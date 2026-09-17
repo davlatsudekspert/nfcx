@@ -328,17 +328,28 @@ void main() {
       // Qiymatlar PROTOTIPNING CSS o'zgaruvchilaridan. O'zgartirilsa
       // — ataylab o'zgartirilsin, tasodifan emas.
       //
-      // Standart mavzu — A "Opal Light": oq qog'oz, indigo urg'u.
+      // Standart mavzu — A "Opal Light".
+      //
+      // ILIQ QOG'OZ, SOF OQ EMAS. Prototipning CSS'i sof oq
+      // (#FFFFFF) va sovuq ko'kimtir kulranglarni beradi — bu
+      // boshqaruv paneli tili. Ilovada u "oddiy" bo'lib chiqdi,
+      // shuning uchun ataylab iliqlashtirildi: fil suyagi fon,
+      // iliq kulrang yuzalar, chuqurroq sapfir urg'u. Rang OILASI
+      // o'zgarmadi (oq + ko'k), MATERIALI o'zgardi.
       C.apply(Palette.opal);
-      expect(C.bg, const Color(0xFFFFFFFF)); // --bg0
-      expect(C.surface, const Color(0xFFF2F4F7)); // --bg1
-      expect(C.accent, const Color(0xFF3A62CC)); // --acc
-      expect(C.ink, const Color(0xFF0D1117)); // --t1
-      expect(C.ink2, const Color(0xFF596372)); // --t2
-      expect(C.line, const Color(0xFFDDE1E8)); // --line
-      expect(C.ok, const Color(0xFF2E9E6B));
-      expect(C.warn, const Color(0xFFD98A2B));
-      expect(C.fail, const Color(0xFFD9534F));
+      expect(C.bg, const Color(0xFFFFFDFA));
+      expect(C.surface, const Color(0xFFF4F0E9));
+      expect(C.accent, const Color(0xFF22407D));
+      expect(C.ink, const Color(0xFF17130E));
+      expect(C.ink2, const Color(0xFF6A6157));
+      expect(C.line, const Color(0xFFE5DFD4));
+      expect(C.ok, const Color(0xFF2F8F63));
+      expect(C.warn, const Color(0xFFB98430));
+      expect(C.fail, const Color(0xFFC0453F));
+
+      // FON SOF OQ BO'LMASLIGI — qoida, tasodif emas.
+      expect(C.bg, isNot(const Color(0xFFFFFFFF)),
+          reason: 'qimmat yuza hech qachon sof oq bo\'lmaydi');
 
       // B "Midnight Silk" — to'q mavzu.
       C.apply(Palette.midnight);

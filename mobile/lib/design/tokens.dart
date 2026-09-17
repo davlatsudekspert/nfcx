@@ -124,31 +124,49 @@ class Palette {
   // tanlangan va kontrast shu juftliklarda tekshirilgan.
 
   /// A — OPAL LIGHT. Standart mavzu: oq qog'oz, indigo urg'u.
+  /// OPAL LIGHT — yorug', lekin QOG'OZDEK, ekrandek emas.
+  ///
+  /// NIMA UCHUN ILIQ: oldingi palitra sof oq (#FFFFFF) va SOVUQ
+  /// ko'kimtir kulranglardan iborat edi. Sovuq kulrang — bu
+  /// boshqaruv paneli, hisobot, korporativ dashboard tili. Qimmat
+  /// narsalar (nashr, qadoq, butik) hech qachon sof oq bo'lmaydi:
+  /// ular ILIQ oq — fil suyagi, qog'oz, marmar. Farq kichkina
+  /// ko'rinadi, lekin aynan shu ilova "oddiy" yoki "qimmat"
+  /// tuyulishini hal qiladi.
+  ///
+  /// URG'U RANGI HAM CHUQURLASHTIRILDI: #3A62CC — Material'ning
+  /// standart ko'ki, uni har uchinchi ilovada ko'rasiz. #22407D —
+  /// chuqur sapfir: o'sha ko'k oilasida qoladi (prototip bilan
+  /// ziddiyat yo'q), lekin "standart" emas, "qimmat" o'qiladi.
+  ///
+  /// OLTIN — FAQAT URG'U UCHUN, fon uchun emas: u tarif kartalari
+  /// va premium belgilarda ishlaydi. Hamma joyga oltin surish
+  /// premiumlikni emas, arzonlikni beradi.
   static const opal = Palette(
     id: 'opal',
     label: 'Opal Light',
     light: true,
-    accent: Color(0xFF3A62CC),
-    accentHigh: Color(0xFF6179D1),
-    accentDeep: Color(0xFF2B4BA3),
-    accentSecondary: Color(0xFFD98A2B),
-    onAccent: Color(0xFFFFFFFF),
-    aura: Color(0xFF6179D1),
-    baseTop: Color(0xFFFFFFFF),
-    baseMid: Color(0xFFFAFBFC),
-    baseBottom: Color(0xFFFFFFFF),
-    raised: Color(0xFFF2F4F7),
-    raisedHigh: Color(0xFFE0E3EB),
-    ink: Color(0xFF0D1117),
-    ink2: Color(0xFF596372),
-    ink3: Color(0xFF8C95A3),
-    line: Color(0xFFDDE1E8),
-    lineStrong: Color(0xFFCCD1DD),
-    glass: Color(0xB8FFFFFF),
-    glassLine: Color(0x140D1117),
-    ok: Color(0xFF2E9E6B),
-    warn: Color(0xFFD98A2B),
-    fail: Color(0xFFD9534F),
+    accent: Color(0xFF22407D),
+    accentHigh: Color(0xFF3B5C9E),
+    accentDeep: Color(0xFF16305F),
+    accentSecondary: Color(0xFFB98430),
+    onAccent: Color(0xFFFFFDF9),
+    aura: Color(0xFF3B5C9E),
+    baseTop: Color(0xFFFFFDFA),
+    baseMid: Color(0xFFFAF7F2),
+    baseBottom: Color(0xFFFFFDFA),
+    raised: Color(0xFFF4F0E9),
+    raisedHigh: Color(0xFFE6E0D5),
+    ink: Color(0xFF17130E),
+    ink2: Color(0xFF6A6157),
+    ink3: Color(0xFF9B9287),
+    line: Color(0xFFE5DFD4),
+    lineStrong: Color(0xFFD2CABB),
+    glass: Color(0xB8FFFDFA),
+    glassLine: Color(0x1417130E),
+    ok: Color(0xFF2F8F63),
+    warn: Color(0xFFB98430),
+    fail: Color(0xFFC0453F),
   );
 
   /// B — MIDNIGHT SILK. To'q mavzu.
