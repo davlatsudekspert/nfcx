@@ -14,6 +14,7 @@ import * as apiAdminFinance from './api/admin-finance.js';
 import * as apiTelegram from './api/telegram.js';
 import * as apiAssistant from './api/assistant.js';
 import * as apiModeration from './api/moderation.js';
+import * as apiComments from './api/comments.js';
 
 // API javoblari standart holda KESHLANMAYDI.
 //
@@ -5197,8 +5198,27 @@ async function authApi(request, env, url) {
   }
 
   if (path === '/api/auth/logout' && request.method === 'POST') {
-    const token = parseCookies(request)[SESSION_COOKIE];
-    if (token) await env.DB.prepare(`DELETE FROM sessions WHERE token IN (?, ?)`).bind(await sha256Hex(token), token).run();
+    // MOBIL SESSIYA HAM YOPILSIN.
+    //
+    // Ilgari token FAQAT cookie'dan o'qilardi. Veb shunday
+    // ishlaydi, mobil ilova esa uni `Authorization: Bearer` da
+    // yuboradi — ya'ni telefonda "Chiqish" bosilganda server
+    // tomonda sessiya UMUMAN o'chmasdi. Ilova tokenni o'zidan
+    // tashlardi, lekin o'sha token qo'lga tushsa keyin ham
+    // ishlayverardi. Productionda o'lchandi: chiqishdan keyin
+    // `/api/auth/me` yana `user` qaytardi.
+    //
+    // Endi ikkala manba ham o'chiriladi.
+    const cookieToken = parseCookies(request)[SESSION_COOKIE];
+    const auth = request.headers.get('authorization') || '';
+    const bearer = auth.toLowerCase().startsWith('bearer ')
+      ? auth.slice(7).trim()
+      : '';
+    for (const token of [cookieToken, bearer]) {
+      if (!token) continue;
+      await env.DB.prepare(`DELETE FROM sessions WHERE token IN (?, ?)`)
+        .bind(await sha256Hex(token), token).run();
+    }
     return jsonWithCookie({ ok: true }, 200, clearedSessionCookieHeader(secure));
   }
 
@@ -5316,6 +5336,44 @@ async function defaultFollowCompanyD1(env, userId) {
 
 async function recordsApi(request, env, url) {
   const path = url.pathname;
+
+  // KOD NARXI — sotib olishdan OLDIN.
+  //
+  // NIMA UCHUN KERAK: do'konda odam kod yozib "bormi?" deb
+  // tekshiradi. Kod hali hech kimda bo'lmasa, `GET /api/records/:code`
+  // 404 qaytaradi va interfeys "topilmadi" deyishga majbur bo'ladi —
+  // holbuki aynan o'sha kodni SOTIB OLSA bo'ladi. Narxni bilishning
+  // yagona yo'li buyurtma yaratish edi, ya'ni "narxini ko'ray" degan
+  // odam pending order qoldirib ketardi va kod 24 soatga band
+  // bo'lib turardi.
+  //
+  // FAQAT O'QIYDI: hech narsa yaratmaydi, hech narsani band
+  // qilmaydi. Narx `personalPurchaseQuote` dan — xarid oqimidagi
+  // AYNAN o'sha manba, shuning uchun ko'rsatilgan summa bilan
+  // to'lanadigan summa hech qachon farq qilmaydi.
+  const quoteMatch = path.match(/^\/api\/records\/([A-Za-z0-9]+)\/quote$/);
+  if (quoteMatch && request.method === 'GET') {
+    const code = String(quoteMatch[1] || '').toUpperCase();
+    const taken = await getRecord(env, code);
+    if (taken) {
+      return json({ code, taken: true, purchasable: false, reason: 'already_taken' });
+    }
+    const quote = personalPurchaseQuote(code);
+    if (!quote.purchasable) {
+      return json({ code, taken: false, purchasable: false, reason: quote.reason || 'not_purchasable' });
+    }
+    // Band qilinib, hali to'lanmagan kod ham sotuvda emas.
+    const pending = await activeWebOrderByCodeD1(env, code);
+    return json({
+      code,
+      taken: false,
+      purchasable: !pending,
+      reason: pending ? 'reserved_pending_payment' : undefined,
+      tier: quote.tier,
+      amount: quote.amount,
+      ...(quote.level ? { level: quote.level } : {}),
+    });
+  }
 
   if (path === '/api/records' && request.method === 'GET') {
     return edgeCached(request, url, async () => {
@@ -8817,6 +8875,19 @@ async function storiesApi(request, env, url) {
 // `story_likes`), kompaniya postida esa jadval YO'Q — shuning uchun
 // u yerda nol qaytariladi va ilova tugmani ko'rsatmaydi. Soxta
 // raqam chiqarishdan ko'ra, yo'qligini aytish to'g'ri.
+/// Lenta qatori uchun izoh "kalitini" beradi.
+///
+/// Lenta to'rt manbadan keladi va ularning id'lari BIR-BIRIGA
+/// BOG'LIQ EMAS: 5-raqamli shaxsiy post va 5-raqamli kompaniya
+/// posti ikki xil narsa. Shuning uchun izoh jadvalidagi kalit
+/// `kind` bilan birga bo'ladi.
+const commentTargetKind = (r) => {
+  const company = String(r.author_kind) === 'company';
+  return String(r.kind) === 'story'
+    ? (company ? 'company_story' : 'story')
+    : (company ? 'company_post' : 'post');
+};
+
 async function feedApi(request, env, url) {
   if (url.pathname !== '/api/feed' || request.method !== 'GET') return null;
 
@@ -8887,7 +8958,20 @@ async function feedApi(request, env, url) {
   const all = (rows.results || []).filter(
     (r) => !blocked.has(`${String(r.author_kind)}:${String(r.code || '').toUpperCase()}`),
   );
-  const feed = all.slice(0, limit).map((r) => {
+
+  // IZOHLAR SONI — BITTA so'rov bilan.
+  //
+  // Har bir kadr ostida "izohlar: 12" turadi. Har biriga alohida
+  // so'rov yuborilsa, bitta sahifa uchun 15 ta qo'shimcha so'rov
+  // bo'lardi; shuning uchun sahifa yig'ilgach bitta guruhlangan
+  // so'rov qilinadi.
+  const page1 = all.slice(0, limit);
+  const commentCounts = await apiComments.countsFor(
+    env,
+    page1.map((r) => ({ kind: commentTargetKind(r), id: Number(r.id) })),
+  ).catch(() => new Map());
+
+  const feed = page1.map((r) => {
     const d = parseDbDate(r.created_at);
     return {
       kind: String(r.kind),
@@ -8905,6 +8989,11 @@ async function feedApi(request, env, url) {
       // Kompaniya postida yoqtirish jadvali yo'q — ilova tugmani
       // umuman ko'rsatmasligi uchun aniq bayroq.
       likeable: String(r.author_kind) === 'card',
+      // IZOH — yoqtirishdan farqli o'laroq, HAMMA kontent turida
+      // ishlaydi (kompaniya posti ham): jadval umumiy va egasi
+      // `target_kind` bilan ajratiladi.
+      commentKind: commentTargetKind(r),
+      commentCount: commentCounts.get(`${commentTargetKind(r)}:${Number(r.id)}`) || 0,
     };
   });
 
@@ -9131,6 +9220,17 @@ const H = {
   nowTs, parseDbDate, newToken, sha256Hex, hashPassword, verifyPassword,
   reqIp, logAdminActivity, logAdminLoginEvent, sendTelegramMessage, sendTelegramTo,
   personalIdTierD1, effectiveAccessD1, featureAllowedD1, paymentsEnabledD1, paymeCheckoutLinkD1,
+  // `checkoutLinksD1` — Payme VA Click havolalarini birga beradi.
+  //
+  // NIMA UCHUN QO'SHILDI: `hosting/api/account.js` uni uch joyda
+  // chaqiradi (Premium so'rovi ikki marta, jismoniy karta
+  // buyurtmasi bir marta), lekin bu ro'yxatda faqat
+  // `paymeCheckoutLinkD1` bor edi. Natijada har ikkala oqim ham
+  // `TypeError: H.checkoutLinksD1 is not a function` bilan yiqilib,
+  // foydalanuvchiga 503 `api_unavailable` qaytarardi — ya'ni
+  // Premium ham, jismoniy karta ham UMUMAN sotib olinmasdi.
+  // Modul testlari bu yo'llarni bosib o'tmagani uchun xato jim edi.
+  checkoutLinksD1,
   createPendingWebOrderD1, getWebOrderD1, createWebOrderD1, setWebOrderStatusD1, ensureCoreSchema,
   finalizePaidWebOrderD1, attachCardToUserD1, createRecordD1, activeWebOrderByCodeD1, getWebOrderByPaymeIdD1,
   sessionCookieHeader, jsonWithCookie, isSecure, SESSION_TTL_S, newsVisitorHash, createUserSession, parseCookies,
@@ -9140,7 +9240,7 @@ const H = {
   usersHaveTrialColumnsD1, trialEndsAtD1, premiumExtendD1,
   signupSourceD1, usersHaveSignupSourceD1, isMobileClientD1,
 };
-const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration];
+const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments];
 
 // Xavfsizlik header'lari — barcha javoblarga (statik va API). CSP ataylab faqat
 // framing/base/form/object ni cheklaydi (script/style ga tegmaydi — YouTube/Yandex
