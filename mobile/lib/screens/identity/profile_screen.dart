@@ -454,16 +454,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: S.gutter),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
+              // AVATAR MARKAZDA VA KATTA.
+              //
+              // Ilgari u chap chekkada, tarif belgisi esa o'ng
+              // chekkada turardi — profil yuzi emas, qatorning bir
+              // uchi bo'lib qolardi. Endi u sahifaning o'rtasida va
+              // 112 dp: profilni ochgan odam birinchi navbatda
+              // KIMNI ochganini ko'radi.
+              //
+              // TARIF BELGISI O'Z JOYIDA QOLADI (o'ng yuqori) —
+              // lekin `Stack` ichida, ya'ni u avatarni markazdan
+              // surib yubormaydi.
+              Stack(
+                alignment: Alignment.topCenter,
                 children: [
                   StoryRing(
                     avatarUrl: r.avatarUrl,
                     name: r.name,
-                    size: 96,
+                    size: 112,
                     showLabel: false,
+                    // OLTIN HALQA — ISTORYA BORLIGINING BELGISI
+                    // (Instagram'dagidek). Istorya bo'lmasa halqa
+                    // so'nadi va bosilmaydi ham: bo'sh ko'rsatuvni
+                    // ochadigan tugma — aldov.
                     seen: _stories.isEmpty,
                     onTap: _stories.isEmpty
                         ? null
@@ -472,14 +487,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               (_) => StoryViewerScreen(code: _code),
                             ),
                   ),
-                  const Spacer(),
-                  _TierBadge(tier: r.tier, label: style.label, code: r.code),
+                  Positioned(
+                    right: 0,
+                    top: 18,
+                    child:
+                        _TierBadge(tier: r.tier, label: style.label, code: r.code),
+                  ),
                 ],
               ),
               const SizedBox(height: S.x12),
               Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Flexible(child: Text(r.name, style: T.profileName)),
+                  Flexible(
+                    child: Text(
+                      r.name,
+                      textAlign: TextAlign.center,
+                      style: T.profileName,
+                    ),
+                  ),
                   if (r.verified) ...[
                     const SizedBox(width: 6),
                     const VerifiedBadge(size: 17),
@@ -490,12 +516,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 2),
                 Text(
                   [r.role, r.city].where((v) => v.isNotEmpty).join(' · '),
+                  textAlign: TextAlign.center,
                   style: T.body.copyWith(fontSize: 14, color: C.ink2),
                 ),
               ],
               const SizedBox(height: 6),
               Text(
                 'nfcstore.uz/${r.code.toLowerCase()}',
+                textAlign: TextAlign.center,
                 style: T.link.copyWith(color: C.accent, fontSize: 12),
               ),
 
@@ -591,6 +619,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           code: _code, title: tr('Obunachilar'), isCompany: true,
         )),
         onMenu: _menu,
+        hasStory: _stories.isNotEmpty,
+        onStory: _stories.isEmpty
+            ? null
+            : () => push<void>(
+                  context,
+                  (_) => StoryViewerScreen(code: _code, isCompany: true),
+                ),
       ),
 
       const SizedBox(height: S.x20),
@@ -895,12 +930,19 @@ class _BusinessCinematicHeader extends StatelessWidget {
     required this.followers,
     required this.onFollowers,
     required this.onMenu,
+    required this.hasStory,
+    this.onStory,
   });
 
   final Company company;
   final int followers;
   final VoidCallback onFollowers;
   final VoidCallback onMenu;
+
+  /// Kompaniyada ko'rsatiladigan istorya bormi — oltin halqa
+  /// shunga qarab chiziladi.
+  final bool hasStory;
+  final VoidCallback? onStory;
 
   @override
   Widget build(BuildContext context) {
@@ -943,53 +985,59 @@ class _BusinessCinematicHeader extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: S.gutter),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                // LOGOTIP MARKAZDA VA KATTA — shaxsiy profildagidek.
+                //
+                // Ilgari u chap chekkada turardi. Biznes profilini
+                // ochgan mijoz birinchi navbatda QAYSI firma
+                // ekanini ko'rishi kerak, qator boshidagi kichik
+                // kvadratni emas.
+                //
+                // KVADRATLIGI QOLADI: dumaloq ramka odamning
+                // avatariga tegishli, brend esa kvadratda.
+                Stack(
+                  alignment: Alignment.topCenter,
                   children: [
-                    // KVADRAT LOGOTIP — kompaniya belgisi dumaloq
-                    // emas (prototip): dumaloq ramka odamning
-                    // avatariga tegishli, brend esa kvadratda.
-                    Container(
-                      width: 84,
-                      height: 84,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(R.card),
-                        border: Border.all(color: C.bg, width: 3),
-                        boxShadow: C.e1,
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(R.card - 3),
-                        child: Avatar(
-                          url: company.logoUrl,
-                          name: company.name,
-                          size: 78,
-                          square: true,
-                        ),
-                      ),
+                    _CompanyLogo(
+                      url: company.logoUrl,
+                      name: company.name,
+                      // OLTIN HALQA — ISTORYA BORLIGINING BELGISI.
+                      // Kompaniya ham istorya joylaydi, demak
+                      // belgi ham unda bo'lishi shart.
+                      hasStory: hasStory,
+                      onTap: onStory,
                     ),
-                    const Spacer(),
                     if (company.verified)
-                      StatusChip(
-                        tr('Admin tasdiqlagan'),
-                        tone: StatusTone.ok,
+                      Positioned(
+                        right: 0,
+                        top: 14,
+                        child: StatusChip(
+                          tr('Admin tasdiqlagan'),
+                          tone: StatusTone.ok,
+                        ),
                       ),
                   ],
                 ),
                 const SizedBox(height: S.x12),
-                Text(company.name, style: T.profileName),
+                Text(
+                  company.name,
+                  textAlign: TextAlign.center,
+                  style: T.profileName,
+                ),
                 if (meta.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(
                     meta,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
                     style: T.body.copyWith(fontSize: 13.5, color: C.ink2),
                   ),
                 ],
                 const SizedBox(height: 6),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Flexible(
                       child: Text(
@@ -1364,4 +1412,67 @@ class _ProfileTabs extends StatelessWidget {
           },
         ),
       );
+}
+
+/// KOMPANIYA LOGOTIPI — kvadrat, va istorya bo'lsa OLTIN HALQA.
+///
+/// NIMA UCHUN ALOHIDA KOMPONENT: `StoryRing` dumaloq avatar uchun
+/// yasalgan, kompaniya belgisi esa kvadrat. Dumaloq halqani
+/// kvadrat logotip atrofiga o'rash belgini kesib qo'yardi; shuning
+/// uchun bu yerda halqa ham kvadrat, radiusi logotipnikiga mos.
+///
+/// HALQA FAQAT ISTORYA BO'LGANDA. Doim ko'rsatilsa u bezakka
+/// aylanadi va hech narsa bildirmaydi — Instagram'dagi halqaning
+/// butun ma'nosi "yangi narsa bor" deganida.
+class _CompanyLogo extends StatelessWidget {
+  const _CompanyLogo({
+    required this.url,
+    required this.name,
+    required this.hasStory,
+    this.onTap,
+  });
+
+  final String? url;
+  final String name;
+  final bool hasStory;
+  final VoidCallback? onTap;
+
+  static const _size = 104.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final logo = Container(
+      width: _size,
+      height: _size,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(R.card),
+        border: Border.all(color: C.bg, width: 3),
+        boxShadow: C.e1,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(R.card - 3),
+        child: Avatar(
+          url: url,
+          name: name,
+          size: _size - 6,
+          square: true,
+        ),
+      ),
+    );
+
+    if (!hasStory) return logo;
+
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(R.card + 6),
+          gradient: C.storyRing,
+        ),
+        child: logo,
+      ),
+    );
+  }
 }

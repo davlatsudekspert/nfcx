@@ -368,6 +368,20 @@ class _FrontFace extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // LOGOTIP KARTANING OLD TOMONIDA (prototip: chap
+            // yuqoridagi `[LOGO]`).
+            //
+            // Ilgari belgi faqat kartaning ORQA tomonida edi —
+            // ya'ni odam kartani ag'darmaguncha brendni ko'rmasdi,
+            // holbuki karta ilovaning eng ko'p ko'rinadigan
+            // narsasi: bosh sahifada, profilda, do'konda.
+            //
+            // MEDALYON, YALANG'OCH BELGI EMAS: oltin belgi oltin
+            // karta ustida ko'rinmaydi. Quyuq medalyon esa metall
+            // yuzada aniq o'qiladi va jismoniy kartadagi chipga
+            // hamohang.
+            BrandMark(size: 18 * k, ring: false),
+            SizedBox(width: 6 * k),
             Expanded(
               child: Text(
                 style.hasMaterial

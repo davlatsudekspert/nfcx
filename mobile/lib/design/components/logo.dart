@@ -134,52 +134,33 @@ class Wordmark extends StatelessWidget {
       );
 }
 
-/// BREND YORLIG'I — punktir chegarali "[LOGO]" (prototip: `.logo`).
+/// BREND YORLIG'I — HAQIQIY LOGOTIP va yonida "NFCSTORE".
 ///
-/// Punktir ATAYLAB: bu yorliq bosiladigan tugma emas, u BRENDNI
-/// bildiradi. To'liq chiziq uni tugmaga o'xshatib qo'yardi va
-/// yonidagi haqiqiy tugmalar bilan chalkashardi.
+/// ILGARI BU YERDA LOGOTIP YO'Q EDI. Prototipda bosh sahifa va
+/// Qidiruv tepasida `[LOGO]` deb yozilgan — bu logotip QO'YILADIGAN
+/// JOYNING belgisi, dizaynning o'zi emas. U so'zma-so'z ko'chirilgan
+/// va ilovada punktir ramka ichida "NFCSTORE" so'zi turgan edi:
+/// ya'ni ilovaning eng ko'rinadigan ikki ekranida brend belgisi
+/// umuman ko'rinmasdi.
+///
+/// Endi o'sha joyda saytdagi bilan AYNAN bir xil oltin medalyon
+/// turadi, yonida esa so'z belgisi.
 class BrandTag extends StatelessWidget {
-  const BrandTag({super.key, this.color});
+  const BrandTag({super.key, this.color, this.size = 26});
 
+  /// So'z belgisining rangi (media ustida oq beriladi).
   final Color? color;
 
+  /// Medalyon diametri.
+  final double size;
+
   @override
-  Widget build(BuildContext context) => CustomPaint(
-        painter: _DashedTag(color ?? C.lineStrong),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-          child: Wordmark(size: 11, color: color ?? C.ink2),
-        ),
+  Widget build(BuildContext context) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          BrandMark(size: size, ring: false),
+          SizedBox(width: size * .3),
+          Wordmark(size: size * .42, color: color ?? C.ink),
+        ],
       );
-}
-
-class _DashedTag extends CustomPainter {
-  _DashedTag(this.color);
-
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5
-      ..color = color;
-    final path = Path()
-      ..addRRect(RRect.fromRectAndRadius(
-        Offset.zero & size,
-        const Radius.circular(10),
-      ));
-    for (final m in path.computeMetrics()) {
-      var start = 0.0;
-      while (start < m.length) {
-        final end = start + 5 < m.length ? start + 5 : m.length;
-        canvas.drawPath(m.extractPath(start, end), paint);
-        start = end + 4;
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(_DashedTag old) => old.color != color;
 }
