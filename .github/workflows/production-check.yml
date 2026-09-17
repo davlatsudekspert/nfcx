@@ -20,6 +20,7 @@ on:
     branches: ['claude/**']
     paths:
       - 'scripts/check-production.mjs'
+      - 'scripts/diagnose-business.mjs'
       - 'mobile/integration_test/**'
       - '.github/workflows/production-check.yml'
 
@@ -35,6 +36,15 @@ jobs:
           node-version: '22'
       - name: nfcstore.uz yo'llari
         run: node scripts/check-production.mjs
+
+      # BIZNES PROFILI DIAGNOSTIKASI — faqat o'qiydi, hech narsa
+      # o'zgartirmaydi. Yiqilsa ham qolgan natijani yashirmasin.
+      - name: Biznes profili diagnostikasi
+        if: always()
+        env:
+          NFC_LOGIN_EMAIL: ${{ secrets.NFC_LOGIN_EMAIL }}
+          NFC_LOGIN_PASSWORD: ${{ secrets.NFC_LOGIN_PASSWORD }}
+        run: node scripts/diagnose-business.mjs
 
   # ── 2. ILOVA + HAQIQIY SAYT ───────────────────────────────────
   #
