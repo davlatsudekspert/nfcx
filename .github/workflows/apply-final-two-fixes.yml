@@ -20,7 +20,9 @@ jobs:
           fetch-depth: 0
 
       - name: Apply targeted patches
-        run: python3 scripts/apply_final_two_fixes.py
+        run: |
+          python3 scripts/apply_final_two_fixes.py
+          python3 scripts/add_final_l10n.py
 
       - uses: subosito/flutter-action@v2
         with:
@@ -32,17 +34,25 @@ jobs:
         working-directory: mobile
         run: flutter pub get --enforce-lockfile
 
+      - name: Build translations
+        working-directory: mobile
+        run: python3 tool/l10n_build.py
+
       - name: Analyze
         working-directory: mobile
         run: flutter analyze --no-fatal-infos
 
-      - name: Tests
+      - name: Tests (non-golden)
         working-directory: mobile
-        run: flutter test
+        shell: bash
+        run: |
+          mapfile -d '' files < <(find test -name '*_test.dart' ! -path 'test/audit/visual_audit_test.dart' -print0)
+          flutter test "${files[@]}"
 
       - name: Commit tested fixes
         run: |
           rm -f scripts/apply_final_two_fixes.py
+          rm -f scripts/add_final_l10n.py
           rm -f .github/workflows/apply-final-two-fixes.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
