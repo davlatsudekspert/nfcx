@@ -23,10 +23,14 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nfcstore/data/api_client.dart';
+import 'package:nfcstore/data/models.dart';
 import 'package:nfcstore/data/repo.dart';
 
 const _demoEmail = 'dilshod@nfcstore.uz';
 const _demoPassword = 'demo1234';
+
+/// Demo hisobning asosiy kartasi (`scripts/lib/demo-seed.mjs`).
+const _demoCode = 'VIP001';
 
 void main() {
   final base = Platform.environment['API_BASE'] ?? '';
@@ -192,6 +196,208 @@ void main() {
           contains('premium_required'),
         ),
       ),
+    );
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // AUDIT: SHAXSIY HISOB
+  // ═══════════════════════════════════════════════════════════════
+
+  test('AUDIT chiqish — sessiya serverda ham yopiladi', () async {
+    // Chiqish serverdagi sessiyani ham yopishi kerak. Faqat
+    // telefondan o'chirish yetmaydi: o'g'irlangan token
+    // ishlayveradi.
+    final r = Repo(Api(baseUrl: base));
+    await r.login(login: _demoEmail, password: _demoPassword);
+    expect((await r.me()).user, isNotNull);
+
+    await r.logout();
+
+    // `/api/auth/me` 401 EMAS, 200 qaytaradi — lekin ICHIDA
+    // foydalanuvchi YO'Q. Bu serverning ataylab tanlagan yo'li va
+    // ilova uni to'g'ri o'qiydi: `boot()` da `user == null`
+    // bo'lsa holat darhol "kirilmagan" ga o'tadi.
+    expect((await r.me()).user, isNull,
+        reason: 'chiqqandan keyin token hech kimni ochmasligi kerak');
+
+    // UMUMIY SESSIYANI TIKLAYMIZ. Server bu hisob uchun bitta
+    // sessiya yuritadi, ya'ni bu yerdagi chiqish qolgan
+    // sinovlarning tokenini ham yopadi. Tiklamasak keyingi
+    // sinovlar "unauthorized" bo'lib yiqilardi — va bu ilovaning
+    // emas, sinovlarning nuqsoni bo'lardi.
+    await repo.login(login: _demoEmail, password: _demoPassword);
+    expect((await repo.me()).user, isNotNull);
+  });
+
+  test('AUDIT profilni tahrirlash — o‘zgarish saqlanadi', () async {
+    final before = await repo.record(_demoCode);
+    final mark = 'Audit ${DateTime.now().millisecondsSinceEpoch % 100000}';
+
+    await repo.updateRecord(_demoCode, {'role': mark});
+    expect((await repo.record(_demoCode)).role, mark);
+
+    // ASL HOLATGA QAYTARAMIZ — sinov ma'lumotni o'zgartirib
+    // qoldirmasligi kerak.
+    await repo.updateRecord(_demoCode, {'role': before.role});
+    expect((await repo.record(_demoCode)).role, before.role);
+  });
+
+  test('AUDIT avatar va muqova — yuklanadi va profilga yoziladi',
+      () async {
+    final before = await repo.record(_demoCode);
+    final avatar = await repo.uploadMedia(_png, contentType: 'image/png');
+    final cover = await repo.uploadMedia(_png, contentType: 'image/png');
+    expect(avatar, isNotEmpty);
+    expect(cover, isNotEmpty);
+
+    await repo.updateRecord(_demoCode, {
+      'avatarUrl': avatar,
+      'bgUrl': cover,
+    });
+    final after = await repo.record(_demoCode);
+    expect(after.avatarUrl, avatar);
+    expect(after.bgUrl, cover);
+
+    await repo.updateRecord(_demoCode, {
+      'avatarUrl': before.avatarUrl ?? '',
+      'bgUrl': before.bgUrl ?? '',
+    });
+  });
+
+  test('AUDIT istorya — joylanadi va O‘CHIRILADI', () async {
+    final url = await repo.uploadMedia(_png, contentType: 'image/png');
+    await repo.addStory(_demoCode, imageUrl: url, agreed: true);
+
+    final mine = await repo.recordStories(_demoCode);
+    expect(mine, isNotEmpty);
+
+    final id = int.parse(mine.first.id);
+    await repo.deleteStory(id);
+    final after = await repo.recordStories(_demoCode);
+    expect(after.any((e) => e.id == '$id'), isFalse,
+        reason: 'o‘chirilgan istorya ro‘yxatda qolmasligi kerak');
+  });
+
+  test('AUDIT begona istoryani o‘chirib bo‘lmaydi', () async {
+    final url = await repo.uploadMedia(_png, contentType: 'image/png');
+    await repo.addStory(_demoCode, imageUrl: url, agreed: true);
+    final mine = await repo.recordStories(_demoCode);
+    final id = int.parse(mine.first.id);
+
+    final other = Repo(Api(baseUrl: base));
+    await other.login(login: 'malika@nfcstore.uz', password: _demoPassword);
+    await expectLater(other.deleteStory(id), throwsA(isA<ApiError>()));
+
+    await repo.deleteStory(id);
+  });
+
+  test('AUDIT yoqtirish — ikkinchi bosish qaytaradi', () async {
+    final feed = await repo.feed();
+    final item = feed.items.firstWhere((e) => e.kind == 'post');
+
+    final on = await repo.likePost(item.id);
+    final off = await repo.likePost(item.id);
+    expect(on.liked, isNot(off.liked),
+        reason: 'ikkinchi bosish holatni qaytarishi kerak');
+    expect((on.count - off.count).abs(), 1);
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // AUDIT: BIZNES HISOB
+  // ═══════════════════════════════════════════════════════════════
+
+  test('AUDIT kompaniya — yaratiladi, tahrirlanadi, o‘chiriladi',
+      () async {
+    // SINOV O'Z KOMPANIYASINI YARATADI — mavjudiga tegilmaydi.
+    final owner = Repo(Api(baseUrl: base));
+    await owner.login(login: 'malika@nfcstore.uz', password: _demoPassword);
+
+    final id = 'AUD${DateTime.now().millisecondsSinceEpoch % 100000}';
+    await owner.createCompany({
+      'id': id,
+      'name': 'Audit MChJ',
+      'category': 'IT',
+      'city': 'Toshkent',
+    });
+
+    final made = await owner.company(id);
+    expect(made.name, 'Audit MChJ');
+
+    // TAHRIRLASH.
+    final logo = await owner.uploadMedia(_png, contentType: 'image/png');
+    final edited = await owner.updateCompany(id, {
+      'about': 'Audit paytida yaratilgan',
+      'logoUrl': logo,
+    });
+    expect(edited.about, 'Audit paytida yaratilgan');
+    expect(edited.logoUrl, logo);
+
+    // MAHSULOT — qo'shish, tahrirlash, o'chirish.
+    await owner.addProduct(id, {'name': 'Audit mahsulot', 'price': 1000});
+    var cat = await owner.companyCatalog(id);
+    expect(cat, isNotEmpty);
+    final itemId = cat.first.id;
+
+    await owner.updateProduct(id, itemId, {'name': 'Audit mahsulot 2'});
+    cat = await owner.companyCatalog(id);
+    expect(cat.first.name, 'Audit mahsulot 2');
+
+    await owner.deleteProduct(id, itemId);
+    cat = await owner.companyCatalog(id);
+    expect(cat.any((e) => e.id == itemId), isFalse);
+
+    // ISH VAQTI — ochiq/yopiq holati shundan chiqadi.
+    await owner.updateHours(id, const [
+      DayHours(closed: false, open: '09:00', close: '23:00'),
+      DayHours(closed: false, open: '09:00', close: '23:00'),
+      DayHours(closed: false, open: '09:00', close: '23:00'),
+      DayHours(closed: false, open: '09:00', close: '23:00'),
+      DayHours(closed: false, open: '09:00', close: '23:00'),
+      DayHours(closed: false, open: '09:00', close: '23:00'),
+      DayHours(),
+    ]);
+    final withHours = await owner.company(id);
+    expect(withHours.hours.length, 7);
+    expect(withHours.hours.first.open, '09:00');
+  });
+
+  test('AUDIT begona odam kompaniyani tahrirlay olmaydi', () async {
+    final other = Repo(Api(baseUrl: base));
+    await other.login(login: 'malika@nfcstore.uz', password: _demoPassword);
+    await expectLater(
+      other.updateCompany('DDD333', {'about': 'begona'}),
+      throwsA(isA<ApiError>()),
+    );
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // AUDIT: NFC
+  // ═══════════════════════════════════════════════════════════════
+
+  test('AUDIT mening ID‘larim — ro‘yxat va bosh karta', () async {
+    final me = await repo.me();
+    expect(me.cards, isNotEmpty, reason: 'kirgan odamda kamida bitta ID bor');
+
+    // BOSH KARTANI ALMASHTIRISH.
+    final code = me.cards.first.code;
+    await repo.setPrimary(code);
+    final after = await repo.me();
+    expect(after.cards.any((c) => c.code == code), isTrue);
+  });
+
+  test('AUDIT noto‘g‘ri ID — topilmaydi, ilova yiqilmaydi', () async {
+    await expectLater(
+      repo.record('YOQBUNDAYKOD'),
+      throwsA(isA<ApiError>()),
+    );
+  });
+
+  test('AUDIT sovg‘a kartasi — noto‘g‘ri kod rad etiladi', () async {
+    // Faqat RAD ETISH yo'li sinaladi: haqiqiy sovg'a kartasini
+    // faollashtirish uni sarflab yuborardi.
+    await expectLater(
+      repo.giftCardVerify('YOQ12345', '000000'),
+      throwsA(isA<ApiError>()),
     );
   });
 
