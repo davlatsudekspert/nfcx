@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -20,16 +18,31 @@ import 'package:nfcstore/state/app_state.dart';
 /// haqiqiy Android ustida, haqiqiy server bilan ishga tushiradi va
 /// ekranma-ekran yuradi.
 ///
-/// SERVER: `API_BASE` orqali beriladi (CI lokal dev serverni
-/// ko'taradi). Berilmasa sinovlar o'tkazib yuboriladi — ishlab
-/// turgan `nfcstore.uz` ga sinov ma'lumotlarini yozmaslik uchun.
+/// SERVER: `--dart-define=API_BASE=...` orqali beriladi (CI lokal
+/// dev serverni ko'taradi) — ishlab turgan `nfcstore.uz` ga sinov
+/// ma'lumotlari hech qachon yozilmaydi. Berilmasa sinov YIQILADI.
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  final base = Platform.environment['API_BASE'] ?? '';
+  // SERVER MANZILI `--dart-define` DAN OLINADI, `Platform.environment`
+  // DAN EMAS.
+  //
+  // Bu farq bir marta soxta yashil berdi: `--dart-define` — KOMPILYATSIYA
+  // paytidagi doimiy, u telefondagi muhit o'zgaruvchisiga AYLANMAYDI.
+  // `Platform.environment['API_BASE']` emulyatorda doim bo'sh bo'lgan,
+  // sinovlar o'zini o'tkazib yuborgan va ish oqimi "0 tests passed,
+  // 1 skipped" bilan YASHIL tugagan — ya'ni "ilova qurilmada
+  // ochiladi" degan xulosa hech narsaga asoslanmagan edi.
+  const base = String.fromEnvironment('API_BASE');
   if (base.isEmpty) {
-    testWidgets('API_BASE berilmagan — o‘tkazib yuborildi', (_) async {},
-        skip: true);
+    // O'TKAZIB YUBORILMAYDI, YIQITILADI. Sinov o'zini jimgina
+    // chetga olsa, ish oqimi yashil bo'ladi va hech kim ilova
+    // sinalmaganini bilmaydi. Yiqilgani esa darrov ko'rinadi.
+    testWidgets('API_BASE berilishi SHART', (_) async {
+      fail('API_BASE berilmagan: sinov --dart-define=API_BASE=... bilan '
+          'ishga tushirilishi kerak. Busiz ilova qurilmada umuman '
+          'tekshirilmaydi.');
+    });
     return;
   }
 
