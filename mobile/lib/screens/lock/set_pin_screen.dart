@@ -33,6 +33,22 @@ class _SetPinScreenState extends State<SetPinScreen> {
   String _pin = '';
   bool _error = false;
 
+  /// ESKI KOD HALI TEKSHIRILMAGAN.
+  ///
+  /// AUDITDA TOPILGAN NUQSON: "Kodni o'zgartirish" to'g'ridan-to'g'ri
+  /// yangi kod so'rardi. Ya'ni qo'lga tushgan OCHIQ telefonda begona
+  /// odam jimgina yangi PIN qo'yib, egasini o'z ilovasidan qulflab
+  /// qo'yishi mumkin edi — qulfning butun ma'nosi shu yerda
+  /// yo'qolardi.
+  ///
+  /// Endi kod ALLAQACHON o'rnatilgan bo'lsa, avval eskisi so'raladi.
+  /// Birinchi marta o'rnatishda bu qadam yo'q — tekshiradigan narsa
+  /// ham yo'q.
+  late bool _needCurrent = widget.lock.enabled;
+
+  /// Eski kod noto'g'ri kiritildi.
+  bool _currentWrong = false;
+
   bool get _confirming => _first.isNotEmpty;
 
   Future<void> _add(String d) async {
@@ -41,8 +57,28 @@ class _SetPinScreenState extends State<SetPinScreen> {
     setState(() {
       _pin += d;
       _error = false;
+      _currentWrong = false;
     });
     if (_pin.length < AppLock.pinLength) return;
+
+    // ── ESKI KODNI TEKSHIRISH ────────────────────────────────
+    if (_needCurrent) {
+      final ok = await widget.lock.verifyPin(_pin);
+      if (!mounted) return;
+      if (!ok) {
+        HapticFeedback.heavyImpact();
+        setState(() {
+          _currentWrong = true;
+          _pin = '';
+        });
+        return;
+      }
+      setState(() {
+        _needCurrent = false;
+        _pin = '';
+      });
+      return;
+    }
 
     if (!_confirming) {
       // Birinchi qadam tugadi — tasdiqlashga o'tamiz.
@@ -82,14 +118,28 @@ class _SetPinScreenState extends State<SetPinScreen> {
               const BrandMark(size: 72, glow: true),
               const SizedBox(height: S.x24),
               Text(
-                _confirming
-                    ? tr('Kodni takrorlang')
-                    : tr('Yangi PIN kod o‘ylab toping'),
+                _needCurrent
+                    ? tr('Joriy PIN kodni kiriting')
+                    : _confirming
+                        ? tr('Kodni takrorlang')
+                        : tr('Yangi PIN kod o‘ylab toping'),
                 textAlign: TextAlign.center,
                 style: T.titleSm,
               ),
               const SizedBox(height: S.x12),
-              if (_error)
+              if (_currentWrong)
+                Text(
+                  tr('Joriy kod noto‘g‘ri.'),
+                  textAlign: TextAlign.center,
+                  style: T.caption.copyWith(color: C.fail),
+                )
+              else if (_needCurrent)
+                Text(
+                  tr('Kodni almashtirish uchun avval eskisini kiriting'),
+                  textAlign: TextAlign.center,
+                  style: T.caption,
+                )
+              else if (_error)
                 Text(
                   tr('Kodlar mos kelmadi. Qaytadan boshlang.'),
                   textAlign: TextAlign.center,

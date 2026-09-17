@@ -13,6 +13,7 @@ import '../../design/components/palette_card.dart';
 import '../../design/components/toast.dart';
 import '../../design/feedback.dart';
 import '../../design/components/input.dart';
+import '../../design/components/press.dart';
 import '../../design/components/sheet.dart';
 import '../../design/components/states.dart';
 import '../../design/components/surface.dart';
@@ -21,6 +22,7 @@ import '../../design/nav.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../l10n/strings.dart';
+import '../../state/app_lock.dart';
 import '../../state/app_state.dart';
 import '../common/contact_actions.dart';
 import '../identity/edit_profile.dart';
@@ -139,6 +141,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       }
                     : null,
               ),
+              // AVTO-QULF — QANCHA VAQTDAN KEYIN.
+              //
+              // Ilgari qulf DOIM darhol tushardi va kun bo'yi
+              // kartalarni ulashib yurgan odam har safar PIN
+              // terishga majbur bo'lardi. Qattiq sozlamaning
+              // natijasi — qulfni butunlay o'chirish, ya'ni u
+              // xavfsizlikni oshirmasdi.
+              const SizedBox(height: S.x20),
+              Eyebrow(tr('Avto-qulf')),
+              const SizedBox(height: S.x8),
+              for (final d in AppLock.delays) ...[
+                _DelayLine(
+                  label: tr(d.label),
+                  selected: lock.delayId == d.id,
+                  onTap: () async {
+                    await lock.setDelay(d.id);
+                    setSheet(() {});
+                  },
+                ),
+                const SizedBox(height: 2),
+              ],
               const SizedBox(height: S.x20),
               SecondaryButton(
                 tr('Kodni o‘zgartirish'),
@@ -671,6 +694,48 @@ class _Loss extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      );
+}
+
+
+/// AVTO-QULF TANLOVI — bitta qator, chapda nom, o'ngda belgi.
+///
+/// Radio tugmalar emas: bu ro'yxat beshta qatordan iborat va
+/// varaqada joy kam. Tanlangani belgi bilan ko'rsatiladi —
+/// qolganlaridan faqat u ajralib tursa yetarli.
+class _DelayLine extends StatelessWidget {
+  const _DelayLine({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Press(
+        onTap: onTap,
+        minSize: 0,
+        scale: .99,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: S.x12),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: T.body.copyWith(
+                    color: selected ? C.ink : C.ink2,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                  ),
+                ),
+              ),
+              if (selected) NIcon(Ico.check, size: 18, color: C.accent),
+            ],
+          ),
         ),
       );
 }

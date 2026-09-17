@@ -174,9 +174,18 @@ class _NfcstoreAppState extends State<NfcstoreApp> with WidgetsBindingObserver {
   /// `paused` — ekran o'chdi yoki boshqa ilovaga o'tildi.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
-      _lock.lock();
+    // AVTO-QULF — SOZLAMAGA QARAB.
+    //
+    // Ilgari qulf DOIM darhol tushardi. Bu eng xavfsizi, lekin kun
+    // bo'yi kartalarni ulashib yurgan odam kameraga yoki xabarga
+    // chiqib qaytganda ham PIN terishga majbur bo'lardi —
+    // natijada u qulfni butunlay o'chirib qo'yardi. Endi kechikish
+    // tanlanadi va u aynan shu yerda hisoblanadi.
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _lock.onBackground();
     }
+    if (state == AppLifecycleState.resumed) _lock.onForeground();
     // Internet qaytganini bilishning yagona ishonchli yo'li — so'rov
     // yuborish. Foydalanuvchi odatda aynan tarmoqni tuzatib qaytadi,
     // shuning uchun FAQAT uzilgan holatda va FAQAT qaytishda bitta

@@ -51,6 +51,22 @@ void main() {
   final failures = <String>[];
   var shot = 0;
 
+  /// CHEGARALANGAN KUTISH — `pumpAndSettle` O'RNIGA.
+  ///
+  /// NIMA UCHUN: `pumpAndSettle` kadrlar TO'XTAGUNCHA kutadi.
+  /// Ilovada esa doim aylanadigan animatsiyalar bor (istorya oltin
+  /// halqasi 9 soniyada bir marta aylanadi, aura, skeleton
+  /// yaltirashi) — ular hech qachon to'xtamaydi. Natijada sayohat
+  /// birinchi lentadayoq osilib qoldi va 10 daqiqadan keyin
+  /// vaqt tugab, BITTA ham surat olinmadi.
+  Future<void> settleFor(WidgetTester t,
+      [Duration d = const Duration(seconds: 2)]) async {
+    final steps = d.inMilliseconds ~/ 100;
+    for (var i = 0; i < steps; i++) {
+      await t.pump(const Duration(milliseconds: 100));
+    }
+  }
+
   Future<bool> waitFor(WidgetTester t, Finder f, {int steps = 40}) async {
     for (var i = 0; i < steps; i++) {
       await t.pump(const Duration(milliseconds: 250));
@@ -100,7 +116,7 @@ void main() {
               w.data == 'Xush kelibsiz' ||
               w.data == 'Bosh sahifa')),
     );
-    await t.pumpAndSettle(const Duration(seconds: 2));
+    await settleFor(t, const Duration(seconds: 2));
 
     // ── 1. TANISHTIRUV ──────────────────────────────────────────
     await capture(t, 'tanishtiruv');
@@ -109,7 +125,7 @@ void main() {
       final skip = find.text('O‘tkazib yuborish');
       if (skip.evaluate().isNotEmpty) {
         await t.tap(skip);
-        await t.pumpAndSettle(const Duration(seconds: 2));
+        await settleFor(t, const Duration(seconds: 2));
       }
     });
 
@@ -119,7 +135,7 @@ void main() {
     // ── 3. RO'YXATDAN O'TISH (shaxsiy / kompaniya) ──────────────
     await step('ro‘yxatdan o‘tish ochilishi', () async {
       await t.tap(find.text('Ro‘yxatdan o‘tish').first);
-      await t.pumpAndSettle(const Duration(seconds: 2));
+      await settleFor(t, const Duration(seconds: 2));
       expect(find.text('Shaxsiy profil'), findsOneWidget);
       expect(find.text('Kompaniya profili'), findsOneWidget);
     });
@@ -129,7 +145,7 @@ void main() {
       final nav = t.state<NavigatorState>(find.byType(Navigator).first);
       if (nav.canPop()) {
         nav.pop();
-        await t.pumpAndSettle(const Duration(seconds: 2));
+        await settleFor(t, const Duration(seconds: 2));
       }
     });
 
@@ -139,10 +155,10 @@ void main() {
       expect(fields, findsWidgets);
       await t.enterText(fields.at(0), loginEmail);
       await t.enterText(fields.at(1), loginPassword);
-      await t.pumpAndSettle();
+      await settleFor(t);
       await t.tap(find.widgetWithText(GestureDetector, 'Kirish').last);
       final ok = await waitFor(t, find.text('Bosh sahifa'));
-      await t.pumpAndSettle(const Duration(seconds: 3));
+      await settleFor(t, const Duration(seconds: 3));
       expect(ok, isTrue, reason: 'kirgandan keyin qobiq ochilishi kerak');
     });
     await capture(t, 'bosh-sahifa');
@@ -154,14 +170,14 @@ void main() {
         find.byType(CustomScrollView).first,
         const Offset(0, -320),
       );
-      await t.pumpAndSettle(const Duration(seconds: 2));
+      await settleFor(t, const Duration(seconds: 2));
     });
     await capture(t, 'lenta');
 
     // ── 6. REELS ────────────────────────────────────────────────
     await step('reels', () async {
       await t.tap(find.text('Reels').first);
-      await t.pumpAndSettle(const Duration(seconds: 3));
+      await settleFor(t, const Duration(seconds: 3));
     });
     await capture(t, 'reels');
 
@@ -169,7 +185,7 @@ void main() {
       final nav = t.state<NavigatorState>(find.byType(Navigator).first);
       if (nav.canPop()) {
         nav.pop();
-        await t.pumpAndSettle(const Duration(seconds: 2));
+        await settleFor(t, const Duration(seconds: 2));
       }
     });
 
@@ -182,7 +198,7 @@ void main() {
     ]) {
       await step('${tab.$1} tabi', () async {
         await t.tap(find.text(tab.$1).last);
-        await t.pumpAndSettle(const Duration(seconds: 3));
+        await settleFor(t, const Duration(seconds: 3));
       });
       await capture(t, tab.$2);
     }
@@ -190,7 +206,7 @@ void main() {
     // ── 11. SOZLAMALAR ──────────────────────────────────────────
     await step('sozlamalar', () async {
       await t.tap(find.text('Sozlamalar').last);
-      await t.pumpAndSettle(const Duration(seconds: 3));
+      await settleFor(t, const Duration(seconds: 3));
     });
     await capture(t, 'sozlamalar');
 
@@ -201,11 +217,54 @@ void main() {
         find.byType(Scrollable).first,
         const Offset(0, -320),
       );
-      await t.pumpAndSettle();
+      await settleFor(t);
       await t.tap(find.text('Buyurtmalarim').last);
-      await t.pumpAndSettle(const Duration(seconds: 3));
+      await settleFor(t, const Duration(seconds: 3));
     });
     await capture(t, 'buyurtmalarim');
+
+    // ── 13-15. ILOVA QULFI (Sozlamalar → Xavfsizlik) ────────────
+    //
+    // Bu uch kadr ataylab OXIRIDA: qulfni yoqish ilovani qulflaydi
+    // va undan keyingi ekranlarga o'tib bo'lmaydi.
+    await step('ilova qulfi varaqasi', () async {
+      await t.dragUntilVisible(
+        find.text('PIN · barmoq izi · Face ID'),
+        find.byType(Scrollable).first,
+        const Offset(0, -320),
+      );
+      await settleFor(t);
+      await t.tap(find.text('PIN · barmoq izi · Face ID').last);
+      await settleFor(t, const Duration(seconds: 2));
+    });
+    await capture(t, 'sozlamalar-qulf');
+
+    await step('PIN o‘rnatish ekrani', () async {
+      // "PIN kod" belgisini yoqish → kod o'rnatish ekrani.
+      final toggle = find.byType(Switch);
+      if (toggle.evaluate().isNotEmpty) {
+        await t.tap(toggle.first);
+      } else {
+        await t.tap(find.text('PIN kod').last);
+      }
+      await settleFor(t, const Duration(seconds: 3));
+    });
+    await capture(t, 'pin-ornatish');
+
+    await step('PIN terish va qulf ekrani', () async {
+      // To'rt raqam + tasdiqlash = qulf yoqiladi.
+      for (final pass in [0, 1]) {
+        for (final d in ['1', '2', '3', '4']) {
+          final key = find.text(d);
+          if (key.evaluate().isEmpty) return;
+          await t.tap(key.last);
+          await settleFor(t, const Duration(milliseconds: 300));
+        }
+        if (pass == 0) await settleFor(t);
+      }
+      await settleFor(t, const Duration(seconds: 2));
+    });
+    await capture(t, 'qulf-holati');
 
     // ── HISOBOT ─────────────────────────────────────────────────
     // ignore: avoid_print

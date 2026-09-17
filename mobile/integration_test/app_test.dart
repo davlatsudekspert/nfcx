@@ -46,6 +46,21 @@ void main() {
     return;
   }
 
+  /// CHEGARALANGAN KUTISH — `pumpAndSettle` O'RNIGA.
+  ///
+  /// `pumpAndSettle` kadrlar TO'XTAGUNCHA kutadi, ilovada esa doim
+  /// aylanadigan animatsiyalar bor (istorya oltin halqasi, aura,
+  /// skeleton yaltirashi). Ular hech qachon to'xtamaydi va sinov
+  /// vaqt tugagunicha osilib qoladi — aynan shu sabab birinchi
+  /// sayohat 10 daqiqada bitta ham surat olmasdan yiqilgan edi.
+  Future<void> settleFor(WidgetTester t,
+      [Duration d = const Duration(seconds: 2)]) async {
+    final steps = d.inMilliseconds ~/ 100;
+    for (var i = 0; i < steps; i++) {
+      await t.pump(const Duration(milliseconds: 100));
+    }
+  }
+
   /// Matn ekranda paydo bo'lguncha kutadi (yoki vaqt tugaguncha).
   ///
   /// `pumpAndSettle` bu yerda YETMAYDI: ilova tarmoqqa chiqadi va
@@ -85,7 +100,7 @@ void main() {
               w.data == 'Xush kelibsiz' ||
               w.data == 'Bosh sahifa')),
     );
-    await t.pumpAndSettle(const Duration(seconds: 2));
+    await settleFor(t, const Duration(seconds: 2));
 
     // SPLASHDA QOTIB QOLMAGANINI shu yerda tekshiramiz: agar
     // yuqoridagi uch ekrandan biri ham chiqmagan bo'lsa, ekranda
@@ -96,7 +111,7 @@ void main() {
     final skip = find.text('O‘tkazib yuborish');
     if (skip.evaluate().isNotEmpty) {
       await t.tap(skip);
-      await t.pumpAndSettle(const Duration(seconds: 2));
+      await settleFor(t, const Duration(seconds: 2));
     }
   }
 
@@ -106,11 +121,11 @@ void main() {
     expect(fields, findsWidgets, reason: 'kirish maydonlari bo‘lishi kerak');
     await t.enterText(fields.at(0), 'dilshod@nfcstore.uz');
     await t.enterText(fields.at(1), 'demo1234');
-    await t.pumpAndSettle();
+    await settleFor(t);
 
     await t.tap(find.widgetWithText(GestureDetector, 'Kirish').last);
     await waitFor(t, find.text('Bosh sahifa'));
-    await t.pumpAndSettle(const Duration(seconds: 3));
+    await settleFor(t, const Duration(seconds: 3));
   }
 
   testWidgets('ilova ochiladi va kirish ekraniga chiqadi', (t) async {
@@ -127,7 +142,7 @@ void main() {
     final toggle = find.text('Ro‘yxatdan o‘tish');
     expect(toggle, findsWidgets, reason: 'ro‘yxatdan o‘tish yo‘li bo‘lishi shart');
     await t.tap(toggle.first);
-    await t.pumpAndSettle(const Duration(seconds: 2));
+    await settleFor(t, const Duration(seconds: 2));
 
     // Forma maydonlari haqiqatan chiqdimi.
     expect(find.text('Shaxsiy profil'), findsOneWidget,
@@ -137,14 +152,14 @@ void main() {
 
     // KOMPANIYA TANLOVI bosiladi — tanlov ishlaydimi.
     await t.tap(find.text('Kompaniya profili'));
-    await t.pumpAndSettle();
+    await settleFor(t);
 
     // ORQAGA QAYTISH ishlaydimi (Android tizim tugmasi).
     final nav = find.byType(Navigator).first;
     final state = t.state<NavigatorState>(nav);
     if (state.canPop()) {
       state.pop();
-      await t.pumpAndSettle(const Duration(seconds: 1));
+      await settleFor(t, const Duration(seconds: 1));
       expect(find.text('Xush kelibsiz'), findsOneWidget,
           reason: 'orqaga qaytganda kirish ekrani qaytishi kerak');
     }
@@ -170,7 +185,7 @@ void main() {
       find.byType(CustomScrollView).first,
       const Offset(0, -300),
     );
-    await t.pumpAndSettle();
+    await settleFor(t);
     expect(find.text('Lenta'), findsOneWidget,
         reason: 'bosh sahifada lenta bo‘lishi kerak');
   });
@@ -186,9 +201,9 @@ void main() {
       find.byType(CustomScrollView).first,
       const Offset(0, -300),
     );
-    await t.pumpAndSettle();
+    await settleFor(t);
     await t.tap(find.text('Reels'));
-    await t.pumpAndSettle(const Duration(seconds: 3));
+    await settleFor(t, const Duration(seconds: 3));
 
     // Reels ekrani ochildi — sarlavha yoki bo'sh holat.
     final opened = find.text('Reels').evaluate().isNotEmpty ||
@@ -204,7 +219,7 @@ void main() {
     // HAR BIR TAB HAQIQATAN OCHILADIMI.
     for (final tab in ['Qidiruv', 'Do‘kon', 'Profil', 'Bosh sahifa']) {
       await t.tap(find.text(tab).last);
-      await t.pumpAndSettle(const Duration(seconds: 2));
+      await settleFor(t, const Duration(seconds: 2));
       expect(find.text(tab), findsWidgets, reason: '$tab tabi ochilishi kerak');
     }
   });

@@ -22,7 +22,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:nfcstore/data/api_client.dart';
+import 'package:nfcstore/app.dart';
 import 'package:nfcstore/data/models.dart';
+import 'package:nfcstore/screens/lock/lock_screen.dart';
+import 'package:nfcstore/state/app_lock.dart';
 import 'package:nfcstore/state/app_state.dart';
 
 import 'widget_test.dart' show FakeStore;
@@ -189,6 +192,40 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(uiCalls, 2, reason: 'yangi sessiya uchun oqim yana ishlaydi');
+    });
+
+    testWidgets('H — SESSIYA TUGAGAN: to‘g‘ri PIN ham ilovaga KIRITMAYDI',
+        (t) async {
+      // ENG MUHIM TEKSHIRUV: ilova qulfi SERVER LOGINI O'RNINI
+      // BOSMAYDI. Qulf — shu telefondagi to'siq, sessiya esa
+      // serverniki. Ikkalasi chalkashsa, tokeni allaqachon
+      // yaroqsiz odam PIN terib ilovaga kirib olardi va ichkarida
+      // har bir so'rov jimgina yiqilaverardi.
+      final lock = AppLock(storage: FakeStore());
+      await lock.setPin('1234');
+
+      final state = AppState(
+        api: Api(client: MockClient((_) async => _json({'error': 'x'}, 401))),
+        storage: FakeStore(),
+      );
+
+      await t.pumpWidget(NfcstoreApp(state: state, lock: lock));
+      await t.pump(const Duration(milliseconds: 100));
+
+      // Sessiya tugadi.
+      await state.sessionExpired();
+      await t.pump(const Duration(milliseconds: 100));
+
+      // QULF TO'G'RI KOD BILAN OCHILDI.
+      expect(await lock.verifyPin('1234'), isTrue);
+      expect(lock.locked, isFalse);
+      await t.pump(const Duration(milliseconds: 300));
+
+      // SHUNGA QARAMAY — KIRISH EKRANI.
+      expect(find.byType(LockScreen), findsNothing,
+          reason: 'qulf ochildi, demak qulf ekrani ketishi kerak');
+      expect(state.phase, AuthPhase.signedOut,
+          reason: 'qulf ochilishi server sessiyasini tiklamaydi');
     });
 
     test('mehmonda 401 — chiqish oqimi ishlamaydi', () async {

@@ -30,6 +30,7 @@ class AppLock extends ChangeNotifier {
   static const _pinKey = 'app_lock_pin';
   static const _saltKey = 'app_lock_salt';
   static const _bioKey = 'app_lock_biometric';
+  static const _delayKey = 'app_lock_delay';
 
   /// PIN uzunligi. To'rt raqam — telefon qulfi bilan bir xil odat.
   static const pinLength = 4;
@@ -43,6 +44,25 @@ class AppLock extends ChangeNotifier {
   static const maxAttempts = 5;
   static const lockoutSeconds = 30;
 
+  /// AVTO-QULF KECHIKISHI — ilova fonga ketgandan keyin qancha
+  /// vaqt o'tib qulflanadi.
+  ///
+  /// NIMA UCHUN TANLOV KERAK: ilgari qulf DOIM darhol tushardi.
+  /// Bu eng xavfsizi, lekin kun bo'yi kartalarni ulashib yurgan
+  /// odam uchun azob: har safar kameraga yoki xabarga chiqib
+  /// qaytganda PIN terishga majbur. Natijada odam qulfni butunlay
+  /// o'chirib qo'yadi — ya'ni qattiq sozlama xavfsizlikni
+  /// OSHIRMAYDI, kamaytiradi.
+  ///
+  /// `null` — hech qachon (faqat ilova butunlay yopilganda).
+  static const delays = <({String id, String label, Duration? after})>[
+    (id: 'now', label: 'Darhol', after: Duration.zero),
+    (id: '30s', label: '30 soniyadan keyin', after: Duration(seconds: 30)),
+    (id: '1m', label: '1 daqiqadan keyin', after: Duration(minutes: 1)),
+    (id: '5m', label: '5 daqiqadan keyin', after: Duration(minutes: 5)),
+    (id: 'never', label: 'Hech qachon', after: null),
+  ];
+
   bool _enabled = false;
   bool _biometricEnabled = false;
   bool _loaded = false;
@@ -50,8 +70,24 @@ class AppLock extends ChangeNotifier {
   int _attempts = 0;
   DateTime? _lockedUntil;
 
+  /// Joriy kechikish. Standart — darhol: xavfsizroq tomoni.
+  String _delayId = 'now';
+
+  /// Ilova fonga ketgan payt. `lock()` emas, aynan shu vaqt
+  /// saqlanadi: qaytishda qancha o'tgani shundan hisoblanadi.
+  DateTime? _backgroundAt;
+
   bool get enabled => _enabled;
   bool get biometricEnabled => _biometricEnabled;
+  String get delayId => _delayId;
+
+  Duration? get delay =>
+      delays.firstWhere((d) => d.id == _delayId, orElse: () => delays.first)
+          .after;
+
+  String get delayLabel =>
+      delays.firstWhere((d) => d.id == _delayId, orElse: () => delays.first)
+          .label;
 
   /// Qulf sozlamasi saqlagichdan O'QIB BO'LINDIMI.
   ///
@@ -78,6 +114,8 @@ class AppLock extends ChangeNotifier {
     try {
       _enabled = (await _storage.read(key: _pinKey))?.isNotEmpty ?? false;
       _biometricEnabled = (await _storage.read(key: _bioKey)) == '1';
+      final d = await _storage.read(key: _delayKey);
+      if (d != null && delays.any((e) => e.id == d)) _delayId = d;
     } catch (_) {
       // Keystore vaqtincha ochilmasa — qulf yo'q deb hisoblaymiz.
       // Aks holda odam o'z ilovasidan butunlay chiqib qolardi.
@@ -194,7 +232,40 @@ class AppLock extends ChangeNotifier {
     }
   }
 
-  /// Ilova fondan qaytganda qayta qulflash.
+  Future<void> setDelay(String id) async {
+    if (!delays.any((d) => d.id == id)) return;
+    _delayId = id;
+    notifyListeners();
+    try {
+      await _storage.write(key: _delayKey, value: id);
+    } catch (_) {
+      // Saqlanmasa joriy sessiyada baribir amal qiladi.
+    }
+  }
+
+  /// ILOVA FONGA KETDI — vaqt belgilanadi.
+  ///
+  /// Qulf SHU YERDA tushmaydi (kechikish "darhol" bo'lmasa):
+  /// qaytishda qancha vaqt o'tgani hisoblanadi.
+  void onBackground() {
+    if (!_enabled) return;
+    _backgroundAt = DateTime.now();
+    if (delay == Duration.zero) lock();
+  }
+
+  /// ILOVA QAYTDI — kechikish o'tgan bo'lsa qulflanadi.
+  void onForeground() {
+    if (!_enabled) return;
+    final d = delay;
+    final at = _backgroundAt;
+    _backgroundAt = null;
+    // "Hech qachon" — faqat ilova butunlay yopilganda qulflanadi
+    // (u holda `load()` `_unlocked` ni yolg'on qoldiradi).
+    if (d == null || at == null) return;
+    if (DateTime.now().difference(at) >= d) lock();
+  }
+
+  /// Darhol qulflash — chiqish va sozlamalar uchun.
   void lock() {
     if (!_enabled) return;
     _unlocked = false;

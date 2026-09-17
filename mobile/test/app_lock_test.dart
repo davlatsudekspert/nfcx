@@ -117,6 +117,91 @@ void main() {
     });
   });
 
+  group('Avto-qulf va kodni almashtirish', () {
+
+    // ── AVTO-QULF KECHIKISHI ────────────────────────────────────
+    //
+    // Ilgari qulf DOIM darhol tushardi. Bu eng xavfsizi, lekin kun
+    // bo'yi kartalarni ulashib yurgan odam kameraga yoki xabarga
+    // chiqib qaytganda ham PIN terishga majbur bo'lardi —
+    // natijada u qulfni butunlay o'chirib qo'yardi, ya'ni qattiq
+    // sozlama xavfsizlikni OSHIRMASDI.
+
+    test('AVTO-QULF "darhol" — fonga ketishi bilan qulflanadi', () async {
+      final lock = AppLock(storage: FakeStore());
+      await lock.setPin('1234');
+      await lock.setDelay('now');
+      expect(lock.locked, isFalse);
+
+      lock.onBackground();
+      expect(lock.locked, isTrue);
+    });
+
+    test('AVTO-QULF "1 daqiqa" — darhol qulflamaydi', () async {
+      final lock = AppLock(storage: FakeStore());
+      await lock.setPin('1234');
+      await lock.setDelay('1m');
+
+      lock.onBackground();
+      expect(lock.locked, isFalse,
+          reason: 'kechikish tanlansa fonga ketishning o‘zi qulflamaydi');
+
+      // Darhol qaytdi — vaqt o'tmagan.
+      lock.onForeground();
+      expect(lock.locked, isFalse);
+    });
+
+    test('AVTO-QULF "hech qachon" — qaytganda ham ochiq qoladi', () async {
+      final lock = AppLock(storage: FakeStore());
+      await lock.setPin('1234');
+      await lock.setDelay('never');
+
+      lock.onBackground();
+      lock.onForeground();
+      expect(lock.locked, isFalse);
+    });
+
+    test('AVTO-QULF tanlovi saqlanadi va ilova ochilganda tiklanadi',
+        () async {
+      final store = FakeStore();
+      final first = AppLock(storage: store);
+      await first.setPin('1234');
+      await first.setDelay('5m');
+
+      final second = AppLock(storage: store);
+      await second.load();
+      expect(second.delayId, '5m');
+    });
+
+    test('AVTO-QULF noma‘lum qiymatni qabul qilmaydi', () async {
+      final lock = AppLock(storage: FakeStore());
+      await lock.setPin('1234');
+      await lock.setDelay('qandaydir');
+      expect(lock.delayId, 'now', reason: 'standart holat saqlanadi');
+    });
+
+    // ── KODNI ALMASHTIRISH ──────────────────────────────────────
+
+    test('KODNI ALMASHTIRISH — eski kodni tekshirish MUMKIN', () async {
+      // Ekran aynan shu tekshiruvga tayanadi: kod allaqachon
+      // o'rnatilgan bo'lsa, yangisini so'rashdan OLDIN eskisi
+      // so'raladi. Aks holda qo'lga tushgan ochiq telefonda begona
+      // odam jimgina yangi PIN qo'yib, egasini o'z ilovasidan
+      // qulflab qo'yishi mumkin edi.
+      final lock = AppLock(storage: FakeStore());
+      await lock.setPin('1234');
+
+      expect(lock.enabled, isTrue, reason: 'ekran shunga qarab qadam qo‘shadi');
+      expect(await lock.verifyPin('9999'), isFalse);
+      expect(await lock.verifyPin('1234'), isTrue);
+
+      // Eski kod tasdiqlangach yangisi qo'yiladi.
+      await lock.setPin('5678');
+      expect(await lock.verifyPin('1234'), isFalse);
+      expect(await lock.verifyPin('5678'), isTrue);
+    });
+  });
+
   group('Katalog keshi', () {
     test('bir vaqtda kelgan ikki so‘rov BITTA so‘rov yuboradi', () async {
       // Home va Discover ilova ochilishida deyarli bir vaqtda
