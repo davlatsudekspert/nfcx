@@ -17,6 +17,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:nfcstore/app.dart';
+import 'package:nfcstore/design/components/buttons.dart';
+import 'package:nfcstore/design/components/icons.dart';
 import 'package:nfcstore/data/api_client.dart';
 import 'package:nfcstore/data/repo.dart';
 import 'package:nfcstore/state/app_state.dart';
@@ -261,31 +263,128 @@ void main() {
       nom: 'PROFILE',
     );
 
-    // ── BUSINESS ─────────────────────────────────────────────
+    // ── PERSONAL ─────────────────────────────────────────────
     //
-    // Biznes bo'limi FAQAT kompaniyasi bor hisobda ko'rinadi.
-    // Yo'qligi ilovaning nuqsoni EMAS — shuning uchun ikki holat
-    // ajratiladi: bo'lsa ochiladi va tekshiriladi, bo'lmasa
-    // shunday deb yoziladi.
-    final bizEntry = find.text('Biznesni tahrirlash');
-    final bizStats = find.text('Biznes statistikasi');
-    if (bizEntry.evaluate().isNotEmpty || bizStats.evaluate().isNotEmpty) {
-      final target =
-          bizEntry.evaluate().isNotEmpty ? bizEntry : bizStats;
-      await t.tap(target.last);
-      await settleFor(t, const Duration(seconds: 3));
-      final opened = find.byType(TextField).evaluate().isNotEmpty ||
-          find.textContaining('Biznes').evaluate().isNotEmpty;
-      expect(opened, isTrue, reason: 'BUSINESS: bo‘lim ochilmadi');
-      say('BUSINESS: ochildi');
-      final nav = t.state<NavigatorState>(find.byType(Navigator).first);
-      if (nav.canPop()) {
-        nav.pop();
-        await settleFor(t, const Duration(seconds: 2));
-      }
-    } else {
-      say('BUSINESS: bu hisobda kompaniya yo‘q');
+    // PERSONA VA HISOB — BOSHQA NARSA. Bitta email ostida bir
+    // nechta shaxs bo'ladi: shaxsiy kartalar va kompaniyalar.
+    // Ilova ularni ARALASHTIRMAYDI — har biri alohida "faol
+    // shaxs" bo'lib turadi va butun ilova o'shanga qarab
+    // ko'rinadi.
+    expect(state.active, isNotNull, reason: 'PERSONAL: faol shaxs yo‘q');
+    expect(state.active!.isBusiness, isFalse,
+        reason: 'PERSONAL: boshida shaxsiy profil faol bo‘lishi kerak');
+    say('PERSONAL: ${state.active!.code} · biznes emas');
+
+    /// Profil muqovasidagi tishli g'ildirak — menyu shundan ochiladi.
+    Future<void> openMenu() async {
+      final gear = find.byWidgetPredicate(
+        (w) => w is RoundButton && w.icon == Ico.settings,
+      );
+      expect(gear, findsWidgets, reason: 'menyu tugmasi TOPILMADI');
+      await t.tap(gear.last);
+      await settleFor(t, const Duration(seconds: 2));
     }
+
+    /// Menyu → "Shaxsni almashtirish" → ro'yxatdan tanlash.
+    Future<void> switchTo(String label, {required String nom}) async {
+      await openMenu();
+      final sw = textLike('Shaxsni almashtirish');
+      expect(sw, findsWidgets, reason: '$nom: almashtirish yo‘li TOPILMADI');
+      await t.tap(sw.last);
+      await settleFor(t, const Duration(seconds: 2));
+
+      final row = textLike(label);
+      if (row.evaluate().isEmpty) {
+        final seen = find
+            .byType(Text)
+            .evaluate()
+            .map((e) => (e.widget as Text).data ?? '')
+            .where((s) => s.trim().isNotEmpty)
+            .take(16)
+            .join(' | ');
+        say('$nom RO‘YXATDAGI SHAXSLAR: $seen');
+      }
+      expect(row, findsWidgets, reason: '$nom: "$label" ro‘yxatda YO‘Q');
+      await t.tap(row.last);
+      await settleFor(t, const Duration(seconds: 3));
+    }
+
+    // ── ID RO'YXATI ──────────────────────────────────────────
+    //
+    // BITTA HISOB — BIR NECHTA NFC ID. Ularning ayrimlari
+    // shaxsiy, ayrimlari biznes. Ro'yxat ikkalasini ham BIR
+    // JOYDA ko'rsatadi va qaysi biri tanlansa, aynan o'sha ID
+    // ning profili ochiladi. Bu yerda avvalo ro'yxatning o'zi
+    // tekshiriladi: ikkala tur ham bormi.
+    await openMenu();
+    final toSwitch = textLike('Shaxsni almashtirish');
+    expect(toSwitch, findsWidgets, reason: 'ID LIST: almashtirish yo‘li yo‘q');
+    await t.tap(toSwitch.last);
+    await settleFor(t, const Duration(seconds: 2));
+
+    final ids = find
+        .byType(Text)
+        .evaluate()
+        .map((e) => (e.widget as Text).data ?? '')
+        .where((x) => x.trim().isNotEmpty)
+        .toList();
+    say('ID LIST: ${ids.take(20).join(" | ")}');
+
+    expect(textLike('VIP001'), findsWidgets,
+        reason: 'ID LIST: shaxsiy ID ro‘yxatda yo‘q');
+    expect(textLike('NFCSTORE'), findsWidgets,
+        reason: 'ID LIST: biznes ID ro‘yxatda yo‘q');
+
+    // ── PERSONAL ID OCHILADI ─────────────────────────────────
+    await t.tap(textLike('VIP001').last);
+    await settleFor(t, const Duration(seconds: 3));
+    expect(state.active!.isBusiness, isFalse,
+        reason: 'PERSONAL ID OPEN: shaxsiy ID biznes bo‘lib ochildi');
+    expect(state.active!.code.toUpperCase(), 'VIP001',
+        reason: 'PERSONAL ID OPEN: boshqa ID ochildi');
+    say('PERSONAL ID OPEN: ${state.active!.code}');
+
+    // ── SWITCH TO BUSINESS ───────────────────────────────────
+    await switchTo('NFCSTORE', nom: 'SWITCH TO BUSINESS');
+    expect(state.active!.isBusiness, isTrue,
+        reason: 'SWITCH TO BUSINESS: faol shaxs biznes bo‘lmadi');
+    expect(state.active!.code.toUpperCase(), 'NFCSTOREUZ',
+        reason: 'SWITCH TO BUSINESS: boshqa kompaniya tanlandi');
+    say('SWITCH TO BUSINESS: ${state.active!.code} · biznes');
+
+    // ── BUSINESS PROFILE ─────────────────────────────────────
+    //
+    // Biznes amallari menyu ICHIDA va faqat faol shaxs biznes
+    // bo'lgandagina chiziladi. Ilgari sinov menyuni umuman
+    // ochmagan va "kompaniya yo'q" degan xulosa chiqargan edi —
+    // holbuki kompaniya bor, bog'langan va API uni qaytaradi.
+    await openMenu();
+    for (final item in const [
+      'Biznesni tahrirlash',
+      'Buyurtmalar',
+      'Biznes statistikasi',
+    ]) {
+      expect(textLike(item), findsWidgets,
+          reason: 'BUSINESS PROFILE: "$item" yo‘q');
+    }
+    say('BUSINESS PROFILE: uchala biznes amali ham bor');
+
+    // ── SWITCH BACK TO PERSONAL ──────────────────────────────
+    // Menyu hali ochiq — almashtirishga o'tamiz va shaxsiy
+    // kartani tanlaymiz. Tanlash KOD bo'yicha: ism takrorlanishi
+    // mumkin, kod esa yagona.
+    final sw = textLike('Shaxsni almashtirish');
+    expect(sw, findsWidgets, reason: 'SWITCH BACK: almashtirish yo‘li yo‘q');
+    await t.tap(sw.last);
+    await settleFor(t, const Duration(seconds: 2));
+    final back = textLike('VIP001');
+    expect(back, findsWidgets,
+        reason: 'SWITCH BACK: shaxsiy karta ro‘yxatda YO‘Q');
+    await t.tap(back.last);
+    await settleFor(t, const Duration(seconds: 3));
+    expect(state.active!.isBusiness, isFalse,
+        reason: 'SWITCH BACK: shaxsiy profilga qaytmadi');
+    say('SWITCH BACK TO PERSONAL: ${state.active!.code}');
 
     // ── SETTINGS ─────────────────────────────────────────────
     //
