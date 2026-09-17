@@ -273,7 +273,20 @@ class AutoImage extends StatefulWidget {
 }
 
 class _AutoImageState extends State<AutoImage> {
-  late double _aspect = widget.fallback;
+  /// URL → hal qilingan nisbat. Lentada bitta rasm bir necha marta
+  /// quriladi (scroll, setState, sahifa qaytishi) — kesh bo'lmasa
+  /// har safar `fallback` dan boshlanib, rasm kelgach balandlik
+  /// o'zgaradi va sliver ostidagi scroll ofseti suriladi. Aynan shu
+  /// Home lentasidagi birinchi post "yuqoriga scroll bo'lmaydi"
+  /// muammosining sababi edi.
+  static final Map<String, double> _known = <String, double>{};
+
+  late double _aspect = _known[(widget.url ?? '').trim()] ?? widget.fallback;
+
+  /// Nisbat kelguncha balandlikni animatsiya qilish MUMKIN EMAS:
+  /// scrollable ichida balandlikning o'zgarishi ofsetni sudraydi.
+  /// Shuning uchun birinchi hal bo'lishda animatsiya o'chadi.
+  bool _settled = false;
 
   ImageStream? _stream;
   ImageStreamListener? _listener;
@@ -289,7 +302,8 @@ class _AutoImageState extends State<AutoImage> {
     super.didUpdateWidget(old);
     if (old.url != widget.url) {
       _drop();
-      _aspect = widget.fallback;
+      _aspect = _known[(widget.url ?? '').trim()] ?? widget.fallback;
+      _settled = _known.containsKey((widget.url ?? '').trim());
       _resolve();
     }
   }
@@ -297,14 +311,27 @@ class _AutoImageState extends State<AutoImage> {
   void _resolve() {
     final url = (widget.url ?? '').trim();
     if (url.isEmpty) return;
-    final listener = ImageStreamListener((info, _) {
+    if (_known.containsKey(url)) _settled = true;
+    final listener = ImageStreamListener((info, sync) {
       if (!mounted) return;
       final w = info.image.width.toDouble();
       final h = info.image.height.toDouble();
       if (w <= 0 || h <= 0) return;
       final next = (w / h).clamp(widget.minAspect, widget.maxAspect);
-      if ((next - _aspect).abs() < .001) return;
-      setState(() => _aspect = next);
+      _known[url] = next;
+      if ((next - _aspect).abs() < .001) {
+        _settled = true;
+        return;
+      }
+      setState(() {
+        _aspect = next;
+        // BIRINCHI hal bo'lish — sakrash emas, ammo animatsiya ham
+        // emas: bitta kadrda to'g'ri balandlik o'rnatiladi va scroll
+        // ofseti bir marta, bir necha piksellik aniqlik bilan
+        // to'g'rilanadi. Keyingi o'zgarishlar (URL almashishi)
+        // silliq suriladi.
+        _settled = true;
+      });
     });
     // `CachedNetworkImageProvider` — `NetImage` bilan BIR XIL manba,
     // ya'ni rasm ikki marta yuklanmaydi: o'lcham keshdan o'qiladi.
@@ -338,7 +365,9 @@ class _AutoImageState extends State<AutoImage> {
       slotIcon: widget.slotIcon,
     );
 
-    if (reduceMotion(context)) {
+    // Nisbat allaqachon ma'lum (kesh yoki hal bo'lgan) — balandlik
+    // o'zgarmaydi, demak animatsiyaga ham hojat yo'q.
+    if (reduceMotion(context) || _settled) {
       return AspectRatio(aspectRatio: _aspect, child: image);
     }
 

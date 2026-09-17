@@ -377,8 +377,26 @@ class Repo {
     return Company.fromJson(_map(r['company']));
   }
 
-  Future<List<Product>> companyCatalog(String id) async =>
-      _rows(await api.get('/api/companies/$id/catalog'), 'items').map(Product.fromJson).toList();
+  /// Kompaniya katalogi.
+  ///
+  /// SERVERDA `GET /api/companies/:id/catalog` YO'Q — faqat POST,
+  /// PATCH va DELETE bor, shuning uchun o'qish 404 bilan tugardi va
+  /// egasining "Katalogni tahrirlash" ekrani bo'sh qolardi. Ro'yxat
+  /// aslida kompaniyaning o'zida (`GET /api/companies/:id` →
+  /// `company.items`) qaytadi — o'sha manba ishlatiladi. Alohida
+  /// yo'l keyin paydo bo'lsa, birinchi urinish o'shani oladi.
+  Future<List<Product>> companyCatalog(String id) async {
+    try {
+      return _rows(await api.get('/api/companies/$id/catalog'), 'items')
+          .map(Product.fromJson)
+          .toList();
+    } on ApiError catch (e) {
+      // Faqat "yo'l yo'q" holati zaxiraga o'tadi. Ruxsat yoki tarmoq
+      // xatosi yashirilmaydi — u foydalanuvchiga ko'rinishi kerak.
+      if (e.status != 404) rethrow;
+      return (await company(id)).items;
+    }
+  }
 
   Future<List<Post>> companyPosts(String id) async =>
       _rows(await api.get('/api/companies/$id/posts'), 'posts').map(Post.fromJson).toList();

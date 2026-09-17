@@ -113,7 +113,23 @@ class _IdCatalogScreenState extends State<IdCatalogScreen> {
       try {
         quote = await repo.codeQuote(code);
       } catch (_) {
-        // Narx kelmasa quyida oddiy "topilmadi" ko'rinadi.
+        // ZAXIRA: `/api/records/:code/quote` hamma o'rnatmada
+        // mavjud emas. Ayni kod DO'KON KATALOGIDA tursa, narx
+        // allaqachon qo'limizda — o'sha ko'rsatiladi. Aks holda
+        // quyida oddiy "topilmadi" chiqadi. Katalog narxi bilan
+        // xarid narxi bitta manbadan keladi, ya'ni ko'rsatilgan
+        // summa to'lanadigan summa bilan bir xil bo'lib qoladi.
+        for (final r in _all ?? const <Record>[]) {
+          if (r.code.toUpperCase() != code || r.price <= 0) continue;
+          if (r.notForSale) break;
+          quote = CodeQuote(
+            code: code,
+            purchasable: true,
+            tier: r.tier.name,
+            amount: r.price,
+          );
+          break;
+        }
       }
     }
 

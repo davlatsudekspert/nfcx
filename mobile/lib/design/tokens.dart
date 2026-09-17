@@ -123,50 +123,42 @@ class Palette {
   // (`--bg0`, `--t1`, `--acc`, ...). O'zgartirilmasin: ular birga
   // tanlangan va kontrast shu juftliklarda tekshirilgan.
 
-  /// A — OPAL LIGHT. Standart mavzu: oq qog'oz, indigo urg'u.
-  /// OPAL LIGHT — yorug', lekin QOG'OZDEK, ekrandek emas.
+  /// A — OPAL LIGHT. Standart mavzu.
   ///
-  /// NIMA UCHUN ILIQ: oldingi palitra sof oq (#FFFFFF) va SOVUQ
-  /// ko'kimtir kulranglardan iborat edi. Sovuq kulrang — bu
-  /// boshqaruv paneli, hisobot, korporativ dashboard tili. Qimmat
-  /// narsalar (nashr, qadoq, butik) hech qachon sof oq bo'lmaydi:
-  /// ular ILIQ oq — fil suyagi, qog'oz, marmar. Farq kichkina
-  /// ko'rinadi, lekin aynan shu ilova "oddiy" yoki "qimmat"
-  /// tuyulishini hal qiladi.
-  ///
-  /// URG'U RANGI HAM CHUQURLASHTIRILDI: #3A62CC — Material'ning
-  /// standart ko'ki, uni har uchinchi ilovada ko'rasiz. #22407D —
-  /// chuqur sapfir: o'sha ko'k oilasida qoladi (prototip bilan
-  /// ziddiyat yo'q), lekin "standart" emas, "qimmat" o'qiladi.
+  /// QIYMATLAR REFERENCE RASMLARDAN: oq qog'oz (#FFFFFF), sovuq
+  /// kulrang yuza (#F2F4F7) va indigo urg'u (#3A62CC). Ilgari bu
+  /// palitra "iliqlashtirilgan" edi (krem #FAF7F2, chuqur sapfir
+  /// #22403D) — aynan o'sha og'ish ilovani reference'dagi
+  /// ko'rinishdan uzoqlashtirgan va "kremsimon eski UI" tuyulgan.
+  /// Endi har bir qiymat reference bilan bir xil.
   ///
   /// OLTIN — FAQAT URG'U UCHUN, fon uchun emas: u tarif kartalari
-  /// va premium belgilarda ishlaydi. Hamma joyga oltin surish
-  /// premiumlikni emas, arzonlikni beradi.
+  /// va premium belgilarda ishlaydi.
   static const opal = Palette(
     id: 'opal',
     label: 'Opal Light',
     light: true,
-    accent: Color(0xFF22407D),
-    accentHigh: Color(0xFF3B5C9E),
-    accentDeep: Color(0xFF16305F),
-    accentSecondary: Color(0xFFB98430),
-    onAccent: Color(0xFFFFFDF9),
-    aura: Color(0xFF3B5C9E),
-    baseTop: Color(0xFFFFFDFA),
-    baseMid: Color(0xFFFAF7F2),
-    baseBottom: Color(0xFFFFFDFA),
-    raised: Color(0xFFF4F0E9),
-    raisedHigh: Color(0xFFE6E0D5),
-    ink: Color(0xFF17130E),
-    ink2: Color(0xFF6A6157),
-    ink3: Color(0xFF9B9287),
-    line: Color(0xFFE5DFD4),
-    lineStrong: Color(0xFFD2CABB),
-    glass: Color(0xB8FFFDFA),
-    glassLine: Color(0x1417130E),
-    ok: Color(0xFF2F8F63),
-    warn: Color(0xFFB98430),
-    fail: Color(0xFFC0453F),
+    accent: Color(0xFF3A62CC),
+    accentHigh: Color(0xFF6179D1),
+    accentDeep: Color(0xFF2B4BA3),
+    accentSecondary: Color(0xFFD98A2B),
+    onAccent: Color(0xFFFFFFFF),
+    aura: Color(0xFF6179D1),
+    baseTop: Color(0xFFFFFFFF),
+    baseMid: Color(0xFFFFFFFF),
+    baseBottom: Color(0xFFFFFFFF),
+    raised: Color(0xFFF2F4F7),
+    raisedHigh: Color(0xFFE0E3EB),
+    ink: Color(0xFF0D1117),
+    ink2: Color(0xFF596372),
+    ink3: Color(0xFF8C95A3),
+    line: Color(0xFFDDE1E8),
+    lineStrong: Color(0xFFCCD1DD),
+    glass: Color(0xB8FFFFFF),
+    glassLine: Color(0x140D1117),
+    ok: Color(0xFF2E9E6B),
+    warn: Color(0xFFD98A2B),
+    fail: Color(0xFFD9534F),
   );
 
   /// B — MIDNIGHT SILK. To'q mavzu.
@@ -489,15 +481,20 @@ class C {
         stops: const [0, .55, 1],
       );
 
-  /// STORY HALQASI — oltin.
+  /// STORY HALQASI.
+  ///
+  /// REFERENCE: `conic-gradient(--acc, --acc2, transparent 55%, --acc)`
+  /// — ya'ni halqa URG'U OILASIDA qoladi, ikkinchi rang aralashmaydi.
+  /// Ilgari o'rtada `accentSecondary` (oltin) turardi va ko'k halqa
+  /// misga o'tib ketardi — reference'dagi bir jinsli halqa emas.
   static SweepGradient get storyRing => SweepGradient(
         colors: [
-          _p.accentHigh,
-          _p.accentSecondary,
           _p.accent,
           _p.accentHigh,
+          _p.accent.withValues(alpha: .10),
+          _p.accent,
         ],
-        stops: const [0, .35, .7, 1],
+        stops: const [0, .3, .62, 1],
         transform: const GradientRotation(.35),
       );
 

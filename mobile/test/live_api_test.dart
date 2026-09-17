@@ -816,9 +816,15 @@ void main() {
     final id = created.id;
     expect(id, isNotEmpty);
 
+    // LENTA ARALASH: post ham, istorya ham bitta ro'yxatda keladi va
+    // ularning id ketma-ketligi ALOHIDA — ya'ni 7-post va 7-istorya
+    // bir vaqtda bo'lishi mumkin. Shuning uchun faqat id bo'yicha
+    // solishtirish noto'g'ri: `kind` ham tekshiriladi.
+    bool isThisPost(FeedEntry e) => '${e.id}' == id && !e.isStory;
+
     final feed = await repo.feed(page: 1);
-    final mine = feed.items.where((e) => '${e.id}' == id);
-    expect(mine, isNotEmpty, reason: 'yangi post lentada ko‘rinishi kerak');
+    expect(feed.items.where(isThisPost), isNotEmpty,
+        reason: 'yangi post lentada ko‘rinishi kerak');
 
     // IZOH — Reels ichidagi varaqa shu metodlarni chaqiradi.
     final postId = int.parse(id);
@@ -831,7 +837,7 @@ void main() {
     // O'CHIRISH — o'z kontentini egasi o'chira oladi.
     await repo.deletePost(int.parse(id));
     final after = await repo.feed(page: 1);
-    expect(after.items.any((e) => '${e.id}' == id), isFalse,
+    expect(after.items.any(isThisPost), isFalse,
         reason: 'o‘chirilgan post lentada qolmasligi kerak');
   });
 
