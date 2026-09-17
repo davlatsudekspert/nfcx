@@ -15,7 +15,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:nfcstore/data/api_client.dart';
+import 'package:nfcstore/design/components/buttons.dart';
+import 'package:nfcstore/design/components/icons.dart';
+import 'package:nfcstore/screens/business/business_stats.dart';
+import 'package:nfcstore/screens/common/share.dart';
 import 'package:nfcstore/screens/discover/discover.dart';
+import 'package:nfcstore/screens/identity/profile_stats.dart';
 import 'package:nfcstore/screens/home/home.dart';
 import 'package:nfcstore/screens/identity/profile_screen.dart';
 import 'package:nfcstore/screens/identity/profile_tab.dart';
@@ -369,6 +374,74 @@ void main() {
 
       expect(calls, greaterThan(before),
           reason: '“Qayta urinish” yangi so‘rov yuborishi kerak');
+    });
+  });
+
+  // ═══ ULASHISH ═════════════════════════════════════════════════
+
+  group('ULASHISH', () {
+    testWidgets('ulashiladigan HAVOLA to‘g‘ri yig‘iladi', (t) async {
+      // Ulashish oynasining o'zi tizimniki — testda ochilmaydi.
+      // Lekin ILOVANING ulushi — havolani yig'ish — bu yerda
+      // tekshiriladi: noto'g'ri havola ulashilsa, kartani olgan
+      // odam bo'sh sahifaga tushadi.
+      final s = await ready();
+      late BuildContext ctx;
+      await pumpScreen(
+        t,
+        Builder(builder: (c) {
+          ctx = c;
+          return const SizedBox.shrink();
+        }),
+        state: s,
+      );
+
+      final base = s.api.baseUrl;
+      expect(profileUrl(ctx, 'VIP001'), '$base/vip001');
+      expect(profileUrl(ctx, 'DDD333', company: true), '$base/c/ddd333');
+      expect(profileHandle(ctx, 'VIP001'), isNot(contains('https://')));
+    });
+
+    testWidgets('profilda ULASHISH tugmasi bor va bosiladi', (t) async {
+      final s = await ready();
+      await pumpScreen(t, const ProfileScreen(code: 'OTH999'), state: s);
+
+      final share = find.byWidgetPredicate(
+        (w) => w is RoundButton && w.icon == Ico.share,
+      );
+      expect(share, findsWidgets, reason: 'ulashish tugmasi bo‘lishi kerak');
+
+      // Bosilganda ilova YIQILMASLIGI kerak (tizim oynasi testda
+      // ochilmaydi, xato yutiladi).
+      await t.tap(share.first, warnIfMissed: false);
+      await settle(t);
+      expect(t.takeException(), isNull);
+    });
+  });
+
+  // ═══ STATISTIKA ═══════════════════════════════════════════════
+
+  group('STATISTIKA', () {
+    testWidgets('shaxsiy statistika SERVERDAN raqam oladi', (t) async {
+      final s = await ready();
+      await pumpScreen(t, ProfileStatsScreen(code: s.active!.code), state: s);
+
+      // Fixture'dagi ko'rish soni — 12 480. Ekran o'zi hisoblab
+      // chiqarmasligi kerak.
+      expect(find.textContaining('12'), findsWidgets,
+          reason: 'statistika raqamlari serverdan kelishi kerak');
+    });
+
+    testWidgets('biznes statistikasi ochiladi va raqam ko‘rsatadi', (t) async {
+      final s = await ready();
+      await pumpScreen(
+        t,
+        const BusinessStatsScreen(companyId: 'DDD333'),
+        state: s,
+      );
+
+      expect(find.text('Ko‘rishlar'), findsOneWidget);
+      expect(find.text('Buyurtmalar'), findsOneWidget);
     });
   });
 }
