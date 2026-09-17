@@ -300,18 +300,24 @@ void main() {
       expect(humanError(ApiError('offline')), contains('Internet'));
     });
 
-    test('NOMA‘LUM KALIT ENDI YASHIRILMAYDI', () {
-      // QAROR O‘ZGARDI. Ilgari tanilmagan kalit yashirilardi va
-      // ekranda "Nimadir noto‘g‘ri ketdi" turardi. Qurilmada kirish
-      // ishlamaganda aynan shu jumla chiqdi va u HECH NARSA
-      // aytmadi: sertifikat xatosimi, himoya qatlami bloklaganmi,
-      // server tokensiz javob berganmi — hammasi bir xil ko‘rindi.
+    test('NOMA‘LUM KALIT — JUMLA ODAMGA, KALIT TEXNIK QATORGA', () {
+      // QAROR IKKI MARTA O‘ZGARDI, VA BU OXIRGISI.
       //
-      // Egasining talabi: "umumiy xato o‘rniga ANIQ sababni
-      // ko‘rsating". Kalit — mashina nomi, unda shaxsiy ma‘lumot
-      // yo‘q; uning o‘rniga taxmin qilish ancha qimmatga tushadi.
-      final msg = humanError(ApiError('qandaydir_yangi_kalit'));
-      expect(msg, contains('qandaydir_yangi_kalit'));
+      // Boshida tanilmagan kalit yashirilardi: ekranda "Nimadir
+      // noto‘g‘ri ketdi" turardi va u HECH NARSA aytmasdi.
+      // Keyin kalit asosiy jumlaga chiqarildi — sabab ko‘rinsin
+      // deb. Auditda esa buning narxi ko‘rindi: foydalanuvchi
+      // ekranida server ichki kaliti turardi ("Kutilmagan xato:
+      // bad_request") — tarjimasiz va ma‘nosiz.
+      //
+      // YECHIM IKKALASINI HAM SAQLAYDI, LEKIN ARALASHTIRMAYDI:
+      // asosiy jumla odam tilida, kalit esa `errorDetail()` da —
+      // ekranda ostidagi kichik kulrang qatorda. Suratga olib
+      // yuborishga yetadi, o‘qishga ham xalaqit bermaydi.
+      final e = ApiError('qandaydir_yangi_kalit', detail: 'HTTP 418 · xom');
+      expect(humanError(e), isNot(contains('qandaydir_yangi_kalit')));
+      expect(humanError(e), contains('Nimadir noto‘g‘ri ketdi'));
+      expect(errorDetail(e), contains('qandaydir_yangi_kalit'));
 
       // Tanilgan kalitlar avvalgidek odam tilida qoladi.
       expect(

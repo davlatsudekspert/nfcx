@@ -511,6 +511,10 @@
     "Этот ID нельзя подарить.",
     "This ID cannot be gifted."
   ],
+  "Bu amal allaqachon bajarilgan yoki band. Sahifani yangilab ko‘ring.": [
+    "Это действие уже выполнено или занято. Обновите страницу.",
+    "This is already done or taken. Refresh and try again."
+  ],
   "Bu amal uchun ruxsat yo‘q.": [
     "Нет прав на это действие.",
     "You do not have permission for this."
@@ -1850,6 +1854,10 @@
   "Kirish ekranidagi «Parolni unutdingizmi?» havolasidan foydalaning — email yoki telefonga kod yuboriladi.": [
     "Воспользуйтесь ссылкой «Забыли пароль?» на экране входа — код придёт на email или телефон.",
     "Use the Forgot your password? link on the sign-in screen — a code is sent to your email or phone."
+  ],
+  "Kiritilgan ma’lumot to‘g‘ri kelmadi. Tekshirib, qayta urining.": [
+    "Введённые данные не подошли. Проверьте и повторите.",
+    "The details did not pass validation. Check and try again."
   ],
   "Kiritilmagan": [
     "Не указано",
@@ -3331,6 +3339,10 @@
     "Сессия истекла. Войдите заново.",
     "Your session expired. Sign in again."
   ],
+  "Sessiyangiz tugadi. Qayta kiring.": [
+    "Сессия истекла. Войдите снова.",
+    "Your session has expired. Please sign in again."
+  ],
   "Shahar": [
     "Город",
     "City"
@@ -3538,6 +3550,10 @@
   "Sozlamalarni ochish": [
     "Открыть настройки",
     "Open settings"
+  ],
+  "So‘rov noto‘g‘ri yuborildi. Ma’lumotlarni tekshirib, qayta urining.": [
+    "Запрос отправлен неверно. Проверьте данные и повторите.",
+    "The request was malformed. Check the data and try again."
   ],
   "So‘rov rad etildi. Tarmoq yoki himoya qatlami to‘sgan bo‘lishi mumkin.": [
     "Запрос отклонён. Возможно, его заблокировала сеть или защитный слой.",

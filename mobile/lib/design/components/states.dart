@@ -321,13 +321,30 @@ String humanError(Object? e) {
   }
 
   // STATUS BO'YICHA — kalit tanilmasa ham javobning ma'nosi ma'lum.
+  //
+  // HAR BIR STATUS QOPLANGAN BO'LISHI SHART. 400, 409 va 422
+  // ilgari bu ro'yxatda YO'Q edi: ular pastdagi "oxirgi holat" ga
+  // tushib, ekranga XOM SERVER KALITINI chiqarardi
+  // ("Kutilmagan xato: bad_request"). Odam u bilan hech narsa
+  // qila olmaydi, tarjimasi ham yo'q.
   if (e is ApiError) {
     final byStatus = {
+      // So'rovning o'zi buzuq — odatda eski ilova yoki
+      // to'ldirilmagan maydon.
+      400: tr('So‘rov noto‘g‘ri yuborildi. Ma’lumotlarni tekshirib, '
+          'qayta urining.'),
       401: tr('Sessiya tugagan. Qaytadan kiring.'),
       403: tr('So‘rov rad etildi. Tarmoq yoki himoya qatlami to‘sgan '
           'bo‘lishi mumkin.'),
       404: tr('Bunday manzil topilmadi.'),
       408: map['timeout']!,
+      // ZIDDIYAT — band kod, takroriy yozuv, allaqachon bajarilgan
+      // amal. "Xatolik" emas: odam bir narsani ikki marta qilgan
+      // yoki uni kimdir oldindan olgan.
+      409: tr('Bu amal allaqachon bajarilgan yoki band. Sahifani '
+          'yangilab ko‘ring.'),
+      422: tr('Kiritilgan ma’lumot to‘g‘ri kelmadi. Tekshirib, qayta '
+          'urining.'),
       429: map['too_many_requests']!,
     }[e.status];
     if (byStatus != null) return byStatus;
@@ -336,15 +353,19 @@ String humanError(Object? e) {
     }
   }
 
-  // ENG OXIRGI HOLAT — AMMO KO'R HOLAT EMAS.
+  // ENG OXIRGI HOLAT — XOM KALIT EKRANGA CHIQMAYDI.
   //
-  // Ilgari bu yerda faqat "Nimadir noto'g'ri ketdi" turardi va u
-  // HAQIQIY SABABNI YASHIRARDI: qurilmada xato ko'rgan odam ham,
-  // tuzatuvchi ham nima bo'lganini bilmasdi. Endi tanilmagan
-  // kalitning o'zi qavs ichida yoziladi — u qisqa, lekin aniq.
-  final key = e is ApiError ? e.key : s.split('\n').first;
-  final short = key.length <= 40 ? key : '${key.substring(0, 37)}...';
-  return trf('Kutilmagan xato: {code}', {'code': short});
+  // Ilgari bu yerda tanilmagan kalitning o'zi yozilardi
+  // ("Kutilmagan xato: bad_request"). Maqsad yaxshi edi — sababni
+  // yashirmaslik — lekin natijada foydalanuvchi ekranida server
+  // ichki kaliti turardi: tarjimasiz, ma'nosiz va ba'zan
+  // ichkarini oshkor qiladigan.
+  //
+  // SABAB YO'QOLMAYDI: u `errorDetail()` ga ketadi va ekranda
+  // kichik kulrang qator bo'lib ostida turadi. Ya'ni odamga
+  // jumla, tuzatuvchiga esa kalit — ikkalasi ham bor, lekin
+  // ARALASHMAYDI.
+  return tr('Nimadir noto‘g‘ri ketdi. Qayta urinib ko‘ring.');
 }
 
 /// XATONING TEXNIK QATORI — ekranda kichik kulrang yozuv uchun.

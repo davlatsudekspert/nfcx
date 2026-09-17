@@ -138,7 +138,20 @@ void main() {
       }
     });
 
-    test('tanilmagan kalit YASHIRILMAYDI', () async {
+    test('tanilmagan kalit EKRANDA emas, TEXNIK QATORDA', () async {
+      // QAROR O'ZGARDI (audit talabi: xom server xatosi
+      // ko'rsatilmasin).
+      //
+      // Ilgari bu sinov teskarisini talab qilardi: tanilmagan kalit
+      // asosiy jumlaga chiqsin. Maqsad yaxshi edi — sababni
+      // yashirmaslik — lekin natijada foydalanuvchi ekranida
+      // server ichki kaliti turardi ("Kutilmagan xato: zang_zung"):
+      // tarjimasiz, ma'nosiz va ba'zan ichkarini oshkor qiladigan.
+      //
+      // SABAB YO'QOLMADI, JOYI O'ZGARDI: u `errorDetail()` ga
+      // ketadi va ekranda kichik kulrang qator bo'lib ostida
+      // turadi. Ya'ni odamga jumla, tuzatuvchiga kalit —
+      // ikkalasi ham bor, lekin ARALASHMAYDI.
       final repo = repoWith(MockClient((_) async =>
           http.Response(jsonEncode({'error': 'zang_zung'}), 418)));
 
@@ -146,7 +159,10 @@ void main() {
         await repo.login(login: 'a@b.uz', password: 'xxxxxxxx');
         fail('xato bo‘lishi kerak');
       } catch (e) {
-        expect(humanError(e), contains('zang_zung'));
+        expect(humanError(e), isNot(contains('zang_zung')),
+            reason: 'xom kalit asosiy jumlaga chiqmaydi');
+        expect(errorDetail(e), contains('zang_zung'),
+            reason: 'sabab texnik qatorda saqlanadi');
       }
     });
 

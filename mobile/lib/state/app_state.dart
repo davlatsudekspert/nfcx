@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../data/api_client.dart';
@@ -47,6 +49,14 @@ class AppState extends ChangeNotifier {
       : api = api ?? Api(),
         _storage = storage ?? const FlutterSecureStorage() {
     repo = Repo(this.api);
+    // TOKEN ESKIRSA — ILOVA BUNI SEZADI.
+    //
+    // Bu ulanish bo'lmaganda 401 hech qayerda o'qilmasdi: eski
+    // token har so'rovga qo'shilaverardi va odam "Sessiya tugagan"
+    // xabarini ko'raverib, kirish ekraniga chiqa olmasdi.
+    this.api.onUnauthorized = () {
+      unawaited(sessionExpired());
+    };
   }
 
   final Api api;
@@ -154,6 +164,28 @@ class AppState extends ChangeNotifier {
     await refreshIdentities();
     phase = AuthPhase.signedIn;
     notifyListeners();
+  }
+
+  /// SESSIYA TUGAGANIDA ILOVAGA XABAR — navigatsiyani tozalash va
+  /// bitta xabar ko'rsatish uchun. Holatni tozalash esa shu yerda.
+  void Function()? onSessionExpired;
+
+  /// SESSIYA TUGAGANDA — server so'ralmaydi.
+  ///
+  /// `signOut()` dan farqi: u serverga `logout` yuboradi, bu yerda
+  /// esa token allaqachon yaroqsiz — yuborish befoyda kutish
+  /// bo'lardi. Holat esa aynan bir xil tozalanadi, ya'ni ilova
+  /// kirish ekraniga qaytadi.
+  Future<void> sessionExpired() async {
+    if (phase == AuthPhase.signedOut) return;
+    await _clearToken();
+    user = null;
+    cards = const [];
+    companies = const [];
+    active = null;
+    phase = AuthPhase.signedOut;
+    notifyListeners();
+    onSessionExpired?.call();
   }
 
   Future<void> signOut() async {

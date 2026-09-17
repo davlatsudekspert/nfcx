@@ -83,6 +83,26 @@ class _NfcstoreAppState extends State<NfcstoreApp> with WidgetsBindingObserver {
     // ochilsin: bu ikki hodisa ildiz widgetni O'ZI qayta qurmaydi.
     _lock.addListener(_onReady);
     widget.state.addListener(_onReady);
+
+    // SESSIYA TUGAGANDA — NAVIGATSIYA TOZALANADI VA BITTA XABAR.
+    //
+    // Holatning o'zgarishi ildizni kirish ekraniga qaytaradi, lekin
+    // USTIDAGI ochiq sahifalar (profil, sozlamalar, varaqalar)
+    // joyida qolardi: odam kirish ekrani o'rniga o'sha eski
+    // sahifalarni ko'rib turardi va orqaga bosa-bosa chiqishga
+    // majbur bo'lardi.
+    //
+    // XABAR BIR MARTA: tokeni eskirgan ilovada o'nlab so'rov birga
+    // yiqiladi. Takrorlanishning oldi `Api` da olinadi, bu yer esa
+    // faqat ko'rsatadi.
+    widget.state.onSessionExpired = () {
+      final nav = _navKey.currentState;
+      nav?.popUntil((r) => r.isFirst);
+      final ctx = _navKey.currentContext;
+      if (ctx != null && ctx.mounted) {
+        showToast(ctx, tr('Sessiyangiz tugadi. Qayta kiring.'));
+      }
+    };
   }
 
   void _onReady() {
