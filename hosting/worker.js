@@ -5198,8 +5198,27 @@ async function authApi(request, env, url) {
   }
 
   if (path === '/api/auth/logout' && request.method === 'POST') {
-    const token = parseCookies(request)[SESSION_COOKIE];
-    if (token) await env.DB.prepare(`DELETE FROM sessions WHERE token IN (?, ?)`).bind(await sha256Hex(token), token).run();
+    // MOBIL SESSIYA HAM YOPILSIN.
+    //
+    // Ilgari token FAQAT cookie'dan o'qilardi. Veb shunday
+    // ishlaydi, mobil ilova esa uni `Authorization: Bearer` da
+    // yuboradi — ya'ni telefonda "Chiqish" bosilganda server
+    // tomonda sessiya UMUMAN o'chmasdi. Ilova tokenni o'zidan
+    // tashlardi, lekin o'sha token qo'lga tushsa keyin ham
+    // ishlayverardi. Productionda o'lchandi: chiqishdan keyin
+    // `/api/auth/me` yana `user` qaytardi.
+    //
+    // Endi ikkala manba ham o'chiriladi.
+    const cookieToken = parseCookies(request)[SESSION_COOKIE];
+    const auth = request.headers.get('authorization') || '';
+    const bearer = auth.toLowerCase().startsWith('bearer ')
+      ? auth.slice(7).trim()
+      : '';
+    for (const token of [cookieToken, bearer]) {
+      if (!token) continue;
+      await env.DB.prepare(`DELETE FROM sessions WHERE token IN (?, ?)`)
+        .bind(await sha256Hex(token), token).run();
+    }
     return jsonWithCookie({ ok: true }, 200, clearedSessionCookieHeader(secure));
   }
 
