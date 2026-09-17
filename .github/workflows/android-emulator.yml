@@ -23,6 +23,19 @@ name: Android emulyator sinovi
 
 on:
   workflow_dispatch:
+  # ISH BRANCHLARIDA HAM YURADI.
+  #
+  # `workflow_dispatch` ni GitHub faqat asosiy branchdagi fayl
+  # uchun beradi — yangi ish oqimini qo'lda ishga tushirib
+  # bo'lmaydi. Ish branchiga push qilinganda ishlashi esa aynan
+  # kerak: o'zgarish qurilmada sinalganini KO'RISH uchun.
+  push:
+    branches:
+      - 'claude/**'
+    paths:
+      - 'mobile/**'
+      - 'hosting/**'
+      - '.github/workflows/android-emulator.yml'
   pull_request:
     paths:
       - 'mobile/**'
