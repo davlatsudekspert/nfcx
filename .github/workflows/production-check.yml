@@ -112,6 +112,14 @@ jobs:
           working-directory: mobile
           # Har qator alohida `sh -c` — buyruq bitta qatorda.
           script: |
-            flutter test integration_test/login_probe_test.dart -d emulator-5554 --dart-define=API_BASE=https://nfcstore.uz --dart-define=LOGIN_EMAIL="$NFC_LOGIN_EMAIL" --dart-define=LOGIN_PASSWORD="$NFC_LOGIN_PASSWORD" --timeout 8m >/tmp/tour.log 2>&1; echo $? >/tmp/tour.rc; sed -e "s|$NFC_LOGIN_PASSWORD|***|g" /tmp/tour.log; true
+            flutter test integration_test/tour_test.dart -d emulator-5554 --dart-define=API_BASE=https://nfcstore.uz --dart-define=LOGIN_EMAIL="$NFC_LOGIN_EMAIL" --dart-define=LOGIN_PASSWORD="$NFC_LOGIN_PASSWORD" --timeout 12m >/tmp/tour.log 2>&1; echo $? >/tmp/tour.rc; sed -e "s|$NFC_LOGIN_PASSWORD|***|g" /tmp/tour.log; true
+            adb pull /sdcard/Android/data/uz.nfcstore.app/files/shots /tmp/shots || true
             exit $(cat /tmp/tour.rc)
 
+      - name: Ekran rasmlarini yuklash
+        if: always() && steps.creds.outputs.have == 'yes'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ilova-ekranlari
+          path: /tmp/shots
+          if-no-files-found: warn

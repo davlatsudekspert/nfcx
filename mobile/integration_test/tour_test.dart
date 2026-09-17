@@ -7,6 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:nfcstore/app.dart';
 import 'package:nfcstore/data/api_client.dart';
+import 'package:nfcstore/design/components/buttons.dart';
+import 'package:nfcstore/design/components/icons.dart';
 import 'package:nfcstore/state/app_state.dart';
 
 /// EKRANMA-EKRAN SAYOHAT — HAQIQIY ANDROID EKRANINING RASMI.
@@ -255,48 +257,37 @@ void main() {
     });
     await capture(t, 'buyurtmalarim');
 
-    // ── 13-15. ILOVA QULFI (Sozlamalar → Xavfsizlik) ────────────
+    // ── BIZNES PROFILI (NFCSTOREUZ) ─────────────────────────
     //
-    // Bu uch kadr ataylab OXIRIDA: qulfni yoqish ilovani qulflaydi
-    // va undan keyingi ekranlarga o'tib bo'lmaydi.
-    await step('ilova qulfi varaqasi', () async {
-      await t.dragUntilVisible(
-        find.text('PIN · barmoq izi · Face ID'),
-        find.byType(Scrollable).first,
-        const Offset(0, -320),
+    // Bitta hisob ichida bir nechta NFC ID bor: ayrimlari
+    // shaxsiy, ayrimlari biznes. Biznes profilini ko'rish uchun
+    // FAOL SHAXSNI almashtirish kerak — u shaxsiy profil ichida
+    // emas, alohida persona.
+    await step('biznesga o‘tish', () async {
+      final gear = find.byWidgetPredicate(
+        (w) => w is RoundButton && w.icon == Ico.settings,
       );
-      await settleFor(t);
-      await t.tap(find.text('PIN · barmoq izi · Face ID').last);
+      if (gear.evaluate().isEmpty) return;
+      await t.tap(gear.last);
       await settleFor(t, const Duration(seconds: 2));
-    });
-    await capture(t, 'sozlamalar-qulf');
 
-    await step('PIN o‘rnatish ekrani', () async {
-      // "PIN kod" belgisini yoqish → kod o'rnatish ekrani.
-      final toggle = find.byType(Switch);
-      if (toggle.evaluate().isNotEmpty) {
-        await t.tap(toggle.first);
-      } else {
-        await t.tap(find.text('PIN kod').last);
-      }
-      await settleFor(t, const Duration(seconds: 3));
-    });
-    await capture(t, 'pin-ornatish');
+      Finder like(String v) => find.byWidgetPredicate(
+            (w) =>
+                w is Text &&
+                (w.data ?? '').toUpperCase().trim() == v.toUpperCase(),
+          );
 
-    await step('PIN terish va qulf ekrani', () async {
-      // To'rt raqam + tasdiqlash = qulf yoqiladi.
-      for (final pass in [0, 1]) {
-        for (final d in ['1', '2', '3', '4']) {
-          final key = find.text(d);
-          if (key.evaluate().isEmpty) return;
-          await t.tap(key.last);
-          await settleFor(t, const Duration(milliseconds: 300));
-        }
-        if (pass == 0) await settleFor(t);
-      }
+      final sw = like('Shaxsni almashtirish');
+      if (sw.evaluate().isEmpty) return;
+      await t.tap(sw.last);
       await settleFor(t, const Duration(seconds: 2));
+
+      final biz = like('NFCSTORE');
+      if (biz.evaluate().isEmpty) return;
+      await t.tap(biz.last);
+      await settleFor(t, const Duration(seconds: 4));
     });
-    await capture(t, 'qulf-holati');
+    await capture(t, 'biznes-profil');
 
     // ── HISOBOT ─────────────────────────────────────────────────
     // ignore: avoid_print
