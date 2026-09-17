@@ -200,6 +200,21 @@ void main() {
     say('HOME: $home');
     expect(home, isTrue, reason: 'HOME: kirgandan keyin qobiq ochilmadi');
 
+    /// HARF KATTA-KICHIGIGA QARAMAYDIGAN MATN QIDIRUVI.
+    ///
+    /// NIMA UCHUN KERAK: dizaynda ba'zi sarlavhalar ekranga KATTA
+    /// HARFDA chiziladi (`Eyebrow`, `.toUpperCase()`). Aniq
+    /// solishtirish esa "Mening profilim" ni topa olmaydi —
+    /// ekranda "MENING PROFILIM" turadi. Bir marta shu sabab
+    /// OCHILGAN ekran "ochilmadi" deb belgilandi: ya'ni finder
+    /// xatosi ilova nuqsoni bo'lib ko'rindi.
+    Finder textLike(String needle) {
+      final want = needle.toUpperCase();
+      return find.byWidgetPredicate(
+        (w) => w is Text && (w.data ?? '').toUpperCase().trim() == want,
+      );
+    }
+
     /// Pastki paneldagi tabni bosadi va ekran ochilganini
     /// tekshiradi.
     ///
@@ -217,7 +232,7 @@ void main() {
       await t.tap(f.last);
       await settleFor(t, const Duration(seconds: 3));
 
-      final hit = expectAny.where((s) => find.text(s).evaluate().isNotEmpty);
+      final hit = expectAny.where((s) => textLike(s).evaluate().isNotEmpty);
       if (hit.isEmpty) {
         final seen = find
             .byType(Text)
@@ -273,18 +288,19 @@ void main() {
     }
 
     // ── SETTINGS ─────────────────────────────────────────────
-    final settings = find.text('Sozlamalar');
+    final settings = textLike('Sozlamalar');
     expect(settings, findsWidgets, reason: 'SETTINGS: yo‘l TOPILMADI');
     await t.tap(settings.last);
     await settleFor(t, const Duration(seconds: 3));
-    final inSettings = find.text('Ko‘rinish').evaluate().isNotEmpty ||
-        find.text('Hisob').evaluate().isNotEmpty ||
-        find.text('Xavfsizlik').evaluate().isNotEmpty;
+    final inSettings = textLike('Ko‘rinish').evaluate().isNotEmpty ||
+        textLike('Hisob').evaluate().isNotEmpty ||
+        textLike('Xavfsizlik').evaluate().isNotEmpty ||
+        textLike('Sozlamalar').evaluate().isNotEmpty;
     expect(inSettings, isTrue, reason: 'SETTINGS: ekran ochilmadi');
     say('SETTINGS: ochildi');
 
     // ── LOGOUT ───────────────────────────────────────────────
-    var out = find.text('Chiqish');
+    var out = textLike('Chiqish');
     if (out.evaluate().isEmpty) {
       await t.dragUntilVisible(
         find.text('Chiqish'),
@@ -292,7 +308,7 @@ void main() {
         const Offset(0, -320),
       );
       await settleFor(t);
-      out = find.text('Chiqish');
+      out = textLike('Chiqish');
     }
     expect(out, findsWidgets, reason: 'LOGOUT: "Chiqish" tugmasi TOPILMADI');
     await t.tap(out.last);
