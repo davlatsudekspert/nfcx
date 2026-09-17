@@ -60,8 +60,8 @@ class AuraLayer {
         center: center,
         radius: radius,
         colors: [
-          color.withValues(alpha: opacity),
-          color.withValues(alpha: opacity * .2),
+          color.withValues(alpha: opacity * C.auraScale),
+          color.withValues(alpha: opacity * .2 * C.auraScale),
           color.withValues(alpha: 0),
         ],
         stops: [0, falloff, 1],

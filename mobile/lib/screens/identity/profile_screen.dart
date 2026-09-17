@@ -275,36 +275,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return ScreenBackdrop(
       aura: Aura.profile,
-      child: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            if (!_isCompany)
-              TopBar(
-                center: _EntryChip(entry: widget.entry, owned: _owned),
-                trailing: RoundButton(Ico.more, onTap: _menu),
-              ),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: _load,
-                color: C.accent,
-                backgroundColor: C.surface,
-                displacement: 28,
-                child: ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.only(bottom: StickyBar.inset(context)),
-                  children: _isCompany ? _companyBody() : _personBody(),
-                ),
+      child: Stack(
+        children: [
+          // COVER EKRANNING TEPASIGA YETADI.
+          //
+          // PROTOTIPDA tepa qator COVER ICHIDA turadi
+          // (`.cover > .acts`) — orqaga, ulashish va menyu rasm
+          // ustida SUZADI. Ilovada esa ular alohida oq tasmada
+          // turardi va cover undan pastdan boshlanardi: profil
+          // "sarlavhali forma" bo'lib ko'rinardi, prototipdagi
+          // kinematik ochilish esa yo'qolgandi.
+          //
+          // SHU BILAN BIRGA KOMPANIYA PROFILIGA ORQAGA TUGMASI
+          // QAYTDI: ilgari `if (!_isCompany)` sharti tufayli
+          // biznes profilida tepa qator UMUMAN chizilmasdi, ya'ni
+          // qidiruvdan ochilgan kompaniyadan chiqish tugmasi
+          // ko'rinmasdi.
+          RefreshIndicator(
+            onRefresh: _load,
+            color: C.accent,
+            backgroundColor: C.surface,
+            displacement: 28,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.only(bottom: StickyBar.inset(context)),
+              children: _isCompany ? _companyBody() : _personBody(),
+            ),
+          ),
+
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            child: SafeArea(
+              bottom: false,
+              child: TopBar(
+                // Rasm ustida turgani uchun tugmalar SHISHA.
+                glass: true,
+                center: _isCompany
+                    ? null
+                    : _EntryChip(entry: widget.entry, owned: _owned),
+                trailing: RoundButton(Ico.more, glass: true, onTap: _menu),
               ),
             ),
+          ),
 
             // YOPISHGAN PASTKI PANEL.
             //
             // NFC/QR orqali kelinganda — "Kontaktni saqlash".
             // Qidiruvdan kelinganda — obuna va ulashish, hamda
             // sababi yozilgan izoh (u kontent ichida turadi).
-            if (!_owned)
-              StickyBar(
+          if (!_owned)
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: StickyBar(
                 child: viaTap
                     ? Column(
                         mainAxisSize: MainAxisSize.min,
@@ -377,8 +401,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ],
                       ),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }

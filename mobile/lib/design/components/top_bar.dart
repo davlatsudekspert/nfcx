@@ -27,6 +27,7 @@ class TopBar extends StatelessWidget {
     this.leading,
     this.showBack = true,
     this.onBack,
+    this.glass = false,
   });
 
   /// Tepa qatoridagi ixcham sarlavha.
@@ -42,6 +43,11 @@ class TopBar extends StatelessWidget {
 
   final bool showBack;
   final VoidCallback? onBack;
+
+  /// Qator MEDIA USTIDA suzadi (profil coveri). Shunda tugmalar
+  /// shisha bo'lishi kerak — to'ldirilgan doira rasmni "teshib"
+  /// turadi va prototipdagi suzuvchi ko'rinish yo'qoladi.
+  final bool glass;
 
   @override
   Widget build(BuildContext context) {
@@ -61,6 +67,7 @@ class TopBar extends StatelessWidget {
                 Ico.back,
                 size: 42,
                 iconSize: 17,
+                glass: glass,
                 onTap: onBack ?? () => Navigator.of(context).maybePop(),
               )
             else

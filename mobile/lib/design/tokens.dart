@@ -257,6 +257,20 @@ class C {
   /// eski to'q mavzuda qolardi.
   static bool get isLight => _p.light;
 
+  /// AMBIENT NUR KUCHINING KO'PAYTUVCHISI.
+  ///
+  /// REFERENCE'DA FON TEKIS: V2 da `.view{background:var(--bg0)}`
+  /// — hech qanday rangli dog' yo'q. Ilovadagi nur qatlamlari to'q
+  /// palitra uchun tanlangan edi: qora fonda 30% oltin dog' —
+  /// nozik chuqurlik, oq fonda esa AYNAN O'SHA qiymat ekranning
+  /// tepasini sariq-krem qilib yuboradi. Foydalanuvchi buni
+  /// "kremsimon eski fon" deb ko'rgan.
+  ///
+  /// Shuning uchun yorug' palitrada nur beshdan biriga tushiriladi:
+  /// fon oq bo'lib o'qiladi, lekin mutlaqo o'lik tekis ham emas.
+  /// To'q palitrada hech narsa o'zgarmaydi.
+  static double get auraScale => _p.light ? .2 : 1;
+
   static Palette get palette => _p;
 
   // ── Fon va yuzalar ──────────────────────────────────────────
