@@ -21,6 +21,7 @@ import '../../state/app_state.dart';
 import '../common/contact_actions.dart';
 import '../identity/profile_screen.dart';
 import '../nfc/nfc_write.dart';
+import '../settings/support.dart';
 
 /// TO'LOV.
 ///
@@ -689,6 +690,22 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         _order = null;
                         _error = null;
                       }),
+                    ),
+                    // YORDAMGA YOZISH (prototip: "To'lov o'tmadi"
+                    // ekrani).
+                    //
+                    // "Qayta urinish" yagona yo'l bo'lsa, ekran boshi
+                    // BERK bo'ladi: pul kartadan yechilgan, lekin
+                    // buyurtma o'tmagan odam qayta-qayta urinadan
+                    // boshqa hech narsa qila olmaydi. Aynan o'sha odam
+                    // tirik odamga yozishi kerak.
+                    const SizedBox(height: S.x12),
+                    GhostButton(
+                      tr('Yordamga yozish'),
+                      onTap: () => push<void>(
+                        context,
+                        (_) => const SupportScreen(),
+                      ),
                     ),
                   ],
                 ),

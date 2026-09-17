@@ -114,11 +114,18 @@ void main() {
       expect(find.text('Premium obuna'), findsOneWidget);
     });
 
-    testWidgets('bo‘sh ro‘yxatda tushunarli yozuv', (tester) async {
+    testWidgets('bo‘sh ro‘yxat BOSHI BERK emas — do‘konga yo‘l bor',
+        (tester) async {
       final state = stateWith(ordersReturning([]));
       await tester.pumpWidget(host(const MyOrdersScreen(), state));
       await settle(tester);
-      expect(find.text('Hali buyurtmangiz yo‘q.'), findsOneWidget);
+
+      expect(find.text('Hozircha buyurtma yo‘q'), findsOneWidget);
+
+      // ASOSIYSI — TUGMA. Odam aynan shu ekranda birinchi
+      // buyurtmasini qilmoqchi bo'ladi; faqat "hali yo'q" deb
+      // yozish uni do'konni o'zi qidirishga majbur qilardi.
+      expect(find.text('Do‘konga o‘tish'), findsOneWidget);
     });
 
     testWidgets('xatoda ASOSIY XABAR jumla, texnik qator esa alohida',

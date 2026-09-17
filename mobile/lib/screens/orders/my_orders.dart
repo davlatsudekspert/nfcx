@@ -11,12 +11,14 @@ import '../../design/components/skeleton.dart';
 import '../../design/components/states.dart';
 import '../../design/components/surface.dart';
 import '../../design/components/top_bar.dart';
+import '../../design/nav.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../l10n/dates.dart';
 import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
 import '../common/contact_actions.dart';
+import '../nfc/id_catalog.dart';
 
 /// MENING BUYURTMALARIM — va TO'LOVNI DAVOM ETTIRISH.
 ///
@@ -109,8 +111,22 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                     data: _orders,
                     onRetry: _load,
                     isEmpty: (d) => d.isEmpty,
-                    emptyMessage: tr('Hali buyurtmangiz yo‘q.'),
+                    // BO'SH HOLAT BOSHI BERK BO'LMAYDI (prototip:
+                    // "Hozircha buyurtma yo'q" → "Do'konga o'tish").
+                    //
+                    // Faqat "Hali buyurtmangiz yo'q" deyish — odamni
+                    // ekranda qoldirish: u aynan shu yerda birinchi
+                    // buyurtmasini qilmoqchi bo'ladi, do'konni esa
+                    // o'zi qidirishi kerak edi.
+                    emptyTitle: tr('Hozircha buyurtma yo‘q'),
+                    emptyMessage: tr('Birinchi NFC ID yoki jismoniy '
+                        'kartani do‘kondan tanlang.'),
                     emptyIcon: Ico.bag,
+                    emptyAction: tr('Do‘konga o‘tish'),
+                    onEmptyAction: () => push<void>(
+                      context,
+                      (_) => const IdCatalogScreen(),
+                    ),
                     skeleton: ListView(
                       padding: const EdgeInsets.symmetric(horizontal: S.gutter),
                       children: const [

@@ -287,6 +287,10 @@
     "Один человек считается один раз, сколько бы раз ни заходил",
     "One person counts once, however many times they visit"
   ],
+  "Birinchi NFC ID yoki jismoniy kartani do‘kondan tanlang.": [
+    "Выберите первый NFC ID или физическую карту в магазине.",
+    "Pick your first NFC ID or a physical card in the shop."
+  ],
   "Birinchi bo‘lib fikr bildiring.": [
     "Будьте первым, кто оставит отзыв.",
     "Be the first to comment."
@@ -855,6 +859,10 @@
     "Магазин · Ташкент",
     "Shop · Tashkent"
   ],
+  "Do‘konga o‘tish": [
+    "В магазин",
+    "Go to shop"
+  ],
   "Dush": [
     "Пн",
     "Mon"
@@ -1262,6 +1270,10 @@
   "Hozircha bo‘sh kod yo‘q": [
     "Свободных кодов пока нет",
     "No free codes right now"
+  ],
+  "Hozircha buyurtma yo‘q": [
+    "Пока нет заказов",
+    "No orders yet"
   ],
   "Hozircha ilovada mavjud emas": [
     "Пока недоступно в приложении",
@@ -4318,6 +4330,10 @@
   "Yordam va huquq": [
     "Помощь и право",
     "Help and legal"
+  ],
+  "Yordamga yozish": [
+    "Написать в поддержку",
+    "Contact support"
   ],
   "Yozib bo‘lmadi — karta himoyalangan yoki juda tez olindi.": [
     "Записать не удалось — карта защищена или её убрали слишком быстро.",
