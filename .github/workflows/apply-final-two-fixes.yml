@@ -8,11 +8,44 @@ on:
       - .github/workflows/apply-final-two-fixes.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  validate:
+  patch-test-commit:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - run: echo workflow-ok
+        with:
+          fetch-depth: 0
+
+      - name: Apply targeted patches
+        run: python3 scripts/apply_final_two_fixes.py
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.4
+          channel: stable
+          cache: true
+
+      - name: Dependencies
+        working-directory: mobile
+        run: flutter pub get --enforce-lockfile
+
+      - name: Analyze
+        working-directory: mobile
+        run: flutter analyze --no-fatal-infos
+
+      - name: Tests
+        working-directory: mobile
+        run: flutter test
+
+      - name: Commit tested fixes
+        run: |
+          rm -f scripts/apply_final_two_fixes.py
+          rm -f .github/workflows/apply-final-two-fixes.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(mobile): show own stories and start payments correctly"
+          git push origin HEAD:codex/final-two-fixes
