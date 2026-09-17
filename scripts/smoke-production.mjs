@@ -32,6 +32,9 @@ async function api(path, { method = 'GET', body, auth = true } = {}) {
     method,
     headers: {
       'content-type': 'application/json',
+      // ILOVA AYNAN SHUNI YUBORADI: token javob TANASIDA faqat shu
+      // sarlavha bilan qaytadi (vebda u Set-Cookie ga ketadi).
+      'x-client': 'mobile',
       ...(auth && token ? { authorization: `Bearer ${token}` } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,
