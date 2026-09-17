@@ -550,11 +550,22 @@ export async function handle(request, env, url, H) {
       const designFrontUrl = printUrl(body.designFrontUrl);
       const designBackUrl = printUrl(body.designBackUrl);
 
+      // KARTA YUZASI — mijoz tanlagan material.
+      //
+      // Ro'yxat QAT'IY: bosmaxonada aynan shu to'rttasi bor va
+      // erkin matn kelsa, buyurtmani bajarib bo'lmasdi. Noma'lum
+      // qiymat rad etilmaydi, standart ('matte_black') olinadi —
+      // eski ilova bu maydonni umuman yubormaydi.
+      const FINISHES = ['matte_black', 'chrome', 'gold', 'titanium'];
+      const rawFinish = H.cleanStr(body.finish, 20);
+      const finish = FINISHES.includes(rawFinish) ? rawFinish : FINISHES[0];
+
       const order = await env.DB.prepare(
         `INSERT INTO web_orders (user_id, code, kind, price, payload, status, created_at)
          VALUES (?, ?, 'physical_card_order', ?, ?, 'pending', ?) RETURNING id`
       ).bind(user.id, code, amount, JSON.stringify({
         shippingName, shippingPhone, shippingAddress, shippingCarrier, quantity,
+        finish,
         designFrontUrl, designBackUrl,
         // Bosmaxona uchun aniq o'lcham — maket qanday chiqarilgani
         // buyurtmaning o'zida yozib qolsin, keyinchalik format o'zgarsa

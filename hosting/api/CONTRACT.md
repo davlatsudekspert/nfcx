@@ -17,3 +17,22 @@ Har modul: `export async function handle(request, env, url, H)` → `Response` y
 
 Qoidalar: har query `.bind()`; egalik tekshiruvi SERVER tomonda (`getRecordOwner === user.id`); javob shakllari `server/index.js` (Express) bilan BIR XIL (frontend `src/lib/db.js` shunga bog'langan); D1 = SQLite (JSONB yo'q → TEXT + JSON.parse; `RETURNING` bor; `ON CONFLICT` bor; `NOW()` yo'q → `H.nowTs()`; `ILIKE` yo'q → `LOWER(x) LIKE LOWER(?)`).
 Har modul uchun test: `scripts/test-<modul>.mjs` (`scripts/lib/d1-harness.mjs` orqali, haqiqiy `worker.fetch` bilan).
+
+## Modullar
+
+`auth`, `account`, `engagement`, `catalog`, `media`, `admin-extra`,
+`admin-finance`, `telegram`, `assistant`, `moderation`, `comments`
+(shu tartibda chaqiriladi — `worker.js: API_MODULES`).
+
+`comments` — izohlar (`content_comments`): `GET|POST
+/api/comments/:kind/:id`, `DELETE /api/comments/:id`, bu yerda
+`:kind` — `post | company_post | story | company_story`. Lenta
+(`/api/feed`) har kadrga `commentKind` va `commentCount` qo'shadi va
+sonlarni `countsFor()` orqali BITTA guruhlangan so'rov bilan oladi.
+
+## Lokal ishga tushirish
+
+`node scripts/dev-api-server.mjs` — shu worker'ni Node HTTP serveri
+ostida, xotiradagi D1 va demo ma'lumot bilan ko'taradi (production'ga
+tegmaydi). Mobil ilovaning uchma-uch testi shunga ulanadi:
+`node scripts/test-live-app.mjs`.
