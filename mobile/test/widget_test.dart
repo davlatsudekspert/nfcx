@@ -8,7 +8,6 @@ import 'package:nfcstore/data/api_client.dart';
 import 'package:nfcstore/data/models.dart';
 import 'package:nfcstore/design/components/buttons.dart';
 import 'package:nfcstore/design/components/input.dart';
-import 'package:nfcstore/design/components/logo.dart';
 import 'package:nfcstore/design/components/nav_bar.dart';
 import 'package:nfcstore/design/components/states.dart';
 import 'package:nfcstore/design/theme.dart';
