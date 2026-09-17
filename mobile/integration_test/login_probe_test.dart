@@ -288,7 +288,32 @@ void main() {
     }
 
     // ── SETTINGS ─────────────────────────────────────────────
+    //
+    // "Sozlamalar" profil ro'yxatining PASTIDA turadi va ekranga
+    // sig'maydi. Aylantirmasdan qidirish uni topmaydi — bu
+    // ilovaning nuqsoni emas, ro'yxatning oddiy uzunligi.
+    Future<void> scrollTo(Finder f) async {
+      if (f.evaluate().isNotEmpty) return;
+      final lists = find.byType(Scrollable);
+      if (lists.evaluate().isEmpty) return;
+      for (var i = 0; i < 12 && f.evaluate().isEmpty; i++) {
+        await t.drag(lists.last, const Offset(0, -260));
+        await settleFor(t, const Duration(milliseconds: 400));
+      }
+    }
+
     final settings = textLike('Sozlamalar');
+    await scrollTo(settings);
+    if (settings.evaluate().isEmpty) {
+      final seen = find
+          .byType(Text)
+          .evaluate()
+          .map((e) => (e.widget as Text).data ?? '')
+          .where((s) => s.trim().isNotEmpty)
+          .take(16)
+          .join(' | ');
+      say('SETTINGS EKRANDAGI MATN: $seen');
+    }
     expect(settings, findsWidgets, reason: 'SETTINGS: yo‘l TOPILMADI');
     await t.tap(settings.last);
     await settleFor(t, const Duration(seconds: 3));
@@ -301,15 +326,8 @@ void main() {
 
     // ── LOGOUT ───────────────────────────────────────────────
     var out = textLike('Chiqish');
-    if (out.evaluate().isEmpty) {
-      await t.dragUntilVisible(
-        find.text('Chiqish'),
-        find.byType(Scrollable).first,
-        const Offset(0, -320),
-      );
-      await settleFor(t);
-      out = textLike('Chiqish');
-    }
+    await scrollTo(out);
+    out = textLike('Chiqish');
     expect(out, findsWidgets, reason: 'LOGOUT: "Chiqish" tugmasi TOPILMADI');
     await t.tap(out.last);
 
