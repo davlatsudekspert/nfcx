@@ -141,12 +141,21 @@ void main() {
     expect(opened, isTrue, reason: 'kirgandan keyin bosh sahifa ochilmadi');
   });
 
-  // ── 3-QATLAM: TO'RT EKRAN ───────────────────────────────────
-  testWidgets('3. EKRANLAR — Profil · Biznes · NFC · Sozlamalar',
+  // ── 3-QATLAM: EKRANMA-EKRAN, QAT'IY TEKSHIRUV ───────────────
+  //
+  // OLDINGI VARIANTDA bu qadamlar faqat YOZIB qo'yilardi: ekran
+  // ochilmasa ham sinov yashil bo'lardi. Ya'ni u hech narsani
+  // isbotlamasdi. Endi har bir qadam qat'iy: element topilmasa
+  // yoki ekran ochilmasa — sinov YIQILADI.
+  //
+  // FINDER XATOSI ILOVA BUGI DEB HISOBLANMASLIGI UCHUN: har bir
+  // element bir nechta yo'l bilan qidiriladi va topilmagani
+  // ALOHIDA xabar bilan aytiladi ("tugma topilmadi" va "ekran
+  // ochilmadi" — ikki xil nosozlik).
+  testWidgets('3. EKRANLAR — Home · Profil · Biznes · NFC · Sozlamalar · Chiqish',
       (t) async {
-    await t.pumpWidget(
-      NfcstoreApp(state: AppState(api: Api(baseUrl: base))),
-    );
+    final state = AppState(api: Api(baseUrl: base));
+    await t.pumpWidget(NfcstoreApp(state: state));
     await waitFor(
       t,
       find.byWidgetPredicate((w) =>
@@ -166,60 +175,121 @@ void main() {
     var btn = find.widgetWithText(GestureDetector, 'Kirish');
     if (btn.evaluate().isEmpty) btn = find.text('Kirish');
     await t.tap(btn.last);
-    final opened = await waitFor(t, find.text('Bosh sahifa'));
-    await settleFor(t, const Duration(seconds: 3));
-    expect(opened, isTrue, reason: 'kirish bo‘lmadi — bu qadam kirishga bog‘liq');
 
-    for (final tab in const ['Profil', 'NFC', 'Do‘kon', 'Bosh sahifa']) {
+    // ── HOME ─────────────────────────────────────────────────
+    final home = await waitFor(t, find.text('Bosh sahifa'));
+    await settleFor(t, const Duration(seconds: 3));
+    say('HOME: $home');
+    expect(home, isTrue, reason: 'HOME: kirgandan keyin qobiq ochilmadi');
+
+    /// Pastki paneldagi tabni bosadi va ekran ochilganini
+    /// tekshiradi.
+    ///
+    /// `expectAny` — o'sha ekranda ALBATTA bo'ladigan matnlar.
+    /// Bittasi topilsa yetarli: ekran tarkibi hisobga qarab
+    /// o'zgaradi (masalan ID'lari yo'q odamda bo'sh holat
+    /// chiqadi), lekin ekranning O'ZI baribir ochilishi shart.
+    Future<void> openTab(
+      String tab,
+      List<String> expectAny, {
+      required String nom,
+    }) async {
       final f = find.text(tab);
-      if (f.evaluate().isEmpty) {
-        say('TAB TOPILMADI: $tab');
-        continue;
-      }
+      expect(f, findsWidgets, reason: '$nom: "$tab" tabi TOPILMADI');
       await t.tap(f.last);
-      await settleFor(t, const Duration(seconds: 2));
-      say('TAB OCHILDI: $tab');
+      await settleFor(t, const Duration(seconds: 3));
+
+      final hit = expectAny.where((s) => find.text(s).evaluate().isNotEmpty);
+      if (hit.isEmpty) {
+        final seen = find
+            .byType(Text)
+            .evaluate()
+            .map((e) => (e.widget as Text).data ?? '')
+            .where((s) => s.trim().isNotEmpty)
+            .take(12)
+            .join(' | ');
+        say('$nom EKRANDAGI MATN: $seen');
+      }
+      expect(hit, isNotEmpty, reason: '$nom: ekran ochilmadi');
+      say('$nom: ochildi');
     }
 
-    // PROFIL ichida biznes va sozlamalar bormi.
-    await t.tap(find.text('Profil').last);
+    // ── NFC IDS ──────────────────────────────────────────────
+    await openTab(
+      'NFC',
+      ['NFC Tools', 'Mening ID’larim', 'Hali ID yo‘q'],
+      nom: 'NFC IDS',
+    );
+
+    // ── PROFILE ──────────────────────────────────────────────
+    await openTab(
+      'Profil',
+      ['Mening profilim', 'Sozlamalar', 'Mening kontentim'],
+      nom: 'PROFILE',
+    );
+
+    // ── BUSINESS ─────────────────────────────────────────────
+    //
+    // Biznes bo'limi FAQAT kompaniyasi bor hisobda ko'rinadi.
+    // Yo'qligi ilovaning nuqsoni EMAS — shuning uchun ikki holat
+    // ajratiladi: bo'lsa ochiladi va tekshiriladi, bo'lmasa
+    // shunday deb yoziladi.
+    final bizEntry = find.text('Biznesni tahrirlash');
+    final bizStats = find.text('Biznes statistikasi');
+    if (bizEntry.evaluate().isNotEmpty || bizStats.evaluate().isNotEmpty) {
+      final target =
+          bizEntry.evaluate().isNotEmpty ? bizEntry : bizStats;
+      await t.tap(target.last);
+      await settleFor(t, const Duration(seconds: 3));
+      final opened = find.byType(TextField).evaluate().isNotEmpty ||
+          find.textContaining('Biznes').evaluate().isNotEmpty;
+      expect(opened, isTrue, reason: 'BUSINESS: bo‘lim ochilmadi');
+      say('BUSINESS: ochildi');
+      final nav = t.state<NavigatorState>(find.byType(Navigator).first);
+      if (nav.canPop()) {
+        nav.pop();
+        await settleFor(t, const Duration(seconds: 2));
+      }
+    } else {
+      say('BUSINESS: bu hisobda kompaniya yo‘q');
+    }
+
+    // ── SETTINGS ─────────────────────────────────────────────
+    final settings = find.text('Sozlamalar');
+    expect(settings, findsWidgets, reason: 'SETTINGS: yo‘l TOPILMADI');
+    await t.tap(settings.last);
+    await settleFor(t, const Duration(seconds: 3));
+    final inSettings = find.text('Ko‘rinish').evaluate().isNotEmpty ||
+        find.text('Hisob').evaluate().isNotEmpty ||
+        find.text('Xavfsizlik').evaluate().isNotEmpty;
+    expect(inSettings, isTrue, reason: 'SETTINGS: ekran ochilmadi');
+    say('SETTINGS: ochildi');
+
+    // ── LOGOUT ───────────────────────────────────────────────
+    var out = find.text('Chiqish');
+    if (out.evaluate().isEmpty) {
+      await t.dragUntilVisible(
+        find.text('Chiqish'),
+        find.byType(Scrollable).first,
+        const Offset(0, -320),
+      );
+      await settleFor(t);
+      out = find.text('Chiqish');
+    }
+    expect(out, findsWidgets, reason: 'LOGOUT: "Chiqish" tugmasi TOPILMADI');
+    await t.tap(out.last);
+
+    final backToLogin = await waitFor(t, find.text('Xush kelibsiz'));
     await settleFor(t, const Duration(seconds: 2));
 
-    // BIZNES — profil menyusida kompaniya bo'limi bormi.
-    say('BIZNES YO‘LI: '
-        '${find.textContaining('Biznes').evaluate().isNotEmpty}');
-
-    final settings = find.text('Sozlamalar');
-    say('SOZLAMALAR YO‘LI: ${settings.evaluate().isNotEmpty}');
-    if (settings.evaluate().isNotEmpty) {
-      await t.tap(settings.last);
-      await settleFor(t, const Duration(seconds: 2));
-      say('SOZLAMALAR OCHILDI: '
-          '${find.text('Xavfsizlik').evaluate().isNotEmpty || find.text('Hisob').evaluate().isNotEmpty}');
-
-      // CHIQISH — sozlamalarning eng pastida.
-      final out = find.text('Chiqish');
-      if (out.evaluate().isEmpty) {
-        await t.dragUntilVisible(
-          find.text('Chiqish'),
-          find.byType(Scrollable).first,
-          const Offset(0, -320),
-        );
-        await settleFor(t);
-      }
-      say('CHIQISH TUGMASI: ${find.text('Chiqish').evaluate().isNotEmpty}');
-      if (find.text('Chiqish').evaluate().isNotEmpty) {
-        await t.tap(find.text('Chiqish').last);
-        await settleFor(t, const Duration(seconds: 2));
-        // Tasdiqlash varaqasi chiqishi mumkin.
-        final confirm = find.text('Chiqish');
-        if (confirm.evaluate().isNotEmpty) {
-          await t.tap(confirm.last);
-          await settleFor(t, const Duration(seconds: 2));
-        }
-        final back = await waitFor(t, find.text('Xush kelibsiz'), steps: 40);
-        say('CHIQQANDAN KEYIN KIRISH EKRANI: $back');
-      }
-    }
+    // IKKI TOMONLAMA TASDIQ: ekran ham qaytdi, holat ham tozalandi.
+    // Faqat ekranga qarash yetmaydi — token qolib ketsa, ilova
+    // keyingi ochilishda o'zini kirgan deb hisoblardi.
+    say('LOGOUT ekran: $backToLogin · token: ${state.api.token == null} '
+        '· hisob: ${state.user == null}');
+    expect(backToLogin, isTrue, reason: 'LOGOUT: kirish ekraniga qaytmadi');
+    expect(state.api.token, isNull, reason: 'LOGOUT: token tozalanmadi');
+    expect(state.user, isNull, reason: 'LOGOUT: hisob keshda qoldi');
+    say('LOGOUT: tasdiqlandi');
   });
 }
