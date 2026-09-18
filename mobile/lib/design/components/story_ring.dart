@@ -113,12 +113,12 @@ class _StoryRingState extends State<StoryRing>
               transform: GradientRotation(.35),
             );
       final inner = Container(
-        margin: const EdgeInsets.all(3.2),
+        margin: const EdgeInsets.all(5.0),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           // Fon rangidagi ingichka halqa — gradient bilan avatar
           // orasidagi nafas.
-          border: Border.all(color: C.bg, width: 2),
+          border: Border.all(color: C.bg, width: 2.4),
         ),
         child: ClipOval(
           child: Avatar(
@@ -141,7 +141,7 @@ class _StoryRingState extends State<StoryRing>
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: C.ink3.withValues(alpha: .55),
-                    width: 1.6,
+                    width: 2.2,
                   ),
                 ),
               )
