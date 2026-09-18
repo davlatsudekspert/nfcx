@@ -10,6 +10,7 @@ import '../../design/components/nav_bar.dart';
 import '../../design/components/press.dart';
 import '../../design/components/skeleton.dart';
 import '../../design/components/states.dart';
+import '../../design/components/toast.dart';
 import '../../design/components/video_view.dart';
 import '../../design/nav.dart';
 import '../../design/tokens.dart';
@@ -129,6 +130,10 @@ class _ReelsScreenState extends State<ReelsScreen> {
   final Map<String, bool> _follows = {};
   final Set<String> _followBusy = {};
 
+  /// Kompaniya post/story larining like holati lentaning asosiy
+  /// javobida kelmaydi. Ko'rinadigan kadr uchun bir marta olinadi.
+  final Set<String> _companyLikeLoaded = {};
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -184,7 +189,10 @@ class _ReelsScreenState extends State<ReelsScreen> {
           if (_pages.hasClients) _pages.jumpToPage(start);
         });
       }
-      if (items.isNotEmpty) _loadFollow(items[start].code);
+      if (items.isNotEmpty) {
+        _loadFollow(items[start]);
+        _loadCompanyLike(start);
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -240,7 +248,9 @@ class _ReelsScreenState extends State<ReelsScreen> {
 
   Future<void> _toggleLike(int i) async {
     final item = _items[i];
-    if (!item.likeable) return;
+    // Shaxsiy kontent eski like endpointida, kompaniya kontenti esa
+    // yangi umumiy endpointda. Ikkalasi ham Reels'da bir xil yurak.
+    if (!item.likeable && !item.isCompany) return;
     final repo = AppScope.read(context).repo;
     setState(() {
       _items = [..._items]..[i] = item.copyWith(
@@ -249,17 +259,55 @@ class _ReelsScreenState extends State<ReelsScreen> {
         );
     });
     try {
-      final r = item.isStory
-          ? await repo.likeStory(item.id)
-          : await repo.likePost(item.id);
+      final r = item.isCompany
+          ? await repo.toggleContentLike(item.commentTarget, item.id)
+          : (item.isStory
+              ? await repo.likeStory(item.id)
+              : await repo.likePost(item.id));
       if (!mounted) return;
+      final at = _items.indexWhere(
+        (x) => x.kind == item.kind && x.id == item.id && x.code == item.code,
+      );
+      if (at < 0) return;
       setState(() {
-        _items = [..._items]..[i] =
-            _items[i].copyWith(liked: r.liked, likeCount: r.count);
+        _items = [..._items]..[at] =
+            _items[at].copyWith(liked: r.liked, likeCount: r.count);
+      });
+    } catch (e) {
+      if (!mounted) return;
+      final at = _items.indexWhere(
+        (x) => x.kind == item.kind && x.id == item.id && x.code == item.code,
+      );
+      if (at >= 0) {
+        setState(() => _items = [..._items]..[at] = item);
+      }
+      showToast(context, humanError(e));
+    }
+  }
+
+  Future<void> _loadCompanyLike(int i) async {
+    if (i < 0 || i >= _items.length) return;
+    final item = _items[i];
+    if (!item.isCompany) return;
+    final key = '${item.commentTarget}:${item.id}';
+    if (!_companyLikeLoaded.add(key)) return;
+    try {
+      final r = await AppScope.read(context).repo.contentLikeInfo(
+            item.commentTarget,
+            item.id,
+          );
+      if (!mounted) return;
+      final at = _items.indexWhere(
+        (x) => x.kind == item.kind && x.id == item.id && x.code == item.code,
+      );
+      if (at < 0) return;
+      setState(() {
+        _items = [..._items]..[at] =
+            _items[at].copyWith(liked: r.liked, likeCount: r.count);
       });
     } catch (_) {
-      if (!mounted) return;
-      setState(() => _items = [..._items]..[i] = item);
+      // Like holati yordamchi ma'lumot; video ishlashda davom etadi.
+      _companyLikeLoaded.remove(key);
     }
   }
 
@@ -289,22 +337,24 @@ class _ReelsScreenState extends State<ReelsScreen> {
   }
 
   /// Obuna holatini bir marta so'rab, keshga qo'yadi.
-  Future<void> _loadFollow(String code) async {
-    final key = code.toUpperCase();
+  Future<void> _loadFollow(FeedEntry item) async {
+    final key = item.code.toUpperCase();
     if (key.isEmpty || _follows.containsKey(key)) return;
     _follows[key] = false; // qayta so'ralmasin
     try {
-      final st = await AppScope.read(context).repo.followStats(code);
+      final repo = AppScope.read(context).repo;
+      final following = item.isCompany
+          ? (await repo.company(item.code)).following
+          : (await repo.followStats(item.code)).isFollowing;
       if (!mounted) return;
-      setState(() => _follows[key] = st.isFollowing);
+      setState(() => _follows[key] = following);
     } catch (_) {
-      // Holat noma'lum bo'lsa tugma "Obuna" bo'lib turaveradi —
-      // bosilganda server baribir haqiqatni aytadi.
+      // Holat noma'lum bo'lsa tugma "Obuna" bo'lib turadi.
     }
   }
 
-  Future<void> _toggleFollow(String code) async {
-    final key = code.toUpperCase();
+  Future<void> _toggleFollow(FeedEntry item) async {
+    final key = item.code.toUpperCase();
     if (_followBusy.contains(key)) return;
     _followBusy.add(key);
 
@@ -312,9 +362,17 @@ class _ReelsScreenState extends State<ReelsScreen> {
     setState(() => _follows[key] = !was);
     try {
       final repo = AppScope.read(context).repo;
-      was ? await repo.unfollow(code) : await repo.follow(code);
-    } catch (_) {
-      if (mounted) setState(() => _follows[key] = was);
+      if (item.isCompany) {
+        final following = await repo.toggleCompanyFollow(item.code);
+        if (mounted) setState(() => _follows[key] = following);
+      } else {
+        was ? await repo.unfollow(item.code) : await repo.follow(item.code);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _follows[key] = was);
+        showToast(context, humanError(e));
+      }
     } finally {
       _followBusy.remove(key);
     }
@@ -400,7 +458,8 @@ class _ReelsScreenState extends State<ReelsScreen> {
             onPageChanged: (i) {
               setState(() => _index = i);
               if (i >= _items.length - 2) _loadMore();
-              _loadFollow(_items[i].code);
+              _loadFollow(_items[i]);
+              _loadCompanyLike(i);
             },
             itemBuilder: (context, i) => _Reel(
               item: _items[i],
@@ -416,7 +475,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
               // umuman ko'rsatilmaydi.
               onFollow: _ownsItem(_items[i])
                   ? null
-                  : () => _toggleFollow(_items[i].code),
+                  : () => _toggleFollow(_items[i]),
               onAuthor: () => push<void>(
                 context,
                 (_) => _items[i].isCompany
@@ -581,7 +640,7 @@ class _Reel extends StatelessWidget {
               // bo'lmasdi — odam "like ishlamayapti" deb
               // o'ylardi. O'lik tugmadan ko'ra tugmaning yo'qligi
               // halolroq.
-              if (item.likeable)
+              if (item.likeable || item.isCompany)
                 LikeButton(
                   liked: item.liked,
                   count: item.likeCount,
