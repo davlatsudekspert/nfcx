@@ -32,7 +32,6 @@ on:
   push:
     branches:
       - 'claude/**'
-      - 'chatgpt/**'
     paths:
       - 'mobile/**'
       - 'hosting/**'
