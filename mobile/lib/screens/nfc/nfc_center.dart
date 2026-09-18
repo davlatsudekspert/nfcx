@@ -514,8 +514,8 @@ class _Tools extends StatelessWidget {
       crossAxisCount: 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: S.x10,
-      crossAxisSpacing: S.x10,
+      mainAxisSpacing: S.x12,
+      crossAxisSpacing: S.x12,
       childAspectRatio: 1.28,
       children: [
         for (final it in items)
@@ -564,7 +564,7 @@ class _ToolTile extends StatelessWidget {
                 ? C.accent.withValues(alpha: .20)
                 : C.lineCool,
           ),
-          boxShadow: C.softShadow,
+          boxShadow: C.e1,
         ),
         child: Stack(
           children: [
@@ -607,7 +607,7 @@ class _ToolTile extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(S.x14),
+              padding: const EdgeInsets.all(S.x12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
