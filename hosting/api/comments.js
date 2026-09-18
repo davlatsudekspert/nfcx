@@ -190,6 +190,36 @@ export async function countsFor(env, targets) {
   return out;
 }
 
+/// Kontent layklari — lenta/profil uchun guruhlab.
+export async function likesFor(env, targets, viewerId = 0) {
+  const out = new Map();
+  if (!targets.length) return out;
+  await ensureSchema(env);
+  const where = targets.map(() => '(target_kind = ? AND target_id = ?)').join(' OR ');
+  const args = targets.flatMap((t) => [t.kind, t.id]);
+  const rows = await env.DB.prepare(
+    `SELECT target_kind, target_id, COUNT(*) AS n,
+            MAX(CASE WHEN user_id = ? THEN 1 ELSE 0 END) AS liked
+       FROM content_likes
+      WHERE ${where}
+      GROUP BY target_kind, target_id`
+  ).bind(Number(viewerId) || 0, ...args).all().catch(() => null);
+  for (const r of rows?.results || []) {
+    out.set(`${r.target_kind}:${Number(r.target_id)}`, {
+      count: Number(r.n) || 0,
+      liked: !!r.liked,
+    });
+  }
+  return out;
+}
+
+export async function deleteLikesFor(env, kind, id) {
+  await ensureSchema(env);
+  await env.DB.prepare(
+    `DELETE FROM content_likes WHERE target_kind = ? AND target_id = ?`
+  ).bind(kind, id).run();
+}
+
 export async function handle(request, env, url, H) {
   const path = url.pathname;
 
