@@ -66,10 +66,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    // Qurilmada barmoq izi/yuz sozlanganmi — shunga qarab belgi
-    // ko'rsatiladi. Sozlanmagan bo'lsa uni umuman taklif qilmaymiz.
-    AppLockScope.read(context).biometricAvailable().then((v) {
-      if (mounted) setState(() => _bioAvailable = v);
+    // Sozlamalar sahifasi AVVAL chizilsin, keyin biometrika tekshirilsin.
+    // Ayrim Android qurilma/emulyatorlarda local_auth method-channel
+    // birinchi frame'dan oldin chaqirilsa route qora fon bilan qolib
+    // ketishi mumkin. Biometrika bu ekran uchun ixtiyoriy ma'lumot:
+    // u ishlamasa ham Sozlamalar ochilishi shart.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      try {
+        final v = await AppLockScope.read(context).biometricAvailable();
+        if (mounted) setState(() => _bioAvailable = v);
+      } catch (_) {
+        // Qurilmada biometrika yo'q yoki native servis javob bermasa
+        // sahifani buzmaymiz — faqat biometrika opsiyasi o'chiq qoladi.
+      }
     });
   }
 
