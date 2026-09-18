@@ -280,7 +280,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
               actionLabel: tr('Davom etish'),
               onAction: () {
-                Navigator.of(context).pop();
+                Navigator.of(context, rootNavigator: true).pop();
                 push<void>(context, (_) => const MyOrdersScreen());
               },
             ),
@@ -293,7 +293,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               message: tr('Qabul qilmaguningizcha ID sizga o‘tmaydi.'),
               actionLabel: tr('Ko‘rish'),
               onAction: () {
-                Navigator.of(context).pop();
+                Navigator.of(context, rootNavigator: true).pop();
                 push<void>(context, (_) => const GiftOffersScreen())
                     .then((_) => mounted ? _load(force: true) : null);
               },
