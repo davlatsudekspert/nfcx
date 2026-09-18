@@ -410,7 +410,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     try {
       final r = item.isStory
           ? await repo.likeStory(item.id)
-          : await repo.likePost(item.id);
+          : item.isCompany
+              ? await repo.likeCompanyPost(item.code, item.id)
+              : await repo.likePost(item.id);
       if (!mounted) return;
       setState(() {
         _feed = [
@@ -855,7 +857,7 @@ class _StoryStrip extends StatelessWidget {
     if (loading) return const SkeletonStories();
 
     return SizedBox(
-      height: 100,
+      height: 112,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: S.gutter),
