@@ -93,6 +93,8 @@ class _StoryRingState extends State<StoryRing>
   @override
   Widget build(BuildContext context) {
     final size = widget.size;
+    final ringInset = size >= 100 ? 5.4 : 4.4;
+    final innerBorder = size >= 100 ? 2.6 : 2.1;
 
     Widget ring;
     if (widget.addButton) {
@@ -156,6 +158,13 @@ class _StoryRingState extends State<StoryRing>
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: gradient,
+                    boxShadow: [
+                      BoxShadow(
+                        color: C.accent.withValues(alpha: .16),
+                        blurRadius: size >= 100 ? 15 : 10,
+                        spreadRadius: .4,
+                      ),
+                    ],
                   ),
                 ),
               ),
