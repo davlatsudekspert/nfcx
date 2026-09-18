@@ -117,10 +117,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         try {
           stories = await repo.companyStories(_code);
         } catch (_) {}
-        FollowStats? follow;
-        try {
-          follow = await repo.followStats(_code);
-        } catch (_) {}
+        final follow = FollowStats(
+          followers: company.followers,
+          isFollowing: company.following,
+        );
         if (!mounted) return;
         setState(() {
           _company = company;
@@ -171,15 +171,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final repo = AppScope.read(context).repo;
     setState(() => _busyFollow = true);
     try {
-      if (stats.isFollowing) {
-        await repo.unfollow(_code);
+      if (_isCompany) {
+        final result = await repo.toggleCompanyFollow(_code);
+        if (!mounted) return;
+        setState(() {
+          _follow = FollowStats(
+            followers: result.followers,
+            isFollowing: result.following,
+          );
+        });
+        if (result.following) successHaptic();
       } else {
-        await repo.follow(_code);
-        successHaptic();
+        if (stats.isFollowing) {
+          await repo.unfollow(_code);
+        } else {
+          await repo.follow(_code);
+          successHaptic();
+        }
+        final fresh = await repo.followStats(_code);
+        if (!mounted) return;
+        setState(() => _follow = fresh);
       }
-      final fresh = await repo.followStats(_code);
-      if (!mounted) return;
-      setState(() => _follow = fresh);
     } catch (e) {
       if (mounted) showError(context, humanError(e));
     } finally {
@@ -888,7 +900,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               onTap: () async {
                 await push<void>(
                   context,
-                  (_) => PostDetailScreen(post: post, canDelete: _owned),
+                  (_) => PostDetailScreen(
+                    post: post,
+                    canDelete: _owned,
+                    commentKind: _isCompany ? 'company_post' : 'post',
+                  ),
                 );
                 if (mounted) await _load();
               },
