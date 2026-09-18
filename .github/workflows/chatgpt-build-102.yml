@@ -1,0 +1,98 @@
+name: NFCSTORE Android +102
+
+on:
+  push:
+    branches: [chatgpt/final-polish-audit]
+    paths:
+      - .github/workflows/chatgpt-build-102.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.4'
+          cache: true
+
+      - name: Backend syntax check
+        run: node --check hosting/worker.js
+
+      - name: Dependencies
+        working-directory: mobile
+        run: flutter pub get --enforce-lockfile
+
+      - name: Analyze
+        working-directory: mobile
+        run: flutter analyze --no-fatal-infos
+
+      - name: Functional tests
+        working-directory: mobile
+        shell: bash
+        run: |
+          set -e
+          for f in $(find test -name '*_test.dart' ! -path 'test/audit/visual_audit_test.dart' | sort); do
+            echo "==> $f"
+            flutter test "$f"
+          done
+
+      - name: Prepare signing key
+        working-directory: mobile
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+          cat > android/key.properties <<EOF
+          storePassword=$ANDROID_KEYSTORE_PASSWORD
+          keyPassword=$ANDROID_KEY_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
+          storeFile=upload-keystore.jks
+          EOF
+
+      - name: Build split APKs +102
+        working-directory: mobile
+        run: flutter build apk --release --split-per-abi --build-name=1.0.0 --build-number=102
+
+      - name: Build universal APK +102
+        working-directory: mobile
+        run: |
+          flutter build apk --release --build-name=1.0.0 --build-number=102
+          cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/nfcstore-1.0.0+102-universal.apk
+
+      - name: Verify APK signatures
+        working-directory: mobile
+        shell: bash
+        run: |
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
+          for f in build/app/outputs/flutter-apk/*.apk; do
+            "$APKSIGNER" verify --print-certs "$f" >/dev/null
+            echo "signed: $f"
+          done
+
+      - name: Upload APK +102
+        uses: actions/upload-artifact@v4
+        with:
+          name: nfcstore-apk-102
+          path: |
+            mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+            mobile/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+            mobile/build/app/outputs/flutter-apk/app-x86_64-release.apk
+            mobile/build/app/outputs/flutter-apk/nfcstore-1.0.0+102-universal.apk
+          retention-days: 14
