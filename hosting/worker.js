@@ -1109,38 +1109,6 @@ async function companyApi(request, env, url) {
   // Bo'lak `[^/]` bilan keng olinadi va companyId() qat'iy tekshiradi:
   // o'zbekcha O'/G' apostrofi (yoki uning %27 ko'rinishi) regexga
   // qo'shimcha belgi qo'shishni talab qilmasin uchun.
-  // Kompaniya posti layki — shaxsiy post_likes bilan aralashtirilmaydi.
-  const companyPostLikeMatch = path.match(/^\/api\/companies\/([^/]{3,40})\/posts\/(\d+)\/like$/);
-  if (companyPostLikeMatch && request.method === 'POST') {
-    const likeCompanyId = companyId(decodeCompanySeg(companyPostLikeMatch[1]));
-    const postId = Number(companyPostLikeMatch[2]);
-    if (!likeCompanyId || !postId) return json({ error: 'not_found' }, 404);
-    const user = await getCurrentUser(request, env);
-    if (!user) return json({ error: 'unauthorized' }, 401);
-    const post = await env.DB.prepare(
-      `SELECT cp.id FROM company_posts cp
-        JOIN companies co ON co.company_id = cp.company_id
-       WHERE cp.id = ? AND cp.company_id = ? AND co.status = 'active'`
-    ).bind(postId, likeCompanyId).first();
-    if (!post) return json({ error: 'not_found' }, 404);
-    const existing = await env.DB.prepare(
-      `SELECT 1 AS x FROM company_post_likes WHERE post_id = ? AND user_id = ?`
-    ).bind(postId, user.id).first();
-    if (existing) {
-      await env.DB.prepare(
-        `DELETE FROM company_post_likes WHERE post_id = ? AND user_id = ?`
-      ).bind(postId, user.id).run();
-    } else {
-      await env.DB.prepare(
-        `INSERT OR IGNORE INTO company_post_likes (post_id, user_id, created_at) VALUES (?,?,?)`
-      ).bind(postId, user.id, new Date().toISOString()).run();
-    }
-    const cnt = await env.DB.prepare(
-      `SELECT COUNT(*) AS n FROM company_post_likes WHERE post_id = ?`
-    ).bind(postId).first();
-    return json({ liked: !existing, count: Number(cnt?.n || 0) });
-  }
-
   const match = path.match(/^\/api\/companies\/([^/]{3,40})(?:\/(submit|payment|catalog|event|stats|orders|posts|stories|follow)(?:\/([A-Za-z0-9_-]+))?)?$/);
   if (!match) return json({ error: 'not_found' }, 404);
   const id = companyId(decodeCompanySeg(match[1]));
@@ -1258,20 +1226,26 @@ async function companyApi(request, env, url) {
       `SELECT display_name, logo_url FROM companies WHERE company_id = ?`
     ).bind(id).first();
     const rows = await env.DB.prepare(
-      `SELECT cp.id, cp.image_url, cp.video_url, cp.caption, cp.created_at,
-              (SELECT COUNT(*) FROM company_post_likes cpl WHERE cpl.post_id = cp.id) AS like_count,
-              EXISTS(SELECT 1 FROM company_post_likes cpl WHERE cpl.post_id = cp.id AND cpl.user_id = ?) AS liked
-         FROM company_posts cp WHERE cp.company_id = ?
-        ORDER BY cp.created_at DESC LIMIT 60`
-    ).bind(viewer ? viewer.id : 0, id).all();
+      `SELECT id, image_url, video_url, caption, created_at
+         FROM company_posts WHERE company_id = ? ORDER BY created_at DESC LIMIT 60`
+    ).bind(id).all();
+    const posts = rows.results || [];
+    const likes = await apiComments.likesFor(
+      env,
+      posts.map((row) => ({ kind: 'company_post', id: Number(row.id) })),
+      viewer ? viewer.id : 0,
+    ).catch(() => new Map());
     return json({
-      posts: (rows.results || []).map((r) => ({
-        id: Number(r.id), code: id,
-        authorName: meta?.display_name || id, authorAvatar: meta?.logo_url || '',
-        imageUrl: r.image_url || '', videoUrl: r.video_url || '',
-        caption: r.caption || '', createdAt: r.created_at,
-        likeCount: Number(r.like_count || 0), liked: !!r.liked,
-      })),
+      posts: posts.map((row) => {
+        const like = likes.get(`company_post:${Number(row.id)}`) || { count: 0, liked: false };
+        return {
+          id: Number(row.id), code: id,
+          authorName: meta?.display_name || id, authorAvatar: meta?.logo_url || '',
+          imageUrl: row.image_url || '', videoUrl: row.video_url || '',
+          caption: row.caption || '', createdAt: row.created_at,
+          likeCount: like.count, liked: like.liked,
+        };
+      }),
     });
   }
   if (action === 'stories' && !itemId && request.method === 'GET') {
@@ -1333,7 +1307,7 @@ async function companyApi(request, env, url) {
     const postId = Number(itemId) || 0;
     const res = await env.DB.prepare(`DELETE FROM company_posts WHERE id = ? AND company_id = ?`).bind(postId, id).run();
     if (!Number(res?.meta?.changes || 0)) return json({ error: 'not_found' }, 404);
-    await env.DB.prepare(`DELETE FROM company_post_likes WHERE post_id = ?`).bind(postId).run().catch(() => {});
+    await apiComments.deleteLikesFor(env, 'company_post', postId).catch(() => {});
     return json({ ok: true });
   }
 
@@ -2597,13 +2571,6 @@ async function ensureCompanyExtrasSchema(env) {
         created_at TEXT NOT NULL
       )`),
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_company_posts ON company_posts(company_id, created_at DESC)`),
-      env.DB.prepare(`CREATE TABLE IF NOT EXISTS "company_post_likes" (
-        post_id INTEGER NOT NULL,
-        user_id INTEGER NOT NULL,
-        created_at TEXT NOT NULL,
-        PRIMARY KEY (post_id, user_id)
-      )`),
-      env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_company_post_likes_post ON company_post_likes(post_id)`),
       // Kompaniyaga OBUNA. Shaxsiy `follows` dan alohida: u
       // foydalanuvchidan foydalanuvchiga, bu esa foydalanuvchidan
       // KOMPANIYAGA. Bittasiga tiqishtirilsa, "kimga obuna bo'ldim"
@@ -8967,8 +8934,7 @@ async function feedApi(request, env, url) {
         SELECT 'post', cp.id, cp.company_id, 'company',
                co.display_name, co.logo_url,
                cp.image_url, cp.video_url, cp.caption, cp.created_at,
-               (SELECT COUNT(*) FROM company_post_likes cpl WHERE cpl.post_id = cp.id),
-               EXISTS(SELECT 1 FROM company_post_likes cpl WHERE cpl.post_id = cp.id AND cpl.user_id = ?)
+               0, 0
           FROM company_posts cp JOIN companies co ON co.company_id = cp.company_id
          WHERE co.status = 'active' AND ${companyOwnerAliveSql('co')}
         UNION ALL
@@ -8993,7 +8959,7 @@ async function feedApi(request, env, url) {
      )
      ORDER BY created_at DESC, id DESC
      LIMIT ? OFFSET ?`
-  ).bind(viewerId, viewerId, viewerId, now, viewerId, now, limit + 1, offset).all();
+  ).bind(viewerId, viewerId, now, viewerId, now, limit + 1, offset).all();
 
   // BLOKLANGAN PROFILLAR LENTADAN CHIQARILADI.
   //
@@ -9025,8 +8991,20 @@ async function feedApi(request, env, url) {
     page1.map((r) => ({ kind: commentTargetKind(r), id: Number(r.id) })),
   ).catch(() => new Map());
 
+  const companyPostLikes = await apiComments.likesFor(
+    env,
+    page1
+      .filter((r) => String(r.kind) === 'post' && String(r.author_kind) === 'company')
+      .map((r) => ({ kind: 'company_post', id: Number(r.id) })),
+    viewerId,
+  ).catch(() => new Map());
+
   const feed = page1.map((r) => {
     const d = parseDbDate(r.created_at);
+    const target = commentTargetKind(r);
+    const companyLike = target === 'company_post'
+      ? companyPostLikes.get(`company_post:${Number(r.id)}`)
+      : null;
     return {
       kind: String(r.kind),
       id: Number(r.id),
@@ -9038,16 +9016,11 @@ async function feedApi(request, env, url) {
       videoUrl: r.video_url || '',
       caption: r.caption || '',
       createdAt: d && !Number.isNaN(d.getTime()) ? d.getTime() : Date.now(),
-      likeCount: Number(r.like_count || 0),
-      liked: !!r.liked,
-      // Kompaniya postida yoqtirish jadvali yo'q — ilova tugmani
-      // umuman ko'rsatmasligi uchun aniq bayroq.
+      likeCount: companyLike ? companyLike.count : Number(r.like_count || 0),
+      liked: companyLike ? companyLike.liked : !!r.liked,
       likeable: true,
-      // IZOH — yoqtirishdan farqli o'laroq, HAMMA kontent turida
-      // ishlaydi (kompaniya posti ham): jadval umumiy va egasi
-      // `target_kind` bilan ajratiladi.
-      commentKind: commentTargetKind(r),
-      commentCount: commentCounts.get(`${commentTargetKind(r)}:${Number(r.id)}`) || 0,
+      commentKind: target,
+      commentCount: commentCounts.get(`${target}:${Number(r.id)}`) || 0,
     };
   });
 
