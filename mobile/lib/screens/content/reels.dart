@@ -337,10 +337,15 @@ class _ReelsScreenState extends State<ReelsScreen> {
   }
 
   /// Obuna holatini bir marta so'rab, keshga qo'yadi.
+  ///
+  /// Shaxsiy va kompaniya obunasi serverda alohida endpointlarda.
+  String _followKey(FeedEntry item) =>
+      '${item.isCompany ? 'company' : 'card'}:${item.code.toUpperCase()}';
+
   Future<void> _loadFollow(FeedEntry item) async {
-    final key = item.code.toUpperCase();
-    if (key.isEmpty || _follows.containsKey(key)) return;
-    _follows[key] = false; // qayta so'ralmasin
+    final key = _followKey(item);
+    if (item.code.isEmpty || _follows.containsKey(key)) return;
+    _follows[key] = false;
     try {
       final repo = AppScope.read(context).repo;
       final following = item.isCompany
@@ -349,12 +354,12 @@ class _ReelsScreenState extends State<ReelsScreen> {
       if (!mounted) return;
       setState(() => _follows[key] = following);
     } catch (_) {
-      // Holat noma'lum bo'lsa tugma "Obuna" bo'lib turadi.
+      // Noma'lum holatda tugma Obuna bo'lib qoladi.
     }
   }
 
   Future<void> _toggleFollow(FeedEntry item) async {
-    final key = item.code.toUpperCase();
+    final key = _followKey(item);
     if (_followBusy.contains(key)) return;
     _followBusy.add(key);
 
@@ -363,16 +368,13 @@ class _ReelsScreenState extends State<ReelsScreen> {
     try {
       final repo = AppScope.read(context).repo;
       if (item.isCompany) {
-        final following = await repo.toggleCompanyFollow(item.code);
-        if (mounted) setState(() => _follows[key] = following);
+        final result = await repo.toggleCompanyFollow(item.code);
+        if (mounted) setState(() => _follows[key] = result.following);
       } else {
         was ? await repo.unfollow(item.code) : await repo.follow(item.code);
       }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _follows[key] = was);
-        showToast(context, humanError(e));
-      }
+    } catch (_) {
+      if (mounted) setState(() => _follows[key] = was);
     } finally {
       _followBusy.remove(key);
     }
@@ -470,7 +472,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
               onLike: () => _toggleLike(i),
               onComment: () => _openComments(i),
               onMenu: () => _menu(_items[i]),
-              following: _follows[_items[i].code.toUpperCase()] ?? false,
+              following: _follows[_followKey(_items[i])] ?? false,
               // O'Z KONTENTINGA OBUNA BO'LIB BO'LMAYDI — tugma
               // umuman ko'rsatilmaydi.
               onFollow: _ownsItem(_items[i])
