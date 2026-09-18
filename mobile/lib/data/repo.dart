@@ -404,6 +404,35 @@ class Repo {
   Future<List<Post>> companyStories(String id) async =>
       _rows(await api.get('/api/companies/$id/stories'), 'stories').map(Post.fromJson).toList();
 
+  /// KOMPANIYAGA OBUNA — serverda bitta toggle endpoint bor.
+  /// Javobdagi `following` serverning yakuniy haqiqatidir; mijoz
+  /// o'zi taxmin qilib holatni saqlamaydi.
+  Future<bool> toggleCompanyFollow(String id) async {
+    final r = _map(await api.post('/api/companies/$id/follow'));
+    return r['following'] == true;
+  }
+
+  /// KOMPANIYA KONTENTIGA LIKE HOLATI.
+  ///
+  /// Shaxsiy post/story eski endpointlarda qoladi. Kompaniya
+  /// kontenti esa umumiy `content-likes` yo'lidan foydalanadi,
+  /// chunki uning ID maydoni shaxsiy post ID bilan to'qnashishi mumkin.
+  Future<({bool liked, int count})> contentLikeInfo(String kind, int id) async {
+    final r = _map(await api.get('/api/content-likes/$kind/$id'));
+    return (
+      liked: r['liked'] == true,
+      count: r['count'] is num ? (r['count'] as num).round() : 0,
+    );
+  }
+
+  Future<({bool liked, int count})> toggleContentLike(String kind, int id) async {
+    final r = _map(await api.post('/api/content-likes/$kind/$id'));
+    return (
+      liked: r['liked'] == true,
+      count: r['count'] is num ? (r['count'] as num).round() : 0,
+    );
+  }
+
   Future<Map<String, dynamic>> companyStats(String id) async =>
       _map(await api.get('/api/companies/$id/stats'));
 
