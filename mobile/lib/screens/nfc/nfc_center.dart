@@ -555,7 +555,7 @@ class _ToolTile extends StatelessWidget {
             end: Alignment.bottomRight,
             colors: [
               C.surface,
-              C.raisedHigh.withValues(alpha: .94),
+              C.surfaceHigh.withValues(alpha: .94),
             ],
           ),
           borderRadius: BorderRadius.circular(R.card),
