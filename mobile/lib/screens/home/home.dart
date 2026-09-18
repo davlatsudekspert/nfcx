@@ -868,18 +868,18 @@ class _StoryStrip extends StatelessWidget {
               return StoryRing(
                 avatarUrl: me.avatarUrl,
                 name: tr('Siz'),
-                size: 68,
+                size: 76,
                 seen: false,
                 onTap: onOwnOpen,
               );
             }
-            return StoryRing(size: 68, addButton: true, onTap: onAdd);
+            return StoryRing(size: 76, addButton: true, onTap: onAdd);
           }
           final e = entries[i - 1];
           return StoryRing(
             avatarUrl: e.avatarUrl,
             name: e.name,
-            size: 68,
+            size: 76,
             // KO'RILGAN BO'LSA HALQA SO'NADI va aylanishi to'xtaydi:
             // ma'no rangda, harakat esa faqat YANGI kontent uchun.
             seen: !unseen(e),
