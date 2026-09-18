@@ -226,11 +226,8 @@ class Repo {
   /// yerda faqat `count` o'qilardi, ya'ni istoryaga yurak bosilgach
   /// hisob HAR DOIM 0 ga tushardi.
   /// KOMPANIYA POSTINI YOQTIRISH.
-  Future<({bool liked, int count})> likeCompanyPost(String companyId, int id) async {
-    final r = _map(await api.post('/api/companies/$companyId/posts/$id/like'));
-    final n = r['count'] ?? r['likeCount'];
-    return (liked: r['liked'] == true, count: n is num ? n.round() : 0);
-  }
+  Future<({bool liked, int count})> likeCompanyPost(String companyId, int id) =>
+      toggleContentLike('company_post', id);
 
   Future<({bool liked, int count})> likeStory(int id) async {
     final r = _map(await api.post('/api/stories/$id/like'));
@@ -414,9 +411,12 @@ class Repo {
   /// KOMPANIYAGA OBUNA — serverda bitta toggle endpoint bor.
   /// Javobdagi `following` serverning yakuniy haqiqatidir; mijoz
   /// o'zi taxmin qilib holatni saqlamaydi.
-  Future<bool> toggleCompanyFollow(String id) async {
+  Future<({bool following, int followers})> toggleCompanyFollow(String id) async {
     final r = _map(await api.post('/api/companies/$id/follow'));
-    return r['following'] == true;
+    return (
+      following: r['following'] == true,
+      followers: r['followers'] is num ? (r['followers'] as num).round() : 0,
+    );
   }
 
   /// KOMPANIYA KONTENTIGA LIKE HOLATI.
