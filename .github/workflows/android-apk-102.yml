@@ -67,19 +67,19 @@ jobs:
           keyPassword=$KEYSTORE_PASSWORD
           PROPS
 
-      - name: Build split APKs +101
+      - name: Build split APKs +102
         run: |
           flutter build apk --release --split-per-abi \
             --build-name=1.0.0 \
             --build-number=102 \
-            --dart-define=APP_VERSION=1.0.0+101
+            --dart-define=APP_VERSION=1.0.0+102
 
-      - name: Build universal APK +101
+      - name: Build universal APK +102
         run: |
           flutter build apk --release \
             --build-name=1.0.0 \
             --build-number=102 \
-            --dart-define=APP_VERSION=1.0.0+101
+            --dart-define=APP_VERSION=1.0.0+102
 
       - name: Verify APK signature
         run: |
