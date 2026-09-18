@@ -226,8 +226,11 @@ class Repo {
   /// yerda faqat `count` o'qilardi, ya'ni istoryaga yurak bosilgach
   /// hisob HAR DOIM 0 ga tushardi.
   /// KOMPANIYA POSTINI YOQTIRISH.
-  Future<({bool liked, int count})> likeCompanyPost(String companyId, int id) =>
-      toggleContentLike('company_post', id);
+  Future<({bool liked, int count})> likeCompanyPost(String companyId, int id) async {
+    final r = _map(await api.post('/api/companies/$companyId/posts/$id/like'));
+    final n = r['count'] ?? r['likeCount'];
+    return (liked: r['liked'] == true, count: n is num ? n.round() : 0);
+  }
 
   Future<({bool liked, int count})> likeStory(int id) async {
     final r = _map(await api.post('/api/stories/$id/like'));
