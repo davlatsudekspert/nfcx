@@ -4,7 +4,7 @@ name: Android APK +102
 on:
   push:
     branches:
-      - codex/final-two-fixes
+      - chatgpt/final-polish-audit
     paths:
       - .github/workflows/android-apk-102.yml
 
