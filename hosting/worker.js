@@ -1221,14 +1221,31 @@ async function companyApi(request, env, url) {
     }
   }
   if (action === 'posts' && !itemId && request.method === 'GET') {
+    const viewer = await getCurrentUser(request, env).catch(() => null);
+    const meta = await env.DB.prepare(
+      `SELECT display_name, logo_url FROM companies WHERE company_id = ?`
+    ).bind(id).first();
     const rows = await env.DB.prepare(
-      `SELECT id, image_url, video_url, caption, created_at FROM company_posts WHERE company_id = ? ORDER BY created_at DESC LIMIT 60`
+      `SELECT id, image_url, video_url, caption, created_at
+         FROM company_posts WHERE company_id = ? ORDER BY created_at DESC LIMIT 60`
     ).bind(id).all();
+    const posts = rows.results || [];
+    const likes = await apiComments.likesFor(
+      env,
+      posts.map((row) => ({ kind: 'company_post', id: Number(row.id) })),
+      viewer ? viewer.id : 0,
+    ).catch(() => new Map());
     return json({
-      posts: (rows.results || []).map((r) => ({
-        id: Number(r.id), imageUrl: r.image_url || '', videoUrl: r.video_url || '',
-        caption: r.caption || '', createdAt: r.created_at,
-      })),
+      posts: posts.map((row) => {
+        const like = likes.get(`company_post:${Number(row.id)}`) || { count: 0, liked: false };
+        return {
+          id: Number(row.id), code: id,
+          authorName: meta?.display_name || id, authorAvatar: meta?.logo_url || '',
+          imageUrl: row.image_url || '', videoUrl: row.video_url || '',
+          caption: row.caption || '', createdAt: row.created_at,
+          likeCount: like.count, liked: like.liked,
+        };
+      }),
     });
   }
   if (action === 'stories' && !itemId && request.method === 'GET') {
@@ -1287,8 +1304,10 @@ async function companyApi(request, env, url) {
   }
 
   if (action === 'posts' && itemId && request.method === 'DELETE') {
-    const res = await env.DB.prepare(`DELETE FROM company_posts WHERE id = ? AND company_id = ?`).bind(Number(itemId) || 0, id).run();
+    const postId = Number(itemId) || 0;
+    const res = await env.DB.prepare(`DELETE FROM company_posts WHERE id = ? AND company_id = ?`).bind(postId, id).run();
     if (!Number(res?.meta?.changes || 0)) return json({ error: 'not_found' }, 404);
+    await apiComments.deleteLikesFor(env, 'company_post', postId).catch(() => {});
     return json({ ok: true });
   }
 
@@ -8932,14 +8951,15 @@ async function feedApi(request, env, url) {
         SELECT 'story', s.id, s.owner_id, 'company',
                co.display_name, co.logo_url,
                s.image_url, s.video_url, s.caption, s.created_at,
-               0, 0
+               (SELECT COUNT(*) FROM story_likes sl WHERE sl.story_id = s.id),
+               EXISTS(SELECT 1 FROM story_likes sl WHERE sl.story_id = s.id AND sl.user_id = ?)
           FROM stories s JOIN companies co ON co.company_id = s.owner_id
          WHERE s.owner_kind = 'company' AND s.expires_at > ?
            AND co.status = 'active' AND ${companyOwnerAliveSql('co')}
      )
      ORDER BY created_at DESC, id DESC
      LIMIT ? OFFSET ?`
-  ).bind(viewerId, viewerId, now, now, limit + 1, offset).all();
+  ).bind(viewerId, viewerId, now, viewerId, now, limit + 1, offset).all();
 
   // BLOKLANGAN PROFILLAR LENTADAN CHIQARILADI.
   //
@@ -8971,8 +8991,20 @@ async function feedApi(request, env, url) {
     page1.map((r) => ({ kind: commentTargetKind(r), id: Number(r.id) })),
   ).catch(() => new Map());
 
+  const companyPostLikes = await apiComments.likesFor(
+    env,
+    page1
+      .filter((r) => String(r.kind) === 'post' && String(r.author_kind) === 'company')
+      .map((r) => ({ kind: 'company_post', id: Number(r.id) })),
+    viewerId,
+  ).catch(() => new Map());
+
   const feed = page1.map((r) => {
     const d = parseDbDate(r.created_at);
+    const target = commentTargetKind(r);
+    const companyLike = target === 'company_post'
+      ? companyPostLikes.get(`company_post:${Number(r.id)}`)
+      : null;
     return {
       kind: String(r.kind),
       id: Number(r.id),
@@ -8984,16 +9016,11 @@ async function feedApi(request, env, url) {
       videoUrl: r.video_url || '',
       caption: r.caption || '',
       createdAt: d && !Number.isNaN(d.getTime()) ? d.getTime() : Date.now(),
-      likeCount: Number(r.like_count || 0),
-      liked: !!r.liked,
-      // Kompaniya postida yoqtirish jadvali yo'q — ilova tugmani
-      // umuman ko'rsatmasligi uchun aniq bayroq.
-      likeable: String(r.author_kind) === 'card',
-      // IZOH — yoqtirishdan farqli o'laroq, HAMMA kontent turida
-      // ishlaydi (kompaniya posti ham): jadval umumiy va egasi
-      // `target_kind` bilan ajratiladi.
-      commentKind: commentTargetKind(r),
-      commentCount: commentCounts.get(`${commentTargetKind(r)}:${Number(r.id)}`) || 0,
+      likeCount: companyLike ? companyLike.count : Number(r.like_count || 0),
+      liked: companyLike ? companyLike.liked : !!r.liked,
+      likeable: true,
+      commentKind: target,
+      commentCount: commentCounts.get(`${target}:${Number(r.id)}`) || 0,
     };
   });
 
