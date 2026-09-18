@@ -1,5 +1,6 @@
 name: NFCSTORE Android +102
 # rebuild after analyzer fixes
+# final production-aligned rebuild
 
 on:
   push:
