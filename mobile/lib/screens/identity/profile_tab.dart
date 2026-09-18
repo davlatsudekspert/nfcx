@@ -536,7 +536,7 @@ class _ProfileTabState extends State<ProfileTab> {
             label: tr('Ochiq profilni ko‘rish'),
             icon: Ico.eye,
             subtitle: tr('Boshqalar qanday ko‘rishini tekshiring'),
-            onTap: () => Navigator.of(context).pop('public'),
+            onTap: () => Navigator.of(context, rootNavigator: true).pop('public'),
           ),
           SheetAction(
             label: active.isBusiness
@@ -546,7 +546,7 @@ class _ProfileTabState extends State<ProfileTab> {
             subtitle: active.isBusiness
                 ? tr('Logotip, muqova, ish vaqti, katalog')
                 : null,
-            onTap: () => Navigator.of(context).pop('edit'),
+            onTap: () => Navigator.of(context, rootNavigator: true).pop('edit'),
           ),
 
           // BIZNES AMALLARI.
@@ -559,29 +559,29 @@ class _ProfileTabState extends State<ProfileTab> {
               label: tr('Buyurtmalar'),
               icon: Ico.bag,
               subtitle: tr('Mijozlardan kelgan buyurtmalar'),
-              onTap: () => Navigator.of(context).pop('orders'),
+              onTap: () => Navigator.of(context, rootNavigator: true).pop('orders'),
             ),
             SheetAction(
               label: tr('Biznes statistikasi'),
               icon: Ico.chart,
-              onTap: () => Navigator.of(context).pop('bizstats'),
+              onTap: () => Navigator.of(context, rootNavigator: true).pop('bizstats'),
             ),
           ],
           SheetAction(
             label: tr('Mening kontentim'),
             icon: Ico.grid,
-            onTap: () => Navigator.of(context).pop('content'),
+            onTap: () => Navigator.of(context, rootNavigator: true).pop('content'),
           ),
           SheetAction(
             label: tr('Shaxsni almashtirish'),
             icon: Ico.refresh,
-            onTap: () => Navigator.of(context).pop('switch'),
+            onTap: () => Navigator.of(context, rootNavigator: true).pop('switch'),
           ),
           const RowDivider(indent: 0),
           SheetAction(
             label: tr('Sozlamalar'),
             icon: Ico.settings,
-            onTap: () => Navigator.of(context).pop('settings'),
+            onTap: () => Navigator.of(context, rootNavigator: true).pop('settings'),
           ),
         ],
       ),
