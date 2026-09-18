@@ -111,7 +111,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       _likes = wasLikes + (wasLiked ? -1 : 1);
     });
     try {
-      final r = await repo.likePost(_postId);
+      final r = widget.commentKind == 'company_post'
+          ? await repo.likeCompanyPost(widget.post.authorCode, _postId)
+          : await repo.likePost(_postId);
       if (!mounted) return;
       setState(() {
         _liked = r.liked;
@@ -137,7 +139,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     await showContentMenu(
       context,
       title: p.authorName.isEmpty ? tr('Post') : p.authorName,
-      targetKind: 'post',
+      targetKind: widget.commentKind,
       targetId: p.id,
       ownerCode: p.authorCode,
       owned: widget.canDelete || _isOwner(context, p),
