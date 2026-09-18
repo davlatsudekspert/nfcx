@@ -511,12 +511,12 @@ class _Tools extends StatelessWidget {
     ];
 
     return GridView.count(
-      crossAxisCount: 3,
+      crossAxisCount: 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: S.x8,
-      crossAxisSpacing: S.x8,
-      childAspectRatio: .92,
+      mainAxisSpacing: S.x10,
+      crossAxisSpacing: S.x10,
+      childAspectRatio: 1.28,
       children: [
         for (final it in items)
           _ToolTile(icon: it.icon, title: it.title, sub: it.sub, onTap: it.tap),
@@ -541,53 +541,119 @@ class _ToolTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final on = onTap != null;
+    final tint = on ? C.accent : C.ink3;
+
     return Press(
       onTap: onTap,
       minSize: 0,
-      scale: .96,
+      scale: .97,
       child: Container(
-        padding: const EdgeInsets.all(S.x12),
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: C.glass,
-          borderRadius: BorderRadius.circular(R.tile),
-          border: Border.all(color: C.lineCool),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              C.surface,
+              C.raisedHigh.withValues(alpha: .94),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(R.card),
+          border: Border.all(
+            color: on
+                ? C.accent.withValues(alpha: .20)
+                : C.lineCool,
+          ),
+          boxShadow: C.softShadow,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Stack(
           children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: (on ? C.accent : C.ink3).withValues(alpha: .14),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              alignment: Alignment.center,
-              child: NIcon(icon, size: 18, color: on ? C.accent : C.ink3),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: T.cardTitle.copyWith(
-                    fontSize: 12.5,
-                    color: on ? C.ink : C.ink3,
-                    height: 1.2,
+            // MINI-ILLUSTRATSIYA: funksiyaning o'z belgisi katta,
+            // yumshoq metall nurlar ichida. Oldingi kataklarda ikon
+            // juda kichik bo'lib, qolgan joy bo'sh qolardi.
+            Positioned(
+              right: -10,
+              top: -12,
+              child: Container(
+                width: 96,
+                height: 96,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      tint.withValues(alpha: on ? .22 : .10),
+                      tint.withValues(alpha: 0),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  sub,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: T.caption.copyWith(fontSize: 10.5, height: 1.25),
+                alignment: Alignment.center,
+                child: NIcon(
+                  icon,
+                  size: 44,
+                  color: tint.withValues(alpha: on ? .42 : .24),
                 ),
-              ],
+              ),
+            ),
+            Positioned(
+              right: 18,
+              top: 52,
+              child: Container(
+                width: 34,
+                height: 2,
+                decoration: BoxDecoration(
+                  color: tint.withValues(alpha: .20),
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(S.x14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          tint.withValues(alpha: .22),
+                          tint.withValues(alpha: .08),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: tint.withValues(alpha: .24),
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: NIcon(icon, size: 19, color: tint),
+                  ),
+                  const Spacer(),
+                  Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: T.cardTitle.copyWith(
+                      fontSize: 13.5,
+                      color: on ? C.ink : C.ink3,
+                      height: 1.16,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    sub,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: T.caption.copyWith(
+                      fontSize: 11,
+                      color: on ? C.ink2 : C.ink3,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -595,7 +661,6 @@ class _ToolTile extends StatelessWidget {
     );
   }
 }
-
 
 
 /// "+" katakchasi — yangi ID olish.
