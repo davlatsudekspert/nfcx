@@ -617,7 +617,14 @@ class _ProfileTabState extends State<ProfileTab> {
       case 'switch':
         await showIdentitySwitcher(context);
       case 'settings':
-        await push<void>(context, (_) => const SettingsScreen());
+        // Sozlamalar qobiq ichidagi kichik navigatorga emas, ildiz
+        // navigatorga ochiladi. Bu ekran butun ilovaga tegishli
+        // (mavzu, til, PIN, hisob) va pastki tab paneli uning ustida
+        // qolmasligi kerak. Ayrim Android qurilmalarida nested route
+        // qora sahifa bo'lib qolgan holat ham shu bilan yo'qoladi.
+        await Navigator.of(context, rootNavigator: true).push<void>(
+          SlidePage<void>(builder: (_) => const SettingsScreen()),
+        );
     }
   }
 }
