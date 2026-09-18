@@ -55,6 +55,18 @@ async function ensureSchema(env) {
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_comments_target ON content_comments(target_kind, target_id, created_at DESC)`),
       // "Mening izohlarim" va o'chirish tekshiruvi uchun.
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_comments_user ON content_comments(user_id)`),
+      // Reels'dagi kompaniya post/story like'lari. Shaxsiy kontentning
+      // eski like jadvallariga tegmaydi; tur + id juftligi bilan
+      // kompaniya post va story ID'lari to'qnashmaydi.
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS "content_likes" (
+        target_kind TEXT NOT NULL,
+        target_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        PRIMARY KEY (target_kind, target_id, user_id)
+      )`),
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_content_likes_target
+        ON content_likes(target_kind, target_id)`),
     ]).catch(() => {});
   }
   await schemaReady;
@@ -180,6 +192,65 @@ export async function countsFor(env, targets) {
 
 export async function handle(request, env, url, H) {
   const path = url.pathname;
+
+  // ── KONTENT LIKE ────────────────────────────────────────────────
+  // GET/POST /api/content-likes/:kind/:id
+  //
+  // Bu yo'l ayniqsa kompaniya post/storylari uchun kerak: ularning
+  // ID'lari shaxsiy post jadvalidagi ID bilan bir xil bo'lishi mumkin,
+  // shuning uchun /api/posts/:id/like ga yuborish noto'g'ri kontentni
+  // yoqtirib qo'yishi mumkin edi.
+  const likeMatch = path.match(/^\/api\/content-likes\/([a-z_]+)\/(\d+)$/);
+  if (likeMatch && (request.method === 'GET' || request.method === 'POST')) {
+    const kind = likeMatch[1];
+    const id = Number(likeMatch[2]);
+    if (!KINDS.includes(kind)) return H.json({ error: 'bad_kind' }, 422);
+    await ensureSchema(env);
+
+    const target = await targetOwner(env, kind, id);
+    if (!target.ok) return H.json({ error: 'not_found' }, 404);
+
+    const user = await H.getCurrentUser(request, env).catch(() => null);
+    const count = async () => {
+      const row = await env.DB.prepare(
+        `SELECT COUNT(*) AS n FROM content_likes WHERE target_kind = ? AND target_id = ?`
+      ).bind(kind, id).first();
+      return Number(row?.n) || 0;
+    };
+
+    if (request.method === 'GET') {
+      let liked = false;
+      if (user) {
+        const mine = await env.DB.prepare(
+          `SELECT 1 AS x FROM content_likes WHERE target_kind = ? AND target_id = ? AND user_id = ?`
+        ).bind(kind, id, user.id).first();
+        liked = !!mine;
+      }
+      return H.json({ liked, count: await count() });
+    }
+
+    if (!user) return H.json({ error: 'unauthorized' }, 401);
+    if (await H.rateLimitD1(env, `like:u:${user.id}`, 120, 60_000)) {
+      return H.json({ error: 'too_many_requests' }, 429);
+    }
+
+    const existing = await env.DB.prepare(
+      `SELECT 1 AS x FROM content_likes WHERE target_kind = ? AND target_id = ? AND user_id = ?`
+    ).bind(kind, id, user.id).first();
+
+    if (existing) {
+      await env.DB.prepare(
+        `DELETE FROM content_likes WHERE target_kind = ? AND target_id = ? AND user_id = ?`
+      ).bind(kind, id, user.id).run();
+      return H.json({ liked: false, count: await count() });
+    }
+
+    await env.DB.prepare(
+      `INSERT OR IGNORE INTO content_likes (target_kind, target_id, user_id, created_at)
+       VALUES (?, ?, ?, ?)`
+    ).bind(kind, id, user.id, H.nowTs()).run();
+    return H.json({ liked: true, count: await count() });
+  }
 
   // ── RO'YXAT ─────────────────────────────────────────────────────
   const listMatch = path.match(/^\/api\/comments\/([a-z_]+)\/(\d+)$/);
