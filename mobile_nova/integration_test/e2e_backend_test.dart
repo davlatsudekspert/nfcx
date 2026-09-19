@@ -798,18 +798,58 @@ void main() {
     // FAQAT O'ZIMIZNIKINI o'chiramiz: izohida `kTestMarker` bo'lgan
     // istoryalar. Haqiqiy foydalanuvchi istoryasiga TEGILMAYDI —
     // marker sinovdan boshqa hech qayerda yozilmaydi.
-    final preExisting = await social.storiesOf(code);
     var swept = 0;
-    if (preExisting case Ok(:final value)) {
-      for (final old in value) {
-        if (!old.caption.contains(kTestMarker)) continue;
-        final del = await social.deleteStory(old.id);
-        if (del.isOk) swept++;
+
+    // 1-QADAM: O'ZIMIZNING eski axlatni tozalash.
+    //
+    // FAQAT markerli istoryalar o'chiriladi. Marker sinovdan boshqa
+    // hech qayerda yozilmaydi, shuning uchun haqiqiy foydalanuvchi
+    // istoryasiga TEGILMAYDI. Markersiz eskilariga ham tegilmaydi:
+    // ularning kim yaratganini ISBOTLAB bo'lmaydi.
+    Future<int> sweepMarked(String c) async {
+      final existing = await social.storiesOf(c);
+      var n = 0;
+      if (existing case Ok(:final value)) {
+        for (final old in value) {
+          if (!old.caption.contains(kTestMarker)) continue;
+          if ((await social.deleteStory(old.id)).isOk) n++;
+        }
       }
-      if (swept > 0) {
-        // ignore: avoid_print
-        print('[E2E] eski sinov istoryalari tozalandi: $swept ta');
+      return n;
+    }
+
+    swept = await sweepMarked(code);
+
+    // 2-QADAM: YOZISH UCHUN ENG BO'SH PROFILNI TANLASH.
+    //
+    // Server bitta profilda 10 ta FAOL istoryaga ruxsat beradi —
+    // bu mahsulot qoidasi va unga tegilmaydi.
+    //
+    // Asosiy profil to'lib qolishi mumkin: markersiz eski
+    // istoryalar (marker qo'shilishidan OLDINGI ishga
+    // tushirishlardan qolgan) o'chirilmaydi, chunki ularning
+    // E2E'niki ekanini isbotlab bo'lmaydi. Ular 24 soatda o'zi
+    // muddati tugab yo'qoladi.
+    //
+    // Shuning uchun yozish sinovi eng KAM istoryali profilga
+    // boradi. Bu haqiqiy yozish yo'lini xuddi shunday sinaydi va
+    // hech kimning ma'lumotiga tegmaydi.
+    var writeCode = code;
+    var writeCount = 0;
+    for (final id in ids) {
+      final list = await social.storiesOf(id.code);
+      final n = list.valueOrNull?.length ?? 999;
+      if (id.code == code) writeCount = n;
+      if (n < writeCount) {
+        writeCode = id.code;
+        writeCount = n;
       }
+    }
+    if (writeCode != code) {
+      // ignore: avoid_print
+      print('[E2E] istorya yozish uchun $writeCode tanlandi '
+          '($writeCount ta faol istorya)');
+      swept += await sweepMarked(writeCode);
     }
 
     final storiesBefore = await social.storiesOf(code);
@@ -832,19 +872,38 @@ void main() {
       // IZOHDA MARKER — keyingi ishga tushirish buni o'ziniki deb
       // ANIQ taniydi va xavfsiz o'chiradi.
       final st = await social.createStory(
-        code: code,
+        code: writeCode,
         imageUrl: uploaded,
         caption: testLabel('story'),
       );
       switch (st) {
         case Err(:final error):
-          fail('Story create',
-              screen: 'StoryComposer',
-              action: 'POST /api/records/:code/stories {agreed:true}',
-              cause: why(error),
-              pathHint: '/stories');
+          // `limit_reached` — ILOVA XATOSI EMAS.
+          //
+          // Server profilda 10 ta faol istoryaga ruxsat beradi
+          // (mahsulot qoidasi). Marker qo'shilishidan OLDINGI
+          // ishga tushirishlardan qolgan istoryalar o'chirilmaydi:
+          // ularning E2E'niki ekanini ISBOTLAB bo'lmaydi, taxmin
+          // bilan o'chirish esa haqiqiy ma'lumotni yo'qotish xavfi.
+          // Ular 24 soatda o'zi muddati tugaydi.
+          if (error.code == 'limit_reached') {
+            partial('Story create',
+                screen: 'StoryComposer',
+                action: 'POST /api/records/:code/stories',
+                cause: 'profil to\'la (10 ta faol istorya chegarasi) — '
+                    'markersiz eski sinov istoryalari o\'chirilmaydi, '
+                    'ular 24 soatda muddati tugab yo\'qoladi; '
+                    'profil=$writeCode',
+                pathHint: '/stories');
+          } else {
+            fail('Story create',
+                screen: 'StoryComposer',
+                action: 'POST /api/records/:code/stories {agreed:true}',
+                cause: why(error),
+                pathHint: '/stories');
+          }
         case Ok():
-          final after = await social.storiesOf(code);
+          final after = await social.storiesOf(writeCode);
           if (after is Ok<List<StoryItem>>) {
             final list = after.value;
             final beforeIds = storiesBefore is Ok<List<StoryItem>>
@@ -860,7 +919,9 @@ void main() {
               report.pass('Story create',
                   screen: 'StoryComposer',
                   action: 'yaratish → qayta o\'qish',
-                  note: 'istorya serverda saqlandi (id=${made.id})');
+                  note: 'istorya serverda saqlandi (id=${made.id}); '
+                      'profil=$writeCode; tozalangan eski sinov '
+                      'istoryasi=$swept');
 
               // KO'RILDI deb belgilash — `POST /api/stories/:id/view`.
               // Bu endpoint BOR; hujjatda xato ravishda "BACKEND
