@@ -87,16 +87,12 @@ android {
         }
     }
 
-    // Universal APK'ga qo'shimcha ravishda ABI bo'yicha bo'lingan APK'lar.
-    // arm64 qurilmalar uchun hajm sezilarli kichrayadi.
-    splits {
-        abi {
-            isEnable = project.hasProperty("splitAbi")
-            reset()
-            include("armeabi-v7a", "arm64-v8a", "x86_64")
-            isUniversalApk = true
-        }
-    }
+    // ABI bo'yicha bo'lish uchun bu yerda `splits` bloki YO'Q.
+    //
+    // Flutter Gradle plagini `--split-per-abi` bayrog'i berilganda
+    // `android.splits.abi` ni O'ZI sozlaydi. Bu yerda qo'lda yozilgan
+    // blok o'sha sozlamaning ustiga chiqib, bayroqni jimgina
+    // ishlamaydigan qilib qo'yishi mumkin edi.
 }
 
 flutter {
