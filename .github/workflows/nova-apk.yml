@@ -23,6 +23,12 @@ on:
     branches: [main, 'claude/**']
     paths:
       - 'mobile_nova/**'
+      # E2E sinovlari va hujjatlar reliz APK'siga KIRMAYDI, shuning
+      # uchun ular o'zgarganda qayta qurish shart emas. Inkor qilingan
+      # naqsh aynan shuning uchun bor: aks holda har sinov tahriri
+      # 6 daqiqalik buildni behuda ishga tushirardi.
+      - '!mobile_nova/integration_test/**'
+      - '!mobile_nova/**.md'
       - '.github/workflows/nova-apk.yml'
 
 concurrency:

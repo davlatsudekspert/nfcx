@@ -25,8 +25,25 @@ const kApiBase = String.fromEnvironment(
 ///    `currentUser()` ichida cookie bo'lmasa Bearer'ni o'qiydi. Mobil
 ///    cookie jar ilova fondan qaytganda yo'qolishi mumkin, Keystore esa yo'q.
 ///
-/// 2) `X-Client: android-nova` — admin panelida eski ilova va Nova'dan
-///    kelgan trafik ajratib ko'rinadi.
+/// 2) `X-Client: android` — BU QIYMAT ANIQ TANLANGAN, xohlagancha
+///    o'zgartirilmaydi. Backend uni TO'LIQ moslik bilan tekshiradi:
+///
+///        const MOBILE_CLIENTS_D1 = new Set(['mobile', 'android', 'ios']);
+///        MOBILE_CLIENTS_D1.has(headers.get('x-client').toLowerCase())
+///
+///    Ya'ni `android-nova` bu to'plamga TUSHMAYDI. Natijada
+///    `/api/auth/login` javob TANASIDA token qaytarmasdi va sessiya
+///    faqat `Set-Cookie` ni qo'lda o'qish hisobiga tirik qolardi —
+///    backend mobil uchun ataylab qurgan yo'l esa o'lik edi.
+///
+///    Ilgari bu yerda `android-nova` turardi va izohda "admin panelida
+///    Nova trafigi ajralib ko'rinadi" deyilgandi. Bu NOTO'G'RI edi:
+///    backend'da `nova` degan qiymat umuman o'qilmaydi. Nova'ni
+///    ajratish uchun alohida `X-App` sarlavhasi yuboriladi — u
+///    `x-client` tekshiruviga xalaqit bermaydi.
+///
+///    Eski ilova ham aynan `android` yuboradi, demak ikkalasi ham
+///    `signupSourceD1` da `android` bo'lib qoladi.
 ///
 /// 3) Metodlar ISTISNO OTMAYDI: `Result` qaytaradi. Shu sabab har bir
 ///    chaqiruvda xato holati hisobga olinishi shart bo'ladi.
@@ -41,7 +58,11 @@ class ApiClient {
       connectTimeout: const Duration(seconds: 15),
       receiveTimeout: const Duration(seconds: 20),
       sendTimeout: const Duration(seconds: 20),
-      headers: {'accept': 'application/json', 'x-client': 'android-nova'},
+      headers: {
+        'accept': 'application/json',
+        'x-client': 'android',
+        'x-app': 'nova',
+      },
       // Status kodini o'zimiz tahlil qilamiz — Dio 4xx uchun istisno
       // otmasligi kerak, aks holda `Result` naqshi buzilardi.
       validateStatus: (_) => true,

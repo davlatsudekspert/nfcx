@@ -43,6 +43,12 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^5.0.0
 
+  # HAQIQIY HISOB E2E — emulyatorda ishlaydi, haqiqiy backendga
+  # ulanadi. Oddiy `flutter test` bu papkani ko'rmaydi, shuning uchun
+  # sinov hisobisiz ham `flutter test` o'tadi.
+  integration_test:
+    sdk: flutter
+
 flutter:
   uses-material-design: true
   generate: true
