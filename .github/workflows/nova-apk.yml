@@ -16,7 +16,11 @@ name: NFCSTORE Nova APK
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    # `claude/**` ham bor: `workflow_dispatch` ni API orqali chaqirish
+    # uchun fayl STANDART branchda turishi kerak, aks holda GitHub 404
+    # qaytaradi. Nova hali `main` ga qo'shilmagan, shuning uchun uni
+    # o'z branchiga push qilish orqali sinab ko'riladi.
+    branches: [main, 'claude/**']
     paths:
       - 'mobile_nova/**'
       - '.github/workflows/nova-apk.yml'
