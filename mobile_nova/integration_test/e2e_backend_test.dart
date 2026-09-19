@@ -869,6 +869,17 @@ void main() {
     }
 
     if (uploaded != null) {
+      // YOZISH profilining oldingi holati — `storiesBefore` ASOSIY
+      // profilники, `writeCode` esa boshqa profil bo'lishi mumkin.
+      // Ikkalasini aralashtirsak, "yangi" ro'yxatiga BEGONA
+      // istoryalar tushib qolardi va tozalash paytida HAQIQIY
+      // foydalanuvchi istoryasi o'chib ketardi.
+      final writeBefore = (await social.storiesOf(writeCode))
+              .valueOrNull
+              ?.map((s) => s.id)
+              .toSet() ??
+          <int>{};
+
       // IZOHDA MARKER — keyingi ishga tushirish buni o'ziniki deb
       // ANIQ taniydi va xavfsiz o'chiradi.
       final st = await social.createStory(
@@ -906,12 +917,14 @@ void main() {
           final after = await social.storiesOf(writeCode);
           if (after is Ok<List<StoryItem>>) {
             final list = after.value;
-            final beforeIds = storiesBefore is Ok<List<StoryItem>>
-                ? storiesBefore.value
-                    .map((s) => s.id)
-                    .toSet()
-                : <int>{};
-            final fresh = list.where((s) => !beforeIds.contains(s.id));
+            // IKKI SHART BIRGA: (a) yaratishdan OLDIN bu profilda
+            // yo'q edi, (b) izohida sinov markeri bor. Marker
+            // sinovdan boshqa hech qayerda yozilmaydi, shuning
+            // uchun bu — 100% O'ZIMIZNIKI. Faqat shundagina
+            // o'chirish navbatiga qo'yiladi.
+            final fresh = list.where((s) =>
+                !writeBefore.contains(s.id) &&
+                s.caption.contains(kTestMarker));
             if (fresh.isNotEmpty) {
               final made = fresh.first;
               litter.trackResult('story #${made.id}',
@@ -944,8 +957,8 @@ void main() {
               fail('Story create',
                   screen: 'StoryComposer',
                   action: 'yaratish → qayta o\'qish',
-                  cause: 'server 2xx qaytardi, lekin istoryalar orasida '
-                      'yangi yozuv paydo bo\'lmadi',
+                  cause: 'server 2xx qaytardi, lekin $writeCode profilida '
+                      'markerli yangi yozuv paydo bo\'lmadi',
                   pathHint: '/stories');
             }
           }
