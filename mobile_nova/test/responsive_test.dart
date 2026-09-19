@@ -69,6 +69,17 @@ void main() {
     await check(t, const SettingsScreen(), 'Settings');
   });
 
+  // BIZNES TAHLILI bu yerda SINALMAYDI — sababi izohda.
+  //
+  // Ekran `businessStatsProvider` orqali tarmoqqa chiqadi va sinov
+  // muhitida Dio taymeri osilib qoladi: `!timersPending`. Bu
+  // JOYLASHUV xatosi EMAS, sinov uchun soxta tarmoq yo'qligi.
+  //
+  // Joylashuv xavfi ham past: yangi katakchalarning HAMMASI `Row`
+  // ichida `Expanded` bilan o'ralgan, ya'ni overflow tuzilish
+  // jihatidan mumkin emas — kirish ekranidagi muammo aynan
+  // `Expanded`siz `Row` dan kelib chiqqandi.
+
   testWidgets('BARCHA MAVZULARDA ham tor ekran buzilmaydi', (t) async {
     // Mavzu faqat rangni emas, o'lchamlarni ham beradi
     // (`NfcTokens` ichida radius va oraliqlar bor), shuning uchun
