@@ -1,4 +1,6 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -30,8 +32,13 @@ class ProfileSetupScreen extends ConsumerStatefulWidget {
 class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   final _name = TextEditingController();
   final _bio = TextEditingController();
+  final _picker = ImagePicker();
   bool _busy = false;
   String? _error;
+
+  /// Yuklangan surat manzili — saqlashda profil bilan birga ketadi.
+  String _avatarUrl = '';
+  double _uploadProgress = 0;
 
   @override
   void initState() {
@@ -45,6 +52,43 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     _name.dispose();
     _bio.dispose();
     super.dispose();
+  }
+
+  /// Avatar tanlash va yuklash.
+  ///
+  /// Ilgari bu doira `onTap: () {}` edi — ya'ni bosilardi, lekin
+  /// hech narsa qilmasdi.
+  Future<void> _pickAvatar() async {
+    final l = L.of(context);
+    final f = await _picker.pickImage(
+      source: ImageSource.gallery,
+      // Avatar hech qachon 800px dan katta ko'rsatilmaydi.
+      maxWidth: 800,
+      imageQuality: 88,
+    );
+    if (f == null || !mounted) return;
+
+    setState(() {
+      _busy = true;
+      _uploadProgress = 0;
+      _error = null;
+    });
+    final res = await ref.read(profileRepositoryProvider).uploadImage(
+          f.path,
+          onProgress: (sent, total) {
+            if (mounted && total > 0) {
+              setState(() => _uploadProgress = sent / total);
+            }
+          },
+        );
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      res.when(
+        ok: (url) => _avatarUrl = url,
+        err: (e) => _error = describeError(l, e),
+      );
+    });
   }
 
   Future<void> _save() async {
@@ -62,6 +106,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           code: id.code,
           name: _name.text.trim(),
           bio: _bio.text.trim(),
+          avatarUrl: _avatarUrl.isEmpty ? null : _avatarUrl,
         );
     if (!mounted) return;
     setState(() => _busy = false);
@@ -108,7 +153,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           const SizedBox(height: Gap.section),
           Center(
             child: PressableScale(
-              onTap: () {},
+              onTap: _busy ? null : _pickAvatar,
               child: Container(
                 width: 92,
                 height: 92,
@@ -117,11 +162,37 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                   shape: BoxShape.circle,
                   boxShadow: t.shadowSoft,
                 ),
+                clipBehavior: Clip.antiAlias,
                 alignment: Alignment.center,
-                child: Text(
-                  user?.initials ?? 'N',
-                  style: AppType.displayStyle(color: t.onAccent, size: 33),
-                ),
+                child: _busy && _uploadProgress > 0
+                    ? CircularProgressIndicator(
+                        value: _uploadProgress,
+                        strokeWidth: 2.4,
+                        color: t.onAccent,
+                      )
+                    : _avatarUrl.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: _avatarUrl,
+                            fit: BoxFit.cover,
+                            width: 92,
+                            height: 92,
+                          )
+                        : Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Text(
+                                user?.initials ?? 'N',
+                                style: AppType.displayStyle(
+                                    color: t.onAccent, size: 33),
+                              ),
+                              Positioned(
+                                right: 6,
+                                bottom: 6,
+                                child: Icon(Icons.photo_camera_rounded,
+                                    size: 17, color: t.onAccent),
+                              ),
+                            ],
+                          ),
               ),
             ),
           ),
