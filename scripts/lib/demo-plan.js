@@ -71,12 +71,22 @@ const DIRECTIONS = [
   { id: 'construction', words: ['qurilish', 'ta’mir', 'tamir', 'remont', 'build', 'arxitekt', 'loyiha'] },
   { id: 'logistics', words: ['logistika', 'yetkaz', 'dostavka', 'transport', 'yuk', 'cargo'] },
   { id: 'finance', words: ['moliya', 'buxgalter', 'audit', 'bank', 'invest', 'finance', 'hisobchi'] },
-  { id: 'legal', words: ['yurist', 'advokat', 'huquq', 'notarius', 'legal'] },
+  // `sud ekspert`/`ekspertiza` ATAYLAB to'liq ibora: yolg'iz "ekspert"
+  // har qanday sohada uchraydi va noto'g'ri yo'nalish berardi.
+  { id: 'legal', words: ['yurist', 'advokat', 'huquq', 'notarius', 'notarial', 'legal', 'sud ekspert', 'sudya', 'ekspertiza'] },
   { id: 'photo', words: ['fotograf', 'photo', 'video', 'operator', 'montaj', 'suratchi'] },
   { id: 'food', words: ['restoran', 'kafe', 'oshxona', 'taom', 'pitsa', 'coffee', 'qahva', 'food', 'oshpaz'] },
   { id: 'mobile', words: ['mobile', 'mobil', 'telefon', 'smartfon', 'gadjet', 'aksessuar', 'texnika', 'elektronika'] },
   { id: 'auto', words: ['avto', 'auto', 'moshina', 'mashina', 'servis', 'shinomontaj'] },
   { id: 'realestate', words: ['ko‘chmas', 'kochmas', 'rieltor', 'realtor', 'estate', 'kvartira'] },
+  // DIQQAT — TARTIB: `retail` va `tech` ro'yxat OXIRIDA turadi.
+  //   • "market" so'zi "marketing" ichida ham bor, shuning uchun
+  //     `marketing` yuqorida tekshiriladi va "Marketing agentligi"
+  //     savdo deb belgilanib qolmaydi;
+  //   • "nfc" esa "NFCStore Mobile" da ham bor — `mobile` yuqorida
+  //     turgani uchun u to'g'ri yo'nalishni oladi.
+  { id: 'retail', words: ['market', 'do‘kon', 'dokon', 'savdo', 'shop', 'store', 'magazin', 'supermarket'] },
+  { id: 'tech', words: ['nfc', 'texnologiya', 'smart', 'raqamli'] },
 ];
 
 // Manba matnlari: kasb, bio, kategoriya, hashtaglar, ism va (biznes
@@ -177,6 +187,16 @@ const PERSONAL_DEMO = {
     about: 'DEMO profil. Yo‘nalish va hamkorlik shartlari shu bo‘limda ko‘rsatiladi. Hozirgi matn — namuna.',
     hashtags: ['demo', 'kochmas-mulk'],
   },
+  retail: {
+    role: 'Savdo sohasi mutaxassisi',
+    about: 'DEMO profil. Mahsulotlar, yetkazib berish va bog‘lanish ma’lumotlari shu bo‘limda ko‘rsatiladi. Hozirgi matn — namuna.',
+    hashtags: ['demo', 'savdo', 'dokon'],
+  },
+  tech: {
+    role: 'NFC va raqamli yechimlar',
+    about: 'DEMO profil. Xizmatlar va raqamli yechimlar yo‘nalishi shu yerda yoziladi. Matn namuna sifatida qo‘yilgan.',
+    hashtags: ['demo', 'nfc', 'raqamli'],
+  },
   // Yo'nalish topilmadi — NEYTRAL. Hech qanday kasb tayinlanmaydi.
   neutral: {
     role: '',
@@ -253,6 +273,26 @@ const BUSINESS_DEMO = {
       { name: 'DEMO · Diagnostika', category: 'Xizmatlar', price: 200000, description: 'Namuna xizmat. Demo narx — haqiqiy taklif emas.' },
     ],
   },
+  retail: {
+    subcategory: 'Savdo do‘koni',
+    description: 'DEMO biznes profil. Savdo yo‘nalishi bo‘yicha namuna katalog. Mahsulotlar va narxlar — demo, haqiqiy savdo taklifi emas.',
+    catalog: [
+      { name: 'DEMO · Mahsulot A', category: 'Savdo', price: 180000, description: 'Namuna pozitsiya. Demo narx — haqiqiy taklif emas.' },
+      { name: 'DEMO · Mahsulot B', category: 'Savdo', price: 340000, description: 'Namuna pozitsiya. Demo narx — haqiqiy taklif emas.' },
+      { name: 'DEMO · Mahsulot C', category: 'Savdo', price: 95000, description: 'Namuna pozitsiya. Demo narx — haqiqiy taklif emas.' },
+      { name: 'DEMO · Mahsulot D', category: 'Savdo', price: 520000, description: 'Namuna pozitsiya. Demo narx — haqiqiy taklif emas.' },
+    ],
+  },
+  tech: {
+    subcategory: 'NFC va raqamli yechimlar',
+    description: 'DEMO biznes profil. NFC va raqamli yechimlar yo‘nalishi bo‘yicha namuna katalog. Mahsulot va narxlar — demo.',
+    catalog: [
+      { name: 'DEMO · NFC vizitka', category: 'NFC', price: 200000, description: 'Namuna mahsulot. Demo narx — haqiqiy taklif emas.' },
+      { name: 'DEMO · NFC stiker', category: 'NFC', price: 60000, description: 'Namuna mahsulot. Demo narx — haqiqiy taklif emas.' },
+      { name: 'DEMO · NFC brelok', category: 'NFC', price: 90000, description: 'Namuna mahsulot. Demo narx — haqiqiy taklif emas.' },
+      { name: 'DEMO · Raqamli profil sozlash', category: 'Xizmatlar', price: 150000, description: 'Namuna xizmat. Demo narx — haqiqiy taklif emas.' },
+    ],
+  },
   neutral: {
     subcategory: '',
     description: 'DEMO biznes profil. Katalog, tavsif va aloqa ma’lumotlari namuna sifatida to‘ldirilgan. Mahsulot va narxlar — demo, haqiqiy savdo taklifi emas.',
@@ -275,6 +315,8 @@ const IMAGE_HINTS = {
   construction: 'Qurilish loyihasi yoki asboblar, toza fon, brendsiz',
   it: 'Ish stoli, noutbuk va kod, toza fon, brendsiz',
   auto: 'Avto servis yoki toza avtomobil, brendsiz',
+  retail: 'Toza mahsulot suratlari, oq yoki neytral fon, brendsiz',
+  tech: 'NFC karta va raqamli qurilma, toza fon, brendsiz',
   neutral: 'Neytral premium abstrakt fon, brendsiz',
 };
 
