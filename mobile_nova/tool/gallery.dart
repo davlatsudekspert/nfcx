@@ -428,7 +428,7 @@ class _Gallery extends ConsumerWidget {
         'verify' => const VerifyScreen(
             args: VerifyArgs(
               email: 'nodira@nfcstore.uz',
-              purpose: VerifyPurpose.login,
+              
             ),
           ),
         'discover' => const DiscoverScreen(),

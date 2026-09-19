@@ -884,3 +884,92 @@ ko'chiradi.
 
 TOKENSIZ holatda signal BERILMAYDI: kirmagan odam uchun
 `user: null` normal javob, sessiya tugashi emas.
+
+---
+
+## 16. RO'YXATDAN O'TISH ISHLAMAS EDI — eng jiddiy topilma
+
+Yangi foydalanuvchi ilovadan ro'yxatdan o'ta OLMASDI.
+
+### Nima bo'lgan
+
+Ro'yxatdan o'tish ekrani `requestEmailCode` ni chaqirardi:
+
+    POST /api/auth/request-email-code
+
+Kod ekrani esa `verifyEmailCode` ni:
+
+    POST /api/auth/verify-email-code
+
+SERVERDA BU IKKALA YO'L HAM YO'Q va hech qachon bo'lmagan.
+`hosting/api/auth.js` dagi haqiqiy shartnoma:
+
+    POST /api/auth/request-register-code {email}|{phone}
+       → {ok:true, channel:'email'|'telegram'|'none'}
+    POST /api/auth/register {email, code, password, phone,
+                             tosAccepted, ...}
+       → 201 {user} + sessiya
+
+Ya'ni birinchi qadamdayoq 404 kelardi. §56 dagi ro'yxatning
+BIRINCHI bandi — "ro'yxatdan o'tadi/kiradi" — bajarilmasdi.
+
+### Eng achinarlisi
+
+To'g'ri metodlar repozitoriyada ALLAQACHON bor edi:
+`requestRegisterCode` va `register`. Ikkalasi ham server
+shartnomasiga to'liq mos (`register` hatto eski `code`+`botAck`
+oqimini ishlatadi, server esa uni "hali qabul qilinadi" deb
+saqlab turibdi).
+
+Ularni shunchaki HECH KIM CHAQIRMASDI. Bu `markStorySeen` va NFC
+dispatcher bilan bir xil sinf: kod yozilgan, ulanmagan.
+
+### Nega audit topmagan edi
+
+Mening "repozitoriya metodi ekrandan chaqiriladimi" skriptim
+`Future<[^>]*>` naqshini ishlatardi. `Future<Result<Map<String,
+dynamic>>>` ichida `>` bor, shuning uchun naqsh mos kelmasdi va
+bunday metodlar RO'YXATGA UMUMAN TUSHMASDI. Skript "hammasi
+ulangan" deb yashil javob berardi.
+
+Tuzatilgan skript 26 ta nomzod topdi — shulardan biri
+`register()` edi.
+
+### Tuzatish
+
+* `register_screen` → `requestRegisterCode(email, phone)`;
+* `verify_screen` → `register(name, email, phone, password, code)`;
+* parol va telefon kod ekraniga argument sifatida olib boriladi
+  (hisob BITTA so'rovda yaratiladi), faqat xotirada;
+* qayta yuborish ham `request-register-code` ga boradi.
+
+### "Kod bilan kirish" ham olib tashlandi
+
+Kirish ekranida "kod bilan kirish" tugmasi bor edi va u ham
+`requestEmailCode` ga borardi — har safar 404. Serverda kod bilan
+KIRISH yo'li umuman yo'q.
+
+Ishlamaydigan imkoniyatni ko'rsatib turishdan ko'ra uni olib
+qo'yish to'g'riroq. Parol bilan kirish ishlaydi va E2E buni har
+safar tasdiqlaydi.
+
+Eski sinov bu buzuq imkoniyatni MUSTAHKAMLAB qo'ygan edi: u
+"tugma bosilganda telefon maydoni chiqadi" deb yashil turardi.
+Endi sinov teskarisini talab qiladi — tugma bo'lmasligi kerak.
+
+### Qo'riqcha
+
+`test/auth_contract_test.dart` — ilova chaqiradigan HAR BIR
+`/api/auth/...` yo'li server manbasida (`hosting/api/auth.js`,
+`hosting/worker.js`) uchrashi shart. Aynan shu sinov yuqoridagi
+ikkala o'lik yo'lni ko'rsatdi.
+
+### QOLGAN CHEKLOV
+
+Ro'yxatdan o'tish HAQIQIY hisob yaratadi va uni ilova ichidan
+o'chirish yo'li YO'Q (`Account delete — BACKEND REQUIRED`).
+Shuning uchun E2E bilan oxirigacha sinab bo'lmaydi: sinov
+produksiyada o'chirib bo'lmaydigan hisob qoldirardi.
+
+Ulanish to'g'riligi shartnoma sinovi bilan tasdiqlangan; oqimning
+o'zi HAQIQIY QURILMADA tekshirilishi kerak.

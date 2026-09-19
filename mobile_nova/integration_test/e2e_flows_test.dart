@@ -910,11 +910,22 @@ void main() {
       await vc.dispose();
 
       if (playing) {
+        // IZOH ANIQ BO'LISHI KERAK. Ilgari bu yerda
+        // `videos.length` yozilardi — u FAQAT lentadagi video
+        // postlarni sanaydi. Video esa istorya yoki profil
+        // fonidan topilishi mumkin, shuning uchun hisobot
+        // "0 ta video ... davomiylik 37s" degan qarama-qarshi
+        // qator chiqarardi: nol topildi, lekin 37 soniya
+        // ijro etildi.
+        final src = videos.isNotEmpty
+            ? 'lentadagi post'
+            : 'istorya yoki profil foni';
         report.pass('Video media',
             screen: 'PostScreen / StoryViewer',
             action: 'HAQIQIY video ijrosi',
-            note: '${videos.length} ta video; davomiylik '
-                '${dur.inSeconds}s');
+            note: 'manba: $src; jami nomzod: ${candidates.length}; '
+                'lentadagi video post: ${videos.length}; '
+                'davomiylik ${dur.inSeconds}s');
       } else {
         report.add(MatrixRow(
           name: 'Video media',

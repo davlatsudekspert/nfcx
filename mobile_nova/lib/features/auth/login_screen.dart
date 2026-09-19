@@ -14,7 +14,6 @@ import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
 import 'session.dart';
-import 'verify_screen.dart';
 
 /// Kirish ekrani.
 ///
@@ -37,7 +36,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _phone = TextEditingController();
   final _password = TextEditingController();
 
-  bool _codeMode = false;
   bool _busy = false;
   bool _obscure = true;
   String? _emailErr, _phoneErr, _passwordErr;
@@ -67,33 +65,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final l = L.of(context);
     setState(() {
       _emailErr = _tr(Validate.email(_email.text));
-      _phoneErr = _codeMode ? _tr(Validate.phone(_phone.text)) : null;
-      _passwordErr = _codeMode ? null : _tr(Validate.password(_password.text));
+      _phoneErr = null;
+      _passwordErr = _tr(Validate.password(_password.text));
       _formError = null;
     });
     if (_emailErr != null || _phoneErr != null || _passwordErr != null) return;
 
     setState(() => _busy = true);
     final repo = ref.read(authRepositoryProvider);
-
-    if (_codeMode) {
-      final res = await repo.requestEmailCode(
-        email: _email.text.trim(),
-        phone: Validate.normalizePhone(_phone.text),
-      );
-      if (!mounted) return;
-      setState(() => _busy = false);
-      res.when(
-        ok: (_) => context.push(
-          Routes.loginVerify,
-          extra: VerifyArgs(email: _email.text.trim(), purpose: VerifyPurpose.login),
-        ),
-        // Bu yerda "kod yuborildi" deb ko'rsatish ALDOV bo'lardi:
-        // hech qanday kod yuborilmagan.
-        err: (e) => setState(() => _formError = describeError(l, e)),
-      );
-      return;
-    }
 
     final res = await repo.loginWithPassword(
       email: _email.text.trim(),
@@ -127,7 +106,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               style: Theme.of(context).textTheme.displayMedium),
           const SizedBox(height: Gap.sm),
           Text(
-            _codeMode ? l.loginSubtitle : l.loginSubtitlePassword,
+            l.loginSubtitlePassword,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
@@ -141,14 +120,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             enabled: !_busy,
           ),
           const SizedBox(height: Gap.lg),
-          if (_codeMode)
-            PhoneField(
-              label: l.fieldPhone,
-              controller: _phone,
-              error: _phoneErr,
-            )
-          else
-            NovaField(
+          NovaField(
               label: l.fieldPassword,
               controller: _password,
               error: _passwordErr,
@@ -173,23 +145,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ],
           const SizedBox(height: Gap.xxl),
           NovaButton(
-            label: _codeMode ? l.loginSendCode : l.welcomeLogin,
+            label: l.welcomeLogin,
             busy: _busy,
             onPressed: _submit,
           ),
-          const SizedBox(height: Gap.md),
-          NovaButton(
-            label: _codeMode ? l.loginWithPassword : l.loginUseCode,
-            tone: ButtonTone.outline,
-            onPressed: _busy
-                ? null
-                : () => setState(() {
-                      _codeMode = !_codeMode;
-                      _formError = null;
-                      _passwordErr = null;
-                      _phoneErr = null;
-                    }),
-          ),
+          // "KOD BILAN KIRISH" TUGMASI OLIB TASHLANDI.
+          //
+          // U `requestEmailCode` ni chaqirardi, ya'ni
+          // `/api/auth/request-email-code` ga borardi. Serverda
+          // BUNDAY YO'L YO'Q va hech qachon bo'lmagan
+          // (`hosting/api/auth.js` dagi yo'llar: `tg-link/start`,
+          // `request-register-code`, `register`,
+          // `request-password-reset`, `request-email-reset`,
+          // `reset-password`) — ya'ni tugma HAR SAFAR 404 bilan
+          // tugardi.
+          //
+          // Ishlamaydigan imkoniyatni ko'rsatib turishdan ko'ra uni
+          // olib qo'yish to'g'riroq: parol bilan kirish ishlaydi.
+          // Backend kod bilan kirishni qo'shsa, bu blok va
+          // `requestEmailCode`/`verifyEmailCode` qaytariladi —
+          // FINAL_GAPS.md ga yozib qo'yildi.
           const SizedBox(height: Gap.section),
           // `Wrap`, `Row` EMAS. Tor ekranda (320 px) o'zbekcha
           // "Hisobingiz yo‘qmi?" + "Ro‘yxatdan o‘tish" bitta

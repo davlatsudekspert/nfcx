@@ -109,7 +109,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     // Texnik topshiriq: email tasdiqlanmaguncha ro'yxatdan o'tish
     // YAKUNLANMAYDI. Shuning uchun avval kod so'raladi, hisob esa
     // faqat kod tasdiqlangach yaratiladi.
-    final res = await ref.read(authRepositoryProvider).requestEmailCode(
+    // SERVERDAGI HAQIQIY YO'L.
+    //
+    // Ilgari `requestEmailCode` chaqirilardi va u
+    // `/api/auth/request-email-code` ga borardi — bunday yo'l
+    // serverda YO'Q. Ya'ni ro'yxatdan o'tish birinchi qadamdayoq
+    // 404 bilan to'xtardi va yangi foydalanuvchi ilovaga kira
+    // olmasdi.
+    final res = await ref.read(authRepositoryProvider).requestRegisterCode(
           email: _email.text.trim(),
           phone: Validate.normalizePhone(_phone.text),
         );
@@ -119,9 +126,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     res.when(
       ok: (_) => context.push(
         Routes.registerVerify,
+        // Hisob BITTA so'rovda yaratiladi (`POST /api/auth/register`),
+        // shuning uchun parol va telefon kod ekraniga olib boriladi.
+        // Faqat xotirada — hech qayerga saqlanmaydi.
         extra: VerifyArgs(
           email: _email.text.trim(),
-          purpose: VerifyPurpose.register,
+          name: _name.text.trim(),
+          phone: Validate.normalizePhone(_phone.text),
+          password: _password.text,
         ),
       ),
       err: (e) => setState(() => _error = describeError(l, e)),

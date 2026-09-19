@@ -16,12 +16,28 @@ import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
 import 'session.dart';
 
-enum VerifyPurpose { login, register }
-
 class VerifyArgs {
-  const VerifyArgs({required this.email, required this.purpose});
+  const VerifyArgs({
+    required this.email,
+    this.name = '',
+    this.phone = '',
+    this.password = '',
+  });
+
   final String email;
-  final VerifyPurpose purpose;
+
+  /// RO'YXATDAN O'TISHNI YAKUNLASH uchun.
+  ///
+  /// Backend hisobni BITTA so'rovda yaratadi:
+  ///
+  ///     POST /api/auth/register {email, code, password, phone, ...}
+  ///
+  /// Ya'ni kod tasdiqlangandan keyin yana parol so'rash shart emas —
+  /// u shu yerga birinchi qadamdan olib kelinadi. Faqat xotirada
+  /// turadi, hech qayerga saqlanmaydi.
+  final String name;
+  final String phone;
+  final String password;
 }
 
 /// Email tasdiqlash ekrani — kod kiritish, sanoq, qayta yuborish,
@@ -86,8 +102,26 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
       _error = null;
     });
 
-    final res = await ref.read(authRepositoryProvider).verifyEmailCode(
+    // RO'YXATDAN O'TISH va KIRISH ikki xil yo'l.
+    //
+    // Ilgari ikkalasi ham `verifyEmailCode` ni chaqirardi va u
+    // `/api/auth/verify-email-code` ga borardi — SERVERDA BUNDAY
+    // YO'L YO'Q. Ya'ni yangi foydalanuvchi ro'yxatdan o'ta olmasdi:
+    // kod so'rash ham, tasdiqlash ham 404 qaytarardi.
+    //
+    // Serverdagi haqiqiy shartnoma (`hosting/api/auth.js`):
+    //
+    //     POST /api/auth/request-register-code {email}|{phone}
+    //     POST /api/auth/register {email, code, password, phone, ...}
+    //
+    // Repozitoriyada bu ikkisi ALLAQACHON to'g'ri yozilgan edi
+    // (`requestRegisterCode`, `register`), lekin ekran ularni
+    // chaqirmasdi.
+    final res = await ref.read(authRepositoryProvider).register(
+          name: widget.args.name,
           email: widget.args.email,
+          phone: widget.args.phone,
+          password: widget.args.password,
           code: code,
         );
     if (!mounted) return;
@@ -97,9 +131,7 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
       ok: (user) async {
         await ref.read(sessionProvider.notifier).adopt(user);
         if (!mounted) return;
-        context.go(widget.args.purpose == VerifyPurpose.register
-            ? Routes.profileSetup
-            : Routes.home);
+        context.go(Routes.profileSetup);
       },
       err: (e) async {
         setState(() {
@@ -119,9 +151,12 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
       _error = null;
       _wrong = false;
     });
-    final res = await ref
-        .read(authRepositoryProvider)
-        .requestEmailCode(email: widget.args.email);
+    // Qayta yuborish ham maqsadga qarab: ro'yxatdan o'tishda
+    // `request-register-code`, kirishda esa email kodi.
+    final res = await ref.read(authRepositoryProvider).requestRegisterCode(
+          email: widget.args.email,
+          phone: widget.args.phone,
+        );
     if (!mounted) return;
     setState(() => _busy = false);
     res.when(

@@ -70,7 +70,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: Routes.loginVerify,
         builder: (_, s) => VerifyScreen(
           args: s.extra as VerifyArgs? ??
-              const VerifyArgs(email: '', purpose: VerifyPurpose.login),
+              const VerifyArgs(email: ''),
         ),
       ),
       GoRoute(path: Routes.register, builder: (_, __) => const RegisterScreen()),
@@ -78,7 +78,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: Routes.registerVerify,
         builder: (_, s) => VerifyScreen(
           args: s.extra as VerifyArgs? ??
-              const VerifyArgs(email: '', purpose: VerifyPurpose.register),
+              const VerifyArgs(email: ''),
         ),
       ),
       GoRoute(

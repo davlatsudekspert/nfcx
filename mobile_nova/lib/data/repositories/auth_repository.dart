@@ -74,38 +74,37 @@ class AuthRepository {
     };
   }
 
-  /// Ro'yxatdan o'tish kodini so'rash (backend: Telegram bot orqali).
-  Future<Result<void>> requestRegisterCode(String phone) =>
-      _api.post<void>('/api/auth/request-register-code', {'phone': phone});
-
-  /// EMAILGA 6 xonali kod so'rash.
+  /// Ro'yxatdan o'tish kodini so'rash.
   ///
-  /// BACKEND ENDPOINT REQUIRED — `API_GAPS.md` ga qarang.
-  Future<Result<void>> requestEmailCode({
-    required String email,
-    String? phone,
+  /// Server EMAIL yoki TELEFON qabul qiladi va qaysi kanal
+  /// ishlatilganini qaytaradi (`hosting/api/auth.js`):
+  ///
+  ///     POST /api/auth/request-register-code {email}|{phone}
+  ///       → {ok:true, channel:'email'|'telegram'|'none'}
+  ///
+  /// Ilgari bu metod FAQAT telefonni yuborardi va ekran uni umuman
+  /// chaqirmasdi — o'rniga mavjud bo'lmagan
+  /// `/api/auth/request-email-code` ga borardi.
+  Future<Result<void>> requestRegisterCode({
+    String email = '',
+    String phone = '',
   }) =>
-      _api.post<void>('/api/auth/request-email-code', {
-        'email': email.trim(),
-        if (phone != null && phone.isNotEmpty) 'phone': phone,
+      _api.post<void>('/api/auth/request-register-code', {
+        if (email.trim().isNotEmpty) 'email': email.trim(),
+        if (phone.isNotEmpty) 'phone': phone,
       });
 
-  /// Emailga yuborilgan kodni tekshirish.
-  ///
-  /// BACKEND ENDPOINT REQUIRED — `API_GAPS.md` ga qarang.
-  Future<Result<User>> verifyEmailCode({
-    required String email,
-    required String code,
-  }) async {
-    final res = await _api.postSession('/api/auth/verify-email-code', {
-      'email': email.trim(),
-      'code': code,
-    });
-    return switch (res) {
-      Err(:final error) => Err(error),
-      Ok(:final value) => await _finishSession(value.body, value.session),
-    };
-  }
+  // `requestEmailCode` / `verifyEmailCode` OLIB TASHLANDI.
+  //
+  // Ular `/api/auth/request-email-code` va
+  // `/api/auth/verify-email-code` ga borardi — serverda bunday
+  // yo'llar YO'Q va hech qachon bo'lmagan. Ro'yxatdan o'tish
+  // ularni ishlatgani uchun yangi foydalanuvchi umuman kira
+  // olmasdi; kirish ekranidagi "kod bilan kirish" esa har safar
+  // 404 berardi.
+  //
+  // Haqiqiy shartnoma — `requestRegisterCode` + `register` (yuqorida).
+  // Backend kod bilan KIRISHNI qo'shsa, bu ikkisi qaytariladi.
 
   /// Saqlangan token bilan sessiyani tiklaydi.
   ///

@@ -205,18 +205,26 @@ void main() {
       expect(find.text(l.errRequired), findsWidgets);
     });
 
-    testWidgets('kod rejimiga o‘tganda telefon maydoni chiqadi',
-        (tester) async {
+    testWidgets('"kod bilan kirish" tugmasi YO‘Q', (tester) async {
+      // Bu sinov ilgari TESKARISINI tekshirardi: tugma bosilganda
+      // telefon maydoni chiqishini.
+      //
+      // Tugma olib tashlandi, chunki u `requestEmailCode` ni
+      // chaqirardi va u `/api/auth/request-email-code` ga borardi —
+      // serverda bunday yo'l YO'Q. Ya'ni tugma HAR SAFAR 404 berardi.
+      //
+      // Sinov ishlamaydigan imkoniyatni MUSTAHKAMLAB qo'ygan edi:
+      // u yashil turardi, foydalanuvchi esa xato olardi.
       await tester.pumpWidget(ProviderScope(
         overrides: await testOverrides(),
         child: wrapScreen(const LoginScreen()),
       ));
       await tester.pump();
 
+      expect(find.text(LUz().loginUseCode), findsNothing,
+          reason: 'serverda qo‘llab-quvvatlanmaydigan imkoniyat '
+              'ko‘rsatilmoqda');
       expect(find.byType(PhoneField), findsNothing);
-      await tester.tap(find.text(LUz().loginUseCode));
-      await tester.pump();
-      expect(find.byType(PhoneField), findsOneWidget);
     });
   });
 
