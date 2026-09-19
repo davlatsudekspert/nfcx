@@ -21,6 +21,8 @@ import ProfileManifest from '../components/ProfileManifest.jsx';
 import CardNumberModal from '../components/CardNumberModal.jsx';
 import ProfileTabs from '../components/ProfileTabs.jsx';
 import StoryGrid from '../components/StoryGrid.jsx';
+import MediaThumb from '../components/MediaThumb.jsx';
+import { mediaKind } from '../lib/media.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { parseMusicSource, yandexEmbedSrc, fetchYoutubeTitle, cachedYoutubeTitle, audioFileTitle } from '../lib/music.js';
 import { useCategories, catPath } from '../lib/categories.js';
@@ -849,22 +851,37 @@ function PostsFeed({ posts, onLike, t }) {
             : <img src={zoom.imageUrl} alt="" className="max-h-[92vh] max-w-[96vw] rounded-lg object-contain" onClick={(e) => e.stopPropagation()} />}
         </div>
       )}
-      {posts.map((p) => (
+      {posts.map((p) => {
+        // MEDIASIZ POST — QORA SLOT EMAS.
+        //
+        // Ilgari bu yerda shart faqat `videoUrl` ga qarardi: media
+        // umuman bo'lmasa ham `<img src="">` chizilardi. Brauzer bo'sh
+        // manzilni SAHIFANING O'ZI deb o'qib, HTML ni rasm sifatida
+        // yuklashga urinar va jim yiqilardi — ekranda esa katta qora
+        // to'rtburchak qolardi. Productionda VIP001 da aynan shu
+        // ko'rindi (mediasiz test postlari).
+        //
+        // Endi mediasiz post — MATN kartasi: media joyi umuman
+        // chizilmaydi. Mediasi bor post esa `MediaThumb` orqali
+        // ketadi va u media kelmasa ham nomlangan qatlam ko'rsatadi.
+        const kind = mediaKind(p);
+        return (
         <div key={p.id} className="vz-rim-soft overflow-hidden rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)]">
-          {p.videoUrl ? (
-            <button type="button" onClick={() => setZoom(p)} className="group relative block w-full cursor-pointer bg-black">
-              <video src={p.videoUrl} muted playsInline preload="metadata" className="block max-h-[520px] w-full bg-black object-contain" />
-              <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-black/55 text-2xl text-white transition group-hover:bg-black/70">▶</span>
-              </span>
-            </button>
-          ) : (
-            <button type="button" onClick={() => setZoom(p)} className="block w-full cursor-pointer">
-              <img src={p.imageUrl} alt="" loading="lazy" className="block max-h-[520px] w-full object-cover" />
+          {kind !== 'none' && (
+            <button type="button" onClick={() => setZoom(p)} className="group relative block w-full cursor-pointer">
+              <MediaThumb item={p} alt={p.caption || ''} fit="cover" className="mt-post" />
+              {kind === 'video' && (
+                <span className="pointer-events-none absolute inset-0 z-[2] flex items-center justify-center">
+                  <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[color:var(--shade-strong,rgba(0,0,0,.55))] text-2xl text-white transition group-hover:opacity-90">▶</span>
+                </span>
+              )}
             </button>
           )}
           <div className="px-4 py-3">
             {p.caption && <p className="whitespace-pre-wrap text-[16px] leading-relaxed text-[color:var(--vz-ink-dim)]">{p.caption}</p>}
+            {kind === 'none' && !p.caption && (
+              <p className="text-[15px] italic text-[color:var(--vz-ink-faint)]">{t('Bu postda matn ham, media ham yo‘q.')}</p>
+            )}
             <div className="mt-2 flex items-center gap-3">
               <button
                 onClick={() => onLike(p.id)}
@@ -876,7 +893,8 @@ function PostsFeed({ posts, onLike, t }) {
             </div>
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

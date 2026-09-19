@@ -157,8 +157,24 @@ jobs:
       # — ikkalasi ham ekranda BIR XIL qora to'rtburchak berardi.
       # Test har katakda yo chizilgan media, yo NOMLANGAN qatlam
       # (xato / video) borligini qo'riqlaydi.
+      # GLOBAL MEDIA QO'RIQCHISI.
+      #
+      # Productionda VIP001 da to'qqizta storydan yettitasi va o'n
+      # sakkizta postning ko'pi qop-qora to'rtburchak edi. Ikkala
+      # joyda ham sabab bitta: media ko'rsatadigan har bir joy o'zicha
+      # <img>/<video> chizardi va "media kelmasa nima ko'rsatamiz?"
+      # degan savolga javob bermasdi. Javob endi bitta joyda —
+      # MediaThumb da — va bu test o'shani qo'riqlaydi.
+      - name: Media qatlami (global)
+        run: node scripts/test-media-guard.mjs
+
       - name: Lenta katagi
         run: node scripts/test-story-grid.mjs
+
+      # POST RO'YXATI. Mediasiz post `<img src="">` chizib qora slot
+      # berardi; endi u MATN kartasi bo'ladi.
+      - name: Post ro'yxati
+        run: node scripts/test-post-grid.mjs
 
       - name: Build (vite build + prepare-sites-build)
         run: npm run build

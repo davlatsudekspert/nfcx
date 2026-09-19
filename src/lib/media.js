@@ -1,10 +1,10 @@
-// ISTORYA MEDIASI — TURINI ANIQLASH VA BIRINCHI KADRNI SO'RASH
+// MEDIA — TURINI ANIQLASH VA VIDEODAN BIRINCHI KADRNI SO'RASH
 //
-// NIMA UCHUN ALOHIDA FAYL. Bu ikki qoida lentada ham (StoryGrid),
-// to'liq ekranda ham (StoryViewer) bir xil bo'lishi kerak: biri
-// "video" deb, ikkinchisi "rasm" deb qarasa, odam bosgan katak bilan
-// ochilgan oyna bir-biriga mos kelmasdi. Alohida fayl bo'lgani uchun
-// ularni `scripts/test-story-grid.mjs` to'g'ridan-to'g'ri chaqirib
+// NIMA UCHUN ALOHIDA FAYL. Bu qoida saytning HAMMA joyida bir xil
+// bo'lishi kerak: lenta (StoryGrid), to'liq ekran (StoryViewer) va
+// postlar. Biri "video" deb, ikkinchisi "rasm" deb qarasa, odam
+// bosgan katak bilan ochilgan oyna bir-biriga mos kelmasdi.
+// Alohida fayl bo'lgani uchun uni testlar to'g'ridan-to'g'ri chaqirib
 // tekshira oladi (JSX ni Node import qila olmaydi).
 
 // Qator qanday media ko'rsatadi?
@@ -19,14 +19,14 @@
 // manzilni SAHIFANING O'ZI deb o'qib, HTML ni rasm sifatida
 // yuklashga urinardi va jim yiqilardi — ekranda shunchaki qora
 // katak qolardi. Endi u ochiq xato holati bo'lib ko'rinadi.
-export function storyMediaKind(story) {
+export function mediaKind(story) {
   if (story && story.videoUrl) return 'video';
   if (story && story.imageUrl) return 'image';
   return 'none';
 }
 
-export function storyMediaUrl(story) {
-  const kind = storyMediaKind(story);
+export function mediaUrl(story) {
+  const kind = mediaKind(story);
   if (kind === 'video') return String(story.videoUrl);
   if (kind === 'image') return String(story.imageUrl);
   return '';
