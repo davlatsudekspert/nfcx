@@ -36,6 +36,12 @@ class LEn extends L {
   String get actionShare => 'Share';
 
   @override
+  String get actionMute => 'Mute';
+
+  @override
+  String get actionUnmute => 'Unmute';
+
+  @override
   String get actionCopy => 'Copy';
 
   @override

@@ -153,6 +153,18 @@ abstract class L {
   /// **'Ulashish'**
   String get actionShare;
 
+  /// No description provided for @actionMute.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ovozni o‘chirish'**
+  String get actionMute;
+
+  /// No description provided for @actionUnmute.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ovozni yoqish'**
+  String get actionUnmute;
+
   /// No description provided for @actionCopy.
   ///
   /// In uz, this message translates to:

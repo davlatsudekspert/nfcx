@@ -9,6 +9,8 @@
   "actionDelete": "Delete",
   "actionEdit": "Edit",
   "actionShare": "Share",
+  "actionMute": "Mute",
+  "actionUnmute": "Unmute",
   "actionCopy": "Copy",
   "actionCopied": "Copied",
   "actionRetry": "Retry",

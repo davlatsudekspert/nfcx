@@ -19,6 +19,13 @@ import '../home/widgets/avatar.dart';
 import '../home/widgets/identity_card.dart';
 import '../profile/music_player.dart';
 
+/// Ovoz o'chirilganmi — BUTUN lenta uchun bitta holat.
+///
+/// Sahifa bo'yicha saqlansa, har silashda ovoz qaytadan yonib
+/// ketardi. Bu yerda `autoDispose` ATAYLAB yo'q: ekrandan chiqib
+/// qaytganda ham tanlov saqlanadi.
+final reelsMutedProvider = StateProvider<bool>((_) => false);
+
 final reelsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
   final res = await ref.watch(socialRepositoryProvider).feed();
   return res.when(
@@ -191,11 +198,25 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
       await c.initialize();
       if (!mounted) return;
       await c.setLooping(true);
+      // Ovoz holati lentaga tegishli, videoga emas: yangi sahifa
+      // ochilganda ham o'sha tanlov qo'llanadi.
+      await c.setVolume(ref.read(reelsMutedProvider) ? 0 : 1);
       await c.play();
       setState(() => _ready = true);
     } catch (_) {
       if (mounted) setState(() => _failed = true);
     }
+  }
+
+  /// Ovozni o'chirish/yoqish.
+  ///
+  /// Tanlov BUTUN lentaga tegishli (`reelsMutedProvider`), shuning
+  /// uchun keyingi videoga silaganda ham saqlanadi.
+  Future<void> _toggleMute() async {
+    final next = !ref.read(reelsMutedProvider);
+    ref.read(reelsMutedProvider.notifier).state = next;
+    await _controller?.setVolume(next ? 0 : 1);
+    if (mounted) setState(() {});
   }
 
   /// Boshqa audio egalik olganda — videoni to'xtatamiz.
@@ -246,6 +267,7 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
     final t = context.tokens;
     final l = L.of(context);
     final p = widget.post;
+    final muted = ref.watch(reelsMutedProvider);
 
     return GestureDetector(
       onTap: () {
@@ -305,6 +327,17 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
                   icon: Icons.mode_comment_outlined,
                   label: formatCount(p.comments),
                   onTap: () => context.push(Routes.post(p.id, code: p.code)),
+                ),
+                const SizedBox(height: Gap.xl),
+                // OVOZ. Ilgari Reels'da ovozni boshqarish umuman
+                // YO'Q edi: video to'liq ovoz bilan boshlanardi va
+                // uni faqat ekrandan chiqib to'xtatish mumkin edi.
+                _Action(
+                  icon: muted
+                      ? Icons.volume_off_rounded
+                      : Icons.volume_up_rounded,
+                  label: muted ? l.actionUnmute : l.actionMute,
+                  onTap: _toggleMute,
                 ),
                 const SizedBox(height: Gap.xl),
                 _Action(

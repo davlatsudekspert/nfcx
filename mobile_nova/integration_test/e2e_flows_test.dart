@@ -470,6 +470,82 @@ void main() {
   }, timeout: const Timeout(Duration(minutes: 5)));
 
   // ══════════════════════════════════════════════════════════════
+  // MEDIA MANZILLARI — HAQIQIY HISOB MA'LUMOTIDA
+  // ══════════════════════════════════════════════════════════════
+
+  testWidgets('Media manzillari TO\'LIQ', (t) async {
+    if (!signedIn) {
+      report.skip('Media URLs', 'sessiya ochilmadi');
+      return;
+    }
+    final c = await launchSignedIn(t);
+
+    // HAQIQIY hisobdan kelgan HAR BIR media maydoni tekshiriladi.
+    // Nisbiy `/uploads/...` qolsa, ilovada o'sha element ochilmaydi
+    // — E2E #6 dagi `Music player` FAIL aynan shundan edi.
+    final bad = <String>[];
+    void check(String what, String url) {
+      if (url.isEmpty) return;
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        bad.add('$what = "$url"');
+      }
+    }
+
+    var checked = 0;
+    for (final id in c.read(myIdsProvider)) {
+      check('${id.code}.avatarUrl', id.avatarUrl);
+      check('${id.code}.coverUrl', id.coverUrl);
+      for (final m in id.musicUrls) {
+        check('${id.code}.musicUrls', m);
+      }
+      checked += 2 + id.musicUrls.length;
+    }
+
+    final feed = await c.read(socialRepositoryProvider).feed();
+    feed.when(
+      ok: (posts) {
+        for (final p in posts.take(20)) {
+          check('post#${p.id}.authorAvatar', p.authorAvatar);
+          for (final m in p.mediaUrls) {
+            check('post#${p.id}.media', m);
+          }
+          checked += 1 + p.mediaUrls.length;
+        }
+      },
+      err: (_) {},
+    );
+
+    final companies = await c.read(discoverRepositoryProvider).companies();
+    companies.when(
+      ok: (list) {
+        for (final b in list.take(10)) {
+          check('${b.companyId}.logoUrl', b.logoUrl);
+          check('${b.companyId}.coverUrl', b.coverUrl);
+          checked += 2;
+        }
+      },
+      err: (_) {},
+    );
+
+    if (bad.isEmpty) {
+      report.pass('Media URLs',
+          screen: 'butun ilova',
+          action: 'model chegarasida to\'ldirish',
+          note: '$checked ta maydon tekshirildi; nisbiy manzil yo\'q');
+    } else {
+      report.add(MatrixRow(
+        name: 'Media URLs',
+        verdict: Verdict.fail,
+        screen: 'butun ilova',
+        action: 'model chegarasida to\'ldirish',
+        cause: 'NISBIY manzil qoldi — ilovada ochilmaydi: '
+            '${bad.take(5).join("; ")}',
+        layer: 'frontend',
+      ));
+    }
+  }, timeout: const Timeout(Duration(minutes: 4)));
+
+  // ══════════════════════════════════════════════════════════════
   // MUSIQA — HAQIQIY IJRO VA PAUZA
   // ══════════════════════════════════════════════════════════════
 

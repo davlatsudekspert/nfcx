@@ -36,6 +36,12 @@ class LUz extends L {
   String get actionShare => 'Ulashish';
 
   @override
+  String get actionMute => 'Ovozni o‘chirish';
+
+  @override
+  String get actionUnmute => 'Ovozni yoqish';
+
+  @override
   String get actionCopy => 'Nusxa olish';
 
   @override

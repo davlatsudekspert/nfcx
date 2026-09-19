@@ -9,6 +9,8 @@
   "actionDelete": "O‘chirish",
   "actionEdit": "Tahrirlash",
   "actionShare": "Ulashish",
+  "actionMute": "Ovozni o‘chirish",
+  "actionUnmute": "Ovozni yoqish",
   "actionCopy": "Nusxa olish",
   "actionCopied": "Nusxa olindi",
   "actionRetry": "Qayta urinish",

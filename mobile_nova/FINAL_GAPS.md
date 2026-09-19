@@ -642,3 +642,69 @@ yiqilardi. Kompozitor qiymatni `uploadImage` dan XOM holda oladi va
 `createPost`/`createStory` ga o'shani uzatadi — tekshirildi,
 tegilmadi. Post yaratish E2E #6 da PASS edi va shundayligicha
 qoladi.
+
+---
+
+## 12. O'LIK AMALLAR — repozitoriyda bor, ekranda yo'q
+
+Uchta amal `social_repository.dart` da to'liq yozilgan, backend
+endpointlari ishlaydi va E2E ularni PASS deb belgilagan — lekin
+ILOVADA ULARNI CHAQIRADIGAN EKRAN YO'Q edi.
+
+Bu "no-op tugma" dan ham yomonroq: tugma umuman yo'q, shuning uchun
+ko'z bilan ham, "bo'sh handler" qidiruvi bilan ham topilmaydi. E2E
+esa REPOZITORIYANI sinaydi, EKRANNI emas — shuning uchun qator
+yashil bo'lib turaverardi.
+
+### 12.1 `deleteStory` — o'z story'ingni o'chirish
+
+Metod bor. `storyDeleteConfirm` tarjimasi UCHALA tilda tayyor.
+Chaqiruvchi yo'q. Ya'ni foydalanuvchi o'z story'sini ilova ichida
+o'chira olmasdi.
+
+Story Viewer sarlavhasiga o'chirish tugmasi qo'shildi va u FAQAT
+o'z story'ingda ko'rinadi (kod `myIdsProvider` dagi yozuvlardan
+birida bo'lsa). Begonanikida tugma umuman chizilmaydi — bosilib
+"ruxsat yo'q" deydigan tugma qoldirilmadi. Egalikni baribir server
+hal qiladi.
+
+O'chgandan keyin ro'yxat SERVERDAN qayta o'qiladi: mahalliy
+ro'yxatdan olib qo'yish "o'chdi" deb ko'rsatib, aslida qolib
+ketishi mumkin edi.
+
+### 12.2 `markStorySeen` — eng jimi
+
+`POST /api/stories/:id/view` ishlaydi va E2E #6 da "Story seen"
+qatori PASS edi. Lekin u REPOZITORIYANI sinaydi. Ilovada bu
+metodni chaqiradigan joy yo'q edi.
+
+Natija: story ochilardi, ko'rilardi — va Home ekranidagi halqa
+baribir "ko'rilmagan" bo'lib turaverardi. Hech qanday xato
+chiqmasdi.
+
+Endi Story Viewer har ko'rsatilgan story uchun bir marta yuboradi
+(`_seen` to'plami takroriy so'rovni to'sadi, chunki progress
+animatsiyasi `build` ni har kadrda chaqiradi). Natija kutilmaydi
+va xatosi yutiladi — bu yordamchi signal.
+
+### 12.3 Reels — ovoz boshqaruvi UMUMAN yo'q edi
+
+Video to'liq ovoz bilan boshlanardi va uni faqat ekrandan chiqib
+to'xtatish mumkin edi. `setVolume` hech qayerda chaqirilmagan.
+
+`reelsMutedProvider` — holat BUTUN lenta uchun bitta, aks holda
+har silashda ovoz qaytadan yonib ketardi. `autoDispose` ataylab
+yo'q: ekrandan chiqib qaytganda ham tanlov saqlanadi.
+
+`actionMute`/`actionUnmute` uchala tilga qo'shildi.
+
+### Qo'riqcha
+
+`no_op_audit_test.dart` endi TESKARI tomondan tekshiradi:
+repozitoriyadagi `deleteStory`, `deletePost`, `deleteComment`,
+`setDeviceBlocked`, `markStorySeen` — har birining `features/`
+ichida chaqiruvi borligi. Kelajakda ekran olib tashlansa yoki
+amal ulanmay qolsa, sinov buni ko'rsatadi.
+
+Ayrim sinov: Reels ovoz tugmasi `setVolume` ni CHAQIRISHI kerak —
+tugma qo'shilgani yetarli emas.

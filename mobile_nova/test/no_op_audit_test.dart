@@ -156,6 +156,44 @@ void main() {
             'ulashish chaqiruvi yo\'q:\n${bad.join('\n')}');
   });
 
+  test('repozitoriyadagi amalning EKRANDA kirish nuqtasi bor', () {
+    // O'LIK AMAL — repozitoriyda metod bor, tarjimasi ham bor,
+    // lekin uni chaqiradigan ekran YO'Q. Foydalanuvchi uchun bu
+    // "funksiya yo'q" degani, kod bo'yicha esa "bor" ko'rinadi.
+    //
+    // `deleteStory` aynan shunday edi: `social_repository.dart` da
+    // metod, `storyDeleteConfirm` esa uchala tilda tayyor turardi —
+    // o'z story'ingni ilova ichida o'chirib bo'lmasdi.
+    final screens = files
+        .where((f) => f.path.contains('/features/'))
+        .map((f) => f.readAsStringSync())
+        .join('\n');
+    for (final method in [
+      'deleteStory',
+      'deletePost',
+      'deleteComment',
+      'setDeviceBlocked',
+      'markStorySeen',
+    ]) {
+      expect(screens.contains('$method('), isTrue,
+          reason: '`$method` repozitoriyada bor, lekin birorta '
+              'ekran uni CHAQIRMAYDI — foydalanuvchi bu amalga '
+              'yeta olmaydi');
+    }
+  });
+
+  test('Reels ovozni boshqarish HAQIQATAN o\'zgartiradi', () {
+    // Ilgari Reels'da ovoz boshqaruvi umuman yo'q edi: video to'liq
+    // ovoz bilan boshlanardi. Tugma qo'shilgani yetarli emas —
+    // u `setVolume` ni CHAQIRISHI kerak.
+    final src =
+        File('lib/features/social/reels_screen.dart').readAsStringSync();
+    expect(src.contains('setVolume('), isTrue,
+        reason: 'ovoz tugmasi bor, lekin `setVolume` chaqirilmaydi');
+    expect(src.contains('reelsMutedProvider'), isTrue,
+        reason: 'ovoz holati lenta bo\'ylab saqlanmaydi');
+  });
+
   test('Sozlamalardagi har bir band marshrutga yoki amalga bog\'langan',
       () {
     final settings = File('lib/features/settings/settings_screen.dart')

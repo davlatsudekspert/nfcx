@@ -36,6 +36,12 @@ class LRu extends L {
   String get actionShare => 'Поделиться';
 
   @override
+  String get actionMute => 'Выключить звук';
+
+  @override
+  String get actionUnmute => 'Включить звук';
+
+  @override
   String get actionCopy => 'Копировать';
 
   @override

@@ -11,6 +11,7 @@ import '../../design/tokens/shapes.dart';
 import '../../design/widgets/states.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
+import '../auth/session.dart';
 import '../home/widgets/avatar.dart';
 
 final storiesOfProvider =
@@ -48,16 +49,92 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
   int _index = 0;
   int _total = 0;
 
+  /// Serverga "ko'rildi" deb yuborilgan story'lar.
+  ///
+  /// Bir story ekranda bir necha marta qayta chizilishi mumkin
+  /// (progress animatsiyasi har kadrda `build` chaqiradi), shuning
+  /// uchun takroriy so'rov yuborilmasligi kerak.
+  final _seen = <int>{};
+
   @override
   void dispose() {
     _progress.dispose();
     super.dispose();
   }
 
+  /// O'Z story'ingni o'chirish.
+  ///
+  /// `deleteStory` repozitoriyda BOR edi, `storyDeleteConfirm`
+  /// tarjimasi ham uchala tilda tayyor edi — lekin ilovada BU
+  /// AMALGA KIRISH NUQTASI YO'Q edi. Ya'ni foydalanuvchi o'z
+  /// story'sini ilova ichida o'chira olmasdi.
+  Future<void> _delete(StoryItem s) async {
+    final l = L.of(context);
+    _progress.stop();
+    final ok = await showDialog<bool>(
+          context: context,
+          builder: (d) => AlertDialog(
+            title: Text(l.actionDelete),
+            content: Text(l.storyDeleteConfirm),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(d).pop(false),
+                child: Text(l.actionCancel),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(d).pop(true),
+                child: Text(l.actionDelete,
+                    style: TextStyle(color: context.tokens.error)),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!mounted) return;
+    if (!ok) {
+      _progress.forward();
+      return;
+    }
+    final res =
+        await ref.read(socialRepositoryProvider).deleteStory(s.id);
+    if (!mounted) return;
+    res.when(
+      ok: (_) {
+        // Ro'yxat SERVERDAN qayta o'qiladi — mahalliy ro'yxatdan
+        // olib qo'yish "o'chdi" deb ko'rsatib, aslida qolib
+        // ketishi mumkin edi.
+        ref.invalidate(storiesOfProvider(widget.code));
+        ref.invalidate(socialRepositoryProvider);
+        context.pop();
+      },
+      err: (e) {
+        _progress.forward();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(describeError(l, e))),
+        );
+      },
+    );
+  }
+
   void _start() {
     _progress
       ..reset()
       ..forward();
+  }
+
+  /// "Ko'rildi" belgisini SERVERGA yuborish.
+  ///
+  /// `markStorySeen` repozitoriyada bor edi va `POST
+  /// /api/stories/:id/view` endpointi ham ishlaydi (E2E buni
+  /// tasdiqlagan), lekin ilovada BU METODNI CHAQIRADIGAN JOY
+  /// YO'Q edi. Ya'ni story ochilardi, ko'rilardi — va Home
+  /// ekranidagi halqa baribir "ko'rilmagan" bo'lib turaverardi.
+  ///
+  /// Natijasi KUTILMAYDI va xatosi yutiladi: bu yordamchi signal,
+  /// uning tufayli story ko'rish to'xtab qolmasligi kerak.
+  void _markSeen(StoryItem s) {
+    if (s.id == 0 || !_seen.add(s.id)) return;
+    ref.read(socialRepositoryProvider).markStorySeen(s.id);
   }
 
   void _next() {
@@ -105,6 +182,16 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
             WidgetsBinding.instance.addPostFrameCallback((_) => _start());
           }
           final s = items[_index.clamp(0, items.length - 1)];
+          WidgetsBinding.instance
+              .addPostFrameCallback((_) => _markSeen(s));
+
+          // "Meniki" — story kodi o'zimning NFC yozuvlarimdan
+          // birida bo'lsa. Egalik huquqini baribir SERVER hal
+          // qiladi (o'zganikida 403 keladi); bu shunchaki
+          // ishlamaydigan tugmani ko'rsatmaslik uchun.
+          final mine = ref
+              .watch(myIdsProvider)
+              .any((e) => e.code == s.code);
 
           return GestureDetector(
             onTapUp: (d) {
@@ -207,6 +294,17 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                                 ),
                               ),
                             ),
+                            // O'chirish FAQAT o'z story'ingda
+                            // ko'rinadi. Begonanikida tugma umuman
+                            // chizilmaydi — bosilib "ruxsat yo'q"
+                            // deydigan tugma qoldirilmadi.
+                            if (mine)
+                              IconButton(
+                                onPressed: () => _delete(s),
+                                icon: const Icon(Icons.delete_outline_rounded,
+                                    color: Colors.white),
+                                tooltip: l.actionDelete,
+                              ),
                             IconButton(
                               onPressed: () => context.pop(),
                               icon: const Icon(Icons.close_rounded,
