@@ -40,6 +40,7 @@ class BrandLogo extends StatelessWidget {
     this.size = 96,
     this.style = BrandLogoStyle.plate,
     this.halo = true,
+    this.tint,
     this.semanticLabel = 'NFCSTORE',
   });
 
@@ -49,6 +50,18 @@ class BrandLogo extends StatelessWidget {
 
   /// Orqadagi yumshoq nur. Kichik o'lchamlarda (nav, ro'yxat) o'chiriladi.
   final bool halo;
+
+  /// Belgini BITTA rangda chizadi — faqat `mark` uslubida.
+  ///
+  /// NIMA UCHUN KERAK: aksent sirti (NFC orb) ustida oltin belgi
+  /// oltinda yo'qoladi. Ilgari buning yechimi plastina edi — u esa
+  /// orbning organik shaklini kesib, ichida qattiq to'rtburchak hosil
+  /// qilardi. Endi belgi o'sha sirt ustida `onAccent` siyohida
+  /// chiziladi: shakl yaxlit qoladi, kontrast esa har mavzuda yetarli.
+  ///
+  /// ORIGINAL AKTIV O'ZGARMAYDI — rang faqat chizish vaqtida
+  /// qo'llanadi (`BlendMode.srcIn`), fayl o'z holicha qoladi.
+  final Color? tint;
   final String semanticLabel;
 
   static const assetLogo = 'assets/brand/nfcstore_logo.jpg';
@@ -68,6 +81,8 @@ class BrandLogo extends StatelessWidget {
           // Belgi keng lokap — balandligi kengligidan hisoblanadi,
           // shuning uchun `height` berilmaydi: cho'zilish imkonsiz.
           fit: BoxFit.contain,
+          color: tint,
+          colorBlendMode: tint == null ? null : BlendMode.srcIn,
           filterQuality: FilterQuality.medium,
         ),
       );

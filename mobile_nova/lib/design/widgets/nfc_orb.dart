@@ -6,6 +6,22 @@ import '../motion/motion.dart';
 import '../tokens/nfc_tokens.dart';
 import 'surfaces.dart';
 
+/// Orb MARKAZIDAGI brend belgisining kengligi — orb widget o'lchamiga
+/// nisbatan.
+///
+/// NIMA UCHUN 0.40, 0.68 EMAS: orbning KO'RINADIGAN oltin yadrosi
+/// widget qutisining hammasi emas. `_OrbPainter` da yadro radiusi
+/// `size * .30 * (.95..1.01)`, ustiga organik wobble ±5%. Ya'ni
+/// yadro diametri widget o'lchamining ~0.54–0.64 qismi; qolgani
+/// halo va pulse halqalariga ketadi.
+///
+/// 0.40 * size — bu YADRO diametrining ~68% i. Belgi 1.955:1
+/// nisbatda bo'lgani uchun balandligi 0.205 * size, eng uzoq
+/// burchagi markazdan 0.222 * size uzoqlikda. Yadroning eng tor
+/// holatidagi radiusi esa 0.270 * size — ya'ni har doim ~18%
+/// zaxira qoladi va belgi nafas/wobble paytida ham chetga chiqmaydi.
+const double kOrbMarkRatio = .40;
+
 /// Orb qanday holatda.
 enum OrbState { idle, scanning, success, error }
 

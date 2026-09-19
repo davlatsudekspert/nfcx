@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
+import '../../design/widgets/brand_logo.dart';
 import '../../design/widgets/nfc_orb.dart';
 import '../../design/widgets/nova_scaffold.dart';
 import '../../design/widgets/buttons.dart';
@@ -103,10 +104,10 @@ class NfcCenterScreen extends ConsumerWidget {
                     //
                     // Orb sirti aksent rangida, shuning uchun belgi
                     // `onAccent` siyohida: har mavzuda o'qiladi.
-                    child: Icon(
-                      Icons.nfc_rounded,
-                      size: orb * .34,
-                      color: t.onAccent,
+                    child: BrandLogo(
+                      size: orb * kOrbMarkRatio,
+                      style: BrandLogoStyle.mark,
+                      tint: t.onAccent,
                     ),
                   ),
                 ],

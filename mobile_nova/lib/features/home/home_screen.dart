@@ -11,6 +11,7 @@ import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
 import '../../design/widgets/buttons.dart';
+import '../../design/widgets/brand_logo.dart';
 import '../../design/widgets/nfc_orb.dart';
 import '../../design/widgets/nova_scaffold.dart';
 import '../../design/widgets/states.dart';
@@ -204,10 +205,10 @@ class _IdentityHero extends StatelessWidget {
         NfcOrb(
           size: orb,
           onTap: onTap,
-          child: Icon(
-            Icons.nfc_rounded,
-            size: orb * .30,
-            color: t.onAccent,
+          child: BrandLogo(
+            size: orb * kOrbMarkRatio,
+            style: BrandLogoStyle.mark,
+            tint: t.onAccent,
           ),
         ),
         const SizedBox(height: Gap.lg),
