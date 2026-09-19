@@ -7,6 +7,7 @@ import { businessModule } from '../lib/access.js';
 import { dbAddCatalogItemView, dbGetCatalogMeta, dbSetCatalogReaction } from '../lib/db.js';
 import { fmt } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
+import { ownerActionUrl } from './OwnerDock.jsx';
 
 const MODULE_COPY = {
   menu: { tab: 'Menyu', singular: 'Taom', route: 'menu' },
@@ -208,7 +209,17 @@ export default function BusinessPublicProfile({
               biznes profilining o'z dizayniga TEGMAYDI. */}
           <ProfileMoreMenu targetKind="record" targetId={record.code} className="bp-quiet-btn bp-theme-btn" />
           <button type="button" className="bp-quiet-btn" onClick={() => navigate('/kompaniyalar')}>{t('Kompaniyalar')}</button>
-          {isOwner && <button type="button" className="bp-gold-btn" onClick={() => navigate(`/business/${record.code.toLowerCase()}`)}>{t('Workspace')}</button>}
+          {/* EGASI UCHUN — HAQIQIY TAHRIRLASH.
+              Ilgari bu tugma `/business/:code` ga olib borardi. U sahifa
+              esa NAMUNA: butunlay qattiq yozilgan ma'lumot ustida
+              ishlaydi va birorta ham so'rov yubormaydi (`DEMO_PRESETS`).
+              Ya'ni egasi tahrirlayman deb kirar, yozgani esa hech qayerga
+              saqlanmasdi va u buni bilmasdi ham.
+              Endi tugma o'zining NFC ID si bilan haqiqiy tahrirlash
+              oynasini ochadi — shaxsiy profildagi bilan bir xil yo'l
+              (`ownerActionUrl`), shuning uchun kod ham bitta joydan
+              keladi va ikkisi bir-biridan ajralib ketmaydi. */}
+          {isOwner && <button type="button" className="bp-gold-btn" onClick={() => navigate(ownerActionUrl(record.code, 'edit'))}>{t('Tahrirlash')}</button>}
         </div>
       </header>
 

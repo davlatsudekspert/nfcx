@@ -176,6 +176,26 @@ jobs:
       - name: Post ro'yxati
         run: node scripts/test-post-grid.mjs
 
+      # NO-OP AUDITI — "bosiladi, lekin hech narsa qilmaydi".
+      # `/api/feed`, `/api/my/nfc-devices` va biznes profilidagi
+      # "Workspace" tugmasi aynan shu turdagi xato edi.
+      - name: No-op auditi
+        run: node scripts/test-noop-audit.mjs
+
+      # AUTH / SESSIYA. Asosiy shart: ANONIM TASHRIFCHI XATO EMAS.
+      # `/api/auth/me` 200 + user:null berishi kerak, 401 emas —
+      # aks holda frontend buni "sessiya tugadi" deb o'qib, odamni
+      # tizimdan chiqarib yuborardi. 403 ham sessiyani tugatmaydi.
+      - name: Auth va sessiya
+        run: node scripts/test-auth-session.mjs
+
+      # BOG'LANGAN NFC QURILMALARI. Bu yo'l produksiyada 404 berardi
+      # ("handler bor" != "so'rov yetib boradi"). Test haqiqiy
+      # worker'ga so'rov yuboradi va egalik tekshiruvlarini ham
+      # qo'riqlaydi (to'liq chip token hech qachon chiqmaydi).
+      - name: NFC qurilmalari
+        run: node scripts/test-nfc-devices.mjs
+
       - name: Build (vite build + prepare-sites-build)
         run: npm run build
 
