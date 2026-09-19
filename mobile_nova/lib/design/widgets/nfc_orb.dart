@@ -230,7 +230,12 @@ class OrbitActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final radius = size * .40;
+    // .40 emas, .36: chip DOIRASI emas, uning YOZUVI eng chekka nuqta.
+    // 390px ekranda orbit ~360 => radius 130; chip qutisi 92 kenglikda
+    // eng chetki nuqta 130+46=176 < 180 — ya'ni yozuv Stack qirrasiga
+    // borib kesilmaydi. Avval radius .40 (=144) edi va 74px li yozuv
+    // ham 181 ga chiqib, o'ng/chap chiplarda qirqilardi.
+    final radius = size * .36;
     final tones = [t.accent2, t.accentBDark, t.accentCDark, t.accentDDark];
 
     return SizedBox(
@@ -238,6 +243,10 @@ class OrbitActions extends StatelessWidget {
       height: size,
       child: Stack(
         alignment: Alignment.center,
+        // Yozuvning bir necha piksel chetga chiqishi qirqilishdan
+        // ko'ra yaxshiroq — lekin yuqoridagi radius buni ham oldini
+        // oladi.
+        clipBehavior: Clip.none,
         children: [
           for (var i = 0; i < actions.length; i++)
             Builder(builder: (context) {
@@ -293,8 +302,13 @@ class _OrbitChip extends StatelessWidget {
               child: Icon(action.icon, size: 21, color: tone),
             ),
             const SizedBox(height: 7),
+            // 92px — rus tilidagi eng uzun yorliq ("Безопасность")
+            // 10px/700 Manrope'da ~70px joy egallaydi. Avval quti 74px
+            // edi va o'sha yorliq "Безопасн..." bo'lib qirqilardi.
+            // Qo'shni chiplar orasidagi yoy masofasi ~200px, shuning
+            // uchun kengaytirish ularni bir-biriga tekkizmaydi.
             SizedBox(
-              width: 74,
+              width: 92,
               child: Text(
                 action.label,
                 maxLines: 1,
@@ -302,8 +316,9 @@ class _OrbitChip extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: 'Manrope',
-                  fontSize: 10.5,
+                  fontSize: 10,
                   fontWeight: FontWeight.w700,
+                  height: 1.2,
                   color: t.text2,
                 ),
               ),
