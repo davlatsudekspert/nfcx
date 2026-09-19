@@ -823,29 +823,62 @@ void main() {
     }
     final c = await launchSignedIn(t);
 
-    // Haqiqiy lentadan VIDEO yozuvni qidiramiz.
+    // HAQIQIY video manzilini qidiramiz — YANGI HECH NARSA
+    // YARATMASDAN. Uchta manba tekshiriladi, chunki video faqat
+    // postda emas: profil FONI ham video bo'lishi mumkin
+    // (`/api/upload-profile-bg` `video/mp4` ni qabul qiladi) va
+    // istoryalar ham.
+    final candidates = <String>[];
+
     final feed = await c.read(socialRepositoryProvider).feed();
     final videos = feed.when(
       ok: (posts) =>
           posts.where((p) => p.isVideo && p.mediaUrls.isNotEmpty).toList(),
       err: (_) => <Post>[],
     );
+    for (final p in videos) {
+      candidates.add(p.mediaUrls.first);
+    }
 
-    if (videos.isEmpty) {
+    bool looksVideo(String u) {
+      final low = u.toLowerCase();
+      return low.endsWith('.mp4') ||
+          low.endsWith('.webm') ||
+          low.contains('cardvid');
+    }
+
+    // Profil fonlari — o'z yozuvlarimiz.
+    for (final id in c.read(myIdsProvider)) {
+      if (looksVideo(id.coverUrl)) candidates.add(id.coverUrl);
+    }
+    // Istoryalar.
+    for (final id in c.read(myIdsProvider)) {
+      final st = await c.read(socialRepositoryProvider).storiesOf(id.code);
+      for (final item in st.valueOrNull ?? const <StoryItem>[]) {
+        if (item.isVideo && item.mediaUrl.isNotEmpty) {
+          candidates.add(item.mediaUrl);
+        }
+      }
+    }
+
+    if (candidates.isEmpty) {
       // Hisobda video post yo'q — bu XATO EMAS. Lekin PASS ham
       // emas: ijro haqiqatan sinalmadi.
       report.add(MatrixRow(
         name: 'Video media',
         verdict: Verdict.skipped,
-        screen: 'PostScreen / StoryViewer',
+        screen: 'PostScreen / StoryViewer / Profil foni',
         action: 'haqiqiy video ijrosi',
-        cause: 'hisobda video post yo\'q — ijro sinab ko\'rilmadi',
+        cause: 'hisobda birorta video YO\'Q (post, istorya, profil '
+            'foni — uchalasi ham tekshirildi). Ijro sinab '
+            'ko\'rilmadi; soxta video yaratilmadi, chunki u ilovani '
+            'emas, o\'sha fayl sifatini sinagan bo\'lardi',
         layer: 'data',
       ));
       return;
     }
 
-    final url = videos.first.mediaUrls.first;
+    final url = candidates.first;
 
     // 1) Manzil TO'LIQ bo'lishi shart. Nisbiy bo'lsa dekoder uni
     //    darhol rad etadi — bu aynan `Music player` ni yiqitgan

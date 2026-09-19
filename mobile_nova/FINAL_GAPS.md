@@ -825,3 +825,32 @@ endpoint emas, KUZATUVNING O'ZI. Bu yangi jadval + yozuv nuqtalari
 + deploy talab qiladi.
 
 Shuning uchun: BACKEND REQUIRED. Soxta endpoint qo'shilmadi.
+
+### 15.4 Reels/video — SOXTA VIDEO YARATILMADI, sabab
+
+Hisobda birorta video yo'q, shuning uchun ijro sinalmadi.
+
+Sinov video YARATISH ko'rib chiqildi va RAD ETILDI:
+
+* CI muhitida kodlovchi (ffmpeg) YO'Q — tekshirildi;
+* server faqat haqiqiy `video/mp4` yoki `video/webm` qabul qiladi
+  (`/api/upload-card-video` → `accept: ['video/mp4','video/webm']`);
+* qo'lda yasalgan minimal MP4 ExoPlayer tomonidan ochilishi
+  KAFOLATLANMAYDI. Ochilmasa, sinov FAIL yozardi — va bu ILOVA
+  emas, mening faylim aybi bo'lardi. Soxta FAIL soxta PASS'dan
+  yaxshi emas: ikkalasi ham noto'g'ri ma'lumot.
+
+O'rniga qidiruv KENGAYTIRILDI — yangi hech narsa yaratmasdan.
+Endi uchala manba tekshiriladi:
+
+* lentadagi `isVideo` postlar;
+* PROFIL FONLARI (`/api/upload-profile-bg` ham `video/mp4` ni
+  qabul qiladi, ya'ni fon video bo'lishi mumkin);
+* istoryalar.
+
+Hisobda ulardan birortasida video bo'lsa, HAQIQIY dekoder bilan
+ijro sinaladi. Bo'lmasa — DATA REQUIRED, PASS emas.
+
+DEKODER YO'LI ALLAQACHON ISBOTLANGAN: `Music player` qatori aynan
+o'sha `video_player` plaginidan foydalanadi va E2E #10 da haqiqiy
+226 soniyalik trekni ochib, ijro etib, to'xtatdi.
