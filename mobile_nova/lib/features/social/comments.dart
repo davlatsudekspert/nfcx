@@ -39,6 +39,7 @@ class CommentsSection extends ConsumerStatefulWidget {
     required this.kind,
     required this.id,
     this.ownerCode = '',
+    this.focusNode,
   });
 
   /// `post` | `company_post` | `story` | `company_story`.
@@ -47,6 +48,12 @@ class CommentsSection extends ConsumerStatefulWidget {
 
   /// Kontent egasining kodi — shikoyatda yuboriladi.
   final String ownerCode;
+
+  /// Tashqaridan fokus berish uchun. Post ekranidagi izoh tugmasi
+  /// aynan shuni ishlatadi: bosilganda klaviatura ochilib, kursor
+  /// yozish maydoniga tushadi. Ilgari o'sha tugma umuman
+  /// `onTap` siz edi — bosilardi, lekin hech narsa bo'lmasdi.
+  final FocusNode? focusNode;
 
   @override
   ConsumerState<CommentsSection> createState() => _CommentsSectionState();
@@ -146,6 +153,7 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
                   Expanded(
                     child: TextField(
                       controller: _text,
+                      focusNode: widget.focusNode,
                       enabled: !_busy,
                       minLines: 1,
                       maxLines: 4,

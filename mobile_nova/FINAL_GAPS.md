@@ -445,3 +445,57 @@ Serverda qo'llab-quvvatlanadigan amal — `blocked`. Endi ilovada
 zararsizlantirish uchun yetarli. Bog'lanishni butunlay olib tashlash
 yo'li serverda YO'Q va ilova uni bordek ko'rsatmaydi.
 
+
+---
+
+## 10. Amali yo'q ikki boshqaruv (topildi va tuzatildi)
+
+Bu ikkitasi barcha oldingi tekshiruvlardan O'TIB KETGAN: CI yashil
+edi, `flutter analyze` toza edi, `no_op_audit_test` ham indamagan.
+Sababi tekshiruvlarning o'zida edi.
+
+### 10.1 Post ekranidagi "izoh" tugmasi
+
+    _Action(
+      icon: Icons.mode_comment_outlined,
+      label: formatCount(p.comments),
+      tint: t.text2,
+    )                                   // <- `onTap` YO'Q
+
+`_Action` ichida `PressableScale(onTap: onTap)` turadi. `onTap`
+`null` bo'lganda ham vidjet o'sha joyda, o'sha ko'rinishda qoladi:
+bosiladi, lekin hech narsa bo'lmaydi.
+
+NIMA UCHUN QO'RIQCHI TUTMADI: `no_op_audit_test` `onTap: () {}` va
+`onTap: null` ni qidirardi. Bu yerda esa `onTap` **umuman
+yozilmagan** — ikkala naqshga ham tushmaydi.
+
+Tuzatish: `CommentsSection` ga ixtiyoriy `focusNode` qo'shildi,
+tugma esa shu maydonga fokus beradi — bosilganda klaviatura
+ochiladi va kursor izoh yozish joyiga tushadi.
+
+### 10.2 Reels'dagi "Ulashish" tugmasi
+
+    onTap: () => context.push(Routes.post(p.id, code: p.code)),
+
+Yorlig'i `actionShare` ("Ulashish"), amali esa post ekranini ochish.
+Tizimning ulashish oynasi hech qachon chiqmasdi. Bu 10.1 dan ham
+yashirinroq: `onTap` BOR, demak har qanday "bo'sh handler"
+tekshiruvi buni toza deb ko'radi.
+
+Tuzatish: `shareLink('$kApiBase/<code>')` — ilovaning qolgan yetti
+joyida ishlatiladigan o'sha yo'l. Kod bo'sh bo'lsa `shareText`.
+
+### Qo'riqchilar kuchaytirildi
+
+`test/no_op_audit_test.dart` ga ikkita sinov qo'shildi:
+
+* bosiladigan `_Action` ning hammasida `onTap` borligi. QAVSLAR
+  SANALADI, regexp emas — birinchi urinishimda
+  `_Action\(([^;]*?)\)` yozgandim va u `formatCount(p.comments)`
+  ning yopuvchi qavsida to'xtab, argumentlar ro'yxatini yarmida
+  kesardi; natijada butunlay to'g'ri kod ham xato deb belgilanardi;
+* `l.actionShare` yorlig'i bor faylda `shareLink`/`shareText`
+  chaqiruvi ham borligi.
+
+Ikkalasi ham emulyatorsiz, `flutter test` da bir soniyada ishlaydi.

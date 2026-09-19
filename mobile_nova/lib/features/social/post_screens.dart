@@ -54,6 +54,17 @@ class _PostScreenState extends ConsumerState<PostScreen> {
   bool? _likedOverride;
   int _likeDelta = 0;
 
+  /// Izoh yozish maydonining fokusi. "Izoh" tugmasi shu orqali
+  /// klaviaturani ochadi — ilgari o'sha tugma `onTap` siz edi va
+  /// bosilganda mutlaqo hech narsa bo'lmasdi.
+  final _commentFocus = FocusNode();
+
+  @override
+  void dispose() {
+    _commentFocus.dispose();
+    super.dispose();
+  }
+
   Future<void> _toggleLike(Post p) async {
     final liked = _likedOverride ?? p.liked;
     setState(() {
@@ -179,6 +190,7 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                     icon: Icons.mode_comment_outlined,
                     label: formatCount(p.comments),
                     tint: t.text2,
+                    onTap: _commentFocus.requestFocus,
                   ),
                   const Spacer(),
                   _Action(
@@ -195,6 +207,7 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                 kind: 'post',
                 id: p.id,
                 ownerCode: p.code,
+                focusNode: _commentFocus,
               ),
             ],
           );

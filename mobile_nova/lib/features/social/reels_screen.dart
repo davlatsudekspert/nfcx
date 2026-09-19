@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../core/network/api_client.dart';
+import '../../core/utils/sharing.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/social_repository.dart';
 import '../../design/theme/typography.dart';
@@ -308,7 +310,14 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
                 _Action(
                   icon: Icons.ios_share_rounded,
                   label: l.actionShare,
-                  onTap: () => context.push(Routes.post(p.id, code: p.code)),
+                  // HAQIQIY ulashish. Ilgari bu tugma ham izoh
+                  // tugmasi kabi post ekranini ochardi: yorlig'i
+                  // "Ulashish" bo'lsa-da, tizim ulashish oynasi
+                  // hech qachon chiqmasdi.
+                  onTap: () => p.code.isEmpty
+                      ? shareText(p.text)
+                      : shareLink('$kApiBase/${Uri.encodeComponent(p.code)}',
+                          title: p.authorName),
                 ),
               ],
             ),
