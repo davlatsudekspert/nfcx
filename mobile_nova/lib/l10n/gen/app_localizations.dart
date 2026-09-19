@@ -984,7 +984,7 @@ abstract class L {
   /// No description provided for @nfcBlockConfirm.
   ///
   /// In uz, this message translates to:
-  /// **'Karta bloklansinmi? Tegizilganda u profilni ochmay qo\'yadi. Keyin blokdan chiqarish mumkin.'**
+  /// **'Karta bloklansinmi? Tegizilganda u profilni ochmay qo‘yadi. Keyin blokdan chiqarish mumkin.'**
   String get nfcBlockConfirm;
 
   /// No description provided for @nfcUnblockCard.

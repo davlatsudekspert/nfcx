@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
 import 'package:nfcstore_nova/l10n/gen/app_localizations_en.dart';
@@ -137,5 +140,32 @@ void main() {
       final loaded = await L.delegate.load(Locale(code));
       expect(loaded.localeName, code);
     }
+  });
+
+  test('o\'zbek matnida ASCII apostrof YO\'Q', () {
+    // O'ZBEK LOTIN TIPOGRAFIYASI.
+    //
+    // Loyiha ikki xil belgi ishlatadi va ikkalasi ham TO'G'RI:
+    //
+    //   ‘  (U+2018) — `o‘`, `g‘` harflari uchun: "o‘chirish",
+    //                 "sovg‘a";
+    //   ’  (U+2019) — ayirish belgisi: "ma’lumot", "ID’lar".
+    //
+    // ASCII `'` esa ikkalasidan ham farq qiladi va matn ichida
+    // boshqacha ko'rinadi. Bitta satrda shunday bo'lgan edi
+    // ("qo'yadi") — qolgan 337 tasida to'g'ri belgi turardi.
+    // Ko'z bilan deyarli sezilmaydi, shuning uchun sinov.
+    final bad = <String>[];
+    for (final lang in ['uz']) {
+      final file = File('lib/l10n/arb/app_$lang.arb');
+      final map = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+      map.forEach((k, v) {
+        if (k.startsWith('@') || v is! String) return;
+        if (v.contains("'")) bad.add('$lang.$k = "$v"');
+      });
+    }
+    expect(bad, isEmpty,
+        reason: 'ASCII apostrof ishlatilgan — `‘` yoki `’` '
+            'bo\'lishi kerak:\n${bad.join('\n')}');
   });
 }

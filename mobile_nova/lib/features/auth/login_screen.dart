@@ -188,8 +188,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     }),
           ),
           const SizedBox(height: Gap.section),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          // `Wrap`, `Row` EMAS. Tor ekranda (320 px) o'zbekcha
+          // "Hisobingiz yo‘qmi?" + "Ro‘yxatdan o‘tish" bitta
+          // qatorga sig'masdi va RenderFlex overflow berardi.
+          // `Wrap` sig'masa ikkinchi qatorga o'tkazadi.
+          Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Text(l.loginNoAccount,
                   style: Theme.of(context).textTheme.bodySmall),

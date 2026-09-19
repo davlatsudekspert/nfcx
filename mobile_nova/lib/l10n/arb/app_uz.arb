@@ -178,7 +178,7 @@
   "nfcPrimary": "Asosiy",
   "nfcLinkCard": "Kartani ulash",
   "nfcBlockCard": "Kartani bloklash",
-  "nfcBlockConfirm": "Karta bloklansinmi? Tegizilganda u profilni ochmay qo'yadi. Keyin blokdan chiqarish mumkin.",
+  "nfcBlockConfirm": "Karta bloklansinmi? Tegizilganda u profilni ochmay qo‘yadi. Keyin blokdan chiqarish mumkin.",
   "nfcUnblockCard": "Blokdan chiqarish",
   "nfcDeleteConfirm": "Bu NFC ID o‘chirilsinmi? Bu amalni qaytarib bo‘lmaydi.",
   "nfcScans": "Skanerlashlar",

@@ -462,7 +462,7 @@ class LUz extends L {
 
   @override
   String get nfcBlockConfirm =>
-      'Karta bloklansinmi? Tegizilganda u profilni ochmay qo\'yadi. Keyin blokdan chiqarish mumkin.';
+      'Karta bloklansinmi? Tegizilganda u profilni ochmay qo‘yadi. Keyin blokdan chiqarish mumkin.';
 
   @override
   String get nfcUnblockCard => 'Blokdan chiqarish';

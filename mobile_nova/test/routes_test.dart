@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nfcstore_nova/routing/routes.dart';
@@ -98,5 +100,36 @@ void main() {
 
   test('noma’lum manzil xato sahifasiga tushadi, qulamaydi', () {
     expect(routeExists(router, '/bunday-yol-yoq'), isFalse);
+  });
+
+  test('App Links BUTUN domenni da\'vo qilmaydi', () {
+    // Ilgari manifestda shunday edi:
+    //
+    //     <data android:scheme="https" android:host="nfcstore.uz"/>
+    //
+    // YO'LSIZ. Ya'ni ilova `https://nfcstore.uz/*` ning HAMMASINI
+    // da'vo qilardi: bosh sahifa, do'kon, blog, admin, to'lov.
+    // Ilovada ular uchun ekran yo'q, ustiga `https://nfcstore.uz/`
+    // `Routes.splash` (`/`) ga mos kelib, sayt o'rniga ilova
+    // ochilardi.
+    final manifest =
+        File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+
+    // VIEW filtri (brauzer havolasi) — faqat `pathPrefix` bilan.
+    final viewFilter = RegExp(
+      r'<intent-filter android:autoVerify="true">(.*?)</intent-filter>',
+      dotAll: true,
+    ).firstMatch(manifest);
+    expect(viewFilter, isNotNull, reason: 'App Links filtri yo\'q');
+
+    final body = viewFilter!.group(1)!;
+    final hostOnly = RegExp(
+      r'<data[^>]*android:host="nfcstore\.uz"(?![^>]*pathPrefix)[^>]*/>',
+    );
+    expect(hostOnly.hasMatch(body), isFalse,
+        reason: 'App Links filtrida YO\'LSIZ host da\'vosi bor — '
+            'ilova saytning hamma havolasini yutib yuboradi');
+    expect(body.contains('pathPrefix'), isTrue,
+        reason: 'App Links filtrida `pathPrefix` yo\'q');
   });
 }

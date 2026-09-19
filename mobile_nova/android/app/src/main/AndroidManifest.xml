@@ -29,11 +29,32 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- APP LINKS — FAQAT ILOVA EGALIK QILADIGAN YO'LLAR.
+                 Ilgari bu yerda `host="nfcstore.uz"` turardi va YO'L
+                 KO'RSATILMAGANDI. Bu butun domenni da'vo qilish
+                 degani: saytning bosh sahifasi, do'kon, blog, admin
+                 va to'lov sahifalari ham ilovaga tortilardi. Ilovada
+                 esa ular uchun ekran YO'Q — odam sayt o'rniga
+                 tushunarsiz joyga tushardi. `https://nfcstore.uz/`
+                 esa `Routes.splash` ga (`/`) mos kelib, saytning
+                 bosh sahifasi o'rniga ilova ochilardi.
+
+                 Endi faqat haqiqatan boshqariladigan yo'llar:
+                 profil, kompaniya vitrinasi, post, story va NFC.
+                 Qolgan hamma narsa brauzerda ochiladi — to'g'ri
+                 xulq, chunki sayt ularni o'zi ko'rsatadi.
+
+                 JISMONIY KARTA TEGIZISH BUNDAN TA'SIRLANMAYDI: u
+                 pastdagi `NDEF_DISCOVERED` filtri orqali keladi. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="https" android:host="nfcstore.uz"/>
+                <data android:scheme="https" android:host="nfcstore.uz" android:pathPrefix="/u/"/>
+                <data android:scheme="https" android:host="nfcstore.uz" android:pathPrefix="/c/"/>
+                <data android:scheme="https" android:host="nfcstore.uz" android:pathPrefix="/post/"/>
+                <data android:scheme="https" android:host="nfcstore.uz" android:pathPrefix="/story/"/>
+                <data android:scheme="https" android:host="nfcstore.uz" android:pathPrefix="/nfc/"/>
             </intent-filter>
             <intent-filter>
                 <action android:name="android.nfc.action.NDEF_DISCOVERED"/>
