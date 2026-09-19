@@ -56,12 +56,6 @@ enum ProfileKind { personal, business }
 /// UMUMIY nomlar bor — ekran `if (business) ... else ...` yozib
 /// o'tirmaydi.
 class ActiveProfile {
-  const ActiveProfile._({
-    required this.kind,
-    this.id,
-    this.business,
-  });
-
   const ActiveProfile.personal(NfcId this.id)
       : kind = ProfileKind.personal,
         business = null;

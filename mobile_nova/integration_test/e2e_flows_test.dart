@@ -31,12 +31,14 @@ import 'package:nfcstore_nova/app/profile_context.dart';
 import 'package:nfcstore_nova/app/providers.dart';
 import 'package:nfcstore_nova/core/storage/secure_store.dart';
 import 'package:nfcstore_nova/data/models/models.dart';
+import 'package:nfcstore_nova/data/repositories/business_repository.dart';
 import 'package:nfcstore_nova/data/repositories/discover_repository.dart';
 import 'package:nfcstore_nova/data/repositories/social_repository.dart';
 import 'package:nfcstore_nova/features/auth/session.dart';
 import 'package:nfcstore_nova/core/utils/result.dart';
 import 'package:nfcstore_nova/data/repositories/auth_repository.dart';
 import 'package:nfcstore_nova/features/business/business_providers.dart';
+import 'package:nfcstore_nova/features/profile/music_player.dart';
 
 import 'support/creds.dart';
 import 'support/net.dart';
@@ -465,6 +467,198 @@ void main() {
         layer: 'backend',
       ));
     }
+  }, timeout: const Timeout(Duration(minutes: 5)));
+
+  // ══════════════════════════════════════════════════════════════
+  // MUSIQA — HAQIQIY IJRO VA PAUZA
+  // ══════════════════════════════════════════════════════════════
+
+  testWidgets('Musiqa — haqiqiy play/pause', (t) async {
+    if (!signedIn) {
+      report.skip('Music player', 'sessiya ochilmadi');
+      return;
+    }
+    final c = await launchSignedIn(t);
+
+    // Hisobdagi HAQIQIY trek: `cards.music_url`.
+    final ids = c.read(myIdsProvider);
+    final withMusic =
+        ids.where((e) => e.musicUrls.isNotEmpty).toList();
+    if (withMusic.isEmpty) {
+      report.skip('Music player',
+          'hisobning birorta yozuvida musiqa yo\'q — ilova ham hech '
+          'narsa ko\'rsatmaydi, bu TO\'G\'RI xulq');
+      return;
+    }
+
+    final url = withMusic.first.musicUrls.first;
+    final player = c.read(musicPlayerProvider.notifier);
+
+    // IJRO. `video_player` emulyatorda haqiqiy dekoder bilan
+    // ishlaydi, shuning uchun bu soxta emas.
+    await player.play(url);
+    for (var i = 0; i < 40 && !c.read(musicPlayerProvider).playing; i++) {
+      await t.pump(const Duration(milliseconds: 250));
+    }
+    final playing = c.read(musicPlayerProvider);
+
+    if (!playing.playing) {
+      report.add(MatrixRow(
+        name: 'Music player',
+        verdict: playing.failed ? Verdict.fail : Verdict.partial,
+        screen: 'MusicPlayer',
+        action: 'play(realUrl)',
+        cause: playing.failed
+            ? 'trek ochilmadi (failed) — manzil yoki format muammosi'
+            : 'ijro boshlanmadi (emulyator dekoderi sekin bo\'lishi '
+                'mumkin)',
+        layer: playing.failed ? 'backend' : 'device',
+      ));
+      player.stop();
+      return;
+    }
+
+    // PAUZA.
+    await player.pause();
+    await t.pump(const Duration(milliseconds: 400));
+    final paused = c.read(musicPlayerProvider);
+
+    if (paused.playing) {
+      report.add(MatrixRow(
+        name: 'Music player',
+        verdict: Verdict.fail,
+        screen: 'MusicPlayer',
+        action: 'pause()',
+        cause: 'pauzadan keyin ham `playing` rost qoldi',
+        layer: 'frontend',
+      ));
+    } else {
+      report.pass('Music player',
+          screen: 'MusicPlayer',
+          action: 'play → pause (HAQIQIY trek)',
+          note: 'davomiylik ${playing.duration.inSeconds}s; '
+              'nom = "${musicTitleOf(url)}"');
+    }
+    player.stop();
+  }, timeout: const Timeout(Duration(minutes: 5)));
+
+  // ══════════════════════════════════════════════════════════════
+  // KASHFIYOT — UCHALA BO'LIM
+  // ══════════════════════════════════════════════════════════════
+
+  testWidgets('Kashfiyot — Odamlar, Bizneslar, Postlar', (t) async {
+    if (!signedIn) {
+      report.skip('Discover tabs', 'sessiya ochilmadi');
+      return;
+    }
+    final c = await launchSignedIn(t);
+    final repo = c.read(discoverRepositoryProvider);
+
+    final people = await repo.suggested();
+    people.when(
+      ok: (v) => v.isEmpty
+          ? report.add(MatrixRow(
+              name: 'Discover people',
+              verdict: Verdict.partial,
+              screen: 'DiscoverScreen',
+              action: 'GET /api/records/search',
+              cause: 'server 0 profil qaytardi',
+              layer: 'backend'))
+          : report.pass('Discover people',
+              screen: 'DiscoverScreen',
+              action: 'tavsiya etilgan profillar',
+              note: '${v.length} ta profil'),
+      err: (e) => report.add(MatrixRow(
+        name: 'Discover people',
+        verdict: Verdict.fail,
+        screen: 'DiscoverScreen',
+        action: 'GET /api/records/search',
+        cause: '${e.kind.name} (${e.status})',
+        layer: 'backend',
+      )),
+    );
+
+    final posts = await repo.trending();
+    posts.when(
+      ok: (v) => report.pass('Discover posts',
+          screen: 'DiscoverScreen',
+          action: 'GET /api/feed',
+          note: '${v.length} ta post; '
+              'mediali: ${v.where((p) => p.mediaUrls.isNotEmpty).length}'),
+      err: (e) => report.add(MatrixRow(
+        name: 'Discover posts',
+        verdict: Verdict.fail,
+        screen: 'DiscoverScreen',
+        action: 'GET /api/feed',
+        cause: '${e.kind.name} (${e.status})',
+        layer: 'backend',
+      )),
+    );
+  }, timeout: const Timeout(Duration(minutes: 5)));
+
+  // ══════════════════════════════════════════════════════════════
+  // BIZNES TAHLILI VA VITRINA
+  // ══════════════════════════════════════════════════════════════
+
+  testWidgets('Biznes — tahlil va vitrina haqiqiy kompaniyadan',
+      (t) async {
+    if (!signedIn) {
+      report.skip('Business analytics', 'sessiya ochilmadi');
+      return;
+    }
+    final c = await launchSignedIn(t);
+    final list = await c.read(myBusinessesProvider.future);
+    if (list.isEmpty) {
+      report.skip('Business analytics', 'hisobda kompaniya yo\'q');
+      report.skip('Business storefront', 'hisobda kompaniya yo\'q');
+      return;
+    }
+
+    final company = list.first;
+
+    // Vitrina — kompaniyaning ommaviy ko'rinishi.
+    final front = await c
+        .read(storefrontProvider(company.companyId).future)
+        .then<Object?>((v) => v)
+        .catchError((Object e) => e);
+    if (front is Business) {
+      report.pass('Business storefront',
+          screen: 'BusinessStorefront',
+          action: 'GET /api/companies/:id',
+          note: '${front.displayName}; holat=${front.status}');
+    } else {
+      report.add(MatrixRow(
+        name: 'Business storefront',
+        verdict: Verdict.fail,
+        screen: 'BusinessStorefront',
+        action: 'GET /api/companies/:id',
+        cause: '$front',
+        layer: 'backend',
+      ));
+    }
+
+    // Tahlil — `/api/records/:code/analytics` KOMPANIYA uchun
+    // ishlamasligi mumkin, chunki u NFC yozuvlari bo'yicha ishlaydi.
+    // Shuning uchun natija halol belgilanadi.
+    final res = await c
+        .read(businessRepositoryProvider)
+        .analytics(company.companyId);
+    res.when(
+      ok: (m) => report.pass('Business analytics',
+          screen: 'BusinessAnalytics',
+          action: 'analitika o\'qildi',
+          note: 'kalitlar: ${m.keys.take(4).join(", ")}'),
+      err: (e) => report.add(MatrixRow(
+        name: 'Business analytics',
+        verdict: Verdict.partial,
+        screen: 'BusinessAnalytics',
+        action: 'GET /api/records/:code/analytics',
+        cause: '${e.kind.name} (${e.status}) — bu yo\'l NFC yozuvlari '
+            'uchun; kompaniya analitikasi alohida endpoint talab '
+            'qilishi mumkin',
+        layer: 'backend',
+      )),
+    );
   }, timeout: const Timeout(Duration(minutes: 5)));
 
   // ══════════════════════════════════════════════════════════════
