@@ -576,3 +576,30 @@ buni eslab qolishi shart emas.
 * `MusicState` ga `error` qo'shildi: `errorDescription` hisobotga
   tushadi. "Ochilmadi" bilan xatoni topib bo'lmaydi, dekoderning
   o'z matni bilan bo'ladi.
+
+### 11.1 Yozish yo'li ham simmetrik bo'lishi kerak edi
+
+Manzilni O'QISHDA to'ldirish yetarli emas. Tahrirlash ekrani
+maydonni modeldan oladi:
+
+    _avatarUrl = id.avatarUrl;   // endi TO'LIQ manzil
+
+Foydalanuvchi faqat ismini o'zgartirib saqlasa, o'sha to'liq manzil
+serverga qaytib ketardi. Server uni RAD ETMAYDI — `safeUrl` ichidagi
+`new URL(...)` shoxi to'g'ri http(s) manzilni qabul qiladi — va
+bazaga absolyut manzil yozilardi.
+
+Ishlashda darhol ko'rinmaydi. Lekin yozuv DOMENGA bog'lanib qoladi:
+domen o'zgarsa yoki yozuv boshqa muhitga ko'chirilsa, rasm
+yo'qoladi. Saqlanadigan shakl o'zgarmasligi kerak.
+
+`storageUrl` — `mediaUrl` ning teskarisi — `profileRepository`
+ning YOZISH chegarasida qo'llanadi, ya'ni `updateProfile` ning
+uchala chaqiruvchisi ham (profil sozlash, profil tahriri, NFC ID
+tahriri) avtomat qamraladi.
+
+Biznes tahriri media maydonlarini umuman yubormaydi — tekshirildi,
+tegilmadi.
+
+Sinovda aylanma xossa ham bor: `storageUrl(mediaUrl(x)) == x`.
+Buzilsa, saqlangan qiymat har tahrirda o'zgarib ketardi.

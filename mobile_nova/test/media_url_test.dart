@@ -46,6 +46,36 @@ void main() {
     });
   });
 
+  group('storageUrl — serverga YOZISH uchun', () {
+    test('bizning bazamiz olib tashlanadi', () {
+      // O'qishda model manzilni to'ldiradi, shuning uchun tahrir
+      // maydoni to'liq manzil bilan to'ladi. Foydalanuvchi faqat
+      // ismini o'zgartirsa ham, o'sha manzil serverga qaytadi —
+      // va baza domenga bog'lanib qolardi.
+      expect(storageUrl('$kApiBase/uploads/a.jpg'), '/uploads/a.jpg');
+    });
+
+    test('BEGONA domen tegilmaydi', () {
+      const ext = 'https://cdn.example.com/a.mp3';
+      expect(storageUrl(ext), ext);
+    });
+
+    test('allaqachon nisbiy bo\'lsa o\'zgarmaydi', () {
+      expect(storageUrl('/uploads/a.jpg'), '/uploads/a.jpg');
+    });
+
+    test('bo\'sh bo\'sh qoladi', () {
+      expect(storageUrl(''), '');
+    });
+
+    test('mediaUrl va storageUrl bir-birini QAYTARADI', () {
+      // Aylanma: nisbiy → to'liq → nisbiy. Shu xossa buzilsa,
+      // saqlangan qiymat har tahrirda o'zgarib ketardi.
+      const rel = '/uploads/6b8fd42d944f7543da7c';
+      expect(storageUrl(mediaUrl(rel)), rel);
+    });
+  });
+
   group('modellar manzilni TO\'LIQ qaytaradi', () {
     test('NfcId — avatar, muqova va MUSIQA', () {
       final id = NfcId.fromJson({

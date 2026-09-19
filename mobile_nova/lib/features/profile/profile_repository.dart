@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers.dart';
 import '../../core/errors/app_error.dart';
 import '../../core/network/api_client.dart';
+import '../../core/utils/media_url.dart';
 import '../../core/utils/result.dart';
 import '../../data/models/models.dart';
 
@@ -37,8 +38,12 @@ class ProfileRepository {
         if (name != null) 'name': name,
         if (bio != null) 'bio': bio,
         if (role != null) 'role': role,
-        if (avatarUrl != null) 'avatarUrl': avatarUrl,
-        if (coverUrl != null) 'bgUrl': coverUrl,
+        // `storageUrl` — o'qishdagi `mediaUrl` ning teskarisi.
+        // Ekranga to'liq manzil boradi, bazaga esa AYNAN o'sha
+        // nisbiy shakl qaytadi. Aks holda yozuv domenga bog'lanib
+        // qolardi.
+        if (avatarUrl != null) 'avatarUrl': storageUrl(avatarUrl),
+        if (coverUrl != null) 'bgUrl': storageUrl(coverUrl),
         if (links != null) ...links,
       });
 

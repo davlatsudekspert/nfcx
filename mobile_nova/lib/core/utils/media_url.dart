@@ -54,3 +54,32 @@ String mediaUrl(String raw) {
       : kApiBase;
   return s.startsWith('/') ? '$base$s' : '$base/$s';
 }
+
+/// `mediaUrl` ning TESKARISI — serverga YOZISH uchun.
+///
+/// ## NIMA UCHUN KERAK
+///
+/// O'qishda model manzilni to'ldiradi, shuning uchun tahrirlash
+/// ekranidagi maydon TO'LIQ manzil bilan to'ladi:
+///
+///     _avatarUrl = id.avatarUrl;   // https://nfcstore.uz/uploads/av.jpg
+///
+/// Foydalanuvchi faqat ismini o'zgartirib saqlasa, o'sha to'liq
+/// manzil serverga qaytib ketardi. Server uni RAD ETMAYDI —
+/// `safeUrl` ichidagi `new URL(...)` shoxi to'g'ri http(s) manzilni
+/// qabul qiladi — va bazaga absolyut manzil yozilardi.
+///
+/// Ishlashda ko'rinmaydi, lekin yozuv DOMENGA bog'lanib qoladi:
+/// domen o'zgarsa yoki yozuv boshqa muhitga ko'chirilsa, rasm
+/// yo'qoladi. Saqlanadigan shakl o'zgarmasligi kerak.
+///
+/// Shuning uchun yozishdan oldin bazamizning prefiksi olib
+/// tashlanadi. BEGONA domen tegilmaydi: u haqiqatan tashqi havola.
+String storageUrl(String full) {
+  final s = full.trim();
+  if (s.isEmpty) return '';
+  final base = kApiBase.endsWith('/')
+      ? kApiBase.substring(0, kApiBase.length - 1)
+      : kApiBase;
+  return s.startsWith('$base/') ? s.substring(base.length) : s;
+}
