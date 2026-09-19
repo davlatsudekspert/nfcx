@@ -204,6 +204,13 @@ jobs:
       - name: Tarjima qoplami
         run: node scripts/test-i18n-coverage.mjs
 
+      # EKRANDA "NaN" CHIQMASIN.
+      # Profilda "Faol bo'lgan: NaN kun oldin" ko'rindi: `timeAgo()`
+      # kiruvchi qiymatni albatta son deb hisoblardi, amalda esa u
+      # ISO satr ham, sekund ham, umuman yo'q ham bo'lishi mumkin.
+      - name: Format xavfsizligi
+        run: node scripts/test-format-safety.mjs
+
       - name: Build (vite build + prepare-sites-build)
         run: npm run build
 
