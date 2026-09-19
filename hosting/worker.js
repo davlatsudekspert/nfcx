@@ -9540,7 +9540,14 @@ async function handleRequest(request, env, url) {
       // Natijasi: ilovadagi Reels tabi BIRINCHI KUNDAN BERI
       // "Topilmadi" ko'rsatib kelgan. Brauzerda sinalmagani uchun
       // sezilmagan — Reels faqat ilovada bor.
-      || url.pathname === '/api/feed') {
+      || url.pathname === '/api/feed'
+      // NFC qurilmalari — `coreApi()` ICHIGA qo'shilgan edi, lekin
+      // `coreApi()` ning O'ZI faqat shu ro'yxatdagi yo'llar uchun
+      // chaqiriladi. Tashqi darvozaga qo'shilmagani uchun so'rov
+      // u yerga yetib bormasdi — aynan `/api/feed` bilan bo'lgan
+      // xatoning o'zi (izohi yuqorida).
+      || url.pathname === '/api/my/nfc-devices'
+      || url.pathname.startsWith('/api/my/nfc-devices/')) {
       try {
         const coreRes = await coreApi(request, env, url);
         if (coreRes) return coreRes;
