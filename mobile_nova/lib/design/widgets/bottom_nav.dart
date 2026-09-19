@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../motion/motion.dart';
 import '../tokens/nfc_tokens.dart';
 import '../tokens/shapes.dart';
+import 'brand_logo.dart';
 import 'surfaces.dart';
 
 class NavItem {
@@ -196,7 +197,25 @@ class _CenterNavButton extends StatelessWidget {
               ),
             ],
           ),
-          child: Icon(item.icon, size: 23, color: t.onAccent),
+          // Generic NFC ikonkasi EMAS, brend belgisi.
+          //
+          // Tugmaning oltin doirasi o'z holicha qoladi: ichiga na
+          // plastina, na ikkinchi doira qo'yiladi — aks holda
+          // "doira ichida doira" hosil bo'lardi. Belgi to'g'ridan
+          // -to'g'ri oltin sirt ustida, `onAccent` siyohida turadi.
+          //
+          // Kenglik doiraning 60% i. Belgi 1.955:1 bo'lgani uchun
+          // balandligi 30% bo'ladi va eng uzoq burchagi markazdan
+          // 0.35 * diametr uzoqlikda — doira radiusi 0.5, ya'ni
+          // atrofida ~30% zaxira qoladi.
+          child: Center(
+            child: BrandLogo(
+              size: kNavCenterSize * .60,
+              style: BrandLogoStyle.markOnly,
+              tint: t.onAccent,
+              semanticLabel: item.label,
+            ),
+          ),
         ),
       ),
     );
