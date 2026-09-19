@@ -354,5 +354,17 @@
   "reportNote": "Комментарий (необязательно)",
   "blockUser": "Заблокировать",
   "unblockUser": "Разблокировать",
-  "blockedList": "Заблокированные"
+  "blockedList": "Заблокированные",
+  "lockTitle": "Блокировка приложения",
+  "lockHint": "Введите PIN-код",
+  "lockWrong": "Неверный PIN",
+  "lockSetPin": "Новый PIN-код",
+  "lockRepeatPin": "Повторите PIN-код",
+  "lockMismatch": "PIN-коды не совпали",
+  "lockEnabled": "Блокировка включена",
+  "lockBiometricReason": "Открыть NFCSTORE",
+  "lockBiometric": "Разблокировка биометрией",
+  "lockBiometricNone": "На этом устройстве нет биометрии",
+  "lockOff": "Выключить блокировку",
+  "lockDesc": "Требует PIN при открытии приложения на этом устройстве. Это не пароль аккаунта."
 }

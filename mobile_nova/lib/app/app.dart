@@ -7,6 +7,7 @@ import '../design/theme/app_theme.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../routing/router.dart';
 import 'providers.dart';
+import '../features/settings/app_lock.dart';
 
 class NovaApp extends ConsumerWidget {
   const NovaApp({super.key});
@@ -47,7 +48,10 @@ class NovaApp extends ConsumerWidget {
               data: mq.copyWith(
                 textScaler: mq.textScaler.clamp(minScaleFactor: .85, maxScaleFactor: 1.3),
               ),
-              child: child ?? const SizedBox.shrink(),
+              // Qulf butun ilovaning USTIGA chiziladi va marshrutni
+              // almashtirmaydi: ochilganda foydalanuvchi qayerda edi,
+              // o'sha yerda qoladi.
+              child: AppLockGate(child: child ?? const SizedBox.shrink()),
             );
           },
         ),

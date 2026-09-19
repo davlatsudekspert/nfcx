@@ -251,8 +251,8 @@ class MusicPlayer extends StateNotifier<MusicState>
   /// Qaytganda O'ZI QAYTA BOSHLANMAYDI: ijro har doim foydalanuvchi
   /// harakatidan boshlanadi.
   @override
-  void didChangeAppLifecycleState(AppLifecycleState s) {
-    if (s != AppLifecycleState.resumed && state.playing) stop();
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed && this.state.playing) stop();
   }
 
   Future<void> toggle(String url) async {

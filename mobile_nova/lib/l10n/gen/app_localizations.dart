@@ -1916,6 +1916,78 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Bloklanganlar'**
   String get blockedList;
+
+  /// No description provided for @lockTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ilova qulfi'**
+  String get lockTitle;
+
+  /// No description provided for @lockHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'PIN kodni kiriting'**
+  String get lockHint;
+
+  /// No description provided for @lockWrong.
+  ///
+  /// In uz, this message translates to:
+  /// **'PIN noto‘g‘ri'**
+  String get lockWrong;
+
+  /// No description provided for @lockSetPin.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yangi PIN kod'**
+  String get lockSetPin;
+
+  /// No description provided for @lockRepeatPin.
+  ///
+  /// In uz, this message translates to:
+  /// **'PIN kodni takrorlang'**
+  String get lockRepeatPin;
+
+  /// No description provided for @lockMismatch.
+  ///
+  /// In uz, this message translates to:
+  /// **'PIN kodlar mos kelmadi'**
+  String get lockMismatch;
+
+  /// No description provided for @lockEnabled.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ilova qulfi yoqildi'**
+  String get lockEnabled;
+
+  /// No description provided for @lockBiometricReason.
+  ///
+  /// In uz, this message translates to:
+  /// **'NFCSTORE’ni ochish'**
+  String get lockBiometricReason;
+
+  /// No description provided for @lockBiometric.
+  ///
+  /// In uz, this message translates to:
+  /// **'Biometrika bilan ochish'**
+  String get lockBiometric;
+
+  /// No description provided for @lockBiometricNone.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu qurilmada biometrika yo‘q'**
+  String get lockBiometricNone;
+
+  /// No description provided for @lockOff.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qulfni o‘chirish'**
+  String get lockOff;
+
+  /// No description provided for @lockDesc.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ilovani shu qurilmada ochishni PIN bilan to‘sadi. Bu akkaunt paroli emas.'**
+  String get lockDesc;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

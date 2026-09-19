@@ -941,4 +941,41 @@ class LUz extends L {
 
   @override
   String get blockedList => 'Bloklanganlar';
+
+  @override
+  String get lockTitle => 'Ilova qulfi';
+
+  @override
+  String get lockHint => 'PIN kodni kiriting';
+
+  @override
+  String get lockWrong => 'PIN noto‘g‘ri';
+
+  @override
+  String get lockSetPin => 'Yangi PIN kod';
+
+  @override
+  String get lockRepeatPin => 'PIN kodni takrorlang';
+
+  @override
+  String get lockMismatch => 'PIN kodlar mos kelmadi';
+
+  @override
+  String get lockEnabled => 'Ilova qulfi yoqildi';
+
+  @override
+  String get lockBiometricReason => 'NFCSTORE’ni ochish';
+
+  @override
+  String get lockBiometric => 'Biometrika bilan ochish';
+
+  @override
+  String get lockBiometricNone => 'Bu qurilmada biometrika yo‘q';
+
+  @override
+  String get lockOff => 'Qulfni o‘chirish';
+
+  @override
+  String get lockDesc =>
+      'Ilovani shu qurilmada ochishni PIN bilan to‘sadi. Bu akkaunt paroli emas.';
 }

@@ -38,6 +38,32 @@ class SecureStore {
       await _s.delete(key: _kToken);
     } catch (_) {/* ignore */}
   }
+
+  /// Lokal ilova qulfining PIN kodi.
+  ///
+  /// Token bilan bir joyda: u ham shu qurilmadagi sir va
+  /// `SharedPreferences` da turishi mumkin emas.
+  static const _kPin = 'nova.appLock.pin';
+
+  Future<String?> readPin() async {
+    try {
+      return await _s.read(key: _kPin);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> writePin(String pin) async {
+    try {
+      await _s.write(key: _kPin, value: pin);
+    } catch (_) {/* ignore */}
+  }
+
+  Future<void> deletePin() async {
+    try {
+      await _s.delete(key: _kPin);
+    } catch (_) {/* ignore */}
+  }
 }
 
 /// Maxfiy BO'LMAGAN sozlamalar: mavzu, til, onboarding holati.

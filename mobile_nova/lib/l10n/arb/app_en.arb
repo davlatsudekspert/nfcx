@@ -354,5 +354,17 @@
   "reportNote": "Note (optional)",
   "blockUser": "Block",
   "unblockUser": "Unblock",
-  "blockedList": "Blocked"
+  "blockedList": "Blocked",
+  "lockTitle": "App lock",
+  "lockHint": "Enter your PIN",
+  "lockWrong": "Wrong PIN",
+  "lockSetPin": "New PIN",
+  "lockRepeatPin": "Repeat the PIN",
+  "lockMismatch": "PINs did not match",
+  "lockEnabled": "App lock enabled",
+  "lockBiometricReason": "Unlock NFCSTORE",
+  "lockBiometric": "Unlock with biometrics",
+  "lockBiometricNone": "No biometrics on this device",
+  "lockOff": "Turn off app lock",
+  "lockDesc": "Asks for a PIN when opening the app on this device. This is not your account password."
 }

@@ -22,6 +22,7 @@ import '../profile/profile_repository.dart';
 import '../../data/repositories/shop_repository.dart';
 import 'settings_screen.dart';
 import '../social/moderation.dart';
+import 'app_lock.dart';
 
 // ------------------------------------------------------------------ mavzu
 
@@ -308,6 +309,58 @@ class _SecuritySettingsScreenState
             busy: _busy,
             onPressed: _codeSent ? _submit : _requestCode,
           ),
+          // ── LOKAL ILOVA QULFI ──────────────────────────────
+          // Bu akkaunt paroli EMAS: server bu haqda bilmaydi.
+          SectionHeader(title: l.lockTitle),
+          Consumer(builder: (context, ref, _) {
+            final lock = ref.watch(appLockProvider);
+            final bio = ref.watch(biometricAvailableProvider);
+            return FloatingSurface(
+              solid: true,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l.lockDesc,
+                      style: Theme.of(context).textTheme.bodyMedium),
+                  const SizedBox(height: Gap.lg),
+                  if (!lock.enabled)
+                    NovaButton(
+                      label: l.lockSetPin,
+                      onPressed: () => showPinSetup(context, ref),
+                    )
+                  else ...[
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: lock.biometric,
+                      // Qurilmada biometrika yo'q bo'lsa tugma
+                      // o'chirilgan va sababi yozilgan — bosilib,
+                      // hech narsa qilmaydigan tugma qolmaydi.
+                      onChanged: bio.valueOrNull == true
+                          ? (v) => ref
+                              .read(appLockProvider.notifier)
+                              .setBiometric(v)
+                          : null,
+                      activeThumbColor: t.accent2,
+                      title: Text(l.lockBiometric,
+                          style: Theme.of(context).textTheme.bodyLarge),
+                      subtitle: bio.valueOrNull == true
+                          ? null
+                          : Text(l.lockBiometricNone,
+                              style:
+                                  Theme.of(context).textTheme.bodySmall),
+                    ),
+                    const SizedBox(height: Gap.sm),
+                    NovaButton(
+                      label: l.lockOff,
+                      tone: ButtonTone.quiet,
+                      onPressed: () =>
+                          ref.read(appLockProvider.notifier).disable(),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          }),
           SectionHeader(title: l.settingsDeleteAccount),
           FloatingSurface(
             solid: true,

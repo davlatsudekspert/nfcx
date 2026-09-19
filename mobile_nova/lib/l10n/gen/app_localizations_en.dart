@@ -938,4 +938,41 @@ class LEn extends L {
 
   @override
   String get blockedList => 'Blocked';
+
+  @override
+  String get lockTitle => 'App lock';
+
+  @override
+  String get lockHint => 'Enter your PIN';
+
+  @override
+  String get lockWrong => 'Wrong PIN';
+
+  @override
+  String get lockSetPin => 'New PIN';
+
+  @override
+  String get lockRepeatPin => 'Repeat the PIN';
+
+  @override
+  String get lockMismatch => 'PINs did not match';
+
+  @override
+  String get lockEnabled => 'App lock enabled';
+
+  @override
+  String get lockBiometricReason => 'Unlock NFCSTORE';
+
+  @override
+  String get lockBiometric => 'Unlock with biometrics';
+
+  @override
+  String get lockBiometricNone => 'No biometrics on this device';
+
+  @override
+  String get lockOff => 'Turn off app lock';
+
+  @override
+  String get lockDesc =>
+      'Asks for a PIN when opening the app on this device. This is not your account password.';
 }

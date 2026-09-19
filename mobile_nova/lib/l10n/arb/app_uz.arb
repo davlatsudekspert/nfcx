@@ -354,5 +354,17 @@
   "reportNote": "Izoh (ixtiyoriy)",
   "blockUser": "Bloklash",
   "unblockUser": "Blokdan chiqarish",
-  "blockedList": "Bloklanganlar"
+  "blockedList": "Bloklanganlar",
+  "lockTitle": "Ilova qulfi",
+  "lockHint": "PIN kodni kiriting",
+  "lockWrong": "PIN noto‘g‘ri",
+  "lockSetPin": "Yangi PIN kod",
+  "lockRepeatPin": "PIN kodni takrorlang",
+  "lockMismatch": "PIN kodlar mos kelmadi",
+  "lockEnabled": "Ilova qulfi yoqildi",
+  "lockBiometricReason": "NFCSTORE’ni ochish",
+  "lockBiometric": "Biometrika bilan ochish",
+  "lockBiometricNone": "Bu qurilmada biometrika yo‘q",
+  "lockOff": "Qulfni o‘chirish",
+  "lockDesc": "Ilovani shu qurilmada ochishni PIN bilan to‘sadi. Bu akkaunt paroli emas."
 }

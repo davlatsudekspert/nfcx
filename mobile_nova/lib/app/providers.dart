@@ -9,6 +9,11 @@ import '../design/tokens/nfc_tokens.dart';
 /// yolg'on `Prefs` beriladi — shuning uchun bu yerda `UnimplementedError`.
 final prefsProvider = Provider<Prefs>((_) => throw UnimplementedError('prefs'));
 
+/// Keystore/Keychain — sessiya tokeni va ilova qulfining PIN kodi.
+///
+/// Testda soxta nusxa bilan almashtiriladi.
+final secureStoreProvider = Provider<SecureStore>((_) => SecureStore());
+
 final apiProvider = Provider<ApiClient>((ref) {
   final api = ApiClient();
   ref.onDispose(() {

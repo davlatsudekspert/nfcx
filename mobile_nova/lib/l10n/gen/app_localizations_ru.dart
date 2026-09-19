@@ -935,4 +935,41 @@ class LRu extends L {
 
   @override
   String get blockedList => 'Заблокированные';
+
+  @override
+  String get lockTitle => 'Блокировка приложения';
+
+  @override
+  String get lockHint => 'Введите PIN-код';
+
+  @override
+  String get lockWrong => 'Неверный PIN';
+
+  @override
+  String get lockSetPin => 'Новый PIN-код';
+
+  @override
+  String get lockRepeatPin => 'Повторите PIN-код';
+
+  @override
+  String get lockMismatch => 'PIN-коды не совпали';
+
+  @override
+  String get lockEnabled => 'Блокировка включена';
+
+  @override
+  String get lockBiometricReason => 'Открыть NFCSTORE';
+
+  @override
+  String get lockBiometric => 'Разблокировка биометрией';
+
+  @override
+  String get lockBiometricNone => 'На этом устройстве нет биометрии';
+
+  @override
+  String get lockOff => 'Выключить блокировку';
+
+  @override
+  String get lockDesc =>
+      'Требует PIN при открытии приложения на этом устройстве. Это не пароль аккаунта.';
 }
