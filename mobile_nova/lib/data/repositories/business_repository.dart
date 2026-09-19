@@ -45,8 +45,11 @@ class BusinessRepository {
         Business.fromJson(((j['company'] ?? j) as Map).cast<String, dynamic>()));
   }
 
+  /// Server bu yerda PATCH kutadi (`app.patch('/api/companies/:companyId')`).
+  /// Ilgari PUT yuborilardi — server uni umuman qabul qilmasdi, ya'ni
+  /// "saqlash" tugmasi hech qachon ishlamagan.
   Future<Result<void>> update(String companyId, Map<String, dynamic> body) =>
-      _api.put<void>('/api/companies/$companyId', body);
+      _api.patch<void>('/api/companies/$companyId', body);
 
   /// Moderatsiyaga yuborish.
   Future<Result<void>> submit(String companyId) =>
@@ -60,10 +63,19 @@ class BusinessRepository {
 
   // ---- katalog ------------------------------------------------------------
 
+  /// Kompaniya katalogi.
+  ///
+  /// `/api/companies/:id/catalog` da FAQAT yozish amallari bor (POST,
+  /// PATCH, DELETE) — o'qish uchun alohida endpoint yo'q. Katalog
+  /// kompaniyaning o'zi bilan birga keladi: `GET /api/companies/:id`
+  /// javobidagi `company.catalog`. Ilgari bu yerda mavjud bo'lmagan
+  /// GET chaqirilardi va katalog hech qachon yuklanmasdi.
   Future<Result<List<CatalogItem>>> catalog(String companyId) async {
-    final res =
-        await _api.get<Map<String, dynamic>>('/api/companies/$companyId/catalog');
-    return res.map((j) => parseList(j['items'] ?? j['catalog'], CatalogItem.fromJson));
+    final res = await _api.get<Map<String, dynamic>>('/api/companies/$companyId');
+    return res.map((j) {
+      final company = (j['company'] ?? j) as Map;
+      return parseList(company['catalog'], CatalogItem.fromJson);
+    });
   }
 
   Future<Result<CatalogItem>> addItem(
@@ -76,7 +88,8 @@ class BusinessRepository {
 
   Future<Result<void>> updateItem(
           String companyId, int itemId, Map<String, dynamic> body) =>
-      _api.put<void>('/api/companies/$companyId/catalog/$itemId', body);
+      // Server PATCH kutadi, PUT emas.
+      _api.patch<void>('/api/companies/$companyId/catalog/$itemId', body);
 
   Future<Result<void>> deleteItem(String companyId, int itemId) =>
       _api.delete<void>('/api/companies/$companyId/catalog/$itemId');

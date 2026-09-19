@@ -49,8 +49,15 @@ class NfcRepository {
     return res.map((j) => parseList(j['devices'] ?? j['items'], NfcDevice.fromJson));
   }
 
+  /// Jismoniy kartani NFC ID dan uzish.
+  ///
+  /// Serverda kartani O'CHIRISH endpointi YO'Q — faqat
+  /// `PUT /api/my/nfc-devices/:id` bor va u `linkedCode` ni
+  /// yangilaydi. Bo'sh qiymat yuborilsa bog'lanish uziladi.
+  /// Ilgari bu yerda DELETE chaqirilardi: server 404 qaytarardi,
+  /// ya'ni "uzish" hech qachon ishlamagan.
   Future<Result<void>> unlinkDevice(int id) =>
-      _api.delete<void>('/api/my/nfc-devices/$id');
+      _api.put<void>('/api/my/nfc-devices/$id', {'linkedCode': ''});
 
   /// Karta tegizilganda o'qilgan token bo'yicha profilni ochish.
   ///

@@ -23,17 +23,23 @@ import '../home/widgets/avatar.dart';
 import '../home/widgets/identity_card.dart';
 import '../profile/profile_repository.dart';
 
+/// Post tafsiloti uchun so'rov: yozuv kodi + post id.
+typedef PostRef = ({String code, int id});
+
 final postProvider =
-    FutureProvider.autoDispose.family<Post, int>((ref, id) async {
-  final res = await ref.watch(socialRepositoryProvider).post(id);
+    FutureProvider.autoDispose.family<Post, PostRef>((ref, r) async {
+  final res = await ref.watch(socialRepositoryProvider).postIn(r.code, r.id);
   return res.when(ok: (v) => v, err: (e) => throw e);
 });
 
 /// Post tafsiloti — yoqtirish, izohlar, ulashish.
 class PostScreen extends ConsumerStatefulWidget {
-  const PostScreen({super.key, required this.id});
+  const PostScreen({super.key, required this.id, this.code = ''});
 
   final int id;
+
+  /// Postning yozuvi — usiz backend'dan postni olib bo'lmaydi.
+  final String code;
 
   @override
   ConsumerState<PostScreen> createState() => _PostScreenState();
@@ -64,7 +70,7 @@ class _PostScreenState extends ConsumerState<PostScreen> {
   Widget build(BuildContext context) {
     final l = L.of(context);
     final t = context.tokens;
-    final post = ref.watch(postProvider(widget.id));
+    final post = ref.watch(postProvider((code: widget.code, id: widget.id)));
     final myIds = ref.watch(myIdsProvider);
 
     return NovaScaffold(
@@ -73,7 +79,7 @@ class _PostScreenState extends ConsumerState<PostScreen> {
       body: post.when(
         loading: () => const SkeletonList(count: 2, height: 200),
         error: (e, __) => StatePanel.fromError(context, asAppError(e),
-            onRetry: () => ref.invalidate(postProvider(widget.id))),
+            onRetry: () => ref.invalidate(postProvider((code: widget.code, id: widget.id)))),
         data: (p) {
           final liked = _likedOverride ?? p.liked;
           final mine = myIds.any((e) => e.code == p.code);

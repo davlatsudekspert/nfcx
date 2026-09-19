@@ -349,7 +349,7 @@ class _ResultTile extends StatelessWidget {
     return FloatingSurface(
       solid: true,
       padding: const EdgeInsets.all(Gap.lg),
-      onTap: () => context.push(Routes.post(e.id)),
+      onTap: () => context.push(Routes.post(e.id, code: e.code)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

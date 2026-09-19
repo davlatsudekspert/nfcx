@@ -702,7 +702,7 @@ abstract class L {
   /// No description provided for @navDiscover.
   ///
   /// In uz, this message translates to:
-  /// **'Kashfiyot'**
+  /// **'Tanlov'**
   String get navDiscover;
 
   /// No description provided for @navNfc.

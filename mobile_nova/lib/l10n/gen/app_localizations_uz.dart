@@ -316,7 +316,7 @@ class LUz extends L {
   String get navHome => 'Asosiy';
 
   @override
-  String get navDiscover => 'Kashfiyot';
+  String get navDiscover => 'Tanlov';
 
   @override
   String get navNfc => 'NFC';

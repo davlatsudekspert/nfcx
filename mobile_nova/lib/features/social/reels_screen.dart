@@ -288,13 +288,13 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
                 _Action(
                   icon: Icons.mode_comment_outlined,
                   label: formatCount(p.comments),
-                  onTap: () => context.push(Routes.post(p.id)),
+                  onTap: () => context.push(Routes.post(p.id, code: p.code)),
                 ),
                 const SizedBox(height: Gap.xl),
                 _Action(
                   icon: Icons.ios_share_rounded,
                   label: l.actionShare,
-                  onTap: () => context.push(Routes.post(p.id)),
+                  onTap: () => context.push(Routes.post(p.id, code: p.code)),
                 ),
               ],
             ),

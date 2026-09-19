@@ -597,7 +597,7 @@ class _PostsGrid extends ConsumerWidget {
             children: [
               for (final p in items)
                 PressableScale(
-                  onTap: () => context.push(Routes.post(p.id)),
+                  onTap: () => context.push(Routes.post(p.id, code: code)),
                   child: ClipRRect(
                     borderRadius: R.tile,
                     child: SizedBox(

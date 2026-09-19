@@ -154,8 +154,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/post/:id',
-        builder: (_, s) =>
-            PostScreen(id: int.tryParse(s.pathParameters['id'] ?? '') ?? 0),
+        builder: (_, s) => PostScreen(
+          id: int.tryParse(s.pathParameters['id'] ?? '') ?? 0,
+          code: s.uri.queryParameters['code'] ?? '',
+        ),
       ),
       GoRoute(
         path: '/story/:code',

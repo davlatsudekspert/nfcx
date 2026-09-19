@@ -806,7 +806,7 @@ class _FeedPreview extends ConsumerWidget {
                 itemBuilder: (context, i) {
                   final p = items[i];
                   return PressableScale(
-                    onTap: () => context.push(Routes.post(p.id)),
+                    onTap: () => context.push(Routes.post(p.id, code: p.code)),
                     child: Container(
                       width: 128,
                       decoration: BoxDecoration(

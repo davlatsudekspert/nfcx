@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
+import '../../core/errors/app_error.dart';
 import '../../core/network/api_client.dart';
 import '../../core/utils/result.dart';
 import '../models/models.dart';
@@ -19,12 +20,31 @@ class SocialRepository {
     return res.map((j) => parseList(j['posts'] ?? j['items'], Post.fromJson));
   }
 
-  Future<Result<Post>> post(int id) async {
-    final res = await _api.get<Map<String, dynamic>>('/api/posts/$id');
-    final v = res.valueOrNull;
-    if (res case Err(:final error)) return Err(error);
-    final map = v!['post'] ?? v;
-    return Ok(Post.fromJson((map as Map).cast<String, dynamic>()));
+  /// Bitta post.
+  ///
+  /// BACKEND'DA `GET /api/posts/:id` YO'Q — serverda faqat
+  /// `DELETE /api/posts/:id` va `POST /api/posts/:id/like` bor.
+  /// Ilgari bu yerda o'sha mavjud bo'lmagan endpoint chaqirilardi va
+  /// post tafsiloti ekrani HAR DOIM xato panelini ko'rsatardi.
+  ///
+  /// Endi post o'zi tegishli yozuvning ro'yxatidan olinadi — bu
+  /// haqiqiy endpoint (`GET /api/records/:code/posts`). Kod ma'lum
+  /// bo'lmasa (masalan sovuq deep link) post topib bo'lmaydi va buni
+  /// yashirmaymiz: `notFound` qaytadi.
+  Future<Result<Post>> postIn(String code, int id) async {
+    if (code.isEmpty) {
+      return const Err(AppError(AppErrorKind.notFound));
+    }
+    final res = await postsOf(code);
+    return res.when(
+      ok: (items) {
+        for (final p in items) {
+          if (p.id == id) return Ok(p);
+        }
+        return const Err(AppError(AppErrorKind.notFound));
+      },
+      err: Err.new,
+    );
   }
 
   Future<Result<void>> like(int id) => _api.post<void>('/api/posts/$id/like');

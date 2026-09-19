@@ -28,7 +28,15 @@ abstract final class Routes {
   static const postCreate = '/post/create';
   static const storyCreate = '/story/create';
   static const reelCreate = '/reel/create';
-  static String post(int id) => '/post/$id';
+  /// Post tafsiloti.
+  ///
+  /// `code` — postning yozuvi. Backend'da bitta postni id bo'yicha
+  /// beradigan endpoint YO'Q, shuning uchun post o'z yozuvining
+  /// ro'yxatidan olinadi va kod manzilning bir qismi bo'lishi kerak.
+  /// Kodsiz manzil ham ochiladi (eski havolalar), lekin u holda post
+  /// topilmaydi va ekran buni ochiq aytadi.
+  static String post(int id, {String code = ''}) =>
+      code.isEmpty ? '/post/$id' : '/post/$id?code=${Uri.encodeComponent(code)}';
   static String story(String code) => '/story/$code';
   static String user(String code) => '/u/$code';
 
