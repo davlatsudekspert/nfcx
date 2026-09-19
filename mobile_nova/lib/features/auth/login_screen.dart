@@ -156,6 +156,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               enabled: !_busy,
               onSubmitted: (_) => _submit(),
               suffix: IconButton(
+                // Ekran o'quvchi uchun nom — ikonaning o'zi
+                // "ko'rsatish" yoki "yashirish" ekanini aytmaydi.
+                tooltip: _obscure ? l.a11yShowPassword : l.a11yHidePassword,
                 onPressed: () => setState(() => _obscure = !_obscure),
                 icon: Icon(
                   _obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded,

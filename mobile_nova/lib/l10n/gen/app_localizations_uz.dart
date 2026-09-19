@@ -217,6 +217,12 @@ class LUz extends L {
   String get fieldPassword => 'Parol';
 
   @override
+  String get a11yShowPassword => 'Parolni ko‘rsatish';
+
+  @override
+  String get a11yHidePassword => 'Parolni yashirish';
+
+  @override
   String get fieldPasswordRepeat => 'Parolni takrorlang';
 
   @override

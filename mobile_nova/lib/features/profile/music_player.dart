@@ -446,6 +446,7 @@ class _MusicSheet extends ConsumerWidget {
                     style: Theme.of(context).textTheme.titleMedium),
               ),
               IconButton(
+                tooltip: l.actionClose,
                 icon: const Icon(Icons.close_rounded, size: 20),
                 color: t.text3,
                 onPressed: () => Navigator.of(context).pop(),

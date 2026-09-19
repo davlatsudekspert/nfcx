@@ -69,6 +69,8 @@
   "fieldEmail": "Email",
   "fieldPhone": "Phone",
   "fieldPassword": "Password",
+  "a11yShowPassword": "Show password",
+  "a11yHidePassword": "Hide password",
   "fieldPasswordRepeat": "Repeat password",
   "fieldName": "Full name",
   "fieldUsername": "Username",

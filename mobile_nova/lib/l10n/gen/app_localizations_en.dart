@@ -218,6 +218,12 @@ class LEn extends L {
   String get fieldPassword => 'Password';
 
   @override
+  String get a11yShowPassword => 'Show password';
+
+  @override
+  String get a11yHidePassword => 'Hide password';
+
+  @override
   String get fieldPasswordRepeat => 'Repeat password';
 
   @override

@@ -11,6 +11,8 @@ import 'helpers.dart';
 /// Ro'yxatni qo'lda yuritish foydasiz: yangi ekran qo'shilganda uni
 /// bu yerga kiritish unutiladi. Shuning uchun test `Routes` dagi HAR
 /// BIR yo'lni oladi va routerdan uni yecha olishini so'raydi.
+final testSource = File('test/routes_test.dart').readAsStringSync();
+
 void main() {
   late GoRouter router;
 
@@ -62,6 +64,8 @@ void main() {
     Routes.settingsSupport,
     Routes.settingsAbout,
     Routes.paymentHistory,
+    // `giftOffers` bu yerda YO'Q edi — yangi meta-sinov topdi.
+    Routes.giftOffers,
   ];
 
   /// Parametrli yo'llar — namunaviy qiymat bilan.
@@ -131,5 +135,34 @@ void main() {
             'ilova saytning hamma havolasini yutib yuboradi');
     expect(body.contains('pathPrefix'), isTrue,
         reason: 'App Links filtrida `pathPrefix` yo\'q');
+  });
+
+  test('`Routes` dagi HAR BIR statik yo\'l ro\'yxatda bor', () {
+    // BU SINOV SINOVNI TEKSHIRADI.
+    //
+    // Yuqoridagi `staticPaths` QO'LDA yuritiladi, hujjat izohi esa
+    // "test `Routes` dagi HAR BIR yo'lni oladi" deb va'da beradi.
+    // Ikkisi bir xil emas: yangi marshrut qo'shilib, ro'yxatga
+    // kiritilmasa, sinov uni UMUMAN ko'rmaydi va "hammasi joyida"
+    // deb turaveradi.
+    //
+    // Shuning uchun manba fayli o'qiladi va e'lon qilingan har bir
+    // statik yo'l ro'yxatda borligi tekshiriladi.
+    final src = File('lib/routing/routes.dart').readAsStringSync();
+    final declared = RegExp(r"static const (\w+)\s*=\s*'/")
+        .allMatches(src)
+        .map((m) => m.group(1)!)
+        .toSet();
+
+    final listed = RegExp(r'Routes\.(\w+)')
+        .allMatches(testSource)
+        .map((m) => m.group(1)!)
+        .toSet();
+
+    final forgotten = declared.difference(listed);
+    expect(forgotten, isEmpty,
+        reason: 'Bu marshrutlar `Routes` da e\'lon qilingan, lekin '
+            'sinov ro\'yxatiga kiritilmagan — ular hech qachon '
+            'tekshirilmaydi:\n${forgotten.join('\n')}');
   });
 }

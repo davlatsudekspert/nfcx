@@ -350,4 +350,38 @@ void main() {
       expect(find.text('English'), findsOneWidget);
     });
   });
+
+  test('ikonli tugmalarning HAMMASIDA nom bor', () {
+    // EKRAN O'QUVCHI UCHUN.
+    //
+    // Faqat ikonadan iborat tugmada matn yo'q, shuning uchun
+    // `tooltip` (yoki `Semantics`) bo'lmasa TalkBack uni
+    // "tugma" deb o'qiydi, xolos — nima qilishini aytmaydi.
+    //
+    // Uchtasi shunday edi: ikkita parol ko'rsatish/yashirish
+    // tugmasi va musiqa oynasining yopish tugmasi.
+    final bad = <String>[];
+    for (final f in Directory('lib')
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((f) => f.path.endsWith('.dart'))) {
+      final src = f.readAsStringSync();
+      for (final m in RegExp(r'\bIconButton\(').allMatches(src)) {
+        var depth = 1;
+        var i = m.end;
+        while (i < src.length && depth > 0) {
+          if (src[i] == '(') depth++;
+          if (src[i] == ')') depth--;
+          i++;
+        }
+        final args = src.substring(m.end, i - 1);
+        if (args.contains('tooltip:') || args.contains('Semantics')) continue;
+        final line = '\n'.allMatches(src.substring(0, m.start)).length + 1;
+        bad.add('${f.path}:$line');
+      }
+    }
+    expect(bad, isEmpty,
+        reason: 'Bu ikonli tugmalarda ekran o\'quvchi uchun nom '
+            'yo\'q:\n${bad.join('\n')}');
+  });
 }

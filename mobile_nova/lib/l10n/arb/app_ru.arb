@@ -69,6 +69,8 @@
   "fieldEmail": "Email",
   "fieldPhone": "Телефон",
   "fieldPassword": "Пароль",
+  "a11yShowPassword": "Показать пароль",
+  "a11yHidePassword": "Скрыть пароль",
   "fieldPasswordRepeat": "Повторите пароль",
   "fieldName": "Имя и фамилия",
   "fieldUsername": "Имя пользователя",

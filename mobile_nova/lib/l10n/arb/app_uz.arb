@@ -69,6 +69,8 @@
   "fieldEmail": "Email",
   "fieldPhone": "Telefon",
   "fieldPassword": "Parol",
+  "a11yShowPassword": "Parolni ko‘rsatish",
+  "a11yHidePassword": "Parolni yashirish",
   "fieldPasswordRepeat": "Parolni takrorlang",
   "fieldName": "Ism va familiya",
   "fieldUsername": "Foydalanuvchi nomi",

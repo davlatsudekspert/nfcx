@@ -513,6 +513,18 @@ abstract class L {
   /// **'Parol'**
   String get fieldPassword;
 
+  /// No description provided for @a11yShowPassword.
+  ///
+  /// In uz, this message translates to:
+  /// **'Parolni ko‘rsatish'**
+  String get a11yShowPassword;
+
+  /// No description provided for @a11yHidePassword.
+  ///
+  /// In uz, this message translates to:
+  /// **'Parolni yashirish'**
+  String get a11yHidePassword;
+
   /// No description provided for @fieldPasswordRepeat.
   ///
   /// In uz, this message translates to:

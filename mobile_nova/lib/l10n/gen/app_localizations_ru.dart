@@ -217,6 +217,12 @@ class LRu extends L {
   String get fieldPassword => 'Пароль';
 
   @override
+  String get a11yShowPassword => 'Показать пароль';
+
+  @override
+  String get a11yHidePassword => 'Скрыть пароль';
+
+  @override
   String get fieldPasswordRepeat => 'Повторите пароль';
 
   @override

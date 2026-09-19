@@ -218,6 +218,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         obscure: _obscure,
                         enabled: !_busy,
                         suffix: IconButton(
+                          tooltip: _obscure ? l.a11yShowPassword : l.a11yHidePassword,
                           onPressed: () => setState(() => _obscure = !_obscure),
                           icon: Icon(
                             _obscure
