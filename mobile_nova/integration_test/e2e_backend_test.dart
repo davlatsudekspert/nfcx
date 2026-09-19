@@ -625,6 +625,34 @@ void main() {
         }
     }
 
+    // ── O'ZIMIZNING ESKI POST AXLATINI TOZALASH ────────────────
+    //
+    // Post o'chirish ham chiqishdan keyin ishlagani uchun 401
+    // olardi, `litter.track()` esa `Err` ni JIMGINA yutardi — ya'ni
+    // hisobot "tozalandi" deb yozsa ham post joyida qolardi.
+    // VIP001 dagi post soni shundan o'sgan (#15 da 19 ta, #19 da
+    // 21 ta).
+    //
+    // Tartib endi tuzatildi, lekin ALLAQACHON qolib ketganlarini
+    // ham yig'ishtirish kerak. Istoryalardagi kabi, FAQAT markerli
+    // postlar o'chiriladi: marker sinovdan boshqa hech qayerda
+    // yozilmaydi, shuning uchun haqiqiy foydalanuvchi postiga
+    // TEGILMAYDI.
+    var sweptPosts = 0;
+    for (final id in ids) {
+      final mine = await social.postsOf(id.code);
+      if (mine case Ok(:final value)) {
+        for (final old in value) {
+          if (!old.text.contains(kTestMarker)) continue;
+          if ((await social.deletePost(old.id)).isOk) sweptPosts++;
+        }
+      }
+    }
+    if (sweptPosts > 0) {
+      // ignore: avoid_print
+      print('[E2E] eski sinov posti o\'chirildi: $sweptPosts ta');
+    }
+
     // ── TEST POST yaratish ─────────────────────────────────────
     int? postId;
     // Server post uchun MEDIA talab qiladi, shuning uchun yuklash

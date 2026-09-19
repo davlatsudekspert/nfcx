@@ -110,6 +110,9 @@ void main() {
     test('yaratilgan obyektlar belgilanadi va tozalanadi', () {
       final e2e =
           File('integration_test/e2e_backend_test.dart').readAsStringSync();
+      // Izohlar hisobga olinmaydi: quyidagi tekshiruvlar KOD haqida,
+      // izohda esa `track()` nima uchun tashlangani tushuntiriladi.
+      final e2eCode = codeOnly(e2e);
       expect(e2e, contains('litter.trackResult('),
           reason: 'yaratilgan obyektlar tozalash ro\'yxatiga qo\'shilmayapti');
       expect(e2e, contains('litter.sweep()'),
@@ -121,15 +124,15 @@ void main() {
       // Shuning uchun `track()` bilan yozilgan o'chirish `Err`
       // qaytarsa ham "tozalandi" deb hisoblanardi va obyekt
       // haqiqiy hisobda qolib ketardi.
-      expect(e2e, isNot(contains('litter.track(')),
+      expect(e2eCode, isNot(contains('litter.track(')),
           reason: 'tozalash `track()` bilan yozilgan — `Err` jimgina '
               'yutiladi; `trackResult()` ishlatilsin');
 
       // TOZALASH CHIQISHDAN OLDIN bo'lishi shart: `logout()` dan
       // keyin har bir o'chirish 401 oladi (E2E #17 da istorya
       // haqiqiy hisobda qolib ketgan edi).
-      final sweepAt = e2e.indexOf('litter.sweep()');
-      final logoutAt = e2e.indexOf('auth.logout()');
+      final sweepAt = e2eCode.indexOf('litter.sweep()');
+      final logoutAt = e2eCode.indexOf('auth.logout()');
       expect(sweepAt >= 0 && logoutAt >= 0 && sweepAt < logoutAt, isTrue,
           reason: 'tozalash `auth.logout()` dan KEYIN turibdi — '
               'o\'chirishlar 401 oladi va axlat qolib ketadi');
