@@ -1,4 +1,5 @@
 import { copyFile, cp, mkdir, readdir } from 'node:fs/promises';
+import { stripComments } from './lib/strip-comments.mjs';
 
 const dist = new URL('../dist/', import.meta.url);
 const client = new URL('../dist/client/', import.meta.url);
@@ -71,9 +72,10 @@ await copyFile(
       // Izohlar tashlanadi: worker.js izohlarida "import ... from
       // '../src/lib/pricing.js'" kabi TUSHUNTIRISH matnlari bor va ular
       // haqiqiy import deb o'qilib, yolg'on xato berardi.
-      const src = (await readFile(child, 'utf8'))
-        .replace(/\/\*[\s\S]*?\*\//g, '')
-        .replace(/^[ \t]*\/\/.*$/gm, '');
+      // Tozalash UMUMIY skaner orqali (scripts/lib/strip-comments.mjs):
+      // oddiy regex satr ichidagi `/*` ni izoh deb o'qib, kodni
+      // o'chirib yuborishi mumkin edi.
+      const src = stripComments(await readFile(child, 'utf8'));
       for (const m of src.matchAll(/\bfrom\s+['"](\.[^'"]+)['"]/g)) {
         try { await stat(new URL(m[1], child)); }
         catch { missing.push(`${prefix}${f.name} -> ${m[1]}`); }

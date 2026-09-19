@@ -13,6 +13,7 @@
 //
 //   node scripts/test-company-profile-fields.mjs
 import { readFileSync } from 'node:fs';
+import { stripComments } from './lib/strip-comments.mjs';
 
 let pass = 0, fail = 0;
 function check(label, actual, expected) {
@@ -27,9 +28,10 @@ const read = (rel) => readFileSync(new URL(`../${rel}`, import.meta.url), 'utf8'
 // Izohlar OLIB TASHLANADI. Aks holda taqiqlangan yozuvni TUSHUNTIRUVCHI
 // izohning o'zi tekshiruvni yiqitardi (repoda bu xato allaqachon bir
 // marta bo'lgan — o'zbekcha izoh ichidagi import yo'li).
-const readCode = (rel) => read(rel)
-  .replace(/\/\*[\s\S]*?\*\//g, ' ')
-  .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+// Tozalash UMUMIY skaner orqali: oddiy regex `accept="image/*"` dagi
+// `/*` ni izoh boshi deb o'qib, tirik kodni o'chirib yuborardi
+// (qarang: scripts/lib/strip-comments.mjs).
+const readCode = (rel) => stripComments(read(rel));
 
 // Har bir maydon: nomi va uni sahifada topish uchun namuna.
 const FIELDS = [

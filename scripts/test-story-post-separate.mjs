@@ -17,6 +17,7 @@
 //   node scripts/test-story-post-separate.mjs
 import { readFileSync } from 'node:fs';
 import { makeChecker } from './lib/d1-harness.mjs';
+import { stripComments } from './lib/strip-comments.mjs';
 
 const { check, checkTrue, done } = makeChecker();
 
@@ -26,9 +27,14 @@ const company = read('../src/pages/CompanyWorkspacePage.jsx');
 const uploader = read('../src/components/StoryUploader.jsx');
 const companyCss = read('../src/company-system.css');
 
-// JSX izohlari ({/* ... */}) tekshiruvni chalg'itmasin: ular ichida
-// ham "confirm", "saveLabel" kabi so'zlar uchraydi.
-const strip = (src) => src.replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+// Izohlar tekshiruvni chalg'itmasin: ular ichida ham "confirm",
+// "saveLabel" kabi so'zlar uchraydi.
+//
+// Ilgari bu ish regex bilan qilinardi va u `accept="image/*"` dagi
+// `/*` ni izoh boshi deb o'qib, 117 KB tirik kodni o'chirib yuborardi
+// (qarang: scripts/lib/strip-comments.mjs). Endi manba holatini
+// biladigan skaner ishlatiladi.
+const strip = stripComments;
 
 // ── 1) HAR BIR <StoryUploader> TASDIQLASH REJIMIDA ────────────────────
 // `confirm` bo'lmasa fayl tanlangan zahoti e'lon qilinadi va odam
