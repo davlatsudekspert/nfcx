@@ -390,8 +390,86 @@
 }
 @media (prefers-reduced-motion: reduce) { .vz-sweep::after { animation: none; opacity: 0 } }
 /* AI tugmasi yopishgan qator OSTIDA qolmasin — biznes profilda ham
-   aynan shunday qilingan (`body:has(.qp-page) .ai-fab`). */
-body:has(.vz-profile-page) .ai-fab { bottom: calc(96px + env(safe-area-inset-bottom, 0px)) }
+   aynan shunday qilingan (`body:has(.qp-page) .ai-fab`).
+   `--owner-dock-h` — ega paneli ochiq bo'lsa qo'shiladigan balandlik
+   (pastda). Panel yo'q bo'lsa 0, ya'ni avvalgi holat AYNAN saqlanadi. */
+body:has(.vz-profile-page) .ai-fab {
+  bottom: calc(96px + env(safe-area-inset-bottom, 0px) + var(--owner-dock-h, 0px));
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   EGANING BOSHQARUV PANELI (`src/components/OwnerDock.jsx`)
+
+   Faqat telefon/planshetda va FAQAT karta egasiga ko'rinadi. Bu sayt
+   interfeysi, shuning uchun rangni GLOBAL mavzu tokenlaridan oladi —
+   profil egasining bazadagi `theme / accentColor / bgColor` qiymatlari
+   bilan hech qanday aloqasi yo'q va ularni o'zgartirmaydi.
+
+   `--owner-dock-h` panel BOR bo'lgandagina o'rnatiladi. Boshqa yopishib
+   turgan narsalar (AI tugmasi, musiqa pleeri, sahifa pastki bo'sh joyi)
+   shu qiymatga ko'tariladi — ya'ni bir-birini yopmaydi.
+
+   z-index 100: modallardan (150/200), AI tugmasi va pleerdan (120)
+   PAST. Modal ochilganda panel uning ostida qoladi, ustiga chiqmaydi.
+   ═══════════════════════════════════════════════════════════════════ */
+body:has(.vz-owner-dock) { --owner-dock-h: 62px }
+
+.vz-owner-dock {
+  position: fixed; z-index: 100; left: 0; right: 0; bottom: 0;
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--nav-bg) 92%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1);
+  backdrop-filter: blur(14px) saturate(1.1);
+  box-shadow: 0 -8px 28px color-mix(in srgb, var(--shade-base) 30%, transparent);
+}
+/* Teng to'rt ustun — 320px li telefonda ham yozuvlar bir-biriga
+   kirishmaydi va gorizontal aylantirish paydo bo'lmaydi. */
+.vz-owner-dock-row {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 2px; margin: 0 auto; max-width: 520px;
+}
+.vz-owner-dock-btn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px; min-height: 48px; padding: 5px 2px;
+  border: 0; border-radius: 14px; background: transparent; cursor: pointer;
+  color: var(--text-secondary);
+  transition: background-color .16s ease, color .16s ease, transform .12s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.vz-owner-dock-btn:hover { color: var(--text-primary); background: var(--surface-raised) }
+/* Bosilgan payt — barmoq ostida nimadir sodir bo'layotgani bilinsin. */
+.vz-owner-dock-btn:active {
+  transform: scale(.95);
+  color: var(--accent-primary);
+  background: var(--accent-soft);
+}
+.vz-owner-dock-btn:focus-visible {
+  outline: 2px solid var(--accent-primary); outline-offset: -2px;
+}
+.vz-owner-dock-ico { position: relative; display: block; line-height: 0 }
+/* Kichik "+" — "qo'shish" ekanini yozuvni uzaytirmasdan aytadi. */
+.vz-owner-dock-plus {
+  position: absolute; right: -6px; top: -4px;
+  display: grid; width: 13px; height: 13px; place-items: center;
+  border-radius: 50%;
+  background: var(--accent-primary); color: var(--accent-ink);
+  font: 700 10px/1 ui-sans-serif, system-ui, sans-serif;
+}
+.vz-owner-dock-label {
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 11px; font-weight: 700; letter-spacing: .01em;
+}
+/* Eng tor telefonlar (iPhone SE — 320px): yozuv bir oz kichrayadi,
+   lekin tegish maydoni 48px bo'lib qoladi. */
+@media (max-width: 360px) {
+  .vz-owner-dock-row { gap: 0 }
+  .vz-owner-dock-label { font-size: 10px }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vz-owner-dock-btn { transition: none }
+  .vz-owner-dock-btn:active { transform: none }
+}
 
 :focus-visible {
   outline: 2px solid var(--color-accent);
@@ -1037,7 +1115,7 @@ body.pricing-bg footer{background:var(--color-page-bg);}
    qo'shimcha bo'sh joy. Aks holda pleer pastdagi aloqa tugmalarini to'sib
    qolardi. Desktopda joy yetarli, shuning uchun tegilmaydi. */
 @media (max-width: 767px) {
-  .vz-music-open { padding-bottom: 330px !important; }
+  .vz-music-open { padding-bottom: calc(330px + var(--owner-dock-h, 0px)) !important; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════

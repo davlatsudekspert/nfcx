@@ -2362,7 +2362,7 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
 // cabinetLinks: [{ id, label, Icon, onClick, disabled }] — boshqa sahifalarga
 //   (Bildirishnomalar, To'lovlar, Akkaunt sozlamalari...) havolalar, sidebar'ning
 //   pastki guruhi.
-export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [], onSelectCard, extraSections = [], cabinetLinks = [] }) {
+export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [], onSelectCard, extraSections = [], cabinetLinks = [], initialAction = '' }) {
   const { t, lang } = useLanguage();
   const { user, refresh } = useAuth();
   const cats = useCategories();
@@ -2388,10 +2388,44 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
   // yana o'zi qidirishi kerak edi — ya'ni tugma va'da qilgan ishni
   // oxirigacha bajarmasdi.
   const [wsTab, setWsTab] = useState(() => {
+    // NFC kartadan kelgan niyat eng ustun: ega profilidagi pastki
+    // boshqaruv panelidan "Story +" bosgan odam SHU zahoti lenta
+    // bo'limida bo'lsin, kabinetni qaytadan kezib chiqmasin.
+    if (initialAction === 'story' || initialAction === 'post') return 'lenta';
+    if (initialAction === 'edit') return card.profileType === 'business' ? 'asosiy' : 'profil';
     const hash = typeof window === 'undefined' ? '' : window.location.hash;
     if (hash === '#lenta') return 'lenta';
     return card.profileType === 'business' ? 'asosiy' : 'boshqaruv';
   });
+  // NIYATNI BAJARISH VA MANZILNI TOZALASH.
+  //
+  // Bo'lim allaqachon `wsTab` boshlang'ich qiymatida tanlangan; bu yerda
+  // faqat kerakli blokka olib boriladi va niyat manzildan OLIB
+  // TASHLANADI. Aks holda odam story yopib, orqaga qaytsa yoki sahifani
+  // yangilasa — o'sha blok yana va yana ochilaverardi (loop).
+  //
+  // `code` ATAYLAB QOLDIRILADI: manzil qaysi NFC ID ustida ishlayotganini
+  // ko'rsatib tursin, yangilangandan keyin ham o'sha karta ochilsin.
+  // `replaceState` ishlatiladi (`pushState` emas) — "orqaga" tugmasi
+  // odamni profiliga qaytarsin, kabinetning o'z ichiga emas.
+  const intentDone = useRef(false);
+  useEffect(() => {
+    if (intentDone.current || !initialAction) return;
+    intentDone.current = true;
+    if (initialAction === 'story' || initialAction === 'post') {
+      const id = initialAction === 'story' ? 'owner-story' : 'owner-post';
+      // Bo'lim endigina chizilgani uchun bir kadr kutamiz.
+      const timer = setTimeout(() => {
+        const el = document.getElementById(id);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 220);
+      cleanAccountIntentFromUrl();
+      return () => clearTimeout(timer);
+    }
+    cleanAccountIntentFromUrl();
+    return undefined;
+  }, [initialAction]);
+
   const [form, setForm] = useState({
     name: card.name,
     role: card.role || '',
@@ -3443,7 +3477,14 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
   );
   const nav = (
     <aside className="mb-5 min-w-0 lg:sticky lg:top-6 lg:mb-0" aria-label={t('Kabinet bo‘limlari')}>
-      <div className="hidden items-center gap-3 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] p-3 lg:flex">
+      {/* QAYSI NFC ID ochilgani — endi TELEFONDA HAM ko'rinadi.
+          Ilgari bu qator `hidden ... lg:flex` edi, ya'ni faqat
+          kompyuterda. Telefonda esa yuqorida ASOSIY kartaning kodi
+          turadi: bir nechta NFC ID'si bor odam kartani bosib
+          TTS075 boshqaruviga kirsa ham ekranda "AAA000 · ASOSIY ID"
+          ni ko'rib, boshqa kartasini tahrirlayapman deb o'ylardi.
+          Endi qaysi ID ustida ishlayotgani aniq yozib turadi. */}
+      <div className="mb-3 flex items-center gap-3 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] p-3 lg:mb-0">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-base-100 text-sm font-bold">
           {form.avatarUrl ? <img src={form.avatarUrl} alt="" className="h-full w-full object-cover" /> : initials(form.name)}
         </div>
@@ -3656,12 +3697,14 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
             <div className="rounded-2xl border border-accent/25 bg-accent/5 px-4 py-3 text-xs leading-relaxed text-base-content/70">
               {t('Story va post — ikki alohida ish. Faqat story yoki faqat post qo‘ysangiz ham bo‘ladi: har birining o‘z saqlash tugmasi bor.')}
             </div>
-            <StorySection code={card.code} allowed={allow('story')} onLocked={() => setLocked(t('Story joylashtirish'))} t={t} />
+            <div id="owner-story" style={{ scrollMarginTop: 84 }}>
+              <StorySection code={card.code} allowed={allow('story')} onLocked={() => setLocked(t('Story joylashtirish'))} t={t} />
+            </div>
             {/* Post bloki istorya bloki bilan BIR XIL ko'rinishda —
                 yig'iladigan panel emas: yig'ilgan holatda "Joylash"
                 tugmasi ko'rinmasdi va bo'lim boshqarilmaydigandek
                 tuyulardi. */}
-            <section className="vz-card p-5">
+            <section id="owner-post" className="vz-card p-5" style={{ scrollMarginTop: 84 }}>
               <div className="min-w-0">
                 <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--accent-text)]">{t('2-bo‘lim')}</span>
                 <h3 className="font-display text-lg font-semibold">{t('Postlar / Media')}</h3>
@@ -3989,16 +4032,75 @@ function ReferralPanel({ user }) {
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// NFC KARTADAN KELGAN NIYAT (deep-link) — `?code=` va `?action=`
+//
+// Telefon bilan NFC kartani bosgan EGA o'z profilida ("/vip001") pastdagi
+// boshqaruv panelidan tugma bosadi va shu yerga tushadi:
+//
+//   /account?code=VIP001&action=story   -> lenta bo'limi, story bloki
+//   /account?code=VIP001&action=post    -> lenta bo'limi, post bloki
+//   /account?code=VIP001&action=edit    -> profil formasi
+//   /account?code=VIP001                -> shu ID boshqaruvi
+//
+// NIMA UCHUN KERAK: ilgari tugmalar oddiy `/account` ga olib kelardi va
+// kabinet HAR DOIM `myCards[0]` ni tanlardi. Odamda bir nechta NFC ID
+// bo'lsa (masalan AAA000, VIP001, TTS075), u TTS075 kartasini bosib
+// kelgan bo'lsa ham kabinet AAA000 ni ochib qo'yardi — ya'ni odam
+// bilmagan holda BOSHQA kartasini tahrirlab yuborishi mumkin edi.
+//
+// XAVFSIZLIK: bu yerdagi `code` — faqat TANLOV ishorasi. U `myCards`
+// (serverdan kelgan O'Z kartalari) ichidan qidiriladi; topilmasa jim
+// e'tiborsiz qoldiriladi va odatdagi `myCards[0]` ishlaydi. Begona kod
+// yozib qo'yish hech narsa ochmaydi, chunki ro'yxatda yo'q. Ruxsatning
+// yagona haqiqiy manbai AVVALGIDEK server bo'lib qoladi — bu yerda
+// hech qanday tekshiruv yumshatilmadi.
+// Niyat bajarilgach manzildan `action` ni olib tashlaydi, `code` ni
+// SAQLAB QOLADI. Tarixga yangi yozuv qo'shmaydi.
+function cleanAccountIntentFromUrl() {
+  try {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has('action')) return;
+    url.searchParams.delete('action');
+    const qs = url.searchParams.toString();
+    window.history.replaceState(null, '', url.pathname + (qs ? '?' + qs : '') + url.hash);
+  } catch {
+    // jim: manzilni o'zgartirib bo'lmasa ham ish davom etaveradi
+  }
+}
+
+function readAccountIntent() {
+  try {
+    const q = new URLSearchParams(window.location.search);
+    // NFC kartadagi manzil kichik harfda bo'ladi (nfcstore.uz/vip001),
+    // kartalar ro'yxatida esa katta harfda — shuning uchun solishtirish
+    // katta-kichik harfga BOG'LIQ EMAS.
+    const code = (q.get('code') || '').trim().toUpperCase();
+    const action = (q.get('action') || '').trim().toLowerCase();
+    return { code, action: ['story', 'post', 'edit'].includes(action) ? action : '' };
+  } catch {
+    return { code: '', action: '' };
+  }
+}
+
 export default function AccountPage({ refreshCatalog }) {
   const { user, myCards, refresh } = useAuth();
   const { t } = useLanguage();
   // "Buyurtmalarim" ro'yxatidagi "To'lash" tugmasi uchun.
   const PAYMENTS_ENABLED = usePaymentsEnabled();
+  // Manzildagi niyat BIR MARTA o'qiladi (`useRef`): keyin manzil
+  // tozalansa ham tanlangan karta o'zgarib ketmasin.
+  const intentRef = useRef(readAccountIntent());
   const [selectedCode, setSelectedCode] = useState(null);
   useEffect(() => {
-    if (myCards.length && !myCards.some((c) => c.code === selectedCode)) {
-      setSelectedCode(myCards[0].code);
-    }
+    if (!myCards.length) return;
+    // Tanlov hali ham o'z kartalarimdan biri bo'lsa — tegmaymiz.
+    // (Odam "Mening ID'larim" orqali qo'lda almashtirgan bo'lishi mumkin.)
+    if (myCards.some((c) => c.code === selectedCode)) return;
+    // NFC kartadan kelgan kod — FAQAT o'z kartalarim ichidan.
+    const wanted = intentRef.current.code;
+    const mine = wanted ? myCards.find((c) => c.code === wanted) : null;
+    setSelectedCode(mine ? mine.code : myCards[0].code);
   }, [myCards, selectedCode]);
   const selectedCard = myCards.find((c) => c.code === selectedCode) || myCards[0];
   const primaryCard = myCards.find((c) => c.isPrimary) || myCards[0];
@@ -4296,6 +4398,10 @@ export default function AccountPage({ refreshCatalog }) {
                     <ReferralPanel user={user} />
                   </div>
                 ) : (
+                  // `initialAction` — NFC kartadan kelgan niyat. U FAQAT
+                  // aynan o'sha karta ochilganda uzatiladi: odam keyin
+                  // "Mening ID'larim" orqali boshqasiga o'tsa, niyat
+                  // u yerda takrorlanmaydi.
                   <EditCardForm
                     key={selectedCard.code}
                     card={selectedCard}
@@ -4304,6 +4410,7 @@ export default function AccountPage({ refreshCatalog }) {
                     onSelectCard={setSelectedCode}
                     extraSections={extraSections}
                     cabinetLinks={cabinetLinks}
+                    initialAction={selectedCard.code === intentRef.current.code ? intentRef.current.action : ''}
                   />
                 )
               )}

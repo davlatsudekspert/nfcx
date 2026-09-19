@@ -7,6 +7,7 @@ import { socialUrl } from '../lib/socialLinks.js';
 import { createPortal } from 'react-dom';
 import { dbGet, dbAddView, dbLogEvent, dbFollow, dbUnfollow, dbFollowStats, dbFollowList, dbStartConversation, dbGetLike, dbToggleLike, dbLikeList, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift, dbListPosts, dbListStories, dbTogglePostLike, dbSubmitLead, dbGetMenu, dbGetProducts, dbGetServices, dbGetFiles, dbGetTeam, dbGetGallery } from '../lib/db.js';
 import { MESSAGING_ENABLED } from '../lib/features.js';
+import OwnerDock, { ownerActionUrl } from '../components/OwnerDock.jsx';
 import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
 import { parseAnyCode, letterPattern, digitPattern, tierForCode, TIER_LABEL, TIER_COLOR, TIER_EMOJI, TIER_PAGE_GLOW } from '../lib/pricing.js';
 import { menuEligible, productEligible, serviceEligible } from '../lib/access.js';
@@ -681,7 +682,9 @@ function MusicPlayer({ urls = [], accentColor, onOpenChange, ownerName = '', cov
       data-music-player=""
       className="fixed z-[120] w-[320px] max-w-[calc(100vw-24px)] overflow-hidden rounded-2xl border border-white/12 bg-[rgba(18,16,13,0.96)] shadow-[0_18px_46px_rgba(0,0,0,0.6)] backdrop-blur-md"
       style={{
-        right: 16, bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+        // `--owner-dock-h` — ega boshqaruv paneli ochiq bo'lsa uning
+        // balandligi (yo'q bo'lsa 0). Usiz pleer panel ostida qolardi.
+        right: 16, bottom: 'calc(16px + env(safe-area-inset-bottom, 0px) + var(--owner-dock-h, 0px))',
         transform: `translate(${drag.x}px, ${drag.y}px)`,
         color: 'var(--vz-ink, #f7f2e8)',
       }}
@@ -1647,7 +1650,9 @@ export default function ProfilePage({ code, catalog, initialTab }) {
       // `vz-profile-page` — langar sinf: pastda yopishib turadigan
       // "Saqlash" qatori borligini boshqa qatlamlarga bildiradi
       // (AI tugmasi uning ostiga tushib qolmasin — theme.css).
-      className={`vz-profile-page min-h-screen pb-[60px] text-[color:var(--vz-ink)]${musicOpen ? ' vz-music-open' : ''}`}
+      // `pb-[122px]` (60 + panel) — ega panelida sahifaning eng oxirgi
+      // qatori panel ostida qolib ketmasin. Mehmonda avvalgidek 60px.
+      className={`vz-profile-page min-h-screen text-[color:var(--vz-ink)] ${isOwner ? 'pb-[122px] lg:pb-[60px]' : 'pb-[60px]'}${musicOpen ? ' vz-music-open' : ''}`}
       style={outerPageStyle(record.theme || 'classic', record, tier)}
     >
       {/* Bosh ekranga qo'shilganda AYNAN shu profil ochilsin. */}
@@ -1740,7 +1745,12 @@ export default function ProfilePage({ code, catalog, initialTab }) {
                 ))}
               </select>
             )}
-            {isOwner && <button className={pillBtn} onClick={() => navigate('/account')}>{t('Tahrirlash')}</button>}
+            {/* Telefonda bu ikki tugma YASHIRINADI: pastdagi ega paneli
+                aynan shu ishlarni (va yana ikkitasini) bajaradi, ya'ni
+                bir amal ekranda ikki marta turmaydi. Kompyuterda panel
+                yo'q, shuning uchun tugmalar o'z joyida qoladi.
+                Mehmon tugmalariga (Obuna, Ulashish, Til, Mavzu) TEGILMAGAN. */}
+            {isOwner && <button className={`${pillBtn} hidden lg:inline-block`} onClick={() => navigate(ownerActionUrl(record.code, 'edit'))}>{t('Tahrirlash')}</button>}
             {/* ISTORYA — ALOHIDA TUGMA, ATAYLAB.
                 Ilgari istorya faqat kabinet ichidagi bo'limda edi va
                 egasi uni "Tahrirlash" ortidan qidirib topishi kerak
@@ -1750,8 +1760,8 @@ export default function ProfilePage({ code, catalog, initialTab }) {
                 ochiladi. */}
             {isOwner && (
               <button
-                className={pillBtn}
-                onClick={() => navigate('/account#lenta')}
+                className={`${pillBtn} hidden lg:inline-block`}
+                onClick={() => navigate(ownerActionUrl(record.code, 'story'))}
               >
                 {t('Story qo‘shish')}
               </button>
@@ -2282,6 +2292,13 @@ export default function ProfilePage({ code, catalog, initialTab }) {
           </div>
         </div>
       )}
+
+      {/* EGANING BOSHQARUV PANELI — faqat telefon/planshetda va faqat
+          shu NFC ID egasiga. `isOwner` serverdan kelgan O'Z kartalari
+          ro'yxatiga (`myCards`) tayanadi; mehmon, begona foydalanuvchi
+          yoki tizimga kirmagan odam uchun bu yerda HECH NARSA
+          chizilmaydi. Ruxsatning haqiqiy manbai avvalgidek server. */}
+      {isOwner && <OwnerDock code={record.code} />}
     </div>
   );
 }
