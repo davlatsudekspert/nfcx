@@ -148,6 +148,18 @@ jobs:
       - name: Story oqimi
         run: node scripts/test-story-flow.mjs
 
+      # LENTA KATAGI — "son bor, rasm yo'q" holatining oldini oladi.
+      #
+      # Egasining xabari: VIP001 da "Stories 7" deb turardi, lekin
+      # bitta rasm ko'rinib, olti katak qop-qora edi. Sababi: video
+      # katagida `poster` yo'q edi (brauzer kadr olmaydi) va `<img>`
+      # da `onError` umuman yo'q edi (fayl 404 bo'lsa jim yiqilardi)
+      # — ikkalasi ham ekranda BIR XIL qora to'rtburchak berardi.
+      # Test har katakda yo chizilgan media, yo NOMLANGAN qatlam
+      # (xato / video) borligini qo'riqlaydi.
+      - name: Lenta katagi
+        run: node scripts/test-story-grid.mjs
+
       - name: Build (vite build + prepare-sites-build)
         run: npm run build
 
