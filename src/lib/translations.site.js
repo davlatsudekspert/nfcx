@@ -88,4 +88,17 @@ export const DICT_SITE = {
   'Auksion topilmadi': { ru: 'Аукцион не найден', en: 'Auction not found' },
   "Auksion ma'lumotini yuklab bo'lmadi.": { ru: 'Не удалось загрузить данные аукциона.', en: 'Could not load the auction.' },
   "Bu auksion mavjud emas yoki o'chirilgan.": { ru: 'Этот аукцион не существует или был удалён.', en: 'This auction does not exist or was removed.' },
+
+  // ─────────────────────────── Media oynachasi (MediaThumb) ───────────────────────────
+  // Rasm/video ko'rsatiladigan HAR joyda chiqadi: lenta, postlar.
+  // Ular ekrandagi yagona izoh bo'lgani uchun tarjimasi shart —
+  // aks holda rus va ingliz tilidagi tashrifchi o'zbekcha ogohlantirish
+  // ko'rardi.
+  'Media ochilmadi': { ru: 'Медиа не открылось', en: 'Media could not load' },
+  'Media javob bermadi': { ru: 'Медиа не отвечает', en: 'Media did not respond' },
+  'Bu postda matn ham, media ham yo‘q.': { ru: 'В этом посте нет ни текста, ни медиа.', en: 'This post has no text and no media.' },
+
+  // ─────────────────────────── Profil ⋮ menyusi ───────────────────────────
+  'Rang mavzusi': { ru: 'Цветовая тема', en: 'Colour theme' },
+  'Til': { ru: 'Язык', en: 'Language' },
 };

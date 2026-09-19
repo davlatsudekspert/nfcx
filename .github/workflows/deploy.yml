@@ -196,6 +196,14 @@ jobs:
       - name: NFC qurilmalari
         run: node scripts/test-nfc-devices.mjs
 
+      # TARJIMA QOPLAMI — RATCHET.
+      # Lug'atda yo'q matn ekranni buzmaydi (o'zbekcha manba matn
+      # qaytadi), lekin rus/ingliz tilidagi odam o'zbekcha jumla
+      # ko'radi. Test hammasini bir yo'la tuzatishni talab qilmaydi —
+      # faqat SONNING O'SISHINI to'xtatadi.
+      - name: Tarjima qoplami
+        run: node scripts/test-i18n-coverage.mjs
+
       - name: Build (vite build + prepare-sites-build)
         run: npm run build
 
