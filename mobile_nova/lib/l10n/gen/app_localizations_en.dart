@@ -1002,4 +1002,17 @@ class LEn extends L {
 
   @override
   String get giftNoOffers => 'No gift offers yet';
+
+  @override
+  String get profilePickBusiness => 'Choose a business profile';
+
+  @override
+  String get profilePickPersonal => 'Choose a personal profile';
+
+  @override
+  String get businessNoneTitle => 'You have no business profile';
+
+  @override
+  String get businessNoneHint =>
+      'Create a business profile or switch back to personal';
 }

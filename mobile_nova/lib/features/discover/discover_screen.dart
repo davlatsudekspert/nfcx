@@ -62,7 +62,12 @@ final discoverResultsProvider = FutureProvider.autoDispose((ref) async {
     return switch (tab) {
       DiscoverTab.people => (await repo.suggested()).when(
           ok: (v) => <Object>[...v], err: (e) => throw e),
-      DiscoverTab.businesses => <Object>[],
+      // Ilgari bu yerda QATTIQ KODLANGAN bo'sh ro'yxat turardi va
+      // "Bizneslar" bo'limi so'rovsiz holatda har doim "Hozircha
+      // bo'sh" deb ko'rsatardi — produksiyada kompaniyalar bo'lsa
+      // ham. Server ro'yxatni allaqachon beradi.
+      DiscoverTab.businesses => (await repo.companies())
+          .when(ok: (v) => <Object>[...v], err: (e) => throw e),
       DiscoverTab.posts =>
         (await repo.trending()).when(ok: (v) => <Object>[...v], err: (e) => throw e),
     };

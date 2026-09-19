@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../app/profile_context.dart';
 import '../../core/utils/sharing.dart';
 import '../../data/models/models.dart';
+import '../../data/repositories/business_repository.dart';
 import '../../data/repositories/social_repository.dart';
 import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
@@ -312,8 +314,12 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
 
   Future<void> _publish() async {
     final l = L.of(context);
-    final id = ref.read(activeIdProvider);
-    if (id == null) return;
+    // FAOL KONTEKST — shaxsiy yozuv yoki kompaniya.
+    //
+    // Ilgari bu yerda `activeIdProvider` turardi, ya'ni biznes
+    // rejimida turib yaratilgan post SHAXSIY profilga tushardi.
+    final profile = ref.read(activeProfileProvider);
+    if (profile == null) return;
 
     // MEDIA MAJBURIY — POST UCHUN HAM.
     //
@@ -382,20 +388,38 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
     final video = _video ? mediaUrl : '';
     final caption = _text.text.trim();
 
-    final res = switch (widget.kind) {
-      ComposerKind.story => await ref
-          .read(socialRepositoryProvider)
+    // Kompaniya va shaxsiy yozuv IKKI XIL endpointga yozadi.
+    final social = ref.read(socialRepositoryProvider);
+    final business = ref.read(businessRepositoryProvider);
+
+    final res = switch ((widget.kind, profile.isBusiness)) {
+      (ComposerKind.story, true) => await business
           .createStory(
-            code: id.code,
+            companyId: profile.code,
             imageUrl: image,
             videoUrl: video,
             caption: caption,
           )
           .then((r) => r.map((_) => null)),
-      _ => await ref
-          .read(socialRepositoryProvider)
+      (ComposerKind.story, false) => await social
+          .createStory(
+            code: profile.code,
+            imageUrl: image,
+            videoUrl: video,
+            caption: caption,
+          )
+          .then((r) => r.map((_) => null)),
+      (ComposerKind.post || ComposerKind.reel, true) => await business
           .createPost(
-            code: id.code,
+            companyId: profile.code,
+            caption: caption,
+            imageUrl: image,
+            videoUrl: video,
+          )
+          .then((r) => r.map((_) => null)),
+      (ComposerKind.post || ComposerKind.reel, false) => await social
+          .createPost(
+            code: profile.code,
             caption: caption,
             imageUrl: image,
             videoUrl: video,

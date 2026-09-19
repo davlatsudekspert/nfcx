@@ -1000,4 +1000,17 @@ class LRu extends L {
 
   @override
   String get giftNoOffers => 'Пока нет предложений подарков';
+
+  @override
+  String get profilePickBusiness => 'Выберите бизнес-профиль';
+
+  @override
+  String get profilePickPersonal => 'Выберите личный профиль';
+
+  @override
+  String get businessNoneTitle => 'У вас нет бизнес-профиля';
+
+  @override
+  String get businessNoneHint =>
+      'Создайте бизнес-профиль или вернитесь в личный режим';
 }

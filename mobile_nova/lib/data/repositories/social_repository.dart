@@ -209,10 +209,19 @@ class SocialRepository {
       _api.delete<void>('/api/comments/$commentId');
 
   /// Kashfiyot lentasi — barcha ommaviy postlar.
+  /// Asosiy ekrandagi lenta — HAQIQIY postlar.
+  ///
+  /// Ilgari `/api/news` (admin e'lonlari) o'qilardi, ya'ni Asosiy
+  /// ekran ham, Kashfiyot ham foydalanuvchi postlarini umuman
+  /// ko'rsatmasdi. Endi ikkalasi ham BITTA manbadan — `/api/feed` —
+  /// oladi, shuning uchun bir joyda rasm ko'rinib boshqasida
+  /// yo'qolib qolmaydi.
   Future<Result<List<Post>>> feed({int page = 1}) async {
-    final res = await _api
-        .get<Map<String, dynamic>>('/api/news', query: {'page': page});
-    return res.map((j) => parseList(j['news'] ?? j['items'], Post.fromJson));
+    final res = await _api.get<Map<String, dynamic>>(
+        '/api/feed', query: {'page': page, 'limit': 15});
+    return res.map((j) => parseList(j['feed'] ?? j['items'], Post.fromJson)
+        .where((p) => !p.isStory)
+        .toList());
   }
 
   Future<Result<void>> likeNews(int id) => _api.post<void>('/api/news/$id/like');

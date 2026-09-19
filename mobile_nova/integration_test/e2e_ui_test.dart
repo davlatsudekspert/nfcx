@@ -391,7 +391,10 @@ void main() {
     // Biometrika — SOXTA "DONE" YO'Q.
     report.add(MatrixRow(
       name: 'Biometric App Lock',
-      verdict: Verdict.fail,
+      // FAIL EMAS — ataylab olib qo'yilgan va bu kelishilgan.
+      // `FAIL` bo'lsa ish har safar qizarib, HAQIQIY yangi
+      // buzilishlar shu shovqinda ko'rinmay qolardi.
+      verdict: Verdict.deferred,
       screen: 'SettingsScreen',
       action: 'biometrik ochish',
       cause: '`local_auth` Android buildini R8 bosqichida qotirgani '

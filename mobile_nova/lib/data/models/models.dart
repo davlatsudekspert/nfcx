@@ -429,6 +429,8 @@ class Post {
     this.saved = false,
     this.createdAt,
     this.isVideo = false,
+    this.kind = 'post',
+    this.authorKind = 'card',
   });
 
   final int id;
@@ -446,6 +448,41 @@ class Post {
   final DateTime? createdAt;
   final bool isVideo;
 
+  /// `post` yoki `story` — `/api/feed` ikkalasini birga beradi.
+  final String kind;
+
+  /// `card` (shaxsiy) yoki `company` (biznes).
+  final String authorKind;
+
+  /// Lentadagi `id` lar manbalar bo'yicha ALOHIDA sanaladi:
+  /// 5-raqamli shaxsiy post va 5-raqamli kompaniya posti ikki xil
+  /// narsa. Shuning uchun tafsilotga o'tishda tur bilinishi shart.
+  bool get isStory => kind == 'story';
+  bool get isCompany => authorKind == 'company';
+
+  /// Manba turini belgilaydi.
+  ///
+  /// Kompaniya postlari `/api/companies/:id/posts` dan keladi va u
+  /// yerda `authorKind` maydoni YO'Q — lekin tafsilotga o'tishda
+  /// shaxsiy postdan ajratish SHART, chunki `id` lar alohida
+  /// sanaladi.
+  Post copyWithKind({String? kind, String? authorKind}) => Post(
+        id: id,
+        code: code,
+        authorName: authorName,
+        authorAvatar: authorAvatar,
+        text: text,
+        mediaUrls: mediaUrls,
+        likes: likes,
+        comments: comments,
+        liked: liked,
+        saved: saved,
+        createdAt: createdAt,
+        isVideo: isVideo,
+        kind: kind ?? this.kind,
+        authorKind: authorKind ?? this.authorKind,
+      );
+
   Post copyWith({int? likes, bool? liked, bool? saved, int? comments}) => Post(
         id: id,
         code: code,
@@ -459,6 +496,8 @@ class Post {
         saved: saved ?? this.saved,
         createdAt: createdAt,
         isVideo: isVideo,
+        kind: kind,
+        authorKind: authorKind,
       );
 
   factory Post.fromJson(Map<String, dynamic> j) {
@@ -488,6 +527,8 @@ class Post {
           _s(j['videoUrl']).isNotEmpty ||
           _s(j['type']) == 'video' ||
           _s(j['type']) == 'reel',
+      kind: _s(j['kind'], 'post'),
+      authorKind: _s(j['authorKind'], 'card'),
     );
   }
 }

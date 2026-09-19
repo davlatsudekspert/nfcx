@@ -2042,6 +2042,30 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Hozircha sovg‘a taklifi yo‘q'**
   String get giftNoOffers;
+
+  /// No description provided for @profilePickBusiness.
+  ///
+  /// In uz, this message translates to:
+  /// **'Biznes profilni tanlang'**
+  String get profilePickBusiness;
+
+  /// No description provided for @profilePickPersonal.
+  ///
+  /// In uz, this message translates to:
+  /// **'Shaxsiy profilni tanlang'**
+  String get profilePickPersonal;
+
+  /// No description provided for @businessNoneTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sizda biznes profil yo‘q'**
+  String get businessNoneTitle;
+
+  /// No description provided for @businessNoneHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Biznes profil yarating yoki shaxsiy rejimga qayting'**
+  String get businessNoneHint;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

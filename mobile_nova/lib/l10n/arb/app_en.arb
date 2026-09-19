@@ -375,5 +375,9 @@
   "giftAccept": "Accept",
   "giftReject": "Decline",
   "giftCancel": "Cancel",
-  "giftNoOffers": "No gift offers yet"
+  "giftNoOffers": "No gift offers yet",
+  "profilePickBusiness": "Choose a business profile",
+  "profilePickPersonal": "Choose a personal profile",
+  "businessNoneTitle": "You have no business profile",
+  "businessNoneHint": "Create a business profile or switch back to personal"
 }

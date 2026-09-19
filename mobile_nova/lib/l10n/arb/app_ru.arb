@@ -375,5 +375,9 @@
   "giftAccept": "Принять",
   "giftReject": "Отклонить",
   "giftCancel": "Отменить",
-  "giftNoOffers": "Пока нет предложений подарков"
+  "giftNoOffers": "Пока нет предложений подарков",
+  "profilePickBusiness": "Выберите бизнес-профиль",
+  "profilePickPersonal": "Выберите личный профиль",
+  "businessNoneTitle": "У вас нет бизнес-профиля",
+  "businessNoneHint": "Создайте бизнес-профиль или вернитесь в личный режим"
 }

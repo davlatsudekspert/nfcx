@@ -96,11 +96,20 @@ run_suite integration_test/e2e_backend_test.dart e2e-backend.log \
 run_suite integration_test/e2e_ui_test.dart e2e-ui.log \
   "UI — haqiqiy ekranlar"
 
+# EKRAN OQIMLARI — screenshotlardan kelgan regressiyalar.
+#
+# Bu to'plamdagi KRITIK FAIL ishni yiqitadi: u oxirida
+# `expect(criticalFailures, isEmpty)` bilan tugaydi. Ilgari UI
+# to'plamida FAIL bo'lsa ham workflow yashil qolardi, chunki faqat
+# backend to'plami o'zini baholardi.
+run_suite integration_test/e2e_flows_test.dart e2e-flows.log \
+  "OQIMLAR — profil konteksti, NFC doirasi, lenta"
+
 echo "$rc" > e2e-exit-code
 
 echo ""
 echo "== Yaratilgan loglar =="
-ls -la e2e-backend.log e2e-ui.log 2>&1 || true
+ls -la e2e-backend.log e2e-ui.log e2e-flows.log 2>&1 || true
 
 # Chiqish kodi HAQIQIY. Oldingi versiyada bu yerda `exit 0` turardi
 # va shu sababli hech narsa ishlamagan bosqich ham yashil ko'rinardi.

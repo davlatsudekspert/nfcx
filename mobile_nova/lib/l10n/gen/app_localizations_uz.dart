@@ -1005,4 +1005,17 @@ class LUz extends L {
 
   @override
   String get giftNoOffers => 'Hozircha sovg‘a taklifi yo‘q';
+
+  @override
+  String get profilePickBusiness => 'Biznes profilni tanlang';
+
+  @override
+  String get profilePickPersonal => 'Shaxsiy profilni tanlang';
+
+  @override
+  String get businessNoneTitle => 'Sizda biznes profil yo‘q';
+
+  @override
+  String get businessNoneHint =>
+      'Biznes profil yarating yoki shaxsiy rejimga qayting';
 }

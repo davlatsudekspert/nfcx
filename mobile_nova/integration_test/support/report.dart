@@ -27,10 +27,25 @@ enum Verdict {
   configRequired('CONFIG REQUIRED'),
   deviceRequired('DEVICE REQUIRED'),
   manualPayment('MANUAL PAYMENT TEST REQUIRED'),
+
+  /// ATAYLAB YO'Q va shu holat kelishilgan.
+  ///
+  /// `FAIL` dan farqi: bu buzilgan narsa emas, olib qo'yilgan narsa.
+  /// Biometrika shunday — `local_auth` Android buildini qotirgani
+  /// uchun chiqarib tashlangan. Uni `FAIL` deb belgilash ishni
+  /// har safar qizartirardi va HAQIQIY yangi buzilish o'sha
+  /// shovqinda ko'rinmay qolardi.
+  deferred('KNOWN MISSING'),
   skipped('SKIPPED');
 
   const Verdict(this.label);
   final String label;
+
+  /// Ishni yiqitadigan holat.
+  ///
+  /// FAQAT `FAIL`. Qolganlari — ma'lum cheklovlar (backend, config,
+  /// qurilma, to'lov) yoki ataylab qoldirilgan narsalar.
+  bool get isCritical => this == Verdict.fail;
 }
 
 /// Bitta HTTP so'rovning izi — FAIL sababini ko'rsatish uchun.
@@ -144,6 +159,10 @@ class E2EReport {
 
   /// Tozalanmay qolgan sinov obyektlari — bularni qo'lda o'chirish kerak.
   List<String> get cleanupProblems => List.unmodifiable(_cleanupProblems);
+
+  /// Ishni yiqitishi kerak bo'lgan qatorlar.
+  List<MatrixRow> get criticalFailures =>
+      _rows.where((r) => r.verdict.isCritical).toList();
 
   Map<Verdict, int> get tally {
     final out = <Verdict, int>{};

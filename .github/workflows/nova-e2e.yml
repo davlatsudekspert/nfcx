@@ -21,8 +21,9 @@
 # `hosting/worker.js` kirishni hisob bo'yicha 15 daqiqada 5 marta
 # cheklaydi va hisoblagich MUVAFFAQIYATLI kirishda ham oshadi
 # (`rateLimitD1` parol tekshirilishidan OLDIN chaqiriladi). Bu ish
-# 3 ta urinish sarflaydi: backend to'plami 2 ta (kirish + noto'g'ri
-# parol), UI to'plami 1 ta.
+# 4 ta urinish sarflaydi: backend to'plami 2 ta (kirish + noto'g'ri
+# parol), UI to'plami 1 ta, oqimlar to'plami 1 ta. Bittasi zaxira
+# bo'lib qoladi.
 #
 # Ya'ni: ketma-ket ikki marta ishga tushirmang. Ikkinchisi 429 oladi
 # va hisob EGASI ham 15 daqiqa kira olmaydi.
@@ -186,7 +187,7 @@ jobs:
         if: always()
         run: |
           missing=0
-          for f in e2e-backend.log e2e-ui.log; do
+          for f in e2e-backend.log e2e-ui.log e2e-flows.log; do
             if [ ! -s "$f" ]; then
               echo "::error::$f yaratilmadi yoki bo'sh — to'plam ishga tushmagan."
               missing=1
@@ -217,7 +218,8 @@ jobs:
       - name: PASS/FAIL matritsasi
         if: always()
         run: |
-          python3 ../tool/e2e_summary.py e2e-backend.log e2e-ui.log \
+          python3 ../tool/e2e_summary.py \
+              e2e-backend.log e2e-ui.log e2e-flows.log \
             | tee -a "$GITHUB_STEP_SUMMARY" || true
 
       # Loglar — maxfiy qiymatlar `redact` dan o'tgan, GitHub esa
@@ -230,6 +232,7 @@ jobs:
           path: |
             mobile_nova/e2e-backend.log
             mobile_nova/e2e-ui.log
+            mobile_nova/e2e-flows.log
           if-no-files-found: warn
           retention-days: 14
 

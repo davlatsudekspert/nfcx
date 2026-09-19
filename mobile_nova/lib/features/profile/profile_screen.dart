@@ -22,13 +22,29 @@ import '../home/home_screen.dart';
 import '../home/widgets/avatar.dart';
 import '../home/widgets/identity_card.dart';
 import '../home/widgets/mode_switch.dart';
+import '../../app/profile_context.dart';
+import '../../data/repositories/business_repository.dart';
+import '../business/business_providers.dart';
 import '../nfc/qr_sheet.dart';
+import 'profile_switcher.dart';
 import '../social/moderation.dart';
 import 'profile_repository.dart';
 
 final profilePostsProvider =
     FutureProvider.autoDispose.family<List<Post>, String>((ref, code) async {
   final res = await ref.watch(socialRepositoryProvider).postsOf(code);
+  return res.when(ok: (v) => v, err: (e) => throw e);
+});
+
+/// Kompaniya postlari — SHAXSIY postlardan boshqa manba.
+///
+/// `/api/records/:code/posts` kompaniya uchun ishlamaydi: u NFC
+/// yozuvlari bilan ishlaydi. Kompaniyaniki `/api/companies/:id/posts`
+/// da. Ilgari biznes rejimida ham shaxsiy yo'l chaqirilardi va
+/// natijada biznes profilida shaxsiy postlar ko'rinardi.
+final companyPostsProvider =
+    FutureProvider.autoDispose.family<List<Post>, String>((ref, id) async {
+  final res = await ref.watch(businessRepositoryProvider).posts(id);
   return res.when(ok: (v) => v, err: (e) => throw e);
 });
 
@@ -51,10 +67,24 @@ class ProfileScreen extends ConsumerWidget {
     final mode = ref.watch(modeProvider);
     final ids = ref.watch(myIdsProvider);
 
-    final id = code == null
-        ? ref.watch(activeIdProvider)
+    // O'Z profili — FAOL KONTEKST (shaxsiy yozuv yoki kompaniya).
+    // Boshqa odamniki — faqat uning NFC yozuvi.
+    final other = code == null
+        ? null
         : ids.where((e) => e.code == code).firstOrNull;
+    final active = code == null
+        ? ref.watch(activeProfileProvider)
+        : (other == null ? null : ActiveProfile.personal(other));
     final isMe = code == null || ids.any((e) => e.code == code);
+
+    // Biznes rejimi tanlangan, lekin hisobda kompaniya yo'q.
+    final noBusiness = code == null && ref.watch(businessMissingProvider);
+
+    // QR va ulashish FAQAT NFC yozuvida ma'noga ega — kompaniyaning
+    // ommaviy manzili boshqacha quriladi va QR kodi shaxsiy yozuvniki
+    // emas. Shuning uchun biznes kontekstida bu tugmalar shaxsiy
+    // yozuvga tegmaydi.
+    final id = active != null && !active.isBusiness ? active.id : null;
 
     if (user == null) return const SizedBox.shrink();
 
@@ -88,20 +118,26 @@ class ProfileScreen extends ConsumerWidget {
         child: NovaScroll(
           padding: EdgeInsets.only(bottom: navSafeBottom(context)),
           children: [
-            _Hero(user: user, id: id, mode: mode),
+            _Hero(user: user, profile: active, mode: mode),
             const SizedBox(height: Gap.xl),
             if (isMe && code == null)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
                 child: ModeSwitch(
                   mode: mode,
-                  onChanged: (m) => ref.read(modeProvider.notifier).set(m),
+                  // Rejimni to'g'ridan-to'g'ri o'rnatish YETARLI EMAS:
+                  // biznesga o'tishda qaysi kompaniya ekanini ham hal
+                  // qilish kerak (bitta bo'lsa — darhol, bir nechta
+                  // bo'lsa — tanlagich).
+                  onChanged: (m) => m == AppMode.business
+                      ? switchToBusiness(context, ref)
+                      : switchToPersonal(context, ref),
                 ),
               ),
             const SizedBox(height: Gap.xl),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-              child: _StatCapsules(id: id),
+              child: _StatCapsules(profile: active),
             ),
             const SizedBox(height: Gap.xl),
             Padding(
@@ -138,7 +174,18 @@ class ProfileScreen extends ConsumerWidget {
                 ],
               ),
             ),
-            if (mode == AppMode.business && isMe) ...[
+            if (noBusiness) ...[
+              const SizedBox(height: Gap.xl),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
+                child: StatePanel(
+                  icon: Icons.storefront_outlined,
+                  title: l.businessNoneTitle,
+                  message: l.businessNoneHint,
+                ),
+              ),
+            ],
+            if (mode == AppMode.business && isMe && !noBusiness) ...[
               SectionHeader(title: l.bizTitle),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
@@ -146,17 +193,21 @@ class ProfileScreen extends ConsumerWidget {
               ),
             ],
             SectionHeader(title: l.profilePosts),
-            if (id == null)
+            if (active == null)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
                 child: FloatingSurface(
                   solid: true,
-                  child: Text(l.homeNoIdHint,
+                  child: Text(
+                      noBusiness ? l.businessNoneHint : l.homeNoIdHint,
                       style: Theme.of(context).textTheme.bodyMedium),
                 ),
               )
             else
-              _PostsGrid(code: id.code),
+              _PostsGrid(
+                code: active.code,
+                company: active.isBusiness,
+              ),
           ],
         ),
       ),
@@ -257,17 +308,23 @@ final profileFollowProvider =
 /// emas: to'liq kenglikdagi, pastga qarab fonga singib ketadigan
 /// atmosfera bo'lib turadi. Fokus kartada emas, odamda.
 class _Hero extends StatelessWidget {
-  const _Hero({required this.user, required this.id, required this.mode});
+  const _Hero({required this.user, required this.profile, required this.mode});
 
   final User user;
-  final NfcId? id;
+
+  /// Faol kontekst — shaxsiy yozuv YOKI kompaniya.
+  ///
+  /// Ilgari bu yerda `NfcId?` turardi va biznes rejimida ham o'sha
+  /// SHAXSIY yozuv kelardi: ekran "Biznes" deb turib, shaxsiy ism,
+  /// avatar va kodni ko'rsatardi.
+  final ActiveProfile? profile;
   final AppMode mode;
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
     final business = mode == AppMode.business;
-    final cover = id?.coverUrl ?? '';
+    final cover = profile?.coverUrl ?? '';
 
     // Rejim atmosferaning ham, avatar nurining ham rangini belgilaydi.
     final tone = business ? t.accentB : t.accent1;
@@ -277,7 +334,7 @@ class _Hero extends StatelessWidget {
     // Ikkilamchi yozuv faqat backend bergan bo'lsa chiqadi. Concept B'da
     // bu yerda `@handle` turadi — bizning backend'da bunday maydon yo'q,
     // shuning uchun UNI TO'QIB CHIQARMAYMIZ.
-    final subtitle = (id?.role ?? '').trim();
+    final subtitle = (profile?.subtitle ?? '').trim();
 
     return Stack(
       children: [
@@ -345,12 +402,19 @@ class _Hero extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const SizedBox(height: 86),
-                _HeroAvatar(user: user, id: id, glow: glow, business: business),
+                _HeroAvatar(
+                    user: user,
+                    profile: profile,
+                    glow: glow,
+                    business: business),
                 const SizedBox(height: Gap.md),
                 Text(
-                  id != null && id!.name.isNotEmpty
-                      ? id!.name
-                      : user.displayName,
+                  (profile?.name ?? '').isNotEmpty
+                      ? profile!.name
+                      // Kompaniya nomi bo'sh bo'lishi mumkin emas,
+                      // shaxsiy yozuvda esa bo'lishi mumkin — shunda
+                      // hisob egasining ismi ishlatiladi.
+                      : (business ? '' : user.displayName),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
@@ -371,9 +435,16 @@ class _Hero extends StatelessWidget {
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
-                if (id != null) ...[
+                if (profile != null) ...[
                   const SizedBox(height: Gap.md),
-                  _IdPill(id: id!),
+                  _IdPill(
+                    code: profile!.code,
+                    // Kompaniyada "faol" holati `status` bilan
+                    // beriladi, shaxsiy yozuvda — `active`.
+                    active: profile!.isBusiness
+                        ? profile!.business!.isPublished
+                        : profile!.id!.active,
+                  ),
                 ],
               ],
             ),
@@ -392,22 +463,25 @@ class _Hero extends StatelessWidget {
 class _HeroAvatar extends StatelessWidget {
   const _HeroAvatar({
     required this.user,
-    required this.id,
+    required this.profile,
     required this.glow,
     required this.business,
   });
 
   final User user;
-  final NfcId? id;
+  final ActiveProfile? profile;
   final Color glow;
   final bool business;
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final avatar = (id?.avatarUrl ?? '').isNotEmpty
-        ? id!.avatarUrl
-        : user.avatarUrl;
+    // Biznes kontekstida hisob egasining avatariga QAYTILMAYDI:
+    // kompaniya logotipi bo'lmasa, bosh harf ko'rsatiladi. Aks holda
+    // biznes profilida odamning surati turardi.
+    final avatar = (profile?.avatarUrl ?? '').isNotEmpty
+        ? profile!.avatarUrl
+        : (business ? '' : user.avatarUrl);
 
     return SizedBox(
       width: 112,
@@ -434,7 +508,8 @@ class _HeroAvatar extends StatelessWidget {
             ),
           ),
           // Nishon FAQAT haqiqiy holat bo'lganda: asosiy ID yoki biznes.
-          if (id != null && (id!.primary || id!.kind == NfcIdKind.business))
+          if (profile != null &&
+              (profile!.isBusiness || profile!.id!.primary))
             Positioned(
               right: 2,
               bottom: 2,
@@ -452,7 +527,7 @@ class _HeroAvatar extends StatelessWidget {
                   boxShadow: [BoxShadow(color: t.glowB, blurRadius: 12)],
                 ),
                 child: Icon(
-                  id!.kind == NfcIdKind.business
+                  profile!.isBusiness
                       ? Icons.storefront_rounded
                       : Icons.check_rounded,
                   size: 12,
@@ -470,13 +545,14 @@ class _HeroAvatar extends StatelessWidget {
 ///
 /// Nuqta bezak emas: ID faol bo'lmasa u so'nik rangda turadi.
 class _IdPill extends StatelessWidget {
-  const _IdPill({required this.id});
-  final NfcId id;
+  const _IdPill({required this.code, required this.active});
+  final String code;
+  final bool active;
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final dot = id.active ? t.success : t.text3;
+    final dot = active ? t.success : t.text3;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
@@ -500,7 +576,7 @@ class _IdPill extends StatelessWidget {
           const SizedBox(width: Gap.sm),
           Flexible(
             child: Text(
-              id.code,
+              code,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AppType.monoStyle(
@@ -519,17 +595,17 @@ class _IdPill extends StatelessWidget {
 
 /// Statistika — katta karta emas, uchta kapsula.
 class _StatCapsules extends StatelessWidget {
-  const _StatCapsules({required this.id});
-  final NfcId? id;
+  const _StatCapsules({required this.profile});
+  final ActiveProfile? profile;
 
   @override
   Widget build(BuildContext context) {
     final l = L.of(context);
     final t = context.tokens;
     final items = [
-      (formatCount(id?.posts ?? 0), l.profilePosts),
-      (formatCount(id?.followers ?? 0), l.profileFollowers),
-      (formatCount(id?.following ?? 0), l.profileFollowing),
+      (formatCount(profile?.posts ?? 0), l.profilePosts),
+      (formatCount(profile?.followers ?? 0), l.profileFollowers),
+      (formatCount(profile?.following ?? 0), l.profileFollowing),
     ];
 
     return Row(
@@ -613,14 +689,22 @@ class _BusinessTiles extends StatelessWidget {
 }
 
 class _PostsGrid extends ConsumerWidget {
-  const _PostsGrid({required this.code});
+  const _PostsGrid({required this.code, this.company = false});
   final String code;
+
+  /// `true` — kod KOMPANIYA identifikatori, NFC yozuvi emas.
+  final bool company;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = L.of(context);
     final t = context.tokens;
-    final posts = ref.watch(profilePostsProvider(code));
+    // Ikki manba ikki xil endpoint: shaxsiy yozuv
+    // `/api/records/:code/posts`, kompaniya esa
+    // `/api/companies/:id/posts`. Ilgari ikkalasi uchun ham birinchi
+    // yo'l chaqirilardi.
+    final posts = ref.watch(
+        company ? companyPostsProvider(code) : profilePostsProvider(code));
 
     return posts.when(
       loading: () => Padding(

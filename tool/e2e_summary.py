@@ -26,6 +26,7 @@ END = "<<<END_E2E_MATRIX_JSON>>>"
 ORDER = [
     "FAIL",
     "PARTIAL",
+    "KNOWN MISSING",
     "BACKEND REQUIRED",
     "CONFIG REQUIRED",
     "DEVICE REQUIRED",
@@ -38,6 +39,7 @@ ICON = {
     "PASS": "✅",
     "FAIL": "❌",
     "PARTIAL": "⚠️",
+    "KNOWN MISSING": "🚧",
     "BACKEND REQUIRED": "🛠",
     "CONFIG REQUIRED": "🔑",
     "DEVICE REQUIRED": "📱",
@@ -128,7 +130,7 @@ def main(paths: list[str]) -> int:
 
     # ── FAIL va PARTIAL uchun to'liq tafsilot ──────────────────
     detailed = [r for r in merged
-                if r.get("verdict") in ("FAIL", "PARTIAL")]
+                if r.get("verdict") in ("FAIL", "PARTIAL", "KNOWN MISSING")]
     if detailed:
         print("### FAIL / PARTIAL — sabab va endpoint\n")
         for r in detailed:

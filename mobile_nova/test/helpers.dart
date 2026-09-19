@@ -85,7 +85,7 @@ class FakeDiscoverRepository extends DiscoverRepository {
   Future<Result<List<NfcId>>> searchPeople(String q) async => const Ok(testIds);
 
   @override
-  Future<Result<List<Post>>> trending() async => const Ok([]);
+  Future<Result<List<Post>>> trending({int page = 1}) async => const Ok([]);
 }
 
 /// Test uchun tayyor `ProviderContainer` overridelari.

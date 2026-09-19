@@ -375,5 +375,9 @@
   "giftAccept": "Qabul qilish",
   "giftReject": "Rad etish",
   "giftCancel": "Bekor qilish",
-  "giftNoOffers": "Hozircha sovg‘a taklifi yo‘q"
+  "giftNoOffers": "Hozircha sovg‘a taklifi yo‘q",
+  "profilePickBusiness": "Biznes profilni tanlang",
+  "profilePickPersonal": "Shaxsiy profilni tanlang",
+  "businessNoneTitle": "Sizda biznes profil yo‘q",
+  "businessNoneHint": "Biznes profil yarating yoki shaxsiy rejimga qayting"
 }

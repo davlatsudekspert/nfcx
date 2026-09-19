@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
+import '../../core/errors/app_error.dart';
 import '../../core/network/api_client.dart';
 import '../../core/utils/result.dart';
 import '../models/models.dart';
@@ -128,6 +129,75 @@ class BusinessRepository {
       _api.delete<void>('/api/records/$code/${kind.path}/items/$id');
 
   /// Vitrina ko'rsatkichlari.
+  /// Kompaniya posti YARATISH.
+  ///
+  /// Shaxsiy post bilan bir xil shakl (`imageUrl`/`videoUrl`,
+  /// `caption`, `agreed`), lekin BOSHQA manzil. Ilgari biznes
+  /// rejimida ham shaxsiy yo'l chaqirilardi — ya'ni biznes
+  /// profilida turib yaratilgan post SHAXSIY profilga tushardi.
+  Future<Result<void>> createPost({
+    required String companyId,
+    String caption = '',
+    String imageUrl = '',
+    String videoUrl = '',
+  }) {
+    if (imageUrl.isEmpty && videoUrl.isEmpty) {
+      return Future.value(const Err(AppError(
+        AppErrorKind.validation,
+        code: 'bad_image',
+        detail: 'post uchun rasm yoki video majburiy',
+      )));
+    }
+    return _api.post<void>('/api/companies/$companyId/posts', {
+      if (imageUrl.isNotEmpty) 'imageUrl': imageUrl,
+      if (videoUrl.isNotEmpty) 'videoUrl': videoUrl,
+      'caption': caption,
+      'agreed': true,
+    });
+  }
+
+  /// Kompaniya istoryasi yaratish.
+  Future<Result<void>> createStory({
+    required String companyId,
+    String imageUrl = '',
+    String videoUrl = '',
+    String caption = '',
+  }) {
+    if (imageUrl.isEmpty && videoUrl.isEmpty) {
+      return Future.value(const Err(AppError(
+        AppErrorKind.validation,
+        code: 'bad_image',
+        detail: 'istorya uchun rasm yoki video majburiy',
+      )));
+    }
+    return _api.post<void>('/api/companies/$companyId/stories', {
+      if (imageUrl.isNotEmpty) 'imageUrl': imageUrl,
+      if (videoUrl.isNotEmpty) 'videoUrl': videoUrl,
+      'caption': caption,
+      'agreed': true,
+    });
+  }
+
+  /// Kompaniya postlari — `/api/companies/:id/posts`.
+  ///
+  /// Javob shakli `Post.fromJson` ga TO'G'RIDAN-TO'G'RI mos keladi:
+  /// `{id, code, authorName, authorAvatar, imageUrl, videoUrl,
+  /// caption, createdAt, likeCount, liked}`.
+  Future<Result<List<Post>>> posts(String companyId) async {
+    final res = await _api
+        .get<Map<String, dynamic>>('/api/companies/$companyId/posts');
+    return res.map((j) => parseList(j['posts'] ?? j['items'], Post.fromJson)
+        .map((p) => p.copyWithKind(authorKind: 'company'))
+        .toList());
+  }
+
+  /// Kompaniya istoryalari — `/api/companies/:id/stories`.
+  Future<Result<List<StoryItem>>> stories(String companyId) async {
+    final res = await _api
+        .get<Map<String, dynamic>>('/api/companies/$companyId/stories');
+    return res.map((j) => parseList(j['stories'] ?? j['items'], StoryItem.fromJson));
+  }
+
   Future<Result<Map<String, dynamic>>> analytics(String code) =>
       _api.get<Map<String, dynamic>>('/api/records/$code/analytics');
 }

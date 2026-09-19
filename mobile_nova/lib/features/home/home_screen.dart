@@ -28,13 +28,21 @@ import '../nfc/qr_sheet.dart';
 import 'widgets/avatar.dart';
 import 'widgets/identity_card.dart';
 import 'widgets/mode_switch.dart';
+import '../../app/profile_context.dart';
+import '../../data/repositories/business_repository.dart';
+import '../profile/profile_switcher.dart';
 
 /// Faol NFC ID ning story'lari.
 final homeStoriesProvider =
     FutureProvider.autoDispose<List<StoryItem>>((ref) async {
-  final id = ref.watch(activeIdProvider);
-  if (id == null) return const [];
-  final res = await ref.watch(socialRepositoryProvider).storiesOf(id.code);
+  final p = ref.watch(activeProfileProvider);
+  if (p == null) return const [];
+  // Kompaniya istoryalari boshqa jadvalda va boshqa manzilda
+  // (`/api/companies/:id/stories`). Shaxsiy yo'lni kompaniya kodi
+  // bilan chaqirish bo'sh ro'yxat qaytarardi.
+  final res = p.isBusiness
+      ? await ref.watch(businessRepositoryProvider).stories(p.code)
+      : await ref.watch(socialRepositoryProvider).storiesOf(p.code);
   return res.when(ok: (v) => v, err: (e) => throw e);
 });
 
@@ -70,7 +78,12 @@ class HomeScreen extends ConsumerWidget {
     final t = context.tokens;
     final user = ref.watch(currentUserProvider);
     final mode = ref.watch(modeProvider);
-    final id = ref.watch(activeIdProvider);
+    final active = ref.watch(activeProfileProvider);
+    final noBusiness = ref.watch(businessMissingProvider);
+
+    // Identifikatsiya kartasi, QR va ulashish FAQAT NFC yozuvida
+    // ma'noli — kompaniyaning QR kodi shaxsiy yozuvniki emas.
+    final id = active != null && !active.isBusiness ? active.id : null;
 
     if (user == null) return const SizedBox.shrink();
 
@@ -123,20 +136,39 @@ class HomeScreen extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
               child: ModeSwitch(
                 mode: mode,
-                onChanged: (m) => ref.read(modeProvider.notifier).set(m),
+                onChanged: (m) => m == AppMode.business
+                    ? switchToBusiness(context, ref)
+                    : switchToPersonal(context, ref),
               ),
             ),
             const SizedBox(height: Gap.xl),
-            if (id != null)
+            if (active != null)
               _IdentityHero(
                 user: user,
-                id: id,
-                onTap: () => context.push(Routes.nfcScan),
+                profile: active,
+                // ORB SKANERGA OLIB BORMAYDI.
+                //
+                // Ilgari bu yerda `Routes.nfcScan` turardi va orbning
+                // BUTUN yuzasi skanerni ochardi. Avatar esa orb ichida,
+                // ya'ni suratni (yoki story halqasini) bosgan odam NFC
+                // skaneriga tushib, apparati yo'q qurilmada "Bu
+                // qurilmada NFC yo'q" degan xabarni olardi — story
+                // ochilishi kerak bo'lgan joyda.
+                //
+                // NFC endi FAQAT pastki navigatsiyaning markaziy
+                // tugmasi va NFC markazi orqali ochiladi. Orbni bosish
+                // o'z profilini ochadi — bu kutilgan, zararsiz amal.
+                onTap: () => context.push(active.isBusiness
+                    ? Routes.business
+                    : Routes.nfcId(active.code)),
               ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
               child: id == null
-                  ? _NoIdCard(onShop: () => context.push(Routes.shop))
+                  ? (noBusiness
+                      ? _NoBusinessCard(
+                          onPersonal: () => switchToPersonal(context, ref))
+                      : _NoIdCard(onShop: () => context.push(Routes.shop)))
                   : IdentityCard(
                       user: user,
                       id: id,
@@ -184,13 +216,19 @@ class HomeScreen extends ConsumerWidget {
 ///
 /// Orb markazida FAQAT belgi — plastina yo'q, shakl yaxlit qoladi.
 class _IdentityHero extends ConsumerWidget {
-  const _IdentityHero({required this.user, required this.id, this.onTap});
+  const _IdentityHero({required this.user, required this.profile, this.onTap});
 
   final User user;
-  final NfcId id;
 
-  /// Tegilganda skanerlash ekrani ochiladi — orb ayni shu amalning
-  /// jismoniy ko'rinishi.
+  /// Faol kontekst — shaxsiy yozuv yoki kompaniya.
+  ///
+  /// Ilgari bu yerda `NfcId` turardi, ya'ni biznes rejimida ham
+  /// shaxsiy yozuv chizilardi.
+  final ActiveProfile profile;
+
+  /// Orbni bosish O'Z PROFILINI ochadi. NFC skaneri ATAYLAB emas:
+  /// u faqat pastki navigatsiyaning markaziy tugmasida va NFC
+  /// markazida bo'lishi kerak.
   final VoidCallback? onTap;
 
   @override
@@ -202,8 +240,10 @@ class _IdentityHero extends ConsumerWidget {
     // ketmaydi, lekin baribir ekranning eng katta obyekti.
     final orb = (width * .58).clamp(200.0, 260.0);
 
-    final title = id.name.isNotEmpty ? id.name : user.displayName;
-    final subtitle = id.role;
+    final title = profile.name.isNotEmpty
+        ? profile.name
+        : (profile.isBusiness ? '' : user.displayName);
+    final subtitle = profile.subtitle;
 
     // Home — "raqamli shaxs" ekrani, shuning uchun orb markazida ODAM
     // turadi: faol NFC ID'ning surati, u bo'lmasa hisobning surati.
@@ -212,7 +252,11 @@ class _IdentityHero extends ConsumerWidget {
     //
     // NFC markazida esa bu mantiq YO'Q: u ekran amal haqida, shaxs
     // haqida emas, shuning uchun u yerda doim belgi turadi.
-    final avatar = id.avatarUrl.isNotEmpty ? id.avatarUrl : user.avatarUrl;
+    // Biznes kontekstida hisob egasining suratiga QAYTILMAYDI —
+    // kompaniya logotipi bo'lmasa brend belgisi chiziladi.
+    final avatar = profile.avatarUrl.isNotEmpty
+        ? profile.avatarUrl
+        : (profile.isBusiness ? '' : user.avatarUrl);
 
     // Story halqasi FAQAT haqiqiy ma'lumotdan. `homeStoriesProvider`
     // backenddan faol ID ning story lentasini oladi; bizga ularning
@@ -220,7 +264,9 @@ class _IdentityHero extends ConsumerWidget {
     // to'qilmaydi: so'rov yuklanayotgan bo'lsa ham, xato bo'lsa ham
     // halqa ko'rsatilmaydi.
     final mine = ref.watch(homeStoriesProvider).maybeWhen(
-          data: (all) => all.where((s) => s.code == id.code).toList(),
+          data: (all) => all
+              .where((s) => s.code.isEmpty || s.code == profile.code)
+              .toList(),
           orElse: () => const <StoryItem>[],
         );
     final ring = mine.isEmpty
@@ -245,15 +291,16 @@ class _IdentityHero extends ConsumerWidget {
                   url: avatar,
                   orb: orb,
                   initials: user.initials,
-                  music: id.musicUrls,
+                  music: profile.musicUrls,
                   ring: ring,
-                  // Story bo'lsa surat o'zining amaliga ega bo'ladi:
-                  // mavjud Story Viewer ochiladi. Story bo'lmasa
-                  // surat alohida amalga ega emas va butun orb
-                  // skanerlashga olib boradi.
+                  // Story BOR bo'lsa — Story Viewer.
+                  //
+                  // Story YO'Q bo'lsa `null` qoladi va bosish orbning
+                  // o'z amaliga o'tadi (profil). Muhimi: ikkala holatda
+                  // ham NFC skaneri OCHILMAYDI.
                   onOpenStory: ring == null
                       ? null
-                      : () => context.push(Routes.story(id.code)),
+                      : () => context.push(Routes.story(profile.code)),
                 ),
         ),
         const SizedBox(height: Gap.lg),
@@ -562,6 +609,44 @@ class _StoryRingPainter extends CustomPainter {
 }
 
 /// NFC ID hali yo'q — do'konga yo'naltiruvchi holat.
+/// Biznes rejimi tanlangan, lekin hisobda kompaniya yo'q.
+///
+/// Bu holat ATAYLAB ko'rsatiladi. Jimgina shaxsiy profilga qaytish
+/// aynan avvalgi xatoning o'zi bo'lardi: tugma "Biznes" da turib,
+/// ekranda shaxsiy ma'lumot ko'rinardi.
+class _NoBusinessCard extends StatelessWidget {
+  const _NoBusinessCard({required this.onPersonal});
+  final VoidCallback onPersonal;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context);
+    return FloatingSurface(
+      solid: true,
+      child: Column(
+        children: [
+          Icon(Icons.storefront_outlined,
+              size: 26, color: context.tokens.text3),
+          const SizedBox(height: Gap.sm),
+          Text(l.businessNoneTitle,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 4),
+          Text(l.businessNoneHint,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall),
+          const SizedBox(height: Gap.lg),
+          NovaButton(
+            label: l.modePersonal,
+            tone: ButtonTone.quiet,
+            onPressed: onPersonal,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _NoIdCard extends StatelessWidget {
   const _NoIdCard({required this.onShop});
   final VoidCallback onShop;
