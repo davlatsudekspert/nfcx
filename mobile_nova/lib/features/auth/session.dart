@@ -94,6 +94,41 @@ final sessionProvider =
   (ref) => SessionController(ref.watch(authRepositoryProvider)),
 );
 
+/// 401 SIGNALINI SESSIYAGA ULAYDI.
+///
+/// ## NIMA UCHUN KERAK BO'LDI
+///
+/// `ApiClient.sessionExpired` hisoblagichi bor edi va 401 da o'sardi
+/// — lekin unga HECH KIM OBUNA BO'LMAGAN. Butun `lib/` da yagona
+/// boshqa chaqiruv `dispose()` edi. Ya'ni token eskirsa, ilova o'sha
+/// o'lik token bilan ishlayverardi: har so'rov 401 olardi, ekranlar
+/// bo'sh qolardi va kirish ekraniga qaytishning yo'li yo'q edi.
+///
+/// Router allaqachon to'g'ri yozilgan: `SessionAnonymous` bo'lishi
+/// bilan u `Routes.welcome` ga ko'chiradi. Yetishmagan bo'lagi
+/// shunchaki MANA SHU ULANISH edi.
+///
+/// `Future.microtask` — signal tarmoq javobidan keladi va o'sha
+/// zahoti holatni o'zgartirish qurilish (build) fazasiga to'g'ri
+/// kelib qolishi mumkin.
+final sessionExpiryWatcherProvider = Provider<void>((ref) {
+  final api = ref.watch(apiProvider);
+  var alive = true;
+
+  void onExpired() {
+    Future.microtask(() {
+      if (!alive) return;
+      ref.read(sessionProvider.notifier).expire();
+    });
+  }
+
+  api.sessionExpired.addListener(onExpired);
+  ref.onDispose(() {
+    alive = false;
+    api.sessionExpired.removeListener(onExpired);
+  });
+});
+
 /// Qulaylik: joriy foydalanuvchi yoki `null`.
 final currentUserProvider = Provider<User?>((ref) {
   final s = ref.watch(sessionProvider);

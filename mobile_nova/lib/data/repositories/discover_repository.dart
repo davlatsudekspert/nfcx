@@ -38,11 +38,39 @@ class DiscoverRepository {
     return res.map((j) => parseList(j['companies'] ?? j['items'], Business.fromJson));
   }
 
-  /// Tavsiya etiladigan profillar — qidiruv bo'sh bo'lganda ko'rinadi.
+  /// Tavsiya etiladigan profillar — qidiruv BO'SH bo'lganda.
+  ///
+  /// ## NIMA UCHUN `/api/records/search` EMAS
+  ///
+  /// Ilgari bu yerda qidiruv endpointi `q: ''` bilan chaqirilardi.
+  /// Server esa bo'sh so'rovni ATAYLAB rad etadi:
+  ///
+  ///     const q = String(url.searchParams.get('q') || '').trim()...;
+  ///     if (q.length < 2) return json({ records: [] });
+  ///
+  /// Ya'ni javob HAR DOIM bo'sh ro'yxat edi va "Odamlar" bo'limi
+  /// hech qachon hech kimni ko'rsatmasdi. Xato serverda emas:
+  /// ilova KO'RIB CHIQISH uchun QIDIRUV yo'lini ishlatardi.
+  ///
+  /// `/api/records` — aynan ommaviy katalog ro'yxati. U bir xil
+  /// ko'rinish filtrlarini qo'llaydi:
+  ///
+  ///     WHERE hidden_from_directory = 0
+  ///       AND catalogVisibleSql(cards)   -- avtomatik/demo ID'lar
+  ///       AND ownerAliveSql(cards)       -- egasi o'chirilganlar
+  ///
+  /// Shuning uchun yashirin, xususiy yoki demo profil bu yo'l
+  /// orqali ham chiqmaydi — ro'yxat saytdagi katalog bilan BIR XIL.
+  ///
+  /// Javob shakli ham boshqacha: `/api/records` YALANG'OCH massiv
+  /// qaytaradi (`json(rows.map(...))`), `search` esa
+  /// `{records: [...]}`. `parseList` ikkalasini ham hazm qiladi.
   Future<Result<List<NfcId>>> suggested() async {
-    final res = await _api
-        .get<Map<String, dynamic>>('/api/records/search', query: {'q': '', 'limit': 12});
-    return res.map((j) => parseList(j['records'] ?? j['items'], NfcId.fromJson));
+    final res = await _api.get<dynamic>('/api/records');
+    return res.map((j) => parseList(
+          j is Map ? (j['records'] ?? j['items'] ?? j) : j,
+          NfcId.fromJson,
+        ).take(60).toList());
   }
 
   /// Ommaviy lenta — HAQIQIY foydalanuvchi va biznes postlari.

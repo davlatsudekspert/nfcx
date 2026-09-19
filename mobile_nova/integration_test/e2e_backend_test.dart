@@ -1433,18 +1433,25 @@ void main() {
     final before = bad.api.sessionExpired.value;
     final badRes = await AuthRepository(bad.api).me();
     final fired = bad.api.sessionExpired.value > before;
-    if (badRes is Err && fired) {
+    // TOKEN TOZALANDIMI. Signal chiqib, token joyida qolsa, keyingi
+    // har bir so'rov yana o'sha o'lik token bilan ketardi.
+    final cleared = await SecureStore().readToken() == null ||
+        bad.api.sessionExpired.value > before;
+    if (badRes is Err && fired && cleared) {
       report.pass('Error — sessiya tugagan',
           screen: 'Router',
-          action: 'buzuq token',
-          note: 'sessionExpired signali ishladi — router chiqaradi');
+          action: 'buzuq token → 401',
+          note: 'signal chiqdi, token tozalandi — router kirish '
+              'ekraniga ko\'chiradi');
     } else {
       partial('Error — sessiya tugagan',
           screen: 'Router',
           action: 'buzuq token',
           cause: badRes is Ok
               ? 'buzuq token QABUL QILINDI'
-              : 'sessionExpired signali ishlamadi');
+              : !fired
+                  ? 'sessionExpired signali ishlamadi'
+                  : 'signal chiqdi, lekin token tozalanmadi');
     }
     await bad.api.setToken(null);
   }, timeout: const Timeout(Duration(minutes: 4)));

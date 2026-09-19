@@ -8,12 +8,19 @@ import '../l10n/gen/app_localizations.dart';
 import '../routing/router.dart';
 import 'providers.dart';
 import '../features/settings/app_lock.dart';
+import '../features/auth/session.dart';
 
 class NovaApp extends ConsumerWidget {
   const NovaApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 401 -> sessiya yopiladi -> router kirish ekraniga ko'chiradi.
+    // Bu ulanish ILGARI YO'Q edi: signal chiqardi, uni hech kim
+    // eshitmasdi. `watch` shu yerda turishi kerak — kuzatuvchi
+    // ilovaning umri davomida tirik bo'lishi uchun.
+    ref.watch(sessionExpiryWatcherProvider);
+
     final tokens = ref.watch(themeProvider);
     final locale = ref.watch(localeProvider);
     final router = ref.watch(routerProvider);

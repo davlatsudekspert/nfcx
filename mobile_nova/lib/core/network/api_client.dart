@@ -221,7 +221,7 @@ class ApiClient {
       if (status >= 200 && status < 300) {
         return Ok((body: map, session: _sessionFrom(res.headers)));
       }
-      return Err(_httpError(status, res.data));
+      return Err(_httpError(status, res.data, res.requestOptions.path));
     } on DioException catch (e) {
       final err = _dioError(e);
       if (err.kind == AppErrorKind.offline) online.value = false;
@@ -276,7 +276,7 @@ class ApiClient {
         if (null is T) return Ok(null as T);
         return Ok(_asMap(body) as T);
       }
-      return Err(_httpError(status, body));
+      return Err(_httpError(status, body, res.requestOptions.path));
     } on DioException catch (e) {
       final err = _dioError(e);
       if (err.kind == AppErrorKind.offline) online.value = false;
@@ -292,7 +292,7 @@ class ApiClient {
     return {'value': body};
   }
 
-  AppError _httpError(int status, dynamic body) {
+  AppError _httpError(int status, dynamic body, [String path = '']) {
     final map = body is Map ? body.cast<String, dynamic>() : const <String, dynamic>{};
     final code = (map['error'] ?? map['code'])?.toString();
     final detail = map['detail']?.toString() ??
@@ -311,8 +311,58 @@ class ApiClient {
       _ => status >= 500 ? AppErrorKind.server : AppErrorKind.unknown,
     };
 
-    if (kind == AppErrorKind.unauthorized) sessionExpired.value++;
+    if (kind == AppErrorKind.unauthorized) _onUnauthorized(path);
     return AppError(kind, code: code, detail: detail, status: status);
+  }
+
+  /// SINOV UCHUN TESHIK.
+  ///
+  /// 401 ni tarmoqsiz qayta ishlab ko'rish imkonini beradi: qaysi
+  /// yo'lda sessiya yopilishi, qaysisida yopilmasligi aynan shu
+  /// yerda hal bo'ladi va uni haqiqiy server bilan sinash qimmat.
+  @visibleForTesting
+  void debugHandleStatus(int status, String path) =>
+      _httpError(status, const <String, dynamic>{}, path);
+
+  /// KIRISH YO'LLARI — u yerdagi 401 "sessiya tugadi" EMAS.
+  ///
+  /// `/api/auth/login` noto'g'ri parolda ham 401 qaytaradi. Buni
+  /// sessiya tugashi deb qabul qilsak, parolni bir marta xato
+  /// yozgan odam saqlangan sessiyasidan ham ayrilardi.
+  static bool _isAuthEntry(String path) =>
+      path.contains('/auth/login') ||
+      path.contains('/auth/register') ||
+      path.contains('/auth/verify') ||
+      path.contains('/auth/request');
+
+  /// SESSIYA TUGADI.
+  ///
+  /// ## NIMA UCHUN KERAK BO'LDI
+  ///
+  /// `sessionExpired` hisoblagichi BOR edi va 401 da o'sardi, lekin
+  /// uni HECH KIM TINGLAMASDI — butun `lib/` da yagona boshqa
+  /// chaqiruv `dispose()` edi. Izohda "router kirish ekraniga
+  /// oladi" deyilgan, router esa unga obuna bo'lmagan.
+  ///
+  /// Natijasi: token eskirsa yoki bekor qilinsa, ilova o'sha o'lik
+  /// token bilan ishlayverardi — har so'rov 401 olardi, ekran esa
+  /// bo'sh yoki xato holatida turardi va foydalanuvchi kirish
+  /// ekraniga QAYTA OLMASDI.
+  ///
+  /// Endi: token tozalanadi (keyingi so'rov o'lik token bilan
+  /// ketmasin) va signal beriladi.
+  ///
+  /// TAKRORLANMAYDI: token allaqachon `null` bo'lsa, signal ham
+  /// bermaymiz. Aks holda parallel ketayotgan o'nta so'rovning
+  /// har biri 401 olib, o'nta signal chiqarardi.
+  void _onUnauthorized(String path) {
+    if (_isAuthEntry(path)) return;
+    if (_token == null) return;
+    // Natijasi kutilmaydi: xato javobni qaytarish kechikmasligi
+    // kerak. Xatosi ham yutiladi — token o'chmasa ham signal
+    // beriladi va sessiya baribir yopiladi.
+    unawaited(setToken(null).catchError((_) {}));
+    sessionExpired.value++;
   }
 
   AppError _dioError(DioException e) {

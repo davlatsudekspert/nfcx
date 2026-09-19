@@ -758,3 +758,70 @@ ochiladi.
 `no_op_audit_test.dart`: Story Viewer va post tafsiloti IKKALASI
 ham `isVideo` ni tekshirishi va `InlineVideo` ni chaqirishi shart;
 `inline_video.dart` esa haqiqiy `VideoPlayer` chizishi shart.
+
+---
+
+## 15. Qolgan PARTIAL'lar — ildiz sabablar
+
+### 15.1 Kashfiyot "Odamlar" — QIDIRUV yo'li BROWSE uchun ishlatilgan
+
+Server aybdor emas. `/api/records/search` bo'sh so'rovni ATAYLAB
+rad etadi:
+
+    const q = String(url.searchParams.get('q') || '').trim()...;
+    if (q.length < 2) return json({ records: [] });
+
+Ilova esa ko'rib chiqish (browse) uchun aynan shu yo'lni `q: ''`
+bilan chaqirardi — ya'ni javob HAR DOIM bo'sh edi.
+
+`/api/records` — ommaviy katalogning o'zi va u BIR XIL ko'rinish
+filtrlarini qo'llaydi:
+
+    WHERE hidden_from_directory = 0
+      AND catalogVisibleSql(cards)   -- avtomatik/demo ID'lar
+      AND ownerAliveSql(cards)       -- egasi o'chirilganlar
+
+Shuning uchun yashirin, xususiy yoki demo profil bu yo'l orqali
+ham chiqmaydi. Backend O'ZGARTIRILMADI.
+
+### 15.2 Sessiya tugashi — signal bor edi, TINGLOVCHI yo'q edi
+
+`ApiClient.sessionExpired` 401 da o'sardi. Butun `lib/` da unga
+yagona murojaat — `dispose()`. Izohda "router kirish ekraniga
+oladi" deyilgan, router esa obuna bo'lmagan.
+
+Natija: token eskirsa ilova o'sha o'lik token bilan ishlayverardi,
+har so'rov 401 olardi va kirish ekraniga qaytish yo'li yo'q edi.
+
+Router ALLAQACHON to'g'ri yozilgan — `SessionAnonymous` bo'lishi
+bilan `Routes.welcome` ga ko'chiradi. Yetishmagani shu ulanish edi.
+
+Endi 401 da: token tozalanadi, signal beriladi, sessiya yopiladi.
+
+IKKI ISTISNO ataylab:
+* `/auth/login|register|verify|request` dagi 401 — bu "parol
+  noto'g'ri", sessiya tugashi emas. Aks holda parolni bir marta
+  xato yozgan odam saqlangan sessiyasidan ayrilardi;
+* 403 — "ruxsat yo'q", "kim ekaningni bilmayman" emas.
+
+TAKROR SIGNAL YO'Q: token allaqachon `null` bo'lsa, signal
+berilmaydi — parallel o'nta so'rov o'nta signal chiqarmasin.
+
+### 15.3 Biznes analitikasi — endpoint emas, MA'LUMOT yo'q
+
+`/api/records/:code/analytics` KARTA uchun yozilgan:
+`ownerOnly(code)` + `cardEventStats(code)`. Kompaniya kartа emas,
+shuning uchun 403.
+
+Audit natijasi — kompaniya uchun analitika MA'LUMOTI umuman yo'q:
+
+* `companies` jadvalida `views` ustuni YO'Q;
+* kompaniya hodisalari jadvali YO'Q;
+* `catalog_item_views(code, ...)` — `code` KARTA kodi
+  (`catalogMeta` → `cleanCode`), kompaniya id'si emas.
+
+Ya'ni endpoint yozilsa ham NOLLAR qaytarardi. Yetishmayotgani
+endpoint emas, KUZATUVNING O'ZI. Bu yangi jadval + yozuv nuqtalari
++ deploy talab qiladi.
+
+Shuning uchun: BACKEND REQUIRED. Soxta endpoint qo'shilmadi.
