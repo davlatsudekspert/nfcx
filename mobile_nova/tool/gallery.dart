@@ -49,11 +49,22 @@ import 'package:nfcstore_nova/features/profile/profile_screen.dart';
 import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Gallereya serveri o'zi beradigan surat — tarmoqqa chiqmaydi.
+///
+/// Home orbdagi avatar mantiqini ko'rsatish uchun kerak. `?avatar=0`
+/// berilsa bu qiymat bo'shatiladi va fallback (brend belgisi) ishlaydi.
+const _sampleAvatar = 'http://127.0.0.1:8731/avatar.jpg';
+
+/// Gallereya ko'rsatayotgan foydalanuvchi — `?avatar=0` bilan
+/// almashtiriladi.
+User _activeUser = _sampleUser;
+
 const _sampleUser = User(
   id: 1,
   email: 'nova@nfcstore.uz',
   name: 'Nodira Rahimova',
   phone: '+998901234567',
+  avatarUrl: _sampleAvatar,
 );
 
 const _sampleIds = [
@@ -88,6 +99,17 @@ Future<void> main() async {
   final themeId = q['theme'] ?? 'pearl';
   final lang = q['lang'] ?? 'uz';
   final signedIn = q['auth'] != 'out';
+
+  // `?avatar=0` — foydalanuvchida surat YO'Q holati: Home orb
+  // fallback sifatida brend belgisini ko'rsatishi kerak.
+  if (q['avatar'] == '0') {
+    _activeUser = const User(
+      id: 1,
+      email: 'nova@nfcstore.uz',
+      name: 'Nodira Rahimova',
+      phone: '+998901234567',
+    );
+  }
 
   // `route` berilsa — HAQIQIY ilova (NovaApp) ishga tushadi va
   // marshrut orqali o'sha ekranga o'tiladi. Shunda `HomeShell` va
@@ -173,11 +195,11 @@ class _GalleryAuth extends AuthRepository {
 
   @override
   Future<Result<({User user, List<NfcId> ids})>> restore() async =>
-      const Ok((user: _sampleUser, ids: _sampleIds));
+      Ok((user: _activeUser, ids: _sampleIds));
 
   @override
   Future<Result<({User user, List<NfcId> ids})>> me() async =>
-      const Ok((user: _sampleUser, ids: _sampleIds));
+      Ok((user: _activeUser, ids: _sampleIds));
 }
 
 const _samplePosts = [

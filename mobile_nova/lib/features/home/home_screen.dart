@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +8,7 @@ import '../../app/providers.dart';
 import '../../core/network/api_client.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/social_repository.dart';
+import '../../design/motion/motion.dart';
 import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
@@ -200,16 +202,27 @@ class _IdentityHero extends StatelessWidget {
     final title = id.name.isNotEmpty ? id.name : user.displayName;
     final subtitle = id.role;
 
+    // Home — "raqamli shaxs" ekrani, shuning uchun orb markazida ODAM
+    // turadi: faol NFC ID'ning surati, u bo'lmasa hisobning surati.
+    // Ikkalasi ham bo'lmasa — brend belgisi. Bo'sh kulrang doira yoki
+    // "surat yo'q" ikonkasi HECH QACHON ko'rsatilmaydi.
+    //
+    // NFC markazida esa bu mantiq YO'Q: u ekran amal haqida, shaxs
+    // haqida emas, shuning uchun u yerda doim belgi turadi.
+    final avatar = id.avatarUrl.isNotEmpty ? id.avatarUrl : user.avatarUrl;
+
     return Column(
       children: [
         NfcOrb(
           size: orb,
           onTap: onTap,
-          child: BrandLogo(
-            size: orb * kOrbMarkRatio,
-            style: BrandLogoStyle.mark,
-            tint: t.onAccent,
-          ),
+          child: avatar.isEmpty
+              ? BrandLogo(
+                  size: orb * kOrbMarkRatio,
+                  style: BrandLogoStyle.mark,
+                  tint: t.onAccent,
+                )
+              : _OrbAvatar(url: avatar, orb: orb, initials: user.initials),
         ),
         const SizedBox(height: Gap.lg),
         Padding(
@@ -241,6 +254,87 @@ class _IdentityHero extends StatelessWidget {
         // ierarxiya emas, takror bo'lardi.
         const SizedBox(height: Gap.lg),
       ],
+    );
+  }
+}
+
+/// Orb yadrosidagi foydalanuvchi surati.
+///
+/// Yadro organik shakl, uning eng tor joyidagi radiusi `orb * .270`.
+/// Surat doirasi `orb * .46` diametrda — ya'ni radiusi `orb * .23`.
+/// Orasidagi ~15% bo'shliq oltin halqa bo'lib qoladi: surat yadroni
+/// to'lg'azib yubormaydi, nafas va wobble paytida ham qirraga
+/// tegmaydi.
+class _OrbAvatar extends StatelessWidget {
+  const _OrbAvatar({
+    required this.url,
+    required this.orb,
+    required this.initials,
+  });
+
+  final String url;
+  final double orb;
+  final String initials;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final d = orb * .46;
+
+    // Surat yuklanmaguncha yoki xato bo'lganda — bo'sh doira emas,
+    // brend belgisi. Orb hech qachon "sinmaydi".
+    Widget fallback() => Center(
+          child: BrandLogo(
+            size: orb * kOrbMarkRatio,
+            style: BrandLogoStyle.mark,
+            tint: t.onAccent,
+          ),
+        );
+
+    return SizedBox(
+      width: d,
+      height: d,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: [
+            // Juda yengil soya — surat yadro ichida "yotgandek"
+            // ko'rinsin, lekin atrofida qorong'i halqa hosil
+            // BO'LMASIN: oltin sirtda qora halqa darhol "teshik"
+            // bo'lib o'qiladi.
+            BoxShadow(
+              color: Colors.black.withValues(alpha: .09),
+              blurRadius: 22,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ClipOval(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              CachedNetworkImage(
+                imageUrl: url,
+                fit: BoxFit.cover,
+                fadeInDuration: Motion.med,
+                placeholder: (_, __) => fallback(),
+                errorWidget: (_, __, ___) => fallback(),
+              ),
+              // Nozik ichki qirra — surat bilan oltin orasida yumshoq
+              // o'tish, qattiq kesilgan chekka emas.
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: .34),
+                    width: 1.2,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
