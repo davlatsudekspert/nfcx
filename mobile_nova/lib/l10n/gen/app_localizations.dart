@@ -1988,6 +1988,12 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Ilovani shu qurilmada ochishni PIN bilan to‘sadi. Bu akkaunt paroli emas.'**
   String get lockDesc;
+
+  /// No description provided for @actionSend.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yuborish'**
+  String get actionSend;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

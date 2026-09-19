@@ -101,6 +101,49 @@ class SocialRepository {
         'agreed': true,
       });
 
+  // ── IZOHLAR ──────────────────────────────────────────────────
+  //
+  // Backend: `hosting/api/comments.js`. Bitta jadval, to'rt xil
+  // kontent: `:kind` = post | company_post | story | company_story.
+  //
+  // DIQQAT: `API_GAPS.md` da bu endpointlar `/api/posts/:id/comments`
+  // deb taxmin qilingan edi — u XATO taxmin. Haqiqiy manzil
+  // `/api/comments/:kind/:id`.
+
+  Future<Result<({List<Comment> items, bool hasMore, int total})>> comments(
+    String kind,
+    int id, {
+    int page = 1,
+  }) async {
+    final res = await _api.get<Map<String, dynamic>>(
+      '/api/comments/$kind/$id',
+      query: {'page': page},
+    );
+    return res.map((j) => (
+          items: parseList(j['comments'], Comment.fromJson),
+          hasMore: j['hasMore'] == true,
+          total: j['total'] is int ? j['total'] as int : 0,
+        ));
+  }
+
+  /// Izoh yozish. Server uzunlikni 1000 belgi bilan cheklaydi va
+  /// daqiqasiga 10 tadan ortiq izohni rad etadi.
+  Future<Result<Comment>> addComment(String kind, int id, String body) async {
+    final res = await _api.post<Map<String, dynamic>>(
+      '/api/comments/$kind/$id',
+      {'body': body},
+    );
+    return res.map((j) =>
+        Comment.fromJson(((j['comment'] ?? j) as Map).cast<String, dynamic>()));
+  }
+
+  /// Izohni o'chirish.
+  ///
+  /// Huquq ikki tomonlama: izoh muallifi ham, kontent egasi ham
+  /// o'chira oladi. Buni server tekshiradi.
+  Future<Result<void>> deleteComment(int commentId) =>
+      _api.delete<void>('/api/comments/$commentId');
+
   /// Kashfiyot lentasi — barcha ommaviy postlar.
   Future<Result<List<Post>>> feed({int page = 1}) async {
     final res = await _api

@@ -972,4 +972,7 @@ class LRu extends L {
   @override
   String get lockDesc =>
       'Требует PIN при открытии приложения на этом устройстве. Это не пароль аккаунта.';
+
+  @override
+  String get actionSend => 'Отправить';
 }

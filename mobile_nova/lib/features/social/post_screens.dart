@@ -22,6 +22,7 @@ import '../home/home_screen.dart';
 import '../home/widgets/avatar.dart';
 import '../home/widgets/identity_card.dart';
 import '../profile/profile_repository.dart';
+import 'comments.dart';
 import 'content_rules.dart';
 import 'moderation.dart';
 
@@ -186,17 +187,12 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                   ),
                 ],
               ),
-              SectionHeader(title: l.postComments),
-              FloatingSurface(
-                solid: true,
-                child: Column(
-                  children: [
-                    Icon(Icons.mode_comment_outlined, size: 25, color: t.text3),
-                    const SizedBox(height: Gap.sm),
-                    Text(l.postNoComments,
-                        style: Theme.of(context).textTheme.bodyMedium),
-                  ],
-                ),
+              // Izohlar — backend'dagi haqiqiy ro'yxat. Ilgari bu
+              // yerda o'zgarmas "izohlar yo'q" yozuvi turardi.
+              CommentsSection(
+                kind: 'post',
+                id: p.id,
+                ownerCode: p.code,
               ),
             ],
           );

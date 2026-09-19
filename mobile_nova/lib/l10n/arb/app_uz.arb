@@ -366,5 +366,6 @@
   "lockBiometric": "Biometrika bilan ochish",
   "lockBiometricNone": "Bu qurilmada biometrika yo‘q",
   "lockOff": "Qulfni o‘chirish",
-  "lockDesc": "Ilovani shu qurilmada ochishni PIN bilan to‘sadi. Bu akkaunt paroli emas."
+  "lockDesc": "Ilovani shu qurilmada ochishni PIN bilan to‘sadi. Bu akkaunt paroli emas.",
+  "actionSend": "Yuborish"
 }

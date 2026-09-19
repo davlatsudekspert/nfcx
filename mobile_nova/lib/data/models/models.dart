@@ -507,23 +507,35 @@ class StoryItem {
 class Comment {
   const Comment({
     required this.id,
+    this.code = '',
     this.authorName = '',
     this.authorAvatar = '',
     this.text = '',
+    this.mine = false,
     this.createdAt,
   });
 
   final int id;
+
+  /// Muallifning NFC kodi — profiliga o'tish uchun.
+  final String code;
   final String authorName;
   final String authorAvatar;
   final String text;
+
+  /// O'chirish tugmasi shu bayroqqa qarab ko'rsatiladi. Huquqni
+  /// BARIBIR server tekshiradi — bu faqat ko'rinish uchun.
+  final bool mine;
+
   final DateTime? createdAt;
 
   factory Comment.fromJson(Map<String, dynamic> j) => Comment(
         id: _i(j['id']),
+        code: _s(j['code']),
         authorName: _s(j['authorName'] ?? j['name']),
         authorAvatar: _s(j['authorAvatar'] ?? j['avatarUrl']),
         text: _s(j['text'] ?? j['body']),
+        mine: _b(j['mine']),
         createdAt: _dt(j['createdAt']),
       );
 }

@@ -978,4 +978,7 @@ class LUz extends L {
   @override
   String get lockDesc =>
       'Ilovani shu qurilmada ochishni PIN bilan to‘sadi. Bu akkaunt paroli emas.';
+
+  @override
+  String get actionSend => 'Yuborish';
 }

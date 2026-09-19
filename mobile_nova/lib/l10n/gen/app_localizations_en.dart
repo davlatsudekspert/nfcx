@@ -975,4 +975,7 @@ class LEn extends L {
   @override
   String get lockDesc =>
       'Asks for a PIN when opening the app on this device. This is not your account password.';
+
+  @override
+  String get actionSend => 'Send';
 }
