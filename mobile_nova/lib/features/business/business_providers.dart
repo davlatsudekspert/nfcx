@@ -31,3 +31,17 @@ final storefrontProvider =
   final res = await ref.watch(businessRepositoryProvider).byId(id);
   return res.when(ok: (v) => v, err: (e) => throw e);
 });
+
+/// KOMPANIYA STATISTIKASI — `GET /api/companies/:id/stats`.
+///
+/// Ilgari analitika ekrani HECH QANDAY statistika endpointini
+/// chaqirmasdi: u faqat kompaniya yozuvidagi `views`, obunachilar
+/// soni va katalog elementlari sonini ko'rsatardi. Repozitoriyadagi
+/// `analytics()` esa KARTA yo'liga borardi va 403 olardi.
+final businessStatsProvider =
+    FutureProvider.autoDispose.family<Map<String, dynamic>, String>(
+  (ref, companyId) async {
+    final res = await ref.watch(businessRepositoryProvider).stats(companyId);
+    return res.when(ok: (v) => v, err: (e) => throw e);
+  },
+);

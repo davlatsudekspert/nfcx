@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:nfcstore_nova/core/network/api_client.dart';
+import 'package:nfcstore_nova/core/utils/result.dart';
 
 import 'creds.dart';
 import 'report.dart';
@@ -100,6 +101,36 @@ class Litter {
 
   void track(String what, Future<void> Function() remove) =>
       _items.add((what: what, remove: remove));
+
+  /// `Result` QAYTARADIGAN tozalash uchun.
+  ///
+  /// ## NIMA UCHUN ALOHIDA METOD
+  ///
+  /// Repozitoriya metodlari ISTISNO OTMAYDI — ular `Result`
+  /// qaytaradi (`result.dart` dagi qoida). `sweep()` esa faqat
+  /// istisnoni ko'radi:
+  ///
+  ///     try { await item.remove(); } catch (e) { ... }
+  ///
+  /// Ya'ni `Err` qaytgan o'chirish JIMGINA muvaffaqiyat bo'lib
+  /// hisoblanardi va hisobotda "hammasi o'chirildi" deb turardi.
+  /// Aslida obyekt joyida qolardi.
+  ///
+  /// Istoryalar aynan shu sababdan yig'ilib qolgan: har ishga
+  /// tushirishda bittadan qo'shilib, chegaraga (10 ta) yetgan va
+  /// E2E #14 da `limit_reached` bergan — hisobot esa har safar
+  /// "tozalandi" deb yozardi.
+  void trackResult(String what, Future<Result<void>> Function() remove) =>
+      _items.add((
+        what: what,
+        remove: () async {
+          final res = await remove();
+          if (res case Err(:final error)) {
+            throw StateError('o\'chmadi: ${error.kind.name} '
+                '(${error.status}) ${error.code ?? ""}');
+          }
+        },
+      ));
 
   /// Teskari tartibda tozalaydi (izoh postdan oldin o'chadi).
   Future<void> sweep() async {

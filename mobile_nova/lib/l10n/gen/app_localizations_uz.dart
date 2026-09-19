@@ -484,6 +484,9 @@ class LUz extends L {
   String get nfcViews => 'Ko‘rishlar';
 
   @override
+  String get bizTaps => 'Bosishlar';
+
+  @override
   String get nfcShowQr => 'QR kodni ko‘rsatish';
 
   @override

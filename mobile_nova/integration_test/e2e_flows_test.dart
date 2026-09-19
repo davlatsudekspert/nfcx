@@ -1119,25 +1119,55 @@ void main() {
       ));
     }
 
-    // Tahlil — `/api/records/:code/analytics` KOMPANIYA uchun
-    // ishlamasligi mumkin, chunki u NFC yozuvlari bo'yicha ishlaydi.
-    // Shuning uchun natija halol belgilanadi.
+    // TAHLIL — HAQIQIY KOMPANIYA ENDPOINTI.
+    //
+    // Ilgari bu yerda `/api/records/:code/analytics` chaqirilardi va
+    // u har safar 403 berardi: o'sha yo'l KARTA uchun yozilgan
+    // (`ownerOnly(code)` + `cardEventStats`). Kompaniya karta emas.
+    //
+    // Serverda kompaniya uchun alohida yo'l ALLAQACHON bor va u
+    // `stats` deb nomlangan — shuning uchun "analytics" bo'yicha
+    // qidirganda topilmagan edi.
     final res = await c
         .read(businessRepositoryProvider)
-        .analytics(company.companyId);
+        .stats(company.companyId);
     res.when(
-      ok: (m) => report.pass('Business analytics',
-          screen: 'BusinessAnalytics',
-          action: 'analitika o\'qildi',
-          note: 'kalitlar: ${m.keys.take(4).join(", ")}'),
+      ok: (m) {
+        final views = m['views'];
+        final taps = m['taps'];
+        final orders = m['orders'];
+        final series = m['series'];
+        final days = m['days'];
+        // Kalitlar SHAKLI ham tekshiriladi: bo'sh javob "ishladi"
+        // bo'lib hisoblanmasin.
+        final shapeOk = views is int &&
+            taps is int &&
+            orders is int &&
+            series is List;
+        if (shapeOk) {
+          report.pass('Business analytics',
+              screen: 'BusinessAnalytics',
+              action: 'GET /api/companies/:id/stats',
+              note: '$days kun; ko\'rish=$views; bosish=$taps; '
+                  'buyurtma=$orders; qator=${(series).length}');
+        } else {
+          report.add(MatrixRow(
+            name: 'Business analytics',
+            verdict: Verdict.partial,
+            screen: 'BusinessAnalytics',
+            action: 'GET /api/companies/:id/stats',
+            cause: 'javob keldi, lekin shakli kutilganidek emas: '
+                '${m.keys.take(6).join(", ")}',
+            layer: 'backend',
+          ));
+        }
+      },
       err: (e) => report.add(MatrixRow(
         name: 'Business analytics',
-        verdict: Verdict.partial,
+        verdict: Verdict.fail,
         screen: 'BusinessAnalytics',
-        action: 'GET /api/records/:code/analytics',
-        cause: '${e.kind.name} (${e.status}) — bu yo\'l NFC yozuvlari '
-            'uchun; kompaniya analitikasi alohida endpoint talab '
-            'qilishi mumkin',
+        action: 'GET /api/companies/:id/stats',
+        cause: '${e.kind.name} (${e.status}) ${e.code ?? ""}',
         layer: 'backend',
       )),
     );

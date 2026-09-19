@@ -347,6 +347,29 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                           ],
                         ),
                       ),
+                      // IZOH. Server uni har doim qaytaradi, model
+                      // esa tashlab yuborardi — shuning uchun
+                      // istoryaga yozilgan matn hech qachon
+                      // ko'rinmasdi.
+                      if (s.caption.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                              Gap.lg, Gap.md, Gap.lg, 0),
+                          child: Text(
+                            s.caption,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontFamily: AppType.sans,
+                              fontSize: 13.5,
+                              height: 1.35,
+                              color: Colors.white,
+                              shadows: [
+                                Shadow(color: Colors.black54, blurRadius: 10),
+                              ],
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),

@@ -783,6 +783,35 @@ void main() {
     }
 
     // ── Story ──────────────────────────────────────────────────
+    //
+    // AVVAL O'ZIMIZNING ESKI AXLATNI TOZALAYMIZ.
+    //
+    // Server bitta profilda ko'pi bilan 10 ta FAOL istoryaga ruxsat
+    // beradi (`limit_reached`). Bu MAHSULOT QOIDASI va unga
+    // tegilmaydi.
+    //
+    // Muammo shunda ediki, har ishga tushirishda bittadan istorya
+    // qolib ketardi (sabab: `sweep()` `Result` dagi `Err` ni
+    // ko'rmasdi — `net.dart` dagi `trackResult` izohiga qarang) va
+    // 10 ta to'lgach E2E #14 da `Story create` 409 bergan.
+    //
+    // FAQAT O'ZIMIZNIKINI o'chiramiz: izohida `kTestMarker` bo'lgan
+    // istoryalar. Haqiqiy foydalanuvchi istoryasiga TEGILMAYDI —
+    // marker sinovdan boshqa hech qayerda yozilmaydi.
+    final preExisting = await social.storiesOf(code);
+    var swept = 0;
+    if (preExisting case Ok(:final value)) {
+      for (final old in value) {
+        if (!old.caption.contains(kTestMarker)) continue;
+        final del = await social.deleteStory(old.id);
+        if (del.isOk) swept++;
+      }
+      if (swept > 0) {
+        // ignore: avoid_print
+        print('[E2E] eski sinov istoryalari tozalandi: $swept ta');
+      }
+    }
+
     final storiesBefore = await social.storiesOf(code);
     switch (storiesBefore) {
       case Err(:final error):
@@ -795,11 +824,18 @@ void main() {
         report.pass('Story view',
             screen: 'StoryViewer',
             action: 'haqiqiy istoryalarni o\'qish',
-            note: '${value.length} ta istorya');
+            note: '${value.length} ta faol istorya (chegara 10); '
+                'tozalangan eski sinov istoryasi: $swept');
     }
 
     if (uploaded != null) {
-      final st = await social.createStory(code: code, imageUrl: uploaded);
+      // IZOHDA MARKER — keyingi ishga tushirish buni o'ziniki deb
+      // ANIQ taniydi va xavfsiz o'chiradi.
+      final st = await social.createStory(
+        code: code,
+        imageUrl: uploaded,
+        caption: testLabel('story'),
+      );
       switch (st) {
         case Err(:final error):
           fail('Story create',
@@ -819,8 +855,8 @@ void main() {
             final fresh = list.where((s) => !beforeIds.contains(s.id));
             if (fresh.isNotEmpty) {
               final made = fresh.first;
-              litter.track('story #${made.id}',
-                  () async => social.deleteStory(made.id));
+              litter.trackResult('story #${made.id}',
+                  () => social.deleteStory(made.id));
               report.pass('Story create',
                   screen: 'StoryComposer',
                   action: 'yaratish → qayta o\'qish',

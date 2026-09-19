@@ -198,8 +198,35 @@ class BusinessRepository {
     return res.map((j) => parseList(j['stories'] ?? j['items'], StoryItem.fromJson));
   }
 
-  Future<Result<Map<String, dynamic>>> analytics(String code) =>
-      _api.get<Map<String, dynamic>>('/api/records/$code/analytics');
+  /// KOMPANIYA STATISTIKASI — haqiqiy endpoint.
+  ///
+  /// ## NIMA UCHUN `/api/records/:code/analytics` EMAS
+  ///
+  /// U yo'l KARTA (NFC yozuvi) uchun yozilgan: `ownerOnly(code)` +
+  /// `cardEventStats(code)`. Kompaniya karta emas, shuning uchun
+  /// har safar 403 `forbidden` qaytarardi va E2E buni PARTIAL deb
+  /// ko'rsatardi.
+  ///
+  /// Haqiqiy yo'l serverda ALLAQACHON bor va u boshqacha nomlangan
+  /// — `stats`, `analytics` emas:
+  ///
+  ///     GET /api/companies/:id/stats?days=30
+  ///
+  /// U `company_stats` jadvalidan o'qiydi (kun bo'yicha yig'ilgan
+  /// `view`/`action`/`item` hodisalari) va quyidagini qaytaradi:
+  /// `views`, `taps`, `orders`, kunlik `series`, eng ko'p bosilgan
+  /// `actions` va `items`. Egalik `requireCompanyOwner` bilan
+  /// tekshiriladi, ya'ni begona kompaniya statistikasi ko'rinmaydi.
+  ///
+  /// Server `days` ni 7..90 oralig'iga qisadi.
+  Future<Result<Map<String, dynamic>>> stats(
+    String companyId, {
+    int days = 30,
+  }) =>
+      _api.get<Map<String, dynamic>>(
+        '/api/companies/$companyId/stats',
+        query: {'days': days},
+      );
 }
 
 /// Backend uchta katalog turini alohida yo'lda saqlaydi.

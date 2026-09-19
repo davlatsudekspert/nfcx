@@ -481,6 +481,9 @@ class LRu extends L {
   String get nfcViews => 'Просмотры';
 
   @override
+  String get bizTaps => 'Нажатия';
+
+  @override
   String get nfcShowQr => 'Показать QR-код';
 
   @override

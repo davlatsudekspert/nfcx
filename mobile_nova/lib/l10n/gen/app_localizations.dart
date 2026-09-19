@@ -1023,6 +1023,12 @@ abstract class L {
   /// **'Ko‘rishlar'**
   String get nfcViews;
 
+  /// No description provided for @bizTaps.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bosishlar'**
+  String get bizTaps;
+
   /// No description provided for @nfcShowQr.
   ///
   /// In uz, this message translates to:

@@ -553,6 +553,7 @@ class StoryItem {
     this.authorAvatar = '',
     this.mediaUrl = '',
     this.isVideo = false,
+    this.caption = '',
     this.seen = false,
     this.createdAt,
   });
@@ -563,6 +564,11 @@ class StoryItem {
   final String authorAvatar;
   final String mediaUrl;
   final bool isVideo;
+
+  /// Istorya izohi. Server buni HAR DOIM qaytaradi
+  /// (`caption: r.caption || ''`), model esa tashlab yuborardi —
+  /// shuning uchun ekranda hech qachon ko'rinmasdi.
+  final String caption;
   final bool seen;
   final DateTime? createdAt;
 
@@ -595,6 +601,7 @@ class StoryItem {
       isVideo: video.isNotEmpty ||
           _b(j['isVideo']) ||
           _s(j['type']) == 'video',
+      caption: _s(j['caption']),
       seen: _b(j['seen'] ?? j['viewed']),
       createdAt: _dt(j['createdAt']),
     );

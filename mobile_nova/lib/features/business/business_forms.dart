@@ -653,6 +653,16 @@ class BusinessAnalyticsScreen extends ConsumerWidget {
     final catalog = b == null
         ? const AsyncValue<List<CatalogItem>>.data([])
         : ref.watch(businessCatalogProvider(b.companyId));
+    // HAQIQIY STATISTIKA — `GET /api/companies/:id/stats`.
+    //
+    // Ilgari bu ekran hech qanday statistika endpointini
+    // chaqirmasdi: faqat kompaniya yozuvidagi `views` va obunachilar
+    // soni ko'rsatilardi. Repozitoriyadagi `analytics()` esa KARTA
+    // yo'liga borardi va 403 olardi — ya'ni haqiqiy raqamlar
+    // ilovada umuman ko'rinmagan.
+    final stats = b == null
+        ? const AsyncValue<Map<String, dynamic>>.data({})
+        : ref.watch(businessStatsProvider(b.companyId));
 
     if (b == null) {
       return NovaScaffold(
@@ -667,20 +677,79 @@ class BusinessAnalyticsScreen extends ConsumerWidget {
       showBack: true,
       body: NovaScroll(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: _Tile(
-                    label: l.nfcViews, value: formatCount(b.views), tone: t.accentB),
-              ),
-              const SizedBox(width: Gap.md),
-              Expanded(
-                child: _Tile(
-                    label: l.profileFollowers,
-                    value: formatCount(b.followers),
-                    tone: t.accentC),
-              ),
-            ],
+          // Server 30 kunlik ko'rish/bosish/buyurtma sonini beradi.
+          // Yuklanayotganda yoki xato bo'lsa — kompaniya yozuvidagi
+          // umumiy `views` ko'rsatiladi, ya'ni ekran hech qachon
+          // bo'sh qolmaydi.
+          stats.when(
+            loading: () => Row(
+              children: const [
+                Expanded(child: Skeleton(height: 70, radius: R.gentle)),
+                SizedBox(width: Gap.md),
+                Expanded(child: Skeleton(height: 70, radius: R.gentle)),
+              ],
+            ),
+            error: (_, __) => Row(
+              children: [
+                Expanded(
+                  child: _Tile(
+                      label: l.nfcViews,
+                      value: formatCount(b.views),
+                      tone: t.accentB),
+                ),
+                const SizedBox(width: Gap.md),
+                Expanded(
+                  child: _Tile(
+                      label: l.profileFollowers,
+                      value: formatCount(b.followers),
+                      tone: t.accentC),
+                ),
+              ],
+            ),
+            data: (m) {
+              final views = m['views'] is int ? m['views'] as int : b.views;
+              final taps = m['taps'] is int ? m['taps'] as int : 0;
+              final orders = m['orders'] is int ? m['orders'] as int : 0;
+              return Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _Tile(
+                            label: l.nfcViews,
+                            value: formatCount(views),
+                            tone: t.accentB),
+                      ),
+                      const SizedBox(width: Gap.md),
+                      Expanded(
+                        child: _Tile(
+                            label: l.profileFollowers,
+                            value: formatCount(b.followers),
+                            tone: t.accentC),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: Gap.md),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _Tile(
+                            label: l.bizTaps,
+                            value: formatCount(taps),
+                            tone: t.accent1),
+                      ),
+                      const SizedBox(width: Gap.md),
+                      Expanded(
+                        child: _Tile(
+                            label: l.orders,
+                            value: formatCount(orders),
+                            tone: t.accentD),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            },
           ),
           const SizedBox(height: Gap.md),
           catalog.when(

@@ -483,6 +483,9 @@ class LEn extends L {
   String get nfcViews => 'Views';
 
   @override
+  String get bizTaps => 'Taps';
+
+  @override
   String get nfcShowQr => 'Show QR code';
 
   @override

@@ -185,6 +185,7 @@
   "nfcDeleteConfirm": "Delete this NFC ID? This cannot be undone.",
   "nfcScans": "Scans",
   "nfcViews": "Views",
+  "bizTaps": "Taps",
   "nfcShowQr": "Show QR code",
   "nfcQrHint": "Scan this code to open the profile",
   "nfcGiftHint": "Gift this ID to another user",

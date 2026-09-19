@@ -185,6 +185,7 @@
   "nfcDeleteConfirm": "Bu NFC ID o‘chirilsinmi? Bu amalni qaytarib bo‘lmaydi.",
   "nfcScans": "Skanerlashlar",
   "nfcViews": "Ko‘rishlar",
+  "bizTaps": "Bosishlar",
   "nfcShowQr": "QR kodni ko‘rsatish",
   "nfcQrHint": "Profilingizni ochish uchun shu kodni skanerlang",
   "nfcGiftHint": "ID’ni boshqa foydalanuvchiga sovg‘a qiling",
