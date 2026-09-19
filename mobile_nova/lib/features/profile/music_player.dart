@@ -201,6 +201,7 @@ class MusicState {
     this.duration = Duration.zero,
     this.loading = false,
     this.failed = false,
+    this.error = '',
   });
 
   final String url;
@@ -212,6 +213,11 @@ class MusicState {
   /// Manzil ochilmadi — buzuq havola yoki tarmoq yo'q.
   final bool failed;
 
+  /// Nega ochilmagani. Foydalanuvchiga ko'rsatilmaydi, lekin E2E
+  /// hisobotiga tushadi: "ochilmadi" degan xabar bilan xatoni
+  /// topib bo'lmaydi, dekoderning o'z matni bilan esa bo'ladi.
+  final String error;
+
   MusicState copyWith({
     String? url,
     bool? playing,
@@ -219,6 +225,7 @@ class MusicState {
     Duration? duration,
     bool? loading,
     bool? failed,
+    String? error,
   }) =>
       MusicState(
         url: url ?? this.url,
@@ -227,6 +234,7 @@ class MusicState {
         duration: duration ?? this.duration,
         loading: loading ?? this.loading,
         failed: failed ?? this.failed,
+        error: error ?? this.error,
       );
 }
 
@@ -277,11 +285,19 @@ class MusicPlayer extends StateNotifier<MusicState>
     _c = c;
     try {
       await c.initialize();
-    } catch (_) {
+    } catch (e) {
       // Buzuq havola yoki qo'llab-quvvatlanmaydigan format — buni
       // yashirmaymiz, lekin ilova ham qulamaydi.
+      //
+      // Sabab SAQLANADI. E2E #6 da bu qator "trek ochilmadi"
+      // deyishdan boshqa hech narsa bilmasdi va xatoni topish
+      // uchun serverni qo'lda titishga to'g'ri keldi.
       if (!mounted) return;
-      state = MusicState(url: url, failed: true);
+      state = MusicState(
+        url: url,
+        failed: true,
+        error: '${c.value.errorDescription ?? e}',
+      );
       await _dispose();
       return;
     }

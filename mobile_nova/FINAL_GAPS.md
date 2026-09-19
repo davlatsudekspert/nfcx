@@ -499,3 +499,80 @@ joyida ishlatiladigan o'sha yo'l. Kod bo'sh bo'lsa `shareText`.
   chaqiruvi ham borligi.
 
 Ikkalasi ham emulyatorsiz, `flutter test` da bir soniyada ishlaydi.
+
+---
+
+## 11. NISBIY MANZIL — E2E #6 dagi yagona FAIL ning ildizi
+
+E2E #6 da bitta FAIL bor edi: `Music player` — "trek ochilmadi".
+Sabab musiqada emas. Sabab BUTUN MEDIADA.
+
+### Nima bo'lgan
+
+Backend yuklangan fayllarni NISBIY yo'l bilan qaytaradi.
+`hosting/worker.js` → `safeUrl` buni ochiq yozadi:
+
+    if (url.startsWith('/uploads/') ||
+        url.startsWith('/business-assets/')) return url;
+
+`recSafeUrl`/`uploadOrSafeUrl` ham xuddi shunday. Ya'ni avatar,
+muqova, post rasmi, istorya, video va musiqa — hammasi
+`/uploads/xxxx` bo'lib, DOMENSIZ keladi.
+
+SAYT uchun bu to'g'ri: brauzer sahifani o'sha domendan ochgan,
+nisbiy yo'l o'zi to'liq manzilga aylanadi. ILOVA esa hech qanday
+domenda turmaydi. `Uri.parse('/uploads/x')` — sxemasiz, xostsiz
+manzil; uni na ExoPlayer, na rasm keshi ocha oladi.
+
+Ilovada bu manzilni to'ldiradigan joy YO'Q edi — `lib/` bo'ylab
+birorta `startsWith('http')` tekshiruvi ham topilmadi.
+
+Hisobdagi trek aynan shunday edi: `/uploads/6b8fd42d944f7543da7c`
+(kengaytmasiz, eski fayl).
+
+### Nega hech qaysi tekshiruv tutmadi
+
+`flutter analyze` uchun bu to'g'ri kod. Birlik testlari modelning
+XOM qiymat qaytarishini KUTARDI (`models_test.dart` → `['a.jpg']`),
+ya'ni xatoni mustahkamlab qo'ygan edi.
+
+Eng yomoni — MENING E2E SINOVIM buni YASHIRGAN:
+
+    api.get(url.startsWith('http') ? url : '/$url')
+
+Sinov manzilni O'ZI to'ldirib yuborardi. Shuning uchun "Music —
+trek manzili" qatori PASS bo'lardi, ilovada esa o'sha fayl hech
+qachon ochilmasdi. Sinov ilova qiladigan ishni qilishi kerak edi,
+o'zinikini emas.
+
+### Tuzatish
+
+`lib/core/utils/media_url.dart` — bitta yordamchi:
+
+* bo'sh — bo'sh qoladi;
+* `http://`, `https://`, `data:` — TEGILMAYDI (server tashqi
+  havolaga ham ruxsat beradi);
+* qolgani `kApiBase` ga ulanadi.
+
+U MODEL CHEGARASIDA qo'llanadi (`models.dart` → `_u`), ya'ni
+avatar, muqova, logo, post mediasi, istorya, video va musiqa —
+hammasi ekranga TO'LIQ manzil bo'lib yetadi. Vidjetlarning birortasi
+buni eslab qolishi shart emas.
+
+### Qo'riqchilar
+
+* `test/media_url_test.dart` — 12 ta sinov: nisbiy → to'liq, tashqi
+  havola tegilmaydi, `data:` tegilmaydi, bo'sh bo'sh qoladi, va har
+  bir model (NfcId avatar/muqova/musiqa, eski bitta `musicUrl`,
+  Post media ro'yxati, StoryItem, Business) uchun alohida qator;
+* o'sha faylda STATIK qo'riqcha: `models.dart` da yangi manzil
+  maydoni `_u` o'rniga `_s` da qolib ketsa, sinov uni ko'rsatadi;
+* `models_test.dart` tuzatildi — endi TO'LIQ manzil kutadi.
+
+### Ikkita sinov ham halollashtirildi
+
+* backend to'plami endi manzilni ILOVA BERGANICHA oladi va nisbiy
+  bo'lsa PARTIAL yozadi;
+* `MusicState` ga `error` qo'shildi: `errorDescription` hisobotga
+  tushadi. "Ochilmadi" bilan xatoni topib bo'lmaydi, dekoderning
+  o'z matni bilan bo'ladi.

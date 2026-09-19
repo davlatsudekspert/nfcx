@@ -509,7 +509,8 @@ void main() {
         screen: 'MusicPlayer',
         action: 'play(realUrl)',
         cause: playing.failed
-            ? 'trek ochilmadi (failed) — manzil yoki format muammosi'
+            ? 'trek ochilmadi: ${playing.error.isEmpty ? "sabab berilmadi" : playing.error} '
+                '(manzil: $url)'
             : 'ijro boshlanmadi (emulyator dekoderi sekin bo\'lishi '
                 'mumkin)',
         layer: playing.failed ? 'backend' : 'device',

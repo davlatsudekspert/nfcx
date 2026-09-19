@@ -6,8 +6,20 @@
 /// qolmasligi uchun.
 library;
 
+import '../../core/utils/media_url.dart';
+
 /// `dynamic` dan xavfsiz o'qish yordamchilari.
 String _s(dynamic v, [String d = '']) => v == null ? d : '$v';
+
+/// MEDIA MANZILI uchun `_s`.
+///
+/// Backend yuklangan fayllarni NISBIY yo'l bilan qaytaradi
+/// (`/uploads/...`). Saytda bu ishlaydi — u o'sha domenda turadi —
+/// ilovada esa yo'q. Shuning uchun har bir manzil maydoni AYNAN shu
+/// yordamchidan o'tadi: bitta joyda, modelning chegarasida. Ekran
+/// va vidjetlar tayyor, to'liq manzil oladi va hech biri buni
+/// o'zi eslab qolishi shart emas.
+String _u(dynamic v) => mediaUrl(_s(v));
 int _i(dynamic v, [int d = 0]) =>
     v is int ? v : int.tryParse('${v ?? ''}') ?? d;
 bool _b(dynamic v, [bool d = false]) =>
@@ -58,7 +70,7 @@ class User {
         email: _s(j['email']),
         name: _s(j['name'] ?? j['fullName'] ?? j['displayName']),
         phone: _s(j['phone']),
-        avatarUrl: _s(j['avatarUrl'] ?? j['avatar']),
+        avatarUrl: _u(j['avatarUrl'] ?? j['avatar']),
         emailVerified: _b(j['emailVerified'] ?? j['email_verified']),
         promoCode: _s(j['promoCode'] ?? j['promo_code']),
         premium: _b(j['premium'] ?? j['isPremium']),
@@ -129,8 +141,8 @@ class NfcId {
         code: _s(j['code']),
         name: _s(j['name'] ?? j['title']),
         role: _s(j['role']),
-        avatarUrl: _s(j['avatarUrl'] ?? j['avatar']),
-        coverUrl: _s(j['bgUrl'] ?? j['coverUrl']),
+        avatarUrl: _u(j['avatarUrl'] ?? j['avatar']),
+        coverUrl: _u(j['bgUrl'] ?? j['coverUrl']),
         bio: _s(j['bio'] ?? j['about']),
         primary: _b(j['isPrimary'] ?? j['primary']),
         active: _b(j['active'] ?? j['isActive'], true),
@@ -157,12 +169,12 @@ List<String> _musicUrls(Map<String, dynamic> j) {
   final raw = j['musicUrls'];
   if (raw is List) {
     return raw
-        .map((e) => e is String ? e.trim() : '')
+        .map((e) => e is String ? mediaUrl(e) : '')
         .where((e) => e.isNotEmpty)
         .take(5)
         .toList(growable: false);
   }
-  final one = _s(j['musicUrl']);
+  final one = _u(j['musicUrl']);
   return one.isEmpty ? const [] : [one];
 }
 
@@ -271,8 +283,8 @@ class Business {
         telegram: _s(j['telegram']),
         whatsapp: _s(j['whatsapp']),
         website: _s(j['website']),
-        logoUrl: _s(j['logoUrl']),
-        coverUrl: _s(j['coverUrl']),
+        logoUrl: _u(j['logoUrl']),
+        coverUrl: _u(j['coverUrl']),
         status: _s(j['status'], 'draft'),
         followers: _i(j['followers']),
         views: _i(j['views']),
@@ -317,7 +329,7 @@ class CatalogItem {
         id: _i(j['id']),
         name: _s(j['name'] ?? j['title']),
         description: _s(j['description'] ?? j['desc']),
-        imageUrl: _s(j['imageUrl'] ?? j['image'] ?? j['photoUrl']),
+        imageUrl: _u(j['imageUrl'] ?? j['image'] ?? j['photoUrl']),
         price: _i(j['price']),
         salePrice: j['salePrice'] == null ? null : _i(j['salePrice']),
         currency: _s(j['currency'], 'UZS'),
@@ -375,7 +387,7 @@ class ShopProduct {
         id: _s(j['id'] ?? j['code'] ?? j['sku']),
         name: _s(j['name'] ?? j['title']),
         description: _s(j['description']),
-        imageUrl: _s(j['imageUrl'] ?? j['image']),
+        imageUrl: _u(j['imageUrl'] ?? j['image']),
         price: _i(j['price']),
         oldPrice: j['oldPrice'] == null ? null : _i(j['oldPrice']),
         currency: _s(j['currency'], 'UZS'),
@@ -505,17 +517,17 @@ class Post {
     final raw = j['media'] ?? j['images'] ?? j['mediaUrls'];
     if (raw is List) {
       for (final e in raw) {
-        if (e is String && e.isNotEmpty) media.add(e);
-        if (e is Map && e['url'] != null) media.add('${e['url']}');
+        if (e is String && e.isNotEmpty) media.add(mediaUrl(e));
+        if (e is Map && e['url'] != null) media.add(_u(e['url']));
       }
     }
-    final single = _s(j['imageUrl'] ?? j['videoUrl'] ?? j['url']);
+    final single = _u(j['imageUrl'] ?? j['videoUrl'] ?? j['url']);
     if (media.isEmpty && single.isNotEmpty) media.add(single);
     return Post(
       id: _i(j['id']),
       code: _s(j['code'] ?? j['recordCode'] ?? j['authorCode']),
       authorName: _s(j['authorName'] ?? j['name']),
-      authorAvatar: _s(j['authorAvatar'] ?? j['avatarUrl']),
+      authorAvatar: _u(j['authorAvatar'] ?? j['avatarUrl']),
       text: _s(j['text'] ?? j['caption'] ?? j['body']),
       mediaUrls: media,
       likes: _i(j['likes'] ?? j['likeCount']),
@@ -570,16 +582,16 @@ class StoryItem {
   /// ishonchli; aks holda `false` bo'lib qoladi va halqa "yangi"
   /// ko'rinadi. To'qib chiqarilmaydi.
   factory StoryItem.fromJson(Map<String, dynamic> j) {
-    final video = _s(j['videoUrl']);
-    final image = _s(j['imageUrl']);
+    final video = _u(j['videoUrl']);
+    final image = _u(j['imageUrl']);
     return StoryItem(
       id: _i(j['id']),
       code: _s(j['code'] ?? j['recordCode'] ?? j['ownerId']),
       authorName: _s(j['authorName'] ?? j['name']),
-      authorAvatar: _s(j['authorAvatar'] ?? j['avatarUrl']),
+      authorAvatar: _u(j['authorAvatar'] ?? j['avatarUrl']),
       mediaUrl: video.isNotEmpty
           ? video
-          : (image.isNotEmpty ? image : _s(j['mediaUrl'] ?? j['url'])),
+          : (image.isNotEmpty ? image : _u(j['mediaUrl'] ?? j['url'])),
       isVideo: video.isNotEmpty ||
           _b(j['isVideo']) ||
           _s(j['type']) == 'video',
@@ -652,7 +664,7 @@ class Comment {
         id: _i(j['id']),
         code: _s(j['code']),
         authorName: _s(j['authorName'] ?? j['name']),
-        authorAvatar: _s(j['authorAvatar'] ?? j['avatarUrl']),
+        authorAvatar: _u(j['authorAvatar'] ?? j['avatarUrl']),
         text: _s(j['text'] ?? j['body']),
         mine: _b(j['mine']),
         createdAt: _dt(j['createdAt']),
@@ -697,7 +709,7 @@ class ActivityEvent {
         },
         title: _s(j['title'] ?? j['text']),
         subtitle: _s(j['subtitle'] ?? j['detail']),
-        avatarUrl: _s(j['avatarUrl'] ?? j['avatar']),
+        avatarUrl: _u(j['avatarUrl'] ?? j['avatar']),
         read: _b(j['read'] ?? j['isRead']),
         createdAt: _dt(j['createdAt'] ?? j['created_at']),
         targetCode: _s(j['code'] ?? j['targetCode']),

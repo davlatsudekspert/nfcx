@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nfcstore_nova/core/network/api_client.dart';
 import 'package:nfcstore_nova/data/models/models.dart';
 
 /// Modellar SERVER JAVOBIGA ishonmasligi kerak.
@@ -103,17 +104,22 @@ void main() {
 
   group('Post', () {
     test('media turli shakllarda kelsa ham yig‘iladi', () {
+      // Manzillar TO'LIQ bo'lib chiqadi. Ilgari bu sinov xom
+      // qiymatni kutardi va shu bilan XATONI MUSTAHKAMLAB qo'ygan
+      // edi: backend `/uploads/...` ni domensiz qaytaradi, ilova
+      // esa hech qanday domenda turmaydi, ya'ni bunday manzil
+      // ochilmaydi. Batafsil — `test/media_url_test.dart`.
       expect(
         Post.fromJson({'id': 1, 'media': ['a.jpg', 'b.jpg']}).mediaUrls,
-        ['a.jpg', 'b.jpg'],
+        ['$kApiBase/a.jpg', '$kApiBase/b.jpg'],
       );
       expect(
         Post.fromJson({'id': 1, 'media': [{'url': 'c.jpg'}]}).mediaUrls,
-        ['c.jpg'],
+        ['$kApiBase/c.jpg'],
       );
       expect(
         Post.fromJson({'id': 1, 'imageUrl': 'd.jpg'}).mediaUrls,
-        ['d.jpg'],
+        ['$kApiBase/d.jpg'],
       );
       expect(Post.fromJson({'id': 1}).mediaUrls, isEmpty);
     });

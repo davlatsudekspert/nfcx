@@ -515,12 +515,29 @@ void main() {
           note: '${card.code}: ${card.musicUrls.length} ta trek; '
               'nom = "${musicTitleOf(url)}"');
 
-      // Trek manzili HAQIQATAN ochiladimi — buzuq URL holati.
-      final head = await api.get<dynamic>(url.startsWith('http')
-          ? url
-          : url.startsWith('/')
-              ? url
-              : '/$url');
+      // Trek manzili HAQIQATAN ochiladimi.
+      //
+      // MUHIM: manzil ILOVA BERGANICHA olinadi. Ilgari bu yerda
+      //
+      //     url.startsWith('http') ? url : '/$url'
+      //
+      // turardi, ya'ni SINOV manzilni o'zi to'ldirib yuborardi.
+      // Natijada bu qator PASS bo'lardi, ilovada esa o'sha fayl
+      // hech qachon ochilmasdi — `musicUrls` nisbiy `/uploads/...`
+      // bo'lib kelardi va `VideoPlayerController` uni rad etardi.
+      // Sinov ilova qiladigan ishni qilishi kerak, o'zinikini emas.
+      //
+      // Endi model manzilni to'ldiradi (`mediaUrl`), shuning uchun
+      // bu yerda qo'shimcha hech narsa qilinmaydi.
+      if (!url.startsWith('http')) {
+        partial('Music — trek manzili',
+            screen: 'MusicPlayer',
+            action: 'trek manzili to\'liqmi',
+            cause: 'model NISBIY manzil qaytardi ($url) — ilovada '
+                'bunday manzil ochilmaydi',
+            layer: 'frontend');
+      }
+      final head = await api.get<dynamic>(url);
       switch (head) {
         case Err(:final error):
           partial('Music — trek manzili',
