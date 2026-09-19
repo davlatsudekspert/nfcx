@@ -217,7 +217,7 @@ class _OrbPainter extends CustomPainter {
 }
 
 /// Orb atrofida aylanma joylashgan tezkor amallar — Concept B "orbit".
-class OrbitActions extends StatelessWidget {
+class OrbitActions extends StatefulWidget {
   const OrbitActions({
     super.key,
     required this.size,
@@ -228,6 +228,42 @@ class OrbitActions extends StatelessWidget {
   final List<OrbitAction> actions;
 
   @override
+  State<OrbitActions> createState() => _OrbitActionsState();
+}
+
+class _OrbitActionsState extends State<OrbitActions>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _spin = AnimationController(
+    vsync: this,
+    duration: Motion.orbit,
+  );
+
+  /// NIMA UCHUN `didChangeDependencies`, `initState` EMAS:
+  /// `reduceMotion` `MediaQuery` dan o'qiydi. `initState` ichida
+  /// `MediaQuery` ga murojaat qilish mumkin emas, qolaversa
+  /// foydalanuvchi tizim sozlamasini ILOVA OCHIQ TURGANDA ham
+  /// o'zgartirishi mumkin — bu chaqiruv o'shanda qayta ishlaydi.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (reduceMotion(context)) {
+      // Harakatni kamaytirish yoqilgan: aylanish butunlay to'xtaydi va
+      // chiplar boshlang'ich holatiga QAYTADI. Yarim yo'lda muzlab
+      // qolgan tartib tasodifiy ko'rinardi.
+      _spin.stop();
+      _spin.value = 0;
+    } else if (!_spin.isAnimating) {
+      _spin.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _spin.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final t = context.tokens;
     // .40 emas, .36: chip DOIRASI emas, uning YOZUVI eng chekka nuqta.
@@ -235,32 +271,45 @@ class OrbitActions extends StatelessWidget {
     // eng chetki nuqta 130+46=176 < 180 — ya'ni yozuv Stack qirrasiga
     // borib kesilmaydi. Avval radius .40 (=144) edi va 74px li yozuv
     // ham 181 ga chiqib, o'ng/chap chiplarda qirqilardi.
-    final radius = size * .36;
+    final radius = widget.size * .36;
     final tones = [t.accent2, t.accentBDark, t.accentCDark, t.accentDDark];
+    final n = widget.actions.length;
+
+    // Chiplar bir marta quriladi: har kadrda faqat ularning O'RNI
+    // qayta hisoblanadi, ichidagi matn va bezak emas.
+    final chips = [
+      for (var i = 0; i < n; i++)
+        _OrbitChip(action: widget.actions[i], tone: tones[i % tones.length]),
+    ];
 
     return SizedBox(
-      width: size,
-      height: size,
-      child: Stack(
-        alignment: Alignment.center,
-        // Yozuvning bir necha piksel chetga chiqishi qirqilishdan
-        // ko'ra yaxshiroq — lekin yuqoridagi radius buni ham oldini
-        // oladi.
-        clipBehavior: Clip.none,
-        children: [
-          for (var i = 0; i < actions.length; i++)
-            Builder(builder: (context) {
-              // Yuqoridan boshlab teng taqsimlanadi.
-              final a = -math.pi / 2 + i * 2 * math.pi / actions.length;
-              return Transform.translate(
-                offset: Offset(math.cos(a) * radius, math.sin(a) * radius),
-                child: _OrbitChip(
-                  action: actions[i],
-                  tone: tones[i % tones.length],
-                ),
-              );
-            }),
-        ],
+      width: widget.size,
+      height: widget.size,
+      child: AnimatedBuilder(
+        animation: _spin,
+        builder: (context, _) => Stack(
+          alignment: Alignment.center,
+          // Yozuvning bir necha piksel chetga chiqishi qirqilishdan
+          // ko'ra yaxshiroq — lekin yuqoridagi radius buni ham oldini
+          // oladi.
+          clipBehavior: Clip.none,
+          children: [
+            for (var i = 0; i < n; i++)
+              Builder(builder: (context) {
+                // Yuqoridan boshlab teng taqsimlanadi, keyin butun
+                // halqa sekin buriladi.
+                final a = -math.pi / 2 +
+                    i * 2 * math.pi / n +
+                    _spin.value * 2 * math.pi;
+                // FAQAT ko'chirish, BURISH emas: shuning uchun ikonka
+                // ham, yozuv ham aylanish davomida tik turadi.
+                return Transform.translate(
+                  offset: Offset(math.cos(a) * radius, math.sin(a) * radius),
+                  child: chips[i],
+                );
+              }),
+          ],
+        ),
       ),
     );
   }

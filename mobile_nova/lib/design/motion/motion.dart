@@ -22,6 +22,12 @@ abstract final class Motion {
   /// Nafas olish sikli: NFC orb, halo va ambient gradient.
   static const breathe = Duration(milliseconds: 5000);
 
+  /// Orbit — NFC markazidagi amallar markaz atrofida bir marta
+  /// aylanib chiqadigan vaqt. HTML: `animation:orbit 22s linear
+  /// infinite`. Ataylab SEKIN: harakat e'tiborni tortish uchun emas,
+  /// obyekt "tirik" ekanini bildirish uchun.
+  static const orbit = Duration(seconds: 22);
+
   /// NFC to'lqinlari — uchtasi 1/3 siklga surilib chiqadi.
   static const wave = Duration(milliseconds: 3200);
 }

@@ -7,6 +7,7 @@ import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
 import 'package:nfcstore_nova/design/widgets/brand_logo.dart';
 import 'package:nfcstore_nova/design/widgets/buttons.dart';
 import 'package:nfcstore_nova/design/widgets/fields.dart';
+import 'package:nfcstore_nova/design/widgets/nfc_orb.dart';
 import 'package:nfcstore_nova/features/auth/login_screen.dart';
 import 'package:nfcstore_nova/features/auth/register_screen.dart';
 import 'package:nfcstore_nova/features/home/widgets/identity_card.dart';
@@ -227,6 +228,66 @@ void main() {
       }
       // Har mavzu kartasida logotip — kontrast shu yerda tekshiriladi.
       expect(find.byType(BrandLogo), findsNWidgets(5));
+    });
+  });
+
+  group('OrbitActions', () {
+    Widget orbit({required bool reduce}) => wrapScreen(
+          MediaQuery(
+            data: MediaQueryData(disableAnimations: reduce),
+            child: const Center(
+              child: OrbitActions(
+                size: 360,
+                actions: [
+                  OrbitAction(icon: Icons.badge_rounded, label: 'Bir'),
+                  OrbitAction(icon: Icons.credit_card_rounded, label: 'Ikki'),
+                  OrbitAction(icon: Icons.card_giftcard_rounded, label: 'Uch'),
+                  OrbitAction(icon: Icons.shield_outlined, label: 'To‘rt'),
+                ],
+              ),
+            ),
+          ),
+        );
+
+    testWidgets('halqa sekin aylanadi — chiplar o‘rnidan siljiydi',
+        (tester) async {
+      await tester.pumpWidget(orbit(reduce: false));
+      final before = tester.getCenter(find.text('Bir'));
+      // 22s siklning chorakiga yaqini — sezilarli siljish.
+      await tester.pump(const Duration(seconds: 5));
+      final after = tester.getCenter(find.text('Bir'));
+      expect((after - before).distance, greaterThan(40));
+    });
+
+    testWidgets('aylanishda yorliq TIK qoladi — burilmaydi', (tester) async {
+      await tester.pumpWidget(orbit(reduce: false));
+      // Burilgan matnning chegara to‘rtburchagi KATTALASHADI. O‘lcham
+      // o‘zgarmasa — demak faqat ko‘chirish bo‘lgan, burish emas.
+      final size = tester.getRect(find.text('Bir')).size;
+      await tester.pump(const Duration(milliseconds: 2750)); // 45°
+      expect(tester.getRect(find.text('Bir')).size, size);
+      await tester.pump(const Duration(milliseconds: 2750)); // 90°
+      expect(tester.getRect(find.text('Bir')).size, size);
+    });
+
+    testWidgets('harakatni kamaytirish yoqilsa — aylanish YO‘Q',
+        (tester) async {
+      await tester.pumpWidget(orbit(reduce: true));
+      final before = tester.getCenter(find.text('Bir'));
+      await tester.pump(const Duration(seconds: 7));
+      expect(tester.getCenter(find.text('Bir')), before);
+      // Takrorlanuvchi animatsiya qolmagani uchun sahna tinchiydi.
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('chiplar orbit qutisidan chiqib ketmaydi', (tester) async {
+      await tester.pumpWidget(orbit(reduce: true));
+      final box = tester.getRect(find.byType(OrbitActions));
+      for (final label in ['Bir', 'Ikki', 'Uch', 'To‘rt']) {
+        final r = tester.getRect(find.text(label));
+        expect(box.contains(r.topLeft), isTrue, reason: label);
+        expect(box.contains(r.bottomRight), isTrue, reason: label);
+      }
     });
   });
 
