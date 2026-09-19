@@ -107,7 +107,7 @@ Bular ilovada UI sifatida bor edi, lekin **umuman ishlamasdi**.
 | NFC ID ro'yxati, tafsiloti | DONE | |
 | Asosiy ID tanlash | DONE | |
 | Sovg'a yuborish | DONE | `POST /api/records/:code/gift` |
-| **Kelgan sovg'alarni ko'rish/qabul qilish** | **PARTIAL** | repozitoriyda `giftOffers`, `accept`, `reject`, `cancel` bor va endpointlar haqiqiy, lekin ULARGA UI YO'Q — foydalanuvchi sovg'a yubora oladi, qabul qila olmaydi |
+| Kelgan sovg'alarni ko'rish/qabul qilish | DONE | `/nfc/gifts` ekrani. Repozitoriydagi javob o'quvchisi ham tuzatildi: server `{incoming, outgoing}` qaytaradi, kod esa `offers`/`items` izlardi — ro'yxat har doim bo'sh chiqardi |
 | QR ko'rsatish / ulashish | DONE | |
 | Jismoniy kartani bog'lash / uzish | DONE | uzish PUT ga tuzatildi |
 | **Qurilmada NFC o'qish** | **DEVICE REQUIRED** | kod `nfc_manager` bilan tayyor va apparat yo'qligini yashirmaydi; emulyatorda tekshirib bo'lmaydi |
@@ -193,12 +193,10 @@ bo'lmasligi.
    yuklab bo'lmaydi.
 2. **Akkauntni ilova ichida o'chirish** (BACKEND REQUIRED) — Google
    Play talabi.
-3. **Kelgan sovg'alar ekrani** (PARTIAL) — backend tayyor, UI kerak.
-4. Qurilmada NFC, biometrika va media oqimlarini tekshirish
-   (DEVICE REQUIRED).
-5. Email kodi bilan kirishni yopish yoki backend'da email
+3. Qurilmada NFC va media oqimlarini tekshirish (DEVICE REQUIRED).
+4. Email kodi bilan kirishni yopish yoki backend'da email
    infratuzilmasini qo'shish.
-6. **Biometrik qulfni qaytarish** — `local_auth` bilan R8 nima uchun
+5. **Biometrik qulfni qaytarish** — `local_auth` bilan R8 nima uchun
    qotib qolishini aniqlash (`-keep`/`-dontwarn androidx.biometric.**`
    yoki `android.enableR8.fullMode=false` bilan sinab ko'rish).
    Hozir qulf PIN bilan to'liq ishlaydi, biometrika esa YO'Q va
