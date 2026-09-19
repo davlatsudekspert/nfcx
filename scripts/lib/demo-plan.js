@@ -66,6 +66,7 @@ const DIRECTIONS = [
   { id: 'design', words: ['dizayn', 'design', 'ux', 'ui', 'grafik', 'brand', 'illustr'] },
   { id: 'marketing', words: ['marketing', 'smm', 'reklama', 'targetolog', 'kontent', 'brending'] },
   { id: 'medicine', words: ['shifokor', 'doktor', 'tibbiyot', 'stomatolog', 'klinika', 'hamshira', 'terapevt'] },
+  { id: 'pharmacy', words: ['dorixona', 'apteka', 'farmatsev', 'pharmacy'] },
   { id: 'education', words: ['o‘qituvchi', 'oqituvchi', 'ustoz', 'repetitor', 'tutor', 'murabbiy', 'trener', 'kurs', 'maktab', 'teacher'] },
   { id: 'beauty', words: ['go‘zallik', 'gozallik', 'salon', 'stilist', 'vizaj', 'kosmetolog', 'barber', 'sartarosh', 'beauty'] },
   { id: 'construction', words: ['qurilish', 'ta’mir', 'tamir', 'remont', 'build', 'arxitekt', 'loyiha'] },
@@ -131,6 +132,11 @@ const PERSONAL_DEMO = {
     role: 'Mutaxassis',
     about: 'DEMO profil. Qabul tartibi va yo‘nalish haqidagi ma’lumot shu bo‘limga yoziladi. Hozirgi matn namuna bo‘lib, tibbiy maslahat emas.',
     hashtags: ['demo', 'mutaxassis'],
+  },
+  pharmacy: {
+    role: 'Dorixona xodimi',
+    about: 'DEMO profil. Ish vaqti, yo‘nalish va bog‘lanish ma’lumotlari shu bo‘limda ko‘rsatiladi. Matn namuna bo‘lib, tibbiy maslahat emas.',
+    hashtags: ['demo', 'dorixona'],
   },
   education: {
     role: 'O‘qituvchi',
@@ -293,6 +299,16 @@ const BUSINESS_DEMO = {
       { name: 'DEMO · Raqamli profil sozlash', category: 'Xizmatlar', price: 150000, description: 'Namuna xizmat. Demo narx — haqiqiy taklif emas.' },
     ],
   },
+  pharmacy: {
+    subcategory: 'Dorixona',
+    description: 'DEMO biznes profil. Dorixona yo‘nalishi bo‘yicha namuna katalog. Mahsulot va narxlar — demo; bu tibbiy tavsiya yoki dori sotuvi taklifi EMAS.',
+    catalog: [
+      { name: 'DEMO · Birinchi yordam to‘plami', category: 'Namuna', price: 85000, description: 'Namuna pozitsiya. Demo narx — haqiqiy taklif emas.' },
+      { name: 'DEMO · Vitamin (namuna)', category: 'Namuna', price: 45000, description: 'Namuna pozitsiya. Demo narx — haqiqiy taklif emas.' },
+      { name: 'DEMO · Tibbiy niqob', category: 'Namuna', price: 12000, description: 'Namuna pozitsiya. Demo narx — haqiqiy taklif emas.' },
+      { name: 'DEMO · Qon bosimi o‘lchagich', category: 'Namuna', price: 320000, description: 'Namuna pozitsiya. Demo narx — haqiqiy taklif emas.' },
+    ],
+  },
   neutral: {
     subcategory: '',
     description: 'DEMO biznes profil. Katalog, tavsif va aloqa ma’lumotlari namuna sifatida to‘ldirilgan. Mahsulot va narxlar — demo, haqiqiy savdo taklifi emas.',
@@ -317,6 +333,7 @@ const IMAGE_HINTS = {
   auto: 'Avto servis yoki toza avtomobil, brendsiz',
   retail: 'Toza mahsulot suratlari, oq yoki neytral fon, brendsiz',
   tech: 'NFC karta va raqamli qurilma, toza fon, brendsiz',
+  pharmacy: 'Toza dorixona javoni yoki tibbiy buyum, oq fon, brendsiz',
   neutral: 'Neytral premium abstrakt fon, brendsiz',
 };
 
