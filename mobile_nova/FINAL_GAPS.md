@@ -603,3 +603,42 @@ tegilmadi.
 
 Sinovda aylanma xossa ham bor: `storageUrl(mediaUrl(x)) == x`.
 Buzilsa, saqlangan qiymat har tahrirda o'zgarib ketardi.
+
+### 11.2 Yuklash natijasi model chegarasidan O'TMAYDI
+
+Uchinchi joy. `uploadImage` javobi to'g'ridan-to'g'ri ekranga
+chiziladi:
+
+    ok: (url) => _avatarUrl = url,     // xom `/uploads/...`
+    ...
+    Avatar(url: _avatarUrl, ...)
+
+Bu qiymat MODELDAN kelmaydi, shuning uchun §11 dagi tuzatish bu
+yerga yetib kelmaydi. Natija: foydalanuvchi yangi avatar tanlaydi,
+yuklash muvaffaqiyatli tugaydi — va o'rnida BO'SHLIQ qoladi.
+Ilovani qayta ochgandan keyingina rasm paydo bo'lardi (chunki u
+paytda qiymat modeldan keladi).
+
+`profile_edit_screen.dart` va `profile_setup_screen.dart` da
+`mediaUrl(url)` qo'yildi. Serverga qaytishda `storageUrl` uni yana
+nisbiy shaklga keltiradi, ya'ni bazada hech narsa o'zgarmaydi.
+
+Qo'riqcha: `media_url_test.dart` ikkala faylni o'qib, xom
+`_avatarUrl = url` qolmaganini tekshiradi.
+
+### 11.3 YOZISH yo'li ataylab NISBIY qoladi
+
+Muhim assimetriya, chalkashmaslik uchun:
+
+* O'QISH — TO'LIQ manzil (ilova uni ocha olishi uchun);
+* YOZISH — NISBIY manzil (server aynan shuni kutadi).
+
+Server post mediasini shunday tekshiradi:
+
+    const okImg = imageUrl.startsWith('/uploads/') && ...
+
+Ya'ni absolyut manzil yuborilsa, post yaratish 422 bilan
+yiqilardi. Kompozitor qiymatni `uploadImage` dan XOM holda oladi va
+`createPost`/`createStory` ga o'shani uzatadi — tekshirildi,
+tegilmadi. Post yaratish E2E #6 da PASS edi va shundayligicha
+qoladi.

@@ -16,6 +16,7 @@ import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
 import '../profile/profile_repository.dart';
 import 'session.dart';
+import '../../core/utils/media_url.dart';
 
 /// Ro'yxatdan o'tgandan keyingi profil to'ldirish.
 ///
@@ -85,7 +86,17 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     setState(() {
       _busy = false;
       res.when(
-        ok: (url) => _avatarUrl = url,
+        // `mediaUrl` — yuklash NISBIY yo'l qaytaradi
+        // (`/uploads/...`) va u to'g'ridan-to'g'ri ko'rsatilsa,
+        // yangi avatar ORNIGA bo'shliq chiqardi: rasm keshi
+        // domensiz manzilni ocholmaydi. Model chegarasidagi
+        // tuzatish bu yerga yetib kelmaydi — qiymat modeldan
+        // emas, yuklash javobidan keladi.
+        //
+        // Serverga qaytishda `storageUrl` uni yana nisbiy
+        // shaklga keltiradi, ya'ni bazada hech narsa
+        // o'zgarmaydi.
+        ok: (url) => _avatarUrl = mediaUrl(url),
         err: (e) => _error = describeError(l, e),
       );
     });

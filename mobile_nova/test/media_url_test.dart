@@ -132,6 +132,25 @@ void main() {
     });
   });
 
+  test('YUKLASH natijasi ko\'rsatishdan oldin to\'ldiriladi', () {
+    // Yuklash javobi MODELDAN O'TMAYDI — u to'g'ridan-to'g'ri
+    // `uploadImage` dan keladi va darhol ekranga chiziladi.
+    // Ya'ni modeldagi tuzatish bu yerga YETIB KELMAYDI: yangi
+    // avatar o'rnida bo'shliq chiqardi va buni faqat ilovani
+    // qayta ochgandan keyin sezish mumkin edi.
+    for (final f in [
+      'lib/features/profile/profile_edit_screen.dart',
+      'lib/features/auth/profile_setup_screen.dart',
+    ]) {
+      final src = File(f).readAsStringSync();
+      expect(src.contains('_avatarUrl = url'), isFalse,
+          reason: '$f: yuklash natijasi XOM holda ko\'rsatilmoqda — '
+              '`mediaUrl(url)` bo\'lishi kerak');
+      expect(src.contains('mediaUrl(url)'), isTrue,
+          reason: '$f: `mediaUrl` chaqiruvi yo\'q');
+    }
+  });
+
   test('yangi MANZIL maydoni `_s` da qolib ketmaydi', () {
     // QO'RIQCHA. Kelajakda modelga yangi manzil maydoni qo'shilsa
     // va u `_u` o'rniga `_s` dan o'tsa, xato JIMGINA qaytardi:

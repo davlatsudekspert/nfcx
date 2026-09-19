@@ -17,6 +17,7 @@ import '../auth/session.dart';
 import '../home/home_screen.dart';
 import '../home/widgets/avatar.dart';
 import 'profile_repository.dart';
+import '../../core/utils/media_url.dart';
 
 /// Profilni tahrirlash.
 ///
@@ -87,7 +88,17 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     setState(() {
       _busy = false;
       res.when(
-        ok: (url) => _avatarUrl = url,
+        // `mediaUrl` — yuklash NISBIY yo'l qaytaradi
+        // (`/uploads/...`) va u to'g'ridan-to'g'ri ko'rsatilsa,
+        // yangi avatar ORNIGA bo'shliq chiqardi: rasm keshi
+        // domensiz manzilni ocholmaydi. Model chegarasidagi
+        // tuzatish bu yerga yetib kelmaydi — qiymat modeldan
+        // emas, yuklash javobidan keladi.
+        //
+        // Serverga qaytishda `storageUrl` uni yana nisbiy
+        // shaklga keltiradi, ya'ni bazada hech narsa
+        // o'zgarmaydi.
+        ok: (url) => _avatarUrl = mediaUrl(url),
         err: (e) => _error = e.kind.name == 'endpointMissing'
             ? l.uploadFailed
             : describeError(l, e),
