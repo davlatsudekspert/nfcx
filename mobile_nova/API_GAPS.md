@@ -65,19 +65,14 @@ Shuningdek serverga kerak: SMTP/email provayderi, kod jadvali (hozirgi
 
 `POST /api/posts/:id/like` bor, lekin **izohlar uchun endpoint yo‘q**.
 
-`Post.comments` maydoni SONni beradi, ro‘yxatni emas. Shuning uchun post
-ekranida izohlar bo‘limi «izohlar yo‘q» holatida turadi — soxta izohlar
-ko‘rsatilmaydi.
+~~`Post.comments` maydoni SONni beradi, ro'yxatni emas.~~
 
-Kerak:
+**HAL QILINDI.** Bu yozuv XATO taxminga asoslangan edi: endpointlar
+`/api/posts/:id/comments` deb o'ylangan. Haqiqiy backend boshqa
+joyda va allaqachon tayyor: `hosting/api/comments.js`,
+`GET/POST /api/comments/:kind/:id`, `DELETE /api/comments/:id`.
+Ilova to'liq ulandi — `FINAL_GAPS.md` ga qarang.
 
-```http
-GET  /api/posts/:id/comments        → { "comments": [...] }
-POST /api/posts/:id/comments        { "text": "..." }
-DELETE /api/posts/:id/comments/:cid
-```
-
----
 
 ## 3. BACKEND ENDPOINT REQUIRED — push bildirishnomalar
 
