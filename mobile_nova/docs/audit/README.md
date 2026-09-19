@@ -37,6 +37,25 @@ ga kichraytirilgan.
 | `settings-midnight-uz.png` | `settings` |
 | `settings-theme-picker.png` | mavzu tanlash |
 
+### To'liq ilova qobig'i bilan — `shell-*`
+
+**Bular eng ishonchli manba.** Qolgan suratlar ekranni SHELLSIZ
+ko'rsatadi, ya'ni ularda pastki `NovaBottomNav` yo'q. `shell-*`
+suratlari esa haqiqiy `NovaApp` -> `routerProvider` -> `HomeShell`
+orqali olingan: navigatsiya taqlid emas, ishlab chiqarish kodining
+o'zi.
+
+| Fayl | Tab |
+|---|---|
+| `shell-home-390.png` | Asosiy |
+| `shell-discover-390.png` | Kashfiyot |
+| `shell-nfc-390.png` | NFC (markazdagi ko'tarilgan tugma) |
+| `shell-reels-390.png` | Reels |
+| `shell-profile-390.png` | Profil |
+| `shell-tabs-390-midnight.png` | beshalasi yonma-yon, yorliqli |
+| `shell-home-{360,390,430}.png` | responsiv, qobiq bilan |
+| `shell-responsive-home.png` | uchtasi yonma-yon, yorliqli |
+
 ### Beshta mavzu
 
 Ikkita asosiy ekran beshala mavzuda — solishtirish uchun eng muhim

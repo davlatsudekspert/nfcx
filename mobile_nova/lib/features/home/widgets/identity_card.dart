@@ -6,10 +6,8 @@ import '../../../design/motion/motion.dart';
 import '../../../design/theme/typography.dart';
 import '../../../design/tokens/nfc_tokens.dart';
 import '../../../design/tokens/shapes.dart';
-import '../../../design/widgets/brand_logo.dart';
 import '../../../design/widgets/surfaces.dart';
 import '../../../l10n/gen/app_localizations.dart';
-import 'avatar.dart';
 
 /// `NfcTokens.onAccent` ga qisqa murojaat — aksent sirti ustidagi siyoh.
 const kOnAccent = Color(0xFF1A1A1F);
@@ -68,55 +66,16 @@ class IdentityCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Avatar(
-                  url: business ? '' : user.avatarUrl,
-                  initials: user.initials,
-                  size: 46,
-                  ring: false,
-                ),
-                const SizedBox(width: Gap.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        id != null && id!.name.isNotEmpty
-                            ? id!.name
-                            : user.displayName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppType.displayStyle(color: kOnAccent, size: 21),
-                      ),
-                      Text(
-                        business
-                            ? l.modeBusiness
-                            : (id != null && id!.role.isNotEmpty
-                                ? id!.role
-                                : l.modePersonal),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontFamily: AppType.sans,
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w600,
-                          color: kOnAccent.withValues(alpha: .72),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Logotip karta ustida.
-                //
-                // Bu sirt OLTIN — shaffof oltin belgi unda YO'QOLADI.
-                // Shuning uchun logotip o'zining qorong'i plastinasi
-                // bilan qo'yiladi: aktiv o'zgarmaydi, atrofi esa
-                // kontrastni ta'minlaydi (texnik topshiriq, 8-bo'lim).
-                const BrandLogo(size: 36, halo: false),
-              ],
-            ),
+            // IKKINCHI IDENTITY BLOKI YO'Q.
+            //
+            // Avval bu yerda avatar, ism, rol va logotip qatori turardi.
+            // Home'ga markazlashgan NFC orb qo'shilgach, o'sha uchala
+            // ma'lumot ORB OSTIDA ko'rsatiladi va bu qator aynan o'sha
+            // matnni takrorlab, ekranni ikki barobar cho'zib yuborgan
+            // edi — tezkor amallar ekran ostiga tushib ketgandi.
+            //
+            // Karta endi ierarxiyani DAVOM ETTIRADI: orb -> ism -> rol
+            // -> KOD, statistika va amallar.
             const SizedBox(height: Gap.xl),
             Text(
               l.homeActiveId.toUpperCase(),

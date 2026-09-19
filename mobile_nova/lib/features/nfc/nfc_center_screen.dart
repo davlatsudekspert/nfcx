@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
-import '../../design/widgets/brand_logo.dart';
 import '../../design/widgets/nfc_orb.dart';
 import '../../design/widgets/nova_scaffold.dart';
 import '../../design/widgets/buttons.dart';
@@ -94,10 +93,21 @@ class NfcCenterScreen extends ConsumerWidget {
                   NfcOrb(
                     size: orb,
                     onTap: () => context.push(Routes.nfcScan),
-                    // Orb sirti OLTIN: shaffof oltin belgi unda
-                    // yo'qolardi, shuning uchun logotip o'zining
-                    // qorong'i plastinasi bilan qo'yiladi.
-                    child: BrandLogo(size: orb * .40, halo: false),
+                    // Markazda FAQAT belgi — plastina YO'Q.
+                    //
+                    // Avval bu yerda `BrandLogo` o'zining qorong'i
+                    // plastinasi bilan turardi. U orbning organik
+                    // shaklini kesib, ichida qattiq to'rtburchak hosil
+                    // qilardi — Concept B'dagi yaxlit "identity object"
+                    // hissi shunda yo'qolgan edi.
+                    //
+                    // Orb sirti aksent rangida, shuning uchun belgi
+                    // `onAccent` siyohida: har mavzuda o'qiladi.
+                    child: Icon(
+                      Icons.nfc_rounded,
+                      size: orb * .34,
+                      color: t.onAccent,
+                    ),
                   ),
                 ],
               ),

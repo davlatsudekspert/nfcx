@@ -7,9 +7,11 @@ import '../../app/providers.dart';
 import '../../core/network/api_client.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/social_repository.dart';
+import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
 import '../../design/widgets/buttons.dart';
+import '../../design/widgets/nfc_orb.dart';
 import '../../design/widgets/nova_scaffold.dart';
 import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
@@ -119,6 +121,12 @@ class HomeScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: Gap.xl),
+            if (id != null)
+              _IdentityHero(
+                user: user,
+                id: id,
+                onTap: () => context.push(Routes.nfcScan),
+              ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
               child: id == null
@@ -158,6 +166,81 @@ class HomeScreen extends ConsumerWidget {
     if (h < 12) return l.homeGreetingMorning;
     if (h < 18) return l.homeGreetingDay;
     return l.homeGreetingEvening;
+  }
+}
+
+/// Home'ning IDENTITY OBYEKTI — markazlashgan NFC orb.
+///
+/// Concept B'da Home dashboard emas: uning markazida NFC orb turadi
+/// va ism, rol, NFC ID undan pastda ierarxiya hosil qiladi. Shu
+/// tartibda ekran "boshqaruv paneli" emas, "raqamli shaxs" bo'lib
+/// o'qiladi.
+///
+/// Orb markazida FAQAT belgi — plastina yo'q, shakl yaxlit qoladi.
+class _IdentityHero extends StatelessWidget {
+  const _IdentityHero({required this.user, required this.id, this.onTap});
+
+  final User user;
+  final NfcId id;
+
+  /// Tegilganda skanerlash ekrani ochiladi — orb ayni shu amalning
+  /// jismoniy ko'rinishi.
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final width = MediaQuery.sizeOf(context).width;
+
+    // 360 da ~208, 390 da ~226, 430 da ~249 — ekranni egallab
+    // ketmaydi, lekin baribir ekranning eng katta obyekti.
+    final orb = (width * .58).clamp(200.0, 260.0);
+
+    final title = id.name.isNotEmpty ? id.name : user.displayName;
+    final subtitle = id.role;
+
+    return Column(
+      children: [
+        NfcOrb(
+          size: orb,
+          onTap: onTap,
+          child: Icon(
+            Icons.nfc_rounded,
+            size: orb * .30,
+            color: t.onAccent,
+          ),
+        ),
+        const SizedBox(height: Gap.lg),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: Gap.xxl),
+          child: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: AppType.displayStyle(color: t.text1, size: 27),
+          ),
+        ),
+        if (subtitle.isNotEmpty) ...[
+          const SizedBox(height: 2),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Gap.xxl),
+            child: Text(
+              subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+        ],
+        // NFC ID bu yerda TAKRORLANMAYDI: u darhol pastdagi kartada,
+        // katta monospace bilan turadi va ierarxiyani davom ettiradi
+        // (orb -> ism -> rol -> kod). Ikki joyda ko'rsatilsa, u
+        // ierarxiya emas, takror bo'lardi.
+        const SizedBox(height: Gap.lg),
+      ],
+    );
   }
 }
 

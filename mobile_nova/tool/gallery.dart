@@ -13,6 +13,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:nfcstore_nova/app/app.dart';
 import 'package:nfcstore_nova/app/providers.dart';
 import 'package:nfcstore_nova/core/network/api_client.dart';
 import 'package:nfcstore_nova/core/utils/result.dart';
@@ -26,6 +27,7 @@ import 'package:nfcstore_nova/data/models/models.dart';
 import 'package:nfcstore_nova/design/theme/app_theme.dart';
 import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
 import 'package:nfcstore_nova/features/auth/session.dart';
+import 'package:nfcstore_nova/routing/router.dart';
 import 'package:nfcstore_nova/features/activity/activity_screen.dart';
 import 'package:nfcstore_nova/features/auth/login_screen.dart';
 import 'package:nfcstore_nova/features/auth/register_screen.dart';
@@ -80,15 +82,30 @@ const _sampleIds = [
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // ignore: invalid_use_of_visible_for_testing_member
-  SharedPreferences.setMockInitialValues({});
-  final prefs = await Prefs.open();
 
   final q = Uri.base.queryParameters;
   final screen = q['screen'] ?? 'home';
   final themeId = q['theme'] ?? 'pearl';
   final lang = q['lang'] ?? 'uz';
   final signedIn = q['auth'] != 'out';
+
+  // `route` berilsa — HAQIQIY ilova (NovaApp) ishga tushadi va
+  // marshrut orqali o'sha ekranga o'tiladi. Shunda `HomeShell` va
+  // uning ichidagi `NovaBottomNav` ham chiziladi.
+  //
+  // `screen` rejimi esa bitta ekranni SHELLSIZ ko'rsatadi — u
+  // marshrutga bog'lanmagan ekranlar (masalan `checkout`) uchun.
+  final route = q['route'];
+
+  // Mavzu va til SAQLANGAN sozlama sifatida beriladi: shunda haqiqiy
+  // ilova ularni o'z providerlaridan o'qiydi va gallereya hech narsani
+  // majburlamaydi.
+  // ignore: invalid_use_of_visible_for_testing_member
+  SharedPreferences.setMockInitialValues({
+    'nova.theme': themeId,
+    'nova.locale': lang,
+  });
+  final prefs = await Prefs.open();
 
   runApp(
     ProviderScope(
@@ -101,9 +118,50 @@ Future<void> main() async {
         businessRepositoryProvider.overrideWithValue(_GalleryBusiness()),
         shopRepositoryProvider.overrideWithValue(_GalleryShop()),
       ],
-      child: _Gallery(screen: screen, themeId: themeId, lang: lang),
+      child: route == null
+          ? _Gallery(screen: screen, themeId: themeId, lang: lang)
+          : _ShellGallery(route: route),
     ),
   );
+}
+
+/// HAQIQIY ilovani ishga tushirib, kerakli marshrutga o'tadi.
+///
+/// NIMA UCHUN KERAK: `_Gallery` ekranlarni to'g'ridan-to'g'ri mount
+/// qiladi va shu sababli `HomeShell` ni — demak `NovaBottomNav` ni ham
+/// chetlab o'tadi. Auditda esa pastki navigatsiya ko'rinishi SHART.
+///
+/// Bu yerda hech narsa taqlid qilinmaydi: `NovaApp`, `routerProvider`,
+/// `HomeShell` va `NovaBottomNav` — hammasi ishlab chiqarish kodi.
+class _ShellGallery extends ConsumerStatefulWidget {
+  const _ShellGallery({required this.route});
+
+  final String route;
+
+  @override
+  ConsumerState<_ShellGallery> createState() => _ShellGalleryState();
+}
+
+class _ShellGalleryState extends ConsumerState<_ShellGallery> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _openRoute());
+  }
+
+  Future<void> _openRoute() async {
+    // Router `redirect` i sessiya tiklanguncha Splash'da ushlab turadi.
+    // Shuning uchun avval sessiya faollashishini kutamiz.
+    for (var i = 0; i < 60; i++) {
+      if (ref.read(sessionProvider) is SessionActive) break;
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+    if (!mounted) return;
+    ref.read(routerProvider).go(widget.route);
+  }
+
+  @override
+  Widget build(BuildContext context) => const NovaApp();
 }
 
 // ---- tarmoqqa chiqmaydigan repositorylar --------------------------------
