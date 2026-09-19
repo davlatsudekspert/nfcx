@@ -78,7 +78,7 @@ export default function ThemeSwitcher({ className = '', menuClassName = '', butt
           id={menuId}
           role="menu"
           aria-label={t('Rang mavzusi')}
-          className={`absolute right-0 z-50 mt-1 w-[252px] max-w-[calc(100vw-24px)] overflow-hidden rounded-2xl border border-[color:var(--border)] bg-[color:var(--modal-bg)] p-1.5 shadow-[var(--shadow)] ${menuClassName}`}
+          className={`absolute right-0 z-50 mt-1 w-[268px] max-w-[calc(100vw-20px)] overflow-hidden rounded-2xl border border-[color:var(--border)] bg-[color:var(--modal-bg)] p-1.5 shadow-[var(--shadow)] ${menuClassName}`}
         >
           {themes.map((th) => {
             const active = th.id === theme;
@@ -96,8 +96,13 @@ export default function ThemeSwitcher({ className = '', menuClassName = '', butt
                 }`}
               >
                 <ThemeDots dots={th.dots} />
-                <span className="flex-1 whitespace-nowrap font-semibold">{th.label}</span>
-                <span className="min-w-0 shrink truncate text-[11px] font-medium text-[color:var(--text-faint)]">{th.hint}</span>
+                {/* Nom va izoh IKKI QATORDA: eng uzun yorliq
+                    ("NFCSTORE Original") bitta qatorda popover'ni
+                    telefon ekranidan chiqarib yuborardi. */}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-semibold leading-tight">{th.label}</span>
+                  <span className="block truncate text-[11px] font-medium leading-tight text-[color:var(--text-faint)]">{th.hint}</span>
+                </span>
                 <span className={`w-3 shrink-0 text-[color:var(--accent-primary)] ${active ? '' : 'opacity-0'}`} aria-hidden="true">{'✓'}</span>
               </button>
             );

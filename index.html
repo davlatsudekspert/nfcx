@@ -9,7 +9,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>NFCSTORE — raqamli profil va NFC karta</title>
   <meta name="description" content="Telefon, ijtimoiy tarmoqlar, sayt va boshqa muhim ma’lumotlaringizni bitta raqamli profilda jamlang va NFC karta orqali ulashing." />
-  <meta name="theme-color" content="#f3eee3" />
+  <meta name="theme-color" content="#050403" />
   <meta name="robots" content="index,follow" />
   <link rel="canonical" href="https://nfcstore.uz/" />
   <meta property="og:title" content="NFCSTORE — raqamli profil va NFC karta" />
@@ -76,9 +76,13 @@
         midnight: '#0d1524',
         legacy: '#050403'
       };
+      // ZAXIRA QIYMAT — SAYTNING ASL QORA-OLTIN KO'RINISHI.
+      // Birinchi tashrifda (saqlangan tanlov yo'q) aynan shu chiqadi,
+      // ya'ni boshqa mavzu bir lahza ham chaqnamaydi. Qiymat
+      // src/lib/theme.jsx dagi DEFAULT_THEME bilan bir xil.
       var t = null;
       try { t = localStorage.getItem('nfc_theme'); } catch (e) { /* private rejim */ }
-      if (!t || !BG[t]) t = 'pearl';
+      if (!t || !BG[t]) t = 'legacy';
       var r = document.documentElement;
       r.setAttribute('data-theme', t);
       r.style.backgroundColor = BG[t];
@@ -103,7 +107,7 @@
        yuboradi. Faqat SAHIFA foni — komponentlarning surface rangiga
        tegilmagan. Aniq qiymatni quyidagi skript qo'yadi; bu yerdagisi
        skript ishlamay qolgan holat uchun zaxira. -->
-  <style>:root{--root-bg:var(--bg-primary,#f3eee3);background-color:var(--bg-primary,#f3eee3)}</style>
+  <style>:root{--root-bg:var(--bg-primary,#050403);background-color:var(--bg-primary,#050403)}</style>
   <script type="module" src="/src/main.jsx"></script>
 </body>
 </html>

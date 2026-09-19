@@ -5,16 +5,19 @@
    kenglik, balandlik yoki funksiya YO‘Q — faqat rang tokenlari va
    ularning daisyUI / `--vz-*` / `--company-*` tizimlariga ulanishi.
 
-   5 ta foydalanuvchi mavzusi (theme):
+   STANDART (birinchi) mavzu — saytning ASL qora-oltin ko‘rinishi:
+     legacy    — NFCSTORE Original / Black & Gold
+
+   Ixtiyoriy qo‘shimcha tanlovlar:
      pearl     — Pearl / Champagne     (iliq ivory, antique gold)
      graphite  — Graphite / Platinum   (premium monoxrom charcoal)
      ocean     — Ocean / Ice           (chuqur navy-ocean + muz ko‘k)
      aurora    — Aurora / Violet       (deep plum + yumshoq lavanda)
      midnight  — Midnight Navy / Soft Gold (iliq navy + champagne gold)
 
-   + legacy — SAYTNING ESKI (production) qora-oltin rangi. O‘CHIRILMADI:
-     zaxira (fallback) sifatida turadi; `nfc_theme=legacy` bo‘lsa eski
-     ko‘rinish aynan qaytadi.
+   `legacy` `:root` ga ham biriktirilgan: saqlangan tanlov bo‘lmasa
+   (birinchi tashrif) sayt AYNAN shu ko‘rinishda ochiladi. Ko‘rinadigan
+   tartib esa `src/lib/theme.jsx` dagi THEMES ro‘yxatida.
 
    Tanlov `localStorage.nfc_theme` da saqlanadi va `index.html` dagi
    kichik skript orqali React’dan OLDIN `<html data-theme>` ga qo‘yiladi
@@ -22,12 +25,94 @@
    ════════════════════════════════════════════════════════════════════════ */
 
 /* ───────────────────────────────────────────────────────────────────
+   NFCSTORE ORIGINAL — BLACK & GOLD (STANDART MAVZU)
+   Saytning ASL ko‘rinishi. Saqlangan tanlov bo‘lmasa birinchi
+   tashrifda aynan shu chiqadi. Ichki nomi `legacy` bo‘lib qoladi —
+   u `localStorage.nfc_theme` da va CSS selektorida allaqachon shu
+   nom bilan yozilgan. Qiymatlar eski `src/theme.css` dagi daisyUI
+   “nfcstore” mavzusi va `--vz-*` tokenlaridan AYNAN ko‘chirilgan —
+   ya’ni sayt avvalgidek ko‘rinadi.
+   ─────────────────────────────────────────────────────────────────── */
+:root,
+[data-theme="legacy"] {
+  color-scheme: dark;
+
+  /* Fon */
+  --bg-primary: #050403;
+  --bg-secondary: #0a0805;
+  --bg-gradient-a: #0a0805;
+  --bg-gradient-b: #14100a;
+
+  /* Yuzalar (surface) — pastdan yuqoriga qatlam narvoni:
+     bg-primary < bg-secondary < surface-soft < surface < surface-elevated < surface-raised */
+  --surface-soft: #0a0908;
+  --surface: #141210;
+  --surface-elevated: #1c1916;
+  --surface-raised: #241f18;
+  --surface-inset: #000000;
+  --surface-sheen: linear-gradient(160deg, rgba(255, 255, 255, 0.022) 0%, rgba(0, 0, 0, 0.05) 100%);
+
+  /* Yarim shaffof qoplama asoslari: tint = yoritadi, shade = parda va soya,
+     inset = panelni ichkariga botiradi (yorug mavzuda ham togri ishlaydi) */
+  --tint-base: #ffffff;
+  --shade-base: #000000;
+  --inset-base: #000000;
+
+  /* Matn */
+  --text-primary: #f6f2ea;
+  --text-secondary: #b5a78b;
+  --text-muted: #8a7f68;
+  --text-faint: #6b6354;
+  --text-on-accent: #1a1206;
+
+  /* Accent */
+  --accent-primary: #d4af5a;
+  --accent-secondary: #f0cf7a;
+  --accent-deep: #b3860f;
+  --accent-soft: rgba(212, 175, 90, 0.12);
+  --accent-ink: #1a1206;
+  --accent-glow: rgba(226, 190, 110, 0.42);
+
+  /* Chegara (border) */
+  --border: #2d2518;
+  --border-soft: #221c12;
+  --border-strong: #3d3220;
+  --border-accent: rgba(212, 175, 90, 0.45);
+
+  /* Soya va nur */
+  --shadow: 0 12px 30px -16px rgba(0, 0, 0, 0.7);
+  --shadow-soft: 0 8px 22px -14px rgba(0, 0, 0, 0.6);
+  --glow: 0 0 20px -8px rgba(226, 190, 110, 0.42);
+  --scrim: rgba(0, 0, 0, 0.7);
+
+  /* Holat ranglari */
+  --success: #7fb28e;
+  --success-soft: rgba(127, 178, 142, 0.14);
+  --warning: #e0b458;
+  --warning-soft: rgba(224, 180, 88, 0.16);
+  --danger: #c9573f;
+  --danger-soft: rgba(201, 87, 63, 0.15);
+  --info: #e8c165;
+  --link: #5fa8ff;
+
+  /* Komponentlar */
+  --input-bg: #0f0c07;
+  --input-border: #2d2518;
+  --button-bg: linear-gradient(135deg, #f0cf7a, #b3860f);
+  --button-text: #1a1206;
+  --nav-bg: rgba(0, 0, 0, 0.86);
+  --card-bg: #141210;
+  --modal-bg: #1c1916;
+  --pill-bg: #232326;
+  --pill-text: #ffffff;
+}
+
+/* ───────────────────────────────────────────────────────────────────
    1. PEARL / CHAMPAGNE
    iliq ivory fon (sof oppoq EMAS), champagne yuzalar, sokin antique
    gold accent. Sariq yoki yaltiroq metall gold YO‘Q; soyalar yumshoq
    va tarqalgan, qattiq qora soya yo‘q.
    ─────────────────────────────────────────────────────────────────── */
-:root,
 [data-theme="pearl"] {
   color-scheme: light;
 
@@ -415,85 +500,6 @@
   --pill-text: #eeeae0;
 }
 
-/* ───────────────────────────────────────────────────────────────────
-   6. LEGACY — ESKI (PRODUCTION) QORA-OLTIN
-   O‘CHIRILMADI. Qiymatlar eski `src/theme.css` dagi daisyUI
-   “nfcstore” mavzusi va `--vz-*` tokenlaridan AYNAN ko‘chirilgan —
-   ya’ni bu mavzu tanlansa sayt avvalgidek ko‘rinadi.
-   ─────────────────────────────────────────────────────────────────── */
-[data-theme="legacy"] {
-  color-scheme: dark;
-
-  /* Fon */
-  --bg-primary: #050403;
-  --bg-secondary: #0a0805;
-  --bg-gradient-a: #0a0805;
-  --bg-gradient-b: #14100a;
-
-  /* Yuzalar (surface) — pastdan yuqoriga qatlam narvoni:
-     bg-primary < bg-secondary < surface-soft < surface < surface-elevated < surface-raised */
-  --surface-soft: #0a0908;
-  --surface: #141210;
-  --surface-elevated: #1c1916;
-  --surface-raised: #241f18;
-  --surface-inset: #000000;
-  --surface-sheen: linear-gradient(160deg, rgba(255, 255, 255, 0.022) 0%, rgba(0, 0, 0, 0.05) 100%);
-
-  /* Yarim shaffof qoplama asoslari: tint = yoritadi, shade = parda va soya,
-     inset = panelni ichkariga botiradi (yorug mavzuda ham togri ishlaydi) */
-  --tint-base: #ffffff;
-  --shade-base: #000000;
-  --inset-base: #000000;
-
-  /* Matn */
-  --text-primary: #f6f2ea;
-  --text-secondary: #b5a78b;
-  --text-muted: #8a7f68;
-  --text-faint: #6b6354;
-  --text-on-accent: #1a1206;
-
-  /* Accent */
-  --accent-primary: #d4af5a;
-  --accent-secondary: #f0cf7a;
-  --accent-deep: #b3860f;
-  --accent-soft: rgba(212, 175, 90, 0.12);
-  --accent-ink: #1a1206;
-  --accent-glow: rgba(226, 190, 110, 0.42);
-
-  /* Chegara (border) */
-  --border: #2d2518;
-  --border-soft: #221c12;
-  --border-strong: #3d3220;
-  --border-accent: rgba(212, 175, 90, 0.45);
-
-  /* Soya va nur */
-  --shadow: 0 12px 30px -16px rgba(0, 0, 0, 0.7);
-  --shadow-soft: 0 8px 22px -14px rgba(0, 0, 0, 0.6);
-  --glow: 0 0 20px -8px rgba(226, 190, 110, 0.42);
-  --scrim: rgba(0, 0, 0, 0.7);
-
-  /* Holat ranglari */
-  --success: #7fb28e;
-  --success-soft: rgba(127, 178, 142, 0.14);
-  --warning: #e0b458;
-  --warning-soft: rgba(224, 180, 88, 0.16);
-  --danger: #c9573f;
-  --danger-soft: rgba(201, 87, 63, 0.15);
-  --info: #e8c165;
-  --link: #5fa8ff;
-
-  /* Komponentlar */
-  --input-bg: #0f0c07;
-  --input-border: #2d2518;
-  --button-bg: linear-gradient(135deg, #f0cf7a, #b3860f);
-  --button-text: #1a1206;
-  --nav-bg: rgba(0, 0, 0, 0.86);
-  --card-bg: #141210;
-  --modal-bg: #1c1916;
-  --pill-bg: #232326;
-  --pill-text: #ffffff;
-}
-
 /* ═══════════════════════════════════════════════════════════════════════
    KO'PRIK (BRIDGE) — yuqoridagi tokenlarni saytda ALLAQACHON
    ishlatilayotgan rang tizimlariga ulaydi. Shu sabab komponentlarning
@@ -589,8 +595,9 @@
 }
 
 
-/* Yorug' mavzuda matn uchun accent TO'QROQ bo'ladi (kontrast). */
-:root,
+/* Yorug' (Pearl) mavzuda matn uchun accent TO'QROQ bo'ladi — krem fon
+   ustida och oltin o'qilmaydi. Standart (qora-oltin) mavzuda esa
+   ochroq oltin kerak, shuning uchun bu qoida FAQAT Pearl'ga tegishli. */
 [data-theme="pearl"] { --accent-text: var(--accent-primary); }
 
 /* ═══════════════════════════════════════════════════════════════════════

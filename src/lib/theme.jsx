@@ -18,13 +18,32 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 
 export const THEME_STORAGE_KEY = 'nfc_theme';
 
-// Standart mavzu. Saqlangan tanlov bo'lmasa shu ishlatiladi.
-// (Eski qora-oltin ko'rinishni standart qilish uchun 'legacy' yozing.)
-export const DEFAULT_THEME = 'pearl';
+// STANDART MAVZU — NFCSTORE'ning ASL qora-oltin ko'rinishi.
+//
+// Saytga BIRINCHI marta kirgan odam aynan shu dizaynni ko'radi:
+// brend shu ko'rinish bilan tanilgan, qolgan besh mavzu esa
+// IXTIYORIY qo'shimcha tanlov. Saqlangan tanlov bo'lsa — u ustun
+// (qarang: `readStored()` va `initialTheme()`).
+//
+// Bu qiymat `index.html` dagi FOUC skriptidagi zaxira qiymat bilan
+// BIR XIL bo'lishi shart, aks holda sahifa ochilishida bir lahza
+// boshqa rang chaqnab ketadi.
+export const DEFAULT_THEME = 'legacy';
 
-// Tanlanadigan mavzular. `dots` — selektordagi kichik rang namunasi
-// (fon / yuza / accent), `bg` — brauzer manzil paneli rangi.
+// Tanlanadigan mavzular — SELEKTORDAGI TARTIBI BILAN.
+// `dots` — kichik rang namunasi (fon / yuza / accent),
+// `bg` — brauzer manzil paneli rangi (`meta[name=theme-color]`).
 export const THEMES = [
+  {
+    // Saytning asl ko'rinishi. Ichki nomi `legacy` bo'lib qoladi —
+    // u `localStorage` da va CSS'da (`[data-theme="legacy"]`)
+    // allaqachon shu nom bilan yozilgan.
+    id: 'legacy',
+    label: 'NFCSTORE Original',
+    hint: 'Black & Gold',
+    bg: '#050403',
+    dots: ['#050403', '#141210', '#d4af5a'],
+  },
   {
     id: 'pearl',
     label: 'Pearl',
@@ -62,11 +81,7 @@ export const THEMES = [
   },
 ];
 
-// `legacy` ro'yxatda ko'rsatilmaydi, lekin YAROQLI qiymat bo'lib qoladi:
-// eski qora-oltin ko'rinish kerak bo'lsa `nfc_theme=legacy` yetarli.
-const LEGACY = { id: 'legacy', label: 'Classic', hint: 'Black & Gold', bg: '#050403', dots: ['#050403', '#141210', '#d4af5a'] };
-
-const BY_ID = new Map([...THEMES, LEGACY].map((t) => [t.id, t]));
+const BY_ID = new Map(THEMES.map((t) => [t.id, t]));
 
 export function isTheme(id) {
   return BY_ID.has(id);
