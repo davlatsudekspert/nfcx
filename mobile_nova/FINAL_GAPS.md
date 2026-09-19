@@ -201,3 +201,63 @@ bo'lmasligi.
    yoki `android.enableR8.fullMode=false` bilan sinab ko'rish).
    Hozir qulf PIN bilan to'liq ishlaydi, biometrika esa YO'Q va
    bordek ko'rsatilmaydi.
+
+---
+
+## 7. Yakuniy build — CI #16 (`c5869f0`)
+
+Auditdan o'tgan commit AYNAN shu: `c5869f0e103a15597691bb9185cb158ca50eaf70`.
+
+Ishga tushish: <https://github.com/davlatsudekspert/nfcx/actions/runs/35440618646>
+Artefakt (30 kun): `nfcstore-nova-apk`, ID `10583458483`,
+zip SHA-256 `7b11c85f05d51fbdcdc342f07b394dddedc117e66d3cdbe53c6b88921fe82fa3`
+
+| Fayl | Hajm | SHA-256 |
+|---|---|---|
+| `app-release.apk` (Universal) | 56.3 MB | `ef41905d164c8de3d305685cf17989b3eda6c78677e33982df284b686b9b87db` |
+| `app-arm64-v8a-release.apk` | 21.8 MB | `3a3c510814b8e6225c7bcd87ec6bfba0182deb8bc10e3b0fcebcd61eb3d0fc46` |
+| `app-armeabi-v7a-release.apk` | 19.7 MB | `34037ca758fa8ceda7faac6c28378541d0b04f4e9c74dabd46a4188389ae1dc5` |
+| `app-x86_64-release.apk` | 23.0 MB | `6bf3c92c67a5ee410be41d5a28b1ea9b9ae33c92360638186756df24aa8fbcd4` |
+| `app-release.aab` (Play Store) | 47.1 MB | `46b5da4ec0732a2a96643aec9a82e08719099494938f76a44df7dc6a4fd49cae` |
+
+Versiya: `1.0.0` (`versionCode` = 16, CI `run_number` dan).
+Paket: `uz.nfcstore.nova` — `aapt2 dump packagename` bilan tekshirildi.
+
+Tayyor APK ichidagi ruxsatlar (manifestda 3 ta, plaginlar 2 ta
+qo'shadi):
+
+* `android.permission.INTERNET` — manifestdan;
+* `android.permission.NFC` — manifestdan;
+* `android.permission.ACCESS_NETWORK_STATE` — `connectivity_plus`;
+* `android.permission.WAKE_LOCK` — `video_player`.
+
+Joylashuv, mikrofon, kontaktlar, SMS, telefon holati — **yo'q**.
+CI bu ro'yxatni har buildda tekshiradi va kutilmagani chiqsa
+qurilishni to'xtatadi.
+
+### `local_auth` tashxisi TASDIQLANDI
+
+Paket olib tashlangandan keyin "Universal APK" bosqichi **4 daq 12 s**
+da tugadi (butun ish — 5 daq 39 s). Xuddi shu bosqich `local_auth`
+bilan uch marta 40–60 daqiqa osilib turgan edi. Ya'ni sabab taxmin
+emas, o'lchangan.
+
+### YANGI TOPILGAN MUAMMO — imzo kaliti har buildda O'ZGARADI
+
+`NOVA_KEYSTORE_BASE64` sozlanmagani uchun Gradle `~/.android/debug.keystore`
+ga tushadi, GitHub runner esa har safar TOZA mashina — ya'ni kalit
+har ishga tushishda QAYTADAN yaratiladi:
+
+| Build | Barmoq izi (SHA-256) |
+|---|---|
+| #12 (`8f523d8`) | `2E:E4:7C:75:FD:AD:54:E8:…` |
+| #16 (`c5869f0`) | `EB:B8:78:17:CF:C1:16:E7:…` |
+
+Amaliy oqibati: **bir buildning APK'si ikkinchisining ustiga
+o'rnatilmaydi** — Android `INSTALL_FAILED_UPDATE_INCOMPATIBLE`
+beradi. Sinovchi yangi APK olganda avval eskisini o'chirishi kerak,
+va bu holda ilova ichidagi ma'lumot (token, PIN, sozlamalar) ham
+yo'qoladi.
+
+Bu CONFIG REQUIRED bandining bir qismi: haqiqiy keystore
+sozlangach muammo o'z-o'zidan yo'qoladi.
