@@ -39,6 +39,7 @@ import 'package:nfcstore_nova/features/auth/session.dart';
 import 'package:nfcstore_nova/core/utils/result.dart';
 import 'package:nfcstore_nova/data/repositories/auth_repository.dart';
 import 'package:nfcstore_nova/features/business/business_providers.dart';
+import 'package:nfcstore_nova/features/profile/profile_repository.dart';
 import 'package:nfcstore_nova/features/profile/music_player.dart';
 
 import 'support/creds.dart';
@@ -545,6 +546,271 @@ void main() {
       ));
     }
   }, timeout: const Timeout(Duration(minutes: 4)));
+
+  // ══════════════════════════════════════════════════════════════
+  // PROFIL WALKTHROUGH — HAR BIR EGALIK QILINGAN PROFIL ALOHIDA
+  // ══════════════════════════════════════════════════════════════
+  //
+  // Bu bo'lim hisobdagi HAR BIR shaxsiy NFC yozuvini va HAR BIR
+  // kompaniyani ALOHIDA qator qilib hisobotga yozadi. Maqsad —
+  // "umuman ishlaydi" emas, "VIP001 da ishlaydi, TTS075 da
+  // ishlaydi, NFCSTORE da ishlaydi" degan javob.
+  //
+  // HECH NARSA O'ZGARTIRILMAYDI: faqat o'qish. Parol, email,
+  // xavfsizlik sozlamalari va begona profillarga TEGILMAYDI.
+
+  /// Bitta profil uchun to'ldirilgan maydonlarni sanaydi va
+  /// nisbiy manzil qolganini tekshiradi.
+  ({List<String> filled, List<String> missing, List<String> relative})
+      inspect(Map<String, String> fields) {
+    final filled = <String>[];
+    final missing = <String>[];
+    final relative = <String>[];
+    fields.forEach((name, value) {
+      if (value.isEmpty) {
+        missing.add(name);
+        return;
+      }
+      filled.add(name);
+      final isUrl = name.contains('avatar') ||
+          name.contains('muqova') ||
+          name.contains('logo') ||
+          name.contains('musiqa');
+      if (isUrl && !value.startsWith('http')) relative.add(name);
+    });
+    return (filled: filled, missing: missing, relative: relative);
+  }
+
+  testWidgets('Profil ro\'yxati — egalik qilinganlarning hammasi',
+      (t) async {
+    if (!signedIn) {
+      report.skip('Profil ro\'yxati', 'sessiya ochilmadi');
+      return;
+    }
+    final c = await launchSignedIn(t);
+    final ids = c.read(myIdsProvider);
+    final biz = await c.read(myBusinessesProvider.future);
+
+    report.pass('Profil ro\'yxati',
+        screen: 'NFC Center / Biznes',
+        action: 'egalik qilingan profillarni sanash',
+        note: 'shaxsiy: ${ids.map((e) => e.code).join(", ")} '
+            '(${ids.length} ta); '
+            'biznes: ${biz.map((e) => e.companyId).join(", ")} '
+            '(${biz.length} ta)');
+  }, timeout: const Timeout(Duration(minutes: 3)));
+
+  testWidgets('HAR BIR shaxsiy profil — to\'liq tekshiruv', (t) async {
+    if (!signedIn) {
+      report.skip('Shaxsiy profillar', 'sessiya ochilmadi');
+      return;
+    }
+    final c = await launchSignedIn(t);
+    final ids = c.read(myIdsProvider);
+    if (ids.isEmpty) {
+      report.skip('Shaxsiy profillar', 'hisobda shaxsiy yozuv yo\'q');
+      return;
+    }
+
+    final social = c.read(socialRepositoryProvider);
+    final profiles = c.read(profileRepositoryProvider);
+
+    for (final id in ids) {
+      // 1) Yozuvni SERVERDAN qayta o'qiymiz — ro'yxatdagi qisqa
+      //    shakl emas, to'liq yozuv.
+      final fresh = await profiles.byCode(id.code);
+      final rec = fresh.valueOrNull ?? id;
+
+      final look = inspect({
+        'ism': rec.name,
+        'avatar': rec.avatarUrl,
+        'muqova': rec.coverUrl,
+        'bio': rec.bio,
+        'lavozim': rec.role,
+        'musiqa': rec.musicUrls.isEmpty ? '' : rec.musicUrls.first,
+      });
+
+      // 2) Postlar va istoryalar — HAQIQIY so'rov.
+      final posts = await social.postsOf(rec.code);
+      final stories = await social.storiesOf(rec.code);
+      final postList = posts.valueOrNull ?? const <Post>[];
+      final storyList = stories.valueOrNull ?? const <StoryItem>[];
+
+      // 3) Mediada nisbiy manzil qolmaganini tekshiramiz.
+      final badMedia = <String>[];
+      for (final p in postList.take(10)) {
+        for (final m in p.mediaUrls) {
+          if (!m.startsWith('http')) badMedia.add('post#${p.id}');
+        }
+      }
+      for (final st in storyList) {
+        if (st.mediaUrl.isNotEmpty && !st.mediaUrl.startsWith('http')) {
+          badMedia.add('story#${st.id}');
+        }
+      }
+
+      final name = 'Profil ${rec.code}';
+      final note = 'to\'ldirilgan: ${look.filled.join("/")}; '
+          'post: ${postList.length}; istorya: ${storyList.length}; '
+          'mediali post: '
+          '${postList.where((p) => p.mediaUrls.isNotEmpty).length}';
+
+      if (look.relative.isNotEmpty || badMedia.isNotEmpty) {
+        report.add(MatrixRow(
+          name: name,
+          verdict: Verdict.fail,
+          screen: 'ProfileScreen',
+          action: 'profil ma\'lumotini o\'qish',
+          cause: 'NISBIY manzil qoldi — ochilmaydi: '
+              '${[...look.relative, ...badMedia].take(5).join(", ")}',
+          layer: 'frontend',
+        ));
+      } else if (posts is Err || stories is Err) {
+        report.add(MatrixRow(
+          name: name,
+          verdict: Verdict.partial,
+          screen: 'ProfileScreen',
+          action: 'post/istorya o\'qish',
+          cause: 'server ro\'yxatni bermadi',
+          layer: 'backend',
+        ));
+      } else {
+        report.pass(name,
+            screen: 'ProfileScreen',
+            action: 'avatar, muqova, ism, bio, musiqa, post, istorya',
+            note: note);
+      }
+    }
+  }, timeout: const Timeout(Duration(minutes: 8)));
+
+  testWidgets('HAR BIR biznes profil — to\'liq tekshiruv', (t) async {
+    if (!signedIn) {
+      report.skip('Biznes profillar', 'sessiya ochilmadi');
+      return;
+    }
+    final c = await launchSignedIn(t);
+    final biz = await c.read(myBusinessesProvider.future);
+    if (biz.isEmpty) {
+      report.skip('Biznes profillar', 'hisobda kompaniya yo\'q');
+      return;
+    }
+
+    final repo = c.read(businessRepositoryProvider);
+
+    for (final b in biz) {
+      // Vitrina SERVERDAN qayta o'qiladi.
+      final fresh = await repo.byId(b.companyId);
+      final co = fresh.valueOrNull ?? b;
+
+      final look = inspect({
+        'nom': co.displayName,
+        'logo': co.logoUrl,
+        'muqova': co.coverUrl,
+        'tavsif': co.description,
+      });
+
+      final catalog = await repo.catalog(co.companyId);
+      final posts = await repo.posts(co.companyId);
+      final stories = await repo.stories(co.companyId);
+
+      final items = catalog.valueOrNull ?? const <CatalogItem>[];
+      final postList = posts.valueOrNull ?? const <Post>[];
+      final storyList = stories.valueOrNull ?? const <StoryItem>[];
+
+      final badMedia = <String>[];
+      for (final p in postList.take(10)) {
+        for (final m in p.mediaUrls) {
+          if (!m.startsWith('http')) badMedia.add('post#${p.id}');
+        }
+      }
+      for (final it in items.take(10)) {
+        if (it.imageUrl.isNotEmpty && !it.imageUrl.startsWith('http')) {
+          badMedia.add('katalog#${it.id}');
+        }
+      }
+
+      final name = 'Biznes ${co.companyId}';
+      if (look.relative.isNotEmpty || badMedia.isNotEmpty) {
+        report.add(MatrixRow(
+          name: name,
+          verdict: Verdict.fail,
+          screen: 'BusinessScreen',
+          action: 'kompaniya ma\'lumotini o\'qish',
+          cause: 'NISBIY manzil qoldi: '
+              '${[...look.relative, ...badMedia].take(5).join(", ")}',
+          layer: 'frontend',
+        ));
+      } else {
+        report.pass(name,
+            screen: 'BusinessScreen / Catalog',
+            action: 'vitrina, katalog, post, istorya',
+            note: '${co.displayName}; to\'ldirilgan: '
+                '${look.filled.join("/")}; katalog: ${items.length}; '
+                'post: ${postList.length}; istorya: ${storyList.length}');
+      }
+    }
+  }, timeout: const Timeout(Duration(minutes: 8)));
+
+  testWidgets('Profillar ARALASHMAYDI — har biriga alohida o\'tib',
+      (t) async {
+    if (!signedIn) {
+      report.skip('Profil izolyatsiyasi (har biri)', 'sessiya ochilmadi');
+      return;
+    }
+    final c = await launchSignedIn(t);
+    final ids = c.read(myIdsProvider);
+    final biz = await c.read(myBusinessesProvider.future);
+
+    final wrong = <String>[];
+
+    // HAR BIR shaxsiy yozuvga o'tib, faol kontekst AYNAN o'shami.
+    for (final id in ids) {
+      c.read(modeProvider.notifier).set(AppMode.personal);
+      c.read(selectedPersonalCodeProvider.notifier).state = id.code;
+      await settle(t, frames: 12);
+      final active = c.read(activeProfileProvider);
+      if (active == null || active.code != id.code) {
+        wrong.add('shaxsiy ${id.code} -> ${active?.code ?? "null"}');
+      }
+      if (active != null && active.isBusiness) {
+        wrong.add('shaxsiy ${id.code} BIZNES bo\'lib ochildi');
+      }
+    }
+
+    // HAR BIR kompaniyaga o'tib, o'sha kompaniya ochilyaptimi.
+    for (final b in biz) {
+      await c.read(modeProvider.notifier).set(AppMode.business);
+      c.read(selectedBusinessProvider.notifier).state = b.companyId;
+      await settle(t, frames: 12);
+      final active = c.read(activeProfileProvider);
+      if (active == null || active.code != b.companyId) {
+        wrong.add('biznes ${b.companyId} -> ${active?.code ?? "null"}');
+      }
+      if (active != null && !active.isBusiness) {
+        wrong.add('biznes ${b.companyId} SHAXSIY bo\'lib ochildi');
+      }
+    }
+
+    // Boshlang'ich holatga qaytaramiz.
+    await c.read(modeProvider.notifier).set(AppMode.personal);
+
+    if (wrong.isEmpty) {
+      report.pass('Profil izolyatsiyasi (har biri)',
+          screen: 'Home / Profil',
+          action: 'har bir profilga alohida o\'tish',
+          note: '${ids.length} ta shaxsiy + ${biz.length} ta biznes — '
+              'hammasi o\'z ma\'lumotini ochdi');
+    } else {
+      report.add(MatrixRow(
+        name: 'Profil izolyatsiyasi (har biri)',
+        verdict: Verdict.fail,
+        screen: 'Home / Profil',
+        action: 'har bir profilga alohida o\'tish',
+        cause: 'noto\'g\'ri kontekst: ${wrong.take(5).join("; ")}',
+        layer: 'frontend',
+      ));
+    }
+  }, timeout: const Timeout(Duration(minutes: 6)));
 
   // ══════════════════════════════════════════════════════════════
   // VIDEO — HAQIQIY DEKODER BILAN
