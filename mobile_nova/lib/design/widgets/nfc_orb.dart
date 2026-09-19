@@ -205,7 +205,14 @@ class _OrbPainter extends CustomPainter {
         ..shader = LinearGradient(
           begin: const Alignment(-.7, -1),
           end: const Alignment(.7, 1),
-          colors: [t.accent1, accent],
+          // Kartadan bir pog'ona CHUQURROQ. Ilgari bu yerda ham
+          // `[accent1, accent2]` turardi — ya'ni orb va identity karta
+          // aynan bir xil oltinda edi va oltin aksent bo'lishdan
+          // to'xtagandi. Holat rangi (muvaffaqiyat/xato) berilganda
+          // esa o'sha rang saqlanadi.
+          colors: accent == t.accent2
+              ? [t.accent2, t.goldDeep]
+              : [t.accent1, accent],
         ).createShader(Rect.fromCircle(center: c, radius: r)),
     );
 

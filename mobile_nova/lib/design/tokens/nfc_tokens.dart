@@ -25,6 +25,7 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     required this.accent1,
     required this.accent2,
     required this.accent3,
+    required this.goldDeep,
     required this.accentB,
     required this.accentBDark,
     required this.accentC,
@@ -56,6 +57,19 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
   final Color surface, surface2, surfaceSolid;
   final Color text1, text2, text3;
   final Color accent1, accent2, accent3;
+
+  /// Aksentning CHUQURROQ ohangi — faqat katta, yaxlit aksent yuzalar
+  /// uchun (hozircha NFC orbning yadrosi).
+  ///
+  /// NIMA UCHUN ALOHIDA TOKEN: orb ham, identity karta ham bir xil
+  /// `[accent1, accent2]` gradientidan foydalanardi. Natijada bitta
+  /// ekranda ikkita katta yuza AYNAN bir xil oltinda turardi va
+  /// oltin aksent bo'lishdan to'xtab, fon rangiga aylanardi.
+  ///
+  /// Endi karta yumshoq shampan ohangida (`accent1 -> accent2`)
+  /// qoladi, orb esa undan bir pog'ona chuqurroq
+  /// (`accent2 -> goldDeep`) — ierarxiya rang bilan ham o'qiladi.
+  final Color goldDeep;
   final Color accentB, accentBDark;
   final Color accentC, accentCDark;
   final Color accentD, accentDDark;
@@ -117,6 +131,7 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
       accent1: c(accent1, other.accent1),
       accent2: c(accent2, other.accent2),
       accent3: c(accent3, other.accent3),
+      goldDeep: c(goldDeep, other.goldDeep),
       accentB: c(accentB, other.accentB),
       accentBDark: c(accentBDark, other.accentBDark),
       accentC: c(accentC, other.accentC),
@@ -151,23 +166,24 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     text1: hex('#2A2A2E'),
     text2: hex('#5A5A62'),
     text3: hex('#9A9AA2'),
-    accent1: hex('#E0CDA9'),
-    accent2: hex('#C4A47C'),
+    accent1: hex('#E4D2AB'),
+    accent2: hex('#CBAA78'),
     accent3: hex('#8E7550'),
+    goldDeep: hex('#B89552'),
     accentB: hex('#C5D8CB'),
     accentBDark: hex('#6E8A7A'),
     accentC: hex('#D5CFE4'),
     accentCDark: hex('#8E7FB8'),
     accentD: hex('#CBDCE8'),
     accentDDark: hex('#6B8FA8'),
-    glow: rgba(196, 164, 124, .35),
+    glow: rgba(203, 170, 120, .33),
     glowB: rgba(159, 184, 168, .35),
     border1: rgba(255, 255, 255, .95),
     border2: rgba(196, 164, 124, .22),
     error: hex('#D88A8A'),
     success: hex('#8FB89A'),
     warn: hex('#DDB878'),
-    ambient1: rgba(224, 205, 169, .45),
+    ambient1: rgba(228, 210, 171, .44),
     ambient2: rgba(197, 216, 203, .4),
     shadowFloat: [
       BoxShadow(color: rgba(160, 140, 110, .16), blurRadius: 50, offset: const Offset(0, 22)),
@@ -198,6 +214,7 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     accent1: hex('#DDDDDE'),
     accent2: hex('#BEBEC0'),
     accent3: hex('#8E8E92'),
+    goldDeep: hex('#A6A6A6'),
     accentB: hex('#8FA0B0'),
     accentBDark: hex('#A8BDD0'),
     accentC: hex('#A8B0C4'),
@@ -242,6 +259,7 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     accent1: hex('#A8D8E8'),
     accent2: hex('#6FC7E0'),
     accent3: hex('#4A8FB0'),
+    goldDeep: hex('#53AFC9'),
     accentB: hex('#A8D4C4'),
     accentBDark: hex('#88C0B0'),
     accentC: hex('#B8C8E8'),
@@ -286,6 +304,7 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     accent1: hex('#D5C4EC'),
     accent2: hex('#B8A0E0'),
     accent3: hex('#8A6FB0'),
+    goldDeep: hex('#9E84C9'),
     accentB: hex('#9ED8E0'),
     accentBDark: hex('#7EC0CC'),
     accentC: hex('#E0B8D8'),
@@ -321,18 +340,19 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
   static final midnight = NfcTokens(
     id: 'midnight',
     isDark: true,
-    bg1: hex('#0A1428'),
-    bg2: hex('#050A18'),
+    bg1: hex('#0C1526'),
+    bg2: hex('#070C18'),
     bgVignette: rgba(212, 179, 106, .10),
-    surface: rgba(18, 32, 54, .72),
-    surface2: rgba(18, 32, 54, .45),
-    surfaceSolid: hex('#0F1E38'),
+    surface: rgba(22, 34, 52, .72),
+    surface2: rgba(22, 34, 52, .45),
+    surfaceSolid: hex('#121F34'),
     text1: hex('#F5EFE2'),
     text2: hex('#B8B4A6'),
     text3: hex('#6E6A60'),
     accent1: hex('#E8D4A0'),
     accent2: hex('#C9A96A'),
     accent3: hex('#8E7340'),
+    goldDeep: hex('#B08F4E'),
     accentB: hex('#A8B8C4'),
     accentBDark: hex('#C4D0D8'),
     accentC: hex('#B8B0C8'),
