@@ -4,6 +4,12 @@ import { useLanguage } from '../lib/i18n.jsx';
 import { IconImage, IconUser } from './Icons.jsx';
 
 // ═══════════════════════════════════════════════════════════════════════
+// HOZIR CHIZILMAYDI — qarang: pastdagi "JOYLASHUV" izohi.
+//
+// Shu fayldan HOZIR ishlatiladigan yagona narsa — `ownerActionUrl()`.
+// Uni profil sahifasidagi "Tahrirlash" va "Story qo'shish"
+// tugmalari chaqiradi.
+//
 // EGANING BOSHQARUV PANELI (telefon uchun)
 //
 // MUAMMO. NFC kartani telefonga tekkizgan ODAM O'ZI karta egasi bo'lsa,
@@ -19,6 +25,21 @@ import { IconImage, IconUser } from './Icons.jsx';
 // BU PUBLIC NAVIGATSIYA EMAS. Panel faqat egaga ko'rinadi: mehmon,
 // boshqa foydalanuvchi yoki tizimga kirmagan odam uni umuman ko'rmaydi
 // (shart `ProfilePage.jsx` da — `isOwner`).
+//
+// JOYLASHUV (2026-09, egasining qarori). Panel avval PROFIL
+// sahifasining pastida turardi. Egasi uni olib tashlashni so'radi:
+// profil — uning ommaga ko'rinadigan yuzi, pastda yopishib turgan
+// qator esa o'sha ko'rinishni to'sib, dizaynni buzardi
+// ("profil eski holatda bo'lsin pastki joyi").
+//
+// Shuning uchun profilda endi avvalgidek ikki tugma turadi —
+// "Tahrirlash" va "Story qo'shish" — faqat ular endi AYNAN shu
+// NFC ID ni olib ketadi (`ownerActionUrl`).
+//
+// Panelning o'zi saqlab qolindi: egasi uni sayt sahifalarida
+// (profil emas) ko'rishni istagan edi, lekin qaysi NFC ID ustida
+// ishlashi hal qilinmagan. Joylashuv aniqlangach shu komponent
+// qayta ulanadi — qaytadan yozish shart emas.
 //
 // NIMA UCHUN FAQAT TELEFONDA. Kompyuterda profilning o'zida inline
 // "Tahrirlash" / "Story qo'shish" tugmalari bor va ular yaxshi

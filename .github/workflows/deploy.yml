@@ -137,6 +137,17 @@ jobs:
       - name: Izoh tozalagich (qo'riqchilar asosi)
         run: node scripts/test-strip-comments.mjs
 
+      # STORY OQIMI — YARATISHDAN KO'RINISHGACHA.
+      #
+      # Egasining xabari: "3-4 ta story qo'ysam bittasi ko'rinadi".
+      # Test haqiqiy worker va SQLite ustida yuradi: ketma-ket to'rtta
+      # story yaratadi va GET to'rttasini ham qaytarishini tekshiradi;
+      # muddati o'tganlar chegaraga kirmasligini, 11-chisi 409
+      # berishini va har bir xato kodining o'z o'zbekcha xabari
+      # borligini ham qo'riqlaydi.
+      - name: Story oqimi
+        run: node scripts/test-story-flow.mjs
+
       - name: Build (vite build + prepare-sites-build)
         run: npm run build
 

@@ -2644,8 +2644,18 @@ async function addStoryD1(env, { kind, ownerId, userId, imageUrl, videoUrl, capt
   // bo'lmasin va jadval cheksiz o'smasin.
   await env.DB.prepare(`DELETE FROM stories WHERE owner_kind = ? AND owner_id = ? AND expires_at <= ?`)
     .bind(kind, ownerId, now.toISOString()).run();
-  const cnt = await env.DB.prepare(`SELECT COUNT(*) AS n FROM stories WHERE owner_kind = ? AND owner_id = ?`)
-    .bind(kind, ownerId).first();
+  // CHEGARA FAQAT FAOL STORYLAR BO'YICHA.
+  //
+  // Yuqoridagi DELETE muddati o'tganlarni tozalaydi, lekin hisob
+  // faqat o'shanga TAYANMAYDI: agar tozalash biror sababga ko'ra
+  // ishlamay qolsa (masalan bitta qatorning `expires_at` qiymati
+  // kutilmagan formatda bo'lsa), eskilari jim turib chegarani
+  // to'ldirib qo'yardi va odam "10 ta bor" degan xabarni ko'rib,
+  // ekranda esa bittasini ko'rardi — chunki GET aynan shu shart
+  // bilan filtrlaydi. Endi ikkalasi BIR XIL shartga tayanadi.
+  const cnt = await env.DB.prepare(
+    `SELECT COUNT(*) AS n FROM stories WHERE owner_kind = ? AND owner_id = ? AND expires_at > ?`,
+  ).bind(kind, ownerId, now.toISOString()).first();
   if (Number(cnt?.n || 0) >= STORY_MAX) return { error: 'limit_reached', limit: STORY_MAX };
   const row = await env.DB.prepare(
     `INSERT INTO stories (owner_kind, owner_id, user_id, image_url, video_url, caption, created_at, expires_at)

@@ -27,13 +27,27 @@ export default function StoryUploader({ label, onSubmit, disabled = false, hint 
 
   // Server xato kodini odam o'qiydigan matnga aylantirish — yuklashda
   // ham, saqlashda ham bir xil.
+  //
+  // HAR BIR KOD O'Z JUMLASIGA EGA BO'LISHI SHART. Ilgari bu yerda
+  // faqat to'rttasi bor edi; `bad_image`, `rules_not_accepted` va
+  // `not_owner` esa umumiy "Yuklab bo'lmadi." ga tushardi. Natijada
+  // egasi bir nechta story qo'yganda ba'zilari saqlanmasdi-yu, U
+  // NEGA saqlanmaganini bilmasdi — xabar hech narsa tushuntirmasdi.
+  // Ro'yxatning to'liqligini `scripts/test-story-flow.mjs` qo'riqlaydi.
+  const STORY_ERRORS = {
+    too_large: 'Fayl 100 MB dan katta.',
+    bad_file: 'Bu format qo‘llab-quvvatlanmaydi (JPG, PNG, WEBP, GIF, MP4, WEBM).',
+    bad_image: 'Rasm formati yoki hajmi mos emas. JPG, PNG, WEBP, GIF, MP4 yoki WEBM tanlang.',
+    limit_reached: 'Maksimal 10 ta faol story mumkin — eskilaridan birini o‘chiring.',
+    feature_locked: 'Tarifingizda Story funksiyasi mavjud emas.',
+    rules_not_accepted: 'Avval quyidagi shartni belgilang.',
+    not_owner: 'Bu profil sizga tegishli emas.',
+    unauthorized: 'Avval tizimga kiring.',
+    not_found: 'Profil topilmadi.',
+  };
   const explain = (error) => {
     const code = error?.error || error?.message;
-    return code === 'too_large' ? t('Fayl 100 MB dan katta.')
-      : code === 'bad_file' ? t('Bu format qo‘llab-quvvatlanmaydi (JPG, PNG, WEBP, GIF, MP4, WEBM).')
-        : code === 'limit_reached' ? t('Chegaraga yetdingiz — eskilaridan birini o‘chiring.')
-          : code === 'feature_locked' ? t('Bu imkoniyat sizning tarifingizda yopiq.')
-            : t('Yuklab bo‘lmadi.');
+    return t(STORY_ERRORS[code] || 'Yuklab bo‘lmadi.');
   };
 
   const pick = async (e) => {
