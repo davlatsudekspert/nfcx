@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
 import '../../design/widgets/buttons.dart';
@@ -119,11 +120,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                 alignment: Alignment.center,
                 child: Text(
                   user?.initials ?? 'N',
-                  style: TextStyle(
-                    fontFamily: 'InstrumentSerif',
-                    fontSize: 33,
-                    color: t.onAccent,
-                  ),
+                  style: AppType.displayStyle(color: t.onAccent, size: 33),
                 ),
               ),
             ),

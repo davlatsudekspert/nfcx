@@ -17,14 +17,28 @@ import 'package:nfcstore_nova/app/providers.dart';
 import 'package:nfcstore_nova/core/network/api_client.dart';
 import 'package:nfcstore_nova/core/utils/result.dart';
 import 'package:nfcstore_nova/data/repositories/auth_repository.dart';
+import 'package:nfcstore_nova/data/repositories/business_repository.dart';
 import 'package:nfcstore_nova/data/repositories/discover_repository.dart';
+import 'package:nfcstore_nova/data/repositories/shop_repository.dart';
 import 'package:nfcstore_nova/data/repositories/social_repository.dart';
 import 'package:nfcstore_nova/core/storage/secure_store.dart';
 import 'package:nfcstore_nova/data/models/models.dart';
 import 'package:nfcstore_nova/design/theme/app_theme.dart';
 import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
 import 'package:nfcstore_nova/features/auth/session.dart';
+import 'package:nfcstore_nova/features/activity/activity_screen.dart';
+import 'package:nfcstore_nova/features/auth/login_screen.dart';
+import 'package:nfcstore_nova/features/auth/register_screen.dart';
+import 'package:nfcstore_nova/features/auth/verify_screen.dart';
+import 'package:nfcstore_nova/features/business/business_forms.dart';
+import 'package:nfcstore_nova/features/business/business_screens.dart';
 import 'package:nfcstore_nova/features/discover/discover_screen.dart';
+import 'package:nfcstore_nova/features/nfc/nfc_ids_screen.dart';
+import 'package:nfcstore_nova/features/nfc/nfc_scan_screen.dart';
+import 'package:nfcstore_nova/features/settings/settings_screen.dart';
+import 'package:nfcstore_nova/features/settings/settings_subscreens.dart';
+import 'package:nfcstore_nova/features/shop/shop_screens.dart';
+import 'package:nfcstore_nova/features/social/post_screens.dart';
 import 'package:nfcstore_nova/features/entry/splash_screen.dart';
 import 'package:nfcstore_nova/features/entry/welcome_screen.dart';
 import 'package:nfcstore_nova/features/home/home_screen.dart';
@@ -84,6 +98,8 @@ Future<void> main() async {
           authRepositoryProvider.overrideWithValue(_GalleryAuth()),
         socialRepositoryProvider.overrideWithValue(_GallerySocial()),
         discoverRepositoryProvider.overrideWithValue(_GalleryDiscover()),
+        businessRepositoryProvider.overrideWithValue(_GalleryBusiness()),
+        shopRepositoryProvider.overrideWithValue(_GalleryShop()),
       ],
       child: _Gallery(screen: screen, themeId: themeId, lang: lang),
     ),
@@ -155,6 +171,116 @@ class _GallerySocial extends SocialRepository {
       const Ok(_sampleStories);
 }
 
+const _sampleBusiness = Business(
+  companyId: 'nova',
+  displayName: 'Nova Studio',
+  category: 'services',
+  subcategory: 'Dizayn studiyasi',
+  city: 'Toshkent',
+  address: 'Amir Temur ko‘chasi 12',
+  description: 'Brend, interfeys va NFC identity yechimlari.',
+  phone: '+998901234567',
+  telegram: '@novastudio',
+  website: 'https://nova.uz',
+  status: 'published',
+  followers: 1290,
+  views: 8420,
+);
+
+const _sampleCatalog = [
+  CatalogItem(
+    id: 1,
+    name: 'Brend identifikatsiyasi',
+    description: 'Logotip, rang tizimi va qo‘llanma.',
+    price: 12000000,
+    isService: true,
+  ),
+  CatalogItem(
+    id: 2,
+    name: 'NFC vizitka to‘plami',
+    description: '50 ta shaxsiylashtirilgan karta.',
+    price: 1800000,
+    salePrice: 1450000,
+  ),
+  CatalogItem(
+    id: 3,
+    name: 'Vitrina sozlash',
+    description: 'Katalog, narxlar va analitika.',
+    price: 3200000,
+    isService: true,
+    available: false,
+  ),
+];
+
+class _GalleryBusiness extends BusinessRepository {
+  _GalleryBusiness() : super(ApiClient());
+
+  @override
+  Future<Result<List<Business>>> mine() async => const Ok([_sampleBusiness]);
+
+  @override
+  Future<Result<Business>> byId(String companyId) async =>
+      const Ok(_sampleBusiness);
+
+  @override
+  Future<Result<List<CatalogItem>>> catalog(String companyId) async =>
+      const Ok(_sampleCatalog);
+}
+
+const _sampleShop = [
+  ShopProduct(
+    id: 'nfc-black',
+    name: 'NFC karta — Matte Black',
+    description: 'PVC karta, lazer o‘yma, NTAG215 chip.',
+    price: 149000,
+    oldPrice: 189000,
+    category: 'Kartalar',
+    tier: 'Standart',
+  ),
+  ShopProduct(
+    id: 'nfc-metal',
+    name: 'NFC karta — Metal',
+    description: 'Zanglamaydigan po‘lat, gravirovka.',
+    price: 549000,
+    category: 'Kartalar',
+    tier: 'Premium',
+  ),
+  ShopProduct(
+    id: 'id-4',
+    name: '4 xonali NFC ID',
+    description: 'Eng qisqa va eslab qolinadigan manzil.',
+    price: 2400000,
+    category: 'ID',
+    tier: '4',
+  ),
+  ShopProduct(
+    id: 'id-6',
+    name: '6 xonali NFC ID',
+    price: 390000,
+    category: 'ID',
+    tier: '6',
+    inStock: false,
+  ),
+];
+
+class _GalleryShop extends ShopRepository {
+  _GalleryShop() : super(ApiClient());
+
+  @override
+  Future<Result<List<ShopProduct>>> products({String? category}) async =>
+      const Ok(_sampleShop);
+
+  @override
+  Future<Result<List<Order>>> orders() async => const Ok([
+        Order(id: 1042, status: 'paid', total: 149000, itemsText: 'NFC karta — Matte Black'),
+        Order(id: 1038, status: 'pending', total: 2400000, itemsText: '4 xonali NFC ID'),
+      ]);
+
+  @override
+  Future<Result<Set<PayProvider>>> enabledProviders() async =>
+      const Ok({PayProvider.payme, PayProvider.click});
+}
+
 class _GalleryDiscover extends DiscoverRepository {
   _GalleryDiscover() : super(ApiClient());
 
@@ -196,9 +322,34 @@ class _Gallery extends ConsumerWidget {
   Widget _screenFor(String name) => switch (name) {
         'splash' => const SplashScreen(),
         'welcome' => const WelcomeScreen(),
+        'login' => const LoginScreen(),
+        'register' => const RegisterScreen(),
+        'verify' => const VerifyScreen(
+            args: VerifyArgs(
+              email: 'nodira@nfcstore.uz',
+              purpose: VerifyPurpose.login,
+            ),
+          ),
         'discover' => const DiscoverScreen(),
         'nfc' => const NfcCenterScreen(),
+        'nfcIds' => const NfcIdsScreen(),
+        'nfcScan' => const NfcScanScreen(),
         'profile' => const ProfileScreen(),
+        'settings' => const SettingsScreen(),
+        'theme' => const ThemeSettingsScreen(),
+        'language' => const LanguageSettingsScreen(),
+        'business' => const BusinessScreen(),
+        'bizOnboard' => const BusinessOnboardScreen(),
+        'bizDashboard' => const BusinessDashboardScreen(),
+        'bizCatalog' => const BusinessCatalogScreen(),
+        'shop' => const ShopScreen(),
+        'checkout' => const CheckoutScreen(),
+        'paymentPending' => const PaymentResultScreen(state: 'pending'),
+        'paymentSuccess' => const PaymentResultScreen(state: 'success'),
+        'paymentFailed' => const PaymentResultScreen(state: 'failed'),
+        'orders' => const OrdersScreen(),
+        'activity' => const ActivityScreen(),
+        'postCreate' => const ComposerScreen(kind: ComposerKind.post),
         _ => const HomeScreen(),
       };
 }

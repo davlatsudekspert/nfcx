@@ -56,6 +56,12 @@ flutter:
         - asset: assets/fonts/InstrumentSerif-400Italic.ttf
           weight: 400
           style: italic
+    - family: PlayfairDisplay
+      fonts:
+        - asset: assets/fonts/PlayfairDisplay-400.ttf
+          weight: 400
+        - asset: assets/fonts/PlayfairDisplay-500.ttf
+          weight: 500
     - family: Manrope
       fonts:
         - asset: assets/fonts/Manrope-400.ttf

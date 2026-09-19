@@ -200,6 +200,9 @@ class LEn extends L {
   String get loginSubtitle => 'Enter your email and phone number';
 
   @override
+  String get loginSubtitlePassword => 'Enter your email and password';
+
+  @override
   String get fieldEmail => 'Email';
 
   @override
@@ -383,6 +386,9 @@ class LEn extends L {
 
   @override
   String get nfcTapToScan => 'Tap to scan';
+
+  @override
+  String get nfcScanShort => 'Scan';
 
   @override
   String get nfcHoldCard => 'Hold the card against the back of your phone';

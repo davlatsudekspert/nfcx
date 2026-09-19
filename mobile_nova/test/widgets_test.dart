@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nfcstore_nova/app/providers.dart';
@@ -77,7 +76,7 @@ void main() {
         const Scaffold(body: NovaButton(label: 'Bosing')),
       ));
       final semantics = tester.getSemantics(find.byType(NovaButton));
-      expect(semantics.hasFlag(SemanticsFlag.isEnabled), isFalse);
+      expect(semantics.flagsCollection.isEnabled, isFalse);
     });
   });
 

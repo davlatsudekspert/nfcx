@@ -88,11 +88,7 @@ class IdentityCard extends StatelessWidget {
                             : user.displayName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontFamily: AppType.display,
-                          fontSize: 21,
-                          color: kOnAccent,
-                        ),
+                        style: AppType.displayStyle(color: kOnAccent, size: 21),
                       ),
                       Text(
                         business
@@ -112,9 +108,13 @@ class IdentityCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                // Logotip karta ustida — bu sirt allaqachon aksent
-                // rangida, shuning uchun plastina emas, shaffof belgi.
-                const BrandLogo(size: 34, style: BrandLogoStyle.mark),
+                // Logotip karta ustida.
+                //
+                // Bu sirt OLTIN — shaffof oltin belgi unda YO'QOLADI.
+                // Shuning uchun logotip o'zining qorong'i plastinasi
+                // bilan qo'yiladi: aktiv o'zgarmaydi, atrofi esa
+                // kontrastni ta'minlaydi (texnik topshiriq, 8-bo'lim).
+                const BrandLogo(size: 36, halo: false),
               ],
             ),
             const SizedBox(height: Gap.xl),

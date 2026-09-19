@@ -127,7 +127,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               style: Theme.of(context).textTheme.displayMedium),
           const SizedBox(height: Gap.sm),
           Text(
-            _codeMode ? l.loginSubtitle : l.registerPasswordHint,
+            _codeMode ? l.loginSubtitle : l.loginSubtitlePassword,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium,
           ),

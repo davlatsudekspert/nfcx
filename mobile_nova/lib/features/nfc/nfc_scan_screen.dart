@@ -163,7 +163,7 @@ class _ScanBody extends StatelessWidget {
                 ? Icon(Icons.check_rounded, size: orb * .3, color: t.onAccent)
                 : state == OrbState.error
                     ? Icon(Icons.close_rounded, size: orb * .3, color: t.onAccent)
-                    : BrandLogo(size: orb * .34, style: BrandLogoStyle.mark),
+                    : BrandLogo(size: orb * .38, halo: false),
           ),
         ),
         const SizedBox(height: Gap.section),

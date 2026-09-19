@@ -207,14 +207,14 @@ class _QuickActions extends StatelessWidget {
             (Icons.storefront_rounded, l.bizStorefront, Routes.business, t.accent1),
           ]
         : [
-            (Icons.nfc_rounded, l.nfcTapToScan, Routes.nfcScan, t.accent1),
+            (Icons.nfc_rounded, l.nfcScanShort, Routes.nfcScan, t.accent1),
             (Icons.badge_rounded, l.nfcMyIds, Routes.nfcIds, t.accentB),
             (Icons.add_circle_outline_rounded, l.postCreate, Routes.postCreate, t.accentC),
             (Icons.storefront_rounded, l.homeShop, Routes.shop, t.accentD),
           ];
 
     return SizedBox(
-      height: 96,
+      height: 98,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
@@ -225,7 +225,9 @@ class _QuickActions extends StatelessWidget {
           return PressableScale(
             onTap: () => context.push(route),
             child: Container(
-              width: 92,
+              // 104px — uch tilning eng uzun yorlig'i ("Сканировать")
+              // ikki qatorga kesilmasdan sig'adigan kenglik.
+              width: 104,
               padding: const EdgeInsets.all(Gap.md),
               decoration: BoxDecoration(
                 color: t.surface,

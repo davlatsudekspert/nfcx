@@ -89,10 +89,9 @@ class _Initials extends StatelessWidget {
       child: Center(
         child: Text(
           initials,
-          style: TextStyle(
-            fontFamily: AppType.display,
-            fontSize: size * .40,
+          style: AppType.displayStyle(
             color: const Color(0xFF1A1A1F),
+            size: size * .40,
           ),
         ),
       ),

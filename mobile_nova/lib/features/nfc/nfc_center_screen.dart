@@ -94,7 +94,10 @@ class NfcCenterScreen extends ConsumerWidget {
                   NfcOrb(
                     size: orb,
                     onTap: () => context.push(Routes.nfcScan),
-                    child: BrandLogo(size: orb * .36, style: BrandLogoStyle.mark),
+                    // Orb sirti OLTIN: shaffof oltin belgi unda
+                    // yo'qolardi, shuning uchun logotip o'zining
+                    // qorong'i plastinasi bilan qo'yiladi.
+                    child: BrandLogo(size: orb * .40, halo: false),
                   ),
                 ],
               ),

@@ -199,6 +199,9 @@ class LRu extends L {
   String get loginSubtitle => 'Введите email и номер телефона';
 
   @override
+  String get loginSubtitlePassword => 'Введите email и пароль';
+
+  @override
   String get fieldEmail => 'Email';
 
   @override
@@ -382,6 +385,9 @@ class LRu extends L {
 
   @override
   String get nfcTapToScan => 'Нажмите для сканирования';
+
+  @override
+  String get nfcScanShort => 'Сканировать';
 
   @override
   String get nfcHoldCard => 'Приложите карту к задней части телефона';

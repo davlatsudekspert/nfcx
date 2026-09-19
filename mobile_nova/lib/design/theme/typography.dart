@@ -12,10 +12,22 @@ abstract final class AppType {
   static const sans = 'Manrope';
   static const mono = 'IBMPlexMono';
 
+  /// Sarlavhalar uchun ZAXIRA oila.
+  ///
+  /// Instrument Serif'da KIRILL ALIFBOSI YO'Q — usiz rus tilidagi har
+  /// bir sarlavha `▯▯▯▯` bo'lib chiqardi. Playfair Display butun kirill
+  /// alifbosini qamraydi va u ham yuqori kontrastli display serif,
+  /// shuning uchun uslub buzilmaydi.
+  ///
+  /// Flutter zaxirani HAR BIR BELGI uchun alohida qo'llaydi: lotin
+  /// harflar Instrument Serif'da, kirill harflar Playfair'da chiziladi.
+  static const displayFallback = ['PlayfairDisplay'];
+
   static TextTheme textTheme(Color text1, Color text2) => TextTheme(
         // Hero sarlavha — Welcome, Splash, bo'sh holat.
         displayLarge: TextStyle(
           fontFamily: display,
+          fontFamilyFallback: displayFallback,
           fontSize: 40,
           height: 1.08,
           letterSpacing: -0.5,
@@ -23,6 +35,7 @@ abstract final class AppType {
         ),
         displayMedium: TextStyle(
           fontFamily: display,
+          fontFamilyFallback: displayFallback,
           fontSize: 32,
           height: 1.12,
           letterSpacing: -0.4,
@@ -31,6 +44,7 @@ abstract final class AppType {
         // Ekran sarlavhasi.
         titleLarge: TextStyle(
           fontFamily: display,
+          fontFamilyFallback: displayFallback,
           fontSize: 25,
           height: 1.2,
           color: text1,
@@ -93,6 +107,28 @@ abstract final class AppType {
           letterSpacing: 1.4,
           color: text2,
         ),
+      );
+
+  /// Sarlavha uslubi — zaxira oila bilan.
+  ///
+  /// QOIDA: ilovada `fontFamily: AppType.display` QO'LDA yozilmaydi.
+  /// Aks holda o'sha joyda kirill zaxirasi tushib qolardi va rus
+  /// tilidagi matn `▯▯▯▯` bo'lib chiqardi.
+  static TextStyle displayStyle({
+    required Color color,
+    double size = 21,
+    double? height,
+    double? letterSpacing,
+    List<Shadow>? shadows,
+  }) =>
+      TextStyle(
+        fontFamily: display,
+        fontFamilyFallback: displayFallback,
+        fontSize: size,
+        height: height,
+        letterSpacing: letterSpacing,
+        color: color,
+        shadows: shadows,
       );
 
   /// NFC ID, narx, sana — raqamlar qatori "sakramasligi" uchun monospace.

@@ -82,11 +82,8 @@ class ThemeSettingsScreen extends ConsumerWidget {
                           children: [
                             Text(
                               name(t.id),
-                              style: TextStyle(
-                                fontFamily: AppType.display,
-                                fontSize: 19,
-                                color: t.text1,
-                              ),
+                              style:
+                                  AppType.displayStyle(color: t.text1, size: 19),
                             ),
                             const SizedBox(height: Gap.sm),
                             Row(

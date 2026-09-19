@@ -116,11 +116,10 @@ class _TopBar extends StatelessWidget {
           children: [
             Text(
               l.navReels,
-              style: const TextStyle(
-                fontFamily: AppType.display,
-                fontSize: 25,
+              style: AppType.displayStyle(
                 color: Colors.white,
-                shadows: [Shadow(color: Colors.black54, blurRadius: 12)],
+                size: 25,
+                shadows: const [Shadow(color: Colors.black54, blurRadius: 12)],
               ),
             ),
             const Spacer(),

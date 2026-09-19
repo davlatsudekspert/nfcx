@@ -477,6 +477,12 @@ abstract class L {
   /// **'Email va telefon raqamingizni kiriting'**
   String get loginSubtitle;
 
+  /// No description provided for @loginSubtitlePassword.
+  ///
+  /// In uz, this message translates to:
+  /// **'Email va parolingizni kiriting'**
+  String get loginSubtitlePassword;
+
   /// No description provided for @fieldEmail.
   ///
   /// In uz, this message translates to:
@@ -830,6 +836,12 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Skanerlash uchun bosing'**
   String get nfcTapToScan;
+
+  /// No description provided for @nfcScanShort.
+  ///
+  /// In uz, this message translates to:
+  /// **'Skanerlash'**
+  String get nfcScanShort;
 
   /// No description provided for @nfcHoldCard.
   ///

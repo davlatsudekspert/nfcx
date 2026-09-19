@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/typography.dart';
 import '../tokens/nfc_tokens.dart';
 import '../tokens/shapes.dart';
 
@@ -150,7 +151,7 @@ class BrandLockup extends StatelessWidget {
           Text(
             'NFCSTORE',
             style: TextStyle(
-              fontFamily: 'Manrope',
+              fontFamily: AppType.sans,
               fontSize: size * .155,
               fontWeight: FontWeight.w800,
               letterSpacing: size * .055,
@@ -160,11 +161,10 @@ class BrandLockup extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             'NOVA',
-            style: TextStyle(
-              fontFamily: 'InstrumentSerif',
-              fontSize: size * .19,
-              letterSpacing: size * .04,
+            style: AppType.displayStyle(
               color: t.accent2,
+              size: size * .19,
+              letterSpacing: size * .04,
             ),
           ),
         ],

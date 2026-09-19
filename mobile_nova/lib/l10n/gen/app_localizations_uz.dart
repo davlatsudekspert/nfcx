@@ -199,6 +199,9 @@ class LUz extends L {
   String get loginSubtitle => 'Email va telefon raqamingizni kiriting';
 
   @override
+  String get loginSubtitlePassword => 'Email va parolingizni kiriting';
+
+  @override
   String get fieldEmail => 'Email';
 
   @override
@@ -382,6 +385,9 @@ class LUz extends L {
 
   @override
   String get nfcTapToScan => 'Skanerlash uchun bosing';
+
+  @override
+  String get nfcScanShort => 'Skanerlash';
 
   @override
   String get nfcHoldCard => 'Kartani telefon orqasiga tegizing';
