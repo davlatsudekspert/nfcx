@@ -11,6 +11,7 @@ import { spawn } from 'node:child_process';
 import { readFile, rm, mkdir } from 'node:fs/promises';
 import http from 'node:http';
 import { makeChecker } from './lib/d1-harness.mjs';
+import { stripComments } from './lib/strip-comments.mjs';
 import {
   planPersonal, planCompany, filterOwned, isBlank, isMeaningful,
   inferDirection, NEVER_INVENT,
@@ -399,7 +400,12 @@ resetStore();
 // test uni qo'riqlaydi. Kelajakda kimdir yangi chaqiruv qo'shsa va u
 // ro'yxatda bo'lmasa — test yiqiladi.
 {
-  const api = await readFile(new URL('./lib/nfcstore-api.js', import.meta.url), 'utf8');
+  // IZOHLARSIZ tekshiramiz. Bu fayldagi izoh AYNAN shu taqiqlarni
+  // TUSHUNTIRADI ("change-password bu yerda YO'Q") — xom matnni
+  // skanerlash o'sha tushuntirishning o'zini qoidabuzarlik deb
+  // o'qirdi. Kod va izohni ajratish uchun loyihaning o'z skaneri
+  // ishlatiladi (scripts/lib/strip-comments.mjs).
+  const api = stripComments(await readFile(new URL('./lib/nfcstore-api.js', import.meta.url), 'utf8'));
 
   // Mijoz murojaat qila oladigan yo'llar (parametrlar umumlashtirilgan).
   const found = [...api.matchAll(/['`](\/api\/[^'`]*)['`]/g)]
