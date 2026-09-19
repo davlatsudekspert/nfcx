@@ -431,7 +431,7 @@ export default function AuthPage({ mode }) {
                     bo'lsa ham shu yerda, YUBORISHDAN OLDIN aytiladi. */}
                 {phone.trim() ? (
                   normalizePhone(phone) ? (
-                    <span className="mt-1 block font-mono text-xs text-[color:var(--vz-gold-2,#f0cf7a)]">
+                    <span className="mt-1 block font-mono text-xs text-[color:var(--accent-text)]">
                       {'\u2713'} {prettyPhone(normalizePhone(phone))}
                     </span>
                   ) : (

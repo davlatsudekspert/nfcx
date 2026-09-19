@@ -61,7 +61,7 @@ export default function PhysicalCardCta() {
       <div className="min-w-0">
         <span className="vz-kicker">{t('O‘zingiz xohlagan uslubda')}</span>
         <h2 className="vz-h2 mt-3 text-[color:var(--vz-ink)]">
-          {t('NFC ID kartangizni o‘zingizga mos')} <span className="text-[color:var(--vz-gold-2)]">{t('dizaynda tayyorlang')}</span>
+          {t('NFC ID kartangizni o‘zingizga mos')} <span className="text-[color:var(--accent-text)]">{t('dizaynda tayyorlang')}</span>
         </h2>
         <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-[color:var(--vz-ink-2)]">
           {t('Rang, dizayn va uslubni o‘zingiz tanlaysiz — keyin buyurtma berasiz. Tayyor karta pochta orqali qo‘lingizga yetib boradi.')}
@@ -88,7 +88,7 @@ export default function PhysicalCardCta() {
         <p className="mt-3 text-[13px] leading-relaxed text-[color:var(--vz-ink-3,rgba(255,255,255,0.45))]">
           {t('Buning uchun {tier} yoki undan yuqori NFC ID kerak. ID’ni «Narxlar» bo‘limidan tanlaysiz — dizayner shundan keyin ochiladi.', { tier: t(TIER_LABEL[PHYSICAL_CARD_MIN_TIER]) })}
           {' '}
-          <button type="button" onClick={() => navigate('/narxlar')} className="underline underline-offset-2 hover:text-[color:var(--vz-gold-2)]">
+          <button type="button" onClick={() => navigate('/narxlar')} className="underline underline-offset-2 hover:text-[color:var(--accent-text)]">
             {t('Narxlarni ko‘rish')}
           </button>
         </p>
@@ -99,7 +99,7 @@ export default function PhysicalCardCta() {
           telefonda u matnni pastga surib yuborardi. */}
       <div aria-hidden="true" className="hidden md:block">
         <div className="relative h-[196px] w-[310px] rotate-[-4deg] rounded-2xl border border-[rgba(212,175,90,0.35)] bg-gradient-to-br from-[#181206] to-[#0b0906] p-5 shadow-[0_28px_60px_-30px_rgba(0,0,0,0.95)]">
-          <div className="font-mono text-[11px] tracking-[0.28em] text-[color:var(--vz-gold-2)]">NFCSTORE</div>
+          <div className="font-mono text-[11px] tracking-[0.28em] text-[color:var(--accent-secondary)]">NFCSTORE</div>
           <div className="mt-8 font-mono text-[30px] font-extrabold tracking-[0.14em] text-[color:var(--vz-ink)]">VIP001</div>
           <div className="mt-1 text-[12px] text-[color:var(--vz-ink-2)]">nfcstore.uz/vip001</div>
           <div className="absolute bottom-5 right-5 h-9 w-9 rounded-full border border-[rgba(212,175,90,0.4)]" />

@@ -6,6 +6,7 @@ import { MESSAGING_ENABLED } from '../lib/features.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { canInstall, onInstallableChange, promptInstall } from '../lib/pwa.js';
 import LanguageSwitcher from './LanguageSwitcher.jsx';
+import ThemeSwitcher from './ThemeSwitcher.jsx';
 import { IconBell, IconChat, IconInstall } from './Icons.jsx';
 import logo from '../assets/logo-128.png';
 
@@ -157,15 +158,15 @@ export default function Header() {
     // iOS status qatori sahifa USTIDA turadi va sarlavha soat bilan
     // ustma-ust tushardi. Sinf qoidasi src/theme.css da; oddiy brauzerda
     // qiymat 0 ga teng, ya'ni hech narsa o'zgarmaydi.
-    <header className="vz-safe-top sticky top-0 z-40 border-b border-[color:var(--vz-line)] bg-[rgba(0,0,0,0.86)] backdrop-blur-md">
+    <header className="vz-safe-top sticky top-0 z-40 border-b border-[color:var(--vz-line)] bg-[color:var(--nav-bg)] backdrop-blur-md">
       {/* 2026-09: BETA e'lon lentasi olib tashlandi — sayt rasman ishga
           tushdi. Matn kaliti src/lib/translations.js da qoldirildi (kelajakda
           shunday e'lon kerak bo'lsa qaytarish oson). `marqueeScroll`
           animatsiyasi HomePage'da ishlatilgani uchun saqlanadi. */}
       <div className="navbar mx-auto w-full max-w-[1800px] px-6 sm:px-10 xl:px-4 2xl:px-10">
         <div className="flex items-center gap-3 sm:gap-4">
-          <button onClick={() => go('/')} className="flex min-h-11 shrink-0 cursor-pointer items-center gap-2 font-display text-[17px] font-semibold tracking-[0.08em] text-[color:var(--vz-gold-2)] xl:gap-2 xl:text-[15px] 2xl:gap-2.5 2xl:text-[17px]">
-            <img src={logo} alt="NFCSTORE" className="h-9 w-9 object-contain drop-shadow-[0_2px_6px_rgba(201,162,39,0.35)] xl:h-8 xl:w-8 2xl:h-9 2xl:w-9" />
+          <button onClick={() => go('/')} className="flex min-h-11 shrink-0 cursor-pointer items-center gap-2 font-display text-[17px] font-semibold tracking-[0.08em] text-[color:var(--accent-text)] xl:gap-2 xl:text-[15px] 2xl:gap-2.5 2xl:text-[17px]">
+            <img src={logo} alt="NFCSTORE" className="h-9 w-9 object-contain drop-shadow-[0_2px_6px_var(--accent-glow)] xl:h-8 xl:w-8 2xl:h-9 2xl:w-9" />
             NFCSTORE
           </button>
           <div className="hidden w-36 shrink-0 md:block lg:w-40 xl:w-28 2xl:w-40">
@@ -239,10 +240,17 @@ export default function Header() {
               <span className="hidden 2xl:inline">{t('Bepul profil ochish')}</span>
             </button>
           )}
+          {/* Rang mavzusi — til tugmasi yonidagi ixcham ikona.
+              Header tuzilmasi o'zgarmadi: bu ham xuddi til tugmasidek
+              bitta kichik tugma. */}
+          <ThemeSwitcher />
           <LanguageSwitcher />
         </div>
 
         <div className="flex items-center gap-1 xl:hidden">
+          {/* Telefonda ham mavzu ikonasi ko'rinadi — hamburger va til
+              tugmasi joyini surmaydi, sarlavha balandligi o'zgarmaydi. */}
+          <ThemeSwitcher />
           <LanguageSwitcher />
           <button aria-label={t('Menyu')} aria-expanded={open} className="btn btn-ghost btn-square h-11 min-h-11 w-11" onClick={() => setOpen(!open)}>
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

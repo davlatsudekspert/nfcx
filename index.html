@@ -9,7 +9,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>NFCSTORE — raqamli profil va NFC karta</title>
   <meta name="description" content="Telefon, ijtimoiy tarmoqlar, sayt va boshqa muhim ma’lumotlaringizni bitta raqamli profilda jamlang va NFC karta orqali ulashing." />
-  <meta name="theme-color" content="#0a0805" />
+  <meta name="theme-color" content="#f3eee3" />
   <meta name="robots" content="index,follow" />
   <link rel="canonical" href="https://nfcstore.uz/" />
   <meta property="og:title" content="NFCSTORE — raqamli profil va NFC karta" />
@@ -59,6 +59,33 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <!-- 2026-09: shriftlar Google CDN'dan EMAS, o'z domenimizdan beriladi.
        Qarang: src/fonts.css (Fontsource npm paketlari). -->
+  <!-- MAVZU (THEME) — RANG CHAQNASHIGA (FOUC) QARSHI.
+       Saqlangan tanlov React ishga tushishidan OLDIN, birinchi
+       bo'yashdan ham oldin `<html data-theme>` ga qo'yiladi. Aks holda
+       sahifa bir lahza standart mavzuda chaqnab, keyin to'g'ri rangga
+       o'tardi. Ranglarning o'zi src/themes.css da; bu yerda faqat
+       manzil paneli va canvas foni uchun kerakli bitta qiymat bor
+       (ro'yxat src/lib/theme.jsx dagi THEMES bilan bir xil). -->
+  <script>
+    (function () {
+      var BG = {
+        pearl: '#f3eee3',
+        graphite: '#17181a',
+        ocean: '#081923',
+        aurora: '#181125',
+        midnight: '#0d1524',
+        legacy: '#050403'
+      };
+      var t = null;
+      try { t = localStorage.getItem('nfc_theme'); } catch (e) { /* private rejim */ }
+      if (!t || !BG[t]) t = 'pearl';
+      var r = document.documentElement;
+      r.setAttribute('data-theme', t);
+      r.style.backgroundColor = BG[t];
+      var m = document.querySelector('meta[name="theme-color"]');
+      if (m) m.setAttribute('content', BG[t]);
+    })();
+  </script>
 </head>
 <!-- Sahifa foni: avval `bg-base-100` (#0a0908 — JIGARRANG tus, R>G>B) va
      ikkita radial "yorug'lik" gradienti shu yerda QATTIQ YOZILGAN edi —
@@ -69,13 +96,14 @@
      modallarda ishlatiladi. -->
 <body class="overflow-x-hidden bg-page-bg font-sans leading-normal text-base-content antialiased">
   <div id="root"></div>
-  <!-- Sahifa/canvas foni — YAGONA qora token (src/theme.css: --color-page-bg).
+  <!-- Sahifa/canvas foni — mavzudan (theme) keladi.
        Bu yerda inline turibdi, chunki daisyUI hujjat (canvas) fonini o'zining
        `--root-bg` o'zgaruvchisi orqali boshqaradi va CSS minifikatori
        stylesheetdagi `html{background}` qoidasini o'sha qoidaga birlashtirib
-       yuboradi. Faqat SAHIFA foni — komponentlarning `--color-base-100`
-       rangiga tegilmagan. -->
-  <style>:root{--root-bg:#000000;background-color:#000000}</style>
+       yuboradi. Faqat SAHIFA foni — komponentlarning surface rangiga
+       tegilmagan. Aniq qiymatni quyidagi skript qo'yadi; bu yerdagisi
+       skript ishlamay qolgan holat uchun zaxira. -->
+  <style>:root{--root-bg:var(--bg-primary,#f3eee3);background-color:var(--bg-primary,#f3eee3)}</style>
   <script type="module" src="/src/main.jsx"></script>
 </body>
 </html>

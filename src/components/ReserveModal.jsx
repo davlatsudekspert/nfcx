@@ -235,7 +235,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
                   <span>{t("bilan to‘lov · {n} so'm", { n: fmt(order.price) })}</span>
                 </a>
                 {payIsSandbox && (
-                  <p className="mt-2 text-center text-xs font-bold text-[#5fd9ca]">{t('Real pul yechilmaydi \u2014 bu test to\u2019lovi.')}</p>
+                  <p className="mt-2 text-center text-xs font-bold text-[color:var(--success)]">{t('Real pul yechilmaydi \u2014 bu test to\u2019lovi.')}</p>
                 )}
                 <PayQr payLink={order.payLink} className="mt-3" />
                 <div className="mt-4 flex items-center justify-center gap-2 text-xs text-base-content/50">

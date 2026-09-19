@@ -1,0 +1,654 @@
+/* ════════════════════════════════════════════════════════════════════════
+   NFCSTORE — MARKAZIY THEME (RANG) TIZIMI
+   ────────────────────────────────────────────────────────────────────────
+   BU FAYL FAQAT RANG BERADI. Bu yerda joylashuv (layout), o‘lcham,
+   kenglik, balandlik yoki funksiya YO‘Q — faqat rang tokenlari va
+   ularning daisyUI / `--vz-*` / `--company-*` tizimlariga ulanishi.
+
+   5 ta foydalanuvchi mavzusi (theme):
+     pearl     — Pearl / Champagne     (iliq ivory, antique gold)
+     graphite  — Graphite / Platinum   (premium monoxrom charcoal)
+     ocean     — Ocean / Ice           (chuqur navy-ocean + muz ko‘k)
+     aurora    — Aurora / Violet       (deep plum + yumshoq lavanda)
+     midnight  — Midnight Navy / Soft Gold (iliq navy + champagne gold)
+
+   + legacy — SAYTNING ESKI (production) qora-oltin rangi. O‘CHIRILMADI:
+     zaxira (fallback) sifatida turadi; `nfc_theme=legacy` bo‘lsa eski
+     ko‘rinish aynan qaytadi.
+
+   Tanlov `localStorage.nfc_theme` da saqlanadi va `index.html` dagi
+   kichik skript orqali React’dan OLDIN `<html data-theme>` ga qo‘yiladi
+   (FOUC — rang chaqnashi bo‘lmasligi uchun).
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ───────────────────────────────────────────────────────────────────
+   1. PEARL / CHAMPAGNE
+   iliq ivory fon (sof oppoq EMAS), champagne yuzalar, sokin antique
+   gold accent. Sariq yoki yaltiroq metall gold YO‘Q; soyalar yumshoq
+   va tarqalgan, qattiq qora soya yo‘q.
+   ─────────────────────────────────────────────────────────────────── */
+:root,
+[data-theme="pearl"] {
+  color-scheme: light;
+
+  /* Fon */
+  --bg-primary: #f3eee3;
+  --bg-secondary: #f7f3ea;
+  --bg-gradient-a: #f8f4ec;
+  --bg-gradient-b: #efe7d9;
+
+  /* Yuzalar (surface) — pastdan yuqoriga qatlam narvoni:
+     bg-primary < bg-secondary < surface-soft < surface < surface-elevated < surface-raised */
+  --surface-soft: #fbf8f2;
+  --surface: #fffdf8;
+  --surface-elevated: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-inset: #ece5d7;
+  --surface-sheen: linear-gradient(160deg, rgba(255, 255, 255, 0.6) 0%, rgba(150, 120, 70, 0.045) 100%);
+
+  /* Yarim shaffof qoplama asoslari: tint = yoritadi, shade = parda va soya,
+     inset = panelni ichkariga botiradi (yorug mavzuda ham togri ishlaydi) */
+  --tint-base: #23201a;
+  --shade-base: #2b2519;
+  --inset-base: #cdc1a8;
+
+  /* Matn */
+  --text-primary: #23201a;
+  --text-secondary: #4f4739;
+  --text-muted: #6b6252;
+  --text-faint: #8a8070;
+  --text-on-accent: #241c0c;
+
+  /* Accent */
+  --accent-primary: #9c7a32;
+  --accent-secondary: #c7a863;
+  --accent-deep: #7c5f22;
+  --accent-soft: rgba(156, 122, 50, 0.12);
+  --accent-ink: #241c0c;
+  --accent-glow: rgba(199, 168, 99, 0.38);
+
+  /* Chegara (border) */
+  --border: #ded3bf;
+  --border-soft: #eae2d2;
+  --border-strong: #c9b99e;
+  --border-accent: rgba(156, 122, 50, 0.34);
+
+  /* Soya va nur */
+  --shadow: 0 18px 40px -22px rgba(92, 74, 44, 0.36);
+  --shadow-soft: 0 10px 26px -18px rgba(92, 74, 44, 0.26);
+  --glow: 0 0 22px -10px rgba(199, 168, 99, 0.6);
+  --scrim: rgba(40, 34, 24, 0.55);
+
+  /* Holat ranglari */
+  --success: #3e7a55;
+  --success-soft: rgba(62, 122, 85, 0.14);
+  --warning: #9c742a;
+  --warning-soft: rgba(156, 116, 42, 0.16);
+  --danger: #b0463a;
+  --danger-soft: rgba(176, 70, 58, 0.13);
+  --info: #3c6e9f;
+  --link: #2f6db4;
+
+  /* Komponentlar */
+  --input-bg: #ffffff;
+  --input-border: #d6c9b2;
+  --button-bg: linear-gradient(135deg, #d0b273, #9c7a32);
+  --button-text: #241c0c;
+  --nav-bg: rgba(247, 243, 234, 0.92);
+  --card-bg: #fffdf8;
+  --modal-bg: #fffdf8;
+  --pill-bg: #2b2519;
+  --pill-text: #fbf7f0;
+}
+
+/* ───────────────────────────────────────────────────────────────────
+   2. GRAPHITE / PLATINUM
+   premium monoxrom: charcoal/graphite fon (qora EMAS), undan bir oz
+   ochroq yuzalar, platinum-kumush accent, iliq off-white matn.
+   ─────────────────────────────────────────────────────────────────── */
+[data-theme="graphite"] {
+  color-scheme: dark;
+
+  /* Fon */
+  --bg-primary: #17181a;
+  --bg-secondary: #1b1d1f;
+  --bg-gradient-a: #1a1b1e;
+  --bg-gradient-b: #121314;
+
+  /* Yuzalar (surface) — pastdan yuqoriga qatlam narvoni:
+     bg-primary < bg-secondary < surface-soft < surface < surface-elevated < surface-raised */
+  --surface-soft: #1f2124;
+  --surface: #242629;
+  --surface-elevated: #2b2e32;
+  --surface-raised: #33363b;
+  --surface-inset: #121314;
+  --surface-sheen: linear-gradient(160deg, rgba(255, 255, 255, 0.03) 0%, rgba(0, 0, 0, 0.05) 100%);
+
+  /* Yarim shaffof qoplama asoslari: tint = yoritadi, shade = parda va soya,
+     inset = panelni ichkariga botiradi (yorug mavzuda ham togri ishlaydi) */
+  --tint-base: #f1efeb;
+  --shade-base: #0a0b0c;
+  --inset-base: #0a0b0c;
+
+  /* Matn */
+  --text-primary: #f1efeb;
+  --text-secondary: #c2bfb9;
+  --text-muted: #95928b;
+  --text-faint: #77746e;
+  --text-on-accent: #191a1c;
+
+  /* Accent */
+  --accent-primary: #cbcfd4;
+  --accent-secondary: #eaedf1;
+  --accent-deep: #9aa0a7;
+  --accent-soft: rgba(203, 207, 212, 0.12);
+  --accent-ink: #191a1c;
+  --accent-glow: rgba(203, 207, 212, 0.3);
+
+  /* Chegara (border) */
+  --border: #35383d;
+  --border-soft: #2b2e31;
+  --border-strong: #474b50;
+  --border-accent: rgba(203, 207, 212, 0.3);
+
+  /* Soya va nur */
+  --shadow: 0 20px 44px -24px rgba(0, 0, 0, 0.74);
+  --shadow-soft: 0 12px 28px -20px rgba(0, 0, 0, 0.58);
+  --glow: 0 0 22px -10px rgba(210, 215, 222, 0.3);
+  --scrim: rgba(10, 11, 12, 0.66);
+
+  /* Holat ranglari */
+  --success: #7fbe95;
+  --success-soft: rgba(127, 190, 149, 0.14);
+  --warning: #d8b871;
+  --warning-soft: rgba(216, 184, 113, 0.16);
+  --danger: #d98072;
+  --danger-soft: rgba(217, 128, 114, 0.15);
+  --info: #8fb6d9;
+  --link: #8fbbea;
+
+  /* Komponentlar */
+  --input-bg: #1b1d20;
+  --input-border: #3c4045;
+  --button-bg: linear-gradient(135deg, #eaedf1, #a9aeb4);
+  --button-text: #191a1c;
+  --nav-bg: rgba(23, 24, 26, 0.9);
+  --card-bg: #242629;
+  --modal-bg: #2b2e32;
+  --pill-bg: #2e3236;
+  --pill-text: #f1efeb;
+}
+
+/* ───────────────────────────────────────────────────────────────────
+   3. OCEAN / ICE
+   chuqur navy-ocean fon (qora EMAS), dark ocean blue yuzalar,
+   YUMSHOQ muz-ko‘k accent. Neon / elektr cyan YO‘Q.
+   ─────────────────────────────────────────────────────────────────── */
+[data-theme="ocean"] {
+  color-scheme: dark;
+
+  /* Fon */
+  --bg-primary: #081923;
+  --bg-secondary: #0c2130;
+  --bg-gradient-a: #0a1e2b;
+  --bg-gradient-b: #06141d;
+
+  /* Yuzalar (surface) — pastdan yuqoriga qatlam narvoni:
+     bg-primary < bg-secondary < surface-soft < surface < surface-elevated < surface-raised */
+  --surface-soft: #102a3a;
+  --surface: #143348;
+  --surface-elevated: #1a3f57;
+  --surface-raised: #214b66;
+  --surface-inset: #061520;
+  --surface-sheen: linear-gradient(160deg, rgba(174, 223, 238, 0.045) 0%, rgba(0, 0, 0, 0.06) 100%);
+
+  /* Yarim shaffof qoplama asoslari: tint = yoritadi, shade = parda va soya,
+     inset = panelni ichkariga botiradi (yorug mavzuda ham togri ishlaydi) */
+  --tint-base: #e7f2f8;
+  --shade-base: #03111a;
+  --inset-base: #03111a;
+
+  /* Matn */
+  --text-primary: #e7f2f8;
+  --text-secondary: #aec9d8;
+  --text-muted: #85a3b5;
+  --text-faint: #6a8a9c;
+  --text-on-accent: #04202c;
+
+  /* Accent */
+  --accent-primary: #7ec4dc;
+  --accent-secondary: #aedfee;
+  --accent-deep: #4e93ac;
+  --accent-soft: rgba(126, 196, 220, 0.13);
+  --accent-ink: #04202c;
+  --accent-glow: rgba(126, 196, 220, 0.34);
+
+  /* Chegara (border) */
+  --border: #1f4659;
+  --border-soft: #193a4b;
+  --border-strong: #2d5f7b;
+  --border-accent: rgba(126, 196, 220, 0.32);
+
+  /* Soya va nur */
+  --shadow: 0 20px 46px -24px rgba(2, 14, 22, 0.8);
+  --shadow-soft: 0 12px 30px -20px rgba(2, 14, 22, 0.64);
+  --glow: 0 0 24px -10px rgba(126, 196, 220, 0.45);
+  --scrim: rgba(4, 16, 24, 0.66);
+
+  /* Holat ranglari */
+  --success: #6fc7a1;
+  --success-soft: rgba(111, 199, 161, 0.14);
+  --warning: #e0bc72;
+  --warning-soft: rgba(224, 188, 114, 0.16);
+  --danger: #e08279;
+  --danger-soft: rgba(224, 130, 121, 0.15);
+  --info: #8cc6e8;
+  --link: #8ecbea;
+
+  /* Komponentlar */
+  --input-bg: #0d2533;
+  --input-border: #27556f;
+  --button-bg: linear-gradient(135deg, #aedfee, #5e9fb9);
+  --button-text: #04202c;
+  --nav-bg: rgba(8, 25, 35, 0.9);
+  --card-bg: #143348;
+  --modal-bg: #1a3f57;
+  --pill-bg: #1a4459;
+  --pill-text: #e7f2f8;
+}
+
+/* ───────────────────────────────────────────────────────────────────
+   4. AURORA / VIOLET
+   deep plum / violet fon, yumshoq lavanda accent. Neon purple va
+   gaming UI YO‘Q — yuzalar mayin va premium.
+   ─────────────────────────────────────────────────────────────────── */
+[data-theme="aurora"] {
+  color-scheme: dark;
+
+  /* Fon */
+  --bg-primary: #181125;
+  --bg-secondary: #1e1630;
+  --bg-gradient-a: #1c1429;
+  --bg-gradient-b: #140e1f;
+
+  /* Yuzalar (surface) — pastdan yuqoriga qatlam narvoni:
+     bg-primary < bg-secondary < surface-soft < surface < surface-elevated < surface-raised */
+  --surface-soft: #241a37;
+  --surface: #2a1f3f;
+  --surface-elevated: #33264b;
+  --surface-raised: #3d2e58;
+  --surface-inset: #130d1e;
+  --surface-sheen: linear-gradient(160deg, rgba(216, 200, 242, 0.045) 0%, rgba(0, 0, 0, 0.06) 100%);
+
+  /* Yarim shaffof qoplama asoslari: tint = yoritadi, shade = parda va soya,
+     inset = panelni ichkariga botiradi (yorug mavzuda ham togri ishlaydi) */
+  --tint-base: #f0eaf8;
+  --shade-base: #0c0617;
+  --inset-base: #0c0617;
+
+  /* Matn */
+  --text-primary: #f0eaf8;
+  --text-secondary: #c9bcdb;
+  --text-muted: #a091b4;
+  --text-faint: #847694;
+  --text-on-accent: #1a1028;
+
+  /* Accent */
+  --accent-primary: #b79ce2;
+  --accent-secondary: #d8c8f2;
+  --accent-deep: #8a6cbc;
+  --accent-soft: rgba(183, 156, 226, 0.13);
+  --accent-ink: #1a1028;
+  --accent-glow: rgba(183, 156, 226, 0.34);
+
+  /* Chegara (border) */
+  --border: #3d2e56;
+  --border-soft: #322646;
+  --border-strong: #503d6e;
+  --border-accent: rgba(183, 156, 226, 0.32);
+
+  /* Soya va nur */
+  --shadow: 0 20px 46px -24px rgba(12, 6, 22, 0.8);
+  --shadow-soft: 0 12px 30px -20px rgba(12, 6, 22, 0.64);
+  --glow: 0 0 24px -10px rgba(183, 156, 226, 0.45);
+  --scrim: rgba(14, 8, 24, 0.66);
+
+  /* Holat ranglari */
+  --success: #79c79f;
+  --success-soft: rgba(121, 199, 159, 0.14);
+  --warning: #ddb878;
+  --warning-soft: rgba(221, 184, 120, 0.16);
+  --danger: #df8391;
+  --danger-soft: rgba(223, 131, 145, 0.15);
+  --info: #a5a8ea;
+  --link: #b9a6f0;
+
+  /* Komponentlar */
+  --input-bg: #221733;
+  --input-border: #473465;
+  --button-bg: linear-gradient(135deg, #d8c8f2, #9878cc);
+  --button-text: #1a1028;
+  --nav-bg: rgba(24, 17, 37, 0.9);
+  --card-bg: #2a1f3f;
+  --modal-bg: #33264b;
+  --pill-bg: #3b2c54;
+  --pill-text: #f0eaf8;
+}
+
+/* ───────────────────────────────────────────────────────────────────
+   5. MIDNIGHT NAVY / SOFT GOLD
+   iliq deep navy fon (sof qora EMAS), navy qatlamli yuzalar va
+   champagne / antique gold accent. Oltin FAQAT accent sifatida:
+   CTA, active holat, ikona, nozik ramka. Sovuq ko‘k yoki gaming
+   ko‘rinish YO‘Q.
+   ─────────────────────────────────────────────────────────────────── */
+[data-theme="midnight"] {
+  color-scheme: dark;
+
+  /* Fon */
+  --bg-primary: #0d1524;
+  --bg-secondary: #121c2e;
+  --bg-gradient-a: #101a2b;
+  --bg-gradient-b: #0a1120;
+
+  /* Yuzalar (surface) — pastdan yuqoriga qatlam narvoni:
+     bg-primary < bg-secondary < surface-soft < surface < surface-elevated < surface-raised */
+  --surface-soft: #162238;
+  --surface: #1a2840;
+  --surface-elevated: #21314c;
+  --surface-raised: #293b59;
+  --surface-inset: #09101c;
+  --surface-sheen: linear-gradient(160deg, rgba(239, 215, 166, 0.04) 0%, rgba(0, 0, 0, 0.06) 100%);
+
+  /* Yarim shaffof qoplama asoslari: tint = yoritadi, shade = parda va soya,
+     inset = panelni ichkariga botiradi (yorug mavzuda ham togri ishlaydi) */
+  --tint-base: #eeeae0;
+  --shade-base: #050a12;
+  --inset-base: #050a12;
+
+  /* Matn */
+  --text-primary: #eeeae0;
+  --text-secondary: #bcc3ce;
+  --text-muted: #8f98a6;
+  --text-faint: #747d8c;
+  --text-on-accent: #1a1308;
+
+  /* Accent */
+  --accent-primary: #d6b478;
+  --accent-secondary: #efd7a6;
+  --accent-deep: #a8874a;
+  --accent-soft: rgba(214, 180, 120, 0.12);
+  --accent-ink: #1a1308;
+  --accent-glow: rgba(214, 180, 120, 0.36);
+
+  /* Chegara (border) */
+  --border: #273751;
+  --border-soft: #1f2e45;
+  --border-strong: #364b6b;
+  --border-accent: rgba(214, 180, 120, 0.32);
+
+  /* Soya va nur */
+  --shadow: 0 20px 46px -24px rgba(3, 8, 16, 0.82);
+  --shadow-soft: 0 12px 30px -20px rgba(3, 8, 16, 0.66);
+  --glow: 0 0 24px -10px rgba(214, 180, 120, 0.45);
+  --scrim: rgba(5, 10, 18, 0.66);
+
+  /* Holat ranglari */
+  --success: #74c49a;
+  --success-soft: rgba(116, 196, 154, 0.14);
+  --warning: #ddb871;
+  --warning-soft: rgba(221, 184, 113, 0.16);
+  --danger: #dd8279;
+  --danger-soft: rgba(221, 130, 121, 0.15);
+  --info: #89b6df;
+  --link: #8fc0f0;
+
+  /* Komponentlar */
+  --input-bg: #111b2c;
+  --input-border: #2f4160;
+  --button-bg: linear-gradient(135deg, #efd7a6, #b6924f);
+  --button-text: #1a1308;
+  --nav-bg: rgba(13, 21, 36, 0.9);
+  --card-bg: #1a2840;
+  --modal-bg: #21314c;
+  --pill-bg: #22314a;
+  --pill-text: #eeeae0;
+}
+
+/* ───────────────────────────────────────────────────────────────────
+   6. LEGACY — ESKI (PRODUCTION) QORA-OLTIN
+   O‘CHIRILMADI. Qiymatlar eski `src/theme.css` dagi daisyUI
+   “nfcstore” mavzusi va `--vz-*` tokenlaridan AYNAN ko‘chirilgan —
+   ya’ni bu mavzu tanlansa sayt avvalgidek ko‘rinadi.
+   ─────────────────────────────────────────────────────────────────── */
+[data-theme="legacy"] {
+  color-scheme: dark;
+
+  /* Fon */
+  --bg-primary: #050403;
+  --bg-secondary: #0a0805;
+  --bg-gradient-a: #0a0805;
+  --bg-gradient-b: #14100a;
+
+  /* Yuzalar (surface) — pastdan yuqoriga qatlam narvoni:
+     bg-primary < bg-secondary < surface-soft < surface < surface-elevated < surface-raised */
+  --surface-soft: #0a0908;
+  --surface: #141210;
+  --surface-elevated: #1c1916;
+  --surface-raised: #241f18;
+  --surface-inset: #000000;
+  --surface-sheen: linear-gradient(160deg, rgba(255, 255, 255, 0.022) 0%, rgba(0, 0, 0, 0.05) 100%);
+
+  /* Yarim shaffof qoplama asoslari: tint = yoritadi, shade = parda va soya,
+     inset = panelni ichkariga botiradi (yorug mavzuda ham togri ishlaydi) */
+  --tint-base: #ffffff;
+  --shade-base: #000000;
+  --inset-base: #000000;
+
+  /* Matn */
+  --text-primary: #f6f2ea;
+  --text-secondary: #b5a78b;
+  --text-muted: #8a7f68;
+  --text-faint: #6b6354;
+  --text-on-accent: #1a1206;
+
+  /* Accent */
+  --accent-primary: #d4af5a;
+  --accent-secondary: #f0cf7a;
+  --accent-deep: #b3860f;
+  --accent-soft: rgba(212, 175, 90, 0.12);
+  --accent-ink: #1a1206;
+  --accent-glow: rgba(226, 190, 110, 0.42);
+
+  /* Chegara (border) */
+  --border: #2d2518;
+  --border-soft: #221c12;
+  --border-strong: #3d3220;
+  --border-accent: rgba(212, 175, 90, 0.45);
+
+  /* Soya va nur */
+  --shadow: 0 12px 30px -16px rgba(0, 0, 0, 0.7);
+  --shadow-soft: 0 8px 22px -14px rgba(0, 0, 0, 0.6);
+  --glow: 0 0 20px -8px rgba(226, 190, 110, 0.42);
+  --scrim: rgba(0, 0, 0, 0.7);
+
+  /* Holat ranglari */
+  --success: #7fb28e;
+  --success-soft: rgba(127, 178, 142, 0.14);
+  --warning: #e0b458;
+  --warning-soft: rgba(224, 180, 88, 0.16);
+  --danger: #c9573f;
+  --danger-soft: rgba(201, 87, 63, 0.15);
+  --info: #e8c165;
+  --link: #5fa8ff;
+
+  /* Komponentlar */
+  --input-bg: #0f0c07;
+  --input-border: #2d2518;
+  --button-bg: linear-gradient(135deg, #f0cf7a, #b3860f);
+  --button-text: #1a1206;
+  --nav-bg: rgba(0, 0, 0, 0.86);
+  --card-bg: #141210;
+  --modal-bg: #1c1916;
+  --pill-bg: #232326;
+  --pill-text: #ffffff;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   KO'PRIK (BRIDGE) — yuqoridagi tokenlarni saytda ALLAQACHON
+   ishlatilayotgan rang tizimlariga ulaydi. Shu sabab komponentlarning
+   JSX tuzilmasiga tegmasdan butun sayt mavzuga bo'ysunadi.
+
+   Bu blok QATLAMSIZ (unlayered) yozilgan — Tailwind/daisyUI o'z
+   qiymatlarini `@layer` ichida beradi, qatlamsiz qoida esa ulardan
+   ustun turadi. Shuning uchun `!important` KERAK EMAS.
+   ═══════════════════════════════════════════════════════════════════════ */
+:root {
+  /* ── Sahifa foni (Tailwind `bg-page-bg` va daisyUI canvas) ── */
+  --color-page-bg: var(--bg-primary);
+  --root-bg: var(--bg-primary);
+
+  /* ── daisyUI semantik ranglari ──
+     Saytda `bg-base-100`, `bg-base-200`, `text-base-content`,
+     `text-accent`, `badge-accent` kabi 700+ joyda ishlatiladi. */
+  --color-base-100: var(--surface);
+  --color-base-200: var(--surface-elevated);
+  --color-base-300: var(--surface-raised);
+  --color-base-content: var(--text-primary);
+  --color-primary: var(--accent-primary);
+  --color-primary-content: var(--accent-ink);
+  --color-secondary: var(--accent-secondary);
+  --color-secondary-content: var(--accent-ink);
+  --color-accent: var(--accent-primary);
+  --color-accent-content: var(--accent-ink);
+  --color-neutral: var(--surface-elevated);
+  --color-neutral-content: var(--text-primary);
+  --color-info: var(--info);
+  --color-info-content: var(--accent-ink);
+  --color-success: var(--success);
+  --color-success-content: var(--accent-ink);
+  --color-warning: var(--warning);
+  --color-warning-content: var(--accent-ink);
+  --color-error: var(--danger);
+  --color-error-content: var(--surface);
+
+  /* ── `--vz-*` (saytning mavjud token oilasi) ── */
+  --vz-gold: var(--accent-primary);
+  --vz-gold-2: var(--accent-secondary);
+  --vz-gold-3: var(--accent-deep);
+  --vz-gold-ink: var(--accent-ink);
+  --vz-bg: var(--bg-primary);
+  --vz-bg-2: var(--bg-secondary);
+  --vz-bg-a: var(--bg-gradient-a);
+  --vz-bg-b: var(--bg-gradient-b);
+  --vz-card: var(--surface);
+  --vz-card-2: var(--surface-elevated);
+  --vz-line: var(--border);
+  --vz-ink: var(--text-primary);
+  --vz-ink-2: var(--text-secondary);
+  --vz-ink-3: var(--text-muted);
+  --vz-ink-dim: var(--text-secondary);
+  --vz-ink-faint: var(--text-faint);
+  --vz-accent: var(--accent-primary);
+  --vz-danger: var(--danger);
+  --vz-link: var(--link);
+  --vz-shadow: var(--shadow);
+  /* `--vz-pill` avval FAQAT `src/index.css` dagi `.vz` blokida edi, u
+     fayl esa ilovaga umuman ulanmaydi — ya'ni qiymat bo'sh qolardi va
+     pill'lar fonsiz chiqardi. Endi u ham mavzudan keladi. */
+  --vz-pill: var(--pill-bg);
+
+
+  /* ── Oltin/accent ustidagi tayyor yarim shaffof qatlamlar ──
+     Tailwind "arbitrary value" ichida `color-mix(...)` yozish qiyin
+     (probel/vergul qoidalari), shuning uchun bir necha ko'p
+     ishlatiladigan nisbat oldindan tayyorlanadi: `var(--accent-a14)`. */
+  --shadow-cast: color-mix(in srgb, var(--shade-base) 55%, transparent);
+  /* MATN uchun accent: to'q mavzuda ochroq oltin, yorug' (Pearl)
+     mavzuda esa to'qroq - krem fon ustida o'qilishi uchun. */
+  --accent-text: var(--accent-secondary);
+  --accent-a08: color-mix(in srgb, var(--accent-primary) 8%, transparent);
+  --accent-a14: color-mix(in srgb, var(--accent-primary) 14%, transparent);
+  --accent-a22: color-mix(in srgb, var(--accent-primary) 22%, transparent);
+  --accent-a25: color-mix(in srgb, var(--accent-primary) 25%, transparent);
+  --accent-a45: color-mix(in srgb, var(--accent-primary) 45%, transparent);
+
+  /* ── Rasm/parda USTIDAGI matn ──
+     Muqova rasmi va qora parda ustidagi matn HAMMA mavzuda oq qoladi:
+     u yerdagi fon mavzuga emas, foydalanuvchi yuklagan rasmga bog'liq. */
+  --on-media: #ffffff;
+  --on-media-dim: rgba(255, 255, 255, 0.82);
+  --on-media-faint: rgba(255, 255, 255, 0.62);
+
+  /* ── Kompaniya (business) tizimi — `src/company-system.css` ── */
+  --company-gold: var(--accent-primary);
+  --company-gold-2: var(--accent-secondary);
+  --company-black: var(--bg-primary);
+  --company-panel: var(--surface);
+  --company-line: var(--border-accent);
+}
+
+
+/* Yorug' mavzuda matn uchun accent TO'QROQ bo'ladi (kontrast). */
+:root,
+[data-theme="pearl"] { --accent-text: var(--accent-primary); }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   YARIM SHAFFOF QOPLAMA UTILITALARI (faqat rang override)
+   ───────────────────────────────────────────────────────────────────────
+   Saytda `border-white/10`, `bg-white/5`, `bg-black/20` kabi sinflar
+   ~300 joyda ishlatiladi. Ular QORA fonga mo'ljallangan: yorug'
+   (Pearl) mavzuda oq ramka ko'rinmay qoladi, qora panel esa dog' bo'lib
+   qolardi. JSX'ga TEGMASDAN, aynan shu sinflarning RANG qiymati mavzu
+   tokenlaridan hisoblanadi — shaffoflik nisbati o'zgarmaydi.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Ramkalar */
+.border-white\/5 { border-color: color-mix(in srgb, var(--tint-base) 5%, transparent); }
+.border-white\/10 { border-color: color-mix(in srgb, var(--tint-base) 10%, transparent); }
+.border-white\/12 { border-color: color-mix(in srgb, var(--tint-base) 12%, transparent); }
+.border-white\/15 { border-color: color-mix(in srgb, var(--tint-base) 15%, transparent); }
+.border-white\/20 { border-color: color-mix(in srgb, var(--tint-base) 20%, transparent); }
+.border-white\/25 { border-color: color-mix(in srgb, var(--tint-base) 25%, transparent); }
+.border-white\/30 { border-color: color-mix(in srgb, var(--tint-base) 30%, transparent); }
+.hover\:border-white\/20:hover,
+.hover\:border-white\/25:hover,
+.hover\:border-white\/30:hover { border-color: var(--border-accent); }
+
+/* Ko'tarilgan (raised) yuzalar */
+.bg-white\/5 { background-color: color-mix(in srgb, var(--tint-base) 5%, transparent); }
+.bg-white\/8 { background-color: color-mix(in srgb, var(--tint-base) 8%, transparent); }
+.bg-white\/10 { background-color: color-mix(in srgb, var(--tint-base) 10%, transparent); }
+.bg-white\/12 { background-color: color-mix(in srgb, var(--tint-base) 12%, transparent); }
+.bg-white\/16 { background-color: color-mix(in srgb, var(--tint-base) 16%, transparent); }
+.bg-white\/20 { background-color: color-mix(in srgb, var(--tint-base) 20%, transparent); }
+.hover\:bg-white\/5:hover { background-color: color-mix(in srgb, var(--tint-base) 8%, transparent); }
+.hover\:bg-white\/12:hover { background-color: color-mix(in srgb, var(--tint-base) 16%, transparent); }
+.hover\:bg-white\/16:hover { background-color: color-mix(in srgb, var(--tint-base) 20%, transparent); }
+.hover\:bg-white\/20:hover { background-color: color-mix(in srgb, var(--tint-base) 26%, transparent); }
+
+/* Ichkariga botgan (inset) yuzalar. Bu yerda `--shade-base` EMAS,
+   `--inset-base` ishlatiladi: qora parda yorug' (Pearl) mavzuda
+   kulrang dog' bo'lib qolardi, `--inset-base` esa har bir mavzuda
+   "bir pog'ona chuqurroq yuza" beradi. */
+.bg-black\/20 { background-color: color-mix(in srgb, var(--inset-base) 20%, transparent); }
+.bg-black\/25 { background-color: color-mix(in srgb, var(--inset-base) 25%, transparent); }
+.bg-black\/30 { background-color: color-mix(in srgb, var(--inset-base) 30%, transparent); }
+.bg-black\/40 { background-color: color-mix(in srgb, var(--inset-base) 42%, transparent); }
+.bg-black\/45 { background-color: color-mix(in srgb, var(--inset-base) 48%, transparent); }
+
+/* Modal / media pardalari (scrim). Ular ustidagi matn HAR DOIM oq
+   bo'lgani uchun hamma mavzuda TO'Q qoladi — faqat tusi mavzuga
+   moslashadi. */
+.bg-black\/55 { background-color: color-mix(in srgb, var(--shade-base) 60%, transparent); }
+.bg-black\/60 { background-color: color-mix(in srgb, var(--shade-base) 64%, transparent); }
+.bg-black\/70 { background-color: color-mix(in srgb, var(--shade-base) 72%, transparent); }
+.bg-black\/85 { background-color: color-mix(in srgb, var(--shade-base) 86%, transparent); }
+.bg-black\/90 { background-color: color-mix(in srgb, var(--shade-base) 90%, transparent); }
+.group:hover .group-hover\:bg-black\/70 { background-color: color-mix(in srgb, var(--shade-base) 72%, transparent); }
+
+/* Halqa (ring) / bo'luvchi chiziq */
+.ring-white\/15 { --tw-ring-color: color-mix(in srgb, var(--tint-base) 15%, transparent); }
+.ring-white\/30 { --tw-ring-color: color-mix(in srgb, var(--tint-base) 30%, transparent); }
+.ring-black\/10 { --tw-ring-color: color-mix(in srgb, var(--shade-base) 10%, transparent); }
+.divide-white\/5 > :not(:last-child) { border-color: color-mix(in srgb, var(--tint-base) 5%, transparent); }

@@ -950,7 +950,7 @@ function FollowListModal({ code, dir, onClose, t }) {
                 <div className="flex items-center gap-1 truncate text-[16px] font-semibold text-[color:var(--vz-ink)]">
                   {m.name}
                   {m.kind === 'company'
-                    ? <span className="shrink-0 rounded-full border border-[color:var(--vz-gold-2,#c9a24b)]/50 px-1.5 py-px text-[10px] font-bold uppercase tracking-wide text-[color:var(--vz-gold-2,#c9a24b)]">{t('Biznes')}</span>
+                    ? <span className="shrink-0 rounded-full border border-[color:var(--vz-gold-2,#c9a24b)]/50 px-1.5 py-px text-[10px] font-bold uppercase tracking-wide text-[color:var(--accent-text)]">{t('Biznes')}</span>
                     : m.verified && <span className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-[#1d9bf0] text-[9px] font-black text-white">✓</span>}
                 </div>
                 <div className="truncate font-mono text-[14px] text-[color:var(--vz-ink-faint)]">
@@ -1952,13 +1952,13 @@ export default function ProfilePage({ code, catalog, initialTab }) {
               onClick={() => navigate(`/c/${record.company.companyId.toLowerCase()}`)}
               className="mx-auto mt-3 flex w-full max-w-[420px] items-center gap-3 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card,rgba(255,255,255,0.03))] px-3.5 py-3 text-left transition hover:border-[color:var(--vz-gold-2,#c9a24b)]/60"
             >
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[color:var(--vz-gold-2,#c9a24b)]/45 bg-black/30 text-sm font-black text-[color:var(--vz-gold-2,#c9a24b)]">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[color:var(--vz-gold-2,#c9a24b)]/45 bg-black/30 text-sm font-black text-[color:var(--accent-text)]">
                 {record.company.logoUrl
                   ? <img src={record.company.logoUrl} alt="" className="h-full w-full object-cover" />
                   : record.company.displayName.slice(0, 2).toUpperCase()}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-[color:var(--vz-gold-2,#c9a24b)]">{t('Kompaniya')}</span>
+                <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-[color:var(--accent-text)]">{t('Kompaniya')}</span>
                 <span className="block truncate text-[15px] font-semibold text-[color:var(--vz-ink)]">{record.company.displayName}</span>
                 <span className="block truncate text-[13px] text-[color:var(--vz-ink-faint)]">
                   {[record.company.subtitle, record.company.city].filter(Boolean).join(' · ') || `nfcstore.uz/c/${record.company.companyId.toLowerCase()}`}

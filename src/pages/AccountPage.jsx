@@ -468,7 +468,7 @@ function MenuManagerSection({ code, allowed, onLock }) {
       {mobilePreview && (
         <div className="fixed inset-0 z-50 flex flex-col bg-black/85 p-4 lg:hidden" onClick={() => setMobilePreview(false)}>
           <div className="mx-auto mt-6 w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-3 flex items-center justify-between text-sm font-bold text-white">
+            <div className="mb-3 flex items-center justify-between text-sm font-bold text-base-content">
               {t('Jonli ko‘rinish')}
               <CloseButton onClick={() => setMobilePreview(false)} />
             </div>
@@ -743,7 +743,7 @@ function ProductManagerSection({ code, allowed, onLock }) {
       {mobilePreview && (
         <div className="fixed inset-0 z-50 flex flex-col bg-black/85 p-4 lg:hidden" onClick={() => setMobilePreview(false)}>
           <div className="mx-auto mt-6 w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-3 flex items-center justify-between text-sm font-bold text-white">
+            <div className="mb-3 flex items-center justify-between text-sm font-bold text-base-content">
               {t('Jonli ko‘rinish')}
               <CloseButton onClick={() => setMobilePreview(false)} />
             </div>
@@ -1122,7 +1122,7 @@ function ServiceManagerSection({ code, allowed, onLock }) {
       {mobilePreview && (
         <div className="fixed inset-0 z-50 flex flex-col bg-black/85 p-4 lg:hidden" onClick={() => setMobilePreview(false)}>
           <div className="mx-auto mt-6 w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-3 flex items-center justify-between text-sm font-bold text-white">
+            <div className="mb-3 flex items-center justify-between text-sm font-bold text-base-content">
               {t('Jonli ko‘rinish')}
               <CloseButton onClick={() => setMobilePreview(false)} />
             </div>
@@ -1711,7 +1711,7 @@ function PremiumPanel({ user, card, onBecamePremium }) {
         <div className="min-w-0">
           <div className="vz-kicker">{t('Tarif')}</div>
           <div className="mt-1 flex flex-wrap items-center gap-2">
-            <span className="flex items-center gap-1.5 font-display text-2xl font-semibold text-[color:var(--vz-gold-2)]"><IconCrown width={22} height={22} /> {tierLabel}</span>
+            <span className="flex items-center gap-1.5 font-display text-2xl font-semibold text-[color:var(--accent-text)]"><IconCrown width={22} height={22} /> {tierLabel}</span>
             {user?.isPremium && <span className="vz-badge vz-badge--gold"><IconCheck width={12} height={12} /> {t("Premium a'zo")}</span>}
             {!user?.isPremium && trialLeft != null && (
               <span className="vz-badge vz-badge--gold">{t('Sinov: {n} kun qoldi', { n: trialLeft })}</span>
@@ -1764,7 +1764,7 @@ function PremiumPanel({ user, card, onBecamePremium }) {
         </div>
         {!user?.isPremium && (
           <div className="vz-panel min-w-0 border-accent/30 p-4">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--vz-gold-2)]">{t('Premium ochadi')}</div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--accent-text)]">{t('Premium ochadi')}</div>
             {lockedNow.length === 0 && <p className="mt-2 text-sm text-base-content/50">{t("NFC ID tarifingiz allaqachon Premium darajasida.")}</p>}
             <ul className="mt-2 space-y-1.5 text-sm">
               {lockedNow.map((f) => (
@@ -2339,7 +2339,7 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
                       ko'rsatamiz — mijoz "yana bittasini qo'shsam bepul
                       bo'larkan" deb bilsin. */}
                   {freeDelivery && (
-                    <p className="text-xs font-semibold text-[color:var(--vz-gold-2)]">
+                    <p className="text-xs font-semibold text-[color:var(--accent-text)]">
                       {t('✓ Yetkazib berish bepul — {n} tadan ortiq buyurtma.', { n: PHYSICAL_CARD_FREE_DELIVERY_QTY })}
                     </p>
                   )}
@@ -3434,7 +3434,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
       type="button"
       onClick={() => setWsTab(id)}
       aria-current={wsTab === id ? 'page' : undefined}
-      className={`flex min-h-11 shrink-0 items-center gap-2.5 rounded-xl border-l-[3px] px-3 py-2 text-left text-sm font-semibold transition lg:w-full ${gold ? 'ws-nav-gold' : ''} ${wsTab === id ? 'border-[color:var(--vz-gold)] bg-[color:var(--vz-card-2)] text-[color:var(--vz-gold-2)]' : 'border-transparent text-base-content/60 hover:bg-white/5 hover:text-base-content'}`}
+      className={`flex min-h-11 shrink-0 items-center gap-2.5 rounded-xl border-l-[3px] px-3 py-2 text-left text-sm font-semibold transition lg:w-full ${gold ? 'ws-nav-gold' : ''} ${wsTab === id ? 'border-[color:var(--vz-gold)] bg-[color:var(--vz-card-2)] text-[color:var(--accent-text)]' : 'border-transparent text-base-content/60 hover:bg-white/5 hover:text-base-content'}`}
     >
       <span className="shrink-0"><Icon width={16} height={16} /></span>
       <span className="truncate">{label}</span>
@@ -3663,7 +3663,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
                 tuyulardi. */}
             <section className="vz-card p-5">
               <div className="min-w-0">
-                <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--vz-gold-2)]">{t('2-bo‘lim')}</span>
+                <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--accent-text)]">{t('2-bo‘lim')}</span>
                 <h3 className="font-display text-lg font-semibold">{t('Postlar / Media')}</h3>
                 <p className="mt-0.5 text-xs leading-relaxed text-base-content/50">
                   {t('Rasm va izohlarni joylashtiring')}
@@ -4114,7 +4114,7 @@ export default function AccountPage({ refreshCatalog }) {
     const urgent = left < 60 * 60 * 1000;
     return (
       <span
-        className={`whitespace-nowrap font-mono text-[13px] ${urgent ? 'font-bold text-[color:var(--vz-gold-2)]' : 'text-base-content/55'}`}
+        className={`whitespace-nowrap font-mono text-[13px] ${urgent ? 'font-bold text-[color:var(--accent-text)]' : 'text-base-content/55'}`}
         title={t("Shu vaqt ichida to'lanmasa, kod qayta sotuvga chiqadi")}
       >
         {t("To'lovga")} {h > 0 ? `${h}:${pad(m)}:${pad(sec)}` : `${pad(m)}:${pad(sec)}`}
@@ -4472,7 +4472,7 @@ function StorySection({ code, allowed, onLocked, t }) {
         {/* Bo'lim raqami — story va post IKKI ALOHIDA ish ekani bir
             qarashda ko'rinsin (egasi ilgari ularni bitta, bir-biriga
             bog'liq forma deb o'ylagan). */}
-        <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--vz-gold-2)]">{t('1-bo‘lim')}</span>
+        <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--accent-text)]">{t('1-bo‘lim')}</span>
         <h3 className="font-display text-lg font-semibold">{t('Stories')}</h3>
         <p className="mt-0.5 text-xs leading-relaxed text-base-content/50">
           {t('Profil rasmingiz atrofida halqa bo‘lib chiqadi va 24 soatdan keyin o‘zi yo‘qoladi. 10 tagacha.')}

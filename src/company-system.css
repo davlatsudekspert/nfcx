@@ -1,32 +1,32 @@
-:root{--company-gold:#efb72f;--company-gold-2:#ffd878;--company-black:#050505;--company-panel:#0d0d0d;--company-line:rgba(239,183,47,.22)}
+:root{--company-gold:var(--accent-primary);--company-gold-2:var(--accent-secondary);--company-black:var(--bg-secondary);--company-panel:var(--surface);--company-line:color-mix(in srgb, var(--accent-primary) 22%, transparent)}
 /* Company Account va Business Workspace — TIZIM bo'limlari, umumiy sahifa foni. */
-.cc-page,.cw-page,.cc-state,.cw-state{min-height:100vh;background:var(--color-page-bg);color:#f7f4eb;font-family:Inter,ui-sans-serif,system-ui,sans-serif}
+.cc-page,.cw-page,.cc-state,.cw-state{min-height:100vh;background:var(--color-page-bg);color:var(--text-primary);font-family:Inter,ui-sans-serif,system-ui,sans-serif}
 /* .cp-* va .cq-* — kompaniya PUBLIC profili va quick profil: ularning
    individual foni ATAYLAB o'zgartirilmaydi. */
-.cp-page,.cq-page,.cp-state,.cq-state{min-height:100vh;background:#050505;color:#f7f4eb;font-family:Inter,ui-sans-serif,system-ui,sans-serif}
-.cc-page button,.cw-page button,.cp-page button,.cq-page button{font:inherit}.cc-header,.cw-header,.cp-header{height:auto;min-height:calc(76px + var(--vz-safe-top,0px));border-bottom:1px solid #242016;background:rgba(5,5,5,.94);backdrop-filter:blur(18px);display:flex;align-items:center;padding:var(--vz-safe-top,0px) clamp(20px,4vw,76px) 0;position:sticky;top:0;z-index:30}
-.cc-header>button:first-child,.cw-brand,.cp-logo{display:flex;align-items:center;gap:10px;color:#fff;background:transparent;border:0;cursor:pointer}.cc-header i,.cw-brand i,.cp-logo i{width:36px;height:36px;border:1px solid #8c6919;border-radius:50%;display:grid;place-items:center;color:var(--company-gold);font-family:Georgia,serif;font-style:normal;overflow:hidden}.cc-header i img,.cw-brand i img,.cp-logo i img{width:100%;height:100%;object-fit:cover}.cc-header>span{margin:auto;color:#8e887a;font-size:var(--fs-xs);letter-spacing:.22em}.cc-header>button:last-child{background:#15130e;border:1px solid #332b1a;color:#d7ceb9;border-radius:99px;padding:10px 16px;cursor:pointer}
+.cp-page,.cq-page,.cp-state,.cq-state{min-height:100vh;background:var(--bg-secondary);color:var(--text-primary);font-family:Inter,ui-sans-serif,system-ui,sans-serif}
+.cc-page button,.cw-page button,.cp-page button,.cq-page button{font:inherit}.cc-header,.cw-header,.cp-header{height:auto;min-height:calc(76px + var(--vz-safe-top,0px));border-bottom:1px solid var(--surface-raised);background:var(--nav-bg);backdrop-filter:blur(18px);display:flex;align-items:center;padding:var(--vz-safe-top,0px) clamp(20px,4vw,76px) 0;position:sticky;top:0;z-index:30}
+.cc-header>button:first-child,.cw-brand,.cp-logo{display:flex;align-items:center;gap:10px;color:var(--text-primary);background:transparent;border:0;cursor:pointer}.cc-header i,.cw-brand i,.cp-logo i{width:36px;height:36px;border:1px solid var(--accent-deep);border-radius:50%;display:grid;place-items:center;color:var(--company-gold);font-family:Georgia,serif;font-style:normal;overflow:hidden}.cc-header i img,.cw-brand i img,.cp-logo i img{width:100%;height:100%;object-fit:cover}.cc-header>span{margin:auto;color:var(--text-faint);font-size:var(--fs-xs);letter-spacing:.22em}.cc-header>button:last-child{background:var(--surface-elevated);border:1px solid var(--border-soft);color:var(--text-secondary);border-radius:99px;padding:10px 16px;cursor:pointer}
 /* Kenglik sayt bilan bir xil (1800px) va yuqoridagi bo'shliq kamaytirildi:
    100% masshtabda forma ekranga sig'ishi kerak edi, avval 90px yo'qotardi. */
 .cc-layout{width:min(1800px,100%);margin:auto;display:grid;grid-template-columns:minmax(0,.88fr) minmax(520px,1.12fr);gap:clamp(28px,4.5vw,72px);padding:36px clamp(22px,3.2vw,56px) 56px}
-.cc-intro{padding-top:8px}.cc-kicker,.cc-form-title>span{color:var(--company-gold);font-size:var(--fs-xs);font-weight:800;letter-spacing:.17em}.cc-intro h1{max-width:620px;margin:18px 0 18px;font-size:clamp(46px,5.2vw,84px);line-height:.94;letter-spacing:-.055em}.cc-intro h1 em{display:block;color:var(--company-gold);font-style:normal}.cc-intro>p{max-width:620px;color:#a9a397;line-height:1.75;font-size:16px}.cc-flow{display:flex;align-items:center;gap:12px;margin-top:38px}.cc-flow div{display:flex;flex-direction:column;gap:5px}.cc-flow b{color:var(--company-gold);font:700 12px/1 monospace}.cc-flow span{font-size:var(--fs-sm);color:#d5d0c5}.cc-flow i{color:#5b5138;font-style:normal}.cc-existing{margin-top:44px;border-top:1px solid #24221c;padding-top:26px}.cc-existing>span{font-size:var(--fs-2xs);letter-spacing:.18em;color:#6f695c}.cc-existing>button{width:100%;display:grid;grid-template-columns:1fr auto auto;align-items:center;text-align:left;gap:16px;margin-top:10px;padding:14px 16px;border:1px solid #28251e;background:#0c0c0b;color:#fff;border-radius:14px;cursor:pointer}.cc-existing b,.cc-existing small{display:block}.cc-existing small{color:#8d8679;font:11px monospace;margin-top:3px}.cc-existing strong{font-size:var(--fs-2xs);color:#efb72f}.cc-existing i{font-style:normal}
-.cc-form{border:1px solid #332b19;border-radius:28px;background:linear-gradient(145deg,rgba(239,183,47,.07),rgba(12,12,12,.98) 31%);padding:clamp(20px,2.2vw,32px);box-shadow:0 30px 90px rgba(0,0,0,.42)}.cc-form-title h2{font-size:27px;margin:5px 0}.cc-form-title p{color:#8f887b;font-size:var(--fs-base);margin:0 0 16px}.cc-id-field>span,.cc-grid label>span{display:block;color:#a9a193;font-size:var(--fs-xs);font-weight:700;margin:0 0 5px}.cc-id-field>div{height:66px;border:1px solid #5d4820;border-radius:15px;display:flex;align-items:center;background:#060606;overflow:hidden;box-shadow:inset 0 0 28px rgba(239,183,47,.04)}.cc-id-field small{padding:0 2px 0 17px;color:#6f685d;font:13px monospace;white-space:nowrap}.cc-id-field input{min-width:0;flex:1;border:0;background:transparent;outline:0;color:var(--company-gold-2);font:800 23px monospace;letter-spacing:.08em;padding:0 17px 0 0;text-transform:uppercase}.cc-id-result{min-height:auto;margin-top:7px;border:1px solid #26241f;border-radius:12px;padding:9px 12px;color:#8e887c}.cc-id-result.available{border-color:rgba(68,194,129,.35);background:rgba(68,194,129,.06)}.cc-id-result.unavailable{border-color:rgba(235,91,91,.3)}.cc-id-result b,.cc-id-result span{display:block;font-size:var(--fs-xs)}.cc-id-result b{color:#d6d0c4}.cc-id-result span{margin-top:4px}.cc-id-result.available span{color:#72d8a8}.cc-alternatives{display:flex;gap:6px;margin-top:9px}.cc-alternatives button{border:1px solid #55421d;background:#161208;color:#efc65f;border-radius:99px;padding:5px 9px;font:10px monospace;cursor:pointer}.cc-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-top:16px}
+.cc-intro{padding-top:8px}.cc-kicker,.cc-form-title>span{color:var(--company-gold);font-size:var(--fs-xs);font-weight:800;letter-spacing:.17em}.cc-intro h1{max-width:620px;margin:18px 0 18px;font-size:clamp(46px,5.2vw,84px);line-height:.94;letter-spacing:-.055em}.cc-intro h1 em{display:block;color:var(--company-gold);font-style:normal}.cc-intro>p{max-width:620px;color:var(--text-muted);line-height:1.75;font-size:16px}.cc-flow{display:flex;align-items:center;gap:12px;margin-top:38px}.cc-flow div{display:flex;flex-direction:column;gap:5px}.cc-flow b{color:var(--company-gold);font:700 12px/1 monospace}.cc-flow span{font-size:var(--fs-sm);color:var(--text-secondary)}.cc-flow i{color:var(--border-strong);font-style:normal}.cc-existing{margin-top:44px;border-top:1px solid var(--surface-raised);padding-top:26px}.cc-existing>span{font-size:var(--fs-2xs);letter-spacing:.18em;color:var(--border-strong)}.cc-existing>button{width:100%;display:grid;grid-template-columns:1fr auto auto;align-items:center;text-align:left;gap:16px;margin-top:10px;padding:14px 16px;border:1px solid var(--border-soft);background:var(--surface);color:var(--text-primary);border-radius:14px;cursor:pointer}.cc-existing b,.cc-existing small{display:block}.cc-existing small{color:var(--text-faint);font:11px monospace;margin-top:3px}.cc-existing strong{font-size:var(--fs-2xs);color:var(--accent-primary)}.cc-existing i{font-style:normal}
+.cc-form{border:1px solid var(--border);border-radius:28px;background:linear-gradient(145deg,color-mix(in srgb, var(--accent-primary) 7%, transparent),var(--surface) 31%);padding:clamp(20px,2.2vw,32px);box-shadow:0 30px 90px color-mix(in srgb, var(--shade-base) 42%, transparent)}.cc-form-title h2{font-size:27px;margin:5px 0}.cc-form-title p{color:var(--text-muted);font-size:var(--fs-base);margin:0 0 16px}.cc-id-field>span,.cc-grid label>span{display:block;color:var(--text-muted);font-size:var(--fs-xs);font-weight:700;margin:0 0 5px}.cc-id-field>div{height:66px;border:1px solid var(--accent-deep);border-radius:15px;display:flex;align-items:center;background:var(--bg-secondary);overflow:hidden;box-shadow:inset 0 0 28px color-mix(in srgb, var(--accent-primary) 4%, transparent)}.cc-id-field small{padding:0 2px 0 17px;color:var(--text-faint);font:13px monospace;white-space:nowrap}.cc-id-field input{min-width:0;flex:1;border:0;background:transparent;outline:0;color:var(--company-gold-2);font:800 23px monospace;letter-spacing:.08em;padding:0 17px 0 0;text-transform:uppercase}.cc-id-result{min-height:auto;margin-top:7px;border:1px solid var(--border-soft);border-radius:12px;padding:9px 12px;color:var(--text-muted)}.cc-id-result.available{border-color:color-mix(in srgb, var(--success) 35%, transparent);background:color-mix(in srgb, var(--success) 6%, transparent)}.cc-id-result.unavailable{border-color:color-mix(in srgb, var(--danger) 30%, transparent)}.cc-id-result b,.cc-id-result span{display:block;font-size:var(--fs-xs)}.cc-id-result b{color:var(--text-secondary)}.cc-id-result span{margin-top:4px}.cc-id-result.available span{color:var(--success)}.cc-alternatives{display:flex;gap:6px;margin-top:9px}.cc-alternatives button{border:1px solid var(--accent-deep);background:var(--surface-elevated);color:var(--accent-text);border-radius:99px;padding:5px 9px;font:10px monospace;cursor:pointer}.cc-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-top:16px}
 /* 100% masshtabda forma ekranga sig'ishi uchun: keng ekranda maydonlar
    UCH ustunda joylashadi va bitta qator kamayadi (~75px). Tor ekranda
    qoida o'zgarmaydi. */
-@media(min-width:1280px){.cc-grid{grid-template-columns:repeat(3,1fr)}}.cc-grid label{display:block}.cc-grid .wide{grid-column:1/-1}.cc-grid input,.cc-grid select,.cc-grid textarea,.cw-fields input,.cw-fields textarea,.cw-item-form input,.cw-item-form textarea{width:100%;border:1px solid #292722;border-radius:11px;background:#070707;color:#f4f0e7;padding:13px 14px;outline:0}.cc-grid input:focus,.cc-grid select:focus,.cc-grid textarea:focus,.cw-fields input:focus,.cw-fields textarea:focus,.cw-item-form input:focus,.cw-item-form textarea:focus{border-color:#7e6123;box-shadow:0 0 0 3px rgba(239,183,47,.05)}.cc-grid select{appearance:auto}.cc-grid textarea{min-height:74px;resize:vertical}.cc-copy{display:flex!important;align-items:flex-start;gap:11px;border:1px solid #39301c;border-radius:12px;padding:13px;background:#111009}.cc-copy input{width:16px;margin-top:3px}.cc-copy b,.cc-copy span{display:block!important}.cc-copy b{font-size:var(--fs-sm)}.cc-copy span{font-size:var(--fs-xs)!important;color:#817b70;margin-top:4px!important}.cc-submit{width:100%;margin-top:22px;border:0;border-radius:13px;background:linear-gradient(135deg,#efb72f,#ffd36a);color:#080705;font-weight:900;padding:15px;cursor:pointer;box-shadow:0 10px 28px rgba(239,183,47,.18)}.cc-submit:disabled{opacity:.38;cursor:not-allowed}.cc-legal{font-size:var(--fs-2xs);color:#686359;text-align:center}.cc-error{color:#ff8b8b;font-size:var(--fs-sm)}.cc-state,.cw-state,.cp-state,.cq-state{display:grid;place-content:center;text-align:center;padding:24px}.cc-state h1,.cw-state h1,.cp-state h1,.cq-state h1{font-size:32px;margin:16px 0 8px}.cc-state p,.cw-state p,.cp-state p,.cq-state p{color:#918b7e}.cc-state button,.cw-state button,.cp-state button,.cq-state button{justify-self:center;border:0;background:var(--company-gold);padding:12px 20px;border-radius:99px;font-weight:800;cursor:pointer}.cc-logo,.cq-mark{width:62px;height:62px;border:1px solid #8b6618;border-radius:50%;display:grid;place-items:center;margin:auto;color:var(--company-gold);font:36px Georgia;overflow:hidden}.cc-logo img,.cq-mark img{width:100%;height:100%;object-fit:cover}
+@media(min-width:1280px){.cc-grid{grid-template-columns:repeat(3,1fr)}}.cc-grid label{display:block}.cc-grid .wide{grid-column:1/-1}.cc-grid input,.cc-grid select,.cc-grid textarea,.cw-fields input,.cw-fields textarea,.cw-item-form input,.cw-item-form textarea{width:100%;border:1px solid var(--border-soft);border-radius:11px;background:var(--surface);color:var(--text-primary);padding:13px 14px;outline:0}.cc-grid input:focus,.cc-grid select:focus,.cc-grid textarea:focus,.cw-fields input:focus,.cw-fields textarea:focus,.cw-item-form input:focus,.cw-item-form textarea:focus{border-color:var(--accent-deep);box-shadow:0 0 0 3px color-mix(in srgb, var(--accent-primary) 5%, transparent)}.cc-grid select{appearance:auto}.cc-grid textarea{min-height:74px;resize:vertical}.cc-copy{display:flex!important;align-items:flex-start;gap:11px;border:1px solid var(--border);border-radius:12px;padding:13px;background:var(--surface)}.cc-copy input{width:16px;margin-top:3px}.cc-copy b,.cc-copy span{display:block!important}.cc-copy b{font-size:var(--fs-sm)}.cc-copy span{font-size:var(--fs-xs)!important;color:var(--text-faint);margin-top:4px!important}.cc-submit{width:100%;margin-top:22px;border:0;border-radius:13px;background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary));color:var(--accent-ink);font-weight:900;padding:15px;cursor:pointer;box-shadow:0 10px 28px color-mix(in srgb, var(--accent-primary) 18%, transparent)}.cc-submit:disabled{opacity:.38;cursor:not-allowed}.cc-legal{font-size:var(--fs-2xs);color:var(--border-strong);text-align:center}.cc-error{color:var(--danger);font-size:var(--fs-sm)}.cc-state,.cw-state,.cp-state,.cq-state{display:grid;place-content:center;text-align:center;padding:24px}.cc-state h1,.cw-state h1,.cp-state h1,.cq-state h1{font-size:32px;margin:16px 0 8px}.cc-state p,.cw-state p,.cp-state p,.cq-state p{color:var(--text-muted)}.cc-state button,.cw-state button,.cp-state button,.cq-state button{justify-self:center;border:0;background:var(--company-gold);padding:12px 20px;border-radius:99px;font-weight:800;cursor:pointer}.cc-logo,.cq-mark{width:62px;height:62px;border:1px solid var(--accent-deep);border-radius:50%;display:grid;place-items:center;margin:auto;color:var(--company-gold);font:36px Georgia;overflow:hidden}.cc-logo img,.cq-mark img{width:100%;height:100%;object-fit:cover}
 
 /* Workspace */
-.cw-header{display:grid;grid-template-columns:1fr auto 1fr}.cw-brand span{color:#9e7925;font-size:9px;letter-spacing:.14em}.cw-company{text-align:center}.cw-company small,.cw-company b{display:block}.cw-company small{font-size:8px;color:#756f64;letter-spacing:.16em}.cw-company b{font:800 13px monospace;color:#efc45a;letter-spacing:.12em;margin:2px 0}.cw-company>span{display:inline-block;border-radius:99px;background:#17150f;color:#a69e8f;font-size:9px;padding:3px 8px}.cw-company>span[data-status=active]{color:#6add9d;background:#092215}.cw-head-actions{justify-self:end;display:flex;gap:7px}.cw-head-actions button{border:1px solid #2d2921;background:#0e0e0d;color:#d8d2c7;border-radius:9px;padding:9px 12px;font-size:var(--fs-xs);cursor:pointer}.cw-head-actions button:first-child{border-color:#5b451c;color:#f0c65a}.cw-layout{display:grid;grid-template-columns:245px minmax(560px,1fr) 380px;min-height:calc(100vh - 76px - var(--vz-safe-top,0px));max-width:1900px;margin:auto}.cw-sidebar{border-right:1px solid #211f1a;padding:28px 18px;background:#080808}.cw-owner{display:flex;align-items:center;gap:12px;padding:0 8px 25px;border-bottom:1px solid #22201b}.cw-owner>div{width:44px;height:44px;border-radius:12px;background:linear-gradient(145deg,#9a721c,#201707);display:grid;place-items:center;color:#fff;font-weight:900;overflow:hidden}.cw-owner img{width:100%;height:100%;object-fit:cover}.cw-owner b,.cw-owner small{display:block}.cw-owner b{font-size:var(--fs-sm)}.cw-owner small{font-size:var(--fs-2xs);color:#797369;margin-top:3px}.cw-sidebar nav{margin-top:23px}.cw-sidebar nav button{width:100%;display:grid;grid-template-columns:26px 1fr auto;gap:8px;align-items:center;padding:13px 12px;border:0;border-radius:10px;background:transparent;color:#8a8479;text-align:left;font-size:var(--fs-sm);cursor:pointer}.cw-sidebar nav button i{font:9px monospace;color:#59554c}.cw-sidebar nav button span{font-size:17px;color:#49453e}.cw-sidebar nav button.active{color:#f5d57f;background:linear-gradient(90deg,rgba(239,183,47,.13),transparent)}.cw-sidebar nav button.active i{color:var(--company-gold)}.cw-separation{margin:30px 8px 0;border:1px solid #2e291d;background:#0d0c09;border-radius:13px;padding:13px}.cw-separation b{font-size:var(--fs-2xs);color:#cfaa4b}.cw-separation p{font-size:var(--fs-2xs);color:#6f695f;line-height:1.5;margin:5px 0 0}.cw-main{padding:40px clamp(28px,3.2vw,58px);min-width:0}.cw-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px}.cw-title span,.cw-panel-head span{font:800 10px monospace;color:var(--company-gold);letter-spacing:.14em}.cw-title h1{font-size:32px;margin:5px 0 0}.cw-save{border:0;background:var(--company-gold);color:#080705;border-radius:10px;padding:11px 21px;font-weight:900;cursor:pointer}.cw-save:disabled{opacity:.5}.cw-status-banner{display:flex;justify-content:space-between;align-items:center;gap:18px;border:1px solid #5a4319;background:#141006;border-radius:16px;padding:17px 19px;margin-bottom:22px}.cw-status-banner b{font-size:var(--fs-base);color:#f0c65d}.cw-status-banner p{font-size:var(--fs-xs);color:#a19989;margin:4px 0 0}.cw-status-banner button{border:0;background:#edb62f;color:#080705;border-radius:9px;padding:10px 13px;font-weight:800;font-size:var(--fs-xs);cursor:pointer}.cw-action-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.cw-action-grid>button{display:grid;grid-template-columns:auto 1fr auto;gap:13px;text-align:left;min-height:170px;border:1px solid #28251e;border-radius:17px;background:linear-gradient(145deg,#11100d,#0a0a0a);color:#fff;padding:20px;cursor:pointer}.cw-action-grid>button:hover{border-color:#6f541e;transform:translateY(-2px)}.cw-action-grid>button>i{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;background:#221a0a;color:#e5b337;font-style:normal}.cw-action-grid small,.cw-action-grid b,.cw-action-grid p{display:block}.cw-action-grid small{font-size:8px;color:#716c62;letter-spacing:.12em}.cw-action-grid b{font-size:15px;margin:10px 0}.cw-action-grid p{font-size:var(--fs-xs);line-height:1.55;color:#8f887e;margin:0}.cw-action-grid strong{color:#c39730}.cw-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px}.cw-metrics article{border:1px solid #22211d;background:#0b0b0a;border-radius:15px;padding:19px}.cw-metrics small,.cw-metrics b,.cw-metrics p{display:block}.cw-metrics small{font-size:9px;letter-spacing:.13em;color:#68645c}.cw-metrics b{font-size:17px;margin-top:8px;word-break:break-all}.cw-metrics p{font-size:var(--fs-2xs);color:#716c62}.cw-panel{border:1px solid #28251e;border-radius:18px;background:#0b0b0a;padding:24px}.cw-panel-head{display:flex;gap:15px;border-bottom:1px solid #24221d;padding-bottom:18px;margin-bottom:20px}.cw-panel-head h2{font-size:18px;margin:0 0 4px}.cw-panel-head p{font-size:var(--fs-xs);color:#7e786e;margin:0}.cw-fields,.cw-item-form{display:grid;grid-template-columns:1fr 1fr;gap:15px}.cw-fields label>span{display:block;font-size:var(--fs-2xs);color:#9a9388;margin-bottom:7px}.cw-fields .wide,.cw-item-form .wide{grid-column:1/-1}.cw-fields textarea{min-height:110px}.cw-item-form textarea{min-height:76px}.cw-item-form button{grid-column:1/-1;border:0;border-radius:10px;background:#efb72f;color:#080705;padding:12px;font-weight:800;cursor:pointer}.cw-items{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}.cw-items article{position:relative;display:grid;grid-template-columns:96px 1fr;gap:13px;border:1px solid #27241e;border-radius:14px;background:#0a0a09;padding:10px}.cw-items img{width:96px;height:96px;border-radius:10px;object-fit:cover}.cw-items small,.cw-items b,.cw-items p,.cw-items strong{display:block}.cw-items small{font-size:9px;color:#a17a29}.cw-items b{font-size:var(--fs-base);margin:4px 0}.cw-items p{font-size:var(--fs-2xs);color:#817b70;margin:0 0 8px}.cw-items strong{font-size:var(--fs-xs);color:#efc152}.cw-items>article>button{position:absolute;right:7px;top:7px;border:0;border-radius:50%;background:#261110;color:#ff8f8f;width:25px;height:25px;cursor:pointer}.cw-empty{grid-column:1/-1;text-align:center;border:1px dashed #28251e;padding:35px;color:#716b61;border-radius:14px;font-size:var(--fs-sm)}.cw-settings{display:grid;gap:13px}.cw-settings section{border:1px solid #29261f;background:#0c0c0b;border-radius:15px;padding:20px}.cw-settings small{display:block;color:#8d6d26;font-size:9px;letter-spacing:.14em}.cw-settings h2{font:800 25px monospace;color:#efc155;margin:9px 0}.cw-settings p{color:#888176;font-size:var(--fs-sm)}.cw-settings code{display:inline-block;margin-top:10px;padding:11px 13px;background:#030303;border-radius:9px;color:#f0cf7b;font-size:var(--fs-xs);word-break:break-all}.cw-settings button{margin-left:8px;border:1px solid #4d3c19;background:#171209;color:#f0c45b;border-radius:8px;padding:9px 11px;font-size:var(--fs-2xs);cursor:pointer}.cw-settings .warning{border-color:#4b3716}.cw-preview{border-left:1px solid #211f1a;background:radial-gradient(circle at 50% 30%,rgba(239,183,47,.08),transparent 40%),#080808;padding:28px 30px;position:sticky;top:calc(76px + var(--vz-safe-top,0px));height:calc(100vh - 76px - var(--vz-safe-top,0px));overflow:auto}.cw-preview-head{display:flex;justify-content:space-between;align-items:flex-start}.cw-preview-head span,.cw-preview-head b{display:block}.cw-preview-head span{font-size:8px;letter-spacing:.14em;color:#7d776b}.cw-preview-head b{font-size:var(--fs-sm);margin-top:4px}.cw-preview-head i{font-style:normal;font-size:8px;color:#56c38a}.cw-iphone{position:relative;width:286px;height:584px;margin:25px auto 18px;border:5px solid #323234;border-radius:52px;background:#151517;padding:7px;box-shadow:0 35px 70px #000,inset 0 0 0 2px #080808}.cw-phone-side{position:absolute;background:#4a4a4d;width:3px;border-radius:4px}.cw-phone-side.left{left:-8px;top:100px;height:80px;box-shadow:0 95px 0 #4a4a4d}.cw-phone-side.right{right:-8px;top:145px;height:116px}.cw-phone-screen{height:100%;border-radius:41px;overflow:hidden;background-size:cover;background-position:center;padding:22px 16px 16px;position:relative}.cw-dynamic{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:86px;height:25px;border-radius:15px;background:#000}.cw-dynamic span{position:absolute;width:7px;height:7px;border-radius:50%;right:12px;top:9px;background:#07131a;box-shadow:0 0 4px #25678d inset}.cw-phone-status{display:flex;justify-content:space-between;font-size:8px;padding:0 4px;margin-bottom:21px}.cw-phone-id{display:table;margin:auto;border:1px solid rgba(239,183,47,.55);border-radius:99px;padding:4px 8px;background:rgba(0,0,0,.6);font:700 7px monospace;color:#efc55d}.cw-phone-logo{width:56px;height:56px;border-radius:18px;margin:18px auto 9px;background:linear-gradient(145deg,#b18424,#231804);display:grid;place-items:center;font-weight:900;overflow:hidden;border:1px solid rgba(255,218,118,.42)}.cw-phone-logo img{width:100%;height:100%;object-fit:cover}.cw-phone-screen h3{text-align:center;font-size:17px;margin:0}.cw-phone-screen>p{text-align:center;font-size:8px;color:#c5beb0;margin:4px 0 15px}.cw-phone-buttons{display:grid;grid-template-columns:1fr 1fr;gap:6px}.cw-phone-buttons button{border:1px solid rgba(255,255,255,.13);border-radius:9px;background:rgba(0,0,0,.62);color:#fff;font-size:8px;padding:8px 2px}.cw-phone-buttons button:first-child{background:#eab32d;color:#0a0803;font-weight:800}.cw-phone-items{display:grid;gap:6px;margin-top:12px}.cw-phone-items>div{display:flex;align-items:center;gap:8px;background:rgba(7,7,7,.82);border:1px solid rgba(255,255,255,.08);border-radius:9px;padding:5px}.cw-phone-items img{width:44px;height:38px;border-radius:6px;object-fit:cover}.cw-phone-items b,.cw-phone-items small{display:block}.cw-phone-items b{font-size:7px}.cw-phone-items small{font-size:6px;color:#dcad3f;margin-top:3px}.cw-phone-items .empty{padding:14px}.cw-home-indicator{position:absolute;bottom:7px;left:50%;transform:translateX(-50%);height:3px;width:90px;border-radius:3px;background:#fff}.cw-preview>p{font-size:var(--fs-2xs);color:#777166;line-height:1.55;text-align:center}.cw-toast{position:fixed;left:50%;bottom:25px;z-index:60;transform:translateX(-50%);border:1px solid #6d531f;background:#171207;color:#f2cb6c;border-radius:99px;padding:11px 19px;font-size:var(--fs-xs);box-shadow:0 10px 40px #000}
+.cw-header{display:grid;grid-template-columns:1fr auto 1fr}.cw-brand span{color:var(--accent-deep);font-size:9px;letter-spacing:.14em}.cw-company{text-align:center}.cw-company small,.cw-company b{display:block}.cw-company small{font-size:8px;color:var(--text-faint);letter-spacing:.16em}.cw-company b{font:800 13px monospace;color:var(--accent-text);letter-spacing:.12em;margin:2px 0}.cw-company>span{display:inline-block;border-radius:99px;background:var(--surface-elevated);color:var(--text-muted);font-size:9px;padding:3px 8px}.cw-company>span[data-status=active]{color:var(--success);background:var(--surface-elevated)}.cw-head-actions{justify-self:end;display:flex;gap:7px}.cw-head-actions button{border:1px solid var(--border-soft);background:var(--surface);color:var(--text-secondary);border-radius:9px;padding:9px 12px;font-size:var(--fs-xs);cursor:pointer}.cw-head-actions button:first-child{border-color:var(--accent-deep);color:var(--accent-text)}.cw-layout{display:grid;grid-template-columns:245px minmax(560px,1fr) 380px;min-height:calc(100vh - 76px - var(--vz-safe-top,0px));max-width:1900px;margin:auto}.cw-sidebar{border-right:1px solid var(--surface-raised);padding:28px 18px;background:var(--surface)}.cw-owner{display:flex;align-items:center;gap:12px;padding:0 8px 25px;border-bottom:1px solid var(--surface-raised)}.cw-owner>div{width:44px;height:44px;border-radius:12px;background:linear-gradient(145deg,var(--accent-deep),var(--surface-elevated));display:grid;place-items:center;color:var(--text-primary);font-weight:900;overflow:hidden}.cw-owner img{width:100%;height:100%;object-fit:cover}.cw-owner b,.cw-owner small{display:block}.cw-owner b{font-size:var(--fs-sm)}.cw-owner small{font-size:var(--fs-2xs);color:var(--text-faint);margin-top:3px}.cw-sidebar nav{margin-top:23px}.cw-sidebar nav button{width:100%;display:grid;grid-template-columns:26px 1fr auto;gap:8px;align-items:center;padding:13px 12px;border:0;border-radius:10px;background:transparent;color:var(--text-faint);text-align:left;font-size:var(--fs-sm);cursor:pointer}.cw-sidebar nav button i{font:9px monospace;color:var(--border-strong)}.cw-sidebar nav button span{font-size:17px;color:var(--border)}.cw-sidebar nav button.active{color:var(--accent-text);background:linear-gradient(90deg,color-mix(in srgb, var(--accent-primary) 13%, transparent),transparent)}.cw-sidebar nav button.active i{color:var(--company-gold)}.cw-separation{margin:30px 8px 0;border:1px solid var(--border-soft);background:var(--surface);border-radius:13px;padding:13px}.cw-separation b{font-size:var(--fs-2xs);color:var(--accent-primary)}.cw-separation p{font-size:var(--fs-2xs);color:var(--text-faint);line-height:1.5;margin:5px 0 0}.cw-main{padding:40px clamp(28px,3.2vw,58px);min-width:0}.cw-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px}.cw-title span,.cw-panel-head span{font:800 10px monospace;color:var(--company-gold);letter-spacing:.14em}.cw-title h1{font-size:32px;margin:5px 0 0}.cw-save{border:0;background:var(--company-gold);color:var(--accent-ink);border-radius:10px;padding:11px 21px;font-weight:900;cursor:pointer}.cw-save:disabled{opacity:.5}.cw-status-banner{display:flex;justify-content:space-between;align-items:center;gap:18px;border:1px solid var(--accent-deep);background:var(--surface);border-radius:16px;padding:17px 19px;margin-bottom:22px}.cw-status-banner b{font-size:var(--fs-base);color:var(--accent-text)}.cw-status-banner p{font-size:var(--fs-xs);color:var(--text-muted);margin:4px 0 0}.cw-status-banner button{border:0;background:var(--accent-primary);color:var(--accent-ink);border-radius:9px;padding:10px 13px;font-weight:800;font-size:var(--fs-xs);cursor:pointer}.cw-action-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.cw-action-grid>button{display:grid;grid-template-columns:auto 1fr auto;gap:13px;text-align:left;min-height:170px;border:1px solid var(--border-soft);border-radius:17px;background:linear-gradient(145deg,var(--surface-elevated),var(--surface));color:var(--text-primary);padding:20px;cursor:pointer}.cw-action-grid>button:hover{border-color:var(--accent-deep);transform:translateY(-2px)}.cw-action-grid>button>i{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;background:var(--surface-elevated);color:var(--accent-primary);font-style:normal}.cw-action-grid small,.cw-action-grid b,.cw-action-grid p{display:block}.cw-action-grid small{font-size:8px;color:var(--text-faint);letter-spacing:.12em}.cw-action-grid b{font-size:15px;margin:10px 0}.cw-action-grid p{font-size:var(--fs-xs);line-height:1.55;color:var(--text-muted);margin:0}.cw-action-grid strong{color:var(--accent-primary)}.cw-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px}.cw-metrics article{border:1px solid var(--surface-raised);background:var(--surface);border-radius:15px;padding:19px}.cw-metrics small,.cw-metrics b,.cw-metrics p{display:block}.cw-metrics small{font-size:9px;letter-spacing:.13em;color:var(--border-strong)}.cw-metrics b{font-size:17px;margin-top:8px;word-break:break-all}.cw-metrics p{font-size:var(--fs-2xs);color:var(--text-faint)}.cw-panel{border:1px solid var(--border-soft);border-radius:18px;background:var(--surface);padding:24px}.cw-panel-head{display:flex;gap:15px;border-bottom:1px solid var(--surface-raised);padding-bottom:18px;margin-bottom:20px}.cw-panel-head h2{font-size:18px;margin:0 0 4px}.cw-panel-head p{font-size:var(--fs-xs);color:var(--text-faint);margin:0}.cw-fields,.cw-item-form{display:grid;grid-template-columns:1fr 1fr;gap:15px}.cw-fields label>span{display:block;font-size:var(--fs-2xs);color:var(--text-muted);margin-bottom:7px}.cw-fields .wide,.cw-item-form .wide{grid-column:1/-1}.cw-fields textarea{min-height:110px}.cw-item-form textarea{min-height:76px}.cw-item-form button{grid-column:1/-1;border:0;border-radius:10px;background:var(--accent-primary);color:var(--accent-ink);padding:12px;font-weight:800;cursor:pointer}.cw-items{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}.cw-items article{position:relative;display:grid;grid-template-columns:96px 1fr;gap:13px;border:1px solid var(--border-soft);border-radius:14px;background:var(--surface);padding:10px}.cw-items img{width:96px;height:96px;border-radius:10px;object-fit:cover}.cw-items small,.cw-items b,.cw-items p,.cw-items strong{display:block}.cw-items small{font-size:9px;color:var(--accent-deep)}.cw-items b{font-size:var(--fs-base);margin:4px 0}.cw-items p{font-size:var(--fs-2xs);color:var(--text-faint);margin:0 0 8px}.cw-items strong{font-size:var(--fs-xs);color:var(--accent-text)}.cw-items>article>button{position:absolute;right:7px;top:7px;border:0;border-radius:50%;background:var(--surface-raised);color:var(--danger);width:25px;height:25px;cursor:pointer}.cw-empty{grid-column:1/-1;text-align:center;border:1px dashed var(--border-soft);padding:35px;color:var(--text-faint);border-radius:14px;font-size:var(--fs-sm)}.cw-settings{display:grid;gap:13px}.cw-settings section{border:1px solid var(--border-soft);background:var(--surface);border-radius:15px;padding:20px}.cw-settings small{display:block;color:var(--accent-deep);font-size:9px;letter-spacing:.14em}.cw-settings h2{font:800 25px monospace;color:var(--accent-text);margin:9px 0}.cw-settings p{color:var(--text-faint);font-size:var(--fs-sm)}.cw-settings code{display:inline-block;margin-top:10px;padding:11px 13px;background:var(--bg-primary);border-radius:9px;color:var(--accent-text);font-size:var(--fs-xs);word-break:break-all}.cw-settings button{margin-left:8px;border:1px solid color-mix(in srgb, var(--accent-primary) 22%, var(--surface));background:var(--surface-elevated);color:var(--accent-text);border-radius:8px;padding:9px 11px;font-size:var(--fs-2xs);cursor:pointer}.cw-settings .warning{border-color:color-mix(in srgb, var(--accent-primary) 22%, var(--surface))}.cw-preview{border-left:1px solid var(--surface-raised);background:radial-gradient(circle at 50% 30%,color-mix(in srgb, var(--accent-primary) 8%, transparent),transparent 40%),var(--surface);padding:28px 30px;position:sticky;top:calc(76px + var(--vz-safe-top,0px));height:calc(100vh - 76px - var(--vz-safe-top,0px));overflow:auto}.cw-preview-head{display:flex;justify-content:space-between;align-items:flex-start}.cw-preview-head span,.cw-preview-head b{display:block}.cw-preview-head span{font-size:8px;letter-spacing:.14em;color:var(--text-faint)}.cw-preview-head b{font-size:var(--fs-sm);margin-top:4px}.cw-preview-head i{font-style:normal;font-size:8px;color:var(--success)}.cw-iphone{position:relative;width:286px;height:584px;margin:25px auto 18px;border:5px solid var(--border);border-radius:52px;background:var(--surface-elevated);padding:7px;box-shadow:0 35px 70px color-mix(in srgb, var(--shade-base) 82%, transparent),inset 0 0 0 2px color-mix(in srgb, var(--shade-base) 82%, transparent)}.cw-phone-side{position:absolute;background:var(--border-strong);width:3px;border-radius:4px}.cw-phone-side.left{left:-8px;top:100px;height:80px;box-shadow:0 95px 0 var(--border-strong)}.cw-phone-side.right{right:-8px;top:145px;height:116px}.cw-phone-screen{height:100%;border-radius:41px;overflow:hidden;background-size:cover;background-position:center;padding:22px 16px 16px;position:relative}.cw-dynamic{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:86px;height:25px;border-radius:15px;background:var(--bg-primary)}.cw-dynamic span{position:absolute;width:7px;height:7px;border-radius:50%;right:12px;top:9px;background:var(--surface-elevated);box-shadow:0 0 4px #25678d inset}.cw-phone-status{display:flex;justify-content:space-between;font-size:8px;padding:0 4px;margin-bottom:21px}.cw-phone-id{display:table;margin:auto;border:1px solid color-mix(in srgb, var(--accent-primary) 55%, transparent);border-radius:99px;padding:4px 8px;background:color-mix(in srgb, var(--shade-base) 60%, transparent);font:700 7px monospace;color:var(--accent-text)}.cw-phone-logo{width:56px;height:56px;border-radius:18px;margin:18px auto 9px;background:linear-gradient(145deg,var(--accent-deep),var(--surface-elevated));display:grid;place-items:center;font-weight:900;overflow:hidden;border:1px solid color-mix(in srgb, var(--accent-secondary) 42%, transparent)}.cw-phone-logo img{width:100%;height:100%;object-fit:cover}.cw-phone-screen h3{text-align:center;font-size:17px;margin:0}.cw-phone-screen>p{text-align:center;font-size:8px;color:var(--text-secondary);margin:4px 0 15px}.cw-phone-buttons{display:grid;grid-template-columns:1fr 1fr;gap:6px}.cw-phone-buttons button{border:1px solid color-mix(in srgb, var(--tint-base) 13%, transparent);border-radius:9px;background:color-mix(in srgb, var(--shade-base) 62%, transparent);color:var(--text-primary);font-size:8px;padding:8px 2px}.cw-phone-buttons button:first-child{background:var(--accent-primary);color:var(--accent-ink);font-weight:800}.cw-phone-items{display:grid;gap:6px;margin-top:12px}.cw-phone-items>div{display:flex;align-items:center;gap:8px;background:color-mix(in srgb, var(--shade-base) 82%, transparent);border:1px solid color-mix(in srgb, var(--tint-base) 8%, transparent);border-radius:9px;padding:5px}.cw-phone-items img{width:44px;height:38px;border-radius:6px;object-fit:cover}.cw-phone-items b,.cw-phone-items small{display:block}.cw-phone-items b{font-size:7px}.cw-phone-items small{font-size:6px;color:var(--accent-primary);margin-top:3px}.cw-phone-items .empty{padding:14px}.cw-home-indicator{position:absolute;bottom:7px;left:50%;transform:translateX(-50%);height:3px;width:90px;border-radius:3px;background:var(--text-primary)}.cw-preview>p{font-size:var(--fs-2xs);color:var(--text-faint);line-height:1.55;text-align:center}.cw-toast{position:fixed;left:50%;bottom:25px;z-index:60;transform:translateX(-50%);border:1px solid var(--accent-deep);background:var(--surface-elevated);color:var(--accent-text);border-radius:99px;padding:11px 19px;font-size:var(--fs-xs);box-shadow:0 10px 40px color-mix(in srgb, var(--shade-base) 82%, transparent)}
 
 /* Company quick profile */
-.cq-page{background:#030303;display:grid;place-items:start center;padding:22px}.cq-shell{width:min(100%,440px);min-height:calc(100vh - 44px);border:1px solid #2b261a;border-radius:34px;overflow:hidden;background:linear-gradient(180deg,rgba(0,0,0,.28),#070706 43%),var(--cq-cover) top center/100% 330px no-repeat;box-shadow:0 40px 100px #000;padding:20px}.cq-top{display:flex;justify-content:space-between;align-items:center}.cq-brand{font-size:var(--fs-2xs);font-weight:800;display:flex;align-items:center;gap:7px}.cq-brand i{width:24px;height:24px;border:1px solid #b68720;border-radius:50%;display:grid;place-items:center;color:#eab32d;font:15px Georgia;overflow:hidden}.cq-brand i img{width:100%;height:100%;object-fit:cover}.cq-id{font:8px monospace;color:#e7bd58;border:1px solid rgba(234,179,45,.34);border-radius:99px;padding:5px 8px;background:rgba(0,0,0,.5)}.cq-identity{text-align:center;padding-top:73px}.cq-logo{width:82px;height:82px;border-radius:25px;display:grid;place-items:center;margin:auto;background:#0e0d09;border:1px solid #d09c24;color:#efc65b;font-weight:900;font-size:22px;overflow:hidden;box-shadow:0 14px 38px #000}.cq-logo img{width:100%;height:100%;object-fit:cover}.cq-live{display:table;margin:12px auto 8px;color:#e3b84f;font-size:7px;letter-spacing:.13em}.cq-identity h1{font-size:27px;margin:0}.cq-category{font-size:var(--fs-xs)!important;color:#c5bcab!important}.cq-description{font-size:var(--fs-sm)!important;line-height:1.6!important;color:#8f887c!important;max-width:340px;margin:11px auto!important}.cq-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:17px}.cq-actions a{display:flex;align-items:center;justify-content:center;text-decoration:none;border:1px solid #2c2923;border-radius:11px;background:#0b0b0a;color:#e4dfd5;font-size:var(--fs-xs);padding:11px}.cq-actions a.primary{background:linear-gradient(135deg,#e9af23,#ffd76e);color:#080603;border:0;font-weight:900}.cq-offers{margin-top:25px;border-top:1px solid #25221c;padding-top:20px}.cq-section-head{display:flex;justify-content:space-between;align-items:end}.cq-section-head>div{display:flex;align-items:center;gap:8px}.cq-section-head span{font:9px monospace;color:#d4a633}.cq-section-head h2{font-size:16px;margin:0}.cq-section-head button{border:0;background:transparent;color:#d6a83a;font-size:9px;cursor:pointer}.cq-item-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.cq-item-grid article{overflow:hidden;border:1px solid #26231d;border-radius:12px;background:#0c0c0b}.cq-item-grid img{width:100%;height:90px;object-fit:cover}.cq-item-grid article>div{padding:9px}.cq-item-grid b,.cq-item-grid p,.cq-item-grid strong{display:block}.cq-item-grid b{font-size:var(--fs-2xs)}.cq-item-grid p{font-size:8px;color:#777166;height:20px;overflow:hidden}.cq-item-grid strong{font-size:9px;color:#e3b44a}.cq-public{width:100%;margin-top:15px;border:1px solid #5a451c;border-radius:11px;background:#151108;color:#f0c65d;padding:12px;font-weight:800;font-size:var(--fs-xs);cursor:pointer}.cq-public span{float:right}.cq-shell footer{display:flex;justify-content:space-between;margin-top:21px;color:#5f5a51;font-size:7px;letter-spacing:.11em}
+.cq-page{background:var(--bg-primary);display:grid;place-items:start center;padding:22px}.cq-shell{width:min(100%,440px);min-height:calc(100vh - 44px);border:1px solid var(--border-soft);border-radius:34px;overflow:hidden;background:linear-gradient(180deg,color-mix(in srgb, var(--inset-base) 28%, transparent),var(--bg-secondary) 43%),var(--cq-cover) top center/100% 330px no-repeat;box-shadow:0 40px 100px color-mix(in srgb, var(--shade-base) 82%, transparent);padding:20px}.cq-top{display:flex;justify-content:space-between;align-items:center}.cq-brand{font-size:var(--fs-2xs);font-weight:800;display:flex;align-items:center;gap:7px}.cq-brand i{width:24px;height:24px;border:1px solid var(--accent-deep);border-radius:50%;display:grid;place-items:center;color:var(--accent-primary);font:15px Georgia;overflow:hidden}.cq-brand i img{width:100%;height:100%;object-fit:cover}.cq-id{font:8px monospace;color:var(--accent-text);border:1px solid color-mix(in srgb, var(--accent-primary) 34%, transparent);border-radius:99px;padding:5px 8px;background:color-mix(in srgb, var(--inset-base) 50%, transparent)}.cq-identity{text-align:center;padding-top:73px}.cq-logo{width:82px;height:82px;border-radius:25px;display:grid;place-items:center;margin:auto;background:var(--surface);border:1px solid var(--accent-primary);color:var(--accent-text);font-weight:900;font-size:22px;overflow:hidden;box-shadow:0 14px 38px color-mix(in srgb, var(--shade-base) 82%, transparent)}.cq-logo img{width:100%;height:100%;object-fit:cover}.cq-live{display:table;margin:12px auto 8px;color:var(--accent-primary);font-size:7px;letter-spacing:.13em}.cq-identity h1{font-size:27px;margin:0}.cq-category{font-size:var(--fs-xs)!important;color:var(--accent-text)!important}.cq-description{font-size:var(--fs-sm)!important;line-height:1.6!important;color:var(--text-muted)!important;max-width:340px;margin:11px auto!important}.cq-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:17px}.cq-actions a{display:flex;align-items:center;justify-content:center;text-decoration:none;border:1px solid var(--border-soft);border-radius:11px;background:var(--surface);color:var(--text-secondary);font-size:var(--fs-xs);padding:11px}.cq-actions a.primary{background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary));color:var(--accent-ink);border:0;font-weight:900}.cq-offers{margin-top:25px;border-top:1px solid var(--surface-raised);padding-top:20px}.cq-section-head{display:flex;justify-content:space-between;align-items:end}.cq-section-head>div{display:flex;align-items:center;gap:8px}.cq-section-head span{font:9px monospace;color:var(--accent-primary)}.cq-section-head h2{font-size:16px;margin:0}.cq-section-head button{border:0;background:transparent;color:var(--accent-primary);font-size:9px;cursor:pointer}.cq-item-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.cq-item-grid article{overflow:hidden;border:1px solid var(--surface-raised);border-radius:12px;background:var(--surface)}.cq-item-grid img{width:100%;height:90px;object-fit:cover}.cq-item-grid article>div{padding:9px}.cq-item-grid b,.cq-item-grid p,.cq-item-grid strong{display:block}.cq-item-grid b{font-size:var(--fs-2xs)}.cq-item-grid p{font-size:8px;color:var(--text-faint);height:20px;overflow:hidden}.cq-item-grid strong{font-size:9px;color:var(--accent-primary)}.cq-public{width:100%;margin-top:15px;border:1px solid var(--accent-deep);border-radius:11px;background:var(--surface);color:var(--accent-text);padding:12px;font-weight:800;font-size:var(--fs-xs);cursor:pointer}.cq-public span{float:right}.cq-shell footer{display:flex;justify-content:space-between;margin-top:21px;color:var(--border-strong);font-size:7px;letter-spacing:.11em}
 
 /* Company public */
-.cp-header{justify-content:space-between}.cp-header nav{display:flex;gap:24px}.cp-header nav button{border:0;background:transparent;color:#999286;font-size:var(--fs-sm);cursor:pointer}.cp-nfc{border:1px solid #5c451c;background:#171208;color:#efc357;border-radius:99px;padding:10px 14px;cursor:pointer}.cp-hero{min-height:510px;background-size:cover;background-position:center;display:flex;align-items:center;padding:70px clamp(24px,9vw,170px)}.cp-hero-copy{max-width:660px}.cp-kicker{font:10px monospace;letter-spacing:.15em;color:#e8b43d}.cp-title-row{display:flex;align-items:center;gap:18px;margin-top:18px}.cp-hero-logo{width:72px;height:72px;border-radius:20px;border:1px solid #d3a02c;background:#11100d;display:grid;place-items:center;overflow:hidden;font-weight:900;color:#edbb47}.cp-hero-logo img{width:100%;height:100%;object-fit:cover}.cp-title-row h1{font-size:clamp(39px,5vw,70px);letter-spacing:-.04em;margin:0}.cp-title-row p{color:#cabfaaa6;margin:4px 0}.cp-lead{font-size:15px;color:#beb6a8;line-height:1.75;max-width:570px}.cp-hero-actions{display:flex;gap:9px;margin-top:24px}.cp-hero-actions a,.cp-hero-actions button{border:1px solid #5c461e;border-radius:10px;background:#171209;color:#efc65e;padding:12px 18px;text-decoration:none;font-weight:800;cursor:pointer}.cp-hero-actions a{background:#edb42b;color:#080705;border:0}.cp-tabs{position:sticky;top:calc(76px + var(--vz-safe-top,0px));z-index:20;display:flex;justify-content:center;gap:3px;background:rgba(7,7,7,.94);backdrop-filter:blur(15px);border-block:1px solid #221f19;padding:8px}.cp-tabs button{border:0;background:transparent;color:#817b71;padding:10px 19px;border-radius:8px;font-size:var(--fs-sm);cursor:pointer}.cp-tabs button.active{background:#dba72d;color:#090704;font-weight:900}.cp-content{width:min(1200px,calc(100% - 40px));margin:50px auto 80px}.cp-about{display:grid;grid-template-columns:1fr 280px;border:1px solid #27241e;border-radius:20px;overflow:hidden;background:#0b0b0a}.cp-about>div{padding:38px}.cp-about span,.cp-section-title span,.cp-contact span{color:#d5a333;font-size:9px;letter-spacing:.16em}.cp-about h2,.cp-section-title h2,.cp-contact h2{font-size:30px;margin:8px 0 14px}.cp-about p{color:#948d81;line-height:1.7}.cp-about aside{padding:35px;border-left:1px solid #28251e;background:linear-gradient(145deg,#171207,#0a0a09)}.cp-about aside small,.cp-about aside strong{display:block}.cp-about aside small{color:#897f6f;font-size:9px}.cp-about aside strong{font-size:64px;color:#e7b139}.cp-about aside p{font-size:var(--fs-xs)}.cp-facts{display:flex;gap:19px;margin-top:22px}.cp-facts b{font-size:var(--fs-2xs);color:#c6bda9}.cp-catalog,.cp-gallery,.cp-contact{margin-top:48px}.cp-section-title{text-align:center}.cp-filters{display:flex;justify-content:center;gap:7px;flex-wrap:wrap;margin:19px 0}.cp-filters button{border:1px solid #2c2922;background:#0e0e0d;color:#9f988c;border-radius:99px;padding:7px 13px;font-size:var(--fs-2xs);cursor:pointer}.cp-filters button.active{border-color:#6f521b;color:#e9ba4f;background:#1a1408}.cp-product-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.cp-product-grid article{overflow:hidden;border:1px solid #29261f;border-radius:16px;background:#0b0b0a}.cp-product-img{height:190px;position:relative}.cp-product-img img{width:100%;height:100%;object-fit:cover}.cp-product-img span{position:absolute;left:10px;top:10px;background:#e8ae24;color:#060503;border-radius:99px;padding:5px 8px;font-size:8px;font-weight:900}.cp-product-grid article>div:last-child{padding:15px}.cp-product-grid small{color:#a17b28;font-size:8px}.cp-product-grid h3{font-size:var(--fs-md);margin:5px 0}.cp-product-grid p{height:35px;color:#777166;font-size:var(--fs-2xs);line-height:1.5;overflow:hidden}.cp-price del,.cp-price b{display:block}.cp-price del{color:#655f55;font-size:9px}.cp-price b,.cp-price-single{color:#eab643;font-size:var(--fs-sm)}.cp-empty{border:1px dashed #29261f;border-radius:16px;text-align:center;padding:50px;color:#6f695e}.cp-gallery>div:last-child{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;margin-top:20px}.cp-gallery img{width:100%;height:300px;border-radius:16px;object-fit:cover}.cp-contact{display:grid;grid-template-columns:1fr 1fr;gap:30px;border:1px solid #29261f;border-radius:20px;padding:36px}.cp-contact p{color:#938c7f}.cp-contact-list{display:grid;gap:9px}.cp-contact-list a{border:1px solid #29261f;border-radius:11px;padding:13px;color:#e7c46d;text-decoration:none}.cp-footer{border-top:1px solid #211f1a;padding:27px clamp(24px,8vw,150px);display:flex;justify-content:space-between;color:#655f55;font-size:9px;letter-spacing:.12em}
+.cp-header{justify-content:space-between}.cp-header nav{display:flex;gap:24px}.cp-header nav button{border:0;background:transparent;color:var(--text-muted);font-size:var(--fs-sm);cursor:pointer}.cp-nfc{border:1px solid var(--accent-deep);background:var(--surface-elevated);color:var(--accent-text);border-radius:99px;padding:10px 14px;cursor:pointer}.cp-hero{min-height:510px;background-size:cover;background-position:center;display:flex;align-items:center;padding:70px clamp(24px,9vw,170px)}.cp-hero-copy{max-width:660px}.cp-kicker{font:10px monospace;letter-spacing:.15em;color:var(--accent-primary)}.cp-title-row{display:flex;align-items:center;gap:18px;margin-top:18px}.cp-hero-logo{width:72px;height:72px;border-radius:20px;border:1px solid var(--accent-primary);background:var(--surface-elevated);display:grid;place-items:center;overflow:hidden;font-weight:900;color:var(--accent-primary)}.cp-hero-logo img{width:100%;height:100%;object-fit:cover}.cp-title-row h1{font-size:clamp(39px,5vw,70px);letter-spacing:-.04em;margin:0}.cp-title-row p{color:color-mix(in srgb, var(--accent-secondary) 65%, transparent);margin:4px 0}.cp-lead{font-size:15px;color:var(--text-secondary);line-height:1.75;max-width:570px}.cp-hero-actions{display:flex;gap:9px;margin-top:24px}.cp-hero-actions a,.cp-hero-actions button{border:1px solid var(--accent-deep);border-radius:10px;background:var(--surface-elevated);color:var(--accent-text);padding:12px 18px;text-decoration:none;font-weight:800;cursor:pointer}.cp-hero-actions a{background:var(--accent-primary);color:var(--accent-ink);border:0}.cp-tabs{position:sticky;top:calc(76px + var(--vz-safe-top,0px));z-index:20;display:flex;justify-content:center;gap:3px;background:var(--nav-bg);backdrop-filter:blur(15px);border-block:1px solid var(--surface-raised);padding:8px}.cp-tabs button{border:0;background:transparent;color:var(--text-faint);padding:10px 19px;border-radius:8px;font-size:var(--fs-sm);cursor:pointer}.cp-tabs button.active{background:var(--accent-primary);color:var(--accent-ink);font-weight:900}.cp-content{width:min(1200px,calc(100% - 40px));margin:50px auto 80px}.cp-about{display:grid;grid-template-columns:1fr 280px;border:1px solid var(--border-soft);border-radius:20px;overflow:hidden;background:var(--surface)}.cp-about>div{padding:38px}.cp-about span,.cp-section-title span,.cp-contact span{color:var(--accent-primary);font-size:9px;letter-spacing:.16em}.cp-about h2,.cp-section-title h2,.cp-contact h2{font-size:30px;margin:8px 0 14px}.cp-about p{color:var(--text-muted);line-height:1.7}.cp-about aside{padding:35px;border-left:1px solid var(--border-soft);background:linear-gradient(145deg,var(--surface-elevated),var(--surface))}.cp-about aside small,.cp-about aside strong{display:block}.cp-about aside small{color:var(--accent-primary);font-size:9px}.cp-about aside strong{font-size:64px;color:var(--accent-primary)}.cp-about aside p{font-size:var(--fs-xs)}.cp-facts{display:flex;gap:19px;margin-top:22px}.cp-facts b{font-size:var(--fs-2xs);color:var(--accent-text)}.cp-catalog,.cp-gallery,.cp-contact{margin-top:48px}.cp-section-title{text-align:center}.cp-filters{display:flex;justify-content:center;gap:7px;flex-wrap:wrap;margin:19px 0}.cp-filters button{border:1px solid var(--border-soft);background:var(--surface);color:var(--text-muted);border-radius:99px;padding:7px 13px;font-size:var(--fs-2xs);cursor:pointer}.cp-filters button.active{border-color:var(--accent-deep);color:var(--accent-primary);background:var(--surface-elevated)}.cp-product-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.cp-product-grid article{overflow:hidden;border:1px solid var(--border-soft);border-radius:16px;background:var(--surface)}.cp-product-img{height:190px;position:relative}.cp-product-img img{width:100%;height:100%;object-fit:cover}.cp-product-img span{position:absolute;left:10px;top:10px;background:var(--accent-primary);color:var(--accent-ink);border-radius:99px;padding:5px 8px;font-size:8px;font-weight:900}.cp-product-grid article>div:last-child{padding:15px}.cp-product-grid small{color:var(--accent-deep);font-size:8px}.cp-product-grid h3{font-size:var(--fs-md);margin:5px 0}.cp-product-grid p{height:35px;color:var(--text-faint);font-size:var(--fs-2xs);line-height:1.5;overflow:hidden}.cp-price del,.cp-price b{display:block}.cp-price del{color:var(--border-strong);font-size:9px}.cp-price b,.cp-price-single{color:var(--accent-primary);font-size:var(--fs-sm)}.cp-empty{border:1px dashed var(--border-soft);border-radius:16px;text-align:center;padding:50px;color:var(--text-faint)}.cp-gallery>div:last-child{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;margin-top:20px}.cp-gallery img{width:100%;height:300px;border-radius:16px;object-fit:cover}.cp-contact{display:grid;grid-template-columns:1fr 1fr;gap:30px;border:1px solid var(--border-soft);border-radius:20px;padding:36px}.cp-contact p{color:var(--text-muted)}.cp-contact-list{display:grid;gap:9px}.cp-contact-list a{border:1px solid var(--border-soft);border-radius:11px;padding:13px;color:var(--accent-text);text-decoration:none}.cp-footer{border-top:1px solid var(--surface-raised);padding:27px clamp(24px,8vw,150px);display:flex;justify-content:space-between;color:var(--border-strong);font-size:9px;letter-spacing:.12em}
 
-@media(max-width:1250px){.cw-layout{grid-template-columns:210px minmax(540px,1fr)}.cw-preview{grid-column:1/-1;position:relative;top:auto;height:auto;border-left:0;border-top:1px solid #211f1a}.cw-iphone{margin-inline:auto}.cw-preview-head,.cw-preview>p{max-width:540px;margin-inline:auto}.cw-action-grid{grid-template-columns:1fr}.cw-action-grid>button{min-height:auto}.cp-product-grid{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:900px){.cc-layout{grid-template-columns:1fr;padding-top:45px}.cc-intro{padding-top:0}.cc-flow{flex-wrap:wrap}.cw-header{grid-template-columns:1fr auto}.cw-company{display:none}.cw-head-actions button:nth-child(2),.cw-head-actions button:nth-child(3){display:none}.cw-layout{grid-template-columns:1fr}.cw-sidebar{border-right:0;border-bottom:1px solid #211f1a;padding:14px;overflow:auto}.cw-owner,.cw-separation{display:none}.cw-sidebar nav{display:flex;min-width:max-content;margin:0}.cw-sidebar nav button{grid-template-columns:auto 1fr;padding:10px 13px}.cw-sidebar nav button span{display:none}.cw-items{grid-template-columns:1fr}.cp-header nav{display:none}.cp-product-grid{grid-template-columns:repeat(2,1fr)}.cp-about{grid-template-columns:1fr}.cp-about aside{border-left:0;border-top:1px solid #28251e}.cp-gallery>div:last-child{grid-template-columns:1fr 1fr}.cp-contact{grid-template-columns:1fr}.cw-action-grid,.cw-metrics,.cw-items,.cw-fields,.cw-item-form,.cp-product-grid{grid-template-columns:1fr}.cw-action-grid>button,.cw-metrics article,.cw-items article,.cw-fields label,.cw-item-form label,.cc-flow,.cc-flow>div,.cc-grid,.cc-grid label{min-width:0}}
+@media(max-width:1250px){.cw-layout{grid-template-columns:210px minmax(540px,1fr)}.cw-preview{grid-column:1/-1;position:relative;top:auto;height:auto;border-left:0;border-top:1px solid var(--surface-raised)}.cw-iphone{margin-inline:auto}.cw-preview-head,.cw-preview>p{max-width:540px;margin-inline:auto}.cw-action-grid{grid-template-columns:1fr}.cw-action-grid>button{min-height:auto}.cp-product-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:900px){.cc-layout{grid-template-columns:1fr;padding-top:45px}.cc-intro{padding-top:0}.cc-flow{flex-wrap:wrap}.cw-header{grid-template-columns:1fr auto}.cw-company{display:none}.cw-head-actions button:nth-child(2),.cw-head-actions button:nth-child(3){display:none}.cw-layout{grid-template-columns:1fr}.cw-sidebar{border-right:0;border-bottom:1px solid var(--surface-raised);padding:14px;overflow:auto}.cw-owner,.cw-separation{display:none}.cw-sidebar nav{display:flex;min-width:max-content;margin:0}.cw-sidebar nav button{grid-template-columns:auto 1fr;padding:10px 13px}.cw-sidebar nav button span{display:none}.cw-items{grid-template-columns:1fr}.cp-header nav{display:none}.cp-product-grid{grid-template-columns:repeat(2,1fr)}.cp-about{grid-template-columns:1fr}.cp-about aside{border-left:0;border-top:1px solid var(--border-soft)}.cp-gallery>div:last-child{grid-template-columns:1fr 1fr}.cp-contact{grid-template-columns:1fr}.cw-action-grid,.cw-metrics,.cw-items,.cw-fields,.cw-item-form,.cp-product-grid{grid-template-columns:1fr}.cw-action-grid>button,.cw-metrics article,.cw-items article,.cw-fields label,.cw-item-form label,.cc-flow,.cc-flow>div,.cc-grid,.cc-grid label{min-width:0}}
 @media(max-width:600px){.cc-header>span{display:none}.cc-header{justify-content:space-between}.cc-layout{padding-inline:16px}.cc-intro h1{font-size:48px}.cc-grid,.cw-fields,.cw-item-form{grid-template-columns:1fr}.cc-grid .wide,.cw-fields .wide,.cw-item-form .wide{grid-column:auto}.cc-flow i{display:none}.cc-flow{display:grid;grid-template-columns:1fr 1fr} .cc-flow,.cc-flow>div,.cc-grid,.cc-grid label,.cc-intro,.cc-form,.cc-existing>button{min-width:0}.cw-main{padding:26px 16px}.cw-title h1{font-size:27px}.cw-metrics{grid-template-columns:1fr}.cw-head-actions button:first-child{display:block}.cw-iphone{width:270px;height:552px}.cp-hero{min-height:470px;padding-inline:22px}.cp-title-row{align-items:flex-start}.cp-hero-logo{width:58px;height:58px}.cp-title-row h1{font-size:37px}.cp-content{width:calc(100% - 24px)}.cp-product-grid{grid-template-columns:1fr}.cp-tabs{justify-content:flex-start;overflow:auto}.cp-about>div,.cp-contact{padding:22px}.cp-facts{flex-direction:column;gap:8px}.cp-gallery>div:last-child{grid-template-columns:1fr}.cq-page{padding:0}.cq-shell{border:0;border-radius:0;min-height:100vh}}
 
 
@@ -34,10 +34,10 @@
 .cw-sub {
   display: flex; flex-direction: column; gap: 10px;
   margin-top: 18px; padding-top: 18px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid color-mix(in srgb, var(--tint-base) 8%, transparent);
 }
-.cw-sub-head b { display: block; font-size: 14.5px; color: #fff; }
-.cw-sub-head small { display: block; margin-top: 4px; font-size: 12.5px; color: rgba(255, 255, 255, 0.42); }
+.cw-sub-head b { display: block; font-size: 14.5px; color: var(--text-primary); }
+.cw-sub-head small { display: block; margin-top: 4px; font-size: 12.5px; color: color-mix(in srgb, var(--tint-base) 42%, transparent); }
 .cw-link-row { display: flex; align-items: center; gap: 8px; }
 .cw-link-row input { flex: 1; min-width: 0; }
 .cw-link-row > .cw-upload-btn { flex: none; padding: 0 12px; }
@@ -47,118 +47,118 @@
   display: flex; align-items: center; gap: 12px;
   margin: 18px 0 0; padding: 12px 14px;
   border-radius: 16px;
-  background: #0b0b0d;
-  border: 1px solid rgba(201, 162, 75, 0.3);
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 30%, transparent);
 }
 .cp-music-play {
   width: 44px; height: 44px; flex: none;
   border: 0; border-radius: 50%;
-  background: linear-gradient(135deg, #f6e3a8, #c9a24b);
-  color: #161616; font-size: 15px; cursor: pointer;
+  background: linear-gradient(135deg, var(--accent-secondary), var(--accent-primary));
+  color:var(--accent-ink); font-size: 15px; cursor: pointer;
 }
 .cp-music-info { flex: 1; min-width: 0; }
-.cp-music-info b { display: block; font-size: 14.5px; color: #fff; }
-.cp-music-info small { display: block; margin-top: 2px; font-size: 12px; color: rgba(255, 255, 255, 0.45); }
+.cp-music-info b { display: block; font-size: 14.5px; color: var(--text-primary); }
+.cp-music-info small { display: block; margin-top: 2px; font-size: 12px; color: color-mix(in srgb, var(--tint-base) 45%, transparent); }
 .cp-music-nav { display: flex; gap: 6px; }
 .cp-music-nav button {
   width: 36px; height: 36px;
-  border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.14);
-  background: transparent; color: #e9e6df; font-size: 18px; cursor: pointer;
+  border-radius: 10px; border: 1px solid color-mix(in srgb, var(--tint-base) 14%, transparent);
+  background: transparent; color: var(--text-primary); font-size: 18px; cursor: pointer;
 }
-.cp-music-nav button:hover { border-color: rgba(201, 162, 75, 0.6); }
+.cp-music-nav button:hover { border-color: color-mix(in srgb, var(--accent-primary) 60%, transparent); }
 
 /* NFC tezkor profil: karta raqami tugmasi havola emas (bosilganda
    nusxalanadi) — shuning uchun `a` uslubi unga tushmasdi va tugma
    ro'yxatdan ajralib, "buzuq" ko'rinardi. */
-.cq-actions button{display:flex;align-items:center;justify-content:center;border:1px solid #2c2923;border-radius:11px;background:#0b0b0a;color:#e4dfd5;font-size:var(--fs-xs);padding:11px;cursor:pointer;font-family:inherit}
-.cq-actions button:hover{border-color:#5a451c;color:#f0c65d}
+.cq-actions button{display:flex;align-items:center;justify-content:center;border:1px solid var(--border-soft);border-radius:11px;background:var(--surface);color:var(--text-secondary);font-size:var(--fs-xs);padding:11px;cursor:pointer;font-family:inherit}
+.cq-actions button:hover{border-color:var(--accent-deep);color:var(--accent-text)}
 .cq-page .cp-music{margin-top:14px}
 
 /* Workspace preview tugmalari — endi haqiqiy havolalar, soni ham
    o'zgaruvchan (Aloqa bo'limi nimaga to'ldirilganiga qarab). Shuning
    uchun qat'iy 2 ustun emas, o'ralib ketadigan ro'yxat. */
-.cw-phone-buttons a,.cw-phone-buttons span{display:flex;align-items:center;justify-content:center;text-align:center;text-decoration:none;border:1px solid rgba(255,255,255,.13);border-radius:9px;background:rgba(0,0,0,.62);color:#fff;font-size:8px;padding:8px 2px;min-width:0;overflow:hidden}
-.cw-phone-buttons a.primary{background:#eab32d;color:#0a0803;font-weight:800;border-color:transparent}
-.cw-phone-buttons .cw-phone-empty,.cw-phone-buttons .cw-phone-music{grid-column:1/-1;color:#c8c0b0;background:rgba(0,0,0,.5);border-style:dashed}
+.cw-phone-buttons a,.cw-phone-buttons span{display:flex;align-items:center;justify-content:center;text-align:center;text-decoration:none;border:1px solid color-mix(in srgb, var(--tint-base) 13%, transparent);border-radius:9px;background:color-mix(in srgb, var(--shade-base) 62%, transparent);color:var(--text-primary);font-size:8px;padding:8px 2px;min-width:0;overflow:hidden}
+.cw-phone-buttons a.primary{background:var(--accent-primary);color:var(--accent-ink);font-weight:800;border-color:transparent}
+.cw-phone-buttons .cw-phone-empty,.cw-phone-buttons .cw-phone-music{grid-column:1/-1;color:var(--text-secondary);background:color-mix(in srgb, var(--inset-base) 50%, transparent);border-style:dashed}
 
 /* ── ISH VAQTI ─────────────────────────────────────────────────────── */
 .ch-box{margin:14px 0}
-.ch-head{display:inline-flex;align-items:center;gap:8px;border:1px solid #2c2923;border-radius:99px;background:rgba(0,0,0,.55);color:#e4dfd5;padding:7px 13px;font-size:var(--fs-xs);cursor:pointer;font-family:inherit}
-.ch-dot{width:8px;height:8px;border-radius:50%;background:#8a5b5b;box-shadow:0 0 6px #8a5b5b}
-.ch-dot.is-open{background:#4ddb8f;box-shadow:0 0 8px #4ddb8f}
-.ch-head small{color:#a49c8e}
-.ch-head i{font-style:normal;color:#8b8478}
-.ch-list{list-style:none;margin:9px 0 0;padding:11px 13px;border:1px solid #26231d;border-radius:12px;background:#0b0b0a;max-width:290px}
-.ch-list li{display:flex;justify-content:space-between;gap:14px;font-size:var(--fs-xs);padding:3px 0;color:#a8a094}
-.ch-list li b{color:#e6dfd2;font-weight:600}
-.ch-tz{border-top:1px solid #24221d;margin-top:6px;padding-top:7px!important;font-size:var(--fs-2xs);color:#6f695f}
+.ch-head{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border-soft);border-radius:99px;background:color-mix(in srgb, var(--surface) 55%, transparent);color:var(--text-secondary);padding:7px 13px;font-size:var(--fs-xs);cursor:pointer;font-family:inherit}
+.ch-dot{width:8px;height:8px;border-radius:50%;background:var(--danger);box-shadow:0 0 6px var(--danger)}
+.ch-dot.is-open{background:var(--success);box-shadow:0 0 8px var(--success)}
+.ch-head small{color:var(--text-muted)}
+.ch-head i{font-style:normal;color:var(--text-faint)}
+.ch-list{list-style:none;margin:9px 0 0;padding:11px 13px;border:1px solid var(--surface-raised);border-radius:12px;background:var(--surface);max-width:290px}
+.ch-list li{display:flex;justify-content:space-between;gap:14px;font-size:var(--fs-xs);padding:3px 0;color:var(--text-muted)}
+.ch-list li b{color:var(--text-secondary);font-weight:600}
+.ch-tz{border-top:1px solid var(--surface-raised);margin-top:6px;padding-top:7px!important;font-size:var(--fs-2xs);color:var(--text-faint)}
 .ch-box.is-compact .ch-list{max-width:100%}
 .cq-page .ch-box{display:flex;flex-direction:column;align-items:center}
 
 /* ── BUYURTMA ──────────────────────────────────────────────────────── */
-.cp-order-btn,.cq-order-btn{display:block;width:100%;margin-top:9px;border:1px solid #5a451c;border-radius:9px;background:#161108;color:#f0c65d;padding:9px;font-weight:700;font-size:var(--fs-xs);cursor:pointer;font-family:inherit}
-.cp-order-btn:hover,.cq-order-btn:hover{background:#efb72f;color:#0a0803;border-color:transparent}
-.co-modal-back{position:fixed;inset:0;z-index:130;background:rgba(0,0,0,.78);display:grid;place-items:center;padding:18px;overflow:auto}
-.co-modal{width:min(100%,420px);border:1px solid #2e2a22;border-radius:20px;background:#0c0c0b;padding:22px}
+.cp-order-btn,.cq-order-btn{display:block;width:100%;margin-top:9px;border:1px solid var(--accent-deep);border-radius:9px;background:var(--surface-elevated);color:var(--accent-text);padding:9px;font-weight:700;font-size:var(--fs-xs);cursor:pointer;font-family:inherit}
+.cp-order-btn:hover,.cq-order-btn:hover{background:var(--accent-primary);color:var(--accent-ink);border-color:transparent}
+.co-modal-back{position:fixed;inset:0;z-index:130;background:color-mix(in srgb, var(--shade-base) 78%, transparent);display:grid;place-items:center;padding:18px;overflow:auto}
+.co-modal{width:min(100%,420px);border:1px solid var(--border-soft);border-radius:20px;background:var(--surface);padding:22px}
 .co-modal h3{margin:0 0 4px;font-size:19px}
-.co-modal>p,.co-modal form>p{font-size:var(--fs-xs);color:#8d867a;margin:0 0 14px;line-height:1.55}
-.co-modal-item{display:flex;justify-content:space-between;gap:12px;border:1px solid #26231d;border-radius:11px;background:#080807;padding:10px 12px;margin:12px 0 14px!important;color:#e6dfd2!important}
-.co-modal-item span{color:#efc152;font-weight:800;white-space:nowrap}
+.co-modal>p,.co-modal form>p{font-size:var(--fs-xs);color:var(--text-faint);margin:0 0 14px;line-height:1.55}
+.co-modal-item{display:flex;justify-content:space-between;gap:12px;border:1px solid var(--surface-raised);border-radius:11px;background:var(--surface);padding:10px 12px;margin:12px 0 14px!important;color:var(--text-secondary)!important}
+.co-modal-item span{color:var(--accent-text);font-weight:800;white-space:nowrap}
 .co-modal label{display:block;margin-bottom:11px}
-.co-modal label>span{display:block;font-size:var(--fs-2xs);color:#9a9388;margin-bottom:6px}
-.co-modal input,.co-modal textarea{width:100%;border:1px solid #2b2822;border-radius:10px;background:#070707;color:#e8e2d6;padding:10px 12px;font:inherit;font-size:var(--fs-sm)}
+.co-modal label>span{display:block;font-size:var(--fs-2xs);color:var(--text-muted);margin-bottom:6px}
+.co-modal input,.co-modal textarea{width:100%;border:1px solid var(--border-soft);border-radius:10px;background:var(--surface);color:var(--text-secondary);padding:10px 12px;font:inherit;font-size:var(--fs-sm)}
 .co-modal textarea{min-height:70px;resize:vertical}
-.co-modal-note{font-size:var(--fs-2xs)!important;color:#756f65!important;margin:0 0 12px!important}
-.co-modal-err{display:block;color:#ff9b9b;font-size:var(--fs-2xs);margin-bottom:10px}
-.co-modal-cta{width:100%;border:0;border-radius:11px;background:var(--company-gold,#efb72f);color:#080705;padding:12px;font-weight:900;cursor:pointer;font-family:inherit}
+.co-modal-note{font-size:var(--fs-2xs)!important;color:var(--text-faint)!important;margin:0 0 12px!important}
+.co-modal-err{display:block;color:var(--danger);font-size:var(--fs-2xs);margin-bottom:10px}
+.co-modal-cta{width:100%;border:0;border-radius:11px;background:var(--company-gold,var(--accent-primary));color:var(--accent-ink);padding:12px;font-weight:900;cursor:pointer;font-family:inherit}
 .co-modal-cta:disabled{opacity:.55}
 
 /* ── KABINET: ish vaqti, statistika, buyurtmalar, QR, domen ───────── */
 .cw-hours{display:grid;gap:7px}
 .cw-hours-row{display:grid;grid-template-columns:1fr auto 96px 96px;gap:8px;align-items:center}
-.cw-hours-row>span{font-size:var(--fs-xs);color:#b3ab9d}
-.cw-hours-off{display:flex;align-items:center;gap:6px;font-size:var(--fs-2xs);color:#8d867a}
-.cw-hours-row input[type=time]{border:1px solid #2b2822;border-radius:8px;background:#070707;color:#e8e2d6;padding:7px 8px;font:inherit;font-size:var(--fs-xs)}
+.cw-hours-row>span{font-size:var(--fs-xs);color:var(--text-muted)}
+.cw-hours-off{display:flex;align-items:center;gap:6px;font-size:var(--fs-2xs);color:var(--text-faint)}
+.cw-hours-row input[type=time]{border:1px solid var(--border-soft);border-radius:8px;background:var(--surface);color:var(--text-secondary);padding:7px 8px;font:inherit;font-size:var(--fs-xs)}
 .cw-hours-row input[type=time]:disabled{opacity:.4}
 .cw-stat-range{display:flex;gap:7px;margin-bottom:16px}
-.cw-stat-range button{border:1px solid #2d2921;background:#0e0e0d;color:#a49c8e;border-radius:9px;padding:7px 13px;font-size:var(--fs-xs);cursor:pointer;font-family:inherit}
-.cw-stat-range button.active{border-color:#6f541e;color:#f0c65d;background:#161108}
-.cw-chart{display:flex;align-items:flex-end;gap:2px;height:130px;margin:18px 0;padding:10px;border:1px solid #24221d;border-radius:13px;background:#080807}
-.cw-chart i{flex:1;min-width:2px;border-radius:2px 2px 0 0;background:linear-gradient(180deg,#efc45a,#7a5a15)}
+.cw-stat-range button{border:1px solid var(--border-soft);background:var(--surface);color:var(--text-muted);border-radius:9px;padding:7px 13px;font-size:var(--fs-xs);cursor:pointer;font-family:inherit}
+.cw-stat-range button.active{border-color:var(--accent-deep);color:var(--accent-text);background:var(--surface-elevated)}
+.cw-chart{display:flex;align-items:flex-end;gap:2px;height:130px;margin:18px 0;padding:10px;border:1px solid var(--surface-raised);border-radius:13px;background:var(--surface)}
+.cw-chart i{flex:1;min-width:2px;border-radius:2px 2px 0 0;background:linear-gradient(180deg,var(--accent-secondary),var(--accent-deep))}
 .cw-stat-cols{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:8px}
-.cw-stat-row{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid #1e1c18;padding:9px 0;font-size:var(--fs-xs);color:#a8a094}
-.cw-stat-row b{color:#efc152}
-.cw-toggle{display:flex;align-items:flex-start;gap:11px;border:1px solid #2a271f;border-radius:13px;background:#0a0a09;padding:14px;margin-bottom:8px;cursor:pointer}
-.cw-toggle input{margin-top:3px;width:17px;height:17px;accent-color:#efb72f}
+.cw-stat-row{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--surface-raised);padding:9px 0;font-size:var(--fs-xs);color:var(--text-muted)}
+.cw-stat-row b{color:var(--accent-text)}
+.cw-toggle{display:flex;align-items:flex-start;gap:11px;border:1px solid var(--border-soft);border-radius:13px;background:var(--surface);padding:14px;margin-bottom:8px;cursor:pointer}
+.cw-toggle input{margin-top:3px;width:17px;height:17px;accent-color:var(--accent-primary)}
 .cw-toggle b{display:block;font-size:var(--fs-sm)}
-.cw-toggle small{display:block;font-size:var(--fs-2xs);color:#807a70;margin-top:4px;line-height:1.5}
+.cw-toggle small{display:block;font-size:var(--fs-2xs);color:var(--text-faint);margin-top:4px;line-height:1.5}
 .cw-orders{display:grid;gap:10px;margin-top:16px}
-.cw-orders article{display:flex;justify-content:space-between;gap:14px;border:1px solid #27241e;border-radius:14px;background:#0a0a09;padding:14px}
+.cw-orders article{display:flex;justify-content:space-between;gap:14px;border:1px solid var(--border-soft);border-radius:14px;background:var(--surface);padding:14px}
 .cw-orders article[data-status=done]{opacity:.55}
 .cw-orders article[data-status=cancelled]{opacity:.4}
 .cw-orders b{font-size:var(--fs-base)}
-.cw-orders strong{display:block;color:#efc152;font-size:var(--fs-sm);margin-top:3px}
-.cw-orders p{font-size:var(--fs-xs);color:#a29a8d;margin:6px 0 0}
-.cw-orders p.note{color:#7f796f}
-.cw-orders a{color:#efc45a}
-.cw-orders small{display:block;font-size:var(--fs-2xs);color:#6b665d;margin-top:6px}
+.cw-orders strong{display:block;color:var(--accent-text);font-size:var(--fs-sm);margin-top:3px}
+.cw-orders p{font-size:var(--fs-xs);color:var(--text-muted);margin:6px 0 0}
+.cw-orders p.note{color:var(--text-faint)}
+.cw-orders a{color:var(--accent-text)}
+.cw-orders small{display:block;font-size:var(--fs-2xs);color:var(--border-strong);margin-top:6px}
 .cw-order-actions{display:flex;flex-direction:column;gap:6px;align-items:flex-end;white-space:nowrap}
-.cw-order-badge{border-radius:99px;background:#17150f;color:#cfaa4b;font-size:var(--fs-2xs);padding:4px 9px}
-.cw-order-actions button{border:1px solid #4d3c19;background:#171209;color:#f0c45b;border-radius:8px;padding:6px 10px;font-size:var(--fs-2xs);cursor:pointer;font-family:inherit}
-.cw-order-actions button.ghost{border-color:#332f27;color:#918a7e;background:transparent}
+.cw-order-badge{border-radius:99px;background:var(--surface-elevated);color:var(--accent-primary);font-size:var(--fs-2xs);padding:4px 9px}
+.cw-order-actions button{border:1px solid color-mix(in srgb, var(--accent-primary) 22%, var(--surface));background:var(--surface-elevated);color:var(--accent-text);border-radius:8px;padding:6px 10px;font-size:var(--fs-2xs);cursor:pointer;font-family:inherit}
+.cw-order-actions button.ghost{border-color:var(--border-soft);color:var(--text-muted);background:transparent}
 .cw-qr{display:grid;justify-items:center;gap:11px;margin-top:12px}
-.cw-qr canvas{width:190px;height:190px;border-radius:12px;background:#fff;padding:8px}
+.cw-qr canvas{width:190px;height:190px;border-radius:12px;background:var(--text-primary);padding:8px}
 .cw-qr code{font-size:var(--fs-2xs);word-break:break-all;text-align:center}
-.cw-qr>button{margin:0!important;border:0!important;background:var(--company-gold,#efb72f)!important;color:#080705!important;border-radius:10px;padding:10px 16px!important;font-weight:800;cursor:pointer}
-.cw-qr>small{text-align:center;color:#7a746a!important;font-size:var(--fs-2xs);letter-spacing:0!important;max-width:280px;line-height:1.5}
+.cw-qr>button{margin:0!important;border:0!important;background:var(--company-gold,var(--accent-primary))!important;color:var(--accent-ink)!important;border-radius:10px;padding:10px 16px!important;font-weight:800;cursor:pointer}
+.cw-qr>small{text-align:center;color:var(--text-faint)!important;font-size:var(--fs-2xs);letter-spacing:0!important;max-width:280px;line-height:1.5}
 .cw-domain{display:flex;gap:8px;margin-top:10px}
-.cw-domain input{flex:1;min-width:0;border:1px solid #2b2822;border-radius:9px;background:#030303;color:#f0cf7b;padding:10px 12px;font:inherit;font-size:var(--fs-xs)}
+.cw-domain input{flex:1;min-width:0;border:1px solid var(--border-soft);border-radius:9px;background:var(--bg-primary);color:var(--accent-text);padding:10px 12px;font:inherit;font-size:var(--fs-xs)}
 .cw-domain button{margin:0!important}
-.cw-domain-badge{display:inline-block;margin-top:9px;border-radius:99px;background:#17150f;color:#cfaa4b;font-size:var(--fs-2xs);padding:4px 10px}
-.cw-domain-badge[data-status=active]{color:#6add9d;background:#092215}
-.cw-domain-badge[data-status=rejected]{color:#ff9b9b;background:#210d0d}
-.cw-domain-note{font-size:var(--fs-2xs)!important;color:#a29a8d!important;margin-top:8px!important}
-.cw-domain-steps{margin:11px 0 0;padding-left:18px;color:#7f796f;font-size:var(--fs-2xs);line-height:1.7}
+.cw-domain-badge{display:inline-block;margin-top:9px;border-radius:99px;background:var(--surface-elevated);color:var(--accent-primary);font-size:var(--fs-2xs);padding:4px 10px}
+.cw-domain-badge[data-status=active]{color:var(--success);background:var(--surface-elevated)}
+.cw-domain-badge[data-status=rejected]{color:var(--danger);background:var(--surface-raised)}
+.cw-domain-note{font-size:var(--fs-2xs)!important;color:var(--text-muted)!important;margin-top:8px!important}
+.cw-domain-steps{margin:11px 0 0;padding-left:18px;color:var(--text-faint);font-size:var(--fs-2xs);line-height:1.7}
 @media(max-width:900px){.cw-stat-cols{grid-template-columns:1fr}.cw-hours-row{grid-template-columns:1fr auto;row-gap:6px}.cw-hours-row input[type=time]{width:100%}.cw-orders article{flex-direction:column}.cw-order-actions{flex-direction:row;align-items:center}}
 
 /* ── NFC TEZKOR PROFIL: fon, tugmalar, karta raqami, kontakt ────────
@@ -176,49 +176,49 @@
    GIF ustida oq harflar yo'qolib ketardi. */
 .cq-shell{
   background:
-    linear-gradient(180deg,rgba(3,3,3,.62) 0%,rgba(3,3,3,.78) 38%,rgba(3,3,3,.92) 100%),
+    linear-gradient(180deg,color-mix(in srgb, var(--surface) 62%, transparent) 0%,color-mix(in srgb, var(--surface) 78%, transparent) 38%,color-mix(in srgb, var(--surface) 92%, transparent) 100%),
     var(--cq-cover) center center/cover no-repeat,
-    #070706;
+    var(--bg-secondary);
 }
 
 /* Tugmalar: bir qatorga bitta, to'liq kenglikda. */
 .cq-actions{grid-template-columns:1fr;gap:9px}
 .cq-actions a,.cq-actions button{
   justify-content:flex-start;gap:9px;padding:13px 16px;
-  border:1px solid rgba(255,255,255,.11);border-radius:13px;
-  background:rgba(10,10,9,.78);color:#e7e2d8;font-weight:600;
+  border:1px solid color-mix(in srgb, var(--tint-base) 11%, transparent);border-radius:13px;
+  background:color-mix(in srgb, var(--surface) 78%, transparent);color:var(--text-secondary);font-weight:600;
   backdrop-filter:blur(6px)
 }
 /* "Qo'ng'iroq" ham qolganlar bilan BIR XIL rangda (egasining talabi) —
    oltin to'ldirish faqat eng pastdagi "Kontaktni saqlash"da qoladi,
    shunda sahifada bitta aniq asosiy harakat bo'ladi. */
-.cq-actions a.primary{background:rgba(10,10,9,.78);color:#e7e2d8;border:1px solid rgba(255,255,255,.11);font-weight:600}
-.cq-actions a:hover,.cq-actions button:hover{border-color:rgba(239,183,47,.5);color:#f2cd6e}
+.cq-actions a.primary{background:color-mix(in srgb, var(--surface) 78%, transparent);color:var(--text-secondary);border:1px solid color-mix(in srgb, var(--tint-base) 11%, transparent);font-weight:600}
+.cq-actions a:hover,.cq-actions button:hover{border-color:color-mix(in srgb, var(--accent-primary) 50%, transparent);color:var(--accent-text)}
 
 /* Karta raqami oynasi */
 .cn-modal{text-align:center}
-.cn-modal canvas{width:210px;height:210px;margin:6px auto 14px;display:block;border-radius:14px;background:#fff;padding:9px}
-.cn-holder{margin:0 0 12px!important;color:#9a9388!important;font-size:var(--fs-xs)!important}
-.cn-number{display:block;font:700 19px/1.4 monospace;letter-spacing:.06em;color:#f0cf7b;margin-bottom:14px;word-break:break-all}
-.cn-close{width:100%;margin-top:10px;border:1px solid #2f2b23;background:transparent;color:#8d867a;border-radius:11px;padding:10px;cursor:pointer;font-family:inherit;font-size:var(--fs-xs)}
+.cn-modal canvas{width:210px;height:210px;margin:6px auto 14px;display:block;border-radius:14px;background:var(--text-primary);padding:9px}
+.cn-holder{margin:0 0 12px!important;color:var(--text-muted)!important;font-size:var(--fs-xs)!important}
+.cn-number{display:block;font:700 19px/1.4 monospace;letter-spacing:.06em;color:var(--accent-text);margin-bottom:14px;word-break:break-all}
+.cn-close{width:100%;margin-top:10px;border:1px solid var(--border-soft);background:transparent;color:var(--text-faint);border-radius:11px;padding:10px;cursor:pointer;font-family:inherit;font-size:var(--fs-xs)}
 
 /* Kontaktni saqlash — oltin, eng ostida */
-.cq-save{width:100%;margin-top:9px;border:0;border-radius:13px;background:linear-gradient(135deg,#e9af23,#ffd76e);color:#080603;padding:14px;font-weight:900;font-size:var(--fs-sm);cursor:pointer;font-family:inherit;box-shadow:0 10px 30px rgba(233,175,35,.18)}
+.cq-save{width:100%;margin-top:9px;border:0;border-radius:13px;background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary));color:var(--accent-ink);padding:14px;font-weight:900;font-size:var(--fs-sm);cursor:pointer;font-family:inherit;box-shadow:0 10px 30px color-mix(in srgb, var(--accent-primary) 18%, transparent)}
 .cq-save:hover{filter:brightness(1.06)}
 
 /* Kompaniya lentasi — kabinetdagi boshqaruv va sahifadagi ko'rinish */
 .cw-feed-strip{display:flex;gap:9px;overflow-x:auto;padding-bottom:6px;margin-bottom:10px}
 .cw-feed-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:9px;margin-bottom:10px}
-.cw-feed-item{position:relative;border:1px solid #27241e;border-radius:12px;overflow:hidden;background:#0a0a09}
+.cw-feed-item{position:relative;border:1px solid var(--border-soft);border-radius:12px;overflow:hidden;background:var(--surface)}
 .cw-feed-item.is-story{flex:0 0 82px;width:82px}
 .cw-feed-item img,.cw-feed-item video{display:block;width:100%;height:110px;object-fit:cover}
-.cw-feed-item span{display:block;padding:7px 9px;font-size:var(--fs-2xs);color:#a29a8d;line-height:1.45}
-.cw-feed-item>button{position:absolute;right:5px;top:5px;width:24px;height:24px;border:0;border-radius:50%;background:rgba(0,0,0,.72);color:#ff9b9b;cursor:pointer;font-size:14px;line-height:1}
+.cw-feed-item span{display:block;padding:7px 9px;font-size:var(--fs-2xs);color:var(--text-muted);line-height:1.45}
+.cw-feed-item>button{position:absolute;right:5px;top:5px;width:24px;height:24px;border:0;border-radius:50%;background:color-mix(in srgb, var(--surface) 72%, transparent);color:var(--danger);cursor:pointer;font-size:14px;line-height:1}
 .cp-posts{margin-top:28px}
 .cp-post-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;margin-top:14px}
-.cp-post-grid article{border:1px solid #26231d;border-radius:15px;overflow:hidden;background:#0b0b0a}
-.cp-post-grid img,.cp-post-grid video{display:block;width:100%;height:190px;object-fit:cover;background:#000}
-.cp-post-grid p{padding:11px 13px;margin:0;font-size:var(--fs-xs);color:#a29a8d;line-height:1.5}
+.cp-post-grid article{border:1px solid var(--surface-raised);border-radius:15px;overflow:hidden;background:var(--surface)}
+.cp-post-grid img,.cp-post-grid video{display:block;width:100%;height:190px;object-fit:cover;background:var(--bg-primary)}
+.cp-post-grid p{padding:11px 13px;margin:0;font-size:var(--fs-xs);color:var(--text-muted);line-height:1.5}
 /* Halqa logotip SHAKLIGA moslashadi: kompaniya logotipi yumaloq-kvadrat
    (border-radius 25px), shuning uchun halqa ham shunday — dumaloq halqa
    burchaklardan chiqib turardi. */
@@ -249,7 +249,7 @@
 }
 .cq-actions a::after,.cq-actions button::after{
   content:'';position:absolute;top:0;bottom:0;left:-60%;width:45%;
-  background:linear-gradient(100deg,transparent,rgba(255,224,150,.16) 45%,rgba(255,238,200,.30) 50%,rgba(255,224,150,.16) 55%,transparent);
+  background:linear-gradient(100deg,transparent,color-mix(in srgb, var(--accent-secondary) 16%, transparent) 45%,color-mix(in srgb, var(--accent-secondary) 30%, transparent) 50%,color-mix(in srgb, var(--accent-secondary) 16%, transparent) 55%,transparent);
   transform:skewX(-18deg);pointer-events:none;
   animation:cq-shine 4.6s ease-in-out infinite
 }
@@ -271,7 +271,7 @@
 .cq-save{position:relative;overflow:hidden}
 .cq-save::after{
   content:'';position:absolute;top:0;bottom:0;left:-60%;width:45%;
-  background:linear-gradient(100deg,transparent,rgba(255,255,255,.32) 50%,transparent);
+  background:linear-gradient(100deg,transparent,color-mix(in srgb, var(--tint-base) 32%, transparent) 50%,transparent);
   transform:skewX(-18deg);pointer-events:none;animation:cq-shine 4.6s ease-in-out infinite;animation-delay:2s
 }
 @media (prefers-reduced-motion:reduce){
@@ -290,7 +290,7 @@
 .cq-page .cp-music{overflow:hidden}
 .cq-page .cp-music::after{
   content:'';position:absolute;top:0;bottom:0;left:-60%;width:45%;
-  background:linear-gradient(100deg,transparent,rgba(255,224,150,.14) 50%,transparent);
+  background:linear-gradient(100deg,transparent,color-mix(in srgb, var(--accent-secondary) 14%, transparent) 50%,transparent);
   transform:skewX(-18deg);pointer-events:none;animation:cq-shine 4.6s ease-in-out infinite;animation-delay:1.6s
 }
 @media (prefers-reduced-motion:reduce){.cq-page .cp-music::after{animation:none;opacity:0}}
@@ -300,15 +300,15 @@
    qatori va oltin "Kontaktni saqlash" — /c/:id sahifasidagidek. */
 .cw-phone-buttons{grid-template-columns:1fr;gap:5px}
 .cw-phone-buttons a,.cw-phone-buttons span{justify-content:center;text-align:center;padding:7px 6px;border-radius:8px}
-.cw-phone-buttons a.primary{background:rgba(0,0,0,.62);color:#fff;font-weight:600;border:1px solid rgba(255,255,255,.13)}
-.cw-phone-hours{display:flex;align-items:center;justify-content:center;gap:5px;margin:0 auto 9px;width:max-content;border:1px solid rgba(255,255,255,.14);border-radius:99px;background:rgba(0,0,0,.55);padding:4px 9px;font-size:7px;color:#ded8ca}
-.cw-phone-hours span{width:5px;height:5px;border-radius:50%;background:#4ddb8f;box-shadow:0 0 5px #4ddb8f}
-.cw-phone-music-row{display:flex;align-items:center;gap:7px;margin-top:6px;border:1px solid rgba(201,162,75,.3);border-radius:9px;background:rgba(7,7,9,.8);padding:5px 7px}
-.cw-phone-music-row i{width:18px;height:18px;flex:none;border-radius:50%;background:linear-gradient(135deg,#f6e3a8,#c9a24b);color:#161616;font-style:normal;font-size:8px;display:grid;place-items:center}
+.cw-phone-buttons a.primary{background:color-mix(in srgb, var(--shade-base) 62%, transparent);color:var(--text-primary);font-weight:600;border:1px solid color-mix(in srgb, var(--tint-base) 13%, transparent)}
+.cw-phone-hours{display:flex;align-items:center;justify-content:center;gap:5px;margin:0 auto 9px;width:max-content;border:1px solid color-mix(in srgb, var(--tint-base) 14%, transparent);border-radius:99px;background:color-mix(in srgb, var(--shade-base) 55%, transparent);padding:4px 9px;font-size:7px;color:var(--text-secondary)}
+.cw-phone-hours span{width:5px;height:5px;border-radius:50%;background:var(--success);box-shadow:0 0 5px var(--success)}
+.cw-phone-music-row{display:flex;align-items:center;gap:7px;margin-top:6px;border:1px solid color-mix(in srgb, var(--accent-primary) 30%, transparent);border-radius:9px;background:color-mix(in srgb, var(--shade-base) 80%, transparent);padding:5px 7px}
+.cw-phone-music-row i{width:18px;height:18px;flex:none;border-radius:50%;background:linear-gradient(135deg,var(--accent-secondary),var(--accent-primary));color:var(--accent-ink);font-style:normal;font-size:8px;display:grid;place-items:center}
 .cw-phone-music-row b,.cw-phone-music-row small{display:block}
 .cw-phone-music-row b{font-size:7px}
-.cw-phone-music-row small{font-size:6px;color:#dcad3f;margin-top:2px}
-.cw-phone-save{margin-top:7px;border-radius:9px;background:linear-gradient(135deg,#e9af23,#ffd76e);color:#080603;text-align:center;padding:7px;font-weight:900;font-size:8px}
+.cw-phone-music-row small{font-size:6px;color:var(--accent-primary);margin-top:2px}
+.cw-phone-save{margin-top:7px;border-radius:9px;background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary));color:var(--accent-ink);text-align:center;padding:7px;font-weight:900;font-size:8px}
 .cw-phone-items{margin-top:7px}
 
 /* ── PROFIL RAQAMLARI: ko'rildi / obunachi / ulashish ────────────────
@@ -316,40 +316,40 @@
    son bilan bir manba), obunachilar haqiqiy obuna yozuvlaridan. */
 /* Sarlavhadagi "Tahrirlash" / "Profilga qaytish" */
 .cq-top{gap:8px;flex-wrap:wrap}
-.cq-top-link{border:1px solid rgba(255,255,255,.16);border-radius:99px;background:rgba(0,0,0,.5);color:#cfc6b4;padding:5px 11px;font:600 10px/1 inherit;cursor:pointer;font-family:inherit;white-space:nowrap}
-.cq-top-link:hover{border-color:rgba(239,183,47,.6);color:#f0cf7b}
+.cq-top-link{border:1px solid color-mix(in srgb, var(--tint-base) 16%, transparent);border-radius:99px;background:color-mix(in srgb, var(--inset-base) 50%, transparent);color:var(--accent-text);padding:5px 11px;font:600 10px/1 inherit;cursor:pointer;font-family:inherit;white-space:nowrap}
+.cq-top-link:hover{border-color:color-mix(in srgb, var(--accent-primary) 60%, transparent);color:var(--accent-text)}
 
 /* Postlar NFC profilida — gorizontal lenta (sahifa uzayib ketmasin) */
-.cq-posts{margin-top:22px;border-top:1px solid #25221c;padding-top:18px}
+.cq-posts{margin-top:22px;border-top:1px solid var(--surface-raised);padding-top:18px}
 .cq-post-strip{display:flex;gap:9px;overflow-x:auto;margin-top:11px;padding-bottom:5px;scrollbar-width:none}
 .cq-post-strip::-webkit-scrollbar{display:none}
-.cq-post-strip article{flex:0 0 148px;width:148px;border:1px solid #26231d;border-radius:13px;overflow:hidden;background:#0c0c0b}
-.cq-post-strip img,.cq-post-strip video{display:block;width:100%;height:148px;object-fit:cover;background:#000}
-.cq-post-strip p{margin:0;padding:8px 9px;font-size:var(--fs-2xs);color:#8e877c;line-height:1.45;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
+.cq-post-strip article{flex:0 0 148px;width:148px;border:1px solid var(--surface-raised);border-radius:13px;overflow:hidden;background:var(--surface)}
+.cq-post-strip img,.cq-post-strip video{display:block;width:100%;height:148px;object-fit:cover;background:var(--bg-primary)}
+.cq-post-strip p{margin:0;padding:8px 9px;font-size:var(--fs-2xs);color:var(--text-muted);line-height:1.45;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
 
 /* ── PREMIUM KO'RINISH QO'SHIMCHALARI (2026-09) ───────────────────── */
 /* Brend yozuvi ikki nozik oltin chiziq orasida — chiziqlar yozuvda
    uchrashadi. Chiziqlar `flex:1` bilan qolgan joyni bo'lishadi. */
 .cq-brand--lined{flex:1;min-width:0;gap:9px}
-.cq-brand--lined::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,rgba(224,178,76,.55),transparent)}
-.cq-brand--lined::before{content:"";width:18px;height:1px;flex:none;background:linear-gradient(270deg,rgba(224,178,76,.55),transparent)}
+.cq-brand--lined::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,color-mix(in srgb, var(--accent-primary) 55%, transparent),transparent)}
+.cq-brand--lined::before{content:"";width:18px;height:1px;flex:none;background:linear-gradient(270deg,color-mix(in srgb, var(--accent-primary) 55%, transparent),transparent)}
 
 /* Aloqa tugmasidagi ikonka — har tarmoqning O'Z firma rangida.
    Tugmaning o'zi qora qoladi: rang faqat urg'u. */
 .cq-brandicon{display:inline-flex;align-items:center;justify-content:center;margin-right:8px;flex:none}
-.cq-brandicon--ig{color:#e1306c}
+.cq-brandicon--ig{color:var(--danger)}
 .cq-actions a:hover .cq-brandicon{filter:brightness(1.18)}
 
 /* Istorya yo'q, lekin yangi post bor — halqa jilvalanadi, bosilmaydi. */
 
 /* Biznes hisob ochish: "nom tanlayman" yoki "bepul" tanlovi. */
 .cc-mode{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px}
-.cc-mode button{border:1px solid #2b2822;border-radius:13px;background:#0a0a08;padding:12px;text-align:left;cursor:pointer;font-family:inherit;color:#c5bcab}
-.cc-mode button b{display:block;font-size:14px;color:#e8e2d6}
-.cc-mode button small{display:block;margin-top:4px;font-size:11.5px;line-height:1.4;color:#8d867a}
-.cc-mode button.is-on{border-color:#c79a2a;background:#151108}
-.cc-mode button.is-on b{color:#f0c65d}
-.cc-free-note{margin:0 0 14px;border:1px solid #2b2822;border-radius:13px;background:#0a0a08;padding:12px 14px;font-size:13px;line-height:1.6;color:#9a9388}
+.cc-mode button{border:1px solid var(--border-soft);border-radius:13px;background:var(--surface);padding:12px;text-align:left;cursor:pointer;font-family:inherit;color:var(--accent-text)}
+.cc-mode button b{display:block;font-size:14px;color:var(--text-secondary)}
+.cc-mode button small{display:block;margin-top:4px;font-size:11.5px;line-height:1.4;color:var(--text-faint)}
+.cc-mode button.is-on{border-color:var(--accent-primary);background:var(--surface)}
+.cc-mode button.is-on b{color:var(--accent-text)}
+.cc-free-note{margin:0 0 14px;border:1px solid var(--border-soft);border-radius:13px;background:var(--surface);padding:12px 14px;font-size:13px;line-height:1.6;color:var(--text-muted)}
 @media (max-width:520px){.cc-mode{grid-template-columns:1fr}}
 
 /* ══ NFC BIZNES PROFILI — EGASINING MAKETI BO'YICHA ═══════════════════
@@ -385,10 +385,10 @@
 /* Oltin — bitta joyda belgilanadi va hamma yerda ishlatiladi, shunda
    tugma, chiziq va yozuv bir xil metalldan bo'ladi. */
 .qp-page{
-  --gold-1:#fbeec2; --gold-2:#e6c36a; --gold-3:#c39a33; --gold-4:#8a6712;
+  --gold-1:var(--text-primary); --gold-2:var(--accent-secondary); --gold-3:var(--accent-primary); --gold-4:var(--accent-deep);
   --gold-face:linear-gradient(145deg,var(--gold-1) 0%,var(--gold-2) 34%,var(--gold-3) 62%,var(--gold-1) 100%);
-  --gold-line:linear-gradient(90deg,transparent,rgba(226,190,110,.55) 18%,rgba(226,190,110,.75) 50%,rgba(226,190,110,.55) 82%,transparent);
-  min-height:100dvh;overflow-x:clip;background:#060504;color:#f2ece0;
+  --gold-line:linear-gradient(90deg,transparent,color-mix(in srgb, var(--accent-secondary) 55%, transparent) 18%,color-mix(in srgb, var(--accent-secondary) 75%, transparent) 50%,color-mix(in srgb, var(--accent-secondary) 55%, transparent) 82%,transparent);
+  min-height:100dvh;overflow-x:clip;background:var(--bg-secondary);color:var(--text-primary);
   font-family:Inter,ui-sans-serif,system-ui,sans-serif;
   /* `place-items:center` EMAS: markazlashtirish balandlikni ham
      qotirar va uzun kontent kesilib qolardi. */
@@ -413,8 +413,8 @@
      sahifa fonining ostiga tushib, umuman ko'rinmasdi. */
   isolation:isolate;
   background:
-    radial-gradient(120% 70% at 50% 0%,rgba(201,161,74,.10),transparent 60%),
-    linear-gradient(180deg,#0b0907 0%,#080706 38%,#060504 100%)
+    radial-gradient(120% 70% at 50% 0%,color-mix(in srgb, var(--accent-primary) 10%, transparent),transparent 60%),
+    linear-gradient(180deg,var(--surface) 0%,var(--surface) 38%,var(--bg-secondary) 100%)
 }
 /* MUQOVA RASMI — faqat TEPADA, xiralashgan va pastga qarab to'liq
    so'nadi.
@@ -435,8 +435,8 @@
   background:var(--cq-cover) center top/cover no-repeat;
   filter:blur(26px) saturate(.7) brightness(.42);
   transform:scale(1.12);transform-origin:50% 0;
-  -webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.9) 0%,rgba(0,0,0,.55) 38%,rgba(0,0,0,.18) 68%,transparent 100%);
-  mask-image:linear-gradient(180deg,rgba(0,0,0,.9) 0%,rgba(0,0,0,.55) 38%,rgba(0,0,0,.18) 68%,transparent 100%)
+  -webkit-mask-image:linear-gradient(180deg,color-mix(in srgb, var(--shade-base) 90%, transparent) 0%,color-mix(in srgb, var(--shade-base) 55%, transparent) 38%,color-mix(in srgb, var(--inset-base) 18%, transparent) 68%,transparent 100%);
+  mask-image:linear-gradient(180deg,color-mix(in srgb, var(--shade-base) 90%, transparent) 0%,color-mix(in srgb, var(--shade-base) 55%, transparent) 38%,color-mix(in srgb, var(--inset-base) 18%, transparent) 68%,transparent 100%)
 }
 /* Nozik don (grain) — qorong'i gradientlarda paydo bo'ladigan
    "halqalar" (banding) ni sindiradi. Qimmat qorong'i interfeyslarda
@@ -449,7 +449,7 @@
 /* Ish stolida — telefon shaklidagi ramka; telefonda butun ekran. */
 @media(min-width:601px){
   .qp-page{padding:22px}
-  .qp-shell{min-height:calc(100dvh - 44px);border-radius:38px;box-shadow:0 40px 100px #000,0 0 0 1px rgba(201,161,74,.34)}
+  .qp-shell{min-height:calc(100dvh - 44px);border-radius:38px;box-shadow:0 40px 100px color-mix(in srgb, var(--shade-base) 82%, transparent),0 0 0 1px color-mix(in srgb, var(--accent-primary) 34%, transparent)}
   /* Yopishgan qator sahifaning 22px chetlashiga moslashadi va ramka
      pastki burchaklaridan chiqib ketmaydi. */
   .qp-bottom{bottom:22px;border-radius:0 0 38px 38px}
@@ -482,21 +482,21 @@
 .qp-fsbtn{
   display:inline-flex;align-items:center;gap:4px;
   max-width:100%;min-height:28px;padding:0 8px;border-radius:99px;cursor:pointer;
-  border:1px solid rgba(226,190,110,.38);
-  background:linear-gradient(160deg,rgba(40,33,18,.9),rgba(18,15,9,.9));
-  color:#d8c08a;font-size:10px;font-weight:600;
+  border:1px solid color-mix(in srgb, var(--accent-secondary) 38%, transparent);
+  background:linear-gradient(160deg,color-mix(in srgb, var(--shade-base) 90%, transparent),color-mix(in srgb, var(--shade-base) 90%, transparent));
+  color:var(--accent-text);font-size:10px;font-weight:600;
   line-height:1;white-space:nowrap;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.07)
+  box-shadow:inset 0 1px 0 color-mix(in srgb, var(--tint-base) 7%, transparent)
 }
 .qp-fsbtn>svg{flex:none}
-.qp-fsbtn:hover{border-color:rgba(226,190,110,.7);color:#f0cf7b}
+.qp-fsbtn:hover{border-color:color-mix(in srgb, var(--accent-secondary) 70%, transparent);color:var(--accent-text)}
 .qp-sidebtn{
-  border:1px solid rgba(226,190,110,.42);border-radius:13px;cursor:pointer;white-space:nowrap;
-  background:linear-gradient(160deg,rgba(40,33,18,.92),rgba(20,17,10,.92));
-  color:#edd79a;padding:9px 11px;font-size:11.5px;font-weight:600;line-height:1.2;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.08)
+  border:1px solid color-mix(in srgb, var(--accent-secondary) 42%, transparent);border-radius:13px;cursor:pointer;white-space:nowrap;
+  background:linear-gradient(160deg,color-mix(in srgb, var(--shade-base) 92%, transparent),color-mix(in srgb, var(--shade-base) 92%, transparent));
+  color:var(--accent-text);padding:9px 11px;font-size:11.5px;font-weight:600;line-height:1.2;
+  box-shadow:inset 0 1px 0 color-mix(in srgb, var(--tint-base) 8%, transparent)
 }
-.qp-sidebtn:hover{border-color:rgba(226,190,110,.75);color:#f7e6b8}
+.qp-sidebtn:hover{border-color:color-mix(in srgb, var(--accent-secondary) 75%, transparent);color:var(--accent-text)}
 .qp-sidebtn:disabled{opacity:.6}
 
 /* OBUNA — mehmon uchun asosiy ikkinchi harakat, shuning uchun butun
@@ -514,13 +514,13 @@
      bilan raqobatlashmaydi. */
   min-width:200px;max-width:100%;min-height:46px;margin-top:22px;padding:0 30px;
   border-radius:99px;cursor:pointer;font-family:inherit;
-  border:1px solid rgba(226,190,110,.5);
-  background:linear-gradient(160deg,rgba(48,39,20,.92),rgba(20,17,10,.92));
-  color:#f0d69a;font-size:14px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 8px 22px rgba(0,0,0,.45)
+  border:1px solid color-mix(in srgb, var(--accent-secondary) 50%, transparent);
+  background:linear-gradient(160deg,color-mix(in srgb, var(--accent-primary) 92%, transparent),color-mix(in srgb, var(--surface) 92%, transparent));
+  color:var(--accent-text);font-size:14px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  box-shadow:inset 0 1px 0 color-mix(in srgb, var(--tint-base) 8%, transparent),0 8px 22px color-mix(in srgb, var(--shade-base) 45%, transparent)
 }
-.qp-follow:hover{border-color:rgba(226,190,110,.9);color:#f9e9bd}
-.qp-follow.is-on{background:rgba(226,190,110,.13);color:#e9cf92}
+.qp-follow:hover{border-color:color-mix(in srgb, var(--accent-secondary) 90%, transparent);color:var(--accent-text)}
+.qp-follow.is-on{background:color-mix(in srgb, var(--accent-secondary) 13%, transparent);color:var(--accent-text)}
 .qp-follow:disabled{opacity:.6}
 
 .qp-ava-wrap{position:relative;display:inline-flex}
@@ -535,28 +535,28 @@
    avvalgi 5px da u oltin hoshiyaning tasodifiy chekkasidek
    ko'rinardi. */
 .qp-hero .story-ring{--ring-radius:50%}
-.qp-hero .story-ring-glow{inset:-21px;box-shadow:0 0 28px rgba(255,160,60,.4)}
-.qp-hero .story-ring::before{inset:-13px;background:#0a0806}
+.qp-hero .story-ring-glow{inset:-21px;box-shadow:0 0 28px color-mix(in srgb, var(--accent-primary) 40%, transparent)}
+.qp-hero .story-ring::before{inset:-13px;background:var(--surface)}
 /* Qalin oltin halqa — maketning eng ko'zga tashlanadigan belgisi. */
 .qp-ava{
   /* Oltin halqa — sahifaning asosiy vizual langari, shuning uchun
      eng katta element. 104px da u "bor, lekin sezilmaydi" edi. */
   width:128px;height:128px;border-radius:50%;display:grid;place-items:center;overflow:hidden;
-  background:#0d0b07;color:#efc65b;font-weight:900;font-size:36px;
+  background:var(--surface);color:var(--accent-text);font-weight:900;font-size:36px;
   box-shadow:
-    0 0 0 3px #0d0b07,
-    0 0 0 10px rgba(201,161,74,.95),
-    0 0 0 11px rgba(120,92,24,.9),
-    0 0 34px -4px rgba(226,190,110,.45),
-    0 18px 48px rgba(0,0,0,.78)
+    0 0 0 3px var(--surface),
+    0 0 0 10px color-mix(in srgb, var(--accent-primary) 95%, transparent),
+    0 0 0 11px color-mix(in srgb, var(--accent-primary) 90%, transparent),
+    0 0 34px -4px color-mix(in srgb, var(--accent-secondary) 45%, transparent),
+    0 18px 48px color-mix(in srgb, var(--shade-base) 78%, transparent)
 }
 .qp-ava img{width:100%;height:100%;object-fit:cover}
 .qp-ava-note{
   position:absolute;right:-1px;bottom:5px;width:34px;height:34px;border-radius:50%;
   display:grid;place-items:center;cursor:pointer;z-index:2;
-  border:1px solid rgba(226,190,110,.5);background:#12100a;color:#e6c169
+  border:1px solid color-mix(in srgb, var(--accent-secondary) 50%, transparent);background:var(--surface);color:var(--accent-text)
 }
-.qp-ava-note.is-on{background:var(--gold-face);color:#241a05;border-color:transparent}
+.qp-ava-note.is-on{background:var(--gold-face);color:var(--accent-ink);border-color:transparent}
 
 /* ISTORYA HALQASI logotipdan 16px PASTGA ham chiqadi — 13px chetlash
    bilan nom halqaning tagiga kirib, unga yopishib qolardi (egasi:
@@ -567,48 +567,48 @@
   font-family:var(--font-display,Georgia),serif;font-size:34px;font-weight:600;line-height:1.18;letter-spacing:.045em;
   background:var(--gold-face);-webkit-background-clip:text;background-clip:text;color:transparent;
   /* Metall harflar ostida yengil issiq nur — tilla "yonib turadi". */
-  filter:drop-shadow(0 2px 10px rgba(201,161,74,.22))
+  filter:drop-shadow(0 2px 10px color-mix(in srgb, var(--accent-primary) 22%, transparent))
 }
 /* Tasdiqlangan belgisi — matn gradienti unga tegmasligi uchun alohida. */
 .qp-verified{
   flex:none;width:25px;height:25px;border-radius:50%;display:grid;place-items:center;
-  background:var(--gold-face);color:#1d1405;font-style:normal;font-size:15px;font-weight:900;line-height:1;
-  -webkit-text-fill-color:#1d1405;box-shadow:0 2px 8px rgba(0,0,0,.5)
+  background:var(--gold-face);color:var(--accent-ink);font-style:normal;font-size:15px;font-weight:900;line-height:1;
+  -webkit-text-fill-color:var(--accent-ink);box-shadow:0 2px 8px color-mix(in srgb, var(--shade-base) 50%, transparent)
 }
-.qp-sub{margin:12px 0 0;max-width:340px;font-size:15px;line-height:1.45;color:#cfc6b4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.qp-sub{margin:12px 0 0;max-width:340px;font-size:15px;line-height:1.45;color:var(--accent-text);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 /* Shahar va ish vaqti — BITTA meta qatorda. Ilgari ular ikki alohida
    satr edi va nom ostida uchta kulrang qator ketma-ket turardi. */
 .qp-meta{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px;margin-top:16px}
 .qp-city{
   display:inline-flex;align-items:center;gap:6px;margin:0;
-  border:1px solid rgba(226,190,110,.26);border-radius:99px;padding:7px 14px;
-  background:rgba(255,255,255,.03);
-  font-size:11.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;line-height:1;color:#cfc6b4
+  border:1px solid color-mix(in srgb, var(--accent-secondary) 26%, transparent);border-radius:99px;padding:7px 14px;
+  background:color-mix(in srgb, var(--tint-base) 3%, transparent);
+  font-size:11.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;line-height:1;color:var(--accent-text)
 }
-.qp-city>svg{flex:none;color:#c9a14a}
+.qp-city>svg{flex:none;color:var(--accent-primary)}
 
 /* Ish vaqti — metall tanachali tugma (maketdagi kabi). */
 .qp-hero .ch-box{position:relative;margin:0;display:block}
 .qp-hero .ch-head{
   padding:7px 16px;gap:8px;border-radius:99px;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
-  border:1px solid rgba(226,190,110,.4);
-  background:linear-gradient(160deg,rgba(86,74,58,.9),rgba(38,32,24,.92));color:#e9dfc8
+  border:1px solid color-mix(in srgb, var(--accent-secondary) 40%, transparent);
+  background:linear-gradient(160deg,color-mix(in srgb, var(--accent-primary) 90%, transparent),color-mix(in srgb, var(--surface) 92%, transparent));color:var(--text-secondary)
 }
-.qp-hero .ch-head small{letter-spacing:0;text-transform:none;color:#bdb3a0}
+.qp-hero .ch-head small{letter-spacing:0;text-transform:none;color:var(--accent-text)}
 /* HOLAT RANGDA ham bilinsin — "ochiq"mi yoki "yopiq"mi degan savolga
    javob bir qarashda kerak. Rangni belgilaydigan yagona manba —
    yashil nuqta (`.ch-dot.is-open`), ya'ni rang bilan matn hech qachon
    bir-biriga zid bo'lib qolmaydi. */
 .qp-hero .ch-box:has(.ch-dot.is-open) .ch-head{
-  border-color:rgba(77,219,143,.45);
-  background:linear-gradient(160deg,rgba(28,64,45,.92),rgba(14,32,23,.94));color:#cdeadb
+  border-color:color-mix(in srgb, var(--success) 45%, transparent);
+  background:linear-gradient(160deg,color-mix(in srgb, var(--success) 92%, transparent),color-mix(in srgb, var(--surface) 94%, transparent));color:var(--success)
 }
 .qp-hero .ch-box:not(:has(.ch-dot.is-open)) .ch-head{
-  border-color:rgba(214,118,104,.42);
-  background:linear-gradient(160deg,rgba(70,34,29,.9),rgba(32,18,16,.92));color:#eed3cd
+  border-color:color-mix(in srgb, var(--danger) 42%, transparent);
+  background:linear-gradient(160deg,color-mix(in srgb, var(--danger) 90%, transparent),color-mix(in srgb, var(--surface) 92%, transparent));color:var(--danger)
 }
-.qp-hero .ch-box:not(:has(.ch-dot.is-open)) .ch-head small{color:#c3a9a3}
-.qp-hero .ch-list{position:absolute;z-index:12;left:50%;transform:translateX(-50%);top:calc(100% + 6px);width:250px;max-width:calc(100vw - 42px);box-shadow:0 18px 44px #000}
+.qp-hero .ch-box:not(:has(.ch-dot.is-open)) .ch-head small{color:var(--danger)}
+.qp-hero .ch-list{position:absolute;z-index:12;left:50%;transform:translateX(-50%);top:calc(100% + 6px);width:250px;max-width:calc(100vw - 42px);box-shadow:0 18px 44px color-mix(in srgb, var(--shade-base) 82%, transparent)}
 
 /* Raqamlar — ikki oltin chiziq orasida. */
 .qp-stats{
@@ -617,8 +617,8 @@
   border-image:var(--gold-line) 1;border-left:0;border-right:0
 }
 .qp-stats>div{flex:1;min-width:0;padding:0 4px}
-.qp-stats b{display:block;font-family:var(--font-display,Georgia),serif;font-size:27px;font-weight:600;line-height:1.1;color:#f5efe2}
-.qp-stats small{display:block;margin-top:7px;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;line-height:1.2;color:#8e8676}
+.qp-stats b{display:block;font-family:var(--font-display,Georgia),serif;font-size:27px;font-weight:600;line-height:1.1;color:var(--text-primary)}
+.qp-stats small{display:block;margin-top:7px;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;line-height:1.2;color:var(--text-faint)}
 
 /* ── Aloqa: OLTIN katakcha, belgi O'Z FIRMA RANGIDA ──────────────── */
 /* O'ng chet yumshoq so'nadi — qator DAVOM ETISHINI bildiradi.
@@ -631,8 +631,8 @@
   /* So'nish faqat OXIRGI 26 pikselda. Ilgari u 87% dan boshlanardi va
      qator ekranga SIG'GANDA ham oxirgi yozuvni ("Ulashish") yarim
      o'chirib qo'yardi. */
-  -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 26px),transparent 100%);
-  mask-image:linear-gradient(90deg,#000 calc(100% - 26px),transparent 100%)
+  -webkit-mask-image:linear-gradient(90deg,var(--bg-primary) calc(100% - 26px),transparent 100%);
+  mask-image:linear-gradient(90deg,var(--bg-primary) calc(100% - 26px),transparent 100%)
 }
 .qp-quick::-webkit-scrollbar{display:none}
 /* Ichki o'ram: sig'sa markazda, sig'masa chapdan boshlanadi va to'liq
@@ -644,7 +644,7 @@
 .qp-qbtn{
   flex:0 0 auto;width:68px;display:flex;flex-direction:column;align-items:center;gap:9px;
   border:0;background:none;padding:0;cursor:pointer;text-decoration:none;text-align:center;
-  font-family:inherit;color:#e6ddcc
+  font-family:inherit;color:var(--text-secondary)
 }
 .qp-page .qp-qbtn{font-size:11.5px;font-weight:500;line-height:1.25}
 .qp-qbtn i{
@@ -653,15 +653,15 @@
   /* Metall his: tepada oq aks, pastda issiq soya, tashqarisida nozik
      qorong'i hoshiya. Ilgari bu shunchaki sariq disk edi. */
   box-shadow:
-    inset 0 1.5px 0 rgba(255,255,255,.72),
-    inset 0 -8px 12px -6px rgba(110,82,18,.55),
-    0 0 0 1px rgba(95,72,18,.85),
-    0 0 16px -6px rgba(226,190,110,.7),
-    0 8px 20px rgba(0,0,0,.6);
+    inset 0 1.5px 0 color-mix(in srgb, var(--tint-base) 72%, transparent),
+    inset 0 -8px 12px -6px color-mix(in srgb, var(--accent-primary) 55%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent-primary) 85%, transparent),
+    0 0 16px -6px color-mix(in srgb, var(--accent-secondary) 70%, transparent),
+    0 8px 20px color-mix(in srgb, var(--shade-base) 60%, transparent);
   transition:transform .16s,filter .16s
 }
 /* Belgi o'z rangida — oltin ustida o'qilishi uchun yengil oq soya. */
-.qp-qbtn i>svg{filter:drop-shadow(0 1px 0 rgba(255,255,255,.5))}
+.qp-qbtn i>svg{filter:drop-shadow(0 1px 0 color-mix(in srgb, var(--tint-base) 50%, transparent))}
 .qp-qbtn:hover i{transform:translateY(-2px);filter:brightness(1.07)}
 .qp-qbtn span{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* "Ulashish" — ShareButton ichida <i> yo'q, belgi to'g'ridan-to'g'ri
@@ -669,14 +669,14 @@
    Ikki sinf (0,2,0) Tailwind'ning `gap-2` sidan kuchliroq. */
 .qp-qbtn.qp-qbtn--share{gap:9px}
 .qp-qbtn--share>svg{
-  width:62px;height:62px;padding:17px;box-sizing:border-box;border-radius:50%;color:#5a4410;
+  width:62px;height:62px;padding:17px;box-sizing:border-box;border-radius:50%;color:color-mix(in srgb, var(--accent-primary) 22%, var(--surface));
   background:var(--gold-face);
   box-shadow:
-    inset 0 1.5px 0 rgba(255,255,255,.72),
-    inset 0 -8px 12px -6px rgba(110,82,18,.55),
-    0 0 0 1px rgba(95,72,18,.85),
-    0 0 16px -6px rgba(226,190,110,.7),
-    0 8px 20px rgba(0,0,0,.6)
+    inset 0 1.5px 0 color-mix(in srgb, var(--tint-base) 72%, transparent),
+    inset 0 -8px 12px -6px color-mix(in srgb, var(--accent-primary) 55%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent-primary) 85%, transparent),
+    0 0 16px -6px color-mix(in srgb, var(--accent-secondary) 70%, transparent),
+    0 8px 20px color-mix(in srgb, var(--shade-base) 60%, transparent)
 }
 .qp-qbtn--share:hover>svg{filter:brightness(1.07)}
 
@@ -690,18 +690,18 @@
 .qp-tabs::-webkit-scrollbar{display:none}
 .qp-tabs-in{display:flex;gap:9px;margin:0 auto}
 .qp-tab{
-  flex:0 0 auto;border:1px solid rgba(226,190,110,.42);border-radius:99px;cursor:pointer;
-  background:rgba(16,13,8,.6);color:#ddd0ae;
+  flex:0 0 auto;border:1px solid color-mix(in srgb, var(--accent-secondary) 42%, transparent);border-radius:99px;cursor:pointer;
+  background:color-mix(in srgb, var(--surface) 60%, transparent);color:var(--accent-text);
   padding:10px 16px;font-family:inherit;font-size:11.5px;font-weight:700;line-height:1;letter-spacing:.06em;text-transform:uppercase
 }
-.qp-tab:hover{border-color:rgba(226,190,110,.8);color:#f7e6b8}
+.qp-tab:hover{border-color:color-mix(in srgb, var(--accent-secondary) 80%, transparent);color:var(--accent-text)}
 /* Faol bo'lim — oltin, lekin "Kontaktni saqlash" dan SO'NIQROQ.
    Sahifada eng yorqin element bitta bo'lishi kerak, aks holda ko'z
    qayerga qarashni bilmaydi. */
 .qp-tab.is-on{
-  background:linear-gradient(160deg,#e8cf8e 0%,#cfa94f 45%,#b28c33 100%);
-  color:#241a05;border-color:rgba(95,72,18,.7);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 6px 16px rgba(0,0,0,.45)
+  background:linear-gradient(160deg,var(--accent-secondary) 0%,var(--accent-primary) 45%,var(--accent-primary) 100%);
+  color:var(--accent-ink);border-color:color-mix(in srgb, var(--accent-primary) 70%, transparent);
+  box-shadow:inset 0 1px 0 color-mix(in srgb, var(--tint-base) 45%, transparent),0 6px 16px color-mix(in srgb, var(--shade-base) 45%, transparent)
 }
 
 /* ── Bo'lim kontenti ─────────────────────────────────────────────────
@@ -720,8 +720,8 @@
    matn" dan "qatlamlangan interfeys" ga aylantiradi. */
 .qp-body{
   flex:1 1 auto;overflow-x:clip;padding:22px 18px 28px;
-  background:linear-gradient(180deg,rgba(0,0,0,.34) 0%,rgba(0,0,0,.5) 100%);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.05)
+  background:linear-gradient(180deg,color-mix(in srgb, var(--inset-base) 34%, transparent) 0%,color-mix(in srgb, var(--inset-base) 50%, transparent) 100%);
+  box-shadow:inset 0 1px 0 color-mix(in srgb, var(--tint-base) 5%, transparent)
 }
 
 .qp-posts{display:grid;gap:16px}
@@ -729,25 +729,25 @@
 /* PREMIUM CHUQURLIK: yumshoq oltin "rim-glow" + yengil balandlik
    soyasi. Manfiy tarqalish (-6px) SHART — usiz yorug'lik kartochkani
    o'rab, arzon neonga o'xshab qolardi. */
-.qp-posts article{border:1px solid rgba(226,190,110,.45);border-radius:18px;overflow:hidden;background:rgba(12,10,7,.85);
-  box-shadow:0 0 18px -6px rgba(226,190,110,.6),0 14px 34px rgba(0,0,0,.55)}
+.qp-posts article{border:1px solid color-mix(in srgb, var(--accent-secondary) 45%, transparent);border-radius:18px;overflow:hidden;background:color-mix(in srgb, var(--surface) 85%, transparent);
+  box-shadow:0 0 18px -6px color-mix(in srgb, var(--accent-secondary) 60%, transparent),0 14px 34px color-mix(in srgb, var(--shade-base) 55%, transparent)}
 /* Post rasmi sahifaga MOS: 16:10 kadr. Ilgari `max-height:320px` edi
    va baland rasm butun oynani egallab, ostidagi hech narsa
    ko'rinmasdi. */
 /* `max-height` OLIB TASHLANDI: sahifa endi suriladi, ya'ni rasmni
    kichraytirib siqishning hojati yo'q. */
-.qp-posts img,.qp-posts video{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;background:#000}
-.qp-posts p{margin:0;padding:13px 15px;font-size:13px;line-height:1.55;color:#bcb2a0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.qp-posts img,.qp-posts video{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;background:var(--bg-primary)}
+.qp-posts p{margin:0;padding:13px 15px;font-size:13px;line-height:1.55;color:var(--accent-text);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 
 .qp-cards{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 /* BITTA element qolganda yonida teshik qolmasin — kartochka butun
    kenglikni egallaydi va bo'lim tugallangan ko'rinadi. */
 .qp-cards:has(>:only-child){grid-template-columns:1fr}
 .qp-cards:has(>:only-child) .qp-item-pic{aspect-ratio:16/10}
-.qp-item{border:1px solid rgba(226,190,110,.35);border-radius:17px;overflow:hidden;background:rgba(12,10,7,.85);
-  box-shadow:0 0 18px -6px rgba(226,190,110,.55),0 12px 30px rgba(0,0,0,.5);
+.qp-item{border:1px solid color-mix(in srgb, var(--accent-secondary) 35%, transparent);border-radius:17px;overflow:hidden;background:color-mix(in srgb, var(--surface) 85%, transparent);
+  box-shadow:0 0 18px -6px color-mix(in srgb, var(--accent-secondary) 55%, transparent),0 12px 30px color-mix(in srgb, var(--shade-base) 50%, transparent);
   transition:transform .18s ease,box-shadow .18s ease}
-.qp-item:hover{transform:translateY(-2px);box-shadow:0 0 22px -5px rgba(226,190,110,.75),0 18px 38px rgba(0,0,0,.58)}
+.qp-item:hover{transform:translateY(-2px);box-shadow:0 0 22px -5px color-mix(in srgb, var(--accent-secondary) 75%, transparent),0 18px 38px color-mix(in srgb, var(--shade-base) 58%, transparent)}
 /* 4:3 kadr — kvadrat rasm kartochkani juda baland qilardi va
    ekranda bitta qator ham to'liq sig'masdi. */
 /* Rasm YO'Q holat. Ilgari bu yerda qiya sariq-qora yo'llar bor edi va
@@ -755,20 +755,20 @@
    uchun eng noto'g'ri assotsiatsiya. Endi tinch oltin nur. */
 .qp-item-pic{position:relative;aspect-ratio:4/3;display:grid;place-items:center;overflow:hidden;
   background:
-    radial-gradient(70% 70% at 50% 38%,rgba(226,190,110,.13),transparent 72%),
-    linear-gradient(160deg,#14110b,#0b0907)}
+    radial-gradient(70% 70% at 50% 38%,color-mix(in srgb, var(--accent-secondary) 13%, transparent),transparent 72%),
+    linear-gradient(160deg,var(--surface-elevated),var(--surface))}
 .qp-item-pic img{width:100%;height:100%;object-fit:cover}
-.qp-item-pic span{font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.18em;color:rgba(226,190,110,.38)}
+.qp-item-pic span{font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.18em;color:color-mix(in srgb, var(--accent-secondary) 38%, transparent)}
 .qp-item-txt{padding:13px}
 .qp-item-txt b{display:block;font-size:13.5px;font-weight:700;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.qp-item-txt strong{display:block;margin-top:6px;font-family:'Space Mono',monospace;font-size:13.5px;font-weight:700;color:#e3b44a}
+.qp-item-txt strong{display:block;margin-top:6px;font-family:'Space Mono',monospace;font-size:13.5px;font-weight:700;color:var(--accent-primary)}
 /* DIQQAT: `font:700 10px/1 inherit` YOZMANG — `font` qisqartmasi ichida
    oila sifatida `inherit` bo'lmaydi va butun qoida tashlab yuboriladi. */
-.qp-order{width:100%;min-height:40px;margin-top:11px;border:1px solid rgba(226,190,110,.42);border-radius:11px;background:rgba(226,190,110,.1);color:#f0cf7b;padding:9px;font-family:inherit;font-size:11.5px;font-weight:700;line-height:1.2;cursor:pointer}
-.qp-order:hover{background:rgba(226,190,110,.2)}
+.qp-order{width:100%;min-height:40px;margin-top:11px;border:1px solid color-mix(in srgb, var(--accent-secondary) 42%, transparent);border-radius:11px;background:color-mix(in srgb, var(--accent-secondary) 10%, transparent);color:var(--accent-text);padding:9px;font-family:inherit;font-size:11.5px;font-weight:700;line-height:1.2;cursor:pointer}
+.qp-order:hover{background:color-mix(in srgb, var(--accent-secondary) 20%, transparent)}
 
-.qp-desc{margin:0;font-size:15px;line-height:1.75;color:#c1b8a6}
-.qp-addr{margin:11px 0 0;font-size:12.5px;line-height:1.5;color:#948b7c}
+.qp-desc{margin:0;font-size:15px;line-height:1.75;color:var(--accent-text)}
+.qp-addr{margin:11px 0 0;font-size:12.5px;line-height:1.5;color:var(--text-muted)}
 .qp-body .pf-story-grid{margin-top:0}
 /* XARITA — oltin hoshiyali kadr. Balandligi o'lchamga moslashadi:
    telefonda ham, ish stolida ham bir xil nisbat. */
@@ -776,43 +776,43 @@
    kartochkamiz (manzil + belgi), bosilganda o'rniga haqiqiy xarita
    yuklanadi. Shu sababli tashqi xizmat sekin bo'lsa ham sahifa hech
    qachon bo'sh kulrang kadr ko'rsatmaydi. */
-.qp-map{margin-top:20px;border:1px solid rgba(226,190,110,.45);border-radius:17px;overflow:hidden;background:#0c0a07;
-  box-shadow:0 0 18px -6px rgba(226,190,110,.5),0 12px 30px rgba(0,0,0,.5)}
-.qp-map iframe{display:block;width:100%;height:210px;border:0;background:#0c0a07;color-scheme:dark;filter:grayscale(.2) contrast(1.05)}
+.qp-map{margin-top:20px;border:1px solid color-mix(in srgb, var(--accent-secondary) 45%, transparent);border-radius:17px;overflow:hidden;background:var(--surface);
+  box-shadow:0 0 18px -6px color-mix(in srgb, var(--accent-secondary) 50%, transparent),0 12px 30px color-mix(in srgb, var(--shade-base) 50%, transparent)}
+.qp-map iframe{display:block;width:100%;height:210px;border:0;background:var(--surface);color-scheme:dark;filter:grayscale(.2) contrast(1.05)}
 .qp-map-card{
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;
   width:100%;min-height:112px;padding:16px 14px;border:0;cursor:pointer;text-align:center;
   /* Qiya sariq-qora yo'llar OLIB TASHLANDI — mahsulot o'rni bilan bir
      xil sabab: ular qurilish ogohlantirish lentasiga o'xshardi. */
   background:
-    radial-gradient(75% 85% at 50% 10%,rgba(226,190,110,.12),transparent 72%),
-    linear-gradient(160deg,#14110b,#0a0806);
-  color:#e6ddcc;font-family:inherit
+    radial-gradient(75% 85% at 50% 10%,color-mix(in srgb, var(--accent-secondary) 12%, transparent),transparent 72%),
+    linear-gradient(160deg,var(--surface-elevated),var(--surface));
+  color:var(--text-secondary);font-family:inherit
 }
-.qp-map-card i{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:var(--gold-face);color:#5a4410;box-shadow:0 6px 16px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.55)}
+.qp-map-card i{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:var(--gold-face);color:color-mix(in srgb, var(--accent-primary) 22%, var(--surface));box-shadow:0 6px 16px color-mix(in srgb, var(--shade-base) 50%, transparent),inset 0 1px 0 color-mix(in srgb, var(--tint-base) 55%, transparent)}
 .qp-map-card b{font-size:14px;font-weight:600;line-height:1.45;max-width:290px}
-.qp-map-card small{font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#cfa14c}
+.qp-map-card small{font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-primary)}
 .qp-map-card:hover{filter:brightness(1.06)}
 .qp-route{
   display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:52px;margin-top:16px;
-  border:1px solid rgba(226,190,110,.42);border-radius:14px;background:rgba(18,14,8,.8);
-  color:#f0cf7b;padding:14px;font-size:14px;font-weight:700;text-decoration:none
+  border:1px solid color-mix(in srgb, var(--accent-secondary) 42%, transparent);border-radius:14px;background:color-mix(in srgb, var(--surface) 80%, transparent);
+  color:var(--accent-text);padding:14px;font-size:14px;font-weight:700;text-decoration:none
 }
-.qp-route:hover{border-color:rgba(226,190,110,.8);color:#f7e6b8}
+.qp-route:hover{border-color:color-mix(in srgb, var(--accent-secondary) 80%, transparent);color:var(--accent-text)}
 /* TO'LDIRILGAN OLTIN EMAS. Sahifada to'ldirilgan oltin FAQAT bitta
    tugmada — "Kontaktni saqlash" da. Ikkita yorqin oltin qator bir
    ekranda turganda ko'z qay birini tanlashni bilmaydi va ikkalasi
    ham "asosiy" bo'lishdan to'xtaydi. */
 .qp-public{
   width:100%;min-height:54px;margin-top:16px;border-radius:15px;padding:15px 18px;cursor:pointer;
-  border:1px solid rgba(226,190,110,.45);
-  background:linear-gradient(160deg,rgba(46,38,20,.9),rgba(18,15,9,.92));
-  color:#f0cf7b;font-family:inherit;font-weight:700;font-size:14.5px;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 8px 22px rgba(0,0,0,.45)
+  border:1px solid color-mix(in srgb, var(--accent-secondary) 45%, transparent);
+  background:linear-gradient(160deg,color-mix(in srgb, var(--accent-primary) 90%, transparent),color-mix(in srgb, var(--surface) 92%, transparent));
+  color:var(--accent-text);font-family:inherit;font-weight:700;font-size:14.5px;
+  box-shadow:inset 0 1px 0 color-mix(in srgb, var(--tint-base) 7%, transparent),0 8px 22px color-mix(in srgb, var(--shade-base) 45%, transparent)
 }
 .qp-public span{float:right}
-.qp-public:hover{border-color:rgba(226,190,110,.85);color:#f9e9bd}
-.qp-foot{display:flex;justify-content:space-between;gap:10px;margin:26px 0 0;color:#6b655b;font-size:9px;letter-spacing:.13em}
+.qp-public:hover{border-color:color-mix(in srgb, var(--accent-secondary) 85%, transparent);color:var(--accent-text)}
+.qp-foot{display:flex;justify-content:space-between;gap:10px;margin:26px 0 0;color:var(--border-strong);font-size:9px;letter-spacing:.13em}
 
 /* Musiqa — yopiq holatda joy egallamaydi, lekin ULANGAN qoladi:
    ekran o'chsa ham ijro to'xtamaydi (MediaSession). */
@@ -827,14 +827,14 @@
 .qp-bottom{
   flex:none;position:sticky;bottom:0;z-index:14;
   padding:12px 18px calc(14px + env(safe-area-inset-bottom,0px));
-  background:linear-gradient(180deg,rgba(6,5,4,0) 0%,rgba(6,5,4,.82) 26%,rgba(6,5,4,.97) 62%);
+  background:linear-gradient(180deg,transparent 0%,color-mix(in srgb, var(--shade-base) 82%, transparent) 26%,color-mix(in srgb, var(--shade-base) 97%, transparent) 62%);
   backdrop-filter:blur(6px)
 }
 .qp-save{
   position:relative;overflow:hidden;
   width:100%;min-height:58px;border:0;border-radius:16px;cursor:pointer;font-family:inherit;
-  background:var(--gold-face);color:#241a05;font-size:17px;font-weight:700;letter-spacing:.02em;
-  box-shadow:0 0 22px -6px rgba(226,190,110,.8),0 12px 34px rgba(201,161,74,.28),inset 0 1px 0 rgba(255,255,255,.55)
+  background:var(--gold-face);color:var(--accent-ink);font-size:17px;font-weight:700;letter-spacing:.02em;
+  box-shadow:0 0 22px -6px color-mix(in srgb, var(--accent-secondary) 80%, transparent),0 12px 34px color-mix(in srgb, var(--accent-primary) 28%, transparent),inset 0 1px 0 color-mix(in srgb, var(--tint-base) 55%, transparent)
 }
 .qp-save:hover{filter:brightness(1.05)}
 /* YORUG'LIK O'TISHI — metall yuzada sekin yuruvchi aks. Nomi
@@ -848,7 +848,7 @@
 }
 .qp-save::after{
   content:'';position:absolute;top:0;bottom:0;left:0;width:38%;
-  background:linear-gradient(100deg,transparent,rgba(255,255,255,.42) 50%,transparent);
+  background:linear-gradient(100deg,transparent,color-mix(in srgb, var(--tint-base) 42%, transparent) 50%,transparent);
   pointer-events:none;animation:qp-sweep 4.2s ease-in-out infinite
 }
 @media (prefers-reduced-motion:reduce){
@@ -886,11 +886,11 @@ body:has(.qp-page) .ai-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
      ga portal orqali qo'yiladi, ya'ni `.qp-page` ning ICHIDA emas va
      uning o'zgaruvchilari bu yerga meros bo'lib o'tmaydi. Ilgari shu
      sabab qadam raqamlari qora fonda qora bo'lib ko'rinmay qolgan edi. */
-  --gold-1:#fbeec2; --gold-2:#e6c36a; --gold-3:#c39a33;
+  --gold-1:var(--text-primary); --gold-2:var(--accent-secondary); --gold-3:var(--accent-primary);
   --gold-face:linear-gradient(145deg,var(--gold-1) 0%,var(--gold-2) 34%,var(--gold-3) 62%,var(--gold-1) 100%);
   position:fixed;inset:0;z-index:120;
   display:flex;align-items:flex-end;justify-content:center;
-  background:rgba(4,3,2,.72);backdrop-filter:blur(3px);
+  background:color-mix(in srgb, var(--shade-base) 72%, transparent);backdrop-filter:blur(3px);
   animation:ma-fade .16s ease-out;
 }
 @keyframes ma-fade{from{opacity:0}to{opacity:1}}
@@ -898,41 +898,41 @@ body:has(.qp-page) .ai-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
   width:min(100%,440px);
   padding:14px 14px calc(14px + env(safe-area-inset-bottom,0px));
   border-radius:20px 20px 0 0;
-  border:1px solid rgba(226,190,110,.3);border-bottom:0;
-  background:linear-gradient(180deg,#15110a 0%,#0b0906 100%);
-  box-shadow:0 -18px 50px rgba(0,0,0,.7);
+  border:1px solid color-mix(in srgb, var(--accent-secondary) 30%, transparent);border-bottom:0;
+  background:linear-gradient(180deg,var(--surface-elevated) 0%,var(--surface) 100%);
+  box-shadow:0 -18px 50px color-mix(in srgb, var(--shade-base) 70%, transparent);
   animation:ma-up .2s cubic-bezier(.22,1,.36,1);
 }
 @keyframes ma-up{from{transform:translateY(18px)}to{transform:translateY(0)}}
 .ma-head{
   display:flex;align-items:center;gap:8px;
   padding:2px 4px 12px;
-  color:#f0d69a;
+  color:var(--accent-text);
 }
-.ma-head i{display:grid;place-items:center;color:#e0be72}
+.ma-head i{display:grid;place-items:center;color:var(--accent-text)}
 .ma-head b{font-size:14px;font-weight:700}
 .ma-item{
   display:flex;align-items:center;justify-content:space-between;
   width:100%;min-height:50px;margin-bottom:8px;padding:0 15px;
   border-radius:13px;
-  border:1px solid rgba(226,190,110,.24);
-  background:linear-gradient(160deg,rgba(44,36,19,.75),rgba(20,16,9,.85));
-  color:#f3e4bf;font-size:14.5px;font-weight:600;text-align:left;
+  border:1px solid color-mix(in srgb, var(--accent-secondary) 24%, transparent);
+  background:linear-gradient(160deg,color-mix(in srgb, var(--surface) 75%, transparent),color-mix(in srgb, var(--surface) 85%, transparent));
+  color:var(--accent-text);font-size:14.5px;font-weight:600;text-align:left;
   cursor:pointer;
 }
-.ma-item span{color:#c0a44e;font-size:19px;line-height:1}
+.ma-item span{color:var(--accent-primary);font-size:19px;line-height:1}
 .ma-close{
   width:100%;min-height:46px;margin-top:4px;
-  border-radius:13px;border:1px solid rgba(255,255,255,.1);
-  background:rgba(255,255,255,.05);
-  color:#b9ab8e;font-size:14px;font-weight:600;cursor:pointer;
+  border-radius:13px;border:1px solid color-mix(in srgb, var(--tint-base) 10%, transparent);
+  background:color-mix(in srgb, var(--tint-base) 5%, transparent);
+  color:var(--accent-text);font-size:14px;font-weight:600;cursor:pointer;
 }
 
 /* Yo'riqnoma matni va qadamlari — xarita tanlovi bilan bir xil
    varaqda (`.ma-sheet`) ishlatiladi. */
 .ma-note{
   margin:0 4px 12px;
-  color:#b9ab8e;font-size:12.5px;line-height:1.5;
+  color:var(--accent-text);font-size:12.5px;line-height:1.5;
 }
 .ma-steps{
   margin:0 0 12px;padding:0 0 0 4px;
@@ -942,17 +942,27 @@ body:has(.qp-page) .ai-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
   counter-increment:ma;
   position:relative;
   padding:0 0 10px 30px;
-  color:#f3e4bf;font-size:13.5px;line-height:1.45;
+  color:var(--accent-text);font-size:13.5px;line-height:1.45;
 }
 .ma-steps li::before{
   content:counter(ma);
   position:absolute;left:0;top:-1px;
   width:21px;height:21px;border-radius:50%;
   display:grid;place-items:center;
-  background:var(--gold-face);color:#241a05;
+  background:var(--gold-face);color:var(--accent-ink);
   font-size:11px;font-weight:700;
 }
 
 /* Bo'limdagi izoh qatori: story va post ikki alohida ish ekanini
    aytadi. Panel ichida, sarlavhadan keyin turadi. */
-.cw-note{margin:12px 0 0;padding:10px 13px;border:1px solid rgba(212,175,55,.24);border-radius:13px;background:rgba(212,175,55,.06);font-size:12.5px;line-height:1.6;color:rgba(255,255,255,.66)}
+.cw-note{margin:12px 0 0;padding:10px 13px;border:1px solid color-mix(in srgb, var(--accent-primary) 24%, transparent);border-radius:13px;background:color-mix(in srgb, var(--accent-primary) 6%, transparent);font-size:12.5px;line-height:1.6;color:color-mix(in srgb, var(--tint-base) 66%, transparent)}
+
+
+/* ── MUQOVA RASMI USTIDAGI MATN (faqat rang) ─────────────────────────
+   `.cp-hero` foni foydalanuvchi yuklagan rasm + qora gradient (JSX'da
+   inline). Shuning uchun undagi matn mavzuga emas, RASMGA qarab
+   tanlanadi va har doim oq bo'ladi — aks holda yorug' (Pearl)
+   mavzuda to'q matn to'q rasm ustiga tushib o'qilmay qolardi. */
+.cp-hero, .cp-hero .cp-hero-copy, .cp-hero .cp-title-row h1 { color: var(--on-media); }
+.cp-hero .cp-lead, .cp-hero .cp-title-row p { color: var(--on-media-dim); }
+.cp-hero .cp-kicker { color:var(--accent-text); }

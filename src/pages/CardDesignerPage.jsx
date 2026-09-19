@@ -921,7 +921,7 @@ export default function CardDesignerPage({ embedded = false, code = '', printApi
           {t('Karta dizayni')}
         </span>
         <h1 className="mt-4 max-w-xl text-4xl font-extrabold leading-tight tracking-tight">
-          {t('NFC karta')} <span className="bg-gradient-to-br from-white to-base-content/50 bg-clip-text text-transparent">{t('dizaynini tayyorlang')}</span>
+          {t('NFC karta')} <span className="bg-gradient-to-br from-base-content to-base-content/55 bg-clip-text text-transparent">{t('dizaynini tayyorlang')}</span>
         </h1>
         <p className="mt-3 max-w-xl text-sm text-base-content/60">
           {t('Matn, rang, fon va logotipni tanlab, jismoniy NFC kartangiz uchun bosma dizaynni shu yerda tayyorlang va tayyor rasmni PNG holida yuklab oling.')}

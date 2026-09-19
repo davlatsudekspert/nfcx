@@ -5,6 +5,7 @@ import { companyIdLocalInfo } from './lib/company.js';
 import { dbList } from './lib/db.js';
 import { AuthProvider } from './lib/auth.jsx';
 import { LanguageProvider, useLanguage } from './lib/i18n.jsx';
+import { ThemeProvider } from './lib/theme.jsx';
 import { applySeo, seoForRoute, seoForProfile } from './lib/seo.js';
 import { PaymentsEnabledProvider } from './lib/paymentsEnabled.jsx';
 import Header from './components/Header.jsx';
@@ -308,6 +309,7 @@ export default function App() {
   );
 
   return (
+    <ThemeProvider>
     <LanguageProvider>
       <SeoSync route={cleanRoute} profileCode={profileCode} catalog={catalog} />
       <PaymentsEnabledProvider>
@@ -327,5 +329,6 @@ export default function App() {
         </AuthProvider>
       </PaymentsEnabledProvider>
     </LanguageProvider>
+    </ThemeProvider>
   );
 }

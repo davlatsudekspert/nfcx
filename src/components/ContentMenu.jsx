@@ -146,7 +146,7 @@ function ReportModal({ targetKind, targetId, onClose }) {
                   aria-pressed={reason === key}
                   className={`min-h-11 rounded-xl border px-4 py-2 text-[13px] transition ${
                     reason === key
-                      ? 'border-[color:var(--vz-gold)] bg-[color:var(--vz-gold)]/12 font-bold text-[color:var(--vz-gold-2)]'
+                      ? 'border-[color:var(--vz-gold)] bg-[color:var(--vz-gold)]/12 font-bold text-[color:var(--accent-text)]'
                       : 'border-white/12 text-base-content/80 hover:border-white/30'
                   }`}
                 >

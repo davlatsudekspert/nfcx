@@ -22,7 +22,7 @@ export function GiftCard({ gift }) {
       <button
         type="button"
         onClick={() => navigate('/' + gift.code)}
-        className="mt-1 min-h-11 cursor-pointer py-2 text-center font-mono text-2xl font-extrabold tracking-[0.14em] text-[#f2d9a0] transition-colors hover:text-[#ffe9bf]"
+        className="mt-1 min-h-11 cursor-pointer py-2 text-center font-mono text-2xl font-extrabold tracking-[0.14em] text-[color:var(--accent-text)] transition-colors hover:text-[#ffe9bf]"
       >
         {gift.code}
       </button>
@@ -86,7 +86,7 @@ export default function GiftsPage({ catalog = [] }) {
       </section>
 
       <section className="mt-8">
-        <div className="gift-luxe-hero grid items-center gap-8 rounded-3xl border border-[#e6c165]/20 bg-gradient-to-br from-[#17130c] via-[#100d09] to-[#070605] p-6 sm:p-9 lg:grid-cols-[1.02fr_0.98fr]">
+        <div className="gift-luxe-hero grid items-center gap-8 rounded-3xl border border-[color:var(--accent-primary)]/20 bg-gradient-to-br from-[color:var(--surface-elevated)] via-[color:var(--surface)] to-[color:var(--bg-secondary)] p-6 sm:p-9 lg:grid-cols-[1.02fr_0.98fr]">
           <div>
             <span className="gift-luxe-kicker">NFCSTORE GOLD EDITION</span>
             <h2 className="vz-h2 mt-3">

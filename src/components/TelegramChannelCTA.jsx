@@ -21,7 +21,7 @@ export default function TelegramChannelCTA() {
         href={TELEGRAM_CHANNEL_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-3 inline-flex items-center gap-2 rounded-lg border border-[#d4af5a]/45 bg-[#d4af5a]/10 px-4 py-2 text-sm font-semibold text-[#d4af5a] transition hover:border-[#d4af5a]/80 hover:bg-[#d4af5a]/15 hover:text-[#e8c165] hover:shadow-[0_0_18px_rgba(212,175,90,0.28)]"
+        className="mt-3 inline-flex items-center gap-2 rounded-lg border border-[color:var(--accent-primary)]/45 bg-[color:var(--accent-primary)]/10 px-4 py-2 text-sm font-semibold text-[color:var(--accent-primary)] transition hover:border-[color:var(--accent-primary)]/80 hover:bg-[color:var(--accent-primary)]/15 hover:text-[color:var(--accent-text)] hover:shadow-[0_0_18px_var(--accent-a25)]"
       >
         <IconTelegram width="16" height="16" />
         {t('Telegram kanalga qo‘shilish')}

@@ -72,7 +72,7 @@ export default function PhysicalCardPromoCard() {
 
           {/* O'rta: taklif matni */}
           <span className="block">
-            <span className="block font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-[color:var(--vz-gold-2)] sm:text-[13px]">
+            <span className="block font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-[color:var(--accent-secondary)] sm:text-[13px]">
               {t('O‘zingiz xohlagan uslubda')}
             </span>
             <span className="mt-2 block text-[17px] font-semibold leading-snug text-white sm:text-[19px]">
@@ -85,7 +85,7 @@ export default function PhysicalCardPromoCard() {
             <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#f6e3a8] to-[#c9a24b] px-5 py-2.5 text-[15px] font-extrabold text-[#1a1206] shadow-[0_6px_18px_-8px_rgba(212,175,90,0.9)]">
               {t('Buyurtma berish')} &rarr;
             </span>
-            <span className="font-mono text-[15px] font-semibold text-[color:var(--vz-gold-2)]">
+            <span className="font-mono text-[15px] font-semibold text-[color:var(--accent-secondary)]">
               {fmt(PHYSICAL_CARD_FEE)} {t("so'm")}
             </span>
           </span>

@@ -32,7 +32,7 @@ export default function ContactPage() {
           {t('Aloqa')}
         </span>
         <h1 className="mt-4 max-w-xl text-4xl font-extrabold leading-tight tracking-tight">
-          {t('Biz bilan')} <span className="bg-gradient-to-br from-white to-base-content/50 bg-clip-text text-transparent">{t("bog'laning")}</span>
+          {t('Biz bilan')} <span className="bg-gradient-to-br from-base-content to-base-content/55 bg-clip-text text-transparent">{t("bog'laning")}</span>
         </h1>
         <p className="mt-3 max-w-lg text-[15px] text-base-content/60">{t("Savol, taklif yoki muammo bo'lsa — quyidagi kanallardan istalganida yozing.")}</p>
       </section>
