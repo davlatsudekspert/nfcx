@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import StoryViewer from './StoryViewer.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
 import { storyMediaKind, storyMediaUrl, videoPosterSrc } from '../lib/story-media.js';
@@ -15,107 +15,119 @@ import { storyMediaKind, storyMediaUrl, videoPosterSrc } from '../lib/story-medi
 // ko'rishning ikkinchi, ochiq yo'lini beradi.
 
 // ═══════════════════════════════════════════════════════════════════════
-// NEGA HAR KATAK O'Z HOLATINI YURITADI
+// KATAK HECH QACHON "SHUNCHAKI QORA" BO'LMASLIGI KERAK
 //
-// SHIKOYAT. VIP001 profilida "Stories 7" deb yozilardi, lekin ekranda
-// bitta rasm ko'rinib, qolgan olti katak QOP-QORA turardi.
+// SHIKOYAT. VIP001 da "Stories 7" deb yozilgan, lekin ekranda ikkita
+// rasm ko'rinib, qolgan beshta katak bo'm-bo'sh qora turardi.
 //
-// SABAB — ROSTAKAM, CSS EMAS. Katak ichida ikki xil media bo'ladi:
+// BIRINCHI URINISH VA U NEGA YETARLI BO'LMADI. Avval har katakka
+// holat (`loading → ready | error`) berilgan, media esa `ready`
+// bo'lgunicha `opacity:0` bilan YASHIRILGAN edi. Bu yondashuv
+// BRAUZER HODISASIGA TAYANARDI: `onLoad` yoki `onError` chiqmasa,
+// katak abadiy `loading` da qolardi.
 //
-//   1) VIDEO. Ilgari u shunchaki `<video preload="metadata">` edi,
-//      `poster` ESA YO'Q EDI. `preload="metadata"` brauzerga "faqat
-//      uzunligi va o'lchamini ol, KADR OLMA" deydi. Ya'ni element
-//      chizilgan, lekin ichida ko'rsatadigan pikselning O'ZI yo'q —
-//      natija qop-qora to'rtburchak. Android Chrome'dagi "Trafikni
-//      tejash" yoki `Save-Data` yoqilgan bo'lsa, u metama'lumotni ham
-//      olmaydi va qorayish 100% bo'ladi. Shuning uchun aynan VIDEO
-//      istoryalar qorayib, RASM istorya ko'rinib turgan.
+// Telefonda esa aynan shunday bo'ladi. So'rov osilib qolsa (sekin
+// tarmoq, katta fayl, Android Chrome'ning "Trafikni tejash" rejimi,
+// uzilib qolgan ulanish) na `load`, na `error` chiqadi. Natijada:
+//   • rasm `opacity:0` bilan ko'rinmas bo'lib qolardi;
+//   • ostidagi qatlam esa RASM uchun BO'SH chizilardi — matn faqat
+//     video va xato holatlariga yozilgan edi.
+// Ikkalasi qo'shilib, yana o'sha qop-qora katak chiqardi — bu safar
+// hech qanday izohsiz. Buni brauzerda media so'rovini ataylab osib
+// qo'yib takrorlash mumkin: 7 katakdan 7 tasi bo'm-bo'sh.
 //
-//   2) MEDIA OCHILMASA. `<img>` da `onError` umuman yo'q edi. Fayl
-//      404 bo'lsa (R2 dan o'chib ketgan, eski havola) yoki buzuq
-//      bo'lsa, rasm JIM YIQILARDI: katak fonining rangi ko'rinardi —
-//      u ham qora. Ya'ni "video kadr olmadi" bilan "fayl yo'q" ekranda
-//      BIR XIL ko'rinardi va shuning uchun sababni aniqlab bo'lmasdi.
+// HOZIRGI YECHIM — HODISAGA TAYANMAYDI.
+//   1) Ostida HAR DOIM ma'noli qatlam turadi: "Rasm", "▶ Video" yoki
+//      "⚠ Media ochilmadi". U holatdan qat'i nazar chiziladi, ya'ni
+//      hech qachon bo'sh bo'lmaydi.
+//   2) RASM yashirilmaydi. `<img>` da ma'lumot bo'lmasa u shaffof
+//      bo'ladi va ostidagi qatlam ko'rinadi; ma'lumot kelsa —
+//      o'zi ustini yopadi. Hodisa chiqdi-chiqmadi — ahamiyati yo'q.
+//   3) VIDEO esa kadr kelgunicha yopiq turadi: bo'sh `<video>` ba'zi
+//      brauzerlarda QORA to'rtburchak chizadi va ostidagi yozuvni
+//      bosib qo'yardi. Lekin bu xavfsiz, chunki uning ostidagi
+//      qatlamda "▶ Video" doim yozilgan turadi.
+//   4) Kadr borligi IKKI yo'l bilan aniqlanadi: `onLoadedData`
+//      hodisasi va elementning O'ZIDAN o'qish (`readyState`) —
+//      hodisa o'tkazib yuborilsa ham holat to'g'ri bo'ladi.
+//   5) `loading="lazy"` olib tashlandi: lentada ko'pi bilan 10 ta
+//      katak bor, lekin kechiktirilgan rasm ham "hodisa chiqmaydi"
+//      holatining yana bir sababi edi.
 //
-// YECHIM. Har katak o'z holatini biladi: `loading` → `ready` | `error`.
-//   • Media haqiqatan piksel chizgunicha (`onLoad` / `onLoadedData`)
-//     u SHAFFOF turadi — ya'ni bo'sh `<video>` ning qora qutisi
-//     hech qachon ustni qoplamaydi.
-//   • Ostida esa har doim MA'NOLI qatlam turadi: video uchun "Video"
-//     yozuvi va ▶ belgisi, xato uchun ochiq "Media ochilmadi".
-//   • Xato konsolga SABABI bilan yoziladi (id, tur, havola) — endi
-//     productionda nima buzilganini ekranning o'zidan ham, konsoldan
-//     ham o'qish mumkin.
-//
-// Ya'ni katak endi HECH QACHON "shunchaki qora" bo'lmaydi: yo media,
-// yo nomlangan video kartasi, yo ochiq xato holati.
+// Ya'ni endi bo'sh katak TUZILISH JIHATIDAN mumkin emas: ustida
+// media bo'lmasa, ostidagi nomlangan qatlam ko'rinadi.
 // ═══════════════════════════════════════════════════════════════════════
 
-function StoryCell({ story, index, onOpen }) {
+function StoryCell({ story, onOpen }) {
   const { t } = useLanguage();
-  const [state, setState] = useState('loading');   // loading | ready | error
   const kind = storyMediaKind(story);
-  const isVideo = kind === 'video';
   const src = storyMediaUrl(story);
+  const isVideo = kind === 'video';
 
-  // Hech qanday media yo'q qator — bu ma'lumotlar xatosi, uni ham
-  // ko'rsatib qo'yamiz (jim qora katak qoldirmaymiz).
-  const missing = kind === 'none';
+  // `failed` — media ochilmadi (404, buzuq fayl, qo'llab-quvvatlanmagan
+  // kodek). `hasFrame` — FAQAT video uchun: birinchi kadr keldimi.
+  const [failed, setFailed] = useState(false);
+  const [hasFrame, setHasFrame] = useState(false);
 
   const fail = (reason) => {
-    setState('error');
-    // Sabab KONSOLGA ham: ekranda "ochilmadi" deyiladi, bu yerda esa
-    // aynan qaysi story va qaysi havola ekani turadi.
-    console.warn('[story] media ochilmadi', {
-      id: story.id, kind, url: src, reason,
-    });
+    setFailed(true);
+    // Sabab KONSOLGA ham: ekranda odam uchun qisqa jumla, bu yerda
+    // esa aynan qaysi story va qaysi havola ekani.
+    console.warn('[story] media ochilmadi', { id: story.id, kind, url: src, reason });
   };
 
-  const shown = missing ? 'error' : state;
+  // Element DOM ga tushgan zahoti holatini O'ZIDAN so'raymiz. Kesh dan
+  // kelgan media React hodisani ulagunicha tayyor bo'lishi mumkin —
+  // o'shanda `onLoadedData` umuman chiqmaydi.
+  const videoRef = useCallback((el) => {
+    if (!el) return;
+    if (el.readyState >= 2) setHasFrame(true);
+    if (el.error) fail('video_load_failed');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const broken = kind === 'none' || failed;
+  const label = broken ? t('Media ochilmadi') : isVideo ? t('Video') : t('Rasm');
+  const mark = broken ? '⚠' : isVideo ? '▶' : '▣';
 
   return (
     <button type="button" className="pf-story-cell" onClick={onOpen}>
-      {/* ORQA QATLAM — media chizilgunicha (yoki umuman chizilmasa)
-          ko'rinadigan MA'NOLI fon. */}
-      {shown !== 'ready' && (
-        <span className={`pf-story-ph ${shown === 'error' ? 'is-err' : ''}`} aria-hidden="true">
-          {shown === 'error'
-            ? <><b>{'⚠'}</b><i>{t('Media ochilmadi')}</i></>
-            : isVideo && <><b>{'▶'}</b><i>{t('Video')}</i></>}
-        </span>
-      )}
+      {/* ENG OSTKI QATLAM — har doim, har holatda, matni bilan. */}
+      <span className={`pf-story-ph ${broken ? 'is-err' : ''}`} aria-hidden="true">
+        <b>{mark}</b><i>{label}</i>
+      </span>
 
-      {!missing && shown !== 'error' && (isVideo
+      {!broken && (isVideo
         ? (
           <video
+            ref={videoRef}
+            className="pf-story-media"
+            // `#t=0.1` — media fragmenti: brauzer 0.1-soniyaga o'tib,
+            // O'SHA kadrni chizadi. `poster` rasmi bizda yo'q, bu esa
+            // ayni shu ishni faylning o'zidan, qo'shimcha so'rovsiz
+            // qiladi (izohi src/lib/story-media.js da).
             src={videoPosterSrc(src)}
             muted playsInline preload="metadata"
-            // `onLoadedData` — BIRINCHI KADR tayyor bo'lgan payt.
-            // Aynan shunda ochamiz: undan oldin element bo'm-bo'sh va
-            // ochilsa qora bo'lib ko'rinardi.
-            onLoadedData={() => setState('ready')}
+            onLoadedData={() => setHasFrame(true)}
             onError={() => fail('video_load_failed')}
-            style={{ opacity: state === 'ready' ? 1 : 0 }}
+            // Kadrsiz `<video>` qora chizishi mumkin — ostidagi
+            // yozuvni bosib qo'ymasin.
+            style={{ opacity: hasFrame ? 1 : 0 }}
           />
         )
         : (
           <img
+            className="pf-story-media"
             src={src}
             alt={story.caption || ''}
-            // Birinchi ikki qator DARHOL yuklansin: "lazy" ular uchun
-            // hech narsa tejamaydi (ular ekranda), lekin kechikish
-            // berardi. Qolgani — odatdagidek kerak bo'lganda.
-            loading={index < 6 ? 'eager' : 'lazy'}
             decoding="async"
-            onLoad={() => setState('ready')}
             onError={() => fail('image_load_failed')}
-            style={{ opacity: state === 'ready' ? 1 : 0 }}
           />
         ))}
 
-      {/* ▶ — media ko'ringandan KEYIN ham turadi: katak video ekani
-          bosishdan oldin bilinsin. */}
-      {isVideo && shown === 'ready' && <span className="pf-story-play" aria-hidden="true">{'▶'}</span>}
+      {/* Video ekani BOSISHDAN OLDIN bilinsin — kadr kelgan-kelmaganidan
+          qat'i nazar. */}
+      {isVideo && !broken && <span className="pf-story-play" aria-hidden="true">{'▶'}</span>}
       {story.likeCount > 0 && <em>{'❤'} {story.likeCount}</em>}
     </button>
   );
@@ -134,7 +146,7 @@ export default function StoryGrid({ stories = [], title = '', avatarUrl = '', ca
     <>
       <div className="pf-story-grid">
         {list.map((s, i) => (
-          <StoryCell key={s.id} story={s} index={i} onOpen={() => setOpenAt(i)} />
+          <StoryCell key={s.id} story={s} onOpen={() => setOpenAt(i)} />
         ))}
       </div>
       {openAt !== null && (

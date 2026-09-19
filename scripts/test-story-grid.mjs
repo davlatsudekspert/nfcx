@@ -1,34 +1,33 @@
 // LENTA KATAGI HECH QACHON "SHUNCHAKI QORA" BO'LMASIN
 //
 // SHIKOYAT (production, VIP001). "Stories 7" deb yozilgan, lekin
-// ekranda bitta rasm ko'rinib, qolgan olti katak qop-qora turardi.
-// Ya'ni SON to'g'ri, MEDIA esa chizilmagan.
+// ekranda ikkita rasm ko'rinib, qolgan beshta katak bo'm-bo'sh qora
+// turardi — na "▶ Video", na "⚠ Media ochilmadi".
 //
-// Sabab kodda edi va u IKKI XIL bo'lishi mumkin — ikkalasi ham
-// ekranda BIR XIL qora to'rtburchak beradi:
+// BIRINCHI URINISH XATO EDI. Unda katakka holat berilgan
+// (`loading → ready | error`), media esa `ready` bo'lgunicha
+// `opacity:0` bilan YASHIRILGAN edi. Ya'ni ko'rinish BRAUZER
+// HODISASIGA tayanardi. Telefonda so'rov osilib qolsa (sekin
+// tarmoq, katta fayl, "Trafikni tejash") na `load`, na `error`
+// chiqadi: rasm ko'rinmas bo'lib qolardi, ostidagi qatlam esa
+// RASM uchun BO'SH chizilardi (matn faqat video va xatoga yozilgan
+// edi). Natija — yana o'sha qora katak, endi izohsiz.
 //
-//   1) VIDEO katagi `<video preload="metadata">` edi, `poster` esa
-//      yo'q. `preload="metadata"` brauzerga "kadr OLMA" deydi, ya'ni
-//      element bor-u, ichida ko'rsatadigan piksel yo'q.
-//   2) `<img>` da `onError` UMUMAN yo'q edi: fayl 404 bo'lsa, buzuq
-//      bo'lsa yoki qatorda havolaning o'zi bo'lmasa (`src=""`) rasm
-//      JIM yiqilardi va katak fonining rangi ko'rinardi — u ham qora.
+// Brauzerda media so'rovini ataylab osib qo'yib takrorlangan:
+// eski kod 7 katakdan 7 tasini bo'm-bo'sh qoldirgan.
 //
-// Shuning uchun productionda sababni aniqlab bo'lmasdi: "fayl yo'q"
-// bilan "video kadr bermadi" farq qilmasdi.
+// HOZIRGI QOIDA — HODISAGA TAYANMAYDI:
+//   • ostida HAR DOIM matnli qatlam bor ("Rasm" / "▶ Video" /
+//     "⚠ Media ochilmadi") — hech qachon bo'sh emas;
+//   • RASM yashirilmaydi: ma'lumot bo'lmasa shaffof, ostidagi
+//     yozuv ko'rinadi; ma'lumot kelsa o'zi ustini yopadi;
+//   • VIDEO kadr kelgunicha yopiq (bo'sh `<video>` qora chizishi
+//     mumkin), lekin ostida "▶ Video" doim turadi;
+//   • kadr borligi hodisadan HAM, elementning o'zidan (`readyState`)
+//     HAM o'qiladi.
 //
-// Bu test o'sha yechimni qo'riqlaydi. TEKSHIRILADIGAN SHART BITTA:
-// katakda yo HAQIQATAN chizilgan media, yo NOMLANGAN qatlam bo'lsin.
-// Ya'ni:
-//   • media faqat CHIZILGANDAN KEYIN ko'rinadi (opacity bilan) —
-//     bo'sh `<video>` ning qora qutisi ostidagi qatlamni qoplamaydi;
-//   • ikkala media turida ham `onError` bor va u konsolga SABABINI
-//     yozadi;
-//   • ro'yxat kesilmaydi — nechta story kelsa, shuncha katak.
-//
-// Brauzerdagi haqiqiy tekshiruv alohida o'tkazildi (7 ta story:
-// 1 rasm + 6 video, hamda 404 / buzuq / havolasiz qatorlar bilan) —
-// tuzatishdan oldin 2-4 ta qora katak chiqqan, keyin 0 ta.
+// Shuning uchun quyidagi tekshiruvlar "opacity bilan yashirish"
+// qaytib kelishini ham, qatlam bo'sh qolishini ham taqiqlaydi.
 //
 //   node scripts/test-story-grid.mjs
 import { readFileSync } from 'node:fs';
@@ -69,15 +68,30 @@ const css = read('../src/theme.css');
   checkTrue('2) nisbiy havola o‘zgarmaydi', videoPosterSrc('/uploads/s.mp4').startsWith('/uploads/'));
 }
 
-// ── 3) MEDIA CHIZILGUNCHA KO'RINMAYDI ────────────────────────────────
-// Eng muhim shart. `<video>` hali kadr olmagan bo'lsa ham element
-// chizilgan bo'ladi va QORA ko'rinadi. Shuning uchun u tayyor
-// bo'lgunicha shaffof turishi, ostidagi nomlangan qatlam esa
-// ko'rinib turishi kerak.
+// ── 3) RASM HECH QACHON YASHIRILMAYDI ────────────────────────────────
+// Aynan shu yerda oldingi yechim yiqilgan edi. `<img>` ning
+// ko'rinishi JS holatiga bog'lansa, hodisa chiqmagan taqdirda u
+// abadiy ko'rinmas bo'lib qoladi.
 {
-  checkTrue('3) media opacity bilan yopilgan', /opacity:\s*state === 'ready'/.test(grid));
-  checkTrue('3) video birinchi KADRDA ochiladi', /onLoadedData=\{\(\) => setState\('ready'\)\}/.test(grid));
-  checkTrue('3) rasm YUKLANGACH ochiladi', /onLoad=\{\(\) => setState\('ready'\)\}/.test(grid));
+  const img = /<img[\s\S]*?\/>/.exec(grid);
+  checkTrue('3) <img> topildi', !!img);
+  checkTrue('3) <img> da opacity/visibility/display bilan yashirish YO‘Q',
+    !!img && !/opacity|visibility|display\s*:/.test(img[0]));
+  checkTrue('3) <img> da loading="lazy" yo‘q (hodisa kechikishining sababi edi)',
+    !/loading=\{?['"]?lazy/.test(grid));
+}
+
+// ── 3b) VIDEO KADR KELGUNICHA YOPIQ ──────────────────────────────────
+// Bo'sh `<video>` ba'zi brauzerlarda QORA to'rtburchak chizadi va
+// ostidagi yozuvni bosib qo'yardi. Bu xavfsiz, chunki uning ostida
+// "▶ Video" doim turadi (4-bo'limda tekshiriladi).
+{
+  checkTrue('3b) video kadrga qarab ochiladi', /opacity:\s*hasFrame/.test(grid));
+  checkTrue('3b) kadr hodisadan o‘qiladi', /onLoadedData=\{\(\) => setHasFrame\(true\)\}/.test(grid));
+  // Kesh dan kelgan media hodisani o'tkazib yuborishi mumkin —
+  // shuning uchun element holati ham so'raladi.
+  checkTrue('3b) kadr elementning O‘ZIDAN ham o‘qiladi', /readyState >= 2/.test(grid));
+  checkTrue('3b) video xatosi ham elementdan o‘qiladi', /el\.error/.test(grid));
 }
 
 // ── 4) HAR IKKALA MEDIADA HAM onError ────────────────────────────────
@@ -100,19 +114,30 @@ const css = read('../src/theme.css');
   }
 }
 
-// ── 6) XATO HOLATI EKRANDA KO'RINADI ─────────────────────────────────
+// ── 6) QATLAM HAR DOIM VA MATN BILAN ────────────────────────────────
 // Telefonda konsol ochib bo'lmaydi — sabab EKRANNING O'ZIDA
-// ko'rinishi kerak.
+// ko'rinishi kerak. Eski yechimda bu qatlam SHARTGA bog'langan edi
+// (`shown !== 'ready' && ...`) va rasm uchun BO'SH chizilardi.
 {
-  checkTrue('6) xato qatlami chiziladi', /pf-story-ph/.test(grid));
+  // Qatlam shartsiz chiziladi: `{shart && <span ...>}` bo'lmasin.
+  checkTrue('6) qatlam SHARTSIZ chiziladi',
+    /<span\s+className=\{`pf-story-ph/.test(grid) && !/&&\s*\(?\s*<span className=\{`pf-story-ph/.test(grid));
+  // Ichida har doim belgi va matn bor.
+  checkTrue('6) qatlamda belgi bor', /<b>\{mark\}<\/b>/.test(grid));
+  checkTrue('6) qatlamda matn bor', /<i>\{label\}<\/i>/.test(grid));
+  // Uch holatning HAR BIRI uchun matn.
+  checkTrue('6) xato matni', grid.includes("t('Media ochilmadi')"));
+  checkTrue('6) video matni', grid.includes("t('Video')"));
+  checkTrue('6) rasm matni (eski yechimda YO‘Q edi)', grid.includes("t('Rasm')"));
   checkTrue('6) xato holati alohida sinf oladi', /is-err/.test(grid));
-  checkTrue('6) xato matni o‘zbekcha', grid.includes("t('Media ochilmadi')"));
-  checkTrue('6) video kutayotganda "Video" deb turadi', grid.includes("t('Video')"));
-  // Qatlam CSS da haqiqatan mavjud bo'lsin — sinf nomi kodda bor-u,
-  // uslub yo'q bo'lsa, katak baribir bo'm-bo'sh ko'rinardi.
+  // Uslublar haqiqatan mavjud bo'lsin.
   checkTrue('6) .pf-story-ph uslubi bor', css.includes('.pf-story-ph{'));
   checkTrue('6) .pf-story-ph.is-err uslubi bor', css.includes('.pf-story-ph.is-err{'));
   checkTrue('6) qatlam katakni to‘liq qoplaydi', /\.pf-story-ph\{[^}]*inset:0/.test(css));
+  // QATLAM ENG OSTDA, MEDIA USTIDA — aks holda yozuv rasmni bosardi.
+  checkTrue('6) qatlam eng ostda (z-index:0)', /\.pf-story-ph\{[^}]*z-index:0/.test(css));
+  checkTrue('6) media qatlam ustida (z-index:1)', /\.pf-story-media\{[^}]*z-index:1/.test(css));
+  checkTrue('6) media foni shaffof', /\.pf-story-media\{[^}]*background:transparent/.test(css));
 }
 
 // ── 7) RO'YXAT KESILMAYDI ────────────────────────────────────────────
