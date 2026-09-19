@@ -244,7 +244,11 @@ for (const sel of ['.qp-tab', '.qp-sidebtn', '.qp-save', '.qp-order']) {
   const pub = rule('.qp-public');
   checkTrue('15) to‘liq sahifa tugmasi bor', pub.length > 0);
   checkTrue('15) u to‘ldirilgan oltin EMAS', !pub.includes('var(--gold-face)'));
-  checkTrue('15) hoshiyasi oltin rangda', /border[^;]*rgba\(226,190,110/.test(pub));
+  // 2026-09: ranglar mavzu tokenlariga o'tkazildi (src/themes.css), shuning
+  // uchun bu yerda qattiq yozilgan rgba() o'rniga accent tokeni qidiriladi.
+  // Tekshiruv MA'NOSI o'zgarmadi: hoshiya oltin/accent rangda bo'lishi shart.
+  checkTrue('15) hoshiyasi oltin rangda',
+    /border[^;]*(rgba\(226,190,110|var\(--accent-(primary|secondary)\))/.test(pub));
   // Yagona to'ldirilgan oltin — saqlash tugmasi, va yaltiroq faqat unda.
   checkTrue('15) yaltiroq faqat saqlash tugmasida', rule('.qp-save::after').includes('qp-sweep 4.2s'));
 }

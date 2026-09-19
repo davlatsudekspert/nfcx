@@ -608,7 +608,7 @@ body:has(.vz-profile-page) .ai-fab { bottom: calc(96px + env(safe-area-inset-bot
    suriladi. */
 body{
   background-color:var(--bg-secondary);
-  background-image:radial-gradient(120% 70% at 50% 0%,var(--surface-elevated) 0%,var(--surface) 55%,var(--bg-secondary) 100%);
+  background-image:radial-gradient(120% 70% at 50% 0%,var(--surface) 0%,var(--bg-secondary) 55%,var(--bg-primary) 100%);
   background-attachment:fixed;
   background-repeat:no-repeat;
 }

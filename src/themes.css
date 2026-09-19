@@ -57,14 +57,14 @@
   --text-secondary: #4f4739;
   --text-muted: #6b6252;
   --text-faint: #8a8070;
-  --text-on-accent: #241c0c;
+  --text-on-accent: #140f04;
 
   /* Accent */
   --accent-primary: #9c7a32;
   --accent-secondary: #c7a863;
   --accent-deep: #7c5f22;
   --accent-soft: rgba(156, 122, 50, 0.12);
-  --accent-ink: #241c0c;
+  --accent-ink: #140f04;
   --accent-glow: rgba(199, 168, 99, 0.38);
 
   /* Chegara (border) */
@@ -93,7 +93,7 @@
   --input-bg: #ffffff;
   --input-border: #d6c9b2;
   --button-bg: linear-gradient(135deg, #d0b273, #9c7a32);
-  --button-text: #241c0c;
+  --button-text: #140f04;
   --nav-bg: rgba(247, 243, 234, 0.92);
   --card-bg: #fffdf8;
   --modal-bg: #fffdf8;

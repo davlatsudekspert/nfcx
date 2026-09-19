@@ -515,7 +515,7 @@
   min-width:200px;max-width:100%;min-height:46px;margin-top:22px;padding:0 30px;
   border-radius:99px;cursor:pointer;font-family:inherit;
   border:1px solid color-mix(in srgb, var(--accent-secondary) 50%, transparent);
-  background:linear-gradient(160deg,color-mix(in srgb, var(--accent-primary) 92%, transparent),color-mix(in srgb, var(--surface) 92%, transparent));
+  background:linear-gradient(160deg,color-mix(in srgb, var(--surface-raised) 92%, transparent),color-mix(in srgb, var(--surface) 92%, transparent));
   color:var(--accent-text);font-size:14px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
   box-shadow:inset 0 1px 0 color-mix(in srgb, var(--tint-base) 8%, transparent),0 8px 22px color-mix(in srgb, var(--shade-base) 45%, transparent)
 }
@@ -592,7 +592,7 @@
 .qp-hero .ch-head{
   padding:7px 16px;gap:8px;border-radius:99px;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
   border:1px solid color-mix(in srgb, var(--accent-secondary) 40%, transparent);
-  background:linear-gradient(160deg,color-mix(in srgb, var(--accent-primary) 90%, transparent),color-mix(in srgb, var(--surface) 92%, transparent));color:var(--text-secondary)
+  background:linear-gradient(160deg,color-mix(in srgb, var(--border-strong) 90%, transparent),color-mix(in srgb, var(--surface) 92%, transparent));color:var(--text-secondary)
 }
 .qp-hero .ch-head small{letter-spacing:0;text-transform:none;color:var(--accent-text)}
 /* HOLAT RANGDA ham bilinsin — "ochiq"mi yoki "yopiq"mi degan savolga
@@ -806,7 +806,7 @@
 .qp-public{
   width:100%;min-height:54px;margin-top:16px;border-radius:15px;padding:15px 18px;cursor:pointer;
   border:1px solid color-mix(in srgb, var(--accent-secondary) 45%, transparent);
-  background:linear-gradient(160deg,color-mix(in srgb, var(--accent-primary) 90%, transparent),color-mix(in srgb, var(--surface) 92%, transparent));
+  background:linear-gradient(160deg,color-mix(in srgb, var(--surface-raised) 90%, transparent),color-mix(in srgb, var(--surface) 92%, transparent));
   color:var(--accent-text);font-family:inherit;font-weight:700;font-size:14.5px;
   box-shadow:inset 0 1px 0 color-mix(in srgb, var(--tint-base) 7%, transparent),0 8px 22px color-mix(in srgb, var(--shade-base) 45%, transparent)
 }
