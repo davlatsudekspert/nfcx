@@ -89,7 +89,10 @@ export default function ContentMenuButton({ targetKind, targetId, className = ''
   );
 }
 
-function ReportModal({ targetKind, targetId, onClose }) {
+// Shikoyat oynasi — `ProfileMoreMenu` ham shu AYNAN oynani ochadi.
+// Nusxa ko'chirilmaydi: shikoyat mantig'i (sabablar, yuborish,
+// cheklovlar) bitta joyda qolishi kerak.
+export function ReportModal({ targetKind, targetId, onClose }) {
   const { t } = useLanguage();
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);

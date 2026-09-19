@@ -3468,10 +3468,12 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
       type="button"
       onClick={() => setWsTab(id)}
       aria-current={wsTab === id ? 'page' : undefined}
-      className={`flex min-h-11 shrink-0 items-center gap-2.5 rounded-xl border-l-[3px] px-3 py-2 text-left text-sm font-semibold transition lg:w-full ${gold ? 'ws-nav-gold' : ''} ${wsTab === id ? 'border-[color:var(--vz-gold)] bg-[color:var(--vz-card-2)] text-[color:var(--accent-text)]' : 'border-transparent text-base-content/60 hover:bg-white/5 hover:text-base-content'}`}
+      className={`flex min-h-11 items-center gap-2.5 rounded-xl border-l-[3px] px-2.5 py-2 text-left text-[13px] font-semibold leading-tight transition lg:w-full lg:px-3 lg:text-sm ${gold ? 'ws-nav-gold' : ''} ${wsTab === id ? 'border-[color:var(--vz-gold)] bg-[color:var(--vz-card-2)] text-[color:var(--accent-text)]' : 'border-transparent text-base-content/60 hover:bg-white/5 hover:text-base-content'}`}
     >
       <span className="shrink-0"><Icon width={16} height={16} /></span>
-      <span className="truncate">{label}</span>
+      {/* `truncate` OLIB TASHLANDI: katakda joy bor, "Stories va post"
+          va "Mening ID'larim" to'liq sig'adi. */}
+      <span className="min-w-0 flex-1">{label}</span>
       {badge > 0 && <span className="vz-badge vz-badge--gold ml-auto !px-1.5 !py-0 text-[11px]">{badge}</span>}
     </button>
   );
@@ -3493,7 +3495,18 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
           <div className="truncate font-mono text-[11px] text-base-content/45">NFC ID · {card.code}{card.isPrimary ? ` · ${t('ASOSIY')}` : ''}</div>
         </div>
       </div>
-      <nav className="flex gap-1 overflow-x-auto rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] p-1.5 lg:mt-3 lg:flex-col lg:overflow-visible">
+      {/* TELEFONDA ENDI KATAKCHA, gorizontal surilma EMAS.
+          Ilgari bo'limlar bitta qatorda yonma-yon turar va ekranga
+          sig'mas edi: yozuvlar kesilib ("Stories va p...") qolar,
+          o'ng tomondagi bo'limlar esa surmaguncha KO'RINMASDI —
+          ya'ni odam ularning borligini ham bilmasdi.
+          Ikki ustunda hammasi bir ko'rinishda va yozuv to'liq.
+          Kompyuterda avvalgidek tik ustun bo'lib qoladi.
+          320px (iPhone SE) da BITTA ustun: ikki ustunda katak
+          ~100px qolar va "Bildirishnomalar" kabi uzun so'z
+          kesilardi. Bitta ustunda biroz ko'proq suriladi, lekin
+          yozuv to'liq o'qiladi. */}
+      <nav className="grid grid-cols-1 gap-1.5 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] p-1.5 min-[360px]:grid-cols-2 lg:mt-3 lg:flex lg:flex-col lg:gap-1">
         {navItems.map(([id, label, Icon, badge, gold]) => navBtn(id, label, Icon, badge, gold))}
         {cabinetLinks.length > 0 && (
           <>
@@ -3501,9 +3514,12 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
             <div className="hidden px-3 pt-1 text-[11px] font-bold uppercase tracking-wider text-base-content/35 lg:block">{t('Kabinet')}</div>
             {cabinetLinks.map(({ id, label, Icon, onClick, disabled }) => (
               <button key={id} type="button" onClick={onClick} disabled={disabled}
-                className="flex min-h-11 shrink-0 items-center gap-2.5 rounded-xl border-l-[3px] border-transparent px-3 py-2 text-left text-sm font-semibold text-base-content/60 transition hover:bg-white/5 hover:text-base-content disabled:opacity-40 lg:w-full">
+                className="flex min-h-11 items-center gap-2.5 rounded-xl border-l-[3px] border-transparent px-2.5 py-2 text-left text-[13px] font-semibold leading-tight text-base-content/60 transition hover:bg-white/5 hover:text-base-content disabled:opacity-40 lg:w-full lg:px-3 lg:text-sm">
                 <span className="shrink-0">{Icon ? <Icon width={16} height={16} /> : null}</span>
-                <span className="truncate">{label}</span>
+                {/* Yuqoridagi bo'lim tugmalari bilan BIR XIL: katakda
+                    joy bor, shuning uchun "Akkaunt sozlamalari" kabi
+                    uzun yozuvlar kesilmaydi. */}
+                <span className="min-w-0 flex-1">{label}</span>
               </button>
             ))}
           </>

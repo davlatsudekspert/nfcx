@@ -141,10 +141,23 @@ checkTrue('6) prefers-reduced-motion hisobga olingan',
   // tarif rangida va kattaroq yozilgan (egasi: "tepadagi #VIP001
   // kerak emas, pastda turibdi").
   checkTrue('9) katta kod pillasi yo‘q', !page.includes('"# {record.code}"') && !page.includes('># {record.code}<'));
-  // Amallar (nusxalash, ulashish, "⋯") va til tugmasi BITTA qatorda.
+  // Amallar (nusxalash, ulashish) va "yana" menyusi BITTA qatorda.
+  //
+  // 2026-09: mavzu, til va shikoyat UCHTA alohida ikona edi va
+  // nusxalash/ulashish bilan birga beshta bo'lib qatorni siqardi.
+  // Ular `ProfileMoreMenu` (⋮) ichiga yig'ildi. Shart o'zgarmadi —
+  // hammasi HAMON tepa qatorda va HAMMASI mavjud; faqat endi bitta
+  // tugma ortida. Quyida ikkalasi ham tekshiriladi: qatorda borligi
+  // VA menyu ichida uchta bo'lim saqlanib qolgani.
   const top = page.slice(page.indexOf("t('Bosh sahifaga')"), page.indexOf(PANEL));
-  checkTrue('9) amallar tepa qatorda', top.includes('ShareButton') && top.includes('ContentMenuButton'));
-  checkTrue('9) til tugmasi ham shu qatorda', top.includes('LanguageSwitcher'));
+  checkTrue('9) amallar tepa qatorda', top.includes('ShareButton') && top.includes('ProfileMoreMenu'));
+  const more = readFileSync(new URL('../src/components/ProfileMoreMenu.jsx', import.meta.url), 'utf8');
+  checkTrue('9) "yana" menyusida til tanlovi bor', more.includes('LANGUAGES') && more.includes('setLang'));
+  checkTrue('9) "yana" menyusida mavzu tanlovi bor', more.includes('useTheme') && more.includes('setTheme'));
+  checkTrue('9) "yana" menyusida shikoyat qoldi', more.includes('ReportModal'));
+  // Shikoyat oynasi NUSXA OLINMAGAN — bitta manbadan keladi.
+  checkTrue('9) shikoyat oynasi qayta ishlatilgan, nusxasi yo‘q',
+    more.includes("from './ContentMenu.jsx'"));
   // "Boshqa raqamli tashrif qog'ozlaringiz" — faqat egaga kerak,
   // shuning uchun u egaga tegishli tugmalar yoniga ko'chdi.
   checkTrue('9) boshqa profillar ro‘yxati ega qismida',

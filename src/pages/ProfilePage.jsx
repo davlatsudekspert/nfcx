@@ -16,7 +16,7 @@ import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import { readFollowAs, rememberFollowAs } from '../lib/followIdentity.js';
 import ShareButton from '../components/ShareButton.jsx';
-import ContentMenuButton from '../components/ContentMenu.jsx';
+import ProfileMoreMenu from '../components/ProfileMoreMenu.jsx';
 import ProfileManifest from '../components/ProfileManifest.jsx';
 import CardNumberModal from '../components/CardNumberModal.jsx';
 import ProfileTabs from '../components/ProfileTabs.jsx';
@@ -24,8 +24,6 @@ import StoryGrid from '../components/StoryGrid.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
 import { parseMusicSource, yandexEmbedSrc, fetchYoutubeTitle, cachedYoutubeTitle, audioFileTitle } from '../lib/music.js';
 import { useCategories, catPath } from '../lib/categories.js';
-import LanguageSwitcher from '../components/LanguageSwitcher.jsx';
-import ThemeSwitcher from '../components/ThemeSwitcher.jsx';
 import NfcCard, { cardFinish } from '../components/NfcCard.jsx';
 import BusinessPublicProfile from '../components/BusinessPublicProfile.jsx';
 import {
@@ -1685,22 +1683,18 @@ export default function ProfilePage({ code, catalog, initialTab }) {
               tashrifchi uchun; kirish shart emas, chunki profilni
               ko'rayotganlarning ko'pi ro'yxatdan o'tmagan va ularni
               majburlash shikoyatlar sonini nolga tushirardi. */}
-          <ContentMenuButton
+          {/* MAVZU, TIL va SHIKOYAT — bitta ⋮ menyuda.
+              Ilgari ular uchta alohida ikona edi va nusxalash/ulashish
+              bilan birga beshta bo'lib qatorni siqib qo'yardi; palitra
+              esa ega uchun chiqadigan "Tahrirlash" tugmasiga yopishib,
+              tasodifan bosiladigan holatga tushardi.
+              Mavzu — SAYT qobig'ining rangi; profil egasining
+              `theme / accentColor / bgColor` tanloviga TEGMAYDI. */}
+          <ProfileMoreMenu
             targetKind="record"
             targetId={record.code}
             className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"
           />
-          {/* SAYT mavzusi (rang) — u FAQAT sayt qobig'iga (topbar, modal,
-              umumiy sahifalar) ta'sir qiladi. Profil kartasining ichki
-              dizayni — egasining `theme / accentColor / bgColor` tanlovi
-              — O'ZGARMAYDI. Shuning uchun tugma karta ICHIDA emas,
-              yuqoridagi umumiy qatorda turadi. */}
-          <ThemeSwitcher
-            buttonClassName="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"
-          />
-          <div className="shrink-0 rounded-[10px] border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink-dim)]">
-            <LanguageSwitcher />
-          </div>
         </div>
       </div>
 
