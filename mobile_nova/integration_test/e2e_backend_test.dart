@@ -834,17 +834,28 @@ void main() {
     // Shuning uchun yozish sinovi eng KAM istoryali profilga
     // boradi. Bu haqiqiy yozish yo'lini xuddi shunday sinaydi va
     // hech kimning ma'lumotiga tegmaydi.
-    var writeCode = code;
-    var writeCount = 0;
+    //
+    // AVVAL HAMMASI O'LCHANADI, KEYIN TANLANADI. Bitta o'tishda
+    // taqqoslash tartibga bog'lanib qolardi: hisoblagich noldan
+    // boshlangani uchun `code` ga yetgunga qadar hech bir profil
+    // "kamroq" deb topilmasdi. Asosiy profil ro'yxatda oxirida
+    // tursa, sinov har safar to'la profilga yozishga urinardi.
+    final counts = <String, int>{};
     for (final id in ids) {
       final list = await social.storiesOf(id.code);
-      final n = list.valueOrNull?.length ?? 999;
-      if (id.code == code) writeCount = n;
+      counts[id.code] = list.valueOrNull?.length ?? 999;
+    }
+    // Boshlang'ich nuqta — ASOSIY profil. Faqat QAT'IY kamroq
+    // istoryali profil tanlanadi, ya'ni teng bo'lsa asosiysi
+    // qoladi va begona profilga behuda yozilmaydi.
+    var writeCode = code;
+    var writeCount = counts[code] ?? 999;
+    counts.forEach((c, n) {
       if (n < writeCount) {
-        writeCode = id.code;
+        writeCode = c;
         writeCount = n;
       }
-    }
+    });
     if (writeCode != code) {
       // ignore: avoid_print
       print('[E2E] istorya yozish uchun $writeCode tanlandi '
