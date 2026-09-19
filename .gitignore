@@ -24,3 +24,7 @@ mobile/web/
 
 # Golden test farqlari — vaqtinchalik chiqim, saqlanmaydi.
 mobile/test/audit/failures/
+
+# Demo to'ldirish skriptining snapshotlari (scripts/demo-fill.mjs).
+# ICHIDA HAQIQIY PROFIL MA'LUMOTI BO'LADI — repoga tushmasligi shart.
+backups/
