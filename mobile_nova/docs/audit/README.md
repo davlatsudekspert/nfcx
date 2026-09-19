@@ -47,7 +47,7 @@ to'plam:
 * `profile-{pearl,graphite,ocean,aurora,midnight}.png`
 
 Mavzu ranglari HTML'dagi `html[data-theme="..."]` bloklaridan
-**bir-bir ko'chirilgan** — `code/nfc_tokens.dart` ga qarang.
+**bir-bir ko'chirilgan** — `DEEPSEEK_UI_AUDIT_SOURCE.md` dagi `nfc_tokens.dart` ga qarang.
 
 ### Responsivlik — 360 / 390 / 430
 
@@ -63,59 +63,31 @@ Ataylab **rus tilida**: eng uzun yozuvlar shu tilda.
 
 ---
 
-## 2. Kod — `code/`
+## 2. Kod — `DEEPSEEK_UI_AUDIT_SOURCE.md`
 
-### Dizayn tokenlari va mavzu
+Manba kod **bitta faylga** birlashtirilgan:
+[`DEEPSEEK_UI_AUDIT_SOURCE.md`](DEEPSEEK_UI_AUDIT_SOURCE.md) — 19 ta
+Dart fayli to'liq matni, har birining boshida
+`===== FILE: lib/.../filename.dart =====`.
 
-| Fayl | Nima |
-|---|---|
-| `nfc_tokens.dart` | **Beshala mavzu**, `ThemeExtension`, `lerp` |
-| `palette.dart` | `hex()` / `rgba()` — CSS qiymatlarini o'girish |
-| `shapes.dart` | Radius shkalasi (`pill`, `blob`, `soft`, `gentle`, `organic`) |
-| `motion.dart` | `--ease-*` va `--dur-*` ning Dart ko'rinishi |
-| `app_theme.dart` | `ThemeData`, Material komponentlarini moslash |
-| `typography.dart` | Serif sarlavha + sans matn + mono raqam, kirill zaxirasi |
+**NIMA UCHUN NUSXA EMAS, BITTA .md:** avval bu yerda
+`docs/audit/code/` papkasi bor edi — 23 ta `.dart` nusxasi.
+`flutter analyze` butun paketni tekshiradi, shuning uchun o'sha
+nusxalardagi nisbiy importlar (`import '../tokens/...'`) hal bo'lmay,
+CI **777 ta xato** bilan yiqildi
+([run #35431593771](https://github.com/davlatsudekspert/nfcx/actions/runs/35431593771)).
+Markdown ichidagi kod bloklari Dart tahlilchisiga ko'rinmaydi.
 
-### NFC
+Qamrab olingan: dizayn tokenlari va mavzu (`nfc_tokens`, `app_theme`,
+`typography`, `shapes`, `motion`, `palette`), NFC (`nfc_orb`,
+`nfc_center_screen`), Home (`home_screen`, `identity_card`,
+`mode_switch`), `profile_screen`, umumiy widgetlar (`surfaces`,
+`buttons`, `backdrop`, `brand_logo`, `bottom_nav`), `discover_screen`
+va `reels_screen`.
 
-| Fayl | Nima |
-|---|---|
-| `nfc_orb.dart` | **Orb**: nafas, halo, 3 ta pulse halqasi, organik yadro, `OrbitActions` |
-| `nfc_center_screen.dart` | NFC markazi ekrani |
-
-Orb butunligicha **bitta `CustomPainter`** ichida chiziladi — har
-halqa alohida widget bo'lganda 4 ta kontroller va 4 ta layout o'tishi
-kerak bo'lardi.
-
-### Home va Profile
-
-| Fayl | Nima |
-|---|---|
-| `home_screen.dart` | Home kompozitsiyasi |
-| `identity_card.dart` | **Identity obyekti** — organik nosimmetrik shakl |
-| `mode_switch.dart` | Shaxsiy ↔ Biznes almashtirgich (morph) |
-| `avatar.dart` | Story halqasi bilan avatar |
-| `profile_screen.dart` | Digital Identity Canvas |
-
-### Umumiy dizayn widgetlari
-
-| Fayl | Nima |
-|---|---|
-| `brand_logo.dart` | **Logotip qoidalari** — cho'zilmaydi, doira qilinmaydi |
-| `surfaces.dart` | `FloatingSurface`, `Capsule`, `PressableScale`, `SectionHeader` |
-| `buttons.dart` | `NovaButton`, `NovaIconButton` |
-| `backdrop.dart` | Ambient fon — sekin suzuvchi dog'lar |
-| `bottom_nav.dart` | Suzuvchi nav, markazda ko'tarilgan NFC tugmasi |
-| `states.dart` | Yuklanish / bo'sh / xato / skeleton |
-| `fields.dart` | `NovaField`, `CodeField`, `PhoneField` |
-| `nova_scaffold.dart` | Har ekranning karkasi |
-
-### Discover va Reels
-
-| Fayl | Nima |
-|---|---|
-| `discover_screen.dart` | Qidiruv (debounce), yorliqlar, natijalar |
-| `reels_screen.dart` | Vertikal lenta, video hayot sikli |
+Concept B tomondagi mos qoidalar:
+[`DEEPSEEK_CONCEPT_B_REFERENCE.md`](DEEPSEEK_CONCEPT_B_REFERENCE.md) —
+original HTML qator raqamlari bilan.
 
 ---
 
@@ -125,7 +97,8 @@ Reels **haqiqiy videoni** backend'dan oladi. Surat oluvchi brauzer
 `nfcstore.uz` ga chiqa olmaydi, shuning uchun u yerda faqat bo'sh
 holat ko'rinardi — bu maketni baholashga yordam bermaydi.
 
-Buning o'rniga `code/reels_screen.dart` to'liq berilgan. E'tibor
+Buning o'rniga `DEEPSEEK_UI_AUDIT_SOURCE.md` ichida
+`reels_screen.dart` to'liq berilgan. E'tibor
 berish kerak bo'lgan joylar:
 
 * `_ReelPageState._open` / `_close` — faqat **ko'rinayotgan** video
