@@ -24,3 +24,10 @@ mobile/web/
 
 # Golden test farqlari — vaqtinchalik chiqim, saqlanmaydi.
 mobile/test/audit/failures/
+
+# mobile_nova — Flutter build artefaktlari
+mobile_nova/build/
+mobile_nova/.dart_tool/
+mobile_nova/android/.gradle/
+mobile_nova/android/local.properties
+mobile_nova/.flutter-plugins-dependencies

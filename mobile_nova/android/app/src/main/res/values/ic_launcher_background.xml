@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Logotipning o'z foni bilan bir xil chuqur qora — adaptiv ikonka
+         maskasi qanday kesmasin, chegara ko'rinmaydi. -->
+    <color name="ic_launcher_background">#121114</color>
+</resources>
