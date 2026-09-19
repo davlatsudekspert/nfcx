@@ -1784,6 +1784,138 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Qo‘shiqni ochib bo‘lmadi'**
   String get musicFailed;
+
+  /// No description provided for @rulesTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Joylashdan oldin o‘qing'**
+  String get rulesTitle;
+
+  /// No description provided for @rulesBody.
+  ///
+  /// In uz, this message translates to:
+  /// **'Joylashtirilayotgan kontent quyidagilarni o‘z ichiga olmasligi shart: diniy targ‘ibot yoki ekstremistik mazmun, pornografik yoki jinsiy xarakterdagi tasvirlar, siyosiy targ‘ibot, shuningdek O‘zbekiston Respublikasi qonunchiligiga zid har qanday material. Ushbu qoidalar buzilgan taqdirda kontent ogohlantirishsiz o‘chiriladi.'**
+  String get rulesBody;
+
+  /// No description provided for @rulesAccept.
+  ///
+  /// In uz, this message translates to:
+  /// **'Men qoidalarni o‘qidim va roziman'**
+  String get rulesAccept;
+
+  /// No description provided for @rulesContinue.
+  ///
+  /// In uz, this message translates to:
+  /// **'Davom etish'**
+  String get rulesContinue;
+
+  /// No description provided for @rulesReminder.
+  ///
+  /// In uz, this message translates to:
+  /// **'Joylash bilan kontent qoidalariga rozilik bildirasiz.'**
+  String get rulesReminder;
+
+  /// No description provided for @rulesOpen.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kontent qoidalari'**
+  String get rulesOpen;
+
+  /// No description provided for @rulesNotAccepted.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kontent qoidalariga rozilik berilmadi.'**
+  String get rulesNotAccepted;
+
+  /// No description provided for @reportTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Shikoyat qilish'**
+  String get reportTitle;
+
+  /// No description provided for @reportSent.
+  ///
+  /// In uz, this message translates to:
+  /// **'Shikoyat yuborildi'**
+  String get reportSent;
+
+  /// No description provided for @reportReasonPorn.
+  ///
+  /// In uz, this message translates to:
+  /// **'Pornografik yoki jinsiy mazmun'**
+  String get reportReasonPorn;
+
+  /// No description provided for @reportReasonReligious.
+  ///
+  /// In uz, this message translates to:
+  /// **'Diniy targ‘ibot yoki ekstremizm'**
+  String get reportReasonReligious;
+
+  /// No description provided for @reportReasonPolitical.
+  ///
+  /// In uz, this message translates to:
+  /// **'Siyosiy targ‘ibot'**
+  String get reportReasonPolitical;
+
+  /// No description provided for @reportReasonViolence.
+  ///
+  /// In uz, this message translates to:
+  /// **'Zo‘ravonlik yoki shafqatsizlik'**
+  String get reportReasonViolence;
+
+  /// No description provided for @reportReasonInsult.
+  ///
+  /// In uz, this message translates to:
+  /// **'Haqorat yoki kamsitish'**
+  String get reportReasonInsult;
+
+  /// No description provided for @reportReasonSpam.
+  ///
+  /// In uz, this message translates to:
+  /// **'Spam yoki aldov'**
+  String get reportReasonSpam;
+
+  /// No description provided for @reportReasonIllegal.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qonunga zid material'**
+  String get reportReasonIllegal;
+
+  /// No description provided for @reportReasonCopyright.
+  ///
+  /// In uz, this message translates to:
+  /// **'Mualliflik huquqi'**
+  String get reportReasonCopyright;
+
+  /// No description provided for @reportReasonOther.
+  ///
+  /// In uz, this message translates to:
+  /// **'Boshqa'**
+  String get reportReasonOther;
+
+  /// No description provided for @reportNote.
+  ///
+  /// In uz, this message translates to:
+  /// **'Izoh (ixtiyoriy)'**
+  String get reportNote;
+
+  /// No description provided for @blockUser.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bloklash'**
+  String get blockUser;
+
+  /// No description provided for @unblockUser.
+  ///
+  /// In uz, this message translates to:
+  /// **'Blokdan chiqarish'**
+  String get unblockUser;
+
+  /// No description provided for @blockedList.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bloklanganlar'**
+  String get blockedList;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

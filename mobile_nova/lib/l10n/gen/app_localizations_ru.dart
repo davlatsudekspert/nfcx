@@ -868,4 +868,71 @@ class LRu extends L {
 
   @override
   String get musicFailed => 'Не удалось открыть трек';
+
+  @override
+  String get rulesTitle => 'Прочитайте перед публикацией';
+
+  @override
+  String get rulesBody =>
+      'Размещаемый контент не должен содержать: религиозную пропаганду или экстремистские материалы, порнографические изображения или материалы сексуального характера, политическую пропаганду, а также любые материалы, противоречащие законодательству Республики Узбекистан. При нарушении этих правил контент удаляется без предупреждения.';
+
+  @override
+  String get rulesAccept => 'Я прочитал(а) правила и согласен(на)';
+
+  @override
+  String get rulesContinue => 'Продолжить';
+
+  @override
+  String get rulesReminder => 'Публикуя, вы соглашаетесь с правилами контента.';
+
+  @override
+  String get rulesOpen => 'Правила контента';
+
+  @override
+  String get rulesNotAccepted => 'Согласие с правилами контента не получено.';
+
+  @override
+  String get reportTitle => 'Пожаловаться';
+
+  @override
+  String get reportSent => 'Жалоба отправлена';
+
+  @override
+  String get reportReasonPorn => 'Порнография или сексуальный контент';
+
+  @override
+  String get reportReasonReligious => 'Религиозная пропаганда или экстремизм';
+
+  @override
+  String get reportReasonPolitical => 'Политическая пропаганда';
+
+  @override
+  String get reportReasonViolence => 'Насилие или жестокость';
+
+  @override
+  String get reportReasonInsult => 'Оскорбление или унижение';
+
+  @override
+  String get reportReasonSpam => 'Спам или обман';
+
+  @override
+  String get reportReasonIllegal => 'Незаконный материал';
+
+  @override
+  String get reportReasonCopyright => 'Авторское право';
+
+  @override
+  String get reportReasonOther => 'Другое';
+
+  @override
+  String get reportNote => 'Комментарий (необязательно)';
+
+  @override
+  String get blockUser => 'Заблокировать';
+
+  @override
+  String get unblockUser => 'Разблокировать';
+
+  @override
+  String get blockedList => 'Заблокированные';
 }

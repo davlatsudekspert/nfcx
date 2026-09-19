@@ -61,6 +61,11 @@ class SocialRepository {
       'text': text,
       'media': mediaUrls,
       if (isVideo) 'type': 'reel',
+      // Backend kontent qoidalariga roziliksiz post yaratmaydi:
+      // `rulesAcceptedD1` tekshiruvi, aks holda 422
+      // `rules_not_accepted`. Bu maydon YUBORILMAS edi — ya'ni
+      // ilovadan post joylash umuman ishlamasdi.
+      'agreed': true,
     });
     return res.map((j) =>
         Post.fromJson(((j['post'] ?? j) as Map).cast<String, dynamic>()));
@@ -92,6 +97,8 @@ class SocialRepository {
       _api.post<void>('/api/records/$code/gallery', {
         'url': mediaUrl,
         if (isVideo) 'type': 'video',
+        // Istoryada ham xuddi shu talab.
+        'agreed': true,
       });
 
   /// Kashfiyot lentasi — barcha ommaviy postlar.

@@ -53,6 +53,9 @@ class Prefs {
   static const _kLocale = 'nova.locale';
   static const _kMode = 'nova.mode';
   static const _kSearches = 'nova.recentSearches';
+  static const _kRules = 'nova.contentRulesAccepted';
+  static const _kLock = 'nova.appLock';
+  static const _kLockBio = 'nova.appLockBiometric';
 
   String? get themeId => _p.getString(_kTheme);
   Future<void> setThemeId(String v) => _p.setString(_kTheme, v);
@@ -63,6 +66,22 @@ class Prefs {
   /// `personal` yoki `business` — ilova qaysi rejimda ochilgani.
   String? get mode => _p.getString(_kMode);
   Future<void> setMode(String v) => _p.setString(_kMode, v);
+
+  /// Kontent qoidalariga rozilik berilganmi.
+  ///
+  /// Bu FAQAT interfeys uchun: serverga rozilik har bir joylashda
+  /// qaytadan yuboriladi (`agreed: true`), chunki dalil server
+  /// tomonda qolishi kerak.
+  bool get contentRulesAccepted => _p.getBool(_kRules) ?? false;
+  Future<void> setContentRulesAccepted(bool v) => _p.setBool(_kRules, v);
+
+  /// Lokal ilova qulfi yoqilganmi. Standart holat — O'CHIQ.
+  bool get appLock => _p.getBool(_kLock) ?? false;
+  Future<void> setAppLock(bool v) => _p.setBool(_kLock, v);
+
+  /// Qulfni biometrika bilan ochishga ruxsat.
+  bool get appLockBiometric => _p.getBool(_kLockBio) ?? true;
+  Future<void> setAppLockBiometric(bool v) => _p.setBool(_kLockBio, v);
 
   List<String> get recentSearches => _p.getStringList(_kSearches) ?? const [];
 

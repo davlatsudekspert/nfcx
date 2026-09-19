@@ -871,4 +871,71 @@ class LEn extends L {
 
   @override
   String get musicFailed => 'Could not open the track';
+
+  @override
+  String get rulesTitle => 'Read before you publish';
+
+  @override
+  String get rulesBody =>
+      'Published content must not contain: religious propaganda or extremist material, pornographic or sexually explicit images, political propaganda, or any material contrary to the laws of the Republic of Uzbekistan. Content that breaks these rules is removed without warning.';
+
+  @override
+  String get rulesAccept => 'I have read the rules and agree';
+
+  @override
+  String get rulesContinue => 'Continue';
+
+  @override
+  String get rulesReminder => 'By publishing you agree to the content rules.';
+
+  @override
+  String get rulesOpen => 'Content rules';
+
+  @override
+  String get rulesNotAccepted => 'Content rules were not accepted.';
+
+  @override
+  String get reportTitle => 'Report';
+
+  @override
+  String get reportSent => 'Report sent';
+
+  @override
+  String get reportReasonPorn => 'Pornographic or sexual content';
+
+  @override
+  String get reportReasonReligious => 'Religious propaganda or extremism';
+
+  @override
+  String get reportReasonPolitical => 'Political propaganda';
+
+  @override
+  String get reportReasonViolence => 'Violence or cruelty';
+
+  @override
+  String get reportReasonInsult => 'Insult or harassment';
+
+  @override
+  String get reportReasonSpam => 'Spam or fraud';
+
+  @override
+  String get reportReasonIllegal => 'Illegal material';
+
+  @override
+  String get reportReasonCopyright => 'Copyright';
+
+  @override
+  String get reportReasonOther => 'Other';
+
+  @override
+  String get reportNote => 'Note (optional)';
+
+  @override
+  String get blockUser => 'Block';
+
+  @override
+  String get unblockUser => 'Unblock';
+
+  @override
+  String get blockedList => 'Blocked';
 }

@@ -873,4 +873,72 @@ class LUz extends L {
 
   @override
   String get musicFailed => 'Qo‘shiqni ochib bo‘lmadi';
+
+  @override
+  String get rulesTitle => 'Joylashdan oldin o‘qing';
+
+  @override
+  String get rulesBody =>
+      'Joylashtirilayotgan kontent quyidagilarni o‘z ichiga olmasligi shart: diniy targ‘ibot yoki ekstremistik mazmun, pornografik yoki jinsiy xarakterdagi tasvirlar, siyosiy targ‘ibot, shuningdek O‘zbekiston Respublikasi qonunchiligiga zid har qanday material. Ushbu qoidalar buzilgan taqdirda kontent ogohlantirishsiz o‘chiriladi.';
+
+  @override
+  String get rulesAccept => 'Men qoidalarni o‘qidim va roziman';
+
+  @override
+  String get rulesContinue => 'Davom etish';
+
+  @override
+  String get rulesReminder =>
+      'Joylash bilan kontent qoidalariga rozilik bildirasiz.';
+
+  @override
+  String get rulesOpen => 'Kontent qoidalari';
+
+  @override
+  String get rulesNotAccepted => 'Kontent qoidalariga rozilik berilmadi.';
+
+  @override
+  String get reportTitle => 'Shikoyat qilish';
+
+  @override
+  String get reportSent => 'Shikoyat yuborildi';
+
+  @override
+  String get reportReasonPorn => 'Pornografik yoki jinsiy mazmun';
+
+  @override
+  String get reportReasonReligious => 'Diniy targ‘ibot yoki ekstremizm';
+
+  @override
+  String get reportReasonPolitical => 'Siyosiy targ‘ibot';
+
+  @override
+  String get reportReasonViolence => 'Zo‘ravonlik yoki shafqatsizlik';
+
+  @override
+  String get reportReasonInsult => 'Haqorat yoki kamsitish';
+
+  @override
+  String get reportReasonSpam => 'Spam yoki aldov';
+
+  @override
+  String get reportReasonIllegal => 'Qonunga zid material';
+
+  @override
+  String get reportReasonCopyright => 'Mualliflik huquqi';
+
+  @override
+  String get reportReasonOther => 'Boshqa';
+
+  @override
+  String get reportNote => 'Izoh (ixtiyoriy)';
+
+  @override
+  String get blockUser => 'Bloklash';
+
+  @override
+  String get unblockUser => 'Blokdan chiqarish';
+
+  @override
+  String get blockedList => 'Bloklanganlar';
 }

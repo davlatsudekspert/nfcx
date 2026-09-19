@@ -22,6 +22,7 @@ import '../home/home_screen.dart';
 import '../home/widgets/avatar.dart';
 import '../home/widgets/identity_card.dart';
 import '../profile/profile_repository.dart';
+import 'content_rules.dart';
 
 /// Post tafsiloti uchun so'rov: yozuv kodi + post id.
 typedef PostRef = ({String code, int id});
@@ -307,6 +308,19 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
       return;
     }
 
+    // Kontent qoidalari darvozasi. Birinchi marta to'liq matn va
+    // rozilik katakchasi ochiladi; keyin bu chaqiruv darhol `true`
+    // qaytadi va tugmaning ostidagi eslatma qoladi.
+    //
+    // Rozilik bo'lmasa so'rov YUBORILMAYDI: serverning o'zi ham uni
+    // 422 bilan rad etardi, lekin foydalanuvchiga sabab tushunarsiz
+    // bo'lardi.
+    if (!await ensureContentRules(context, ref)) {
+      if (mounted) setState(() => _error = l.rulesNotAccepted);
+      return;
+    }
+    if (!mounted) return;
+
     setState(() {
       _busy = true;
       _error = null;
@@ -480,6 +494,7 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
           ],
           const SizedBox(height: Gap.xxl),
           NovaButton(label: l.actionPublish, busy: _busy, onPressed: _publish),
+          const ContentRulesNote(),
         ],
       ),
     );

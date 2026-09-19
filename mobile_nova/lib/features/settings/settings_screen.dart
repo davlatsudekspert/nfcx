@@ -13,6 +13,7 @@ import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
 import '../auth/session.dart';
 import '../home/widgets/avatar.dart';
+import '../social/content_rules.dart';
 
 /// Ilova versiyasi.
 ///
@@ -142,6 +143,14 @@ class SettingsScreen extends ConsumerWidget {
               icon: Icons.support_agent_rounded,
               label: l.settingsSupport,
               onTap: () => context.push(Routes.settingsSupport),
+            ),
+            // Kontent qoidalari — joylash paytidagi darvoza bilan
+            // AYNAN bir matn. Foydalanuvchi uni istalgan vaqtda
+            // qayta o'qiy olishi kerak.
+            SettingsItem(
+              icon: Icons.gavel_rounded,
+              label: l.rulesOpen,
+              onTap: () => ensureContentRules(context, ref, force: true),
             ),
             SettingsItem(
               icon: Icons.info_outline_rounded,
