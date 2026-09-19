@@ -650,9 +650,8 @@ void main() {
                 : null);
       case Ok(:final value):
         postId = value.id;
-        litter.track('post #${value.id}', () async {
-          await social.deletePost(value.id);
-        });
+        litter.trackResult(
+            'post #${value.id}', () => social.deletePost(value.id));
         report.pass('Post create',
             screen: 'PostComposer',
             action: 'POST /api/records/:code/posts',
@@ -733,8 +732,8 @@ void main() {
               cause: why(error),
               pathHint: '/api/comments/');
         case Ok(:final value):
-          litter.track('izoh #${value.id}',
-              () async => social.deleteComment(value.id));
+          litter.trackResult('izoh #${value.id}',
+              () => social.deleteComment(value.id));
           final back = await social.comments('post', postId);
           final ok = back is Ok<({List<Comment> items, bool hasMore, int total})> &&
               back.value
@@ -818,7 +817,18 @@ void main() {
       return n;
     }
 
-    swept = await sweepMarked(code);
+    // HAMMA EGALIK QILINGAN PROFIL bo'ylab tozalanadi.
+    //
+    // Faqat `code` va yoziladigan profil tozalansa, oldingi ishga
+    // tushirishda BOSHQA profilga yozilib qolgan axlat hech qachon
+    // o'chmasdi: E2E #17 da istorya #36 UZD772 ga yozilgan va
+    // chiqishdan keyingi 401 tufayli o'chmagan edi, keyingi ishga
+    // tushirish esa boshqa profilni tanlab, unga qaramasdi.
+    //
+    // Bu yerda ham FAQAT markerli yozuvlar o'chiriladi.
+    for (final id in ids) {
+      swept += await sweepMarked(id.code);
+    }
 
     // 2-QADAM: YOZISH UCHUN ENG BO'SH PROFILNI TANLASH.
     //
@@ -860,7 +870,6 @@ void main() {
       // ignore: avoid_print
       print('[E2E] istorya yozish uchun $writeCode tanlandi '
           '($writeCount ta faol istorya)');
-      swept += await sweepMarked(writeCode);
     }
 
     final storiesBefore = await social.storiesOf(code);
@@ -1227,9 +1236,10 @@ void main() {
             cause: why(error),
             pathHint: '/catalog');
       case Ok(:final value):
-        litter.track('katalog #${value.id}', () async {
-          await business.deleteRecordItem(code, CatalogKind.products, value.id);
-        });
+        litter.trackResult(
+            'katalog #${value.id}',
+            () => business.deleteRecordItem(
+                code, CatalogKind.products, value.id));
         report.pass('Product create',
             screen: 'CatalogForm',
             action: 'POST /api/records/:code/catalog',
@@ -1586,6 +1596,19 @@ void main() {
   // ══════════════════════════════════════════════════════════════
 
   testWidgets('8. Chiqish va yakuniy baho', (_) async {
+    // TOZALASH CHIQISHDAN OLDIN.
+    //
+    // Ilgari tozalash faqat `tearDownAll` da edi, ya'ni quyidagi
+    // `logout()` dan KEYIN ishlardi: server sessiyasi ham,
+    // qurilmadagi token ham o'chgan bo'lardi va har bir o'chirish
+    // 401 olardi. E2E #17 da aynan shu sodir bo'ldi — istorya #36
+    // haqiqiy hisobda qolib ketdi.
+    //
+    // `sweep()` ro'yxatni bo'shatadi, shuning uchun `tearDownAll`
+    // dagi chaqiruv endi faqat ZAXIRA: to'plam bu testga
+    // yetmasdan yiqilsa ishlaydi.
+    await litter.sweep();
+
     if (me != null) {
       await auth.logout();
       final after = await auth.me();
@@ -1619,6 +1642,19 @@ void main() {
       isEmpty,
       reason: 'FAIL qatorlari:\n${failures.map((f) => ' · ${f.name}: '
           '${f.cause}\n   ${f.trace}').join('\n')}',
+    );
+
+    // TOZALANMAGAN AXLAT HAM ISHNI QIZIL QILADI.
+    //
+    // E2E #17 yashil tugadi, lekin istorya #36 haqiqiy hisobda
+    // qolib ketdi: tozalash muammosi hech bir FAIL qatoriga
+    // tegmasdi. Haqiqiy hisobda qolgan sinov obyekti — jim
+    // o'tkazib yuboriladigan narsa emas.
+    expect(
+      report.cleanupProblems,
+      isEmpty,
+      reason: 'Haqiqiy hisobda sinov obyekti qoldi:\n'
+          '${report.cleanupProblems.map((c) => ' · $c').join('\n')}',
     );
   }, timeout: const Timeout(Duration(minutes: 3)));
 }
