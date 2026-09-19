@@ -223,8 +223,17 @@ class _Hero extends StatelessWidget {
             shaderCallback: (rect) => const LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Colors.white, Colors.white, Colors.transparent],
-              stops: [0, .34, 1],
+              // Uch emas, to'rt to'xtash: shaffoflikning O'ZGARISH
+              // TEZLIGI ham asta susayadi. Ikki bosqichli chiziqli
+              // so'nishda burilish nuqtasi ko'z uchun yengil chiziq
+              // (Mach band) bo'lib seziladi.
+              colors: [
+                Colors.white,
+                Colors.white,
+                Color(0x40FFFFFF),
+                Colors.transparent,
+              ],
+              stops: [0, .30, .70, 1],
             ).createShader(rect),
             blendMode: BlendMode.dstIn,
             child: Stack(
