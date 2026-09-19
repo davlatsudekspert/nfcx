@@ -981,4 +981,25 @@ class LUz extends L {
 
   @override
   String get actionSend => 'Yuborish';
+
+  @override
+  String get giftOffers => 'Sovg‘a takliflari';
+
+  @override
+  String get giftIncoming => 'Sizga kelgan';
+
+  @override
+  String get giftOutgoing => 'Siz yuborgan';
+
+  @override
+  String get giftAccept => 'Qabul qilish';
+
+  @override
+  String get giftReject => 'Rad etish';
+
+  @override
+  String get giftCancel => 'Bekor qilish';
+
+  @override
+  String get giftNoOffers => 'Hozircha sovg‘a taklifi yo‘q';
 }

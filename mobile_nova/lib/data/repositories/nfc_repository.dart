@@ -74,14 +74,31 @@ class NfcRepository {
   Future<Result<void>> gift({required String code, required String email}) =>
       _api.post<void>('/api/records/$code/gift', {'email': email});
 
-  Future<Result<List<Map<String, dynamic>>>> giftOffers() async {
+  /// Sovg'a takliflari.
+  ///
+  /// Server `{ incoming: [...], outgoing: [...] }` qaytaradi
+  /// (`listGiftOffers`). Ilgari bu yerda `offers` yoki `items`
+  /// izlanardi — bunday kalitlar YO'Q, ya'ni ro'yxat HAR DOIM bo'sh
+  /// chiqardi.
+  ///
+  /// Har bir element: `id`, `code`, `createdAt` va yo'nalishga qarab
+  /// `fromEmail` (kelgan) yoki `toEmail` (yuborilgan).
+  Future<Result<({List<GiftOffer> incoming, List<GiftOffer> outgoing})>>
+      giftOffers() async {
     final res = await _api.get<Map<String, dynamic>>('/api/gift-offers');
-    return res.map((j) {
-      final raw = j['offers'] ?? j['items'];
-      return raw is List
-          ? raw.whereType<Map>().map((e) => e.cast<String, dynamic>()).toList()
-          : <Map<String, dynamic>>[];
-    });
+    return res.map((j) => (
+          incoming: _offers(j['incoming'], incoming: true),
+          outgoing: _offers(j['outgoing'], incoming: false),
+        ));
+  }
+
+  static List<GiftOffer> _offers(Object? raw, {required bool incoming}) {
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map((e) => GiftOffer.fromJson(e.cast<String, dynamic>(),
+            incoming: incoming))
+        .toList();
   }
 
   Future<Result<void>> acceptGift(int id) =>

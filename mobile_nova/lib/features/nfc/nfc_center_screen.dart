@@ -43,6 +43,14 @@ class NfcCenterScreen extends ConsumerWidget {
     return NovaScaffold(
       title: l.nfcCenter,
       actions: [
+        // Kelgan sovg'alar — backend'da bu oqim bor edi, ilovada
+        // ko'rish yo'li yo'q edi.
+        NovaIconButton(
+          icon: Icons.card_giftcard_rounded,
+          tooltip: l.giftOffers,
+          onPressed: () => context.push(Routes.giftOffers),
+        ),
+        const SizedBox(width: Gap.sm),
         NovaIconButton(
           icon: Icons.history_rounded,
           tooltip: l.nfcHistory,

@@ -30,6 +30,7 @@ import '../features/social/reels_screen.dart';
 import '../features/social/story_viewer.dart';
 import 'routes.dart';
 import 'shell.dart';
+import '../features/nfc/gift_offers_screen.dart';
 
 final _rootKey = GlobalKey<NavigatorState>();
 
@@ -151,6 +152,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.reelCreate,
         builder: (_, __) => const ComposerScreen(kind: ComposerKind.reel),
+      ),
+      GoRoute(
+        path: Routes.giftOffers,
+        builder: (_, __) => const GiftOffersScreen(),
       ),
       GoRoute(
         path: '/post/:id',

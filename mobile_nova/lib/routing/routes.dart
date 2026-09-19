@@ -50,6 +50,9 @@ abstract final class Routes {
   static String nfcIdEdit(String code) => '/nfc/id/$code/edit';
   static String nfcGift(String code) => '/nfc/id/$code/gift';
 
+  /// Kelgan va yuborilgan sovg'a takliflari.
+  static const giftOffers = '/nfc/gifts';
+
   // Profil
   static const profileEdit = '/profile/edit';
 

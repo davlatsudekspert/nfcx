@@ -978,4 +978,25 @@ class LEn extends L {
 
   @override
   String get actionSend => 'Send';
+
+  @override
+  String get giftOffers => 'Gift offers';
+
+  @override
+  String get giftIncoming => 'Offered to you';
+
+  @override
+  String get giftOutgoing => 'You sent';
+
+  @override
+  String get giftAccept => 'Accept';
+
+  @override
+  String get giftReject => 'Decline';
+
+  @override
+  String get giftCancel => 'Cancel';
+
+  @override
+  String get giftNoOffers => 'No gift offers yet';
 }

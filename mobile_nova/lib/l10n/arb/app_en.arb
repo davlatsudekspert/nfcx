@@ -367,5 +367,12 @@
   "lockBiometricNone": "No biometrics on this device",
   "lockOff": "Turn off app lock",
   "lockDesc": "Asks for a PIN when opening the app on this device. This is not your account password.",
-  "actionSend": "Send"
+  "actionSend": "Send",
+  "giftOffers": "Gift offers",
+  "giftIncoming": "Offered to you",
+  "giftOutgoing": "You sent",
+  "giftAccept": "Accept",
+  "giftReject": "Decline",
+  "giftCancel": "Cancel",
+  "giftNoOffers": "No gift offers yet"
 }

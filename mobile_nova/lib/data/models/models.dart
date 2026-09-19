@@ -504,6 +504,40 @@ class StoryItem {
       );
 }
 
+/// NFC ID sovg'a taklifi — `/api/gift-offers`.
+class GiftOffer {
+  const GiftOffer({
+    required this.id,
+    required this.code,
+    required this.incoming,
+    this.email = '',
+    this.createdAt,
+  });
+
+  final int id;
+
+  /// Sovg'a qilinayotgan NFC ID.
+  final String code;
+
+  /// `true` — menga kelgan, `false` — men yuborgan.
+  final bool incoming;
+
+  /// Kelganda yuboruvchining, yuborilganda qabul qiluvchining emaili.
+  final String email;
+
+  final DateTime? createdAt;
+
+  factory GiftOffer.fromJson(Map<String, dynamic> j,
+          {required bool incoming}) =>
+      GiftOffer(
+        id: _i(j['id']),
+        code: _s(j['code']),
+        incoming: incoming,
+        email: _s(incoming ? j['fromEmail'] : j['toEmail']),
+        createdAt: _dt(j['createdAt']),
+      );
+}
+
 class Comment {
   const Comment({
     required this.id,

@@ -367,5 +367,12 @@
   "lockBiometricNone": "Bu qurilmada biometrika yo‘q",
   "lockOff": "Qulfni o‘chirish",
   "lockDesc": "Ilovani shu qurilmada ochishni PIN bilan to‘sadi. Bu akkaunt paroli emas.",
-  "actionSend": "Yuborish"
+  "actionSend": "Yuborish",
+  "giftOffers": "Sovg‘a takliflari",
+  "giftIncoming": "Sizga kelgan",
+  "giftOutgoing": "Siz yuborgan",
+  "giftAccept": "Qabul qilish",
+  "giftReject": "Rad etish",
+  "giftCancel": "Bekor qilish",
+  "giftNoOffers": "Hozircha sovg‘a taklifi yo‘q"
 }

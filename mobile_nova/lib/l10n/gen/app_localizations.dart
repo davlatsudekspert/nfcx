@@ -1994,6 +1994,48 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Yuborish'**
   String get actionSend;
+
+  /// No description provided for @giftOffers.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sovg‘a takliflari'**
+  String get giftOffers;
+
+  /// No description provided for @giftIncoming.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sizga kelgan'**
+  String get giftIncoming;
+
+  /// No description provided for @giftOutgoing.
+  ///
+  /// In uz, this message translates to:
+  /// **'Siz yuborgan'**
+  String get giftOutgoing;
+
+  /// No description provided for @giftAccept.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qabul qilish'**
+  String get giftAccept;
+
+  /// No description provided for @giftReject.
+  ///
+  /// In uz, this message translates to:
+  /// **'Rad etish'**
+  String get giftReject;
+
+  /// No description provided for @giftCancel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bekor qilish'**
+  String get giftCancel;
+
+  /// No description provided for @giftNoOffers.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hozircha sovg‘a taklifi yo‘q'**
+  String get giftNoOffers;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

@@ -975,4 +975,25 @@ class LRu extends L {
 
   @override
   String get actionSend => 'Отправить';
+
+  @override
+  String get giftOffers => 'Предложения подарков';
+
+  @override
+  String get giftIncoming => 'Вам предложено';
+
+  @override
+  String get giftOutgoing => 'Вы отправили';
+
+  @override
+  String get giftAccept => 'Принять';
+
+  @override
+  String get giftReject => 'Отклонить';
+
+  @override
+  String get giftCancel => 'Отменить';
+
+  @override
+  String get giftNoOffers => 'Пока нет предложений подарков';
 }
