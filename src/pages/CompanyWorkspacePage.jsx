@@ -336,9 +336,29 @@ function CompanyStatsPanel({ companyId, t }) {
   }, [companyId, days]);
 
   if (data === undefined) return <div className="cw-panel"><p className="cw-empty">{t('Yuklanmoqda…')}</p></div>;
-  if (!data) return <div className="cw-panel"><p className="cw-empty">{t('Statistikani yuklab bo‘lmadi.')}</p></div>;
 
-  const max = Math.max(1, ...data.series.map((d) => d.views));
+  // JAVOB SHAKLI TEKSHIRILADI, "bor-yo'qligi" emas.
+  //
+  // Ilgari bu yerda faqat `if (!data)` turardi va pastda
+  // `data.series.map(...)` chaqirilardi. Ammo javob BO'LIB, lekin
+  // kutilgan shaklda BO'LMASLIGI mumkin: eski keshdan kelgan
+  // nusxa, xato obyekti yoki bo'sh massiv (`[]` — u ham "rost").
+  // O'shanda `undefined.map` xatosi butun daraxtni yiqitardi va
+  // odam QOP-QORA ekran ko'rardi — nima bo'lganini aytadigan hech
+  // narsasiz.
+  //
+  // Endi shakl bir joyda tekshiriladi: uchta ro'yxat ham massiv
+  // bo'lishi shart, sonlar esa son. Mos kelmasa — ochiq xato
+  // xabari, qora ekran emas.
+  const series = Array.isArray(data?.series) ? data.series : null;
+  const actions = Array.isArray(data?.actions) ? data.actions : [];
+  const items = Array.isArray(data?.items) ? data.items : [];
+  if (!series) return <div className="cw-panel"><p className="cw-empty">{t('Statistikani yuklab bo‘lmadi.')}</p></div>;
+
+  const views = Number(data?.views) || 0;
+  const taps = Number(data?.taps) || 0;
+  const orders = Number(data?.orders) || 0;
+  const max = Math.max(1, ...series.map((d) => Number(d?.views) || 0));
   return (
     <div className="cw-panel">
       <div className="cw-panel-head">
@@ -356,15 +376,15 @@ function CompanyStatsPanel({ companyId, t }) {
       </div>
 
       <section className="cw-metrics">
-        <article><small>{t('OCHILISHLAR')}</small><b>{fmt(data.views)}</b><p>{t('NFC tegish va havola')}</p></article>
-        <article><small>{t('TUGMA BOSILDI')}</small><b>{fmt(data.taps)}</b><p>{t('Qo‘ng‘iroq, Telegram, yo‘nalish…')}</p></article>
-        <article><small>{t('BUYURTMALAR')}</small><b>{fmt(data.orders)}</b><p>{t('Jami')}</p></article>
+        <article><small>{t('OCHILISHLAR')}</small><b>{fmt(views)}</b><p>{t('NFC tegish va havola')}</p></article>
+        <article><small>{t('TUGMA BOSILDI')}</small><b>{fmt(taps)}</b><p>{t('Qo‘ng‘iroq, Telegram, yo‘nalish…')}</p></article>
+        <article><small>{t('BUYURTMALAR')}</small><b>{fmt(orders)}</b><p>{t('Jami')}</p></article>
       </section>
 
-      {data.views > 0 ? (
+      {views > 0 ? (
         <div className="cw-chart" role="img" aria-label={t('Kunlik ochilishlar')}>
-          {data.series.map((d) => (
-            <i key={d.day} style={{ height: `${Math.max(2, (d.views / max) * 100)}%` }} title={`${d.day}: ${d.views}`} />
+          {series.map((d) => (
+            <i key={d.day} style={{ height: `${Math.max(2, ((Number(d?.views) || 0) / max) * 100)}%` }} title={`${d?.day}: ${Number(d?.views) || 0}`} />
           ))}
         </div>
       ) : (
@@ -374,13 +394,13 @@ function CompanyStatsPanel({ companyId, t }) {
       <div className="cw-stat-cols">
         <div>
           <div className="cw-sub-head"><b>{t('Tugmalar')}</b></div>
-          {data.actions.length ? data.actions.map((a) => (
+          {actions.length ? actions.map((a) => (
             <div className="cw-stat-row" key={a.key}><span>{t(ACTION_LABEL[a.key] || a.key)}</span><b>{fmt(a.hits)}</b></div>
           )) : <p className="cw-empty">{t('Hali hech kim bosmagan.')}</p>}
         </div>
         <div>
           <div className="cw-sub-head"><b>{t('Eng ko‘p qaralgan')}</b></div>
-          {data.items.length ? data.items.map((i) => (
+          {items.length ? items.map((i) => (
             <div className="cw-stat-row" key={i.id}><span>{i.name || i.id}</span><b>{fmt(i.hits)}</b></div>
           )) : <p className="cw-empty">{t('Hozircha yo‘q.')}</p>}
         </div>

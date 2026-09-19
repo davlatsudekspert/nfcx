@@ -136,4 +136,33 @@ await env.DB.prepare(
   checkTrue('8) shaxsiy analitika alohida manzilda', /\/records\/\$\{encodeURIComponent\(code\)\}\/analytics/.test(db));
 }
 
+// ── 9) KUTILMAGAN JAVOB QORA EKRAN BERMASIN ──────────────────────────
+// Panel ilgari faqat "javob bormi?" deb qarardi va darhol
+// `data.series.map(...)` chaqirardi. Javob BO'LIB, lekin kutilgan
+// shaklda BO'LMASLIGI mumkin: eski keshdan kelgan nusxa, xato
+// obyekti yoki bo'sh massiv (`[]` — u ham "rost"). O'shanda
+// `undefined.map` xatosi butun daraxtni yiqitib, odam QOP-QORA
+// ekran ko'rardi — hech qanday izohsiz. Brauzerda takrorlandi.
+{
+  const { readFileSync } = await import('node:fs');
+  const { stripComments } = await import('./lib/strip-comments.mjs');
+  const page = stripComments(readFileSync(new URL('../src/pages/CompanyWorkspacePage.jsx', import.meta.url), 'utf8'));
+  const from = page.indexOf('function CompanyStatsPanel');
+  const panel = page.slice(from, page.indexOf('\nfunction ', from + 10));
+
+  checkTrue('9) panel topildi', from > 0 && panel.length > 200);
+  // Uchala ro'yxat ham MASSIV ekani tekshirilsin.
+  for (const f of ['series', 'actions', 'items']) {
+    checkTrue(`9) "${f}" massiv ekani tekshiriladi`,
+      new RegExp(`Array\\.isArray\\(data\\?\\.${f}\\)`).test(panel));
+  }
+  // Tekshirilmagan to'g'ridan-to'g'ri murojaat qolmasin.
+  for (const f of ['series', 'actions', 'items']) {
+    checkTrue(`9) xom "data.${f}" ishlatilmaydi`, !new RegExp(`data\\.${f}[.\\[]`).test(panel));
+  }
+  checkTrue('9) shakl mos kelmasa ochiq xabar', /Statistikani yuklab bo/.test(panel));
+  // Sonlar ham son bo'lsin (NaN ekranga chiqmasin).
+  checkTrue('9) sonlar Number bilan olinadi', /Number\(data\?\.views\)/.test(panel));
+}
+
 done('Biznes statistikasi');
