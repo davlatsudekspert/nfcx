@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:local_auth/local_auth.dart';
 
 import '../../app/providers.dart';
 import '../../core/storage/secure_store.dart';
@@ -29,8 +27,8 @@ import '../../l10n/gen/app_localizations.dart';
 /// * PIN `flutter_secure_storage` da (Keystore/Keychain), oddiy
 ///   `SharedPreferences` da EMAS: u oddiy fayl va root olingan
 ///   qurilmada o'qiladi.
-/// * Biometrika — QULAYLIK, ishonch emas. Qurilmada yo'q bo'lsa
-///   yoki muvaffaqiyatsiz bo'lsa, PIN har doim ishlaydi.
+/// * Biometrika HOZIRCHA YO'Q — sababi pastda, `biometric`
+///   maydonining izohida.
 /// * Ilova fonga ketganda darhol emas, [_graceDelay] dan keyin
 ///   qulflanadi: kamera yoki fayl tanlash oynasi ham ilovani fonga
 ///   chiqaradi va har safar PIN so'ralsa, ishlatib bo'lmasdi.
@@ -52,6 +50,17 @@ class AppLockState {
   final bool enabled;
 
   /// Biometrika bilan ochishga ruxsat berilganmi.
+  ///
+  /// HOZIRCHA ISHLATILMAYDI. `local_auth` paketi qo'shilganda
+  /// Android buildi R8 bosqichida QOTIB QOLDI: uchala urinishda ham
+  /// (ikkitasi qayta ishga tushirish, bittasi Gradle xotirasi
+  /// tuzatilgandan keyin) build aynan "Universal APK" bosqichida
+  /// 40-60 daqiqa osilib turdi va xatolik ham bermadi. Paketsiz
+  /// esa build ~7 daqiqada o'tadi.
+  ///
+  /// Shuning uchun paket olib tashlandi va qulf FAQAT PIN bilan
+  /// ishlaydi — bu to'liq ishlaydigan himoya. Maydon o'z joyida
+  /// qoldirildi: biometrika qaytarilganda sozlama saqlanib qoladi.
   final bool biometric;
 
   /// Ayni damda ekran qulflanganmi.
@@ -142,17 +151,12 @@ final appLockProvider = StateNotifierProvider<AppLock, AppLockState>(
 );
 
 /// Qurilmada biometrika bormi.
-final biometricAvailableProvider = FutureProvider<bool>((ref) async {
-  try {
-    final auth = LocalAuthentication();
-    return await auth.canCheckBiometrics || await auth.isDeviceSupported();
-  } on PlatformException {
-    return false;
-  } on MissingPluginException {
-    // Sinov muhitida plagin yo'q — biometrika "yo'q" deb qaraladi.
-    return false;
-  }
-});
+///
+/// HOZIRCHA HAR DOIM `false`: biometrika paketi olib tashlangan
+/// (yuqoridagi izohga qarang). Soxta "bor" qaytarilmaydi —
+/// sozlamada bosilib, hech narsa qilmaydigan tugma qolmasligi
+/// kerak.
+final biometricAvailableProvider = FutureProvider<bool>((ref) async => false);
 
 /// Qulf ekrani.
 ///
@@ -188,32 +192,6 @@ class _LockScreen extends ConsumerStatefulWidget {
 class _LockScreenState extends ConsumerState<_LockScreen> {
   String _pin = '';
   bool _wrong = false;
-  bool _triedBiometric = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _tryBiometric());
-  }
-
-  Future<void> _tryBiometric() async {
-    if (_triedBiometric) return;
-    _triedBiometric = true;
-    if (!ref.read(appLockProvider).biometric) return;
-    final l = L.of(context);
-    try {
-      final ok = await LocalAuthentication().authenticate(
-        localizedReason: l.lockBiometricReason,
-        // Tizim PIN/parolini so'ramaymiz — bizda o'z PIN'imiz bor.
-        biometricOnly: true,
-      );
-      if (ok && mounted) ref.read(appLockProvider.notifier).unlock();
-    } on PlatformException {
-      // Biometrika yo'q, o'chirilgan yoki bloklangan — PIN qoladi.
-    } on MissingPluginException {
-      // Sinov muhiti.
-    }
-  }
 
   Future<void> _push(String d) async {
     if (_pin.length >= kPinLength) return;
@@ -241,8 +219,6 @@ class _LockScreenState extends ConsumerState<_LockScreen> {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final l = L.of(context);
-    final bio = ref.watch(appLockProvider).biometric;
-
     return ColoredBox(
       color: t.bg1,
       child: SafeArea(
@@ -280,14 +256,7 @@ class _LockScreenState extends ConsumerState<_LockScreen> {
               ],
             ),
             const SizedBox(height: Gap.section),
-            _Keypad(
-              onDigit: _push,
-              onBack: _back,
-              onBiometric: bio ? () {
-                _triedBiometric = false;
-                _tryBiometric();
-              } : null,
-            ),
+            _Keypad(onDigit: _push, onBack: _back),
           ],
         ),
       ),
@@ -296,15 +265,10 @@ class _LockScreenState extends ConsumerState<_LockScreen> {
 }
 
 class _Keypad extends StatelessWidget {
-  const _Keypad({
-    required this.onDigit,
-    required this.onBack,
-    this.onBiometric,
-  });
+  const _Keypad({required this.onDigit, required this.onBack});
 
   final ValueChanged<String> onDigit;
   final VoidCallback onBack;
-  final VoidCallback? onBiometric;
 
   @override
   Widget build(BuildContext context) {
@@ -345,12 +309,8 @@ class _Keypad extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            onBiometric == null
-                ? key(const SizedBox.shrink(), null)
-                : key(
-                    Icon(Icons.fingerprint_rounded, size: 27, color: t.accent2),
-                    onBiometric,
-                  ),
+            // Chap katak bo'sh: klaviatura simmetriyasi saqlanadi.
+            key(const SizedBox.shrink(), null),
             digit('0'),
             key(
               Icon(Icons.backspace_outlined, size: 21, color: t.text2),

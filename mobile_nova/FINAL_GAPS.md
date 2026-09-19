@@ -116,7 +116,7 @@ Bular ilovada UI sifatida bor edi, lekin **umuman ishlamasdi**.
 | Feature | Status | Izoh |
 |---|---|---|
 | Lokal ilova qulfi (PIN) | DONE | PIN Keystore ichida, `SharedPreferences` da emas — test qo'riqlaydi |
-| Biometrika | DONE (kod) / DEVICE REQUIRED (tekshiruv) | `local_auth`; qurilmada yo'q bo'lsa tugma o'chirilgan va sababi yozilgan; PIN har doim zaxira |
+| **Biometrika** | **FAILED (qaytarildi)** | `local_auth` qo'shilganda Android buildi R8 bosqichida QOTIB QOLDI. Uch urinishda ham (ikkitasi qayta ishga tushirish, bittasi Gradle xotirasi tuzatilgandan keyin) build aynan "Universal APK" bosqichida 40–60 daqiqa osilib turdi va xatolik ham bermadi; paketsiz esa ~7 daqiqada o'tadi. Paket olib tashlandi, qulf FAQAT PIN bilan ishlaydi — bu to'liq ishlaydigan himoya. Qaytarish uchun R8/`androidx.biometric` o'zaro ta'sirini aniqlash kerak |
 | Parolni almashtirish | DONE | |
 | Mavzu, til | DONE | 5 mavzu, 3 til |
 | Bildirishnoma sozlamalari | PARTIAL | tanlov lokal saqlanadi; serverga yuborilmaydi (endpoint yo'q) |
@@ -198,3 +198,8 @@ bo'lmasligi.
    (DEVICE REQUIRED).
 5. Email kodi bilan kirishni yopish yoki backend'da email
    infratuzilmasini qo'shish.
+6. **Biometrik qulfni qaytarish** — `local_auth` bilan R8 nima uchun
+   qotib qolishini aniqlash (`-keep`/`-dontwarn androidx.biometric.**`
+   yoki `android.enableR8.fullMode=false` bilan sinab ko'rish).
+   Hozir qulf PIN bilan to'liq ishlaydi, biometrika esa YO'Q va
+   bordek ko'rsatilmaydi.

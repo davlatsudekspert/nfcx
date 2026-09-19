@@ -314,7 +314,6 @@ class _SecuritySettingsScreenState
           SectionHeader(title: l.lockTitle),
           Consumer(builder: (context, ref, _) {
             final lock = ref.watch(appLockProvider);
-            final bio = ref.watch(biometricAvailableProvider);
             return FloatingSurface(
               solid: true,
               child: Column(
@@ -328,35 +327,13 @@ class _SecuritySettingsScreenState
                       label: l.lockSetPin,
                       onPressed: () => showPinSetup(context, ref),
                     )
-                  else ...[
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      value: lock.biometric,
-                      // Qurilmada biometrika yo'q bo'lsa tugma
-                      // o'chirilgan va sababi yozilgan — bosilib,
-                      // hech narsa qilmaydigan tugma qolmaydi.
-                      onChanged: bio.valueOrNull == true
-                          ? (v) => ref
-                              .read(appLockProvider.notifier)
-                              .setBiometric(v)
-                          : null,
-                      activeThumbColor: t.accent2,
-                      title: Text(l.lockBiometric,
-                          style: Theme.of(context).textTheme.bodyLarge),
-                      subtitle: bio.valueOrNull == true
-                          ? null
-                          : Text(l.lockBiometricNone,
-                              style:
-                                  Theme.of(context).textTheme.bodySmall),
-                    ),
-                    const SizedBox(height: Gap.sm),
+                  else
                     NovaButton(
                       label: l.lockOff,
                       tone: ButtonTone.quiet,
                       onPressed: () =>
                           ref.read(appLockProvider.notifier).disable(),
                     ),
-                  ],
                 ],
               ),
             );
