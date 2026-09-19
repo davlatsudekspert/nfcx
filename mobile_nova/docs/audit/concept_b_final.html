@@ -1,0 +1,2478 @@
+<!DOCTYPE html>
+<html lang="uz" data-theme="pearl" data-device="390">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NFCSTORE — Concept B · Final</title>
+<style>
+/* ============================================================
+   THEME SYSTEM — 5 ta to‘liq premium palette
+   ============================================================ */
+:root{
+  --r-pill:100px;
+  --r-blob:44px;
+  --r-soft:28px;
+  --r-gentle:22px;
+  --phone-w:390;
+  --ease-spring:cubic-bezier(.34,1.4,.5,1);
+  --ease-smooth:cubic-bezier(.4,0,.2,1);
+  --dur-fast:.25s;
+  --dur-med:.45s;
+  --dur-slow:.7s;
+}
+
+/* ============ 1 · PEARL / CHAMPAGNE ============ */
+html[data-theme="pearl"]{
+  --bg-1:#FAF7F2; --bg-2:#EFE7DA; --bg-vignette:rgba(196,164,124,.14);
+  --surface:rgba(253,251,247,.82); --surface-2:rgba(253,251,247,.55); --surface-solid:#FDFBF7;
+  --text-1:#2A2A2E; --text-2:#5A5A62; --text-3:#9A9AA2;
+  --accent-1:#E0CDA9; --accent-2:#C4A47C; --accent-3:#8E7550;
+  --accent-b:#C5D8CB; --accent-b-dark:#6E8A7A;
+  --accent-c:#D5CFE4; --accent-c-dark:#8E7FB8;
+  --accent-d:#CBDCE8; --accent-d-dark:#6B8FA8;
+  --glow:rgba(196,164,124,.35); --glow-b:rgba(159,184,168,.35);
+  --shadow-float:0 22px 50px rgba(160,140,110,.16), 0 8px 20px rgba(160,140,110,.08);
+  --shadow-soft:0 12px 32px rgba(160,140,110,.10), 0 4px 12px rgba(160,140,110,.06);
+  --shadow-tiny:0 4px 12px rgba(160,140,110,.08);
+  --border-1:rgba(255,255,255,.95); --border-2:rgba(196,164,124,.22);
+  --phone-frame:linear-gradient(150deg,#D9CFBE,#B8A88E);
+  --error:#D88A8A; --success:#8FB89A; --warn:#DDB878;
+  --ambient-1:rgba(224,205,169,.45); --ambient-2:rgba(197,216,203,.4);
+}
+
+/* ============ 2 · GRAPHITE / PLATINUM ============ */
+html[data-theme="graphite"]{
+  --bg-1:#1A1B1F; --bg-2:#0A0B0E; --bg-vignette:rgba(200,200,210,.08);
+  --surface:rgba(38,40,46,.72); --surface-2:rgba(38,40,46,.45); --surface-solid:#22232A;
+  --text-1:#F0EFEB; --text-2:#B8B8BE; --text-3:#7A7A82;
+  --accent-1:#DDDDDE; --accent-2:#BEBEC0; --accent-3:#8E8E92;
+  --accent-b:#8FA0B0; --accent-b-dark:#A8BDD0;
+  --accent-c:#A8B0C4; --accent-c-dark:#8A94B0;
+  --accent-d:#8898A8; --accent-d-dark:#A0B4C4;
+  --glow:rgba(220,220,224,.22); --glow-b:rgba(143,160,176,.22);
+  --shadow-float:0 22px 50px rgba(0,0,0,.55), 0 8px 20px rgba(0,0,0,.35);
+  --shadow-soft:0 12px 32px rgba(0,0,0,.4), 0 4px 12px rgba(0,0,0,.2);
+  --shadow-tiny:0 4px 12px rgba(0,0,0,.3);
+  --border-1:rgba(255,255,255,.14); --border-2:rgba(200,200,210,.14);
+  --phone-frame:linear-gradient(150deg,#2E3038,#14151A);
+  --error:#E09494; --success:#94C4A0; --warn:#E0C088;
+  --ambient-1:rgba(180,180,190,.14); --ambient-2:rgba(143,160,176,.14);
+}
+
+/* ============ 3 · OCEAN / ICE ============ */
+html[data-theme="ocean"]{
+  --bg-1:#0F1E30; --bg-2:#04101C; --bg-vignette:rgba(111,199,224,.14);
+  --surface:rgba(30,54,82,.7); --surface-2:rgba(30,54,82,.45); --surface-solid:#152B44;
+  --text-1:#E8F0F8; --text-2:#A8C0D8; --text-3:#6A88A8;
+  --accent-1:#A8D8E8; --accent-2:#6FC7E0; --accent-3:#4A8FB0;
+  --accent-b:#A8D4C4; --accent-b-dark:#88C0B0;
+  --accent-c:#B8C8E8; --accent-c-dark:#8AA4CC;
+  --accent-d:#D0E8F4; --accent-d-dark:#A8C8E0;
+  --glow:rgba(111,199,224,.3); --glow-b:rgba(168,212,196,.3);
+  --shadow-float:0 22px 50px rgba(0,10,25,.6), 0 8px 20px rgba(0,10,25,.4);
+  --shadow-soft:0 12px 32px rgba(0,10,25,.45), 0 4px 12px rgba(0,10,25,.25);
+  --shadow-tiny:0 4px 12px rgba(0,10,25,.35);
+  --border-1:rgba(200,230,255,.15); --border-2:rgba(111,199,224,.2);
+  --phone-frame:linear-gradient(150deg,#1E3A5A,#0A1A2E);
+  --error:#E09494; --success:#94C4A0; --warn:#E0C088;
+  --ambient-1:rgba(111,199,224,.28); --ambient-2:rgba(168,212,196,.22);
+}
+
+/* ============ 4 · AURORA / VIOLET ============ */
+html[data-theme="aurora"]{
+  --bg-1:#1E1832; --bg-2:#0A0716; --bg-vignette:rgba(184,160,224,.16);
+  --surface:rgba(50,38,78,.72); --surface-2:rgba(50,38,78,.45); --surface-solid:#2A2040;
+  --text-1:#F4EDF8; --text-2:#C8B8E0; --text-3:#8A7AA8;
+  --accent-1:#D5C4EC; --accent-2:#B8A0E0; --accent-3:#8A6FB0;
+  --accent-b:#9ED8E0; --accent-b-dark:#7EC0CC;
+  --accent-c:#E0B8D8; --accent-c-dark:#C090B8;
+  --accent-d:#B8C4E8; --accent-d-dark:#8A9AC8;
+  --glow:rgba(184,160,224,.35); --glow-b:rgba(158,216,224,.3);
+  --shadow-float:0 22px 50px rgba(10,5,25,.6), 0 8px 20px rgba(10,5,25,.4);
+  --shadow-soft:0 12px 32px rgba(10,5,25,.45), 0 4px 12px rgba(10,5,25,.25);
+  --shadow-tiny:0 4px 12px rgba(10,5,25,.35);
+  --border-1:rgba(220,200,240,.15); --border-2:rgba(184,160,224,.22);
+  --phone-frame:linear-gradient(150deg,#3A2E58,#1A1028);
+  --error:#E09494; --success:#94C4A0; --warn:#E0C088;
+  --ambient-1:rgba(184,160,224,.32); --ambient-2:rgba(158,216,224,.24);
+}
+
+/* ============ 5 · MIDNIGHT NAVY / SOFT GOLD ============ */
+html[data-theme="midnight"]{
+  --bg-1:#0A1428; --bg-2:#050A18; --bg-vignette:rgba(212,179,106,.10);
+  --surface:rgba(18,32,54,.72); --surface-2:rgba(18,32,54,.45); --surface-solid:#0F1E38;
+  --text-1:#F5EFE2; --text-2:#B8B4A6; --text-3:#6E6A60;
+  --accent-1:#E8D4A0; --accent-2:#C9A96A; --accent-3:#8E7340;
+  --accent-b:#A8B8C4; --accent-b-dark:#C4D0D8;
+  --accent-c:#B8B0C8; --accent-c-dark:#8E88A0;
+  --accent-d:#C4C8D0; --accent-d-dark:#9AA0A8;
+  --glow:rgba(201,169,106,.32); --glow-b:rgba(168,184,196,.22);
+  --shadow-float:0 22px 50px rgba(0,5,15,.7), 0 8px 20px rgba(0,5,15,.5), 0 0 60px rgba(201,169,106,.10);
+  --shadow-soft:0 12px 32px rgba(0,5,15,.55), 0 4px 12px rgba(0,5,15,.35);
+  --shadow-tiny:0 4px 12px rgba(0,5,15,.4);
+  --border-1:rgba(212,179,106,.14); --border-2:rgba(201,169,106,.24);
+  --phone-frame:linear-gradient(150deg,#12213A,#050A18);
+  --error:#E0A0A0; --success:#A8C4A8; --warn:#E0C088;
+  --ambient-1:rgba(201,169,106,.22); --ambient-2:rgba(50,90,140,.24);
+}
+
+/* ============================================================
+   BASE
+   ============================================================ */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;}
+html,body{
+  background:linear-gradient(180deg,#16161a 0%,#08080c 100%);
+  color:var(--text-1);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,Inter,Arial,sans-serif;
+  min-height:100vh;overflow-x:hidden;
+  transition:color var(--dur-slow) var(--ease-smooth);
+}
+body{display:flex;}
+
+/* ============================================================
+   REVIEW PANEL
+   ============================================================ */
+.review{
+  width:310px;flex-shrink:0;
+  background:rgba(14,14,18,.95);
+  backdrop-filter:blur(30px);
+  border-right:1px solid rgba(255,255,255,.08);
+  height:100vh;overflow-y:auto;
+  padding:22px 16px 40px;position:sticky;top:0;color:#E0E0E4;
+}
+.review::-webkit-scrollbar{width:5px;}
+.review::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:3px;}
+.review .brand-row{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+.review h1{font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#F0F0F4;}
+.review .badge-b{font-size:9px;font-weight:800;letter-spacing:.8px;padding:2px 7px;border-radius:8px;background:linear-gradient(150deg,var(--accent-1),var(--accent-2));color:#1a1206;}
+.review .sub{font-size:11px;color:#7A7A82;margin-bottom:14px;line-height:1.55;}
+.review .notice{font-size:10.5px;line-height:1.5;color:#D4B36A;background:rgba(212,179,106,.08);border:1px solid rgba(212,179,106,.22);padding:9px 11px;border-radius:14px;margin-bottom:14px;}
+.review .section-label{font-size:9.5px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:#6A6A72;margin:14px 0 6px;padding-left:4px;}
+.review .switcher{display:flex;gap:4px;padding:3px;background:rgba(255,255,255,.06);border-radius:12px;margin-bottom:8px;}
+.review .switcher button{flex:1;padding:8px 4px;border-radius:9px;border:none;background:transparent;color:#8A8A92;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:.2s;letter-spacing:.2px;}
+.review .switcher button.active{background:rgba(255,255,255,.14);color:#F0F0F4;}
+.review .theme-sw{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;}
+.review .theme-sw button{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.03);color:#B8B8BE;font-size:10.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:.2s;text-align:left;}
+.review .theme-sw button.active{border-color:var(--accent-2);background:rgba(255,255,255,.08);color:#F0F0F4;}
+.review .theme-sw .sw{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+.review .theme-sw .sw.pearl{background:linear-gradient(150deg,#E0CDA9,#C4A47C);}
+.review .theme-sw .sw.graphite{background:linear-gradient(150deg,#DDDDDE,#4A4A52);}
+.review .theme-sw .sw.ocean{background:linear-gradient(150deg,#6FC7E0,#1E3A5A);}
+.review .theme-sw .sw.aurora{background:linear-gradient(150deg,#B8A0E0,#3A2E58);}
+.review .theme-sw .sw.midnight{background:linear-gradient(150deg,#C9A96A,#0A1428);}
+.review .group{margin-bottom:12px;}
+.review .group h2{font-size:9.5px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:#6A6A72;margin-bottom:5px;padding-left:6px;}
+.review .item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:10px;font-size:11.5px;color:#B8B8BE;cursor:pointer;transition:.15s;margin-bottom:1px;}
+.review .item:hover{background:rgba(255,255,255,.06);color:#F0F0F4;}
+.review .item.active{background:rgba(255,255,255,.1);color:#F0F0F4;font-weight:600;}
+.review .item .dot{width:5px;height:5px;border-radius:50%;background:#5A5A62;flex-shrink:0;}
+.review .item.active .dot{background:var(--accent-2);}
+.review .item .demo{margin-left:auto;font-size:8.5px;font-weight:800;letter-spacing:.4px;color:#E0C088;padding:1px 5px;border-radius:5px;background:rgba(224,192,136,.14);}
+.review .item .future{margin-left:auto;font-size:8.5px;font-weight:800;letter-spacing:.4px;color:#94C4A0;padding:1px 5px;border-radius:5px;background:rgba(148,196,160,.14);}
+
+/* ============================================================
+   STAGE
+   ============================================================ */
+.stage{flex:1;display:flex;align-items:center;justify-content:center;padding:24px;min-height:100vh;position:relative;transition:padding var(--dur-med) var(--ease-smooth);}
+.stage.gallery{align-items:flex-start;padding:32px;flex-wrap:wrap;gap:28px;}
+
+/* ============================================================
+   PHONE
+   ============================================================ */
+.phone{
+  width:calc(var(--phone-w) * 1px);
+  height:calc(var(--phone-w) * 844 / 390 * 1px);
+  background:linear-gradient(180deg,var(--bg-1) 0%,var(--bg-2) 100%);
+  border-radius:calc(var(--phone-w) * 46 / 390 * 1px);
+  position:relative;overflow:hidden;
+  box-shadow:
+    0 0 0 calc(var(--phone-w) * 8 / 390 * 1px) var(--phone-frame),
+    0 0 0 calc(var(--phone-w) * 9 / 390 * 1px) rgba(0,0,0,.3),
+    calc(var(--phone-w) * 50 / 390 * 1px) calc(var(--phone-w) * 100 / 390 * 1px) calc(var(--phone-w) * 120 / 390 * 1px) rgba(0,0,0,.55),
+    0 0 calc(var(--phone-w) * 180 / 390 * 1px) var(--glow);
+  flex-shrink:0;
+  transition:width .5s var(--ease-smooth), height .5s var(--ease-smooth), border-radius .5s var(--ease-smooth), background var(--dur-slow), box-shadow var(--dur-slow);
+}
+.phone::before{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:1;
+  background:radial-gradient(120% 80% at 50% 0%, var(--bg-vignette), transparent 60%);
+}
+.statusbar{
+  height:calc(var(--phone-w) * 42 / 390 * 1px);
+  display:flex;align-items:flex-end;justify-content:space-between;
+  padding:0 calc(var(--phone-w) * 26 / 390 * 1px) calc(var(--phone-w) * 6 / 390 * 1px) calc(var(--phone-w) * 30 / 390 * 1px);
+  font-size:calc(var(--phone-w) * 12.5 / 390 * 1px);
+  font-weight:600;color:var(--text-1);position:relative;z-index:150;
+}
+.status-right{display:flex;align-items:center;gap:calc(var(--phone-w) * 5 / 390 * 1px);}
+.status-right svg{width:calc(var(--phone-w) * 16 / 390 * 1px);height:auto;}
+.viewport{position:absolute;top:calc(var(--phone-w) * 42 / 390 * 1px);left:0;right:0;bottom:0;overflow:hidden;z-index:2;}
+.screen{
+  position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;
+  padding:0 calc(var(--phone-w) * 20 / 390 * 1px) calc(var(--phone-w) * 130 / 390 * 1px);
+  opacity:0;pointer-events:none;transform:translateY(14px) scale(.985);
+  transition:opacity var(--dur-med) var(--ease-smooth), transform .55s var(--ease-spring);
+  scrollbar-width:none;
+}
+.screen::-webkit-scrollbar{display:none;}
+.screen.active{opacity:1;pointer-events:auto;transform:translateY(0) scale(1);}
+.screen.fullbleed{padding:0;}
+
+/* ============================================================
+   BOTTOM NAV
+   ============================================================ */
+.bnav{
+  position:absolute;bottom:calc(var(--phone-w) * 14 / 390 * 1px);
+  left:calc(var(--phone-w) * 16 / 390 * 1px);right:calc(var(--phone-w) * 16 / 390 * 1px);
+  height:calc(var(--phone-w) * 72 / 390 * 1px);
+  background:var(--surface);backdrop-filter:blur(28px) saturate(160%);
+  -webkit-backdrop-filter:blur(28px) saturate(160%);
+  border-radius:var(--r-pill);border:1px solid var(--border-1);
+  box-shadow:var(--shadow-float);
+  display:flex;align-items:center;justify-content:space-around;
+  padding:0 calc(var(--phone-w) * 8 / 390 * 1px);z-index:100;
+  transition:transform var(--dur-med) var(--ease-spring), background var(--dur-slow), box-shadow var(--dur-slow);
+}
+.bnav.hidden{transform:translateY(140%);}
+.bnav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--text-3);cursor:pointer;padding:8px 0;border:none;background:none;font-family:inherit;transition:color .3s;position:relative;}
+.bnav-item svg{width:calc(var(--phone-w) * 21 / 390 * 1px);height:calc(var(--phone-w) * 21 / 390 * 1px);transition:transform .3s var(--ease-spring);}
+.bnav-item span{font-size:calc(var(--phone-w) * 9.5 / 390 * 1px);font-weight:600;letter-spacing:.3px;}
+.bnav-item.active{color:var(--text-1);}
+.bnav-item.active svg{transform:translateY(-1px) scale(1.06);}
+.bnav-item.active::before{content:"";position:absolute;top:-4px;left:50%;transform:translateX(-50%);width:calc(var(--phone-w) * 34 / 390 * 1px);height:calc(var(--phone-w) * 34 / 390 * 1px);border-radius:50%;background:radial-gradient(circle,var(--glow),transparent 70%);z-index:-1;}
+.bnav-item.center .wrap{width:calc(var(--phone-w) * 52 / 390 * 1px);height:calc(var(--phone-w) * 52 / 390 * 1px);border-radius:50%;background:linear-gradient(150deg,var(--accent-1),var(--accent-2));display:flex;align-items:center;justify-content:center;color:var(--bg-1);margin-top:calc(var(--phone-w) * -22 / 390 * 1px);box-shadow:0 calc(var(--phone-w) * 12 / 390 * 1px) calc(var(--phone-w) * 24 / 390 * 1px) var(--glow), inset 0 1px 0 rgba(255,255,255,.4);transition:transform .3s var(--ease-spring), background var(--dur-slow);}
+.bnav-item.center.active .wrap{transform:scale(1.08) translateY(-3px);}
+.bnav-item.center svg{width:calc(var(--phone-w) * 24 / 390 * 1px);height:calc(var(--phone-w) * 24 / 390 * 1px);color:var(--bg-1);}
+.bnav-item.center.active{color:var(--accent-3);}
+
+/* ============================================================
+   PRIMITIVES
+   ============================================================ */
+.capsule{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:10px 18px;border-radius:var(--r-pill);
+  background:var(--surface);backdrop-filter:blur(20px);
+  border:1px solid var(--border-1);box-shadow:var(--shadow-tiny);
+  font-size:12.5px;font-weight:600;color:var(--text-1);
+  cursor:pointer;transition:all .3s var(--ease-spring), background var(--dur-slow);
+}
+.capsule:active{transform:scale(.94);}
+.capsule.active{background:linear-gradient(150deg,var(--accent-1),var(--accent-2));color:var(--bg-1);border-color:transparent;box-shadow:0 12px 28px var(--glow);}
+
+.btn-soft{
+  height:56px;border-radius:var(--r-pill);border:none;
+  background:linear-gradient(150deg,var(--accent-1) 0%, var(--accent-2) 100%);
+  color:var(--bg-1);font-size:15px;font-weight:700;letter-spacing:.2px;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  cursor:pointer;font-family:inherit;width:100%;
+  box-shadow:0 16px 32px var(--glow), inset 0 1px 0 rgba(255,255,255,.4);
+  transition:transform .3s var(--ease-spring), background var(--dur-slow);
+}
+.btn-soft:active{transform:scale(.97);}
+.btn-soft.mint{background:linear-gradient(150deg,var(--accent-b),var(--accent-b-dark));color:#fff;box-shadow:0 16px 32px var(--glow-b), inset 0 1px 0 rgba(255,255,255,.4);}
+.btn-soft.danger{background:linear-gradient(150deg,#E8B8B8,#D88A8A);color:#fff;box-shadow:0 16px 32px rgba(216,138,138,.32);}
+.btn-ghost{
+  height:56px;border-radius:var(--r-pill);
+  background:var(--surface);backdrop-filter:blur(20px);
+  border:1px solid var(--border-1);color:var(--text-1);
+  font-size:15px;font-weight:600;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  cursor:pointer;font-family:inherit;width:100%;box-shadow:var(--shadow-soft);
+  transition:transform .3s var(--ease-spring), background var(--dur-slow);
+}
+.btn-ghost:active{transform:scale(.97);}
+.btn-soft:disabled,.btn-ghost:disabled{opacity:.4;cursor:not-allowed;box-shadow:none;}
+
+.inp-soft{
+  width:100%;height:56px;border-radius:var(--r-gentle);padding:0 20px;
+  background:var(--surface);backdrop-filter:blur(12px);
+  border:1px solid var(--border-1);
+  box-shadow:inset 0 2px 8px rgba(0,0,0,.06), var(--shadow-tiny);
+  color:var(--text-1);font-size:15px;font-family:inherit;
+  outline:none;letter-spacing:.1px;transition:.3s var(--ease-smooth);
+}
+.inp-soft:focus{background:var(--surface-solid);box-shadow:inset 0 2px 8px rgba(0,0,0,.04), 0 0 0 4px var(--glow), var(--shadow-soft);border-color:var(--accent-2);}
+.inp-soft::placeholder{color:var(--text-3);}
+.inp-soft.err{box-shadow:inset 0 2px 8px rgba(216,138,138,.08), 0 0 0 4px rgba(216,138,138,.18), var(--shadow-soft);}
+
+.lbl-soft{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--text-3);margin-bottom:8px;display:block;padding-left:6px;}
+.field{margin-bottom:16px;}
+
+.t-title{font-size:32px;font-weight:500;letter-spacing:-1.2px;color:var(--text-1);line-height:1.08;font-family:Georgia,"Times New Roman",serif;}
+.t-sub{font-size:14px;color:var(--text-2);letter-spacing:.1px;margin-top:8px;line-height:1.55;}
+.t-section{font-size:13px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--text-3);}
+.sec-head{display:flex;align-items:center;justify-content:space-between;margin:26px 0 14px;padding:0 4px;}
+.sec-link{font-size:12px;color:var(--accent-3);font-weight:600;letter-spacing:.3px;cursor:pointer;background:none;border:none;font-family:inherit;}
+
+.av-orb{
+  width:44px;height:44px;border-radius:50%;
+  background:linear-gradient(150deg,var(--accent-1),var(--accent-2));
+  display:flex;align-items:center;justify-content:center;
+  font-size:15px;font-weight:700;color:var(--bg-1);flex-shrink:0;
+  box-shadow:0 8px 20px var(--glow), inset 0 1px 0 rgba(255,255,255,.4);
+  position:relative;transition:background var(--dur-slow);
+}
+.av-orb.b{background:linear-gradient(150deg,var(--accent-b),var(--accent-b-dark));color:#fff;}
+.av-orb.c{background:linear-gradient(150deg,var(--accent-c),var(--accent-c-dark));color:#fff;}
+.av-orb.d{background:linear-gradient(150deg,var(--accent-d),var(--accent-d-dark));color:#fff;}
+
+.row{display:flex;align-items:center;justify-content:space-between;padding:6px 0 16px;gap:12px;}
+.icon-soft{
+  width:44px;height:44px;border-radius:50%;
+  background:var(--surface);backdrop-filter:blur(20px);
+  border:1px solid var(--border-1);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--text-1);cursor:pointer;flex-shrink:0;box-shadow:var(--shadow-tiny);
+  transition:transform .3s var(--ease-spring), background var(--dur-slow);
+}
+.icon-soft:active{transform:scale(.92);}
+.icon-soft svg{width:18px;height:18px;}
+
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
+@keyframes floatSoft{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes pulseOrb{0%{transform:scale(.6);opacity:.8}100%{transform:scale(1.6);opacity:0}}
+@keyframes waveRipple{0%{transform:scale(.7);opacity:.55}100%{transform:scale(1.9);opacity:0}}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+@keyframes orbit{from{transform:rotate(0) translateX(115px) rotate(0)}to{transform:rotate(360deg) translateX(115px) rotate(-360deg)}}
+@keyframes morphBlob{
+  0%,100%{border-radius:60% 40% 55% 45% / 50% 60% 40% 50%;}
+  25%{border-radius:45% 55% 40% 60% / 60% 45% 55% 40%;}
+  50%{border-radius:55% 45% 60% 40% / 45% 55% 45% 55%;}
+  75%{border-radius:40% 60% 45% 55% / 55% 40% 60% 45%;}
+}
+@keyframes ambientDrift{
+  0%{transform:translate(-30px,20px) scale(1);}
+  33%{transform:translate(20px,-20px) scale(1.06);}
+  66%{transform:translate(-10px,30px) scale(.98);}
+  100%{transform:translate(-30px,20px) scale(1);}
+}
+@keyframes confirmationPop{
+  0%{transform:scale(.6);opacity:0;}
+  60%{transform:scale(1.06);}
+  100%{transform:scale(1);opacity:1;}
+}
+.screen.active > *{animation:fadeInUp .55s var(--ease-spring) both;}
+
+.aurora{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0;}
+.aurora .blob-a,.aurora .blob-b{position:absolute;filter:blur(40px);}
+.aurora .blob-a{width:70%;height:50%;top:-10%;right:-15%;background:radial-gradient(circle,var(--ambient-1),transparent 70%);animation:ambientDrift 14s ease-in-out infinite;}
+.aurora .blob-b{width:60%;height:40%;bottom:-10%;left:-15%;background:radial-gradient(circle,var(--ambient-2),transparent 70%);animation:ambientDrift 18s ease-in-out infinite reverse;}
+
+/* ============================================================
+   NFC ORB
+   ============================================================ */
+.orb-hero{position:relative;margin:8px auto 26px;width:270px;height:270px;display:flex;align-items:center;justify-content:center;}
+.orb-hero .halo{position:absolute;inset:-14px;border-radius:50%;background:radial-gradient(circle at 30% 30%, var(--glow), transparent 60%);filter:blur(14px);animation:breathe 5s ease-in-out infinite;}
+.orb-hero .blob-shape{
+  position:absolute;width:200px;height:200px;
+  background:radial-gradient(circle at 32% 28%, rgba(255,255,255,.9), transparent 45%), linear-gradient(150deg,var(--accent-1) 0%, var(--accent-2) 55%, var(--accent-3) 100%);
+  animation:morphBlob 12s ease-in-out infinite;
+  box-shadow:0 30px 60px var(--glow), 0 15px 30px var(--glow), inset -12px -20px 40px rgba(0,0,0,.12), inset 12px 16px 32px rgba(255,255,255,.3);
+  display:flex;align-items:center;justify-content:center;z-index:2;
+  transition:background var(--dur-slow);
+}
+.orb-hero .ring{position:absolute;width:200px;height:200px;border-radius:50%;border:1.5px solid var(--accent-2);opacity:.4;animation:pulseOrb 3.6s ease-out infinite;}
+.orb-hero .ring:nth-child(2){animation-delay:1.2s;}
+.orb-hero .ring:nth-child(3){animation-delay:2.4s;}
+.orb-hero .nfc-mark{position:relative;z-index:3;width:64px;height:64px;display:flex;align-items:center;justify-content:center;color:var(--bg-1);}
+.orb-hero .nfc-mark svg{width:100%;height:100%;filter:drop-shadow(0 2px 6px rgba(0,0,0,.15));}
+
+/* ============================================================
+   ORBIT — NFC Center
+   ============================================================ */
+.orbit{position:relative;width:320px;height:320px;margin:8px auto 26px;}
+.orbit .center-orb{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:130px;height:130px;
+  background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.9), transparent 45%), linear-gradient(150deg,var(--accent-1),var(--accent-2));
+  animation:morphBlob 10s ease-in-out infinite, breathe 4s ease-in-out infinite;
+  box-shadow:0 24px 50px var(--glow), inset -8px -12px 24px rgba(0,0,0,.1), inset 8px 12px 24px rgba(255,255,255,.3);
+  display:flex;align-items:center;justify-content:center;z-index:5;color:var(--bg-1);cursor:pointer;
+  transition:transform .3s var(--ease-spring), background var(--dur-slow);
+}
+.orbit .center-orb:active{transform:translate(-50%,-50%) scale(.95);}
+.orbit .center-orb svg{width:48px;height:48px;}
+.orbit .wave{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:200px;height:200px;border-radius:50%;border:1.5px solid var(--accent-2);opacity:.5;animation:waveRipple 3.2s ease-out infinite;}
+.orbit .wave:nth-child(2){animation-delay:1.06s;}
+.orbit .wave:nth-child(3){animation-delay:2.13s;}
+.orbit .item{
+  position:absolute;top:50%;left:50%;width:56px;height:56px;border-radius:50%;
+  background:var(--surface);backdrop-filter:blur(14px);border:1px solid var(--border-1);
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text-1);
+  box-shadow:var(--shadow-soft);cursor:pointer;
+  animation:orbit 22s linear infinite;margin:-28px 0 0 -28px;
+  transition:transform .3s var(--ease-spring);
+}
+.orbit .item:hover{transform:scale(1.12);}
+.orbit .item:nth-of-type(1){animation-delay:0s;background:linear-gradient(150deg,var(--accent-1),var(--accent-2));color:var(--bg-1);}
+.orbit .item:nth-of-type(2){animation-delay:-7.33s;background:linear-gradient(150deg,var(--accent-b),var(--accent-b-dark));color:#fff;}
+.orbit .item:nth-of-type(3){animation-delay:-14.66s;background:linear-gradient(150deg,var(--accent-c),var(--accent-c-dark));color:#fff;}
+
+/* ============================================================
+   TILES
+   ============================================================ */
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.tile{
+  border-radius:var(--r-blob);padding:18px;
+  background:var(--surface);backdrop-filter:blur(20px);
+  border:1px solid var(--border-1);box-shadow:var(--shadow-soft);
+  cursor:pointer;transition:all .3s var(--ease-spring), background var(--dur-slow);
+  position:relative;overflow:hidden;
+}
+.tile:active{transform:scale(.97);}
+.tile.tall{grid-row:span 2;}
+.tile.hero{grid-column:span 2;}
+.tile .deco{position:absolute;border-radius:50%;filter:blur(20px);opacity:.5;pointer-events:none;}
+.tile .deco.d1{width:100px;height:100px;background:radial-gradient(circle,var(--accent-1),transparent 70%);top:-30px;right:-30px;}
+.tile .deco.d2{width:120px;height:120px;background:radial-gradient(circle,var(--accent-b),transparent 70%);bottom:-40px;left:-40px;}
+
+.chip-scroll{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;padding:2px 2px 8px;}
+.chip-scroll::-webkit-scrollbar{display:none;}
+
+/* stories */
+.story-bubbles{display:flex;gap:14px;overflow-x:auto;scrollbar-width:none;padding:2px 2px 4px;}
+.story-bubbles::-webkit-scrollbar{display:none;}
+.bub{display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0;cursor:pointer;width:64px;}
+.bub-ring{width:60px;height:60px;border-radius:50%;padding:3px;background:linear-gradient(150deg,var(--accent-1),var(--accent-2));display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px var(--glow);transition:background var(--dur-slow);}
+.bub-ring.seen{background:linear-gradient(150deg,var(--text-3),var(--text-2));box-shadow:none;opacity:.5;}
+.bub-ring.you{background:conic-gradient(from 220deg,var(--accent-2) 0 35%, var(--text-3) 35% 100%);}
+.bub-ring.biz{background:linear-gradient(150deg,var(--accent-b),var(--accent-b-dark));box-shadow:0 8px 20px var(--glow-b);}
+.bub-inner{width:100%;height:100%;border-radius:50%;background:var(--surface-solid);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--accent-3);border:2.5px solid var(--bg-1);}
+.bub-inner.biz{color:var(--accent-b-dark);}
+.bub-name{font-size:10.5px;font-weight:600;color:var(--text-2);letter-spacing:.1px;}
+
+/* post */
+.post-soft{border-radius:var(--r-blob);padding:20px;margin-bottom:14px;background:var(--surface);backdrop-filter:blur(20px);border:1px solid var(--border-1);box-shadow:var(--shadow-soft);cursor:pointer;transition:background var(--dur-slow);}
+.post-soft .head{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.post-soft .av-orb{width:40px;height:40px;font-size:13px;}
+.post-soft .meta .n{font-size:13.5px;font-weight:600;color:var(--text-1);display:flex;align-items:center;gap:6px;}
+.post-soft .meta .t{font-size:11px;color:var(--text-3);margin-top:2px;}
+.post-soft .body{font-size:14px;line-height:1.6;color:var(--text-2);letter-spacing:.1px;margin-bottom:14px;}
+.post-soft .media{height:140px;border-radius:24px;margin-bottom:14px;background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.4), transparent 60%), linear-gradient(150deg,var(--accent-1),var(--accent-2));display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;opacity:.85;transition:background var(--dur-slow);}
+.post-soft .media.mint{background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.4), transparent 60%), linear-gradient(150deg,var(--accent-b),var(--accent-b-dark));}
+.post-soft .actions{display:flex;align-items:center;gap:20px;color:var(--text-2);font-size:12.5px;font-weight:500;}
+.post-soft .act{display:flex;align-items:center;gap:6px;cursor:pointer;transition:color .2s, transform .2s var(--ease-spring);}
+.post-soft .act svg{width:18px;height:18px;}
+.post-soft .act.liked{color:var(--accent-3);}
+.post-soft .act.saved{color:var(--accent-3);}
+.post-soft .act:active{transform:scale(.9);}
+
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:var(--r-pill);font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;}
+.pill.biz{background:rgba(159,184,168,.2);color:var(--accent-b-dark);}
+.pill.gold{background:rgba(196,164,124,.2);color:var(--accent-3);}
+.pill.active{background:rgba(143,184,154,.18);color:#5A8068;}
+.pill.warn{background:rgba(221,184,120,.2);color:#A07E30;}
+
+/* list */
+.list-soft{display:flex;flex-direction:column;gap:8px;}
+.list-soft .item{
+  display:flex;align-items:center;gap:14px;
+  padding:16px 18px;border-radius:26px;
+  background:var(--surface);backdrop-filter:blur(14px);
+  border:1px solid var(--border-1);box-shadow:var(--shadow-tiny);
+  cursor:pointer;transition:all .25s;
+  width:100%;text-align:left;font-family:inherit;color:inherit;
+}
+.list-soft .item:active{transform:scale(.98);background:var(--surface-solid);}
+.lic-soft{width:42px;height:42px;border-radius:50%;background:linear-gradient(150deg,var(--accent-1),var(--accent-2));display:flex;align-items:center;justify-content:center;color:var(--bg-1);flex-shrink:0;box-shadow:0 6px 16px var(--glow);transition:background var(--dur-slow);}
+.lic-soft.b{background:linear-gradient(150deg,var(--accent-b),var(--accent-b-dark));color:#fff;box-shadow:0 6px 16px var(--glow-b);}
+.lic-soft.c{background:linear-gradient(150deg,var(--accent-c),var(--accent-c-dark));color:#fff;}
+.lic-soft.d{background:linear-gradient(150deg,var(--accent-d),var(--accent-d-dark));color:#fff;}
+.lic-soft.err{background:linear-gradient(150deg,#E8B8B8,#D88A8A);color:#fff;}
+.lic-soft svg{width:18px;height:18px;}
+
+/* toast */
+.toast{position:absolute;bottom:130px;left:50%;transform:translateX(-50%) translateY(20px) scale(.95);padding:14px 22px;border-radius:var(--r-pill);background:rgba(30,30,34,.94);color:#F0F0F4;backdrop-filter:blur(20px);font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:all .35s var(--ease-spring);z-index:300;box-shadow:0 20px 40px rgba(0,0,0,.35);max-width:320px;text-align:center;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0) scale(1);}
+.toast.err{background:rgba(216,138,138,.96);color:#fff;}
+.toast.ok{background:rgba(143,184,154,.96);color:#fff;}
+
+/* sheet */
+.sheet-bg{position:absolute;inset:0;background:rgba(0,0,0,.4);backdrop-filter:blur(6px);z-index:190;opacity:0;pointer-events:none;transition:.3s;}
+.sheet-bg.open{opacity:1;pointer-events:auto;}
+.sheet{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(180deg,var(--surface-solid) 0%, var(--bg-1) 100%);border-radius:40px 40px 0 0;padding:14px 22px 38px;transform:translateY(100%);transition:transform .5s var(--ease-spring), background var(--dur-slow);max-height:80vh;overflow-y:auto;box-shadow:0 -20px 40px rgba(0,0,0,.2);}
+.sheet.open{transform:translateY(0);}
+.sheet-handle{width:46px;height:5px;border-radius:3px;background:var(--text-3);opacity:.4;margin:0 auto 20px;}
+
+/* otp */
+.otp-row{display:flex;gap:10px;justify-content:center;margin:26px 0;}
+.otp-pill{width:48px;height:60px;border-radius:22px;background:var(--surface);backdrop-filter:blur(14px);border:1px solid var(--border-1);box-shadow:inset 0 2px 6px rgba(0,0,0,.06), var(--shadow-tiny);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:600;color:var(--text-1);font-family:Georgia,serif;transition:.3s;cursor:text;}
+.otp-pill.filled{background:linear-gradient(150deg,var(--accent-1),var(--accent-2));border-color:transparent;color:var(--bg-1);}
+.otp-pill.focused{background:var(--surface-solid);box-shadow:0 0 0 4px var(--glow), var(--shadow-soft);border-color:var(--accent-2);}
+.otp-pill.err{background:rgba(216,138,138,.15);border-color:rgba(216,138,138,.4);color:#A06060;}
+
+.prog{height:6px;border-radius:var(--r-pill);background:var(--surface-2);overflow:hidden;border:1px solid var(--border-1);}
+.prog > div{height:100%;background:linear-gradient(90deg,var(--accent-1),var(--accent-2));border-radius:var(--r-pill);transition:width .6s var(--ease-spring), background var(--dur-slow);}
+
+.empty-soft{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:60px 20px;gap:18px;}
+.empty-soft .orb{width:140px;height:140px;background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.5), transparent 50%), linear-gradient(150deg,var(--accent-1),var(--accent-2));animation:morphBlob 10s ease-in-out infinite, breathe 4s ease-in-out infinite;display:flex;align-items:center;justify-content:center;box-shadow:0 24px 50px var(--glow), inset -8px -12px 24px rgba(0,0,0,.1), inset 8px 12px 24px rgba(255,255,255,.3);margin-bottom:6px;transition:background var(--dur-slow);}
+.empty-soft h3{font-size:19px;font-weight:600;color:var(--text-1);font-family:Georgia,serif;letter-spacing:-.3px;}
+.empty-soft p{font-size:13.5px;color:var(--text-2);max-width:250px;line-height:1.6;}
+
+.sk-soft{background:linear-gradient(90deg,var(--surface-2),var(--surface),var(--surface-2));background-size:200% 100%;animation:shimmer 1.6s infinite;border-radius:28px;}
+
+/* reels */
+.reels-host{position:absolute;inset:0;background:#000;overflow:hidden;}
+.reel-full{position:absolute;inset:0;opacity:0;transition:opacity .5s;pointer-events:none;overflow:hidden;}
+.reel-full.active{opacity:1;pointer-events:auto;}
+.reel-full .bg{position:absolute;inset:0;}
+.reel-full .grad{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.4) 0%,transparent 25%,transparent 55%,rgba(0,0,0,.75) 100%);}
+.reel-full .progress-row{position:absolute;top:20px;left:20px;right:20px;display:flex;gap:6px;}
+.reel-full .progress-row .bar{flex:1;height:3px;border-radius:3px;background:rgba(255,255,255,.25);overflow:hidden;}
+.reel-full .progress-row .bar.active{background:#fff;}
+.reel-full .bottom{position:absolute;left:0;right:0;bottom:120px;padding:0 22px;display:flex;align-items:flex-end;gap:16px;}
+.reel-full .info{flex:1;min-width:0;}
+.reel-full .user{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.reel-full .user .av-orb{width:42px;height:42px;font-size:14px;}
+.reel-full .user .nm{font-size:14.5px;font-weight:700;color:#fff;display:flex;align-items:center;gap:6px;}
+.reel-full .user .hd{font-size:11.5px;color:rgba(255,255,255,.75);margin-top:2px;}
+.reel-full .caption{font-size:14px;color:rgba(255,255,255,.95);line-height:1.5;margin-bottom:12px;}
+.reel-full .nfc-pill{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:100px;background:rgba(255,255,255,.18);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.3);font-size:11.5px;font-weight:700;color:#fff;cursor:pointer;}
+.reel-full .actions{display:flex;flex-direction:column;gap:20px;align-items:center;}
+.reel-full .act-col{display:flex;flex-direction:column;align-items:center;gap:5px;color:#fff;cursor:pointer;transition:color .2s, transform .2s var(--ease-spring);}
+.reel-full .act-col:active{transform:scale(.9);}
+.reel-full .act-col svg{width:28px;height:28px;filter:drop-shadow(0 2px 6px rgba(0,0,0,.5));}
+.reel-full .act-col span{font-size:10.5px;font-weight:600;}
+.reel-full .act-col.liked svg{color:var(--accent-1);}
+.reel-full .act-col.saved svg{color:var(--accent-1);}
+
+/* product */
+.prod-soft{border-radius:var(--r-blob);overflow:hidden;background:var(--surface);border:1px solid var(--border-1);box-shadow:var(--shadow-soft);cursor:pointer;transition:all .3s var(--ease-spring);}
+.prod-soft:active{transform:scale(.98);}
+.prod-soft .img{height:150px;background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.4), transparent 55%), linear-gradient(150deg,var(--accent-1),var(--accent-2));display:flex;align-items:center;justify-content:center;position:relative;opacity:.9;transition:background var(--dur-slow);}
+.prod-soft .info{padding:14px 16px 18px;}
+.prod-soft .nm{font-size:13.5px;font-weight:600;color:var(--text-1);margin-bottom:6px;}
+.prod-soft .pr{font-size:15px;font-weight:700;color:var(--accent-3);letter-spacing:-.2px;}
+
+.mode-switch{display:flex;padding:5px;border-radius:var(--r-pill);background:var(--surface-2);border:1px solid var(--border-1);margin-bottom:20px;}
+.mode-switch .m{flex:1;padding:12px;border-radius:var(--r-pill);text-align:center;font-size:13px;font-weight:700;color:var(--text-3);cursor:pointer;transition:.4s var(--ease-spring);letter-spacing:.2px;}
+.mode-switch .m.active{background:var(--surface-solid);color:var(--text-1);box-shadow:var(--shadow-tiny), inset 0 1px 0 rgba(255,255,255,.6);}
+
+/* confirmation animation */
+@keyframes confirmationPop{0%{transform:scale(.6);opacity:0;}60%{transform:scale(1.06);}100%{transform:scale(1);opacity:1;}}
+.confirm-orb{animation:confirmationPop .7s var(--ease-spring) both;}
+
+/* success pulse */
+@keyframes successPulse{0%{box-shadow:0 0 0 0 var(--glow);}100%{box-shadow:0 0 0 60px transparent;}}
+.success-pulse{animation:successPulse 1.2s ease-out;}
+
+@media (max-width:900px){.review{display:none;}}
+</style>
+</head>
+<body>
+
+<aside class="review">
+  <div class="brand-row">
+    <div id="reviewLogo"></div>
+    <h1>NFCSTORE</h1>
+    <span class="badge-b">B · FINAL</span>
+  </div>
+  <div class="sub">Concept B · Soft Identity</div>
+
+  <div class="notice">
+    ⚠ Logo — placeholder. <code style="color:#D4B36A;">BRAND_LOGO_URL</code> ga real asset qo‘ying. Auth: email + telefon → 6 xonali email code.
+  </div>
+
+  <div class="section-label">Device</div>
+  <div class="switcher" id="deviceSw">
+    <button data-dev="360">360</button>
+    <button data-dev="390" class="active">390</button>
+    <button data-dev="430">430</button>
+  </div>
+
+  <div class="section-label">Theme</div>
+  <div class="theme-sw" id="themeSw">
+    <button data-th="pearl" class="active"><span class="sw pearl"></span>Pearl</button>
+    <button data-th="graphite"><span class="sw graphite"></span>Graphite</button>
+    <button data-th="ocean"><span class="sw ocean"></span>Ocean</button>
+    <button data-th="aurora"><span class="sw aurora"></span>Aurora</button>
+    <button data-th="midnight" style="grid-column:span 2;"><span class="sw midnight"></span>Midnight Navy · Soft Gold</button>
+  </div>
+
+  <div class="section-label">View</div>
+  <div class="switcher" id="viewSw">
+    <button data-view="single" class="active">Single</button>
+    <button data-view="gallery">Gallery</button>
+  </div>
+
+  <div id="screenList"></div>
+</aside>
+
+<main class="stage" id="stage">
+  <div class="phone" id="phone">
+    <div class="statusbar">
+      <div id="clock">9:41</div>
+      <div class="status-right">
+        <svg viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+        <svg viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" style="width:14px;"><path d="M1 3.5C3 1.6 5.4 0.8 8 0.8C10.6 0.8 13 1.6 15 3.5"/><path d="M3.4 6C4.8 4.7 6.3 4.1 8 4.1C9.7 4.1 11.2 4.7 12.6 6"/><path d="M5.8 8.4C6.5 7.7 7.2 7.4 8 7.4C8.8 7.4 9.5 7.7 10.2 8.4"/></svg>
+        <svg viewBox="0 0 26 12" fill="none" style="width:22px;"><rect x="0.5" y="0.5" width="22" height="11" rx="3" stroke="currentColor" opacity=".5"/><rect x="2" y="2" width="17" height="8" rx="1.6" fill="currentColor"/><rect x="24" y="4" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+      </div>
+    </div>
+    <div class="viewport" id="viewport"></div>
+    <nav class="bnav" id="bottomNav"></nav>
+    <div class="sheet-bg" id="sheetBg" onclick="closeSheet()"></div>
+    <div class="sheet" id="sheet"></div>
+    <div class="toast" id="toast"></div>
+  </div>
+</main>
+
+<script>
+/* ============================================================
+   NFCSTORE — Concept B · Final
+   ============================================================ */
+
+/* Logo — swappable */
+const BRAND_LOGO_URL = ''; /* <-- REAL LOGO shu yerga */
+function BRAND_LOGO(size, opts = {}){
+  const s = typeof size === 'number' ? size : 40;
+  if(BRAND_LOGO_URL){
+    return `<img src="${BRAND_LOGO_URL}" width="${s}" height="${s}" alt="NFCSTORE" style="display:block;width:${s}px;height:${s}px;object-fit:contain;${opts.style||''}">`;
+  }
+  const gid = 'g' + Math.random().toString(36).slice(2,8);
+  const dark = opts.dark;
+  return `<svg width="${s}" height="${s}" viewBox="0 0 200 200" fill="none" style="display:block;flex-shrink:0;${opts.style||''}">
+    <defs>
+      <linearGradient id="${gid}" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#F4DC9A"/>
+        <stop offset="45%" stop-color="#D4B36A"/>
+        <stop offset="100%" stop-color="#9E7B38"/>
+      </linearGradient>
+      <linearGradient id="${gid}b" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#B8944A"/>
+        <stop offset="50%" stop-color="#F4DC9A"/>
+        <stop offset="100%" stop-color="#B8944A"/>
+      </linearGradient>
+    </defs>
+    <circle cx="100" cy="100" r="92" stroke="url(#${gid})" stroke-width="7" fill="${dark?'rgba(0,0,0,.85)':'transparent'}"/>
+    <g transform="translate(100 100)">
+      <path d="M -42 -18 A 44 44 0 0 0 -42 18" stroke="url(#${gid}b)" stroke-width="7" stroke-linecap="round" fill="none"/>
+      <path d="M -30 -30 A 56 56 0 0 0 -30 30" stroke="url(#${gid}b)" stroke-width="7" stroke-linecap="round" fill="none" opacity=".9"/>
+      <path d="M -14 -36 L -14 36 L -2 36 L -2 -2 L 12 36 L 24 36 L 24 -36 L 12 -36 L 12 2 L -2 -36 Z" fill="url(#${gid})"/>
+      <path d="M 42 -18 A 44 44 0 0 1 42 18" stroke="url(#${gid}b)" stroke-width="7" stroke-linecap="round" fill="none"/>
+      <path d="M 30 -30 A 56 56 0 0 1 30 30" stroke="url(#${gid}b)" stroke-width="7" stroke-linecap="round" fill="none" opacity=".9"/>
+    </g>
+  </svg>`;
+}
+function NFC_MARK(size){
+  const s = size||40;
+  return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <path d="M4 8a11 11 0 0 1 16 0"/>
+    <path d="M7 11a7 7 0 0 1 10 0"/>
+    <path d="M10 14a3 3 0 0 1 4 0"/>
+    <circle cx="12" cy="17.5" r="1.2" fill="currentColor" stroke="none"/>
+  </svg>`;
+}
+
+const I = {
+  home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-5h4v5h4a1 1 0 0 0 1-1V9.5"/></svg>',
+  search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>',
+  reels:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="4"/><path d="M3 9h18M8 4v5M16 4v5"/><path d="M11 13l4 2.5-4 2.5z" fill="currentColor" stroke="none"/></svg>',
+  nfc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 8a11 11 0 0 1 16 0"/><path d="M7 11a7 7 0 0 1 10 0"/><path d="M10 14a3 3 0 0 1 4 0"/><circle cx="12" cy="17.5" r="1.2" fill="currentColor" stroke="none"/></svg>',
+  user:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>',
+  back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
+  chev:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
+  bell:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>',
+  share:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v14"/></svg>',
+  scan:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V5a1 1 0 0 1 1-1h3"/><path d="M16 4h3a1 1 0 0 1 1 1v3"/><path d="M20 16v3a1 1 0 0 1-1 1h-3"/><path d="M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M4 12h16"/></svg>',
+  heart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7.5-4.6-9.3-9.4C1.4 8.2 3.6 5 6.9 5c2 0 3.5 1.1 4.1 2.2C11.6 6.1 13.1 5 15.1 5c3.3 0 5.5 3.2 4.2 6.6C19.5 16.4 12 21 12 21z"/></svg>',
+  heartF:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.5-4.6-9.3-9.4C1.4 8.2 3.6 5 6.9 5c2 0 3.5 1.1 4.1 2.2C11.6 6.1 13.1 5 15.1 5c3.3 0 5.5 3.2 4.2 6.6C19.5 16.4 12 21 12 21z"/></svg>',
+  comment:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.4 7.2L4 21l1.8-5.6A8 8 0 1 1 21 12z"/></svg>',
+  bookmark:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12v18l-6-4-6 4z"/></svg>',
+  bookmarkF:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h12v18l-6-4-6 4z"/></svg>',
+  more:'<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>',
+  close:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>',
+  plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>',
+  edit:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
+  settings:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+  lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="3"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+  card:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="3"/><path d="M7 12h2M11 12h2"/></svg>',
+  bag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>',
+  chart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>',
+  globe:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>',
+  logout:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>',
+  place:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6-7-11a7 7 0 1 1 14 0c0 5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>',
+  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  image:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>',
+  video:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5z"/><rect x="1" y="5" width="15" height="14" rx="3"/></svg>',
+  wifi:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5a10 10 0 0 1 14 0"/><path d="M8.5 16a6 6 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1" fill="currentColor" stroke="none"/></svg>',
+  gift:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12v9H4v-9M2 7h20v5H2zM12 22V7M12 7a3 3 0 1 0-3-3c0 2 3 3 3 3zM12 7a3 3 0 1 1 3-3c0 2-3 3-3 3z"/></svg>',
+  qr:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><path d="M14 14h3v3M21 14v3M14 21h7"/></svg>',
+  star:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3 7 7 .8-5.2 5 1.5 7L12 18l-6.3 3.8 1.5-7L2 9.8 9 9z"/></svg>',
+  send:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg>',
+  play:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 4l14 8-14 8z"/></svg>',
+  mail:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 7l9 6 9-6"/></svg>',
+  phone:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2 4.2 2 2 0 0 1 4 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.5 2.1L8 9.5a16 16 0 0 0 6 6l1.1-1.1a2 2 0 0 1 2.1-.5c.8.3 1.7.5 2.6.6a2 2 0 0 1 1.7 2z"/></svg>',
+  chart2:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V8M10 20V4M16 20v-8M22 20H2"/></svg>'
+};
+
+/* DATA */
+const DataLayer = {
+  me:{ name:'Aziz Karimov', handle:'@aziz', initials:'AK', nfcId:'NFC · 0000 · 0001', role:'Founder',
+       followers:12408, following:312, posts:248, mode:'personal' },
+  biz:{ name:'Silk Route Digital', handle:'@silkroute', initials:'SR', nfcId:'NFC · 0000 · 0002',
+        category:'Digital Studio · Toshkent', followers:4820, verified:true,
+        desc:'Brend va mahsulot uchun digital studio.' },
+  stories:[
+    { name:'Siz', initials:'+', you:true, seen:false },
+    { name:'Malika', initials:'MY', seen:false },
+    { name:'Brew Lab', initials:'BL', seen:false, biz:true },
+    { name:'Jasur', initials:'JT', seen:true },
+    { name:'Nur', initials:'NC', seen:true, biz:true }
+  ],
+  posts:[
+    { id:'p1', user:'Malika Yusupova', initials:'MY', time:'2 soat oldin',
+      body:'Yangi NFC kartam tayyor. Endi vizitka, kontakt va portfolio — bitta tegish bilan.',
+      likes:128, comments:24, liked:true, saved:false },
+    { id:'p2', user:'Brew Lab Coffee', initials:'BL', time:'5 soat oldin', biz:true,
+      body:'Yangi mavsumiy menyu. Har bir stolda NFC menyu.',
+      likes:312, comments:56, liked:false, saved:true },
+    { id:'p3', user:'Jasur Toshmatov', initials:'JT', time:'Kecha',
+      body:'Portfolio sahifamni NFC orqali ulashdim.',
+      likes:84, comments:12, liked:false, saved:false }
+  ],
+  reels:[
+    { id:'r1', user:'Aziz Karimov', handle:'@aziz', initials:'AK', tag:'NFC Metal Card',
+      caption:'Yangi NFC kartam. Endi vizitka 5 sekundda.',
+      likes:2400, comments:184, followed:false, liked:false, saved:false,
+      bg:'radial-gradient(120% 90% at 30% 20%, #E0CDA9 0%, #8E7550 60%, #1A1A1E 100%)' },
+    { id:'r2', user:'Brew Lab Coffee', handle:'@brewlab', initials:'BL', biz:true, tag:'Brew Lab Storefront',
+      caption:'Yangi mavsumiy menyu.',
+      likes:8200, comments:412, followed:false, liked:false, saved:false,
+      bg:'radial-gradient(120% 90% at 70% 30%, #C5D8CB 0%, #6E8A7A 60%, #1A1A1E 100%)' },
+    { id:'r3', user:'Malika Yusupova', handle:'@malika.design', initials:'MY', tag:'NFC Business Card',
+      caption:'Portfolio endi NFCda.',
+      likes:1200, comments:78, followed:true, liked:true, saved:false,
+      bg:'radial-gradient(120% 90% at 50% 40%, #D5CFE4 0%, #8E7FB8 60%, #1A1A1E 100%)' }
+  ],
+  products:[
+    { id:'pr1', name:'NFC Metal Card', price:120000, cat:'Metal', badge:'Top' },
+    { id:'pr2', name:'NFC Ring', price:180000, cat:'Aksessuar' },
+    { id:'pr3', name:'NFC Keychain', price:85000, cat:'Aksessuar' },
+    { id:'pr4', name:'NFC Business Card', price:150000, cat:'PVC' },
+    { id:'pr5', name:'NFC Sticker Pack', price:45000, cat:'PVC' },
+    { id:'pr6', name:'Table Stand', price:200000, cat:'Aksessuar' }
+  ],
+  people:[
+    { name:'Malika Yusupova', initials:'MY', role:'Designer', followed:false },
+    { name:'Jasur Toshmatov', initials:'JT', role:'PM', followed:true },
+    { name:'Nodira Rahimova', initials:'NR', role:'Founder', followed:false }
+  ],
+  businesses:[
+    { name:'Brew Lab Coffee', initials:'BL', cat:'Kafe · Toshkent', verified:true },
+    { name:'Silk Route Hotel', initials:'SR', cat:'Hotel · Samarqand', verified:true },
+    { name:'Nur Ceramics', initials:'NC', cat:'Handmade · Rishton' }
+  ],
+  nfcIDs:[
+    { label:'Personal', code:'NFC · 0000 · 0001', sub:'Aziz Karimov', type:'personal', active:true },
+    { label:'Business', code:'NFC · 0000 · 0002', sub:'Silk Route Digital', type:'business', active:true }
+  ],
+  nfcHistory:[
+    { t:'Silk Route Digital kartasi skanerlandi', time:'12 daqiqa oldin', type:'scan' },
+    { t:'Malika NFC ID ni ulashdi', time:'2 soat oldin', type:'share' },
+    { t:'Brew Lab menyusi ochildi', time:'Kecha', type:'view' },
+    { t:'NFC Metal Card sotib olindi', time:'3 kun oldin', type:'order' }
+  ],
+  activity:[
+    { t:'Malika postni yoqtirdi', time:'5 daqiqa', type:'like', read:false },
+    { t:'Jasur sizni follow qildi', time:'1 soat', type:'follow', read:false },
+    { t:'NFC ID skanerlandi', time:'3 soat', type:'scan', read:false },
+    { t:'Buyurtmangiz tayyor', time:'Kecha', type:'order', read:true },
+    { t:'To‘lov muvaffaqiyatli', time:'Kecha', type:'payment', read:true }
+  ],
+  shopFilter:'all',
+  contacts: [
+    { l:'Telefon', v:'+998 90 123 45 67', i:'phone' },
+    { l:'Telegram', v:'@silkroute', i:'send' },
+    { l:'Instagram', v:'@silkroute', i:'globe' },
+    { l:'Website', v:'nfcstore.uz', i:'globe' }
+  ]
+};
+const DATA = DataLayer;
+
+const S = {
+  current:'home', currentReel:0, currentStory:0, mode:'personal',
+  history:[], galleryMode:false, theme:'pearl', device:390,
+  auth:{ email:'', phone:'', password:'', name:'', code:'', verified:false, err:null },
+  shopCat:'all'
+};
+
+/* ============================================================
+   SCREENS
+   ============================================================ */
+const SCREENS = {
+  /* ENTRY */
+  splash:{title:'Splash',group:'Entry',bleed:true,render:renderSplash,hideNav:true},
+  welcome:{title:'Welcome',group:'Entry',bleed:true,render:renderWelcome,hideNav:true},
+  /* AUTH */
+  login:{title:'Login',group:'Auth',render:renderLogin,hideNav:true},
+  loginVerify:{title:'Verify',group:'Auth',render:()=>verifyT('loginVerifyErr','loginVerifyExpired','home','login'),hideNav:true},
+  loginVerifyErr:{title:'Wrong code',group:'Auth',render:()=>verifyErrT('loginVerify'),hideNav:true},
+  loginVerifyExpired:{title:'Expired',group:'Auth',render:()=>verifyExpT('loginVerify'),hideNav:true},
+  loginEmailChange:{title:'Change email',group:'Auth',render:()=>emailChangeT('loginVerify'),hideNav:true},
+  regName:{title:'Reg · Name',group:'Auth',render:renderRegName,hideNav:true},
+  regEmail:{title:'Reg · Email',group:'Auth',render:renderRegEmail,hideNav:true},
+  regPhone:{title:'Reg · Phone',group:'Auth',render:renderRegPhone,hideNav:true},
+  regPassword:{title:'Reg · Password',group:'Auth',render:renderRegPassword,hideNav:true},
+  regVerify:{title:'Reg · Verify',group:'Auth',render:()=>verifyT('regVerifyErr','regVerifyExpired','regVerifySuccess','regPassword','reg'),hideNav:true},
+  regVerifyErr:{title:'Reg · Wrong',group:'Auth',render:()=>verifyErrT('regVerify'),hideNav:true},
+  regVerifyExpired:{title:'Reg · Expired',group:'Auth',render:()=>verifyExpT('regVerify'),hideNav:true},
+  regVerifySuccess:{title:'Reg · Success',group:'Auth',render:renderRegVerifySuccess,hideNav:true},
+  regEmailChange:{title:'Reg · Change email',group:'Auth',render:()=>emailChangeT('regVerify'),hideNav:true},
+  setup:{title:'Profile Setup',group:'Auth',render:renderSetup,hideNav:true},
+  /* CORE */
+  home:{title:'Home',group:'Core',render:renderHome,tab:'home'},
+  discover:{title:'Discover',group:'Core',render:renderDiscover,tab:'discover'},
+  search:{title:'Search',group:'Core',render:renderSearch},
+  reels:{title:'Reels',group:'Core',bleed:true,render:renderReels,tab:'reels',future:true},
+  nfc:{title:'NFC Center',group:'Core',render:renderNFCCenter,tab:'nfc'},
+  profile:{title:'Profile',group:'Core',render:renderProfile,tab:'profile'},
+  /* SOCIAL */
+  story:{title:'Story Viewer',group:'Social',bleed:true,render:renderStory,hideNav:true,future:true},
+  storyCreate:{title:'Create Story',group:'Social',render:renderStoryCreate,hideNav:true,future:true},
+  post:{title:'Post Detail',group:'Social',render:renderPostDetail,hideNav:true,future:true},
+  postCreate:{title:'Create Post',group:'Social',render:renderPostCreate,hideNav:true,future:true},
+  reelCreate:{title:'Create Reel',group:'Social',render:renderReelCreate,hideNav:true,future:true},
+  /* NFC */
+  nfcIDs:{title:'My NFC IDs',group:'NFC',render:renderNFCIDs,hideNav:true},
+  nfcID:{title:'NFC ID Detail',group:'NFC',render:renderNFCID,hideNav:true},
+  nfcIDEdit:{title:'Edit NFC ID',group:'NFC',render:renderNFCIDEdit,hideNav:true},
+  nfcCard:{title:'Card Detail',group:'NFC',render:renderNFCCard,hideNav:true},
+  nfcScan:{title:'Scan NFC',group:'NFC',render:renderNFCScan,hideNav:true},
+  nfcHistory:{title:'NFC History',group:'NFC',render:renderNFCHistory,hideNav:true},
+  nfcGift:{title:'Gift NFC',group:'NFC',render:renderNFCGift,hideNav:true},
+  nfcSecurity:{title:'NFC Security',group:'NFC',render:renderNFCSecurity,hideNav:true},
+  /* PROFILE */
+  editProfile:{title:'Edit Profile',group:'Profile',render:renderEditProfile,hideNav:true},
+  otherUser:{title:'Other User',group:'Profile',render:renderOtherUser,hideNav:true},
+  /* BUSINESS */
+  biz:{title:'Business Storefront',group:'Business',render:renderBiz,hideNav:true,demo:true},
+  bizDash:{title:'Business Dashboard',group:'Business',render:renderBizDash,hideNav:true,demo:true},
+  bizCatalog:{title:'Business Catalog',group:'Business',render:renderBizCatalog,hideNav:true,demo:true},
+  bizOnboard:{title:'Business Onboarding',group:'Business',render:renderBizOnboard,hideNav:true,demo:true},
+  bizEdit:{title:'Business Edit',group:'Business',render:renderBizEdit,hideNav:true,demo:true},
+  bizProductAdd:{title:'Add Product',group:'Business',render:renderBizProductAdd,hideNav:true,demo:true},
+  bizAnalytics:{title:'Analytics',group:'Business',render:renderBizAnalytics,hideNav:true,demo:true},
+  /* SHOP */
+  shop:{title:'Shop',group:'Shop',render:renderShop,demo:true},
+  product:{title:'Product Detail',group:'Shop',render:renderProduct,hideNav:true,demo:true},
+  checkout:{title:'Checkout',group:'Shop',render:renderCheckout,hideNav:true,demo:true},
+  paymentPending:{title:'Payment Pending',group:'Shop',render:renderPayPending,hideNav:true,demo:true},
+  paymentSuccess:{title:'Payment Success',group:'Shop',render:renderPaySuccess,hideNav:true,demo:true},
+  paymentFail:{title:'Payment Failed',group:'Shop',render:renderPayFail,hideNav:true,demo:true},
+  orders:{title:'Orders',group:'Shop',render:renderOrders,hideNav:true,demo:true},
+  /* SYSTEM */
+  activity:{title:'Activity',group:'System',render:renderActivity,hideNav:true},
+  settings:{title:'Settings',group:'System',render:renderSettings,hideNav:true},
+  settingsSecurity:{title:'Security',group:'System',render:renderSettingsSecurity,hideNav:true},
+  settingsPayment:{title:'Payment',group:'System',render:renderSettingsPayment,hideNav:true},
+  settingsNotif:{title:'Notifications',group:'System',render:renderSettingsNotif,hideNav:true},
+  settingsLang:{title:'Language',group:'System',render:renderSettingsLang,hideNav:true},
+  settingsPremium:{title:'Premium',group:'System',render:renderSettingsPremium,hideNav:true},
+  settingsReferral:{title:'Referral',group:'System',render:renderSettingsReferral,hideNav:true},
+  /* STATES */
+  stateLoading:{title:'Loading',group:'States',render:renderLoading,hideNav:true},
+  stateEmpty:{title:'Empty',group:'States',render:renderEmpty,hideNav:true},
+  stateError:{title:'Error',group:'States',render:renderError,hideNav:true},
+  stateOffline:{title:'Offline',group:'States',render:renderOffline,hideNav:true},
+  stateNFC:{title:'NFC Unsupported',group:'States',render:renderStateNFC,hideNav:true}
+};
+
+/* ============================================================
+   ROUTER
+   ============================================================ */
+function nav(id, opts={}){
+  if(!SCREENS[id]){ toast('Ekran topilmadi','err'); return; }
+  if(!opts.replace && S.current !== id) S.history.push(S.current);
+  S.current = id;
+  const sc = SCREENS[id];
+  const vp = document.getElementById('viewport');
+  vp.innerHTML = '';
+  const el = document.createElement('div');
+  el.className = 'screen' + (sc.bleed?' fullbleed':'');
+  el.dataset.screen = id;
+  el.innerHTML = sc.render();
+  vp.appendChild(el);
+  requestAnimationFrame(()=>el.classList.add('active'));
+  const bnav = document.getElementById('bottomNav');
+  if(sc.hideNav){ bnav.classList.add('hidden'); }
+  else { bnav.classList.remove('hidden'); bnav.innerHTML = renderBottomNav(sc.tab); }
+  document.querySelectorAll('.review .item').forEach(i=>i.classList.toggle('active', i.dataset.screen === id));
+  el.scrollTop = 0;
+  requestAnimationFrame(()=>initOTP());
+  if(id === 'reels') requestAnimationFrame(bindReels);
+}
+function back(){ const prev = S.history.pop() || 'home'; nav(prev, {replace:true}); }
+function renderBottomNav(active){
+  const tabs = [
+    {id:'home',label:'Home',icon:I.home},
+    {id:'discover',label:'Discover',icon:I.search},
+    {id:'reels',label:'Reels',icon:I.reels,center:true},
+    {id:'nfc',label:'NFC',icon:I.nfc},
+    {id:'profile',label:'Profile',icon:I.user}
+  ];
+  return tabs.map(t=>`
+    <button class="bnav-item ${t.center?'center':''} ${active===t.id?'active':''}" onclick="nav('${t.id}')">
+      ${t.center ? `<div class="wrap">${t.icon}</div>` : t.icon}
+      <span>${t.label}</span>
+    </button>`).join('');
+}
+
+let toastT;
+function toast(msg, kind){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (kind?' '+kind:'');
+  t.classList.add('show');
+  clearTimeout(toastT);
+  toastT = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+function openSheet(html){
+  const bg = document.getElementById('sheetBg');
+  const sh = document.getElementById('sheet');
+  sh.innerHTML = `<div class="sheet-handle"></div>` + html;
+  bg.classList.add('open'); sh.classList.add('open');
+}
+function closeSheet(){
+  document.getElementById('sheetBg').classList.remove('open');
+  document.getElementById('sheet').classList.remove('open');
+}
+
+/* OTP */
+let otpVal = ['','','','','',''];
+let otpBound = false;
+function initOTP(){
+  const cells = document.querySelectorAll('.otp-pill[data-idx]');
+  if(!cells.length) return;
+  otpVal = ['','','','','',''];
+  cells.forEach(c=>c.addEventListener('click',()=>focusOTP(parseInt(c.dataset.idx))));
+  focusOTP(0);
+  if(!otpBound){ document.addEventListener('keydown', otpKey); otpBound = true; }
+}
+function otpKey(e){
+  const cells = document.querySelectorAll('.otp-pill[data-idx]');
+  if(!cells.length) return;
+  const f = document.querySelector('.otp-pill.focused');
+  if(!f) return;
+  const i = parseInt(f.dataset.idx);
+  if(e.key>='0' && e.key<='9'){ e.preventDefault(); setOTP(i,e.key); }
+  else if(e.key==='Backspace'){ e.preventDefault(); clearOTP(i); }
+  else if(e.key==='ArrowLeft'){ e.preventDefault(); focusOTP(i-1); }
+  else if(e.key==='ArrowRight'){ e.preventDefault(); focusOTP(i+1); }
+}
+function setOTP(i,v){
+  if(i<0||i>5) return;
+  otpVal[i]=v;
+  const c = document.querySelector(`.otp-pill[data-idx="${i}"]`);
+  if(!c) return;
+  c.textContent = v; c.classList.add('filled'); c.classList.remove('focused');
+  if(i<5) focusOTP(i+1);
+  updateOTP();
+}
+function clearOTP(i){
+  if(i<0||i>5) return;
+  otpVal[i]='';
+  const c = document.querySelector(`.otp-pill[data-idx="${i}"]`);
+  if(c){ c.textContent=''; c.classList.remove('filled','err'); }
+  if(i>0) focusOTP(i-1); else focusOTP(0);
+  updateOTP();
+}
+function focusOTP(i){
+  if(i<0||i>5) return;
+  document.querySelectorAll('.otp-pill').forEach(c=>c.classList.remove('focused'));
+  const c = document.querySelector(`.otp-pill[data-idx="${i}"]`);
+  if(!c) return;
+  if(!c.textContent){ c.classList.add('focused'); }
+  else if(i<5){ focusOTP(i+1); }
+}
+function updateOTP(){
+  const full = otpVal.every(v=>v);
+  const btn = document.getElementById('otpBtn');
+  if(btn) btn.disabled = !full;
+}
+
+/* ============================================================
+   ENTRY
+   ============================================================ */
+function renderSplash(){
+  return `<div class="aurora"><div class="blob-a"></div><div class="blob-b"></div></div>
+  <div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 30px;position:relative;z-index:2;">
+    <div style="animation:floatSoft 4s ease-in-out infinite;filter:drop-shadow(0 20px 40px var(--glow));">${BRAND_LOGO(130)}</div>
+    <div style="font-size:32px;font-weight:500;letter-spacing:-1px;color:var(--text-1);margin-top:26px;font-family:Georgia,serif;">NFCSTORE</div>
+    <div style="font-size:11px;color:var(--text-3);letter-spacing:3px;text-transform:uppercase;margin-top:10px;font-weight:600;">Digital Identity</div>
+    <div style="position:absolute;bottom:60px;left:50%;transform:translateX(-50%);width:160px;">
+      <div class="prog"><div style="width:70%;"></div></div>
+    </div>
+  </div>`;
+}
+function renderWelcome(){
+  return `<div class="aurora"><div class="blob-a"></div><div class="blob-b"></div></div>
+  <div style="height:100%;display:flex;flex-direction:column;position:relative;z-index:2;">
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:space-between;padding:80px 30px 40px;position:relative;">
+      <div style="animation:floatSoft 5s ease-in-out infinite;">${BRAND_LOGO(72)}</div>
+      <div>
+        <div style="font-size:46px;font-weight:500;letter-spacing:-2px;line-height:1.05;color:var(--text-1);font-family:Georgia,serif;">Sizning<br>raqamli<br>identifikatsiyangiz</div>
+        <div style="font-size:15px;color:var(--text-2);margin-top:20px;line-height:1.6;max-width:300px;">NFC karta, shaxsiy profil va biznes platforma — bitta yumshoq tajribada.</div>
+      </div>
+    </div>
+    <div style="padding:0 26px 46px;display:flex;flex-direction:column;gap:12px;">
+      <button class="btn-soft" onclick="startRegister()">Boshlash</button>
+      <button class="btn-ghost" onclick="startLogin()">Kirish</button>
+      <div style="text-align:center;font-size:11.5px;color:var(--text-3);margin-top:10px;line-height:1.5;">Davom etish bilan siz <span style="color:var(--text-2);font-weight:600;">Shartlar</span> va <span style="color:var(--text-2);font-weight:600;">Maxfiylik</span>ga rozilik bildirasiz.</div>
+    </div>
+  </div>`;
+}
+
+/* Login */
+function startLogin(){ S.auth = { email:'', phone:'', password:'', name:'', code:'', verified:false, err:null }; nav('login'); }
+function renderLogin(){
+  const err = S.auth.err;
+  return `
+  <div class="row" style="padding:14px 0 20px;">
+    <button class="icon-soft" onclick="nav('welcome')">${I.back}</button>
+    <div>${BRAND_LOGO(34)}</div>
+    <div style="width:44px;"></div>
+  </div>
+  <div style="padding:14px 0 28px;">
+    <div class="t-title">Xush<br>kelibsiz</div>
+    <div class="t-sub">Email va telefon raqamingizni kiriting. Tasdiqlash kodi emailga yuboriladi.</div>
+  </div>
+  <div class="field"><label class="lbl-soft">Email</label>
+    <input class="inp-soft ${err?'err':''}" id="logEmail" type="email" placeholder="siz@example.com" value="${S.auth.email||''}">
+  </div>
+  <div class="field"><label class="lbl-soft">Telefon</label>
+    <input class="inp-soft" id="logPhone" type="tel" placeholder="+998 90 123 45 67" value="${S.auth.phone||''}">
+  </div>
+  ${err?`<div style="font-size:12px;color:#A06060;margin:-6px 0 12px;padding-left:8px;">${err}</div>`:''}
+  <div style="padding:14px 18px;border-radius:22px;background:var(--surface-2);border:1px solid var(--border-2);margin-bottom:18px;display:flex;gap:12px;align-items:center;">
+    <div class="lic-soft" style="width:34px;height:34px;">${I.mail}</div>
+    <div style="font-size:12px;color:var(--accent-3);line-height:1.5;font-weight:500;">Kod <b>emailga</b> yuboriladi. SMS ishlatilmaydi.</div>
+  </div>
+  <button class="btn-soft" onclick="submitLogin()">Kodni yuborish</button>
+  <div style="text-align:center;margin-top:22px;font-size:13px;color:var(--text-3);">
+    Hisobingiz yo‘qmi? <span style="color:var(--accent-3);font-weight:600;cursor:pointer;" onclick="startRegister()">Ro‘yxatdan o‘tish</span>
+  </div>`;
+}
+function submitLogin(){
+  const e = (document.getElementById('logEmail').value||'').trim();
+  const p = (document.getElementById('logPhone').value||'').trim();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)){ S.auth.err='Email manzil noto‘g‘ri'; nav('login',{replace:true}); return; }
+  if(p.replace(/\D/g,'').length<9){ S.auth.err='Telefon raqam noto‘g‘ri'; nav('login',{replace:true}); return; }
+  S.auth.email = e; S.auth.phone = p; S.auth.err = null;
+  nav('loginVerify');
+}
+
+/* Register */
+function startRegister(){ S.auth = { email:'', phone:'', password:'', name:'', code:'', verified:false, err:null }; nav('regName'); }
+function regProg(step){ return `<div class="prog" style="margin-bottom:22px;"><div style="width:${step*20}%;"></div></div>`; }
+function renderRegName(){
+  return `
+  <div class="row" style="padding:14px 0 20px;"><button class="icon-soft" onclick="nav('welcome')">${I.back}</button><div>${BRAND_LOGO(34)}</div><div style="width:44px;"></div></div>
+  ${regProg(1)}
+  <div style="padding:10px 0 22px;"><div class="t-title">Ismingiz</div><div class="t-sub">NFCSTORE’da ko‘rinadigan ism.</div></div>
+  <div class="field"><label class="lbl-soft">To‘liq ism</label><input class="inp-soft" id="regName" placeholder="Aziz Karimov"></div>
+  <div style="height:14px;"></div>
+  <button class="btn-soft" onclick="
+    const n=(document.getElementById('regName').value||'').trim();
+    if(n.length<2){ toast('Ismingizni kiriting','err'); return; }
+    S.auth.name = n; nav('regEmail');
+  ">Davom etish</button>`;
+}
+function renderRegEmail(){
+  const err = S.auth.err;
+  return `
+  <div class="row" style="padding:14px 0 20px;"><button class="icon-soft" onclick="nav('regName')">${I.back}</button><div>${BRAND_LOGO(34)}</div><div style="width:44px;"></div></div>
+  ${regProg(2)}
+  <div style="padding:10px 0 22px;"><div class="t-title">Email<br>manzil</div><div class="t-sub">Tasdiqlash kodi shu emailga yuboriladi.</div></div>
+  <div class="field"><label class="lbl-soft">Email</label>
+    <input class="inp-soft ${err?'err':''}" id="regEmail" type="email" placeholder="siz@example.com" value="${S.auth.email||''}">
+  </div>
+  <div style="height:14px;"></div>
+  <button class="btn-soft" onclick="
+    const e=(document.getElementById('regEmail').value||'').trim();
+    if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(e)){ S.auth.err='Email noto‘g‘ri'; nav('regEmail',{replace:true}); return; }
+    S.auth.email = e; S.auth.err=null; nav('regPhone');
+  ">Davom etish</button>`;
+}
+function renderRegPhone(){
+  return `
+  <div class="row" style="padding:14px 0 20px;"><button class="icon-soft" onclick="nav('regEmail')">${I.back}</button><div>${BRAND_LOGO(34)}</div><div style="width:44px;"></div></div>
+  ${regProg(3)}
+  <div style="padding:10px 0 22px;"><div class="t-title">Telefon<br>raqam</div><div class="t-sub">Aloqa uchun. Tasdiqlash email orqali.</div></div>
+  <div class="field"><label class="lbl-soft">Telefon</label>
+    <input class="inp-soft" id="regPhone" type="tel" placeholder="+998 90 123 45 67" value="${S.auth.phone||''}">
+  </div>
+  <div style="height:14px;"></div>
+  <button class="btn-soft" onclick="
+    const p=(document.getElementById('regPhone').value||'').trim();
+    if(p.replace(/\\D/g,'').length<9){ toast('Telefon noto‘g‘ri','err'); return; }
+    S.auth.phone = p; nav('regPassword');
+  ">Davom etish</button>`;
+}
+function renderRegPassword(){
+  return `
+  <div class="row" style="padding:14px 0 20px;"><button class="icon-soft" onclick="nav('regPhone')">${I.back}</button><div>${BRAND_LOGO(34)}</div><div style="width:44px;"></div></div>
+  ${regProg(4)}
+  <div style="padding:10px 0 22px;"><div class="t-title">Parol<br>yaratish</div><div class="t-sub">Kamida 8 belgi.</div></div>
+  <div class="field"><label class="lbl-soft">Parol</label><input class="inp-soft" id="regPwd" type="password" placeholder="••••••••"></div>
+  <div class="field"><label class="lbl-soft">Tasdiqlash</label><input class="inp-soft" id="regPwd2" type="password" placeholder="••••••••"></div>
+  <div style="display:flex;align-items:center;gap:12px;margin:6px 0 20px;padding-left:6px;">
+    <div style="width:22px;height:22px;border-radius:50%;background:linear-gradient(150deg,var(--accent-1),var(--accent-2));display:flex;align-items:center;justify-content:center;color:var(--bg-1);box-shadow:0 4px 12px var(--glow);">
+      <div style="width:12px;height:12px;">${I.check}</div>
+    </div>
+    <div style="font-size:12.5px;color:var(--text-2);line-height:1.4;">Shartlar va Maxfiylik siyosatiga roziman</div>
+  </div>
+  <button class="btn-soft" onclick="
+    const p=document.getElementById('regPwd').value||'';
+    const p2=document.getElementById('regPwd2').value||'';
+    if(p.length<8){ toast('Parol kamida 8 belgi','err'); return; }
+    if(p!==p2){ toast('Parollar mos emas','err'); return; }
+    S.auth.password = p; nav('regVerify');
+  ">Ro‘yxatdan o‘tish</button>`;
+}
+function renderRegVerifySuccess(){
+  return `<div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 30px;text-align:center;">
+    <div class="confirm-orb" style="width:140px;height:140px;background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.5), transparent 50%), linear-gradient(150deg,var(--accent-b),var(--accent-b-dark));display:flex;align-items:center;justify-content:center;color:#fff;animation:morphBlob 10s ease-in-out infinite, breathe 4s ease-in-out infinite, confirmationPop .7s var(--ease-spring) both;box-shadow:0 24px 50px var(--glow-b);margin-bottom:28px;">
+      <div style="width:56px;height:56px;">${I.check}</div>
+    </div>
+    <div style="font-size:28px;font-weight:500;letter-spacing:-.8px;color:var(--text-1);font-family:Georgia,serif;">Email tasdiqlandi</div>
+    <div style="font-size:14px;color:var(--text-2);margin-top:12px;line-height:1.6;max-width:280px;">Hisobingiz yaratildi.</div>
+    <button class="btn-soft" style="margin-top:36px;" onclick="nav('setup')">Profilni sozlash</button>
+  </div>`;
+}
+function verifyT(errS, expS, successS, backTo, mode){
+  const email = S.auth.email || 'siz@example.com';
+  const title = mode === 'reg' ? 'Tasdiqlang' : 'Kodni kiriting';
+  const sub = mode === 'reg' ? `6 xonali kod <b>${email}</b> manziliga yuborildi.` : `Kirish uchun kod <b>${email}</b> manziliga yuborildi.`;
+  return `
+  <div class="row" style="padding:14px 0 20px;"><button class="icon-soft" onclick="nav('${backTo}')">${I.back}</button><div>${BRAND_LOGO(34)}</div><div style="width:44px;"></div></div>
+  ${mode==='reg'?regProg(5):''}
+  <div style="padding:14px 0 6px;"><div class="t-title">${title}</div><div class="t-sub">${sub}</div></div>
+  <div class="otp-row">${[0,1,2,3,4,5].map(i=>`<div class="otp-pill" data-idx="${i}" tabindex="0"></div>`).join('')}</div>
+  <div style="text-align:center;margin:14px 0 22px;"><div style="font-size:12.5px;color:var(--text-3);">Qayta yuborish: <span style="color:var(--accent-3);font-weight:700;">00:59</span></div></div>
+  <button class="btn-soft" id="otpBtn" disabled onclick="submitCode('${errS}','${expS}','${successS}')">Tasdiqlash</button>
+  <div style="text-align:center;margin-top:18px;"><button style="background:none;border:none;color:var(--text-2);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;" onclick="nav('${mode==='reg'?'regEmailChange':'loginEmailChange'}')">Emailni o‘zgartirish</button></div>
+  <div style="margin-top:22px;padding:14px 18px;border-radius:22px;background:var(--surface-2);border:1px solid var(--border-2);">
+    <div style="font-size:11.5px;color:var(--text-2);line-height:1.55;"><b>Demo:</b> 123456 — muvaffaqiyat · 000000 — xato · 999999 — muddati tugagan</div>
+  </div>`;
+}
+function verifyErrT(backTo){
+  return `
+  <div class="row" style="padding:14px 0 20px;"><button class="icon-soft" onclick="nav('${backTo}')">${I.back}</button><div>${BRAND_LOGO(34)}</div><div style="width:44px;"></div></div>
+  <div class="prog" style="margin-bottom:22px;"><div style="width:100%;background:linear-gradient(90deg,#E8B8B8,#D88A8A);"></div></div>
+  <div style="padding:14px 0 6px;"><div class="t-title" style="color:#A06060;">Kod<br>noto‘g‘ri</div><div class="t-sub">Kiritilgan kod emailga yuborilgan kodga mos kelmadi.</div></div>
+  <div class="otp-row">${[0,1,2,3,4,5].map(i=>`<div class="otp-pill err" data-idx="${i}"></div>`).join('')}</div>
+  <button class="btn-soft danger" onclick="nav('${backTo}',{replace:true})">Qayta urinish</button>
+  <button class="btn-ghost" style="margin-top:12px;" onclick="toast('Kod qayta yuborildi','ok'); nav('${backTo}',{replace:true})">Kodni qayta yuborish</button>`;
+}
+function verifyExpT(backTo){
+  return `
+  <div class="row" style="padding:14px 0 20px;"><button class="icon-soft" onclick="nav('${backTo}')">${I.back}</button><div>${BRAND_LOGO(34)}</div><div style="width:44px;"></div></div>
+  <div class="prog" style="margin-bottom:22px;"><div style="width:100%;background:linear-gradient(90deg,#DDB878,#B89040);"></div></div>
+  <div style="padding:20px 0 22px;">
+    <div style="width:90px;height:90px;background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.5), transparent 50%), linear-gradient(150deg,#E8D2A0,#DDB878);display:flex;align-items:center;justify-content:center;color:#fff;margin-bottom:18px;animation:morphBlob 10s ease-in-out infinite;box-shadow:0 20px 40px rgba(221,184,120,.35);">
+      <div style="width:38px;height:38px;">${I.clock}</div>
+    </div>
+    <div class="t-title">Muddati<br>tugadi</div>
+    <div class="t-sub">Yangi kod so‘rang.</div>
+  </div>
+  <button class="btn-soft" onclick="toast('Yangi kod yuborildi','ok'); nav('${backTo}',{replace:true})">Yangi kod yuborish</button>`;
+}
+function emailChangeT(backTo){
+  return `
+  <div class="row" style="padding:14px 0 20px;"><button class="icon-soft" onclick="nav('${backTo}')">${I.back}</button><div style="width:44px;"></div><div style="width:44px;"></div></div>
+  <div style="padding:10px 0 22px;"><div class="t-title">Emailni<br>o‘zgartirish</div><div class="t-sub">Yangi manzilga kod yuboriladi.</div></div>
+  <div class="field"><label class="lbl-soft">Yangi email</label><input class="inp-soft" id="newEmail" type="email" placeholder="yangi@example.com" value="${S.auth.email||''}"></div>
+  <button class="btn-soft" onclick="
+    const v=(document.getElementById('newEmail').value||'').trim();
+    if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(v)){ toast('Email noto‘g‘ri','err'); return; }
+    S.auth.email = v;
+    toast('Kod yuborildi: '+v,'ok'); nav('${backTo}',{replace:true});
+  ">Yuborish</button>`;
+}
+function submitCode(errS, expS, successS){
+  const code = otpVal.join('');
+  if(code.length!==6) return;
+  S.auth.code = code;
+  if(code==='000000') nav(errS);
+  else if(code==='999999') nav(expS);
+  else { S.auth.verified = true; if(successS==='home'){ toast('Kirdingiz','ok'); nav('home'); } else nav(successS); }
+}
+function renderSetup(){
+  return `
+  <div class="row" style="padding:14px 0 20px;"><div style="width:44px;"></div><div>${BRAND_LOGO(34)}</div><div style="width:44px;"></div></div>
+  <div style="padding:14px 0 20px;"><div class="t-title">Profilni<br>sozlash</div><div class="t-sub">Bu ma’lumotlar NFC kartangizda ko‘rinadi.</div></div>
+  <div style="text-align:center;margin:22px 0;">
+    <div style="width:130px;height:130px;margin:0 auto;background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.5), transparent 50%), linear-gradient(150deg,var(--accent-1),var(--accent-2));display:flex;align-items:center;justify-content:center;color:var(--bg-1);animation:morphBlob 12s ease-in-out infinite;box-shadow:0 20px 40px var(--glow);cursor:pointer;">
+      <div style="width:44px;height:44px;">${I.plus}</div>
+    </div>
+    <div style="font-size:12px;color:var(--text-3);margin-top:12px;letter-spacing:.4px;">Rasm yuklash</div>
+  </div>
+  <div class="field"><label class="lbl-soft">To‘liq ism</label><input class="inp-soft" value="${S.auth.name||''}"></div>
+  <div class="field"><label class="lbl-soft">Username</label><input class="inp-soft" placeholder="@username"></div>
+  <div class="field"><label class="lbl-soft">Kasb</label><input class="inp-soft" placeholder="Product Designer"></div>
+  <div class="field"><label class="lbl-soft">Bio</label><textarea class="inp-soft" style="height:100px;padding:18px;resize:none;font-family:inherit;"></textarea></div>
+  <button class="btn-soft" onclick="toast('Xush kelibsiz!','ok'); nav('home');">Boshlash</button>`;
+}
+
+/* ============================================================
+   HOME
+   ============================================================ */
+function renderHome(){
+  const bubbles = DATA.stories.map((s,i)=>`
+    <div class="bub" onclick="openStory(${i})">
+      <div class="bub-ring ${s.seen?'seen':''} ${s.you?'you':''} ${s.biz?'biz':''}">
+        <div class="bub-inner ${s.biz?'biz':''}">${s.you?'<span style="color:var(--accent-3);font-size:24px;font-weight:400;">+</span>':s.initials}</div>
+      </div>
+      <div class="bub-name">${s.name}</div>
+    </div>`).join('');
+  const posts = DATA.posts.map(p=>renderPostCard(p)).join('');
+  return `<div class="aurora"><div class="blob-a"></div><div class="blob-b"></div></div>
+  <div style="position:relative;z-index:2;">
+    <div class="row" style="padding:10px 0 8px;">
+      <div>
+        <div style="font-size:11px;color:var(--text-3);letter-spacing:1.6px;text-transform:uppercase;font-weight:700;">Xush kelibsiz</div>
+        <div style="font-size:22px;font-weight:500;letter-spacing:-.5px;color:var(--text-1);margin-top:4px;font-family:Georgia,serif;">Aziz Karimov</div>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="icon-soft" onclick="nav('activity')" style="position:relative;">${I.bell}
+          <span style="position:absolute;top:10px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--accent-2);box-shadow:0 0 0 2px var(--bg-1);"></span>
+        </button>
+        <button class="icon-soft" onclick="nav('profile')">${BRAND_LOGO(26)}</button>
+      </div>
+    </div>
+
+    <div class="orb-hero" style="cursor:pointer;" onclick="openSheet(identitySheet())">
+      <div class="halo"></div>
+      <div class="ring"></div>
+      <div class="ring"></div>
+      <div class="ring"></div>
+      <div class="blob-shape"><div class="nfc-mark">${NFC_MARK(64)}</div></div>
+    </div>
+
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="font-size:24px;font-weight:500;letter-spacing:-.6px;color:var(--text-1);font-family:Georgia,serif;">Aziz Karimov</div>
+      <div style="font-size:12.5px;color:var(--text-3);margin-top:6px;">${DATA.me.role}</div>
+      <div style="margin-top:14px;display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:100px;background:var(--surface-2);border:1px solid var(--border-2);backdrop-filter:blur(14px);">
+        <span style="width:7px;height:7px;border-radius:50%;background:var(--success);box-shadow:0 0 10px var(--success);"></span>
+        <span style="font-size:11.5px;font-weight:700;color:var(--accent-3);letter-spacing:1.2px;">${DATA.me.nfcId}</span>
+      </div>
+    </div>
+
+    <div class="chip-scroll" style="margin-bottom:22px;justify-content:center;">
+      <div class="capsule" onclick="openSheet(shareSheet())"><div style="width:16px;height:16px;">${I.share}</div>Share</div>
+      <div class="capsule" onclick="nav('nfcScan')"><div style="width:16px;height:16px;">${I.scan}</div>Scan</div>
+      <div class="capsule" onclick="nav('nfc')"><div style="width:16px;height:16px;">${I.nfc}</div>NFC</div>
+      <div class="capsule" onclick="nav('shop')"><div style="width:16px;height:16px;">${I.bag}</div>Shop</div>
+    </div>
+
+    <div class="sec-head" style="margin-top:8px;"><div class="t-section">Stories</div><button class="sec-link" onclick="toast('Barcha stories')">Barchasi</button></div>
+    <div class="story-bubbles" style="margin-bottom:24px;">${bubbles}</div>
+
+    <div class="sec-head" style="margin-top:8px;"><div class="t-section">Feed</div><button class="sec-link" onclick="nav('postCreate')">Yangi</button></div>
+    ${posts}
+  </div>`;
+}
+function identitySheet(){
+  return `
+  <div style="text-align:center;padding:8px 0 18px;">
+    <div class="orb-hero" style="width:180px;height:180px;margin:0 auto 16px;">
+      <div class="halo"></div><div class="ring"></div><div class="ring"></div>
+      <div class="blob-shape" style="width:140px;height:140px;">
+        <div class="nfc-mark" style="width:48px;height:48px;">${NFC_MARK(48)}</div>
+      </div>
+    </div>
+    <div style="font-size:22px;font-weight:500;color:var(--text-1);font-family:Georgia,serif;">Aziz Karimov</div>
+    <div style="font-size:12.5px;color:var(--text-3);margin-top:6px;">${DATA.me.role}</div>
+    <div style="margin-top:14px;font-family:Georgia,serif;font-size:14px;letter-spacing:4px;color:var(--accent-3);">${DATA.me.nfcId}</div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;">
+    ${[['Telegram',I.send],['QR',I.qr],['Havola',I.globe],['NFC',I.nfc]].map(([l,ic])=>`
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 0;border-radius:22px;background:var(--surface-2);cursor:pointer;" onclick="toast('${l}'); closeSheet();">
+        <div style="width:22px;height:22px;color:var(--accent-3);">${ic}</div>
+        <div style="font-size:11px;color:var(--accent-3);font-weight:600;">${l}</div>
+      </div>`).join('')}
+  </div>
+  <button class="btn-ghost" onclick="closeSheet()">Yopish</button>`;
+}
+function renderPostCard(p){
+  return `
+  <div class="post-soft" onclick="nav('post')">
+    <div class="head">
+      <div class="av-orb ${p.biz?'b':''}">${p.initials}</div>
+      <div class="meta" style="flex:1;min-width:0;">
+        <div class="n">${p.user} ${p.biz?'<span class="pill biz">Business</span>':''}</div>
+        <div class="t">${p.time}</div>
+      </div>
+      <div style="color:var(--text-3);width:18px;height:18px;">${I.more}</div>
+    </div>
+    <div class="body">${p.body}</div>
+    <div class="media ${p.biz?'mint':''}"><div style="color:#fff;opacity:.9;">${NFC_MARK(52)}</div></div>
+    <div class="actions">
+      <div class="act ${p.liked?'liked':''}" onclick="event.stopPropagation();toggleLike(this)">
+        <div style="width:18px;height:18px;">${p.liked?I.heartF:I.heart}</div><span>${p.likes}</span>
+      </div>
+      <div class="act" onclick="event.stopPropagation();openSheet(commentSheet())">
+        <div style="width:18px;height:18px;">${I.comment}</div><span>${p.comments}</span>
+      </div>
+      <div class="act" onclick="event.stopPropagation();toast('Ulashildi','ok')" style="width:18px;height:18px;">${I.share}</div>
+      <div class="act ${p.saved?'saved':''}" onclick="event.stopPropagation();toggleSave(this)" style="margin-left:auto;width:18px;height:18px;">${p.saved?I.bookmarkF:I.bookmark}</div>
+    </div>
+  </div>`;
+}
+
+/* ============================================================
+   DISCOVER
+   ============================================================ */
+function renderDiscover(){
+  const people = DATA.people.map(p=>`
+    <div style="flex-shrink:0;width:150px;padding:18px;border-radius:32px;background:var(--surface);backdrop-filter:blur(20px);border:1px solid var(--border-1);box-shadow:var(--shadow-soft);text-align:center;cursor:pointer;" onclick="nav('otherUser')">
+      <div class="av-orb ${p.followed?'b':''}" style="width:64px;height:64px;font-size:20px;margin:0 auto 12px;">${p.initials}</div>
+      <div style="font-size:13px;font-weight:600;color:var(--text-1);">${p.name.split(' ')[0]} ${p.name.split(' ')[1][0]}.</div>
+      <div style="font-size:11px;color:var(--text-3);margin:4px 0 12px;">${p.role}</div>
+      <div onclick="event.stopPropagation();toggleFollow(this)" class="capsule" style="width:100%;justify-content:center;padding:8px 0;font-size:11.5px;${p.followed?'background:linear-gradient(150deg,var(--accent-b),var(--accent-b-dark));color:#fff;border-color:transparent;':''}">${p.followed?'Followed':'+ Follow'}</div>
+    </div>`).join('');
+  const bizs = DATA.businesses.map((b,i)=>`
+    <div class="tile" onclick="nav('biz')" style="grid-column:${i===0?'span 2':'auto'};">
+      <div class="deco d1"></div>
+      ${i===0?`<div style="display:flex;align-items:center;gap:14px;position:relative;z-index:2;">
+        <div class="av-orb b" style="width:56px;height:56px;font-size:17px;">${b.initials}</div>
+        <div style="flex:1;">
+          <div style="font-size:16px;font-weight:600;color:var(--text-1);">${b.name} ${b.verified?`<span class="pill biz" style="margin-left:6px;">✓</span>`:''}</div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:4px;">${b.cat}</div>
+        </div>
+      </div>`:`
+      <div class="deco d2"></div>
+      <div class="av-orb ${i===2?'c':'d'}" style="width:44px;height:44px;font-size:14px;margin-bottom:12px;position:relative;z-index:2;">${b.initials}</div>
+      <div style="font-size:13.5px;font-weight:600;color:var(--text-1);position:relative;z-index:2;">${b.name}</div>
+      <div style="font-size:11px;color:var(--text-3);margin-top:4px;position:relative;z-index:2;">${b.cat}</div>`}
+    </div>`).join('');
+  return `<div class="aurora"><div class="blob-a"></div></div>
+  <div style="position:relative;z-index:2;">
+    <div style="padding-top:14px;"></div>
+    <div class="t-title">Discover</div>
+    <div class="t-sub">Kashf qiling, kuzatib boring, ulanish.</div>
+    <div style="height:20px;"></div>
+    <div style="position:relative;">
+      <input class="inp-soft" placeholder="Qidirish..." readonly onclick="nav('search')" style="padding-left:52px;">
+      <div style="position:absolute;left:20px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--text-3);">${I.search}</div>
+    </div>
+    <div class="chip-scroll" style="margin-top:18px;">
+      <div class="capsule active">Hammasi</div>
+      <div class="capsule">Odamlar</div>
+      <div class="capsule">Bizneslar</div>
+      <div class="capsule">Reels</div>
+    </div>
+    <div class="sec-head" style="margin-top:22px;"><div class="t-section">Tavsiya</div><button class="sec-link">Barchasi</button></div>
+    <div style="display:flex;gap:14px;overflow-x:auto;scrollbar-width:none;padding-bottom:6px;">${people}</div>
+    <div class="sec-head" style="margin-top:26px;"><div class="t-section">Bizneslar</div><button class="sec-link">Barchasi</button></div>
+    <div class="tiles">${bizs}</div>
+    <div class="sec-head" style="margin-top:26px;"><div class="t-section">Trend Reels</div><button class="sec-link" onclick="nav('reels')">Barchasi</button></div>
+    <div class="tiles">
+      ${DATA.reels.slice(0,2).map(r=>`
+        <div class="tile" onclick="nav('reels')" style="padding:0;overflow:hidden;border-radius:36px;">
+          <div style="height:200px;background:${r.bg};position:relative;">
+            <div style="position:absolute;bottom:12px;left:14px;font-size:12px;font-weight:700;color:#fff;display:flex;align-items:center;gap:6px;">
+              <div style="width:12px;height:12px;">${I.play}</div> ${(r.likes/1000).toFixed(1)}k
+            </div>
+          </div>
+          <div style="padding:14px 16px 18px;">
+            <div style="font-size:13px;font-weight:600;color:var(--text-1);">${r.user.split(' ')[0]}</div>
+            <div style="font-size:11px;color:var(--text-3);margin-top:3px;">${r.handle}</div>
+          </div>
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+function renderSearch(){
+  return `
+  <div class="row" style="padding:14px 0 20px;">
+    <button class="icon-soft" onclick="back()">${I.back}</button>
+    <div style="flex:1;"><input class="inp-soft" placeholder="Qidirish..." autofocus style="height:52px;padding-left:50px;"></div>
+  </div>
+  <div class="sec-head" style="margin-top:6px;"><div class="t-section">Oxirgi</div><button class="sec-link">Tozalash</button></div>
+  <div class="list-soft">
+    ${['NFC metal card','Malika','Brew Lab'].map(q=>`
+      <div class="item" onclick="toast('${q}')">
+        <div class="lic-soft">${I.clock}</div>
+        <div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">${q}</div></div>
+        <div style="width:16px;height:16px;color:var(--text-3);">${I.chev}</div>
+      </div>`).join('')}
+  </div>
+  <div class="sec-head" style="margin-top:22px;"><div class="t-section">Trend</div></div>
+  <div class="chip-scroll"><div class="capsule">NFC metal</div><div class="capsule">business</div><div class="capsule">identity</div></div>`;
+}
+
+/* ============================================================
+   REELS
+   ============================================================ */
+function renderReels(){
+  const rs = DATA.reels.map((r,i)=>`
+    <div class="reel-full ${i===S.currentReel?'active':''}" data-i="${i}">
+      <div class="bg" style="background:${r.bg};"></div>
+      <div class="grad"></div>
+      <div class="progress-row">${DATA.reels.map((_,k)=>`<div class="bar ${k===i?'active':''}"></div>`).join('')}</div>
+      <div class="bottom">
+        <div class="info">
+          <div class="user">
+            <div class="av-orb ${r.biz?'b':''}" onclick="nav('${r.biz?'biz':'otherUser'}')" style="cursor:pointer;">${r.initials}</div>
+            <div style="flex:1;min-width:0;">
+              <div class="nm">${r.user} ${r.biz?'<span class="pill biz" style="background:rgba(255,255,255,.2);color:#fff;">Biz</span>':''}</div>
+              <div class="hd">${r.handle}</div>
+            </div>
+            <button onclick="event.stopPropagation();reelFollow(${i},this)" style="padding:8px 16px;border-radius:100px;border:none;background:${r.followed?'rgba(255,255,255,.9)':'rgba(255,255,255,.18)'};backdrop-filter:blur(12px);color:${r.followed?'#2A2A2E':'#fff'};font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid rgba(255,255,255,.3);">${r.followed?'Following':'Follow'}</button>
+          </div>
+          <div class="caption">${r.caption}</div>
+          <div class="nfc-pill" onclick="nav('product')"><div style="width:18px;height:18px;">${NFC_MARK(18)}</div>${r.tag}</div>
+        </div>
+        <div class="actions">
+          <div class="act-col ${r.liked?'liked':''}" onclick="reelLike(${i},this)"><div>${r.liked?I.heartF:I.heart}</div><span>${(r.likes/1000).toFixed(1)}k</span></div>
+          <div class="act-col" onclick="openSheet(commentSheet())">${I.comment}<span>${r.comments}</span></div>
+          <div class="act-col" onclick="openSheet(shareSheet())">${I.share}<span>Share</span></div>
+          <div class="act-col ${r.saved?'saved':''}" onclick="reelSave(${i},this)"><div>${r.saved?I.bookmarkF:I.bookmark}</div><span>Save</span></div>
+        </div>
+      </div>
+    </div>`).join('');
+  return `<div class="reels-host" id="reelsHost">
+    ${rs}
+    <div style="position:absolute;top:20px;left:22px;filter:drop-shadow(0 4px 12px rgba(0,0,0,.5));">${BRAND_LOGO(30,{dark:true})}</div>
+    <div style="position:absolute;top:20px;right:22px;font-size:10px;color:rgba(255,255,255,.6);font-weight:600;letter-spacing:1px;">↕ SWIPE</div>
+    <button onclick="nav('reelCreate')" style="position:absolute;bottom:130px;right:22px;width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.15);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;">${I.plus}</button>
+    <div style="position:absolute;bottom:130px;left:0;right:0;display:flex;justify-content:center;gap:8px;">
+      ${DATA.reels.map((_,i)=>`<div onclick="setReel(${i})" style="width:7px;height:7px;border-radius:50%;background:${i===S.currentReel?'#fff':'rgba(255,255,255,.4)'};cursor:pointer;transition:.3s;"></div>`).join('')}
+    </div>
+  </div>`;
+}
+function setReel(i){ S.currentReel = Math.max(0, Math.min(DATA.reels.length-1, i)); nav('reels',{replace:true}); }
+function reelLike(i, el){ const r = DATA.reels[i]; r.liked=!r.liked; el.classList.toggle('liked'); el.querySelector('div').innerHTML = r.liked?I.heartF:I.heart; }
+function reelSave(i, el){ const r = DATA.reels[i]; r.saved=!r.saved; el.classList.toggle('saved'); el.querySelector('div').innerHTML = r.saved?I.bookmarkF:I.bookmark; toast(r.saved?'Saqlandi':'Saqlashdan olindi', r.saved?'ok':''); }
+function reelFollow(i, el){ const r = DATA.reels[i]; r.followed=!r.followed; el.textContent = r.followed?'Following':'Follow'; el.style.background = r.followed?'rgba(255,255,255,.9)':'rgba(255,255,255,.18)'; el.style.color = r.followed?'#2A2A2E':'#fff'; toast(r.followed?'Follow qilindi':'Unfollowed', r.followed?'ok':''); }
+function commentSheet(){
+  return `
+  <div style="font-size:17px;font-weight:600;margin-bottom:16px;font-family:Georgia,serif;color:var(--text-1);">Izohlar</div>
+  <div style="max-height:40vh;overflow-y:auto;">
+    ${[['Malika','MY','Zo‘r! Qaysi chip?','2m'],['Jasur','JT','Men ham kerak 🔥','15m']].map(c=>`
+      <div style="display:flex;gap:12px;padding:14px 0;border-bottom:1px solid var(--border-1);">
+        <div class="av-orb" style="width:38px;height:38px;font-size:12px;">${c[1]}</div>
+        <div style="flex:1;">
+          <div style="font-size:13.5px;font-weight:600;color:var(--text-1);">${c[0]}</div>
+          <div style="font-size:13px;color:var(--text-2);margin-top:3px;line-height:1.5;">${c[2]}</div>
+        </div>
+      </div>`).join('')}
+  </div>
+  <div style="display:flex;gap:10px;padding-top:16px;">
+    <input class="inp-soft" placeholder="Izoh..." style="height:48px;">
+    <button class="btn-soft" style="width:56px;height:48px;padding:0;border-radius:24px;">${I.send}</button>
+  </div>`;
+}
+function shareSheet(){
+  return `
+  <div style="font-size:17px;font-weight:600;margin-bottom:16px;font-family:Georgia,serif;color:var(--text-1);">Ulashish</div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;">
+    ${[['Telegram',I.send],['QR',I.qr],['Havola',I.globe],['NFC',I.nfc]].map(([l,ic])=>`
+      <div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px 0;border-radius:22px;background:var(--surface-2);cursor:pointer;" onclick="toast('${l}'); closeSheet();">
+        <div style="width:22px;height:22px;color:var(--accent-3);">${ic}</div>
+        <div style="font-size:11px;color:var(--accent-3);font-weight:600;">${l}</div>
+      </div>`).join('')}
+  </div>
+  <button class="btn-ghost" onclick="closeSheet()">Yopish</button>`;
+}
+function contactSheet(){
+  return `
+  <div style="font-size:17px;font-weight:600;margin-bottom:16px;font-family:Georgia,serif;color:var(--text-1);">Aloqa</div>
+  <div class="list-soft" style="margin-bottom:14px;">
+    ${DATA.contacts.map(c=>`
+      <div class="item" onclick="toast('${c.l}'); closeSheet();">
+        <div class="lic-soft b">${I[c.i]||I.globe}</div>
+        <div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">${c.l}</div><div style="font-size:11.5px;color:var(--text-3);margin-top:3px;">${c.v}</div></div>
+        <div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div>
+      </div>`).join('')}
+  </div>
+  <button class="btn-ghost" onclick="closeSheet()">Yopish</button>`;
+}
+
+/* ============================================================
+   STORY
+   ============================================================ */
+function openStory(i){ S.currentStory = i; nav('story'); }
+function renderStory(){
+  const s = DATA.stories[S.currentStory] || DATA.stories[0];
+  return `<div style="position:absolute;inset:0;background:#000;display:flex;flex-direction:column;">
+    <div style="display:flex;gap:6px;padding:16px 16px 0;">
+      ${DATA.stories.map((_,k)=>`
+        <div style="flex:1;height:3px;border-radius:3px;background:${k<=S.currentStory?'#fff':'rgba(255,255,255,.25)'};overflow:hidden;">
+          ${k===S.currentStory?'<div style="height:100%;background:#fff;animation:storyProgress 5s linear forwards;"></div>':''}
+        </div>`).join('')}
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;padding:16px;">
+      <div class="av-orb ${s.biz?'b':''}" style="width:40px;height:40px;font-size:13px;">${s.you?'AK':s.initials}</div>
+      <div style="flex:1;">
+        <div style="font-size:14px;font-weight:600;color:#fff;">${s.you?'Aziz Karimov':s.name}</div>
+        <div style="font-size:11.5px;color:rgba(255,255,255,.7);">2 soat oldin</div>
+      </div>
+      <div style="color:#fff;cursor:pointer;padding:8px;" onclick="back()">${I.close}</div>
+    </div>
+    <div style="flex:1;position:relative;overflow:hidden;">
+      <div style="position:absolute;inset:0;background:radial-gradient(circle at 40% 30%, var(--accent-1), var(--accent-2) 50%, #000);"></div>
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:.4;">${BRAND_LOGO(180,{dark:true})}</div>
+      <div style="position:absolute;bottom:40px;left:24px;right:24px;font-size:16px;color:#fff;font-weight:500;line-height:1.5;z-index:5;text-align:center;font-family:Georgia,serif;">Yangi NFC kartam — bitta tegish bilan hamma narsa</div>
+      <div onclick="prevStory()" style="position:absolute;left:0;top:0;bottom:0;width:35%;cursor:pointer;"></div>
+      <div onclick="nextStory()" style="position:absolute;right:0;top:0;bottom:0;width:65%;cursor:pointer;"></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;padding:16px 18px 30px;">
+      <input style="flex:1;height:48px;border-radius:100px;padding:0 20px;background:rgba(255,255,255,.12);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.2);color:#fff;font-size:13.5px;font-family:inherit;outline:none;" placeholder="Javob yozish...">
+      <div onclick="toast('Reaksiya yuborildi','ok')" style="width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.12);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;">${I.heart}</div>
+    </div>
+  </div>`;
+}
+function nextStory(){ if(S.currentStory<DATA.stories.length-1){ S.currentStory++; nav('story',{replace:true}); } else { toast('Barcha stories ko‘rildi','ok'); back(); } }
+function prevStory(){ if(S.currentStory>0){ S.currentStory--; nav('story',{replace:true}); } }
+function renderStoryCreate(){
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.close}</button><div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:var(--text-1);">Story</div><button class="capsule active" onclick="toast('Story nashr qilindi','ok'); back();" style="padding:8px 16px;font-size:12px;">Nashr</button></div>
+  <div style="height:380px;border-radius:40px;background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.5), transparent 55%), linear-gradient(150deg,var(--accent-1),var(--accent-2));position:relative;overflow:hidden;margin-bottom:18px;animation:morphBlob 14s ease-in-out infinite;box-shadow:0 30px 60px var(--glow);">
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:.4;">${BRAND_LOGO(140,{dark:true})}</div>
+    <div style="position:absolute;bottom:20px;left:20px;right:20px;display:flex;gap:12px;">
+      <div onclick="toast('Galereya')" style="width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.7);backdrop-filter:blur(16px);display:flex;align-items:center;justify-content:center;color:var(--text-1);cursor:pointer;">${I.image}</div>
+      <div onclick="toast('Video')" style="width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.7);backdrop-filter:blur(16px);display:flex;align-items:center;justify-content:center;color:var(--text-1);cursor:pointer;">${I.video}</div>
+    </div>
+  </div>
+  <div class="field"><label class="lbl-soft">Izoh</label><input class="inp-soft" placeholder="Storyga izoh..."></div>
+  <button class="btn-soft" onclick="toast('Story nashr qilindi','ok'); back();">Nashr qilish</button>`;
+}
+function renderReelCreate(){
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.close}</button><div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:var(--text-1);">Reel</div><button class="capsule active" onclick="toast('Reel nashr qilindi','ok'); back();" style="padding:8px 16px;font-size:12px;">Nashr</button></div>
+  <div style="height:300px;border-radius:40px;background:radial-gradient(circle at 40% 30%, var(--accent-c), var(--accent-c-dark) 60%, #1A1A1E);position:relative;overflow:hidden;margin-bottom:18px;box-shadow:0 30px 60px var(--glow);display:flex;align-items:center;justify-content:center;">${BRAND_LOGO(110,{dark:true})}</div>
+  <div class="field"><label class="lbl-soft">Tavsif</label><input class="inp-soft" placeholder="Reel tavsifi..."></div>
+  <div class="field"><label class="lbl-soft">NFC tag</label><input class="inp-soft" placeholder="NFC ID yoki mahsulot"></div>
+  <button class="btn-soft" onclick="toast('Reel nashr qilindi','ok'); back();">Nashr qilish</button>`;
+}
+function renderPostDetail(){
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div>${BRAND_LOGO(26)}</div><div style="width:44px;"></div></div>
+  ${renderPostCard(DATA.posts[0]).replace('onclick="nav(\'post\')"','')}
+  <div class="sec-head" style="margin-top:16px;"><div class="t-section">Izohlar · 24</div></div>
+  <div class="list-soft">
+    ${[['Jasur Toshmatov','JT','Zo‘r!'],['Brew Lab','BL','Bizga ham kerak','b'],['Nodira','NR','Narxi?']].map(c=>`
+      <div class="item">
+        <div class="av-orb ${c[3]||''}" style="width:38px;height:38px;font-size:12px;">${c[1]}</div>
+        <div style="flex:1;"><div style="font-size:13px;font-weight:600;color:var(--text-1);">${c[0]}</div><div style="font-size:12.5px;color:var(--text-2);margin-top:3px;">${c[2]}</div></div>
+      </div>`).join('')}
+  </div>
+  <div style="display:flex;gap:10px;padding-top:16px;">
+    <input class="inp-soft" placeholder="Izoh yozish..." style="height:48px;">
+    <button class="btn-soft" style="width:56px;height:48px;padding:0;border-radius:24px;">${I.send}</button>
+  </div>`;
+}
+function renderPostCreate(){
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.close}</button><div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:var(--text-1);">Yangi post</div><button class="capsule active" onclick="toast('Post nashr qilindi','ok'); back();" style="padding:8px 16px;font-size:12px;">Nashr</button></div>
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+    <div class="av-orb">AK</div>
+    <div><div style="font-size:14px;font-weight:600;color:var(--text-1);">Aziz Karimov</div><div style="font-size:11.5px;color:var(--text-3);">Hammaga ochiq</div></div>
+  </div>
+  <textarea class="inp-soft" placeholder="Nima haqida o‘ylayapsiz?" style="height:140px;padding:20px;resize:none;font-family:inherit;font-size:15px;line-height:1.6;"></textarea>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0 20px;">
+    ${[I.image,I.video,I.nfc,I.bag].map(ic=>`
+      <div style="height:64px;border-radius:24px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;color:var(--accent-3);cursor:pointer;"><div style="width:22px;height:22px;">${ic}</div></div>`).join('')}
+  </div>
+  <div style="padding:18px;border-radius:26px;background:var(--surface-2);border:1px solid var(--border-2);display:flex;align-items:center;gap:14px;">
+    <div class="lic-soft" style="width:40px;height:40px;">${I.nfc}</div>
+    <div style="flex:1;font-size:13px;color:var(--accent-3);font-weight:600;">NFC ID: ${DATA.me.nfcId}</div>
+    <div style="width:20px;height:20px;color:var(--accent-3);">${I.check}</div>
+  </div>`;
+}
+
+/* ============================================================
+   NFC CENTER
+   ============================================================ */
+function renderNFCCenter(){
+  return `<div class="aurora"><div class="blob-a"></div><div class="blob-b"></div></div>
+  <div style="position:relative;z-index:2;">
+    <div style="padding-top:14px;"></div>
+    <div class="t-title">NFC<br>Center</div>
+    <div class="t-sub">Sizning identifikatsiya markazingiz.</div>
+    <div style="height:20px;"></div>
+    <div class="orbit">
+      <div class="wave"></div><div class="wave"></div><div class="wave"></div>
+      <div class="center-orb" onclick="nav('nfcScan')">${NFC_MARK(48)}</div>
+      <div class="item" onclick="nav('nfcID')">AK</div>
+      <div class="item" onclick="nav('nfcID')">SR</div>
+      <div class="item" onclick="nav('nfcGift')">+</div>
+    </div>
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="font-size:22px;font-weight:500;color:var(--text-1);font-family:Georgia,serif;">NFC faol</div>
+      <div style="font-size:12.5px;color:var(--text-3);margin-top:6px;">Oxirgi skan: 2 daqiqa oldin</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:22px;">
+      <button class="btn-ghost" onclick="nav('nfcScan')" style="height:60px;"><div style="width:20px;height:20px;">${I.scan}</div> Skan</button>
+      <button class="btn-soft" onclick="nav('nfcIDs')" style="height:60px;"><div style="width:20px;height:20px;">${I.card}</div> ID lar</button>
+    </div>
+    <div class="sec-head"><div class="t-section">Mening ID larim</div><button class="sec-link" onclick="nav('nfcIDs')">Barchasi</button></div>
+    ${DATA.nfcIDs.map(id=>`
+      <div style="padding:22px;border-radius:34px;margin-bottom:12px;cursor:pointer;position:relative;overflow:hidden;
+        background:${id.type==='business'?'linear-gradient(150deg,var(--accent-b),var(--accent-b-dark))':'linear-gradient(150deg,var(--accent-1),var(--accent-2))'};
+        border:1px solid var(--border-1);box-shadow:var(--shadow-soft);color:${id.type==='business'?'#fff':'var(--bg-1)'};"
+        onclick="nav('nfcID')">
+        <div style="position:absolute;top:-30%;right:-20%;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.3),transparent 65%);filter:blur(10px);"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;position:relative;z-index:2;">
+          <div style="font-size:11px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;opacity:.9;">${id.label}</div>
+          <div class="pill" style="background:rgba(255,255,255,.25);color:inherit;">Faol</div>
+        </div>
+        <div style="font-family:Georgia,serif;font-size:16px;font-weight:600;letter-spacing:3px;position:relative;z-index:2;">${id.code}</div>
+        <div style="font-size:12.5px;margin-top:8px;opacity:.85;position:relative;z-index:2;">${id.sub}</div>
+      </div>`).join('')}
+    <div class="sec-head" style="margin-top:20px;"><div class="t-section">Boshqaruv</div></div>
+    <div class="list-soft">
+      <div class="item" onclick="nav('nfcScan')"><div class="lic-soft">${I.scan}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">Skan qilish</div><div style="font-size:11.5px;color:var(--text-3);margin-top:3px;">Kartani tekshirish</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+      <div class="item" onclick="nav('nfcHistory')"><div class="lic-soft b">${I.clock}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">NFC tarixi</div><div style="font-size:11.5px;color:var(--text-3);margin-top:3px;">Skanlar, ulashishlar</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+      <div class="item" onclick="nav('nfcGift')"><div class="lic-soft c">${I.gift}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">Sovg‘a qilish</div><div style="font-size:11.5px;color:var(--text-3);margin-top:3px;">NFC ID do‘stga</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+      <div class="item" onclick="nav('nfcCard')"><div class="lic-soft d">${I.card}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">NFC Karta</div><div style="font-size:11.5px;color:var(--text-3);margin-top:3px;">Metal card</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+      <div class="item" onclick="nav('nfcSecurity')"><div class="lic-soft c">${I.lock}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">Xavfsizlik</div><div style="font-size:11.5px;color:var(--text-3);margin-top:3px;">PIN, bloklash</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+    </div>
+  </div>`;
+}
+function renderNFCIDs(){
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div style="font-family:Georgia,serif;font-size:17px;font-weight:600;color:var(--text-1);">NFC ID lar</div><button class="capsule active" style="padding:8px 16px;font-size:11px;" onclick="toast('Yangi ID — Demo')">+ Yangi</button></div>
+  ${DATA.nfcIDs.map(id=>`
+    <div style="padding:22px;border-radius:34px;margin-bottom:12px;cursor:pointer;
+      background:${id.type==='business'?'linear-gradient(150deg,var(--accent-b),var(--accent-b-dark))':'linear-gradient(150deg,var(--accent-1),var(--accent-2))'};
+      border:1px solid var(--border-1);box-shadow:var(--shadow-soft);color:${id.type==='business'?'#fff':'var(--bg-1)'};"
+      onclick="nav('nfcID')">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;opacity:.9;">${id.label}</div>
+        <div class="pill" style="background:rgba(255,255,255,.25);color:inherit;">Faol</div>
+      </div>
+      <div style="font-family:Georgia,serif;font-size:16px;font-weight:600;letter-spacing:3px;">${id.code}</div>
+      <div style="font-size:12.5px;margin-top:8px;opacity:.85;">${id.sub}</div>
+    </div>`).join('')}`;
+}
+function renderNFCID(){
+  const id = DATA.nfcIDs[0];
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:var(--text-1);">${id.label}</div><button class="icon-soft" onclick="openSheet(shareSheet())">${I.share}</button></div>
+  <div class="orb-hero" style="width:220px;height:220px;margin-top:8px;">
+    <div class="halo"></div><div class="ring"></div><div class="ring"></div>
+    <div class="blob-shape" style="width:170px;height:170px;">
+      <div class="nfc-mark" style="width:56px;height:56px;">${NFC_MARK(56)}</div>
+    </div>
+  </div>
+  <div style="text-align:center;margin-bottom:24px;">
+    <div style="font-size:22px;font-weight:500;color:var(--text-1);font-family:Georgia,serif;">Aziz Karimov</div>
+    <div style="font-size:12.5px;color:var(--text-3);margin-top:6px;">${DATA.me.role}</div>
+    <div style="margin-top:14px;font-family:Georgia,serif;font-size:15px;letter-spacing:4px;color:var(--accent-3);">${id.code}</div>
+  </div>
+  <div style="padding:20px;border-radius:28px;background:var(--surface);border:1px solid var(--border-1);box-shadow:var(--shadow-soft);display:flex;align-items:center;gap:16px;margin-bottom:20px;">
+    <div class="lic-soft" style="width:48px;height:48px;">${I.qr}</div>
+    <div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">QR kod</div><div style="font-size:11.5px;color:var(--text-3);margin-top:3px;">Skanerlab ochiladi</div></div>
+    <div style="width:64px;height:64px;background:#fff;border-radius:20px;display:flex;align-items:center;justify-content:center;">
+      <div style="width:48px;height:48px;background-image:repeating-conic-gradient(#000 0 25%, transparent 0 50%);background-size:8px 8px;"></div>
+    </div>
+  </div>
+  <div class="sec-head"><div class="t-section">Boshqaruv</div></div>
+  <div class="list-soft">
+    <div class="item" onclick="nav('nfcIDEdit')"><div class="lic-soft">${I.edit}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">Tahrirlash</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+    <div class="item" onclick="nav('nfcCard')"><div class="lic-soft d">${I.card}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">Karta</div><div style="font-size:11.5px;color:var(--text-3);margin-top:3px;">NFC Metal Card</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+    <div class="item" onclick="nav('nfcGift')"><div class="lic-soft c">${I.gift}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">Sovg‘a qilish</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+    <div class="item" onclick="nav('nfcSecurity')"><div class="lic-soft">${I.lock}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">Xavfsizlik</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+    <div class="item" onclick="openSheet(confirmSheet('NFC ID ni o‘chirish?','Bu amalni qaytarib bo‘lmaydi.'))">
+      <div class="lic-soft err">${I.close}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:#A06060;">O‘chirish</div></div>
+    </div>
+  </div>`;
+}
+function renderNFCIDEdit(){
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:var(--text-1);">Tahrirlash</div><button class="capsule active" style="padding:8px 16px;font-size:12px;" onclick="toast('Saqlandi','ok'); back();">Saqlash</button></div>
+  <div class="field"><label class="lbl-soft">Nom</label><input class="inp-soft" value="Aziz Karimov"></div>
+  <div class="field"><label class="lbl-soft">Kasb</label><input class="inp-soft" value="${DATA.me.role}"></div>
+  <div class="field"><label class="lbl-soft">Bio</label><textarea class="inp-soft" style="height:100px;padding:18px;resize:none;font-family:inherit;">Digital identity va NFC</textarea></div>
+  <div class="field"><label class="lbl-soft">Ko‘rinish</label>
+    <div class="mode-switch"><div class="m active">Ochiq</div><div class="m">Yopiq</div></div>
+  </div>
+  <button class="btn-soft" onclick="toast('Saqlandi','ok'); back();">Saqlash</button>`;
+}
+function renderNFCCard(){
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:var(--text-1);">NFC Karta</div><div style="width:44px;"></div></div>
+  <div style="height:210px;border-radius:32px;background:radial-gradient(120% 100% at 100% 0%, rgba(212,179,106,.24), transparent 60%), linear-gradient(155deg,var(--accent-3),#1A1A1E);border:1px solid rgba(212,179,106,.35);box-shadow:0 20px 50px rgba(0,0,0,.55);position:relative;overflow:hidden;margin-bottom:22px;padding:22px;display:flex;flex-direction:column;justify-content:space-between;color:#fff;">
+    <div style="position:absolute;top:-40%;right:-20%;width:260px;height:260px;background:radial-gradient(circle, rgba(232,217,181,.22), transparent 65%);"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;position:relative;">
+      ${BRAND_LOGO(34,{dark:true})}
+      <div style="width:38px;height:28px;border-radius:7px;background:linear-gradient(135deg,#D9C28E 0%, #B8945A 45%, #E8D9B5 100%);"></div>
+    </div>
+    <div style="position:relative;">
+      <div style="font-family:Georgia,serif;font-size:16px;letter-spacing:4px;">${DATA.me.nfcId}</div>
+      <div style="font-size:12px;opacity:.85;margin-top:10px;">Faol · Personal ID bilan bog‘langan</div>
+    </div>
+  </div>
+  <div class="list-soft">
+    <div class="item" onclick="toast('Qayta yozish')"><div class="lic-soft">${I.edit}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">Qayta yozish</div><div style="font-size:11.5px;color:var(--text-3);margin-top:3px;">NFC chipga yangi ID yozish</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+    <div class="item" onclick="nav('nfcSecurity')"><div class="lic-soft">${I.lock}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">Bloklash</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+    <div class="item" onclick="openSheet(confirmSheet('Kartani uzish?','Karta NFC ID bilan bog‘liqligi uziladi.'))">
+      <div class="lic-soft err">${I.close}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:#A06060;">Uzish</div></div>
+    </div>
+  </div>`;
+}
+function renderNFCScan(){
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:var(--text-1);">Skan</div><div style="width:44px;"></div></div>
+  <div style="text-align:center;padding:40px 0;">
+    <div style="width:240px;height:240px;margin:0 auto;position:relative;">
+      <div style="position:absolute;inset:0;background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.5), transparent 50%), linear-gradient(150deg,var(--accent-1),var(--accent-2));box-shadow:0 30px 60px var(--glow), inset -10px -15px 30px rgba(0,0,0,.15), inset 10px 15px 30px rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;animation:morphBlob 10s ease-in-out infinite, breathe 3s ease-in-out infinite;color:var(--bg-1);">${NFC_MARK(76)}</div>
+      <div style="position:absolute;inset:-30px;border-radius:50%;border:1.5px solid var(--accent-2);opacity:.5;animation:waveRipple 3s ease-out infinite;"></div>
+      <div style="position:absolute;inset:-30px;border-radius:50%;border:1.5px solid var(--accent-2);opacity:.5;animation:waveRipple 3s ease-out infinite 1s;"></div>
+    </div>
+    <div style="font-size:22px;font-weight:500;color:var(--text-1);margin-top:34px;font-family:Georgia,serif;">Telefonni kartaga tegizing</div>
+    <div style="font-size:14px;color:var(--text-2);margin-top:10px;max-width:280px;margin-left:auto;margin-right:auto;line-height:1.6;">NFC chipni skanerlash uchun telefonni yaqinlashtiring.</div>
+  </div>
+  <button class="btn-soft" onclick="toast('Skanerlandi','ok'); nav('nfcID');">Skanerlash</button>`;
+}
+function renderNFCHistory(){
+  const icons = { scan:I.scan, share:I.share, view:I.globe, order:I.bag };
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:var(--text-1);">NFC tarixi</div><div style="width:44px;"></div></div>
+  <div class="list-soft" style="margin-top:10px;">
+    ${DATA.nfcHistory.map(h=>`
+      <div class="item">
+        <div class="lic-soft">${icons[h.type]||I.clock}</div>
+        <div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">${h.t}</div><div style="font-size:11.5px;color:var(--text-3);margin-top:3px;">${h.time}</div></div>
+      </div>`).join('')}
+  </div>`;
+}
+function renderNFCGift(){
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:var(--text-1);">Sovg‘a</div><div style="width:44px;"></div></div>
+  <div style="text-align:center;margin:20px 0 26px;">
+    <div style="width:130px;height:130px;background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.5), transparent 50%), linear-gradient(150deg,var(--accent-1),var(--accent-2));display:flex;align-items:center;justify-content:center;color:var(--bg-1);margin:0 auto 18px;animation:morphBlob 10s ease-in-out infinite, breathe 4s ease-in-out infinite;box-shadow:0 24px 50px var(--glow);">
+      <div style="width:52px;height:52px;">${I.gift}</div>
+    </div>
+    <div style="font-size:22px;font-weight:500;color:var(--text-1);font-family:Georgia,serif;">NFC ID sovg‘a qiling</div>
+    <div style="font-size:14px;color:var(--text-2);margin-top:10px;max-width:300px;margin-left:auto;margin-right:auto;line-height:1.6;">Do‘stingizga yumshoq sovg‘a yuboring.</div>
+  </div>
+  <div class="field"><label class="lbl-soft">Qabul qiluvchi</label><input class="inp-soft" placeholder="@username"></div>
+  <div class="field"><label class="lbl-soft">Izoh</label><input class="inp-soft" placeholder="Tug‘ilgan kuningiz bilan!"></div>
+  <button class="btn-soft" onclick="toast('Sovg‘a yuborildi','ok'); back();">Yuborish</button>`;
+}
+function renderNFCSecurity(){
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:var(--text-1);">Xavfsizlik</div><div style="width:44px;"></div></div>
+  <div class="list-soft" style="margin-top:8px;">
+    <div class="item" onclick="toast('PIN o‘zgartirish')"><div class="lic-soft">${I.lock}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">PIN kod</div><div style="font-size:11.5px;color:var(--text-3);margin-top:3px;">Faol · 4 xonali</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+    <div class="item" onclick="toast('Bloklash')"><div class="lic-soft b">${I.wifi}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">NFC bloklash</div><div style="font-size:11.5px;color:var(--text-3);margin-top:3px;">Karta yo‘qolsa</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+    <div class="item" onclick="toast('Ruxsatlar')"><div class="lic-soft c">${I.check}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">Ruxsatlar</div><div style="font-size:11.5px;color:var(--text-3);margin-top:3px;">Kim skanerlashi mumkin</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+    <div class="item" onclick="toast('2FA')"><div class="lic-soft d">${I.lock}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">Ikki bosqichli</div><div style="font-size:11.5px;color:var(--text-3);margin-top:3px;">Nofaol</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+  </div>`;
+}
+function confirmSheet(title, body){
+  return `
+  <div style="text-align:center;">
+    <div style="width:72px;height:72px;background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.5), transparent 55%), linear-gradient(150deg,#E8B8B8,#D88A8A);display:flex;align-items:center;justify-content:center;color:#fff;margin:0 auto 18px;animation:morphBlob 8s ease-in-out infinite;box-shadow:0 16px 32px rgba(216,138,138,.3);">
+      <div style="width:28px;height:28px;">${I.close}</div>
+    </div>
+    <div style="font-size:18px;font-weight:600;color:var(--text-1);font-family:Georgia,serif;">${title}</div>
+    <div style="font-size:13.5px;color:var(--text-2);margin-top:10px;line-height:1.6;">${body}</div>
+  </div>
+  <div style="display:flex;gap:10px;margin-top:24px;">
+    <button class="btn-ghost" onclick="closeSheet()">Bekor qilish</button>
+    <button class="btn-soft danger" onclick="toast('O‘chirildi','ok'); closeSheet();">O‘chirish</button>
+  </div>`;
+}
+
+/* ============================================================
+   PROFILE — Digital Identity Canvas
+   ============================================================ */
+function renderProfile(){
+  const biz = S.mode === 'business';
+  return `<div class="aurora"><div class="blob-a"></div></div>
+  <div style="position:relative;z-index:2;">
+    <div class="row" style="padding:12px 0 4px;">
+      <button class="icon-soft" onclick="nav('settings')">${I.settings}</button>
+      <div class="mode-switch" style="margin:0;padding:4px;flex:1;max-width:180px;">
+        <div class="m ${!biz?'active':''}" onclick="switchMode('personal')" style="padding:9px;font-size:12px;">Personal</div>
+        <div class="m ${biz?'active':''}" onclick="switchMode('business')" style="padding:9px;font-size:12px;">Business</div>
+      </div>
+      <button class="icon-soft" onclick="openSheet(shareSheet())">${I.share}</button>
+    </div>
+
+    <div style="text-align:center;padding:22px 0 8px;">
+      <div style="position:relative;display:inline-block;margin-bottom:16px;">
+        <div style="width:120px;height:120px;background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.5), transparent 50%), ${biz?'linear-gradient(150deg,var(--accent-b),var(--accent-b-dark))':'linear-gradient(150deg,var(--accent-1),var(--accent-2))'};display:flex;align-items:center;justify-content:center;font-size:38px;font-weight:500;color:${biz?'#fff':'var(--bg-1)'};animation:morphBlob 14s ease-in-out infinite, breathe 5s ease-in-out infinite;box-shadow:0 24px 50px ${biz?'var(--glow-b)':'var(--glow)'}, inset -10px -15px 30px rgba(0,0,0,.1), inset 10px 15px 30px rgba(255,255,255,.3);font-family:Georgia,serif;">
+          ${biz?'SR':'AK'}
+        </div>
+        <div style="position:absolute;bottom:4px;right:4px;width:26px;height:26px;border-radius:50%;background:linear-gradient(150deg,var(--accent-b),var(--accent-b-dark));border:4px solid var(--bg-1);box-shadow:0 4px 12px var(--glow-b);"></div>
+      </div>
+      <div style="font-size:24px;font-weight:500;letter-spacing:-.6px;color:var(--text-1);font-family:Georgia,serif;">${biz?DATA.biz.name:DATA.me.name} ${biz?'<span style="color:var(--accent-3);">✓</span>':''}</div>
+      <div style="font-size:13px;color:var(--text-3);margin-top:6px;">${biz?DATA.biz.category:DATA.me.handle}</div>
+      <div style="margin-top:12px;display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:100px;background:var(--surface-2);border:1px solid var(--border-2);backdrop-filter:blur(14px);">
+        <span style="width:6px;height:6px;border-radius:50%;background:var(--success);box-shadow:0 0 10px var(--success);"></span>
+        <span style="font-size:11px;font-weight:700;color:var(--accent-3);letter-spacing:1.2px;">${biz?DATA.biz.nfcId:DATA.me.nfcId}</span>
+      </div>
+    </div>
+
+    <!-- Stats — compact -->
+    <div style="display:flex;justify-content:space-around;padding:18px 0;margin:20px 0 18px;border-top:1px solid var(--border-1);border-bottom:1px solid var(--border-1);">
+      ${[biz?['4.8k','Followers']:['12.4k','Followers'],biz?['12','Mahsulot']:['248','Posts'],biz?['340','Skan']:['312','Following']].map(s=>`
+        <div style="text-align:center;">
+          <div style="font-size:20px;font-weight:500;color:var(--text-1);font-family:Georgia,serif;letter-spacing:-.4px;">${s[0]}</div>
+          <div style="font-size:10px;color:var(--text-3);margin-top:3px;letter-spacing:.8px;text-transform:uppercase;font-weight:700;">${s[1]}</div>
+        </div>`).join('')}
+    </div>
+
+    <!-- Asymmetric action composition -->
+    ${biz ? `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+        <div class="capsule" style="justify-content:center;padding:14px;" onclick="nav('biz')"><div style="width:18px;height:18px;">${I.bag}</div> Storefront</div>
+        <div class="capsule active" style="justify-content:center;padding:14px;" onclick="nav('bizDash')"><div style="width:18px;height:18px;">${I.chart}</div> Dashboard</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:22px;">
+        <div class="capsule" style="justify-content:center;padding:12px;font-size:11.5px;" onclick="nav('bizEdit')"><div style="width:16px;height:16px;">${I.edit}</div> Edit</div>
+        <div class="capsule" style="justify-content:center;padding:12px;font-size:11.5px;" onclick="nav('bizAnalytics')"><div style="width:16px;height:16px;">${I.chart2}</div> Analytics</div>
+      </div>
+    ` : `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+        <div class="capsule" style="justify-content:center;padding:14px;" onclick="nav('editProfile')"><div style="width:18px;height:18px;">${I.edit}</div> Tahrirlash</div>
+        <div class="capsule active" style="justify-content:center;padding:14px;" onclick="nav('nfc')"><div style="width:18px;height:18px;">${I.nfc}</div> NFC ID</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:22px;">
+        <div class="capsule" style="justify-content:center;padding:12px;font-size:11.5px;" onclick="openSheet(shareSheet())"><div style="width:16px;height:16px;">${I.share}</div> Share</div>
+        <div class="capsule" style="justify-content:center;padding:12px;font-size:11.5px;" onclick="openSheet(qrSheet())"><div style="width:16px;height:16px;">${I.qr}</div> QR</div>
+      </div>
+    `}
+
+    <div class="tiles">
+      ${[0,1,2,3].map(i=>`
+        <div class="tile" onclick="nav('post')" style="aspect-ratio:1;padding:0;overflow:hidden;display:flex;align-items:center;justify-content:center;">
+          <div style="color:var(--bg-1);opacity:.9;">${NFC_MARK(56)}</div>
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+function switchMode(m){ S.mode = m; nav('profile',{replace:true}); }
+function renderEditProfile(){
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:var(--text-1);">Tahrirlash</div><button class="capsule active" style="padding:8px 16px;font-size:12px;" onclick="toast('Saqlandi','ok'); back();">Saqlash</button></div>
+  <div style="text-align:center;margin:14px 0 24px;">
+    <div style="width:120px;height:120px;background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.5), transparent 50%), linear-gradient(150deg,var(--accent-1),var(--accent-2));display:flex;align-items:center;justify-content:center;font-size:38px;color:var(--bg-1);margin:0 auto 14px;animation:morphBlob 12s ease-in-out infinite;box-shadow:0 24px 50px var(--glow);font-family:Georgia,serif;">AK</div>
+    <div style="font-size:13px;color:var(--accent-3);font-weight:600;cursor:pointer;">Rasmni o‘zgartirish</div>
+  </div>
+  <div class="field"><label class="lbl-soft">To‘liq ism</label><input class="inp-soft" value="Aziz Karimov"></div>
+  <div class="field"><label class="lbl-soft">Username</label><input class="inp-soft" value="@aziz"></div>
+  <div class="field"><label class="lbl-soft">Kasb</label><input class="inp-soft" value="Founder"></div>
+  <div class="field"><label class="lbl-soft">Bio</label><textarea class="inp-soft" style="height:100px;padding:18px;resize:none;font-family:inherit;">Digital identity va NFC</textarea></div>`;
+}
+function renderOtherUser(){
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div style="width:44px;"></div><button class="icon-soft" onclick="openSheet(contactSheet())">${I.send}</button></div>
+  <div style="text-align:center;padding:12px 0 20px;">
+    <div style="width:130px;height:130px;background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.5), transparent 50%), linear-gradient(150deg,var(--accent-c),var(--accent-c-dark));display:flex;align-items:center;justify-content:center;font-size:38px;color:#fff;margin:0 auto 18px;animation:morphBlob 14s ease-in-out infinite, breathe 5s ease-in-out infinite;box-shadow:0 24px 50px var(--glow);font-family:Georgia,serif;">MY</div>
+    <div style="font-size:24px;font-weight:500;color:var(--text-1);letter-spacing:-.6px;font-family:Georgia,serif;">Malika Yusupova</div>
+    <div style="font-size:13px;color:var(--text-3);margin-top:6px;">@malika.design</div>
+    <div style="font-size:13.5px;color:var(--text-2);margin-top:12px;padding:0 30px;line-height:1.6;">Product designer. NFC va digital identity.</div>
+  </div>
+  <div style="display:flex;gap:10px;margin-bottom:22px;">
+    <button class="btn-ghost" onclick="toggleFollow(this)">+ Follow</button>
+    <button class="btn-soft" onclick="toast('NFC so‘ralmoqda','ok')">${I.nfc} NFC so‘rash</button>
+  </div>
+  <div class="tiles">
+    ${[0,1,2,3].map(()=>`<div class="tile" style="aspect-ratio:1;padding:0;background:linear-gradient(150deg,var(--accent-c),var(--accent-c-dark));opacity:.85;"></div>`).join('')}
+  </div>`;
+}
+function qrSheet(){
+  return `
+  <div style="text-align:center;padding:6px 0 12px;">
+    <div style="font-size:17px;font-weight:600;color:var(--text-1);font-family:Georgia,serif;margin-bottom:16px;">QR kod</div>
+    <div style="width:200px;height:200px;background:#fff;border-radius:28px;margin:0 auto;display:flex;align-items:center;justify-content:center;box-shadow:0 20px 40px rgba(0,0,0,.2);">
+      <div style="width:160px;height:160px;background-image:repeating-conic-gradient(#000 0 25%, transparent 0 50%);background-size:14px 14px;"></div>
+    </div>
+    <div style="font-size:12.5px;color:var(--text-3);margin-top:16px;">Skanerlab ochiladi</div>
+  </div>
+  <button class="btn-ghost" onclick="closeSheet()">Yopish</button>`;
+}
+
+/* ============================================================
+   BUSINESS
+   ============================================================ */
+function renderBiz(){
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div>${BRAND_LOGO(26)}</div><button class="icon-soft" onclick="openSheet(shareSheet())">${I.share}</button></div>
+  <div style="position:relative;height:170px;border-radius:44px;overflow:hidden;margin-bottom:22px;background:linear-gradient(150deg,var(--accent-b),var(--accent-b-dark),var(--accent-d));box-shadow:0 30px 60px var(--glow-b);">
+    <div style="position:absolute;top:-30%;right:-20%;width:280px;height:280px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.5),transparent 65%);filter:blur(10px);"></div>
+    <div style="position:absolute;bottom:-30px;left:20px;width:110px;height:110px;background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.7), transparent 50%), linear-gradient(150deg,var(--accent-b),var(--accent-b-dark));display:flex;align-items:center;justify-content:center;font-size:36px;color:#fff;border:5px solid var(--bg-1);animation:morphBlob 12s ease-in-out infinite;box-shadow:0 20px 40px var(--glow-b);font-family:Georgia,serif;">SR</div>
+  </div>
+  <div style="padding:36px 0 14px;">
+    <div style="font-size:24px;font-weight:500;color:var(--text-1);letter-spacing:-.5px;display:flex;align-items:center;gap:8px;font-family:Georgia,serif;">${DATA.biz.name} <span style="color:var(--accent-b-dark);font-size:18px;">✓</span></div>
+    <div style="font-size:13px;color:var(--text-3);margin-top:6px;">${DATA.biz.category} · ${DATA.biz.nfcId}</div>
+  </div>
+  <div style="font-size:14.5px;color:var(--text-2);line-height:1.65;margin:16px 0 22px;">${DATA.biz.desc}</div>
+  <div style="display:flex;gap:10px;margin-bottom:24px;">
+    <button class="btn-ghost" onclick="openSheet(contactSheet())">${I.comment} Aloqa</button>
+    <button class="btn-soft mint" onclick="toggleFollow(this)">${I.plus} Follow</button>
+  </div>
+  <div class="sec-head" style="margin-top:8px;"><div class="t-section">Mahsulotlar</div><button class="sec-link" onclick="nav('bizCatalog')">Barchasi</button></div>
+  <div class="tiles">
+    ${DATA.products.slice(0,2).map(p=>`
+      <div class="tile" onclick="nav('product')" style="padding:0;overflow:hidden;">
+        <div style="height:150px;background:linear-gradient(150deg,var(--accent-1),var(--accent-2));display:flex;align-items:center;justify-content:center;opacity:.85;">
+          <div style="color:var(--bg-1);">${NFC_MARK(52)}</div>
+        </div>
+        <div style="padding:14px 16px 18px;">
+          <div style="font-size:13.5px;font-weight:600;color:var(--text-1);">${p.name}</div>
+          <div style="font-size:14px;font-weight:700;color:var(--accent-3);margin-top:6px;">${p.price.toLocaleString()} so‘m</div>
+        </div>
+      </div>`).join('')}
+  </div>
+  <div class="sec-head" style="margin-top:22px;"><div class="t-section">Manzil</div></div>
+  <div class="list-soft">
+    <div class="item">
+      <div class="lic-soft b">${I.place}</div>
+      <div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">Amir Temur 42</div><div style="font-size:11.5px;color:var(--text-3);margin-top:3px;">Toshkent · 9:00–22:00</div></div>
+    </div>
+  </div>`;
+}
+function renderBizDash(){
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:var(--text-1);">Dashboard</div><button class="icon-soft" onclick="nav('bizAnalytics')">${I.chart2}</button></div>
+  <div class="tiles" style="margin-top:8px;">
+    ${[['Skanlar','1 248','+12%'],['Follow','4 820','+8%'],['Buyurtma','32','+4'],['Konversiya','7.4%','+0.6']].map(s=>`
+      <div class="tile" style="padding:20px;">
+        <div class="deco d1"></div>
+        <div style="font-size:10.5px;color:var(--text-3);letter-spacing:1.2px;text-transform:uppercase;font-weight:700;position:relative;z-index:2;">${s[0]}</div>
+        <div style="font-size:24px;font-weight:500;color:var(--text-1);margin-top:8px;letter-spacing:-.6px;font-family:Georgia,serif;position:relative;z-index:2;">${s[1]}</div>
+        <div style="font-size:11px;color:var(--success);margin-top:4px;position:relative;z-index:2;font-weight:600;">${s[2]}</div>
+      </div>`).join('')}
+  </div>
+  <div class="sec-head" style="margin-top:22px;"><div class="t-section">Tezkor</div></div>
+  <div class="list-soft">
+    <div class="item" onclick="nav('bizCatalog')"><div class="lic-soft b">${I.bag}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">Katalog</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+    <div class="item" onclick="nav('bizProductAdd')"><div class="lic-soft">${I.plus}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">Mahsulot qo‘shish</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+    <div class="item" onclick="toast('NFC')"><div class="lic-soft c">${I.nfc}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">Business NFC ID</div><div style="font-size:11.5px;color:var(--text-3);margin-top:3px;">${DATA.biz.nfcId}</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+    <div class="item" onclick="nav('bizEdit')"><div class="lic-soft d">${I.edit}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">Tahrirlash</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+    <div class="item" onclick="nav('biz')"><div class="lic-soft b">${I.globe}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">Storefront</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+  </div>`;
+}
+function renderBizCatalog(){
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:var(--text-1);">Katalog</div><button class="capsule active" style="padding:8px 16px;font-size:11px;" onclick="nav('bizProductAdd')">+ Qo‘shish</button></div>
+  <div class="tiles">
+    ${DATA.products.map(p=>`
+      <div class="tile" onclick="nav('product')" style="padding:0;overflow:hidden;">
+        <div style="height:150px;background:linear-gradient(150deg,var(--accent-1),var(--accent-2));display:flex;align-items:center;justify-content:center;opacity:.85;">
+          <div style="color:var(--bg-1);">${NFC_MARK(48)}</div>
+        </div>
+        <div style="padding:14px 16px 18px;">
+          <div style="font-size:13px;font-weight:600;color:var(--text-1);">${p.name}</div>
+          <div style="font-size:14px;font-weight:700;color:var(--accent-3);margin-top:5px;">${p.price.toLocaleString()} so‘m</div>
+        </div>
+      </div>`).join('')}
+  </div>`;
+}
+function renderBizOnboard(){
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:var(--text-1);">Biznes yaratish</div><div style="width:44px;"></div></div>
+  <div class="prog" style="margin:6px 0 22px;"><div style="width:35%;"></div></div>
+  <div style="text-align:center;margin:16px 0 22px;">
+    <div style="width:110px;height:110px;background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.5), transparent 50%), linear-gradient(150deg,var(--accent-b),var(--accent-b-dark));display:flex;align-items:center;justify-content:center;color:#fff;margin:0 auto;animation:morphBlob 12s ease-in-out infinite;box-shadow:0 20px 40px var(--glow-b);">
+      <div style="width:36px;height:36px;">${I.plus}</div>
+    </div>
+  </div>
+  <div class="field"><label class="lbl-soft">Kompaniya nomi</label><input class="inp-soft" placeholder="Silk Route Digital"></div>
+  <div class="field"><label class="lbl-soft">Kategoriya</label><input class="inp-soft" placeholder="Digital Studio"></div>
+  <div class="field"><label class="lbl-soft">Tavsif</label><textarea class="inp-soft" style="height:100px;padding:18px;resize:none;font-family:inherit;"></textarea></div>
+  <button class="btn-soft mint" onclick="toast('Biznes yaratildi','ok'); nav('bizDash');">Yaratish</button>`;
+}
+function renderBizEdit(){
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:var(--text-1);">Tahrirlash</div><button class="capsule active" style="padding:8px 16px;font-size:12px;" onclick="toast('Saqlandi','ok'); back();">Saqlash</button></div>
+  <div class="field"><label class="lbl-soft">Kompaniya nomi</label><input class="inp-soft" value="${DATA.biz.name}"></div>
+  <div class="field"><label class="lbl-soft">Kategoriya</label><input class="inp-soft" value="${DATA.biz.category}"></div>
+  <div class="field"><label class="lbl-soft">Tavsif</label><textarea class="inp-soft" style="height:120px;padding:18px;resize:none;font-family:inherit;">${DATA.biz.desc}</textarea></div>
+  <div class="field"><label class="lbl-soft">Manzil</label><input class="inp-soft" value="Amir Temur 42, Toshkent"></div>
+  <button class="btn-soft mint" onclick="toast('Saqlandi','ok'); back();">Saqlash</button>`;
+}
+function renderBizProductAdd(){
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.close}</button><div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:var(--text-1);">Yangi mahsulot</div><button class="capsule active" style="padding:8px 16px;font-size:12px;" onclick="toast('Qo‘shildi','ok'); back();">Saqlash</button></div>
+  <div style="height:200px;border-radius:32px;background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.5), transparent 55%), linear-gradient(150deg,var(--accent-1),var(--accent-2));display:flex;align-items:center;justify-content:center;color:var(--bg-1);margin-bottom:20px;animation:morphBlob 14s ease-in-out infinite;box-shadow:0 24px 50px var(--glow);cursor:pointer;">
+    <div style="width:60px;height:60px;">${I.image}</div>
+  </div>
+  <div class="field"><label class="lbl-soft">Nomi</label><input class="inp-soft" placeholder="NFC Metal Card"></div>
+  <div class="field"><label class="lbl-soft">Narxi</label><input class="inp-soft" placeholder="120 000"></div>
+  <div class="field"><label class="lbl-soft">Kategoriya</label><input class="inp-soft" placeholder="Metal"></div>
+  <div class="field"><label class="lbl-soft">Tavsif</label><textarea class="inp-soft" style="height:100px;padding:18px;resize:none;font-family:inherit;"></textarea></div>
+  <button class="btn-soft mint" onclick="toast('Mahsulot qo‘shildi','ok'); back();">Saqlash</button>`;
+}
+function renderBizAnalytics(){
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:var(--text-1);">Statistika</div><div style="width:44px;"></div></div>
+  <div class="tile" style="padding:24px;margin-bottom:16px;">
+    <div style="font-size:11px;color:var(--text-3);letter-spacing:1.4px;text-transform:uppercase;font-weight:700;">Haftalik skanlar</div>
+    <div style="font-size:36px;font-weight:500;color:var(--text-1);margin-top:10px;letter-spacing:-1px;font-family:Georgia,serif;">1 248</div>
+    <div style="display:flex;align-items:flex-end;gap:6px;height:80px;margin-top:18px;">
+      ${[40,60,50,80,70,90,85].map((h,i)=>`
+        <div style="flex:1;background:linear-gradient(180deg,var(--accent-1),var(--accent-2));border-radius:6px;height:${h}%;opacity:.8;"></div>`).join('')}
+    </div>
+  </div>
+  <div class="tiles">
+    <div class="tile" style="padding:20px;">
+      <div style="font-size:11px;color:var(--text-3);letter-spacing:1.2px;text-transform:uppercase;font-weight:700;">Konversiya</div>
+      <div style="font-size:26px;font-weight:500;color:var(--text-1);margin-top:10px;font-family:Georgia,serif;">7.4%</div>
+    </div>
+    <div class="tile" style="padding:20px;">
+      <div style="font-size:11px;color:var(--text-3);letter-spacing:1.2px;text-transform:uppercase;font-weight:700;">Retention</div>
+      <div style="font-size:26px;font-weight:500;color:var(--text-1);margin-top:10px;font-family:Georgia,serif;">62%</div>
+    </div>
+  </div>`;
+}
+
+/* ============================================================
+   SHOP
+   ============================================================ */
+function renderShop(){
+  const cats = ['all','Metal','PVC','Aksessuar'];
+  const labels = {all:'Hammasi', Metal:'Metal', PVC:'PVC', Aksessuar:'Aksessuar'};
+  const list = S.shopCat==='all' ? DATA.products : DATA.products.filter(p=>p.cat===S.shopCat);
+  return `
+  <div style="display:flex;align-items:center;gap:14px;padding-top:14px;">
+    ${BRAND_LOGO(44)}
+    <div><div class="t-title" style="font-size:26px;">Shop</div><div class="t-sub" style="font-size:12px;margin-top:4px;">NFC kartalar va aksessuarlar</div></div>
+  </div>
+  <div style="height:20px;"></div>
+  <div class="chip-scroll" style="margin-bottom:20px;">
+    ${cats.map(c=>`<div class="capsule ${S.shopCat===c?'active':''}" onclick="setShopCat('${c}')">${labels[c]}</div>`).join('')}
+  </div>
+  <div class="tiles">
+    ${list.map(p=>`
+      <div class="tile" onclick="nav('product')" style="padding:0;overflow:hidden;">
+        <div style="height:150px;background:linear-gradient(150deg,var(--accent-1),var(--accent-2));display:flex;align-items:center;justify-content:center;position:relative;opacity:.9;">
+          ${p.badge?`<div style="position:absolute;top:12px;left:12px;font-size:9px;font-weight:800;letter-spacing:1px;padding:5px 10px;border-radius:100px;background:rgba(0,0,0,.65);color:#fff;text-transform:uppercase;">${p.badge}</div>`:''}
+          <div style="color:var(--bg-1);">${NFC_MARK(52)}</div>
+        </div>
+        <div style="padding:14px 16px 18px;">
+          <div style="font-size:13px;font-weight:600;color:var(--text-1);">${p.name}</div>
+          <div style="font-size:14px;font-weight:700;color:var(--accent-3);margin-top:6px;">${p.price.toLocaleString()} so‘m</div>
+        </div>
+      </div>`).join('')}
+  </div>`;
+}
+function setShopCat(c){ S.shopCat = c; nav('shop',{replace:true}); }
+function renderProduct(){
+  const p = DATA.products[0];
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div>${BRAND_LOGO(26)}</div><button class="icon-soft" onclick="toggleSave(this)">${I.bookmark}</button></div>
+  <div style="height:320px;border-radius:48px;background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.5), transparent 55%), linear-gradient(150deg,var(--accent-1),var(--accent-2));display:flex;align-items:center;justify-content:center;animation:morphBlob 14s ease-in-out infinite;box-shadow:0 30px 60px var(--glow);margin-bottom:24px;color:var(--bg-1);">
+    <div style="width:140px;height:140px;">${NFC_MARK(140)}</div>
+  </div>
+  <div style="font-size:26px;font-weight:500;color:var(--text-1);letter-spacing:-.7px;font-family:Georgia,serif;">${p.name}</div>
+  <div style="font-size:22px;font-weight:700;color:var(--accent-3);margin-top:10px;letter-spacing:-.4px;">${p.price.toLocaleString()} so‘m</div>
+  <div style="font-size:14.5px;color:var(--text-2);line-height:1.7;margin:18px 0;">Premium metal NFC karta. Suvga chidamli, bir tegish bilan vizitka, portfolio va kontakt ma’lumotlarini ulashadi.</div>
+  <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--text-3);margin-bottom:12px;">Rang</div>
+  <div class="chip-scroll" style="margin-bottom:24px;">
+    <div class="capsule active">Qora</div>
+    <div class="capsule">Kumush</div>
+    <div class="capsule">Champagne</div>
+  </div>
+  <button class="btn-soft" onclick="nav('checkout')">${I.bag} Savatga qo‘shish</button>`;
+}
+function renderCheckout(){
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:var(--text-1);">To‘lov</div><div style="width:44px;"></div></div>
+  <div style="padding:20px;border-radius:28px;background:var(--surface);border:1px solid var(--border-1);box-shadow:var(--shadow-soft);display:flex;gap:14px;align-items:center;margin-bottom:16px;">
+    <div style="width:70px;height:70px;background:linear-gradient(150deg,var(--accent-1),var(--accent-2));display:flex;align-items:center;justify-content:center;color:var(--bg-1);animation:morphBlob 12s ease-in-out infinite;">${NFC_MARK(38)}</div>
+    <div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">NFC Metal Card</div><div style="font-size:11.5px;color:var(--text-3);margin-top:4px;">Qora · 1 dona</div></div>
+    <div style="font-size:15px;font-weight:700;color:var(--text-1);">120 000</div>
+  </div>
+  <div class="sec-head" style="margin-top:8px;"><div class="t-section">To‘lov usuli</div></div>
+  <div class="list-soft">
+    ${[['Payme','#00B4A0'],['Click','#0098DA'],['Karta','#C4A47C']].map(([n,c],i)=>`
+      <div class="item">
+        <div class="lic-soft" style="background:linear-gradient(150deg,${c}80,${c});color:#fff;">${n.substring(0,2).toUpperCase()}</div>
+        <div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">${n}</div></div>
+        <div style="width:22px;height:22px;border-radius:50%;border:2px solid ${i===0?'var(--accent-2)':'var(--border-2)'};display:flex;align-items:center;justify-content:center;">
+          ${i===0?`<div style="width:9px;height:9px;border-radius:50%;background:var(--accent-2);"></div>`:''}
+        </div>
+      </div>`).join('')}
+  </div>
+  <div style="padding:22px;border-radius:28px;background:var(--surface-2);margin-top:16px;margin-bottom:20px;">
+    <div style="display:flex;justify-content:space-between;font-size:13.5px;color:var(--text-2);margin-bottom:10px;"><span>Mahsulot</span><span style="font-weight:600;">120 000</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:13.5px;color:var(--text-2);margin-bottom:12px;"><span>Yetkazish</span><span style="font-weight:600;">15 000</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:17px;font-weight:700;color:var(--text-1);padding-top:12px;border-top:1px solid var(--border-2);font-family:Georgia,serif;"><span>Jami</span><span>135 000</span></div>
+  </div>
+  <div style="display:flex;gap:10px;">
+    <button class="btn-ghost" onclick="nav('paymentPending')" style="font-size:13px;">Pending</button>
+    <button class="btn-soft" onclick="nav('paymentSuccess')">To‘lash</button>
+  </div>
+  <button class="btn-ghost" style="margin-top:10px;color:#A06060;" onclick="nav('paymentFail')">Failed state demo</button>`;
+}
+function renderPayPending(){
+  return `<div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 30px;text-align:center;">
+    <div style="width:140px;height:140px;background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.5), transparent 50%), linear-gradient(150deg,#E8D2A0,#DDB878);display:flex;align-items:center;justify-content:center;color:#fff;margin-bottom:28px;animation:morphBlob 10s ease-in-out infinite, breathe 3s ease-in-out infinite;box-shadow:0 30px 60px rgba(221,184,120,.4);">
+      <div style="width:60px;height:60px;">${I.clock}</div>
+    </div>
+    <div style="font-size:28px;font-weight:500;color:var(--text-1);letter-spacing:-.8px;font-family:Georgia,serif;">To‘lov kutilmoqda</div>
+    <div style="font-size:14px;color:var(--text-2);margin-top:12px;line-height:1.6;max-width:280px;">Bank tasdiqlashi kutilmoqda.</div>
+    <div style="display:flex;gap:10px;width:100%;margin-top:38px;">
+      <button class="btn-ghost" onclick="nav('home')">Bosh sahifa</button>
+      <button class="btn-soft" onclick="nav('orders')">Buyurtmalar</button>
+    </div>
+  </div>`;
+}
+function renderPaySuccess(){
+  return `<div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 30px;text-align:center;">
+    <div class="confirm-orb success-pulse" style="width:140px;height:140px;background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.5), transparent 50%), linear-gradient(150deg,var(--accent-b),var(--accent-b-dark));display:flex;align-items:center;justify-content:center;color:#fff;margin-bottom:28px;animation:morphBlob 10s ease-in-out infinite, breathe 4s ease-in-out infinite, confirmationPop .7s var(--ease-spring) both;box-shadow:0 30px 60px var(--glow-b);">
+      <div style="width:60px;height:60px;">${I.check}</div>
+    </div>
+    <div style="font-size:28px;font-weight:500;color:var(--text-1);letter-spacing:-.8px;font-family:Georgia,serif;">To‘lov muvaffaqiyatli</div>
+    <div style="font-size:14px;color:var(--text-2);margin-top:12px;line-height:1.6;max-width:280px;">Buyurtmangiz qabul qilindi.</div>
+    <div style="display:flex;gap:10px;width:100%;margin-top:38px;">
+      <button class="btn-ghost" onclick="nav('home')">Bosh sahifa</button>
+      <button class="btn-soft mint" onclick="nav('orders')">Buyurtmalar</button>
+    </div>
+  </div>`;
+}
+function renderPayFail(){
+  return `<div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 30px;text-align:center;">
+    <div style="width:140px;height:140px;background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.5), transparent 50%), linear-gradient(150deg,#E8B8B8,#D88A8A);display:flex;align-items:center;justify-content:center;color:#fff;margin-bottom:28px;animation:morphBlob 10s ease-in-out infinite;box-shadow:0 30px 60px rgba(216,138,138,.4);">
+      <div style="width:60px;height:60px;">${I.close}</div>
+    </div>
+    <div style="font-size:28px;font-weight:500;color:var(--text-1);letter-spacing:-.8px;font-family:Georgia,serif;">To‘lov amalga oshmadi</div>
+    <div style="font-size:14px;color:var(--text-2);margin-top:12px;line-height:1.6;max-width:280px;">Karta rad etildi.</div>
+    <div style="display:flex;gap:10px;width:100%;margin-top:38px;">
+      <button class="btn-ghost" onclick="nav('home')">Bosh sahifa</button>
+      <button class="btn-soft" onclick="nav('checkout')">Qayta urinish</button>
+    </div>
+  </div>`;
+}
+function renderOrders(){
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:var(--text-1);">Buyurtmalar</div><div style="width:44px;"></div></div>
+  ${[{n:'#1248',d:'12.09',s:'Yetkazildi',c:'var(--accent-b-dark)'},{n:'#1247',d:'05.09',s:'Yo‘lda',c:'var(--accent-3)'}].map(o=>`
+    <div style="padding:20px;border-radius:28px;background:var(--surface);border:1px solid var(--border-1);box-shadow:var(--shadow-soft);margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:10px;"><div style="font-size:13px;color:var(--text-3);">${o.n} · ${o.d}</div><div style="font-size:12px;font-weight:700;color:${o.c};">${o.s}</div></div>
+      <div style="font-size:14px;font-weight:600;color:var(--text-1);">NFC Metal Card</div>
+      <div style="font-size:15px;font-weight:700;color:var(--accent-3);margin-top:8px;">120 000 so‘m</div>
+    </div>`).join('')}`;
+}
+
+/* ============================================================
+   ACTIVITY / SETTINGS
+   ============================================================ */
+function renderActivity(){
+  const types = { like:[I.heartF,''], follow:[I.user,'b'], scan:[I.nfc,''], order:[I.bag,'b'], payment:[I.card,'d'] };
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div style="font-family:Georgia,serif;font-size:17px;font-weight:600;color:var(--text-1);">Faoliyat</div><button class="capsule active" style="padding:8px 14px;font-size:11px;" onclick="toast('O‘qildi','ok')">O‘qildi</button></div>
+  <div class="list-soft" style="margin-top:10px;">
+    ${DATA.activity.map(a=>{
+      const [ic,cls] = types[a.type]||[I.bell,''];
+      return `
+      <div class="item" style="${!a.read?'background:var(--surface-2);':''}">
+        <div class="lic-soft ${cls}">${ic}</div>
+        <div style="flex:1;"><div style="font-size:14px;font-weight:${a.read?'500':'600'};color:var(--text-1);">${a.t}</div><div style="font-size:11.5px;color:var(--text-3);margin-top:3px;">${a.time}</div></div>
+        ${!a.read?`<div style="width:8px;height:8px;border-radius:50%;background:var(--accent-2);"></div>`:''}
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+function renderSettings(){
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div style="font-family:Georgia,serif;font-size:17px;font-weight:600;color:var(--text-1);">Sozlamalar</div><div style="width:44px;"></div></div>
+  <div style="padding:20px;border-radius:28px;background:var(--surface);border:1px solid var(--border-1);box-shadow:var(--shadow-soft);display:flex;gap:14px;align-items:center;margin-bottom:16px;">
+    <div class="av-orb" style="width:52px;height:52px;font-size:16px;">AK</div>
+    <div style="flex:1;"><div style="font-size:15px;font-weight:600;color:var(--text-1);">Aziz Karimov</div><div style="font-size:12px;color:var(--text-3);margin-top:3px;">${S.auth.email||'aziz@nfcstore.uz'}</div></div>
+    <div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div>
+  </div>
+  <div class="sec-head" style="margin-top:6px;"><div class="t-section">Hisob</div></div>
+  <div class="list-soft">
+    <div class="item" onclick="nav('editProfile')"><div class="lic-soft">${I.user}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">Profil</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+    <div class="item" onclick="nav('nfc')"><div class="lic-soft b">${I.nfc}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">NFC sozlamalari</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+    <div class="item" onclick="nav('settingsSecurity')"><div class="lic-soft c">${I.lock}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">Xavfsizlik</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+    <div class="item" onclick="nav('orders')"><div class="lic-soft d">${I.bag}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">Buyurtmalar</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+    <div class="item" onclick="nav('settingsPayment')"><div class="lic-soft">${I.card}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">To‘lov usullari</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+    <div class="item" onclick="nav('settingsNotif')"><div class="lic-soft b">${I.bell}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">Bildirishnomalar</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+  </div>
+  <div class="sec-head" style="margin-top:20px;"><div class="t-section">Tizim</div></div>
+  <div class="list-soft">
+    <div class="item" onclick="nav('settingsLang')"><div class="lic-soft d">${I.globe}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">Til</div></div><div style="font-size:12.5px;color:var(--text-3);font-weight:600;">O‘zbekcha</div><div style="width:18px;height:18px;color:var(--text-3);margin-left:8px;">${I.chev}</div></div>
+    <div class="item" onclick="nav('settingsPremium')"><div class="lic-soft">${I.star}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">Premium</div></div><div style="font-size:12.5px;color:var(--text-3);font-weight:600;">Nofaol</div><div style="width:18px;height:18px;color:var(--text-3);margin-left:8px;">${I.chev}</div></div>
+    <div class="item" onclick="nav('settingsReferral')"><div class="lic-soft c">${I.gift}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">Referral</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+  </div>
+  <div style="height:20px;"></div>
+  <div class="list-soft">
+    <div class="item" onclick="openSheet(confirmSheet('Chiqishni tasdiqlaysizmi?','Hisobdan chiqasiz.'))">
+      <div class="lic-soft err">${I.logout}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:#A06060;">Chiqish</div></div>
+    </div>
+  </div>
+  <div style="text-align:center;font-size:11px;color:var(--text-3);margin-top:26px;">NFCSTORE · Concept B · Final</div>`;
+}
+function renderSettingsSecurity(){
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:var(--text-1);">Xavfsizlik</div><div style="width:44px;"></div></div>
+  <div class="list-soft" style="margin-top:8px;">
+    <div class="item" onclick="toast('PIN')"><div class="lic-soft">${I.lock}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">PIN o‘zgartirish</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+    <div class="item" onclick="toast('Parol')"><div class="lic-soft c">${I.lock}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">Parolni o‘zgartirish</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+    <div class="item" onclick="toast('2FA')"><div class="lic-soft b">${I.check}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">Ikki bosqichli</div><div style="font-size:11.5px;color:var(--text-3);margin-top:3px;">Email kod</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+    <div class="item" onclick="toast('Qurilmalar')"><div class="lic-soft d">${I.user}</div><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">Faol qurilmalar</div></div><div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div></div>
+  </div>`;
+}
+function renderSettingsPayment(){
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:var(--text-1);">To‘lov</div><div style="width:44px;"></div></div>
+  <div class="list-soft" style="margin-top:8px;">
+    ${[['Payme','#00B4A0'],['Click','#0098DA'],['Karta','#C4A47C']].map(([n,c])=>`
+      <div class="item">
+        <div class="lic-soft" style="background:linear-gradient(150deg,${c}80,${c});color:#fff;">${n.substring(0,2).toUpperCase()}</div>
+        <div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">${n}</div></div>
+        <div style="width:18px;height:18px;color:var(--text-3);">${I.chev}</div>
+      </div>`).join('')}
+  </div>
+  <div class="sec-head" style="margin-top:20px;"><div class="t-section">Tarix</div></div>
+  <div class="list-soft">
+    <div class="item"><div class="lic-soft b">${I.check}</div><div style="flex:1;"><div style="font-size:13.5px;font-weight:600;color:var(--text-1);">To‘lov muvaffaqiyatli</div><div style="font-size:11px;color:var(--text-3);margin-top:3px;">120 000 · Kecha</div></div></div>
+  </div>`;
+}
+function renderSettingsNotif(){
+  const items = [['Push bildirishnomalar',true],['Like va follow',true],['NFC skanlar',true],['Buyurtma yangiliklari',true],['Marketing',false]];
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:var(--text-1);">Bildirishnomalar</div><div style="width:44px;"></div></div>
+  <div class="list-soft" style="margin-top:8px;">
+    ${items.map(([t,v])=>`
+      <div class="item" onclick="this.querySelector('.tog').classList.toggle('on'); toast('${t}')">
+        <div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">${t}</div></div>
+        <div class="tog ${v?'on':''}" style="width:44px;height:26px;border-radius:100px;background:${v?'linear-gradient(150deg,var(--accent-1),var(--accent-2))':'var(--surface-2)'};position:relative;transition:.3s;">
+          <div style="position:absolute;top:3px;${v?'right:3px':'left:3px'};width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.2);transition:.3s;"></div>
+        </div>
+      </div>`).join('')}
+  </div>`;
+}
+function renderSettingsLang(){
+  const langs = ['O‘zbekcha','Русский','English'];
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:var(--text-1);">Til</div><div style="width:44px;"></div></div>
+  <div class="list-soft" style="margin-top:8px;">
+    ${langs.map((l,i)=>`
+      <div class="item">
+        <div class="lic-soft ${i===0?'':'b'}">${I.globe}</div>
+        <div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text-1);">${l}</div></div>
+        ${i===0?`<div style="width:20px;height:20px;color:var(--accent-3);">${I.check}</div>`:''}
+      </div>`).join('')}
+  </div>`;
+}
+function renderSettingsPremium(){
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:var(--text-1);">Premium</div><div style="width:44px;"></div></div>
+  <div style="padding:28px 24px;border-radius:34px;background:linear-gradient(150deg,var(--accent-1),var(--accent-2));text-align:center;color:var(--bg-1);animation:morphBlob 14s ease-in-out infinite;box-shadow:0 30px 60px var(--glow);margin-bottom:20px;">
+    <div style="width:60px;height:60px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;">${I.star}</div>
+    <div style="font-size:24px;font-weight:500;font-family:Georgia,serif;letter-spacing:-.5px;">NFCSTORE Premium</div>
+    <div style="font-size:13px;margin-top:10px;opacity:.85;line-height:1.55;">Cheksiz NFC ID, eksklyuziv kartalar, business analytics, priority support.</div>
+    <div style="font-size:22px;font-weight:700;margin-top:18px;font-family:Georgia,serif;">49 000 so‘m<span style="font-size:13px;font-weight:500;opacity:.75;"> / oy</span></div>
+  </div>
+  <button class="btn-soft" onclick="toast('Premium — Demo')">Premium olish</button>`;
+}
+function renderSettingsReferral(){
+  return `
+  <div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:var(--text-1);">Referral</div><div style="width:44px;"></div></div>
+  <div style="padding:28px 24px;border-radius:34px;background:linear-gradient(150deg,var(--accent-c),var(--accent-c-dark));color:#fff;text-align:center;margin-bottom:20px;animation:morphBlob 14s ease-in-out infinite;box-shadow:0 24px 50px var(--glow);">
+    <div style="font-size:11px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;opacity:.85;">Sizning kodingiz</div>
+    <div style="font-size:26px;font-weight:600;margin-top:10px;letter-spacing:3px;font-family:Georgia,serif;">AZIZ-2026</div>
+    <div style="font-size:12.5px;margin-top:14px;opacity:.85;line-height:1.55;">Do‘stingiz ro‘yxatdan o‘tsa — ikkalangiz 20 000 so‘m bonus olasiz.</div>
+  </div>
+  <div class="tiles">
+    <div class="tile" style="padding:20px;"><div style="font-size:11px;color:var(--text-3);letter-spacing:1.2px;text-transform:uppercase;font-weight:700;">Taklif qilingan</div><div style="font-size:26px;font-weight:500;color:var(--text-1);margin-top:10px;font-family:Georgia,serif;">4</div></div>
+    <div class="tile" style="padding:20px;"><div style="font-size:11px;color:var(--text-3);letter-spacing:1.2px;text-transform:uppercase;font-weight:700;">Bonus</div><div style="font-size:26px;font-weight:500;color:var(--text-1);margin-top:10px;font-family:Georgia,serif;">80k</div></div>
+  </div>
+  <button class="btn-soft" style="margin-top:18px;" onclick="openSheet(shareSheet())">Ulashish</button>`;
+}
+
+/* ============================================================
+   STATES
+   ============================================================ */
+function renderLoading(){
+  return `<div style="padding-top:20px;"></div>
+  <div class="t-title">Loading</div>
+  <div style="height:20px;"></div>
+  <div class="sk-soft" style="height:240px;width:240px;border-radius:50%;margin:0 auto 26px;"></div>
+  <div class="sk-soft" style="height:24px;width:60%;margin:0 auto 14px;"></div>
+  <div class="sk-soft" style="height:16px;width:40%;margin:0 auto 30px;"></div>
+  <div style="display:flex;gap:12px;margin-bottom:22px;justify-content:center;">
+    ${[0,1,2,3].map(()=>`<div class="sk-soft" style="width:60px;height:60px;border-radius:50%;"></div>`).join('')}
+  </div>
+  <div class="sk-soft" style="height:200px;"></div>`;
+}
+function renderEmpty(){
+  return `<div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:var(--text-1);">Empty</div><div style="width:44px;"></div></div>
+  <div class="empty-soft">
+    <div class="orb">${BRAND_LOGO(60)}</div>
+    <h3>Hozircha bo‘sh</h3>
+    <p>Katalogga mahsulot qo‘shishdan boshlang.</p>
+    <button class="btn-soft" style="width:auto;padding:0 30px;margin-top:10px;" onclick="toast('Yangi')">+ Qo‘shish</button>
+  </div>`;
+}
+function renderError(){
+  return `<div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:var(--text-1);">Error</div><div style="width:44px;"></div></div>
+  <div class="empty-soft">
+    <div class="orb" style="background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.5), transparent 50%), linear-gradient(150deg,#E8B8B8,#D88A8A);box-shadow:0 24px 50px rgba(216,138,138,.3);">
+      <div style="width:48px;height:48px;color:#fff;">${I.close}</div>
+    </div>
+    <h3>Xatolik yuz berdi</h3>
+    <p>Server bilan aloqa uzildi.</p>
+    <button class="btn-soft" style="width:auto;padding:0 30px;margin-top:10px;" onclick="toast('Qayta urinilmoqda...')">Qayta urinish</button>
+  </div>`;
+}
+function renderOffline(){
+  return `<div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:var(--text-1);">Offline</div><div style="width:44px;"></div></div>
+  <div class="empty-soft">
+    <div class="orb" style="background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.5), transparent 50%), linear-gradient(150deg,#E8D2A0,#DDB878);box-shadow:0 24px 50px rgba(221,184,120,.3);">
+      <div style="width:48px;height:48px;color:#fff;">${I.wifi}</div>
+    </div>
+    <h3>Siz oflaynsiz</h3>
+    <p>Internetga ulanmadingiz.</p>
+  </div>`;
+}
+function renderStateNFC(){
+  return `<div class="row"><button class="icon-soft" onclick="back()">${I.back}</button><div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:var(--text-1);">NFC</div><div style="width:44px;"></div></div>
+  <div class="empty-soft">
+    <div class="orb" style="background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.5), transparent 50%), linear-gradient(150deg,#E8B8B8,#D88A8A);">${BRAND_LOGO(56)}</div>
+    <h3>NFC qo‘llab-quvvatlanmaydi</h3>
+    <p>Bu qurilma NFC skanerlashni qo‘llab-quvvatlamaydi.</p>
+  </div>`;
+}
+
+/* ============================================================
+   INTERACTIONS
+   ============================================================ */
+function toggleLike(el){
+  el.classList.toggle('liked');
+  const ic = el.querySelector('div');
+  if(ic) ic.innerHTML = el.classList.contains('liked') ? I.heartF : I.heart;
+  const sp = el.querySelector('span');
+  if(sp){ const n = parseInt(sp.textContent)||0; sp.textContent = el.classList.contains('liked') ? n+1 : Math.max(0,n-1); }
+}
+function toggleSave(el){
+  if(el.tagName === 'BUTTON'){
+    el.classList.toggle('saved');
+    el.innerHTML = el.classList.contains('saved') ? I.bookmarkF : I.bookmark;
+    el.style.color = el.classList.contains('saved') ? 'var(--accent-3)' : '';
+    toast(el.classList.contains('saved') ? 'Saqlandi' : 'Saqlashdan olindi', el.classList.contains('saved') ? 'ok' : '');
+    return;
+  }
+  const saved = el.classList.contains('saved');
+  el.classList.toggle('saved');
+  el.innerHTML = saved ? I.bookmark : I.bookmarkF;
+  toast(saved ? 'Saqlashdan olindi' : 'Saqlandi', saved ? '' : 'ok');
+}
+function toggleFollow(el){
+  const t = el.textContent.trim();
+  if(t === 'Following' || t === 'Followed'){
+    el.textContent = '+ Follow';
+    el.style.background = ''; el.style.color = '';
+  } else {
+    el.textContent = 'Following';
+    el.style.background = 'linear-gradient(150deg,var(--accent-b),var(--accent-b-dark))';
+    el.style.color = '#fff';
+    toast('Follow qilindi','ok');
+  }
+}
+function bindReels(){
+  const h = document.getElementById('reelsHost');
+  if(!h) return;
+  let sy = 0;
+  h.addEventListener('touchstart', e => { sy = e.touches[0].clientY; });
+  h.addEventListener('touchend', e => { const d = sy - e.changedTouches[0].clientY; if(Math.abs(d)>50) setReel(S.currentReel + (d>0?1:-1)); });
+  h.addEventListener('wheel', e => { if(Math.abs(e.deltaY)<20) return; setReel(S.currentReel + (e.deltaY>0?1:-1)); }, {passive:true});
+}
+
+/* ============================================================
+   REVIEW PANEL
+   ============================================================ */
+function buildReviewPanel(){
+  document.getElementById('reviewLogo').innerHTML = BRAND_LOGO(26,{dark:true});
+  const groups = {};
+  Object.entries(SCREENS).forEach(([id, sc]) => {
+    const g = sc.group || 'Other';
+    if(!groups[g]) groups[g] = [];
+    groups[g].push([id, sc.title, sc.demo, sc.future]);
+  });
+  const order = ['Entry','Auth','Core','Social','NFC','Profile','Business','Shop','System','States'];
+  let html = '';
+  order.forEach(g=>{
+    if(!groups[g]) return;
+    html += `<div class="group"><h2>${g}</h2>`;
+    groups[g].forEach(([id,title,demo,future])=>{
+      const tag = demo?'<span class="demo">DEMO</span>':future?'<span class="future">FUTURE</span>':'';
+      html += `<div class="item" data-screen="${id}" onclick="nav('${id}')"><span class="dot"></span>${title}${tag}</div>`;
+    });
+    html += `</div>`;
+  });
+  document.getElementById('screenList').innerHTML = html;
+}
+function setTheme(th){
+  S.theme = th;
+  document.documentElement.setAttribute('data-theme', th);
+  document.querySelectorAll('.review .theme-sw button').forEach(b=>b.classList.toggle('active', b.dataset.th === th));
+  document.getElementById('reviewLogo').innerHTML = BRAND_LOGO(26,{dark:true});
+}
+function setDevice(w){
+  S.device = w;
+  document.documentElement.setAttribute('data-device', String(w));
+  document.documentElement.style.setProperty('--phone-w', String(w));
+  document.querySelectorAll('.review #deviceSw button').forEach(b=>b.classList.toggle('active', parseInt(b.dataset.dev) === w));
+}
+const galleryOrder = Object.keys(SCREENS);
+function setViewMode(mode){
+  S.galleryMode = mode === 'gallery';
+  document.querySelectorAll('.review #viewSw button').forEach(b=>b.classList.toggle('active', b.dataset.view === mode));
+  const stage = document.getElementById('stage');
+  if(mode === 'gallery'){
+    stage.classList.add('gallery');
+    document.getElementById('phone').style.display = 'none';
+    let gal = document.getElementById('galleryHost');
+    if(!gal){ gal = document.createElement('div'); gal.id = 'galleryHost'; stage.appendChild(gal); }
+    gal.style.cssText = 'display:flex;flex-wrap:wrap;gap:28px;justify-content:center;width:100%;';
+    gal.innerHTML = '';
+    galleryOrder.forEach(id=>{
+      const sc = SCREENS[id]; if(!sc) return;
+      const wrap = document.createElement('div');
+      const scale = S.device / 390;
+      wrap.style.cssText = `width:${S.device}px;height:${844*scale}px;position:relative;flex-shrink:0;transform:scale(.55);transform-origin:top center;margin:-${844*scale*0.22}px 0 -${844*scale*0.22}px;`;
+      wrap.innerHTML = `<div class="phone" style="position:absolute;top:0;left:0;width:${S.device}px;height:${844*scale}px;">
+        <div class="statusbar"><div>9:41</div><div class="status-right">
+          <svg viewBox="0 0 17 11" fill="currentColor" style="width:14px;"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+        </div></div>
+        <div class="viewport"><div class="screen active" style="padding-bottom:20px;">${sc.render()}</div></div>
+      </div>`;
+      const lb = document.createElement('div');
+      lb.style.cssText = 'position:absolute;bottom:10px;left:0;right:0;text-align:center;font-size:12px;color:#B8B8BE;letter-spacing:.4px;';
+      lb.textContent = sc.title;
+      wrap.appendChild(lb);
+      gal.appendChild(wrap);
+    });
+  } else {
+    stage.classList.remove('gallery');
+    document.getElementById('phone').style.display = '';
+    const gal = document.getElementById('galleryHost'); if(gal) gal.remove();
+    nav(S.current, {replace:true});
+  }
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function clock(){ const d = new Date(); document.getElementById('clock').textContent = `${d.getHours()}:${d.getMinutes().toString().padStart(2,'0')}`; }
+clock(); setInterval(clock, 30000);
+
+document.querySelectorAll('#deviceSw button').forEach(b=> b.addEventListener('click', ()=>setDevice(parseInt(b.dataset.dev))));
+document.querySelectorAll('#themeSw button').forEach(b=> b.addEventListener('click', ()=>setTheme(b.dataset.th)));
+document.querySelectorAll('#viewSw button').forEach(b=> b.addEventListener('click', ()=>setViewMode(b.dataset.view)));
+
+buildReviewPanel();
+setDevice(390);
+setTheme('pearl');
+nav('welcome');
+</script>
+</body>
+</html>

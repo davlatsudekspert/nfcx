@@ -178,33 +178,90 @@ bo‘lsa qo‘yilgan.
 | Rasm kichraytirish | **DONE** | Yuklashdan oldin |
 | Semantика / tap nishoni | **DONE** | Tugma va ikonkalar belgilangan |
 | Matn masshtabi | **DONE** | 0.85–1.3 oralig‘ida cheklangan |
-| **Android APK** | **BLOKLANGAN** | Bu muhitda Android SDK o‘rnatib bo‘lmaydi (quyiga qarang) |
+| **Android APK / AAB** | **DONE** | CI da qurildi va tekshirildi (quyiga qarang) |
 
 ---
 
-## APK haqida — ochiq holat
+## APK — qurildi va tekshirildi
 
-**Bu ishlab chiqish muhitida APK QURILMADI.**
+**Run [#35430822764](https://github.com/davlatsudekspert/nfcx/actions/runs/35430822764)
+— 17/17 qadam muvaffaqiyatli.**
 
-Sababi: Android SDK faqat `dl.google.com` va `maven.google.com` dan
-keladi, ikkalasi ham tarmoq siyosati tomonidan bloklangan
-(CONNECT → 403). Debian’dagi `android-sdk` paketi esa API 23 da
-qolgan — Flutter uchun yaramaydi.
+| | |
+|---|---|
+| Paket | `uz.nfcstore.nova` (CI da tekshiriladi) |
+| versionName | `1.0.0` (pubspec'dan) |
+| versionCode | `2` (`github.run_number`) |
+| Artifact | `nfcstore-nova-apk` (ID 10579899161), 108 MB, 5 fayl |
 
-Bu repozitoriyada **allaqachon ma’lum muammo**: mavjud
-`.github/workflows/android-apk.yml` faylining birinchi izohi aynan
-shu haqda.
+| Fayl | Hajm | SHA-256 |
+|---|---|---|
+| `flutter-apk/app-release.apk` (universal) | 55.5 MB | `2a7b60c7…6dba2` |
+| `flutter-apk/app-arm64-v8a-release.apk` | 21.5 MB | `beef7821…62ecb` |
+| `flutter-apk/app-armeabi-v7a-release.apk` | 19.4 MB | `5c259f48…6f322` |
+| `flutter-apk/app-x86_64-release.apk` | 22.7 MB | `631e5561…3bfc8` |
+| `bundle/release/app-release.aab` | 46.8 MB | `c7d105e3…53bba` |
 
-**Yechim — CI:** `.github/workflows/nova-apk.yml` qo‘shildi. U
-GitHub runner’ida (SDK bor) universal APK, ABI APK’lari va AAB
-quradi, so‘ng paket nomini va ruxsatlarni tekshiradi.
+### Ruxsatlar auditi
 
-Bu muhitda tekshirilgani:
+Tayyor APK ichidagi to'liq ro'yxat:
 
-* `flutter analyze` — 0 ta muammo;
-* `flutter test` — 71 ta test o‘tadi;
-* `flutter build web --release` — butun Dart kodi relizga
-  kompilyatsiya bo‘ladi;
-* Android sozlamalari (manifest, Gradle, imzo, adaptiv ikonka)
-  yozilgan va ko‘rib chiqilgan, lekin **Gradle bilan ishga
-  tushirilmagan**.
+```
+android.permission.ACCESS_NETWORK_STATE
+android.permission.INTERNET
+android.permission.NFC
+android.permission.WAKE_LOCK
+```
+
+Manifestda ikkitasi yozilgan (`INTERNET`, `NFC`). Qolgan ikkitasi
+PLAGINLARDAN qo'shilgan: `WAKE_LOCK` — `video_player` (Reels
+o'ynayotganda ekran o'chmasligi uchun), `ACCESS_NETWORK_STATE` —
+tarmoq holatini o'qiydigan kutubxonalar.
+
+Ikkalasi ham xavfsiz va foydalanuvchidan ruxsat so'ramaydi. Joylashuv,
+mikrofon, kontakt, SMS yoki telefon holati — **bittasi ham yo'q**.
+
+### Imzo — DIQQAT
+
+APK **debug kaliti** bilan imzolangan, chunki `NOVA_KEYSTORE_BASE64`
+sekreti hali sozlanmagan.
+
+Barmoq izi (SHA-256):
+`77:82:10:39:BB:AA:7A:E6:0A:95:EF:6B:3B:1A:17:5B:88:C2:12:1B:61:D0:C9:47:D6:29:7D:95:06:F1:14:27`
+
+Bu APK **o'rnatiladi va ishlaydi**, lekin:
+
+* **Play Store'ga yaramaydi** — release kaliti kerak;
+* App Links ishlashi uchun `assetlinks.json` ichidagi barmoq izi
+  shunga mos bo'lishi kerak;
+* debug kaliti har muhitda boshqacha bo'lishi mumkin, ya'ni eski
+  versiya ustiga o'rnatilmasligi mumkin.
+
+Haqiqiy kalit uchun: `README.md` → «Imzolash».
+
+### Qurishdagi to'siq va uning yechimi
+
+Birinchi urinish ([#35430448266](https://github.com/davlatsudekspert/nfcx/actions/runs/35430448266))
+R8 bosqichida yiqildi:
+
+```
+Missing class com.google.android.play.core.splitcompat.SplitCompatApplication
+Execution failed for task ':app:minifyReleaseWithR8'
+```
+
+Flutter embeddingi deferred-component sinflarini olib yuradi va ular
+Play Core'ga havola qiladi; ilova Play Core'ni bog'liqlik sifatida
+olmaydi, AGP 8 dagi R8 esa yetishmayotgan sinfni XATO deb hisoblaydi.
+
+Tuzatildi: `-dontwarn com.google.android.play.core.**` va keep
+qoidalarini aniq paketlarga toraytirish
+(`android/app/proguard-rules.pro`).
+
+### Nima uchun bu muhitda emas, CI da
+
+Ushbu ishlab chiqish muhitida Android SDK o'rnatib bo'lmaydi:
+`dl.google.com` va `maven.google.com` tarmoq siyosati bilan bloklangan
+(CONNECT → 403), Debian paketi esa API 23 da qolgan.
+
+Shuning uchun qurish `.github/workflows/nova-apk.yml` orqali GitHub
+runner'ida bajariladi.

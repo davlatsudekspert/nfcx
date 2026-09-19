@@ -1,0 +1,316 @@
+import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
+
+import '../motion/motion.dart';
+import '../tokens/nfc_tokens.dart';
+import 'surfaces.dart';
+
+/// Orb qanday holatda.
+enum OrbState { idle, scanning, success, error }
+
+/// NFC markazining yuragi: nafas oluvchi organik shakl, yumshoq halo va
+/// uchta ketma-ket chiqadigan pulse halqasi.
+///
+/// TEXNIK QAROR: hamma narsa BITTA `CustomPainter` ichida chiziladi.
+/// Har halqa alohida widget bo'lganda 4 ta `AnimationController` va
+/// 4 ta layout o'tishi kerak bo'lardi; bu yerda bitta kontroller va
+/// bitta repaint. 60fps'da farqi sezilarli.
+class NfcOrb extends StatefulWidget {
+  const NfcOrb({
+    super.key,
+    this.size = 260,
+    this.state = OrbState.idle,
+    this.onTap,
+    this.child,
+  });
+
+  final double size;
+  final OrbState state;
+  final VoidCallback? onTap;
+
+  /// Markazdagi belgi — odatda `BrandLogo` yoki NFC ikonkasi.
+  final Widget? child;
+
+  @override
+  State<NfcOrb> createState() => _NfcOrbState();
+}
+
+class _NfcOrbState extends State<NfcOrb> with TickerProviderStateMixin {
+  late final AnimationController _breath = AnimationController(
+    vsync: this,
+    duration: Motion.breathe,
+  );
+  late final AnimationController _waves = AnimationController(
+    vsync: this,
+    duration: Motion.wave,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _breath.repeat(reverse: true);
+    _waves.repeat();
+  }
+
+  @override
+  void didUpdateWidget(covariant NfcOrb old) {
+    super.didUpdateWidget(old);
+    // Skanerlashda to'lqinlar tezlashadi — foydalanuvchi "ilova eshitmoqda"
+    // ekanini ko'radi. Yakunlanganda esa tinchiydi.
+    final wantFast = widget.state == OrbState.scanning;
+    final target = wantFast ? const Duration(milliseconds: 1500) : Motion.wave;
+    if (_waves.duration != target) {
+      _waves
+        ..duration = target
+        ..repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _breath.dispose();
+    _waves.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final still = reduceMotion(context);
+
+    final accent = switch (widget.state) {
+      OrbState.success => t.success,
+      OrbState.error => t.error,
+      _ => t.accent2,
+    };
+
+    return PressableScale(
+      onTap: widget.onTap,
+      scale: .95,
+      child: SizedBox(
+        width: widget.size,
+        height: widget.size,
+        child: AnimatedBuilder(
+          animation: Listenable.merge([_breath, _waves]),
+          builder: (context, child) => CustomPaint(
+            painter: _OrbPainter(
+              t: t,
+              accent: accent,
+              breath: still ? .5 : Curves.easeInOut.transform(_breath.value),
+              wave: still ? 0 : _waves.value,
+              showWaves: !still,
+            ),
+            child: child,
+          ),
+          child: Center(child: widget.child),
+        ),
+      ),
+    );
+  }
+}
+
+class _OrbPainter extends CustomPainter {
+  _OrbPainter({
+    required this.t,
+    required this.accent,
+    required this.breath,
+    required this.wave,
+    required this.showWaves,
+  });
+
+  final NfcTokens t;
+  final Color accent;
+
+  /// 0..1 — nafas fazasi.
+  final double breath;
+
+  /// 0..1 — to'lqin fazasi.
+  final double wave;
+  final bool showWaves;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = Offset(size.width / 2, size.height / 2);
+    final base = size.width * .30;
+
+    // --- pulse halqalari: uchtasi siklning 1/3 qismiga surilgan ---------
+    if (showWaves) {
+      for (var i = 0; i < 3; i++) {
+        final p = (wave + i / 3) % 1.0;
+        final r = base * (1 + p * 1.55);
+        // Chiqib borgan sari so'nadi; boshida ham to'liq emas — "portlash"
+        // taassuroti bo'lmasligi uchun.
+        final o = (1 - p) * .45 * math.min(1, p * 6);
+        canvas.drawCircle(
+          c,
+          r,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.5
+            ..color = accent.withValues(alpha: o),
+        );
+      }
+    }
+
+    // --- halo: markazdan tarqaladigan yumshoq nur ------------------------
+    final haloR = base * (1.34 + breath * .12);
+    canvas.drawCircle(
+      c,
+      haloR,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [t.glow, t.glow.withValues(alpha: 0)],
+          stops: const [.35, 1],
+        ).createShader(Rect.fromCircle(center: c, radius: haloR))
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 18),
+    );
+
+    // --- organik yadro ---------------------------------------------------
+    // Doira EMAS: radius burchak bo'ylab ikkita sinus bilan biroz
+    // o'zgaradi, shuning uchun shakl "tirik" ko'rinadi va nafas bilan
+    // sekin aylanadi.
+    final r = base * (.95 + breath * .06);
+    final path = Path();
+    const steps = 72;
+    for (var i = 0; i <= steps; i++) {
+      final a = i / steps * 2 * math.pi;
+      final wobble = 1 +
+          math.sin(a * 3 + breath * math.pi * 2) * .035 +
+          math.sin(a * 5 - breath * math.pi) * .018;
+      final p = c + Offset(math.cos(a) * r * wobble, math.sin(a) * r * wobble);
+      i == 0 ? path.moveTo(p.dx, p.dy) : path.lineTo(p.dx, p.dy);
+    }
+    path.close();
+
+    canvas.drawPath(
+      path,
+      Paint()
+        ..shader = LinearGradient(
+          begin: const Alignment(-.7, -1),
+          end: const Alignment(.7, 1),
+          colors: [t.accent1, accent],
+        ).createShader(Rect.fromCircle(center: c, radius: r)),
+    );
+
+    // Yuqori chetdagi nozik yorug'lik — shakl yassi qog'oz emas, hajmli.
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.white.withValues(alpha: .45), Colors.white.withValues(alpha: 0)],
+        ).createShader(Rect.fromCircle(center: c, radius: r)),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_OrbPainter old) =>
+      old.breath != breath ||
+      old.wave != wave ||
+      old.accent != accent ||
+      old.t.id != t.id ||
+      old.showWaves != showWaves;
+}
+
+/// Orb atrofida aylanma joylashgan tezkor amallar — Concept B "orbit".
+class OrbitActions extends StatelessWidget {
+  const OrbitActions({
+    super.key,
+    required this.size,
+    required this.actions,
+  });
+
+  final double size;
+  final List<OrbitAction> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final radius = size * .40;
+    final tones = [t.accent2, t.accentBDark, t.accentCDark, t.accentDDark];
+
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          for (var i = 0; i < actions.length; i++)
+            Builder(builder: (context) {
+              // Yuqoridan boshlab teng taqsimlanadi.
+              final a = -math.pi / 2 + i * 2 * math.pi / actions.length;
+              return Transform.translate(
+                offset: Offset(math.cos(a) * radius, math.sin(a) * radius),
+                child: _OrbitChip(
+                  action: actions[i],
+                  tone: tones[i % tones.length],
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+}
+
+class OrbitAction {
+  const OrbitAction({required this.icon, required this.label, this.onTap});
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+}
+
+class _OrbitChip extends StatelessWidget {
+  const _OrbitChip({required this.action, required this.tone});
+
+  final OrbitAction action;
+  final Color tone;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Semantics(
+      button: true,
+      label: action.label,
+      child: PressableScale(
+        onTap: action.onTap,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: t.surfaceSolid,
+                shape: BoxShape.circle,
+                border: Border.all(color: tone.withValues(alpha: .5), width: 1.4),
+                boxShadow: t.shadowTiny,
+              ),
+              child: Icon(action.icon, size: 21, color: tone),
+            ),
+            const SizedBox(height: 7),
+            SizedBox(
+              width: 74,
+              child: Text(
+                action.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Manrope',
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w700,
+                  color: t.text2,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
