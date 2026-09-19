@@ -1,0 +1,222 @@
+# NFCSTORE NOVA — HAQIQIY HISOB E2E (emulyatorda)
+#
+# Bu workflow HAQIQIY `nfcstore.uz` backendiga, HAQIQIY hisob bilan
+# ulanadi. Shuning uchun u:
+#
+#   * FAQAT qo'lda ishga tushiriladi (`workflow_dispatch`) — har
+#     push'da emas;
+#   * bir vaqtda BITTA bo'ladi (`concurrency`) — ikki ish parallel
+#     kirsa, backendning kirish chegarasi yeb qo'yilardi;
+#   * HECH QANDAY APK/AAB yuklamaydi.
+#
+# ## NIMA UCHUN APK YUKLANMAYDI
+#
+# `--dart-define` qiymatlari qurilgan ikkilik fayl ICHIGA tushadi.
+# Demak sinov APK'si artefakt bo'lib chiqsa, uni yuklab olgan har
+# kim paroldan nusxa ko'chira olardi. Reliz APK'si alohida
+# `nova-apk.yml` da, sinov hisobisiz quriladi.
+#
+# ## KIRISH CHEGARASI — MUHIM
+#
+# `hosting/worker.js` kirishni hisob bo'yicha 15 daqiqada 5 marta
+# cheklaydi va hisoblagich MUVAFFAQIYATLI kirishda ham oshadi
+# (`rateLimitD1` parol tekshirilishidan OLDIN chaqiriladi). Bu ish
+# 3 ta urinish sarflaydi: backend to'plami 2 ta (kirish + noto'g'ri
+# parol), UI to'plami 1 ta.
+#
+# Ya'ni: ketma-ket ikki marta ishga tushirmang. Ikkinchisi 429 oladi
+# va hisob EGASI ham 15 daqiqa kira olmaydi.
+name: NFCSTORE Nova E2E (real account)
+
+on:
+  workflow_dispatch:
+    inputs:
+      note:
+        description: "Bu ishga tushirish nima uchun (hisobotda ko'rinadi)"
+        required: false
+        default: "real account E2E"
+
+  # `workflow_dispatch` ni API orqali chaqirish uchun fayl STANDART
+  # branchda turishi kerak — aks holda GitHub 404 beradi. Nova hali
+  # `main` ga qo'shilmagan, shuning uchun sinov branchida ishga
+  # tushirishning yagona yo'li — push.
+  #
+  # Yo'l ATAYLAB tor: FAQAT E2E fayllari o'zgarganda. `lib/` ga
+  # tegilganda bu ish ishga tushmaydi, ya'ni oddiy tahrirlar haqiqiy
+  # hisobga bormaydi va kirish chegarasi yeyilmaydi.
+  push:
+    branches: ['claude/**']
+    paths:
+      - 'mobile_nova/integration_test/**'
+      - '.github/workflows/nova-e2e.yml'
+      - 'tool/e2e_summary.py'
+
+concurrency:
+  group: nova-e2e
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: mobile_nova
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.35.5
+          channel: stable
+          cache: true
+
+      - name: Bog'liqliklar
+        run: flutter pub get --enforce-lockfile
+
+      # ARZON QO'RIQCHI — EMULYATORDAN OLDIN.
+      #
+      # `test/e2e_safety_test.dart` E2E manbasini o'qib, buzg'unchi
+      # metod (NFC o'chirish, sovg'a qabul qilish, to'lov boshlash)
+      # chaqirilmaganini tekshiradi va parol kodga yozilmaganiga
+      # ishonch hosil qiladi. Bu bir soniya turadi va haqiqiy hisobga
+      # tegmasdan oldin to'xtatadi.
+      - name: Xavfsizlik qo'riqchisi va oddiy testlar
+        run: flutter test
+
+      - name: Kod tekshiruvi
+        run: flutter analyze
+
+      # Sinov hisobi sozlanmagan bo'lsa, emulyatorni behuda ko'tarmaymiz.
+      - name: Sinov hisobi bormi
+        env:
+          LOGIN: ${{ secrets.NOVA_TEST_LOGIN }}
+          PASSWORD: ${{ secrets.NOVA_TEST_PASSWORD }}
+        run: |
+          if [ -z "$LOGIN" ] || [ -z "$PASSWORD" ]; then
+            echo "::error::NOVA_TEST_LOGIN / NOVA_TEST_PASSWORD secret'lari yo'q."
+            echo "Settings -> Secrets and variables -> Actions da qo'shing."
+            exit 1
+          fi
+          # Qiymat EMAS, faqat uzunlik — shu ham parol juda qisqa
+          # bo'lsa ogohlantirish uchun kerak.
+          echo "Sinov hisobi sozlangan (parol uzunligi: ${#PASSWORD})."
+
+      # Emulyator KVM'siz sudralib yuradi va ko'pincha muddatdan oshadi.
+      - name: KVM ni yoqish
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: AVD keshi
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-34-x86_64
+
+      # Kesh bo'sh bo'lsa AVD ni bir marta yaratib, uni keshlaymiz:
+      # keyingi ishlar 3-4 daqiqa tejaydi.
+      - name: AVD ni tayyorlash (faqat kesh bo'sh bo'lsa)
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "AVD tayyor"
+
+      # ── ASOSIY BOSQICH ────────────────────────────────────────
+      #
+      # `continue-on-error` ataylab: FAIL qatori bo'lsa ham hisobot
+      # CHOP ETILISHI kerak. Ishning qizil/yashilligi oxirgi qadamda
+      # yozib olingan chiqish kodiga qarab hal qilinadi.
+      - name: E2E — haqiqiy hisob
+        id: e2e
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          NOVA_TEST_LOGIN: ${{ secrets.NOVA_TEST_LOGIN }}
+          NOVA_TEST_PASSWORD: ${{ secrets.NOVA_TEST_PASSWORD }}
+          NOVA_TEST_LOGIN_2: ${{ secrets.NOVA_TEST_LOGIN_2 }}
+          NOVA_TEST_PASSWORD_2: ${{ secrets.NOVA_TEST_PASSWORD_2 }}
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          working-directory: mobile_nova
+          script: |
+            set -o pipefail
+            adb devices
+
+            DEFINES="--dart-define=NOVA_TEST_LOGIN=$NOVA_TEST_LOGIN \
+                     --dart-define=NOVA_TEST_PASSWORD=$NOVA_TEST_PASSWORD \
+                     --dart-define=NOVA_TEST_LOGIN_2=$NOVA_TEST_LOGIN_2 \
+                     --dart-define=NOVA_TEST_PASSWORD_2=$NOVA_TEST_PASSWORD_2"
+
+            rc=0
+
+            # Backend to'plami — kontrakt va saqlanish.
+            # shellcheck disable=SC2086
+            flutter test integration_test/e2e_backend_test.dart \
+              -d emulator-5554 $DEFINES 2>&1 | tee e2e-backend.log || rc=1
+
+            # UI to'plami — haqiqiy ekranlar.
+            # shellcheck disable=SC2086
+            flutter test integration_test/e2e_ui_test.dart \
+              -d emulator-5554 $DEFINES 2>&1 | tee e2e-ui.log || rc=1
+
+            echo "$rc" > e2e-exit-code
+            exit 0
+
+      # ── HISOBOT ───────────────────────────────────────────────
+      - name: PASS/FAIL matritsasi
+        if: always()
+        run: |
+          python3 ../tool/e2e_summary.py e2e-backend.log e2e-ui.log \
+            >> "$GITHUB_STEP_SUMMARY"
+          python3 ../tool/e2e_summary.py e2e-backend.log e2e-ui.log
+
+      # Loglar — maxfiy qiymatlar `redact` dan o'tgan, GitHub esa
+      # secret'ni qo'shimcha ravishda `***` qiladi. APK YO'Q.
+      - name: E2E loglari
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nova-e2e-logs
+          path: |
+            mobile_nova/e2e-backend.log
+            mobile_nova/e2e-ui.log
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Yakuniy baho
+        if: always()
+        run: |
+          code=$(cat e2e-exit-code 2>/dev/null || echo 1)
+          if [ "$code" != "0" ]; then
+            echo "::error::E2E da FAIL qatorlari bor — yuqoridagi matritsaga qarang."
+            exit 1
+          fi
+          echo "E2E to'liq o'tdi."
