@@ -49,15 +49,35 @@ class NfcRepository {
     return res.map((j) => parseList(j['devices'] ?? j['items'], NfcDevice.fromJson));
   }
 
-  /// Jismoniy kartani NFC ID dan uzish.
+  /// Jismoniy kartani VAQTINCHA O'CHIRISH / QAYTA YOQISH.
   ///
-  /// Serverda kartani O'CHIRISH endpointi YO'Q — faqat
-  /// `PUT /api/my/nfc-devices/:id` bor va u `linkedCode` ni
-  /// yangilaydi. Bo'sh qiymat yuborilsa bog'lanish uziladi.
-  /// Ilgari bu yerda DELETE chaqirilardi: server 404 qaytarardi,
-  /// ya'ni "uzish" hech qachon ishlamagan.
-  Future<Result<void>> unlinkDevice(int id) =>
-      _api.put<void>('/api/my/nfc-devices/$id', {'linkedCode': ''});
+  /// ## NIMA UCHUN "UZISH" EMAS
+  ///
+  /// Ilgari bu yerda `PUT {linkedCode: ''}` yuborilardi va izohda
+  /// "bo'sh qiymat bog'lanishni uzadi" deb yozilgandi. Bu NOTO'G'RI:
+  /// server bo'sh kodni ham tekshiruvdan o'tkazadi —
+  ///
+  ///     const code = String(b.linkedCode || '').toUpperCase();
+  ///     if (!validCode(code)) return 422 { error: 'bad_code' };
+  ///
+  /// `validCode('')` — `false`. Ya'ni bo'sh qiymat bilan "uzish"
+  /// HECH QACHON ishlamagan bo'lardi, faqat 422 qaytarardi.
+  /// Undan oldin esa umuman `DELETE` chaqirilardi va u 404 berardi.
+  ///
+  /// Serverda qo'llab-quvvatlanadigan amal — `blocked`. Karta
+  /// bloklanganda `/api/tap/:token` uni ochmaydi, ya'ni yo'qolgan
+  /// kartani zararsizlantirish uchun aynan shu kerak. Bog'lanishni
+  /// butunlay olib tashlash yo'li serverda yo'q va ilova uni
+  /// bordek ko'rsatmaydi.
+  Future<Result<void>> setDeviceBlocked(int id, bool blocked) =>
+      _api.put<void>('/api/my/nfc-devices/$id', {'blocked': blocked});
+
+  /// Kartani boshqa NFC ID ga bog'lash.
+  ///
+  /// Kod EGASINIKI bo'lishi shart — aks holda server 403
+  /// `not_your_code` qaytaradi.
+  Future<Result<void>> linkDevice(int id, String code) =>
+      _api.put<void>('/api/my/nfc-devices/$id', {'linkedCode': code});
 
   /// Karta tegizilganda o'qilgan token bo'yicha profilni ochish.
   ///

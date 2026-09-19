@@ -385,3 +385,63 @@ Buzuq token bilan `/api/auth/me` **200** va `{user: null}` qaytaradi,
 tushmaydi. Repozitoriy baribir `unauthorized` qaytaradi va ekran
 to'g'ri ishlaydi, lekin GLOBAL "sessiya tugadi" yo'li bu holatda
 ishlamaydi. PARTIAL deb belgilangan.
+
+---
+
+## 9. Jismoniy karta (`/api/my/nfc-devices`) — parityi yozildi, DEPLOY QILINMADI
+
+### Audit natijasi
+
+| Manba | Holat |
+|---|---|
+| `server/index.js` (Express + Postgres) | `GET` va `PUT /api/my/nfc-devices/:id` BOR |
+| `hosting/worker.js` (produksiya, D1) | yo'q edi → **404** |
+| D1 `physical_cards` jadvali | **BOR** va shu Worker uni o'zi to'ldiradi, o'qiydi va o'chiradi |
+| Sayt (`src/`) | `dbListNfcDevices` / `dbUpdateNfcDevice` eksport qilingan, lekin **hech kim chaqirmaydi** |
+
+Ya'ni bu feature Express'da qolib ketgan va produksiyada hech qachon
+ishlamagan — na ilovada, na saytda.
+
+### Yozilgan parity
+
+`hosting/worker.js` ga `userAccountApi` ichiga (izohi bo'yicha aynan
+"signed-in user endpoints ported from server/index.js") ikki yo'l
+qo'shildi:
+
+* `GET /api/my/nfc-devices` → `{ devices: [...] }`
+* `PUT /api/my/nfc-devices/:id` → `{ linkedCode }` yoki `{ blocked }`
+
+Semantika Express bilan BIR XIL, jumladan `validCode` sharti va
+`not_your_code` (403) tekshiruvi. `chip_token` to'liq qaytarilmaydi —
+faqat oxirgi 4 belgi.
+
+Yangi jadval ham, migratsiya ham KERAK EMAS: ustunlar
+(`chip_token, linked_code, owner_user_id, active, blocked_by_owner,
+status, created_at`) allaqachon bor.
+
+### DEPLOY — BLOCKER
+
+`deploy.yml` faqat `main` ga push bo'lganda ishlaydi. Bu o'zgarish
+sinov branchida, ya'ni **`nfcstore.uz` da hali YO'Q**. Shuning uchun
+E2E hali ham 404 ko'radi va qator PARTIAL bo'lib qoladi.
+
+Yopish uchun: `main` ga merge → `deploy.yml` → E2E qayta.
+Bu produksiyaga chiqarish qarori, shuning uchun men bajarmadim.
+
+### Ilovadagi tuzatish — "uzish" hech qachon ishlamagan
+
+`unlinkDevice` `PUT {linkedCode: ''}` yuborardi. Bo'sh kod serverda
+ham tekshiruvdan o'tmaydi:
+
+    const code = String(b.linkedCode || '').toUpperCase();
+    if (!validCode(code)) return 422 { error: 'bad_code' };
+
+`validCode('')` — `false`. Undan oldin esa `DELETE` chaqirilardi va u
+404 berardi. Ya'ni bu tugma ikki marta "tuzatilgan" bo'lsa-da, hech
+qachon ishlamagan.
+
+Serverda qo'llab-quvvatlanadigan amal — `blocked`. Endi ilovada
+"Kartani bloklash / blokdan chiqarish" bor va u yo'qolgan kartani
+zararsizlantirish uchun yetarli. Bog'lanishni butunlay olib tashlash
+yo'li serverda YO'Q va ilova uni bordek ko'rsatmaydi.
+

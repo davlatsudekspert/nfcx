@@ -963,17 +963,23 @@ abstract class L {
   /// **'Kartani ulash'**
   String get nfcLinkCard;
 
-  /// No description provided for @nfcUnlinkCard.
+  /// No description provided for @nfcBlockCard.
   ///
   /// In uz, this message translates to:
-  /// **'Kartani uzish'**
-  String get nfcUnlinkCard;
+  /// **'Kartani bloklash'**
+  String get nfcBlockCard;
 
-  /// No description provided for @nfcUnlinkConfirm.
+  /// No description provided for @nfcBlockConfirm.
   ///
   /// In uz, this message translates to:
-  /// **'Karta uzilsinmi? Uni keyin qayta ulashingiz mumkin.'**
-  String get nfcUnlinkConfirm;
+  /// **'Karta bloklansinmi? Tegizilganda u profilni ochmay qo\'yadi. Keyin blokdan chiqarish mumkin.'**
+  String get nfcBlockConfirm;
+
+  /// No description provided for @nfcUnblockCard.
+  ///
+  /// In uz, this message translates to:
+  /// **'Blokdan chiqarish'**
+  String get nfcUnblockCard;
 
   /// No description provided for @nfcDeleteConfirm.
   ///

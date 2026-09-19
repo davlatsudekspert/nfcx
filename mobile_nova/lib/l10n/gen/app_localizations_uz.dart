@@ -452,11 +452,14 @@ class LUz extends L {
   String get nfcLinkCard => 'Kartani ulash';
 
   @override
-  String get nfcUnlinkCard => 'Kartani uzish';
+  String get nfcBlockCard => 'Kartani bloklash';
 
   @override
-  String get nfcUnlinkConfirm =>
-      'Karta uzilsinmi? Uni keyin qayta ulashingiz mumkin.';
+  String get nfcBlockConfirm =>
+      'Karta bloklansinmi? Tegizilganda u profilni ochmay qo\'yadi. Keyin blokdan chiqarish mumkin.';
+
+  @override
+  String get nfcUnblockCard => 'Blokdan chiqarish';
 
   @override
   String get nfcDeleteConfirm =>

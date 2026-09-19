@@ -8445,6 +8445,88 @@ async function userAccountApi(request, env, url) {
     });
   }
 
+  // ---------- JISMONIY NFC KARTALAR ----------
+  //
+  // PARITET TUZATISHI. Bu ikki yo'l `server/index.js` (Express) da
+  // bor edi, lekin produksiyani SHU Worker xizmat qiladi — ya'ni
+  // ilova `GET /api/my/nfc-devices` ga borganda 404 olardi va
+  // "bog'langan kartalar" ekrani hech qachon ishlamagan.
+  //
+  // Bu YANGI feature EMAS: `physical_cards` jadvali D1 da allaqachon
+  // bor va shu Worker uni o'zi to'ldiradi (karta sotib olinganda),
+  // o'qiydi (`/api/tap/:token`) va o'chiradi (hisob o'chirilganda).
+  // Faqat EGASI uchun ro'yxat va tahrir yo'li yo'q edi.
+  //
+  // Semantika Express bilan BIR XIL qilib olindi — jumladan
+  // `linkedCode` uchun `validCode` sharti ham. Ya'ni bo'sh satr
+  // yuborib "uzish" bu yerda ham ishlamaydi; Express ham uni
+  // 422 `bad_code` bilan rad etardi. Kartani vaqtincha o'chirish
+  // uchun `blocked` bor.
+  //
+  // `chip_token` TO'LIQ QAYTARILMAYDI — faqat oxirgi 4 belgi.
+  // To'liq token kartani soxtalashtirish uchun yetarli bo'lardi.
+  const nfcDeviceRow = (r) => ({
+    id: Number(r.id),
+    tokenTail: String(r.chip_token || '').slice(-4).toUpperCase(),
+    linkedCode: r.linked_code || '',
+    linkedName: r.linked_name || '',
+    active: Number(r.active) === 1,
+    blockedByOwner: Number(r.blocked_by_owner) === 1,
+    status: r.status || '',
+    createdAt: r.created_at,
+  });
+
+  const listNfcDevices = async (ownerId) => {
+    const rows = await env.DB.prepare(
+      `SELECT pc.id, pc.chip_token, pc.linked_code, pc.active,
+              pc.blocked_by_owner, pc.status, pc.created_at,
+              c.name AS linked_name
+         FROM physical_cards pc
+         LEFT JOIN cards c ON c.code = pc.linked_code
+        WHERE pc.owner_user_id = ?
+        ORDER BY pc.created_at DESC`
+    ).bind(ownerId).all();
+    return (rows.results || []).map(nfcDeviceRow);
+  };
+
+  if (path === '/api/my/nfc-devices' && request.method === 'GET') {
+    if (!user) return json({ error: 'unauthorized' }, 401);
+    return json({ devices: await listNfcDevices(user.id) });
+  }
+
+  const nfcDeviceMatch = path.match(/^\/api\/my\/nfc-devices\/(\d+)$/);
+  if (nfcDeviceMatch && request.method === 'PUT') {
+    if (!user) return json({ error: 'unauthorized' }, 401);
+    const id = Number(nfcDeviceMatch[1]);
+    const body = await request.json().catch(() => ({}));
+
+    if ('linkedCode' in body) {
+      const code = String(body.linkedCode || '').toUpperCase();
+      if (!validCode(code)) return json({ error: 'bad_code' }, 422);
+      // Kod SIZNIKI bo'lishi shart — aks holda begona profilni
+      // o'z kartangizga bog'lab qo'yish mumkin bo'lardi.
+      const own = await env.DB.prepare(
+        `SELECT 1 AS x FROM cards WHERE code = ? AND user_id = ?`
+      ).bind(code, user.id).first();
+      if (!own) return json({ error: 'not_your_code' }, 403);
+      const upd = await env.DB.prepare(
+        `UPDATE physical_cards SET linked_code = ?
+          WHERE id = ? AND owner_user_id = ? RETURNING id`
+      ).bind(code, id, user.id).first();
+      if (!upd) return json({ error: 'not_found' }, 404);
+    }
+
+    if ('blocked' in body) {
+      const upd = await env.DB.prepare(
+        `UPDATE physical_cards SET blocked_by_owner = ?
+          WHERE id = ? AND owner_user_id = ? RETURNING id`
+      ).bind(body.blocked === true ? 1 : 0, id, user.id).first();
+      if (!upd) return json({ error: 'not_found' }, 404);
+    }
+
+    return json({ ok: true, devices: await listNfcDevices(user.id) });
+  }
+
   const giftAction = path.match(/^\/api\/gift-offers\/(\d+)\/(accept|reject|cancel)$/);
   if (giftAction && request.method === 'POST') {
     if (!user) return json({ error: 'unauthorized' }, 401);

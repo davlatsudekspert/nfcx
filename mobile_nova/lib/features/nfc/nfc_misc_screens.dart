@@ -88,10 +88,14 @@ class NfcCardsScreen extends ConsumerWidget {
                           ),
                         ),
                         NovaIconButton(
-                          icon: Icons.link_off_rounded,
-                          tooltip: l.nfcUnlinkCard,
+                          icon: d.blockedByOwner
+                              ? Icons.lock_open_rounded
+                              : Icons.block_rounded,
+                          tooltip: d.blockedByOwner
+                              ? l.nfcUnblockCard
+                              : l.nfcBlockCard,
                           size: 38,
-                          onPressed: () => _unlink(context, ref, d),
+                          onPressed: () => _toggleBlock(context, ref, d),
                         ),
                       ],
                     ),
@@ -102,25 +106,41 @@ class NfcCardsScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _unlink(BuildContext context, WidgetRef ref, NfcDevice d) async {
+  /// Kartani bloklash / blokdan chiqarish.
+  ///
+  /// Ilgari bu "uzish" deb atalardi va serverga `linkedCode: ''`
+  /// yuborardi. Bunday amal serverda YO'Q: bo'sh kod `validCode`
+  /// tekshiruvidan o'tmaydi va 422 `bad_code` qaytadi. Ya'ni tugma
+  /// bosilardi-yu, hech narsa o'zgarmasdi.
+  ///
+  /// Serverda haqiqatan qo'llab-quvvatlanadigan amal — `blocked`.
+  /// Bloklangan karta tegizilganda profil ochilmaydi, ya'ni
+  /// yo'qolgan kartani zararsizlantirish uchun aynan shu kerak.
+  Future<void> _toggleBlock(
+      BuildContext context, WidgetRef ref, NfcDevice d) async {
     final l = L.of(context);
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l.nfcUnlinkCard),
-        content: Text(l.nfcUnlinkConfirm),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text(l.actionCancel)),
-          TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(l.actionConfirm)),
-        ],
-      ),
-    );
-    if (ok != true || !context.mounted) return;
-    final res = await ref.read(nfcRepositoryProvider).unlinkDevice(d.id);
+    // Blokdan chiqarish tasdiq so'ramaydi — u xavfsiz amal.
+    if (!d.blockedByOwner) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(l.nfcBlockCard),
+          content: Text(l.nfcBlockConfirm),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(l.actionCancel)),
+            TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(l.actionConfirm)),
+          ],
+        ),
+      );
+      if (ok != true || !context.mounted) return;
+    }
+    final res = await ref
+        .read(nfcRepositoryProvider)
+        .setDeviceBlocked(d.id, !d.blockedByOwner);
     if (!context.mounted) return;
     res.when(
       ok: (_) => ref.invalidate(nfcDevicesProvider),

@@ -452,11 +452,14 @@ class LEn extends L {
   String get nfcLinkCard => 'Link a card';
 
   @override
-  String get nfcUnlinkCard => 'Unlink card';
+  String get nfcBlockCard => 'Block card';
 
   @override
-  String get nfcUnlinkConfirm =>
-      'Unlink this card? You can link it again later.';
+  String get nfcBlockConfirm =>
+      'Block this card? Tapping it will stop opening your profile. You can unblock it later.';
+
+  @override
+  String get nfcUnblockCard => 'Unblock card';
 
   @override
   String get nfcDeleteConfirm => 'Delete this NFC ID? This cannot be undone.';

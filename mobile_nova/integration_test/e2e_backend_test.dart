@@ -808,6 +808,24 @@ void main() {
                   screen: 'StoryComposer',
                   action: 'yaratish → qayta o\'qish',
                   note: 'istorya serverda saqlandi (id=${made.id})');
+
+              // KO'RILDI deb belgilash — `POST /api/stories/:id/view`.
+              // Bu endpoint BOR; hujjatda xato ravishda "BACKEND
+              // REQUIRED" deb yozilgan edi.
+              final seen = await social.markStorySeen(made.id);
+              switch (seen) {
+                case Err(:final error):
+                  partial('Story seen',
+                      screen: 'StoryViewer',
+                      action: 'POST /api/stories/:id/view',
+                      cause: why(error),
+                      pathHint: '/view');
+                case Ok():
+                  report.pass('Story seen',
+                      screen: 'StoryViewer',
+                      action: 'POST /api/stories/:id/view',
+                      note: 'ko\'rish hodisasi serverga yozildi');
+              }
             } else {
               fail('Story create',
                   screen: 'StoryComposer',
@@ -993,18 +1011,52 @@ void main() {
     // server to'g'ri ravishda 403 `not_business` qaytarardi — sinov
     // esa buni FAIL deb yozardi. Bu ilovaning kamchiligi emas,
     // sinovning noto'g'ri yozuvni tanlagani edi.
+    // KOMPANIYA KATALOGI — yozuv katalogidan BOSHQA yo'l.
+    //
+    // Backend'da ikki xil katalog bor:
+    //   * yozuv katalogi  — `/api/records/:code/:kind/items`, faqat
+    //     BIZNES turidagi NFC yozuvida (aks holda 403 not_business);
+    //   * kompaniya katalogi — `/api/companies/:id` javobidagi
+    //     `company.catalog`.
+    //
+    // Hisobda biznes YOZUVI bo'lmasa ham KOMPANIYA bo'lishi mumkin,
+    // shuning uchun o'qish baribir tekshiriladi.
+    final companies = await business.mine();
+    final company = companies is Ok<List<Business>> && companies.value.isNotEmpty
+        ? companies.value.first
+        : null;
+    if (company != null) {
+      final cat = await business.catalog(company.companyId);
+      switch (cat) {
+        case Err(:final error):
+          fail('Catalog',
+              screen: 'BusinessCatalogScreen',
+              action: 'GET /api/companies/:id → company.catalog',
+              cause: why(error),
+              pathHint: '/api/companies/');
+        case Ok(:final value):
+          report.pass('Catalog',
+              screen: 'BusinessCatalogScreen',
+              action: 'haqiqiy kompaniya katalogini o\'qish',
+              note: '${company.displayName}: ${value.length} ta element');
+      }
+    }
+
     final code = businessId?.code;
     if (code == null) {
+      if (company == null) {
+        report.skip('Catalog', 'hisobda kompaniya ham, biznes yozuvi ham yo\'q');
+      }
       for (final r in [
-        'Catalog',
         'Product create',
         'Product edit',
         'Product delete test object',
       ]) {
         report.skip(
             r,
-            'hisobda BIZNES yozuvi yo\'q — katalog faqat biznesda '
-            'bo\'ladi (server: 403 not_business)');
+            'hisobda BIZNES turidagi NFC yozuvi yo\'q — katalog '
+            'elementini faqat o\'sha yerga qo\'shib bo\'ladi '
+            '(server: 403 not_business)');
       }
       return;
     }

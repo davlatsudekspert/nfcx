@@ -176,6 +176,7 @@ class NfcDevice {
     this.code = '',
     this.lastSeen,
     this.active = true,
+    this.blockedByOwner = false,
   });
 
   final int id;
@@ -186,13 +187,33 @@ class NfcDevice {
   final DateTime? lastSeen;
   final bool active;
 
-  factory NfcDevice.fromJson(Map<String, dynamic> j) => NfcDevice(
-        id: _i(j['id']),
-        label: _s(j['label'] ?? j['name'], 'NFC'),
-        code: _s(j['code'] ?? j['recordCode']),
-        lastSeen: _dt(j['lastSeen'] ?? j['updatedAt']),
-        active: _b(j['active'], true),
-      );
+  /// Egasi kartani vaqtincha o'chirib qo'yganmi.
+  ///
+  /// Bloklangan karta tegizilganda profil OCHILMAYDI. Bu yo'qolgan
+  /// kartani zararsizlantirishning yagona qo'llab-quvvatlanadigan
+  /// yo'li — serverda "bog'lanishni uzish" degan amal yo'q.
+  final bool blockedByOwner;
+
+  /// Server `listPhysicalCardsByOwner` shaklida qaytaradi:
+  ///
+  ///     { id, tokenTail, linkedCode, linkedName, active,
+  ///       blockedByOwner, status, createdAt }
+  ///
+  /// `label` uchun avval bog'langan profil NOMI olinadi, u bo'sh
+  /// bo'lsa chip tokenining oxirgi 4 belgisi — foydalanuvchi ikki
+  /// kartani shundan ajratadi.
+  factory NfcDevice.fromJson(Map<String, dynamic> j) {
+    final tail = _s(j['tokenTail']);
+    return NfcDevice(
+      id: _i(j['id']),
+      label: _s(j['linkedName'] ?? j['label'] ?? j['name'],
+          tail.isEmpty ? 'NFC' : '•••• $tail'),
+      code: _s(j['linkedCode'] ?? j['code'] ?? j['recordCode']),
+      lastSeen: _dt(j['lastSeen'] ?? j['updatedAt'] ?? j['createdAt']),
+      active: _b(j['active'], true),
+      blockedByOwner: _b(j['blockedByOwner']),
+    );
+  }
 }
 
 /// Biznes hisobi (`/api/companies`).
