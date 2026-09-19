@@ -315,7 +315,17 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
     final id = ref.read(activeIdProvider);
     if (id == null) return;
 
-    if (_file == null && widget.kind != ComposerKind.post) {
+    // MEDIA MAJBURIY — POST UCHUN HAM.
+    //
+    // Ilgari post uchun media ixtiyoriy deb hisoblanardi va faqat
+    // matn bilan "joylash" bosilardi. Server esa bunday postni
+    // QABUL QILMAYDI:
+    //
+    //     if (!okImg && !okVid) return json({ error: 'bad_image' }, 422);
+    //
+    // Ya'ni foydalanuvchi matn yozib, tugmani bosib, tushunarsiz
+    // xato olardi. Endi shart oldindan aytiladi.
+    if (_file == null) {
       setState(() => _error = l.errRequired);
       return;
     }
@@ -341,12 +351,17 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
 
     var mediaUrl = '';
     if (_file != null) {
-      final up = await ref.read(profileRepositoryProvider).uploadImage(
-            _file!.path,
-            onProgress: (sent, total) {
-              if (mounted && total > 0) setState(() => _progress = sent / total);
-            },
-          );
+      void progress(int sent, int total) {
+        if (mounted && total > 0) setState(() => _progress = sent / total);
+      }
+
+      // Video va rasm SERVERDA ikki xil yo'ldan boradi: rasm base64
+      // `data:` URL bo'lib `/api/upload` ga, video esa xom binar
+      // bo'lib `/api/upload-card-video` ga ketadi.
+      final repo = ref.read(profileRepositoryProvider);
+      final up = _video
+          ? await repo.uploadVideo(_file!.path, onProgress: progress)
+          : await repo.uploadImage(_file!.path, onProgress: progress);
       if (!mounted) return;
       final url = up.valueOrNull;
       if (url == null || url.isEmpty) {
@@ -361,18 +376,29 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
       mediaUrl = url;
     }
 
+    // Server media turini ALOHIDA maydonlardan biladi (`imageUrl`
+    // yoki `videoUrl`), `type` degan maydon yo'q.
+    final image = _video ? '' : mediaUrl;
+    final video = _video ? mediaUrl : '';
+    final caption = _text.text.trim();
+
     final res = switch (widget.kind) {
       ComposerKind.story => await ref
           .read(socialRepositoryProvider)
-          .createStory(code: id.code, mediaUrl: mediaUrl, isVideo: _video)
+          .createStory(
+            code: id.code,
+            imageUrl: image,
+            videoUrl: video,
+            caption: caption,
+          )
           .then((r) => r.map((_) => null)),
       _ => await ref
           .read(socialRepositoryProvider)
           .createPost(
             code: id.code,
-            text: _text.text.trim(),
-            mediaUrls: mediaUrl.isEmpty ? const [] : [mediaUrl],
-            isVideo: _video,
+            caption: caption,
+            imageUrl: image,
+            videoUrl: video,
           )
           .then((r) => r.map((_) => null)),
     };

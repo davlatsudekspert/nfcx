@@ -492,16 +492,39 @@ class StoryItem {
   final bool seen;
   final DateTime? createdAt;
 
-  factory StoryItem.fromJson(Map<String, dynamic> j) => StoryItem(
-        id: _i(j['id']),
-        code: _s(j['code'] ?? j['recordCode']),
-        authorName: _s(j['authorName'] ?? j['name']),
-        authorAvatar: _s(j['authorAvatar'] ?? j['avatarUrl']),
-        mediaUrl: _s(j['mediaUrl'] ?? j['url'] ?? j['imageUrl']),
-        isVideo: _b(j['isVideo']) || _s(j['type']) == 'video',
-        seen: _b(j['seen']),
-        createdAt: _dt(j['createdAt']),
-      );
+  /// `listStoriesD1` quyidagini qaytaradi:
+  ///
+  ///     { id, imageUrl, videoUrl, caption, createdAt, expiresAt,
+  ///       likeCount, liked, viewCount }
+  ///
+  /// Ya'ni media IKKI alohida maydonda va qaysi biri to'lganidan
+  /// video ekani bilinadi — `type` degan maydon umuman yo'q.
+  /// Ilgari bu yerda faqat `mediaUrl`/`url` o'qilardi va video
+  /// istoryalar bo'sh chiqardi.
+  ///
+  /// `seen` — serverda `viewCount` bor, lekin u BARCHA ko'rishlarni
+  /// sanaydi, "men ko'rdimmi" degani emas. Shuning uchun ko'rilgan
+  /// holati faqat server aniq `seen`/`viewed` bergan joyda
+  /// ishonchli; aks holda `false` bo'lib qoladi va halqa "yangi"
+  /// ko'rinadi. To'qib chiqarilmaydi.
+  factory StoryItem.fromJson(Map<String, dynamic> j) {
+    final video = _s(j['videoUrl']);
+    final image = _s(j['imageUrl']);
+    return StoryItem(
+      id: _i(j['id']),
+      code: _s(j['code'] ?? j['recordCode'] ?? j['ownerId']),
+      authorName: _s(j['authorName'] ?? j['name']),
+      authorAvatar: _s(j['authorAvatar'] ?? j['avatarUrl']),
+      mediaUrl: video.isNotEmpty
+          ? video
+          : (image.isNotEmpty ? image : _s(j['mediaUrl'] ?? j['url'])),
+      isVideo: video.isNotEmpty ||
+          _b(j['isVideo']) ||
+          _s(j['type']) == 'video',
+      seen: _b(j['seen'] ?? j['viewed']),
+      createdAt: _dt(j['createdAt']),
+    );
+  }
 }
 
 /// NFC ID sovg'a taklifi — `/api/gift-offers`.

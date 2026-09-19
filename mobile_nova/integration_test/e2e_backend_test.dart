@@ -610,11 +610,17 @@ void main() {
 
     // ── TEST POST yaratish ─────────────────────────────────────
     int? postId;
-    final created = await social.createPost(
-      code: code,
-      text: testLabel('post'),
-      mediaUrls: uploaded == null ? const [] : [uploaded],
-    );
+    // Server post uchun MEDIA talab qiladi, shuning uchun yuklash
+    // muvaffaqiyatsiz bo'lsa post ham sinalmaydi — bu server
+    // qoidasi, ilova kamchiligi emas.
+    final created = uploaded == null
+        ? const Err<Post>(AppError(AppErrorKind.validation,
+            code: 'no_media', detail: 'rasm yuklanmadi'))
+        : await social.createPost(
+            code: code,
+            caption: testLabel('post'),
+            imageUrl: uploaded,
+          );
     switch (created) {
       case Err(:final error):
         fail('Post create',
@@ -776,14 +782,14 @@ void main() {
     }
 
     if (uploaded != null) {
-      final st = await social.createStory(code: code, mediaUrl: uploaded);
+      final st = await social.createStory(code: code, imageUrl: uploaded);
       switch (st) {
         case Err(:final error):
           fail('Story create',
               screen: 'StoryComposer',
-              action: 'POST /api/records/:code/gallery {agreed:true}',
+              action: 'POST /api/records/:code/stories {agreed:true}',
               cause: why(error),
-              pathHint: '/gallery');
+              pathHint: '/stories');
         case Ok():
           final after = await social.storiesOf(code);
           if (after is Ok<List<StoryItem>>) {
@@ -797,7 +803,7 @@ void main() {
             if (fresh.isNotEmpty) {
               final made = fresh.first;
               litter.track('story #${made.id}',
-                  () async => social.deleteStory(code, made.id));
+                  () async => social.deleteStory(made.id));
               report.pass('Story create',
                   screen: 'StoryComposer',
                   action: 'yaratish → qayta o\'qish',
@@ -806,9 +812,9 @@ void main() {
               fail('Story create',
                   screen: 'StoryComposer',
                   action: 'yaratish → qayta o\'qish',
-                  cause: 'server 2xx qaytardi, lekin galereyada yangi '
-                      'yozuv paydo bo\'lmadi',
-                  pathHint: '/gallery');
+                  cause: 'server 2xx qaytardi, lekin istoryalar orasida '
+                      'yangi yozuv paydo bo\'lmadi',
+                  pathHint: '/stories');
             }
           }
       }
@@ -981,7 +987,13 @@ void main() {
   // ══════════════════════════════════════════════════════════════
 
   testWidgets('5. Katalog — o\'qish va TEST mahsulot', (_) async {
-    final code = businessId?.code ?? personal?.code;
+    // KATALOG FAQAT BIZNES YOZUVIDA.
+    //
+    // Ilgari bu yerda biznes topilmasa SHAXSIY yozuvga tushilardi va
+    // server to'g'ri ravishda 403 `not_business` qaytarardi — sinov
+    // esa buni FAIL deb yozardi. Bu ilovaning kamchiligi emas,
+    // sinovning noto'g'ri yozuvni tanlagani edi.
+    final code = businessId?.code;
     if (code == null) {
       for (final r in [
         'Catalog',
@@ -989,7 +1001,10 @@ void main() {
         'Product edit',
         'Product delete test object',
       ]) {
-        report.skip(r, 'yozuv yo\'q');
+        report.skip(
+            r,
+            'hisobda BIZNES yozuvi yo\'q — katalog faqat biznesda '
+            'bo\'ladi (server: 403 not_business)');
       }
       return;
     }

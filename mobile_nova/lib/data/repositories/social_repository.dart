@@ -51,20 +51,49 @@ class SocialRepository {
 
   Future<Result<void>> deletePost(int id) => _api.delete<void>('/api/posts/$id');
 
+  /// Post yaratish.
+  ///
+  /// ## SERVER KUTADIGAN SHAKL — TAXMIN EMAS, O'QILGAN
+  ///
+  ///     const imageUrl = String(body?.imageUrl || '');
+  ///     const videoUrl = String(body?.videoUrl || '');
+  ///     const caption  = String(body?.caption  || '').slice(0, 600);
+  ///     const okImg = imageUrl.startsWith('/uploads/') && ...
+  ///     const okVid = videoUrl.startsWith('/uploads/') && /\.(mp4|webm)$/i...
+  ///     if (!okImg && !okVid) return json({ error: 'bad_image' }, 422);
+  ///
+  /// Ilgari bu yerdan `text` va `media: []` yuborilardi. Server
+  /// bunday maydonlarni umuman o'qimaydi, shuning uchun HAR BIR post
+  /// 422 `bad_image` bilan tugardi — ya'ni ilovadan post joylash
+  /// UMUMAN ishlamasdi. Buni haqiqiy hisobdagi E2E ko'rsatdi:
+  ///
+  ///     POST /api/records/VIP001/posts
+  ///     {"text":"...","media":[],"agreed":true}  ->  422 bad_image
+  ///
+  /// MEDIA MAJBURIY: serverda rasm ham, video ham bo'lmasa post
+  /// yaratilmaydi. Shuning uchun [imageUrl] yoki [videoUrl] dan
+  /// kamida bittasi bo'lishi shart va UI ham shuni talab qiladi —
+  /// foydalanuvchi "joylash" tugmasini bosib 422 olmasin.
   Future<Result<Post>> createPost({
     required String code,
-    required String text,
-    List<String> mediaUrls = const [],
-    bool isVideo = false,
+    String caption = '',
+    String imageUrl = '',
+    String videoUrl = '',
   }) async {
+    if (imageUrl.isEmpty && videoUrl.isEmpty) {
+      return const Err(AppError(
+        AppErrorKind.validation,
+        code: 'bad_image',
+        detail: 'post uchun rasm yoki video majburiy',
+      ));
+    }
     final res = await _api.post<Map<String, dynamic>>('/api/records/$code/posts', {
-      'text': text,
-      'media': mediaUrls,
-      if (isVideo) 'type': 'reel',
+      if (imageUrl.isNotEmpty) 'imageUrl': imageUrl,
+      if (videoUrl.isNotEmpty) 'videoUrl': videoUrl,
+      'caption': caption,
       // Backend kontent qoidalariga roziliksiz post yaratmaydi:
       // `rulesAcceptedD1` tekshiruvi, aks holda 422
-      // `rules_not_accepted`. Bu maydon YUBORILMAS edi — ya'ni
-      // ilovadan post joylash umuman ishlamasdi.
+      // `rules_not_accepted`.
       'agreed': true,
     });
     return res.map((j) =>
@@ -80,26 +109,61 @@ class SocialRepository {
   Future<Result<void>> deleteVideo(String code, int id) =>
       _api.delete<void>('/api/records/$code/videos/$id');
 
-  /// Story — backend'da `gallery` sifatida saqlanadi.
+  // ── ISTORYA ──────────────────────────────────────────────────
+  //
+  // MUHIM TUZATISH: bu yerda ilgari `/api/records/:code/gallery`
+  // ishlatilardi. U MAVJUD endpoint, lekin BUTUNLAY BOSHQA narsa —
+  // `hosting/api/media.js` dagi KARTA GALEREYASI (biznes yozuvlari
+  // uchun statik rasmlar to'plami, `card_gallery` jadvali). Istorya
+  // esa `stories` jadvalida va boshqa manzilda turadi:
+  //
+  //     GET    /api/records/:code/stories   -> { stories: [...] }
+  //     POST   /api/records/:code/stories   -> 201
+  //     DELETE /api/stories/:id
+  //     POST   /api/stories/:id/view        -> ko'rildi
+  //
+  // Natijada ilova istoryani noto'g'ri joydan o'qirdi (shuning uchun
+  // ro'yxat doim bo'sh edi) va yaratishga urinish gallereyaga borib,
+  // u yerda "faqat biznes" sharti bilan rad etilardi.
+
   Future<Result<List<StoryItem>>> storiesOf(String code) async {
-    final res = await _api.get<Map<String, dynamic>>('/api/records/$code/gallery');
-    return res.map((j) => parseList(j['gallery'] ?? j['items'], StoryItem.fromJson));
+    final res = await _api.get<Map<String, dynamic>>('/api/records/$code/stories');
+    return res.map((j) => parseList(j['stories'] ?? j['items'], StoryItem.fromJson));
   }
 
-  Future<Result<void>> deleteStory(String code, int id) =>
-      _api.delete<void>('/api/records/$code/gallery/$id');
+  /// Istoryani o'chirish — manzil KODSIZ, faqat `id` bo'yicha.
+  Future<Result<void>> deleteStory(int id) =>
+      _api.delete<void>('/api/stories/$id');
+
+  /// Ko'rilgan deb belgilash.
+  ///
+  /// Bu endpoint BOR — `FINAL_GAPS.md` da xato ravishda "BACKEND
+  /// REQUIRED" deb yozilgan edi. Ya'ni Home orbidagi halqa
+  /// "ko'rilgan" holatini haqiqatan yangilay oladi.
+  Future<Result<void>> markStorySeen(int id) =>
+      _api.post<void>('/api/stories/$id/view');
 
   Future<Result<void>> createStory({
     required String code,
-    required String mediaUrl,
-    bool isVideo = false,
-  }) =>
-      _api.post<void>('/api/records/$code/gallery', {
-        'url': mediaUrl,
-        if (isVideo) 'type': 'video',
-        // Istoryada ham xuddi shu talab.
-        'agreed': true,
-      });
+    String imageUrl = '',
+    String videoUrl = '',
+    String caption = '',
+  }) {
+    if (imageUrl.isEmpty && videoUrl.isEmpty) {
+      return Future.value(const Err(AppError(
+        AppErrorKind.validation,
+        code: 'bad_image',
+        detail: 'istorya uchun rasm yoki video majburiy',
+      )));
+    }
+    return _api.post<void>('/api/records/$code/stories', {
+      if (imageUrl.isNotEmpty) 'imageUrl': imageUrl,
+      if (videoUrl.isNotEmpty) 'videoUrl': videoUrl,
+      'caption': caption,
+      // Istoryada ham xuddi shu talab.
+      'agreed': true,
+    });
+  }
 
   // ── IZOHLAR ──────────────────────────────────────────────────
   //

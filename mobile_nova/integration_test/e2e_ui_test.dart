@@ -27,6 +27,8 @@ import 'package:nfcstore_nova/app/providers.dart';
 import 'package:nfcstore_nova/core/storage/secure_store.dart';
 import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
 import 'package:nfcstore_nova/design/widgets/bottom_nav.dart';
+import 'package:nfcstore_nova/design/widgets/buttons.dart';
+import 'package:nfcstore_nova/design/widgets/surfaces.dart';
 import 'package:nfcstore_nova/features/settings/app_lock.dart';
 
 import 'support/creds.dart';
@@ -75,15 +77,24 @@ void main() {
   testWidgets('UI 1 — kirish ekrani va haqiqiy kirish', (t) async {
     await launch(t);
 
-    // Kirmagan foydalanuvchi kirish/kutib olish ekranida bo'lishi kerak.
-    final fields = find.byType(TextField);
-    if (fields.evaluate().isEmpty) {
-      // Welcome ekranida bo'lishimiz mumkin — "Kirish" tugmasini bosamiz.
-      final buttons = find.byType(ElevatedButton);
-      if (buttons.evaluate().isNotEmpty) {
-        await t.tap(buttons.first);
-        await settle(t);
+    // Kirmagan foydalanuvchi Welcome ekranida turadi va u yerda
+    // matn maydoni YO'Q — "Kirish" tugmasini bosish kerak.
+    //
+    // DIQQAT: `NovaButton` `ElevatedButton` EMAS. U
+    // `Semantics > PressableScale > AnimatedContainer` dan iborat,
+    // shuning uchun `find.byType(ElevatedButton)` hech narsa
+    // topmaydi — birinchi ishga tushirishda sinov aynan shu sababdan
+    // "maydonlar topilmadi" deb yiqilgan edi.
+    if (find.byType(TextField).evaluate().isEmpty) {
+      final buttons = find.byType(NovaButton);
+      // Welcome'da ikkita tugma bor: "Ro'yxatdan o'tish" va "Kirish".
+      // Kirish — ikkinchisi.
+      if (buttons.evaluate().length >= 2) {
+        await t.tap(buttons.at(1), warnIfMissed: false);
+      } else if (buttons.evaluate().isNotEmpty) {
+        await t.tap(buttons.first, warnIfMissed: false);
       }
+      await settle(t, frames: 40);
     }
 
     if (find.byType(TextField).evaluate().length < 2) {
@@ -115,8 +126,9 @@ void main() {
     await t.enterText(find.byType(TextField).at(1), kTestPassword);
     await settle(t, frames: 5);
 
-    // "Kirish" tugmasi — birinchi asosiy tugma.
-    final submit = find.byType(ElevatedButton);
+    // Kirish ekranida ikkita `NovaButton`: birinchisi — yuborish,
+    // ikkinchisi — "kod bilan kirish" ga o'tish.
+    final submit = find.byType(NovaButton);
     if (submit.evaluate().isEmpty) {
       report.add(MatrixRow(
         name: 'Login (UI)',
@@ -248,9 +260,11 @@ void main() {
     }
 
     // ── Beshala tab ────────────────────────────────────────────
+    // Pastki navigatsiya ham `PressableScale` ustiga qurilgan —
+    // `InkWell` bu yerda ham yo'q.
     final navIcons = find.descendant(
       of: find.byType(NovaBottomNav),
-      matching: find.byType(InkWell),
+      matching: find.byType(PressableScale),
     );
     final tabCount = navIcons.evaluate().length;
     if (tabCount >= 4) {

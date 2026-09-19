@@ -261,3 +261,127 @@ yo'qoladi.
 
 Bu CONFIG REQUIRED bandining bir qismi: haqiqiy keystore
 sozlangach muammo o'z-o'zidan yo'qoladi.
+
+---
+
+## 8. HAQIQIY HISOB E2E — statik audit KO'RMAGAN buzuqliklar
+
+CI ishi: <https://github.com/davlatsudekspert/nfcx/actions/runs/35442474771>
+
+Bu bo'lim alohida turadi, chunki quyidagilarning HECH BIRINI kod
+o'qib topib bo'lmagan edi. Ularning hammasi "endpoint bor, metod
+bor, UI bor" edi — va hammasi ishlamasdi. Faqat haqiqiy hisob bilan
+haqiqiy serverga borgandan keyin ko'rindi.
+
+| Nima | Server nima kutadi | Ilova nima yuborardi | Natija |
+|---|---|---|---|
+| **Rasm yuklash** | `POST /api/upload` tanasida JSON: `{"dataUrl":"data:image/png;base64,..."}` | `multipart/form-data` | **422 `bad_image` — HAR SAFAR** |
+| **Post yaratish** | `{imageUrl \| videoUrl, caption, agreed}`; media MAJBURIY | `{text, media:[], agreed}` | **422 `bad_image` — HAR SAFAR** |
+| **Istorya** | `/api/records/:code/stories` | `/api/records/:code/gallery` | boshqa feature'ga borardi |
+
+### Nima uchun bu jiddiy
+
+Uchala buzuqlik BIR-BIRIGA bog'langan: rasm yuklanmagani uchun post
+ham, istorya ham, avatar ham, muqova ham, katalog rasmi ham
+yaratilmasdi. Ya'ni **ilovadan kontent joylashning birorta yo'li
+ishlamasdi**.
+
+Xato foydalanuvchiga "rasm yaroqsiz" bo'lib ko'rinardi — aslida rasm
+serverga umuman yetib bormagan edi.
+
+### Tafsilotlar
+
+**1. `/api/upload` — multipart emas, `data:` URL.**
+
+Serverda:
+
+```js
+const body = await request.json().catch(() => ({}));
+const match = UPLOAD_IMAGE_RE.exec(String(body.dataUrl || ''));
+if (!match) return json({ error: 'bad_image' }, 422);
+```
+
+`request.json()` multipart tanani o'qiy olmaydi; `catch` uni bo'sh
+obyektga aylantiradi va `dataUrl` `undefined` bo'ladi. Shakl qat'iy:
+`data:image/(png|jpeg|jpg|webp|gif);base64,...`.
+
+Hajm base64 OCHILGANDAN keyin o'lchanadi: oddiy rasm 700 KB, gif
+3 MB, `kind: 'cover'` 20 MB.
+
+Tuzatildi: `ApiClient.uploadDataUrl`. MIME kengaytmadan emas, SEHRLI
+BAYTLARDAN aniqlanadi — galereyadagi `.jpg` nomli fayl ichi HEIC
+bo'lishi mumkin.
+
+Video boshqa yo'ldan boradi: `/api/upload-card-video` tanani xom
+binar sifatida oqim bilan o'qiydi (`streamUploadToR2`), base64
+ishlatilmaydi — u videoda hajmni 33% oshirardi.
+
+**2. Post — `caption`/`imageUrl`, `text`/`media` emas.**
+
+```js
+const imageUrl = String(body?.imageUrl || '');
+const videoUrl = String(body?.videoUrl || '');
+const caption  = String(body?.caption  || '').slice(0, 600);
+if (!okImg && !okVid) return json({ error: 'bad_image' }, 422);
+```
+
+Haqiqiy javob:
+
+```
+POST /api/records/VIP001/posts
+{"text":"...","media":[],"agreed":true}   ->   422 bad_image
+```
+
+**MEDIA MAJBURIY**: faqat matnli post server tomonidan umuman
+qo'llab-quvvatlanmaydi. Endi UI buni oldindan aytadi va bo'sh
+so'rov yuborilmaydi.
+
+O'qish tomoni ishlayotgan edi, chunki `Post.fromJson` allaqachon
+`j['text'] ?? j['caption']` ni o'qiydi — shuning uchun ro'yxat
+to'g'ri ko'rinib, YARATISH jimgina ishlamasdi.
+
+**3. Istorya — `/stories`, `/gallery` emas.**
+
+`/api/records/:code/gallery` MAVJUD, lekin u butunlay boshqa narsa:
+`hosting/api/media.js` dagi KARTA GALEREYASI (`card_gallery`
+jadvali, biznes yozuvlari uchun statik rasmlar). Istorya esa
+`stories` jadvalida:
+
+```
+GET    /api/records/:code/stories   -> { stories: [...] }
+POST   /api/records/:code/stories
+DELETE /api/stories/:id
+POST   /api/stories/:id/view
+```
+
+`StoryItem.fromJson` ham tuzatildi: server media'ni `imageUrl` va
+`videoUrl` deb IKKI maydonda beradi, `type` degan maydon yo'q —
+ilgari video istoryalar bo'sh chiqardi.
+
+### Shu bilan birga TUZATILGAN tavsif xatosi
+
+`POST /api/stories/:id/view` **BOR**. Yuqorida (2-bo'lim) "Story
+ko'rilgan holati — BACKEND REQUIRED" deb yozilgan edi, bu NOTO'G'RI.
+`markStorySeen` qo'shildi.
+
+### Yangi BACKEND REQUIRED — haqiqiy 404 bilan tasdiqlangan
+
+| Endpoint | Holat |
+|---|---|
+| `GET /api/my/nfc-devices` | **404 `not_found`** — bu yo'l faqat `server/index.js` (Express) da bor, `nfcstore.uz` ni esa Cloudflare Worker xizmat qiladi. Ya'ni jismoniy karta ro'yxati produksiyada UMUMAN ishlamaydi |
+
+### `x-client` — kirish tokeni
+
+Backend mobil mijozni `new Set(['mobile','android','ios'])` bilan
+TO'LIQ moslikda tekshiradi. Nova `android-nova` yuborardi va bu
+to'plamga tushmasdi, shuning uchun `/api/auth/login` javob TANASIDA
+token qaytarmasdi. Kirish faqat `Set-Cookie` ni qo'lda o'qish
+hisobiga tirik edi. Endi `x-client: android` + `x-app: nova`.
+
+### Sessiya tugashi — kichik, lekin haqiqiy
+
+Buzuq token bilan `/api/auth/me` **200** va `{user: null}` qaytaradi,
+401 emas. Shuning uchun `ApiClient.sessionExpired` signali ishga
+tushmaydi. Repozitoriy baribir `unauthorized` qaytaradi va ekran
+to'g'ri ishlaydi, lekin GLOBAL "sessiya tugadi" yo'li bu holatda
+ishlamaydi. PARTIAL deb belgilangan.

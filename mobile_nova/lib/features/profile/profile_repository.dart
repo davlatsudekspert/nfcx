@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
+import '../../core/errors/app_error.dart';
 import '../../core/network/api_client.dart';
 import '../../core/utils/result.dart';
 import '../../data/models/models.dart';
@@ -66,13 +69,71 @@ class ProfileRepository {
     return res.map((j) => parseList(j['items'] ?? j['users'], NfcId.fromJson));
   }
 
-  /// Rasm yuklash — avatar, muqova, post va story uchun bitta endpoint.
+  /// Rasm yuklash — avatar, muqova, post va istorya uchun bitta endpoint.
+  ///
+  /// Server `data:` URL kutadi, multipart EMAS — batafsil sabab
+  /// `ApiClient.uploadDataUrl` izohida. Ilgari bu yerda multipart
+  /// yuborilardi va HAR BIR rasm yuklash 422 `bad_image` bilan
+  /// tugardi.
+  ///
+  /// [kind] `'cover'` bo'lganda server chegarasi 20 MB, aks holda
+  /// 700 KB (gif uchun 3 MB).
   Future<Result<String>> uploadImage(
+    String filePath, {
+    String? kind,
+    void Function(int, int)? onProgress,
+  }) async {
+    final file = File(filePath);
+    final bytes = await file.readAsBytes();
+    final mime = _imageMime(filePath, bytes);
+    if (mime == null) {
+      return const Err(AppError(
+        AppErrorKind.validation,
+        code: 'bad_image',
+        detail: 'png, jpg, webp yoki gif bo\'lishi kerak',
+      ));
+    }
+    final res = await _api.uploadDataUrl('/api/upload', bytes, mime,
+        kind: kind, onProgress: onProgress);
+    return res.map((j) => '${j['url'] ?? j['path'] ?? ''}');
+  }
+
+  /// Video yuklash — xom binar, alohida endpoint.
+  Future<Result<String>> uploadVideo(
     String filePath, {
     void Function(int, int)? onProgress,
   }) async {
-    final res = await _api.upload('/api/upload', filePath, onProgress: onProgress);
+    final bytes = await File(filePath).readAsBytes();
+    final lower = filePath.toLowerCase();
+    final type = lower.endsWith('.webm') ? 'video/webm' : 'video/mp4';
+    final res = await _api.uploadBinary(
+        '/api/upload-card-video', bytes, type,
+        onProgress: onProgress);
     return res.map((j) => '${j['url'] ?? j['path'] ?? ''}');
+  }
+
+  /// MIME ni BAYTLARDAN aniqlaydi, kengaytmadan emas.
+  ///
+  /// Galereyadan kelgan fayl nomi `.jpg` bo'lib, ichi aslida HEIC
+  /// bo'lishi mumkin — server esa sarlavhani o'qiydi va
+  /// `bad_image` qaytaradi. Sehrli baytlar yolg'on gapirmaydi.
+  static String? _imageMime(String path, List<int> b) {
+    bool at(int i, List<int> sig) {
+      if (b.length < i + sig.length) return false;
+      for (var k = 0; k < sig.length; k++) {
+        if (b[i + k] != sig[k]) return false;
+      }
+      return true;
+    }
+
+    if (at(0, [0x89, 0x50, 0x4E, 0x47])) return 'image/png';
+    if (at(0, [0xFF, 0xD8, 0xFF])) return 'image/jpeg';
+    if (at(0, [0x47, 0x49, 0x46, 0x38])) return 'image/gif';
+    // WEBP: "RIFF" .... "WEBP"
+    if (at(0, [0x52, 0x49, 0x46, 0x46]) && at(8, [0x57, 0x45, 0x42, 0x50])) {
+      return 'image/webp';
+    }
+    return null;
   }
 
   Future<Result<void>> changePassword({

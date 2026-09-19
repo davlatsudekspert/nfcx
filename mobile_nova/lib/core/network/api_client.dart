@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -118,27 +119,85 @@ class ApiClient {
   Future<Result<T>> delete<T>(String path, [Object? body]) => _run<T>(
       () => _dio.delete(path, data: body, options: Options(headers: _auth)));
 
-  /// Fayl yuklash — alohida, uzunroq muddat bilan.
+  /// RASM YUKLASH — `data:` URL, multipart EMAS.
   ///
-  /// 10 MB rasm mobil internetda 20 soniyaga sig'maydi, shuning uchun
-  /// bu yerda muddat 90 soniya.
-  Future<Result<Map<String, dynamic>>> upload(
+  /// ## NIMA UCHUN MULTIPART EMAS
+  ///
+  /// Bu ilgari `FormData` bilan yuborilardi va HAR SAFAR 422
+  /// `bad_image` qaytarardi — ya'ni ilovadan birorta rasm (avatar,
+  /// muqova, post, istorya, katalog) yuklanmagan. Sabab serverda:
+  ///
+  ///     const body = await request.json().catch(() => ({}));
+  ///     const match = UPLOAD_IMAGE_RE.exec(String(body.dataUrl || ''));
+  ///     if (!match) return json({ error: 'bad_image' }, 422);
+  ///
+  /// `request.json()` multipart tanani o'qiy olmaydi, `catch` uni
+  /// bo'sh obyektga aylantiradi, `dataUrl` esa `undefined` bo'ladi.
+  /// Xato hech qachon ko'rinmagan, chunki server 2xx o'rniga 422
+  /// qaytargan va UI buni "rasm yaroqsiz" deb ko'rsatgan.
+  ///
+  /// Server kutadigan shakl QAT'IY:
+  ///
+  ///     /^data:(image\/(png|jpeg|jpg|webp|gif));base64,([A-Za-z0-9+\/=]+)$/
+  ///
+  /// Shuning uchun `mime` shu ro'yxatdan bo'lishi va base64 da
+  /// satr uzilishi BO'LMASLIGI shart.
+  ///
+  /// HAJM: server base64 ni ochgandan KEYIN o'lchaydi — oddiy rasm
+  /// uchun 700 KB, `kind: 'cover'` uchun 20 MB, gif uchun 3 MB.
+  /// Shuning uchun rasm tanlashda `maxWidth`/`imageQuality` bilan
+  /// siqiladi.
+  Future<Result<Map<String, dynamic>>> uploadDataUrl(
     String path,
-    String filePath, {
-    String field = 'file',
+    List<int> bytes,
+    String mime, {
+    String? kind,
     void Function(int sent, int total)? onProgress,
   }) =>
       _run<Map<String, dynamic>>(
         () => _dio.post(
           path,
-          data: FormData.fromMap({
-            field: MultipartFile.fromFileSync(filePath),
-          }),
+          data: {
+            'dataUrl': 'data:$mime;base64,${base64Encode(bytes)}',
+            if (kind != null) 'kind': kind,
+          },
           onSendProgress: onProgress,
           options: Options(
             headers: _auth,
             sendTimeout: const Duration(seconds: 90),
             receiveTimeout: const Duration(seconds: 90),
+          ),
+        ),
+      );
+
+  /// VIDEO YUKLASH — XOM BINAR.
+  ///
+  /// Video uchun server boshqa yo'l tutadi: `/api/upload-card-video`
+  /// tanani `streamUploadToR2` orqali oqim sifatida o'qiydi va
+  /// to'g'ridan-to'g'ri R2 ga yozadi. Ya'ni bu yerda na base64, na
+  /// multipart — faqat fayl baytlari va to'g'ri `content-type`.
+  ///
+  /// Base64 bu yerda ATAYLAB ishlatilmaydi: u hajmni ~33% oshiradi
+  /// va videoda bu o'nlab megabaytga aylanadi.
+  Future<Result<Map<String, dynamic>>> uploadBinary(
+    String path,
+    List<int> bytes,
+    String contentType, {
+    void Function(int sent, int total)? onProgress,
+  }) =>
+      _run<Map<String, dynamic>>(
+        () => _dio.post(
+          path,
+          data: Stream.fromIterable([bytes]),
+          onSendProgress: onProgress,
+          options: Options(
+            headers: {
+              ..._auth,
+              'content-type': contentType,
+              'content-length': bytes.length,
+            },
+            sendTimeout: const Duration(seconds: 180),
+            receiveTimeout: const Duration(seconds: 180),
           ),
         ),
       );

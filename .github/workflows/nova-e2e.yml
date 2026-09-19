@@ -207,12 +207,18 @@ jobs:
           echo "Ikkala to'plam ham ishladi va matritsa yozildi."
 
       # ── HISOBOT ───────────────────────────────────────────────
+      # Hisobot HAR DOIM chiqadi va bu bosqich HECH QACHON ishni
+      # yiqitmaydi.
+      #
+      # Ilgari skript FAIL qatori bo'lsa 1 bilan tugardi va
+      # `bash -e` shu yerda to'xtardi — natijada jadval faqat ish
+      # sahifasiga tushib, LOGDA umuman ko'rinmasdi. Qizil/yashilni
+      # oxirgi bosqich hal qiladi, bu esa faqat ko'rsatadi.
       - name: PASS/FAIL matritsasi
         if: always()
         run: |
           python3 ../tool/e2e_summary.py e2e-backend.log e2e-ui.log \
-            >> "$GITHUB_STEP_SUMMARY"
-          python3 ../tool/e2e_summary.py e2e-backend.log e2e-ui.log
+            | tee -a "$GITHUB_STEP_SUMMARY" || true
 
       # Loglar — maxfiy qiymatlar `redact` dan o'tgan, GitHub esa
       # secret'ni qo'shimcha ravishda `***` qiladi. APK YO'Q.
