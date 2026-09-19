@@ -255,7 +255,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
           {/* ===== Karta — qahramon (V1) ===== */}
           <Reveal delay="[transition-delay:160ms]" className="relative flex w-full justify-center overflow-visible lg:justify-self-center">
             <div className="hidden lg:block">
-              <NeonOrbitCard code="AAA000" name={t('SIZNING ISMINGIZ')} />
+              <NeonOrbitCard code="AAA000" name={t('SIZNING ISMINGIZ')} finish="showcase" />
             </div>
             <div className="relative lg:hidden">
               <div className="pointer-events-none absolute -inset-6 rounded-full bg-[radial-gradient(circle,var(--accent-a22),transparent_68%)] blur-md"></div>

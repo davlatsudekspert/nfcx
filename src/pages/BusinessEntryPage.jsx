@@ -108,7 +108,7 @@ export default function BusinessEntryPage() {
                 {/* Namunaviy kompaniya kartasi. Kod haqiqiy Company ID
                     shakliga o'xshasin — "NFCSTORE" uzun bo'lib, karta
                     ustidagi brend yozuvi bilan takrorlanib ketardi. */}
-                <NfcCard code="BIZ001" name={t('KOMPANIYANGIZ')} finish="black" size="lg" rim />
+                <NfcCard code="BIZ001" name={t('KOMPANIYANGIZ')} finish="showcase" size="lg" rim />
               </Interactive3DCard>
             </div>
           </div>
@@ -179,7 +179,7 @@ export default function BusinessEntryPage() {
               <NfcCard
                 code={companies?.[0]?.companyId || 'BIZ001'}
                 name={companies?.[0]?.displayName?.toUpperCase() || t('KOMPANIYANGIZ')}
-                finish="black"
+                finish="showcase"
                 size="lg"
                 rim
               />

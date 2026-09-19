@@ -105,6 +105,19 @@
   --modal-bg: #1c1916;
   --pill-bg: #232326;
   --pill-text: #ffffff;
+
+  /* NAMUNA (showcase) NFC karta — FAQAT marketing/demo kartalar uchun.
+     Foydalanuvchining haqiqiy kartasi (tarif finish'i, Card Designer
+     tanlovi, profildagi karta) bu tokenlarga BOG'LIQ EMAS. */
+  --showcase-card-bg: linear-gradient(135deg, #262422 0%, #171614 55%, #262422 100%);
+  --showcase-card-fg: #d4af5a;
+  --showcase-card-sub: rgba(212, 175, 90, 0.62);
+  --showcase-card-code: #e8c165;
+  --showcase-card-border: #d4af5a;
+  --showcase-card-sheen: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.16) 40%, rgba(255, 255, 255, 0.35) 50%, rgba(255, 255, 255, 0.16) 60%, transparent);
+  --showcase-card-gloss: rgba(255, 255, 255, 0.55);
+  --showcase-card-shadow: 0 20px 45px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --showcase-card-rim: 0 0 0 1px rgba(201, 162, 39, 0.28), 0 0 40px rgba(180, 140, 30, 0.28), 0 28px 70px rgba(0, 0, 0, 0.65);
 }
 
 /* ───────────────────────────────────────────────────────────────────
@@ -184,6 +197,19 @@
   --modal-bg: #fffdf8;
   --pill-bg: #2b2519;
   --pill-text: #fbf7f0;
+
+  /* NAMUNA (showcase) NFC karta — FAQAT marketing/demo kartalar uchun.
+     Foydalanuvchining haqiqiy kartasi (tarif finish'i, Card Designer
+     tanlovi, profildagi karta) bu tokenlarga BOG'LIQ EMAS. */
+  --showcase-card-bg: linear-gradient(135deg, #fffdf7 0%, #d9c9a4 50%, #efe1c4 100%);
+  --showcase-card-fg: #2a2114;
+  --showcase-card-sub: rgba(42, 33, 20, 0.58);
+  --showcase-card-code: #6a4f18;
+  --showcase-card-border: #b0894a;
+  --showcase-card-sheen: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.55) 40%, rgba(255, 255, 255, 0.85) 50%, rgba(255, 255, 255, 0.55) 60%, transparent);
+  --showcase-card-gloss: rgba(255, 255, 255, 0.3);
+  --showcase-card-shadow: 0 20px 45px rgba(92, 74, 44, 0.28), 0 2px 8px rgba(92, 74, 44, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  --showcase-card-rim: 0 0 0 1px rgba(156, 122, 50, 0.3), 0 0 40px rgba(199, 168, 99, 0.35), 0 28px 70px rgba(92, 74, 44, 0.32);
 }
 
 /* ───────────────────────────────────────────────────────────────────
@@ -262,6 +288,19 @@
   --modal-bg: #2b2e32;
   --pill-bg: #2e3236;
   --pill-text: #f1efeb;
+
+  /* NAMUNA (showcase) NFC karta — FAQAT marketing/demo kartalar uchun.
+     Foydalanuvchining haqiqiy kartasi (tarif finish'i, Card Designer
+     tanlovi, profildagi karta) bu tokenlarga BOG'LIQ EMAS. */
+  --showcase-card-bg: linear-gradient(135deg, #43464b 0%, #26282c 52%, #3c4045 100%);
+  --showcase-card-fg: #eef0f3;
+  --showcase-card-sub: rgba(238, 240, 243, 0.6);
+  --showcase-card-code: #dfe3e8;
+  --showcase-card-border: #9aa0a7;
+  --showcase-card-sheen: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.18) 40%, rgba(255, 255, 255, 0.4) 50%, rgba(255, 255, 255, 0.18) 60%, transparent);
+  --showcase-card-gloss: rgba(255, 255, 255, 0.5);
+  --showcase-card-shadow: 0 20px 45px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  --showcase-card-rim: 0 0 0 1px rgba(203, 207, 212, 0.3), 0 0 40px rgba(203, 207, 212, 0.22), 0 28px 70px rgba(0, 0, 0, 0.66);
 }
 
 /* ───────────────────────────────────────────────────────────────────
@@ -340,6 +379,19 @@
   --modal-bg: #1a3f57;
   --pill-bg: #1a4459;
   --pill-text: #e7f2f8;
+
+  /* NAMUNA (showcase) NFC karta — FAQAT marketing/demo kartalar uchun.
+     Foydalanuvchining haqiqiy kartasi (tarif finish'i, Card Designer
+     tanlovi, profildagi karta) bu tokenlarga BOG'LIQ EMAS. */
+  --showcase-card-bg: linear-gradient(135deg, #1d5271 0%, #0f3449 52%, #1a4966 100%);
+  --showcase-card-fg: #dff0f8;
+  --showcase-card-sub: rgba(223, 240, 248, 0.62);
+  --showcase-card-code: #a6dcee;
+  --showcase-card-border: #5e9fb9;
+  --showcase-card-sheen: linear-gradient(100deg, transparent, rgba(214, 240, 250, 0.16) 40%, rgba(214, 240, 250, 0.36) 50%, rgba(214, 240, 250, 0.16) 60%, transparent);
+  --showcase-card-gloss: rgba(224, 244, 252, 0.45);
+  --showcase-card-shadow: 0 20px 45px rgba(2, 14, 22, 0.55), 0 2px 8px rgba(2, 14, 22, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  --showcase-card-rim: 0 0 0 1px rgba(126, 196, 220, 0.32), 0 0 40px rgba(126, 196, 220, 0.24), 0 28px 70px rgba(2, 14, 22, 0.68);
 }
 
 /* ───────────────────────────────────────────────────────────────────
@@ -418,6 +470,19 @@
   --modal-bg: #33264b;
   --pill-bg: #3b2c54;
   --pill-text: #f0eaf8;
+
+  /* NAMUNA (showcase) NFC karta — FAQAT marketing/demo kartalar uchun.
+     Foydalanuvchining haqiqiy kartasi (tarif finish'i, Card Designer
+     tanlovi, profildagi karta) bu tokenlarga BOG'LIQ EMAS. */
+  --showcase-card-bg: linear-gradient(135deg, #433062 0%, #2a1f40 52%, #3a2950 100%);
+  --showcase-card-fg: #efe8f8;
+  --showcase-card-sub: rgba(239, 232, 248, 0.62);
+  --showcase-card-code: #cdbaf0;
+  --showcase-card-border: #9878cc;
+  --showcase-card-sheen: linear-gradient(100deg, transparent, rgba(232, 222, 250, 0.16) 40%, rgba(232, 222, 250, 0.36) 50%, rgba(232, 222, 250, 0.16) 60%, transparent);
+  --showcase-card-gloss: rgba(240, 232, 252, 0.45);
+  --showcase-card-shadow: 0 20px 45px rgba(12, 6, 22, 0.55), 0 2px 8px rgba(12, 6, 22, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  --showcase-card-rim: 0 0 0 1px rgba(183, 156, 226, 0.32), 0 0 40px rgba(183, 156, 226, 0.24), 0 28px 70px rgba(12, 6, 22, 0.68);
 }
 
 /* ───────────────────────────────────────────────────────────────────
@@ -498,6 +563,19 @@
   --modal-bg: #21314c;
   --pill-bg: #22314a;
   --pill-text: #eeeae0;
+
+  /* NAMUNA (showcase) NFC karta — FAQAT marketing/demo kartalar uchun.
+     Foydalanuvchining haqiqiy kartasi (tarif finish'i, Card Designer
+     tanlovi, profildagi karta) bu tokenlarga BOG'LIQ EMAS. */
+  --showcase-card-bg: linear-gradient(135deg, #2a3c57 0%, #17243c 52%, #22334d 100%);
+  --showcase-card-fg: #efd7a6;
+  --showcase-card-sub: rgba(239, 215, 166, 0.62);
+  --showcase-card-code: #efd7a6;
+  --showcase-card-border: #d6b478;
+  --showcase-card-sheen: linear-gradient(100deg, transparent, rgba(255, 245, 224, 0.16) 40%, rgba(255, 245, 224, 0.34) 50%, rgba(255, 245, 224, 0.16) 60%, transparent);
+  --showcase-card-gloss: rgba(255, 248, 232, 0.45);
+  --showcase-card-shadow: 0 20px 45px rgba(3, 8, 16, 0.55), 0 2px 8px rgba(3, 8, 16, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --showcase-card-rim: 0 0 0 1px rgba(214, 180, 120, 0.32), 0 0 40px rgba(214, 180, 120, 0.26), 0 28px 70px rgba(3, 8, 16, 0.68);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -749,6 +827,19 @@
   --modal-bg: #1c1916;
   --pill-bg: #232326;
   --pill-text: #ffffff;
+
+  /* NAMUNA (showcase) NFC karta — FAQAT marketing/demo kartalar uchun.
+     Foydalanuvchining haqiqiy kartasi (tarif finish'i, Card Designer
+     tanlovi, profildagi karta) bu tokenlarga BOG'LIQ EMAS. */
+  --showcase-card-bg: linear-gradient(135deg, #262422 0%, #171614 55%, #262422 100%);
+  --showcase-card-fg: #d4af5a;
+  --showcase-card-sub: rgba(212, 175, 90, 0.62);
+  --showcase-card-code: #e8c165;
+  --showcase-card-border: #d4af5a;
+  --showcase-card-sheen: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.16) 40%, rgba(255, 255, 255, 0.35) 50%, rgba(255, 255, 255, 0.16) 60%, transparent);
+  --showcase-card-gloss: rgba(255, 255, 255, 0.55);
+  --showcase-card-shadow: 0 20px 45px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --showcase-card-rim: 0 0 0 1px rgba(201, 162, 39, 0.28), 0 0 40px rgba(180, 140, 30, 0.28), 0 28px 70px rgba(0, 0, 0, 0.65);
 
   /* ── Sahifa foni (Tailwind `bg-page-bg` va daisyUI canvas) ── */
 
