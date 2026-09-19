@@ -1432,6 +1432,10 @@ void main() {
     await bad.api.setToken('NOVA_E2E_INVALID_TOKEN');
     final before = bad.api.sessionExpired.value;
     final badRes = await AuthRepository(bad.api).me();
+    // DIQQAT: `/api/auth/me` eskirgan token uchun 401 EMAS, 200 +
+    // `{user: null}` qaytaradi. Shuning uchun signal HTTP holat
+    // kodidan emas, `AuthRepository.me()` ichidan keladi. E2E #11
+    // aynan shuni ochib berdi.
     final fired = bad.api.sessionExpired.value > before;
     // TOKEN TOZALANDIMI. Signal chiqib, token joyida qolsa, keyingi
     // har bir so'rov yana o'sha o'lik token bilan ketardi.

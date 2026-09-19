@@ -121,15 +121,35 @@ class AuthRepository {
 
   Future<Result<({User user, List<NfcId> ids})>> me() async {
     final res = await _api.get<Map<String, dynamic>>('/api/auth/me');
-    return switch (res) {
-      Err(:final error) => Err(error),
-      Ok(:final value) => value['user'] == null
-          ? const Err(AppError(AppErrorKind.unauthorized))
-          : Ok((
-              user: User.fromJson((value['user'] as Map).cast<String, dynamic>()),
-              ids: parseList(value['cards'], NfcId.fromJson),
-            )),
-    };
+    switch (res) {
+      case Err(:final error):
+        return Err(error);
+      case Ok(:final value):
+        if (value['user'] == null) {
+          // SESSIYA TUGADI — lekin 401 EMAS.
+          //
+          // Server eskirgan token uchun ham 200 qaytaradi, tanasida
+          // esa bo'sh foydalanuvchi:
+          //
+          //     const user = await getCurrentUser(request, env);
+          //     if (!user) return json({ user: null, cards: [] });
+          //
+          // Shuning uchun tarmoq qatlamidagi 401 ushlagichi bu
+          // holatni KO'RMAYDI. E2E buni "sessionExpired signali
+          // ishlamadi" deb ko'rsatgan edi va men avval sababni
+          // faqat 401 da deb o'ylagandim — aslida bu yo'l umuman
+          // 401 qaytarmaydi.
+          //
+          // Endi signal shu yerdan beriladi: oqim 401 bilan bir xil
+          // bo'ladi — token tozalanadi, router chiqaradi.
+          _api.notifySessionExpired();
+          return const Err(AppError(AppErrorKind.unauthorized));
+        }
+        return Ok((
+          user: User.fromJson((value['user'] as Map).cast<String, dynamic>()),
+          ids: parseList(value['cards'], NfcId.fromJson),
+        ));
+    }
   }
 
   /// Chiqish — server sessiyasi ham, qurilmadagi token ham o'chiriladi.

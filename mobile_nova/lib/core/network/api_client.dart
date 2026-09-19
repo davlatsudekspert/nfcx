@@ -315,11 +315,36 @@ class ApiClient {
     return AppError(kind, code: code, detail: detail, status: status);
   }
 
+  /// SESSIYA TUGAGANINI BOSHQA QATLAM ANIQLAGANDA.
+  ///
+  /// ## NIMA UCHUN KERAK
+  ///
+  /// `/api/auth/me` eskirgan token uchun 401 QAYTARMAYDI. Server
+  /// kodi buni ochiq ko'rsatadi:
+  ///
+  ///     const user = await getCurrentUser(request, env);
+  ///     if (!user) return json({ user: null, cards: [] });
+  ///
+  /// Ya'ni HTTP 200, tanasida esa `user: null`. Demak sessiyani
+  /// tekshiradigan ASOSIY yo'l uchun 401 hech qachon kelmaydi va
+  /// faqat holat kodiga tayangan har qanday tekshiruv bu holatni
+  /// ko'rmaydi.
+  ///
+  /// `AuthRepository.me()` bo'sh foydalanuvchini ko'rganda shu
+  /// metodni chaqiradi — shunda oqim 401 bilan bir xil bo'ladi:
+  /// token tozalanadi, signal beriladi, router kirish ekraniga
+  /// ko'chiradi.
+  void notifySessionExpired() => _onUnauthorized('');
+
   /// SINOV UCHUN TESHIK.
   ///
   /// 401 ni tarmoqsiz qayta ishlab ko'rish imkonini beradi: qaysi
   /// yo'lda sessiya yopilishi, qaysisida yopilmasligi aynan shu
   /// yerda hal bo'ladi va uni haqiqiy server bilan sinash qimmat.
+  /// Sinovda tokenni tarmoqsiz o'rnatadi (Keystore'ga tegmasdan).
+  @visibleForTesting
+  void debugSetTokenForTest(String? v) => _token = v;
+
   @visibleForTesting
   void debugHandleStatus(int status, String path) =>
       _httpError(status, const <String, dynamic>{}, path);

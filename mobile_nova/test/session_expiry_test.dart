@@ -39,6 +39,42 @@ void main() {
             'foydalanuvchini kirish ekraniga chiqara olmaydi');
   });
 
+  test('200 + `user: null` HAM sessiyani yopadi', () {
+    // SERVER 401 QAYTARMAYDI. `/api/auth/me` eskirgan token uchun
+    // ham 200 beradi, tanasida esa bo'sh foydalanuvchi:
+    //
+    //     const user = await getCurrentUser(request, env);
+    //     if (!user) return json({ user: null, cards: [] });
+    //
+    // Shuning uchun faqat holat kodiga tayangan tekshiruv bu
+    // holatni KO'RMAYDI. E2E #11 aynan shuni ko'rsatdi: 401
+    // ushlagichi to'g'ri ishlardi, lekin bu yo'lda 401 umuman
+    // kelmasdi.
+    final api = ApiClient();
+    addTearDown(() {
+      api.online.dispose();
+      api.sessionExpired.dispose();
+    });
+    api.debugSetTokenForTest('ESKIRGAN_TOKEN');
+    final before = api.sessionExpired.value;
+    api.notifySessionExpired();
+    expect(api.sessionExpired.value, greaterThan(before),
+        reason: 'bo\'sh foydalanuvchi sessiyani yopmadi');
+  });
+
+  test('TOKENSIZ holatda signal berilMAYDI', () {
+    // Kirmagan odam uchun `user: null` normal javob — uni sessiya
+    // tugashi deb hisoblash noto'g'ri bo'lardi.
+    final api = ApiClient();
+    addTearDown(() {
+      api.online.dispose();
+      api.sessionExpired.dispose();
+    });
+    final before = api.sessionExpired.value;
+    api.notifySessionExpired();
+    expect(api.sessionExpired.value, before);
+  });
+
   group('401 — QAYSI yo\'lda sessiya yopiladi', () {
     test('KIRISH yo\'lidagi 401 sessiyani yopMAYDI', () {
       // `/api/auth/login` noto'g'ri parolda ham 401 qaytaradi. Buni

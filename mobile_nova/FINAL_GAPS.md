@@ -854,3 +854,33 @@ ijro sinaladi. Bo'lmasa — DATA REQUIRED, PASS emas.
 DEKODER YO'LI ALLAQACHON ISBOTLANGAN: `Music player` qatori aynan
 o'sha `video_player` plaginidan foydalanadi va E2E #10 da haqiqiy
 226 soniyalik trekni ochib, ijro etib, to'xtatdi.
+
+### 15.5 Sessiya tugashi — ildiz 401 da EMAS edi
+
+E2E #11 da tuzatishdan KEYIN ham qator PARTIAL qoldi:
+"sessionExpired signali ishlamadi".
+
+401 ushlagichi to'g'ri ishlardi. Muammo boshqa joyda edi:
+**`/api/auth/me` eskirgan token uchun 401 QAYTARMAYDI.**
+
+    const user = await getCurrentUser(request, env);
+    if (!user) return json({ user: null, cards: [] });
+
+HTTP 200, tanasida esa `user: null`. Ya'ni sessiyani tekshiradigan
+ASOSIY yo'l uchun 401 hech qachon kelmaydi va faqat holat kodiga
+tayangan har qanday mexanizm bu holatni ko'rmaydi.
+
+MENING XATOM: birinchi tuzatishda men sababni "signalni hech kim
+tinglamaydi" deb aniqladim — bu TO'G'RI edi, lekin YETARLI emas.
+Ikkinchi sabab — signalning o'zi bu yo'lda umuman CHIQMASLIGI —
+faqat E2E qayta ishga tushgach ko'rindi. Statik o'qish bilan buni
+topmagan bo'lardim: server kodi bilan ilova kodini YONMA-YON
+qo'yish kerak edi.
+
+Endi `AuthRepository.me()` bo'sh foydalanuvchini ko'rganda
+`notifySessionExpired()` chaqiradi — oqim 401 bilan bir xil:
+token tozalanadi, signal beriladi, router kirish ekraniga
+ko'chiradi.
+
+TOKENSIZ holatda signal BERILMAYDI: kirmagan odam uchun
+`user: null` normal javob, sessiya tugashi emas.
