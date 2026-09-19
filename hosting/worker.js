@@ -9237,7 +9237,13 @@ async function coreApi(request, env, url) {
   await ensureCoreSchema(env);
 
   if (url.pathname === '/api/conversations/unread-count' || url.pathname.startsWith('/api/gift-offers')
-    || url.pathname === '/api/auctions/won/pending' || url.pathname === '/api/referrals') {
+    || url.pathname === '/api/auctions/won/pending' || url.pathname === '/api/referrals'
+    // NFC qurilmalari ham shu yerda: `userAccountApi` ichida yo'l BOR
+    // edi, lekin DISPATCHER uni o'sha funksiyaga umuman yubormasdi.
+    // Natijada so'rov eski proksiga tushib, 404 qaytarardi — kod
+    // yozilgan, lekin YETIB BO'LMAYDIGAN holatda edi.
+    || url.pathname === '/api/my/nfc-devices'
+    || url.pathname.startsWith('/api/my/nfc-devices/')) {
     const res = await userAccountApi(request, env, url);
     if (res) return res;
   }
