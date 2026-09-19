@@ -21,6 +21,7 @@ import '../business/business_screens.dart' show formatMoney;
 import '../profile/profile_repository.dart';
 import '../../data/repositories/shop_repository.dart';
 import 'settings_screen.dart';
+import '../social/moderation.dart';
 
 // ------------------------------------------------------------------ mavzu
 
@@ -468,6 +469,26 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
       showBack: true,
       body: NovaScroll(
         children: [
+          // Bloklanganlar — backend'da bu ro'yxat bor edi, lekin
+          // ilovada unga kirish yo'li yo'q edi.
+          FloatingSurface(
+            solid: true,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const BlockedScreen()),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.block_rounded, size: 19, color: t.text3),
+                const SizedBox(width: Gap.md),
+                Expanded(
+                  child: Text(l.blockedList,
+                      style: Theme.of(context).textTheme.titleSmall),
+                ),
+                Icon(Icons.chevron_right_rounded, size: 19, color: t.text3),
+              ],
+            ),
+          ),
+          const SizedBox(height: Gap.md),
           FloatingSurface(
             solid: true,
             padding: const EdgeInsets.symmetric(vertical: Gap.xs),

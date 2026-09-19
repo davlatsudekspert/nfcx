@@ -23,6 +23,7 @@ import '../home/widgets/avatar.dart';
 import '../home/widgets/identity_card.dart';
 import '../home/widgets/mode_switch.dart';
 import '../nfc/qr_sheet.dart';
+import '../social/moderation.dart';
 import 'profile_repository.dart';
 
 final profilePostsProvider =
@@ -60,7 +61,15 @@ class ProfileScreen extends ConsumerWidget {
     return NovaScaffold(
       showBack: code != null,
       actions: code != null
-          ? null
+          ? [
+              // O'ZGANING profili — shikoyat va bloklash.
+              NovaIconButton(
+                icon: Icons.more_horiz_rounded,
+                tooltip: l.reportTitle,
+                onPressed: () => _showProfileActions(context, ref, code!),
+              ),
+              const SizedBox(width: Gap.sm),
+            ]
           : [
               NovaIconButton(
                 icon: Icons.settings_outlined,
@@ -153,6 +162,69 @@ class ProfileScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// O'zga profil ustidagi amallar: shikoyat va bloklash.
+void _showProfileActions(BuildContext context, WidgetRef ref, String code) {
+  final l = L.of(context);
+  showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (sheet) => Padding(
+      padding: EdgeInsets.only(
+        left: Gap.lg,
+        right: Gap.lg,
+        bottom: MediaQuery.viewPaddingOf(sheet).bottom + Gap.lg,
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: sheet.tokens.surfaceSolid,
+          borderRadius: R.soft,
+          border: Border.all(color: sheet.tokens.border2),
+        ),
+        padding: const EdgeInsets.all(Gap.lg),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.flag_outlined,
+                  color: sheet.tokens.warn, size: 20),
+              title: Text(l.reportTitle,
+                  style: Theme.of(sheet).textTheme.bodyLarge),
+              onTap: () {
+                Navigator.of(sheet).pop();
+                showReportSheet(
+                  context,
+                  target: ReportTarget.record,
+                  targetId: code,
+                  ownerCode: code,
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.block_rounded,
+                  color: sheet.tokens.error, size: 20),
+              title: Text(l.blockUser,
+                  style: Theme.of(sheet).textTheme.bodyLarge),
+              onTap: () async {
+                Navigator.of(sheet).pop();
+                final res = await ref
+                    .read(moderationRepositoryProvider)
+                    .block(BlockKind.record, code);
+                if (!context.mounted) return;
+                res.when(
+                  ok: (_) => ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(l.blockUser))),
+                  err: (e) => ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(describeError(l, e)))),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 /// Kuzatish holati — optimistik.

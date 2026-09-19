@@ -23,6 +23,7 @@ import '../home/widgets/avatar.dart';
 import '../home/widgets/identity_card.dart';
 import '../profile/profile_repository.dart';
 import 'content_rules.dart';
+import 'moderation.dart';
 
 /// Post tafsiloti uchun so'rov: yozuv kodi + post id.
 typedef PostRef = ({String code, int id});
@@ -118,6 +119,21 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                       tooltip: l.actionDelete,
                       size: 38,
                       onPressed: () => _confirmDelete(p),
+                    )
+                  else
+                    // O'ZGANING posti — shikoyat qilish mumkin.
+                    // Backend'da bu yo'l bor edi, ilovada kirish
+                    // nuqtasi yo'q edi.
+                    NovaIconButton(
+                      icon: Icons.flag_outlined,
+                      tooltip: l.reportTitle,
+                      size: 38,
+                      onPressed: () => showReportSheet(
+                        context,
+                        target: ReportTarget.post,
+                        targetId: '${p.id}',
+                        ownerCode: p.code,
+                      ),
                     ),
                 ],
               ),
