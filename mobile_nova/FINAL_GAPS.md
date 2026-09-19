@@ -708,3 +708,53 @@ amal ulanmay qolsa, sinov buni ko'rsatadi.
 
 Ayrim sinov: Reels ovoz tugmasi `setVolume` ni CHAQIRISHI kerak —
 tugma qo'shilgani yetarli emas.
+
+---
+
+## 13. VIDEO umuman chizilmasdi
+
+`Post.isVideo` ham, `StoryItem.isVideo` ham model tomonidan TO'G'RI
+o'qilardi. Ekranlarning BIRORTASI ularni ishlatmasdi.
+
+Story Viewer ham, post tafsiloti ham hamma narsani
+`CachedNetworkImage` bilan chizardi. Ya'ni:
+
+* video istorya qo'yish MUMKIN edi (kompozitor `videoUrl` ni qabul
+  qiladi, server saqlaydi) — ko'rgan odam bo'sh quti ko'rardi;
+* video post ochilganda siniq rasm belgisi chiqardi.
+
+Hech qanday xato chiqmasdi: `errorWidget` jimgina o'rnini egallardi.
+Shuning uchun bu "ishlamayapti" emas, "shunaqa ekan" bo'lib
+ko'rinardi.
+
+`lib/features/social/inline_video.dart` — bitta chizuvchi, ikkala
+ekran uchun:
+
+* kontroller SHU vidjetga bog'langan (`ValueKey` bilan eski holat
+  tashlanadi) — aks holda story almashganda eski dekoder xotirani
+  ushlab qolardi;
+* ovoz egaligi Reels bilan bir xil: video ovoz chiqarsa, profil
+  musiqasi to'xtaydi;
+* istoryada progress video UZUNLIGIGA moslanadi (60 s bilan
+  cheklab) — aks holda 5 soniyada keyingisiga o'tib ketardi;
+* postda bosish ijro/pauza, avtomatik ijro YO'Q.
+
+## 14. Kashfiyotda rasm umuman yo'q edi
+
+Post kartasi faqat muallif, matn va video belgisidan iborat edi —
+rasm chizadigan vidjet UMUMAN yo'q edi.
+
+Ya'ni §"postlarda rasm yo'q" muammosi `/api/news` → `/api/feed`
+almashtirilgandan keyin ham QOLGAN edi: manba to'g'rilandi, lekin
+karta o'sha manbadagi rasmni baribir ko'rsatmasdi.
+
+Endi media bor bo'lsa muqova chiziladi. VIDEODA ro'yxat ichida
+pleyer OCHILMAYDI — o'nlab video bir vaqtda dekoder ushlab, ilovani
+yiqitardi; o'rniga belgi turadi va bosilganda to'liq ekran
+ochiladi.
+
+## Qo'riqcha
+
+`no_op_audit_test.dart`: Story Viewer va post tafsiloti IKKALASI
+ham `isVideo` ni tekshirishi va `InlineVideo` ni chaqirishi shart;
+`inline_video.dart` esa haqiqiy `VideoPlayer` chizishi shart.

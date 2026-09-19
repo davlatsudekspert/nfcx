@@ -182,6 +182,34 @@ void main() {
     }
   });
 
+  test('VIDEO istorya video sifatida chiziladi', () {
+    // `StoryItem.isVideo` model tomonidan TO'G'RI o'qilardi, lekin
+    // Story Viewer uni UMUMAN ishlatmasdi: hamma narsa
+    // `CachedNetworkImage` bilan chizilardi. Video istorya qo'yish
+    // mumkin edi, ko'rgan odam esa faqat bo'sh quti ko'rardi.
+    // Chizuvchining O'ZI `inline_video.dart` da — istorya ham,
+    // post ham o'shani ishlatadi. Shuning uchun ekrandan
+    // TEKSHIRUV (`isVideo`) va CHAQIRUV (`InlineVideo`) talab
+    // qilinadi, `VideoPlayer(` emas.
+    for (final f in [
+      'lib/features/social/story_viewer.dart',
+      'lib/features/social/post_screens.dart',
+    ]) {
+      final src = File(f).readAsStringSync();
+      expect(src.contains('isVideo'), isTrue,
+          reason: '$f: `isVideo` tekshirilmaydi — video media rasm '
+              'sifatida chizilmoqda va siniq belgi chiqadi');
+      expect(src.contains('InlineVideo('), isTrue,
+          reason: '$f: video chizuvchi chaqirilmaydi');
+    }
+    expect(
+        File('lib/features/social/inline_video.dart')
+            .readAsStringSync()
+            .contains('VideoPlayer('),
+        isTrue,
+        reason: 'InlineVideo haqiqiy video chizmayapti');
+  });
+
   test('Reels ovozni boshqarish HAQIQATAN o\'zgartiradi', () {
     // Ilgari Reels'da ovoz boshqaruvi umuman yo'q edi: video to'liq
     // ovoz bilan boshlanardi. Tugma qo'shilgani yetarli emas —

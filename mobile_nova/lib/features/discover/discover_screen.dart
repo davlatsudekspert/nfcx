@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -382,6 +383,38 @@ class _ResultTile extends StatelessWidget {
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodyMedium),
+          ],
+          // MEDIA. Ilgari bu karta faqat muallif, matn va video
+          // belgisidan iborat edi — rasm UMUMAN chizilmasdi.
+          // Ya'ni `/api/feed` ga o'tilgach ham Kashfiyotda post
+          // rasmlari ko'rinmasdi.
+          //
+          // Videoda bu yerda pleyer OCHILMAYDI: ro'yxatda o'nlab
+          // video bir vaqtda dekoder ushlab, ilovani yiqitardi.
+          // Muqova rasmi bo'lsa o'sha, bo'lmasa belgi qo'yiladi va
+          // bosilganda to'liq ekran ochiladi.
+          if (e.mediaUrls.isNotEmpty) ...[
+            const SizedBox(height: Gap.md),
+            ClipRRect(
+              borderRadius: R.gentle,
+              child: AspectRatio(
+                aspectRatio: 16 / 10,
+                child: e.isVideo
+                    ? ColoredBox(
+                        color: t.surface2,
+                        child: Icon(Icons.play_circle_fill_rounded,
+                            size: 40, color: t.text3),
+                      )
+                    : CachedNetworkImage(
+                        imageUrl: e.mediaUrls.first,
+                        fit: BoxFit.cover,
+                        placeholder: (_, __) =>
+                            ColoredBox(color: t.surface2),
+                        errorWidget: (_, __, ___) =>
+                            ColoredBox(color: t.surface2),
+                      ),
+              ),
+            ),
           ],
         ],
       ),

@@ -25,6 +25,7 @@ import '../home/widgets/avatar.dart';
 import '../home/widgets/identity_card.dart';
 import '../profile/profile_repository.dart';
 import 'comments.dart';
+import 'inline_video.dart';
 import 'content_rules.dart';
 import 'moderation.dart';
 
@@ -157,16 +158,29 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                   borderRadius: R.gentle,
                   child: AspectRatio(
                     aspectRatio: 1,
-                    child: CachedNetworkImage(
-                      imageUrl: p.mediaUrls.first,
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => ColoredBox(color: t.surface2),
-                      errorWidget: (_, __, ___) => ColoredBox(
-                        color: t.surface2,
-                        child: Icon(Icons.broken_image_outlined,
-                            size: 30, color: t.text3),
-                      ),
-                    ),
+                    // VIDEO POST. Ilgari bu yerda HAR DOIM
+                    // `CachedNetworkImage` turardi va `p.isVideo`
+                    // umuman o'qilmasdi — video post ochilganda
+                    // siniq rasm belgisi chiqardi.
+                    child: p.isVideo
+                        ? InlineVideo(
+                            key: ValueKey(p.id),
+                            url: p.mediaUrls.first,
+                            autoPlay: false,
+                            looping: true,
+                            tapToToggle: true,
+                          )
+                        : CachedNetworkImage(
+                            imageUrl: p.mediaUrls.first,
+                            fit: BoxFit.cover,
+                            placeholder: (_, __) =>
+                                ColoredBox(color: t.surface2),
+                            errorWidget: (_, __, ___) => ColoredBox(
+                              color: t.surface2,
+                              child: Icon(Icons.broken_image_outlined,
+                                  size: 30, color: t.text3),
+                            ),
+                          ),
                   ),
                 ),
               ],

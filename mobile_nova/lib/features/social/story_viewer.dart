@@ -12,6 +12,7 @@ import '../../design/widgets/states.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
 import '../auth/session.dart';
+import 'inline_video.dart';
 import '../home/widgets/avatar.dart';
 
 final storiesOfProvider =
@@ -118,8 +119,27 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
 
   void _start() {
     _progress
+      ..duration = _perStory
       ..reset()
       ..forward();
+  }
+
+  /// Video uzunligi ma'lum bo'lgach, progress shunga moslanadi.
+  ///
+  /// Aks holda 5 soniyada keyingisiga o'tib ketardi va uzunroq
+  /// video hech qachon oxirigacha ko'rilmasdi.
+  void _useVideoDuration(Duration d) {
+    if (!mounted || d <= Duration.zero) return;
+    // Juda uzun videoni ham cheksiz kutmaymiz.
+    final capped = d > const Duration(seconds: 60)
+        ? const Duration(seconds: 60)
+        : d;
+    setState(() {
+      _progress
+        ..duration = capped
+        ..reset()
+        ..forward();
+    });
   }
 
   /// "Ko'rildi" belgisini SERVERGA yuborish.
@@ -209,6 +229,19 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                 if (s.mediaUrl.isEmpty)
                   DecoratedBox(
                     decoration: BoxDecoration(gradient: t.accentGradient),
+                  )
+                else if (s.isVideo)
+                  // VIDEO ISTORYA. `isVideo` model tomonidan
+                  // TO'G'RI o'qilardi, lekin bu ekran uni UMUMAN
+                  // ishlatmasdi: hamma narsa `CachedNetworkImage`
+                  // bilan chizilardi. Ya'ni video istorya qo'yish
+                  // mumkin edi (kompozitor uni qabul qiladi), lekin
+                  // ko'rgan odam faqat bo'sh quti ko'rardi —
+                  // `errorWidget`.
+                  InlineVideo(
+                    key: ValueKey(s.id),
+                    url: s.mediaUrl,
+                    onDuration: _useVideoDuration,
                   )
                 else
                   CachedNetworkImage(
@@ -330,3 +363,4 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
     return (s.length >= 2 ? s.substring(0, 2) : s).toUpperCase();
   }
 }
+
