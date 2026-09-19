@@ -107,9 +107,11 @@ jobs:
             echo "Settings -> Secrets and variables -> Actions da qo'shing."
             exit 1
           fi
-          # Qiymat EMAS, faqat uzunlik — shu ham parol juda qisqa
-          # bo'lsa ogohlantirish uchun kerak.
-          echo "Sinov hisobi sozlangan (parol uzunligi: ${#PASSWORD})."
+          # Qiymat ham, uzunlik ham chop etilMAYDI: uzunlik ham
+          # parol haqidagi ma'lumot. Qisqa parol haqida ogohlantirish
+          # Dart tomonda, `credWarning` orqali chiqadi va u qiymatni
+          # ko'rsatmaydi.
+          echo "Sinov hisobi sozlangan."
 
       # Emulyator KVM'siz sudralib yuradi va ko'pincha muddatdan oshadi.
       - name: KVM ni yoqish
@@ -145,9 +147,15 @@ jobs:
 
       # ── ASOSIY BOSQICH ────────────────────────────────────────
       #
-      # `continue-on-error` ataylab: FAIL qatori bo'lsa ham hisobot
-      # CHOP ETILISHI kerak. Ishning qizil/yashilligi oxirgi qadamda
-      # yozib olingan chiqish kodiga qarab hal qilinadi.
+      # `script:` `bash` ORQALI chaqiriladi. Action bu blokni
+      # `/usr/bin/sh` (dash) bilan bajaradi, shuning uchun bu yerda
+      # bitta qator turadi va butun mantiq `tool/e2e_run.sh` ichida.
+      # Birinchi urinish aynan shu sababdan yiqilgan edi:
+      # `set: Illegal option -o pipefail`.
+      #
+      # `continue-on-error` ataylab: FAIL bo'lsa ham hisobot CHOP
+      # ETILISHI kerak. Ishning qizil/yashilligi keyingi bosqichlarda,
+      # HAQIQIY loglarga qarab hal qilinadi.
       - name: E2E — haqiqiy hisob
         id: e2e
         continue-on-error: true
@@ -166,29 +174,37 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
           working-directory: mobile_nova
-          script: |
-            set -o pipefail
-            adb devices
+          script: bash ../tool/e2e_run.sh
 
-            DEFINES="--dart-define=NOVA_TEST_LOGIN=$NOVA_TEST_LOGIN \
-                     --dart-define=NOVA_TEST_PASSWORD=$NOVA_TEST_PASSWORD \
-                     --dart-define=NOVA_TEST_LOGIN_2=$NOVA_TEST_LOGIN_2 \
-                     --dart-define=NOVA_TEST_PASSWORD_2=$NOVA_TEST_PASSWORD_2"
-
-            rc=0
-
-            # Backend to'plami — kontrakt va saqlanish.
-            # shellcheck disable=SC2086
-            flutter test integration_test/e2e_backend_test.dart \
-              -d emulator-5554 $DEFINES 2>&1 | tee e2e-backend.log || rc=1
-
-            # UI to'plami — haqiqiy ekranlar.
-            # shellcheck disable=SC2086
-            flutter test integration_test/e2e_ui_test.dart \
-              -d emulator-5554 $DEFINES 2>&1 | tee e2e-ui.log || rc=1
-
-            echo "$rc" > e2e-exit-code
-            exit 0
+      # ── SINOV HAQIQATAN ISHLADIMI ─────────────────────────────
+      #
+      # Bu bosqich ataylab hisobotdan OLDIN turadi. Birinchi urinishda
+      # emulyator ko'tarilgan, lekin birorta `flutter test` ishga
+      # tushmagan edi — va buni faqat log fayllari yo'qligidan bilish
+      # mumkin edi. Endi bu holat jimgina o'tib ketmaydi.
+      - name: Sinov haqiqatan ishladimi
+        if: always()
+        run: |
+          missing=0
+          for f in e2e-backend.log e2e-ui.log; do
+            if [ ! -s "$f" ]; then
+              echo "::error::$f yaratilmadi yoki bo'sh — to'plam ishga tushmagan."
+              missing=1
+            else
+              echo "$f: $(wc -l < "$f") qator"
+            fi
+          done
+          if [ "$missing" = "1" ]; then
+            echo "SINOV UMUMAN ISHLAMADI — hisobot ma'nosiz." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          # Matritsa bloki bo'lmasa, sinov hisobot yozishdan oldin
+          # to'xtagan degani.
+          if ! grep -q "<<<E2E_MATRIX_JSON>>>" e2e-backend.log; then
+            echo "::error::Backend logida matritsa bloki yo'q."
+            exit 1
+          fi
+          echo "Ikkala to'plam ham ishladi va matritsa yozildi."
 
       # ── HISOBOT ───────────────────────────────────────────────
       - name: PASS/FAIL matritsasi
