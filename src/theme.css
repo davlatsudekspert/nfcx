@@ -1610,6 +1610,12 @@ body.pricing-bg footer{background:var(--color-page-bg);}
 .mt-ph.is-slow{background:color-mix(in srgb, var(--warning, #c98a2e) 14%, var(--surface-raised))}
 .mt-ph.is-slow b{border-color:var(--warning, #c98a2e);color:var(--warning, #c98a2e)}
 .mt-ph.is-slow i{color:var(--text-secondary)}
+/* VIDEO KARTASI — bu XATO EMAS, oddiy holat.
+   Telefon bir vaqtda hamma videoning kadrini bera olmaydi; kadr
+   kelmagan video ham TOZA, ataylab qo'yilgandek ko'rinishi kerak. */
+.mt-ph.is-video{background:linear-gradient(155deg,var(--surface-elevated),var(--surface-raised))}
+.mt-ph.is-video b{width:34px;height:34px;border-radius:50%;font-size:15px;padding-left:2px;border-color:color-mix(in srgb, var(--accent-primary) 45%, transparent);color:var(--accent-primary);background:color-mix(in srgb, var(--accent-primary) 12%, var(--surface))}
+.mt-ph.is-video i{color:var(--text-secondary);letter-spacing:.1em}
 /* Post kartasidagi media uchun barqaror o'lcham: media yiqilsa ham
    karta yig'ilib qolmasin (aks holda qatlamning to'ldiradigan joyi
    bo'lmasdi). */

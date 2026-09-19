@@ -24,6 +24,7 @@ import { fileURLToPath } from 'node:url';
 import { makeChecker } from './lib/d1-harness.mjs';
 import { stripComments } from './lib/strip-comments.mjs';
 import { mediaKind, mediaUrl, videoPosterSrc } from '../src/lib/media.js';
+import { acquireVideoSlot, release, resetVideoQueue, queueState, MAX_CONCURRENT_VIDEO } from '../src/lib/media-queue.js';
 
 const { check, checkTrue, done } = makeChecker();
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..');
@@ -179,6 +180,68 @@ const css = read('src/theme.css');
   const users = files.filter((f) => !f.endsWith('MediaThumb.jsx')
     && /from '.*MediaThumb\.jsx'/.test(readFileSync(f, 'utf8')));
   checkTrue(`10) MediaThumb ishlatilyapti (${users.length} joy)`, users.length >= 2);
+}
+
+// ── 11) VIDEO NAVBATI ────────────────────────────────────────────────
+// Productionda to'qqizta video story bor edi: ikkitasi kadr berdi,
+// yettitasi JIM qoldi — na `loadeddata`, na `error`. Telefon brauzeri
+// bir vaqtda shuncha videoni o'qiy olmaydi va ortig'i haqida hech
+// qanday hodisa bermaydi. Shuning uchun videolar navbat bilan
+// o'qiladi.
+{
+  resetVideoQueue();
+  const started = [];
+  for (let i = 0; i < 9; i += 1) acquireVideoSlot(() => started.push(i));
+
+  check('11) bir vaqtda faqat chegara qadar boshlanadi', started.length, MAX_CONCURRENT_VIDEO);
+  check('11) qolgani navbatda', queueState().waiting, 9 - MAX_CONCURRENT_VIDEO);
+
+  // Biri tugagach keyingisi boshlanadi.
+  release();
+  check('11) bo‘shagach keyingisi boshlanadi', started.length, MAX_CONCURRENT_VIDEO + 1);
+
+  // Hammasi navbatdan o'tadi — hech biri abadiy qolib ketmaydi.
+  for (let i = 0; i < 9; i += 1) release();
+  check('11) hammasi navbatdan o‘tdi', started.length, 9);
+  check('11) navbat bo‘shadi', queueState().waiting, 0);
+  checkTrue('11) faol son manfiy bo‘lmaydi', queueState().active >= 0);
+}
+
+// ── 12) NAVBAT QOTIB QOLMAYDI ────────────────────────────────────────
+// Komponent yo'q bo'lsa (tab almashtirildi) joyi BO'SHASHI shart,
+// aks holda qolgan videolar abadiy kutardi.
+{
+  resetVideoQueue();
+  const started = [];
+  const cancels = [];
+  for (let i = 0; i < 5; i += 1) cancels.push(acquireVideoSlot(() => started.push(i)));
+  const before = started.length;
+  // Navbatdagi (hali boshlanmagan) ishni bekor qilamiz.
+  cancels[4]();
+  release();
+  checkTrue('12) bekor qilingan ish joyni to‘smaydi', queueState().active <= MAX_CONCURRENT_VIDEO);
+  checkTrue('12) navbat harakatda', started.length >= before);
+  resetVideoQueue();
+  check('12) tozalash ishlaydi', queueState().waiting, 0);
+}
+
+// ── 13) VIDEO KUTISHI XATO EMAS ──────────────────────────────────────
+// Eng muhim tuzatish. Ilgari video kadr bermasa ekranda sariq
+// "Media javob bermadi" chiqardi — go'yo tarmoq buzuq. Aslida bu
+// telefonda ODATIY hol.
+{
+  checkTrue('13) video uchun alohida kutish chegarasi bor', /VIDEO_TIMEOUT_MS/.test(thumb));
+  checkTrue('13) video vaqti tugasa XATO holatiga o‘tmaydi',
+    /if \(isVideo\) \{[\s\S]{0,300}?return;/.test(thumb));
+  checkTrue('13) video sababi alohida yoziladi', thumb.includes("'video_no_preview'"));
+  // "slow" (sariq) holatiga faqat RASM tushadi.
+  checkTrue('13) sariq holat faqat rasmga tegishli', /setState\('slow'\)/.test(thumb)
+    && !/isVideo[\s\S]{0,120}setState\('slow'\)/.test(thumb));
+  checkTrue('13) video kartasi alohida ko‘rinishga ega', /is-video/.test(thumb));
+  checkTrue('13) .mt-ph.is-video uslubi bor', css.includes('.mt-ph.is-video{'));
+  // Navbat kelmaguncha `src` umuman qo'yilmaydi — aks holda brauzer
+  // baribir hammasini birdan so'rardi.
+  checkTrue('13) navbatsiz video yuklanmaydi', /armed && \(/.test(thumb));
 }
 
 done('Global media qo‘riqchisi');
