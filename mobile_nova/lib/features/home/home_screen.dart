@@ -271,6 +271,15 @@ class _NoIdCard extends StatelessWidget {
   }
 }
 
+/// Tezkor amallar — Concept B'dagi `chip-scroll` kapsulalari.
+///
+/// Avval bu yerda 104x98 li to'rtburchak plitkalar qatori turardi:
+/// rangli doira + ikki qatorli yozuv. U "boshqaruv paneli" tilida
+/// gapirardi, holbuki Concept B'da Home'ning butun pastki qismi
+/// KAPSULA tilida — orbdan keyin hech qanday karta kelmaydi.
+///
+/// Endi umumiy `Capsule` widgetidan foydalaniladi: bir xil balandlik,
+/// bir xil radius va bir xil bosilish javobi butun ilovada.
 class _QuickActions extends StatelessWidget {
   const _QuickActions({required this.mode});
   final AppMode mode;
@@ -278,77 +287,42 @@ class _QuickActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = L.of(context);
-    final t = context.tokens;
 
     // Biznes rejimida tezkor amallar BOSHQACHA — bu rejim almashuvi
     // shunchaki rang o'zgarishi emasligining amaliy isboti.
     final actions = mode == AppMode.business
         ? [
-            (Icons.dashboard_rounded, l.bizDashboard, Routes.businessDashboard, t.accentB),
-            (Icons.inventory_2_rounded, l.bizCatalog, Routes.businessCatalog, t.accentC),
-            (Icons.insights_rounded, l.bizAnalytics, Routes.businessAnalytics, t.accentD),
-            (Icons.storefront_rounded, l.bizStorefront, Routes.business, t.accent1),
+            (Icons.dashboard_rounded, l.bizDashboard, Routes.businessDashboard),
+            (Icons.inventory_2_rounded, l.bizCatalog, Routes.businessCatalog),
+            (Icons.insights_rounded, l.bizAnalytics, Routes.businessAnalytics),
+            (Icons.storefront_rounded, l.bizStorefront, Routes.business),
           ]
         : [
-            (Icons.nfc_rounded, l.nfcScanShort, Routes.nfcScan, t.accent1),
-            (Icons.badge_rounded, l.nfcMyIds, Routes.nfcIds, t.accentB),
-            (Icons.add_circle_outline_rounded, l.postCreate, Routes.postCreate, t.accentC),
-            (Icons.storefront_rounded, l.homeShop, Routes.shop, t.accentD),
+            (Icons.nfc_rounded, l.nfcScanShort, Routes.nfcScan),
+            (Icons.badge_rounded, l.nfcMyIds, Routes.nfcIds),
+            (Icons.add_circle_outline_rounded, l.postCreate, Routes.postCreate),
+            (Icons.storefront_rounded, l.homeShop, Routes.shop),
           ];
 
-    return SizedBox(
-      height: 98,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-        itemCount: actions.length,
-        separatorBuilder: (_, __) => const SizedBox(width: Gap.md),
-        itemBuilder: (context, i) {
-          final (icon, label, route, tone) = actions[i];
-          return PressableScale(
-            onTap: () => context.push(route),
-            child: Container(
-              // 104px — uch tilning eng uzun yorlig'i ("Сканировать")
-              // ikki qatorga kesilmasdan sig'adigan kenglik.
-              width: 104,
-              padding: const EdgeInsets.all(Gap.md),
-              decoration: BoxDecoration(
-                color: t.surface,
-                borderRadius: R.gentle,
-                border: Border.all(color: t.border2),
-                boxShadow: t.shadowTiny,
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: tone.withValues(alpha: .22),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(icon, size: 19, color: t.isDark ? tone : t.text1),
-                  ),
-                  const SizedBox(height: Gap.sm),
-                  Text(
-                    label,
-                    maxLines: 2,
-                    textAlign: TextAlign.center,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontFamily: 'Manrope',
-                      fontSize: 10,
-                      height: 1.15,
-                      fontWeight: FontWeight.w700,
-                      color: t.text2,
-                    ),
-                  ),
-                ],
-              ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
+      // Gorizontal ro'yxat EMAS, `Wrap`: rus tilidagi uzun yorliqlar
+      // ("Сканировать", "Аналитика") ekranga sig'masa, qator o'zi
+      // ikkiga bo'linadi va qatori bo'ylab MARKAZDA qoladi — Concept
+      // B'dagi `justify-content:center` shu. Hech narsa gorizontal
+      // aylantirishga yashirinmaydi.
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: Gap.sm,
+        runSpacing: Gap.sm,
+        children: [
+          for (final (icon, label, route) in actions)
+            Capsule(
+              icon: icon,
+              label: label,
+              onTap: () => context.push(route),
             ),
-          );
-        },
+        ],
       ),
     );
   }
