@@ -254,7 +254,13 @@ async function main() {
   rule('═');
 
   // Snapshot — YOZISHDAN OLDIN.
-  const ts = new Date().toISOString().replace(/[:T]/g, '').slice(0, 15).replace(/(\d{8})(\d{6})/, '$1-$2');
+  // Fayl nomi: YYYYMMDD-HHMMSS. Soniyagacha aniq bo'lishi SHART —
+  // aks holda ketma-ket ikki ishga tushirish bitta faylga yozilib,
+  // avvalgi snapshot (ya'ni rollback manbai) yo'qolib ketardi.
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const ts = `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}`
+    + `-${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}`;
   const snapPath = `backups/nfcstore-demo-before-${ts}.json`;
   const snapshot = {
     createdAt: new Date().toISOString(),
