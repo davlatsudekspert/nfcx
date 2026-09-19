@@ -389,6 +389,56 @@ resetStore();
   checkTrue('24) xato matniga so‘rov tanasi qo‘shilmaydi', !/err\.message.*body|JSON\.stringify\(body\)/.test(api.split('throw err')[0].split('const err')[1] || ''));
 }
 
+// ═══ 3) HISOB XAVFSIZLIGI — QAT'IY RO'YXAT ═══════════════════════════
+//
+// Login/parol FAQAT tizimga kirish uchun. Skript hech qachon parolni
+// almashtirmasligi, emailni o'zgartirmasligi, 2FA yoki tiklash
+// sozlamalariga tegmasligi kerak.
+//
+// Bu shunchaki va'da emas: API mijozida YOPIQ ro'yxat bor va quyidagi
+// test uni qo'riqlaydi. Kelajakda kimdir yangi chaqiruv qo'shsa va u
+// ro'yxatda bo'lmasa — test yiqiladi.
+{
+  const api = await readFile(new URL('./lib/nfcstore-api.js', import.meta.url), 'utf8');
+
+  // Mijoz murojaat qila oladigan yo'llar (parametrlar umumlashtirilgan).
+  const found = [...api.matchAll(/['`](\/api\/[^'`]*)['`]/g)]
+    .map((m) => m[1].replace(/\$\{[^}]*\}/g, ':p'))
+    .filter((v, i, a) => a.indexOf(v) === i)
+    .sort();
+
+  const ALLOWED = [
+    '/api/auth/login',            // faqat kirish
+    '/api/auth/logout',           // sessiyani yopish
+    '/api/auth/me',               // o'qish
+    '/api/companies/:p',          // biznes maydonlari
+    '/api/companies/:p/catalog',  // demo katalog qo'shish
+    '/api/companies/:p/catalog/:p', // rollback: faqat SKRIPT qo'shganini o'chirish
+    '/api/companies/mine',        // o'qish
+    '/api/records/:p',            // profil o'qish/yozish
+  ].sort();
+
+  check('25) mijozdagi endpointlar AYNAN ruxsat etilganlar',
+    found.join('\n'), ALLOWED.join('\n'));
+
+  // Hisob xavfsizligiga tegadigan hech narsa bo'lmasin.
+  const FORBIDDEN = [
+    'change-password', 'request-password-code', 'reset-password',
+    'change-email', '2fa', 'totp', 'recovery', 'recover',
+    'delete-account', 'deactivate',
+  ];
+  const hit = FORBIDDEN.filter((f) => api.toLowerCase().includes(f));
+  check('25) parol/email/2FA/tiklash endpointi YO‘Q', hit.join(',') || '(yo‘q)', '(yo‘q)');
+
+  // NFC ID o'chirish serverda BOR, lekin mijozda BO'LMASLIGI shart.
+  checkTrue('25) NFC ID o‘chirish metodi yo‘q',
+    !/delete\s*\(\s*['`]\/api\/records/i.test(api) && !/deleteRecord/.test(api));
+
+  // Parol faqat login chaqiruvida ishlatiladi.
+  const passUses = (api.match(/password/g) || []).length;
+  checkTrue('25) parol faqat login(email, password) da', passUses <= 3, `${passUses} marta uchradi`);
+}
+
 await rm('backups', { recursive: true, force: true });
 await mkdir('backups', { recursive: true }).catch(() => {});
 await rm('backups', { recursive: true, force: true });

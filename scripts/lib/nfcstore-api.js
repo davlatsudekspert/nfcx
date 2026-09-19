@@ -9,6 +9,16 @@
 // ishlatiladi. U hech qayerda saqlanmaydi, log qilinmaydi va xato
 // matniga tushmaydi: quyidagi `req()` xato chiqarganda so'rov TANASINI
 // umuman ko'rsatmaydi, faqat yo'l va holat kodini yozadi.
+//
+// HISOB XAVFSIZLIGI — YOPIQ RO'YXAT. Login/parol FAQAT tizimga kirish
+// uchun. Bu mijozda parolni almashtirish, emailni o'zgartirish, 2FA yoki
+// hisobni tiklash/o'chirish uchun METOD YO'Q va bo'lmasligi ham kerak —
+// serverda bunday endpointlar mavjud bo'lsa ham (masalan
+// `/api/settings/change-password`, `DELETE /api/records/:code`).
+//
+// Quyidagi ro'yxat `scripts/test-demo-fill.mjs` dagi 25-band bilan
+// QO'RIQLANADI: yangi chaqiruv qo'shilsa va u ruxsat etilganlar
+// ro'yxatida bo'lmasa, test yiqiladi.
 // ═══════════════════════════════════════════════════════════════════════
 
 export class NfcstoreApi {
