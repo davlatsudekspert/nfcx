@@ -865,4 +865,10 @@ class LEn extends L {
 
   @override
   String get supportSent => 'Your message was sent';
+
+  @override
+  String get musicTitle => 'Music';
+
+  @override
+  String get musicFailed => 'Could not open the track';
 }

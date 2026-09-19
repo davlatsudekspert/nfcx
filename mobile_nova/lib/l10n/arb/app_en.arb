@@ -330,5 +330,7 @@
   "langRu": "Russian",
   "langEn": "English",
   "supportWriteUs": "Write to us",
-  "supportSent": "Your message was sent"
+  "supportSent": "Your message was sent",
+  "musicTitle": "Music",
+  "musicFailed": "Could not open the track"
 }

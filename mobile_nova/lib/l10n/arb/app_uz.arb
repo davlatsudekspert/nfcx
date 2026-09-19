@@ -330,5 +330,7 @@
   "langRu": "Русский",
   "langEn": "English",
   "supportWriteUs": "Bizga yozing",
-  "supportSent": "Murojaat yuborildi"
+  "supportSent": "Murojaat yuborildi",
+  "musicTitle": "Musiqa",
+  "musicFailed": "Qo‘shiqni ochib bo‘lmadi"
 }

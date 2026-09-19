@@ -867,4 +867,10 @@ class LUz extends L {
 
   @override
   String get supportSent => 'Murojaat yuborildi';
+
+  @override
+  String get musicTitle => 'Musiqa';
+
+  @override
+  String get musicFailed => 'Qo‘shiqni ochib bo‘lmadi';
 }

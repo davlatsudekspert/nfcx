@@ -1772,6 +1772,18 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Murojaat yuborildi'**
   String get supportSent;
+
+  /// No description provided for @musicTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Musiqa'**
+  String get musicTitle;
+
+  /// No description provided for @musicFailed.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qo‘shiqni ochib bo‘lmadi'**
+  String get musicFailed;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

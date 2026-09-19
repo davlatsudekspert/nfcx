@@ -87,6 +87,7 @@ class NfcId {
     this.posts = 0,
     this.kind = NfcIdKind.personal,
     this.cardLinked = false,
+    this.musicUrls = const [],
     this.createdAt,
   });
 
@@ -107,6 +108,18 @@ class NfcId {
 
   /// Jismoniy karta ulanganmi.
   final bool cardLinked;
+
+  /// Profil musiqasi — backend'da `cards.music_url` ustuni.
+  ///
+  /// Server uni JSON massiv sifatida saqlaydi (ko'pi bilan 5 ta) va
+  /// `musicUrls` bo'lib qaytaradi; eski yozuvlarda bitta `musicUrl`
+  /// bo'lishi mumkin. Qiymat tashqi havola YOKI serverga yuklangan
+  /// `/uploads/...` fayli.
+  ///
+  /// MUHIM: backend'da qo'shiq NOMI yoki IJROCHISI uchun maydon
+  /// YO'Q — faqat manzil. Shuning uchun ilova ularni o'zidan
+  /// to'qimaydi.
+  final List<String> musicUrls;
   final DateTime? createdAt;
 
   /// Ommaviy profil manzili — QR va "ulashish" uchun.
@@ -131,8 +144,26 @@ class NfcId {
             : NfcIdKind.personal,
         cardLinked: _b(j['cardLinked'] ?? j['hasCard']) ||
             _s(j['chipToken']).isNotEmpty,
+        musicUrls: _musicUrls(j),
         createdAt: _dt(j['createdAt'] ?? j['created_at']),
       );
+}
+
+/// `musicUrls` ro'yxatini o'qish.
+///
+/// Server yangi yozuvlarda ro'yxat, eskilarida bitta `musicUrl`
+/// qaytaradi — ikkalasi ham qabul qilinadi.
+List<String> _musicUrls(Map<String, dynamic> j) {
+  final raw = j['musicUrls'];
+  if (raw is List) {
+    return raw
+        .map((e) => e is String ? e.trim() : '')
+        .where((e) => e.isNotEmpty)
+        .take(5)
+        .toList(growable: false);
+  }
+  final one = _s(j['musicUrl']);
+  return one.isEmpty ? const [] : [one];
 }
 
 enum NfcIdKind { personal, business }

@@ -15,6 +15,7 @@ import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
 import '../home/widgets/avatar.dart';
 import '../home/widgets/identity_card.dart';
+import '../profile/music_player.dart';
 
 final reelsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
   final res = await ref.watch(socialRepositoryProvider).feed();
@@ -172,6 +173,11 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
   }
 
   Future<void> _open() async {
+    // Video ovoz chiqaradi — ya'ni u audio EGASI bo'ladi. Shu
+    // paytda profil musiqasi ijro etilayotgan bo'lsa, u to'xtaydi:
+    // ikki manba bir vaqtda ovoz chiqarmaydi.
+    ref.read(audioOwnerProvider.notifier).take(this, _pauseForOther);
+
     if (_controller != null) {
       await _controller!.play();
       return;
@@ -190,6 +196,12 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
     }
   }
 
+  /// Boshqa audio egalik olganda — videoni to'xtatamiz.
+  void _pauseForOther() {
+    _controller?.pause();
+    if (mounted) setState(() {});
+  }
+
   Future<void> _close() async {
     // Kontroller YO'Q QILINADI, faqat to'xtatilmaydi: to'xtatilgan
     // video ham dekoder va bufer xotirasini ushlab turadi.
@@ -198,12 +210,14 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
     _ready = false;
     await c?.pause();
     await c?.dispose();
+    ref.read(audioOwnerProvider.notifier).release(this);
     if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
     _controller?.dispose();
+    ref.read(audioOwnerProvider.notifier).release(this);
     super.dispose();
   }
 

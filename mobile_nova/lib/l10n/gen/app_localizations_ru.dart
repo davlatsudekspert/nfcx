@@ -862,4 +862,10 @@ class LRu extends L {
 
   @override
   String get supportSent => 'Обращение отправлено';
+
+  @override
+  String get musicTitle => 'Музыка';
+
+  @override
+  String get musicFailed => 'Не удалось открыть трек';
 }

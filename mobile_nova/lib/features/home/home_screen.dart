@@ -23,6 +23,7 @@ import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
 import '../auth/session.dart';
+import '../profile/music_player.dart';
 import '../nfc/qr_sheet.dart';
 import 'widgets/avatar.dart';
 import 'widgets/identity_card.dart';
@@ -244,6 +245,7 @@ class _IdentityHero extends ConsumerWidget {
                   url: avatar,
                   orb: orb,
                   initials: user.initials,
+                  music: id.musicUrls,
                   ring: ring,
                   // Story bo'lsa surat o'zining amaliga ega bo'ladi:
                   // mavjud Story Viewer ochiladi. Story bo'lmasa
@@ -311,6 +313,7 @@ class _OrbAvatar extends StatelessWidget {
     required this.url,
     required this.orb,
     required this.initials,
+    this.music = const [],
     this.ring,
     this.onOpenStory,
   });
@@ -322,6 +325,9 @@ class _OrbAvatar extends StatelessWidget {
   /// `null` — story yo'q, halqa CHIZILMAYDI.
   final _StoryRingState? ring;
   final VoidCallback? onOpenStory;
+
+  /// Profil musiqasi. Bo'sh bo'lsa boshqaruv UMUMAN ko'rinmaydi.
+  final List<String> music;
 
   @override
   Widget build(BuildContext context) {
@@ -417,6 +423,14 @@ class _OrbAvatar extends StatelessWidget {
             left: d / 2 + off - rb,
             top: d / 2 + off - rb,
             child: _BrandSeal(size: rb * 2),
+          ),
+          // Musiqa boshqaruvi — muhrning KO'ZGU aksi: pastki chapda.
+          // Kompozitsiya shunda muvozanatda qoladi. Musiqa yo'q
+          // bo'lsa `MusicControl` bo'sh widget qaytaradi.
+          Positioned(
+            left: d / 2 - off - rb,
+            top: d / 2 + off - rb,
+            child: MusicControl(urls: music, size: rb * 2),
           ),
         ],
       ),
