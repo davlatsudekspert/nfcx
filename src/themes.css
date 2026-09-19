@@ -118,6 +118,20 @@
   --showcase-card-gloss: rgba(255, 255, 255, 0.55);
   --showcase-card-shadow: 0 20px 45px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   --showcase-card-rim: 0 0 0 1px rgba(201, 162, 39, 0.28), 0 0 40px rgba(180, 140, 30, 0.28), 0 28px 70px rgba(0, 0, 0, 0.65);
+
+  /* BREND va PROMO bloklari — logotip plitasi/halqasi, promo karta
+     ramkasi va brend suratlarining mavzuga moslashuvi.
+     Logotipning O'ZI (shakli, nisbati, fayli) o'zgarmaydi — faqat uni
+     o'rab turgan yuza, halqa, nur va yumshoq rang moslashuvi. */
+  --promo-inner-bg: linear-gradient(160deg, #12131a 0%, #0a0b10 55%, #070709 100%);
+  --promo-ink: #ffffff;
+  --promo-code: #e2be6e;
+  --promo-frame: linear-gradient(140deg, #f6e3a8 0%, #c9a24b 22%, #8a6a22 46%, #e8d194 62%, #a8813a 82%, #f2dfa2 100%);
+  --promo-glow: rgba(212, 175, 90, 0.3);
+  --brand-plate: radial-gradient(circle at 50% 38%, #1a1713 0%, #0a0907 72%);
+  --brand-ring: rgba(212, 175, 90, 0.55);
+  --brand-mark-filter: none;
+  --media-tint-filter: saturate(1.12) contrast(1.04);
 }
 
 /* ───────────────────────────────────────────────────────────────────
@@ -210,6 +224,20 @@
   --showcase-card-gloss: rgba(255, 255, 255, 0.3);
   --showcase-card-shadow: 0 20px 45px rgba(92, 74, 44, 0.28), 0 2px 8px rgba(92, 74, 44, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.85);
   --showcase-card-rim: 0 0 0 1px rgba(156, 122, 50, 0.3), 0 0 40px rgba(199, 168, 99, 0.35), 0 28px 70px rgba(92, 74, 44, 0.32);
+
+  /* BREND va PROMO bloklari — logotip plitasi/halqasi, promo karta
+     ramkasi va brend suratlarining mavzuga moslashuvi.
+     Logotipning O'ZI (shakli, nisbati, fayli) o'zgarmaydi — faqat uni
+     o'rab turgan yuza, halqa, nur va yumshoq rang moslashuvi. */
+  --promo-inner-bg: linear-gradient(160deg, #fffdf7 0%, #f3ead7 55%, #e9dcc2 100%);
+  --promo-ink: #2a2114;
+  --promo-code: #6a4f18;
+  --promo-frame: linear-gradient(140deg, #fffaf0 0%, #d8bd80 22%, #9c7a32 46%, #f1e2bd 62%, #b99a55 82%, #fdf6e6 100%);
+  --promo-glow: rgba(199, 168, 99, 0.34);
+  --brand-plate: radial-gradient(circle at 50% 38%, #fffdf8 0%, #ece2cc 72%);
+  --brand-ring: rgba(156, 122, 50, 0.55);
+  --brand-mark-filter: saturate(1.08) brightness(0.72);
+  --media-tint-filter: brightness(1.26) saturate(1.06) contrast(0.9);
 }
 
 /* ───────────────────────────────────────────────────────────────────
@@ -301,6 +329,20 @@
   --showcase-card-gloss: rgba(255, 255, 255, 0.5);
   --showcase-card-shadow: 0 20px 45px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.1);
   --showcase-card-rim: 0 0 0 1px rgba(203, 207, 212, 0.3), 0 0 40px rgba(203, 207, 212, 0.22), 0 28px 70px rgba(0, 0, 0, 0.66);
+
+  /* BREND va PROMO bloklari — logotip plitasi/halqasi, promo karta
+     ramkasi va brend suratlarining mavzuga moslashuvi.
+     Logotipning O'ZI (shakli, nisbati, fayli) o'zgarmaydi — faqat uni
+     o'rab turgan yuza, halqa, nur va yumshoq rang moslashuvi. */
+  --promo-inner-bg: linear-gradient(160deg, #2e3136 0%, #1e2023 55%, #17181a 100%);
+  --promo-ink: #f2f4f6;
+  --promo-code: #cbcfd4;
+  --promo-frame: linear-gradient(140deg, #f2f4f6 0%, #b9bec5 22%, #75797f 46%, #e4e7ea 62%, #9aa0a7 82%, #eceff2 100%);
+  --promo-glow: rgba(203, 207, 212, 0.26);
+  --brand-plate: radial-gradient(circle at 50% 38%, #303338 0%, #17181a 72%);
+  --brand-ring: rgba(203, 207, 212, 0.5);
+  --brand-mark-filter: grayscale(0.82) brightness(1.3);
+  --media-tint-filter: grayscale(0.72) contrast(1.06) brightness(1.02);
 }
 
 /* ───────────────────────────────────────────────────────────────────
@@ -392,6 +434,20 @@
   --showcase-card-gloss: rgba(224, 244, 252, 0.45);
   --showcase-card-shadow: 0 20px 45px rgba(2, 14, 22, 0.55), 0 2px 8px rgba(2, 14, 22, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.09);
   --showcase-card-rim: 0 0 0 1px rgba(126, 196, 220, 0.32), 0 0 40px rgba(126, 196, 220, 0.24), 0 28px 70px rgba(2, 14, 22, 0.68);
+
+  /* BREND va PROMO bloklari — logotip plitasi/halqasi, promo karta
+     ramkasi va brend suratlarining mavzuga moslashuvi.
+     Logotipning O'ZI (shakli, nisbati, fayli) o'zgarmaydi — faqat uni
+     o'rab turgan yuza, halqa, nur va yumshoq rang moslashuvi. */
+  --promo-inner-bg: linear-gradient(160deg, #103246 0%, #0a2130 55%, #06141d 100%);
+  --promo-ink: #e8f6fc;
+  --promo-code: #8fcde4;
+  --promo-frame: linear-gradient(140deg, #eaf7fd 0%, #9fd2e6 22%, #3d7896 46%, #d3edf8 62%, #6ba9c4 82%, #e6f5fc 100%);
+  --promo-glow: rgba(126, 196, 220, 0.28);
+  --brand-plate: radial-gradient(circle at 50% 38%, #10303f 0%, #081923 72%);
+  --brand-ring: rgba(126, 196, 220, 0.5);
+  --brand-mark-filter: hue-rotate(158deg) saturate(0.62) brightness(1.06);
+  --media-tint-filter: hue-rotate(155deg) saturate(0.8) contrast(1.05);
 }
 
 /* ───────────────────────────────────────────────────────────────────
@@ -483,6 +539,20 @@
   --showcase-card-gloss: rgba(240, 232, 252, 0.45);
   --showcase-card-shadow: 0 20px 45px rgba(12, 6, 22, 0.55), 0 2px 8px rgba(12, 6, 22, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.09);
   --showcase-card-rim: 0 0 0 1px rgba(183, 156, 226, 0.32), 0 0 40px rgba(183, 156, 226, 0.24), 0 28px 70px rgba(12, 6, 22, 0.68);
+
+  /* BREND va PROMO bloklari — logotip plitasi/halqasi, promo karta
+     ramkasi va brend suratlarining mavzuga moslashuvi.
+     Logotipning O'ZI (shakli, nisbati, fayli) o'zgarmaydi — faqat uni
+     o'rab turgan yuza, halqa, nur va yumshoq rang moslashuvi. */
+  --promo-inner-bg: linear-gradient(160deg, #2a1f40 0%, #1c1430 55%, #130d20 100%);
+  --promo-ink: #f3ecfd;
+  --promo-code: #c2a9ea;
+  --promo-frame: linear-gradient(140deg, #f4edff 0%, #c8b2ec 22%, #6d55a0 46%, #e6dcfa 62%, #a488d6 82%, #f0e8fd 100%);
+  --promo-glow: rgba(183, 156, 226, 0.28);
+  --brand-plate: radial-gradient(circle at 50% 38%, #2a1f40 0%, #181125 72%);
+  --brand-ring: rgba(183, 156, 226, 0.5);
+  --brand-mark-filter: hue-rotate(230deg) saturate(0.55) brightness(1.02);
+  --media-tint-filter: hue-rotate(222deg) saturate(0.72) contrast(1.04);
 }
 
 /* ───────────────────────────────────────────────────────────────────
@@ -576,6 +646,20 @@
   --showcase-card-gloss: rgba(255, 248, 232, 0.45);
   --showcase-card-shadow: 0 20px 45px rgba(3, 8, 16, 0.55), 0 2px 8px rgba(3, 8, 16, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   --showcase-card-rim: 0 0 0 1px rgba(214, 180, 120, 0.32), 0 0 40px rgba(214, 180, 120, 0.26), 0 28px 70px rgba(3, 8, 16, 0.68);
+
+  /* BREND va PROMO bloklari — logotip plitasi/halqasi, promo karta
+     ramkasi va brend suratlarining mavzuga moslashuvi.
+     Logotipning O'ZI (shakli, nisbati, fayli) o'zgarmaydi — faqat uni
+     o'rab turgan yuza, halqa, nur va yumshoq rang moslashuvi. */
+  --promo-inner-bg: linear-gradient(160deg, #1a2740 0%, #101a2e 55%, #0a1220 100%);
+  --promo-ink: #f2e9d6;
+  --promo-code: #d6b478;
+  --promo-frame: linear-gradient(140deg, #f7e9c8 0%, #d6b478 22%, #8d6f34 46%, #eedcb4 62%, #b3924f 82%, #f4e6c4 100%);
+  --promo-glow: rgba(214, 180, 120, 0.28);
+  --brand-plate: radial-gradient(circle at 50% 38%, #18243a 0%, #0d1524 72%);
+  --brand-ring: rgba(214, 180, 120, 0.5);
+  --brand-mark-filter: saturate(0.85) brightness(1.08);
+  --media-tint-filter: hue-rotate(-8deg) saturate(0.95) contrast(1.03);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -840,6 +924,20 @@
   --showcase-card-gloss: rgba(255, 255, 255, 0.55);
   --showcase-card-shadow: 0 20px 45px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   --showcase-card-rim: 0 0 0 1px rgba(201, 162, 39, 0.28), 0 0 40px rgba(180, 140, 30, 0.28), 0 28px 70px rgba(0, 0, 0, 0.65);
+
+  /* BREND va PROMO bloklari — logotip plitasi/halqasi, promo karta
+     ramkasi va brend suratlarining mavzuga moslashuvi.
+     Logotipning O'ZI (shakli, nisbati, fayli) o'zgarmaydi — faqat uni
+     o'rab turgan yuza, halqa, nur va yumshoq rang moslashuvi. */
+  --promo-inner-bg: linear-gradient(160deg, #12131a 0%, #0a0b10 55%, #070709 100%);
+  --promo-ink: #ffffff;
+  --promo-code: #e2be6e;
+  --promo-frame: linear-gradient(140deg, #f6e3a8 0%, #c9a24b 22%, #8a6a22 46%, #e8d194 62%, #a8813a 82%, #f2dfa2 100%);
+  --promo-glow: rgba(212, 175, 90, 0.3);
+  --brand-plate: radial-gradient(circle at 50% 38%, #1a1713 0%, #0a0907 72%);
+  --brand-ring: rgba(212, 175, 90, 0.55);
+  --brand-mark-filter: none;
+  --media-tint-filter: saturate(1.12) contrast(1.04);
 
   /* ── Sahifa foni (Tailwind `bg-page-bg` va daisyUI canvas) ── */
 

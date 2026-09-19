@@ -17,7 +17,7 @@ export default function Footer() {
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
           <div className="col-span-2 md:col-span-1">
             <div className="mb-2 flex items-center gap-2.5 font-display text-[17px] font-semibold tracking-[0.08em] text-[color:var(--accent-text)]">
-              <img src={logo} alt="NFCSTORE" className="h-8 w-8 object-contain" />
+              <img src={logo} alt="NFCSTORE" className="h-8 w-8 object-contain" style={{ filter: 'var(--brand-mark-filter)' }} />
               NFCSTORE
             </div>
             <p className="max-w-[28ch] text-sm text-[color:var(--vz-ink-2)]">{t('NFC karta + raqamli profil')}</p>

@@ -166,7 +166,10 @@ export default function Header() {
       <div className="navbar mx-auto w-full max-w-[1800px] px-6 sm:px-10 xl:px-4 2xl:px-10">
         <div className="flex items-center gap-3 sm:gap-4">
           <button onClick={() => go('/')} className="flex min-h-11 shrink-0 cursor-pointer items-center gap-2 font-display text-[17px] font-semibold tracking-[0.08em] text-[color:var(--accent-text)] xl:gap-2 xl:text-[15px] 2xl:gap-2.5 2xl:text-[17px]">
-            <img src={logo} alt="NFCSTORE" className="h-9 w-9 object-contain drop-shadow-[0_2px_6px_var(--accent-glow)] xl:h-8 xl:w-8 2xl:h-9 2xl:w-9" />
+            {/* Logotip FAYLI o'zgarmaydi — shakl, nisbat va yozuv o'sha-o'sha.
+                `--brand-mark-filter` faqat belgining METALL RANGINI mavzuga
+                hamohang qiladi (standart mavzuda `none` — ya'ni asl oltin). */}
+            <img src={logo} alt="NFCSTORE" className="h-9 w-9 object-contain drop-shadow-[0_2px_6px_var(--accent-glow)] xl:h-8 xl:w-8 2xl:h-9 2xl:w-9" style={{ filter: 'var(--brand-mark-filter)' }} />
             NFCSTORE
           </button>
           <div className="hidden w-36 shrink-0 md:block lg:w-40 xl:w-28 2xl:w-40">
