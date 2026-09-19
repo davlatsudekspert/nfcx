@@ -211,6 +211,14 @@ jobs:
       - name: Format xavfsizligi
         run: node scripts/test-format-safety.mjs
 
+      # SO'ROV BUDJETI — sayt nega sekin ochilardi.
+      # Profil sahifasi 27 ta API so'rovi yuborardi, 10 tasi aynan
+      # takror. Endi 14 ta, takror 0. Test o'sha uch sababning
+      # (takror effekt, butun katalog, mos kelmaydigan modullar)
+      # qaytib kelishini to'xtatadi.
+      - name: So'rov budjeti
+        run: node scripts/test-request-budget.mjs
+
       - name: Build (vite build + prepare-sites-build)
         run: npm run build
 

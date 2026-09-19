@@ -178,7 +178,36 @@ export default function App() {
     setCatalog(recs);
   }, []);
 
-  useEffect(() => { refreshCatalog(); }, [refreshCatalog]);
+  // ── KATALOG KRITIK YO'LDAN OLIB TASHLANDI ──────────────────────────
+  //
+  // `dbList()` — BUTUN katalog (`GET /api/records`). Ilgari u HAR
+  // sahifa ochilishida, hech qanday shartsiz yuklanardi. NFC kartani
+  // bosgan odam ham o'zi ko'rmoqchi bo'lgan profildan oldin butun
+  // ro'yxatni kutardi; profilda esa u faqat "TOP #N" nishoni uchun
+  // kerak.
+  //
+  // Endi:
+  //   • katalogga TAYANADIGAN sahifalarda (bosh sahifa, katalog,
+  //     narxlar, reyting, kompaniyalar, sovg'alar, savollar) —
+  //     darhol, chunki sahifaning mazmuni shundan;
+  //   • qolganida (profil, kirish, kabinet, sozlamalar) — brauzer
+  //     BO'SH bo'lganda. Nishon baribir paydo bo'ladi, lekin profil
+  //     ochilishini kechiktirmaydi.
+  //
+  // `requestIdleCallback` hamma brauzerda yo'q (iOS Safari) —
+  // shuning uchun `setTimeout` zaxira sifatida.
+  const catalogPage = /^(|katalog|narxlar|reyting|kompaniyalar|savollar|gifts)$/.test(cleanRoute);
+  useEffect(() => {
+    if (catalogPage) { refreshCatalog(); return undefined; }
+    let cancelled = false;
+    const run = () => { if (!cancelled) refreshCatalog(); };
+    if (typeof requestIdleCallback === 'function') {
+      const h = requestIdleCallback(run, { timeout: 2500 });
+      return () => { cancelled = true; cancelIdleCallback?.(h); };
+    }
+    const h = setTimeout(run, 1200);
+    return () => { cancelled = true; clearTimeout(h); };
+  }, [refreshCatalog, catalogPage]);
 
   // Tahrirlash maydonidan tashqarida "Backspace" bosilishi ba'zi
   // brauzerlarda "orqaga" navigatsiyani chaqiradi (yoki sahifani bo'sh

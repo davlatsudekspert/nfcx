@@ -1330,7 +1330,67 @@ export default function ProfilePage({ code, catalog, initialTab }) {
   const { t, lang } = useLanguage();
   const cats = useCategories();
 
+  // ── PROFIL MA'LUMOTI IKKI GURUHGA BO'LINGAN ────────────────────────
+  //
+  // Ilgari hammasi BITTA effektda edi va bog'liqlikda `user` turardi.
+  // `user` esa sahifa ochilganda `null` bo'lib, `/api/auth/me` javob
+  // bergach obyektga aylanadi — ya'ni effekt IKKI MARTA ishlardi va
+  // O'NTA so'rovning hammasi takrorlanardi.
+  //
+  // O'lchandi: profil sahifasi 27 ta API so'rovi yuborardi, shundan
+  // 10 tasi AYNAN takror. Telefonda har bir takror so'rov Cloudflare
+  // va D1 gacha borib keladi — sayt aynan shundan "sekin ochilardi".
+  //
+  // Endi:
+  //   • OMMAVIY kontent (menyu, mahsulot, xizmat, fayl, jamoa,
+  //     galereya) kim qarayotganiga BOG'LIQ EMAS -> faqat `code`;
+  //   • TASHRIFCHIGA bog'liq narsalar (obuna holati, yoqtirish,
+  //     post/story dagi "men yoqtirganman" belgisi) -> `code` va
+  //     foydalanuvchining IDsi.
+  //
+  // Bog'liqlikda `user` OBYEKTI emas, `user?.id` turadi: obyekt har
+  // render'da yangi havola bo'lishi mumkin va bu yana takror so'rov
+  // berardi.
+  //
+  // `user` boshida `undefined` — bu "hali bilmayman" degani (auth.jsx
+  // dagi izoh). Shuni KUTAMIZ: aks holda so'rov avval "mehmon"
+  // sifatida ketib, javob kelgach yana "egasi" sifatida takrorlanardi
+  // va odam bir lahza noto'g'ri "yoqtirilgan" belgisini ko'rardi.
+  const authReady = user !== undefined;
+  const viewerId = user ? user.id : null;
+
   useEffect(() => {
+    dbGetFiles(code).then(setFiles).catch(() => setFiles([]));
+    dbGetTeam(code).then(setTeam).catch(() => setTeam([]));
+    dbGetGallery(code).then(setGallery).catch(() => setGallery([]));
+  }, [code]);
+
+  // ── MENYU / MAHSULOT / XIZMAT — FAQAT MOS PROFILGA ─────────────────
+  //
+  // Bu uchtasi BIZNES modullari: profil turi va sohasiga qarab
+  // beriladi (`menuEligible` va h.k.). Ular allaqachon tab
+  // ro'yxatida shu shart bilan ko'rsatiladi, ya'ni mos kelmaydigan
+  // profilda hech qachon ko'rinmasdi — lekin so'rov baribir
+  // ketaverardi.
+  //
+  // Shaxsiy profil esa saytdagi eng ko'p ochiladigan sahifa (NFC
+  // kartani bosgan odam aynan shu yerga tushadi). Har teginishda
+  // uchta keraksiz so'rov Cloudflare va D1 gacha borib kelardi.
+  //
+  // Endi so'rov faqat profil HAQIQATAN shu modulga ega bo'lsa
+  // ketadi. Ko'rinishda o'zgarish yo'q: mos kelmaydigan profilda bu
+  // tablar avval ham chiqmasdi.
+  const profileType = record ? record.profileType : null;
+  const categorySlug = record ? record.categorySlug : null;
+  useEffect(() => {
+    if (!profileType && !categorySlug) return;
+    if (menuEligible(profileType, categorySlug)) dbGetMenu(code).then(setMenu).catch(() => setMenu([]));
+    if (productEligible(profileType, categorySlug)) dbGetProducts(code).then(setProducts).catch(() => setProducts([]));
+    if (serviceEligible(profileType, categorySlug)) dbGetServices(code).then(setServices).catch(() => setServices([]));
+  }, [code, profileType, categorySlug]);
+
+  useEffect(() => {
+    if (!authReady) return;          // kim qarayotgani hali noma'lum
     // Bu profilga ALLAQACHON obuna bo'lgan bo'lsa — serverdagi yuz
     // ko'rsatiladi. Obuna bo'lmagan bo'lsa esa eslab qolingan tanlov
     // saqlanadi (aks holda u har bir yangi profilda "shaxsiy"ga
@@ -1340,15 +1400,11 @@ export default function ProfilePage({ code, catalog, initialTab }) {
       if (st.isFollowing) setFollowAs(st.asCompanyId || '');
     }).catch(() => {});
     dbGetLike(code).then(setLikeInfo).catch(() => {});
+    // Post va story tashrifchiga bog'liq: ularda "men yoqtirganman"
+    // belgisi bor.
     dbListPosts(code).then(setPosts).catch(() => setPosts([]));
     dbListStories(code).then(setStories).catch(() => setStories([]));
-    dbGetMenu(code).then(setMenu).catch(() => setMenu([]));
-    dbGetProducts(code).then(setProducts).catch(() => setProducts([]));
-    dbGetServices(code).then(setServices).catch(() => setServices([]));
-    dbGetFiles(code).then(setFiles).catch(() => setFiles([]));
-    dbGetTeam(code).then(setTeam).catch(() => setTeam([]));
-    dbGetGallery(code).then(setGallery).catch(() => setGallery([]));
-  }, [code, user]);
+  }, [code, viewerId, authReady]);
 
   // "Menyu" tabi ochilganda bir marta menu_view hodisasini yozamiz.
   const menuViewLogged = useRef(false);
