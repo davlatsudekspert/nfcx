@@ -26,6 +26,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:video_player/video_player.dart';
 import 'package:nfcstore_nova/app/app.dart';
 import 'package:nfcstore_nova/app/profile_context.dart';
 import 'package:nfcstore_nova/app/providers.dart';
@@ -544,6 +545,100 @@ void main() {
       ));
     }
   }, timeout: const Timeout(Duration(minutes: 4)));
+
+  // ══════════════════════════════════════════════════════════════
+  // VIDEO — HAQIQIY DEKODER BILAN
+  // ══════════════════════════════════════════════════════════════
+
+  testWidgets('Video media haqiqatan ochiladi', (t) async {
+    if (!signedIn) {
+      report.skip('Video media', 'sessiya ochilmadi');
+      return;
+    }
+    final c = await launchSignedIn(t);
+
+    // Haqiqiy lentadan VIDEO yozuvni qidiramiz.
+    final feed = await c.read(socialRepositoryProvider).feed();
+    final videos = feed.when(
+      ok: (posts) =>
+          posts.where((p) => p.isVideo && p.mediaUrls.isNotEmpty).toList(),
+      err: (_) => <Post>[],
+    );
+
+    if (videos.isEmpty) {
+      // Hisobda video post yo'q — bu XATO EMAS. Lekin PASS ham
+      // emas: ijro haqiqatan sinalmadi.
+      report.add(MatrixRow(
+        name: 'Video media',
+        verdict: Verdict.skipped,
+        screen: 'PostScreen / StoryViewer',
+        action: 'haqiqiy video ijrosi',
+        cause: 'hisobda video post yo\'q — ijro sinab ko\'rilmadi',
+        layer: 'data',
+      ));
+      return;
+    }
+
+    final url = videos.first.mediaUrls.first;
+
+    // 1) Manzil TO'LIQ bo'lishi shart. Nisbiy bo'lsa dekoder uni
+    //    darhol rad etadi — bu aynan `Music player` ni yiqitgan
+    //    xato edi.
+    if (!url.startsWith('http')) {
+      report.add(MatrixRow(
+        name: 'Video media',
+        verdict: Verdict.fail,
+        screen: 'PostScreen',
+        action: 'video manzili',
+        cause: 'NISBIY manzil: $url',
+        layer: 'frontend',
+      ));
+      return;
+    }
+
+    // 2) HAQIQIY dekoder. Emulyatorda `video_player` platforma
+    //    kodini ishlatadi, ya'ni bu soxta emas.
+    final vc = VideoPlayerController.networkUrl(Uri.parse(url));
+    try {
+      await vc.initialize();
+      await vc.play();
+      for (var i = 0; i < 40 && !vc.value.isPlaying; i++) {
+        await t.pump(const Duration(milliseconds: 250));
+      }
+      final playing = vc.value.isPlaying;
+      final dur = vc.value.duration;
+      await vc.pause();
+      await vc.dispose();
+
+      if (playing) {
+        report.pass('Video media',
+            screen: 'PostScreen / StoryViewer',
+            action: 'HAQIQIY video ijrosi',
+            note: '${videos.length} ta video; davomiylik '
+                '${dur.inSeconds}s');
+      } else {
+        report.add(MatrixRow(
+          name: 'Video media',
+          verdict: Verdict.partial,
+          screen: 'PostScreen',
+          action: 'video ijrosi',
+          cause: 'ochildi, lekin ijro boshlanmadi (emulyator '
+              'dekoderi sekin bo\'lishi mumkin)',
+          layer: 'device',
+        ));
+      }
+    } catch (e) {
+      await vc.dispose();
+      report.add(MatrixRow(
+        name: 'Video media',
+        verdict: Verdict.fail,
+        screen: 'PostScreen',
+        action: 'video ijrosi',
+        cause: '${vc.value.errorDescription ?? e}',
+        layer: 'backend',
+      ));
+    }
+  }, timeout: const Timeout(Duration(minutes: 5)));
 
   // ══════════════════════════════════════════════════════════════
   // MUSIQA — HAQIQIY IJRO VA PAUZA
