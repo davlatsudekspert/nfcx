@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import ThemeSwitcher from './ThemeSwitcher.jsx';
 import { directionsUrl, yandexDirectionsUrl } from '../lib/mapLink.js';
 import CloseButton from './CloseButton.jsx';
 import { socialUrl } from '../lib/socialLinks.js';
@@ -201,6 +202,8 @@ export default function BusinessPublicProfile({
         </button>
         {record.demo && <span className="bp-demo-badge">{t('NAMUNA PROFIL')}</span>}
         <div className="bp-top-actions">
+          {/* Sayt mavzusi — biznes profilining o'z dizayniga tegmaydi. */}
+          <ThemeSwitcher buttonClassName="bp-quiet-btn bp-theme-btn" iconClassName="h-[18px] w-[18px]" />
           <button type="button" className="bp-quiet-btn" onClick={() => navigate('/kompaniyalar')}>{t('Kompaniyalar')}</button>
           {isOwner && <button type="button" className="bp-gold-btn" onClick={() => navigate(`/business/${record.code.toLowerCase()}`)}>{t('Workspace')}</button>}
         </div>

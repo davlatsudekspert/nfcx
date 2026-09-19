@@ -966,3 +966,19 @@ body:has(.qp-page) .ai-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 .cp-hero, .cp-hero .cp-hero-copy, .cp-hero .cp-title-row h1 { color: var(--on-media); }
 .cp-hero .cp-lead, .cp-hero .cp-title-row p { color: var(--on-media-dim); }
 .cp-hero .cp-kicker { color:var(--accent-text); }
+
+/* ── SAYT MAVZUSI TUGMASI (theme switcher) ───────────────────────────
+   Bu YANGI element uchun o'z uslubi. Mavjud qoidalarning birortasi
+   ham o'zgartirilmadi: `.cp-header` hamon uch bo'lakli
+   (logotip | navigatsiya | o'ng tomon), faqat o'ng bo'lakning ichiga
+   ikona qo'shildi. Kompaniya sahifasining O'Z rangi, muqovasi va
+   accent'i — egasining tanlovi — tegilmagan. */
+.cp-head-right { display: flex; align-items: center; gap: 10px; }
+.cp-theme-btn {
+  display: grid; place-items: center;
+  width: 38px; height: 38px; flex: none;
+  border: 1px solid var(--border-accent); border-radius: 50%;
+  background: transparent; color: var(--accent-text); cursor: pointer;
+}
+.cp-theme-btn:hover { background: var(--accent-soft); }
+.qp-theme-btn { width: 34px; padding: 0; display: grid; place-items: center; }

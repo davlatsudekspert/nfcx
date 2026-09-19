@@ -26,6 +26,7 @@ import {
   IconNote, IconPin, IconBankCard, IconExpand, IconCollapse,
 } from '../components/Icons.jsx';
 import logo from '../assets/logo-128.png';
+import ThemeSwitcher from '../components/ThemeSwitcher.jsx';
 import '../company-system.css';
 
 const fallbackCover = '/business-assets/construction-hero.jpg';
@@ -327,6 +328,9 @@ export default function CompanyQuickProfilePage({ companyId }) {
               )}
             </div>
             <div className="qp-topbar-side qp-topbar-side--right">
+              {/* Sayt mavzusi. Kompaniya profilining o'z rangi, muqovasi
+                  va accent'i — egasining tanlovi — o'zgarmaydi. */}
+              <ThemeSwitcher buttonClassName="qp-sidebtn qp-theme-btn" iconClassName="h-[15px] w-[15px]" />
               {/* Egasiga — "Tahrirlash": kamdan-kam bosiladigan, ikkinchi
                   darajali harakat. Mehmonga bu joy BO'SH qoladi va
                   "Obuna bo'lish" pastda, butun kenglikda turadi. */}

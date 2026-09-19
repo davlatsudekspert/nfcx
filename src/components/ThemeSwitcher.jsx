@@ -40,7 +40,7 @@ export function ThemeDots({ dots, size = 'h-3.5 w-3.5' }) {
   );
 }
 
-export default function ThemeSwitcher({ className = '', menuClassName = '' }) {
+export default function ThemeSwitcher({ className = '', menuClassName = '', buttonClassName = 'btn btn-ghost btn-sm min-h-11 px-2', iconClassName = 'h-5 w-5' }) {
   const { t } = useLanguage();
   const { theme, setTheme, themes } = useTheme();
   const [open, setOpen] = useState(false);
@@ -63,7 +63,7 @@ export default function ThemeSwitcher({ className = '', menuClassName = '' }) {
     <div ref={boxRef} className={`relative ${className}`}>
       <button
         type="button"
-        className="btn btn-ghost btn-sm min-h-11 px-2"
+        className={buttonClassName}
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -71,7 +71,7 @@ export default function ThemeSwitcher({ className = '', menuClassName = '' }) {
         aria-label={t('Rang mavzusi')}
         title={t('Rang mavzusi')}
       >
-        <PaletteIcon />
+        <PaletteIcon className={iconClassName} />
       </button>
       {open && (
         <div

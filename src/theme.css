@@ -1667,3 +1667,6 @@ body{
 @media(max-width:640px){
   .bp-tabs{ padding-top:calc(9px + var(--vz-safe-top)) }
 }
+
+/* Biznes public profil topbar'idagi sayt-mavzusi ikonasi (yangi element). */
+.bp-theme-btn { display: grid; place-items: center; width: 38px; padding: 0; }

@@ -652,3 +652,175 @@
 .ring-white\/30 { --tw-ring-color: color-mix(in srgb, var(--tint-base) 30%, transparent); }
 .ring-black\/10 { --tw-ring-color: color-mix(in srgb, var(--shade-base) 10%, transparent); }
 .divide-white\/5 > :not(:last-child) { border-color: color-mix(in srgb, var(--tint-base) 5%, transparent); }
+
+
+/* ════════════════════════════════════════════════════════════════════════
+   SHAXSIY PROFIL — EGASINING DIZAYNI DAXLSIZ (SOURCE OF TRUTH)
+   ────────────────────────────────────────────────────────────────────────
+   Profil kartasining rangi, accent'i va foni foydalanuvchining
+   DB'dagi `theme / accentColor / bgColor` tanlovidan keladi
+   (`VZ_THEMES` + `vzStyle()` — src/pages/ProfilePage.jsx). Sayt
+   (global) mavzusi uni ALMASHTIRMASLIGI kerak.
+
+   Shuning uchun profil sahifasi ichida barcha mavzu tokenlari eski
+   (legacy) qiymatlarga qotiriladi. Sayt mavzusi Pearl bo'ladimi,
+   Midnight bo'ladimi — profil kartasi bir xil chiqadi; mavzu faqat
+   qobiqqa (header, footer, modal, sozlamalar, kabinet, katalog,
+   to'lovlar …) ta'sir qiladi.
+
+   Bu blokni qo'lda tahrirlamang — u legacy mavzu va ko'prikdan
+   avtomatik hosil qilinadi.
+   ════════════════════════════════════════════════════════════════════════ */
+.vz-profile-page {
+  color-scheme: dark;
+
+  /* Fon */
+  --bg-primary: #050403;
+  --bg-secondary: #0a0805;
+  --bg-gradient-a: #0a0805;
+  --bg-gradient-b: #14100a;
+
+  /* Yuzalar (surface) — pastdan yuqoriga qatlam narvoni:
+     bg-primary < bg-secondary < surface-soft < surface < surface-elevated < surface-raised */
+  --surface-soft: #0a0908;
+  --surface: #141210;
+  --surface-elevated: #1c1916;
+  --surface-raised: #241f18;
+  --surface-inset: #000000;
+  --surface-sheen: linear-gradient(160deg, rgba(255, 255, 255, 0.022) 0%, rgba(0, 0, 0, 0.05) 100%);
+
+  /* Yarim shaffof qoplama asoslari: tint = yoritadi, shade = parda va soya,
+     inset = panelni ichkariga botiradi (yorug mavzuda ham togri ishlaydi) */
+  --tint-base: #ffffff;
+  --shade-base: #000000;
+  --inset-base: #000000;
+
+  /* Matn */
+  --text-primary: #f6f2ea;
+  --text-secondary: #b5a78b;
+  --text-muted: #8a7f68;
+  --text-faint: #6b6354;
+  --text-on-accent: #1a1206;
+
+  /* Accent */
+  --accent-primary: #d4af5a;
+  --accent-secondary: #f0cf7a;
+  --accent-deep: #b3860f;
+  --accent-soft: rgba(212, 175, 90, 0.12);
+  --accent-ink: #1a1206;
+  --accent-glow: rgba(226, 190, 110, 0.42);
+
+  /* Chegara (border) */
+  --border: #2d2518;
+  --border-soft: #221c12;
+  --border-strong: #3d3220;
+  --border-accent: rgba(212, 175, 90, 0.45);
+
+  /* Soya va nur */
+  --shadow: 0 12px 30px -16px rgba(0, 0, 0, 0.7);
+  --shadow-soft: 0 8px 22px -14px rgba(0, 0, 0, 0.6);
+  --glow: 0 0 20px -8px rgba(226, 190, 110, 0.42);
+  --scrim: rgba(0, 0, 0, 0.7);
+
+  /* Holat ranglari */
+  --success: #7fb28e;
+  --success-soft: rgba(127, 178, 142, 0.14);
+  --warning: #e0b458;
+  --warning-soft: rgba(224, 180, 88, 0.16);
+  --danger: #c9573f;
+  --danger-soft: rgba(201, 87, 63, 0.15);
+  --info: #e8c165;
+  --link: #5fa8ff;
+
+  /* Komponentlar */
+  --input-bg: #0f0c07;
+  --input-border: #2d2518;
+  --button-bg: linear-gradient(135deg, #f0cf7a, #b3860f);
+  --button-text: #1a1206;
+  --nav-bg: rgba(0, 0, 0, 0.86);
+  --card-bg: #141210;
+  --modal-bg: #1c1916;
+  --pill-bg: #232326;
+  --pill-text: #ffffff;
+
+  /* ── Sahifa foni (Tailwind `bg-page-bg` va daisyUI canvas) ── */
+
+  /* ── daisyUI semantik ranglari ──
+     Saytda `bg-base-100`, `bg-base-200`, `text-base-content`,
+     `text-accent`, `badge-accent` kabi 700+ joyda ishlatiladi. */
+  --color-base-100: var(--surface);
+  --color-base-200: var(--surface-elevated);
+  --color-base-300: var(--surface-raised);
+  --color-base-content: var(--text-primary);
+  --color-primary: var(--accent-primary);
+  --color-primary-content: var(--accent-ink);
+  --color-secondary: var(--accent-secondary);
+  --color-secondary-content: var(--accent-ink);
+  --color-accent: var(--accent-primary);
+  --color-accent-content: var(--accent-ink);
+  --color-neutral: var(--surface-elevated);
+  --color-neutral-content: var(--text-primary);
+  --color-info: var(--info);
+  --color-info-content: var(--accent-ink);
+  --color-success: var(--success);
+  --color-success-content: var(--accent-ink);
+  --color-warning: var(--warning);
+  --color-warning-content: var(--accent-ink);
+  --color-error: var(--danger);
+  --color-error-content: var(--surface);
+
+  /* ── `--vz-*` (saytning mavjud token oilasi) ── */
+  --vz-gold: var(--accent-primary);
+  --vz-gold-2: var(--accent-secondary);
+  --vz-gold-3: var(--accent-deep);
+  --vz-gold-ink: var(--accent-ink);
+  --vz-bg: var(--bg-primary);
+  --vz-bg-2: var(--bg-secondary);
+  --vz-bg-a: var(--bg-gradient-a);
+  --vz-bg-b: var(--bg-gradient-b);
+  --vz-card: var(--surface);
+  --vz-card-2: var(--surface-elevated);
+  --vz-line: var(--border);
+  --vz-ink: var(--text-primary);
+  --vz-ink-2: var(--text-secondary);
+  --vz-ink-3: var(--text-muted);
+  --vz-ink-dim: var(--text-secondary);
+  --vz-ink-faint: var(--text-faint);
+  --vz-accent: var(--accent-primary);
+  --vz-danger: var(--danger);
+  --vz-link: var(--link);
+  --vz-shadow: var(--shadow);
+  /* `--vz-pill` avval FAQAT `src/index.css` dagi `.vz` blokida edi, u
+     fayl esa ilovaga umuman ulanmaydi — ya'ni qiymat bo'sh qolardi va
+     pill'lar fonsiz chiqardi. Endi u ham mavzudan keladi. */
+  --vz-pill: var(--pill-bg);
+
+
+  /* ── Oltin/accent ustidagi tayyor yarim shaffof qatlamlar ──
+     Tailwind "arbitrary value" ichida `color-mix(...)` yozish qiyin
+     (probel/vergul qoidalari), shuning uchun bir necha ko'p
+     ishlatiladigan nisbat oldindan tayyorlanadi: `var(--accent-a14)`. */
+  --shadow-cast: color-mix(in srgb, var(--shade-base) 55%, transparent);
+  /* MATN uchun accent: to'q mavzuda ochroq oltin, yorug' (Pearl)
+     mavzuda esa to'qroq - krem fon ustida o'qilishi uchun. */
+  --accent-text: var(--accent-secondary);
+  --accent-a08: color-mix(in srgb, var(--accent-primary) 8%, transparent);
+  --accent-a14: color-mix(in srgb, var(--accent-primary) 14%, transparent);
+  --accent-a22: color-mix(in srgb, var(--accent-primary) 22%, transparent);
+  --accent-a25: color-mix(in srgb, var(--accent-primary) 25%, transparent);
+  --accent-a45: color-mix(in srgb, var(--accent-primary) 45%, transparent);
+
+  /* ── Rasm/parda USTIDAGI matn ──
+     Muqova rasmi va qora parda ustidagi matn HAMMA mavzuda oq qoladi:
+     u yerdagi fon mavzuga emas, foydalanuvchi yuklagan rasmga bog'liq. */
+  --on-media: #ffffff;
+  --on-media-dim: rgba(255, 255, 255, 0.82);
+  --on-media-faint: rgba(255, 255, 255, 0.62);
+
+  /* ── Kompaniya (business) tizimi — `src/company-system.css` ── */
+  --company-gold: var(--accent-primary);
+  --company-gold-2: var(--accent-secondary);
+  --company-black: var(--bg-primary);
+  --company-panel: var(--surface);
+  --company-line: var(--border-accent);
+}
