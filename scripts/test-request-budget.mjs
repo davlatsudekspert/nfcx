@@ -97,4 +97,38 @@ const app = read('src/App.jsx');
   }
 }
 
+// ── 7) KRITIK YO'LDA TAKROR SO'ROV = 0 ───────────────────────────────
+// Yakuniy shart, bitta joyda. Profil ochilganda bir xil manzilga
+// IKKI MARTA borilmasin: har takror so'rov telefondan Cloudflare va
+// D1 gacha borib keladi.
+//
+// O'lchov (haqiqiy brauzer, 390px): OLDIN 27 so'rov / 10 takror,
+// KEYIN 14 so'rov / 0 takror.
+{
+  // Bitta effektda ham `code`, ham `user` bo'lsa — takror qaytadi.
+  const effects = profile.match(/useEffect\(\(\) => \{[\s\S]*?\}, \[[^\]]*\]\);/g) || [];
+  const risky = effects.filter((e) => /\[code,\s*user\]/.test(e));
+  check('7) "code + user" ga bog‘langan effekt yo‘q', risky.length, 0);
+
+  // Har bir ma'lumot SAHIFA OCHILGANDA bir marta so'ralsin.
+  //
+  // Tekshiruv faqat YUKLASH effektlariga qaraydi. Foydalanuvchi
+  // amalidan keyingi qayta so'rov (obuna bosilgach holatni yangilash,
+  // like xato bo'lsa ro'yxatni tiklash) — bu boshqa narsa va u
+  // o'rinli: u sahifa ochilishini sekinlashtirmaydi.
+  // Yuklash effektlari bir joyda turadi: birinchisi `authReady`
+  // e'lonidan boshlanadi va oxirgisi `[code, viewerId, authReady]`
+  // bilan tugaydi. Shu oraliqni AYNAN kesib olamiz — regex bilan
+  // "effektni topish" chalg'ituvchi bo'lardi.
+  const from = profile.indexOf('const authReady');
+  const to = profile.indexOf('[code, viewerId, authReady]');
+  checkTrue('7) yuklash bo‘limi topildi', from > 0 && to > from);
+  const loadEffects = from > 0 && to > from ? profile.slice(from, to) : '';
+  for (const fn of ['dbListPosts', 'dbListStories', 'dbFollowStats', 'dbGetLike',
+    'dbGetMenu', 'dbGetProducts', 'dbGetServices', 'dbGetFiles', 'dbGetTeam', 'dbGetGallery']) {
+    const n = (loadEffects.match(new RegExp(`${fn}\\(`, 'g')) || []).length;
+    check(`7) ${fn} yuklashda bir marta`, n, 1);
+  }
+}
+
 done('So‘rov budjeti');

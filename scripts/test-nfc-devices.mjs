@@ -144,9 +144,20 @@ let deviceId = 0;
   })(root);
   const used = files.some((f) => !f.endsWith('db.js')
     && /dbListNfcDevices|dbUpdateNfcDevice/.test(readFileSync(f, 'utf8')));
+  // QAROR (2026-09): saytda bu ekran ATAYLAB yo'q.
+  //
+  // Bu ikki yo'l `hosting/worker.js` ga ILOVA uchun ko'chirilgan —
+  // o'sha yerdagi izoh aynan shuni aytadi: "ilova
+  // `GET /api/my/nfc-devices` ga borganda 404 olardi va 'bog'langan
+  // kartalar' EKRANI hech qachon ishlamagan". Ya'ni ekran ilovada,
+  // sayt esa hech qachon uni ko'rsatmagan.
+  //
+  // Sayt uchun bu KNOWN DEFERRED: backend tayyor va qo'riqlanadi,
+  // ekran kerak bo'lganda qo'shiladi. Hech narsa buzuq emas —
+  // funksiya sayt tomonida hali yo'q.
   console.log(used
     ? 'IZOH  - saytda NFC qurilmalari ekrani ULANGAN'
-    : 'IZOH  - saytda NFC qurilmalari ekrani HALI YO‘Q (backend tayyor, UI kerak)');
+    : 'IZOH  - saytda ekran ATAYLAB yo‘q (KNOWN DEFERRED); backend tayyor va qo‘riqlanadi');
 }
 
 done('NFC qurilmalari');

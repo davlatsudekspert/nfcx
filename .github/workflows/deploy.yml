@@ -219,6 +219,18 @@ jobs:
       - name: So'rov budjeti
         run: node scripts/test-request-budget.mjs
 
+      # BIZNES STATISTIKASI — yozishdan grafikka qadar.
+      # Bir paytlar "BACKEND REQUIRED" deb belgilangan edi; aslida
+      # to'liq ishlaydi. Endi buni test aytadi, taxmin emas.
+      - name: Biznes statistikasi
+        run: node scripts/test-company-analytics.mjs
+
+      # E2E MARKERI. Produksiya postlarini o'chirish qoidasi —
+      # bitta yolg'on ijobiy javob odamning haqiqiy postini
+      # o'chirib yuborardi.
+      - name: E2E markeri
+        run: node scripts/test-e2e-marker.mjs
+
       - name: Build (vite build + prepare-sites-build)
         run: npm run build
 
