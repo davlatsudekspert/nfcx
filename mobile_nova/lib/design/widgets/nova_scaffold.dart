@@ -130,6 +130,20 @@ class _Bar extends StatelessWidget {
   }
 }
 
+/// Suzuvchi pastki navigatsiya ostida kontent qolib ketmasligi uchun
+/// kerakli pastki bo'shliq.
+///
+/// `NovaBottomNav` 64px, uning ostida `Gap.md` hoshiya bor va hammasi
+/// `SafeArea` ichida — ya'ni haqiqiy balandlik 76px + QURILMANING jest
+/// paneli. Bu inset brauzerda NOL, shuning uchun suratlarda muammo
+/// ko'rinmaydi; jest panelli Android'da esa 34–48px bo'ladi va qat'iy
+/// 120px bo'shliq yetmay qoladi.
+///
+/// 120 — dizayndagi "nafas" oralig'i, uning ustiga qurilma inset'i
+/// qo'shiladi. Inset nol bo'lsa natija o'zgarmaydi.
+double navSafeBottom(BuildContext context) =>
+    120 + MediaQuery.viewPaddingOf(context).bottom;
+
 /// Ekran ichidagi oddiy scroll — hamma joyda bir xil padding va
 /// "bounce" xatti-harakati bilan.
 class NovaScroll extends StatelessWidget {
@@ -148,7 +162,12 @@ class NovaScroll extends StatelessWidget {
   Widget build(BuildContext context) => ListView(
         controller: controller,
         padding: padding ??
-            const EdgeInsets.fromLTRB(Gap.screenX, Gap.sm, Gap.screenX, 120),
+            EdgeInsets.fromLTRB(
+              Gap.screenX,
+              Gap.sm,
+              Gap.screenX,
+              navSafeBottom(context),
+            ),
         physics: const BouncingScrollPhysics(
           parent: AlwaysScrollableScrollPhysics(),
         ),

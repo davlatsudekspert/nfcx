@@ -214,8 +214,8 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
                       message: query.isEmpty ? l.stateEmptyHint : l.stateNoResultsHint,
                     )
                   : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(
-                          Gap.screenX, Gap.md, Gap.screenX, 120),
+                      padding: EdgeInsets.fromLTRB(Gap.screenX, Gap.md,
+                          Gap.screenX, navSafeBottom(context)),
                       itemCount: items.length,
                       separatorBuilder: (_, __) => const SizedBox(height: Gap.md),
                       itemBuilder: (context, i) => _ResultTile(item: items[i]),

@@ -78,7 +78,7 @@ class HomeScreen extends ConsumerWidget {
           ref.invalidate(homeFeedProvider);
         },
         child: NovaScroll(
-          padding: const EdgeInsets.only(bottom: 120),
+          padding: EdgeInsets.only(bottom: navSafeBottom(context)),
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(Gap.screenX, Gap.sm, Gap.screenX, 0),

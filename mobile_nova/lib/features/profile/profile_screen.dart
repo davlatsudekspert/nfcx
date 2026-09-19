@@ -77,7 +77,7 @@ class ProfileScreen extends ConsumerWidget {
           if (id != null) ref.invalidate(profilePostsProvider(id.code));
         },
         child: NovaScroll(
-          padding: const EdgeInsets.only(bottom: 120),
+          padding: EdgeInsets.only(bottom: navSafeBottom(context)),
           children: [
             _Hero(user: user, id: id, mode: mode),
             const SizedBox(height: Gap.xl),
