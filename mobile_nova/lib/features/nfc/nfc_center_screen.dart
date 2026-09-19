@@ -106,7 +106,7 @@ class NfcCenterScreen extends ConsumerWidget {
                     // `onAccent` siyohida: har mavzuda o'qiladi.
                     child: BrandLogo(
                       size: orb * kOrbMarkRatio,
-                      style: BrandLogoStyle.mark,
+                      style: BrandLogoStyle.markOnly,
                       tint: t.onAccent,
                     ),
                   ),

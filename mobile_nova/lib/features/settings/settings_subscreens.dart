@@ -69,12 +69,11 @@ class ThemeSettingsScreen extends ConsumerWidget {
                   ),
                   child: Row(
                     children: [
-                      // Logotip o'z plastinasi bilan — shu mavzuda
-                      // kontrast yetarlimi, shu yerdan ko'rinadi.
-                      Theme(
-                        data: Theme.of(context).copyWith(extensions: [t]),
-                        child: const BrandLogo(size: 48, halo: false),
-                      ),
+                      // Brend nishoni — mavzudan qat'i nazar bir xil.
+                      // Kartaning qolgan qismi o'sha mavzuning
+                      // ranglarida, shuning uchun nishon yonida
+                      // mavzu kontrasti baribir ko'rinib turadi.
+                      const BrandLogo(size: 48, style: BrandLogoStyle.badge),
                       const SizedBox(width: Gap.lg),
                       Expanded(
                         child: Column(

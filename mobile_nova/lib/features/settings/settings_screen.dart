@@ -160,7 +160,7 @@ class SettingsScreen extends ConsumerWidget {
           Center(
             child: Column(
               children: [
-                const BrandLogo(size: 46, halo: false),
+                const BrandLogo(size: 46, style: BrandLogoStyle.badge),
                 const SizedBox(height: Gap.sm),
                 Text(l.settingsVersion(kAppVersion),
                     style: Theme.of(context).textTheme.bodySmall),

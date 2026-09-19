@@ -100,6 +100,12 @@ Future<void> main() async {
   final lang = q['lang'] ?? 'uz';
   final signedIn = q['auth'] != 'out';
 
+  _stories = switch (q['story']) {
+    'seen' => _seenStories,
+    'none' => _noOwnStories,
+    _ => _sampleStories,
+  };
+
   // `?avatar=0` — foydalanuvchida surat YO'Q holati: Home orb
   // fallback sifatida brend belgisini ko'rsatishi kerak.
   if (q['avatar'] == '0') {
@@ -235,6 +241,21 @@ const _sampleStories = [
   StoryItem(id: 3, code: '48210377', authorName: 'Studio', seen: true),
 ];
 
+/// Hammasi ko'rilgan — Home orbdagi halqa so'nik holatda.
+const _seenStories = [
+  StoryItem(id: 1, code: '48210377', authorName: 'Nodira', seen: true),
+  StoryItem(id: 2, code: 'NOVA', authorName: 'Nova Studio'),
+  StoryItem(id: 3, code: '48210377', authorName: 'Studio', seen: true),
+];
+
+/// Faol ID da story YO'Q — halqa umuman chizilmaydi.
+const _noOwnStories = [
+  StoryItem(id: 2, code: 'NOVA', authorName: 'Nova Studio'),
+];
+
+/// `?story=unseen|seen|none` — uchala holatni suratga olish uchun.
+List<StoryItem> _stories = _sampleStories;
+
 class _GallerySocial extends SocialRepository {
   _GallerySocial() : super(ApiClient());
 
@@ -248,7 +269,7 @@ class _GallerySocial extends SocialRepository {
 
   @override
   Future<Result<List<StoryItem>>> storiesOf(String code) async =>
-      const Ok(_sampleStories);
+      Ok(_stories);
 }
 
 const _sampleBusiness = Business(

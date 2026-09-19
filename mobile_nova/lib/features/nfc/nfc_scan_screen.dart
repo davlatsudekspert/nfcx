@@ -163,7 +163,12 @@ class _ScanBody extends StatelessWidget {
                 ? Icon(Icons.check_rounded, size: orb * .3, color: t.onAccent)
                 : state == OrbState.error
                     ? Icon(Icons.close_rounded, size: orb * .3, color: t.onAccent)
-                    : BrandLogo(size: orb * .38, halo: false),
+                    // Orb ichida plastina yo'q — faqat belgi.
+                    : BrandLogo(
+                        size: orb * kOrbMarkRatio,
+                        style: BrandLogoStyle.markOnly,
+                        tint: t.onAccent,
+                      ),
           ),
         ),
         const SizedBox(height: Gap.section),

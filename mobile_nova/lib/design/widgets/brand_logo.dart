@@ -10,9 +10,23 @@ enum BrandLogoStyle {
   /// Splash, Welcome va Auth kabi logotip "qahramon" bo'lgan joylarda.
   plate,
 
-  /// Faqat oltin belgi — foni shaffof. Atrofdagi sirt allaqachon
-  /// qorong'i bo'lgan joylarda (masalan Midnight'dagi karta ustida).
-  mark,
+  /// Dumaloq brend nishoni: qorong'i grafit doira, uning atrofida
+  /// nozik oltin halqa, markazda belgi.
+  ///
+  /// KICHIK joylar uchun: sozlamalardagi brend nuqtasi, mavzu
+  /// tanlagichi, avatar ustidagi muhr. Bu yerda belgi o'z-o'zidan
+  /// tura olmaydi — atrofdagi sirt har xil rangda bo'lishi mumkin,
+  /// shuning uchun nishon o'z fonini olib yuradi.
+  badge,
+
+  /// Faqat belgi — foni ham, doirasi ham yo'q.
+  ///
+  /// KATTA markaziy nuqtalar uchun: Home hero orbi, NFC markazi
+  /// orbi, skanerlash orbi. U yerda orbning o'zi allaqachon doira —
+  /// ichiga yana bir doira qo'yilsa, "doira ichida doira" hosil
+  /// bo'lardi.
+  markOnly,
+
 }
 
 /// NFCSTORE brend logotipi.
@@ -67,11 +81,64 @@ class BrandLogo extends StatelessWidget {
   static const assetLogo = 'assets/brand/nfcstore_logo.jpg';
   static const assetMark = 'assets/brand/nfcstore_mark.png';
 
+  /// Nishon ranglari MAVZUGA BOG'LIQ EMAS.
+  ///
+  /// Brend nishoni beshala mavzuda ham bir xil ko'rinadi — xuddi
+  /// jismoniy kartadagi muhr kabi. Mavzu bilan o'zgaradigan narsa
+  /// uning ATROFI, o'zi emas.
+  static const _ringGold = Color(0xFFD4B87C);
+  static const _badgeInnerTop = Color(0xFF26242B);
+  static const _badgeInnerBottom = Color(0xFF111015);
+
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
 
-    if (style == BrandLogoStyle.mark) {
+    if (style == BrandLogoStyle.badge) {
+      // Halqa qalinligi o'lchamga mutanosib, lekin chegaralangan:
+      // 16px li nishonda 1px dan ingichka halqa yo'qoladi, 64px da
+      // esa 3px dan qalini og'ir ko'rinadi.
+      final ringWidth = (size * .045).clamp(1.0, 3.0);
+
+      return Semantics(
+        label: semanticLabel,
+        image: true,
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            // Yassi qora emas: yuqori chap tomondan yengil yorug'lik
+            // tushgan grafit. "Soft premium depth" — 3D emas.
+            gradient: const RadialGradient(
+              center: Alignment(-.35, -.45),
+              radius: 1.05,
+              colors: [_badgeInnerTop, _badgeInnerBottom],
+            ),
+            border: Border.all(color: _ringGold, width: ringWidth),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: .22),
+                blurRadius: size * .22,
+                offset: Offset(0, size * .06),
+              ),
+            ],
+          ),
+          child: Center(
+            // Belgi ORIGINAL oltinida — bo'yalmaydi. Qorong'i fon
+            // ustida u o'z jilosi bilan turadi.
+            child: Image.asset(
+              assetMark,
+              width: size * .62,
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.medium,
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (style == BrandLogoStyle.markOnly) {
       return Semantics(
         label: semanticLabel,
         image: true,

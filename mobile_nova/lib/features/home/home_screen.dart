@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -180,7 +182,7 @@ class HomeScreen extends ConsumerWidget {
 /// o'qiladi.
 ///
 /// Orb markazida FAQAT belgi — plastina yo'q, shakl yaxlit qoladi.
-class _IdentityHero extends StatelessWidget {
+class _IdentityHero extends ConsumerWidget {
   const _IdentityHero({required this.user, required this.id, this.onTap});
 
   final User user;
@@ -191,7 +193,7 @@ class _IdentityHero extends StatelessWidget {
   final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = context.tokens;
     final width = MediaQuery.sizeOf(context).width;
 
@@ -211,6 +213,22 @@ class _IdentityHero extends StatelessWidget {
     // haqida emas, shuning uchun u yerda doim belgi turadi.
     final avatar = id.avatarUrl.isNotEmpty ? id.avatarUrl : user.avatarUrl;
 
+    // Story halqasi FAQAT haqiqiy ma'lumotdan. `homeStoriesProvider`
+    // backenddan faol ID ning story lentasini oladi; bizga ularning
+    // ichidan AYNAN SHU ID ga tegishlilari kerak. Hech narsa
+    // to'qilmaydi: so'rov yuklanayotgan bo'lsa ham, xato bo'lsa ham
+    // halqa ko'rsatilmaydi.
+    final mine = ref.watch(homeStoriesProvider).maybeWhen(
+          data: (all) => all.where((s) => s.code == id.code).toList(),
+          orElse: () => const <StoryItem>[],
+        );
+    final ring = mine.isEmpty
+        ? null
+        : _StoryRingState(
+            count: mine.length,
+            unseen: mine.any((s) => !s.seen),
+          );
+
     return Column(
       children: [
         NfcOrb(
@@ -219,10 +237,22 @@ class _IdentityHero extends StatelessWidget {
           child: avatar.isEmpty
               ? BrandLogo(
                   size: orb * kOrbMarkRatio,
-                  style: BrandLogoStyle.mark,
+                  style: BrandLogoStyle.markOnly,
                   tint: t.onAccent,
                 )
-              : _OrbAvatar(url: avatar, orb: orb, initials: user.initials),
+              : _OrbAvatar(
+                  url: avatar,
+                  orb: orb,
+                  initials: user.initials,
+                  ring: ring,
+                  // Story bo'lsa surat o'zining amaliga ega bo'ladi:
+                  // mavjud Story Viewer ochiladi. Story bo'lmasa
+                  // surat alohida amalga ega emas va butun orb
+                  // skanerlashga olib boradi.
+                  onOpenStory: ring == null
+                      ? null
+                      : () => context.push(Routes.story(id.code)),
+                ),
         ),
         const SizedBox(height: Gap.lg),
         Padding(
@@ -265,33 +295,63 @@ class _IdentityHero extends StatelessWidget {
 /// Orasidagi ~15% bo'shliq oltin halqa bo'lib qoladi: surat yadroni
 /// to'lg'azib yubormaydi, nafas va wobble paytida ham qirraga
 /// tegmaydi.
+/// Foydalanuvchining o'z story'lari haqidagi HAQIQIY holat.
+class _StoryRingState {
+  const _StoryRingState({required this.count, required this.unseen});
+
+  /// Nechta story bor — halqa shuncha bo'lakka bo'linadi.
+  final int count;
+
+  /// Hech bo'lmasa bittasi ko'rilmaganmi.
+  final bool unseen;
+}
+
 class _OrbAvatar extends StatelessWidget {
   const _OrbAvatar({
     required this.url,
     required this.orb,
     required this.initials,
+    this.ring,
+    this.onOpenStory,
   });
 
   final String url;
   final double orb;
   final String initials;
 
+  /// `null` — story yo'q, halqa CHIZILMAYDI.
+  final _StoryRingState? ring;
+  final VoidCallback? onOpenStory;
+
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final d = orb * .46;
+    // Halqa bo'lsa surat bir oz kichrayadi — halqa yadro qirrasiga
+    // yaqinlashib qolmasligi uchun. 2% farq ko'zga tashlanmaydi.
+    final d = orb * (ring == null ? .46 : .44);
 
     // Surat yuklanmaguncha yoki xato bo'lganda — bo'sh doira emas,
     // brend belgisi. Orb hech qachon "sinmaydi".
     Widget fallback() => Center(
           child: BrandLogo(
             size: orb * kOrbMarkRatio,
-            style: BrandLogoStyle.mark,
+            style: BrandLogoStyle.markOnly,
             tint: t.onAccent,
           ),
         );
 
-    return SizedBox(
+    // Halqa suratdan TASHQARIDA turadi va yadroga tegmaydi:
+    //   surat  d        = orb * .46
+    //   bo'shliq 3.5px + halqa 2.2px  => tashqi diametr d + 11.4
+    //   yadroning eng tor diametri    = orb * .540
+    // 390px ekranda: 104 -> 115.4 va yadro 122 — ya'ni ikki tomondan
+    // ~3.3px oltin ko'rinib turadi. Halqa ataylab ingichka: orbning
+    // o'z halo va pulse halqalari bilan raqobatlashmasligi kerak.
+    const gap = 4.0;
+    final stroke = ring != null && ring!.unseen ? 2.6 : 1.8;
+    final outer = d + (gap + stroke) * 2;
+
+    final photo = SizedBox(
       width: d,
       height: d,
       child: DecoratedBox(
@@ -336,7 +396,155 @@ class _OrbAvatar extends StatelessWidget {
         ),
       ),
     );
+
+    // Surat bo'lsa ham brend butunlay yo'qolmaydi: suratning pastki
+    // o'ng chekkasida kichik muhr turadi.
+    //
+    // Muhr ATAYLAB suratning ICHIDA: markazi markazdan `ra - rb - 2`
+    // masofada, ya'ni eng tashqi nuqtasi surat qirrasiga yetmaydi.
+    // Shunda u story halqasiga ham, yadro qirrasiga ham tegmaydi.
+    final rb = d * .15;
+    final off = (d / 2 - rb - 2) / math.sqrt2;
+
+    final avatar = SizedBox(
+      width: d,
+      height: d,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          photo,
+          Positioned(
+            left: d / 2 + off - rb,
+            top: d / 2 + off - rb,
+            child: _BrandSeal(size: rb * 2),
+          ),
+        ],
+      ),
+    );
+
+    if (ring == null) return avatar;
+
+    return GestureDetector(
+      onTap: onOpenStory,
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        width: outer,
+        height: outer,
+        child: CustomPaint(
+          painter: _StoryRingPainter(
+            t: t,
+            state: ring!,
+            stroke: stroke,
+          ),
+          child: Center(child: avatar),
+        ),
+      ),
+    );
   }
+}
+
+/// Avatar ustidagi brend nishoni.
+///
+/// Bu ham xuddi sozlamalardagi va mavzu tanlagichidagi nishon —
+/// bitta komponent, bitta brend tili. Farqi faqat o'lchamda.
+class _BrandSeal extends StatelessWidget {
+  const _BrandSeal({required this.size});
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        // Fon rangidagi nozik halqa — nishon surat ustida
+        // "yopishgan" emas, undan ajralib turadi.
+        border: Border.all(color: t.bg1, width: size * .08),
+      ),
+      child: BrandLogo(size: size, style: BrandLogoStyle.badge),
+    );
+  }
+}
+
+/// Story halqasi.
+///
+/// Instagram gradienti EMAS: ranglar mavzuning o'z aksentlaridan
+/// olinadi, shuning uchun halqa beshala mavzuda ham o'zinikidek
+/// ko'rinadi.
+///
+/// Ko'rilmagan story — aksent gradientida, aniq va yorug'.
+/// Ko'rilgan story — bitta so'nik ohangda, ingichkaroq. Farq bir
+/// qarashda bilinadi, lekin e'tiborni tortib olmaydi.
+class _StoryRingPainter extends CustomPainter {
+  _StoryRingPainter({
+    required this.t,
+    required this.state,
+    required this.stroke,
+  });
+
+  final NfcTokens t;
+  final _StoryRingState state;
+  final double stroke;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = Offset(size.width / 2, size.height / 2);
+    final r = (size.width - stroke) / 2;
+    final rect = Rect.fromCircle(center: c, radius: r);
+
+    // HALQA FAQAT YORUG' OHANGDA.
+    //
+    // Birinchi urinishda bu yerda `[accent3, accent1, accent2,
+    // accent3]` sweep gradienti bor edi va halqa deyarli
+    // KO'RINMASDI: u oltin yadro USTIDA turadi, aksentlarning
+    // ko'pchiligi esa o'sha oltinning o'zi. Oltin ustida oltin
+    // yo'qoladi — bu ilovada allaqachon uchragan muammo.
+    //
+    // Shuning uchun halqa doim yadrodan YORUG'ROQ: `accent1` dan
+    // uning oqartirilgan variantigacha. Sweep sheni saqlaydi
+    // (metall yaltirashi), lekin yoyning HECH BIR joyida qorayib
+    // ketmaydi.
+    final bright = Color.lerp(t.accent1, Colors.white, .78)!;
+
+    final p = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = stroke;
+
+    if (state.unseen) {
+      p.shader = SweepGradient(
+        colors: [t.accent1, bright, t.accent1, bright, t.accent1],
+        stops: const [0, .25, .5, .75, 1],
+        transform: const GradientRotation(-math.pi / 2),
+      ).createShader(rect);
+    } else {
+      // Ko'rilgan: o'sha oila, lekin so'nik — "bor, endi muhim emas".
+      p.color = bright.withValues(alpha: .38);
+    }
+
+    // Bitta story bo'lsa yaxlit halqa. Bir nechta bo'lsa — shuncha
+    // bo'lak. Bo'lak soni ataylab cheklangan: 8 tadan ortig'i
+    // punktir chiziqqa aylanib, bezakka aylanardi.
+    final segments = state.count <= 1 ? 1 : math.min(state.count, 8);
+    if (segments == 1) {
+      canvas.drawCircle(c, r, p);
+      return;
+    }
+
+    const gapAngle = .10;
+    final step = 2 * math.pi / segments;
+    for (var i = 0; i < segments; i++) {
+      final start = -math.pi / 2 + i * step + gapAngle / 2;
+      canvas.drawArc(rect, start, step - gapAngle, false, p);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_StoryRingPainter old) =>
+      old.state.count != state.count ||
+      old.state.unseen != state.unseen ||
+      old.t.id != t.id ||
+      old.stroke != stroke;
 }
 
 /// NFC ID hali yo'q — do'konga yo'naltiruvchi holat.

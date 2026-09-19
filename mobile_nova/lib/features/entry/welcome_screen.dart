@@ -33,7 +33,14 @@ class WelcomeScreen extends StatelessWidget {
               const Spacer(flex: 2),
               NfcOrb(
                 size: orb,
-                child: BrandLogo(size: orb * .34, halo: false),
+                // Orb ichida PLASTINA yo'q: orbning o'zi allaqachon
+                // doira, ichiga to'rtburchak plastina qo'yilsa shakl
+                // ikkiga bo'linib ketardi.
+                child: BrandLogo(
+                  size: orb * kOrbMarkRatio,
+                  style: BrandLogoStyle.markOnly,
+                  tint: context.tokens.onAccent,
+                ),
               ),
               const Spacer(),
               Text(

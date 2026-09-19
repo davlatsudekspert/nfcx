@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -38,12 +39,57 @@ void main() {
 
     testWidgets('belgi ko‘rinishida shaffof PNG ishlatiladi', (tester) async {
       await tester.pumpWidget(wrapScreen(
-        const Center(child: BrandLogo(style: BrandLogoStyle.mark)),
+        const Center(child: BrandLogo(style: BrandLogoStyle.markOnly)),
       ));
       final image = tester.widget<Image>(find.byType(Image).first);
       expect((image.image as AssetImage).assetName, BrandLogo.assetMark);
       // Balandlik berilmaydi — nisbat kenglikdan hisoblanadi.
       expect(image.height, isNull);
+    });
+
+    testWidgets('nishon dumaloq, oltin halqali va belgi bo‘yalmaydi',
+        (tester) async {
+      for (final t in NfcTokens.all) {
+        await tester.pumpWidget(wrapScreen(
+          const Center(child: BrandLogo(size: 48, style: BrandLogoStyle.badge)),
+          tokens: t,
+        ));
+        final box = tester.widget<Container>(
+          find.descendant(
+            of: find.byType(BrandLogo),
+            matching: find.byType(Container),
+          ),
+        );
+        final dec = box.decoration! as BoxDecoration;
+        expect(dec.shape, BoxShape.circle, reason: t.id);
+        // Halqa bor va ingichka.
+        expect(dec.border!.top.width, lessThanOrEqualTo(3.0), reason: t.id);
+        // Nishon MAVZUGA BOG‘LIQ EMAS: halqa rangi hamma mavzuda bir xil.
+        expect(dec.border!.top.color, const Color(0xFFD4B87C), reason: t.id);
+
+        final image = tester.widget<Image>(find.byType(Image).first);
+        expect((image.image as AssetImage).assetName, BrandLogo.assetMark,
+            reason: t.id);
+        // Belgi ORIGINAL oltinida qoladi — qayta bo‘yalmaydi.
+        expect(image.color, isNull, reason: t.id);
+      }
+    });
+
+    testWidgets('orb markazlarida plastina ISHLATILMAYDI', (tester) async {
+      // Orb ichida plastina "doira ichida to‘rtburchak" hosil qiladi.
+      // Bu test o‘sha xatoning qaytib kelishini ushlaydi.
+      final src = File('lib/features/entry/welcome_screen.dart')
+          .readAsStringSync() +
+          File('lib/features/nfc/nfc_scan_screen.dart').readAsStringSync() +
+          File('lib/features/nfc/nfc_center_screen.dart').readAsStringSync() +
+          File('lib/features/home/home_screen.dart').readAsStringSync();
+      for (final m in RegExp(r'NfcOrb\(').allMatches(src)) {
+        final tail = src.substring(m.start, (m.start + 700).clamp(0, src.length));
+        final end = tail.indexOf('\n        ),');
+        final body = end == -1 ? tail : tail.substring(0, end);
+        expect(body.contains('BrandLogoStyle.plate'), isFalse,
+            reason: 'NfcOrb ichida plastina: $body');
+      }
     });
   });
 
