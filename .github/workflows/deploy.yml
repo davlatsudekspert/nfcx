@@ -153,6 +153,15 @@ jobs:
       - name: Marketplace aktivatsiyasi
         run: node scripts/test-marketplace.mjs
 
+      # KONTAKTNI SAQLASH (vCard) — NFC KARTANING BUTUN MA'NOSI.
+      # Odam tegizadi, sahifani yopadi — raqam uning telefonida
+      # QOLADI. Tugma BIZNES profilida umuman yo'q edi, shaxsiy
+      # profil esa o'z, buzuq nusxasini ishlatardi (vergul
+      # qalqonlanmasdi, CRLF yo'q, `NOTE2:` degan mavjud bo'lmagan
+      # maydon). Endi uchalasi ham bitta yozuvchidan.
+      - name: Kontaktni saqlash (vCard)
+        run: node scripts/test-vcard.mjs
+
       - name: Story va post mustaqilligi
         run: node scripts/test-story-post-separate.mjs
 

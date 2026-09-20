@@ -9629,6 +9629,53 @@ async function handleRequest(request, env, url) {
       }
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // NFC TEGISH: /t/<chip_token>
+    //
+    // MARKETPLACE MAHSULOTI UCHUN SHART. Mavjud jismoniy karta
+    // oqimida chip `nfcstore.uz/<kod>?t=<token>` bilan yoziladi —
+    // profil ISHLAB CHIQARISHDA allaqachon ma'lum. Marketplace'da
+    // esa teskari: stiker sotilgunga qadar kimniki bo'lishi noma'lum,
+    // shuning uchun chipda FAQAT token bo'ladi va profilni SERVER
+    // topib beradi.
+    //
+    // 302, 301 EMAS. Doimiy yo'naltirish brauzerda abadiy keshlanadi
+    // va odam profilini almashtirganda karta ESKI profilga olib
+    // boraverardi — qayta yozib bo'lmaydigan stikerni o'ldirardi.
+    // Shu sababli `no-store` ham qo'yiladi.
+    //
+    //   bog'lanmagan token -> /activate (hali faollashtirilmagan)
+    //   shaxsiy profil     -> /<kod>?t=<token>  (mavjud tekshiruv
+    //                         va "karta o'chirilgan" xabari ishlaydi)
+    //   biznes/kompaniya   -> /c/<companyId>
+    //   noma'lum token     -> bosh sahifa (yolg'on va'da bermaymiz)
+    const tapRedirect = url.pathname.match(/^\/t\/([A-Za-z0-9_-]{1,64})\/?$/);
+    if (tapRedirect && request.method === 'GET') {
+      const to = (pathname) => new Response(null, {
+        status: 302,
+        headers: { location: pathname, 'cache-control': 'no-store' },
+      });
+      try {
+        await ensureCoreSchema(env);
+        const token = tapRedirect[1];
+        const row = await env.DB.prepare(
+          `SELECT linked_code, linked_company_id FROM physical_cards WHERE chip_token = ?`
+        ).bind(token).first()
+          // Eski bazada `linked_company_id` ustuni bo'lmasligi mumkin.
+          .catch(() => env.DB.prepare(`SELECT linked_code FROM physical_cards WHERE chip_token = ?`)
+            .bind(token).first());
+        if (!row) return to('/');
+        if (row.linked_code) return to(`/${String(row.linked_code).toLowerCase()}?t=${encodeURIComponent(token)}`);
+        if (row.linked_company_id) return to(`/c/${String(row.linked_company_id).toLowerCase()}`);
+        // Qurilma bor, lekin hali hech qayerga bog'lanmagan —
+        // demak mahsulot sotilgan, ammo faollashtirilmagan.
+        return to('/activate');
+      } catch (error) {
+        console.error('tap redirect', error?.message);
+        return to('/');
+      }
+    }
+
     // Kompaniyaning o'z domeni — HTML so'rovlari uchun. Statik fayllar
     // (JS/CSS/rasm) odatdagidek beriladi, shuning uchun `accept` bo'yicha
     // ajratiladi va D1 ga har bir fayl uchun so'rov ketmaydi.

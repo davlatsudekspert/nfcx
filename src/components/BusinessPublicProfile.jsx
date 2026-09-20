@@ -9,6 +9,7 @@ import { dbAddCatalogItemView, dbGetCatalogMeta, dbSetCatalogReaction } from '..
 import { fmt } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
 import { ownerActionUrl } from './OwnerDock.jsx';
+import { downloadVcard } from '../lib/vcard.js';
 
 const MODULE_COPY = {
   menu: { tab: 'Menyu', singular: 'Taom', route: 'menu' },
@@ -209,6 +210,17 @@ export default function BusinessPublicProfile({
   // Nusxalash RAD ETILISHI mumkin (ruxsat berilmagan brauzer, HTTPS
   // bo'lmagan muhit) — va'da qaytaradi, shuning uchun `await` bilan
   // kutiladi va natija ROST aytiladi.
+  const saveContact = () => downloadVcard({
+    name: record.name,
+    org: record.name,
+    title: record.role,
+    phone: (record.phone && !record.hidePhone) ? record.phone : '',
+    email: record.email,
+    address: record.address,
+    note: record.about ? String(record.about).replace(/\s*\n\s*/g, ' ') : '',
+    urls: [tgUrl, record.website || '', shareUrl].filter(Boolean),
+  }, String(record.code || 'nfcstore').toLowerCase());
+
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl);
@@ -283,7 +295,16 @@ export default function BusinessPublicProfile({
             </div>
           </div>
           <div className="bp-hero-actions">
-            {record.phone && !record.hidePhone && <a className="bp-gold-btn" href={`tel:${record.phone}`}>☎ {t('Qo‘ng‘iroq')}</a>}
+            {/* KONTAKTNI SAQLASH — NFC KARTANING BUTUN MA'NOSI.
+                Odam tegizadi, sahifani yopadi — va raqamingiz uning
+                telefonida QOLADI. Shaxsiy profilda ham, kompaniya
+                sahifasida ham bu tugma bor edi, faqat SHU YERDA
+                yo'q edi: bu yerda qolgani (qo'ng'iroq, Telegram)
+                sahifa yopilgach hech qanday iz qoldirmaydi.
+                Yozuvchi umumiy (`src/lib/vcard.js`) — uchinchi
+                nusxa yaratilmadi. */}
+            <button type="button" className="bp-gold-btn" onClick={saveContact}>↓ {t('Kontaktni saqlash')}</button>
+            {record.phone && !record.hidePhone && <a className="bp-dark-btn" href={`tel:${record.phone}`}>☎ {t('Qo‘ng‘iroq')}</a>}
             {tgUrl && <a className="bp-dark-btn" href={tgUrl} target="_blank" rel="noopener noreferrer">Telegram</a>}
             {hasLocation && <a className="bp-dark-btn" href={mapsUrl} target="_blank" rel="noopener noreferrer">⌖ {t('Yo‘nalish')}</a>}
           </div>

@@ -457,7 +457,13 @@ function Codes({ adminApi, t, isManager, products, apiErrText, catalog }) {
       await adminApi(`/marketplace/activations/${row.id}/${action}`, { method: 'POST', body: JSON.stringify(body || {}) });
       await load();
     } catch (e) {
-      setMsg({ ok: false, text: e.code === 'already_activated' ? t('Faollashtirilgan kodni o‘zgartirib bo‘lmaydi.') : apiErrText(e, t) });
+      setMsg({
+        ok: false,
+        text: e.code === 'already_activated' ? t('Faollashtirilgan kodni o‘zgartirib bo‘lmaydi.')
+          : e.code === 'device_taken' ? t('Bu chip boshqa kodga yoki odamga biriktirilgan.')
+          : e.code === 'chip_token_required' ? t('Chip tokenini kiriting.')
+          : apiErrText(e, t),
+      });
     }
   };
 
@@ -565,6 +571,21 @@ function Codes({ adminApi, t, isManager, products, apiErrText, catalog }) {
                                 >
                                   {t('Buyurtma')}
                                 </button>
+                                {/* CHIP TOKENI — stiker qaysi kodga
+                                    solinganini yozib qo'yadi. Usiz
+                                    faollashtirilgan mahsulot
+                                    tegizilganda hech qayerga olib
+                                    bormaydi. */}
+                                <button
+                                  type="button" className="btn btn-xs"
+                                  onClick={() => {
+                                    const token = window.prompt(t('Chip tokeni (stikerdagi):'), '');
+                                    if (token == null || !token.trim()) return;
+                                    act(r, 'attach-device', { chipToken: token.trim() });
+                                  }}
+                                >
+                                  {t('Qurilma')}
+                                </button>
                               </>
                             )}
                           </div>
@@ -640,17 +661,21 @@ function Orders({ adminApi, t, apiErrText }) {
     // solishtiriladi va mos kelmasa satr bog'lanmaydi: bu
     // "konvertga boshqa mahsulotning kodi solingan" degani.
     const iSku = idx('sku', 'product_sku', 'marketplace_sku');
-    if (iCode < 0 || iOrder < 0) {
-      setParseErr(t('Sarlavhada "code" va "marketplace_order_id" ustunlari bo‘lishi kerak.'));
+    // Chip tokeni — ishlab chiqarish faylidan keladi.
+    const iChip = idx('chip_token', 'chip', 'token', 'nfc_token');
+    // `code` SHART; qolganidan hech bo'lmasa bittasi bo'lsin.
+    if (iCode < 0 || (iOrder < 0 && iChip < 0)) {
+      setParseErr(t('Sarlavhada "code" va hech bo‘lmasa "marketplace_order_id" yoki "chip_token" ustuni bo‘lishi kerak.'));
       setRows([]);
       return;
     }
     const parsed = table.slice(1).map((r) => ({
       code: (r[iCode] || '').trim(),
-      marketplaceOrderId: (r[iOrder] || '').trim(),
+      marketplaceOrderId: iOrder >= 0 ? (r[iOrder] || '').trim() : '',
       customerReference: iRef >= 0 ? (r[iRef] || '').trim() : '',
       sku: iSku >= 0 ? (r[iSku] || '').trim() : '',
-    })).filter((r) => r.code || r.marketplaceOrderId);
+      chipToken: iChip >= 0 ? (r[iChip] || '').trim() : '',
+    })).filter((r) => r.code || r.marketplaceOrderId || r.chipToken);
     setRows(parsed);
   };
 
@@ -664,7 +689,7 @@ function Orders({ adminApi, t, apiErrText }) {
     <div className="space-y-4">
       <AdminCard title={t('Buyurtmalarni CSV dan bog‘lash')}>
         <p className="mk-hint">
-          {t('Ustunlar: code, marketplace_order_id va (ixtiyoriy) customer_reference, sku. Batch yaratilganda yuklab olingan CSV ga buyurtma raqamini qo‘shib, shu yerga yuklang. `sku` berilsa, u kodning haqiqiy mahsuloti bilan solishtiriladi.')}
+          {t('Ustunlar: code va (ixtiyoriy) marketplace_order_id, customer_reference, sku, chip_token. Ishlab chiqarish fayli chip_token bilan, sotuv fayli buyurtma raqami bilan keladi — ikkalasi ham shu yerdan o‘tadi. `sku` berilsa, u kodning haqiqiy mahsuloti bilan solishtiriladi.')}
         </p>
         <input type="file" accept=".csv,text/csv" className="vz-input" onChange={onFile} aria-label={t('CSV fayl')} />
         {fileName && <p className="mk-hint mt-2">{fileName} — {t('{n} ta qator', { n: rows.length })}</p>}
@@ -695,6 +720,7 @@ function Orders({ adminApi, t, apiErrText }) {
                         {p.reason === 'not_found' ? t('Bunday kod topilmadi')
                           : p.reason === 'bad_code' ? t('Kod formati noto‘g‘ri')
                           : p.reason === 'sku_mismatch' ? t('SKU mos kelmadi — konvertda boshqa mahsulotning kodi')
+                          : p.reason === 'device_taken' ? t('Chip band — boshqa kodga yoki odamga biriktirilgan')
                           : t('Buyurtma raqami yo‘q')}
                       </td>
                     </tr>

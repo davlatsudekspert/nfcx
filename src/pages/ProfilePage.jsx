@@ -12,6 +12,7 @@ import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
 import { parseAnyCode, letterPattern, digitPattern, tierForCode, TIER_LABEL, TIER_COLOR, TIER_EMOJI, TIER_PAGE_GLOW } from '../lib/pricing.js';
 import { menuEligible, productEligible, serviceEligible } from '../lib/access.js';
 import { listMyCompanies } from '../lib/company.js';
+import { downloadVcard } from '../lib/vcard.js';
 import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import { readFollowAs, rememberFollowAs } from '../lib/followIdentity.js';
@@ -288,32 +289,40 @@ export function vzStyle(theme, record) {
   };
 }
 
-function buildVcf(record) {
-  const lines = [
-    'BEGIN:VCARD',
-    'VERSION:3.0',
-    `FN:${record.name}`,
-    record.role ? `TITLE:${record.role}` : '',
-    record.about ? `NOTE:${record.about.replace(/\n/g, ' ')}` : '',
-    (record.phone && !record.hidePhone) ? `TEL;TYPE=CELL:${record.phone}` : '',
-    record.email ? `EMAIL:${record.email}` : '',
-    record.tg ? `URL:${socialUrl('tg', record.tg)}` : '',
-    record.website ? `URL:${record.website}` : '',
-    `NOTE2:nfcstore.uz/${record.code.toLowerCase()}`,
-    'END:VCARD',
-  ].filter(Boolean);
-  return lines.join('\n');
+// SHAXSIY PROFIL KONTAKTI — UMUMIY YOZUVCHI ORQALI.
+//
+// Bu yerda o'z nusxasi bor edi va u `src/lib/vcard.js` dan
+// ANCHA yomon ishlardi:
+//   • vergul, nuqta-vergul va teskari chiziq QALQONLANMASDI —
+//     ismida yoki tavsifida vergul bo'lgan odamning kartasi
+//     buzuq chiqardi (O'zbekistonda "Ism, Familiya" ko'p);
+//   • qatorlar `\n` bilan ulanardi, RFC esa CRLF talab qiladi —
+//     iOS bunday faylni ba'zan umuman ochmaydi;
+//   • `NOTE2:` degan mavjud BO'LMAGAN maydon yozilardi.
+// Ustiga-ustak `vcard.js` izohida "shaxsiy profil ham shu
+// funksiyani ishlatadi" deb yozib qo'yilgandi — ya'ni izoh
+// haqiqatga mos emasdi.
+function vcardFieldsFor(record) {
+  return {
+    name: record.name,
+    title: record.role,
+    phone: (record.phone && !record.hidePhone) ? record.phone : '',
+    email: record.email,
+    note: record.about ? String(record.about).replace(/\s*\n\s*/g, ' ') : '',
+    urls: [
+      record.tg ? socialUrl('tg', record.tg) : '',
+      record.website || '',
+      // Profil havolasi — kontaktning ichida qoladi, shunda odam
+      // keyin ham qaytib kela oladi.
+      `${typeof window === 'undefined' ? 'https://nfcstore.uz' : window.location.origin}/${String(record.code || '').toLowerCase()}`,
+    ].filter(Boolean),
+  };
 }
 
 function downloadVcf(record) {
-  const blob = new Blob([buildVcf(record)], { type: 'text/vcard' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${record.code}.vcf`;
-  a.click();
-  URL.revokeObjectURL(url);
+  downloadVcard(vcardFieldsFor(record), record.code);
 }
+
 
 // Havola yasash YAGONA manbadan — src/lib/socialLinks.js.
 // Avval bu yerda `https://instagram.com/${qiymat}` deb to'g'ridan-to'g'ri

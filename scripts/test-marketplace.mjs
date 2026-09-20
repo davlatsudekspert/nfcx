@@ -610,8 +610,18 @@ function gatedEnv(env, sqlNeedle) {
   // Egalik SERVER tomonda.
   checkTrue('13) shaxsiy egalik serverda', /getRecordOwner\(env, wanted\)/.test(src));
   checkTrue('13) kompaniya egaligi serverda', /FROM companies WHERE company_id = \? AND owner_user_id = \?/.test(src));
-  // Qurilma tashqaridan berilmaydi.
-  checkTrue('13) qurilma body dan olinmaydi', !/body\.deviceId|body\.physicalDeviceId|body\.chipToken/.test(src));
+  // QURILMA TASHQARIDAN BERILMAYDI — ommaviy aktivatsiyada.
+  //
+  // Xavf aynan shu yerda: tashrifchi so'rov tanasida begona chip
+  // tokenini yuborib, boshqa odamning stikerini o'ziga bog'lab
+  // olishi mumkin bo'lardi. Admin uchun esa token bilan biriktirish
+  // QONUNIY (ishlab chiqarish ro'yxati), shuning uchun tekshiruv
+  // butun faylga emas, AYNAN aktivatsiya ishlovchisiga qaratilgan.
+  const handler = src.slice(src.indexOf('async function activateHandler'));
+  checkTrue('13) ommaviy aktivatsiyada qurilma body dan olinmaydi',
+    !/body\.deviceId|body\.physicalDeviceId|body\.chipToken/.test(handler));
+  checkTrue('13) qurilma faqat kodga oldindan biriktirilganidan olinadi',
+    /if \(row\.physical_device_id\)/.test(handler));
   // Tezlik chegarasi mavjud mexanizmdan.
   checkTrue('13) mavjud rateLimitD1 ishlatiladi', /H\.rateLimitD1\(/.test(src));
 
@@ -745,7 +755,12 @@ function gatedEnv(env, sqlNeedle) {
   checkTrue('16) fayl serverga yuborilmaydi', !/FormData|multipart/.test(tab));
   // Excel saqlagan faylda BOM birinchi ustun nomiga yopishadi.
   checkTrue('16) BOM olib tashlanadi', /replace\(\/\^\\uFEFF\/, ''\)/.test(tab));
-  checkTrue('16) sarlavha ustunlari tekshiriladi', /iCode < 0 \|\| iOrder < 0/.test(tab));
+  // `code` HAR DOIM shart; qolganidan hech bo'lmasa bittasi —
+  // ishlab chiqarish fayli faqat `chip_token` bilan keladi
+  // (buyurtma hali yo'q), sotuv fayli esa buyurtma raqami bilan.
+  checkTrue('16) code ustuni majburiy',
+    /iCode < 0 \|\| \(iOrder < 0 && iChip < 0\)/.test(tab));
+  checkTrue('16) chip_token ustuni o‘qiladi', /idx\('chip_token'/.test(tab));
   checkTrue('16) noto‘g‘ri tab raqami rad etiladi', /n >= 0 && n < TABS\.length \? n : 0/.test(admin));
 }
 
@@ -1153,6 +1168,125 @@ function gatedEnv(env, sqlNeedle) {
   // Backendda esa BITTA ta'rif bo'lsin.
   const src = read('../hosting/api/marketplace.js');
   check('21) backendda bitta ta’rif', (src.match(/^const MARKETPLACES = \[/gm) || []).length, 1);
+}
+
+// ── 22) FIZIK STIKER HAQIQATAN ISHLAYDIMI ────────────────────────────
+//
+// Aktivatsiya kod -> profil bog'lanishini to'g'ri qilardi, LEKIN
+// STIKERNING O'ZI hech qayerga olib bormasdi: chipdagi token uchun
+// yo'naltirish marshruti yo'q edi va admin panelda kodga qurilma
+// biriktirish ham yo'q edi. Ya'ni marketplace mahsuloti FIZIK
+// jihatdan ishlamasdi.
+{
+  const env = await setup();
+  const product = await makeProduct(env);
+  const codes = (await makeCodes(env, product.id, 5)).codes;
+  const idOf = async (c) => Number((await rowOfCode(env, c.code, 'id')).id);
+
+  // ── QURILMANI BIRIKTIRISH ──────────────────────────────────────────
+  const id0 = await idOf(codes[0]);
+  const att = await call(env, `/api/admin/marketplace/activations/${id0}/attach-device`, {
+    method: 'POST', cookie: cookie.admin, json: { chipToken: 'CHIP-AAA1' },
+  });
+  check('22) qurilma biriktirildi', att.status, 200);
+  const dev = await env.DB.prepare(`SELECT id, owner_user_id AS uid, linked_code AS lc FROM physical_cards WHERE chip_token = 'CHIP-AAA1'`).first();
+  checkTrue('22) qurilma yozuvi yaratildi', !!dev);
+  check('22) hali egasi yo‘q', dev.uid, null);
+  const bound = await rowOfCode(env, codes[0].code, 'physical_device_id AS d');
+  check('22) kodga bog‘landi', Number(bound.d), Number(dev.id));
+
+  // Bir stikerni IKKI kodga biriktirib bo'lmaydi.
+  const id1 = await idOf(codes[1]);
+  const dup = await call(env, `/api/admin/marketplace/activations/${id1}/attach-device`, {
+    method: 'POST', cookie: cookie.admin, json: { chipToken: 'CHIP-AAA1' },
+  });
+  check('22) band stiker ikkinchi kodga o‘tmaydi', dup.status, 409);
+  check('22) sababi aniq', (await jsonOf(dup)).error, 'device_taken');
+
+  // Odamga tegishli stiker ham olinmaydi.
+  await env.DB.prepare(`INSERT INTO physical_cards (chip_token, owner_user_id) VALUES ('CHIP-OWNED', 2)`).run();
+  const owned = await call(env, `/api/admin/marketplace/activations/${id1}/attach-device`, {
+    method: 'POST', cookie: cookie.admin, json: { chipToken: 'CHIP-OWNED' },
+  });
+  check('22) begona stiker olinmaydi', owned.status, 409);
+
+  check('22) token majburiy', (await call(env, `/api/admin/marketplace/activations/${id1}/attach-device`, { method: 'POST', cookie: cookie.admin, json: {} })).status, 422);
+  check('22) biriktirish mehmonga yopiq', (await call(env, `/api/admin/marketplace/activations/${id1}/attach-device`, { method: 'POST', json: { chipToken: 'X' } })).status, 401);
+
+  // ── /t/<token> — BOG'LANMAGAN ──────────────────────────────────────
+  const r1 = await call(env, '/t/CHIP-AAA1');
+  check('22) bog‘lanmagan token -> yo‘naltirish', r1.status, 302);
+  check('22) ...faollashtirish sahifasiga', r1.headers.get('location'), '/activate');
+  // KESHLANMASIN: profil keyin o'zgaradi.
+  check('22) kesh yo‘q', r1.headers.get('cache-control'), 'no-store');
+
+  // ── AKTIVATSIYA -> STIKER PROFILGA ISHORA QILADI ──────────────────
+  const out = await jsonOf(await call(env, '/api/activate', {
+    method: 'POST', cookie: cookie.user, json: { code: codes[0].code, profileKind: 'personal' },
+  }));
+  const r2 = await call(env, '/t/CHIP-AAA1');
+  check('22) endi profilga yo‘naltiradi', r2.status, 302);
+  check('22) aynan o‘sha profilga', r2.headers.get('location'), `/${out.result.profileCode.toLowerCase()}?t=CHIP-AAA1`);
+  const after = await env.DB.prepare(`SELECT owner_user_id AS uid, linked_code AS lc, active FROM physical_cards WHERE chip_token = 'CHIP-AAA1'`).first();
+  check('22) qurilma egasiga o‘tdi', Number(after.uid), 1);
+  check('22) profilga bog‘landi', after.lc, out.result.profileCode);
+  check('22) faol', Number(after.active), 1);
+
+  // ── BIZNES: kompaniya sahifasiga ──────────────────────────────────
+  await addCompany(env, 'TAPCO', 1, 'Tegish Kompaniyasi');
+  const id2 = await idOf(codes[2]);
+  await call(env, `/api/admin/marketplace/activations/${id2}/attach-device`, {
+    method: 'POST', cookie: cookie.admin, json: { chipToken: 'CHIP-BIZ1' },
+  });
+  await call(env, '/api/activate', { method: 'POST', cookie: cookie.user, json: { code: codes[2].code, profileKind: 'business', companyId: 'TAPCO' } });
+  const r3 = await call(env, '/t/CHIP-BIZ1');
+  check('22) biznes -> kompaniya sahifasi', r3.headers.get('location'), '/c/tapco');
+  // `linked_code` — cards.code ga FK; kompaniya u yerga YOZILMAYDI.
+  const bizDev = await env.DB.prepare(`SELECT linked_code AS lc, linked_company_id AS cid FROM physical_cards WHERE chip_token = 'CHIP-BIZ1'`).first();
+  check('22) linked_code bo‘sh qoldi', bizDev.lc, null);
+  check('22) kompaniya alohida ustunda', bizDev.cid, 'TAPCO');
+
+  // ── NOMA'LUM TOKEN — YOLG'ON VA'DA BERMAYMIZ ──────────────────────
+  const r4 = await call(env, '/t/YOQBUNDAY');
+  check('22) noma’lum token -> bosh sahifa', r4.headers.get('location'), '/');
+  // Xavfsizlik: token shakliga tushmaydigan narsa marshrutga
+  // umuman kirmaydi (SPA qobig'i qaytadi, yo'naltirish emas).
+  const r5 = await call(env, '/t/' + encodeURIComponent("' OR 1=1 --"));
+  checkTrue('22) injeksiya urinishi yo‘naltirilmaydi', r5.status !== 302, `${r5.status}`);
+
+  // ── CSV: chip_token ustuni ────────────────────────────────────────
+  const imp = await jsonOf(await call(env, '/api/admin/marketplace/orders/import', {
+    method: 'POST', cookie: cookie.admin,
+    json: {
+      rows: [
+        // Faqat token (ishlab chiqarish fayli — buyurtma hali yo'q).
+        { code: codes[3].code, chipToken: 'CHIP-CSV1' },
+        // Token + buyurtma birga.
+        { code: codes[4].code, chipToken: 'CHIP-CSV2', marketplaceOrderId: 'UZUM-7001' },
+        // Band token — qator BOG'LANMASIN.
+        { code: codes[1].code, chipToken: 'CHIP-AAA1', marketplaceOrderId: 'UZUM-7002' },
+      ],
+    },
+  }));
+  check('22) CSV: 2 qator bog‘landi', imp.linked, 2);
+  check('22) CSV: band token muammo sifatida qaytdi', imp.problems[0].reason, 'device_taken');
+  const csv1 = await rowOfCode(env, codes[3].code, 'physical_device_id AS d, marketplace_order_id AS o, status');
+  checkTrue('22) CSV: token biriktirildi', csv1.d != null);
+  check('22) CSV: buyurtmasiz qator holatini o‘zgartirmadi', csv1.status, 'new');
+  const csv2 = await rowOfCode(env, codes[4].code, 'physical_device_id AS d, marketplace_order_id AS o, status');
+  checkTrue('22) CSV: token va buyurtma birga', csv2.d != null && csv2.o === 'UZUM-7001');
+  check('22) CSV: buyurtma bilan SOLD', csv2.status, 'sold');
+  // Band token bo'lgan qatorning buyurtmasi ham YOZILMASIN.
+  const csv3 = await rowOfCode(env, codes[1].code, 'marketplace_order_id AS o');
+  check('22) band token: buyurtma ham yozilmadi', csv3.o, null);
+
+  // ── MANBA QOIDALARI ───────────────────────────────────────────────
+  const worker = read('../hosting/worker.js');
+  // 301 BO'LMASIN: brauzer abadiy keshlaydi va profil almashganda
+  // karta eski profilga olib boraverardi.
+  checkTrue('22) doimiy yo‘naltirish (301) ishlatilmaydi',
+    !/status: 301[\s\S]{0,200}chip_token/.test(worker));
+  checkTrue('22) 302 va no-store', /status: 302,\s*\n?\s*headers: \{ location: pathname, 'cache-control': 'no-store' \}/.test(worker));
 }
 
 done();

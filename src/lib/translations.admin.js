@@ -304,4 +304,15 @@ export const DICT_ADMIN = {
   'Muddati tugatildi': { ru: 'Срок завершён', en: 'Expired' },
   'Faollashtirildi': { ru: 'Активирован', en: 'Activated' },
   'Qayta taqsimlandi': { ru: 'Переназначен', en: 'Reassigned' },
+
+  // Chip tokeni — stiker qaysi aktivatsiya kodiga solinganini yozib
+  // qo'yadi. Usiz faollashtirilgan mahsulot tegizilganda hech
+  // qayerga olib bormaydi.
+  'Qurilma': { ru: 'Устройство', en: 'Device' },
+  'Chip tokeni (stikerdagi):': { ru: 'Токен чипа (со стикера):', en: 'Chip token (from the sticker):' },
+  'Chip tokenini kiriting.': { ru: 'Введите токен чипа.', en: 'Enter the chip token.' },
+  'Bu chip boshqa kodga yoki odamga biriktirilgan.': { ru: 'Этот чип уже привязан к другому коду или человеку.', en: 'This chip is already attached to another code or person.' },
+  'Chip band — boshqa kodga yoki odamga biriktirilgan': { ru: 'Чип занят — привязан к другому коду или человеку', en: 'Chip taken — attached to another code or person' },
+  'Sarlavhada "code" va hech bo‘lmasa "marketplace_order_id" yoki "chip_token" ustuni bo‘lishi kerak.': { ru: 'В заголовке должна быть колонка "code" и хотя бы одна из "marketplace_order_id" или "chip_token".', en: 'The header must contain "code" and at least one of "marketplace_order_id" or "chip_token".' },
+  'Ustunlar: code va (ixtiyoriy) marketplace_order_id, customer_reference, sku, chip_token. Ishlab chiqarish fayli chip_token bilan, sotuv fayli buyurtma raqami bilan keladi — ikkalasi ham shu yerdan o‘tadi. `sku` berilsa, u kodning haqiqiy mahsuloti bilan solishtiriladi.': { ru: 'Колонки: code и (необязательно) marketplace_order_id, customer_reference, sku, chip_token. Производственный файл приходит с chip_token, файл продаж — с номером заказа; оба проходят здесь. Если указан `sku`, он сверяется с реальным продуктом кода.', en: 'Columns: code and (optional) marketplace_order_id, customer_reference, sku, chip_token. The production file carries chip_token, the sales file carries the order number — both go through here. When `sku` is given, it is checked against the code\u2019s actual product.' },
 };

@@ -593,8 +593,14 @@ export async function handle(request, env, url, H) {
         const r = rows[i] || {};
         const normalized = normalizeActivationCode(r.code);
         const orderId = H.shortText(r.marketplaceOrderId, 80);
+        // Chip tokeni — IXTIYORIY ustun. Ishlab chiqarish fayli
+        // token bilan keladi, sotuv fayli esa buyurtma raqami
+        // bilan. Ikkalasi BITTA yo'ldan o'tadi: shunda kelajakdagi
+        // marketplace API adapteri ham shu yerga ulanadi.
+        const chipToken = H.shortText(r.chipToken, 64).replace(/[^A-Za-z0-9_-]/g, '');
         if (!normalized) { problems.push({ line: i + 1, code: String(r.code || '').slice(0, 20), reason: 'bad_code' }); continue; }
-        if (!orderId) { problems.push({ line: i + 1, code: formatActivationCode(normalized), reason: 'order_required' }); continue; }
+        // Qatorda hech bo'lmasa BITTA foydali maydon bo'lsin.
+        if (!orderId && !chipToken) { problems.push({ line: i + 1, code: formatActivationCode(normalized), reason: 'order_required' }); continue; }
         const hash = await activationCodeHash(H, normalized);
 
         // SKU MOSLIGI — OMBORDAGI XATONI TUTADI.
@@ -621,16 +627,35 @@ export async function handle(request, env, url, H) {
           }
         }
 
+        // Chip tokeni berilgan bo'lsa — avval o'shani biriktiramiz.
+        // Band bo'lsa QATOR BOG'LANMAYDI: buyurtma raqami yozilib,
+        // token esa jimgina tushib qolishi eng yomon holat bo'lardi —
+        // omborchi "bog'landi" deb o'ylab, stiker esa hech qayerga
+        // ishora qilmasdi.
+        if (chipToken) {
+          const target = await env.DB.prepare(
+            `SELECT id, code_tail, status FROM marketplace_activations WHERE code_hash = ?`
+          ).bind(hash).first();
+          if (!target) { problems.push({ line: i + 1, code: formatActivationCode(normalized), reason: 'not_found' }); continue; }
+          if (target.status !== 'activated') {
+            const att = await attachDeviceToActivation(env, H, target, chipToken);
+            if (att.error) { problems.push({ line: i + 1, code: formatActivationCode(normalized), reason: att.error }); continue; }
+          }
+        }
+
         // FAOLLASHTIRILGAN kodga tegilmaydi: odam allaqachon
         // ishlatgan bo'lsa, buyurtma raqami uni o'zgartirmasligi
         // kerak. Buyurtma ma'lumoti esa baribir yoziladi.
-        const row = await env.DB.prepare(
+        const row = orderId ? await env.DB.prepare(
           `UPDATE marketplace_activations
               SET marketplace_order_id = ?, customer_reference = COALESCE(?, customer_reference),
                   sold_at = COALESCE(sold_at, ?),
                   status = CASE WHEN status IN ('new','exported') THEN 'sold' ELSE status END
             WHERE code_hash = ? RETURNING id, code_tail, status`
-        ).bind(orderId, H.shortText(r.customerReference, 80) || null, now, hash).first().catch(() => null);
+        ).bind(orderId, H.shortText(r.customerReference, 80) || null, now, hash).first().catch(() => null)
+          // Buyurtma raqamisiz qator (faqat token) — yuqorida
+          // allaqachon topilgan va biriktirilgan.
+          : { id: 0 };
         if (!row) { problems.push({ line: i + 1, code: formatActivationCode(normalized), reason: 'not_found' }); continue; }
         linked += 1;
       }
@@ -732,6 +757,26 @@ export async function handle(request, env, url, H) {
         return H.json({ ok: true });
       }
 
+      // ── QURILMANI BIRIKTIRISH ────────────────────────────────
+      //
+      // Chip tokeni ishlab chiqarishda ma'lum bo'ladi, profil esa
+      // sotilgandan KEYIN. Shuning uchun token oldindan kodga
+      // biriktiriladi: xaridor faollashtirganda stiker o'sha
+      // zahoti to'g'ri profilga ishora qiladi (/t/<token>).
+      if (action === 'attach-device') {
+        const chipToken = H.shortText(body.chipToken, 64).replace(/[^A-Za-z0-9_-]/g, '');
+        if (!chipToken) return H.json({ error: 'chip_token_required' }, 422);
+        if (row.status === 'activated') return H.json({ error: 'already_activated' }, 409);
+        const attached = await attachDeviceToActivation(env, H, row, chipToken);
+        if (attached.error) return H.json({ error: attached.error }, attached.status || 409);
+        await H.logAdminActivity(env, {
+          action: 'marketplace_device_attached',
+          details: `****-${row.code_tail} — …${chipToken.slice(-4).toUpperCase()}`,
+          ip,
+        });
+        return H.json({ ok: true, deviceId: attached.deviceId });
+      }
+
       if (action === 'mark-exported') {
         if (row.status !== 'new') return H.json({ error: 'bad_state', status: row.status }, 409);
         await env.DB.prepare(`UPDATE marketplace_activations SET status = 'exported' WHERE id = ? AND status = 'new'`).bind(id).run();
@@ -746,6 +791,40 @@ export async function handle(request, env, url, H) {
   }
 
   return null;
+}
+
+// Chip tokenini aktivatsiya kodiga biriktiradi.
+//
+// Token BAZADA BO'LMASA — yaratiladi (marketplace mahsuloti hali
+// hech kimga tegishli emas). BO'LSA — faqat egasiz va boshqa kodga
+// biriktirilmagan bo'lsa qabul qilinadi: aks holda bir stiker ikki
+// buyurtmaga tushib, ikki xaridor bitta kartani egallab olardi.
+async function attachDeviceToActivation(env, H, row, chipToken) {
+  let device = await env.DB.prepare(
+    `SELECT id, owner_user_id, linked_code FROM physical_cards WHERE chip_token = ?`
+  ).bind(chipToken).first();
+
+  if (!device) {
+    const made = await env.DB.prepare(
+      `INSERT INTO physical_cards (chip_token, linked_code, owner_user_id, status)
+       VALUES (?, NULL, NULL, 'pending') ON CONFLICT(chip_token) DO NOTHING RETURNING id`
+    ).bind(chipToken).first().catch(() => null);
+    if (!made) return { error: 'device_taken' };
+    device = { id: made.id, owner_user_id: null, linked_code: null };
+  } else if (device.owner_user_id != null || device.linked_code) {
+    // Allaqachon odamga tegishli — bu stiker ishlatilgan.
+    return { error: 'device_taken' };
+  }
+
+  // Boshqa aktivatsiya kodiga biriktirilganmi?
+  const busy = await env.DB.prepare(
+    `SELECT id FROM marketplace_activations WHERE physical_device_id = ? AND id <> ?`
+  ).bind(device.id, row.id).first();
+  if (busy) return { error: 'device_taken' };
+
+  await env.DB.prepare(`UPDATE marketplace_activations SET physical_device_id = ? WHERE id = ?`)
+    .bind(device.id, row.id).run();
+  return { deviceId: Number(device.id) };
 }
 
 function activationResult(row) {
