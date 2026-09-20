@@ -193,10 +193,31 @@ const css = raw('../src/theme.css');
   checkTrue('8) pleer ham o‘sha ro‘yxatni oladi', /urls=\{musicUrls\}/.test(profile));
 }
 
+// ── 8b) AMALLAR KARTANING ICHIDA, SAHIFA FONIDA EMAS ─────────────────
+// Egasining ikkinchi xabari: "like/menyu alohida ekranga chiqib
+// qolibdi". Ular panel USTIDA, ochiq fonda suzib turardi va premium
+// kartaga tegishli emasdek ko'rinardi.
+{
+  const panelAt = profile.indexOf('rounded-[22px] px-7 pb-[30px]');
+  const clusterAt = profile.indexOf('<ProfileActionCluster');
+  checkTrue('8b) to‘plam panel ichida chiziladi', clusterAt > panelAt && panelAt > 0);
+  checkTrue('8b) o‘z o‘rami bor', /<div className="pf-card-actions">/.test(profile));
+  // Sahifa tepasidagi qatorda endi FAQAT orqaga tugmasi.
+  const topRow = profile.slice(profile.indexOf("t('Bosh sahifaga')"), panelAt);
+  checkTrue('8b) tepa qatorda boshqa amal yo‘q', !/<ProfileActionCluster|<ShareButton|<ProfileMoreMenu/.test(topRow));
+  // Fon RASMI qo'yilgan profilda ham o'qilsin.
+  checkTrue('8b) CSS: kartada shisha yostiq bor',
+    /\.pf-card-actions \.pf-actions\{[\s\S]{0,260}backdrop-filter:blur/.test(css));
+  checkTrue('8b) CSS: fon ustida ko‘rinadi',
+    /\.pf-card-actions \.pf-actions\{[\s\S]{0,260}background:color-mix/.test(css));
+  checkTrue('8b) CSS: avatar halqalari ostida qolmaydi',
+    /\.pf-card-actions\{[\s\S]{0,160}z-index:3\}/.test(css));
+}
+
 // ── 9) AVATAR TEPAGA QADALIB QOLMAYDI ────────────────────────────────
 {
   checkTrue('9) panelda tepa bo‘shlig‘i bor', /rounded-\[22px\] px-7 pb-\[30px\] pt-\[18px\]/.test(profile));
-  checkTrue('9) avatar bloki tepadan surilgan', /className="mt-4 flex flex-col items-center"/.test(profile));
+  checkTrue('9) avatar bloki tepadan surilgan', /className="mt-5 flex flex-col items-center"/.test(profile));
   checkTrue('9) eski yopishgan holat qaytmadi', !/className="mt-0\.5 flex flex-col items-center"/.test(profile));
   // Mehmon qatori endi o'z `pt-5` ini qo'shmaydi — aks holda
   // mehmonda bo'shliq ikki barobar bo'lardi.

@@ -1772,53 +1772,6 @@ export default function ProfilePage({ code, catalog, initialTab }) {
         <button onClick={() => navigate('/')} aria-label={t('Bosh sahifaga')} title={t('Bosh sahifaga')} className={`${pillBtn} inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap !rounded-[10px] border border-[color:var(--vz-line)] !bg-[color:var(--vz-card)] !font-semibold !normal-case text-[color:var(--vz-ink)]`}>
           <IconArrowLeft /> <span className="hidden sm:inline">{t('Bosh sahifaga')}</span>
         </button>
-        {/* HAVOLA MAYDONI OLIB TASHLANDI (egasining qarori).
-            U ekranning yarmini egallardi va ichida turgan matn —
-            "nfcstore.uz/vip001" — brauzerning manzil qatorida
-            allaqachon ko'rinib turadi. Nusxalash esa yo'qolmadi:
-            quyidagi qatordagi ikonka aynan shu ishni qiladi.
-
-            O'NG YUQORI BURCHAK — BITTA TIZIM.
-            Tartib `ProfileActionCluster` da qat'iy belgilangan va
-            biznes profilda ham AYNAN shunday:
-                [nusxalash] [ulashish] [⋮] [♥ n]
-            Yurak ilgari butunlay boshqa qatorda — obunachilar sonining
-            yonida — turardi; endi u ⋮ dan KEYIN, shu yerda. */}
-        <ProfileActionCluster
-          url={`${window.location.origin}/${record.code.toLowerCase()}`}
-          shareTitle={record.name || 'NFCSTORE'}
-          shareText={t('Mening raqamli tashrif qog‘ozim')}
-          onCopy={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, t('Havola nusxalandi!'))}
-          targetKind="record"
-          targetId={record.code}
-          like={likeInfo ? {
-            count: likeInfo.count,
-            liked: likeInfo.liked,
-            onToggle: toggleLike,
-            onOpenList: () => setFollowListDir('likes'),
-          } : null}
-          // EGA AMALLARI SHU MENYUDA.
-          //
-          // Ilgari ular profil TEPASIDA katta tugmalar edi
-          // ("Tahrirlash", "Story qo'shish") va yonida "Boshqa
-          // raqamli tashrif qog'ozlaringiz" ro'yxati turardi.
-          // Natijada OCHIQ PROFIL — mehmonga ko'rsatiladigan,
-          // chiroyli bo'lishi kerak bo'lgan sahifa — boshqaruv
-          // paneliga o'xshab qolgandi.
-          //
-          // Har amal O'Z NFC ID si bilan ketadi (`ownerActionUrl`),
-          // shuning uchun bir nechta ID li odam boshqasiga adashib
-          // yozib qo'ymaydi.
-          ownerActions={isOwner ? [
-            { label: t('Profilni tahrirlash'), icon: '✎', onClick: () => navigate(ownerActionUrl(record.code, 'edit')) },
-            { label: t('Story qo‘shish'), icon: '＋', onClick: () => navigate(ownerActionUrl(record.code, 'story')) },
-            { label: t('Post qo‘shish'), icon: '＋', onClick: () => navigate(ownerActionUrl(record.code, 'post')) },
-            { label: t('QR kod'), icon: '▦', onClick: () => setQrOpen(true) },
-            ...(otherCodes.length > 0
-              ? [{ label: t("Mening ID'larim"), icon: '▤', onClick: () => navigate('/account#myids') }]
-              : []),
-          ] : []}
-        />
       </div>
 
       <div
@@ -1833,6 +1786,52 @@ export default function ProfilePage({ code, catalog, initialTab }) {
         style={innerPanelStyle(record)}
       >
         {hasBg && isVideoBg(record.bgUrl) && <ProfileBgVideo src={record.bgUrl} />}
+        {/* AMALLAR — SAHIFA FONIDA EMAS, KARTANING O'ZIDA.
+            Egasining xabari: "like/menyu alohida ekranga chiqib
+            qolibdi". Haq gap edi: ular panel USTIDA, ochiq fonda
+            suzib turardi va premium kartaga tegishli emasdek
+            ko'rinardi. Endi ular kartaning ichida, o'ng yuqori
+            burchagida — ko'zga ko'rinadigan, lekin kartaning bir
+            qismi.
+            Tartib o'zgarmadi: [nusxalash] [ulashish] [⋮] [♥ n],
+            ⋮ yurakdan OLDIN. */}
+        <div className="pf-card-actions">
+          <ProfileActionCluster
+            url={`${window.location.origin}/${record.code.toLowerCase()}`}
+            shareTitle={record.name || 'NFCSTORE'}
+            shareText={t('Mening raqamli tashrif qog‘ozim')}
+            onCopy={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, t('Havola nusxalandi!'))}
+            targetKind="record"
+            targetId={record.code}
+            like={likeInfo ? {
+              count: likeInfo.count,
+              liked: likeInfo.liked,
+              onToggle: toggleLike,
+              onOpenList: () => setFollowListDir('likes'),
+            } : null}
+            // EGA AMALLARI SHU MENYUDA.
+            //
+            // Ilgari ular profil TEPASIDA katta tugmalar edi
+            // ("Tahrirlash", "Story qo'shish") va yonida "Boshqa
+            // raqamli tashrif qog'ozlaringiz" ro'yxati turardi.
+            // Natijada OCHIQ PROFIL — mehmonga ko'rsatiladigan,
+            // chiroyli bo'lishi kerak bo'lgan sahifa — boshqaruv
+            // paneliga o'xshab qolgandi.
+            //
+            // Har amal O'Z NFC ID si bilan ketadi (`ownerActionUrl`),
+            // shuning uchun bir nechta ID li odam boshqasiga adashib
+            // yozib qo'ymaydi.
+            ownerActions={isOwner ? [
+              { label: t('Profilni tahrirlash'), icon: '✎', onClick: () => navigate(ownerActionUrl(record.code, 'edit')) },
+              { label: t('Story qo‘shish'), icon: '＋', onClick: () => navigate(ownerActionUrl(record.code, 'story')) },
+              { label: t('Post qo‘shish'), icon: '＋', onClick: () => navigate(ownerActionUrl(record.code, 'post')) },
+              { label: t('QR kod'), icon: '▦', onClick: () => setQrOpen(true) },
+              ...(otherCodes.length > 0
+                ? [{ label: t("Mening ID'larim"), icon: '▤', onClick: () => navigate('/account#myids') }]
+                : []),
+            ] : []}
+          />
+        </div>
         {/* OCHIQ PROFIL — KO'RISH UCHUN, BOSHQARUV UCHUN EMAS.
             Bu qatorda ilgari TOP nishoni, egaga tegishli katta
             "Tahrirlash" va "Story qo'shish" tugmalari hamda "Boshqa
@@ -1932,7 +1931,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
             chizilmaydi) avatar to'g'ridan-to'g'ri panel chetiga
             yopishib turardi. Endi bo'shliq ikki joydan keladi —
             panelning `pt-[18px]` i va shu `mt-4`. */}
-        <div className="mt-4 flex flex-col items-center">
+        <div className="mt-5 flex flex-col items-center">
           <div className={`relative flex h-[152px] w-[152px] items-center justify-center pf-ava-rings${hasMusic ? ' has-music' : ''}`}>
             {/* Yengil oltin porlash (glow) — premium ko'rinish uchun, avatar ortida sekin nafas oladi. */}
             <span className="pointer-events-none absolute inset-[-22px] animate-[goldGlow_3.6s_ease-in-out_infinite] rounded-full" style={{ background: `radial-gradient(circle, color-mix(in srgb, ${tier === 'free' ? 'var(--vz-accent)' : tierColor} 45%, transparent), transparent 70%)` }}></span>

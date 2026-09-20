@@ -155,7 +155,14 @@ checkTrue('6) prefers-reduced-motion hisobga olingan',
   // tugma ortida. Quyida ikkalasi ham tekshiriladi: qatorda borligi
   // VA menyu ichida uchta bo'lim saqlanib qolgani.
   const top = page.slice(page.indexOf("t('Bosh sahifaga')"), page.indexOf(PANEL));
-  checkTrue('9) amallar tepa qatorda', top.includes('ProfileActionCluster'));
+  // 2026-09 (egasining ikkinchi xabari): amallar sahifa FONIDAN
+  // KARTANING ichiga ko'chdi — ular panel ustida suzib turganda
+  // "alohida ekranga chiqib qolgandek" ko'rinardi. Shart kuchaytirildi:
+  // tepa qatorda faqat orqaga tugmasi, amallar esa panel ICHIDA.
+  checkTrue('9) tepa qatorda faqat orqaga tugmasi',
+    !/ProfileActionCluster|ShareButton|ProfileMoreMenu/.test(top));
+  checkTrue('9) amallar karta ichida', page.indexOf('<ProfileActionCluster') > page.indexOf(PANEL));
+  checkTrue('9) amallar o‘z o‘ramida', page.includes('className="pf-card-actions"'));
   checkTrue('9) to‘plamda ulashish va ⋮ bor',
     cluster.includes('ShareButton') && cluster.includes('ProfileMoreMenu'));
   const more = readFileSync(new URL('../src/components/ProfileMoreMenu.jsx', import.meta.url), 'utf8');

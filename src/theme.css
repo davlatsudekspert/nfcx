@@ -1455,6 +1455,20 @@ body.pricing-bg footer{background:var(--color-page-bg);}
    yozardi va vaqt o'tib bir-biridan ajralib ketgandi.
    ────────────────────────────────────────────────────────────────── */
 .pf-actions{display:flex;align-items:center;gap:2px;margin-left:auto;flex-shrink:0;min-width:0}
+/* KARTANING ICHIDAGI JOY. Ilgari bu qator sahifa FONIDA, panelning
+   USTIDA suzib turardi va egasining so'zi bilan "alohida ekranga
+   chiqib qolgandek" ko'rinardi — premium kartaga tegishli emasdek.
+   Endi u kartaning o'ng yuqori burchagida va kartaning bir qismi.
+   Yengil shisha yostiq — fon RASMI qo'yilgan profilda ham ikonkalar
+   o'qilib tursin (usiz ular och rasm ustida yo'qolardi). */
+.pf-card-actions{display:flex;justify-content:flex-end;margin:0 0 2px;position:relative;z-index:3}
+.pf-card-actions .pf-actions{
+  padding:2px 5px;border-radius:999px;
+  background:color-mix(in srgb, var(--vz-card) 66%, transparent);
+  border:1px solid color-mix(in srgb, var(--vz-line) 65%, transparent);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  box-shadow:0 4px 14px color-mix(in srgb, var(--shade-base, #000) 18%, transparent)
+}
 /* 40px — barmoq uchun eng kichik qulay maydon. Kichraytirilmaydi. */
 .pf-act{
   display:inline-flex;align-items:center;justify-content:center;
