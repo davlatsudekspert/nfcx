@@ -75,6 +75,7 @@ const AdminPage = lazyPage(() => import('./pages/AdminPage.jsx'));
 const MessagesPage = lazyPage(() => import('./pages/MessagesPage.jsx'));
 const PaymentsPage = lazyPage(() => import('./pages/PaymentsPage.jsx'));
 const CardDesignerPage = lazyPage(() => import('./pages/CardDesignerPage.jsx'));
+const ActivatePage = lazyPage(() => import('./pages/ActivatePage.jsx'));
 const BusinessWorkspacePage = lazyPage(() => import('./pages/BusinessWorkspacePage.jsx'));
 const BusinessPublicDemoPage = lazyPage(() => import('./pages/BusinessPublicDemoPage.jsx'));
 const CompanyCreatePage = lazyPage(() => import('./pages/CompanyCreatePage.jsx'));
@@ -108,6 +109,11 @@ const STATIC_ROUTES = {
   xabarlar: MessagesPage,
   tolovlar: PaymentsPage,
   'karta-dizayni': CardDesignerPage,
+  // MARKETPLACE'DA SOTILGAN MAHSULOTNI FAOLLASHTIRISH.
+  // Konvertdagi QR aynan shu manzilni ochadi. Aktivatsiya kodi
+  // URL'GA QO'SHILMAYDI — u faqat POST tanasida ketadi (brauzer
+  // tarixi, server logi va Referer sarlavhasiga tushmasin).
+  activate: ActivatePage,
   'biznes-namuna': BusinessPublicDemoPage,
 };
 // STATIC_ROUTES'dan tashqari, if-zanjirida ishlov beriladigan sahifalar ham
@@ -315,6 +321,14 @@ export default function App() {
     else if (cleanRoute === 'qollanma') page = <GuideRedirect />;
     else if (cleanRoute === 'tolovlar') page = <PaymentsPage />;
     else if (cleanRoute === 'karta-dizayni') page = <CardDesignerPage />;
+    // MARKETPLACE MAHSULOTINI FAOLLASHTIRISH.
+    //
+    // `bare`: saytning sarlavhasi va menyusi KO'RSATILMAYDI. Bu
+    // odamning NFCSTORE bilan BIRINCHI uchrashuvi — konvertdagi QR
+    // to'g'ridan-to'g'ri shu yerga olib keladi. Menyu, kirish
+    // tugmalari va pastdagi havolalar bir vaqtda turganda oqim
+    // "sayt"ga aylanib ketardi; kerakli tugmalar sahifaning O'ZIDA.
+    else if (cleanRoute === 'activate') { page = <ActivatePage />; bare = true; }
     // NFCSTORE BUSINESS — kompaniyalar uchun alohida kirish eshigi.
     // `bare`: saytning umumiy sarlavhasi/menyusi ko'rinmaydi, ya'ni
     // kompaniya bo'limi shaxsiy profil ichida turgandek tuyulmaydi.

@@ -1906,3 +1906,113 @@ body{
 
 /* Biznes public profil topbar'idagi sayt-mavzusi ikonasi (yangi element). */
 .bp-theme-btn { display: grid; place-items: center; width: 38px; padding: 0; }
+
+/* ══════════════════════════════════════════════════════════════════
+   MAHSULOTNI FAOLLASHTIRISH (/activate)
+   Marketplace'da sotilgan NFC karta/stikerning konvertidagi QR aynan
+   shu sahifani ochadi. Bu odamning NFCSTORE bilan BIRINCHI uchrashuvi
+   — shuning uchun har qadamda EKRANDA BITTA ISH bo'ladi va hech qayerda
+   "sozlama" ko'rinishi yo'q.
+   Ranglar — mavzu tokenlaridan, ya'ni sahifa har mavzuda o'qiladi.
+   ────────────────────────────────────────────────────────────────── */
+.ac-page{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  padding:28px 16px calc(28px + env(safe-area-inset-bottom,0px));
+  background:var(--bg-primary);color:var(--text-primary)
+}
+.ac-card{
+  width:100%;max-width:440px;display:flex;flex-direction:column;gap:14px;
+  border-radius:22px;border:1px solid var(--border);background:var(--surface);
+  padding:26px 22px 24px;box-shadow:var(--shadow);position:relative
+}
+.ac-brand{font-size:11px;font-weight:900;letter-spacing:.22em;color:var(--accent-primary);text-align:center}
+.ac-card h1{margin:0!important;max-width:none!important;font-size:24px;line-height:1.25;font-weight:800;text-align:center}
+.ac-sub{margin:0!important;font-size:var(--fs-sm);line-height:1.55;color:var(--text-muted);text-align:center}
+.ac-note{margin:0!important;font-size:var(--fs-2xs);color:var(--text-faint);text-align:center}
+.ac-err{
+  margin:0!important;border-radius:12px;padding:10px 12px;text-align:center;
+  font-size:var(--fs-sm);font-weight:600;color:var(--danger);
+  background:color-mix(in srgb, var(--danger) 12%, transparent);
+  border:1px solid color-mix(in srgb, var(--danger) 32%, transparent)
+}
+.ac-badge{
+  align-self:center;border-radius:999px;padding:5px 13px;
+  font-size:var(--fs-2xs);font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--accent-primary);border:1px solid color-mix(in srgb, var(--accent-primary) 34%, transparent);
+  background:var(--accent-soft)
+}
+.ac-field{display:flex;flex-direction:column;gap:7px}
+.ac-field>span{font-size:var(--fs-2xs);font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint)}
+/* Kod — monoshrift va keng oraliq: odam uni konvertdan ko'chiradi va
+   har belgini ko'rishi kerak. */
+.ac-field input{
+  width:100%;min-height:56px;border-radius:14px;padding:0 16px;
+  font:800 21px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;text-align:center;
+  color:var(--text-primary);background:var(--surface-inset,var(--bg-secondary));
+  border:1px solid var(--border-strong);outline:none
+}
+.ac-field input:focus{border-color:var(--accent-primary);box-shadow:0 0 0 3px var(--accent-soft)}
+.ac-field input[aria-invalid="true"]{border-color:var(--danger)}
+.ac-primary{
+  min-height:52px;border:0;border-radius:14px;cursor:pointer;
+  font:800 var(--fs-base)/1 inherit;
+  background:var(--accent-primary);color:var(--accent-ink);
+  transition:filter .15s ease
+}
+.ac-primary:hover:not(:disabled){filter:brightness(1.08)}
+.ac-primary:disabled{opacity:.5;cursor:not-allowed}
+.ac-ghost{
+  min-height:52px;border-radius:14px;cursor:pointer;
+  font:700 var(--fs-base)/1 inherit;
+  background:transparent;color:var(--text-primary);border:1px solid var(--border-strong)
+}
+.ac-actions{display:flex;flex-direction:column;gap:10px}
+.ac-back{
+  align-self:flex-start;border:0;background:transparent;cursor:pointer;padding:0;
+  font:700 var(--fs-sm)/1 inherit;color:var(--text-muted)
+}
+/* SHAXSIY / BIZNES — ikkita katta, teng tanlov. Ataylab teng: biri
+   ikkinchisidan "to'g'riroq" emas. */
+.ac-choices{display:grid;gap:12px}
+.ac-choice{
+  display:grid;gap:5px;text-align:left;cursor:pointer;
+  border-radius:16px;border:1px solid var(--border-strong);background:var(--surface-elevated);
+  padding:16px 16px 15px;color:var(--text-primary);font:inherit;
+  transition:border-color .15s ease,background .15s ease
+}
+.ac-choice:hover{border-color:var(--accent-primary);background:var(--surface-raised)}
+.ac-choice-ic{font-size:26px;line-height:1}
+.ac-choice b{font-size:var(--fs-lg);font-weight:800}
+.ac-choice small{font-size:var(--fs-xs);line-height:1.5;color:var(--text-muted)}
+.ac-list{display:grid;gap:9px;max-height:46vh;overflow-y:auto}
+.ac-opt{
+  display:grid;gap:3px;text-align:left;cursor:pointer;
+  border-radius:14px;border:1px solid var(--border);background:var(--surface-elevated);
+  padding:13px 14px;color:var(--text-primary);font:inherit
+}
+.ac-opt small{font-size:var(--fs-2xs);color:var(--text-faint);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.ac-opt.is-on{border-color:var(--accent-primary);background:var(--accent-soft)}
+.ac-empty{display:grid;gap:10px;text-align:center;padding:6px 0}
+.ac-empty p{margin:0!important;font-size:var(--fs-sm);color:var(--text-muted)}
+/* TAYYOR ekrani */
+.ac-done{text-align:center}
+.ac-check{
+  align-self:center;width:62px;height:62px;border-radius:50%;
+  display:grid;place-items:center;font-size:30px;font-weight:900;
+  color:var(--accent-ink);background:var(--accent-primary)
+}
+.ac-facts{display:grid;gap:9px;margin:4px 0 0;text-align:left}
+.ac-facts>div{display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+  border-bottom:1px solid var(--border-soft);padding-bottom:8px}
+.ac-facts dt{margin:0;font-size:var(--fs-2xs);font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint)}
+.ac-facts dd{margin:0;font-size:var(--fs-base);font-weight:700}
+.ac-facts dd b{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;color:var(--accent-text,var(--accent-primary))}
+.ac-hint{margin:0!important;font-size:var(--fs-sm);color:var(--text-muted)}
+/* Cross-sell — oqim TUGAGANDAN keyin, kichik va ikkinchi darajali. */
+.ac-cross{font-size:var(--fs-xs);color:var(--text-faint);text-decoration:none;text-align:center}
+.ac-cross:hover{color:var(--accent-primary)}
+@media (max-width:360px){
+  .ac-card{padding:22px 16px 20px}
+  .ac-card h1{font-size:21px}
+  .ac-field input{font-size:18px;letter-spacing:.1em}
+}

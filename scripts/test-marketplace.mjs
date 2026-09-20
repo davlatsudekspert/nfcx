@@ -22,6 +22,7 @@ import { readFileSync } from 'node:fs';
 import worker from '../hosting/worker.js';
 import { makeEnv, seedBasic, cookie, req, makeChecker } from './lib/d1-harness.mjs';
 import { normalizeActivationCode, formatActivationCode, generateActivationCode } from '../hosting/api/marketplace.js';
+import { stripComments } from './lib/strip-comments.mjs';
 
 const { check, checkTrue, done } = makeChecker();
 const read = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
@@ -638,6 +639,38 @@ function gatedEnv(env, sqlNeedle) {
   checkTrue('14) avtomatik ID berildi', /^\d{8}$/.test(auto.code));
   check('14) u ASOSIY profil (xulq o‘zgarmadi)', Number(auto.is_primary), 1);
   check('14) manbasi registration_auto', auto.source, 'registration_auto');
+}
+
+// ── 15) AKTIVATSIYA SAHIFASI — MANBA QOIDALARI ───────────────────────
+// Sahifa brauzerda alohida sinaladi (73 tekshiruv). Bu yerda faqat
+// buzilishi OSON va oqibati OG'IR bo'lgan qoidalar qo'riqlanadi.
+{
+  // Izohlar chalg'itmasin: ular ichida ham `localStorage` kabi
+  // so'zlar uchraydi (aynan "localStorage EMAS" deb yozilgan joyda).
+  const page = stripComments(read('../src/pages/ActivatePage.jsx'));
+  const app = read('../src/App.jsx');
+  const db = read('../src/lib/db.js');
+
+  // KOD URL'GA TUSHMASIN: ikkala so'rov ham POST.
+  checkTrue('15) tekshiruv POST bilan', /fetch\('\/api\/activate\/check', \{\s*\n?\s*method: 'POST'/.test(db));
+  checkTrue('15) aktivatsiya POST bilan', /fetch\('\/api\/activate', \{\s*\n?\s*method: 'POST'/.test(db));
+  checkTrue('15) kod URL parametriga qo‘shilmaydi', !/activate\?[^']*code=/.test(db) && !/activate\/\$\{code/.test(db));
+  checkTrue('15) sahifa ham kodni manzilga yozmaydi', !/navigate\([^)]*code/.test(page));
+
+  // Kod `sessionStorage` da — `localStorage` da EMAS (brauzerda abadiy
+  // qolib ketmasin).
+  checkTrue('15) kod sessionStorage da', /sessionStorage\.setItem\(STORAGE_KEY/.test(page));
+  checkTrue('15) localStorage ishlatilmaydi', !/localStorage/.test(page));
+  checkTrue('15) muvaffaqiyatdan keyin kod o‘chiriladi', (page.match(/storeCode\(''\)/g) || []).length >= 2);
+
+  // Marshrut ulangan va sahifa "bare" (sayt menyusi ko'rinmaydi).
+  checkTrue('15) /activate marshruti bor', /cleanRoute === 'activate'\) \{ page = <ActivatePage \/>; bare = true; \}/.test(app));
+  checkTrue('15) marshrut band ro‘yxatida', /activate: ActivatePage/.test(app));
+
+  // Biznes uchun YANGI oqim yozilmagan — saytning o'z kompaniya
+  // ochish sahifasiga yuboriladi.
+  checkTrue('15) kompaniya ochish mavjud oqimga yuboradi', /navigate\('\/company\/create'\)/.test(page));
+  checkTrue('15) sahifada kompaniya YARATISH so‘rovi yo‘q', !/\/api\/companies/.test(page));
 }
 
 done();

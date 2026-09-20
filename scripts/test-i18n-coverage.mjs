@@ -23,7 +23,7 @@ const { check, checkTrue, done } = makeChecker();
 const SRC = join(fileURLToPath(new URL('.', import.meta.url)), '..', 'src');
 
 // Hozirgi qarz. FAQAT KAMAYISHI mumkin.
-const ALLOWED = 196;
+const ALLOWED = 195;
 
 const files = [];
 (function walk(dir) {
