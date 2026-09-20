@@ -108,4 +108,7 @@ export const DICT_SITE = {
   // Marketplace aktivatsiyasi — stikerni tegizish talabi.
   'Stikeringiz shu profilga bog‘landi. Telefonga tekkizib ko‘ring.': { ru: 'Ваш стикер привязан к этому профилю. Приложите его к телефону.', en: 'Your sticker is linked to this profile. Tap it with your phone.' },
   'ENDI KONVERTDAGI NFC STIKERNI TELEFONGA TEKKIZING — shunda u shu profilga bog‘lanadi va bundan keyin har tegizganda profilingiz ochiladi.': { ru: 'ТЕПЕРЬ ПРИЛОЖИТЕ NFC-СТИКЕР ИЗ КОНВЕРТА К ТЕЛЕФОНУ — он привяжется к этому профилю, и дальше при каждом касании будет открываться ваш профиль.', en: 'NOW TAP THE NFC STICKER FROM THE ENVELOPE WITH YOUR PHONE — it links to this profile, and from then on every tap opens your profile.' },
+
+  'NFC stiker ulandi': { ru: 'NFC-стикер подключён', en: 'NFC sticker connected' },
+  'Bundan keyin stikerni telefonga tekkizsangiz shu profil ochiladi.': { ru: 'Теперь при касании стикера телефоном будет открываться этот профиль.', en: 'From now on, tapping the sticker with your phone opens this profile.' },
 };

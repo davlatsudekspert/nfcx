@@ -1850,6 +1850,28 @@ function gatedEnv(env, sqlNeedle) {
   const tap = stripComments(read('../src/pages/TapRedirectPage.jsx'));
   checkTrue('27) tegizganda avval bog‘lashga urinadi', /activate\/attach-sticker/.test(tap));
   checkTrue('27) bo‘lmasa faollashtirishga yuboradi', /activate\?d=/.test(tap));
+  // ULANGANI AYTILSIN. Jim bog'lanib profilga o'tsa, odam
+  // "stikerim ishladimi yoki shunchaki sayt ochildimi?" deb
+  // bilmasdi — mahsulotning asosiy va'dasi tasdiqlanmasdi.
+  checkTrue('27) ulangani tasdiqlanadi', /NFC stiker ulandi/.test(tap));
+  checkTrue('27) profil kodi ko‘rsatiladi', /tap-ok-code/.test(tap));
+  // Tasdiq YO'LNI TO'SMASIN: o'zi profilga o'tadi.
+  checkTrue('27) o‘zi profilga o‘tadi', /setTimeout\(\(\) => go\(d\.redirect\)/.test(tap));
+
+  // ── BATCH MUDDATI ───────────────────────────────────
+  //
+  // Oldin faqat sana maydoni turardi: "muddatsiz" qilish uchun uni
+  // BO'SH qoldirish kerakligi hech qayerda yozilmagandi.
+  const tabSrc = stripComments(read('../src/components/admin/MarketplaceTab.jsx'));
+  checkTrue('27) muddat tugmalari bor', /mk-exp-btn/.test(tabSrc));
+  checkTrue('27) doimiy variant bor', /t\('Doimiy'\)/.test(tabSrc));
+  checkTrue('27) 6 oy va 1 yil', /t\('6 oy'\)/.test(tabSrc) && /t\('1 yil'\)/.test(tabSrc));
+  checkTrue('27) sana ham tanlanadi', /t\('Sana tanlash'\)/.test(tabSrc));
+  // Tanlovning MA'NOSI yozib qo'yilgan.
+  checkTrue('27) tanlov izohlanadi', /Kod muddatsiz/.test(tabSrc));
+  // O'tmishdagi sana tanlab bo'lmasin — kod tug'ilishidanoq o'lik
+  // bo'lib qolardi.
+  checkTrue('27) o‘tmish sana yopiq', /min=\{dateFromPreset\('tomorrow'\)\}/.test(tabSrc));
 
   const page = stripComments(read('../src/pages/ActivatePage.jsx'));
   checkTrue('27) bog‘lanmagan bo‘lsa tegizish so‘raladi', /deviceBound/.test(page));

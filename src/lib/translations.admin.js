@@ -236,6 +236,13 @@ export const DICT_ADMIN = {
   'Chop etish (A4)': { ru: 'Печать (A4)', en: 'Print (A4)' },
 
   // ── STIKER YOZISH ──────────────────────────────────────────────
+  'Amal qilish muddati': { ru: 'Срок действия', en: 'Valid until' },
+  'Doimiy': { ru: 'Бессрочно', en: 'No expiry' },
+  '6 oy': { ru: '6 месяцев', en: '6 months' },
+  '1 yil': { ru: '1 год', en: '1 year' },
+  'Sana tanlash': { ru: 'Выбрать дату', en: 'Pick a date' },
+  'Kod {d} gacha ishlaydi. Keyin faollashtirib bo‘lmaydi.': { ru: 'Код действует до {d}. После этого активировать его нельзя.', en: 'The code works until {d}. After that it cannot be activated.' },
+  'Kod muddatsiz — do‘konda uzoq turib qolsa ham ishlaydi.': { ru: 'Код бессрочный — сработает, даже если долго пролежит в магазине.', en: 'The code never expires — it still works after a long spell on the shelf.' },
   'Brauzer yangi oynani bloklab qo‘ydi. Manzil satridagi ruxsatni yoqing va qayta urinib ko‘ring.': { ru: 'Браузер заблокировал новое окно. Разрешите всплывающие окна в адресной строке и попробуйте снова.', en: 'Your browser blocked the new window. Allow pop-ups in the address bar and try again.' },
   'Sayt yangilandi. Sahifani yangilang (Ctrl+Shift+R) va qaytadan chop eting — kodlar saqlanib qoladi.': { ru: 'Сайт обновился. Обновите страницу (Ctrl+Shift+R) и распечатайте заново — коды сохранятся.', en: 'The site was updated. Refresh the page (Ctrl+Shift+R) and print again — the codes stay.' },
   'Chop etish tayyorlanmadi. CSV yuklab oling — undagi kodlar aynan shu.': { ru: 'Не удалось подготовить печать. Скачайте CSV — коды в нём те же самые.', en: 'Could not prepare the printout. Download the CSV — it holds the same codes.' },

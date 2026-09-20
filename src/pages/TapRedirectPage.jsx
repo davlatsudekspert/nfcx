@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
 
@@ -29,6 +29,13 @@ import { useLanguage } from '../lib/i18n.jsx';
 // yuboradigan mijozlarda u ishlaydi va bir qadam tezroq.
 export default function TapRedirectPage({ token }) {
   const { t } = useLanguage();
+  // BOG'LANGANINI AYTIB QO'YISH SHART.
+  //
+  // Ilgari stiker jim bog'lanib, odam to'g'ridan-to'g'ri profilga
+  // tushardi — va u "stikerim ishladimi yoki shunchaki sayt
+  // ochildimi?" deb bilmasdi. Endi qisqa tasdiq ko'rsatiladi,
+  // keyin profil ochiladi.
+  const [bound, setBound] = useState(null);
 
   useEffect(() => {
     let live = true;
@@ -53,7 +60,14 @@ export default function TapRedirectPage({ token }) {
       body: JSON.stringify({ deviceToken: token }),
     })
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => (d?.redirect ? go(d.redirect) : go(`/activate?d=${encodeURIComponent(token)}`)))
+      .then((d) => {
+        if (!d?.redirect) return go(`/activate?d=${encodeURIComponent(token)}`);
+        if (!live) return undefined;
+        setBound(d);
+        // Tasdiq ko'rinib ulgursin, lekin yo'lni to'smasin.
+        setTimeout(() => go(d.redirect), 1900);
+        return undefined;
+      })
       .catch(() => go(`/activate?d=${encodeURIComponent(token)}`));
 
     fetch(`/api/tap/${encodeURIComponent(token)}`, { headers: { accept: 'application/json' } })
@@ -67,6 +81,24 @@ export default function TapRedirectPage({ token }) {
       .catch(() => go('/'));
     return () => { live = false; };
   }, [token]);
+
+  if (bound) {
+    return (
+      <main className="tap-wait">
+        <div className="tap-ok" role="status">
+          <div className="tap-ok-check" aria-hidden="true">✓</div>
+          <h1>{t('NFC stiker ulandi')}</h1>
+          <p className="tap-ok-code">{bound.profileCode}</p>
+          <p className="tap-ok-sub">
+            {t('Bundan keyin stikerni telefonga tekkizsangiz shu profil ochiladi.')}
+          </p>
+          <button type="button" className="btn btn-gold" onClick={() => navigate(bound.redirect, { replace: true })}>
+            {t('Profilni ochish')}
+          </button>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="tap-wait">

@@ -705,6 +705,7 @@ function Batch({ adminApi, t, products, apiErrText }) {
   const [productId, setProductId] = useState('');
   const [quantity, setQuantity] = useState(100);
   const [expiresAt, setExpiresAt] = useState('');
+  const [expPreset, setExpPreset] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
   const [batch, setBatch] = useState(null);
@@ -763,8 +764,45 @@ function Batch({ adminApi, t, products, apiErrText }) {
             {[2, 5, 10, 50, 100, 500, 1000].map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
         </label>
-        <label><span>{t('Amal qilish muddati (ixtiyoriy)')}</span>
-          <input className="vz-input" type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
+        {/* MUDDAT — TUGMALAR BILAN.
+            Oldin faqat sana maydoni turardi: odam "muddatsiz" qilish
+            uchun uni BO'SH qoldirish kerakligini bilmasdi, va sana
+            terish 100 ta partiya uchun ortiqcha ish edi. */}
+        <label className="mk-wide"><span>{t('Amal qilish muddati')}</span>
+          <div className="mk-exp">
+            {[
+              ['', t('Doimiy')],
+              ['6m', t('6 oy')],
+              ['1y', t('1 yil')],
+            ].map(([id, label]) => (
+              <button
+                key={id || 'never'} type="button"
+                className={`mk-exp-btn${expPreset === id ? ' is-on' : ''}`}
+                onClick={() => { setExpPreset(id); setExpiresAt(dateFromPreset(id)); }}
+              >
+                {label}
+              </button>
+            ))}
+            <button
+              type="button"
+              className={`mk-exp-btn${expPreset === 'custom' ? ' is-on' : ''}`}
+              onClick={() => setExpPreset('custom')}
+            >
+              {t('Sana tanlash')}
+            </button>
+            {expPreset === 'custom' && (
+              <input
+                className="vz-input mk-exp-date" type="date" value={expiresAt}
+                min={dateFromPreset('tomorrow')}
+                onChange={(e) => setExpiresAt(e.target.value)}
+              />
+            )}
+          </div>
+          <span className="mk-exp-note">
+            {expiresAt
+              ? t('Kod {d} gacha ishlaydi. Keyin faollashtirib bo‘lmaydi.', { d: expiresAt })
+              : t('Kod muddatsiz — do‘konda uzoq turib qolsa ham ishlaydi.')}
+          </span>
         </label>
       </div>
       <button className="btn btn-gold mt-3 w-full sm:w-auto" disabled={busy || !productId} onClick={create}>
@@ -803,6 +841,16 @@ function Batch({ adminApi, t, products, apiErrText }) {
       )}
     </AdminCard>
   );
+}
+
+// Muddat tugmasidan sanaga. Bo'sh qiymat — MUDDATSIZ.
+function dateFromPreset(id) {
+  if (!id || id === 'custom') return '';
+  const d = new Date();
+  if (id === 'tomorrow') d.setDate(d.getDate() + 1);
+  if (id === '6m') d.setMonth(d.getMonth() + 6);
+  if (id === '1y') d.setFullYear(d.getFullYear() + 1);
+  return d.toISOString().slice(0, 10);
 }
 
 // ── BATCH NATIJASI: CHOP ETISH VA CSV ────────────────────────────────

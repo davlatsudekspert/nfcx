@@ -2050,6 +2050,20 @@ body{
 .mk-form label>span{font-size:var(--fs-2xs);font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint)}
 .mk-form .mk-wide{grid-column:1/-1}
 .mk-hint{margin:0 0 10px!important;font-size:var(--fs-xs);line-height:1.55;color:var(--text-muted)}
+/* Muddat tugmalari — sana terishning o'rniga. */
+.mk-exp{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+.mk-exp-btn{
+  padding:8px 13px;border-radius:99px;font-size:var(--fs-xs);font-weight:700;cursor:pointer;
+  color:var(--text-secondary);background:var(--surface);border:1px solid var(--border-soft);
+  transition:background .15s,color .15s,border-color .15s
+}
+.mk-exp-btn:hover{color:var(--text-primary)}
+.mk-exp-btn.is-on{color:var(--accent-ink);background:var(--accent-primary);border-color:transparent}
+.mk-exp-date{max-width:190px}
+.mk-exp-note{
+  display:block;margin-top:7px;font-size:var(--fs-2xs)!important;font-weight:400!important;
+  letter-spacing:0!important;text-transform:none!important;color:var(--text-muted)!important
+}
 .mk-batch-actions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
 /* Yaratilgan kodlar — bir marta ko'rinadi, shuning uchun o'qishga
    qulay monoshriftda va aniq ajratilgan. */
@@ -2074,6 +2088,23 @@ body{
   min-height:100svh;padding:24px;text-align:center;color:var(--text-muted);background:var(--bg-primary)
 }
 .tap-wait p{margin:0;font-size:var(--fs-sm)}
+/* Stiker ulanganining tasdig'i. */
+.tap-ok{
+  display:flex;flex-direction:column;align-items:center;gap:11px;max-width:380px;width:100%;
+  padding:26px 20px;border-radius:18px;
+  background:var(--surface);border:1px solid var(--border-soft)
+}
+.tap-ok-check{
+  display:grid;place-items:center;width:58px;height:58px;border-radius:50%;
+  font-size:28px;font-weight:700;color:var(--accent-ink);background:var(--accent-primary)
+}
+.tap-ok h1{margin:0;font-size:var(--fs-lg);font-weight:700;color:var(--text-primary)}
+.tap-ok-code{
+  margin:0!important;font:700 22px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.08em;color:var(--accent-primary)
+}
+.tap-ok-sub{margin:0!important;font-size:var(--fs-xs)!important;line-height:1.55;color:var(--text-muted)}
+.tap-ok .btn{width:100%;min-height:46px;margin-top:4px}
 /* ── MENING NFC QURILMALARIM ─────────────────────────
    Stiker qaysi profilni ochishini mijozning o'zi almashtiradi.
    320px da ustma-ust, kengroq ekranda bitta qatorda. */
