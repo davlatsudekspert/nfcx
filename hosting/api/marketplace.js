@@ -99,8 +99,47 @@ const STATUSES = ['new', 'exported', 'sold', 'activating', 'activated', 'blocked
 // boshqa so'rov tomonidan band qilingan degani.
 const ACTIVATABLE = ['new', 'exported', 'sold'];
 
-const PHYSICAL_TYPES = ['nfc_card', 'nfc_sticker', 'car_sticker', 'table_nfc', 'premium_card', 'custom'];
-const MARKETPLACES = ['uzum', 'wildberries', 'ozon', 'other'];
+// ── MARKETPLACE VA MAHSULOT TURLARI — YAGONA MANBA ───────────────────
+//
+// Bu ro'yxatlar ilgari IKKI joyda edi: shu yerda (faqat id'lar) va
+// admin komponentida (id + yozuv). Natijada ular bir-biridan ajralib
+// ketishi mumkin edi va xato JIM bo'lardi: admin ro'yxatdan yangi
+// marketplace'ni tanlaydi, backend uni tanimaydi va mahsulotni
+// indamay 'uzum' deb saqlab qo'yadi.
+//
+// Endi manba BITTA — shu yer. Ro'yxat mahsulotlar javobida
+// frontendga ham yuboriladi (`catalog`), ya'ni yangi marketplace
+// qo'shish uchun FAQAT shu faylga bitta qator qo'shiladi.
+//
+// Nima uchun umumiy fayl emas: `hosting/worker.js` Cloudflare'ga
+// oddiy fayl-nusxalash bilan chiqadi (bundler yo'q), shuning uchun
+// `src/` dan import qilib bo'lmaydi — bu cheklov oldingi audit'da
+// aniqlangan.
+const PHYSICAL_TYPES = [
+  { id: 'nfc_card', label: 'NFC karta' },
+  { id: 'nfc_sticker', label: 'NFC stiker' },
+  { id: 'car_sticker', label: 'Avtomobil stikeri' },
+  { id: 'table_nfc', label: 'Stol NFC' },
+  { id: 'premium_card', label: 'Premium karta' },
+  { id: 'custom', label: 'Boshqa' },
+];
+// Yozuvlar — ATOQLI OTLAR, tarjima qilinmaydi ("Uzum Market" har
+// tilda Uzum Market). Faqat "Boshqa" tarjimaga tushadi.
+const MARKETPLACES = [
+  { id: 'uzum', label: 'Uzum Market' },
+  { id: 'yandex', label: 'Yandex Market' },
+  { id: 'wildberries', label: 'Wildberries' },
+  { id: 'ozon', label: 'Ozon' },
+  { id: 'other', label: 'Boshqa' },
+];
+const TIERS = [
+  { id: 'auto', label: 'AUTO (oddiy bepul ID bilan bir xil)' },
+  { id: 'free', label: 'FREE' },
+  { id: 'standard', label: 'STANDARD' },
+  { id: 'premium', label: 'PREMIUM' },
+  { id: 'exclusive', label: 'EKSLYUZIV' },
+];
+const ids = (list) => list.map((x) => x.id);
 
 // Yarim qolgan bandlik shuncha vaqtdan keyin bekor qilinadi. Worker
 // aktivatsiya o'rtasida to'xtab qolsa (crash/timeout), kod abadiy
@@ -369,18 +408,24 @@ export async function handle(request, env, url, H) {
     // ── MAHSULOTLAR ───────────────────────────────────────────────
     if (path === '/api/admin/marketplace/products' && method === 'GET') {
       const rows = await env.DB.prepare(`SELECT * FROM marketplace_products ORDER BY created_at DESC`).all();
-      return H.json({ products: (rows.results || []).map(productOut) });
+      // `catalog` — interfeys uchun ro'yxatlar. Ular SHU YERDAN
+      // keladi, ya'ni admin panelida ko'ringan variant backendda
+      // ham albatta tanilgan bo'ladi.
+      return H.json({
+        products: (rows.results || []).map(productOut),
+        catalog: { marketplaces: MARKETPLACES, physicalTypes: PHYSICAL_TYPES, tiers: TIERS },
+      });
     }
     if (path === '/api/admin/marketplace/products' && method === 'POST') {
       const body = await readJson();
       const name = H.shortText(body.name, 120);
       const sku = H.shortText(body.sku, 60).toUpperCase().replace(/[^A-Z0-9-]/g, '');
       if (!name || !sku) return H.json({ error: 'required_fields' }, 422);
-      const marketplace = MARKETPLACES.includes(body.marketplace) ? body.marketplace : 'uzum';
-      const physicalType = PHYSICAL_TYPES.includes(body.physicalType) ? body.physicalType : 'nfc_card';
+      const marketplace = ids(MARKETPLACES).includes(body.marketplace) ? body.marketplace : 'uzum';
+      const physicalType = ids(PHYSICAL_TYPES).includes(body.physicalType) ? body.physicalType : 'nfc_card';
       // 'auto' — mavjud bepul ID bilan AYNAN bir xil. Boshqa qiymat
       // sovg'a oqimi ishlatadigan `tier_override` ustuniga yoziladi.
-      const includedTier = ['auto', 'free', 'standard', 'premium', 'exclusive'].includes(body.includedTier) ? body.includedTier : 'auto';
+      const includedTier = ids(TIERS).includes(body.includedTier) ? body.includedTier : 'auto';
       // Marketplace'ning O'Z SKU si — ixtiyoriy. Uzum'da raqam,
       // boshqalarda harf-raqam bo'lishi mumkin, shuning uchun
       // shakl TALAB QILINMAYDI, faqat uzunligi cheklanadi.
@@ -467,7 +512,7 @@ export async function handle(request, env, url, H) {
       const status = q.get('status') || '';
       if (STATUSES.includes(status)) { where.push('a.status = ?'); bind.push(status); }
       const marketplace = q.get('marketplace') || '';
-      if (MARKETPLACES.includes(marketplace)) { where.push('p.marketplace = ?'); bind.push(marketplace); }
+      if (ids(MARKETPLACES).includes(marketplace)) { where.push('p.marketplace = ?'); bind.push(marketplace); }
       const productId = Number(q.get('productId')) || 0;
       if (productId) { where.push('a.product_id = ?'); bind.push(productId); }
       const kind = q.get('profileKind') || '';

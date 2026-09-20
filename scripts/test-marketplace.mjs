@@ -1107,4 +1107,52 @@ function gatedEnv(env, sqlNeedle) {
   checkTrue('20) noma’lum amal jim yo‘qolmaydi', /ACTION_LABEL\[r\.action\] \? t\(ACTION_LABEL\[r\.action\]\) : r\.action/.test(tab));
 }
 
+// ── 21) MARKETPLACE RO'YXATI — YAGONA MANBA ──────────────────────────
+// Ro'yxat ilgari IKKI joyda edi (backend id'lari va admin
+// komponentidagi yozuvlar). Ular ajralib ketsa xato JIM bo'lardi:
+// admin ro'yxatdan yangi marketplace'ni tanlaydi, backend uni
+// tanimaydi va mahsulotni indamay 'uzum' deb saqlab qo'yadi.
+{
+  const env = await setup();
+
+  // Ro'yxat MAHSULOTLAR javobida keladi — qo'shimcha so'rovsiz.
+  const list = await jsonOf(await call(env, '/api/admin/marketplace/products', { cookie: cookie.admin }));
+  checkTrue('21) katalog javobda bor', !!list.catalog);
+  const mkIds = list.catalog.marketplaces.map((m) => m.id);
+  check('21) marketplace ro‘yxati', mkIds.join(','), 'uzum,yandex,wildberries,ozon,other');
+  checkTrue('21) Yandex Market bor', list.catalog.marketplaces.some((m) => m.id === 'yandex' && m.label === 'Yandex Market'));
+  checkTrue('21) har birida yozuv bor', list.catalog.marketplaces.every((m) => m.id && m.label));
+  checkTrue('21) mahsulot turlari ham keladi', list.catalog.physicalTypes.length >= 6);
+  checkTrue('21) tariflar ham keladi', list.catalog.tiers.some((x) => x.id === 'auto'));
+
+  // YANDEX HAQIQATAN ISHLAYDI — saqlanadi, filtrlanadi, sanaladi.
+  const yandex = await makeProduct(env, { sku: 'YA-NFC-01', marketplace: 'yandex' });
+  check('21) yandex saqlandi', yandex.marketplace, 'yandex');
+  await makeCodes(env, yandex.id, 2);
+  const filtered = await jsonOf(await call(env, '/api/admin/marketplace/activations?marketplace=yandex', { cookie: cookie.admin }));
+  check('21) yandex bo‘yicha filtr', filtered.activations.length, 2);
+  const stats = await jsonOf(await call(env, '/api/admin/marketplace/stats', { cookie: cookie.admin }));
+  check('21) statistikada yandex', stats.byMarketplace.find((m) => m.marketplace === 'yandex')?.count, 2);
+
+  // Noma'lum marketplace JIM 'uzum' bo'lib qolmasin deb emas —
+  // aksincha, u ATAYLAB standart qiymatga tushadi. Muhimi: bu
+  // faqat NOMA'LUM qiymat uchun, ro'yxatdagilar uchun emas.
+  const unknown = await makeProduct(env, { sku: 'XX-01', marketplace: 'temu' });
+  check('21) noma’lum qiymat standartga tushadi', unknown.marketplace, 'uzum');
+
+  // Frontendda IKKINCHI nusxa qolmasin.
+  const tab = stripComments(read('../src/components/admin/MarketplaceTab.jsx'));
+  checkTrue('21) frontendda marketplace ro‘yxati yo‘q', !/const MARKETPLACES = \[/.test(tab));
+  checkTrue('21) frontendda mahsulot turlari ro‘yxati yo‘q', !/const PHYSICAL_TYPES = \[/.test(tab));
+  checkTrue('21) frontendda tarif ro‘yxati yo‘q', !/const TIERS = \[/.test(tab));
+  checkTrue('21) frontend serverdan oladi', /d\.catalog/.test(tab));
+  // Atoqli otlar qattiq yozilmasin (ular endi serverdan keladi).
+  checkTrue('21) "Uzum Market" frontendda qotirilmagan', !/'Uzum Market'/.test(tab));
+  checkTrue('21) "Yandex Market" frontendda qotirilmagan', !/'Yandex Market'/.test(tab));
+
+  // Backendda esa BITTA ta'rif bo'lsin.
+  const src = read('../hosting/api/marketplace.js');
+  check('21) backendda bitta ta’rif', (src.match(/^const MARKETPLACES = \[/gm) || []).length, 1);
+}
+
 done();

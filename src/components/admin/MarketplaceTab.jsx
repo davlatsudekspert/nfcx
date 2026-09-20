@@ -20,27 +20,22 @@ import { useLanguage } from '../../lib/i18n.jsx';
 // bo'lardi.
 // ═══════════════════════════════════════════════════════════════════════
 
-const MARKETPLACES = [
-  ['uzum', 'Uzum Market'],
-  ['wildberries', 'Wildberries'],
-  ['ozon', 'Ozon'],
-  ['other', 'Boshqa'],
-];
-const PHYSICAL_TYPES = [
-  ['nfc_card', 'NFC karta'],
-  ['nfc_sticker', 'NFC stiker'],
-  ['car_sticker', 'Avtomobil stikeri'],
-  ['table_nfc', 'Stol NFC'],
-  ['premium_card', 'Premium karta'],
-  ['custom', 'Boshqa'],
-];
-const TIERS = [
-  ['auto', 'AUTO (oddiy bepul ID bilan bir xil)'],
-  ['free', 'FREE'],
-  ['standard', 'STANDARD'],
-  ['premium', 'PREMIUM'],
-  ['exclusive', 'EKSLYUZIV'],
-];
+// ── RO'YXATLAR SERVERDAN KELADI ──────────────────────────────────────
+//
+// Ilgari marketplace va mahsulot turlari SHU YERDA ham, backendda ham
+// alohida yozilgandi. Ikkisi ajralib ketsa xato JIM bo'lardi: admin
+// ro'yxatdan yangi marketplace'ni tanlaydi, backend uni tanimaydi va
+// mahsulotni indamay 'uzum' deb saqlab qo'yadi.
+//
+// Endi manba BITTA — `hosting/api/marketplace.js`. Ro'yxat
+// mahsulotlar javobida keladi. Yangi marketplace qo'shish uchun
+// bu faylga TEGILMAYDI.
+//
+// Quyidagi zaxira faqat ro'yxat hali yuklanmagan lahza uchun:
+// eski yozuvning yozuvini ko'rsatish kerak bo'lsa, `id` ning o'zi
+// chiqadi — bo'sh katak emas.
+const EMPTY_CATALOG = { marketplaces: [], physicalTypes: [], tiers: [] };
+
 const STATUS_TONE = {
   new: 'muted', exported: 'info', sold: 'warning',
   activating: 'warning', activated: 'success', blocked: 'danger', expired: 'danger',
@@ -71,18 +66,25 @@ const ACTION_LABEL = {
   marketplace_reassigned: 'Qayta taqsimlandi',
 };
 
-const labelOf = (pairs, id) => (pairs.find((p) => p[0] === id) || [id, id])[1];
+const labelOf = (list, id) => (list.find((x) => x.id === id) || { label: id }).label;
 
 export default function MarketplaceTab({ adminApi, isManager, apiErrText }) {
   const { t } = useLanguage();
   const [sub, setSub] = useState('dashboard');
   const [products, setProducts] = useState(null);
+  const [catalog, setCatalog] = useState(EMPTY_CATALOG);
   const [prodErr, setProdErr] = useState(null);
 
   const loadProducts = () => {
     setProdErr(null);
     return adminApi('/marketplace/products')
-      .then((d) => setProducts(Array.isArray(d?.products) ? d.products : []))
+      .then((d) => {
+        setProducts(Array.isArray(d?.products) ? d.products : []);
+        // Ro'yxatlar SERVERDAN. Eski javobda `catalog` bo'lmasligi
+        // mumkin (deploy oralig'i) — shunda bo'sh qoladi va
+        // yozuvlar o'rniga `id` ko'rinadi, sahifa buzilmaydi.
+        if (d?.catalog) setCatalog({ ...EMPTY_CATALOG, ...d.catalog });
+      })
       .catch((e) => setProdErr(e));
   };
   useEffect(() => { loadProducts(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -101,14 +103,14 @@ export default function MarketplaceTab({ adminApi, isManager, apiErrText }) {
         ))}
       </div>
 
-      {sub === 'dashboard' && <Dashboard adminApi={adminApi} t={t} />}
+      {sub === 'dashboard' && <Dashboard adminApi={adminApi} t={t} catalog={catalog} />}
       {sub === 'products' && (
         <Products
           adminApi={adminApi} t={t} isManager={isManager} apiErrText={apiErrText}
-          products={products} err={prodErr} reload={loadProducts}
+          products={products} err={prodErr} reload={loadProducts} catalog={catalog}
         />
       )}
-      {sub === 'codes' && <Codes adminApi={adminApi} t={t} isManager={isManager} products={products || []} apiErrText={apiErrText} />}
+      {sub === 'codes' && <Codes adminApi={adminApi} t={t} isManager={isManager} products={products || []} catalog={catalog} apiErrText={apiErrText} />}
       {sub === 'batch' && (isManager
         ? <Batch adminApi={adminApi} t={t} products={(products || []).filter((p) => p.active)} apiErrText={apiErrText} />
         : <ForbiddenState hint={t('Kod yaratish faqat Manager va Super Admin uchun.')} />)}
@@ -121,7 +123,7 @@ export default function MarketplaceTab({ adminApi, isManager, apiErrText }) {
 }
 
 // ── STATISTIKA ───────────────────────────────────────────────────────
-function Dashboard({ adminApi, t }) {
+function Dashboard({ adminApi, t, catalog }) {
   const [data, setData] = useState(null);
   const [err, setErr] = useState(null);
   const load = () => { setErr(null); setData(null); return adminApi('/marketplace/stats').then(setData).catch(setErr); };
@@ -156,7 +158,7 @@ function Dashboard({ adminApi, t }) {
               <thead><tr><th>{t('Marketplace')}</th><th className="text-right">{t('Kod')}</th></tr></thead>
               <tbody>
                 {data.byMarketplace.map((m) => (
-                  <tr key={m.marketplace}><td>{t(labelOf(MARKETPLACES, m.marketplace))}</td><td className="text-right font-bold">{m.count}</td></tr>
+                  <tr key={m.marketplace}><td>{t(labelOf(catalog.marketplaces, m.marketplace))}</td><td className="text-right font-bold">{m.count}</td></tr>
                 ))}
               </tbody>
             </table>
@@ -190,7 +192,7 @@ function Dashboard({ adminApi, t }) {
 }
 
 // ── MAHSULOTLAR ──────────────────────────────────────────────────────
-function Products({ adminApi, t, isManager, products, err, reload, apiErrText }) {
+function Products({ adminApi, t, isManager, products, err, reload, apiErrText, catalog }) {
   const [form, setForm] = useState({ name: '', sku: '', externalSku: '', marketplace: 'uzum', physicalType: 'nfc_sticker', includedTier: 'auto', price: '', description: '' });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
@@ -239,17 +241,17 @@ function Products({ adminApi, t, isManager, products, err, reload, apiErrText })
             <label><span>{t('Marketplace SKU (ixtiyoriy)')}</span><input className="vz-input font-mono uppercase" value={form.externalSku} onChange={set('externalSku')} placeholder="UZUM-777001" /></label>
             <label><span>{t('Marketplace')}</span>
               <select className="vz-input" value={form.marketplace} onChange={set('marketplace')}>
-                {MARKETPLACES.map(([id, label]) => <option key={id} value={id}>{t(label)}</option>)}
+                {catalog.marketplaces.map((m) => <option key={m.id} value={m.id}>{t(m.label)}</option>)}
               </select>
             </label>
             <label><span>{t('Fizik mahsulot turi')}</span>
               <select className="vz-input" value={form.physicalType} onChange={set('physicalType')}>
-                {PHYSICAL_TYPES.map(([id, label]) => <option key={id} value={id}>{t(label)}</option>)}
+                {catalog.physicalTypes.map((x) => <option key={x.id} value={x.id}>{t(x.label)}</option>)}
               </select>
             </label>
             <label><span>{t('Tarif')}</span>
               <select className="vz-input" value={form.includedTier} onChange={set('includedTier')}>
-                {TIERS.map(([id, label]) => <option key={id} value={id}>{t(label)}</option>)}
+                {catalog.tiers.map((x) => <option key={x.id} value={x.id}>{t(x.label)}</option>)}
               </select>
             </label>
             <label><span>{t('Narx (ichki, ixtiyoriy)')}</span><input className="vz-input" type="number" min="0" value={form.price} onChange={set('price')} /></label>
@@ -276,8 +278,8 @@ function Products({ adminApi, t, isManager, products, err, reload, apiErrText })
                       <td className="font-mono text-xs font-bold">{p.sku}</td>
                       <td className="font-mono text-xs">{p.externalSku || '—'}</td>
                       <td className="text-xs">{p.name}</td>
-                      <td className="text-xs">{t(labelOf(MARKETPLACES, p.marketplace))}</td>
-                      <td className="text-xs">{t(labelOf(PHYSICAL_TYPES, p.physicalType))}</td>
+                      <td className="text-xs">{t(labelOf(catalog.marketplaces, p.marketplace))}</td>
+                      <td className="text-xs">{t(labelOf(catalog.physicalTypes, p.physicalType))}</td>
                       <td className="text-xs uppercase">{p.includedTier}</td>
                       <td><StatusBadge tone={p.active ? 'success' : 'muted'}>{p.active ? t('Faol') : t('Nofaol')}</StatusBadge></td>
                       {isManager && (
@@ -428,7 +430,7 @@ function BatchResult({ batch, t, onDone }) {
 }
 
 // ── AKTIVATSIYA KODLARI ──────────────────────────────────────────────
-function Codes({ adminApi, t, isManager, products, apiErrText }) {
+function Codes({ adminApi, t, isManager, products, apiErrText, catalog }) {
   const [rows, setRows] = useState(null);
   const [err, setErr] = useState(null);
   const [filters, setFilters] = useState({ search: '', status: '', marketplace: '', productId: '', profileKind: '' });
@@ -487,7 +489,7 @@ function Codes({ adminApi, t, isManager, products, apiErrText }) {
           <label><span>{t('Marketplace')}</span>
             <select className="vz-input" value={filters.marketplace} onChange={setF('marketplace')}>
               <option value="">{t('Hammasi')}</option>
-              {MARKETPLACES.map(([id, label]) => <option key={id} value={id}>{t(label)}</option>)}
+              {catalog.marketplaces.map((m) => <option key={m.id} value={m.id}>{t(m.label)}</option>)}
             </select>
           </label>
           <label><span>{t('Mahsulot')}</span>
@@ -530,7 +532,7 @@ function Codes({ adminApi, t, isManager, products, apiErrText }) {
                     <tr key={r.id}>
                       <td className="font-mono text-xs font-bold">{r.codeMasked}</td>
                       <td className="font-mono text-xs">{r.sku}</td>
-                      <td className="text-xs">{t(labelOf(MARKETPLACES, r.marketplace))}</td>
+                      <td className="text-xs">{t(labelOf(catalog.marketplaces, r.marketplace))}</td>
                       <td className="font-mono text-xs">{r.deviceTokenTail ? `…${r.deviceTokenTail}` : '—'}</td>
                       <td><StatusBadge tone={STATUS_TONE[r.status] || 'muted'}>{r.status}</StatusBadge></td>
                       <td className="text-xs">{r.marketplaceOrderId || '—'}</td>
