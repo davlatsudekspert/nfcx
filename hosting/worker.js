@@ -9667,9 +9667,21 @@ async function handleRequest(request, env, url) {
         if (!row) return to('/');
         if (row.linked_code) return to(`/${String(row.linked_code).toLowerCase()}?t=${encodeURIComponent(token)}`);
         if (row.linked_company_id) return to(`/c/${String(row.linked_company_id).toLowerCase()}`);
-        // Qurilma bor, lekin hali hech qayerga bog'lanmagan —
-        // demak mahsulot sotilgan, ammo faollashtirilmagan.
-        return to('/activate');
+        // Qurilma bor, lekin hali hech qayerga bog'lanmagan — demak
+        // mahsulot sotilgan, ammo faollashtirilmagan.
+        //
+        // TOKEN O'ZI BILAN KETADI (`?d=`). Shu sababli egasi
+        // stikerlarni OLDINDAN kimgadir biriktirib qo'yishi SHART
+        // EMAS: odam qaysi stikerni tekkizgan bo'lsa, faollashtirish
+        // paytida AYNAN o'sha bog'lanadi. Omborda "qaysi stiker qaysi
+        // konvertga tushdi" degan hisob yuritish kerak emas.
+        //
+        // Token maxfiy emas: u stikerning O'ZIDA yozilgan va uni
+        // tekkizgan har kim o'qiy oladi. Ya'ni manzilga qo'shilishi
+        // yangi sir ochmaydi. Egallab olishdan himoya boshqa joyda:
+        // bog'lash uchun HAQIQIY aktivatsiya kodi kerak va faqat
+        // EGASIZ qurilma bog'lanadi (hosting/api/marketplace.js).
+        return to(`/activate?d=${encodeURIComponent(token)}`);
       } catch (error) {
         console.error('tap redirect', error?.message);
         return to('/');

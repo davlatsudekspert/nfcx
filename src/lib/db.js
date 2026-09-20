@@ -1366,7 +1366,10 @@ export async function dbActivateOptions() {
 }
 
 // Aktivatsiyaning o'zi. `payload`:
-//   { code, profileKind: 'personal'|'business', profileCode?, companyId?, name? }
+//   { code, profileKind: 'personal'|'business', profileCode?, companyId?,
+//     name?, deviceToken? }
+// `deviceToken` — odam TEKKIZGAN stikerning tokeni. U kelsa, o'sha
+// stiker aynan shu profilga bog'lanadi.
 export async function dbActivate(payload) {
   let res;
   try {

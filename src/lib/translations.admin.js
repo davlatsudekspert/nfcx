@@ -234,6 +234,8 @@ export const DICT_ADMIN = {
   '{n} ta kod yaratildi': { ru: 'Создано кодов: {n}', en: '{n} codes created' },
   'Bu kodlar BOSHQA KO‘RSATILMAYDI. Yopishdan oldin chop eting yoki CSV yuklab oling.': { ru: 'Эти коды БОЛЬШЕ НЕ БУДУТ показаны. Распечатайте или скачайте CSV перед закрытием.', en: 'These codes will NOT be shown again. Print or download the CSV before closing.' },
   'Chop etish (A4)': { ru: 'Печать (A4)', en: 'Print (A4)' },
+  'Stiker manzillari (CSV)': { ru: 'Адреса стикеров (CSV)', en: 'Sticker links (CSV)' },
+  'Stiker manzillarini NFC yozuvchi dasturga bering — shu {n} ta manzil {n} ta chipga yoziladi. Ular kodlar bilan JUFTLASHTIRILMAGAN: qaysi stiker qaysi konvertga tushishi muhim emas, bog‘lanish xaridor stikerga tekkizganda hosil bo‘ladi.': { ru: 'Передайте адреса в программу записи NFC — эти {n} адресов запишутся на {n} чипов. Они НЕ СВЯЗАНЫ с кодами: неважно, какой стикер попадёт в какой конверт — связь создаётся, когда покупатель прикладывает стикер.', en: 'Give these links to your NFC writer — the {n} links are written to {n} chips. They are NOT paired with the codes: it does not matter which sticker goes into which envelope — the link is created when the buyer taps the sticker.' },
   'Kodlarni chop etdim yoki saqlab oldim.': { ru: 'Я распечатал(а) или сохранил(а) коды.', en: 'I have printed or saved the codes.' },
   'Faollashtirilgan kodni o‘zgartirib bo‘lmaydi.': { ru: 'Активированный код изменить нельзя.', en: 'An activated code cannot be changed.' },
   'Sabab (kamida 10 belgi) — audit logga yoziladi:': { ru: 'Причина (минимум 10 символов) — попадёт в журнал аудита:', en: 'Reason (at least 10 characters) — recorded in the audit log:' },

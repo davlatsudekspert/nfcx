@@ -496,7 +496,36 @@ export async function handle(request, env, url, H) {
             `INSERT INTO marketplace_activations (code_hash, code_tail, product_id, batch_id, status, created_at, expires_at)
              VALUES (?,?,?,?, 'new', ?, ?) ON CONFLICT(code_hash) DO NOTHING RETURNING id`
           ).bind(hash, codeTail(normalized), productId, batchId, now, expiresAt).first().catch(() => null);
-          if (row?.id) { created.push({ id: Number(row.id), code: formatActivationCode(normalized) }); ok = true; }
+          if (!row?.id) continue;
+
+          // ── STIKER TOKENI HAM SHU YERDA ──────────────────────────
+          //
+          // Ilgari token admin tomonidan QO'LDA kiritilardi. 100 dona
+          // stiker uchun bu 100 marta "token o'ylab topish" degani
+          // edi — ish tartibiga mutlaqo to'g'ri kelmasdi.
+          //
+          // TOKEN KODGA BIRIKTIRILMAYDI — ATAYLAB.
+          //
+          // Egasi stikerlarni tayyorlab do'konga beradi va QAYSI
+          // stiker qaysi xaridorga tushishini BILMAYDI. Shuning uchun
+          // stiker va kod IKKI ALOHIDA ro'yxat: har qanday stiker
+          // har qanday konvertga tushsa ham ishlaydi. Juftlik odam
+          // stikerni TEKKIZGANDA, faollashtirish paytida hosil
+          // bo'ladi.
+          //
+          // Token bazada bo'lishi SHART: `/t/<token>` faqat mavjud
+          // tokenni taniydi, aks holda bosh sahifaga yuboradi.
+          const chipToken = H.newToken(6);
+          const dev = await env.DB.prepare(
+            `INSERT INTO physical_cards (chip_token, linked_code, owner_user_id, status)
+             VALUES (?, NULL, NULL, 'pending') ON CONFLICT(chip_token) DO NOTHING RETURNING id`
+          ).bind(chipToken).first().catch(() => null);
+          created.push({
+            id: Number(row.id),
+            code: formatActivationCode(normalized),
+            chipToken: dev?.id ? chipToken : '',
+          });
+          ok = true;
         }
         if (!ok) return H.json({ error: 'generation_failed', created: created.length }, 500);
       }
@@ -948,17 +977,57 @@ async function activateHandler(request, env, H, body) {
     }
 
     // ── 5) FIZIK QURILMANI BOG'LASH ────────────────────────────────
-    // Faqat SHU kodga oldindan biriktirilgan qurilma. Begona qurilma
-    // tashqaridan berilmaydi — `body` dan qurilma OLINMAYDI.
-    if (row.physical_device_id) {
-      const dev = await env.DB.prepare(`SELECT id, owner_user_id, linked_code FROM physical_cards WHERE id = ?`).bind(row.physical_device_id).first();
+    //
+    // Ikki yo'l:
+    //   a) kodga OLDINDAN biriktirilgan qurilma (batch yaratilganda
+    //      yoki admin qo'lda biriktirgan);
+    //   b) odam TEKKIZGAN stiker (`deviceToken`) — u `/t/<token>`
+    //      orqali `?d=` bo'lib keladi.
+    //
+    // (b) shuning uchun kerak: egasi stikerlarni oldindan kimgadir
+    // biriktirib qo'ymaydi — lenta olib, yozib, konvertga soladi.
+    // Qaysi stiker kimga tushgani faqat ODAM TEKKIZGANDA ma'lum
+    // bo'ladi.
+    //
+    // XAVFSIZLIK. Token stikerning o'zida yozilgan, ya'ni sir emas.
+    // Himoya ikki qatlamda: bog'lash uchun HAQIQIY aktivatsiya kodi
+    // kerak, VA faqat EGASIZ hamda hech qayerga bog'lanmagan
+    // qurilma qabul qilinadi — birovning ishlab turgan kartasini
+    // tortib olish MUMKIN EMAS.
+    // TEKKIZILGAN STIKER USTUN. Kodga oldindan biriktirilgan qurilma
+    // bo'lsa ham, odam qo'lidagi HAQIQIY stiker g'olib: aks holda
+    // xaridor boshqa birovning stikeriga bog'lanib qolardi.
+    //
+    // `row` — `loadByCode` dan kelgan o'zgarmas obyekt, shuning uchun
+    // qurilma AYRIM o'zgaruvchida yuritiladi.
+    let deviceId = row.physical_device_id || 0;
+    const tappedToken = H.shortText(body.deviceToken, 64).replace(/[^A-Za-z0-9_-]/g, '');
+    if (tappedToken) {
+      const free = await env.DB.prepare(
+        `SELECT id FROM physical_cards WHERE chip_token = ? AND owner_user_id IS NULL AND (linked_code IS NULL OR linked_code = '')`
+      ).bind(tappedToken).first().catch(() => null);
+      // Band bo'lsa JIM o'tamiz: kod baribir faollashadi, stiker
+      // esa bog'lanmaydi. Butun aktivatsiyani to'xtatish yomonroq
+      // bo'lardi — odam mahsulotidan umuman foydalana olmasdi.
+      if (free?.id) deviceId = Number(free.id);
+    }
+    if (deviceId) {
+      const dev = await env.DB.prepare(`SELECT id, owner_user_id, linked_code FROM physical_cards WHERE id = ?`).bind(deviceId).first();
       if (dev && (dev.owner_user_id == null || String(dev.owner_user_id) === String(user.id))) {
         // Shaxsiy -> `linked_code` (cards.code ga FK).
         // Biznes  -> `linked_company_id`; `linked_code` NULL bo'lib
         //            qoladi, chunki kompaniya `cards` da yo'q va
         //            u yerga har qanday qiymat yozish FK ni buzardi.
         await env.DB.prepare(`UPDATE physical_cards SET owner_user_id = ?, linked_code = ?, linked_company_id = ?, active = 1 WHERE id = ?`)
-          .bind(user.id, kind === 'personal' ? profileCode : null, kind === 'business' ? profileCode : null, row.physical_device_id).run();
+          .bind(user.id, kind === 'personal' ? profileCode : null, kind === 'business' ? profileCode : null, deviceId).run();
+        // KOD QATORIGA HAM YOZAMIZ. Aks holda admin panelda va
+        // tarixda "bu kod qaysi stikerga tushdi" ko'rinmasdi —
+        // stiker tekkizish orqali kelganda bog'lanish faqat
+        // `physical_cards` da qolib ketardi.
+        if (deviceId !== row.physical_device_id) {
+          await env.DB.prepare(`UPDATE marketplace_activations SET physical_device_id = ? WHERE id = ?`)
+            .bind(deviceId, row.id).run().catch(() => {});
+        }
       } else if (dev) {
         await release();
         return H.json({ error: 'device_taken' }, 409);

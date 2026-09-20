@@ -610,18 +610,23 @@ function gatedEnv(env, sqlNeedle) {
   // Egalik SERVER tomonda.
   checkTrue('13) shaxsiy egalik serverda', /getRecordOwner\(env, wanted\)/.test(src));
   checkTrue('13) kompaniya egaligi serverda', /FROM companies WHERE company_id = \? AND owner_user_id = \?/.test(src));
-  // QURILMA TASHQARIDAN BERILMAYDI — ommaviy aktivatsiyada.
+  // QURILMA TASHQARIDAN KELADI — LEKIN FAQAT BO'SH QURILMA.
   //
-  // Xavf aynan shu yerda: tashrifchi so'rov tanasida begona chip
-  // tokenini yuborib, boshqa odamning stikerini o'ziga bog'lab
-  // olishi mumkin bo'lardi. Admin uchun esa token bilan biriktirish
-  // QONUNIY (ishlab chiqarish ro'yxati), shuning uchun tekshiruv
-  // butun faylga emas, AYNAN aktivatsiya ishlovchisiga qaratilgan.
+  // Stiker tokeni sir emas: u chipning o'zida yozilgan va istalgan
+  // odam o'qiy oladi. Shuning uchun "tekkizilgan stiker" yo'li
+  // ATAYLAB body orqali keladi, himoya esa SO'ROVDA emas — SQL da:
+  // faqat egasiz va hech qayerga bog'lanmagan qator tanlanadi.
   const handler = src.slice(src.indexOf('async function activateHandler'));
-  checkTrue('13) ommaviy aktivatsiyada qurilma body dan olinmaydi',
-    !/body\.deviceId|body\.physicalDeviceId|body\.chipToken/.test(handler));
-  checkTrue('13) qurilma faqat kodga oldindan biriktirilganidan olinadi',
-    /if \(row\.physical_device_id\)/.test(handler));
+  // Ichki identifikator (id) hech qachon tashqaridan olinmaydi —
+  // aks holda raqamni oshirib begona stikerga tegib bo'lardi.
+  checkTrue('13) qurilma ID si body dan olinmaydi',
+    !/body\.deviceId|body\.physicalDeviceId/.test(handler));
+  checkTrue('13) tekkizilgan token tozalanadi',
+    /H\.shortText\(body\.deviceToken, 64\)\.replace\(\/\[\^A-Za-z0-9_-\]\/g, ''\)/.test(handler));
+  checkTrue('13) faqat EGASIZ va BOG‘LANMAGAN stiker tanlanadi',
+    /chip_token = \? AND owner_user_id IS NULL AND \(linked_code IS NULL OR linked_code = ''\)/.test(handler));
+  // Begona (egasi bor) qurilma — aniq rad javobi.
+  checkTrue('13) begona qurilma rad etiladi', /error: 'device_taken' \}, 409/.test(handler));
   // Tezlik chegarasi mavjud mexanizmdan.
   checkTrue('13) mavjud rateLimitD1 ishlatiladi', /H\.rateLimitD1\(/.test(src));
 
@@ -1216,7 +1221,10 @@ function gatedEnv(env, sqlNeedle) {
   // ── /t/<token> — BOG'LANMAGAN ──────────────────────────────────────
   const r1 = await call(env, '/t/CHIP-AAA1');
   check('22) bog‘lanmagan token -> yo‘naltirish', r1.status, 302);
-  check('22) ...faollashtirish sahifasiga', r1.headers.get('location'), '/activate');
+  // Token yo'naltirishda OLIB KETILADI: aynan shu narsa "har qanday stiker +
+  // har qanday kod" ishlashini ta'minlaydi — odam tekkizgan stiker o'zi
+  // faollashtirish sahifasiga ergashadi, oldindan juftlashtirish shart emas.
+  check('22) ...faollashtirish sahifasiga', r1.headers.get('location'), '/activate?d=CHIP-AAA1');
   // KESHLANMASIN: profil keyin o'zgaradi.
   check('22) kesh yo‘q', r1.headers.get('cache-control'), 'no-store');
 
@@ -1287,6 +1295,137 @@ function gatedEnv(env, sqlNeedle) {
   checkTrue('22) doimiy yo‘naltirish (301) ishlatilmaydi',
     !/status: 301[\s\S]{0,200}chip_token/.test(worker));
   checkTrue('22) 302 va no-store', /status: 302,\s*\n?\s*headers: \{ location: pathname, 'cache-control': 'no-store' \}/.test(worker));
+}
+
+// ── 23) HAR QANDAY STIKER + HAR QANDAY KOD ───────────────────
+//
+// HAQIQIY ISH TARTIBI. Egasi 10 ta yoki 100 ta stikerni oldindan
+// tayyorlaydi va yopishtirilgan holda do'konga topshiradi. QAYSI
+// stiker qaysi xaridorga tushishini U BILMAYDI — demak stikerni
+// kodga OLDINDAN juftlashtirish mumkin emas.
+//
+// Shuning uchun juftlik ODAM STIKERGA TEKKIZGANDA hosil bo'ladi:
+// stiker `/activate` ga o'z tokenini olib keladi, xaridor konvertdan
+// olingan kodni kiritadi va aynan QO'LIDAGI stiker bog'lanadi.
+//
+// Bu bo'lim shuni isbotlaydi: 2-kod bilan mintalgan stiker 0-kod
+// bilan faollashtirilsa ham to'g'ri ishlaydi.
+{
+  const env = await setup();
+  const product = await makeProduct(env);
+  const batch = await makeCodes(env, product.id, 4);
+  const codes = batch.codes;
+  const idOf = async (c) => Number((await rowOfCode(env, c.code, 'id')).id);
+
+  // Batch stikerni ham chiqaradi — aks holda egasi 100 ta tokenni
+  // qo'lda o'ylab topishi kerak bo'lardi.
+  checkTrue('23) batch stiker tokenini ham beradi', codes.every((c) => /^[A-Za-z0-9_-]{4,}$/.test(c.chipToken || '')));
+  check('23) tokenlar takrorlanmaydi', new Set(codes.map((c) => c.chipToken)).size, codes.length);
+
+  // JUFTLASHTIRILMAGAN: token kodning qatoriga yozilmagan.
+  const pre = await rowOfCode(env, codes[0].code, 'physical_device_id AS d');
+  check('23) kod stikersiz tug‘iladi', pre.d, null);
+
+  // ── XARIDOR 2-KOD UCHUN MINTALGAN STIKERNI OLDI ────────────
+  const tapped = codes[2].chipToken;          // qo'ldagi stiker
+  const envelope = codes[0].code;             // konvertdagi kod — BOSHQA
+  const hop = await call(env, `/t/${tapped}`);
+  check('23) tegish -> faollashtirish', hop.status, 302);
+  check('23) token o‘zi bilan ketadi', hop.headers.get('location'), `/activate?d=${tapped}`);
+
+  const act = await jsonOf(await call(env, '/api/activate', {
+    method: 'POST', cookie: cookie.user, json: { code: envelope, profileKind: 'personal', deviceToken: tapped },
+  }));
+  checkTrue('23) faollashdi', !!act?.result?.profileCode);
+  const profile = act.result.profileCode;
+
+  // QO'LDAGI stiker bog'landi — kod bilan "o'z" stikeri emas.
+  const tdev = await env.DB.prepare(`SELECT owner_user_id AS uid, linked_code AS lc, active FROM physical_cards WHERE chip_token = ?`).bind(tapped).first();
+  check('23) tegilgan stiker egasiga o‘tdi', Number(tdev.uid), 1);
+  check('23) tegilgan stiker profilga bog‘landi', tdev.lc, profile);
+  check('23) tegilgan stiker faol', Number(tdev.active), 1);
+
+  const usedRow = await rowOfCode(env, envelope, 'physical_device_id AS d, status');
+  const tdevId = await env.DB.prepare(`SELECT id FROM physical_cards WHERE chip_token = ?`).bind(tapped).first();
+  check('23) kod qatori tegilgan stikerni ko‘rsatadi', Number(usedRow.d), Number(tdevId.id));
+  check('23) kod faollashgan', usedRow.status, 'activated');
+
+  // 2-kodning O'ZI tegilmagan: u hali ham sotilishi kerak.
+  const donor = await rowOfCode(env, codes[2].code, 'status, physical_device_id AS d, activated_profile_code AS p');
+  check('23) stiker "egasi" kod o‘zgarmadi', donor.status, 'new');
+  check('23) stiker "egasi" kod hali bo‘sh', donor.d, null);
+  check('23) stiker "egasi" kod faollashmadi', donor.p, null);
+
+  // Tegilgan stiker endi profilga olib boradi.
+  check('23) stiker profilni ochadi', (await call(env, `/t/${tapped}`)).headers.get('location'), `/${profile.toLowerCase()}?t=${tapped}`);
+
+  // ── IKKINCHI XARIDOR, BOSHQA STIKER, BOSHQA KOD ────────────
+  const tapped2 = codes[3].chipToken;
+  const act2 = await jsonOf(await call(env, '/api/activate', {
+    method: 'POST', cookie: cookie.other, json: { code: codes[1].code, profileKind: 'personal', deviceToken: tapped2 },
+  }));
+  checkTrue('23) ikkinchi xaridor faollashtirdi', !!act2?.result?.profileCode);
+  const dev2 = await env.DB.prepare(`SELECT owner_user_id AS uid, linked_code AS lc FROM physical_cards WHERE chip_token = ?`).bind(tapped2).first();
+  check('23) ikkinchi stiker ikkinchi odamga', Number(dev2.uid), 2);
+  check('23) ikkinchi stiker o‘z profiliga', dev2.lc, act2.result.profileCode);
+  // BIRINCHISI TEGILMADI.
+  const still = await env.DB.prepare(`SELECT owner_user_id AS uid, linked_code AS lc FROM physical_cards WHERE chip_token = ?`).bind(tapped).first();
+  check('23) birinchi stiker o‘zgarmadi', `${still.uid}|${still.lc}`, `1|${profile}`);
+
+  // ── BOSHQANING ISHLAB TURGAN STIKERINI TORTIB OLIB BO'LMAYDI ──
+  //
+  // Token sir emas — u stikerning o'zida yozilgan. Shuning uchun
+  // "begona tokenni yuboraman" hujumi ALOHIDA tekshiriladi.
+  const steal = await call(env, '/api/activate', {
+    method: 'POST', cookie: cookie.user, json: { code: codes[2].code, profileKind: 'personal', deviceToken: tapped2 },
+  });
+  checkTrue('23) band stiker aktivatsiyani to‘xtatmaydi', steal.status === 200 || steal.status === 201);
+  const afterSteal = await env.DB.prepare(`SELECT owner_user_id AS uid, linked_code AS lc FROM physical_cards WHERE chip_token = ?`).bind(tapped2).first();
+  check('23) band stiker egasida qoldi', Number(afterSteal.uid), 2);
+  check('23) band stiker profili o‘zgarmadi', afterSteal.lc, act2.result.profileCode);
+  const stealRow = await rowOfCode(env, codes[2].code, 'status, physical_device_id AS d');
+  check('23) kod baribir faollashdi', stealRow.status, 'activated');
+  check('23) kodga begona stiker yozilmadi', stealRow.d, null);
+
+  // ── AXLAT TOKEN AKTIVATSIYANI BUZMAYDI ─────────────────
+  const batch2 = await makeCodes(env, product.id, 2);
+  const junk = await call(env, '/api/activate', {
+    method: 'POST', cookie: cookie.other, json: { code: batch2.codes[0].code, profileKind: 'personal', deviceToken: 'YO\'Q-BUNDAY-TOKEN' },
+  });
+  checkTrue('23) noma’lum token bilan ham faollashadi', junk.status === 200 || junk.status === 201);
+  check('23) noma’lum token yozilmadi', (await rowOfCode(env, batch2.codes[0].code, 'physical_device_id AS d')).d, null);
+
+  // ── STIKERSIZ HAM ISHLAYDI (QR + kod, NFC o'qimaydigan telefon) ──
+  const noTap = await call(env, '/api/activate', {
+    method: 'POST', cookie: cookie.other, json: { code: batch2.codes[1].code, profileKind: 'personal' },
+  });
+  checkTrue('23) stikersiz faollashtirish ham ishlaydi', noTap.status === 200 || noTap.status === 201);
+
+  // ── MANBA QOIDALARI ────────────────────────────────
+  const page = stripComments(read('../src/pages/ActivatePage.jsx'));
+  // Token URL'da QOLMASIN: brauzer tarixi va "share" orqali sizadi.
+  checkTrue('23) token URL’dan olib tashlanadi', /replaceState/.test(page) && /delete\('d'\)/.test(page));
+  // Aktivatsiya kodidan farqli — token uzoq muddat saqlanmaydi.
+  checkTrue('23) token localStorage’ga yozilmaydi', !/localStorage[\s\S]{0,80}nfc_activation_device/.test(page));
+  checkTrue('23) token sessionStorage’da',
+    /DEVICE_KEY = 'nfc_activation_device'/.test(page) && /sessionStorage\.setItem\(DEVICE_KEY/.test(page));
+  checkTrue('23) token so‘rov bilan yuboriladi', /deviceToken/.test(page));
+
+  // Admin egasi 100 ta chipga nimani yozishini BILISHI kerak.
+  const tab = stripComments(read('../src/components/admin/MarketplaceTab.jsx'));
+  checkTrue('23) stiker manzillari yuklab olinadi', /tap_url,chip_token/.test(tab));
+  checkTrue('23) manzil /t/<token> ko‘rinishida', /\/t\/\$\{c\.chipToken\}/.test(tab));
+  // Kod CSV'siga stiker QO'SHILMAYDI: bir qatorda turgani "juftlik"
+  // degan yolg‘on taassurot berardi.
+  checkTrue('23) kodlar CSV’sida stiker yo‘q', /const head = 'code,sku,product,marketplace,batch/.test(tab));
+
+  const mk = stripComments(read('../hosting/api/marketplace.js'));
+  // Faqat EGASIZ va BOG'LANMAGAN stiker qabul qilinadi.
+  checkTrue('23) faqat egasiz stiker qabul qilinadi',
+    /owner_user_id IS NULL AND \(linked_code IS NULL OR linked_code = ''\)/.test(mk));
+  // Batch tokenni kod qatoriga YOZMAYDI.
+  checkTrue('23) batch stikerni kodga biriktirmaydi',
+    !/INSERT INTO marketplace_activations[\s\S]{0,600}physical_device_id/.test(mk));
 }
 
 done();

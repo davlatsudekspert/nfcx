@@ -24,12 +24,40 @@ import { useLanguage } from '../lib/i18n.jsx';
 // ═══════════════════════════════════════════════════════════════════════
 
 const STORAGE_KEY = 'nfc_activation_code';
+const DEVICE_KEY = 'nfc_activation_device';
 
 function readStoredCode() {
   try { return sessionStorage.getItem(STORAGE_KEY) || ''; } catch { return ''; }
 }
 function storeCode(code) {
   try { if (code) sessionStorage.setItem(STORAGE_KEY, code); else sessionStorage.removeItem(STORAGE_KEY); } catch { /* private rejim */ }
+}
+
+// TEKKIZILGAN STIKERNING TOKENI.
+//
+// `/t/<token>` bog'lanmagan stikerni shu sahifaga `?d=` bilan
+// yuboradi. Token saqlanadi, chunki odam oradan kirish yoki
+// ro'yxatdan o'tishga chiqib ketishi mumkin — qaytganda qaysi
+// stikerni tekkizgani ESDA qolishi kerak.
+//
+// Manzildan DARHOL olib tashlanadi: brauzer tarixida va `Referer`
+// sarlavhasida qolib ketmasin.
+function readStoredDevice() {
+  try { return sessionStorage.getItem(DEVICE_KEY) || ''; } catch { return ''; }
+}
+function takeDeviceFromUrl() {
+  if (typeof window === 'undefined') return '';
+  const params = new URLSearchParams(window.location.search);
+  const d = (params.get('d') || '').replace(/[^A-Za-z0-9_-]/g, '');
+  if (!d) return readStoredDevice();
+  try { sessionStorage.setItem(DEVICE_KEY, d); } catch { /* private rejim */ }
+  params.delete('d');
+  const clean = window.location.pathname + (params.toString() ? `?${params}` : '');
+  window.history.replaceState(null, '', clean);
+  return d;
+}
+function clearDevice() {
+  try { sessionStorage.removeItem(DEVICE_KEY); } catch { /* private rejim */ }
 }
 
 // Kiritish paytida ko'rinishni tartibga soladi: NF-XXXX-XXXX.
@@ -64,6 +92,8 @@ export default function ActivatePage() {
   const authReady = user !== undefined;
 
   const [code, setCode] = useState(() => prettyInput(readStoredCode()));
+  // Tekkizilgan stiker (bo'lsa). Manzildan bir marta olinadi.
+  const [deviceToken] = useState(takeDeviceFromUrl);
   const [product, setProduct] = useState(null);
   const [kind, setKind] = useState('');
   const [options, setOptions] = useState(null);
@@ -128,7 +158,7 @@ export default function ActivatePage() {
     setErr(''); setBusy(true);
     try {
       const data = await dbActivateCheck(code);
-      if (data?.alreadyActivated) { setResult(data.result); storeCode(''); return; }
+      if (data?.alreadyActivated) { setResult(data.result); storeCode(''); clearDevice(); return; }
       setProduct(data.product);
       storeCode(code);
     } catch (e2) { fail(e2); } finally { setBusy(false); }
@@ -140,9 +170,12 @@ export default function ActivatePage() {
       const payload = { code, profileKind: kind };
       if (kind === 'personal' && choice) payload.profileCode = choice;
       if (kind === 'business') payload.companyId = choice;
+      // Odam tekkizgan stiker AYNAN shu profilga bog'lanadi.
+      if (deviceToken) payload.deviceToken = deviceToken;
       const data = await dbActivate(payload);
       setResult(data.result);
       storeCode('');
+      clearDevice();
     } catch (e2) { fail(e2); } finally { setBusy(false); }
   };
 

@@ -362,6 +362,7 @@ function BatchResult({ batch, t, onDone }) {
   const [acked, setAcked] = useState(false);
   const codes = batch.codes || [];
   const sku = batch.product?.sku || '';
+  const stickerCount = codes.filter((c) => c.chipToken).length;
 
   const csv = () => {
     // Excel o'zbekcha/kirill matnni to'g'ri ochishi uchun BOM.
@@ -372,6 +373,26 @@ function BatchResult({ batch, t, onDone }) {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `nfcstore-${sku || 'batch'}-${batch.batchId}.csv`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  };
+
+  // ── STIKER RO'YXATI ───────────────────────────────
+  //
+  // Chipga YOZILADIGAN manzillar. Kodlar bilan bitta faylda
+  // berilmaydi — ATAYLAB: bitta jadvalda yonma-yon turgan kod va
+  // stiker "juftlik" degan taassurot qoldirardi, holbuki juftlik
+  // xaridor stikerga tekkizganda hosil bo'ladi va istalgan stiker
+  // istalgan konvert bilan ishlaydi.
+  const stickersCsv = () => {
+    const origin = window.location.origin;
+    const head = 'tap_url,chip_token,batch\n';
+    const rows = codes.filter((c) => c.chipToken).map((c) => [`${origin}/t/${c.chipToken}`, c.chipToken, batch.batchId]
+      .map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob(['\ufeff' + head + rows], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `nfcstore-stikerlar-${batch.batchId}.csv`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   };
@@ -416,7 +437,13 @@ function BatchResult({ batch, t, onDone }) {
       <div className="mk-batch-actions">
         <button type="button" className="btn btn-gold" onClick={print}>{t('Chop etish (A4)')}</button>
         <button type="button" className="btn" onClick={csv}>{t('CSV yuklab olish')}</button>
+        <button type="button" className="btn" onClick={stickersCsv} disabled={!stickerCount}>
+          {t('Stiker manzillari (CSV)')}
+        </button>
       </div>
+      <p className="mk-hint">
+        {t('Stiker manzillarini NFC yozuvchi dasturga bering — shu {n} ta manzil {n} ta chipga yoziladi. Ular kodlar bilan JUFTLASHTIRILMAGAN: qaysi stiker qaysi konvertga tushishi muhim emas, bog‘lanish xaridor stikerga tekkizganda hosil bo‘ladi.', { n: stickerCount })}
+      </p>
       <div className="mk-codes">
         {codes.map((c) => <code key={c.id}>{c.code}</code>)}
       </div>
