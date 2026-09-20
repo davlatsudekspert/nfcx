@@ -521,7 +521,29 @@ class Post {
         if (e is Map && e['url'] != null) media.add(_u(e['url']));
       }
     }
-    final single = _u(j['imageUrl'] ?? j['videoUrl'] ?? j['url']);
+    // BO'SH SATR — `null` EMAS.
+    //
+    // Server video post uchun `{"imageUrl": "", "videoUrl":
+    // "/uploads/cardvid_....mp4"}` qaytaradi. Ilgari bu yerda
+    //
+    //     j['imageUrl'] ?? j['videoUrl'] ?? j['url']
+    //
+    // turardi. `??` FAQAT `null` da keyingisiga o'tadi, bo'sh
+    // satrda esa o'tmaydi — shuning uchun `videoUrl` ga HECH
+    // QACHON yetib borilmasdi va video postda `mediaUrls` bo'sh
+    // qolardi.
+    //
+    // Oqibati ikkita edi va ikkalasi ham telefonda ko'rindi:
+    // Reels filtri `isVideo && mediaUrls.isNotEmpty` ga qaraydi,
+    // shuning uchun bo'lim "Hozircha reels yo'q" deb turardi; profil
+    // panjarasi esa `mediaUrls.isEmpty` shoxiga tushib, video
+    // o'rniga MATN katakchasini chizardi.
+    //
+    // `StoryItem.fromJson` buni allaqachon to'g'ri qilardi — aynan
+    // shuning uchun video ISTORYA ishlab, video POST ishlamasdi.
+    final single = _u([j['imageUrl'], j['videoUrl'], j['url']]
+        .map(_s)
+        .firstWhere((e) => e.isNotEmpty, orElse: () => ''));
     if (media.isEmpty && single.isNotEmpty) media.add(single);
     return Post(
       id: _i(j['id']),
