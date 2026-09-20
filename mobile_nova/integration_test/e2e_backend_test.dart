@@ -930,6 +930,29 @@ void main() {
           '($writeCount ta faol istorya)');
     }
 
+    // OBUNA ISTORYALARI — HAQIQIY SERVERDA.
+    //
+    // `GET /api/stories/feed` serverda bor edi, lekin ilova uni
+    // chaqirmasdi: bosh ekrandagi qator faqat o'z profilingni
+    // ko'rsatardi. Bu yerda endpoint HAQIQATAN javob berishini va
+    // javob shakli o'qilishini tekshiramiz (bo'sh bo'lishi ham
+    // to'g'ri natija: hamma obunachida faol istorya bo'lishi shart
+    // emas).
+    switch (await social.followedStories()) {
+      case Err(:final error):
+        fail('Obuna istoryalari',
+            screen: 'Home — istorya qatori',
+            action: 'GET /api/stories/feed',
+            cause: why(error),
+            pathHint: '/api/stories/feed');
+      case Ok(:final value):
+        report.pass('Obuna istoryalari',
+            screen: 'Home — istorya qatori',
+            action: 'GET /api/stories/feed',
+            note: '${value.length} ta faol istorya; '
+                'egalari: ${value.map((e) => e.code).toSet().length} ta profil');
+    }
+
     final storiesBefore = await social.storiesOf(code);
     switch (storiesBefore) {
       case Err(:final error):
