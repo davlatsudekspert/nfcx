@@ -53,6 +53,12 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   generate: true
+  # ISHLATILMAYDIGAN SHRIFTLAR OLIB TASHLANDI.
+  #
+  # Kursiv serif ilovada hech qayerda chaqirilmaydi; `w800`
+  # tipografiya yumshatilgandan keyin qolmadi; mono `w700` ham
+  # ishlatilmaydi (eng og'iri — `w600`). Har bir shrift fayli
+  # APK ga TO'LIQ tushadi, ishlatilsa ham, ishlatilmasa ham.
   assets:
     - assets/brand/
     - assets/demo/
@@ -62,9 +68,6 @@ flutter:
       fonts:
         - asset: assets/fonts/InstrumentSerif-400.ttf
           weight: 400
-        - asset: assets/fonts/InstrumentSerif-400Italic.ttf
-          weight: 400
-          style: italic
     - family: PlayfairDisplay
       fonts:
         - asset: assets/fonts/PlayfairDisplay-400.ttf
@@ -81,8 +84,6 @@ flutter:
           weight: 600
         - asset: assets/fonts/Manrope-700.ttf
           weight: 700
-        - asset: assets/fonts/Manrope-800.ttf
-          weight: 800
     - family: IBMPlexMono
       fonts:
         - asset: assets/fonts/IBMPlexMono-400.ttf
@@ -91,5 +92,3 @@ flutter:
           weight: 500
         - asset: assets/fonts/IBMPlexMono-600.ttf
           weight: 600
-        - asset: assets/fonts/IBMPlexMono-700.ttf
-          weight: 700
