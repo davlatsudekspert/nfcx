@@ -100,7 +100,26 @@ export default function ActivatePage() {
   useEffect(() => {
     if (!kind || !user) return;
     let alive = true;
-    dbActivateOptions().then((o) => { if (alive) setOptions(o); }).catch(() => { if (alive) setOptions({ personal: [], business: [] }); });
+    dbActivateOptions().then((o) => {
+      if (!alive) return;
+      setOptions(o);
+      // STANDART TANLOV — MAVJUD PROFIL, "yangi" EMAS.
+      //
+      // Ro'yxatdan o'tishning O'ZI bepul NFC ID beradi. Ya'ni
+      // marketplace'dan kelgan yangi xaridorda aktivatsiyaga
+      // yetganda allaqachon bitta profil bor. Agar standart
+      // "yangi profil yaratish" bo'lib qolsa, u IKKINCHI profilni
+      // oladi va stiker BO'SH profilga ishora qilardi — birinchi,
+      // ismi va kontaktlari bor profil esa kartasiz qolardi.
+      //
+      // Shuning uchun standart — asosiy (yoki birinchi) profil.
+      // "Yangi profil yaratish" varianti joyida qoladi.
+      const list = kind === 'business' ? o.business : o.personal;
+      if (list.length > 0) {
+        const primary = kind === 'business' ? list[0] : (list.find((x) => x.isPrimary) || list[0]);
+        setChoice(kind === 'business' ? primary.companyId : primary.code);
+      }
+    }).catch(() => { if (alive) setOptions({ personal: [], business: [] }); });
     return () => { alive = false; };
   }, [kind, user]);
 

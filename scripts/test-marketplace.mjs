@@ -677,6 +677,19 @@ function gatedEnv(env, sqlNeedle) {
   checkTrue('15) /activate marshruti bor', /cleanRoute === 'activate'\) \{ page = <ActivatePage \/>; bare = true; \}/.test(app));
   checkTrue('15) marshrut band ro‘yxatida', /activate: ActivatePage/.test(app));
 
+  // STANDART TANLOV — MAVJUD PROFIL, "yangi" EMAS.
+  //
+  // Ro'yxatdan o'tishning O'ZI bepul NFC ID beradi. Marketplace'dan
+  // kelgan yangi xaridorda aktivatsiyaga yetganda allaqachon bitta
+  // profil bor. Standart "yangi profil yaratish" bo'lib qolsa, u
+  // IKKINCHI profilni olardi va stiker BO'SH profilga ishora
+  // qilardi — ismi va kontaktlari bor birinchi profil esa kartasiz
+  // qolardi. Brauzerda aynan shu holat tutildi.
+  checkTrue('15) standart tanlov — mavjud profil', /setChoice\(kind === 'business' \? primary\.companyId : primary\.code\)/.test(page));
+  checkTrue('15) asosiy profil ustun', /list\.find\(\(x\) => x\.isPrimary\) \|\| list\[0\]/.test(page));
+  // "Yangi profil yaratish" varianti YO'QOLMADI.
+  checkTrue('15) "yangi profil" varianti qoldi', /t\('Yangi profil yaratish'\)/.test(page));
+
   // Biznes uchun YANGI oqim yozilmagan — saytning o'z kompaniya
   // ochish sahifasiga yuboriladi.
   checkTrue('15) kompaniya ochish mavjud oqimga yuboradi', /navigate\('\/company\/create'\)/.test(page));
