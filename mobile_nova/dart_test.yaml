@@ -1,0 +1,25 @@
+# SINOV TEGLARI.
+#
+# `shots` — vizual prototip generatori (`test/shots/`). U ilovaning
+# haqiqiy vidjetlarini PNG ga chizadi, ya'ni SURAT OLADI, hech
+# narsani tekshirmaydi.
+#
+# Uni oddiy `flutter test` darvozasidan AJRATISH shart edi:
+#
+#   - natija PNG fayllari `.gitignore` da (ular ko'rish uchun,
+#     repozitoriyaga yuklanmaydi), demak CI da ular YO'Q va
+#     `matchesGoldenFile` solishtiradigan narsa topolmay yiqilardi;
+#   - piksel solishtiruvi har qanday holda ham shrift versiyasi va
+#     platformaga bog'liq, shuning uchun APK darvozasi bo'lishga
+#     yaramaydi.
+#
+# Shuning uchun u ODATDA o'tkazib yuboriladi. Surat olish uchun
+# ATAYIN chaqiriladi:
+#
+#   flutter test --run-skipped -t shots --update-goldens test/shots
+#
+# `--run-skipped` bo'lmasa hech narsa chizilmaydi — ya'ni suratlar
+# faqat so'ralganda olinadi, tasodifan emas.
+tags:
+  shots:
+    skip: "Vizual prototip generatori — `--run-skipped -t shots --update-goldens` bilan chaqiriladi"

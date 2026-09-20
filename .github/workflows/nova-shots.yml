@@ -1,0 +1,77 @@
+# NFCSTORE NOVA — VIZUAL PROTOTIP SURATLARI
+#
+# NIMA UCHUN ALOHIDA: `test/shots/` sinov EMAS. U ilovaning haqiqiy
+# vidjetlarini PNG ga chizadi — ya'ni surat oladi, hech narsani
+# tekshirmaydi. Uni oddiy `flutter test` bilan birga ishlatish ikki
+# marta zarar keltirdi:
+#
+#   1. natija PNG fayllari `.gitignore` da (ular ko'rish uchun,
+#      repozitoriyaga yuklanmaydi), shuning uchun CI da ular YO'Q va
+#      `matchesGoldenFile` solishtiradigan narsa topolmay yiqilardi —
+#      APK #41, #42, #43 aynan shundan qizil bo'ldi (18 ta surat
+#      18 ta "yiqilgan test" bo'lib chiqdi);
+#
+#   2. piksel solishtiruvi shrift versiyasi va platformaga bog'liq,
+#      ya'ni u releaz darvozasi bo'lishga umuman yaramaydi.
+#
+# Shuning uchun generator `dart_test.yaml` da o'tkazib yuboriladi va
+# FAQAT shu yerda, ATAYIN chaqiriladi. `test/shots_gate_test.dart`
+# o'sha sozlama joyida turganini qotiradi.
+#
+# QANDAY OLINADI: Actions -> "NFCSTORE Nova suratlari" -> "Run
+# workflow" -> tugagach pastdagi "Artifacts" -> `nova-shots`.
+name: NFCSTORE Nova suratlari
+
+# PUSH TRIGGERI ATAYIN YO'Q. Bu workflow hech qachon o'zi ishga
+# tushmaydi va hech narsani bloklamaydi — surat kerak bo'lganda
+# qo'lda chaqiriladi.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: nova-shots-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: mobile_nova
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # APK workflow bilan BIR XIL versiya: surat ishlayotgan
+      # ilovaga o'xshashi kerak, boshqa Flutter ning boshqacha
+      # chizganiga emas.
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.35.5
+          channel: stable
+          cache: true
+
+      - name: Bog'liqliklar
+        run: flutter pub get --enforce-lockfile
+
+      # `--run-skipped` SHART: `dart_test.yaml` bu tegni o'tkazib
+      # yuboradi, ya'ni usiz hech narsa chizilmaydi.
+      #
+      # `--update-goldens` — solishtirish emas, CHIZISH rejimi.
+      # Repozitoriyada etalon PNG yo'q va bo'lishi ham kerak emas.
+      - name: Suratlarni chizish
+        run: flutter test --run-skipped -t shots --update-goldens test/shots
+
+      - name: Nima chizildi
+        run: ls -la test/shots/png
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nova-shots
+          path: mobile_nova/test/shots/png/
+          if-no-files-found: error
+          retention-days: 14
