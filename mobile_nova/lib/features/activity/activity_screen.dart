@@ -46,22 +46,31 @@ class ActivityScreen extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.symmetric(
                 horizontal: Gap.screenX, vertical: Gap.sm),
-            child: Row(
-              children: [
-                Capsule(
-                  label: l.activityAll,
-                  selected: !unreadOnly,
-                  onTap: () =>
-                      ref.read(activityFilterProvider.notifier).state = false,
-                ),
-                const SizedBox(width: Gap.sm),
-                Capsule(
-                  label: l.activityUnread,
-                  selected: unreadOnly,
-                  onTap: () =>
-                      ref.read(activityFilterProvider.notifier).state = true,
-                ),
-              ],
+            // FILTR KAPSULALARI — GORIZONTAL SURILADI.
+            //
+            // Qat'iy `Row` da ikkita kapsula 320dp li telefonda 18
+            // piksel toshib ketardi. Yorliqni qisqartirib bo'lmaydi
+            // (filtr nomi yarim ko'rinsa foydasi yo'q), shuning
+            // uchun qator suriladi — filtr chiplarida odatiy yo'l.
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  Capsule(
+                    label: l.activityAll,
+                    selected: !unreadOnly,
+                    onTap: () =>
+                        ref.read(activityFilterProvider.notifier).state = false,
+                  ),
+                  const SizedBox(width: Gap.sm),
+                  Capsule(
+                    label: l.activityUnread,
+                    selected: unreadOnly,
+                    onTap: () =>
+                        ref.read(activityFilterProvider.notifier).state = true,
+                  ),
+                ],
+              ),
             ),
           ),
           Expanded(

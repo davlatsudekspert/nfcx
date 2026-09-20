@@ -111,13 +111,24 @@ class IdentityCard extends StatelessWidget {
             ),
             if (id != null) ...[
               const SizedBox(height: Gap.lg),
+              // UCHALASI KENGLIKNI BO'LIB OLADI.
+              //
+              // Ilgari bu uchta qat'iy kenglikdagi ustun va ular
+              // orasida qat'iy `Gap.xl` edi. 320dp li telefonda
+              // ("Skanerlashlar", "Ko'rishlar", "Obunachilar"
+              // yonma-yon) qator 125 piksel toshib ketardi va
+              // ekranda sariq-qora chiziq chiqardi. Ruschada ham
+              // (96 piksel) xuddi shunday edi.
               Row(
                 children: [
-                  _Stat(value: id!.taps, label: l.nfcScans),
-                  const SizedBox(width: Gap.xl),
-                  _Stat(value: id!.views, label: l.nfcViews),
-                  const SizedBox(width: Gap.xl),
-                  _Stat(value: id!.followers, label: l.profileFollowers),
+                  Expanded(child: _Stat(value: id!.taps, label: l.nfcScans)),
+                  const SizedBox(width: Gap.md),
+                  Expanded(child: _Stat(value: id!.views, label: l.nfcViews)),
+                  const SizedBox(width: Gap.md),
+                  Expanded(
+                    child: _Stat(
+                        value: id!.followers, label: l.profileFollowers),
+                  ),
                 ],
               ),
             ],
@@ -171,6 +182,11 @@ class _Stat extends StatelessWidget {
           ),
           Text(
             label,
+            // Ustun endi `Expanded` ichida — ya'ni kengligi
+            // cheklangan. Bitta qatorga sig'masa uchta nuqta bilan
+            // qisqaradi, toshib ketmaydi.
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontFamily: AppType.sans,
               fontSize: 9.5,
