@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/providers.dart';
+import '../../core/utils/external_link.dart';
+import '../../core/utils/result.dart';
 import '../../core/utils/validators.dart';
+import '../../data/models/models.dart';
 import '../../design/motion/motion.dart';
 import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
@@ -737,16 +740,171 @@ class ReferralScreen extends ConsumerWidget {
   }
 }
 
-class PremiumScreen extends ConsumerWidget {
+/// PREMIUM OBUNA — ILOVA ICHIDAN SOTIB OLISH.
+///
+/// ## AVVAL BU YERDA NIMA TURGANI
+///
+/// Ekran bor edi, lekin u SOXTA edi:
+///
+///   * `requestPremium()` `post<void>` edi — server qaytargan
+///     TO'LOV HAVOLASI tashlab yuborilardi;
+///   * tugma yorlig'i `l.supportWriteUs` ("Bizga yozing") edi;
+///   * muvaffaqiyatda `l.supportSent` ("Xabar yuborildi") chiqardi —
+///     bu YOLG'ON: qo'llab-quvvatlashga hech narsa yuborilmagan,
+///     serverda to'lanmagan buyurtma yaratilgan, odam esa to'lov
+///     sahifasiga OLIB BORILMAGAN;
+///   * narx ham, nima ochilishi ham yozilmagan edi.
+///
+/// Ya'ni "Premium" tugmasi bosilardi, hech narsa sotib olinmasdi va
+/// odam nega Reels qo'ya olmasligini bilmay qolardi.
+///
+/// ## ENDI QANDAY
+///
+/// `POST /api/premium/request` → `{orderId, amount, payLinks}`.
+/// Havola TIZIM BRAUZERIDA ochiladi (Payme/Click checkout), keyin
+/// odam ilovaga qaytganda `GET /api/payments/:id` bilan holat
+/// so'raladi va to'langan bo'lsa sessiya yangilanadi.
+///
+/// NARX SERVERDAN KELADI. Ilova uni o'zida yozib qo'ymaydi: saytda
+/// narx o'zgarsa ilova eski summani ko'rsatib turardi.
+class PremiumScreen extends ConsumerStatefulWidget {
   const PremiumScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PremiumScreen> createState() => _PremiumScreenState();
+}
+
+class _PremiumScreenState extends ConsumerState<PremiumScreen>
+    with WidgetsBindingObserver {
+  PremiumOffer? _offer;
+  bool _busy = false;
+  String? _error;
+  String? _note;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// BRAUZERDAN QAYTGANDA O'ZI TEKSHIRADI.
+  ///
+  /// To'lov ILOVADAN TASHQARIDA bo'ladi, shuning uchun ilova
+  /// to'langanini o'zi bilmaydi. Odamdan "tekshirish" tugmasini
+  /// bosishni talab qilish — uni yarim yo'lda qoldirish.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _offer != null) _check();
+  }
+
+  /// Buyurtma yaratadi (yoki to'lanmagan eskisini qaytaradi) va
+  /// to'lov sahifasini ochadi.
+  Future<void> _start(bool preferClick) async {
+    final l = L.of(context);
+    setState(() {
+      _busy = true;
+      _error = null;
+      _note = null;
+    });
+
+    var offer = _offer;
+    if (offer == null) {
+      final res = await ref.read(profileRepositoryProvider).requestPremium();
+      if (!mounted) return;
+      switch (res) {
+        case Err(:final error):
+          setState(() {
+            _busy = false;
+            _error = describeError(l, error);
+          });
+          return;
+        case Ok(:final value):
+          offer = value;
+          _offer = value;
+      }
+    }
+
+    // TO'LOV YO'LI YO'Q BO'LSA SOXTA TUGMA KO'RSATILMAYDI.
+    if (!offer.payable) {
+      setState(() {
+        _busy = false;
+        _error = l.premiumNoProvider;
+      });
+      return;
+    }
+
+    final url = preferClick && offer.click.isNotEmpty
+        ? offer.click
+        : (offer.payme.isNotEmpty ? offer.payme : offer.click);
+
+    // `openLink` HECH QACHON osilib qolmaydi va ochilmasa manzilni
+    // buferga ko'chiradi — odam boshi berk ko'chada qolmaydi.
+    final opened = await openLink(url);
+    if (!mounted) return;
+
+    setState(() {
+      _busy = false;
+      _note = opened ? l.premiumPending : l.premiumBrowserFailed;
+    });
+  }
+
+  /// To'lov holatini SERVERDAN so'raydi.
+  Future<void> _check() async {
+    final offer = _offer;
+    if (offer == null || _busy) return;
+    final l = L.of(context);
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+
+    final res =
+        await ref.read(shopRepositoryProvider).paymentStatus(offer.orderId);
+    if (!mounted) return;
+
+    await res.when(
+      ok: (j) async {
+        final paid = '${j['status'] ?? ''}' == 'paid';
+        if (paid) {
+          // Sessiya YANGILANADI — `isPremium` shu yerdan keladi va
+          // butun ilova (post qo'yish darvozasi ham) shunga qaraydi.
+          await ref.read(sessionProvider.notifier).refresh();
+          if (!mounted) return;
+          setState(() {
+            _busy = false;
+            _offer = null;
+            _note = l.premiumPaid;
+          });
+        } else {
+          setState(() {
+            _busy = false;
+            _note = l.premiumNotYet;
+          });
+        }
+      },
+      err: (e) async => setState(() {
+        _busy = false;
+        _error = describeError(l, e);
+      }),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l = L.of(context);
     final t = context.tokens;
+    final user = ref.watch(currentUserProvider);
+    final active = user?.premiumActive ?? false;
+    final offer = _offer;
 
     return NovaScaffold(
-      title: l.settingsPremium,
+      title: l.premiumTitle,
       showBack: true,
       body: NovaScroll(
         children: [
@@ -761,28 +919,132 @@ class PremiumScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: Gap.xl),
-          Text(l.settingsPremium,
+          Text(active ? l.premiumActive : l.premiumTitle,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.displayMedium),
           const SizedBox(height: Gap.sm),
-          Text(l.settingsReferralHint,
+          Text(active ? _validity(l, user!) : l.premiumTagline,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium),
+
           const SizedBox(height: Gap.section),
-          NovaButton(
-            label: l.supportWriteUs,
-            onPressed: () async {
-              final res =
-                  await ref.read(profileRepositoryProvider).requestPremium();
-              if (!context.mounted) return;
-              res.when(
-                ok: (_) => ScaffoldMessenger.of(context)
-                    .showSnackBar(SnackBar(content: Text(l.supportSent))),
-                err: (e) => ScaffoldMessenger.of(context)
-                    .showSnackBar(SnackBar(content: Text(describeError(l, e)))),
-              );
-            },
-          ),
+          _Perks(),
+
+          // NARX FAQAT SERVERDAN KELGANDA ko'rsatiladi. Buyurtma hali
+          // yaratilmagan bo'lsa ilova summani TAXMIN QILMAYDI.
+          if (offer != null) ...[
+            const SizedBox(height: Gap.section),
+            Center(
+              child: Capsule(
+                label:
+                    '${formatMoney(offer.amount, 'UZS')} / ${l.premiumPerMonth}',
+                icon: Icons.sell_outlined,
+                selected: true,
+              ),
+            ),
+          ],
+
+          if (_note != null) ...[
+            const SizedBox(height: Gap.xl),
+            Text(_note!,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium),
+          ],
+          if (_error != null) ...[
+            const SizedBox(height: Gap.xl),
+            Text(_error!,
+                textAlign: TextAlign.center,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: t.error)),
+          ],
+
+          const SizedBox(height: Gap.section),
+
+          // To'lov tugmalari FAQAT server bergan havolalar uchun
+          // chiziladi: Click ulanmagan bo'lsa uning tugmasi ham yo'q.
+          if (offer == null || offer.payme.isNotEmpty)
+            NovaButton(
+              label: active ? l.premiumExtend : l.premiumBuy,
+              icon: Icons.lock_outline_rounded,
+              busy: _busy,
+              onPressed: _busy ? null : () => _start(false),
+            ),
+          if (offer != null && offer.click.isNotEmpty) ...[
+            const SizedBox(height: Gap.md),
+            NovaButton(
+              label: l.premiumClick,
+              tone: ButtonTone.quiet,
+              busy: _busy,
+              onPressed: _busy ? null : () => _start(true),
+            ),
+          ],
+          if (offer != null) ...[
+            const SizedBox(height: Gap.md),
+            NovaButton(
+              label: l.premiumCheck,
+              tone: ButtonTone.outline,
+              busy: _busy,
+              onPressed: _busy ? null : _check,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// "Qachongacha" qatori.
+  ///
+  /// Muddat YO'Q bo'lishi "premium emas" degani emas: eski, bir
+  /// martalik to'lov qilganlarda `is_premium = 1` va u MUDDATSIZ.
+  String _validity(L l, User u) {
+    if (u.trialActive && u.premiumUntil == null) return l.premiumTrial;
+    final until = u.premiumUntil;
+    if (until == null) return l.premiumForever;
+    final d = until.toLocal();
+    String two(int n) => n.toString().padLeft(2, '0');
+    return l.premiumUntil('${two(d.day)}.${two(d.month)}.${d.year}');
+  }
+}
+
+/// Premium nimani ochishi — SERVERDAGI qoidalar bilan bir xil.
+///
+/// `FEATURE_MIN_D1 = { post: 'silver', video: 'premium', story: 'gold' }`
+/// va `POST_LIMIT_D1[premium] = 60`, `musicLimitD1(true) = 10`.
+class _Perks extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context);
+    final t = context.tokens;
+    final items = <(IconData, String)>[
+      (Icons.movie_creation_outlined, l.premiumPerkVideo),
+      (Icons.auto_stories_outlined, l.premiumPerkStory),
+      (Icons.grid_on_rounded, l.premiumPerkPosts),
+      (Icons.music_note_rounded, l.premiumPerkMusic),
+    ];
+    return FloatingSurface(
+      solid: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l.premiumPerksTitle,
+              style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: Gap.md),
+          for (final (icon, label) in items)
+            Padding(
+              padding: const EdgeInsets.only(bottom: Gap.sm),
+              child: Row(
+                children: [
+                  Icon(icon, size: 20, color: t.accent2),
+                  const SizedBox(width: Gap.md),
+                  Expanded(
+                    child: Text(label,
+                        style: Theme.of(context).textTheme.bodyMedium),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );

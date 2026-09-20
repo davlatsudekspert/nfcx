@@ -1071,4 +1071,92 @@ class LEn extends L {
   @override
   String get businessNoneHint =>
       'Create a business profile or switch back to personal';
+
+  @override
+  String get premiumTitle => 'Premium subscription';
+
+  @override
+  String get premiumTagline => 'Reels, stories and every feature';
+
+  @override
+  String get premiumPerMonth => 'per month';
+
+  @override
+  String get premiumActive => 'Premium active';
+
+  @override
+  String premiumUntil(String date) {
+    return 'Valid until: $date';
+  }
+
+  @override
+  String get premiumForever => 'No expiry';
+
+  @override
+  String get premiumTrial => 'Trial period';
+
+  @override
+  String get premiumExtend => 'Extend';
+
+  @override
+  String get premiumBuy => 'Get Premium';
+
+  @override
+  String get premiumPerksTitle => 'What you unlock';
+
+  @override
+  String get premiumPerkVideo => 'Video posts and Reels';
+
+  @override
+  String get premiumPerkStory => 'Posting stories';
+
+  @override
+  String get premiumPerkPosts => 'More posts (up to 60)';
+
+  @override
+  String get premiumPerkMusic => '10 profile tracks';
+
+  @override
+  String get premiumPayWith => 'Choose a payment method';
+
+  @override
+  String get premiumPayme => 'Payme';
+
+  @override
+  String get premiumClick => 'Click';
+
+  @override
+  String get premiumOpening => 'Opening the payment page…';
+
+  @override
+  String get premiumPending =>
+      'Waiting for payment. Come back here once you have paid.';
+
+  @override
+  String get premiumCheck => 'Check payment';
+
+  @override
+  String get premiumPaid => 'Payment received. Premium is active.';
+
+  @override
+  String get premiumNotYet => 'The payment is not confirmed yet.';
+
+  @override
+  String get premiumNoProvider => 'No payment provider is connected yet.';
+
+  @override
+  String get premiumBrowserFailed =>
+      'Could not open the payment page. The link was copied.';
+
+  @override
+  String get premiumLocked => 'This feature is in Premium';
+
+  @override
+  String get premiumLockedVideo => 'Video posts and Reels need Premium.';
+
+  @override
+  String get premiumLockedStory => 'Your tier is not high enough for stories.';
+
+  @override
+  String get premiumLockedPost => 'Your tier is not high enough for posts.';
 }

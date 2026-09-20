@@ -1073,4 +1073,92 @@ class LUz extends L {
   @override
   String get businessNoneHint =>
       'Biznes profil yarating yoki shaxsiy rejimga qayting';
+
+  @override
+  String get premiumTitle => 'Premium obuna';
+
+  @override
+  String get premiumTagline => 'Reels, istorya va to‘liq imkoniyatlar';
+
+  @override
+  String get premiumPerMonth => 'oyiga';
+
+  @override
+  String get premiumActive => 'Premium faol';
+
+  @override
+  String premiumUntil(String date) {
+    return 'Amal qiladi: $date';
+  }
+
+  @override
+  String get premiumForever => 'Muddatsiz';
+
+  @override
+  String get premiumTrial => 'Sinov muddati';
+
+  @override
+  String get premiumExtend => 'Muddatni uzaytirish';
+
+  @override
+  String get premiumBuy => 'Premium olish';
+
+  @override
+  String get premiumPerksTitle => 'Nimalar ochiladi';
+
+  @override
+  String get premiumPerkVideo => 'Video post va Reels';
+
+  @override
+  String get premiumPerkStory => 'Istorya qo‘yish';
+
+  @override
+  String get premiumPerkPosts => 'Ko‘proq post (60 tagacha)';
+
+  @override
+  String get premiumPerkMusic => '10 ta profil qo‘shig‘i';
+
+  @override
+  String get premiumPayWith => 'To‘lov usulini tanlang';
+
+  @override
+  String get premiumPayme => 'Payme';
+
+  @override
+  String get premiumClick => 'Click';
+
+  @override
+  String get premiumOpening => 'To‘lov sahifasi ochilmoqda…';
+
+  @override
+  String get premiumPending =>
+      'To‘lov kutilmoqda. To‘lagach shu yerga qayting.';
+
+  @override
+  String get premiumCheck => 'To‘lovni tekshirish';
+
+  @override
+  String get premiumPaid => 'To‘lov qabul qilindi. Premium faollashdi.';
+
+  @override
+  String get premiumNotYet => 'To‘lov hali tasdiqlanmadi.';
+
+  @override
+  String get premiumNoProvider => 'Hozircha to‘lov tizimi ulanmagan.';
+
+  @override
+  String get premiumBrowserFailed =>
+      'To‘lov sahifasini ocholmadik. Havola nusxalandi.';
+
+  @override
+  String get premiumLocked => 'Bu imkoniyat Premiumda';
+
+  @override
+  String get premiumLockedVideo => 'Video post va Reels uchun Premium kerak.';
+
+  @override
+  String get premiumLockedStory => 'Istorya qo‘yish uchun darajangiz yetmaydi.';
+
+  @override
+  String get premiumLockedPost => 'Post qo‘yish uchun darajangiz yetmaydi.';
 }

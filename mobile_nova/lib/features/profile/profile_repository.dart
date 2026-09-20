@@ -235,8 +235,70 @@ class ProfileRepository {
     });
   }
 
-  Future<Result<void>> requestPremium() => _api.post<void>('/api/premium/request');
+  /// PREMIUM OBUNA BUYURTMASI — natijada TO'LOV HAVOLASI bor.
+  ///
+  /// Ilgari bu yerda `_api.post<void>` turardi, ya'ni server
+  /// qaytargan javob BUTUNLAY TASHLAB YUBORILARDI. Javobda esa eng
+  /// muhim narsa bor: `payLinks` — Payme va Click checkout
+  /// manzillari. Ularsiz ilovada premiumni sotib olishning HECH
+  /// QANDAY yo'li yo'q edi: buyurtma serverda yaratilar, ekran
+  /// "yuborildi" deb yozar, odam esa hech qayerga bormasdi.
+  ///
+  /// Server 201 (yangi buyurtma) yoki 200 (`reused: true` — avval
+  /// boshlangan, hali to'lanmagan buyurtma) qaytaradi. Ikkalasida
+  /// ham tana bir xil, shuning uchun ilova ularni ajratmaydi:
+  /// muhimi — to'lanmagan bitta buyurtma va uning havolasi.
+  Future<Result<PremiumOffer>> requestPremium() async {
+    final res =
+        await _api.post<Map<String, dynamic>>('/api/premium/request');
+    return res.map(PremiumOffer.fromJson);
+  }
 }
+
+/// Premium buyurtmasi va uning to'lov havolalari.
+///
+/// Havolalarda MAXFIY narsa yo'q: merchant identifikatori har bir
+/// checkout manzilida ochiq turadi, buyurtma esa allaqachon shu
+/// foydalanuvchiniki (server so'rovni `user_id` bo'yicha filtrlaydi).
+class PremiumOffer {
+  const PremiumOffer({
+    required this.orderId,
+    required this.amount,
+    this.payme = '',
+    this.click = '',
+  });
+
+  final int orderId;
+
+  /// So'mda. Server `PROFILE_PREMIUM_FEE` ni qaytaradi — ilova
+  /// narxni O'ZI YOZIB QO'YMAYDI, aks holda saytda narx o'zgarsa
+  /// ilova eski summani ko'rsatib turardi.
+  final int amount;
+
+  final String payme;
+  final String click;
+
+  /// Hech bo'lmasa bitta to'lov yo'li bormi.
+  ///
+  /// Bo'sh bo'lsa ilova "to'lash" tugmasini KO'RSATMAYDI: odamni
+  /// bo'sh sahifaga olib borish "ishlamadi" degan tuyg'u beradi.
+  bool get payable => payme.isNotEmpty || click.isNotEmpty;
+
+  factory PremiumOffer.fromJson(Map<String, dynamic> j) {
+    final links = j['payLinks'];
+    final m = links is Map ? links.cast<String, dynamic>() : const {};
+    return PremiumOffer(
+      orderId: _int(j['orderId'] ?? j['id']),
+      amount: _int(j['amount'] ?? j['price']),
+      // `payLink` — eski, bitta havolali shakl. U DOIM Payme.
+      payme: '${m['payme'] ?? j['payLink'] ?? ''}',
+      click: '${m['click'] ?? ''}',
+    );
+  }
+}
+
+int _int(dynamic v) =>
+    v is int ? v : (v is num ? v.toInt() : (int.tryParse('$v') ?? 0));
 
 final profileRepositoryProvider = Provider<ProfileRepository>(
   (ref) => ProfileRepository(ref.watch(apiProvider)),

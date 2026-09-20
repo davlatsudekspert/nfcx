@@ -2174,6 +2174,174 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Biznes profil yarating yoki shaxsiy rejimga qayting'**
   String get businessNoneHint;
+
+  /// No description provided for @premiumTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Premium obuna'**
+  String get premiumTitle;
+
+  /// No description provided for @premiumTagline.
+  ///
+  /// In uz, this message translates to:
+  /// **'Reels, istorya va to‘liq imkoniyatlar'**
+  String get premiumTagline;
+
+  /// No description provided for @premiumPerMonth.
+  ///
+  /// In uz, this message translates to:
+  /// **'oyiga'**
+  String get premiumPerMonth;
+
+  /// No description provided for @premiumActive.
+  ///
+  /// In uz, this message translates to:
+  /// **'Premium faol'**
+  String get premiumActive;
+
+  /// No description provided for @premiumUntil.
+  ///
+  /// In uz, this message translates to:
+  /// **'Amal qiladi: {date}'**
+  String premiumUntil(String date);
+
+  /// No description provided for @premiumForever.
+  ///
+  /// In uz, this message translates to:
+  /// **'Muddatsiz'**
+  String get premiumForever;
+
+  /// No description provided for @premiumTrial.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sinov muddati'**
+  String get premiumTrial;
+
+  /// No description provided for @premiumExtend.
+  ///
+  /// In uz, this message translates to:
+  /// **'Muddatni uzaytirish'**
+  String get premiumExtend;
+
+  /// No description provided for @premiumBuy.
+  ///
+  /// In uz, this message translates to:
+  /// **'Premium olish'**
+  String get premiumBuy;
+
+  /// No description provided for @premiumPerksTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Nimalar ochiladi'**
+  String get premiumPerksTitle;
+
+  /// No description provided for @premiumPerkVideo.
+  ///
+  /// In uz, this message translates to:
+  /// **'Video post va Reels'**
+  String get premiumPerkVideo;
+
+  /// No description provided for @premiumPerkStory.
+  ///
+  /// In uz, this message translates to:
+  /// **'Istorya qo‘yish'**
+  String get premiumPerkStory;
+
+  /// No description provided for @premiumPerkPosts.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ko‘proq post (60 tagacha)'**
+  String get premiumPerkPosts;
+
+  /// No description provided for @premiumPerkMusic.
+  ///
+  /// In uz, this message translates to:
+  /// **'10 ta profil qo‘shig‘i'**
+  String get premiumPerkMusic;
+
+  /// No description provided for @premiumPayWith.
+  ///
+  /// In uz, this message translates to:
+  /// **'To‘lov usulini tanlang'**
+  String get premiumPayWith;
+
+  /// No description provided for @premiumPayme.
+  ///
+  /// In uz, this message translates to:
+  /// **'Payme'**
+  String get premiumPayme;
+
+  /// No description provided for @premiumClick.
+  ///
+  /// In uz, this message translates to:
+  /// **'Click'**
+  String get premiumClick;
+
+  /// No description provided for @premiumOpening.
+  ///
+  /// In uz, this message translates to:
+  /// **'To‘lov sahifasi ochilmoqda…'**
+  String get premiumOpening;
+
+  /// No description provided for @premiumPending.
+  ///
+  /// In uz, this message translates to:
+  /// **'To‘lov kutilmoqda. To‘lagach shu yerga qayting.'**
+  String get premiumPending;
+
+  /// No description provided for @premiumCheck.
+  ///
+  /// In uz, this message translates to:
+  /// **'To‘lovni tekshirish'**
+  String get premiumCheck;
+
+  /// No description provided for @premiumPaid.
+  ///
+  /// In uz, this message translates to:
+  /// **'To‘lov qabul qilindi. Premium faollashdi.'**
+  String get premiumPaid;
+
+  /// No description provided for @premiumNotYet.
+  ///
+  /// In uz, this message translates to:
+  /// **'To‘lov hali tasdiqlanmadi.'**
+  String get premiumNotYet;
+
+  /// No description provided for @premiumNoProvider.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hozircha to‘lov tizimi ulanmagan.'**
+  String get premiumNoProvider;
+
+  /// No description provided for @premiumBrowserFailed.
+  ///
+  /// In uz, this message translates to:
+  /// **'To‘lov sahifasini ocholmadik. Havola nusxalandi.'**
+  String get premiumBrowserFailed;
+
+  /// No description provided for @premiumLocked.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu imkoniyat Premiumda'**
+  String get premiumLocked;
+
+  /// No description provided for @premiumLockedVideo.
+  ///
+  /// In uz, this message translates to:
+  /// **'Video post va Reels uchun Premium kerak.'**
+  String get premiumLockedVideo;
+
+  /// No description provided for @premiumLockedStory.
+  ///
+  /// In uz, this message translates to:
+  /// **'Istorya qo‘yish uchun darajangiz yetmaydi.'**
+  String get premiumLockedStory;
+
+  /// No description provided for @premiumLockedPost.
+  ///
+  /// In uz, this message translates to:
+  /// **'Post qo‘yish uchun darajangiz yetmaydi.'**
+  String get premiumLockedPost;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

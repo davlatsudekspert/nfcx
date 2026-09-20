@@ -1,8 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
+
+import 'external_link.dart';
 
 /// Tizim "ulashish" oynasini ochadigan yagona joy.
 ///
@@ -65,17 +66,8 @@ Future<bool> _share(String raw, {String? subject}) async {
   } catch (_) {
     // Osilib qolgan ham, xato bergan ham bir xil yakun topadi:
     // havola odamning bufferida.
-    await _copy(s);
+    await copyToClipboard(s);
     return false;
-  }
-}
-
-Future<void> _copy(String s) async {
-  try {
-    await Clipboard.setData(ClipboardData(text: s));
-  } catch (_) {
-    // Bufer ham ishlamasa qiladigan ish qolmadi — lekin ilova
-    // yiqilmasligi kerak.
   }
 }
 

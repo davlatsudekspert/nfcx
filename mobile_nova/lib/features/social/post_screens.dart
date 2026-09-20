@@ -343,6 +343,14 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
   bool _busy = false;
   String? _error;
 
+  /// Server "darajangiz yetmaydi" dedimi.
+  ///
+  /// Oddiy xato matni bilan farqi bor: bu YO'L BOR degani — odam
+  /// Premium olsa qo'ya oladi. Shuning uchun matn emas, TUGMA
+  /// ko'rsatiladi. Aks holda odam nega joylay olmasligini bilmay,
+  /// "ilova buzuq" deb o'ylaydi.
+  bool _locked = false;
+
   bool get _video => widget.kind == ComposerKind.reel;
 
   @override
@@ -404,6 +412,7 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
     setState(() {
       _busy = true;
       _error = null;
+      _locked = false;
       _progress = 0;
     });
 
@@ -509,7 +518,13 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
         }
         context.pop();
       },
-      err: (e) => setState(() => _error = describeError(l, e)),
+      err: (e) => setState(() {
+        // `feature_locked` — serverdagi `FEATURE_MIN_D1` darvozasi.
+        // Qaysi imkoniyat ekanini ILOVA O'ZI biladi: shu ekranda
+        // nima joylanayotgani ma'lum.
+        _locked = e.code == 'feature_locked';
+        _error = _locked ? _lockedText(l) : describeError(l, e);
+      }),
     );
   }
 
@@ -652,8 +667,18 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
                 fontFamily: AppType.sans,
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
-                color: t.error,
+                color: _locked ? t.text2 : t.error,
               ),
+            ),
+          ],
+          // BOSHI BERK KO'CHA EMAS: darvoza yopiq bo'lsa, uni
+          // ochadigan joyga olib boradigan tugma turadi.
+          if (_locked) ...[
+            const SizedBox(height: Gap.lg),
+            NovaButton(
+              label: l.premiumBuy,
+              icon: Icons.workspace_premium_rounded,
+              onPressed: () => context.push(Routes.settingsPremium),
             ),
           ],
           const SizedBox(height: Gap.xxl),
@@ -665,6 +690,17 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
       ),
     );
   }
+
+  /// Qaysi darvoza yopilganini AYTADI.
+  ///
+  /// Server `{error:'feature_locked', feature:'video'|'story'|'post'}`
+  /// qaytaradi, lekin ilova buni o'z holatidan ham biladi va
+  /// javobning shakliga bog'lanib qolmaydi.
+  String _lockedText(L l) => switch (widget.kind) {
+        ComposerKind.reel => l.premiumLockedVideo,
+        ComposerKind.story => l.premiumLockedStory,
+        ComposerKind.post => l.premiumLockedPost,
+      };
 
   void _showPicker() {
     final l = L.of(context);

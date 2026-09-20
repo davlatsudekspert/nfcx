@@ -39,6 +39,8 @@ class User {
     this.emailVerified = false,
     this.promoCode = '',
     this.premium = false,
+    this.premiumUntil,
+    this.trialUntil,
   });
 
   final int id;
@@ -49,6 +51,30 @@ class User {
   final bool emailVerified;
   final String promoCode;
   final bool premium;
+
+  /// Premium OBUNA tugash sanasi.
+  ///
+  /// Server `isPremium` ni ikki yo'l bilan hisoblaydi: eski, bir
+  /// martalik to'lov qilganlarda `is_premium = 1` (MUDDATSIZ), yangi
+  /// obunachilarda esa `premium_expires_at > hozir`. Ikkinchisida
+  /// sana bor, birinchisida YO'Q — shuning uchun bu maydon `null`
+  /// bo'lishi MUDDATSIZ degani, "premium emas" degani emas.
+  ///
+  /// Ilgari bu maydon o'qilmasdi: server yuborardi, model tashlab
+  /// yuborardi. Natijada obuna qachon tugashini ilova ayta olmasdi.
+  final DateTime? premiumUntil;
+
+  /// Sinov muddati tugash sanasi — u ham premium darajasini beradi.
+  final DateTime? trialUntil;
+
+  /// Premium HOZIR faolmi.
+  bool get premiumActive =>
+      premium ||
+      (premiumUntil?.isAfter(DateTime.now()) ?? false) ||
+      trialActive;
+
+  /// Sinov muddati hozir ketyaptimi.
+  bool get trialActive => trialUntil?.isAfter(DateTime.now()) ?? false;
 
   /// Ism bo'lmasa email'ning `@` gacha qismi ishlatiladi — profil
   /// hech qachon "bo'sh nom" bilan ko'rinmaydi.
@@ -74,6 +100,8 @@ class User {
         emailVerified: _b(j['emailVerified'] ?? j['email_verified']),
         promoCode: _s(j['promoCode'] ?? j['promo_code']),
         premium: _b(j['premium'] ?? j['isPremium']),
+        premiumUntil: _dt(j['premiumExpiresAt'] ?? j['premium_expires_at']),
+        trialUntil: _dt(j['trialExpiresAt'] ?? j['trial_expires_at']),
       );
 }
 

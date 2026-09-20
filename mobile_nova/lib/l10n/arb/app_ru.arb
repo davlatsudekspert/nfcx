@@ -397,5 +397,40 @@
   "profilePickBusiness": "Выберите бизнес-профиль",
   "profilePickPersonal": "Выберите личный профиль",
   "businessNoneTitle": "У вас нет бизнес-профиля",
-  "businessNoneHint": "Создайте бизнес-профиль или вернитесь в личный режим"
+  "businessNoneHint": "Создайте бизнес-профиль или вернитесь в личный режим",
+  "premiumTitle": "Подписка Premium",
+  "premiumTagline": "Reels, истории и все возможности",
+  "premiumPerMonth": "в месяц",
+  "premiumActive": "Premium активен",
+  "premiumUntil": "Действует до: {date}",
+  "@premiumUntil": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "premiumForever": "Бессрочно",
+  "premiumTrial": "Пробный период",
+  "premiumExtend": "Продлить",
+  "premiumBuy": "Получить Premium",
+  "premiumPerksTitle": "Что открывается",
+  "premiumPerkVideo": "Видео и Reels",
+  "premiumPerkStory": "Публикация историй",
+  "premiumPerkPosts": "Больше постов (до 60)",
+  "premiumPerkMusic": "10 треков в профиле",
+  "premiumPayWith": "Выберите способ оплаты",
+  "premiumPayme": "Payme",
+  "premiumClick": "Click",
+  "premiumOpening": "Открываем страницу оплаты…",
+  "premiumPending": "Ожидается оплата. Вернитесь сюда после оплаты.",
+  "premiumCheck": "Проверить оплату",
+  "premiumPaid": "Оплата получена. Premium активен.",
+  "premiumNotYet": "Оплата пока не подтверждена.",
+  "premiumNoProvider": "Платёжная система пока не подключена.",
+  "premiumBrowserFailed": "Не удалось открыть страницу оплаты. Ссылка скопирована.",
+  "premiumLocked": "Эта возможность в Premium",
+  "premiumLockedVideo": "Для видео и Reels нужен Premium.",
+  "premiumLockedStory": "Вашего уровня недостаточно для историй.",
+  "premiumLockedPost": "Вашего уровня недостаточно для постов."
 }

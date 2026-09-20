@@ -2,8 +2,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/utils/external_link.dart';
 import '../../core/errors/app_error.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/shop_repository.dart';
@@ -349,7 +349,11 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
     await res.when(
       ok: (url) async {
-        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+        // TO'LOV SAHIFASI — `openLink` osilib qolmaydi va brauzer
+        // ochilmasa havolani buferga ko'chiradi. Ilgari shu yerda
+        // `launchUrl` to'g'ridan-to'g'ri kutilardi: kanal javob
+        // bermasa tugma cheksiz "yuklanmoqda" bo'lib qolardi.
+        await openLink(url);
         if (mounted) context.push(Routes.paymentResult('pending'));
       },
       err: (e) async => setState(() => _error = e.code == 'payment_not_configured'

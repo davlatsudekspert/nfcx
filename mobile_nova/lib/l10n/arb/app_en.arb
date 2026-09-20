@@ -397,5 +397,40 @@
   "profilePickBusiness": "Choose a business profile",
   "profilePickPersonal": "Choose a personal profile",
   "businessNoneTitle": "You have no business profile",
-  "businessNoneHint": "Create a business profile or switch back to personal"
+  "businessNoneHint": "Create a business profile or switch back to personal",
+  "premiumTitle": "Premium subscription",
+  "premiumTagline": "Reels, stories and every feature",
+  "premiumPerMonth": "per month",
+  "premiumActive": "Premium active",
+  "premiumUntil": "Valid until: {date}",
+  "@premiumUntil": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "premiumForever": "No expiry",
+  "premiumTrial": "Trial period",
+  "premiumExtend": "Extend",
+  "premiumBuy": "Get Premium",
+  "premiumPerksTitle": "What you unlock",
+  "premiumPerkVideo": "Video posts and Reels",
+  "premiumPerkStory": "Posting stories",
+  "premiumPerkPosts": "More posts (up to 60)",
+  "premiumPerkMusic": "10 profile tracks",
+  "premiumPayWith": "Choose a payment method",
+  "premiumPayme": "Payme",
+  "premiumClick": "Click",
+  "premiumOpening": "Opening the payment page…",
+  "premiumPending": "Waiting for payment. Come back here once you have paid.",
+  "premiumCheck": "Check payment",
+  "premiumPaid": "Payment received. Premium is active.",
+  "premiumNotYet": "The payment is not confirmed yet.",
+  "premiumNoProvider": "No payment provider is connected yet.",
+  "premiumBrowserFailed": "Could not open the payment page. The link was copied.",
+  "premiumLocked": "This feature is in Premium",
+  "premiumLockedVideo": "Video posts and Reels need Premium.",
+  "premiumLockedStory": "Your tier is not high enough for stories.",
+  "premiumLockedPost": "Your tier is not high enough for posts."
 }

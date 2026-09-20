@@ -2,8 +2,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/utils/external_link.dart';
 import '../../core/network/api_client.dart';
 import '../../core/utils/sharing.dart';
 import '../../data/models/models.dart';
@@ -547,8 +547,9 @@ class StorefrontScreen extends ConsumerWidget {
                 title: Text(o.$2, maxLines: 1, overflow: TextOverflow.ellipsis),
                 onTap: () {
                   Navigator.pop(context);
-                  launchUrl(Uri.parse(o.$3),
-                      mode: LaunchMode.externalApplication);
+                  // `openLink` — osilib qolmaydi, ochilmasa manzil
+                  // buferga ko'chadi.
+                  openLink(o.$3);
                 },
               ),
             const SizedBox(height: Gap.md),

@@ -1068,4 +1068,91 @@ class LRu extends L {
   @override
   String get businessNoneHint =>
       'Создайте бизнес-профиль или вернитесь в личный режим';
+
+  @override
+  String get premiumTitle => 'Подписка Premium';
+
+  @override
+  String get premiumTagline => 'Reels, истории и все возможности';
+
+  @override
+  String get premiumPerMonth => 'в месяц';
+
+  @override
+  String get premiumActive => 'Premium активен';
+
+  @override
+  String premiumUntil(String date) {
+    return 'Действует до: $date';
+  }
+
+  @override
+  String get premiumForever => 'Бессрочно';
+
+  @override
+  String get premiumTrial => 'Пробный период';
+
+  @override
+  String get premiumExtend => 'Продлить';
+
+  @override
+  String get premiumBuy => 'Получить Premium';
+
+  @override
+  String get premiumPerksTitle => 'Что открывается';
+
+  @override
+  String get premiumPerkVideo => 'Видео и Reels';
+
+  @override
+  String get premiumPerkStory => 'Публикация историй';
+
+  @override
+  String get premiumPerkPosts => 'Больше постов (до 60)';
+
+  @override
+  String get premiumPerkMusic => '10 треков в профиле';
+
+  @override
+  String get premiumPayWith => 'Выберите способ оплаты';
+
+  @override
+  String get premiumPayme => 'Payme';
+
+  @override
+  String get premiumClick => 'Click';
+
+  @override
+  String get premiumOpening => 'Открываем страницу оплаты…';
+
+  @override
+  String get premiumPending => 'Ожидается оплата. Вернитесь сюда после оплаты.';
+
+  @override
+  String get premiumCheck => 'Проверить оплату';
+
+  @override
+  String get premiumPaid => 'Оплата получена. Premium активен.';
+
+  @override
+  String get premiumNotYet => 'Оплата пока не подтверждена.';
+
+  @override
+  String get premiumNoProvider => 'Платёжная система пока не подключена.';
+
+  @override
+  String get premiumBrowserFailed =>
+      'Не удалось открыть страницу оплаты. Ссылка скопирована.';
+
+  @override
+  String get premiumLocked => 'Эта возможность в Premium';
+
+  @override
+  String get premiumLockedVideo => 'Для видео и Reels нужен Premium.';
+
+  @override
+  String get premiumLockedStory => 'Вашего уровня недостаточно для историй.';
+
+  @override
+  String get premiumLockedPost => 'Вашего уровня недостаточно для постов.';
 }
