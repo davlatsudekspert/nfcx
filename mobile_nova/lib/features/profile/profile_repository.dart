@@ -174,3 +174,22 @@ class ProfileRepository {
 final profileRepositoryProvider = Provider<ProfileRepository>(
   (ref) => ProfileRepository(ref.watch(apiProvider)),
 );
+
+/// OMMAVIY PROFIL — begona odamning NFC yozuvi.
+///
+/// `byCode()` repozitoriyda ANCHADAN BERI bor edi, lekin uni
+/// chaqiradigan joy YO'Q edi. `ProfileScreen` begona kodni FAQAT
+/// o'zimning ID larim orasidan qidirardi:
+///
+///     ids.where((e) => e.code == code).firstOrNull
+///
+/// Begona odamning kodi u yerda hech qachon bo'lmaydi, shuning
+/// uchun natija doim `null` edi va ekran serverga UMUMAN murojaat
+/// qilmasdi. Oqibat: Kashfiyotdan qaysi odamni tanlasangiz ham
+/// bir xil BO'SH panel ochilardi — 0 post, 0 obunachi va
+/// "Do'kondan karta oling yoki ID yarating" yozuvi bilan.
+final publicProfileProvider =
+    FutureProvider.family<NfcId, String>((ref, code) async {
+  final res = await ref.watch(profileRepositoryProvider).byCode(code);
+  return res.when(ok: (v) => v, err: (e) => throw e);
+});

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../app/profile_context.dart';
 import '../../core/network/api_client.dart';
 import '../../core/utils/sharing.dart';
 import '../../data/models/models.dart';
@@ -26,11 +27,50 @@ import '../profile/music_player.dart';
 /// qaytganda ham tanlov saqlanadi.
 final reelsMutedProvider = StateProvider<bool>((_) => false);
 
+/// Reels manbai — LENTA va O'Z VIDEOLARIM.
+///
+/// Ilgari bu yerda faqat `feed()` turardi. `/api/feed` esa OBUNA
+/// bo'linganlarning kontentini beradi, shuning uchun o'z reelingni
+/// joylab, Reels bo'limini ochganingda u yerda "Hozircha reels
+/// yo'q" chiqardi — o'zingga obuna bo'lolmaysan. Hisobda obuna
+/// yo'q bo'lsa bo'lim BUTUNLAY bo'sh turardi.
+///
+/// Endi faol profilning o'z videolari ham qo'shiladi. O'z
+/// videolarini o'qishdagi xato YUTILADI: lenta kelgan bo'lsa
+/// bo'lim baribir ishlashi kerak.
 final reelsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
-  final res = await ref.watch(socialRepositoryProvider).feed();
+  final repo = ref.watch(socialRepositoryProvider);
+  bool playable(Post p) => p.isVideo && p.mediaUrls.isNotEmpty;
+
+  // `id` bo'yicha yig'iladi: bir video ikkala manbada ham
+  // bo'lishi mumkin (o'z kompaniyangga obuna bo'lsang).
+  final byId = <int, Post>{};
+
+  final active = ref.watch(activeProfileProvider);
+  if (active != null) {
+    final mine = await repo.postsOf(active.code);
+    mine.when(
+      ok: (items) {
+        for (final p in items.where(playable)) {
+          byId[p.id] = p;
+        }
+      },
+      err: (_) {},
+    );
+  }
+
+  final res = await repo.feed();
   return res.when(
-    ok: (items) => items.where((p) => p.isVideo && p.mediaUrls.isNotEmpty).toList(),
-    err: (e) => throw e,
+    ok: (items) {
+      for (final p in items.where(playable)) {
+        byId[p.id] = p;
+      }
+      return byId.values.toList();
+    },
+    // Lenta kelmasa — bu haqiqiy xato va ekran shuni ko'rsatishi
+    // kerak. Lekin o'z videolarim kelgan bo'lsa ularni ko'rsatish
+    // hech narsadan yaxshiroq.
+    err: (e) => byId.isEmpty ? throw e : byId.values.toList(),
   );
 });
 

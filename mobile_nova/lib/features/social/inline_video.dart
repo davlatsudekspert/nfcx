@@ -61,6 +61,17 @@ class _InlineVideoState extends ConsumerState<InlineVideo> {
   bool _ready = false;
   bool _failed = false;
 
+  /// Vidjet o'chirilgan — `_open()` ning har bir `await` idan keyin
+  /// tekshiriladi.
+  ///
+  /// NIMA UCHUN `mounted` YETARLI EMAS: `_open()` ichida bir nechta
+  /// `await` bor va ular orasida ekran yopilishi mumkin. Ilgari
+  /// faqat BITTA joyda `mounted` tekshirilardi, shuning uchun
+  /// istorya yuklanayotganda X bosilsa, keyin `play()` ALLAQACHON
+  /// o'chirilgan kontrollerda chaqirilardi va ovoz ekran
+  /// yopilganidan keyin ham davom etardi.
+  bool _gone = false;
+
   @override
   void initState() {
     super.initState();
@@ -72,14 +83,28 @@ class _InlineVideoState extends ConsumerState<InlineVideo> {
     _c = c;
     try {
       await c.initialize();
-      if (!mounted) {
+      if (_gone || !mounted) {
         await c.dispose();
         return;
       }
       await c.setLooping(widget.looping);
+      if (_gone) {
+        await c.dispose();
+        return;
+      }
       if (widget.autoPlay) {
         ref.read(audioOwnerProvider.notifier).take(this, _pauseForOther);
         await c.play();
+        // Ijro buyrug'i ketgandan keyin ham tekshiriladi: aynan shu
+        // oraliqda yopilsa ovoz ortda qolib ketardi.
+        if (_gone) {
+          await c.dispose();
+          return;
+        }
+      }
+      if (!mounted) {
+        await c.dispose();
+        return;
       }
       setState(() => _ready = true);
       widget.onDuration?.call(c.value.duration);
@@ -109,9 +134,15 @@ class _InlineVideoState extends ConsumerState<InlineVideo> {
 
   @override
   void dispose() {
+    _gone = true;
     final c = _c;
     _c = null;
     ref.read(audioOwnerProvider.notifier).release(this);
+    // OVOZ AVVAL O'CHIRILADI. `pause()` ham, `dispose()` ham
+    // asinxron va platformaga xabar yuboradi; ular bajarilguncha
+    // o'tgan qisqa vaqt ichida ovoz eshitilib turardi. Ovozni nolga
+    // tushirish shu oraliqni yopadi.
+    c?.setVolume(0);
     c?.pause();
     c?.dispose();
     super.dispose();

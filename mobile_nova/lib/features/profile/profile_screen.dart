@@ -28,11 +28,11 @@ import 'profile_switcher.dart';
 import '../social/moderation.dart';
 import 'profile_repository.dart';
 
-final profilePostsProvider =
-    FutureProvider.autoDispose.family<List<Post>, String>((ref, code) async {
-  final res = await ref.watch(socialRepositoryProvider).postsOf(code);
-  return res.when(ok: (v) => v, err: (e) => throw e);
-});
+final profilePostsProvider = FutureProvider.autoDispose
+    .family<List<Post>, String>((ref, code) async {
+      final res = await ref.watch(socialRepositoryProvider).postsOf(code);
+      return res.when(ok: (v) => v, err: (e) => throw e);
+    });
 
 /// Kompaniya postlari — SHAXSIY postlardan boshqa manba.
 ///
@@ -40,11 +40,11 @@ final profilePostsProvider =
 /// yozuvlari bilan ishlaydi. Kompaniyaniki `/api/companies/:id/posts`
 /// da. Ilgari biznes rejimida ham shaxsiy yo'l chaqirilardi va
 /// natijada biznes profilida shaxsiy postlar ko'rinardi.
-final companyPostsProvider =
-    FutureProvider.autoDispose.family<List<Post>, String>((ref, id) async {
-  final res = await ref.watch(businessRepositoryProvider).posts(id);
-  return res.when(ok: (v) => v, err: (e) => throw e);
-});
+final companyPostsProvider = FutureProvider.autoDispose
+    .family<List<Post>, String>((ref, id) async {
+      final res = await ref.watch(businessRepositoryProvider).posts(id);
+      return res.when(ok: (v) => v, err: (e) => throw e);
+    });
 
 /// Digital Identity Canvas.
 ///
@@ -66,14 +66,23 @@ class ProfileScreen extends ConsumerWidget {
     final ids = ref.watch(myIdsProvider);
 
     // O'Z profili — FAOL KONTEKST (shaxsiy yozuv yoki kompaniya).
-    // Boshqa odamniki — faqat uning NFC yozuvi.
+    // Boshqa odamniki — SERVERDAN o'qiladi.
+    //
+    // Ilgari bu yerda faqat `ids.where(...)` turardi, ya'ni begona
+    // kod MENING ID larim orasidan qidirilardi. U yerda u hech
+    // qachon bo'lmaydi, shuning uchun natija doim `null` edi va
+    // ekran serverga umuman murojaat qilmasdi: Kashfiyotdan qaysi
+    // odamni tanlasangiz ham bir xil BO'SH panel ochilardi.
+    final isMe = code == null || ids.any((e) => e.code == code);
+    final remote = (code == null || isMe)
+        ? null
+        : ref.watch(publicProfileProvider(code!));
     final other = code == null
         ? null
-        : ids.where((e) => e.code == code).firstOrNull;
+        : (ids.where((e) => e.code == code).firstOrNull ?? remote?.valueOrNull);
     final active = code == null
         ? ref.watch(activeProfileProvider)
         : (other == null ? null : ActiveProfile.personal(other));
-    final isMe = code == null || ids.any((e) => e.code == code);
 
     // Biznes rejimi tanlangan, lekin hisobda kompaniya yo'q.
     final noBusiness = code == null && ref.watch(businessMissingProvider);
@@ -145,12 +154,14 @@ class ProfileScreen extends ConsumerWidget {
                   Expanded(
                     child: NovaButton(
                       label: isMe ? l.profileEdit : l.actionFollow,
-                      icon: isMe ? Icons.edit_rounded : Icons.person_add_alt_rounded,
+                      icon: isMe
+                          ? Icons.edit_rounded
+                          : Icons.person_add_alt_rounded,
                       onPressed: isMe
                           ? () => context.push(Routes.profileEdit)
                           : () => ref
-                              .read(profileFollowProvider.notifier)
-                              .toggle(code!),
+                                .read(profileFollowProvider.notifier)
+                                .toggle(code!),
                     ),
                   ),
                   const SizedBox(width: Gap.md),
@@ -158,7 +169,9 @@ class ProfileScreen extends ConsumerWidget {
                     icon: Icons.qr_code_rounded,
                     tooltip: l.nfcShowQr,
                     size: 52,
-                    onPressed: id == null ? null : () => showQrSheet(context, id),
+                    onPressed: id == null
+                        ? null
+                        : () => showQrSheet(context, id),
                   ),
                   const SizedBox(width: Gap.sm),
                   NovaIconButton(
@@ -191,21 +204,39 @@ class ProfileScreen extends ConsumerWidget {
               ),
             ],
             SectionHeader(title: l.profilePosts),
-            if (active == null)
+            // Begona profil hali kelmagan yoki kelmadi — SABABNI
+            // ko'rsatamiz. Ilgari bu yerda "Do'kondan karta oling
+            // yoki ID yarating" chiqardi, ya'ni begona odamning
+            // profili o'rniga MENGA tegishli maslahat.
+            if (active == null && remote != null)
+              remote.when(
+                loading: () => const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: Gap.screenX),
+                  child: SkeletonList(count: 3),
+                ),
+                error: (e, __) => Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
+                  child: StatePanel.fromError(
+                    context,
+                    asAppError(e),
+                    onRetry: () => ref.invalidate(publicProfileProvider(code!)),
+                  ),
+                ),
+                data: (_) => const SizedBox.shrink(),
+              )
+            else if (active == null)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
                 child: FloatingSurface(
                   solid: true,
                   child: Text(
-                      noBusiness ? l.businessNoneHint : l.homeNoIdHint,
-                      style: Theme.of(context).textTheme.bodyMedium),
+                    noBusiness ? l.businessNoneHint : l.homeNoIdHint,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
                 ),
               )
             else
-              _PostsGrid(
-                code: active.code,
-                company: active.isBusiness,
-              ),
+              _PostsGrid(code: active.code, company: active.isBusiness),
           ],
         ),
       ),
@@ -236,10 +267,15 @@ void _showProfileActions(BuildContext context, WidgetRef ref, String code) {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: Icon(Icons.flag_outlined,
-                  color: sheet.tokens.warn, size: 20),
-              title: Text(l.reportTitle,
-                  style: Theme.of(sheet).textTheme.bodyLarge),
+              leading: Icon(
+                Icons.flag_outlined,
+                color: sheet.tokens.warn,
+                size: 20,
+              ),
+              title: Text(
+                l.reportTitle,
+                style: Theme.of(sheet).textTheme.bodyLarge,
+              ),
               onTap: () {
                 Navigator.of(sheet).pop();
                 showReportSheet(
@@ -251,10 +287,15 @@ void _showProfileActions(BuildContext context, WidgetRef ref, String code) {
               },
             ),
             ListTile(
-              leading: Icon(Icons.block_rounded,
-                  color: sheet.tokens.error, size: 20),
-              title: Text(l.blockUser,
-                  style: Theme.of(sheet).textTheme.bodyLarge),
+              leading: Icon(
+                Icons.block_rounded,
+                color: sheet.tokens.error,
+                size: 20,
+              ),
+              title: Text(
+                l.blockUser,
+                style: Theme.of(sheet).textTheme.bodyLarge,
+              ),
               onTap: () async {
                 Navigator.of(sheet).pop();
                 final res = await ref
@@ -262,10 +303,12 @@ void _showProfileActions(BuildContext context, WidgetRef ref, String code) {
                     .block(BlockKind.record, code);
                 if (!context.mounted) return;
                 res.when(
-                  ok: (_) => ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(l.blockUser))),
-                  err: (e) => ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(describeError(l, e)))),
+                  ok: (_) => ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(l.blockUser))),
+                  err: (e) => ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(describeError(l, e)))),
                 );
               },
             ),
@@ -283,19 +326,23 @@ class ProfileFollow extends StateNotifier<Set<String>> {
 
   Future<void> toggle(String code) async {
     final following = state.contains(code);
-    state = following ? (state.toSet()..remove(code)) : (state.toSet()..add(code));
+    state = following
+        ? (state.toSet()..remove(code))
+        : (state.toSet()..add(code));
     final repo = _ref.read(profileRepositoryProvider);
     final res = following ? await repo.unfollow(code) : await repo.follow(code);
     res.when(
       ok: (_) {},
-      err: (_) => state =
-          following ? (state.toSet()..add(code)) : (state.toSet()..remove(code)),
+      err: (_) => state = following
+          ? (state.toSet()..add(code))
+          : (state.toSet()..remove(code)),
     );
   }
 }
 
-final profileFollowProvider =
-    StateNotifierProvider<ProfileFollow, Set<String>>(ProfileFollow.new);
+final profileFollowProvider = StateNotifierProvider<ProfileFollow, Set<String>>(
+  ProfileFollow.new,
+);
 
 /// Profil boshi — Concept B'dagi markazlashgan "identity" ustuni.
 ///
@@ -401,10 +448,11 @@ class _Hero extends StatelessWidget {
               children: [
                 const SizedBox(height: 86),
                 _HeroAvatar(
-                    user: user,
-                    profile: profile,
-                    glow: glow,
-                    business: business),
+                  user: user,
+                  profile: profile,
+                  glow: glow,
+                  business: business,
+                ),
                 const SizedBox(height: Gap.md),
                 Text(
                   (profile?.name ?? '').isNotEmpty
@@ -506,8 +554,7 @@ class _HeroAvatar extends StatelessWidget {
             ),
           ),
           // Nishon FAQAT haqiqiy holat bo'lganda: asosiy ID yoki biznes.
-          if (profile != null &&
-              (profile!.isBusiness || profile!.id!.primary))
+          if (profile != null && (profile!.isBusiness || profile!.id!.primary))
             Positioned(
               right: 2,
               bottom: 2,
@@ -620,8 +667,10 @@ class _StatCapsules extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  Text(items[i].$1,
-                      style: Theme.of(context).textTheme.titleMedium),
+                  Text(
+                    items[i].$1,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                   Text(
                     items[i].$2,
                     maxLines: 1,
@@ -657,7 +706,11 @@ class _BusinessTiles extends StatelessWidget {
           PressableScale(
             onTap: () => context.push(e.$3),
             child: Container(
-              width: (MediaQuery.sizeOf(context).width - Gap.screenX * 2 - Gap.md) / 2,
+              width:
+                  (MediaQuery.sizeOf(context).width -
+                      Gap.screenX * 2 -
+                      Gap.md) /
+                  2,
               padding: const EdgeInsets.all(Gap.lg),
               decoration: BoxDecoration(
                 color: t.surface,
@@ -702,7 +755,8 @@ class _PostsGrid extends ConsumerWidget {
     // `/api/companies/:id/posts`. Ilgari ikkalasi uchun ham birinchi
     // yo'l chaqirilardi.
     final posts = ref.watch(
-        company ? companyPostsProvider(code) : profilePostsProvider(code));
+      company ? companyPostsProvider(code) : profilePostsProvider(code),
+    );
 
     return posts.when(
       loading: () => Padding(
@@ -713,8 +767,10 @@ class _PostsGrid extends ConsumerWidget {
           children: List.generate(
             6,
             (_) => Skeleton(
-              width: (MediaQuery.sizeOf(context).width - Gap.screenX * 2 - 12) / 3,
-              height: (MediaQuery.sizeOf(context).width - Gap.screenX * 2 - 12) / 3,
+              width:
+                  (MediaQuery.sizeOf(context).width - Gap.screenX * 2 - 12) / 3,
+              height:
+                  (MediaQuery.sizeOf(context).width - Gap.screenX * 2 - 12) / 3,
               radius: R.tile,
             ),
           ),
@@ -722,8 +778,11 @@ class _PostsGrid extends ConsumerWidget {
       ),
       error: (e, __) => Padding(
         padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-        child: StatePanel.fromError(context, asAppError(e),
-            onRetry: () => ref.invalidate(profilePostsProvider(code))),
+        child: StatePanel.fromError(
+          context,
+          asAppError(e),
+          onRetry: () => ref.invalidate(profilePostsProvider(code)),
+        ),
       ),
       data: (items) {
         if (items.isEmpty) {
@@ -735,7 +794,10 @@ class _PostsGrid extends ConsumerWidget {
                 children: [
                   Icon(Icons.photo_library_outlined, size: 27, color: t.text3),
                   const SizedBox(height: Gap.sm),
-                  Text(l.stateEmpty, style: Theme.of(context).textTheme.bodyMedium),
+                  Text(
+                    l.stateEmpty,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
                 ],
               ),
             ),
@@ -768,6 +830,33 @@ class _PostsGrid extends ConsumerWidget {
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                             )
+                          : p.isVideo
+                          // VIDEO KATAKCHASI. Ilgari bu yerda
+                          // ham `CachedNetworkImage` turardi va
+                          // unga `.mp4` manzili berilardi —
+                          // rasm yuklovchi uni hech qachon
+                          // ocholmaydi, shuning uchun video
+                          // post panjarada BO'SH kvadrat bo'lib
+                          // turardi. Xato ham chiqmasdi:
+                          // `errorWidget` jimgina o'rnini
+                          // egallardi.
+                          //
+                          // Server hozir video uchun surat
+                          // (poster) bermaydi, shuning uchun
+                          // panjarada video O'YNATILMAYDI —
+                          // 3 ta dekoderni bir vaqtda ochish
+                          // telefonni qiynaydi. O'rniga video
+                          // ekani ANIQ ko'rinadi va bosilganda
+                          // to'liq ekranda ochiladi.
+                          ? Container(
+                              color: t.surface2,
+                              alignment: Alignment.center,
+                              child: Icon(
+                                Icons.play_circle_fill_rounded,
+                                size: 34,
+                                color: t.text2,
+                              ),
+                            )
                           : Stack(
                               fit: StackFit.expand,
                               children: [
@@ -783,8 +872,11 @@ class _PostsGrid extends ConsumerWidget {
                                   const Positioned(
                                     right: 5,
                                     top: 5,
-                                    child: Icon(Icons.play_circle_fill_rounded,
-                                        size: 15, color: Colors.white),
+                                    child: Icon(
+                                      Icons.play_circle_fill_rounded,
+                                      size: 15,
+                                      color: Colors.white,
+                                    ),
                                   ),
                               ],
                             ),
