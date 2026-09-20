@@ -33,16 +33,36 @@ export default function TapRedirectPage({ token }) {
   useEffect(() => {
     let live = true;
     const go = (to) => { if (live) navigate(to, { replace: true }); };
+
+    // BOG'LANMAGAN STIKER — IKKI HOLAT.
+    //
+    // 1) Odam QR bilan allaqachon faollashtirgan (konvertdagi kodni
+    //    kiritgan), lekin stikeri bog'lanmagan. Unda tegizishning
+    //    O'ZI bog'lash uchun yetarli: kod — sotib olganlik isboti,
+    //    tegizish — stiker qo'lda ekanining isboti. Odam hech narsa
+    //    qilmaydi, shunchaki tegizadi va profili ochiladi.
+    //
+    // 2) Hali faollashtirmagan — faollashtirish sahifasiga tokeni
+    //    bilan boradi va kodni kiritganda bog'lanadi.
+    //
+    // Serverning o'zi ajratadi: "kutayotgan aktivatsiya" bo'lmasa
+    // 409 qaytaradi va biz 2-yo'lga o'tamiz.
+    const attach = () => fetch('/api/activate/attach-sticker', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify({ deviceToken: token }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => (d?.redirect ? go(d.redirect) : go(`/activate?d=${encodeURIComponent(token)}`)))
+      .catch(() => go(`/activate?d=${encodeURIComponent(token)}`));
+
     fetch(`/api/tap/${encodeURIComponent(token)}`, { headers: { accept: 'application/json' } })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (!d || d.found === false) return go('/');
         if (d.linkedCode) return go(`/${String(d.linkedCode).toLowerCase()}?t=${encodeURIComponent(token)}`);
         if (d.linkedCompanyId) return go(`/c/${String(d.linkedCompanyId).toLowerCase()}`);
-        // Qurilma bor, lekin hali bog'lanmagan — mahsulot sotilgan,
-        // ammo faollashtirilmagan. Token o'zi bilan ketadi, shunda
-        // odam qaysi stikerni tekkizgan bo'lsa AYNAN o'sha bog'lanadi.
-        return go(`/activate?d=${encodeURIComponent(token)}`);
+        return attach();
       })
       .catch(() => go('/'));
     return () => { live = false; };

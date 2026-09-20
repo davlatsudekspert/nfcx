@@ -328,6 +328,12 @@ async function loadByCode(env, H, rawCode) {
 // nechta mahsulotni faollashtirishi mumkin (do'kon, oila, ofis) va
 // chegara ularni to'sib qo'ymasligi kerak.
 const RATE_LIMITS = { check: 20, activate: 60 };
+// Faollashtirgandan keyin stikerni tegizib bog'lash muddati.
+// Konvertni ochib, ro'yxatdan o'tib, kodni kiritib, keyin stikerga
+// tegizish — bularning hammasi bir necha kun cho'zilishi mumkin
+// (masalan sovg'a qilingan bo'lsa). 7 kun yetarlicha keng, lekin
+// "yillar oldingi kod bilan begona stiker egallash" ni yopadi.
+const ATTACH_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 // DIQQAT — QAYTISH QIYMATI TESKARI O'QILADI.
 // `H.rateLimitD1` chegara OSHGANDA `true` qaytaradi ("bloklangan"),
 // ruxsat berilganda `false`. Nomi "ruxsatmi?" degan taassurot beradi
@@ -417,6 +423,88 @@ export async function handle(request, env, url, H) {
 
   if (path === '/api/activate' && method === 'POST') {
     return activateHandler(request, env, H, await readJson());
+  }
+
+  // ═══ STIKERNI KEYIN BOG'LASH ═════════════════════════
+  //
+  // MUAMMO. Xaridor ikki yo'l bilan kelishi mumkin:
+  //   1) STIKERGA TEGIZADI — token o'zi bilan keladi va faollashtirish
+  //      paytida aynan o'sha stiker bog'lanadi;
+  //   2) QR NI SKANERLAYDI — tokenni olib kelmaydi, chunki QR hammada
+  //      bir xil. Kod faollashadi, LEKIN stiker bog'lanmay qoladi va
+  //      keyin unga tekkizgan odam "faollashtirish" sahifasini
+  //      ko'raveradi. Mahsulotning YARMI ishlamay qoladi.
+  //
+  // NIMA UCHUN JUFTLASHTIRISH YECHIM EMAS. Stikerni kodga oldindan
+  // biriktirish 100 dona uchun 100 marta qo'l mehnati va 100 marta
+  // chalkashtirish imkoni degani. Egasi stikerlarni tayyor holda
+  // do'konga topshiradi va qaysi biri kimga tushishini bilmaydi.
+  //
+  // YECHIM: KEYIN TEGIZISH. Odam QR bilan faollashtirgach stikerga
+  // tegizadi — va o'sha paytda bog'lanadi.
+  //
+  // XAVFSIZLIK SHU YERDA HAL BO'LADI. NFC konvert QOG'OZI ORQALI HAM
+  // o'qiladi, ya'ni do'kondagi begona odam qadoqni ochmasdan turib
+  // stikerga tegizishi mumkin. Shuning uchun "kirgan odam bo'sh
+  // stikerni egallab oladi" degan qoida XAVFLI bo'lardi.
+  //
+  // Bog'lash uchun SOTIB OLGANLIK ISBOTI kerak: odamda stikeri hali
+  // yo'q, yaqinda faollashtirilgan kodi bo'lishi shart. Kod — pul
+  // to'langanining isboti, tegizish esa — stiker QO'LDA ekanining.
+  if (path === '/api/activate/attach-sticker' && method === 'POST') {
+    const user = await H.getCurrentUser(request, env);
+    if (!user) return H.json({ error: 'unauthorized' }, 401);
+    const body = await readJson();
+    const token = H.shortText(body.deviceToken, 64).replace(/[^A-Za-z0-9_-]/g, '');
+    if (!token) return H.json({ error: 'device_token_required' }, 422);
+
+    // Faqat EGASIZ va hech qayerga bog'lanmagan stiker.
+    const dev = await env.DB.prepare(
+      `SELECT id FROM physical_cards
+        WHERE chip_token = ? AND owner_user_id IS NULL AND (linked_code IS NULL OR linked_code = '')`
+    ).bind(token).first().catch(() => null);
+    if (!dev?.id) return H.json({ error: 'device_taken' }, 409);
+
+    // Stikeri hali yo'q, YAQINDA faollashtirilgan kod.
+    //
+    // Muddat cheklovi zarar doirasini yopadi: hisob o'g'irlansa ham
+    // eski, unutilgan kod orqali begona stiker egallab bo'lmaydi.
+    const since = new Date(Date.now() - ATTACH_WINDOW_MS).toISOString();
+    const act = await env.DB.prepare(
+      `SELECT id, activated_profile_kind AS kind, activated_profile_code AS code
+         FROM marketplace_activations
+        WHERE activated_by_user_id = ? AND status = 'activated'
+          AND physical_device_id IS NULL AND activated_at >= ?
+        ORDER BY activated_at DESC LIMIT 1`
+    ).bind(String(user.id), since).first().catch(() => null);
+    if (!act?.id) return H.json({ error: 'no_pending_activation' }, 409);
+
+    // BITTA G'OLIB. Ikki oyna bir vaqtda tegizsa ham kod bitta
+    // stikerni oladi: yozuv FAQAT hali bo'sh qatorga tushadi.
+    const won = await env.DB.prepare(
+      `UPDATE marketplace_activations SET physical_device_id = ?
+        WHERE id = ? AND physical_device_id IS NULL RETURNING id`
+    ).bind(dev.id, act.id).first().catch(() => null);
+    if (!won) return H.json({ error: 'no_pending_activation' }, 409);
+
+    const personal = act.kind === 'personal';
+    const bound = await env.DB.prepare(
+      `UPDATE physical_cards SET owner_user_id = ?, linked_code = ?, linked_company_id = ?, active = 1
+        WHERE id = ? AND owner_user_id IS NULL RETURNING id`
+    ).bind(user.id, personal ? act.code : null, personal ? null : act.code, dev.id).first().catch(() => null);
+    if (!bound) {
+      // Oraliqda birov egallab ulgurdi — kodni bo'sh qoldiramiz,
+      // aks holda u boshqa stikerni ololmay qolardi.
+      await env.DB.prepare(`UPDATE marketplace_activations SET physical_device_id = NULL WHERE id = ?`)
+        .bind(act.id).run().catch(() => {});
+      return H.json({ error: 'device_taken' }, 409);
+    }
+    return H.json({
+      ok: true,
+      profileKind: act.kind,
+      profileCode: act.code,
+      redirect: personal ? `/${String(act.code).toLowerCase()}?t=${encodeURIComponent(token)}` : `/c/${String(act.code).toLowerCase()}`,
+    });
   }
 
   // ═════════════════════════════════════════════════════════════════
@@ -1210,7 +1298,13 @@ async function activateHandler(request, env, H, body) {
 
     return H.json({
       ok: true,
-      result: { profileKind: kind, profileCode, productName: product.name || '' },
+      // `deviceBound` — stiker SHU aktivatsiyada bog'landimi.
+      //
+      // QR bilan kelgan odamda u `false` bo'ladi (QR token olib
+      // kelmaydi) va sahifa unga "endi stikerga tegizing" deb AYTADI.
+      // Usiz odam tugatdim deb o'ylab ketardi, stiker esa ishlamay
+      // qolardi — mahsulotning yarmi yo'qolardi.
+      result: { profileKind: kind, profileCode, productName: product.name || '', deviceBound: !!deviceId },
     }, 201);
   } catch (err) {
     await release();

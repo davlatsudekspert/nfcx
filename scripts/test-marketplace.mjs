@@ -1702,4 +1702,158 @@ function gatedEnv(env, sqlNeedle) {
   checkTrue('26) /api/tap "found" beradi', /found: true/.test(worker) && /found: false/.test(worker));
 }
 
+// ── 27) QR BILAN KELGAN ODAM: STIKER KEYIN BOG'LANADI ───────
+//
+// MUAMMO. Xaridor ikki yo'l bilan keladi:
+//   1) stikerga TEGIZADI — token o'zi bilan keladi;
+//   2) QR ni SKANERLAYDI — QR hammada BIR XIL, ya'ni token YO'Q.
+//
+// Ikkinchi yo'lda kod faollashardi, LEKIN stiker bog'lanmay
+// qolardi: keyin unga tekkizgan odam yana "faollashtirish"
+// sahifasini ko'raverardi. Mahsulotning yarmi ishlamasdi.
+//
+// Juftlashtirish yechim emas (100 dona uchun 100 marta qo'l
+// mehnati), shuning uchun bog'lanish KEYIN, tegizilganda.
+{
+  const env = await setup();
+  const product = await makeProduct(env);
+  const batch = await makeCodes(env, product.id, 4);
+
+  // TOZA XARIDOR. 1- va 2-foydalanuvchida oldingi bo'limlardan
+  // qolgan, stikersiz aktivatsiyalar bor — ular bu yerdagi
+  // "bitta kod — bitta stiker" qoidasini tekshirishga xalaqit
+  // berardi (test aynan shuni tutdi).
+  // ID ni BAZA beradi: oldingi bo'limlar qaysi raqamlarni band
+  // qilganini bilib bo'lmaydi (test aynan shunda yiqildi).
+  const newBuyer = async (tag) => {
+    const row = await env.DB.prepare(
+      `INSERT INTO users (email, password_hash, phone) VALUES (?, 'x', ?) RETURNING id`
+    ).bind(`${tag}@test.local`, `+9989${String(Date.now()).slice(-8)}`).first();
+    await env.DB.prepare(`INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, '2999-01-01T00:00:00.000Z')`)
+      .bind(`${tag}-token`, row.id).run();
+    return { id: Number(row.id), cookie: `nfc_session=${tag}-token` };
+  };
+  const b1 = await newBuyer('buyer1');
+  const buyer = b1.cookie;
+
+  // ── QR YO'LI: TOKENSIZ FAOLLASHTIRISH ───────────────
+  const act = await jsonOf(await call(env, '/api/activate', {
+    method: 'POST', cookie: buyer,
+    json: { code: batch.codes[0].code, profileKind: 'personal' },
+  }));
+  const profile = act.result.profileCode;
+  check('27) stiker hali bog‘lanmadi', act.result.deviceBound, false);
+
+  // Stiker (boshqa koddan minталган — juftlik YO'Q) hali bo'sh.
+  const tok = batch.codes[2].chipToken;
+  check('27) stiker faollashtirishga yuboradi',
+    (await call(env, `/t/${tok}`)).headers.get('location'), `/activate?d=${tok}`);
+
+  // ── TEGIZISH — SHU YERDA BOG'LANADI ───────────────
+  const at = await call(env, '/api/activate/attach-sticker', {
+    method: 'POST', cookie: buyer, json: { deviceToken: tok },
+  });
+  check('27) bog‘landi', at.status, 200);
+  const atj = await jsonOf(at);
+  check('27) profilga yo‘naltiradi', atj.redirect, `/${profile.toLowerCase()}?t=${tok}`);
+  const dev = await env.DB.prepare(`SELECT owner_user_id AS uid, linked_code AS lc, active FROM physical_cards WHERE chip_token = ?`).bind(tok).first();
+  check('27) egasi yozildi', Number(dev.uid), b1.id);
+  check('27) profilga bog‘landi', dev.lc, profile);
+  check('27) faol', Number(dev.active), 1);
+  // Endi tegizish TO'G'RIDAN-TO'G'RI profilni ochadi.
+  check('27) stiker profilni ochadi', (await call(env, `/t/${tok}`)).headers.get('location'), `/${profile.toLowerCase()}?t=${tok}`);
+  // Kod qatorida ham ko'rinadi.
+  check('27) kod qatoriga yozildi',
+    Number((await rowOfCode(env, batch.codes[0].code, 'physical_device_id AS d')).d),
+    Number((await env.DB.prepare(`SELECT id FROM physical_cards WHERE chip_token = ?`).bind(tok).first()).id));
+
+  // ── IKKINCHI MARTA OLIB BO'LMAYDI ─────────────────
+  //
+  // Bitta kod — bitta stiker. Aks holda bitta kod bilan butun
+  // partiyani egallab olish mumkin bo'lardi.
+  const again = await call(env, '/api/activate/attach-sticker', {
+    method: 'POST', cookie: buyer, json: { deviceToken: batch.codes[3].chipToken },
+  });
+  check('27) ikkinchi stiker berilmaydi', again.status, 409);
+  check('27) sababi aniq', (await jsonOf(again)).error, 'no_pending_activation');
+  check('27) ikkinchi stiker bo‘sh qoldi',
+    (await env.DB.prepare(`SELECT owner_user_id AS uid FROM physical_cards WHERE chip_token = ?`).bind(batch.codes[3].chipToken).first()).uid, null);
+
+  // ── XAVFSIZLIK: KODSIZ ODAM EGALLAY OLMAYDI ───────────
+  //
+  // NFC konvert QOG'OZI ORQALI ham o'qiladi — do'kondagi begona
+  // odam qadoqni ochmasdan stikerga tegizishi mumkin. Shuning
+  // uchun "kirgan odam bo'sh stikerni oladi" XAVFLI bo'lardi.
+  // KODI YO'Q odam — ya'ni hech narsa sotib olmagan. 1- va
+  // 2-foydalanuvchida oldingi bo'limlardan qolgan aktivatsiyalar
+  // bor, shuning uchun ular bu yerda "begona" hisoblanmaydi va
+  // test yolg'on yashil bo'lardi (aynan shunday bo'ldi).
+  const thiefCookie = (await newBuyer('thief')).cookie;
+  const thief = await call(env, '/api/activate/attach-sticker', {
+    method: 'POST', cookie: thiefCookie, json: { deviceToken: batch.codes[3].chipToken },
+  });
+  check('27) kodsiz odam egallay olmaydi', thief.status, 409);
+  check('27) sababi aniq', (await jsonOf(thief)).error, 'no_pending_activation');
+  check('27) stiker tegilmay qoldi',
+    (await env.DB.prepare(`SELECT owner_user_id AS uid FROM physical_cards WHERE chip_token = ?`).bind(batch.codes[3].chipToken).first()).uid, null);
+  check('27) mehmon ham', (await call(env, '/api/activate/attach-sticker', { method: 'POST', json: { deviceToken: batch.codes[3].chipToken } })).status, 401);
+  check('27) token majburiy', (await call(env, '/api/activate/attach-sticker', { method: 'POST', cookie: buyer, json: {} })).status, 422);
+
+  // ── BAND STIKERNI TORTIB OLIB BO'LMAYDI ──────────────
+  const b2u = await newBuyer('buyer2');
+  const buyer2 = b2u.cookie;
+  await call(env, '/api/activate', {
+    method: 'POST', cookie: buyer2, json: { code: batch.codes[1].code, profileKind: 'personal' },
+  });
+  const steal = await call(env, '/api/activate/attach-sticker', {
+    method: 'POST', cookie: buyer2, json: { deviceToken: tok },
+  });
+  check('27) band stiker ko‘chmaydi', steal.status, 409);
+  check('27) sababi aniq', (await jsonOf(steal)).error, 'device_taken');
+  check('27) egasida qoldi',
+    Number((await env.DB.prepare(`SELECT owner_user_id AS uid FROM physical_cards WHERE chip_token = ?`).bind(tok).first()).uid), b1.id);
+  // MUVAFFAQIYATSIZ URINISH HUQUQNI SARFLAMASIN. Aks holda begona
+  // stikerga bir marta tekkizgan odam o'z stikerini ololmay
+  // qolardi — tasodifan mahsulotidan mahrum bo'lardi.
+  const after = await call(env, '/api/activate/attach-sticker', {
+    method: 'POST', cookie: buyer2, json: { deviceToken: batch.codes[3].chipToken },
+  });
+  check('27) rad etilgandan keyin ham huquq qoladi', after.status, 200);
+
+  // ── MUDDATI O'TGAN AKTIVATSIYA ───────────────────
+  //
+  // Hisob o'g'irlansa, yillar oldingi unutilgan kod bilan begona
+  // stiker egallab bo'lmasin.
+  const buyer3 = (await newBuyer('buyer3')).cookie;
+  const b2 = await makeCodes(env, product.id, 2);
+  await call(env, '/api/activate', {
+    method: 'POST', cookie: buyer3, json: { code: b2.codes[0].code, profileKind: 'personal' },
+  });
+  await env.DB.prepare(`UPDATE marketplace_activations SET activated_at = '2020-01-01T00:00:00.000Z' WHERE code_tail = ?`)
+    .bind(b2.codes[0].code.slice(-4)).run();
+  const stale = await call(env, '/api/activate/attach-sticker', {
+    method: 'POST', cookie: buyer3, json: { deviceToken: b2.codes[1].chipToken },
+  });
+  check('27) eski aktivatsiya kuchga ega emas', stale.status, 409);
+  check('27) eski urinishda stiker bo‘sh qoldi',
+    (await env.DB.prepare(`SELECT owner_user_id AS uid FROM physical_cards WHERE chip_token = ?`).bind(b2.codes[1].chipToken).first()).uid, null);
+
+  // ── MANBA QOIDALARI ──────────────────────────────
+  const mk = stripComments(read('../hosting/api/marketplace.js'));
+  checkTrue('27) faqat egasiz stiker olinadi',
+    /attach-sticker[\s\S]{0,900}owner_user_id IS NULL AND \(linked_code IS NULL OR linked_code = ''\)/.test(mk));
+  checkTrue('27) sotib olganlik isboti talab qilinadi',
+    /physical_device_id IS NULL AND activated_at >= \?/.test(mk));
+  checkTrue('27) bitta g‘olib (CAS)',
+    /UPDATE marketplace_activations SET physical_device_id = \?[\s\S]{0,120}WHERE id = \? AND physical_device_id IS NULL RETURNING id/.test(mk));
+
+  const tap = stripComments(read('../src/pages/TapRedirectPage.jsx'));
+  checkTrue('27) tegizganda avval bog‘lashga urinadi', /activate\/attach-sticker/.test(tap));
+  checkTrue('27) bo‘lmasa faollashtirishga yuboradi', /activate\?d=/.test(tap));
+
+  const page = stripComments(read('../src/pages/ActivatePage.jsx'));
+  checkTrue('27) bog‘lanmagan bo‘lsa tegizish so‘raladi', /deviceBound/.test(page));
+  checkTrue('27) talab ko‘rinarli', /ac-hint-do/.test(page));
+}
+
 done();

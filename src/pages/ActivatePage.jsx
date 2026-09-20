@@ -192,7 +192,18 @@ export default function ActivatePage() {
             <div><dt>{t('Profil')}</dt><dd>{result.profileKind === 'business' ? t('Biznes') : t('Shaxsiy')}</dd></div>
             {result.productName && <div><dt>{t('Mahsulot')}</dt><dd>{result.productName}</dd></div>}
           </dl>
-          <p className="ac-hint">{t('Endi NFC mahsulotingizni telefonga tekkizib ko‘ring.')}</p>
+          {/* STIKER HALI BOG'LANMAGAN BO'LSA — BU MAJBURIY QADAM.
+              QR bilan kelgan odam tokenni olib kelmaydi, shuning
+              uchun stiker faollashtirish paytida bog'lanmaydi. U
+              tegizganda bog'lanadi — va buni aytib qo'yish shart,
+              aks holda odam tugatdim deb ketardi. */}
+          {result.deviceBound
+            ? <p className="ac-hint">{t('Stikeringiz shu profilga bog‘landi. Telefonga tekkizib ko‘ring.')}</p>
+            : (
+              <p className="ac-hint ac-hint-do">
+                {t('ENDI KONVERTDAGI NFC STIKERNI TELEFONGA TEKKIZING — shunda u shu profilga bog‘lanadi va bundan keyin har tegizganda profilingiz ochiladi.')}
+              </p>
+            )}
           <div className="ac-actions">
             <button type="button" className="ac-primary" onClick={() => navigate(href)}>{t('Profilni ochish')}</button>
             <button type="button" className="ac-ghost" onClick={() => navigate('/account')}>{t('Kabinetga o‘tish')}</button>

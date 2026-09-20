@@ -2008,6 +2008,13 @@ body{
 .ac-facts dd{margin:0;font-size:var(--fs-base);font-weight:700}
 .ac-facts dd b{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;color:var(--accent-text,var(--accent-primary))}
 .ac-hint{margin:0!important;font-size:var(--fs-sm);color:var(--text-muted)}
+/* Stiker hali bog'lanmagan — bu MAJBURIY qadam, shuning uchun
+   ko'rinarli. Oddiy kulrang izoh bo'lsa odam o'qimay ketardi. */
+.ac-hint-do{
+  padding:12px 14px!important;border-radius:12px;line-height:1.55;
+  color:var(--text-primary)!important;background:var(--surface-inset,var(--bg-secondary));
+  border:1px solid var(--accent-primary)
+}
 /* Cross-sell — oqim TUGAGANDAN keyin, kichik va ikkinchi darajali. */
 .ac-cross{font-size:var(--fs-xs);color:var(--text-faint);text-decoration:none;text-align:center}
 .ac-cross:hover{color:var(--accent-primary)}
