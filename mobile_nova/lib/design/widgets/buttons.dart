@@ -90,7 +90,7 @@ class NovaButton extends StatelessWidget {
                     style: TextStyle(
                       fontFamily: 'Manrope',
                       fontSize: 14.5,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                       letterSpacing: .2,
                       color: fg,
                     ),

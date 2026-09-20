@@ -94,7 +94,7 @@ class FeedCard extends ConsumerWidget {
                         style: TextStyle(
                           fontFamily: AppType.sans,
                           fontSize: 13.5,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w600,
                           color: t.text1,
                         ),
                       ),
@@ -234,7 +234,7 @@ class _CardAction extends StatelessWidget {
                     style: TextStyle(
                       fontFamily: AppType.sans,
                       fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                       color: c,
                     ),
                   ),
@@ -278,7 +278,7 @@ class _FollowChip extends StatelessWidget {
             style: TextStyle(
               fontFamily: AppType.sans,
               fontSize: 12,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
               color: following ? t.text2 : t.onAccent,
             ),
           ),

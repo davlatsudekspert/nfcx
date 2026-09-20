@@ -436,7 +436,7 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
                           style: const TextStyle(
                             fontFamily: AppType.sans,
                             fontSize: 14,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w600,
                             color: Colors.white,
                           ),
                         ),
@@ -523,7 +523,7 @@ class _Action extends StatelessWidget {
               style: const TextStyle(
                 fontFamily: AppType.sans,
                 fontSize: 11,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
                 color: Colors.white,
                 shadows: [Shadow(color: Colors.black54, blurRadius: 10)],
               ),

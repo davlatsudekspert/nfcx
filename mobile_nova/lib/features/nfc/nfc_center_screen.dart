@@ -279,7 +279,7 @@ class _StatusStrip extends StatelessWidget {
               style: TextStyle(
                 fontFamily: 'Manrope',
                 fontSize: 12,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
                 color: t.text1,
               ),
             ),

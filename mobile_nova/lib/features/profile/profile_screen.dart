@@ -826,7 +826,7 @@ class _IdPill extends StatelessWidget {
               style: AppType.monoStyle(
                 color: t.accent3,
                 size: 11.5,
-                weight: FontWeight.w700,
+                weight: FontWeight.w600,
                 letterSpacing: 1.2,
               ),
             ),

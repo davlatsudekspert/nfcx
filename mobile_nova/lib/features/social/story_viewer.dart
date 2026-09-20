@@ -490,7 +490,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                                   style: const TextStyle(
                                     fontFamily: AppType.sans,
                                     fontSize: 14,
-                                    fontWeight: FontWeight.w700,
+                                    fontWeight: FontWeight.w600,
                                     color: Colors.white,
                                   ),
                                 ),
@@ -727,7 +727,7 @@ class _StoryIcon extends StatelessWidget {
                     style: const TextStyle(
                       fontFamily: AppType.sans,
                       fontSize: 11,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                       color: Colors.white,
                       shadows: [Shadow(color: Colors.black54, blurRadius: 8)],
                     ),

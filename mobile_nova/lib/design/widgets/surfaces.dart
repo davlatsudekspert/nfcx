@@ -122,7 +122,7 @@ class Capsule extends StatelessWidget {
               style: TextStyle(
                 fontFamily: 'Manrope',
                 fontSize: dense ? 11.5 : 12.5,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
                 color: fg,
               ),
             ),
@@ -210,7 +210,7 @@ class SectionHeader extends StatelessWidget {
                   style: TextStyle(
                     fontFamily: 'Manrope',
                     fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                     color: t.accent2,
                   ),
                 ),

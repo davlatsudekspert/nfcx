@@ -82,7 +82,7 @@ class IdentityCard extends StatelessWidget {
               style: TextStyle(
                 fontFamily: AppType.sans,
                 fontSize: 9.5,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
                 letterSpacing: 1.3,
                 color: kOnAccent.withValues(alpha: .6),
               ),
@@ -99,7 +99,7 @@ class IdentityCard extends StatelessWidget {
                     style: AppType.monoStyle(
                       color: kOnAccent,
                       size: 23,
-                      weight: FontWeight.w700,
+                      weight: FontWeight.w600,
                       letterSpacing: 2.2,
                     ),
                   ),
@@ -166,7 +166,7 @@ class _Stat extends StatelessWidget {
             style: AppType.monoStyle(
               color: kOnAccent,
               size: 15,
-              weight: FontWeight.w700,
+              weight: FontWeight.w600,
             ),
           ),
           Text(

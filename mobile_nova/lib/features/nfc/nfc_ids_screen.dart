@@ -228,7 +228,7 @@ class NfcIdDetailScreen extends ConsumerWidget {
                   style: TextStyle(
                     fontFamily: AppType.sans,
                     fontSize: 9.5,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                     letterSpacing: 1.3,
                     color: t.onAccent.withValues(alpha: .6),
                   ),

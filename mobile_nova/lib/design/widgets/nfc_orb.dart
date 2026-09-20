@@ -389,7 +389,7 @@ class _OrbitChip extends StatelessWidget {
                 style: TextStyle(
                   fontFamily: 'Manrope',
                   fontSize: 10,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                   height: 1.2,
                   color: t.text2,
                 ),

@@ -143,7 +143,7 @@ class _Badge extends StatelessWidget {
             : TextStyle(
                 fontFamily: AppType.sans,
                 fontSize: 9,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w600,
                 letterSpacing: .6,
                 color: c,
               ),

@@ -235,7 +235,9 @@ class BrandLockup extends StatelessWidget {
             style: TextStyle(
               fontFamily: AppType.sans,
               fontSize: size * .155,
-              fontWeight: FontWeight.w800,
+              fontWeight: // BREND YOZUVI ataylab og'irroq: logotip ilovaning
+        // qolgan matnidan ajralib turishi kerak.
+        FontWeight.w700,
               letterSpacing: size * .055,
               color: t.text1,
             ),

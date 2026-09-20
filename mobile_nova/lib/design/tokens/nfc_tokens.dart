@@ -186,15 +186,15 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     ambient1: rgba(228, 210, 171, .44),
     ambient2: rgba(197, 216, 203, .4),
     shadowFloat: [
-      BoxShadow(color: rgba(160, 140, 110, .16), blurRadius: 50, offset: const Offset(0, 22)),
-      BoxShadow(color: rgba(160, 140, 110, .08), blurRadius: 20, offset: const Offset(0, 8)),
+      BoxShadow(color: rgba(160, 140, 110, .12), blurRadius: 72, offset: const Offset(0, 23)),
+      BoxShadow(color: rgba(160, 140, 110, .06), blurRadius: 29, offset: const Offset(0, 8)),
     ],
     shadowSoft: [
-      BoxShadow(color: rgba(160, 140, 110, .10), blurRadius: 32, offset: const Offset(0, 12)),
-      BoxShadow(color: rgba(160, 140, 110, .06), blurRadius: 12, offset: const Offset(0, 4)),
+      BoxShadow(color: rgba(160, 140, 110, .08), blurRadius: 46, offset: const Offset(0, 13)),
+      BoxShadow(color: rgba(160, 140, 110, .05), blurRadius: 17, offset: const Offset(0, 4)),
     ],
     shadowTiny: [
-      BoxShadow(color: rgba(160, 140, 110, .08), blurRadius: 12, offset: const Offset(0, 4)),
+      BoxShadow(color: rgba(160, 140, 110, .06), blurRadius: 17, offset: const Offset(0, 4)),
     ],
   );
 
@@ -231,15 +231,15 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     ambient1: rgba(180, 180, 190, .14),
     ambient2: rgba(143, 160, 176, .14),
     shadowFloat: [
-      BoxShadow(color: rgba(0, 0, 0, .55), blurRadius: 50, offset: const Offset(0, 22)),
-      BoxShadow(color: rgba(0, 0, 0, .35), blurRadius: 20, offset: const Offset(0, 8)),
+      BoxShadow(color: rgba(0, 0, 0, .43), blurRadius: 72, offset: const Offset(0, 23)),
+      BoxShadow(color: rgba(0, 0, 0, .27), blurRadius: 29, offset: const Offset(0, 8)),
     ],
     shadowSoft: [
-      BoxShadow(color: rgba(0, 0, 0, .40), blurRadius: 32, offset: const Offset(0, 12)),
-      BoxShadow(color: rgba(0, 0, 0, .20), blurRadius: 12, offset: const Offset(0, 4)),
+      BoxShadow(color: rgba(0, 0, 0, .31), blurRadius: 46, offset: const Offset(0, 13)),
+      BoxShadow(color: rgba(0, 0, 0, .16), blurRadius: 17, offset: const Offset(0, 4)),
     ],
     shadowTiny: [
-      BoxShadow(color: rgba(0, 0, 0, .30), blurRadius: 12, offset: const Offset(0, 4)),
+      BoxShadow(color: rgba(0, 0, 0, .23), blurRadius: 17, offset: const Offset(0, 4)),
     ],
   );
 
@@ -276,15 +276,15 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     ambient1: rgba(111, 199, 224, .28),
     ambient2: rgba(168, 212, 196, .22),
     shadowFloat: [
-      BoxShadow(color: rgba(0, 10, 25, .6), blurRadius: 50, offset: const Offset(0, 22)),
-      BoxShadow(color: rgba(0, 10, 25, .4), blurRadius: 20, offset: const Offset(0, 8)),
+      BoxShadow(color: rgba(0, 10, 25, .47), blurRadius: 72, offset: const Offset(0, 23)),
+      BoxShadow(color: rgba(0, 10, 25, .31), blurRadius: 29, offset: const Offset(0, 8)),
     ],
     shadowSoft: [
-      BoxShadow(color: rgba(0, 10, 25, .45), blurRadius: 32, offset: const Offset(0, 12)),
-      BoxShadow(color: rgba(0, 10, 25, .25), blurRadius: 12, offset: const Offset(0, 4)),
+      BoxShadow(color: rgba(0, 10, 25, .35), blurRadius: 46, offset: const Offset(0, 13)),
+      BoxShadow(color: rgba(0, 10, 25, .20), blurRadius: 17, offset: const Offset(0, 4)),
     ],
     shadowTiny: [
-      BoxShadow(color: rgba(0, 10, 25, .35), blurRadius: 12, offset: const Offset(0, 4)),
+      BoxShadow(color: rgba(0, 10, 25, .27), blurRadius: 17, offset: const Offset(0, 4)),
     ],
   );
 
@@ -321,15 +321,15 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     ambient1: rgba(184, 160, 224, .32),
     ambient2: rgba(158, 216, 224, .24),
     shadowFloat: [
-      BoxShadow(color: rgba(10, 5, 25, .6), blurRadius: 50, offset: const Offset(0, 22)),
-      BoxShadow(color: rgba(10, 5, 25, .4), blurRadius: 20, offset: const Offset(0, 8)),
+      BoxShadow(color: rgba(10, 5, 25, .47), blurRadius: 72, offset: const Offset(0, 23)),
+      BoxShadow(color: rgba(10, 5, 25, .31), blurRadius: 29, offset: const Offset(0, 8)),
     ],
     shadowSoft: [
-      BoxShadow(color: rgba(10, 5, 25, .45), blurRadius: 32, offset: const Offset(0, 12)),
-      BoxShadow(color: rgba(10, 5, 25, .25), blurRadius: 12, offset: const Offset(0, 4)),
+      BoxShadow(color: rgba(10, 5, 25, .35), blurRadius: 46, offset: const Offset(0, 13)),
+      BoxShadow(color: rgba(10, 5, 25, .20), blurRadius: 17, offset: const Offset(0, 4)),
     ],
     shadowTiny: [
-      BoxShadow(color: rgba(10, 5, 25, .35), blurRadius: 12, offset: const Offset(0, 4)),
+      BoxShadow(color: rgba(10, 5, 25, .27), blurRadius: 17, offset: const Offset(0, 4)),
     ],
   );
 
@@ -369,16 +369,16 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     ambient1: rgba(201, 169, 106, .22),
     ambient2: rgba(50, 90, 140, .24),
     shadowFloat: [
-      BoxShadow(color: rgba(0, 5, 15, .7), blurRadius: 50, offset: const Offset(0, 22)),
-      BoxShadow(color: rgba(0, 5, 15, .5), blurRadius: 20, offset: const Offset(0, 8)),
-      BoxShadow(color: rgba(201, 169, 106, .10), blurRadius: 60),
+      BoxShadow(color: rgba(0, 5, 15, .55), blurRadius: 72, offset: const Offset(0, 23)),
+      BoxShadow(color: rgba(0, 5, 15, .39), blurRadius: 29, offset: const Offset(0, 8)),
+      BoxShadow(color: rgba(201, 169, 106, .08), blurRadius: 60),
     ],
     shadowSoft: [
-      BoxShadow(color: rgba(0, 5, 15, .55), blurRadius: 32, offset: const Offset(0, 12)),
-      BoxShadow(color: rgba(0, 5, 15, .35), blurRadius: 12, offset: const Offset(0, 4)),
+      BoxShadow(color: rgba(0, 5, 15, .43), blurRadius: 46, offset: const Offset(0, 13)),
+      BoxShadow(color: rgba(0, 5, 15, .27), blurRadius: 17, offset: const Offset(0, 4)),
     ],
     shadowTiny: [
-      BoxShadow(color: rgba(0, 5, 15, .4), blurRadius: 12, offset: const Offset(0, 4)),
+      BoxShadow(color: rgba(0, 5, 15, .31), blurRadius: 17, offset: const Offset(0, 4)),
     ],
   );
 
