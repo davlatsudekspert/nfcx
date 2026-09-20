@@ -222,6 +222,9 @@
   "storyPublish": "Опубликовать story",
   "postPublish": "Опубликовать пост",
   "reelPublish": "Опубликовать reel",
+  "storyLike": "Нравится",
+  "storyComments": "Комментарии",
+  "storyCommentHint": "Напишите комментарий…",
   "reelsEmpty": "Reels пока нет",
   "uploadProgress": "Загрузка {percent}%",
   "@uploadProgress": {

@@ -594,6 +594,15 @@ class LEn extends L {
   String get reelPublish => 'Share reel';
 
   @override
+  String get storyLike => 'Like';
+
+  @override
+  String get storyComments => 'Comments';
+
+  @override
+  String get storyCommentHint => 'Write a comment…';
+
+  @override
   String get reelsEmpty => 'No reels yet';
 
   @override

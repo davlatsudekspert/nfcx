@@ -227,6 +227,19 @@ class SkeletonList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListView.separated(
+        // SKELET O'ZI SCROLL QILMAYDI.
+        //
+        // Bu ro'yxat ko'pincha BOSHQA scroll ichida turadi:
+        // `CommentsSection` ning yuklanish holati `NovaScroll`
+        // (u ham `ListView`) ichida chiziladi. `shrinkWrap`siz
+        // ListView u yerda "Vertical viewport was given unbounded
+        // height" xatosini berardi va izohlar yuklanayotgan payt
+        // ekran buzilardi.
+        //
+        // Skelet — vaqtinchalik o'rin egallovchi, unga alohida
+        // scroll kerak emas.
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.all(Gap.screenX),
         itemCount: count,
         separatorBuilder: (_, __) => const SizedBox(height: Gap.md),

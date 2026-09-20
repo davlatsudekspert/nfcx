@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/network/api_client.dart';
+import '../../core/utils/sharing.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/social_repository.dart';
 import '../../design/theme/typography.dart';
@@ -11,7 +13,9 @@ import '../../design/tokens/shapes.dart';
 import '../../design/widgets/states.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
+import '../../app/profile_context.dart';
 import '../auth/session.dart';
+import 'comments.dart';
 import 'inline_video.dart';
 import '../home/widgets/avatar.dart';
 
@@ -62,6 +66,16 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
 
   int _index = 0;
   int _total = 0;
+
+  /// Mahalliy layk holati — `id -> (liked, likes)`.
+  ///
+  /// Server javobi kelguncha tugma DARHOL o'zgaradi, xato bo'lsa
+  /// eski holatga qaytariladi. Provayderni butunlay qayta o'qish
+  /// istoryani boshidan boshlab yuborardi.
+  final _likes = <int, ({bool liked, int count})>{};
+
+  /// Varaq yoki dialog ochiqmi — shunda taymer TO'XTAB turadi.
+  bool _paused = false;
 
   /// Serverga "ko'rildi" deb yuborilgan story'lar.
   ///
@@ -135,7 +149,52 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
       ..duration = _perStory
       ..reset()
       ..forward();
+    if (_paused) _progress.stop();
   }
+
+  /// Varaq/dialog ochilganda taymer to'xtaydi, yopilganda davom
+  /// etadi. Aks holda izoh yozib turganda istorya keyingisiga
+  /// o'tib ketardi.
+  Future<T?> _whilePaused<T>(Future<T?> Function() run) async {
+    _paused = true;
+    _progress.stop();
+    try {
+      return await run();
+    } finally {
+      if (mounted) {
+        _paused = false;
+        _progress.forward();
+      }
+    }
+  }
+
+  /// LAYK — optimistik, xatoda ORQAGA QAYTADI.
+  Future<void> _like(StoryItem s) async {
+    final now = _likes[s.id] ?? (liked: s.liked, count: s.likes);
+    setState(() => _likes[s.id] = (
+          liked: !now.liked,
+          count: now.count + (now.liked ? -1 : 1),
+        ));
+    final res = await ref.read(socialRepositoryProvider).likeStory(s.id);
+    if (!mounted) return;
+    res.when(
+      // Server QAYTARGAN sanoq o'rnatiladi — mahalliy taxmin emas.
+      ok: (v) => setState(
+          () => _likes[s.id] = (liked: v.liked, count: v.likeCount)),
+      err: (_) => setState(() => _likes[s.id] = now),
+    );
+  }
+
+  /// Izohlar — mavjud `CommentsSection` qayta ishlatiladi.
+  ///
+  /// `kind` kontekstga qarab: shaxsiy istorya `story`, kompaniya
+  /// istoryasi `company_story`.
+  Future<void> _comments(StoryItem s) => _whilePaused(() => showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => _CommentsSheet(story: s),
+      ));
 
   /// Video uzunligi ma'lum bo'lgach, progress shunga moslanadi.
   ///
@@ -225,6 +284,11 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
           final mine = ref
               .watch(myIdsProvider)
               .any((e) => e.code == s.code);
+
+          // Mahalliy layk holati bo'lsa o'sha, aks holda serverniki.
+          final lk = _likes[s.id];
+          final liked = lk?.liked ?? s.liked;
+          final likeCount = lk?.count ?? s.likes;
 
           return GestureDetector(
             onTapUp: (d) {
@@ -386,6 +450,57 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                     ],
                   ),
                 ),
+
+                // ── PASTKI AMALLAR: layk, izoh, ulashish ────────
+                //
+                // Ilgari istorya ko'ruvchisida HECH QANDAY amal yo'q
+                // edi: ko'rib, chiqib ketishdan boshqa ish qilib
+                // bo'lmasdi. Uchala endpoint ham serverda allaqachon
+                // bor edi.
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: SafeArea(
+                    top: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                          Gap.lg, 0, Gap.lg, Gap.md),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _StoryAction(
+                              icon: Icons.mode_comment_outlined,
+                              label: l.storyCommentHint,
+                              onTap: () => _comments(s),
+                            ),
+                          ),
+                          const SizedBox(width: Gap.sm),
+                          _StoryIcon(
+                            icon: liked
+                                ? Icons.favorite_rounded
+                                : Icons.favorite_border_rounded,
+                            tint: liked ? t.error : Colors.white,
+                            label: l.storyLike,
+                            count: likeCount,
+                            onTap: () => _like(s),
+                          ),
+                          const SizedBox(width: Gap.sm),
+                          _StoryIcon(
+                            icon: Icons.ios_share_rounded,
+                            tint: Colors.white,
+                            label: l.actionShare,
+                            // Ulashiladigan narsa — MUALLIFNING OCHIQ
+                            // profili. Istoryaning o'zi 24 soatda
+                            // yo'qoladi va yopiq havola bo'lardi.
+                            onTap: () => _whilePaused(
+                                () => shareLink('$kApiBase/${Uri.encodeComponent(s.code)}')),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           );
@@ -400,3 +515,197 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
   }
 }
 
+
+/// Istorya ostidagi "izoh yozing…" maydoni ko'rinishi.
+///
+/// Haqiqiy matn maydoni EMAS: bosilganda izohlar varag'i ochiladi
+/// va yozish o'sha yerda bo'ladi. Shunda klaviatura istorya
+/// ko'rinishini buzmaydi va taymer ham to'xtab turadi.
+class _StoryAction extends StatelessWidget {
+  const _StoryAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: label,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          height: 42,
+          padding: const EdgeInsets.symmetric(horizontal: Gap.md),
+          decoration: BoxDecoration(
+            borderRadius: R.pill,
+            color: Colors.white.withValues(alpha: .14),
+            border: Border.all(color: Colors.white.withValues(alpha: .35)),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 17, color: Colors.white),
+              const SizedBox(width: Gap.sm),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: AppType.sans,
+                    fontSize: 13,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Dumaloq amal tugmasi — ostida sanoq (bo'lsa).
+class _StoryIcon extends StatelessWidget {
+  const _StoryIcon({
+    required this.icon,
+    required this.tint,
+    required this.label,
+    required this.onTap,
+    this.count = 0,
+  });
+
+  final IconData icon;
+  final Color tint;
+  final String label;
+  final VoidCallback onTap;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: count > 0 ? '$label: $count' : label,
+      child: Tooltip(
+        message: label,
+        child: GestureDetector(
+          onTap: onTap,
+          behavior: HitTestBehavior.opaque,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: .14),
+                  border:
+                      Border.all(color: Colors.white.withValues(alpha: .35)),
+                ),
+                child: Icon(icon, size: 19, color: tint),
+              ),
+              if (count > 0)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(
+                    '$count',
+                    style: const TextStyle(
+                      fontFamily: AppType.sans,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      shadows: [Shadow(color: Colors.black54, blurRadius: 8)],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Izohlar varag'i.
+///
+/// Mavjud `CommentsSection` QAYTA ISHLATILADI — istorya uchun
+/// alohida izoh tizimi yozilmaydi. `kind` kontekstga qarab
+/// tanlanadi: shaxsiy istorya `story`, kompaniya istoryasi
+/// `company_story`.
+class _CommentsSheet extends ConsumerWidget {
+  const _CommentsSheet({required this.story});
+
+  final StoryItem story;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.tokens;
+    final l = L.of(context);
+    // Kompaniya istoryasimi — faol profil turiga qarab.
+    final company = ref.watch(activeProfileProvider)?.isBusiness ?? false;
+
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.viewInsetsOf(context).bottom,
+      ),
+      // BALANDLIK ANIQ BERILADI.
+      //
+      // `DraggableScrollableSheet` + ichki ro'yxat birikmasi
+      // "Vertical viewport was given unbounded height" xatosini
+      // berardi: `CommentsSection` ning o'zi `Column`, ya'ni
+      // scrollni TASHQARIDAN olishi kerak. Shuning uchun balandlik
+      // ekranning 70% i qilib belgilanadi va ichida bitta scroll
+      // qoladi.
+      child: SizedBox(
+        height: MediaQuery.sizeOf(context).height * .7,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: t.surfaceSolid,
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(22)),
+            border: Border.all(color: t.border2),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: Gap.sm),
+              Center(
+                child: Container(
+                  width: 42,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: t.border2,
+                    borderRadius: R.pill,
+                  ),
+                ),
+              ),
+              const SizedBox(height: Gap.sm),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Gap.lg),
+                child: Text(l.storyComments,
+                    style: Theme.of(context).textTheme.titleMedium),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: CommentsSection(
+                    kind: company ? 'company_story' : 'story',
+                    id: story.id,
+                    ownerCode: story.code,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

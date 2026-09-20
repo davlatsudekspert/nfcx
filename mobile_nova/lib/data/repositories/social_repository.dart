@@ -176,6 +176,24 @@ class SocialRepository {
     });
   }
 
+  /// ISTORYAGA LAYK — bosilganda holat teskarisiga o'giriladi.
+  ///
+  /// `POST /api/stories/:id/like` serverda ALLAQACHON bor edi va
+  /// `{ liked, likeCount }` qaytaradi, lekin ilovada uni
+  /// chaqiradigan joy YO'Q edi: istorya ko'ruvchisida layk tugmasi
+  /// umuman chizilmagan.
+  ///
+  /// Server QAYTARGAN qiymat o'qiladi — mahalliy sanoq bilan
+  /// taxmin qilinmaydi: ikki qurilmadan bosilsa sanoq chalkashardi.
+  Future<Result<({bool liked, int likeCount})>> likeStory(int id) async {
+    final res =
+        await _api.post<Map<String, dynamic>>('/api/stories/$id/like', const {});
+    return res.map((j) => (
+          liked: j['liked'] == true,
+          likeCount: (j['likeCount'] as num?)?.toInt() ?? 0,
+        ));
+  }
+
   /// Istoryani o'chirish — manzil KODSIZ, faqat `id` bo'yicha.
   Future<Result<void>> deleteStory(int id) =>
       _api.delete<void>('/api/stories/$id');

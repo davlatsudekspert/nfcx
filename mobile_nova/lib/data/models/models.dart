@@ -556,6 +556,8 @@ class StoryItem {
     this.caption = '',
     this.seen = false,
     this.createdAt,
+    this.likes = 0,
+    this.liked = false,
   });
 
   final int id;
@@ -571,6 +573,29 @@ class StoryItem {
   final String caption;
   final bool seen;
   final DateTime? createdAt;
+
+  /// LAYKLAR. Server `listStoriesD1` va `/api/stories/feed` da
+  /// `likeCount` va `liked` ni HAR DOIM qaytaradi (yuqoridagi
+  /// izohda ham shunday yozilgan), lekin model ularni TASHLAB
+  /// YUBORARDI — xuddi `caption` kabi. Natijada istorya ostida
+  /// layk soni ko'rsatilmasdi va "men bosganmanmi" degani ham
+  /// bilinmasdi.
+  final int likes;
+  final bool liked;
+
+  StoryItem copyWith({int? likes, bool? liked, bool? seen}) => StoryItem(
+        id: id,
+        code: code,
+        authorName: authorName,
+        authorAvatar: authorAvatar,
+        mediaUrl: mediaUrl,
+        isVideo: isVideo,
+        caption: caption,
+        seen: seen ?? this.seen,
+        createdAt: createdAt,
+        likes: likes ?? this.likes,
+        liked: liked ?? this.liked,
+      );
 
   /// `listStoriesD1` quyidagini qaytaradi:
   ///
@@ -604,6 +629,8 @@ class StoryItem {
       caption: _s(j['caption']),
       seen: _b(j['seen'] ?? j['viewed']),
       createdAt: _dt(j['createdAt']),
+      likes: _i(j['likeCount'] ?? j['likes']),
+      liked: _b(j['liked'] ?? j['isLiked']),
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
+import 'package:nfcstore_nova/core/errors/app_error.dart';
 import 'package:nfcstore_nova/core/network/api_client.dart';
 import 'package:nfcstore_nova/core/utils/result.dart';
 import 'package:nfcstore_nova/data/models/models.dart';
@@ -10,6 +11,7 @@ import 'package:nfcstore_nova/data/repositories/social_repository.dart';
 import 'package:nfcstore_nova/design/theme/app_theme.dart';
 import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
 import 'package:nfcstore_nova/features/social/story_viewer.dart';
+import 'package:nfcstore_nova/l10n/gen/app_localizations_uz.dart';
 import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
 
 import 'helpers.dart';
@@ -24,9 +26,40 @@ class _StoriesRepo extends SocialRepository {
 
   final List<StoryItem> items;
   int seenCalls = 0;
+  int likeCalls = 0;
+
+  /// Keyingi `likeStory` chaqiruvi xato qaytarsinmi.
+  bool likeFails = false;
+
+  /// Server qaytaradigan holat.
+  bool liked = true;
+  int likeCount = 1;
 
   @override
   Future<Result<List<StoryItem>>> storiesOf(String code) async => Ok(items);
+
+  @override
+  Future<Result<({bool liked, int likeCount})>> likeStory(int id) async {
+    likeCalls++;
+    // Haqiqiy tarmoq kabi KECHIKADI — aks holda optimistik holat
+    // ko'rinmasdan darhol almashib ketardi va uni sinab bo'lmasdi.
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    if (likeFails) {
+      return const Err(AppError(AppErrorKind.server, status: 500));
+    }
+    return Ok((liked: liked, likeCount: likeCount));
+  }
+
+  /// Izohlar varag'i ochilganda ro'yxat SO'RALADI — soxta
+  /// repozitoriyada bo'lmasa, tarmoq xatosi test natijasini
+  /// buzardi (mahsulot nuqsoni emas, sinov artefakti).
+  @override
+  Future<Result<({List<Comment> items, bool hasMore, int total})>> comments(
+    String kind,
+    int id, {
+    int page = 1,
+  }) async =>
+      const Ok((items: <Comment>[], hasMore: false, total: 0));
 
   @override
   Future<Result<void>> markStorySeen(int id) async {
@@ -164,5 +197,63 @@ void main() {
     expect(where(router), '/story');
     expect(find.byType(StoryViewerScreen), findsOneWidget);
     expect(repo.seenCalls, 0);
+  });
+
+  group('istorya amallari', () {
+    StoryItem liked0(int id) =>
+        StoryItem(id: id, code: 'VIP001', authorName: 'M');
+
+    testWidgets('layk bosilganda DARHOL o‘zgaradi va serverga boradi',
+        (tester) async {
+      final repo = _StoriesRepo([liked0(1)])
+        ..liked = true
+        ..likeCount = 7;
+      await pump(tester, repo);
+
+      // Boshida to‘ldirilmagan yurak.
+      expect(find.byIcon(Icons.favorite_border_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.favorite_rounded), findsNothing);
+
+      await tester.tap(find.byIcon(Icons.favorite_border_rounded));
+      await tester.pump();
+
+      // Server javobi kelmasdan turib ham to‘lgan yurak.
+      expect(find.byIcon(Icons.favorite_rounded), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(repo.likeCalls, 1);
+      // Server qaytargan sanoq ko‘rinadi — mahalliy taxmin emas.
+      expect(find.text('7'), findsOneWidget);
+    });
+
+    testWidgets('server xato bersa layk ORQAGA qaytadi', (tester) async {
+      final repo = _StoriesRepo([liked0(1)])..likeFails = true;
+      await pump(tester, repo);
+
+      await tester.tap(find.byIcon(Icons.favorite_border_rounded));
+      await tester.pump();
+      expect(find.byIcon(Icons.favorite_rounded), findsOneWidget,
+          reason: 'optimistik o‘zgarish ko‘rinmadi');
+
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.byIcon(Icons.favorite_border_rounded), findsOneWidget,
+          reason: 'xatodan keyin eski holatga qaytmadi');
+      expect(repo.likeCalls, 1);
+    });
+
+    testWidgets('izoh varag‘i ochilganda TAYMER TO‘XTAYDI', (tester) async {
+      final repo = _StoriesRepo([liked0(1), liked0(2)]);
+      final router = await pump(tester, repo);
+
+      // Izoh maydoni — matni bo‘yicha topiladi.
+      await tester.tap(find.text(LUz().storyCommentHint));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Varaq ochiq turganda 10 soniya o‘tsa ham istorya
+      // keyingisiga O‘TMAYDI va ko‘ruvchi yopilmaydi.
+      await tester.pump(const Duration(seconds: 10));
+      expect(where(router), '/story',
+          reason: 'izoh yozayotganda istorya o‘zgarib ketdi');
+    });
   });
 }

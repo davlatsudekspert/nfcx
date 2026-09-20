@@ -222,6 +222,9 @@
   "storyPublish": "Share story",
   "postPublish": "Share post",
   "reelPublish": "Share reel",
+  "storyLike": "Like",
+  "storyComments": "Comments",
+  "storyCommentHint": "Write a comment…",
   "reelsEmpty": "No reels yet",
   "uploadProgress": "Uploading {percent}%",
   "@uploadProgress": {

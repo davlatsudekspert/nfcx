@@ -595,6 +595,15 @@ class LUz extends L {
   String get reelPublish => 'Reelni joylash';
 
   @override
+  String get storyLike => 'Yoqtirish';
+
+  @override
+  String get storyComments => 'Izohlar';
+
+  @override
+  String get storyCommentHint => 'Izoh yozing…';
+
+  @override
   String get reelsEmpty => 'Hozircha reels yo‘q';
 
   @override

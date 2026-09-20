@@ -1245,6 +1245,24 @@ abstract class L {
   /// **'Reelni joylash'**
   String get reelPublish;
 
+  /// No description provided for @storyLike.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yoqtirish'**
+  String get storyLike;
+
+  /// No description provided for @storyComments.
+  ///
+  /// In uz, this message translates to:
+  /// **'Izohlar'**
+  String get storyComments;
+
+  /// No description provided for @storyCommentHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Izoh yozing…'**
+  String get storyCommentHint;
+
   /// No description provided for @reelsEmpty.
   ///
   /// In uz, this message translates to:

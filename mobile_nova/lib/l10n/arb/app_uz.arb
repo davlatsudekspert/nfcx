@@ -222,6 +222,9 @@
   "storyPublish": "Storyni joylash",
   "postPublish": "Postni joylash",
   "reelPublish": "Reelni joylash",
+  "storyLike": "Yoqtirish",
+  "storyComments": "Izohlar",
+  "storyCommentHint": "Izoh yozing…",
   "reelsEmpty": "Hozircha reels yo‘q",
   "uploadProgress": "Yuklanmoqda {percent}%",
   "@uploadProgress": {
