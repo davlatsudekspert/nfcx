@@ -217,6 +217,28 @@ async function prepareMarketplaceTables(env) {
   // device" jadvali YARATILMADI.
   await env.DB.prepare(`ALTER TABLE physical_cards ADD COLUMN linked_company_id TEXT`).run()
     .catch(() => { /* ustun allaqachon bor */ });
+  // STIKER RO'YXATI QAYTA OCHILSIN.
+  //
+  // Ilgari stiker manzillari FAQAT batch yaratilgan lahzada
+  // ko'rinardi — kodlar bilan bir xil muomala. Bu XATO edi: kod sir
+  // (bazada faqat xeshi turadi), token esa SIR EMAS — u chipning
+  // o'zida yozilgan va istalgan odam o'qiy oladi.
+  //
+  // Amalda bu ish tartibini buzardi: telefonda NFC Tools bilan
+  // bittalab yozilganda ro'yxat soatlab kerak bo'ladi, ekran yopilsa
+  // esa 100 ta stiker yozilmay qolardi va ularni qaytarib bo'lmasdi.
+  //
+  // Shuning uchun token batchga bog'lanadi va "yozildi" belgisi
+  // SERVERDA saqlanadi — telefon almashsa yoki brauzer tozalansa
+  // ham joyi yo'qolmaydi.
+  for (const sql of [
+    `ALTER TABLE physical_cards ADD COLUMN marketplace_batch_id TEXT`,
+    `ALTER TABLE physical_cards ADD COLUMN written_at TEXT`,
+  ]) {
+    await env.DB.prepare(sql).run().catch(() => { /* ustun allaqachon bor */ });
+  }
+  await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_pc_mkt_batch ON physical_cards(marketplace_batch_id)`)
+    .run().catch(() => {});
   // Oldin yaratilgan jadvalga ustun qo'shish (CREATE TABLE IF NOT
   // EXISTS mavjud jadvalni O'ZGARTIRMAYDI).
   await env.DB.prepare(`ALTER TABLE marketplace_products ADD COLUMN external_sku TEXT`).run()
@@ -517,9 +539,9 @@ export async function handle(request, env, url, H) {
           // tokenni taniydi, aks holda bosh sahifaga yuboradi.
           const chipToken = H.newToken(6);
           const dev = await env.DB.prepare(
-            `INSERT INTO physical_cards (chip_token, linked_code, owner_user_id, status)
-             VALUES (?, NULL, NULL, 'pending') ON CONFLICT(chip_token) DO NOTHING RETURNING id`
-          ).bind(chipToken).first().catch(() => null);
+            `INSERT INTO physical_cards (chip_token, linked_code, owner_user_id, status, marketplace_batch_id)
+             VALUES (?, NULL, NULL, 'pending', ?) ON CONFLICT(chip_token) DO NOTHING RETURNING id`
+          ).bind(chipToken, batchId).first().catch(() => null);
           created.push({
             id: Number(row.id),
             code: formatActivationCode(normalized),
@@ -725,7 +747,88 @@ export async function handle(request, env, url, H) {
       });
     }
 
-    // ── HOLAT O'ZGARTIRISH ────────────────────────────────────────
+    // ── PARTIYALAR RO'YXATI ──────────────────────────
+    //
+    // Stikerlarni yozish bir kunda tugamaydi. Partiya ID si esa
+    // tasodifiy token — uni yodlab yoki qo'lda yozib bo'lmaydi.
+    // Shuning uchun ro'yxat: odam kechagi partiyasini topib, qolgan
+    // stikerlarni yozishda davom etadi.
+    if (path === '/api/admin/marketplace/batches' && method === 'GET') {
+      const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 30, 1), 100);
+      const rows = await env.DB.prepare(
+        `SELECT a.batch_id, p.sku, p.name, COUNT(*) AS codes, MIN(a.created_at) AS created_at
+           FROM marketplace_activations a
+           LEFT JOIN marketplace_products p ON p.id = a.product_id
+          WHERE a.batch_id IS NOT NULL AND a.batch_id <> ''
+          GROUP BY a.batch_id, p.sku, p.name
+          ORDER BY MIN(a.created_at) DESC LIMIT ?`
+      ).bind(limit).all();
+      const out = [];
+      for (const r of rows.results || []) {
+        const st = await env.DB.prepare(
+          `SELECT COUNT(*) AS total, SUM(CASE WHEN written_at IS NOT NULL THEN 1 ELSE 0 END) AS written
+             FROM physical_cards WHERE marketplace_batch_id = ?`
+        ).bind(r.batch_id).first().catch(() => null);
+        out.push({
+          batchId: r.batch_id,
+          sku: r.sku || '',
+          product: r.name || '',
+          codes: Number(r.codes || 0),
+          stickers: Number(st?.total || 0),
+          written: Number(st?.written || 0),
+          createdAt: r.created_at,
+        });
+      }
+      return H.json({ batches: out });
+    }
+
+    // ── STIKER RO'YXATI: CHIPGA NIMA YOZILADI ──────────────
+    //
+    // Kodlardan FARQLI o'laroq bu ro'yxat xohlagancha qayta
+    // ochiladi. Token sir emas — u chipning o'zida yozilgan.
+    // Sir bo'lgani kod, va u bu javobga UMUMAN tushmaydi.
+    //
+    // Telefonda NFC Tools bilan bittalab yozish soatlab davom etadi,
+    // shuning uchun "yozildi" belgisi ham shu yerda: qaysi biridan
+    // davom etishni odam emas, server eslab qoladi.
+    if (path === '/api/admin/marketplace/stickers' && method === 'GET') {
+      const batchId = H.shortText(url.searchParams.get('batchId'), 64);
+      if (!batchId) return H.json({ error: 'batch_required' }, 422);
+      const rows = await env.DB.prepare(
+        `SELECT id, chip_token, written_at, owner_user_id, linked_code, linked_company_id
+           FROM physical_cards WHERE marketplace_batch_id = ? ORDER BY id`
+      ).bind(batchId).all();
+      const list = (rows.results || []).map((r) => ({
+        id: Number(r.id),
+        chipToken: r.chip_token,
+        written: !!r.written_at,
+        // Sotilib faollashgan stikerni qayta yozib bo'lmaydi — uni
+        // ro'yxatda ajratib ko'rsatamiz, jim o'tkazib yubormaymiz.
+        used: !!(r.owner_user_id || r.linked_code || r.linked_company_id),
+      }));
+      return H.json({
+        batchId,
+        stickers: list,
+        total: list.length,
+        writtenCount: list.filter((x) => x.written).length,
+      });
+    }
+
+    // Bitta stikerni "yozildi" deb belgilash (yoki bekor qilish).
+    const stickerMatch = path.match(/^\/api\/admin\/marketplace\/stickers\/(\d+)\/written$/);
+    if (stickerMatch && method === 'POST') {
+      const id = Number(stickerMatch[1]);
+      const body = await readJson();
+      // `written: false` — xato bosilganini qaytarish uchun.
+      const on = body.written !== false;
+      const done = await env.DB.prepare(
+        `UPDATE physical_cards SET written_at = ? WHERE id = ? AND marketplace_batch_id IS NOT NULL RETURNING id`
+      ).bind(on ? H.nowTs() : null, id).first().catch(() => null);
+      if (!done) return H.json({ error: 'not_found' }, 404);
+      return H.json({ ok: true, id, written: on });
+    }
+
+    // ── HOLAT O'ZGARTIRISH ────────────────────────────
     const actMatch = path.match(/^\/api\/admin\/marketplace\/activations\/(\d+)\/([a-z-]+)$/);
     if (actMatch && method === 'POST') {
       const id = Number(actMatch[1]);

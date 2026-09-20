@@ -296,7 +296,13 @@ function Guide({ t, onGo }) {
             <b>{t('Stiker manzillari (CSV)')}</b> — {t('NFC yozuvchi dasturga bering (masalan NFC Tools yoki ko‘p dona yozadigan enkoder). Dastur ro‘yxatdagi manzillarni chiplarga ketma-ket yozadi.')}
           </p>
           <p>
+            <b>{t('Telefonda yozish')}</b> — {t('telefonda NFC Tools bilan bittalab yozsangiz shu tugmani bosing: manzillar bittadan, katta qilib chiqadi va qaysi biridan davom etishni tizim eslab qoladi. Ekranni yopsangiz ham joyingiz saqlanadi.')}
+          </p>
+          <p>
             <b>{t('Chop etish (A4)')}</b> — {t('har bir konvert uchun varaq: QR va aktivatsiya kodi. QR hammada bir xil, kod esa har xil.')}
+          </p>
+          <p className="mk-gd-warn">
+            {t('HAR BIR stikerda BOSHQA manzil bo‘ladi. Hammasiga bir xil manzil yozsangiz, birinchi faollashtirgan odamning profili hammaga ochilib qoladi.')}
           </p>
           <p className="mk-gd-warn">
             {t('Kod QR ichiga YOZILMAYDI: konvert ochilmasdan tashqaridan skanerlab kodni olib qo‘yish mumkin bo‘lardi.')}
@@ -331,6 +337,12 @@ function Guide({ t, onGo }) {
 
           <dt>{t('Stikerni kodga oldindan biriktirishim kerakmi?')}</dt>
           <dd>{t('Yo‘q. Aksincha, biriktirmang. «Aktivatsiya kodlari» bo‘limidagi «Qurilma» tugmasi faqat alohida holatlar uchun — masalan mijozga qo‘lma-qo‘l berayotganingizda.')}</dd>
+
+          <dt>{t('Hamma stikerga bir xil manzil yozsam bo‘ladimi?')}</dt>
+          <dd>{t('YO‘Q. Bu tizimni butunlay buzadi: birinchi odam faollashtiradi va qolgan hamma o‘sha begona profilni ko‘radi. Har bir stikerda o‘zining manzili bo‘lishi shart — «Stiker manzillari» ro‘yxati aynan shuning uchun.')}</dd>
+
+          <dt>{t('100 ta stikerni bir o‘tirishda yozolmasam?')}</dt>
+          <dd>{t('Muammo yo‘q. «Batch yaratish» bo‘limida oldingi partiyalar ro‘yxati turadi — «Yozishda davom etish» ni bossangiz, to‘xtagan joyingizdan davom etasiz.')}</dd>
 
           <dt>{t('Konvertni chalkashtirib yuborsam nima bo‘ladi?')}</dt>
           <dd>{t('Hech narsa. Har qanday stiker har qanday konvert bilan ishlaydi.')}</dd>
@@ -532,6 +544,124 @@ function Products({ adminApi, t, isManager, products, err, reload, apiErrText, c
 }
 
 // ── BATCH YARATISH ───────────────────────────────────────────────────
+// ── STIKER YOZISH EKRANI ─────────────────────────────────────────────
+//
+// ISH TARTIBI. Hozircha stikerlar TELEFONDA, NFC Tools bilan
+// bittalab yoziladi. Ya'ni odam soat davomida ikki dastur orasida
+// almashib turadi: bu yerdan manzilni nusxalaydi, NFC Tools'ga
+// o'tadi, yozadi, qaytadi.
+//
+// Shuning uchun ekran BITTA stikerni ko'rsatadi, kattaligi bilan —
+// 100 ta qatordan iborat ro'yxatda telefonda joyni yo'qotib qo'yish
+// muqarrar edi.
+//
+// "Yozildi" belgisi SERVERDA saqlanadi: telefon o'chsa, brauzer
+// tozalansa yoki boshqa qurilmadan davom etilsa ham joyi saqlanadi.
+function StickerWriter({ adminApi, t, batchId, onClose, apiErrText }) {
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState(null);
+  const [i, setI] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const load = () => {
+    setErr(null);
+    adminApi(`/marketplace/stickers?batchId=${encodeURIComponent(batchId)}`)
+      .then((d) => {
+        setData(d);
+        // Yozilmagan BIRINCHISIDAN davom etamiz — odam o'zi
+        // qidirib o'tirmasin.
+        const next = (d.stickers || []).findIndex((x) => !x.written);
+        setI(next < 0 ? Math.max((d.stickers || []).length - 1, 0) : next);
+      })
+      .catch(setErr);
+  };
+  useEffect(load, [batchId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (err) return <LoadError error={err} onRetry={load} />;
+  if (!data) return <AdminLoading />;
+
+  const list = data.stickers || [];
+  if (list.length === 0) {
+    return (
+      <AdminCard title={t('Stikerlar topilmadi')}>
+        <p className="mk-hint">{t('Bu partiyada stiker yo‘q. Eski partiyalarda stikerlar hali biriktirilmagan bo‘lishi mumkin.')}</p>
+        <button type="button" className="btn" onClick={onClose}>{t('Yopish')}</button>
+      </AdminCard>
+    );
+  }
+
+  const cur = list[Math.min(i, list.length - 1)];
+  const origin = typeof window === 'undefined' ? '' : window.location.origin;
+  const url = `${origin}/t/${cur.chipToken}`;
+  const doneCount = list.filter((x) => x.written).length;
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      // `clipboard` HTTPS'siz yoki ruxsatsiz ishlamaydi — manzil
+      // baribir ekranda turadi, qo'lda belgilash mumkin.
+      setCopied(false);
+    }
+  };
+
+  const mark = async (written) => {
+    setBusy(true);
+    try {
+      await adminApi(`/marketplace/stickers/${cur.id}/written`, {
+        method: 'POST', body: JSON.stringify({ written }),
+      });
+      setData((d) => ({
+        ...d,
+        stickers: d.stickers.map((x) => (x.id === cur.id ? { ...x, written } : x)),
+      }));
+      if (written && i < list.length - 1) setI(i + 1);
+    } catch (e) { setErr(e); } finally { setBusy(false); }
+  };
+
+  return (
+    <AdminCard
+      title={t('Stikerlarni yozish')}
+      right={<button type="button" className="btn btn-sm" onClick={onClose}>{t('Yopish')}</button>}
+    >
+      <div className="mk-wr-progress">
+        <div className="mk-wr-bar"><span style={{ width: `${Math.round((doneCount / list.length) * 100)}%` }} /></div>
+        <b>{doneCount} / {list.length}</b>
+      </div>
+
+      <p className="mk-hint">
+        {t('Manzilni nusxalang → NFC Tools → «Yozish» → «URL» → qo‘ying → chipga tegizing. Keyin bu yerga qaytib «Yozildi» ni bosing.')}
+      </p>
+
+      <div className={`mk-wr-card${cur.written ? ' is-done' : ''}`}>
+        <div className="mk-wr-no">{t('Stiker')} {i + 1}</div>
+        <code className="mk-wr-url">{url}</code>
+        <button type="button" className="btn btn-gold mk-wr-copy" onClick={copy}>
+          {copied ? t('Nusxalandi ✓') : t('Manzilni nusxalash')}
+        </button>
+        {cur.used && (
+          <p className="mk-wr-used">{t('Bu stiker allaqachon sotilib faollashtirilgan — uni qayta yozmang.')}</p>
+        )}
+      </div>
+
+      <div className="mk-wr-nav">
+        <button type="button" className="btn" disabled={i === 0} onClick={() => setI(i - 1)}>← {t('Oldingi')}</button>
+        {cur.written
+          ? <button type="button" className="btn" disabled={busy} onClick={() => mark(false)}>{t('Belgini olib tashlash')}</button>
+          : <button type="button" className="btn btn-gold" disabled={busy} onClick={() => mark(true)}>{t('Yozildi ✓')}</button>}
+        <button type="button" className="btn" disabled={i >= list.length - 1} onClick={() => setI(i + 1)}>{t('Keyingi')} →</button>
+      </div>
+
+      {doneCount === list.length && (
+        <p className="mk-wr-all">{t('Hammasi yozildi. Endi konvertlarni qo‘shib do‘konga topshirsangiz bo‘ladi.')}</p>
+      )}
+    </AdminCard>
+  );
+}
+
 function Batch({ adminApi, t, products, apiErrText }) {
   const [productId, setProductId] = useState('');
   const [quantity, setQuantity] = useState(100);
@@ -539,7 +669,14 @@ function Batch({ adminApi, t, products, apiErrText }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
   const [batch, setBatch] = useState(null);
+  // Eski partiyaning stikerlarini yozishda davom etish uchun.
+  const [batches, setBatches] = useState(null);
+  const [openBatch, setOpenBatch] = useState('');
 
+  const loadBatches = () => {
+    adminApi('/marketplace/batches').then((d) => setBatches(d.batches || [])).catch(() => setBatches([]));
+  };
+  useEffect(loadBatches, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (!productId && products.length) setProductId(String(products[0].id)); }, [products, productId]);
 
   const create = async () => {
@@ -557,7 +694,15 @@ function Batch({ adminApi, t, products, apiErrText }) {
     return <EmptyState icon="tag" title={t('Avval faol mahsulot qo‘shing.')} hint={t('Kod har doim aniq mahsulotga tegishli bo‘ladi.')} />;
   }
 
-  if (batch) return <BatchResult batch={batch} t={t} onDone={() => setBatch(null)} />;
+  if (batch) return <BatchResult batch={batch} t={t} onDone={() => { setBatch(null); loadBatches(); }} adminApi={adminApi} apiErrText={apiErrText} />;
+  if (openBatch) {
+    return (
+      <StickerWriter
+        adminApi={adminApi} t={t} batchId={openBatch} apiErrText={apiErrText}
+        onClose={() => { setOpenBatch(''); loadBatches(); }}
+      />
+    );
+  }
 
   return (
     <AdminCard title={t('Batch yaratish')}>
@@ -583,13 +728,44 @@ function Batch({ adminApi, t, products, apiErrText }) {
         {busy ? <span className="loading loading-spinner loading-xs" /> : t('{n} ta kod yaratish', { n: quantity })}
       </button>
       {msg && <div role="alert" className="alert alert-error mt-3 py-2 text-xs"><span>{msg.text}</span></div>}
+
+      {/* OLDINGI PARTIYALAR.
+          100 ta stikerni bir o'tirishda yozib bo'lmaydi, ya'ni ertasi
+          kuni davom etish KERAK bo'ladi. Partiya ID si esa tasodifiy
+          token — uni qo'lda kiritib bo'lmasdi. */}
+      {batches && batches.length > 0 && (
+        <div className="mk-bt-list">
+          <div className="mk-bt-head">{t('Oldingi partiyalar')}</div>
+          {batches.map((b) => (
+            <div key={b.batchId} className="mk-bt-row">
+              <div className="mk-bt-info">
+                <b>{b.sku || t('Mahsulot o‘chirilgan')}</b>
+                <span>{t('{n} ta kod', { n: b.codes })} · {String(b.createdAt || '').slice(0, 10)}</span>
+              </div>
+              {b.stickers > 0 ? (
+                <>
+                  <span className={`mk-bt-count${b.written >= b.stickers ? ' is-done' : ''}`}>
+                    {b.written} / {b.stickers}
+                  </span>
+                  <button type="button" className="btn btn-sm" onClick={() => setOpenBatch(b.batchId)}>
+                    {b.written >= b.stickers ? t('Ko‘rish') : t('Yozishda davom etish')}
+                  </button>
+                </>
+              ) : (
+                <span className="mk-bt-none">{t('stikersiz')}</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </AdminCard>
   );
 }
 
 // ── BATCH NATIJASI: CHOP ETISH VA CSV ────────────────────────────────
-function BatchResult({ batch, t, onDone }) {
+function BatchResult({ batch, t, onDone, adminApi, apiErrText }) {
   const [acked, setAcked] = useState(false);
+  const [writing, setWriting] = useState(false);
   const codes = batch.codes || [];
   const sku = batch.product?.sku || '';
   const stickerCount = codes.filter((c) => c.chipToken).length;
@@ -670,7 +846,16 @@ function BatchResult({ batch, t, onDone }) {
         <button type="button" className="btn" onClick={stickersCsv} disabled={!stickerCount}>
           {t('Stiker manzillari (CSV)')}
         </button>
+        <button type="button" className="btn" onClick={() => setWriting(true)} disabled={!stickerCount}>
+          {t('Telefonda yozish')}
+        </button>
       </div>
+      {writing && (
+        <StickerWriter
+          adminApi={adminApi} t={t} batchId={batch.batchId}
+          apiErrText={apiErrText} onClose={() => setWriting(false)}
+        />
+      )}
       <p className="mk-hint">
         {t('Stiker manzillarini NFC yozuvchi dasturga bering — shu {n} ta manzil {n} ta chipga yoziladi. Ular kodlar bilan JUFTLASHTIRILMAGAN: qaysi stiker qaysi konvertga tushishi muhim emas, bog‘lanish xaridor stikerga tekkizganda hosil bo‘ladi.', { n: stickerCount })}
       </p>

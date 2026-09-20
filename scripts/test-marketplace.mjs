@@ -1458,6 +1458,15 @@ function gatedEnv(env, sqlNeedle) {
   // Eng muhim xabar aynan shu: juftlash SHART EMAS.
   checkTrue('24) "juftlik yo‘q" aytilgan', /BIRIKTIRILMAGAN — ataylab/.test(tab));
   checkTrue('24) aralash solish mumkinligi aytilgan', /ARALASH solsangiz ham/.test(tab));
+  // ENG XAVFLI TUSHUNMOVCHILIK: hamma stikerga bitta manzil yozish.
+  // Bunda birinchi faollashtirgan odamning profili HAMMAGA ochilib
+  // qolardi, ya'ni 100 ta stikerdan faqat bittasi ishlardi.
+  checkTrue('24) "har birida boshqa manzil" ogohlantirishi',
+    /HAR BIR stikerda BOSHQA manzil/.test(tab));
+  checkTrue('24) savolda ham javob bor',
+    /Hamma stikerga bir xil manzil yozsam/.test(tab));
+  checkTrue('24) yarim qolgan ishni davom ettirish aytilgan',
+    /bir o‘tirishda yozolmasam/.test(tab));
   // Ekran o'qigich uchun: chizma bezak emas, ma'no tashiydi.
   const arts = tab.match(/<svg viewBox/g) || [];
   const labels = tab.match(/role="img" aria-label=/g) || [];
@@ -1476,6 +1485,100 @@ function gatedEnv(env, sqlNeedle) {
     const re = new RegExp(`'${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}': \\{ ru: '[^']+', en: '[^']+' \\}`);
     checkTrue(`24) tarjima: ${key}`, re.test(tr));
   }
+}
+
+// ── 25) STIKER RO'YXATI QAYTA OCHILADI ───────────────────
+//
+// XATO SHU EDI: stiker manzillari ham kodlar bilan bir xil
+// muomalada edi — FAQAT batch yaratilgan lahzada ko'rinardi.
+//
+// Lekin ular bir xil emas: KOD sir (bazada faqat xeshi turadi),
+// TOKEN esa sir emas — u chipning o'zida yozilgan va uni har
+// qanday telefon o'qiy oladi.
+//
+// Amalda bu ish tartibini buzardi: telefonda NFC Tools bilan
+// bittalab yozish soatlab davom etadi, ekran yopilsa esa qolgan
+// stikerlar YOZILMAY QOLARDI va ro'yxatni qaytarib bo'lmasdi.
+{
+  const env = await setup();
+  const product = await makeProduct(env);
+  const batch = await makeCodes(env, product.id, 3);
+
+  // ── RO'YXAT SERVERDAN QAYTA OLINADI ─────────────────
+  const res = await call(env, `/api/admin/marketplace/stickers?batchId=${encodeURIComponent(batch.batchId)}`, { cookie: cookie.admin });
+  check('25) ro‘yxat ochildi', res.status, 200);
+  const data = await jsonOf(res);
+  check('25) uchala stiker ham bor', data.stickers.length, 3);
+  check('25) hali hech biri yozilmagan', data.writtenCount, 0);
+  // Tokenlar batchdagilar bilan AYNAN bir xil bo'lsin — aks holda
+  // odam boshqa manzilni chipga yozib qo'yardi.
+  check('25) tokenlar mos keladi',
+    data.stickers.map((x) => x.chipToken).sort().join(','),
+    batch.codes.map((c) => c.chipToken).sort().join(','));
+
+  // ── KOD BU JAVOBGA TUSHMAYDI ─────────────────────
+  const raw = JSON.stringify(data);
+  const leaked = batch.codes.filter((c) => raw.includes(c.code) || raw.includes(normalizeActivationCode(c.code)));
+  check('25) javobda aktivatsiya kodi yo‘q', leaked.length, 0);
+
+  // ── "YOZILDI" BELGISI SERVERDA ────────────────────
+  const first = data.stickers[0];
+  const mark = await call(env, `/api/admin/marketplace/stickers/${first.id}/written`, {
+    method: 'POST', cookie: cookie.admin, json: { written: true },
+  });
+  check('25) belgilandi', mark.status, 200);
+  const after = await jsonOf(await call(env, `/api/admin/marketplace/stickers?batchId=${encodeURIComponent(batch.batchId)}`, { cookie: cookie.admin }));
+  check('25) belgi saqlandi', after.writtenCount, 1);
+  checkTrue('25) aynan o‘sha stiker', after.stickers.find((x) => x.id === first.id).written);
+  // Xato bosilgan bo'lsa qaytarib olish mumkin.
+  await call(env, `/api/admin/marketplace/stickers/${first.id}/written`, {
+    method: 'POST', cookie: cookie.admin, json: { written: false },
+  });
+  check('25) belgi qaytarib olindi',
+    (await jsonOf(await call(env, `/api/admin/marketplace/stickers?batchId=${encodeURIComponent(batch.batchId)}`, { cookie: cookie.admin }))).writtenCount, 0);
+
+  // ── SOTILGAN STIKER AJRATIB KO'RSATILADI ──────────────
+  //
+  // Faollashgan stikerni qayta yozish mijozning kartasini
+  // o'ldirardi, shuning uchun u jim o'tib ketmaydi.
+  await call(env, '/api/activate', {
+    method: 'POST', cookie: cookie.user,
+    json: { code: batch.codes[1].code, profileKind: 'personal', deviceToken: batch.codes[1].chipToken },
+  });
+  const used = await jsonOf(await call(env, `/api/admin/marketplace/stickers?batchId=${encodeURIComponent(batch.batchId)}`, { cookie: cookie.admin }));
+  checkTrue('25) sotilgan stiker belgilangan', used.stickers.find((x) => x.chipToken === batch.codes[1].chipToken).used);
+  checkTrue('25) sotilmagani belgilanmagan', !used.stickers.find((x) => x.chipToken === batch.codes[0].chipToken).used);
+
+  // ── PARTIYALAR RO'YXATI ──────────────────────────
+  const bl = await jsonOf(await call(env, '/api/admin/marketplace/batches', { cookie: cookie.admin }));
+  const mine = bl.batches.find((b) => b.batchId === batch.batchId);
+  checkTrue('25) partiya ro‘yxatda', !!mine);
+  check('25) kodlar soni', mine.codes, 3);
+  check('25) stikerlar soni', mine.stickers, 3);
+  check('25) SKU ko‘rinadi', mine.sku, product.sku);
+
+  // ── HIMOYA ───────────────────────────────────
+  check('25) ro‘yxat mehmonga yopiq', (await call(env, `/api/admin/marketplace/stickers?batchId=${batch.batchId}`)).status, 401);
+  check('25) ro‘yxat oddiy userga yopiq', (await call(env, `/api/admin/marketplace/stickers?batchId=${batch.batchId}`, { cookie: cookie.user })).status, 401);
+  check('25) belgilash mehmonga yopiq', (await call(env, `/api/admin/marketplace/stickers/${first.id}/written`, { method: 'POST', json: {} })).status, 401);
+  check('25) partiya ID majburiy', (await call(env, '/api/admin/marketplace/stickers', { cookie: cookie.admin })).status, 422);
+  // Marketplace'ga tegishli BO'LMAGAN qurilmani bu yo'l bilan
+  // o'zgartirib bo'lmaydi.
+  await env.DB.prepare(`INSERT INTO physical_cards (chip_token, owner_user_id) VALUES ('CHIP-OUTSIDE', 2)`).run();
+  const outside = await env.DB.prepare(`SELECT id FROM physical_cards WHERE chip_token = 'CHIP-OUTSIDE'`).first();
+  check('25) begona qurilmaga tegmaydi',
+    (await call(env, `/api/admin/marketplace/stickers/${outside.id}/written`, { method: 'POST', cookie: cookie.admin, json: {} })).status, 404);
+
+  // ── MANBA QOIDALARI ──────────────────────────────
+  const mk = stripComments(read('../hosting/api/marketplace.js'));
+  // Parallel jadval YARATILMADI — mavjud `physical_cards` ga ustun.
+  checkTrue('25) yangi stiker jadvali yo‘q', !/CREATE TABLE[\s\S]{0,60}marketplace_(stickers|devices|chips)/.test(mk));
+  checkTrue('25) mavjud jadvalga ustun qo‘shildi', /ALTER TABLE physical_cards ADD COLUMN marketplace_batch_id TEXT/.test(mk));
+  const tab = stripComments(read('../src/components/admin/MarketplaceTab.jsx'));
+  checkTrue('25) yozish ekrani bor', /function StickerWriter\(/.test(tab));
+  // Joy SERVERDA eslanadi: telefon almashsa ham yo'qolmasin.
+  checkTrue('25) joy localStorage’da saqlanmaydi', !/localStorage[\s\S]{0,120}(written|sticker)/i.test(tab));
+  checkTrue('25) eski partiyani ochish mumkin', /marketplace\/batches/.test(tab) && /setOpenBatch/.test(tab));
 }
 
 done();
