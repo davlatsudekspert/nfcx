@@ -1291,4 +1291,18 @@ class LUz extends L {
 
   @override
   String get siteCardCta => 'Saytga o‘tish';
+
+  @override
+  String get privacyPublicProfile => 'Profil ommaviy';
+
+  @override
+  String get privacyPublicHint =>
+      'Yoqilgan bo‘lsa, profilingiz “Tanlov” ro‘yxatida va ommaviy katalogda ko‘rinadi. O‘chirsangiz, profil faqat to‘g‘ridan-to‘g‘ri havola yoki NFC karta orqali ochiladi.';
+
+  @override
+  String get notifOnDeviceHint => 'Tanlovlar shu qurilmada saqlanadi.';
+
+  @override
+  String get paymentNotConfiguredHint =>
+      'Hozircha onlayn to‘lov usullari yoqilmagan. Biroz keyinroq urinib ko‘ring yoki saytdan buyurtma bering.';
 }

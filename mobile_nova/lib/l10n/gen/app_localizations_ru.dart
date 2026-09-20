@@ -1283,4 +1283,18 @@ class LRu extends L {
 
   @override
   String get siteCardCta => 'Перейти на сайт';
+
+  @override
+  String get privacyPublicProfile => 'Профиль публичный';
+
+  @override
+  String get privacyPublicHint =>
+      'Если включено, профиль виден в разделе «Выбор» и в публичном каталоге. Если выключить, профиль откроется только по прямой ссылке или через NFC-карту.';
+
+  @override
+  String get notifOnDeviceHint => 'Настройки сохраняются на этом устройстве.';
+
+  @override
+  String get paymentNotConfiguredHint =>
+      'Онлайн-оплата пока недоступна. Попробуйте позже или оформите заказ на сайте.';
 }

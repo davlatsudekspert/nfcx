@@ -474,5 +474,21 @@
   "demoAddToCart": "Связаться",
   "siteCardTitle": "nfcstore.uz",
   "siteCardBody": "NFC-карты, заказ и полный каталог — на сайте.",
-  "siteCardCta": "Перейти на сайт"
+  "siteCardCta": "Перейти на сайт",
+  "privacyPublicProfile": "Профиль публичный",
+  "@privacyPublicProfile": {
+    "description": "Maxfiylik / bildirishnoma / to‘lov holati matni"
+  },
+  "privacyPublicHint": "Если включено, профиль виден в разделе «Выбор» и в публичном каталоге. Если выключить, профиль откроется только по прямой ссылке или через NFC-карту.",
+  "@privacyPublicHint": {
+    "description": "Maxfiylik / bildirishnoma / to‘lov holati matni"
+  },
+  "notifOnDeviceHint": "Настройки сохраняются на этом устройстве.",
+  "@notifOnDeviceHint": {
+    "description": "Maxfiylik / bildirishnoma / to‘lov holati matni"
+  },
+  "paymentNotConfiguredHint": "Онлайн-оплата пока недоступна. Попробуйте позже или оформите заказ на сайте.",
+  "@paymentNotConfiguredHint": {
+    "description": "Maxfiylik / bildirishnoma / to‘lov holati matni"
+  }
 }

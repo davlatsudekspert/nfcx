@@ -474,5 +474,21 @@
   "demoAddToCart": "Get in touch",
   "siteCardTitle": "nfcstore.uz",
   "siteCardBody": "NFC cards, physical orders and the full catalog — on the site.",
-  "siteCardCta": "Open the site"
+  "siteCardCta": "Open the site",
+  "privacyPublicProfile": "Public profile",
+  "@privacyPublicProfile": {
+    "description": "Maxfiylik / bildirishnoma / to‘lov holati matni"
+  },
+  "privacyPublicHint": "When on, your profile appears in Discover and the public catalogue. Turn it off and the profile opens only via a direct link or an NFC card.",
+  "@privacyPublicHint": {
+    "description": "Maxfiylik / bildirishnoma / to‘lov holati matni"
+  },
+  "notifOnDeviceHint": "Choices are saved on this device.",
+  "@notifOnDeviceHint": {
+    "description": "Maxfiylik / bildirishnoma / to‘lov holati matni"
+  },
+  "paymentNotConfiguredHint": "Online payment is not available yet. Try again later or order from the website.",
+  "@paymentNotConfiguredHint": {
+    "description": "Maxfiylik / bildirishnoma / to‘lov holati matni"
+  }
 }

@@ -45,13 +45,19 @@ const testIds = [
 /// Testda haqiqiy so'rov yuborilsa natija tarmoqqa bog'liq bo'lardi —
 /// ya'ni test beqaror bo'lardi.
 class FakeAuthRepository extends AuthRepository {
-  FakeAuthRepository({this.signedIn = true}) : super(ApiClient());
+  FakeAuthRepository({this.signedIn = true, List<NfcId>? ids})
+      : ids = ids ?? testIds,
+        super(ApiClient());
 
   final bool signedIn;
 
+  /// Sinov uchun boshqa NFC ID ro'yxati (masalan `hiddenFromDirectory`
+  /// yoqilgan profil).
+  final List<NfcId> ids;
+
   @override
   Future<Result<({User user, List<NfcId> ids})>> restore() async => signedIn
-      ? const Ok((user: testUser, ids: testIds))
+      ? Ok((user: testUser, ids: ids))
       : const Err(AppError(AppErrorKind.unauthorized));
 
   @override

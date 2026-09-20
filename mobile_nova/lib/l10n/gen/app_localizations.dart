@@ -2594,6 +2594,30 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Saytga o‘tish'**
   String get siteCardCta;
+
+  /// Maxfiylik / bildirishnoma / to‘lov holati matni
+  ///
+  /// In uz, this message translates to:
+  /// **'Profil ommaviy'**
+  String get privacyPublicProfile;
+
+  /// Maxfiylik / bildirishnoma / to‘lov holati matni
+  ///
+  /// In uz, this message translates to:
+  /// **'Yoqilgan bo‘lsa, profilingiz “Tanlov” ro‘yxatida va ommaviy katalogda ko‘rinadi. O‘chirsangiz, profil faqat to‘g‘ridan-to‘g‘ri havola yoki NFC karta orqali ochiladi.'**
+  String get privacyPublicHint;
+
+  /// Maxfiylik / bildirishnoma / to‘lov holati matni
+  ///
+  /// In uz, this message translates to:
+  /// **'Tanlovlar shu qurilmada saqlanadi.'**
+  String get notifOnDeviceHint;
+
+  /// Maxfiylik / bildirishnoma / to‘lov holati matni
+  ///
+  /// In uz, this message translates to:
+  /// **'Hozircha onlayn to‘lov usullari yoqilmagan. Biroz keyinroq urinib ko‘ring yoki saytdan buyurtma bering.'**
+  String get paymentNotConfiguredHint;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

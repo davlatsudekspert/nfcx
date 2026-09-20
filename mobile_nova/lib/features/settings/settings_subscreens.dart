@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/profile_context.dart';
 import '../../app/providers.dart';
 import '../../core/utils/external_link.dart';
 import '../../core/utils/result.dart';
@@ -418,12 +419,24 @@ class NotificationsSettingsScreen extends ConsumerStatefulWidget {
 
 class _NotificationsSettingsScreenState
     extends ConsumerState<NotificationsSettingsScreen> {
-  final _values = <String, bool>{
+  /// Standart holat. `news` — reklama xabarlari, shuning uchun
+  /// yoqilgan holda EMAS, o'chiq holda boshlanadi.
+  static const _defaults = <String, bool>{
     'scan': true,
     'social': true,
     'orders': true,
     'news': false,
   };
+
+  late final Map<String, bool> _values = {
+    for (final e in _defaults.entries)
+      e.key: ref.read(prefsProvider).notif(e.key, fallback: e.value),
+  };
+
+  Future<void> _set(String key, bool v) async {
+    setState(() => _values[key] = v);
+    await ref.read(prefsProvider).setNotif(key, v);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -462,7 +475,7 @@ class _NotificationsSettingsScreenState
                         Switch(
                           value: _values[r.$1]!,
                           activeThumbColor: t.accent2,
-                          onChanged: (v) => setState(() => _values[r.$1] = v),
+                          onChanged: (v) => _set(r.$1, v),
                         ),
                       ],
                     ),
@@ -471,10 +484,18 @@ class _NotificationsSettingsScreenState
             ),
           ),
           const SizedBox(height: Gap.lg),
-          Text(
-            l.devBackendRequired,
-            textAlign: TextAlign.center,
-            style: AppType.monoStyle(color: t.text3, size: 10.5),
+          // Ilgari bu yerda "BACKEND ENDPOINT REQUIRED" degan
+          // ishlab-chiquvchi yozuvi turardi — foydalanuvchi uchun
+          // bu shunchaki buzuq ekran taassuroti berardi.
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Gap.sm),
+            child: Text(
+              l.notifOnDeviceHint,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: t.text3),
+            ),
           ),
         ],
       ),
@@ -482,21 +503,81 @@ class _NotificationsSettingsScreenState
   }
 }
 
-class PrivacySettingsScreen extends StatefulWidget {
+/// MAXFIYLIK.
+///
+/// Bu ekran ilgari YOLG'ON gapirardi: ikkita tugma bor edi, lekin
+/// ularning qiymati hech qayerda saqlanmasdi va hech narsaga
+/// ta'sir qilmasdi. Foydalanuvchi "Profil ommaviy" ni o'chirib,
+/// profili yashirilgan deb o'ylardi — aslida u katalogda turaverardi.
+/// Maxfiylikda bu oddiy o'lik tugmadan ham yomon.
+///
+/// Endi tugma HAQIQIY maydonga ulangan: `cards.hidden_from_directory`.
+/// Server uni allaqachon qabul qilar va qaytarar edi — ilova shunchaki
+/// so'ramagan. `worker.js` dagi barcha katalog so'rovlari
+/// (`Tanlov`, biznes katalogi, ommaviy sovg'alar devori) aynan shu
+/// ustun bo'yicha filtrlaydi.
+///
+/// "Ko'rishlar statistikasi" tugmasi OLIB TASHLANDI: unga mos ustun
+/// backend'da yo'q, ya'ni uni bajarib bo'lmaydigan va'da edi.
+class PrivacySettingsScreen extends ConsumerStatefulWidget {
   const PrivacySettingsScreen({super.key});
 
   @override
-  State<PrivacySettingsScreen> createState() => _PrivacySettingsScreenState();
+  ConsumerState<PrivacySettingsScreen> createState() =>
+      _PrivacySettingsScreenState();
 }
 
-class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
-  bool _publicProfile = true;
-  bool _showStats = true;
+class _PrivacySettingsScreenState
+    extends ConsumerState<PrivacySettingsScreen> {
+  /// Saqlash ketayotganda tugma qayta bosilmasin.
+  bool _saving = false;
+
+  /// Optimistik qiymat: so'rov ketayotganda tugma darhol siljiydi,
+  /// xato bo'lsa joyiga QAYTADI.
+  bool? _pending;
+
+  Future<void> _setPublic(NfcId id, bool public) async {
+    if (_saving) return;
+    setState(() {
+      _saving = true;
+      _pending = public;
+    });
+
+    final res = await ref.read(profileRepositoryProvider).updateProfile(
+          code: id.code,
+          hiddenFromDirectory: !public,
+        );
+    if (!mounted) return;
+
+    switch (res) {
+      case Ok():
+        // Ro'yxat sessiyadan keladi — saqlagandan keyin uni
+        // yangilamasak, ekrandan chiqib qaytganda ESKI qiymat
+        // ko'rinardi va tugma "o'zi qaytib qoldi" bo'lib tuyulardi.
+        await ref.read(sessionProvider.notifier).refresh();
+        if (!mounted) return;
+        setState(() {
+          _saving = false;
+          _pending = null;
+        });
+      case Err(:final error):
+        setState(() {
+          _saving = false;
+          _pending = null;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(describeError(L.of(context), error))),
+        );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final l = L.of(context);
     final t = context.tokens;
+    final id = ref.watch(activePersonalProvider);
+    final public = _pending ?? (id == null ? true : !id.hiddenFromDirectory);
+
     return NovaScaffold(
       title: l.settingsPrivacy,
       showBack: true,
@@ -525,27 +606,25 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
           FloatingSurface(
             solid: true,
             padding: const EdgeInsets.symmetric(vertical: Gap.xs),
-            child: Column(
-              children: [
-                _Toggle(
-                  icon: Icons.public_rounded,
-                  label: l.profileLinks,
-                  value: _publicProfile,
-                  onChanged: (v) => setState(() => _publicProfile = v),
-                ),
-                _Toggle(
-                  icon: Icons.insights_rounded,
-                  label: l.nfcViews,
-                  value: _showStats,
-                  onChanged: (v) => setState(() => _showStats = v),
-                ),
-              ],
+            child: _Toggle(
+              icon: Icons.public_rounded,
+              label: l.privacyPublicProfile,
+              value: public,
+              onChanged:
+                  id == null || _saving ? null : (v) => _setPublic(id, v),
             ),
           ),
-          const SizedBox(height: Gap.lg),
-          Text(l.devBackendRequired,
-              textAlign: TextAlign.center,
-              style: AppType.monoStyle(color: t.text3, size: 10.5)),
+          const SizedBox(height: Gap.md),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Gap.sm),
+            child: Text(
+              l.privacyPublicHint,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: t.text3),
+            ),
+          ),
         ],
       ),
     );
@@ -563,7 +642,9 @@ class _Toggle extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool value;
-  final ValueChanged<bool> onChanged;
+
+  /// `null` — saqlash ketyapti yoki profil hali kelmagan.
+  final ValueChanged<bool>? onChanged;
 
   @override
   Widget build(BuildContext context) {

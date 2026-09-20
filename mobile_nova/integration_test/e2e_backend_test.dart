@@ -1993,11 +1993,24 @@ void main() {
       final shareCode = await probe(sharePath);
       final homeCode = await probe('/');
 
+      // KICHIK HARFLI VARIANTNI HAM SINAYMIZ.
+      //
+      // `worker.js` profil manifestida yo'lni `/${code.toLowerCase()}`
+      // deb quradi, `NfcId.publicUrl` esa kodni KATTA harfda
+      // qoldiradi. Agar kichik harfli manzil ochilsa-yu kattasi
+      // ochilmasa — bu backend emas, ILOVA tomonidagi kamchilik va
+      // uni ilovada tuzatish kerak. Shuni ajratmasdan turib
+      // "backend aybdor" deyish taxmin bo'lardi.
+      final lowerPath = '/${Uri.encodeComponent(code.toLowerCase())}';
+      final lowerCode =
+          lowerPath == sharePath ? shareCode : await probe(lowerPath);
+
       final trace = Trace(
         method: 'GET',
         path: sharePath,
         status: shareCode,
-        response: 'bosh sahifa `/` -> HTTP $homeCode',
+        response: 'bosh sahifa `/` -> HTTP $homeCode, '
+            'kichik harf `$lowerPath` -> HTTP $lowerCode',
       );
 
       if (shareCode >= 200 && shareCode < 400) {
@@ -2021,6 +2034,22 @@ void main() {
               'tomoni yiqilgan — ilovadagi kamchilik emas',
           layer: 'backend',
         ));
+      } else if (lowerCode >= 200 && lowerCode < 400) {
+        // Kichik harfli manzil ISHLAYDI — demak sayt tirik va
+        // aybdor ilova: u kodni katta harfda yuboryapti.
+        report.add(MatrixRow(
+          name: 'Lenta — ulashish havolasi',
+          verdict: Verdict.fail,
+          screen: 'FeedCard',
+          action: 'ulashiladigan manzilni ochish',
+          trace: trace,
+          cause: 'KATTA harfli manzil HTTP $shareCode, KICHIK harfli '
+              'manzil esa HTTP $lowerCode — ya\'ni sayt ishlaydi, '
+              'ilova manzilni noto\'g\'ri quryapti. Tuzatish '
+              '`NfcId.publicUrl` ichida: kod kichik harfga '
+              'o\'tkazilishi kerak',
+          layer: 'frontend',
+        ));
       } else {
         report.add(MatrixRow(
           name: 'Lenta — ulashish havolasi',
@@ -2033,7 +2062,9 @@ void main() {
               'ochilmaydi. Bu manzilni Profil, NFC ID, Istorya va '
               'Reels ham AYNAN shunday quradi (`NfcId.publicUrl`), '
               'ya\'ni kamchilik lenta kartasiga xos emas va Stage 1 '
-              'bilan kelmagan',
+              'bilan kelmagan. Kichik harfli manzil ham HTTP '
+              '$lowerCode qaytardi, ya\'ni bu harf registri masalasi '
+              'EMAS',
           layer: 'backend',
         ));
       }

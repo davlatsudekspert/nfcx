@@ -1289,4 +1289,18 @@ class LEn extends L {
 
   @override
   String get siteCardCta => 'Open the site';
+
+  @override
+  String get privacyPublicProfile => 'Public profile';
+
+  @override
+  String get privacyPublicHint =>
+      'When on, your profile appears in Discover and the public catalogue. Turn it off and the profile opens only via a direct link or an NFC card.';
+
+  @override
+  String get notifOnDeviceHint => 'Choices are saved on this device.';
+
+  @override
+  String get paymentNotConfiguredHint =>
+      'Online payment is not available yet. Try again later or order from the website.';
 }

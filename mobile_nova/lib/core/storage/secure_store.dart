@@ -82,6 +82,7 @@ class Prefs {
   static const _kRules = 'nova.contentRulesAccepted';
   static const _kLock = 'nova.appLock';
   static const _kLockBio = 'nova.appLockBiometric';
+  static const _kNotif = 'nova.notif.';
 
   String? get themeId => _p.getString(_kTheme);
   Future<void> setThemeId(String v) => _p.setString(_kTheme, v);
@@ -108,6 +109,19 @@ class Prefs {
   /// Qulfni biometrika bilan ochishga ruxsat.
   bool get appLockBiometric => _p.getBool(_kLockBio) ?? true;
   Future<void> setAppLockBiometric(bool v) => _p.setBool(_kLockBio, v);
+
+  /// BILDIRISHNOMA TANLOVLARI — QURILMADA.
+  ///
+  /// Backend'da push ro'yxati yo'q, shuning uchun serverga yuborish
+  /// soxta bo'lardi. Ilgari bu tanlovlar UMUMAN saqlanmasdi: ekrandan
+  /// chiqib qaytilsa, tugmalar o'z holiga qaytib qolardi va bu
+  /// "buzuq" bo'lib ko'rinardi. Endi hech bo'lmasa qurilmada qoladi —
+  /// ekrandagi yozuv ham aynan shuni aytadi.
+  bool notif(String key, {bool fallback = true}) =>
+      _p.getBool('$_kNotif$key') ?? fallback;
+
+  Future<void> setNotif(String key, bool v) =>
+      _p.setBool('$_kNotif$key', v);
 
   List<String> get recentSearches => _p.getStringList(_kSearches) ?? const [];
 

@@ -128,6 +128,7 @@ class NfcId {
     this.kind = NfcIdKind.personal,
     this.cardLinked = false,
     this.musicUrls = const [],
+    this.hiddenFromDirectory = false,
     this.createdAt,
   });
 
@@ -160,6 +161,19 @@ class NfcId {
   /// YO'Q — faqat manzil. Shuning uchun ilova ularni o'zidan
   /// to'qimaydi.
   final List<String> musicUrls;
+
+  /// Profil ommaviy katalogdan YASHIRILGANMI.
+  ///
+  /// Backend'da `cards.hidden_from_directory` ustuni. `true` bo'lsa
+  /// yozuv "Tanlov" ro'yxatiga, biznes katalogiga va ommaviy
+  /// sovg'alar devoriga TUSHMAYDI (`worker.js` dagi barcha katalog
+  /// so'rovlari `hidden_from_directory = 0` bilan filtrlaydi).
+  ///
+  /// Server buni ANCHADAN BERI qaytarardi va qabul qilardi, lekin
+  /// model uni tashlab yuborar edi — shuning uchun Maxfiylik
+  /// ekranidagi tugma hech narsaga ulanmagan edi.
+  final bool hiddenFromDirectory;
+
   final DateTime? createdAt;
 
   /// Ommaviy profil manzili — QR va "ulashish" uchun.
@@ -179,12 +193,27 @@ class NfcId {
         followers: _i(j['followers']),
         following: _i(j['following']),
         posts: _i(j['posts']),
-        kind: _s(j['type']) == 'business' || _b(j['isCompany'])
+        // TUR — SERVER `profileType` YUBORADI.
+        //
+        // Ilgari bu yerda faqat `type` va `isCompany` o'qilardi.
+        // Karta serializeri (`rowToRecord`) ularning BIRORTASINI
+        // yubormaydi — u `profileType: 'personal'|'expert'|'business'`
+        // yuboradi. Ya'ni foydalanuvchining biznes turidagi kartasi
+        // ham DOIM shaxsiy bo'lib o'qilardi va NFC ro'yxatida
+        // noto'g'ri rang/belgi bilan chizilardi.
+        //
+        // `expert` — shaxsiy profilning bir ko'rinishi, shuning uchun
+        // u shaxsiy bo'lib qoladi.
+        kind: _s(j['profileType']) == 'business' ||
+                _s(j['type']) == 'business' ||
+                _b(j['isCompany'])
             ? NfcIdKind.business
             : NfcIdKind.personal,
         cardLinked: _b(j['cardLinked'] ?? j['hasCard']) ||
             _s(j['chipToken']).isNotEmpty,
         musicUrls: _musicUrls(j),
+        hiddenFromDirectory: _b(j['hiddenFromDirectory'] ??
+            j['hidden_from_directory']),
         createdAt: _dt(j['createdAt'] ?? j['created_at']),
       );
 }

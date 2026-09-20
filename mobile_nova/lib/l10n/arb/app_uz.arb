@@ -474,5 +474,21 @@
   "demoAddToCart": "Bog‘lanish",
   "siteCardTitle": "nfcstore.uz",
   "siteCardBody": "NFC kartalar, jismoniy buyurtma va to‘liq katalog — saytda.",
-  "siteCardCta": "Saytga o‘tish"
+  "siteCardCta": "Saytga o‘tish",
+  "privacyPublicProfile": "Profil ommaviy",
+  "@privacyPublicProfile": {
+    "description": "Maxfiylik / bildirishnoma / to‘lov holati matni"
+  },
+  "privacyPublicHint": "Yoqilgan bo‘lsa, profilingiz “Tanlov” ro‘yxatida va ommaviy katalogda ko‘rinadi. O‘chirsangiz, profil faqat to‘g‘ridan-to‘g‘ri havola yoki NFC karta orqali ochiladi.",
+  "@privacyPublicHint": {
+    "description": "Maxfiylik / bildirishnoma / to‘lov holati matni"
+  },
+  "notifOnDeviceHint": "Tanlovlar shu qurilmada saqlanadi.",
+  "@notifOnDeviceHint": {
+    "description": "Maxfiylik / bildirishnoma / to‘lov holati matni"
+  },
+  "paymentNotConfiguredHint": "Hozircha onlayn to‘lov usullari yoqilmagan. Biroz keyinroq urinib ko‘ring yoki saytdan buyurtma bering.",
+  "@paymentNotConfiguredHint": {
+    "description": "Maxfiylik / bildirishnoma / to‘lov holati matni"
+  }
 }

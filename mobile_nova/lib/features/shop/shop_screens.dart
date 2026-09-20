@@ -406,11 +406,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             error: (e, __) => StatePanel.fromError(context, asAppError(e),
                 onRetry: () => ref.invalidate(paymentProvidersProvider)),
             data: (enabled) => enabled.isEmpty
-                // CONFIG REQUIRED — backend'da hech bir provayder yoqilmagan.
+                // Backend'da hech bir to'lov provayderi yoqilmagan.
+                // Ilgari bu yerda "CONFIG REQUIRED" chiqardi — xarid
+                // qilmoqchi bo'lgan odamga hech nima aytmaydigan
+                // ishlab-chiquvchi yozuvi.
                 ? StatePanel(
                     icon: Icons.credit_card_off_rounded,
                     title: l.paymentNotConfigured,
-                    message: l.devConfigRequired,
+                    message: l.paymentNotConfiguredHint,
                     tone: t.warn,
                   )
                 : Column(

@@ -51,6 +51,7 @@ class ProfileRepository {
     String? avatarUrl,
     String? coverUrl,
     List<String>? musicUrls,
+    bool? hiddenFromDirectory,
     Map<String, dynamic>? links,
   }) async {
     final cur =
@@ -73,6 +74,11 @@ class ProfileRepository {
     if (coverUrl != null) body['bgUrl'] = storageUrl(coverUrl);
     if (musicUrls != null) {
       body['musicUrls'] = musicUrls.map(storageUrl).toList();
+    }
+    // Server buni `body` da BOOLEAN kutadi (`=== true` bilan
+    // tekshiradi) va `hidden_from_directory` ustuniga yozadi.
+    if (hiddenFromDirectory != null) {
+      body['hiddenFromDirectory'] = hiddenFromDirectory;
     }
     if (links != null) body.addAll(links);
 
