@@ -653,6 +653,14 @@ void main() {
       print('[E2E] eski sinov posti o\'chirildi: $sweptPosts ta');
     }
 
+    // ARALASHUV O'LCHOVI.
+    //
+    // Post yaratish STORY soniga tegmasligi kerak — ikkalasi
+    // ayrim endpoint va ayrim ro'yxat. Buni haqiqiy serverda
+    // sanab tekshiramiz, "shunday bo'lishi kerak" deb emas.
+    final storyCountBeforePost =
+        (await social.storiesOf(code)).valueOrNull?.length;
+
     // ── TEST POST yaratish ─────────────────────────────────────
     int? postId;
     // Server post uchun MEDIA talab qiladi, shuning uchun yuklash
@@ -684,6 +692,28 @@ void main() {
             screen: 'PostComposer',
             action: 'POST /api/records/:code/posts',
             note: 'id=${value.id}');
+
+        // POST STORYGA AYLANMADIMI.
+        final storyCountAfterPost =
+            (await social.storiesOf(code)).valueOrNull?.length;
+        if (storyCountBeforePost == null || storyCountAfterPost == null) {
+          partial('Post story soniga tegmaydi',
+              screen: 'PostComposer',
+              action: 'post yaratish → istorya sonini qayta sanash',
+              cause: 'istorya ro\'yxati o\'qilmadi');
+        } else if (storyCountBeforePost == storyCountAfterPost) {
+          report.pass('Post story soniga tegmaydi',
+              screen: 'PostComposer',
+              action: 'post yaratish → istorya sonini qayta sanash',
+              note: 'istorya soni $storyCountAfterPost — o\'zgarmadi');
+        } else {
+          fail('Post story soniga tegmaydi',
+              screen: 'PostComposer',
+              action: 'post yaratish → istorya sonini qayta sanash',
+              cause: 'post yaratilgach istorya soni '
+                  '$storyCountBeforePost → $storyCountAfterPost',
+              pathHint: '/stories');
+        }
 
         // Kontent qoidalari HAQIQATAN serverga yetdimi — bu post
         // yaratilganining o'zi isbot: `agreed` bo'lmasa 422 kelardi.
@@ -928,6 +958,12 @@ void main() {
               .toSet() ??
           <int>{};
 
+      // ARALASHUV O'LCHOVI — teskari yo'nalish.
+      //
+      // Story yaratish POST soniga tegmasligi kerak.
+      final postCountBeforeStory =
+          (await social.postsOf(writeCode)).valueOrNull?.length;
+
       // IZOHDA MARKER — keyingi ishga tushirish buni o'ziniki deb
       // ANIQ taniydi va xavfsiz o'chiradi.
       final st = await social.createStory(
@@ -983,6 +1019,30 @@ void main() {
                   note: 'istorya serverda saqlandi (id=${made.id}); '
                       'profil=$writeCode; tozalangan eski sinov '
                       'istoryasi=$swept');
+
+              // STORY POSTGA AYLANMADIMI.
+              final postCountAfterStory =
+                  (await social.postsOf(writeCode)).valueOrNull?.length;
+              if (postCountBeforeStory == null ||
+                  postCountAfterStory == null) {
+                partial('Story post soniga tegmaydi',
+                    screen: 'StoryComposer',
+                    action: 'istorya yaratish → post sonini qayta sanash',
+                    cause: 'post ro\'yxati o\'qilmadi');
+              } else if (postCountBeforeStory == postCountAfterStory) {
+                report.pass('Story post soniga tegmaydi',
+                    screen: 'StoryComposer',
+                    action: 'istorya yaratish → post sonini qayta sanash',
+                    note: 'profil=$writeCode; post soni '
+                        '$postCountAfterStory — o\'zgarmadi');
+              } else {
+                fail('Story post soniga tegmaydi',
+                    screen: 'StoryComposer',
+                    action: 'istorya yaratish → post sonini qayta sanash',
+                    cause: 'istorya yaratilgach post soni '
+                        '$postCountBeforeStory → $postCountAfterStory',
+                    pathHint: '/posts');
+              }
 
               // KO'RILDI deb belgilash — `POST /api/stories/:id/view`.
               // Bu endpoint BOR; hujjatda xato ravishda "BACKEND
