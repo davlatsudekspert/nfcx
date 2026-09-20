@@ -1876,6 +1876,25 @@ function gatedEnv(env, sqlNeedle) {
   const page = stripComments(read('../src/pages/ActivatePage.jsx'));
   checkTrue('27) bog‘lanmagan bo‘lsa tegizish so‘raladi', /deviceBound/.test(page));
   checkTrue('27) talab ko‘rinarli', /ac-hint-do/.test(page));
+
+  // ── BOSHQA BRAUZERDA OCHILISHI ─────────────────────
+  //
+  // HAQIQIY HOLAT (sinovda chiqdi): odam QR ni BIR brauzerda
+  // skanerlab faollashtiradi, telefonni stikerga tekkizganda esa
+  // iOS havolani STANDART brauzerda (Safari) ochadi. Boshqa
+  // brauzer — boshqa sessiya: u yerda odam KIRMAGAN va bog'lash
+  // 401 bilan rad etilardi. Unga bo'sh kod maydoni ko'rinardi,
+  // holbuki kodi allaqachon ishlatilgan — qayta terish yordam
+  // bermasdi va "ishlamadi" degan xulosaga kelardi.
+  checkTrue('27) kirgandan keyin o‘zi bog‘lanadi',
+    /attach-sticker/.test(page) && /\}, \[deviceToken, user, result\]\);/.test(page));
+  checkTrue('27) kirmaganga "kiring" deyiladi', /Stikeringizni bog‘lash/.test(page));
+  checkTrue('27) kodni qayta terish shart emasligi aytiladi',
+    /Kodni qayta kiritish shart emas/.test(page));
+  // Kirishdan keyin AYNAN shu stikerga qaytsin.
+  checkTrue('27) kirishdan keyin qaytib keladi', /login\?next=\$\{back\}/.test(page));
+  // Hali faollashtirmagan odam qamalib qolmasin.
+  checkTrue('27) kod kiritish yo‘li ochiq qoladi', /Menda aktivatsiya kodi bor/.test(page));
 }
 
 done();

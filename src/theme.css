@@ -2007,6 +2007,12 @@ body{
 .ac-facts dt{margin:0;font-size:var(--fs-2xs);font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint)}
 .ac-facts dd{margin:0;font-size:var(--fs-base);font-weight:700}
 .ac-facts dd b{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;color:var(--accent-text,var(--accent-primary))}
+/* "Menda kod bor" — ikkinchi darajali chiqish yo'li. */
+.ac-linkish{
+  margin-top:12px;background:none;border:0;cursor:pointer;text-decoration:underline;
+  font-size:var(--fs-xs);color:var(--text-muted)
+}
+.ac-linkish:hover{color:var(--text-primary)}
 .ac-hint{margin:0!important;font-size:var(--fs-sm);color:var(--text-muted)}
 /* Stiker hali bog'lanmagan — bu MAJBURIY qadam, shuning uchun
    ko'rinarli. Oddiy kulrang izoh bo'lsa odam o'qimay ketardi. */

@@ -111,4 +111,9 @@ export const DICT_SITE = {
 
   'NFC stiker ulandi': { ru: 'NFC-стикер подключён', en: 'NFC sticker connected' },
   'Bundan keyin stikerni telefonga tekkizsangiz shu profil ochiladi.': { ru: 'Теперь при касании стикера телефоном будет открываться этот профиль.', en: 'From now on, tapping the sticker with your phone opens this profile.' },
+
+  // Stiker tekkizildi, lekin odam boshqa brauzerda kirmagan.
+  'Stikeringizni bog‘lash': { ru: 'Привязать ваш стикер', en: 'Link your sticker' },
+  'Hisobingizga kiring — stiker o‘zi bog‘lanadi. Kodni qayta kiritish shart emas.': { ru: 'Войдите в аккаунт — стикер привяжется сам. Код вводить заново не нужно.', en: 'Sign in and the sticker links itself. You do not need to enter the code again.' },
+  'Menda aktivatsiya kodi bor': { ru: 'У меня есть код активации', en: 'I have an activation code' },
 };

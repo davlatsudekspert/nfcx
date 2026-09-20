@@ -101,6 +101,9 @@ export default function ActivatePage() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [result, setResult] = useState(null);
+  // "Menda kod bor" — tekkizgan, lekin hali faollashtirmagan odam
+  // uchun chiqish yo'li: kirish ekranini o'tkazib yuboradi.
+  const [skipAttach, setSkipAttach] = useState(false);
   const inputRef = useRef(null);
 
   const fail = useCallback((e) => {
@@ -124,6 +127,36 @@ export default function ActivatePage() {
       .catch(() => { /* kod eskirgan — odam qaytadan kiritadi */ });
     return () => { alive = false; };
   }, [product]);
+
+  // ── TEKKIZILGAN STIKERNI DARHOL BOG'LASH ──────────────
+  //
+  // HAQIQIY HOLAT (2026-09-20, sinovda chiqdi): odam QR ni BIR
+  // brauzerda skanerlab faollashtiradi, telefonni stikerga
+  // tekkizganda esa iOS havolani STANDART brauzerda (Safari) ochadi.
+  // Boshqa brauzer — boshqa sessiya, ya'ni odam u yerda KIRMAGAN.
+  // Natijada bog'lash 401 bilan rad etilardi va u bo'sh kod
+  // maydonini ko'rib "ishlamadi" deb o'ylardi.
+  //
+  // Endi: sahifa ochilganda ham, odam KIRGANDAN KEYIN ham urinib
+  // ko'riladi. Kirish o'zi yetarli — kodni qayta terish shart emas,
+  // chunki u allaqachon ishlatilgan.
+  useEffect(() => {
+    if (!deviceToken || !user || result) return;
+    let alive = true;
+    fetch('/api/activate/attach-sticker', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify({ deviceToken }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!alive || !d?.redirect) return;
+        clearDevice();
+        navigate(d.redirect, { replace: true });
+      })
+      .catch(() => { /* bog'lanmadi — odatdagi oqim davom etadi */ });
+    return () => { alive = false; };
+  }, [deviceToken, user, result]);
 
   // Profil tanlovi: FAQAT o'zinikilar (server ham shuni qaytaradi va
   // egalikni yana bir bor TEKSHIRADI).
@@ -217,6 +250,43 @@ export default function ActivatePage() {
   }
 
   // ── 1-QADAM: KOD ───────────────────────────────────────────────────
+  // ── STIKER TEKKIZILDI, LEKIN ODAM KIRMAGAN ─────────────
+  //
+  // iOS NFC havolasini STANDART brauzerda ochadi. Odam QR ni boshqa
+  // brauzerda skanerlagan bo'lsa, bu yerda KIRMAGAN bo'ladi — va
+  // unga bo'sh kod maydoni ko'rinardi. U esa kodini allaqachon
+  // ishlatgan: qayta terish yordam bermasdi va "ishlamadi" degan
+  // xulosaga kelardi.
+  //
+  // Endi unga aniq bitta ish aytiladi: KIRING. Kirgan zahoti
+  // yuqoridagi effekt stikerni o'zi bog'laydi.
+  if (deviceToken && !skipAttach && !product && authReady && !user) {
+    const back = encodeURIComponent(`/activate?d=${deviceToken}`);
+    return (
+      <main className="ac-page">
+        <section className="ac-card">
+          <div className="ac-brand">NFCSTORE</div>
+          <h1>{t('Stikeringizni bog‘lash')}</h1>
+          <p className="ac-sub">
+            {t('Hisobingizga kiring — stiker o‘zi bog‘lanadi. Kodni qayta kiritish shart emas.')}
+          </p>
+          <div className="ac-actions">
+            <button type="button" className="ac-primary" onClick={() => navigate(`/login?next=${back}`)}>
+              {t('Kirish')}
+            </button>
+            <button type="button" className="ac-ghost" onClick={() => navigate(`/register?next=${back}`)}>
+              {t('Ro‘yxatdan o‘tish')}
+            </button>
+          </div>
+          {/* Hali faollashtirmaganlar uchun chiqish yo'li. */}
+          <button type="button" className="ac-linkish" onClick={() => setSkipAttach(true)}>
+            {t('Menda aktivatsiya kodi bor')}
+          </button>
+        </section>
+      </main>
+    );
+  }
+
   if (!product) {
     return (
       <main className="ac-page">
