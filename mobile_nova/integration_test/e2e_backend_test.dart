@@ -20,7 +20,6 @@
 // tekshirilishi kerak, shuning uchun natijalar `E2EReport` ga
 // yig'iladi va test faqat eng oxirida baholanadi.
 
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -1959,39 +1958,69 @@ void main() {
     // TIRIK ekanini tekshiramiz — aks holda odam ulashgan manzil
     // ochilmasdi.
     //
-    // `Accept: text/html` MAJBURIY. Server SPA qobig'ini AYNAN
-    // shu sarlavha bo'yicha beradi:
+    // UCHTA manzil birga so'raladi, chunki bitta 500 ning ma'nosi
+    // ikki xil bo'lishi mumkin va ularni ajratish SHART:
     //
-    //     const acceptsHtml = accept?.includes('text/html');
-    //     if (response.status === 404 && acceptsHtml) { ...qobiq... }
+    //   `/` ham yiqilgan bo'lsa  -> butun SPA qobig'i o'lik,
+    //                               ulashish bilan aloqasi yo'q;
+    //   faqat `/<kod>` yiqilgan  -> aynan profil havolasi buzuq.
     //
-    // Dart ning `HttpClient` i o'zi `Accept` yubormaydi, shuning
-    // uchun usiz sinov brauzer HECH QACHON yubormaydigan so'rovni
-    // tekshirardi — ya'ni mahsulotni emas, o'zini sinardi.
-    final shareUrl = '$kApiBase/${Uri.encodeComponent(code)}';
-    try {
+    // `Accept: text/html` MAJBURIY: server qobiqni AYNAN shu
+    // sarlavha bo'yicha beradi
+    // (`if (status === 404 && acceptsHtml) { ...qobiq... }`).
+    // Dart ning `HttpClient` i o'zi `Accept` yubormaydi, ya'ni
+    // usiz sinov brauzer hech qachon yubormaydigan so'rovni
+    // tekshirardi.
+    Future<int> probe(String path) async {
       final client = HttpClient()
         ..connectionTimeout = const Duration(seconds: 15)
         ..userAgent = 'Mozilla/5.0 (Android) NFCSTORE-Nova-E2E';
-      final req = await client.getUrl(Uri.parse(shareUrl));
-      req.headers.set(HttpHeaders.acceptHeader,
-          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8');
-      req.followRedirects = true;
-      final res = await req.close();
-      final body = await res.transform(const Utf8Decoder(allowMalformed: true)).join();
-      client.close();
+      try {
+        final req = await client.getUrl(Uri.parse('$kApiBase$path'));
+        req.headers.set(HttpHeaders.acceptHeader,
+            'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8');
+        req.followRedirects = true;
+        final res = await req.close();
+        await res.drain<void>();
+        return res.statusCode;
+      } finally {
+        client.close();
+      }
+    }
+
+    try {
+      final sharePath = '/${Uri.encodeComponent(code)}';
+      final shareCode = await probe(sharePath);
+      final homeCode = await probe('/');
 
       final trace = Trace(
         method: 'GET',
-        path: '/${Uri.encodeComponent(code)}',
-        status: res.statusCode,
-        response: body.isEmpty ? null : body.substring(0, body.length.clamp(0, 300)),
+        path: sharePath,
+        status: shareCode,
+        response: 'bosh sahifa `/` -> HTTP $homeCode',
       );
-      if (res.statusCode >= 200 && res.statusCode < 400) {
+
+      if (shareCode >= 200 && shareCode < 400) {
         report.pass('Lenta — ulashish havolasi',
             screen: 'FeedCard',
             action: 'ulashiladigan manzilni ochish',
-            note: 'HTTP ${res.statusCode}, ${body.length} bayt');
+            note: 'HTTP $shareCode (bosh sahifa: $homeCode)');
+      } else if (homeCode < 200 || homeCode >= 400) {
+        // Bosh sahifa ham yiqilgan: muammo ulashish havolasida
+        // emas, butun veb qobig'ida. Bu ilovaning kamchiligi
+        // EMAS va Stage 1 ga umuman aloqasi yo'q.
+        report.add(MatrixRow(
+          name: 'Lenta — ulashish havolasi',
+          verdict: Verdict.backendRequired,
+          screen: 'FeedCard',
+          action: 'ulashiladigan manzilni ochish',
+          trace: trace,
+          cause: 'sayt qobig\'i BUTUNLAY javob bermayapti: `/` HTTP '
+              '$homeCode, `$sharePath` HTTP $shareCode. Ya\'ni '
+              'ulashish havolasi emas, `nfcstore.uz` ning HTML '
+              'tomoni yiqilgan — ilovadagi kamchilik emas',
+          layer: 'backend',
+        ));
       } else {
         report.add(MatrixRow(
           name: 'Lenta — ulashish havolasi',
@@ -1999,11 +2028,12 @@ void main() {
           screen: 'FeedCard',
           action: 'ulashiladigan manzilni ochish',
           trace: trace,
-          cause: 'ulashiladigan manzil HTTP ${res.statusCode} qaytardi — '
-              'odam ulashgan havola ochilmaydi. Bu manzilni Profil, '
-              'NFC ID, Istorya va Reels ham AYNAN shunday quradi '
-              '(`NfcId.publicUrl`), ya\'ni kamchilik lenta kartasiga '
-              'xos emas',
+          cause: 'bosh sahifa ishlaydi (HTTP $homeCode), lekin profil '
+              'havolasi HTTP $shareCode — odam ulashgan manzil '
+              'ochilmaydi. Bu manzilni Profil, NFC ID, Istorya va '
+              'Reels ham AYNAN shunday quradi (`NfcId.publicUrl`), '
+              'ya\'ni kamchilik lenta kartasiga xos emas va Stage 1 '
+              'bilan kelmagan',
           layer: 'backend',
         ));
       }
