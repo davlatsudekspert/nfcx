@@ -36,7 +36,9 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  # `contents: write` — APK'ni GitHub Release sifatida chiqarish
+  # uchun. Faqat shu ish uchun; boshqa hech narsa yozilmaydi.
+  contents: write
 
 jobs:
   build:
@@ -304,6 +306,53 @@ jobs:
 
       # Telefonga o'rnatish va Play Store uchun — tushunarli nomlar
       # bilan alohida artifakt.
+      # ── TELEFONGA — FAQAT BITTA FAYL ──────────────────────────
+      #
+      # To'liq to'plam ~110 MB: universal APK, uchta ABI varianti va
+      # Play Store uchun AAB. Telefonga esa ULARDAN BITTASI kerak.
+      # Ustiga GitHub artefaktni ZIP qiladi, APK esa allaqachon
+      # siqilgan — ya'ni ZIP hajmni kamaytirmaydi, faqat qo'shimcha
+      # ish qiladi.
+      #
+      # Zamonaviy Android telefonlarning deyarli hammasi arm64-v8a.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NFCSTORE-Nova-telefon
+          path: mobile_nova/release-final/NFCSTORE-Nova-final-arm64-v8a.apk
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+
+      # ── GITHUB RELEASE ────────────────────────────────────────
+      #
+      # NIMA UCHUN: Actions artefaktlari Azure omboridan beriladi va
+      # ular sekin — O'zbekistondan 110 MB ~27 daqiqa ketdi. Release
+      # assetlari esa CDN orqali keladi va ochiq repozitoriyada
+      # LOGIN ham talab qilmaydi: havola to'g'ridan-to'g'ri `.apk`
+      # ga olib boradi, ZIP ham yo'q.
+      #
+      # Teg QAT'IY: `nova-latest`. Har qurilishda yangilanadi,
+      # shuning uchun havola O'ZGARMAYDI — bir marta saqlab qo'yib,
+      # keyin doim o'shani ochish mumkin.
+      - name: Release — oxirgi qurilish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd release-final
+          # Eski relizni tegi bilan birga olib tashlaymiz, aks holda
+          # `create` "allaqachon bor" deb to'xtardi.
+          gh release delete nova-latest --yes --cleanup-tag 2>/dev/null || true
+          gh release create nova-latest \
+            NFCSTORE-Nova-final-arm64-v8a.apk \
+            NFCSTORE-Nova-final-armeabi-v7a.apk \
+            NFCSTORE-Nova-final.apk \
+            NFCSTORE-Nova-final.aab \
+            SHA256SUMS.txt \
+            --target "$GITHUB_SHA" \
+            --title "NFCSTORE Nova — oxirgi qurilish (#${{ github.run_number }})" \
+            --prerelease \
+            --notes "Telefon uchun: **NFCSTORE-Nova-final-arm64-v8a.apk** — qurilish #${{ github.run_number }}, commit ${{ github.sha }}, branch ${{ github.ref_name }}. Sinov qurilishi: har yangi push'da yangilanadi."
+
       - uses: actions/upload-artifact@v4
         with:
           name: NFCSTORE-Nova-final
