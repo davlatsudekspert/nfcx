@@ -1306,4 +1306,7 @@ class LEn extends L {
 
   @override
   String get profileCover => 'Cover';
+
+  @override
+  String get themeOnyx => 'Onyx';
 }

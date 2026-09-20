@@ -263,7 +263,7 @@ void main() {
   });
 
   group('Mavzu tanlash ekrani', () {
-    testWidgets('beshta mavzuni ham ko‘rsatadi', (tester) async {
+    testWidgets('oltita mavzuni ham ko‘rsatadi', (tester) async {
       await tester.pumpWidget(ProviderScope(
         overrides: await testOverrides(),
         child: wrapScreen(const ThemeSettingsScreen()),
@@ -277,11 +277,14 @@ void main() {
         l.themeOcean,
         l.themeAurora,
         l.themeMidnight,
+        l.themeOnyx,
       ]) {
         expect(find.text(name), findsOneWidget, reason: name);
       }
       // Har mavzu kartasida logotip — kontrast shu yerda tekshiriladi.
-      expect(find.byType(BrandLogo), findsNWidgets(5));
+      // Son ro'yxatdan olinadi: mavzu qo'shilganda bu sinov yana
+      // qo'lda tuzatilishi shart bo'lmasin.
+      expect(find.byType(BrandLogo), findsNWidgets(NfcTokens.all.length));
     });
   });
 

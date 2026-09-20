@@ -27,11 +27,23 @@ double _contrast(Color a, Color b) {
 }
 
 void main() {
-  test('beshta mavzu ham mavjud va kaliti takrorlanmaydi', () {
-    expect(NfcTokens.all.length, 5);
+  test('oltita mavzu ham mavjud va kaliti takrorlanmaydi', () {
+    expect(NfcTokens.all.length, 6);
     final ids = NfcTokens.all.map((t) => t.id).toSet();
-    expect(ids.length, 5);
-    expect(ids, {'pearl', 'graphite', 'ocean', 'aurora', 'midnight'});
+    expect(ids.length, 6);
+    expect(ids, {'pearl', 'graphite', 'ocean', 'aurora', 'midnight', 'onyx'});
+  });
+
+  test('onyx ILIQ, midnight esa SOVUQ qora', () {
+    // Sayt fonidan o'lchangan qoida: iliq qorada qizil kanal
+    // ko'kdan KATTA. `midnight` da aksincha — u ko'k-qora.
+    // Ikkalasi bitta oilaga tushib qolsa, saytga moslik yo'qoladi.
+    final onyx = NfcTokens.onyx.bg1;
+    final mid = NfcTokens.midnight.bg1;
+    expect(onyx.r, greaterThan(onyx.b),
+        reason: 'onyx foni iliq bo‘lishi kerak (qizil > ko‘k)');
+    expect(mid.b, greaterThan(mid.r),
+        reason: 'midnight foni sovuq bo‘lib qolishi kerak');
   });
 
   test('noma’lum kalit STANDART mavzuga tushadi', () {

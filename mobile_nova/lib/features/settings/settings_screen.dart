@@ -195,6 +195,7 @@ class SettingsScreen extends ConsumerWidget {
         'ocean' => l.themeOcean,
         'aurora' => l.themeAurora,
         'midnight' => l.themeMidnight,
+        'onyx' => l.themeOnyx,
         _ => l.themePearl,
       };
 

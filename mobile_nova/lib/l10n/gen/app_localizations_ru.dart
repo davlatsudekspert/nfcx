@@ -1300,4 +1300,7 @@ class LRu extends L {
 
   @override
   String get profileCover => 'Обложка';
+
+  @override
+  String get themeOnyx => 'Оникс';
 }

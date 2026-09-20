@@ -382,7 +382,61 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     ],
   );
 
-  static final all = <NfcTokens>[pearl, graphite, ocean, aurora, midnight];
+  /// ONYX — SAYTDAGI BIZNES PROFILNING O'ZI.
+  ///
+  /// Ranglar taxmin qilinmadi, saytning haqiqiy ekranidan
+  /// o'lchab olindi: fon `#0D0C0A` dan `#1D1A15` gacha, ya'ni
+  /// ILIQ ko'mir-qora (qizil > yashil > ko'k). `midnight` esa
+  /// sovuq ko'k-qora (`#0C1526`) — butunlay boshqa oila.
+  ///
+  /// Oltin `midnight` dagidan olingan: u allaqachon saytdagi
+  /// oltinga mos edi, faqat foni boshqa edi.
+  static final onyx = NfcTokens(
+    id: 'onyx',
+    isDark: true,
+    bg1: hex('#141210'),
+    bg2: hex('#0C0B09'),
+    bgVignette: rgba(212, 179, 106, .10),
+    surface: rgba(32, 29, 24, .74),
+    surface2: rgba(32, 29, 24, .46),
+    surfaceSolid: hex('#1D1A15'),
+    text1: hex('#F5EFE2'),
+    text2: hex('#B5AC99'),
+    text3: hex('#726A5B'),
+    accent1: hex('#E8D4A0'),
+    accent2: hex('#C9A96A'),
+    accent3: hex('#8E7340'),
+    goldDeep: hex('#B08F4E'),
+    accentB: hex('#C0B49C'),
+    accentBDark: hex('#D6CCB6'),
+    accentC: hex('#C2B39A'),
+    accentCDark: hex('#9A8D76'),
+    accentD: hex('#CCC4B4'),
+    accentDDark: hex('#A39B8B'),
+    glow: rgba(201, 169, 106, .32),
+    glowB: rgba(192, 180, 156, .20),
+    border1: rgba(212, 179, 106, .14),
+    border2: rgba(201, 169, 106, .24),
+    error: hex('#E0A0A0'),
+    success: hex('#A8C4A8'),
+    warn: hex('#E0C088'),
+    ambient1: rgba(201, 169, 106, .22),
+    ambient2: rgba(120, 96, 58, .20),
+    shadowFloat: [
+      BoxShadow(color: rgba(6, 5, 3, .58), blurRadius: 72, offset: const Offset(0, 23)),
+      BoxShadow(color: rgba(6, 5, 3, .40), blurRadius: 29, offset: const Offset(0, 8)),
+      BoxShadow(color: rgba(201, 169, 106, .08), blurRadius: 60),
+    ],
+    shadowSoft: [
+      BoxShadow(color: rgba(6, 5, 3, .45), blurRadius: 46, offset: const Offset(0, 13)),
+      BoxShadow(color: rgba(6, 5, 3, .28), blurRadius: 17, offset: const Offset(0, 4)),
+    ],
+    shadowTiny: [
+      BoxShadow(color: rgba(6, 5, 3, .32), blurRadius: 17, offset: const Offset(0, 4)),
+    ],
+  );
+
+  static final all = <NfcTokens>[pearl, graphite, ocean, aurora, midnight, onyx];
 
   /// STANDART MAVZU — `ocean`.
   ///

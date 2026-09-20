@@ -494,5 +494,9 @@
   "profileCover": "Обложка",
   "@profileCover": {
     "description": "Profil muqovasi tugmasi"
+  },
+  "themeOnyx": "Оникс",
+  "@themeOnyx": {
+    "description": "Mavzu nomi — saytdagi iliq ko‘mir-qora"
   }
 }

@@ -1308,4 +1308,7 @@ class LUz extends L {
 
   @override
   String get profileCover => 'Muqova';
+
+  @override
+  String get themeOnyx => 'Onyx';
 }

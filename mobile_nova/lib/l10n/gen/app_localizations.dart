@@ -2624,6 +2624,12 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Muqova'**
   String get profileCover;
+
+  /// Mavzu nomi — saytdagi iliq ko‘mir-qora
+  ///
+  /// In uz, this message translates to:
+  /// **'Onyx'**
+  String get themeOnyx;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {
