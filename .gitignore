@@ -31,3 +31,7 @@ mobile_nova/.dart_tool/
 mobile_nova/android/.gradle/
 mobile_nova/android/local.properties
 mobile_nova/.flutter-plugins-dependencies
+
+# Surat vositasi natijalari — ko'rish uchun, versiyalanmaydi.
+mobile_nova/test/shots/png/
+mobile_nova/test/shots/contact-sheet-*.png
