@@ -15,10 +15,15 @@ import 'package:nfcstore_nova/design/widgets/nova_scaffold.dart';
 import 'package:nfcstore_nova/design/widgets/surfaces.dart';
 import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
 
+import 'package:nfcstore_nova/app/providers.dart';
+import 'package:nfcstore_nova/data/repositories/business_repository.dart';
+import 'package:nfcstore_nova/features/business/business_forms.dart';
+import 'package:nfcstore_nova/features/business/business_screens.dart';
 import 'package:nfcstore_nova/features/discover/discover_screen.dart';
 import 'package:nfcstore_nova/features/home/home_screen.dart';
 import 'package:nfcstore_nova/features/nfc/nfc_center_screen.dart';
 import 'package:nfcstore_nova/features/profile/profile_screen.dart';
+import 'package:nfcstore_nova/features/social/post_screens.dart';
 import 'package:nfcstore_nova/features/social/reels_screen.dart';
 import 'package:nfcstore_nova/features/social/story_viewer.dart';
 
@@ -94,6 +99,61 @@ class _ShotsRepo extends SocialRepository {
 
   @override
   Future<Result<void>> markStorySeen(int id) async => const Ok(null);
+}
+
+/// Biznes ma'lumoti — suratlarda kompaniya bo'limlari BO'SH
+/// ko'rinmasligi uchun.
+class _ShotsBusinessRepo extends BusinessRepository {
+  _ShotsBusinessRepo() : super(ApiClient());
+
+  static const _company = Business(
+    companyId: 'NFCSTOREUZ',
+    displayName: 'NFCSTORE',
+    category: 'texnologiya',
+    city: 'Toshkent',
+    description: 'NFC kartalar, stikerlar va raqamli profillar.',
+    phone: '+998 90 123 45 67',
+    status: 'active',
+    followers: 312,
+    views: 5680,
+  );
+
+  static const _items = [
+    CatalogItem(id: 1, name: 'NFC karta — Classic', price: 149000),
+    CatalogItem(id: 2, name: 'NFC stiker', price: 49000),
+    CatalogItem(id: 3, name: 'Metall karta', price: 390000),
+  ];
+
+  @override
+  Future<Result<List<Business>>> mine() async => const Ok([_company]);
+
+  @override
+  Future<Result<Business>> byId(String companyId) async => const Ok(_company);
+
+  @override
+  Future<Result<List<CatalogItem>>> catalog(String companyId) async =>
+      const Ok(_items);
+
+  @override
+  Future<Result<List<Post>>> posts(String companyId) async =>
+      Ok(_ShotsRepo._posts);
+
+  @override
+  Future<Result<List<StoryItem>>> stories(String companyId) async =>
+      Ok(_ShotsRepo._stories);
+
+  @override
+  Future<Result<Map<String, dynamic>>> stats(
+    String companyId, {
+    int days = 30,
+  }) async =>
+      const Ok({
+        'days': 30,
+        'views': 5680,
+        'taps': 412,
+        'orders': 37,
+        'series': <dynamic>[],
+      });
 }
 
 /// HAQIQIY EKRANLARNI RASMGA OLISH.
@@ -173,6 +233,7 @@ void main() {
     String name, {
     NfcTokens? tokens,
     Size size = phone,
+    bool business = false,
   }) async {
     tester.view.physicalSize = size * 3;
     tester.view.devicePixelRatio = 3.0;
@@ -184,6 +245,16 @@ void main() {
       overrides: [
         ...await testOverrides(),
         socialRepositoryProvider.overrideWithValue(_ShotsRepo()),
+        businessRepositoryProvider.overrideWithValue(_ShotsBusinessRepo()),
+        // BIZNES REJIMI. `ModeController` boshlang'ich holatni
+        // sozlamalardan oladi, shuning uchun rejimni shu yerda
+        // to'g'ridan-to'g'ri o'rnatamiz.
+        if (business)
+          modeProvider.overrideWith((ref) {
+            final c = ModeController(ref.watch(prefsProvider));
+            c.set(AppMode.business);
+            return c;
+          }),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -259,6 +330,122 @@ void main() {
   testWidgets('P5 — NFC yozish: tasdiq (taklif)', (t) async {
     await shot(t, const ProposedNfcWriteWaiting(done: true), 'p5-nfc-done');
   });
+
+  // ── QOLGAN TO'RT JUFTLIK ────────────────────────────────────
+
+  testWidgets('07 — Post tafsiloti', (t) async {
+    await shot(t, const PostScreen(code: 'VIP001', id: 11), '07-post-detail');
+  });
+
+  testWidgets('08 — Biznes profil (Profil ekrani, biznes rejimi)', (t) async {
+    await shot(t, const ProfileScreen(), '08-business', business: true);
+  });
+
+  testWidgets('08b — Biznes ro\u2018yxati / vitrina', (t) async {
+    await shot(t, const BusinessScreen(), '08b-business-list', business: true);
+  });
+
+  testWidgets('09 — Biznes katalog', (t) async {
+    await shot(t, const BusinessCatalogScreen(), '09-business-catalog',
+        business: true);
+  });
+
+  testWidgets('10 — Biznes kabinet', (t) async {
+    await shot(t, const BusinessDashboardScreen(), '10-business-dash',
+        business: true);
+  });
+
+  testWidgets('11 — Biznes tahlil', (t) async {
+    await shot(t, const BusinessAnalyticsScreen(), '11-business-stats',
+        business: true);
+  });
+
+  testWidgets('P6 — Biznes post/istorya amallari (taklif)', (t) async {
+    await shot(t, const _ProposedBusinessSocial(), 'p6-business-social',
+        business: true);
+  });
+}
+
+/// Biznes post va istorya — taklif qilingan amallar bilan.
+///
+/// Kompaniya kontenti SHAXSIYGA ARALASHMAYDI: karta tepasida
+/// kompaniya nomi va `company` belgisi turadi, izohlar esa
+/// `company_post` / `company_story` turi bilan ketadi.
+class _ProposedBusinessSocial extends StatelessWidget {
+  const _ProposedBusinessSocial();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return NovaScaffold(
+      title: 'NFCSTORE',
+      showBack: true,
+      body: NovaScroll(
+        children: [
+          const SectionHeader(title: 'KOMPANIYA ISTORYASI'),
+          const SizedBox(height: Gap.sm),
+          FloatingSurface(
+            solid: true,
+            padding: const EdgeInsets.all(Gap.md),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: R.tile,
+                  child: SizedBox(
+                    width: 54,
+                    height: 72,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(gradient: t.accentGradient),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: Gap.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('NFCSTORE',
+                          style: Theme.of(context).textTheme.bodyMedium),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: const [
+                          ProposedAction(
+                              icon: Icons.favorite_border_rounded,
+                              label: 'Yoqtirish',
+                              count: '18'),
+                          SizedBox(width: Gap.lg),
+                          ProposedAction(
+                              icon: Icons.mode_comment_outlined,
+                              label: 'Izohlar',
+                              count: '4'),
+                          Spacer(),
+                          ProposedAction(
+                              icon: Icons.ios_share_rounded,
+                              label: 'Ulashish'),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: Gap.xl),
+          const SectionHeader(title: 'KOMPANIYA POSTI'),
+          const SizedBox(height: Gap.sm),
+          const ProposedFeedCard(
+            author: 'NFCSTORE',
+            code: 'NFCSTOREUZ',
+            text: 'Yangi metall kartalar sotuvda — cheklangan miqdorda.',
+            likes: '42',
+            comments: '9',
+            following: true,
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// Lenta — taklif qilingan kartalar bilan.
