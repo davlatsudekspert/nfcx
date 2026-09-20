@@ -54,6 +54,32 @@ final searchQueryProvider =
 final discoverTabProvider =
     StateProvider.autoDispose<DiscoverTab>((_) => DiscoverTab.people);
 
+/// Ko'rishlar bo'yicha kamayish tartibida.
+///
+/// Teng bo'lsa obunachilar, keyin ism — aks holda har ochilganda
+/// tartib sakrab, ro'yxat "beqaror" bo'lib ko'rinardi.
+List<NfcId> _byViews(List<NfcId> v) {
+  final out = [...v];
+  out.sort((a, b) {
+    final c = b.views.compareTo(a.views);
+    if (c != 0) return c;
+    final f = b.followers.compareTo(a.followers);
+    return f != 0 ? f : a.code.compareTo(b.code);
+  });
+  return out;
+}
+
+List<Business> _byBizViews(List<Business> v) {
+  final out = [...v];
+  out.sort((a, b) {
+    final c = b.views.compareTo(a.views);
+    if (c != 0) return c;
+    final f = b.followers.compareTo(a.followers);
+    return f != 0 ? f : a.companyId.compareTo(b.companyId);
+  });
+  return out;
+}
+
 final discoverResultsProvider = FutureProvider.autoDispose((ref) async {
   final q = ref.watch(searchQueryProvider);
   final tab = ref.watch(discoverTabProvider);
@@ -61,14 +87,19 @@ final discoverResultsProvider = FutureProvider.autoDispose((ref) async {
 
   if (q.isEmpty) {
     return switch (tab) {
+      // ENG KO'P KO'RILGANLAR TEPADA.
+      //
+      // Server tartibni kafolatlamaydi, shuning uchun ro'yxat
+      // shu yerda saralanadi: odam bo'limni ochganda eng faol
+      // profillarni birinchi ko'rsin.
       DiscoverTab.people => (await repo.suggested()).when(
-          ok: (v) => <Object>[...v], err: (e) => throw e),
+          ok: (v) => <Object>[..._byViews(v)], err: (e) => throw e),
       // Ilgari bu yerda QATTIQ KODLANGAN bo'sh ro'yxat turardi va
       // "Bizneslar" bo'limi so'rovsiz holatda har doim "Hozircha
       // bo'sh" deb ko'rsatardi — produksiyada kompaniyalar bo'lsa
       // ham. Server ro'yxatni allaqachon beradi.
       DiscoverTab.businesses => (await repo.companies())
-          .when(ok: (v) => <Object>[...v], err: (e) => throw e),
+          .when(ok: (v) => <Object>[..._byBizViews(v)], err: (e) => throw e),
       DiscoverTab.posts =>
         (await repo.trending()).when(ok: (v) => <Object>[...v], err: (e) => throw e),
     };
@@ -288,72 +319,45 @@ class _ResultTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.tokens;
+    final l = L.of(context);
 
     if (item is NfcId) {
       final e = item as NfcId;
-      return FloatingSurface(
-        solid: true,
-        padding: const EdgeInsets.all(Gap.lg),
+      return _ProfileCard(
+        title: e.name.isEmpty ? e.code : e.name,
+        subtitle: e.role.isEmpty ? l.discoverPeople : e.role,
+        badge: e.code,
+        imageUrl: e.avatarUrl,
+        initials: _initials(e.name, e.code),
+        rounded: false,
+        stats: [
+          (formatCount(e.views), l.nfcViews),
+          (formatCount(e.followers), l.profileFollowers),
+          (formatCount(e.posts), l.profilePosts),
+        ],
         onTap: () => context.push(Routes.user(e.code)),
-        child: Row(
-          children: [
-            Avatar(url: e.avatarUrl, initials: _initials(e.name, e.code), size: 46),
-            const SizedBox(width: Gap.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(e.name.isEmpty ? e.code : e.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleSmall),
-                  Text(e.code,
-                      style: AppType.monoStyle(color: t.text3, size: 11)),
-                ],
-              ),
-            ),
-            Text(formatCount(e.followers),
-                style: Theme.of(context).textTheme.labelMedium),
-          ],
-        ),
       );
     }
 
     if (item is Business) {
       final e = item as Business;
-      return FloatingSurface(
-        solid: true,
-        padding: const EdgeInsets.all(Gap.lg),
+      final where =
+          [e.city, e.subcategory].where((s) => s.isNotEmpty).join(' · ');
+      return _ProfileCard(
+        title: e.displayName.isEmpty ? e.companyId : e.displayName,
+        subtitle: where.isEmpty ? l.discoverBusinesses : where,
+        badge: e.companyId,
+        imageUrl: e.logoUrl,
+        initials: _initials(e.displayName, e.companyId),
+        // Biznes — KVADRAT logotip, shaxsiy — dumaloq avatar.
+        // Ikkalasi bir qarashda ajralib tursin.
+        rounded: true,
+        accentBusiness: true,
+        stats: [
+          (formatCount(e.views), l.nfcViews),
+          (formatCount(e.followers), l.profileFollowers),
+        ],
         onTap: () => context.push(Routes.storefront(e.companyId)),
-        child: Row(
-          children: [
-            Avatar(
-                url: e.logoUrl,
-                initials: _initials(e.displayName, e.companyId),
-                size: 46,
-                ring: false),
-            const SizedBox(width: Gap.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(e.displayName.isEmpty ? e.companyId : e.displayName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleSmall),
-                  Text(
-                    [e.city, e.subcategory].where((s) => s.isNotEmpty).join(' · '),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-            Icon(Icons.chevron_right_rounded, size: 20, color: t.text3),
-          ],
-        ),
       );
     }
 
@@ -369,5 +373,157 @@ class _ResultTile extends StatelessWidget {
   String _initials(String name, String fallback) {
     final s = name.trim().isEmpty ? fallback : name.trim();
     return (s.length >= 2 ? s.substring(0, 2) : s).toUpperCase();
+  }
+}
+
+/// TANLOV BO'LIMIDAGI PROFIL KARTASI.
+///
+/// Ilgari bu yerda oddiy ro'yxat qatori turardi: kichik avatar,
+/// ism, kod va o'ngda bitta raqam. U "texnik ro'yxat" bo'lib
+/// ko'rinardi va profilga kirishga undamasdi.
+///
+/// Endi "NFC Mobile" demo kartalari bilan BIR XIL tilda: surat
+/// o'ngda kvadrat ramkada, chapda ism, kichik tavsif va kod
+/// kapsulasi, pastda uchta statistika qutisi. Butun yuza
+/// bosiladi.
+///
+/// Rang qat'iy yozilmagan — hammasi `context.tokens` dan, ya'ni
+/// mavzu almashganda karta ham o'zgaradi.
+class _ProfileCard extends StatelessWidget {
+  const _ProfileCard({
+    required this.title,
+    required this.subtitle,
+    required this.badge,
+    required this.imageUrl,
+    required this.initials,
+    required this.stats,
+    required this.onTap,
+    this.rounded = false,
+    this.accentBusiness = false,
+  });
+
+  final String title;
+  final String subtitle;
+  final String badge;
+  final String imageUrl;
+  final String initials;
+
+  /// `true` — kvadrat (biznes logotipi), `false` — dumaloq avatar.
+  final bool rounded;
+  final bool accentBusiness;
+  final List<(String, String)> stats;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final accent = accentBusiness ? t.accentB : t.accent2;
+
+    return FloatingSurface(
+      solid: true,
+      padding: const EdgeInsets.all(14),
+      borderRadius: BorderRadius.circular(24),
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: Gap.sm),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: t.border2),
+                      ),
+                      child: Text(badge,
+                          style: AppType.monoStyle(color: t.text1, size: 11)),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: Gap.md),
+              // SURAT — kartaning eng jonli qismi.
+              Container(
+                width: 78,
+                height: 78,
+                decoration: BoxDecoration(
+                  borderRadius:
+                      BorderRadius.circular(rounded ? 20 : 999),
+                  border: Border.all(color: accent.withValues(alpha: .55),
+                      width: 1.4),
+                ),
+                padding: const EdgeInsets.all(3),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(rounded ? 17 : 999),
+                  child: Avatar(
+                    url: imageUrl,
+                    initials: initials,
+                    size: 72,
+                    ring: false,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: Gap.md),
+          Row(
+            children: [
+              for (var i = 0; i < stats.length; i++) ...[
+                if (i > 0) const SizedBox(width: Gap.sm),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 9, horizontal: 4),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: t.border2),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(stats[i].$1,
+                            maxLines: 1,
+                            style:
+                                AppType.monoStyle(color: t.text1, size: 12)),
+                        const SizedBox(height: 2),
+                        Text(
+                          stats[i].$2,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: AppType.sans,
+                            fontSize: 8.5,
+                            color: t.text3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
