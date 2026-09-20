@@ -15,6 +15,7 @@ import * as apiTelegram from './api/telegram.js';
 import * as apiAssistant from './api/assistant.js';
 import * as apiModeration from './api/moderation.js';
 import * as apiComments from './api/comments.js';
+import * as apiMarketplace from './api/marketplace.js';
 
 // API javoblari standart holda KESHLANMAYDI.
 //
@@ -904,9 +905,23 @@ async function publicContentApi(request, env, url) {
 
   const tapMatch = path.match(/^\/api\/tap\/([^/]+)$/);
   if (tapMatch && request.method === 'GET') {
-    const row = await env.DB.prepare(`SELECT active, blocked_by_owner, linked_code FROM physical_cards WHERE chip_token = ?`)
-      .bind(decodeURIComponent(tapMatch[1])).first();
-    return json(row ? { active: !!row.active && !row.blocked_by_owner, linkedCode: row.linked_code || null } : { active: true });
+    // `linked_company_id` — marketplace'da sotilgan stiker/karta BIZNES
+    // profilga bog'langan holat (hosting/api/marketplace.js). U
+    // `cards.code` ga FK bo'lgan `linked_code` ga sig'maydi, shuning
+    // uchun alohida ustunda. Ustun eski bazada bo'lmasligi mumkin —
+    // shunda so'rov `linked_code` bilan qayta uriniladi va tegish
+    // avvalgidek ishlayveradi.
+    const row = await env.DB.prepare(`SELECT active, blocked_by_owner, linked_code, linked_company_id FROM physical_cards WHERE chip_token = ?`)
+      .bind(decodeURIComponent(tapMatch[1])).first()
+      .catch(() => env.DB.prepare(`SELECT active, blocked_by_owner, linked_code FROM physical_cards WHERE chip_token = ?`)
+        .bind(decodeURIComponent(tapMatch[1])).first());
+    return json(row
+      ? {
+        active: !!row.active && !row.blocked_by_owner,
+        linkedCode: row.linked_code || null,
+        linkedCompanyId: row.linked_company_id || null,
+      }
+      : { active: true });
   }
 
   if (path === '/api/settings/physical-nfc-pricing' && request.method === 'GET') {
@@ -3189,6 +3204,12 @@ function codePriceOverrideD1(code) {
 // Egasining kabineti (/api/auth/me), public profili (/:code) va Admin
 // Panel bu filtrdan mutlaqo ta'sirlanmaydi.
 const CARD_SOURCE_REGISTRATION_AUTO = 'registration_auto';
+// Marketplace'da sotilgan fizik mahsulot aktivatsiyasidan tug'ilgan ID
+// (hosting/api/marketplace.js). U ham SOTUVDA emas — odam uni
+// allaqachon sotib olgan — shuning uchun katalogda ko'rinmaydi.
+// ID'ning O'ZI aynan ro'yxatdan o'tishdagidek: bir xil allokator, bir
+// xil tarif dvigateli. Bu belgi faqat MANBANI ayirib turadi (audit).
+const CARD_SOURCE_MARKETPLACE = 'marketplace_activation';
 const FREE_AUTO_ID_GLOB = '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]';
 
 // `alias` — SQL'dagi cards jadvali taxallusi ('cards' yoki 'c').
@@ -3196,7 +3217,7 @@ const FREE_AUTO_ID_GLOB = '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]';
 function catalogVisibleSql(alias) {
   const a = alias;
   return `(
-    COALESCE(${a}.source, '') <> '${CARD_SOURCE_REGISTRATION_AUTO}'
+    COALESCE(${a}.source, '') NOT IN ('${CARD_SOURCE_REGISTRATION_AUTO}', '${CARD_SOURCE_MARKETPLACE}')
     AND NOT (
       ${a}.source IS NULL
       AND ${a}.code GLOB '${FREE_AUTO_ID_GLOB}'
@@ -9365,7 +9386,7 @@ const H = {
   usersHaveTrialColumnsD1, trialEndsAtD1, premiumExtendD1,
   signupSourceD1, usersHaveSignupSourceD1, isMobileClientD1,
 };
-const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments];
+const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiMarketplace];
 
 // Xavfsizlik header'lari — barcha javoblarga (statik va API). CSP ataylab faqat
 // framing/base/form/object ni cheklaydi (script/style ga tegmaydi — YouTube/Yandex

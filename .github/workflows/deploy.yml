@@ -140,6 +140,19 @@ jobs:
       # qilinardi, yonidagi post blokida esa "Postni saqlash" turardi.
       # Egasi shundan "story postsiz saqlanmaydi" degan xulosaga
       # kelgan. Test nusxa qaytib kelishiga yo'l qo'ymaydi.
+      # MARKETPLACE — UNIVERSAL NFC AKTIVATSIYA.
+      #
+      # Bu qo'riqchi eng avvalo PARALLEL TIZIM YARATILMAGANINI
+      # tekshiradi: yangi ID generatori yo'q (auth.js dagi allokator
+      # chaqiriladi), alohida tarif/limit jadvali yo'q, alohida profil
+      # modeli yo'q. Qolgani — pul va egalik bilan bog'liq: bitta
+      # kodni ikki odam egallab ololmasligi (qo'lda aralashtirilgan
+      # haqiqiy poyga bilan), yarim qolgan aktivatsiyadan orfan ID
+      # qolmasligi va tugmani ikki marta bosish ikkinchi ID
+      # yaratmasligi.
+      - name: Marketplace aktivatsiyasi
+        run: node scripts/test-marketplace.mjs
+
       - name: Story va post mustaqilligi
         run: node scripts/test-story-post-separate.mjs
 
