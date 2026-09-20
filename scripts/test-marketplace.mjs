@@ -1452,6 +1452,28 @@ function gatedEnv(env, sqlNeedle) {
   // qilingan `data:` manzil va u qonuniy.
   const guide = tab.slice(tab.indexOf('const GC = {'), tab.indexOf('function Dashboard'));
   checkTrue('24) qo‘llanmada tashqi rasm yo‘q', !/<img\s|https?:\/\//.test(guide));
+
+  // ── CHOP ETISH JIM YIQILMASIN ───────────────────────
+  //
+  // 2026-09-20: tugma bosilardi va HECH NIMA bo'lmasdi.
+  //
+  // Sabab ikkita: (1) `window.open` QR rasmlari tayyorlangach
+  // chaqirilardi — 100 ta kod uchun sekundlar o'tib ketardi va
+  // brauzer oynani bloklardi; (2) `import('qrcode')` yiqilsa
+  // (deploy'dan keyin eski bo'lak manzili qolgan brauzerda)
+  // hech qanday xabar chiqmasdi.
+  //
+  // Oyna `await` dan OLDIN ochilishi shart — shunda "foydalanuvchi
+  // bosgani" bilan bog'liqlik saqlanadi.
+  const printFn = tab.slice(tab.indexOf('const print = async'), tab.indexOf('const buildPrintPage'));
+  checkTrue('24) oyna await dan oldin ochiladi',
+    printFn.indexOf('window.open') < printFn.indexOf('await'));
+  checkTrue('24) bloklangani aytiladi', /bloklab qo‘ydi/.test(tab));
+  checkTrue('24) xato tutiladi', /catch \(e\)[\s\S]{0,200}w\.close\(\)/.test(tab));
+  // Eski bo'lak — aniq yechim bilan.
+  checkTrue('24) eski sahifa uchun yechim', /Ctrl\+Shift\+R/.test(tab));
+  // Kodlar yo'qolmaydi: CSV har doim mavjud.
+  checkTrue('24) zaxira yo‘l ko‘rsatiladi', /CSV yuklab oling — undagi kodlar aynan shu/.test(tab));
   checkTrue('24) qo‘llanma bo‘lagi topildi', guide.length > 2000);
   // Chizma ranglari mavzu tokenlaridan — to'q mavzuda ham o'qiladi.
   checkTrue('24) chizma ranglari tokenlardan', /ink: 'var\(--vz-ink\)'/.test(tab));

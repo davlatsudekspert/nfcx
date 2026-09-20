@@ -809,6 +809,7 @@ function Batch({ adminApi, t, products, apiErrText }) {
 function BatchResult({ batch, t, onDone, adminApi, apiErrText }) {
   const [acked, setAcked] = useState(false);
   const [writing, setWriting] = useState(false);
+  const [msg, setMsg] = useState('');
   const codes = batch.codes || [];
   const sku = batch.product?.sku || '';
   const stickerCount = codes.filter((c) => c.chipToken).length;
@@ -846,7 +847,42 @@ function BatchResult({ batch, t, onDone, adminApi, apiErrText }) {
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   };
 
+  // ── CHOP ETISH ────────────────────────────────────────────────────
+  //
+  // IKKI SABABDAN JIM ISHLAMAY QO'YARDI:
+  //
+  // 1) OYNA KECH OCHILARDI. `window.open` bosishdan keyin, QR
+  //    rasmlari tayyorlangach chaqirilardi — 100 ta kod uchun bu
+  //    sekundlar. Brauzer "foydalanuvchi bosgani" bilan bog'liqlikni
+  //    shu vaqt ichida yo'qotadi va oynani BLOKLAYDI. Endi oyna
+  //    bosilgan zahoti, hech qanday `await` dan OLDIN ochiladi.
+  //
+  // 2) XATO KO'RINMASDI. `import('qrcode')` yiqilsa (deploy'dan
+  //    keyin eski bo'lak manzili qolib ketgan brauzerda shunday
+  //    bo'ladi), hech nima ko'rsatilmasdi — tugma "ishlamayotgandek"
+  //    tuyulardi. Endi sabab aytiladi va yechim ham.
   const print = async () => {
+    setMsg('');
+    const w = window.open('', '_blank');
+    if (!w) {
+      setMsg(t('Brauzer yangi oynani bloklab qo‘ydi. Manzil satridagi ruxsatni yoqing va qayta urinib ko‘ring.'));
+      return;
+    }
+    w.document.write('<!doctype html><meta charset="utf-8"><title>NFCSTORE</title><body style="font:14px system-ui;padding:24px">Tayyorlanmoqda…</body>');
+    try {
+      await buildPrintPage(w);
+    } catch (e) {
+      w.close();
+      // Eski bo'lak manzili — sayt yangilangan, brauzerda esa eski
+      // sahifa turibdi.
+      const stale = /dynamically imported module|Failed to fetch/i.test(String(e?.message || e));
+      setMsg(stale
+        ? t('Sayt yangilandi. Sahifani yangilang (Ctrl+Shift+R) va qaytadan chop eting — kodlar saqlanib qoladi.')
+        : t('Chop etish tayyorlanmadi. CSV yuklab oling — undagi kodlar aynan shu.'));
+    }
+  };
+
+  const buildPrintPage = async (w) => {
     const QRCode = await import('qrcode');
     const origin = window.location.origin;
     const cards = [];
@@ -860,8 +896,7 @@ function BatchResult({ batch, t, onDone, adminApi, apiErrText }) {
         <li>Aktivatsiya kodni kiriting.</li><li>Shaxsiy yoki Biznes profilni tanlang.</li>
         <li>NFC mahsulotingiz tayyor.</li></ol></article>`);
     }
-    const w = window.open('', '_blank');
-    if (!w) return;
+    w.document.open();
     w.document.write(`<!doctype html><html lang="uz"><head><meta charset="utf-8"><title>NFCSTORE — ${sku}</title><style>
       @page{size:A4;margin:10mm}
       *{box-sizing:border-box}
@@ -893,6 +928,7 @@ function BatchResult({ batch, t, onDone, adminApi, apiErrText }) {
           {t('Telefonda yozish')}
         </button>
       </div>
+      {msg && <div role="alert" className="alert alert-warning py-2 text-xs"><span>{msg}</span></div>}
       {writing && (
         <StickerWriter
           adminApi={adminApi} t={t} batchId={batch.batchId}
