@@ -199,9 +199,22 @@ void main() {
       expect(src.contains('isVideo'), isTrue,
           reason: '$f: `isVideo` tekshirilmaydi — video media rasm '
               'sifatida chizilmoqda va siniq belgi chiqadi');
-      expect(src.contains('InlineVideo('), isTrue,
+      // Ekran chizuvchiga TO'G'RIDAN-TO'G'RI yoki `AdaptiveMedia`
+      // orqali boradi (u quti nisbatini mediaga moslaydi va
+      // ichida `InlineVideo` ni chaqiradi). Muhimi shu: yo'l
+      // chizuvchiga BORADI.
+      expect(src.contains('InlineVideo(') || src.contains('AdaptiveMedia('),
+          isTrue,
           reason: '$f: video chizuvchi chaqirilmaydi');
     }
+    // `AdaptiveMedia` ning o'zi haqiqatan video chizuvchiga
+    // boradimi — aks holda yuqoridagi tekshiruv bo'shab qolardi.
+    expect(
+        File('lib/features/social/media_frame.dart')
+            .readAsStringSync()
+            .contains('InlineVideo('),
+        isTrue,
+        reason: 'AdaptiveMedia video chizuvchiga bormayapti');
     expect(
         File('lib/features/social/inline_video.dart')
             .readAsStringSync()

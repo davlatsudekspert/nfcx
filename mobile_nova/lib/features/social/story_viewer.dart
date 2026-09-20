@@ -18,6 +18,7 @@ import '../auth/session.dart';
 import 'comments.dart';
 import '../profile/music_player.dart';
 import 'inline_video.dart';
+import 'media_frame.dart';
 import '../home/widgets/avatar.dart';
 
 final storiesOfProvider = FutureProvider.autoDispose
@@ -377,17 +378,36 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                     // mumkin edi (kompozitor uni qabul qiladi), lekin
                     // ko'rgan odam faqat bo'sh quti ko'rardi —
                     // `errorWidget`.
-                    InlineVideo(
-                      key: ValueKey(s.id),
-                      url: s.mediaUrl,
-                      onDuration: _useVideoDuration,
+                    //
+                    // `contain`: yotiq video ekranga sig'sin, usti
+                    // va osti kesilib ketmasin. Tik video uchun
+                    // farqi yo'q — u baribir ekranni to'ldiradi.
+                    FullBleedMedia(
+                      child: InlineVideo(
+                        key: ValueKey(s.id),
+                        url: s.mediaUrl,
+                        onDuration: _useVideoDuration,
+                        fit: BoxFit.contain,
+                      ),
                     )
                   else
-                    CachedNetworkImage(
-                      imageUrl: s.mediaUrl,
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => ColoredBox(color: t.bg2),
-                      errorWidget: (_, __, ___) => ColoredBox(color: t.bg2),
+                    // RASM KESILMAYDI. Ilgari `cover` edi: kvadrat
+                    // rasm (masalan logotip) butun ekranni
+                    // to'ldirishi uchun kattalashtirilar va
+                    // hoshiyasi qirqilardi. Endi rasm butunligicha
+                    // ko'rinadi, atrofi esa o'sha rasmning xira
+                    // nusxasi bilan to'ladi.
+                    FullBleedMedia(
+                      backdropUrl: s.mediaUrl,
+                      child: CachedNetworkImage(
+                        imageUrl: s.mediaUrl,
+                        fit: BoxFit.contain,
+                        placeholder: (_, __) => const SizedBox.shrink(),
+                        errorWidget: (_, __, ___) => Icon(
+                            Icons.broken_image_outlined,
+                            size: 34,
+                            color: t.text3),
+                      ),
                     ),
                   Positioned.fill(
                     child: IgnorePointer(

@@ -1155,4 +1155,37 @@ class LRu extends L {
 
   @override
   String get premiumLockedPost => 'Вашего уровня недостаточно для постов.';
+
+  @override
+  String get payKindCard => 'Цифровая визитка';
+
+  @override
+  String get payKindPhysical => 'Физическая NFC-карта';
+
+  @override
+  String get payKindAuction => 'Оплата аукциона';
+
+  @override
+  String get payKindPremium => 'Подписка Premium';
+
+  @override
+  String get payKindFollow => 'Premium-подписка';
+
+  @override
+  String get payKindOther => 'Платёж';
+
+  @override
+  String get payStatusPaid => 'Оплачено';
+
+  @override
+  String get payStatusPending => 'Ожидается';
+
+  @override
+  String get payStatusCancelled => 'Отменено';
+
+  @override
+  String get payStatusFailed => 'Ошибка';
+
+  @override
+  String get payPendingHint => 'Платёж не завершён — можно оплатить';
 }

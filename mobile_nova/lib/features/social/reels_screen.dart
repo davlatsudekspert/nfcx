@@ -331,8 +331,11 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
         children: [
           ColoredBox(color: t.bg2),
           if (_ready && _controller != null)
+            // `contain` — yotiq yoki kvadrat video kesilmasin.
+            // Ilgari `cover` edi va 16:9 video tik ekranda ikki
+            // yonidan qirqilib, o'rtasi kattalashib ketardi.
             FittedBox(
-              fit: BoxFit.cover,
+              fit: BoxFit.contain,
               child: SizedBox(
                 width: _controller!.value.size.width,
                 height: _controller!.value.size.height,

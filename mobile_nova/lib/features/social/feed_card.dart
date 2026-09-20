@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -17,7 +16,7 @@ import '../../routing/routes.dart';
 import '../home/widgets/avatar.dart';
 import '../home/widgets/identity_card.dart';
 import 'engagement.dart';
-import 'inline_video.dart';
+import 'media_frame.dart';
 
 /// LENTA KARTASI — LAYK, IZOH, ULASHISH VA OBUNA.
 ///
@@ -121,20 +120,15 @@ class FeedCard extends ConsumerWidget {
           ),
           if (media.isNotEmpty) ...[
             const SizedBox(height: Gap.md),
-            ClipRRect(
+            // Quti media shakliga MOSLASHADI. Ilgari bu yerda
+            // `AspectRatio(4 / 3)` + `cover` turardi: tik rasm usti
+            // va osti bilan kesilardi, kvadrat logotip esa cho'zilib
+            // hoshiyasi chiqib ketardi.
+            AdaptiveMedia(
+              url: media,
+              isVideo: post.isVideo,
+              videoKey: ValueKey(post.id),
               borderRadius: R.gentle,
-              child: AspectRatio(
-                aspectRatio: 4 / 3,
-                child: post.isVideo
-                    ? InlineVideo(key: ValueKey(post.id), url: media)
-                    : CachedNetworkImage(
-                        imageUrl: media,
-                        fit: BoxFit.cover,
-                        placeholder: (_, __) => ColoredBox(color: t.surface2),
-                        errorWidget: (_, __, ___) =>
-                            ColoredBox(color: t.surface2),
-                      ),
-              ),
             ),
           ],
           if (post.text.isNotEmpty) ...[

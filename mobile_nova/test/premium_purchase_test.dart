@@ -322,6 +322,8 @@ void main() {
     });
   });
 
+  _historyTests();
+
   group('Darvoza yopiq bo‘lsa — BOSHI BERK KO‘CHA EMAS', () {
     final code = File('lib/features/social/post_screens.dart')
         .readAsStringSync()
@@ -352,4 +354,73 @@ void main() {
       expect(code, contains('l.premiumLockedPost'));
     });
   });
+}
+
+/// TO'LOVLAR TARIXI — HAMMA SUMMA "0 so'm" EDI.
+///
+/// Server `/api/payments` da summani `price` deb yuboradi
+/// (`hosting/api/account.js`), ekran esa `amount` ni o'qirdi —
+/// bunday kalit javobda umuman yo'q.
+void _historyTests() {
+  group('To‘lovlar tarixi', () {
+    /// Serverning AYNAN javobi.
+    final row = <String, dynamic>{
+      'id': 412,
+      'kind': 'premium_upgrade',
+      'code': 'PREMIUM',
+      'price': 20000,
+      'status': 'paid',
+      'createdAt': '2026-09-20 10:00:00',
+      'paymentProvider': 'payme',
+    };
+
+    testWidgets('summa KO‘RINADI, "0 so‘m" emas', (tester) async {
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          ...await testOverrides(),
+          shopRepositoryProvider.overrideWithValue(_HistoryRepo([row])),
+        ],
+        child: wrapScreen(const PaymentHistoryScreen()),
+      ));
+      await settle(tester);
+
+      expect(find.textContaining('20 000'), findsOneWidget,
+          reason: 'summa `price` dan o‘qilmadi');
+      expect(find.text('0 so\'m'), findsNothing,
+          reason: 'eski xato qaytib kelgan');
+    });
+
+    testWidgets('holat va sabab TARJIMA qilinadi', (tester) async {
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          ...await testOverrides(),
+          shopRepositoryProvider.overrideWithValue(_HistoryRepo([
+            row,
+            {...row, 'id': 9, 'status': 'pending', 'price': 20000},
+          ])),
+        ],
+        child: wrapScreen(const PaymentHistoryScreen()),
+      ));
+      await settle(tester);
+      final l = await L.delegate.load(const Locale('uz'));
+
+      // Odam "premium_upgrade" yoki "pending" degan xom so'zlarni
+      // ko'rmasligi kerak.
+      expect(find.text(l.payKindPremium), findsNWidgets(2));
+      expect(find.text(l.payStatusPaid), findsOneWidget);
+      expect(find.text(l.payStatusPending), findsOneWidget);
+      expect(find.text('pending'), findsNothing);
+      expect(find.text('premium_upgrade'), findsNothing);
+      // Tugallanmagan to'lov shundayligini AYTADI.
+      expect(find.text(l.payPendingHint), findsOneWidget);
+    });
+  });
+}
+
+class _HistoryRepo extends ShopRepository {
+  _HistoryRepo(this.rows) : super(ApiClient());
+  final List<Map<String, dynamic>> rows;
+
+  @override
+  Future<Result<List<Map<String, dynamic>>>> payments() async => Ok(rows);
 }

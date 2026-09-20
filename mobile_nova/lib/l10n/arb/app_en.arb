@@ -432,5 +432,16 @@
   "premiumLocked": "This feature is in Premium",
   "premiumLockedVideo": "Video posts and Reels need Premium.",
   "premiumLockedStory": "Your tier is not high enough for stories.",
-  "premiumLockedPost": "Your tier is not high enough for posts."
+  "premiumLockedPost": "Your tier is not high enough for posts.",
+  "payKindCard": "Digital business card",
+  "payKindPhysical": "Physical NFC card",
+  "payKindAuction": "Auction payment",
+  "payKindPremium": "Premium subscription",
+  "payKindFollow": "Premium follow",
+  "payKindOther": "Payment",
+  "payStatusPaid": "Paid",
+  "payStatusPending": "Pending",
+  "payStatusCancelled": "Cancelled",
+  "payStatusFailed": "Failed",
+  "payPendingHint": "Payment not finished — you can still pay"
 }

@@ -38,6 +38,8 @@ class InlineVideo extends ConsumerStatefulWidget {
     this.looping = false,
     this.onDuration,
     this.tapToToggle = false,
+    this.fit = BoxFit.cover,
+    this.onAspect,
   });
 
   final String url;
@@ -51,6 +53,19 @@ class InlineVideo extends ConsumerStatefulWidget {
   /// Postda: bosish ijro/pauza. Istoryada bosish keyingisiga
   /// o'tkazadi, shuning uchun u yerda YOQILMAYDI.
   final bool tapToToggle;
+
+  /// Videoni qutiga qanday joylash.
+  ///
+  /// Ro'yxatda quti videoning nisbatiga moslanadi, shuning uchun
+  /// `cover` hech narsa kesmaydi. Butun ekranda esa `contain`
+  /// beriladi: yotiq video kesilib ketmasligi kerak.
+  final BoxFit fit;
+
+  /// Video o'lchami ma'lum bo'lgach chaqiriladi (kenglik/balandlik).
+  ///
+  /// Shusiz quti videoning haqiqiy shaklini BILMAYDI va oldindan
+  /// yozib qo'yilgan nisbatga majburlaydi.
+  final ValueChanged<double>? onAspect;
 
   @override
   ConsumerState<InlineVideo> createState() => _InlineVideoState();
@@ -126,6 +141,12 @@ class _InlineVideoState extends ConsumerState<InlineVideo> {
       }
       setState(() => _ready = true);
       widget.onDuration?.call(c.value.duration);
+      // Shakl SHU YERDA ma'lum bo'ladi — oldin emas. Ota-vidjet
+      // qutini shunga moslaydi.
+      final size = c.value.size;
+      if (size.height > 0) {
+        widget.onAspect?.call(size.width / size.height);
+      }
     } catch (_) {
       // Buzuq havola yoki qo'llab-quvvatlanmaydigan format — ilova
       // qulamaydi, o'rnida fon qoladi.
@@ -185,7 +206,7 @@ class _InlineVideoState extends ConsumerState<InlineVideo> {
       return ColoredBox(color: t.surface2);
     }
     final video = FittedBox(
-      fit: BoxFit.cover,
+      fit: widget.fit,
       child: SizedBox(
         width: c.value.size.width,
         height: c.value.size.height,

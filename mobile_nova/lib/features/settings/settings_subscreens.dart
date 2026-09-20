@@ -596,7 +596,6 @@ class PaymentHistoryScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = L.of(context);
-    final t = context.tokens;
     final payments = ref.watch(paymentHistoryProvider);
 
     return NovaScaffold(
@@ -617,26 +616,112 @@ class PaymentHistoryScreen extends ConsumerWidget {
                 itemCount: items.length,
                 separatorBuilder: (_, __) => const SizedBox(height: Gap.sm),
                 itemBuilder: (context, i) {
-                  final p = items[i];
-                  return FloatingSurface(
-                    solid: true,
-                    padding: const EdgeInsets.all(Gap.lg),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text('${p['provider'] ?? p['status'] ?? ''}',
-                              style: Theme.of(context).textTheme.bodyLarge),
-                        ),
-                        Text(
-                          formatMoney(
-                              (p['amount'] as num?)?.toInt() ?? 0, 'UZS'),
-                          style: AppType.monoStyle(color: t.text1, size: 13),
-                        ),
-                      ],
-                    ),
-                  );
+                  return _PaymentRow(row: items[i]);
                 },
               ),
+      ),
+    );
+  }
+}
+
+/// TO'LOVLAR TARIXIDAGI BITTA QATOR.
+///
+/// ## NIMA UCHUN HAMMA SUMMA "0 so'm" EDI
+///
+/// Server `/api/payments` da summani **`price`** deb yuboradi
+/// (`hosting/api/account.js`). Ekran esa **`p['amount']`** ni
+/// o'qirdi — bunday kalit javobda UMUMAN YO'Q. Natijada
+/// `(null as num?)?.toInt() ?? 0` doim 0 qaytarardi va butun tarix
+/// "0 so'm" bo'lib ko'rinardi.
+///
+/// Xuddi shu sabab birinchi ustunda ham `p['provider']` o'qilardi
+/// (server `paymentProvider` yuboradi), shuning uchun u har doim
+/// zaxira qiymatga — XOM `status` matniga tushib ketardi. Odam
+/// "pending", "cancelled" degan inglizcha so'zlarni ko'rardi va
+/// to'lovi nima uchun ekanini bilmasdi.
+///
+/// Endi qator uch narsani aytadi: NIMA uchun to'langan, QANCHA va
+/// HOLATI nima — hammasi tarjima qilingan holda.
+class _PaymentRow extends StatelessWidget {
+  const _PaymentRow({required this.row});
+
+  final Map<String, dynamic> row;
+
+  /// Summani o'qiydi. `price` — serverning haqiqiy kaliti;
+  /// `amount` zaxira sifatida qoldirilgan.
+  int get _price {
+    final v = row['price'] ?? row['amount'];
+    if (v is num) return v.toInt();
+    return int.tryParse('$v') ?? 0;
+  }
+
+  String _kind(L l) => switch ('${row['kind'] ?? ''}') {
+        'card_purchase' => l.payKindCard,
+        'physical_card_order' => l.payKindPhysical,
+        'auction_payment' => l.payKindAuction,
+        'premium_upgrade' => l.payKindPremium,
+        'premium_follow' => l.payKindFollow,
+        _ => l.payKindOther,
+      };
+
+  /// Holat matni va rangi.
+  (String, Color) _status(L l, NfcTokens t) =>
+      switch ('${row['status'] ?? ''}') {
+        'paid' => (l.payStatusPaid, t.success),
+        'pending' => (l.payStatusPending, t.warn),
+        'cancelled' => (l.payStatusCancelled, t.text3),
+        'failed_code_taken' => (l.payStatusFailed, t.error),
+        _ => ('${row['status'] ?? ''}', t.text3),
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context);
+    final t = context.tokens;
+    final (statusText, statusColor) = _status(l, t);
+    final provider = '${row['paymentProvider'] ?? row['provider'] ?? ''}';
+
+    return FloatingSurface(
+      solid: true,
+      padding: const EdgeInsets.all(Gap.lg),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(_kind(l), style: Theme.of(context).textTheme.bodyLarge),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Text(statusText,
+                        style: AppType.monoStyle(color: statusColor, size: 11)),
+                    if (provider.isNotEmpty) ...[
+                      Text(' · ',
+                          style: AppType.monoStyle(color: t.text3, size: 11)),
+                      Text(provider,
+                          style: AppType.monoStyle(color: t.text3, size: 11)),
+                    ],
+                  ],
+                ),
+                // TUGALLANMAGAN TO'LOV SHUNDAYLIGINI AYTADI.
+                // Ilgari qatorda xom "pending" so'zi turardi va
+                // odam to'lovi o'tdimi, yo'qmi bilmasdi.
+                if ('${row['status'] ?? ''}' == 'pending') ...[
+                  const SizedBox(height: 2),
+                  Text(l.payPendingHint,
+                      style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: Gap.md),
+          Text(
+            formatMoney(_price, 'UZS'),
+            style: AppType.monoStyle(color: t.text1, size: 13),
+          ),
+        ],
       ),
     );
   }

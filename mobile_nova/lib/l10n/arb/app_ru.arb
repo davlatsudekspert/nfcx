@@ -432,5 +432,16 @@
   "premiumLocked": "Эта возможность в Premium",
   "premiumLockedVideo": "Для видео и Reels нужен Premium.",
   "premiumLockedStory": "Вашего уровня недостаточно для историй.",
-  "premiumLockedPost": "Вашего уровня недостаточно для постов."
+  "premiumLockedPost": "Вашего уровня недостаточно для постов.",
+  "payKindCard": "Цифровая визитка",
+  "payKindPhysical": "Физическая NFC-карта",
+  "payKindAuction": "Оплата аукциона",
+  "payKindPremium": "Подписка Premium",
+  "payKindFollow": "Premium-подписка",
+  "payKindOther": "Платёж",
+  "payStatusPaid": "Оплачено",
+  "payStatusPending": "Ожидается",
+  "payStatusCancelled": "Отменено",
+  "payStatusFailed": "Ошибка",
+  "payPendingHint": "Платёж не завершён — можно оплатить"
 }

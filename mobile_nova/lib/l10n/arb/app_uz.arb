@@ -432,5 +432,16 @@
   "premiumLocked": "Bu imkoniyat Premiumda",
   "premiumLockedVideo": "Video post va Reels uchun Premium kerak.",
   "premiumLockedStory": "Istorya qo‘yish uchun darajangiz yetmaydi.",
-  "premiumLockedPost": "Post qo‘yish uchun darajangiz yetmaydi."
+  "premiumLockedPost": "Post qo‘yish uchun darajangiz yetmaydi.",
+  "payKindCard": "Raqamli tashrif qog‘ozi",
+  "payKindPhysical": "Jismoniy NFC karta",
+  "payKindAuction": "Auksion to‘lovi",
+  "payKindPremium": "Premium obuna",
+  "payKindFollow": "Premium kuzatuv",
+  "payKindOther": "To‘lov",
+  "payStatusPaid": "To‘landi",
+  "payStatusPending": "Kutilmoqda",
+  "payStatusCancelled": "Bekor qilindi",
+  "payStatusFailed": "Xatolik",
+  "payPendingHint": "To‘lov tugallanmagan — to‘lash mumkin"
 }

@@ -1161,4 +1161,37 @@ class LUz extends L {
 
   @override
   String get premiumLockedPost => 'Post qo‘yish uchun darajangiz yetmaydi.';
+
+  @override
+  String get payKindCard => 'Raqamli tashrif qog‘ozi';
+
+  @override
+  String get payKindPhysical => 'Jismoniy NFC karta';
+
+  @override
+  String get payKindAuction => 'Auksion to‘lovi';
+
+  @override
+  String get payKindPremium => 'Premium obuna';
+
+  @override
+  String get payKindFollow => 'Premium kuzatuv';
+
+  @override
+  String get payKindOther => 'To‘lov';
+
+  @override
+  String get payStatusPaid => 'To‘landi';
+
+  @override
+  String get payStatusPending => 'Kutilmoqda';
+
+  @override
+  String get payStatusCancelled => 'Bekor qilindi';
+
+  @override
+  String get payStatusFailed => 'Xatolik';
+
+  @override
+  String get payPendingHint => 'To‘lov tugallanmagan — to‘lash mumkin';
 }

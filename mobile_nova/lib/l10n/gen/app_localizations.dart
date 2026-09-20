@@ -2342,6 +2342,72 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Post qo‘yish uchun darajangiz yetmaydi.'**
   String get premiumLockedPost;
+
+  /// No description provided for @payKindCard.
+  ///
+  /// In uz, this message translates to:
+  /// **'Raqamli tashrif qog‘ozi'**
+  String get payKindCard;
+
+  /// No description provided for @payKindPhysical.
+  ///
+  /// In uz, this message translates to:
+  /// **'Jismoniy NFC karta'**
+  String get payKindPhysical;
+
+  /// No description provided for @payKindAuction.
+  ///
+  /// In uz, this message translates to:
+  /// **'Auksion to‘lovi'**
+  String get payKindAuction;
+
+  /// No description provided for @payKindPremium.
+  ///
+  /// In uz, this message translates to:
+  /// **'Premium obuna'**
+  String get payKindPremium;
+
+  /// No description provided for @payKindFollow.
+  ///
+  /// In uz, this message translates to:
+  /// **'Premium kuzatuv'**
+  String get payKindFollow;
+
+  /// No description provided for @payKindOther.
+  ///
+  /// In uz, this message translates to:
+  /// **'To‘lov'**
+  String get payKindOther;
+
+  /// No description provided for @payStatusPaid.
+  ///
+  /// In uz, this message translates to:
+  /// **'To‘landi'**
+  String get payStatusPaid;
+
+  /// No description provided for @payStatusPending.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kutilmoqda'**
+  String get payStatusPending;
+
+  /// No description provided for @payStatusCancelled.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bekor qilindi'**
+  String get payStatusCancelled;
+
+  /// No description provided for @payStatusFailed.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xatolik'**
+  String get payStatusFailed;
+
+  /// No description provided for @payPendingHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'To‘lov tugallanmagan — to‘lash mumkin'**
+  String get payPendingHint;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

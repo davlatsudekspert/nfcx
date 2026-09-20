@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -29,7 +28,7 @@ import 'comments.dart';
 import 'engagement.dart';
 import 'reels_screen.dart';
 import 'story_viewer.dart';
-import 'inline_video.dart';
+import 'media_frame.dart';
 import 'content_rules.dart';
 import 'moderation.dart';
 
@@ -160,37 +159,18 @@ class _PostScreenState extends ConsumerState<PostScreen> {
               ),
               if (p.mediaUrls.isNotEmpty) ...[
                 const SizedBox(height: Gap.lg),
-                ClipRRect(
+                // LENTA BILAN BIR XIL QUTI. Ilgari lentada
+                // `AspectRatio(4 / 3)`, bu yerda `AspectRatio(1)`
+                // turardi — BITTA post ikki ekranda ikki xil
+                // ko'rinardi va ikkalasida ham kesilardi.
+                AdaptiveMedia(
+                  url: p.mediaUrls.first,
+                  isVideo: p.isVideo,
+                  videoKey: ValueKey(p.id),
+                  autoPlayVideo: false,
+                  loopingVideo: true,
+                  tapToToggleVideo: true,
                   borderRadius: R.gentle,
-                  child: AspectRatio(
-                    aspectRatio: 1,
-                    // VIDEO POST. Ilgari bu yerda HAR DOIM
-                    // `CachedNetworkImage` turardi va `p.isVideo`
-                    // umuman o'qilmasdi — video post ochilganda
-                    // siniq rasm belgisi chiqardi.
-                    child: p.isVideo
-                        ? InlineVideo(
-                            key: ValueKey(p.id),
-                            url: p.mediaUrls.first,
-                            autoPlay: false,
-                            looping: true,
-                            tapToToggle: true,
-                          )
-                        : CachedNetworkImage(
-                            imageUrl: p.mediaUrls.first,
-                            fit: BoxFit.cover,
-                            placeholder: (_, __) =>
-                                ColoredBox(color: t.surface2),
-                            errorWidget: (_, __, ___) => ColoredBox(
-                              color: t.surface2,
-                              child: Icon(
-                                Icons.broken_image_outlined,
-                                size: 30,
-                                color: t.text3,
-                              ),
-                            ),
-                          ),
-                  ),
                 ),
               ],
               if (p.text.isNotEmpty) ...[

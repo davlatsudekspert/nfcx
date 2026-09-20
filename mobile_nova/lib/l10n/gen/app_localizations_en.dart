@@ -1159,4 +1159,37 @@ class LEn extends L {
 
   @override
   String get premiumLockedPost => 'Your tier is not high enough for posts.';
+
+  @override
+  String get payKindCard => 'Digital business card';
+
+  @override
+  String get payKindPhysical => 'Physical NFC card';
+
+  @override
+  String get payKindAuction => 'Auction payment';
+
+  @override
+  String get payKindPremium => 'Premium subscription';
+
+  @override
+  String get payKindFollow => 'Premium follow';
+
+  @override
+  String get payKindOther => 'Payment';
+
+  @override
+  String get payStatusPaid => 'Paid';
+
+  @override
+  String get payStatusPending => 'Pending';
+
+  @override
+  String get payStatusCancelled => 'Cancelled';
+
+  @override
+  String get payStatusFailed => 'Failed';
+
+  @override
+  String get payPendingHint => 'Payment not finished — you can still pay';
 }
