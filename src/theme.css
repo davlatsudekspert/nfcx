@@ -539,6 +539,9 @@ body:has(.vz-owner-dock) { --owner-dock-h: 62px }
 /* Professional Business Public Profile — deliberately separate from NFC ID. */
 .bp-page{--bp-gold:var(--accent-primary);--bp-gold-2:var(--accent-secondary);--bp-bg:var(--bg-secondary);--bp-panel:var(--surface);--bp-line:color-mix(in srgb, var(--tint-base) 10%, transparent);min-height:100vh;background:var(--bp-bg);color:var(--text-primary);font-family:'Manrope',system-ui,sans-serif}.bp-page button,.bp-page a{font:inherit}
 .bp-topbar{height:70px;display:flex;align-items:center;gap:20px;padding:0 max(24px,calc((100vw - 1240px)/2));border-bottom:1px solid var(--bp-line);background:var(--nav-bg);backdrop-filter:blur(18px);position:relative;z-index:20}.bp-brand{display:flex;align-items:center;gap:10px;border:0;background:transparent;color:var(--text-primary);font-weight:900;letter-spacing:.05em;cursor:pointer}.bp-brand img{width:32px;height:32px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 1px color-mix(in srgb, var(--accent-primary) 35%, transparent),0 0 24px color-mix(in srgb, var(--accent-primary) 13%, transparent)}.bp-demo-badge{font-size:9px;font-weight:900;letter-spacing:.16em;color:var(--bp-gold);border:1px solid color-mix(in srgb, var(--accent-primary) 30%, transparent);border-radius:999px;padding:6px 9px}.bp-top-actions{margin-left:auto;display:flex;align-items:center;gap:10px}
+/* Havola nusxalandi — natija KO'RINSIN (tugma "ishlamayotgandek"
+   tuyulmasin). Modallardan (z-200) past turadi. */
+.bp-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:190;border-radius:999px;background:var(--surface-raised);color:var(--text-primary);border:1px solid var(--border);padding:10px 18px;font-size:var(--fs-sm);font-weight:700;box-shadow:var(--shadow)}
 .bp-quiet-btn,.bp-dark-btn,.bp-gold-btn{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 17px;border-radius:12px;text-decoration:none;font-size:var(--fs-sm);font-weight:800;cursor:pointer;transition:.2s ease}.bp-quiet-btn{border:1px solid var(--bp-line);background:var(--surface);color:var(--text-secondary)}.bp-quiet-btn:hover,.bp-dark-btn:hover{border-color:color-mix(in srgb, var(--accent-primary) 45%, transparent);color:var(--text-primary);transform:translateY(-1px)}.bp-dark-btn{border:1px solid color-mix(in srgb, var(--tint-base) 18%, transparent);background:color-mix(in srgb, var(--shade-base) 62%, transparent);color:var(--text-primary);backdrop-filter:blur(10px)}.bp-gold-btn{border:1px solid var(--accent-secondary);background:linear-gradient(135deg,var(--accent-secondary),var(--accent-primary));color:var(--accent-ink);box-shadow:0 10px 30px color-mix(in srgb, var(--accent-primary) 18%, transparent)}.bp-gold-btn:hover{filter:brightness(1.08);transform:translateY(-1px);box-shadow:0 14px 36px color-mix(in srgb, var(--accent-primary) 25%, transparent)}
 .bp-hero{position:relative;min-height:430px;overflow:hidden;border-bottom:1px solid color-mix(in srgb, var(--accent-primary) 25%, transparent);background:radial-gradient(700px 340px at 72% 20%,color-mix(in srgb, var(--accent-primary) 14%, transparent),transparent 70%),linear-gradient(150deg,var(--surface-elevated),var(--bg-primary))}.bp-hero-image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:saturate(.72) brightness(.58)}.bp-hero-shade{position:absolute;inset:0;background:linear-gradient(90deg,color-mix(in srgb, var(--shade-base) 95%, transparent) 0%,color-mix(in srgb, var(--shade-base) 76%, transparent) 38%,color-mix(in srgb, var(--inset-base) 22%, transparent) 78%,color-mix(in srgb, var(--inset-base) 45%, transparent) 100%),linear-gradient(0deg,var(--bg-secondary) 0%,transparent 45%)}.bp-hero::after{content:'';position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(color-mix(in srgb, var(--tint-base) 2%, transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb, var(--tint-base) 2%, transparent) 1px,transparent 1px);background-size:44px 44px;mask-image:linear-gradient(90deg,var(--bg-primary),transparent 68%)}
 .bp-hero-content{position:relative;z-index:2;max-width:1240px;min-height:430px;margin:0 auto;padding:78px 32px 46px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:25px;align-items:end}.bp-logo{align-self:center;width:104px;height:104px;border-radius:26px;border:1px solid color-mix(in srgb, var(--accent-secondary) 55%, transparent);background:color-mix(in srgb, var(--surface) 84%, transparent);display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--bp-gold);font-size:24px;font-weight:900;letter-spacing:.06em;box-shadow:0 24px 80px color-mix(in srgb, var(--shade-base) 45%, transparent),inset 0 1px 0 color-mix(in srgb, var(--tint-base) 8%, transparent)}.bp-logo img{width:100%;height:100%;object-fit:cover}.bp-identity{align-self:center;min-width:0}.bp-kicker,.bp-section-label{color:var(--bp-gold);font-family:'Space Mono',monospace;font-size:9px;font-weight:800;letter-spacing:.18em}.bp-identity h1{margin:12px 0 5px;font-family:'Space Grotesk',sans-serif;font-size:clamp(34px,5vw,58px);line-height:.96;letter-spacing:-.04em;color:var(--text-primary)}.bp-identity>p{margin:0;color:color-mix(in srgb, var(--tint-base) 67%, transparent);font-size:16px}.bp-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:17px}.bp-meta span{display:inline-flex;align-items:center;gap:5px;border:1px solid color-mix(in srgb, var(--tint-base) 13%, transparent);background:color-mix(in srgb, var(--inset-base) 44%, transparent);border-radius:999px;padding:6px 10px;color:color-mix(in srgb, var(--tint-base) 68%, transparent);font-size:var(--fs-2xs);font-weight:700}.bp-meta .bp-verified{color:var(--bp-gold-2);border-color:color-mix(in srgb, var(--accent-primary) 34%, transparent)}.bp-hero-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;padding-bottom:5px}
@@ -1444,6 +1447,118 @@ body.pricing-bg footer{background:var(--color-page-bg);}
 /* Sanoq belgisi OLIB TASHLANDI (egasining talabi): logotip yonidagi
    "1", "2" raqamlari ortiqcha edi — halqaning o‘zi istorya borligini
    bildiradi. */
+/* ══════════════════════════════════════════════════════════════════
+   OCHIQ PROFIL TEPASIDAGI AMALLAR QATORI (ProfileActionCluster)
+   [nusxalash] [ulashish] [⋮] [♥ n]
+   Shaxsiy va biznes ochiq profilda AYNAN bir xil — uslub ham shu
+   yerda, sahifalarda emas. Ilgari ikkalasi o'z tailwind satrini
+   yozardi va vaqt o'tib bir-biridan ajralib ketgandi.
+   ────────────────────────────────────────────────────────────────── */
+.pf-actions{display:flex;align-items:center;gap:2px;margin-left:auto;flex-shrink:0;min-width:0}
+/* 40px — barmoq uchun eng kichik qulay maydon. Kichraytirilmaydi. */
+.pf-act{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:40px;height:40px;flex-shrink:0;
+  padding:0;border:0;border-radius:999px;background:transparent;
+  color:var(--vz-ink-faint);cursor:pointer;
+  transition:color .15s ease,background .15s ease
+}
+.pf-act:hover{color:var(--vz-ink);background:color-mix(in srgb, var(--vz-ink) 8%, transparent)}
+.pf-act:focus-visible{outline:2px solid var(--vz-accent);outline-offset:2px}
+/* YURAK — qatordagi YAGONA ramkali element. Ko'z unga tushishi kerak:
+   bu sahifadagi asosiy ijtimoiy harakat. */
+.pf-like{
+  display:inline-flex;align-items:center;flex-shrink:0;
+  height:34px;margin-left:4px;border-radius:999px;
+  border:1px solid var(--vz-line);color:var(--vz-ink-dim);
+  transition:border-color .15s ease,color .15s ease
+}
+/* Bosilgan holat rangi TOKENDAN emas, o'zgarmas qizil — u "yoqdi"
+   degan umumiy belgi va mavzu almashganda ma'nosi o'zgarmasligi
+   kerak. Qolgan hamma narsa (ramka, matn) tokenda. */
+.pf-like.is-on{border-color:color-mix(in srgb,#f2555a 50%, transparent);color:#f2555a}
+.pf-like button{border:0;background:transparent;color:inherit;cursor:pointer;font:inherit;line-height:1;height:100%}
+.pf-like-heart{padding:0 3px 0 10px;font-size:15px}
+.pf-like-count{padding:0 11px 0 3px;font-size:14px;min-width:0}
+.pf-like-count b{font-weight:700;font-variant-numeric:tabular-nums}
+.pf-like button:focus-visible{outline:2px solid var(--vz-accent);outline-offset:2px;border-radius:999px}
+/* 320px: ikona oralig'i nolgacha siqiladi, LEKIN o'lchamlar emas —
+   tugma kichrayganda barmoq nishonga tegmay qoladi. */
+@media (max-width:360px){
+  .pf-actions{gap:0}
+  .pf-act{width:36px}
+  .pf-like-heart{padding-left:8px}
+  .pf-like-count{padding-right:9px}
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   AVATAR ATROFIDAGI IKKI HALQA
+     TASHQI = STORY (.story-ring)  •  ICHKI = MUSIQA (.music-ring)
+   Ular USTMA-UST TUSHMASLIGI uchun radiuslar ajratilgan: musiqa
+   -5..-8px, story esa musiqa bo'lganda -13..-18px ga suriladi.
+   `:has()` ATAYLAB ishlatilmadi — eski mobil brauzerlarda u yo'q va
+   halqalar bir-birining ustiga chiqib ketardi. Holat JSX dan aniq
+   sinf bilan keladi.
+   ────────────────────────────────────────────────────────────────── */
+.pf-ava-rings.has-music .story-ring::before{inset:-13px}
+.pf-ava-rings.has-music .story-ring-glow{inset:-18px}
+
+.music-ring{position:relative;display:inline-flex;line-height:0}
+.music-ring>*{position:relative;z-index:1}
+/* Avatar bilan musiqa yoyi orasidagi ingichka bo'shliq. Usiz yoy
+   avatarning O'Z chetiga (oltin ramkasiga) qo'shilib ketardi va
+   "halqa" emas, ramkaning bir qismi bo'lib ko'rinardi — ya'ni odam
+   qaysi halqa nima ekanini ajrata olmasdi. Story halqasida ham
+   xuddi shu usul ishlatilgan (`.story-ring::before`). */
+.music-ring::before{
+  content:'';position:absolute;inset:-4px;z-index:0;pointer-events:none;
+  border-radius:50%;background:var(--vz-card)
+}
+/* Halqaning O'ZI — to'liq doira emas, YOY (uzuq chiziq): to'liq doira
+   story halqasidan farq qilmasdi va odam qaysi biri nima ekanini
+   bilmasdi. Yoy + nota belgisi birga "bu musiqa" deb turadi. */
+/* `z-index:2` — ATAYLAB istorya halqasidan yuqori.
+   Sabab (brauzerda o'lchangan): `.story-ring::before` — TO'LDIRILGAN
+   doira, halqa emas; u -13px dan avatargacha bo'lgan hamma joyni
+   qoplaydi. Istorya halqasi esa `.music-ring>*` qoidasidan
+   `z-index:1` oladi, ya'ni o'sha to'ldirilgan doira musiqa yoyini
+   BUTUNLAY YOPIB qo'yardi: musiqa yoqilgan bo'lsa ham halqa
+   ko'rinmasdi. Yoy niqoblangan (faqat 2.5px chegara chiziladi) va
+   avatardan tashqarida turadi, shuning uchun u hech narsani
+   to'smaydi.
+   `inset:-8px` — avatar (0) bilan istorya bo'shlig'i (-13px)
+   ORASIDAGI qorong'i tasmaning o'rtasi. */
+.music-ring-arc{
+  position:absolute;inset:-8px;z-index:2;pointer-events:none;border-radius:50%;
+  border:2.5px solid transparent;
+  background:
+    conic-gradient(from 0deg,
+      var(--vz-accent) 0deg 82deg, transparent 82deg 120deg,
+      var(--vz-accent) 120deg 202deg, transparent 202deg 240deg,
+      var(--vz-accent) 240deg 322deg, transparent 322deg 360deg) border-box;
+  -webkit-mask:linear-gradient(#000 0 0) padding-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) padding-box,linear-gradient(#000 0 0);
+  mask-composite:exclude;
+  opacity:.45
+}
+/* IJRO — yoy aylanadi va yorqinlashadi. TO'XTAGAN — tinch turadi.
+   Shunda halqaga qarab ijro holatini bilish mumkin. */
+.music-ring.is-playing .music-ring-arc{opacity:1;animation:music-spin 3.2s linear infinite}
+@media (prefers-reduced-motion:reduce){.music-ring.is-playing .music-ring-arc{animation:none}}
+@keyframes music-spin{to{transform:rotate(1turn)}}
+/* Nota tugmasi — o'ng pastda, avatar chetida. 40px teginish maydoni,
+   ko'rinadigan doira esa 28px: katta tugma avatarni yeb qo'yardi. */
+.music-ring .music-ring-btn{
+  position:absolute;right:-6px;bottom:-2px;z-index:30;
+  display:inline-flex;align-items:center;justify-content:center;
+  width:30px;height:30px;padding:0;cursor:pointer;
+  border:1.5px solid var(--vz-card);border-radius:999px;
+  background:var(--vz-pill);color:#fff;line-height:0;
+  box-shadow:0 3px 10px rgba(0,0,0,.28)
+}
+.music-ring.is-playing .music-ring-btn{background:var(--vz-accent);color:var(--vz-card)}
+.music-ring-btn:focus-visible{outline:2px solid var(--vz-accent);outline-offset:2px}
+
 /* ── TO'LIQ EKRANLI KO'RUVCHI ─────────────────────────────────────── */
 .sv-back{position:fixed;inset:0;z-index:200;background:var(--bg-primary);display:flex;flex-direction:column;align-items:center;justify-content:center}
 .sv-bars{position:absolute;top:10px;left:10px;right:10px;display:flex;gap:4px;z-index:3}

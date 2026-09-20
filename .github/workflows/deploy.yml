@@ -110,6 +110,15 @@ jobs:
       - name: Ochiq profil tepasi
         run: node scripts/test-public-profile-top.mjs
 
+      # OCHIQ PROFIL BOSHI — BITTA TIZIM.
+      # Tartib qat'iy: [nusxalash] [ulashish] [⋮] [♥]. Yurak ilgari
+      # obunachilar soni bilan bir qatorda "statistika" bo'lib
+      # turardi. Shu yerda avatar atrofidagi ikki halqa (tashqi =
+      # story, ichki = musiqa) ustma-ust tushmasligi va musiqa yo'q
+      # bo'lganda halqa UMUMAN chizilmasligi ham qo'riqlanadi.
+      - name: Ochiq profil boshi va musiqa halqasi
+        run: node scripts/test-profile-header.mjs
+
       - name: Biznes profil maketi
         run: node scripts/test-quick-profile-screen.mjs
 

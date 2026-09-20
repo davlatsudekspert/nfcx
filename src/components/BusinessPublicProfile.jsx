@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import ProfileMoreMenu from './ProfileMoreMenu.jsx';
+import ProfileActionCluster from './ProfileActionCluster.jsx';
+import ProfileQrModal from './ProfileQrModal.jsx';
 import { directionsUrl, yandexDirectionsUrl } from '../lib/mapLink.js';
 import CloseButton from './CloseButton.jsx';
 import { socialUrl } from '../lib/socialLinks.js';
@@ -101,6 +102,10 @@ export default function BusinessPublicProfile({
   team = [],
   initialTab,
   isOwner,
+  // Egasining boshqa NFC ID lari SONI. Ro'yxatning o'zi kabinetda
+  // ("Mening ID'larim"); bu yerda faqat menyu bandini ko'rsatish-
+  // ko'rsatmaslik uchun kerak.
+  otherCodesCount = 0,
   t,
 }) {
   const module = businessModule(record.profileType, record.categorySlug) || 'services';
@@ -111,6 +116,8 @@ export default function BusinessPublicProfile({
   const [active, setActive] = useState(initial);
   const [selected, setSelected] = useState(null);
   const [catalogMeta, setCatalogMeta] = useState({});
+  const [qrOpen, setQrOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
   const source = module === 'menu' ? menu : module === 'products' ? products : services;
   const categories = useMemo(() => (source || []).filter((category) => category.items?.length), [source]);
   const items = useMemo(() => categories.flatMap((category) => category.items.map((item) => ({ ...item, categoryName: category.name }))), [categories]);
@@ -194,6 +201,22 @@ export default function BusinessPublicProfile({
     ['contact', t('Aloqa')],
   ];
 
+  // Ulashish/nusxalash uchun kanonik havola — shaxsiy profildagi bilan
+  // AYNAN bir xil shakl: nfcstore.uz/<kod kichik harfda>.
+  const shareUrl = typeof window === 'undefined'
+    ? `https://nfcstore.uz/${String(record.code || '').toLowerCase()}`
+    : `${window.location.origin}/${String(record.code || '').toLowerCase()}`;
+  // Nusxalash RAD ETILISHI mumkin (ruxsat berilmagan brauzer, HTTPS
+  // bo'lmagan muhit) — va'da qaytaradi, shuning uchun `await` bilan
+  // kutiladi va natija ROST aytiladi.
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* brauzer rad etdi — ulashish tugmasi baribir ishlaydi */ }
+  };
+
   return (
     <main className="bp-page">
       <header className="bp-topbar">
@@ -203,23 +226,42 @@ export default function BusinessPublicProfile({
         </button>
         {record.demo && <span className="bp-demo-badge">{t('NAMUNA PROFIL')}</span>}
         <div className="bp-top-actions">
-          {/* Mavzu, til va shikoyat — bitta ⋮ menyuda. Ilgari palitra
-              "Workspace" tugmasiga yopishib turardi va telefonda
-              tasodifan bosilardi. Mavzu SAYT qobig'ining rangi;
-              biznes profilining o'z dizayniga TEGMAYDI. */}
-          <ProfileMoreMenu targetKind="record" targetId={record.code} className="bp-quiet-btn bp-theme-btn" />
-          <button type="button" className="bp-quiet-btn" onClick={() => navigate('/kompaniyalar')}>{t('Kompaniyalar')}</button>
-          {/* EGASI UCHUN — HAQIQIY TAHRIRLASH.
-              Ilgari bu tugma `/business/:code` ga olib borardi. U sahifa
-              esa NAMUNA: butunlay qattiq yozilgan ma'lumot ustida
-              ishlaydi va birorta ham so'rov yubormaydi (`DEMO_PRESETS`).
-              Ya'ni egasi tahrirlayman deb kirar, yozgani esa hech qayerga
-              saqlanmasdi va u buni bilmasdi ham.
-              Endi tugma o'zining NFC ID si bilan haqiqiy tahrirlash
-              oynasini ochadi — shaxsiy profildagi bilan bir xil yo'l
-              (`ownerActionUrl`), shuning uchun kod ham bitta joydan
-              keladi va ikkisi bir-biridan ajralib ketmaydi. */}
-          {isOwner && <button type="button" className="bp-gold-btn" onClick={() => navigate(ownerActionUrl(record.code, 'edit'))}>{t('Tahrirlash')}</button>}
+        {/* "Kompaniyalar" — SAYT navigatsiyasi, profilning amali emas.
+            Telefonda yashiriladi (theme.css) — u yerda joy yo'q va
+            pastdagi kolontitulda o'sha havola baribir bor. */}
+        <button type="button" className="bp-quiet-btn" onClick={() => navigate('/kompaniyalar')}>{t('Kompaniyalar')}</button>
+        {/* O'NG YUQORI BURCHAK — SHAXSIY PROFIL BILAN BITTA TIZIM:
+                [nusxalash] [ulashish] [⋮]
+            (yurak biznes profilda yo'q — bu yerda asosiy ijtimoiy
+            harakat "Obuna bo'lish", u pastda turadi.)
+
+            EGASI UCHUN KATTA OLTIN "TAHRIRLASH" TUGMASI OLIB TASHLANDI.
+            Ochiq profil — mehmonga ko'rsatiladigan sahifa; boshqaruv
+            tugmasi uning eng ko'zga tashlanadigan joyida turmasligi
+            kerak. Tahrirlash yo'qolmadi: u ⋮ menyusida va avvalgidek
+            o'zining NFC ID si bilan haqiqiy tahrirlash oynasini
+            ochadi (`ownerActionUrl`) — shaxsiy profildagi bilan bir
+            xil yo'l. (Ilgari u `/business/:code` ga olib borardi; u
+            sahifa esa NAMUNA — `DEMO_PRESETS` ustida ishlaydi va
+            birorta ham so'rov yubormaydi, ya'ni yozilgan narsa hech
+            qayerga saqlanmasdi.) */}
+        <ProfileActionCluster
+          url={shareUrl}
+          shareTitle={record.name || 'NFCSTORE'}
+          shareText={record.role || t('Kompaniya va xizmatlar')}
+          onCopy={copyLink}
+          targetKind="record"
+          targetId={record.code}
+          ownerActions={isOwner ? [
+            { label: t('Profilni tahrirlash'), icon: '✎', onClick: () => navigate(ownerActionUrl(record.code, 'edit')) },
+            { label: t('Story qo‘shish'), icon: '＋', onClick: () => navigate(ownerActionUrl(record.code, 'story')) },
+            { label: t('Post qo‘shish'), icon: '＋', onClick: () => navigate(ownerActionUrl(record.code, 'post')) },
+            { label: t('QR kod'), icon: '▦', onClick: () => setQrOpen(true) },
+            ...(otherCodesCount > 0
+              ? [{ label: t("Mening ID'larim"), icon: '▤', onClick: () => navigate('/account#myids') }]
+              : []),
+          ] : []}
+        />
         </div>
       </header>
 
@@ -375,6 +417,21 @@ export default function BusinessPublicProfile({
           </article>
         </div>
       )}
+
+      {/* QR — ega uchun, ⋮ menyusidan. Shaxsiy profildagi bilan bitta
+          komponent (`ProfileQrModal`): ikki xil QR oynasi bo'lsa,
+          ulardan biri vaqt o'tib boshqasidan orqada qolardi. */}
+      {qrOpen && (
+        <ProfileQrModal
+          url={shareUrl}
+          name={record.name || record.code}
+          onClose={() => setQrOpen(false)}
+        />
+      )}
+
+      {/* Nusxalash natijasi KO'RINADI — aks holda tugma
+          "ishlamayotgandek" tuyulardi. */}
+      {copied && <div className="bp-toast" role="status">{t('Havola nusxalandi!')}</div>}
     </main>
   );
 }

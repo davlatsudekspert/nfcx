@@ -28,6 +28,7 @@ const { check, checkTrue, done } = makeChecker();
 // olinadi.
 const PANEL = 'mt-[22px] max-w-[640px] overflow-hidden rounded-[22px]';
 const page = readFileSync(new URL('../src/pages/ProfilePage.jsx', import.meta.url), 'utf8');
+const cluster = readFileSync(new URL('../src/components/ProfileActionCluster.jsx', import.meta.url), 'utf8');
 const theme = readFileSync(new URL('../src/theme.css', import.meta.url), 'utf8');
 const companyCss = readFileSync(new URL('../src/company-system.css', import.meta.url), 'utf8');
 
@@ -136,7 +137,11 @@ checkTrue('6) prefers-reduced-motion hisobga olingan',
   // Havola maydoni olib tashlandi: undagi matn brauzerning manzil
   // qatorida allaqachon turadi. Nusxalash ikonkasi qoldi.
   checkTrue('9) havola maydoni yo‘q', !page.includes('input readOnly value={`nfcstore.uz/'));
-  checkTrue('9) nusxalash ikonkasi qoldi', page.includes("title={t('Nusxalash')}"));
+  // 2026-09: ikonkalarning O'ZI endi umumiy `ProfileActionCluster`
+  // da — shaxsiy va biznes ochiq profil bitta tizimdan ishlaydi.
+  // Shuning uchun tekshiruv KUCHAYTIRILDI: sahifa to'plamni
+  // chaqirayotgani VA to'plamning ichida nusxalash borligi.
+  checkTrue('9) nusxalash ikonkasi qoldi', cluster.includes("t('Nusxalash')"));
   // Katta kod pillasi ham olib tashlandi — kod profil kartasi ichida
   // tarif rangida va kattaroq yozilgan (egasi: "tepadagi #VIP001
   // kerak emas, pastda turibdi").
@@ -150,7 +155,9 @@ checkTrue('6) prefers-reduced-motion hisobga olingan',
   // tugma ortida. Quyida ikkalasi ham tekshiriladi: qatorda borligi
   // VA menyu ichida uchta bo'lim saqlanib qolgani.
   const top = page.slice(page.indexOf("t('Bosh sahifaga')"), page.indexOf(PANEL));
-  checkTrue('9) amallar tepa qatorda', top.includes('ShareButton') && top.includes('ProfileMoreMenu'));
+  checkTrue('9) amallar tepa qatorda', top.includes('ProfileActionCluster'));
+  checkTrue('9) to‘plamda ulashish va ⋮ bor',
+    cluster.includes('ShareButton') && cluster.includes('ProfileMoreMenu'));
   const more = readFileSync(new URL('../src/components/ProfileMoreMenu.jsx', import.meta.url), 'utf8');
   checkTrue('9) "yana" menyusida til tanlovi bor', more.includes('LANGUAGES') && more.includes('setLang'));
   checkTrue('9) "yana" menyusida mavzu tanlovi bor', more.includes('useTheme') && more.includes('setTheme'));

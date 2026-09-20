@@ -69,6 +69,10 @@ export default function ProfileMoreMenu({ targetKind, targetId, className = '', 
           type="button"
           className={className}
           onClick={() => setOpen((o) => !o)}
+          // Qatorda ulashish tugmasida ham `aria-haspopup="menu"` bor —
+          // ya'ni faqat shu belgi bilan ⋮ ni ajratib bo'lmaydi. Bu
+          // atribut qo'riqchi testlarga aniq nishon beradi.
+          data-more-menu=""
           aria-haspopup="menu"
           aria-expanded={open}
           aria-label={t('Yana')}

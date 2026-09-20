@@ -26,6 +26,7 @@ const { check, checkTrue, done } = makeChecker();
 const read = (rel) => stripComments(readFileSync(new URL(rel, import.meta.url), 'utf8'));
 const profile = read('../src/pages/ProfilePage.jsx');
 const menu = read('../src/components/ProfileMoreMenu.jsx');
+const cluster = read('../src/components/ProfileActionCluster.jsx');
 
 // ── 1) TEPADA EGA TUGMALARI YO'Q ─────────────────────────────────────
 {
@@ -90,9 +91,15 @@ const menu = read('../src/components/ProfileMoreMenu.jsx');
 // ── 6) TEPA QATORI — TO'RT NARSA ─────────────────────────────────────
 {
   checkTrue('6) orqaga tugmasi bor', profile.includes("aria-label={t('Bosh sahifaga')}"));
-  checkTrue('6) nusxalash bor', profile.includes("aria-label={t('Nusxalash')}"));
-  checkTrue('6) ulashish bor', /<ShareButton/.test(profile));
-  checkTrue('6) ⋮ menyusi bor', /<ProfileMoreMenu/.test(profile));
+  // 2026-09: nusxalash/ulashish/⋮ endi SAHIFADA emas, umumiy
+  // `ProfileActionCluster` da. Sahifa faqat uni chaqiradi — shuning
+  // uchun tekshiruv ikki bosqichli: chaqiruv bormi va to'plamning
+  // O'ZIDA uchalasi bormi. Ilgari bu yerda satr ichidagi markup
+  // tekshirilardi va biznes profil o'z nusxasini yozib ketgandi.
+  checkTrue('6) sahifa umumiy amallar to‘plamini chaqiradi', /<ProfileActionCluster/.test(profile));
+  checkTrue('6) nusxalash bor', cluster.includes("aria-label={t('Nusxalash')}"));
+  checkTrue('6) ulashish bor', /<ShareButton/.test(cluster));
+  checkTrue('6) ⋮ menyusi bor', /<ProfileMoreMenu/.test(cluster));
 }
 
 // ── 7) STORY VA POST AJRALGANICHA QOLADI ─────────────────────────────

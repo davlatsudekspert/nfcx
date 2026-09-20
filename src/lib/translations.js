@@ -847,6 +847,7 @@ const DICT_BASE = {
   'Tanlangan kompaniya sizga tegishli emas yoki hali faol emas.': { ru: 'Выбранная компания вам не принадлежит или ещё не активна.', en: 'The selected company is not yours or is not active yet.' },
   "Server bilan bog'liq xatolik ({code}). Birozdan so'ng qayta urinib ko'ring.": { ru: 'Ошибка на стороне сервера ({code}). Попробуйте позже.', en: 'Server-side error ({code}). Please try again shortly.' },
   'Yoqtirganlar': { ru: 'Понравилось', en: 'Likes' },
+  'Profil QR kodi': { ru: 'QR-код профиля', en: 'Profile QR code' },
   'Yoqtirish': { ru: 'Нравится', en: 'Like' },
   '{name} nomidan yoqtirdingiz': { ru: 'Вы поставили лайк от имени {name}', en: 'You liked as {name}' },
   'Stories va post': { ru: 'История и пост', en: 'Story & post' },

@@ -15,8 +15,9 @@ import { listMyCompanies } from '../lib/company.js';
 import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import { readFollowAs, rememberFollowAs } from '../lib/followIdentity.js';
-import ShareButton from '../components/ShareButton.jsx';
-import ProfileMoreMenu from '../components/ProfileMoreMenu.jsx';
+import ProfileActionCluster from '../components/ProfileActionCluster.jsx';
+import MusicRing from '../components/MusicRing.jsx';
+import ProfileQrModal from '../components/ProfileQrModal.jsx';
 import ProfileManifest from '../components/ProfileManifest.jsx';
 import CardNumberModal from '../components/CardNumberModal.jsx';
 import ProfileTabs from '../components/ProfileTabs.jsx';
@@ -31,7 +32,7 @@ import BusinessPublicProfile from '../components/BusinessPublicProfile.jsx';
 import {
   IconArrowLeft, IconCheck, IconSearch,
   IconLinkedIn, IconInstagram, IconTelegram, IconFacebook, IconX,
-  IconPhone, IconMail, IconDownload, IconGlobe, IconCopy, IconTag, IconStar, IconLink, IconSupport,
+  IconPhone, IconMail, IconDownload, IconGlobe, IconTag, IconStar, IconLink, IconSupport,
 } from '../components/Icons.jsx';
 
 export const THEME_FINISH = { classic: 'silver', midnight: 'black', emerald: 'graphite', royal: 'silver', sunset: 'black', gold: 'gold' };
@@ -390,7 +391,7 @@ function loadYouTubeApi() {
 // display:none / opacity:0 / 1x1 / ekran tashqarisi YO'Q, ustiga element
 // qo'yilmaydi); birinchi ijro faqat foydalanuvchining Play bosishi bilan.
 // `ownerName` va `coverUrl` — qulf ekranidagi kartochka uchun (MediaSession).
-function MusicPlayer({ urls = [], accentColor, onOpenChange, ownerName = '', coverUrl = '' }) {
+function MusicPlayer({ urls = [], accentColor, onOpenChange, onPlayingChange, controlRef, ownerName = '', coverUrl = '' }) {
   const audioRef = useRef(null);
   const ytHostRef = useRef(null);
   const ytPlayerRef = useRef(null);
@@ -400,6 +401,7 @@ function MusicPlayer({ urls = [], accentColor, onOpenChange, ownerName = '', cov
   // joydan davom ettiradi).
   const ytResumeRef = useRef(new Map());
   const endedRef = useRef(() => {});
+  const toggleRef = useRef(() => {});
   const [playing, setPlaying] = useState(false);
   const [embedOpen, setEmbedOpen] = useState(false);
   const [trackIndex, setTrackIndex] = useState(0);
@@ -421,6 +423,18 @@ function MusicPlayer({ urls = [], accentColor, onOpenChange, ownerName = '', cov
   const ydH = ydFrag && ydFrag.startsWith('track/') ? 180 : 220;
 
   useEffect(() => { setMounted(true); }, []);
+  // IJRO HOLATI TASHQARIGA. Avatar atrofidagi musiqa halqasi shu
+  // holatni ko'rsatadi (aylanadi / tinch turadi). Halqa O'Z pleerini
+  // yaratmaydi — sahifada YAGONA pleer bo'lishi shart, aks holda bir
+  // vaqtda ikki manba chalinib ketardi.
+  useEffect(() => { if (onPlayingChange) onPlayingChange(playing); }, [playing, onPlayingChange]);
+  // Tashqi boshqaruv dastagi. Har renderda yangilanadi, chunki
+  // `toggle` joriy holat ustida ishlaydi.
+  useEffect(() => {
+    if (!controlRef) return undefined;
+    controlRef.current = { toggle: () => toggleRef.current() };
+    return () => { controlRef.current = null; };
+  }, [controlRef]);
   // Ochiq/yopiq holatni tashqariga bildiramiz — mobil ekranda kontent
   // oxiriga bo'sh joy qo'shiladi va pleer aloqa tugmalarini TO'SMAYDI.
   useEffect(() => { if (onOpenChange) onOpenChange(embedOpen); }, [embedOpen, onOpenChange]);
@@ -550,6 +564,7 @@ function MusicPlayer({ urls = [], accentColor, onOpenChange, ownerName = '', cov
     if (playing) { el.pause(); setPlaying(false); }
     else el.play().then(() => setPlaying(true)).catch(() => {});
   };
+  toggleRef.current = toggle;
 
   // ─── EKRAN O'CHGANDA HAM IJRO (MediaSession) ────────────────────────
   //
@@ -1291,6 +1306,11 @@ export default function ProfilePage({ code, catalog, initialTab }) {
   // Suzuvchi mini-pleer ochiqmi — ochiq bo'lsa kontent oxiriga bo'sh joy
   // qo'shiladi, shunda pleer aloqa tugmalarini to'sib qolmaydi.
   const [musicOpen, setMusicOpen] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
+  // Musiqa — SAHIFADA YAGONA pleer (`MusicPlayer`). Avatar atrofidagi
+  // halqa faqat uning holatini ko'rsatadi va uni chaqiradi.
+  const [musicPlaying, setMusicPlaying] = useState(false);
+  const musicCtl = useRef(null);
   const [followStats, setFollowStats] = useState(null);
   const [likeInfo, setLikeInfo] = useState(null);
   const [followBusy, setFollowBusy] = useState(false);
@@ -1671,6 +1691,10 @@ export default function ProfilePage({ code, catalog, initialTab }) {
         team={team}
         initialTab={initialTab}
         isOwner={isOwner}
+        // Egasining boshqa NFC ID lari — ⋮ menyusidagi "Mening
+        // ID'larim" bandi uchun. Ro'yxatning O'ZI ochiq profilda
+        // emas, kabinetda.
+        otherCodesCount={isOwner ? myCards.filter((c) => c.code !== record.code).length : 0}
         t={t}
       />
     );
@@ -1698,6 +1722,19 @@ export default function ProfilePage({ code, catalog, initialTab }) {
   }
 
   const otherCodes = isOwner ? myCards.filter((c) => c.code !== record.code) : [];
+
+  // MUSIQA MANBASI BITTA JOYDA HISOBLANADI. Ilgari ro'yxat faqat
+  // pleerning ichida, JSX satrida yig'ilardi — avatar halqasi esa
+  // "musiqa bormi?" degan savolga javob ololmasdi.
+  //
+  // `parseMusicSource` bilan tekshiriladi, shunchaki "matn bormi" deb
+  // emas: sozlamada bo'sh yoki buzuq havola qolgan bo'lsa pleer
+  // baribir chizilmaydi (u ham shu funksiyaga tayanadi) va halqa ham
+  // chiqmasligi kerak — aks holda bosilganda hech narsa bo'lmasdi.
+  const musicUrls = (Array.isArray(record.musicUrls) && record.musicUrls.length
+    ? record.musicUrls
+    : (record.musicUrl ? [record.musicUrl] : [])).filter(Boolean);
+  const hasMusic = !!parseMusicSource(musicUrls[0]);
 
   const pillBtn = 'cursor-pointer rounded-full bg-[color:var(--vz-pill)] px-[18px] py-2 text-[16px] font-bold text-white transition hover:brightness-125';
   const linkStyleName = ['standard', 'transparent', 'glass'].includes(record.linkStyle)
@@ -1739,59 +1776,53 @@ export default function ProfilePage({ code, catalog, initialTab }) {
             U ekranning yarmini egallardi va ichida turgan matn —
             "nfcstore.uz/vip001" — brauzerning manzil qatorida
             allaqachon ko'rinib turadi. Nusxalash esa yo'qolmadi:
-            o'ng tomondagi ikonka aynan shu ishni qiladi. */}
-        <div className="ml-auto flex shrink-0 items-center gap-1">
-          <button title={t('Nusxalash')} aria-label={t('Nusxalash')} onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, t('Havola nusxalandi!'))} className="flex h-10 w-10 cursor-pointer items-center justify-center text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"><IconCopy /></button>
-          {/* Yangiliklardagi bilan AYNAN bir xil tugma: telefonda
-              tizim oynasi, ish stolida esa Telegram/WhatsApp/Facebook/X
-              menyusi. */}
-          <ShareButton
-            url={`${window.location.origin}/${record.code.toLowerCase()}`}
-            title={record.name || 'NFCSTORE'}
-            text={t('Mening raqamli tashrif qog‘ozim')}
-            className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"
-          />
-          {/* "⋯" — ichida shikoyat. Ochiq profilda har qanday
-              tashrifchi uchun; kirish shart emas, chunki profilni
-              ko'rayotganlarning ko'pi ro'yxatdan o'tmagan va ularni
-              majburlash shikoyatlar sonini nolga tushirardi. */}
-          {/* MAVZU, TIL va SHIKOYAT — bitta ⋮ menyuda.
-              Ilgari ular uchta alohida ikona edi va nusxalash/ulashish
-              bilan birga beshta bo'lib qatorni siqib qo'yardi; palitra
-              esa ega uchun chiqadigan "Tahrirlash" tugmasiga yopishib,
-              tasodifan bosiladigan holatga tushardi.
-              Mavzu — SAYT qobig'ining rangi; profil egasining
-              `theme / accentColor / bgColor` tanloviga TEGMAYDI. */}
-          <ProfileMoreMenu
-            targetKind="record"
-            targetId={record.code}
-            className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"
-            // EGA AMALLARI SHU MENYUDA.
-            //
-            // Ilgari ular profil TEPASIDA katta tugmalar edi
-            // ("Tahrirlash", "Story qo'shish") va yonida "Boshqa
-            // raqamli tashrif qog'ozlaringiz" ro'yxati turardi.
-            // Natijada OCHIQ PROFIL — mehmonga ko'rsatiladigan,
-            // chiroyli bo'lishi kerak bo'lgan sahifa — boshqaruv
-            // paneliga o'xshab qolgandi.
-            //
-            // Har amal O'Z NFC ID si bilan ketadi (`ownerActionUrl`),
-            // shuning uchun bir nechta ID li odam boshqasiga adashib
-            // yozib qo'ymaydi.
-            ownerActions={isOwner ? [
-              { label: t('Profilni tahrirlash'), icon: '✎', onClick: () => navigate(ownerActionUrl(record.code, 'edit')) },
-              { label: t('Story qo‘shish'), icon: '＋', onClick: () => navigate(ownerActionUrl(record.code, 'story')) },
-              { label: t('Post qo‘shish'), icon: '＋', onClick: () => navigate(ownerActionUrl(record.code, 'post')) },
-              ...(otherCodes.length > 0
-                ? [{ label: t("Mening ID'larim"), icon: '▤', onClick: () => navigate('/account#myids') }]
-                : []),
-            ] : []}
-          />
-        </div>
+            quyidagi qatordagi ikonka aynan shu ishni qiladi.
+
+            O'NG YUQORI BURCHAK — BITTA TIZIM.
+            Tartib `ProfileActionCluster` da qat'iy belgilangan va
+            biznes profilda ham AYNAN shunday:
+                [nusxalash] [ulashish] [⋮] [♥ n]
+            Yurak ilgari butunlay boshqa qatorda — obunachilar sonining
+            yonida — turardi; endi u ⋮ dan KEYIN, shu yerda. */}
+        <ProfileActionCluster
+          url={`${window.location.origin}/${record.code.toLowerCase()}`}
+          shareTitle={record.name || 'NFCSTORE'}
+          shareText={t('Mening raqamli tashrif qog‘ozim')}
+          onCopy={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, t('Havola nusxalandi!'))}
+          targetKind="record"
+          targetId={record.code}
+          like={likeInfo ? {
+            count: likeInfo.count,
+            liked: likeInfo.liked,
+            onToggle: toggleLike,
+            onOpenList: () => setFollowListDir('likes'),
+          } : null}
+          // EGA AMALLARI SHU MENYUDA.
+          //
+          // Ilgari ular profil TEPASIDA katta tugmalar edi
+          // ("Tahrirlash", "Story qo'shish") va yonida "Boshqa
+          // raqamli tashrif qog'ozlaringiz" ro'yxati turardi.
+          // Natijada OCHIQ PROFIL — mehmonga ko'rsatiladigan,
+          // chiroyli bo'lishi kerak bo'lgan sahifa — boshqaruv
+          // paneliga o'xshab qolgandi.
+          //
+          // Har amal O'Z NFC ID si bilan ketadi (`ownerActionUrl`),
+          // shuning uchun bir nechta ID li odam boshqasiga adashib
+          // yozib qo'ymaydi.
+          ownerActions={isOwner ? [
+            { label: t('Profilni tahrirlash'), icon: '✎', onClick: () => navigate(ownerActionUrl(record.code, 'edit')) },
+            { label: t('Story qo‘shish'), icon: '＋', onClick: () => navigate(ownerActionUrl(record.code, 'story')) },
+            { label: t('Post qo‘shish'), icon: '＋', onClick: () => navigate(ownerActionUrl(record.code, 'post')) },
+            { label: t('QR kod'), icon: '▦', onClick: () => setQrOpen(true) },
+            ...(otherCodes.length > 0
+              ? [{ label: t("Mening ID'larim"), icon: '▤', onClick: () => navigate('/account#myids') }]
+              : []),
+          ] : []}
+        />
       </div>
 
       <div
-        className={`relative mx-auto mt-[22px] max-w-[640px] overflow-hidden rounded-[22px] px-7 pb-[30px] ${
+        className={`relative mx-auto mt-[22px] max-w-[640px] overflow-hidden rounded-[22px] px-7 pb-[30px] pt-[18px] ${
           hasBg && isVideoBg(record.bgUrl) ? 'profile-panel--video ' : ''}${
           (record.theme === 'glass' && !hasBg && !record.bgColor)
             ? 'border border-white/15 backdrop-blur-md shadow-[0_20px_60px_rgba(0,0,0,0.35)]'
@@ -1816,7 +1847,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
             Bu qatorda faqat MEHMONGA tegishli amallar qoladi
             (obuna, xabar) — ega uchun u umuman chizilmaydi. */}
         {!isOwner && (
-        <div className="flex flex-wrap items-center justify-end gap-2.5 pt-5">
+        <div className="flex flex-wrap items-center justify-end gap-2.5">
           <div className="flex flex-wrap items-center gap-2">
               <>
                 {MESSAGING_ENABLED && <button className={pillBtn} onClick={startChat}>{'\u{1F4AC}'} {t('Xabar yozish')}</button>}
@@ -1870,28 +1901,11 @@ export default function ProfilePage({ code, catalog, initialTab }) {
             <button type="button" onClick={() => setFollowListDir('following')} className="cursor-pointer hover:text-[color:var(--vz-ink)]">
               <b className="text-[color:var(--vz-ink)]">{followStats.following}</b> {t('obuna')}
             </button>
-            {/* Yurak — bosish/bekor qilish; SON esa alohida tugma va u
-                "kim yoqtirdi" ro'yxatini ochadi. Ilgari son ham
-                yurakning ichida edi, ya'ni ro'yxatni ochishning iloji
-                yo'q edi — laykni faqat sanardik. */}
-            <span className={`ml-auto flex items-center rounded-full border transition ${likeInfo?.liked ? 'border-red-400/50 text-red-400' : 'border-[color:var(--vz-line)] text-[color:var(--vz-ink-dim)]'}`}>
-              <button
-                type="button"
-                onClick={toggleLike}
-                aria-label={t('Yoqtirish')}
-                className="cursor-pointer py-1 pl-3 pr-1.5"
-              >
-                {likeInfo?.liked ? '\u2764\uFE0F' : '\u{1F90D}'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setFollowListDir('likes')}
-                aria-label={t('Yoqtirganlar')}
-                className="cursor-pointer py-1 pl-0.5 pr-3 hover:text-[color:var(--vz-ink)]"
-              >
-                <b>{likeInfo?.count ?? 0}</b>
-              </button>
-            </span>
+            {/* YURAK BU YERDAN KETDI — endi sahifaning o'ng yuqori
+                burchagida, ⋮ dan keyin (`ProfileActionCluster`).
+                Sabab: u obunachilar soni bilan bir qatorda turganda
+                "statistika" ko'rinardi, holbuki bu — bosiladigan
+                asosiy ijtimoiy harakat. */}
           </div>
         )}
         {followMsg && <div className="mt-2 text-[15px] text-red-400">{t(followMsg)}</div>}
@@ -1912,8 +1926,14 @@ export default function ProfilePage({ code, catalog, initialTab }) {
         )}
 
 
-        <div className="mt-0.5 flex flex-col items-center">
-          <div className="relative flex h-[152px] w-[152px] items-center justify-center">
+        {/* AVATAR TEPAGA QADALIB QOLMASIN (egasining talabi).
+            Ilgari bu blok `mt-0.5` edi va panelning o'zida ham tepa
+            bo'shlig'i yo'q edi: ega sifatida kirganda (mehmon qatori
+            chizilmaydi) avatar to'g'ridan-to'g'ri panel chetiga
+            yopishib turardi. Endi bo'shliq ikki joydan keladi —
+            panelning `pt-[18px]` i va shu `mt-4`. */}
+        <div className="mt-4 flex flex-col items-center">
+          <div className={`relative flex h-[152px] w-[152px] items-center justify-center pf-ava-rings${hasMusic ? ' has-music' : ''}`}>
             {/* Yengil oltin porlash (glow) — premium ko'rinish uchun, avatar ortida sekin nafas oladi. */}
             <span className="pointer-events-none absolute inset-[-22px] animate-[goldGlow_3.6s_ease-in-out_infinite] rounded-full" style={{ background: `radial-gradient(circle, color-mix(in srgb, ${tier === 'free' ? 'var(--vz-accent)' : tierColor} 45%, transparent), transparent 70%)` }}></span>
             <span className={`pointer-events-none absolute inset-[-4px] animate-[spinSlow_18s_linear_infinite] rounded-full border border-dashed border-[color:var(--vz-line)] ${glass ? 'opacity-40' : ''}`}></span>
@@ -1938,14 +1958,24 @@ export default function ProfilePage({ code, catalog, initialTab }) {
 
             {/* Istorya bo'lsa — profil rasmi atrofida halqa. Rasmning
                 O'ZI qayta chizilmaydi: StoryRing uni o'rab oladi. */}
-            <StoryRing stories={stories} title={record.name} avatarUrl={record.avatarUrl}>
-              {/* Avatar 132 -> 152: biznes profildagi logotip bilan bir
-                  darajada. U sahifaning asosiy vizual langari. */}
-              <div className="font-display z-10 flex h-[152px] w-[152px] items-center justify-center overflow-hidden rounded-full border-[3px] bg-gradient-to-br from-[#dfe3e6] to-[#cfd4d8] text-[44px] font-bold text-[#565c62] shadow-[0_0_0_1px_var(--vz-line),0_10px_30px_rgba(20,25,30,0.18)]"
-                style={{ borderColor: tier === 'free' ? 'var(--vz-card)' : tierColor }}>
-                {record.avatarUrl ? <img src={record.avatarUrl} alt={record.name} className="block h-full w-full object-cover" /> : initials(record.name)}
-              </div>
-            </StoryRing>
+            {/* IKKI HALQA, IKKI MA'NO — biznes profildagi bilan bir xil:
+                  TASHQI = STORY  (bosilsa istorya ochiladi),
+                  ICHKI  = MUSIQA (bosilsa musiqa yonadi/to'xtaydi).
+                Ular USTMA-UST TUSHMAYDI: musiqa yoqilganda story
+                halqasining radiusi tashqariga suriladi
+                (`.pf-ava-rings.has-music` — theme.css).
+                Musiqa YO'Q bo'lsa `MusicRing` avatarning O'ZINI
+                qaytaradi: bo'sh halqa ham, bo'sh joy ham qolmaydi. */}
+            <MusicRing hasMusic={hasMusic} playing={musicPlaying} onToggle={() => musicCtl.current?.toggle()}>
+              <StoryRing stories={stories} title={record.name} avatarUrl={record.avatarUrl}>
+                {/* Avatar 132 -> 152: biznes profildagi logotip bilan bir
+                    darajada. U sahifaning asosiy vizual langari. */}
+                <div className="font-display z-10 flex h-[152px] w-[152px] items-center justify-center overflow-hidden rounded-full border-[3px] bg-gradient-to-br from-[#dfe3e6] to-[#cfd4d8] text-[44px] font-bold text-[#565c62] shadow-[0_0_0_1px_var(--vz-line),0_10px_30px_rgba(20,25,30,0.18)]"
+                  style={{ borderColor: tier === 'free' ? 'var(--vz-card)' : tierColor }}>
+                  {record.avatarUrl ? <img src={record.avatarUrl} alt={record.name} className="block h-full w-full object-cover" /> : initials(record.name)}
+                </div>
+              </StoryRing>
+            </MusicRing>
           </div>
           {/* Ism — sahifaning ASOSIY sarlavhasi (h1). Avval oddiy div edi:
               ko'rinishi to'g'ri, lekin qidiruv tizimlari uchun public
@@ -2178,9 +2208,14 @@ export default function ProfilePage({ code, catalog, initialTab }) {
                 kontent oxiriga bo'sh joy qo‘shish uchun kerak — pleer
                 aloqa tugmalarini to'sib qolmasin. */}
             <MusicPlayer
-              urls={Array.isArray(record.musicUrls) && record.musicUrls.length ? record.musicUrls : (record.musicUrl ? [record.musicUrl] : [])}
+              urls={musicUrls}
               accentColor={record.accentColor}
               onOpenChange={setMusicOpen}
+              // Avatar atrofidagi halqa uchun: holatni O'QIYDI va
+              // bosilganda SHU pleerni chaqiradi. Ikkinchi pleer
+              // yaratilmaydi.
+              onPlayingChange={setMusicPlaying}
+              controlRef={musicCtl}
               ownerName={record.name || ''}
               coverUrl={record.avatarUrl || ''}
             />
@@ -2341,6 +2376,16 @@ export default function ProfilePage({ code, catalog, initialTab }) {
 
       {followListDir && record && (
         <FollowListModal code={record.code} dir={followListDir} onClose={() => setFollowListDir(null)} t={t} />
+      )}
+
+      {/* QR — ega uchun, ⋮ menyusidan. Kartani tegizib bo'lmaganda
+          (eski telefon, NFC o'chiq) shu QR ko'rsatiladi. */}
+      {qrOpen && record && (
+        <ProfileQrModal
+          url={`${window.location.origin}/${record.code.toLowerCase()}`}
+          name={record.name || record.code}
+          onClose={() => setQrOpen(false)}
+        />
       )}
 
       {cardModal && (
