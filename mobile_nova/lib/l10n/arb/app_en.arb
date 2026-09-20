@@ -469,5 +469,7 @@
   "demoBadgePersonal": "DEMO · PERSONAL",
   "demoBadgeBusiness": "DEMO · BUSINESS",
   "welcomeHeadline": "Real meetings now last longer.",
-  "welcomeStart": "Get started"
+  "welcomeStart": "Get started",
+  "demoProductTitle": "Product",
+  "demoAddToCart": "Get in touch"
 }

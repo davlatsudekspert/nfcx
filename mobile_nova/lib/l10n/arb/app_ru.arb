@@ -469,5 +469,7 @@
   "demoBadgePersonal": "ДЕМО · PERSONAL",
   "demoBadgeBusiness": "ДЕМО · BUSINESS",
   "welcomeHeadline": "Настоящие встречи теперь длятся дольше.",
-  "welcomeStart": "Начать"
+  "welcomeStart": "Начать",
+  "demoProductTitle": "Товар",
+  "demoAddToCart": "Связаться"
 }

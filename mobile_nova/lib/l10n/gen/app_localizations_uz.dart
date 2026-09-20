@@ -1275,4 +1275,10 @@ class LUz extends L {
 
   @override
   String get welcomeStart => 'Boshlash';
+
+  @override
+  String get demoProductTitle => 'Mahsulot';
+
+  @override
+  String get demoAddToCart => 'Bog‘lanish';
 }

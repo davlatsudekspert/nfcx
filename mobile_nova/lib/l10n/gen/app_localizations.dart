@@ -2564,6 +2564,18 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Boshlash'**
   String get welcomeStart;
+
+  /// No description provided for @demoProductTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Mahsulot'**
+  String get demoProductTitle;
+
+  /// No description provided for @demoAddToCart.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bog‘lanish'**
+  String get demoAddToCart;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

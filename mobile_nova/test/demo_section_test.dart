@@ -312,7 +312,7 @@ void main() {
     test('raqamlar etalondagidek', () {
       expect(demoPersonalId.views, 2840);
       expect(demoPersonalId.followers, 1240);
-      expect(demoPersonalPosts.length, 5);
+      expect(demoPersonalPosts.length, 4);
       expect(demoBusiness.views, 18400);
       expect(demoBusiness.followers, 3120);
       expect(demoCatalog.length, 6);

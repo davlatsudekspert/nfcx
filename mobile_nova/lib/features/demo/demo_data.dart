@@ -34,17 +34,19 @@ const kDemoBusinessId = 'NFCMARKET';
 
 /// DEMO SURATLARI — HAMMASI HAQIQIY FOTO.
 ///
-/// "NFC to'lqin" naqshli o'rin egallovchilar OLIB TASHLANDI.
-/// Ularning o'rnida NFCSTORE'ning O'Z materiallari turadi:
+/// "NFC to'lqin" naqshli o'rin egallovchilar BUTUNLAY olib
+/// tashlandi. Ularning o'rnida egasi bergan besh foto va ulardan
+/// kesib olingan mahsulot ko'rinishlari turadi:
 ///
-///   * do'kon interyeri va mahsulot renderlari
-///     (`public/business-assets/`);
-///   * shahar grafikalari (`public/card-backgrounds/`) — ular
-///     karta fonlari sifatida chizilgan, ya'ni brend tilida;
-///   * oltin sovg'a va qora NFC karta fotosi.
+///   01_nfc_phones_card  → NFC texnologiya posti, mahsulot juftligi
+///   02_zafar_rooftop    → portret va tomdagi post
+///   03_zafar_cafe       → kafe posti
+///   04_zafar_evening    → muqova va kechki post
+///   05_nfc_market_showroom → do'kon hero'si; undan NFC kartalar,
+///     stikerlar, QR stendi va telefonlar qatori ALOHIDA kesildi
 ///
-/// Hammasi APK ichida — tarmoqqa chiqmaydi, offline ko'rinadi.
-/// Birorta surat ikki marta ishlatilmaydi.
+/// Hammasi APK ichida — tarmoqqa chiqmaydi, offline ko'rinadi va
+/// birortasi ikki marta ishlatilmaydi (buni test qo'riqlaydi).
 const _a = 'assets/demo';
 
 const kDemoPortrait = '$_a/z_portrait.jpg';
@@ -56,7 +58,8 @@ final demoPersonalId = NfcId(
   role: 'Digital creator',
   bio: 'Brendlar uchun kontent yarataman. Tadbirda yoki uchrashuvda '
       'kartani tegizamiz — aloqa, portfolio va ijtimoiy tarmoqlar '
-      'bir zumda qo\'lingizda bo\'ladi.',
+      'bir zumda qo\'lingizda bo\'ladi. Qog\'oz vizitka bilan '
+      'xayrlashganimga ikki yil bo\'ldi.',
   avatarUrl: kDemoPortrait,
   coverUrl: '$_a/z_cover.jpg',
   primary: true,
@@ -64,7 +67,7 @@ final demoPersonalId = NfcId(
   taps: 612,
   followers: 1240,
   following: 86,
-  posts: 5,
+  posts: 4,
   cardLinked: true,
 );
 
@@ -82,25 +85,21 @@ Post _zafar(int id, String text, String media, DateTime at,
       createdAt: at,
     );
 
-/// Beshta post — beshta BOSHQA surat va boshqa mavzu.
+/// To'rtta post — to'rttasi ham BOSHQA foto va boshqa mavzu.
 ///
-/// Ilgari uchta post ham bir xil naqsh edi va profil "bo'sh"
-/// bo'lib ko'rinardi. Demo'ning butun maqsadi shu yerda: odam
-/// shaxsiy NFC profil qanday to'ldirilishini ko'rsin.
+/// Birinchisi ataylab eng kuchlisi: profil ochilganda u KATTA
+/// bo'lib chiziladi (`demo_grid.dart` ga qarang).
 final demoPersonalPosts = <Post>[
-  _zafar(-101, 'Dubaydagi tadbirda 40 ta yangi tanishuv. Qog\'oz '
-      'vizitka bitta ham ishlatilmadi.', '$_a/z_post_city.jpg',
+  _zafar(-101, 'Tomdagi kechki uchrashuv. Bitta tegizish — aloqa '
+      'saqlandi.', '$_a/z_post_rooftop.jpg',
       DateTime(2026, 9, 17), likes: 412, comments: 23),
-  _zafar(-102, 'Yangi metall kartam keldi — bitta tegizishda butun '
+  _zafar(-102, 'Ertalabki qahva va yangi loyiha rejasi.',
+      '$_a/z_post_cafe.jpg', DateTime(2026, 9, 14), likes: 386, comments: 19),
+  _zafar(-103, 'Yangi kartam keldi — telefonni tegizsangiz butun '
       'profil ochiladi.', '$_a/z_post_nfc.jpg',
-      DateTime(2026, 9, 14), likes: 386, comments: 19),
-  _zafar(-103, 'Mijoz bilan uchrashuv. Aloqani saqlash uchun telefon '
-      'raqami ham kerak bo\'lmadi.', '$_a/z_post_meeting.jpg',
-      DateTime(2026, 9, 10), likes: 254, comments: 12),
-  _zafar(-104, 'Parij. Kechki yurish va yangi suratlar.',
-      '$_a/z_post_evening.jpg', DateTime(2026, 9, 6), likes: 331, comments: 15),
-  _zafar(-105, 'Samarqand — keyingi loyiha shu yerda boshlanadi.',
-      '$_a/z_post_travel.jpg', DateTime(2026, 9, 2), likes: 297, comments: 11),
+      DateTime(2026, 9, 10), likes: 354, comments: 27),
+  _zafar(-104, 'Shahar chiroqlari yonganda.', '$_a/z_post_evening.jpg',
+      DateTime(2026, 9, 6), likes: 331, comments: 15),
 ];
 
 final demoPersonalStories = <StoryItem>[
@@ -109,7 +108,7 @@ final demoPersonalStories = <StoryItem>[
     code: kDemoPersonalCode,
     authorName: demoPersonalId.name,
     authorAvatar: kDemoPortrait,
-    mediaUrl: '$_a/z_post_city.jpg',
+    mediaUrl: '$_a/z_post_rooftop.jpg',
     caption: 'Karta tegizib tanishgansiz',
     createdAt: DateTime(2026, 9, 19),
   ),
@@ -132,27 +131,25 @@ const demoBusiness = Business(
   city: 'Toshkent',
   address: 'Amir Temur ko\'chasi, 12',
   description: 'Texnologiya hayotni yaqinroq qiladi. Smartfonlar, '
-      'NFC kartalar va aksessuarlar — katalog, aloqa va '
+      'NFC kartalar, stikerlar va stendlar — katalog, aloqa va '
       'buyurtmalar bitta NFC profil ichida. Mijoz kartani '
       'tegizadi va do\'koningiz ochiladi.',
   phone: '+998 90 000 00 00',
   telegram: 'nfcmarket',
   website: 'nfcstore.uz',
-  logoUrl: '$_a/m_card.jpg',
+  logoUrl: '$_a/m_card_metal.jpg',
   coverUrl: kDemoStorefront,
   status: 'active',
   followers: 3120,
   views: 18400,
 );
 
-/// Katalog — har bir mahsulotning O'Z fotosi.
+/// Katalog — HAR BIR mahsulotning O'Z fotosi.
 ///
-/// MUHIM: bu yerda faqat loyihada HAQIQIY fotosi bor mahsulotlar
-/// turadi. "NFC stiker to'plami" va "Stol stendi + QR" uchun
-/// materiallarda surat yo'q edi, shuning uchun ular boshqa
-/// mahsulotning rasmi bilan ATAYLAB to'ldirilmadi: noto'g'ri
-/// surat ostidagi nom reklamani buzadi. Surat berilganda ro'yxatga
-/// bitta qator qo'shiladi.
+/// NFC stiker va stol stendi uchun alohida foto yo'q edi; ular
+/// showroom suratining ICHIDA turibdi, shuning uchun o'sha
+/// suratdan aniq kesib olindi. Ya'ni nom ostidagi rasm haqiqatan
+/// o'sha mahsulot.
 const demoCatalog = <CatalogItem>[
   CatalogItem(
     id: -301,
@@ -171,33 +168,32 @@ const demoCatalog = <CatalogItem>[
   ),
   CatalogItem(
     id: -303,
-    name: 'Galaxy Z Fold',
-    description: 'Buklanadigan ekran, ikki rejim.',
-    imageUrl: '$_a/m_fold.jpg',
-    price: 18200000,
-  ),
-  CatalogItem(
-    id: -304,
     name: 'NFC vizitka — Klassik',
-    description: 'Qora PVC karta, oltin bosma. Profilga bitta '
-        'tegizishda.',
-    imageUrl: '$_a/m_card.jpg',
+    description: 'PVC karta, mat qoplama. Profilga bitta tegizishda.',
+    imageUrl: '$_a/m_cards.jpg',
     price: 149000,
     salePrice: 119000,
   ),
   CatalogItem(
+    id: -304,
+    name: 'NFC vizitka — Metall',
+    description: 'To\'liq metall korpus, oltin lazer o\'yma.',
+    imageUrl: '$_a/m_card_metal.jpg',
+    price: 390000,
+  ),
+  CatalogItem(
     id: -305,
-    name: 'NFCSTORE sovg\'a to\'plami',
-    description: 'Qutida NFC karta va oltin lenta — tayyor sovg\'a.',
-    imageUrl: '$_a/m_gift.jpg',
-    price: 290000,
+    name: 'NFC stiker to\'plami',
+    description: '5 ta stiker — stol, eshik yoki vitrina uchun.',
+    imageUrl: '$_a/m_stickers.jpg',
+    price: 79000,
   ),
   CatalogItem(
     id: -306,
-    name: 'Google Pixel',
-    description: 'Toza Android, kamera va NFC.',
-    imageUrl: '$_a/m_pixel.jpg',
-    price: 9800000,
+    name: 'Stol stendi + QR',
+    description: 'Kafe va do\'konlar uchun: tegizish ham, QR ham.',
+    imageUrl: '$_a/m_stand.jpg',
+    price: 210000,
   ),
 ];
 
@@ -207,7 +203,7 @@ Post _market(int id, String text, String media, DateTime at,
       id: id,
       code: kDemoBusinessId,
       authorName: demoBusiness.displayName,
-      authorAvatar: '$_a/m_card.jpg',
+      authorAvatar: '$_a/m_card_metal.jpg',
       text: text,
       mediaUrls: [media],
       likes: likes,
@@ -217,13 +213,13 @@ Post _market(int id, String text, String media, DateTime at,
     );
 
 final demoBusinessPosts = <Post>[
-  _market(-401, 'Do\'konimizda NFC stend o\'rnatildi — mijoz tegizadi, '
-      'katalog ochiladi.', kDemoStorefront,
+  _market(-401, 'Yangi vitrina tayyor — mijoz tegizadi, katalog '
+      'ochiladi.', kDemoStorefront,
       DateTime(2026, 9, 16), likes: 340, comments: 21),
-  _market(-402, 'Yangi smartfonlar omborga keldi.', '$_a/m_lifestyle.jpg',
-      DateTime(2026, 9, 12), likes: 187, comments: 9),
-  _market(-403, 'Sovg\'a to\'plamlari cheklangan miqdorda.',
-      '$_a/m_gift.jpg', DateTime(2026, 9, 8), likes: 221, comments: 14),
+  _market(-402, 'Yangi smartfonlar omborga keldi.',
+      '$_a/m_product_duo.jpg', DateTime(2026, 9, 12), likes: 187, comments: 9),
+  _market(-403, 'NFC kartalar va stikerlar — jonli ko\'rish mumkin.',
+      '$_a/m_phones.jpg', DateTime(2026, 9, 8), likes: 221, comments: 14),
 ];
 
 // ------------------------------------------------ demo repozitoriylari

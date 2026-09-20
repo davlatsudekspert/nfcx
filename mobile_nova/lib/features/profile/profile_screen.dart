@@ -26,6 +26,7 @@ import '../../data/repositories/business_repository.dart';
 import '../nfc/qr_sheet.dart';
 import 'profile_switcher.dart';
 import '../demo/demo_mode.dart';
+import '../demo/demo_mosaic.dart';
 import '../social/engagement.dart';
 import '../social/story_viewer.dart';
 import '../social/inline_video.dart';
@@ -563,6 +564,14 @@ class _Hero extends StatelessWidget {
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
+                // BIO — DEMO PROFILDA.
+                //
+                // Odam "bu profil bo'sh emas" degan fikrni ism va
+                // rolning o'zidan olmaydi: unga nima qilishi
+                // yozilgan bo'lishi kerak. Haqiqiy profil bu
+                // qatorni ko'rsatmaydi — u yerda tartib
+                // o'zgarmaydi.
+                _DemoBio(text: profile?.bio ?? ''),
                 if (profile != null) ...[
                   const SizedBox(height: Gap.md),
                   _IdPill(
@@ -588,6 +597,36 @@ class _Hero extends StatelessWidget {
 /// Concept B'da avatar 120px, aksent gradientida va o'z nuri bilan
 /// suzib turadi. `Avatar` widgeti butun ilovada bir xil — shuning uchun
 /// u qayta yozilmaydi, faqat ostiga nur qo'yiladi.
+/// Demo profilning bio matni.
+///
+/// Odam "bu profil bo'sh emas" degan fikrni ism va rolning
+/// o'zidan olmaydi: unga nima qilishi yozilgan bo'lishi kerak.
+/// Haqiqiy profil bu qatorni KO'RSATMAYDI — u yerda tartib
+/// o'zgarmaydi.
+class _DemoBio extends ConsumerWidget {
+  const _DemoBio({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (text.isEmpty || ref.watch(demoModeProvider) == null) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: Gap.md),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: Theme.of(context)
+            .textTheme
+            .bodySmall
+            ?.copyWith(height: 1.5, color: context.tokens.text2),
+      ),
+    );
+  }
+}
+
 /// "Bu namuna" eslatmasi.
 ///
 /// O'zi `demoModeProvider` ni o'qiydi, shuning uchun uni ekranning
@@ -599,12 +638,31 @@ class _DemoNotice extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (ref.watch(demoModeProvider) == null) return const SizedBox.shrink();
+    final t = context.tokens;
+    // YUMSHOQ KAPSULA.
+    //
+    // Ilgari bu matn to'g'ridan-to'g'ri MUQOVA SURATI ustida
+    // turardi va o'qilmasdi: har bir profilning muqovasi boshqa
+    // rangda. Kapsula o'z foniga ega, shuning uchun u har qanday
+    // surat ustida bir xil o'qiladi.
     return Padding(
       padding: const EdgeInsets.only(bottom: Gap.lg),
-      child: Text(
-        L.of(context).demoNotice,
-        textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.bodySmall,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+            horizontal: Gap.md, vertical: Gap.sm),
+        decoration: BoxDecoration(
+          color: t.surfaceSolid.withValues(alpha: .86),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: t.border2),
+        ),
+        child: Text(
+          L.of(context).demoNotice,
+          textAlign: TextAlign.center,
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(color: t.text2, height: 1.4),
+        ),
       ),
     );
   }
@@ -943,6 +1001,14 @@ class _PostsGrid extends ConsumerWidget {
               ),
             ),
           );
+        }
+        // DEMO'DA MOZAIK, HAQIQIY PROFILDA 3x3 TO'R.
+        //
+        // Demo — reklama: odam shaxsiy profil qanday chiroyli
+        // bo'lishini ko'rishi kerak, kvadratchalar to'rini emas.
+        // Haqiqiy profil UMUMAN o'zgarmaydi.
+        if (ref.watch(demoModeProvider) != null) {
+          return DemoMosaicPosts(items: items, code: code);
         }
         final side =
             (MediaQuery.sizeOf(context).width - Gap.screenX * 2 - 12) / 3;

@@ -1268,4 +1268,10 @@ class LRu extends L {
 
   @override
   String get welcomeStart => 'Начать';
+
+  @override
+  String get demoProductTitle => 'Товар';
+
+  @override
+  String get demoAddToCart => 'Связаться';
 }

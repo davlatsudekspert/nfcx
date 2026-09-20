@@ -1273,4 +1273,10 @@ class LEn extends L {
 
   @override
   String get welcomeStart => 'Get started';
+
+  @override
+  String get demoProductTitle => 'Product';
+
+  @override
+  String get demoAddToCart => 'Get in touch';
 }

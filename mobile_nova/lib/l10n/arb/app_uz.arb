@@ -469,5 +469,7 @@
   "demoBadgePersonal": "DEMO · PERSONAL",
   "demoBadgeBusiness": "DEMO · BUSINESS",
   "welcomeHeadline": "Haqiqiy uchrashuvlar endi uzoq davom etadi.",
-  "welcomeStart": "Boshlash"
+  "welcomeStart": "Boshlash",
+  "demoProductTitle": "Mahsulot",
+  "demoAddToCart": "Bog‘lanish"
 }

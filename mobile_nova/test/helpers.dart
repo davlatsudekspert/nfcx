@@ -161,3 +161,23 @@ bool routeExists(GoRouter router, String location) {
   final match = router.configuration.findMatch(Uri.parse(location));
   return match.routes.isNotEmpty && match.error == null;
 }
+
+/// Routerli ekranni mavzu va tarjimalar bilan o'raydi.
+///
+/// Tap testlari uchun kerak: bosilgandan keyin QAYERGA borilgani
+/// tekshiriladi, ya'ni haqiqiy navigatsiya bo'lishi shart.
+Widget wrapRouter(GoRouter router, {NfcTokens? tokens}) {
+  final t = tokens ?? NfcTokens.ocean;
+  return MaterialApp.router(
+    routerConfig: router,
+    theme: buildTheme(t),
+    locale: const Locale('uz'),
+    supportedLocales: LocaleController.supported,
+    localizationsDelegates: const [
+      L.delegate,
+      GlobalMaterialLocalizations.delegate,
+      GlobalWidgetsLocalizations.delegate,
+      GlobalCupertinoLocalizations.delegate,
+    ],
+  );
+}

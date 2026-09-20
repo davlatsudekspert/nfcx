@@ -38,8 +38,11 @@ class BusinessScreen extends ConsumerWidget {
       showBack: true,
       body: list.when(
         loading: () => const SkeletonList(count: 2),
-        error: (e, __) => StatePanel.fromError(context, asAppError(e),
-            onRetry: () => ref.invalidate(myBusinessesProvider)),
+        error: (e, __) => StatePanel.fromError(
+          context,
+          asAppError(e),
+          onRetry: () => ref.invalidate(myBusinessesProvider),
+        ),
         data: (items) => items.isEmpty
             ? StatePanel(
                 icon: Icons.storefront_outlined,
@@ -50,7 +53,11 @@ class BusinessScreen extends ConsumerWidget {
               )
             : ListView.separated(
                 padding: const EdgeInsets.fromLTRB(
-                    Gap.screenX, Gap.md, Gap.screenX, 120),
+                  Gap.screenX,
+                  Gap.md,
+                  Gap.screenX,
+                  120,
+                ),
                 itemCount: items.length + 1,
                 separatorBuilder: (_, __) => const SizedBox(height: Gap.md),
                 itemBuilder: (context, i) {
@@ -106,10 +113,12 @@ class _BusinessTile extends ConsumerWidget {
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
-                Text('nfcstore.uz/c/${business.companyId}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppType.monoStyle(color: t.text3, size: 10.5)),
+                Text(
+                  'nfcstore.uz/c/${business.companyId}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppType.monoStyle(color: t.text3, size: 10.5),
+                ),
               ],
             ),
           ),
@@ -202,8 +211,11 @@ class BusinessDashboardScreen extends ConsumerWidget {
                   Icon(Icons.hourglass_top_rounded, size: 18, color: t.warn),
                   const SizedBox(width: Gap.md),
                   Expanded(
-                      child: Text(l.bizPending,
-                          style: Theme.of(context).textTheme.bodyMedium)),
+                    child: Text(
+                      l.bizPending,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ),
                   TextButton(
                     onPressed: () async {
                       final res = await ref
@@ -213,7 +225,8 @@ class BusinessDashboardScreen extends ConsumerWidget {
                       res.when(
                         ok: (_) => ref.invalidate(myBusinessesProvider),
                         err: (e) => ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(describeError(l, e)))),
+                          SnackBar(content: Text(describeError(l, e))),
+                        ),
                       );
                     },
                     child: Text(l.bizSubmitReview),
@@ -245,8 +258,10 @@ class BusinessDashboardScreen extends ConsumerWidget {
                 _NavRow(
                   icon: Icons.ios_share_rounded,
                   label: l.actionShare,
-                  onTap: () => shareLink('$kApiBase/c/${b.companyId}',
-                      title: b.displayName),
+                  onTap: () => shareLink(
+                    '$kApiBase/c/${b.companyId}',
+                    title: b.displayName,
+                  ),
                 ),
               ],
             ),
@@ -264,8 +279,10 @@ class BusinessDashboardScreen extends ConsumerWidget {
                 if (b.website.isNotEmpty)
                   _InfoRow(icon: Icons.language_rounded, text: b.website),
                 if (b.phone.isEmpty && b.address.isEmpty && b.website.isEmpty)
-                  Text(l.stateEmpty,
-                      style: Theme.of(context).textTheme.bodyMedium),
+                  Text(
+                    l.stateEmpty,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
               ],
             ),
           ),
@@ -304,12 +321,18 @@ class _Metric extends StatelessWidget {
         children: [
           Icon(icon, size: 18, color: t.isDark ? tone : t.text1),
           const SizedBox(height: Gap.sm),
-          Text(formatCount(value),
-              style: Theme.of(context).textTheme.displayMedium?.copyWith(fontSize: 25)),
-          Text(label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelMedium),
+          Text(
+            formatCount(value),
+            style: Theme.of(
+              context,
+            ).textTheme.displayMedium?.copyWith(fontSize: 25),
+          ),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelMedium,
+          ),
         ],
       ),
     );
@@ -329,13 +352,17 @@ class _NavRow extends StatelessWidget {
     return PressableScale(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: Gap.lg, vertical: Gap.md),
+        padding: const EdgeInsets.symmetric(
+          horizontal: Gap.lg,
+          vertical: Gap.md,
+        ),
         child: Row(
           children: [
             Icon(icon, size: 18, color: t.text1),
             const SizedBox(width: Gap.md),
             Expanded(
-                child: Text(label, style: Theme.of(context).textTheme.bodyLarge)),
+              child: Text(label, style: Theme.of(context).textTheme.bodyLarge),
+            ),
             Icon(Icons.chevron_right_rounded, size: 18, color: t.text3),
           ],
         ),
@@ -360,10 +387,12 @@ class _InfoRow extends StatelessWidget {
           Icon(icon, size: 15, color: t.text3),
           const SizedBox(width: Gap.sm),
           Expanded(
-            child: Text(text,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium),
+            child: Text(
+              text,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
           ),
         ],
       ),
@@ -400,17 +429,43 @@ class StorefrontScreen extends ConsumerWidget {
             ],
       body: business.when(
         loading: () => const SkeletonList(count: 3),
-        error: (e, __) => StatePanel.fromError(context, asAppError(e),
-            onRetry: () => ref.invalidate(storefrontProvider(companyId))),
+        error: (e, __) => StatePanel.fromError(
+          context,
+          asAppError(e),
+          onRetry: () => ref.invalidate(storefrontProvider(companyId)),
+        ),
         data: (b) => NovaScroll(
           padding: const EdgeInsets.only(bottom: 120),
           children: [
             if (demo != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(
-                    Gap.screenX, 0, Gap.screenX, Gap.md),
-                child: Text(l.demoNotice,
-                    style: Theme.of(context).textTheme.bodySmall),
+                  Gap.screenX,
+                  0,
+                  Gap.screenX,
+                  Gap.md,
+                ),
+                // YUMSHOQ KAPSULA — matn har qanday fon ustida
+                // bir xil o'qilsin.
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: Gap.md,
+                    vertical: Gap.sm,
+                  ),
+                  decoration: BoxDecoration(
+                    color: t.surfaceSolid.withValues(alpha: .86),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: t.border2),
+                  ),
+                  child: Text(
+                    l.demoNotice,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: t.text2, height: 1.4),
+                  ),
+                ),
               ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
@@ -423,7 +478,8 @@ class StorefrontScreen extends ConsumerWidget {
                       ? DecoratedBox(
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
-                                colors: [t.accentB, t.accentCDark]),
+                              colors: [t.accentB, t.accentCDark],
+                            ),
                           ),
                         )
                       : mediaImage(context, b.coverUrl, fit: BoxFit.cover),
@@ -436,24 +492,27 @@ class StorefrontScreen extends ConsumerWidget {
               child: Row(
                 children: [
                   Avatar(
-                      url: b.logoUrl,
-                      initials: _initials(b.displayName, b.companyId),
-                      size: 56,
-                      ring: false),
+                    url: b.logoUrl,
+                    initials: _initials(b.displayName, b.companyId),
+                    size: 56,
+                    ring: false,
+                  ),
                   const SizedBox(width: Gap.md),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                            b.displayName.isEmpty ? b.companyId : b.displayName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleLarge),
+                          b.displayName.isEmpty ? b.companyId : b.displayName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
                         Text(
-                          [b.city, b.subcategory]
-                              .where((s) => s.isNotEmpty)
-                              .join(' · '),
+                          [
+                            b.city,
+                            b.subcategory,
+                          ].where((s) => s.isNotEmpty).join(' · '),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.bodySmall,
@@ -468,8 +527,10 @@ class StorefrontScreen extends ConsumerWidget {
               const SizedBox(height: Gap.lg),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-                child: Text(b.description,
-                    style: Theme.of(context).textTheme.bodyMedium),
+                child: Text(
+                  b.description,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
               ),
             ],
             const SizedBox(height: Gap.xl),
@@ -490,21 +551,35 @@ class StorefrontScreen extends ConsumerWidget {
               ),
               data: (items) => items.isEmpty
                   ? Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: Gap.screenX,
+                      ),
                       child: FloatingSurface(
                         solid: true,
-                        child: Text(l.bizCatalogEmpty,
-                            style: Theme.of(context).textTheme.bodyMedium),
+                        child: Text(
+                          l.bizCatalogEmpty,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
                       ),
                     )
                   : Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: Gap.screenX,
+                      ),
                       child: Column(
                         children: [
+                          // PLITKA BOSILADI.
+                          //
+                          // Ilgari bu yerda `onTap` UMUMAN yo'q edi:
+                          // katalogdagi mahsulotni bosish hech narsa
+                          // qilmasdi — o'lik yuza.
                           for (final item in items)
                             Padding(
                               padding: const EdgeInsets.only(bottom: Gap.md),
-                              child: CatalogTile(item: item),
+                              child: CatalogTile(
+                                item: item,
+                                onTap: () => showProductSheet(context, item),
+                              ),
                             ),
                         ],
                       ),
@@ -525,9 +600,17 @@ class StorefrontScreen extends ConsumerWidget {
     final options = <(IconData, String, String)>[
       if (b.phone.isNotEmpty) (Icons.phone_rounded, b.phone, 'tel:${b.phone}'),
       if (b.telegram.isNotEmpty)
-        (Icons.send_rounded, b.telegram, 'https://t.me/${b.telegram.replaceAll('@', '')}'),
+        (
+          Icons.send_rounded,
+          b.telegram,
+          'https://t.me/${b.telegram.replaceAll('@', '')}',
+        ),
       if (b.whatsapp.isNotEmpty)
-        (Icons.chat_rounded, b.whatsapp, 'https://wa.me/${b.whatsapp.replaceAll(RegExp(r'[^\d]'), '')}'),
+        (
+          Icons.chat_rounded,
+          b.whatsapp,
+          'https://wa.me/${b.whatsapp.replaceAll(RegExp(r'[^\d]'), '')}',
+        ),
       if (b.website.isNotEmpty) (Icons.language_rounded, b.website, b.website),
     ];
 
@@ -546,14 +629,18 @@ class StorefrontScreen extends ConsumerWidget {
           children: [
             Padding(
               padding: const EdgeInsets.all(Gap.lg),
-              child: Text(l.bizContactSheet,
-                  style: Theme.of(context).textTheme.titleLarge),
+              child: Text(
+                l.bizContactSheet,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
             ),
             if (options.isEmpty)
               Padding(
                 padding: const EdgeInsets.all(Gap.xl),
-                child: Text(l.stateEmpty,
-                    style: Theme.of(context).textTheme.bodyMedium),
+                child: Text(
+                  l.stateEmpty,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
               ),
             for (final o in options)
               ListTile(
@@ -567,6 +654,125 @@ class StorefrontScreen extends ConsumerWidget {
                 },
               ),
             const SizedBox(height: Gap.md),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// MAHSULOT TAFSILOTI — pastdan ochiladigan varaq.
+///
+/// Katalogdagi plitka bosilganda ochiladi. Ilgari plitkada
+/// `onTap` umuman yo'q edi va mahsulotni ko'rishning hech qanday
+/// yo'li yo'q edi.
+///
+/// Varaq ATAYLAB yangi ekran emas: katalogdan chiqib ketmasdan
+/// qarab, yopib, keyingisiga o'tish mumkin.
+Future<void> showProductSheet(BuildContext context, CatalogItem item) {
+  return showModalBottomSheet(
+    context: context,
+    // Ildiz navigatorda — aks holda pastki panel varaq ustiga
+    // chiziladi va tugmalar ko'rinmay qoladi.
+    useRootNavigator: true,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) => _ProductSheet(item: item),
+  );
+}
+
+class _ProductSheet extends StatelessWidget {
+  const _ProductSheet({required this.item});
+
+  final CatalogItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context);
+    final t = context.tokens;
+    final sale = item.salePrice;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: t.surfaceSolid,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(34)),
+        border: Border.all(color: t.border2),
+      ),
+      padding: EdgeInsets.fromLTRB(
+        Gap.xl,
+        Gap.md,
+        Gap.xl,
+        Gap.xl + MediaQuery.viewPaddingOf(context).bottom,
+      ),
+      // VARAQ AYLANTIRILADI.
+      //
+      // Kichik ekranda (yoki tizim shrifti kattalashtirilganda)
+      // surat, tavsif va narx sig'masdi: "A RenderFlex overflowed
+      // by 92 pixels" va pastdagi tugma ko'rinmay qolardi.
+      // Balandlik ekranning 88% i bilan cheklanadi, ortig'i
+      // aylantiriladi.
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * .88,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: t.border1,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: Gap.lg),
+            if (item.imageUrl.isNotEmpty)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: AspectRatio(
+                  aspectRatio: 4 / 3,
+                  child: mediaImage(context, item.imageUrl, fit: BoxFit.cover),
+                ),
+              ),
+            const SizedBox(height: Gap.lg),
+            Text(item.name, style: Theme.of(context).textTheme.titleLarge),
+            if (item.description.isNotEmpty) ...[
+              const SizedBox(height: Gap.sm),
+              Text(
+                item.description,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
+            const SizedBox(height: Gap.lg),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  formatMoney(sale ?? item.price, item.currency),
+                  style: AppType.monoStyle(color: t.text1, size: 18),
+                ),
+                if (sale != null) ...[
+                  const SizedBox(width: Gap.sm),
+                  Text(
+                    formatMoney(item.price, item.currency),
+                    style: AppType.monoStyle(
+                      color: t.text3,
+                      size: 13,
+                    ).copyWith(decoration: TextDecoration.lineThrough),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: Gap.xl),
+            NovaButton(
+              label: l.demoAddToCart,
+              icon: Icons.chat_bubble_outline_rounded,
+              onPressed: () => Navigator.of(context).pop(),
+            ),
           ],
         ),
       ),
@@ -616,15 +822,19 @@ class CatalogTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(item.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleSmall),
+                Text(
+                  item.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
                 if (item.description.isNotEmpty)
-                  Text(item.description,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    item.description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
@@ -636,13 +846,19 @@ class CatalogTile extends StatelessWidget {
                       const SizedBox(width: Gap.sm),
                       Text(
                         formatMoney(item.price, item.currency),
-                        style: AppType.monoStyle(color: t.text3, size: 11)
-                            .copyWith(decoration: TextDecoration.lineThrough),
+                        style: AppType.monoStyle(
+                          color: t.text3,
+                          size: 11,
+                        ).copyWith(decoration: TextDecoration.lineThrough),
                       ),
                     ],
                     if (!item.available) ...[
                       const SizedBox(width: Gap.sm),
-                      Capsule(label: l.bizUnavailable, dense: true, tone: t.error),
+                      Capsule(
+                        label: l.bizUnavailable,
+                        dense: true,
+                        tone: t.error,
+                      ),
                     ],
                   ],
                 ),
