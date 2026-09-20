@@ -467,5 +467,7 @@
   "demoBizSubtitle": "Business NFC Profile",
   "demoPersonalSubtitle": "Personal NFC Profile",
   "demoBadgePersonal": "ДЕМО · PERSONAL",
-  "demoBadgeBusiness": "ДЕМО · BUSINESS"
+  "demoBadgeBusiness": "ДЕМО · BUSINESS",
+  "welcomeHeadline": "Настоящие встречи теперь длятся дольше.",
+  "welcomeStart": "Начать"
 }

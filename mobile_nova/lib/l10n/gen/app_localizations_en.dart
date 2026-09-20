@@ -1267,4 +1267,10 @@ class LEn extends L {
 
   @override
   String get demoBadgeBusiness => 'DEMO · BUSINESS';
+
+  @override
+  String get welcomeHeadline => 'Real meetings now last longer.';
+
+  @override
+  String get welcomeStart => 'Get started';
 }

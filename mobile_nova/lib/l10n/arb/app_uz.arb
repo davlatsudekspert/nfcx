@@ -467,5 +467,7 @@
   "demoBizSubtitle": "Business NFC Profile",
   "demoPersonalSubtitle": "Personal NFC Profile",
   "demoBadgePersonal": "DEMO · PERSONAL",
-  "demoBadgeBusiness": "DEMO · BUSINESS"
+  "demoBadgeBusiness": "DEMO · BUSINESS",
+  "welcomeHeadline": "Haqiqiy uchrashuvlar endi uzoq davom etadi.",
+  "welcomeStart": "Boshlash"
 }

@@ -2552,6 +2552,18 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'DEMO · BUSINESS'**
   String get demoBadgeBusiness;
+
+  /// No description provided for @welcomeHeadline.
+  ///
+  /// In uz, this message translates to:
+  /// **'Haqiqiy uchrashuvlar endi uzoq davom etadi.'**
+  String get welcomeHeadline;
+
+  /// No description provided for @welcomeStart.
+  ///
+  /// In uz, this message translates to:
+  /// **'Boshlash'**
+  String get welcomeStart;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

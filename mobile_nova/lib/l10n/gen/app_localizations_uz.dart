@@ -1269,4 +1269,10 @@ class LUz extends L {
 
   @override
   String get demoBadgeBusiness => 'DEMO · BUSINESS';
+
+  @override
+  String get welcomeHeadline => 'Haqiqiy uchrashuvlar endi uzoq davom etadi.';
+
+  @override
+  String get welcomeStart => 'Boshlash';
 }

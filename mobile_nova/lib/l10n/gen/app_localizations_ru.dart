@@ -1262,4 +1262,10 @@ class LRu extends L {
 
   @override
   String get demoBadgeBusiness => 'ДЕМО · BUSINESS';
+
+  @override
+  String get welcomeHeadline => 'Настоящие встречи теперь длятся дольше.';
+
+  @override
+  String get welcomeStart => 'Начать';
 }

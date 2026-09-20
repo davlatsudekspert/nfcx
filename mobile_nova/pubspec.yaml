@@ -56,6 +56,7 @@ flutter:
   assets:
     - assets/brand/
     - assets/demo/
+    - assets/welcome/
   fonts:
     - family: InstrumentSerif
       fonts:
