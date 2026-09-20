@@ -10,6 +10,7 @@ import '../../app/providers.dart';
 import '../../core/network/api_client.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/social_repository.dart';
+import '../social/feed_card.dart';
 import '../../design/motion/motion.dart';
 import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
@@ -884,90 +885,46 @@ class _FeedPreview extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final feed = ref.watch(homeFeedProvider);
-    final t = context.tokens;
 
-    return SizedBox(
-      height: 160,
-      child: feed.when(
-        loading: () => ListView.separated(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-          itemCount: 3,
-          separatorBuilder: (_, __) => const SizedBox(width: Gap.md),
-          itemBuilder: (_, __) =>
-              const Skeleton(width: 128, height: 160, radius: R.gentle),
-        ),
-        error: (e, __) => Padding(
-          padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-          child: FloatingSurface(
-            solid: true,
-            child: Text(
-              L.of(context).stateEmpty,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
+    // LENTA ENDI VERTIKAL VA AMALLI.
+    //
+    // Ilgari bu yerda 128px kenglikdagi gorizontal "ko'rinish"
+    // kartalari turardi: ularga layk, izoh va ulashish sig'masdi,
+    // ya'ni postni ochmasdan hech narsa qilib bo'lmasdi.
+    return feed.when(
+      loading: () => const SkeletonList(count: 2, height: 180),
+      error: (e, __) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
+        child: FloatingSurface(
+          solid: true,
+          child: Text(
+            L.of(context).stateEmpty,
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
         ),
-        data: (items) => items.isEmpty
-            ? Padding(
-                padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-                child: FloatingSurface(
-                  solid: true,
-                  child: Text(
-                    L.of(context).stateEmpty,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ),
-              )
-            : ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-                itemCount: items.length.clamp(0, 10),
-                separatorBuilder: (_, __) => const SizedBox(width: Gap.md),
-                itemBuilder: (context, i) {
-                  final p = items[i];
-                  return PressableScale(
-                    onTap: () => context.push(Routes.post(p.id, code: p.code)),
-                    child: Container(
-                      width: 128,
-                      decoration: BoxDecoration(
-                        color: t.surface,
-                        borderRadius: R.gentle,
-                        border: Border.all(color: t.border2),
-                        boxShadow: t.shadowTiny,
-                      ),
-                      padding: const EdgeInsets.all(Gap.md),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              p.text,
-                              maxLines: 5,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.favorite_rounded,
-                                size: 12,
-                                color: t.accent2,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                formatCount(p.likes),
-                                style: Theme.of(context).textTheme.labelMedium,
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
       ),
+      data: (items) => items.isEmpty
+          ? Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
+              child: FloatingSurface(
+                solid: true,
+                child: Text(
+                  L.of(context).stateEmpty,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+            )
+          : Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
+              child: Column(
+                children: [
+                  for (final p in items.take(10)) ...[
+                    FeedCard(post: p),
+                    const SizedBox(height: Gap.md),
+                  ],
+                ],
+              ),
+            ),
     );
   }
 }

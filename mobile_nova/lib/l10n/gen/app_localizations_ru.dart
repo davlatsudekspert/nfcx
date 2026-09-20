@@ -601,6 +601,12 @@ class LRu extends L {
   String get storyCommentHint => 'Напишите комментарий…';
 
   @override
+  String get actionFollowing => 'Вы подписаны';
+
+  @override
+  String get postLike => 'Нравится';
+
+  @override
   String get reelsEmpty => 'Reels пока нет';
 
   @override

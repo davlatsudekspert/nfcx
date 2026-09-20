@@ -225,6 +225,8 @@
   "storyLike": "Нравится",
   "storyComments": "Комментарии",
   "storyCommentHint": "Напишите комментарий…",
+  "actionFollowing": "Вы подписаны",
+  "postLike": "Нравится",
   "reelsEmpty": "Reels пока нет",
   "uploadProgress": "Загрузка {percent}%",
   "@uploadProgress": {

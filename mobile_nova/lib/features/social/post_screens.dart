@@ -26,6 +26,7 @@ import '../home/widgets/identity_card.dart';
 import '../profile/profile_repository.dart';
 import '../profile/profile_screen.dart';
 import 'comments.dart';
+import 'engagement.dart';
 import 'reels_screen.dart';
 import 'story_viewer.dart';
 import 'inline_video.dart';
@@ -35,8 +36,10 @@ import 'moderation.dart';
 /// Post tafsiloti uchun so'rov: yozuv kodi + post id.
 typedef PostRef = ({String code, int id});
 
-final postProvider =
-    FutureProvider.autoDispose.family<Post, PostRef>((ref, r) async {
+final postProvider = FutureProvider.autoDispose.family<Post, PostRef>((
+  ref,
+  r,
+) async {
   final res = await ref.watch(socialRepositoryProvider).postIn(r.code, r.id);
   return res.when(ok: (v) => v, err: (e) => throw e);
 });
@@ -55,8 +58,13 @@ class PostScreen extends ConsumerStatefulWidget {
 }
 
 class _PostScreenState extends ConsumerState<PostScreen> {
-  bool? _likedOverride;
-  int _likeDelta = 0;
+  // LAYK HOLATI MAHALLIY EMAS.
+  //
+  // Ilgari bu yerda `_likedOverride` va `_likeDelta` degan
+  // maydonlar turardi va ular FAQAT shu ekranga tegishli edi:
+  // lentada bosilgan layk bu yerda ko'rinmasdi, bu yerda
+  // bosilgani esa lentaga qaytmasdi. Endi holat
+  // `postLikesProvider` da — bitta joyda.
 
   /// Izoh yozish maydonining fokusi. "Izoh" tugmasi shu orqali
   /// klaviaturani ochadi — ilgari o'sha tugma `onTap` siz edi va
@@ -67,23 +75,6 @@ class _PostScreenState extends ConsumerState<PostScreen> {
   void dispose() {
     _commentFocus.dispose();
     super.dispose();
-  }
-
-  Future<void> _toggleLike(Post p) async {
-    final liked = _likedOverride ?? p.liked;
-    setState(() {
-      _likedOverride = !liked;
-      _likeDelta += liked ? -1 : 1;
-    });
-    final res = await ref.read(socialRepositoryProvider).like(p.id);
-    if (!mounted) return;
-    res.when(
-      ok: (_) {},
-      err: (_) => setState(() {
-        _likedOverride = liked;
-        _likeDelta += liked ? 1 : -1;
-      }),
-    );
   }
 
   @override
@@ -98,10 +89,19 @@ class _PostScreenState extends ConsumerState<PostScreen> {
       showBack: true,
       body: post.when(
         loading: () => const SkeletonList(count: 2, height: 200),
-        error: (e, __) => StatePanel.fromError(context, asAppError(e),
-            onRetry: () => ref.invalidate(postProvider((code: widget.code, id: widget.id)))),
+        error: (e, __) => StatePanel.fromError(
+          context,
+          asAppError(e),
+          onRetry: () =>
+              ref.invalidate(postProvider((code: widget.code, id: widget.id))),
+        ),
         data: (p) {
-          final liked = _likedOverride ?? p.liked;
+          final like = ref.watch(
+            postLikesProvider.select(
+              (m) => m[p.id] ?? (liked: p.liked, count: p.likes),
+            ),
+          );
+          final liked = like.liked;
           final mine = myIds.any((e) => e.code == p.code);
           return NovaScroll(
             children: [
@@ -120,14 +120,17 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(p.authorName.isEmpty ? p.code : p.authorName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleSmall),
+                        Text(
+                          p.authorName.isEmpty ? p.code : p.authorName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
                         if (p.code.isNotEmpty)
-                          Text(p.code,
-                              style:
-                                  AppType.monoStyle(color: t.text3, size: 11)),
+                          Text(
+                            p.code,
+                            style: AppType.monoStyle(color: t.text3, size: 11),
+                          ),
                       ],
                     ),
                   ),
@@ -180,8 +183,11 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                                 ColoredBox(color: t.surface2),
                             errorWidget: (_, __, ___) => ColoredBox(
                               color: t.surface2,
-                              child: Icon(Icons.broken_image_outlined,
-                                  size: 30, color: t.text3),
+                              child: Icon(
+                                Icons.broken_image_outlined,
+                                size: 30,
+                                color: t.text3,
+                              ),
                             ),
                           ),
                   ),
@@ -198,9 +204,9 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                     icon: liked
                         ? Icons.favorite_rounded
                         : Icons.favorite_border_rounded,
-                    label: formatCount(p.likes + _likeDelta),
+                    label: formatCount(like.count),
                     tint: liked ? t.error : t.text2,
-                    onTap: () => _toggleLike(p),
+                    onTap: () => ref.read(postLikesProvider.notifier).toggle(p),
                   ),
                   const SizedBox(width: Gap.xl),
                   _Action(
@@ -242,12 +248,16 @@ class _PostScreenState extends ConsumerState<PostScreen> {
         content: Text(l.postDeleteConfirm),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text(l.actionCancel)),
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l.actionCancel),
+          ),
           TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(l.actionDelete,
-                  style: TextStyle(color: context.tokens.error))),
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              l.actionDelete,
+              style: TextStyle(color: context.tokens.error),
+            ),
+          ),
         ],
       ),
     );
@@ -256,8 +266,9 @@ class _PostScreenState extends ConsumerState<PostScreen> {
     if (!mounted) return;
     res.when(
       ok: (_) => context.pop(),
-      err: (e) => ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(describeError(l, e)))),
+      err: (e) => ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(describeError(l, e)))),
     );
   }
 
@@ -282,19 +293,18 @@ class _Action extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => PressableScale(
-        onTap: onTap,
-        child: Row(
-          children: [
-            Icon(icon, size: 21, color: tint),
-            const SizedBox(width: 5),
-            Text(label,
-                style: Theme.of(context)
-                    .textTheme
-                    .labelMedium
-                    ?.copyWith(color: tint)),
-          ],
+    onTap: onTap,
+    child: Row(
+      children: [
+        Icon(icon, size: 21, color: tint),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(color: tint),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 // --------------------------------------------------------------- yaratish
@@ -338,7 +348,10 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
         // Yuklashdan OLDIN kichraytiriladi: 12 MP telefon rasmi mobil
         // internetda daqiqalab ketardi va serverda ham keraksiz.
         : await _picker.pickImage(
-            source: source, maxWidth: 1600, imageQuality: 85);
+            source: source,
+            maxWidth: 1600,
+            imageQuality: 85,
+          );
     if (f != null && mounted) setState(() => _file = f);
   }
 
@@ -423,38 +436,42 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
     final business = ref.read(businessRepositoryProvider);
 
     final res = switch ((widget.kind, profile.isBusiness)) {
-      (ComposerKind.story, true) => await business
-          .createStory(
-            companyId: profile.code,
-            imageUrl: image,
-            videoUrl: video,
-            caption: caption,
-          )
-          .then((r) => r.map((_) => null)),
-      (ComposerKind.story, false) => await social
-          .createStory(
-            code: profile.code,
-            imageUrl: image,
-            videoUrl: video,
-            caption: caption,
-          )
-          .then((r) => r.map((_) => null)),
-      (ComposerKind.post || ComposerKind.reel, true) => await business
-          .createPost(
-            companyId: profile.code,
-            caption: caption,
-            imageUrl: image,
-            videoUrl: video,
-          )
-          .then((r) => r.map((_) => null)),
-      (ComposerKind.post || ComposerKind.reel, false) => await social
-          .createPost(
-            code: profile.code,
-            caption: caption,
-            imageUrl: image,
-            videoUrl: video,
-          )
-          .then((r) => r.map((_) => null)),
+      (ComposerKind.story, true) =>
+        await business
+            .createStory(
+              companyId: profile.code,
+              imageUrl: image,
+              videoUrl: video,
+              caption: caption,
+            )
+            .then((r) => r.map((_) => null)),
+      (ComposerKind.story, false) =>
+        await social
+            .createStory(
+              code: profile.code,
+              imageUrl: image,
+              videoUrl: video,
+              caption: caption,
+            )
+            .then((r) => r.map((_) => null)),
+      (ComposerKind.post || ComposerKind.reel, true) =>
+        await business
+            .createPost(
+              companyId: profile.code,
+              caption: caption,
+              imageUrl: image,
+              videoUrl: video,
+            )
+            .then((r) => r.map((_) => null)),
+      (ComposerKind.post || ComposerKind.reel, false) =>
+        await social
+            .createPost(
+              code: profile.code,
+              caption: caption,
+              imageUrl: image,
+              videoUrl: video,
+            )
+            .then((r) => r.map((_) => null)),
     };
 
     if (!mounted) return;
@@ -559,19 +576,25 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
                           color: t.text3,
                         ),
                         const SizedBox(height: Gap.sm),
-                        Text(_video ? l.mediaPickVideo : l.mediaPickPhoto,
-                            style: Theme.of(context).textTheme.bodyMedium),
+                        Text(
+                          _video ? l.mediaPickVideo : l.mediaPickPhoto,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
                       ],
                     )
                   : Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.check_circle_rounded,
-                            size: 30, color: t.success),
+                        Icon(
+                          Icons.check_circle_rounded,
+                          size: 30,
+                          color: t.success,
+                        ),
                         const SizedBox(height: Gap.sm),
                         Padding(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: Gap.xl),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: Gap.xl,
+                          ),
                           child: Text(
                             _file!.name,
                             maxLines: 1,
@@ -605,20 +628,24 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
               ),
             ),
             const SizedBox(height: Gap.sm),
-            Text(l.uploadProgress((_progress * 100).round()),
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall),
+            Text(
+              l.uploadProgress((_progress * 100).round()),
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
           ],
           if (_error != null) ...[
             const SizedBox(height: Gap.lg),
-            Text(_error!,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: AppType.sans,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                  color: t.error,
-                )),
+            Text(
+              _error!,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: AppType.sans,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: t.error,
+              ),
+            ),
           ],
           const SizedBox(height: Gap.xxl),
           // Generic "Chop etish" EMAS: foydalanuvchi nima

@@ -603,6 +603,12 @@ class LEn extends L {
   String get storyCommentHint => 'Write a comment…';
 
   @override
+  String get actionFollowing => 'Following';
+
+  @override
+  String get postLike => 'Like';
+
+  @override
   String get reelsEmpty => 'No reels yet';
 
   @override

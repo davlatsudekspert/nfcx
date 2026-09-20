@@ -604,6 +604,12 @@ class LUz extends L {
   String get storyCommentHint => 'Izoh yozing…';
 
   @override
+  String get actionFollowing => 'Kuzatilmoqda';
+
+  @override
+  String get postLike => 'Yoqtirish';
+
+  @override
   String get reelsEmpty => 'Hozircha reels yo‘q';
 
   @override

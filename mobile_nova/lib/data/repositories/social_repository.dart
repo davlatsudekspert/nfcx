@@ -47,7 +47,20 @@ class SocialRepository {
     );
   }
 
-  Future<Result<void>> like(int id) => _api.post<void>('/api/posts/$id/like');
+  /// POSTGA LAYK — bosilganda holat teskarisiga o'giriladi.
+  ///
+  /// Server `{ liked, count }` qaytaradi, lekin bu metod ilgari
+  /// `Result<void>` edi va javobni TASHLAB YUBORARDI. Natijada
+  /// ilova sanoqni o'zi taxmin qilishga majbur bo'lardi va ikki
+  /// qurilmadan bosilganda son chalkashardi.
+  Future<Result<({bool liked, int count})>> like(int id) async {
+    final res =
+        await _api.post<Map<String, dynamic>>('/api/posts/$id/like', const {});
+    return res.map((j) => (
+          liked: j['liked'] == true,
+          count: (j['count'] as num?)?.toInt() ?? 0,
+        ));
+  }
 
   Future<Result<void>> deletePost(int id) => _api.delete<void>('/api/posts/$id');
 

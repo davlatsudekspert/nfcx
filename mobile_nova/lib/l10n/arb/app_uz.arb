@@ -225,6 +225,8 @@
   "storyLike": "Yoqtirish",
   "storyComments": "Izohlar",
   "storyCommentHint": "Izoh yozing…",
+  "actionFollowing": "Kuzatilmoqda",
+  "postLike": "Yoqtirish",
   "reelsEmpty": "Hozircha reels yo‘q",
   "uploadProgress": "Yuklanmoqda {percent}%",
   "@uploadProgress": {

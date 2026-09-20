@@ -1263,6 +1263,18 @@ abstract class L {
   /// **'Izoh yozing…'**
   String get storyCommentHint;
 
+  /// No description provided for @actionFollowing.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kuzatilmoqda'**
+  String get actionFollowing;
+
+  /// No description provided for @postLike.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yoqtirish'**
+  String get postLike;
+
   /// No description provided for @reelsEmpty.
   ///
   /// In uz, this message translates to:

@@ -225,6 +225,8 @@
   "storyLike": "Like",
   "storyComments": "Comments",
   "storyCommentHint": "Write a comment…",
+  "actionFollowing": "Following",
+  "postLike": "Like",
   "reelsEmpty": "No reels yet",
   "uploadProgress": "Uploading {percent}%",
   "@uploadProgress": {

@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -16,6 +15,7 @@ import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
+import '../social/feed_card.dart';
 import '../home/widgets/avatar.dart';
 import '../home/widgets/identity_card.dart';
 
@@ -357,74 +357,13 @@ class _ResultTile extends StatelessWidget {
       );
     }
 
-    final e = item as Post;
-    return FloatingSurface(
-      solid: true,
-      padding: const EdgeInsets.all(Gap.lg),
-      onTap: () => context.push(Routes.post(e.id, code: e.code)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Avatar(
-                  url: e.authorAvatar,
-                  initials: _initials(e.authorName, e.code),
-                  size: 34,
-                  ring: false),
-              const SizedBox(width: Gap.sm),
-              Expanded(
-                child: Text(e.authorName.isEmpty ? e.code : e.authorName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleSmall),
-              ),
-              if (e.isVideo)
-                Icon(Icons.play_circle_outline_rounded, size: 18, color: t.accent2),
-            ],
-          ),
-          if (e.text.isNotEmpty) ...[
-            const SizedBox(height: Gap.sm),
-            Text(e.text,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium),
-          ],
-          // MEDIA. Ilgari bu karta faqat muallif, matn va video
-          // belgisidan iborat edi — rasm UMUMAN chizilmasdi.
-          // Ya'ni `/api/feed` ga o'tilgach ham Kashfiyotda post
-          // rasmlari ko'rinmasdi.
-          //
-          // Videoda bu yerda pleyer OCHILMAYDI: ro'yxatda o'nlab
-          // video bir vaqtda dekoder ushlab, ilovani yiqitardi.
-          // Muqova rasmi bo'lsa o'sha, bo'lmasa belgi qo'yiladi va
-          // bosilganda to'liq ekran ochiladi.
-          if (e.mediaUrls.isNotEmpty) ...[
-            const SizedBox(height: Gap.md),
-            ClipRRect(
-              borderRadius: R.gentle,
-              child: AspectRatio(
-                aspectRatio: 16 / 10,
-                child: e.isVideo
-                    ? ColoredBox(
-                        color: t.surface2,
-                        child: Icon(Icons.play_circle_fill_rounded,
-                            size: 40, color: t.text3),
-                      )
-                    : CachedNetworkImage(
-                        imageUrl: e.mediaUrls.first,
-                        fit: BoxFit.cover,
-                        placeholder: (_, __) =>
-                            ColoredBox(color: t.surface2),
-                        errorWidget: (_, __, ___) =>
-                            ColoredBox(color: t.surface2),
-                      ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
+    // POST — LENTA KARTASI BILAN BIR XIL.
+    //
+    // Ilgari Kashfiyotdagi post kartasi bosh ekrandagidan boshqacha
+    // edi va unda layk/izoh/ulashish yo'q edi. Endi ikkala joyda
+    // bitta `FeedCard` ishlatiladi: xulq ham, ko'rinish ham bir xil
+    // bo'ladi va holat avtomatik sinxron qoladi.
+    return FeedCard(post: item as Post);
   }
 
   String _initials(String name, String fallback) {
