@@ -8519,6 +8519,13 @@ async function userAccountApi(request, env, url) {
     // uni o'zgartira ham olmasdi.
     linkedCompanyId: r.linked_company_id || '',
     linkedCompanyName: r.linked_company_name || '',
+    // QAYSI BIRI QAYSI EKANINI AJRATISH UCHUN.
+    //
+    // Ro'yxatda faqat `NFC …XXXX` turardi. Bitta qurilmasi bor
+    // odamga bu yetarli, lekin bir nechta stiker/karta olgan odam
+    // qaysi birini tahrirlayotganini BILMASDI — va noto'g'risini
+    // almashtirib qo'yish oson edi.
+    fromMarketplace: !!r.marketplace_batch_id,
     active: Number(r.active) === 1,
     blockedByOwner: Number(r.blocked_by_owner) === 1,
     status: r.status || '',
@@ -8528,7 +8535,7 @@ async function userAccountApi(request, env, url) {
   const listNfcDevices = async (ownerId) => {
     const rows = await env.DB.prepare(
       `SELECT pc.id, pc.chip_token, pc.linked_code, pc.linked_company_id, pc.active,
-              pc.blocked_by_owner, pc.status, pc.created_at,
+              pc.blocked_by_owner, pc.status, pc.created_at, pc.marketplace_batch_id,
               c.name AS linked_name, co.display_name AS linked_company_name
          FROM physical_cards pc
          LEFT JOIN cards c ON c.code = pc.linked_code
@@ -8536,8 +8543,29 @@ async function userAccountApi(request, env, url) {
         WHERE pc.owner_user_id = ?
         ORDER BY pc.created_at DESC`
     ).bind(ownerId).all()
-      // Eski bazada ustun bo'lmasligi mumkin — ro'yxat baribir
-      // ochilsin, aks holda butun ekran yiqilardi.
+      // Ustunlar marketplace moduli migratsiyasidan keladi. Ular
+      // hali qo'shilmagan bo'lsa so'rov yiqiladi — shunda ustunlar
+      // QO'SHILIB, so'rov qayta uriniladi.
+      //
+      // KAMROQ MA'LUMOT BERADIGAN ZAXIRA ENG OXIRIDA TURADI. Ilgari
+      // birinchi xatodan keyin darhol o'shanga tushilardi va
+      // kompaniyaga ulangan stiker egasiga "bog'lanmagan" bo'lib
+      // ko'rinardi — test aynan shuni tutdi.
+      .catch(async () => {
+        for (const col of ['linked_company_id TEXT', 'marketplace_batch_id TEXT']) {
+          await env.DB.prepare(`ALTER TABLE physical_cards ADD COLUMN ${col}`).run().catch(() => {});
+        }
+        return env.DB.prepare(
+          `SELECT pc.id, pc.chip_token, pc.linked_code, pc.linked_company_id, pc.active,
+                  pc.blocked_by_owner, pc.status, pc.created_at, pc.marketplace_batch_id,
+                  c.name AS linked_name, co.display_name AS linked_company_name
+             FROM physical_cards pc
+             LEFT JOIN cards c ON c.code = pc.linked_code
+             LEFT JOIN companies co ON co.company_id = pc.linked_company_id
+            WHERE pc.owner_user_id = ?
+            ORDER BY pc.created_at DESC`
+        ).bind(ownerId).all();
+      })
       .catch(() => env.DB.prepare(
         `SELECT pc.id, pc.chip_token, pc.linked_code, pc.active,
                 pc.blocked_by_owner, pc.status, pc.created_at,

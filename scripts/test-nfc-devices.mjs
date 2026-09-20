@@ -195,6 +195,30 @@ let deviceId = 0;
   check('7) ro\u2018yxatda kompaniya ko\u2018rinadi', listed.linkedCompanyId, 'MYCO');
   check('7) kompaniya nomi ham', listed.linkedCompanyName, 'Mening Kompaniyam');
 
+  // ── QAYSI BIRI QAYSI ─────────────────────────────
+  //
+  // Ro'yxatda faqat `NFC …XXXX` turardi. Bir nechta stiker/karta
+  // olgan odam qaysi birini tahrirlayotganini bilmasdi va
+  // noto'g'risini almashtirib qo'yish oson edi.
+  await env.DB.prepare(
+    `INSERT INTO physical_cards (chip_token, owner_user_id, linked_code, marketplace_batch_id) VALUES ('CHIP-MKT-1', 1, 'VIP001', 'BATCH-X')`
+  ).run().catch(async () => {
+    await env.DB.prepare(`ALTER TABLE physical_cards ADD COLUMN marketplace_batch_id TEXT`).run().catch(() => {});
+    await env.DB.prepare(
+      `INSERT INTO physical_cards (chip_token, owner_user_id, linked_code, marketplace_batch_id) VALUES ('CHIP-MKT-1', 1, 'VIP001', 'BATCH-X')`
+    ).run();
+  });
+  const all = (await call('/api/my/nfc-devices', { headers: { cookie: cookie.user } })).body.devices || [];
+  const mkt = all.find((d) => d.tokenTail === 'KT-1');
+  checkTrue('7) do‘kondan kelgani belgilangan', mkt?.fromMarketplace === true);
+  const plain = all.find((d) => d.id === dev.id);
+  checkTrue('7) oddiy karta belgilanmagan', plain?.fromMarketplace === false);
+  checkTrue('7) sana beriladi', !!plain?.createdAt);
+  // TO'LIQ TOKEN HECH QACHON CHIQMAYDI — u karta soxtalashtirish
+  // uchun yetarli bo'lardi.
+  const raw = JSON.stringify(all);
+  checkTrue('7) to‘liq token yo‘q', !raw.includes('CHIP-MKT-1') && !raw.includes('CHIP-BIZ-UI'));
+
   // ── BEGONA KOMPANIYA ────────────────────────────
   const bad = await call(`/api/my/nfc-devices/${dev.id}`, {
     method: 'PUT', headers: { cookie: cookie.user, 'content-type': 'application/json' },

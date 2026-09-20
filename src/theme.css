@@ -2080,6 +2080,12 @@ body{
 .nfcdev-id{display:flex;align-items:baseline;gap:7px}
 .nfcdev-id b{font-size:var(--fs-2xs);font-weight:800;letter-spacing:.12em;color:var(--accent-primary)}
 .nfcdev-id span{font:700 var(--fs-sm)/1 ui-monospace,Menlo,monospace;color:var(--text-primary)}
+.nfcdev-id{flex-wrap:wrap;gap:7px 9px}
+.nfcdev-src{
+  font-style:normal;font-size:var(--fs-2xs);font-weight:700;letter-spacing:.06em;
+  padding:2px 7px;border-radius:99px;color:var(--accent-ink);background:var(--accent-primary)
+}
+.nfcdev-id time{font-size:var(--fs-2xs);color:var(--text-faint)}
 .nfcdev-pick{display:flex;flex-direction:column;gap:5px;min-width:0}
 .nfcdev-pick>span{font-size:var(--fs-2xs);font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint)}
 .nfcdev-block{white-space:nowrap;min-height:40px}

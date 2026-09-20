@@ -4634,6 +4634,11 @@ function MyNfcDevices({ t, myCards }) {
             <div className="nfcdev-id">
               <b>NFC</b>
               <span>…{d.tokenTail}</span>
+              {/* Bir nechta stikeri bor odam qaysi birini
+                  tahrirlayotganini bilsin: sana va qayerdan
+                  kelgani. Faqat token dumi yetarli emasdi. */}
+              {d.fromMarketplace && <em className="nfcdev-src">{t('do‘kondan')}</em>}
+              {d.createdAt && <time>{String(d.createdAt).slice(0, 10)}</time>}
             </div>
             <label className="nfcdev-pick">
               <span>{t('Nimani ochadi')}</span>

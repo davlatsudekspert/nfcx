@@ -217,6 +217,7 @@ export const DICT_ACCOUNT = {
       en: 'For 24-hour content, go to the "Stories" section.' },
 
   // ── MENING NFC QURILMALARIM ────────────────────────────────────
+  'do‘kondan': { ru: 'из магазина', en: 'from the shop' },
   'Stikeringiz qaysi profilni ochishini shu yerdan o‘zgartirasiz. Chipga qayta yozish shart emas — hatto qulflangan stiker ham yangi profilga ergashadi.': { ru: 'Здесь вы меняете, какой профиль открывает ваш стикер. Перезаписывать чип не нужно — даже заблокированный стикер последует за новым профилем.', en: 'Here you change which profile your sticker opens. The chip does not need rewriting — even a locked sticker follows the new profile.' },
   'Nimani ochadi': { ru: 'Что открывает', en: 'Opens' },
   'Tanlanmagan': { ru: 'Не выбрано', en: 'Not selected' },
