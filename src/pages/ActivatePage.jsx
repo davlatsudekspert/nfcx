@@ -25,6 +25,15 @@ import { useLanguage } from '../lib/i18n.jsx';
 
 const STORAGE_KEY = 'nfc_activation_code';
 const DEVICE_KEY = 'nfc_activation_device';
+// Profil turi ham saqlanadi: odam kirishga chiqib qaytganda
+// tanlovini QAYTA qilmasin.
+const KIND_KEY = 'nfc_activation_kind';
+function readStoredKind() {
+  try { const v = sessionStorage.getItem(KIND_KEY); return v === 'personal' || v === 'business' ? v : ''; } catch { return ''; }
+}
+function storeKind(v) {
+  try { if (v) sessionStorage.setItem(KIND_KEY, v); else sessionStorage.removeItem(KIND_KEY); } catch { /* private rejim */ }
+}
 
 function readStoredCode() {
   try { return sessionStorage.getItem(STORAGE_KEY) || ''; } catch { return ''; }
@@ -95,17 +104,16 @@ export default function ActivatePage() {
   // Tekkizilgan stiker (bo'lsa). Manzildan bir marta olinadi.
   const [deviceToken] = useState(takeDeviceFromUrl);
   const [product, setProduct] = useState(null);
-  const [kind, setKind] = useState('');
+  const [kind, setKind] = useState(readStoredKind);
   const [options, setOptions] = useState(null);
   const [choice, setChoice] = useState('');      // '' = yangi yaratish
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [result, setResult] = useState(null);
-  // "Menda kod bor" — tekkizgan, lekin hali faollashtirmagan odam
-  // uchun chiqish yo'li: kirish ekranini o'tkazib yuboradi.
-  const [skipAttach, setSkipAttach] = useState(false);
   // Bog'lash nega bo'lmagani — odamga aytiladi.
   const [attachWhy, setAttachWhy] = useState('');
+  // Kirishdan keyin AYNAN shu yerga, stiker bilan birga qaytadi.
+  const authNext = encodeURIComponent(deviceToken ? `/activate?d=${deviceToken}` : '/activate');
   const inputRef = useRef(null);
 
   const fail = useCallback((e) => {
@@ -161,7 +169,9 @@ export default function ActivatePage() {
   }, [deviceToken]);
 
   useEffect(() => {
-    if (!deviceToken || !user || result) return;
+    // MEHMON UCHUN HAM ISHLAYDI. Kirmagan odam ham izohni ko'rishi
+    // kerak — aks holda u bo'sh kod maydonini sababsiz ko'rardi.
+    if (!deviceToken || result) return;
     let alive = true;
     tryAttach().then((why) => { if (alive && why && why !== 'ok') setAttachWhy(why); });
     return () => { alive = false; };
@@ -234,6 +244,7 @@ export default function ActivatePage() {
       const data = await dbActivate(payload);
       setResult(data.result);
       storeCode('');
+      storeKind('');
       clearDevice();
     } catch (e2) { fail(e2); } finally { setBusy(false); }
   };
@@ -276,43 +287,6 @@ export default function ActivatePage() {
   }
 
   // ── 1-QADAM: KOD ───────────────────────────────────────────────────
-  // ── STIKER TEKKIZILDI, LEKIN ODAM KIRMAGAN ─────────────
-  //
-  // iOS NFC havolasini STANDART brauzerda ochadi. Odam QR ni boshqa
-  // brauzerda skanerlagan bo'lsa, bu yerda KIRMAGAN bo'ladi — va
-  // unga bo'sh kod maydoni ko'rinardi. U esa kodini allaqachon
-  // ishlatgan: qayta terish yordam bermasdi va "ishlamadi" degan
-  // xulosaga kelardi.
-  //
-  // Endi unga aniq bitta ish aytiladi: KIRING. Kirgan zahoti
-  // yuqoridagi effekt stikerni o'zi bog'laydi.
-  if (deviceToken && !skipAttach && !product && authReady && !user) {
-    const back = encodeURIComponent(`/activate?d=${deviceToken}`);
-    return (
-      <main className="ac-page">
-        <section className="ac-card">
-          <div className="ac-brand">NFCSTORE</div>
-          <h1>{t('Stikeringizni bog‘lash')}</h1>
-          <p className="ac-sub">
-            {t('Hisobingizga kiring — stiker o‘zi bog‘lanadi. Kodni qayta kiritish shart emas.')}
-          </p>
-          <div className="ac-actions">
-            <button type="button" className="ac-primary" onClick={() => navigate(`/login?next=${back}`)}>
-              {t('Kirish')}
-            </button>
-            <button type="button" className="ac-ghost" onClick={() => navigate(`/register?next=${back}`)}>
-              {t('Ro‘yxatdan o‘tish')}
-            </button>
-          </div>
-          {/* Hali faollashtirmaganlar uchun chiqish yo'li. */}
-          <button type="button" className="ac-linkish" onClick={() => setSkipAttach(true)}>
-            {t('Menda aktivatsiya kodi bor')}
-          </button>
-        </section>
-      </main>
-    );
-  }
-
   if (!product) {
     return (
       <main className="ac-page">
@@ -325,9 +299,7 @@ export default function ActivatePage() {
               bo'layotganini umuman bilmasdi. */}
           {deviceToken && attachWhy && (
             <p className="ac-why" role="status">
-              {attachWhy === 'unauthorized'
-                ? t('Stikeringizni bog‘lash uchun avval kiring.')
-                : attachWhy === 'device_taken'
+              {attachWhy === 'device_taken'
                   ? t('Bu stiker allaqachon boshqa profilga bog‘langan.')
                   : t('Stiker hali bog‘lanmagan. Konvertdagi kodni kiriting — shundan keyin u shu profilga bog‘lanadi.')}
             </p>
@@ -356,27 +328,11 @@ export default function ActivatePage() {
     );
   }
 
-  // ── 2-QADAM: KIRISH ────────────────────────────────────────────────
   if (!authReady) {
     return <main className="ac-page"><section className="ac-card"><p className="ac-sub">{t('Yuklanmoqda…')}</p></section></main>;
   }
-  if (!user) {
-    return (
-      <main className="ac-page">
-        <section className="ac-card">
-          <div className="ac-badge">{product.name || t('NFC mahsulot')}</div>
-          <h1>{t('Kod to‘g‘ri')}</h1>
-          <p className="ac-sub">{t('Davom etish uchun hisobingizga kiring yoki yangi hisob oching. Kod saqlanib qoladi.')}</p>
-          <div className="ac-actions">
-            <button type="button" className="ac-primary" onClick={() => navigate('/login?next=/activate')}>{t('Kirish')}</button>
-            <button type="button" className="ac-ghost" onClick={() => navigate('/register?next=/activate')}>{t('Ro‘yxatdan o‘tish')}</button>
-          </div>
-        </section>
-      </main>
-    );
-  }
 
-  // ── 3-QADAM: SHAXSIY / BIZNES ──────────────────────────────────────
+  // ── 2-QADAM: SHAXSIY / BIZNES ──────────────────────────────────────
   if (!kind) {
     return (
       <main className="ac-page">
@@ -385,16 +341,41 @@ export default function ActivatePage() {
           <h1>{t('Qanday profil kerak?')}</h1>
           <p className="ac-sub">{t('Buni keyin ham o‘zgartirish mumkin emas — shuning uchun o‘ylab tanlang.')}</p>
           <div className="ac-choices">
-            <button type="button" className="ac-choice" onClick={() => { setKind('personal'); setChoice(''); }}>
+            <button type="button" className="ac-choice" onClick={() => { setKind('personal'); storeKind('personal'); setChoice(''); }}>
               <span className="ac-choice-ic" aria-hidden="true">{'\u{1F464}'}</span>
               <b>{t('Shaxsiy')}</b>
               <small>{t('Kontaktlaringiz, ijtimoiy tarmoqlaringiz va shaxsiy NFC profilingiz.')}</small>
             </button>
-            <button type="button" className="ac-choice" onClick={() => { setKind('business'); setChoice(''); }}>
+            <button type="button" className="ac-choice" onClick={() => { setKind('business'); storeKind('business'); setChoice(''); }}>
               <span className="ac-choice-ic" aria-hidden="true">{'\u{1F3E2}'}</span>
               <b>{t('Biznes')}</b>
               <small>{t('Kompaniyangiz, katalogingiz, aloqa ma’lumotlari va statistikangiz.')}</small>
             </button>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  // ── 3-QADAM: KIRISH — ENG OXIRIDA ────────────────────
+  //
+  // TARTIB ATAYLAB SHUNDAY. Ilgari kirish kodni kiritgandan KEYIN,
+  // lekin profil turini tanlashdan OLDIN so'ralardi — odam nima
+  // olayotganini ko'rmasdan turib ro'yxatdan o'tishi kerak edi.
+  //
+  // Endi u avval kodini kiritadi (mahsulot haqiqiy ekaniga ishonch
+  // hosil qiladi), keyin nima olishini tanlaydi va FAQAT SHUNDAN
+  // KEYIN hisob ochadi. Kod ham, tanlov ham saqlanib qoladi.
+  if (!user) {
+    return (
+      <main className="ac-page">
+        <section className="ac-card">
+          <div className="ac-badge">{product.name || t('NFC mahsulot')}</div>
+          <h1>{t('Kod to‘g‘ri')}</h1>
+          <p className="ac-sub">{t('Davom etish uchun hisobingizga kiring yoki yangi hisob oching. Kod saqlanib qoladi.')}</p>
+          <div className="ac-actions">
+            <button type="button" className="ac-primary" onClick={() => { storeKind(kind); navigate(`/login?next=${authNext}`); }}>{t('Kirish')}</button>
+            <button type="button" className="ac-ghost" onClick={() => { storeKind(kind); navigate(`/register?next=${authNext}`); }}>{t('Ro‘yxatdan o‘tish')}</button>
           </div>
         </section>
       </main>

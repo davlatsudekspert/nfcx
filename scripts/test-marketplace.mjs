@@ -1964,13 +1964,29 @@ function gatedEnv(env, sqlNeedle) {
   checkTrue('27) kirgandan keyin o‘zi bog‘lanadi',
     /attach-sticker/.test(page) && /tryAttach\(\)\.then/.test(page)
     && /\[deviceToken, user, result, tryAttach\]/.test(page));
-  checkTrue('27) kirmaganga "kiring" deyiladi', /Stikeringizni bog‘lash/.test(page));
-  checkTrue('27) kodni qayta terish shart emasligi aytiladi',
-    /Kodni qayta kiritish shart emas/.test(page));
+  // ── QADAMLAR TARTIBI ──────────────────────────────
+  //
+  // KOD → PROFIL TURI → KIRISH. Ilgari kirish o'rtada turardi va
+  // odam nima olayotganini ko'rmasdan turib ro'yxatdan o'tishi
+  // kerak edi — eng ko'p tashlab ketiladigan joy.
+  //
+  // Tekkizgan mehmonga ham avval KOD maydoni chiqadi: kod bilan
+  // bog'lash sessiyasiz ishlagani uchun kirish so'rashning ma'nosi
+  // qolmadi.
+  const iCode = page.indexOf('if (!product) {');
+  const iKind = page.indexOf('if (!kind) {');
+  const iAuth = page.indexOf('if (!user) {');
+  checkTrue('27) kod birinchi', iCode > 0 && iCode < iKind);
+  checkTrue('27) profil turi ikkinchi', iKind > 0 && iKind < iAuth);
+  checkTrue('27) kirish eng oxirida', iAuth > iKind);
+  // Kirishga chiqib qaytganda tanlov yo'qolmasin.
+  // Tanlov BOSILGAN ZAHOTI saqlanadi — odam qayerga ketishidan
+  // qat'i nazar (kirish, ro'yxatdan o'tish, sahifani yangilash).
+  checkTrue('27) tanlov saqlanadi',
+    /storeKind\('personal'\)/.test(page) && /storeKind\('business'\)/.test(page)
+    && /useState\(readStoredKind\)/.test(page));
   // Kirishdan keyin AYNAN shu stikerga qaytsin.
-  checkTrue('27) kirishdan keyin qaytib keladi', /login\?next=\$\{back\}/.test(page));
-  // Hali faollashtirmagan odam qamalib qolmasin.
-  checkTrue('27) kod kiritish yo‘li ochiq qoladi', /Menda aktivatsiya kodi bor/.test(page));
+  checkTrue('27) kirishdan keyin stiker bilan qaytadi', /authNext/.test(page) && /activate\?d=\$\{deviceToken\}/.test(page));
 
   // ── ISHLATILGAN KODNI QAYTA KIRITISH ─────────────────
   //
@@ -1995,8 +2011,10 @@ function gatedEnv(env, sqlNeedle) {
   // bermagandek. Endi sababi aytiladi.
   checkTrue('27) sabab saqlanadi', /setAttachWhy/.test(page));
   checkTrue('27) sabab ko‘rsatiladi', /ac-why/.test(page));
-  checkTrue('27) kirish kerakligi', /bog‘lash uchun avval kiring/.test(page));
   checkTrue('27) band stiker sababi', /allaqachon boshqa profilga bog‘langan/.test(page));
+  // MEHMON HAM SABABNI KO'RADI. Kirish endi shart emas, shuning
+  // uchun urinish sessiyaga bog'liq emas.
+  checkTrue('27) sabab mehmonga ham', !/!deviceToken \|\| !user \|\| result/.test(page));
 }
 
 done();
