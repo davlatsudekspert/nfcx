@@ -35,7 +35,10 @@ import 'moderation.dart';
 /// Post tafsiloti uchun so'rov: yozuv kodi + post id.
 typedef PostRef = ({String code, int id});
 
-final postProvider = FutureProvider.autoDispose.family<Post, PostRef>((
+// RIVERPOD `dependencies` — demo daraxti uchun shart
+// (`profile_repository.dart` dagi izohga qarang).
+final postProvider = FutureProvider.autoDispose.family<Post, PostRef>(
+    dependencies: [socialRepositoryProvider], (
   ref,
   r,
 ) async {

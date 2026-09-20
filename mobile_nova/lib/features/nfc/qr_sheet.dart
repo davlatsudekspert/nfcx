@@ -16,7 +16,12 @@ import '../../l10n/gen/app_localizations.dart';
 ///
 /// NFC'siz qurilmalar uchun bu ASOSIY ulashish yo'li, shuning uchun u
 /// har joydan bitta chaqiruv bilan ochiladi.
-Future<void> showQrSheet(BuildContext context, NfcId id) {
+/// [urlOverride] — QR va ulashish uchun BOSHQA manzil.
+///
+/// Demo profil uchun kerak: demo kodi saytda mavjud emas, shuning
+/// uchun uning QR kodi 404 sahifaga olib borardi.
+Future<void> showQrSheet(BuildContext context, NfcId id,
+    {String? urlOverride}) {
   return showModalBottomSheet(
     context: context,
     // ILDIZ NAVIGATORDA OCHILADI.
@@ -28,19 +33,20 @@ Future<void> showQrSheet(BuildContext context, NfcId id) {
     useRootNavigator: true,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (context) => _QrSheet(id: id),
+    builder: (context) => _QrSheet(id: id, urlOverride: urlOverride),
   );
 }
 
 class _QrSheet extends StatelessWidget {
-  const _QrSheet({required this.id});
+  const _QrSheet({required this.id, this.urlOverride});
   final NfcId id;
+  final String? urlOverride;
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
     final l = L.of(context);
-    final url = id.publicUrl(kApiBase);
+    final url = urlOverride ?? id.publicUrl(kApiBase);
 
     return Container(
       decoration: BoxDecoration(

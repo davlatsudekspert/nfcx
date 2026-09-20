@@ -58,6 +58,37 @@ double clampMediaAspect(double raw) {
   return raw.clamp(kMediaAspectMin, kMediaAspectMax);
 }
 
+/// Manzil ILOVA ICHIDAGI rasmmi.
+///
+/// Demo bo'limi tarmoqqa BOG'LIQ BO'LMASLIGI kerak: reklama
+/// bo'limi internet sekin bo'lganda bo'sh kvadratlar ko'rsatsa,
+/// u reklama emas, nuqson bo'lib ko'rinadi.
+bool isAssetMedia(String url) => url.startsWith('assets/');
+
+/// Rasmni chizadi — manba tarmoq ham, ilova ichi ham bo'lishi
+/// mumkin. Ikkala yo'l BITTA joyda turadi, shuning uchun har bir
+/// ekran buni qaytadan hal qilmaydi.
+Widget mediaImage(
+  BuildContext context,
+  String url, {
+  required BoxFit fit,
+}) {
+  final t = context.tokens;
+  Widget broken() => ColoredBox(
+        color: t.surface2,
+        child: Icon(Icons.broken_image_outlined, size: 30, color: t.text3),
+      );
+  if (isAssetMedia(url)) {
+    return Image.asset(url, fit: fit, errorBuilder: (_, __, ___) => broken());
+  }
+  return CachedNetworkImage(
+    imageUrl: url,
+    fit: fit,
+    placeholder: (_, __) => ColoredBox(color: t.surface2),
+    errorWidget: (_, __, ___) => broken(),
+  );
+}
+
 /// RO'YXAT ICHIDAGI MEDIA — quti mediaga moslashadi.
 class AdaptiveMedia extends StatefulWidget {
   const AdaptiveMedia({
@@ -110,7 +141,9 @@ class _AdaptiveMediaState extends State<AdaptiveMedia> {
   /// to'g'ri nisbatda quriladi — sakrash ko'rinmaydi.
   void _resolveImage() {
     if (widget.url.isEmpty) return;
-    final provider = CachedNetworkImageProvider(widget.url);
+    final ImageProvider provider = isAssetMedia(widget.url)
+        ? AssetImage(widget.url)
+        : CachedNetworkImageProvider(widget.url);
     final stream = provider.resolve(ImageConfiguration.empty);
     final listener = ImageStreamListener(
       (info, _) {
@@ -146,8 +179,6 @@ class _AdaptiveMediaState extends State<AdaptiveMedia> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.tokens;
-
     final child = widget.isVideo
         ? InlineVideo(
             key: widget.videoKey,
@@ -166,15 +197,7 @@ class _AdaptiveMediaState extends State<AdaptiveMedia> {
               }
             },
           )
-        : CachedNetworkImage(
-            imageUrl: widget.url,
-            fit: BoxFit.cover,
-            placeholder: (_, __) => ColoredBox(color: t.surface2),
-            errorWidget: (_, __, ___) => ColoredBox(
-              color: t.surface2,
-              child: Icon(Icons.broken_image_outlined, size: 30, color: t.text3),
-            ),
-          );
+        : mediaImage(context, widget.url, fit: BoxFit.cover);
 
     final framed = AspectRatio(aspectRatio: _aspect, child: child);
     final r = widget.borderRadius;
@@ -210,12 +233,7 @@ class FullBleedMedia extends StatelessWidget {
         if (backdropUrl.isNotEmpty)
           ImageFiltered(
             imageFilter: ImageFilter.blur(sigmaX: 34, sigmaY: 34),
-            child: CachedNetworkImage(
-              imageUrl: backdropUrl,
-              fit: BoxFit.cover,
-              placeholder: (_, __) => ColoredBox(color: t.bg1),
-              errorWidget: (_, __, ___) => ColoredBox(color: t.bg1),
-            ),
+            child: mediaImage(context, backdropUrl, fit: BoxFit.cover),
           ),
         // Fon mazmunni yutib yubormasligi uchun qoraytiriladi.
         if (backdropUrl.isNotEmpty)

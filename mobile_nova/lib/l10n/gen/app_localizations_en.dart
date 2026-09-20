@@ -1192,4 +1192,74 @@ class LEn extends L {
 
   @override
   String get payPendingHint => 'Payment not finished — you can still pay';
+
+  @override
+  String get demoBadge => 'Demo';
+
+  @override
+  String get demoSectionTitle => 'NFC Mobile';
+
+  @override
+  String get demoSectionHint =>
+      'See how an NFC ID, a personal profile and a business profile look.';
+
+  @override
+  String get demoHeroTitle => 'Meet NFC';
+
+  @override
+  String get demoHeroBody =>
+      'Personal profile, business page and NFC ID — all in one app.';
+
+  @override
+  String get demoChipIphone => 'Works with iPhone 18';
+
+  @override
+  String get demoChipSamsung => 'Works with Samsung S26';
+
+  @override
+  String get demoChipReady => 'NFC ready';
+
+  @override
+  String get demoPersonalBtn => 'Personal demo';
+
+  @override
+  String get demoBusinessBtn => 'Business demo';
+
+  @override
+  String get demoPersonalTitle => 'Personal profile';
+
+  @override
+  String get demoPersonalRole => 'Digital creator';
+
+  @override
+  String get demoSampleBtn => 'Sample profile';
+
+  @override
+  String get demoBusinessTitle => 'Business profile';
+
+  @override
+  String get demoBusinessBody =>
+      'Catalog, contacts and orders — all inside one NFC profile.';
+
+  @override
+  String get demoCatalogBtn => 'Open the catalog';
+
+  @override
+  String get demoBuyBtn => 'Get an NFC ID';
+
+  @override
+  String get demoNotice =>
+      'This is sample data — it does not affect your profile.';
+
+  @override
+  String get demoViewProfile => 'View the profile';
+
+  @override
+  String get demoViewBusiness => 'View the business profile';
+
+  @override
+  String get demoBizSubtitle => 'Business NFC Profile';
+
+  @override
+  String get demoPersonalSubtitle => 'Personal NFC Profile';
 }

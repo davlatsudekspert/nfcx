@@ -26,6 +26,7 @@ import '../auth/session.dart';
 import '../profile/music_player.dart';
 import '../nfc/qr_sheet.dart';
 import 'widgets/avatar.dart';
+import 'widgets/nfc_mobile_section.dart';
 import 'widgets/identity_card.dart';
 import 'widgets/mode_switch.dart';
 import '../../app/profile_context.dart';
@@ -196,6 +197,12 @@ class HomeScreen extends ConsumerWidget {
             ),
             const SizedBox(height: Gap.xxl),
             _QuickActions(mode: mode),
+            // TANISHTIRUV BO'LIMI — tezkor amallardan KEYIN,
+            // storylardan OLDIN. Yuqorida bo'lishi shart: ilovaga
+            // birinchi kirgan odam pastga tushmasdan "bu ilova
+            // nima beradi" degan savolga javob olsin.
+            const NfcMobileSection(),
+            const SizedBox(height: Gap.sm),
             _StoriesRow(user: user),
             // BOSH EKRANDA LENTA YO'Q.
             //

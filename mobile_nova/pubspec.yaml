@@ -55,6 +55,7 @@ flutter:
   generate: true
   assets:
     - assets/brand/
+    - assets/demo/
   fonts:
     - family: InstrumentSerif
       fonts:

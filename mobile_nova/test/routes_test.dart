@@ -80,6 +80,9 @@ void main() {
     Routes.storefront('nova'),
     Routes.shopProduct('nfc-black'),
     Routes.paymentResult('success'),
+    // "NFC Mobile" bo'limidagi namuna profillar.
+    Routes.demoPersonal,
+    Routes.demoBusiness,
   ];
 
   test('har bir statik marshrut routerda mavjud', () {

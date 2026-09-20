@@ -18,6 +18,7 @@ import '../features/profile/profile_screen.dart';
 import '../features/activity/activity_screen.dart';
 import '../features/business/business_forms.dart';
 import '../features/business/business_screens.dart';
+import '../features/demo/demo_screens.dart';
 import '../features/nfc/nfc_ids_screen.dart';
 import '../features/nfc/nfc_misc_screens.dart';
 import '../features/nfc/nfc_scan_screen.dart';
@@ -159,14 +160,23 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/post/:id',
-        builder: (_, s) => PostScreen(
-          id: int.tryParse(s.pathParameters['id'] ?? '') ?? 0,
-          code: s.uri.queryParameters['code'] ?? '',
-        ),
+        builder: (_, s) {
+          final code = s.uri.queryParameters['code'] ?? '';
+          return demoWrap(
+            code,
+            PostScreen(
+              id: int.tryParse(s.pathParameters['id'] ?? '') ?? 0,
+              code: code,
+            ),
+          );
+        },
       ),
       GoRoute(
         path: '/story/:code',
-        builder: (_, s) => StoryViewerScreen(code: s.pathParameters['code']!),
+        builder: (_, s) {
+          final code = s.pathParameters['code']!;
+          return demoWrap(code, StoryViewerScreen(code: code));
+        },
       ),
 
       // Biznes
@@ -203,6 +213,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/c/:companyId',
         builder: (_, s) =>
             StorefrontScreen(companyId: s.pathParameters['companyId']!),
+      ),
+      GoRoute(
+        path: Routes.demoPersonal,
+        builder: (_, __) => const DemoPersonalScreen(),
+      ),
+      GoRoute(
+        path: Routes.demoBusiness,
+        builder: (_, __) => const DemoBusinessScreen(),
       ),
 
       // Do'kon

@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -16,6 +15,8 @@ import '../../design/widgets/nova_scaffold.dart';
 import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
+import '../demo/demo_mode.dart';
+import '../social/media_frame.dart';
 import '../../routing/routes.dart';
 import '../home/widgets/avatar.dart';
 import '../home/widgets/identity_card.dart';
@@ -383,8 +384,20 @@ class StorefrontScreen extends ConsumerWidget {
     final business = ref.watch(storefrontProvider(companyId));
     final catalog = ref.watch(businessCatalogProvider(companyId));
 
+    // DEMO holati. Ishlab chiqarishda DOIM `null` — ya'ni pastdagi
+    // yorliq va eslatma umuman chizilmaydi.
+    final demo = ref.watch(demoModeProvider);
+
     return NovaScaffold(
       showBack: true,
+      actions: demo == null
+          ? null
+          : [
+              Padding(
+                padding: const EdgeInsets.only(right: Gap.sm),
+                child: Capsule(label: l.demoBadge, dense: true),
+              ),
+            ],
       body: business.when(
         loading: () => const SkeletonList(count: 3),
         error: (e, __) => StatePanel.fromError(context, asAppError(e),
@@ -392,6 +405,13 @@ class StorefrontScreen extends ConsumerWidget {
         data: (b) => NovaScroll(
           padding: const EdgeInsets.only(bottom: 120),
           children: [
+            if (demo != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                    Gap.screenX, 0, Gap.screenX, Gap.md),
+                child: Text(l.demoNotice,
+                    style: Theme.of(context).textTheme.bodySmall),
+              ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
               child: ClipRRect(
@@ -406,13 +426,7 @@ class StorefrontScreen extends ConsumerWidget {
                                 colors: [t.accentB, t.accentCDark]),
                           ),
                         )
-                      : CachedNetworkImage(
-                          imageUrl: b.coverUrl,
-                          fit: BoxFit.cover,
-                          placeholder: (_, __) => ColoredBox(color: t.surface2),
-                          errorWidget: (_, __, ___) =>
-                              ColoredBox(color: t.surface2),
-                        ),
+                      : mediaImage(context, b.coverUrl, fit: BoxFit.cover),
                 ),
               ),
             ),
@@ -594,12 +608,7 @@ class CatalogTile extends StatelessWidget {
                         color: t.text3,
                       ),
                     )
-                  : CachedNetworkImage(
-                      imageUrl: item.imageUrl,
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => ColoredBox(color: t.surface2),
-                      errorWidget: (_, __, ___) => ColoredBox(color: t.surface2),
-                    ),
+                  : mediaImage(context, item.imageUrl, fit: BoxFit.cover),
             ),
           ),
           const SizedBox(width: Gap.md),

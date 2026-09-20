@@ -317,8 +317,18 @@ final profileRepositoryProvider = Provider<ProfileRepository>(
 /// qilmasdi. Oqibat: Kashfiyotdan qaysi odamni tanlasangiz ham
 /// bir xil BO'SH panel ochilardi — 0 post, 0 obunachi va
 /// "Do'kondan karta oling yoki ID yarating" yozuvi bilan.
+// RIVERPOD `dependencies` — DEMO DARAXTI UCHUN SHART.
+//
+// "NFC Mobile" demo ekranlari repozitoriylarni ichki
+// `ProviderScope` da almashtiradi. Riverpod esa almashtirilgan
+// provayderga TAYANADIGAN har bir provayderdan buni OLDINDAN
+// e'lon qilishni talab qiladi — aks holda u ichki doirada qayta
+// yaratilmaydi va "Tried to read ... from a place where one of
+// its dependencies were overridden" xatosi chiqadi.
+//
+// Ishlab chiqarish xulqi O'ZGARMAYDI.
 final publicProfileProvider =
-    FutureProvider.family<NfcId, String>((ref, code) async {
+    FutureProvider.family<NfcId, String>(dependencies: [profileRepositoryProvider], (ref, code) async {
   final res = await ref.watch(profileRepositoryProvider).byCode(code);
   return res.when(ok: (v) => v, err: (e) => throw e);
 });

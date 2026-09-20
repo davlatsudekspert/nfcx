@@ -1194,4 +1194,74 @@ class LUz extends L {
 
   @override
   String get payPendingHint => 'To‘lov tugallanmagan — to‘lash mumkin';
+
+  @override
+  String get demoBadge => 'Demo';
+
+  @override
+  String get demoSectionTitle => 'NFC Mobile';
+
+  @override
+  String get demoSectionHint =>
+      'NFC ID, shaxsiy profil va biznes profilingiz qanday ko‘rinishini ko‘ring.';
+
+  @override
+  String get demoHeroTitle => 'NFC bilan tanishing';
+
+  @override
+  String get demoHeroBody =>
+      'Shaxsiy profil, biznes sahifa va NFC ID — barchasi bitta mobil ilovada.';
+
+  @override
+  String get demoChipIphone => 'iPhone 18 bilan ishlaydi';
+
+  @override
+  String get demoChipSamsung => 'Samsung S26 bilan ishlaydi';
+
+  @override
+  String get demoChipReady => 'NFC ready';
+
+  @override
+  String get demoPersonalBtn => 'Personal demo';
+
+  @override
+  String get demoBusinessBtn => 'Business demo';
+
+  @override
+  String get demoPersonalTitle => 'Shaxsiy profil';
+
+  @override
+  String get demoPersonalRole => 'Digital creator';
+
+  @override
+  String get demoSampleBtn => 'Namuna profil';
+
+  @override
+  String get demoBusinessTitle => 'Biznes profil';
+
+  @override
+  String get demoBusinessBody =>
+      'Katalog, aloqa va buyurtmalar — barchasi bitta NFC profil ichida.';
+
+  @override
+  String get demoCatalogBtn => 'Katalogni ko‘rish';
+
+  @override
+  String get demoBuyBtn => 'NFC ID olish';
+
+  @override
+  String get demoNotice =>
+      'Bu namuna ma’lumot — sizning profilingizga ta’sir qilmaydi.';
+
+  @override
+  String get demoViewProfile => 'Profilni ko‘rish';
+
+  @override
+  String get demoViewBusiness => 'Biznes profilni ko‘rish';
+
+  @override
+  String get demoBizSubtitle => 'Business NFC Profile';
+
+  @override
+  String get demoPersonalSubtitle => 'Personal NFC Profile';
 }

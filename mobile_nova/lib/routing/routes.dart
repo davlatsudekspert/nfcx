@@ -67,6 +67,13 @@ abstract final class Routes {
   static String businessProduct(int id) => '/business/catalog/$id';
   static String storefront(String companyId) => '/c/$companyId';
 
+  /// "NFC Mobile" bo'limidagi namuna profillar.
+  ///
+  /// Alohida manzil: demo ekan haqiqiy profil manzillari bilan
+  /// aralashib ketmasligi kerak.
+  static const demoPersonal = '/demo/personal';
+  static const demoBusiness = '/demo/business';
+
   // Do'kon
   static const shop = '/shop';
   static const checkout = '/shop/checkout';

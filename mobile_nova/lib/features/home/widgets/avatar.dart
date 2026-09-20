@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import '../../social/media_frame.dart';
 
 import '../../../design/theme/typography.dart';
 import '../../../design/tokens/nfc_tokens.dart';
@@ -39,14 +40,20 @@ class Avatar extends StatelessWidget {
         height: inner,
         child: url.isEmpty
             ? _Initials(initials: initials, size: inner)
-            : CachedNetworkImage(
-                imageUrl: url,
-                fit: BoxFit.cover,
-                fadeInDuration: const Duration(milliseconds: 240),
-                placeholder: (_, __) => ColoredBox(color: t.surface2),
-                errorWidget: (_, __, ___) =>
-                    _Initials(initials: initials, size: inner),
-              ),
+            : isAssetMedia(url)
+                // Demo avatarlari ilova ichida saqlanadi.
+                ? Image.asset(url,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) =>
+                        _Initials(initials: initials, size: inner))
+                : CachedNetworkImage(
+                    imageUrl: url,
+                    fit: BoxFit.cover,
+                    fadeInDuration: const Duration(milliseconds: 240),
+                    placeholder: (_, __) => ColoredBox(color: t.surface2),
+                    errorWidget: (_, __, ___) =>
+                        _Initials(initials: initials, size: inner),
+                  ),
       ),
     );
 

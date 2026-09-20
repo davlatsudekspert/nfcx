@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -25,13 +24,26 @@ import '../../app/profile_context.dart';
 import '../../data/repositories/business_repository.dart';
 import '../nfc/qr_sheet.dart';
 import 'profile_switcher.dart';
+import '../demo/demo_mode.dart';
 import '../social/engagement.dart';
+import '../social/story_viewer.dart';
 import '../social/inline_video.dart';
+import '../social/media_frame.dart';
 import '../social/moderation.dart';
 import 'profile_repository.dart';
 
+// RIVERPOD `dependencies` — DEMO DARAXTI UCHUN SHART.
+//
+// "NFC Mobile" demo ekranlari repozitoriylarni ichki
+// `ProviderScope` da almashtiradi. Riverpod esa almashtirilgan
+// provayderga TAYANADIGAN har bir provayderdan buni OLDINDAN
+// e'lon qilishni talab qiladi — aks holda u ichki doirada qayta
+// yaratilmaydi va "Tried to read ... from a place where one of
+// its dependencies were overridden" xatosi chiqadi.
+//
+// Ishlab chiqarish xulqi O'ZGARMAYDI.
 final profilePostsProvider = FutureProvider.autoDispose
-    .family<List<Post>, String>((ref, code) async {
+    .family<List<Post>, String>(dependencies: [socialRepositoryProvider], (ref, code) async {
       final res = await ref.watch(socialRepositoryProvider).postsOf(code);
       return res.when(ok: (v) => v, err: (e) => throw e);
     });
@@ -43,7 +55,7 @@ final profilePostsProvider = FutureProvider.autoDispose
 /// da. Ilgari biznes rejimida ham shaxsiy yo'l chaqirilardi va
 /// natijada biznes profilida shaxsiy postlar ko'rinardi.
 final companyPostsProvider = FutureProvider.autoDispose
-    .family<List<Post>, String>((ref, id) async {
+    .family<List<Post>, String>(dependencies: [businessRepositoryProvider], (ref, id) async {
       final res = await ref.watch(businessRepositoryProvider).posts(id);
       return res.when(ok: (v) => v, err: (e) => throw e);
     });
@@ -98,19 +110,32 @@ class ProfileScreen extends ConsumerWidget {
     // Obuna holati — lenta kartasi bilan BITTA manba.
     final following = code == null ? false : ref.watch(followingOfProvider(code!));
 
+    // DEMO holati. Ishlab chiqarishda DOIM `null` — ya'ni pastdagi
+    // hech bir shart ishlamaydi va ekran avvalgidek qoladi.
+    final demo = ref.watch(demoModeProvider);
+
     if (user == null) return const SizedBox.shrink();
 
     return NovaScaffold(
       showBack: code != null,
       actions: code != null
           ? [
-              // O'ZGANING profili — shikoyat va bloklash.
-              NovaIconButton(
-                icon: Icons.more_horiz_rounded,
-                tooltip: l.reportTitle,
-                onPressed: () => _showProfileActions(context, ref, code!),
-              ),
-              const SizedBox(width: Gap.sm),
+              // DEMO profilni shikoyat qilish yoki bloklash
+              // ma'nosiz — o'rnida "Demo" yorlig'i turadi.
+              if (demo != null)
+                Padding(
+                  padding: const EdgeInsets.only(right: Gap.sm),
+                  child: Capsule(label: l.demoBadge, dense: true),
+                )
+              else ...[
+                // O'ZGANING profili — shikoyat va bloklash.
+                NovaIconButton(
+                  icon: Icons.more_horiz_rounded,
+                  tooltip: l.reportTitle,
+                  onPressed: () => _showProfileActions(context, ref, code!),
+                ),
+                const SizedBox(width: Gap.sm),
+              ],
             ]
           : [
               NovaIconButton(
@@ -194,7 +219,8 @@ class ProfileScreen extends ConsumerWidget {
                     size: 52,
                     onPressed: id == null
                         ? null
-                        : () => showQrSheet(context, id),
+                        : () => showQrSheet(context, id,
+                            urlOverride: demo?.shareUrl),
                   ),
                   const SizedBox(width: Gap.sm),
                   NovaIconButton(
@@ -207,8 +233,8 @@ class ProfileScreen extends ConsumerWidget {
                             // Tizim oynasi ochilmasa manzil buferga
                             // ko'chiriladi — odam boshi berk
                             // ko'chada qolmasin.
-                            final ok =
-                                await shareLink(id.publicUrl(kApiBase));
+                            final ok = await shareLink(
+                                demo?.shareUrl ?? id.publicUrl(kApiBase));
                             if (ok || !context.mounted) return;
                             ScaffoldMessenger.of(context)
                               ..hideCurrentSnackBar()
@@ -456,12 +482,7 @@ class _Hero extends StatelessWidget {
                     ),
                   )
                 else
-                  CachedNetworkImage(
-                    imageUrl: cover,
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) => ColoredBox(color: t.surface2),
-                    errorWidget: (_, __, ___) => ColoredBox(color: t.surface2),
-                  ),
+                  mediaImage(context, cover, fit: BoxFit.cover),
               ],
             ),
           ),
@@ -476,11 +497,22 @@ class _Hero extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const SizedBox(height: 86),
-                _HeroAvatar(
-                  user: user,
-                  profile: profile,
-                  glow: glow,
-                  business: business,
+                const _DemoNotice(),
+                // ISTORYA HALQASI — FAQAT istorya BOR bo'lsa.
+                //
+                // Ilgari profil ekrani istoryani umuman
+                // ko'rsatmasdi: odam istorya qo'yardi, lekin uni
+                // profilidan ochib bo'lmasdi. Halqa ro'yxat bo'sh
+                // bo'lganda umuman chizilmaydi, shuning uchun
+                // istoryasiz profil avvalgidek ko'rinadi.
+                _AvatarWithStory(
+                  code: profile?.code,
+                  child: _HeroAvatar(
+                    user: user,
+                    profile: profile,
+                    glow: glow,
+                    business: business,
+                  ),
                 ),
                 const SizedBox(height: Gap.md),
                 Text(
@@ -535,6 +567,65 @@ class _Hero extends StatelessWidget {
 /// Concept B'da avatar 120px, aksent gradientida va o'z nuri bilan
 /// suzib turadi. `Avatar` widgeti butun ilovada bir xil — shuning uchun
 /// u qayta yozilmaydi, faqat ostiga nur qo'yiladi.
+/// "Bu namuna" eslatmasi.
+///
+/// O'zi `demoModeProvider` ni o'qiydi, shuning uchun uni ekranning
+/// istalgan joyiga qo'yish mumkin va ishlab chiqarishda u
+/// UMUMAN chizilmaydi.
+class _DemoNotice extends ConsumerWidget {
+  const _DemoNotice();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (ref.watch(demoModeProvider) == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Gap.lg),
+      child: Text(
+        L.of(context).demoNotice,
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.bodySmall,
+      ),
+    );
+  }
+}
+
+/// Avatar ustidagi istorya halqasi.
+///
+/// Halqa FAQAT istorya bo'lganda paydo bo'ladi va bosilganda
+/// ko'ruvchini ochadi. Istoryasi yo'q profilda hech narsa
+/// o'zgarmaydi — hatto bosish ham ishlamaydi.
+class _AvatarWithStory extends ConsumerWidget {
+  const _AvatarWithStory({required this.code, required this.child});
+
+  final String? code;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.tokens;
+    if (code == null || code!.isEmpty) return child;
+
+    final stories = ref.watch(storiesOfProvider(code!)).valueOrNull;
+    if (stories == null || stories.isEmpty) return child;
+
+    return GestureDetector(
+      onTap: () => context.push(Routes.story(code!)),
+      child: Container(
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: t.accentGradient,
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(shape: BoxShape.circle, color: t.bg1),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
 class _HeroAvatar extends StatelessWidget {
   const _HeroAvatar({
     required this.user,
@@ -915,14 +1006,8 @@ class _PostsGrid extends ConsumerWidget {
                           : Stack(
                               fit: StackFit.expand,
                               children: [
-                                CachedNetworkImage(
-                                  imageUrl: p.mediaUrls.first,
-                                  fit: BoxFit.cover,
-                                  placeholder: (_, __) =>
-                                      ColoredBox(color: t.surface2),
-                                  errorWidget: (_, __, ___) =>
-                                      ColoredBox(color: t.surface2),
-                                ),
+                                mediaImage(context, p.mediaUrls.first,
+                                    fit: BoxFit.cover),
                                 if (p.isVideo)
                                   const Positioned(
                                     right: 5,

@@ -2408,6 +2408,138 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'To‘lov tugallanmagan — to‘lash mumkin'**
   String get payPendingHint;
+
+  /// No description provided for @demoBadge.
+  ///
+  /// In uz, this message translates to:
+  /// **'Demo'**
+  String get demoBadge;
+
+  /// No description provided for @demoSectionTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'NFC Mobile'**
+  String get demoSectionTitle;
+
+  /// No description provided for @demoSectionHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'NFC ID, shaxsiy profil va biznes profilingiz qanday ko‘rinishini ko‘ring.'**
+  String get demoSectionHint;
+
+  /// No description provided for @demoHeroTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'NFC bilan tanishing'**
+  String get demoHeroTitle;
+
+  /// No description provided for @demoHeroBody.
+  ///
+  /// In uz, this message translates to:
+  /// **'Shaxsiy profil, biznes sahifa va NFC ID — barchasi bitta mobil ilovada.'**
+  String get demoHeroBody;
+
+  /// No description provided for @demoChipIphone.
+  ///
+  /// In uz, this message translates to:
+  /// **'iPhone 18 bilan ishlaydi'**
+  String get demoChipIphone;
+
+  /// No description provided for @demoChipSamsung.
+  ///
+  /// In uz, this message translates to:
+  /// **'Samsung S26 bilan ishlaydi'**
+  String get demoChipSamsung;
+
+  /// No description provided for @demoChipReady.
+  ///
+  /// In uz, this message translates to:
+  /// **'NFC ready'**
+  String get demoChipReady;
+
+  /// No description provided for @demoPersonalBtn.
+  ///
+  /// In uz, this message translates to:
+  /// **'Personal demo'**
+  String get demoPersonalBtn;
+
+  /// No description provided for @demoBusinessBtn.
+  ///
+  /// In uz, this message translates to:
+  /// **'Business demo'**
+  String get demoBusinessBtn;
+
+  /// No description provided for @demoPersonalTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Shaxsiy profil'**
+  String get demoPersonalTitle;
+
+  /// No description provided for @demoPersonalRole.
+  ///
+  /// In uz, this message translates to:
+  /// **'Digital creator'**
+  String get demoPersonalRole;
+
+  /// No description provided for @demoSampleBtn.
+  ///
+  /// In uz, this message translates to:
+  /// **'Namuna profil'**
+  String get demoSampleBtn;
+
+  /// No description provided for @demoBusinessTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Biznes profil'**
+  String get demoBusinessTitle;
+
+  /// No description provided for @demoBusinessBody.
+  ///
+  /// In uz, this message translates to:
+  /// **'Katalog, aloqa va buyurtmalar — barchasi bitta NFC profil ichida.'**
+  String get demoBusinessBody;
+
+  /// No description provided for @demoCatalogBtn.
+  ///
+  /// In uz, this message translates to:
+  /// **'Katalogni ko‘rish'**
+  String get demoCatalogBtn;
+
+  /// No description provided for @demoBuyBtn.
+  ///
+  /// In uz, this message translates to:
+  /// **'NFC ID olish'**
+  String get demoBuyBtn;
+
+  /// No description provided for @demoNotice.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu namuna ma’lumot — sizning profilingizga ta’sir qilmaydi.'**
+  String get demoNotice;
+
+  /// No description provided for @demoViewProfile.
+  ///
+  /// In uz, this message translates to:
+  /// **'Profilni ko‘rish'**
+  String get demoViewProfile;
+
+  /// No description provided for @demoViewBusiness.
+  ///
+  /// In uz, this message translates to:
+  /// **'Biznes profilni ko‘rish'**
+  String get demoViewBusiness;
+
+  /// No description provided for @demoBizSubtitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Business NFC Profile'**
+  String get demoBizSubtitle;
+
+  /// No description provided for @demoPersonalSubtitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Personal NFC Profile'**
+  String get demoPersonalSubtitle;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

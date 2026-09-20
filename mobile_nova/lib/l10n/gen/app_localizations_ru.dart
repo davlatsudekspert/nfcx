@@ -1188,4 +1188,73 @@ class LRu extends L {
 
   @override
   String get payPendingHint => 'Платёж не завершён — можно оплатить';
+
+  @override
+  String get demoBadge => 'Демо';
+
+  @override
+  String get demoSectionTitle => 'NFC Mobile';
+
+  @override
+  String get demoSectionHint =>
+      'Посмотрите, как выглядят NFC ID, личный и бизнес-профиль.';
+
+  @override
+  String get demoHeroTitle => 'Знакомьтесь с NFC';
+
+  @override
+  String get demoHeroBody =>
+      'Личный профиль, бизнес-страница и NFC ID — всё в одном приложении.';
+
+  @override
+  String get demoChipIphone => 'Работает с iPhone 18';
+
+  @override
+  String get demoChipSamsung => 'Работает с Samsung S26';
+
+  @override
+  String get demoChipReady => 'NFC ready';
+
+  @override
+  String get demoPersonalBtn => 'Personal demo';
+
+  @override
+  String get demoBusinessBtn => 'Business demo';
+
+  @override
+  String get demoPersonalTitle => 'Личный профиль';
+
+  @override
+  String get demoPersonalRole => 'Digital creator';
+
+  @override
+  String get demoSampleBtn => 'Пример профиля';
+
+  @override
+  String get demoBusinessTitle => 'Бизнес-профиль';
+
+  @override
+  String get demoBusinessBody =>
+      'Каталог, контакты и заказы — всё внутри одного NFC-профиля.';
+
+  @override
+  String get demoCatalogBtn => 'Открыть каталог';
+
+  @override
+  String get demoBuyBtn => 'Получить NFC ID';
+
+  @override
+  String get demoNotice => 'Это пример — на ваш профиль он не влияет.';
+
+  @override
+  String get demoViewProfile => 'Открыть профиль';
+
+  @override
+  String get demoViewBusiness => 'Открыть бизнес-профиль';
+
+  @override
+  String get demoBizSubtitle => 'Business NFC Profile';
+
+  @override
+  String get demoPersonalSubtitle => 'Personal NFC Profile';
 }

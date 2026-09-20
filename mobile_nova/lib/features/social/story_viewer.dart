@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -21,8 +20,18 @@ import 'inline_video.dart';
 import 'media_frame.dart';
 import '../home/widgets/avatar.dart';
 
+// RIVERPOD `dependencies` — DEMO DARAXTI UCHUN SHART.
+//
+// "NFC Mobile" demo ekranlari repozitoriylarni ichki
+// `ProviderScope` da almashtiradi. Riverpod esa almashtirilgan
+// provayderga TAYANADIGAN har bir provayderdan buni OLDINDAN
+// e'lon qilishni talab qiladi — aks holda u ichki doirada qayta
+// yaratilmaydi va "Tried to read ... from a place where one of
+// its dependencies were overridden" xatosi chiqadi.
+//
+// Ishlab chiqarish xulqi O'ZGARMAYDI.
 final storiesOfProvider = FutureProvider.autoDispose
-    .family<List<StoryItem>, String>((ref, code) async {
+    .family<List<StoryItem>, String>(dependencies: [socialRepositoryProvider], (ref, code) async {
       final res = await ref.watch(socialRepositoryProvider).storiesOf(code);
       return res.when(ok: (v) => v, err: (e) => throw e);
     });
@@ -399,15 +408,8 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                     // nusxasi bilan to'ladi.
                     FullBleedMedia(
                       backdropUrl: s.mediaUrl,
-                      child: CachedNetworkImage(
-                        imageUrl: s.mediaUrl,
-                        fit: BoxFit.contain,
-                        placeholder: (_, __) => const SizedBox.shrink(),
-                        errorWidget: (_, __, ___) => Icon(
-                            Icons.broken_image_outlined,
-                            size: 34,
-                            color: t.text3),
-                      ),
+                      child: mediaImage(context, s.mediaUrl,
+                          fit: BoxFit.contain),
                     ),
                   Positioned.fill(
                     child: IgnorePointer(
