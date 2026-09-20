@@ -248,7 +248,16 @@ function CompanyMusic({ form, setForm, t }) {
           {busy ? t('Yuklanmoqda…') : `＋ ${t('Qo‘shiq qo‘shish')}`}
         </button>
       )}
-      <input ref={fileRef} type="file" accept="audio/*" hidden onChange={pick} />
+      {/* Kengaytmalar ATAYLAB: `audio/*` ning o'zida Android fayl
+          tanlagichi rasm va video ko'rsatadi, musiqani esa
+          ro'yxatga qo'shmaydi (shaxsiy profilda ham xuddi shu). */}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.oga,.opus,.flac,.weba,.mp4a"
+        hidden
+        onChange={pick}
+      />
       {err && <small role="alert" className="cw-upload-err">{err}</small>}
       <small className="cw-upload-hint">{t('{n} tadan {max} tagacha', { n: tracks.length, max: MAX })}</small>
     </div>

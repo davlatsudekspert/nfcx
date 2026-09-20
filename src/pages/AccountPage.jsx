@@ -3152,7 +3152,18 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
       <Gate ok={allow('music')} onLock={() => setLocked(t('Profil musiqasi'))}>
       <label className="form-control mt-5 block">
         <span className="flex items-center gap-1.5 text-xs font-semibold text-base-content/70"><IconMusic width={12} height={12} /> {t('Profil musiqasi')} <span className="font-normal text-base-content/40">({form.musicUrls.length}/{musicMax})</span></span>
-        <input ref={musicFileRef} type="file" accept="audio/*" style={{ display: 'none' }} onChange={onPickMusicFile} />
+        {/* KENGAYTMALAR ATAYLAB SANAB O'TILGAN.
+            `audio/*` ning O'ZI yetarli emas: Android'dagi fayl
+            tanlagich unda ko'pincha RASM va VIDEO ko'rsatadi,
+            musiqa esa ro'yxatga tushmaydi. Kengaytmalar qo'shilsa
+            tanlagich mp3/m4a/wav larni to'g'ri ko'rsatadi. */}
+        <input
+          ref={musicFileRef}
+          type="file"
+          accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.oga,.opus,.flac,.weba,.mp4a"
+          style={{ display: 'none' }}
+          onChange={onPickMusicFile}
+        />
         {contentRules.node}
         <div className="mt-2 space-y-3">
           {form.musicUrls.map((url, i) => (

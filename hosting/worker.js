@@ -5963,6 +5963,8 @@ function sniffAnyFileTypeD1(bytes) {
   if (bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0) return { ext: 'mp3', type: 'audio/mpeg' };
   if (head.slice(0, 4) === 'RIFF' && head.slice(8, 12) === 'WAVE') return { ext: 'wav', type: 'audio/wav' };
   if (head.slice(0, 4) === 'OggS') return { ext: 'ogg', type: 'audio/ogg' };
+  // FLAC umuman tanilmasdi — har qanday .flac fayl rad etilardi.
+  if (head.slice(0, 4) === 'fLaC') return { ext: 'flac', type: 'audio/flac' };
   return null;
 }
 
@@ -6107,6 +6109,63 @@ async function streamUploadToR2(request, env, opts) {
   }
   return { ok: true, url: `/uploads/${filename}`, type: sniffed.type, size: total };
 }
+
+// ── FAYL TURI TAXALLUSLARI ───────────────────────────────────────────
+//
+// EGASINING SHIKOYATI (2026-09-20): "saytda musiqa yuklayotganda
+// mp3 topsam 'qo'llab-quvvatlanmaydi' deyapti".
+//
+// Sabab: yuklashda IKKI manba solishtiriladi — brauzer E'LON QILGAN
+// tur va faylning SEHRLI BAYTLARI. Ular mos kelmasa fayl rad
+// etiladi (bu to'g'ri himoya: kengaytmasi almashtirilgan fayl
+// o'tib ketmasin).
+//
+// Lekin turlarning RASMIY nomi bitta, amalda esa ko'p: Android
+// mp3 ni ko'pincha `audio/mp3` deb e'lon qiladi, standart nom esa
+// `audio/mpeg`. Shu sababli TO'G'RI mp3 ham rad etilardi.
+//
+// Quyida faqat AYNAN BIR XIL formatning boshqa nomlari. Himoya
+// pasaymadi: rasm o'rniga video yoki audio o'rniga hujjat o'tkazib
+// bo'lmaydi — har bir taxallus o'z oilasi ichida qoladi.
+const UPLOAD_TYPE_ALIASES = {
+  // MP3
+  'audio/mp3': ['audio/mpeg'],
+  'audio/mpg': ['audio/mpeg'],
+  'audio/mpeg3': ['audio/mpeg'],
+  'audio/x-mp3': ['audio/mpeg'],
+  'audio/x-mpeg': ['audio/mpeg'],
+  'audio/x-mpeg-3': ['audio/mpeg'],
+  // M4A / AAC — ikkalasi ham MP4 konteyner. `ftyp` brendi "M4A"
+  // bo'lmasa sniffer uni `video/mp4` deb biladi, holbuki ichida
+  // faqat ovoz bor.
+  'audio/mp4': ['audio/mp4', 'video/mp4'],
+  'audio/m4a': ['audio/mp4', 'video/mp4'],
+  'audio/x-m4a': ['audio/mp4', 'video/mp4'],
+  'audio/aac': ['audio/mp4', 'video/mp4', 'audio/mpeg'],
+  'audio/aacp': ['audio/mp4', 'video/mp4'],
+  // WAV
+  'audio/x-wav': ['audio/wav'],
+  'audio/wave': ['audio/wav'],
+  'audio/vnd.wave': ['audio/wav'],
+  'audio/x-pn-wav': ['audio/wav'],
+  // OGG / OPUS — Opus ham Ogg, ham WebM konteynerda bo'ladi.
+  'audio/opus': ['audio/ogg', 'video/webm'],
+  'audio/x-opus': ['audio/ogg', 'video/webm'],
+  'audio/vorbis': ['audio/ogg'],
+  'audio/x-ogg': ['audio/ogg'],
+  'application/ogg': ['audio/ogg'],
+  // WebM ichidagi ovoz
+  'audio/webm': ['video/webm'],
+  // FLAC
+  'audio/flac': ['audio/flac'],
+  'audio/x-flac': ['audio/flac'],
+  // Rasm/video uchun ham uchraydigan nomlar.
+  'image/jpg': ['image/jpeg'],
+  'image/pjpeg': ['image/jpeg'],
+  'video/quicktime': ['video/mp4'],
+  'video/x-m4v': ['video/mp4'],
+  'video/x-matroska': ['video/webm'],
+};
 
 const PROFILE_BG_ALIASES = {
   'application/octet-stream': ['image/gif', 'video/mp4', 'video/webm'],
@@ -6282,6 +6341,7 @@ async function uploadApi(request, env, pathname) {
     const up = await streamUploadToR2(request, env, {
       prefix: 'file', actor,
       accept: ['image/', 'video/', 'audio/', 'application/pdf'],
+      aliases: UPLOAD_TYPE_ALIASES,
     });
     if (!up.ok) return json({ error: up.error, ...(up.limitMb ? { limitMb: up.limitMb } : {}) }, up.status);
     return json({ url: up.url, type: up.type, size: up.size });

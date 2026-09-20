@@ -122,6 +122,22 @@ jobs:
       - name: Biznes profil maketi
         run: node scripts/test-quick-profile-screen.mjs
 
+      # MUSIQA YUKLASH — E'LON QILINGAN TUR va FAYLNING O'ZI.
+      #
+      # SHIKOYAT (2026-09, egasi): "androidda mp3 tanlasam
+      # qo'llab-quvvatlamaydi deydi". Sabab: yuklovchi brauzer aytgan
+      # `Content-Type` ni faylning sehrli baytlari bilan solishtiradi
+      # va farq bo'lsa rad etadi. Android esa mp3 ni `audio/mp3` deb
+      # e'lon qiladi, baytlar esa `audio/mpeg` beradi — ikkalasi bir
+      # xil fayl, nomi boshqa. FLAC umuman tanilmasdi.
+      #
+      # Test HAQIQIY sehrli baytlar bilan (ID3, xom mp3 kadri, wav,
+      # ogg, flac, m4a, webm) yuklaydi va yot faylni (jpg, pdf)
+      # hamon rad etishini tekshiradi — ya'ni taqqoslash yumshatildi,
+      # olib tashlanmadi.
+      - name: Musiqa yuklash formatlari
+        run: node scripts/test-audio-upload.mjs
+
       # SAHIFA FONI.
       #
       # Bu ishda topilgan haqiqiy xato: `theme.css` dagi bitta izohda
