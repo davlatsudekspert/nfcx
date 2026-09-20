@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import '../../core/utils/external_link.dart';
 import '../../core/utils/sharing.dart';
 
 import '../../core/network/api_client.dart';
@@ -115,7 +115,11 @@ class _QrSheet extends StatelessWidget {
                   tone: ButtonTone.quiet,
                   icon: Icons.copy_rounded,
                   onPressed: () async {
-                    await Clipboard.setData(ClipboardData(text: url));
+                    // `Clipboard.setData` kanali javob bermasa
+                    // MANGU kutadi — istisno ham tashlamaydi. Shuning
+                    // uchun to'g'ridan-to'g'ri emas, `copyToClipboard`
+                    // orqali: u ichida timeout bilan o'ralgan.
+                    await copyToClipboard(url);
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text(l.actionCopied)),

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -64,6 +65,32 @@ void main() {
       // Keskin yoki sakraydigan egri chiziqlar bo'lmasin.
       expect(src, isNot(contains('Curves.bounce')));
       expect(src, isNot(contains('Curves.elasticOut')));
+    });
+  });
+
+  group('Qotib qoladigan kanallar', () {
+    // `Clipboard.setData` — bu kanal javob bermasa MANGU kutadi va
+    // istisno ham tashlamaydi. Buni sinovda ushlab bo'lmaydi: test
+    // muhitida kanal doim javob beradi. Shuning uchun qoida manba
+    // darajasida tekshiriladi — `lib/` ichida faqat bitta joy,
+    // `core/utils/`, bu kanalga to'g'ridan-to'g'ri tegadi.
+    test('lib/ ichida himoyasiz Clipboard.setData qolmagan', () {
+      final bad = <String>[];
+      for (final f in Directory('lib').listSync(recursive: true)) {
+        if (f is! File || !f.path.endsWith('.dart')) continue;
+        if (f.path.contains('core/utils/')) continue;
+        final src = f.readAsStringSync();
+        for (final line in const LineSplitter().convert(src)) {
+          // Izoh satri chaqiruv emas — aks holda bu sinov o'zining
+          // tushuntirish matnini "xato" deb topadi.
+          final code = line.trimLeft();
+          if (code.startsWith('//')) continue;
+          if (code.contains('Clipboard.setData')) bad.add('${f.path}: $code');
+        }
+      }
+      expect(bad, isEmpty,
+          reason: 'bu chaqiruvlar qotib qolishi mumkin — '
+              'copyToClipboard() orqali o‘tkazing');
     });
   });
 }
