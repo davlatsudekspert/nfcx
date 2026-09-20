@@ -34,6 +34,7 @@ import 'package:nfcstore_nova/data/repositories/social_repository.dart';
 
 import '../helpers.dart';
 import 'identity_widgets.dart';
+import 'theme_mockup.dart';
 import 'proposed_widgets.dart';
 
 /// Suratlar uchun NAMUNAVIY ma'lumot.
@@ -329,6 +330,27 @@ void main() {
     await shot(t, const LavhaEmpty(), 'n3-lavha');
   });
 
+  // ── PROFIL RANG TIZIMI — to'rt mavzu ──────────────────────────
+  testWidgets('T1 — Gold shaxsiy', (t) async {
+    await shot(t, const _Theme(goldTheme), 't1-gold',
+        size: const Size(390, 1480));
+  });
+
+  testWidgets('T2 — Silver shaxsiy', (t) async {
+    await shot(t, const _Theme(silverTheme), 't2-silver',
+        size: const Size(390, 1480));
+  });
+
+  testWidgets('T3 — Exclusive qora/oltin', (t) async {
+    await shot(t, const _Theme(exclusiveTheme), 't3-exclusive',
+        size: const Size(390, 1480));
+  });
+
+  testWidgets('T4 — Biznes brend rangi', (t) async {
+    await shot(t, const _Theme(businessTheme), 't4-business',
+        size: const Size(390, 1480));
+  });
+
   testWidgets('P2 — Reels (taklif)', (t) async {
     await shot(t, const ProposedReels(), 'p2-reels');
   });
@@ -463,6 +485,15 @@ class _ProposedBusinessSocial extends StatelessWidget {
 }
 
 /// Lenta — taklif qilingan kartalar bilan.
+class _Theme extends StatelessWidget {
+  const _Theme(this.theme);
+  final ProfileTheme theme;
+
+  @override
+  Widget build(BuildContext context) =>
+      Scaffold(body: SingleChildScrollView(child: ThemeShowcase(theme)));
+}
+
 class _IdentityFeed extends StatelessWidget {
   const _IdentityFeed();
 
