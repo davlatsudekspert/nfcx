@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
 import 'package:nfcstore_nova/features/auth/login_screen.dart';
+import 'package:nfcstore_nova/features/discover/discover_screen.dart';
 import 'package:nfcstore_nova/features/entry/welcome_screen.dart';
 import 'package:nfcstore_nova/features/settings/settings_screen.dart';
 
@@ -63,6 +64,15 @@ void main() {
 
   testWidgets('Login — 320/360/390/430', (t) async {
     await check(t, const LoginScreen(), 'Login');
+  });
+
+  // TEPA QISMI O'ZGARGAN EKRAN.
+  //
+  // "Kashf eting" sarlavhasi olib tashlangandan keyin qidiruv
+  // maydoni tepaga ko'chdi — tor ekranda va uzun ruscha yorliqlar
+  // bilan sinmasligi tekshiriladi.
+  testWidgets('Discover — 320/360/390/430', (t) async {
+    await check(t, const DiscoverScreen(), 'Discover');
   });
 
   testWidgets('Settings — 320/360/390/430', (t) async {

@@ -40,12 +40,25 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
     with SingleTickerProviderStateMixin {
   static const _perStory = Duration(seconds: 5);
 
-  late final AnimationController _progress = AnimationController(
-    vsync: this,
-    duration: _perStory,
-  )..addStatusListener((s) {
-      if (s == AnimationStatus.completed) _next();
-    });
+  /// TAYMER `initState` DA YARATILADI.
+  ///
+  /// Ilgari bu maydon `late final ... = AnimationController(...)` edi,
+  /// ya'ni kontroller BIRINCHI O'QILGANDA tug'ilardi. Istoryasi
+  /// bo'lmagan profil ochilsa `build` bo'sh holatni qaytarardi va
+  /// kontrollerga umuman tegilmasdi — natijada uni BIRINCHI marta
+  /// `dispose()` uyg'otardi va `createTicker` o'chirilgan element
+  /// ustida chaqirilib, "Looking up a deactivated widget's ancestor
+  /// is unsafe" xatosi chiqardi.
+  late final AnimationController _progress;
+
+  @override
+  void initState() {
+    super.initState();
+    _progress = AnimationController(vsync: this, duration: _perStory)
+      ..addStatusListener((s) {
+        if (s == AnimationStatus.completed) _next();
+      });
+  }
 
   int _index = 0;
   int _total = 0;

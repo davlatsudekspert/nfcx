@@ -33,8 +33,9 @@ import '../../data/repositories/business_repository.dart';
 import '../profile/profile_switcher.dart';
 
 /// Faol NFC ID ning story'lari.
-final homeStoriesProvider =
-    FutureProvider.autoDispose<List<StoryItem>>((ref) async {
+final homeStoriesProvider = FutureProvider.autoDispose<List<StoryItem>>((
+  ref,
+) async {
   final p = ref.watch(activeProfileProvider);
   if (p == null) return const [];
   // Kompaniya istoryalari boshqa jadvalda va boshqa manzilda
@@ -43,7 +44,19 @@ final homeStoriesProvider =
   final res = p.isBusiness
       ? await ref.watch(businessRepositoryProvider).stories(p.code)
       : await ref.watch(socialRepositoryProvider).storiesOf(p.code);
-  return res.when(ok: (v) => v, err: (e) => throw e);
+  final own = res.when(ok: (v) => v, err: (e) => throw e);
+
+  // OBUNA BO'LGANLARNING ISTORYALARI HAM QO'SHILADI.
+  //
+  // Ilgari bu qator FAQAT o'z profilingni ko'rsatardi: obuna
+  // bo'lganing odam istorya qo'ysa, ilovada uni ko'rishning iloji
+  // yo'q edi. Server uchun `GET /api/stories/feed` allaqachon bor
+  // edi — ilova uni chaqirmasdi.
+  //
+  // Xatosi YUTILADI: obuna lentasi kelmasa ham o'z istoryang
+  // ko'rinaverishi kerak, butun qator yo'qolib qolmasin.
+  final followed = await ref.watch(socialRepositoryProvider).followedStories();
+  return [...own, ...followed.valueOrNull ?? const <StoryItem>[]];
 });
 
 /// Lentaning boshidagi postlar.
@@ -60,8 +73,9 @@ final activeIdProvider = Provider<NfcId?>((ref) {
   final ids = ref.watch(myIdsProvider);
   if (ids.isEmpty) return null;
   final mode = ref.watch(modeProvider);
-  final want =
-      mode == AppMode.business ? NfcIdKind.business : NfcIdKind.personal;
+  final want = mode == AppMode.business
+      ? NfcIdKind.business
+      : NfcIdKind.personal;
   final match = ids.where((e) => e.kind == want);
   if (match.isNotEmpty) {
     return match.firstWhere((e) => e.primary, orElse: () => match.first);
@@ -100,23 +114,22 @@ class HomeScreen extends ConsumerWidget {
           padding: EdgeInsets.only(bottom: navSafeBottom(context)),
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(Gap.screenX, Gap.sm, Gap.screenX, 0),
+              padding: const EdgeInsets.fromLTRB(
+                Gap.screenX,
+                Gap.sm,
+                Gap.screenX,
+                0,
+              ),
               child: Row(
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(_greeting(l), style: Theme.of(context).textTheme.bodySmall),
-                        Text(
-                          user.displayName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                      ],
-                    ),
-                  ),
+                  // SALOMLASHUV VA HISOB NOMI OLIB TASHLANDI.
+                  //
+                  // Bu yerda "Xayrli tong" va hisob login nomi
+                  // (`ali77099`) turardi. Pastda avatar, ism
+                  // ("Muhammad") va lavozim baribir ko'rinadi —
+                  // ya'ni tepadagi blok bir xil ma'lumotni ikkinchi
+                  // marta, lekin XOM ko'rinishda takrorlardi.
+                  const Spacer(),
                   NovaIconButton(
                     icon: Icons.notifications_none_rounded,
                     tooltip: l.activityTitle,
@@ -158,17 +171,20 @@ class HomeScreen extends ConsumerWidget {
                 // NFC endi FAQAT pastki navigatsiyaning markaziy
                 // tugmasi va NFC markazi orqali ochiladi. Orbni bosish
                 // o'z profilini ochadi — bu kutilgan, zararsiz amal.
-                onTap: () => context.push(active.isBusiness
-                    ? Routes.business
-                    : Routes.nfcId(active.code)),
+                onTap: () => context.push(
+                  active.isBusiness
+                      ? Routes.business
+                      : Routes.nfcId(active.code),
+                ),
               ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
               child: id == null
                   ? (noBusiness
-                      ? _NoBusinessCard(
-                          onPersonal: () => switchToPersonal(context, ref))
-                      : _NoIdCard(onShop: () => context.push(Routes.shop)))
+                        ? _NoBusinessCard(
+                            onPersonal: () => switchToPersonal(context, ref),
+                          )
+                        : _NoIdCard(onShop: () => context.push(Routes.shop)))
                   : IdentityCard(
                       user: user,
                       id: id,
@@ -187,8 +203,11 @@ class HomeScreen extends ConsumerWidget {
               onAction: () => context.go(Routes.discover),
             ),
             const _FeedPreview(),
-            SectionHeader(title: l.homeActivity, action: l.actionSeeAll,
-                onAction: () => context.push(Routes.activity)),
+            SectionHeader(
+              title: l.homeActivity,
+              action: l.actionSeeAll,
+              onAction: () => context.push(Routes.activity),
+            ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
               child: _ActivityPreview(id: id),
@@ -197,13 +216,6 @@ class HomeScreen extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  String _greeting(L l) {
-    final h = DateTime.now().hour;
-    if (h < 12) return l.homeGreetingMorning;
-    if (h < 18) return l.homeGreetingDay;
-    return l.homeGreetingEvening;
   }
 }
 
@@ -263,7 +275,9 @@ class _IdentityHero extends ConsumerWidget {
     // ichidan AYNAN SHU ID ga tegishlilari kerak. Hech narsa
     // to'qilmaydi: so'rov yuklanayotgan bo'lsa ham, xato bo'lsa ham
     // halqa ko'rsatilmaydi.
-    final mine = ref.watch(homeStoriesProvider).maybeWhen(
+    final mine = ref
+        .watch(homeStoriesProvider)
+        .maybeWhen(
           data: (all) => all
               .where((s) => s.code.isEmpty || s.code == profile.code)
               .toList(),
@@ -271,10 +285,7 @@ class _IdentityHero extends ConsumerWidget {
         );
     final ring = mine.isEmpty
         ? null
-        : _StoryRingState(
-            count: mine.length,
-            unseen: mine.any((s) => !s.seen),
-          );
+        : _StoryRingState(count: mine.length, unseen: mine.any((s) => !s.seen));
 
     return Column(
       children: [
@@ -386,12 +397,12 @@ class _OrbAvatar extends StatelessWidget {
     // Surat yuklanmaguncha yoki xato bo'lganda — bo'sh doira emas,
     // brend belgisi. Orb hech qachon "sinmaydi".
     Widget fallback() => Center(
-          child: BrandLogo(
-            size: orb * kOrbMarkRatio,
-            style: BrandLogoStyle.markOnly,
-            tint: t.onAccent,
-          ),
-        );
+      child: BrandLogo(
+        size: orb * kOrbMarkRatio,
+        style: BrandLogoStyle.markOnly,
+        tint: t.onAccent,
+      ),
+    );
 
     // Halqa suratdan TASHQARIDA turadi va yadroga tegmaydi:
     //   surat  d        = orb * .46
@@ -466,16 +477,20 @@ class _OrbAvatar extends StatelessWidget {
         clipBehavior: Clip.none,
         children: [
           photo,
+          // SURAT USTIDA FAQAT BITTA NISHON — MUSIQA.
+          //
+          // Ilgari bu yerda ikkita nishon turardi: pastki o'ngda
+          // NFC brend muhri, pastki chapda musiqa tugmasi. Ikkalasi
+          // birga suratning pastki yarmini yopib qo'yardi. Brend
+          // belgisi ekranda allaqachon bor (orbning o'zi, sozlamalar,
+          // yuklanmagan surat o'rnidagi belgi), shuning uchun muhr
+          // olib tashlandi va MUSIQA nishoni uning o'rniga —
+          // pastki o'ngga ko'chirildi.
+          //
+          // Musiqa yo'q bo'lsa `MusicControl` bo'sh widget qaytaradi,
+          // ya'ni surat butunlay ochiq qoladi.
           Positioned(
             left: d / 2 + off - rb,
-            top: d / 2 + off - rb,
-            child: _BrandSeal(size: rb * 2),
-          ),
-          // Musiqa boshqaruvi — muhrning KO'ZGU aksi: pastki chapda.
-          // Kompozitsiya shunda muvozanatda qoladi. Musiqa yo'q
-          // bo'lsa `MusicControl` bo'sh widget qaytaradi.
-          Positioned(
-            left: d / 2 - off - rb,
             top: d / 2 + off - rb,
             child: MusicControl(urls: music, size: rb * 2),
           ),
@@ -492,37 +507,10 @@ class _OrbAvatar extends StatelessWidget {
         width: outer,
         height: outer,
         child: CustomPaint(
-          painter: _StoryRingPainter(
-            t: t,
-            state: ring!,
-            stroke: stroke,
-          ),
+          painter: _StoryRingPainter(t: t, state: ring!, stroke: stroke),
           child: Center(child: avatar),
         ),
       ),
-    );
-  }
-}
-
-/// Avatar ustidagi brend nishoni.
-///
-/// Bu ham xuddi sozlamalardagi va mavzu tanlagichidagi nishon —
-/// bitta komponent, bitta brend tili. Farqi faqat o'lchamda.
-class _BrandSeal extends StatelessWidget {
-  const _BrandSeal({required this.size});
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        // Fon rangidagi nozik halqa — nishon surat ustida
-        // "yopishgan" emas, undan ajralib turadi.
-        border: Border.all(color: t.bg1, width: size * .08),
-      ),
-      child: BrandLogo(size: size, style: BrandLogoStyle.badge),
     );
   }
 }
@@ -625,16 +613,23 @@ class _NoBusinessCard extends StatelessWidget {
       solid: true,
       child: Column(
         children: [
-          Icon(Icons.storefront_outlined,
-              size: 26, color: context.tokens.text3),
+          Icon(
+            Icons.storefront_outlined,
+            size: 26,
+            color: context.tokens.text3,
+          ),
           const SizedBox(height: Gap.sm),
-          Text(l.businessNoneTitle,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleSmall),
+          Text(
+            l.businessNoneTitle,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
           const SizedBox(height: 4),
-          Text(l.businessNoneHint,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall),
+          Text(
+            l.businessNoneHint,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
           const SizedBox(height: Gap.lg),
           NovaButton(
             label: l.modePersonal,
@@ -666,7 +661,11 @@ class _NoIdCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(l.homeNoIdHint, style: Theme.of(context).textTheme.bodyMedium),
           const SizedBox(height: Gap.xl),
-          NovaButton(label: l.homeShop, onPressed: onShop, icon: Icons.storefront_rounded),
+          NovaButton(
+            label: l.homeShop,
+            onPressed: onShop,
+            icon: Icons.storefront_rounded,
+          ),
         ],
       ),
     );
@@ -719,11 +718,7 @@ class _QuickActions extends StatelessWidget {
         runSpacing: Gap.sm,
         children: [
           for (final (icon, label, route) in actions)
-            Capsule(
-              icon: icon,
-              label: label,
-              onTap: () => context.push(route),
-            ),
+            Capsule(icon: icon, label: label, onTap: () => context.push(route)),
         ],
       ),
     );
@@ -755,31 +750,52 @@ class _StoriesRow extends ConsumerWidget {
               itemBuilder: (_, __) => const Skeleton(height: 62, circle: true),
             ),
             error: (_, __) => const SizedBox.shrink(),
-            data: (items) => ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-              itemCount: items.length + 1,
-              separatorBuilder: (_, __) => const SizedBox(width: Gap.md),
-              itemBuilder: (context, i) {
-                if (i == 0) {
+            data: (all) {
+              // BITTA ODAM — BITTA DOIRACHA.
+              //
+              // Server istoryalarni odam bo'yicha guruhlab beradi,
+              // bu yerda esa ular yassi ro'yxat bo'lib keladi. Agar
+              // har bir istoryaga alohida doiracha chizilsa, uchta
+              // istorya qo'ygan bitta odam qatorda uch marta
+              // takrorlanardi. Doiracha bosilganda baribir o'sha
+              // odamning HAMMA istoryasi ochiladi.
+              final seenCodes = <String>{};
+              final items = <StoryItem>[];
+              for (final s in all) {
+                if (seenCodes.add(s.code)) items.add(s);
+              }
+              return ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
+                itemCount: items.length + 1,
+                separatorBuilder: (_, __) => const SizedBox(width: Gap.md),
+                itemBuilder: (context, i) {
+                  if (i == 0) {
+                    return _StoryBubble(
+                      label: l.homeYourStory,
+                      avatarUrl: user.avatarUrl,
+                      initials: user.initials,
+                      add: true,
+                      onTap: () => context.push(Routes.storyCreate),
+                    );
+                  }
+                  final s = items[i - 1];
                   return _StoryBubble(
-                    label: l.homeYourStory,
-                    avatarUrl: user.avatarUrl,
+                    label: s.authorName.isEmpty
+                        ? (id?.name ?? '')
+                        : s.authorName,
+                    avatarUrl: s.authorAvatar.isEmpty
+                        ? s.mediaUrl
+                        : s.authorAvatar,
                     initials: user.initials,
-                    add: true,
-                    onTap: () => context.push(Routes.storyCreate),
+                    seen: s.seen,
+                    onTap: () => context.push(
+                      Routes.story(s.code.isEmpty ? (id?.code ?? '') : s.code),
+                    ),
                   );
-                }
-                final s = items[i - 1];
-                return _StoryBubble(
-                  label: s.authorName.isEmpty ? (id?.name ?? '') : s.authorName,
-                  avatarUrl: s.authorAvatar.isEmpty ? s.mediaUrl : s.authorAvatar,
-                  initials: user.initials,
-                  seen: s.seen,
-                  onTap: () => context.push(Routes.story(s.code.isEmpty ? (id?.code ?? '') : s.code)),
-                );
-              },
-            ),
+                },
+              );
+            },
           ),
         ),
         if (stories.hasError) const SizedBox(height: Gap.sm),
@@ -834,7 +850,11 @@ class _StoryBubble extends StatelessWidget {
                         shape: BoxShape.circle,
                         border: Border.all(color: t.bg1, width: 2),
                       ),
-                      child: const Icon(Icons.add_rounded, size: 12, color: kOnAccent),
+                      child: const Icon(
+                        Icons.add_rounded,
+                        size: 12,
+                        color: kOnAccent,
+                      ),
                     ),
                   ),
               ],
@@ -874,7 +894,8 @@ class _FeedPreview extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
           itemCount: 3,
           separatorBuilder: (_, __) => const SizedBox(width: Gap.md),
-          itemBuilder: (_, __) => const Skeleton(width: 128, height: 160, radius: R.gentle),
+          itemBuilder: (_, __) =>
+              const Skeleton(width: 128, height: 160, radius: R.gentle),
         ),
         error: (e, __) => Padding(
           padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
@@ -928,7 +949,11 @@ class _FeedPreview extends ConsumerWidget {
                           ),
                           Row(
                             children: [
-                              Icon(Icons.favorite_rounded, size: 12, color: t.accent2),
+                              Icon(
+                                Icons.favorite_rounded,
+                                size: 12,
+                                color: t.accent2,
+                              ),
                               const SizedBox(width: 4),
                               Text(
                                 formatCount(p.likes),
@@ -958,18 +983,36 @@ class _ActivityPreview extends StatelessWidget {
     if (id == null) {
       return FloatingSurface(
         solid: true,
-        child: Text(l.activityEmpty, style: Theme.of(context).textTheme.bodyMedium),
+        child: Text(
+          l.activityEmpty,
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
       );
     }
     return FloatingSurface(
       solid: true,
       child: Column(
         children: [
-          _Row(icon: Icons.nfc_rounded, label: l.nfcScans, value: id!.taps, tone: t.accent2),
+          _Row(
+            icon: Icons.nfc_rounded,
+            label: l.nfcScans,
+            value: id!.taps,
+            tone: t.accent2,
+          ),
           const SizedBox(height: Gap.md),
-          _Row(icon: Icons.visibility_rounded, label: l.nfcViews, value: id!.views, tone: t.accentBDark),
+          _Row(
+            icon: Icons.visibility_rounded,
+            label: l.nfcViews,
+            value: id!.views,
+            tone: t.accentBDark,
+          ),
           const SizedBox(height: Gap.md),
-          _Row(icon: Icons.group_rounded, label: l.profileFollowers, value: id!.followers, tone: t.accentCDark),
+          _Row(
+            icon: Icons.group_rounded,
+            label: l.profileFollowers,
+            value: id!.followers,
+            tone: t.accentCDark,
+          ),
         ],
       ),
     );
@@ -977,7 +1020,12 @@ class _ActivityPreview extends StatelessWidget {
 }
 
 class _Row extends StatelessWidget {
-  const _Row({required this.icon, required this.label, required this.value, required this.tone});
+  const _Row({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.tone,
+  });
 
   final IconData icon;
   final String label;
@@ -992,11 +1040,16 @@ class _Row extends StatelessWidget {
         Container(
           width: 34,
           height: 34,
-          decoration: BoxDecoration(color: tone.withValues(alpha: .18), shape: BoxShape.circle),
+          decoration: BoxDecoration(
+            color: tone.withValues(alpha: .18),
+            shape: BoxShape.circle,
+          ),
           child: Icon(icon, size: 16, color: t.isDark ? tone : t.text1),
         ),
         const SizedBox(width: Gap.md),
-        Expanded(child: Text(label, style: Theme.of(context).textTheme.bodyMedium)),
+        Expanded(
+          child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
+        ),
         Text(formatCount(value), style: Theme.of(context).textTheme.titleSmall),
       ],
     );

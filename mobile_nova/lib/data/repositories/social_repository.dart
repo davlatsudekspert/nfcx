@@ -131,6 +131,51 @@ class SocialRepository {
     return res.map((j) => parseList(j['stories'] ?? j['items'], StoryItem.fromJson));
   }
 
+  /// OBUNA BO'LGANLARNING FAOL ISTORYALARI.
+  ///
+  /// `GET /api/stories/feed` serverda ALLAQACHON bor edi, lekin
+  /// ilovada uni chaqiradigan joy YO'Q edi: bosh ekrandagi istorya
+  /// qatori faqat O'Z profilingni ko'rsatardi. Ya'ni obuna
+  /// bo'lganing odam istorya qo'ysa, sen uni ilovada umuman
+  /// ko'rmasding.
+  ///
+  /// Server javobi ODAM BO'YICHA guruhlangan:
+  ///
+  ///     { feed: [ { code, name, avatarUrl, stories: [...] } ] }
+  ///
+  /// Bu yerda u yassilanadi va har bir istoryaga egasining kodi,
+  /// ismi va surati yoziladi — qator uchun aynan shular kerak.
+  /// Server allaqachon `expires_at > now` bo'yicha filtrlaydi,
+  /// shuning uchun bu yerda muddati o'tganini qayta tekshirish
+  /// shart emas.
+  Future<Result<List<StoryItem>>> followedStories() async {
+    final res = await _api.get<Map<String, dynamic>>('/api/stories/feed');
+    return res.map((j) {
+      final groups = j['feed'];
+      if (groups is! List) return const <StoryItem>[];
+      final out = <StoryItem>[];
+      for (final g in groups) {
+        if (g is! Map) continue;
+        final code = '${g['code'] ?? ''}';
+        final name = '${g['name'] ?? ''}';
+        final avatar = '${g['avatarUrl'] ?? ''}';
+        final list = g['stories'];
+        if (list is! List) continue;
+        for (final raw in list) {
+          if (raw is! Map) continue;
+          final item = StoryItem.fromJson({
+            ...raw.cast<String, dynamic>(),
+            'code': code,
+            'authorName': name,
+            'authorAvatar': avatar,
+          });
+          out.add(item);
+        }
+      }
+      return out;
+    });
+  }
+
   /// Istoryani o'chirish — manzil KODSIZ, faqat `id` bo'yicha.
   Future<Result<void>> deleteStory(int id) =>
       _api.delete<void>('/api/stories/$id');

@@ -7,6 +7,7 @@ import 'package:video_player/video_player.dart';
 import '../../design/motion/motion.dart';
 import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
+import '../../design/widgets/nova_scaffold.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 
@@ -382,10 +383,19 @@ Future<void> showMusicSheet(BuildContext context, List<String> urls) {
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
     builder: (_) => Padding(
+      // PASTKI NAVIGATSIYA PANELNI YOPIB QO'YMASIN.
+      //
+      // Ilgari bu yerda faqat `viewInsets.bottom` (klaviatura)
+      // hisobga olinardi — u esa odatda NOL. Ilovaning pastki
+      // navigatsiyasi SUZUVCHI va varaq ustiga tushardi: ijro
+      // tugmasi va vaqt chizig'i ekran ostida qolib ketardi.
+      // `navSafeBottom` navigatsiya balandligini ham, qurilmaning
+      // jest panelini ham qo'shadi.
       padding: EdgeInsets.only(
         left: Gap.lg,
         right: Gap.lg,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + Gap.lg,
+        bottom: MediaQuery.viewInsetsOf(context).bottom +
+            navSafeBottom(context),
       ),
       child: DecoratedBox(
         decoration: BoxDecoration(

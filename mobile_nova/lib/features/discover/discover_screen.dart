@@ -115,7 +115,13 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
     final prefs = ref.watch(prefsProvider);
 
     return NovaScaffold(
-      title: l.discoverTitle,
+      // SARLAVHA YO'Q.
+      //
+      // "Kashf eting" yozuvi qidiruv maydoni va tablar ustida
+      // ortiqcha qavat hosil qilardi: ekranning o'zi allaqachon
+      // pastki navigatsiyada belgilangan. Sarlavha berilmagani
+      // uchun `NovaScaffold` yuqori panelni UMUMAN chizmaydi va
+      // qidiruv maydoni tepaga ko'tariladi.
       body: Column(
         children: [
           Padding(
