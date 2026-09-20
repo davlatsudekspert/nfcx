@@ -37,6 +37,25 @@ const files = [];
 const dictFiles = files.filter((f) => /translations.*\.js$/.test(f));
 checkTrue('0) lug‘at fayllari topildi', dictFiles.length >= 2);
 
+// LUG'AT HAQIQATAN YUKLANADIMI.
+//
+// 2026-09-20: tarjima noto'g'ri faylga qo'shildi va `translations.js`
+// sintaktik buzildi. Bu to'plam MATN sifatida o'qigani uchun hammasi
+// yashil qoldi — xatoni faqat `npm run build` tutdi. Endi fayl
+// haqiqatan import qilinadi: buzuq lug'at shu yerda yiqiladi.
+{
+  let loaded = null;
+  let err = '';
+  try {
+    loaded = await import('../src/lib/translations.js');
+  } catch (e) { err = String(e?.message || e); }
+  checkTrue(`0) lug‘at moduli yuklandi${err ? ` — ${err}` : ''}`, !!loaded);
+  checkTrue('0) DICT eksport qilingan', !!loaded?.DICT && typeof loaded.DICT === 'object');
+  // Har kalit {ru, en} shaklida bo'lsin — buzuq yozuv jim o'tmasin.
+  const bad = Object.entries(loaded?.DICT || {}).filter(([, v]) => !v || typeof v !== 'object' || !('ru' in v) || !('en' in v));
+  check('0) buzuq yozuv yo‘q', bad.length, 0);
+}
+
 const dicts = dictFiles.map((f) => readFileSync(f, 'utf8')).join('\n');
 const keys = new Set();
 for (const m of dicts.matchAll(/^\s*'((?:[^'\\]|\\.)*)':\s*\{/gm)) keys.add(m[1]);

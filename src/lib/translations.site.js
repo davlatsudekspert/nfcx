@@ -101,4 +101,7 @@ export const DICT_SITE = {
   // ─────────────────────────── Profil ⋮ menyusi ───────────────────────────
   'Rang mavzusi': { ru: 'Цветовая тема', en: 'Colour theme' },
   'Til': { ru: 'Язык', en: 'Language' },
+
+  // NFC tegish — yo'naltirish paytidagi qisqa kutish.
+  'Ochilmoqda…': { ru: 'Открывается…', en: 'Opening…' },
 };

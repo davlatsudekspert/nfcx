@@ -2061,6 +2061,12 @@ body{
    Qadam + chizma. 320px da ustma-ust, kengroq ekranda yonma-yon.
    Chizmalar inline SVG: tashqi rasm yuklanmaydi va ranglari mavzu
    tokenlaridan olinadi, ya'ni to'q mavzuda ham o'qiladi. */
+/* NFC tegish — yo'naltirish paytidagi qisqa kutish ekrani. */
+.tap-wait{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+  min-height:100svh;padding:24px;text-align:center;color:var(--text-muted);background:var(--bg-primary)
+}
+.tap-wait p{margin:0;font-size:var(--fs-sm)}
 /* ── MENING NFC QURILMALARIM ─────────────────────────
    Stiker qaysi profilni ochishini mijozning o'zi almashtiradi.
    320px da ustma-ust, kengroq ekranda bitta qatorda. */

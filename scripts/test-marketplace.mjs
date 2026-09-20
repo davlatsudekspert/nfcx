@@ -1636,4 +1636,48 @@ function gatedEnv(env, sqlNeedle) {
   checkTrue('25) kichik partiya tanlanadi', /\[2, 5, 10, 50, 100, 500, 1000\]/.test(tab));
 }
 
+// ── 26) TEGISH MIJOZ TOMONIDA HAM YO'NALTIRILADI ────────────
+//
+// PRODUCTIONDA WORKER MARSHRUTI YETARLI EMAS.
+//
+// `wrangler.jsonc`: `not_found_handling: "single-page-application"`.
+// Odam stikerga TEGIZGANDA brauzer navigatsiya so'rovi yuboradi
+// (`Accept: text/html`), u hech qanday faylga to'g'ri kelmaydi va
+// Cloudflare SPA qoidasi bo'yicha `index.html` qaytaradi — WORKER
+// UMUMAN ISHGA TUSHMAYDI. React esa noma'lum yo'lni ko'rib BOSH
+// SAHIFANI chizardi.
+//
+// `/api/*` ishlayverardi (JSON `fetch()` — navigatsiya emas),
+// shuning uchun admin panel butunlay soz ko'rinardi va xato faqat
+// haqiqiy stikerni tekkizganda chiqdi.
+//
+// `run_worker_first` ro'yxati BU YERDA YECHIM EMAS: `wrangler.jsonc`
+// dagi tajriba ro'yxat berilganda qolgan hamma narsa (jumladan
+// `/api/*`) statikaga tushib sayt ishdan chiqqanini yozadi.
+{
+  const app = stripComments(read('../src/App.jsx'));
+  checkTrue('26) SPA da /t/ marshruti bor', /cleanRoute\.match\(\/\^t\\\/\(\[A-Za-z0-9_-\]\{1,64\}\)\$\/\)/.test(app));
+  checkTrue('26) TapRedirectPage ulangan', /<TapRedirectPage[\s\S]{0,80}token=\{tapMatch\[1\]\}/.test(app));
+
+  const page = stripComments(read('../src/pages/TapRedirectPage.jsx'));
+  checkTrue('26) mavjud /api/tap ishlatiladi', /\/api\/tap\//.test(page));
+  // YANGI ENDPOINT YOZILMADI — mavjudi ishlatildi.
+  checkTrue('26) yangi tegish endpointi yaratilmadi', !/\/api\/(tap2|chip|sticker)/.test(page));
+  checkTrue('26) shaxsiy profilga yo‘naltiradi', /linkedCode/.test(page));
+  checkTrue('26) kompaniyaga yo‘naltiradi', /linkedCompanyId/.test(page));
+  checkTrue('26) bog‘lanmagan -> faollashtirish', /activate\?d=/.test(page));
+  // NOMA'LUM TOKENGA YOLG'ON VA'DA BERILMAYDI.
+  checkTrue('26) noma’lum token -> bosh sahifa', /found === false/.test(page));
+  // Tarixda `/t/...` qolmasin: "orqaga" bosilganda aylanma hosil
+  // bo'lardi — yo'naltirish yana ishga tushaverardi.
+  checkTrue('26) tarixda iz qoldirmaydi', /replace: true/.test(page));
+
+  // Worker marshruti OLIB TASHLANMADI: QR skaner va Telegram kabi
+  // `Accept: */*` yuboradigan mijozlarda u ishlaydi va tezroq.
+  const worker = read('../hosting/worker.js');
+  checkTrue('26) worker marshruti joyida', /\^\\\/t\\\/\(\[A-Za-z0-9_-\]\{1,64\}\)/.test(worker));
+  // `found` — "noma'lum" va "bog'lanmagan" ni ajratish uchun.
+  checkTrue('26) /api/tap "found" beradi', /found: true/.test(worker) && /found: false/.test(worker));
+}
+
 done();

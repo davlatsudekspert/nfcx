@@ -81,6 +81,7 @@ const BusinessPublicDemoPage = lazyPage(() => import('./pages/BusinessPublicDemo
 const CompanyCreatePage = lazyPage(() => import('./pages/CompanyCreatePage.jsx'));
 const CompanyWorkspacePage = lazyPage(() => import('./pages/CompanyWorkspacePage.jsx'));
 const CompanyQuickProfilePage = lazyPage(() => import('./pages/CompanyQuickProfilePage.jsx'));
+const TapRedirectPage = lazyPage(() => import('./pages/TapRedirectPage.jsx'));
 const CompanyPublicPage = lazyPage(() => import('./pages/CompanyPublicPage.jsx'));
 const BusinessEntryPage = lazyPage(() => import('./pages/BusinessEntryPage.jsx'));
 
@@ -248,6 +249,12 @@ export default function App() {
   // shuningdek turli apostrof belgilari va %27. Shuning uchun bo'lak keng
   // olinadi, `companyIdFromRoute()` esa uni kanonik shaklga keltirib
   // TEKSHIRADI — yaroqsiz bo'lsa `null` qaytadi va sahifa ochilmaydi.
+  // NFC TEGISH. Worker'dagi marshrut productionda ISHGA TUSHMAYDI:
+  // Cloudflare statik qatlami navigatsiya so'rovini SPA qoidasi
+  // bo'yicha `index.html` bilan javob beradi (batafsili
+  // `src/pages/TapRedirectPage.jsx` da). Shuning uchun yo'naltirish
+  // shu yerda ham bor.
+  const tapMatch = cleanRoute.match(/^t\/([A-Za-z0-9_-]{1,64})$/);
   const companyQuickMatch = companyIdFromRoute(cleanRoute, /^c\/([^/]{1,40})$/);
   const companyPublicMatch = companyIdFromRoute(cleanRoute, /^company\/([^/]{1,40})$/);
   const companyWorkspaceMatch = companyIdFromRoute(cleanRoute, /^workspace\/([^/]{1,40})$/);
@@ -259,6 +266,10 @@ export default function App() {
   const ownDomainCompany = domainCompanyId();
   if (!page && ownDomainCompany && cleanRoute === '') {
     page = <CompanyPublicPage key={`domain-${ownDomainCompany}`} companyId={ownDomainCompany} />;
+    bare = true;
+  }
+  if (!page && tapMatch) {
+    page = <TapRedirectPage key={cleanRoute} token={tapMatch[1]} />;
     bare = true;
   }
   if (!page && cleanRoute === 'company/create') {

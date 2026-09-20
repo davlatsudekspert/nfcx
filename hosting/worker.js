@@ -915,13 +915,22 @@ async function publicContentApi(request, env, url) {
       .bind(decodeURIComponent(tapMatch[1])).first()
       .catch(() => env.DB.prepare(`SELECT active, blocked_by_owner, linked_code FROM physical_cards WHERE chip_token = ?`)
         .bind(decodeURIComponent(tapMatch[1])).first());
+    // `found` — MIJOZ TOMONIDAGI yo'naltirish uchun (`/t/<token>`,
+    // `src/pages/TapRedirectPage.jsx`). Usiz "token noma'lum" va
+    // "token bor, lekin hali bog'lanmagan" holatlari bir xil
+    // ko'rinardi va noma'lum stiker ham faollashtirish sahifasiga
+    // olib borardi — ya'ni yolg'on va'da berardi.
+    //
+    // Maydon QO'SHILDI, eskilari o'zgarmadi: mobil ilova uni
+    // e'tiborsiz qoldiradi va avvalgidek ishlayveradi.
     return json(row
       ? {
+        found: true,
         active: !!row.active && !row.blocked_by_owner,
         linkedCode: row.linked_code || null,
         linkedCompanyId: row.linked_company_id || null,
       }
-      : { active: true });
+      : { found: false, active: true });
   }
 
   if (path === '/api/settings/physical-nfc-pricing' && request.method === 'GET') {
