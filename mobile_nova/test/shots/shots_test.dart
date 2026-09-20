@@ -33,6 +33,7 @@ import 'package:nfcstore_nova/data/models/models.dart';
 import 'package:nfcstore_nova/data/repositories/social_repository.dart';
 
 import '../helpers.dart';
+import 'identity_widgets.dart';
 import 'proposed_widgets.dart';
 
 /// Suratlar uchun NAMUNAVIY ma'lumot.
@@ -315,6 +316,19 @@ void main() {
     await shot(t, const _ProposedFeed(), 'p1-feed-card');
   });
 
+  // ── NFC O'ZIGA XOSLIGI (Instagram naqshidan uzoqlashtirish) ──
+  testWidgets('N1 — lenta kartasi: NFC kodi bosh rolda', (t) async {
+    await shot(t, const _IdentityFeed(), 'n1-feed-code');
+  });
+
+  testWidgets('N2 — profil yozuvlari: karta ko\'rinishida', (t) async {
+    await shot(t, const IdentityProfilePosts(), 'n2-profile-cards');
+  });
+
+  testWidgets('N3 — «Reels» o\'rniga «Lavha»', (t) async {
+    await shot(t, const LavhaEmpty(), 'n3-lavha');
+  });
+
   testWidgets('P2 — Reels (taklif)', (t) async {
     await shot(t, const ProposedReels(), 'p2-reels');
   });
@@ -449,6 +463,37 @@ class _ProposedBusinessSocial extends StatelessWidget {
 }
 
 /// Lenta — taklif qilingan kartalar bilan.
+class _IdentityFeed extends StatelessWidget {
+  const _IdentityFeed();
+
+  @override
+  Widget build(BuildContext context) {
+    return NovaScaffold(
+      title: 'Lenta',
+      body: NovaScroll(
+        children: const [
+          IdentityFeedCard(
+            author: 'Tohir',
+            code: 'TTS075',
+            text: 'Do\'konda yangi NFC kartalar keldi.',
+            tapped: true,
+            likes: '24',
+            comments: '5',
+          ),
+          SizedBox(height: Gap.md),
+          IdentityFeedCard(
+            author: 'Nodira',
+            code: 'NDR442',
+            text: 'Bugungi uchrashuv uchun rahmat.',
+            likes: '8',
+            comments: '2',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ProposedFeed extends StatelessWidget {
   const _ProposedFeed();
 

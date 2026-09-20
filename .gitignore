@@ -35,3 +35,4 @@ mobile_nova/.flutter-plugins-dependencies
 # Surat vositasi natijalari — ko'rish uchun, versiyalanmaydi.
 mobile_nova/test/shots/png/
 mobile_nova/test/shots/contact-sheet-*.png
+mobile_nova/test/shots/*-sheet.png
