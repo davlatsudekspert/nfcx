@@ -25,6 +25,7 @@ import '../../app/profile_context.dart';
 import '../../data/repositories/business_repository.dart';
 import '../nfc/qr_sheet.dart';
 import 'profile_switcher.dart';
+import '../social/inline_video.dart';
 import '../social/moderation.dart';
 import 'profile_repository.dart';
 
@@ -831,31 +832,57 @@ class _PostsGrid extends ConsumerWidget {
                               ),
                             )
                           : p.isVideo
-                          // VIDEO KATAKCHASI. Ilgari bu yerda
-                          // ham `CachedNetworkImage` turardi va
-                          // unga `.mp4` manzili berilardi —
-                          // rasm yuklovchi uni hech qachon
-                          // ocholmaydi, shuning uchun video
-                          // post panjarada BO'SH kvadrat bo'lib
-                          // turardi. Xato ham chiqmasdi:
-                          // `errorWidget` jimgina o'rnini
-                          // egallardi.
+                          // VIDEO KATAKCHASI — BIRINCHI KADR.
                           //
-                          // Server hozir video uchun surat
-                          // (poster) bermaydi, shuning uchun
-                          // panjarada video O'YNATILMAYDI —
-                          // 3 ta dekoderni bir vaqtda ochish
-                          // telefonni qiynaydi. O'rniga video
-                          // ekani ANIQ ko'rinadi va bosilganda
-                          // to'liq ekranda ochiladi.
-                          ? Container(
-                              color: t.surface2,
-                              alignment: Alignment.center,
-                              child: Icon(
-                                Icons.play_circle_fill_rounded,
-                                size: 34,
-                                color: t.text2,
-                              ),
+                          // Ilgari bu yerda `CachedNetworkImage`
+                          // turardi va unga `.mp4` manzili
+                          // berilardi — rasm yuklovchi uni hech
+                          // qachon ocholmaydi, shuning uchun video
+                          // post BO'SH kvadrat bo'lib turardi.
+                          // Keyin o'rniga ijro belgisi qo'yildi,
+                          // lekin muqova baribir ko'rinmasdi.
+                          //
+                          // Server video uchun surat (poster)
+                          // bermaydi, shuning uchun muqovani
+                          // ilovaning o'zi ochadi: `InlineVideo`
+                          // faylni yuklab birinchi kadrni chizadi.
+                          //
+                          // `autoPlay: false` SHART — aks holda
+                          // panjaradagi hamma video bir vaqtda
+                          // o'ynab, ovozlar qo'shilib ketardi va
+                          // telefon qiynalardi.
+                          ? Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                InlineVideo(
+                                  key: ValueKey('tile-${p.id}'),
+                                  url: p.mediaUrls.first,
+                                  autoPlay: false,
+                                ),
+                                const DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.center,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        Colors.transparent,
+                                        Color(0x55000000),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const Align(
+                                  alignment: Alignment.bottomRight,
+                                  child: Padding(
+                                    padding: EdgeInsets.all(6),
+                                    child: Icon(
+                                      Icons.play_circle_fill_rounded,
+                                      size: 20,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             )
                           : Stack(
                               fit: StackFit.expand,

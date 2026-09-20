@@ -22,9 +22,17 @@ class VerifyArgs {
     this.name = '',
     this.phone = '',
     this.password = '',
+    this.channel = '',
   });
 
   final String email;
+
+  /// Kod QAYSI KANAL orqali ketgani — serverdan kelgan `channel`.
+  ///
+  /// Ekran shunga qarab haqiqatni yozadi. Ilgari u har doim
+  /// "emailingizga yuborildi" derdi, kod esa Telegram botiga
+  /// ketgan yoki umuman yuborilmagan bo'lishi mumkin edi.
+  final String channel;
 
   /// RO'YXATDAN O'TISHNI YAKUNLASH uchun.
   ///
@@ -204,7 +212,15 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
           Text(
             _expired
                 ? l.verifyExpiredHint
-                : (_wrong ? l.verifyWrongCodeHint : l.verifySentTo(widget.args.email)),
+                : (_wrong
+                    ? l.verifyWrongCodeHint
+                    : switch (widget.args.channel) {
+                        'telegram' => l.verifySentTelegram,
+                        'email' => l.verifySentTo(widget.args.email),
+                        // Bo'sh yoki `none` — server kodni HECH
+                        // QAYERGA yubormagan. Soxta va'da berilmaydi.
+                        _ => l.verifyNoChannel,
+                      }),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium,
           ),

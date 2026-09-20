@@ -85,14 +85,27 @@ class AuthRepository {
   /// Ilgari bu metod FAQAT telefonni yuborardi va ekran uni umuman
   /// chaqirmasdi — o'rniga mavjud bo'lmagan
   /// `/api/auth/request-email-code` ga borardi.
-  Future<Result<void>> requestRegisterCode({
+  /// Kod QAYSI KANAL orqali ketganini ham qaytaradi.
+  ///
+  /// Ilgari javob tanasi TASHLAB YUBORILARDI (`post<void>`), ekran
+  /// esa har doim "kod emailingizga yuborildi" deb yozardi. Server
+  /// emaili o'chirilgan bo'lsa (`RESEND_API_KEY` qo'yilmagan) javob
+  /// `channel: 'none'` bo'ladi — ya'ni kod HECH QAYERGA
+  /// yuborilmagan. Odam esa hech qachon kelmaydigan kodni kutib
+  /// o'tirardi.
+  Future<Result<String>> requestRegisterCode({
     String email = '',
     String phone = '',
-  }) =>
-      _api.post<void>('/api/auth/request-register-code', {
-        if (email.trim().isNotEmpty) 'email': email.trim(),
-        if (phone.isNotEmpty) 'phone': phone,
-      });
+  }) async {
+    final res = await _api.post<Map<String, dynamic>>(
+        '/api/auth/request-register-code', {
+      if (email.trim().isNotEmpty) 'email': email.trim(),
+      if (phone.isNotEmpty) 'phone': phone,
+    });
+    // Eski server `channel` bermasligi mumkin — o'shanda noma'lum
+    // deb qaraymiz va yolg'on va'da bermaymiz.
+    return res.map((j) => '${j['channel'] ?? ''}'.trim().toLowerCase());
+  }
 
   // `requestEmailCode` / `verifyEmailCode` OLIB TASHLANDI.
   //

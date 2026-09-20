@@ -384,12 +384,20 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
 
   static final all = <NfcTokens>[pearl, graphite, ocean, aurora, midnight];
 
+  /// STANDART MAVZU — `ocean`.
+  ///
+  /// Foydalanuvchi hali tanlamagan bo'lsa (birinchi ochilish yoki
+  /// saqlangan qiymat noma'lum bo'lsa) shu ishlatiladi. Egasining
+  /// qarori: ilova birinchi ochilganda `ocean` ko'rinsin.
+  static NfcTokens get fallback => ocean;
+
   static NfcTokens byId(String? id) =>
-      all.firstWhere((t) => t.id == id, orElse: () => pearl);
+      all.firstWhere((t) => t.id == id, orElse: () => fallback);
 }
 
 /// `context.tokens` — har widget ichida `Theme.of(context).extension<...>()`
 /// yozmaslik uchun.
 extension NfcTokensX on BuildContext {
-  NfcTokens get tokens => Theme.of(this).extension<NfcTokens>() ?? NfcTokens.pearl;
+  NfcTokens get tokens =>
+      Theme.of(this).extension<NfcTokens>() ?? NfcTokens.fallback;
 }

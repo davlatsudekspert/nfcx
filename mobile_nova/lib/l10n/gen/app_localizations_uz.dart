@@ -258,6 +258,13 @@ class LUz extends L {
   }
 
   @override
+  String get verifySentTelegram => '6 xonali kod Telegram botiga yuborildi';
+
+  @override
+  String get verifyNoChannel =>
+      'Kod yuborilmadi. Serverda email xizmati sozlanmagan — qo‘llab-quvvatlashga murojaat qiling.';
+
+  @override
   String verifyResendIn(int seconds) {
     return 'Qayta yuborish $seconds soniyadan keyin';
   }

@@ -82,6 +82,8 @@
   "loginHaveAccount": "Already have an account?",
   "verifyTitle": "Enter the code",
   "verifySentTo": "A 6-digit code was sent to {email}",
+  "verifySentTelegram": "A 6-digit code was sent to the Telegram bot",
+  "verifyNoChannel": "The code was not sent. Email delivery is not configured on the server — please contact support.",
   "@verifySentTo": {
     "placeholders": {
       "email": {

@@ -258,6 +258,13 @@ class LRu extends L {
   }
 
   @override
+  String get verifySentTelegram => '6-значный код отправлен в Telegram-бот';
+
+  @override
+  String get verifyNoChannel =>
+      'Код не отправлен. На сервере не настроена отправка писем — обратитесь в поддержку.';
+
+  @override
   String verifyResendIn(int seconds) {
     return 'Отправить снова через $seconds с';
   }

@@ -34,9 +34,11 @@ void main() {
     expect(ids, {'pearl', 'graphite', 'ocean', 'aurora', 'midnight'});
   });
 
-  test('noma’lum kalit Pearl’ga tushadi', () {
-    expect(NfcTokens.byId('bunday-mavzu-yoq').id, 'pearl');
-    expect(NfcTokens.byId(null).id, 'pearl');
+  test('noma’lum kalit STANDART mavzuga tushadi', () {
+    // Egasining qarori: ilova birinchi ochilganda `ocean`.
+    expect(NfcTokens.fallback.id, 'ocean');
+    expect(NfcTokens.byId('bunday-mavzu-yoq').id, 'ocean');
+    expect(NfcTokens.byId(null).id, 'ocean');
     expect(NfcTokens.byId('midnight').id, 'midnight');
   });
 

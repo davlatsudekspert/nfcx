@@ -82,6 +82,8 @@
   "loginHaveAccount": "Hisobingiz bormi?",
   "verifyTitle": "Kodni kiriting",
   "verifySentTo": "6 xonali kod {email} manziliga yuborildi",
+  "verifySentTelegram": "6 xonali kod Telegram botiga yuborildi",
+  "verifyNoChannel": "Kod yuborilmadi. Serverda email xizmati sozlanmagan — qo‘llab-quvvatlashga murojaat qiling.",
   "@verifySentTo": {
     "placeholders": {
       "email": {

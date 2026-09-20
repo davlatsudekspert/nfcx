@@ -591,6 +591,18 @@ abstract class L {
   /// **'6 xonali kod {email} manziliga yuborildi'**
   String verifySentTo(String email);
 
+  /// No description provided for @verifySentTelegram.
+  ///
+  /// In uz, this message translates to:
+  /// **'6 xonali kod Telegram botiga yuborildi'**
+  String get verifySentTelegram;
+
+  /// No description provided for @verifyNoChannel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kod yuborilmadi. Serverda email xizmati sozlanmagan — qo‘llab-quvvatlashga murojaat qiling.'**
+  String get verifyNoChannel;
+
   /// No description provided for @verifyResendIn.
   ///
   /// In uz, this message translates to:

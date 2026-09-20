@@ -124,7 +124,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     setState(() => _busy = false);
 
     res.when(
-      ok: (_) => context.push(
+      ok: (channel) => context.push(
         Routes.registerVerify,
         // Hisob BITTA so'rovda yaratiladi (`POST /api/auth/register`),
         // shuning uchun parol va telefon kod ekraniga olib boriladi.
@@ -134,6 +134,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           name: _name.text.trim(),
           phone: Validate.normalizePhone(_phone.text),
           password: _password.text,
+          // Kod qaysi kanal orqali ketgani — kod ekrani shunga
+          // qarab HAQIQATNI yozadi. Ilgari u har doim
+          // "emailingizga yuborildi" derdi.
+          channel: channel,
         ),
       ),
       err: (e) => setState(() => _error = describeError(l, e)),

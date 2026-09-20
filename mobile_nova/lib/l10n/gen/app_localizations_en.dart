@@ -259,6 +259,14 @@ class LEn extends L {
   }
 
   @override
+  String get verifySentTelegram =>
+      'A 6-digit code was sent to the Telegram bot';
+
+  @override
+  String get verifyNoChannel =>
+      'The code was not sent. Email delivery is not configured on the server — please contact support.';
+
+  @override
   String verifyResendIn(int seconds) {
     return 'Resend in ${seconds}s';
   }

@@ -82,6 +82,8 @@
   "loginHaveAccount": "Уже есть аккаунт?",
   "verifyTitle": "Введите код",
   "verifySentTo": "6-значный код отправлен на {email}",
+  "verifySentTelegram": "6-значный код отправлен в Telegram-бот",
+  "verifyNoChannel": "Код не отправлен. На сервере не настроена отправка писем — обратитесь в поддержку.",
   "@verifySentTo": {
     "placeholders": {
       "email": {

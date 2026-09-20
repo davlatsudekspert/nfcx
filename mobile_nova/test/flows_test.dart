@@ -64,7 +64,8 @@ void main() {
       final container = ProviderContainer(overrides: overrides);
       addTearDown(container.dispose);
 
-      expect(container.read(themeProvider).id, 'pearl');
+      // Saqlangan tanlov yo'q — standart mavzu ko'rinadi.
+      expect(container.read(themeProvider).id, 'ocean');
       await container
           .read(themeProvider.notifier)
           .select(NfcTokens.midnight);
