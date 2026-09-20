@@ -123,7 +123,16 @@ class _QrSheet extends StatelessWidget {
                 child: NovaButton(
                   label: l.actionShare,
                   icon: Icons.ios_share_rounded,
-                  onPressed: () => shareLink(url, title: id.name),
+                  onPressed: () async {
+                    // Tizim oynasi ochilmasa `shareLink` manzilni
+                    // buferga ko'chiradi — buni odamga aytamiz,
+                    // aks holda tugma "ishlamadi" bo'lib ko'rinadi.
+                    final ok = await shareLink(url, title: id.name);
+                    if (ok || !context.mounted) return;
+                    ScaffoldMessenger.of(context)
+                      ..hideCurrentSnackBar()
+                      ..showSnackBar(SnackBar(content: Text(l.shareCopied)));
+                  },
                 ),
               ),
             ],

@@ -153,6 +153,12 @@ abstract class L {
   /// **'Ulashish'**
   String get actionShare;
 
+  /// No description provided for @shareCopied.
+  ///
+  /// In uz, this message translates to:
+  /// **'Havola nusxalandi'**
+  String get shareCopied;
+
   /// No description provided for @actionMute.
   ///
   /// In uz, this message translates to:

@@ -36,6 +36,9 @@ class LEn extends L {
   String get actionShare => 'Share';
 
   @override
+  String get shareCopied => 'Link copied';
+
+  @override
   String get actionMute => 'Mute';
 
   @override

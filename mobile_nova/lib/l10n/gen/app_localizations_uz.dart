@@ -36,6 +36,9 @@ class LUz extends L {
   String get actionShare => 'Ulashish';
 
   @override
+  String get shareCopied => 'Havola nusxalandi';
+
+  @override
   String get actionMute => 'Ovozni o‘chirish';
 
   @override

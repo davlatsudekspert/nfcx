@@ -25,6 +25,7 @@ import '../../app/profile_context.dart';
 import '../../data/repositories/business_repository.dart';
 import '../nfc/qr_sheet.dart';
 import 'profile_switcher.dart';
+import '../social/engagement.dart';
 import '../social/inline_video.dart';
 import '../social/moderation.dart';
 import 'profile_repository.dart';
@@ -94,6 +95,9 @@ class ProfileScreen extends ConsumerWidget {
     // yozuvga tegmaydi.
     final id = active != null && !active.isBusiness ? active.id : null;
 
+    // Obuna holati — lenta kartasi bilan BITTA manba.
+    final following = code == null ? false : ref.watch(followingOfProvider(code!));
+
     if (user == null) return const SizedBox.shrink();
 
     return NovaScaffold(
@@ -154,15 +158,33 @@ class ProfileScreen extends ConsumerWidget {
                 children: [
                   Expanded(
                     child: NovaButton(
-                      label: isMe ? l.profileEdit : l.actionFollow,
+                      // Obuna holati KO'RINADI. Ilgari yozuv
+                      // "Kuzatish" deb qotib qolgan edi, shuning
+                      // uchun bosilganda hech narsa o'zgarmagandek
+                      // tuyulardi.
+                      label: isMe
+                          ? l.profileEdit
+                          : (following ? l.actionFollowing : l.actionFollow),
                       icon: isMe
                           ? Icons.edit_rounded
-                          : Icons.person_add_alt_rounded,
+                          : (following
+                              ? Icons.check_rounded
+                              : Icons.person_add_alt_rounded),
+                      tone: (!isMe && following)
+                          ? ButtonTone.outline
+                          : ButtonTone.accent,
                       onPressed: isMe
                           ? () => context.push(Routes.profileEdit)
-                          : () => ref
-                                .read(profileFollowProvider.notifier)
-                                .toggle(code!),
+                          : () async {
+                              final e = await ref
+                                  .read(followOverridesProvider.notifier)
+                                  .toggle(code!, following: following);
+                              if (e == null || !context.mounted) return;
+                              ScaffoldMessenger.of(context)
+                                ..hideCurrentSnackBar()
+                                ..showSnackBar(SnackBar(
+                                    content: Text(describeError(l, e))));
+                            },
                     ),
                   ),
                   const SizedBox(width: Gap.md),
@@ -181,7 +203,18 @@ class ProfileScreen extends ConsumerWidget {
                     size: 52,
                     onPressed: id == null
                         ? null
-                        : () => shareLink(id.publicUrl(kApiBase)),
+                        : () async {
+                            // Tizim oynasi ochilmasa manzil buferga
+                            // ko'chiriladi — odam boshi berk
+                            // ko'chada qolmasin.
+                            final ok =
+                                await shareLink(id.publicUrl(kApiBase));
+                            if (ok || !context.mounted) return;
+                            ScaffoldMessenger.of(context)
+                              ..hideCurrentSnackBar()
+                              ..showSnackBar(
+                                  SnackBar(content: Text(l.shareCopied)));
+                          },
                   ),
                 ],
               ),
@@ -328,29 +361,17 @@ void _showProfileActions(BuildContext context, WidgetRef ref, String code) {
 }
 
 /// Kuzatish holati — optimistik.
-class ProfileFollow extends StateNotifier<Set<String>> {
-  ProfileFollow(this._ref) : super(const {});
-  final Ref _ref;
-
-  Future<void> toggle(String code) async {
-    final following = state.contains(code);
-    state = following
-        ? (state.toSet()..remove(code))
-        : (state.toSet()..add(code));
-    final repo = _ref.read(profileRepositoryProvider);
-    final res = following ? await repo.unfollow(code) : await repo.follow(code);
-    res.when(
-      ok: (_) {},
-      err: (_) => state = following
-          ? (state.toSet()..add(code))
-          : (state.toSet()..remove(code)),
-    );
-  }
-}
-
-final profileFollowProvider = StateNotifierProvider<ProfileFollow, Set<String>>(
-  ProfileFollow.new,
-);
+// `ProfileFollow` OLIB TASHLANDI.
+//
+// U obunaning IKKINCHI, mustaqil tizimi edi: o'z ro'yxatini bo'sh
+// holatdan boshlardi va serverdagi "kimga obunaman" ro'yxatini
+// UMUMAN o'qimasdi. Natijada allaqachon obuna bo'lgan odamda ham
+// tugma "Kuzatish" deb turardi va bosilganda holat ko'rinmasdi.
+//
+// Endi lenta kartasi bilan BITTA tizim ishlatiladi
+// (`followingOfProvider` + `followOverridesProvider`): u serverdan
+// urug'lanadi, darhol o'zgaradi, xato bo'lsa orqaga qaytadi va
+// sababni ko'rsatadi.
 
 /// Profil boshi — Concept B'dagi markazlashgan "identity" ustuni.
 ///
