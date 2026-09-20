@@ -158,10 +158,27 @@ checkTrue('6) prefers-reduced-motion hisobga olingan',
   // Shikoyat oynasi NUSXA OLINMAGAN — bitta manbadan keladi.
   checkTrue('9) shikoyat oynasi qayta ishlatilgan, nusxasi yo‘q',
     more.includes("from './ContentMenu.jsx'"));
-  // "Boshqa raqamli tashrif qog'ozlaringiz" — faqat egaga kerak,
-  // shuning uchun u egaga tegishli tugmalar yoniga ko'chdi.
-  checkTrue('9) boshqa profillar ro‘yxati ega qismida',
-    page.indexOf('otherCodes.length > 0') > page.indexOf(PANEL));
+  // "Boshqa raqamli tashrif qog'ozlaringiz" ro'yxati OCHIQ PROFILDAN
+  // BUTUNLAY OLIB TASHLANDI (2026-09).
+  //
+  // Avval u tepada turardi, keyin egaga tegishli tugmalar yoniga
+  // ko'chirilgan edi — lekin ikkala holatda ham u MEHMON ko'radigan
+  // sahifada joy egallardi va ochiq profil boshqaruv paneliga
+  // o'xshab qolgandi. Bundan tashqari `select` elementining ichki
+  // kengligi eng uzun variantdan kelib chiqadi va 390px telefonda
+  // sahifani ufqiy suradigan qilib qo'yardi.
+  //
+  // Endi ro'yxat kabinetdagi "Mening ID'larim" bo'limida, ⋮ menyusi
+  // esa o'sha yerga havola beradi.
+  checkTrue('9) ochiq profilda ID ro‘yxati yo‘q',
+    !/Boshqa raqamli tashrif qog/.test(page));
+  checkTrue('9) profilda ega uchun <select> qolmagan',
+    !/otherCodes\.map\(\(c\) => \(\s*<option/.test(page));
+  checkTrue('9) ⋮ menyusi kabinetdagi ro‘yxatga yo‘naltiradi',
+    /navigate\('\/account#myids'\)/.test(page));
+  // Ega amallari endi o'sha menyuda — profil tepasida katta tugma
+  // bo'lib turmaydi.
+  checkTrue('9) ega amallari menyuda', /ownerActions=\{isOwner \?/.test(page));
 }
 
 // ── 10) SOVG'A BO'LSA — SUMMA YOZILMAYDI ─────────────────────────────

@@ -31,7 +31,16 @@ import FlagIcon from './FlagIcon.jsx';
 // TEGMAYDI.
 // ═══════════════════════════════════════════════════════════════════════
 
-export default function ProfileMoreMenu({ targetKind, targetId, className = '' }) {
+// `ownerActions` — FAQAT EGAGA ko'rinadigan amallar:
+//   [{ label, onClick }]
+//
+// Ular ilgari profil TEPASIDA katta tugmalar edi ("Tahrirlash",
+// "Story qo'shish") va yonida "Boshqa raqamli tashrif
+// qog'ozlaringiz" ro'yxati turardi. Natijada ochiq profil —
+// mehmonga ko'rsatiladigan sahifa — boshqaruv paneliga o'xshab
+// qolgandi. Endi ular shu menyuda: ega uchun bir bosish narida,
+// mehmon uchun umuman yo'q.
+export default function ProfileMoreMenu({ targetKind, targetId, className = '', ownerActions = [] }) {
   const { t, lang, setLang } = useLanguage();
   const { theme, setTheme, themes } = useTheme();
   const [open, setOpen] = useState(false);
@@ -80,6 +89,28 @@ export default function ProfileMoreMenu({ targetKind, targetId, className = '' }
             // birga 320px li telefonda ekrandan chiqib ketmasin.
             className="absolute right-0 z-50 mt-1 max-h-[70vh] w-[248px] max-w-[calc(100vw-20px)] overflow-y-auto rounded-2xl border border-[color:var(--border)] bg-[color:var(--modal-bg)] p-1.5 text-[color:var(--text-secondary)] shadow-[var(--shadow)]"
           >
+            {/* EGA AMALLARI — eng tepada, chunki ega uchun aynan shular
+                kerak. Mehmonda bu ro'yxat bo'sh bo'ladi va bo'lim
+                umuman chizilmaydi. */}
+            {ownerActions.length > 0 && (
+              <>
+                <div className={head}>{t('Egasi uchun')}</div>
+                {ownerActions.map((a) => (
+                  <button
+                    key={a.label}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => { setOpen(false); a.onClick(); }}
+                    className={`${row} hover:bg-[color:var(--surface-raised)]`}
+                  >
+                    <span className="w-4 shrink-0 text-center text-[color:var(--accent-primary)]" aria-hidden="true">{a.icon || '·'}</span>
+                    <span className="min-w-0 flex-1 truncate font-semibold leading-tight">{a.label}</span>
+                  </button>
+                ))}
+                <div className="my-1 h-px bg-[color:var(--border)]" />
+              </>
+            )}
+
             <div className={head}>{t('Rang mavzusi')}</div>
             {themes.map((th) => {
               const active = th.id === theme;

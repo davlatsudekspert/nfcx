@@ -102,6 +102,14 @@ jobs:
       - name: Shaxsiy profil maketi
         run: node scripts/test-profile-page.mjs
 
+      # OCHIQ PROFIL TEPASI — ko'rish uchun, boshqaruv uchun emas.
+      # Ilgari u yerda TOP nishoni katta blok bo'lib, yonida egaga
+      # tegishli "Tahrirlash", "Story qo'shish" va "Boshqa raqamli
+      # tashrif qog'ozlaringiz" ro'yxati turardi. Ega amallari endi
+      # ⋮ menyusida; mehmon ularni umuman ko'rmaydi.
+      - name: Ochiq profil tepasi
+        run: node scripts/test-public-profile-top.mjs
+
       - name: Biznes profil maketi
         run: node scripts/test-quick-profile-screen.mjs
 

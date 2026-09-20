@@ -2904,6 +2904,13 @@ const DICT_HOME = {
     { ru: 'На рассмотрении', en: 'Reviewing' },
   'Nishon':
     { ru: 'Объект', en: 'Target' },
+
+  // ── OCHIQ PROFIL TEPASI SODDALASHTIRILDI (2026-09) ──
+  // Ega amallari katta tugmalardan ⋮ menyusiga ko'chdi; TOP nishoni
+  // esa tepadagi katta blokdan ism ostidagi kichik belgiga.
+  'Egasi uchun': { ru: 'Для владельца', en: 'For the owner' },
+  'Profilni tahrirlash': { ru: 'Редактировать профиль', en: 'Edit profile' },
+  'TOP #{n}': { ru: 'ТОП #{n}', en: 'TOP #{n}' },
 };
 
 export const DICT = { ...DICT_BASE, ...DICT_HOME, ...DICT_SITE, ...DICT_ACCOUNT, ...DICT_ADMIN };

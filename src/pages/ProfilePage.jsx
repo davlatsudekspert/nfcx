@@ -1766,6 +1766,26 @@ export default function ProfilePage({ code, catalog, initialTab }) {
             targetKind="record"
             targetId={record.code}
             className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"
+            // EGA AMALLARI SHU MENYUDA.
+            //
+            // Ilgari ular profil TEPASIDA katta tugmalar edi
+            // ("Tahrirlash", "Story qo'shish") va yonida "Boshqa
+            // raqamli tashrif qog'ozlaringiz" ro'yxati turardi.
+            // Natijada OCHIQ PROFIL — mehmonga ko'rsatiladigan,
+            // chiroyli bo'lishi kerak bo'lgan sahifa — boshqaruv
+            // paneliga o'xshab qolgandi.
+            //
+            // Har amal O'Z NFC ID si bilan ketadi (`ownerActionUrl`),
+            // shuning uchun bir nechta ID li odam boshqasiga adashib
+            // yozib qo'ymaydi.
+            ownerActions={isOwner ? [
+              { label: t('Profilni tahrirlash'), icon: '✎', onClick: () => navigate(ownerActionUrl(record.code, 'edit')) },
+              { label: t('Story qo‘shish'), icon: '＋', onClick: () => navigate(ownerActionUrl(record.code, 'story')) },
+              { label: t('Post qo‘shish'), icon: '＋', onClick: () => navigate(ownerActionUrl(record.code, 'post')) },
+              ...(otherCodes.length > 0
+                ? [{ label: t("Mening ID'larim"), icon: '▤', onClick: () => navigate('/account#myids') }]
+                : []),
+            ] : []}
           />
         </div>
       </div>
@@ -1782,57 +1802,22 @@ export default function ProfilePage({ code, catalog, initialTab }) {
         style={innerPanelStyle(record)}
       >
         {hasBg && isVideoBg(record.bgUrl) && <ProfileBgVideo src={record.bgUrl} />}
-        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-5">
-          <div className="flex flex-wrap gap-2">
-            {topRank && <span className={`${badge} bg-[color:var(--vz-pill)] text-white [&_svg]:text-[#ffd76a]`}><IconStar /> {t('TOP #{n} bu hafta', { n: topRank })}</span>}
-          </div>
+        {/* OCHIQ PROFIL — KO'RISH UCHUN, BOSHQARUV UCHUN EMAS.
+            Bu qatorda ilgari TOP nishoni, egaga tegishli katta
+            "Tahrirlash" va "Story qo'shish" tugmalari hamda "Boshqa
+            raqamli tashrif qog'ozlaringiz" ro'yxati birga turardi —
+            beshta element, profilning eng ko'zga tashlanadigan
+            joyida.
+
+            Endi:
+              ega amallari  -> yuqoridagi ⋮ menyuda;
+              ID ro'yxati   -> kabinetdagi "Mening ID'larim";
+              TOP nishoni   -> ism ostida, kichik belgi bo'lib.
+            Bu qatorda faqat MEHMONGA tegishli amallar qoladi
+            (obuna, xabar) — ega uchun u umuman chizilmaydi. */}
+        {!isOwner && (
+        <div className="flex flex-wrap items-center justify-end gap-2.5 pt-5">
           <div className="flex flex-wrap items-center gap-2">
-            {/* EGA VOSITALARI BITTA JOYDA.
-                "Boshqa raqamli tashrif qog'ozlaringiz" ro'yxati ilgari
-                sahifaning TEPASIDA, katta kod pillasi yonida turardi
-                va mehmonga ham joy egallab ko'rinardi. U faqat EGAGA
-                kerak — endi egaga tegishli qolgan tugmalar bilan
-                yonma-yon. */}
-            {otherCodes.length > 0 && (
-              <select
-                value=""
-                onChange={(e) => { if (e.target.value) navigate('/' + e.target.value); }}
-                aria-label={t("Boshqa raqamli tashrif qog'ozlaringiz")}
-                // `max-w-full min-w-0 truncate` — `select` elementining ichki
-                // (intrinsic) kengligi eng uzun `option` matnidan kelib chiqadi;
-                // 390px telefonda u 392px bo'lib sahifadan chiqib ketardi va
-                // gorizontal scroll hosil qilardi (faqat karta EGASIGA
-                // ko'rinadigan element bo'lgani uchun ilgari sezilmagan).
-                className="min-w-0 max-w-full cursor-pointer truncate rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3 py-1.5 font-mono text-[14px] text-[color:var(--vz-ink-dim)] outline-none hover:border-[color:var(--vz-ink-dim)]"
-              >
-                <option value="">{t("Boshqa raqamli tashrif qog'ozlaringiz")} ({otherCodes.length})</option>
-                {otherCodes.map((c) => (
-                  <option key={c.code} value={c.code}>nfcstore.uz/{c.code.toLowerCase()}</option>
-                ))}
-              </select>
-            )}
-            {/* EGA TUGMALARI — telefonda ham, kompyuterda ham shu yerda.
-                Pastda yopishib turadigan panel ATAYLAB yo'q: u profil
-                ko'rinishini to'sib, egasining dizaynini buzardi. Profil
-                — avvalgi holatida; boshqaruv esa shu ikki tugmada,
-                va ular endi AYNAN shu NFC ID ni olib ketadi. */}
-            {isOwner && <button className={pillBtn} onClick={() => navigate(ownerActionUrl(record.code, 'edit'))}>{t('Tahrirlash')}</button>}
-            {/* ISTORYA — ALOHIDA TUGMA, ATAYLAB.
-                Ilgari istorya faqat kabinet ichidagi bo'limda edi va
-                egasi uni "Tahrirlash" ortidan qidirib topishi kerak
-                edi. Istorya 24 soatlik ish: u qo'yiladigan joy eng
-                ko'p ochiladigan sahifada, profil rasmining yonida
-                turishi kerak. `#lenta` — kabinet o'sha bo'limdan
-                ochiladi. */}
-            {isOwner && (
-              <button
-                className={pillBtn}
-                onClick={() => navigate(ownerActionUrl(record.code, 'story'))}
-              >
-                {t('Story qo‘shish')}
-              </button>
-            )}
-            {!isOwner && (
               <>
                 {MESSAGING_ENABLED && <button className={pillBtn} onClick={startChat}>{'\u{1F4AC}'} {t('Xabar yozish')}</button>}
                 <button
@@ -1874,9 +1859,9 @@ export default function ProfilePage({ code, catalog, initialTab }) {
                   </label>
                 )}
               </>
-            )}
           </div>
         </div>
+        )}
         {followStats && (
           <div className="mt-2 flex items-center gap-4 text-[16px] text-[color:var(--vz-ink-dim)]">
             <button type="button" onClick={() => setFollowListDir('followers')} className="cursor-pointer hover:text-[color:var(--vz-ink)]">
@@ -1987,9 +1972,27 @@ export default function ProfilePage({ code, catalog, initialTab }) {
             {record.code}
             <span className="shrink-0"><IconCheck style={{ color: 'var(--vz-accent)' }} /></span>
           </div>
-          {tier !== 'free' && (
-            <div className="mb-1 rounded-full px-2.5 py-0.5 text-[13px] font-extrabold uppercase tracking-wider" style={{ color: tierColor, border: `1px solid ${tierColor}55`, background: `${tierColor}15` }}>
-              {t('{tier} tarif', { tier: t(TIER_LABEL[tier]) })}
+          {/* TARIF va TOP nishoni — BIR QATORDA, ism ostida.
+              TOP nishoni ilgari sahifaning eng tepasida, alohida
+              katta blok bo'lib turardi va profilning birinchi
+              taassurotini o'ziga tortardi. U — maqtov belgisi,
+              boshqaruv emas: joyi shu yerda, tarif yonida. */}
+          {(tier !== 'free' || topRank) && (
+            <div className="mb-1 flex flex-wrap items-center justify-center gap-1.5">
+              {tier !== 'free' && (
+                <span className="rounded-full px-2.5 py-0.5 text-[13px] font-extrabold uppercase tracking-wider" style={{ color: tierColor, border: `1px solid ${tierColor}55`, background: `${tierColor}15` }}>
+                  {t('{tier} tarif', { tier: t(TIER_LABEL[tier]) })}
+                </span>
+              )}
+              {topRank && (
+                <span
+                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[13px] font-extrabold uppercase tracking-wider text-[color:var(--vz-ink-dim)] [&_svg]:text-[#ffd76a]"
+                  style={{ border: '1px solid var(--vz-line)' }}
+                  title={t('TOP #{n} bu hafta', { n: topRank })}
+                >
+                  <IconStar /> {t('TOP #{n}', { n: topRank })}
+                </span>
+              )}
             </div>
           )}
           {/* SOVG'A YOKI NARX — endi profil kartasining ICHIDA, kod va
@@ -2303,9 +2306,11 @@ export default function ProfilePage({ code, catalog, initialTab }) {
               <a className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink-dim)] no-underline transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]" href="https://t.me/nfcstore_admin" target="_blank" rel="noreferrer" title={t("Qo'llab-quvvatlash")}><IconSupport /></a>
             </div>
 
-            {/* "Boshqa raqamli tashrif qog'ozlaringiz" ro'yxati pastda
-                TAKRORLANMAYDI — yuqorida (sarlavha qatorida, kod belgisi
-                yonida) allaqachon ko'rsatilgan, shu yetarli. */}
+            {/* Egaga tegishli NFC ID ro'yxati bu sahifada UMUMAN
+                chizilmaydi — u kabinetdagi "Mening ID'larim"
+                bo'limida. Ochiq profil mehmonga ko'rsatiladi va
+                boshqaruv ro'yxatiga o'xshab qolmasligi kerak;
+                ega uchun yo'l ⋮ menyusida turibdi. */}
 
           </>
         )}
