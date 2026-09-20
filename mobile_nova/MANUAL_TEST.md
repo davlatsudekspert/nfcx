@@ -185,6 +185,91 @@ Ruxsat bermaguningizcha 6.4-qadamni bajarmang.
 
 ---
 
+## 8. STAGE 1 — lenta kartasi va asosiy oqimlar
+
+**Qaysi qurilish:** APK #46, commit `ece12ed` (yoki undan keyingi).
+Actions → *NFCSTORE Nova APK* → `NFCSTORE-Nova-final` artefakti.
+
+Bu bo'lim avtomatlashtirilganidan FARQ qiladi. Vidjet testlari soxta
+backend bilan, E2E esa emulyatorda ishlaydi. Quyidagilarni faqat
+haqiqiy telefon isbotlaydi: tizim ulashish oynasi, haqiqiy tarmoq
+kechikishi ostida ikki marta bosish, ilovani o'ldirib qayta ochish,
+va NFC apparati.
+
+Har qatorga **PASS** yoki **FAIL** yozing. FAIL bo'lsa: nima
+kutilgan, nima chiqqan, va ekran surati.
+
+### 8.1 Ochilish va rejimlar
+
+| # | Qadam | Kutilgan natija | Natija |
+|---|---|---|---|
+| 1 | Ilovani ochish | Home ochiladi, pastki navigatsiya ko'rinadi | |
+| 2 | Shaxsiy rejim | O'z ismingiz va NFC kodingiz tepada | |
+| 3 | Biznes rejimga o'tish | Kompaniya nomi va logosi almashadi | |
+| 4 | Biznes → Shaxsiy qaytish | Avvalgi shaxsiy profil qaytadi | |
+
+### 8.2 Lenta kartasi — to'rt amal
+
+| # | Qadam | Kutilgan natija | Natija |
+|---|---|---|---|
+| 5 | Lentani ochish | Kartalar yuklanadi, rasm/video ko'rinadi | |
+| 6 | Yurakni bosish | DARHOL to'ladi, sanoq +1 | |
+| 7 | Qayta bosish | Bo'shaydi, sanoq boshlang'ichga qaytadi | |
+| 8 | Yurakni TEZ ikki marta bosish | Bir marta bosgandek: holat aniq, sanoq sakramaydi | |
+| 9 | Internetni o'chirib yurakni bosish | Holat ESKISIGA qaytadi **va** sabab yozuvi chiqadi | |
+| 10 | Izohni bosish | Post ekrani ochiladi, izoh maydoni fokusda | |
+| 11 | Ulashishni bosish | Tizim ulashish oynasi ochiladi | |
+
+> **8.2/11 haqida:** ulashish oynasi ochilishi — shu qatorning
+> mezoni. Havolani OCHIB ko'rish alohida masala: `nfcstore.uz/<kod>`
+> hozir HTTP 500 qaytaryapti va bu **EXTERNAL WEB BLOCKER** —
+> saytning production marshruti, ilova kamchiligi emas. Ilovada
+> yashirilmadi va havola formati o'zgartirilmadi.
+
+### 8.3 Obuna
+
+| # | Qadam | Kutilgan natija | Natija |
+|---|---|---|---|
+| 12 | Begona muallif postini topish | "Obuna bo'lish" tugmasi bor | |
+| 13 | Uni bosish | Darhol "Obuna bo'lingan" ga o'tadi | |
+| 14 | Uning profiliga kirish | U yerda ham obuna holati mos | |
+| 15 | Qaytib yechish | "Obuna bo'lish" ga qaytadi | |
+| 16 | **O'Z** postingizni topish | Obuna tugmasi UMUMAN yo'q | |
+| 17 | Biznes rejimda o'z kompaniya postini topish | Obuna tugmasi UMUMAN yo'q | |
+
+### 8.4 Holat mosligi
+
+| # | Qadam | Kutilgan natija | Natija |
+|---|---|---|---|
+| 18 | Lentada yurak bosib, postni ochish | Post ekranida ham to'lgan yurak, sanoq bir xil | |
+| 19 | Post ekranida yechib, orqaga qaytish | Lentadagi karta ham bo'shagan | |
+| 20 | Biznes rejimda lentani ko'rish | Kompaniya postlari shaxsiy bilan aralashmagan | |
+
+### 8.5 Qolgan oqimlar buzilmaganini tekshirish
+
+| # | Qadam | Kutilgan natija | Natija |
+|---|---|---|---|
+| 21 | Istorya doirachasini bosish | Ko'ruvchi ochiladi, oxirigacha o'tib yopiladi | |
+| 22 | NFC markazini ochish | Ekran ochiladi, orb ko'rinadi | |
+| 23 | "NFC ID larim" | Hamma ID lar joyida | |
+| 24 | Kartalar / Sovg'a / Xavfsizlik | Uchalasi ham ochiladi, ma'lumot joyida | |
+| 25 | Katalog va Statistika (biznes) | Ikkalasi ham ochiladi, ma'lumot joyida | |
+
+### 8.6 Sessiya
+
+| # | Qadam | Kutilgan natija | Natija |
+|---|---|---|---|
+| 26 | Chiqish (logout) | Kirish ekraniga qaytadi | |
+| 27 | Qayta kirish | Home ochiladi, profil joyida | |
+| 28 | Ilovani BUTUNLAY yopib qayta ochish | Qayta kirish so'ralmaydi, sessiya tirik | |
+| 29 | Qayta ochgandan keyin lenta | Layk va obuna holatlari serverdagidek | |
+
+> **29 haqida:** layk/obuna holati ataylab xotirada saqlanmaydi —
+> ilova qayta ochilganda u SERVERDAN o'qiladi. Ya'ni to'g'ri natija
+> "bosganim esda qolgan" emas, "serverdagi haqiqat ko'rsatilgan".
+
+---
+
 ## Natijani qaytarish
 
 Qisqa jadval yetarli:

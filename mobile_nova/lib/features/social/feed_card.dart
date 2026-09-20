@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/errors/app_error.dart';
 import '../../core/network/api_client.dart';
 import '../../core/utils/sharing.dart';
 import '../../data/models/models.dart';
 import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
+import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
@@ -48,6 +50,16 @@ class FeedCard extends ConsumerWidget {
     final media = post.mediaUrls.isEmpty ? '' : post.mediaUrls.first;
 
     void openPost() => context.push(Routes.post(post.id, code: post.code));
+
+    /// Amal yiqilganda holat eskisiga qaytadi. Buni AYTISH kerak:
+    /// jimgina orqaga sakragan yurak odamga "bosilmadi" emas,
+    /// "ilova buzuq" bo'lib ko'rinadi.
+    void reportIfFailed(AppError? e) {
+      if (e == null || !context.mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(describeError(l, e))));
+    }
 
     return FloatingSurface(
       solid: true,
@@ -101,9 +113,9 @@ class FeedCard extends ConsumerWidget {
               if (!mine && post.code.isNotEmpty)
                 _FollowChip(
                   following: following,
-                  onTap: () => ref
+                  onTap: () async => reportIfFailed(await ref
                       .read(followOverridesProvider.notifier)
-                      .toggle(post.code, following: following),
+                      .toggle(post.code, following: following)),
                 ),
             ],
           ),
@@ -150,7 +162,8 @@ class FeedCard extends ConsumerWidget {
                 label: l.postLike,
                 count: like.count,
                 tint: like.liked ? t.error : null,
-                onTap: () => ref.read(postLikesProvider.notifier).toggle(post),
+                onTap: () async => reportIfFailed(
+                    await ref.read(postLikesProvider.notifier).toggle(post)),
               ),
               const SizedBox(width: Gap.lg),
               // Izoh — mavjud oqim: post ochiladi va izoh maydoni

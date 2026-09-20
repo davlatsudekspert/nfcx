@@ -206,7 +206,16 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                         : Icons.favorite_border_rounded,
                     label: formatCount(like.count),
                     tint: liked ? t.error : t.text2,
-                    onTap: () => ref.read(postLikesProvider.notifier).toggle(p),
+                    onTap: () async {
+                      final e = await ref
+                          .read(postLikesProvider.notifier)
+                          .toggle(p);
+                      if (e == null || !context.mounted) return;
+                      ScaffoldMessenger.of(context)
+                        ..hideCurrentSnackBar()
+                        ..showSnackBar(
+                            SnackBar(content: Text(describeError(l, e))));
+                    },
                   ),
                   const SizedBox(width: Gap.xl),
                   _Action(

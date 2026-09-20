@@ -331,6 +331,78 @@ void main() {
     });
   });
 
+  group('IKKI MARTA BOSISH VA XATO HOLATI', () {
+    testWidgets('tez ikki marta bosilsa serverga BIR so‘rov ketadi', (
+      tester,
+    ) async {
+      final social = _FeedRepo()
+        ..serverLiked = true
+        ..serverCount = 9;
+      await pump(tester, social: social, profile: _FollowRepo());
+
+      // Birinchi bosish serverga ketdi va hali javob kelmadi.
+      await tester.tap(find.byIcon(Icons.favorite_border_rounded));
+      await tester.pump();
+      // Ikkinchi bosish AYNAN shu paytda tushadi.
+      await tester.tap(find.byIcon(Icons.favorite_rounded));
+      await tester.pump();
+
+      await tester.pump(const Duration(milliseconds: 200));
+
+      // Ikki so‘rov ketganda server laykni ikki marta o‘girardi va
+      // odam bosgani YO‘QOLARDI.
+      expect(social.likeCalls, 1, reason: 'ikki marta so‘rov ketdi');
+      expect(find.byIcon(Icons.favorite_rounded), findsOneWidget);
+    });
+
+    testWidgets('obunada ham tez ikki bosish BIR so‘rov', (tester) async {
+      final profile = _FollowRepo();
+      await pump(tester, social: _FeedRepo(), profile: profile);
+
+      await tester.tap(find.text(LUz().actionFollow));
+      await tester.pump();
+      await tester.tap(find.text(LUz().actionFollowing));
+      await tester.pump();
+
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(profile.followCalls, 1);
+      expect(
+        profile.unfollowCalls,
+        0,
+        reason: 'obuna qo‘yilib darhol yechilib ketdi',
+      );
+    });
+
+    testWidgets('layk yiqilsa SABAB ko‘rsatiladi', (tester) async {
+      final social = _FeedRepo()..likeFails = true;
+      await pump(tester, social: social, profile: _FollowRepo());
+
+      await tester.tap(find.byIcon(Icons.favorite_border_rounded));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      // Jimgina orqaga sakragan yurak odamga "bosilmadi" emas,
+      // "ilova buzuq" bo‘lib ko‘rinadi.
+      expect(
+        find.byType(SnackBar),
+        findsOneWidget,
+        reason: 'xato jimgina yutildi',
+      );
+      expect(find.text(LUz().errServer), findsOneWidget);
+    });
+
+    testWidgets('obuna yiqilsa ham SABAB ko‘rsatiladi', (tester) async {
+      final profile = _FollowRepo()..fails = true;
+      await pump(tester, social: _FeedRepo(), profile: profile);
+
+      await tester.tap(find.text(LUz().actionFollow));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(find.byType(SnackBar), findsOneWidget);
+    });
+  });
+
   group('IZOH VA ULASHISH', () {
     testWidgets('izoh bosilganda POST ekraniga o‘tadi', (tester) async {
       await pump(tester, social: _FeedRepo(), profile: _FollowRepo());

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/profile_context.dart';
+import '../../core/errors/app_error.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/social_repository.dart';
 import '../business/business_providers.dart';
@@ -24,13 +25,32 @@ class PostLikes extends StateNotifier<Map<int, LikeState>> {
   PostLikes(this._ref) : super(const {});
   final Ref _ref;
 
+  /// Hozir serverga ketayotgan postlar.
+  ///
+  /// IKKI MARTA BOSISH HIMOYASI. Busiz tez ikki marta bosilganda
+  /// serverga IKKI so'rov ketardi va layk ikki marta o'girilib,
+  /// natijada odam bosgani YO'QOLARDI. Ustiga ikkinchi so'rovning
+  /// "eski holati" birinchisining OPTIMISTIK qiymati bo'lardi —
+  /// ya'ni xato bo'lganda hech qachon serverda turmagan holatga
+  /// "qaytarilardi".
+  final _busy = <int>{};
+
+  bool isBusy(int id) => _busy.contains(id);
+
   /// Postning HOZIRGI holati: mahalliy o'zgarish bo'lsa o'sha,
   /// aks holda serverdan kelgani.
   LikeState of(Post p) => state[p.id] ?? (liked: p.liked, count: p.likes);
 
   /// Bosilganda holat DARHOL o'zgaradi, so'ng server javobi
-  /// o'rnatiladi. Xato bo'lsa eski holatga qaytadi.
-  Future<void> toggle(Post p) async {
+  /// o'rnatiladi.
+  ///
+  /// `null` qaytsa — o'tdi. Xato qaytsa holat ESKISIGA qaytgan
+  /// bo'ladi va chaqiruvchi buni foydalanuvchiga ko'rsatishi
+  /// kerak: jimgina orqaga qaytgan yurak odamni chalg'itadi.
+  Future<AppError?> toggle(Post p) async {
+    if (_busy.contains(p.id)) return null;
+    _busy.add(p.id);
+
     final before = state[p.id];
     final now = of(p);
     state = {
@@ -39,12 +59,20 @@ class PostLikes extends StateNotifier<Map<int, LikeState>> {
     };
 
     final res = await _ref.read(socialRepositoryProvider).like(p.id);
-    res.when(
+    _busy.remove(p.id);
+    // Ekran yopilgan bo'lsa holatga tegmaymiz — `StateNotifier`
+    // o'chirilgandan keyin yozish istisno beradi.
+    if (!mounted) return null;
+
+    return res.when(
       // Server SANOQNI ham qaytaradi — mahalliy taxmin emas, o'sha
       // o'rnatiladi: boshqa qurilmadan bosilgan layklar ham
       // hisobga olinadi.
-      ok: (v) => state = {...state, p.id: (liked: v.liked, count: v.count)},
-      err: (_) {
+      ok: (v) {
+        state = {...state, p.id: (liked: v.liked, count: v.count)};
+        return null;
+      },
+      err: (e) {
         final m = {...state};
         if (before == null) {
           m.remove(p.id);
@@ -52,6 +80,7 @@ class PostLikes extends StateNotifier<Map<int, LikeState>> {
           m[p.id] = before;
         }
         state = m;
+        return e;
       },
     );
   }
@@ -88,15 +117,28 @@ class FollowOverrides extends StateNotifier<Map<String, bool>> {
   FollowOverrides(this._ref) : super(const {});
   final Ref _ref;
 
-  Future<void> toggle(String code, {required bool following}) async {
+  /// Hozir serverga ketayotgan kodlar — layk bilan bir xil sabab:
+  /// ikki marta bosilganda obuna qo'yilib, darhol yechilardi.
+  final _busy = <String>{};
+
+  bool isBusy(String code) => _busy.contains(code);
+
+  /// `null` qaytsa — o'tdi, aks holda holat eskisiga qaytgan.
+  Future<AppError?> toggle(String code, {required bool following}) async {
+    if (_busy.contains(code)) return null;
+    _busy.add(code);
+
     final before = state[code];
     state = {...state, code: !following};
 
     final repo = _ref.read(profileRepositoryProvider);
     final res = following ? await repo.unfollow(code) : await repo.follow(code);
-    res.when(
-      ok: (_) {},
-      err: (_) {
+    _busy.remove(code);
+    if (!mounted) return null;
+
+    return res.when(
+      ok: (_) => null,
+      err: (e) {
         final m = {...state};
         if (before == null) {
           m.remove(code);
@@ -104,6 +146,7 @@ class FollowOverrides extends StateNotifier<Map<String, bool>> {
           m[code] = before;
         }
         state = m;
+        return e;
       },
     );
   }
