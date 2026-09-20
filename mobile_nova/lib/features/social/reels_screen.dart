@@ -16,6 +16,7 @@ import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
+import '../../routing/shell.dart';
 import '../home/widgets/avatar.dart';
 import '../home/widgets/identity_card.dart';
 import '../profile/music_player.dart';
@@ -100,6 +101,8 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Reels — pastki navigatsiyaning 4-tabi (`HomeShell.tabRoutes`).
+    final onReelsTab = ref.watch(activeTabProvider) == 3;
     final l = L.of(context);
     final t = context.tokens;
     final reels = ref.watch(reelsProvider);
@@ -140,7 +143,15 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
                 onPageChanged: (i) => setState(() => _index = i),
                 itemBuilder: (context, i) => _ReelPage(
                   post: items[i],
-                  visible: i == _index,
+                  // KO'RINISH IKKI SHARTDAN IBORAT: bu sahifa
+                  // ochiqmi VA Reels tabining O'ZI ko'rinyaptimi.
+                  //
+                  // Ikkinchisi shart, chunki tablar
+                  // `IndexedStack` da turadi va boshqa bo'limga
+                  // o'tganda bu ekran O'CHMAYDI — faqat
+                  // berkitiladi. Usiz odam Profilda turib Reels
+                  // ovozini eshitardi.
+                  visible: i == _index && onReelsTab,
                 ),
               ),
               _TopBar(onCreate: () => context.push(Routes.reelCreate)),

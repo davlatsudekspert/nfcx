@@ -10,7 +10,6 @@ import '../../app/providers.dart';
 import '../../core/network/api_client.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/social_repository.dart';
-import '../social/feed_card.dart';
 import '../../design/motion/motion.dart';
 import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
@@ -198,12 +197,20 @@ class HomeScreen extends ConsumerWidget {
             const SizedBox(height: Gap.xxl),
             _QuickActions(mode: mode),
             _StoriesRow(user: user),
+            // BOSH EKRANDA LENTA YO'Q.
+            //
+            // Postlar Tanlov bo'limida to'liq ko'rinadi va bu yerda
+            // takrorlanishi ilovani "yana bir lenta" qilib
+            // ko'rsatardi. Bosh ekranning vazifasi boshqa: bu
+            // sizning NFC shaxsingiz. Shuning uchun o'rnida
+            // egalik qilgan ID'laringiz turadi — ilgari ular
+            // tugma ortida yashiringan edi.
             SectionHeader(
-              title: l.homePosts,
+              title: l.nfcMyIds,
               action: l.actionSeeAll,
-              onAction: () => context.go(Routes.discover),
+              onAction: () => context.push(Routes.nfcIds),
             ),
-            const _FeedPreview(),
+            const _MyIdsStrip(),
             SectionHeader(
               title: l.homeActivity,
               action: l.actionSeeAll,
@@ -879,52 +886,85 @@ class _StoryBubble extends StatelessWidget {
   }
 }
 
-class _FeedPreview extends ConsumerWidget {
-  const _FeedPreview();
+class _MyIdsStrip extends ConsumerWidget {
+  const _MyIdsStrip();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final feed = ref.watch(homeFeedProvider);
+    final t = context.tokens;
+    final ids = ref.watch(myIdsProvider);
+    if (ids.isEmpty) return const SizedBox.shrink();
 
-    // LENTA ENDI VERTIKAL VA AMALLI.
-    //
-    // Ilgari bu yerda 128px kenglikdagi gorizontal "ko'rinish"
-    // kartalari turardi: ularga layk, izoh va ulashish sig'masdi,
-    // ya'ni postni ochmasdan hech narsa qilib bo'lmasdi.
-    return feed.when(
-      loading: () => const SkeletonList(count: 2, height: 180),
-      error: (e, __) => Padding(
+    final active = ref.watch(activeIdProvider)?.code;
+
+    return SizedBox(
+      height: 96,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-        child: FloatingSurface(
-          solid: true,
-          child: Text(
-            L.of(context).stateEmpty,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-        ),
-      ),
-      data: (items) => items.isEmpty
-          ? Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-              child: FloatingSurface(
-                solid: true,
-                child: Text(
-                  L.of(context).stateEmpty,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
+        itemCount: ids.length,
+        separatorBuilder: (_, __) => const SizedBox(width: Gap.sm),
+        itemBuilder: (context, i) {
+          final id = ids[i];
+          final on = id.code == active;
+          return PressableScale(
+            onTap: () => context.push(Routes.nfcId(id.code)),
+            child: Container(
+              width: 152,
+              padding: const EdgeInsets.all(Gap.md),
+              decoration: BoxDecoration(
+                // Faol yozuv oltin, qolganlari sokin — bir qarashda
+                // qaysi biri ishlayotgani ko'rinadi.
+                gradient: on ? t.accentGradient : null,
+                color: on ? null : t.surfaceSolid,
+                borderRadius: R.tile,
+                border: Border.all(color: on ? t.accent2 : t.border2),
               ),
-            )
-          : Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  for (final p in items.take(10)) ...[
-                    FeedCard(post: p),
-                    const SizedBox(height: Gap.md),
-                  ],
+                  Row(
+                    children: [
+                      Icon(Icons.nfc_rounded,
+                          size: 14, color: on ? t.onAccent : t.accent2),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        child: Text(
+                          id.code,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppType.monoStyle(
+                              color: on ? t.onAccent : t.text1, size: 13),
+                        ),
+                      ),
+                      if (id.cardLinked)
+                        Icon(Icons.credit_card_rounded,
+                            size: 13, color: on ? t.onAccent : t.text3),
+                    ],
+                  ),
+                  Text(
+                    id.name.isEmpty ? '—' : id.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontFamily: AppType.sans,
+                        fontSize: 12,
+                        color: on ? t.onAccent : t.text2),
+                  ),
+                  Text(
+                    '${formatCount(id.views)} ko\u2018rish',
+                    style: TextStyle(
+                        fontFamily: AppType.sans,
+                        fontSize: 11,
+                        color: on ? t.onAccent.withValues(alpha: .85) : t.text3),
+                  ),
                 ],
               ),
             ),
+          );
+        },
+      ),
     );
   }
 }
