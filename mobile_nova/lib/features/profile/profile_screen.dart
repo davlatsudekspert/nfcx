@@ -20,6 +20,7 @@ import '../auth/session.dart';
 import '../home/widgets/avatar.dart';
 import '../home/widgets/identity_card.dart';
 import '../home/widgets/mode_switch.dart';
+import '../home/widgets/my_ids_strip.dart';
 import '../../app/profile_context.dart';
 import '../../data/repositories/business_repository.dart';
 import '../nfc/qr_sheet.dart';
@@ -255,6 +256,26 @@ class ProfileScreen extends ConsumerWidget {
                   message: l.businessNoneHint,
                 ),
               ),
+            ],
+            // "NFC ID'LARIM" — BOSH SAHIFADAN SHU YERGA KO'CHDI.
+            //
+            // Bosh sahifaning vazifasi boshqa: FAOL yozuv va uning
+            // ustidagi amallar. Egalik qilingan ID'lar ro'yxati esa
+            // profilning ishi — o'zingiz haqingizdagi sahifada.
+            //
+            // FAQAT O'Z profilida: begona odamning profilida
+            // sizning ID'laringiz ko'rinishi mantiqsiz.
+            //
+            // "Hammasi" mavjud boshqaruv ekraniga olib boradi —
+            // u o'zgarmadi. Sozlamalar va NFC markazidagi yo'llar
+            // ham joyida qoldi.
+            if (code == null && ref.watch(myIdsProvider).isNotEmpty) ...[
+              SectionHeader(
+                title: l.nfcMyIds,
+                action: l.actionSeeAll,
+                onAction: () => context.push(Routes.nfcIds),
+              ),
+              const MyIdsStrip(),
             ],
             if (mode == AppMode.business && isMe && !noBusiness) ...[
               SectionHeader(title: l.bizTitle),

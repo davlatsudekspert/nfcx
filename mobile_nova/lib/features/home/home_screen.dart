@@ -197,36 +197,26 @@ class HomeScreen extends ConsumerWidget {
             ),
             const SizedBox(height: Gap.xxl),
             _QuickActions(mode: mode),
-            // TANISHTIRUV BO'LIMI — tezkor amallardan KEYIN,
-            // storylardan OLDIN. Yuqorida bo'lishi shart: ilovaga
-            // birinchi kirgan odam pastga tushmasdan "bu ilova
-            // nima beradi" degan savolga javob olsin.
-            const NfcMobileSection(),
-            const SizedBox(height: Gap.sm),
             _StoriesRow(user: user),
-            // BOSH EKRANDA LENTA YO'Q.
+            // BOSH EKRAN TARTIBI:
+            //   faol NFC ID karta → tezkor amallar → storylar →
+            //   NFC Mobile.
             //
-            // Postlar Tanlov bo'limida to'liq ko'rinadi va bu yerda
-            // takrorlanishi ilovani "yana bir lenta" qilib
-            // ko'rsatardi. Bosh ekranning vazifasi boshqa: bu
-            // sizning NFC shaxsingiz. Shuning uchun o'rnida
-            // egalik qilgan ID'laringiz turadi — ilgari ular
-            // tugma ortida yashiringan edi.
-            SectionHeader(
-              title: l.nfcMyIds,
-              action: l.actionSeeAll,
-              onAction: () => context.push(Routes.nfcIds),
-            ),
-            const _MyIdsStrip(),
-            SectionHeader(
-              title: l.homeActivity,
-              action: l.actionSeeAll,
-              onAction: () => context.push(Routes.activity),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-              child: _ActivityPreview(id: id),
-            ),
+            // "NFC ID'larim" va "So'nggi harakatlar" bu yerdan
+            // OLIB TASHLANDI — o'chirilmadi:
+            //
+            //   * ID'lar ro'yxati endi PROFIL ichida turadi va u
+            //     yerdan to'liq boshqaruvga o'tiladi. Yo'l NFC
+            //     markazi, Sozlamalar va tezkor amallardan ham
+            //     ochiq — hech bir kirish nuqtasi yo'qolmadi;
+            //   * harakatlar ekrani tepadagi qo'ng'iroq
+            //     tugmasidan ochiladi (o'sha joyda turibdi).
+            //
+            // Bo'shagan joyni tanishtiruv bo'limi egallaydi:
+            // ilovaga birinchi kirgan odam pastga tushmasdan
+            // "bu ilova nima beradi" degan savolga javob olsin.
+            const NfcMobileSection(),
+            const SizedBox(height: Gap.xxl),
           ],
         ),
       ),
@@ -889,173 +879,6 @@ class _StoryBubble extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _MyIdsStrip extends ConsumerWidget {
-  const _MyIdsStrip();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.tokens;
-    final ids = ref.watch(myIdsProvider);
-    if (ids.isEmpty) return const SizedBox.shrink();
-
-    final active = ref.watch(activeIdProvider)?.code;
-
-    return SizedBox(
-      height: 96,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-        itemCount: ids.length,
-        separatorBuilder: (_, __) => const SizedBox(width: Gap.sm),
-        itemBuilder: (context, i) {
-          final id = ids[i];
-          final on = id.code == active;
-          return PressableScale(
-            onTap: () => context.push(Routes.nfcId(id.code)),
-            child: Container(
-              width: 152,
-              padding: const EdgeInsets.all(Gap.md),
-              decoration: BoxDecoration(
-                // Faol yozuv oltin, qolganlari sokin — bir qarashda
-                // qaysi biri ishlayotgani ko'rinadi.
-                gradient: on ? t.accentGradient : null,
-                color: on ? null : t.surfaceSolid,
-                borderRadius: R.tile,
-                border: Border.all(color: on ? t.accent2 : t.border2),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.nfc_rounded,
-                          size: 14, color: on ? t.onAccent : t.accent2),
-                      const SizedBox(width: 5),
-                      Expanded(
-                        child: Text(
-                          id.code,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppType.monoStyle(
-                              color: on ? t.onAccent : t.text1, size: 13),
-                        ),
-                      ),
-                      if (id.cardLinked)
-                        Icon(Icons.credit_card_rounded,
-                            size: 13, color: on ? t.onAccent : t.text3),
-                    ],
-                  ),
-                  Text(
-                    id.name.isEmpty ? '—' : id.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontFamily: AppType.sans,
-                        fontSize: 12,
-                        color: on ? t.onAccent : t.text2),
-                  ),
-                  Text(
-                    '${formatCount(id.views)} ko\u2018rish',
-                    style: TextStyle(
-                        fontFamily: AppType.sans,
-                        fontSize: 11,
-                        color: on ? t.onAccent.withValues(alpha: .85) : t.text3),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _ActivityPreview extends StatelessWidget {
-  const _ActivityPreview({required this.id});
-  final NfcId? id;
-
-  @override
-  Widget build(BuildContext context) {
-    final l = L.of(context);
-    final t = context.tokens;
-    if (id == null) {
-      return FloatingSurface(
-        solid: true,
-        child: Text(
-          l.activityEmpty,
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-      );
-    }
-    return FloatingSurface(
-      solid: true,
-      child: Column(
-        children: [
-          _Row(
-            icon: Icons.nfc_rounded,
-            label: l.nfcScans,
-            value: id!.taps,
-            tone: t.accent2,
-          ),
-          const SizedBox(height: Gap.md),
-          _Row(
-            icon: Icons.visibility_rounded,
-            label: l.nfcViews,
-            value: id!.views,
-            tone: t.accentBDark,
-          ),
-          const SizedBox(height: Gap.md),
-          _Row(
-            icon: Icons.group_rounded,
-            label: l.profileFollowers,
-            value: id!.followers,
-            tone: t.accentCDark,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Row extends StatelessWidget {
-  const _Row({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.tone,
-  });
-
-  final IconData icon;
-  final String label;
-  final int value;
-  final Color tone;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-    return Row(
-      children: [
-        Container(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-            color: tone.withValues(alpha: .18),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, size: 16, color: t.isDark ? tone : t.text1),
-        ),
-        const SizedBox(width: Gap.md),
-        Expanded(
-          child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
-        ),
-        Text(formatCount(value), style: Theme.of(context).textTheme.titleSmall),
-      ],
     );
   }
 }

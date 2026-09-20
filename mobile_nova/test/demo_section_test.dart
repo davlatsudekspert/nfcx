@@ -200,11 +200,8 @@ void main() {
       final src =
           File('lib/features/home/home_screen.dart').readAsStringSync();
       expect(src, contains('NfcMobileSection()'));
-      // Tezkor amallardan KEYIN, storylardan OLDIN.
-      expect(src.indexOf('_QuickActions(mode: mode)'),
-          lessThan(src.indexOf('NfcMobileSection()')));
-      expect(src.indexOf('NfcMobileSection()'),
-          lessThan(src.indexOf('_StoriesRow(user: user)')));
+      // Tartibning O'ZI `home_layout_test.dart` da qo'riqlanadi —
+      // bu yerda faqat bo'lim bosh sahifaga ULANGANI muhim.
     });
 
     test('marshrutlar ro‘yxatdan o‘tadi', () {
