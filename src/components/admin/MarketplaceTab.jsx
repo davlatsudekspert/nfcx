@@ -1039,10 +1039,10 @@ function BatchResult({ batch, t, onDone, adminApi, apiErrText }) {
       // bu muammo umuman tug'ilmaydi. QR esa NFC o'qimaydigan
       // telefon uchun zaxira bo'lib qolaveradi.
       cards.push(`<article class="c">
-        <div class="hd"><span class="br">NFCSTORE</span><span class="sku">${sku}</span></div>
-        <p class="lead">Mahsulotingiz tayyor. Faollashtirish 1 daqiqa.</p>
+        <header class="hd"><span class="br">NFCSTORE</span><span class="sku">${sku}</span></header>
+        <p class="lead">Mahsulotingiz tayyor.<br><span>Faollashtirish — 1 daqiqa.</span></p>
         <ol>
-          <li><b>Telefonni stikerga tegizing.</b><br><small>NFC ishlamasa — QR ni skanerlang.</small></li>
+          <li><b>Telefonni stikerga tegizing.</b><br><small>NFC ishlamasa — pastdagi QR ni skanerlang.</small></li>
           <li><b>Shu kodni kiriting.</b></li>
           <li>Shaxsiy yoki Biznes profilni tanlang.</li>
           <li>Ro'yxatdan o'ting — bitta tugma.</li>
@@ -1068,30 +1068,69 @@ function BatchResult({ batch, t, onDone, adminApi, apiErrText }) {
     // `@page margin:0` — chekka maydon qog'ozning O'ZIDA emas,
     // kartaning ICHIDA (`padding`). Aks holda to'rtta A6 A4 ga
     // sig'masdi va printer ularni kichraytirib yuborardi.
+    //
+    // ── RANG ────────────────────────────────────────────────────────
+    //
+    // Oltin aksent, QORA FON EMAS (egasining printeri — Epson L850,
+    // siyoh bakli inkjet). To'liq qora fon inkjetda juda ko'p siyoh
+    // yeydi, qog'ozni ho'llab bukib qo'yadi va chiziq-chiziq chiqadi.
+    // Shuning uchun fon oq qoladi, oltin esa chiziq, raqam va
+    // ramkada — kam siyoh, toza ko'rinish.
+    //
+    // `print-color-adjust:exact` — brauzer rangli fonlarni chop
+    // etishda O'CHIRIB qo'yadi; bu qator bo'lmasa oltin doiralar
+    // oq bo'lib chiqardi.
+    //
+    // QIRQISH CHIZIG'I: uzuq-uzuq kulrang ramka — u AYNAN qirqish
+    // joyida turadi va qirqilganda yo'qoladi. Qora bo'lsa, ozgina
+    // qiyshiq qirqilganda kartada qora iz qolardi.
     w.document.write(`<!doctype html><html lang="uz"><head><meta charset="utf-8"><title>NFCSTORE — ${sku}</title><style>
       @page{size:A4;margin:0}
       *{box-sizing:border-box}
-      body{margin:0;font:12px/1.45 system-ui,sans-serif;color:#000;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      :root{--gold:#b8912f;--gold-d:#8a6c1d;--ink:#111}
+      body{margin:0;font:12px/1.45 system-ui,sans-serif;color:var(--ink);background:#fff;
+           -webkit-print-color-adjust:exact;print-color-adjust:exact}
       .g{display:grid;grid-template-columns:105mm 105mm;grid-auto-rows:148.5mm}
       .c{width:105mm;height:148.5mm;padding:9mm 8mm;display:flex;flex-direction:column;
-         outline:.2mm dashed #bbb;outline-offset:-.1mm;break-inside:avoid;page-break-inside:avoid}
-      .hd{display:flex;align-items:baseline;justify-content:space-between;border-bottom:.4mm solid #000;padding-bottom:2mm}
-      .hd .br{font:800 12px/1 system-ui;letter-spacing:.26em}
-      .hd .sku{font:600 7px/1 ui-monospace,Menlo,monospace;letter-spacing:.06em;color:#666}
-      .lead{margin:4mm 0 3mm;font-size:10px;font-weight:700}
-      .c ol{margin:0;padding-left:5mm;font-size:9.5px;line-height:1.55}
-      .c ol li{margin-bottom:1.2mm}
-      .c ol small{font-size:8.5px;color:#555}
+         outline:.18mm dashed #b5b5b5;outline-offset:-.09mm;break-inside:avoid;page-break-inside:avoid}
+      .hd{display:flex;align-items:baseline;justify-content:space-between;
+          border-bottom:.5mm solid var(--gold);padding-bottom:2mm}
+      .hd .br{font:800 13px/1 system-ui;letter-spacing:.26em;color:var(--gold-d)}
+      .hd .sku{font:600 7px/1 ui-monospace,Menlo,monospace;letter-spacing:.06em;color:#888}
+      .lead{margin:4mm 0 3.5mm;font-size:11px;font-weight:800;line-height:1.35}
+      .lead span{font-weight:600;color:var(--gold-d)}
+      /* Raqamlar oltin doirada — ro'yxat "qadam" ekani shundan ko'rinadi. */
+      .c ol{margin:0;padding:0;list-style:none;counter-reset:s}
+      .c ol li{position:relative;counter-increment:s;padding-left:7mm;margin-bottom:2mm;
+               font-size:9.5px;line-height:1.5}
+      .c ol li::before{content:counter(s);position:absolute;left:0;top:-.3mm;
+        width:5mm;height:5mm;border-radius:50%;background:var(--gold);color:#fff;
+        font:800 8px/5mm system-ui;text-align:center}
+      .c ol small{font-size:8.5px;color:#666}
       /* KOD — sahifadagi eng katta element. Odam konvertni ochganda
          birinchi shuni ko'rishi kerak; qolgani o'qiladigan matn. */
-      .box{margin:4mm 0 0;border:.5mm solid #000;border-radius:2.5mm;padding:3.5mm 2mm;text-align:center}
-      .box .lbl{font:700 7px/1 system-ui;letter-spacing:.18em;text-transform:uppercase;color:#555}
-      .box .k{margin:2.5mm 0 0;font:700 21px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em}
+      /* margin:auto 0 — qadamlar bilan pastki qism orasidagi bo'sh joy
+         kodning USTI va OSTIGA teng bo'linadi, ya'ni kod kartaning
+         o'rtasida turadi. Aks holda u ro'yxatga yopishib qolar, pastda
+         esa katta bo'sh joy osilib turardi.
+         DIQQAT: bu izoh template literal ICHIDA — teskari apostrof
+         (backtick) yozib bo'lmaydi, u satrni uzib yuboradi va butun
+         build yiqiladi. */
+      .box{margin:auto 0;border:.6mm solid var(--gold);border-radius:2.5mm;
+           padding:3.5mm 2mm;text-align:center;background:#fdf9ef}
+      .box .lbl{font:800 7px/1 system-ui;letter-spacing:.18em;text-transform:uppercase;color:var(--gold-d)}
+      .box .k{margin:2.5mm 0 0;font:700 21px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;color:var(--ink)}
       /* QR pastda va kichik — u ZAXIRA yo'l, asosiysi tegizish. */
-      .ft{margin-top:auto;display:flex;align-items:center;gap:3.5mm;border-top:.2mm solid #ccc;padding-top:3mm}
+      /* margin-top bu yerda AUTO EMAS: bo'sh joyni faqat .box yig'sin.
+         Ikkalasi ham auto bo'lganda bo'sh joy uchga bo'linib, kod
+         yuqoriga siljib qolardi (brauzerda o'lchandi: 22px va 85px).
+         Pastki qism baribir oxirgi element, ya'ni pastda qoladi. */
+      .ft{display:flex;align-items:center;gap:3.5mm;
+          border-top:.3mm solid var(--gold);padding-top:3mm}
       .ft img{width:22mm;height:22mm;flex:none}
       .ftx{font-size:8.5px;line-height:1.5}
-      .warn{margin:2.5mm 0 0;font-size:7.5px;color:#666;text-align:center}
+      .ftx b{color:var(--gold-d)}
+      .warn{margin:2.5mm 0 0;font-size:7.5px;color:#777;text-align:center}
     </style></head><body><div class="g">${cards.join('')}</div></body></html>`);
     w.document.close();
     w.focus();

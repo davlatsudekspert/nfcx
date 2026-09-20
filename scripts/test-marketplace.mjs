@@ -1513,6 +1513,35 @@ function gatedEnv(env, sqlNeedle) {
   // `@page margin` NOLGA teng bo'lishi SHART: aks holda to'rtta A6
   // A4 ga sig'masdi va printer hammasini kichraytirib yuborardi.
   checkTrue('24) sahifa chetlari nolga teng', /@page\{size:A4;margin:0\}/.test(tab));
+  // RANG — egasining printeri rangli (Epson L850, siyoh bakli inkjet).
+  // Oltin AKSENT, qora fon EMAS: to'liq qora fon inkjetda juda ko'p
+  // siyoh yeydi va qog'ozni bukib qo'yadi.
+  checkTrue('24) oltin rang belgilangan', /--gold:#[0-9a-f]{6}/i.test(tab));
+  // Brauzer rangli fonlarni chop etishda O'CHIRIB qo'yadi — bu qator
+  // bo'lmasa oltin doiralar va kod ramkasi oq bo'lib chiqardi.
+  // IKKALASI HAM kerak: prefikssiz qator zamonaviy brauzer uchun,
+  // `-webkit-` esa eski Chrome/Safari uchun. Faqat bittasi qolsa,
+  // ba'zi brauzerda oltin oq bo'lib chiqardi — shuning uchun
+  // ikkalasi alohida tekshiriladi.
+  checkTrue('24) rangli fon chop etiladi (standart)', /;print-color-adjust:exact/.test(tab));
+  checkTrue('24) rangli fon chop etiladi (webkit)', /-webkit-print-color-adjust:exact/.test(tab));
+  checkTrue('24) qora fon ishlatilmagan', !/background:#(000|111|1[0-9a-f]{5})/i.test(tab.slice(tab.indexOf('@page{size:A4'), tab.indexOf('</style>'))));
+  // QIRQISH CHIZIG'I qirqilganda YO'QOLSIN: qora bo'lsa, ozgina
+  // qiyshiq qirqilganda kartada qora iz qolardi.
+  checkTrue('24) qirqish chizig‘i och kulrang', /outline:\.18mm dashed #b5b5b5/.test(tab));
+
+  // TEMPLATE LITERAL ICHIDA TESKARI APOSTROF BO'LMASIN.
+  //
+  // Chop etish sahifasi butunlay template literal ichida yoziladi.
+  // Izohga teskari apostrof (backtick) qo'ysang, u satrni O'SHA
+  // YERDA uzadi va BUTUN BUILD yiqiladi. Aynan shunday bo'ldi:
+  // izohdagi ikkita apostrof tufayli `npm run build` sindi, testlar
+  // esa eski `dist` ga qarshi yashil qolaverdi.
+  {
+    const lit = tab.slice(tab.indexOf('w.document.write(`<!doctype html><html lang="uz"'));
+    const body = lit.slice(0, lit.indexOf('</html>`)'));
+    check('24) chop etish satrida ortiqcha apostrof yo‘q', (body.match(/`/g) || []).length, 1);
+  }
   // QR o'chirilmasin: NFC o'qimaydigan telefon ham bor.
   checkTrue('24) QR rasmi joyida', /<img src="\$\{url\}"/.test(print1));
   checkTrue('24) qo‘llanma bo‘lagi topildi', guide.length > 2000);
