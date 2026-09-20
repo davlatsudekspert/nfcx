@@ -50,6 +50,7 @@ const SUBTABS = [
   ['products', 'Mahsulotlar'],
   ['codes', 'Aktivatsiya kodlari'],
   ['batch', 'Batch yaratish'],
+  ['orders', 'Buyurtmalar (CSV)'],
 ];
 
 const labelOf = (pairs, id) => (pairs.find((p) => p[0] === id) || [id, id])[1];
@@ -93,6 +94,9 @@ export default function MarketplaceTab({ adminApi, isManager, apiErrText }) {
       {sub === 'batch' && (isManager
         ? <Batch adminApi={adminApi} t={t} products={(products || []).filter((p) => p.active)} apiErrText={apiErrText} />
         : <ForbiddenState hint={t('Kod yaratish faqat Manager va Super Admin uchun.')} />)}
+      {sub === 'orders' && (isManager
+        ? <Orders adminApi={adminApi} t={t} apiErrText={apiErrText} />
+        : <ForbiddenState hint={t('Buyurtmalarni bog‘lash faqat Manager va Super Admin uchun.')} />)}
     </div>
   );
 }
@@ -168,7 +172,7 @@ function Dashboard({ adminApi, t }) {
 
 // ── MAHSULOTLAR ──────────────────────────────────────────────────────
 function Products({ adminApi, t, isManager, products, err, reload, apiErrText }) {
-  const [form, setForm] = useState({ name: '', sku: '', marketplace: 'uzum', physicalType: 'nfc_sticker', includedTier: 'auto', price: '', description: '' });
+  const [form, setForm] = useState({ name: '', sku: '', externalSku: '', marketplace: 'uzum', physicalType: 'nfc_sticker', includedTier: 'auto', price: '', description: '' });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -177,7 +181,7 @@ function Products({ adminApi, t, isManager, products, err, reload, apiErrText })
     setBusy(true); setMsg(null);
     try {
       await adminApi('/marketplace/products', { method: 'POST', body: JSON.stringify({ ...form, price: form.price === '' ? null : Number(form.price) }) });
-      setForm({ name: '', sku: '', marketplace: 'uzum', physicalType: 'nfc_sticker', includedTier: 'auto', price: '', description: '' });
+      setForm({ name: '', sku: '', externalSku: '', marketplace: 'uzum', physicalType: 'nfc_sticker', includedTier: 'auto', price: '', description: '' });
       setMsg({ ok: true, text: t('Mahsulot qo‘shildi.') });
       await reload();
     } catch (e) {
@@ -190,6 +194,16 @@ function Products({ adminApi, t, isManager, products, err, reload, apiErrText })
     catch (e) { setMsg({ ok: false, text: apiErrText(e, t) }); }
   };
 
+  // Marketplace'ning O'Z SKU si e'lon joylangandan KEYIN ma'lum
+  // bo'ladi — shuning uchun uni keyin ham qo'yish/o'zgartirish
+  // mumkin. Bo'sh qoldirilsa — tozalanadi.
+  const setExternal = async (p) => {
+    const next = window.prompt(t('Marketplace SKU (bo‘sh qoldirilsa tozalanadi):'), p.externalSku || '');
+    if (next == null) return;
+    try { await adminApi(`/marketplace/products/${p.id}`, { method: 'PATCH', body: JSON.stringify({ externalSku: next.trim() }) }); await reload(); }
+    catch (e) { setMsg({ ok: false, text: apiErrText(e, t) }); }
+  };
+
   return (
     <div className="space-y-5">
       {isManager && (
@@ -199,7 +213,11 @@ function Products({ adminApi, t, isManager, products, err, reload, apiErrText })
           </p>
           <div className="mk-form">
             <label><span>{t('Nomi')}</span><input className="vz-input" value={form.name} onChange={set('name')} placeholder="NFC Smart Sticker" /></label>
-            <label><span>SKU</span><input className="vz-input font-mono uppercase" value={form.sku} onChange={set('sku')} placeholder="UZ-NFC-STICKER" /></label>
+            <label><span>{t('SKU (ichki)')}</span><input className="vz-input font-mono uppercase" value={form.sku} onChange={set('sku')} placeholder="UZ-NFC-STICKER" /></label>
+            {/* Marketplace'ning O'Z SKU si — e'lon joylangandan KEYIN
+                ma'lum bo'ladi, shuning uchun bo'sh qoldirsa ham
+                bo'ladi va keyin qo'shiladi. */}
+            <label><span>{t('Marketplace SKU (ixtiyoriy)')}</span><input className="vz-input font-mono uppercase" value={form.externalSku} onChange={set('externalSku')} placeholder="UZUM-777001" /></label>
             <label><span>{t('Marketplace')}</span>
               <select className="vz-input" value={form.marketplace} onChange={set('marketplace')}>
                 {MARKETPLACES.map(([id, label]) => <option key={id} value={id}>{t(label)}</option>)}
@@ -232,17 +250,25 @@ function Products({ adminApi, t, isManager, products, err, reload, apiErrText })
           <AdminCard title={t('Mahsulotlar')} pad={false}>
             <div className="overflow-x-auto">
               <table className="table table-sm">
-                <thead><tr><th>SKU</th><th>{t('Nomi')}</th><th>{t('Marketplace')}</th><th>{t('Turi')}</th><th>{t('Tarif')}</th><th>{t('Holat')}</th>{isManager && <th />}</tr></thead>
+                <thead><tr><th>SKU</th><th>{t('Marketplace SKU')}</th><th>{t('Nomi')}</th><th>{t('Marketplace')}</th><th>{t('Turi')}</th><th>{t('Tarif')}</th><th>{t('Holat')}</th>{isManager && <th />}</tr></thead>
                 <tbody>
                   {products.map((p) => (
                     <tr key={p.id}>
                       <td className="font-mono text-xs font-bold">{p.sku}</td>
+                      <td className="font-mono text-xs">{p.externalSku || '—'}</td>
                       <td className="text-xs">{p.name}</td>
                       <td className="text-xs">{t(labelOf(MARKETPLACES, p.marketplace))}</td>
                       <td className="text-xs">{t(labelOf(PHYSICAL_TYPES, p.physicalType))}</td>
                       <td className="text-xs uppercase">{p.includedTier}</td>
                       <td><StatusBadge tone={p.active ? 'success' : 'muted'}>{p.active ? t('Faol') : t('Nofaol')}</StatusBadge></td>
-                      {isManager && <td><button type="button" className="btn btn-xs" onClick={() => toggle(p)}>{p.active ? t('O‘chirish') : t('Yoqish')}</button></td>}
+                      {isManager && (
+                        <td>
+                          <div className="mk-row-actions">
+                            <button type="button" className="btn btn-xs" onClick={() => toggle(p)}>{p.active ? t('O‘chirish') : t('Yoqish')}</button>
+                            <button type="button" className="btn btn-xs" onClick={() => setExternal(p)}>{t('Marketplace SKU')}</button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -530,6 +556,134 @@ function Codes({ adminApi, t, isManager, products, apiErrText }) {
             </div>
           </AdminCard>
         )}
+    </div>
+  );
+}
+
+// ── MARKETPLACE BUYURTMALARI (CSV) ───────────────────────────────────
+//
+// Uzum'ning API si hali yo'q. Bog'lanish QO'LDA boshlanadi: omborchi
+// qaysi kodni qaysi buyurtmaga solganini yozib boradi, o'sha ro'yxat
+// shu yerga tushadi.
+//
+// CSV BRAUZERDA o'qiladi va qatorlar sifatida yuboriladi — fayl
+// serverga YUKLANMAYDI. Shunda har satr uchun aniq natija qaytariladi
+// va nima bog'lanmagani ko'rinib turadi.
+function Orders({ adminApi, t, apiErrText }) {
+  const [rows, setRows] = useState([]);
+  const [fileName, setFileName] = useState('');
+  const [parseErr, setParseErr] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState(null);
+  const [err, setErr] = useState('');
+
+  // Oddiy CSV o'quvchi: qo'shtirnoq ichidagi vergul va ikkilangan
+  // qo'shtirnoqni tushunadi. Excel shu formatda saqlaydi.
+  const parseCsv = (text) => {
+    const out = [];
+    let row = [];
+    let cell = '';
+    let quoted = false;
+    const push = () => { row.push(cell); cell = ''; };
+    const endRow = () => { push(); if (row.some((c) => c.trim() !== '')) out.push(row); row = []; };
+    for (let i = 0; i < text.length; i += 1) {
+      const ch = text[i];
+      if (quoted) {
+        if (ch === '"' && text[i + 1] === '"') { cell += '"'; i += 1; }
+        else if (ch === '"') quoted = false;
+        else cell += ch;
+      } else if (ch === '"') quoted = true;
+      else if (ch === ',' || ch === ';' || ch === '\t') push();
+      else if (ch === '\n') endRow();
+      else if (ch !== '\r') cell += ch;
+    }
+    endRow();
+    return out;
+  };
+
+  const onFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setParseErr(''); setResult(null); setErr(''); setFileName(file.name);
+    // BOM ni olib tashlaymiz — Excel saqlagan faylda u birinchi
+    // ustun nomiga yopishib, sarlavha topilmay qolardi.
+    const text = (await file.text()).replace(/^\uFEFF/, '');
+    const table = parseCsv(text);
+    if (!table.length) { setParseErr(t('Fayl bo‘sh.')); setRows([]); return; }
+    const head = table[0].map((h) => h.trim().toLowerCase());
+    const idx = (...names) => head.findIndex((h) => names.includes(h));
+    const iCode = idx('code', 'kod', 'activation_code');
+    const iOrder = idx('marketplace_order_id', 'order_id', 'order', 'buyurtma');
+    const iRef = idx('customer_reference', 'customer', 'mijoz');
+    // `sku` IXTIYORIY. Bo'lsa — kodning haqiqiy mahsuloti bilan
+    // solishtiriladi va mos kelmasa satr bog'lanmaydi: bu
+    // "konvertga boshqa mahsulotning kodi solingan" degani.
+    const iSku = idx('sku', 'product_sku', 'marketplace_sku');
+    if (iCode < 0 || iOrder < 0) {
+      setParseErr(t('Sarlavhada "code" va "marketplace_order_id" ustunlari bo‘lishi kerak.'));
+      setRows([]);
+      return;
+    }
+    const parsed = table.slice(1).map((r) => ({
+      code: (r[iCode] || '').trim(),
+      marketplaceOrderId: (r[iOrder] || '').trim(),
+      customerReference: iRef >= 0 ? (r[iRef] || '').trim() : '',
+      sku: iSku >= 0 ? (r[iSku] || '').trim() : '',
+    })).filter((r) => r.code || r.marketplaceOrderId);
+    setRows(parsed);
+  };
+
+  const send = async () => {
+    setBusy(true); setErr(''); setResult(null);
+    try { setResult(await adminApi('/marketplace/orders/import', { method: 'POST', body: JSON.stringify({ rows }) })); }
+    catch (e) { setErr(apiErrText(e, t)); } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <AdminCard title={t('Buyurtmalarni CSV dan bog‘lash')}>
+        <p className="mk-hint">
+          {t('Ustunlar: code, marketplace_order_id va (ixtiyoriy) customer_reference, sku. Batch yaratilganda yuklab olingan CSV ga buyurtma raqamini qo‘shib, shu yerga yuklang. `sku` berilsa, u kodning haqiqiy mahsuloti bilan solishtiriladi.')}
+        </p>
+        <input type="file" accept=".csv,text/csv" className="vz-input" onChange={onFile} aria-label={t('CSV fayl')} />
+        {fileName && <p className="mk-hint mt-2">{fileName} — {t('{n} ta qator', { n: rows.length })}</p>}
+        {parseErr && <div role="alert" className="alert alert-error mt-3 py-2 text-xs"><span>{parseErr}</span></div>}
+        <button className="btn btn-gold mt-3 w-full sm:w-auto" disabled={busy || rows.length === 0} onClick={send}>
+          {busy ? <span className="loading loading-spinner loading-xs" /> : t('Bog‘lash')}
+        </button>
+        {err && <div role="alert" className="alert alert-error mt-3 py-2 text-xs"><span>{err}</span></div>}
+      </AdminCard>
+
+      {result && (
+        <AdminCard title={t('Natija')}>
+          <div className="mk-kpis">
+            <KpiCard icon="check" label={t('Bog‘landi')} value={result.linked} tone="success" />
+            <KpiCard icon="clipboard" label={t('Jami qator')} value={result.total} />
+            <KpiCard icon="alert" label={t('Muammoli')} value={(result.problems || []).length} tone={result.problems?.length ? 'danger' : 'muted'} />
+          </div>
+          {(result.problems || []).length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="table table-sm">
+                <thead><tr><th>{t('Satr')}</th><th>{t('Kod')}</th><th>{t('Sabab')}</th></tr></thead>
+                <tbody>
+                  {result.problems.map((p) => (
+                    <tr key={`${p.line}-${p.code}`}>
+                      <td>{p.line}</td>
+                      <td className="font-mono text-xs">{p.code || '—'}</td>
+                      <td className="text-xs">
+                        {p.reason === 'not_found' ? t('Bunday kod topilmadi')
+                          : p.reason === 'bad_code' ? t('Kod formati noto‘g‘ri')
+                          : p.reason === 'sku_mismatch' ? t('SKU mos kelmadi — konvertda boshqa mahsulotning kodi')
+                          : t('Buyurtma raqami yo‘q')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </AdminCard>
+      )}
     </div>
   );
 }

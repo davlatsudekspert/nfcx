@@ -125,6 +125,10 @@ export async function ensureMarketplaceTables(env) {
 
 async function prepareMarketplaceTables(env) {
   await env.DB.batch([
+    // `external_sku` — MARKETPLACE'NING O'Z SKU SI (Uzum offer id va
+    // h.k.). Bizning `sku` ichki nom; marketplace o'z raqamini beradi
+    // va buyurtma fayllari AYNAN o'shani olib keladi. Ikkalasi bitta
+    // qatorda turgani uchun mos kelmaslikni darhol tutib olish mumkin.
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS marketplace_products (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -132,6 +136,7 @@ async function prepareMarketplaceTables(env) {
       marketplace TEXT NOT NULL DEFAULT 'uzum',
       physical_type TEXT NOT NULL DEFAULT 'nfc_card',
       included_tier TEXT NOT NULL DEFAULT 'auto',
+      external_sku TEXT,
       price INTEGER,
       description TEXT,
       active INTEGER NOT NULL DEFAULT 1,
@@ -173,12 +178,17 @@ async function prepareMarketplaceTables(env) {
   // device" jadvali YARATILMADI.
   await env.DB.prepare(`ALTER TABLE physical_cards ADD COLUMN linked_company_id TEXT`).run()
     .catch(() => { /* ustun allaqachon bor */ });
+  // Oldin yaratilgan jadvalga ustun qo'shish (CREATE TABLE IF NOT
+  // EXISTS mavjud jadvalni O'ZGARTIRMAYDI).
+  await env.DB.prepare(`ALTER TABLE marketplace_products ADD COLUMN external_sku TEXT`).run()
+    .catch(() => { /* ustun allaqachon bor */ });
 }
 
 function productOut(r) {
   return {
     id: Number(r.id), name: r.name, sku: r.sku, marketplace: r.marketplace,
     physicalType: r.physical_type, includedTier: r.included_tier,
+    externalSku: r.external_sku || '',
     price: r.price == null ? null : Number(r.price),
     description: r.description || '', active: !!r.active, createdAt: r.created_at,
   };
@@ -269,6 +279,27 @@ async function isRateLimited(env, H, request, suffix) {
   return H.rateLimitD1(env, `mkt:${suffix}:${ip}`, RATE_LIMITS[suffix] || 20, 10 * 60 * 1000);
 }
 
+// ═════════════════════════════════════════════════════════════════════
+// KELAJAKDAGI MARKETPLACE API SI QAYERGA ULANADI
+//
+// Uzum'ning Seller API si hozir BIZDA YO'Q va u ishga tushirishga
+// TO'SIQ EMAS: buyurtmalar qo'lda va CSV orqali bog'lanadi.
+//
+// API (yoki webhook) berilganda UNING UCHUN ALOHIDA AKTIVATSIYA
+// TIZIMI YOZILMAYDI. U shu modulga ADAPTER bo'lib ulanadi va bor-yo'g'i
+// bitta ishni bajaradi: marketplace javobini quyidagi shaklga
+// aylantiradi —
+//
+//   { code | sku, marketplaceOrderId, customerReference?, soldAt? }
+//
+// va `POST /api/admin/marketplace/orders/import` ga (yoki uning
+// ichidagi o'sha halqaga) beradi. Undan keyingi hamma narsa —
+// SKU mosligi, holat o'zgarishi, audit — O'ZGARMAYDI.
+//
+// Shuning uchun import ataylab FAYL emas, QATORLAR qabul qiladi:
+// qatorlar CSV dan ham, API javobidan ham bir xil keladi.
+// ═════════════════════════════════════════════════════════════════════
+
 export async function handle(request, env, url, H) {
   const path = url.pathname;
   const method = request.method;
@@ -350,12 +381,16 @@ export async function handle(request, env, url, H) {
       // 'auto' — mavjud bepul ID bilan AYNAN bir xil. Boshqa qiymat
       // sovg'a oqimi ishlatadigan `tier_override` ustuniga yoziladi.
       const includedTier = ['auto', 'free', 'standard', 'premium', 'exclusive'].includes(body.includedTier) ? body.includedTier : 'auto';
+      // Marketplace'ning O'Z SKU si — ixtiyoriy. Uzum'da raqam,
+      // boshqalarda harf-raqam bo'lishi mumkin, shuning uchun
+      // shakl TALAB QILINMAYDI, faqat uzunligi cheklanadi.
+      const externalSku = H.shortText(body.externalSku, 80).toUpperCase();
       const price = body.price == null || body.price === '' ? null : Math.max(0, Math.round(Number(body.price)) || 0);
       try {
         const row = await env.DB.prepare(
-          `INSERT INTO marketplace_products (name, sku, marketplace, physical_type, included_tier, price, description, active, created_at)
-           VALUES (?,?,?,?,?,?,?,?,?) RETURNING *`
-        ).bind(name, sku, marketplace, physicalType, includedTier, price, H.shortText(body.description, 600), body.active === false ? 0 : 1, H.nowTs()).first();
+          `INSERT INTO marketplace_products (name, sku, marketplace, physical_type, included_tier, external_sku, price, description, active, created_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING *`
+        ).bind(name, sku, marketplace, physicalType, includedTier, externalSku || null, price, H.shortText(body.description, 600), body.active === false ? 0 : 1, H.nowTs()).first();
         await H.logAdminActivity(env, { action: 'marketplace_product_created', details: `${sku} — ${name}`, ip });
         return H.json({ product: productOut(row) }, 201);
       } catch (err) {
@@ -368,10 +403,24 @@ export async function handle(request, env, url, H) {
       const body = await readJson();
       const id = Number(prodMatch[1]);
       const active = body.active === true ? 1 : body.active === false ? 0 : null;
-      if (active == null) return H.json({ error: 'nothing_to_update' }, 422);
-      const row = await env.DB.prepare(`UPDATE marketplace_products SET active = ? WHERE id = ? RETURNING *`).bind(active, id).first();
+      // `externalSku` mahsulot YARATILGANDA hali noma'lum bo'ladi —
+      // u marketplace'da e'lon joylangandan keyin beriladi. Shuning
+      // uchun keyin ham qo'yish mumkin. Bo'sh satr — tozalash.
+      const hasSku = typeof body.externalSku === 'string';
+      const externalSku = hasSku ? H.shortText(body.externalSku, 80).toUpperCase() : null;
+      if (active == null && !hasSku) return H.json({ error: 'nothing_to_update' }, 422);
+      const row = await env.DB.prepare(
+        `UPDATE marketplace_products
+            SET active = COALESCE(?, active),
+                external_sku = CASE WHEN ? THEN ? ELSE external_sku END
+          WHERE id = ? RETURNING *`
+      ).bind(active, hasSku ? 1 : 0, externalSku || null, id).first();
       if (!row) return H.json({ error: 'not_found' }, 404);
-      await H.logAdminActivity(env, { action: 'marketplace_product_updated', details: `${row.sku} active=${active}`, ip });
+      await H.logAdminActivity(env, {
+        action: 'marketplace_product_updated',
+        details: `${row.sku}${active == null ? '' : ` active=${active}`}${hasSku ? ` external=${externalSku || '—'}` : ''}`,
+        ip,
+      });
       return H.json({ product: productOut(row) });
     }
 
@@ -472,6 +521,80 @@ export async function handle(request, env, url, H) {
         byMarketplace: (byMarketplace.results || []).map((r) => ({ marketplace: r.k || 'other', count: Number(r.n) })),
         byProduct: (byProduct.results || []).map((r) => ({ sku: r.k || '', name: r.name || '', count: Number(r.n), activated: Number(r.activated || 0) })),
       });
+    }
+
+    // ── MARKETPLACE BUYURTMALARINI CSV DAN BOG'LASH ───────────────
+    //
+    // Uzum'ning API si hali yo'q, shuning uchun bog'lanish QO'LDA
+    // boshlanadi: omborchi qaysi kodni qaysi buyurtmaga solganini
+    // yozib boradi va o'sha ro'yxat shu yerga keladi.
+    //
+    // Kod XESH bo'yicha topiladi — bazada ochiq kod yo'q. Ya'ni
+    // import uchun TO'LIQ kod kerak (batch yaratilganda beriladigan
+    // CSV da bor).
+    //
+    // Fayl EMAS, tayyor qatorlar keladi: CSV ni brauzer o'qiydi va
+    // shu yerga yuboradi. Sabab — fayl yuklash uchun alohida yo'l
+    // ochish kerak bo'lardi va u xatolarni yashirardi; qatorlar
+    // bilan har satr uchun ANIQ natija qaytariladi.
+    if (path === '/api/admin/marketplace/orders/import' && method === 'POST') {
+      const body = await readJson();
+      const rows = Array.isArray(body.rows) ? body.rows.slice(0, 2000) : [];
+      if (!rows.length) return H.json({ error: 'no_rows' }, 422);
+      const now = H.nowTs();
+      let linked = 0;
+      const problems = [];
+      for (let i = 0; i < rows.length; i += 1) {
+        const r = rows[i] || {};
+        const normalized = normalizeActivationCode(r.code);
+        const orderId = H.shortText(r.marketplaceOrderId, 80);
+        if (!normalized) { problems.push({ line: i + 1, code: String(r.code || '').slice(0, 20), reason: 'bad_code' }); continue; }
+        if (!orderId) { problems.push({ line: i + 1, code: formatActivationCode(normalized), reason: 'order_required' }); continue; }
+        const hash = await activationCodeHash(H, normalized);
+
+        // SKU MOSLIGI — OMBORDAGI XATONI TUTADI.
+        //
+        // Fayldagi satr o'z SKU sini olib kelsa (bizning ichki SKU
+        // yoki marketplace'ning o'z SKU si), u kodning HAQIQIY
+        // mahsuloti bilan solishtiriladi. Mos kelmasa — bog'lanmaydi
+        // va satr muammo sifatida qaytadi.
+        //
+        // Nima uchun MUHIM: bu "konvertga boshqa mahsulotning kodi
+        // solingan" degani. Jimgina bog'lab qo'ysak, xaridor stiker
+        // buyurtma qilib karta oladi va hisobotlar ham noto'g'ri
+        // bo'lardi.
+        const wantSku = H.shortText(r.sku, 80).toUpperCase();
+        if (wantSku) {
+          const owner = await env.DB.prepare(
+            `SELECT p.sku, p.external_sku AS ext FROM marketplace_activations a
+               LEFT JOIN marketplace_products p ON p.id = a.product_id
+              WHERE a.code_hash = ?`
+          ).bind(hash).first().catch(() => null);
+          if (owner && String(owner.sku || '').toUpperCase() !== wantSku && String(owner.ext || '').toUpperCase() !== wantSku) {
+            problems.push({ line: i + 1, code: formatActivationCode(normalized), reason: 'sku_mismatch' });
+            continue;
+          }
+        }
+
+        // FAOLLASHTIRILGAN kodga tegilmaydi: odam allaqachon
+        // ishlatgan bo'lsa, buyurtma raqami uni o'zgartirmasligi
+        // kerak. Buyurtma ma'lumoti esa baribir yoziladi.
+        const row = await env.DB.prepare(
+          `UPDATE marketplace_activations
+              SET marketplace_order_id = ?, customer_reference = COALESCE(?, customer_reference),
+                  sold_at = COALESCE(sold_at, ?),
+                  status = CASE WHEN status IN ('new','exported') THEN 'sold' ELSE status END
+            WHERE code_hash = ? RETURNING id, code_tail, status`
+        ).bind(orderId, H.shortText(r.customerReference, 80) || null, now, hash).first().catch(() => null);
+        if (!row) { problems.push({ line: i + 1, code: formatActivationCode(normalized), reason: 'not_found' }); continue; }
+        linked += 1;
+      }
+      await H.logAdminActivity(env, {
+        action: 'marketplace_orders_imported',
+        details: `${linked}/${rows.length}`,
+        ip,
+      });
+      return H.json({ linked, total: rows.length, problems: problems.slice(0, 100) });
     }
 
     // ── HOLAT O'ZGARTIRISH ────────────────────────────────────────

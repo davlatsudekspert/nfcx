@@ -309,9 +309,19 @@ async function makeCodes(env, productId, quantity = 1) {
   checkTrue('8) bitta egasi bor', act.uid != null);
 
   // Yutqazgan tomondan ORFAN karta qolmasin.
-  const loserId = Number(act.uid) === 1 ? 2 : 1;
-  const loserCards = await env.DB.prepare(`SELECT COUNT(*) AS n FROM cards WHERE user_id = ? AND source = 'marketplace_activation'`).bind(loserId).first();
-  check('8) yutqazganda ORFAN ID qolmadi', Number(loserCards.n), 0);
+  //
+  // ORFAN = hech qaysi aktivatsiyaga bog'lanmagan marketplace ID.
+  // Ilgari bu yerda "yutqazgan foydalanuvchining marketplace
+  // kartalari soni" sanalardi va test QALTIS edi: baza umumiy,
+  // oldingi bo'limlar 1-foydalanuvchiga karta yaratgan, g'olib esa
+  // tasodifiy — 1-foydalanuvchi yutqazsa test o'z-o'zidan yiqilardi.
+  // Qaltis qo'riqchi yo'qidan yomon: u odamni "yana bir marta
+  // ishga tushir" deb o'rgatadi.
+  const orphan = await env.DB.prepare(
+    `SELECT COUNT(*) AS n FROM cards WHERE source = 'marketplace_activation'
+      AND code NOT IN (SELECT COALESCE(activated_profile_code,'') FROM marketplace_activations)`
+  ).first();
+  check('8) yutqazganda ORFAN ID qolmadi', Number(orphan.n), 0);
 }
 
 // ── 8b) HAQIQIY POYGA — QO'LDA ARALASHTIRILGAN ───────────────────────
@@ -715,7 +725,318 @@ function gatedEnv(env, sqlNeedle) {
 
   // `?tab=` chuqur havolasi — izohda VA'DA qilingan edi, endi rost.
   checkTrue('16) ?tab= chuqur havolasi ishlaydi', /new URLSearchParams\(window\.location\.search\)\.get\('tab'\)/.test(admin));
+
+  // CSV BRAUZERDA o'qiladi — fayl serverga YUKLANMAYDI. Shunda har
+  // satr uchun aniq natija qaytariladi.
+  checkTrue('16) CSV brauzerda o‘qiladi', /await file\.text\(\)/.test(tab));
+  checkTrue('16) fayl serverga yuborilmaydi', !/FormData|multipart/.test(tab));
+  // Excel saqlagan faylda BOM birinchi ustun nomiga yopishadi.
+  checkTrue('16) BOM olib tashlanadi', /replace\(\/\^\\uFEFF\/, ''\)/.test(tab));
+  checkTrue('16) sarlavha ustunlari tekshiriladi', /iCode < 0 \|\| iOrder < 0/.test(tab));
   checkTrue('16) noto‘g‘ri tab raqami rad etiladi', /n >= 0 && n < TABS\.length \? n : 0/.test(admin));
+}
+
+// ── 17) XAVFSIZLIK AUDITI ────────────────────────────────────────────
+// Talabdagi ro'yxat bo'yicha, har biri alohida. Bu bo'lim HAQIQIY
+// so'rovlar yuboradi — manba matnini o'qish bilan cheklanmaydi.
+{
+  const env = await setup();
+  const product = await makeProduct(env);
+  const codes = (await makeCodes(env, product.id, 6)).codes;
+
+  // ── BRUTE-FORCE / ENUMERATSIYA ─────────────────────────────────────
+  // Chegara IP bo'yicha. 20 urinishdan keyin 429.
+  {
+    const ip = '198.18.0.1';
+    let blockedAt = 0;
+    for (let i = 1; i <= 30; i += 1) {
+      const r = await worker.fetch(req('/api/activate/check', { method: 'POST', ip, json: { code: `NF-AAAA-${String(i).padStart(4, '2')}` } }), env, { waitUntil() {} });
+      if (r.status === 429) { blockedAt = i; break; }
+    }
+    checkTrue('17) brute-force to‘xtatiladi', blockedAt > 0 && blockedAt <= 22, `${blockedAt}-urinishda`);
+  }
+
+  // Mavjud VA mavjud bo'lmagan kod uchun javob ENUMERATSIYAGA yordam
+  // bermasin: ikkalasi ham "bad_code", faqat HTTP holati farq qiladi
+  // (404 — topilmadi). Muhimi, javobda mahsulot/egasi haqida hech
+  // narsa chiqmaydi.
+  {
+    const ip = '198.18.0.2';
+    const miss = await worker.fetch(req('/api/activate/check', { method: 'POST', ip, json: { code: 'NF-ZZZZ-ZZZZ' } }), env, { waitUntil() {} });
+    const body = await miss.json();
+    check('17) yo‘q kod javobi quruq', Object.keys(body).join(','), 'error');
+    check('17) sabab umumiy', body.error, 'bad_code');
+  }
+
+  // ── IDOR: BEGONA PROFIL / KOMPANIYA / QURILMA ──────────────────────
+  {
+    const ip = '198.18.0.3';
+    // Begona shaxsiy profil.
+    const r1 = await worker.fetch(req('/api/activate', { method: 'POST', ip, cookie: cookie.user, json: { code: codes[0].code, profileKind: 'personal', profileCode: 'OTH222' } }), env, { waitUntil() {} });
+    check('17) IDOR: begona profil rad etildi', r1.status, 403);
+
+    // Begona QURILMA tashqaridan berilmaydi — `body` dagi qurilma
+    // maydonlari UMUMAN o'qilmaydi.
+    const dev = await env.DB.prepare(`INSERT INTO physical_cards (chip_token, linked_code, owner_user_id) VALUES ('FOREIGNTOKEN', NULL, 2) RETURNING id`).first();
+    const r2 = await worker.fetch(req('/api/activate', { method: 'POST', ip, cookie: cookie.user, json: { code: codes[0].code, profileKind: 'personal', deviceId: dev.id, physicalDeviceId: dev.id, chipToken: 'FOREIGNTOKEN' } }), env, { waitUntil() {} });
+    check('17) begona qurilma bilan ham aktivatsiya o‘tdi (qurilma E’TIBORSIZ)', r2.status, 201);
+    const untouched = await env.DB.prepare(`SELECT owner_user_id AS uid, linked_code AS code FROM physical_cards WHERE id = ?`).bind(dev.id).first();
+    check('17) BEGONA qurilma egasi o‘zgarmadi', Number(untouched.uid), 2);
+    check('17) begona qurilma bog‘lanmadi', untouched.code, null);
+  }
+
+  // ── QAYTA YUBORISH (REPLAY) ────────────────────────────────────────
+  // Bir marta ishlagan kod ikkinchi odam uchun ishlamaydi.
+  {
+    const ip = '198.18.0.4';
+    const replay = await worker.fetch(req('/api/activate', { method: 'POST', ip, cookie: cookie.other, json: { code: codes[0].code, profileKind: 'personal' } }), env, { waitUntil() {} });
+    check('17) replay: boshqa odam uchun ishlamaydi', replay.status, 409);
+    check('17) replay sababi aniq', (await replay.json()).error, 'already_activated');
+  }
+
+  // ── ADMIN ENDPOINTLARI HIMOYALANGAN ────────────────────────────────
+  {
+    const ip = '198.18.0.5';
+    const paths = [
+      ['/api/admin/marketplace/products', 'GET'],
+      ['/api/admin/marketplace/products', 'POST'],
+      ['/api/admin/marketplace/batch', 'POST'],
+      ['/api/admin/marketplace/activations', 'GET'],
+      ['/api/admin/marketplace/stats', 'GET'],
+      ['/api/admin/marketplace/activations/1/block', 'POST'],
+    ];
+    for (const [path, method] of paths) {
+      // Mehmon.
+      const guest = await worker.fetch(req(path, { method, ip, json: method === 'POST' ? {} : undefined }), env, { waitUntil() {} });
+      check(`17) ${method} ${path} — mehmon 401`, guest.status, 401);
+      // ODDIY FOYDALANUVCHI sessiyasi bilan ham YO'Q.
+      const asUser = await worker.fetch(req(path, { method, ip, cookie: cookie.user, json: method === 'POST' ? {} : undefined }), env, { waitUntil() {} });
+      check(`17) ${method} ${path} — oddiy user 401`, asUser.status, 401);
+    }
+  }
+
+  // ── SQL INJEKSIYA ──────────────────────────────────────────────────
+  // Qidiruv va kod maydonlari to'g'ridan-to'g'ri SQL ga tushmaydi.
+  {
+    const ip = '198.18.0.6';
+    const evil = "' OR 1=1 --";
+    const r = await worker.fetch(req(`/api/admin/marketplace/activations?search=${encodeURIComponent(evil)}`, { ip, cookie: cookie.admin }), env, { waitUntil() {} });
+    check('17) SQL injeksiya: so‘rov yiqilmadi', r.status, 200);
+    const found = (await r.json()).activations;
+    check('17) SQL injeksiya: hech narsa qaytmadi', found.length, 0);
+    const still = await env.DB.prepare(`SELECT COUNT(*) AS n FROM marketplace_activations`).first();
+    checkTrue('17) SQL injeksiya: yozuvlar joyida', Number(still.n) > 0);
+
+    const r2 = await worker.fetch(req('/api/activate/check', { method: 'POST', ip, json: { code: evil } }), env, { waitUntil() {} });
+    check('17) kod maydonida injeksiya rad etiladi', r2.status, 422);
+  }
+
+  // ── LOG SIZIB CHIQISHI ─────────────────────────────────────────────
+  // Audit logda TO'LIQ kod BO'LMASLIGI shart.
+  {
+    const logs = await env.DB.prepare(`SELECT action, details, old_value, new_value FROM admin_activity_log WHERE action LIKE 'marketplace%'`).all();
+    checkTrue('17) marketplace audit yozuvlari bor', logs.results.length > 0);
+    const allText = JSON.stringify(logs.results);
+    const leaked = codes.filter((c) => allText.includes(c.code));
+    check('17) auditda to‘liq kod YO‘Q', leaked.length, 0);
+    checkTrue('17) auditda maskalangan ko‘rinish bor', /\*\*\*\*-/.test(allText));
+    // Parol/xesh ham tushmasin.
+    checkTrue('17) auditda kod xeshi ham yo‘q', !/[0-9a-f]{64}/.test(allText));
+  }
+
+  // ── JAVOBDA SIR QAYTMAYDI ──────────────────────────────────────────
+  {
+    const ip = '198.18.0.7';
+    const list = await (await worker.fetch(req('/api/admin/marketplace/activations?limit=500', { ip, cookie: cookie.admin }), env, { waitUntil() {} })).json();
+    const text = JSON.stringify(list);
+    checkTrue('17) javobda kod xeshi yo‘q', !/[0-9a-f]{64}/.test(text));
+    checkTrue('17) javobda "code_hash" maydoni yo‘q', !text.includes('code_hash'));
+    checkTrue('17) javobda to‘liq chip token yo‘q', !text.includes('FOREIGNTOKEN'));
+    for (const row of list.activations) {
+      checkTrue('17) har qatorda faqat maskalangan kod', /^\*\*\*\*-[A-Z2-9]{4}$/.test(row.codeMasked) && row.code === undefined);
+      break;
+    }
+  }
+
+  // ── MUDDATI O'TGAN KOD ─────────────────────────────────────────────
+  {
+    const ip = '198.18.0.8';
+    await env.DB.prepare(`UPDATE marketplace_activations SET expires_at = ? WHERE code_tail = ?`)
+      .bind('2020-01-01T00:00:00.000Z', codes[1].code.slice(-4)).run();
+    const r = await worker.fetch(req('/api/activate', { method: 'POST', ip, cookie: cookie.user, json: { code: codes[1].code, profileKind: 'personal' } }), env, { waitUntil() {} });
+    check('17) muddati o‘tgan kod rad etiladi', r.status, 409);
+    check('17) sababi aniq', (await r.json()).error, 'code_expired');
+    // Tekshiruv bosqichida ham.
+    const c = await worker.fetch(req('/api/activate/check', { method: 'POST', ip, json: { code: codes[1].code } }), env, { waitUntil() {} });
+    check('17) tekshiruvda ham muddat ko‘rsatiladi', (await c.json()).error, 'code_expired');
+  }
+
+  // ── KOD URL'DA TASHILMAYDI ─────────────────────────────────────────
+  // GET orqali kod yuborib bo'lmasligi: bunday marshrut YO'Q.
+  {
+    const ip = '198.18.0.9';
+    const g1 = await worker.fetch(req(`/api/activate?code=${codes[2].code}`, { ip, cookie: cookie.user }), env, { waitUntil() {} });
+    checkTrue('17) GET /api/activate?code= ishlamaydi', g1.status === 404 || g1.status === 405, `${g1.status}`);
+    const g2 = await worker.fetch(req(`/api/activate/${codes[2].code}`, { ip, cookie: cookie.user }), env, { waitUntil() {} });
+    checkTrue('17) GET /api/activate/<kod> ishlamaydi', g2.status === 404 || g2.status === 405, `${g2.status}`);
+    // Kod HAMON ishlatilmagan.
+    const st = await rowOfCode(env, codes[2].code, 'status');
+    check('17) urinishlar kodni sarflamadi', st.status, 'new');
+  }
+}
+
+// ── 18) CSV DAN BUYURTMALARNI BOG'LASH ───────────────────────────────
+// Uzum API si hali yo'q: omborchi qaysi kodni qaysi buyurtmaga
+// solganini yozib boradi va o'sha ro'yxat import qilinadi.
+{
+  const env = await setup();
+  const product = await makeProduct(env);
+  const codes = (await makeCodes(env, product.id, 4)).codes;
+
+  // Bittasini oldindan faollashtiramiz — import uni BUZMASLIGI kerak.
+  await call(env, '/api/activate', { method: 'POST', cookie: cookie.user, json: { code: codes[3].code, profileKind: 'personal' } });
+
+  const res = await call(env, '/api/admin/marketplace/orders/import', {
+    method: 'POST', cookie: cookie.admin,
+    json: {
+      rows: [
+        { code: codes[0].code, marketplaceOrderId: 'UZUM-1001', customerReference: 'Ali' },
+        // Kichik harf va chiziqchasiz — normalizatsiya ishlashi kerak.
+        { code: codes[1].code.toLowerCase().replace(/-/g, ''), marketplaceOrderId: 'UZUM-1002' },
+        { code: 'NF-ZZZZ-ZZZZ', marketplaceOrderId: 'UZUM-1003' },   // yo'q kod
+        { code: 'salom', marketplaceOrderId: 'UZUM-1004' },          // buzuq
+        { code: codes[2].code, marketplaceOrderId: '' },             // buyurtmasiz
+        { code: codes[3].code, marketplaceOrderId: 'UZUM-1005' },    // faollashtirilgan
+      ],
+    },
+  });
+  check('18) import ishladi', res.status, 200);
+  const out = await jsonOf(res);
+  check('18) 3 ta bog‘landi', out.linked, 3);
+  check('18) 6 qator kelgan', out.total, 6);
+  check('18) 3 ta muammo qaytdi', out.problems.length, 3);
+  const reasons = out.problems.map((p) => p.reason).sort();
+  check('18) sabablar aniq', reasons.join(','), 'bad_code,not_found,order_required');
+  // Qaysi SATRDA ekani ham aytiladi — 2000 qatorli faylda bu shart.
+  checkTrue('18) satr raqami bor', out.problems.every((p) => Number.isInteger(p.line) && p.line > 0));
+
+  const r0 = await rowOfCode(env, codes[0].code, 'marketplace_order_id AS o, customer_reference AS c, status, sold_at AS s');
+  check('18) buyurtma yozildi', r0.o, 'UZUM-1001');
+  check('18) mijoz havolasi yozildi', r0.c, 'Ali');
+  check('18) holat "sotilgan"', r0.status, 'sold');
+  checkTrue('18) sotilgan sana qo‘yildi', !!r0.s);
+
+  const r1 = await rowOfCode(env, codes[1].code, 'marketplace_order_id AS o, status');
+  check('18) normalizatsiya ishladi', r1.o, 'UZUM-1002');
+
+  const r2 = await rowOfCode(env, codes[2].code, 'marketplace_order_id AS o, status');
+  check('18) buyurtmasiz qator tegmadi', r2.o, null);
+  check('18) uning holati o‘zgarmadi', r2.status, 'new');
+
+  // FAOLLASHTIRILGAN kod: buyurtma yoziladi, LEKIN holat buzilmaydi.
+  const r3 = await rowOfCode(env, codes[3].code, 'marketplace_order_id AS o, status, activated_profile_code AS p');
+  check('18) faollashgan kodga buyurtma yozildi', r3.o, 'UZUM-1005');
+  check('18) LEKIN holati "activated" qoldi', r3.status, 'activated');
+  checkTrue('18) profili joyida', !!r3.p);
+
+  // Bo'sh ro'yxat — aniq xato.
+  check('18) bo‘sh ro‘yxat rad etiladi', (await call(env, '/api/admin/marketplace/orders/import', { method: 'POST', cookie: cookie.admin, json: { rows: [] } })).status, 422);
+  // Faqat admin.
+  check('18) import mehmonga yopiq', (await call(env, '/api/admin/marketplace/orders/import', { method: 'POST', json: { rows: [{ code: 'x', marketplaceOrderId: 'y' }] } })).status, 401);
+  check('18) import oddiy userga yopiq', (await call(env, '/api/admin/marketplace/orders/import', { method: 'POST', cookie: cookie.user, json: { rows: [{ code: 'x', marketplaceOrderId: 'y' }] } })).status, 401);
+
+  // Audit.
+  const log = await env.DB.prepare(`SELECT details FROM admin_activity_log WHERE action = 'marketplace_orders_imported'`).first();
+  check('18) auditda natija bor', log.details, '3/6');
+  // Javobda to'liq kod FAQAT muammoli satrlarda (admin o'zi yuborgan).
+  checkTrue('18) javobda kod xeshi yo‘q', !/[0-9a-f]{64}/.test(JSON.stringify(out)));
+}
+
+// ── 19) SKU MAPPING VA ADAPTER TAYYORLIGI ────────────────────────────
+// Uzum API si hozir YO'Q va u ishga tushirishga to'siq emas. Bu
+// bo'lim API'siz oqim TO'LIQ ishlashini tekshiradi: SKU mapping,
+// qo'lda bog'lash, CSV import, SOLD/ACTIVATED holatlari.
+{
+  const env = await setup();
+
+  // ── MARKETPLACE'NING O'Z SKU SI ────────────────────────────────────
+  const p1 = await makeProduct(env, { sku: 'UZ-STICKER-A', externalSku: 'uzum-777001' });
+  check('19) tashqi SKU katta harfda saqlandi', p1.externalSku, 'UZUM-777001');
+  const p2 = await makeProduct(env, { sku: 'UZ-CARD-B' });
+  check('19) tashqi SKU ixtiyoriy', p2.externalSku, '');
+
+  // E'lon joylangandan KEYIN ham qo'yish mumkin.
+  const patched = await jsonOf(await call(env, `/api/admin/marketplace/products/${p2.id}`, {
+    method: 'PATCH', cookie: cookie.admin, json: { externalSku: 'uzum-777002' },
+  }));
+  check('19) keyin ham qo‘yiladi', patched.product.externalSku, 'UZUM-777002');
+  check('19) faollik o‘zgarmadi', patched.product.active, true);
+  // Faollik alohida ham ishlayveradi (eski xulq buzilmadi).
+  const off = await jsonOf(await call(env, `/api/admin/marketplace/products/${p2.id}`, {
+    method: 'PATCH', cookie: cookie.admin, json: { active: false },
+  }));
+  check('19) faollikni o‘chirish ishlaydi', off.product.active, false);
+  check('19) tashqi SKU saqlanib qoldi', off.product.externalSku, 'UZUM-777002');
+  check('19) bo‘sh so‘rov rad etiladi', (await call(env, `/api/admin/marketplace/products/${p2.id}`, { method: 'PATCH', cookie: cookie.admin, json: {} })).status, 422);
+
+  // ── SKU MOSLIGI OMBORDAGI XATONI TUTADI ────────────────────────────
+  const aCodes = (await makeCodes(env, p1.id, 3)).codes;
+  const res = await jsonOf(await call(env, '/api/admin/marketplace/orders/import', {
+    method: 'POST', cookie: cookie.admin,
+    json: {
+      rows: [
+        // Bizning ichki SKU bilan.
+        { code: aCodes[0].code, sku: 'UZ-STICKER-A', marketplaceOrderId: 'UZUM-2001' },
+        // Marketplace'ning O'Z SKU si bilan (kichik harfda).
+        { code: aCodes[1].code, sku: 'uzum-777001', marketplaceOrderId: 'UZUM-2002' },
+        // BOSHQA mahsulotning SKU si — konvertga noto'g'ri kod
+        // solingan degani.
+        { code: aCodes[2].code, sku: 'UZ-CARD-B', marketplaceOrderId: 'UZUM-2003' },
+      ],
+    },
+  }));
+  check('19) 2 ta bog‘landi', res.linked, 2);
+  check('19) 1 ta mos kelmadi', res.problems.length, 1);
+  check('19) sabab: sku_mismatch', res.problems[0].reason, 'sku_mismatch');
+  check('19) qaysi satr ekani aytildi', res.problems[0].line, 3);
+  const bad = await rowOfCode(env, aCodes[2].code, 'marketplace_order_id AS o, status');
+  check('19) mos kelmagan kodga buyurtma YOZILMADI', bad.o, null);
+  check('19) holati ham o‘zgarmadi', bad.status, 'new');
+  const good = await rowOfCode(env, aCodes[1].code, 'marketplace_order_id AS o, status');
+  check('19) tashqi SKU bo‘yicha bog‘landi', good.o, 'UZUM-2002');
+  check('19) holati SOLD', good.status, 'sold');
+
+  // ── SOLD -> ACTIVATED TO'LIQ YO'LI ─────────────────────────────────
+  const act = await jsonOf(await call(env, '/api/activate', {
+    method: 'POST', cookie: cookie.user, json: { code: aCodes[0].code, profileKind: 'personal' },
+  }));
+  checkTrue('19) sotilgan kod faollashdi', !!act.result.profileCode);
+  const done1 = await rowOfCode(env, aCodes[0].code, 'status, marketplace_order_id AS o, sold_at AS s, activated_at AS a');
+  check('19) holat ACTIVATED', done1.status, 'activated');
+  check('19) buyurtma raqami saqlanib qoldi', done1.o, 'UZUM-2001');
+  checkTrue('19) sotilgan sana ham joyida', !!done1.s);
+  checkTrue('19) faollashgan sana yozildi', !!done1.a);
+
+  // ── QO'LDA BOG'LASH HAM ISHLAYDI (API'siz) ─────────────────────────
+  const manualRow = await rowOfCode(env, aCodes[2].code, 'id');
+  await call(env, `/api/admin/marketplace/activations/${manualRow.id}/attach-order`, {
+    method: 'POST', cookie: cookie.admin, json: { marketplaceOrderId: 'UZUM-2003', customerReference: 'Qo‘lda' },
+  });
+  const manual = await rowOfCode(env, aCodes[2].code, 'marketplace_order_id AS o, status, customer_reference AS c');
+  check('19) qo‘lda bog‘lash ishladi', manual.o, 'UZUM-2003');
+  check('19) holat SOLD ga o‘tdi', manual.status, 'sold');
+  check('19) mijoz havolasi yozildi', manual.c, 'Qo‘lda');
+
+  // ── ADAPTER SEAMI: IMPORT FAYL EMAS, QATORLAR QABUL QILADI ─────────
+  // Kelajakdagi Uzum API si shu yerga ULANADI — alohida aktivatsiya
+  // tizimi yozilmaydi.
+  const src = read('../hosting/api/marketplace.js');
+  checkTrue('19) import qatorlar qabul qiladi', /Array\.isArray\(body\.rows\)/.test(src));
+  checkTrue('19) import fayl qabul qilmaydi', !/formData\(\)|multipart/i.test(src));
+  checkTrue('19) adapter seami hujjatlashtirilgan', /ADAPTER bo'lib ulanadi/.test(src));
+  // Uzum uchun ALOHIDA marshrut/jadval bo'lmasin.
+  checkTrue('19) Uzumga alohida marshrut yo‘q', !/\/api\/(uzum|admin\/uzum)/.test(src));
+  checkTrue('19) Uzumga alohida jadval yo‘q', !/uzum_(orders|activations|products)/.test(src));
 }
 
 done();

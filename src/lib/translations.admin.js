@@ -257,4 +257,32 @@ export const DICT_ADMIN = {
   'Stol NFC': { ru: 'Настольный NFC', en: 'Table NFC' },
   'Premium karta': { ru: 'Premium-карта', en: 'Premium card' },
   'AUTO (oddiy bepul ID bilan bir xil)': { ru: 'AUTO (как обычный бесплатный ID)', en: 'AUTO (same as a regular free ID)' },
+
+  // Marketplace buyurtmalarini CSV dan bog'lash.
+  'Buyurtmalar (CSV)': { ru: 'Заказы (CSV)', en: 'Orders (CSV)' },
+  'Buyurtmalarni CSV dan bog‘lash': { ru: 'Привязать заказы из CSV', en: 'Link orders from CSV' },
+  'Buyurtmalarni bog‘lash faqat Manager va Super Admin uchun.': { ru: 'Привязка заказов доступна только Manager и Super Admin.', en: 'Only Manager and Super Admin can link orders.' },
+  'Ustunlar: code, marketplace_order_id va (ixtiyoriy) customer_reference. Batch yaratilganda yuklab olingan CSV ga buyurtma raqamini qo‘shib, shu yerga yuklang.': { ru: 'Колонки: code, marketplace_order_id и (необязательно) customer_reference. Добавьте номер заказа в CSV, скачанный при создании партии, и загрузите сюда.', en: 'Columns: code, marketplace_order_id and (optional) customer_reference. Add the order number to the CSV you downloaded when creating the batch, then upload it here.' },
+  'CSV fayl': { ru: 'CSV-файл', en: 'CSV file' },
+  'Fayl bo‘sh.': { ru: 'Файл пуст.', en: 'The file is empty.' },
+  'Sarlavhada "code" va "marketplace_order_id" ustunlari bo‘lishi kerak.': { ru: 'В заголовке должны быть колонки "code" и "marketplace_order_id".', en: 'The header must contain "code" and "marketplace_order_id" columns.' },
+  '{n} ta qator': { ru: 'Строк: {n}', en: '{n} rows' },
+  'Bog‘lash': { ru: 'Привязать', en: 'Link' },
+  'Bog‘landi': { ru: 'Привязано', en: 'Linked' },
+  'Natija': { ru: 'Результат', en: 'Result' },
+  'Jami qator': { ru: 'Всего строк', en: 'Total rows' },
+  'Muammoli': { ru: 'С проблемами', en: 'With problems' },
+  'Satr': { ru: 'Строка', en: 'Row' },
+  'Bunday kod topilmadi': { ru: 'Такой код не найден', en: 'Code not found' },
+  'Kod formati noto‘g‘ri': { ru: 'Неверный формат кода', en: 'Invalid code format' },
+  'Buyurtma raqami yo‘q': { ru: 'Нет номера заказа', en: 'Missing order number' },
+
+  // Marketplace'ning O'Z SKU si (Uzum offer id va h.k.) — bizning
+  // ichki SKU dan alohida.
+  'SKU (ichki)': { ru: 'SKU (внутренний)', en: 'SKU (internal)' },
+  'Marketplace SKU': { ru: 'SKU маркетплейса', en: 'Marketplace SKU' },
+  'Marketplace SKU (ixtiyoriy)': { ru: 'SKU маркетплейса (необязательно)', en: 'Marketplace SKU (optional)' },
+  'Marketplace SKU (bo‘sh qoldirilsa tozalanadi):': { ru: 'SKU маркетплейса (пустое значение очистит поле):', en: 'Marketplace SKU (leave empty to clear):' },
+  'SKU mos kelmadi — konvertda boshqa mahsulotning kodi': { ru: 'SKU не совпал — в конверте код другого продукта', en: 'SKU mismatch — the envelope holds another product\u2019s code' },
+  'Ustunlar: code, marketplace_order_id va (ixtiyoriy) customer_reference, sku. Batch yaratilganda yuklab olingan CSV ga buyurtma raqamini qo‘shib, shu yerga yuklang. `sku` berilsa, u kodning haqiqiy mahsuloti bilan solishtiriladi.': { ru: 'Колонки: code, marketplace_order_id и (необязательно) customer_reference, sku. Добавьте номер заказа в CSV, скачанный при создании партии, и загрузите сюда. Если указан `sku`, он сверяется с реальным продуктом кода.', en: 'Columns: code, marketplace_order_id and (optional) customer_reference, sku. Add the order number to the CSV downloaded when creating the batch, then upload it here. When `sku` is given, it is checked against the code\u2019s actual product.' },
 };
