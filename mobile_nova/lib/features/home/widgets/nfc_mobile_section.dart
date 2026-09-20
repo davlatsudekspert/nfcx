@@ -57,11 +57,11 @@ class NfcMobileSection extends StatelessWidget {
         // HTML: <div class="section-head"><b>NFC MOBILE</b>
         //       <span>NFC bilan nimalar mumkin?</span></div>
         SectionHeader(title: l.demoSectionTitle, action: l.demoSectionHint),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: Gap.screenX),
-          child: _Hero(),
-        ),
-        const SizedBox(height: Gap.md),
+        // HERO BANNER OLIB TASHLANDI.
+        //
+        // U ikkita kartaning ustida yana bir qatlam bo'lib turardi
+        // va bo'limni cho'zib yuborardi. Endi bo'lim aynan ikkita
+        // narsa: shaxsiy va biznes.
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: Gap.screenX),
           child: _PersonalCard(),
@@ -107,128 +107,6 @@ class _Panel extends StatelessWidget {
     );
     if (onTap == null) return body;
     return PressableScale(onTap: onTap!, child: body);
-  }
-}
-
-/// Chip — HTML'dagi `.chip`.
-class _Chip extends StatelessWidget {
-  const _Chip(this.label);
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      // SIRT SHAFFOF EMAS.
-      //
-      // Chiplar hero suratining ustida turadi (surat chapga qarab
-      // so'nadi, lekin butunlay yo'qolmaydi). Shaffof sirtda
-      // telefon fotosi yorliq ostidan ko'rinib, matn o'qilmay
-      // qolardi.
-      decoration: BoxDecoration(
-        color: t.surfaceSolid,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: t.border2),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontFamily: AppType.sans,
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          color: t.text2,
-        ),
-      ),
-    );
-  }
-}
-
-// ------------------------------------------------------------ hero
-
-class _Hero extends StatelessWidget {
-  const _Hero();
-
-  @override
-  Widget build(BuildContext context) {
-    final l = L.of(context);
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: _Panel(
-        padding: const EdgeInsets.all(18),
-        // BALANDLIK QAT'IY EMAS.
-        //
-        // HTML'da hero 188px edi, lekin u yerda shrift o'lchamlari
-        // boshqa va tarjima ham bitta tilda. Bu yerda balandlik
-        // MATNGA qarab o'lchanadi: rus tilidagi uzunroq yorliqlar
-        // yoki tizim shrift kattaligi oshirilgan telefon kartani
-        // toshirib yubormasin. `Stack` joylanmagan bolasi —
-        // matn ustuni — o'lchamni belgilaydi.
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-              // SURAT O'NG PASTDA, chapga qarab so'nadi.
-              //
-              // HTML: `mask-image: linear-gradient(to left, #000 72%,
-              // transparent)`. Flutter'da buning to'g'ridan-to'g'ri
-              // muqobili — `ShaderMask` bilan `dstIn`.
-            Positioned(
-              right: -16,
-              bottom: -18,
-              child: SizedBox(
-                width: 132,
-                height: 132,
-                child: ShaderMask(
-                  // CHAPGA QARAB SO'NADI.
-                  //
-                  // HTML: `mask-image: linear-gradient(to left, #000
-                  // 72%, transparent)`. So'nish matn tomonida
-                  // boshlanishi kerak — aks holda surat chiplar
-                  // ostiga kirib, ular o'qilmay qoladi.
-                  shaderCallback: (r) => const LinearGradient(
-                    begin: Alignment.centerRight,
-                    end: Alignment.centerLeft,
-                    colors: [Colors.white, Colors.white, Colors.transparent],
-                    stops: [0, .40, 1],
-                  ).createShader(r),
-                  blendMode: BlendMode.dstIn,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(22),
-                    child:
-                        mediaImage(context, kDemoHeroImage, fit: BoxFit.cover),
-                  ),
-                ),
-              ),
-            ),
-            // Matn surat ostida qolmasligi uchun kengligi cheklangan —
-            // HTML'da ham `max-width: 190px` turardi.
-            SizedBox(
-              width: 186,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(l.demoHeroTitle,
-                      style: Theme.of(context).textTheme.displaySmall),
-                  const SizedBox(height: Gap.sm),
-                  Text(l.demoHeroBody,
-                      style: Theme.of(context).textTheme.bodySmall),
-                  const SizedBox(height: Gap.md),
-                  // Chiplar USTUN bo'lib turadi — yonma-yon
-                  // qo'yilganda uzun yorliqlar qirqilardi.
-                  _Chip(l.demoChipIphone),
-                  const SizedBox(height: 6),
-                  _Chip(l.demoChipSamsung),
-                  const SizedBox(height: 6),
-                  _Chip(l.demoChipReady),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 
@@ -364,7 +242,6 @@ class _DemoCard extends StatelessWidget {
     required this.role,
     required this.trailing,
     required this.image,
-    this.imageAlign = Alignment.center,
     required this.stats,
     required this.thumbs,
     required this.cta,
@@ -380,12 +257,6 @@ class _DemoCard extends StatelessWidget {
   final Widget trailing;
   final String image;
 
-  /// Suratning qaysi qismi ko'rinadi.
-  ///
-  /// Etalondagi suratlar KESIB olingan ekran nusxalari: ularda
-  /// matn ham bor. Kvadrat qutida markazdan kesilsa, o'sha matn
-  /// yarmi bilan ko'rinib, rasm buzuq bo'lib chiqadi.
-  final Alignment imageAlign;
   final List<(String, String)> stats;
   final List<String> thumbs;
   final String cta;
@@ -435,7 +306,7 @@ class _DemoCard extends StatelessWidget {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(18),
                     child: mediaImage(context, image,
-                        fit: BoxFit.cover, alignment: imageAlign),
+                        fit: BoxFit.cover),
                   ),
                 ),
               ),
@@ -480,10 +351,7 @@ class _PersonalCard extends StatelessWidget {
       title: demoPersonalId.name,
       role: l.demoPersonalSubtitle,
       trailing: _Badge(demoPersonalId.code, mono: true, color: t.text1),
-      image: kDemoPersonalImage,
-      // Yuz suratning O'NG tomonida — markazdan kesilsa chapdagi
-      // kesilgan yozuvlar ko'rinib qolardi.
-      imageAlign: Alignment.centerRight,
+      image: kDemoPortrait,
       stats: [
         (_n(demoPersonalId.views), l.nfcViews),
         (_n(demoPersonalId.followers), l.profileFollowers),
@@ -511,7 +379,7 @@ class _BusinessCard extends StatelessWidget {
       // Biznes nishoni mavzuning BIZNES aksentida — shaxsiydan
       // farq qilishi ataylab, lekin u ham mavzudan keladi.
       trailing: _Badge(l.demoChipReady),
-      image: kDemoBusinessImage,
+      image: kDemoStorefront,
       stats: [
         (_n(demoBusiness.views), l.nfcViews),
         (_n(demoBusiness.followers), l.profileFollowers),

@@ -90,7 +90,7 @@ void main() {
       expect(demoPersonalId.code, 'ZZZ777');
       expect(demoPersonalId.avatarUrl, isNotEmpty);
       expect(demoPersonalId.coverUrl, isNotEmpty);
-      expect(demoPersonalPosts.length, greaterThanOrEqualTo(2));
+      expect(demoPersonalPosts.length, greaterThanOrEqualTo(4));
       expect(demoPersonalStories.length, greaterThanOrEqualTo(1));
       expect(demoPersonalId.followers, greaterThan(0));
     });
@@ -173,11 +173,8 @@ void main() {
 
       // `SectionHeader` sarlavhani BOSH HARFGA o'giradi.
       expect(find.text(l.demoSectionTitle.toUpperCase()), findsOneWidget);
-      expect(find.text(l.demoHeroTitle), findsOneWidget);
-      expect(find.text(l.demoChipIphone), findsOneWidget);
       expect(find.text(l.demoBadgePersonal), findsOneWidget);
       expect(find.text(l.demoBadgeBusiness), findsOneWidget);
-      expect(find.text(l.demoChipSamsung), findsOneWidget);
       // AMAL BITTA JOYDA — o'z kartasida. Ilgari hero ichida ham
       // "Personal demo"/"Business demo" turardi va tor ekranda
       // ikkala yorliq ham qirqilib ko'rinardi.
@@ -270,29 +267,35 @@ void main() {
   });
 
   group('HTML etaloni bilan bog‘lanish', () {
-    test('etalondan ajratilgan suratlar DISKDA bor', () {
-      // `nfc_mobile_demo.html` ichida ular `data:` URI edi.
-      for (final p in [kDemoHeroImage, kDemoPersonalImage]) {
+    test('demo suratlari DISKDA bor', () {
+      for (final p in [kDemoPortrait, kDemoStorefront]) {
         expect(File(p).existsSync(), isTrue, reason: '$p yo‘q');
       }
     });
 
-    test('biznes kartasi HERO suratini TAKRORLAMAYDI', () {
-      // Prototipda biznes kartaning surati hero suratining aynan
-      // nusxasi edi: "NFC Market demo katalogi" deb turgan joyda
-      // telefonlar fotosi ko‘rinardi.
-      expect(kDemoBusinessImage, isNot(kDemoHeroImage));
-      expect(File(kDemoBusinessImage).existsSync(), isTrue);
+    test('HAR BIR mahsulotning O‘Z surati bor', () {
+      // "NFC to'lqin" naqshli o'rin egallovchilar olib tashlandi.
+      final urls = demoCatalog.map((c) => c.imageUrl).toList();
+      expect(urls.toSet().length, urls.length,
+          reason: 'katalogda surat takrorlanyapti');
+      for (final u in urls) {
+        expect(File(u).existsSync(), isTrue, reason: '$u yo‘q');
+      }
+    });
+
+    test('postlar ham bir-birini TAKRORLAMAYDI', () {
+      final urls = [
+        ...demoPersonalPosts.map((p) => p.mediaUrls.first),
+        ...demoBusinessPosts.map((p) => p.mediaUrls.first),
+      ];
+      expect(urls.toSet().length, urls.length);
+      for (final u in urls) {
+        expect(File(u).existsSync(), isTrue, reason: '$u yo‘q');
+      }
     });
 
     test('matnlar etalondan AYNAN ko‘chirilgan', () async {
       final l = await L.delegate.load(const Locale('uz'));
-      expect(l.demoHeroTitle, 'NFC bilan tanishing');
-      expect(l.demoHeroBody,
-          'Shaxsiy profil, biznes sahifa va NFC ID — barchasi bitta '
-          'mobil ilovada.');
-      expect(l.demoChipIphone, 'iPhone 18 bilan ishlaydi');
-      expect(l.demoChipSamsung, 'Samsung S26 bilan ishlaydi');
       expect(l.demoChipReady, 'NFC ready');
       expect(l.demoSectionHint, 'NFC bilan nimalar mumkin?');
       expect(l.demoBadgePersonal, 'DEMO · PERSONAL');
@@ -309,10 +312,10 @@ void main() {
     test('raqamlar etalondagidek', () {
       expect(demoPersonalId.views, 2840);
       expect(demoPersonalId.followers, 1240);
-      expect(demoPersonalPosts.length, 3);
+      expect(demoPersonalPosts.length, 5);
       expect(demoBusiness.views, 18400);
       expect(demoBusiness.followers, 3120);
-      expect(demoCatalog.length, 4);
+      expect(demoCatalog.length, 6);
     });
 
     test('bo‘limda QAT‘IY rang yo‘q — hammasi mavzudan', () {
