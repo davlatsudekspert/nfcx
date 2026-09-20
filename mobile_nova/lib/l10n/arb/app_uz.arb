@@ -471,5 +471,8 @@
   "welcomeHeadline": "Haqiqiy uchrashuvlar endi uzoq davom etadi.",
   "welcomeStart": "Boshlash",
   "demoProductTitle": "Mahsulot",
-  "demoAddToCart": "Bog‘lanish"
+  "demoAddToCart": "Bog‘lanish",
+  "siteCardTitle": "nfcstore.uz",
+  "siteCardBody": "NFC kartalar, jismoniy buyurtma va to‘liq katalog — saytda.",
+  "siteCardCta": "Saytga o‘tish"
 }

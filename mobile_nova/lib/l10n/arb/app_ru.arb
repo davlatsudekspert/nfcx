@@ -471,5 +471,8 @@
   "welcomeHeadline": "Настоящие встречи теперь длятся дольше.",
   "welcomeStart": "Начать",
   "demoProductTitle": "Товар",
-  "demoAddToCart": "Связаться"
+  "demoAddToCart": "Связаться",
+  "siteCardTitle": "nfcstore.uz",
+  "siteCardBody": "NFC-карты, заказ и полный каталог — на сайте.",
+  "siteCardCta": "Перейти на сайт"
 }

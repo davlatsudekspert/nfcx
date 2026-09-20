@@ -9,6 +9,8 @@ import '../../design/widgets/brand_logo.dart';
 import '../../design/widgets/buttons.dart';
 import '../../design/widgets/nova_scaffold.dart';
 import '../../design/widgets/surfaces.dart';
+import '../../core/network/api_client.dart';
+import '../../core/utils/external_link.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
 import '../auth/session.dart';
@@ -159,6 +161,13 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ]),
           const SizedBox(height: Gap.xxl),
+          // SAYT HAQIDA — bosh menyuning pastida, chiqishdan oldin.
+          //
+          // Ilovada NFC kartani SOTIB OLIB bo'lmaydi: jismoniy
+          // buyurtma, to'liq katalog va yetkazib berish saytda.
+          // Odam buni bilmasa, ilovada qidirib topolmay qoladi.
+          const _SiteCard(),
+          const SizedBox(height: Gap.xxl),
           NovaButton(
             label: l.logout,
             tone: ButtonTone.danger,
@@ -306,6 +315,56 @@ class _Row extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+
+/// SAYTGA TAKLIF — yumshoq, reklama bo'lib ko'rinmaydigan karta.
+///
+/// Rang qat'iy yozilmagan: aksent gradienti ham, hoshiya ham
+/// mavzudan keladi.
+class _SiteCard extends StatelessWidget {
+  const _SiteCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context);
+    final t = context.tokens;
+
+    return FloatingSurface(
+      solid: true,
+      padding: const EdgeInsets.all(Gap.lg),
+      borderRadius: BorderRadius.circular(24),
+      onTap: () => openLink(kApiBase),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: t.accentGradient,
+            ),
+            child: Icon(Icons.language_rounded, size: 21, color: t.onAccent),
+          ),
+          const SizedBox(width: Gap.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l.siteCardTitle,
+                    style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 2),
+                Text(l.siteCardBody,
+                    style: Theme.of(context).textTheme.bodySmall),
+              ],
+            ),
+          ),
+          const SizedBox(width: Gap.sm),
+          Icon(Icons.arrow_outward_rounded, size: 18, color: t.text3),
+        ],
       ),
     );
   }

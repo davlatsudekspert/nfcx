@@ -115,6 +115,15 @@ SystemUiOverlayStyle overlayFor(NfcTokens t) => SystemUiOverlayStyle(
           t.isDark ? Brightness.light : Brightness.dark,
     );
 
+/// IPAKDEK egri chiziq.
+///
+/// `easeOutCubic` yaxshi, lekin oxirida hali ham sezilarli
+/// "to'xtash" bor. Bu egri chiziq boshida tezroq ketadi va
+/// oxiriga juda uzoq, deyarli sezilmaydigan sekinlashuv bilan
+/// keladi — harakat "qo'yib yuborilgan" emas, "qo'ndirilgan"
+/// bo'lib seziladi.
+const _silk = Cubic(.22, 1, .36, 1);
+
 class _FadeScaleTransitions extends PageTransitionsBuilder {
   const _FadeScaleTransitions();
 
@@ -126,13 +135,29 @@ class _FadeScaleTransitions extends PageTransitionsBuilder {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+    // KIRUVCHI sahifa: yumshoq so'nib chiqadi va sal yaqinlashadi.
+    final inCurve = CurvedAnimation(parent: animation, curve: _silk);
+    // CHIQUVCHI sahifa: ORQAGA suriladi va xiralashadi.
+    //
+    // Ilgari faqat kiruvchisi harakatlanardi, eskisi esa joyida
+    // qotib turardi va almashuv "sakrash" bo'lib sezilardi. Ikki
+    // qatlam birga harakatlansa, o'tish chuqur va silliq bo'ladi.
+    final outCurve =
+        CurvedAnimation(parent: secondaryAnimation, curve: _silk);
+
     return FadeTransition(
-      opacity: curved,
+      opacity: Tween(begin: 1.0, end: .0).animate(outCurve),
       child: ScaleTransition(
-        // 0.97 dan boshlash — sezilmaydigan, lekin "chuqurlik" beradigan miqdor.
-        scale: Tween(begin: .97, end: 1.0).animate(curved),
-        child: child,
+        scale: Tween(begin: 1.0, end: 1.03).animate(outCurve),
+        child: FadeTransition(
+          opacity: inCurve,
+          child: ScaleTransition(
+            // 0.97 dan boshlash — sezilmaydigan, lekin "chuqurlik"
+            // beradigan miqdor.
+            scale: Tween(begin: .97, end: 1.0).animate(inCurve),
+            child: child,
+          ),
+        ),
       ),
     );
   }

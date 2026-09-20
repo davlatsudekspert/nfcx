@@ -1274,4 +1274,13 @@ class LRu extends L {
 
   @override
   String get demoAddToCart => 'Связаться';
+
+  @override
+  String get siteCardTitle => 'nfcstore.uz';
+
+  @override
+  String get siteCardBody => 'NFC-карты, заказ и полный каталог — на сайте.';
+
+  @override
+  String get siteCardCta => 'Перейти на сайт';
 }

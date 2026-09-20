@@ -1281,4 +1281,14 @@ class LUz extends L {
 
   @override
   String get demoAddToCart => 'Bog‘lanish';
+
+  @override
+  String get siteCardTitle => 'nfcstore.uz';
+
+  @override
+  String get siteCardBody =>
+      'NFC kartalar, jismoniy buyurtma va to‘liq katalog — saytda.';
+
+  @override
+  String get siteCardCta => 'Saytga o‘tish';
 }

@@ -471,5 +471,8 @@
   "welcomeHeadline": "Real meetings now last longer.",
   "welcomeStart": "Get started",
   "demoProductTitle": "Product",
-  "demoAddToCart": "Get in touch"
+  "demoAddToCart": "Get in touch",
+  "siteCardTitle": "nfcstore.uz",
+  "siteCardBody": "NFC cards, physical orders and the full catalog — on the site.",
+  "siteCardCta": "Open the site"
 }

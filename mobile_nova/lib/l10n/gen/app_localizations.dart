@@ -2576,6 +2576,24 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Bog‘lanish'**
   String get demoAddToCart;
+
+  /// No description provided for @siteCardTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'nfcstore.uz'**
+  String get siteCardTitle;
+
+  /// No description provided for @siteCardBody.
+  ///
+  /// In uz, this message translates to:
+  /// **'NFC kartalar, jismoniy buyurtma va to‘liq katalog — saytda.'**
+  String get siteCardBody;
+
+  /// No description provided for @siteCardCta.
+  ///
+  /// In uz, this message translates to:
+  /// **'Saytga o‘tish'**
+  String get siteCardCta;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

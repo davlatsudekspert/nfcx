@@ -7,7 +7,11 @@ import 'package:flutter/widgets.dart';
 /// ilova bir maromda "nafas oladi".
 abstract final class Motion {
   static const fast = Duration(milliseconds: 250);
-  static const med = Duration(milliseconds: 450);
+  /// Sahifa o'tishi va o'rta uzunlikdagi harakatlar.
+  ///
+  /// 450 dan 520 ga uzaytirildi: qisqa o'tish "shoshilgan" bo'lib
+  /// seziladi, uzunrog'i esa sokin va qimmat.
+  static const med = Duration(milliseconds: 520);
   static const slow = Duration(milliseconds: 700);
 
   /// Mavzu almashuvi — sezilarli, lekin shoshmaydigan.

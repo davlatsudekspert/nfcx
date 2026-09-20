@@ -1279,4 +1279,14 @@ class LEn extends L {
 
   @override
   String get demoAddToCart => 'Get in touch';
+
+  @override
+  String get siteCardTitle => 'nfcstore.uz';
+
+  @override
+  String get siteCardBody =>
+      'NFC cards, physical orders and the full catalog — on the site.';
+
+  @override
+  String get siteCardCta => 'Open the site';
 }
