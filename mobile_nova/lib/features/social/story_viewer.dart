@@ -16,14 +16,15 @@ import '../../routing/routes.dart';
 import '../../app/profile_context.dart';
 import '../auth/session.dart';
 import 'comments.dart';
+import '../profile/music_player.dart';
 import 'inline_video.dart';
 import '../home/widgets/avatar.dart';
 
-final storiesOfProvider =
-    FutureProvider.autoDispose.family<List<StoryItem>, String>((ref, code) async {
-  final res = await ref.watch(socialRepositoryProvider).storiesOf(code);
-  return res.when(ok: (v) => v, err: (e) => throw e);
-});
+final storiesOfProvider = FutureProvider.autoDispose
+    .family<List<StoryItem>, String>((ref, code) async {
+      final res = await ref.watch(socialRepositoryProvider).storiesOf(code);
+      return res.when(ok: (v) => v, err: (e) => throw e);
+    });
 
 /// Story ko'rish oynasi.
 ///
@@ -41,7 +42,7 @@ class StoryViewerScreen extends ConsumerStatefulWidget {
 }
 
 class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   static const _perStory = Duration(seconds: 5);
 
   /// TAYMER `initState` DA YARATILADI.
@@ -62,6 +63,44 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
       ..addStatusListener((s) {
         if (s == AnimationStatus.completed) _next();
       });
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  /// MEDIANI TO'XTATADI — ekran yopilishidan OLDIN.
+  ///
+  /// `dispose()` ga tayanib bo'lmaydi: `context.pop()` marshrutni
+  /// ANIMATSIYA bilan yopadi va vidjet darhol o'chmaydi. APK #48
+  /// gacha ovoz aynan shu oraliqda eshitilib turardi — X bosilgan,
+  /// ekran ketgan, ovoz esa davom etardi.
+  void _stopMedia() {
+    _progress.stop();
+    ref.read(audioOwnerProvider.notifier).stopAll();
+  }
+
+  /// YAGONA CHIQISH NUQTASI.
+  ///
+  /// Hamma yo'l shu yerdan o'tadi: X tugmasi, Android orqaga,
+  /// pastga surish, oxirgi story tugashi va bo'sh holatdagi
+  /// "yopish". Har joyda alohida `context.pop()` qoldirilsa,
+  /// ulardan biri ertami-kechmi to'xtatishni o'tkazib yuborardi.
+  void _close() {
+    _stopMedia();
+    if (!mounted) return;
+    // STEK BO'SH BO'LISHI MUMKIN. Istorya jismoniy kartadan yoki
+    // App Link orqali TO'G'RIDAN-TO'G'RI ochilsa, ortida hech
+    // narsa yo'q va `pop()` istisno beradi — ya'ni X tugmasi
+    // ishlamay qolardi. Bunday holatda uyga qaytamiz.
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go(Routes.home);
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Ilova fonga ketdi — ovoz telefon cho'ntakda davom etmasin.
+    if (state != AppLifecycleState.resumed) _stopMedia();
   }
 
   int _index = 0;
@@ -86,6 +125,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _progress.dispose();
     super.dispose();
   }
@@ -99,7 +139,8 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
   Future<void> _delete(StoryItem s) async {
     final l = L.of(context);
     _progress.stop();
-    final ok = await showDialog<bool>(
+    final ok =
+        await showDialog<bool>(
           context: context,
           builder: (d) => AlertDialog(
             title: Text(l.actionDelete),
@@ -111,8 +152,10 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
               ),
               TextButton(
                 onPressed: () => Navigator.of(d).pop(true),
-                child: Text(l.actionDelete,
-                    style: TextStyle(color: context.tokens.error)),
+                child: Text(
+                  l.actionDelete,
+                  style: TextStyle(color: context.tokens.error),
+                ),
               ),
             ],
           ),
@@ -123,8 +166,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
       _progress.forward();
       return;
     }
-    final res =
-        await ref.read(socialRepositoryProvider).deleteStory(s.id);
+    final res = await ref.read(socialRepositoryProvider).deleteStory(s.id);
     if (!mounted) return;
     res.when(
       ok: (_) {
@@ -133,13 +175,13 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
         // ketishi mumkin edi.
         ref.invalidate(storiesOfProvider(widget.code));
         ref.invalidate(socialRepositoryProvider);
-        context.pop();
+        _close();
       },
       err: (e) {
         _progress.forward();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(describeError(l, e))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(describeError(l, e))));
       },
     );
   }
@@ -171,16 +213,18 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
   /// LAYK — optimistik, xatoda ORQAGA QAYTADI.
   Future<void> _like(StoryItem s) async {
     final now = _likes[s.id] ?? (liked: s.liked, count: s.likes);
-    setState(() => _likes[s.id] = (
-          liked: !now.liked,
-          count: now.count + (now.liked ? -1 : 1),
-        ));
+    setState(
+      () => _likes[s.id] = (
+        liked: !now.liked,
+        count: now.count + (now.liked ? -1 : 1),
+      ),
+    );
     final res = await ref.read(socialRepositoryProvider).likeStory(s.id);
     if (!mounted) return;
     res.when(
       // Server QAYTARGAN sanoq o'rnatiladi — mahalliy taxmin emas.
-      ok: (v) => setState(
-          () => _likes[s.id] = (liked: v.liked, count: v.likeCount)),
+      ok: (v) =>
+          setState(() => _likes[s.id] = (liked: v.liked, count: v.likeCount)),
       err: (_) => setState(() => _likes[s.id] = now),
     );
   }
@@ -189,12 +233,14 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
   ///
   /// `kind` kontekstga qarab: shaxsiy istorya `story`, kompaniya
   /// istoryasi `company_story`.
-  Future<void> _comments(StoryItem s) => _whilePaused(() => showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (_) => _CommentsSheet(story: s),
-      ));
+  Future<void> _comments(StoryItem s) => _whilePaused(
+    () => showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _CommentsSheet(story: s),
+    ),
+  );
 
   /// Video uzunligi ma'lum bo'lgach, progress shunga moslanadi.
   ///
@@ -231,7 +277,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
 
   void _next() {
     if (_index + 1 >= _total) {
-      if (mounted) context.pop();
+      _close();
       return;
     }
     setState(() => _index++);
@@ -253,258 +299,290 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
     final t = context.tokens;
     final stories = ref.watch(storiesOfProvider(widget.code));
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: stories.when(
-        loading: () => Center(
-          child: CircularProgressIndicator(color: t.accent2, strokeWidth: 2),
-        ),
-        error: (e, __) => StatePanel.fromError(context, asAppError(e)),
-        data: (items) {
-          if (items.isEmpty) {
-            return StatePanel(
-              icon: Icons.auto_stories_outlined,
-              title: l.stateEmpty,
-              actionLabel: l.actionClose,
-              onAction: () => context.pop(),
-            );
-          }
-          if (_total != items.length) {
-            _total = items.length;
-            WidgetsBinding.instance.addPostFrameCallback((_) => _start());
-          }
-          final s = items[_index.clamp(0, items.length - 1)];
-          WidgetsBinding.instance
-              .addPostFrameCallback((_) => _markSeen(s));
+    // ANDROID ORQASI HAM SHU OQIMDAN O'TADI.
+    //
+    // Tizim tugmasi marshrutni TO'G'RIDAN-TO'G'RI yopadi va X
+    // tugmasidagi kod umuman ishlamaydi. `canPop: false` bilan
+    // yopishni o'zimiz boshqaramiz: avval media to'xtaydi, keyin
+    // ekran ketadi.
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _close();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: stories.when(
+          loading: () => Center(
+            child: CircularProgressIndicator(color: t.accent2, strokeWidth: 2),
+          ),
+          error: (e, __) => StatePanel.fromError(context, asAppError(e)),
+          data: (items) {
+            if (items.isEmpty) {
+              return StatePanel(
+                icon: Icons.auto_stories_outlined,
+                title: l.stateEmpty,
+                actionLabel: l.actionClose,
+                onAction: _close,
+              );
+            }
+            if (_total != items.length) {
+              _total = items.length;
+              WidgetsBinding.instance.addPostFrameCallback((_) => _start());
+            }
+            final s = items[_index.clamp(0, items.length - 1)];
+            WidgetsBinding.instance.addPostFrameCallback((_) => _markSeen(s));
 
-          // "Meniki" — story kodi o'zimning NFC yozuvlarimdan
-          // birida bo'lsa. Egalik huquqini baribir SERVER hal
-          // qiladi (o'zganikida 403 keladi); bu shunchaki
-          // ishlamaydigan tugmani ko'rsatmaslik uchun.
-          final mine = ref
-              .watch(myIdsProvider)
-              .any((e) => e.code == s.code);
+            // "Meniki" — story kodi o'zimning NFC yozuvlarimdan
+            // birida bo'lsa. Egalik huquqini baribir SERVER hal
+            // qiladi (o'zganikida 403 keladi); bu shunchaki
+            // ishlamaydigan tugmani ko'rsatmaslik uchun.
+            final mine = ref.watch(myIdsProvider).any((e) => e.code == s.code);
 
-          // Mahalliy layk holati bo'lsa o'sha, aks holda serverniki.
-          final lk = _likes[s.id];
-          final liked = lk?.liked ?? s.liked;
-          final likeCount = lk?.count ?? s.likes;
+            // Mahalliy layk holati bo'lsa o'sha, aks holda serverniki.
+            final lk = _likes[s.id];
+            final liked = lk?.liked ?? s.liked;
+            final likeCount = lk?.count ?? s.likes;
 
-          return GestureDetector(
-            onTapUp: (d) {
-              final half = MediaQuery.sizeOf(context).width / 2;
-              d.localPosition.dx < half ? _prev() : _next();
-            },
-            onLongPressStart: (_) => _progress.stop(),
-            onLongPressEnd: (_) => _progress.forward(),
-            onVerticalDragEnd: (d) {
-              if ((d.primaryVelocity ?? 0) > 260) context.pop();
-            },
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (s.mediaUrl.isEmpty)
-                  DecoratedBox(
-                    decoration: BoxDecoration(gradient: t.accentGradient),
-                  )
-                else if (s.isVideo)
-                  // VIDEO ISTORYA. `isVideo` model tomonidan
-                  // TO'G'RI o'qilardi, lekin bu ekran uni UMUMAN
-                  // ishlatmasdi: hamma narsa `CachedNetworkImage`
-                  // bilan chizilardi. Ya'ni video istorya qo'yish
-                  // mumkin edi (kompozitor uni qabul qiladi), lekin
-                  // ko'rgan odam faqat bo'sh quti ko'rardi —
-                  // `errorWidget`.
-                  InlineVideo(
-                    key: ValueKey(s.id),
-                    url: s.mediaUrl,
-                    onDuration: _useVideoDuration,
-                  )
-                else
-                  CachedNetworkImage(
-                    imageUrl: s.mediaUrl,
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) => ColoredBox(color: t.bg2),
-                    errorWidget: (_, __, ___) => ColoredBox(color: t.bg2),
-                  ),
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.center,
-                          colors: [
-                            Colors.black.withValues(alpha: .55),
-                            Colors.transparent,
-                          ],
+            return GestureDetector(
+              onTapUp: (d) {
+                final half = MediaQuery.sizeOf(context).width / 2;
+                d.localPosition.dx < half ? _prev() : _next();
+              },
+              onLongPressStart: (_) => _progress.stop(),
+              onLongPressEnd: (_) => _progress.forward(),
+              onVerticalDragEnd: (d) {
+                if ((d.primaryVelocity ?? 0) > 260) _close();
+              },
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (s.mediaUrl.isEmpty)
+                    DecoratedBox(
+                      decoration: BoxDecoration(gradient: t.accentGradient),
+                    )
+                  else if (s.isVideo)
+                    // VIDEO ISTORYA. `isVideo` model tomonidan
+                    // TO'G'RI o'qilardi, lekin bu ekran uni UMUMAN
+                    // ishlatmasdi: hamma narsa `CachedNetworkImage`
+                    // bilan chizilardi. Ya'ni video istorya qo'yish
+                    // mumkin edi (kompozitor uni qabul qiladi), lekin
+                    // ko'rgan odam faqat bo'sh quti ko'rardi —
+                    // `errorWidget`.
+                    InlineVideo(
+                      key: ValueKey(s.id),
+                      url: s.mediaUrl,
+                      onDuration: _useVideoDuration,
+                    )
+                  else
+                    CachedNetworkImage(
+                      imageUrl: s.mediaUrl,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => ColoredBox(color: t.bg2),
+                      errorWidget: (_, __, ___) => ColoredBox(color: t.bg2),
+                    ),
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.center,
+                            colors: [
+                              Colors.black.withValues(alpha: .55),
+                              Colors.transparent,
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-                SafeArea(
-                  child: Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: Gap.md, vertical: Gap.sm),
-                        child: Row(
-                          children: [
-                            for (var i = 0; i < items.length; i++)
-                              Expanded(
-                                child: Padding(
-                                  padding: EdgeInsets.only(
-                                      right: i == items.length - 1 ? 0 : 4),
-                                  child: ClipRRect(
-                                    borderRadius: R.pill,
-                                    child: AnimatedBuilder(
-                                      animation: _progress,
-                                      builder: (_, __) => LinearProgressIndicator(
-                                        value: i < _index
-                                            ? 1
-                                            : i == _index
-                                                ? _progress.value
-                                                : 0,
-                                        minHeight: 2.5,
-                                        backgroundColor:
-                                            Colors.white.withValues(alpha: .3),
-                                        valueColor: const AlwaysStoppedAnimation(
-                                            Colors.white),
+                  SafeArea(
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: Gap.md,
+                            vertical: Gap.sm,
+                          ),
+                          child: Row(
+                            children: [
+                              for (var i = 0; i < items.length; i++)
+                                Expanded(
+                                  child: Padding(
+                                    padding: EdgeInsets.only(
+                                      right: i == items.length - 1 ? 0 : 4,
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: R.pill,
+                                      child: AnimatedBuilder(
+                                        animation: _progress,
+                                        builder: (_, __) =>
+                                            LinearProgressIndicator(
+                                              value: i < _index
+                                                  ? 1
+                                                  : i == _index
+                                                  ? _progress.value
+                                                  : 0,
+                                              minHeight: 2.5,
+                                              backgroundColor: Colors.white
+                                                  .withValues(alpha: .3),
+                                              valueColor:
+                                                  const AlwaysStoppedAnimation(
+                                                    Colors.white,
+                                                  ),
+                                            ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                      Padding(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: Gap.lg),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: Gap.lg,
+                          ),
+                          child: Row(
+                            children: [
+                              Avatar(
+                                url: s.authorAvatar,
+                                initials: _initials(s.authorName, s.code),
+                                size: 38,
+                                onTap: () => context.push(Routes.user(s.code)),
+                              ),
+                              const SizedBox(width: Gap.sm),
+                              Expanded(
+                                child: Text(
+                                  s.authorName.isEmpty ? s.code : s.authorName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontFamily: AppType.sans,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                              // O'chirish FAQAT o'z story'ingda
+                              // ko'rinadi. Begonanikida tugma umuman
+                              // chizilmaydi — bosilib "ruxsat yo'q"
+                              // deydigan tugma qoldirilmadi.
+                              if (mine)
+                                IconButton(
+                                  onPressed: () => _delete(s),
+                                  icon: const Icon(
+                                    Icons.delete_outline_rounded,
+                                    color: Colors.white,
+                                  ),
+                                  tooltip: l.actionDelete,
+                                ),
+                              IconButton(
+                                onPressed: _close,
+                                icon: const Icon(
+                                  Icons.close_rounded,
+                                  color: Colors.white,
+                                ),
+                                tooltip: l.actionClose,
+                              ),
+                            ],
+                          ),
+                        ),
+                        // IZOH. Server uni har doim qaytaradi, model
+                        // esa tashlab yuborardi — shuning uchun
+                        // istoryaga yozilgan matn hech qachon
+                        // ko'rinmasdi.
+                        if (s.caption.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(
+                              Gap.lg,
+                              Gap.md,
+                              Gap.lg,
+                              0,
+                            ),
+                            child: Text(
+                              s.caption,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontFamily: AppType.sans,
+                                fontSize: 13.5,
+                                height: 1.35,
+                                color: Colors.white,
+                                shadows: [
+                                  Shadow(color: Colors.black54, blurRadius: 10),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+
+                  // ── PASTKI AMALLAR: layk, izoh, ulashish ────────
+                  //
+                  // Ilgari istorya ko'ruvchisida HECH QANDAY amal yo'q
+                  // edi: ko'rib, chiqib ketishdan boshqa ish qilib
+                  // bo'lmasdi. Uchala endpoint ham serverda allaqachon
+                  // bor edi.
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: SafeArea(
+                      top: false,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          Gap.lg,
+                          0,
+                          Gap.lg,
+                          Gap.md,
+                        ),
                         child: Row(
                           children: [
-                            Avatar(
-                              url: s.authorAvatar,
-                              initials: _initials(s.authorName, s.code),
-                              size: 38,
-                              onTap: () => context.push(Routes.user(s.code)),
+                            Expanded(
+                              child: _StoryAction(
+                                icon: Icons.mode_comment_outlined,
+                                label: l.storyCommentHint,
+                                onTap: () => _comments(s),
+                              ),
                             ),
                             const SizedBox(width: Gap.sm),
-                            Expanded(
-                              child: Text(
-                                s.authorName.isEmpty ? s.code : s.authorName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontFamily: AppType.sans,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
+                            _StoryIcon(
+                              icon: liked
+                                  ? Icons.favorite_rounded
+                                  : Icons.favorite_border_rounded,
+                              tint: liked ? t.error : Colors.white,
+                              label: l.storyLike,
+                              count: likeCount,
+                              onTap: () => _like(s),
+                            ),
+                            const SizedBox(width: Gap.sm),
+                            _StoryIcon(
+                              icon: Icons.ios_share_rounded,
+                              tint: Colors.white,
+                              label: l.actionShare,
+                              // Ulashiladigan narsa — MUALLIFNING OCHIQ
+                              // profili. Istoryaning o'zi 24 soatda
+                              // yo'qoladi va yopiq havola bo'lardi.
+                              onTap: () => _whilePaused(
+                                () => shareLink(
+                                  '$kApiBase/${Uri.encodeComponent(s.code)}',
                                 ),
                               ),
                             ),
-                            // O'chirish FAQAT o'z story'ingda
-                            // ko'rinadi. Begonanikida tugma umuman
-                            // chizilmaydi — bosilib "ruxsat yo'q"
-                            // deydigan tugma qoldirilmadi.
-                            if (mine)
-                              IconButton(
-                                onPressed: () => _delete(s),
-                                icon: const Icon(Icons.delete_outline_rounded,
-                                    color: Colors.white),
-                                tooltip: l.actionDelete,
-                              ),
-                            IconButton(
-                              onPressed: () => context.pop(),
-                              icon: const Icon(Icons.close_rounded,
-                                  color: Colors.white),
-                              tooltip: l.actionClose,
-                            ),
                           ],
                         ),
                       ),
-                      // IZOH. Server uni har doim qaytaradi, model
-                      // esa tashlab yuborardi — shuning uchun
-                      // istoryaga yozilgan matn hech qachon
-                      // ko'rinmasdi.
-                      if (s.caption.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(
-                              Gap.lg, Gap.md, Gap.lg, 0),
-                          child: Text(
-                            s.caption,
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontFamily: AppType.sans,
-                              fontSize: 13.5,
-                              height: 1.35,
-                              color: Colors.white,
-                              shadows: [
-                                Shadow(color: Colors.black54, blurRadius: 10),
-                              ],
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-
-                // ── PASTKI AMALLAR: layk, izoh, ulashish ────────
-                //
-                // Ilgari istorya ko'ruvchisida HECH QANDAY amal yo'q
-                // edi: ko'rib, chiqib ketishdan boshqa ish qilib
-                // bo'lmasdi. Uchala endpoint ham serverda allaqachon
-                // bor edi.
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: SafeArea(
-                    top: false,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                          Gap.lg, 0, Gap.lg, Gap.md),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _StoryAction(
-                              icon: Icons.mode_comment_outlined,
-                              label: l.storyCommentHint,
-                              onTap: () => _comments(s),
-                            ),
-                          ),
-                          const SizedBox(width: Gap.sm),
-                          _StoryIcon(
-                            icon: liked
-                                ? Icons.favorite_rounded
-                                : Icons.favorite_border_rounded,
-                            tint: liked ? t.error : Colors.white,
-                            label: l.storyLike,
-                            count: likeCount,
-                            onTap: () => _like(s),
-                          ),
-                          const SizedBox(width: Gap.sm),
-                          _StoryIcon(
-                            icon: Icons.ios_share_rounded,
-                            tint: Colors.white,
-                            label: l.actionShare,
-                            // Ulashiladigan narsa — MUALLIFNING OCHIQ
-                            // profili. Istoryaning o'zi 24 soatda
-                            // yo'qoladi va yopiq havola bo'lardi.
-                            onTap: () => _whilePaused(
-                                () => shareLink('$kApiBase/${Uri.encodeComponent(s.code)}')),
-                          ),
-                        ],
-                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          );
-        },
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -514,7 +592,6 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
     return (s.length >= 2 ? s.substring(0, 2) : s).toUpperCase();
   }
 }
-
 
 /// Istorya ostidagi "izoh yozing…" maydoni ko'rinishi.
 ///
@@ -607,8 +684,9 @@ class _StoryIcon extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.white.withValues(alpha: .14),
-                  border:
-                      Border.all(color: Colors.white.withValues(alpha: .35)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: .35),
+                  ),
                 ),
                 child: Icon(icon, size: 19, color: tint),
               ),
@@ -653,9 +731,7 @@ class _CommentsSheet extends ConsumerWidget {
     final company = ref.watch(activeProfileProvider)?.isBusiness ?? false;
 
     return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.viewInsetsOf(context).bottom,
-      ),
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       // BALANDLIK ANIQ BERILADI.
       //
       // `DraggableScrollableSheet` + ichki ro'yxat birikmasi
@@ -669,8 +745,7 @@ class _CommentsSheet extends ConsumerWidget {
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: t.surfaceSolid,
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(22)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
             border: Border.all(color: t.border2),
           ),
           child: Column(
@@ -690,8 +765,10 @@ class _CommentsSheet extends ConsumerWidget {
               const SizedBox(height: Gap.sm),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: Gap.lg),
-                child: Text(l.storyComments,
-                    style: Theme.of(context).textTheme.titleMedium),
+                child: Text(
+                  l.storyComments,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
               ),
               Expanded(
                 child: SingleChildScrollView(

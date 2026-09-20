@@ -2119,6 +2119,220 @@ void main() {
     }
   }, timeout: const Timeout(Duration(minutes: 5)));
 
+  // ══════════════════════════════════════════════════════════════
+  // 7c. REELS QUVURI — YUKLASHDAN EKRANGACHA
+  //
+  // Telefonda reel joylangandan keyin u NA profilda, NA Reels
+  // bo'limida ko'rinmadi. Taxmin qilish bilan ikki marta xato
+  // qilindi, shuning uchun bu yerda QUVURNING HAR BO'G'INI
+  // alohida o'lchanadi va javoblar hisobotga yoziladi.
+  // ══════════════════════════════════════════════════════════════
+
+  testWidgets('7c. Reels quvuri — yuklash, yaratish, qayta o\'qish',
+      (_) async {
+    const rows = [
+      'Reel A — video yuklash',
+      'Reel B — reel yaratish',
+      'Reel C — serverdan qayta o\'qish',
+      'Reel D — model tahlili',
+      'Reel E — /videos endpointi',
+    ];
+
+    final code = personal?.code;
+    if (code == null) {
+      for (final r in rows) {
+        report.skip(r, 'shaxsiy NFC ID yo\'q');
+      }
+      return;
+    }
+
+    // ── A. VIDEO YUKLASH ──────────────────────────────────────
+    //
+    // Server faylni MAGIK BAYT bo'yicha taniydi (`head.includes
+    // ('ftyp')`), shuning uchun haqiqiy MP4 quti sarlavhasi
+    // yuboriladi — soxta bayt qabul qilinmaydi.
+    final mp4 = File('${Directory.systemTemp.path}/nova_e2e_tiny.mp4');
+    await mp4.writeAsBytes([
+      0, 0, 0, 0x20, 0x66, 0x74, 0x79, 0x70, // size + 'ftyp'
+      0x69, 0x73, 0x6F, 0x6D, // 'isom'
+      0, 0, 2, 0,
+      0x69, 0x73, 0x6F, 0x6D, 0x69, 0x73, 0x6F, 0x32, // 'isomiso2'
+      0x61, 0x76, 0x63, 0x31, 0x6D, 0x70, 0x34, 0x31, // 'avc1mp41'
+      0, 0, 0, 8, 0x6D, 0x64, 0x61, 0x74, // 'mdat'
+    ]);
+    addTearDown(() {
+      if (mp4.existsSync()) mp4.deleteSync();
+    });
+
+    String videoUrl = '';
+    final up = await profile.uploadVideo(mp4.path);
+    switch (up) {
+      case Err(:final error):
+        fail('Reel A — video yuklash',
+            screen: 'ComposerScreen',
+            action: 'POST /api/upload-card-video',
+            cause: why(error),
+            pathHint: '/upload-card-video');
+        for (final r in rows.skip(1).take(3)) {
+          report.skip(r, 'video yuklanmadi');
+        }
+      case Ok(:final value):
+        videoUrl = value;
+        // Server post yaratishda AYNAN shu shaklni talab qiladi:
+        //   videoUrl.startsWith('/uploads/') && /\.(mp4|webm)$/i
+        // Ya'ni NISBIY yo'l va kengaytma SHART.
+        final shapeOk = value.startsWith('/uploads/') &&
+            RegExp(r'\.(mp4|webm)$', caseSensitive: false).hasMatch(value);
+        if (shapeOk) {
+          report.pass('Reel A — video yuklash',
+              screen: 'ComposerScreen',
+              action: 'yuklash → manzil shakli',
+              note: 'manzil: $value');
+        } else {
+          fail('Reel A — video yuklash',
+              screen: 'ComposerScreen',
+              action: 'yuklash → manzil shakli',
+              cause: 'server qaytargan manzil post yaratish shartiga '
+                  'MOS EMAS (nisbiy `/uploads/...` va .mp4/.webm '
+                  'bo\'lishi kerak): «$value»',
+              pathHint: '/upload-card-video');
+        }
+    }
+
+    if (videoUrl.isEmpty) {
+      report.skip('Reel E — /videos endpointi', 'video yuklanmadi');
+      return;
+    }
+
+    // ── B. REEL YARATISH ──────────────────────────────────────
+    int? reelId;
+    final created = await social.createPost(
+      code: code,
+      caption: testLabel('reel'),
+      videoUrl: videoUrl,
+    );
+    switch (created) {
+      case Err(:final error):
+        // `feature_locked` — bu RUXSAT masalasi: server video
+        // postni faqat `premium` va undan yuqori darajaga
+        // ruxsat beradi (`FEATURE_MIN_D1.video`).
+        fail('Reel B — reel yaratish',
+            screen: 'ComposerScreen',
+            action: 'POST /api/records/:code/posts {videoUrl}',
+            cause: why(error),
+            pathHint: '/posts',
+            fix: error.code == 'feature_locked'
+                ? 'bu NFC ID darajasi video postga yetmaydi — '
+                    'server qoidasi, ilova kamchiligi emas'
+                : null);
+      case Ok(:final value):
+        reelId = value.id;
+        litter.trackResult(
+            'reel #${value.id}', () => social.deletePost(value.id));
+        // Javobning O'ZIDA video manzili bormi — model aynan shu
+        // javobdan `isVideo` ni hisoblaydi.
+        if (value.isVideo && value.mediaUrls.isNotEmpty) {
+          report.pass('Reel B — reel yaratish',
+              screen: 'ComposerScreen',
+              action: 'yaratish javobi',
+              note: 'id=${value.id}; isVideo=${value.isVideo}; '
+                  'media=${value.mediaUrls.length}');
+        } else {
+          fail('Reel B — reel yaratish',
+              screen: 'ComposerScreen',
+              action: 'yaratish javobi',
+              cause: 'post yaratildi (id=${value.id}), lekin javobda '
+                  'isVideo=${value.isVideo}, media='
+                  '${value.mediaUrls.length} — model video ekanini '
+                  'bilolmaydi',
+              pathHint: '/posts');
+        }
+    }
+
+    // ── C va D. QAYTA O'QISH VA MODEL TAHLILI ─────────────────
+    if (reelId == null) {
+      report.skip('Reel C — serverdan qayta o\'qish', 'reel yaratilmadi');
+      report.skip('Reel D — model tahlili', 'reel yaratilmadi');
+    } else {
+      final back = await social.postsOf(code);
+      switch (back) {
+        case Err(:final error):
+          fail('Reel C — serverdan qayta o\'qish',
+              screen: 'ProfileScreen',
+              action: 'GET /api/records/:code/posts',
+              cause: why(error),
+              pathHint: '/posts');
+          report.skip('Reel D — model tahlili', 'ro\'yxat o\'qilmadi');
+        case Ok(:final value):
+          final row = value.where((p) => p.id == reelId).firstOrNull;
+          if (row == null) {
+            fail('Reel C — serverdan qayta o\'qish',
+                screen: 'ProfileScreen',
+                action: 'yaratilgandan keyin ro\'yxatda qidirish',
+                cause: 'reel #$reelId yaratildi, lekin profil postlari '
+                    'ro\'yxatida YO\'Q — shuning uchun panjarada ham, '
+                    'Reels\'da ham ko\'rinmaydi',
+                pathHint: '/posts');
+            report.skip('Reel D — model tahlili', 'qator topilmadi');
+          } else {
+            report.pass('Reel C — serverdan qayta o\'qish',
+                screen: 'ProfileScreen',
+                action: 'ro\'yxatda topildi',
+                note: 'id=${row.id}; kod=${row.code}; '
+                    'jami ${value.length} post');
+
+            // Reels bo'limining SHARTI shu ikki maydon.
+            if (row.isVideo && row.mediaUrls.isNotEmpty) {
+              report.pass('Reel D — model tahlili',
+                  screen: 'ReelsScreen',
+                  action: 'Post.fromJson → isVideo + mediaUrls',
+                  note: 'isVideo=${row.isVideo}; '
+                      'media=${row.mediaUrls.first}');
+            } else {
+              fail('Reel D — model tahlili',
+                  screen: 'ReelsScreen',
+                  action: 'Post.fromJson → isVideo + mediaUrls',
+                  cause: 'server qatorni qaytardi, lekin model uni video '
+                      'deb tanimadi: isVideo=${row.isVideo}, '
+                      'media=${row.mediaUrls.length} — Reels filtri '
+                      'aynan shu ikki maydonga qaraydi',
+                  pathHint: '/posts');
+            }
+          }
+      }
+    }
+
+    // ── E. `/videos` ENDPOINTI TIRIKMI ────────────────────────
+    //
+    // `videosOf()` repozitoriyda bor. Agar bu endpoint haqiqiy
+    // bo'lsa, Reels uchun kanonik manba o'sha bo'lardi.
+    final vids = await social.videosOf(code);
+    switch (vids) {
+      case Err(:final error):
+        report.add(MatrixRow(
+          name: 'Reel E — /videos endpointi',
+          verdict: Verdict.pass,
+          screen: 'ReelsScreen',
+          action: 'GET /api/records/:code/videos',
+          cause: null,
+          note: 'O\'LIK ENDPOINT (${why(error)}) — `videosOf()` va '
+              '`deleteVideo()` ishlatilmasligi TASDIQLANDI. Reels '
+              'manbai `postsOf()` bo\'lib qolishi to\'g\'ri',
+          layer: 'backend',
+        ));
+      case Ok(:final value):
+        report.add(MatrixRow(
+          name: 'Reel E — /videos endpointi',
+          verdict: Verdict.partial,
+          screen: 'ReelsScreen',
+          action: 'GET /api/records/:code/videos',
+          cause: 'endpoint TIRIK va ${value.length} ta yozuv qaytardi — '
+              'Reels manbai sifatida qayta ko\'rib chiqilsin',
+          layer: 'backend',
+        ));
+    }
+  }, timeout: const Timeout(Duration(minutes: 5)));
+
   testWidgets('8. Chiqish va yakuniy baho', (_) async {
     // TOZALASH CHIQISHDAN OLDIN.
     //

@@ -52,6 +52,21 @@ class AudioOwner extends StateNotifier<Object?> {
     _stoppers.remove(owner);
     if (state == owner) state = null;
   }
+
+  /// HAMMA MANBANI DARHOL TO'XTATADI.
+  ///
+  /// Ekran YOPILISHIDAN OLDIN chaqiriladi. Nima uchun `dispose()`
+  /// ga tayanib bo'lmaydi: `context.pop()` marshrutni animatsiya
+  /// bilan yopadi va vidjet DARHOL o'chmaydi. Odam X ni bosgan
+  /// zahoti ovoz to'xtashi kerak, `dispose()` kelishini kutmasdan.
+  ///
+  /// Ro'yxat NUSXASI bo'ylab yuriladi: to'xtatuvchi o'z navbatida
+  /// `release()` chaqirib ro'yxatni o'zgartirishi mumkin.
+  void stopAll() {
+    for (final stop in _stoppers.values.toList()) {
+      stop();
+    }
+  }
 }
 
 final audioOwnerProvider =

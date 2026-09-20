@@ -72,9 +72,27 @@ class _InlineVideoState extends ConsumerState<InlineVideo> {
   /// yopilganidan keyin ham davom etardi.
   bool _gone = false;
 
+  /// Ovoz egaligi reyestri — `initState` DA olinadi.
+  ///
+  /// `dispose()` ichida `ref` ni ishlatib bo'lMAYDI: Riverpod
+  /// "Cannot use ref after the widget was disposed" istisnosini
+  /// tashlaydi. Ilgari `dispose()` aynan shu chaqiruvdan
+  /// BOSHLANARDI, ya'ni istisno undan keyingi qatorlarni —
+  /// `setVolume(0)`, `pause()` va `dispose()` ni — BUTUNLAY
+  /// ishlamay qoldirardi.
+  ///
+  /// Natija: video kontrolleri hech qachon yopilmasdi va istorya
+  /// ekrani ketganidan keyin ham OVOZ DAVOM ETARDI. APK #48 dagi
+  /// tuzatish ishlamaganining sababi ham shu — `setVolume(0)`
+  /// istisnodan KEYIN turgan edi.
+  AudioOwner? _owner;
+
   @override
   void initState() {
     super.initState();
+    // `ref.read` `initState` da ruxsat etilgan; reyestr konteyner
+    // bilan yashaydi, ya'ni vidjetdan uzoq umr ko'radi.
+    _owner = ref.read(audioOwnerProvider.notifier);
     _open();
   }
 
@@ -93,7 +111,7 @@ class _InlineVideoState extends ConsumerState<InlineVideo> {
         return;
       }
       if (widget.autoPlay) {
-        ref.read(audioOwnerProvider.notifier).take(this, _pauseForOther);
+        _owner?.take(this, _pauseForOther);
         await c.play();
         // Ijro buyrug'i ketgandan keyin ham tekshiriladi: aynan shu
         // oraliqda yopilsa ovoz ortda qolib ketardi.
@@ -115,7 +133,12 @@ class _InlineVideoState extends ConsumerState<InlineVideo> {
     }
   }
 
+  /// Boshqa manba ovoz egaligini oldi — yoki ekran yopilmoqda.
+  ///
+  /// OVOZ AVVAL o'chiriladi: `pause()` platformaga xabar yuboradi
+  /// va u bajarilguncha ovoz eshitilib turardi.
   void _pauseForOther() {
+    _c?.setVolume(0);
     _c?.pause();
     if (mounted) setState(() {});
   }
@@ -126,7 +149,8 @@ class _InlineVideoState extends ConsumerState<InlineVideo> {
     if (c.value.isPlaying) {
       await c.pause();
     } else {
-      ref.read(audioOwnerProvider.notifier).take(this, _pauseForOther);
+      _owner?.take(this, _pauseForOther);
+      await c.setVolume(1);
       await c.play();
     }
     if (mounted) setState(() {});
@@ -137,14 +161,13 @@ class _InlineVideoState extends ConsumerState<InlineVideo> {
     _gone = true;
     final c = _c;
     _c = null;
-    ref.read(audioOwnerProvider.notifier).release(this);
-    // OVOZ AVVAL O'CHIRILADI. `pause()` ham, `dispose()` ham
-    // asinxron va platformaga xabar yuboradi; ular bajarilguncha
-    // o'tgan qisqa vaqt ichida ovoz eshitilib turardi. Ovozni nolga
-    // tushirish shu oraliqni yopadi.
+    // KONTROLLER BIRINCHI YOPILADI. Bu yerda hech narsa undan
+    // oldin turmasligi kerak: oldin turgan har qanday chaqiruv
+    // istisno tashlasa, video yopilmay qolardi.
     c?.setVolume(0);
     c?.pause();
     c?.dispose();
+    _owner?.release(this);
     super.dispose();
   }
 
