@@ -95,7 +95,15 @@ final postLikesProvider = StateNotifierProvider<PostLikes, Map<int, LikeState>>(
 /// Busiz har bir begona post ostida "Obuna bo'lish" turardi, hatto
 /// allaqachon obuna bo'lgan odamda ham. Ya'ni tugma holatni emas,
 /// TAXMINNI ko'rsatardi.
-final myFollowingProvider = FutureProvider<Set<String>>((ref) async {
+///
+/// `dependencies` SHART: busiz bu provayder demo `ProviderScope`
+/// ichida ham ILDIZ doirasidan o'qilardi, ya'ni demo profil
+/// ochilganda HAQIQIY hisob uchun tarmoq so'rovi ketardi va obuna
+/// tugmasining holati haqiqiy hisobdan hisoblanardi. Demo hech
+/// qachon haqiqiy ma'lumotga tegmasligi kerak.
+final myFollowingProvider = FutureProvider<Set<String>>(
+    dependencies: [profileRepositoryProvider, activePersonalProvider],
+    (ref) async {
   final me = ref.watch(activePersonalProvider);
   if (me == null) return const <String>{};
   final res = await ref
@@ -158,7 +166,12 @@ final followOverridesProvider =
     );
 
 /// Shu kodga obunamanmi — serverdagi ro'yxat + mahalliy o'zgarish.
-final followingOfProvider = Provider.family<bool, String>((ref, code) {
+/// `myFollowingProvider` doiralangani uchun buni ham doiralash
+/// SHART: aks holda Riverpod "dependencies were overridden" deb
+/// istisno tashlaydi va ekran bo'sh chiqadi.
+final followingOfProvider = Provider.family<bool, String>(
+    dependencies: [myFollowingProvider, followOverridesProvider],
+    (ref, code) {
   final override = ref.watch(followOverridesProvider)[code];
   if (override != null) return override;
   final seed = ref.watch(myFollowingProvider).valueOrNull;
