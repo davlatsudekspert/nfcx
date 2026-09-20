@@ -104,6 +104,8 @@ export default function ActivatePage() {
   // "Menda kod bor" — tekkizgan, lekin hali faollashtirmagan odam
   // uchun chiqish yo'li: kirish ekranini o'tkazib yuboradi.
   const [skipAttach, setSkipAttach] = useState(false);
+  // Bog'lash nega bo'lmagani — odamga aytiladi.
+  const [attachWhy, setAttachWhy] = useState('');
   const inputRef = useRef(null);
 
   const fail = useCallback((e) => {
@@ -140,23 +142,28 @@ export default function ActivatePage() {
   // Endi: sahifa ochilganda ham, odam KIRGANDAN KEYIN ham urinib
   // ko'riladi. Kirish o'zi yetarli — kodni qayta terish shart emas,
   // chunki u allaqachon ishlatilgan.
+  const tryAttach = useCallback(async () => {
+    if (!deviceToken) return null;
+    try {
+      const r = await fetch('/api/activate/attach-sticker', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify({ deviceToken }),
+      });
+      const d = await r.json().catch(() => null);
+      if (r.ok && d?.redirect) { clearDevice(); navigate(d.redirect, { replace: true }); return 'ok'; }
+      // SABABNI SAQLAYMIZ. Ilgari jim tushib qolardi va odam
+      // sababini bilmasdan bo'sh kod maydonini ko'rardi.
+      return (d && d.error) || (r.status === 401 ? 'unauthorized' : 'failed');
+    } catch { return 'failed'; }
+  }, [deviceToken]);
+
   useEffect(() => {
     if (!deviceToken || !user || result) return;
     let alive = true;
-    fetch('/api/activate/attach-sticker', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', accept: 'application/json' },
-      body: JSON.stringify({ deviceToken }),
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (!alive || !d?.redirect) return;
-        clearDevice();
-        navigate(d.redirect, { replace: true });
-      })
-      .catch(() => { /* bog'lanmadi — odatdagi oqim davom etadi */ });
+    tryAttach().then((why) => { if (alive && why && why !== 'ok') setAttachWhy(why); });
     return () => { alive = false; };
-  }, [deviceToken, user, result]);
+  }, [deviceToken, user, result, tryAttach]);
 
   // Profil tanlovi: FAQAT o'zinikilar (server ham shuni qaytaradi va
   // egalikni yana bir bor TEKSHIRADI).
@@ -191,7 +198,17 @@ export default function ActivatePage() {
     setErr(''); setBusy(true);
     try {
       const data = await dbActivateCheck(code);
-      if (data?.alreadyActivated) { setResult(data.result); storeCode(''); clearDevice(); return; }
+      if (data?.alreadyActivated) {
+        // KOD ALLAQACHON ISHLATILGAN — LEKIN SHU ODAM TOMONIDAN.
+        //
+        // Aynan shu holat ko'p uchraydi: odam QR bilan
+        // faollashtirgan, keyin stikerga tekkizgan va kodini yana
+        // kiritmoqda. Ilgari bu yerda faqat natija ko'rsatilardi,
+        // STIKER esa bog'lanmay qolardi — ya'ni odam to'g'ri ish
+        // qilsa ham mahsuloti ishlamasdi.
+        if (deviceToken && (await tryAttach()) === 'ok') return;
+        setResult(data.result); storeCode(''); clearDevice(); return;
+      }
       setProduct(data.product);
       storeCode(code);
     } catch (e2) { fail(e2); } finally { setBusy(false); }
@@ -294,6 +311,18 @@ export default function ActivatePage() {
           <div className="ac-brand">NFCSTORE</div>
           <h1>{t('NFCSTORE mahsulotingizni faollashtiring')}</h1>
           <p className="ac-sub">{t('Konvert ichidagi aktivatsiya kodini kiriting.')}</p>
+          {/* STIKER TEKKIZILGAN, LEKIN BOG'LANMAGAN — SABABI.
+              Ilgari bu jim tushib qolardi va odam nima
+              bo'layotganini umuman bilmasdi. */}
+          {deviceToken && attachWhy && (
+            <p className="ac-why" role="status">
+              {attachWhy === 'unauthorized'
+                ? t('Stikeringizni bog‘lash uchun avval kiring.')
+                : attachWhy === 'device_taken'
+                  ? t('Bu stiker allaqachon boshqa profilga bog‘langan.')
+                  : t('Stiker hali bog‘lanmagan. Konvertdagi kodni kiriting — shundan keyin u shu profilga bog‘lanadi.')}
+            </p>
+          )}
           <label className="ac-field">
             <span>{t('Aktivatsiya kodi')}</span>
             <input

@@ -2008,6 +2008,12 @@ body{
 .ac-facts dd{margin:0;font-size:var(--fs-base);font-weight:700}
 .ac-facts dd b{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;color:var(--accent-text,var(--accent-primary))}
 /* "Menda kod bor" — ikkinchi darajali chiqish yo'li. */
+/* Stiker nega bog'lanmagani — ko'rinarli, lekin xato emas. */
+.ac-why{
+  margin:0 0 4px!important;padding:10px 12px;border-radius:11px;line-height:1.5;
+  font-size:var(--fs-xs)!important;color:var(--text-primary);
+  background:var(--surface-inset,var(--bg-secondary));border-left:3px solid var(--accent-primary)
+}
 .ac-linkish{
   margin-top:12px;background:none;border:0;cursor:pointer;text-decoration:underline;
   font-size:var(--fs-xs);color:var(--text-muted)

@@ -1899,7 +1899,8 @@ function gatedEnv(env, sqlNeedle) {
   // holbuki kodi allaqachon ishlatilgan — qayta terish yordam
   // bermasdi va "ishlamadi" degan xulosaga kelardi.
   checkTrue('27) kirgandan keyin o‘zi bog‘lanadi',
-    /attach-sticker/.test(page) && /\}, \[deviceToken, user, result\]\);/.test(page));
+    /attach-sticker/.test(page) && /tryAttach\(\)\.then/.test(page)
+    && /\[deviceToken, user, result, tryAttach\]/.test(page));
   checkTrue('27) kirmaganga "kiring" deyiladi', /Stikeringizni bog‘lash/.test(page));
   checkTrue('27) kodni qayta terish shart emasligi aytiladi',
     /Kodni qayta kiritish shart emas/.test(page));
@@ -1907,6 +1908,28 @@ function gatedEnv(env, sqlNeedle) {
   checkTrue('27) kirishdan keyin qaytib keladi', /login\?next=\$\{back\}/.test(page));
   // Hali faollashtirmagan odam qamalib qolmasin.
   checkTrue('27) kod kiritish yo‘li ochiq qoladi', /Menda aktivatsiya kodi bor/.test(page));
+
+  // ── ISHLATILGAN KODNI QAYTA KIRITISH ─────────────────
+  //
+  // FOYDALANUVCHI AYNAN SHUNGA DUCH KELDI: "yana o'sha kodni
+  // kiritsak BAND deyapti".
+  //
+  // Holat ko'p uchraydi: odam QR bilan faollashtirgan, keyin
+  // stikerga tekkizgan va kodini qayta kiritmoqda. Ilgari bu yerda
+  // faqat natija ko'rsatilardi, STIKER esa bog'lanmay qolardi —
+  // ya'ni odam hamma ishni TO'G'RI qilsa ham mahsuloti ishlamasdi.
+  checkTrue('27) ishlatilgan kod stikerni bog‘laydi',
+    /alreadyActivated[\s\S]{0,700}deviceToken && \(await tryAttach\(\)\) === 'ok'/.test(page));
+
+  // ── SABAB JIM TUSHIB QOLMASIN ─────────────────────
+  //
+  // Bog'lash bo'lmaganda odam bo'sh kod maydonini ko'rardi va nima
+  // bo'layotganini umuman bilmasdi — xuddi hech narsa yuz
+  // bermagandek. Endi sababi aytiladi.
+  checkTrue('27) sabab saqlanadi', /setAttachWhy/.test(page));
+  checkTrue('27) sabab ko‘rsatiladi', /ac-why/.test(page));
+  checkTrue('27) kirish kerakligi', /bog‘lash uchun avval kiring/.test(page));
+  checkTrue('27) band stiker sababi', /allaqachon boshqa profilga bog‘langan/.test(page));
 }
 
 done();

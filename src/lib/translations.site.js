@@ -116,4 +116,9 @@ export const DICT_SITE = {
   'Stikeringizni bog‘lash': { ru: 'Привязать ваш стикер', en: 'Link your sticker' },
   'Hisobingizga kiring — stiker o‘zi bog‘lanadi. Kodni qayta kiritish shart emas.': { ru: 'Войдите в аккаунт — стикер привяжется сам. Код вводить заново не нужно.', en: 'Sign in and the sticker links itself. You do not need to enter the code again.' },
   'Menda aktivatsiya kodi bor': { ru: 'У меня есть код активации', en: 'I have an activation code' },
+
+  // Stiker bog'lanmagani — sababi.
+  'Stikeringizni bog‘lash uchun avval kiring.': { ru: 'Чтобы привязать стикер, сначала войдите.', en: 'Sign in first to link your sticker.' },
+  'Bu stiker allaqachon boshqa profilga bog‘langan.': { ru: 'Этот стикер уже привязан к другому профилю.', en: 'This sticker is already linked to another profile.' },
+  'Stiker hali bog‘lanmagan. Konvertdagi kodni kiriting — shundan keyin u shu profilga bog‘lanadi.': { ru: 'Стикер пока не привязан. Введите код из конверта — после этого он привяжется к этому профилю.', en: 'The sticker is not linked yet. Enter the code from the envelope and it will link to this profile.' },
 };
