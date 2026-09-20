@@ -20,6 +20,7 @@
 // tekshirilishi kerak, shuning uchun natijalar `E2EReport` ga
 // yig'iladi va test faqat eng oxirida baholanadi.
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -1971,7 +1972,7 @@ void main() {
     // Dart ning `HttpClient` i o'zi `Accept` yubormaydi, ya'ni
     // usiz sinov brauzer hech qachon yubormaydigan so'rovni
     // tekshirardi.
-    Future<int> probe(String path) async {
+    Future<({int status, String body})> probe(String path) async {
       final client = HttpClient()
         ..connectionTimeout = const Duration(seconds: 15)
         ..userAgent = 'Mozilla/5.0 (Android) NFCSTORE-Nova-E2E';
@@ -1981,8 +1982,20 @@ void main() {
             'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8');
         req.followRedirects = true;
         final res = await req.close();
-        await res.drain<void>();
-        return res.statusCode;
+        // XATO TANASI — SABABNI AYTADIGAN YAGONA NARSA.
+        //
+        // Ilgari javob shunchaki `drain` qilinardi va bizda faqat
+        // "500" raqami qolardi. Worker o'z xatolarini JSON bilan
+        // qaytaradi (`{"error":...,"detail":...}`), Cloudflare esa
+        // ushlanmagan istisnoda oddiy matnli sahifa beradi — ya'ni
+        // tana aybdor qaysi qatlam ekanini KO'RSATADI.
+        final body = await res
+            .transform(const Utf8Decoder(allowMalformed: true))
+            .join();
+        return (
+          status: res.statusCode,
+          body: body.trim().replaceAll(RegExp(r'\s+'), ' '),
+        );
       } finally {
         client.close();
       }
@@ -1990,8 +2003,10 @@ void main() {
 
     try {
       final sharePath = '/${Uri.encodeComponent(code)}';
-      final shareCode = await probe(sharePath);
-      final homeCode = await probe('/');
+      final shareRes = await probe(sharePath);
+      final homeRes = await probe('/');
+      final shareCode = shareRes.status;
+      final homeCode = homeRes.status;
 
       // KICHIK HARFLI VARIANTNI HAM SINAYMIZ.
       //
@@ -2002,15 +2017,23 @@ void main() {
       // uni ilovada tuzatish kerak. Shuni ajratmasdan turib
       // "backend aybdor" deyish taxmin bo'lardi.
       final lowerPath = '/${Uri.encodeComponent(code.toLowerCase())}';
-      final lowerCode =
-          lowerPath == sharePath ? shareCode : await probe(lowerPath);
+      final lowerCode = lowerPath == sharePath
+          ? shareCode
+          : (await probe(lowerPath)).status;
+
+      // Tanadan faqat boshi olinadi: bu sahifa HTML bo'lsa
+      // kilobaytlab matn bo'lib ketadi.
+      final snippet = shareRes.body.length > 300
+          ? '${shareRes.body.substring(0, 300)}...'
+          : shareRes.body;
 
       final trace = Trace(
         method: 'GET',
         path: sharePath,
         status: shareCode,
         response: 'bosh sahifa `/` -> HTTP $homeCode, '
-            'kichik harf `$lowerPath` -> HTTP $lowerCode',
+            'kichik harf `$lowerPath` -> HTTP $lowerCode; '
+            'javob tanasi: $snippet',
       );
 
       if (shareCode >= 200 && shareCode < 400) {
