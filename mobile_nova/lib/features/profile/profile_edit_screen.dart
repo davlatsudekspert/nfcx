@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../data/models/models.dart';
@@ -41,6 +42,14 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   bool _busy = false;
   String? _error;
   String _avatarUrl = '';
+
+  /// PROFIL MUSIQASI — ko'pi bilan 5 ta.
+  ///
+  /// Chegara serverdan: oddiy hisobda 5, Premiumda 10
+  /// (`musicLimitD1`). Ilova eng qat'iysini qo'llaydi, shuning
+  /// uchun serverga sig'maydigan ro'yxat yuborilmaydi.
+  List<String> _music = const [];
+  static const _musicMax = 5;
   double _uploadProgress = 0;
 
   @override
@@ -58,6 +67,50 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     _role.text = id.role;
     _bio.text = id.bio;
     _avatarUrl = id.avatarUrl;
+    _music = List<String>.from(id.musicUrls);
+  }
+
+  /// MUSIQA QO'SHISH.
+  ///
+  /// `image_picker` audio tanlay olmaydi — shuning uchun
+  /// `file_picker`. Fayl OQIM bilan yuboriladi
+  /// (`/api/upload-file`), base64 emas.
+  Future<void> _pickMusic() async {
+    final l = L.of(context);
+    final picked = await FilePicker.pickFiles(
+      type: FileType.audio,
+      withData: false,
+    );
+    final path = picked?.files.singleOrNull?.path;
+    if (path == null || !mounted) return;
+
+    setState(() {
+      _busy = true;
+      _uploadProgress = 0;
+      _error = null;
+    });
+    final res = await ref.read(profileRepositoryProvider).uploadAudio(
+          path,
+          onProgress: (sent, total) {
+            if (mounted && total > 0) {
+              setState(() => _uploadProgress = sent / total);
+            }
+          },
+        );
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      res.when(
+        // Avatar bilan bir xil sabab: yuklash NISBIY yo'l
+        // qaytaradi, pleyer esa domensiz manzilni ocholmaydi.
+        // Serverga qaytishda `storageUrl` uni yana nisbiy
+        // shaklga keltiradi.
+        ok: (url) {
+          if (url.isNotEmpty) _music = [..._music, mediaUrl(url)];
+        },
+        err: (e) => _error = describeError(l, e),
+      );
+    });
   }
 
   Future<void> _pickAvatar() async {
@@ -118,6 +171,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
           role: _role.text.trim(),
           bio: _bio.text.trim(),
           avatarUrl: _avatarUrl.isEmpty ? null : _avatarUrl,
+          musicUrls: _music,
         );
     if (!mounted) return;
     setState(() => _busy = false);
@@ -213,6 +267,70 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
             maxLength: 300,
             enabled: !_busy,
           ),
+          const SizedBox(height: Gap.xl),
+          // ── PROFIL MUSIQASI ─────────────────────────────────
+          //
+          // Ilgari ilovada musiqa qo'shish IMKONI YO'Q edi:
+          // `MusicControl` faqat serverdan kelgan ro'yxatni
+          // IJRO ETARDI, qo'shish esa faqat saytda mumkin edi.
+          Row(
+            children: [
+              Icon(Icons.music_note_rounded, size: 17, color: t.text3),
+              const SizedBox(width: Gap.sm),
+              Expanded(
+                child: Text(
+                  l.profileMusic,
+                  style: Theme.of(context).textTheme.labelMedium,
+                ),
+              ),
+              Text('${_music.length}/$_musicMax',
+                  style: AppType.monoStyle(color: t.text3, size: 11.5)),
+            ],
+          ),
+          const SizedBox(height: Gap.sm),
+          for (var i = 0; i < _music.length; i++) ...[
+            FloatingSurface(
+              solid: true,
+              padding: const EdgeInsets.fromLTRB(Gap.md, Gap.sm, Gap.sm, Gap.sm),
+              child: Row(
+                children: [
+                  Icon(Icons.audiotrack_rounded, size: 16, color: t.accent2),
+                  const SizedBox(width: Gap.md),
+                  Expanded(
+                    child: Text(
+                      // Manzilning oxirgi bo'lagi — fayl nomi.
+                      Uri.parse(_music[i]).pathSegments.isEmpty
+                          ? _music[i]
+                          : Uri.parse(_music[i]).pathSegments.last,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontFamily: AppType.sans,
+                          fontSize: 12.5,
+                          color: t.text2),
+                    ),
+                  ),
+                  NovaIconButton(
+                    icon: Icons.close_rounded,
+                    tooltip: l.actionDelete,
+                    size: 34,
+                    onPressed: _busy
+                        ? null
+                        : () => setState(() =>
+                            _music = [..._music]..removeAt(i)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: Gap.sm),
+          ],
+          if (_music.length < _musicMax)
+            NovaButton(
+              label: l.profileMusicAdd,
+              icon: Icons.add_rounded,
+              tone: ButtonTone.quiet,
+              onPressed: _busy ? null : _pickMusic,
+            ),
           const SizedBox(height: Gap.lg),
           FloatingSurface(
             solid: true,

@@ -521,6 +521,12 @@ class LUz extends L {
   String get profileEdit => 'Profilni tahrirlash';
 
   @override
+  String get profileMusic => 'Profil musiqasi';
+
+  @override
+  String get profileMusicAdd => 'Musiqa qo‘shish';
+
+  @override
   String get profileLinks => 'Havolalar';
 
   @override

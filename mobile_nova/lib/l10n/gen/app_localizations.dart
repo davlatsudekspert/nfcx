@@ -1095,6 +1095,18 @@ abstract class L {
   /// **'Profilni tahrirlash'**
   String get profileEdit;
 
+  /// No description provided for @profileMusic.
+  ///
+  /// In uz, this message translates to:
+  /// **'Profil musiqasi'**
+  String get profileMusic;
+
+  /// No description provided for @profileMusicAdd.
+  ///
+  /// In uz, this message translates to:
+  /// **'Musiqa qo‘shish'**
+  String get profileMusicAdd;
+
   /// No description provided for @profileLinks.
   ///
   /// In uz, this message translates to:

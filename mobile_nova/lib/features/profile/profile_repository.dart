@@ -25,6 +25,24 @@ class ProfileRepository {
             : j));
   }
 
+  /// PROFILNI SAQLASH — AVVAL O'QIB, KEYIN YOZADI.
+  ///
+  /// ## NIMA UCHUN SHUNDAY
+  ///
+  /// `PUT /api/records/:code` yozuvni QISMAN yangilamaydi — u
+  /// butun yozuvni QAYTA QURADI (`validateRecordBody`), `updateRecord`
+  /// esa natijadagi HAR BIR ustunni yozadi. Ya'ni tanada bo'lmagan
+  /// maydon bo'shatiladi.
+  ///
+  /// Ilgari bu yerda faqat o'zgargan maydonlar yuborilardi. Natijada
+  /// odam ismini yoki avatarini tahrirlasa, uning MUSIQASI,
+  /// hashteglari, qo'shimcha havolalari, karta raqamlari, Telegrami
+  /// va telefoni JIMGINA O'CHIB ketardi.
+  ///
+  /// Endi avval yozuvning O'ZI o'qiladi, o'zgarishlar ustiga
+  /// qo'yiladi va TO'LIQ yozuv qaytariladi. Ilova hech narsa
+  /// o'ylab topmaydi — serverdan kelgan qiymatlarni aynan
+  /// qaytaradi.
   Future<Result<void>> updateProfile({
     required String code,
     String? name,
@@ -32,20 +50,69 @@ class ProfileRepository {
     String? role,
     String? avatarUrl,
     String? coverUrl,
+    List<String>? musicUrls,
     Map<String, dynamic>? links,
-  }) =>
-      _api.put<void>('/api/records/$code', {
-        if (name != null) 'name': name,
-        if (bio != null) 'bio': bio,
-        if (role != null) 'role': role,
-        // `storageUrl` — o'qishdagi `mediaUrl` ning teskarisi.
-        // Ekranga to'liq manzil boradi, bazaga esa AYNAN o'sha
-        // nisbiy shakl qaytadi. Aks holda yozuv domenga bog'lanib
-        // qolardi.
-        if (avatarUrl != null) 'avatarUrl': storageUrl(avatarUrl),
-        if (coverUrl != null) 'bgUrl': storageUrl(coverUrl),
-        if (links != null) ...links,
-      });
+  }) async {
+    final cur =
+        await _api.get<Map<String, dynamic>>('/api/records/$code');
+    if (cur case Err(:final error)) return Err(error);
+
+    final raw = (cur as Ok<Map<String, dynamic>>).value;
+    final inner = raw['record'] ?? raw['card'] ?? raw;
+    final body = <String, dynamic>{
+      if (inner is Map) ...inner.cast<String, dynamic>(),
+    };
+
+    if (name != null) body['name'] = name;
+    if (bio != null) body['bio'] = bio;
+    if (role != null) body['role'] = role;
+    // `storageUrl` — o'qishdagi `mediaUrl` ning teskarisi. Ekranga
+    // to'liq manzil boradi, bazaga esa AYNAN o'sha nisbiy shakl
+    // qaytadi. Aks holda yozuv domenga bog'lanib qolardi.
+    if (avatarUrl != null) body['avatarUrl'] = storageUrl(avatarUrl);
+    if (coverUrl != null) body['bgUrl'] = storageUrl(coverUrl);
+    if (musicUrls != null) {
+      body['musicUrls'] = musicUrls.map(storageUrl).toList();
+    }
+    if (links != null) body.addAll(links);
+
+    return _api.put<void>('/api/records/$code', body);
+  }
+
+  /// MUSIQA FAYLINI YUKLASH.
+  ///
+  /// `/api/upload-file` OQIM bilan yuboradi. Eski `/api/upload-audio`
+  /// base64 kutadi va serverdagi izohda aytilganidek, base64 hajmni
+  /// ~33% oshirib Worker xotirasiga sig'masdi — shuning uchun musiqa
+  /// uchun aynan oqimli yo'l ishlatiladi.
+  ///
+  /// Qaytadigan manzil NISBIY (`/uploads/file_....mp3`) — server
+  /// yozuvni shu shaklda saqlaydi.
+  Future<Result<String>> uploadAudio(
+    String filePath, {
+    void Function(int sent, int total)? onProgress,
+  }) async {
+    final bytes = await File(filePath).readAsBytes();
+    final res = await _api.uploadBinary(
+      '/api/upload-file',
+      bytes,
+      _audioType(filePath),
+      onProgress: onProgress,
+    );
+    return res.map((j) => '${j['url'] ?? j['path'] ?? ''}');
+  }
+
+  /// Kengaytmadan MIME turi. Server `accept: ['audio/', ...]` bo'yicha
+  /// tekshiradi va faylning SEHRLI BAYTLARIDAN haqiqiy turni o'zi
+  /// aniqlaydi, shuning uchun bu yerda taxminiy tur yetarli.
+  static String _audioType(String path) {
+    final p = path.toLowerCase();
+    if (p.endsWith('.m4a') || p.endsWith('.mp4')) return 'audio/mp4';
+    if (p.endsWith('.ogg')) return 'audio/ogg';
+    if (p.endsWith('.wav')) return 'audio/wav';
+    if (p.endsWith('.webm')) return 'audio/webm';
+    return 'audio/mpeg';
+  }
 
   /// Ko'rish hodisasi — profil analitikasi uchun.
   ///

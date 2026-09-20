@@ -518,6 +518,12 @@ class LRu extends L {
   String get profileEdit => 'Редактировать профиль';
 
   @override
+  String get profileMusic => 'Музыка профиля';
+
+  @override
+  String get profileMusicAdd => 'Добавить музыку';
+
+  @override
   String get profileLinks => 'Ссылки';
 
   @override

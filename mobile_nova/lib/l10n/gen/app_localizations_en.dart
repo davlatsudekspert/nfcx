@@ -521,6 +521,12 @@ class LEn extends L {
   String get profileEdit => 'Edit profile';
 
   @override
+  String get profileMusic => 'Profile music';
+
+  @override
+  String get profileMusicAdd => 'Add music';
+
+  @override
   String get profileLinks => 'Links';
 
   @override
