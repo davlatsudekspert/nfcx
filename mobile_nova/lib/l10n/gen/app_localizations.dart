@@ -2618,6 +2618,12 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Hozircha onlayn to‘lov usullari yoqilmagan. Biroz keyinroq urinib ko‘ring yoki saytdan buyurtma bering.'**
   String get paymentNotConfiguredHint;
+
+  /// Profil muqovasi tugmasi
+  ///
+  /// In uz, this message translates to:
+  /// **'Muqova'**
+  String get profileCover;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

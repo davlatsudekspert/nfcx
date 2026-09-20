@@ -18,6 +18,7 @@ import '../auth/session.dart';
 import '../home/home_screen.dart';
 import '../home/widgets/avatar.dart';
 import 'profile_repository.dart';
+import '../social/media_frame.dart';
 import '../../core/utils/media_url.dart';
 
 /// Profilni tahrirlash.
@@ -43,6 +44,14 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   String? _error;
   String _avatarUrl = '';
 
+  /// MUQOVA RASMI — profil tepasidagi keng rasm.
+  ///
+  /// Server buni `bgUrl` deb saqlaydi, model `coverUrl` deb o'qiydi
+  /// va profil ekrani uni ALLAQACHON chizadi. Yetishmagani faqat
+  /// shu yer edi: tahrir oynasida uni qo'yish yo'li yo'q edi, ya'ni
+  /// odam o'z profilining tepa qismini o'zgartira olmasdi.
+  String _coverUrl = '';
+
   /// PROFIL MUSIQASI — ko'pi bilan 5 ta.
   ///
   /// Chegara serverdan: oddiy hisobda 5, Premiumda 10
@@ -67,6 +76,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     _role.text = id.role;
     _bio.text = id.bio;
     _avatarUrl = id.avatarUrl;
+    _coverUrl = id.coverUrl;
     _music = List<String>.from(id.musicUrls);
   }
 
@@ -113,13 +123,23 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     });
   }
 
-  Future<void> _pickAvatar() async {
+  Future<void> _pickAvatar() => _pickImage(cover: false);
+
+  Future<void> _pickCover() => _pickImage(cover: true);
+
+  /// AVATAR VA MUQOVA — BITTA YO'L.
+  ///
+  /// Farqi faqat o'lchamda va natija qaysi maydonga tushishida.
+  /// Ikkita deyarli bir xil usul yozish keyin ularning biri
+  /// tuzatilib, ikkinchisi unutilishiga olib kelardi.
+  Future<void> _pickImage({required bool cover}) async {
     final l = L.of(context);
     final f = await _picker.pickImage(
       source: ImageSource.gallery,
-      // Avatar hech qachon 800px dan katta ko'rsatilmaydi — kattaroq
-      // faylni yuklash trafikni bekorga sarflardi.
-      maxWidth: 800,
+      // Avatar hech qachon 800px dan katta ko'rsatilmaydi; muqova
+      // esa ekran kengligida turadi, shuning uchun unga kengroq
+      // ruxsat. Kattaroq faylni yuklash trafikni bekorga sarflardi.
+      maxWidth: cover ? 1600 : 800,
       imageQuality: 88,
     );
     if (f == null || !mounted) return;
@@ -143,7 +163,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       res.when(
         // `mediaUrl` — yuklash NISBIY yo'l qaytaradi
         // (`/uploads/...`) va u to'g'ridan-to'g'ri ko'rsatilsa,
-        // yangi avatar ORNIGA bo'shliq chiqardi: rasm keshi
+        // yangi rasm ORNIGA bo'shliq chiqardi: rasm keshi
         // domensiz manzilni ocholmaydi. Model chegarasidagi
         // tuzatish bu yerga yetib kelmaydi — qiymat modeldan
         // emas, yuklash javobidan keladi.
@@ -151,7 +171,13 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
         // Serverga qaytishda `storageUrl` uni yana nisbiy
         // shaklga keltiradi, ya'ni bazada hech narsa
         // o'zgarmaydi.
-        ok: (url) => _avatarUrl = mediaUrl(url),
+        ok: (url) {
+          if (cover) {
+            _coverUrl = mediaUrl(url);
+          } else {
+            _avatarUrl = mediaUrl(url);
+          }
+        },
         err: (e) => _error = e.kind.name == 'endpointMissing'
             ? l.uploadFailed
             : describeError(l, e),
@@ -171,6 +197,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
           role: _role.text.trim(),
           bio: _bio.text.trim(),
           avatarUrl: _avatarUrl.isEmpty ? null : _avatarUrl,
+          coverUrl: _coverUrl.isEmpty ? null : _coverUrl,
           musicUrls: _music,
         );
     if (!mounted) return;
@@ -213,26 +240,129 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       showBack: true,
       body: NovaScroll(
         children: [
-          Center(
+          // MUQOVA + AVATAR — profil tepasi qanday ko'rinsa,
+          // tahrirda ham shunday turadi. Ilgari bu yerda faqat
+          // avatar bor edi va muqovani umuman qo'yib bo'lmasdi.
+          SizedBox(
+            height: 176,
             child: Stack(
+              alignment: Alignment.topCenter,
+              clipBehavior: Clip.none,
               children: [
-                Avatar(url: _avatarUrl, initials: user.initials, size: 104),
                 Positioned(
+                  left: 0,
                   right: 0,
-                  bottom: 0,
+                  top: 0,
                   child: PressableScale(
-                    onTap: _busy ? null : _pickAvatar,
-                    child: Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        gradient: t.accentGradient,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: t.bg1, width: 2.5),
+                    onTap: _busy ? null : _pickCover,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(22),
+                      child: SizedBox(
+                        height: 124,
+                        width: double.infinity,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            if (_coverUrl.isEmpty)
+                              DecoratedBox(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [t.surface2, t.surface],
+                                  ),
+                                ),
+                              )
+                            else
+                              mediaImage(context, _coverUrl,
+                                  fit: BoxFit.cover),
+                            // Tugma har qanday rasm ustida
+                            // o'qiladigan bo'lishi uchun yengil
+                            // qorong'ilashtirish.
+                            DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.black.withValues(alpha: .10),
+                                    Colors.black.withValues(alpha: .34),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            Align(
+                              alignment: Alignment.topRight,
+                              child: Padding(
+                                padding: const EdgeInsets.all(Gap.md),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: Gap.md, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: .42),
+                                    borderRadius: R.pill,
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.image_rounded,
+                                          size: 13, color: Colors.white),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        l.profileCover,
+                                        style: TextStyle(
+                                          fontFamily: AppType.sans,
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w600,
+                                          letterSpacing: .3,
+                                          color: Colors.white
+                                              .withValues(alpha: .92),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      child: Icon(Icons.photo_camera_rounded,
-                          size: 15, color: t.onAccent),
                     ),
+                  ),
+                ),
+                Positioned(
+                  top: 72,
+                  child: Stack(
+                    children: [
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: t.bg1, width: 3),
+                        ),
+                        child: Avatar(
+                            url: _avatarUrl,
+                            initials: user.initials,
+                            size: 104),
+                      ),
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: PressableScale(
+                          onTap: _busy ? null : _pickAvatar,
+                          child: Container(
+                            width: 34,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              gradient: t.accentGradient,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: t.bg1, width: 2.5),
+                            ),
+                            child: Icon(Icons.photo_camera_rounded,
+                                size: 15, color: t.onAccent),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],

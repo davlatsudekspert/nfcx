@@ -117,14 +117,34 @@ final personalIdsProvider = Provider<List<NfcId>>((ref) {
 /// Tanlangan shaxsiy yozuv kodi — bir nechta bo'lganda.
 final selectedPersonalCodeProvider = StateProvider<String?>((_) => null);
 
+/// TANLANGAN YOZUV — BUTUN RO'YXATDAN QIDIRILADI.
+///
+/// Qidiruv `personalIdsProvider` dan EMAS, `myIdsProvider` dan
+/// boradi va bu ataylab.
+///
+/// `cards.profile_type = 'business'` — bu saytdagi KO'RINISH
+/// uslubi, hisobdagi alohida kompaniya emas (kompaniyalar butunlay
+/// boshqa manbadan, `myBusinessesProvider` dan keladi). Ya'ni
+/// bunday yozuv ham foydalanuvchining o'z NFC ID'si va uni tanlash
+/// mumkin bo'lishi kerak.
+///
+/// Filtrlangan ro'yxatdan qidirilganda haqiqiy hisobda aynan shu
+/// sindi: `profileType` o'qiladigan bo'lgandan keyin ikkita yozuv
+/// ro'yxatdan tushib qoldi va ular tanlanganda jimgina ASOSIY
+/// profil ochilaverdi — odam boshqa profilga o'tdim deb o'ylab,
+/// aslida eskisini ko'rib turardi.
 final activePersonalProvider = Provider<NfcId?>((ref) {
-  final list = ref.watch(personalIdsProvider);
-  if (list.isEmpty) return null;
+  final all = ref.watch(myIdsProvider);
   final code = ref.watch(selectedPersonalCodeProvider);
   if (code != null) {
-    final match = list.where((e) => e.code == code).firstOrNull;
+    final match = all.where((e) => e.code == code).firstOrNull;
     if (match != null) return match;
   }
+
+  // Hech narsa tanlanmagan bo'lsa — odatiy shaxsiy ro'yxatdan
+  // asosiysi.
+  final list = ref.watch(personalIdsProvider);
+  if (list.isEmpty) return null;
   return list.firstWhere((e) => e.primary, orElse: () => list.first);
 });
 

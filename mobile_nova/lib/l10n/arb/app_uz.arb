@@ -490,5 +490,9 @@
   "paymentNotConfiguredHint": "Hozircha onlayn to‘lov usullari yoqilmagan. Biroz keyinroq urinib ko‘ring yoki saytdan buyurtma bering.",
   "@paymentNotConfiguredHint": {
     "description": "Maxfiylik / bildirishnoma / to‘lov holati matni"
+  },
+  "profileCover": "Muqova",
+  "@profileCover": {
+    "description": "Profil muqovasi tugmasi"
   }
 }

@@ -490,5 +490,9 @@
   "paymentNotConfiguredHint": "Online payment is not available yet. Try again later or order from the website.",
   "@paymentNotConfiguredHint": {
     "description": "Maxfiylik / bildirishnoma / to‘lov holati matni"
+  },
+  "profileCover": "Cover",
+  "@profileCover": {
+    "description": "Profil muqovasi tugmasi"
   }
 }

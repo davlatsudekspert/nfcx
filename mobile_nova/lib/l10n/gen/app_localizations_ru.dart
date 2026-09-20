@@ -1297,4 +1297,7 @@ class LRu extends L {
   @override
   String get paymentNotConfiguredHint =>
       'Онлайн-оплата пока недоступна. Попробуйте позже или оформите заказ на сайте.';
+
+  @override
+  String get profileCover => 'Обложка';
 }

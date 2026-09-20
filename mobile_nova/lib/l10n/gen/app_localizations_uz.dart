@@ -1305,4 +1305,7 @@ class LUz extends L {
   @override
   String get paymentNotConfiguredHint =>
       'Hozircha onlayn to‘lov usullari yoqilmagan. Biroz keyinroq urinib ko‘ring yoki saytdan buyurtma bering.';
+
+  @override
+  String get profileCover => 'Muqova';
 }

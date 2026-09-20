@@ -1303,4 +1303,7 @@ class LEn extends L {
   @override
   String get paymentNotConfiguredHint =>
       'Online payment is not available yet. Try again later or order from the website.';
+
+  @override
+  String get profileCover => 'Cover';
 }

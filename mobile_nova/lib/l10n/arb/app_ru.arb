@@ -490,5 +490,9 @@
   "paymentNotConfiguredHint": "Онлайн-оплата пока недоступна. Попробуйте позже или оформите заказ на сайте.",
   "@paymentNotConfiguredHint": {
     "description": "Maxfiylik / bildirishnoma / to‘lov holati matni"
+  },
+  "profileCover": "Обложка",
+  "@profileCover": {
+    "description": "Profil muqovasi tugmasi"
   }
 }
