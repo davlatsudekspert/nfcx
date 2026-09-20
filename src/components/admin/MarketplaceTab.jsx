@@ -41,6 +41,7 @@ const STATUS_TONE = {
   activating: 'warning', activated: 'success', blocked: 'danger', expired: 'danger',
 };
 const SUBTABS = [
+  ['guide', 'Qo‘llanma'],
   ['dashboard', 'Statistika'],
   ['products', 'Mahsulotlar'],
   ['codes', 'Aktivatsiya kodlari'],
@@ -103,6 +104,7 @@ export default function MarketplaceTab({ adminApi, isManager, apiErrText }) {
         ))}
       </div>
 
+      {sub === 'guide' && <Guide t={t} onGo={setSub} />}
       {sub === 'dashboard' && <Dashboard adminApi={adminApi} t={t} catalog={catalog} />}
       {sub === 'products' && (
         <Products
@@ -118,6 +120,234 @@ export default function MarketplaceTab({ adminApi, isManager, apiErrText }) {
       {sub === 'orders' && (isManager
         ? <Orders adminApi={adminApi} t={t} apiErrText={apiErrText} />
         : <ForbiddenState hint={t('Buyurtmalarni bog‘lash faqat Manager va Super Admin uchun.')} />)}
+    </div>
+  );
+}
+
+// ── QO'LLANMA ────────────────────────────────────────────────────────
+//
+// NEGA KERAK. Bu bo'limda "kod", "token", "SKU", "batch" degan to'rtta
+// tushuncha bor va ular bir-biriga o'xshamaydi. Ularni chalkashtirish
+// eng qimmat xatoga olib boradi: odam stikerni kodga juftlab tayyorlay
+// boshlasa, 100 dona uchun 100 marta xato qilish imkoni tug'iladi —
+// holbuki juftlash UMUMAN SHART EMAS.
+//
+// Shuning uchun qo'llanma matn emas, CHIZMA: har qadamda nima qayerga
+// borishi ko'rinib tursin. Chizmalar sahifa ichida (inline SVG) —
+// tashqi rasm yuklanmaydi, ya'ni internet sekin bo'lsa ham ochiladi va
+// mavzu (och/to'q) almashsa ranglar ergashadi.
+
+// Chizmalarda ishlatiladigan ranglar — mavzu tokenlaridan.
+const GC = {
+  ink: 'var(--vz-ink)',
+  muted: 'var(--vz-ink-muted, var(--vz-ink))',
+  line: 'var(--vz-line)',
+  gold: 'var(--vz-gold, #c8a23c)',
+  ok: 'var(--vz-ok, #2e9e5b)',
+};
+
+function GuideStep({ n, title, children, art }) {
+  return (
+    <section className="mk-gd-step">
+      <div className="mk-gd-num" aria-hidden="true">{n}</div>
+      <div className="mk-gd-body">
+        <h4 className="mk-gd-title">{title}</h4>
+        <div className="mk-gd-text">{children}</div>
+      </div>
+      {art && <div className="mk-gd-art">{art}</div>}
+    </section>
+  );
+}
+
+// ── CHIZMA 1: BATCH IKKI RO'YXAT BERADI ──────────────────────────────
+function ArtBatch() {
+  return (
+    <svg viewBox="0 0 300 150" role="img" aria-label="Batch ikkita ro'yxat beradi: kodlar va stiker manzillari">
+      <rect x="108" y="6" width="84" height="26" rx="6" fill="none" stroke={GC.gold} strokeWidth="2" />
+      <text x="150" y="23" textAnchor="middle" fontSize="11" fill={GC.ink}>Batch · 100</text>
+      <path d="M150 32 L150 46 M150 46 L60 46 L60 58 M150 46 L240 46 L240 58" fill="none" stroke={GC.line} strokeWidth="2" />
+      <rect x="8" y="58" width="104" height="84" rx="6" fill="none" stroke={GC.line} strokeWidth="1.5" />
+      <text x="60" y="74" textAnchor="middle" fontSize="10" fill={GC.ink}>Kodlar (konvert)</text>
+      <text x="60" y="92" textAnchor="middle" fontSize="10" fontFamily="monospace" fill={GC.muted}>NF-8KD2</text>
+      <text x="60" y="107" textAnchor="middle" fontSize="10" fontFamily="monospace" fill={GC.muted}>NF-M4X9</text>
+      <text x="60" y="122" textAnchor="middle" fontSize="10" fontFamily="monospace" fill={GC.muted}>NF-P2L7</text>
+      <rect x="188" y="58" width="104" height="84" rx="6" fill="none" stroke={GC.line} strokeWidth="1.5" />
+      <text x="240" y="74" textAnchor="middle" fontSize="10" fill={GC.ink}>Stiker (chipga)</text>
+      <text x="240" y="92" textAnchor="middle" fontSize="10" fontFamily="monospace" fill={GC.muted}>/t/A7K2M9</text>
+      <text x="240" y="107" textAnchor="middle" fontSize="10" fontFamily="monospace" fill={GC.muted}>/t/B3X8P1</text>
+      <text x="240" y="122" textAnchor="middle" fontSize="10" fontFamily="monospace" fill={GC.muted}>/t/C5N4R7</text>
+      <path d="M118 100 L182 100" stroke={GC.line} strokeWidth="2" strokeDasharray="4 4" />
+      <text x="150" y="96" textAnchor="middle" fontSize="9" fill={GC.muted}>juftlik</text>
+      <text x="150" y="112" textAnchor="middle" fontSize="11" fontWeight="700" fill={GC.gold}>YO‘Q</text>
+    </svg>
+  );
+}
+
+// ── CHIZMA 2: KONVERT ────────────────────────────────────────────────
+function ArtEnvelope() {
+  return (
+    <svg viewBox="0 0 300 150" role="img" aria-label="Konvert ichida QR va aktivatsiya kodi">
+      <rect x="86" y="14" width="128" height="122" rx="8" fill="none" stroke={GC.line} strokeWidth="1.5" />
+      <text x="150" y="34" textAnchor="middle" fontSize="9" letterSpacing="2" fill={GC.muted}>NFCSTORE</text>
+      <rect x="118" y="42" width="64" height="64" rx="4" fill="none" stroke={GC.ink} strokeWidth="1.5" />
+      {[[126, 50], [162, 50], [126, 86]].map(([x, y], i) => (
+        <g key={i}>
+          <rect x={x} y={y} width="12" height="12" fill="none" stroke={GC.ink} strokeWidth="2" />
+        </g>
+      ))}
+      <rect x="147" y="71" width="6" height="6" fill={GC.ink} />
+      <rect x="163" y="87" width="6" height="6" fill={GC.ink} />
+      <text x="150" y="126" textAnchor="middle" fontSize="12" fontWeight="700" fontFamily="monospace" fill={GC.ink}>NF-8KD2</text>
+      <text x="42" y="60" textAnchor="middle" fontSize="9" fill={GC.muted}>QR</text>
+      <text x="42" y="73" textAnchor="middle" fontSize="9" fontWeight="700" fill={GC.ink}>bir xil</text>
+      <path d="M62 66 L112 70" stroke={GC.line} strokeWidth="1.5" />
+      <text x="262" y="112" textAnchor="middle" fontSize="9" fill={GC.muted}>Kod</text>
+      <text x="262" y="125" textAnchor="middle" fontSize="9" fontWeight="700" fill={GC.gold}>har xil</text>
+      <path d="M238 120 L190 124" stroke={GC.line} strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+// ── CHIZMA 3: XARIDOR YO'LI ──────────────────────────────────────────
+function ArtBuyer() {
+  const steps = [
+    ['Tegizadi', 'stiker'],
+    ['Kod', 'konvertdan'],
+    ['Tanlaydi', 'shaxsiy/biznes'],
+    ['Tayyor', 'bog‘landi'],
+  ];
+  return (
+    <svg viewBox="0 0 300 120" role="img" aria-label="Xaridor to'rt qadamda faollashtiradi">
+      {steps.map(([a, b], i) => {
+        const x = 8 + i * 73;
+        const last = i === steps.length - 1;
+        return (
+          <g key={a}>
+            <rect x={x} y="30" width="62" height="46" rx="6" fill="none" stroke={last ? GC.ok : GC.line} strokeWidth={last ? 2 : 1.5} />
+            <text x={x + 31} y="50" textAnchor="middle" fontSize="10" fontWeight="700" fill={last ? GC.ok : GC.ink}>{a}</text>
+            <text x={x + 31} y="65" textAnchor="middle" fontSize="8.5" fill={GC.muted}>{b}</text>
+            {!last && <path d={`M${x + 64} 53 L${x + 71} 53`} stroke={GC.line} strokeWidth="2" />}
+          </g>
+        );
+      })}
+      <text x="150" y="98" textAnchor="middle" fontSize="9.5" fill={GC.muted}>Bu yerda sizning ishtirokingiz kerak emas</text>
+    </svg>
+  );
+}
+
+// ── CHIZMA 4: JUFTLIK QAYERDA HOSIL BO'LADI ──────────────────────────
+function ArtBind() {
+  return (
+    <svg viewBox="0 0 300 140" role="img" aria-label="Juftlik xaridor stikerga tekkizganda hosil bo'ladi">
+      <rect x="10" y="20" width="78" height="34" rx="6" fill="none" stroke={GC.line} strokeWidth="1.5" />
+      <text x="49" y="35" textAnchor="middle" fontSize="9" fill={GC.muted}>Stiker</text>
+      <text x="49" y="47" textAnchor="middle" fontSize="9.5" fontFamily="monospace" fill={GC.ink}>C5N4R7</text>
+      <rect x="10" y="86" width="78" height="34" rx="6" fill="none" stroke={GC.line} strokeWidth="1.5" />
+      <text x="49" y="101" textAnchor="middle" fontSize="9" fill={GC.muted}>Konvert</text>
+      <text x="49" y="113" textAnchor="middle" fontSize="9.5" fontFamily="monospace" fill={GC.ink}>NF-8KD2</text>
+      <path d="M90 37 L134 62" stroke={GC.line} strokeWidth="2" />
+      <path d="M90 103 L134 78" stroke={GC.line} strokeWidth="2" />
+      <circle cx="150" cy="70" r="17" fill="none" stroke={GC.gold} strokeWidth="2" />
+      <text x="150" y="67" textAnchor="middle" fontSize="8" fill={GC.muted}>tegizdi</text>
+      <text x="150" y="78" textAnchor="middle" fontSize="8" fill={GC.muted}>+ kod</text>
+      <path d="M169 70 L196 70" stroke={GC.ok} strokeWidth="2" />
+      <rect x="198" y="48" width="94" height="44" rx="6" fill="none" stroke={GC.ok} strokeWidth="2" />
+      <text x="245" y="66" textAnchor="middle" fontSize="10" fontWeight="700" fill={GC.ok}>Profil</text>
+      <text x="245" y="80" textAnchor="middle" fontSize="9" fill={GC.muted}>ikkalasi bog‘landi</text>
+      <text x="150" y="128" textAnchor="middle" fontSize="9" fill={GC.muted}>Qaysi stiker qaysi konvertga tushgani muhim emas</text>
+    </svg>
+  );
+}
+
+function Guide({ t, onGo }) {
+  return (
+    <div className="space-y-5">
+      <AdminCard title={t('Qanday ishlaydi — qisqacha')}>
+        <p className="mk-gd-lead">
+          {t('Butun ish OLDINDAN, bir marta bajariladi. Buyurtma kelganda siz hech narsa qilmaysiz: do‘kon tayyor mahsulotni beradi, xaridor o‘zi faollashtiradi.')}
+        </p>
+        <div className="mk-gd-facts">
+          <div><b>{t('Kod')}</b><span>{t('Konvert ichida. Har biri boshqa. Bir martalik — profil ochish uchun.')}</span></div>
+          <div><b>{t('Stiker')}</b><span>{t('Chip ichida. Har biri boshqa. Umrbod — har tegizganda profilni ochadi.')}</span></div>
+          <div><b>{t('QR')}</b><span>{t('Hammada bir xil. Faqat sahifani ochadi, kodni O‘ZIDA saqlamaydi.')}</span></div>
+          <div><b>{t('SKU')}</b><span>{t('Mahsulot artikuli. Do‘kondagi tovarni shu yerdagi mahsulot bilan bog‘laydi.')}</span></div>
+        </div>
+      </AdminCard>
+
+      <AdminCard title={t('Sizning ishingiz — 3 qadam')}>
+        <GuideStep
+          n="1"
+          title={t('Batch yarating')}
+          art={<ArtBatch />}
+        >
+          <p>{t('«Batch yaratish» bo‘limida mahsulotni tanlang va sonini yozing (masalan 100). Tizim BIR YO‘LA ikkita ro‘yxat beradi: aktivatsiya kodlari va stiker manzillari.')}</p>
+          <p className="mk-gd-warn">
+            {t('Bu ikki ro‘yxat bir-biriga BIRIKTIRILMAGAN — ataylab. Siz qaysi stiker qaysi xaridorga tushishini bilmaysiz, shuning uchun juftlash shart emas va zararli.')}
+          </p>
+          <button type="button" className="btn btn-sm" onClick={() => onGo('batch')}>{t('Batch yaratishga o‘tish')}</button>
+        </GuideStep>
+
+        <GuideStep
+          n="2"
+          title={t('Stikerlarni yozing, konvertlarni bosing')}
+          art={<ArtEnvelope />}
+        >
+          <p>
+            <b>{t('Stiker manzillari (CSV)')}</b> — {t('NFC yozuvchi dasturga bering (masalan NFC Tools yoki ko‘p dona yozadigan enkoder). Dastur ro‘yxatdagi manzillarni chiplarga ketma-ket yozadi.')}
+          </p>
+          <p>
+            <b>{t('Chop etish (A4)')}</b> — {t('har bir konvert uchun varaq: QR va aktivatsiya kodi. QR hammada bir xil, kod esa har xil.')}
+          </p>
+          <p className="mk-gd-warn">
+            {t('Kod QR ichiga YOZILMAYDI: konvert ochilmasdan tashqaridan skanerlab kodni olib qo‘yish mumkin bo‘lardi.')}
+          </p>
+        </GuideStep>
+
+        <GuideStep
+          n="3"
+          title={t('Do‘konga topshiring')}
+          art={<ArtBind />}
+        >
+          <p>{t('Lentani stikerga yopishtiring, konvertni qo‘shing va do‘konga bering. ARALASH solsangiz ham to‘g‘ri ishlaydi — tartibni saqlash shart emas.')}</p>
+          <p>{t('Juftlik xaridor stikerga tekkizganda hosil bo‘ladi: stiker o‘z manzilini faollashtirish sahifasiga olib boradi, xaridor konvertdagi kodni kiritadi va aynan QO‘LIDAGI stiker profilga bog‘lanadi.')}</p>
+        </GuideStep>
+      </AdminCard>
+
+      <AdminCard title={t('Xaridor nima qiladi')}>
+        <div className="mk-gd-art mk-gd-art-wide"><ArtBuyer /></div>
+        <ol className="mk-gd-ol">
+          <li>{t('Stikerga telefonini tegizadi (yoki NFC o‘qimasa — konvertdagi QR ni skanerlaydi).')}</li>
+          <li>{t('NFCSTORE‘ga kiradi yoki ro‘yxatdan o‘tadi.')}</li>
+          <li>{t('Konvertdagi aktivatsiya kodini kiritadi.')}</li>
+          <li>{t('Shaxsiy yoki Biznes profilni tanlaydi.')}</li>
+          <li>{t('Tayyor. Endi har tegizganda o‘sha profil ochiladi.')}</li>
+        </ol>
+      </AdminCard>
+
+      <AdminCard title={t('Tez-tez so‘raladigan savollar')}>
+        <dl className="mk-gd-faq">
+          <dt>{t('Buyurtma kelganda men nima qilaman?')}</dt>
+          <dd>{t('Hech narsa. Mahsulot do‘konda tayyor turadi va xaridor o‘zi faollashtiradi. Sizga xabar ham kelmaydi.')}</dd>
+
+          <dt>{t('Stikerni kodga oldindan biriktirishim kerakmi?')}</dt>
+          <dd>{t('Yo‘q. Aksincha, biriktirmang. «Aktivatsiya kodlari» bo‘limidagi «Qurilma» tugmasi faqat alohida holatlar uchun — masalan mijozga qo‘lma-qo‘l berayotganingizda.')}</dd>
+
+          <dt>{t('Konvertni chalkashtirib yuborsam nima bo‘ladi?')}</dt>
+          <dd>{t('Hech narsa. Har qanday stiker har qanday konvert bilan ishlaydi.')}</dd>
+
+          <dt>{t('Kodni yo‘qotib qo‘ysam qayta ko‘rsataman deyman?')}</dt>
+          <dd>{t('Bo‘lmaydi. Bazada faqat xesh saqlanadi — bu ataylab: kimdir bazani ko‘rsa ham kodlarni o‘g‘irlay olmaydi. Shuning uchun batch yaratilgan zahoti CSV ni yuklab oling yoki chop eting.')}</dd>
+
+          <dt>{t('Chipdagi token sirmi?')}</dt>
+          <dd>{t('Yo‘q, u stikerning o‘zida yozilgan va istalgan odam o‘qiy oladi. Himoya boshqa joyda: faqat hali hech kimga tegishli bo‘lmagan stiker bog‘lanadi. Birovning ishlayotgan kartasini o‘ziga olish mumkin emas.')}</dd>
+
+          <dt>{t('Xaridor profilini almashtirsa, chipni qayta yozishim kerakmi?')}</dt>
+          <dd>{t('Yo‘q. Chipda profil manzili emas, token yozilgan. Profil almashsa stiker yangisiga ergashadi.')}</dd>
+
+          <dt>{t('SKU nima uchun kerak?')}</dt>
+          <dd>{t('Do‘kondagi tovar artikuli. Buyurtmalarni CSV dan yuklaganda tizim SKU bo‘yicha qaysi mahsulot ekanini taniydi va noto‘g‘ri mahsulotga yozilishining oldini oladi. Do‘kon bilan ishlamasangiz bo‘sh qoldirsangiz ham bo‘ladi.')}</dd>
+        </dl>
+      </AdminCard>
     </div>
   );
 }

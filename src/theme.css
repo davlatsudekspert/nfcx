@@ -2057,6 +2057,59 @@ body{
   color:var(--text-primary);background:var(--surface)
 }
 .mk-ack{display:flex;align-items:center;gap:9px;margin-top:12px;font-size:var(--fs-sm);color:var(--text-secondary);cursor:pointer}
+/* ── QO'LLANMA ────────────────────────────────────────
+   Qadam + chizma. 320px da ustma-ust, kengroq ekranda yonma-yon.
+   Chizmalar inline SVG: tashqi rasm yuklanmaydi va ranglari mavzu
+   tokenlaridan olinadi, ya'ni to'q mavzuda ham o'qiladi. */
+.mk-gd-lead{margin:0 0 14px;font-size:var(--fs-sm);line-height:1.6;color:var(--text-secondary)}
+.mk-gd-facts{display:grid;gap:9px;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr))}
+.mk-gd-facts>div{
+  display:flex;flex-direction:column;gap:3px;padding:11px 12px;border-radius:11px;
+  background:var(--surface-inset,var(--bg-secondary));border:1px solid var(--border-soft)
+}
+.mk-gd-facts b{font-size:var(--fs-2xs);font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-primary)}
+.mk-gd-facts span{font-size:var(--fs-xs);line-height:1.5;color:var(--text-secondary)}
+.mk-gd-step{
+  display:grid;gap:12px;align-items:start;padding:16px 0;
+  grid-template-columns:auto minmax(0,1fr);border-top:1px solid var(--border-soft)
+}
+.mk-gd-step:first-of-type{border-top:0;padding-top:4px}
+.mk-gd-num{
+  display:grid;place-items:center;width:28px;height:28px;border-radius:50%;
+  font:800 13px/1 system-ui,sans-serif;color:var(--accent-ink);background:var(--accent-primary)
+}
+.mk-gd-body{min-width:0}
+.mk-gd-title{margin:3px 0 7px;font-size:var(--fs-sm);font-weight:700;color:var(--text-primary)}
+.mk-gd-text{font-size:var(--fs-xs);line-height:1.62;color:var(--text-secondary)}
+.mk-gd-text p{margin:0 0 8px}
+.mk-gd-text p:last-child{margin-bottom:0}
+.mk-gd-warn{
+  padding:8px 10px;border-radius:9px;border-left:3px solid var(--accent-primary);
+  background:var(--surface-inset,var(--bg-secondary));color:var(--text-primary)
+}
+.mk-gd-art{
+  grid-column:1/-1;padding:10px;border-radius:12px;
+  background:var(--surface-inset,var(--bg-secondary));border:1px solid var(--border-soft)
+}
+.mk-gd-art svg{display:block;width:100%;height:auto}
+.mk-gd-art-wide{margin:0 auto 12px;max-width:520px}
+/* Admin panelda `ol` uchun umumiy reset bor — raqamlar yo'qolardi,
+   ya'ni "qadamlar ro'yxati" oddiy matn bo'lib qolardi. */
+.mk-gd-ol{list-style:decimal outside}
+.mk-gd-ol li{margin:0 0 3px}
+.mk-gd-ol{margin:0;padding-left:20px;font-size:var(--fs-xs);line-height:1.7;color:var(--text-secondary)}
+.mk-gd-faq{margin:0;font-size:var(--fs-xs);line-height:1.6}
+.mk-gd-faq dt{margin-top:12px;font-weight:700;color:var(--text-primary)}
+.mk-gd-faq dt:first-child{margin-top:0}
+.mk-gd-faq dd{margin:4px 0 0;color:var(--text-secondary)}
+/* Kengroq ekranda chizma matn yoniga chiqadi — qadam bir qarashda
+   o'qiladi va sahifa cho'zilib ketmaydi. */
+@media (min-width:860px){
+  .mk-gd-step{grid-template-columns:auto minmax(0,1fr) minmax(0,300px)}
+  .mk-gd-art{grid-column:auto;align-self:center}
+  .mk-gd-art-wide{grid-column:1/-1}
+}
+
 .mk-ack input{width:18px;height:18px;accent-color:var(--accent-primary);cursor:pointer}
 .mk-row-actions{display:flex;flex-wrap:wrap;gap:4px}
 @media (max-width:640px){

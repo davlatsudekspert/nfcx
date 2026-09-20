@@ -1428,4 +1428,54 @@ function gatedEnv(env, sqlNeedle) {
     !/INSERT INTO marketplace_activations[\s\S]{0,600}physical_device_id/.test(mk));
 }
 
+// ── 24) ADMIN QO'LLANMASI ───────────────────────────────
+//
+// Bu bo'limda "kod", "token", "SKU", "batch" degan to'rtta boshqa
+// tushuncha bor. Ularni chalkashtirish eng qimmat xatoga olib
+// boradi: stikerni kodga juftlab tayyorlash — 100 dona uchun 100
+// marta xato qilish imkoni, holbuki juftlash SHART EMAS.
+//
+// Shuning uchun qo'llanma mahsulotning bir qismi, "qo'shimcha"
+// emas: u yo'qolsa yoki chizmalari tushib qolsa, egasi yana eski
+// (noto'g'ri) usulga qaytadi.
+{
+  const tab = stripComments(read('../src/components/admin/MarketplaceTab.jsx'));
+  checkTrue('24) qo‘llanma bo‘limi ro‘yxatda', /\['guide', 'Qo‘llanma'\]/.test(tab));
+  checkTrue('24) qo‘llanma chizildi', /sub === 'guide' && <Guide/.test(tab));
+  // To'rtala chizma ham joyida.
+  for (const art of ['ArtBatch', 'ArtEnvelope', 'ArtBuyer', 'ArtBind']) {
+    checkTrue(`24) chizma ${art}`, new RegExp(`function ${art}\\(`).test(tab) && new RegExp(`<${art} />`).test(tab));
+  }
+  // TASHQI RASM YO'Q: internet sekin bo'lsa ham ochilsin, mavzu
+  // almashsa ranglar ergashsin. Tekshiruv AYNAN qo'llanmaga
+  // qaratilgan — chop etish oynasidagi QR o'sha yerda hosil
+  // qilingan `data:` manzil va u qonuniy.
+  const guide = tab.slice(tab.indexOf('const GC = {'), tab.indexOf('function Dashboard'));
+  checkTrue('24) qo‘llanmada tashqi rasm yo‘q', !/<img\s|https?:\/\//.test(guide));
+  checkTrue('24) qo‘llanma bo‘lagi topildi', guide.length > 2000);
+  // Chizma ranglari mavzu tokenlaridan — to'q mavzuda ham o'qiladi.
+  checkTrue('24) chizma ranglari tokenlardan', /ink: 'var\(--vz-ink\)'/.test(tab));
+  // Eng muhim xabar aynan shu: juftlash SHART EMAS.
+  checkTrue('24) "juftlik yo‘q" aytilgan', /BIRIKTIRILMAGAN — ataylab/.test(tab));
+  checkTrue('24) aralash solish mumkinligi aytilgan', /ARALASH solsangiz ham/.test(tab));
+  // Ekran o'qigich uchun: chizma bezak emas, ma'no tashiydi.
+  const arts = tab.match(/<svg viewBox/g) || [];
+  const labels = tab.match(/role="img" aria-label=/g) || [];
+  check('24) har chizmada aria-label bor', labels.length, arts.length);
+
+  const css = read('../src/theme.css');
+  for (const cls of ['mk-gd-step', 'mk-gd-art', 'mk-gd-faq', 'mk-gd-facts', 'mk-gd-ol']) {
+    checkTrue(`24) uslub .${cls}`, new RegExp(`\\.${cls}\\s*\\{`).test(css));
+  }
+  // Admin paneldagi umumiy reset raqamlarni yo'q qilardi.
+  checkTrue('24) ro‘yxat raqamlari tiklangan', /\.mk-gd-ol\{list-style:decimal/.test(css));
+
+  // Tarjimalar: uch tilda ham bo'lsin.
+  const tr = read('../src/lib/translations.admin.js');
+  for (const key of ['Qanday ishlaydi — qisqacha', 'Sizning ishingiz — 3 qadam', 'SKU nima uchun kerak?']) {
+    const re = new RegExp(`'${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}': \\{ ru: '[^']+', en: '[^']+' \\}`);
+    checkTrue(`24) tarjima: ${key}`, re.test(tr));
+  }
+}
+
 done();
