@@ -107,7 +107,23 @@ const MARKETPLACES = ['uzum', 'wildberries', 'ozon', 'other'];
 // `activating` holatida qolib ketmasin.
 const RESERVE_TTL_MS = 5 * 60 * 1000;
 
+// Jadvallar BIR MARTA tayyorlanadi.
+//
+// Ilgari bu funksiya har so'rovda to'liq ishlardi: `CREATE TABLE IF
+// NOT EXISTS` lar ham, `ALTER TABLE` urinishi ham. Ular zararsiz,
+// lekin har aktivatsiyaga bir nechta ortiqcha D1 borish-kelishi
+// qo'shilardi. Naqsh worker.js dagi `coreSchemaReady` bilan bir xil:
+// yiqilsa qayta urinish uchun tozalanadi.
+let tablesReady = null;
+export function resetMarketplaceTablesCache() { tablesReady = null; }
+
 export async function ensureMarketplaceTables(env) {
+  if (tablesReady) return tablesReady;
+  tablesReady = prepareMarketplaceTables(env).catch((err) => { tablesReady = null; throw err; });
+  return tablesReady;
+}
+
+async function prepareMarketplaceTables(env) {
   await env.DB.batch([
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS marketplace_products (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
