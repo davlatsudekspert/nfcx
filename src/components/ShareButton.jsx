@@ -84,6 +84,9 @@ export default function ShareButton({ url, title, text, label, forceCopy = false
         className={`${className} gap-2`}
         aria-haspopup={forceCopy ? undefined : 'menu'}
         aria-expanded={menu ? true : undefined}
+        // Menyuni ochgan tugma "tashqari" hisoblanmaydi — izoh uchun
+        // `AnchoredMenu` ga qarang.
+        data-anchored-anchor=""
         aria-label={label ? undefined : t(forceCopy ? 'Havolani nusxalash' : 'Ulashish')}
         title={t(forceCopy ? 'Havolani nusxalash' : 'Ulashish')}
       >

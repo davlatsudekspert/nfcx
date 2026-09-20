@@ -110,4 +110,45 @@ const cluster = read('../src/components/ProfileActionCluster.jsx');
   checkTrue('7) lenta va postlar tablari alohida', /id: 'lenta'/.test(profile) && /id: 'postlar'/.test(profile));
 }
 
+// ── 8) ⋮ MENYUSI AVATAR OSTIDA QOLMAYDI ──────────────────────────────
+// SHIKOYAT (2026-09, egasi): menyu ochilsa o'rtasi berkilib qolardi —
+// mavzu qatorlari o'qilmasdi.
+//
+// SABAB. Menyu o'z o'ramida `absolute z-50` bilan chizilardi, avatar
+// esa `z-10`. Raqamlarga qaraganda menyu yutishi kerak edi, lekin
+// `z-index` faqat O'Z QATLAM KONTEKSTI ichida taqqoslanadi: menyu
+// ustidagi `.pf-card-actions` (`z-index:3`) va `.pf-actions`
+// (`backdrop-filter`) ikkalasi ham yangi kontekst ochadi, ya'ni butun
+// menyu sahifada "3" bo'lib turardi va avatarning "10" i ustun kelardi.
+// Shuning uchun `z-50` ni `z-9999` ga o'zgartirish YORDAM BERMASDI.
+//
+// YECHIM. Menyu `document.body` ga (`AnchoredMenu` → `createPortal` +
+// `position:fixed`) chiqariladi — u yerda hech qanday o'ram yo'q.
+// Brauzerda 390×844 da o'lchandi (`elementFromPoint`, menyu bo'yi
+// bo'ylab 9 nuqta): /vip001, /aaa001 va /c/demo — berkilgan nuqta 0.
+//
+// Bu tekshiruv AYNAN SABABNI qo'riqlaydi: menyu qaytib o'z o'ramida
+// `absolute` bo'lib qolsa, xato ham qaytadi.
+{
+  checkTrue('8) ⋮ menyusi portal orqali chiziladi (o‘ramdan tashqarida)',
+    /from '\.\/AnchoredMenu\.jsx'/.test(menu) && /<AnchoredMenu/.test(menu));
+  const anchored = read('../src/components/AnchoredMenu.jsx');
+  checkTrue('8) `AnchoredMenu` haqiqatan `document.body` ga chiqaradi',
+    /createPortal\(/.test(anchored) && /document\.body/.test(anchored));
+  checkTrue('8) menyu ekranga nisbatan turadi', /position: 'fixed'/.test(anchored));
+  // Eski usul QAYTIB KELMASIN.
+  checkTrue('8) ⋮ menyusi o‘ramida `absolute` bilan chizilmaydi',
+    !/className="absolute/.test(menu) && !/absolute right-0 z-/.test(menu));
+  // ⋮ ekran chetida turadi — menyu chapga tenglashsa ekrandan chiqardi.
+  checkTrue('8) menyu o‘ng qirra bo‘yicha tenglashadi', /align: 'right'/.test(menu));
+  // Menyu uzun (mavzular + tillar) va o'z ichida siljiydi; umumiy
+  // "siljidi — yop" qoidasi uni birinchi harakatdayoq yopib qo'yardi.
+  checkTrue('8) ichki siljish menyuni yopmaydi',
+    /onScroll = \(e\) => \{ if \(!e\.target\?\.closest\?\.\('\[data-anchored-menu\]'\)\) close/.test(anchored) && /'scroll', onScroll/.test(anchored));
+  // Menyuni ochgan tugma "tashqari" emas — aks holda `mousedown`
+  // yopar, ketidan kelgan `click` qayta ochardi va tugma yopolmasdi.
+  checkTrue('8) ⋮ tugmasi menyuni yopa oladi',
+    /data-anchored-anchor/.test(menu) && /data-anchored-anchor/.test(anchored));
+}
+
 done('Ochiq profil tepasi');

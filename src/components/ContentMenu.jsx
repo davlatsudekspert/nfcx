@@ -59,6 +59,9 @@ export default function ContentMenuButton({ targetKind, targetId, className = ''
         aria-label={t('Yana')}
         aria-haspopup="menu"
         aria-expanded={menu ? true : undefined}
+        // Menyuni ochgan tugma "tashqari" hisoblanmaydi — aks holda
+        // `mousedown` menyuni yopar, ketidan kelgan `click` qayta ochardi.
+        data-anchored-anchor=""
         onClick={() => setMenu(menu ? null : anchorTo(btnRef.current, { width: 200, height: 64 }))}
         className={className}
       >
