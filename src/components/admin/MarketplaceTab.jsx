@@ -756,7 +756,11 @@ function Batch({ adminApi, t, products, apiErrText }) {
         </label>
         <label><span>{t('Soni')}</span>
           <select className="vz-input" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))}>
-            {[10, 50, 100, 500, 1000].map((n) => <option key={n} value={n}>{n}</option>)}
+            {/* KICHIK SONLAR SINOV UCHUN.
+                Eng kichigi 10 edi: sinab ko'rish uchun 10 ta keraksiz
+                kod yaratilardi va ular statistikani to'ldirib yotardi.
+                Backend allaqachon 1 dan qabul qiladi. */}
+            {[2, 5, 10, 50, 100, 500, 1000].map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
         </label>
         <label><span>{t('Amal qilish muddati (ixtiyoriy)')}</span>

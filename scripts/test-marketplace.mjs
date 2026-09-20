@@ -1630,6 +1630,10 @@ function gatedEnv(env, sqlNeedle) {
   // Joy SERVERDA eslanadi: telefon almashsa ham yo'qolmasin.
   checkTrue('25) joy localStorage’da saqlanmaydi', !/localStorage[\s\S]{0,120}(written|sticker)/i.test(tab));
   checkTrue('25) eski partiyani ochish mumkin', /marketplace\/batches/.test(tab) && /setOpenBatch/.test(tab));
+  // SINOV UCHUN KICHIK PARTIYA. Eng kichigi 10 bo'lsa, har sinov
+  // 8 ta keraksiz kod qoldirardi — ular statistikani buzadi va
+  // bittalab bloklanishi kerak bo'lardi.
+  checkTrue('25) kichik partiya tanlanadi', /\[2, 5, 10, 50, 100, 500, 1000\]/.test(tab));
 }
 
 done();
