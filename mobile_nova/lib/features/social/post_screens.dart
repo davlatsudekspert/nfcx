@@ -24,7 +24,10 @@ import '../home/home_screen.dart';
 import '../home/widgets/avatar.dart';
 import '../home/widgets/identity_card.dart';
 import '../profile/profile_repository.dart';
+import '../profile/profile_screen.dart';
 import 'comments.dart';
+import 'reels_screen.dart';
+import 'story_viewer.dart';
 import 'inline_video.dart';
 import 'content_rules.dart';
 import 'moderation.dart';
@@ -458,12 +461,43 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
     setState(() => _busy = false);
     res.when(
       ok: (_) {
-        ref.invalidate(homeFeedProvider);
-        ref.invalidate(homeStoriesProvider);
+        // YANGILANISH TURGA QARAB — ilgari ikkalasi ham har safar
+        // qayta o'qilardi, ya'ni story joylansa postlar ro'yxati
+        // ham "yangilanardi" va aksincha. Foydalanuvchi uchun bu
+        // ikki bo'limni bir-biriga bog'lab qo'yardi.
+        switch (widget.kind) {
+          case ComposerKind.story:
+            // FAQAT STORYLAR. Postlar va lentaga tegilmaydi.
+            ref.invalidate(homeStoriesProvider);
+            ref.invalidate(storiesOfProvider(profile.code));
+          case ComposerKind.post:
+            // FAQAT POSTLAR. Story halqasi qayta o'qilmaydi.
+            ref.invalidate(homeFeedProvider);
+            _invalidatePosts(profile);
+          case ComposerKind.reel:
+            // Reel — video POST: lentada ham, Reels'da ham
+            // ko'rinadi, lekin STORY emas.
+            ref.invalidate(homeFeedProvider);
+            ref.invalidate(reelsProvider);
+            _invalidatePosts(profile);
+        }
         context.pop();
       },
       err: (e) => setState(() => _error = describeError(l, e)),
     );
+  }
+
+  /// Post ro'yxatini yangilash — manba kontekstga bog'liq.
+  ///
+  /// Kompaniya postlari `/api/companies/:id/posts` da, shaxsiy
+  /// postlar esa `/api/records/:code/posts` da. Noto'g'risini
+  /// yangilash "joyladim, lekin ko'rinmadi" holatini berardi.
+  void _invalidatePosts(ActiveProfile profile) {
+    if (profile.isBusiness) {
+      ref.invalidate(companyPostsProvider(profile.code));
+    } else {
+      ref.invalidate(profilePostsProvider(profile.code));
+    }
   }
 
   @override
@@ -476,6 +510,11 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
       ComposerKind.post => l.postCreate,
       ComposerKind.story => l.storyCreate,
       ComposerKind.reel => l.reelCreate,
+    };
+    final action = switch (widget.kind) {
+      ComposerKind.post => l.postPublish,
+      ComposerKind.story => l.storyPublish,
+      ComposerKind.reel => l.reelPublish,
     };
 
     if (id == null) {
@@ -582,7 +621,9 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
                 )),
           ],
           const SizedBox(height: Gap.xxl),
-          NovaButton(label: l.actionPublish, busy: _busy, onPressed: _publish),
+          // Generic "Chop etish" EMAS: foydalanuvchi nima
+          // joylayotganini tugmaning o'zidan bilsin.
+          NovaButton(label: action, busy: _busy, onPressed: _publish),
           const ContentRulesNote(),
         ],
       ),

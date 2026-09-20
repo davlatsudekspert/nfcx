@@ -553,13 +553,13 @@ class LUz extends L {
   String get searchClear => 'Tozalash';
 
   @override
-  String get storyCreate => 'Story yaratish';
+  String get storyCreate => 'Story qo‘shish';
 
   @override
   String get storyDeleteConfirm => 'Bu story o‘chirilsinmi?';
 
   @override
-  String get postCreate => 'Post yaratish';
+  String get postCreate => 'Post qo‘shish';
 
   @override
   String get postCaption => 'Izoh yozing…';
@@ -583,7 +583,16 @@ class LUz extends L {
   String get postDeleteConfirm => 'Bu post o‘chirilsinmi?';
 
   @override
-  String get reelCreate => 'Reel yaratish';
+  String get reelCreate => 'Reel qo‘shish';
+
+  @override
+  String get storyPublish => 'Storyni joylash';
+
+  @override
+  String get postPublish => 'Postni joylash';
+
+  @override
+  String get reelPublish => 'Reelni joylash';
 
   @override
   String get reelsEmpty => 'Hozircha reels yo‘q';

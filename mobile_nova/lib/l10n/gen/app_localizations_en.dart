@@ -552,13 +552,13 @@ class LEn extends L {
   String get searchClear => 'Clear';
 
   @override
-  String get storyCreate => 'Create a story';
+  String get storyCreate => 'Add a story';
 
   @override
   String get storyDeleteConfirm => 'Delete this story?';
 
   @override
-  String get postCreate => 'Create a post';
+  String get postCreate => 'Add a post';
 
   @override
   String get postCaption => 'Write a caption…';
@@ -582,7 +582,16 @@ class LEn extends L {
   String get postDeleteConfirm => 'Delete this post?';
 
   @override
-  String get reelCreate => 'Create a reel';
+  String get reelCreate => 'Add a reel';
+
+  @override
+  String get storyPublish => 'Share story';
+
+  @override
+  String get postPublish => 'Share post';
+
+  @override
+  String get reelPublish => 'Share reel';
 
   @override
   String get reelsEmpty => 'No reels yet';

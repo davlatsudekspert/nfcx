@@ -1164,7 +1164,7 @@ abstract class L {
   /// No description provided for @storyCreate.
   ///
   /// In uz, this message translates to:
-  /// **'Story yaratish'**
+  /// **'Story qo‘shish'**
   String get storyCreate;
 
   /// No description provided for @storyDeleteConfirm.
@@ -1176,7 +1176,7 @@ abstract class L {
   /// No description provided for @postCreate.
   ///
   /// In uz, this message translates to:
-  /// **'Post yaratish'**
+  /// **'Post qo‘shish'**
   String get postCreate;
 
   /// No description provided for @postCaption.
@@ -1224,8 +1224,26 @@ abstract class L {
   /// No description provided for @reelCreate.
   ///
   /// In uz, this message translates to:
-  /// **'Reel yaratish'**
+  /// **'Reel qo‘shish'**
   String get reelCreate;
+
+  /// No description provided for @storyPublish.
+  ///
+  /// In uz, this message translates to:
+  /// **'Storyni joylash'**
+  String get storyPublish;
+
+  /// No description provided for @postPublish.
+  ///
+  /// In uz, this message translates to:
+  /// **'Postni joylash'**
+  String get postPublish;
+
+  /// No description provided for @reelPublish.
+  ///
+  /// In uz, this message translates to:
+  /// **'Reelni joylash'**
+  String get reelPublish;
 
   /// No description provided for @reelsEmpty.
   ///

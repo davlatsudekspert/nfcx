@@ -550,13 +550,13 @@ class LRu extends L {
   String get searchClear => 'Очистить';
 
   @override
-  String get storyCreate => 'Создать story';
+  String get storyCreate => 'Добавить story';
 
   @override
   String get storyDeleteConfirm => 'Удалить эту story?';
 
   @override
-  String get postCreate => 'Создать пост';
+  String get postCreate => 'Добавить пост';
 
   @override
   String get postCaption => 'Напишите описание…';
@@ -580,7 +580,16 @@ class LRu extends L {
   String get postDeleteConfirm => 'Удалить этот пост?';
 
   @override
-  String get reelCreate => 'Создать reel';
+  String get reelCreate => 'Добавить reel';
+
+  @override
+  String get storyPublish => 'Опубликовать story';
+
+  @override
+  String get postPublish => 'Опубликовать пост';
+
+  @override
+  String get reelPublish => 'Опубликовать reel';
 
   @override
   String get reelsEmpty => 'Reels пока нет';
