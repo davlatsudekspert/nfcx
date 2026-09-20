@@ -597,6 +597,35 @@ export async function handle(request, env, url, H) {
       return H.json({ linked, total: rows.length, problems: problems.slice(0, 100) });
     }
 
+    // ── AKTIVATSIYALAR TARIXI ─────────────────────────────────────
+    //
+    // Kodlar RO'YXATI joriy holatni ko'rsatadi ("hozir nima"),
+    // tarix esa KIM, QACHON va NIMA QILGANINI ("nima bo'ldi").
+    // Ikkalasi har xil savolga javob beradi: "bu kod nega bloklangan?"
+    // degan savolga faqat tarix javob beradi.
+    //
+    // Manba — mavjud `admin_activity_log`. Marketplace uchun alohida
+    // jurnal YARATILMADI.
+    if (path === '/api/admin/marketplace/history' && method === 'GET') {
+      const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 200, 1), 500);
+      const rows = await env.DB.prepare(
+        `SELECT id, action, details, old_value, new_value, created_at
+           FROM admin_activity_log
+          WHERE action LIKE 'marketplace%'
+          ORDER BY created_at DESC, id DESC LIMIT ?`
+      ).bind(limit).all();
+      return H.json({
+        history: (rows.results || []).map((r) => ({
+          id: Number(r.id),
+          action: r.action,
+          details: r.details || '',
+          from: r.old_value || '',
+          to: r.new_value || '',
+          createdAt: r.created_at,
+        })),
+      });
+    }
+
     // ── HOLAT O'ZGARTIRISH ────────────────────────────────────────
     const actMatch = path.match(/^\/api\/admin\/marketplace\/activations\/(\d+)\/([a-z-]+)$/);
     if (actMatch && method === 'POST') {

@@ -285,4 +285,23 @@ export const DICT_ADMIN = {
   'Marketplace SKU (bo‘sh qoldirilsa tozalanadi):': { ru: 'SKU маркетплейса (пустое значение очистит поле):', en: 'Marketplace SKU (leave empty to clear):' },
   'SKU mos kelmadi — konvertda boshqa mahsulotning kodi': { ru: 'SKU не совпал — в конверте код другого продукта', en: 'SKU mismatch — the envelope holds another product\u2019s code' },
   'Ustunlar: code, marketplace_order_id va (ixtiyoriy) customer_reference, sku. Batch yaratilganda yuklab olingan CSV ga buyurtma raqamini qo‘shib, shu yerga yuklang. `sku` berilsa, u kodning haqiqiy mahsuloti bilan solishtiriladi.': { ru: 'Колонки: code, marketplace_order_id и (необязательно) customer_reference, sku. Добавьте номер заказа в CSV, скачанный при создании партии, и загрузите сюда. Если указан `sku`, он сверяется с реальным продуктом кода.', en: 'Columns: code, marketplace_order_id and (optional) customer_reference, sku. Add the order number to the CSV downloaded when creating the batch, then upload it here. When `sku` is given, it is checked against the code\u2019s actual product.' },
+
+  // Aktivatsiyalar tarixi (mavjud admin_activity_log ustidan).
+  'Tarix': { ru: 'История', en: 'History' },
+  'Aktivatsiyalar tarixi': { ru: 'История активаций', en: 'Activation history' },
+  'Tarixni yuklab bo‘lmadi.': { ru: 'Не удалось загрузить историю.', en: 'Could not load the history.' },
+  'Hozircha tarix yo‘q.': { ru: 'Истории пока нет.', en: 'No history yet.' },
+  'Oxirgi 200 amal. Kodlar bu yerda ham maskalangan — to‘liq kod hech qayerda saqlanmaydi.': { ru: 'Последние 200 действий. Коды здесь тоже замаскированы — полный код нигде не хранится.', en: 'The last 200 actions. Codes are masked here too — the full code is never stored.' },
+  'O‘zgarish': { ru: 'Изменение', en: 'Change' },
+  'Mahsulot yaratildi': { ru: 'Продукт создан', en: 'Product created' },
+  'Mahsulot o‘zgartirildi': { ru: 'Продукт изменён', en: 'Product updated' },
+  'Kodlar yaratildi': { ru: 'Коды созданы', en: 'Codes created' },
+  'Kod eksport qilindi': { ru: 'Код экспортирован', en: 'Code exported' },
+  'Sotilgan deb belgilandi': { ru: 'Отмечен как проданный', en: 'Marked as sold' },
+  'Buyurtma biriktirildi': { ru: 'Заказ привязан', en: 'Order attached' },
+  'Buyurtmalar CSV dan yuklandi': { ru: 'Заказы загружены из CSV', en: 'Orders imported from CSV' },
+  'Bloklandi': { ru: 'Заблокирован', en: 'Blocked' },
+  'Muddati tugatildi': { ru: 'Срок завершён', en: 'Expired' },
+  'Faollashtirildi': { ru: 'Активирован', en: 'Activated' },
+  'Qayta taqsimlandi': { ru: 'Переназначен', en: 'Reassigned' },
 };

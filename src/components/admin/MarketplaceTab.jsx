@@ -51,7 +51,25 @@ const SUBTABS = [
   ['codes', 'Aktivatsiya kodlari'],
   ['batch', 'Batch yaratish'],
   ['orders', 'Buyurtmalar (CSV)'],
+  ['history', 'Tarix'],
 ];
+
+// Jurnal amali -> odamga tushunarli matn. Noma'lum amal bo'lsa
+// texnik nomi ko'rsatiladi — jim yo'qolgandan ko'ra shunisi yaxshi.
+const ACTION_LABEL = {
+  marketplace_product_created: 'Mahsulot yaratildi',
+  marketplace_product_updated: 'Mahsulot o‘zgartirildi',
+  marketplace_codes_created: 'Kodlar yaratildi',
+  marketplace_code_exported: 'Kod eksport qilindi',
+  marketplace_marked_sold: 'Sotilgan deb belgilandi',
+  marketplace_order_attached: 'Buyurtma biriktirildi',
+  marketplace_orders_imported: 'Buyurtmalar CSV dan yuklandi',
+  marketplace_blocked: 'Bloklandi',
+  marketplace_unblocked: 'Blokdan chiqarildi',
+  marketplace_expired: 'Muddati tugatildi',
+  marketplace_activated: 'Faollashtirildi',
+  marketplace_reassigned: 'Qayta taqsimlandi',
+};
 
 const labelOf = (pairs, id) => (pairs.find((p) => p[0] === id) || [id, id])[1];
 
@@ -94,6 +112,7 @@ export default function MarketplaceTab({ adminApi, isManager, apiErrText }) {
       {sub === 'batch' && (isManager
         ? <Batch adminApi={adminApi} t={t} products={(products || []).filter((p) => p.active)} apiErrText={apiErrText} />
         : <ForbiddenState hint={t('Kod yaratish faqat Manager va Super Admin uchun.')} />)}
+      {sub === 'history' && <History adminApi={adminApi} t={t} />}
       {sub === 'orders' && (isManager
         ? <Orders adminApi={adminApi} t={t} apiErrText={apiErrText} />
         : <ForbiddenState hint={t('Buyurtmalarni bog‘lash faqat Manager va Super Admin uchun.')} />)}
@@ -685,5 +704,44 @@ function Orders({ adminApi, t, apiErrText }) {
         </AdminCard>
       )}
     </div>
+  );
+}
+
+// ── AKTIVATSIYALAR TARIXI ────────────────────────────────────────────
+//
+// Kodlar ro'yxati "hozir nima" ni ko'rsatadi, tarix esa "nima
+// bo'ldi" ni. "Bu kod nega bloklangan?" degan savolga faqat shu
+// yerda javob bor — jumladan qayta taqsimlash SABABI.
+function History({ adminApi, t }) {
+  const [rows, setRows] = useState(null);
+  const [err, setErr] = useState(null);
+  const load = () => { setErr(null); setRows(null); return adminApi('/marketplace/history').then((d) => setRows(d?.history || [])).catch(setErr); };
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (err) return <LoadError err={err} onRetry={load} title={t('Tarixni yuklab bo‘lmadi.')} />;
+  if (!rows) return <AdminLoading />;
+  if (rows.length === 0) return <EmptyState icon="clipboard" title={t('Hozircha tarix yo‘q.')} />;
+
+  return (
+    <AdminCard title={t('Aktivatsiyalar tarixi')} pad={false}>
+      <p className="mk-hint px-4 pt-4">
+        {t('Oxirgi 200 amal. Kodlar bu yerda ham maskalangan — to‘liq kod hech qayerda saqlanmaydi.')}
+      </p>
+      <div className="overflow-x-auto">
+        <table className="table table-sm">
+          <thead><tr><th>{t('Vaqt')}</th><th>{t('Amal')}</th><th>{t('Tafsilot')}</th><th>{t('O‘zgarish')}</th></tr></thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.id}>
+                <td className="whitespace-nowrap text-xs">{String(r.createdAt || '').replace('T', ' ').slice(0, 16)}</td>
+                <td className="text-xs font-semibold">{ACTION_LABEL[r.action] ? t(ACTION_LABEL[r.action]) : r.action}</td>
+                <td className="text-xs">{r.details || '—'}</td>
+                <td className="text-xs">{r.from || r.to ? `${r.from || '—'} → ${r.to || '—'}` : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </AdminCard>
   );
 }

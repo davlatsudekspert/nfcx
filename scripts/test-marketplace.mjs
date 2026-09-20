@@ -1039,4 +1039,59 @@ function gatedEnv(env, sqlNeedle) {
   checkTrue('19) Uzumga alohida jadval yo‘q', !/uzum_(orders|activations|products)/.test(src));
 }
 
+// ── 20) AKTIVATSIYALAR TARIXI ────────────────────────────────────────
+// Kodlar ro'yxati "hozir nima" ni ko'rsatadi, tarix esa "nima
+// bo'ldi" ni. "Bu kod nega bloklangan?" degan savolga faqat tarix
+// javob beradi — jumladan qayta taqsimlash SABABI.
+{
+  const env = await setup();
+  const product = await makeProduct(env);
+  const codes = (await makeCodes(env, product.id, 2)).codes;
+  const id = Number((await rowOfCode(env, codes[0].code, 'id')).id);
+
+  await call(env, `/api/admin/marketplace/activations/${id}/block`, { method: 'POST', cookie: cookie.admin });
+  await call(env, `/api/admin/marketplace/activations/${id}/unblock`, { method: 'POST', cookie: cookie.admin });
+  await call(env, '/api/activate', { method: 'POST', cookie: cookie.user, json: { code: codes[1].code, profileKind: 'personal' } });
+
+  const res = await call(env, '/api/admin/marketplace/history', { cookie: cookie.admin });
+  check('20) tarix ochildi', res.status, 200);
+  const hist = (await jsonOf(res)).history;
+  const actions = hist.map((h) => h.action);
+  checkTrue('20) mahsulot yaratilishi yozilgan', actions.includes('marketplace_product_created'));
+  checkTrue('20) kodlar yaratilishi yozilgan', actions.includes('marketplace_codes_created'));
+  checkTrue('20) bloklash yozilgan', actions.includes('marketplace_blocked'));
+  checkTrue('20) blokdan chiqarish yozilgan', actions.includes('marketplace_unblocked'));
+  checkTrue('20) faollashtirish yozilgan', actions.includes('marketplace_activated'));
+  // Faqat marketplace amallari — boshqa bo'limlarning jurnali
+  // aralashib ketmasin.
+  checkTrue('20) faqat marketplace amallari', actions.every((a) => a.startsWith('marketplace')));
+  // Eng yangisi tepada.
+  checkTrue('20) yangisi tepada', hist.length > 1 && hist[0].createdAt >= hist[hist.length - 1].createdAt);
+  // Holat o'zgarishi ko'rinadi.
+  const blocked = hist.find((h) => h.action === 'marketplace_blocked');
+  check('20) qaysi holatdan qaysiga', `${blocked.from}->${blocked.to}`, 'new->blocked');
+
+  // TO'LIQ KOD TARIXDA HAM YO'Q.
+  const text = JSON.stringify(hist);
+  const leaked = codes.filter((c) => text.includes(c.code));
+  check('20) tarixda to‘liq kod yo‘q', leaked.length, 0);
+  checkTrue('20) maskalangan ko‘rinish bor', /\*\*\*\*-/.test(text));
+  checkTrue('20) xesh ham yo‘q', !/[0-9a-f]{64}/.test(text));
+
+  // Faqat admin.
+  check('20) tarix mehmonga yopiq', (await call(env, '/api/admin/marketplace/history', {})).status, 401);
+  check('20) tarix oddiy userga yopiq', (await call(env, '/api/admin/marketplace/history', { cookie: cookie.user })).status, 401);
+
+  // Alohida jurnal jadvali YARATILMADI — mavjud `admin_activity_log`.
+  const src = read('../hosting/api/marketplace.js');
+  checkTrue('20) mavjud jurnal ishlatiladi', /FROM admin_activity_log/.test(src));
+  checkTrue('20) alohida jurnal jadvali yo‘q', !/marketplace_(log|history|audit)\b/.test(src));
+
+  // Interfeysda ham bor.
+  const tab = stripComments(read('../src/components/admin/MarketplaceTab.jsx'));
+  checkTrue('20) "Tarix" bo‘limi bor', /\['history', 'Tarix'\]/.test(tab));
+  checkTrue('20) amallar o‘zbekcha nomlanadi', /marketplace_reassigned: 'Qayta taqsimlandi'/.test(tab));
+  checkTrue('20) noma’lum amal jim yo‘qolmaydi', /ACTION_LABEL\[r\.action\] \? t\(ACTION_LABEL\[r\.action\]\) : r\.action/.test(tab));
+}
+
 done();
