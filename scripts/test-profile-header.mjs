@@ -42,6 +42,8 @@ const ring = read('../src/components/MusicRing.jsx');
 const profile = read('../src/pages/ProfilePage.jsx');
 const business = read('../src/components/BusinessPublicProfile.jsx');
 const qr = read('../src/components/ProfileQrModal.jsx');
+const quick = read('../src/pages/CompanyQuickProfilePage.jsx');
+const workspace = read('../src/pages/CompanyWorkspacePage.jsx');
 const css = raw('../src/theme.css');
 
 // ── 1) TARTIB: ⋮ YURAKDAN OLDIN ──────────────────────────────────────
@@ -74,7 +76,7 @@ const css = raw('../src/theme.css');
     /<ProfileMoreMenu[\s\S]{0,300}ownerActions=\{ownerActions\}/.test(cluster));
   checkTrue('3) mehmonda ro‘yxat bo‘sh', /ownerActions = \[\]/.test(cluster));
   // Ega amallari `isOwner` shartisiz uzatilmasin.
-  for (const [name, src] of [['shaxsiy', profile], ['biznes', business]]) {
+  for (const [name, src] of [['shaxsiy', profile], ['biznes', business], ['kompaniya', quick]]) {
     checkTrue(`3) ${name}: ownerActions faqat egaga`,
       /ownerActions=\{isOwner \? \[/.test(src));
   }
@@ -270,6 +272,44 @@ const css = raw('../src/theme.css');
     /ownerActionUrl\(record\.code, 'story'\)/.test(profile) && /ownerActionUrl\(record\.code, 'post'\)/.test(profile));
   checkTrue('13) biznesda ham alohida',
     /ownerActionUrl\(record\.code, 'story'\)/.test(business) && /ownerActionUrl\(record\.code, 'post'\)/.test(business));
+}
+
+// ── 14) KOMPANIYA SAHIFASI (/c/:id) HAM SHU TIZIMDA ──────────────────
+//
+// Egasining xabari: "buni ham personal profilga o'xshasin degandik,
+// tepa qismini poryadki qilishni qilinmaganmidi".
+//
+// Haq edi: bu sahifa qamrovdan TASHQARIDA qolgandi. Uning tepasida
+// alohida mavzu tugmasi va katta oltin "Tahrirlash" turardi, ya'ni
+// saytning qolgan ochiq profillaridan boshqacha boshqarilardi.
+{
+  checkTrue('14) kompaniya sahifasi umumiy to‘plamni chaqiradi', /<ProfileActionCluster/.test(quick));
+  // Alohida mavzu tugmasi YO'Q — mavzu ⋮ ichida.
+  checkTrue('14) alohida ThemeSwitcher yo‘q', !/ThemeSwitcher/.test(quick));
+  // Katta oltin "Tahrirlash" YO'Q — u ⋮ da.
+  checkTrue('14) tepada katta "Tahrirlash" yo‘q',
+    !/className="qp-sidebtn" onClick=\{\(\) => navigate\(`\/workspace/.test(quick));
+  // Ega amallari ⋮ da va HAR BIRI o'z bo'limiga olib boradi.
+  for (const [label, tab] of [['Profilni tahrirlash', 'profile'], ['Story qo‘shish', 'feed'], ['Post qo‘shish', 'posts']]) {
+    // Yorliq va manzil BITTA qatorda — oradagi `${...}` ichida `}`
+    // bo'lgani uchun "istalgan belgi" naqshi ishlamaydi.
+    const line = quick.split('\n').find((l) => l.includes(`t('${label}')`));
+    checkTrue(`14) ⋮ da "${label}" -> ?tab=${tab}`, !!line && line.includes(`?tab=${tab}`), line ? line.trim().slice(0, 80) : 'topilmadi');
+  }
+  checkTrue('14) ⋮ da QR kod bor', /t\('QR kod'\)/.test(quick) && /<ProfileQrModal/.test(quick));
+  // Shikoyat turi kompaniya uchun to'g'ri.
+  checkTrue('14) shikoyat turi "company"', /targetKind="company"/.test(quick));
+
+  // IKKITA "Ulashish" bo'lmasin: u faqat tepadagi to'plamda.
+  check('14) sahifada ulashish tugmasi bitta', (quick.match(/<ShareButton/g) || []).length, 0);
+  checkTrue('14) ShareButton importi ham olib tashlangan', !/import ShareButton/.test(quick));
+
+  // `?tab=` chuqur havolasi HAQIQATAN ishlasin — aks holda ⋮ dagi
+  // "Story qo'shish" odamni Boshqaruvga tashlab ketardi.
+  checkTrue('14) workspace ?tab= ni o‘qiydi',
+    /new URLSearchParams\(window\.location\.search\)\.get\('tab'\)/.test(workspace));
+  checkTrue('14) noma’lum bo‘lim rad etiladi',
+    /tabs\.some\(\(\[id\]\) => id === want\) \? want : 'dashboard'/.test(workspace));
 }
 
 done('Ochiq profil boshi va musiqa halqasi');

@@ -28,7 +28,18 @@ export default function CompanyWorkspacePage({ companyId }) {
   const { t } = useLanguage();
   const [company, setCompany] = useState(undefined);
   const [form, setForm] = useState(null);
-  const [tab, setTab] = useState('dashboard');
+  // `?tab=` — CHUQUR HAVOLA.
+  //
+  // Ochiq profildagi ⋮ menyusi "Story qo'shish" / "Post qo'shish" ni
+  // shu orqali ochadi. Usiz odam har safar Boshqaruvga tushib,
+  // kerakli bo'limni o'zi qidirib topishi kerak edi.
+  // Faqat MAVJUD bo'lim nomi qabul qilinadi — noto'g'ri qiymat bilan
+  // bo'sh ekran chiqmaydi.
+  const [tab, setTab] = useState(() => {
+    if (typeof window === 'undefined') return 'dashboard';
+    const want = new URLSearchParams(window.location.search).get('tab');
+    return tabs.some(([id]) => id === want) ? want : 'dashboard';
+  });
   const [item, setItem] = useState(blankItem);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');

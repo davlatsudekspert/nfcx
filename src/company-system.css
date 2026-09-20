@@ -490,6 +490,10 @@
 .qp-topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:30px;margin-bottom:20px}
 .qp-topbar-side{display:flex;justify-content:flex-start;min-width:0}
 .qp-topbar-side--right{justify-content:flex-end}
+/* Umumiy amallar to'plami (ProfileActionCluster) shu burchakda.
+   `margin-left:auto` unda allaqachon bor — bu yerda takrorlanmaydi,
+   aks holda `qp-topbar` ning o'z taqsimoti buzilardi. */
+.qp-topbar-side--right .pf-actions{margin-left:0}
 /* Yuklanish skeleti uchun qator (ma'lumot kelgunicha ko'rinadi). */
 .qp-hero-row{display:flex;align-items:center;gap:12px;width:100%}
 /* TO'LIQ EKRAN tugmasi — brauzerning manzil va pastki qatorini
@@ -683,21 +687,11 @@
 .qp-qbtn i>svg{filter:drop-shadow(0 1px 0 color-mix(in srgb, var(--tint-base) 50%, transparent))}
 .qp-qbtn:hover i{transform:translateY(-2px);filter:brightness(1.07)}
 .qp-qbtn span{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* "Ulashish" — ShareButton ichida <i> yo'q, belgi to'g'ridan-to'g'ri
-   <svg>. Shuning uchun dumaloq katak SVGning o'ziga beriladi.
-   Ikki sinf (0,2,0) Tailwind'ning `gap-2` sidan kuchliroq. */
-.qp-qbtn.qp-qbtn--share{gap:9px}
-.qp-qbtn--share>svg{
-  width:62px;height:62px;padding:17px;box-sizing:border-box;border-radius:50%;color:color-mix(in srgb, var(--accent-primary) 22%, var(--surface));
-  background:var(--gold-face);
-  box-shadow:
-    inset 0 1.5px 0 color-mix(in srgb, var(--tint-base) 72%, transparent),
-    inset 0 -8px 12px -6px color-mix(in srgb, var(--accent-primary) 55%, transparent),
-    0 0 0 1px color-mix(in srgb, var(--accent-primary) 85%, transparent),
-    0 0 16px -6px color-mix(in srgb, var(--accent-secondary) 70%, transparent),
-    0 8px 20px color-mix(in srgb, var(--shade-base) 60%, transparent)
-}
-.qp-qbtn--share:hover>svg{filter:brightness(1.07)}
+/* "Ulashish" tugmasi bu qatordan OLIB TASHLANDI (2026-09): u endi
+   tepadagi umumiy amallar to'plamida (ProfileActionCluster), shaxsiy
+   profildagidek. Uslublari ham shu bilan ketdi — ikkita bir xil
+   "Ulashish" bitta ekranda turgani egasi shikoyat qilgan ortiqcha
+   element edi. */
 
 /* ── Bo'limlar — oltin tanachali tugmalar ────────────────────────── */
 .qp-tabs{
