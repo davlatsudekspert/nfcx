@@ -215,4 +215,13 @@ export const DICT_ACCOUNT = {
   '24 soatlik kontent uchun “Stories” bo‘limiga o‘ting.':
     { ru: 'Для 24-часового контента перейдите в раздел «Stories».',
       en: 'For 24-hour content, go to the "Stories" section.' },
+
+  // ── MENING NFC QURILMALARIM ────────────────────────────────────
+  'Stikeringiz qaysi profilni ochishini shu yerdan o‘zgartirasiz. Chipga qayta yozish shart emas — hatto qulflangan stiker ham yangi profilga ergashadi.': { ru: 'Здесь вы меняете, какой профиль открывает ваш стикер. Перезаписывать чип не нужно — даже заблокированный стикер последует за новым профилем.', en: 'Here you change which profile your sticker opens. The chip does not need rewriting — even a locked sticker follows the new profile.' },
+  'Nimani ochadi': { ru: 'Что открывает', en: 'Opens' },
+  'Tanlanmagan': { ru: 'Не выбрано', en: 'Not selected' },
+  'biznes': { ru: 'бизнес', en: 'business' },
+  'Vaqtincha o‘chirish': { ru: 'Временно отключить', en: 'Turn off for now' },
+  'Saqlandi. Endi stiker shu profilni ochadi.': { ru: 'Сохранено. Теперь стикер открывает этот профиль.', en: 'Saved. The sticker now opens this profile.' },
+  'Saqlanmadi. Qaytadan urinib ko‘ring.': { ru: 'Не сохранилось. Попробуйте ещё раз.', en: 'Not saved. Please try again.' },
 };

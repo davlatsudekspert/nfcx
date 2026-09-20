@@ -8501,6 +8501,15 @@ async function userAccountApi(request, env, url) {
     tokenTail: String(r.chip_token || '').slice(-4).toUpperCase(),
     linkedCode: r.linked_code || '',
     linkedName: r.linked_name || '',
+    // BIZNES BOG'LANISHI HAM KO'RINSIN.
+    //
+    // Marketplace aktivatsiyasi kompaniyani `linked_company_id` ga
+    // yozadi (`linked_code` — `cards.code` ga FK, kompaniya u yerga
+    // sig'maydi). Bu ustun bu yerda o'qilmagani uchun kompaniyaga
+    // ulangan stiker egasiga "bog'lanmagan" bo'lib ko'rinardi va u
+    // uni o'zgartira ham olmasdi.
+    linkedCompanyId: r.linked_company_id || '',
+    linkedCompanyName: r.linked_company_name || '',
     active: Number(r.active) === 1,
     blockedByOwner: Number(r.blocked_by_owner) === 1,
     status: r.status || '',
@@ -8509,14 +8518,26 @@ async function userAccountApi(request, env, url) {
 
   const listNfcDevices = async (ownerId) => {
     const rows = await env.DB.prepare(
-      `SELECT pc.id, pc.chip_token, pc.linked_code, pc.active,
+      `SELECT pc.id, pc.chip_token, pc.linked_code, pc.linked_company_id, pc.active,
               pc.blocked_by_owner, pc.status, pc.created_at,
-              c.name AS linked_name
+              c.name AS linked_name, co.display_name AS linked_company_name
          FROM physical_cards pc
          LEFT JOIN cards c ON c.code = pc.linked_code
+         LEFT JOIN companies co ON co.company_id = pc.linked_company_id
         WHERE pc.owner_user_id = ?
         ORDER BY pc.created_at DESC`
-    ).bind(ownerId).all();
+    ).bind(ownerId).all()
+      // Eski bazada ustun bo'lmasligi mumkin — ro'yxat baribir
+      // ochilsin, aks holda butun ekran yiqilardi.
+      .catch(() => env.DB.prepare(
+        `SELECT pc.id, pc.chip_token, pc.linked_code, pc.active,
+                pc.blocked_by_owner, pc.status, pc.created_at,
+                c.name AS linked_name
+           FROM physical_cards pc
+           LEFT JOIN cards c ON c.code = pc.linked_code
+          WHERE pc.owner_user_id = ?
+          ORDER BY pc.created_at DESC`
+      ).bind(ownerId).all());
     return (rows.results || []).map(nfcDeviceRow);
   };
 
@@ -8540,10 +8561,47 @@ async function userAccountApi(request, env, url) {
         `SELECT 1 AS x FROM cards WHERE code = ? AND user_id = ?`
       ).bind(code, user.id).first();
       if (!own) return json({ error: 'not_your_code' }, 403);
+      // Kompaniya bog'lanishi TOZALANADI: ikkalasi bir vaqtda
+      // turib qolsa, tegizganda qaysi biri ochilishi noaniq edi.
       const upd = await env.DB.prepare(
-        `UPDATE physical_cards SET linked_code = ?
+        `UPDATE physical_cards SET linked_code = ?, linked_company_id = NULL
           WHERE id = ? AND owner_user_id = ? RETURNING id`
-      ).bind(code, id, user.id).first();
+      ).bind(code, id, user.id).first()
+        .catch(() => env.DB.prepare(
+          `UPDATE physical_cards SET linked_code = ?
+            WHERE id = ? AND owner_user_id = ? RETURNING id`
+        ).bind(code, id, user.id).first());
+      if (!upd) return json({ error: 'not_found' }, 404);
+    }
+
+    // ── KOMPANIYAGA ULASH ────────────────────────────
+    //
+    // Stikerni sotib olgan odam uni o'z shaxsiy profili bilan
+    // kompaniyasi orasida ERKIN almashtira olishi kerak. Chipga
+    // qayta yozish SHART EMAS — chipda o'zgarmas token turadi,
+    // yo'nalishni server hal qiladi. Shuning uchun qulflangan
+    // stiker ham shu yerdan boshqariladi.
+    if ('linkedCompanyId' in body) {
+      const cid = shortText(body.linkedCompanyId, 32).toUpperCase();
+      if (!cid) return json({ error: 'bad_company' }, 422);
+      const own = await env.DB.prepare(
+        `SELECT 1 AS x FROM companies WHERE company_id = ? AND owner_user_id = ?`
+      ).bind(cid, String(user.id)).first();
+      if (!own) return json({ error: 'not_your_company' }, 403);
+      // `linked_company_id` ustuni marketplace moduli migratsiyasidan
+      // keladi. Agar u hali ishlamagan bo'lsa (masalan yangi bazada
+      // hali biror marketplace so'rovi bo'lmagan), bu yerda so'rov
+      // 503 bilan yiqilardi. Ustunni O'ZI qo'shib qayta uriniladi —
+      // `ALTER TABLE ... ADD COLUMN` buzmaydigan amal.
+      const linkCompany = () => env.DB.prepare(
+        `UPDATE physical_cards SET linked_company_id = ?, linked_code = NULL
+          WHERE id = ? AND owner_user_id = ? RETURNING id`
+      ).bind(cid, id, user.id).first();
+      let upd = await linkCompany().catch(() => undefined);
+      if (upd === undefined) {
+        await env.DB.prepare(`ALTER TABLE physical_cards ADD COLUMN linked_company_id TEXT`).run().catch(() => {});
+        upd = await linkCompany().catch(() => null);
+      }
       if (!upd) return json({ error: 'not_found' }, 404);
     }
 

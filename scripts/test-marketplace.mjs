@@ -1467,6 +1467,16 @@ function gatedEnv(env, sqlNeedle) {
     /Hamma stikerga bir xil manzil yozsam/.test(tab));
   checkTrue('24) yarim qolgan ishni davom ettirish aytilgan',
     /bir o‘tirishda yozolmasam/.test(tab));
+  // QULFLASH — UNUTIB BO'LMAYDIGAN QADAM.
+  //
+  // Qulflanmagan stikerni ko'chada istalgan odam NFC Tools bilan
+  // qayta yozib yoki o'chirib yuborishi mumkin: mijozning mahsuloti
+  // notanish qo'lda o'ladi. Bu jumla qo'llanmadan tushib ketsa,
+  // butun partiya himoyasiz chiqib ketardi.
+  checkTrue('24) chipni qulflash aytilgan', /CHIPNI QULFLANG/.test(tab));
+  checkTrue('24) qulflash qaytarilmasligi aytilgan', /Qulflash QAYTARILMAYDI/.test(tab));
+  checkTrue('24) qulf bizga xalaqit bermasligi tushuntirilgan',
+    /qulflash hech narsani cheklamaydi/.test(tab));
   // Ekran o'qigich uchun: chizma bezak emas, ma'no tashiydi.
   const arts = tab.match(/<svg viewBox/g) || [];
   const labels = tab.match(/role="img" aria-label=/g) || [];
@@ -1568,6 +1578,47 @@ function gatedEnv(env, sqlNeedle) {
   const outside = await env.DB.prepare(`SELECT id FROM physical_cards WHERE chip_token = 'CHIP-OUTSIDE'`).first();
   check('25) begona qurilmaga tegmaydi',
     (await call(env, `/api/admin/marketplace/stickers/${outside.id}/written`, { method: 'POST', cookie: cookie.admin, json: {} })).status, 404);
+
+  // ── SINOVDAN CHIQARISH ──────────────────────────
+  //
+  // Sotuvdan oldin egasi o'z stikerlarida sinab ko'radi. Ilgari
+  // o'sha stiker uning profiliga BOG'LANIB qolardi va jismoniy
+  // stikerni endi sotib bo'lmasdi — sinov har safar bitta
+  // mahsulotni yo'q qilardi.
+  const sold = used.stickers.find((x) => x.chipToken === batch.codes[1].chipToken);
+  const relUrl = `/api/admin/marketplace/stickers/${sold.id}/release`;
+
+  // TOKEN SHART: stiker QO'LDA bo'lsin, ro'yxatdan tasodifan
+  // bosib mijozning kartasini o'chirib bo'lmasin.
+  check('25) token shart', (await call(env, relUrl, { method: 'POST', cookie: cookie.admin, json: { reason: 'sinov' } })).status, 422);
+  check('25) noto‘g‘ri token rad etiladi',
+    (await call(env, relUrl, { method: 'POST', cookie: cookie.admin, json: { chipToken: 'BOSHQA-TOKEN', reason: 'sinov' } })).status, 409);
+  check('25) sabab shart',
+    (await call(env, relUrl, { method: 'POST', cookie: cookie.admin, json: { chipToken: sold.chipToken } })).status, 422);
+  check('25) bo‘shatish mehmonga yopiq', (await call(env, relUrl, { method: 'POST', json: { chipToken: sold.chipToken, reason: 'sinov' } })).status, 401);
+
+  const rel = await call(env, relUrl, {
+    method: 'POST', cookie: cookie.admin, json: { chipToken: sold.chipToken, reason: 'sinov stikeri' },
+  });
+  check('25) bo‘shatildi', rel.status, 200);
+  const freed = await env.DB.prepare(`SELECT owner_user_id AS uid, linked_code AS lc, linked_company_id AS cid, written_at AS w FROM physical_cards WHERE chip_token = ?`).bind(sold.chipToken).first();
+  check('25) egasi tozalandi', freed.uid, null);
+  check('25) profil bog‘lanishi tozalandi', freed.lc, null);
+  check('25) kompaniya bog‘lanishi tozalandi', freed.cid, null);
+  check('25) "yozildi" belgisi ham tozalandi', freed.w, null);
+  // Kod qatoridagi ishora ham qolmasin.
+  check('25) kod qatori tozalandi', (await rowOfCode(env, batch.codes[1].code, 'physical_device_id AS d')).d, null);
+  // Stiker endi YANA ishlatilishi mumkin.
+  check('25) stiker yana bo‘sh', (await call(env, `/t/${sold.chipToken}`)).headers.get('location'), `/activate?d=${sold.chipToken}`);
+  // Jurnalga tushdi.
+  const hist = await jsonOf(await call(env, '/api/admin/marketplace/history', { cookie: cookie.admin }));
+  const entry = hist.history.find((h) => h.action === 'marketplace_sticker_released');
+  checkTrue('25) jurnalga yozildi', !!entry);
+  checkTrue('25) jurnalda sabab bor', (entry?.details || '').includes('sinov stikeri'));
+  checkTrue('25) jurnalda to‘liq token yo‘q', !(entry?.details || '').includes(sold.chipToken));
+  // Marketplace'ga tegishli bo'lmagan qurilmani bo'shatib bo'lmaydi.
+  check('25) begona qurilma bo‘shatilmaydi',
+    (await call(env, `/api/admin/marketplace/stickers/${outside.id}/release`, { method: 'POST', cookie: cookie.admin, json: { chipToken: 'CHIP-OUTSIDE', reason: 'sinov' } })).status, 404);
 
   // ── MANBA QOIDALARI ──────────────────────────────
   const mk = stripComments(read('../hosting/api/marketplace.js'));

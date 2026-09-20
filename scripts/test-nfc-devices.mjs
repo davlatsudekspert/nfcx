@@ -144,20 +144,91 @@ let deviceId = 0;
   })(root);
   const used = files.some((f) => !f.endsWith('db.js')
     && /dbListNfcDevices|dbUpdateNfcDevice/.test(readFileSync(f, 'utf8')));
-  // QAROR (2026-09): saytda bu ekran ATAYLAB yo'q.
+  // QAROR O'ZGARDI (2026-09): EKRAN ENDI MAJBURIY.
   //
-  // Bu ikki yo'l `hosting/worker.js` ga ILOVA uchun ko'chirilgan —
-  // o'sha yerdagi izoh aynan shuni aytadi: "ilova
-  // `GET /api/my/nfc-devices` ga borganda 404 olardi va 'bog'langan
-  // kartalar' EKRANI hech qachon ishlamagan". Ya'ni ekran ilovada,
-  // sayt esa hech qachon uni ko'rsatmagan.
+  // Ilgari bu "KNOWN DEFERRED" edi: backend ilova uchun yozilgan,
+  // sayt esa ekranni ko'rsatmasdi — va bu zarar qilmasdi, chunki
+  // jismoniy kartani ISHLAB CHIQARISHDA biz o'zimiz to'g'ri profilga
+  // bog'lardik.
   //
-  // Sayt uchun bu KNOWN DEFERRED: backend tayyor va qo'riqlanadi,
-  // ekran kerak bo'lganda qo'shiladi. Hech narsa buzuq emas —
-  // funksiya sayt tomonida hali yo'q.
-  console.log(used
-    ? 'IZOH  - saytda NFC qurilmalari ekrani ULANGAN'
-    : 'IZOH  - saytda ekran ATAYLAB yo‘q (KNOWN DEFERRED); backend tayyor va qo‘riqlanadi');
+  // Marketplace buni o'zgartirdi: endi profilni XARIDOR tanlaydi.
+  // Noto'g'ri tanlasa (yoki keyinroq biznesdan shaxsiyga o'tmoqchi
+  // bo'lsa) ekransiz uni tuzatib BO'LMASDI — chipda esa o'zgarmas
+  // token turgani uchun qayta yozish ham yechim emas.
+  //
+  // Shuning uchun bu endi izoh emas, SHART.
+  checkTrue('6) saytda NFC qurilmalari ekrani ulangan', used);
+}
+
+// ── 7) BIZNESGA ULASH ───────────────────────────────
+//
+// Marketplace aktivatsiyasi kompaniyani `linked_company_id` ga
+// yozadi (`linked_code` — `cards.code` ga FK, kompaniya u yerga
+// sig'maydi). Bu ustun ro'yxatda o'qilmagani uchun kompaniyaga
+// ulangan stiker egasiga "bog'lanmagan" bo'lib ko'rinardi va uni
+// o'zgartirib ham bo'lmasdi.
+{
+  await env.DB.prepare(
+    `INSERT INTO companies (company_id, owner_user_id, display_name, category, city, description, phone, tier, price, status, created_at, updated_at)
+     VALUES ('MYCO', '1', 'Mening Kompaniyam', 'other', 'Toshkent', 'Test', '+998900000001', 'free', 0, 'active', '2026-01-01', '2026-01-01')`
+  ).run();
+  // Begona kompaniya — user 2 niki.
+  await env.DB.prepare(
+    `INSERT INTO companies (company_id, owner_user_id, display_name, category, city, description, phone, tier, price, status, created_at, updated_at)
+     VALUES ('OTHCO', '2', 'Begona', 'other', 'Toshkent', 'Test', '+998900000002', 'free', 0, 'active', '2026-01-01', '2026-01-01')`
+  ).run();
+  await env.DB.prepare(`INSERT INTO physical_cards (chip_token, owner_user_id, linked_code) VALUES ('CHIP-BIZ-UI', 1, 'VIP001')`).run();
+  const dev = await env.DB.prepare(`SELECT id FROM physical_cards WHERE chip_token = 'CHIP-BIZ-UI'`).first();
+
+  const ok = await call(`/api/my/nfc-devices/${dev.id}`, {
+    method: 'PUT', headers: { cookie: cookie.user, 'content-type': 'application/json' },
+    body: JSON.stringify({ linkedCompanyId: 'MYCO' }),
+  });
+  check('7) kompaniyaga ulandi', ok.status, 200);
+  const row = await env.DB.prepare(`SELECT linked_code AS lc, linked_company_id AS cid FROM physical_cards WHERE id = ?`).bind(dev.id).first();
+  check('7) kompaniya yozildi', row.cid, 'MYCO');
+  // IKKALASI BIR VAQTDA TURMASIN: tegizganda qaysi biri ochilishi
+  // noaniq bo'lib qolardi.
+  check('7) shaxsiy bog\u2018lanish tozalandi', row.lc, null);
+
+  const listed = (ok.body.devices || []).find((d) => d.id === dev.id);
+  check('7) ro\u2018yxatda kompaniya ko\u2018rinadi', listed.linkedCompanyId, 'MYCO');
+  check('7) kompaniya nomi ham', listed.linkedCompanyName, 'Mening Kompaniyam');
+
+  // ── BEGONA KOMPANIYA ────────────────────────────
+  const bad = await call(`/api/my/nfc-devices/${dev.id}`, {
+    method: 'PUT', headers: { cookie: cookie.user, 'content-type': 'application/json' },
+    body: JSON.stringify({ linkedCompanyId: 'OTHCO' }),
+  });
+  check('7) begona kompaniya rad etiladi', bad.status, 403);
+  check('7) sababi aniq', bad.body?.error, 'not_your_company');
+  check('7) begona tegmadi',
+    (await env.DB.prepare(`SELECT linked_company_id AS cid FROM physical_cards WHERE id = ?`).bind(dev.id).first()).cid, 'MYCO');
+
+  // ── SHAXSIYGA QAYTISH ───────────────────────────
+  const back = await call(`/api/my/nfc-devices/${dev.id}`, {
+    method: 'PUT', headers: { cookie: cookie.user, 'content-type': 'application/json' },
+    body: JSON.stringify({ linkedCode: 'VIP001' }),
+  });
+  check('7) shaxsiyga qaytdi', back.status, 200);
+  const row2 = await env.DB.prepare(`SELECT linked_code AS lc, linked_company_id AS cid FROM physical_cards WHERE id = ?`).bind(dev.id).first();
+  check('7) shaxsiy yozildi', row2.lc, 'VIP001');
+  check('7) kompaniya tozalandi', row2.cid, null);
+
+  // ── BEGONA QURILMA ─────────────────────────────
+  const other = await call(`/api/my/nfc-devices/${dev.id}`, {
+    method: 'PUT', headers: { cookie: cookie.other, 'content-type': 'application/json' },
+    body: JSON.stringify({ linkedCompanyId: 'OTHCO' }),
+  });
+  check('7) boshqa odam tegolmaydi', other.status, 404);
+
+  // ── TEGIZGANDA HAQIQATAN KOMPANIYA OCHILADI ────────────
+  await call(`/api/my/nfc-devices/${dev.id}`, {
+    method: 'PUT', headers: { cookie: cookie.user, 'content-type': 'application/json' },
+    body: JSON.stringify({ linkedCompanyId: 'MYCO' }),
+  });
+  const hop = await worker.fetch(req('/t/CHIP-BIZ-UI'), env);
+  check('7) stiker kompaniya sahifasini ochdi', hop.headers.get('location'), '/c/myco');
 }
 
 done('NFC qurilmalari');

@@ -2061,6 +2061,26 @@ body{
    Qadam + chizma. 320px da ustma-ust, kengroq ekranda yonma-yon.
    Chizmalar inline SVG: tashqi rasm yuklanmaydi va ranglari mavzu
    tokenlaridan olinadi, ya'ni to'q mavzuda ham o'qiladi. */
+/* ── MENING NFC QURILMALARIM ─────────────────────────
+   Stiker qaysi profilni ochishini mijozning o'zi almashtiradi.
+   320px da ustma-ust, kengroq ekranda bitta qatorda. */
+.nfcdev{margin-top:14px;padding-top:14px;border-top:1px solid var(--border-soft)}
+.nfcdev-hint{margin:0 0 11px;font-size:var(--fs-xs);line-height:1.55;color:var(--text-muted)}
+.nfcdev-row{
+  display:grid;gap:9px;align-items:end;margin-bottom:9px;padding:11px 12px;border-radius:12px;
+  background:var(--surface-inset,var(--bg-secondary));border:1px solid var(--border-soft)
+}
+.nfcdev-row.is-off{opacity:.55}
+.nfcdev-id{display:flex;align-items:baseline;gap:7px}
+.nfcdev-id b{font-size:var(--fs-2xs);font-weight:800;letter-spacing:.12em;color:var(--accent-primary)}
+.nfcdev-id span{font:700 var(--fs-sm)/1 ui-monospace,Menlo,monospace;color:var(--text-primary)}
+.nfcdev-pick{display:flex;flex-direction:column;gap:5px;min-width:0}
+.nfcdev-pick>span{font-size:var(--fs-2xs);font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint)}
+.nfcdev-block{white-space:nowrap;min-height:40px}
+.nfcdev-msg{margin:9px 0 0;font-size:var(--fs-xs);color:var(--accent-primary)}
+@media (min-width:640px){
+  .nfcdev-row{grid-template-columns:auto minmax(0,1fr) auto}
+}
 /* ── STIKER YOZISH (telefon) ──────────────────────────
    Bitta stiker — katta qilib. Odam ikki dastur orasida almashib
    turadi, shuning uchun manzil ham, tugmalar ham barmoqqa mo'ljallangan. */
@@ -2082,6 +2102,7 @@ body{
 }
 .mk-wr-copy{width:100%;min-height:46px}
 .mk-wr-used{margin:0;font-size:var(--fs-xs);line-height:1.5;color:var(--danger,#d14343)}
+.mk-wr-release{width:100%}
 .mk-wr-nav{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .mk-wr-nav>.btn{flex:1 1 30%;min-width:96px;min-height:42px;white-space:nowrap;padding-inline:10px}
 .mk-wr-all{margin:12px 0 0;font-size:var(--fs-sm);font-weight:700;color:var(--accent-primary)}

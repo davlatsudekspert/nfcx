@@ -65,6 +65,7 @@ const ACTION_LABEL = {
   marketplace_expired: 'Muddati tugatildi',
   marketplace_activated: 'Faollashtirildi',
   marketplace_reassigned: 'Qayta taqsimlandi',
+  marketplace_sticker_released: 'Stiker sinovdan chiqarildi',
 };
 
 const labelOf = (list, id) => (list.find((x) => x.id === id) || { label: id }).label;
@@ -305,6 +306,12 @@ function Guide({ t, onGo }) {
             {t('HAR BIR stikerda BOSHQA manzil bo‘ladi. Hammasiga bir xil manzil yozsangiz, birinchi faollashtirgan odamning profili hammaga ochilib qoladi.')}
           </p>
           <p className="mk-gd-warn">
+            {t('YOZGANDAN KEYIN CHIPNI QULFLANG (NFC Tools → «Boshqa» → «Qulflash»). Qulflanmagan stikerni ko‘chada istalgan odam NFC Tools bilan qayta yozib yoki o‘chirib yuborishi mumkin. Qulflash QAYTARILMAYDI, shuning uchun avval yozuv ishlayotganini tekshiring.')}
+          </p>
+          <p>
+            {t('Bizda qulflash hech narsani cheklamaydi: chipda profil manzili emas, o‘zgarmas token yozilgan. Mijoz profilini almashtirsa ham stiker yangisiga ergashadi — chipga qayta yozish hech qachon kerak bo‘lmaydi.')}
+          </p>
+          <p className="mk-gd-warn">
             {t('Kod QR ichiga YOZILMAYDI: konvert ochilmasdan tashqaridan skanerlab kodni olib qo‘yish mumkin bo‘lardi.')}
           </p>
         </GuideStep>
@@ -343,6 +350,12 @@ function Guide({ t, onGo }) {
 
           <dt>{t('100 ta stikerni bir o‘tirishda yozolmasam?')}</dt>
           <dd>{t('Muammo yo‘q. «Batch yaratish» bo‘limida oldingi partiyalar ro‘yxati turadi — «Yozishda davom etish» ni bossangiz, to‘xtagan joyingizdan davom etasiz.')}</dd>
+
+          <dt>{t('Qulflangan stikerni ham sinovdan chiqarib sotsam bo‘ladimi?')}</dt>
+          <dd>{t('Ha. Qulf CHIPGA taalluqli — unda o‘zgarmas token turadi va u baribir o‘zgarmasligi kerak edi. «Sinovdan chiqarish» esa SERVERDAGI bog‘lanishni uzadi. Shuning uchun qulflangan stiker ham yana sotiladi va yangi xaridor uni odatdagidek faollashtiradi.')}</dd>
+
+          <dt>{t('Sinab ko‘rgan stikerimni keyin sotsam bo‘ladimi?')}</dt>
+          <dd>{t('Ha. Yozish ekranida faollashgan stikerda «Sinovdan chiqarish» tugmasi bor — stiker yana bo‘sh holatga qaytadi. Xavfsizlik uchun chip tokenini to‘liq kiritish so‘raladi, ya’ni stiker qo‘lingizda bo‘lishi shart.')}</dd>
 
           <dt>{t('Konvertni chalkashtirib yuborsam nima bo‘ladi?')}</dt>
           <dd>{t('Hech narsa. Har qanday stiker har qanday konvert bilan ishlaydi.')}</dd>
@@ -608,6 +621,21 @@ function StickerWriter({ adminApi, t, batchId, onClose, apiErrText }) {
     }
   };
 
+  // Tasdiq MATN bilan: ro'yxatdan tasodifan bosib mijozning ishlab
+  // turgan kartasini o'chirib qo'yish mumkin bo'lmasin.
+  const release = async () => {
+    const reason = window.prompt(t('Nima uchun bo‘shatilyapti? (sinov, xato yozuv va h.k.)'));
+    if (!reason || reason.trim().length < 3) return;
+    setBusy(true);
+    try {
+      await adminApi(`/marketplace/stickers/${cur.id}/release`, {
+        method: 'POST',
+        body: JSON.stringify({ chipToken: cur.chipToken, reason: reason.trim() }),
+      });
+      load();
+    } catch (e) { setErr(e); } finally { setBusy(false); }
+  };
+
   const mark = async (written) => {
     setBusy(true);
     try {
@@ -643,7 +671,18 @@ function StickerWriter({ adminApi, t, batchId, onClose, apiErrText }) {
           {copied ? t('Nusxalandi ✓') : t('Manzilni nusxalash')}
         </button>
         {cur.used && (
-          <p className="mk-wr-used">{t('Bu stiker allaqachon sotilib faollashtirilgan — uni qayta yozmang.')}</p>
+          <>
+            <p className="mk-wr-used">{t('Bu stiker allaqachon faollashtirilgan — uni qayta yozmang.')}</p>
+            {/* SINOV STIKERINI QAYTARISH.
+                Sotuvdan oldin egasi o'z stikerlarida sinab ko'radi va
+                ular uning profiliga bog'lanib qolardi — o'sha jismoniy
+                stikerni endi sotib bo'lmasdi. Bu tugma faqat
+                stikerni bo'shatadi; aktivatsiya kodi sarflangan holda
+                qoladi, chunki sotuvda konvertga boshqa kod solinadi. */}
+            <button type="button" className="btn btn-sm mk-wr-release" disabled={busy} onClick={release}>
+              {t('Sinovdan chiqarish')}
+            </button>
+          </>
         )}
       </div>
 

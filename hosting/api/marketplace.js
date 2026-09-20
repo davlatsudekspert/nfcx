@@ -828,6 +828,57 @@ export async function handle(request, env, url, H) {
       return H.json({ ok: true, id, written: on });
     }
 
+    // ── SINOVDAN CHIQARISH ──────────────────────────
+    //
+    // Sotuvdan oldin egasi o'z stikerlarida sinab ko'radi — bu
+    // majburiy qadam. Lekin sinovda stiker uning profiliga BOG'LANIB
+    // qolardi va o'sha jismoniy stikerni endi sotib bo'lmasdi.
+    //
+    // XAVF SHU YERDA: bu amal noto'g'ri ishlatilsa MIJOZNING ishlab
+    // turgan kartasini o'chirib qo'yardi. Shuning uchun uch qatlam:
+    //   1) faqat marketplace partiyasidagi stiker;
+    //   2) CHIP TOKENI to'liq yozilishi shart — ya'ni stiker QO'LDA
+    //      bo'lishi kerak, ro'yxatdan tasodifan bosib bo'lmaydi;
+    //   3) sabab majburiy va jurnalga tushadi.
+    //
+    // Aktivatsiya KODI qaytarilmaydi: u sarflangan va shunday
+    // qolishi to'g'ri — sotuvda konvertga boshqa kod solinadi.
+    const releaseMatch = path.match(/^\/api\/admin\/marketplace\/stickers\/(\d+)\/release$/);
+    if (releaseMatch && method === 'POST') {
+      const id = Number(releaseMatch[1]);
+      const body = await readJson();
+      const token = H.shortText(body.chipToken, 64).replace(/[^A-Za-z0-9_-]/g, '');
+      const reason = H.shortText(body.reason, 200);
+      if (!token) return H.json({ error: 'chip_token_required' }, 422);
+      if (reason.trim().length < 3) return H.json({ error: 'reason_required' }, 422);
+      const row = await env.DB.prepare(
+        `SELECT id, chip_token, owner_user_id, linked_code, linked_company_id
+           FROM physical_cards WHERE id = ? AND marketplace_batch_id IS NOT NULL`
+      ).bind(id).first();
+      if (!row) return H.json({ error: 'not_found' }, 404);
+      // Token MOS KELMASA — stiker qo'lda emas, demak bu tasodifiy
+      // bosish yoki xato qator.
+      if (String(row.chip_token) !== token) return H.json({ error: 'token_mismatch' }, 409);
+      await env.DB.prepare(
+        `UPDATE physical_cards
+            SET owner_user_id = NULL, linked_code = NULL, linked_company_id = NULL,
+                active = 1, written_at = NULL
+          WHERE id = ?`
+      ).bind(id).run();
+      // Kod qatoridagi ishora ham tozalanadi, aks holda admin
+      // panelda "bu kod shu stikerda" deb ko'rinib turaverardi.
+      await env.DB.prepare(`UPDATE marketplace_activations SET physical_device_id = NULL WHERE physical_device_id = ?`)
+        .bind(id).run().catch(() => {});
+      await H.logAdminActivity(env, {
+        action: 'marketplace_sticker_released',
+        details: `…${token.slice(-4).toUpperCase()} — ${reason}`,
+        oldValue: row.linked_code || row.linked_company_id || '',
+        newValue: 'free',
+        ip,
+      });
+      return H.json({ ok: true, id });
+    }
+
     // ── HOLAT O'ZGARTIRISH ────────────────────────────
     const actMatch = path.match(/^\/api\/admin\/marketplace\/activations\/(\d+)\/([a-z-]+)$/);
     if (actMatch && method === 'POST') {

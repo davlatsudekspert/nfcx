@@ -23,6 +23,7 @@ import StoryUploader from '../components/StoryUploader.jsx';
 import StoryFeedBar from '../components/StoryFeedBar.jsx';
 import { CARD_BACKGROUNDS, cardBackgroundFromUrl } from '../lib/cardBackgrounds.js';
 import { listMyCompanies } from '../lib/company.js';
+import { dbListNfcDevices, dbUpdateNfcDevice } from '../lib/db.js';
 import { autoCropToContent, centerObject, removeBackground, whitenBackground, enhance } from '../lib/imageAI.js';
 import { tierForCode, TIER_COLOR, TIER_EMOJI, PROFILE_PREMIUM_FEE, PHYSICAL_CARD_FEE, PHYSICAL_CARD_FREE_DELIVERY_QTY, PHYSICAL_CARD_MAX_QTY, TIER_LABEL, tierLabelFor } from '../lib/pricing.js';
 import { effectiveAccess, featureAllowed, menuEligible, productEligible, serviceEligible, businessModule, FEATURE_MIN, hasAccess, trialDaysLeft } from '../lib/access.js';
@@ -3667,6 +3668,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
         {!isBusiness && wsTab === 'nfckarta' && (
           <Section title={t('NFC karta')} subtitle={t("Narx, ko'rishlar, dizayn va buyurtma")} defaultOpen>
             {nfcIdBlock}
+            <MyNfcDevices t={t} myCards={myCards} />
             {giftBlock}
           </Section>
         )}
@@ -4561,6 +4563,105 @@ function StoriesManager({ code }) {
         }}
       />
       {msg && <div className="alert alert-success py-2 text-sm"><span>{msg}</span></div>}
+    </div>
+  );
+}
+
+// ── MENING NFC QURILMALARIM ──────────────────────────────────────────
+//
+// KAMCHILIK SHU EDI: `/api/my/nfc-devices` allaqachon bor edi, lekin
+// uni ochadigan EKRAN yo'q edi. Ya'ni marketplace'dan stiker olgan
+// odam uni noto'g'ri profilga ulab qo'ysa, tuzatolmasdi.
+//
+// CHIPGA QAYTA YOZISH SHART EMAS. Chipda profil manzili emas,
+// o'zgarmas token yozilgan — yo'nalishni server hal qiladi. Shuning
+// uchun QULFLANGAN stiker ham shu yerdan boshqariladi: qulf chipni
+// himoya qiladi, bu ekran esa yo'nalishni o'zgartiradi.
+function MyNfcDevices({ t, myCards }) {
+  const [devices, setDevices] = useState(null);
+  const [companies, setCompanies] = useState([]);
+  const [busyId, setBusyId] = useState(0);
+  const [msg, setMsg] = useState('');
+
+  const load = () => {
+    dbListNfcDevices().then(setDevices).catch(() => setDevices([]));
+  };
+  useEffect(() => {
+    load();
+    listMyCompanies()
+      .then((d) => setCompanies((d.companies || []).filter((c) => c.status === 'active')))
+      .catch(() => setCompanies([]));
+  }, []);
+
+  if (!devices) return null;
+  // Qurilmasi yo'q odamga bo'sh blok ko'rsatishdan ma'no yo'q.
+  if (devices.length === 0) return null;
+
+  const change = async (dev, value) => {
+    if (!value) return;
+    setBusyId(dev.id); setMsg('');
+    try {
+      const body = value.startsWith('c:')
+        ? { linkedCompanyId: value.slice(2) }
+        : { linkedCode: value };
+      const res = await dbUpdateNfcDevice(dev.id, body);
+      setDevices(res.devices || []);
+      setMsg(t('Saqlandi. Endi stiker shu profilni ochadi.'));
+    } catch {
+      setMsg(t('Saqlanmadi. Qaytadan urinib ko‘ring.'));
+    } finally { setBusyId(0); }
+  };
+
+  const toggleBlock = async (dev) => {
+    setBusyId(dev.id); setMsg('');
+    try {
+      const res = await dbUpdateNfcDevice(dev.id, { blocked: !dev.blockedByOwner });
+      setDevices(res.devices || []);
+    } catch {
+      setMsg(t('Saqlanmadi. Qaytadan urinib ko‘ring.'));
+    } finally { setBusyId(0); }
+  };
+
+  return (
+    <div className="nfcdev">
+      <p className="nfcdev-hint">
+        {t('Stikeringiz qaysi profilni ochishini shu yerdan o‘zgartirasiz. Chipga qayta yozish shart emas — hatto qulflangan stiker ham yangi profilga ergashadi.')}
+      </p>
+      {devices.map((d) => {
+        const value = d.linkedCompanyId ? `c:${d.linkedCompanyId}` : (d.linkedCode || '');
+        return (
+          <div key={d.id} className={`nfcdev-row${d.blockedByOwner ? ' is-off' : ''}`}>
+            <div className="nfcdev-id">
+              <b>NFC</b>
+              <span>…{d.tokenTail}</span>
+            </div>
+            <label className="nfcdev-pick">
+              <span>{t('Nimani ochadi')}</span>
+              <select
+                className="vz-input" value={value} disabled={busyId === d.id}
+                onChange={(e) => change(d, e.target.value)}
+              >
+                {!value && <option value="">{t('Tanlanmagan')}</option>}
+                {myCards.map((c) => (
+                  <option key={c.code} value={c.code}>{c.name || c.code} ({c.code})</option>
+                ))}
+                {companies.map((c) => (
+                  <option key={c.companyId} value={`c:${c.companyId}`}>
+                    {c.displayName || c.companyId} — {t('biznes')}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button" className="btn btn-sm nfcdev-block"
+              disabled={busyId === d.id} onClick={() => toggleBlock(d)}
+            >
+              {d.blockedByOwner ? t('Yoqish') : t('Vaqtincha o‘chirish')}
+            </button>
+          </div>
+        );
+      })}
+      {msg && <p className="nfcdev-msg">{msg}</p>}
     </div>
   );
 }
