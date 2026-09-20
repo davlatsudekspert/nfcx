@@ -7,6 +7,7 @@ import 'package:nfcstore_nova/core/errors/app_error.dart';
 import 'package:nfcstore_nova/core/network/api_client.dart';
 import 'package:nfcstore_nova/core/utils/result.dart';
 import 'package:nfcstore_nova/data/models/models.dart';
+import 'package:nfcstore_nova/data/repositories/business_repository.dart';
 import 'package:nfcstore_nova/data/repositories/social_repository.dart';
 import 'package:nfcstore_nova/design/theme/app_theme.dart';
 import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
@@ -82,8 +83,21 @@ class _FollowRepo extends ProfileRepository {
   }
 }
 
+/// KOMPANIYALARIM — biznes lentasida o'z kompaniyamning posti
+/// ostida ham obuna tugmasi chizilmasligi kerak.
+class _BizRepo extends BusinessRepository {
+  _BizRepo(this.ids) : super(ApiClient());
+
+  final List<String> ids;
+
+  @override
+  Future<Result<List<Business>>> mine() async =>
+      Ok(ids.map((e) => Business(companyId: e)).toList());
+}
+
 void main() {
   const myCode = '48210377';
+  const myCompany = 'NFCSTOREUZ';
 
   Post post({
     String code = 'TTS075',
@@ -106,6 +120,7 @@ void main() {
     required _FeedRepo social,
     required _FollowRepo profile,
     Post? item,
+    List<String> companies = const [],
     Locale locale = const Locale('uz'),
     NfcTokens? tokens,
     double width = 390,
@@ -145,6 +160,7 @@ void main() {
           ...await testOverrides(),
           socialRepositoryProvider.overrideWithValue(social),
           profileRepositoryProvider.overrideWithValue(profile),
+          businessRepositoryProvider.overrideWithValue(_BizRepo(companies)),
           myIdsProvider.overrideWithValue(const [
             NfcId(code: myCode, name: 'Men', primary: true),
           ]),
@@ -237,6 +253,41 @@ void main() {
         reason: 'o‘z postimda obuna tugmasi chiqdi',
       );
       expect(find.text(uz.actionFollowing), findsNothing);
+    });
+
+    testWidgets('BIZNES lentasida o‘z kompaniyam postida tugma YO‘Q', (
+      tester,
+    ) async {
+      // `isMineProvider` shaxsiy ID lardan tashqari KOMPANIYA
+      // ID larini ham tekshiradi. Busiz biznes rejimida o'z
+      // kompaniyangning posti ostida "Obuna bo'lish" turardi.
+      await pump(
+        tester,
+        social: _FeedRepo(),
+        profile: _FollowRepo(),
+        item: post(code: myCompany, author: 'NFCSTORE'),
+        companies: const [myCompany],
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(
+        find.text(LUz().actionFollow),
+        findsNothing,
+        reason: 'o‘z kompaniyam postida obuna tugmasi chiqdi',
+      );
+      expect(find.text(LUz().actionFollowing), findsNothing);
+
+      // BEGONA kompaniya posti esa obuna qilinadi.
+      await pump(
+        tester,
+        social: _FeedRepo(),
+        profile: _FollowRepo(),
+        item: post(code: 'BEGONABIZ', author: 'Begona'),
+        companies: const [myCompany],
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text(LUz().actionFollow), findsOneWidget);
     });
 
     testWidgets('serverdagi obuna ro‘yxati HISOBGA olinadi', (tester) async {
