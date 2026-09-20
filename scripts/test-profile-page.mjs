@@ -224,4 +224,35 @@ checkTrue('11) tugma matni biznes profildagidek', page.includes("t('Kontaktni sa
 checkTrue('8) langar sinf qo‘yilgan', page.includes('vz-profile-page'));
 checkTrue('8) AI tugmasi ko‘tarilgan', theme.includes('body:has(.vz-profile-page) .ai-fab'));
 
+// ── 9) IJTIMOIY TARMOQLAR OSON TOPILSIN ─────────────────
+//
+// Yangi xaridor uchun bu eng kerakli maydon, lekin u "Profil"
+// (bizneda "Sozlamalar") bo'limining ICHIDA, pastda yotardi —
+// odam uni topolmasdi.
+//
+// Uning o'rnida menyuda "Xabarlar · tez orada" turardi: bosib
+// bo'lmaydigan tugma, hech qanday foydasiz.
+{
+  const acc = readFileSync(new URL('../src/pages/AccountPage.jsx', import.meta.url), 'utf8');
+  checkTrue('9) menyuda ijtimoiy tarmoqlar yo‘li', /t\('Ijtimoiy tarmoqlar'\)/.test(acc));
+  // Kerakli bo'limga o'tadi — shaxsiyda "profil", bizneda
+  // "sozlamalar" (ikkalasida ham ishlashi SHART).
+  checkTrue('9) ikkala profilda ham ishlaydi',
+    /setWsTab\(isBusiness \? 'sozlamalar' : 'profil'\)/.test(acc));
+  // Bo'limni OCHADI va o'sha joyga SURADI — shunchaki sahifada
+  // turgani yetarli emas, odam yana qidirardi.
+  checkTrue('9) bo‘limni ochadi', /setSocialSignal/.test(acc) && /openSignal=\{socialSignal\}/.test(acc));
+  checkTrue('9) o‘sha joyga suradi', /getElementById\('ijtimoiy'\)\?\.scrollIntoView/.test(acc));
+  checkTrue('9) langar qo‘yilgan', /id="ijtimoiy"/.test(acc));
+  // HOLAT ISHLATILISHIDAN OLDIN E'LON QILINSIN.
+  //
+  // Birinchi urinishda uni pastroqqa qo'ydim va `secSocial` unga
+  // yetib bo'lmaydigan paytda murojaat qildi: BUTUN KABINET
+  // "Cannot access before initialization" bilan ochilmay qoldi.
+  checkTrue('9) holat ishlatilishidan oldin e‘lon qilingan',
+    acc.indexOf('const [socialSignal') < acc.indexOf('openSignal={socialSignal}'));
+  // Ishlamaydigan "tez orada" tugmasi olib tashlandi.
+  checkTrue('9) o‘chirilgan "tez orada" tugmasi yo‘q', !/t\('Xabarlar · tez orada'\)/.test(acc));
+}
+
 done();

@@ -2002,6 +2002,17 @@ function gatedEnv(env, sqlNeedle) {
   checkTrue('27) asosiy tugma — ro‘yxatdan o‘tish', /ac-primary[\s\S]{0,160}\/register\?next=/.test(authBlock));
   checkTrue('27) hisobi borlar uchun havola', /Hisobim bor — kirish/.test(authBlock));
 
+  // ── "YANGI PROFIL" VARIANTI ────────────────────────
+  //
+  // Ro'yxatdan o'tishning O'ZI bepul NFC ID beradi, ya'ni bu
+  // qadamga yetgan odamda allaqachon profil bor. Variant ochiq
+  // tursa, u IKKINCHI — BO'SH — profilni olardi va stiker
+  // o'shanga ishora qilardi; ismi va kontaktlari bor asl profil
+  // esa kartasiz qolardi. Odam buni faqat stikerni tekkizganda
+  // sezardi — ya'ni juda kech.
+  checkTrue('27) profili bor odamga "yangi" ko‘rsatilmaydi',
+    /kind === 'personal' && list\.length === 0 &&/.test(page));
+
   // ── `next` YO'QOLMASIN ─────────────────────────────
   //
   // Kirish va ro'yxatdan o'tish sahifalari bir-biriga o'tish

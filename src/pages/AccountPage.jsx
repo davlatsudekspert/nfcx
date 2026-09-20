@@ -3056,8 +3056,21 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
     </Section>
   );
 
+  // "Ijtimoiy tarmoqlar" bosilganda bo'lim OCHILADI.
+  //
+  // E'LON SHU YERDA — `secSocial` dan OLDIN. Uni pastroqqa
+  // qo'yganimda `secSocial` unga yetib bo'lmaydigan paytda
+  // murojaat qildi va butun kabinet "Cannot access before
+  // initialization" bilan ochilmay qoldi.
+  const [socialSignal, setSocialSignal] = useState(0);
+
   const secSocial = (
-    <Section title={t('Ijtimoiy tarmoqlar')} subtitle={t('Instagram, Facebook, X, LinkedIn, veb-sayt, havolalar, hashtaglar')}>
+    <Section
+      id="ijtimoiy"
+      title={t('Ijtimoiy tarmoqlar')}
+      subtitle={t('Instagram, Facebook, X, LinkedIn, veb-sayt, havolalar, hashtaglar')}
+      openSignal={socialSignal}
+    >
       <div className="grid gap-3 md:grid-cols-2">
         <label className="form-control min-w-0"><span className="flex items-center gap-1.5 text-xs font-semibold text-base-content/70"><IconInstagram width={12} height={12} /> Instagram</span><input value={form.instagram} onChange={set('instagram')} placeholder={t('@username yoki to‘liq havola')} className={inp} /></label>
         <label className="form-control min-w-0"><span className="flex items-center gap-1.5 text-xs font-semibold text-base-content/70"><IconFacebook width={12} height={12} /> Facebook</span><input value={form.facebook} onChange={set('facebook')} placeholder={t("username yoki havola")} className={inp} /></label>
@@ -3522,6 +3535,26 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
           yozuv to'liq o'qiladi. */}
       <nav className="grid grid-cols-1 gap-1.5 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] p-1.5 min-[360px]:grid-cols-2 lg:mt-3 lg:flex lg:flex-col lg:gap-1">
         {navItems.map(([id, label, Icon, badge, gold]) => navBtn(id, label, Icon, badge, gold))}
+        {/* IJTIMOIY TARMOQLAR — ALOHIDA YO'L.
+            Yangi odam uchun bu eng kerakli maydon, lekin u "Profil"
+            (yoki bizneda "Sozlamalar") bo'limining ICHIDA, pastda
+            yotardi — odam uni topolmasdi. Endi yon menyudan bir
+            bosishda ochiladi: kerakli bo'limga o'tadi, bo'limni
+            ochadi va o'sha joyga suradi. */}
+        <button
+          type="button"
+          onClick={() => {
+            setWsTab(isBusiness ? 'sozlamalar' : 'profil');
+            setSocialSignal((n) => n + 1);
+            setTimeout(() => {
+              document.getElementById('ijtimoiy')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 120);
+          }}
+          className="flex min-h-11 items-center gap-2.5 rounded-xl border-l-[3px] border-transparent px-2.5 py-2 text-left text-[13px] font-semibold leading-tight text-base-content/60 transition hover:bg-white/5 hover:text-base-content lg:w-full lg:px-3 lg:text-sm"
+        >
+          <span className="shrink-0"><IconLink width={16} height={16} /></span>
+          <span className="min-w-0 flex-1">{t('Ijtimoiy tarmoqlar')}</span>
+        </button>
         {cabinetLinks.length > 0 && (
           <>
             <div className="mx-1 hidden h-px bg-[color:var(--vz-line)] lg:my-1.5 lg:block"></div>
@@ -4342,7 +4375,16 @@ export default function AccountPage({ refreshCatalog }) {
   const cabinetLinks = [
     { id: 'bildirishnomalar', label: t('Bildirishnomalar'), Icon: IconBell, onClick: () => navigate('/bildirishnomalar') },
     { id: 'tolovlar', label: t("To'lovlar"), Icon: IconWallet, onClick: () => navigate('/tolovlar') },
-    { id: 'xabarlar', label: t(MESSAGING_ENABLED ? 'Xabarlar' : 'Xabarlar · tez orada'), Icon: IconChat, onClick: () => MESSAGING_ENABLED && navigate('/xabarlar'), disabled: !MESSAGING_ENABLED },
+    // "Xabarlar" faqat YOQILGAN bo'lsa ko'rinadi.
+    //
+    // Ilgari u "tez orada" deb, o'chirilgan holda turardi va menyuda
+    // joy egallardi — bosib bo'lmaydigan tugma odamga hech narsa
+    // bermaydi. O'sha joy endi "Ijtimoiy tarmoqlar" ga berildi: yangi
+    // xaridor uchun eng kerakli maydon, lekin u bo'limlar ichida
+    // ko'milib yotardi.
+    ...(MESSAGING_ENABLED
+      ? [{ id: 'xabarlar', label: t('Xabarlar'), Icon: IconChat, onClick: () => navigate('/xabarlar') }]
+      : []),
     // KOMPANIYA BO'LIMI SHAXSIY KABINETDAN CHIQARILDI (2026-09, egasining
     // qarori: "kompaniyani alohida qilsak, profildan olib tashlasak").
     // Bu endi shaxsiy kabinetning bir bo'limi emas — /business dagi

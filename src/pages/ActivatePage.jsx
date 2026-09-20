@@ -194,8 +194,9 @@ export default function ActivatePage() {
       // oladi va stiker BO'SH profilga ishora qilardi — birinchi,
       // ismi va kontaktlari bor profil esa kartasiz qolardi.
       //
-      // Shuning uchun standart — asosiy (yoki birinchi) profil.
-      // "Yangi profil yaratish" varianti joyida qoladi.
+      // Shuning uchun standart — asosiy (yoki birinchi) profil, va
+      // profili bor odamga "yangi yaratish" varianti UMUMAN
+      // ko'rsatilmaydi (pastdagi ro'yxatga qarang).
       const list = kind === 'business' ? o.business : o.personal;
       if (list.length > 0) {
         const primary = kind === 'business' ? list[0] : (list.find((x) => x.isPrimary) || list[0]);
@@ -404,7 +405,15 @@ export default function ActivatePage() {
 
         {!loading && (
           <div className="ac-list">
-            {kind === 'personal' && (
+            {/* "YANGI PROFIL YARATISH" — FAQAT PROFILI YO'Q ODAMGA.
+                Ro'yxatdan o'tishning O'ZI bepul NFC ID beradi, ya'ni
+                bu yerga yetib kelgan odamda allaqachon profil bor.
+                Variant ochiq tursa, u IKKINCHI — BO'SH — profilni
+                oladi va stiker o'shanga ishora qilardi; ismi va
+                kontaktlari bor asl profil esa kartasiz qolardi.
+                Odam buni faqat stikerni tekkizganda sezardi.
+                Yangi ID kerak bo'lsa — kabinetdan olinadi. */}
+            {kind === 'personal' && list.length === 0 && (
               <button type="button" className={`ac-opt${choice === '' ? ' is-on' : ''}`} onClick={() => setChoice('')}>
                 <b>{t('Yangi profil yaratish')}</b>
                 <small>{t('Sizga yangi NFC ID beriladi.')}</small>
