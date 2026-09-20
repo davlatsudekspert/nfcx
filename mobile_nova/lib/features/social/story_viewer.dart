@@ -236,6 +236,13 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
   Future<void> _comments(StoryItem s) => _whilePaused(
     () => showModalBottomSheet<void>(
       context: context,
+      // ILDIZ NAVIGATORDA OCHILADI.
+      //
+      // Aks holda varaq TAB navigatorida ochiladi va pastki suzuvchi
+      // navigatsiya paneli uning ustiga chiziladi — varaqning eng
+      // pastki tugmalari panel ostida qolib ko'rinmay qoladi.
+      // Ildiz navigatorda varaq butun ekranni qoplaydi.
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _CommentsSheet(story: s),

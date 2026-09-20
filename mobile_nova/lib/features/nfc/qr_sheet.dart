@@ -19,6 +19,13 @@ import '../../l10n/gen/app_localizations.dart';
 Future<void> showQrSheet(BuildContext context, NfcId id) {
   return showModalBottomSheet(
     context: context,
+    // ILDIZ NAVIGATORDA OCHILADI.
+    //
+    // Aks holda varaq TAB navigatorida ochiladi va pastki suzuvchi
+    // navigatsiya paneli uning ustiga chiziladi — varaqning eng
+    // pastki tugmalari panel ostida qolib ko'rinmay qoladi.
+    // Ildiz navigatorda varaq butun ekranni qoplaydi.
+    useRootNavigator: true,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (context) => _QrSheet(id: id),

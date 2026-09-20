@@ -395,6 +395,13 @@ Future<void> showMusicSheet(BuildContext context, List<String> urls) {
   final t = Theme.of(context).extension<NfcTokens>()!;
   return showModalBottomSheet<void>(
     context: context,
+    // ILDIZ NAVIGATORDA OCHILADI.
+    //
+    // Aks holda varaq TAB navigatorida ochiladi va pastki suzuvchi
+    // navigatsiya paneli uning ustiga chiziladi — varaqning eng
+    // pastki tugmalari panel ostida qolib ko'rinmay qoladi.
+    // Ildiz navigatorda varaq butun ekranni qoplaydi.
+    useRootNavigator: true,
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
     builder: (_) => Padding(

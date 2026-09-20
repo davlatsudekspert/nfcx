@@ -250,6 +250,13 @@ void _showProfileActions(BuildContext context, WidgetRef ref, String code) {
   final l = L.of(context);
   showModalBottomSheet<void>(
     context: context,
+    // ILDIZ NAVIGATORDA OCHILADI.
+    //
+    // Aks holda varaq TAB navigatorida ochiladi va pastki suzuvchi
+    // navigatsiya paneli uning ustiga chiziladi — varaqning eng
+    // pastki tugmalari panel ostida qolib ko'rinmay qoladi.
+    // Ildiz navigatorda varaq butun ekranni qoplaydi.
+    useRootNavigator: true,
     backgroundColor: Colors.transparent,
     builder: (sheet) => Padding(
       padding: EdgeInsets.only(

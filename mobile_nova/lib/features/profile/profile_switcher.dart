@@ -126,6 +126,13 @@ Future<T?> _pick<T>(
   final t = context.tokens;
   return showModalBottomSheet<T>(
     context: context,
+    // ILDIZ NAVIGATORDA OCHILADI.
+    //
+    // Aks holda varaq TAB navigatorida ochiladi va pastki suzuvchi
+    // navigatsiya paneli uning ustiga chiziladi — varaqning eng
+    // pastki tugmalari panel ostida qolib ko'rinmay qoladi.
+    // Ildiz navigatorda varaq butun ekranni qoplaydi.
+    useRootNavigator: true,
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
     builder: (sheet) => SafeArea(
