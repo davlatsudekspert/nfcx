@@ -126,6 +126,14 @@ jobs:
       - name: Story va post mustaqilligi
         run: node scripts/test-story-post-separate.mjs
 
+      # STORY VA POST ARALASHMASLIGI — BACKEND KAFOLATI.
+      # Interfeys ajratilgani yetarli emas: story yaratish POST
+      # jadvaliga tushmasligi va aksincha. Test haqiqiy worker'ga
+      # so'rov yuborib, HAR IKKALA sonni bir vaqtda o'lchaydi va
+      # shaxsiy/biznes kontekstlari aralashmasligini ham tekshiradi.
+      - name: Story va post ajralishi
+        run: node scripts/test-story-post-isolation.mjs
+
       # IZOH TOZALAGICHI — QO'RIQCHILARNING O'ZINI QO'RIQLAYDI.
       #
       # Tekshiruvlar manbadan izohlarni olib tashlab ishlaydi. Ilgari bu

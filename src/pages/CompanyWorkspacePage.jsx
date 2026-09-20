@@ -18,7 +18,10 @@ import { companyNameBlocked } from '../lib/nameGuard.js';
 import logo from '../assets/logo-128.png';
 import '../company-system.css';
 
-const tabs = [['dashboard','Boshqaruv'],['stats','Statistika'],['orders','Buyurtmalar'],['feed','Stories'],['profile','Profil'],['catalog','Katalog'],['contact','Aloqa'],['design','Karta dizayni'],['settings','Sozlamalar']];
+// STORIES va POSTLAR — ALOHIDA BO'LIM. Ilgari ikkalasi bitta
+// "Stories" bo'limida ustma-ust turardi: ikkala forma ham bir xil
+// ko'rinardi va odam nima yaratayotganini bilmasdi.
+const tabs = [['dashboard','Boshqaruv'],['stats','Statistika'],['orders','Buyurtmalar'],['feed','Stories'],['posts','Postlar'],['profile','Profil'],['catalog','Katalog'],['contact','Aloqa'],['design','Karta dizayni'],['settings','Sozlamalar']];
 const blankItem = { name: '', category: '', description: '', price: '', promotionPrice: '', imageUrl: '', available: true };
 
 export default function CompanyWorkspacePage({ companyId }) {
@@ -97,7 +100,8 @@ export default function CompanyWorkspacePage({ companyId }) {
           </div>
         )}
 
-        {tab === 'feed' && <CompanyFeedPanel companyId={company.companyId} name={company.displayName} logoUrl={company.logoUrl} t={t} />}
+        {tab === 'feed' && <CompanyFeedPanel mode="stories" onSwitch={() => setTab('posts')} companyId={company.companyId} name={company.displayName} logoUrl={company.logoUrl} t={t} />}
+        {tab === 'posts' && <CompanyFeedPanel mode="posts" onSwitch={() => setTab('feed')} companyId={company.companyId} name={company.displayName} logoUrl={company.logoUrl} t={t} />}
 
         {tab === 'settings' && <div className="cw-settings"><section><small>{t('COMPANY ID')}</small><h2>{company.companyId}</h2><p>{t('ID o‘zgarmaydi va shaxsiy NFC ID bilan aralashmaydi.')}</p></section><section><small>{t('NFC KARTAGA YOZILADIGAN URL')}</small><code>{window.location.origin}/c/{company.companyId.toLowerCase()}</code><button onClick={() => navigator.clipboard.writeText(`${window.location.origin}/c/${company.companyId.toLowerCase()}`)}>{t('Nusxalash')}</button></section><section><small>{t('KOMPANIYA PUBLIC URL')}</small><code>{window.location.origin}/company/{company.companyId.toLowerCase()}</code><button onClick={() => navigator.clipboard.writeText(`${window.location.origin}/company/${company.companyId.toLowerCase()}`)}>{t('Nusxalash')}</button></section><section><small>{t('QR KOD')}</small><p>{t('NFC ishlamaydigan telefonlar uchun — kamera bilan skanerlansa ham sahifangiz ochiladi.')}</p><CompanyQrCard url={`${window.location.origin}/c/${company.companyId.toLowerCase()}`} fileName={`nfcstore-${company.companyId.toLowerCase()}`} /></section><CompanyDomainSection company={company} form={form} setForm={setForm} save={save} busy={busy} t={t} /><section className="warning"><small>{t('ESKI NFC ID')}</small><p>{company.sourceCardCode ? t('{code} dan ma’lumot nusxalangan. Asl profil o‘zgarmagan.', { code: company.sourceCardCode }) : t('Bu kompaniya hech bir shaxsiy NFC IDga bog‘lanmagan.')}</p></section></div>}
       </section>
@@ -511,7 +515,7 @@ function CompanyDomainSection({ company, form, setForm, save, busy, t }) {
 // Post — qoladi. Istorya — 24 soatdan keyin o'zi yo'qoladi.
 // Ikkalasida ham joylashdan OLDIN kontent qoidalari ko'rsatiladi
 // (StoryUploader ichida) va rozilik serverga yuboriladi.
-function CompanyFeedPanel({ companyId, name, logoUrl, t }) {
+function CompanyFeedPanel({ companyId, name, logoUrl, mode = 'stories', onSwitch, t }) {
   const [posts, setPosts] = useState([]);
   const [stories, setStories] = useState([]);
   const [notice, setNotice] = useState('');
@@ -532,22 +536,34 @@ function CompanyFeedPanel({ companyId, name, logoUrl, t }) {
     load();
   };
 
+  const isStories = mode === 'stories';
+
   return (
     <div className="cw-panel">
-      {/* Panel sarlavhasi ilgari faqat "Stories" edi, ichida esa
-          postlar ham bor edi — ikkisi bitta ish deb o'qilardi. */}
+      {/* IKKI ALOHIDA BO'LIM. Ilgari bitta panelda ikkala forma
+          ustma-ust turardi va odam nima yaratayotganini bilmasdi. */}
       <div className="cw-panel-head">
         <span>01</span>
         <div>
-          <h2>{t('Stories va postlar')}</h2>
-          <p>{t('Post kompaniya sahifasida qoladi. Story logotip atrofida chiqadi va 24 soatdan keyin o‘zi yo‘qoladi.')}</p>
+          <h2>{isStories ? t('Stories') : t('Postlar')}</h2>
+          <p>{isStories
+            ? t('Story logotip atrofida chiqadi va 24 soatdan keyin o‘zi yo‘qoladi.')
+            : t('Post kompaniya sahifasida DOIMIY qoladi.')}</p>
         </div>
       </div>
 
       <p className="cw-note">
-        {t('Story va post — ikki alohida ish. Faqat story yoki faqat post qo‘ysangiz ham bo‘ladi: har birining o‘z saqlash tugmasi bor.')}
+        {isStories
+          ? t('Doimiy qoladigan kontent uchun “Postlar” bo‘limiga o‘ting.')
+          : t('24 soatlik kontent uchun “Stories” bo‘limiga o‘ting.')}
+        {onSwitch && (
+          <button type="button" className="cw-note-link" onClick={onSwitch}>
+            {isStories ? t('Postlar') : t('Stories')} ›
+          </button>
+        )}
       </p>
 
+      {isStories && (
       <div className="cw-sub">
         <div className="cw-sub-head">
           <b>{t('Stories')}</b>
@@ -579,7 +595,9 @@ function CompanyFeedPanel({ companyId, name, logoUrl, t }) {
           onSubmit={async (payload) => { await createCompanyStory(companyId, payload); setNotice(t('Story joylandi')); load(); }}
         />
       </div>
+      )}
 
+      {!isStories && (
       <div className="cw-sub">
         <div className="cw-sub-head">
           <b>{t('Postlar')}</b>
@@ -605,6 +623,7 @@ function CompanyFeedPanel({ companyId, name, logoUrl, t }) {
           onSubmit={async (payload) => { await createCompanyPost(companyId, payload); setNotice(t('Post joylandi')); load(); }}
         />
       </div>
+      )}
 
       {notice && <div className="cw-toast" role="status">{notice}</div>}
     </div>

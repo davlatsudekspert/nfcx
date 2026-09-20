@@ -2381,7 +2381,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
   const [geoMsg, setGeoMsg] = useState('');
   // Business Workspace navigatsiyasi: 'asosiy' | 'katalog' | 'lokatsiya' | 'sozlamalar'.
   // Shaxsiy/expert profillar uchun ishlatilmaydi (ular eski flat accordion'da qoladi).
-  // BOSHLANG'ICH BO'LIM — manzildagi `#lenta` bo'lsa istorya/post.
+  // BOSHLANG'ICH BO'LIM — niyat yoki manzil qaysi bo'limni ochishni aytadi.
   //
   // Nima uchun: profil sahifasidagi "Istorya qo'shish" tugmasi shu
   // yerga olib keladi. Usiz odam kabinetga tushib, kerakli bo'limni
@@ -2389,12 +2389,18 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
   // oxirigacha bajarmasdi.
   const [wsTab, setWsTab] = useState(() => {
     // NFC kartadan kelgan niyat eng ustun: ega profilidagi pastki
-    // boshqaruv panelidan "Story +" bosgan odam SHU zahoti lenta
+    // boshqaruv panelidan "Story +" bosgan odam SHU zahoti Stories
     // bo'limida bo'lsin, kabinetni qaytadan kezib chiqmasin.
-    if (initialAction === 'story' || initialAction === 'post') return 'lenta';
+    // STORY va POST ENDI ALOHIDA BO'LIM. Ilgari ikkalasi bitta
+    // "lenta" bo'limida ustma-ust turardi va odam nima yaratayotganini
+    // ajrata olmasdi. Niyat ham aynan o'z bo'limiga olib boradi.
+    if (initialAction === 'story') return 'stories';
+    if (initialAction === 'post') return 'postlar';
     if (initialAction === 'edit') return card.profileType === 'business' ? 'asosiy' : 'profil';
     const hash = typeof window === 'undefined' ? '' : window.location.hash;
-    if (hash === '#lenta') return 'lenta';
+    // `#lenta` — eski manzil; xatcho'p va eski havolalar buzilmasin.
+    if (hash === '#stories' || hash === '#lenta') return 'stories';
+    if (hash === '#postlar') return 'postlar';
     return card.profileType === 'business' ? 'asosiy' : 'boshqaruv';
   });
   // NIYATNI BAJARISH VA MANZILNI TOZALASH.
@@ -2821,10 +2827,10 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
   // ko'rinadi-yu, ichi bo'sh qolib ketadi) — mos kelmasa mos andozaga qaytaramiz.
   useEffect(() => {
     const extraIds = extraSections.map((x) => x.id);
-    const businessTabs = ['asosiy', 'lenta', 'katalog', 'aksiyalar', 'galereya', 'lokatsiya', 'sozlamalar', ...extraIds];
+    const businessTabs = ['asosiy', 'stories', 'postlar', 'katalog', 'aksiyalar', 'galereya', 'lokatsiya', 'sozlamalar', ...extraIds];
     // Shaxsiy profilda alohida "Sozlamalar" tabi yo'q — akkaunt sozlamalari
     // sidebar'ning "Kabinet" guruhidan (bitta kirish nuqtasi) ochiladi.
-    const personalTabs = ['boshqaruv', 'profil', 'lenta', 'nfckarta', 'myids', ...extraIds];
+    const personalTabs = ['boshqaruv', 'profil', 'stories', 'postlar', 'nfckarta', 'myids', ...extraIds];
     if (isBusiness && !businessTabs.includes(wsTab)) setWsTab('asosiy');
     if (!isBusiness && !personalTabs.includes(wsTab)) setWsTab('boshqaruv');
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -3429,17 +3435,24 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
   // o'rinda va OLTIN yaltiroq bilan ajratilgan (egasining so'rovi).
   // Sabab: ilgari istorya "Umumiy" ichida, post esa ro'yxatning eng
   // oxirida turardi — odam ularni umuman topmasdi.
-  const lentaNav = ['lenta', t('Stories va post'), IconImage, 0, true];
+  // IKKITA ALOHIDA YOZUV. Bitta "Stories va post" bo'limi ichida
+  // ikkala oqim ustma-ust turardi: ikkala forma ham bir xil
+  // ko'rinardi va odam nima yaratayotganini bilmasdi. Endi ular
+  // navigatsiyada ham, manzilda ham, ekranda ham ajralgan.
+  const storiesNav = ['stories', t('Stories'), IconImage, 0, true];
+  const postlarNav = ['postlar', t('Postlar'), IconGrid, 0, true];
   const personalNav = [
     ['boshqaruv', t('Umumiy'), IconHome],
     ['profil', t('Profil'), IconUser],
-    lentaNav,
+    storiesNav,
+    postlarNav,
     ['nfckarta', t('NFC karta'), IconCard],
     ['myids', t("Mening ID'larim"), IconIdCard],
   ];
   const businessNav = [
     ['asosiy', t('Asosiy'), IconBriefcase],
-    lentaNav,
+    storiesNav,
+    postlarNav,
     ['katalog', CATALOG_TAB_LABEL[catalogModule] || t('Katalog'), IconGrid],
     ...(catalogModule === 'products' ? [['aksiyalar', t('Aksiyalar'), IconTag]] : []),
     ['galereya', t('Galereya'), IconImage],
@@ -3708,27 +3721,54 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
             formasining "Profilni saqlash" paneli turardi va u shu
             bo'limning saqlash tugmasi deb o'qilardi (u endi bu yerda
             chizilmaydi — pastga qarang). */}
-        {wsTab === 'lenta' && (
-          <div className="space-y-5">
-            <div className="rounded-2xl border border-accent/25 bg-accent/5 px-4 py-3 text-xs leading-relaxed text-base-content/70">
-              {t('Story va post — ikki alohida ish. Faqat story yoki faqat post qo‘ysangiz ham bo‘ladi: har birining o‘z saqlash tugmasi bor.')}
+        {/* ── STORIES — ALOHIDA BO'LIM ─────────────────────────────
+            Ilgari story va post BITTA bo'limda ustma-ust turardi.
+            Ikkala forma ham bir xil ko'rinardi va odam nima
+            yaratayotganini bilmasdi — "saqladim, lekin qayerga
+            ketdi?" degan savol shundan edi.
+
+            Endi har biri o'z bo'limida: o'z manzili (#stories),
+            o'z sarlavhasi, o'z rangi va o'z saqlash tugmasi. */}
+        {wsTab === 'stories' && (
+          <div className="space-y-5" id="owner-story" style={{ scrollMarginTop: 84 }}>
+            <div className="rounded-2xl border border-accent/25 bg-accent/5 px-4 py-3">
+              <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--accent-text)]">{t('STORY')}</div>
+              <p className="mt-1 text-xs leading-relaxed text-base-content/70">
+                {t('Story 24 soatdan keyin o‘zi yo‘qoladi. Doimiy qoladigan kontent uchun “Postlar” bo‘limiga o‘ting.')}
+              </p>
+              <button
+                type="button"
+                className="mt-2 text-xs font-semibold text-[color:var(--accent-text)] underline underline-offset-2"
+                onClick={() => setWsTab('postlar')}
+              >
+                {t('Postlar bo‘limiga o‘tish')} ›
+              </button>
             </div>
-            <div id="owner-story" style={{ scrollMarginTop: 84 }}>
-              <StorySection code={card.code} allowed={allow('story')} onLocked={() => setLocked(t('Story joylashtirish'))} t={t} />
+            <StorySection code={card.code} allowed={allow('story')} onLocked={() => setLocked(t('Story joylashtirish'))} t={t} />
+          </div>
+        )}
+
+        {/* ── POSTLAR — ALOHIDA BO'LIM ─────────────────────────────── */}
+        {wsTab === 'postlar' && (
+          <div className="space-y-5" id="owner-post" style={{ scrollMarginTop: 84 }}>
+            <div className="rounded-2xl border border-info/25 bg-info/5 px-4 py-3">
+              <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-info">{t('POST')}</div>
+              <p className="mt-1 text-xs leading-relaxed text-base-content/70">
+                {t('Post profilda DOIMIY qoladi. 24 soatlik kontent uchun “Stories” bo‘limiga o‘ting.')}
+              </p>
+              <button
+                type="button"
+                className="mt-2 text-xs font-semibold text-info underline underline-offset-2"
+                onClick={() => setWsTab('stories')}
+              >
+                {t('Stories bo‘limiga o‘tish')} ›
+              </button>
             </div>
-            {/* Post bloki istorya bloki bilan BIR XIL ko'rinishda —
-                yig'iladigan panel emas: yig'ilgan holatda "Joylash"
-                tugmasi ko'rinmasdi va bo'lim boshqarilmaydigandek
-                tuyulardi. */}
-            <section id="owner-post" className="vz-card p-5" style={{ scrollMarginTop: 84 }}>
+            <section className="vz-card p-5">
               <div className="min-w-0">
-                <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--accent-text)]">{t('2-bo‘lim')}</span>
-                <h3 className="font-display text-lg font-semibold">{t('Postlar / Media')}</h3>
+                <h3 className="font-display text-lg font-semibold">{t('Postlar')}</h3>
                 <p className="mt-0.5 text-xs leading-relaxed text-base-content/50">
-                  {t('Rasm va izohlarni joylashtiring')}
-                </p>
-                <p className="mt-1 text-xs leading-relaxed text-base-content/40">
-                  {t('Faqat post qo‘ysangiz ham bo‘ladi — story qo‘yish shart emas.')}
+                  {t('Rasm yoki video va izoh — profilingizda doimiy qoladi.')}
                 </p>
               </div>
               <div className="mt-4">
@@ -3845,7 +3885,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
               bosgan, hech narsa bo'lmagan (u faqat profil o'zgarganda
               ishlaydi) va "istorya postsiz saqlanmayapti" degan
               xulosaga kelgan. */}
-          {wsTab === 'lenta' && dirty && (
+          {(wsTab === 'stories' || wsTab === 'postlar') && dirty && (
             <div className="mt-5 rounded-2xl border border-warning/30 bg-warning/5 px-4 py-3">
               <div className="flex flex-wrap items-center gap-3">
                 <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-warning">
@@ -3860,7 +3900,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
               </p>
             </div>
           )}
-          {wsTab !== 'lenta' && (isFormTab || dirty) && (
+          {wsTab !== 'stories' && wsTab !== 'postlar' && (isFormTab || dirty) && (
             <div className={dirty ? 'fixed inset-x-0 bottom-0 z-40 border-t border-[color:var(--vz-line)] bg-[color:var(--vz-bg)] p-3 lg:static lg:mt-5 lg:border-0 lg:bg-transparent lg:p-0' : 'mt-5'}>
               <div className="flex flex-wrap items-center gap-3">
                 <button type="button" className="btn btn-gold min-h-11 w-full sm:w-auto" onClick={submit} disabled={busy || !dirty}>
@@ -3872,7 +3912,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
               </div>
             </div>
           )}
-          {wsTab !== 'lenta' && dirty && <div className="h-20 lg:hidden" aria-hidden="true"></div>}
+          {wsTab !== 'stories' && wsTab !== 'postlar' && dirty && <div className="h-20 lg:hidden" aria-hidden="true"></div>}
           {msg && <div className={`alert mt-4 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(msg.text)}</span></div>}
         </div>
 
@@ -4054,8 +4094,8 @@ function ReferralPanel({ user }) {
 // Telefon bilan NFC kartani bosgan EGA o'z profilida ("/vip001") pastdagi
 // boshqaruv panelidan tugma bosadi va shu yerga tushadi:
 //
-//   /account?code=VIP001&action=story   -> lenta bo'limi, story bloki
-//   /account?code=VIP001&action=post    -> lenta bo'limi, post bloki
+//   /account?code=VIP001&action=story   -> STORIES bo'limi
+//   /account?code=VIP001&action=post    -> POSTLAR bo'limi (alohida)
 //   /account?code=VIP001&action=edit    -> profil formasi
 //   /account?code=VIP001                -> shu ID boshqaruvi
 //
@@ -4592,16 +4632,13 @@ function StorySection({ code, allowed, onLocked, t }) {
   return (
     <section className="vz-card p-5">
       <div className="min-w-0">
-        {/* Bo'lim raqami — story va post IKKI ALOHIDA ish ekani bir
-            qarashda ko'rinsin (egasi ilgari ularni bitta, bir-biriga
-            bog'liq forma deb o'ylagan). */}
-        <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--accent-text)]">{t('1-bo‘lim')}</span>
+        {/* "1-bo'lim" raqami OLIB TASHLANDI: u story va post BITTA
+            sahifada ustma-ust turgan paytdan qolgan edi. Endi ular
+            alohida bo'limlar, ya'ni raqamlash chalg'itardi — go'yo
+            ikkinchi bo'limni ham to'ldirish kerakdek. */}
         <h3 className="font-display text-lg font-semibold">{t('Stories')}</h3>
         <p className="mt-0.5 text-xs leading-relaxed text-base-content/50">
           {t('Profil rasmingiz atrofida halqa bo‘lib chiqadi va 24 soatdan keyin o‘zi yo‘qoladi. 10 tagacha.')}
-        </p>
-        <p className="mt-1 text-xs leading-relaxed text-base-content/40">
-          {t('Faqat story qo‘ysangiz ham bo‘ladi — post to‘ldirish shart emas.')}
         </p>
       </div>
 
