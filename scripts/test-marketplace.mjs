@@ -1481,9 +1481,38 @@ function gatedEnv(env, sqlNeedle) {
   // ochadi, stikerga tekkizganda esa telefon havolani STANDART
   // brauzerda ochadi — ikki sessiya, va stiker bog'lanmay qoladi.
   // Tegizishdan boshlansa butun oqim BITTA brauzerda o'tadi.
-  const print1 = tab.slice(tab.indexOf('cards.push('), tab.indexOf('</ol></article>'));
-  checkTrue('24) 1-qadam — tegizish', /<li><b>Telefonni NFC stikerga tegizing/.test(print1));
+  const print1 = tab.slice(tab.indexOf('cards.push('), tab.indexOf('</article>`)'));
+  checkTrue('24) 1-qadam — tegizish', /<li><b>Telefonni stikerga tegizing/.test(print1));
   checkTrue('24) QR zaxira sifatida qoladi', /NFC ishlamasa/.test(print1));
+  // KONVERT QOG'OZI — QADAMLAR TARTIBI SAHIFADAGIDEK BO'LSIN.
+  //
+  // Bu qog'oz HAR BIR XARIDORGA ketadi. Admin qo'llanmasi
+  // yangilanib, bu yerda eski tartib qolib ketsa, 100 ta odam
+  // noto'g'ri yo'riqnoma oladi va uni qaytarib bo'lmaydi
+  // (qog'oz allaqachon konvertda). Aynan shunday bo'lgan edi:
+  // 2-qadam "ro'yxatdan o'ting" bo'lib qolgandi.
+  {
+    const iTap = print1.indexOf('Telefonni stikerga tegizing');
+    const iCode = print1.indexOf('Shu kodni kiriting');
+    const iKind = print1.indexOf('Shaxsiy yoki Biznes');
+    const iReg = print1.indexOf("Ro'yxatdan o'ting");
+    checkTrue('24) konvert qog‘ozi: tegizish -> kod -> profil turi -> ro‘yxat',
+      iTap > 0 && iCode > iTap && iKind > iCode && iReg > iKind);
+    checkTrue('24) konvertda kod maydoni ajratilgan', /class="box"[\s\S]{0,120}Aktivatsiya kodi/.test(print1));
+    checkTrue('24) kodni bermaslik ogohlantirishi', /hech kimga bermang/.test(print1));
+  }
+  // O'LCHAM — A6, VARAQDA TO'RTTA.
+  //
+  // A6 (105×148 mm) STANDART C6 konvertga (114×162 mm) kiradi, C6
+  // esa 8 sm lik dumaloq stiker bilan birga sig'adi. O'lcham
+  // o'zgarsa konvert ham o'zgaradi — shuning uchun qo'riqlanadi.
+  // Brauzerda o'lchangan: 105.0 × 148.5 mm, 2×2, toshish 0.
+  checkTrue('24) karta kengligi 105 mm', /width:105mm/.test(tab));
+  checkTrue('24) karta bo‘yi 148.5 mm', /height:148\.5mm/.test(tab));
+  checkTrue('24) varaqda ikkita ustun', /grid-template-columns:105mm 105mm/.test(tab));
+  // `@page margin` NOLGA teng bo'lishi SHART: aks holda to'rtta A6
+  // A4 ga sig'masdi va printer hammasini kichraytirib yuborardi.
+  checkTrue('24) sahifa chetlari nolga teng', /@page\{size:A4;margin:0\}/.test(tab));
   // QR o'chirilmasin: NFC o'qimaydigan telefon ham bor.
   checkTrue('24) QR rasmi joyida', /<img src="\$\{url\}"/.test(print1));
   checkTrue('24) qo‘llanma bo‘lagi topildi', guide.length > 2000);

@@ -1038,25 +1038,60 @@ function BatchResult({ batch, t, onDone, adminApi, apiErrText }) {
       // Tegizishdan boshlansa, butun oqim BITTA brauzerda o'tadi va
       // bu muammo umuman tug'ilmaydi. QR esa NFC o'qimaydigan
       // telefon uchun zaxira bo'lib qolaveradi.
-      cards.push(`<article class="c"><h2>NFCSTORE</h2><img src="${url}" alt=""><p class="k">${c.code}</p><ol>
-        <li><b>Telefonni NFC stikerga tegizing.</b><br><small>NFC ishlamasa — yuqoridagi QR ni skanerlang.</small></li>
-        <li>NFCSTORE'ga kiring yoki ro'yxatdan o'ting.</li>
-        <li>Shu kodni kiriting.</li>
-        <li>Shaxsiy yoki Biznes profilni tanlang.</li>
-        <li>Tayyor — stiker o'zi bog'landi.</li></ol></article>`);
+      cards.push(`<article class="c">
+        <div class="hd"><span class="br">NFCSTORE</span><span class="sku">${sku}</span></div>
+        <p class="lead">Mahsulotingiz tayyor. Faollashtirish 1 daqiqa.</p>
+        <ol>
+          <li><b>Telefonni stikerga tegizing.</b><br><small>NFC ishlamasa — QR ni skanerlang.</small></li>
+          <li><b>Shu kodni kiriting.</b></li>
+          <li>Shaxsiy yoki Biznes profilni tanlang.</li>
+          <li>Ro'yxatdan o'ting — bitta tugma.</li>
+          <li>Tayyor. Stiker o'zi bog'landi.</li>
+        </ol>
+        <div class="box"><span class="lbl">Aktivatsiya kodi</span><p class="k">${c.code}</p></div>
+        <div class="ft"><img src="${url}" alt=""><div class="ftx"><b>NFC ishlamadimi?</b><br>QR ni skanerlang yoki <b>nfcstore.uz/activate</b> ga kiring.</div></div>
+        <p class="warn">Kodni hech kimga bermang — u bir martalik.</p>
+      </article>`);
     }
     w.document.open();
+    // ── QOG'OZ O'LCHAMI: A6, VARAQDA TO'RTTA ────────────────────────
+    //
+    // A4 ni chetsiz to'rtga bo'lsak, aynan A6 (105×148 mm) chiqadi:
+    // bir marta ko'ndalang, bir marta bo'ylama qirqiladi — 100 ta
+    // varaqni qirqish daqiqalar ishi.
+    //
+    // NIMA UCHUN AYNAN A6: u STANDART C6 konvertga (114×162 mm)
+    // kiradi, C6 esa 8 sm lik dumaloq stiker bilan birga bemalol
+    // sig'adi. Ya'ni maxsus o'lchamli konvert buyurtma qilish shart
+    // emas — C6 har joyda bor.
+    //
+    // `@page margin:0` — chekka maydon qog'ozning O'ZIDA emas,
+    // kartaning ICHIDA (`padding`). Aks holda to'rtta A6 A4 ga
+    // sig'masdi va printer ularni kichraytirib yuborardi.
     w.document.write(`<!doctype html><html lang="uz"><head><meta charset="utf-8"><title>NFCSTORE — ${sku}</title><style>
-      @page{size:A4;margin:10mm}
+      @page{size:A4;margin:0}
       *{box-sizing:border-box}
-      body{margin:0;font:12px/1.45 system-ui,sans-serif;color:#000;background:#fff}
-      .g{display:grid;grid-template-columns:repeat(2,1fr);gap:6mm}
-      .c{border:1px dashed #999;border-radius:4mm;padding:6mm;text-align:center;break-inside:avoid;page-break-inside:avoid}
-      .c h2{margin:0 0 3mm;font-size:11px;letter-spacing:.22em}
-      .c img{width:34mm;height:34mm}
-      .c .k{margin:3mm 0;font:700 17px/1 ui-monospace,Menlo,monospace;letter-spacing:.09em}
-      .c ol{margin:0;padding-left:5mm;text-align:left;font-size:9.5px;line-height:1.5}
-      .c ol small{font-size:8.5px;color:#444}
+      body{margin:0;font:12px/1.45 system-ui,sans-serif;color:#000;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      .g{display:grid;grid-template-columns:105mm 105mm;grid-auto-rows:148.5mm}
+      .c{width:105mm;height:148.5mm;padding:9mm 8mm;display:flex;flex-direction:column;
+         outline:.2mm dashed #bbb;outline-offset:-.1mm;break-inside:avoid;page-break-inside:avoid}
+      .hd{display:flex;align-items:baseline;justify-content:space-between;border-bottom:.4mm solid #000;padding-bottom:2mm}
+      .hd .br{font:800 12px/1 system-ui;letter-spacing:.26em}
+      .hd .sku{font:600 7px/1 ui-monospace,Menlo,monospace;letter-spacing:.06em;color:#666}
+      .lead{margin:4mm 0 3mm;font-size:10px;font-weight:700}
+      .c ol{margin:0;padding-left:5mm;font-size:9.5px;line-height:1.55}
+      .c ol li{margin-bottom:1.2mm}
+      .c ol small{font-size:8.5px;color:#555}
+      /* KOD — sahifadagi eng katta element. Odam konvertni ochganda
+         birinchi shuni ko'rishi kerak; qolgani o'qiladigan matn. */
+      .box{margin:4mm 0 0;border:.5mm solid #000;border-radius:2.5mm;padding:3.5mm 2mm;text-align:center}
+      .box .lbl{font:700 7px/1 system-ui;letter-spacing:.18em;text-transform:uppercase;color:#555}
+      .box .k{margin:2.5mm 0 0;font:700 21px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em}
+      /* QR pastda va kichik — u ZAXIRA yo'l, asosiysi tegizish. */
+      .ft{margin-top:auto;display:flex;align-items:center;gap:3.5mm;border-top:.2mm solid #ccc;padding-top:3mm}
+      .ft img{width:22mm;height:22mm;flex:none}
+      .ftx{font-size:8.5px;line-height:1.5}
+      .warn{margin:2.5mm 0 0;font-size:7.5px;color:#666;text-align:center}
     </style></head><body><div class="g">${cards.join('')}</div></body></html>`);
     w.document.close();
     w.focus();
