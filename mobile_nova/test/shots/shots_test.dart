@@ -10,6 +10,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nfcstore_nova/design/theme/app_theme.dart';
 import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
+import 'package:nfcstore_nova/design/tokens/shapes.dart';
+import 'package:nfcstore_nova/design/widgets/nova_scaffold.dart';
+import 'package:nfcstore_nova/design/widgets/surfaces.dart';
 import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
 
 import 'package:nfcstore_nova/features/discover/discover_screen.dart';
@@ -25,6 +28,7 @@ import 'package:nfcstore_nova/data/models/models.dart';
 import 'package:nfcstore_nova/data/repositories/social_repository.dart';
 
 import '../helpers.dart';
+import 'proposed_widgets.dart';
 
 /// Suratlar uchun NAMUNAVIY ma'lumot.
 ///
@@ -230,4 +234,128 @@ void main() {
   testWidgets('06 — Kashf etish', (t) async {
     await shot(t, const DiscoverScreen(), '06-discover');
   });
+
+  // ── TAKLIFLAR ───────────────────────────────────────────────
+  //
+  // Bular `lib/` ga TEGMAYDI: `proposed_widgets.dart` faqat
+  // `test/` ichida va ilovaga kirmaydi.
+
+  testWidgets('P1 — lenta kartasi (taklif)', (t) async {
+    await shot(t, const _ProposedFeed(), 'p1-feed-card');
+  });
+
+  testWidgets('P2 — Reels (taklif)', (t) async {
+    await shot(t, const ProposedReels(), 'p2-reels');
+  });
+
+  testWidgets('P3 — NFC markazi (taklif)', (t) async {
+    await shot(t, const _ProposedNfcCenter(), 'p3-nfc-center');
+  });
+
+  testWidgets('P4 — NFC yozish (taklif)', (t) async {
+    await shot(t, const ProposedNfcWrite(), 'p4-nfc-write');
+  });
+
+  testWidgets('P5 — NFC yozish: tasdiq (taklif)', (t) async {
+    await shot(t, const ProposedNfcWriteWaiting(done: true), 'p5-nfc-done');
+  });
+}
+
+/// Lenta — taklif qilingan kartalar bilan.
+class _ProposedFeed extends StatelessWidget {
+  const _ProposedFeed();
+
+  @override
+  Widget build(BuildContext context) {
+    return NovaScaffold(
+      title: 'Lenta',
+      body: NovaScroll(
+        children: const [
+          ProposedFeedCard(
+            author: 'Muhammad',
+            code: 'VIP001',
+            text: 'NFCSTORE jamoasi bilan yangi loyiha ustida ishlayapmiz.',
+            likes: '24',
+            comments: '5',
+            liked: true,
+            following: null,
+          ),
+          SizedBox(height: Gap.md),
+          ProposedFeedCard(
+            author: 'Tohir',
+            code: 'TTS075',
+            text: 'Bugungi uchrashuv — yangi hamkorlar bilan.',
+            likes: '8',
+            comments: '1',
+            following: false,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// NFC markazi — MAVJUD tuzilma + yangi vositalar.
+class _ProposedNfcCenter extends StatelessWidget {
+  const _ProposedNfcCenter();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return NovaScaffold(
+      title: 'NFC markazi',
+      body: NovaScroll(
+        children: [
+          // MAVJUD ORB VA AMALLAR SHU YERDA QOLADI — bu maketda
+          // ular joyini ko'rsatish uchun soddalashtirilgan.
+          Container(
+            height: 210,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              borderRadius: R.soft,
+              border: Border.all(color: t.border2, style: BorderStyle.solid),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.nfc_rounded, size: 54, color: t.accent2),
+                const SizedBox(height: Gap.sm),
+                Text('MAVJUD: orb + NFC ID\u2019larim, Xavfsizlik,',
+                    style: Theme.of(context).textTheme.bodySmall),
+                Text('Kartalar, Sovg\u2018a — o\u2018zgarmaydi',
+                    style: Theme.of(context).textTheme.bodySmall),
+              ],
+            ),
+          ),
+          const SizedBox(height: Gap.xl),
+          const SectionHeader(title: 'NFC VOSITALARI'),
+          const SizedBox(height: Gap.sm),
+          const ProposedNfcTool(
+            icon: Icons.wifi_tethering_rounded,
+            title: 'O\u2018qish',
+            subtitle: 'Tegdagi havola yoki matnni ko\u2018rish',
+          ),
+          const SizedBox(height: Gap.sm),
+          const ProposedNfcTool(
+            icon: Icons.edit_note_rounded,
+            title: 'Yozish',
+            subtitle: 'Havola, matn, kontakt yoki profil',
+          ),
+          const SizedBox(height: Gap.sm),
+          const ProposedNfcTool(
+            icon: Icons.info_outline_rounded,
+            title: 'Teg ma\u2019lumoti',
+            subtitle: 'Turi, sig\u2018imi, yozish mumkinmi',
+          ),
+          const SizedBox(height: Gap.sm),
+          const ProposedNfcTool(
+            icon: Icons.delete_sweep_outlined,
+            title: 'Tozalash',
+            subtitle: 'Qurilma qo\u2018llasa — bo\u2018sh NDEF yoziladi',
+            disabled: true,
+          ),
+        ],
+      ),
+    );
+  }
 }
