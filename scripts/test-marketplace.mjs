@@ -1474,6 +1474,18 @@ function gatedEnv(env, sqlNeedle) {
   checkTrue('24) eski sahifa uchun yechim', /Ctrl\+Shift\+R/.test(tab));
   // Kodlar yo'qolmaydi: CSV har doim mavjud.
   checkTrue('24) zaxira yo‘l ko‘rsatiladi', /CSV yuklab oling — undagi kodlar aynan shu/.test(tab));
+
+  // ── KONVERT QOG'OZI: TEGIZISH BIRINCHI ────────────────
+  //
+  // 1-qadam "QR ni skanerlang" bo'lsa, odam QR ni bir brauzerda
+  // ochadi, stikerga tekkizganda esa telefon havolani STANDART
+  // brauzerda ochadi — ikki sessiya, va stiker bog'lanmay qoladi.
+  // Tegizishdan boshlansa butun oqim BITTA brauzerda o'tadi.
+  const print1 = tab.slice(tab.indexOf('cards.push('), tab.indexOf('</ol></article>'));
+  checkTrue('24) 1-qadam — tegizish', /<li><b>Telefonni NFC stikerga tegizing/.test(print1));
+  checkTrue('24) QR zaxira sifatida qoladi', /NFC ishlamasa/.test(print1));
+  // QR o'chirilmasin: NFC o'qimaydigan telefon ham bor.
+  checkTrue('24) QR rasmi joyida', /<img src="\$\{url\}"/.test(print1));
   checkTrue('24) qo‘llanma bo‘lagi topildi', guide.length > 2000);
   // Chizma ranglari mavzu tokenlaridan — to'q mavzuda ham o'qiladi.
   checkTrue('24) chizma ranglari tokenlardan', /ink: 'var\(--vz-ink\)'/.test(tab));

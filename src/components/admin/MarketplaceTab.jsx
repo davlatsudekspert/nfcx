@@ -939,10 +939,23 @@ function BatchResult({ batch, t, onDone, adminApi, apiErrText }) {
       // yozilmaydi: konvert ochilmasdan skanerlansa kod sizib
       // chiqardi, va u har qanday kamerada o'qiladi.
       const url = await QRCode.toDataURL(`${origin}/activate`, { margin: 1, width: 260, color: { dark: '#000000', light: '#ffffff' } });
+      // TEGIZISH BIRINCHI, QR — ZAXIRA.
+      //
+      // Ilgari 1-qadam "QR ni skanerlang" edi va bu HAQIQIY
+      // nosozlikka olib keldi: odam QR ni bir brauzerda ochadi,
+      // stikerga tekkizganda esa telefon havolani STANDART
+      // brauzerda ochadi. Ikki brauzer — ikki sessiya, va stiker
+      // bog'lanmay qolardi.
+      //
+      // Tegizishdan boshlansa, butun oqim BITTA brauzerda o'tadi va
+      // bu muammo umuman tug'ilmaydi. QR esa NFC o'qimaydigan
+      // telefon uchun zaxira bo'lib qolaveradi.
       cards.push(`<article class="c"><h2>NFCSTORE</h2><img src="${url}" alt=""><p class="k">${c.code}</p><ol>
-        <li>QR kodni skanerlang.</li><li>NFCSTORE'ga kiring yoki ro'yxatdan o'ting.</li>
-        <li>Aktivatsiya kodni kiriting.</li><li>Shaxsiy yoki Biznes profilni tanlang.</li>
-        <li>NFC mahsulotingiz tayyor.</li></ol></article>`);
+        <li><b>Telefonni NFC stikerga tegizing.</b><br><small>NFC ishlamasa — yuqoridagi QR ni skanerlang.</small></li>
+        <li>NFCSTORE'ga kiring yoki ro'yxatdan o'ting.</li>
+        <li>Shu kodni kiriting.</li>
+        <li>Shaxsiy yoki Biznes profilni tanlang.</li>
+        <li>Tayyor — stiker o'zi bog'landi.</li></ol></article>`);
     }
     w.document.open();
     w.document.write(`<!doctype html><html lang="uz"><head><meta charset="utf-8"><title>NFCSTORE — ${sku}</title><style>
@@ -955,6 +968,7 @@ function BatchResult({ batch, t, onDone, adminApi, apiErrText }) {
       .c img{width:34mm;height:34mm}
       .c .k{margin:3mm 0;font:700 17px/1 ui-monospace,Menlo,monospace;letter-spacing:.09em}
       .c ol{margin:0;padding-left:5mm;text-align:left;font-size:9.5px;line-height:1.5}
+      .c ol small{font-size:8.5px;color:#444}
     </style></head><body><div class="g">${cards.join('')}</div></body></html>`);
     w.document.close();
     w.focus();
