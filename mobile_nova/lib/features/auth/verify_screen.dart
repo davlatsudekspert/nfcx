@@ -23,6 +23,7 @@ class VerifyArgs {
     this.phone = '',
     this.password = '',
     this.channel = '',
+    this.tosAccepted = false,
   });
 
   final String email;
@@ -46,6 +47,10 @@ class VerifyArgs {
   final String name;
   final String phone;
   final String password;
+
+  /// Odam ofertaga rozilik berganmi — ro'yxatdan o'tish ekranidan
+  /// shu yerga olib kelinadi. Server buni MAJBURIY tekshiradi.
+  final bool tosAccepted;
 }
 
 /// Email tasdiqlash ekrani — kod kiritish, sanoq, qayta yuborish,
@@ -131,6 +136,7 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
           phone: widget.args.phone,
           password: widget.args.password,
           code: code,
+          tosAccepted: widget.args.tosAccepted,
         );
     if (!mounted) return;
     setState(() => _busy = false);

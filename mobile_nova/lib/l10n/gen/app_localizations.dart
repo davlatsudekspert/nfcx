@@ -2630,6 +2630,30 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Onyx'**
   String get themeOnyx;
+
+  /// Ro‘yxatdan o‘tishda oferta roziligi
+  ///
+  /// In uz, this message translates to:
+  /// **'Davom etish uchun ommaviy oferta shartlariga rozilik bering.'**
+  String get registerTosRequired;
+
+  /// Ro‘yxatdan o‘tishda oferta roziligi
+  ///
+  /// In uz, this message translates to:
+  /// **'Ro‘yxatdan o‘tish bilan '**
+  String get registerTosPrefix;
+
+  /// Ro‘yxatdan o‘tishda oferta roziligi
+  ///
+  /// In uz, this message translates to:
+  /// **'ommaviy oferta'**
+  String get registerTosLink;
+
+  /// Ro‘yxatdan o‘tishda oferta roziligi
+  ///
+  /// In uz, this message translates to:
+  /// **' shartlariga roziman.'**
+  String get registerTosSuffix;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

@@ -1303,4 +1303,17 @@ class LRu extends L {
 
   @override
   String get themeOnyx => 'Оникс';
+
+  @override
+  String get registerTosRequired =>
+      'Чтобы продолжить, примите условия публичной оферты.';
+
+  @override
+  String get registerTosPrefix => 'Регистрируясь, я принимаю условия ';
+
+  @override
+  String get registerTosLink => 'публичной оферты';
+
+  @override
+  String get registerTosSuffix => '.';
 }

@@ -56,6 +56,7 @@ class AuthRepository {
     required String phone,
     required String password,
     required String code,
+    required bool tosAccepted,
     String? promoCode,
   }) async {
     final res = await _api.postSession('/api/auth/register', {
@@ -65,7 +66,10 @@ class AuthRepository {
       'password': password,
       'code': code,
       'botAck': true,
-      'tosAccepted': true,
+      // QOTIRILGAN `true` EMAS. Ilgari shu yerda `true` turardi va
+      // ilovada rozilik so'raydigan joy umuman yo'q edi — ya'ni
+      // odam ko'rmagan shartga uning nomidan rozilik yozilardi.
+      'tosAccepted': tosAccepted,
       if (promoCode != null && promoCode.isNotEmpty) 'promoCode': promoCode,
     });
     return switch (res) {

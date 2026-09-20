@@ -498,5 +498,21 @@
   "themeOnyx": "Оникс",
   "@themeOnyx": {
     "description": "Mavzu nomi — saytdagi iliq ko‘mir-qora"
+  },
+  "registerTosRequired": "Чтобы продолжить, примите условия публичной оферты.",
+  "@registerTosRequired": {
+    "description": "Ro‘yxatdan o‘tishda oferta roziligi"
+  },
+  "registerTosPrefix": "Регистрируясь, я принимаю условия ",
+  "@registerTosPrefix": {
+    "description": "Ro‘yxatdan o‘tishda oferta roziligi"
+  },
+  "registerTosLink": "публичной оферты",
+  "@registerTosLink": {
+    "description": "Ro‘yxatdan o‘tishda oferta roziligi"
+  },
+  "registerTosSuffix": ".",
+  "@registerTosSuffix": {
+    "description": "Ro‘yxatdan o‘tishda oferta roziligi"
   }
 }

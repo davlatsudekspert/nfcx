@@ -1309,4 +1309,17 @@ class LEn extends L {
 
   @override
   String get themeOnyx => 'Onyx';
+
+  @override
+  String get registerTosRequired =>
+      'Accept the public offer terms to continue.';
+
+  @override
+  String get registerTosPrefix => 'By signing up I accept the ';
+
+  @override
+  String get registerTosLink => 'public offer';
+
+  @override
+  String get registerTosSuffix => ' terms.';
 }

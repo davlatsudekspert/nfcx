@@ -1,8 +1,12 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/network/api_client.dart';
+import '../../core/utils/external_link.dart';
 import '../../core/utils/validators.dart';
+import '../../design/theme/typography.dart';
 import '../../design/motion/motion.dart';
 import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
@@ -39,6 +43,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   int _step = 0;
   bool _busy = false;
+
+  /// OMMAVIY OFERTAGA ROZILIK.
+  ///
+  /// Server buni MAJBURIY deb tekshiradi (`tosAccepted !== true` ->
+  /// 422). Ilova esa uni repozitoriyda QOTIRIB `true` yuborardi,
+  /// ya'ni odam ko'rmagan shartga uning nomidan rozilik yozilardi.
+  /// Bu huquqiy jihatdan ham, Google Play talablari bo'yicha ham
+  /// noto'g'ri. Endi qiymat shu yerdan, odamning o'zidan keladi.
+  bool _tos = false;
   bool _obscure = true;
   String? _error;
   final _fieldErrors = <int, String?>{};
@@ -76,6 +89,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (key != null) return _tr(key);
     if (_step == 3 && _password.text != _password2.text) {
       return L.of(context).errPasswordMismatch;
+    }
+    // Rozilik belgilanmagan bo'lsa serverning o'zi 422 qaytaradi.
+    // Uni shu yerda ushlash aniqroq: odam qaysi qadamda nima
+    // qilishi kerakligini darhol ko'radi.
+    if (_step == _steps - 1 && !_tos) {
+      return L.of(context).registerTosRequired;
     }
     return null;
   }
@@ -138,6 +157,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           // qarab HAQIQATNI yozadi. Ilgari u har doim
           // "emailingizga yuborildi" derdi.
           channel: channel,
+          // Rozilik kod ekraniga olib boriladi: hisob AYNAN
+          // o'sha yerda yaratiladi va server `tosAccepted` ni
+          // shu so'rovda kutadi.
+          tosAccepted: _tos,
         ),
       ),
       err: (e) => setState(() => _error = describeError(l, e)),
@@ -285,6 +308,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   const SizedBox(height: Gap.lg),
                 ],
+                if (_step == _steps - 1) ...[
+                  _TosRow(
+                    value: _tos,
+                    onChanged: (v) => setState(() {
+                      _tos = v;
+                      _fieldErrors[_step] = null;
+                    }),
+                  ),
+                  const SizedBox(height: Gap.md),
+                ],
                 NovaButton(
                   label: _step == _steps - 1 ? l.actionContinue : l.actionNext,
                   busy: _busy,
@@ -321,4 +354,76 @@ class _Step extends StatelessWidget {
           ],
         ),
       );
+}
+
+/// OFERTAGA ROZILIK QATORI.
+///
+/// Matnning "ommaviy oferta" qismi bosilsa sayt ochiladi. Havola
+/// sayt BOSH sahifasiga boradi: alohida oferta sahifasining aniq
+/// yo'li tekshirib tasdiqlanmagan va mavjud bo'lmagan manzilga
+/// yuborish roziliksiz qoldirishdan ham yomon bo'lardi.
+class _TosRow extends StatelessWidget {
+  const _TosRow({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context);
+    final t = context.tokens;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 26,
+          height: 26,
+          child: Checkbox(
+            value: value,
+            onChanged: (v) => onChanged(v ?? false),
+            activeColor: t.accent2,
+            checkColor: t.onAccent,
+            side: BorderSide(color: t.border2, width: 1.4),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(7),
+            ),
+          ),
+        ),
+        const SizedBox(width: Gap.md),
+        Expanded(
+          child: GestureDetector(
+            onTap: () => onChanged(!value),
+            child: Padding(
+              padding: const EdgeInsets.only(top: 3),
+              child: Text.rich(
+                TextSpan(
+                  text: l.registerTosPrefix,
+                  style: TextStyle(
+                    fontFamily: AppType.sans,
+                    fontSize: 12.5,
+                    height: 1.45,
+                    color: t.text2,
+                  ),
+                  children: [
+                    TextSpan(
+                      text: l.registerTosLink,
+                      style: TextStyle(
+                        color: t.accent2,
+                        fontWeight: FontWeight.w600,
+                        decoration: TextDecoration.underline,
+                        decorationColor: t.accent2.withValues(alpha: .5),
+                      ),
+                      recognizer: TapGestureRecognizer()
+                        ..onTap = () => openLink(kApiBase),
+                    ),
+                    TextSpan(text: l.registerTosSuffix),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
