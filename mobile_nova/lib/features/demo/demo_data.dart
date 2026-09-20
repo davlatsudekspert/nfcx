@@ -189,6 +189,14 @@ const demoCatalog = <CatalogItem>[
     price: 79000,
   ),
   CatalogItem(
+    id: -307,
+    name: 'NFCSTORE sovg\'a to\'plami',
+    description: 'Qutida karta, brelok, ruchka va vizitkadon — '
+        'tayyor sovg\'a.',
+    imageUrl: '$_a/m_gift_set.jpg',
+    price: 690000,
+  ),
+  CatalogItem(
     id: -306,
     name: 'Stol stendi + QR',
     description: 'Kafe va do\'konlar uchun: tegizish ham, QR ham.',

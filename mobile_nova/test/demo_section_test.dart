@@ -315,7 +315,7 @@ void main() {
       expect(demoPersonalPosts.length, 4);
       expect(demoBusiness.views, 18400);
       expect(demoBusiness.followers, 3120);
-      expect(demoCatalog.length, 6);
+      expect(demoCatalog.length, 7);
     });
 
     test('bo‘limda QAT‘IY rang yo‘q — hammasi mavzudan', () {
