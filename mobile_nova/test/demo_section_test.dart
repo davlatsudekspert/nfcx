@@ -95,8 +95,13 @@ void main() {
       expect(demoPersonalId.followers, greaterThan(0));
     });
 
+    test('biznes nomi ETALONDAGIDEK — NFV emas, NFC Market', () {
+      expect(demoBusiness.displayName, 'NFC Market');
+      expect(demoBusiness.displayName, isNot(contains('NFV')));
+      expect(kDemoBusinessId, 'NFCMARKET');
+    });
+
     test('biznes demo to‘ldirilgan', () {
-      expect(demoBusiness.displayName, 'NFV Market');
       expect(demoCatalog.length, greaterThanOrEqualTo(3));
       expect(demoBusinessPosts.length, greaterThanOrEqualTo(2));
       expect(demoBusiness.logoUrl, isNotEmpty);
@@ -170,19 +175,23 @@ void main() {
       expect(find.text(l.demoSectionTitle.toUpperCase()), findsOneWidget);
       expect(find.text(l.demoHeroTitle), findsOneWidget);
       expect(find.text(l.demoChipIphone), findsOneWidget);
+      expect(find.text(l.demoBadgePersonal), findsOneWidget);
+      expect(find.text(l.demoBadgeBusiness), findsOneWidget);
       expect(find.text(l.demoChipSamsung), findsOneWidget);
-      expect(find.text('iPhone 18'), findsOneWidget,
-          reason: 'telefon maketi yorlig‘i yo‘q');
       // AMAL BITTA JOYDA — o'z kartasida. Ilgari hero ichida ham
       // "Personal demo"/"Business demo" turardi va tor ekranda
       // ikkala yorliq ham qirqilib ko'rinardi.
       expect(find.text(l.demoViewProfile), findsOneWidget);
       expect(find.text(l.demoViewBusiness), findsOneWidget);
       expect(find.text(l.demoPersonalBtn), findsNothing);
-      // Demo ekani ikkala kartada ham ko'rinadi.
-      expect(find.text(l.demoBadge), findsNWidgets(2));
+      // Demo ekani ikkala kartada ham ko'rinadi — endi
+      // "DEMO · PERSONAL" va "DEMO · BUSINESS" nishonlari bilan
+      // (yuqoridagi tekshiruvlar). Qisqa "Demo" yorlig'i esa demo
+      // EKRANLARINING sarlavhasida qoladi.
       // Telefon maketlarining yorliqlari KESILMAYDI.
-      expect(find.text('Samsung S26'), findsOneWidget);
+      // Bo'lim sarlavhasining o'ng tomonida savol turadi —
+      // HTML: <b>NFC MOBILE</b><span>NFC bilan nimalar mumkin?</span>
+      expect(find.text(l.demoSectionHint), findsOneWidget);
       expect(find.text(demoPersonalId.code), findsOneWidget);
       expect(find.text(demoBusiness.displayName), findsOneWidget);
     });
@@ -261,5 +270,73 @@ void main() {
     expect(src, contains('stories.isEmpty'),
         reason: 'istoryasiz profilda ham halqa chizilyapti');
     expect(storiesOfProvider, isNotNull);
+  });
+
+  group('HTML etaloni bilan bog‘lanish', () {
+    test('etalondan ajratilgan suratlar DISKDA bor', () {
+      // `nfc_mobile_demo.html` ichida ular `data:` URI edi.
+      for (final p in [kDemoHeroImage, kDemoPersonalImage]) {
+        expect(File(p).existsSync(), isTrue, reason: '$p yo‘q');
+      }
+    });
+
+    test('biznes kartasi HERO suratini TAKRORLAMAYDI', () {
+      // Prototipda biznes kartaning surati hero suratining aynan
+      // nusxasi edi: "NFC Market demo katalogi" deb turgan joyda
+      // telefonlar fotosi ko‘rinardi.
+      expect(kDemoBusinessImage, isNot(kDemoHeroImage));
+      expect(File(kDemoBusinessImage).existsSync(), isTrue);
+    });
+
+    test('matnlar etalondan AYNAN ko‘chirilgan', () async {
+      final l = await L.delegate.load(const Locale('uz'));
+      expect(l.demoHeroTitle, 'NFC bilan tanishing');
+      expect(l.demoHeroBody,
+          'Shaxsiy profil, biznes sahifa va NFC ID — barchasi bitta '
+          'mobil ilovada.');
+      expect(l.demoChipIphone, 'iPhone 18 bilan ishlaydi');
+      expect(l.demoChipSamsung, 'Samsung S26 bilan ishlaydi');
+      expect(l.demoChipReady, 'NFC ready');
+      expect(l.demoSectionHint, 'NFC bilan nimalar mumkin?');
+      expect(l.demoBadgePersonal, 'DEMO · PERSONAL');
+      expect(l.demoBadgeBusiness, 'DEMO · BUSINESS');
+      expect(l.demoPersonalSubtitle, 'Personal NFC Profile');
+      expect(l.demoBizSubtitle, 'Business NFC Profile');
+      expect(l.demoViewProfile, 'Profilni ko‘rish');
+      expect(l.demoViewBusiness, 'Biznes profilni ko‘rish');
+      expect(l.demoNotice,
+          'Bu namuna ma’lumot — sizning profilingizga ta’sir '
+          'qilmaydi.');
+    });
+
+    test('raqamlar etalondagidek', () {
+      expect(demoPersonalId.views, 2840);
+      expect(demoPersonalId.followers, 1240);
+      expect(demoPersonalPosts.length, 3);
+      expect(demoBusiness.views, 18400);
+      expect(demoBusiness.followers, 3120);
+      expect(demoCatalog.length, 4);
+    });
+
+    test('bo‘limda QAT‘IY rang yo‘q — hammasi mavzudan', () {
+      // HTML'da mavzular CSS o'zgaruvchilari bilan almashardi.
+      // Bu yerda ularning o'rnida `context.tokens` turadi.
+      // Izohlar OLIB TASHLANADI: tekshiruv KOD haqida, matn
+      // haqida emas. (Bu tekshiruvning o'zi shu sababdan bir
+      // marta noto'g'ri yiqilgandi — fayl izohida `Color(0x...)`
+      // degan so'zlar bor.)
+      final src =
+          File('lib/features/home/widgets/nfc_mobile_section.dart')
+              .readAsStringSync()
+              .split('\n')
+              .where((line) {
+                final t = line.trimLeft();
+                return !t.startsWith('//') && !t.startsWith('///');
+              })
+              .join('\n');
+      expect(RegExp(r'Color\(0x').hasMatch(src), isFalse,
+          reason: 'qat‘iy rang yozilgan — mavzu almashganda o‘zgarmaydi');
+      expect(src, contains('context.tokens'));
+    });
   });
 }

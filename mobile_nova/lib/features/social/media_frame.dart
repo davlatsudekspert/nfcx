@@ -72,6 +72,7 @@ Widget mediaImage(
   BuildContext context,
   String url, {
   required BoxFit fit,
+  Alignment alignment = Alignment.center,
 }) {
   final t = context.tokens;
   Widget broken() => ColoredBox(
@@ -79,11 +80,13 @@ Widget mediaImage(
         child: Icon(Icons.broken_image_outlined, size: 30, color: t.text3),
       );
   if (isAssetMedia(url)) {
-    return Image.asset(url, fit: fit, errorBuilder: (_, __, ___) => broken());
+    return Image.asset(url,
+        fit: fit, alignment: alignment, errorBuilder: (_, __, ___) => broken());
   }
   return CachedNetworkImage(
     imageUrl: url,
     fit: fit,
+    alignment: alignment,
     placeholder: (_, __) => ColoredBox(color: t.surface2),
     errorWidget: (_, __, ___) => broken(),
   );

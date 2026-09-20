@@ -1202,8 +1202,7 @@ class LUz extends L {
   String get demoSectionTitle => 'NFC Mobile';
 
   @override
-  String get demoSectionHint =>
-      'NFC ID, shaxsiy profil va biznes profilingiz qanday ko‘rinishini ko‘ring.';
+  String get demoSectionHint => 'NFC bilan nimalar mumkin?';
 
   @override
   String get demoHeroTitle => 'NFC bilan tanishing';
@@ -1264,4 +1263,10 @@ class LUz extends L {
 
   @override
   String get demoPersonalSubtitle => 'Personal NFC Profile';
+
+  @override
+  String get demoBadgePersonal => 'DEMO · PERSONAL';
+
+  @override
+  String get demoBadgeBusiness => 'DEMO · BUSINESS';
 }

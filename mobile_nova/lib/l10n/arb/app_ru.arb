@@ -446,7 +446,7 @@
   "payPendingHint": "Платёж не завершён — можно оплатить",
   "demoBadge": "Демо",
   "demoSectionTitle": "NFC Mobile",
-  "demoSectionHint": "Посмотрите, как выглядят NFC ID, личный и бизнес-профиль.",
+  "demoSectionHint": "Что можно с NFC?",
   "demoHeroTitle": "Знакомьтесь с NFC",
   "demoHeroBody": "Личный профиль, бизнес-страница и NFC ID — всё в одном приложении.",
   "demoChipIphone": "Работает с iPhone 18",
@@ -465,5 +465,7 @@
   "demoViewProfile": "Открыть профиль",
   "demoViewBusiness": "Открыть бизнес-профиль",
   "demoBizSubtitle": "Business NFC Profile",
-  "demoPersonalSubtitle": "Personal NFC Profile"
+  "demoPersonalSubtitle": "Personal NFC Profile",
+  "demoBadgePersonal": "ДЕМО · PERSONAL",
+  "demoBadgeBusiness": "ДЕМО · BUSINESS"
 }

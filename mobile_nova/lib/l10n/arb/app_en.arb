@@ -446,7 +446,7 @@
   "payPendingHint": "Payment not finished — you can still pay",
   "demoBadge": "Demo",
   "demoSectionTitle": "NFC Mobile",
-  "demoSectionHint": "See how an NFC ID, a personal profile and a business profile look.",
+  "demoSectionHint": "What can NFC do?",
   "demoHeroTitle": "Meet NFC",
   "demoHeroBody": "Personal profile, business page and NFC ID — all in one app.",
   "demoChipIphone": "Works with iPhone 18",
@@ -465,5 +465,7 @@
   "demoViewProfile": "View the profile",
   "demoViewBusiness": "View the business profile",
   "demoBizSubtitle": "Business NFC Profile",
-  "demoPersonalSubtitle": "Personal NFC Profile"
+  "demoPersonalSubtitle": "Personal NFC Profile",
+  "demoBadgePersonal": "DEMO · PERSONAL",
+  "demoBadgeBusiness": "DEMO · BUSINESS"
 }

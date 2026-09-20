@@ -30,7 +30,7 @@ import '../profile/profile_repository.dart';
 const kDemoPersonalCode = 'ZZZ777';
 
 /// Biznes demo kompaniya identifikatori.
-const kDemoBusinessId = 'NFVMARKET';
+const kDemoBusinessId = 'NFCMARKET';
 
 /// Demo rasmlar ILOVA ICHIDA saqlanadi.
 ///
@@ -39,6 +39,26 @@ const kDemoBusinessId = 'NFVMARKET';
 /// ko'rinadi. Nisbatlar ataylab har xil: kvadrat, tik va yotiq —
 /// moslashuvchi quti aynan shu yerda ko'rinadi.
 const _a = 'assets/demo';
+
+/// HTML etalonidan ajratib olingan suratlar.
+///
+/// `nfc_mobile_demo.html` ichida ular `data:` URI bo'lib
+/// joylashtirilgandi; shu yerga fayl sifatida chiqarilgan va
+/// kompozitsiyada AYNAN o'sha o'rinlarda ishlatiladi.
+const kDemoHeroImage = '$_a/ref_hero.jpg';
+const kDemoPersonalImage = '$_a/ref_personal.jpg';
+
+/// BIZNES KARTASI UCHUN ETALON SURATI ISHLATILMAYDI.
+///
+/// `nfc_mobile_demo.html` ichida biznes kartaning surati hero
+/// suratining AYNAN NUSXASI edi (bir xil bayt, bir xil o'lcham):
+/// ikkalasi ham premium smartfonlar fotosi. "NFC Market demo
+/// katalogi" deb turgan joyda telefonlar fotosi ko'rinishi
+/// prototipdagi nazorat qilinmagan holat.
+///
+/// Shuning uchun bu yerda katalogning O'Z rasmi turadi — odam
+/// "katalog" yozuvi ostida katalogni ko'radi.
+const kDemoBusinessImage = '$_a/b_item1.jpg';
 
 final demoPersonalId = NfcId(
   code: kDemoPersonalCode,
@@ -116,7 +136,7 @@ final demoPersonalStories = <StoryItem>[
 
 const demoBusiness = Business(
   companyId: kDemoBusinessId,
-  displayName: 'NFV Market',
+  displayName: 'NFC Market',
   category: 'shop',
   subcategory: 'Elektronika',
   city: 'Toshkent',

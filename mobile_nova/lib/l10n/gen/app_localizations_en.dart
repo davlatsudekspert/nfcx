@@ -1200,8 +1200,7 @@ class LEn extends L {
   String get demoSectionTitle => 'NFC Mobile';
 
   @override
-  String get demoSectionHint =>
-      'See how an NFC ID, a personal profile and a business profile look.';
+  String get demoSectionHint => 'What can NFC do?';
 
   @override
   String get demoHeroTitle => 'Meet NFC';
@@ -1262,4 +1261,10 @@ class LEn extends L {
 
   @override
   String get demoPersonalSubtitle => 'Personal NFC Profile';
+
+  @override
+  String get demoBadgePersonal => 'DEMO · PERSONAL';
+
+  @override
+  String get demoBadgeBusiness => 'DEMO · BUSINESS';
 }

@@ -2424,7 +2424,7 @@ abstract class L {
   /// No description provided for @demoSectionHint.
   ///
   /// In uz, this message translates to:
-  /// **'NFC ID, shaxsiy profil va biznes profilingiz qanday ko‘rinishini ko‘ring.'**
+  /// **'NFC bilan nimalar mumkin?'**
   String get demoSectionHint;
 
   /// No description provided for @demoHeroTitle.
@@ -2540,6 +2540,18 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Personal NFC Profile'**
   String get demoPersonalSubtitle;
+
+  /// No description provided for @demoBadgePersonal.
+  ///
+  /// In uz, this message translates to:
+  /// **'DEMO · PERSONAL'**
+  String get demoBadgePersonal;
+
+  /// No description provided for @demoBadgeBusiness.
+  ///
+  /// In uz, this message translates to:
+  /// **'DEMO · BUSINESS'**
+  String get demoBadgeBusiness;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

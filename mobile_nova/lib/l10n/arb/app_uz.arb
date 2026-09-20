@@ -446,7 +446,7 @@
   "payPendingHint": "To‘lov tugallanmagan — to‘lash mumkin",
   "demoBadge": "Demo",
   "demoSectionTitle": "NFC Mobile",
-  "demoSectionHint": "NFC ID, shaxsiy profil va biznes profilingiz qanday ko‘rinishini ko‘ring.",
+  "demoSectionHint": "NFC bilan nimalar mumkin?",
   "demoHeroTitle": "NFC bilan tanishing",
   "demoHeroBody": "Shaxsiy profil, biznes sahifa va NFC ID — barchasi bitta mobil ilovada.",
   "demoChipIphone": "iPhone 18 bilan ishlaydi",
@@ -465,5 +465,7 @@
   "demoViewProfile": "Profilni ko‘rish",
   "demoViewBusiness": "Biznes profilni ko‘rish",
   "demoBizSubtitle": "Business NFC Profile",
-  "demoPersonalSubtitle": "Personal NFC Profile"
+  "demoPersonalSubtitle": "Personal NFC Profile",
+  "demoBadgePersonal": "DEMO · PERSONAL",
+  "demoBadgeBusiness": "DEMO · BUSINESS"
 }

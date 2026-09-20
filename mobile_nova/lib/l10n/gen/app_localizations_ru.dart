@@ -1196,8 +1196,7 @@ class LRu extends L {
   String get demoSectionTitle => 'NFC Mobile';
 
   @override
-  String get demoSectionHint =>
-      'Посмотрите, как выглядят NFC ID, личный и бизнес-профиль.';
+  String get demoSectionHint => 'Что можно с NFC?';
 
   @override
   String get demoHeroTitle => 'Знакомьтесь с NFC';
@@ -1257,4 +1256,10 @@ class LRu extends L {
 
   @override
   String get demoPersonalSubtitle => 'Personal NFC Profile';
+
+  @override
+  String get demoBadgePersonal => 'ДЕМО · PERSONAL';
+
+  @override
+  String get demoBadgeBusiness => 'ДЕМО · BUSINESS';
 }
