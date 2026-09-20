@@ -121,4 +121,8 @@ export const DICT_SITE = {
   'Stikeringizni bog‘lash uchun avval kiring.': { ru: 'Чтобы привязать стикер, сначала войдите.', en: 'Sign in first to link your sticker.' },
   'Bu stiker allaqachon boshqa profilga bog‘langan.': { ru: 'Этот стикер уже привязан к другому профилю.', en: 'This sticker is already linked to another profile.' },
   'Stiker hali bog‘lanmagan. Konvertdagi kodni kiriting — shundan keyin u shu profilga bog‘lanadi.': { ru: 'Стикер пока не привязан. Введите код из конверта — после этого он привяжется к этому профилю.', en: 'The sticker is not linked yet. Enter the code from the envelope and it will link to this profile.' },
+
+  // Aktivatsiya: oxirgi qadam — hisob ochish.
+  'Oxirgi qadam — hisob oching. Kod va tanlovingiz saqlanib qoladi.': { ru: 'Последний шаг — создайте аккаунт. Код и ваш выбор сохранятся.', en: 'Last step — create an account. Your code and choice are kept.' },
+  'Hisobim bor — kirish': { ru: 'У меня есть аккаунт — войти', en: 'I have an account — sign in' },
 };

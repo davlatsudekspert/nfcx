@@ -1988,6 +1988,48 @@ function gatedEnv(env, sqlNeedle) {
   // Kirishdan keyin AYNAN shu stikerga qaytsin.
   checkTrue('27) kirishdan keyin stiker bilan qaytadi', /authNext/.test(page) && /activate\?d=\$\{deviceToken\}/.test(page));
 
+  // ── BITTA TUGMA ────────────────────────────────────
+  //
+  // Marketplace xaridorining deyarli hammasi YANGI odam — unga
+  // ikkita teng tugma ko'rsatish ortiqcha qaror edi. Hisobi
+  // borlar uchun kichik havola qoladi.
+  // Izohlar olib tashlangani uchun chegara sifatida EKRAN MATNI
+  // olinadi — izoh sarlavhasi emas (birinchi urinishda shunda
+  // adashdim va butun fayl bo'lak deb hisoblandi).
+  const ai = page.indexOf('Oxirgi qadam');
+  const authBlock = page.slice(ai, page.indexOf('Hisobim bor', ai) + 40);
+  check('27) bitta asosiy tugma', (authBlock.match(/ac-primary/g) || []).length, 1);
+  checkTrue('27) asosiy tugma — ro‘yxatdan o‘tish', /ac-primary[\s\S]{0,160}\/register\?next=/.test(authBlock));
+  checkTrue('27) hisobi borlar uchun havola', /Hisobim bor — kirish/.test(authBlock));
+
+  // ── `next` YO'QOLMASIN ─────────────────────────────
+  //
+  // Kirish va ro'yxatdan o'tish sahifalari bir-biriga o'tish
+  // havolasida `next` ni TASHLAB KETARDI: aktivatsiyadan kelgan
+  // odam "Kirish" ni bossa, kirgandan keyin bosh sahifaga tushib
+  // qolardi va stikerini bog'lash uchun hammasini boshidan
+  // boshlashi kerak bo'lardi.
+  const auth = stripComments(read('../src/pages/AuthPage.jsx'));
+  checkTrue('27) kirishga o‘tishda next saqlanadi',
+    /nextPath \? `\/login\?next=\$\{encodeURIComponent\(nextPath\)\}` : '\/login'/.test(auth));
+  checkTrue('27) ro‘yxatga o‘tishda ham',
+    /nextPath \? `\/register\?next=\$\{encodeURIComponent\(nextPath\)\}` : '\/register'/.test(auth));
+
+  // ── QAYTISH MANZILI SO'ROV QATORINI YO'QOTMASIN ──────────
+  //
+  // Eski tekshiruv naqshi `?` va `=` ni RAD ETARDI, ya'ni
+  // `/activate?d=<token>` yaroqsiz deb tashlanardi. Oqibati og'ir
+  // edi: stikerga tekkizib ro'yxatdan o'tgan odam oxirida BOSH
+  // SAHIFAGA tushardi va hammasini boshidan boshlashi kerak
+  // bo'lardi — aynan shundan shikoyat keldi.
+  checkTrue('27) eski naqsh olib tashlandi',
+    !/\[A-Za-z0-9\\-\/_\]\*\$\/\.test\(raw\)/.test(auth));
+  checkTrue('27) so‘rov qatori saqlanadi', /u\.pathname \+ u\.search/.test(auth));
+  // OCHIQ YO'NALTIRISHDAN HIMOYA SAQLANDI va kuchaydi: endi
+  // domen `new URL` bilan tekshiriladi, naqsh bilan emas.
+  checkTrue('27) boshqa domenga yo‘naltirmaydi', /u\.origin !== window\.location\.origin/.test(auth));
+  checkTrue('27) protokolsiz manzil rad etiladi', /raw\.startsWith\('\/\/'\)/.test(auth));
+
   // ── ISHLATILGAN KODNI QAYTA KIRITISH ─────────────────
   //
   // FOYDALANUVCHI AYNAN SHUNGA DUCH KELDI: "yana o'sha kodni

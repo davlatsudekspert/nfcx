@@ -372,11 +372,19 @@ export default function ActivatePage() {
         <section className="ac-card">
           <div className="ac-badge">{product.name || t('NFC mahsulot')}</div>
           <h1>{t('Kod to‘g‘ri')}</h1>
-          <p className="ac-sub">{t('Davom etish uchun hisobingizga kiring yoki yangi hisob oching. Kod saqlanib qoladi.')}</p>
+          <p className="ac-sub">{t('Oxirgi qadam — hisob oching. Kod va tanlovingiz saqlanib qoladi.')}</p>
+          {/* BITTA TUGMA.
+              Marketplace xaridorining deyarli hammasi YANGI odam —
+              unga ikkita teng tugma ko'rsatish ortiqcha qaror edi.
+              Hisobi borlar uchun pastda kichik havola bor, va
+              ro'yxatdan o'tish sahifasida ham "Akkauntingiz bormi?"
+              havolasi turadi (u ham `next` ni saqlaydi). */}
           <div className="ac-actions">
-            <button type="button" className="ac-primary" onClick={() => { storeKind(kind); navigate(`/login?next=${authNext}`); }}>{t('Kirish')}</button>
-            <button type="button" className="ac-ghost" onClick={() => { storeKind(kind); navigate(`/register?next=${authNext}`); }}>{t('Ro‘yxatdan o‘tish')}</button>
+            <button type="button" className="ac-primary" onClick={() => { storeKind(kind); navigate(`/register?next=${authNext}`); }}>{t('Ro‘yxatdan o‘tish')}</button>
           </div>
+          <button type="button" className="ac-linkish" onClick={() => { storeKind(kind); navigate(`/login?next=${authNext}`); }}>
+            {t('Hisobim bor — kirish')}
+          </button>
         </section>
       </main>
     );
