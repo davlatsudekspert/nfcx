@@ -220,14 +220,70 @@ jobs:
           }
           RAW=$(grep -i 'SHA-256 digest' certs.txt | head -1 | awk '{print $NF}')
           FP=$(echo "$RAW" | tr -d ':' | tr 'a-z' 'A-Z' | sed 's/../&:/g; s/:$//')
-          echo "## Imzo" >> "$GITHUB_STEP_SUMMARY"
+          # IMZO TURI XULOSAGA EMAS, LOGGA ham yoziladi.
+          #
+          # Ilgari bu faqat `GITHUB_STEP_SUMMARY` ga borardi va
+          # tashqaridan "bu RELEASE mi yoki DEBUG mi" degan savolga
+          # javob topib bo'lmasdi. Hisobotda taxmin qilish esa
+          # Play Store uchun yaroqsiz paketni yaroqli deb ko'rsatish
+          # xavfini tug'diradi.
           if [ -f android/key.properties ]; then
+            echo "SIGNING: RELEASE"
             echo "HAQIQIY kalit — Play Store uchun yaroqli." >> "$GITHUB_STEP_SUMMARY"
           else
+            echo "SIGNING: DEBUG"
             echo "DIQQAT: DEBUG kaliti. Play Store'ga yaramaydi." >> "$GITHUB_STEP_SUMMARY"
           fi
+          echo "## Imzo" >> "$GITHUB_STEP_SUMMARY"
           echo "App Links barmoq izi: \`$FP\`" >> "$GITHUB_STEP_SUMMARY"
           echo "Barmoq izi: $FP"
+
+      # O'RNATISHGA TAYYOR, TUSHUNARLI NOMLAR.
+      #
+      # `app-release.apk` va `app-arm64-v8a-release.apk` telefonga
+      # yuklab olinganda qaysi ilova ekani bilinmaydi. Bu yerda
+      # fayllar ko'chiriladi (asl nusxalar ham qoladi) va yagona
+      # `SHA256SUMS.txt` yoziladi — yuklab olgandan keyin
+      # tekshirish uchun.
+      - name: Yakuniy paketlarni nomlash
+        run: |
+          OUT=release-final
+          mkdir -p "$OUT"
+          cp build/app/outputs/flutter-apk/app-release.apk \
+             "$OUT/NFCSTORE-Nova-final.apk"
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk \
+             "$OUT/NFCSTORE-Nova-final-arm64-v8a.apk"
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk \
+             "$OUT/NFCSTORE-Nova-final-armeabi-v7a.apk"
+          cp build/app/outputs/flutter-apk/app-x86_64-release.apk \
+             "$OUT/NFCSTORE-Nova-final-x86_64.apk"
+          cp build/app/outputs/bundle/release/app-release.aab \
+             "$OUT/NFCSTORE-Nova-final.aab"
+          ( cd "$OUT" && sha256sum * > SHA256SUMS.txt )
+          ls -la "$OUT"
+          echo "--- SHA-256 ---"
+          cat "$OUT/SHA256SUMS.txt"
+
+      # O'RNATISHGA YAROQLILIK — uchala tekshiruv ham QATTIQ.
+      - name: O'rnatish tekshiruvi
+        run: |
+          AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 2>/dev/null | sort -V | tail -1)
+          ALIGN=$(ls "$ANDROID_HOME"/build-tools/*/zipalign 2>/dev/null | sort -V | tail -1)
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1)
+          APK=release-final/NFCSTORE-Nova-final.apk
+
+          echo "--- badging ---"
+          "$AAPT" dump badging "$APK" | grep -E "^package:|sdkVersion|targetSdkVersion"
+
+          echo "--- zipalign ---"
+          if [ -n "$ALIGN" ]; then
+            "$ALIGN" -c -v 4 "$APK" > /dev/null && echo "zipalign: OK"
+          else
+            echo "::warning::zipalign topilmadi."
+          fi
+
+          echo "--- apksigner verify ---"
+          "$APKSIGNER" verify --verbose "$APK" | head -5
 
       - name: Qurilgan fayllar
         run: |
@@ -235,7 +291,7 @@ jobs:
           echo "--- SHA-256 ---"
           sha256sum build/app/outputs/flutter-apk/*.apk build/app/outputs/bundle/release/*.aab
           echo "## Fayllar" >> "$GITHUB_STEP_SUMMARY"
-          du -h build/app/outputs/flutter-apk/*.apk build/app/outputs/bundle/release/*.aab >> "$GITHUB_STEP_SUMMARY"
+          du -h release-final/* >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -245,3 +301,12 @@ jobs:
             mobile_nova/build/app/outputs/bundle/release/*.aab
           if-no-files-found: error
           retention-days: 30
+
+      # Telefonga o'rnatish va Play Store uchun — tushunarli nomlar
+      # bilan alohida artifakt.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NFCSTORE-Nova-final
+          path: mobile_nova/release-final/*
+          if-no-files-found: error
+          retention-days: 90
