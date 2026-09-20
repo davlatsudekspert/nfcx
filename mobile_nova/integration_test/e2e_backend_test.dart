@@ -20,6 +20,7 @@
 // tekshirilishi kerak, shuning uchun natijalar `E2EReport` ga
 // yig'iladi va test faqat eng oxirida baholanadi.
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -1956,32 +1957,60 @@ void main() {
     //
     // Karta `$kApiBase/<kod>` ni tizim varag'iga beradi. Havola
     // TIRIK ekanini tekshiramiz — aks holda odam ulashgan manzil
-    // 404 bo'lardi.
+    // ochilmasdi.
+    //
+    // `Accept: text/html` MAJBURIY. Server SPA qobig'ini AYNAN
+    // shu sarlavha bo'yicha beradi:
+    //
+    //     const acceptsHtml = accept?.includes('text/html');
+    //     if (response.status === 404 && acceptsHtml) { ...qobiq... }
+    //
+    // Dart ning `HttpClient` i o'zi `Accept` yubormaydi, shuning
+    // uchun usiz sinov brauzer HECH QACHON yubormaydigan so'rovni
+    // tekshirardi — ya'ni mahsulotni emas, o'zini sinardi.
+    final shareUrl = '$kApiBase/${Uri.encodeComponent(code)}';
     try {
       final client = HttpClient()
-        ..connectionTimeout = const Duration(seconds: 15);
-      final req = await client
-          .getUrl(Uri.parse('$kApiBase/${Uri.encodeComponent(code)}'));
+        ..connectionTimeout = const Duration(seconds: 15)
+        ..userAgent = 'Mozilla/5.0 (Android) NFCSTORE-Nova-E2E';
+      final req = await client.getUrl(Uri.parse(shareUrl));
+      req.headers.set(HttpHeaders.acceptHeader,
+          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8');
       req.followRedirects = true;
       final res = await req.close();
-      await res.drain<void>();
+      final body = await res.transform(const Utf8Decoder(allowMalformed: true)).join();
       client.close();
+
+      final trace = Trace(
+        method: 'GET',
+        path: '/${Uri.encodeComponent(code)}',
+        status: res.statusCode,
+        response: body.isEmpty ? null : body.substring(0, body.length.clamp(0, 300)),
+      );
       if (res.statusCode >= 200 && res.statusCode < 400) {
         report.pass('Lenta — ulashish havolasi',
             screen: 'FeedCard',
-            action: 'GET <baza>/:kod',
-            note: 'HTTP ${res.statusCode} — havola tirik');
+            action: 'ulashiladigan manzilni ochish',
+            note: 'HTTP ${res.statusCode}, ${body.length} bayt');
       } else {
-        fail('Lenta — ulashish havolasi',
-            screen: 'FeedCard',
-            action: 'GET <baza>/:kod',
-            cause: 'ulashiladigan manzil HTTP ${res.statusCode} qaytardi',
-            layer: 'backend');
+        report.add(MatrixRow(
+          name: 'Lenta — ulashish havolasi',
+          verdict: Verdict.fail,
+          screen: 'FeedCard',
+          action: 'ulashiladigan manzilni ochish',
+          trace: trace,
+          cause: 'ulashiladigan manzil HTTP ${res.statusCode} qaytardi — '
+              'odam ulashgan havola ochilmaydi. Bu manzilni Profil, '
+              'NFC ID, Istorya va Reels ham AYNAN shunday quradi '
+              '(`NfcId.publicUrl`), ya\'ni kamchilik lenta kartasiga '
+              'xos emas',
+          layer: 'backend',
+        ));
       }
     } catch (e) {
       partial('Lenta — ulashish havolasi',
           screen: 'FeedCard',
-          action: 'GET <baza>/:kod',
+          action: 'ulashiladigan manzilni ochish',
           cause: 'havolani tekshirib bo\'lmadi: ${redact('$e')}');
     }
 
