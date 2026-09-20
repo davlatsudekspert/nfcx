@@ -2061,6 +2061,19 @@ body{
 .mk-form label{display:flex;flex-direction:column;gap:5px;min-width:0}
 .mk-form label>span{font-size:var(--fs-2xs);font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint)}
 .mk-form .mk-wide{grid-column:1/-1}
+/* Belgilash katagi — `mk-form label` ustunga teradi, bu yerda esa
+   katak va yozuv YONMA-YON turishi kerak. */
+.mk-form .mk-check{flex-direction:row;align-items:center;gap:9px}
+.mk-form .mk-check>span{text-transform:none;letter-spacing:0;font-size:var(--fs-xs);font-weight:600;color:var(--text-secondary)}
+/* Statistikadagi "sinov hisobga olinmadi" satri. Ogohlantirish emas,
+   izoh — shuning uchun qizil/sariq alert emas, yumshoq karta. */
+.mk-testnote{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;
+  padding:10px 13px;border-radius:14px;border:1px solid var(--border);
+  background:var(--surface-raised);font-size:var(--fs-xs);line-height:1.5;color:var(--text-secondary)}
+.mk-testnote>span{min-width:0;flex:1 1 220px}
+/* Jadvaldagi mayda "sinov" nishoni — SKU yonida, qatorni kengaytirmaydi. */
+.mk-testtag{margin-left:5px;padding:1px 6px;border-radius:999px;font-size:9px;font-weight:800;
+  letter-spacing:.08em;text-transform:uppercase;background:var(--warning-soft,var(--surface-raised));color:var(--warning)}
 .mk-hint{margin:0 0 10px!important;font-size:var(--fs-xs);line-height:1.55;color:var(--text-muted)}
 /* Muddat tugmalari — sana terishning o'rniga. */
 .mk-exp{display:flex;flex-wrap:wrap;gap:7px;align-items:center}

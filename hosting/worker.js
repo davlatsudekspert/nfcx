@@ -9540,6 +9540,13 @@ const H = {
   personalPriceForCode, personalTierFromCode, personalCodeTierOverride, isPersonalCodePurchasable,
   usersHaveTrialColumnsD1, trialEndsAtD1, premiumExtendD1,
   signupSourceD1, usersHaveSignupSourceD1, isMobileClientD1,
+  // SINOV/ICHKI AKKAUNTLAR — BITTA MANBA, MODULLAR UCHUN HAM.
+  //
+  // `hosting/api/marketplace.js` statistikasi ham "o'zimiz qilgan ish
+  // hisobga kirmasin" qoidasiga bo'ysunadi. Shart NUSXA OLINMADI: agar
+  // ikkinchi nusxa bo'lsa, `is_internal` qo'shilganda biri yangilanib,
+  // biri qolib ketardi — aynan shunday xato bir marta bo'lgan.
+  TEST_USER_IDS_D1,
 };
 const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiMarketplace];
 

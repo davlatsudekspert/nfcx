@@ -282,6 +282,10 @@ function Guide({ t, onGo }) {
           art={<ArtBatch />}
         >
           <p>{t('«Batch yaratish» bo‘limida mahsulotni tanlang va sonini yozing (masalan 100). Tizim BIR YO‘LA ikkita ro‘yxat beradi: aktivatsiya kodlari va stiker manzillari.')}</p>
+          <p>
+            <b>{t('Muddat')}</b> — {t('«Doimiy» (muddatsiz), «Vaqt qo‘yish» (1 oy / 3 oy / 1 yil) yoki qo‘lda sana. Sinov partiyasiga qisqa muddat qo‘ying: unutilgan sinov kodi keyin ishlab ketmaydi.')}
+          </p>
+          <p>{t('Eng kami — 2 ta kod. Bitta kod bilan partiya ochish deyarli har doim xato bosish bo‘lardi.')}</p>
           <p className="mk-gd-warn">
             {t('Bu ikki ro‘yxat bir-biriga BIRIKTIRILMAGAN — ataylab. Siz qaysi stiker qaysi xaridorga tushishini bilmaysiz, shuning uchun juftlash shart emas va zararli.')}
           </p>
@@ -323,6 +327,8 @@ function Guide({ t, onGo }) {
         >
           <p>{t('Lentani stikerga yopishtiring, konvertni qo‘shing va do‘konga bering. ARALASH solsangiz ham to‘g‘ri ishlaydi — tartibni saqlash shart emas.')}</p>
           <p>{t('Juftlik xaridor stikerga tekkizganda hosil bo‘ladi: stiker o‘z manzilini faollashtirish sahifasiga olib boradi, xaridor konvertdagi kodni kiritadi va aynan QO‘LIDAGI stiker profilga bog‘lanadi.')}</p>
+          <p>{t('Bog‘lanish AVTOMATIK. Xaridor tekkizganda ekranda «NFC stiker ulandi» yozuvi chiqadi va sahifa o‘zi davom etadi — hech qanday tugma bosish shart emas.')}</p>
+          <p>{t('Konvertdagi QR dan boshlagan odam ham stikerini bog‘lay oladi: kodni kiritib bo‘lgach 7 kun ichida stikerga tekkizsa yetarli. Kodning o‘zi ruxsat beradi, ya’ni boshqa brauzerdan yoki boshqa telefondan tekkizsa ham ishlaydi.')}</p>
         </GuideStep>
       </AdminCard>
 
@@ -330,11 +336,35 @@ function Guide({ t, onGo }) {
         <div className="mk-gd-art mk-gd-art-wide"><ArtBuyer /></div>
         <ol className="mk-gd-ol">
           <li>{t('Stikerga telefonini tegizadi (yoki NFC o‘qimasa — konvertdagi QR ni skanerlaydi).')}</li>
-          <li>{t('NFCSTORE‘ga kiradi yoki ro‘yxatdan o‘tadi.')}</li>
           <li>{t('Konvertdagi aktivatsiya kodini kiritadi.')}</li>
           <li>{t('Shaxsiy yoki Biznes profilni tanlaydi.')}</li>
+          <li>{t('Ro‘yxatdan o‘tadi — bitta tugma. Tugagach AYNAN shu joyga qaytadi, kod qayta so‘ralmaydi.')}</li>
+          <li>{t('Qaysi ID ga bog‘lashni tanlaydi. «Yangi profil ochish» yo‘q: ro‘yxatdan o‘tishning o‘zi ID beradi.')}</li>
           <li>{t('Tayyor. Endi har tegizganda o‘sha profil ochiladi.')}</li>
         </ol>
+        <p className="mk-gd-warn">
+          {t('QADAMLAR TARTIBI ATAYLAB SHUNDAY: avval kod, keyin profil turi, eng oxirida ro‘yxatdan o‘tish. Odam nima olayotganini ko‘rmasdan turib parol o‘ylab topishga majbur bo‘lmaydi.')}
+        </p>
+      </AdminCard>
+
+      {/* SINOV — ALOHIDA BO'LIM.
+          Birinchi partiya chiqishidan oldin oqim o'nlab marta
+          sinaladi. Sinov kodlari haqiqiy sotuv raqamlariga
+          qo'shilib ketsa, statistika ma'nosini yo'qotadi. */}
+      <AdminCard title={t('Sinov ishlari statistikaga kirmasligi uchun')}>
+        <p className="mk-gd-lead">
+          {t('Oqimni sinash uchun ochilgan mahsulotni «Sinov» deb belgilang — uning BARCHA kodlari statistikadan chiqadi. Hech narsa o‘chirilmaydi: belgi olinsa hammasi qaytadi.')}
+        </p>
+        <ol className="mk-gd-ol">
+          <li>{t('«Mahsulotlar» bo‘limiga o‘ting.')}</li>
+          <li>{t('Sinov uchun ishlatgan mahsulot qatorida «Sinov deb belgilash» tugmasini bosing.')}</li>
+          <li>{t('«Statistika» bo‘limi o‘sha zahoti faqat haqiqiy sotuvni ko‘rsatadi.')}</li>
+        </ol>
+        <p>{t('Yangi mahsulot ochayotganda esa formadagi «Sinov mahsuloti» katagini belgilang — shunda kodlari statistikaga bir marta ham kirmaydi.')}</p>
+        <p>{t('«Aktivatsiya kodlari» ro‘yxati esa standart holda HAMMASINI ko‘rsatadi — sinov kodini topa olmaslik ishni to‘xtatib qo‘yardi. Kerak bo‘lsa «Sinov» filtridan «Faqat haqiqiy» yoki «Faqat sinov» ni tanlang.')}</p>
+        <p className="mk-gd-warn">
+          {t('Shaxsiy sinov akkauntingizni «Foydalanuvchilar» bo‘limida «Sinov» deb belgilang: u holda o‘sha akkaunt faollashtirgan kodlar ham hisobga kirmaydi.')}
+        </p>
       </AdminCard>
 
       <AdminCard title={t('Tez-tez so‘raladigan savollar')}>
@@ -369,6 +399,12 @@ function Guide({ t, onGo }) {
           <dt>{t('Xaridor profilini almashtirsa, chipni qayta yozishim kerakmi?')}</dt>
           <dd>{t('Yo‘q. Chipda profil manzili emas, token yozilgan. Profil almashsa stiker yangisiga ergashadi.')}</dd>
 
+          <dt>{t('Statistikadagi raqamlar sinovlarim bilan aralashib ketdi. Nima qilaman?')}</dt>
+          <dd>{t('Sinov uchun ishlatgan mahsulotni «Mahsulotlar» bo‘limida «Sinov deb belgilash» tugmasi bilan belgilang. Uning kodlari statistikadan chiqadi, lekin bazada qoladi — belgini olsangiz qaytadi. Statistika tepasida nechta yozuv chiqarilgani va «Sinov bilan ko‘rsatish» tugmasi turadi.')}</dd>
+
+          <dt>{t('Avtomobil stikerini shishaga qo‘ysam ishlaydimi?')}</dt>
+          <dd>{t('Ha, shisha NFC ni to‘smaydi — metall to‘sadi. Lekin uch narsaga e’tibor bering: (1) oltin rang FOLGA bilan bosilmasin, folga ham metall va signalni to‘sadi — oddiy bo‘yoq bilan bosiladi; (2) mashinaning metall qoplamali tonirovkasi ham to‘sishi mumkin; (3) stiker oynaning ICHIGA yopishtiriladi, ya’ni bosma teskari bo‘lishi kerak. Ko‘p buyurtma berishdan oldin 2 ta bilan haqiqiy oynada sinab ko‘ring.')}</dd>
+
           <dt>{t('SKU nima uchun kerak?')}</dt>
           <dd>{t('Do‘kondagi tovar artikuli. Buyurtmalarni CSV dan yuklaganda tizim SKU bo‘yicha qaysi mahsulot ekanini taniydi va noto‘g‘ri mahsulotga yozilishining oldini oladi. Do‘kon bilan ishlamasangiz bo‘sh qoldirsangiz ham bo‘ladi.')}</dd>
         </dl>
@@ -378,17 +414,48 @@ function Guide({ t, onGo }) {
 }
 
 // ── STATISTIKA ───────────────────────────────────────────────────────
+// SINOV YOZUVLARI BU YERGA KIRMAYDI.
+//
+// Egasining so'rovi: birinchi 100 stiker chiqishidan oldin oqim
+// o'nlab marta sinaladi va "NFC-TEST" kabi mahsulotlarning kodlari
+// haqiqiy sotuv raqamlarini ko'rsatmay qo'yardi.
+//
+// Hech narsa O'CHIRILMAYDI — mahsulotga "Sinov" belgisi qo'yiladi
+// (Mahsulotlar bo'limida bitta tugma) va uning kodlari hisobdan
+// chiqadi. Belgi olinsa hammasi qaytadi.
+//
+// Nechta yozuv chiqarilgani OCHIQ yoziladi va bir bosishda ko'rsatiladi:
+// raqam jim yo'qolsa, "kodlarim qayoqqa ketdi?" degan savol tug'ilardi.
 function Dashboard({ adminApi, t, catalog }) {
   const [data, setData] = useState(null);
   const [err, setErr] = useState(null);
-  const load = () => { setErr(null); setData(null); return adminApi('/marketplace/stats').then(setData).catch(setErr); };
-  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const [withTest, setWithTest] = useState(false);
+  const load = (inc = withTest) => {
+    setErr(null); setData(null);
+    return adminApi(`/marketplace/stats${inc ? '?includeTest=1' : ''}`).then(setData).catch(setErr);
+  };
+  useEffect(() => { load(withTest); }, [withTest]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (err) return <LoadError err={err} onRetry={load} title={t('Statistikani yuklab bo‘lmadi.')} />;
+  if (err) return <LoadError err={err} onRetry={() => load(withTest)} title={t('Statistikani yuklab bo‘lmadi.')} />;
   if (!data) return <AdminLoading />;
   const c = data.counts || {};
+  const excluded = Number(data.testExcluded || 0);
   return (
     <div className="space-y-5">
+      {excluded > 0 && (
+        <div className="mk-testnote">
+          <span>
+            {data.includeTest
+              ? t('Sinov yozuvlari ham sanalyapti.')
+              : t('Sinov yozuvlari hisobga olinmadi.')}
+            {' '}
+            <b>{excluded}</b>{' '}{t('ta sinov kodi')} — {t('“Mahsulotlar” bo‘limida “Sinov” belgisi bilan.')}
+          </span>
+          <button type="button" className="btn btn-xs" onClick={() => setWithTest((v) => !v)}>
+            {withTest ? t('Sinovsiz ko‘rsatish') : t('Sinov bilan ko‘rsatish')}
+          </button>
+        </div>
+      )}
       <div className="mk-kpis">
         <KpiCard icon="tag" label={t('Jami kod')} value={data.total ?? 0} />
         <KpiCard icon="check" label={t('Faollashtirilgan')} value={c.activated ?? 0} tone="success" />
@@ -448,7 +515,7 @@ function Dashboard({ adminApi, t, catalog }) {
 
 // ── MAHSULOTLAR ──────────────────────────────────────────────────────
 function Products({ adminApi, t, isManager, products, err, reload, apiErrText, catalog }) {
-  const [form, setForm] = useState({ name: '', sku: '', externalSku: '', marketplace: 'uzum', physicalType: 'nfc_sticker', includedTier: 'auto', price: '', description: '' });
+  const [form, setForm] = useState({ name: '', sku: '', externalSku: '', marketplace: 'uzum', physicalType: 'nfc_sticker', includedTier: 'auto', price: '', description: '', isTest: false });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -457,7 +524,7 @@ function Products({ adminApi, t, isManager, products, err, reload, apiErrText, c
     setBusy(true); setMsg(null);
     try {
       await adminApi('/marketplace/products', { method: 'POST', body: JSON.stringify({ ...form, price: form.price === '' ? null : Number(form.price) }) });
-      setForm({ name: '', sku: '', externalSku: '', marketplace: 'uzum', physicalType: 'nfc_sticker', includedTier: 'auto', price: '', description: '' });
+      setForm({ name: '', sku: '', externalSku: '', marketplace: 'uzum', physicalType: 'nfc_sticker', includedTier: 'auto', price: '', description: '', isTest: false });
       setMsg({ ok: true, text: t('Mahsulot qo‘shildi.') });
       await reload();
     } catch (e) {
@@ -467,6 +534,14 @@ function Products({ adminApi, t, isManager, products, err, reload, apiErrText, c
 
   const toggle = async (p) => {
     try { await adminApi(`/marketplace/products/${p.id}`, { method: 'PATCH', body: JSON.stringify({ active: !p.active }) }); await reload(); }
+    catch (e) { setMsg({ ok: false, text: apiErrText(e, t) }); }
+  };
+
+  // SINOV BELGISI. Bitta bosish — mahsulotning BARCHA kodlari
+  // statistikadan chiqadi (yoki qaytadi). Hech narsa o'chirilmaydi,
+  // shuning uchun tasdiq so'ralmaydi: xato bosilsa qaytarib bosiladi.
+  const toggleTest = async (p) => {
+    try { await adminApi(`/marketplace/products/${p.id}`, { method: 'PATCH', body: JSON.stringify({ isTest: !p.isTest }) }); await reload(); }
     catch (e) { setMsg({ ok: false, text: apiErrText(e, t) }); }
   };
 
@@ -511,6 +586,13 @@ function Products({ adminApi, t, isManager, products, err, reload, apiErrText, c
             </label>
             <label><span>{t('Narx (ichki, ixtiyoriy)')}</span><input className="vz-input" type="number" min="0" value={form.price} onChange={set('price')} /></label>
             <label className="mk-wide"><span>{t('Tavsif (ixtiyoriy)')}</span><input className="vz-input" value={form.description} onChange={set('description')} /></label>
+            {/* SINOV MAHSULOTI. Oqimni tekshirish uchun ochilgan
+                mahsulot shu belgi bilan yaratilsa, uning kodlari
+                statistikaga BIR MARTA HAM kirmaydi. */}
+            <label className="mk-wide mk-check">
+              <input type="checkbox" className="checkbox checkbox-sm" checked={form.isTest} onChange={(e) => setForm((f) => ({ ...f, isTest: e.target.checked }))} />
+              <span>{t('Sinov mahsuloti — kodlari statistikaga kirmaydi')}</span>
+            </label>
           </div>
           <button className="btn btn-gold mt-3 w-full sm:w-auto" disabled={busy || !form.name.trim() || !form.sku.trim()} onClick={create}>
             {busy ? <span className="loading loading-spinner loading-xs" /> : t('Mahsulot qo‘shish')}
@@ -536,11 +618,17 @@ function Products({ adminApi, t, isManager, products, err, reload, apiErrText, c
                       <td className="text-xs">{t(labelOf(catalog.marketplaces, p.marketplace))}</td>
                       <td className="text-xs">{t(labelOf(catalog.physicalTypes, p.physicalType))}</td>
                       <td className="text-xs uppercase">{p.includedTier}</td>
-                      <td><StatusBadge tone={p.active ? 'success' : 'muted'}>{p.active ? t('Faol') : t('Nofaol')}</StatusBadge></td>
+                      <td>
+                        <div className="flex flex-wrap items-center gap-1">
+                          <StatusBadge tone={p.active ? 'success' : 'muted'}>{p.active ? t('Faol') : t('Nofaol')}</StatusBadge>
+                          {p.isTest && <StatusBadge tone="pending">{t('Sinov')}</StatusBadge>}
+                        </div>
+                      </td>
                       {isManager && (
                         <td>
                           <div className="mk-row-actions">
                             <button type="button" className="btn btn-xs" onClick={() => toggle(p)}>{p.active ? t('O‘chirish') : t('Yoqish')}</button>
+                            <button type="button" className="btn btn-xs" onClick={() => toggleTest(p)}>{p.isTest ? t('Sinovdan chiqarish') : t('Sinov deb belgilash')}</button>
                             <button type="button" className="btn btn-xs" onClick={() => setExternal(p)}>{t('Marketplace SKU')}</button>
                           </div>
                         </td>
@@ -1016,7 +1104,10 @@ function BatchResult({ batch, t, onDone, adminApi, apiErrText }) {
 function Codes({ adminApi, t, isManager, products, apiErrText, catalog }) {
   const [rows, setRows] = useState(null);
   const [err, setErr] = useState(null);
-  const [filters, setFilters] = useState({ search: '', status: '', marketplace: '', productId: '', profileKind: '' });
+  // `test` — ro'yxat standart holda HAMMASINI ko'rsatadi (statistikadan
+  // farqli). Sabab: statistikada sinov shovqin, ro'yxatda esa ish
+  // quroli — sinov kodini topa olmaslik ishni to'xtatardi.
+  const [filters, setFilters] = useState({ search: '', status: '', marketplace: '', productId: '', profileKind: '', test: '' });
   const [msg, setMsg] = useState(null);
 
   const query = useMemo(() => {
@@ -1094,6 +1185,13 @@ function Codes({ adminApi, t, isManager, products, apiErrText, catalog }) {
               <option value="business">{t('Biznes')}</option>
             </select>
           </label>
+          <label><span>{t('Sinov')}</span>
+            <select className="vz-input" value={filters.test} onChange={setF('test')}>
+              <option value="">{t('Hammasi')}</option>
+              <option value="real">{t('Faqat haqiqiy')}</option>
+              <option value="only">{t('Faqat sinov')}</option>
+            </select>
+          </label>
         </div>
         <p className="mk-hint mt-2">
           {t('Qidiruvga TO‘LIQ kod kiritsangiz aniq topiladi. Bazada to‘liq kod yo‘q — ro‘yxatda faqat oxirgi 4 belgi ko‘rinadi.')}
@@ -1120,7 +1218,10 @@ function Codes({ adminApi, t, isManager, products, apiErrText, catalog }) {
                   {rows.map((r) => (
                     <tr key={r.id}>
                       <td className="font-mono text-xs font-bold">{r.codeMasked}</td>
-                      <td className="font-mono text-xs">{r.sku}</td>
+                      <td className="font-mono text-xs">
+                        {r.sku}
+                        {r.isTest && <span className="mk-testtag">{t('sinov')}</span>}
+                      </td>
                       <td className="text-xs">{t(labelOf(catalog.marketplaces, r.marketplace))}</td>
                       <td className="font-mono text-xs">{r.deviceTokenTail ? `…${r.deviceTokenTail}` : '—'}</td>
                       <td><StatusBadge tone={STATUS_TONE[r.status] || 'muted'}>{r.status}</StatusBadge></td>

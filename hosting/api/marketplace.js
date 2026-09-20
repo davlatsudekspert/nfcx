@@ -243,6 +243,33 @@ async function prepareMarketplaceTables(env) {
   // EXISTS mavjud jadvalni O'ZGARTIRMAYDI).
   await env.DB.prepare(`ALTER TABLE marketplace_products ADD COLUMN external_sku TEXT`).run()
     .catch(() => { /* ustun allaqachon bor */ });
+  // SINOV MAHSULOTI — STATISTIKADAN CHIQADI, LEKIN O'CHIRILMAYDI.
+  //
+  // Egasining qoidasi butun admin panelida bir xil: "o'zimiz qilgan
+  // ishlar statistikaga kirmasin" (`users.is_test` / `is_internal`).
+  // Marketplace'da sinov AKKAUNT bilan emas, MAHSULOT bilan o'lchanadi:
+  // yangi oqim tekshirilayotganda "NFC-TEST" kabi mahsulot ochiladi va
+  // unga o'nlab kod yaratiladi. O'sha kodlar haqiqiy sotuvga aralashib
+  // ketardi.
+  //
+  // NIMA UCHUN O'CHIRISH EMAS: o'chirish qaytarib bo'lmaydigan amal va
+  // sinov tarixi ham kerak bo'ladi (qaysi kod qachon sinalgan). Belgi
+  // olinsa — hammasi hisobga qaytadi.
+  await env.DB.prepare(`ALTER TABLE marketplace_products ADD COLUMN is_test INTEGER NOT NULL DEFAULT 0`).run()
+    .catch(() => { /* ustun allaqachon bor */ });
+}
+
+// SINOVNI HISOBDAN CHIQARADIGAN SHART — BITTA JOYDA.
+//
+// Ikki manba: mahsulotning o'zi sinov deb belgilangan, YOKI kodni
+// faollashtirgan odam sinov/ichki akkaunt (butun admin panelidagi
+// `TEST_USER_IDS_D1` bilan AYNAN bir xil shart).
+//
+// `p.` — `marketplace_products`, `a.` — `marketplace_activations`
+// taxalluslari; ikkalasi JOIN qilingan so'rovlarda ishlatiladi.
+function notTestSql(H) {
+  const users = H.TEST_USER_IDS_D1 || '(SELECT id FROM users WHERE is_test = 1 OR is_internal = 1)';
+  return `(COALESCE(p.is_test, 0) = 0 AND (a.activated_by_user_id IS NULL OR a.activated_by_user_id NOT IN ${users}))`;
 }
 
 function productOut(r) {
@@ -252,6 +279,7 @@ function productOut(r) {
     externalSku: r.external_sku || '',
     price: r.price == null ? null : Number(r.price),
     description: r.description || '', active: !!r.active, createdAt: r.created_at,
+    isTest: !!r.is_test,
   };
 }
 
@@ -266,6 +294,9 @@ function activationOut(r) {
     productId: Number(r.product_id),
     productName: r.product_name || '',
     sku: r.sku || '',
+    // Ro'yxatda "Sinov" nishoni — qator qaysi mahsulotdan kelganini
+    // SKU dan emas, belgidan bilish uchun.
+    isTest: !!r.product_is_test,
     marketplace: r.marketplace || '',
     physicalType: r.physical_type || '',
     deviceId: r.physical_device_id == null ? null : Number(r.physical_device_id),
@@ -284,6 +315,7 @@ function activationOut(r) {
 
 const ACTIVATION_SELECT = `
   SELECT a.*, p.name AS product_name, p.sku, p.marketplace, p.physical_type,
+         p.is_test AS product_is_test,
          pc.chip_token, u.email AS activated_by_email
     FROM marketplace_activations a
     LEFT JOIN marketplace_products p ON p.id = a.product_id
@@ -577,11 +609,14 @@ export async function handle(request, env, url, H) {
       // shakl TALAB QILINMAYDI, faqat uzunligi cheklanadi.
       const externalSku = H.shortText(body.externalSku, 80).toUpperCase();
       const price = body.price == null || body.price === '' ? null : Math.max(0, Math.round(Number(body.price)) || 0);
+      // SINOV MAHSULOTI — yaratilayotgandayoq belgilanadi, shunda
+      // sinov kodlari statistikaga BIR MARTA HAM kirmaydi.
+      const isTest = body.isTest === true ? 1 : 0;
       try {
         const row = await env.DB.prepare(
-          `INSERT INTO marketplace_products (name, sku, marketplace, physical_type, included_tier, external_sku, price, description, active, created_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING *`
-        ).bind(name, sku, marketplace, physicalType, includedTier, externalSku || null, price, H.shortText(body.description, 600), body.active === false ? 0 : 1, H.nowTs()).first();
+          `INSERT INTO marketplace_products (name, sku, marketplace, physical_type, included_tier, external_sku, price, description, active, is_test, created_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?) RETURNING *`
+        ).bind(name, sku, marketplace, physicalType, includedTier, externalSku || null, price, H.shortText(body.description, 600), body.active === false ? 0 : 1, isTest, H.nowTs()).first();
         await H.logAdminActivity(env, { action: 'marketplace_product_created', details: `${sku} — ${name}`, ip });
         return H.json({ product: productOut(row) }, 201);
       } catch (err) {
@@ -599,17 +634,25 @@ export async function handle(request, env, url, H) {
       // uchun keyin ham qo'yish mumkin. Bo'sh satr — tozalash.
       const hasSku = typeof body.externalSku === 'string';
       const externalSku = hasSku ? H.shortText(body.externalSku, 80).toUpperCase() : null;
-      if (active == null && !hasSku) return H.json({ error: 'nothing_to_update' }, 422);
+      // SINOV BELGISI — KEYIN HAM QO'YILADI VA OLINADI.
+      //
+      // Sinov ko'pincha oldindan rejalashtirilmaydi: mahsulot oddiy
+      // qilib ochiladi, keyin u bilan oqim tekshiriladi. Shuning uchun
+      // belgi mavjud mahsulotga ham qo'yiladi — bitta bosishda uning
+      // BARCHA kodlari hisobdan chiqadi (va qaytariladi).
+      const isTest = body.isTest === true ? 1 : body.isTest === false ? 0 : null;
+      if (active == null && !hasSku && isTest == null) return H.json({ error: 'nothing_to_update' }, 422);
       const row = await env.DB.prepare(
         `UPDATE marketplace_products
             SET active = COALESCE(?, active),
+                is_test = COALESCE(?, is_test),
                 external_sku = CASE WHEN ? THEN ? ELSE external_sku END
           WHERE id = ? RETURNING *`
-      ).bind(active, hasSku ? 1 : 0, externalSku || null, id).first();
+      ).bind(active, isTest, hasSku ? 1 : 0, externalSku || null, id).first();
       if (!row) return H.json({ error: 'not_found' }, 404);
       await H.logAdminActivity(env, {
         action: 'marketplace_product_updated',
-        details: `${row.sku}${active == null ? '' : ` active=${active}`}${hasSku ? ` external=${externalSku || '—'}` : ''}`,
+        details: `${row.sku}${active == null ? '' : ` active=${active}`}${isTest == null ? '' : ` test=${isTest}`}${hasSku ? ` external=${externalSku || '—'}` : ''}`,
         ip,
       });
       return H.json({ product: productOut(row) });
@@ -698,6 +741,15 @@ export async function handle(request, env, url, H) {
       if (from) { where.push('a.created_at >= ?'); bind.push(from); }
       const to = H.shortText(q.get('to'), 40);
       if (to) { where.push('a.created_at <= ?'); bind.push(to); }
+      // SINOV FILTRI — RO'YXATDA OCHIQ TANLOV.
+      //
+      // Statistikadan farqli o'laroq ro'yxat standart holda HAMMASINI
+      // ko'rsatadi. Sabab: statistikada sinov shovqin, ro'yxatda esa
+      // ish quroli — sinov kodini topa olmaslik ishni to'xtatardi.
+      // Kerak bo'lganda "Faqat haqiqiy" yoki "Faqat sinov" tanlanadi.
+      const testMode = q.get('test') || '';
+      if (testMode === 'real') where.push(notTestSql(H));
+      else if (testMode === 'only') where.push(`NOT ${notTestSql(H)}`);
 
       // QIDIRUV. Aktivatsiya kodi bo'yicha qidirishda TO'LIQ kod
       // berilsa xesh bo'yicha aniq topiladi; qisqa matn berilsa
@@ -722,13 +774,34 @@ export async function handle(request, env, url, H) {
 
     // ── STATISTIKA ────────────────────────────────────────────────
     if (path === '/api/admin/marketplace/stats' && method === 'GET') {
-      const [byStatus, byMarketplace, byProduct, byKind] = await Promise.all([
-        env.DB.prepare(`SELECT status, COUNT(*) AS n FROM marketplace_activations GROUP BY status`).all(),
-        env.DB.prepare(`SELECT p.marketplace AS k, COUNT(*) AS n FROM marketplace_activations a LEFT JOIN marketplace_products p ON p.id = a.product_id GROUP BY p.marketplace`).all(),
+      // SINOV YOZUVLARI STANDART HOLDA HISOBGA KIRMAYDI.
+      //
+      // Sabab (egasining so'rovi): birinchi 100 stiker chiqishidan
+      // oldin oqim o'nlab marta sinaladi va o'sha kodlar "Jami kod",
+      // "Faollashtirilgan", "Shaxsiy/Biznes" raqamlariga qo'shilib,
+      // haqiqiy sotuvni ko'rsatmay qo'yadi.
+      //
+      // `?includeTest=1` — sinov bilan BIRGA ko'rsatadi (panelda
+      // tugmasi bor). Hech narsa o'chirilmaydi, faqat sanalmaydi.
+      const includeTest = url.searchParams.get('includeTest') === '1';
+      const notTest = notTestSql(H);
+      const keep = includeTest ? '1 = 1' : notTest;
+      // Har bir so'rov `marketplace_products` ga JOIN qiladi — shart
+      // `p.is_test` ni ko'rishi kerak. Ilgari `byStatus` va `byKind`
+      // JOINsiz edi.
+      const FROM = `FROM marketplace_activations a LEFT JOIN marketplace_products p ON p.id = a.product_id`;
+      const [byStatus, byMarketplace, byProduct, byKind, testCount] = await Promise.all([
+        env.DB.prepare(`SELECT a.status AS status, COUNT(*) AS n ${FROM} WHERE ${keep} GROUP BY a.status`).all(),
+        env.DB.prepare(`SELECT p.marketplace AS k, COUNT(*) AS n ${FROM} WHERE ${keep} GROUP BY p.marketplace`).all(),
         env.DB.prepare(`SELECT p.sku AS k, p.name AS name, COUNT(*) AS n,
             SUM(CASE WHEN a.status = 'activated' THEN 1 ELSE 0 END) AS activated
-          FROM marketplace_activations a LEFT JOIN marketplace_products p ON p.id = a.product_id GROUP BY p.sku, p.name`).all(),
-        env.DB.prepare(`SELECT activated_profile_kind AS k, COUNT(*) AS n FROM marketplace_activations WHERE status = 'activated' GROUP BY activated_profile_kind`).all(),
+          ${FROM} WHERE ${keep} GROUP BY p.sku, p.name`).all(),
+        env.DB.prepare(`SELECT a.activated_profile_kind AS k, COUNT(*) AS n ${FROM}
+          WHERE a.status = 'activated' AND ${keep} GROUP BY a.activated_profile_kind`).all(),
+        // Nechta yozuv hisobdan chiqarilgani — panel buni ochiq
+        // yozadi. Raqam JIM yo'qolsa, "kodlarim qayoqqa ketdi?"
+        // degan savol tug'ilardi.
+        env.DB.prepare(`SELECT COUNT(*) AS n ${FROM} WHERE NOT ${notTest}`).first(),
       ]);
       const counts = {};
       for (const s of STATUSES) counts[s] = 0;
@@ -738,6 +811,7 @@ export async function handle(request, env, url, H) {
       for (const r of byKind.results || []) if (r.k === 'personal' || r.k === 'business') kinds[r.k] = Number(r.n);
       return H.json({
         total, counts, profileKinds: kinds,
+        includeTest, testExcluded: Number(testCount?.n || 0),
         byMarketplace: (byMarketplace.results || []).map((r) => ({ marketplace: r.k || 'other', count: Number(r.n) })),
         byProduct: (byProduct.results || []).map((r) => ({ sku: r.k || '', name: r.name || '', count: Number(r.n), activated: Number(r.activated || 0) })),
       });

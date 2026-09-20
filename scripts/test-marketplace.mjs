@@ -33,7 +33,7 @@ const jsonOf = async (res) => { try { return await res.json(); } catch { return 
 // davomida BIR MARTA ishlaydi (`coreSchemaReady` — modul darajasidagi
 // promise), shuning uchun bitta test faylida ikkinchi baza yaratib
 // bo'lmaydi: ikkinchisida admin jadvallari umuman yaratilmasdi.
-const { env: DB_ENV } = makeEnv();
+const { env: DB_ENV, sqlite: DB_SQLITE } = makeEnv();
 await seedBasic(DB_ENV);
 
 // HAR BO'LIM O'Z IP SI BILAN. Tezlik chegarasi (rateLimitD1) bazada
@@ -1523,9 +1523,46 @@ function gatedEnv(env, sqlNeedle) {
   // Admin paneldagi umumiy reset raqamlarni yo'q qilardi.
   checkTrue('24) ro‘yxat raqamlari tiklangan', /\.mk-gd-ol\{list-style:decimal/.test(css));
 
+  // QO'LLANMA HAQIQATAN NIMA BO'LAYOTGANINI YOZADIMI.
+  //
+  // Eskirgan qo'llanma yo'qidan ham yomon: odam unga ishonib
+  // noto'g'ri ish qiladi. Bu yerdagi shartlar OXIRGI o'zgarishlarni
+  // qo'riqlaydi — ular qaytarilsa yoki qo'llanma eskirsa, test
+  // yiqiladi.
+  //
+  // 1) Xaridor qadamlari TARTIBI: kod -> profil turi -> ro'yxat.
+  //    Ilgari qo'llanmada kirish IKKINCHI qadam edi va bu endi
+  //    noto'g'ri.
+  const buyerSteps = tab.slice(tab.indexOf('Xaridor nima qiladi'), tab.indexOf('Tez-tez so‘raladigan'));
+  const iCode = buyerSteps.indexOf('aktivatsiya kodini kiritadi');
+  const iKind = buyerSteps.indexOf('Shaxsiy yoki Biznes profilni tanlaydi');
+  const iReg = buyerSteps.indexOf('Ro‘yxatdan o‘tadi');
+  checkTrue('24) qadamlar: kod -> profil turi -> ro‘yxatdan o‘tish',
+    iCode > 0 && iKind > iCode && iReg > iKind);
+  checkTrue('24) tartib sababi tushuntirilgan', /QADAMLAR TARTIBI ATAYLAB/.test(tab));
+  // 2) "Yangi profil ochish" OLIB TASHLANDI — qo'llanma ham shuni aytadi.
+  checkTrue('24) "yangi profil ochish yo‘q" aytilgan',
+    /«Yangi profil ochish» yo‘q/.test(tab));
+  // 3) Bog'lanish AVTOMATIK va tasdiq ko'rinadi.
+  checkTrue('24) avtomatik bog‘lanish aytilgan', /Bog‘lanish AVTOMATIK/.test(tab));
+  checkTrue('24) "NFC stiker ulandi" tasdig‘i aytilgan', /«NFC stiker ulandi»/.test(tab));
+  // 4) QR dan boshlagan odam ham bog'laydi — 7 kunlik oyna.
+  checkTrue('24) QR yo‘li va 7 kun aytilgan', /7 kun ichida stikerga tekkizsa/.test(tab));
+  // 5) Muddat tugmalari va eng kam 2 ta kod.
+  checkTrue('24) muddat tanlovi aytilgan', /«Doimiy» \(muddatsiz\)/.test(tab));
+  checkTrue('24) eng kam 2 ta kod aytilgan', /Eng kami — 2 ta kod/.test(tab));
+  // 6) SINOV BO'LIMI — statistikani tozalashning yagona yo'li.
+  checkTrue('24) sinov bo‘limi bor', /Sinov ishlari statistikaga kirmasligi uchun/.test(tab));
+  checkTrue('24) sinov belgisi qanday qo‘yilishi aytilgan', /«Sinov deb belgilash» tugmasini bosing/.test(tab));
+  checkTrue('24) hech narsa o‘chirilmasligi aytilgan', /Hech narsa o‘chirilmaydi: belgi olinsa hammasi qaytadi/.test(tab));
+  // 7) Oynaga yopishtirish — folga va tonirovka ogohlantirishi.
+  checkTrue('24) shisha savoli bor', /shishaga qo‘ysam ishlaydimi/.test(tab));
+  checkTrue('24) folga ogohlantirishi bor', /FOLGA bilan bosilmasin/.test(tab));
+
   // Tarjimalar: uch tilda ham bo'lsin.
   const tr = read('../src/lib/translations.admin.js');
-  for (const key of ['Qanday ishlaydi — qisqacha', 'Sizning ishingiz — 3 qadam', 'SKU nima uchun kerak?']) {
+  for (const key of ['Qanday ishlaydi — qisqacha', 'Sizning ishingiz — 3 qadam', 'SKU nima uchun kerak?',
+    'Sinov ishlari statistikaga kirmasligi uchun', 'Sinov bilan ko‘rsatish', 'Avtomobil stikerini shishaga qo‘ysam ishlaydimi?']) {
     const re = new RegExp(`'${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}': \\{ ru: '[^']+', en: '[^']+' \\}`);
     checkTrue(`24) tarjima: ${key}`, re.test(tr));
   }
@@ -2068,6 +2105,90 @@ function gatedEnv(env, sqlNeedle) {
   // MEHMON HAM SABABNI KO'RADI. Kirish endi shart emas, shuning
   // uchun urinish sessiyaga bog'liq emas.
   checkTrue('27) sabab mehmonga ham', !/!deviceToken \|\| !user \|\| result/.test(page));
+}
+
+// ── 28) SINOV YOZUVLARI STATISTIKAGA KIRMAYDI ────────────────────────
+//
+// Egasining qoidasi butun admin panelida bir xil: "o'zimiz qilgan
+// ishlar statistikaga kirmasin". Marketplace'da sinov MAHSULOT bilan
+// o'lchanadi — oqim tekshirilayotganda "NFC-TEST" kabi mahsulot
+// ochiladi va unga o'nlab kod yaratiladi.
+//
+// NIMA QO'RIQLANADI:
+//   a) sinov mahsulotining kodlari HAMMA kesimdan chiqadi (jami,
+//      holatlar, marketplace, mahsulot, profil turi) — ilgari
+//      `byStatus` va `byKind` so'rovlari JOINsiz edi, ya'ni ular
+//      filtrni UMUMAN ko'rmasdi;
+//   b) hech narsa o'chirilmaydi — belgi olinsa hammasi qaytadi;
+//   c) sinov akkaunti faollashtirgan kod ham chiqadi (butun admin
+//      panelidagi `is_test`/`is_internal` bilan AYNAN bir xil shart);
+//   d) ro'yxat esa standart holda HAMMASINI ko'rsatadi.
+{
+  const env = await setup();
+  const base = await jsonOf(await call(env, '/api/admin/marketplace/stats', { cookie: cookie.admin }));
+
+  // Sinov mahsuloti — YARATILAYOTGANDAYOQ belgilanadi.
+  const test = await makeProduct(env, { sku: 'NFC-TEST-28', marketplace: 'yandex', isTest: true });
+  checkTrue('28) sinov belgisi saqlandi', test.isTest === true);
+  await makeCodes(env, test.id, 3);
+
+  const s1 = await jsonOf(await call(env, '/api/admin/marketplace/stats', { cookie: cookie.admin }));
+  check('28) jami o‘zgarmadi', s1.total - base.total, 0);
+  check('28) "new" holati o‘zgarmadi', (s1.counts.new || 0) - (base.counts.new || 0), 0);
+  checkTrue('28) mahsulot kesimida yo‘q', !s1.byProduct.some((p) => p.sku === 'NFC-TEST-28'));
+  check('28) nechtasi chiqarilgani aytiladi', s1.testExcluded >= 3, true);
+
+  // HECH NARSA O'CHIRILMADI — `includeTest=1` bilan hammasi joyida.
+  const s2 = await jsonOf(await call(env, '/api/admin/marketplace/stats?includeTest=1', { cookie: cookie.admin }));
+  check('28) sinov bilan jami +3', s2.total - base.total, 3);
+  checkTrue('28) sinov bilan mahsulot kesimida bor', s2.byProduct.some((p) => p.sku === 'NFC-TEST-28'));
+
+  // RO'YXAT standart holda hammasini ko'rsatadi (statistikadan farqli).
+  const all = await jsonOf(await call(env, '/api/admin/marketplace/activations?productId=' + test.id, { cookie: cookie.admin }));
+  check('28) ro‘yxatda standart holda ko‘rinadi', all.activations.length, 3);
+  checkTrue('28) qatorda sinov nishoni bor', all.activations.every((r) => r.isTest === true));
+  const real = await jsonOf(await call(env, '/api/admin/marketplace/activations?test=real&productId=' + test.id, { cookie: cookie.admin }));
+  check('28) "faqat haqiqiy" sinovni yashiradi', real.activations.length, 0);
+  const only = await jsonOf(await call(env, '/api/admin/marketplace/activations?test=only&productId=' + test.id, { cookie: cookie.admin }));
+  check('28) "faqat sinov" sinovni beradi', only.activations.length, 3);
+
+  // BELGI OLINSA — HAMMASI QAYTADI.
+  const back = await jsonOf(await call(env, `/api/admin/marketplace/products/${test.id}`, {
+    method: 'PATCH', cookie: cookie.admin, json: { isTest: false },
+  }));
+  check('28) belgi olindi', back.product.isTest, false);
+  const s3 = await jsonOf(await call(env, '/api/admin/marketplace/stats', { cookie: cookie.admin }));
+  check('28) belgi olingach jami +3', s3.total - base.total, 3);
+
+  // Oddiy mahsulotga KEYIN belgi qo'yish ham ishlaydi.
+  const again = await jsonOf(await call(env, `/api/admin/marketplace/products/${test.id}`, {
+    method: 'PATCH', cookie: cookie.admin, json: { isTest: true },
+  }));
+  check('28) keyin ham belgilanadi', again.product.isTest, true);
+
+  // SINOV AKKAUNTI — HAQIQIY mahsulotdagi kodi ham hisobga kirmaydi.
+  const realProduct = await makeProduct(env, { sku: 'UZ-REAL-28' });
+  const madeCodes = await makeCodes(env, realProduct.id, 2);
+  const before = await jsonOf(await call(env, '/api/admin/marketplace/stats', { cookie: cookie.admin }));
+  const mineBefore = before.byProduct.find((p) => p.sku === 'UZ-REAL-28')?.count || 0;
+  check('28) haqiqiy mahsulot sanaladi', mineBefore, 2);
+  // Kodni user#2 faollashtirgandek qilamiz va o'sha akkauntni
+  // "sinov" deb belgilaymiz — butun admin panelidagi shart.
+  const firstId = (await jsonOf(await call(env, '/api/admin/marketplace/activations?productId=' + realProduct.id, { cookie: cookie.admin }))).activations[0].id;
+  DB_SQLITE.prepare(`UPDATE marketplace_activations SET activated_by_user_id = 2 WHERE id = ?`).run(firstId);
+  DB_SQLITE.prepare(`UPDATE users SET is_test = 1 WHERE id = 2`).run();
+  const after = await jsonOf(await call(env, '/api/admin/marketplace/stats', { cookie: cookie.admin }));
+  check('28) sinov akkaunti kodi chiqdi', after.byProduct.find((p) => p.sku === 'UZ-REAL-28')?.count, 1);
+  DB_SQLITE.prepare(`UPDATE users SET is_test = 0 WHERE id = 2`).run();
+  checkTrue('28) kodlar yaratilgan edi', (madeCodes.codes || []).length === 2);
+
+  // FILTR BITTA JOYDAN. Nusxa paydo bo'lsa, `is_internal` qo'shilganda
+  // biri yangilanib biri qolib ketardi — aynan shunday xato bo'lgan.
+  const src = read('../hosting/api/marketplace.js');
+  check('28) shart bitta funksiyada', (src.match(/^function notTestSql\(/gm) || []).length, 1);
+  checkTrue('28) foydalanuvchi ro‘yxati worker\'dan keladi', /H\.TEST_USER_IDS_D1/.test(src));
+  const worker = read('../hosting/worker.js');
+  checkTrue('28) worker uni modullarga beradi', /\n  TEST_USER_IDS_D1,\n\};/.test(worker));
 }
 
 done();
