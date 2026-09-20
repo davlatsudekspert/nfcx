@@ -452,11 +452,27 @@ export async function handle(request, env, url, H) {
   // yo'q, yaqinda faollashtirilgan kodi bo'lishi shart. Kod — pul
   // to'langanining isboti, tegizish esa — stiker QO'LDA ekanining.
   if (path === '/api/activate/attach-sticker' && method === 'POST') {
-    const user = await H.getCurrentUser(request, env);
-    if (!user) return H.json({ error: 'unauthorized' }, 401);
     const body = await readJson();
     const token = H.shortText(body.deviceToken, 64).replace(/[^A-Za-z0-9_-]/g, '');
     if (!token) return H.json({ error: 'device_token_required' }, 422);
+    // KOD BERILSA — SESSIYA UMUMAN KERAK EMAS.
+    //
+    // Bu eng ko'p uchragan nosozlikni yopadi: odam QR ni bir
+    // brauzerda ochadi, stikerga tekkizganda esa telefon havolani
+    // BOSHQA brauzerda ochadi. U yerda sessiya yo'q yoki boshqa
+    // hisob — va bog'lash rad etilardi, garchi odamning qo'lida
+    // ham KOD, ham STIKER bo'lsa ham.
+    //
+    // Ikkala isbot ham kodda jamlangan: KOD — konvert ochilgani va
+    // pul to'langanining isboti, TEGIZISH — stiker qo'ldaligining.
+    // Sessiya bularning hech biriga qo'shimcha ishonch bermaydi.
+    //
+    // Qurilma kodni FAOLLASHTIRGAN odamga yoziladi, so'rov
+    // yuborganga emas — shuning uchun begona odam kodni topib
+    // olsa ham o'ziga hech narsa ololmaydi.
+    const rawCode = H.shortText(body.code, 32);
+    const user = await H.getCurrentUser(request, env);
+    if (!user && !rawCode) return H.json({ error: 'unauthorized' }, 401);
 
     // Faqat EGASIZ va hech qayerga bog'lanmagan stiker.
     const dev = await env.DB.prepare(
@@ -470,14 +486,34 @@ export async function handle(request, env, url, H) {
     // Muddat cheklovi zarar doirasini yopadi: hisob o'g'irlansa ham
     // eski, unutilgan kod orqali begona stiker egallab bo'lmaydi.
     const since = new Date(Date.now() - ATTACH_WINDOW_MS).toISOString();
-    const act = await env.DB.prepare(
-      `SELECT id, activated_profile_kind AS kind, activated_profile_code AS code
-         FROM marketplace_activations
-        WHERE activated_by_user_id = ? AND status = 'activated'
-          AND physical_device_id IS NULL AND activated_at >= ?
-        ORDER BY activated_at DESC LIMIT 1`
-    ).bind(String(user.id), since).first().catch(() => null);
+    let act = null;
+    if (rawCode) {
+      // Kod bo'yicha. Taxmin qilishdan himoya — mavjud tezlik
+      // chegarasi (`activate` limiti bilan bir xil hisob).
+      if (await isRateLimited(env, H, request, 'activate')) return H.json({ error: 'rate_limited' }, 429);
+      const normalized = normalizeActivationCode(rawCode);
+      if (normalized) {
+        const hash = await activationCodeHash(H, normalized);
+        act = await env.DB.prepare(
+          `SELECT id, activated_by_user_id AS uid, activated_profile_kind AS kind, activated_profile_code AS code
+             FROM marketplace_activations
+            WHERE code_hash = ? AND status = 'activated'
+              AND physical_device_id IS NULL AND activated_at >= ?`
+        ).bind(hash, since).first().catch(() => null);
+      }
+    }
+    if (!act?.id && user) {
+      act = await env.DB.prepare(
+        `SELECT id, activated_by_user_id AS uid, activated_profile_kind AS kind, activated_profile_code AS code
+           FROM marketplace_activations
+          WHERE activated_by_user_id = ? AND status = 'activated'
+            AND physical_device_id IS NULL AND activated_at >= ?
+          ORDER BY activated_at DESC LIMIT 1`
+      ).bind(String(user.id), since).first().catch(() => null);
+    }
     if (!act?.id) return H.json({ error: 'no_pending_activation' }, 409);
+    // EGA — KODNI FAOLLASHTIRGAN ODAM, so'rov yuborgan emas.
+    const ownerId = act.uid;
 
     // BITTA G'OLIB. Ikki oyna bir vaqtda tegizsa ham kod bitta
     // stikerni oladi: yozuv FAQAT hali bo'sh qatorga tushadi.
@@ -491,7 +527,7 @@ export async function handle(request, env, url, H) {
     const bound = await env.DB.prepare(
       `UPDATE physical_cards SET owner_user_id = ?, linked_code = ?, linked_company_id = ?, active = 1
         WHERE id = ? AND owner_user_id IS NULL RETURNING id`
-    ).bind(user.id, personal ? act.code : null, personal ? null : act.code, dev.id).first().catch(() => null);
+    ).bind(ownerId, personal ? act.code : null, personal ? null : act.code, dev.id).first().catch(() => null);
     if (!bound) {
       // Oraliqda birov egallab ulgurdi — kodni bo'sh qoldiramiz,
       // aks holda u boshqa stikerni ololmay qolardi.

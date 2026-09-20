@@ -142,13 +142,15 @@ export default function ActivatePage() {
   // Endi: sahifa ochilganda ham, odam KIRGANDAN KEYIN ham urinib
   // ko'riladi. Kirish o'zi yetarli — kodni qayta terish shart emas,
   // chunki u allaqachon ishlatilgan.
-  const tryAttach = useCallback(async () => {
+  // `withCode` — odam kodni QO'LDA kiritganda. Shunda sessiya
+  // umuman kerak emas: kodning o'zi konvert ochilganining isboti.
+  const tryAttach = useCallback(async (withCode = '') => {
     if (!deviceToken) return null;
     try {
       const r = await fetch('/api/activate/attach-sticker', {
         method: 'POST',
         headers: { 'content-type': 'application/json', accept: 'application/json' },
-        body: JSON.stringify({ deviceToken }),
+        body: JSON.stringify(withCode ? { deviceToken, code: withCode } : { deviceToken }),
       });
       const d = await r.json().catch(() => null);
       if (r.ok && d?.redirect) { clearDevice(); navigate(d.redirect, { replace: true }); return 'ok'; }
@@ -197,6 +199,14 @@ export default function ActivatePage() {
     e.preventDefault();
     setErr(''); setBusy(true);
     try {
+      // STIKER TEKKIZILGAN BO'LSA — AVVAL BOG'LASHGA URINAMIZ.
+      //
+      // Kod allaqachon ishlatilgan bo'lishi MUMKIN va bu normal:
+      // odam QR bilan faollashtirgan, endi stikerini bog'lamoqda.
+      // Ilgari bu yerda "Bu kod allaqachon faollashtirilgan" degan
+      // XATO chiqardi va odam boshi berk ko'chaga tushardi —
+      // qo'lida ham kod, ham stiker bo'lsa ham.
+      if (deviceToken && (await tryAttach(code)) === 'ok') { storeCode(''); return; }
       const data = await dbActivateCheck(code);
       if (data?.alreadyActivated) {
         // KOD ALLAQACHON ISHLATILGAN — LEKIN SHU ODAM TOMONIDAN.
@@ -206,7 +216,6 @@ export default function ActivatePage() {
         // kiritmoqda. Ilgari bu yerda faqat natija ko'rsatilardi,
         // STIKER esa bog'lanmay qolardi — ya'ni odam to'g'ri ish
         // qilsa ham mahsuloti ishlamasdi.
-        if (deviceToken && (await tryAttach()) === 'ok') return;
         setResult(data.result); storeCode(''); clearDevice(); return;
       }
       setProduct(data.product);

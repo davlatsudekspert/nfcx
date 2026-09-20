@@ -1850,8 +1850,71 @@ function gatedEnv(env, sqlNeedle) {
   check('27) eski urinishda stiker bo‘sh qoldi',
     (await env.DB.prepare(`SELECT owner_user_id AS uid FROM physical_cards WHERE chip_token = ?`).bind(b2.codes[1].chipToken).first()).uid, null);
 
+  // ── KOD BILAN BOG'LASH: SESSIYA KERAK EMAS ────────────
+  //
+  // ENG KO'P UCHRAGAN NOSOZLIK. Odam QR ni bir brauzerda ochadi,
+  // stikerga tekkizganda esa telefon havolani BOSHQA brauzerda
+  // ochadi — u yerda sessiya yo'q yoki boshqa hisob. Qo'lida ham
+  // kod, ham stiker bo'lsa ham bog'lash rad etilardi.
+  //
+  // Ikkala isbot kodda jamlangan, sessiya qo'shimcha ishonch
+  // bermaydi — shuning uchun kod berilsa u talab qilinmaydi.
+  const b3 = await makeCodes(env, product.id, 2);
+  const buyer4 = await newBuyer('buyer4');
+  await call(env, '/api/activate', {
+    method: 'POST', cookie: buyer4.cookie, json: { code: b3.codes[0].code, profileKind: 'personal' },
+  });
+  const prof4 = (await rowOfCode(env, b3.codes[0].code, 'activated_profile_code AS p')).p;
+
+  // MEHMON (sessiyasiz) kod bilan bog'laydi.
+  const byCode = await call(env, '/api/activate/attach-sticker', {
+    method: 'POST', json: { deviceToken: b3.codes[1].chipToken, code: b3.codes[0].code },
+  });
+  check('27) kod bilan sessiyasiz bog‘landi', byCode.status, 200);
+  check('27) to‘g‘ri profilga', (await jsonOf(byCode)).profileCode, prof4);
+  // EGA — KODNI FAOLLASHTIRGAN ODAM, so'rov yuborgan emas.
+  check('27) ega kodning egasi',
+    Number((await env.DB.prepare(`SELECT owner_user_id AS uid FROM physical_cards WHERE chip_token = ?`).bind(b3.codes[1].chipToken).first()).uid),
+    buyer4.id);
+
+  // BEGONA HISOB KOD BILAN URINSA — STIKER BARIBIR KOD EGASIGA.
+  //
+  // Aks holda kimdir tashlab yuborilgan konvertdagi kodni topib,
+  // bo'sh stikerni O'ZIGA yozib olardi. Endi kod faqat kimga
+  // tegishli bo'lsa, stiker ham o'shanga boradi.
+  const b5 = await makeCodes(env, product.id, 2);
+  const owner5 = await newBuyer('owner5');
+  const strang = await newBuyer('stranger');
+  await call(env, '/api/activate', {
+    method: 'POST', cookie: owner5.cookie, json: { code: b5.codes[0].code, profileKind: 'personal' },
+  });
+  const grab = await call(env, '/api/activate/attach-sticker', {
+    method: 'POST', cookie: strang.cookie,
+    json: { deviceToken: b5.codes[1].chipToken, code: b5.codes[0].code },
+  });
+  check('27) begona hisob bilan ham bog‘lanadi', grab.status, 200);
+  check('27) LEKIN ega — kodning egasi',
+    Number((await env.DB.prepare(`SELECT owner_user_id AS uid FROM physical_cards WHERE chip_token = ?`).bind(b5.codes[1].chipToken).first()).uid),
+    owner5.id);
+  checkTrue('27) begona o‘ziga olmadi',
+    Number((await env.DB.prepare(`SELECT owner_user_id AS uid FROM physical_cards WHERE chip_token = ?`).bind(b5.codes[1].chipToken).first()).uid) !== strang.id);
+
+  // NOTO'G'RI KOD ISH BERMAYDI.
+  const b4 = await makeCodes(env, product.id, 1);
+  check('27) noto‘g‘ri kod rad etiladi',
+    (await call(env, '/api/activate/attach-sticker', { method: 'POST', json: { deviceToken: b4.codes[0].chipToken, code: 'NF-XXXX-XXXX' } })).status, 409);
+  // FAOLLASHTIRILMAGAN kod ham ish bermaydi — aks holda sotilmagan
+  // konvertdagi kod bilan stiker egallab olish mumkin bo'lardi.
+  check('27) faollashtirilmagan kod ish bermaydi',
+    (await call(env, '/api/activate/attach-sticker', { method: 'POST', json: { deviceToken: b4.codes[0].chipToken, code: b4.codes[0].code } })).status, 409);
+
   // ── MANBA QOIDALARI ──────────────────────────────
   const mk = stripComments(read('../hosting/api/marketplace.js'));
+  // Kod bo'yicha qidiruv taxmin qilishdan himoyalangan.
+  checkTrue('27) kod bo‘yicha urinish cheklanadi',
+    /attach-sticker[\s\S]{0,1400}isRateLimited\(env, H, request, 'activate'\)/.test(mk));
+  checkTrue('27) faqat faollashgan kod qabul qilinadi',
+    /code_hash = \? AND status = 'activated'/.test(mk));
   checkTrue('27) faqat egasiz stiker olinadi',
     /attach-sticker[\s\S]{0,900}owner_user_id IS NULL AND \(linked_code IS NULL OR linked_code = ''\)/.test(mk));
   checkTrue('27) sotib olganlik isboti talab qilinadi',
@@ -1918,8 +1981,12 @@ function gatedEnv(env, sqlNeedle) {
   // stikerga tekkizgan va kodini qayta kiritmoqda. Ilgari bu yerda
   // faqat natija ko'rsatilardi, STIKER esa bog'lanmay qolardi —
   // ya'ni odam hamma ishni TO'G'RI qilsa ham mahsuloti ishlamasdi.
+  // Kod kiritilganda AVVAL bog'lashga urinamiz — "allaqachon
+  // faollashtirilgan" xatosi chiqmasdan OLDIN.
   checkTrue('27) ishlatilgan kod stikerni bog‘laydi',
-    /alreadyActivated[\s\S]{0,700}deviceToken && \(await tryAttach\(\)\) === 'ok'/.test(page));
+    /deviceToken && \(await tryAttach\(code\)\) === 'ok'/.test(page));
+  checkTrue('27) urinish tekshiruvdan OLDIN',
+    page.indexOf("tryAttach(code)") < page.indexOf('dbActivateCheck(code)'));
 
   // ── SABAB JIM TUSHIB QOLMASIN ─────────────────────
   //
