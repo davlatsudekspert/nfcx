@@ -673,4 +673,49 @@ function gatedEnv(env, sqlNeedle) {
   checkTrue('15) sahifada kompaniya YARATISH so‘rovi yo‘q', !/\/api\/companies/.test(page));
 }
 
+// ── 16) ADMIN BO'LIMI — MANBA QOIDALARI ──────────────────────────────
+// Bo'lim brauzerda alohida sinaladi (35 tekshiruv + CSV/chop etish).
+// Bu yerda faqat oqibati OG'IR bo'lgan qoidalar.
+{
+  const tab = stripComments(read('../src/components/admin/MarketplaceTab.jsx'));
+  const admin = stripComments(read('../src/pages/AdminPage.jsx'));
+
+  checkTrue('16) bo‘lim admin panelga ulangan', /tab === 22 && <MarketplaceTab/.test(admin));
+  checkTrue('16) menyuda "Marketplace" bor', /\{ index: 22, label: 'Marketplace'/.test(admin));
+  // `adminApi` PROP orqali — import qilinsa aylanma bog'liqlik.
+  checkTrue('16) adminApi prop orqali keladi', /export default function MarketplaceTab\(\{ adminApi/.test(tab));
+  checkTrue('16) AdminPage dan import qilinmaydi', !/from '\.\.\/\.\.\/pages\/AdminPage/.test(tab));
+
+  // TO'LIQ KOD: faqat yaratilgan zahoti. Ro'yxat MASKALANGANNI
+  // ko'rsatadi va admin buni ochiq o'qiydi.
+  checkTrue('16) ro‘yxatda maskalangan kod', /\{r\.codeMasked\}/.test(tab));
+  checkTrue('16) ro‘yxatda to‘liq kod chizilmaydi', !/\{r\.code\}/.test(tab));
+  checkTrue('16) chip token faqat dumi', /\{r\.deviceTokenTail \? `…\$\{r\.deviceTokenTail\}` : '—'\}/.test(tab));
+  checkTrue('16) kodlar bir marta ko‘rinishi aytiladi', /BOSHQA KO‘RSATILMAYDI/.test(tab));
+  checkTrue('16) tasdiqsiz yopib bo‘lmaydi', /disabled=\{!acked\}/.test(tab));
+
+  // FAOLLASHTIRILGAN KOD UCHUN ODDIY "RESET" YO'Q.
+  checkTrue('16) reset tugmasi yo‘q', !/'reset'/.test(tab));
+  checkTrue('16) qayta taqsimlash sabab so‘raydi', /reason\.trim\(\)\.length < 10/.test(tab));
+  checkTrue('16) qayta taqsimlash tasdiq so‘raydi', /window\.confirm\(/.test(tab));
+  checkTrue('16) faollashgan kodda faqat qayta taqsimlash', /r\.status === 'activated' \? \(/.test(tab));
+
+  // QR ichida FAQAT sahifa manzili — kodning o'zi emas. Konvert
+  // ochilmasdan skanerlansa kod sizib chiqardi.
+  checkTrue('16) QR da faqat /activate manzili', /QRCode\.toDataURL\(`\$\{origin\}\/activate`/.test(tab));
+  checkTrue('16) QR ichiga kod yozilmaydi', !/toDataURL\([^)]*c\.code/.test(tab));
+  // `qrcode` OG'IR — faqat chop etish bosilganda yuklanadi.
+  checkTrue('16) qrcode faqat kerak bo‘lganda yuklanadi', /await import\('qrcode'\)/.test(tab));
+
+  // Jadvallar o'z o'ramida suriladi — aks holda 360px telefonda
+  // BUTUN sahifa ufqiy surilardi (brauzerda o'lchangan xato).
+  const tables = (tab.match(/<table className="table table-sm">/g) || []).length;
+  const wrappers = (tab.match(/<div className="overflow-x-auto">/g) || []).length;
+  check('16) har jadval o‘z o‘ramida', wrappers, tables);
+
+  // `?tab=` chuqur havolasi — izohda VA'DA qilingan edi, endi rost.
+  checkTrue('16) ?tab= chuqur havolasi ishlaydi', /new URLSearchParams\(window\.location\.search\)\.get\('tab'\)/.test(admin));
+  checkTrue('16) noto‘g‘ri tab raqami rad etiladi', /n >= 0 && n < TABS\.length \? n : 0/.test(admin));
+}
+
 done();

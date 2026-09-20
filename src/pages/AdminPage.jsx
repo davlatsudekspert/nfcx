@@ -7,6 +7,7 @@ import {
 import { fmt, timeAgo, dateTime } from '../lib/format.js';
 import { adminPreviewUrl, adminCompanyPreviewUrl } from '../lib/preview.js';
 import { useLanguage } from '../lib/i18n.jsx';
+import MarketplaceTab from '../components/admin/MarketplaceTab.jsx';
 import { useCategories, catPath } from '../lib/categories.js';
 import { idTier, effectiveAccess } from '../lib/access.js';
 import { TIER_LABEL } from '../lib/pricing.js';
@@ -280,7 +281,7 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
 // bo'limning sarlavhasi siljib ketadi va menyu boshqa sahifani
 // ochadi. Bo'limni yashirish uchun uni faqat `ADMIN_NAV` dan oling:
 // bo'limning o'zi joyida qoladi va indekslar buzilmaydi.
-const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika', 'Security', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar', 'Kategoriyalar', 'Tasdiqlash', 'Talab', 'Moliya', 'Kompaniyalar', 'Trafik', 'Shikoyatlar'];
+const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika', 'Security', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar', 'Kategoriyalar', 'Tasdiqlash', 'Talab', 'Moliya', 'Kompaniyalar', 'Trafik', 'Shikoyatlar', 'Marketplace'];
 
 function StatsTab() {
   const { t } = useLanguage();
@@ -4491,6 +4492,9 @@ const ADMIN_NAV = [
   { index: 8, label: 'Bildirishnomalar', icon: 'bell' },
   { index: 9, label: 'Tashqi analitika', icon: 'activity' },
   { index: 12, label: 'Gift NFC ID', icon: 'gift' },
+  // MARKETPLACE / AKTIVATSIYA — Uzum Market va boshqa
+  // marketplace'larda sotilgan fizik NFC mahsulotlar.
+  { index: 22, label: 'Marketplace', icon: 'bag' },
   { index: 13, label: 'Promokodlar', icon: 'tag' },
   { index: 14, label: 'Yangiliklar', icon: 'news' },
   { index: 15, label: 'Kategoriyalar', icon: 'folder' },
@@ -4501,7 +4505,20 @@ const ADMIN_NAV = [
 
 function Dashboard({ onLogout, role, totpEnabled, refreshMe }) {
   const { t } = useLanguage();
-  const [tab, setTab] = useState(0);
+  // `?tab=N` — CHUQUR HAVOLA.
+  //
+  // Bu imkoniyat menyudan olib tashlangan bo'limlar izohida
+  // ("/admin?tab=5 orqali baribir ochiladi") allaqachon VA'DA
+  // QILINGAN edi, lekin amalda yozilmagandi: manzil o'qilmas va
+  // sahifa har doim birinchi bo'limda ochilardi. Endi va'da rost.
+  //
+  // Faqat mavjud bo'lim raqami qabul qilinadi — noto'g'ri qiymat
+  // bilan bo'sh ekran chiqmaydi.
+  const [tab, setTab] = useState(() => {
+    if (typeof window === 'undefined') return 0;
+    const n = Number(new URLSearchParams(window.location.search).get('tab'));
+    return Number.isInteger(n) && n >= 0 && n < TABS.length ? n : 0;
+  });
   const [secSub, setSecSub] = useState(null);
   const logout = async () => { try { await adminApi('/logout', { method: 'POST' }); } catch { /* baribir chiqamiz */ } onLogout(); };
   const isSuperAdmin = role === 'super_admin';
@@ -4550,6 +4567,10 @@ function Dashboard({ onLogout, role, totpEnabled, refreshMe }) {
         {tab === 19 && <CompaniesTab />}
         {tab === 20 && <TrafficTab />}
         {tab === 21 && <ReportsTab />}
+        {/* `adminApi`, `isManager` va `apiErrText` PROP orqali beriladi:
+            ular shu faylda va MarketplaceTab ularni import qilsa
+            aylanma bog'liqlik hosil bo'lardi. */}
+        {tab === 22 && <MarketplaceTab adminApi={adminApi} isManager={isManager} apiErrText={apiErrText} />}
       </div>
     </AdminShell>
     </AdminCtx.Provider>
