@@ -6,7 +6,7 @@
 //
 //   node scripts/test-e2e-marker.mjs
 import { makeChecker } from './lib/d1-harness.mjs';
-import { isE2eTestCaption, isDeletableE2ePost } from './lib/e2e-marker.js';
+import { isE2eTestCaption, isDeletableE2ePost, isDeletableE2eStory, isExpired } from './lib/e2e-marker.js';
 
 const { check, checkTrue, done } = makeChecker();
 
@@ -91,6 +91,37 @@ const { check, checkTrue, done } = makeChecker();
   const owned = ['VIP001', 'TTS075'];
   const picked = posts.filter((p) => isDeletableE2ePost(p, owned)).map((p) => p.id);
   check('4) aynan uchtasi tanlandi', picked, [1, 3, 5]);
+}
+
+// ── 5) STORY UCHUN HAM AYNAN SHU QOIDA ───────────────────────────────
+{
+  const cap = 'NOVA E2E TEST — DELETE · story · 2026-09-19T10:00:00Z';
+  checkTrue('5) story markeri taniladi', isE2eTestCaption(cap));
+  checkTrue('5) o‘z storysi — nomzod',
+    isDeletableE2eStory({ id: 1, code: 'VIP001', caption: cap }, ['VIP001']));
+  checkTrue('5) begona storyga TEGILMAYDI',
+    !isDeletableE2eStory({ id: 2, code: 'ZZZ999', caption: cap }, ['VIP001']));
+  checkTrue('5) haqiqiy storyga TEGILMAYDI',
+    !isDeletableE2eStory({ id: 3, code: 'VIP001', caption: 'Bugungi kun' }, ['VIP001']));
+  checkTrue('5) izohsiz storyga TEGILMAYDI',
+    !isDeletableE2eStory({ id: 4, code: 'VIP001', caption: '' }, ['VIP001']));
+}
+
+// ── 6) MUDDAT — ALOHIDA VA EHTIYOTKOR SHART ──────────────────────────
+// Sana o'qib bo'lmasa "o'tmagan" deb hisoblanadi: noaniq qiymat
+// tufayli haqiqiy story o'chib ketmasin.
+{
+  const now = Date.parse('2026-09-20T12:00:00Z');
+  checkTrue('6) kecha tugagan — o‘tgan', isExpired({ expiresAt: '2026-09-19T12:00:00Z' }, now));
+  checkTrue('6) bir soniya oldin — o‘tgan', isExpired({ expiresAt: '2026-09-20T11:59:59Z' }, now));
+  checkTrue('6) aynan hozir — o‘tgan', isExpired({ expiresAt: '2026-09-20T12:00:00Z' }, now));
+  checkTrue('6) bir soatdan keyin — O‘TMAGAN', !isExpired({ expiresAt: '2026-09-20T13:00:00Z' }, now));
+  // Noaniq qiymatlar — hech biri "o'tgan" deb hisoblanmaydi.
+  for (const v of [undefined, null, '', 'salom', '2026-13-45', 0, {}]) {
+    checkTrue(`6) noaniq (${JSON.stringify(v)}) — O‘TMAGAN deb hisoblanadi`,
+      !isExpired({ expiresAt: v }, now));
+  }
+  checkTrue('6) obyekt yo‘q — O‘TMAGAN', !isExpired(null, now));
 }
 
 done('E2E markeri');

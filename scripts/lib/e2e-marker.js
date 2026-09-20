@@ -40,4 +40,24 @@ export function isDeletableE2ePost(post, ownedCodes) {
   return !!code && owned.has(code);
 }
 
+// Story uchun ham AYNAN shu qoida. Story qatori ham `caption` va
+// (skript qo'shadigan) `code` maydoniga ega, shuning uchun mantiq
+// ikkiga bo'linmaydi: bo'lingan bo'lsa, biri qattiqroq, ikkinchisi
+// bo'shroq bo'lib qolish xavfi bor edi.
+export const isDeletableE2eStory = isDeletableE2ePost;
+export const isDeletableE2eItem = isDeletableE2ePost;
+
+// Muddati o'tganmi? Story 24 soatdan keyin ko'rinmasligi kerak.
+//
+// Bu ALOHIDA shart: muddati o'tgan story E2E bo'lishi ham, haqiqiy
+// bo'lishi ham mumkin — ikkalasi ham ko'rinmaydi va chegaraga
+// kirmaydi. Sana o'qib bo'lmasa "o'tmagan" deb hisoblaymiz: noaniq
+// qiymat tufayli haqiqiy story o'chib ketmasin.
+export function isExpired(item, now = Date.now()) {
+  const raw = item && item.expiresAt;
+  if (!raw) return false;
+  const ms = Date.parse(String(raw));
+  return Number.isNaN(ms) ? false : ms <= now;
+}
+
 export default isDeletableE2ePost;

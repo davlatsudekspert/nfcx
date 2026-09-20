@@ -148,6 +148,12 @@ jobs:
       - name: Story oqimi
         run: node scripts/test-story-flow.mjs
 
+      # ISTORYA QOIDALARI — 79 tekshiruv. Bu to'plam repoda bor edi,
+      # lekin deploy qo'riqchisiga ULANMAGAN edi. 24 soatlik muddat,
+      # egalik, daraja chegarasi va media manbai shu yerda.
+      - name: Istorya qoidalari
+        run: node scripts/test-stories.mjs
+
       # LENTA KATAGI — "son bor, rasm yo'q" holatining oldini oladi.
       #
       # Egasining xabari: VIP001 da "Stories 7" deb turardi, lekin
