@@ -73,6 +73,12 @@ void main() {
   NfcId? personal;
   NfcId? businessId;
 
+  /// Blok 3 yaratgan TEST post. Stage 1 bloki shuni qayta
+  /// ishlatadi: lenta kartasidagi amallar o'z postimizda
+  /// sinaladi, ya'ni begona kontentga umuman tegilmaydi.
+  int? feedPostId;
+  String? feedPostCode;
+
   /// FAIL qatorini oxirgi HTTP izi bilan yozadi.
   void fail(
     String name, {
@@ -686,6 +692,8 @@ void main() {
                 : null);
       case Ok(:final value):
         postId = value.id;
+        feedPostId = value.id;
+        feedPostCode = code;
         litter.trackResult(
             'post #${value.id}', () => social.deletePost(value.id));
         report.pass('Post create',
@@ -1139,7 +1147,13 @@ void main() {
 
   testWidgets('4. Follow / unfollow', (_) async {
     if (!hasSecondAccount) {
-      for (final r in ['Follow', 'Unfollow', 'Block']) {
+      for (final r in [
+        'Follow',
+        'Unfollow',
+        'Block',
+        'Lenta — begona muallifda Obuna bo\'lingan',
+        'Lenta — obuna yechilgandan keyin holat',
+      ]) {
         report.add(MatrixRow(
           name: r,
           verdict: Verdict.configRequired,
@@ -1213,6 +1227,35 @@ void main() {
               pathHint: '/api/follow-stats/');
         }
 
+        // ── Stage 1: lenta kartasidagi obuna HOLATI ─────────
+        //
+        // Karta "Obuna bo'lish" va "Obuna bo'lingan" ni
+        // `followList(men, type: 'following')` dan farqlaydi.
+        // Follow o'tgan bo'lsa, begona muallif kodi AYNAN shu
+        // ro'yxatda chiqishi kerak — aks holda tugma holatni
+        // emas, taxminni ko'rsatardi.
+        final myCode = personal?.code;
+        if (myCode == null) {
+          report.skip('Lenta — begona muallifda Obuna bo\'lingan',
+              'shaxsiy NFC ID yo\'q');
+        } else {
+          final fl = await profile.followList(myCode, type: 'following');
+          if (fl is Ok<List<NfcId>> &&
+              fl.value.any((e) => e.code == target.code)) {
+            report.pass('Lenta — begona muallifda Obuna bo\'lingan',
+                screen: 'FeedCard',
+                action: 'follow → following ro\'yxatida chiqishi',
+                note: 'karta «Obuna bo\'lingan» ko\'rsatadi');
+          } else {
+            fail('Lenta — begona muallifda Obuna bo\'lingan',
+                screen: 'FeedCard',
+                action: 'follow → following ro\'yxatida chiqishi',
+                cause: 'obuna bo\'lindi, lekin `following` ro\'yxatida '
+                    'YO\'Q — karta baribir «Obuna bo\'lish» ko\'rsatardi',
+                pathHint: '/follow-list');
+          }
+        }
+
         final u = await profile.unfollow(target.code);
         switch (u) {
           case Err(:final error):
@@ -1225,6 +1268,30 @@ void main() {
             report.pass('Unfollow',
                 screen: 'ProfileScreen',
                 action: 'unfollow → holat qaytdi');
+
+            // Obuna yechilgandan keyin ro'yxatdan HAM chiqsin:
+            // aks holda karta abadiy «Obuna bo'lingan» holatida
+            // qotib qolardi.
+            final back = myCode == null
+                ? null
+                : await profile.followList(myCode, type: 'following');
+            if (back == null) {
+              report.skip('Lenta — obuna yechilgandan keyin holat',
+                  'shaxsiy NFC ID yo\'q');
+            } else if (back is Ok<List<NfcId>> &&
+                !back.value.any((e) => e.code == target.code)) {
+              report.pass('Lenta — obuna yechilgandan keyin holat',
+                  screen: 'FeedCard',
+                  action: 'unfollow → ro\'yxatdan chiqishi',
+                  note: 'karta «Obuna bo\'lish» ga qaytadi');
+            } else {
+              fail('Lenta — obuna yechilgandan keyin holat',
+                  screen: 'FeedCard',
+                  action: 'unfollow → ro\'yxatdan chiqishi',
+                  cause: 'obuna yechildi, lekin `following` ro\'yxatida '
+                      'QOLDI — karta holatda qotib qolardi',
+                  pathHint: '/follow-list');
+            }
         }
     }
 
@@ -1705,6 +1772,293 @@ void main() {
   // ══════════════════════════════════════════════════════════════
   // YAKUN — chiqish va baho
   // ══════════════════════════════════════════════════════════════
+
+  // ══════════════════════════════════════════════════════════════
+  // 7b. STAGE 1 — LENTA KARTASIDAGI AMALLAR
+  //
+  // Lenta kartasi postni OCHMASDAN layk bosish, izohga o'tish,
+  // ulashish va obuna bo'lish imkonini beradi. Vidjet testlari
+  // buni SOXTA backend bilan qotirgan; bu yerda o'sha to'rt amal
+  // HAQIQIY serverda tekshiriladi.
+  //
+  // XAVFSIZLIK: hamma yozish amali O'Z test postimizda va
+  // IKKINCHI SINOV HISOBIDA bajariladi. Begona odamga obuna
+  // bo'linmaydi, begona kontent o'chirilmaydi.
+  // ══════════════════════════════════════════════════════════════
+
+  testWidgets('7b. Stage 1 — lenta kartasi amallari', (_) async {
+    const rows = [
+      'Lenta — like javob shakli',
+      'Lenta — like sanog\'i serverdan',
+      'Lenta — like holati qaytadi',
+      'Lenta ↔ Post tafsiloti mosligi',
+      'Lenta — izoh oqimi',
+      'Lenta — ulashish havolasi',
+      'Lenta — obuna urug\'i (following)',
+      'Lenta — o\'z postimda obuna YO\'Q',
+      'Lenta — Personal/Business aralashmaydi',
+    ];
+
+    final id = feedPostId;
+    final code = feedPostCode;
+    if (id == null || code == null) {
+      for (final r in rows) {
+        report.skip(r, 'test post yaratilmadi (blok 3 ga qarang)');
+      }
+      return;
+    }
+
+    // ── 1–3. LAYK: javob shakli, sanoq, qaytish ───────────────
+    //
+    // Stage 1 ning ASOSIY kontrakti. Ilgari `like()` server
+    // javobini o'qib, so'ng TASHLAB YUBORARDI va karta sanoqni
+    // o'zi taxmin qilardi. Endi server qaytargan sanoq
+    // o'rnatiladi, ya'ni boshqa qurilmadan bosilgan layklar ham
+    // hisobga olinadi.
+    final before = await social.postIn(code, id);
+    final likeRes = await social.like(id);
+
+    switch (likeRes) {
+      case Err(:final error):
+        fail('Lenta — like javob shakli',
+            screen: 'FeedCard',
+            action: 'POST /api/posts/:id/like',
+            cause: why(error),
+            pathHint: '/like');
+        report.skip('Lenta — like sanog\'i serverdan', 'like o\'tmadi');
+        report.skip('Lenta — like holati qaytadi', 'like o\'tmadi');
+        report.skip('Lenta ↔ Post tafsiloti mosligi', 'like o\'tmadi');
+      case Ok(:final value):
+        report.pass('Lenta — like javob shakli',
+            screen: 'FeedCard',
+            action: 'like → {liked, count}',
+            note: 'liked=${value.liked} count=${value.count}');
+
+        // Server qaytargan sanoq postni qayta o'qiganda AYNAN
+        // shunday chiqishi kerak. Farq bo'lsa karta yolg'on
+        // raqam ko'rsatardi.
+        final after = await social.postIn(code, id);
+        if (after is Ok<Post>) {
+          if (after.value.likes == value.count &&
+              after.value.liked == value.liked) {
+            report.pass('Lenta — like sanog\'i serverdan',
+                screen: 'FeedCard',
+                action: 'like javobi ↔ postni qayta o\'qish',
+                note: '${value.count} — ikkalasi mos');
+          } else {
+            fail('Lenta — like sanog\'i serverdan',
+                screen: 'FeedCard',
+                action: 'like javobi ↔ postni qayta o\'qish',
+                cause: 'like ${value.count}(${value.liked}) qaytardi, '
+                    'post esa ${after.value.likes}(${after.value.liked}) '
+                    '— karta yolg\'on sanoq ko\'rsatadi',
+                pathHint: '/like');
+          }
+
+          // ── Lenta ↔ Post tafsiloti ──────────────────────────
+          //
+          // Ikkala ekran bitta `postLikesProvider` dan o'qiydi.
+          // Backend tomondan buning sharti — lenta ishlatadigan
+          // ro'yxat endpointi va post tafsiloti endpointi BIR XIL
+          // sanoqni berishi.
+          final inList = await social.postsOf(code);
+          if (inList is Ok<List<Post>>) {
+            final row = inList.value.where((p) => p.id == id).firstOrNull;
+            if (row == null) {
+              partial('Lenta ↔ Post tafsiloti mosligi',
+                  screen: 'FeedCard / PostScreen',
+                  action: 'ro\'yxat ↔ tafsilot',
+                  cause: 'post ro\'yxatda topilmadi');
+            } else if (row.likes == after.value.likes &&
+                row.liked == after.value.liked) {
+              report.pass('Lenta ↔ Post tafsiloti mosligi',
+                  screen: 'FeedCard / PostScreen',
+                  action: 'ro\'yxat ↔ tafsilot',
+                  note: 'ikkala endpoint ${row.likes}(${row.liked})');
+            } else {
+              fail('Lenta ↔ Post tafsiloti mosligi',
+                  screen: 'FeedCard / PostScreen',
+                  action: 'ro\'yxat ↔ tafsilot',
+                  cause: 'ro\'yxat ${row.likes}(${row.liked}), tafsilot '
+                      '${after.value.likes}(${after.value.liked}) — ikki '
+                      'ekran bir postni boshqa-boshqacha ko\'rsatadi',
+                  pathHint: '/posts');
+            }
+          } else {
+            report.skip(
+                'Lenta ↔ Post tafsiloti mosligi', 'post ro\'yxati o\'qilmadi');
+          }
+        } else {
+          partial('Lenta — like sanog\'i serverdan',
+              screen: 'FeedCard',
+              action: 'like → qayta o\'qish',
+              cause: 'like o\'tdi, lekin postni qayta o\'qib bo\'lmadi');
+          report.skip('Lenta ↔ Post tafsiloti mosligi', 'post o\'qilmadi');
+        }
+
+        // ── Holatni QAYTARISH ────────────────────────────────
+        //
+        // Test o'zidan keyin iz qoldirmasin: laykni yechamiz va
+        // boshlang'ich sanoqqa qaytganini TEKSHIRAMIZ.
+        final undo = await social.like(id);
+        final start =
+            before is Ok<Post> ? before.value.likes : null;
+        if (undo is Ok<({bool liked, int count})>) {
+          if (start == null) {
+            partial('Lenta — like holati qaytadi',
+                screen: 'FeedCard',
+                action: 'like → qayta bosish',
+                cause: 'boshlang\'ich sanoq o\'qilmagan edi');
+          } else if (undo.value.count == start && !undo.value.liked) {
+            report.pass('Lenta — like holati qaytadi',
+                screen: 'FeedCard',
+                action: 'like → qayta bosish',
+                note: '$start ga qaytdi');
+          } else {
+            fail('Lenta — like holati qaytadi',
+                screen: 'FeedCard',
+                action: 'like → qayta bosish',
+                cause: 'boshlang\'ich $start edi, qaytgani '
+                    '${undo.value.count}(${undo.value.liked})',
+                pathHint: '/like');
+          }
+        } else {
+          fail('Lenta — like holati qaytadi',
+              screen: 'FeedCard',
+              action: 'like → qayta bosish',
+              cause: 'laykni yechib bo\'lmadi — test postda layk QOLDI',
+              pathHint: '/like');
+          report.cleanupProblem('post #$id da layk qolgan bo\'lishi mumkin');
+        }
+    }
+
+    // ── 5. IZOH OQIMI ─────────────────────────────────────────
+    //
+    // Karta "izoh" tugmasi post ekranini ochadi va o'sha yerdagi
+    // MAVJUD izoh oqimi ishlaydi. Backend tomondan sharti — shu
+    // post uchun izohlarni o'qib bo'lishi.
+    final cs = await social.comments('post', id);
+    switch (cs) {
+      case Err(:final error):
+        fail('Lenta — izoh oqimi',
+            screen: 'FeedCard → PostScreen',
+            action: 'GET /api/comments/post/:id',
+            cause: why(error),
+            pathHint: '/api/comments/');
+      case Ok(:final value):
+        report.pass('Lenta — izoh oqimi',
+            screen: 'FeedCard → PostScreen',
+            action: 'izoh tugmasi ochadigan oqim',
+            note: '${value.total} ta izoh');
+    }
+
+    // ── 6. ULASHISH HAVOLASI ──────────────────────────────────
+    //
+    // Karta `$kApiBase/<kod>` ni tizim varag'iga beradi. Havola
+    // TIRIK ekanini tekshiramiz — aks holda odam ulashgan manzil
+    // 404 bo'lardi.
+    try {
+      final client = HttpClient()
+        ..connectionTimeout = const Duration(seconds: 15);
+      final req = await client
+          .getUrl(Uri.parse('$kApiBase/${Uri.encodeComponent(code)}'));
+      req.followRedirects = true;
+      final res = await req.close();
+      await res.drain<void>();
+      client.close();
+      if (res.statusCode >= 200 && res.statusCode < 400) {
+        report.pass('Lenta — ulashish havolasi',
+            screen: 'FeedCard',
+            action: 'GET <baza>/:kod',
+            note: 'HTTP ${res.statusCode} — havola tirik');
+      } else {
+        fail('Lenta — ulashish havolasi',
+            screen: 'FeedCard',
+            action: 'GET <baza>/:kod',
+            cause: 'ulashiladigan manzil HTTP ${res.statusCode} qaytardi',
+            layer: 'backend');
+      }
+    } catch (e) {
+      partial('Lenta — ulashish havolasi',
+          screen: 'FeedCard',
+          action: 'GET <baza>/:kod',
+          cause: 'havolani tekshirib bo\'lmadi: ${redact('$e')}');
+    }
+
+    // ── 7. OBUNA URUG'I ───────────────────────────────────────
+    //
+    // Karta "Obuna bo'lish" va "Obuna bo'lingan" ni shu ro'yxatdan
+    // farqlaydi. Ro'yxat kelmasa tugma holatni emas, TAXMINNI
+    // ko'rsatardi — ya'ni allaqachon obuna bo'lgan odamda ham
+    // "Obuna bo'lish" turardi.
+    final mine = personal?.code;
+    if (mine == null) {
+      report.skip('Lenta — obuna urug\'i (following)', 'shaxsiy NFC ID yo\'q');
+    } else {
+      final fl = await profile.followList(mine, type: 'following');
+      switch (fl) {
+        case Err(:final error):
+          fail('Lenta — obuna urug\'i (following)',
+              screen: 'FeedCard',
+              action: 'GET /api/follow-list/:code?type=following',
+              cause: why(error),
+              pathHint: '/follow-list');
+        case Ok(:final value):
+          report.pass('Lenta — obuna urug\'i (following)',
+              screen: 'FeedCard',
+              action: 'obuna tugmasini urug\'lantiruvchi ro\'yxat',
+              note: '${value.length} ta obuna');
+      }
+    }
+
+    // ── 8. O'Z POSTIMDA OBUNA TUGMASI YO'Q ────────────────────
+    //
+    // Karta `isMineProvider` bo'yicha qaror qiladi: shaxsiy ID lar
+    // + kompaniyalarim. Backend tomondan sharti — test post kodi
+    // AYNAN shu to'plamda bo'lishi.
+    final companies = await business.mine();
+    final companyIds = companies is Ok<List<Business>>
+        ? companies.value.map((c) => c.companyId).toSet()
+        : <String>{};
+    final personalIds = ids.map((e) => e.code).toSet();
+    final mineSet = {...personalIds, ...companyIds};
+
+    if (mineSet.contains(code)) {
+      report.pass('Lenta — o\'z postimda obuna YO\'Q',
+          screen: 'FeedCard',
+          action: 'post kodi «meniki» to\'plamida',
+          note: '${personalIds.length} shaxsiy + '
+              '${companyIds.length} kompaniya');
+    } else {
+      fail('Lenta — o\'z postimda obuna YO\'Q',
+          screen: 'FeedCard',
+          action: 'post kodi «meniki» to\'plamida',
+          cause: 'o\'z postim kodi o\'z ID larim orasida YO\'Q — karta '
+              'o\'z postim ostida ham obuna tugmasini chizardi',
+          pathHint: '/api/companies/mine');
+    }
+
+    // ── 9. PERSONAL / BUSINESS ARALASHMASLIGI ─────────────────
+    if (companies is Err) {
+      report.skip('Lenta — Personal/Business aralashmaydi',
+          'kompaniyalar ro\'yxati o\'qilmadi');
+    } else {
+      final overlap = personalIds.intersection(companyIds);
+      if (overlap.isEmpty) {
+        report.pass('Lenta — Personal/Business aralashmaydi',
+            screen: 'FeedCard',
+            action: 'shaxsiy ID lar ∩ kompaniya ID lari',
+            note: 'kesishma yo\'q — ikki kontekst ajratilgan');
+      } else {
+        fail('Lenta — Personal/Business aralashmaydi',
+            screen: 'FeedCard',
+            action: 'shaxsiy ID lar ∩ kompaniya ID lari',
+            cause: '${overlap.length} ta kod ikkala ro\'yxatda ham bor — '
+                'kontekstlar aralashgan',
+            pathHint: '/api/companies/mine');
+      }
+    }
+  }, timeout: const Timeout(Duration(minutes: 5)));
 
   testWidgets('8. Chiqish va yakuniy baho', (_) async {
     // TOZALASH CHIQISHDAN OLDIN.
