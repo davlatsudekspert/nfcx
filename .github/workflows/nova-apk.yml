@@ -373,7 +373,25 @@ jobs:
       # Teg QAT'IY: `nova-latest`. Har qurilishda yangilanadi,
       # shuning uchun havola O'ZGARMAYDI — bir marta saqlab qo'yib,
       # keyin doim o'shani ochish mumkin.
+      # QURILISHNI YIQITMAYDI — ATAYLAB.
+      #
+      # Bu qadam APK'ni GitHub Release sifatida chiqaradi. Yuqorida
+      # `permissions: contents: write` yozilgan, LEKIN token baribir
+      # 403 ("Resource not accessible by integration") qaytarishi
+      # mumkin: repozitoriya sozlamasida Actions tokeni faqat
+      # o'qish uchun cheklangan bo'lsa, workflow'dagi ruxsat uni
+      # KENGAYTIRA OLMAYDI.
+      #
+      # APK'ning O'ZI esa allaqachon artefakt sifatida yuklangan
+      # (pastdagi `upload-artifact`) — ya'ni fayl bor, faqat
+      # Release sahifasida ko'rinmaydi. Shuning uchun bu qadam
+      # tufayli butun qurilishni qizil qilish noto'g'ri bo'lardi:
+      # odam "APK qurilmadi" deb o'ylab qolardi.
+      #
+      # Tuzatish (egasi uchun): Settings -> Actions -> General ->
+      # Workflow permissions -> "Read and write permissions".
       - name: Release — oxirgi qurilish
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
