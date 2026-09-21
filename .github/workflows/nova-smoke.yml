@@ -11,6 +11,11 @@ on:
         description: "Tekshiriladigan NFC kodi"
         required: false
         default: "VIP001"
+      email_test:
+        description: "Email OTP ni ham tekshirish (HAQIQIY xat yuboriladi)"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -211,3 +216,59 @@ jobs:
 
           [ "$fail" = "0" ] || { echo "::error::Smoke yiqildi — yuqoriga qarang."; exit 1; }
           echo "Smoke to'liq o'tdi."
+
+      # EMAIL OTP — ATAYLAB IXTIYORIY.
+      #
+      # Bu qadam HAQIQIY xat yuboradi, shuning uchun doimiy smoke'ga
+      # kiritilmadi: har tekshiruvda begona pochtaga xat yog'dirish
+      # Resend'dagi domen obro'sini tushiradi va tezlik cheklovini
+      # (bitta manzilga 10 daqiqada 3 ta) behuda yeydi.
+      #
+      # Manzil sifatida MAVJUD sinov hisobi ishlatiladi
+      # (`NFC_LOGIN_EMAIL`) — GitHub uni logda maskalaydi, ya'ni
+      # manzil ham, javobdagi hech narsa ham ochilmaydi. Kod
+      # javobda umuman qaytmaydi: u faqat xat ichida bo'ladi.
+      #
+      # Hisob YARATILMAYDI: bu faqat kod so'rash, ro'yxatdan o'tish
+      # emas.
+      - name: Email OTP — kod kanali
+        if: ${{ inputs.email_test }}
+        env:
+          TO: ${{ secrets.NFC_LOGIN_EMAIL }}
+        run: |
+          if [ -z "$TO" ]; then
+            echo "::error::NFC_LOGIN_EMAIL secret yo'q."; exit 1
+          fi
+          out=$(curl -sS --max-time 25 -X POST -w '\n<<<%{http_code}>>>' \
+            -H 'content-type: application/json' \
+            --data "$(printf '{"email":"%s"}' "$TO")" \
+            "https://nfcstore.uz/api/auth/request-register-code" || echo '<<<000>>>')
+          code="${out##*<<<}"; code="${code%%>>>*}"
+          body="${out%<<<*}"
+          # Javobdan FAQAT kanal nomi olinadi. Butun tanani chop
+          # etmaymiz: unda manzil bo'lishi mumkin.
+          channel=$(printf '%s' "$body" | sed -n 's/.*"channel":"\([a-z]*\)".*/\1/p')
+          # DIQQAT: `${var:-...}` ning ichida apostrof qo'shtirnoq
+          # bilan himoyalanmaydi — u yerda "yo'q" deb yozish butun
+          # skriptni sintaksis xatosiga olib keladi.
+          echo "HTTP $code | channel=${channel:-?}"
+          case "$channel" in
+            email)
+              echo "OK — server kodni EMAILGA yubordi."
+              echo "Resend so'rovni qabul qildi: aks holda 503 email_send_failed kelardi."
+              ;;
+            none)
+              echo "::error::channel=none — RESEND_API_KEY/RESEND_FROM jonli Workerda o'qilmadi."
+              exit 1 ;;
+            telegram)
+              echo "::error::channel=telegram — email yo'li tanlanmadi."
+              exit 1 ;;
+            *)
+              # Xato sababi MAXFIY EMAS: server faqat holat kodini
+              # beradi ("http_403" kabi), Resend matni yoki kalit
+              # hech qachon javobga tushmaydi.
+              reason=$(printf '%s' "$body" | sed -n 's/.*"reason":"\([a-z0-9_]*\)".*/\1/p')
+              err=$(printf '%s' "$body" | sed -n 's/.*"error":"\([a-z0-9_]*\)".*/\1/p')
+              echo "::error::HTTP $code error=${err:-?} reason=${reason:-?}"
+              exit 1 ;;
+          esac
