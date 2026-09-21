@@ -142,6 +142,51 @@ class NfcCenterScreen extends ConsumerWidget {
           ),
           const SizedBox(height: Gap.section),
 
+          // YANGI NFC ID OLISH — MAHSULOTNING ASOSIY AMALI.
+          //
+          // Aylanma chiplar ichiga qo'shilmadi: ular to'rttaga
+          // moslab o'lchangan va beshinchisi yorliqlarni bir-biriga
+          // tiqib qo'yardi (rus tilidagi uzun matnlar bilan ayniqsa).
+          // Bu esa eng muhim amal — u ko'rinib turishi va bosish
+          // oson bo'lishi kerak, shuning uchun alohida karta.
+          //
+          // Bosh sahifadagi "ID qidirish" ham AYNAN shu ekranni
+          // ochadi — ikkinchi katalog yo'q.
+          FloatingSurface(
+            solid: true,
+            onTap: () => context.push(Routes.nfcMarket),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: t.accent1.withValues(alpha: .18),
+                    borderRadius: R.tile,
+                  ),
+                  child: Icon(Icons.search_rounded, size: 22, color: t.accent1),
+                ),
+                const SizedBox(width: Gap.lg),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(l.idMarketTitle,
+                          style: Theme.of(context).textTheme.titleSmall),
+                      const SizedBox(height: 2),
+                      Text(l.idMarketSearchHint,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded, size: 20, color: t.text3),
+              ],
+            ),
+          ),
+          const SizedBox(height: Gap.lg),
+
           // BEGONA KARTAGA YOZISH.
           //
           // Ataylab aylanma chiplar ichida EMAS, alohida karta

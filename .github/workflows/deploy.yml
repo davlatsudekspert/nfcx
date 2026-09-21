@@ -82,6 +82,10 @@ jobs:
         run: node scripts/test-comment-moderation.mjs
       - name: NFCSTORE FEATURED — slot faqat haqiqiy to'lovdan keyin yonadi
         run: node scripts/test-featured.mjs
+      # Shaxsiy NFC ID xaridi: narxni SERVER hisoblaydi, bitta kodni
+      # ikki kishi ola olmaydi va to'lanmaguncha ID biriktirilmaydi.
+      - name: NFC ID xaridi — narx, band qilish va to'lov
+        run: node scripts/test-nova-id-purchase.mjs
       - name: Admin "NFCSTORE ILOVASI" — tugmalar haqiqatdan ishlaydimi
         run: node scripts/test-admin-nova-tab.mjs
       # Manifestdagi yaroqsiz XML ilova qurilishini yiqitadi, lekin

@@ -2625,17 +2625,17 @@ abstract class L {
   /// **'Muqova'**
   String get profileCover;
 
+  /// NFCSTORE premium mavzusi
+  ///
+  /// In uz, this message translates to:
+  /// **'Noir'**
+  String get themeNoir;
+
   /// Mavzu nomi — saytdagi iliq ko‘mir-qora
   ///
   /// In uz, this message translates to:
   /// **'Onyx'**
   String get themeOnyx;
-
-  /// NFCSTORE premium mavzusi — chuqur qora, shampan va platina.
-  ///
-  /// In uz, this message translates to:
-  /// **'Noir'**
-  String get themeNoir;
 
   /// Ro‘yxatdan o‘tishda oferta roziligi
   ///
@@ -3020,6 +3020,174 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Muddati tugagan'**
   String get featuredExpired;
+
+  /// No description provided for @idMarketTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'NFC ID olish'**
+  String get idMarketTitle;
+
+  /// No description provided for @idMarketSearchHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'NFC ID yozing — masalan VIP001'**
+  String get idMarketSearchHint;
+
+  /// No description provided for @idMarketTiers.
+  ///
+  /// In uz, this message translates to:
+  /// **'Darajalar va narxlar'**
+  String get idMarketTiers;
+
+  /// No description provided for @idMarketMinChars.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kamida 3 belgi kiriting'**
+  String get idMarketMinChars;
+
+  /// No description provided for @idTierFree.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bronza'**
+  String get idTierFree;
+
+  /// No description provided for @idTierSilver.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kumush'**
+  String get idTierSilver;
+
+  /// No description provided for @idTierGold.
+  ///
+  /// In uz, this message translates to:
+  /// **'Oltin'**
+  String get idTierGold;
+
+  /// No description provided for @idTierPremium.
+  ///
+  /// In uz, this message translates to:
+  /// **'Premium'**
+  String get idTierPremium;
+
+  /// No description provided for @idTierExclusive.
+  ///
+  /// In uz, this message translates to:
+  /// **'Eksklyuziv'**
+  String get idTierExclusive;
+
+  /// No description provided for @idPriceFrom.
+  ///
+  /// In uz, this message translates to:
+  /// **'dan boshlab'**
+  String get idPriceFrom;
+
+  /// No description provided for @idStateAvailable.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sotuvda'**
+  String get idStateAvailable;
+
+  /// No description provided for @idStateTaken.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sotilgan'**
+  String get idStateTaken;
+
+  /// No description provided for @idStateReserved.
+  ///
+  /// In uz, this message translates to:
+  /// **'Band qilingan'**
+  String get idStateReserved;
+
+  /// No description provided for @idStateMine.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sizniki'**
+  String get idStateMine;
+
+  /// No description provided for @idStateNotForSale.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sotuvda emas'**
+  String get idStateNotForSale;
+
+  /// No description provided for @idBuy.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sotib olish'**
+  String get idBuy;
+
+  /// No description provided for @idDetailTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'NFC ID'**
+  String get idDetailTitle;
+
+  /// No description provided for @idOrderTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Buyurtma'**
+  String get idOrderTitle;
+
+  /// No description provided for @idOrderPending.
+  ///
+  /// In uz, this message translates to:
+  /// **'To‘lov kutilmoqda'**
+  String get idOrderPending;
+
+  /// No description provided for @idOrderPaid.
+  ///
+  /// In uz, this message translates to:
+  /// **'To‘landi'**
+  String get idOrderPaid;
+
+  /// No description provided for @idOrderCancelled.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bekor qilindi'**
+  String get idOrderCancelled;
+
+  /// No description provided for @idOrderFailed.
+  ///
+  /// In uz, this message translates to:
+  /// **'To‘lov o‘tmadi'**
+  String get idOrderFailed;
+
+  /// No description provided for @idOrderCheck.
+  ///
+  /// In uz, this message translates to:
+  /// **'Holatni tekshirish'**
+  String get idOrderCheck;
+
+  /// No description provided for @idPaidHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'NFC ID hisobingizga biriktirildi.'**
+  String get idPaidHint;
+
+  /// No description provided for @idPendingHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'To‘lovni yakunlang — ID shundan keyin biriktiriladi.'**
+  String get idPendingHint;
+
+  /// No description provided for @idNameLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kartadagi ism'**
+  String get idNameLabel;
+
+  /// No description provided for @idSearchEmpty.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bunday NFC ID topilmadi'**
+  String get idSearchEmpty;
+
+  /// No description provided for @idSearchShort.
+  ///
+  /// In uz, this message translates to:
+  /// **'ID qidirish'**
+  String get idSearchShort;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

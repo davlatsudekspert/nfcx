@@ -249,19 +249,34 @@ class ProfileRepository {
     return null;
   }
 
+  /// Parolni almashtirish — JORIY PAROL bilan, kodsiz.
+  ///
+  /// ## NIMA UCHUN `change-password` EMAS
+  ///
+  /// Serverda ikkita yo'l bor (`hosting/api/account.js`):
+  ///
+  ///     POST /api/settings/change-password-direct {currentPassword,newPassword}
+  ///     POST /api/settings/change-password        {code,newPassword}
+  ///
+  /// Ilova ikkinchisini chaqirardi — u emailga (yoki Telegramga)
+  /// yuborilgan 6 xonali kodni talab qiladi. Server email xizmati
+  /// o'chiq bo'lsa `request-password-code` kod YUBORMAYDI, ya'ni
+  /// odam parolini umuman o'zgartira olmasdi: kod maydoni bo'shligicha
+  /// qolardi va yagona yo'l shu edi.
+  ///
+  /// Birinchi yo'l esa aynan kutilgan narsani qiladi va u ham
+  /// XAVFSIZ: server joriy parolni `verifyPassword` bilan tekshiradi
+  /// va tezlik cheklovi qo'yadi. Ya'ni bu qoidani yumshatish emas —
+  /// serverning o'zida turgan, tasdiqlash uchun kodga muhtoj
+  /// bo'lmagan yo'lni ishlatish.
   Future<Result<void>> changePassword({
     required String currentPassword,
     required String newPassword,
-    required String code,
   }) =>
-      _api.post<void>('/api/settings/change-password', {
+      _api.post<void>('/api/settings/change-password-direct', {
         'currentPassword': currentPassword,
         'newPassword': newPassword,
-        'code': code,
       });
-
-  Future<Result<void>> requestPasswordCode() =>
-      _api.post<void>('/api/settings/request-password-code');
 
   Future<Result<void>> support(String message) =>
       _api.post<void>('/api/support', {'message': message});

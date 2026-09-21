@@ -1308,10 +1308,10 @@ class LEn extends L {
   String get profileCover => 'Cover';
 
   @override
-  String get themeOnyx => 'Onyx';
+  String get themeNoir => 'Noir';
 
   @override
-  String get themeNoir => 'Noir';
+  String get themeOnyx => 'Onyx';
 
   @override
   String get registerTosRequired =>
@@ -1531,4 +1531,89 @@ class LEn extends L {
 
   @override
   String get featuredExpired => 'Expired';
+
+  @override
+  String get idMarketTitle => 'Get an NFC ID';
+
+  @override
+  String get idMarketSearchHint => 'Type an NFC ID — e.g. VIP001';
+
+  @override
+  String get idMarketTiers => 'Tiers and prices';
+
+  @override
+  String get idMarketMinChars => 'Enter at least 3 characters';
+
+  @override
+  String get idTierFree => 'Bronze';
+
+  @override
+  String get idTierSilver => 'Silver';
+
+  @override
+  String get idTierGold => 'Gold';
+
+  @override
+  String get idTierPremium => 'Premium';
+
+  @override
+  String get idTierExclusive => 'Exclusive';
+
+  @override
+  String get idPriceFrom => 'from';
+
+  @override
+  String get idStateAvailable => 'Available';
+
+  @override
+  String get idStateTaken => 'Sold';
+
+  @override
+  String get idStateReserved => 'Reserved';
+
+  @override
+  String get idStateMine => 'Yours';
+
+  @override
+  String get idStateNotForSale => 'Not for sale';
+
+  @override
+  String get idBuy => 'Buy';
+
+  @override
+  String get idDetailTitle => 'NFC ID';
+
+  @override
+  String get idOrderTitle => 'Order';
+
+  @override
+  String get idOrderPending => 'Awaiting payment';
+
+  @override
+  String get idOrderPaid => 'Paid';
+
+  @override
+  String get idOrderCancelled => 'Cancelled';
+
+  @override
+  String get idOrderFailed => 'Payment failed';
+
+  @override
+  String get idOrderCheck => 'Check status';
+
+  @override
+  String get idPaidHint => 'The NFC ID is now attached to your account.';
+
+  @override
+  String get idPendingHint =>
+      'Finish the payment — the ID is attached after it.';
+
+  @override
+  String get idNameLabel => 'Name on the card';
+
+  @override
+  String get idSearchEmpty => 'No such NFC ID';
+
+  @override
+  String get idSearchShort => 'Find an ID';
 }

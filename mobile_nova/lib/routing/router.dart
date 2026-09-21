@@ -28,6 +28,7 @@ import '../features/profile/follow_list_screen.dart';
 import '../features/profile/profile_edit_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/settings/settings_subscreens.dart';
+import '../features/shop/nfc_id_market.dart';
 import '../features/shop/shop_screens.dart';
 import '../features/social/post_screens.dart';
 import '../features/social/reels_screen.dart';
@@ -135,6 +136,20 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // NFC
       GoRoute(path: Routes.nfcIds, builder: (_, __) => const NfcIdsScreen()),
+      // NFC ID BOZORI. Buyurtma yo'li `/:code` dan OLDIN turishi
+      // shart — aks holda `order` so'zi kod deb o'qilardi va
+      // `/nfc/market/order/12` umuman ochilmasdi.
+      GoRoute(
+        path: '/nfc/market/order/:id',
+        builder: (_, st) =>
+            NfcIdOrderScreen(orderId: int.tryParse(st.pathParameters['id'] ?? '') ?? 0),
+      ),
+      GoRoute(
+        path: '/nfc/market/:code',
+        builder: (_, st) =>
+            NfcIdBuyScreen(code: st.pathParameters['code'] ?? ''),
+      ),
+      GoRoute(path: Routes.nfcMarket, builder: (_, __) => const NfcIdMarketScreen()),
       GoRoute(path: Routes.nfcScan, builder: (_, __) => const NfcScanScreen()),
       GoRoute(path: Routes.nfcWrite, builder: (_, __) => const NfcWriteScreen()),
       GoRoute(

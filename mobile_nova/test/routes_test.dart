@@ -36,6 +36,7 @@ void main() {
     Routes.storyCreate,
     Routes.reelCreate,
     Routes.nfcIds,
+    Routes.nfcMarket,
     Routes.nfcScan,
     Routes.nfcWrite,
     Routes.nfcHistory,
@@ -86,6 +87,9 @@ void main() {
     Routes.demoBusiness,
     // Postni lentada ko'tarish — tur + id.
     Routes.featured('post', 10),
+    // NFC ID xaridi: kod bo'yicha ekran va buyurtma holati.
+    Routes.nfcIdBuy('VIP001'),
+    Routes.nfcIdOrder(42),
   ];
 
   test('har bir statik marshrut routerda mavjud', () {

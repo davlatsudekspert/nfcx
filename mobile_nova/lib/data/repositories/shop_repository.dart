@@ -94,6 +94,61 @@ class ShopRepository {
     });
   }
 
+
+  // ═══════════════════════════════════════════════════════════════
+  // SHAXSIY NFC ID XARIDI
+  //
+  // Bu yerda ILOVA UCHUN ALOHIDA katalog, alohida narx jadvali yoki
+  // alohida to'lov backendi YO'Q. Hammasi saytning O'SHA
+  // endpointlaridan — `hosting/worker.js`:
+  //
+  //   GET  /api/settings/id-pricing     darajalar va narxlar
+  //   GET  /api/records/:code/quote     kod bo'shmi, narxi qancha
+  //   POST /api/records/:code           buyurtma (narxni SERVER qo'yadi)
+  //   GET  /api/orders/:id              holat
+  //   GET  /api/orders                  to'lovlar tarixi
+  //
+  // Narx hech qachon ilovada yozilmaydi va klientdan yuborilmaydi.
+  // ═══════════════════════════════════════════════════════════════
+
+  /// Daraja narxlari — katalog shu ro'yxatdan chiziladi.
+  Future<Result<List<IdTier>>> idPricing() async {
+    final res = await _api.get<Map<String, dynamic>>('/api/settings/id-pricing');
+    return res.map((j) => parseList(j['tiers'], IdTier.fromJson));
+  }
+
+  /// Kod holati — BAND QILMAYDI, faqat o'qiydi.
+  Future<Result<IdQuote>> idQuote(String code) async {
+    final res = await _api
+        .get<Map<String, dynamic>>('/api/records/${code.toUpperCase()}/quote');
+    return res.map(IdQuote.fromJson);
+  }
+
+  /// Buyurtma yaratish.
+  ///
+  /// SUMMA YUBORILMAYDI. Server uni `personalPurchaseQuote()` bilan
+  /// o'zi hisoblaydi; klient yuborgan narx e'tiborga olinmaydi
+  /// (`scripts/test-nova-id-purchase.mjs` shuni tekshiradi). Shu
+  /// sabab bu yerda `price` parametri ATAYLAB yo'q — bo'lsa, kimdir
+  /// uni "tezlik uchun" yuborib qo'yishi va ikkala tomonda ikki xil
+  /// summa paydo bo'lishi mumkin edi.
+  Future<Result<IdOrderDraft>> buyId({
+    required String code,
+    required String name,
+    String role = '',
+    String phone = '',
+  }) async {
+    final res = await _api.post<Map<String, dynamic>>(
+      '/api/records/${code.toUpperCase()}',
+      {
+        'name': name,
+        if (role.isNotEmpty) 'role': role,
+        if (phone.isNotEmpty) 'phone': phone,
+      },
+    );
+    return res.map(IdOrderDraft.fromJson);
+  }
+
   /// To'lov sahifasiga o'tish havolasi.
   ///
   /// Provayder sozlanmagan bo'lsa bu yerda SOXTA muvaffaqiyat

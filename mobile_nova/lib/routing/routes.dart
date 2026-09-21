@@ -51,6 +51,14 @@ abstract final class Routes {
   static String following(String code) => '/u/$code/following';
 
   // NFC
+  // NFC ID QIDIRISH / OLISH — BITTA EKRAN, IKKI KIRISH JOYI.
+  //
+  // NFC Markaz ham, Bosh sahifadagi tezkor amal ham AYNAN shu
+  // manzilni ochadi. Ikkinchi katalog yaratilmaydi.
+  static const nfcMarket = '/nfc/market';
+  static String nfcIdBuy(String code) => '/nfc/market/$code';
+  static String nfcIdOrder(int orderId) => '/nfc/market/order/$orderId';
+
   static const nfcIds = '/nfc/ids';
   static const nfcScan = '/nfc/scan';
   static const nfcWrite = '/nfc/write';

@@ -177,11 +177,21 @@ class LanguageSettingsScreen extends ConsumerWidget {
 
 // ------------------------------------------------------------- xavfsizlik
 
-/// Parolni almashtirish.
+/// Parolni almashtirish — joriy parol bilan, bitta qadamda.
 ///
-/// Backend tasdiqlash kodini talab qiladi
-/// (`/api/settings/request-password-code`), shuning uchun oqim ikki
-/// bosqichli: kod so'rash → yangi parol + kod.
+/// ## NIMA UCHUN KOD YO'Q
+///
+/// Ilgari bu ekran ikki bosqichli edi: avval emailga kod so'ralardi
+/// (`/api/settings/request-password-code`), keyin kod bilan
+/// `/api/settings/change-password`. Email xizmati o'chganda kod hech
+/// qachon kelmasdi va parolni o'zgartirishning YAGONA yo'li yopilib
+/// qolardi.
+///
+/// Serverda ayni shu ish uchun kodsiz yo'l ALLAQACHON bor:
+/// `/api/settings/change-password-direct` — u joriy parolni
+/// `verifyPassword` bilan tekshiradi va tezlik cheklovi qo'yadi.
+/// Ya'ni xavfsizlik qoidasi yumshatilmadi, faqat tasdiqlash
+/// EMAILDAN emas, JORIY PAROLDAN olinadi.
 class SecuritySettingsScreen extends ConsumerStatefulWidget {
   const SecuritySettingsScreen({super.key});
 
@@ -194,9 +204,8 @@ class _SecuritySettingsScreenState
     extends ConsumerState<SecuritySettingsScreen> {
   final _current = TextEditingController();
   final _next = TextEditingController();
-  final _code = TextEditingController();
+  final _next2 = TextEditingController();
 
-  bool _codeSent = false;
   bool _busy = false;
   String? _error;
   String? _info;
@@ -205,48 +214,35 @@ class _SecuritySettingsScreenState
   void dispose() {
     _current.dispose();
     _next.dispose();
-    _code.dispose();
+    _next2.dispose();
     super.dispose();
-  }
-
-  Future<void> _requestCode() async {
-    final l = L.of(context);
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    final res = await ref.read(profileRepositoryProvider).requestPasswordCode();
-    if (!mounted) return;
-    setState(() {
-      _busy = false;
-      res.when(
-        ok: (_) {
-          _codeSent = true;
-          _info = l.verifySending;
-        },
-        err: (e) => _error = describeError(l, e),
-      );
-    });
   }
 
   Future<void> _submit() async {
     final l = L.of(context);
+    if (_current.text.isEmpty) {
+      setState(() => _error = l.settingsCurrentPassword);
+      return;
+    }
     if (Validate.password(_next.text) != null) {
       setState(() => _error = l.errPasswordShort);
       return;
     }
-    if (Validate.code(_code.text) != null) {
-      setState(() => _error = l.errBadCode);
+    // Takrorlash mos kelmasa serverga umuman bormaymiz: aks holda
+    // odam xato yozgan parolni bilmasdan o'rnatib qo'yardi va
+    // keyingi kirishda ichkariga tusholmasdi.
+    if (_next.text != _next2.text) {
+      setState(() => _error = l.errPasswordMismatch);
       return;
     }
     setState(() {
       _busy = true;
       _error = null;
+      _info = null;
     });
     final res = await ref.read(profileRepositoryProvider).changePassword(
           currentPassword: _current.text,
           newPassword: _next.text,
-          code: _code.text.trim(),
         );
     if (!mounted) return;
     setState(() => _busy = false);
@@ -283,16 +279,13 @@ class _SecuritySettingsScreenState
             obscure: true,
             enabled: !_busy,
           ),
-          if (_codeSent) ...[
-            const SizedBox(height: Gap.lg),
-            NovaField(
-              label: l.verifyTitle,
-              controller: _code,
-              keyboardType: TextInputType.number,
-              maxLength: 6,
-              enabled: !_busy,
-            ),
-          ],
+          const SizedBox(height: Gap.lg),
+          NovaField(
+            label: l.fieldPasswordRepeat,
+            controller: _next2,
+            obscure: true,
+            enabled: !_busy,
+          ),
           if (_info != null && _error == null) ...[
             const SizedBox(height: Gap.lg),
             Text(_info!,
@@ -311,9 +304,9 @@ class _SecuritySettingsScreenState
           ],
           const SizedBox(height: Gap.xxl),
           NovaButton(
-            label: _codeSent ? l.actionSave : l.loginSendCode,
+            label: l.actionSave,
             busy: _busy,
-            onPressed: _codeSent ? _submit : _requestCode,
+            onPressed: _submit,
           ),
           // ── LOKAL ILOVA QULFI ──────────────────────────────
           // Bu akkaunt paroli EMAS: server bu haqda bilmaydi.

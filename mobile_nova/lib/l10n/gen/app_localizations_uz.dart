@@ -1310,10 +1310,10 @@ class LUz extends L {
   String get profileCover => 'Muqova';
 
   @override
-  String get themeOnyx => 'Onyx';
+  String get themeNoir => 'Noir';
 
   @override
-  String get themeNoir => 'Noir';
+  String get themeOnyx => 'Onyx';
 
   @override
   String get registerTosRequired =>
@@ -1534,4 +1534,89 @@ class LUz extends L {
 
   @override
   String get featuredExpired => 'Muddati tugagan';
+
+  @override
+  String get idMarketTitle => 'NFC ID olish';
+
+  @override
+  String get idMarketSearchHint => 'NFC ID yozing — masalan VIP001';
+
+  @override
+  String get idMarketTiers => 'Darajalar va narxlar';
+
+  @override
+  String get idMarketMinChars => 'Kamida 3 belgi kiriting';
+
+  @override
+  String get idTierFree => 'Bronza';
+
+  @override
+  String get idTierSilver => 'Kumush';
+
+  @override
+  String get idTierGold => 'Oltin';
+
+  @override
+  String get idTierPremium => 'Premium';
+
+  @override
+  String get idTierExclusive => 'Eksklyuziv';
+
+  @override
+  String get idPriceFrom => 'dan boshlab';
+
+  @override
+  String get idStateAvailable => 'Sotuvda';
+
+  @override
+  String get idStateTaken => 'Sotilgan';
+
+  @override
+  String get idStateReserved => 'Band qilingan';
+
+  @override
+  String get idStateMine => 'Sizniki';
+
+  @override
+  String get idStateNotForSale => 'Sotuvda emas';
+
+  @override
+  String get idBuy => 'Sotib olish';
+
+  @override
+  String get idDetailTitle => 'NFC ID';
+
+  @override
+  String get idOrderTitle => 'Buyurtma';
+
+  @override
+  String get idOrderPending => 'To‘lov kutilmoqda';
+
+  @override
+  String get idOrderPaid => 'To‘landi';
+
+  @override
+  String get idOrderCancelled => 'Bekor qilindi';
+
+  @override
+  String get idOrderFailed => 'To‘lov o‘tmadi';
+
+  @override
+  String get idOrderCheck => 'Holatni tekshirish';
+
+  @override
+  String get idPaidHint => 'NFC ID hisobingizga biriktirildi.';
+
+  @override
+  String get idPendingHint =>
+      'To‘lovni yakunlang — ID shundan keyin biriktiriladi.';
+
+  @override
+  String get idNameLabel => 'Kartadagi ism';
+
+  @override
+  String get idSearchEmpty => 'Bunday NFC ID topilmadi';
+
+  @override
+  String get idSearchShort => 'ID qidirish';
 }

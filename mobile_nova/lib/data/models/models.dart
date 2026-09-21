@@ -502,6 +502,10 @@ class Order {
     this.createdAt,
     this.itemsText = '',
     this.paymentProvider = '',
+    this.code = '',
+    this.kind = '',
+    this.paymeLink = '',
+    this.clickLink = '',
   });
 
   final int id;
@@ -512,14 +516,38 @@ class Order {
   final String itemsText;
   final String paymentProvider;
 
+  /// Buyurtma qaysi NFC ID uchun (`web_orders.code`).
+  final String code;
+
+  /// `card_purchase` | `auction_payment` | `premium_upgrade` | ...
+  final String kind;
+
+  /// Kutilayotgan buyurtmani DAVOM ETTIRISH havolalari. Server ularni
+  /// faqat `status == 'pending'` uchun beradi.
+  final String paymeLink;
+  final String clickLink;
+
+  bool get pending => status == 'pending';
+
+  /// SUMMA `price` MAYDONIDAN.
+  ///
+  /// Server `GET /api/orders` javobida summani `price` deb yuboradi
+  /// (`hosting/worker.js` -> `web_orders`). Bu yerda esa faqat
+  /// `total`/`amount` o'qilardi — ya'ni ikkalasi ham yo'q edi va
+  /// "To'lovlar" ekrani HAR BIR buyurtma uchun 0 so'm ko'rsatardi.
+  /// Kod va tur ham javobda bor edi, lekin tashlab yuborilardi.
   factory Order.fromJson(Map<String, dynamic> j) => Order(
         id: _i(j['id']),
         status: _s(j['status'], 'new'),
-        total: _i(j['total'] ?? j['amount']),
+        total: _i(j['price'] ?? j['total'] ?? j['amount']),
         currency: _s(j['currency'], 'UZS'),
         createdAt: _dt(j['createdAt'] ?? j['created_at']),
         itemsText: _s(j['items'] ?? j['title']),
         paymentProvider: _s(j['provider'] ?? j['paymentProvider']),
+        code: _s(j['code']).toUpperCase(),
+        kind: _s(j['kind']),
+        paymeLink: _s((j['payLinks'] as Map?)?['payme'] ?? j['payLink']),
+        clickLink: _s((j['payLinks'] as Map?)?['click']),
       );
 }
 
@@ -1002,4 +1030,95 @@ class FeaturedPackage {
 
   factory FeaturedPackage.fromJson(Map<String, dynamic> j) =>
       FeaturedPackage(days: _i(j['days']), price: _i(j['price']));
+}
+
+// ─────────────────────────────────────────────────────────────────
+// SHAXSIY NFC ID XARIDI
+//
+// Uchala model ham SERVER javobining shakli — ilovada hech qanday
+// narx, daraja nomi yoki kod ro'yxati yozilmagan.
+// ─────────────────────────────────────────────────────────────────
+
+/// `GET /api/settings/id-pricing` dagi bitta daraja.
+class IdTier {
+  const IdTier({required this.tier, this.price, this.from = false});
+
+  /// `free` | `silver` | `gold` | `premium` | `exclusive`
+  final String tier;
+
+  /// So'mda. `null` — sotuvda emas.
+  final int? price;
+
+  /// `true` bo'lsa summa "shundan boshlanadi" (aniq narx kodga bog'liq).
+  final bool from;
+
+  factory IdTier.fromJson(Map<String, dynamic> j) => IdTier(
+        tier: _s(j['tier']),
+        price: j['price'] == null ? null : _i(j['price']),
+        from: j['from'] == true,
+      );
+}
+
+/// `GET /api/records/:code/quote` javobi.
+class IdQuote {
+  const IdQuote({
+    required this.code,
+    this.taken = false,
+    this.purchasable = false,
+    this.reason = '',
+    this.tier = '',
+    this.amount = 0,
+  });
+
+  final String code;
+
+  /// Kodning egasi bor.
+  final bool taken;
+
+  /// Hozir sotib olsa bo'ladimi.
+  final bool purchasable;
+
+  /// `already_taken` | `reserved_pending_payment` | `not_purchasable` | ''
+  final String reason;
+  final String tier;
+  final int amount;
+
+  /// Boshqa odam band qilib, hali to'lamagan.
+  bool get reserved => reason == 'reserved_pending_payment';
+
+  factory IdQuote.fromJson(Map<String, dynamic> j) => IdQuote(
+        code: _s(j['code']).toUpperCase(),
+        taken: j['taken'] == true,
+        purchasable: j['purchasable'] == true,
+        reason: _s(j['reason']),
+        tier: _s(j['tier']),
+        amount: _i(j['amount']),
+      );
+}
+
+/// `POST /api/records/:code` javobi — yaratilgan kutilayotgan buyurtma.
+class IdOrderDraft {
+  const IdOrderDraft({
+    required this.orderId,
+    required this.code,
+    required this.price,
+    this.paymeLink = '',
+    this.clickLink = '',
+  });
+
+  final int orderId;
+  final String code;
+
+  /// SERVER hisoblagan summa — ekranda aynan shu ko'rsatiladi.
+  final int price;
+  final String paymeLink;
+  final String clickLink;
+
+  factory IdOrderDraft.fromJson(Map<String, dynamic> j) => IdOrderDraft(
+        orderId: _i(j['orderId']),
+        code: _s(j['code']).toUpperCase(),
+        price: _i(j['price']),
+        paymeLink: _s((j['payLinks'] as Map?)?['payme'] ?? j['payLink']),
+        clickLink: _s((j['payLinks'] as Map?)?['click']),
+      );
 }

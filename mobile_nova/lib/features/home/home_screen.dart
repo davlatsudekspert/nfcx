@@ -767,6 +767,9 @@ class _QuickActions extends StatelessWidget {
         : [
             (Icons.nfc_rounded, l.nfcScanShort, Routes.nfcScan),
             (Icons.badge_rounded, l.nfcMyIds, Routes.nfcIds),
+            // ID QIDIRISH — NFC Markazdagi AYNAN O'SHA ekran.
+            // Ikkinchi katalog yaratilmadi: bu shunchaki qisqa yo'l.
+            (Icons.search_rounded, l.idSearchShort, Routes.nfcMarket),
             (Icons.add_circle_outline_rounded, l.postCreate, Routes.postCreate),
             (Icons.storefront_rounded, l.homeShop, Routes.shop),
           ];
