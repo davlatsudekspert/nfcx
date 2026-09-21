@@ -493,20 +493,40 @@ class _Hero extends StatelessWidget {
                 if (cover.isEmpty)
                   DecoratedBox(
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        // YUMSHOQ ATMOSFERA — DOG' EMAS.
-                        //
-                        // Alfa endi `washScale` orqali o'tadi:
-                        // oq-qora mavzuda aksent qora, .34 esa
-                        // ekran tepasida iflos kulrang chiziq
-                        // bo'lib turardi. Oltin mavzularda ham
-                        // .34 og'ir edi — zaytun dog'i.
+                      // ATMOSFERA — DOG' EMAS.
+                      //
+                      // ## NIMA UCHUN DIAGONAL EMAS
+                      //
+                      // Ilgari bu yerda chap tepadan o'ng pastga
+                      // ketadigan DIAGONAL gradient turardi.
+                      // Alfani pasaytirish yetmadi: muammo
+                      // kuchda emas, YO'NALIShDA edi. Diagonal
+                      // gradient bitta burchakni ajratib
+                      // ko'rsatadi va ko'z uni fon emas, ekranga
+                      // tushgan DOG' deb o'qiydi. `noir`,
+                      // `graphite` va `onyx` da u zaytun-kulrang
+                      // iflos burchak bo'lib turardi.
+                      //
+                      // Radial gradient esa SIMMETRIK: markazi
+                      // tepada, hamma tomonga teng so'nadi. Hech
+                      // bir burchak ajralmaydi, shuning uchun u
+                      // dog' emas, YORUG'LIK bo'lib ko'rinadi.
+                      //
+                      // ## KUCH
+                      //
+                      // Qorong'i mavzularda ham pasaytirildi:
+                      // .24 hali og'ir edi. `washScale` esa
+                      // oq-qora mavzuda buni yana susaytiradi,
+                      // chunki u yerda aksent qora.
+                      gradient: RadialGradient(
+                        center: Alignment.topCenter,
+                        radius: 1.15,
                         colors: [
-                          t.wash(tone, .24),
-                          t.wash(toneDark, .09),
+                          t.wash(tone, .17),
+                          t.wash(toneDark, .05),
+                          Colors.transparent,
                         ],
+                        stops: const [0, .55, 1],
                       ),
                     ),
                   )

@@ -191,9 +191,10 @@ void main() {
     expect(m.washScale, greaterThan(0),
         reason: 'yumshoq boshqa, yo‘q boshqa');
 
-    // 3. Muqova atmosferasi (.24) oq fon ustida deyarli
-    //    sezilmaydigan bo‘lib qolsin.
-    final cover = Color.alphaBlend(m.wash(m.accent1, .24), m.bg1);
+    // 3. Muqova atmosferasi oq fon ustida deyarli sezilmaydigan
+    //    bo‘lib qolsin. .17 — `profile_screen.dart` dagi
+    //    radial gradientning eng kuchli nuqtasi.
+    final cover = Color.alphaBlend(m.wash(m.accent1, .17), m.bg1);
     expect((cover.computeLuminance() - m.bg1.computeLuminance()).abs(),
         lessThan(.18),
         reason: 'ekran tepasidagi chiziq fondan uzoqlashmasin');
