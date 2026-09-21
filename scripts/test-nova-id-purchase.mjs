@@ -136,6 +136,19 @@ let orderId = null;
   const body = await res.json();
   check('6) holat pending', [res.status, body.status, body.code], [200, 'pending', 'QWE321']);
 
+  // TO'LOV HAVOLALARI SHU JAVOBDA HAM BO'LISHI SHART.
+  //
+  // Ilovadagi "Buyurtma" ekrani AYNAN shu endpointdan o'qiydi va
+  // havolasiz tugma chizmaydi. Ular yo'q bo'lganda ekran boshi berk
+  // ko'cha edi: buyurtma turibdi, "To'lov kutilmoqda" deb yozilgan,
+  // lekin to'lash uchun hech qanday tugma yo'q.
+  checkTrue('6) Payme havolasi bor',
+    typeof body.payLink === 'string' && body.payLink.length > 0);
+  checkTrue('6) Click havolasi bor',
+    typeof body.payLinks?.click === 'string' && body.payLinks.click.length > 0);
+  check('6) summa havolada server narxi',
+    new URL(body.payLinks.click).searchParams.get('amount'), String(freeQuote.amount));
+
   // BEGONA BUYURTMA KO'RINMAYDI.
   const foreign = await get(`/api/orders/${orderId}`, { cookie: cookie.other });
   check('6) begona buyurtma -> 404', foreign.status, 404);
