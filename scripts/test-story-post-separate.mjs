@@ -17,6 +17,7 @@
 //   node scripts/test-story-post-separate.mjs
 import { readFileSync } from 'node:fs';
 import { makeChecker } from './lib/d1-harness.mjs';
+import { stripComments } from './lib/strip-comments.mjs';
 
 const { check, checkTrue, done } = makeChecker();
 
@@ -26,9 +27,14 @@ const company = read('../src/pages/CompanyWorkspacePage.jsx');
 const uploader = read('../src/components/StoryUploader.jsx');
 const companyCss = read('../src/company-system.css');
 
-// JSX izohlari ({/* ... */}) tekshiruvni chalg'itmasin: ular ichida
-// ham "confirm", "saveLabel" kabi so'zlar uchraydi.
-const strip = (src) => src.replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+// Izohlar tekshiruvni chalg'itmasin: ular ichida ham "confirm",
+// "saveLabel" kabi so'zlar uchraydi.
+//
+// Ilgari bu ish regex bilan qilinardi va u `accept="image/*"` dagi
+// `/*` ni izoh boshi deb o'qib, 117 KB tirik kodni o'chirib yuborardi
+// (qarang: scripts/lib/strip-comments.mjs). Endi manba holatini
+// biladigan skaner ishlatiladi.
+const strip = stripComments;
 
 // ── 1) HAR BIR <StoryUploader> TASDIQLASH REJIMIDA ────────────────────
 // `confirm` bo'lmasa fayl tanlangan zahoti e'lon qilinadi va odam
@@ -75,10 +81,53 @@ checkTrue('5) StoriesManager videoni ham chizadi',
 checkTrue('5) Kompaniya lentasi videoni ham chizadi', /st\.videoUrl\s*\n?\s*\?\s*<video/.test(company));
 checkTrue('5) CSS video eskizini ham o‘lchaydi', /\.cw-feed-item img,\.cw-feed-item video\{/.test(companyCss));
 
-// ── 6) IZOH MATNI — IKKISI MUSTAQIL EKANI YOZILGAN ────────────────────
-const NOTE = 'Story va post — ikki alohida ish.';
-checkTrue('6) Kabinetda izoh bor', account.includes(NOTE));
-checkTrue('6) Kompaniya kabinetida ham izoh bor', company.includes(NOTE));
+// ── 6) IKKALASI ALOHIDA BO'LIM ────────────────────────────────────────
+// Ilgari story va post BITTA "lenta" bo'limida ustma-ust turardi.
+// Ikkala forma ham bir xil ko'rinardi va odam nima yaratayotganini
+// bilmasdi — "saqladim, lekin qayerga ketdi?" degan savol shundan
+// edi. Endi ajralish MATNDA emas, TUZILISHDA: alohida bo'lim,
+// alohida manzil, alohida sarlavha.
+checkTrue('6) "stories" bo‘limi bor', /wsTab === 'stories' &&/.test(account));
+checkTrue('6) "postlar" bo‘limi bor', /wsTab === 'postlar' &&/.test(account));
+// Eski birlashtirilgan bo'lim qaytib kelmasin.
+checkTrue('6) eski birlashgan "lenta" bo‘limi yo‘q', !/wsTab === 'lenta' &&/.test(account));
+
+// Navigatsiyada ham ikkita alohida yozuv.
+checkTrue('6) navigatsiyada Stories', /\['stories', t\('Stories'\)/.test(account));
+checkTrue('6) navigatsiyada Postlar', /\['postlar', t\('Postlar'\)/.test(account));
+
+// Har biri qaysi ekanini O'ZI aytadi va ikkinchisiga yo'l ko'rsatadi.
+checkTrue('6) story bo‘limi 24 soatni aytadi', /Story 24 soatdan keyin o/.test(account));
+checkTrue('6) post bo‘limi DOIMIY ekanini aytadi', /Post profilda DOIMIY qoladi/.test(account));
+checkTrue('6) storydan postga yo‘l bor', /setWsTab\('postlar'\)/.test(account));
+checkTrue('6) postdan storyga yo‘l bor', /setWsTab\('stories'\)/.test(account));
+
+// ── 6b) NIYAT O'Z BO'LIMIGA OLIB BORADI ───────────────────────────────
+// `?action=story` postlar bo'limini ochsa (yoki aksincha), odam yana
+// adashardi.
+checkTrue('6b) action=story -> stories', /initialAction === 'story'\) return 'stories'/.test(account));
+checkTrue('6b) action=post -> postlar', /initialAction === 'post'\) return 'postlar'/.test(account));
+// Eski `#lenta` havolasi buzilmasin (xatcho'plar).
+checkTrue('6b) eski #lenta havolasi ishlaydi', /hash === '#lenta'\) return 'stories'/.test(account));
+
+// ── 6c) IKKALASI BIR VAQTDA CHIZILMAYDI ───────────────────────────────
+// Bitta ekranda ikkala forma turgani chalkashlikning asl sababi edi.
+{
+  const storiesBlock = account.slice(account.indexOf("wsTab === 'stories' &&"),
+    account.indexOf("wsTab === 'postlar' &&"));
+  checkTrue('6c) Stories bo‘limida post boshqaruvi yo‘q', !/PostsManager/.test(storiesBlock));
+  const postBlock = account.slice(account.indexOf("wsTab === 'postlar' &&"));
+  const postBlockEnd = postBlock.slice(0, 2500);
+  checkTrue('6c) Postlar bo‘limida story bloki yo‘q', !/<StorySection/.test(postBlockEnd));
+}
+// ── 6d) BIZNES KABINETI HAM AJRATILGAN ────────────────────────────────
+// Kompaniyada ham ikkala forma bitta panelda turardi.
+checkTrue('6d) biznesda "Postlar" tabi bor', /\['posts','Postlar'\]/.test(company));
+checkTrue('6d) panel rejim bilan chaqiriladi', /mode="stories"/.test(company) && /mode="posts"/.test(company));
+checkTrue('6d) story bo‘limi rejimga bog‘langan', /\{isStories && \(/.test(company));
+checkTrue('6d) post bo‘limi rejimga bog‘langan', /\{!isStories && \(/.test(company));
+checkTrue('6d) sarlavha rejimga qarab o‘zgaradi', /isStories \? t\('Stories'\) : t\('Postlar'\)/.test(company));
+checkTrue('6d) ikkinchi bo‘limga yo‘l bor', /onSwitch/.test(company));
 checkTrue('6) .cw-note uslubi global emas, kompaniya CSS ida', /\.cw-note\{/.test(companyCss));
 
 // ── 7) TARJIMALAR ─────────────────────────────────────────────────────

@@ -223,7 +223,7 @@ function ShowcaseCard({ type, t }) {
           ))}
         </div>
         <div className="co-nfc-card">
-          <NfcCard code="BIZ001" name={t('KOMPANIYANGIZ')} finish="black" size="md" rim />
+          <NfcCard code="BIZ001" name={t('KOMPANIYANGIZ')} finish="showcase" size="md" rim />
         </div>
       </div>
     </article>

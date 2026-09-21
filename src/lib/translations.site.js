@@ -88,4 +88,41 @@ export const DICT_SITE = {
   'Auksion topilmadi': { ru: 'Аукцион не найден', en: 'Auction not found' },
   "Auksion ma'lumotini yuklab bo'lmadi.": { ru: 'Не удалось загрузить данные аукциона.', en: 'Could not load the auction.' },
   "Bu auksion mavjud emas yoki o'chirilgan.": { ru: 'Этот аукцион не существует или был удалён.', en: 'This auction does not exist or was removed.' },
+
+  // ─────────────────────────── Media oynachasi (MediaThumb) ───────────────────────────
+  // Rasm/video ko'rsatiladigan HAR joyda chiqadi: lenta, postlar.
+  // Ular ekrandagi yagona izoh bo'lgani uchun tarjimasi shart —
+  // aks holda rus va ingliz tilidagi tashrifchi o'zbekcha ogohlantirish
+  // ko'rardi.
+  'Media ochilmadi': { ru: 'Медиа не открылось', en: 'Media could not load' },
+  'Media javob bermadi': { ru: 'Медиа не отвечает', en: 'Media did not respond' },
+  'Bu postda matn ham, media ham yo‘q.': { ru: 'В этом посте нет ни текста, ни медиа.', en: 'This post has no text and no media.' },
+
+  // ─────────────────────────── Profil ⋮ menyusi ───────────────────────────
+  'Rang mavzusi': { ru: 'Цветовая тема', en: 'Colour theme' },
+  'Til': { ru: 'Язык', en: 'Language' },
+
+  // NFC tegish — yo'naltirish paytidagi qisqa kutish.
+  'Ochilmoqda…': { ru: 'Открывается…', en: 'Opening…' },
+
+  // Marketplace aktivatsiyasi — stikerni tegizish talabi.
+  'Stikeringiz shu profilga bog‘landi. Telefonga tekkizib ko‘ring.': { ru: 'Ваш стикер привязан к этому профилю. Приложите его к телефону.', en: 'Your sticker is linked to this profile. Tap it with your phone.' },
+  'ENDI KONVERTDAGI NFC STIKERNI TELEFONGA TEKKIZING — shunda u shu profilga bog‘lanadi va bundan keyin har tegizganda profilingiz ochiladi.': { ru: 'ТЕПЕРЬ ПРИЛОЖИТЕ NFC-СТИКЕР ИЗ КОНВЕРТА К ТЕЛЕФОНУ — он привяжется к этому профилю, и дальше при каждом касании будет открываться ваш профиль.', en: 'NOW TAP THE NFC STICKER FROM THE ENVELOPE WITH YOUR PHONE — it links to this profile, and from then on every tap opens your profile.' },
+
+  'NFC stiker ulandi': { ru: 'NFC-стикер подключён', en: 'NFC sticker connected' },
+  'Bundan keyin stikerni telefonga tekkizsangiz shu profil ochiladi.': { ru: 'Теперь при касании стикера телефоном будет открываться этот профиль.', en: 'From now on, tapping the sticker with your phone opens this profile.' },
+
+  // Stiker tekkizildi, lekin odam boshqa brauzerda kirmagan.
+  'Stikeringizni bog‘lash': { ru: 'Привязать ваш стикер', en: 'Link your sticker' },
+  'Hisobingizga kiring — stiker o‘zi bog‘lanadi. Kodni qayta kiritish shart emas.': { ru: 'Войдите в аккаунт — стикер привяжется сам. Код вводить заново не нужно.', en: 'Sign in and the sticker links itself. You do not need to enter the code again.' },
+  'Menda aktivatsiya kodi bor': { ru: 'У меня есть код активации', en: 'I have an activation code' },
+
+  // Stiker bog'lanmagani — sababi.
+  'Stikeringizni bog‘lash uchun avval kiring.': { ru: 'Чтобы привязать стикер, сначала войдите.', en: 'Sign in first to link your sticker.' },
+  'Bu stiker allaqachon boshqa profilga bog‘langan.': { ru: 'Этот стикер уже привязан к другому профилю.', en: 'This sticker is already linked to another profile.' },
+  'Stiker hali bog‘lanmagan. Konvertdagi kodni kiriting — shundan keyin u shu profilga bog‘lanadi.': { ru: 'Стикер пока не привязан. Введите код из конверта — после этого он привяжется к этому профилю.', en: 'The sticker is not linked yet. Enter the code from the envelope and it will link to this profile.' },
+
+  // Aktivatsiya: oxirgi qadam — hisob ochish.
+  'Oxirgi qadam — hisob oching. Kod va tanlovingiz saqlanib qoladi.': { ru: 'Последний шаг — создайте аккаунт. Код и ваш выбор сохранятся.', en: 'Last step — create an account. Your code and choice are kept.' },
+  'Hisobim bor — kirish': { ru: 'У меня есть аккаунт — войти', en: 'I have an account — sign in' },
 };

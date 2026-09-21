@@ -1,0 +1,127 @@
+name: Production smoke (ulashish havolalari)
+
+# Deploydan KEYIN tez tekshirish. To'liq E2E ~25 daqiqa oladi va
+# emulyator ko'taradi; bu esa soniyalarda javob beradi va FAQAT
+# ommaviy sahifalarni GET qiladi — hech narsa yozmaydi, hisobga
+# kirmaydi, ma'lumotga tegmaydi.
+on:
+  workflow_dispatch:
+    inputs:
+      code:
+        description: "Tekshiriladigan NFC kodi"
+        required: false
+        default: "VIP001"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ommaviy sahifalarni tekshirish
+        env:
+          CODE: ${{ inputs.code || 'VIP001' }}
+        run: |
+          fail=0
+          probe() {
+            local path="$1" want="$2"
+            # -sS: jim, lekin xatoni ko'rsat. Qayta yo'naltirish
+            # kuzatiladi (--location): ulashilgan havola brauzerda
+            # ham aynan shunday ochiladi.
+            out=$(curl -sS --location --max-time 25 \
+              -H 'accept: text/html,application/xhtml+xml' \
+              -H 'user-agent: Mozilla/5.0 (Android) NFCSTORE-smoke' \
+              -w '\n<<<%{http_code}>>>' "https://nfcstore.uz${path}" || echo '<<<000>>>')
+            code="${out##*<<<}"; code="${code%%>>>*}"
+            body="${out%<<<*}"
+            snippet=$(printf '%s' "$body" | tr -d '\r\n' | cut -c1-160)
+            if [ "$code" = "$want" ]; then
+              echo "OK    $code  $path"
+            else
+              echo "XATO  $code (kutilgan $want)  $path"
+              echo "      tana: $snippet"
+              fail=1
+            fi
+          }
+
+          echo "── Sayt asosiy sahifalari ──"
+          probe "/" 200
+          probe "/katalog" 200
+          probe "/login" 200
+          probe "/register" 200
+
+          echo "── Nova ulashish havolalari ──"
+          # Shaxsiy profil — ilovadagi Profil, NFC ID, Post, Istorya
+          # va Reels ulashuvi AYNAN shu shaklni quradi.
+          probe "/$CODE" 200
+          probe "/$(printf '%s' "$CODE" | tr 'A-Z' 'a-z')" 200
+
+          echo "── Bildirishnoma API tirikmi ──"
+          # 401 — endpoint BOR va kirish talab qiladi (to'g'ri).
+          # 404 — deploy qilinmagan. 5xx — yiqilgan.
+          # Hech qanday token yuborilmaydi: bu faqat marshrut
+          # mavjudligini tekshiradi, ma'lumotga tegmaydi.
+          out=$(curl -sS --max-time 25 -o /dev/null -w '%{http_code}' \
+            -H 'accept: application/json' "https://nfcstore.uz/api/notifications" || echo 000)
+          case "$out" in
+            401) echo "OK    401  /api/notifications (endpoint bor, kirish talab qiladi)" ;;
+            404) echo "XATO  404  /api/notifications — deploy qilinmagan"; fail=1 ;;
+            5*)  echo "XATO  $out  /api/notifications — server xatosi"; fail=1 ;;
+            *)   echo "XATO  $out  /api/notifications — kutilmagan javob"; fail=1 ;;
+          esac
+
+          echo "── FEATURED va izoh moderatsiyasi tirikmi ──"
+          # `/api/featured/packages` — OMMAVIY (narxlar ro'yxati),
+          # shuning uchun 200 kutiladi. Bu endpoint bir vaqtning
+          # o'zida `featured_slots` jadvali yaratilganini ham
+          # bilvosita tasdiqlaydi.
+          out=$(curl -sS --max-time 25 -w '\n<<<%{http_code}>>>' \
+            -H 'accept: application/json' "https://nfcstore.uz/api/featured/packages" || echo '<<<000>>>')
+          code="${out##*<<<}"; code="${code%%>>>*}"
+          body="${out%<<<*}"
+          if [ "$code" = "200" ] && printf '%s' "$body" | grep -q '"packages"'; then
+            echo "OK    200  /api/featured/packages"
+          else
+            echo "XATO  $code  /api/featured/packages"
+            echo "      tana: $(printf '%s' "$body" | tr -d '\r\n' | cut -c1-160)"
+            fail=1
+          fi
+
+          # Admin moderatsiyasi — 401 kutiladi (endpoint bor,
+          # admin sessiyasi talab qiladi). HECH QANDAY kalit
+          # yuborilmaydi.
+          out=$(curl -sS --max-time 25 -o /dev/null -w '%{http_code}' \
+            -H 'accept: application/json' "https://nfcstore.uz/api/admin/comments" || echo 000)
+          case "$out" in
+            401) echo "OK    401  /api/admin/comments (endpoint bor, admin talab qiladi)" ;;
+            404) echo "XATO  404  /api/admin/comments — deploy qilinmagan"; fail=1 ;;
+            200) echo "XATO  200  /api/admin/comments — ADMINSIZ OCHIQ, bu jiddiy"; fail=1 ;;
+            5*)  echo "XATO  $out  /api/admin/comments — server xatosi"; fail=1 ;;
+            *)   echo "XATO  $out  /api/admin/comments — kutilmagan javob"; fail=1 ;;
+          esac
+
+          # Lenta — ilovaning Asosiy ekrani va Reels shu yerdan
+          # oziqlanadi. Kirmasdan ham ishlashi kerak.
+          out=$(curl -sS --max-time 25 -w '\n<<<%{http_code}>>>' \
+            -H 'accept: application/json' "https://nfcstore.uz/api/feed" || echo '<<<000>>>')
+          code="${out##*<<<}"; code="${code%%>>>*}"
+          if [ "$code" = "200" ] && printf '%s' "${out%<<<*}" | grep -q '"feed"'; then
+            echo "OK    200  /api/feed"
+          else
+            echo "XATO  $code  /api/feed"
+            fail=1
+          fi
+
+          echo "── Yaroqsiz kod 500 BERMASLIGI kerak ──"
+          # Yo'q profil uchun toza 404/200 (SPA) bo'lishi mumkin,
+          # lekin 5xx — hech qachon.
+          out=$(curl -sS --location --max-time 25 -o /dev/null -w '%{http_code}' \
+            -H 'accept: text/html' "https://nfcstore.uz/ZZZZ999" || echo 000)
+          case "$out" in
+            5*) echo "XATO  $out  /ZZZZ999 — yaroqsiz kod server xatosi bermasligi kerak"; fail=1 ;;
+            *)  echo "OK    $out  /ZZZZ999" ;;
+          esac
+
+          [ "$fail" = "0" ] || { echo "::error::Smoke yiqildi — yuqoriga qarang."; exit 1; }
+          echo "Smoke to'liq o'tdi."

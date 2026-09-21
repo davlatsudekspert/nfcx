@@ -35,7 +35,7 @@ export default function LockedFeatureModal({ featureLabel, onClose, onGoPremium 
       <div className="vz-card my-8 w-full max-w-md p-6">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-2 text-base font-bold">
-            <IconLock className="mt-0.5 shrink-0 text-[color:var(--vz-gold-2)]" /> <span>{featureLabel
+            <IconLock className="mt-0.5 shrink-0 text-[color:var(--accent-text)]" /> <span>{featureLabel
               ? t('«{f}» — hozirgi profilingizda yopiq', { f: featureLabel })
               : t('Bu funksiya hozirgi profilingizda yopiq.')}</span>
           </div>

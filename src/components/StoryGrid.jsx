@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import StoryViewer from './StoryViewer.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
+import { mediaKind } from '../lib/media.js';
+import MediaThumb from './MediaThumb.jsx';
 
 // "LENTA" — 24 soatdan keyin o'zi yo'qoladigan istoryalar ro'yxati.
 //
@@ -12,6 +14,38 @@ import { useLanguage } from '../lib/i18n.jsx';
 //
 // Halqa (StoryRing) JOYIDA QOLADI — bu uni almashtirmaydi, balki
 // ko'rishning ikkinchi, ochiq yo'lini beradi.
+
+// LENTA KATAGI HECH QACHON BO'M-BO'SH QOLMAYDI.
+//
+// Shikoyat: VIP001 da "Stories 9" deb turardi, lekin ikkita katakda
+// media ko'rinib, qolgan yettitasi qop-qora edi. Sabab har katak
+// o'zicha `<img>`/`<video>` chizib, "media kelmasa nima ko'rsatamiz?"
+// degan savolga javob bermagani edi.
+//
+// Endi bu ish `MediaThumb` ga topshirilgan — sayt bo'yicha YAGONA
+// media oynachasi. Bo'sh katak chiqmasligining kafolati va uning
+// to'liq izohi o'sha faylda (src/components/MediaThumb.jsx).
+function StoryCell({ story, onOpen }) {
+  const kind = mediaKind(story);
+  return (
+    <button type="button" className="pf-story-cell" onClick={onOpen}>
+      {/* Media oynachasi — sayt bo'yicha YAGONA komponent
+          (src/components/MediaThumb.jsx). Bo'sh katak chiqmasligi
+          kafolati o'sha yerda, shuning uchun lenta ham, post ham,
+          boshqa joylar ham bir xil ishlaydi. */}
+      <MediaThumb item={story} alt={story.caption || ''} fit="cover" />
+
+      {/* Katta ▶ — faqat kadr CHIZILGANDA. Kadr yo'q bo'lsa ostidagi
+          qatlamda allaqachon "▶ Video" yozilgan turadi va ikkita
+          belgi bir-birining ustiga tushib chalkashtirardi. Buni CSS
+          hal qiladi (`[data-media-state="ok"] ~ .pf-story-play`),
+          shuning uchun bu yerda holatni ko'chirib yurish shart emas. */}
+      {kind === 'video' && <span className="pf-story-play" aria-hidden="true">{'▶'}</span>}
+      {story.likeCount > 0 && <em>{'❤'} {story.likeCount}</em>}
+    </button>
+  );
+}
+
 export default function StoryGrid({ stories = [], title = '', avatarUrl = '', canDelete = false, onDelete }) {
   const { t } = useLanguage();
   const [openAt, setOpenAt] = useState(null);
@@ -25,16 +59,7 @@ export default function StoryGrid({ stories = [], title = '', avatarUrl = '', ca
     <>
       <div className="pf-story-grid">
         {list.map((s, i) => (
-          <button key={s.id} type="button" className="pf-story-cell" onClick={() => setOpenAt(i)}>
-            {s.videoUrl
-              // `preload="metadata"` — birinchi kadr ko'rinsin, lekin
-              // butun video yuklanmasin (lentada 10 tagacha bo'lishi
-              // mumkin va hammasi birdan yuklansa trafik ketardi).
-              ? <video src={s.videoUrl} muted playsInline preload="metadata" />
-              : <img src={s.imageUrl} alt={s.caption || ''} loading="lazy" />}
-            {s.videoUrl && <span className="pf-story-play" aria-hidden="true">▶</span>}
-            {s.likeCount > 0 && <em>{'❤'} {s.likeCount}</em>}
-          </button>
+          <StoryCell key={s.id} story={s} onOpen={() => setOpenAt(i)} />
         ))}
       </div>
       {openAt !== null && (

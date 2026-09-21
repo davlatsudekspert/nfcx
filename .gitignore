@@ -25,7 +25,17 @@ mobile/web/
 # Golden test farqlari — vaqtinchalik chiqim, saqlanmaydi.
 mobile/test/audit/failures/
 
-# mobile_nova — Flutter build artefaktlari
+# Demo to'ldirish skriptining snapshotlari (scripts/demo-fill.mjs).
+# ICHIDA HAQIQIY PROFIL MA'LUMOTI BO'LADI — repoga tushmasligi shart.
+backups/
+
+# ── NOVA ILOVASI (mobile_nova/) ─────────────────────────────────
+#
+# BU QATORLAR SHU BRANCHGA XOS. `main` da `mobile_nova/` yo'q,
+# shuning uchun ular u yerda ham yo'q. Sayt fayllari main'dan
+# sinxronlanganda bu blok yo'qolib ketgan edi va surat darvozasi
+# (`test/shots_gate_test.dart`) buni darhol tutdi — aynan shu
+# uchun u yozilgan.
 mobile_nova/build/
 mobile_nova/.dart_tool/
 mobile_nova/android/.gradle/

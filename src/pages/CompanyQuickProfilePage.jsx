@@ -19,13 +19,14 @@ import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { fmt } from '../lib/format.js';
 import { TIER_COLOR, TIER_LABEL } from '../lib/pricing.js';
-import ShareButton from '../components/ShareButton.jsx';
 import ProfileManifest from '../components/ProfileManifest.jsx';
 import {
   IconPhone, IconTelegram, IconGlobe, IconWhatsApp, IconInstagram, IconFacebook, IconLink,
   IconNote, IconPin, IconBankCard, IconExpand, IconCollapse,
 } from '../components/Icons.jsx';
 import logo from '../assets/logo-128.png';
+import ProfileActionCluster from '../components/ProfileActionCluster.jsx';
+import ProfileQrModal from '../components/ProfileQrModal.jsx';
 import '../company-system.css';
 
 const fallbackCover = '/business-assets/construction-hero.jpg';
@@ -59,6 +60,8 @@ export default function CompanyQuickProfilePage({ companyId }) {
   const [posts, setPosts] = useState([]);
   // Musiqa pleeri — avatar yonidagi belgi bilan ochiladi/yopiladi.
   const [musicOpen, setMusicOpen] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
   // Xarita bosilgandagina yuklanadi (izohi pastda).
   const [mapOpen, setMapOpen] = useState(false);
@@ -240,6 +243,16 @@ export default function CompanyQuickProfilePage({ companyId }) {
   const tier = companyTier(company.companyId);
   const tierColor = TIER_COLOR[tier] || TIER_COLOR.free;
   const shareUrl = `${window.location.origin}/c/${company.companyId.toLowerCase()}`;
+  const workspaceUrl = `/workspace/${company.companyId.toLowerCase()}`;
+  // Nusxalash RAD ETILISHI mumkin (ruxsatsiz brauzer, HTTPS bo'lmagan
+  // muhit) — va'da qaytaradi, shuning uchun natija ROST aytiladi.
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* brauzer rad etdi — ulashish tugmasi baribir ishlaydi */ }
+  };
 
   // ── ALOQA — oltin dumaloq tugmalar, ikonka O'Z FIRMA RANGIDA ────────
   // Egasining talabi: "ikonka Telegram va boshqalar o'zini rangida
@@ -327,14 +340,31 @@ export default function CompanyQuickProfilePage({ companyId }) {
               )}
             </div>
             <div className="qp-topbar-side qp-topbar-side--right">
-              {/* Egasiga — "Tahrirlash": kamdan-kam bosiladigan, ikkinchi
-                  darajali harakat. Mehmonga bu joy BO'SH qoladi va
-                  "Obuna bo'lish" pastda, butun kenglikda turadi. */}
-              {isOwner && (
-                <button type="button" className="qp-sidebtn" onClick={() => navigate(`/workspace/${company.companyId.toLowerCase()}`)}>
-                  ✎ {t('Tahrirlash')}
-                </button>
-              )}
+              {/* SHAXSIY PROFIL BILAN BITTA TIZIM.
+                      [nusxalash] [ulashish] [⋮]
+                  (yurak kompaniya sahifasida yo'q — bu yerda asosiy
+                  ijtimoiy harakat "Obuna bo'lish", u pastda.)
+
+                  Ilgari bu burchakda alohida mavzu tugmasi va katta
+                  oltin "Tahrirlash" turardi — ya'ni bu sahifa
+                  saytning qolgan ochiq profillaridan boshqacha
+                  boshqarilardi. Mavzu endi ⋮ ichida (u SAYT qobig'i
+                  rangi; kompaniyaning o'z bezagiga tegmaydi), ega
+                  amallari ham o'sha yerda. */}
+              <ProfileActionCluster
+                url={shareUrl}
+                shareTitle={company.displayName}
+                shareText={company.description || company.displayName}
+                onCopy={copyLink}
+                targetKind="company"
+                targetId={company.companyId}
+                ownerActions={isOwner ? [
+                  { label: t('Profilni tahrirlash'), icon: '✎', onClick: () => navigate(`${workspaceUrl}?tab=profile`) },
+                  { label: t('Story qo‘shish'), icon: '＋', onClick: () => navigate(`${workspaceUrl}?tab=feed`) },
+                  { label: t('Post qo‘shish'), icon: '＋', onClick: () => navigate(`${workspaceUrl}?tab=posts`) },
+                  { label: t('QR kod'), icon: '▦', onClick: () => setQrOpen(true) },
+                ] : []}
+              />
             </div>
           </div>
           <div className="qp-ava-wrap">
@@ -408,12 +438,11 @@ export default function CompanyQuickProfilePage({ companyId }) {
                   </button>
                 )
               ))}
-              {/* ULASHISH — qolgan havolalar bilan BIR QATORDA. */}
-              <ShareButton
-                url={shareUrl} title={company.displayName}
-                text={company.description || company.displayName}
-                label={t('Ulashish')} className="qp-qbtn qp-qbtn--share vz-tap"
-              />
+              {/* ULASHISH BU QATORDAN OLIB TASHLANDI.
+                  U endi tepadagi amallar to'plamida — shaxsiy
+                  profildagidek. Ikkita bir xil "Ulashish" bitta
+                  ekranda turgani aynan egasi shikoyat qilgan
+                  "ortiqcha element" edi. */}
             </div>
           </div>
         </section>
@@ -553,6 +582,16 @@ export default function CompanyQuickProfilePage({ companyId }) {
         {showCard && <CardNumberModal cardNumber={company.cardNumber} holder={company.displayName} onClose={() => setShowCard(false)} />}
         {mapPick && <MapAppSheet company={company} onClose={() => setMapPick(false)} />}
         {fsHelp && <AddToHomeSheet onClose={() => setFsHelp(false)} />}
+
+        {/* QR — ega uchun, ⋮ menyusidan. Shaxsiy va biznes profil
+            bilan BITTA komponent. */}
+        {qrOpen && (
+          <ProfileQrModal url={shareUrl} name={company.displayName} onClose={() => setQrOpen(false)} />
+        )}
+
+        {/* Nusxalash natijasi KO'RINSIN — aks holda tugma
+            "ishlamayotgandek" tuyulardi. */}
+        {copied && <div className="bp-toast" role="status">{t('Havola nusxalandi!')}</div>}
       </div>
     </main>
   );

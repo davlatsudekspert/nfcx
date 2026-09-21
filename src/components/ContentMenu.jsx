@@ -59,6 +59,9 @@ export default function ContentMenuButton({ targetKind, targetId, className = ''
         aria-label={t('Yana')}
         aria-haspopup="menu"
         aria-expanded={menu ? true : undefined}
+        // Menyuni ochgan tugma "tashqari" hisoblanmaydi — aks holda
+        // `mousedown` menyuni yopar, ketidan kelgan `click` qayta ochardi.
+        data-anchored-anchor=""
         onClick={() => setMenu(menu ? null : anchorTo(btnRef.current, { width: 200, height: 64 }))}
         className={className}
       >
@@ -89,7 +92,10 @@ export default function ContentMenuButton({ targetKind, targetId, className = ''
   );
 }
 
-function ReportModal({ targetKind, targetId, onClose }) {
+// Shikoyat oynasi — `ProfileMoreMenu` ham shu AYNAN oynani ochadi.
+// Nusxa ko'chirilmaydi: shikoyat mantig'i (sabablar, yuborish,
+// cheklovlar) bitta joyda qolishi kerak.
+export function ReportModal({ targetKind, targetId, onClose }) {
   const { t } = useLanguage();
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
@@ -146,7 +152,7 @@ function ReportModal({ targetKind, targetId, onClose }) {
                   aria-pressed={reason === key}
                   className={`min-h-11 rounded-xl border px-4 py-2 text-[13px] transition ${
                     reason === key
-                      ? 'border-[color:var(--vz-gold)] bg-[color:var(--vz-gold)]/12 font-bold text-[color:var(--vz-gold-2)]'
+                      ? 'border-[color:var(--vz-gold)] bg-[color:var(--vz-gold)]/12 font-bold text-[color:var(--accent-text)]'
                       : 'border-white/12 text-base-content/80 hover:border-white/30'
                   }`}
                 >

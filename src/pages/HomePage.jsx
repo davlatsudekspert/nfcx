@@ -130,7 +130,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
     <main className="bg-page-bg">
       {/* ================= HERO (V1: markazlashgan, karta pastda) ================= */}
       <section className="relative overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(720px_420px_at_50%_0%,rgba(212,175,90,0.14),transparent_70%),radial-gradient(420px_320px_at_10%_90%,rgba(180,140,50,0.08),transparent_60%)]"></div>
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(720px_420px_at_50%_0%,var(--accent-a14),transparent_70%),radial-gradient(420px_320px_at_10%_90%,rgba(180,140,50,0.08),transparent_60%)]"></div>
 
         <div className="relative z-[1] mx-auto w-full max-w-[1800px] px-6 pb-10 pt-14 sm:px-10 lg:px-14 md:pt-20 lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:items-center lg:gap-10 lg:pb-8 lg:pt-8 xl:grid-cols-[minmax(0,1fr)_560px] xl:gap-16 xl:pt-12">
           {/* ===== CHAP USTUN: sarlavha, CTA, afzalliklar, NFC ID qidiruvi ===== */}
@@ -142,7 +142,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
           <Reveal delay="[transition-delay:80ms]">
             <h1 className="vz-h1 mt-5 max-w-[18ch] text-[color:var(--vz-ink)]">
               {lang === 'uz' ? (
-                <>Siz va biznesingiz — <span className="text-[color:var(--vz-gold-2)]">bitta profilda.</span></>
+                <>Siz va biznesingiz — <span className="text-[color:var(--accent-text)]">bitta profilda.</span></>
               ) : t('Siz va biznesingiz — bitta profilda.')}
             </h1>
           </Reveal>
@@ -170,7 +170,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
             <div className="vz-panel mx-auto mt-8 w-full max-w-xl p-3 text-left sm:p-4 lg:mx-0">
               <div className="vz-label mb-2">{t('Maxsus NFC ID tekshirish (ixtiyoriy)')}</div>
               <div className="flex items-center gap-2.5">
-                <div className="flex min-w-0 flex-1 items-center rounded-[10px] border border-[rgba(212,175,90,0.25)] bg-black/45 focus-within:border-[rgba(212,175,90,0.7)] focus-within:shadow-[0_0_0_3px_rgba(212,175,90,0.18)]">
+                <div className="flex min-w-0 flex-1 items-center rounded-[10px] border border-[color:var(--accent-primary)]/25 bg-black/45 focus-within:border-[color:var(--accent-primary)]/70 focus-within:shadow-[0_0_0_3px_var(--accent-a22)]">
                   <span className="shrink-0 pl-3 font-mono text-xs text-[color:var(--vz-ink-3)]">nfcstore.uz/</span>
                   <input
                     value={checkVal}
@@ -229,7 +229,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
                     <span className="vz-badge vz-badge--muted">{t('Band')}</span>
                     <span className="text-[color:var(--vz-ink-2)]">
                       {t('nfcstore.uz/{code} allaqachon olingan —', { code: checkResult.code.toLowerCase() })}{' '}
-                      <button onClick={() => navigate('/' + checkResult.code)} className="cursor-pointer underline decoration-[#c9a227] underline-offset-2 hover:text-[color:var(--vz-ink)]">{t("sahifasini ko'rish")}</button>
+                      <button onClick={() => navigate('/' + checkResult.code)} className="cursor-pointer underline decoration-[color:var(--accent-primary)] underline-offset-2 hover:text-[color:var(--vz-ink)]">{t("sahifasini ko'rish")}</button>
                     </span>
                   </>}
                   {/* AUKSION BEKOR QILINDI (2026-09): ekslyuziv kod endi
@@ -255,10 +255,10 @@ export default function HomePage({ catalog, refreshCatalog }) {
           {/* ===== Karta — qahramon (V1) ===== */}
           <Reveal delay="[transition-delay:160ms]" className="relative flex w-full justify-center overflow-visible lg:justify-self-center">
             <div className="hidden lg:block">
-              <NeonOrbitCard code="AAA000" name={t('SIZNING ISMINGIZ')} />
+              <NeonOrbitCard code="AAA000" name={t('SIZNING ISMINGIZ')} finish="showcase" />
             </div>
             <div className="relative lg:hidden">
-              <div className="pointer-events-none absolute -inset-6 rounded-full bg-[radial-gradient(circle,rgba(212,175,90,0.22),transparent_68%)] blur-md"></div>
+              <div className="pointer-events-none absolute -inset-6 rounded-full bg-[radial-gradient(circle,var(--accent-a22),transparent_68%)] blur-md"></div>
               <div className="relative rotate-[-3deg]">
                 <NfcCard code="AAA000" name={t('SIZNING ISMINGIZ')} finish="showcase" size="md" />
               </div>
@@ -269,7 +269,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
           <Reveal delay="[transition-delay:320ms]" className="w-full">
             <div className="mx-auto mt-10 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-3 lg:max-w-none lg:mt-8">
               <div className="vz-card--flat vz-card min-w-0 px-4 py-3">
-                <div className="font-display text-2xl font-semibold text-[color:var(--vz-gold-2)]"><CountUp value={catalog.length} /></div>
+                <div className="font-display text-2xl font-semibold text-[color:var(--accent-text)]"><CountUp value={catalog.length} /></div>
                 <div className="text-xs text-[color:var(--vz-ink-2)]">{t('Band qilingan')}</div>
               </div>
               <div className="vz-card--flat vz-card min-w-0 px-4 py-3">
@@ -294,7 +294,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
                   <span
                     key={it.code + i}
                     onClick={() => navigate('/' + it.code)}
-                    className="cursor-pointer whitespace-nowrap font-mono text-[14px] tracking-wide text-[color:var(--vz-ink-3)] transition-colors hover:text-[color:var(--vz-gold-2)]"
+                    className="cursor-pointer whitespace-nowrap font-mono text-[14px] tracking-wide text-[color:var(--vz-ink-3)] transition-colors hover:text-[color:var(--accent-text)]"
                   >
                     nfcstore.uz/{it.code.toLowerCase()} · {it.name}
                   </span>
@@ -317,13 +317,13 @@ export default function HomePage({ catalog, refreshCatalog }) {
           <h2 className="vz-h2 text-[color:var(--vz-ink)]">{t('Kimlar uchun')}</h2>
           <div className="mt-8 grid gap-4 md:grid-cols-2">
             <article className="vz-card flex min-w-0 flex-col p-6 sm:p-7">
-              <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[rgba(212,175,90,0.14)] text-[color:var(--vz-gold-2)]"><IconUser width="22" height="22" /></span>
+              <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[var(--accent-a14)] text-[color:var(--accent-text)]"><IconUser width="22" height="22" /></span>
               <h3 className="mt-4 text-xl font-bold text-[color:var(--vz-ink)]">{t('Jismoniy shaxs')}</h3>
               <p className="mt-2 max-w-[52ch] flex-1 text-[15px] leading-relaxed text-[color:var(--vz-ink-2)]">{t('Mutaxassis, tadbirkor, ijodkor — o‘z brendingiz uchun bitta havola.')}</p>
               <button onClick={() => navigate('/register')} className="btn btn-gold mt-5 self-start">{t('Shaxsiy profil ochish')}</button>
             </article>
             <article className="vz-card flex min-w-0 flex-col p-6 sm:p-7">
-              <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[rgba(212,175,90,0.14)] text-[color:var(--vz-gold-2)]"><IconBag width="22" height="22" /></span>
+              <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[var(--accent-a14)] text-[color:var(--accent-text)]"><IconBag width="22" height="22" /></span>
               <h3 className="mt-4 text-xl font-bold text-[color:var(--vz-ink)]">{t('Kompaniya')}</h3>
               <p className="mt-2 max-w-[52ch] flex-1 text-[15px] leading-relaxed text-[color:var(--vz-ink-2)]">{t('Menyu, katalog, xizmatlar, filiallar va jamoa — premium biznes profil.')}</p>
               <button onClick={() => navigate('/kompaniyalar')} className="btn btn-outline-gold mt-5 self-start">{t('Kompaniya profili ochish')}</button>
@@ -342,7 +342,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
               ['03', 'Kontaktni saqlang', 'Ism, telefon va boshqa ma’lumotlar bir tugma orqali kontaktlarga qo‘shiladi.'],
             ].map(([n, title, desc]) => (
               <li key={n} className="vz-card min-w-0 p-5 sm:p-6">
-                <div className="font-mono text-xs text-[color:var(--vz-gold-2)]">{n}</div>
+                <div className="font-mono text-xs text-[color:var(--accent-text)]">{n}</div>
                 <h3 className="mt-3 text-lg font-bold text-[color:var(--vz-ink)]">{t(title)}</h3>
                 <p className="mt-2 text-[15px] leading-relaxed text-[color:var(--vz-ink-2)]">{t(desc)}</p>
               </li>
@@ -370,15 +370,15 @@ export default function HomePage({ catalog, refreshCatalog }) {
               </ul>
               <button onClick={() => navigate('/register')} className="btn btn-outline-gold mt-5">{t('Boshlash')}</button>
             </article>
-            <article className="vz-card relative flex min-w-0 flex-col border-[rgba(212,175,90,0.45)] p-6">
+            <article className="vz-card relative flex min-w-0 flex-col border-[color:var(--accent-primary)]/45 p-6">
               <span className="vz-badge vz-badge--gold absolute -top-3 left-6">{t('Mashhur')}</span>
               <h3 className="text-lg font-bold text-[color:var(--vz-ink)]">{t('Maxsus NFC ID')}</h3>
-              <div className="mt-3 font-display text-3xl font-semibold text-[color:var(--vz-gold-2)]">{fmt(TIER_PRICE.free)} <small className="font-sans text-sm font-normal text-[color:var(--vz-ink-2)]">{t("so'mdan")}</small></div>
+              <div className="mt-3 font-display text-3xl font-semibold text-[color:var(--accent-text)]">{fmt(TIER_PRICE.free)} <small className="font-sans text-sm font-normal text-[color:var(--vz-ink-2)]">{t("so'mdan")}</small></div>
               <ul className="mt-4 flex-1 space-y-2 text-[15px] text-[color:var(--vz-ink-2)]">
                 {['free', 'silver', 'gold', 'premium'].map((k) => (
                   <li key={k} className="flex items-start justify-between gap-2"><span>{t(TIER_LABEL[k])}</span><span className="font-mono text-[color:var(--vz-ink)]">{fmt(TIER_PRICE[k])}</span></li>
                 ))}
-                <li className="flex items-start justify-between gap-2"><span>{t('Ekslyuziv')}</span><span className="text-[color:var(--vz-gold-2)]">{t('490 000 dan')}</span></li>
+                <li className="flex items-start justify-between gap-2"><span>{t('Ekslyuziv')}</span><span className="text-[color:var(--accent-text)]">{t('490 000 dan')}</span></li>
               </ul>
               <button onClick={() => navigate('/narxlar')} className="btn btn-gold mt-5">{t("Narxlarni ko'rish")}</button>
             </article>
@@ -405,7 +405,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
               [IconShield, "O'zbekiston", 'Mahalliy qo‘llab-quvvatlash — savollaringizga o‘zbek tilida javob beramiz.'],
             ].map(([Ic, h, p]) => (
               <div key={h} className="vz-panel flex min-w-0 items-start gap-3 p-5">
-                <span className="mt-0.5 shrink-0 text-[color:var(--vz-gold-2)]"><Ic width="22" height="22" /></span>
+                <span className="mt-0.5 shrink-0 text-[color:var(--accent-text)]"><Ic width="22" height="22" /></span>
                 <div className="min-w-0">
                   <b className="block text-[color:var(--vz-ink)]">{h}</b>
                   <span className="text-sm text-[color:var(--vz-ink-2)]">{t(p)}</span>
@@ -423,7 +423,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
               <details key={i} className="vz-card group p-0" open={i === 0}>
                 <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-4 px-5 py-3.5 text-[15px] font-bold text-[color:var(--vz-ink)] [&::-webkit-details-marker]:hidden">
                   <span className="min-w-0 break-words">{item.q}</span>
-                  <span className="shrink-0 text-[color:var(--vz-gold-2)] transition-transform group-open:rotate-45" aria-hidden="true">+</span>
+                  <span className="shrink-0 text-[color:var(--accent-text)] transition-transform group-open:rotate-45" aria-hidden="true">+</span>
                 </summary>
                 <p className="px-5 pb-5 text-[15px] leading-relaxed text-[color:var(--vz-ink-2)]">{item.a}</p>
               </details>
@@ -440,11 +440,11 @@ export default function HomePage({ catalog, refreshCatalog }) {
               <button
                 key={item.href}
                 onClick={() => navigate(item.href)}
-                className="vz-card group min-w-0 cursor-pointer p-5 text-left transition-all hover:-translate-y-0.5 hover:border-[rgba(212,175,90,0.5)]"
+                className="vz-card group min-w-0 cursor-pointer p-5 text-left transition-all hover:-translate-y-0.5 hover:border-[color:var(--accent-primary)]/50"
               >
                 <h3 className="font-semibold text-[color:var(--vz-ink)]">{t(item.title)}</h3>
                 <p className="mt-2 text-[15px] leading-relaxed text-[color:var(--vz-ink-2)]">{t(item.desc)}</p>
-                <span className="mt-4 inline-block text-sm text-[color:var(--vz-gold-2)] transition-transform group-hover:translate-x-1">{t(item.go)}</span>
+                <span className="mt-4 inline-block text-sm text-[color:var(--accent-text)] transition-transform group-hover:translate-x-1">{t(item.go)}</span>
               </button>
             ))}
           </div>

@@ -105,13 +105,21 @@ class BusinessRepository {
         parseList(j['items'] ?? j[kind.path] ?? j['products'], CatalogItem.fromJson));
   }
 
-  Future<Result<List<CatalogCategory>>> recordCategories(
-      String code, CatalogKind kind) async {
-    final res =
-        await _api.get<Map<String, dynamic>>('/api/records/$code/${kind.path}/categories');
-    return res.map(
-        (j) => parseList(j['categories'] ?? j['items'], CatalogCategory.fromJson));
-  }
+  // `recordCategories` OLIB TASHLANDI.
+  //
+  // U `GET /api/records/:code/:kind/categories` ga murojaat
+  // qilardi — server esa bu yo'lni faqat POST/PUT/DELETE bilan
+  // biladi (`hosting/api/catalog.js`), GET umuman yo'q. Ya'ni
+  // metod chaqirilganda DOIM 404 qaytarardi.
+  //
+  // Ilovada uni hech kim chaqirmasdi, shuning uchun sezilmagan.
+  // Yangi qo'riqchi (`scripts/test-nova-api-parity.mjs`) topdi.
+  //
+  // Serverga GET qo'shilmadi: kategoriyalar allaqachon
+  // `recordCatalog()` javobi bilan birga keladi (har bir
+  // kategoriya o'z elementlari bilan). Hech kim chaqirmaydigan
+  // metod uchun yangi endpoint yozish — bo'lmagan ishni
+  // o'ylab topish.
 
   Future<Result<CatalogItem>> addRecordItem(
       String code, CatalogKind kind, Map<String, dynamic> body) async {

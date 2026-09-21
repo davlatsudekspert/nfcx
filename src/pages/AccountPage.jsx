@@ -23,6 +23,7 @@ import StoryUploader from '../components/StoryUploader.jsx';
 import StoryFeedBar from '../components/StoryFeedBar.jsx';
 import { CARD_BACKGROUNDS, cardBackgroundFromUrl } from '../lib/cardBackgrounds.js';
 import { listMyCompanies } from '../lib/company.js';
+import { dbListNfcDevices, dbUpdateNfcDevice } from '../lib/db.js';
 import { autoCropToContent, centerObject, removeBackground, whitenBackground, enhance } from '../lib/imageAI.js';
 import { tierForCode, TIER_COLOR, TIER_EMOJI, PROFILE_PREMIUM_FEE, PHYSICAL_CARD_FEE, PHYSICAL_CARD_FREE_DELIVERY_QTY, PHYSICAL_CARD_MAX_QTY, TIER_LABEL, tierLabelFor } from '../lib/pricing.js';
 import { effectiveAccess, featureAllowed, menuEligible, productEligible, serviceEligible, businessModule, FEATURE_MIN, hasAccess, trialDaysLeft } from '../lib/access.js';
@@ -468,7 +469,7 @@ function MenuManagerSection({ code, allowed, onLock }) {
       {mobilePreview && (
         <div className="fixed inset-0 z-50 flex flex-col bg-black/85 p-4 lg:hidden" onClick={() => setMobilePreview(false)}>
           <div className="mx-auto mt-6 w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-3 flex items-center justify-between text-sm font-bold text-white">
+            <div className="mb-3 flex items-center justify-between text-sm font-bold text-base-content">
               {t('Jonli ko‘rinish')}
               <CloseButton onClick={() => setMobilePreview(false)} />
             </div>
@@ -743,7 +744,7 @@ function ProductManagerSection({ code, allowed, onLock }) {
       {mobilePreview && (
         <div className="fixed inset-0 z-50 flex flex-col bg-black/85 p-4 lg:hidden" onClick={() => setMobilePreview(false)}>
           <div className="mx-auto mt-6 w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-3 flex items-center justify-between text-sm font-bold text-white">
+            <div className="mb-3 flex items-center justify-between text-sm font-bold text-base-content">
               {t('Jonli ko‘rinish')}
               <CloseButton onClick={() => setMobilePreview(false)} />
             </div>
@@ -1122,7 +1123,7 @@ function ServiceManagerSection({ code, allowed, onLock }) {
       {mobilePreview && (
         <div className="fixed inset-0 z-50 flex flex-col bg-black/85 p-4 lg:hidden" onClick={() => setMobilePreview(false)}>
           <div className="mx-auto mt-6 w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-3 flex items-center justify-between text-sm font-bold text-white">
+            <div className="mb-3 flex items-center justify-between text-sm font-bold text-base-content">
               {t('Jonli ko‘rinish')}
               <CloseButton onClick={() => setMobilePreview(false)} />
             </div>
@@ -1711,7 +1712,7 @@ function PremiumPanel({ user, card, onBecamePremium }) {
         <div className="min-w-0">
           <div className="vz-kicker">{t('Tarif')}</div>
           <div className="mt-1 flex flex-wrap items-center gap-2">
-            <span className="flex items-center gap-1.5 font-display text-2xl font-semibold text-[color:var(--vz-gold-2)]"><IconCrown width={22} height={22} /> {tierLabel}</span>
+            <span className="flex items-center gap-1.5 font-display text-2xl font-semibold text-[color:var(--accent-text)]"><IconCrown width={22} height={22} /> {tierLabel}</span>
             {user?.isPremium && <span className="vz-badge vz-badge--gold"><IconCheck width={12} height={12} /> {t("Premium a'zo")}</span>}
             {!user?.isPremium && trialLeft != null && (
               <span className="vz-badge vz-badge--gold">{t('Sinov: {n} kun qoldi', { n: trialLeft })}</span>
@@ -1764,7 +1765,7 @@ function PremiumPanel({ user, card, onBecamePremium }) {
         </div>
         {!user?.isPremium && (
           <div className="vz-panel min-w-0 border-accent/30 p-4">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--vz-gold-2)]">{t('Premium ochadi')}</div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--accent-text)]">{t('Premium ochadi')}</div>
             {lockedNow.length === 0 && <p className="mt-2 text-sm text-base-content/50">{t("NFC ID tarifingiz allaqachon Premium darajasida.")}</p>}
             <ul className="mt-2 space-y-1.5 text-sm">
               {lockedNow.map((f) => (
@@ -2339,7 +2340,7 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
                       ko'rsatamiz — mijoz "yana bittasini qo'shsam bepul
                       bo'larkan" deb bilsin. */}
                   {freeDelivery && (
-                    <p className="text-xs font-semibold text-[color:var(--vz-gold-2)]">
+                    <p className="text-xs font-semibold text-[color:var(--accent-text)]">
                       {t('✓ Yetkazib berish bepul — {n} tadan ortiq buyurtma.', { n: PHYSICAL_CARD_FREE_DELIVERY_QTY })}
                     </p>
                   )}
@@ -2362,7 +2363,7 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
 // cabinetLinks: [{ id, label, Icon, onClick, disabled }] — boshqa sahifalarga
 //   (Bildirishnomalar, To'lovlar, Akkaunt sozlamalari...) havolalar, sidebar'ning
 //   pastki guruhi.
-export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [], onSelectCard, extraSections = [], cabinetLinks = [] }) {
+export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [], onSelectCard, extraSections = [], cabinetLinks = [], initialAction = '' }) {
   const { t, lang } = useLanguage();
   const { user, refresh } = useAuth();
   const cats = useCategories();
@@ -2381,17 +2382,57 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
   const [geoMsg, setGeoMsg] = useState('');
   // Business Workspace navigatsiyasi: 'asosiy' | 'katalog' | 'lokatsiya' | 'sozlamalar'.
   // Shaxsiy/expert profillar uchun ishlatilmaydi (ular eski flat accordion'da qoladi).
-  // BOSHLANG'ICH BO'LIM — manzildagi `#lenta` bo'lsa istorya/post.
+  // BOSHLANG'ICH BO'LIM — niyat yoki manzil qaysi bo'limni ochishni aytadi.
   //
   // Nima uchun: profil sahifasidagi "Istorya qo'shish" tugmasi shu
   // yerga olib keladi. Usiz odam kabinetga tushib, kerakli bo'limni
   // yana o'zi qidirishi kerak edi — ya'ni tugma va'da qilgan ishni
   // oxirigacha bajarmasdi.
   const [wsTab, setWsTab] = useState(() => {
+    // NFC kartadan kelgan niyat eng ustun: ega profilidagi pastki
+    // boshqaruv panelidan "Story +" bosgan odam SHU zahoti Stories
+    // bo'limida bo'lsin, kabinetni qaytadan kezib chiqmasin.
+    // STORY va POST ENDI ALOHIDA BO'LIM. Ilgari ikkalasi bitta
+    // "lenta" bo'limida ustma-ust turardi va odam nima yaratayotganini
+    // ajrata olmasdi. Niyat ham aynan o'z bo'limiga olib boradi.
+    if (initialAction === 'story') return 'stories';
+    if (initialAction === 'post') return 'postlar';
+    if (initialAction === 'edit') return card.profileType === 'business' ? 'asosiy' : 'profil';
     const hash = typeof window === 'undefined' ? '' : window.location.hash;
-    if (hash === '#lenta') return 'lenta';
+    // `#lenta` — eski manzil; xatcho'p va eski havolalar buzilmasin.
+    if (hash === '#stories' || hash === '#lenta') return 'stories';
+    if (hash === '#postlar') return 'postlar';
     return card.profileType === 'business' ? 'asosiy' : 'boshqaruv';
   });
+  // NIYATNI BAJARISH VA MANZILNI TOZALASH.
+  //
+  // Bo'lim allaqachon `wsTab` boshlang'ich qiymatida tanlangan; bu yerda
+  // faqat kerakli blokka olib boriladi va niyat manzildan OLIB
+  // TASHLANADI. Aks holda odam story yopib, orqaga qaytsa yoki sahifani
+  // yangilasa — o'sha blok yana va yana ochilaverardi (loop).
+  //
+  // `code` ATAYLAB QOLDIRILADI: manzil qaysi NFC ID ustida ishlayotganini
+  // ko'rsatib tursin, yangilangandan keyin ham o'sha karta ochilsin.
+  // `replaceState` ishlatiladi (`pushState` emas) — "orqaga" tugmasi
+  // odamni profiliga qaytarsin, kabinetning o'z ichiga emas.
+  const intentDone = useRef(false);
+  useEffect(() => {
+    if (intentDone.current || !initialAction) return;
+    intentDone.current = true;
+    if (initialAction === 'story' || initialAction === 'post') {
+      const id = initialAction === 'story' ? 'owner-story' : 'owner-post';
+      // Bo'lim endigina chizilgani uchun bir kadr kutamiz.
+      const timer = setTimeout(() => {
+        const el = document.getElementById(id);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 220);
+      cleanAccountIntentFromUrl();
+      return () => clearTimeout(timer);
+    }
+    cleanAccountIntentFromUrl();
+    return undefined;
+  }, [initialAction]);
+
   const [form, setForm] = useState({
     name: card.name,
     role: card.role || '',
@@ -2787,10 +2828,10 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
   // ko'rinadi-yu, ichi bo'sh qolib ketadi) — mos kelmasa mos andozaga qaytaramiz.
   useEffect(() => {
     const extraIds = extraSections.map((x) => x.id);
-    const businessTabs = ['asosiy', 'lenta', 'katalog', 'aksiyalar', 'galereya', 'lokatsiya', 'sozlamalar', ...extraIds];
+    const businessTabs = ['asosiy', 'stories', 'postlar', 'katalog', 'aksiyalar', 'galereya', 'lokatsiya', 'sozlamalar', ...extraIds];
     // Shaxsiy profilda alohida "Sozlamalar" tabi yo'q — akkaunt sozlamalari
     // sidebar'ning "Kabinet" guruhidan (bitta kirish nuqtasi) ochiladi.
-    const personalTabs = ['boshqaruv', 'profil', 'lenta', 'nfckarta', 'myids', ...extraIds];
+    const personalTabs = ['boshqaruv', 'profil', 'stories', 'postlar', 'nfckarta', 'myids', ...extraIds];
     if (isBusiness && !businessTabs.includes(wsTab)) setWsTab('asosiy');
     if (!isBusiness && !personalTabs.includes(wsTab)) setWsTab('boshqaruv');
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -3015,8 +3056,21 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
     </Section>
   );
 
+  // "Ijtimoiy tarmoqlar" bosilganda bo'lim OCHILADI.
+  //
+  // E'LON SHU YERDA — `secSocial` dan OLDIN. Uni pastroqqa
+  // qo'yganimda `secSocial` unga yetib bo'lmaydigan paytda
+  // murojaat qildi va butun kabinet "Cannot access before
+  // initialization" bilan ochilmay qoldi.
+  const [socialSignal, setSocialSignal] = useState(0);
+
   const secSocial = (
-    <Section title={t('Ijtimoiy tarmoqlar')} subtitle={t('Instagram, Facebook, X, LinkedIn, veb-sayt, havolalar, hashtaglar')}>
+    <Section
+      id="ijtimoiy"
+      title={t('Ijtimoiy tarmoqlar')}
+      subtitle={t('Instagram, Facebook, X, LinkedIn, veb-sayt, havolalar, hashtaglar')}
+      openSignal={socialSignal}
+    >
       <div className="grid gap-3 md:grid-cols-2">
         <label className="form-control min-w-0"><span className="flex items-center gap-1.5 text-xs font-semibold text-base-content/70"><IconInstagram width={12} height={12} /> Instagram</span><input value={form.instagram} onChange={set('instagram')} placeholder={t('@username yoki to‘liq havola')} className={inp} /></label>
         <label className="form-control min-w-0"><span className="flex items-center gap-1.5 text-xs font-semibold text-base-content/70"><IconFacebook width={12} height={12} /> Facebook</span><input value={form.facebook} onChange={set('facebook')} placeholder={t("username yoki havola")} className={inp} /></label>
@@ -3098,7 +3152,18 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
       <Gate ok={allow('music')} onLock={() => setLocked(t('Profil musiqasi'))}>
       <label className="form-control mt-5 block">
         <span className="flex items-center gap-1.5 text-xs font-semibold text-base-content/70"><IconMusic width={12} height={12} /> {t('Profil musiqasi')} <span className="font-normal text-base-content/40">({form.musicUrls.length}/{musicMax})</span></span>
-        <input ref={musicFileRef} type="file" accept="audio/*" style={{ display: 'none' }} onChange={onPickMusicFile} />
+        {/* KENGAYTMALAR ATAYLAB SANAB O'TILGAN.
+            `audio/*` ning O'ZI yetarli emas: Android'dagi fayl
+            tanlagich unda ko'pincha RASM va VIDEO ko'rsatadi,
+            musiqa esa ro'yxatga tushmaydi. Kengaytmalar qo'shilsa
+            tanlagich mp3/m4a/wav larni to'g'ri ko'rsatadi. */}
+        <input
+          ref={musicFileRef}
+          type="file"
+          accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.oga,.opus,.flac,.weba,.mp4a"
+          style={{ display: 'none' }}
+          onChange={onPickMusicFile}
+        />
         {contentRules.node}
         <div className="mt-2 space-y-3">
           {form.musicUrls.map((url, i) => (
@@ -3395,17 +3460,24 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
   // o'rinda va OLTIN yaltiroq bilan ajratilgan (egasining so'rovi).
   // Sabab: ilgari istorya "Umumiy" ichida, post esa ro'yxatning eng
   // oxirida turardi — odam ularni umuman topmasdi.
-  const lentaNav = ['lenta', t('Stories va post'), IconImage, 0, true];
+  // IKKITA ALOHIDA YOZUV. Bitta "Stories va post" bo'limi ichida
+  // ikkala oqim ustma-ust turardi: ikkala forma ham bir xil
+  // ko'rinardi va odam nima yaratayotganini bilmasdi. Endi ular
+  // navigatsiyada ham, manzilda ham, ekranda ham ajralgan.
+  const storiesNav = ['stories', t('Stories'), IconImage, 0, true];
+  const postlarNav = ['postlar', t('Postlar'), IconGrid, 0, true];
   const personalNav = [
     ['boshqaruv', t('Umumiy'), IconHome],
     ['profil', t('Profil'), IconUser],
-    lentaNav,
+    storiesNav,
+    postlarNav,
     ['nfckarta', t('NFC karta'), IconCard],
     ['myids', t("Mening ID'larim"), IconIdCard],
   ];
   const businessNav = [
     ['asosiy', t('Asosiy'), IconBriefcase],
-    lentaNav,
+    storiesNav,
+    postlarNav,
     ['katalog', CATALOG_TAB_LABEL[catalogModule] || t('Katalog'), IconGrid],
     ...(catalogModule === 'products' ? [['aksiyalar', t('Aksiyalar'), IconTag]] : []),
     ['galereya', t('Galereya'), IconImage],
@@ -3434,16 +3506,25 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
       type="button"
       onClick={() => setWsTab(id)}
       aria-current={wsTab === id ? 'page' : undefined}
-      className={`flex min-h-11 shrink-0 items-center gap-2.5 rounded-xl border-l-[3px] px-3 py-2 text-left text-sm font-semibold transition lg:w-full ${gold ? 'ws-nav-gold' : ''} ${wsTab === id ? 'border-[color:var(--vz-gold)] bg-[color:var(--vz-card-2)] text-[color:var(--vz-gold-2)]' : 'border-transparent text-base-content/60 hover:bg-white/5 hover:text-base-content'}`}
+      className={`flex min-h-11 items-center gap-2.5 rounded-xl border-l-[3px] px-2.5 py-2 text-left text-[13px] font-semibold leading-tight transition lg:w-full lg:px-3 lg:text-sm ${gold ? 'ws-nav-gold' : ''} ${wsTab === id ? 'border-[color:var(--vz-gold)] bg-[color:var(--vz-card-2)] text-[color:var(--accent-text)]' : 'border-transparent text-base-content/60 hover:bg-white/5 hover:text-base-content'}`}
     >
       <span className="shrink-0"><Icon width={16} height={16} /></span>
-      <span className="truncate">{label}</span>
+      {/* `truncate` OLIB TASHLANDI: katakda joy bor, "Stories va post"
+          va "Mening ID'larim" to'liq sig'adi. */}
+      <span className="min-w-0 flex-1">{label}</span>
       {badge > 0 && <span className="vz-badge vz-badge--gold ml-auto !px-1.5 !py-0 text-[11px]">{badge}</span>}
     </button>
   );
   const nav = (
     <aside className="mb-5 min-w-0 lg:sticky lg:top-6 lg:mb-0" aria-label={t('Kabinet bo‘limlari')}>
-      <div className="hidden items-center gap-3 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] p-3 lg:flex">
+      {/* QAYSI NFC ID ochilgani — endi TELEFONDA HAM ko'rinadi.
+          Ilgari bu qator `hidden ... lg:flex` edi, ya'ni faqat
+          kompyuterda. Telefonda esa yuqorida ASOSIY kartaning kodi
+          turadi: bir nechta NFC ID'si bor odam kartani bosib
+          TTS075 boshqaruviga kirsa ham ekranda "AAA000 · ASOSIY ID"
+          ni ko'rib, boshqa kartasini tahrirlayapman deb o'ylardi.
+          Endi qaysi ID ustida ishlayotgani aniq yozib turadi. */}
+      <div className="mb-3 flex items-center gap-3 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] p-3 lg:mb-0">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-base-100 text-sm font-bold">
           {form.avatarUrl ? <img src={form.avatarUrl} alt="" className="h-full w-full object-cover" /> : initials(form.name)}
         </div>
@@ -3452,17 +3533,51 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
           <div className="truncate font-mono text-[11px] text-base-content/45">NFC ID · {card.code}{card.isPrimary ? ` · ${t('ASOSIY')}` : ''}</div>
         </div>
       </div>
-      <nav className="flex gap-1 overflow-x-auto rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] p-1.5 lg:mt-3 lg:flex-col lg:overflow-visible">
+      {/* TELEFONDA ENDI KATAKCHA, gorizontal surilma EMAS.
+          Ilgari bo'limlar bitta qatorda yonma-yon turar va ekranga
+          sig'mas edi: yozuvlar kesilib ("Stories va p...") qolar,
+          o'ng tomondagi bo'limlar esa surmaguncha KO'RINMASDI —
+          ya'ni odam ularning borligini ham bilmasdi.
+          Ikki ustunda hammasi bir ko'rinishda va yozuv to'liq.
+          Kompyuterda avvalgidek tik ustun bo'lib qoladi.
+          320px (iPhone SE) da BITTA ustun: ikki ustunda katak
+          ~100px qolar va "Bildirishnomalar" kabi uzun so'z
+          kesilardi. Bitta ustunda biroz ko'proq suriladi, lekin
+          yozuv to'liq o'qiladi. */}
+      <nav className="grid grid-cols-1 gap-1.5 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] p-1.5 min-[360px]:grid-cols-2 lg:mt-3 lg:flex lg:flex-col lg:gap-1">
         {navItems.map(([id, label, Icon, badge, gold]) => navBtn(id, label, Icon, badge, gold))}
+        {/* IJTIMOIY TARMOQLAR — ALOHIDA YO'L.
+            Yangi odam uchun bu eng kerakli maydon, lekin u "Profil"
+            (yoki bizneda "Sozlamalar") bo'limining ICHIDA, pastda
+            yotardi — odam uni topolmasdi. Endi yon menyudan bir
+            bosishda ochiladi: kerakli bo'limga o'tadi, bo'limni
+            ochadi va o'sha joyga suradi. */}
+        <button
+          type="button"
+          onClick={() => {
+            setWsTab(isBusiness ? 'sozlamalar' : 'profil');
+            setSocialSignal((n) => n + 1);
+            setTimeout(() => {
+              document.getElementById('ijtimoiy')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 120);
+          }}
+          className="flex min-h-11 items-center gap-2.5 rounded-xl border-l-[3px] border-transparent px-2.5 py-2 text-left text-[13px] font-semibold leading-tight text-base-content/60 transition hover:bg-white/5 hover:text-base-content lg:w-full lg:px-3 lg:text-sm"
+        >
+          <span className="shrink-0"><IconLink width={16} height={16} /></span>
+          <span className="min-w-0 flex-1">{t('Ijtimoiy tarmoqlar')}</span>
+        </button>
         {cabinetLinks.length > 0 && (
           <>
             <div className="mx-1 hidden h-px bg-[color:var(--vz-line)] lg:my-1.5 lg:block"></div>
             <div className="hidden px-3 pt-1 text-[11px] font-bold uppercase tracking-wider text-base-content/35 lg:block">{t('Kabinet')}</div>
             {cabinetLinks.map(({ id, label, Icon, onClick, disabled }) => (
               <button key={id} type="button" onClick={onClick} disabled={disabled}
-                className="flex min-h-11 shrink-0 items-center gap-2.5 rounded-xl border-l-[3px] border-transparent px-3 py-2 text-left text-sm font-semibold text-base-content/60 transition hover:bg-white/5 hover:text-base-content disabled:opacity-40 lg:w-full">
+                className="flex min-h-11 items-center gap-2.5 rounded-xl border-l-[3px] border-transparent px-2.5 py-2 text-left text-[13px] font-semibold leading-tight text-base-content/60 transition hover:bg-white/5 hover:text-base-content disabled:opacity-40 lg:w-full lg:px-3 lg:text-sm">
                 <span className="shrink-0">{Icon ? <Icon width={16} height={16} /> : null}</span>
-                <span className="truncate">{label}</span>
+                {/* Yuqoridagi bo'lim tugmalari bilan BIR XIL: katakda
+                    joy bor, shuning uchun "Akkaunt sozlamalari" kabi
+                    uzun yozuvlar kesilmaydi. */}
+                <span className="min-w-0 flex-1">{label}</span>
               </button>
             ))}
           </>
@@ -3597,6 +3712,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
         {!isBusiness && wsTab === 'nfckarta' && (
           <Section title={t('NFC karta')} subtitle={t("Narx, ko'rishlar, dizayn va buyurtma")} defaultOpen>
             {nfcIdBlock}
+            <MyNfcDevices t={t} myCards={myCards} />
             {giftBlock}
           </Section>
         )}
@@ -3651,25 +3767,54 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
             formasining "Profilni saqlash" paneli turardi va u shu
             bo'limning saqlash tugmasi deb o'qilardi (u endi bu yerda
             chizilmaydi — pastga qarang). */}
-        {wsTab === 'lenta' && (
-          <div className="space-y-5">
-            <div className="rounded-2xl border border-accent/25 bg-accent/5 px-4 py-3 text-xs leading-relaxed text-base-content/70">
-              {t('Story va post — ikki alohida ish. Faqat story yoki faqat post qo‘ysangiz ham bo‘ladi: har birining o‘z saqlash tugmasi bor.')}
+        {/* ── STORIES — ALOHIDA BO'LIM ─────────────────────────────
+            Ilgari story va post BITTA bo'limda ustma-ust turardi.
+            Ikkala forma ham bir xil ko'rinardi va odam nima
+            yaratayotganini bilmasdi — "saqladim, lekin qayerga
+            ketdi?" degan savol shundan edi.
+
+            Endi har biri o'z bo'limida: o'z manzili (#stories),
+            o'z sarlavhasi, o'z rangi va o'z saqlash tugmasi. */}
+        {wsTab === 'stories' && (
+          <div className="space-y-5" id="owner-story" style={{ scrollMarginTop: 84 }}>
+            <div className="rounded-2xl border border-accent/25 bg-accent/5 px-4 py-3">
+              <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--accent-text)]">{t('STORY')}</div>
+              <p className="mt-1 text-xs leading-relaxed text-base-content/70">
+                {t('Story 24 soatdan keyin o‘zi yo‘qoladi. Doimiy qoladigan kontent uchun “Postlar” bo‘limiga o‘ting.')}
+              </p>
+              <button
+                type="button"
+                className="mt-2 text-xs font-semibold text-[color:var(--accent-text)] underline underline-offset-2"
+                onClick={() => setWsTab('postlar')}
+              >
+                {t('Postlar bo‘limiga o‘tish')} ›
+              </button>
             </div>
             <StorySection code={card.code} allowed={allow('story')} onLocked={() => setLocked(t('Story joylashtirish'))} t={t} />
-            {/* Post bloki istorya bloki bilan BIR XIL ko'rinishda —
-                yig'iladigan panel emas: yig'ilgan holatda "Joylash"
-                tugmasi ko'rinmasdi va bo'lim boshqarilmaydigandek
-                tuyulardi. */}
+          </div>
+        )}
+
+        {/* ── POSTLAR — ALOHIDA BO'LIM ─────────────────────────────── */}
+        {wsTab === 'postlar' && (
+          <div className="space-y-5" id="owner-post" style={{ scrollMarginTop: 84 }}>
+            <div className="rounded-2xl border border-info/25 bg-info/5 px-4 py-3">
+              <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-info">{t('POST')}</div>
+              <p className="mt-1 text-xs leading-relaxed text-base-content/70">
+                {t('Post profilda DOIMIY qoladi. 24 soatlik kontent uchun “Stories” bo‘limiga o‘ting.')}
+              </p>
+              <button
+                type="button"
+                className="mt-2 text-xs font-semibold text-info underline underline-offset-2"
+                onClick={() => setWsTab('stories')}
+              >
+                {t('Stories bo‘limiga o‘tish')} ›
+              </button>
+            </div>
             <section className="vz-card p-5">
               <div className="min-w-0">
-                <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--vz-gold-2)]">{t('2-bo‘lim')}</span>
-                <h3 className="font-display text-lg font-semibold">{t('Postlar / Media')}</h3>
+                <h3 className="font-display text-lg font-semibold">{t('Postlar')}</h3>
                 <p className="mt-0.5 text-xs leading-relaxed text-base-content/50">
-                  {t('Rasm va izohlarni joylashtiring')}
-                </p>
-                <p className="mt-1 text-xs leading-relaxed text-base-content/40">
-                  {t('Faqat post qo‘ysangiz ham bo‘ladi — story qo‘yish shart emas.')}
+                  {t('Rasm yoki video va izoh — profilingizda doimiy qoladi.')}
                 </p>
               </div>
               <div className="mt-4">
@@ -3786,7 +3931,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
               bosgan, hech narsa bo'lmagan (u faqat profil o'zgarganda
               ishlaydi) va "istorya postsiz saqlanmayapti" degan
               xulosaga kelgan. */}
-          {wsTab === 'lenta' && dirty && (
+          {(wsTab === 'stories' || wsTab === 'postlar') && dirty && (
             <div className="mt-5 rounded-2xl border border-warning/30 bg-warning/5 px-4 py-3">
               <div className="flex flex-wrap items-center gap-3">
                 <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-warning">
@@ -3801,7 +3946,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
               </p>
             </div>
           )}
-          {wsTab !== 'lenta' && (isFormTab || dirty) && (
+          {wsTab !== 'stories' && wsTab !== 'postlar' && (isFormTab || dirty) && (
             <div className={dirty ? 'fixed inset-x-0 bottom-0 z-40 border-t border-[color:var(--vz-line)] bg-[color:var(--vz-bg)] p-3 lg:static lg:mt-5 lg:border-0 lg:bg-transparent lg:p-0' : 'mt-5'}>
               <div className="flex flex-wrap items-center gap-3">
                 <button type="button" className="btn btn-gold min-h-11 w-full sm:w-auto" onClick={submit} disabled={busy || !dirty}>
@@ -3813,7 +3958,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
               </div>
             </div>
           )}
-          {wsTab !== 'lenta' && dirty && <div className="h-20 lg:hidden" aria-hidden="true"></div>}
+          {wsTab !== 'stories' && wsTab !== 'postlar' && dirty && <div className="h-20 lg:hidden" aria-hidden="true"></div>}
           {msg && <div className={`alert mt-4 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(msg.text)}</span></div>}
         </div>
 
@@ -3989,16 +4134,75 @@ function ReferralPanel({ user }) {
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// NFC KARTADAN KELGAN NIYAT (deep-link) — `?code=` va `?action=`
+//
+// Telefon bilan NFC kartani bosgan EGA o'z profilida ("/vip001") pastdagi
+// boshqaruv panelidan tugma bosadi va shu yerga tushadi:
+//
+//   /account?code=VIP001&action=story   -> STORIES bo'limi
+//   /account?code=VIP001&action=post    -> POSTLAR bo'limi (alohida)
+//   /account?code=VIP001&action=edit    -> profil formasi
+//   /account?code=VIP001                -> shu ID boshqaruvi
+//
+// NIMA UCHUN KERAK: ilgari tugmalar oddiy `/account` ga olib kelardi va
+// kabinet HAR DOIM `myCards[0]` ni tanlardi. Odamda bir nechta NFC ID
+// bo'lsa (masalan AAA000, VIP001, TTS075), u TTS075 kartasini bosib
+// kelgan bo'lsa ham kabinet AAA000 ni ochib qo'yardi — ya'ni odam
+// bilmagan holda BOSHQA kartasini tahrirlab yuborishi mumkin edi.
+//
+// XAVFSIZLIK: bu yerdagi `code` — faqat TANLOV ishorasi. U `myCards`
+// (serverdan kelgan O'Z kartalari) ichidan qidiriladi; topilmasa jim
+// e'tiborsiz qoldiriladi va odatdagi `myCards[0]` ishlaydi. Begona kod
+// yozib qo'yish hech narsa ochmaydi, chunki ro'yxatda yo'q. Ruxsatning
+// yagona haqiqiy manbai AVVALGIDEK server bo'lib qoladi — bu yerda
+// hech qanday tekshiruv yumshatilmadi.
+// Niyat bajarilgach manzildan `action` ni olib tashlaydi, `code` ni
+// SAQLAB QOLADI. Tarixga yangi yozuv qo'shmaydi.
+function cleanAccountIntentFromUrl() {
+  try {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has('action')) return;
+    url.searchParams.delete('action');
+    const qs = url.searchParams.toString();
+    window.history.replaceState(null, '', url.pathname + (qs ? '?' + qs : '') + url.hash);
+  } catch {
+    // jim: manzilni o'zgartirib bo'lmasa ham ish davom etaveradi
+  }
+}
+
+function readAccountIntent() {
+  try {
+    const q = new URLSearchParams(window.location.search);
+    // NFC kartadagi manzil kichik harfda bo'ladi (nfcstore.uz/vip001),
+    // kartalar ro'yxatida esa katta harfda — shuning uchun solishtirish
+    // katta-kichik harfga BOG'LIQ EMAS.
+    const code = (q.get('code') || '').trim().toUpperCase();
+    const action = (q.get('action') || '').trim().toLowerCase();
+    return { code, action: ['story', 'post', 'edit'].includes(action) ? action : '' };
+  } catch {
+    return { code: '', action: '' };
+  }
+}
+
 export default function AccountPage({ refreshCatalog }) {
   const { user, myCards, refresh } = useAuth();
   const { t } = useLanguage();
   // "Buyurtmalarim" ro'yxatidagi "To'lash" tugmasi uchun.
   const PAYMENTS_ENABLED = usePaymentsEnabled();
+  // Manzildagi niyat BIR MARTA o'qiladi (`useRef`): keyin manzil
+  // tozalansa ham tanlangan karta o'zgarib ketmasin.
+  const intentRef = useRef(readAccountIntent());
   const [selectedCode, setSelectedCode] = useState(null);
   useEffect(() => {
-    if (myCards.length && !myCards.some((c) => c.code === selectedCode)) {
-      setSelectedCode(myCards[0].code);
-    }
+    if (!myCards.length) return;
+    // Tanlov hali ham o'z kartalarimdan biri bo'lsa — tegmaymiz.
+    // (Odam "Mening ID'larim" orqali qo'lda almashtirgan bo'lishi mumkin.)
+    if (myCards.some((c) => c.code === selectedCode)) return;
+    // NFC kartadan kelgan kod — FAQAT o'z kartalarim ichidan.
+    const wanted = intentRef.current.code;
+    const mine = wanted ? myCards.find((c) => c.code === wanted) : null;
+    setSelectedCode(mine ? mine.code : myCards[0].code);
   }, [myCards, selectedCode]);
   const selectedCard = myCards.find((c) => c.code === selectedCode) || myCards[0];
   const primaryCard = myCards.find((c) => c.isPrimary) || myCards[0];
@@ -4114,7 +4318,7 @@ export default function AccountPage({ refreshCatalog }) {
     const urgent = left < 60 * 60 * 1000;
     return (
       <span
-        className={`whitespace-nowrap font-mono text-[13px] ${urgent ? 'font-bold text-[color:var(--vz-gold-2)]' : 'text-base-content/55'}`}
+        className={`whitespace-nowrap font-mono text-[13px] ${urgent ? 'font-bold text-[color:var(--accent-text)]' : 'text-base-content/55'}`}
         title={t("Shu vaqt ichida to'lanmasa, kod qayta sotuvga chiqadi")}
       >
         {t("To'lovga")} {h > 0 ? `${h}:${pad(m)}:${pad(sec)}` : `${pad(m)}:${pad(sec)}`}
@@ -4182,7 +4386,16 @@ export default function AccountPage({ refreshCatalog }) {
   const cabinetLinks = [
     { id: 'bildirishnomalar', label: t('Bildirishnomalar'), Icon: IconBell, onClick: () => navigate('/bildirishnomalar') },
     { id: 'tolovlar', label: t("To'lovlar"), Icon: IconWallet, onClick: () => navigate('/tolovlar') },
-    { id: 'xabarlar', label: t(MESSAGING_ENABLED ? 'Xabarlar' : 'Xabarlar · tez orada'), Icon: IconChat, onClick: () => MESSAGING_ENABLED && navigate('/xabarlar'), disabled: !MESSAGING_ENABLED },
+    // "Xabarlar" faqat YOQILGAN bo'lsa ko'rinadi.
+    //
+    // Ilgari u "tez orada" deb, o'chirilgan holda turardi va menyuda
+    // joy egallardi — bosib bo'lmaydigan tugma odamga hech narsa
+    // bermaydi. O'sha joy endi "Ijtimoiy tarmoqlar" ga berildi: yangi
+    // xaridor uchun eng kerakli maydon, lekin u bo'limlar ichida
+    // ko'milib yotardi.
+    ...(MESSAGING_ENABLED
+      ? [{ id: 'xabarlar', label: t('Xabarlar'), Icon: IconChat, onClick: () => navigate('/xabarlar') }]
+      : []),
     // KOMPANIYA BO'LIMI SHAXSIY KABINETDAN CHIQARILDI (2026-09, egasining
     // qarori: "kompaniyani alohida qilsak, profildan olib tashlasak").
     // Bu endi shaxsiy kabinetning bir bo'limi emas — /business dagi
@@ -4296,6 +4509,10 @@ export default function AccountPage({ refreshCatalog }) {
                     <ReferralPanel user={user} />
                   </div>
                 ) : (
+                  // `initialAction` — NFC kartadan kelgan niyat. U FAQAT
+                  // aynan o'sha karta ochilganda uzatiladi: odam keyin
+                  // "Mening ID'larim" orqali boshqasiga o'tsa, niyat
+                  // u yerda takrorlanmaydi.
                   <EditCardForm
                     key={selectedCard.code}
                     card={selectedCard}
@@ -4304,6 +4521,7 @@ export default function AccountPage({ refreshCatalog }) {
                     onSelectCard={setSelectedCode}
                     extraSections={extraSections}
                     cabinetLinks={cabinetLinks}
+                    initialAction={selectedCard.code === intentRef.current.code ? intentRef.current.action : ''}
                   />
                 )
               )}
@@ -4402,6 +4620,110 @@ function StoriesManager({ code }) {
   );
 }
 
+// ── MENING NFC QURILMALARIM ──────────────────────────────────────────
+//
+// KAMCHILIK SHU EDI: `/api/my/nfc-devices` allaqachon bor edi, lekin
+// uni ochadigan EKRAN yo'q edi. Ya'ni marketplace'dan stiker olgan
+// odam uni noto'g'ri profilga ulab qo'ysa, tuzatolmasdi.
+//
+// CHIPGA QAYTA YOZISH SHART EMAS. Chipda profil manzili emas,
+// o'zgarmas token yozilgan — yo'nalishni server hal qiladi. Shuning
+// uchun QULFLANGAN stiker ham shu yerdan boshqariladi: qulf chipni
+// himoya qiladi, bu ekran esa yo'nalishni o'zgartiradi.
+function MyNfcDevices({ t, myCards }) {
+  const [devices, setDevices] = useState(null);
+  const [companies, setCompanies] = useState([]);
+  const [busyId, setBusyId] = useState(0);
+  const [msg, setMsg] = useState('');
+
+  const load = () => {
+    dbListNfcDevices().then(setDevices).catch(() => setDevices([]));
+  };
+  useEffect(() => {
+    load();
+    listMyCompanies()
+      .then((d) => setCompanies((d.companies || []).filter((c) => c.status === 'active')))
+      .catch(() => setCompanies([]));
+  }, []);
+
+  if (!devices) return null;
+  // Qurilmasi yo'q odamga bo'sh blok ko'rsatishdan ma'no yo'q.
+  if (devices.length === 0) return null;
+
+  const change = async (dev, value) => {
+    if (!value) return;
+    setBusyId(dev.id); setMsg('');
+    try {
+      const body = value.startsWith('c:')
+        ? { linkedCompanyId: value.slice(2) }
+        : { linkedCode: value };
+      const res = await dbUpdateNfcDevice(dev.id, body);
+      setDevices(res.devices || []);
+      setMsg(t('Saqlandi. Endi stiker shu profilni ochadi.'));
+    } catch {
+      setMsg(t('Saqlanmadi. Qaytadan urinib ko‘ring.'));
+    } finally { setBusyId(0); }
+  };
+
+  const toggleBlock = async (dev) => {
+    setBusyId(dev.id); setMsg('');
+    try {
+      const res = await dbUpdateNfcDevice(dev.id, { blocked: !dev.blockedByOwner });
+      setDevices(res.devices || []);
+    } catch {
+      setMsg(t('Saqlanmadi. Qaytadan urinib ko‘ring.'));
+    } finally { setBusyId(0); }
+  };
+
+  return (
+    <div className="nfcdev">
+      <p className="nfcdev-hint">
+        {t('Stikeringiz qaysi profilni ochishini shu yerdan o‘zgartirasiz. Chipga qayta yozish shart emas — hatto qulflangan stiker ham yangi profilga ergashadi.')}
+      </p>
+      {devices.map((d) => {
+        const value = d.linkedCompanyId ? `c:${d.linkedCompanyId}` : (d.linkedCode || '');
+        return (
+          <div key={d.id} className={`nfcdev-row${d.blockedByOwner ? ' is-off' : ''}`}>
+            <div className="nfcdev-id">
+              <b>NFC</b>
+              <span>…{d.tokenTail}</span>
+              {/* Bir nechta stikeri bor odam qaysi birini
+                  tahrirlayotganini bilsin: sana va qayerdan
+                  kelgani. Faqat token dumi yetarli emasdi. */}
+              {d.fromMarketplace && <em className="nfcdev-src">{t('do‘kondan')}</em>}
+              {d.createdAt && <time>{String(d.createdAt).slice(0, 10)}</time>}
+            </div>
+            <label className="nfcdev-pick">
+              <span>{t('Nimani ochadi')}</span>
+              <select
+                className="vz-input" value={value} disabled={busyId === d.id}
+                onChange={(e) => change(d, e.target.value)}
+              >
+                {!value && <option value="">{t('Tanlanmagan')}</option>}
+                {myCards.map((c) => (
+                  <option key={c.code} value={c.code}>{c.name || c.code} ({c.code})</option>
+                ))}
+                {companies.map((c) => (
+                  <option key={c.companyId} value={`c:${c.companyId}`}>
+                    {c.displayName || c.companyId} — {t('biznes')}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button" className="btn btn-sm nfcdev-block"
+              disabled={busyId === d.id} onClick={() => toggleBlock(d)}
+            >
+              {d.blockedByOwner ? t('Yoqish') : t('Vaqtincha o‘chirish')}
+            </button>
+          </div>
+        );
+      })}
+      {msg && <p className="nfcdev-msg">{msg}</p>}
+    </div>
+  );
+}
+
 // ── PROFILDA KO'RSATILADIGAN KOMPANIYA ───────────────────────────────
 // Faqat O'ZINING FAOL kompaniyalari ro'yxatga tushadi (server ham
 // aynan shuni tekshiradi: begona brendni biriktirib bo'lmaydi).
@@ -4469,16 +4791,13 @@ function StorySection({ code, allowed, onLocked, t }) {
   return (
     <section className="vz-card p-5">
       <div className="min-w-0">
-        {/* Bo'lim raqami — story va post IKKI ALOHIDA ish ekani bir
-            qarashda ko'rinsin (egasi ilgari ularni bitta, bir-biriga
-            bog'liq forma deb o'ylagan). */}
-        <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--vz-gold-2)]">{t('1-bo‘lim')}</span>
+        {/* "1-bo'lim" raqami OLIB TASHLANDI: u story va post BITTA
+            sahifada ustma-ust turgan paytdan qolgan edi. Endi ular
+            alohida bo'limlar, ya'ni raqamlash chalg'itardi — go'yo
+            ikkinchi bo'limni ham to'ldirish kerakdek. */}
         <h3 className="font-display text-lg font-semibold">{t('Stories')}</h3>
         <p className="mt-0.5 text-xs leading-relaxed text-base-content/50">
           {t('Profil rasmingiz atrofida halqa bo‘lib chiqadi va 24 soatdan keyin o‘zi yo‘qoladi. 10 tagacha.')}
-        </p>
-        <p className="mt-1 text-xs leading-relaxed text-base-content/40">
-          {t('Faqat story qo‘ysangiz ham bo‘ladi — post to‘ldirish shart emas.')}
         </p>
       </div>
 

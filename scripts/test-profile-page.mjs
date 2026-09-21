@@ -28,6 +28,7 @@ const { check, checkTrue, done } = makeChecker();
 // olinadi.
 const PANEL = 'mt-[22px] max-w-[640px] overflow-hidden rounded-[22px]';
 const page = readFileSync(new URL('../src/pages/ProfilePage.jsx', import.meta.url), 'utf8');
+const cluster = readFileSync(new URL('../src/components/ProfileActionCluster.jsx', import.meta.url), 'utf8');
 const theme = readFileSync(new URL('../src/theme.css', import.meta.url), 'utf8');
 const companyCss = readFileSync(new URL('../src/company-system.css', import.meta.url), 'utf8');
 
@@ -136,19 +137,62 @@ checkTrue('6) prefers-reduced-motion hisobga olingan',
   // Havola maydoni olib tashlandi: undagi matn brauzerning manzil
   // qatorida allaqachon turadi. Nusxalash ikonkasi qoldi.
   checkTrue('9) havola maydoni yo‘q', !page.includes('input readOnly value={`nfcstore.uz/'));
-  checkTrue('9) nusxalash ikonkasi qoldi', page.includes("title={t('Nusxalash')}"));
+  // 2026-09: ikonkalarning O'ZI endi umumiy `ProfileActionCluster`
+  // da — shaxsiy va biznes ochiq profil bitta tizimdan ishlaydi.
+  // Shuning uchun tekshiruv KUCHAYTIRILDI: sahifa to'plamni
+  // chaqirayotgani VA to'plamning ichida nusxalash borligi.
+  checkTrue('9) nusxalash ikonkasi qoldi', cluster.includes("t('Nusxalash')"));
   // Katta kod pillasi ham olib tashlandi — kod profil kartasi ichida
   // tarif rangida va kattaroq yozilgan (egasi: "tepadagi #VIP001
   // kerak emas, pastda turibdi").
   checkTrue('9) katta kod pillasi yo‘q', !page.includes('"# {record.code}"') && !page.includes('># {record.code}<'));
-  // Amallar (nusxalash, ulashish, "⋯") va til tugmasi BITTA qatorda.
+  // Amallar (nusxalash, ulashish) va "yana" menyusi BITTA qatorda.
+  //
+  // 2026-09: mavzu, til va shikoyat UCHTA alohida ikona edi va
+  // nusxalash/ulashish bilan birga beshta bo'lib qatorni siqardi.
+  // Ular `ProfileMoreMenu` (⋮) ichiga yig'ildi. Shart o'zgarmadi —
+  // hammasi HAMON tepa qatorda va HAMMASI mavjud; faqat endi bitta
+  // tugma ortida. Quyida ikkalasi ham tekshiriladi: qatorda borligi
+  // VA menyu ichida uchta bo'lim saqlanib qolgani.
   const top = page.slice(page.indexOf("t('Bosh sahifaga')"), page.indexOf(PANEL));
-  checkTrue('9) amallar tepa qatorda', top.includes('ShareButton') && top.includes('ContentMenuButton'));
-  checkTrue('9) til tugmasi ham shu qatorda', top.includes('LanguageSwitcher'));
-  // "Boshqa raqamli tashrif qog'ozlaringiz" — faqat egaga kerak,
-  // shuning uchun u egaga tegishli tugmalar yoniga ko'chdi.
-  checkTrue('9) boshqa profillar ro‘yxati ega qismida',
-    page.indexOf('otherCodes.length > 0') > page.indexOf(PANEL));
+  // 2026-09 (egasining ikkinchi xabari): amallar sahifa FONIDAN
+  // KARTANING ichiga ko'chdi — ular panel ustida suzib turganda
+  // "alohida ekranga chiqib qolgandek" ko'rinardi. Shart kuchaytirildi:
+  // tepa qatorda faqat orqaga tugmasi, amallar esa panel ICHIDA.
+  checkTrue('9) tepa qatorda faqat orqaga tugmasi',
+    !/ProfileActionCluster|ShareButton|ProfileMoreMenu/.test(top));
+  checkTrue('9) amallar karta ichida', page.indexOf('<ProfileActionCluster') > page.indexOf(PANEL));
+  checkTrue('9) amallar o‘z o‘ramida', page.includes('className="pf-card-actions"'));
+  checkTrue('9) to‘plamda ulashish va ⋮ bor',
+    cluster.includes('ShareButton') && cluster.includes('ProfileMoreMenu'));
+  const more = readFileSync(new URL('../src/components/ProfileMoreMenu.jsx', import.meta.url), 'utf8');
+  checkTrue('9) "yana" menyusida til tanlovi bor', more.includes('LANGUAGES') && more.includes('setLang'));
+  checkTrue('9) "yana" menyusida mavzu tanlovi bor', more.includes('useTheme') && more.includes('setTheme'));
+  checkTrue('9) "yana" menyusida shikoyat qoldi', more.includes('ReportModal'));
+  // Shikoyat oynasi NUSXA OLINMAGAN — bitta manbadan keladi.
+  checkTrue('9) shikoyat oynasi qayta ishlatilgan, nusxasi yo‘q',
+    more.includes("from './ContentMenu.jsx'"));
+  // "Boshqa raqamli tashrif qog'ozlaringiz" ro'yxati OCHIQ PROFILDAN
+  // BUTUNLAY OLIB TASHLANDI (2026-09).
+  //
+  // Avval u tepada turardi, keyin egaga tegishli tugmalar yoniga
+  // ko'chirilgan edi — lekin ikkala holatda ham u MEHMON ko'radigan
+  // sahifada joy egallardi va ochiq profil boshqaruv paneliga
+  // o'xshab qolgandi. Bundan tashqari `select` elementining ichki
+  // kengligi eng uzun variantdan kelib chiqadi va 390px telefonda
+  // sahifani ufqiy suradigan qilib qo'yardi.
+  //
+  // Endi ro'yxat kabinetdagi "Mening ID'larim" bo'limida, ⋮ menyusi
+  // esa o'sha yerga havola beradi.
+  checkTrue('9) ochiq profilda ID ro‘yxati yo‘q',
+    !/Boshqa raqamli tashrif qog/.test(page));
+  checkTrue('9) profilda ega uchun <select> qolmagan',
+    !/otherCodes\.map\(\(c\) => \(\s*<option/.test(page));
+  checkTrue('9) ⋮ menyusi kabinetdagi ro‘yxatga yo‘naltiradi',
+    /navigate\('\/account#myids'\)/.test(page));
+  // Ega amallari endi o'sha menyuda — profil tepasida katta tugma
+  // bo'lib turmaydi.
+  checkTrue('9) ega amallari menyuda', /ownerActions=\{isOwner \?/.test(page));
 }
 
 // ── 10) SOVG'A BO'LSA — SUMMA YOZILMAYDI ─────────────────────────────
@@ -179,5 +223,36 @@ checkTrue('11) tugma matni biznes profildagidek', page.includes("t('Kontaktni sa
 // yechim (`body:has(.qp-page) .ai-fab`).
 checkTrue('8) langar sinf qo‘yilgan', page.includes('vz-profile-page'));
 checkTrue('8) AI tugmasi ko‘tarilgan', theme.includes('body:has(.vz-profile-page) .ai-fab'));
+
+// ── 9) IJTIMOIY TARMOQLAR OSON TOPILSIN ─────────────────
+//
+// Yangi xaridor uchun bu eng kerakli maydon, lekin u "Profil"
+// (bizneda "Sozlamalar") bo'limining ICHIDA, pastda yotardi —
+// odam uni topolmasdi.
+//
+// Uning o'rnida menyuda "Xabarlar · tez orada" turardi: bosib
+// bo'lmaydigan tugma, hech qanday foydasiz.
+{
+  const acc = readFileSync(new URL('../src/pages/AccountPage.jsx', import.meta.url), 'utf8');
+  checkTrue('9) menyuda ijtimoiy tarmoqlar yo‘li', /t\('Ijtimoiy tarmoqlar'\)/.test(acc));
+  // Kerakli bo'limga o'tadi — shaxsiyda "profil", bizneda
+  // "sozlamalar" (ikkalasida ham ishlashi SHART).
+  checkTrue('9) ikkala profilda ham ishlaydi',
+    /setWsTab\(isBusiness \? 'sozlamalar' : 'profil'\)/.test(acc));
+  // Bo'limni OCHADI va o'sha joyga SURADI — shunchaki sahifada
+  // turgani yetarli emas, odam yana qidirardi.
+  checkTrue('9) bo‘limni ochadi', /setSocialSignal/.test(acc) && /openSignal=\{socialSignal\}/.test(acc));
+  checkTrue('9) o‘sha joyga suradi', /getElementById\('ijtimoiy'\)\?\.scrollIntoView/.test(acc));
+  checkTrue('9) langar qo‘yilgan', /id="ijtimoiy"/.test(acc));
+  // HOLAT ISHLATILISHIDAN OLDIN E'LON QILINSIN.
+  //
+  // Birinchi urinishda uni pastroqqa qo'ydim va `secSocial` unga
+  // yetib bo'lmaydigan paytda murojaat qildi: BUTUN KABINET
+  // "Cannot access before initialization" bilan ochilmay qoldi.
+  checkTrue('9) holat ishlatilishidan oldin e‘lon qilingan',
+    acc.indexOf('const [socialSignal') < acc.indexOf('openSignal={socialSignal}'));
+  // Ishlamaydigan "tez orada" tugmasi olib tashlandi.
+  checkTrue('9) o‘chirilgan "tez orada" tugmasi yo‘q', !/t\('Xabarlar · tez orada'\)/.test(acc));
+}
 
 done();

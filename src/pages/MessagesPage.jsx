@@ -74,7 +74,7 @@ function MessageBubble({ m, mine }) {
   const isImage = IMAGE_URL_RE.test(m.body.trim());
   return (
     <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-      <div className={`max-w-[78%] rounded-2xl px-3.5 py-2 text-sm shadow-sm sm:max-w-[75%] ${mine ? 'bg-gradient-to-br from-accent to-[#b3860f] text-black' : 'bg-base-300'}`}>
+      <div className={`max-w-[78%] rounded-2xl px-3.5 py-2 text-sm shadow-sm sm:max-w-[75%] ${mine ? 'bg-gradient-to-br from-accent to-[color:var(--accent-deep)] text-black' : 'bg-base-300'}`}>
         {isImage ? (
           <a href={m.body} target="_blank" rel="noopener noreferrer">
             <img src={m.body} alt={t('rasm')} className="max-h-56 max-w-full rounded-lg object-cover" />
@@ -237,7 +237,7 @@ function Thread({ conversation, myUserId, onBack }) {
           className="input input-bordered min-h-11 min-w-0 flex-1 bg-base-100"
           aria-label={t("Xabar yozing...")}
         />
-        <button type="button" className="btn btn-circle vz-tap shrink-0 border-none bg-gradient-to-br from-accent to-[#b3860f] text-black" onClick={send} disabled={sending || !body.trim()} aria-label={t('Yuborish')}>
+        <button type="button" className="btn btn-circle vz-tap shrink-0 border-none bg-gradient-to-br from-accent to-[color:var(--accent-deep)] text-black" onClick={send} disabled={sending || !body.trim()} aria-label={t('Yuborish')}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2z" /></svg>
         </button>
       </div>

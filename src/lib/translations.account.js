@@ -182,4 +182,47 @@ export const DICT_ACCOUNT = {
   "Oddiy profilda 5 ta, Premium'da 10 tagacha qo'shiq. YouTube yoki Yandex Music havolasini qo'ysangiz \u2014 fayl yuklamasdan, iPhone'da ham ishlaydi. Yoki to'g'ridan-to'g'ri .mp3 havolasi / fayl. Profilingizga kirgan odam pastdagi tugma orqali yoqib-o'chiradi va qo'shiqlar orasida almashtiradi.":
     { ru: '\u0412 \u043e\u0431\u044b\u0447\u043d\u043e\u043c \u043f\u0440\u043e\u0444\u0438\u043b\u0435 5, \u0432 Premium \u2014 \u0434\u043e 10 \u0442\u0440\u0435\u043a\u043e\u0432. \u0421\u0441\u044b\u043b\u043a\u0430 YouTube \u0438\u043b\u0438 Yandex Music \u0440\u0430\u0431\u043e\u0442\u0430\u0435\u0442 \u0431\u0435\u0437 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0438 \u0444\u0430\u0439\u043b\u0430, \u0432 \u0442\u043e\u043c \u0447\u0438\u0441\u043b\u0435 \u043d\u0430 iPhone. \u0418\u043b\u0438 \u043f\u0440\u044f\u043c\u0430\u044f .mp3 \u0441\u0441\u044b\u043b\u043a\u0430 / \u0444\u0430\u0439\u043b. \u041f\u043e\u0441\u0435\u0442\u0438\u0442\u0435\u043b\u044c \u0432\u043a\u043b\u044e\u0447\u0430\u0435\u0442 \u0438 \u043f\u0435\u0440\u0435\u043a\u043b\u044e\u0447\u0430\u0435\u0442 \u0442\u0440\u0435\u043a\u0438 \u043a\u043d\u043e\u043f\u043a\u0430\u043c\u0438 \u043d\u0438\u0436\u0435.',
       en: '5 tracks on a normal profile, up to 10 with Premium. A YouTube or Yandex Music link works without uploading a file, including on iPhone. Or a direct .mp3 link / file. Visitors play and switch tracks with the buttons below.' },
+
+  // ── STORY va POST — ALOHIDA BO'LIMLAR (2026-09) ──
+  // Ilgari ikkalasi bitta bo'limda ustma-ust turardi va odam nima
+  // yaratayotganini bilmasdi. Bu matnlar HAR BIR egaga ko'rinadi.
+  'STORY': { ru: 'STORY', en: 'STORY' },
+  'POST': { ru: 'POST', en: 'POST' },
+  'Story 24 soatdan keyin o‘zi yo‘qoladi. Doimiy qoladigan kontent uchun “Postlar” bo‘limiga o‘ting.':
+    { ru: 'Сторис исчезнет через 24 часа. Для постоянного контента перейдите в раздел «Посты».',
+      en: 'A story disappears after 24 hours. For permanent content, go to the "Posts" section.' },
+  'Post profilda DOIMIY qoladi. 24 soatlik kontent uchun “Stories” bo‘limiga o‘ting.':
+    { ru: 'Пост остаётся в профиле НАВСЕГДА. Для 24-часового контента перейдите в раздел «Stories».',
+      en: 'A post stays on the profile PERMANENTLY. For 24-hour content, go to the "Stories" section.' },
+  'Postlar bo‘limiga o‘tish':
+    { ru: 'Перейти в раздел «Посты»',
+      en: 'Go to Posts' },
+  'Stories bo‘limiga o‘tish':
+    { ru: 'Перейти в раздел «Stories»',
+      en: 'Go to Stories' },
+  'Rasm yoki video va izoh — profilingizda doimiy qoladi.':
+    { ru: 'Фото или видео с подписью — остаётся в профиле навсегда.',
+      en: 'A photo or video with a caption — stays on your profile permanently.' },
+  'Story logotip atrofida chiqadi va 24 soatdan keyin o‘zi yo‘qoladi.':
+    { ru: 'Сторис показывается вокруг логотипа и исчезает через 24 часа.',
+      en: 'A story appears around the logo and disappears after 24 hours.' },
+  'Post kompaniya sahifasida DOIMIY qoladi.':
+    { ru: 'Пост остаётся на странице компании НАВСЕГДА.',
+      en: 'A post stays on the company page PERMANENTLY.' },
+  'Doimiy qoladigan kontent uchun “Postlar” bo‘limiga o‘ting.':
+    { ru: 'Для постоянного контента перейдите в раздел «Посты».',
+      en: 'For permanent content, go to the "Posts" section.' },
+  '24 soatlik kontent uchun “Stories” bo‘limiga o‘ting.':
+    { ru: 'Для 24-часового контента перейдите в раздел «Stories».',
+      en: 'For 24-hour content, go to the "Stories" section.' },
+
+  // ── MENING NFC QURILMALARIM ────────────────────────────────────
+  'do‘kondan': { ru: 'из магазина', en: 'from the shop' },
+  'Stikeringiz qaysi profilni ochishini shu yerdan o‘zgartirasiz. Chipga qayta yozish shart emas — hatto qulflangan stiker ham yangi profilga ergashadi.': { ru: 'Здесь вы меняете, какой профиль открывает ваш стикер. Перезаписывать чип не нужно — даже заблокированный стикер последует за новым профилем.', en: 'Here you change which profile your sticker opens. The chip does not need rewriting — even a locked sticker follows the new profile.' },
+  'Nimani ochadi': { ru: 'Что открывает', en: 'Opens' },
+  'Tanlanmagan': { ru: 'Не выбрано', en: 'Not selected' },
+  'biznes': { ru: 'бизнес', en: 'business' },
+  'Vaqtincha o‘chirish': { ru: 'Временно отключить', en: 'Turn off for now' },
+  'Saqlandi. Endi stiker shu profilni ochadi.': { ru: 'Сохранено. Теперь стикер открывает этот профиль.', en: 'Saved. The sticker now opens this profile.' },
+  'Saqlanmadi. Qaytadan urinib ko‘ring.': { ru: 'Не сохранилось. Попробуйте ещё раз.', en: 'Not saved. Please try again.' },
 };

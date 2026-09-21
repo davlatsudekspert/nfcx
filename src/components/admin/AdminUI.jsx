@@ -98,7 +98,7 @@ export function AdminShell({ nav, activeIndex, onSelect, title, role, onLogout, 
       <div className="min-w-0 lg:pl-60">
         {/* `vz-safe-top` — iOS standalone rejimida status qatori ostida
             qolmasin (izohi src/theme.css da). */}
-        <header className="vz-safe-top sticky top-0 z-30 border-b backdrop-blur-md" style={{ background: 'rgba(0,0,0,.88)', borderColor: 'var(--vz-line)' }}>
+        <header className="vz-safe-top sticky top-0 z-30 border-b backdrop-blur-md" style={{ background: 'var(--nav-bg)', borderColor: 'var(--vz-line)' }}>
           <div className="flex h-16 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-3">
               <img src={logo} alt="" className="h-7 w-7 shrink-0 object-contain lg:hidden" />
@@ -134,17 +134,17 @@ const TONE = {
   muted: 'vz-badge--muted',
 };
 const ICON_TONE = {
-  success: 'bg-[rgba(34,197,94,.14)] text-[#4ade80]',
-  pending: 'bg-[rgba(245,158,11,.16)] text-[#fbbf24]',
-  danger: 'bg-[rgba(229,72,77,.16)] text-[#ff7b81]',
-  info: 'bg-[rgba(59,130,246,.16)] text-[#7fb1ff]',
-  accent: 'bg-[rgba(212,175,90,.16)] text-[var(--vz-gold-2)]',
+  success: 'bg-[color:var(--success)]/15 text-[color:var(--success)]',
+  pending: 'bg-[color:var(--warning)]/16 text-[color:var(--warning)]',
+  danger: 'bg-[color:var(--danger)]/16 text-[color:var(--danger)]',
+  info: 'bg-[color:var(--info)]/16 text-[color:var(--info)]',
+  accent: 'bg-[color:var(--accent-primary)]/16 text-[color:var(--accent-text)]',
   muted: 'bg-[var(--vz-card-2)] text-[var(--vz-ink-2)]',
 };
 
 export function StatusBadge({ tone = 'muted', children }) {
   const cls = TONE[tone] || TONE.muted;
-  const danger = tone === 'danger' ? { background: 'rgba(229,72,77,.16)', color: '#ff7b81' } : undefined;
+  const danger = tone === 'danger' ? { background: 'var(--danger-soft)', color: 'var(--danger)' } : undefined;
   return <span className={`vz-badge ${cls}`} style={danger}>{children}</span>;
 }
 
@@ -176,12 +176,12 @@ export function KpiCard({ icon = 'chart', label, value, sub, tone = 'accent' }) 
 }
 
 // recharts uchun umumiy dark tema (oltin urg'u)
-export const chartGrid = { strokeDasharray: '3 3', stroke: 'rgba(246,239,224,0.07)', vertical: false };
-export const chartAxis = { tick: { fontSize: 10, fill: 'rgba(246,239,224,0.45)' }, axisLine: { stroke: 'rgba(246,239,224,0.12)' }, tickLine: false };
+export const chartGrid = { strokeDasharray: '3 3', stroke: 'var(--border-soft)', vertical: false };
+export const chartAxis = { tick: { fontSize: 10, fill: 'var(--text-muted)' }, axisLine: { stroke: 'var(--border)' }, tickLine: false };
 export const chartTooltip = {
-  contentStyle: { background: '#1e1810', border: '1px solid #2d2518', borderRadius: 10, fontSize: 12, padding: '8px 12px', color: '#f6efe0' },
-  labelStyle: { color: '#b5a78b', marginBottom: 4 },
-  cursor: { fill: 'rgba(212,175,90,0.06)' },
+  contentStyle: { background: 'var(--modal-bg)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 12, padding: '8px 12px', color: 'var(--text-primary)' },
+  labelStyle: { color: 'var(--text-secondary)', marginBottom: 4 },
+  cursor: { fill: 'var(--accent-soft)' },
 };
 
 // Yuklanmoqda — skeleton qatorlar (.vz-skel)
@@ -219,10 +219,10 @@ export function ErrorState({ title, hint, onRetry, retryLabel }) {
   const { t } = useLanguage();
   return (
     <div role="alert" className="flex flex-col items-center gap-2 rounded-[14px] border px-6 py-8 text-center" style={{ borderColor: 'rgba(229,72,77,.45)', background: 'rgba(229,72,77,.06)' }}>
-      <span className="flex h-12 w-12 items-center justify-center rounded-full" style={{ background: 'rgba(229,72,77,.14)', color: '#ff7b81' }}>
+      <span className="flex h-12 w-12 items-center justify-center rounded-full" style={{ background: 'var(--danger-soft)', color: 'var(--danger)' }}>
         <AdminIcon name="alert" className="h-6 w-6" />
       </span>
-      <div className="text-sm font-semibold break-words" style={{ color: '#ff7b81' }}>{title || t("Ma'lumotlarni yuklab bo'lmadi.")}</div>
+      <div className="text-sm font-semibold break-words" style={{ color: 'var(--danger)' }}>{title || t("Ma'lumotlarni yuklab bo'lmadi.")}</div>
       {hint && <div className="max-w-sm text-xs break-words" style={{ color: 'var(--vz-ink-2)' }}>{hint}</div>}
       {onRetry && (
         <button type="button" className="btn btn-outline-gold btn-sm mt-2 min-h-11 gap-1.5" onClick={onRetry}>
@@ -278,7 +278,7 @@ export function LoadMore({ shown, total, onMore, step = 50 }) {
 // Ogohlantirish banneri (masalan 2FA yoqilmagan)
 export function WarnBanner({ children, action }) {
   return (
-    <div role="alert" className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 text-sm sm:px-6 lg:px-8" style={{ background: 'rgba(245,158,11,.12)', borderColor: 'rgba(245,158,11,.35)', color: '#fbbf24' }}>
+    <div role="alert" className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 text-sm sm:px-6 lg:px-8" style={{ background: 'var(--warning-soft)', borderColor: 'var(--warning)', color: 'var(--warning)' }}>
       <span className="flex min-w-0 items-center gap-2 break-words">
         <AdminIcon name="alert" className="h-4 w-4 shrink-0" />
         <span className="min-w-0">{children}</span>

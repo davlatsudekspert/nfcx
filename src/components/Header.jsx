@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { navigate, usePathRoute } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
-import { dbUnreadCount, dbList } from '../lib/db.js';
+import { dbListNotifications, dbUnreadCount, dbList } from '../lib/db.js';
 import { MESSAGING_ENABLED } from '../lib/features.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { canInstall, onInstallableChange, promptInstall } from '../lib/pwa.js';
 import LanguageSwitcher from './LanguageSwitcher.jsx';
+import ThemeSwitcher from './ThemeSwitcher.jsx';
 import { IconBell, IconChat, IconInstall } from './Icons.jsx';
 import logo from '../assets/logo-128.png';
 
@@ -128,6 +129,8 @@ export default function Header() {
   const myLabel = primaryCard?.name || user?.email || '';
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
+  // Bildirishnomalar — xabarlardan ALOHIDA sanoq.
+  const [notifUnread, setNotifUnread] = useState(0);
   const [installable, setInstallable] = useState(canInstall());
   const [iosHint, setIosHint] = useState(null); // null | 'safari' | 'open-safari'
 
@@ -150,6 +153,25 @@ export default function Header() {
     return () => clearInterval(t2);
   }, [user]);
 
+  // BILDIRISHNOMA SANOG'I.
+  //
+  // Xabarlarникидan ANCHA sekin so'raladi (60 s va 8 s). Obuna,
+  // like va izoh — soniyada bir marta yangilanishi shart bo'lmagan
+  // narsalar, har 8 soniyada so'rov yuborish esa bekorga D1 ga yuk
+  // bo'lardi. Sahifa fonga ketganda esa umuman so'ralmaydi.
+  useEffect(() => {
+    if (!user) { setNotifUnread(0); return; }
+    const load = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      dbListNotifications({ limit: 1 })
+        .then((d) => setNotifUnread(Number(d?.unreadCount) || 0))
+        .catch(() => {});
+    };
+    load();
+    const t3 = setInterval(load, 60000);
+    return () => clearInterval(t3);
+  }, [user]);
+
   const go = (href) => { setOpen(false); navigate(href); };
 
   return (
@@ -157,15 +179,18 @@ export default function Header() {
     // iOS status qatori sahifa USTIDA turadi va sarlavha soat bilan
     // ustma-ust tushardi. Sinf qoidasi src/theme.css da; oddiy brauzerda
     // qiymat 0 ga teng, ya'ni hech narsa o'zgarmaydi.
-    <header className="vz-safe-top sticky top-0 z-40 border-b border-[color:var(--vz-line)] bg-[rgba(0,0,0,0.86)] backdrop-blur-md">
+    <header className="vz-safe-top sticky top-0 z-40 border-b border-[color:var(--vz-line)] bg-[color:var(--nav-bg)] backdrop-blur-md">
       {/* 2026-09: BETA e'lon lentasi olib tashlandi — sayt rasman ishga
           tushdi. Matn kaliti src/lib/translations.js da qoldirildi (kelajakda
           shunday e'lon kerak bo'lsa qaytarish oson). `marqueeScroll`
           animatsiyasi HomePage'da ishlatilgani uchun saqlanadi. */}
       <div className="navbar mx-auto w-full max-w-[1800px] px-6 sm:px-10 xl:px-4 2xl:px-10">
         <div className="flex items-center gap-3 sm:gap-4">
-          <button onClick={() => go('/')} className="flex min-h-11 shrink-0 cursor-pointer items-center gap-2 font-display text-[17px] font-semibold tracking-[0.08em] text-[color:var(--vz-gold-2)] xl:gap-2 xl:text-[15px] 2xl:gap-2.5 2xl:text-[17px]">
-            <img src={logo} alt="NFCSTORE" className="h-9 w-9 object-contain drop-shadow-[0_2px_6px_rgba(201,162,39,0.35)] xl:h-8 xl:w-8 2xl:h-9 2xl:w-9" />
+          <button onClick={() => go('/')} className="flex min-h-11 shrink-0 cursor-pointer items-center gap-2 font-display text-[17px] font-semibold tracking-[0.08em] text-[color:var(--accent-text)] xl:gap-2 xl:text-[15px] 2xl:gap-2.5 2xl:text-[17px]">
+            {/* Logotip FAYLI o'zgarmaydi — shakl, nisbat va yozuv o'sha-o'sha.
+                `--brand-mark-filter` faqat belgining METALL RANGINI mavzuga
+                hamohang qiladi (standart mavzuda `none` — ya'ni asl oltin). */}
+            <img src={logo} alt="NFCSTORE" className="h-9 w-9 object-contain drop-shadow-[0_2px_6px_var(--accent-glow)] xl:h-8 xl:w-8 2xl:h-9 2xl:w-9" style={{ filter: 'var(--brand-mark-filter)' }} />
             NFCSTORE
           </button>
           <div className="hidden w-36 shrink-0 md:block lg:w-40 xl:w-28 2xl:w-40">
@@ -202,8 +227,11 @@ export default function Header() {
             </button>
           )}
           {user && (
-            <button className="btn btn-ghost btn-circle btn-sm" onClick={() => go('/bildirishnomalar')} title={t('Bildirishnomalar')} aria-label={t('Bildirishnomalar')}>
+            <button className="btn btn-ghost btn-circle btn-sm relative" onClick={() => go('/bildirishnomalar')} title={t('Bildirishnomalar')} aria-label={t('Bildirishnomalar')}>
               <IconBell />
+              {notifUnread > 0 && (
+                <span className="badge badge-accent badge-xs absolute -right-1 -top-1">{notifUnread}</span>
+              )}
             </button>
           )}
           {user && (
@@ -239,10 +267,17 @@ export default function Header() {
               <span className="hidden 2xl:inline">{t('Bepul profil ochish')}</span>
             </button>
           )}
+          {/* Rang mavzusi — til tugmasi yonidagi ixcham ikona.
+              Header tuzilmasi o'zgarmadi: bu ham xuddi til tugmasidek
+              bitta kichik tugma. */}
+          <ThemeSwitcher />
           <LanguageSwitcher />
         </div>
 
         <div className="flex items-center gap-1 xl:hidden">
+          {/* Telefonda ham mavzu ikonasi ko'rinadi — hamburger va til
+              tugmasi joyini surmaydi, sarlavha balandligi o'zgarmaydi. */}
+          <ThemeSwitcher />
           <LanguageSwitcher />
           <button aria-label={t('Menyu')} aria-expanded={open} className="btn btn-ghost btn-square h-11 min-h-11 w-11" onClick={() => setOpen(!open)}>
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -296,7 +331,7 @@ export default function Header() {
             {user && (
               <li className={MESSAGING_ENABLED ? '' : 'mt-2 border-t border-white/10 pt-2'}>
                 <button onClick={() => go('/bildirishnomalar')} className="min-h-11 cursor-pointer">
-                  <IconBell /> {t('Bildirishnomalar')}
+                  <IconBell /> {t('Bildirishnomalar')}{notifUnread > 0 && <span className="badge badge-accent badge-xs ml-1">{notifUnread}</span>}
                 </button>
               </li>
             )}

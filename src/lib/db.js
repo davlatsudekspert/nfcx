@@ -1330,3 +1330,86 @@ export async function dbListMyOrders() {
   if (!res.ok) throw new Error(apiErrorText(res.status, data && data.error));
   return Array.isArray(data && data.orders) ? data.orders : [];
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// MARKETPLACE AKTIVATSIYASI
+//
+// AKTIVATSIYA KODI HECH QACHON URL'DA TASHILMAYDI — shuning uchun
+// ikkalasi ham POST (brauzer tarixi, server logi, Referer sarlavhasi
+// va analitikaga tushmasin).
+// ═══════════════════════════════════════════════════════════════════════
+
+// Kodni tekshiradi. Hech narsani o'zgartirmaydi — sahifa shu javob
+// bilan mahsulot nomini ko'rsatadi. `{ ok, product }` yoki `{ error }`.
+export async function dbActivateCheck(code) {
+  let res;
+  try {
+    res = await fetch('/api/activate/check', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin', body: JSON.stringify({ code }),
+    });
+  } catch { throw new Error(API_ERROR_TEXT.network); }
+  const data = await res.json().catch(() => null);
+  if (!res.ok) { const e = new Error('activate_check'); e.code = data && data.error; throw e; }
+  return data;
+}
+
+// Foydalanuvchining O'Z profillari (tanlash uchun). Begona profil
+// server tomonda ham, bu ro'yxatda ham chiqmaydi.
+export async function dbActivateOptions() {
+  let res;
+  try { res = await fetch('/api/activate/options', { credentials: 'same-origin' }); }
+  catch { throw new Error(API_ERROR_TEXT.network); }
+  const data = await res.json().catch(() => null);
+  if (!res.ok) { const e = new Error('activate_options'); e.code = data && data.error; throw e; }
+  return { personal: data?.personal || [], business: data?.business || [] };
+}
+
+// Aktivatsiyaning o'zi. `payload`:
+//   { code, profileKind: 'personal'|'business', profileCode?, companyId?,
+//     name?, deviceToken? }
+// `deviceToken` — odam TEKKIZGAN stikerning tokeni. U kelsa, o'sha
+// stiker aynan shu profilga bog'lanadi.
+export async function dbActivate(payload) {
+  let res;
+  try {
+    res = await fetch('/api/activate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin', body: JSON.stringify(payload),
+    });
+  } catch { throw new Error(API_ERROR_TEXT.network); }
+  const data = await res.json().catch(() => null);
+  if (!res.ok) { const e = new Error('activate'); e.code = data && data.error; throw e; }
+  return data;
+}
+
+// ── BILDIRISHNOMALAR — ilova bilan BITTA tizim ──────────────────
+//
+// `o'qildi` holati backendda saqlanadi, shuning uchun telefonda
+// o'qilgan xabar bu yerda ham o'qilgan bo'lib ko'rinadi (va
+// aksincha). Qurilmada hech narsa saqlanmaydi.
+export async function dbListNotifications({ cursor = 0, limit = 30 } = {}) {
+  const q = new URLSearchParams({ limit: String(limit) });
+  if (cursor) q.set('cursor', String(cursor));
+  const res = await fetch(`/api/notifications?${q}`, { credentials: 'same-origin' });
+  const data = await res.json().catch(() => null);
+  return data || { items: [], unreadCount: 0, nextCursor: null };
+}
+
+export async function dbMarkNotificationRead(id) {
+  const res = await fetch(`/api/notifications/${id}/read`, {
+    method: 'POST',
+    credentials: 'same-origin',
+  });
+  const data = await res.json().catch(() => null);
+  return data || { ok: false, unreadCount: 0 };
+}
+
+export async function dbMarkAllNotificationsRead() {
+  const res = await fetch('/api/notifications/read-all', {
+    method: 'POST',
+    credentials: 'same-origin',
+  });
+  const data = await res.json().catch(() => null);
+  return data || { ok: false, unreadCount: 0 };
+}

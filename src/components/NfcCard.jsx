@@ -11,10 +11,25 @@ const FINISHES = {
   silver: { bg: 'linear-gradient(135deg, #f4f4f5 0%, #d6d7d9 45%, #f4f4f5 100%)', fg: '#101112', sub: 'rgba(16,17,18,0.55)', code: '#101112' },
   graphite: { bg: 'linear-gradient(135deg, #3a3730 0%, #201f1a 55%, #3a3730 100%)', fg: '#f6f2ea', sub: 'rgba(232,193,101,0.6)', code: '#e8c165' },
   gold: { bg: 'linear-gradient(135deg, #d4af5a 0%, #8a6a20 45%, #d4af5a 100%)', fg: '#1a1206', sub: 'rgba(26,18,6,0.6)', code: '#1a1206' },
-  // "Showcase" — sayt bo'ylab (Narxlar, Savollar, Auksion, Ro'yxatdan
-  // o'tish) NAMUNA sifatida ko'rsatiladigan kartalar uchun: to'q kulrang
-  // fon, oltin chegara, barcha matn oltin rangda.
-  showcase: { bg: 'linear-gradient(135deg, #262422 0%, #171614 55%, #262422 100%)', fg: '#d4af5a', sub: 'rgba(212,175,90,0.62)', code: '#e8c165', border: '1.5px solid #d4af5a' },
+  // "Showcase" — sayt bo'ylab (Bosh sahifa, Narxlar, Qanday ishlaydi,
+  // Savollar, Ro'yxatdan o'tish) NAMUNA sifatida ko'rsatiladigan
+  // kartalar uchun.
+  //
+  // FAQAT SHU FINISH sayt mavzusiga (global theme) ERGASHADI: ranglar
+  // `src/themes.css` dagi `--showcase-card-*` tokenlaridan keladi, ya'ni
+  // Pearl'da sadaf-champagne, Ocean'da chuqur ko'k va h.k.
+  //
+  // Foydalanuvchining HAQIQIY kartasi bunga KIRMAYDI: tarif finish'lari
+  // (`tier-*`), Card Designer'da tanlangan yuza va profildagi karta
+  // quyidagi qat'iy qiymatlarda qoladi — ular mahsulot ma'lumoti,
+  // sayt bezagi emas.
+  showcase: {
+    bg: 'var(--showcase-card-bg)',
+    fg: 'var(--showcase-card-fg)',
+    sub: 'var(--showcase-card-sub)',
+    code: 'var(--showcase-card-code)',
+    border: '1.5px solid var(--showcase-card-border)',
+  },
   // ===== Daraja-asosli finish'lar — profildagi haqiqiy karta shu tarifga
   // qarab avtomatik shu ko'rinishni oladi (Titanium Gold/Platinum/Gold/
   // Silver/Emerald vizual tizimi). =====
@@ -54,6 +69,16 @@ export default function NfcCard({
   const [tilt, setTilt] = useState({ rx: 0, ry: 0, mx: 50, my: 50 });
   const [dragTarget, setDragTarget] = useState(null); // 'name' | 'code' | 'brand' | null
   const f = FINISHES[finish] || FINISHES.black;
+  // Namuna karta soyasi va yaltirashi ham mavzudan keladi; boshqa
+  // finish'lar avvalgi qat'iy qiymatlarda qoladi.
+  const showcase = finish === 'showcase';
+  const shadow = showcase
+    ? (rim ? 'var(--showcase-card-rim)' : 'var(--showcase-card-shadow)')
+    : (rim ? SHADOW_RIM : SHADOW_DEFAULT);
+  const sheenStyle = showcase ? { background: 'var(--showcase-card-sheen)' } : undefined;
+  // Egilishdagi yaltirash: yorug' kartada oq nur kartani yuvib
+  // yuboradi, shuning uchun namuna kartada u ham mavzudan keladi.
+  const glossClr = showcase ? 'var(--showcase-card-gloss)' : 'rgba(255,255,255,0.55)';
   const year = since ? new Date(since).getFullYear() : new Date().getFullYear();
   const editable = typeof onNameChange === 'function' || typeof onCodeChange === 'function' || typeof onBrandChange === 'function';
   const namePositioned = namePos && Number.isFinite(namePos.x) && Number.isFinite(namePos.y);
@@ -94,10 +119,10 @@ export default function NfcCard({
       <div className="flex justify-center" style={{ perspective: 1000 }}>
         <div
           className={`relative flex ${CARD_SIZES[size]} select-none flex-col items-center justify-center gap-3 overflow-hidden rounded-2xl px-5 py-[18px]`}
-          style={{ background: f.bg, color: f.fg, boxShadow: rim ? SHADOW_RIM : SHADOW_DEFAULT }}
+          style={{ background: f.bg, color: f.fg, boxShadow: shadow }}
         >
           <div className="pointer-events-none absolute inset-0 overflow-hidden [border-radius:inherit] [transform:translateZ(0)]">
-            <div className="absolute -left-[60%] -top-[60%] h-[220%] w-[60%] animate-[shimmerSweep_3.6s_ease-in-out_infinite] bg-[linear-gradient(100deg,transparent,rgba(255,255,255,0.16)_40%,rgba(255,255,255,0.35)_50%,rgba(255,255,255,0.16)_60%,transparent)]" />
+            <div className="absolute -left-[60%] -top-[60%] h-[220%] w-[60%] animate-[shimmerSweep_3.6s_ease-in-out_infinite] bg-[linear-gradient(100deg,transparent,rgba(255,255,255,0.16)_40%,rgba(255,255,255,0.35)_50%,rgba(255,255,255,0.16)_60%,transparent)]" style={sheenStyle} />
           </div>
           <div className="relative z-[1] grid grid-cols-5 gap-[3px] rounded-md p-2" style={{ background: 'rgba(0,0,0,0.12)' }}>
             {Array.from({ length: 25 }).map((_, i) => (
@@ -125,7 +150,7 @@ export default function NfcCard({
           color: f.fg,
           border: f.border || 'none',
           transform: `rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg)`,
-          boxShadow: rim ? SHADOW_RIM : SHADOW_DEFAULT,
+          boxShadow: shadow,
         }}
       >
         {bgImage && (
@@ -147,7 +172,7 @@ export default function NfcCard({
         )}
         <div
           className="pointer-events-none absolute inset-0 opacity-55 mix-blend-overlay"
-          style={{ background: `radial-gradient(360px circle at ${tilt.mx}% ${tilt.my}%, rgba(255,255,255,0.55), transparent 45%)` }}
+          style={{ background: `radial-gradient(360px circle at ${tilt.mx}% ${tilt.my}%, ${glossClr}, transparent 45%)` }}
         />
         {/* iPhone/Safari GORIZONTAL SILJISH ILDIZ SABABI (2026-09 hotfix).
             Yaltirash qatlami kartadan ANCHA kengroq (-left-60%, w-60%,
@@ -163,7 +188,7 @@ export default function NfcCard({
             translateZ(0) yassi (flat) qirqish konteksti yaratadi, uni
             WebKit ham to'g'ri qirqadi. Vizual ko'rinish o'zgarmadi. */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden [border-radius:inherit] [transform:translateZ(0)]">
-            <div className="absolute -left-[60%] -top-[60%] h-[220%] w-[60%] animate-[shimmerSweep_3.6s_ease-in-out_infinite] bg-[linear-gradient(100deg,transparent,rgba(255,255,255,0.16)_40%,rgba(255,255,255,0.35)_50%,rgba(255,255,255,0.16)_60%,transparent)]" />
+            <div className="absolute -left-[60%] -top-[60%] h-[220%] w-[60%] animate-[shimmerSweep_3.6s_ease-in-out_infinite] bg-[linear-gradient(100deg,transparent,rgba(255,255,255,0.16)_40%,rgba(255,255,255,0.35)_50%,rgba(255,255,255,0.16)_60%,transparent)]" style={sheenStyle} />
           </div>
         <div className="relative z-[1] flex items-center justify-end">
           <IconWave style={{ color: f.sub }} />

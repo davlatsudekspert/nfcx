@@ -7,6 +7,7 @@ import {
 import { fmt, timeAgo, dateTime } from '../lib/format.js';
 import { adminPreviewUrl, adminCompanyPreviewUrl } from '../lib/preview.js';
 import { useLanguage } from '../lib/i18n.jsx';
+import MarketplaceTab from '../components/admin/MarketplaceTab.jsx';
 import { useCategories, catPath } from '../lib/categories.js';
 import { idTier, effectiveAccess } from '../lib/access.js';
 import { TIER_LABEL } from '../lib/pricing.js';
@@ -222,7 +223,7 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
           <LanguageSwitcher />
         </div>
         <h1 className="vz-h2 mt-2">{t("Admin panel")}</h1>
-        {expiredMsg && <div role="alert" className="mt-4 rounded-[10px] border px-3 py-2 text-xs" style={{ borderColor: 'rgba(245,158,11,.35)', background: 'rgba(245,158,11,.10)', color: '#fbbf24' }}>{t(expiredMsg)}</div>}
+        {expiredMsg && <div role="alert" className="mt-4 rounded-[10px] border px-3 py-2 text-xs" style={{ borderColor: 'var(--warning)', background: 'var(--warning-soft)', color: 'var(--warning)' }}>{t(expiredMsg)}</div>}
 
         {step === 'credentials' ? (
           <form onSubmit={submitCredentials} className="mt-6 space-y-3">
@@ -280,7 +281,7 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
 // bo'limning sarlavhasi siljib ketadi va menyu boshqa sahifani
 // ochadi. Bo'limni yashirish uchun uni faqat `ADMIN_NAV` dan oling:
 // bo'limning o'zi joyida qoladi va indekslar buzilmaydi.
-const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika', 'Security', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar', 'Kategoriyalar', 'Tasdiqlash', 'Talab', 'Moliya', 'Kompaniyalar', 'Trafik', 'Shikoyatlar'];
+const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika', 'Security', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar', 'Kategoriyalar', 'Tasdiqlash', 'Talab', 'Moliya', 'Kompaniyalar', 'Trafik', 'Shikoyatlar', 'Marketplace'];
 
 function StatsTab() {
   const { t } = useLanguage();
@@ -369,7 +370,7 @@ function StatsTab() {
             {series && series.length > 1 && (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={series} margin={{ top: 6, right: 4, bottom: 0, left: 4 }}>
-                  <Line type="monotone" dataKey="total" stroke="#d4af5a" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="total" stroke="var(--accent-primary)" strokeWidth={2} dot={false} />
                   <Tooltip {...chartTooltip} formatter={(v) => [fmt(v) + " so'm", t('Komissiya')]} labelFormatter={() => ''} />
                 </LineChart>
               </ResponsiveContainer>
@@ -394,7 +395,7 @@ function StatsTab() {
                 <XAxis dataKey="day" {...chartAxis} />
                 <YAxis {...chartAxis} width={44} />
                 <Tooltip {...chartTooltip} formatter={(v) => [fmt(v) + " so'm", t('Komissiya')]} />
-                <Line type="monotone" dataKey="total" name={t('Komissiya')} stroke="#d4af5a" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                <Line type="monotone" dataKey="total" name={t('Komissiya')} stroke="var(--accent-primary)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -437,7 +438,7 @@ const SIGNUP_SRC = { web: 'Sayt', android: 'Android ilova', ios: 'iOS ilova', ap
 // rang ko'rish buzilishida ham ajraladi, qorong'i fonda kontrast
 // yetarli). Ularni o'zgartirsangiz qaytadan tekshiring: ikkita seriya
 // bir-biridan farq qilishi SHART, aks holda grafik o'qilmaydi.
-const C_OPENS = '#b08736';     // ochilishlar — oltin
+const C_OPENS = 'var(--accent-primary)';     // ochilishlar — oltin
 const C_VISITORS = '#4a90c4';  // noyob tashrifchilar — ko'k
 
 
@@ -759,7 +760,7 @@ function TrafficTab() {
                 <YAxis type="category" dataKey="label" {...chartAxis} width={110} />
                 <Tooltip {...chartTooltip} formatter={(v) => [fmt(v), t('Ochilish')]} />
                 <Bar dataKey="opens" name={t('Ochilish')} fill={C_OPENS} radius={[0, 4, 4, 0]} maxBarSize={22}
-                  label={{ position: 'right', fill: 'rgba(246,239,224,0.65)', fontSize: 11, formatter: (v) => fmt(v) }} />
+                  label={{ position: 'right', fill: 'var(--text-secondary)', fontSize: 11, formatter: (v) => fmt(v) }} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -862,7 +863,7 @@ function AnalyticsTab() {
               <XAxis dataKey="day" {...chartAxis} />
               <YAxis {...chartAxis} width={44} />
               <Tooltip {...chartTooltip} formatter={(v) => [fmt(v) + " so'm", t('Komissiya')]} />
-              <Line type="monotone" dataKey="total" name={t('Komissiya')} stroke="#d4af5a" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+              <Line type="monotone" dataKey="total" name={t('Komissiya')} stroke="var(--accent-primary)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -945,7 +946,7 @@ function ManualAdjustmentsSection() {
   return (
     <div className="vz-card p-5">
       <div className="flex flex-wrap items-center gap-2 text-sm font-bold">
-        <AdminIcon name="alert" className="h-4 w-4 text-[#fbbf24]" /> {t("Qo'lda kiritilgan balans tuzatishlari")}
+        <AdminIcon name="alert" className="h-4 w-4 text-[color:var(--warning)]" /> {t("Qo'lda kiritilgan balans tuzatishlari")}
         <span className="vz-badge vz-badge--muted">{t('Daromadga kirmaydi')}</span>
       </div>
       <p className="mt-1 text-xs" style={{ color: 'var(--vz-ink-2)' }}>
@@ -1360,7 +1361,7 @@ function PhysicalCardDesign({ order }) {
         <div>{order.shippingPhone || '—'}</div>
         <div className="max-w-[280px]">{order.shippingAddress || '—'}</div>
         {order.shippingCarrier && (
-          <div className="mt-1 text-[color:var(--vz-gold-2)]">{order.shippingCarrier}</div>
+          <div className="mt-1 text-[color:var(--accent-text)]">{order.shippingCarrier}</div>
         )}
         {order.printSpec && (
           <div className="mt-2 font-mono text-[11px] text-base-content/45">{order.printSpec}</div>
@@ -2208,7 +2209,7 @@ function SecurityTab({ initialSub }) {
             )}
             {ipMsg && <div role="alert" className="vz-err mt-3">{t(ipMsg)}</div>}
 
-            <div className="mt-5 rounded-lg border border-dashed p-3 text-xs break-words" style={{ borderColor: 'rgba(245,158,11,.35)', background: 'rgba(245,158,11,.06)', color: '#fbbf24' }}>
+            <div className="mt-5 rounded-lg border border-dashed p-3 text-xs break-words" style={{ borderColor: 'var(--warning)', background: 'var(--warning-soft)', color: 'var(--warning)' }}>
               <b>{t('Xavfsiz tiklash:')}</b> {t("agar o'zingiz (dinamik IP tufayli) bloklanib qolsangiz, Cloudflare Dashboard → nfcstore-api Worker → Settings → Variables bo'limida ADMIN_IP_WHITELIST_BYPASS=true muhit o'zgaruvchisini qo'shing — bu whitelist'ni vaqtincha chetlab o'tadi. Kirib, IP'ni yangilagach, bu o'zgaruvchini albatta o'chirib qo'ying.")}
             </div>
           </div>
@@ -2229,7 +2230,7 @@ function SecurityTab({ initialSub }) {
               </div>
             ) : !totpSetup ? (
               <div>
-                <div className="flex items-center gap-2 text-sm font-bold" style={{ color: '#fbbf24' }}><AdminIcon name="alert" className="h-4 w-4" /> {t('Google Authenticator ulanmagan')}</div>
+                <div className="flex items-center gap-2 text-sm font-bold" style={{ color: 'var(--warning)' }}><AdminIcon name="alert" className="h-4 w-4" /> {t('Google Authenticator ulanmagan')}</div>
                 <p className="mt-1 text-xs" style={{ color: 'var(--vz-ink-2)' }}>
                   {t('Google Authenticator, Microsoft Authenticator yoki 1Password kabi ilova bilan ulash — kirishda parolga qo‘shimcha 6 xonali kod so‘raladi.')}
                 </p>
@@ -3218,7 +3219,7 @@ function FinanceDashboard({ rangeQs, ready, onGoRates }) {
   return (
     <div className="space-y-4">
       {!o.ratesConfigured && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-[14px] border px-4 py-3 text-sm" style={{ borderColor: 'rgba(245,158,11,.35)', background: 'rgba(245,158,11,.10)', color: '#fbbf24' }}>
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-[14px] border px-4 py-3 text-sm" style={{ borderColor: 'var(--warning)', background: 'var(--warning-soft)', color: 'var(--warning)' }}>
           <span className="flex min-w-0 items-center gap-2"><AdminIcon name="alert" className="h-4 w-4 shrink-0" /> {t('Payme / bank / soliq foizlari hali kiritilmagan — hisob-kitob to‘liq bo‘lmaydi.')}</span>
           <button className="btn btn-warning btn-xs min-h-9" onClick={onGoRates}>{t('Tarif va soliqlarni to‘ldirish')}</button>
         </div>
@@ -4491,6 +4492,9 @@ const ADMIN_NAV = [
   { index: 8, label: 'Bildirishnomalar', icon: 'bell' },
   { index: 9, label: 'Tashqi analitika', icon: 'activity' },
   { index: 12, label: 'Gift NFC ID', icon: 'gift' },
+  // MARKETPLACE / AKTIVATSIYA — Uzum Market va boshqa
+  // marketplace'larda sotilgan fizik NFC mahsulotlar.
+  { index: 22, label: 'Marketplace', icon: 'bag' },
   { index: 13, label: 'Promokodlar', icon: 'tag' },
   { index: 14, label: 'Yangiliklar', icon: 'news' },
   { index: 15, label: 'Kategoriyalar', icon: 'folder' },
@@ -4501,7 +4505,20 @@ const ADMIN_NAV = [
 
 function Dashboard({ onLogout, role, totpEnabled, refreshMe }) {
   const { t } = useLanguage();
-  const [tab, setTab] = useState(0);
+  // `?tab=N` — CHUQUR HAVOLA.
+  //
+  // Bu imkoniyat menyudan olib tashlangan bo'limlar izohida
+  // ("/admin?tab=5 orqali baribir ochiladi") allaqachon VA'DA
+  // QILINGAN edi, lekin amalda yozilmagandi: manzil o'qilmas va
+  // sahifa har doim birinchi bo'limda ochilardi. Endi va'da rost.
+  //
+  // Faqat mavjud bo'lim raqami qabul qilinadi — noto'g'ri qiymat
+  // bilan bo'sh ekran chiqmaydi.
+  const [tab, setTab] = useState(() => {
+    if (typeof window === 'undefined') return 0;
+    const n = Number(new URLSearchParams(window.location.search).get('tab'));
+    return Number.isInteger(n) && n >= 0 && n < TABS.length ? n : 0;
+  });
   const [secSub, setSecSub] = useState(null);
   const logout = async () => { try { await adminApi('/logout', { method: 'POST' }); } catch { /* baribir chiqamiz */ } onLogout(); };
   const isSuperAdmin = role === 'super_admin';
@@ -4550,6 +4567,10 @@ function Dashboard({ onLogout, role, totpEnabled, refreshMe }) {
         {tab === 19 && <CompaniesTab />}
         {tab === 20 && <TrafficTab />}
         {tab === 21 && <ReportsTab />}
+        {/* `adminApi`, `isManager` va `apiErrText` PROP orqali beriladi:
+            ular shu faylda va MarketplaceTab ularni import qilsa
+            aylanma bog'liqlik hosil bo'lardi. */}
+        {tab === 22 && <MarketplaceTab adminApi={adminApi} isManager={isManager} apiErrText={apiErrText} />}
       </div>
     </AdminShell>
     </AdminCtx.Provider>

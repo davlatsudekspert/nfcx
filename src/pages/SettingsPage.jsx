@@ -8,12 +8,18 @@ import PremiumPreviewCard from '../components/PremiumPreviewCard.jsx';
 import CardTools from '../components/CardTools.jsx';
 import TgLinkBox from '../components/TgLinkBox.jsx';
 import { IconUser, IconShield, IconPhone } from '../components/Icons.jsx';
+import { useTheme } from '../lib/theme.jsx';
+import { ThemeDots } from '../components/ThemeSwitcher.jsx';
 
 // Profildagi Sozlamalar sahifasi — o'z ma'lumotlarini ko'rish va
 // Telegram orqali kelgan bir martalik kod bilan parolni o'zgartirish.
 export default function SettingsPage() {
   const { user, myCards, refresh } = useAuth();
   const { t } = useLanguage();
+  // Rang mavzusi — header'dagi tezkor tugma bilan AYNAN bir xil holat
+  // (localStorage: nfc_theme). Bir joydan o'zgartirilsa ikkinchisi ham
+  // darhol yangilanadi. Til tanlovidan mustaqil.
+  const { theme, setTheme, themes } = useTheme();
 
   const [step, setStep] = useState('idle'); // idle | code_sent
   // KOD QAYSI KANALGA KETADI.
@@ -201,6 +207,44 @@ export default function SettingsPage() {
           oqimining o'ziga tegilmagan. */}
       <section className="mt-8 max-w-lg">
         <PremiumPreviewCard user={user} />
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════
+          RANG MAVZUSI (THEME) — to'liq selektor.
+          Header'dagi ixcham tugma bilan bir xil holatni boshqaradi.
+          Tanlov darhol qo'llanadi, sahifani qayta yuklash kerak emas.
+          ═══════════════════════════════════════════════════════════════ */}
+      <section className="mt-10 max-w-lg">
+        <h2 className="flex items-center gap-2 font-display text-lg font-semibold">{t('Rang mavzusi')}</h2>
+        <p className="mt-1 text-sm text-base-content/50">
+          {t('Saytning rang ko‘rinishi. Tanlov shu brauzerda saqlanadi va til tanlovidan mustaqil.')}
+        </p>
+        <div className="vz-card mt-4 space-y-1.5 p-3" role="radiogroup" aria-label={t('Rang mavzusi')}>
+          {themes.map((th) => {
+            const active = th.id === theme;
+            return (
+              <button
+                key={th.id}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => setTheme(th.id)}
+                className={`flex min-h-12 w-full cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition ${
+                  active
+                    ? 'border-[color:var(--accent-primary)] bg-[color:var(--accent-soft)]'
+                    : 'border-[color:var(--border-soft)] hover:border-[color:var(--border-strong)]'
+                }`}
+              >
+                <ThemeDots dots={th.dots} size="h-5 w-5" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-bold">{th.label}</span>
+                  <span className="block truncate text-xs text-base-content/45">{th.hint}</span>
+                </span>
+                <span className={`shrink-0 text-accent ${active ? '' : 'opacity-0'}`} aria-hidden="true">{'\u2713'}</span>
+              </button>
+            );
+          })}
+        </div>
       </section>
 
       <section className="mt-8 max-w-lg">

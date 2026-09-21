@@ -151,7 +151,7 @@ export default function NewsPage({ newsId = null }) {
       aria-label={liked[item.id] ? t('Yoqtirishni bekor qilish') : t('Yoqtirish')}
       className="vz-tap inline-flex items-center gap-1.5 rounded-full border px-3 text-sm font-semibold transition"
       style={liked[item.id]
-        ? { borderColor: 'rgba(229,72,77,.5)', color: '#ff7b81', background: 'rgba(229,72,77,.08)' }
+        ? { borderColor: 'var(--danger)', color: 'var(--danger)', background: 'var(--danger-soft)' }
         : { borderColor: 'var(--vz-line)', color: 'var(--vz-ink-2)' }}
     >
       <IconHeart filled={!!liked[item.id]} />
@@ -179,7 +179,7 @@ export default function NewsPage({ newsId = null }) {
         <section className="mt-6">
           {err && (
             <div role="alert" className="flex flex-col items-center gap-3 rounded-[14px] border p-8 text-center" style={{ borderColor: 'rgba(229,72,77,.45)', background: 'rgba(229,72,77,.06)' }}>
-              <div className="text-sm font-semibold" style={{ color: '#ff7b81' }}>{t("Yangilikni yuklab bo'lmadi.")}</div>
+              <div className="text-sm font-semibold" style={{ color: 'var(--danger)' }}>{t("Yangilikni yuklab bo'lmadi.")}</div>
               <div className="text-xs" style={{ color: 'var(--vz-ink-2)' }}>{t("Server bilan aloqa yo'q.")}</div>
               <button type="button" className="btn btn-outline-gold btn-sm" onClick={load}>{t('Qayta urinish')}</button>
             </div>
@@ -274,7 +274,7 @@ export default function NewsPage({ newsId = null }) {
       <section className="mt-10">
         {err && (
           <div role="alert" className="flex flex-col items-center gap-3 rounded-[14px] border p-8 text-center" style={{ borderColor: 'rgba(229,72,77,.45)', background: 'rgba(229,72,77,.06)' }}>
-            <div className="text-sm font-semibold" style={{ color: '#ff7b81' }}>{t("Yangiliklarni yuklab bo'lmadi.")}</div>
+            <div className="text-sm font-semibold" style={{ color: 'var(--danger)' }}>{t("Yangiliklarni yuklab bo'lmadi.")}</div>
             <div className="text-xs" style={{ color: 'var(--vz-ink-2)' }}>{t("Server bilan aloqa yo'q.")}</div>
             <button type="button" className="btn btn-outline-gold btn-sm" onClick={load}>{t('Qayta urinish')}</button>
           </div>
@@ -313,7 +313,7 @@ export default function NewsPage({ newsId = null }) {
                   key={item.id}
                   className="vz-card flex h-full min-w-0 flex-col overflow-hidden transition duration-200 hover:-translate-y-0.5"
                   style={{ borderColor: 'var(--vz-line)' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(212,175,90,0.5)'; }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--vz-line)'; }}
                 >
                   <a href={href} onClick={(e) => go(e, href)} className="block aspect-[16/9] w-full overflow-hidden" aria-label={pick(item, 'title', lang)}>
@@ -323,7 +323,7 @@ export default function NewsPage({ newsId = null }) {
                       // Rasm yo'q bo'lsa ham kartalar bir xil balandlikda qolsin
                       <span
                         className="flex h-full w-full items-center justify-center font-display text-sm tracking-[0.18em]"
-                        style={{ background: 'linear-gradient(135deg,#1a1409,#0d0b07)', color: 'rgba(212,175,90,0.5)' }}
+                        style={{ background: 'linear-gradient(135deg,var(--surface-elevated),var(--surface))', color: 'var(--accent-primary)' }}
                         aria-hidden="true"
                       >
                         NFCSTORE

@@ -5,6 +5,7 @@ import { useLanguage } from '../lib/i18n.jsx';
 import { dateTime } from '../lib/format.js';
 import { IconCheck } from '../components/Icons.jsx';
 import NfcCard from '../components/NfcCard.jsx';
+import brandMark from '../assets/nfcstore-mark.png';
 import CatalogCard from '../components/CatalogCard.jsx';
 
 // Faqat sana (vaqtsiz) — dateTime() joriy tilga mos formatlaydi.
@@ -22,7 +23,7 @@ export function GiftCard({ gift }) {
       <button
         type="button"
         onClick={() => navigate('/' + gift.code)}
-        className="mt-1 min-h-11 cursor-pointer py-2 text-center font-mono text-2xl font-extrabold tracking-[0.14em] text-[#f2d9a0] transition-colors hover:text-[#ffe9bf]"
+        className="mt-1 min-h-11 cursor-pointer py-2 text-center font-mono text-2xl font-extrabold tracking-[0.14em] text-[color:var(--accent-text)] transition-colors hover:text-[#ffe9bf]"
       >
         {gift.code}
       </button>
@@ -86,7 +87,7 @@ export default function GiftsPage({ catalog = [] }) {
       </section>
 
       <section className="mt-8">
-        <div className="gift-luxe-hero grid items-center gap-8 rounded-3xl border border-[#e6c165]/20 bg-gradient-to-br from-[#17130c] via-[#100d09] to-[#070605] p-6 sm:p-9 lg:grid-cols-[1.02fr_0.98fr]">
+        <div className="gift-luxe-hero grid items-center gap-8 rounded-3xl border border-[color:var(--accent-primary)]/20 bg-gradient-to-br from-[color:var(--surface-elevated)] via-[color:var(--surface)] to-[color:var(--bg-secondary)] p-6 sm:p-9 lg:grid-cols-[1.02fr_0.98fr]">
           <div>
             <span className="gift-luxe-kicker">NFCSTORE GOLD EDITION</span>
             <h2 className="vz-h2 mt-3">
@@ -99,7 +100,7 @@ export default function GiftsPage({ catalog = [] }) {
               <button type="button" onClick={() => navigate('/narxlar')} className="btn btn-gold min-h-11 px-5">{t('NFC ID tanlash')}</button>
               <button type="button" onClick={() => navigate('/account')} className="btn btn-outline-gold min-h-11 px-5">{t('NFC ID sovg‘a qilish')}</button>
             </div>
-            <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <div className="mt-5 rounded-2xl border border-white/10 bg-[color:var(--tint-base)]/[0.03] p-4">
               <div className="text-sm font-bold">{t('Noyob ID — unutilmas sovg‘a')}</div>
               <p className="mt-1 text-[16px] leading-relaxed text-base-content/55">
                 {t('Ism, sana, brend yoki alohida ma’noga ega NFC ID’ni tanlang va yaqin insoningizga raqamli sovg‘a sifatida taqdim eting.')}
@@ -111,7 +112,10 @@ export default function GiftsPage({ catalog = [] }) {
             <div className="gift-luxe-card">
               <NfcCard code="VIP007" name={t('Noyob ID — unutilmas sovg‘a')} finish="showcase" size="md" />
             </div>
-            <span className="gift-luxe-seal">NFC<br />{t('GIFT')}</span>
+            <span className="gift-luxe-seal">
+              <img src={brandMark} alt="" aria-hidden="true" className="gift-luxe-seal-mark" />
+              {t('GIFT')}
+            </span>
           </div>
         </div>
       </section>

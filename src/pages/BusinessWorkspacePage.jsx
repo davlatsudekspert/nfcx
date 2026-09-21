@@ -244,7 +244,7 @@ export default function BusinessWorkspacePage({ code }) {
         <h1 className="vz-h1 mt-3 break-words !text-[clamp(28px,5vw,48px)]">{card.name || card.code}</h1>
         <p className="vz-lead mt-4 text-[15px]">{t('Bu eski biznes ko‘rinishi shaxsiy NFC ID bilan aralashib qolgan edi. Endi kompaniya alohida, faqat harflardan iborat Company ID va admin tasdig‘i bilan ochiladi.')}</p>
         <div className="vz-panel mt-6 p-4">
-          <b className="font-mono text-[color:var(--vz-gold-2)]">{card.code} — {t('mavjud NFC ID')}</b>
+          <b className="font-mono text-[color:var(--accent-text)]">{card.code} — {t('mavjud NFC ID')}</b>
           <p className="mt-1 text-sm leading-relaxed text-base-content/55">{t('Uning profili va bazadagi ma’lumotlari o‘zgarmaydi. Yangi kompaniyaga kerakli biznes ma’lumotlarini nusxalash mumkin.')}</p>
         </div>
         <div className="mt-6 flex flex-wrap gap-2.5">

@@ -3,7 +3,14 @@ import { useAuth } from '../lib/auth.jsx';
 import { navigate } from '../lib/router.js';
 import { timeAgo } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
-import { dbListGiftOffers, dbListMySupportMessages, dbListWonPendingAuctions } from '../lib/db.js';
+import {
+  dbListGiftOffers,
+  dbListMySupportMessages,
+  dbListWonPendingAuctions,
+  dbListNotifications,
+  dbMarkNotificationRead,
+  dbMarkAllNotificationsRead,
+} from '../lib/db.js';
 import BackToCabinet from '../components/BackToCabinet.jsx';
 import { IconBell, IconStar, IconSupport, IconTag } from '../components/Icons.jsx';
 
@@ -15,6 +22,14 @@ export default function NotificationsPage() {
   const [gifts, setGifts] = useState(null);
   const [support, setSupport] = useState(null);
   const [auctions, setAuctions] = useState(null);
+  // IJTIMOIY BILDIRISHNOMALAR — ilova bilan BITTA manbadan.
+  //
+  // O'qildi holati backendda turadi, ya'ni telefonda o'qilgan xabar
+  // bu yerda ham o'qilgan bo'lib ko'rinadi va aksincha. Mavjud uch
+  // manba (sovg'a, admin javobi, auksion) O'ZGARMADI — bu ularning
+  // YONIGA qo'shiladi.
+  const [social, setSocial] = useState(null);
+  const [unread, setUnread] = useState(0);
   const [err, setErr] = useState(false); // birorta so'rov muvaffaqiyatsiz → xato + qayta urinish
 
   useEffect(() => {
@@ -25,10 +40,14 @@ export default function NotificationsPage() {
   // Har biri mustaqil; bittasi yiqilsa boshqalari ko'rsatiladi, ustida xato paneli.
   const load = () => {
     setErr(false);
-    setGifts(null); setSupport(null); setAuctions(null);
+    setGifts(null); setSupport(null); setAuctions(null); setSocial(null);
     dbListGiftOffers().then((d) => setGifts(Array.isArray(d?.incoming) ? d.incoming : [])).catch(() => { setGifts([]); setErr(true); });
     dbListMySupportMessages().then((rows) => setSupport(Array.isArray(rows) ? rows : [])).catch(() => { setSupport([]); setErr(true); });
     dbListWonPendingAuctions().then((rows) => setAuctions(Array.isArray(rows) ? rows : [])).catch(() => { setAuctions([]); setErr(true); });
+    dbListNotifications().then((d) => {
+      setSocial(Array.isArray(d?.items) ? d.items : []);
+      setUnread(Number(d?.unreadCount) || 0);
+    }).catch(() => { setSocial([]); setErr(true); });
   };
   useEffect(() => { if (user) load(); }, [user]);
 
@@ -41,9 +60,46 @@ export default function NotificationsPage() {
     );
   }
 
-  const loading = gifts === null || support === null || auctions === null;
+  const loading = gifts === null || support === null || auctions === null || social === null;
   const repliedSupport = (support || []).filter((m) => m.status === 'replied');
-  const totalCount = (gifts?.length || 0) + repliedSupport.length + (auctions?.length || 0);
+  const totalCount = (gifts?.length || 0) + repliedSupport.length + (auctions?.length || 0) + (social?.length || 0);
+
+  // Jumla SERVERDAN kelmaydi — `type` keladi va matn shu yerda,
+  // foydalanuvchi tilida yig'iladi. Server tayyor matn yuborsa, u
+  // yozilgan tilda muzlab qolardi.
+  const socialText = (n) => {
+    if (n.type === 'follow') return t('sizga obuna bo‘ldi');
+    if (n.type === 'like') return t('postingizni yoqtirdi');
+    if (n.type === 'comment') return t('postingizga izoh yozdi');
+    return '';
+  };
+
+  // Nishon: obunada — obuna bo'lgan odamning profili; like va
+  // izohda — post turgan profil. Saytda alohida post sahifasi yo'q,
+  // postlar profil ichida. Kod bo'sh bo'lsa (yozuv o'chirilgan)
+  // hech qayerga o'tilmaydi — sahifa yiqilmasligi kerak.
+  const socialTarget = (n) => {
+    const code = n.type === 'follow' ? n.actorCode : n.code;
+    return code ? '/' + code : '';
+  };
+
+  const openSocial = async (n) => {
+    if (!n.read) {
+      setSocial((rows) => (rows || []).map((r) => (r.id === n.id ? { ...r, read: true } : r)));
+      setUnread((u) => Math.max(0, u - 1));
+      // Server javobi aniq sanoqni beradi — mahalliy taxmin emas.
+      const res = await dbMarkNotificationRead(n.id).catch(() => null);
+      if (res && typeof res.unreadCount === 'number') setUnread(res.unreadCount);
+    }
+    const to = socialTarget(n);
+    if (to) navigate(to);
+  };
+
+  const markAll = async () => {
+    setSocial((rows) => (rows || []).map((r) => ({ ...r, read: true })));
+    setUnread(0);
+    await dbMarkAllNotificationsRead().catch(() => {});
+  };
 
   return (
     <main className="mx-auto w-full max-w-[1800px] overflow-x-hidden px-5 sm:px-10 lg:px-14 pb-16">
@@ -51,6 +107,11 @@ export default function NotificationsPage() {
       <section className="pt-6">
         <span className="vz-kicker">{t('Kabinet')}</span>
         <h1 className="vz-h2 mt-3 flex items-center gap-2"><IconBell width={24} height={24} /> {t('Bildirishnomalar')} {totalCount > 0 && <span className="text-accent">({totalCount})</span>}</h1>
+        {unread > 0 && (
+          <button type="button" className="btn btn-ghost btn-sm mt-3 min-h-11" onClick={markAll}>
+            {t('Hammasini o‘qildi')}
+          </button>
+        )}
       </section>
 
       <section className="mt-8 max-w-2xl space-y-3">
@@ -70,6 +131,27 @@ export default function NotificationsPage() {
         {!loading && !err && totalCount === 0 && (
           <div className="vz-empty"><span className="text-base-content/40"><IconBell width={28} height={28} /></span><span className="text-sm">{t("Hozircha bildirishnomangiz yo'q.")}</span></div>
         )}
+
+        {social?.map((n) => (
+          <button
+            type="button"
+            key={'soc' + n.id}
+            onClick={() => openSocial(n)}
+            className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm transition ${
+              n.read
+                ? 'border-base-content/10 bg-transparent'
+                : 'border-accent/40 bg-accent/5'
+            }`}
+          >
+            {!n.read && <span className="h-2 w-2 shrink-0 rounded-full bg-accent" aria-hidden="true" />}
+            <span className="min-w-0 flex-1 break-words">
+              <b>{n.title || t('Foydalanuvchi')}</b> {socialText(n)}
+            </span>
+            <span className="shrink-0 text-xs text-base-content/45">
+              {n.createdAt ? timeAgo(new Date(String(n.createdAt).replace(' ', 'T')).getTime()) : ''}
+            </span>
+          </button>
+        ))}
 
         {gifts?.map((g) => (
           <div key={'gift' + g.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 text-sm">

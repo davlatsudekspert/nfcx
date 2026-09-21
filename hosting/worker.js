@@ -15,6 +15,9 @@ import * as apiTelegram from './api/telegram.js';
 import * as apiAssistant from './api/assistant.js';
 import * as apiModeration from './api/moderation.js';
 import * as apiComments from './api/comments.js';
+import * as apiMarketplace from './api/marketplace.js';
+import * as apiNotifications from './api/notifications.js';
+import * as apiFeatured from './api/featured.js';
 
 // API javoblari standart holda KESHLANMAYDI.
 //
@@ -904,9 +907,32 @@ async function publicContentApi(request, env, url) {
 
   const tapMatch = path.match(/^\/api\/tap\/([^/]+)$/);
   if (tapMatch && request.method === 'GET') {
-    const row = await env.DB.prepare(`SELECT active, blocked_by_owner, linked_code FROM physical_cards WHERE chip_token = ?`)
-      .bind(decodeURIComponent(tapMatch[1])).first();
-    return json(row ? { active: !!row.active && !row.blocked_by_owner, linkedCode: row.linked_code || null } : { active: true });
+    // `linked_company_id` — marketplace'da sotilgan stiker/karta BIZNES
+    // profilga bog'langan holat (hosting/api/marketplace.js). U
+    // `cards.code` ga FK bo'lgan `linked_code` ga sig'maydi, shuning
+    // uchun alohida ustunda. Ustun eski bazada bo'lmasligi mumkin —
+    // shunda so'rov `linked_code` bilan qayta uriniladi va tegish
+    // avvalgidek ishlayveradi.
+    const row = await env.DB.prepare(`SELECT active, blocked_by_owner, linked_code, linked_company_id FROM physical_cards WHERE chip_token = ?`)
+      .bind(decodeURIComponent(tapMatch[1])).first()
+      .catch(() => env.DB.prepare(`SELECT active, blocked_by_owner, linked_code FROM physical_cards WHERE chip_token = ?`)
+        .bind(decodeURIComponent(tapMatch[1])).first());
+    // `found` — MIJOZ TOMONIDAGI yo'naltirish uchun (`/t/<token>`,
+    // `src/pages/TapRedirectPage.jsx`). Usiz "token noma'lum" va
+    // "token bor, lekin hali bog'lanmagan" holatlari bir xil
+    // ko'rinardi va noma'lum stiker ham faollashtirish sahifasiga
+    // olib borardi — ya'ni yolg'on va'da berardi.
+    //
+    // Maydon QO'SHILDI, eskilari o'zgarmadi: mobil ilova uni
+    // e'tiborsiz qoldiradi va avvalgidek ishlayveradi.
+    return json(row
+      ? {
+        found: true,
+        active: !!row.active && !row.blocked_by_owner,
+        linkedCode: row.linked_code || null,
+        linkedCompanyId: row.linked_company_id || null,
+      }
+      : { found: false, active: true });
   }
 
   if (path === '/api/settings/physical-nfc-pricing' && request.method === 'GET') {
@@ -2644,8 +2670,18 @@ async function addStoryD1(env, { kind, ownerId, userId, imageUrl, videoUrl, capt
   // bo'lmasin va jadval cheksiz o'smasin.
   await env.DB.prepare(`DELETE FROM stories WHERE owner_kind = ? AND owner_id = ? AND expires_at <= ?`)
     .bind(kind, ownerId, now.toISOString()).run();
-  const cnt = await env.DB.prepare(`SELECT COUNT(*) AS n FROM stories WHERE owner_kind = ? AND owner_id = ?`)
-    .bind(kind, ownerId).first();
+  // CHEGARA FAQAT FAOL STORYLAR BO'YICHA.
+  //
+  // Yuqoridagi DELETE muddati o'tganlarni tozalaydi, lekin hisob
+  // faqat o'shanga TAYANMAYDI: agar tozalash biror sababga ko'ra
+  // ishlamay qolsa (masalan bitta qatorning `expires_at` qiymati
+  // kutilmagan formatda bo'lsa), eskilari jim turib chegarani
+  // to'ldirib qo'yardi va odam "10 ta bor" degan xabarni ko'rib,
+  // ekranda esa bittasini ko'rardi — chunki GET aynan shu shart
+  // bilan filtrlaydi. Endi ikkalasi BIR XIL shartga tayanadi.
+  const cnt = await env.DB.prepare(
+    `SELECT COUNT(*) AS n FROM stories WHERE owner_kind = ? AND owner_id = ? AND expires_at > ?`,
+  ).bind(kind, ownerId, now.toISOString()).first();
   if (Number(cnt?.n || 0) >= STORY_MAX) return { error: 'limit_reached', limit: STORY_MAX };
   const row = await env.DB.prepare(
     `INSERT INTO stories (owner_kind, owner_id, user_id, image_url, video_url, caption, created_at, expires_at)
@@ -3179,6 +3215,12 @@ function codePriceOverrideD1(code) {
 // Egasining kabineti (/api/auth/me), public profili (/:code) va Admin
 // Panel bu filtrdan mutlaqo ta'sirlanmaydi.
 const CARD_SOURCE_REGISTRATION_AUTO = 'registration_auto';
+// Marketplace'da sotilgan fizik mahsulot aktivatsiyasidan tug'ilgan ID
+// (hosting/api/marketplace.js). U ham SOTUVDA emas — odam uni
+// allaqachon sotib olgan — shuning uchun katalogda ko'rinmaydi.
+// ID'ning O'ZI aynan ro'yxatdan o'tishdagidek: bir xil allokator, bir
+// xil tarif dvigateli. Bu belgi faqat MANBANI ayirib turadi (audit).
+const CARD_SOURCE_MARKETPLACE = 'marketplace_activation';
 const FREE_AUTO_ID_GLOB = '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]';
 
 // `alias` — SQL'dagi cards jadvali taxallusi ('cards' yoki 'c').
@@ -3186,7 +3228,7 @@ const FREE_AUTO_ID_GLOB = '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]';
 function catalogVisibleSql(alias) {
   const a = alias;
   return `(
-    COALESCE(${a}.source, '') <> '${CARD_SOURCE_REGISTRATION_AUTO}'
+    COALESCE(${a}.source, '') NOT IN ('${CARD_SOURCE_REGISTRATION_AUTO}', '${CARD_SOURCE_MARKETPLACE}')
     AND NOT (
       ${a}.source IS NULL
       AND ${a}.code GLOB '${FREE_AUTO_ID_GLOB}'
@@ -4080,6 +4122,38 @@ async function finalizePaidWebOrderD1(env, orderId) {
   if (order.kind === 'payme_test') {
     if (order.status === 'paid') return { ok: true, alreadyPaid: true };
     if (order.status !== 'pending') return { alreadyProcessed: true };
+    await setWebOrderStatusD1(env, order.id, 'paid');
+    return { ok: true };
+  }
+
+  // ── NFCSTORE FEATURED (kind='featured_slot') ─────────────────────
+  //
+  // Pullik ko'tarilgan slot. SHU YER — slotni yoqadigan YAGONA
+  // joy: mijozning so'rovi faqat "kutilmoqda" holatidagi buyurtma
+  // ochadi, yonishi esa Payme/Click tasdig'idan keyin, shu yerda
+  // bo'ladi.
+  //
+  // `payme_test` kabi UMUMIY mantiqdan OLDIN turadi. Pastdagi kod
+  // `order.code` ni sotib olinayotgan NFC kodi deb hisoblaydi va
+  // uning egasini qidiradi; FEATURED da esa `code` shunchaki
+  // e'lon egasining kartasi — u allaqachon o'sha odamniki, ya'ni
+  // umumiy tarmoq `code_taken` deb noto'g'ri rad etardi.
+  if (order.kind === 'featured_slot') {
+    if (order.status === 'paid') {
+      // Takroriy `PerformTransaction` — slot ikkinchi marta
+      // uzaytirilmaydi (`activateFromOrder` idempotent).
+      await apiFeatured.activateFromOrder(env, H, order);
+      return { ok: true, alreadyPaid: true };
+    }
+    if (order.status !== 'pending') return { alreadyProcessed: true };
+    const res = await apiFeatured.activateFromOrder(env, H, order);
+    if (!res.ok) {
+      // Slot topilmadi yoki holati mos emas. Pul olingan, shuning
+      // uchun buyurtma BARIBIR 'paid' deb belgilanadi va sabab
+      // logga chiqadi — aks holda Payme takror-takror urinardi va
+      // mijozning puli "muallaq" ko'rinardi.
+      console.error('featured slot yoqilmadi', order.id, res.reason);
+    }
     await setWebOrderStatusD1(env, order.id, 'paid');
     return { ok: true };
   }
@@ -5923,6 +5997,8 @@ function sniffAnyFileTypeD1(bytes) {
   if (bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0) return { ext: 'mp3', type: 'audio/mpeg' };
   if (head.slice(0, 4) === 'RIFF' && head.slice(8, 12) === 'WAVE') return { ext: 'wav', type: 'audio/wav' };
   if (head.slice(0, 4) === 'OggS') return { ext: 'ogg', type: 'audio/ogg' };
+  // FLAC umuman tanilmasdi — har qanday .flac fayl rad etilardi.
+  if (head.slice(0, 4) === 'fLaC') return { ext: 'flac', type: 'audio/flac' };
   return null;
 }
 
@@ -6067,6 +6143,63 @@ async function streamUploadToR2(request, env, opts) {
   }
   return { ok: true, url: `/uploads/${filename}`, type: sniffed.type, size: total };
 }
+
+// ── FAYL TURI TAXALLUSLARI ───────────────────────────────────────────
+//
+// EGASINING SHIKOYATI (2026-09-20): "saytda musiqa yuklayotganda
+// mp3 topsam 'qo'llab-quvvatlanmaydi' deyapti".
+//
+// Sabab: yuklashda IKKI manba solishtiriladi — brauzer E'LON QILGAN
+// tur va faylning SEHRLI BAYTLARI. Ular mos kelmasa fayl rad
+// etiladi (bu to'g'ri himoya: kengaytmasi almashtirilgan fayl
+// o'tib ketmasin).
+//
+// Lekin turlarning RASMIY nomi bitta, amalda esa ko'p: Android
+// mp3 ni ko'pincha `audio/mp3` deb e'lon qiladi, standart nom esa
+// `audio/mpeg`. Shu sababli TO'G'RI mp3 ham rad etilardi.
+//
+// Quyida faqat AYNAN BIR XIL formatning boshqa nomlari. Himoya
+// pasaymadi: rasm o'rniga video yoki audio o'rniga hujjat o'tkazib
+// bo'lmaydi — har bir taxallus o'z oilasi ichida qoladi.
+const UPLOAD_TYPE_ALIASES = {
+  // MP3
+  'audio/mp3': ['audio/mpeg'],
+  'audio/mpg': ['audio/mpeg'],
+  'audio/mpeg3': ['audio/mpeg'],
+  'audio/x-mp3': ['audio/mpeg'],
+  'audio/x-mpeg': ['audio/mpeg'],
+  'audio/x-mpeg-3': ['audio/mpeg'],
+  // M4A / AAC — ikkalasi ham MP4 konteyner. `ftyp` brendi "M4A"
+  // bo'lmasa sniffer uni `video/mp4` deb biladi, holbuki ichida
+  // faqat ovoz bor.
+  'audio/mp4': ['audio/mp4', 'video/mp4'],
+  'audio/m4a': ['audio/mp4', 'video/mp4'],
+  'audio/x-m4a': ['audio/mp4', 'video/mp4'],
+  'audio/aac': ['audio/mp4', 'video/mp4', 'audio/mpeg'],
+  'audio/aacp': ['audio/mp4', 'video/mp4'],
+  // WAV
+  'audio/x-wav': ['audio/wav'],
+  'audio/wave': ['audio/wav'],
+  'audio/vnd.wave': ['audio/wav'],
+  'audio/x-pn-wav': ['audio/wav'],
+  // OGG / OPUS — Opus ham Ogg, ham WebM konteynerda bo'ladi.
+  'audio/opus': ['audio/ogg', 'video/webm'],
+  'audio/x-opus': ['audio/ogg', 'video/webm'],
+  'audio/vorbis': ['audio/ogg'],
+  'audio/x-ogg': ['audio/ogg'],
+  'application/ogg': ['audio/ogg'],
+  // WebM ichidagi ovoz
+  'audio/webm': ['video/webm'],
+  // FLAC
+  'audio/flac': ['audio/flac'],
+  'audio/x-flac': ['audio/flac'],
+  // Rasm/video uchun ham uchraydigan nomlar.
+  'image/jpg': ['image/jpeg'],
+  'image/pjpeg': ['image/jpeg'],
+  'video/quicktime': ['video/mp4'],
+  'video/x-m4v': ['video/mp4'],
+  'video/x-matroska': ['video/webm'],
+};
 
 const PROFILE_BG_ALIASES = {
   'application/octet-stream': ['image/gif', 'video/mp4', 'video/webm'],
@@ -6242,6 +6375,7 @@ async function uploadApi(request, env, pathname) {
     const up = await streamUploadToR2(request, env, {
       prefix: 'file', actor,
       accept: ['image/', 'video/', 'audio/', 'application/pdf'],
+      aliases: UPLOAD_TYPE_ALIASES,
     });
     if (!up.ok) return json({ error: up.error, ...(up.limitMb ? { limitMb: up.limitMb } : {}) }, up.status);
     return json({ url: up.url, type: up.type, size: up.size });
@@ -8470,6 +8604,22 @@ async function userAccountApi(request, env, url) {
     tokenTail: String(r.chip_token || '').slice(-4).toUpperCase(),
     linkedCode: r.linked_code || '',
     linkedName: r.linked_name || '',
+    // BIZNES BOG'LANISHI HAM KO'RINSIN.
+    //
+    // Marketplace aktivatsiyasi kompaniyani `linked_company_id` ga
+    // yozadi (`linked_code` — `cards.code` ga FK, kompaniya u yerga
+    // sig'maydi). Bu ustun bu yerda o'qilmagani uchun kompaniyaga
+    // ulangan stiker egasiga "bog'lanmagan" bo'lib ko'rinardi va u
+    // uni o'zgartira ham olmasdi.
+    linkedCompanyId: r.linked_company_id || '',
+    linkedCompanyName: r.linked_company_name || '',
+    // QAYSI BIRI QAYSI EKANINI AJRATISH UCHUN.
+    //
+    // Ro'yxatda faqat `NFC …XXXX` turardi. Bitta qurilmasi bor
+    // odamga bu yetarli, lekin bir nechta stiker/karta olgan odam
+    // qaysi birini tahrirlayotganini BILMASDI — va noto'g'risini
+    // almashtirib qo'yish oson edi.
+    fromMarketplace: !!r.marketplace_batch_id,
     active: Number(r.active) === 1,
     blockedByOwner: Number(r.blocked_by_owner) === 1,
     status: r.status || '',
@@ -8478,14 +8628,47 @@ async function userAccountApi(request, env, url) {
 
   const listNfcDevices = async (ownerId) => {
     const rows = await env.DB.prepare(
-      `SELECT pc.id, pc.chip_token, pc.linked_code, pc.active,
-              pc.blocked_by_owner, pc.status, pc.created_at,
-              c.name AS linked_name
+      `SELECT pc.id, pc.chip_token, pc.linked_code, pc.linked_company_id, pc.active,
+              pc.blocked_by_owner, pc.status, pc.created_at, pc.marketplace_batch_id,
+              c.name AS linked_name, co.display_name AS linked_company_name
          FROM physical_cards pc
          LEFT JOIN cards c ON c.code = pc.linked_code
+         LEFT JOIN companies co ON co.company_id = pc.linked_company_id
         WHERE pc.owner_user_id = ?
         ORDER BY pc.created_at DESC`
-    ).bind(ownerId).all();
+    ).bind(ownerId).all()
+      // Ustunlar marketplace moduli migratsiyasidan keladi. Ular
+      // hali qo'shilmagan bo'lsa so'rov yiqiladi — shunda ustunlar
+      // QO'SHILIB, so'rov qayta uriniladi.
+      //
+      // KAMROQ MA'LUMOT BERADIGAN ZAXIRA ENG OXIRIDA TURADI. Ilgari
+      // birinchi xatodan keyin darhol o'shanga tushilardi va
+      // kompaniyaga ulangan stiker egasiga "bog'lanmagan" bo'lib
+      // ko'rinardi — test aynan shuni tutdi.
+      .catch(async () => {
+        for (const col of ['linked_company_id TEXT', 'marketplace_batch_id TEXT']) {
+          await env.DB.prepare(`ALTER TABLE physical_cards ADD COLUMN ${col}`).run().catch(() => {});
+        }
+        return env.DB.prepare(
+          `SELECT pc.id, pc.chip_token, pc.linked_code, pc.linked_company_id, pc.active,
+                  pc.blocked_by_owner, pc.status, pc.created_at, pc.marketplace_batch_id,
+                  c.name AS linked_name, co.display_name AS linked_company_name
+             FROM physical_cards pc
+             LEFT JOIN cards c ON c.code = pc.linked_code
+             LEFT JOIN companies co ON co.company_id = pc.linked_company_id
+            WHERE pc.owner_user_id = ?
+            ORDER BY pc.created_at DESC`
+        ).bind(ownerId).all();
+      })
+      .catch(() => env.DB.prepare(
+        `SELECT pc.id, pc.chip_token, pc.linked_code, pc.active,
+                pc.blocked_by_owner, pc.status, pc.created_at,
+                c.name AS linked_name
+           FROM physical_cards pc
+           LEFT JOIN cards c ON c.code = pc.linked_code
+          WHERE pc.owner_user_id = ?
+          ORDER BY pc.created_at DESC`
+      ).bind(ownerId).all());
     return (rows.results || []).map(nfcDeviceRow);
   };
 
@@ -8509,10 +8692,47 @@ async function userAccountApi(request, env, url) {
         `SELECT 1 AS x FROM cards WHERE code = ? AND user_id = ?`
       ).bind(code, user.id).first();
       if (!own) return json({ error: 'not_your_code' }, 403);
+      // Kompaniya bog'lanishi TOZALANADI: ikkalasi bir vaqtda
+      // turib qolsa, tegizganda qaysi biri ochilishi noaniq edi.
       const upd = await env.DB.prepare(
-        `UPDATE physical_cards SET linked_code = ?
+        `UPDATE physical_cards SET linked_code = ?, linked_company_id = NULL
           WHERE id = ? AND owner_user_id = ? RETURNING id`
-      ).bind(code, id, user.id).first();
+      ).bind(code, id, user.id).first()
+        .catch(() => env.DB.prepare(
+          `UPDATE physical_cards SET linked_code = ?
+            WHERE id = ? AND owner_user_id = ? RETURNING id`
+        ).bind(code, id, user.id).first());
+      if (!upd) return json({ error: 'not_found' }, 404);
+    }
+
+    // ── KOMPANIYAGA ULASH ────────────────────────────
+    //
+    // Stikerni sotib olgan odam uni o'z shaxsiy profili bilan
+    // kompaniyasi orasida ERKIN almashtira olishi kerak. Chipga
+    // qayta yozish SHART EMAS — chipda o'zgarmas token turadi,
+    // yo'nalishni server hal qiladi. Shuning uchun qulflangan
+    // stiker ham shu yerdan boshqariladi.
+    if ('linkedCompanyId' in body) {
+      const cid = shortText(body.linkedCompanyId, 32).toUpperCase();
+      if (!cid) return json({ error: 'bad_company' }, 422);
+      const own = await env.DB.prepare(
+        `SELECT 1 AS x FROM companies WHERE company_id = ? AND owner_user_id = ?`
+      ).bind(cid, String(user.id)).first();
+      if (!own) return json({ error: 'not_your_company' }, 403);
+      // `linked_company_id` ustuni marketplace moduli migratsiyasidan
+      // keladi. Agar u hali ishlamagan bo'lsa (masalan yangi bazada
+      // hali biror marketplace so'rovi bo'lmagan), bu yerda so'rov
+      // 503 bilan yiqilardi. Ustunni O'ZI qo'shib qayta uriniladi —
+      // `ALTER TABLE ... ADD COLUMN` buzmaydigan amal.
+      const linkCompany = () => env.DB.prepare(
+        `UPDATE physical_cards SET linked_company_id = ?, linked_code = NULL
+          WHERE id = ? AND owner_user_id = ? RETURNING id`
+      ).bind(cid, id, user.id).first();
+      let upd = await linkCompany().catch(() => undefined);
+      if (upd === undefined) {
+        await env.DB.prepare(`ALTER TABLE physical_cards ADD COLUMN linked_company_id TEXT`).run().catch(() => {});
+        upd = await linkCompany().catch(() => null);
+      }
       if (!upd) return json({ error: 'not_found' }, 404);
     }
 
@@ -8816,13 +9036,29 @@ async function postsApi(request, env, url) {
   }
 
   if (m[2] === 'like' && request.method === 'POST') {
-    const post = await env.DB.prepare(`SELECT id FROM posts WHERE id = ?`).bind(postId).first();
+    // `user_id` va `code` ham olinadi: bildirishnoma KIMGA
+    // ketishini aniqlash uchun post egasi kerak. Ilgari faqat `id`
+    // o'qilardi.
+    const post = await env.DB.prepare(`SELECT id, user_id, code FROM posts WHERE id = ?`).bind(postId).first();
     if (!post) return json({ error: 'not_found' }, 404);
     const existing = await env.DB.prepare(`SELECT id FROM post_likes WHERE post_id = ? AND user_id = ?`).bind(postId, user.id).first();
     if (existing) {
       await env.DB.prepare(`DELETE FROM post_likes WHERE id = ?`).bind(existing.id).run();
     } else {
       await env.DB.prepare(`INSERT OR IGNORE INTO post_likes (post_id, user_id) VALUES (?, ?)`).bind(postId, user.id).run();
+      // FAQAT LIKE QO'YILGANDA. Like olinganda bildirishnoma
+      // yaratilmaydi va mavjudi ham o'chirilmaydi: "like bosdi,
+      // keyin oldi" degan xabarning ma'nosi yo'q, qayta bosilganda
+      // esa unique indeks takrorini to'sadi.
+      await apiNotifications.createNotification(env, {
+        recipientUserId: post.user_id,
+        actorUserId: user.id,
+        kind: 'like',
+        targetType: 'post',
+        targetId: postId,
+        targetCode: post.code || '',
+        now: nowTs(),
+      });
     }
     const cnt = await env.DB.prepare(`SELECT COUNT(*) AS n FROM post_likes WHERE post_id = ?`).bind(postId).first();
     return json({ liked: !existing, count: Number(cnt?.n || 0) });
@@ -8989,20 +9225,21 @@ const commentTargetKind = (r) => {
     : (company ? 'company_post' : 'post');
 };
 
-async function feedApi(request, env, url) {
-  if (url.pathname !== '/api/feed' || request.method !== 'GET') return null;
-
-  const user = await getCurrentUser(request, env);
-  const viewerId = user ? user.id : 0;
-  const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
-  const limit = Math.min(30, Math.max(1, Number(url.searchParams.get('limit')) || 15));
-  const offset = (page - 1) * limit;
-  const now = new Date().toISOString();
-
-  // `limit + 1` — keyingi sahifa bor-yo'qligini BITTA so'rov bilan
-  // bilish uchun (alohida COUNT so'rovi butun jadvalni sanardi).
-  const rows = await env.DB.prepare(
-    `SELECT * FROM (
+/// LENTA UNIONI — BITTA MANBA.
+///
+/// To'rt shox: shaxsiy post, kompaniya posti, shaxsiy istorya,
+/// kompaniya istoryasi. Ustun nomlari, maxfiylik shartlari va
+/// like sanog'i SHU YERDA, bitta joyda turadi.
+///
+/// NIMA UCHUN FUNKSIYA. Endi bu so'rov IKKI marta ishlatiladi:
+/// oddiy lenta uchun va FEATURED (pullik ko'tarilgan) kontent
+/// uchun. Nusxa olinganda ikkinchisi maxfiylik filtrini yo'qotib
+/// qo'yishi mumkin edi — ya'ni katalogdan yashiringan odamning
+/// posti pul evaziga bosh sahifaga chiqib ketardi.
+///
+/// `?` parametrlari, TARTIBI BILAN:
+///   viewerId, viewerId, now, viewerId, now
+const FEED_UNION_SQL = `SELECT * FROM (
         SELECT 'post' AS kind, p.id AS id, p.code AS code, 'card' AS author_kind,
                c.name AS name, c.avatar_url AS avatar_url,
                p.image_url AS image_url, p.video_url AS video_url,
@@ -9038,50 +9275,27 @@ async function feedApi(request, env, url) {
           FROM stories s JOIN companies co ON co.company_id = s.owner_id
          WHERE s.owner_kind = 'company' AND s.expires_at > ?
            AND co.status = 'active' AND ${companyOwnerAliveSql('co')}
-     )
-     ORDER BY created_at DESC, id DESC
-     LIMIT ? OFFSET ?`
-  ).bind(viewerId, viewerId, now, viewerId, now, limit + 1, offset).all();
+)`;
 
-  // BLOKLANGAN PROFILLAR LENTADAN CHIQARILADI.
-  //
-  // Bloklash tugmasi bor, lekin lenta uni hisobga olmasa — tugma
-  // YOLG'ON bo'lardi: odam bloklaydi, kontent esa baribir
-  // ko'rinaveradi.
-  //
-  // Filtr SQL da emas, shu yerda: bloklanganlar soni odatda bir
-  // nechta va ularni har bir UNION shoxiga qo'shish so'rovni
-  // sezilarli murakkablashtirardi.
-  const blocked = viewerId
-    ? new Set((await apiModeration.blockedByUser(env, viewerId))
-      .map((b) => `${b.kind === 'company' ? 'company' : 'card'}:${b.id.toUpperCase()}`))
-    : new Set();
-
-  const all = (rows.results || []).filter(
-    (r) => !blocked.has(`${String(r.author_kind)}:${String(r.code || '').toUpperCase()}`),
-  );
-
-  // IZOHLAR SONI — BITTA so'rov bilan.
-  //
-  // Har bir kadr ostida "izohlar: 12" turadi. Har biriga alohida
-  // so'rov yuborilsa, bitta sahifa uchun 15 ta qo'shimcha so'rov
-  // bo'lardi; shuning uchun sahifa yig'ilgach bitta guruhlangan
-  // so'rov qilinadi.
-  const page1 = all.slice(0, limit);
+/// Lenta qatorlarini o'qiladigan ko'rinishga keltiradi.
+///
+/// `feedApi` va FEATURED bir xil shaklni qaytarishi SHART: ilova
+/// ikkalasini ham bitta `Post.fromJson` bilan o'qiydi.
+async function shapeFeedRows(env, rows, viewerId) {
   const commentCounts = await apiComments.countsFor(
     env,
-    page1.map((r) => ({ kind: commentTargetKind(r), id: Number(r.id) })),
+    rows.map((r) => ({ kind: commentTargetKind(r), id: Number(r.id) })),
   ).catch(() => new Map());
 
   const companyPostLikes = await apiComments.likesFor(
     env,
-    page1
+    rows
       .filter((r) => String(r.kind) === 'post' && String(r.author_kind) === 'company')
       .map((r) => ({ kind: 'company_post', id: Number(r.id) })),
     viewerId,
   ).catch(() => new Map());
 
-  const feed = page1.map((r) => {
+  return rows.map((r) => {
     const d = parseDbDate(r.created_at);
     const target = commentTargetKind(r);
     const companyLike = target === 'company_post'
@@ -9105,8 +9319,106 @@ async function feedApi(request, env, url) {
       commentCount: commentCounts.get(`${target}:${Number(r.id)}`) || 0,
     };
   });
+}
 
-  return json({ feed, hasMore: all.length > limit });
+async function feedApi(request, env, url) {
+  if (url.pathname !== '/api/feed' || request.method !== 'GET') return null;
+
+  const user = await getCurrentUser(request, env);
+  const viewerId = user ? user.id : 0;
+  const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
+  const limit = Math.min(30, Math.max(1, Number(url.searchParams.get('limit')) || 15));
+  const offset = (page - 1) * limit;
+  const now = new Date().toISOString();
+
+  // `limit + 1` — keyingi sahifa bor-yo'qligini BITTA so'rov bilan
+  // bilish uchun (alohida COUNT so'rovi butun jadvalni sanardi).
+  const rows = await env.DB.prepare(
+    // `limit + 1` — keyingi sahifa bor-yo'qligini BITTA so'rov bilan
+    // bilish uchun (alohida COUNT so'rovi butun jadvalni sanardi).
+    `${FEED_UNION_SQL}
+     ORDER BY created_at DESC, id DESC
+     LIMIT ? OFFSET ?`
+  ).bind(viewerId, viewerId, now, viewerId, now, limit + 1, offset).all();
+
+  // BLOKLANGAN PROFILLAR LENTADAN CHIQARILADI.
+  //
+  // Bloklash tugmasi bor, lekin lenta uni hisobga olmasa — tugma
+  // YOLG'ON bo'lardi: odam bloklaydi, kontent esa baribir
+  // ko'rinaveradi.
+  //
+  // Filtr SQL da emas, shu yerda: bloklanganlar soni odatda bir
+  // nechta va ularni har bir UNION shoxiga qo'shish so'rovni
+  // sezilarli murakkablashtirardi.
+  const blocked = viewerId
+    ? new Set((await apiModeration.blockedByUser(env, viewerId))
+      .map((b) => `${b.kind === 'company' ? 'company' : 'card'}:${b.id.toUpperCase()}`))
+    : new Set();
+
+  const all = (rows.results || []).filter(
+    (r) => !blocked.has(`${String(r.author_kind)}:${String(r.code || '').toUpperCase()}`),
+  );
+
+  // IZOHLAR SONI VA SHAKL — `shapeFeedRows` da, bitta joyda.
+  //
+  // Har bir kadr ostida "izohlar: 12" turadi. Har biriga alohida
+  // so'rov yuborilsa, bitta sahifa uchun 15 ta qo'shimcha so'rov
+  // bo'lardi; shuning uchun sahifa yig'ilgach bitta guruhlangan
+  // so'rov qilinadi.
+  const page1 = all.slice(0, limit);
+  const feed = await shapeFeedRows(env, page1, viewerId);
+
+  // ── NFCSTORE FEATURED — PULLIK KO'TARILGAN KONTENT ───────────────
+  //
+  // ALOHIDA ENDPOINT YO'Q, ATAYLAB. Ilova lentani allaqachon
+  // `/api/feed` dan oladi va uni `Post.fromJson` bilan o'qiydi.
+  // Ko'tarilgan kontent uchun ikkinchi manba ochilsa, ilova ikkita
+  // turli shaklni qo'llab-quvvatlashi va ikki marta so'rov
+  // yuborishi kerak bo'lardi — hamda maxfiylik filtri ikkinchi
+  // nusxada unutilishi mumkin edi.
+  //
+  // FAQAT BIRINCHI SAHIFADA: ko'tarilgan kontent har bir
+  // sahifada qayta chiqsa, odam pastga tushgan sari o'sha e'lonni
+  // qayta-qayta ko'rardi.
+  //
+  // Ular UNIONDAN o'tadi, ya'ni maxfiylik, o'chirilgan egasi va
+  // kompaniya holati shartlari ular uchun ham ishlaydi: pul
+  // to'langani yashiringan profilni ochib bermaydi.
+  let featured = [];
+  if (page === 1) {
+    const targets = await apiFeatured.activeTargets(env, nowTs()).catch(() => []);
+    if (targets.length) {
+      const where = targets.map(() => '(kind = ? AND id = ?)').join(' OR ');
+      const fRows = await env.DB.prepare(
+        `${FEED_UNION_SQL} WHERE ${where} ORDER BY created_at DESC, id DESC LIMIT 10`
+      ).bind(
+        viewerId, viewerId, now, viewerId, now,
+        // FEATURED `target_kind` izoh turlarini ishlatadi
+        // (`company_post`), UNION esa `kind` + `author_kind`
+        // juftligini — shuning uchun moslashtiriladi.
+        ...targets.flatMap((t) => [t.kind.endsWith('story') ? 'story' : 'post', t.id]),
+      ).all().catch(() => null);
+
+      const fFiltered = (fRows?.results || []).filter((r) => {
+        if (blocked.has(`${String(r.author_kind)}:${String(r.code || '').toUpperCase()}`)) return false;
+        // `kind` ni moslashtirish keng edi (`company_post` -> `post`),
+        // shuning uchun muallif turi ham tekshiriladi: aks holda
+        // 5-raqamli kompaniya posti uchun to'langan pul 5-raqamli
+        // SHAXSIY postni ko'tarib qo'yardi.
+        return targets.some((t) => Number(t.id) === Number(r.id)
+          && t.kind === commentTargetKind(r));
+      });
+
+      featured = (await shapeFeedRows(env, fFiltered, viewerId))
+        .map((x) => ({ ...x, featured: true }));
+    }
+  }
+
+  // Ko'tarilgan kontent lentada IKKI MARTA chiqmasin.
+  const featuredKeys = new Set(featured.map((f) => `${f.commentKind}:${f.id}`));
+  const rest = feed.filter((f) => !featuredKeys.has(`${f.commentKind}:${f.id}`));
+
+  return json({ feed: [...featured, ...rest], hasMore: all.length > limit });
 }
 
 async function followApi(request, env, url) {
@@ -9160,6 +9472,17 @@ async function followApi(request, env, url) {
       }
       throw err;
     }
+    // Bildirishnoma — obuna YOZILGANDAN keyin. Yuqoridagi
+    // `already` sharti tufayli bu joyga faqat YANGI obuna yetib
+    // keladi, ya'ni takroriy xabar yaratilmaydi.
+    await apiNotifications.createNotification(env, {
+      recipientUserId: ownerId,
+      actorUserId: user.id,
+      kind: 'follow',
+      targetType: 'user',
+      targetCode: code,
+      now: nowTs(),
+    });
     return json({ ok: true, paid: false });
   }
 
@@ -9227,7 +9550,13 @@ async function coreApi(request, env, url) {
   await ensureCoreSchema(env);
 
   if (url.pathname === '/api/conversations/unread-count' || url.pathname.startsWith('/api/gift-offers')
-    || url.pathname === '/api/auctions/won/pending' || url.pathname === '/api/referrals') {
+    || url.pathname === '/api/auctions/won/pending' || url.pathname === '/api/referrals'
+    // NFC qurilmalari ham shu yerda: `userAccountApi` ichida yo'l BOR
+    // edi, lekin DISPATCHER uni o'sha funksiyaga umuman yubormasdi.
+    // Natijada so'rov eski proksiga tushib, 404 qaytarardi — kod
+    // yozilgan, lekin YETIB BO'LMAYDIGAN holatda edi.
+    || url.pathname === '/api/my/nfc-devices'
+    || url.pathname.startsWith('/api/my/nfc-devices/')) {
     const res = await userAccountApi(request, env, url);
     if (res) return res;
   }
@@ -9348,8 +9677,20 @@ const H = {
   personalPriceForCode, personalTierFromCode, personalCodeTierOverride, isPersonalCodePurchasable,
   usersHaveTrialColumnsD1, trialEndsAtD1, premiumExtendD1,
   signupSourceD1, usersHaveSignupSourceD1, isMobileClientD1,
+  // SINOV/ICHKI AKKAUNTLAR — BITTA MANBA, MODULLAR UCHUN HAM.
+  //
+  // `hosting/api/marketplace.js` statistikasi ham "o'zimiz qilgan ish
+  // hisobga kirmasin" qoidasiga bo'ysunadi. Shart NUSXA OLINMADI: agar
+  // ikkinchi nusxa bo'lsa, `is_internal` qo'shilganda biri yangilanib,
+  // biri qolib ketardi — aynan shunday xato bir marta bo'lgan.
+  TEST_USER_IDS_D1,
 };
-const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments];
+// `apiNotifications` `apiMarketplace` DAN OLDIN turadi.
+// `scripts/test-marketplace.mjs` ro'yxat AYNAN `apiMarketplace]`
+// bilan tugashini tekshiradi — oxiriga qo'shilsa o'sha qo'riqchi
+// yiqiladi. Tartibning boshqa ahamiyati yo'q: har bir modul o'ziga
+// tegishli bo'lmagan yo'lga `null` qaytaradi.
+const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiMarketplace];
 
 // Xavfsizlik header'lari — barcha javoblarga (statik va API). CSP ataylab faqat
 // framing/base/form/object ni cheklaydi (script/style ga tegmaydi — YouTube/Yandex
@@ -9369,8 +9710,37 @@ function withSecurityHeaders(res, url) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    const res = await handleRequest(request, env, url);
-    return withSecurityHeaders(res, url);
+    try {
+      const res = await handleRequest(request, env, url);
+      return withSecurityHeaders(res, url);
+    } catch (error) {
+      // ── NIMA UCHUN BU YERDA TUTQICH BOR ───────────────────────────
+      //
+      // Busiz `handleRequest` dagi istalgan istisno Workers runtime'ga
+      // chiqib ketardi va u BO'SH TANALI 500 qaytarardi: na sabab, na
+      // yo'l, na iz. Ya'ni production'da sayt yiqilsa, nega
+      // yiqilganini bilishning yo'qligi.
+      //
+      // Aynan shunday bo'ldi: ilovadagi ulashish havolasi
+      // (`nfcstore.uz/KOD`) 500 qaytarardi, javob tanasi esa bo'sh
+      // edi. Mahalliy harness'da o'sha yo'l yiqilmaydi, demak sabab
+      // faqat production muhitida ko'rinadi — uni ko'rsatadigan joy
+      // esa yo'q edi.
+      //
+      // BU XATONI YASHIRMAYDI. Aksincha: 500 avvalgidek 500 bo'lib
+      // qoladi, lekin endi u O'ZINI TUSHUNTIRADI va log'ga yoziladi
+      // (`observability` wrangler.jsonc'da yoqilgan).
+      //
+      // `detail` — faqat istisno xabari, 200 belgigacha qisqartirilgan.
+      // Foydalanuvchi ma'lumoti emas: bu yerga so'rov tanasi ham,
+      // cookie ham, tokenning birorta bo'lagi ham tushmaydi.
+      console.error('worker fetch', request.method, url.pathname, error?.stack || error?.message);
+      const detail = String((error && error.message) || error || '').slice(0, 200);
+      return withSecurityHeaders(
+        json({ error: 'worker_error', path: url.pathname, detail }, 500),
+        url,
+      );
+    }
   },
 };
 
@@ -9524,7 +9894,14 @@ async function handleRequest(request, env, url) {
       // Natijasi: ilovadagi Reels tabi BIRINCHI KUNDAN BERI
       // "Topilmadi" ko'rsatib kelgan. Brauzerda sinalmagani uchun
       // sezilmagan — Reels faqat ilovada bor.
-      || url.pathname === '/api/feed') {
+      || url.pathname === '/api/feed'
+      // NFC qurilmalari — `coreApi()` ICHIGA qo'shilgan edi, lekin
+      // `coreApi()` ning O'ZI faqat shu ro'yxatdagi yo'llar uchun
+      // chaqiriladi. Tashqi darvozaga qo'shilmagani uchun so'rov
+      // u yerga yetib bormasdi — aynan `/api/feed` bilan bo'lgan
+      // xatoning o'zi (izohi yuqorida).
+      || url.pathname === '/api/my/nfc-devices'
+      || url.pathname.startsWith('/api/my/nfc-devices/')) {
       try {
         const coreRes = await coreApi(request, env, url);
         if (coreRes) return coreRes;
@@ -9582,6 +9959,65 @@ async function handleRequest(request, env, url) {
         if (shell) return shell;
       } catch (error) {
         console.error('news shell', url.pathname, error);
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // NFC TEGISH: /t/<chip_token>
+    //
+    // MARKETPLACE MAHSULOTI UCHUN SHART. Mavjud jismoniy karta
+    // oqimida chip `nfcstore.uz/<kod>?t=<token>` bilan yoziladi —
+    // profil ISHLAB CHIQARISHDA allaqachon ma'lum. Marketplace'da
+    // esa teskari: stiker sotilgunga qadar kimniki bo'lishi noma'lum,
+    // shuning uchun chipda FAQAT token bo'ladi va profilni SERVER
+    // topib beradi.
+    //
+    // 302, 301 EMAS. Doimiy yo'naltirish brauzerda abadiy keshlanadi
+    // va odam profilini almashtirganda karta ESKI profilga olib
+    // boraverardi — qayta yozib bo'lmaydigan stikerni o'ldirardi.
+    // Shu sababli `no-store` ham qo'yiladi.
+    //
+    //   bog'lanmagan token -> /activate (hali faollashtirilmagan)
+    //   shaxsiy profil     -> /<kod>?t=<token>  (mavjud tekshiruv
+    //                         va "karta o'chirilgan" xabari ishlaydi)
+    //   biznes/kompaniya   -> /c/<companyId>
+    //   noma'lum token     -> bosh sahifa (yolg'on va'da bermaymiz)
+    const tapRedirect = url.pathname.match(/^\/t\/([A-Za-z0-9_-]{1,64})\/?$/);
+    if (tapRedirect && request.method === 'GET') {
+      const to = (pathname) => new Response(null, {
+        status: 302,
+        headers: { location: pathname, 'cache-control': 'no-store' },
+      });
+      try {
+        await ensureCoreSchema(env);
+        const token = tapRedirect[1];
+        const row = await env.DB.prepare(
+          `SELECT linked_code, linked_company_id FROM physical_cards WHERE chip_token = ?`
+        ).bind(token).first()
+          // Eski bazada `linked_company_id` ustuni bo'lmasligi mumkin.
+          .catch(() => env.DB.prepare(`SELECT linked_code FROM physical_cards WHERE chip_token = ?`)
+            .bind(token).first());
+        if (!row) return to('/');
+        if (row.linked_code) return to(`/${String(row.linked_code).toLowerCase()}?t=${encodeURIComponent(token)}`);
+        if (row.linked_company_id) return to(`/c/${String(row.linked_company_id).toLowerCase()}`);
+        // Qurilma bor, lekin hali hech qayerga bog'lanmagan — demak
+        // mahsulot sotilgan, ammo faollashtirilmagan.
+        //
+        // TOKEN O'ZI BILAN KETADI (`?d=`). Shu sababli egasi
+        // stikerlarni OLDINDAN kimgadir biriktirib qo'yishi SHART
+        // EMAS: odam qaysi stikerni tekkizgan bo'lsa, faollashtirish
+        // paytida AYNAN o'sha bog'lanadi. Omborda "qaysi stiker qaysi
+        // konvertga tushdi" degan hisob yuritish kerak emas.
+        //
+        // Token maxfiy emas: u stikerning O'ZIDA yozilgan va uni
+        // tekkizgan har kim o'qiy oladi. Ya'ni manzilga qo'shilishi
+        // yangi sir ochmaydi. Egallab olishdan himoya boshqa joyda:
+        // bog'lash uchun HAQIQIY aktivatsiya kodi kerak va faqat
+        // EGASIZ qurilma bog'lanadi (hosting/api/marketplace.js).
+        return to(`/activate?d=${encodeURIComponent(token)}`);
+      } catch (error) {
+        console.error('tap redirect', error?.message);
+        return to('/');
       }
     }
 

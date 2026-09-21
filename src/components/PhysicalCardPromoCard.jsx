@@ -2,6 +2,8 @@ import { useLanguage } from '../lib/i18n.jsx';
 import { fmt } from '../lib/format.js';
 import { PHYSICAL_CARD_FEE } from '../lib/pricing.js';
 import { usePhysicalCardCta } from './PhysicalCardCta.jsx';
+import brandLockup from '../assets/nfcstore-lockup.png';
+import brandMark from '../assets/nfcstore-mark.png';
 
 // ═══════════════════════════════════════════════════════════════════════
 // KATALOG SAHIFASIDAGI NAMOYISH KARTASI — endi TAKLIF (2026-09)
@@ -24,6 +26,18 @@ import { usePhysicalCardCta } from './PhysicalCardCta.jsx';
 //
 // `<button>` ISHLATILADI, `<div onClick>` emas: klaviatura bilan yurgan
 // va ekran o'quvchi ishlatadigan odam uchun ham bu haqiqiy tugma bo'lsin.
+//
+// RANG — MAVZUGA ERGASHADI (2026-09). Ramka, karta yuzasi, matn, tugma,
+// narx va nur endi `src/themes.css` dagi tokenlardan oladi, ya'ni Pearl'da
+// ivory-oltin, Graphite'da platinum, Ocean'da muz ko'k, Aurora'da lavanda,
+// Midnight'da navy-champagne bo'ladi. Standart (legacy) mavzuda tokenlar
+// AYNAN avvalgi qora-oltin qiymatlarni beradi — ko'rinish o'zgarmaydi.
+//
+// Bu NAMOYISH (marketing) kartasi. Foydalanuvchining HAQIQIY kartasi
+// (tarif finish'i, Card Designer tanlovi) bu tokenlarga bog'liq EMAS.
+//
+// O'lcham, joylashuv, nisbat va animatsiya TEGILMAGAN — faqat rang va
+// brend tasviri (matn o'rniga haqiqiy logotip) yangilandi.
 // ═══════════════════════════════════════════════════════════════════════
 export default function PhysicalCardPromoCard() {
   const { t } = useLanguage();
@@ -40,52 +54,70 @@ export default function PhysicalCardPromoCard() {
       <span
         aria-hidden="true"
         className="pointer-events-none absolute -inset-4 rounded-[42px] opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-100 motion-reduce:transition-none"
-        style={{ background: 'radial-gradient(60% 60% at 50% 50%, rgba(212,175,90,0.3), transparent 70%)' }}
+        style={{ background: 'radial-gradient(60% 60% at 50% 50%, var(--promo-glow), transparent 70%)' }}
       />
 
       {/* OLTIN RAMKA. Ramka gradient bilan chiziladi (rasm emas): har
           qanday ekran zichligida tiniq, telefon kengligiga moslashadi va
           sayt mavzusi bilan bir xil rangda qoladi. */}
       <span
-        className="relative block rounded-[32px] p-[13px] shadow-[0_30px_70px_-34px_rgba(0,0,0,0.95)] transition-shadow duration-300 group-focus-visible:ring-2 group-focus-visible:ring-[var(--vz-gold)] group-focus-visible:ring-offset-4 group-focus-visible:ring-offset-transparent"
+        className="relative block rounded-[32px] p-[13px] transition-shadow duration-300 group-focus-visible:ring-2 group-focus-visible:ring-[color:var(--accent-primary)] group-focus-visible:ring-offset-4 group-focus-visible:ring-offset-transparent"
         style={{
-          background: 'linear-gradient(140deg,#f6e3a8 0%,#c9a24b 22%,#8a6a22 46%,#e8d194 62%,#a8813a 82%,#f2dfa2 100%)',
+          background: 'var(--promo-frame)',
+          boxShadow: '0 30px 70px -34px color-mix(in srgb, var(--shade-base) 95%, transparent)',
         }}
       >
         <span
           className="relative flex aspect-[1.585/1] flex-col justify-between rounded-[21px] px-8 py-7"
-          style={{ background: 'linear-gradient(160deg,#12131a 0%,#0a0b10 55%,#070709 100%)' }}
+          style={{
+            background: 'var(--promo-inner-bg)',
+            boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--showcase-card-gloss) 22%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--promo-code) 14%, transparent)',
+          }}
         >
           {/* Yuqori qator: brend + NFC to'lqini */}
           <span className="flex items-start justify-between gap-3">
-            <span className="font-display text-[32px] font-bold leading-none tracking-[0.16em] text-transparent sm:text-[38px]"
-              style={{ backgroundImage: 'linear-gradient(180deg,#f7e6ae,#c9a24b)', WebkitBackgroundClip: 'text', backgroundClip: 'text' }}>
-              NFCSTORE
-            </span>
-            <svg width="38" height="38" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="mt-0.5 shrink-0">
-              <rect x="3" y="8" width="7" height="9" rx="1.6" stroke="#d9b866" strokeWidth="1.6" />
-              <circle cx="6.5" cy="12.5" r="1.1" fill="#d9b866" />
-              <path d="M13.5 7.5a7 7 0 0 1 0 9M16.5 5.5a10.5 10.5 0 0 1 0 13M19.5 3.5a14 14 0 0 1 0 17"
-                stroke="#d9b866" strokeWidth="1.6" strokeLinecap="round" />
-            </svg>
+            {/* Brend belgisi — haqiqiy logotip fayli (yuqori aniqlikdagi
+                manba, shuning uchun har qanday ekran zichligida tiniq).
+                `--brand-mark-filter` uni mavzu bilan hamohang qiladi:
+                shakl va nisbat o'zgarmaydi, faqat metall rangi. */}
+            <img
+              src={brandLockup}
+              alt="NFCSTORE"
+              className="h-[34px] w-auto shrink-0 sm:h-[42px]"
+              style={{ filter: 'var(--brand-mark-filter)' }}
+            />
+            <img
+              src={brandMark}
+              alt=""
+              aria-hidden="true"
+              className="mt-0.5 h-[38px] w-[38px] shrink-0 object-contain"
+              style={{ filter: 'var(--brand-mark-filter)' }}
+            />
           </span>
 
           {/* O'rta: taklif matni */}
           <span className="block">
-            <span className="block font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-[color:var(--vz-gold-2)] sm:text-[13px]">
+            <span className="block font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-[color:var(--promo-code)] sm:text-[13px]">
               {t('O‘zingiz xohlagan uslubda')}
             </span>
-            <span className="mt-2 block text-[17px] font-semibold leading-snug text-white sm:text-[19px]">
+            <span className="mt-2 block text-[17px] font-semibold leading-snug text-[color:var(--promo-ink)] sm:text-[19px]">
               {t('Rang, dizayn va uslubni o‘zingiz tanlang')}
             </span>
           </span>
 
           {/* Pastki qator: tugma + narx */}
           <span className="flex flex-wrap items-center justify-between gap-3">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#f6e3a8] to-[#c9a24b] px-5 py-2.5 text-[15px] font-extrabold text-[#1a1206] shadow-[0_6px_18px_-8px_rgba(212,175,90,0.9)]">
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-[15px] font-extrabold"
+              style={{
+                background: 'var(--button-bg)',
+                color: 'var(--button-text)',
+                boxShadow: '0 6px 18px -8px var(--accent-glow)',
+              }}
+            >
               {t('Buyurtma berish')} &rarr;
             </span>
-            <span className="font-mono text-[15px] font-semibold text-[color:var(--vz-gold-2)]">
+            <span className="font-mono text-[15px] font-semibold text-[color:var(--promo-code)]">
               {fmt(PHYSICAL_CARD_FEE)} {t("so'm")}
             </span>
           </span>

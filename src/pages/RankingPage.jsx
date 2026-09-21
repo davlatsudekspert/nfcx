@@ -94,7 +94,7 @@ export default function RankingPage({ catalog }) {
         {t('Reyting')}
       </span>
       <h1 className="mt-4 text-4xl font-extrabold leading-tight tracking-tight">
-        {t("Eng ko'p ko'rilgan")} <span className="bg-gradient-to-br from-white to-base-content/50 bg-clip-text text-transparent">{t('profillar')}</span>
+        {t("Eng ko'p ko'rilgan")} <span className="bg-gradient-to-br from-base-content to-base-content/55 bg-clip-text text-transparent">{t('profillar')}</span>
       </h1>
       <p className="mt-3 max-w-xl text-[15px] text-base-content/60">{t("Ko'rishlar soniga qarab tuzilgan jonli reyting.")}</p>
 
@@ -135,7 +135,7 @@ export default function RankingPage({ catalog }) {
                   type="button"
                   onClick={() => setExpanded((v) => !v)}
                   aria-expanded={expanded}
-                  className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[color:var(--vz-gold,#d4af5a)]/45 bg-transparent px-5 py-2 text-[15px] font-semibold text-[color:var(--vz-gold-2,#f0cf7a)] transition hover:border-[color:var(--vz-gold,#d4af5a)] hover:bg-[color:var(--vz-gold,#d4af5a)]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vz-gold,#d4af5a)]"
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[color:var(--vz-gold,#d4af5a)]/45 bg-transparent px-5 py-2 text-[15px] font-semibold text-[color:var(--accent-text)] transition hover:border-[color:var(--vz-gold,#d4af5a)] hover:bg-[color:var(--vz-gold,#d4af5a)]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vz-gold,#d4af5a)]"
                 >
                   {expanded ? t('Yashirish') : t("Yana {n} ta ishtirokchini ko'rish", { n: fmt(hidden.length) })}
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform .25s ease' }}>

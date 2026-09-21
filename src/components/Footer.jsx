@@ -12,12 +12,12 @@ export default function Footer() {
   const { t } = useLanguage();
   return (
     <footer className="border-t border-[color:var(--vz-line)] bg-page-bg">
-      <div className="h-px bg-gradient-to-r from-transparent via-[rgba(212,175,90,0.45)] to-transparent"></div>
+      <div className="h-px bg-gradient-to-r from-transparent via-[color:var(--accent-primary)]/45 to-transparent"></div>
       <div className="mx-auto w-full max-w-[1800px] px-6 py-12 sm:px-10 lg:px-14">
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
           <div className="col-span-2 md:col-span-1">
-            <div className="mb-2 flex items-center gap-2.5 font-display text-[17px] font-semibold tracking-[0.08em] text-[color:var(--vz-gold-2)]">
-              <img src={logo} alt="NFCSTORE" className="h-8 w-8 object-contain" />
+            <div className="mb-2 flex items-center gap-2.5 font-display text-[17px] font-semibold tracking-[0.08em] text-[color:var(--accent-text)]">
+              <img src={logo} alt="NFCSTORE" className="h-8 w-8 object-contain" style={{ filter: 'var(--brand-mark-filter)' }} />
               NFCSTORE
             </div>
             <p className="max-w-[28ch] text-sm text-[color:var(--vz-ink-2)]">{t('NFC karta + raqamli profil')}</p>

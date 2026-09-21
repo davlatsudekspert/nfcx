@@ -5,6 +5,7 @@ import { companyIdLocalInfo } from './lib/company.js';
 import { dbList } from './lib/db.js';
 import { AuthProvider } from './lib/auth.jsx';
 import { LanguageProvider, useLanguage } from './lib/i18n.jsx';
+import { ThemeProvider } from './lib/theme.jsx';
 import { applySeo, seoForRoute, seoForProfile } from './lib/seo.js';
 import { PaymentsEnabledProvider } from './lib/paymentsEnabled.jsx';
 import Header from './components/Header.jsx';
@@ -74,11 +75,13 @@ const AdminPage = lazyPage(() => import('./pages/AdminPage.jsx'));
 const MessagesPage = lazyPage(() => import('./pages/MessagesPage.jsx'));
 const PaymentsPage = lazyPage(() => import('./pages/PaymentsPage.jsx'));
 const CardDesignerPage = lazyPage(() => import('./pages/CardDesignerPage.jsx'));
+const ActivatePage = lazyPage(() => import('./pages/ActivatePage.jsx'));
 const BusinessWorkspacePage = lazyPage(() => import('./pages/BusinessWorkspacePage.jsx'));
 const BusinessPublicDemoPage = lazyPage(() => import('./pages/BusinessPublicDemoPage.jsx'));
 const CompanyCreatePage = lazyPage(() => import('./pages/CompanyCreatePage.jsx'));
 const CompanyWorkspacePage = lazyPage(() => import('./pages/CompanyWorkspacePage.jsx'));
 const CompanyQuickProfilePage = lazyPage(() => import('./pages/CompanyQuickProfilePage.jsx'));
+const TapRedirectPage = lazyPage(() => import('./pages/TapRedirectPage.jsx'));
 const CompanyPublicPage = lazyPage(() => import('./pages/CompanyPublicPage.jsx'));
 const BusinessEntryPage = lazyPage(() => import('./pages/BusinessEntryPage.jsx'));
 
@@ -107,6 +110,11 @@ const STATIC_ROUTES = {
   xabarlar: MessagesPage,
   tolovlar: PaymentsPage,
   'karta-dizayni': CardDesignerPage,
+  // MARKETPLACE'DA SOTILGAN MAHSULOTNI FAOLLASHTIRISH.
+  // Konvertdagi QR aynan shu manzilni ochadi. Aktivatsiya kodi
+  // URL'GA QO'SHILMAYDI — u faqat POST tanasida ketadi (brauzer
+  // tarixi, server logi va Referer sarlavhasiga tushmasin).
+  activate: ActivatePage,
   'biznes-namuna': BusinessPublicDemoPage,
 };
 // STATIC_ROUTES'dan tashqari, if-zanjirida ishlov beriladigan sahifalar ham
@@ -177,7 +185,36 @@ export default function App() {
     setCatalog(recs);
   }, []);
 
-  useEffect(() => { refreshCatalog(); }, [refreshCatalog]);
+  // ── KATALOG KRITIK YO'LDAN OLIB TASHLANDI ──────────────────────────
+  //
+  // `dbList()` — BUTUN katalog (`GET /api/records`). Ilgari u HAR
+  // sahifa ochilishida, hech qanday shartsiz yuklanardi. NFC kartani
+  // bosgan odam ham o'zi ko'rmoqchi bo'lgan profildan oldin butun
+  // ro'yxatni kutardi; profilda esa u faqat "TOP #N" nishoni uchun
+  // kerak.
+  //
+  // Endi:
+  //   • katalogga TAYANADIGAN sahifalarda (bosh sahifa, katalog,
+  //     narxlar, reyting, kompaniyalar, sovg'alar, savollar) —
+  //     darhol, chunki sahifaning mazmuni shundan;
+  //   • qolganida (profil, kirish, kabinet, sozlamalar) — brauzer
+  //     BO'SH bo'lganda. Nishon baribir paydo bo'ladi, lekin profil
+  //     ochilishini kechiktirmaydi.
+  //
+  // `requestIdleCallback` hamma brauzerda yo'q (iOS Safari) —
+  // shuning uchun `setTimeout` zaxira sifatida.
+  const catalogPage = /^(|katalog|narxlar|reyting|kompaniyalar|savollar|gifts)$/.test(cleanRoute);
+  useEffect(() => {
+    if (catalogPage) { refreshCatalog(); return undefined; }
+    let cancelled = false;
+    const run = () => { if (!cancelled) refreshCatalog(); };
+    if (typeof requestIdleCallback === 'function') {
+      const h = requestIdleCallback(run, { timeout: 2500 });
+      return () => { cancelled = true; cancelIdleCallback?.(h); };
+    }
+    const h = setTimeout(run, 1200);
+    return () => { cancelled = true; clearTimeout(h); };
+  }, [refreshCatalog, catalogPage]);
 
   // Tahrirlash maydonidan tashqarida "Backspace" bosilishi ba'zi
   // brauzerlarda "orqaga" navigatsiyani chaqiradi (yoki sahifani bo'sh
@@ -212,6 +249,12 @@ export default function App() {
   // shuningdek turli apostrof belgilari va %27. Shuning uchun bo'lak keng
   // olinadi, `companyIdFromRoute()` esa uni kanonik shaklga keltirib
   // TEKSHIRADI — yaroqsiz bo'lsa `null` qaytadi va sahifa ochilmaydi.
+  // NFC TEGISH. Worker'dagi marshrut productionda ISHGA TUSHMAYDI:
+  // Cloudflare statik qatlami navigatsiya so'rovini SPA qoidasi
+  // bo'yicha `index.html` bilan javob beradi (batafsili
+  // `src/pages/TapRedirectPage.jsx` da). Shuning uchun yo'naltirish
+  // shu yerda ham bor.
+  const tapMatch = cleanRoute.match(/^t\/([A-Za-z0-9_-]{1,64})$/);
   const companyQuickMatch = companyIdFromRoute(cleanRoute, /^c\/([^/]{1,40})$/);
   const companyPublicMatch = companyIdFromRoute(cleanRoute, /^company\/([^/]{1,40})$/);
   const companyWorkspaceMatch = companyIdFromRoute(cleanRoute, /^workspace\/([^/]{1,40})$/);
@@ -223,6 +266,10 @@ export default function App() {
   const ownDomainCompany = domainCompanyId();
   if (!page && ownDomainCompany && cleanRoute === '') {
     page = <CompanyPublicPage key={`domain-${ownDomainCompany}`} companyId={ownDomainCompany} />;
+    bare = true;
+  }
+  if (!page && tapMatch) {
+    page = <TapRedirectPage key={cleanRoute} token={tapMatch[1]} />;
     bare = true;
   }
   if (!page && cleanRoute === 'company/create') {
@@ -285,6 +332,14 @@ export default function App() {
     else if (cleanRoute === 'qollanma') page = <GuideRedirect />;
     else if (cleanRoute === 'tolovlar') page = <PaymentsPage />;
     else if (cleanRoute === 'karta-dizayni') page = <CardDesignerPage />;
+    // MARKETPLACE MAHSULOTINI FAOLLASHTIRISH.
+    //
+    // `bare`: saytning sarlavhasi va menyusi KO'RSATILMAYDI. Bu
+    // odamning NFCSTORE bilan BIRINCHI uchrashuvi — konvertdagi QR
+    // to'g'ridan-to'g'ri shu yerga olib keladi. Menyu, kirish
+    // tugmalari va pastdagi havolalar bir vaqtda turganda oqim
+    // "sayt"ga aylanib ketardi; kerakli tugmalar sahifaning O'ZIDA.
+    else if (cleanRoute === 'activate') { page = <ActivatePage />; bare = true; }
     // NFCSTORE BUSINESS — kompaniyalar uchun alohida kirish eshigi.
     // `bare`: saytning umumiy sarlavhasi/menyusi ko'rinmaydi, ya'ni
     // kompaniya bo'limi shaxsiy profil ichida turgandek tuyulmaydi.
@@ -308,6 +363,7 @@ export default function App() {
   );
 
   return (
+    <ThemeProvider>
     <LanguageProvider>
       <SeoSync route={cleanRoute} profileCode={profileCode} catalog={catalog} />
       <PaymentsEnabledProvider>
@@ -327,5 +383,6 @@ export default function App() {
         </AuthProvider>
       </PaymentsEnabledProvider>
     </LanguageProvider>
+    </ThemeProvider>
   );
 }

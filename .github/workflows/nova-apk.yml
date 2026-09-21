@@ -78,6 +78,27 @@ jobs:
       - name: Testlar
         run: flutter test
 
+      # ── ILOVA CHAQIRADIGAN ENDPOINT SERVERDA BORMI ──────────────
+      #
+      # `flutter analyze` buni KO'RA OLMAYDI: yo'l shunchaki satr.
+      # Marshrut serverda ro'yxatga qo'shilmay qolsa, ilovadagi
+      # butun bir bo'lim birinchi kundan beri bo'sh turaverardi —
+      # aynan `/api/feed` bilan shunday bo'lgan.
+      #
+      # Tekshiruv matn taqqoslash EMAS: haqiqiy `hosting/worker.js`
+      # xotiradagi SQLite ustida ishga tushiriladi va har bir
+      # chaqiruv ilova ishlatadigan AYNAN o'sha usul bilan
+      # yuboriladi. Production D1 ga tegilmaydi.
+      # `node:sqlite` Node 22 dan boshlab bor — runner'ning standart
+      # versiyasi eski bo'lsa test "module not found" bilan yiqilardi.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Nova API parity — endpointlar serverda bormi
+        working-directory: ${{ github.workspace }}
+        run: node scripts/test-nova-api-parity.mjs
+
       # HAQIQIY IMZO — faqat sozlangan bo'lsa.
       #
       # Uchta secret kerak (Settings -> Secrets and variables ->

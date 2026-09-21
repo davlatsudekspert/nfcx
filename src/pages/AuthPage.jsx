@@ -70,10 +70,24 @@ function errText(err, t, botLink) {
 export default function AuthPage({ mode }) {
   const isRegister = mode === 'register';
   // Kirgandan keyin qaytiladigan yo'l (masalan /business).
+  // QAYTISH MANZILI.
+  //
+  // Eski tekshiruv `?` va `=` ni RAD ETARDI, ya'ni
+  // `/activate?d=<token>` yaroqsiz deb tashlanardi. Oqibati:
+  // stikerga tekkizib ro'yxatdan o'tgan odam oxirida BOSH SAHIFAGA
+  // tushardi va stikerini bog'lash uchun hammasini boshidan
+  // boshlashi kerak bo'lardi.
+  //
+  // Ochiq yo'naltirishdan himoya saqlanib qoldi va KUCHAYDI: manzil
+  // `/` bilan boshlanishi, `//` bo'lmasligi va o'sha domenda
+  // qolishi SHART (`new URL` bilan tekshiriladi, naqsh bilan emas).
   const nextPath = (() => {
     try {
       const raw = new URLSearchParams(window.location.search).get('next') || '';
-      return /^\/(?!\/)[A-Za-z0-9\-/_]*$/.test(raw) ? raw : '';
+      if (!raw.startsWith('/') || raw.startsWith('//') || raw.startsWith('/\\')) return '';
+      const u = new URL(raw, window.location.origin);
+      if (u.origin !== window.location.origin) return '';
+      return u.pathname + u.search;
     } catch { return ''; }
   })();
   const isBusiness = nextPath === '/business';
@@ -431,7 +445,7 @@ export default function AuthPage({ mode }) {
                     bo'lsa ham shu yerda, YUBORISHDAN OLDIN aytiladi. */}
                 {phone.trim() ? (
                   normalizePhone(phone) ? (
-                    <span className="mt-1 block font-mono text-xs text-[color:var(--vz-gold-2,#f0cf7a)]">
+                    <span className="mt-1 block font-mono text-xs text-[color:var(--accent-text)]">
                       {'\u2713'} {prettyPhone(normalizePhone(phone))}
                     </span>
                   ) : (
@@ -541,13 +555,19 @@ export default function AuthPage({ mode }) {
           {msg && <div className={`alert mt-4 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(msg.text)}</span></div>}
 
           <div className="mt-4 text-center text-sm text-base-content/55">
+            {/* `next` SAQLANADI.
+                Ilgari bu ikki havola uni tashlab ketardi: aktivatsiya
+                oqimidan kelgan odam "Kirish" ni bossa, kirgandan
+                keyin bosh sahifaga tushib qolardi va stikerini
+                bog'lash uchun hammasini boshidan boshlashi kerak
+                bo'lardi. */}
             {isRegister ? (
               <>{t('Akkauntingiz bormi?')}{' '}
-                <button onClick={() => navigate('/login')} className="min-h-11 cursor-pointer underline underline-offset-2 hover:text-base-content">{t('Kirish')}</button>
+                <button onClick={() => navigate(nextPath ? `/login?next=${encodeURIComponent(nextPath)}` : '/login')} className="min-h-11 cursor-pointer underline underline-offset-2 hover:text-base-content">{t('Kirish')}</button>
               </>
             ) : (
               <>{t('Akkauntingiz yo‘qmi?')}{' '}
-                <button onClick={() => navigate('/register')} className="min-h-11 cursor-pointer underline underline-offset-2 hover:text-base-content">{t('Ro’yxatdan o’tish')}</button>
+                <button onClick={() => navigate(nextPath ? `/register?next=${encodeURIComponent(nextPath)}` : '/register')} className="min-h-11 cursor-pointer underline underline-offset-2 hover:text-base-content">{t('Ro’yxatdan o’tish')}</button>
               </>
             )}
           </div>

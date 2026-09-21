@@ -344,7 +344,24 @@ async function createUser(env, H, { email, passwordHash, phone, botAck, tosAccep
 
 // Har yangi foydalanuvchiga avtomatik, bepul, 8 xonali ID — sovg'a qilib
 // bo'lmaydi, asosiy (is_primary) profil. Legacy createFreeAutoId bilan bir xil.
-async function createFreeAutoId(env, userId, name) {
+//
+// BU SAYTDAGI YAGONA AVTOMATIK NFC ID BERUVCHI. Marketplace
+// aktivatsiyasi ham (hosting/api/marketplace.js) AYNAN shuni
+// chaqiradi — ikkinchi generator YOZILMADI. Sabab oddiy: ID noyobligi
+// faqat BITTA joyda ta'minlansa qo'riqlash mumkin. Bu yerda u
+// `ON CONFLICT (code) DO NOTHING` + 8 urinish bilan ta'minlanadi:
+// poyga (race) bo'lsa yutqazgan urinish qator qaytarmaydi va keyingi
+// kodga o'tadi, ya'ni ikki odam bitta ID ni ololmaydi.
+//
+// `opts.primary` — `false` bo'lsa karta ASOSIY qilinmaydi. Bu
+// marketplace uchun kerak: odamda allaqachon asosiy profil bo'lsa,
+// yangi karta uni surib qo'ymasligi kerak. Standart qiymat `true` —
+// ro'yxatdan o'tish oqimining xulqi O'ZGARMAYDI.
+// `opts.source` — kartaning manba belgisi; katalog ko'rinishi shunga
+// qarab hal qilinadi (hosting/worker.js catalogVisibleSql).
+export async function createFreeAutoId(env, userId, name, opts = {}) {
+  const primary = opts.primary === false ? 0 : 1;
+  const source = opts.source || 'registration_auto';
   for (let i = 0; i < 8; i++) {
     const code = String(Math.floor(10_000_000 + Math.random() * 89_999_999));
     const row = await env.DB.prepare(
@@ -354,9 +371,9 @@ async function createFreeAutoId(env, userId, name) {
       // Foydalanuvchining kabineti, public profili va Admin Panel
       // ta'sirlanmaydi.
       `INSERT INTO cards (code, name, theme, hashtags, price, ts, user_id, is_primary, giftable, source)
-       VALUES (?, ?, 'classic', '[]', 0, ?, ?, 1, 0, 'registration_auto')
+       VALUES (?, ?, 'classic', '[]', 0, ?, ?, ?, 0, ?)
        ON CONFLICT (code) DO NOTHING RETURNING code`
-    ).bind(code, name || 'Yangi foydalanuvchi', Date.now(), userId).first().catch(() => null);
+    ).bind(code, name || 'Yangi foydalanuvchi', Date.now(), userId, primary, source).first().catch(() => null);
     if (row?.code) return row.code;
   }
   return null;

@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nfcstore_nova/core/errors/app_error.dart';
@@ -21,19 +20,17 @@ import 'helpers.dart';
 /// bo'lishi kerak — aks holda so'rovni qo'lda yuborgan odam
 /// 6 kunlik slotni 1 so'mga olardi.
 class _FakeFeatured extends FeaturedRepository {
-  _FakeFeatured({
-    this.enabled = true,
-    this.failCode,
-    this.offered = const [
-      FeaturedPackage(days: 1, price: 29000),
-      FeaturedPackage(days: 3, price: 69000),
-      FeaturedPackage(days: 6, price: 119000),
-    ],
-  }) : super(ApiClient());
+  _FakeFeatured({this.enabled = true, this.failCode}) : super(ApiClient());
 
   final bool enabled;
   final String? failCode;
-  final List<FeaturedPackage> offered;
+  /// Serverdagi standart paketlar bilan AYNAN bir xil —
+  /// `hosting/api/featured.js` dagi `DEFAULT_PACKAGES`.
+  static const offered = [
+    FeaturedPackage(days: 1, price: 29000),
+    FeaturedPackage(days: 3, price: 69000),
+    FeaturedPackage(days: 6, price: 119000),
+  ];
 
   /// `buy()` ga AYNAN nima yuborilgani.
   final calls = <Map<String, dynamic>>[];

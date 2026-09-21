@@ -19,7 +19,7 @@ export default function FaqPage({ catalog }) {
           {t('Savollar')}
         </span>
         <h1 className="mt-4 text-4xl font-extrabold leading-tight tracking-tight">
-          {t("Tez-tez so'raladigan")} <span className="bg-gradient-to-br from-white to-base-content/50 bg-clip-text text-transparent">{t('savollar')}</span>
+          {t("Tez-tez so'raladigan")} <span className="bg-gradient-to-br from-base-content to-base-content/55 bg-clip-text text-transparent">{t('savollar')}</span>
         </h1>
       </section>
 

@@ -96,7 +96,7 @@ export default function CatalogCard({ item: it, idx = 0 }) {
             ko'rsatadi va keyinchalik bu ID'lar sotuvga qo'yilsa,
             yorliq o'zi o'zgaradi. */}
         {(it.isGift || it.notForSale)
-          ? <span className="rounded-full bg-[color:var(--vz-gold,#d4af5a)]/15 px-2.5 py-0.5 text-[13px] font-bold text-[color:var(--vz-gold-2,#f0cf7a)]">{t("Sovg'a")}</span>
+          ? <span className="rounded-full bg-[color:var(--vz-gold,#d4af5a)]/15 px-2.5 py-0.5 text-[13px] font-bold text-[color:var(--accent-text)]">{t("Sovg'a")}</span>
           : <span className="cat-price">{t("{n} so'm", { n: fmt(it.price) })}</span>}
         <span className="cat-when">{timeAgo(it.ts)}</span>
       </div>

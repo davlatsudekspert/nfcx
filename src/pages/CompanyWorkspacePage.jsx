@@ -18,14 +18,28 @@ import { companyNameBlocked } from '../lib/nameGuard.js';
 import logo from '../assets/logo-128.png';
 import '../company-system.css';
 
-const tabs = [['dashboard','Boshqaruv'],['stats','Statistika'],['orders','Buyurtmalar'],['feed','Stories'],['profile','Profil'],['catalog','Katalog'],['contact','Aloqa'],['design','Karta dizayni'],['settings','Sozlamalar']];
+// STORIES va POSTLAR — ALOHIDA BO'LIM. Ilgari ikkalasi bitta
+// "Stories" bo'limida ustma-ust turardi: ikkala forma ham bir xil
+// ko'rinardi va odam nima yaratayotganini bilmasdi.
+const tabs = [['dashboard','Boshqaruv'],['stats','Statistika'],['orders','Buyurtmalar'],['feed','Stories'],['posts','Postlar'],['profile','Profil'],['catalog','Katalog'],['contact','Aloqa'],['design','Karta dizayni'],['settings','Sozlamalar']];
 const blankItem = { name: '', category: '', description: '', price: '', promotionPrice: '', imageUrl: '', available: true };
 
 export default function CompanyWorkspacePage({ companyId }) {
   const { t } = useLanguage();
   const [company, setCompany] = useState(undefined);
   const [form, setForm] = useState(null);
-  const [tab, setTab] = useState('dashboard');
+  // `?tab=` — CHUQUR HAVOLA.
+  //
+  // Ochiq profildagi ⋮ menyusi "Story qo'shish" / "Post qo'shish" ni
+  // shu orqali ochadi. Usiz odam har safar Boshqaruvga tushib,
+  // kerakli bo'limni o'zi qidirib topishi kerak edi.
+  // Faqat MAVJUD bo'lim nomi qabul qilinadi — noto'g'ri qiymat bilan
+  // bo'sh ekran chiqmaydi.
+  const [tab, setTab] = useState(() => {
+    if (typeof window === 'undefined') return 'dashboard';
+    const want = new URLSearchParams(window.location.search).get('tab');
+    return tabs.some(([id]) => id === want) ? want : 'dashboard';
+  });
   const [item, setItem] = useState(blankItem);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
@@ -97,7 +111,8 @@ export default function CompanyWorkspacePage({ companyId }) {
           </div>
         )}
 
-        {tab === 'feed' && <CompanyFeedPanel companyId={company.companyId} name={company.displayName} logoUrl={company.logoUrl} t={t} />}
+        {tab === 'feed' && <CompanyFeedPanel mode="stories" onSwitch={() => setTab('posts')} companyId={company.companyId} name={company.displayName} logoUrl={company.logoUrl} t={t} />}
+        {tab === 'posts' && <CompanyFeedPanel mode="posts" onSwitch={() => setTab('feed')} companyId={company.companyId} name={company.displayName} logoUrl={company.logoUrl} t={t} />}
 
         {tab === 'settings' && <div className="cw-settings"><section><small>{t('COMPANY ID')}</small><h2>{company.companyId}</h2><p>{t('ID o‘zgarmaydi va shaxsiy NFC ID bilan aralashmaydi.')}</p></section><section><small>{t('NFC KARTAGA YOZILADIGAN URL')}</small><code>{window.location.origin}/c/{company.companyId.toLowerCase()}</code><button onClick={() => navigator.clipboard.writeText(`${window.location.origin}/c/${company.companyId.toLowerCase()}`)}>{t('Nusxalash')}</button></section><section><small>{t('KOMPANIYA PUBLIC URL')}</small><code>{window.location.origin}/company/{company.companyId.toLowerCase()}</code><button onClick={() => navigator.clipboard.writeText(`${window.location.origin}/company/${company.companyId.toLowerCase()}`)}>{t('Nusxalash')}</button></section><section><small>{t('QR KOD')}</small><p>{t('NFC ishlamaydigan telefonlar uchun — kamera bilan skanerlansa ham sahifangiz ochiladi.')}</p><CompanyQrCard url={`${window.location.origin}/c/${company.companyId.toLowerCase()}`} fileName={`nfcstore-${company.companyId.toLowerCase()}`} /></section><CompanyDomainSection company={company} form={form} setForm={setForm} save={save} busy={busy} t={t} /><section className="warning"><small>{t('ESKI NFC ID')}</small><p>{company.sourceCardCode ? t('{code} dan ma’lumot nusxalangan. Asl profil o‘zgarmagan.', { code: company.sourceCardCode }) : t('Bu kompaniya hech bir shaxsiy NFC IDga bog‘lanmagan.')}</p></section></div>}
       </section>
@@ -233,7 +248,16 @@ function CompanyMusic({ form, setForm, t }) {
           {busy ? t('Yuklanmoqda…') : `＋ ${t('Qo‘shiq qo‘shish')}`}
         </button>
       )}
-      <input ref={fileRef} type="file" accept="audio/*" hidden onChange={pick} />
+      {/* Kengaytmalar ATAYLAB: `audio/*` ning o'zida Android fayl
+          tanlagichi rasm va video ko'rsatadi, musiqani esa
+          ro'yxatga qo'shmaydi (shaxsiy profilda ham xuddi shu). */}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.oga,.opus,.flac,.weba,.mp4a"
+        hidden
+        onChange={pick}
+      />
       {err && <small role="alert" className="cw-upload-err">{err}</small>}
       <small className="cw-upload-hint">{t('{n} tadan {max} tagacha', { n: tracks.length, max: MAX })}</small>
     </div>
@@ -336,9 +360,29 @@ function CompanyStatsPanel({ companyId, t }) {
   }, [companyId, days]);
 
   if (data === undefined) return <div className="cw-panel"><p className="cw-empty">{t('Yuklanmoqda…')}</p></div>;
-  if (!data) return <div className="cw-panel"><p className="cw-empty">{t('Statistikani yuklab bo‘lmadi.')}</p></div>;
 
-  const max = Math.max(1, ...data.series.map((d) => d.views));
+  // JAVOB SHAKLI TEKSHIRILADI, "bor-yo'qligi" emas.
+  //
+  // Ilgari bu yerda faqat `if (!data)` turardi va pastda
+  // `data.series.map(...)` chaqirilardi. Ammo javob BO'LIB, lekin
+  // kutilgan shaklda BO'LMASLIGI mumkin: eski keshdan kelgan
+  // nusxa, xato obyekti yoki bo'sh massiv (`[]` — u ham "rost").
+  // O'shanda `undefined.map` xatosi butun daraxtni yiqitardi va
+  // odam QOP-QORA ekran ko'rardi — nima bo'lganini aytadigan hech
+  // narsasiz.
+  //
+  // Endi shakl bir joyda tekshiriladi: uchta ro'yxat ham massiv
+  // bo'lishi shart, sonlar esa son. Mos kelmasa — ochiq xato
+  // xabari, qora ekran emas.
+  const series = Array.isArray(data?.series) ? data.series : null;
+  const actions = Array.isArray(data?.actions) ? data.actions : [];
+  const items = Array.isArray(data?.items) ? data.items : [];
+  if (!series) return <div className="cw-panel"><p className="cw-empty">{t('Statistikani yuklab bo‘lmadi.')}</p></div>;
+
+  const views = Number(data?.views) || 0;
+  const taps = Number(data?.taps) || 0;
+  const orders = Number(data?.orders) || 0;
+  const max = Math.max(1, ...series.map((d) => Number(d?.views) || 0));
   return (
     <div className="cw-panel">
       <div className="cw-panel-head">
@@ -356,15 +400,15 @@ function CompanyStatsPanel({ companyId, t }) {
       </div>
 
       <section className="cw-metrics">
-        <article><small>{t('OCHILISHLAR')}</small><b>{fmt(data.views)}</b><p>{t('NFC tegish va havola')}</p></article>
-        <article><small>{t('TUGMA BOSILDI')}</small><b>{fmt(data.taps)}</b><p>{t('Qo‘ng‘iroq, Telegram, yo‘nalish…')}</p></article>
-        <article><small>{t('BUYURTMALAR')}</small><b>{fmt(data.orders)}</b><p>{t('Jami')}</p></article>
+        <article><small>{t('OCHILISHLAR')}</small><b>{fmt(views)}</b><p>{t('NFC tegish va havola')}</p></article>
+        <article><small>{t('TUGMA BOSILDI')}</small><b>{fmt(taps)}</b><p>{t('Qo‘ng‘iroq, Telegram, yo‘nalish…')}</p></article>
+        <article><small>{t('BUYURTMALAR')}</small><b>{fmt(orders)}</b><p>{t('Jami')}</p></article>
       </section>
 
-      {data.views > 0 ? (
+      {views > 0 ? (
         <div className="cw-chart" role="img" aria-label={t('Kunlik ochilishlar')}>
-          {data.series.map((d) => (
-            <i key={d.day} style={{ height: `${Math.max(2, (d.views / max) * 100)}%` }} title={`${d.day}: ${d.views}`} />
+          {series.map((d) => (
+            <i key={d.day} style={{ height: `${Math.max(2, ((Number(d?.views) || 0) / max) * 100)}%` }} title={`${d?.day}: ${Number(d?.views) || 0}`} />
           ))}
         </div>
       ) : (
@@ -374,13 +418,13 @@ function CompanyStatsPanel({ companyId, t }) {
       <div className="cw-stat-cols">
         <div>
           <div className="cw-sub-head"><b>{t('Tugmalar')}</b></div>
-          {data.actions.length ? data.actions.map((a) => (
+          {actions.length ? actions.map((a) => (
             <div className="cw-stat-row" key={a.key}><span>{t(ACTION_LABEL[a.key] || a.key)}</span><b>{fmt(a.hits)}</b></div>
           )) : <p className="cw-empty">{t('Hali hech kim bosmagan.')}</p>}
         </div>
         <div>
           <div className="cw-sub-head"><b>{t('Eng ko‘p qaralgan')}</b></div>
-          {data.items.length ? data.items.map((i) => (
+          {items.length ? items.map((i) => (
             <div className="cw-stat-row" key={i.id}><span>{i.name || i.id}</span><b>{fmt(i.hits)}</b></div>
           )) : <p className="cw-empty">{t('Hozircha yo‘q.')}</p>}
         </div>
@@ -491,7 +535,7 @@ function CompanyDomainSection({ company, form, setForm, save, busy, t }) {
 // Post — qoladi. Istorya — 24 soatdan keyin o'zi yo'qoladi.
 // Ikkalasida ham joylashdan OLDIN kontent qoidalari ko'rsatiladi
 // (StoryUploader ichida) va rozilik serverga yuboriladi.
-function CompanyFeedPanel({ companyId, name, logoUrl, t }) {
+function CompanyFeedPanel({ companyId, name, logoUrl, mode = 'stories', onSwitch, t }) {
   const [posts, setPosts] = useState([]);
   const [stories, setStories] = useState([]);
   const [notice, setNotice] = useState('');
@@ -512,22 +556,34 @@ function CompanyFeedPanel({ companyId, name, logoUrl, t }) {
     load();
   };
 
+  const isStories = mode === 'stories';
+
   return (
     <div className="cw-panel">
-      {/* Panel sarlavhasi ilgari faqat "Stories" edi, ichida esa
-          postlar ham bor edi — ikkisi bitta ish deb o'qilardi. */}
+      {/* IKKI ALOHIDA BO'LIM. Ilgari bitta panelda ikkala forma
+          ustma-ust turardi va odam nima yaratayotganini bilmasdi. */}
       <div className="cw-panel-head">
         <span>01</span>
         <div>
-          <h2>{t('Stories va postlar')}</h2>
-          <p>{t('Post kompaniya sahifasida qoladi. Story logotip atrofida chiqadi va 24 soatdan keyin o‘zi yo‘qoladi.')}</p>
+          <h2>{isStories ? t('Stories') : t('Postlar')}</h2>
+          <p>{isStories
+            ? t('Story logotip atrofida chiqadi va 24 soatdan keyin o‘zi yo‘qoladi.')
+            : t('Post kompaniya sahifasida DOIMIY qoladi.')}</p>
         </div>
       </div>
 
       <p className="cw-note">
-        {t('Story va post — ikki alohida ish. Faqat story yoki faqat post qo‘ysangiz ham bo‘ladi: har birining o‘z saqlash tugmasi bor.')}
+        {isStories
+          ? t('Doimiy qoladigan kontent uchun “Postlar” bo‘limiga o‘ting.')
+          : t('24 soatlik kontent uchun “Stories” bo‘limiga o‘ting.')}
+        {onSwitch && (
+          <button type="button" className="cw-note-link" onClick={onSwitch}>
+            {isStories ? t('Postlar') : t('Stories')} ›
+          </button>
+        )}
       </p>
 
+      {isStories && (
       <div className="cw-sub">
         <div className="cw-sub-head">
           <b>{t('Stories')}</b>
@@ -559,7 +615,9 @@ function CompanyFeedPanel({ companyId, name, logoUrl, t }) {
           onSubmit={async (payload) => { await createCompanyStory(companyId, payload); setNotice(t('Story joylandi')); load(); }}
         />
       </div>
+      )}
 
+      {!isStories && (
       <div className="cw-sub">
         <div className="cw-sub-head">
           <b>{t('Postlar')}</b>
@@ -585,6 +643,7 @@ function CompanyFeedPanel({ companyId, name, logoUrl, t }) {
           onSubmit={async (payload) => { await createCompanyPost(companyId, payload); setNotice(t('Post joylandi')); load(); }}
         />
       </div>
+      )}
 
       {notice && <div className="cw-toast" role="status">{notice}</div>}
     </div>

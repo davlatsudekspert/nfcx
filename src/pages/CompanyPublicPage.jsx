@@ -8,6 +8,7 @@ import { socialUrl } from '../lib/socialLinks.js';
 import { companyCta, companyEvent, getCompany, listCompanyPosts, listCompanyStories } from '../lib/company.js';
 import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
+import ThemeSwitcher from '../components/ThemeSwitcher.jsx';
 import logo from '../assets/logo-128.png';
 import '../company-system.css';
 
@@ -52,7 +53,7 @@ export default function CompanyPublicPage({ companyId }) {
   const items = (company.catalog || []).filter((item) => item.available !== false && (filter === 'all' || item.category === filter));
   return (
     <main className="cp-page">
-      <header className="cp-header"><button onClick={() => navigate('/')} className="cp-logo"><i><img src={logo} alt="NFCSTORE" /></i><b>NFCSTORE</b></button><nav><button onClick={() => setTab('main')}>{t('Asosiy')}</button><button onClick={() => setTab('catalog')}>{t(cta.noun)}</button><button onClick={() => setTab('gallery')}>{t('Galereya')}</button><button onClick={() => setTab('contact')}>{t('Aloqa')}</button></nav><button className="cp-nfc" onClick={() => navigate(`/c/${company.companyId.toLowerCase()}`)}>{t('NFC ko‘rinish')} ↗</button></header>
+      <header className="cp-header"><button onClick={() => navigate('/')} className="cp-logo"><i><img src={logo} alt="NFCSTORE" /></i><b>NFCSTORE</b></button><nav><button onClick={() => setTab('main')}>{t('Asosiy')}</button><button onClick={() => setTab('catalog')}>{t(cta.noun)}</button><button onClick={() => setTab('gallery')}>{t('Galereya')}</button><button onClick={() => setTab('contact')}>{t('Aloqa')}</button></nav><div className="cp-head-right">{/* Sayt mavzusi — kompaniya sahifasining O'Z dizayniga tegmaydi. */}<ThemeSwitcher buttonClassName="cp-theme-btn" iconClassName="h-[18px] w-[18px]" /><button className="cp-nfc" onClick={() => navigate(`/c/${company.companyId.toLowerCase()}`)}>{t('NFC ko‘rinish')} ↗</button></div></header>
       <section className="cp-hero" style={{ backgroundImage: `linear-gradient(90deg,rgba(0,0,0,.96) 5%,rgba(0,0,0,.56) 62%,rgba(0,0,0,.16)),url("${company.coverUrl || fallbackCover}")` }}>
         <div className="cp-hero-copy"><span className="cp-kicker">{t('COMPANY ID')} · {company.companyId}</span><div className="cp-title-row"><StoryRing stories={stories} title={company.displayName} avatarUrl={company.logoUrl}><div className="cp-hero-logo">{company.logoUrl ? <img src={company.logoUrl} alt="" /> : company.displayName.slice(0, 2).toUpperCase()}</div></StoryRing><div><h1>{company.displayName}</h1><p>{company.subcategory || company.categoryLabel || t('Professional kompaniya')}</p></div></div><p className="cp-lead">{company.description || t('Biz haqimizda to‘liq ma’lumot tez orada qo‘shiladi.')}</p><CompanyHours hours={company.hours} openNow={company.openNow} /><div className="cp-hero-actions">{company.phone && <a href={`tel:${company.phone}`} onClick={() => companyEvent(company.companyId, 'action', 'phone')}>{t('Qo‘ng‘iroq qilish')}</a>}<button onClick={() => { setTab('catalog'); document.getElementById('catalog')?.scrollIntoView({ behavior: 'smooth' }); }}>{t(cta.label)}</button></div></div>
       </section>
