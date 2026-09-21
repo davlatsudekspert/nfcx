@@ -28,7 +28,13 @@ import 'media_frame.dart';
 ///
 /// Endpointlarning hammasi serverda allaqachon bor edi.
 class FeedCard extends ConsumerWidget {
-  const FeedCard({super.key, required this.post});
+  const FeedCard({super.key, required this.post, this.activeVideo});
+
+  /// Lentadagi DOMINANT karta shumi.
+  ///
+  /// `null` — ko'rinishga bog'liq ijro o'chiq (masalan Kashfiyot
+  /// ro'yxatida), odam o'zi bosadi.
+  final bool? activeVideo;
 
   final Post post;
 
@@ -164,7 +170,10 @@ class FeedCard extends ConsumerWidget {
               // sarflash odamning roziligisiz bo'lardi.
               autoPlayVideo: false,
               tapToToggleVideo: true,
-              lazyVideo: true,
+              // Dominant karta bo'lsa dangasalik shart emas — u
+              // baribir darhol ochiladi.
+              lazyVideo: activeVideo == null,
+              activeVideo: activeVideo,
             ),
           ],
           if (post.text.isNotEmpty) ...[

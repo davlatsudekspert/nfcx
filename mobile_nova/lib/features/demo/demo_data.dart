@@ -244,7 +244,7 @@ class DemoProfileRepository extends ProfileRepository {
 
   @override
   Future<Result<List<NfcId>>> followList(String code,
-          {String type = 'followers'}) async =>
+          {String dir = 'followers'}) async =>
       const Ok([]);
 
   @override
@@ -254,9 +254,12 @@ class DemoProfileRepository extends ProfileRepository {
   Future<Result<void>> unfollow(String code) async => const Ok(null);
 
   @override
-  Future<Result<({int followers, int following})>> followStats(
-          String code) async =>
-      Ok((followers: demoPersonalId.followers, following: demoPersonalId.following));
+  Future<Result<FollowStats>> followStats(String code) async => Ok((
+        followers: demoPersonalId.followers,
+        following: demoPersonalId.following,
+        // Demo hech qachon haqiqiy obunani ko'rsatmaydi.
+        isFollowing: false,
+      ));
 }
 
 class DemoSocialRepository extends SocialRepository {

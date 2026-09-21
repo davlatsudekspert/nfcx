@@ -108,7 +108,7 @@ final myFollowingProvider = FutureProvider<Set<String>>(
   if (me == null) return const <String>{};
   final res = await ref
       .read(profileRepositoryProvider)
-      .followList(me.code, type: 'following');
+      .followList(me.code, dir: 'following');
   return res.when(
     ok: (list) => list.map((e) => e.code).toSet(),
     // Xato yutiladi: obuna ro'yxati kelmasa ham lenta ishlashi
@@ -145,7 +145,18 @@ class FollowOverrides extends StateNotifier<Map<String, bool>> {
     if (!mounted) return null;
 
     return res.when(
-      ok: (_) => null,
+      ok: (_) {
+        // SON SERVER TASDIQLAGANDAN KEYIN YANGILANADI.
+        //
+        // Mahalliy sanoqni oshirib qo'yish yolg'on bo'lardi:
+        // boshqa qurilmadan qilingan o'zgarish hisobga olinmasdi.
+        // Shuning uchun raqam manbasi qayta o'qiladi.
+        _ref.invalidate(followStatsProvider(code));
+        final me = _ref.read(activePersonalProvider);
+        if (me != null) _ref.invalidate(followStatsProvider(me.code));
+        _ref.invalidate(myFollowingProvider);
+        return null;
+      },
       err: (e) {
         final m = {...state};
         if (before == null) {
@@ -169,11 +180,54 @@ final followOverridesProvider =
 /// `myFollowingProvider` doiralangani uchun buni ham doiralash
 /// SHART: aks holda Riverpod "dependencies were overridden" deb
 /// istisno tashlaydi va ekran bo'sh chiqadi.
+/// Bitta profilning ko'rsatkichlari — SERVERDAN.
+///
+/// `/api/follow-stats/:code` uchta narsani birga beradi:
+/// obunachilar, obunalar va TASHRIFCHI OBUNAMI (`isFollowing`).
+/// Oxirgisini server o'z sessiyasi bo'yicha hisoblaydi, ya'ni
+/// tugmaning holati uchun eng ishonchli manba shu.
+///
+/// Ro'yxatga (`myFollowingProvider`) tayanib bo'lmaydi: u 200 ta
+/// yozuv bilan cheklangan va faqat lentadagi ko'p kartani bir
+/// so'rovda urug'lantirish uchun. Profil ochilganda esa ANIQ
+/// javob kerak.
+/// XATODA `null` — NOL EMAS.
+///
+/// Bu farq muhim. Agar xato holatida `(0, 0, false)` qaytarilsa,
+/// "javob yo'q" bilan "obuna emas" bir xil ma'noga ega bo'lib
+/// qoladi: tarmoq uzilganda tugma ishonch bilan "Kuzatish" deb
+/// ko'rsatardi va lentadagi ro'yxat urug'ini ham bosib ketardi.
+/// `null` esa "bilmayman" degani — quyidagi provayder urug'ga
+/// qaytadi, sonlar esa chizilmaydi.
+final followStatsProvider =
+    FutureProvider.family<FollowStats?, String>(
+        dependencies: [profileRepositoryProvider], (ref, code) async {
+  if (code.isEmpty) return null;
+  final res = await ref.read(profileRepositoryProvider).followStats(code);
+  return res.when(ok: (v) => v, err: (_) => null);
+});
+
+/// Shu kodga obunamanmi.
+///
+/// Tartib MUHIM:
+///   1. mahalliy o'zgarish (endigina bosilgan tugma);
+///   2. `follow-stats` dan kelgan ANIQ javob;
+///   3. lentadagi ro'yxat urug'i.
+///
+/// Ilgari faqat 3-manba bor edi va u kontrakt xatosi tufayli DOIM
+/// bo'sh edi — shuning uchun tugma har doim "Kuzatish" ko'rsatardi
+/// va bosilganda server 409 qaytarardi.
 final followingOfProvider = Provider.family<bool, String>(
-    dependencies: [myFollowingProvider, followOverridesProvider],
+    dependencies: [
+      myFollowingProvider,
+      followOverridesProvider,
+      followStatsProvider,
+    ],
     (ref, code) {
   final override = ref.watch(followOverridesProvider)[code];
   if (override != null) return override;
+  final stats = ref.watch(followStatsProvider(code)).valueOrNull;
+  if (stats != null) return stats.isFollowing;
   final seed = ref.watch(myFollowingProvider).valueOrNull;
   return seed?.contains(code) ?? false;
 });

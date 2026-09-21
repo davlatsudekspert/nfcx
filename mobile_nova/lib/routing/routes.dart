@@ -46,6 +46,10 @@ abstract final class Routes {
   static String story(String code) => '/story/$code';
   static String user(String code) => '/u/$code';
 
+  /// Obunachilar / obunalar ro'yxati — profildagi raqam bosilganda.
+  static String followers(String code) => '/u/$code/followers';
+  static String following(String code) => '/u/$code/following';
+
   // NFC
   static const nfcIds = '/nfc/ids';
   static const nfcScan = '/nfc/scan';

@@ -838,45 +838,99 @@ class _IdPill extends StatelessWidget {
 }
 
 /// Statistika — katta karta emas, uchta kapsula.
-class _StatCapsules extends StatelessWidget {
+/// Uchta raqam: postlar, obunachilar, obunalar.
+///
+/// ## RAQAMLAR QAYERDAN KELADI — VA NIMA UCHUN ILGARI 0 EDI
+///
+/// Ilgari uchalasi ham `ActiveProfile` dan, ya'ni oxir-oqibat
+/// `GET /api/records/:code` javobidan o'qilardi. O'sha javobda
+/// esa `posts`, `followers`, `following` maydonlari UMUMAN YO'Q
+/// (o'lchab tekshirilgan — javobda 50 ga yaqin maydon bor,
+/// bulardan bittasi ham emas). Model `?? 0` qilardi, ekran esa
+/// har doim uchta nol ko'rsatardi — profilda 10 ta post va
+/// o'nlab obunachi bo'lsa ham.
+///
+/// Endi:
+///   * obunachilar/obunalar — `GET /api/follow-stats/:code`
+///     (server hisoblaydi, obuna bosilgach qayta o'qiladi);
+///   * postlar — profil postlari ro'yxatining uzunligi, ya'ni
+///     ekranning O'ZI ko'rsatib turgan narsa. Yangi endpoint
+///     o'ylab topilmadi.
+///
+/// Javob hali kelmagan bo'lsa raqam o'rniga "—" turadi: nol
+/// ko'rsatish yolg'on bo'lardi.
+///
+/// Obunachilar va obunalar BOSILADI — haqiqiy ro'yxat ochiladi.
+class _StatCapsules extends ConsumerWidget {
   const _StatCapsules({required this.profile});
   final ActiveProfile? profile;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l = L.of(context);
-    final t = context.tokens;
-    final items = [
-      (formatCount(profile?.posts ?? 0), l.profilePosts),
-      (formatCount(profile?.followers ?? 0), l.profileFollowers),
-      (formatCount(profile?.following ?? 0), l.profileFollowing),
+    final code = profile?.code ?? '';
+    final business = profile?.isBusiness ?? false;
+
+    final stats = ref.watch(followStatsProvider(code)).valueOrNull;
+    final posts = ref
+        .watch(business ? companyPostsProvider(code) : profilePostsProvider(code))
+        .valueOrNull
+        ?.length;
+
+    String n(int? v) => v == null ? '—' : formatCount(v);
+
+    final items = <(String, String, VoidCallback?)>[
+      (n(posts), l.profilePosts, null),
+      (
+        n(stats?.followers),
+        l.profileFollowers,
+        code.isEmpty ? null : () => context.push(Routes.followers(code)),
+      ),
+      (
+        // Kompaniya hech kimga obuna bo'lolmaydi — server ham
+        // shunday deydi. Raqam ko'rsatiladi, lekin bosilmaydi.
+        n(business ? 0 : stats?.following),
+        l.profileFollowing,
+        code.isEmpty || business
+            ? null
+            : () => context.push(Routes.following(code)),
+      ),
     ];
 
+    final t = context.tokens;
     return Row(
       children: [
         for (var i = 0; i < items.length; i++) ...[
           if (i > 0) const SizedBox(width: Gap.sm),
           Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: Gap.md),
-              decoration: BoxDecoration(
-                color: t.surface2,
-                borderRadius: R.pill,
-                border: Border.all(color: t.border2),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    items[i].$1,
-                    style: Theme.of(context).textTheme.titleMedium,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: items[i].$3,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: Gap.md),
+                decoration: BoxDecoration(
+                  color: t.surface2,
+                  borderRadius: R.pill,
+                  border: Border.all(
+                    // Bosiladigan kapsula bir oz aniqroq chegara
+                    // oladi — u tugma ekani ko'rinib tursin.
+                    color: items[i].$3 == null ? t.border2 : t.border1,
                   ),
-                  Text(
-                    items[i].$2,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelMedium,
-                  ),
-                ],
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      items[i].$1,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    Text(
+                      items[i].$2,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

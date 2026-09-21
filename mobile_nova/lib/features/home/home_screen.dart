@@ -33,6 +33,8 @@ import 'widgets/mode_switch.dart';
 import '../../app/profile_context.dart';
 import '../../data/repositories/business_repository.dart';
 import '../profile/profile_switcher.dart';
+import '../social/visible_fraction.dart';
+import '../../routing/shell.dart';
 
 /// Faol NFC ID ning story'lari.
 final homeStoriesProvider = FutureProvider.autoDispose<List<StoryItem>>((
@@ -85,11 +87,42 @@ final activeIdProvider = Provider<NfcId?>((ref) {
   return ids.firstWhere((e) => e.primary, orElse: () => ids.first);
 });
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  /// Ro'yxat kontrolleri — "Asosiy" qayta bosilganda tepaga
+  /// qaytarish uchun. Boshqa hech qayerda ishlatilmaydi.
+  final _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  /// Eng tepaga — animatsiya bilan.
+  void _toTop() {
+    if (!_scroll.hasClients) return;
+    // Allaqachon tepada bo'lsa hech narsa qilinmaydi: keraksiz
+    // animatsiya ham, `jumpTo` sakrashi ham bo'lmaydi.
+    if (_scroll.offset <= 0) return;
+    _scroll.animateTo(
+      0,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // "Asosiy" tugmasi Home'da turib bosilganda signal keladi.
+    ref.listen<int>(homeReselectProvider, (_, __) => _toTop());
+
     final l = L.of(context);
     final t = context.tokens;
     final user = ref.watch(currentUserProvider);
@@ -113,6 +146,7 @@ class HomeScreen extends ConsumerWidget {
           ref.invalidate(homeFeedProvider);
         },
         child: NovaScroll(
+          controller: _scroll,
           padding: EdgeInsets.only(bottom: navSafeBottom(context)),
           children: [
             Padding(
@@ -971,14 +1005,86 @@ class _HomeFeed extends ConsumerWidget {
               action: posts.length > _limit ? l.homeFeedMore : null,
               onAction: () => context.go(Routes.discover),
             ),
-            for (final p in shown)
-              Padding(
-                padding: const EdgeInsets.only(bottom: Gap.md),
-                child: FeedCard(post: p),
-              ),
+            _AutoplayFeed(posts: shown),
           ],
         );
       },
+    );
+  }
+}
+
+
+/// LENTADAGI VIDEO — INSTAGRAM KABI.
+///
+/// ## QOIDA
+///
+/// Ekranning yetarli qismi ko'ringan BITTA video o'ynaydi. U
+/// "dominant" deb ataladi: ulushi eng katta va `_kThreshold` dan
+/// yuqori bo'lgan karta. Dominant almashganda avvalgisi DARHOL
+/// to'xtaydi.
+///
+/// ## NIMA UCHUN OVOZ REYESTRI BILAN
+///
+/// To'xtatishni bu yer O'ZI qilmaydi — `InlineVideo` dominant
+/// bo'lganda `AudioOwner.take()` chaqiradi va reyestr avvalgi
+/// egasini to'xtatadi. Ya'ni video, profil musiqasi va istorya
+/// BITTA navbatda turadi; bu yerda parallel tizim yo'q.
+///
+/// Bu vidjet faqat ARIFMETIKA qiladi: kim qancha ko'rinyapti va
+/// kim dominant.
+///
+/// ## CHEGARA NIMA UCHUN IKKITA EMAS
+///
+/// Bitta chegara (0.65) yetarli, chunki tanlov `argmax` orqali
+/// boradi: ikkita karta bir vaqtda chegaradan o'tsa ham, faqat
+/// ulushi kattarog'i dominant bo'ladi. "Ikkalasi ham o'ynab
+/// ketdi" holati tuzilish jihatidan mumkin emas.
+class _AutoplayFeed extends StatefulWidget {
+  const _AutoplayFeed({required this.posts});
+
+  final List<Post> posts;
+
+  @override
+  State<_AutoplayFeed> createState() => _AutoplayFeedState();
+}
+
+class _AutoplayFeedState extends State<_AutoplayFeed> {
+  /// Ekranning kamida shuncha qismi ko'rinsa — ijroga nomzod.
+  static const _kThreshold = 0.65;
+
+  final _fraction = <int, double>{};
+  int? _dominant;
+
+  void _report(int i, double f) {
+    _fraction[i] = f;
+    final best = dominantIndex(_fraction, threshold: _kThreshold);
+    if (best == _dominant) return;
+    // O'lchov kadr chizilayotganda keladi — `setState` ni keyingi
+    // kadrga suramiz, aks holda "setState during build" chiqadi.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && best != _dominant) setState(() => _dominant = best);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < widget.posts.length; i++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: Gap.md),
+            child: widget.posts[i].isVideo
+                ? VisibleFraction(
+                    onChanged: (f) => _report(i, f),
+                    child: FeedCard(
+                      post: widget.posts[i],
+                      activeVideo: _dominant == i,
+                    ),
+                  )
+                : FeedCard(post: widget.posts[i]),
+          ),
+      ],
     );
   }
 }

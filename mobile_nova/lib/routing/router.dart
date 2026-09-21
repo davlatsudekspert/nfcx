@@ -24,6 +24,7 @@ import '../features/nfc/nfc_misc_screens.dart';
 import '../features/nfc/nfc_scan_screen.dart';
 import '../features/nfc/nfc_write_screen.dart';
 import '../features/social/featured_screen.dart';
+import '../features/profile/follow_list_screen.dart';
 import '../features/profile/profile_edit_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/settings/settings_subscreens.dart';
@@ -119,6 +120,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/u/:code',
         builder: (_, s) => ProfileScreen(code: s.pathParameters['code']),
+      ),
+      // Profildagi "Obunachilar" / "Obunalar" raqami bosilganda.
+      GoRoute(
+        path: '/u/:code/followers',
+        builder: (_, s) => FollowListScreen(
+            code: s.pathParameters['code'] ?? '', dir: 'followers'),
+      ),
+      GoRoute(
+        path: '/u/:code/following',
+        builder: (_, s) => FollowListScreen(
+            code: s.pathParameters['code'] ?? '', dir: 'following'),
       ),
 
       // NFC

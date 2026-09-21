@@ -32,8 +32,8 @@ class _ForbiddenProfileRepository extends ProfileRepository {
 
   @override
   Future<Result<List<NfcId>>> followList(String code,
-          {String type = 'followers'}) async =>
-      _boom('followList($code, $type)');
+          {String dir = 'followers'}) async =>
+      _boom('followList($code, $dir)');
 
   @override
   Future<Result<void>> follow(String code) async => _boom('follow($code)');
@@ -42,8 +42,7 @@ class _ForbiddenProfileRepository extends ProfileRepository {
   Future<Result<void>> unfollow(String code) async => _boom('unfollow($code)');
 
   @override
-  Future<Result<({int followers, int following})>> followStats(
-          String code) async =>
+  Future<Result<FollowStats>> followStats(String code) async =>
       _boom('followStats($code)');
 }
 

@@ -67,6 +67,7 @@ class InlineVideo extends ConsumerStatefulWidget {
     this.fit = BoxFit.cover,
     this.onAspect,
     this.lazy = false,
+    this.active,
   });
 
   final String url;
@@ -98,6 +99,21 @@ class InlineVideo extends ConsumerStatefulWidget {
   ///
   /// Ro'yxatlar uchun. `autoPlay: false` dan farqi yuqorida.
   final bool lazy;
+
+  /// KO'RINISHGA BOG'LIQ IJRO (Instagram uslubi).
+  ///
+  /// `null` — bu rejim o'chiq, ijroni odam boshqaradi (eski xulq,
+  /// istorya va post tafsiloti shunday qoladi).
+  ///
+  /// `true` — bu video hozir lentaning DOMINANT elementi: ochilib
+  /// ijro etiladi. `false` — ekrandan chiqdi yoki boshqasi
+  /// dominant bo'ldi: darhol to'xtaydi.
+  ///
+  /// Kimning ovozi chiqishini baribir `AudioOwner` hal qiladi —
+  /// bu yerda parallel tizim YO'Q. Ko'rinish ulushini lentaning
+  /// o'zi o'lchaydi (`VisibleFraction`) va faqat BITTA kartaga
+  /// `true` beradi.
+  final bool? active;
 
   @override
   ConsumerState<InlineVideo> createState() => _InlineVideoState();
@@ -151,7 +167,42 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
     WidgetsBinding.instance.addObserver(this);
     // Dangasa rejimda kontroller ham, tarmoq so'rovi ham odam
     // bosmaguncha YO'Q. Boshqa hamma holatda — avvalgidek.
-    if (!widget.lazy) _open();
+    if (widget.active == true) {
+      _openAndPlay();
+    } else if (!widget.lazy && widget.active == null) {
+      _open();
+    }
+  }
+
+  /// Dominantlik o'zgardi — ijro etiladi yoki to'xtatiladi.
+  @override
+  void didUpdateWidget(covariant InlineVideo old) {
+    super.didUpdateWidget(old);
+    if (widget.active == old.active) return;
+    if (widget.active == true) {
+      _openAndPlay();
+    } else if (widget.active == false) {
+      _pauseForOther();
+    }
+  }
+
+  /// Ochish + ovoz egaligini olish + ijro.
+  ///
+  /// Egalik `take()` orqali olinadi, ya'ni AVVALGI manba (boshqa
+  /// video yoki profil musiqasi) darhol to'xtaydi. Bir vaqtda
+  /// bitta ovoz qoidasi shu bitta joyda saqlanadi.
+  Future<void> _openAndPlay() async {
+    _owner?.take(this, _pauseForOther);
+    if (_c == null) {
+      await _open();
+    }
+    final c = _c;
+    if (c == null || _gone || !mounted) return;
+    // Dominantlik `_open()` davomida o'zgargan bo'lishi mumkin.
+    if (widget.active == false) return;
+    await c.setVolume(1);
+    await c.play();
+    if (mounted) setState(() {});
   }
 
   /// ILOVA FONGA KETDI — video to'xtaydi.
@@ -161,7 +212,16 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
   /// o'tganda ovoz davom etardi.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state != AppLifecycleState.resumed) _pauseForOther();
+    if (state != AppLifecycleState.resumed) {
+      _pauseForOther();
+      return;
+    }
+    // QAYTGANDA YASHIRIN VIDEO O'ZI BOSHLANMAYDI.
+    //
+    // Faqat hozir dominant bo'lgan karta qayta baholanadi.
+    // Ekrandan chiqib ketgan videoning `active` i `false`, ya'ni
+    // u jim qoladi.
+    if (widget.active == true) _openAndPlay();
   }
 
   Future<void> _open() async {

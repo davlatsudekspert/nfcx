@@ -1210,10 +1210,9 @@ void main() {
             pathHint: '/api/follow/');
       case Ok():
         final after = await profile.followStats(target.code);
-        final grew = before is Ok<({int followers, int following})> &&
-            after is Ok<({int followers, int following})> &&
-            after.value.followers >
-                before.value.followers;
+        final grew = before is Ok<FollowStats> &&
+            after is Ok<FollowStats> &&
+            after.value.followers > before.value.followers;
         if (grew) {
           report.pass('Follow',
               screen: 'ProfileScreen',
@@ -1240,7 +1239,7 @@ void main() {
           report.skip('Lenta — begona muallifda Obuna bo\'lingan',
               'shaxsiy NFC ID yo\'q');
         } else {
-          final fl = await profile.followList(myCode, type: 'following');
+          final fl = await profile.followList(myCode, dir: 'following');
           if (fl is Ok<List<NfcId>> &&
               fl.value.any((e) => e.code == target.code)) {
             report.pass('Lenta — begona muallifda Obuna bo\'lingan',
@@ -1275,7 +1274,7 @@ void main() {
             // qotib qolardi.
             final back = myCode == null
                 ? null
-                : await profile.followList(myCode, type: 'following');
+                : await profile.followList(myCode, dir: 'following');
             if (back == null) {
               report.skip('Lenta — obuna yechilgandan keyin holat',
                   'shaxsiy NFC ID yo\'q');
@@ -2206,7 +2205,7 @@ void main() {
     if (mine == null) {
       report.skip('Lenta — obuna urug\'i (following)', 'shaxsiy NFC ID yo\'q');
     } else {
-      final fl = await profile.followList(mine, type: 'following');
+      final fl = await profile.followList(mine, dir: 'following');
       switch (fl) {
         case Err(:final error):
           fail('Lenta — obuna urug\'i (following)',

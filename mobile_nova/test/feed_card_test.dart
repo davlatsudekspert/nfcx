@@ -61,7 +61,7 @@ class _FollowRepo extends ProfileRepository {
   @override
   Future<Result<List<NfcId>>> followList(
     String code, {
-    String type = 'followers',
+    String dir = 'followers',
   }) async => Ok(following.map((c) => NfcId(code: c, name: c)).toList());
 
   @override

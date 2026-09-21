@@ -22,6 +22,10 @@ import 'routes.dart';
 /// Ekranlar ko'rinayotgan-ko'rinmayotganini shu yerdan biladi.
 final activeTabProvider = StateProvider<int>((_) => 0);
 
+/// "Asosiy" tugmasi Home'da turib qayta bosilgan — har bosishda
+/// oshadi. Bosh sahifa buni eshitadi va tepaga suriladi.
+final homeReselectProvider = StateProvider<int>((_) => 0);
+
 class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key, required this.navigationShell});
 
@@ -80,6 +84,18 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             // kelishini kutmasdan, chunki u umuman kelmaydi.
             if (i != shell.currentIndex) {
               ref.read(audioOwnerProvider).stopAll();
+            }
+            // ASOSIY TABGA QAYTA BOSISH — TEPAGA QAYTARADI.
+            //
+            // Boshqa tabdan bosilganda shunchaki Home'ga o'tadi
+            // (pastdagi `goBranch`). Home'da turib bosilganda esa
+            // ro'yxat animatsiya bilan eng tepaga qaytadi — bu
+            // odatiy mobil xulq va odam uni kutadi.
+            //
+            // Signal sanoqchi orqali: `bool` bo'lsa ketma-ket
+            // ikkinchi bosish "o'zgarish yo'q" bo'lib ketardi.
+            if (i == 0 && shell.currentIndex == 0) {
+              ref.read(homeReselectProvider.notifier).state++;
             }
             shell.goBranch(
               i,

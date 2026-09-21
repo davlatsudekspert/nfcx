@@ -13,6 +13,13 @@ import '../../data/models/models.dart';
 ///
 /// Backend'da "profil" alohida obyekt emas: har bir NFC ID ning O'ZI
 /// profil. Shuning uchun bu yerdagi metodlar `code` bilan ishlaydi.
+/// Profil ostidagi uchta raqam va tashrifchining obuna holati.
+///
+/// `/api/records/:code` da `followers`/`following` maydoni UMUMAN
+/// YO'Q — o'lchab tekshirilgan. Shuning uchun bu sonlar faqat
+/// `/api/follow-stats/:code` dan keladi.
+typedef FollowStats = ({int followers, int following, bool isFollowing});
+
 class ProfileRepository {
   ProfileRepository(this._api);
   final ApiClient _api;
@@ -133,18 +140,46 @@ class ProfileRepository {
   Future<Result<void>> unfollow(String code) =>
       _api.post<void>('/api/unfollow/$code');
 
-  Future<Result<({int followers, int following})>> followStats(String code) async {
+  /// Obuna ko'rsatkichlari — VA tashrifchi obunami.
+  ///
+  /// `isFollowing` ni server O'ZI hisoblaydi (tashrifchi sessiyasi
+  /// bo'yicha), shuning uchun tugmaning holati uchun ENG ISHONCHLI
+  /// manba shu. Ilgari u umuman o'qilmasdi.
+  Future<Result<FollowStats>> followStats(String code) async {
     final res = await _api.get<Map<String, dynamic>>('/api/follow-stats/$code');
     return res.map((j) => (
           followers: (j['followers'] as num?)?.toInt() ?? 0,
           following: (j['following'] as num?)?.toInt() ?? 0,
+          isFollowing: j['isFollowing'] == true,
         ));
   }
 
-  Future<Result<List<NfcId>>> followList(String code, {String type = 'followers'}) async {
+  /// Obunachilar yoki obunalar ro'yxati.
+  ///
+  /// IKKITA KONTRAKT XATOSI SHU YERDA EDI (2026-09, qurilmada
+  /// topildi):
+  ///
+  ///   1. Ilova `?type=following` yuborardi, server esa `?dir=` ni
+  ///      o'qiydi (`hosting/worker.js`, `followApi`). Ya'ni server
+  ///      DOIM obunachilarni qaytarardi — hech qachon obunalarni.
+  ///   2. Server `{list: [...]}` beradi, ilova esa
+  ///      `j['items'] ?? j['users']` ni o'qirdi — ikkalasi ham yo'q,
+  ///      demak ro'yxat DOIM bo'sh edi.
+  ///
+  /// Oqibati zanjir bo'lib ketardi: "men kimga obunaman" to'plami
+  /// doim bo'sh -> obuna tugmasi doim "Kuzatish" -> bosilganda
+  /// server 409 ALREADY_FOLLOWING qaytarardi -> ilova uni
+  /// `errConflict` ("Bu ma'lumot allaqachon band") deb ko'rsatib,
+  /// optimistik ✓ ni orqaga qaytarardi. Foydalanuvchi buni
+  /// "kuzatish ishlamayapti" deb ko'rardi, aslida obuna BAZAGA
+  /// YOZILGAN edi.
+  ///
+  /// `dir` nomi serverdagi nom bilan ATAYLAB bir xil.
+  Future<Result<List<NfcId>>> followList(String code,
+      {String dir = 'followers'}) async {
     final res = await _api
-        .get<Map<String, dynamic>>('/api/follow-list/$code', query: {'type': type});
-    return res.map((j) => parseList(j['items'] ?? j['users'], NfcId.fromJson));
+        .get<Map<String, dynamic>>('/api/follow-list/$code', query: {'dir': dir});
+    return res.map((j) => parseList(j['list'], NfcId.fromJson));
   }
 
   /// Rasm yuklash — avatar, muqova, post va istorya uchun bitta endpoint.
