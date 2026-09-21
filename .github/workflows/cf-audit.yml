@@ -181,3 +181,13 @@ jobs:
                       print(f'  {t:<6} {n:<40} {c[:90]}')
                   print(f'  (zonada jami {len(rows)} ta yozuv)')
           PY
+
+      # Qo'riqchining O'ZI shu yerda ham yuriladi: auditni qo'lda
+      # ochganda jonli Workerdagi holat darhol ko'rinsin.
+      - name: Jonli Workerda sozlamalar to'liqmi
+        if: always()
+        continue-on-error: true
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: 31c4b3d8ece4b65de515debc4552334a
+        run: node scripts/test-worker-secrets.mjs
