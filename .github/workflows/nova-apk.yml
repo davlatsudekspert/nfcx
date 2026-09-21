@@ -30,6 +30,20 @@ on:
       - '!mobile_nova/integration_test/**'
       - '!mobile_nova/**.md'
       - '.github/workflows/nova-apk.yml'
+      # SHU WORKFLOW YURGIZADIGAN QO'RIQCHILAR.
+      #
+      # Ular `scripts/` da yotadi va yuqoridagi ro'yxatga kirmasdi —
+      # ya'ni qo'riqchi tuzatilsa ham build QAYTA ISHGA TUSHMASDI va
+      # oxirgi natija eski (qizil) holicha qolib ketardi. Aynan shu
+      # yuz berdi. Butun `scripts/**` emas: unda har bir sayt
+      # qo'riqchisining tahriri ham 6 daqiqalik APK buildini behuda
+      # ishga tushirardi.
+      - 'scripts/test-app-identity.mjs'
+      - 'scripts/test-catalog-kind-parity.mjs'
+      - 'scripts/test-nova-api-parity.mjs'
+      - 'scripts/test-nova-id-purchase.mjs'
+      - 'scripts/test-nova-response-contract.mjs'
+      - 'scripts/lib/**'
 
 concurrency:
   group: nova-apk-${{ github.ref }}
