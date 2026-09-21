@@ -9568,8 +9568,37 @@ function withSecurityHeaders(res, url) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    const res = await handleRequest(request, env, url);
-    return withSecurityHeaders(res, url);
+    try {
+      const res = await handleRequest(request, env, url);
+      return withSecurityHeaders(res, url);
+    } catch (error) {
+      // ── NIMA UCHUN BU YERDA TUTQICH BOR ───────────────────────────
+      //
+      // Busiz `handleRequest` dagi istalgan istisno Workers runtime'ga
+      // chiqib ketardi va u BO'SH TANALI 500 qaytarardi: na sabab, na
+      // yo'l, na iz. Ya'ni production'da sayt yiqilsa, nega
+      // yiqilganini bilishning yo'qligi.
+      //
+      // Aynan shunday bo'ldi: ilovadagi ulashish havolasi
+      // (`nfcstore.uz/KOD`) 500 qaytarardi, javob tanasi esa bo'sh
+      // edi. Mahalliy harness'da o'sha yo'l yiqilmaydi, demak sabab
+      // faqat production muhitida ko'rinadi — uni ko'rsatadigan joy
+      // esa yo'q edi.
+      //
+      // BU XATONI YASHIRMAYDI. Aksincha: 500 avvalgidek 500 bo'lib
+      // qoladi, lekin endi u O'ZINI TUSHUNTIRADI va log'ga yoziladi
+      // (`observability` wrangler.jsonc'da yoqilgan).
+      //
+      // `detail` — faqat istisno xabari, 200 belgigacha qisqartirilgan.
+      // Foydalanuvchi ma'lumoti emas: bu yerga so'rov tanasi ham,
+      // cookie ham, tokenning birorta bo'lagi ham tushmaydi.
+      console.error('worker fetch', request.method, url.pathname, error?.stack || error?.message);
+      const detail = String((error && error.message) || error || '').slice(0, 200);
+      return withSecurityHeaders(
+        json({ error: 'worker_error', path: url.pathname, detail }, 500),
+        url,
+      );
+    }
   },
 };
 

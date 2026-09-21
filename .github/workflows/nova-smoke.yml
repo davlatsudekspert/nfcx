@@ -1,0 +1,71 @@
+name: Production smoke (ulashish havolalari)
+
+# Deploydan KEYIN tez tekshirish. To'liq E2E ~25 daqiqa oladi va
+# emulyator ko'taradi; bu esa soniyalarda javob beradi va FAQAT
+# ommaviy sahifalarni GET qiladi — hech narsa yozmaydi, hisobga
+# kirmaydi, ma'lumotga tegmaydi.
+on:
+  workflow_dispatch:
+    inputs:
+      code:
+        description: "Tekshiriladigan NFC kodi"
+        required: false
+        default: "VIP001"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ommaviy sahifalarni tekshirish
+        env:
+          CODE: ${{ inputs.code || 'VIP001' }}
+        run: |
+          fail=0
+          probe() {
+            local path="$1" want="$2"
+            # -sS: jim, lekin xatoni ko'rsat. Qayta yo'naltirish
+            # kuzatiladi (--location): ulashilgan havola brauzerda
+            # ham aynan shunday ochiladi.
+            out=$(curl -sS --location --max-time 25 \
+              -H 'accept: text/html,application/xhtml+xml' \
+              -H 'user-agent: Mozilla/5.0 (Android) NFCSTORE-smoke' \
+              -w '\n<<<%{http_code}>>>' "https://nfcstore.uz${path}" || echo '<<<000>>>')
+            code="${out##*<<<}"; code="${code%%>>>*}"
+            body="${out%<<<*}"
+            snippet=$(printf '%s' "$body" | tr -d '\r\n' | cut -c1-160)
+            if [ "$code" = "$want" ]; then
+              echo "OK    $code  $path"
+            else
+              echo "XATO  $code (kutilgan $want)  $path"
+              echo "      tana: $snippet"
+              fail=1
+            fi
+          }
+
+          echo "── Sayt asosiy sahifalari ──"
+          probe "/" 200
+          probe "/katalog" 200
+          probe "/login" 200
+          probe "/register" 200
+
+          echo "── Nova ulashish havolalari ──"
+          # Shaxsiy profil — ilovadagi Profil, NFC ID, Post, Istorya
+          # va Reels ulashuvi AYNAN shu shaklni quradi.
+          probe "/$CODE" 200
+          probe "/$(printf '%s' "$CODE" | tr 'A-Z' 'a-z')" 200
+
+          echo "── Yaroqsiz kod 500 BERMASLIGI kerak ──"
+          # Yo'q profil uchun toza 404/200 (SPA) bo'lishi mumkin,
+          # lekin 5xx — hech qachon.
+          out=$(curl -sS --location --max-time 25 -o /dev/null -w '%{http_code}' \
+            -H 'accept: text/html' "https://nfcstore.uz/ZZZZ999" || echo 000)
+          case "$out" in
+            5*) echo "XATO  $out  /ZZZZ999 — yaroqsiz kod server xatosi bermasligi kerak"; fail=1 ;;
+            *)  echo "OK    $out  /ZZZZ999" ;;
+          esac
+
+          [ "$fail" = "0" ] || { echo "::error::Smoke yiqildi — yuqoriga qarang."; exit 1; }
+          echo "Smoke to'liq o'tdi."

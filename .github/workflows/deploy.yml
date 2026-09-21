@@ -55,6 +55,15 @@ jobs:
       # unutish oson va natija JIM: so'rov umumiy tutqichga tushib
       # `{"error":"not_found"}` qaytaradi. `GET /api/feed` aynan
       # shunday bo'ldi va ilovadagi Reels tabi ishlamay turdi.
+      # WORKER YIQILSA SABAB KO'RINADIMI.
+      #
+      # `handleRequest` himoyasiz chaqirilsa, undagi istalgan
+      # istisno BO'SH TANALI 500 bo'lib chiqadi — na sabab, na yo'l.
+      # Ulashish havolasi (`nfcstore.uz/KOD`) aynan shunday 500
+      # berardi va sababi bir necha kun ko'rinmadi.
+      - name: Worker yiqilsa sabab ko'rinadimi
+        run: node scripts/test-worker-error-visibility.mjs
+
       - name: API marshrutlari yetib boradimi
         run: node scripts/api-route-reachability-test.mjs
 
