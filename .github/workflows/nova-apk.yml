@@ -128,6 +128,10 @@ jobs:
       # ishlashi, narxni SERVER hisoblashi va to'lanmagan ID hech
       # qachon biriktirilmasligi.
       - name: NFC ID xaridi — narx, band qilish va to'lov shartnomasi
+        # Bu ishning standart papkasi `mobile_nova`, skript esa
+        # repo ildizida — shuning uchun yo'l aniq ko'rsatiladi
+        # (yonidagi qo'riqchi qadamida ham xuddi shunday).
+        working-directory: ${{ github.workspace }}
         run: node scripts/test-nova-id-purchase.mjs
 
       # ── ILOVA NOMI VA PAKET ID ──────────────────────────────────
