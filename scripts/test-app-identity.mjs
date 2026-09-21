@@ -33,6 +33,69 @@ const { check, checkTrue, done } = makeChecker();
 
 const read = (p) => readFileSync(join(ROOT, p), 'utf8');
 
+/// MANIFEST YAROQLI XML MI.
+///
+/// NIMA UCHUN BU TEKSHIRUV BOR — HAQIQIY XATODAN.
+///
+/// Ilova nomini o'zgartirganda izoh `<application ...>` TEGINING
+/// ICHIGA, atributlar orasiga tushib qoldi. Bu yaroqsiz XML va
+/// `flutter build` uni "Error parsing LocalFile" bilan rad etdi.
+///
+/// Eng yomoni — buni HECH NARSA oldindan aytmadi: `flutter
+/// analyze` ham, `flutter test` ham (519 ta test) manifestni
+/// O'QIMAYDI. Xato faqat CI da, APK qurish bosqichida chiqdi.
+///
+/// Shuning uchun tuzilish shu yerda tekshiriladi: teglar
+/// juftligi va atributlarning teg ichida ekani.
+function assertWellFormedXml(label, xml) {
+  // IZOHLAR OLIB TASHLANMAYDI — TEKSHIRILAYOTGAN NARSA AYNAN
+  // ULARNING JOYI.
+  //
+  // Birinchi urinishda izohlar avval olib tashlangan edi va
+  // tekshiruv haqiqiy xatoni TUTMADI: izoh olib tashlangach,
+  // buzuq manifest yaroqli ko'rinib qolardi.
+  //
+  // Ochiladigan teg (`<application ...>`) ichida `<!--` ham,
+  // bo'sh `<` ham bo'lishi MUMKIN EMAS. Atribut qiymatlari
+  // ichidagi `>` esa tegni tugatmaydi, shuning uchun tirnoqlar
+  // hisobga olinadi.
+  const bad = [];
+  for (let i = 0; i < xml.length; i++) {
+    if (xml[i] !== '<') continue;
+    // Izohning O'ZI — uni butunlay o'tkazib yuboramiz.
+    if (xml.startsWith('<!--', i)) {
+      const close = xml.indexOf('-->', i);
+      i = close < 0 ? xml.length : close + 2;
+      continue;
+    }
+    // Faqat ochiladigan/yopiladigan teg boshi.
+    if (!/[A-Za-z/]/.test(xml[i + 1] || '')) continue;
+
+    let quote = '';
+    let j = i + 1;
+    for (; j < xml.length; j++) {
+      const c = xml[j];
+      if (quote) { if (c === quote) quote = ''; continue; }
+      if (c === '"' || c === "'") { quote = c; continue; }
+      if (c === '>') break;
+      if (c === '<') {
+        bad.push(xml.slice(i, Math.min(j + 40, xml.length)).split('\n')[0]);
+        break;
+      }
+    }
+    i = j;
+  }
+
+  if (bad.length) {
+    console.log(`  ${label}: teg ichida begona "<":`);
+    for (const b of bad) console.log(`    ${b.trim()}`);
+  }
+  check(`${label}: teg ichida begona "<" yo‘q`, bad.length, 0);
+
+  // Ildiz teg yopilgan.
+  checkTrue(`${label}: <manifest> yopilgan`, /<\/manifest>\s*$/.test(xml.trim()));
+}
+
 /** `android:label="..."` — izohlar ichidagi matn hisobga olinmaydi. */
 function androidLabel(manifest) {
   const clean = manifest.replace(/<!--[\s\S]*?-->/g, '');
@@ -66,6 +129,8 @@ const APPS = [
 ];
 
 for (const app of APPS) {
+  // TUZILISH AVVAL: buzuq manifestdan o'qilgan nom ma'nosiz.
+  assertWellFormedXml(app.name, read(app.manifest));
   check(`${app.name}: Android nomi`, androidLabel(read(app.manifest)), app.label);
   check(`${app.name}: iOS nomi`, iosName(read(app.plist)), app.label);
 
