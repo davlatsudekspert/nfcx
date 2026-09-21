@@ -157,7 +157,19 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
   /// Quyi chegara .35: butunlay yo'qolsa avatar doirasi va
   /// kapsula ko'rinmay qoladi — yumshoq boshqa, yo'q boshqa.
   double get washScale {
-    if (isDark) return 1;
+    // QORONG'I MAVZULAR HAM YUMShATILADI, LEKIN KAMROQ.
+    //
+    // Avval bu yerda `if (isDark) return 1` turgan edi: qorong'i
+    // fonda yuvindi FONNI YORITADI, iflos qilmaydi degan mantiq
+    // bilan. Mantiq to'g'ri, lekin "iflos emas" degani "yumshoq"
+    // degani emas. Oltita mavzu yonma-yon qo'yilganda `noir` dagi
+    // "Shaxsiy" kapsulasi va avatar to'ldirmasi qolganlaridan
+    // sezilarli OG'IR ko'rindi.
+    //
+    // .78 — to'liq kuchning uchdan ikki qismidan sal ko'prog'i.
+    // Element hamon ko'rinadi va bosilgani bilinadi, lekin u
+    // endi "plastina" emas, TUS.
+    if (isDark) return .78;
     final drop = (bg1.computeLuminance() - accent1.computeLuminance())
         .clamp(0.0, 1.0);
     return (1 - drop * .85).clamp(.35, 1.0);
@@ -449,7 +461,14 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     // juda qattiq ko'rinadi, shuning uchun shaffoflik bilan:
     // ko'z uni qora deb o'qiydi, lekin u ekranni to'rga
     // aylantirmaydi.
-    border1: rgba(0, 0, 0, .55),
+    //
+    // .55 dan .38 ga TUShIRILDI. Oltita mavzuning chegarasi
+    // o'lchab chiqilganda ma'lum bo'ldi: qolganlarida .14-.15,
+    // bu yerda esa .55 — TO'RT BAROBAR qattiq. Shuning uchun
+    // oq-qora mavzu boshqalaridan ko'ra "chizilgan" bo'lib
+    // ko'rinardi. .38 hamon aniq qora, lekin endi qolgan
+    // mavzular bilan bir oilada.
+    border1: rgba(0, 0, 0, .38),
     border2: rgba(0, 0, 0, .22),
     error: hex('#8A1F1F'),
     success: hex('#1F5A2E'),

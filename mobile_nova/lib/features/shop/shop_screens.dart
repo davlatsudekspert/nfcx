@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/utils/external_link.dart';
 import '../../core/errors/app_error.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/shop_repository.dart';
@@ -315,60 +314,21 @@ class CheckoutScreen extends ConsumerStatefulWidget {
 }
 
 class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
-  PayProvider? _selected;
-  bool _busy = false;
-  String? _error;
-
-  Future<void> _pay() async {
-    final l = L.of(context);
-    final provider = _selected;
-    if (provider == null) return;
-
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-
-    // Buyurtma avval serverda yaratiladi: to'lov havolasi uning
-    // raqamiga bog'lanadi.
-    final repo = ref.read(shopRepositoryProvider);
-    final orders = await repo.orders();
-    if (!mounted) return;
-
-    final orderId = orders.valueOrNull?.firstOrNull?.id ?? 0;
-    if (orderId == 0) {
-      setState(() {
-        _busy = false;
-        _error = l.errEndpointMissing;
-      });
-      return;
-    }
-
-    final res = await repo.startPayment(provider: provider, orderId: orderId);
-    if (!mounted) return;
-    setState(() => _busy = false);
-
-    await res.when(
-      ok: (url) async {
-        // TO'LOV SAHIFASI — `openLink` osilib qolmaydi va brauzer
-        // ochilmasa havolani buferga ko'chiradi. Ilgari shu yerda
-        // `launchUrl` to'g'ridan-to'g'ri kutilardi: kanal javob
-        // bermasa tugma cheksiz "yuklanmoqda" bo'lib qolardi.
-        await openLink(url);
-        if (mounted) context.push(Routes.paymentResult('pending'));
-      },
-      err: (e) async => setState(() => _error = e.code == 'payment_not_configured'
-          ? l.paymentNotConfigured
-          : describeError(l, e)),
-    );
-  }
-
+  // TO'LOV HOLATI OLIB TASHLANDI.
+  //
+  // Bu yerda `_selected` (tanlangan provayder), `_busy` va `_pay()`
+  // turgan edi. `_pay()` ishlamasdi: u buyurtma YARATMAY, mavjud
+  // ro'yxatdan birinchisini olardi — yangi mijozda xato, eski
+  // buyurtmasi borida esa BOShQA buyurtma uchun to'lov. Serverda
+  // ham jismoniy karta buyurtmasini yaratadigan yo'l yo'q edi.
+  //
+  // To'liq tahlil `store_policy.dart` dagi `canPayInApp()` izohida.
+  //
   @override
   Widget build(BuildContext context) {
     final l = L.of(context);
     final t = context.tokens;
     final p = widget.product;
-    final providers = ref.watch(paymentProvidersProvider);
 
     return NovaScaffold(
       title: l.checkoutTitle,
@@ -401,112 +361,19 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               ],
             ),
           ),
-          SectionHeader(title: l.checkoutPayWith),
-          providers.when(
-            loading: () => const Skeleton(height: 56, radius: R.gentle),
-            error: (e, __) => StatePanel.fromError(context, asAppError(e),
-                onRetry: () => ref.invalidate(paymentProvidersProvider)),
-            data: (enabled) => enabled.isEmpty
-                // Backend'da hech bir to'lov provayderi yoqilmagan.
-                // Ilgari bu yerda "CONFIG REQUIRED" chiqardi — xarid
-                // qilmoqchi bo'lgan odamga hech nima aytmaydigan
-                // ishlab-chiquvchi yozuvi.
-                ? StatePanel(
-                    icon: Icons.credit_card_off_rounded,
-                    title: l.paymentNotConfigured,
-                    message: l.paymentNotConfiguredHint,
-                    tone: t.warn,
-                  )
-                : Column(
-                    children: [
-                      for (final e in enabled)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: Gap.sm),
-                          child: FloatingSurface(
-                            solid: true,
-                            padding: const EdgeInsets.all(Gap.lg),
-                            onTap: () => setState(() => _selected = e),
-                            child: Row(
-                              children: [
-                                Builder(builder: (_) {
-                                  final label = switch (e) {
-                                    PayProvider.payme => 'Payme',
-                                    PayProvider.click => 'Click',
-                                    PayProvider.paynet => 'Paynet',
-                                  };
-                                  // PROVAYDER O'Z RANGIDA.
-                                  //
-                                  // Odam to'lov tizimini RANGIDAN
-                                  // taniydi, matnni o'qib emas.
-                                  // Ranglar saytdan olingan, ikki
-                                  // joyda bir xil.
-                                  final brand = brandColor(label);
-                                  return Row(children: [
-                                    Icon(
-                                      _selected == e
-                                          ? Icons.radio_button_checked_rounded
-                                          : Icons.radio_button_unchecked_rounded,
-                                      size: 19,
-                                      color: _selected == e
-                                          ? (brand ?? t.accent2)
-                                          : t.text3,
-                                    ),
-                                    const SizedBox(width: Gap.md),
-                                    if (brand != null) ...[
-                                      Container(
-                                        width: 26,
-                                        height: 26,
-                                        decoration: BoxDecoration(
-                                          color: brand,
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                        ),
-                                        alignment: Alignment.center,
-                                        child: Text(
-                                          label.characters.first,
-                                          style: const TextStyle(
-                                            fontFamily: AppType.sans,
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w800,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: Gap.md),
-                                    ],
-                                    Expanded(
-                                      child: Text(
-                                        label,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodyLarge,
-                                      ),
-                                    ),
-                                  ]);
-                                }),
-                              ],
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-          ),
-          if (_error != null) ...[
-            const SizedBox(height: Gap.lg),
-            Text(_error!,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontFamily: AppType.sans,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: t.error)),
-          ],
+          // TO'LOV USULI TANLASH OLIB TASHLANDI.
+          //
+          // Sabab `lib/features/shop/store_policy.dart` dagi
+          // `canPayInApp()` izohida to'liq yozilgan, qisqasi:
+          // ilovadagi jismoniy karta xaridi uch joyda uzilgan edi
+          // va tugma bosilganda XATO chiqardi. Buzuq tugmadan
+          // ko'ra ishlaydigan yozuv yaxshi.
+          //
+          // Narx va mahsulot yuqorida QOLDI — odam nima
+          // olayotganini va qanchaligini ko'radi, faqat
+          // rasmiylashtirish saytda bo'ladi.
+          StoreNotice(text: l.storeBuyOnSiteId),
           const SizedBox(height: Gap.xxl),
-          NovaButton(
-            label: l.checkoutPlace,
-            busy: _busy,
-            onPressed: _selected == null ? null : _pay,
-          ),
         ],
       ),
     );

@@ -199,9 +199,17 @@ void main() {
         lessThan(.18),
         reason: 'ekran tepasidagi chiziq fondan uzoqlashmasin');
 
-    // 4. QORONG‘I mavzularga tegilmagan — ular o‘sha-o‘sha.
+    // 4. QORONG‘I mavzular ham yumshatiladi, lekin KAMROQ.
+    //
+    // Ular oq fon emas, shuning uchun yuvindi u yerda iflos
+    // qilmaydi — lekin og‘irlik qiladi. Oltita mavzu yonma-yon
+    // qo‘yilganda bu aniq ko‘rindi.
     for (final t in NfcTokens.all.where((e) => e.isDark)) {
-      expect(t.washScale, 1.0, reason: t.id);
+      expect(t.washScale, .78, reason: t.id);
+      // To‘liq kuchdan past, lekin oq-qora mavzudan YUQORI:
+      // qorong‘ida element ko‘rinib turishi kerak.
+      expect(t.washScale, greaterThan(NfcTokens.mono.washScale),
+          reason: t.id);
     }
   });
 

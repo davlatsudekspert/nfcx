@@ -21,8 +21,21 @@ import 'package:nfcstore_nova/features/shop/store_policy.dart';
 /// KELMASLIGINI qo'riqlaydi — yangi tugma qo'shilsa CI yiqiladi.
 void main() {
   group('qaysi buyurtmani ilovada to\'lash mumkin', () {
-    test('faqat jismoniy karta', () {
-      expect(canPayInApp(OrderKind.physicalCard), isTrue);
+    test('HOZIRCHA hech biri — jismoniy karta ham', () {
+      // Jismoniy karta Play Billing qoidasidan OZOD va uzoq vaqt
+      // bu yerda `isTrue` turgan edi. Qoida o'zgargani yo'q —
+      // KOD tayyor emasligi ma'lum bo'ldi.
+      //
+      // Ilovadagi xarid uch joyda uzilgan edi: ilova buyurtma
+      // yaratmasdi, serverda bunday yo'l yo'q edi va server
+      // to'lovni yakunlay olmasdi. Ya'ni tugma bosilsa XATO
+      // chiqardi.
+      //
+      // To'liq tahlil `store_policy.dart` dagi `canPayInApp()`
+      // izohida. Uchala uzilish tuzatilib, xarid boshidan
+      // oxirigacha sinovdan o'tkazilgandan KEYIN bu yerga
+      // `isTrue` qaytariladi.
+      expect(canPayInApp(OrderKind.physicalCard), isFalse);
     });
 
     test('raqamli mahsulotlar — yo\'q', () {
@@ -149,13 +162,26 @@ void main() {
     });
   });
 
-  /// JISMONIY KARTA DO'KONI TEGILMAGAN.
+  /// DO'KON EKRANIDA BUZUQ TUGMA QOLMAGAN.
   ///
-  /// U qoidadan ozod va ilovadagi yagona to'lov kanali bo'lib
-  /// qoladi. Uni ham o'chirib qo'yish daromadni bekorga yo'qotardi.
-  test('do\'kon (jismoniy karta) hamon to\'lay oladi', () {
+  /// Bu sinov ilgari teskarisini talab qilardi — "do'kon hamon
+  /// to'lay oladi". O'shanda mantiq shunday edi: jismoniy tovar
+  /// Play qoidasidan ozod, demak tugma qolsin.
+  ///
+  /// Mantiq to'g'ri, lekin tugmaning ISHLASHI tekshirilmagan edi.
+  /// Tekshirilganda ma'lum bo'ldi: u buyurtma yaratmaydi, server
+  /// tomonda esa bunday yo'l umuman yo'q. Ya'ni sinov ishlamaydigan
+  /// narsani "bor" deb qo'riqlab turgan ekan.
+  ///
+  /// Endi teskarisi qo'riqlanadi: ekranda to'lov chaqiruvi
+  /// QOLMASIN. Kimdir uni tuzatmasdan qaytarsa, CI yiqiladi va
+  /// `canPayInApp()` izohidagi uchta shartni o'qishga majbur
+  /// bo'ladi.
+  test('do\'kon ekranida to\'lov chaqiruvi qolmagan', () {
     final src = File('lib/features/shop/shop_screens.dart').readAsStringSync();
-    expect(src.contains('startPayment'), isTrue,
-        reason: 'jismoniy karta to\'lovi ham olib tashlangan');
+    for (final marker in ['startPayment', 'PayProvider.payme', 'checkoutPayWith']) {
+      expect(src.contains(marker), isFalse,
+          reason: 'buzuq to\'lov yo\'li qaytib kelgan: `$marker`');
+    }
   });
 }

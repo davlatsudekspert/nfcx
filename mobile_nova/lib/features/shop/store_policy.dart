@@ -71,11 +71,47 @@ class OrderKind {
 
 /// Shu buyurtmani ILOVA ICHIDA to'lash mumkinmi.
 ///
-/// FAQAT jismoniy karta. Ro'yxat ataylab "ruxsat etilganlar" shaklida
-/// yozilgan: kelajakda yangi tur qo'shilsa, u avtomatik RUXSAT
-/// ETILMAGAN bo'ladi. Teskarisi ("taqiqlanganlar ro'yxati") bo'lsa,
-/// yangi raqamli mahsulot jimgina to'lanadigan bo'lib qolardi.
-bool canPayInApp(String kind) => kind == OrderKind.physicalCard;
+/// ## HOZIRCHA HECH BIRI
+///
+/// Uzoq vaqt bu yerda `kind == OrderKind.physicalCard` turgan edi:
+/// jismoniy karta Play Billing qoidasidan ozod, demak uni ilovada
+/// to'lash mumkin degan mantiq bilan. Mantiq to'g'ri, lekin
+/// TEKShIRILMAGAN edi.
+///
+/// 2026-09 da tekshirilganda ma'lum bo'ldi: ilovadagi jismoniy
+/// karta xaridi UCH joyda uzilgan.
+///
+///   1. Ilova buyurtma YARATMAYDI. `CheckoutScreen._pay()`
+///      `repo.orders()` bilan mavjud ro'yxatni o'qib, BIRINCHI
+///      buyurtmani oladi. Yangi mijozda ro'yxat bo'sh -> xato.
+///      Eski buyurtmasi borida esa BOShQA buyurtma uchun to'lov
+///      ochilardi — bu pul masalasi.
+///
+///   2. Serverda bunday yo'l yo'q. `orderPhysicalCard()`
+///      `/api/records/:code/order-physical-card` ga murojaat
+///      qiladi, `hosting/worker.js` da esa u MAVJUD EMAS.
+///
+///   3. Server to'lovni YAKUNLAY olmaydi. `worker.js` dagi izoh
+///      o'zi aytadi: `physical_card_order` D1'ga ko'chirilmagan,
+///      buyurtma `pending` holatida qoldiriladi.
+///
+/// Ya'ni tugma bosilsa xato chiqardi. Play tekshiruvchisi uchun bu
+/// anti-steering'dan ham og'irroq sabab: "ilova tavsifda aytilganidek
+/// ishlamaydi" — bahssiz rad etish.
+///
+/// Shuning uchun HOZIRCHA hamma tur saytga yo'naltiriladi. Buzuq
+/// tugmadan ko'ra ishlaydigan yozuv yaxshi.
+///
+/// ## QACHON QAYTARILADI
+///
+/// Yuqoridagi uchala uzilish tuzatilganda va xarid BOShIDAN
+/// OXIRIGACHA sinovdan o'tkazilganda, bu yerga yana
+/// `kind == OrderKind.physicalCard` qaytariladi. Jismoniy tovar
+/// qoidadan ozodligi o'zgargani yo'q — faqat kod tayyor emas edi.
+///
+/// Ro'yxat ataylab "ruxsat etilganlar" shaklida: yangi tur
+/// qo'shilsa, u avtomatik RUXSAT ETILMAGAN bo'ladi.
+bool canPayInApp(String kind) => false;
 
 /// Raqamli mahsulot xaridi o'rnidagi yozuv.
 ///
