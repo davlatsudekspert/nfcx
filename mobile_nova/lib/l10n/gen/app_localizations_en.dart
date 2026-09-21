@@ -881,6 +881,12 @@ class LEn extends L {
   String get settingsAbout => 'About';
 
   @override
+  String get legalPrivacy => 'Privacy policy';
+
+  @override
+  String get legalTerms => 'Terms of use';
+
+  @override
   String settingsVersion(String version) {
     return 'Version $version';
   }

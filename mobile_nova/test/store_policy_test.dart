@@ -79,8 +79,43 @@ void main() {
         final src = File(entry.value)
             .readAsStringSync()
             .replaceAll(RegExp(r'^\s*///?.*$', multiLine: true), '');
-        expect(src.contains('openLink('), isFalse,
-            reason: '${entry.key}: tashqi havola ochilyapti');
+        // `openLink` NING O'ZI EMAS, U QAYERGA OCHILISHI muhim.
+        //
+        // Avval bu yerda `openLink(` umuman bo'lmasin deb
+        // yozilgandi. Keyin "Ilova haqida" ekraniga maxfiylik
+        // siyosati havolasi qo'shilganda sinov qizardi — holbuki
+        // huquqiy hujjat to'lov sahifasi emas, uni Google
+        // aksincha TALAB qiladi.
+        //
+        // Shuning uchun endi har bir `openLink` chaqiruvining
+        // manzili tekshiriladi: faqat huquqiy hujjatlarga ruxsat.
+        final calls = RegExp(r'openLink\(([^)]*)\)')
+            .allMatches(src)
+            .map((m) => m.group(1) ?? '')
+            .toList();
+        for (final arg in calls) {
+          // `openLink(url)` — huquqiy qator vidjetining o'zi.
+          // Manzil u yerda maydon orqali keladi, shuning uchun
+          // chaqiruv joyida ko'rinmaydi. Bu TEShIK emas: quyida
+          // o'sha maydonga nima berilishi alohida tekshiriladi.
+          final wrapper = arg.trim() == 'url';
+          final legal = arg.contains('/maxfiylik') || arg.contains('/shartlar');
+          expect(wrapper || legal, isTrue,
+              reason: '${entry.key}: huquqiy hujjat emas — `$arg`');
+        }
+
+        // IKKINCHI BOSQICH — vidjetga BERILGAN manzillar.
+        //
+        // Busiz kimdir `_LegalRow(url: 'https://checkout...')`
+        // deb yozib, yuqoridagi tekshiruvdan o'tib ketardi.
+        final urls = RegExp("url:\\s*'([^']*)'")
+            .allMatches(src)
+            .map((m) => m.group(1) ?? '')
+            .toList();
+        for (final u in urls) {
+          expect(u.contains('/maxfiylik') || u.contains('/shartlar'), isTrue,
+              reason: '${entry.key}: ruxsatsiz manzil — `$u`');
+        }
         // NAQSH ANIQ BO'LISHI KERAK. Oddiy `payme|click` "Payment"
         // va "PaymentHistory" so'zlarini ham ushlab, sinovni yolg'on
         // qizartirardi. Shuning uchun HAQIQIY to'lov havolalari

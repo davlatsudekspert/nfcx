@@ -329,6 +329,8 @@
   "settingsSupport": "Поддержка",
   "settingsNews": "Новости",
   "settingsAbout": "О приложении",
+  "legalPrivacy": "Политика конфиденциальности",
+  "legalTerms": "Условия использования",
   "settingsVersion": "Версия {version}",
   "@settingsVersion": {
     "placeholders": {

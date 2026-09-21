@@ -14,8 +14,8 @@ bo'limda yozilgan.
 | Ilova nomi (`android:label`) | `NFCSTORE` |
 | Paket (`applicationId`) | `uz.nfcstore.nova` |
 | Kategoriya | Ijtimoiy (Social) |
-| Maxfiylik siyosati | `https://nfcstore.uz/maxfiylik` |
-| Foydalanish shartlari | `https://nfcstore.uz/shartlar` |
+| Maxfiylik siyosati | `https://nfcstore.uz/maxfiylik` — **ilovada ham havola bor**: Sozlamalar → Ilova haqida |
+| Foydalanish shartlari | `https://nfcstore.uz/shartlar` — ilovada ham havola bor |
 | Sayt | `https://nfcstore.uz` |
 | Aloqa email | Play Console'ga O'ZINGIZ kiritasiz |
 
@@ -226,7 +226,21 @@ Bularning hammasiga **YO'Q** deb javob bering:
 * Reklama identifikatori
 * Ilovadagi xatoliklar / diagnostika (crash-reporting yo'q)
 
-### 3.4 Ruxsatlar
+### 3.4 Foydalanuvchi nazorati — Play shuni so'raydi
+
+| Imkoniyat | Ilovada qayerda | Kodda |
+|---|---|---|
+| Hisobni o'chirish | Sozlamalar → Hisobni o'chirish | `settings_subscreens.dart` |
+| Profilni ro'yxatdan yashirish | Sozlamalar → Maxfiylik → "Profil ommaviy" | `settings_subscreens.dart` |
+| Shikoyat qilish | Post/profil menyusi | `social/moderation.dart` |
+| Foydalanuvchini bloklash | Profil menyusi | `social/moderation.dart` |
+| Maxfiylik siyosati | Sozlamalar → Ilova haqida | `legal_links_test.dart` qo'riqlaydi |
+| Ilova qulfi (PIN / barmoq izi) | Sozlamalar → Xavfsizlik | App Lock |
+
+Bularning barchasi Play'ning foydalanuvchi kontenti bor
+ilovalarga qo'yadigan talablari. Hammasi mavjud.
+
+### 3.5 Ruxsatlar
 
 `AndroidManifest.xml` da atigi ikkita:
 
@@ -261,50 +275,57 @@ ijtimoiy tarmoqlarda odatda Teen chiqadi).
 
 ---
 
-## 5. TO'LOVLAR — DIQQAT BILAN O'QING
+## 5. TO'LOVLAR
 
-Bu Play'da ilova RAD ETILADIGAN eng ko'p uchraydigan sabab.
-
-### Hozirgi holat
+### Hozirgi holat — ILOVADA TO'LOV YO'Q
 
 | Nima | Ilovada | Sabab |
 |---|---|---|
-| Jismoniy NFC karta | To'lov ilovada | Jismoniy mahsulot — Play Billing SHART EMAS |
-| NFC ID (raqamli) | To'lov YO'Q, "saytda" deb yozilgan | Raqamli mahsulot |
-| Premium obuna | To'lov YO'Q, "saytda" deb yozilgan | Raqamli mahsulot |
-| Postni ko'tarish (FEATURED) | To'lov YO'Q, narx ko'rinadi, xarid yo'q | Raqamli mahsulot |
+| NFC ID (raqamli) | To'lov yo'q, "saytda" yozuvi | Raqamli mahsulot — Play Billing talab qilinadi |
+| Premium obuna | To'lov yo'q, "saytda" yozuvi | Raqamli mahsulot |
+| Postni ko'tarish | To'lov yo'q, narx ko'rinadi | Raqamli mahsulot |
+| **Jismoniy NFC karta** | **To'lov yo'q, "saytda" yozuvi** | **Qoidadan ozod, lekin KOD tayyor emas edi** |
 
 Kodda: `lib/features/shop/store_policy.dart` — `canPayInApp()`
-faqat jismoniy kartaga `true` qaytaradi.
+hozircha hamma tur uchun `false`.
 
-### OCHIQ XAVF — men buni yashirmayman
+### Nega jismoniy karta ham olib tashlandi
 
-"Xarid saytda rasmiylashtiriladi: nfcstore.uz" degan yozuv
-ilovada BOR. U bosilmaydigan oddiy matn (tugma ham, havola
-ham emas) — `StoreNotice` vidjetida `onTap` yo'q.
+Jismoniy tovar Play Billing qoidasidan **ozod** — bu o'zgargani
+yo'q. Lekin ilovadagi xarid **uch joyda uzilgan** edi:
 
-Lekin Google Play'ning **anti-steering** qoidasi raqamli
-mahsulot uchun foydalanuvchini tashqi to'lovga YO'NALTIRISHNI
-cheklaydi. Bosilmaydigan matn bosiladigan havoladan ANCHA
-xavfsiz, lekin xavf NOLGA teng emas.
+1. Ilova buyurtma **yaratmasdi** — mavjud ro'yxatdan birinchisini
+   olardi. Yangi mijozda xato, eskisida esa boshqa buyurtma uchun
+   to'lov.
+2. Serverda `/api/records/:code/order-physical-card` **yo'q**.
+3. Server `physical_card_order` ni **yakunlay olmaydi** —
+   buyurtma `pending` da qoladi.
 
-Uch yo'l bor:
+Ya'ni tugma bosilsa xato chiqardi. Play uchun bu anti-steering'dan
+og'irroq sabab: *"ilova tavsifda aytilganidek ishlamaydi"*.
 
-1. **Hozirgidek qoldirish.** Xavf kichik, lekin bor.
-2. **Eng xavfsiz:** o'sha yozuvni butunlay olib tashlash —
-   ilovada raqamli mahsulot haqida umuman gapirilmaydi.
-   Mijoz saytga o'zi boradi.
-3. **Play Billing qo'shish** — raqamli mahsulotlarni ilova
-   ichida Google orqali sotish. Google 15–30% oladi.
-
-Qaror SIZNIKI. Aytsangiz, 2-yo'lni bir soatda qilib beraman.
+Uchala uzilish tuzatilgandan keyin `canPayInApp()` ga jismoniy
+karta qaytariladi.
 
 ### Play Console'da
 
 "Bu ilova raqamli xarid taklif qiladimi?" → **Yo'q**
-(jismoniy karta raqamli xarid hisoblanmaydi).
 
----
+Ilovada umuman to'lov yo'q, shuning uchun bu savol endi bahssiz.
+
+### Qolgan xavf — kichik, lekin bor
+
+"Xarid saytda rasmiylashtiriladi: nfcstore.uz" degan **bosilmaydigan**
+yozuv qoladi. Anti-steering bo'yicha xavfi nolga teng emas.
+
+Rad etish kelsa: `store_policy.dart` dagi `kShowSiteNotice` ni
+`false` qiling va qayta yig'ing — bir daqiqalik ish, besh ekranni
+kovlash shart emas.
+
+### Do'kon tavsifida Payme/Click YOZILMASIN
+
+Ularni sanash hech narsa bermaydi, lekin tekshiruvchining
+diqqatini to'lov masalasiga qaratadi.
 
 ## 6. GRAFIKA
 

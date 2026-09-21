@@ -329,6 +329,8 @@
   "settingsSupport": "Support",
   "settingsNews": "News",
   "settingsAbout": "About",
+  "legalPrivacy": "Privacy policy",
+  "legalTerms": "Terms of use",
   "settingsVersion": "Version {version}",
   "@settingsVersion": {
     "placeholders": {

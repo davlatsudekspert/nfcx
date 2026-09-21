@@ -878,6 +878,12 @@ class LRu extends L {
   String get settingsAbout => 'О приложении';
 
   @override
+  String get legalPrivacy => 'Политика конфиденциальности';
+
+  @override
+  String get legalTerms => 'Условия использования';
+
+  @override
   String settingsVersion(String version) {
     return 'Версия $version';
   }

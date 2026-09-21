@@ -329,6 +329,8 @@
   "settingsSupport": "Yordam",
   "settingsNews": "Yangiliklar",
   "settingsAbout": "Ilova haqida",
+  "legalPrivacy": "Maxfiylik siyosati",
+  "legalTerms": "Foydalanish shartlari",
   "settingsVersion": "Versiya {version}",
   "@settingsVersion": {
     "placeholders": {

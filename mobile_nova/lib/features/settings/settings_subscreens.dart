@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/profile_context.dart';
 import '../../app/providers.dart';
+import '../../core/utils/external_link.dart';
 import '../../core/utils/result.dart';
 import '../../core/utils/validators.dart';
 import '../../data/models/models.dart';
@@ -1264,6 +1265,29 @@ class AboutScreen extends StatelessWidget {
               ],
             ),
           ),
+          // HUQUQIY HUJJATLAR — PLAY TALABI.
+          //
+          // Google shaxsiy ma'lumot yig'adigan ilovadan maxfiylik
+          // siyosatini talab qiladi. Ilgari bu ekranda faqat
+          // `nfcstore.uz` matn bo'lib turardi — odam siyosatni
+          // qayerdan o'qishini bilmasdi.
+          //
+          // BU XARID HAVOLASI EMAS. `store_policy.dart` dagi
+          // anti-steering qoidasi to'lovga yo'naltirishni
+          // cheklaydi; huquqiy hujjatga havola esa aksincha,
+          // Google TALAB qiladigan narsa.
+          SectionHeader(title: l.settingsAbout),
+          _LegalRow(
+            icon: Icons.privacy_tip_outlined,
+            label: l.legalPrivacy,
+            url: 'https://$kSiteHost/maxfiylik',
+          ),
+          const SizedBox(height: Gap.sm),
+          _LegalRow(
+            icon: Icons.gavel_rounded,
+            label: l.legalTerms,
+            url: 'https://$kSiteHost/shartlar',
+          ),
           SectionHeader(title: l.settingsNews),
           FloatingSurface(
             solid: true,
@@ -1279,6 +1303,42 @@ class AboutScreen extends StatelessWidget {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Huquqiy hujjat qatori — brauzerda ochiladi.
+///
+/// `openLink` ishlatiladi: u osilib qolmaydi va brauzer
+/// ochilmasa havolani buferga ko'chiradi, ya'ni odam uni
+/// baribir o'qiy oladi.
+class _LegalRow extends StatelessWidget {
+  const _LegalRow({
+    required this.icon,
+    required this.label,
+    required this.url,
+  });
+
+  final IconData icon;
+  final String label;
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return FloatingSurface(
+      solid: true,
+      onTap: () => openLink(url),
+      child: Row(
+        children: [
+          Icon(icon, size: 19, color: t.accent2),
+          const SizedBox(width: Gap.md),
+          Expanded(
+            child: Text(label, style: Theme.of(context).textTheme.bodyLarge),
+          ),
+          Icon(Icons.open_in_new_rounded, size: 16, color: t.text3),
         ],
       ),
     );

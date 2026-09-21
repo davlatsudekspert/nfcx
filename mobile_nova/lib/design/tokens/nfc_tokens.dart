@@ -673,9 +673,20 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     // pastga tomon esa deyarli qoraga tushadi. Shusiz ekran
     // "yassi qora" bo'lib ko'rinardi.
     //
-    // Oltin ambient ataylab juda past — u faqat bir tomchi
-    // iliqlik beradi, fonni sarg'aytirmaydi.
-    ambient1: rgba(214, 178, 94, .05),
+    // OLTIN AMBIENT — .05 DAN .13 GA.
+    //
+    // .05 da u amalda YO'Q edi: navy chuqurlik bor, iliqlik esa
+    // yo'q, shuning uchun fon "toza, lekin oddiy" ko'rinardi.
+    // Boshqa mavzularda bu qiymat .14-.32 — ya'ni `noir`, aynan
+    // STANDART va brend mavzusi, eng tekis fonli bo'lib qolgan
+    // ekan.
+    //
+    // .13 fonni sarg'aytirmaydi (buni rang sinovi qo'riqlaydi:
+    // fon sovuq, ko'k kanal qizildan katta bo'lib qolishi kerak),
+    // lekin oltin aksent bilan fon o'rtasida BOG'LIQLIK paydo
+    // qiladi — premium hissi shundan keladi, aksentning
+    // yorqinligidan emas.
+    ambient1: rgba(214, 178, 94, .13),
     ambient2: rgba(32, 56, 86, .55),
     shadowFloat: [
       BoxShadow(color: rgba(0, 0, 0, .55), blurRadius: 28, offset: const Offset(0, 10)),

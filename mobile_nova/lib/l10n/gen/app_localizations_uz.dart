@@ -881,6 +881,12 @@ class LUz extends L {
   String get settingsAbout => 'Ilova haqida';
 
   @override
+  String get legalPrivacy => 'Maxfiylik siyosati';
+
+  @override
+  String get legalTerms => 'Foydalanish shartlari';
+
+  @override
   String settingsVersion(String version) {
     return 'Versiya $version';
   }

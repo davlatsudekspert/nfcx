@@ -1803,6 +1803,18 @@ abstract class L {
   /// **'Ilova haqida'**
   String get settingsAbout;
 
+  /// No description provided for @legalPrivacy.
+  ///
+  /// In uz, this message translates to:
+  /// **'Maxfiylik siyosati'**
+  String get legalPrivacy;
+
+  /// No description provided for @legalTerms.
+  ///
+  /// In uz, this message translates to:
+  /// **'Foydalanish shartlari'**
+  String get legalTerms;
+
   /// No description provided for @settingsVersion.
   ///
   /// In uz, this message translates to:
