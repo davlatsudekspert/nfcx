@@ -1322,4 +1322,16 @@ class LEn extends L {
 
   @override
   String get registerTosSuffix => ' terms.';
+
+  @override
+  String get activityFollowed => 'followed you';
+
+  @override
+  String get activityLiked => 'liked your post';
+
+  @override
+  String get activityCommented => 'commented on your post';
+
+  @override
+  String get activityMarkAll => 'Mark all as read';
 }

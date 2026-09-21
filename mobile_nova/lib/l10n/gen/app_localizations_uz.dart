@@ -1324,4 +1324,16 @@ class LUz extends L {
 
   @override
   String get registerTosSuffix => ' shartlariga roziman.';
+
+  @override
+  String get activityFollowed => 'sizga obuna bo‘ldi';
+
+  @override
+  String get activityLiked => 'postingizni yoqtirdi';
+
+  @override
+  String get activityCommented => 'postingizga izoh yozdi';
+
+  @override
+  String get activityMarkAll => 'Hammasini o‘qildi';
 }

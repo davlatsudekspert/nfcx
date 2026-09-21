@@ -2654,6 +2654,30 @@ abstract class L {
   /// In uz, this message translates to:
   /// **' shartlariga roziman.'**
   String get registerTosSuffix;
+
+  /// Bildirishnoma matni
+  ///
+  /// In uz, this message translates to:
+  /// **'sizga obuna bo‘ldi'**
+  String get activityFollowed;
+
+  /// Bildirishnoma matni
+  ///
+  /// In uz, this message translates to:
+  /// **'postingizni yoqtirdi'**
+  String get activityLiked;
+
+  /// Bildirishnoma matni
+  ///
+  /// In uz, this message translates to:
+  /// **'postingizga izoh yozdi'**
+  String get activityCommented;
+
+  /// Bildirishnoma matni
+  ///
+  /// In uz, this message translates to:
+  /// **'Hammasini o‘qildi'**
+  String get activityMarkAll;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

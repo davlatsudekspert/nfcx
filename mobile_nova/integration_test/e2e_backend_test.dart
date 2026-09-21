@@ -1586,25 +1586,65 @@ void main() {
           note: '${trending.value.length} ta yozuv');
     }
 
-    // ── Faoliyat ───────────────────────────────────────────────
-    final codes = ids.map((i) => i.code).toList();
-    if (codes.isEmpty) {
-      report.skip('Activity', 'yozuv yo\'q');
-    } else {
-      final feed = await activity.feed(codes);
-      switch (feed) {
-        case Err(:final error):
-          fail('Activity',
+    // ── Faoliyat / bildirishnomalar ────────────────────────────
+    //
+    // Ilgari bu yerda `/api/records/:code/analytics` so'ralar va
+    // javobdan `events` o'qilardi — server uni hech qachon
+    // yubormaydi, shuning uchun ro'yxat doim bo'sh bo'lsa ham
+    // sinov "PASS" berardi. Endi haqiqiy endpoint sinaladi.
+    final feed = await activity.list();
+    switch (feed) {
+      case Err(:final error):
+        fail('Activity',
+            screen: 'ActivityScreen',
+            action: 'GET /api/notifications',
+            cause: why(error),
+            pathHint: 'notifications');
+      case Ok(:final value):
+        report.pass('Activity',
+            screen: 'ActivityScreen',
+            action: 'GET /api/notifications',
+            note: '${value.items.length} ta hodisa; '
+                'o\'qilmagan: ${value.unreadCount}');
+
+        // O'QILDI — IKKI TOMONLAMA SINXRONIZATSIYA.
+        //
+        // Sayt va ilova bitta jadvalni o'qiydi, shuning uchun bu
+        // yerda o'qilgan xabar saytda ham o'qilgan bo'lishi kerak.
+        // Bu yerda ilova tomonini tekshiramiz: sanoq serverdan
+        // kelgan aniq qiymatga tushadimi.
+        if (value.items.any((e) => !e.read)) {
+          final first = value.items.firstWhere((e) => !e.read);
+          final before = value.unreadCount;
+          final marked = await activity.markRead(first.id);
+          switch (marked) {
+            case Err(:final error):
+              fail('Activity — o\'qildi',
+                  screen: 'ActivityScreen',
+                  action: 'POST /api/notifications/:id/read',
+                  cause: why(error),
+                  pathHint: 'notifications');
+            case Ok(:final value):
+              if (value < before) {
+                report.pass('Activity — o\'qildi',
+                    screen: 'ActivityScreen',
+                    action: 'POST /api/notifications/:id/read',
+                    note: 'o\'qilmagan $before -> $value');
+              } else {
+                fail('Activity — o\'qildi',
+                    screen: 'ActivityScreen',
+                    action: 'POST /api/notifications/:id/read',
+                    cause: 'sanoq kamaymadi: $before -> $value');
+              }
+          }
+        } else {
+          partial('Activity — o\'qildi',
               screen: 'ActivityScreen',
-              action: 'GET /api/activity',
-              cause: why(error),
-              pathHint: 'activity');
-        case Ok(:final value):
-          report.pass('Activity',
-              screen: 'ActivityScreen',
-              action: 'haqiqiy faoliyat lentasi',
-              note: '${value.length} ta hodisa');
-      }
+              action: 'POST /api/notifications/:id/read',
+              cause: 'o\'qilmagan bildirishnoma yo\'q — sinash uchun '
+                  'ikkinchi hisob kerak (obuna/like/izoh o\'zidan '
+                  'kelmaydi)');
+        }
     }
 
     backendGap(

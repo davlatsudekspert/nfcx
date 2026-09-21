@@ -514,5 +514,21 @@
   "registerTosSuffix": " shartlariga roziman.",
   "@registerTosSuffix": {
     "description": "Ro‘yxatdan o‘tishda oferta roziligi"
+  },
+  "activityFollowed": "sizga obuna bo‘ldi",
+  "@activityFollowed": {
+    "description": "Bildirishnoma matni"
+  },
+  "activityLiked": "postingizni yoqtirdi",
+  "@activityLiked": {
+    "description": "Bildirishnoma matni"
+  },
+  "activityCommented": "postingizga izoh yozdi",
+  "@activityCommented": {
+    "description": "Bildirishnoma matni"
+  },
+  "activityMarkAll": "Hammasini o‘qildi",
+  "@activityMarkAll": {
+    "description": "Bildirishnoma matni"
   }
 }

@@ -796,6 +796,9 @@ class ActivityEvent {
     this.read = false,
     this.createdAt,
     this.targetCode = '',
+    this.actorCode = '',
+    this.targetType = '',
+    this.targetId = '',
   });
 
   final int id;
@@ -806,6 +809,15 @@ class ActivityEvent {
   final bool read;
   final DateTime? createdAt;
   final String targetCode;
+
+  /// Harakatni qilgan odamning NFC kodi — obunada aynan shu profilga
+  /// o'tiladi.
+  final String actorCode;
+
+  /// Nishon turi va ID'si: `post`, `comment`, `user`. Server bermasa
+  /// bo'sh qoladi va ekran hech qayerga o'tmaydi.
+  final String targetType;
+  final String targetId;
 
   factory ActivityEvent.fromJson(Map<String, dynamic> j) => ActivityEvent(
         id: _i(j['id']),
@@ -826,6 +838,34 @@ class ActivityEvent {
         read: _b(j['read'] ?? j['isRead']),
         createdAt: _dt(j['createdAt'] ?? j['created_at']),
         targetCode: _s(j['code'] ?? j['targetCode']),
+        actorCode: _s(j['actorCode']),
+        targetType: _s(j['targetType']),
+        targetId: _s(j['targetId']),
+      );
+}
+
+/// BILDIRISHNOMALAR SAHIFASI — `GET /api/notifications` javobi.
+///
+/// Kursor bilan: `nextCursor` oxirgi ko'rilgan ID. Offset ishlatilmadi
+/// — yangi bildirishnoma kelganda offset sahifalarni surib yuborardi
+/// va bitta yozuv ikki marta ko'rinardi.
+class NotificationPage {
+  const NotificationPage({
+    this.items = const [],
+    this.unreadCount = 0,
+    this.nextCursor,
+  });
+
+  final List<ActivityEvent> items;
+  final int unreadCount;
+  final int? nextCursor;
+
+  bool get hasMore => nextCursor != null;
+
+  factory NotificationPage.fromJson(Map<String, dynamic> j) => NotificationPage(
+        items: parseList(j['items'], ActivityEvent.fromJson),
+        unreadCount: _i(j['unreadCount']),
+        nextCursor: (j['nextCursor'] as num?)?.toInt(),
       );
 }
 

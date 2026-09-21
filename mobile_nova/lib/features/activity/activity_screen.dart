@@ -11,15 +11,21 @@ import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
-import '../auth/session.dart';
 
+/// BILDIRISHNOMALAR — SAYT BILAN BITTA MANBADAN.
+///
+/// Ilgari bu yerda har bir NFC ID uchun analitika so'ralar va
+/// javobdan `events` kaliti o'qilardi — server esa uni hech qachon
+/// yubormaydi. Ro'yxat DOIM bo'sh edi.
 final activityFeedProvider =
-    FutureProvider.autoDispose<List<ActivityEvent>>((ref) async {
-  final codes = ref.watch(myIdsProvider).map((e) => e.code).toList();
-  if (codes.isEmpty) return const [];
-  final res = await ref.watch(activityRepositoryProvider).feed(codes);
+    FutureProvider.autoDispose<NotificationPage>((ref) async {
+  final res = await ref.watch(activityRepositoryProvider).list();
   return res.when(ok: (v) => v, err: (e) => throw e);
 });
+
+/// O'qilmaganlar sanog'i — sarlavhadagi nishon uchun.
+final unreadCountProvider = Provider.autoDispose<int>((ref) =>
+    ref.watch(activityFeedProvider).valueOrNull?.unreadCount ?? 0);
 
 final activityFilterProvider = StateProvider.autoDispose<bool>((_) => false);
 
@@ -69,6 +75,22 @@ class ActivityScreen extends ConsumerWidget {
                     onTap: () =>
                         ref.read(activityFilterProvider.notifier).state = true,
                   ),
+                  // "Hammasini o'qildi" — FAQAT o'qilmagani bo'lsa.
+                  // Bosiladigan, lekin hech narsa qilmaydigan tugma
+                  // qoldirilmaydi.
+                  if (ref.watch(unreadCountProvider) > 0) ...[
+                    const SizedBox(width: Gap.sm),
+                    Capsule(
+                      label: l.activityMarkAll,
+                      selected: false,
+                      onTap: () async {
+                        await ref
+                            .read(activityRepositoryProvider)
+                            .markAllRead();
+                        ref.invalidate(activityFeedProvider);
+                      },
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -79,8 +101,9 @@ class ActivityScreen extends ConsumerWidget {
               error: (e, __) => StatePanel.fromError(context, asAppError(e),
                   onRetry: () => ref.invalidate(activityFeedProvider)),
               data: (all) {
+                final rows = all.items;
                 final items =
-                    unreadOnly ? all.where((e) => !e.read).toList() : all;
+                    unreadOnly ? rows.where((e) => !e.read).toList() : rows;
                 if (items.isEmpty) {
                   return StatePanel(
                     icon: Icons.notifications_none_rounded,
@@ -108,12 +131,47 @@ class ActivityScreen extends ConsumerWidget {
   }
 }
 
-class _EventTile extends StatelessWidget {
+class _EventTile extends ConsumerWidget {
   const _EventTile({required this.event});
   final ActivityEvent event;
 
+  /// NISHON — server bergan turga qarab.
+  ///
+  /// Obunada — obuna bo'lgan odamning profili; like va izohda — post
+  /// turgan profil. Ikkalasi ham bo'sh bo'lsa (yozuv o'chirilgan)
+  /// hech qayerga o'tilmaydi: mavjud bo'lmagan ekranga yuborish
+  /// ilovani yiqitardi.
+  String? _actionText(L l) => switch (event.kind) {
+        ActivityKind.follow => l.activityFollowed,
+        ActivityKind.like => l.activityLiked,
+        ActivityKind.comment => l.activityCommented,
+        _ => null,
+      };
+
+  String? get _target {
+    final code = event.kind == ActivityKind.follow
+        ? (event.actorCode.isNotEmpty ? event.actorCode : event.targetCode)
+        : event.targetCode;
+    return code.isEmpty ? null : Routes.user(code);
+  }
+
+  Future<void> _open(BuildContext context, WidgetRef ref) async {
+    // O'QILDI — OCHISHDAN OLDIN.
+    //
+    // Server aniq sanoqni qaytaradi, lekin ro'yxat baribir qayta
+    // o'qiladi: boshqa qurilmada o'qilganlar ham hisobga olinsin.
+    // Xatosi jimgina yutiladi — bildirishnomani ocholmaslik
+    // sababi bo'lolmaydi.
+    if (!event.read) {
+      await ref.read(activityRepositoryProvider).markRead(event.id);
+      ref.invalidate(activityFeedProvider);
+    }
+    final to = _target;
+    if (to != null && context.mounted) context.push(to);
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l = L.of(context);
     final t = context.tokens;
 
@@ -132,9 +190,9 @@ class _EventTile extends StatelessWidget {
     return FloatingSurface(
       solid: true,
       padding: const EdgeInsets.all(Gap.md),
-      onTap: event.targetCode.isEmpty
-          ? null
-          : () => context.push(Routes.user(event.targetCode)),
+      // O'qilmagan yozuv nishonsiz bo'lsa ham bosiladi — hech
+      // bo'lmasa o'qilgan deb belgilanadi.
+      onTap: (_target == null && event.read) ? null : () => _open(context, ref),
       child: Row(
         children: [
           Container(
@@ -155,6 +213,17 @@ class _EventTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
+                // JUMLA SHU YERDA YIG'ILADI.
+                //
+                // Server tayyor matn emas, `type` va aktyor ismini
+                // beradi. Serverda yozilsa, u yozilgan tilda muzlab
+                // qolardi va til almashtirilganda eski xabarlar
+                // o'zbekcha qolib ketardi.
+                if (_actionText(l) != null)
+                  Text(_actionText(l)!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall),
                 if (event.subtitle.isNotEmpty)
                   Text(event.subtitle,
                       maxLines: 1,

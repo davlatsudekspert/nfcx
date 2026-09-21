@@ -1316,4 +1316,16 @@ class LRu extends L {
 
   @override
   String get registerTosSuffix => '.';
+
+  @override
+  String get activityFollowed => 'подписался на вас';
+
+  @override
+  String get activityLiked => 'оценил ваш пост';
+
+  @override
+  String get activityCommented => 'оставил комментарий к вашему посту';
+
+  @override
+  String get activityMarkAll => 'Отметить всё прочитанным';
 }

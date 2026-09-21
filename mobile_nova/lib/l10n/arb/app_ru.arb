@@ -514,5 +514,21 @@
   "registerTosSuffix": ".",
   "@registerTosSuffix": {
     "description": "Ro‘yxatdan o‘tishda oferta roziligi"
+  },
+  "activityFollowed": "подписался на вас",
+  "@activityFollowed": {
+    "description": "Bildirishnoma matni"
+  },
+  "activityLiked": "оценил ваш пост",
+  "@activityLiked": {
+    "description": "Bildirishnoma matni"
+  },
+  "activityCommented": "оставил комментарий к вашему посту",
+  "@activityCommented": {
+    "description": "Bildirishnoma matni"
+  },
+  "activityMarkAll": "Отметить всё прочитанным",
+  "@activityMarkAll": {
+    "description": "Bildirishnoma matni"
   }
 }

@@ -14,21 +14,38 @@ class ActivityRepository {
   ActivityRepository(this._api);
   final ApiClient _api;
 
-  /// Foydalanuvchining barcha NFC ID'lari bo'yicha hodisalar.
+  /// BILDIRISHNOMALAR — SAYT BILAN BITTA MANBADAN.
   ///
-  /// Backend har bir ID uchun alohida analitika beradi, umumiy lenta
-  /// endpointi yo'q — shuning uchun ro'yxat shu yerda birlashtiriladi
-  /// va sana bo'yicha saralanadi.
-  Future<Result<List<ActivityEvent>>> feed(List<String> codes) async {
-    final all = <ActivityEvent>[];
-    for (final code in codes.take(5)) {
-      final res = await _api.get<Map<String, dynamic>>('/api/records/$code/analytics');
-      if (res case Ok(:final value)) {
-        all.addAll(parseList(value['events'] ?? value['items'], ActivityEvent.fromJson));
-      }
-    }
-    all.sort((a, b) => (b.createdAt ?? DateTime(0)).compareTo(a.createdAt ?? DateTime(0)));
-    return Ok(all);
+  /// Ilgari bu yerda har bir NFC ID uchun
+  /// `/api/records/:code/analytics` so'ralar va javobdan `events`
+  /// kaliti o'qilardi. Server esa uni HECH QACHON yubormaydi — o'sha
+  /// endpoint faqat yig'ma statistika beradi (`totalViews`, `byDay`,
+  /// `byRef`). Ya'ni ro'yxat DOIM bo'sh edi va E2E buni "0 ta
+  /// hodisa" deb yozib turardi.
+  ///
+  /// Endi haqiqiy manba: `GET /api/notifications`. O'sha jadvalni
+  /// sayt ham o'qiydi, shuning uchun telefonda o'qilgan xabar saytda
+  /// ham o'qilgan bo'lib ko'rinadi.
+  ///
+  /// `/api/records/:code/analytics` O'Z O'RNIDA QOLADI — u analitika
+  /// uchun va bildirishnoma uning o'rnini bosmaydi. Ko'rish va bosish
+  /// statistikasi bildirishnomaga aylantirilmaydi: Activity — odamga
+  /// tegishli hodisalar, analitika esa raqamlar.
+  Future<Result<NotificationPage>> list({int cursor = 0}) async {
+    final q = cursor > 0 ? '?cursor=$cursor' : '';
+    final res = await _api.get<Map<String, dynamic>>('/api/notifications$q');
+    return res.map(NotificationPage.fromJson);
+  }
+
+  /// Bittasini o'qilgan deb belgilash. Server aniq sanoqni qaytaradi.
+  Future<Result<int>> markRead(int id) async {
+    final res = await _api.post<Map<String, dynamic>>('/api/notifications/$id/read');
+    return res.map((j) => (j['unreadCount'] as num?)?.toInt() ?? 0);
+  }
+
+  Future<Result<int>> markAllRead() async {
+    final res = await _api.post<Map<String, dynamic>>('/api/notifications/read-all');
+    return res.map((j) => (j['unreadCount'] as num?)?.toInt() ?? 0);
   }
 
   /// Biznes uchun kelgan murojaatlar (lead).
