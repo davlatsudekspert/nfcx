@@ -97,16 +97,42 @@ jobs:
       - name: Kod tekshiruvi
         run: flutter analyze
 
-      # Sinov hisobi sozlanmagan bo'lsa, emulyatorni behuda ko'tarmaymiz.
+      # Sinov hisobi sozlanmagan bo'lsa, emulyatorni behuda
+      # ko'tarmaymiz.
+      #
+      # SIR NOMLARI — IKKITA MANBA, BITTA MA'NO.
+      #
+      # Repozitoriyada `NFC_LOGIN_EMAIL` / `NFC_LOGIN_PASSWORD`
+      # allaqachon bor. Bu workflow esa `NOVA_TEST_*` nomlari bilan
+      # yozilgan edi. Sir NOMINI o'zgartirish o'rniga ikkalasi ham
+      # qabul qilinadi: mavjudi ishlatiladi.
+      #
+      # `||` GitHub ifodasi — bo'sh (mavjud bo'lmagan) sir "yolg'on"
+      # sanaladi va ikkinchisiga o'tadi. Qiymat HECH QACHON chop
+      # etilmaydi; pastdagi tekshiruv faqat BO'SH-EMASLIGINI
+      # ko'radi.
       - name: Sinov hisobi bormi
         env:
-          LOGIN: ${{ secrets.NOVA_TEST_LOGIN }}
-          PASSWORD: ${{ secrets.NOVA_TEST_PASSWORD }}
+          LOGIN: ${{ secrets.NFC_LOGIN_EMAIL || secrets.NOVA_TEST_LOGIN }}
+          PASSWORD: ${{ secrets.NFC_LOGIN_PASSWORD || secrets.NOVA_TEST_PASSWORD }}
+          LOGIN2: ${{ secrets.NOVA_TEST_LOGIN_2 }}
+          PASSWORD2: ${{ secrets.NOVA_TEST_PASSWORD_2 }}
         run: |
           if [ -z "$LOGIN" ] || [ -z "$PASSWORD" ]; then
-            echo "::error::NOVA_TEST_LOGIN / NOVA_TEST_PASSWORD secret'lari yo'q."
+            echo "::error::Sinov hisobi siri yo'q: NFC_LOGIN_EMAIL / NFC_LOGIN_PASSWORD (yoki eski NOVA_TEST_LOGIN / NOVA_TEST_PASSWORD)."
             echo "Settings -> Secrets and variables -> Actions da qo'shing."
             exit 1
+          fi
+          # IKKINCHI HISOB — MAJBURIY EMAS, LEKIN BAHOSI BOR.
+          #
+          # Follow / unfollow / bildirishnoma oqimini BITTA hisob
+          # bilan sinab bo'lmaydi: server o'ziga obuna bo'lishni
+          # ataylab taqiqlaydi (409 CANNOT_FOLLOW_SELF) va bu
+          # TO'G'RI qoida — uni test uchun yumshatish mumkin emas.
+          # Shuning uchun ikkinchi hisob bo'lmasa o'sha qatorlar
+          # CONFIG REQUIRED bo'lib qoladi, ish esa qizarmaydi.
+          if [ -z "$LOGIN2" ] || [ -z "$PASSWORD2" ]; then
+            echo "::warning::Ikkinchi sinov hisobi yo'q (NOVA_TEST_LOGIN_2 / NOVA_TEST_PASSWORD_2) — follow/bildirishnoma qatorlari CONFIG REQUIRED bo'ladi."
           fi
           # Qiymat ham, uzunlik ham chop etilMAYDI: uzunlik ham
           # parol haqidagi ma'lumot. Qisqa parol haqida ogohlantirish
@@ -162,8 +188,10 @@ jobs:
         continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         env:
-          NOVA_TEST_LOGIN: ${{ secrets.NOVA_TEST_LOGIN }}
-          NOVA_TEST_PASSWORD: ${{ secrets.NOVA_TEST_PASSWORD }}
+          # Mavjud `NFC_LOGIN_*` birinchi; eski nom zaxira (yuqoridagi
+          # "Sinov hisobi bormi" qadamidagi mantiq bilan bir xil).
+          NOVA_TEST_LOGIN: ${{ secrets.NFC_LOGIN_EMAIL || secrets.NOVA_TEST_LOGIN }}
+          NOVA_TEST_PASSWORD: ${{ secrets.NFC_LOGIN_PASSWORD || secrets.NOVA_TEST_PASSWORD }}
           NOVA_TEST_LOGIN_2: ${{ secrets.NOVA_TEST_LOGIN_2 }}
           NOVA_TEST_PASSWORD_2: ${{ secrets.NOVA_TEST_PASSWORD_2 }}
         with:
