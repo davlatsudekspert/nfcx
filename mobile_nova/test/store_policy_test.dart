@@ -98,6 +98,57 @@ void main() {
     });
   });
 
+  /// RAD ETILSA — BITTA KALIT.
+  ///
+  /// Play anti-steering bo'yicha rad etsa, tuzatish besh ekranni
+  /// qayta yozishni emas, bitta so'zni almashtirishni talab
+  /// qilishi kerak. Bosim ostida qo'lda o'chirishda bitta joy
+  /// albatta esdan chiqadi.
+  group('sayt yozuvi kaliti', () {
+    final src =
+        File('lib/features/shop/store_policy.dart').readAsStringSync();
+
+    test('kalit mavjud', () {
+      expect(src, contains('const kShowSiteNotice'),
+          reason: 'kalit o\'chirib yuborilgan');
+    });
+
+    test('kalit `StoreNotice` ni HAQIQATAN o\'chiradi', () {
+      // Kalit bor, lekin hech qayerda tekshirilmasa — u bezak.
+      expect(src, contains('if (!kShowSiteNotice) return'),
+          reason: 'kalit tekshirilmayapti');
+    });
+
+    test('XARIDGA yo\'naltiruvchi matn faqat `StoreNotice` orqali', () {
+      // MUHIMI QAYSI MATN EKANI.
+      //
+      // `nfcstore.uz` ilovada ko'p joyda uchraydi va ularning
+      // aksariyati anti-steering'ga umuman aloqasiz: ulashish
+      // havolasi (`nfcstore.uz/c/...`), API manzili, Sozlamalardagi
+      // "bizning saytimiz" kartasi. Bularni o'chirish ilovani
+      // buzardi va Play'ning talabi ham bu emas.
+      //
+      // Xavfli narsa bitta: "buni saytdan sotib olasiz" degan
+      // matn, ya'ni `storeBuyOnSite*` satrlari. Ular FAQAT
+      // `StoreNotice` ichidan chiqishi kerak — aks holda kalit
+      // ularni o'chira olmaydi va rad etishdan keyin yozuv
+      // ilovada qolib ketadi.
+      final leaks = <String>[];
+      for (final f in Directory('lib').listSync(recursive: true)
+          .whereType<File>()) {
+        if (!f.path.endsWith('.dart')) continue;
+        if (f.path.contains('/l10n/')) continue; // tarjima manbalari
+        if (f.path.endsWith('store_policy.dart')) continue;
+        final body = f.readAsStringSync();
+        if (body.contains('storeBuyOnSite') && !body.contains('StoreNotice')) {
+          leaks.add(f.path);
+        }
+      }
+      expect(leaks, isEmpty,
+          reason: 'xarid matni `StoreNotice` dan tashqarida ishlatilgan');
+    });
+  });
+
   /// JISMONIY KARTA DO'KONI TEGILMAGAN.
   ///
   /// U qoidadan ozod va ilovadagi yagona to'lov kanali bo'lib

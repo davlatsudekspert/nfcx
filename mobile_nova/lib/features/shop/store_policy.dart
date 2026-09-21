@@ -33,6 +33,33 @@ import '../../l10n/gen/app_localizations.dart';
 /// Saytning manzili — MATN sifatida ko'rsatiladi, havola emas.
 const kSiteHost = 'nfcstore.uz';
 
+/// SAYT MANZILI UMUMAN KO'RSATILSINMI.
+///
+/// ## NIMA UCHUN BU KALIT BOR
+///
+/// "Xarid saytda rasmiylashtiriladi: nfcstore.uz" degan yozuv
+/// bosilmaydi — na tugma, na havola. Shunga qaramay Google
+/// Play'ning anti-steering qoidasi bo'yicha xavf NOLGA teng
+/// emas: qoida foydalanuvchini tashqi to'lovga yo'naltirishni
+/// cheklaydi, "yo'naltirish" ning chegarasi esa Google
+/// tekshiruvchisining qarorida.
+///
+/// Egasining qarori (2026-09): yozuv QOLSIN, chunki usiz mijoz
+/// NFC ID ni qayerdan olishini umuman bilmay qoladi. Play rad
+/// etsa — shu kalit `false` qilinadi va ilova qayta yig'iladi.
+///
+/// ## NIMA UCHUN KALIT, KODNI O'CHIRISH EMAS
+///
+/// Rad etish kelsa, tuzatish bir necha ekranni qayta yozishni
+/// emas, BITTA so'zni almashtirishni talab qilsin. Yozuv besh
+/// joyda chiziladi; ularni qo'lda birma-bir olib tashlash
+/// bosim ostida qilinadigan ish va bittasi albatta esdan
+/// chiqadi.
+///
+/// `false` bo'lganda `StoreNotice` hech narsa chizmaydi —
+/// atrofidagi ekranlarga tegilmaydi.
+const kShowSiteNotice = true;
+
 /// Buyurtma turlari (`web_orders.kind`) — server bilan bir xil nom.
 class OrderKind {
   static const nfcId = 'card_purchase';
@@ -62,6 +89,11 @@ class StoreNotice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Kalit o'chirilgan bo'lsa — hech narsa. Ekranning qolgan
+    // qismi avvalgidek ishlaydi, chunki bu shunchaki izoh
+    // kartasi edi.
+    if (!kShowSiteNotice) return const SizedBox.shrink();
+
     final t = context.tokens;
     return Container(
       padding: const EdgeInsets.all(Gap.lg),
