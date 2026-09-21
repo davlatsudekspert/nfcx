@@ -23,6 +23,8 @@
 // haqoratni olib tashlay olmaydi; muallifsiz — o'z so'zini qaytarib
 // ololmaydi.
 
+import { createNotification } from './notifications.js';
+
 const KINDS = ['post', 'company_post', 'story', 'company_story'];
 
 // Izoh uzunligi. Instagram'da 2200 — bu yerda 1000 yetarli va
@@ -366,6 +368,25 @@ export async function handle(request, env, url, H) {
       `INSERT INTO content_comments (target_kind, target_id, user_id, author_code, body, created_at)
        VALUES (?,?,?,?,?,?) RETURNING id`
     ).bind(kind, id, user.id, author.code, body, now).first();
+
+    // Bildirishnoma — izoh YOZILGANDAN keyin, javobdan oldin.
+    //
+    // `targetType: 'comment'` va `targetId` AYNAN izoh ID'si:
+    // shuning uchun ikkita alohida izoh ikkita bildirishnoma
+    // beradi (to'g'ri), takroriy so'rov esa yangi izoh yaratmagani
+    // uchun takroriy xabar ham bermaydi.
+    //
+    // Xatosi yutiladi: bildirishnoma yozilmagani uchun odamning
+    // izohi yo'qolib ketishi mumkin emas.
+    await createNotification(env, {
+      recipientUserId: target.ownerUserId,
+      actorUserId: user.id,
+      kind: 'comment',
+      targetType: 'comment',
+      targetId: Number(ins?.id) || 0,
+      targetCode: target.ownerCode || '',
+      now,
+    });
 
     return H.json({
       comment: {

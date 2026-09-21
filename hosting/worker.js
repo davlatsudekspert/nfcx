@@ -16,6 +16,7 @@ import * as apiAssistant from './api/assistant.js';
 import * as apiModeration from './api/moderation.js';
 import * as apiComments from './api/comments.js';
 import * as apiMarketplace from './api/marketplace.js';
+import * as apiNotifications from './api/notifications.js';
 
 // API javoblari standart holda KESHLANMAYDI.
 //
@@ -9002,13 +9003,29 @@ async function postsApi(request, env, url) {
   }
 
   if (m[2] === 'like' && request.method === 'POST') {
-    const post = await env.DB.prepare(`SELECT id FROM posts WHERE id = ?`).bind(postId).first();
+    // `user_id` va `code` ham olinadi: bildirishnoma KIMGA
+    // ketishini aniqlash uchun post egasi kerak. Ilgari faqat `id`
+    // o'qilardi.
+    const post = await env.DB.prepare(`SELECT id, user_id, code FROM posts WHERE id = ?`).bind(postId).first();
     if (!post) return json({ error: 'not_found' }, 404);
     const existing = await env.DB.prepare(`SELECT id FROM post_likes WHERE post_id = ? AND user_id = ?`).bind(postId, user.id).first();
     if (existing) {
       await env.DB.prepare(`DELETE FROM post_likes WHERE id = ?`).bind(existing.id).run();
     } else {
       await env.DB.prepare(`INSERT OR IGNORE INTO post_likes (post_id, user_id) VALUES (?, ?)`).bind(postId, user.id).run();
+      // FAQAT LIKE QO'YILGANDA. Like olinganda bildirishnoma
+      // yaratilmaydi va mavjudi ham o'chirilmaydi: "like bosdi,
+      // keyin oldi" degan xabarning ma'nosi yo'q, qayta bosilganda
+      // esa unique indeks takrorini to'sadi.
+      await apiNotifications.createNotification(env, {
+        recipientUserId: post.user_id,
+        actorUserId: user.id,
+        kind: 'like',
+        targetType: 'post',
+        targetId: postId,
+        targetCode: post.code || '',
+        now: nowTs(),
+      });
     }
     const cnt = await env.DB.prepare(`SELECT COUNT(*) AS n FROM post_likes WHERE post_id = ?`).bind(postId).first();
     return json({ liked: !existing, count: Number(cnt?.n || 0) });
@@ -9346,6 +9363,17 @@ async function followApi(request, env, url) {
       }
       throw err;
     }
+    // Bildirishnoma — obuna YOZILGANDAN keyin. Yuqoridagi
+    // `already` sharti tufayli bu joyga faqat YANGI obuna yetib
+    // keladi, ya'ni takroriy xabar yaratilmaydi.
+    await apiNotifications.createNotification(env, {
+      recipientUserId: ownerId,
+      actorUserId: user.id,
+      kind: 'follow',
+      targetType: 'user',
+      targetCode: code,
+      now: nowTs(),
+    });
     return json({ ok: true, paid: false });
   }
 
@@ -9548,7 +9576,12 @@ const H = {
   // biri qolib ketardi — aynan shunday xato bir marta bo'lgan.
   TEST_USER_IDS_D1,
 };
-const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiMarketplace];
+// `apiNotifications` `apiMarketplace` DAN OLDIN turadi.
+// `scripts/test-marketplace.mjs` ro'yxat AYNAN `apiMarketplace]`
+// bilan tugashini tekshiradi — oxiriga qo'shilsa o'sha qo'riqchi
+// yiqiladi. Tartibning boshqa ahamiyati yo'q: har bir modul o'ziga
+// tegishli bo'lmagan yo'lga `null` qaytaradi.
+const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiMarketplace];
 
 // Xavfsizlik header'lari — barcha javoblarga (statik va API). CSP ataylab faqat
 // framing/base/form/object ni cheklaydi (script/style ga tegmaydi — YouTube/Yandex

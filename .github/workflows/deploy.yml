@@ -70,6 +70,15 @@ jobs:
       - name: Kod ishlatadigan binding'lar e'lon qilinganmi
         run: node scripts/test-worker-bindings.mjs
 
+      # BILDIRISHNOMALAR — ilova va sayt uchun BITTA tizim.
+      #
+      # O'qildi holati backendda saqlanadi, shuning uchun telefonda
+      # o'qilgan xabar saytda ham o'qilgan bo'lib ko'rinadi. Test
+      # egalik, takrorlanmaslik va o'ziga xabar yubormaslikni ham
+      # tekshiradi.
+      - name: Bildirishnomalar (obuna / like / izoh)
+        run: node scripts/test-notifications.mjs
+
       - name: Worker yiqilsa sabab ko'rinadimi
         run: node scripts/test-worker-error-visibility.mjs
 
