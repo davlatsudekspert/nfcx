@@ -5361,7 +5361,47 @@ async function authApi(request, env, url) {
     if (!user) return json({ user: null, cards: [] });
     const rows = await env.DB.prepare(`SELECT ${recordColumnsD1()} FROM cards WHERE user_id = ? ORDER BY is_primary DESC, ts DESC`)
       .bind(user.id).all();
-    return json({ user, cards: (rows.results || []).map(rowToRecord) });
+    // OBUNACHILAR SONI — KARTA MA'LUMOTIDA HAM.
+    //
+    // `rowToRecord()` faqat `views` va `taps` beradi; `followers`
+    // maydoni umuman yo'q edi va ilovadagi "FAOL NFC ID" kartasi
+    // HAR DOIM 0 ko'rsatardi — hech kimda obunachi ko'rinmasdi.
+    //
+    // `follows` jadvali FOYDALANUVCHI bo'yicha ishlaydi
+    // (`follower_id`/`followee_id`), karta bo'yicha emas — shuning
+    // uchun sanoq bir marta olinadi va egasining hamma kartasiga
+    // bir xil qo'yiladi. Bu `/api/follow-stats/:code` beradigan
+    // AYNAN o'sha raqam: ikkinchi manba yaratilmadi.
+    const fr = await env.DB.prepare(
+      `SELECT COUNT(*) AS n FROM follows WHERE followee_id = ?`
+    ).bind(user.id).first().catch(() => null);
+    const followers = Number(fr?.n) || 0;
+
+    // POSTLAR SONI — ilovadagi uchinchi raqam uchun.
+    //
+    // Ilgari u yerda "Skanerlashlar" (`taps`) turardi, lekin bu
+    // maydonni server HECH QACHON yubormagan va NFC tegizishlar
+    // hech qayerda sanalmaydi ham — ya'ni raqam HAR DOIM 0 edi.
+    // Bo'lmagan narsani ko'rsatgandan ko'ra, bor narsani
+    // ko'rsatgan to'g'ri.
+    const cards = rows.results || [];
+    const counts = new Map();
+    if (cards.length) {
+      const marks = cards.map(() => '?').join(',');
+      const pr = await env.DB.prepare(
+        `SELECT code, COUNT(*) AS n FROM posts WHERE code IN (${marks}) GROUP BY code`
+      ).bind(...cards.map((c) => c.code)).all().catch(() => null);
+      for (const r of (pr?.results || [])) counts.set(String(r.code), Number(r.n) || 0);
+    }
+
+    return json({
+      user,
+      cards: cards.map((r) => ({
+        ...rowToRecord(r),
+        followers,
+        posts: counts.get(String(r.code)) || 0,
+      })),
+    });
   }
 
   // Registration needs the Telegram bot (phone verification via bot webhook,
