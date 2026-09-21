@@ -342,6 +342,81 @@ kutilgan, nima chiqqan, va ekran surati.
 
 ---
 
+## 9. QURILMADA TOPILGAN UCHTA XATO — QAYTA TEKSHIRUV
+
+Bu bo'lim 2026-09-21 da haqiqiy Android telefonda topilgan
+xatolar uchun. Har bir qator TELEFONDA bajarilishi kerak:
+emulyatorda video ijrosi ham, ovoz ham ishonchli emas.
+
+Ikkita hisob kerak: **A** (siz) va **B** (boshqa profil).
+
+### 9.1 Kuzatish — holat saqlanadimi
+
+| # | Qadam | Kutilgan |
+|---|-------|----------|
+| 1 | A bilan kiring, B ning profilini oching | tugma holati SERVERDAN keladi: agar allaqachon obuna bo'lsangiz — «Kuzatilmoqda» |
+| 2 | «Kuzatish» ni bosing | ✓ chiqadi va **QAYTIB KETMAYDI** |
+| 3 | Orqaga chiqib, B profilini QAYTA oching | hali ham «Kuzatilmoqda» |
+| 4 | Ilovani butunlay yopib, qayta oching, B ga kiring | hali ham «Kuzatilmoqda» |
+| 5 | «Kuzatilmoqda» ni bosing (obunani yechish) | «Kuzatish» ga qaytadi va qayta ochilganda ham shunday qoladi |
+| 6 | Internetni o'chirib, 2-qadamni takrorlang | ✓ **KO'RSATILMAYDI**; aniq xato xabari chiqadi |
+
+> 6-qator muhim: ilova server tasdiqlamagan narsani tasdiqlangandek
+> ko'rsatmasligi kerak.
+
+### 9.2 Obunachilar / Obunalar — raqam va ro'yxat
+
+| # | Qadam | Kutilgan |
+|---|-------|----------|
+| 1 | O'z profilingizni oching | uchta raqam HAQIQIY (0 emas, agar postingiz/obunachingiz bo'lsa). Javob kelmaguncha «—» turadi |
+| 2 | B ga obuna bo'ling, B profilini oching | B ning «Obunachilar» soni +1 |
+| 3 | O'z profilingizga qayting | «Obunalar» soni +1 |
+| 4 | «Obunachilar» raqamini bosing | HAQIQIY ro'yxat ochiladi |
+| 5 | Ro'yxatdan birortasini bosing | o'sha profil ochiladi |
+| 6 | «Obunalar» ni bosing | obuna bo'lganlaringiz chiqadi (obunachilar EMAS) |
+| 7 | Obunani yeching, profilni qayta oching | raqam −1 |
+
+> 6-qator aynan shu xatoni ushlaydi: ilova noto'g'ri parametr
+> yuborganda server ikkala tugmaga ham obunachilarni qaytarardi.
+
+### 9.3 B ning bildirishnomasi
+
+| # | Qadam | Kutilgan |
+|---|-------|----------|
+| 1 | A bilan B ga obuna bo'ling | — |
+| 2 | B hisobiga kiring, Faoliyat bo'limini oching | A ning obunasi haqida yozuv BOR, o'qilmagan |
+| 3 | Yozuvni bosing | o'qilgan bo'ladi va A profiliga olib boradi |
+| 4 | A bilan yana obuna bo'ling (yechib, qayta) | takroriy YOZUV yaratilmaydi (yangi obuna — yangi yozuv, lekin duplikat emas) |
+| 5 | A o'ziga obuna bo'lishga urinsin | mumkin emas; o'ziga bildirishnoma kelmaydi |
+
+### 9.4 Lentadagi video — Instagram xulqi *(DEVICE REQUIRED)*
+
+Bosh sahifada kamida ikkita VIDEO post bo'lishi kerak.
+
+| # | Qadam | Kutilgan |
+|---|-------|----------|
+| 1 | Bosh sahifani oching, birinchi videogacha suring | video ekranning ~2/3 qismini egallaganda O'ZI boshlanadi |
+| 2 | Ikkinchi videogacha suring | birinchisi DARHOL to'xtaydi, ikkinchisi boshlanadi |
+| 3 | Ikkalasi ham yarimta ko'rinadigan joyda to'xtang | HECH BIRI o'ynamaydi |
+| 4 | Diqqat bilan tinglang | bir vaqtda BITTA ovoz; ikkita ovoz ustma-ust kelmaydi |
+| 5 | Videoni ekrandan butunlay chiqaring | to'xtaydi |
+| 6 | Boshqa tabga o'ting | ovoz DARHOL to'xtaydi |
+| 7 | Bosh sahifaga qayting | faqat HOZIR ko'rinayotgan video boshlanadi; yashirin eski video o'zi o'ynamaydi |
+| 8 | Telefonning Home tugmasini bosing (ilova fonga) | ovoz to'xtaydi |
+| 9 | Ilovaga qayting | faqat ko'rinayotgani davom etadi |
+| 10 | Profil musiqasi o'ynayotganda videoga suring | musiqa to'xtaydi, video boshlanadi |
+
+### 9.5 "Asosiy" tugmasi
+
+| # | Qadam | Kutilgan |
+|---|-------|----------|
+| 1 | Boshqa tabda turib «Asosiy» ni bosing | bosh sahifaga o'tadi |
+| 2 | Bosh sahifani pastga suring | — |
+| 3 | «Asosiy» ni QAYTA bosing | ro'yxat animatsiya bilan eng tepaga qaytadi |
+| 4 | Tepada turib yana bosing | hech narsa buzilmaydi |
+
+---
+
 ## Natijani qaytarish
 
 Qisqa jadval yetarli:

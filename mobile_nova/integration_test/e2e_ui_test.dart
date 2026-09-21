@@ -302,6 +302,71 @@ void main() {
         layer: 'frontend',
       ));
     }
+    // ── "ASOSIY" QAYTA BOSILGANDA TEPAGA QAYTADI ──────────────
+    //
+    // Qurilmadagi shikoyat: lentani pastga silkitgandan keyin
+    // "Asosiy" ni bosish hech narsa qilmasdi.
+    //
+    // Bu yerda HAQIQIY qurilmada o'lchanadi: birinchi tabga
+    // o'tiladi, ro'yxat pastga suriladi, so'ng o'sha tab QAYTA
+    // bosiladi va siljish o'rni tekshiriladi.
+    if (tabCount >= 1) {
+      await t.tap(navIcons.at(0), warnIfMissed: false);
+      await settle(t, frames: 20);
+
+      final scrollables = find.byType(Scrollable);
+      if (scrollables.evaluate().isEmpty) {
+        report.add(MatrixRow(
+          name: 'Asosiy — tepaga qaytish',
+          verdict: Verdict.partial,
+          screen: 'HomeScreen',
+          action: '"Asosiy" ni qayta bosish',
+          cause: 'bosh sahifada siljiydigan ro\'yxat topilmadi',
+          layer: 'frontend',
+        ));
+      } else {
+        final pos = t.state<ScrollableState>(scrollables.first).position;
+        final room = pos.maxScrollExtent;
+        if (room < 80) {
+          report.add(MatrixRow(
+            name: 'Asosiy — tepaga qaytish',
+            verdict: Verdict.partial,
+            screen: 'HomeScreen',
+            action: '"Asosiy" ni qayta bosish',
+            cause: 'bosh sahifa siljimaydi (maxScrollExtent=$room) — '
+                'sinov ma\'noga ega emas',
+            layer: 'frontend',
+          ));
+        } else {
+          pos.jumpTo(room < 400 ? room : 400);
+          await settle(t, frames: 5);
+          final before = pos.pixels;
+
+          await t.tap(navIcons.at(0), warnIfMissed: false);
+          await settle(t, frames: 20);
+
+          final after = t
+              .state<ScrollableState>(find.byType(Scrollable).first)
+              .position
+              .pixels;
+          if (before > 0 && after == 0) {
+            report.pass('Asosiy — tepaga qaytish',
+                screen: 'HomeScreen',
+                action: '"Asosiy" ni qayta bosish',
+                note: '$before px dan 0 ga qaytdi');
+          } else {
+            report.add(MatrixRow(
+              name: 'Asosiy — tepaga qaytish',
+              verdict: Verdict.fail,
+              screen: 'HomeScreen',
+              action: '"Asosiy" ni qayta bosish',
+              cause: 'siljish $before -> $after (0 bo\'lishi kerak edi)',
+              layer: 'frontend',
+            ));
+          }
+        }
+      }
+    }
   }, timeout: const Timeout(Duration(minutes: 6)));
 
   // ══════════════════════════════════════════════════════════════
