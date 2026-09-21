@@ -98,6 +98,17 @@ const readAgain = await call(`/api/notifications/${firstId}/read`, { method: 'PO
 check('8) takroriy o’qildi — xato emas', readAgain.status, 200);
 check('8) sanoq o’zgarmadi', readAgain.body.unreadCount, 2);
 
+// ── 8b) QURILMALARARO SINXRONIZATSIYA ────────────────
+//
+// Ilova va sayt BITTA jadvalni o'qiydi, shuning uchun bir joyda
+// o'qilgan xabar ikkinchisida ham o'qilgan bo'lishi kerak. Bu
+// yerda "ikkinchi mijoz" — YANGI ro'yxat so'rovi: u holatni
+// qurilmadan emas, serverdan oladi.
+const otherClient = await call('/api/notifications', asB);
+const syncedItem = otherClient.body.items.find((x) => x.id === firstId);
+check('8b) boshqa mijozda ham O’QILGAN', syncedItem?.read, true);
+check('8b) boshqa mijozda sanoq ham bir xil', otherClient.body.unreadCount, 2);
+
 // ── 9) HAMMASINI O’QILDI ────────────────────────────────────
 const all = await call('/api/notifications/read-all', { method: 'POST', ...asB });
 check('9) hammasi o’qildi', all.body.unreadCount, 0);
