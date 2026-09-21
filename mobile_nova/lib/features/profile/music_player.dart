@@ -34,23 +34,48 @@ import '../../l10n/gen/app_localizations.dart';
 ///
 /// Reels videosi ham, profil musiqasi ham shu yerdan navbat oladi.
 /// Yangi egasi kelganda avvalgisiga to'xtash buyrug'i boradi.
-class AudioOwner extends StateNotifier<Object?> {
-  AudioOwner() : super(null);
-
+///
+/// ## NIMA UCHUN BU `StateNotifier` EMAS
+///
+/// Ilgari shunday edi va egalik `state` ichida turardi. Oqibati:
+/// `take()` yoki `release()` vidjet hayot siklidan chaqirilsa
+/// (`initState`, `didUpdateWidget`, `dispose`) Riverpod istisno
+/// otardi:
+///
+///     Tried to modify a provider while the widget tree was building.
+///
+/// Reels aynan shunga yiqildi: `_ReelPage.initState` -> `_open()`
+/// -> `take()`, va bu sliver dangasa qurayotgan paytda sodir
+/// bo'lardi. E2E da u "failed after test completion" bo'lib
+/// chiqardi — ya'ni har bir tekshiruv o'tsa ham to'plam qizil edi.
+///
+/// Sabab tuzilishda: egalik reyestri UI HOLATI EMAS. Uni hech kim
+/// `watch` qilmaydi — butun ilovada faqat `.notifier` o'qilardi.
+/// Ya'ni `state` shunchaki ichki daftar edi va uni provayder
+/// holatida saqlashning sababi yo'q edi.
+///
+/// Endi bu oddiy obyekt: egalik `_current` da turadi, provayder
+/// esa uni bir marta yaratadi. Shu bilan butun xatolar sinfi
+/// yopildi — reyestrni ISTALGAN joydan chaqirish xavfsiz.
+class AudioOwner {
   final _stoppers = <Object, VoidCallback>{};
+  Object? _current;
+
+  /// Hozirgi egasi — sinovlar uchun.
+  Object? get current => _current;
 
   /// Egalikni oladi. Avvalgi egasi to'xtatiladi.
   void take(Object owner, VoidCallback stop) {
-    final prev = state;
+    final prev = _current;
     if (prev != null && prev != owner) _stoppers[prev]?.call();
     _stoppers[owner] = stop;
-    state = owner;
+    _current = owner;
   }
 
   /// Egalikni bo'shatadi — faqat o'zi egasi bo'lsa.
   void release(Object owner) {
     _stoppers.remove(owner);
-    if (state == owner) state = null;
+    if (_current == owner) _current = null;
   }
 
   /// HAMMA MANBANI DARHOL TO'XTATADI.
@@ -69,8 +94,7 @@ class AudioOwner extends StateNotifier<Object?> {
   }
 }
 
-final audioOwnerProvider =
-    StateNotifierProvider<AudioOwner, Object?>((ref) => AudioOwner());
+final audioOwnerProvider = Provider<AudioOwner>((ref) => AudioOwner());
 
 /// Musiqa boshqaruvi — avatar/orbning pastki CHAP tomonida.
 ///
@@ -284,7 +308,7 @@ class MusicPlayer extends StateNotifier<MusicState>
       if (state.playing) {
         await pause();
       } else {
-        _ref.read(audioOwnerProvider.notifier).take(this, stop);
+        _ref.read(audioOwnerProvider).take(this, stop);
         await _c!.play();
         state = state.copyWith(playing: true);
       }
@@ -323,7 +347,7 @@ class MusicPlayer extends StateNotifier<MusicState>
     }
 
     c.addListener(_onTick);
-    _ref.read(audioOwnerProvider.notifier).take(this, stop);
+    _ref.read(audioOwnerProvider).take(this, stop);
     await c.play();
     state = state.copyWith(
       playing: true,
@@ -343,14 +367,14 @@ class MusicPlayer extends StateNotifier<MusicState>
     );
     // Oxiriga yetdi — egalikni bo'shatamiz.
     if (v.duration > Duration.zero && v.position >= v.duration) {
-      _ref.read(audioOwnerProvider.notifier).release(this);
+      _ref.read(audioOwnerProvider).release(this);
     }
   }
 
   Future<void> pause() async {
     await _c?.pause();
     if (mounted) state = state.copyWith(playing: false);
-    _ref.read(audioOwnerProvider.notifier).release(this);
+    _ref.read(audioOwnerProvider).release(this);
   }
 
   /// Boshqa audio egalik olganda chaqiriladi.
@@ -371,7 +395,7 @@ class MusicPlayer extends StateNotifier<MusicState>
       c.removeListener(_onTick);
       await c.dispose();
     }
-    _ref.read(audioOwnerProvider.notifier).release(this);
+    _ref.read(audioOwnerProvider).release(this);
   }
 
   @override

@@ -96,7 +96,7 @@ void main() {
     ProviderScope.containerOf(
             tester.element(find.byType(StoryViewerScreen)),
             listen: false)
-        .read(audioOwnerProvider.notifier)
+        .read(audioOwnerProvider)
         .take(#video, () => events.add('stop'));
     return router;
   }

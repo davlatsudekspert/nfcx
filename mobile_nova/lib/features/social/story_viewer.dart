@@ -84,7 +84,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
   /// ekran ketgan, ovoz esa davom etardi.
   void _stopMedia() {
     _progress.stop();
-    ref.read(audioOwnerProvider.notifier).stopAll();
+    ref.read(audioOwnerProvider).stopAll();
   }
 
   /// YAGONA CHIQISH NUQTASI.

@@ -77,25 +77,25 @@ void main() {
     test('yangi egasi kelganda avvalgisi TO‘XTATILADI', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
-      final owner = container.read(audioOwnerProvider.notifier);
+      final owner = container.read(audioOwnerProvider);
 
       var musicStopped = 0;
       final music = Object();
       final reel = Object();
 
       owner.take(music, () => musicStopped++);
-      expect(container.read(audioOwnerProvider), music);
+      expect(container.read(audioOwnerProvider).current, music);
       expect(musicStopped, 0);
 
       owner.take(reel, () {});
-      expect(container.read(audioOwnerProvider), reel);
+      expect(container.read(audioOwnerProvider).current, reel);
       expect(musicStopped, 1, reason: 'reels ovoz olganda musiqa to‘xtaydi');
     });
 
     test('o‘zini qayta olish to‘xtatmaydi', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
-      final owner = container.read(audioOwnerProvider.notifier);
+      final owner = container.read(audioOwnerProvider);
       var stopped = 0;
       final me = Object();
       owner.take(me, () => stopped++);
@@ -103,17 +103,55 @@ void main() {
       expect(stopped, 0);
     });
 
+    // REELS SHU YERDA YIQILGANDI.
+    //
+    // `AudioOwner` ilgari `StateNotifier` edi va egalik `state`
+    // ichida turardi. `_ReelPage.initState` -> `_open()` ->
+    // `take()` zanjiri esa vidjet daraxti QURILAYOTGAN paytda
+    // ishlardi, Riverpod esa buni taqiqlaydi:
+    //
+    //     Tried to modify a provider while the widget tree was building.
+    //
+    // E2E da u "failed after test completion" bo'lib chiqardi:
+    // to'plamdagi har bir tekshiruv o'tsa ham ish qizil edi va
+    // sabab matritsada UMUMAN ko'rinmasdi.
+    //
+    // Endi reyestr oddiy obyekt, shuning uchun uni hayot siklidan
+    // chaqirish xavfsiz. Bu test aynan o'sha zanjirni takrorlaydi
+    // va eski tuzilish qaytarilsa YIQILADI (o'lchab tekshirilgan).
+    testWidgets('hayot siklidan chaqirish istisno OTMAYDI',
+        (tester) async {
+      var stopped = 0;
+      await tester.pumpWidget(ProviderScope(
+        child: MaterialApp(
+          home: _LifecycleAudioProbe(onStop: () => stopped++),
+        ),
+      ));
+      await tester.pump();
+      expect(tester.takeException(), isNull,
+          reason: '`initState` dan `take()` provayderni o‘zgartirdi');
+
+      // `dispose()` dan `release()` ham xavfsiz bo‘lishi kerak.
+      await tester.pumpWidget(ProviderScope(
+        child: const MaterialApp(home: SizedBox.shrink()),
+      ));
+      await tester.pump();
+      expect(tester.takeException(), isNull,
+          reason: '`dispose` dan `release()` provayderni o‘zgartirdi');
+      expect(stopped, 0);
+    });
+
     test('release faqat o‘z egaligini bo‘shatadi', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
-      final owner = container.read(audioOwnerProvider.notifier);
+      final owner = container.read(audioOwnerProvider);
       final a = Object(), b = Object();
       owner.take(a, () {});
       owner.take(b, () {});
       owner.release(a); // a endi ega emas — holat o‘zgarmasligi kerak
-      expect(container.read(audioOwnerProvider), b);
+      expect(container.read(audioOwnerProvider).current, b);
       owner.release(b);
-      expect(container.read(audioOwnerProvider), isNull);
+      expect(container.read(audioOwnerProvider).current, isNull);
     });
   });
 
@@ -126,4 +164,37 @@ void main() {
       expect(musicTitleOf('https://a/b/'), 'https://a/b/');
     });
   });
+}
+
+
+/// `_ReelPage` ning hayot siklini takrorlaydi: `initState` da
+/// egalikni oladi, `dispose` da bo'shatadi.
+class _LifecycleAudioProbe extends ConsumerStatefulWidget {
+  const _LifecycleAudioProbe({required this.onStop});
+
+  final VoidCallback onStop;
+
+  @override
+  ConsumerState<_LifecycleAudioProbe> createState() =>
+      _LifecycleAudioProbeState();
+}
+
+class _LifecycleAudioProbeState extends ConsumerState<_LifecycleAudioProbe> {
+  late final AudioOwner _owner;
+
+  @override
+  void initState() {
+    super.initState();
+    _owner = ref.read(audioOwnerProvider);
+    _owner.take(this, widget.onStop);
+  }
+
+  @override
+  void dispose() {
+    _owner.release(this);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }

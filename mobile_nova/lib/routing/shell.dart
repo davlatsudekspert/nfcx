@@ -79,7 +79,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             // Tab almashganda ovoz DARHOL to'xtaydi — `dispose()`
             // kelishini kutmasdan, chunki u umuman kelmaydi.
             if (i != shell.currentIndex) {
-              ref.read(audioOwnerProvider.notifier).stopAll();
+              ref.read(audioOwnerProvider).stopAll();
             }
             shell.goBranch(
               i,

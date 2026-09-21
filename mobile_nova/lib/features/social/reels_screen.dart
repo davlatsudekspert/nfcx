@@ -224,7 +224,7 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
   @override
   void initState() {
     super.initState();
-    _owner = ref.read(audioOwnerProvider.notifier);
+    _owner = ref.read(audioOwnerProvider);
     _liked = widget.post.liked;
     _likes = widget.post.likes;
     if (widget.visible) _open();

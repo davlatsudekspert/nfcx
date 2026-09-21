@@ -147,7 +147,7 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
     super.initState();
     // `ref.read` `initState` da ruxsat etilgan; reyestr konteyner
     // bilan yashaydi, ya'ni vidjetdan uzoq umr ko'radi.
-    _owner = ref.read(audioOwnerProvider.notifier);
+    _owner = ref.read(audioOwnerProvider);
     WidgetsBinding.instance.addObserver(this);
     // Dangasa rejimda kontroller ham, tarmoq so'rovi ham odam
     // bosmaguncha YO'Q. Boshqa hamma holatda — avvalgidek.

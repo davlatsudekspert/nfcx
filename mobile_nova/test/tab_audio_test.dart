@@ -31,7 +31,7 @@ void main() {
   test('`stopAll` ro‘yxatdagi HAMMA manbani to‘xtatadi', () async {
     final c = ProviderContainer(overrides: [...await testOverrides()]);
     addTearDown(c.dispose);
-    final owner = c.read(audioOwnerProvider.notifier);
+    final owner = c.read(audioOwnerProvider);
 
     final stopped = <String>[];
     owner.take(#reels, () => stopped.add('reels'));
@@ -49,7 +49,7 @@ void main() {
       () async {
     final c = ProviderContainer(overrides: [...await testOverrides()]);
     addTearDown(c.dispose);
-    final owner = c.read(audioOwnerProvider.notifier);
+    final owner = c.read(audioOwnerProvider);
 
     // `InlineVideo` aynan shunday qiladi: to'xtaganda o'zini
     // ro'yxatdan chiqaradi. Ro'yxat bo'ylab yurib turib uni
