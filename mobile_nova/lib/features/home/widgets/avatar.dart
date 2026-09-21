@@ -91,13 +91,32 @@ class _Initials extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
+    // TO'LA OLTIN DISK EMAS — QORONG'I DOIRA, OLTIN HARF.
+    //
+    // Ilgari bu yer butunlay aksent gradient bilan bo'yalardi.
+    // Qora mavzuda u katta, qattiq oltin dog' bo'lib ko'rinardi
+    // va `nfcstore.uz/c/...` dagi kayfiyatdan uzoq edi: o'sha
+    // yerda logotip doirasining ICHI qorong'i, oltin esa faqat
+    // ingichka halqa va harfda.
+    //
+    // Ichki fon juda nozik gradient: tekis rang "yassi", kuchli
+    // gradient esa "neon" bo'lib ko'rinardi.
     return DecoratedBox(
-      decoration: BoxDecoration(gradient: t.accentGradient),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: const Alignment(-0.6, -1),
+          end: const Alignment(0.6, 1),
+          colors: [
+            t.accent2.withValues(alpha: t.isDark ? .16 : .26),
+            t.accent3.withValues(alpha: t.isDark ? .07 : .14),
+          ],
+        ),
+      ),
       child: Center(
         child: Text(
           initials,
           style: AppType.displayStyle(
-            color: const Color(0xFF1A1A1F),
+            color: t.accent1,
             size: size * .40,
           ),
         ),

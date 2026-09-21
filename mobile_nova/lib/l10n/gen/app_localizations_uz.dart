@@ -1313,6 +1313,9 @@ class LUz extends L {
   String get themeOnyx => 'Onyx';
 
   @override
+  String get themeNoir => 'Noir';
+
+  @override
   String get registerTosRequired =>
       'Davom etish uchun ommaviy oferta shartlariga rozilik bering.';
 

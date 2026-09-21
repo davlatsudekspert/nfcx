@@ -898,46 +898,84 @@ class _StatCapsules extends ConsumerWidget {
     ];
 
     final t = context.tokens;
-    return Row(
+
+    // QUTILAR EMAS — INGICHKA CHIZIQ.
+    //
+    // Ilgari har bir raqam o'z kapsulasida, chegara bilan turardi:
+    // uchta quti yonma-yon "og'ir" ko'rinardi va sahifaning katta
+    // qismini egallardi.
+    //
+    // `nfcstore.uz/c/...` da esa boshqacha: raqamlar markazda,
+    // ustida va ostida bittadan ingichka chiziq, atrofida quti
+    // YO'Q. Raqam — serif (brend tili), yorliq — kichik, katta
+    // harflarda, keng oraliqli sans. Ilova endi aynan shunday.
+    return Column(
       children: [
-        for (var i = 0; i < items.length; i++) ...[
-          if (i > 0) const SizedBox(width: Gap.sm),
-          Expanded(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: items[i].$3,
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: Gap.md),
-                decoration: BoxDecoration(
-                  color: t.surface2,
-                  borderRadius: R.pill,
-                  border: Border.all(
-                    // Bosiladigan kapsula bir oz aniqroq chegara
-                    // oladi — u tugma ekani ko'rinib tursin.
-                    color: items[i].$3 == null ? t.border2 : t.border1,
+        _Hairline(color: t.border2),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: Gap.lg),
+          child: Row(
+            children: [
+              for (var i = 0; i < items.length; i++)
+                Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: items[i].$3,
+                    child: Column(
+                      children: [
+                        Text(
+                          items[i].$1,
+                          maxLines: 1,
+                          style: TextStyle(
+                            fontFamily: AppType.display,
+                            fontFamilyFallback: AppType.displayFallback,
+                            fontSize: 26,
+                            height: 1.05,
+                            color: t.text1,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          items[i].$2.toUpperCase(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: AppType.sans,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1.1,
+                            color: t.text3,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                child: Column(
-                  children: [
-                    Text(
-                      items[i].$1,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    Text(
-                      items[i].$2,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelMedium,
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            ],
           ),
-        ],
+        ),
+        _Hairline(color: t.border2),
       ],
     );
   }
+}
+
+/// Bir piksellik ajratgich — quti o'rniga.
+///
+/// Balandligi qurilma zichligiga bog'liq: 3x ekranda 1 mantiqiy
+/// piksel qalin ko'rinadi, shuning uchun eng ingichka chiziq
+/// beriladi.
+class _Hairline extends StatelessWidget {
+  const _Hairline({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 1 / MediaQuery.devicePixelRatioOf(context),
+        color: color,
+      );
 }
 
 class _BusinessTiles extends StatelessWidget {

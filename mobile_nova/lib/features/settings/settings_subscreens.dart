@@ -49,6 +49,7 @@ class ThemeSettingsScreen extends ConsumerWidget {
           'aurora' => l.themeAurora,
           'midnight' => l.themeMidnight,
           'onyx' => l.themeOnyx,
+          'noir' => l.themeNoir,
           _ => l.themePearl,
         };
 

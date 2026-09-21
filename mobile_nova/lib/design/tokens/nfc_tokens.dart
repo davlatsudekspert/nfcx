@@ -436,7 +436,84 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     ],
   );
 
-  static final all = <NfcTokens>[pearl, graphite, ocean, aurora, midnight, onyx];
+  // ------------------------------------------------------------ 7 NOIR
+  //
+  // NFCSTORE PREMIUM — SAYT BILAN BITTA PALITRA.
+  //
+  // ## RANGLAR TO'QIB CHIQARILMAGAN
+  //
+  // Bu qiymatlar `src/themes.css` dagi saytning qorong'i
+  // mavzusidan AYNAN ko'chirilgan. Ya'ni `nfcstore.uz/c/...`
+  // sahifasi va ilova bitta brendda ko'rinadi — ilova sayt
+  // "uslubiga o'xshash" emas, xuddi o'sha.
+  //
+  //     --bg-primary      #050403      --accent-primary  #d4af5a
+  //     --bg-secondary    #0a0805      --accent-secondary #f0cf7a
+  //     --surface         #141210      --accent-deep     #b3860f
+  //     --surface-elevated #1c1916     --text-primary    #f6f2ea
+  //     --border-soft     #221c12      --text-secondary  #b5a78b
+  //
+  // ## NIMA UCHUN ALOHIDA MAVZU
+  //
+  // `ocean` telefonda ko'rilgan va u tegilmadi; `onyx` esa
+  // saytdan boshqa qiymatlarga ega. Bu uchinchisi — yoqmasa
+  // hech narsa yo'qolmaydi, yoqsa standart qilinadi.
+  //
+  // ## CHEGARA VA SOYA YENGIL
+  //
+  // Saytda chegara `#221c12` — ya'ni fondan atigi bir pog'ona
+  // yorug'. "Og'ir" hissini bergan asosiy narsa qalin rangli
+  // chegara edi. Soya ham past: qora fonda kuchli soya
+  // ko'rinmaydi, faqat chetlarni loyqalatadi.
+  static final noir = NfcTokens(
+    id: 'noir',
+    isDark: true,
+    bg1: hex('#0A0805'),
+    bg2: hex('#050403'),
+    bgVignette: rgba(212, 175, 90, .07),
+    // Yuzalar — saytdagi qatlam narvoni (`surface` va
+    // `surface-elevated`) shaffoflik orqali.
+    surface: rgba(255, 255, 255, .052),
+    surface2: rgba(255, 255, 255, .030),
+    surfaceSolid: hex('#141210'),
+    text1: hex('#F6F2EA'),
+    text2: hex('#B5A78B'),
+    text3: hex('#8A7F68'),
+    accent1: hex('#F0CF7A'),
+    accent2: hex('#D4AF5A'),
+    accent3: hex('#B3860F'),
+    goldDeep: hex('#8E6B0C'),
+    // Ikkilamchi — platina. Saytda yashil "ochiq" chipi bor,
+    // shuning uchun `accentB` o'sha yashil ohangda qoladi.
+    accentB: hex('#7FB28E'),
+    accentBDark: hex('#5E8E6C'),
+    accentC: hex('#C9CDD2'),
+    accentCDark: hex('#8E949A'),
+    accentD: hex('#E2E4E7'),
+    accentDDark: hex('#AFB4B9'),
+    glow: rgba(226, 190, 110, .28),
+    glowB: rgba(201, 205, 210, .14),
+    // `--border` va `--border-soft` — fondan bir pog'ona yorug'.
+    border1: rgba(212, 175, 90, .22),
+    border2: rgba(255, 255, 255, .07),
+    error: hex('#C9573F'),
+    success: hex('#7FB28E'),
+    warn: hex('#E0B458'),
+    ambient1: rgba(212, 175, 90, .16),
+    ambient2: rgba(201, 205, 210, .08),
+    shadowFloat: [
+      BoxShadow(color: rgba(0, 0, 0, .70), blurRadius: 30, offset: const Offset(0, 12)),
+      BoxShadow(color: rgba(226, 190, 110, .05), blurRadius: 34),
+    ],
+    shadowSoft: [
+      BoxShadow(color: rgba(0, 0, 0, .60), blurRadius: 22, offset: const Offset(0, 8)),
+    ],
+    shadowTiny: [
+      BoxShadow(color: rgba(0, 0, 0, .45), blurRadius: 10, offset: const Offset(0, 3)),
+    ],
+  );
+
+  static final all = <NfcTokens>[pearl, graphite, ocean, aurora, midnight, onyx, noir];
 
   /// STANDART MAVZU — `ocean`.
   ///

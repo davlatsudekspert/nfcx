@@ -27,11 +27,29 @@ double _contrast(Color a, Color b) {
 }
 
 void main() {
-  test('oltita mavzu ham mavjud va kaliti takrorlanmaydi', () {
-    expect(NfcTokens.all.length, 6);
+  test('yettita mavzu ham mavjud va kaliti takrorlanmaydi', () {
+    // `noir` — NFCSTORE premium mavzusi, `src/themes.css` dagi
+    // saytning qorong'i palitrasidan olingan. Eskilariga tegilmadi.
+    expect(NfcTokens.all.length, 7);
     final ids = NfcTokens.all.map((t) => t.id).toSet();
-    expect(ids.length, 6);
-    expect(ids, {'pearl', 'graphite', 'ocean', 'aurora', 'midnight', 'onyx'});
+    expect(ids.length, 7);
+    expect(ids,
+        {'pearl', 'graphite', 'ocean', 'aurora', 'midnight', 'onyx', 'noir'});
+  });
+
+  test('noir palitrasi SAYT bilan bir xil', () {
+    // Bu qiymatlar `src/themes.css` dan ko'chirilgan. Ular
+    // ajralib ketsa, ilova va sayt boshqa brendga o'xshab
+    // qoladi — shuning uchun aynan solishtiriladi.
+    final n = NfcTokens.noir;
+    expect(n.bg1, const Color(0xFF0A0805), reason: '--bg-secondary');
+    expect(n.bg2, const Color(0xFF050403), reason: '--bg-primary');
+    expect(n.surfaceSolid, const Color(0xFF141210), reason: '--surface');
+    expect(n.text1, const Color(0xFFF6F2EA), reason: '--text-primary');
+    expect(n.text2, const Color(0xFFB5A78B), reason: '--text-secondary');
+    expect(n.accent1, const Color(0xFFF0CF7A), reason: '--accent-secondary');
+    expect(n.accent2, const Color(0xFFD4AF5A), reason: '--accent-primary');
+    expect(n.accent3, const Color(0xFFB3860F), reason: '--accent-deep');
   });
 
   test('onyx ILIQ, midnight esa SOVUQ qora', () {

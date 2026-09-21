@@ -263,7 +263,15 @@ void main() {
   });
 
   group('Mavzu tanlash ekrani', () {
-    testWidgets('oltita mavzuni ham ko‘rsatadi', (tester) async {
+    testWidgets('yettita mavzuni ham ko‘rsatadi', (tester) async {
+      // BALAND OYNA. Ro'yxat `ListView` ustiga qurilgan va u
+      // ekrandan PASTDAGI elementni umuman qurmaydi. Standart
+      // 600px li test oynasida yettinchi mavzu "topilmadi" bo'lib
+      // chiqardi — holbuki telefonda odam pastga tushib ko'radi.
+      tester.view.physicalSize = const Size(1080, 4200);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+
       await tester.pumpWidget(ProviderScope(
         overrides: await testOverrides(),
         child: wrapScreen(const ThemeSettingsScreen()),
@@ -278,6 +286,7 @@ void main() {
         l.themeAurora,
         l.themeMidnight,
         l.themeOnyx,
+        l.themeNoir,
       ]) {
         expect(find.text(name), findsOneWidget, reason: name);
       }

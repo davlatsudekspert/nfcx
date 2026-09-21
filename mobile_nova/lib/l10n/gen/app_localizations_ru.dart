@@ -1305,6 +1305,9 @@ class LRu extends L {
   String get themeOnyx => 'Оникс';
 
   @override
+  String get themeNoir => 'Noir';
+
+  @override
   String get registerTosRequired =>
       'Чтобы продолжить, примите условия публичной оферты.';
 

@@ -51,12 +51,24 @@ class MyIdsStrip extends ConsumerWidget {
               width: 152,
               padding: const EdgeInsets.all(Gap.md),
               decoration: BoxDecoration(
-                // Faol yozuv oltin, qolganlari sokin — bir qarashda
-                // qaysi biri ishlayotgani ko'rinadi.
-                gradient: on ? t.accentGradient : null,
-                color: on ? null : t.surfaceSolid,
+                // FAOL YOZUV — OLTIN CHEGARA VA NOZIK TUS, TO'LA
+                // OLTIN BLOK EMAS.
+                //
+                // Ilgari faol karta butunlay aksent gradient bilan
+                // bo'yalardi. Qora mavzuda u qattiq oltin plita
+                // bo'lib ko'rinardi va matn uning ustida qorong'i
+                // yozilardi — ya'ni ro'yxatdagi eng katta dog'.
+                //
+                // Endi farq YENGIL: ichkarida aksentning juda past
+                // tusi, chetida oltin chiziq. Qaysi biri
+                // ishlayotgani baribir bir qarashda ko'rinadi.
+                color: on
+                    ? t.accent2.withValues(alpha: t.isDark ? .10 : .16)
+                    : t.surfaceSolid,
                 borderRadius: R.tile,
-                border: Border.all(color: on ? t.accent2 : t.border2),
+                border: Border.all(
+                  color: on ? t.accent2.withValues(alpha: .55) : t.border2,
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -65,7 +77,7 @@ class MyIdsStrip extends ConsumerWidget {
                   Row(
                     children: [
                       Icon(Icons.nfc_rounded,
-                          size: 14, color: on ? t.onAccent : t.accent2),
+                          size: 14, color: t.accent2),
                       const SizedBox(width: 5),
                       Expanded(
                         child: Text(
@@ -73,12 +85,12 @@ class MyIdsStrip extends ConsumerWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppType.monoStyle(
-                              color: on ? t.onAccent : t.text1, size: 13),
+                              color: t.text1, size: 13),
                         ),
                       ),
                       if (id.cardLinked)
                         Icon(Icons.credit_card_rounded,
-                            size: 13, color: on ? t.onAccent : t.text3),
+                            size: 13, color: t.text3),
                     ],
                   ),
                   Text(
@@ -88,14 +100,14 @@ class MyIdsStrip extends ConsumerWidget {
                     style: TextStyle(
                         fontFamily: AppType.sans,
                         fontSize: 12,
-                        color: on ? t.onAccent : t.text2),
+                        color: t.text2),
                   ),
                   Text(
                     '${formatCount(id.views)} ko\u2018rish',
                     style: TextStyle(
                         fontFamily: AppType.sans,
                         fontSize: 11,
-                        color: on ? t.onAccent.withValues(alpha: .85) : t.text3),
+                        color: t.text3),
                   ),
                 ],
               ),

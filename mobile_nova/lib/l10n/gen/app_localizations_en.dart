@@ -1311,6 +1311,9 @@ class LEn extends L {
   String get themeOnyx => 'Onyx';
 
   @override
+  String get themeNoir => 'Noir';
+
+  @override
   String get registerTosRequired =>
       'Accept the public offer terms to continue.';
 

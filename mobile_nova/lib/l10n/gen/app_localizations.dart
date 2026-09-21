@@ -2631,6 +2631,12 @@ abstract class L {
   /// **'Onyx'**
   String get themeOnyx;
 
+  /// NFCSTORE premium mavzusi — chuqur qora, shampan va platina.
+  ///
+  /// In uz, this message translates to:
+  /// **'Noir'**
+  String get themeNoir;
+
   /// Ro‘yxatdan o‘tishda oferta roziligi
   ///
   /// In uz, this message translates to:
