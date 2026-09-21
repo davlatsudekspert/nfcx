@@ -99,6 +99,17 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: node scripts/test-nova-api-parity.mjs
 
+      # ── JAVOB KONTRAKTI ─────────────────────────────────────────
+      #
+      # Yuqoridagi qo'riqchi endpoint MAVJUDLIGINI tekshiradi va
+      # aynan shu sababdan qurilmadagi xatoni o'tkazib yuborgan
+      # edi: `/api/follow-list/` 200 qaytarardi, lekin ilova
+      # noto'g'ri query nomini yuborar va javobdan mavjud
+      # bo'lmagan kalitni o'qirdi. Bu qo'riqchi shuni tekshiradi.
+      - name: Javob kontrakti — ilova o'qiydigan kalit bormi
+        working-directory: ${{ github.workspace }}
+        run: node scripts/test-nova-response-contract.mjs
+
       # ── ILOVA NOMI VA PAKET ID ──────────────────────────────────
       #
       # Bu tekshiruv `deploy.yml` da EMAS, ataylab: u `main` da

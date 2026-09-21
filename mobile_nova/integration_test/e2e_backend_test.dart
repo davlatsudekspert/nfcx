@@ -1227,6 +1227,63 @@ void main() {
               pathHint: '/api/follow-stats/');
         }
 
+        // ── PROFIL QAYTA OCHILGANDA HOLAT SAQLANADIMI ───────
+        //
+        // Qurilmadagi shikoyat aynan shu edi: ✓ bir lahza chiqib,
+        // darhol "Kuzatish" ga qaytardi. Sababi — ilova server
+        // bergan `isFollowing` ni UMUMAN o'qimasdi. Bu qator
+        // profilni qayta ochishni taqlid qiladi: yangi so'rov
+        // yuboriladi va javobdagi bayroq tekshiriladi.
+        final reopened = await profile.followStats(target.code);
+        if (reopened is Ok<FollowStats> && reopened.value.isFollowing) {
+          report.pass('Follow — qayta ochilganda hali obuna',
+              screen: 'ProfileScreen',
+              action: 'GET /api/follow-stats/:code → isFollowing',
+              note: 'server true qaytardi; tugma «Kuzatilmoqda» turadi');
+        } else {
+          fail('Follow — qayta ochilganda hali obuna',
+              screen: 'ProfileScreen',
+              action: 'GET /api/follow-stats/:code → isFollowing',
+              cause: reopened is Ok<FollowStats>
+                  ? 'isFollowing = false — obuna yozilgan bo\'lsa ham '
+                      'tugma «Kuzatish» ga qaytardi'
+                  : 'so\'rov yiqildi',
+              pathHint: '/api/follow-stats/');
+        }
+
+        // ── B NING BILDIRISHNOMASI ──────────────────────────
+        //
+        // A obuna bo'ldi -> B da yozuv paydo bo'lishi SHART.
+        // Ikkinchi hisobning O'Z mijozi bilan o'qiladi.
+        final bActivity = ActivityRepository(second.api);
+        final inbox = await bActivity.list();
+        if (inbox is Ok<NotificationPage>) {
+          final mineCode = personal?.code ?? '';
+          final hit = inbox.value.items.where((e) =>
+              e.kind == ActivityKind.follow &&
+              (mineCode.isEmpty || e.actorCode == mineCode));
+          if (hit.isNotEmpty) {
+            report.pass('Follow → B da bildirishnoma',
+                screen: 'ActivityScreen (B hisobi)',
+                action: 'follow → GET /api/notifications',
+                note: 'aktor=${hit.first.actorCode}; '
+                    'o\'qilmagan=${inbox.value.unreadCount}');
+          } else {
+            fail('Follow → B da bildirishnoma',
+                screen: 'ActivityScreen (B hisobi)',
+                action: 'follow → GET /api/notifications',
+                cause: 'obuna o\'tdi, lekin B ning ro\'yxatida follow '
+                    'yozuvi YO\'Q (jami ${inbox.value.items.length} ta)',
+                pathHint: '/api/notifications');
+          }
+        } else {
+          partial('Follow → B da bildirishnoma',
+              screen: 'ActivityScreen (B hisobi)',
+              action: 'GET /api/notifications',
+              cause: 'ikkinchi hisobning bildirishnomalari o\'qilmadi',
+              pathHint: '/api/notifications');
+        }
+
         // ── Stage 1: lenta kartasidagi obuna HOLATI ─────────
         //
         // Karta "Obuna bo'lish" va "Obuna bo'lingan" ni
@@ -1268,6 +1325,42 @@ void main() {
             report.pass('Unfollow',
                 screen: 'ProfileScreen',
                 action: 'unfollow → holat qaytdi');
+
+            // SON KAMAYDIMI VA BAYROQ O'CHDIMI.
+            //
+            // Follow tomonini tekshirib, unfollow tomonini
+            // tekshirmaslik yarim ish bo'lardi: profildagi raqam
+            // aynan shu yerda "yopishib" qolishi mumkin.
+            final afterUn = await profile.followStats(target.code);
+            final beforeN = before is Ok<FollowStats>
+                ? before.value.followers
+                : null;
+            if (afterUn is Ok<FollowStats>) {
+              final ok = !afterUn.value.isFollowing &&
+                  (beforeN == null || afterUn.value.followers <= beforeN);
+              if (ok) {
+                report.pass('Unfollow — son kamaydi',
+                    screen: 'ProfileScreen',
+                    action: 'unfollow → follow-stats',
+                    note: 'obunachilar=${afterUn.value.followers}; '
+                        'isFollowing=false');
+              } else {
+                fail('Unfollow — son kamaydi',
+                    screen: 'ProfileScreen',
+                    action: 'unfollow → follow-stats',
+                    cause: 'obuna yechildi, lekin '
+                        'isFollowing=${afterUn.value.isFollowing}, '
+                        'obunachilar=${afterUn.value.followers} '
+                        '(oldin ${beforeN ?? "?"})',
+                    pathHint: '/api/follow-stats/');
+              }
+            } else {
+              partial('Unfollow — son kamaydi',
+                  screen: 'ProfileScreen',
+                  action: 'unfollow → follow-stats',
+                  cause: 'ko\'rsatkichlar o\'qilmadi',
+                  pathHint: '/api/follow-stats/');
+            }
 
             // Obuna yechilgandan keyin ro'yxatdan HAM chiqsin:
             // aks holda karta abadiy «Obuna bo'lingan» holatida
