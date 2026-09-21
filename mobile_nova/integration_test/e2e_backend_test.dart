@@ -1387,7 +1387,23 @@ void main() {
       return;
     }
 
-    final read = await business.recordCatalog(code, CatalogKind.products);
+    // KATALOG TURI YOZUVNING YO'NALISHIDAN OLINADI.
+    //
+    // Ilgari bu yerda DOIM `CatalogKind.products` turardi. Server
+    // esa turni biznes yo'nalishiga qarab hal qiladi: restoran —
+    // menyu, do'kon — mahsulot, qolgani — xizmat. Yo'nalish mos
+    // kelmasa 403 qaytaradi va bu TO'G'RI qoida.
+    //
+    // Ya'ni bu FAIL ilovaning kamchiligi emas, sinov noto'g'ri
+    // turni so'rayotgani edi. Qoida yumshatilmadi — mijoz to'g'ri
+    // turni so'raydigan qilindi (`CatalogKind.forCategory`,
+    // manbasi `hosting/api/catalog.js`).
+    final kind = CatalogKind.forCategory(businessId?.categorySlug ?? '');
+    // Tanlangan tur natijaga yoziladi: hisobotni o'qiyotgan odam
+    // nima uchun aynan shu tur sinalganini ko'rishi kerak.
+    final kindNote = '${businessId?.categorySlug ?? "—"} -> ${kind.path}';
+
+    final read = await business.recordCatalog(code, kind);
     switch (read) {
       case Err(:final error):
         fail('Catalog',
@@ -1399,12 +1415,12 @@ void main() {
         report.pass('Catalog',
             screen: 'CatalogScreen',
             action: 'haqiqiy katalogni o\'qish',
-            note: '${value.length} ta mahsulot');
+            note: '$kindNote · ${value.length} ta element');
     }
 
     final add = await business.addRecordItem(
       code,
-      CatalogKind.products,
+      kind,
       {'name': testLabel('mahsulot'), 'price': 1, 'available': true},
     );
     switch (add) {
@@ -1418,7 +1434,7 @@ void main() {
         litter.trackResult(
             'katalog #${value.id}',
             () => business.deleteRecordItem(
-                code, CatalogKind.products, value.id));
+                code, kind, value.id));
         report.pass('Product create',
             screen: 'CatalogForm',
             action: 'POST /api/records/:code/catalog',
@@ -1426,7 +1442,7 @@ void main() {
 
         final edit = await business.updateRecordItem(
           code,
-          CatalogKind.products,
+          kind,
           value.id,
           {'price': 2, 'available': false},
         );
@@ -1439,7 +1455,7 @@ void main() {
                 pathHint: '/catalog');
           case Ok():
             final back =
-                await business.recordCatalog(code, CatalogKind.products);
+                await business.recordCatalog(code, kind);
             final item = back is Ok<List<CatalogItem>>
                 ? back.value
                     .where((i) => i.id == value.id)

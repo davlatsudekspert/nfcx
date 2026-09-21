@@ -158,6 +158,7 @@ class NfcId {
     this.cardLinked = false,
     this.musicUrls = const [],
     this.hiddenFromDirectory = false,
+    this.categorySlug = '',
     this.createdAt,
   });
 
@@ -203,6 +204,14 @@ class NfcId {
   /// ekranidagi tugma hech narsaga ulanmagan edi.
   final bool hiddenFromDirectory;
 
+  /// Biznes yo'nalishi — `food`, `retail-clothes`, `beauty`…
+  ///
+  /// Server buni `/api/records/:code` javobida qaytaradi
+  /// (`rowToRecord`), lekin ilova uni o'qimasdi. U KERAK:
+  /// katalogning qaysi turi (menyu / mahsulot / xizmat) ochilishi
+  /// AYNAN shu maydonga bog'liq (`CatalogKind.forCategory`).
+  final String categorySlug;
+
   final DateTime? createdAt;
 
   /// Ommaviy profil manzili — QR va "ulashish" uchun.
@@ -243,6 +252,7 @@ class NfcId {
         musicUrls: _musicUrls(j),
         hiddenFromDirectory: _b(j['hiddenFromDirectory'] ??
             j['hidden_from_directory']),
+        categorySlug: _s(j['categorySlug'] ?? j['category_slug']),
         createdAt: _dt(j['createdAt'] ?? j['created_at']),
       );
 }

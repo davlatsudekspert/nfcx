@@ -109,6 +109,14 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: node scripts/test-app-identity.mjs
 
+      # Katalog turi qoidasi ikki joyda (server va ilova) va
+      # ular ajralib ketsa, odam "mahsulot qo'shib bo'lmadi"
+      # degan xatoni ko'radi. `deploy.yml` da EMAS: ilova
+      # manbasi `main` da yo'q.
+      - name: Katalog turi — server/ilova parity
+        working-directory: ${{ github.workspace }}
+        run: node scripts/test-catalog-kind-parity.mjs
+
       # HAQIQIY IMZO — faqat sozlangan bo'lsa.
       #
       # Uchta secret kerak (Settings -> Secrets and variables ->

@@ -245,6 +245,35 @@ enum CatalogKind {
 
   const CatalogKind(this.path);
   final String path;
+
+  /// BIZNES YO'NALISHIGA MOS KATALOG TURI.
+  ///
+  /// Qoida SERVERDAN ko'chirilgan — `hosting/api/catalog.js`
+  /// dagi `businessModule()`:
+  ///
+  ///     food*   -> menyu
+  ///     retail* -> mahsulotlar
+  ///     qolgan  -> xizmatlar
+  ///
+  /// NIMA UCHUN KERAK. Server noto'g'ri turga yozishni RAD ETADI
+  /// (403 `not_business` / `not_restaurant` /
+  /// `not_service_business`). Ya'ni restoran profiliga "mahsulot"
+  /// qo'shib bo'lmaydi — va bu to'g'ri qoida.
+  ///
+  /// E2E sinovi aynan shu yerda yiqilardi: u DOIM `products`
+  /// so'rardi va hisobdagi biznes yozuvi xizmat yo'nalishida
+  /// bo'lgani uchun server 403 qaytarardi. Sinov buni
+  /// ilovaning kamchiligi deb yozardi, aslida esa SINOV noto'g'ri
+  /// turni so'rayotgan edi.
+  ///
+  /// SERVER QOIDASI YUMSHATILMADI — mijoz to'g'ri turni
+  /// so'raydigan qilindi.
+  static CatalogKind forCategory(String slug) {
+    final s = slug.toLowerCase();
+    if (s == 'food' || s.startsWith('food-')) return CatalogKind.menu;
+    if (s == 'retail' || s.startsWith('retail-')) return CatalogKind.products;
+    return CatalogKind.services;
+  }
 }
 
 final businessRepositoryProvider = Provider<BusinessRepository>(
