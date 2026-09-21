@@ -9225,20 +9225,21 @@ const commentTargetKind = (r) => {
     : (company ? 'company_post' : 'post');
 };
 
-async function feedApi(request, env, url) {
-  if (url.pathname !== '/api/feed' || request.method !== 'GET') return null;
-
-  const user = await getCurrentUser(request, env);
-  const viewerId = user ? user.id : 0;
-  const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
-  const limit = Math.min(30, Math.max(1, Number(url.searchParams.get('limit')) || 15));
-  const offset = (page - 1) * limit;
-  const now = new Date().toISOString();
-
-  // `limit + 1` — keyingi sahifa bor-yo'qligini BITTA so'rov bilan
-  // bilish uchun (alohida COUNT so'rovi butun jadvalni sanardi).
-  const rows = await env.DB.prepare(
-    `SELECT * FROM (
+/// LENTA UNIONI — BITTA MANBA.
+///
+/// To'rt shox: shaxsiy post, kompaniya posti, shaxsiy istorya,
+/// kompaniya istoryasi. Ustun nomlari, maxfiylik shartlari va
+/// like sanog'i SHU YERDA, bitta joyda turadi.
+///
+/// NIMA UCHUN FUNKSIYA. Endi bu so'rov IKKI marta ishlatiladi:
+/// oddiy lenta uchun va FEATURED (pullik ko'tarilgan) kontent
+/// uchun. Nusxa olinganda ikkinchisi maxfiylik filtrini yo'qotib
+/// qo'yishi mumkin edi — ya'ni katalogdan yashiringan odamning
+/// posti pul evaziga bosh sahifaga chiqib ketardi.
+///
+/// `?` parametrlari, TARTIBI BILAN:
+///   viewerId, viewerId, now, viewerId, now
+const FEED_UNION_SQL = `SELECT * FROM (
         SELECT 'post' AS kind, p.id AS id, p.code AS code, 'card' AS author_kind,
                c.name AS name, c.avatar_url AS avatar_url,
                p.image_url AS image_url, p.video_url AS video_url,
@@ -9274,50 +9275,27 @@ async function feedApi(request, env, url) {
           FROM stories s JOIN companies co ON co.company_id = s.owner_id
          WHERE s.owner_kind = 'company' AND s.expires_at > ?
            AND co.status = 'active' AND ${companyOwnerAliveSql('co')}
-     )
-     ORDER BY created_at DESC, id DESC
-     LIMIT ? OFFSET ?`
-  ).bind(viewerId, viewerId, now, viewerId, now, limit + 1, offset).all();
+)`;
 
-  // BLOKLANGAN PROFILLAR LENTADAN CHIQARILADI.
-  //
-  // Bloklash tugmasi bor, lekin lenta uni hisobga olmasa — tugma
-  // YOLG'ON bo'lardi: odam bloklaydi, kontent esa baribir
-  // ko'rinaveradi.
-  //
-  // Filtr SQL da emas, shu yerda: bloklanganlar soni odatda bir
-  // nechta va ularni har bir UNION shoxiga qo'shish so'rovni
-  // sezilarli murakkablashtirardi.
-  const blocked = viewerId
-    ? new Set((await apiModeration.blockedByUser(env, viewerId))
-      .map((b) => `${b.kind === 'company' ? 'company' : 'card'}:${b.id.toUpperCase()}`))
-    : new Set();
-
-  const all = (rows.results || []).filter(
-    (r) => !blocked.has(`${String(r.author_kind)}:${String(r.code || '').toUpperCase()}`),
-  );
-
-  // IZOHLAR SONI — BITTA so'rov bilan.
-  //
-  // Har bir kadr ostida "izohlar: 12" turadi. Har biriga alohida
-  // so'rov yuborilsa, bitta sahifa uchun 15 ta qo'shimcha so'rov
-  // bo'lardi; shuning uchun sahifa yig'ilgach bitta guruhlangan
-  // so'rov qilinadi.
-  const page1 = all.slice(0, limit);
+/// Lenta qatorlarini o'qiladigan ko'rinishga keltiradi.
+///
+/// `feedApi` va FEATURED bir xil shaklni qaytarishi SHART: ilova
+/// ikkalasini ham bitta `Post.fromJson` bilan o'qiydi.
+async function shapeFeedRows(env, rows, viewerId) {
   const commentCounts = await apiComments.countsFor(
     env,
-    page1.map((r) => ({ kind: commentTargetKind(r), id: Number(r.id) })),
+    rows.map((r) => ({ kind: commentTargetKind(r), id: Number(r.id) })),
   ).catch(() => new Map());
 
   const companyPostLikes = await apiComments.likesFor(
     env,
-    page1
+    rows
       .filter((r) => String(r.kind) === 'post' && String(r.author_kind) === 'company')
       .map((r) => ({ kind: 'company_post', id: Number(r.id) })),
     viewerId,
   ).catch(() => new Map());
 
-  const feed = page1.map((r) => {
+  return rows.map((r) => {
     const d = parseDbDate(r.created_at);
     const target = commentTargetKind(r);
     const companyLike = target === 'company_post'
@@ -9341,8 +9319,106 @@ async function feedApi(request, env, url) {
       commentCount: commentCounts.get(`${target}:${Number(r.id)}`) || 0,
     };
   });
+}
 
-  return json({ feed, hasMore: all.length > limit });
+async function feedApi(request, env, url) {
+  if (url.pathname !== '/api/feed' || request.method !== 'GET') return null;
+
+  const user = await getCurrentUser(request, env);
+  const viewerId = user ? user.id : 0;
+  const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
+  const limit = Math.min(30, Math.max(1, Number(url.searchParams.get('limit')) || 15));
+  const offset = (page - 1) * limit;
+  const now = new Date().toISOString();
+
+  // `limit + 1` — keyingi sahifa bor-yo'qligini BITTA so'rov bilan
+  // bilish uchun (alohida COUNT so'rovi butun jadvalni sanardi).
+  const rows = await env.DB.prepare(
+    // `limit + 1` — keyingi sahifa bor-yo'qligini BITTA so'rov bilan
+    // bilish uchun (alohida COUNT so'rovi butun jadvalni sanardi).
+    `${FEED_UNION_SQL}
+     ORDER BY created_at DESC, id DESC
+     LIMIT ? OFFSET ?`
+  ).bind(viewerId, viewerId, now, viewerId, now, limit + 1, offset).all();
+
+  // BLOKLANGAN PROFILLAR LENTADAN CHIQARILADI.
+  //
+  // Bloklash tugmasi bor, lekin lenta uni hisobga olmasa — tugma
+  // YOLG'ON bo'lardi: odam bloklaydi, kontent esa baribir
+  // ko'rinaveradi.
+  //
+  // Filtr SQL da emas, shu yerda: bloklanganlar soni odatda bir
+  // nechta va ularni har bir UNION shoxiga qo'shish so'rovni
+  // sezilarli murakkablashtirardi.
+  const blocked = viewerId
+    ? new Set((await apiModeration.blockedByUser(env, viewerId))
+      .map((b) => `${b.kind === 'company' ? 'company' : 'card'}:${b.id.toUpperCase()}`))
+    : new Set();
+
+  const all = (rows.results || []).filter(
+    (r) => !blocked.has(`${String(r.author_kind)}:${String(r.code || '').toUpperCase()}`),
+  );
+
+  // IZOHLAR SONI VA SHAKL — `shapeFeedRows` da, bitta joyda.
+  //
+  // Har bir kadr ostida "izohlar: 12" turadi. Har biriga alohida
+  // so'rov yuborilsa, bitta sahifa uchun 15 ta qo'shimcha so'rov
+  // bo'lardi; shuning uchun sahifa yig'ilgach bitta guruhlangan
+  // so'rov qilinadi.
+  const page1 = all.slice(0, limit);
+  const feed = await shapeFeedRows(env, page1, viewerId);
+
+  // ── NFCSTORE FEATURED — PULLIK KO'TARILGAN KONTENT ───────────────
+  //
+  // ALOHIDA ENDPOINT YO'Q, ATAYLAB. Ilova lentani allaqachon
+  // `/api/feed` dan oladi va uni `Post.fromJson` bilan o'qiydi.
+  // Ko'tarilgan kontent uchun ikkinchi manba ochilsa, ilova ikkita
+  // turli shaklni qo'llab-quvvatlashi va ikki marta so'rov
+  // yuborishi kerak bo'lardi — hamda maxfiylik filtri ikkinchi
+  // nusxada unutilishi mumkin edi.
+  //
+  // FAQAT BIRINCHI SAHIFADA: ko'tarilgan kontent har bir
+  // sahifada qayta chiqsa, odam pastga tushgan sari o'sha e'lonni
+  // qayta-qayta ko'rardi.
+  //
+  // Ular UNIONDAN o'tadi, ya'ni maxfiylik, o'chirilgan egasi va
+  // kompaniya holati shartlari ular uchun ham ishlaydi: pul
+  // to'langani yashiringan profilni ochib bermaydi.
+  let featured = [];
+  if (page === 1) {
+    const targets = await apiFeatured.activeTargets(env, nowTs()).catch(() => []);
+    if (targets.length) {
+      const where = targets.map(() => '(kind = ? AND id = ?)').join(' OR ');
+      const fRows = await env.DB.prepare(
+        `${FEED_UNION_SQL} WHERE ${where} ORDER BY created_at DESC, id DESC LIMIT 10`
+      ).bind(
+        viewerId, viewerId, now, viewerId, now,
+        // FEATURED `target_kind` izoh turlarini ishlatadi
+        // (`company_post`), UNION esa `kind` + `author_kind`
+        // juftligini — shuning uchun moslashtiriladi.
+        ...targets.flatMap((t) => [t.kind.endsWith('story') ? 'story' : 'post', t.id]),
+      ).all().catch(() => null);
+
+      const fFiltered = (fRows?.results || []).filter((r) => {
+        if (blocked.has(`${String(r.author_kind)}:${String(r.code || '').toUpperCase()}`)) return false;
+        // `kind` ni moslashtirish keng edi (`company_post` -> `post`),
+        // shuning uchun muallif turi ham tekshiriladi: aks holda
+        // 5-raqamli kompaniya posti uchun to'langan pul 5-raqamli
+        // SHAXSIY postni ko'tarib qo'yardi.
+        return targets.some((t) => Number(t.id) === Number(r.id)
+          && t.kind === commentTargetKind(r));
+      });
+
+      featured = (await shapeFeedRows(env, fFiltered, viewerId))
+        .map((x) => ({ ...x, featured: true }));
+    }
+  }
+
+  // Ko'tarilgan kontent lentada IKKI MARTA chiqmasin.
+  const featuredKeys = new Set(featured.map((f) => `${f.commentKind}:${f.id}`));
+  const rest = feed.filter((f) => !featuredKeys.has(`${f.commentKind}:${f.id}`));
+
+  return json({ feed: [...featured, ...rest], hasMore: all.length > limit });
 }
 
 async function followApi(request, env, url) {

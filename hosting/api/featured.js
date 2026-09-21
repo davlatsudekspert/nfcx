@@ -146,6 +146,29 @@ async function sweepExpired(env, H) {
   ).bind(H.nowTs()).run().catch(() => {});
 }
 
+/// HOZIR KO'TARILGAN KONTENT — lenta uchun.
+///
+/// `worker.js` dagi `feedApi` shu ro'yxatni oladi va kontentni
+/// O'ZINING UNIONIDAN chiqaradi. Bu yerda kontentga tegilmaydi:
+/// aks holda maxfiylik va bloklash shartlarining IKKINCHI nusxasi
+/// paydo bo'lardi — va u eskirib, pul to'langan e'lon yashiringan
+/// profilni ochib qo'yishi mumkin edi.
+///
+/// `ends_at > now` sharti — muddati o'tganni belgilash kechiksa
+/// ham eskirgan slot chiqmasligi uchun.
+export async function activeTargets(env, nowTs) {
+  await ensureSchema(env);
+  const rows = await env.DB.prepare(
+    `SELECT target_kind, target_id FROM featured_slots
+      WHERE status = 'active' AND ends_at > ?
+      ORDER BY starts_at DESC, id DESC LIMIT 10`
+  ).bind(nowTs).all().catch(() => null);
+  return (rows?.results || []).map((r) => ({
+    kind: String(r.target_kind),
+    id: Number(r.target_id),
+  }));
+}
+
 /// TO'LANGAN BUYURTMA SLOTNI YOQADI.
 ///
 /// `worker.js` dagi `finalizePaidWebOrderD1()` shu yerga keladi.

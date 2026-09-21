@@ -289,4 +289,78 @@ check('19) unga FEATURED slot yaratilmadi',
   (await env.DB.prepare(`SELECT COUNT(*) AS n FROM featured_slots WHERE order_id = ?`)
     .bind(Number(cardOrder.id)).first())?.n, 0);
 
+// ═══════════════════════════════════════════════════════════════════
+// 20) KO'TARILGAN KONTENT LENTADA — ALOHIDA ENDPOINTSIZ
+// ═══════════════════════════════════════════════════════════════════
+//
+// Ilova lentani `/api/feed` dan oladi. Ko'tarilgan kontent uchun
+// ikkinchi manba ochilmagan: u SHU lentaning boshida, `featured:
+// true` belgisi bilan keladi.
+
+// Toza holat: hamma slotni o'chirib, bittasini qaytadan yoqamiz.
+await env.DB.prepare(`UPDATE featured_slots SET status = 'expired'`).run();
+await env.DB.prepare(
+  `INSERT INTO posts (id, code, user_id, caption, created_at)
+   VALUES (30, 'VIP001', 1, 'KO‘TARILGAN post', '2020-01-01 00:00:00')`
+).run();
+const promo = await call('/api/featured', {
+  method: 'POST', ...asA, json: { targetKind: 'post', targetId: 30, days: 1 },
+});
+check('20) slot ochildi', promo.status, 201);
+await payOrder(Number(promo.body?.orderId), Number(promo.body?.price), 'ptx-feed-1');
+
+const feed = await call('/api/feed', asB);
+const items = feed.body?.feed || [];
+checkTrue('20) lenta bo‘sh emas', items.length > 0);
+check('20) BIRINCHI qator — ko‘tarilgan kontent', Number(items[0]?.id), 30);
+check('20) unga "featured" belgisi qo‘yilgan', items[0]?.featured, true);
+
+// Eng muhimi: u lentadagi eng ESKI post (2020-yil). Ko'tarilmaganda
+// u oxirida turardi — ya'ni yuqoriga chiqishi to'lov tufayli.
+checkTrue('20) oddiy qatorlarda "featured" belgisi YO‘Q',
+  items.slice(1).every((f) => !f.featured));
+
+// IKKI MARTA chiqmasligi kerak.
+check('20) lentada bir marta',
+  items.filter((f) => Number(f.id) === 30 && f.commentKind === 'post').length, 1);
+
+// Shakli oddiy qator bilan AYNAN bir xil — ilova ikkalasini ham
+// bitta `Post.fromJson` bilan o'qiydi.
+for (const key of ['kind', 'code', 'authorKind', 'name', 'imageUrl',
+                   'caption', 'createdAt', 'likeCount', 'commentKind']) {
+  checkTrue(`20) "${key}" maydoni bor`, key in (items[0] || {}));
+}
+
+// ── 21) IKKINCHI SAHIFADA TAKRORLANMAYDI ─────────────────────────
+const page2 = await call('/api/feed?page=2', asB);
+checkTrue('21) 2-sahifada ko‘tarilgan kontent YO‘Q',
+  !(page2.body?.feed || []).some((f) => f.featured));
+
+// ── 22) PUL MAXFIYLIKNI OCHIB BERMAYDI ───────────────────────────
+//
+// Eng nozik joy: ko'tarilgan kontent UNIONDAN o'tadi, ya'ni
+// katalogdan yashiringan profil pul to'lagani uchun ham lentaga
+// chiqmasligi kerak.
+await env.DB.prepare(`UPDATE cards SET hidden_from_directory = 1 WHERE code = 'VIP001'`).run();
+const hiddenFeed = await call('/api/feed', asB);
+checkTrue('22) yashiringan profil pulga ham CHIQMADI',
+  !(hiddenFeed.body?.feed || []).some((f) => Number(f.id) === 30));
+await env.DB.prepare(`UPDATE cards SET hidden_from_directory = 0 WHERE code = 'VIP001'`).run();
+
+// ── 23) BLOKLANGAN MUALLIF KO'TARILGAN BO'LSA HAM CHIQMAYDI ──────
+// Blok turi `record` (`card` emas) — `moderation.js` dagi
+// `BLOCK_KINDS` shunday. `feedApi` uni `card:` kalitiga
+// o'giradi.
+const blockRes = await call('/api/blocks', {
+  method: 'POST', ...asB, json: { kind: 'record', id: 'VIP001' },
+});
+check('23) blok qo‘yildi', blockRes.status, 200);
+checkTrue('23) bloklangan muallifning KO‘TARILGAN posti ham chiqmadi',
+  !((await call('/api/feed', asB)).body?.feed || []).some((f) => Number(f.id) === 30));
+
+// Blok olinsa — qaytadi.
+await call('/api/blocks/record/VIP001', { method: 'DELETE', ...asB });
+checkTrue('23) blok olingach qaytdi',
+  ((await call('/api/feed', asB)).body?.feed || []).some((f) => Number(f.id) === 30));
+
 done('NFCSTORE FEATURED');
