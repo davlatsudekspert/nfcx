@@ -194,3 +194,5 @@ jobs:
           CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT: 31c4b3d8ece4b65de515debc4552334a
         run: node scripts/test-worker-secrets.mjs
+
+# (audit qayta yurgizildi — qo'riqchi to'liq ro'yxatni chiqarishi uchun)
