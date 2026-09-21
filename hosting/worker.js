@@ -5875,7 +5875,29 @@ async function ordersApi(request, env, url) {
     // Boshqa foydalanuvchining buyurtmasi bo'lsa ham 404 (mavjudligini
     // oshkor qilmaslik uchun) — legacy bilan bir xil.
     if (!order || String(order.userId) !== String(user.id)) return json({ error: 'not_found' }, 404);
-    return json({ id: order.id, code: order.code, status: order.status, price: order.price });
+    // TO'LOV HAVOLALARI SHU YERDA HAM KERAK.
+    //
+    // Ro'yxat endpointi (`GET /api/orders`) ularni allaqachon
+    // qaytaradi, bittalik esa qaytarmasdi. Natijada ilovadagi
+    // "Buyurtma" ekrani BOSHI BERK KO'CHA bo'lardi: buyurtma
+    // yaratilgan, "To'lov kutilmoqda" deb turibdi, lekin "TO'LOV
+    // USULI" bo'limi BO'SH — Payme ham, Click ham chiqmaydi,
+    // chunki ekran havolasiz tugma chizmaydi. Odam to'lay olmasdi.
+    //
+    // Shakl ro'yxatdagi bilan AYNAN bir xil (`payLink` + `payLinks`)
+    // va faqat kutilayotgan buyurtma uchun to'ldiriladi. Havolada
+    // maxfiy narsa yo'q: merchant ID har bir checkout manzilida
+    // ochiq turadi, buyurtma esa allaqachon shu foydalanuvchiniki
+    // (yuqorida egalik tekshirildi).
+    const pending = order.status === 'pending';
+    return json({
+      id: order.id,
+      code: order.code,
+      status: order.status,
+      price: order.price,
+      payLink: pending ? paymeCheckoutLinkD1(env, order.id, Number(order.price)) : null,
+      payLinks: pending ? checkoutLinksD1(env, order.id, Number(order.price)) : null,
+    });
   }
 
   if (path === '/api/orders' && request.method === 'GET') {
