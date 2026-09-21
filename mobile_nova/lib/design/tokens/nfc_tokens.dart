@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 
 import 'palette.dart';
@@ -98,7 +99,33 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
   /// Beshala mavzuda ham aksent OCHIQ rang (champagne, platina, muz,
   /// siyohrang, oltin), shuning uchun ustida oq emas, QORONG'I siyoh
   /// o'qiladi. Bu qiymat mavzu bilan o'zgarmaydi — aynan shu sababdan.
-  Color get onAccent => const Color(0xFF1A1A1F);
+  /// AKSENT SIRTI USTIDAGI SIYOH — tugma va nishon yozuvi.
+  ///
+  /// Ilgari QOTIRILGAN quyuq rang edi. Bu hamma mavzuda ishlardi,
+  /// chunki aksent har doim oltin (yorug') edi. `mono` (oq-qora)
+  /// mavzusida aksent QORA bo'ldi va quyuq siyoh qora ustida
+  /// umuman o'qilmasdi — kontrast 1.2, sinov ushladi.
+  ///
+  /// Endi siyoh AKSENTNING YORUG'LIGIDAN hisoblanadi. Yangi mavzu
+  /// qo'shilganda bu yerni qo'lda yangilash kerak emas.
+  Color get onAccent {
+    // Chegara ("yorug'ligi 0.45 dan katta bo'lsa") YETARLI EMAS:
+    // `ocean` aksenti chegaradan sal yuqori turib, quyuq siyoh
+    // bilan atigi 2.3 kontrast berardi. Shuning uchun ikkala
+    // siyoh ham O'LCHANADI va yaxshirog'i tanlanadi.
+    //
+    // `accent1` ham, `accent2` ham hisobga olinadi: siyoh ikkala
+    // sirt ustida ham o'qilishi kerak.
+    double lum(Color c) => c.computeLuminance();
+    double ratio(Color a, Color b) {
+      final x = lum(a), y = lum(b);
+      return (max(x, y) + .05) / (min(x, y) + .05);
+    }
+    const dark = Color(0xFF1A1A1F);
+    final darkScore = min(ratio(dark, accent1), ratio(dark, accent2));
+    final lightScore = min(ratio(Colors.white, accent1), ratio(Colors.white, accent2));
+    return darkScore >= lightScore ? dark : Colors.white;
+  }
 
   /// Logotip orqasidagi plastina rangi.
   ///
@@ -337,6 +364,80 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
   // Brend logotipi aynan shu mavzu uchun yaratilgandek: chuqur ko'k fon,
   // champagne oltin aksent. `shadowFloat` ichidagi uchinchi qatlam —
   // juda yengil oltin nur; usiz mavzu shunchaki "qorong'i ko'k" bo'lardi.
+  // ------------------------------------------------------------- 5 MONO
+  //
+  // OQ-QORA. Egasining so'rovi: "oq mayin fon, harflar tim qora,
+  // boxlar chegarasi ham qora — faqat oq va qora".
+  //
+  // `midnight` o'rnini egalladi: u ham qorong'i mavzu edi va
+  // `noir` bilan deyarli bir xil ko'rinardi, ya'ni tanlovda
+  // ma'nosi yo'q edi.
+  //
+  // FON SOF OQ EMAS. `#F7F6F3` — juda yengil iliq kulrang. Sof
+  // `#FFFFFF` ekranda ko'zni qamashtiradi va ustidagi oq kartalar
+  // umuman ajralmaydi. Kartalar esa SOF OQ — shunda ular fondan
+  // ko'tarilib turadi, chegara ham, soya ham kerak bo'lmaydi.
+  //
+  // AKSENT HAM QORA. Bu yagona mavzu bo'lib, unda oltin yo'q:
+  // "faqat oq va qora" degani aynan shu. Holat ranglari (xato,
+  // ogohlantirish) ham kulrangning quyuq darajalari — ular
+  // bo'yoq bilan emas, MATN bilan tushuntiriladi.
+  static final mono = NfcTokens(
+    id: 'mono',
+    isDark: false,
+    bg1: hex('#F7F6F3'),
+    bg2: hex('#EFEEEA'),
+    // Vinyetka deyarli sezilmaydi — oq fonda har qanday quyuq
+    // dog' iflos ko'rinadi.
+    bgVignette: rgba(0, 0, 0, .04),
+    surface: rgba(255, 255, 255, .92),
+    surface2: rgba(255, 255, 255, .70),
+    surfaceSolid: hex('#FFFFFF'),
+    text1: hex('#0A0A0A'),
+    text2: hex('#3D3D3D'),
+    text3: hex('#6B6B6B'),
+    accent1: hex('#111111'),
+    accent2: hex('#000000'),
+    accent3: hex('#4A4A4A'),
+    // Rejim va mahsulot aksentlari — hammasi qoraning darajalari.
+    // "Faqat oq va qora" degani aynan shu: biznes rejimi ham,
+    // boshqa aksentlar ham rang bilan emas, QUYUQLIK bilan
+    // ajraladi.
+    goldDeep: hex('#000000'),
+    accentB: hex('#111111'),
+    accentBDark: hex('#000000'),
+    accentC: hex('#2A2A2A'),
+    accentCDark: hex('#141414'),
+    accentD: hex('#3D3D3D'),
+    accentDDark: hex('#1F1F1F'),
+    glow: rgba(0, 0, 0, .10),
+    glowB: rgba(0, 0, 0, .08),
+    // CHEGARALAR QORA — egasining aniq so'rovi. Sof qora chiziq
+    // juda qattiq ko'rinadi, shuning uchun shaffoflik bilan:
+    // ko'z uni qora deb o'qiydi, lekin u ekranni to'rga
+    // aylantirmaydi.
+    border1: rgba(0, 0, 0, .55),
+    border2: rgba(0, 0, 0, .22),
+    error: hex('#8A1F1F'),
+    success: hex('#1F5A2E'),
+    warn: hex('#7A5A10'),
+    ambient1: rgba(0, 0, 0, .05),
+    ambient2: rgba(0, 0, 0, .03),
+    shadowFloat: [
+      BoxShadow(color: rgba(0, 0, 0, .10), blurRadius: 24, offset: const Offset(0, 8)),
+    ],
+    shadowSoft: [
+      BoxShadow(color: rgba(0, 0, 0, .07), blurRadius: 14, offset: const Offset(0, 4)),
+    ],
+    shadowTiny: [
+      BoxShadow(color: rgba(0, 0, 0, .06), blurRadius: 6, offset: const Offset(0, 2)),
+    ],
+  );
+
+  // ------------------------------------------------------------- 5 MIDNIGHT
+  // Brend logotipi aynan shu mavzu uchun yaratilgandek: chuqur ko'k fon,
+  // champagne oltin aksent. `shadowFloat` ichidagi uchinchi qatlam —
+  // juda yengil oltin nur; usiz mavzu shunchaki "qorong'i ko'k" bo'lardi.
   static final midnight = NfcTokens(
     id: 'midnight',
     isDark: true,
@@ -550,7 +651,7 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
   // topa olmagan id uchun `fallback` (noir) qaytaradi, ya'ni eski
   // tanlov saqlangan qurilmalar keyingi ochilishda Noir'ga
   // o'tadi. Alohida migratsiya kodi shart emas.
-  static final all = <NfcTokens>[noir, ocean, graphite, aurora, midnight, onyx];
+  static final all = <NfcTokens>[noir, ocean, mono, graphite, aurora, onyx];
 
   /// STANDART MAVZU — `noir`.
   ///

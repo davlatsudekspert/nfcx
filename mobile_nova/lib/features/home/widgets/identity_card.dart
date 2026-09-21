@@ -10,7 +10,7 @@ import '../../../design/widgets/surfaces.dart';
 import '../../../l10n/gen/app_localizations.dart';
 
 /// `NfcTokens.onAccent` ga qisqa murojaat — aksent sirti ustidagi siyoh.
-const kOnAccent = Color(0xFF1A1A1F);
+
 
 /// Home'ning markaziy obyekti: foydalanuvchi + faol NFC ID.
 ///
@@ -147,7 +147,17 @@ class IdentityCard extends StatelessWidget {
               // (96 piksel) xuddi shunday edi.
               Row(
                 children: [
-                  Expanded(child: _Stat(value: id!.taps, label: l.nfcScans)),
+                  // "SKANERLASHLAR" OLIB TASHLANDI.
+                  //
+                  // Bu raqamning MANBASI YO'Q edi: server karta
+                  // ma'lumotida `taps` maydonini hech qachon
+                  // yubormagan va NFC tegizishlar hech qayerda
+                  // sanalmaydi ham. Ya'ni u har doim 0 turardi.
+                  //
+                  // Bo'lmagan sanoqni ko'rsatish — odamda "ilova
+                  // ishlamayapti" degan taassurot qoldiradi.
+                  // O'rniga POSTLAR: u haqiqiy va serverdan keladi.
+                  Expanded(child: _Stat(value: id!.posts, label: l.profilePosts)),
                   const SizedBox(width: Gap.md),
                   Expanded(child: _Stat(value: id!.views, label: l.nfcViews)),
                   const SizedBox(width: Gap.md),

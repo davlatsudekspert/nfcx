@@ -39,7 +39,7 @@ void main() {
         // odamni chalkashtirardi: u tugmani RANGIDAN taniydi.
         // Qiymatlar saytdan olingan (`src/pages/PaymentsPage.jsx`)
         // va ikki joyda bir xil.
-        'lib/features/shop/nfc_id_market.dart',
+        'lib/features/shop/store_policy.dart',
       };
 
       final offenders = <String>[];

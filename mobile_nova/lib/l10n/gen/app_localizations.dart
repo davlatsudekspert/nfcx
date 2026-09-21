@@ -1851,12 +1851,6 @@ abstract class L {
   /// **'Aurora'**
   String get themeAurora;
 
-  /// No description provided for @themeMidnight.
-  ///
-  /// In uz, this message translates to:
-  /// **'Yarim tun'**
-  String get themeMidnight;
-
   /// No description provided for @langUz.
   ///
   /// In uz, this message translates to:
@@ -3200,6 +3194,24 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'{name} ga javob'**
   String commentReplyingTo(String name);
+
+  /// No description provided for @storeBuyOnSiteId.
+  ///
+  /// In uz, this message translates to:
+  /// **'NFC ID xaridi saytda rasmiylashtiriladi:'**
+  String get storeBuyOnSiteId;
+
+  /// No description provided for @storeBuyOnSitePremium.
+  ///
+  /// In uz, this message translates to:
+  /// **'Premium obunani saytdan olasiz:'**
+  String get storeBuyOnSitePremium;
+
+  /// No description provided for @themeMono.
+  ///
+  /// In uz, this message translates to:
+  /// **'Oq-qora'**
+  String get themeMono;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

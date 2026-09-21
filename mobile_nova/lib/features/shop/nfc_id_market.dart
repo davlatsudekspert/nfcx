@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/utils/external_link.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/shop_repository.dart';
 import '../../design/theme/typography.dart';
@@ -18,7 +17,7 @@ import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
 import '../business/business_screens.dart' show formatMoney;
-import '../auth/session.dart';
+import 'store_policy.dart';
 
 // ═══════════════════════════════════════════════════════════════════
 // NFC ID QIDIRISH / OLISH
@@ -295,59 +294,15 @@ class _IdCard extends ConsumerWidget {
 /// ID tafsiloti + buyurtma. Ikkalasi BITTA ekranda: oraliqda
 /// yana bir "tasdiqlang" qadami odamni kutdirardi, holbuki tanlov
 /// bitta — sotib olish yoki yo'q.
-class NfcIdBuyScreen extends ConsumerStatefulWidget {
+class NfcIdBuyScreen extends ConsumerWidget {
   const NfcIdBuyScreen({super.key, required this.code});
   final String code;
 
   @override
-  ConsumerState<NfcIdBuyScreen> createState() => _NfcIdBuyScreenState();
-}
-
-class _NfcIdBuyScreenState extends ConsumerState<NfcIdBuyScreen> {
-  final _name = TextEditingController();
-  bool _busy = false;
-  String? _error;
-  bool _seeded = false;
-
-  @override
-  void dispose() {
-    _name.dispose();
-    super.dispose();
-  }
-
-  Future<void> _buy(IdQuote quote) async {
-    final l = L.of(context);
-    if (_name.text.trim().isEmpty) {
-      setState(() => _error = l.idNameLabel);
-      return;
-    }
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    final res = await ref.read(shopRepositoryProvider).buyId(
-          code: quote.code,
-          name: _name.text.trim(),
-        );
-    if (!mounted) return;
-    setState(() => _busy = false);
-    res.when(
-      ok: (draft) => context.push(Routes.nfcIdOrder(draft.orderId)),
-      err: (e) {
-        // Kod shu daqiqada band bo'lib qolgan bo'lishi mumkin —
-        // holatni qayta o'qiymiz, aks holda ekran eski "Sotuvda"
-        // yozuvi bilan qolib ketardi.
-        ref.invalidate(idQuoteProvider(quote.code));
-        setState(() => _error = describeError(l, e));
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l = L.of(context);
     final t = context.tokens;
-    final quote = ref.watch(idQuoteProvider(widget.code));
+    final quote = ref.watch(idQuoteProvider(code));
 
     return NovaScaffold(
       title: l.idDetailTitle,
@@ -355,18 +310,8 @@ class _NfcIdBuyScreenState extends ConsumerState<NfcIdBuyScreen> {
       body: quote.when(
         loading: () => const SkeletonList(count: 2, height: 120),
         error: (e, __) => StatePanel.fromError(context, asAppError(e),
-            onRetry: () => ref.invalidate(idQuoteProvider(widget.code))),
+            onRetry: () => ref.invalidate(idQuoteProvider(code))),
         data: (q) {
-          // Ism maydoni profildagi nom bilan to'ldiriladi — odam uni
-          // qaytadan yozib o'tirmasin. Faqat BIR MARTA: keyin u
-          // yozgan matn ustidan yozib yuborilmaydi.
-          if (!_seeded) {
-            _seeded = true;
-            final me = ref.read(sessionProvider);
-            if (me is SessionActive && _name.text.isEmpty) {
-              _name.text = me.user.name;
-            }
-          }
           final state = quoteState(l, t, q);
 
           return NovaScroll(
@@ -406,35 +351,13 @@ class _NfcIdBuyScreenState extends ConsumerState<NfcIdBuyScreen> {
                   ],
                 ),
               ),
+              // ILOVA ICHIDA SOTILMAYDI — `store_policy.dart` izohi.
+              // Ism maydoni ham kerak emas: u faqat xarid uchun edi.
               if (q.purchasable) ...[
                 const SizedBox(height: Gap.xl),
-                NovaField(
-                  label: l.idNameLabel,
-                  controller: _name,
-                  enabled: !_busy,
-                  maxLength: 60,
-                ),
-              ],
-              if (_error != null) ...[
-                const SizedBox(height: Gap.lg),
-                Text(_error!,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                        fontFamily: AppType.sans,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                        color: t.error)),
+                StoreNotice(text: l.storeBuyOnSiteId),
               ],
               const SizedBox(height: Gap.xxl),
-              // SOTIB OLIB BO'LMAYDIGAN ID UCHUN TUGMA UMUMAN YO'Q.
-              // O'chirilgan tugma odamda "balki bosilar" degan umid
-              // qoldiradi; sababi esa yuqorida kapsulada yozilgan.
-              if (q.purchasable)
-                NovaButton(
-                  label: l.idBuy,
-                  busy: _busy,
-                  onPressed: _busy ? null : () => _buy(q),
-                ),
             ],
           );
         },
@@ -520,29 +443,19 @@ class NfcIdOrderScreen extends ConsumerWidget {
                   ],
                 ),
               ),
+              // BU EKRANDA TO'LOV TUGMASI YO'Q.
+              //
+              // Bu yerga faqat NFC ID buyurtmasi tushadi — raqamli
+              // mahsulot. Google Play uni o'z to'lov tizimisiz
+              // sotishga ruxsat bermaydi, tashqi havola ochish ham
+              // taqiqlangan. Holat ko'rinadi, to'lov esa saytda.
+              //
+              // Jismoniy karta boshqa ekranda (`shop_screens.dart`)
+              // va u yerda Payme/Click avvalgidek ishlaydi — jismoniy
+              // tovar bu qoidadan ozod.
               if (o.pending) ...[
                 const SizedBox(height: Gap.xl),
-                SectionHeader(title: l.checkoutPayWith),
-                // TO'LOV HAVOLALARI SERVERDAN KELADI — ilova merchant
-                // ID yoki summani havolaga o'zi yozmaydi.
-                if (o.paymeLink.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: Gap.md),
-                    child: _PayButton(
-                      label: 'Payme',
-                      brand: _paymeBrand,
-                      onTap: () => openLink(o.paymeLink),
-                    ),
-                  ),
-                if (o.clickLink.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: Gap.md),
-                    child: _PayButton(
-                      label: 'Click',
-                      brand: _clickBrand,
-                      onTap: () => openLink(o.clickLink),
-                    ),
-                  ),
+                StoreNotice(text: storeNoticeText(l, o.kind)),
               ],
               const SizedBox(height: Gap.lg),
               NovaButton(
@@ -568,108 +481,6 @@ class NfcIdOrderScreen extends ConsumerWidget {
             ],
           );
         },
-      ),
-    );
-  }
-}
-
-
-// ─────────────────────────────────────────────── to'lov provayderi
-
-// BREND RANGLARI SAYTDAN OLINGAN — o'ylab topilmagan.
-//
-// `src/pages/PaymentsPage.jsx` da ayni shu ikki qiymat turadi:
-//
-//     { id: 'payme', label: 'Payme', color: '#33c8b6' }
-//     { id: 'click', label: 'Click', color: '#0d6efd' }
-//
-// Ikki joyda ikki xil rang bo'lsa, odam saytda bir xil, ilovada
-// boshqacha tugma ko'rardi va qaysi biri haqiqiy ekaniga
-// ishonmasdi.
-const _paymeBrand = Color(0xFF33C8B6);
-const _clickBrand = Color(0xFF0D6EFD);
-
-/// To'lov provayderi tugmasi — O'Z RANGIDA.
-///
-/// Ilgari ikkalasi ham oddiy NovaButton edi: biri oltin, ikkinchisi
-/// kulrang. Provayder tanlash to'lovdagi eng muhim qadam va odam uni
-/// RANGIDAN taniydi — matnni o'qib emas. Shuning uchun har biri
-/// o'z brend rangida.
-///
-/// Logotip TASVIRI ishlatilmadi: repoda Payme/Click belgilari yo'q
-/// va ularni o'zim chizish — begona brendni taqlid qilish bo'lardi.
-/// O'rniga brend rangi va nomi, NFCSTORE shakllari bilan.
-class _PayButton extends StatelessWidget {
-  const _PayButton({
-    required this.label,
-    required this.brand,
-    required this.onTap,
-  });
-
-  final String label;
-  final Color brand;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    // Brend rangi ustida oq matn har doim o'qiladi (ikkala rang ham
-    // to'yingan va o'rtacha yorug'likda), shuning uchun matn oq.
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: R.gentle,
-        child: Ink(
-          height: 52,
-          decoration: BoxDecoration(
-            color: brand,
-            borderRadius: R.gentle,
-            boxShadow: [
-              BoxShadow(
-                color: brand.withValues(alpha: .34),
-                blurRadius: 18,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 26,
-                height: 26,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: .22),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  label.characters.first,
-                  style: const TextStyle(
-                    fontFamily: AppType.sans,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(width: Gap.md),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontFamily: AppType.sans,
-                  fontSize: 15.5,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: .2,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(width: Gap.md),
-              Icon(Icons.arrow_forward_rounded,
-                  size: 18, color: Colors.white.withValues(alpha: .85)),
-            ],
-          ),
-        ),
       ),
     );
   }

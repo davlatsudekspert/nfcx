@@ -75,7 +75,7 @@ void main() {
       ],
       child: MaterialApp.router(
         routerConfig: router,
-        theme: buildTheme(NfcTokens.midnight),
+        theme: buildTheme(NfcTokens.mono),
         locale: const Locale('uz'),
         supportedLocales: L.supportedLocales,
         localizationsDelegates: const [

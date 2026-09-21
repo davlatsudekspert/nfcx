@@ -33,8 +33,7 @@ void main() {
     expect(NfcTokens.all.length, 6);
     final ids = NfcTokens.all.map((t) => t.id).toSet();
     expect(ids.length, 6);
-    expect(ids,
-        {'noir', 'ocean', 'graphite', 'aurora', 'midnight', 'onyx'});
+    expect(ids, {'noir', 'ocean', 'mono', 'graphite', 'aurora', 'onyx'});
     // OQ MAVZU TANLANMAYDI.
     //
     // `pearl` ta'rifi qoladi (sinovlar undan yorug' palitra namunasi
@@ -44,8 +43,14 @@ void main() {
     expect(ids.contains('pearl'), isFalse);
     // Birinchi o'rin — standart mavzu.
     expect(NfcTokens.all.first.id, 'noir');
-    // Hamma mavzu qorong'i.
-    expect(NfcTokens.all.every((t) => t.isDark), isTrue);
+    // FAQAT BITTA YORUG' MAVZU — `mono` (oq-qora).
+    //
+    // Qolgani qorong'i. `pearl` olib tashlanganidan keyin yorug'
+    // mavzu umuman yo'q edi; `mono` egasining so'rovi bilan
+    // qaytdi, lekin u BOShQACHA: oq fon, tim qora matn va qora
+    // chegaralar, oltin umuman yo'q.
+    final light = NfcTokens.all.where((t) => !t.isDark).map((t) => t.id);
+    expect(light, ['mono']);
   });
 
   test('noir AKSENTI shampan oltin', () {
@@ -94,18 +99,19 @@ void main() {
         reason: 'farq juda kichik — karta fon bilan qo‘shilib ketadi');
   });
 
-  test('onyx ILIQ, midnight esa SOVUQ qora', () {
-    // Sayt fonidan o'lchangan qoida: iliq qorada qizil kanal
-    // ko'kdan KATTA. `midnight` da aksincha — u ko'k-qora.
-    // Ikkalasi bitta oilaga tushib qolsa, saytga moslik yo'qoladi.
+  test('onyx ILIQ qora — oq-qora mavzu esa butunlay rangsiz', () {
+    // `midnight` o'rnini `mono` egalladi, shuning uchun eski
+    // "iliq/sovuq" taqqoslash ma'nosini yo'qotdi. Endi tekshiruv
+    // boshqacha: `onyx` iliq qolsin, `mono` esa RANGSIZ bo'lsin —
+    // uning fonida qizil va ko'k deyarli teng bo'lishi kerak,
+    // aks holda u "oq" emas, tusli bo'lib ko'rinadi.
     final onyx = NfcTokens.onyx.bg1;
-    final mid = NfcTokens.midnight.bg1;
-    expect(onyx.r, greaterThan(onyx.b),
-        reason: 'onyx foni iliq bo‘lishi kerak (qizil > ko‘k)');
-    expect(mid.b, greaterThan(mid.r),
-        reason: 'midnight foni sovuq bo‘lib qolishi kerak');
-  });
+    expect(onyx.r, greaterThan(onyx.b), reason: 'onyx iliq bo\u2018lishi kerak');
 
+    final mono = NfcTokens.mono.bg1;
+    expect((mono.r - mono.b).abs(), lessThan(0.03),
+        reason: 'oq-qora mavzu fonida rang tusi bo\u2018lmasin');
+  });
   test('noma’lum kalit STANDART mavzuga tushadi', () {
     // Egasining qarori (2026-09): ilova birinchi ochilganda
     // NFCSTORE brend rangida — `noir`. `ocean` o'chirilmadi, u
@@ -113,14 +119,14 @@ void main() {
     expect(NfcTokens.fallback.id, 'noir');
     expect(NfcTokens.byId('bunday-mavzu-yoq').id, 'noir');
     expect(NfcTokens.byId(null).id, 'noir');
-    expect(NfcTokens.byId('midnight').id, 'midnight');
+    expect(NfcTokens.byId('mono').id, 'mono');
     // `ocean` HALI HAM mavjud — o'chirib yuborilmaganiga ishonch.
     expect(NfcTokens.byId('ocean').id, 'ocean');
   });
 
-  test('faqat Pearl yorug‘, qolganlari qorong‘i', () {
-    expect(NfcTokens.pearl.isDark, isFalse);
-    for (final t in NfcTokens.all.where((e) => e.id != 'pearl')) {
+  test('faqat oq-qora mavzu yorug‘, qolganlari qorong‘i', () {
+    expect(NfcTokens.mono.isDark, isFalse);
+    for (final t in NfcTokens.all.where((e) => e.id != 'mono')) {
       expect(t.isDark, isTrue, reason: t.id);
     }
   });
@@ -141,13 +147,13 @@ void main() {
   });
 
   test('mavzular orasida lerp qiladi — almashuv silliq', () {
-    final mid = NfcTokens.pearl.lerp(NfcTokens.midnight, 0.5);
+    final mid = NfcTokens.pearl.lerp(NfcTokens.mono, 0.5);
     expect(mid.bg1, isNot(NfcTokens.pearl.bg1));
-    expect(mid.bg1, isNot(NfcTokens.midnight.bg1));
+    expect(mid.bg1, isNot(NfcTokens.mono.bg1));
 
     // Chegaralarda aniq mavzular qaytadi.
-    expect(NfcTokens.pearl.lerp(NfcTokens.midnight, 0).id, 'pearl');
-    expect(NfcTokens.pearl.lerp(NfcTokens.midnight, 1).id, 'midnight');
+    expect(NfcTokens.pearl.lerp(NfcTokens.mono, 0).id, 'pearl');
+    expect(NfcTokens.pearl.lerp(NfcTokens.mono, 1).id, 'mono');
   });
 
   test('ThemeData har mavzu uchun quriladi va kengaytmani saqlaydi', () {
@@ -163,12 +169,34 @@ void main() {
     }
   });
 
-  test('Midnight’da oltin aksent ishlatiladi', () {
-    // Champagne oltin: qizil komponent ko'kdan sezilarli katta.
-    final gold = NfcTokens.midnight.accent2;
-    expect(gold.r, greaterThan(gold.b));
-    // Fon esa qora emas, CHUQUR KO'K.
-    final bg = NfcTokens.midnight.bg1;
-    expect(bg.b, greaterThan(bg.r));
+  test('Oq-qora mavzu HAQIQATAN rangsiz', () {
+    // Egasining so'rovi: "faqat oq va qora". Demak bu mavzuda
+    // oltin ham, ko'k ham bo'lmasligi kerak — hamma rang
+    // kulrangning darajasi.
+    final m = NfcTokens.mono;
+    for (final (name, c) in [
+      ('accent1', m.accent1),
+      ('accent2', m.accent2),
+      ('bg1', m.bg1),
+      ('surfaceSolid', m.surfaceSolid),
+      ('text1', m.text1),
+    ]) {
+      final spread = [c.r, c.g, c.b];
+      expect(spread.reduce((a, b) => a > b ? a : b) -
+              spread.reduce((a, b) => a < b ? a : b),
+          lessThan(0.05),
+          reason: '$name rangsiz bo\u2018lishi kerak');
+    }
+
+    // Fon YORUG', matn esa TIM QORA.
+    expect(m.bg1.computeLuminance(), greaterThan(.85));
+    expect(m.text1.computeLuminance(), lessThan(.05));
+
+    // Chegaralar QORADAN — egasining aniq so'rovi.
+    expect(m.border1.computeLuminance(), lessThan(.15));
+
+    // Karta fondan ajralsin, aks holda qutilar ko'rinmaydi.
+    expect(m.surfaceSolid.computeLuminance(),
+        greaterThan(m.bg1.computeLuminance()));
   });
 }

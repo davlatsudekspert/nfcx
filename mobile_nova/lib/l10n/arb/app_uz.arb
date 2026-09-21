@@ -344,7 +344,6 @@
   "themeGraphite": "Grafit",
   "themeOcean": "Okean",
   "themeAurora": "Aurora",
-  "themeMidnight": "Yarim tun",
   "langUz": "O‘zbekcha",
   "langRu": "Русский",
   "langEn": "English",
@@ -658,5 +657,8 @@
         "type": "String"
       }
     }
-  }
+  },
+  "storeBuyOnSiteId": "NFC ID xaridi saytda rasmiylashtiriladi:",
+  "storeBuyOnSitePremium": "Premium obunani saytdan olasiz:",
+  "themeMono": "Oq-qora"
 }

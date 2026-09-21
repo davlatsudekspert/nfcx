@@ -155,7 +155,11 @@ void main() {
         const Scaffold(
           body: IdentityCard(
             user: testUser,
-            id: NfcId(code: '48210377', name: 'Test', taps: 1200),
+            // `taps` EMAS, `posts`: "Skanerlashlar" olib tashlandi.
+            // Uning manbasi yo'q edi — server `taps` maydonini
+            // hech qachon yubormagan va NFC tegizishlar hech
+            // qayerda sanalmaydi, ya'ni raqam har doim 0 turardi.
+            id: NfcId(code: '48210377', name: 'Test', posts: 1200),
             mode: AppMode.personal,
           ),
         ),
@@ -285,7 +289,7 @@ void main() {
         l.themeGraphite,
         l.themeOcean,
         l.themeAurora,
-        l.themeMidnight,
+        l.themeMono,
         l.themeOnyx,
         l.themeNoir,
       ]) {

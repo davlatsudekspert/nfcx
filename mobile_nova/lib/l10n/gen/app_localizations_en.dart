@@ -908,9 +908,6 @@ class LEn extends L {
   String get themeAurora => 'Aurora';
 
   @override
-  String get themeMidnight => 'Midnight';
-
-  @override
   String get langUz => 'Uzbek';
 
   @override
@@ -1624,4 +1621,14 @@ class LEn extends L {
   String commentReplyingTo(String name) {
     return 'Replying to $name';
   }
+
+  @override
+  String get storeBuyOnSiteId =>
+      'NFC ID purchases are completed on the website:';
+
+  @override
+  String get storeBuyOnSitePremium => 'Premium is purchased on the website:';
+
+  @override
+  String get themeMono => 'Mono';
 }

@@ -103,5 +103,5 @@ void main() {
   testWidgets('site card ocean', (t) => shot(t, NfcTokens.ocean, 'site-ocean'));
   testWidgets('site card pearl', (t) => shot(t, NfcTokens.pearl, 'site-pearl'));
   testWidgets(
-      'site card midnight', (t) => shot(t, NfcTokens.midnight, 'site-midnight'));
+      'site card midnight', (t) => shot(t, NfcTokens.mono, 'site-midnight'));
 }

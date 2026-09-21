@@ -919,10 +919,10 @@ class _StoryBubble extends StatelessWidget {
                         shape: BoxShape.circle,
                         border: Border.all(color: t.bg1, width: 2),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.add_rounded,
                         size: 12,
-                        color: kOnAccent,
+                        color: t.onAccent,
                       ),
                     ),
                   ),

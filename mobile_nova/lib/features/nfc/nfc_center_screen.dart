@@ -15,7 +15,6 @@ import '../../routing/routes.dart';
 import '../../data/models/models.dart';
 import '../auth/session.dart';
 import '../home/home_screen.dart';
-import '../home/widgets/identity_card.dart';
 import 'nfc_service.dart';
 import 'qr_sheet.dart';
 
@@ -241,7 +240,7 @@ class NfcCenterScreen extends ConsumerWidget {
                       gradient: t.accentGradient,
                       borderRadius: R.tile,
                     ),
-                    child: const Icon(Icons.nfc_rounded, size: 21, color: kOnAccent),
+                    child: Icon(Icons.nfc_rounded, size: 21, color: t.onAccent),
                   ),
                   const SizedBox(width: Gap.lg),
                   Expanded(

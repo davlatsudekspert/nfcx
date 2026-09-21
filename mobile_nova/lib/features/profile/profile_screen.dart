@@ -775,7 +775,7 @@ class _HeroAvatar extends StatelessWidget {
                       ? Icons.storefront_rounded
                       : Icons.check_rounded,
                   size: 12,
-                  color: kOnAccent,
+                  color: t.onAccent,
                 ),
               ),
             ),

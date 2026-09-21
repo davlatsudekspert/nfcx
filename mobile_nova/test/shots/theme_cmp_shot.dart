@@ -87,6 +87,6 @@ void main() {
         find.byType(MaterialApp), matchesGoldenFile('png/$name.png'));
   }
 
-  testWidgets('midnight', (t) => shot(t, NfcTokens.midnight, 'th-midnight'));
+  testWidgets('midnight', (t) => shot(t, NfcTokens.mono, 'th-midnight'));
   testWidgets('onyx', (t) => shot(t, NfcTokens.onyx, 'th-onyx'));
 }

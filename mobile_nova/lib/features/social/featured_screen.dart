@@ -1,18 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/errors/app_error.dart';
-import '../../core/utils/external_link.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/featured_repository.dart';
 import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
-import '../../design/widgets/buttons.dart';
 import '../../design/widgets/nova_scaffold.dart';
 import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
+import '../shop/store_policy.dart';
 import '../business/business_screens.dart' show formatMoney;
 
 /// POSTNI LENTADA KO'TARISH — NFCSTORE FEATURED.
@@ -45,64 +43,8 @@ class FeaturedScreen extends ConsumerStatefulWidget {
 }
 
 class _FeaturedScreenState extends ConsumerState<FeaturedScreen> {
-  int? _days;
-  bool _busy = false;
   FeaturedPurchase? _pending;
-  String _error = '';
-
-  /// Server kalitini ODAM TUSHUNADIGAN gapga o'giradi.
-  ///
-  /// Umumiy "xatolik yuz berdi" bu yerda yaramaydi: sabablar
-  /// aniq va har biri boshqa harakat talab qiladi — biri "boshqa
-  /// post tanlang", biri "avval bittasini to'xtating".
-  String _say(AppError e) {
-    final l = L.of(context);
-    return switch (e.code) {
-      'already_featured' => l.featuredAlready,
-      'too_many_active' => l.featuredTooMany,
-      'forbidden' => l.featuredNotYours,
-      'payments_disabled' => l.featuredPaymentOff,
-      _ => describeError(l, e),
-    };
-  }
-
-  Future<void> _buy(int days) async {
-    setState(() {
-      _busy = true;
-      _error = '';
-    });
-    final res = await ref.read(featuredRepositoryProvider).buy(
-          targetKind: widget.targetKind,
-          targetId: widget.targetId,
-          days: days,
-        );
-    if (!mounted) return;
-
-    await res.when(
-      ok: (p) async {
-        setState(() {
-          _busy = false;
-          _pending = p;
-        });
-        ref.invalidate(myFeaturedProvider);
-        // To'lov sahifasi darhol ochiladi. Ochilmasa — havola
-        // ekranda qoladi va odam uni qo'lda ocha oladi; jimgina
-        // hech narsa qilmaslik eng yomoni.
-        final link = p.payme.isNotEmpty ? p.payme : p.click;
-        if (link.isEmpty) return;
-        final opened = await openLink(link);
-        if (!opened && mounted) {
-          setState(() => _error = L.of(context).featuredOpenPayment);
-        }
-      },
-      err: (e) async {
-        setState(() {
-          _busy = false;
-          _error = _say(e);
-        });
-      },
-    );
-  }
+  final String _error = '';
 
   @override
   Widget build(BuildContext context) {
@@ -146,32 +88,22 @@ class _FeaturedScreenState extends ConsumerState<FeaturedScreen> {
                   body: l.featuredPendingHint,
                 ),
                 const SizedBox(height: Gap.md),
-                if (_pending!.payme.isNotEmpty)
-                  NovaButton(
-                    label: l.featuredBuy,
-                    icon: Icons.open_in_new_rounded,
-                    onPressed: () => openLink(_pending!.payme),
-                  ),
+                StoreNotice(text: l.storeBuyOnSiteId),
               ] else ...[
+                // PAKETLAR VA NARXLAR KO'RINADI — xarid esa saytda.
+                //
+                // Sabab `lib/features/shop/store_policy.dart` da:
+                // Google Play raqamli xizmatni o'z to'lov tizimisiz
+                // sotishga ruxsat bermaydi. Ro'yxatni yashirish
+                // shart emas — u ma'lumot, xarid emas.
                 SectionHeader(title: l.featuredPick),
                 for (final p in o.packages)
                   Padding(
                     padding: const EdgeInsets.only(bottom: Gap.md),
-                    child: _PackageTile(
-                      pack: p,
-                      selected: _days == p.days,
-                      onTap: _busy ? null : () => setState(() => _days = p.days),
-                    ),
+                    child: _PackageTile(pack: p),
                   ),
                 const SizedBox(height: Gap.md),
-                NovaButton(
-                  label: l.featuredBuy,
-                  icon: Icons.credit_card_rounded,
-                  busy: _busy,
-                  // Muddat tanlanmaguncha tugma o'chiq: qaysi
-                  // paket sotib olinayotgani noaniq qolmasin.
-                  onPressed: _days == null || _busy ? null : () => _buy(_days!),
-                ),
+                StoreNotice(text: l.storeBuyOnSiteId),
               ],
 
               if (_error.isNotEmpty) ...[
@@ -192,15 +124,11 @@ class _FeaturedScreenState extends ConsumerState<FeaturedScreen> {
 
 /// Bitta paket — kun soni va narxi.
 class _PackageTile extends StatelessWidget {
-  const _PackageTile({
-    required this.pack,
-    required this.selected,
-    required this.onTap,
-  });
+  /// Endi faqat MA'LUMOT kartasi: narx va muddat ko'rinadi, lekin
+  /// bosilmaydi va tanlanmaydi — xarid saytda.
+  const _PackageTile({required this.pack});
 
   final FeaturedPackage pack;
-  final bool selected;
-  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -208,16 +136,12 @@ class _PackageTile extends StatelessWidget {
     final t = context.tokens;
     return FloatingSurface(
       solid: true,
-      onTap: onTap,
       child: Row(
         children: [
-          Icon(
-            selected
-                ? Icons.radio_button_checked_rounded
-                : Icons.radio_button_unchecked_rounded,
-            size: 20,
-            color: selected ? t.accent2 : t.text3,
-          ),
+          // Tanlash doirasi OLIB TASHLANDI: karta endi bosilmaydi va
+          // "tanlangan" holati ham yo'q — bu shunchaki narxlar
+          // ro'yxati.
+          Icon(Icons.bolt_rounded, size: 20, color: t.accent2),
           const SizedBox(width: Gap.md),
           Expanded(
             child: Text(

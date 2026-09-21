@@ -471,7 +471,7 @@ void main() {
         NfcTokens.graphite,
         NfcTokens.ocean,
         NfcTokens.aurora,
-        NfcTokens.midnight,
+        NfcTokens.mono,
       ]) {
         await pump(
           tester,

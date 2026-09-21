@@ -194,7 +194,7 @@ class SettingsScreen extends ConsumerWidget {
         'graphite' => l.themeGraphite,
         'ocean' => l.themeOcean,
         'aurora' => l.themeAurora,
-        'midnight' => l.themeMidnight,
+        'mono' => l.themeMono,
         'onyx' => l.themeOnyx,
         'noir' => l.themeNoir,
         _ => l.themePearl,

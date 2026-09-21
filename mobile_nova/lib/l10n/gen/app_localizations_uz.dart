@@ -909,9 +909,6 @@ class LUz extends L {
   String get themeAurora => 'Aurora';
 
   @override
-  String get themeMidnight => 'Yarim tun';
-
-  @override
   String get langUz => 'O‘zbekcha';
 
   @override
@@ -1627,4 +1624,13 @@ class LUz extends L {
   String commentReplyingTo(String name) {
     return '$name ga javob';
   }
+
+  @override
+  String get storeBuyOnSiteId => 'NFC ID xaridi saytda rasmiylashtiriladi:';
+
+  @override
+  String get storeBuyOnSitePremium => 'Premium obunani saytdan olasiz:';
+
+  @override
+  String get themeMono => 'Oq-qora';
 }

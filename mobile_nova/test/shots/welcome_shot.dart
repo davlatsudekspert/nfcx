@@ -108,7 +108,7 @@ void main() {
   });
   testWidgets('welcome 360x800 midnight', (t) async {
     await shot(
-        t, const Size(360, 800), NfcTokens.midnight, 'welcome-360-midnight');
+        t, const Size(360, 800), NfcTokens.mono, 'welcome-360-midnight');
   });
   // Eng tor va eng cho'ziq holat — bo'sh joy shu yerda chiqardi.
   testWidgets('welcome 320x780 ocean', (t) async {

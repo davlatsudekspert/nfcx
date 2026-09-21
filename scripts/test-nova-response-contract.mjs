@@ -150,4 +150,33 @@ const afterUn = await call('/api/follow-stats/OTH222');
 check('unfollow dan keyin 0 obunachi', afterUn.body?.followers, 0);
 check('unfollow dan keyin isFollowing = false', afterUn.body?.isFollowing, false);
 
+// ===== /api/auth/me KARTA MA'LUMOTI — OBUNACHI VA POSTLAR =====
+//
+// Ilovadagi "FAOL NFC ID" kartasi uchta raqam ko'rsatadi. Ikkitasi
+// — obunachilar va postlar — javobda UMUMAN YO'Q edi
+// (`rowToRecord` faqat `views` va `ts` beradi), shuning uchun ular
+// HAR DOIM 0 turardi: hech kimda obunachi ko'rinmasdi.
+{
+  // user#1 (VIP001) ga user#2 obuna bo'ladi.
+  await env.DB.prepare(
+    `INSERT INTO follows (follower_id, followee_id, created_at) VALUES (2, 1, ?)`
+  ).bind(new Date().toISOString()).run().catch(() => {});
+  await env.DB.prepare(
+    `INSERT INTO posts (id, code, user_id, caption, created_at)
+     VALUES (901, 'VIP001', 1, 'post', '2026-01-01 00:00:00')`
+  ).run().catch(() => {});
+
+  const body = (await call('/api/auth/me')).body;
+  const card = (body.cards || []).find((c) => c.code === 'VIP001');
+  checkTrue('me: VIP001 kartasi bor', !!card);
+  check('me: obunachilar soni javobda bor', card.followers, 1);
+  check('me: postlar soni javobda bor', card.posts, 1);
+
+  // Sanoq `/api/follow-stats` beradigan raqam bilan BIR XIL
+  // bo'lishi kerak — ikkita manba ikki xil raqam bersa, odam
+  // qaysi biriga ishonishni bilmasdi.
+  const st = (await call('/api/follow-stats/VIP001')).body;
+  check('me: follow-stats bilan bir xil', card.followers, st.followers);
+}
+
 done();

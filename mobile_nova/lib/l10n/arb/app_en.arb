@@ -344,7 +344,6 @@
   "themeGraphite": "Graphite",
   "themeOcean": "Ocean",
   "themeAurora": "Aurora",
-  "themeMidnight": "Midnight",
   "langUz": "Uzbek",
   "langRu": "Russian",
   "langEn": "English",
@@ -648,5 +647,8 @@
   "themeNoir": "Noir",
   "idSearchShort": "Find an ID",
   "commentReply": "Reply",
-  "commentReplyingTo": "Replying to {name}"
+  "commentReplyingTo": "Replying to {name}",
+  "storeBuyOnSiteId": "NFC ID purchases are completed on the website:",
+  "storeBuyOnSitePremium": "Premium is purchased on the website:",
+  "themeMono": "Mono"
 }

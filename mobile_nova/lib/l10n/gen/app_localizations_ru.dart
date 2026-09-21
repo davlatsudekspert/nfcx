@@ -905,9 +905,6 @@ class LRu extends L {
   String get themeAurora => 'Аврора';
 
   @override
-  String get themeMidnight => 'Полночь';
-
-  @override
   String get langUz => 'Узбекский';
 
   @override
@@ -1617,4 +1614,13 @@ class LRu extends L {
   String commentReplyingTo(String name) {
     return 'Ответ $name';
   }
+
+  @override
+  String get storeBuyOnSiteId => 'Покупка NFC ID оформляется на сайте:';
+
+  @override
+  String get storeBuyOnSitePremium => 'Premium оформляется на сайте:';
+
+  @override
+  String get themeMono => 'Чёрно-белая';
 }

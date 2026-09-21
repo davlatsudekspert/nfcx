@@ -104,7 +104,11 @@ void main() {
         .style!
         .color!;
 
-    await pump(tester, const Size(390, 844), tokens: NfcTokens.midnight);
+    // QORONG'I mavzu bilan solishtiriladi. Ilgari bu yerda
+    // `midnight` turardi; u `mono` (OQ-QORA, ya'ni YORUG') bilan
+    // almashtirilganda taqqoslash ma'nosini yo'qotgan edi —
+    // ikkala tomon ham yorug' bo'lib, matn rangi bir xil chiqardi.
+    await pump(tester, const Size(390, 844), tokens: NfcTokens.noir);
     final dark =
         tester.widget<Text>(find.text(l.welcomeHeadline)).style!.color!;
 

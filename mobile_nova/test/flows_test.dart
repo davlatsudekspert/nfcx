@@ -70,14 +70,14 @@ void main() {
       expect(container.read(themeProvider).id, 'noir');
       await container
           .read(themeProvider.notifier)
-          .select(NfcTokens.midnight);
-      expect(container.read(themeProvider).id, 'midnight');
+          .select(NfcTokens.mono);
+      expect(container.read(themeProvider).id, 'mono');
 
       // Yangi konteyner — ya'ni "ilova qayta ochildi". Xotira emas,
       // SAQLANGAN qiymat o'qilishi kerak.
       final reopened = ProviderContainer(overrides: overrides);
       addTearDown(reopened.dispose);
-      expect(reopened.read(themeProvider).id, 'midnight');
+      expect(reopened.read(themeProvider).id, 'mono');
     });
   });
 

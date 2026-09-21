@@ -344,7 +344,6 @@
   "themeGraphite": "Графит",
   "themeOcean": "Океан",
   "themeAurora": "Аврора",
-  "themeMidnight": "Полночь",
   "langUz": "Узбекский",
   "langRu": "Русский",
   "langEn": "Английский",
@@ -648,5 +647,8 @@
   "themeNoir": "Нуар",
   "idSearchShort": "Найти ID",
   "commentReply": "Ответить",
-  "commentReplyingTo": "Ответ {name}"
+  "commentReplyingTo": "Ответ {name}",
+  "storeBuyOnSiteId": "Покупка NFC ID оформляется на сайте:",
+  "storeBuyOnSitePremium": "Premium оформляется на сайте:",
+  "themeMono": "Чёрно-белая"
 }

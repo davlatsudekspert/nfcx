@@ -61,7 +61,7 @@ void main() {
         'stateEmpty': l.stateEmpty,
         'stateNoResults': l.stateNoResults,
         'themePearl': l.themePearl,
-        'themeMidnight': l.themeMidnight,
+        'themeMono': l.themeMono,
       };
 
   test('uchala til ham bir xil kalitlarni qamrab oladi', () {

@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/profile_context.dart';
 import '../../app/providers.dart';
-import '../../core/utils/external_link.dart';
 import '../../core/utils/result.dart';
 import '../../core/utils/validators.dart';
 import '../../data/models/models.dart';
@@ -19,6 +18,7 @@ import '../../design/widgets/nova_scaffold.dart';
 import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
+import '../shop/store_policy.dart';
 import '../../routing/routes.dart';
 import '../auth/session.dart';
 import '../business/business_screens.dart' show formatMoney;
@@ -47,7 +47,7 @@ class ThemeSettingsScreen extends ConsumerWidget {
           'graphite' => l.themeGraphite,
           'ocean' => l.themeOcean,
           'aurora' => l.themeAurora,
-          'midnight' => l.themeMidnight,
+          'mono' => l.themeMono,
           'onyx' => l.themeOnyx,
           'noir' => l.themeNoir,
           _ => l.themePearl,
@@ -966,56 +966,6 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen>
 
   /// Buyurtma yaratadi (yoki to'lanmagan eskisini qaytaradi) va
   /// to'lov sahifasini ochadi.
-  Future<void> _start(bool preferClick) async {
-    final l = L.of(context);
-    setState(() {
-      _busy = true;
-      _error = null;
-      _note = null;
-    });
-
-    var offer = _offer;
-    if (offer == null) {
-      final res = await ref.read(profileRepositoryProvider).requestPremium();
-      if (!mounted) return;
-      switch (res) {
-        case Err(:final error):
-          setState(() {
-            _busy = false;
-            _error = describeError(l, error);
-          });
-          return;
-        case Ok(:final value):
-          offer = value;
-          _offer = value;
-      }
-    }
-
-    // TO'LOV YO'LI YO'Q BO'LSA SOXTA TUGMA KO'RSATILMAYDI.
-    if (!offer.payable) {
-      setState(() {
-        _busy = false;
-        _error = l.premiumNoProvider;
-      });
-      return;
-    }
-
-    final url = preferClick && offer.click.isNotEmpty
-        ? offer.click
-        : (offer.payme.isNotEmpty ? offer.payme : offer.click);
-
-    // `openLink` HECH QACHON osilib qolmaydi va ochilmasa manzilni
-    // buferga ko'chiradi — odam boshi berk ko'chada qolmaydi.
-    final opened = await openLink(url);
-    if (!mounted) return;
-
-    setState(() {
-      _busy = false;
-      _note = opened ? l.premiumPending : l.premiumBrowserFailed;
-    });
-  }
-
-  /// To'lov holatini SERVERDAN so'raydi.
   Future<void> _check() async {
     final offer = _offer;
     if (offer == null || _busy) return;
@@ -1123,33 +1073,26 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen>
 
           const SizedBox(height: Gap.section),
 
-          // To'lov tugmalari FAQAT server bergan havolalar uchun
-          // chiziladi: Click ulanmagan bo'lsa uning tugmasi ham yo'q.
-          if (offer == null || offer.payme.isNotEmpty)
-            NovaButton(
-              label: active ? l.premiumExtend : l.premiumBuy,
-              icon: Icons.lock_outline_rounded,
-              busy: _busy,
-              onPressed: _busy ? null : () => _start(false),
-            ),
-          if (offer != null && offer.click.isNotEmpty) ...[
-            const SizedBox(height: Gap.md),
-            NovaButton(
-              label: l.premiumClick,
-              tone: ButtonTone.quiet,
-              busy: _busy,
-              onPressed: _busy ? null : () => _start(true),
-            ),
-          ],
-          if (offer != null) ...[
-            const SizedBox(height: Gap.md),
-            NovaButton(
-              label: l.premiumCheck,
-              tone: ButtonTone.outline,
-              busy: _busy,
-              onPressed: _busy ? null : _check,
-            ),
-          ],
+          // PREMIUM ILOVA ICHIDA SOTILMAYDI.
+          //
+          // Sabab `lib/features/shop/store_policy.dart` da: Google
+          // Play raqamli obunani o'z to'lov tizimisiz sotishga ruxsat
+          // bermaydi. Obunaning O'ZI va uning imkoniyatlari yuqorida
+          // ko'rinib turadi — faqat oxirgi qadam saytda.
+          //
+          // Saytga BOSILADIGAN havola ham qo'yilmaydi (anti-steering):
+          // manzil matn sifatida yoziladi.
+          StoreNotice(text: l.storeBuyOnSitePremium),
+
+          // Saytda to'langan bo'lsa — holatni shu yerdan yangilash.
+          // Bu xarid emas, tekshiruv; qoidaga daxli yo'q.
+          const SizedBox(height: Gap.md),
+          NovaButton(
+            label: l.premiumCheck,
+            tone: ButtonTone.outline,
+            busy: _busy,
+            onPressed: _busy ? null : _check,
+          ),
         ],
       ),
     );

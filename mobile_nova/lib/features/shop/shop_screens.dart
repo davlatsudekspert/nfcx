@@ -17,6 +17,7 @@ import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
 import '../business/business_screens.dart' show formatMoney;
+import 'store_policy.dart';
 
 final shopProductsProvider =
     FutureProvider.autoDispose<List<ShopProduct>>((ref) async {
@@ -427,25 +428,62 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                             onTap: () => setState(() => _selected = e),
                             child: Row(
                               children: [
-                                Icon(
-                                  _selected == e
-                                      ? Icons.radio_button_checked_rounded
-                                      : Icons.radio_button_unchecked_rounded,
-                                  size: 19,
-                                  color: _selected == e ? t.accent2 : t.text3,
-                                ),
-                                const SizedBox(width: Gap.md),
-                                Expanded(
-                                  child: Text(
-                                    switch (e) {
-                                      PayProvider.payme => 'Payme',
-                                      PayProvider.click => 'Click',
-                                      PayProvider.paynet => 'Paynet',
-                                    },
-                                    style:
-                                        Theme.of(context).textTheme.bodyLarge,
-                                  ),
-                                ),
+                                Builder(builder: (_) {
+                                  final label = switch (e) {
+                                    PayProvider.payme => 'Payme',
+                                    PayProvider.click => 'Click',
+                                    PayProvider.paynet => 'Paynet',
+                                  };
+                                  // PROVAYDER O'Z RANGIDA.
+                                  //
+                                  // Odam to'lov tizimini RANGIDAN
+                                  // taniydi, matnni o'qib emas.
+                                  // Ranglar saytdan olingan, ikki
+                                  // joyda bir xil.
+                                  final brand = brandColor(label);
+                                  return Row(children: [
+                                    Icon(
+                                      _selected == e
+                                          ? Icons.radio_button_checked_rounded
+                                          : Icons.radio_button_unchecked_rounded,
+                                      size: 19,
+                                      color: _selected == e
+                                          ? (brand ?? t.accent2)
+                                          : t.text3,
+                                    ),
+                                    const SizedBox(width: Gap.md),
+                                    if (brand != null) ...[
+                                      Container(
+                                        width: 26,
+                                        height: 26,
+                                        decoration: BoxDecoration(
+                                          color: brand,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        alignment: Alignment.center,
+                                        child: Text(
+                                          label.characters.first,
+                                          style: const TextStyle(
+                                            fontFamily: AppType.sans,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w800,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: Gap.md),
+                                    ],
+                                    Expanded(
+                                      child: Text(
+                                        label,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyLarge,
+                                      ),
+                                    ),
+                                  ]);
+                                }),
                               ],
                             ),
                           ),

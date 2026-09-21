@@ -98,7 +98,7 @@ void main() {
   for (final (t, tag) in [
     (NfcTokens.ocean, 'ocean'),
     (NfcTokens.pearl, 'pearl'),
-    (NfcTokens.midnight, 'midnight'),
+    (NfcTokens.mono, 'midnight'),
   ]) {
     testWidgets('home $tag', (x) async {
       await shot(
