@@ -1418,10 +1418,41 @@ void main() {
             note: '$kindNote · ${value.length} ta element');
     }
 
+    // ELEMENT BO'LIMSIZ BO'LMAYDI.
+    //
+    // Server `categoryId` siz so'rovni 422 `bad_category` bilan
+    // rad etadi va bu TO'G'RI: narx ro'yxati bo'limga tegishli
+    // bo'lishi kerak. Ilgari bu sinov faqat elementni yuborardi
+    // va FAIL berardi — ya'ni xato serverda emas, so'rovda edi.
+    //
+    // Qoida yumshatilmadi. Sinov o'ZINING bo'limini yaratadi,
+    // elementni o'sha yerga qo'yadi va oxirida bo'limni
+    // o'chiradi. Server bo'limni ichidagi elementlar bilan birga
+    // o'chiradi, shuning uchun hisobda hech narsa qolmaydi.
+    // BEGONA bo'limga tegilmaydi.
+    final section =
+        await business.addRecordCategory(code, kind, testLabel('bo\'lim'));
+    if (section case Err(:final error)) {
+      fail('Product create',
+          screen: 'CatalogForm',
+          action: 'POST /api/records/:code/:kind/categories',
+          cause: why(error),
+          pathHint: '/catalog');
+      return;
+    }
+    final sectionId = (section as Ok<int>).value;
+    litter.trackResult('katalog bo\'limi #$sectionId',
+        () => business.deleteRecordCategory(code, kind, sectionId));
+
     final add = await business.addRecordItem(
       code,
       kind,
-      {'name': testLabel('mahsulot'), 'price': 1, 'available': true},
+      {
+        'categoryId': sectionId,
+        'name': testLabel('mahsulot'),
+        'price': 1,
+        'available': true,
+      },
     );
     switch (add) {
       case Err(:final error):
@@ -1431,14 +1462,18 @@ void main() {
             cause: why(error),
             pathHint: '/catalog');
       case Ok(:final value):
+        // Element bo'lim bilan birga ketadi (`deleteCategory`
+        // avval elementlarni o'chiradi), lekin aniq o'chirish
+        // ham qoldirilgan: bo'lim o'chirilmay qolsa ham hisobda
+        // sinov mahsuloti turib qolmasin.
         litter.trackResult(
             'katalog #${value.id}',
             () => business.deleteRecordItem(
                 code, kind, value.id));
         report.pass('Product create',
             screen: 'CatalogForm',
-            action: 'POST /api/records/:code/catalog',
-            note: 'id=${value.id}');
+            action: 'POST /api/records/:code/${kind.path}/items',
+            note: '$kindNote · bo\'lim #$sectionId · id=${value.id}');
 
         final edit = await business.updateRecordItem(
           code,
@@ -1594,11 +1629,18 @@ void main() {
       }
     }
 
-    final trending = await discover.trending();
+    // LENTA — ILOVA HAQIQATDAN ISHLATADIGAN MIJOZ ORQALI.
+    //
+    // Ilgari bu yerda `discover.trending()` turardi — `/api/feed`
+    // ning ikkinchi nusxasi, faqat Tanlovdagi "Postlar" yorlig'i
+    // uchun yozilgan. Yorliq olib tashlangach nusxa ham ketdi,
+    // shuning uchun sinov endi bosh sahifaning `feed()` iga
+    // qaraydi. Amal nomi ham to'g'rilandi: u `/api/news` emas.
+    final trending = await social.feed();
     if (trending is Ok<List<Post>>) {
       report.pass('Post list — lenta',
-          screen: 'DiscoverScreen',
-          action: 'GET /api/news',
+          screen: 'Home / DiscoverScreen',
+          action: 'GET /api/feed',
           note: '${trending.value.length} ta yozuv');
     }
 

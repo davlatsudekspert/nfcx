@@ -99,11 +99,68 @@ class BusinessRepository {
   // Restoran menyusi, do'kon mahsulotlari va xizmatlar backend'da
   // NFC ID (record) ostida ham turadi. Bitta universal kirish nuqtasi.
 
+  /// Yozuv katalogi — ELEMENTLAR ro'yxati.
+  ///
+  /// SERVER KATEGORIYALARNI QAYTARADI, elementlarni emas:
+  ///
+  ///     { "services": [ {id, name, sort, enabled, items: [...] } ] }
+  ///
+  /// Ilgari bu yerda o'sha tashqi ro'yxat to'g'ridan-to'g'ri
+  /// `CatalogItem.fromJson` ga berilardi, ya'ni KATEGORIYALAR
+  /// element deb o'qilardi: "9 ta element" aslida 9 ta bo'lim
+  /// edi, element qidirilganda esa hech qachon topilmasdi.
+  ///
+  /// Endi ichki `items` lar yoyiladi. Bo'lim tuzilishi kerak
+  /// bo'lsa `recordCatalogSections()` bor.
   Future<Result<List<CatalogItem>>> recordCatalog(String code, CatalogKind kind) async {
     final res = await _api.get<Map<String, dynamic>>('/api/records/$code/${kind.path}');
-    return res.map((j) =>
-        parseList(j['items'] ?? j[kind.path] ?? j['products'], CatalogItem.fromJson));
+    return res.map((j) {
+      final cats = j[kind.path] ?? j['items'] ?? j['products'];
+      if (cats is! List) return const <CatalogItem>[];
+      return [
+        for (final c in cats)
+          ...parseList(c is Map ? c['items'] : null, CatalogItem.fromJson),
+      ];
+    });
   }
+
+  /// Katalog BO'LIMLARI — `(id, nom)` juftliklari.
+  Future<Result<List<(int, String)>>> recordCatalogSections(
+      String code, CatalogKind kind) async {
+    final res = await _api.get<Map<String, dynamic>>('/api/records/$code/${kind.path}');
+    return res.map((j) {
+      final cats = j[kind.path] ?? j['items'] ?? j['products'];
+      if (cats is! List) return const <(int, String)>[];
+      return [
+        for (final c in cats)
+          if (c is Map && c['id'] != null)
+            (int.tryParse('${c['id']}') ?? 0, '${c['name'] ?? ''}'),
+      ];
+    });
+  }
+
+  /// Katalog BO'LIMINI yaratish.
+  ///
+  /// Serverda element HAR DOIM bo'limga tegishli bo'lishi shart:
+  /// `categoryId` siz yuborilgan so'rov 422 `bad_category` bilan
+  /// rad etiladi (`hosting/api/catalog.js`, `item_create`).
+  ///
+  /// Bu to'g'ri qoida — narx ro'yxati bo'limsiz bo'lmaydi — lekin
+  /// mijoz tomonida uni bajarishning YO'LI YO'Q edi: `addRecordItem`
+  /// bor, bo'lim yaratadigan metod esa yo'q edi. Ya'ni yozuv
+  /// katalogiga element qo'shib bo'lmasdi.
+  Future<Result<int>> addRecordCategory(
+      String code, CatalogKind kind, String name) async {
+    final res = await _api.post<Map<String, dynamic>>(
+        '/api/records/$code/${kind.path}/categories', {'name': name});
+    return res.map((j) => int.tryParse('${j['id']}') ?? 0);
+  }
+
+  /// Bo'limni o'chirish — ICHIDAGI ELEMENTLAR BILAN BIRGA.
+  /// Server avval elementlarni o'chiradi (`deleteCategory`).
+  Future<Result<void>> deleteRecordCategory(
+          String code, CatalogKind kind, int id) =>
+      _api.delete<void>('/api/records/$code/${kind.path}/categories/$id');
 
   // `recordCategories` OLIB TASHLANDI.
   //
