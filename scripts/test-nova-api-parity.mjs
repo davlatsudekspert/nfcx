@@ -111,6 +111,10 @@ const EXPRESSIONS = new Map([
   // (`business_repository.dart`). Bittasi yetadi — uchalasi ham
   // bitta ishlovchiga boradi.
   ['kind.path', 'products'],
+  // NFC ID xaridi — kod so'rovdan oldin bosh harfga o'tkaziladi
+  // (`shop_repository.dart`). Server ham aynan shunday
+  // normallashtiradi, shuning uchun namuna sifatida tayyor kod.
+  ['code.toUpperCase()', 'VIP001'],
 ]);
 
 function concrete(path) {
