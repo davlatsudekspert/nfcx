@@ -11,8 +11,13 @@ import 'helpers.dart';
 
 /// BIRINCHI KIRISH EKRANI.
 ///
-/// Eng muhim talab: rasm ekranni TO'LIQ egallasin, pastda bo'sh
-/// joy qolmasin — har qanday kenglikda.
+/// Talab o'zgardi. Ilgari surat butun ekranni qoplashi kerak edi
+/// (`BoxFit.cover`) va matn uning ustida turardi. Endi ekran
+/// ikkiga bo'lingan: TEPADA vizual, PASTDA matn va tugmalar.
+///
+/// Shuning uchun bu yerdagi o'lchovlar ham boshqacha va, aslida,
+/// qattiqroq: ilgari faqat "bo'sh joy yo'qmi" tekshirilardi,
+/// endi esa surat tugmalarga XALAQIT BERMASLIGI o'lchanadi.
 void main() {
   Future<void> pump(WidgetTester tester, Size size,
       {NfcTokens? tokens}) async {
@@ -28,31 +33,57 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
   }
 
-  group('Rasm ekranni TO‘LIQ egallaydi', () {
-    for (final s in const [
-      Size(320, 780),
-      Size(360, 800),
-      Size(390, 844),
-      Size(430, 932),
-      // Eng cho‘ziq holat — bo‘sh joy aynan shu yerda chiqardi.
-      Size(360, 880),
-    ]) {
+  const sizes = [
+    Size(320, 780),
+    Size(360, 800),
+    Size(390, 844),
+    Size(430, 932),
+    // Eng cho'ziq holat.
+    Size(360, 880),
+    // Eng past holat — tugmalar aynan shu yerda qisilardi.
+    Size(360, 640),
+  ];
+
+  group('vizual tepada, tugmalar pastda', () {
+    for (final s in sizes) {
       testWidgets('${s.width.toInt()}x${s.height.toInt()}', (tester) async {
         await pump(tester, s);
+        final l = await L.delegate.load(const Locale('uz'));
 
         final img = tester.widget<Image>(find.byType(Image).first);
-        expect(img.fit, BoxFit.cover,
-            reason: 'cover bo‘lmasa chetlarda bo‘sh joy ochiladi');
+        expect(img.fit, BoxFit.contain,
+            reason: 'cover suratni yon tomonlaridan kesadi — '
+                'telefon ham, NFC kartasi ham chala ko\'rinardi');
 
-        // Rasm qutisi ekrandan KICHIK bo‘lmasligi kerak.
-        final box = tester.getRect(find.byType(Image).first);
-        expect(box.left, lessThanOrEqualTo(0));
-        expect(box.top, lessThanOrEqualTo(0));
-        expect(box.right, greaterThanOrEqualTo(s.width),
-            reason: 'o‘ngda bo‘sh joy qolyapti');
-        expect(box.bottom, greaterThanOrEqualTo(s.height),
-            reason: 'PASTDA BO‘SH JOY QOLYAPTI');
+        final hero = tester.getRect(find.byType(Image).first);
+        final startBtn = tester.getRect(find.text(l.welcomeStart));
+        final loginBtn = tester.getRect(find.text(l.welcomeLogin));
+
+        // 1. Surat TUGMALARGA TEGMAYDI.
+        expect(hero.bottom, lessThanOrEqualTo(startBtn.top),
+            reason: 'surat "Boshlash" tugmasining ustiga tushyapti');
+
+        // 2. Ikkala tugma ham EKRAN ICHIDA — pastdan kesilmagan.
+        expect(loginBtn.bottom, lessThanOrEqualTo(s.height),
+            reason: '"Kirish" tugmasi ekrandan chiqib ketdi');
+        expect(startBtn.top, greaterThanOrEqualTo(0));
+
+        // 3. Vizual ekranning TEPA qismida.
+        expect(hero.top, lessThan(s.height * 0.5),
+            reason: 'asosiy vizual tepada bo\'lishi kerak');
+
+        // 4. Suratning eni ekrandan oshib ketmaydi.
+        expect(hero.left, greaterThanOrEqualTo(0));
+        expect(hero.right, lessThanOrEqualTo(s.width));
       });
+    }
+  });
+
+  testWidgets('hech qayerda toshib ketish yo\'q', (tester) async {
+    for (final s in sizes) {
+      await pump(tester, s);
+      expect(tester.takeException(), isNull,
+          reason: '${s.width.toInt()}x${s.height.toInt()} da toshib ketdi');
     }
   });
 
@@ -84,13 +115,23 @@ void main() {
   });
 
   test('sarlavha SURATDA emas, kodda', () {
-    // Surat telefondan kengroq (0.563 va 0.45–0.46), ya'ni `cover`
-    // yon tomonlarini kesadi. Yozuv suratda qolsa, tor ekranda
-    // kesilardi — 360x800 da bu o'lchab isbotlangan.
     final src =
         File('lib/features/entry/welcome_screen.dart').readAsStringSync();
     expect(src, contains('l.welcomeHeadline'));
-    expect(File('assets/welcome/nfc_hero.jpg').existsSync(), isTrue);
+    expect(File('assets/welcome/nfc_hero.webp').existsSync(), isTrue);
+  });
+
+  test('surat FONSIZ — alfa kanali bor', () {
+    // Fon qirqilgan to'rtburchak bo'lib ko'rinmasligi uchun
+    // suratda alfa kanali BO'LISHI SHART. WebP sarlavhasidagi
+    // `VP8X` bayrog'ining 5-biti — aynan shu.
+    final b = File('assets/welcome/nfc_hero.webp').readAsBytesSync();
+    expect(String.fromCharCodes(b.sublist(0, 4)), 'RIFF');
+    expect(String.fromCharCodes(b.sublist(8, 12)), 'WEBP');
+    final chunk = String.fromCharCodes(b.sublist(12, 16));
+    expect(chunk, 'VP8X',
+        reason: 'alfa kanalsiz WebP — fon oq to\'rtburchak bo\'lib turadi');
+    expect(b[20] & 0x10, 0x10, reason: 'ALPHA bayrog\'i o\'chirilgan');
   });
 
   test('animatsiya BITTA kontrollerda va 5 soniyalik halqa', () {

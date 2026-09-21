@@ -9,58 +9,53 @@ import '../../design/widgets/buttons.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
 
-/// Suratning o'z fon rangi.
-///
-/// Surat bir kadr kechikib yuklansa, orqada QORA emas, aynan
-/// o'sha krem turadi — ya'ni ochilishda qora miltillash bo'lmaydi.
-const kHeroCream = Color(0xFFF3EADC);
-
 /// ILOVANI BIRINCHI OCHGANDAGI EKRAN.
 ///
-/// ## MATN NIMA UCHUN RASMDA EMAS
+/// ## TUZILISH: TEPADA VIZUAL, PASTDA MATN
 ///
-/// Berilgan surat 941x1672, ya'ni nisbati 0.563. Telefon ekrani
-/// esa ancha tor: 390x844 → 0.462, 360x800 → 0.450. `BoxFit.cover`
-/// balandlik bo'yicha o'lchaydi va YON TOMONLARNI kesadi.
+/// Ilgari surat butun ekranni `BoxFit.cover` bilan qoplardi va
+/// matn uning USTIGA tushardi. Bunda ikki muammo bor edi: surat
+/// yon tomonlaridan kesilardi (nisbati telefonnikidan keng), va
+/// matn o'qilishi uchun butun ekranga parda tortishga to'g'ri
+/// kelardi — ya'ni surat o'zi xiralashardi.
 ///
-/// O'lchandi: 390x844 da har yondan 84px, 360x800 da 94px
-/// kesiladi. Suratdagi yozuv esa x=103 dan x=849 gacha turardi —
-/// ya'ni 360x800 da u ALLAQACHON kesilardi, 390x844 da esa atigi
-/// 19px zaxira qolardi. Biroz boshqacha nisbatdagi telefonda
-/// (masalan 360x880) u ham yetmaydi.
+/// Endi ekran ikkiga bo'lingan:
 ///
-/// Shuning uchun yozuv suratdan olib tashlandi (uning o'rni toza
-/// qatorlardan qayta qurildi) va bu yerda FLUTTER chizadi. Yutuq
-/// uchta: hech qachon kesilmaydi, har qanday ekran zichligida
-/// tiniq chiqadi va tarjima qilinadi.
+///   * TEPA — vizual. Surat `BoxFit.contain` bilan to'liq
+///     ko'rinadi: hech narsa kesilmaydi, telefon ham, NFC kartasi
+///     ham, profil/reels/izoh kartochkalari ham joyida turadi.
+///   * PAST — sarlavha, tavsif va ikkita tugma. Ular suratning
+///     ostida, o'z fonida turadi — parda kerak emas, matn har
+///     qanday mavzuda toza o'qiladi.
 ///
-/// ## RANG: SURAT QAT'IY, MATN ESA MAVZUDAN
+/// Tugmalar suratning ostida, ya'ni vizual ularga HECH QACHON
+/// xalaqit bermaydi. `welcome_screen_test.dart` buni har bir
+/// ekran o'lchamida o'lchab tekshiradi.
 ///
-/// Bu ikkisi zid ko'rinadi: surat doim krem va oltin, mavzu esa
-/// qora bo'lishi mumkin. Matn to'g'ridan-to'g'ri mavzudan olinsa,
-/// "midnight" tanlangan telefonda oq yozuv krem fon ustiga
-/// tushib, umuman o'qilmasdi.
+/// ## SURAT FONSIZ — MAVZU BILAN QO'SHILADI
 ///
-/// Yechim — MAVZU RANGIDAGI PARDA. Matn va tugmalar
-/// `context.tokens` dan keladi, ularning ORQASIGA esa o'sha
-/// mavzuning fon rangi yumshoq gradient bo'lib qo'yiladi:
+/// `assets/welcome/nfc_hero.webp` da FON YO'Q (alfa kanali).
+/// Shuning uchun u qora–champagne mavzuda qora ustida, ochiq
+/// mavzuda esa och fon ustida turadi — qirqilgan to'rtburchak
+/// ko'rinmaydi.
 ///
-///   * ochiq mavzuda parda krem — surat bilan qo'shilib ketadi;
-///   * qorong'i mavzuda parda to'q — matn oq rangda o'qiladi va
-///     suratning O'RTASI (karta va qo'l) ochiq qoladi.
+/// Suratning pastki cheti `ShaderMask` bilan asta so'nadi va
+/// matnga yumshoq o'tadi; orqasida esa mavzuning oltin nuri
+/// (`t.glow`) nafas oladi.
 ///
-/// Ya'ni surat hech qachon bo'yalmaydi; faqat matn turadigan
-/// tepa va past qismi mavzuga moslanadi.
+/// ## RANG: MATN DOIM MAVZUDAN
+///
+/// Hech bir rang qat'iy yozilmagan — hammasi `context.tokens`
+/// dan. "midnight" da oq yozuv qora fonda, "pearl" da to'q yozuv
+/// och fonda o'qiladi. Buni test o'lchaydi (yorqinliklar
+/// solishtiriladi).
 ///
 /// ## ANIMATSIYA
 ///
-/// Bitta 5 soniyalik kontroller, hamma qatlam o'shanga ulangan:
-/// NFC belgisining yorug'ligi nafas oladi, ekran bo'ylab juda
-/// mayin nur o'tadi, surat 1.5px suziydi. Keskin zoom, silkinish
-/// yoki tez o'tish yo'q.
-///
+/// Bitta 5 soniyalik kontroller: oltin nur nafas oladi va surat
+/// 3px suziydi. Keskin zoom, silkinish yoki tez o'tish yo'q.
 /// Tizimda "animatsiyani kamaytirish" yoqilgan bo'lsa harakat
-/// UMUMAN bo'lmaydi — ekran tinch suratga aylanadi.
+/// UMUMAN bo'lmaydi.
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
 
@@ -70,11 +65,7 @@ class WelcomeScreen extends StatefulWidget {
 
 class _WelcomeScreenState extends State<WelcomeScreen>
     with SingleTickerProviderStateMixin {
-  static const _asset = 'assets/welcome/nfc_hero.jpg';
-
-  /// NFC belgisining suratdagi o'rni — yorug'lik aynan shu yerda
-  /// nafas oladi.
-  static const _nfcSpot = Alignment(0.10, 0.08);
+  static const _asset = 'assets/welcome/nfc_hero.webp';
 
   late final AnimationController _c;
 
@@ -99,119 +90,119 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     final w = MediaQuery.sizeOf(context).width;
 
     return Scaffold(
-      backgroundColor: kHeroCream,
-      body: AnimatedBuilder(
-        animation: _c,
-        // MATN VA TUGMALAR HAR KADRDA QAYTA QURILMAYDI.
-        //
-        // `AnimatedBuilder` o'z `builder` ini soniyasiga 60 marta
-        // chaqiradi. Matn, tugmalar va `SafeArea` shu ichida
-        // qolsa, ular ham 60 marta qaytadan quriladi — harakat
-        // "plaviy" bo'lmay, sekin telefonlarda kadr tushirardi.
-        //
-        // `child` esa BIR MARTA quriladi va har kadrda o'zgarmay
-        // uzatiladi. Harakat qiladigan qatlamlargina qayta
-        // chiziladi.
-        child: _Foreground(
-          headline: l.welcomeHeadline,
-          subtitle: l.welcomeSubtitle,
-          start: l.welcomeStart,
-          login: l.welcomeLogin,
-          tokens: t,
-          headlineSize: (w * .062).clamp(19.0, 25.0),
+      backgroundColor: t.bg1,
+      body: DecoratedBox(
+        // Mavzuning o'z foni — surat aynan shu ustida turadi.
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [t.bg2, t.bg1],
+          ),
         ),
-        builder: (context, child) {
-          final p = still ? 0.0 : _c.value;
-          // Sinus — boshi va oxiri bir xil, ya'ni halqa ulanganda
-          // sakrash bo'lmaydi.
-          final breathe = math.sin(p * 2 * math.pi);
-
-          return Stack(
-            fit: StackFit.expand,
+        child: SafeArea(
+          child: Column(
             children: [
-              // 1. SURAT — BUTUN EKRAN.
+              // ── TEPA: VIZUAL ──────────────────────────────────
               //
-              // `BoxFit.cover` qaysi nisbatdagi ekranda ham to'liq
-              // qoplaydi: pastda ham, tepada ham bo'sh joy
-              // qolmaydi. Suzish uchun quti har tomondan 2px
-              // kattaroq — aks holda siljiganda chetda ingichka
-              // bo'shliq ochilardi.
-              Positioned(
-                left: -2,
-                right: -2,
-                top: -2 + breathe * 1.5,
-                bottom: -2 - breathe * 1.5,
-                child: Image.asset(
-                  _asset,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) =>
-                      const ColoredBox(color: kHeroCream),
-                ),
-              ),
+              // `Expanded` — qolgan bo'sh joyning hammasini oladi,
+              // ya'ni matn bloki o'z balandligini olgandan keyin
+              // nima qolsa, o'sha suratniki. Past ekranda surat
+              // kichrayadi, tugmalar esa HAR DOIM joyida qoladi.
+              Expanded(
+                child: AnimatedBuilder(
+                  animation: _c,
+                  builder: (context, _) {
+                    final p = still ? 0.0 : _c.value;
+                    // Sinus — halqa ulanganda sakrash bo'lmaydi.
+                    final breathe = math.sin(p * 2 * math.pi);
 
-              // 2. NFC BELGISI NAFAS OLADI.
-              if (!still)
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: RadialGradient(
-                          center: _nfcSpot,
-                          radius: 0.34,
-                          colors: [
-                            const Color(0xFFFFF3D6).withValues(
-                                alpha: .10 + .13 * (breathe + 1) / 2),
-                            const Color(0x00FFF3D6),
-                          ],
+                    return Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        // Suratning orqasidagi oltin nur.
+                        IgnorePointer(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: RadialGradient(
+                                center: const Alignment(0, -0.05),
+                                radius: 0.78,
+                                colors: [
+                                  t.glow.withValues(
+                                      alpha: .14 + .07 * (breathe + 1) / 2),
+                                  t.glow.withValues(alpha: 0),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
-                ),
 
-              // 3. EKRAN BO'YLAB MAYIN NUR.
-              if (!still)
-                Positioned.fill(child: IgnorePointer(child: _Sweep(p))),
-
-              // 4. MAVZU RANGIDAGI PARDA — matn o'qilishi uchun.
-              //
-              // Surat O'RTADA tegilmaydi: parda faqat tepa va
-              // pastdan, yumshoq gradient bilan keladi.
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          t.bg1.withValues(alpha: t.isDark ? .88 : .72),
-                          t.bg1.withValues(alpha: t.isDark ? .34 : .12),
-                          const Color(0x00000000),
-                          const Color(0x00000000),
-                          t.bg1.withValues(alpha: t.isDark ? .52 : .30),
-                          t.bg1.withValues(alpha: t.isDark ? .94 : .86),
-                        ],
-                        stops: const [0.0, 0.20, 0.36, 0.56, 0.78, 1.0],
-                      ),
-                    ),
-                  ),
+                        // Suratning o'zi — hech narsa kesilmasin.
+                        Padding(
+                          padding: EdgeInsets.only(
+                            left: Gap.lg,
+                            right: Gap.lg,
+                            top: Gap.sm + breathe * 3,
+                          ),
+                          child: _FadingHero(asset: _asset),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
 
-              // 5. MATN VA TUGMALAR — yuqoridagi `child`.
-              child!,
+              // ── PAST: MATN VA TUGMALAR ────────────────────────
+              _Foreground(
+                headline: l.welcomeHeadline,
+                subtitle: l.welcomeSubtitle,
+                start: l.welcomeStart,
+                login: l.welcomeLogin,
+                tokens: t,
+                headlineSize: (w * .062).clamp(19.0, 25.0),
+              ),
             ],
-          );
-        },
+          ),
+        ),
       ),
     );
   }
 }
 
-/// Harakatsiz oldingi qatlam: sarlavha, ajratgich va tugmalar.
+/// Surat, pastki cheti asta so'nadi.
 ///
-/// `AnimatedBuilder` ning `child` i sifatida BIR MARTA quriladi.
+/// So'nish `ShaderMask` + `BlendMode.dstIn` bilan: gradientning
+/// SHAFFOFLIGI suratga ko'chiriladi, rangi emas. Shuning uchun u
+/// qora mavzuda ham, och mavzuda ham bir xil ishlaydi — fon
+/// rangini bilishi shart emas.
+class _FadingHero extends StatelessWidget {
+  const _FadingHero({required this.asset});
+
+  final String asset;
+
+  @override
+  Widget build(BuildContext context) {
+    return ShaderMask(
+      shaderCallback: (rect) => const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Colors.white, Colors.white, Color(0x00FFFFFF)],
+        stops: [0.0, 0.86, 1.0],
+      ).createShader(rect),
+      blendMode: BlendMode.dstIn,
+      child: Image.asset(
+        asset,
+        fit: BoxFit.contain,
+        alignment: Alignment.bottomCenter,
+        // Surat yuklanmasa EKRAN BUZILMASIN: bo'sh joy qoladi,
+        // matn va tugmalar joyida turaveradi.
+        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+      ),
+    );
+  }
+}
+
+/// Pastki blok: sarlavha, ajratgich, tavsif va ikkita tugma.
 class _Foreground extends StatelessWidget {
   const _Foreground({
     required this.headline,
@@ -232,45 +223,40 @@ class _Foreground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = tokens;
-    return SafeArea(
-      child: Padding(
-        padding:
-            const EdgeInsets.fromLTRB(Gap.xxl, Gap.lg, Gap.xxl, Gap.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: Gap.sm),
-            Text(
-              headline,
-              style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                    color: t.text1,
-                    height: 1.18,
-                    // Kichikroq: sarlavha suratni bosib qo'ymasligi
-                    // kerak — asosiy obyekt karta.
-                    fontSize: headlineSize,
-                  ),
-            ),
-            const SizedBox(height: Gap.md),
-            _Rule(tone: t.accent2),
-            const Spacer(),
-            Text(
-              subtitle,
-              style:
-                  Theme.of(context).textTheme.bodySmall?.copyWith(color: t.text2),
-            ),
-            const SizedBox(height: Gap.lg),
-            NovaButton(
-              label: start,
-              onPressed: () => context.push(Routes.register),
-            ),
-            const SizedBox(height: Gap.sm),
-            NovaButton(
-              label: login,
-              tone: ButtonTone.quiet,
-              onPressed: () => context.push(Routes.login),
-            ),
-          ],
-        ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(Gap.xxl, 0, Gap.xxl, Gap.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            headline,
+            style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                  color: t.text1,
+                  height: 1.18,
+                  fontSize: headlineSize,
+                ),
+          ),
+          const SizedBox(height: Gap.md),
+          _Rule(tone: t.accent2),
+          const SizedBox(height: Gap.md),
+          Text(
+            subtitle,
+            style:
+                Theme.of(context).textTheme.bodySmall?.copyWith(color: t.text2),
+          ),
+          const SizedBox(height: Gap.lg),
+          NovaButton(
+            label: start,
+            onPressed: () => context.push(Routes.register),
+          ),
+          const SizedBox(height: Gap.sm),
+          NovaButton(
+            label: login,
+            tone: ButtonTone.quiet,
+            onPressed: () => context.push(Routes.login),
+          ),
+        ],
       ),
     );
   }
@@ -299,42 +285,6 @@ class _Rule extends StatelessWidget {
             decoration: BoxDecoration(shape: BoxShape.circle, color: tone),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Ekran bo'ylab o'tadigan juda mayin nur.
-///
-/// Halqaning FAQAT bir qismida ko'rinadi: nur o'tib bo'lgach uzoq
-/// tinchlik bo'ladi, aks holda u bezovta qilardi.
-class _Sweep extends StatelessWidget {
-  const _Sweep(this.progress);
-
-  final double progress;
-
-  @override
-  Widget build(BuildContext context) {
-    const start = 0.10, end = 0.62;
-    if (progress < start || progress > end) return const SizedBox.shrink();
-    final k = (progress - start) / (end - start);
-
-    // Chetlarda so'nadi: paydo bo'lishi ham, yo'qolishi ham
-    // sezilmasin.
-    final fade = math.sin(k * math.pi);
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment(-1.8 + k * 3.6, -1),
-          end: Alignment(-1.0 + k * 3.6, 1),
-          colors: [
-            const Color(0x00FFFFFF),
-            Colors.white.withValues(alpha: .16 * fade),
-            const Color(0x00FFFFFF),
-          ],
-          stops: const [0.0, 0.5, 1.0],
-        ),
       ),
     );
   }
