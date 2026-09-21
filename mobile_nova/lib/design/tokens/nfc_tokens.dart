@@ -438,89 +438,106 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
 
   // ------------------------------------------------------------ 7 NOIR
   //
-  // NFCSTORE PREMIUM — SAYT BILAN BITTA PALITRA.
+  // NFCSTORE PREMIUM — LUXURY BLUE-BLACK + CHAMPAGNE.
   //
-  // ## RANGLAR TO'QIB CHIQARILMAGAN
+  // ## "QORA ICHIDA JUDA TO'Q KO'K"
   //
-  // Bu qiymatlar `src/themes.css` dagi saytning qorong'i
-  // mavzusidan AYNAN ko'chirilgan. Ya'ni `nfcstore.uz/c/...`
-  // sahifasi va ilova bitta brendda ko'rinadi — ilova sayt
-  // "uslubiga o'xshash" emas, xuddi o'sha.
+  // Qiymatlar egasi bergan reference asosida. Ikki marta
+  // to'g'rilandi va ikkala xato ham yozib qo'yilgan, chunki ular
+  // oson qaytadi:
   //
-  //     --bg-primary      #050403      --accent-primary  #d4af5a
-  //     --bg-secondary    #0a0805      --accent-secondary #f0cf7a
-  //     --surface         #141210      --accent-deep     #b3860f
-  //     --surface-elevated #1c1916     --text-primary    #f6f2ea
-  //     --border-soft     #221c12      --text-secondary  #b5a78b
+  //   1-urinish: fon saytdagi `#0a0805` dan olingandi (R=10,
+  //      B=5) va ustiga oltin tumanlik tushardi -> butun ilova
+  //      "tim jigarrang" bo'lib ko'rindi;
+  //   2-urinish: fon neytral ko'mir qilindi -> jigarranglik
+  //      ketdi, lekin "premium" hissi ham ketdi, oddiy kulrang
+  //      qoldi.
   //
-  // ## NIMA UCHUN ALOHIDA MAVZU
+  // To'g'ri javob — MIDNIGHT NAVY: sof qora emas, jigarrang ham
+  // emas, qoraga juda yaqin sovuq ko'k. Ko'k YORQIN ko'rinmaydi,
+  // faqat chuqurlik beradi.
   //
-  // `ocean` telefonda ko'rilgan va u tegilmadi; `onyx` esa
-  // saytdan boshqa qiymatlarga ega. Bu uchinchisi — yoqmasa
-  // hech narsa yo'qolmaydi, yoqsa standart qilinadi.
+  //     fon         #07111F      karta        #0E1A2A
+  //     chuqur fon  #050B14      ko'tarilgan  #142337
+  //     chegara     #2A3B52      matn         #F4F1E8
+  //     shampan     #D6B25E      yumshoq      #E4C97A
   //
-  // ## CHEGARA VA SOYA YENGIL
+  // ## OLTIN — 10-15%, FON EMAS
   //
-  // Saytda chegara `#221c12` — ya'ni fondan atigi bir pog'ona
-  // yorug'. "Og'ir" hissini bergan asosiy narsa qalin rangli
-  // chegara edi. Soya ham past: qora fonda kuchli soya
-  // ko'rinmaydi, faqat chetlarni loyqalatadi.
+  // Oltin faqat aksentda: faol tab, ikonka halqasi, ingichka
+  // chegara, NFC ID, tasdiq belgisi va asosiy tugma. Katta
+  // yuzalar HECH QACHON to'la oltin bo'lmaydi.
   static final noir = NfcTokens(
     id: 'noir',
     isDark: true,
-    bg1: hex('#0A0805'),
-    bg2: hex('#050403'),
-    bgVignette: rgba(212, 175, 90, .07),
-    // Yuzalar — saytdagi qatlam narvoni (`surface` va
-    // `surface-elevated`) shaffoflik orqali.
-    surface: rgba(255, 255, 255, .052),
-    surface2: rgba(255, 255, 255, .030),
-    surfaceSolid: hex('#141210'),
-    text1: hex('#F6F2EA'),
-    text2: hex('#B5A78B'),
-    text3: hex('#8A7F68'),
-    accent1: hex('#F0CF7A'),
-    accent2: hex('#D4AF5A'),
-    accent3: hex('#B3860F'),
-    goldDeep: hex('#8E6B0C'),
-    // Ikkilamchi — platina. Saytda yashil "ochiq" chipi bor,
-    // shuning uchun `accentB` o'sha yashil ohangda qoladi.
+    bg1: hex('#07111F'),
+    bg2: hex('#050B14'),
+    // Tumanlik deyarli ko'rinmas — fonni bo'yamaydi.
+    bgVignette: rgba(214, 178, 94, .03),
+    // YUZALAR FONDAN 1-2 TON OCHROQ NAVY.
+    //
+    // Shaffoflik emas, ANIQ rang: shaffof yuza fon gradientiga
+    // qarab "suzib" ketardi va kartaning chegarasi ekranning
+    // qaysi joyida turganiga qarab yo'qolardi.
+    //
+    // Qiymat ko'z bilan emas, O'LCHOV bilan tanlangan. Reference
+    // bergan `#0E1A2A` fondan atigi 0.0045 yorqinroq — qora
+    // ekranda bu deyarli sezilmaydi va karta fonga singib
+    // ketadi. `#16283E` esa 0.0149 beradi: hali ham juda to'q
+    // navy, lekin chegarasi aniq. `theme_test.dart` shu farqni
+    // qo'riqlaydi.
+    surface: hex('#16283E'),
+    surface2: hex('#0E1A2A'),
+    surfaceSolid: hex('#142337'),
+    text1: hex('#F4F1E8'),
+    text2: hex('#AAB4C3'),
+    text3: hex('#7A8699'),
+    accent1: hex('#E4C97A'),
+    accent2: hex('#D6B25E'),
+    accent3: hex('#A8853F'),
+    goldDeep: hex('#8A6C30'),
+    // Ikkilamchi — platina va yashil "ochiq" holati.
     accentB: hex('#7FB28E'),
     accentBDark: hex('#5E8E6C'),
     accentC: hex('#C9CDD2'),
     accentCDark: hex('#8E949A'),
     accentD: hex('#E2E4E7'),
     accentDDark: hex('#AFB4B9'),
-    glow: rgba(226, 190, 110, .28),
-    glowB: rgba(201, 205, 210, .14),
-    // `--border` va `--border-soft` — fondan bir pog'ona yorug'.
-    border1: rgba(212, 175, 90, .22),
-    border2: rgba(255, 255, 255, .07),
+    glow: rgba(228, 201, 122, .20),
+    glowB: rgba(201, 205, 210, .10),
+    // Chegara — reference'dagi `#2A3B52`, ya'ni navy, oltin emas.
+    // Oltin chegara faqat AKSENT elementlarda.
+    border1: rgba(214, 178, 94, .30),
+    border2: hex('#2A3B52'),
     error: hex('#C9573F'),
     success: hex('#7FB28E'),
     warn: hex('#E0B458'),
-    ambient1: rgba(212, 175, 90, .16),
-    ambient2: rgba(201, 205, 210, .08),
+    ambient1: rgba(214, 178, 94, .06),
+    ambient2: rgba(42, 59, 82, .28),
     shadowFloat: [
-      BoxShadow(color: rgba(0, 0, 0, .70), blurRadius: 30, offset: const Offset(0, 12)),
-      BoxShadow(color: rgba(226, 190, 110, .05), blurRadius: 34),
+      BoxShadow(color: rgba(0, 0, 0, .55), blurRadius: 28, offset: const Offset(0, 10)),
     ],
     shadowSoft: [
-      BoxShadow(color: rgba(0, 0, 0, .60), blurRadius: 22, offset: const Offset(0, 8)),
+      BoxShadow(color: rgba(0, 0, 0, .42), blurRadius: 18, offset: const Offset(0, 6)),
     ],
     shadowTiny: [
-      BoxShadow(color: rgba(0, 0, 0, .45), blurRadius: 10, offset: const Offset(0, 3)),
+      BoxShadow(color: rgba(0, 0, 0, .32), blurRadius: 9, offset: const Offset(0, 3)),
     ],
   );
 
   static final all = <NfcTokens>[pearl, graphite, ocean, aurora, midnight, onyx, noir];
 
-  /// STANDART MAVZU — `ocean`.
+  /// STANDART MAVZU — `noir`.
   ///
   /// Foydalanuvchi hali tanlamagan bo'lsa (birinchi ochilish yoki
-  /// saqlangan qiymat noma'lum bo'lsa) shu ishlatiladi. Egasining
-  /// qarori: ilova birinchi ochilganda `ocean` ko'rinsin.
-  static NfcTokens get fallback => ocean;
+  /// saqlangan qiymat noma'lum bo'lsa) shu ishlatiladi.
+  ///
+  /// Ilgari `ocean` edi. Egasining qarori (2026-09): ilova
+  /// birinchi ochilganda NFCSTORE brend rangida ko'rinsin, ya'ni
+  /// sayt bilan bir xil qora-shampan palitrada. `ocean`
+  /// O'CHIRILMADI — u Sozlamalarda muqobil mavzu bo'lib qoladi
+  /// va uni tanlagan odamda hech narsa o'zgarmaydi.
+  static NfcTokens get fallback => noir;
 
   static NfcTokens byId(String? id) =>
       all.firstWhere((t) => t.id == id, orElse: () => fallback);

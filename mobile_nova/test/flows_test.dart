@@ -65,7 +65,9 @@ void main() {
       addTearDown(container.dispose);
 
       // Saqlangan tanlov yo'q — standart mavzu ko'rinadi.
-      expect(container.read(themeProvider).id, 'ocean');
+      // Standart 2026-09 dan beri `noir` (NFCSTORE brend rangi);
+      // `ocean` o'chirilmadi, u Sozlamalarda muqobil bo'lib qoldi.
+      expect(container.read(themeProvider).id, 'noir');
       await container
           .read(themeProvider.notifier)
           .select(NfcTokens.midnight);

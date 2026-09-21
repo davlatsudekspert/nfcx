@@ -37,19 +37,50 @@ void main() {
         {'pearl', 'graphite', 'ocean', 'aurora', 'midnight', 'onyx', 'noir'});
   });
 
-  test('noir palitrasi SAYT bilan bir xil', () {
-    // Bu qiymatlar `src/themes.css` dan ko'chirilgan. Ular
-    // ajralib ketsa, ilova va sayt boshqa brendga o'xshab
-    // qoladi — shuning uchun aynan solishtiriladi.
+  test('noir AKSENTI shampan oltin', () {
     final n = NfcTokens.noir;
-    expect(n.bg1, const Color(0xFF0A0805), reason: '--bg-secondary');
-    expect(n.bg2, const Color(0xFF050403), reason: '--bg-primary');
-    expect(n.surfaceSolid, const Color(0xFF141210), reason: '--surface');
-    expect(n.text1, const Color(0xFFF6F2EA), reason: '--text-primary');
-    expect(n.text2, const Color(0xFFB5A78B), reason: '--text-secondary');
-    expect(n.accent1, const Color(0xFFF0CF7A), reason: '--accent-secondary');
-    expect(n.accent2, const Color(0xFFD4AF5A), reason: '--accent-primary');
-    expect(n.accent3, const Color(0xFFB3860F), reason: '--accent-deep');
+    expect(n.accent1, const Color(0xFFE4C97A), reason: 'yumshoq oltin');
+    expect(n.accent2, const Color(0xFFD6B25E), reason: 'shampan');
+  });
+
+  test('noir FONI midnight navy — jigarrang ham, kulrang ham EMAS', () {
+    // Ikki marta noto'g'ri chiqqan joy, shuning uchun test bor:
+    //   1) sayt palitrasidan olingan iliq qora -> "tim jigarrang";
+    //   2) neytral ko'mir -> jigarranglik ketdi, premium hissi ham.
+    // To'g'ri javob — qoraga juda yaqin SOVUQ ko'k.
+    final n = NfcTokens.noir;
+    int ch(double v) => (v * 255).round();
+
+    // 1. Sovuq: ko'k kanal qizildan katta.
+    expect(ch(n.bg1.b), greaterThan(ch(n.bg1.r)),
+        reason: 'fon sovuq bo‘lishi kerak (ko‘k > qizil) — sepia emas');
+
+    // 2. Lekin YORQIN ko'k emas: farq o'lchovli qoladi.
+    final cool = ch(n.bg1.b) - ch(n.bg1.r);
+    expect(cool, inInclusiveRange(12, 40),
+        reason: 'navy sezilsin, lekin ko‘k bo‘lib yonmasin, topildi $cool');
+
+    // 3. Qoraga yaqin.
+    expect(n.bg1.computeLuminance(), lessThan(0.02),
+        reason: 'fon qoraga juda yaqin bo‘lishi kerak');
+
+    // 4. Matn ham iliq-jigarrang bo‘lmasin.
+    expect(ch(n.text2.b), greaterThanOrEqualTo(ch(n.text2.r)),
+        reason: 'ikkilamchi matn sepia bo‘lib qolgan');
+  });
+
+  test('noir kartalari FON bilan qo‘shilib ketmaydi', () {
+    // Yuzalar juda shaffof bo‘lsa, qora fonda karta ko‘rinmay
+    // qoladi — "hammasi bitta qora dog‘". Yuza fon ustiga
+    // qo‘yilganda yorqinlik farqi seziladigan bo‘lishi kerak.
+    final n = NfcTokens.noir;
+    final bg = n.bg1;
+    final over = Color.alphaBlend(n.surface, bg);
+    expect(over.computeLuminance(), greaterThan(bg.computeLuminance()),
+        reason: 'yuza fondan ochroq bo‘lishi kerak');
+    expect(over.computeLuminance() - bg.computeLuminance(),
+        greaterThan(0.012),
+        reason: 'farq juda kichik — karta fon bilan qo‘shilib ketadi');
   });
 
   test('onyx ILIQ, midnight esa SOVUQ qora', () {
@@ -65,11 +96,15 @@ void main() {
   });
 
   test('noma’lum kalit STANDART mavzuga tushadi', () {
-    // Egasining qarori: ilova birinchi ochilganda `ocean`.
-    expect(NfcTokens.fallback.id, 'ocean');
-    expect(NfcTokens.byId('bunday-mavzu-yoq').id, 'ocean');
-    expect(NfcTokens.byId(null).id, 'ocean');
+    // Egasining qarori (2026-09): ilova birinchi ochilganda
+    // NFCSTORE brend rangida — `noir`. `ocean` o'chirilmadi, u
+    // Sozlamalarda muqobil bo'lib qoladi.
+    expect(NfcTokens.fallback.id, 'noir');
+    expect(NfcTokens.byId('bunday-mavzu-yoq').id, 'noir');
+    expect(NfcTokens.byId(null).id, 'noir');
     expect(NfcTokens.byId('midnight').id, 'midnight');
+    // `ocean` HALI HAM mavjud — o'chirib yuborilmaganiga ishonch.
+    expect(NfcTokens.byId('ocean').id, 'ocean');
   });
 
   test('faqat Pearl yorug‘, qolganlari qorong‘i', () {

@@ -26,9 +26,17 @@ class ModeSwitch extends StatelessWidget {
 
     return Semantics(
       label: business ? l.modeBusiness : l.modePersonal,
+      // MINIMAL SEGMENTED CONTROL.
+      //
+      // Ilgari faol tomon TO'LA aksent gradient bilan bo'yalardi
+      // va butun kenglikni egallagan qalin pill bo'lib ko'rinardi
+      // — sahifadagi eng og'ir element. `/c/nfcstoreuz` da esa
+      // tablar yengil: faol bo'lim shampan TUSIDA, ingichka oltin
+      // chegara bilan; matn oltin, fon esa qorong'i bo'lib
+      // qolaveradi.
       child: Container(
-        height: 40,
-        padding: const EdgeInsets.all(3.5),
+        height: 38,
+        padding: const EdgeInsets.all(3),
         decoration: BoxDecoration(
           color: t.surface2,
           borderRadius: R.pill,
@@ -48,15 +56,16 @@ class ModeSwitch extends StatelessWidget {
                     duration: Motion.med,
                     curve: Motion.smooth,
                     width: w,
-                    height: 33,
+                    height: 32,
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: business
-                            ? [t.accentB, t.accentBDark]
-                            : [t.accent1, t.accent2],
-                      ),
+                      // TUS, TO'LDIRISH EMAS.
+                      color: (business ? t.accentB : t.accent2)
+                          .withValues(alpha: t.isDark ? .14 : .20),
                       borderRadius: R.pill,
-                      boxShadow: t.shadowTiny,
+                      border: Border.all(
+                        color: (business ? t.accentB : t.accent2)
+                            .withValues(alpha: .5),
+                      ),
                     ),
                   ),
                 ),
@@ -65,13 +74,15 @@ class ModeSwitch extends StatelessWidget {
                     _Label(
                       text: l.modePersonal,
                       selected: !business,
+                      tone: t.accent2,
                       width: w,
                       onTap: () => onChanged(AppMode.personal),
                     ),
-                    const SizedBox(width: 7),
+                    const SizedBox(width: 6),
                     _Label(
                       text: l.modeBusiness,
                       selected: business,
+                      tone: t.accentB,
                       width: w,
                       onTap: () => onChanged(AppMode.business),
                     ),
@@ -90,12 +101,16 @@ class _Label extends StatelessWidget {
   const _Label({
     required this.text,
     required this.selected,
+    required this.tone,
     required this.width,
     required this.onTap,
   });
 
   final String text;
   final bool selected;
+
+  /// Faol yorliq rangi — shaxsiyda shampan, bizneda platina-yashil.
+  final Color tone;
   final double width;
   final VoidCallback onTap;
 
@@ -107,15 +122,17 @@ class _Label extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
         width: width,
-        height: 33,
+        height: 32,
         child: Center(
           child: AnimatedDefaultTextStyle(
             duration: Motion.fast,
             style: TextStyle(
               fontFamily: 'Manrope',
               fontSize: 12.5,
+              // Faol yorliq QALIN emas, RANGLI: qalinlik yozuvni
+              // "sakrab" ko'rsatardi, chunki kenglik o'zgaradi.
               fontWeight: FontWeight.w600,
-              color: selected ? const Color(0xFF1A1A1F) : t.text2,
+              color: selected ? tone : t.text2,
             ),
             child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
           ),

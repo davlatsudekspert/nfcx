@@ -412,8 +412,21 @@ class _ProfileCard extends StatelessWidget {
     final t = context.tokens;
     final accent = accentBusiness ? t.accentB : t.accent2;
 
-    return FloatingSurface(
+    // KARTA FON BILAN QO'SHILIB KETMASIN.
+    //
+    // Qora mavzuda `surfaceSolid` va fon bir-biriga juda yaqin
+    // edi, chegara esa neytral — natijada odam kartasi
+    // "ko'rinmas quti" bo'lib qolardi. Endi chetida juda ingichka
+    // shampan chiziq bor: quti emas, lekin chegara sezilib
+    // turadi.
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: accent.withValues(alpha: .22)),
+      ),
+      child: FloatingSurface(
       solid: true,
+      border: false,
       padding: const EdgeInsets.all(14),
       borderRadius: BorderRadius.circular(24),
       onTap: onTap,
@@ -516,6 +529,7 @@ class _ProfileCard extends StatelessWidget {
             ],
           ),
         ],
+      ),
       ),
     );
   }

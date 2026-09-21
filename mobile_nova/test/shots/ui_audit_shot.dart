@@ -19,6 +19,9 @@ import 'package:nfcstore_nova/features/home/home_screen.dart';
 import 'package:nfcstore_nova/features/nfc/nfc_center_screen.dart';
 import 'package:nfcstore_nova/features/profile/follow_list_screen.dart';
 import 'package:nfcstore_nova/features/profile/profile_screen.dart';
+import 'package:nfcstore_nova/features/auth/login_screen.dart';
+import 'package:nfcstore_nova/features/auth/register_screen.dart';
+import 'package:nfcstore_nova/features/social/reels_screen.dart';
 
 import '../helpers.dart';
 
@@ -162,6 +165,44 @@ void main() {
   });
   testWidgets('noir — Profil 360x640', (t) async {
     await shot(t, const ProfileScreen(), 'noir-profile-360',
+        tokens: NfcTokens.noir, size: const Size(360, 640));
+  });
+
+  testWidgets('noir — Reels', (t) async {
+    await shot(t, const ReelsScreen(), 'noir-reels', tokens: NfcTokens.noir);
+  });
+  testWidgets('noir — Kirish', (t) async {
+    await shot(t, const LoginScreen(), 'noir-login', tokens: NfcTokens.noir);
+  });
+  testWidgets('noir — Ro\'yxatdan o\'tish', (t) async {
+    await shot(t, const RegisterScreen(), 'noir-register',
+        tokens: NfcTokens.noir);
+  });
+  testWidgets('noir — Xush kelibsiz', (t) async {
+    await shot(t, const WelcomeScreen(), 'noir-welcome',
+        tokens: NfcTokens.noir);
+  });
+  testWidgets('noir — Obunachilar', (t) async {
+    await shot(t, const FollowListScreen(code: 'VIP001', dir: 'followers'),
+        'noir-followers', tokens: NfcTokens.noir);
+  });
+
+  // Ochiq mavzu — brend identikligi saqlanganmi.
+  testWidgets('pearl — Profil', (t) async {
+    await shot(t, const ProfileScreen(), 'light-profile',
+        tokens: NfcTokens.pearl);
+  });
+  testWidgets('pearl — Home', (t) async {
+    await shot(t, const HomeScreen(), 'light-home', tokens: NfcTokens.pearl);
+  });
+
+  // Tor ekran — toshib ketish.
+  testWidgets('noir — Home 360x640', (t) async {
+    await shot(t, const HomeScreen(), 'noir-home-360',
+        tokens: NfcTokens.noir, size: const Size(360, 640));
+  });
+  testWidgets('noir — Faoliyat 360x640', (t) async {
+    await shot(t, const ActivityScreen(), 'noir-activity-360',
         tokens: NfcTokens.noir, size: const Size(360, 640));
   });
 }

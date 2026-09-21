@@ -199,21 +199,42 @@ class _OrbPainter extends CustomPainter {
     }
     path.close();
 
+    // YADRO — QORONG'I, CHETI OLTIN HALQA.
+    //
+    // Ilgari yadro to'la oltin gradient bilan to'ldirilardi va
+    // bosh sahifadagi eng katta dog' edi: qora-navy fonda u
+    // "sariq shar" bo'lib ko'rinardi. Egasi bergan reference'da
+    // esa logotip doirasining ICHI qorong'i, oltin faqat halqa
+    // va belgida.
+    //
+    // Shakl, wobble va animatsiya o'zgarmadi — faqat to'ldirish.
     canvas.drawPath(
       path,
       Paint()
         ..shader = LinearGradient(
           begin: const Alignment(-.7, -1),
           end: const Alignment(.7, 1),
-          // Kartadan bir pog'ona CHUQURROQ. Ilgari bu yerda ham
-          // `[accent1, accent2]` turardi — ya'ni orb va identity karta
-          // aynan bir xil oltinda edi va oltin aksent bo'lishdan
-          // to'xtagandi. Holat rangi (muvaffaqiyat/xato) berilganda
-          // esa o'sha rang saqlanadi.
           colors: accent == t.accent2
-              ? [t.accent2, t.goldDeep]
+              ? [
+                  // Yuzadan bir pog'ona ko'tarilgan navy, ustiga
+                  // juda past oltin tus.
+                  Color.alphaBlend(
+                      t.accent2.withValues(alpha: .10), t.surfaceSolid),
+                  Color.alphaBlend(
+                      t.accent3.withValues(alpha: .05), t.bg1),
+                ]
               : [t.accent1, accent],
         ).createShader(Rect.fromCircle(center: c, radius: r)),
+    );
+
+    // Chetdagi OLTIN HALQA — endi shaklni aynan shu belgilaydi.
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = r * .022
+        ..color = (accent == t.accent2 ? t.accent2 : accent)
+            .withValues(alpha: .85),
     );
 
     // Yuqori chetdagi nozik yorug'lik — shakl yassi qog'oz emas, hajmli.

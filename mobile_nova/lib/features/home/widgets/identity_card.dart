@@ -53,15 +53,30 @@ class IdentityCard extends StatelessWidget {
         curve: Motion.smooth,
         padding: const EdgeInsets.all(Gap.xl),
         decoration: BoxDecoration(
+          // GRAFIT KARTA, OLTIN TAFSILOT — TO'LA OLTIN PLITA EMAS.
+          //
+          // Ilgari butun karta aksent gradient bilan bo'yalardi va
+          // bosh sahifadagi eng katta dog' edi: qora fonda u
+          // "sariq plita" bo'lib ko'rinardi. Egasining talabi —
+          // oltin 10-15% aksent bo'lsin, fon emas.
+          //
+          // Endi karta yuzasi grafit, chetida ingichka oltin
+          // chiziq, ichida esa NFC kodi oltin rangda. Ierarxiya
+          // saqlandi: karta hali ham ekrandagi eng muhim blok.
+          color: t.surfaceSolid,
           gradient: LinearGradient(
             begin: const Alignment(-.8, -1),
             end: const Alignment(.9, 1),
-            colors: [tone, toneDark],
+            colors: [
+              tone.withValues(alpha: t.isDark ? .10 : .18),
+              toneDark.withValues(alpha: t.isDark ? .04 : .10),
+            ],
           ),
           // Nosimmetrik radius — bir burchak boshqacha, shakl "yasalgan"
           // emas, o'sgandek ko'rinadi.
           borderRadius: R.organic(a: 40, b: 40, c: 40, d: 18),
-          boxShadow: t.shadowFloat,
+          border: Border.all(color: toneDark.withValues(alpha: .34)),
+          boxShadow: t.shadowSoft,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -84,7 +99,7 @@ class IdentityCard extends StatelessWidget {
                 fontSize: 9.5,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 1.3,
-                color: kOnAccent.withValues(alpha: .6),
+                color: t.text3,
               ),
             ),
             const SizedBox(height: 5),
@@ -97,7 +112,7 @@ class IdentityCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppType.monoStyle(
-                      color: kOnAccent,
+                      color: t.accent1,
                       size: 23,
                       weight: FontWeight.w600,
                       letterSpacing: 2.2,
@@ -146,19 +161,24 @@ class _MiniAction extends StatelessWidget {
   final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => PressableScale(
-        onTap: onTap,
-        child: Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: .32),
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white.withValues(alpha: .4)),
-          ),
-          child: Icon(icon, size: 18, color: kOnAccent),
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return PressableScale(
+      onTap: onTap,
+      child: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          // Karta endi grafit — doira ham oq parda emas, aksent
+          // tusi bilan ishlaydi.
+          color: t.accent2.withValues(alpha: .12),
+          shape: BoxShape.circle,
+          border: Border.all(color: t.accent2.withValues(alpha: .38)),
         ),
-      );
+        child: Icon(icon, size: 18, color: t.accent2),
+      ),
+    );
+  }
 }
 
 class _Stat extends StatelessWidget {
@@ -168,14 +188,16 @@ class _Stat extends StatelessWidget {
   final String label;
 
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             formatCount(value),
             style: AppType.monoStyle(
-              color: kOnAccent,
+              color: t.text1,
               size: 15,
               weight: FontWeight.w600,
             ),
@@ -191,11 +213,12 @@ class _Stat extends StatelessWidget {
               fontFamily: AppType.sans,
               fontSize: 9.5,
               fontWeight: FontWeight.w600,
-              color: kOnAccent.withValues(alpha: .62),
+              color: t.text3,
             ),
           ),
         ],
-      );
+    );
+  }
 }
 
 /// 1 200 → `1.2K`. Uzun raqamlar kapsulani kengaytirib yubormaydi.

@@ -93,7 +93,17 @@ class Capsule extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final accent = tone ?? t.accent2;
-    final fg = selected ? t.onAccent : t.text2;
+    // TANLANGAN CHIP — TUS, TO'LDIRISH EMAS.
+    //
+    // Ilgari tanlangan kapsula butunlay aksent rangda bo'yalar va
+    // matn uning ustida qorong'i yozilardi. Qora mavzuda u qattiq
+    // oltin tabletka bo'lib ko'rinardi — ekrandagi eng og'ir
+    // element, holbuki bu shunchaki filtr.
+    //
+    // `nfcstore.uz/c/...` dagi til: fon qorong'i qolaveradi,
+    // tanlov esa nozik tus + ingichka oltin chiziq + oltin matn
+    // bilan ko'rsatiladi.
+    final fg = selected ? accent : t.text2;
 
     return PressableScale(
       onTap: onTap,
@@ -105,10 +115,13 @@ class Capsule extends StatelessWidget {
           vertical: dense ? 7 : 9.5,
         ),
         decoration: BoxDecoration(
-          color: selected ? accent : t.surface2,
+          color: selected
+              ? accent.withValues(alpha: t.isDark ? .13 : .18)
+              : t.surface2,
           borderRadius: R.pill,
-          border: Border.all(color: selected ? accent : t.border2),
-          boxShadow: selected ? t.shadowTiny : null,
+          border: Border.all(
+            color: selected ? accent.withValues(alpha: .55) : t.border2,
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,

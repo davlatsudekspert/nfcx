@@ -304,7 +304,12 @@ class _IdentityHero extends ConsumerWidget {
 
     // 360 da ~208, 390 da ~226, 430 da ~249 — ekranni egallab
     // ketmaydi, lekin baribir ekranning eng katta obyekti.
-    final orb = (width * .58).clamp(200.0, 260.0);
+    // HERO BIROZ IXCHAM.
+    //
+    // Ilgari orb ekran kengligining 58% ini olardi va u bilan
+    // birga halqalar butun yuqori yarmini egallab, lenta ekran
+    // ostiga tushib ketardi.
+    final orb = (width * .50).clamp(176.0, 216.0);
 
     final title = profile.name.isNotEmpty
         ? profile.name
@@ -350,7 +355,8 @@ class _IdentityHero extends ConsumerWidget {
               ? BrandLogo(
                   size: orb * kOrbMarkRatio,
                   style: BrandLogoStyle.markOnly,
-                  tint: t.onAccent,
+                  // Yadro endi qorong'i — belgi oltin bo'ladi.
+                  tint: t.accent2,
                 )
               : _OrbAvatar(
                   url: avatar,
