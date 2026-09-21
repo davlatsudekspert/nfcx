@@ -43,6 +43,7 @@ on:
       - 'scripts/test-nova-api-parity.mjs'
       - 'scripts/test-nova-id-purchase.mjs'
       - 'scripts/test-nova-response-contract.mjs'
+      - 'scripts/test-nova-register-payload.mjs'
       - 'scripts/lib/**'
 
 concurrency:
@@ -133,6 +134,13 @@ jobs:
         # (yonidagi qo'riqchi qadamida ham xuddi shunday).
         working-directory: ${{ github.workspace }}
         run: node scripts/test-nova-id-purchase.mjs
+
+      # Ro'yxatdan o'tish so'rovi: ilova yuboradigan kalit nomlari
+      # server o'qiydigan nomlar bilan bir xilmi. `code` va
+      # `emailCode` farqi bir hafta jim turgan edi.
+      - name: Ro'yxatdan o'tish so'rovi serverga mos keladimi
+        working-directory: ${{ github.workspace }}
+        run: node scripts/test-nova-register-payload.mjs
 
       # ── ILOVA NOMI VA PAKET ID ──────────────────────────────────
       #

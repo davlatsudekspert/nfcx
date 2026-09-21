@@ -151,7 +151,13 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
         setState(() {
           // Noto'g'ri kod maydonni qizartiradi; boshqa xatolar esa
           // yo'lakcha bo'lib chiqadi — ular kodga aloqador emas.
-          _wrong = e.code == 'bad_code' || e.code == 'bad_email_code';
+          // `email_code_required` ham AYNAN shu maydonga tegishli:
+          // server kodni umuman ololmaganini aytadi. Ilgari u
+          // ro'yxatda yo'q edi va xato yo'lakcha bo'lib chiqardi —
+          // odam qaysi maydon aybdor ekanini bilmasdi.
+          _wrong = e.code == 'bad_code' ||
+              e.code == 'bad_email_code' ||
+              e.code == 'email_code_required';
           _error = _wrong ? null : describeError(l, e);
         });
       },

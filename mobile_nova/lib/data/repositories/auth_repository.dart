@@ -64,7 +64,20 @@ class AuthRepository {
       'email': email.trim(),
       'phone': phone,
       'password': password,
-      'code': code,
+      // KALIT NOMI `emailCode` — `code` EMAS.
+      //
+      // Server aynan shu nomni o'qiydi (`hosting/api/auth.js`):
+      //
+      //     const emailCode = H.cleanStr(body?.emailCode, 6);
+      //     if (!emailCode) return H.json({ error: 'email_code_required' }, 422);
+      //
+      // Ilgari bu yerda `code` turardi. Xato BIR HAFTA KO'RINMADI,
+      // chunki email xizmati o'chiq edi va server bu blokni umuman
+      // bajarmasdi (`if (emailOn)`). Xizmat yoqilgan kuni esa
+      // ro'yxatdan o'tish darhol yiqildi: odam emailga kelgan
+      // to'g'ri kodni kiritardi, server esa "kod umuman
+      // yuborilmagan" deb 422 qaytarardi.
+      'emailCode': code,
       'botAck': true,
       // QOTIRILGAN `true` EMAS. Ilgari shu yerda `true` turardi va
       // ilovada rozilik so'raydigan joy umuman yo'q edi — ya'ni
