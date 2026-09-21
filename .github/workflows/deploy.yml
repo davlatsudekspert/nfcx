@@ -78,6 +78,8 @@ jobs:
       # tekshiradi.
       - name: Bildirishnomalar (obuna / like / izoh)
         run: node scripts/test-notifications.mjs
+      - name: Izoh moderatsiyasi — soft-delete va dalil arxivi
+        run: node scripts/test-comment-moderation.mjs
 
       - name: Worker yiqilsa sabab ko'rinadimi
         run: node scripts/test-worker-error-visibility.mjs
