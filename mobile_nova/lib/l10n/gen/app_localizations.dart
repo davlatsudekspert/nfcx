@@ -2870,6 +2870,30 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Kartaga faqat ochiq profil manzili yoziladi. Hech qanday maxfiy kalit yozilmaydi.'**
   String get nfcWriteSafety;
+
+  /// No description provided for @feedSponsored.
+  ///
+  /// In uz, this message translates to:
+  /// **'Homiylik'**
+  String get feedSponsored;
+
+  /// No description provided for @homeFeed.
+  ///
+  /// In uz, this message translates to:
+  /// **'Lenta'**
+  String get homeFeed;
+
+  /// No description provided for @homeFeedEmpty.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hozircha post yo‘q. Obuna bo‘lgan odamlaringiz post qo‘yganda shu yerda ko‘rinadi.'**
+  String get homeFeedEmpty;
+
+  /// No description provided for @homeFeedMore.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hammasini ko‘rish'**
+  String get homeFeedMore;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

@@ -579,5 +579,9 @@
   "nfcWriteErrVerify": "Yozildi, lekin qayta o‘qiganda manzil to‘g‘ri chiqmadi. Kartani qayta tegizib ko‘ring.",
   "nfcWriteErrIo": "Karta bilan aloqa uzildi. Kartani qimirlatmasdan qayta urinib ko‘ring.",
   "nfcWriteIosHint": "iPhone’da yozish uchun kartani tegizib turing — tizim oynasi ochiladi.",
-  "nfcWriteSafety": "Kartaga faqat ochiq profil manzili yoziladi. Hech qanday maxfiy kalit yozilmaydi."
+  "nfcWriteSafety": "Kartaga faqat ochiq profil manzili yoziladi. Hech qanday maxfiy kalit yozilmaydi.",
+  "feedSponsored": "Homiylik",
+  "homeFeed": "Lenta",
+  "homeFeedEmpty": "Hozircha post yo‘q. Obuna bo‘lgan odamlaringiz post qo‘yganda shu yerda ko‘rinadi.",
+  "homeFeedMore": "Hammasini ko‘rish"
 }

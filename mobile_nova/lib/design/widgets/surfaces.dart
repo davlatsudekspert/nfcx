@@ -191,32 +191,54 @@ class SectionHeader extends StatelessWidget {
     final t = context.tokens;
     return Padding(
       padding: const EdgeInsets.fromLTRB(Gap.screenX, Gap.xxl, Gap.screenX, Gap.md),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              title.toUpperCase(),
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(color: t.text3),
+      // O'NG TOMONDAGI YOZUV YARIMDAN OSHMAYDI.
+      //
+      // Ilgari u oddiy (flex bo'lmagan) bola edi: Flutter uni AVVAL
+      // tabiiy kengligida joylashtirib, qolganini sarlavhaga
+      // berardi. Yozuv uzun bo'lsa (masalan "NFC Mobile nima?"
+      // degan savol) 320dp li ekranda qatorga sig'masdi va
+      // `RenderFlex overflowed` chiqardi — sariq-qora chiziqlar
+      // bilan. Telefonda bu 360dp dan tor qurilmalarda ko'rinardi.
+      //
+      // `LayoutBuilder` + 50% cheklov: qisqa yozuvlar uchun hech
+      // narsa o'zgarmaydi (ular yarmidan kichik), uzunlari esa
+      // qisqartiriladi.
+      child: LayoutBuilder(
+        builder: (context, box) => Row(
+          children: [
+            Expanded(
+              child: Text(
+                title.toUpperCase(),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(color: t.text3),
+              ),
             ),
-          ),
-          if (action != null)
-            PressableScale(
-              onTap: onAction,
-              child: Padding(
-                // Barmoq uchun 44px minimal nishon: matnning o'zi juda kichik.
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
-                child: Text(
-                  action!,
-                  style: TextStyle(
-                    fontFamily: 'Manrope',
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: t.accent2,
+            if (action != null)
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: box.maxWidth * .5),
+                child: PressableScale(
+                  onTap: onAction,
+                  child: Padding(
+                    // Barmoq uchun 44px minimal nishon: matnning o'zi juda kichik.
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+                    child: Text(
+                      action!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.end,
+                      style: TextStyle(
+                        fontFamily: 'Manrope',
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: t.accent2,
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

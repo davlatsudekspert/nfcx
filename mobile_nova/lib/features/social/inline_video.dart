@@ -30,6 +30,32 @@ import '../profile/music_player.dart';
 /// Video ovoz chiqaradi, demak u audio EGASI bo'ladi. Shu paytda
 /// profil musiqasi ijro etilayotgan bo'lsa — to'xtaydi. Reels'dagi
 /// bilan bir xil qoida: ikki manba bir vaqtda ovoz chiqarmaydi.
+///
+/// ## DANGASA OCHILISH (`lazy: true`)
+///
+/// Kontroller UMUMAN qurilmaydi — odam bosmaguncha. Lentada
+/// beshta video post bo'lsa, ilgari beshta dekoder ochilib,
+/// beshta tarmoq so'rovi ketardi; ekranda esa hech biri
+/// o'ynamasdi.
+///
+/// `autoPlay: false` BILAN BIR XIL EMAS, ataylab. Profil
+/// panjarasi `autoPlay: false` ni POSTER sifatida ishlatadi:
+/// kontroller ochiladi va birinchi kadr ko'rinadi, lekin
+/// o'ynamaydi. Dangasa rejim uni kulrang qutiga aylantirib
+/// qo'yardi — shuning uchun bayroq ALOHIDA va standarti
+/// `false`: mavjud joylarning birortasi ham o'zgarmaydi.
+///
+/// Bu O'zbekistonda ayniqsa muhim: mobil internet qimmat va
+/// ko'rilmagan video uchun trafik sarflash — odamning pulini
+/// so'ramasdan ishlatish.
+///
+/// ## ILOVA FONGA KETGANDA
+///
+/// `WidgetsBindingObserver` orqali to'xtatiladi. Ilgari bu yerda
+/// u YO'Q edi: `story_viewer.dart` va `music_player.dart` fonni
+/// kuzatardi, ichki video esa yo'q — ya'ni lentadagi video
+/// o'ynayotganda telefon boshqa ilovaga o'tsa, OVOZ DAVOM
+/// ETARDI.
 class InlineVideo extends ConsumerStatefulWidget {
   const InlineVideo({
     super.key,
@@ -40,6 +66,7 @@ class InlineVideo extends ConsumerStatefulWidget {
     this.tapToToggle = false,
     this.fit = BoxFit.cover,
     this.onAspect,
+    this.lazy = false,
   });
 
   final String url;
@@ -67,14 +94,27 @@ class InlineVideo extends ConsumerStatefulWidget {
   /// yozib qo'yilgan nisbatga majburlaydi.
   final ValueChanged<double>? onAspect;
 
+  /// Kontroller FAQAT bosilganda qurilsinmi.
+  ///
+  /// Ro'yxatlar uchun. `autoPlay: false` dan farqi yuqorida.
+  final bool lazy;
+
   @override
   ConsumerState<InlineVideo> createState() => _InlineVideoState();
 }
 
-class _InlineVideoState extends ConsumerState<InlineVideo> {
+class _InlineVideoState extends ConsumerState<InlineVideo>
+    with WidgetsBindingObserver {
   VideoPlayerController? _c;
   bool _ready = false;
   bool _failed = false;
+
+  /// Kontroller ochilishi BOSHLANGANMI.
+  ///
+  /// `_ready` dan farq qiladi: ochilish boshlangan, lekin hali
+  /// tugamagan oraliq bor. Ikkinchi bosish o'sha oraliqda kelsa,
+  /// ikkinchi kontroller qurilib, birinchisi yetim qolardi.
+  bool _opening = false;
 
   /// Vidjet o'chirilgan — `_open()` ning har bir `await` idan keyin
   /// tekshiriladi.
@@ -108,10 +148,27 @@ class _InlineVideoState extends ConsumerState<InlineVideo> {
     // `ref.read` `initState` da ruxsat etilgan; reyestr konteyner
     // bilan yashaydi, ya'ni vidjetdan uzoq umr ko'radi.
     _owner = ref.read(audioOwnerProvider.notifier);
-    _open();
+    WidgetsBinding.instance.addObserver(this);
+    // Dangasa rejimda kontroller ham, tarmoq so'rovi ham odam
+    // bosmaguncha YO'Q. Boshqa hamma holatda — avvalgidek.
+    if (!widget.lazy) _open();
+  }
+
+  /// ILOVA FONGA KETDI — video to'xtaydi.
+  ///
+  /// `story_viewer.dart` va `music_player.dart` buni allaqachon
+  /// qiladi; ichki video esa qilmasdi va telefon boshqa ilovaga
+  /// o'tganda ovoz davom etardi.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) _pauseForOther();
   }
 
   Future<void> _open() async {
+    // Ikki marta ochilmasin: birinchi kontroller yetim qolardi va
+    // uni hech kim yopmasdi.
+    if (_opening || _c != null) return;
+    _opening = true;
     final c = VideoPlayerController.networkUrl(Uri.parse(widget.url));
     _c = c;
     try {
@@ -165,6 +222,18 @@ class _InlineVideoState extends ConsumerState<InlineVideo> {
   }
 
   Future<void> _toggle() async {
+    // Dangasa rejim: birinchi bosishda kontroller endi quriladi.
+    if (widget.lazy && _c == null && !_failed) {
+      _owner?.take(this, _pauseForOther);
+      await _open();
+      final opened = _c;
+      if (opened != null && !_gone && mounted) {
+        await opened.setVolume(1);
+        await opened.play();
+        if (mounted) setState(() {});
+      }
+      return;
+    }
     final c = _c;
     if (c == null || !_ready) return;
     if (c.value.isPlaying) {
@@ -180,6 +249,7 @@ class _InlineVideoState extends ConsumerState<InlineVideo> {
   @override
   void dispose() {
     _gone = true;
+    WidgetsBinding.instance.removeObserver(this);
     final c = _c;
     _c = null;
     // KONTROLLER BIRINCHI YOPILADI. Bu yerda hech narsa undan
@@ -200,6 +270,23 @@ class _InlineVideoState extends ConsumerState<InlineVideo> {
       return ColoredBox(
         color: t.surface2,
         child: Icon(Icons.videocam_off_rounded, size: 30, color: t.text3),
+      );
+    }
+    // HALI OCHILMAGAN (dangasa rejim) — bosish taklifi ko'rinadi.
+    //
+    // Bo'sh kulrang quti "yuklanmadi" degan taassurot qoldirardi;
+    // aslida video joyida va bir bosishda ochiladi.
+    if (c == null && widget.lazy) {
+      return GestureDetector(
+        onTap: _toggle,
+        behavior: HitTestBehavior.opaque,
+        child: ColoredBox(
+          color: t.surface2,
+          child: Center(
+            child: Icon(Icons.play_circle_fill_rounded,
+                size: 54, color: t.text1.withValues(alpha: .85)),
+          ),
+        ),
       );
     }
     if (!_ready || c == null) {

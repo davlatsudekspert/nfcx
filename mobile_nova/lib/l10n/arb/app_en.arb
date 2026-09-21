@@ -579,5 +579,9 @@
   "nfcWriteErrVerify": "The write went through, but reading it back gave a different address. Try again.",
   "nfcWriteErrIo": "Lost contact with the card. Keep it still and try again.",
   "nfcWriteIosHint": "On iPhone, hold the card near the phone — the system sheet opens.",
-  "nfcWriteSafety": "Only the public profile address is written. No secret key is ever written to the card."
+  "nfcWriteSafety": "Only the public profile address is written. No secret key is ever written to the card.",
+  "feedSponsored": "Sponsored",
+  "homeFeed": "Feed",
+  "homeFeedEmpty": "No posts yet. Posts from people you follow will appear here.",
+  "homeFeedMore": "See all"
 }

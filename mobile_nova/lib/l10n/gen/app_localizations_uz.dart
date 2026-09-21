@@ -1449,4 +1449,17 @@ class LUz extends L {
   @override
   String get nfcWriteSafety =>
       'Kartaga faqat ochiq profil manzili yoziladi. Hech qanday maxfiy kalit yozilmaydi.';
+
+  @override
+  String get feedSponsored => 'Homiylik';
+
+  @override
+  String get homeFeed => 'Lenta';
+
+  @override
+  String get homeFeedEmpty =>
+      'Hozircha post yo‘q. Obuna bo‘lgan odamlaringiz post qo‘yganda shu yerda ko‘rinadi.';
+
+  @override
+  String get homeFeedMore => 'Hammasini ko‘rish';
 }

@@ -20,6 +20,17 @@ import 'helpers.dart';
 ///
 /// Ruscha eng uzun matnlar bilan ham sinaladi: tarjima o'zbekchadan
 /// uzunroq va aynan shu yerda joy yetmay qoladi.
+///
+/// IKKI O'LCHAMDA SUPURILADI — VA BU MUHIM.
+///
+/// Avval faqat 320x640 sinalardi. Ekran esa `ListView`: undan
+/// PASTDAGI bo'lim UMUMAN QURILMAYDI, ya'ni sinov uni ko'rmasdi
+/// ham. `NfcMobileSection` dagi `SectionHeader` toshib ketishi
+/// aynan shu sababli topilmay qolgan edi — u bosh sahifaning
+/// pastida turadi.
+///
+/// Shuning uchun ikkinchi o'tish baland oyna bilan: 320x4000,
+/// ya'ni ekrandagi HAMMA bo'lim quriladi va tekshiriladi.
 void main() {
   final screens = <String, Widget Function()>{
     'Bosh sahifa': () => const HomeScreen(),
@@ -30,11 +41,22 @@ void main() {
     'Xush kelibsiz': () => const WelcomeScreen(),
   };
 
+  /// Sinaladigan oyna o'lchamlari.
+  ///
+  /// `qisqa` — haqiqiy telefon: faqat yuqoridagi bo'lim ko'rinadi.
+  /// `baland` — HAMMA bo'lim quriladi (pastdagilar ham).
+  const viewports = <String, Size>{
+    'qisqa': Size(320, 640),
+    'baland': Size(320, 4000),
+  };
+
   for (final entry in screens.entries) {
     for (final locale in const [Locale('uz'), Locale('ru')]) {
-      testWidgets('${entry.key} — 320dp x1.3 shrift, ${locale.languageCode}',
+      for (final vp in viewports.entries) {
+      testWidgets(
+          '${entry.key} — 320dp ${vp.key}, x1.3 shrift, ${locale.languageCode}',
           (tester) async {
-        tester.view.physicalSize = const Size(320, 640);
+        tester.view.physicalSize = vp.value;
         tester.view.devicePixelRatio = 1.0;
         // Shrift kattaligi VIEW dan beriladi. Uni `MaterialApp`
         // tashqarisidagi `MediaQuery` bilan berib bo'lmaydi:
@@ -57,9 +79,10 @@ void main() {
         await settle(tester, frames: 24);
 
         expect(tester.takeException(), isNull,
-            reason: '${entry.key} 320dp da (${locale.languageCode}) '
-                'joylashuvni buzdi');
+            reason: '${entry.key} 320dp ${vp.key} oynada '
+                '(${locale.languageCode}) joylashuvni buzdi');
       });
+      }
     }
   }
 }

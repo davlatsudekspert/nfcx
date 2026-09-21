@@ -1447,4 +1447,17 @@ class LEn extends L {
   @override
   String get nfcWriteSafety =>
       'Only the public profile address is written. No secret key is ever written to the card.';
+
+  @override
+  String get feedSponsored => 'Sponsored';
+
+  @override
+  String get homeFeed => 'Feed';
+
+  @override
+  String get homeFeedEmpty =>
+      'No posts yet. Posts from people you follow will appear here.';
+
+  @override
+  String get homeFeedMore => 'See all';
 }

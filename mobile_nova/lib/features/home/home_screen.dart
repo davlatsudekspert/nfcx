@@ -24,6 +24,7 @@ import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
 import '../auth/session.dart';
 import '../profile/music_player.dart';
+import '../social/feed_card.dart';
 import '../nfc/qr_sheet.dart';
 import 'widgets/avatar.dart';
 import 'widgets/nfc_mobile_section.dart';
@@ -216,6 +217,20 @@ class HomeScreen extends ConsumerWidget {
             // ilovaga birinchi kirgan odam pastga tushmasdan
             // "bu ilova nima beradi" degan savolga javob olsin.
             const NfcMobileSection(),
+
+            // HAQIQIY LENTA — tanishtiruv bo'limidan KEYIN.
+            //
+            // TARTIB ATAYLAB SHUNDAY. Tanishtiruv bo'limi yangi
+            // odam uchun: u "bu ilova nima beradi" degan savolga
+            // javob beradi va uni pastga tushishga undaydi. Lenta
+            // esa QAYTIB KELGAN odam uchun — u har kuni yangi
+            // narsa ko'rish uchun keladi.
+            //
+            // `homeFeedProvider` allaqachon e'lon qilingan va
+            // yangilanganda invalidate qilinardi, LEKIN hech
+            // qayerda chizilmasdi: ya'ni so'rov yuborilmasdi ham,
+            // bosh sahifada post umuman ko'rinmasdi.
+            const _HomeFeed(),
             const SizedBox(height: Gap.xxl),
           ],
         ),
@@ -879,6 +894,91 @@ class _StoryBubble extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+
+/// Bosh sahifadagi lenta.
+///
+/// MANBA — `/api/feed`, ya'ni Reels va Kashfiyot bilan AYNAN bir
+/// xil. Uchala joy uchun uchta so'rov yozilganda biri maxfiylik
+/// filtrini yo'qotib qo'yishi mumkin edi.
+///
+/// Pullik ko'tarilgan kontent (`featured`) shu ro'yxatning
+/// boshida keladi — server shunday tartiblaydi. Ilova uni qayta
+/// saralamaydi: tartib SERVER qaroridir, aks holda to'lovning
+/// ma'nosi ilova versiyasiga bog'liq bo'lib qolardi.
+class _HomeFeed extends ConsumerWidget {
+  const _HomeFeed();
+
+  /// Bosh sahifada nechta post ko'rsatiladi.
+  ///
+  /// Bu LENTA EMAS, uning BOSHI: to'liq oqim Kashfiyotda. Bosh
+  /// sahifa cheksiz uzaymasligi kerak — pastda NFC bo'limi va
+  /// boshqa narsalar bor.
+  static const _limit = 5;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = L.of(context);
+    final feed = ref.watch(homeFeedProvider);
+
+    return feed.when(
+      // Yuklanayotganda BO'SHLIQ emas, skelet: ekran sakramaydi.
+      loading: () => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SectionHeader(title: l.homeFeed),
+          const SkeletonList(count: 2, height: 108),
+        ],
+      ),
+      // Lenta kelmasa bosh sahifa YIQILMAYDI — qolgan hamma narsa
+      // joyida turadi va faqat shu bo'lim o'rniga sabab chiqadi.
+      error: (e, _) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SectionHeader(title: l.homeFeed),
+          StatePanel.fromError(
+            context,
+            asAppError(e),
+            onRetry: () => ref.invalidate(homeFeedProvider),
+          ),
+        ],
+      ),
+      data: (posts) {
+        if (posts.isEmpty) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SectionHeader(title: l.homeFeed),
+              FloatingSurface(
+                solid: true,
+                child: Text(
+                  l.homeFeedEmpty,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+            ],
+          );
+        }
+        final shown = posts.take(_limit).toList();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionHeader(
+              title: l.homeFeed,
+              action: posts.length > _limit ? l.homeFeedMore : null,
+              onAction: () => context.go(Routes.discover),
+            ),
+            for (final p in shown)
+              Padding(
+                padding: const EdgeInsets.only(bottom: Gap.md),
+                child: FeedCard(post: p),
+              ),
+          ],
+        );
+      },
     );
   }
 }

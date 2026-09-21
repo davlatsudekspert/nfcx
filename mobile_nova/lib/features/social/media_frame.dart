@@ -103,6 +103,7 @@ class AdaptiveMedia extends StatefulWidget {
     this.loopingVideo = false,
     this.tapToToggleVideo = false,
     this.borderRadius,
+    this.lazyVideo = false,
   });
 
   final String url;
@@ -112,6 +113,10 @@ class AdaptiveMedia extends StatefulWidget {
   final bool loopingVideo;
   final bool tapToToggleVideo;
   final BorderRadius? borderRadius;
+
+  /// Video kontrolleri faqat bosilganda qurilsinmi — ro'yxatlar
+  /// uchun. `InlineVideo.lazy` ga uzatiladi.
+  final bool lazyVideo;
 
   @override
   State<AdaptiveMedia> createState() => _AdaptiveMediaState();
@@ -189,6 +194,7 @@ class _AdaptiveMediaState extends State<AdaptiveMedia> {
             autoPlay: widget.autoPlayVideo,
             looping: widget.loopingVideo,
             tapToToggle: widget.tapToToggleVideo,
+            lazy: widget.lazyVideo,
             // Quti videoning o'z nisbatiga kelganda `cover` hech
             // narsa kesmaydi; chegaraga urilgan holatda esa
             // kesish eng kichik bo'ladi.

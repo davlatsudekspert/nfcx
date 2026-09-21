@@ -98,11 +98,33 @@ class FeedCard extends ConsumerWidget {
                           color: t.text1,
                         ),
                       ),
-                      if (post.code.isNotEmpty)
-                        Text(
-                          post.code,
-                          style: AppType.monoStyle(color: t.text3, size: 11),
-                        ),
+                      // Kod va "Homiylik" belgisi bir qatorda.
+                      //
+                      // TO'LANGAN JOYLASHUV BELGISIZ QOLMAYDI.
+                      // Ko'tarilgan kontent lentaning boshida
+                      // turadi; agar u oddiy postdan farq qilmasa,
+                      // bu yashirin reklama bo'lardi — odam nima
+                      // uchun aynan shu post birinchi turganini
+                      // bilmaydi.
+                      Row(
+                        children: [
+                          if (post.code.isNotEmpty)
+                            Flexible(
+                              child: Text(
+                                post.code,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppType.monoStyle(
+                                    color: t.text3, size: 11),
+                              ),
+                            ),
+                          if (post.featured) ...[
+                            if (post.code.isNotEmpty)
+                              const SizedBox(width: Gap.sm),
+                            const _FeaturedBadge(),
+                          ],
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -129,6 +151,20 @@ class FeedCard extends ConsumerWidget {
               isVideo: post.isVideo,
               videoKey: ValueKey(post.id),
               borderRadius: R.gentle,
+              // LENTADA VIDEO O'ZI BOSHLANMAYDI.
+              //
+              // Standart qiymat `true` edi, ya'ni ekranda beshta
+              // video post bo'lsa BESHTASI ham ochilardi: beshta
+              // dekoder, beshta tarmoq so'rovi va ketma-ket ovoz
+              // egaligini tortib olish. Ko'ringan narsa esa —
+              // eng oxirgisining ovozi.
+              //
+              // Endi odam bosadi. Trafik ham tejaladi: mobil
+              // internet qimmat, ko'rilmagan video uchun pul
+              // sarflash odamning roziligisiz bo'lardi.
+              autoPlayVideo: false,
+              tapToToggleVideo: true,
+              lazyVideo: true,
             ),
           ],
           if (post.text.isNotEmpty) ...[
@@ -282,6 +318,38 @@ class _FollowChip extends StatelessWidget {
               color: following ? t.text2 : t.onAccent,
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+
+/// "Homiylik" belgisi — pullik ko'tarilgan kontent uchun.
+///
+/// Ataylab KICHIK va TINCH: u ogohlantirish emas, oddiy ma'lumot.
+/// Katta rangli yorliq lentaning ohangini buzardi, belgisiz qolishi
+/// esa yashirin reklama bo'lardi.
+class _FeaturedBadge extends StatelessWidget {
+  const _FeaturedBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      decoration: BoxDecoration(
+        color: t.accent2.withValues(alpha: .14),
+        borderRadius: R.pill,
+      ),
+      child: Text(
+        L.of(context).feedSponsored,
+        style: TextStyle(
+          fontFamily: AppType.sans,
+          fontSize: 9.5,
+          fontWeight: FontWeight.w700,
+          letterSpacing: .3,
+          color: t.accent2,
         ),
       ),
     );

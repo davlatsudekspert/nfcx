@@ -1441,4 +1441,17 @@ class LRu extends L {
   @override
   String get nfcWriteSafety =>
       'На карту записывается только публичный адрес профиля. Секретные ключи не записываются.';
+
+  @override
+  String get feedSponsored => 'Реклама';
+
+  @override
+  String get homeFeed => 'Лента';
+
+  @override
+  String get homeFeedEmpty =>
+      'Пока нет постов. Здесь появятся публикации тех, на кого вы подписаны.';
+
+  @override
+  String get homeFeedMore => 'Смотреть все';
 }

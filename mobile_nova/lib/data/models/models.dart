@@ -500,6 +500,7 @@ class Post {
     this.isVideo = false,
     this.kind = 'post',
     this.authorKind = 'card',
+    this.featured = false,
   });
 
   final int id;
@@ -522,6 +523,17 @@ class Post {
 
   /// `card` (shaxsiy) yoki `company` (biznes).
   final String authorKind;
+
+  /// NFCSTORE FEATURED — pul evaziga ko'tarilgan kontent.
+  ///
+  /// Server buni `/api/feed` ning BIRINCHI sahifasida qaytaradi.
+  /// Ilova uchun bu faqat BELGI: qator boshqa manbadan kelmaydi,
+  /// shakli oddiy qator bilan aynan bir xil. Shuning uchun uni
+  /// o'qishga alohida model ham, alohida so'rov ham kerak emas.
+  ///
+  /// Ko'rsatilishi SHART: to'langan joylashuv belgisiz qolsa, bu
+  /// yashirin reklama bo'lardi.
+  final bool featured;
 
   /// Lentadagi `id` lar manbalar bo'yicha ALOHIDA sanaladi:
   /// 5-raqamli shaxsiy post va 5-raqamli kompaniya posti ikki xil
@@ -550,6 +562,7 @@ class Post {
         isVideo: isVideo,
         kind: kind ?? this.kind,
         authorKind: authorKind ?? this.authorKind,
+        featured: featured,
       );
 
   Post copyWith({int? likes, bool? liked, bool? saved, int? comments}) => Post(
@@ -567,6 +580,10 @@ class Post {
         isVideo: isVideo,
         kind: kind,
         authorKind: authorKind,
+        // Belgi SAQLANADI: `copyWith` like/izoh sonini yangilaydi,
+        // va u yo'qolsa odam like bosgan zahoti "Homiylik" yozuvi
+        // o'chib ketardi — ya'ni to'langan joylashuv yashirinardi.
+        featured: featured,
       );
 
   factory Post.fromJson(Map<String, dynamic> j) {
@@ -614,6 +631,7 @@ class Post {
       liked: _b(j['liked'] ?? j['isLiked']),
       saved: _b(j['saved'] ?? j['isSaved']),
       createdAt: _dt(j['createdAt'] ?? j['created_at']),
+      featured: _b(j['featured']),
       isVideo: _b(j['isVideo']) ||
           _s(j['videoUrl']).isNotEmpty ||
           _s(j['type']) == 'video' ||
