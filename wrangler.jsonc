@@ -86,6 +86,26 @@
     // dist/server pastki papkalari ham bor — ularni Cloudflare'ga
     // statik aktiv sifatida yubormaslik uchun aynan dist/client tanlangan).
     "directory": "./dist/client",
+    // `binding` — `env.ASSETS` SHU YERDAN paydo bo'ladi.
+    //
+    // Cloudflare sxemasidagi ta'rif: "Name of `env` binding property
+    // in the User Worker." Ya'ni `directory` statik fayllarni
+    // XIZMAT QILADI, lekin Worker ichida `env.ASSETS` ni FAQAT shu
+    // maydon yaratadi.
+    //
+    // U yozilmagan edi, `hosting/worker.js` esa `env.ASSETS.fetch()`
+    // ni to'rt joyda chaqiradi. Natijada har bir chaqiruv
+    // "Cannot read properties of undefined (reading 'fetch')" bilan
+    // yiqilardi va butun sayt uchun BO'SH TANALI 500 qaytardi.
+    //
+    // NIMA UCHUN BOSH SAHIFA ISHLAYOTGAN EDI: `/` aniq statik faylga
+    // (index.html) mos keladi va Worker'gacha umuman yetib bormaydi.
+    // Qolgan HAR BIR yo'l — `/katalog`, `/login`, `/register`,
+    // ilovadagi ulashish havolasi `/KOD` — Worker'ga tushadi va
+    // o'sha yerda yiqilardi. Odam bosh sahifadan yurib ketsa
+    // sezmasdi (marshrutlash brauzerda), lekin ULASHILGAN HAVOLA
+    // yoki sahifani yangilash har doim 500 berardi.
+    "binding": "ASSETS",
     "not_found_handling": "single-page-application"
     // DIQQAT — BU YERGA `run_worker_first` QO'SHMANG (2026-09-09).
     //

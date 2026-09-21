@@ -61,6 +61,15 @@ jobs:
       # istisno BO'SH TANALI 500 bo'lib chiqadi — na sabab, na yo'l.
       # Ulashish havolasi (`nfcstore.uz/KOD`) aynan shunday 500
       # berardi va sababi bir necha kun ko'rinmadi.
+      # BINDING E'LON QILINGANMI.
+      #
+      # `wrangler.jsonc` dagi `assets` blokida `binding` yo'q edi va
+      # `env.ASSETS` undefined bo'lib qoldi: bosh sahifadan boshqa
+      # HAR BIR yo'l 500 qaytardi. Xato konfiguratsiyada edi, kodda
+      # emas — shuning uchun birorta kod testi uni tutolmasdi.
+      - name: Kod ishlatadigan binding'lar e'lon qilinganmi
+        run: node scripts/test-worker-bindings.mjs
+
       - name: Worker yiqilsa sabab ko'rinadimi
         run: node scripts/test-worker-error-visibility.mjs
 
