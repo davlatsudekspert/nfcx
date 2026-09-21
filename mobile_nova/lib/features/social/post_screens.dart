@@ -136,13 +136,30 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                       ],
                     ),
                   ),
-                  if (mine)
+                  if (mine) ...[
+                    // LENTADA KO'TARISH — faqat O'Z postingda.
+                    //
+                    // Begona postni ko'tarish serverda ham
+                    // to'siladi (403), lekin tugmani ko'rsatib
+                    // keyin rad etish — odamni bekorga yugurtirish.
+                    NovaIconButton(
+                      icon: Icons.trending_up_rounded,
+                      tooltip: l.featuredTitle,
+                      size: 38,
+                      onPressed: () => context.push(
+                        Routes.featured(
+                          p.isCompany ? 'company_post' : 'post',
+                          p.id,
+                        ),
+                      ),
+                    ),
                     NovaIconButton(
                       icon: Icons.delete_outline_rounded,
                       tooltip: l.actionDelete,
                       size: 38,
                       onPressed: () => _confirmDelete(p),
-                    )
+                    ),
+                  ]
                   else
                     // O'ZGANING posti — shikoyat qilish mumkin.
                     // Backend'da bu yo'l bor edi, ilovada kirish

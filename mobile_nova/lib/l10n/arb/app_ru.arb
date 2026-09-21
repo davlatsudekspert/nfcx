@@ -583,5 +583,39 @@
   "feedSponsored": "Реклама",
   "homeFeed": "Лента",
   "homeFeedEmpty": "Пока нет постов. Здесь появятся публикации тех, на кого вы подписаны.",
-  "homeFeedMore": "Смотреть все"
+  "homeFeedMore": "Смотреть все",
+  "featuredTitle": "Поднять в ленте",
+  "featuredIntro": "Ваш пост будет в самом верху ленты в течение выбранного срока.",
+  "featuredPick": "Выберите срок",
+  "featuredDays": "{days} дн.",
+  "@featuredDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "featuredBuy": "Перейти к оплате",
+  "featuredPaymentOff": "Оплата временно отключена. Попробуйте позже.",
+  "featuredPending": "Ожидается оплата",
+  "featuredPendingHint": "После подтверждения оплаты пост поднимется в ленте. Обновите страницу.",
+  "featuredActive": "В ленте",
+  "featuredDaysLeft": "осталось {days} дн.",
+  "@featuredDaysLeft": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "featuredMine": "Мои поднятые посты",
+  "featuredNone": "Пока нет поднятых постов.",
+  "featuredCancel": "Отменить",
+  "featuredCancelConfirm": "Отменить неоплаченный запрос?",
+  "featuredAlready": "Этот пост уже поднят.",
+  "featuredTooMany": "Одновременно можно поднять не более 3 постов.",
+  "featuredNotYours": "Поднять можно только свой пост.",
+  "featuredOpenPayment": "Страница оплаты не открылась. Откройте ссылку в браузере.",
+  "featuredStopped": "Остановлено админом",
+  "featuredExpired": "Срок истёк"
 }

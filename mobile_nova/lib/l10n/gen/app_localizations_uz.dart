@@ -1462,4 +1462,73 @@ class LUz extends L {
 
   @override
   String get homeFeedMore => 'Hammasini ko‘rish';
+
+  @override
+  String get featuredTitle => 'Lentada ko‘tarish';
+
+  @override
+  String get featuredIntro =>
+      'Postingiz belgilangan muddat davomida lentaning eng boshida turadi.';
+
+  @override
+  String get featuredPick => 'Muddatni tanlang';
+
+  @override
+  String featuredDays(int days) {
+    return '$days kun';
+  }
+
+  @override
+  String get featuredBuy => 'To‘lovga o‘tish';
+
+  @override
+  String get featuredPaymentOff =>
+      'To‘lovlar vaqtincha o‘chirilgan. Keyinroq urinib ko‘ring.';
+
+  @override
+  String get featuredPending => 'To‘lov kutilmoqda';
+
+  @override
+  String get featuredPendingHint =>
+      'To‘lov tasdiqlangach post lentaning boshiga chiqadi. Sahifani yangilang.';
+
+  @override
+  String get featuredActive => 'Lentada turibdi';
+
+  @override
+  String featuredDaysLeft(int days) {
+    return '$days kun qoldi';
+  }
+
+  @override
+  String get featuredMine => 'Ko‘tarilgan postlarim';
+
+  @override
+  String get featuredNone => 'Hali ko‘tarilgan post yo‘q.';
+
+  @override
+  String get featuredCancel => 'Bekor qilish';
+
+  @override
+  String get featuredCancelConfirm => 'To‘lanmagan so‘rov bekor qilinsinmi?';
+
+  @override
+  String get featuredAlready => 'Bu post allaqachon ko‘tarilgan.';
+
+  @override
+  String get featuredTooMany =>
+      'Bir vaqtda ko‘pi bilan 3 ta post ko‘tarilishi mumkin.';
+
+  @override
+  String get featuredNotYours => 'Faqat o‘z postingizni ko‘tara olasiz.';
+
+  @override
+  String get featuredOpenPayment =>
+      'To‘lov sahifasi ochilmadi. Havolani brauzerda oching.';
+
+  @override
+  String get featuredStopped => 'Admin to‘xtatgan';
+
+  @override
+  String get featuredExpired => 'Muddati tugagan';
 }

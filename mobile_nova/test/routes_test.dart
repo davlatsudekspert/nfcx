@@ -84,6 +84,8 @@ void main() {
     // "NFC Mobile" bo'limidagi namuna profillar.
     Routes.demoPersonal,
     Routes.demoBusiness,
+    // Postni lentada ko'tarish — tur + id.
+    Routes.featured('post', 10),
   ];
 
   test('har bir statik marshrut routerda mavjud', () {

@@ -583,5 +583,39 @@
   "feedSponsored": "Homiylik",
   "homeFeed": "Lenta",
   "homeFeedEmpty": "Hozircha post yo‘q. Obuna bo‘lgan odamlaringiz post qo‘yganda shu yerda ko‘rinadi.",
-  "homeFeedMore": "Hammasini ko‘rish"
+  "homeFeedMore": "Hammasini ko‘rish",
+  "featuredTitle": "Lentada ko‘tarish",
+  "featuredIntro": "Postingiz belgilangan muddat davomida lentaning eng boshida turadi.",
+  "featuredPick": "Muddatni tanlang",
+  "featuredDays": "{days} kun",
+  "@featuredDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "featuredBuy": "To‘lovga o‘tish",
+  "featuredPaymentOff": "To‘lovlar vaqtincha o‘chirilgan. Keyinroq urinib ko‘ring.",
+  "featuredPending": "To‘lov kutilmoqda",
+  "featuredPendingHint": "To‘lov tasdiqlangach post lentaning boshiga chiqadi. Sahifani yangilang.",
+  "featuredActive": "Lentada turibdi",
+  "featuredDaysLeft": "{days} kun qoldi",
+  "@featuredDaysLeft": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "featuredMine": "Ko‘tarilgan postlarim",
+  "featuredNone": "Hali ko‘tarilgan post yo‘q.",
+  "featuredCancel": "Bekor qilish",
+  "featuredCancelConfirm": "To‘lanmagan so‘rov bekor qilinsinmi?",
+  "featuredAlready": "Bu post allaqachon ko‘tarilgan.",
+  "featuredTooMany": "Bir vaqtda ko‘pi bilan 3 ta post ko‘tarilishi mumkin.",
+  "featuredNotYours": "Faqat o‘z postingizni ko‘tara olasiz.",
+  "featuredOpenPayment": "To‘lov sahifasi ochilmadi. Havolani brauzerda oching.",
+  "featuredStopped": "Admin to‘xtatgan",
+  "featuredExpired": "Muddati tugagan"
 }

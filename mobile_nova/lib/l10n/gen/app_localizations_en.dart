@@ -1460,4 +1460,72 @@ class LEn extends L {
 
   @override
   String get homeFeedMore => 'See all';
+
+  @override
+  String get featuredTitle => 'Boost in feed';
+
+  @override
+  String get featuredIntro =>
+      'Your post sits at the very top of the feed for the chosen period.';
+
+  @override
+  String get featuredPick => 'Choose a period';
+
+  @override
+  String featuredDays(int days) {
+    return '$days days';
+  }
+
+  @override
+  String get featuredBuy => 'Go to payment';
+
+  @override
+  String get featuredPaymentOff =>
+      'Payments are temporarily disabled. Please try later.';
+
+  @override
+  String get featuredPending => 'Awaiting payment';
+
+  @override
+  String get featuredPendingHint =>
+      'Once payment is confirmed the post moves to the top. Refresh the page.';
+
+  @override
+  String get featuredActive => 'In the feed';
+
+  @override
+  String featuredDaysLeft(int days) {
+    return '$days days left';
+  }
+
+  @override
+  String get featuredMine => 'My boosted posts';
+
+  @override
+  String get featuredNone => 'No boosted posts yet.';
+
+  @override
+  String get featuredCancel => 'Cancel';
+
+  @override
+  String get featuredCancelConfirm => 'Cancel the unpaid request?';
+
+  @override
+  String get featuredAlready => 'This post is already boosted.';
+
+  @override
+  String get featuredTooMany => 'At most 3 posts can be boosted at once.';
+
+  @override
+  String get featuredNotYours => 'You can only boost your own post.';
+
+  @override
+  String get featuredOpenPayment =>
+      'The payment page did not open. Open the link in a browser.';
+
+  @override
+  String get featuredStopped => 'Stopped by admin';
+
+  @override
+  String get featuredExpired => 'Expired';
 }

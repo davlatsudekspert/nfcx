@@ -35,6 +35,12 @@ abstract final class Routes {
   /// ro'yxatidan olinadi va kod manzilning bir qismi bo'lishi kerak.
   /// Kodsiz manzil ham ochiladi (eski havolalar), lekin u holda post
   /// topilmaydi va ekran buni ochiq aytadi.
+  /// Postni lentada ko'tarish (NFCSTORE FEATURED).
+  ///
+  /// `kind` kerak: 5-raqamli shaxsiy post va 5-raqamli kompaniya
+  /// posti ikki xil narsa.
+  static String featured(String kind, int id) => '/featured/$kind/$id';
+
   static String post(int id, {String code = ''}) =>
       code.isEmpty ? '/post/$id' : '/post/$id?code=${Uri.encodeComponent(code)}';
   static String story(String code) => '/story/$code';

@@ -1454,4 +1454,72 @@ class LRu extends L {
 
   @override
   String get homeFeedMore => 'Смотреть все';
+
+  @override
+  String get featuredTitle => 'Поднять в ленте';
+
+  @override
+  String get featuredIntro =>
+      'Ваш пост будет в самом верху ленты в течение выбранного срока.';
+
+  @override
+  String get featuredPick => 'Выберите срок';
+
+  @override
+  String featuredDays(int days) {
+    return '$days дн.';
+  }
+
+  @override
+  String get featuredBuy => 'Перейти к оплате';
+
+  @override
+  String get featuredPaymentOff =>
+      'Оплата временно отключена. Попробуйте позже.';
+
+  @override
+  String get featuredPending => 'Ожидается оплата';
+
+  @override
+  String get featuredPendingHint =>
+      'После подтверждения оплаты пост поднимется в ленте. Обновите страницу.';
+
+  @override
+  String get featuredActive => 'В ленте';
+
+  @override
+  String featuredDaysLeft(int days) {
+    return 'осталось $days дн.';
+  }
+
+  @override
+  String get featuredMine => 'Мои поднятые посты';
+
+  @override
+  String get featuredNone => 'Пока нет поднятых постов.';
+
+  @override
+  String get featuredCancel => 'Отменить';
+
+  @override
+  String get featuredCancelConfirm => 'Отменить неоплаченный запрос?';
+
+  @override
+  String get featuredAlready => 'Этот пост уже поднят.';
+
+  @override
+  String get featuredTooMany => 'Одновременно можно поднять не более 3 постов.';
+
+  @override
+  String get featuredNotYours => 'Поднять можно только свой пост.';
+
+  @override
+  String get featuredOpenPayment =>
+      'Страница оплаты не открылась. Откройте ссылку в браузере.';
+
+  @override
+  String get featuredStopped => 'Остановлено админом';
+
+  @override
+  String get featuredExpired => 'Срок истёк';
 }

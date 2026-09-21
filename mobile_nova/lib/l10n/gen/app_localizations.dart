@@ -2894,6 +2894,126 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Hammasini ko‘rish'**
   String get homeFeedMore;
+
+  /// No description provided for @featuredTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Lentada ko‘tarish'**
+  String get featuredTitle;
+
+  /// No description provided for @featuredIntro.
+  ///
+  /// In uz, this message translates to:
+  /// **'Postingiz belgilangan muddat davomida lentaning eng boshida turadi.'**
+  String get featuredIntro;
+
+  /// No description provided for @featuredPick.
+  ///
+  /// In uz, this message translates to:
+  /// **'Muddatni tanlang'**
+  String get featuredPick;
+
+  /// No description provided for @featuredDays.
+  ///
+  /// In uz, this message translates to:
+  /// **'{days} kun'**
+  String featuredDays(int days);
+
+  /// No description provided for @featuredBuy.
+  ///
+  /// In uz, this message translates to:
+  /// **'To‘lovga o‘tish'**
+  String get featuredBuy;
+
+  /// No description provided for @featuredPaymentOff.
+  ///
+  /// In uz, this message translates to:
+  /// **'To‘lovlar vaqtincha o‘chirilgan. Keyinroq urinib ko‘ring.'**
+  String get featuredPaymentOff;
+
+  /// No description provided for @featuredPending.
+  ///
+  /// In uz, this message translates to:
+  /// **'To‘lov kutilmoqda'**
+  String get featuredPending;
+
+  /// No description provided for @featuredPendingHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'To‘lov tasdiqlangach post lentaning boshiga chiqadi. Sahifani yangilang.'**
+  String get featuredPendingHint;
+
+  /// No description provided for @featuredActive.
+  ///
+  /// In uz, this message translates to:
+  /// **'Lentada turibdi'**
+  String get featuredActive;
+
+  /// No description provided for @featuredDaysLeft.
+  ///
+  /// In uz, this message translates to:
+  /// **'{days} kun qoldi'**
+  String featuredDaysLeft(int days);
+
+  /// No description provided for @featuredMine.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ko‘tarilgan postlarim'**
+  String get featuredMine;
+
+  /// No description provided for @featuredNone.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hali ko‘tarilgan post yo‘q.'**
+  String get featuredNone;
+
+  /// No description provided for @featuredCancel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bekor qilish'**
+  String get featuredCancel;
+
+  /// No description provided for @featuredCancelConfirm.
+  ///
+  /// In uz, this message translates to:
+  /// **'To‘lanmagan so‘rov bekor qilinsinmi?'**
+  String get featuredCancelConfirm;
+
+  /// No description provided for @featuredAlready.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu post allaqachon ko‘tarilgan.'**
+  String get featuredAlready;
+
+  /// No description provided for @featuredTooMany.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bir vaqtda ko‘pi bilan 3 ta post ko‘tarilishi mumkin.'**
+  String get featuredTooMany;
+
+  /// No description provided for @featuredNotYours.
+  ///
+  /// In uz, this message translates to:
+  /// **'Faqat o‘z postingizni ko‘tara olasiz.'**
+  String get featuredNotYours;
+
+  /// No description provided for @featuredOpenPayment.
+  ///
+  /// In uz, this message translates to:
+  /// **'To‘lov sahifasi ochilmadi. Havolani brauzerda oching.'**
+  String get featuredOpenPayment;
+
+  /// No description provided for @featuredStopped.
+  ///
+  /// In uz, this message translates to:
+  /// **'Admin to‘xtatgan'**
+  String get featuredStopped;
+
+  /// No description provided for @featuredExpired.
+  ///
+  /// In uz, this message translates to:
+  /// **'Muddati tugagan'**
+  String get featuredExpired;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

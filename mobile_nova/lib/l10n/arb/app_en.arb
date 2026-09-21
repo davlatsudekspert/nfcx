@@ -583,5 +583,39 @@
   "feedSponsored": "Sponsored",
   "homeFeed": "Feed",
   "homeFeedEmpty": "No posts yet. Posts from people you follow will appear here.",
-  "homeFeedMore": "See all"
+  "homeFeedMore": "See all",
+  "featuredTitle": "Boost in feed",
+  "featuredIntro": "Your post sits at the very top of the feed for the chosen period.",
+  "featuredPick": "Choose a period",
+  "featuredDays": "{days} days",
+  "@featuredDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "featuredBuy": "Go to payment",
+  "featuredPaymentOff": "Payments are temporarily disabled. Please try later.",
+  "featuredPending": "Awaiting payment",
+  "featuredPendingHint": "Once payment is confirmed the post moves to the top. Refresh the page.",
+  "featuredActive": "In the feed",
+  "featuredDaysLeft": "{days} days left",
+  "@featuredDaysLeft": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "featuredMine": "My boosted posts",
+  "featuredNone": "No boosted posts yet.",
+  "featuredCancel": "Cancel",
+  "featuredCancelConfirm": "Cancel the unpaid request?",
+  "featuredAlready": "This post is already boosted.",
+  "featuredTooMany": "At most 3 posts can be boosted at once.",
+  "featuredNotYours": "You can only boost your own post.",
+  "featuredOpenPayment": "The payment page did not open. Open the link in a browser.",
+  "featuredStopped": "Stopped by admin",
+  "featuredExpired": "Expired"
 }

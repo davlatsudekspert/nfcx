@@ -24,7 +24,36 @@ int _i(dynamic v, [int d = 0]) =>
     v is int ? v : int.tryParse('${v ?? ''}') ?? d;
 bool _b(dynamic v, [bool d = false]) =>
     v is bool ? v : (v == 1 || v == '1' || v == 'true' ? true : d);
-DateTime? _dt(dynamic v) => v == null ? null : DateTime.tryParse('$v');
+/// Sana — ISO satr YOKI epoch raqami.
+///
+/// NIMA UCHUN IKKALASI. Server ikki xil yuboradi: eski
+/// endpointlar ISO satr (`2026-09-21T02:46:37Z`), lenta va
+/// bildirishnomalar esa RAQAM — `Date.getTime()` natijasi
+/// (millisekund).
+///
+/// Ilgari bu yerda faqat `DateTime.tryParse` turardi va u raqam
+/// uchun `null` qaytarardi. Ya'ni `/api/feed` dan kelgan HAR BIR
+/// postning vaqti `null` edi. Hozircha bu ko'rinmaydi — lenta
+/// kartasida vaqt chizilmaydi — lekin vaqtga TAYANADIGAN har
+/// qanday yangi joy (masalan FEATURED slotining "necha kun
+/// qoldi" hisobi) jimgina noto'g'ri ishlardi.
+///
+/// Raqam chegarasi: 1e11 dan katta — millisekund (2020-yil
+/// ~1.6e12), 1e9 dan katta — sekund (~1.6e9). Kichik sonlar
+/// (masalan `2026`) sana EMAS va `null` qaytariladi — aks holda
+/// yil raqami 1970-yilning boshiga aylanib ketardi.
+DateTime? _dt(dynamic v) {
+  if (v == null) return null;
+  final n = v is num ? v : num.tryParse('$v');
+  if (n != null) {
+    final ms = n.abs() >= 1e11
+        ? n.toInt()
+        : (n.abs() >= 1e9 ? n.toInt() * 1000 : null);
+    if (ms == null) return null;
+    return DateTime.fromMillisecondsSinceEpoch(ms);
+  }
+  return DateTime.tryParse('$v');
+}
 List<Map<String, dynamic>> _list(dynamic v) => v is List
     ? v.whereType<Map>().map((e) => e.cast<String, dynamic>()).toList()
     : const [];
@@ -892,3 +921,75 @@ List<T> parseList<T>(dynamic raw, T Function(Map<String, dynamic>) f) =>
     _list(raw is Map ? (raw['items'] ?? raw['data'] ?? raw['rows']) : raw)
         .map(f)
         .toList();
+
+/// NFCSTORE FEATURED — pullik ko'tarilgan slot.
+///
+/// Ilova bu modelni FAQAT boshqaruv uchun ishlatadi ("mening
+/// slotlarim", narx tanlash, holat). Ko'tarilgan KONTENTNING O'ZI
+/// oddiy lenta qatori bo'lib keladi (`Post.featured`), ya'ni uni
+/// ko'rsatish uchun bu model kerak emas.
+class FeaturedSlot {
+  const FeaturedSlot({
+    required this.id,
+    this.targetKind = 'post',
+    this.targetId = 0,
+    this.code = '',
+    this.days = 0,
+    this.price = 0,
+    this.status = 'pending',
+    this.startsAt,
+    this.endsAt,
+  });
+
+  final int id;
+  final String targetKind;
+  final int targetId;
+  final String code;
+  final int days;
+  final int price;
+
+  /// `pending` | `active` | `expired` | `cancelled` | `stopped`.
+  final String status;
+  final DateTime? startsAt;
+  final DateTime? endsAt;
+
+  bool get isPending => status == 'pending';
+  bool get isActive => status == 'active';
+
+  /// Faol slotdan necha kun qolgani.
+  ///
+  /// Tugagan bo'lsa 0 — manfiy son ko'rsatilmaydi.
+  int get daysLeft {
+    final end = endsAt;
+    if (end == null) return 0;
+    final left = end.difference(DateTime.now()).inHours / 24;
+    return left <= 0 ? 0 : left.ceil();
+  }
+
+  factory FeaturedSlot.fromJson(Map<String, dynamic> j) => FeaturedSlot(
+        id: _i(j['id']),
+        targetKind: _s(j['targetKind']),
+        targetId: _i(j['targetId']),
+        code: _s(j['code']),
+        days: _i(j['days']),
+        price: _i(j['price']),
+        status: _s(j['status']),
+        startsAt: _dt(j['startsAt']),
+        endsAt: _dt(j['endsAt']),
+      );
+}
+
+/// Sotuvdagi FEATURED paketi — kun soni va narxi.
+///
+/// NARX SERVERDAN KELADI va ilova uni HECH QACHON o'zi
+/// hisoblamaydi: so'rovda faqat `days` yuboriladi. Aks holda
+/// so'rovni qo'lda yuborgan odam 6 kunlik slotni 1 so'mga olardi.
+class FeaturedPackage {
+  const FeaturedPackage({required this.days, required this.price});
+
+  final int days;
+  final int price;
+
+  factory FeaturedPackage.fromJson(Map<String, dynamic> j) =>
+      FeaturedPackage(days: _i(j['days']), price: _i(j['price']));
+}
