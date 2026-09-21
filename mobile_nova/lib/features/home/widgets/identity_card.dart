@@ -63,14 +63,25 @@ class IdentityCard extends StatelessWidget {
           // Endi karta yuzasi grafit, chetida ingichka oltin
           // chiziq, ichida esa NFC kodi oltin rangda. Ierarxiya
           // saqlandi: karta hali ham ekrandagi eng muhim blok.
-          color: t.surfaceSolid,
+          // YUZA NAVY BO'LIB QOLSIN.
+          //
+          // Ilgari bu yerda `surfaceSolid` USTIGA oltin tus
+          // qo'yilardi. O'lchandi: natija `#1E1F1E` — ya'ni
+          // R=30, G=31, B=30, navy butunlay yo'qolgan va karta
+          // kulrang-jigarrang bo'lib chiqqan. Aynan shu "brown"
+          // deb shikoyat qilingan.
+          //
+          // Endi gradient ham NAVY: `surface` dan `surfaceSolid`
+          // ga. Oltin faqat chegarada va NFC raqamida qoladi.
           gradient: LinearGradient(
             begin: const Alignment(-.8, -1),
             end: const Alignment(.9, 1),
-            colors: [
-              tone.withValues(alpha: t.isDark ? .10 : .18),
-              toneDark.withValues(alpha: t.isDark ? .04 : .10),
-            ],
+            colors: t.isDark
+                ? [t.surface, t.surfaceSolid]
+                : [
+                    tone.withValues(alpha: .18),
+                    toneDark.withValues(alpha: .10),
+                  ],
           ),
           // Nosimmetrik radius — bir burchak boshqacha, shakl "yasalgan"
           // emas, o'sgandek ko'rinadi.

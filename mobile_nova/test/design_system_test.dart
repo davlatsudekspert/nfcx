@@ -67,13 +67,20 @@ void main() {
           reason: 'faol karta yana to‘la oltin bo‘lib qolgan');
     });
 
-    test('identity kartasi grafit, chetida oltin', () {
+    test('identity kartasi NAVY, chetida oltin', () {
       final src =
           codeOnly(read('lib/features/home/widgets/identity_card.dart'));
-      expect(src, contains('color: t.surfaceSolid'),
-          reason: 'karta yuzasi grafit bo‘lishi kerak');
+      // Qorong'i mavzuda yuza MAVZU YUZALARIDAN qurilishi kerak.
+      // Ilgari bu yerda `surfaceSolid` USTIGA oltin tus qo'yilardi
+      // va o'lchov `#1E1F1E` bergandi — ya'ni navy yo'qolib,
+      // karta kulrang-jigarrang bo'lib chiqqandi.
+      expect(src, contains('t.surface'),
+          reason: 'karta yuzasi mavzu yuzasidan olinishi kerak');
       expect(src, contains('border: Border.all'),
           reason: 'chetida oltin chiziq bo‘lishi kerak');
+      // To'la oltin gradient qaytmasin.
+      expect(src, isNot(contains('colors: [tone, toneDark]')),
+          reason: 'karta yana to‘la oltin gradient bo‘lgan');
     });
 
     test('tanlangan kapsula TUS, to‘ldirish emas', () {

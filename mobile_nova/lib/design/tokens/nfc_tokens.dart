@@ -472,8 +472,9 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     isDark: true,
     bg1: hex('#07111F'),
     bg2: hex('#050B14'),
-    // Tumanlik deyarli ko'rinmas — fonni bo'yamaydi.
-    bgVignette: rgba(214, 178, 94, .03),
+    // Pastki vinyetka NAVY, oltin emas: oltin tuman butun
+    // ekranni sariq qilardi.
+    bgVignette: rgba(5, 11, 20, .55),
     // YUZALAR FONDAN 1-2 TON OCHROQ NAVY.
     //
     // Shaffoflik emas, ANIQ rang: shaffof yuza fon gradientiga
@@ -512,8 +513,17 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     error: hex('#C9573F'),
     success: hex('#7FB28E'),
     warn: hex('#E0B458'),
-    ambient1: rgba(214, 178, 94, .06),
-    ambient2: rgba(42, 59, 82, .28),
+    // O'RTADA JUDA YENGIL NAVY KO'TARILISH.
+    //
+    // Reference'da fon tekis qora emas: chetlarda va o'rtada
+    // yumshoq navy nur bor (o'lchandi: `#142838` atrofida),
+    // pastga tomon esa deyarli qoraga tushadi. Shusiz ekran
+    // "yassi qora" bo'lib ko'rinardi.
+    //
+    // Oltin ambient ataylab juda past — u faqat bir tomchi
+    // iliqlik beradi, fonni sarg'aytirmaydi.
+    ambient1: rgba(214, 178, 94, .05),
+    ambient2: rgba(32, 56, 86, .55),
     shadowFloat: [
       BoxShadow(color: rgba(0, 0, 0, .55), blurRadius: 28, offset: const Offset(0, 10)),
     ],
