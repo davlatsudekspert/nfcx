@@ -75,6 +75,78 @@ albatta yozing:
 
 ---
 
+## 1B. BEGONA NFC KARTAGA YOZISH *(DEVICE REQUIRED)*
+
+> **EHTIYOT BO'LING:** bu bo'lim kartaga YOZADI. Sinov uchun
+> **o'zingizning bo'sh yoki keraksiz** NFC stikeringizni oling.
+> NFCSTORE jismoniy kartangizga yozmang — undagi chip tokeni
+> o'chib ketadi va karta ishlamay qoladi.
+>
+> Kerak: qayta yoziladigan NFC teg (NTAG213/215/216 stiker yoki
+> oq karta). Ular bozorda arzon.
+
+| # | Qadam | Kutilgan natija |
+|---|---|---|
+| 1B.1 | NFC markazi → "NFC kartaga yozish" | Ekran ochiladi, yoziladigan manzil ko'rinadi (`nfcstore.uz/KOD`) |
+| 1B.2 | Manzilni o'qing | U **ochiq profil manzili**; `/tap/` yoki uzun tasodifiy token **BO'LMASLIGI** kerak |
+| 1B.3 | "Kartani tekshirish" → **bo'sh** stikerni tegizing | "Karta bo'sh" deb yozadi, sig'imini ko'rsatadi |
+| 1B.4 | "Kartaga yozish" → o'sha stikerni tegizing | Tasdiq **so'ralmaydi** (karta bo'sh), "Yozildi va tekshirildi" chiqadi |
+| 1B.5 | Stikerni telefonga tegizing (ilovadan tashqarida) | Brauzer yoki ilova sizning profilingizni ochadi |
+| 1B.6 | O'sha stikerni **qayta** tekshiring | Endi "Bu kartada allaqachon ma'lumot bor" va ichidagi manzil ko'rinadi |
+| 1B.7 | "Kartaga yozish" → **"Bekor qilish"** | Hech narsa yozilmaydi, eski manzil joyida qoladi (1B.5 ni takrorlab tekshiring) |
+| 1B.8 | Qayta yozing → "Ha, ustiga yozilsin" | Yoziladi va tasdiqlanadi |
+| 1B.9 | Bir necha profilingiz bo'lsa: boshqa profilni tanlang | 2-qadam **yopiladi**, qaytadan tekshirish so'raladi |
+| 1B.10 | Tekshirgandan keyin **boshqa** stikerni tegizing | "Bu boshqa karta" deb rad etadi — tekshirilmagan kartaga yozmaydi |
+| 1B.11 | Qulflangan (read-only) teg bo'lsa tegizing | "Bu karta qulflangan, qayta yozib bo'lmaydi", yozish tugmasi **o'chiq** |
+| 1B.12 | Juda kichik sig'imli teg (NTAG203) bo'lsa | Sabab aniq: necha bayt kerak, necha bayt bor |
+| 1B.13 | Yozish paytida kartani **olib qo'ying** | Xato chiqadi; "yozildi" **DEYILMAYDI** |
+| 1B.14 | NFC ni o'chirib ekranni oching | "NFC o'chirilgan" holati, soxta kutish yo'q |
+
+**Eng muhimi — 1B.2, 1B.7 va 1B.13.** Birinchisi maxfiy token
+kartaga chiqib ketmasligini, ikkinchisi odamning ma'lumoti
+so'roqsiz o'chmasligini, uchinchisi esa ilova yolg'on
+"muvaffaqiyat" ko'rsatmasligini tekshiradi.
+
+---
+
+## 1C. LENTA VA VIDEO *(DEVICE REQUIRED)*
+
+| # | Qadam | Kutilgan natija |
+|---|---|---|
+| 1C.1 | Bosh sahifani pastga aylantiring | Tanishtiruv bo'limidan **keyin** "LENTA" bo'limi va postlar |
+| 1C.2 | Lentada video posti bo'lsa | Video **o'zi boshlanmaydi**, o'rtada ijro tugmasi turadi |
+| 1C.3 | Ijro tugmasini bosing | Video ochiladi va o'ynaydi |
+| 1C.4 | O'ynab turganda **boshqa ilovaga** o'ting va qayting | Ovoz fonga o'tganda **to'xtaydi** |
+| 1C.5 | O'ynab turganda boshqa tabga o'ting (Reels/Profil) | Ovoz to'xtaydi, ikkita manba bir vaqtda ovoz chiqarmaydi |
+| 1C.6 | Lentada beshta video post bo'lsa, tez aylantiring | Telefon qizimaydi, sekinlashmaydi (kontrollerlar ochilmaydi) |
+| 1C.7 | Pullik ko'tarilgan post bo'lsa | Ism ostida kichik **"Homiylik"** belgisi turadi |
+| 1C.8 | Mobil internetda lentani oching | Video trafigi ketmaydi (bosilmaguncha) |
+
+---
+
+## 1D. POSTNI LENTADA KO'TARISH *(DEVICE REQUIRED — HAQIQIY PUL)*
+
+> **DIQQAT: bu HAQIQIY to'lov.** Eng arzon paketni tanlang va
+> to'laganingizdan keyin admin panelidan to'xtatishingiz mumkin.
+> To'lashni xohlamasangiz — 1D.1–1D.4 gacha bajaring va
+> to'lov sahifasini yoping; slot "kutilmoqda" holatida qoladi
+> va uni bekor qilsangiz bo'ladi.
+
+| # | Qadam | Kutilgan natija |
+|---|---|---|
+| 1D.1 | **O'z** postingizni oching | Yuqorida "ko'tarish" belgisi (↗) ko'rinadi |
+| 1D.2 | Begona postni oching | O'sha belgi **YO'Q** |
+| 1D.3 | Ko'tarishni bosing | 1 / 3 / 6 kunlik paketlar va narxlari chiqadi |
+| 1D.4 | Muddat tanlamasdan "To'lovga o'tish" | Tugma **o'chiq** turadi |
+| 1D.5 | Muddat tanlang → "To'lovga o'tish" | Payme sahifasi ochiladi; ilovada **"To'lov kutilmoqda"** yoziladi |
+| 1D.6 | To'lamasdan orqaga qayting | Hamon "kutilmoqda" — **"yonди" deb ko'rsatilmaydi** |
+| 1D.7 | (Ixtiyoriy) To'lovni yakunlang | Bir necha soniyadan keyin post lentaning boshida, "Homiylik" belgisi bilan |
+| 1D.8 | O'sha postni **yana** ko'tarmoqchi bo'ling | "Bu post allaqachon ko'tarilgan" |
+
+**1D.6 eng muhimi:** ilova slotni o'zi yoqa olmasligi kerak.
+
+---
+
 ## 2. Kamera va galereya *(DEVICE REQUIRED)*
 
 > Yaratilgan hamma narsani **sinovdan keyin o'chiring**. Sarlavhaga
