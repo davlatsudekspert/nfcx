@@ -460,7 +460,9 @@ class _OrbAvatar extends StatelessWidget {
       child: BrandLogo(
         size: orb * kOrbMarkRatio,
         style: BrandLogoStyle.markOnly,
-        tint: t.onAccent,
+        // Yadro qorong'i — belgi oltin (yuqoridagi asosiy
+        // chaqiruv bilan bir xil).
+        tint: t.accent2,
       ),
     );
 
@@ -504,13 +506,17 @@ class _OrbAvatar extends StatelessWidget {
                 placeholder: (_, __) => fallback(),
                 errorWidget: (_, __, ___) => fallback(),
               ),
-              // Nozik ichki qirra — surat bilan oltin orasida yumshoq
-              // o'tish, qattiq kesilgan chekka emas.
+              // Nozik ichki qirra — surat bilan yadro orasida
+              // yumshoq o'tish, qattiq kesilgan chekka emas.
+              //
+              // Ilgari bu OQ edi, chunki yadro oltin sirt edi.
+              // Yadro qorong'i navy bo'lgach, oq halqa yorqin
+              // chiziq bo'lib ko'rinardi — endi shampan.
               DecoratedBox(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: .34),
+                    color: context.tokens.accent2.withValues(alpha: .38),
                     width: 1.2,
                   ),
                 ),

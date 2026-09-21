@@ -116,7 +116,9 @@ class _Initials extends StatelessWidget {
         child: Text(
           initials,
           style: AppType.displayStyle(
-            color: t.accent1,
+            // Qorong'i mavzuda och oltin, OCHIQ mavzuda to'q:
+            // `accent1` ochiq fonda deyarli o'qilmasdi.
+            color: t.isDark ? t.accent1 : t.accent3,
             size: size * .40,
           ),
         ),

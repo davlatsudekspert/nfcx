@@ -180,7 +180,12 @@ class _ScanBody extends StatelessWidget {
                     : BrandLogo(
                         size: orb * kOrbMarkRatio,
                         style: BrandLogoStyle.markOnly,
-                        tint: t.onAccent,
+                        // Sokin holatdagi yadro qorong'i — belgi
+                        // oltin. Muvaffaqiyat/xato holatida sirt
+                        // hali ham to'liq rangli, shuning uchun
+                        // yuqoridagi ikkita ikonka `onAccent`
+                        // bo'lib qoladi.
+                        tint: t.accent2,
                       ),
           ),
         ),

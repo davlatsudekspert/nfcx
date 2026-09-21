@@ -115,7 +115,12 @@ class NfcCenterScreen extends ConsumerWidget {
                     child: BrandLogo(
                       size: orb * kOrbMarkRatio,
                       style: BrandLogoStyle.markOnly,
-                      tint: t.onAccent,
+                      // Yadro endi QORONG'I navy (orb to'la
+                      // oltin bo'lishdan to'xtadi), shuning uchun
+                      // belgi ham qorong'i siyoh emas, OLTIN
+                      // bo'lishi kerak — aks holda u fonga
+                      // singib, deyarli ko'rinmay qoladi.
+                      tint: t.accent2,
                     ),
                   ),
                 ],

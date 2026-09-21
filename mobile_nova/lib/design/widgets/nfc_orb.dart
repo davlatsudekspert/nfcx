@@ -246,7 +246,15 @@ class _OrbPainter extends CustomPainter {
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Colors.white.withValues(alpha: .45), Colors.white.withValues(alpha: 0)],
+          // YADRO QORONG'I — YORUG'LIK OQ EMAS, SHAMPAN.
+          //
+          // Ilgari yadro oltin sirt edi va ustidagi oq nur uni
+          // hajmli qilardi. Yadro navy bo'lgach, o'sha oq nur
+          // yorqin dog' bo'lib ko'rindi.
+          colors: [
+            t.accent1.withValues(alpha: .22),
+            t.accent1.withValues(alpha: 0),
+          ],
         ).createShader(Rect.fromCircle(center: c, radius: r)),
     );
   }
