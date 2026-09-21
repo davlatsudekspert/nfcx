@@ -30,7 +30,7 @@
 // Token yoki hisob berilmasa test O'TKAZIB YUBORILADI (mahalliy
 // ishga tushirishda to'sqinlik qilmasin).
 
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 
 const TOKEN = process.env.CF_API_TOKEN || '';
 const ACCOUNT = process.env.CF_ACCOUNT || '';
@@ -77,9 +77,16 @@ if (!TOKEN || !ACCOUNT) {
 }
 
 // 1) Manbadan kod o'qiydigan HAR BIR nomni yig'amiz.
-const source = ['hosting/worker.js', 'hosting/api/auth.js']
-  .map((p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8'))
-  .join('\n');
+// BUTUN server manbasi. Ilgari bu yerda ikkita fayl qotirib
+// yozilgan edi va `hosting/api/` dagi qolgan modullar tekshiruvdan
+// chetda qolardi: `GEMINI_API_KEY` aynan shunday ko'rinmay ketdi.
+const apiDir = new URL('../hosting/api/', import.meta.url);
+const files = [
+  new URL('../hosting/worker.js', import.meta.url),
+  ...readdirSync(apiDir).filter((f) => f.endsWith('.js'))
+    .map((f) => new URL(f, apiDir)),
+];
+const source = files.map((u) => readFileSync(u, 'utf8')).join('\n');
 const used = new Set(
   [...source.matchAll(/env\.([A-Z][A-Z0-9_]{2,})/g)].map((m) => m[1]),
 );
