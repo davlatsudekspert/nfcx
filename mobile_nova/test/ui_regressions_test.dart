@@ -62,9 +62,28 @@ void main() {
       expect(feedUsesNews, isFalse,
           reason: '$p: lenta `/api/news` (admin e\'lonlari) dan o\'qiyapti. '
               'Haqiqiy postlar `/api/feed` da va faqat u yerda media bor');
-      expect(src, contains("'/api/feed'"),
-          reason: '$p: `/api/feed` ishlatilishi kerak');
     }
+
+    // LENTANING MIJOZI BITTA BO'LSIN.
+    //
+    // Ilgari ikkita edi: bosh sahifa `SocialRepository.feed()`,
+    // Tanlovdagi "Postlar" yorlig'i esa
+    // `DiscoverRepository.trending()`. Ikkalasi ham `/api/feed`
+    // ga qarardi, lekin `limit` i va filtri boshqacha edi — ya'ni
+    // bitta joyda ko'ringan post boshqasida yo'qolishi mumkin edi.
+    //
+    // Yorliq olib tashlanganda nusxa ham ketdi. Bu tekshiruv
+    // uning jim qaytib kelishini ushlaydi.
+    final owners = Directory('lib/data/repositories')
+        .listSync()
+        .whereType<File>()
+        .where((f) => f.path.endsWith('.dart'))
+        .where((f) => code(f.readAsStringSync()).contains("'/api/feed'"))
+        .map((f) => f.uri.pathSegments.last)
+        .toList()
+      ..sort();
+    expect(owners, ['social_repository.dart'],
+        reason: 'lentaning mijozi BITTA bo\'lishi kerak, topildi: $owners');
   });
 
   test('Biznes konteksti NFC yozuvidan EMAS, kompaniyadan olinadi', () {

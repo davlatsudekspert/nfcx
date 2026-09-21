@@ -15,11 +15,20 @@ import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
-import '../social/feed_card.dart';
 import '../home/widgets/avatar.dart';
 import '../home/widgets/identity_card.dart';
 
-enum DiscoverTab { people, businesses, posts }
+/// TANLOV BO'LIMI — FAQAT ODAMLAR VA BIZNESLAR.
+///
+/// "Postlar" yorlig'i olib tashlandi: bosh sahifaning O'ZI
+/// postlar lentasi, ya'ni bu yerdagi uchinchi yorliq aynan
+/// o'sha ro'yxatni ikkinchi marta ko'rsatardi. Tanlov esa
+/// QIDIRUV bo'limi — bu yerda odam ODAM yoki BIZNES qidiradi.
+///
+/// Yorliq bilan birga `discoverRepository.trending()` ham
+/// ketdi: u `/api/feed` ning IKKINCHI mijozi edi, birinchisi —
+/// bosh sahifaning `SocialRepository.feed()` i.
+enum DiscoverTab { people, businesses }
 
 /// Qidiruv so'rovi — `debounce` bilan.
 ///
@@ -100,8 +109,6 @@ final discoverResultsProvider = FutureProvider.autoDispose((ref) async {
       // ham. Server ro'yxatni allaqachon beradi.
       DiscoverTab.businesses => (await repo.companies())
           .when(ok: (v) => <Object>[..._byBizViews(v)], err: (e) => throw e),
-      DiscoverTab.posts =>
-        (await repo.trending()).when(ok: (v) => <Object>[...v], err: (e) => throw e),
     };
   }
 
@@ -110,13 +117,6 @@ final discoverResultsProvider = FutureProvider.autoDispose((ref) async {
         .when(ok: (v) => <Object>[...v], err: (e) => throw e),
     DiscoverTab.businesses => (await repo.searchBusinesses(q))
         .when(ok: (v) => <Object>[...v], err: (e) => throw e),
-    DiscoverTab.posts => (await repo.trending()).when(
-        ok: (v) => <Object>[
-              ...v.where((p) =>
-                  p.text.toLowerCase().contains(q.toLowerCase()) ||
-                  p.authorName.toLowerCase().contains(q.toLowerCase()))
-            ],
-        err: (e) => throw e),
   };
 });
 
@@ -215,7 +215,6 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
                 for (final e in [
                   (DiscoverTab.people, l.discoverPeople, Icons.person_rounded),
                   (DiscoverTab.businesses, l.discoverBusinesses, Icons.storefront_rounded),
-                  (DiscoverTab.posts, l.homePosts, Icons.article_rounded),
                 ])
                   Padding(
                     padding: const EdgeInsets.only(right: Gap.sm),
@@ -339,7 +338,9 @@ class _ResultTile extends StatelessWidget {
       );
     }
 
-    if (item is Business) {
+    // Faqat ODAM yoki BIZNES keladi — "Postlar" yorlig'i
+    // olib tashlangandan keyin bu ro'yxatga post tushmaydi.
+    {
       final e = item as Business;
       final where =
           [e.city, e.subcategory].where((s) => s.isNotEmpty).join(' · ');
@@ -360,14 +361,6 @@ class _ResultTile extends StatelessWidget {
         onTap: () => context.push(Routes.storefront(e.companyId)),
       );
     }
-
-    // POST — LENTA KARTASI BILAN BIR XIL.
-    //
-    // Ilgari Kashfiyotdagi post kartasi bosh ekrandagidan boshqacha
-    // edi va unda layk/izoh/ulashish yo'q edi. Endi ikkala joyda
-    // bitta `FeedCard` ishlatiladi: xulq ham, ko'rinish ham bir xil
-    // bo'ladi va holat avtomatik sinxron qoladi.
-    return FeedCard(post: item as Post);
   }
 
   String _initials(String name, String fallback) {

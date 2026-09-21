@@ -390,9 +390,6 @@ class _GalleryDiscover extends DiscoverRepository {
 
   @override
   Future<Result<List<NfcId>>> searchPeople(String q) async => const Ok(_sampleIds);
-
-  @override
-  Future<Result<List<Post>>> trending({int page = 1}) async => const Ok(_samplePosts);
 }
 
 class _Gallery extends ConsumerWidget {

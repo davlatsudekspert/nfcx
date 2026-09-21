@@ -1060,7 +1060,8 @@ void main() {
       )),
     );
 
-    final posts = await repo.trending();
+    // `/api/feed` — bosh sahifa bilan BITTA mijoz orqali.
+    final posts = await c.read(socialRepositoryProvider).feed();
     posts.when(
       ok: (v) => report.pass('Discover posts',
           screen: 'DiscoverScreen',

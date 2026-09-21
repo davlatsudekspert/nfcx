@@ -72,34 +72,18 @@ class DiscoverRepository {
           NfcId.fromJson,
         ).take(60).toList());
   }
-
-  /// Ommaviy lenta — HAQIQIY foydalanuvchi va biznes postlari.
-  ///
-  /// ## NIMA UCHUN `/api/news` EMAS
-  ///
-  /// Ilgari bu yerda `/api/news` turardi. U ADMIN YANGILIKLARI —
-  /// "Payme ishga tushdi" kabi e'lonlar. Ularda odatda rasm yo'q,
-  /// shuning uchun Kashfiyotdagi "Postlar" bo'limi faqat matnli
-  /// kartochkalar ko'rsatardi va foydalanuvchi postlari umuman
-  /// chiqmasdi.
-  ///
-  /// `/api/feed` aynan shu ehtiyoj uchun yozilgan va serverdagi
-  /// izohda shunday deyilgan: "hamma joylagan kontent degan
-  /// ko'rinish uchun manba yo'q edi". U postlarni ham, faol
-  /// istoryalarni ham, shaxsiy va biznes profillarni ham birga
-  /// beradi — `imageUrl`, `videoUrl`, `caption`, muallif nomi va
-  /// avatari bilan.
-  ///
-  /// Bu yerda FAQAT postlar qoladi: istoryalar o'z qatorida
-  /// ko'rsatiladi va lentada ikki marta chiqmasligi kerak.
-  Future<Result<List<Post>>> trending({int page = 1}) async {
-    final res = await _api.get<Map<String, dynamic>>(
-        '/api/feed', query: {'page': page, 'limit': 30});
-    return res.map((j) => parseList(j['feed'] ?? j['items'], Post.fromJson)
-        .where((p) => !p.isStory)
-        .toList());
-  }
 }
+
+// `trending()` OLIB TASHLANDI.
+//
+// U `/api/feed` ni o'qirdi — AYNAN `SocialRepository.feed()`
+// qiladigan ish. Ikkinchi nusxa Tanlovdagi "Postlar" yorlig'i
+// uchun yozilgan edi; yorliq olib tashlangach, ilovada uni
+// chaqiradigan hech kim qolmadi.
+//
+// Ikki mijoz bitta endpointga qarab turishi jim xavf: biri
+// tuzatilib, ikkinchisi unutiladi. Shuning uchun E2E ham endi
+// ilova HAQIQATDAN ishlatadigan `feed()` ni sinaydi.
 
 final discoverRepositoryProvider = Provider<DiscoverRepository>(
   (ref) => DiscoverRepository(ref.watch(apiProvider)),
