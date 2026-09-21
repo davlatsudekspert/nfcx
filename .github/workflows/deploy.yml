@@ -82,6 +82,14 @@ jobs:
         run: node scripts/test-comment-moderation.mjs
       - name: NFCSTORE FEATURED — slot faqat haqiqiy to'lovdan keyin yonadi
         run: node scripts/test-featured.mjs
+      - name: Admin "NFCSTORE ILOVASI" — tugmalar haqiqatdan ishlaydimi
+        run: node scripts/test-admin-nova-tab.mjs
+      # Manifestdagi yaroqsiz XML ilova qurilishini yiqitadi, lekin
+      # `flutter analyze` ham, `flutter test` ham uni o'qimaydi.
+      # Eski ilovaning CI'si esa faqat QO'LDA ishga tushadi —
+      # ya'ni u yerdagi xato oylab sezilmay turardi.
+      - name: AndroidManifest fayllari yaroqli XML mi
+        run: node scripts/test-android-manifests.mjs
 
       - name: Worker yiqilsa sabab ko'rinadimi
         run: node scripts/test-worker-error-visibility.mjs
