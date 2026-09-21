@@ -3158,6 +3158,60 @@ function parseJsonObjectOrNull(text) {
   try { const v = JSON.parse(text); return v && typeof v === 'object' ? v : null; } catch { return null; }
 }
 
+/// RO'YXATDAGI KARTALARGA OBUNACHI VA POST SONINI QO'SHADI.
+///
+/// ## NIMA UCHUN KERAK BO'LDI
+///
+/// Profil ochilganda "5 obunachi, 4 obuna" ko'rinardi, lekin
+/// Tanlov RO'YXATIDA o'sha odam "0 obunachi, 0 post" bo'lib
+/// turardi. Sabab: ro'yxat `catalogCard()` orqali yig'iladi va
+/// unda bu ikki maydon UMUMAN yo'q edi — mijoz esa yo'q maydonni
+/// 0 deb o'qiydi. Ya'ni raqam noto'g'ri hisoblanmagan, u hech
+/// qachon YUBORILMAGAN.
+///
+/// ## MANBA IKKITA EMAS, BITTA
+///
+/// Obunachilar `follows` jadvalidan FOYDALANUVCHI bo'yicha
+/// sanaladi (`followee_id`) — aynan `/api/follow-stats/:code`
+/// beradigan raqam. Postlar esa `posts` jadvalidan KOD bo'yicha.
+/// Ikkinchi hisoblash usuli yaratilmadi: aks holda ro'yxat va
+/// profil vaqt o'tib bir-biridan uzoqlashardi.
+///
+/// ## BITTA SO'ROV, QATOR BOShiga EMAS
+///
+/// Ro'yxatda 500 tagacha karta bo'ladi. Har biriga alohida
+/// so'rov yuborish D1 uchun 1000 ta so'rov degani — shuning
+/// uchun ikkita guruhlangan so'rov.
+async function socialCountsD1(env, rows) {
+  const codes = [...new Set((rows || [])
+    .map((r) => String(r.code || '')).filter(Boolean))];
+  const users = [...new Set((rows || [])
+    .map((r) => Number(r.user_id))
+    .filter((n) => Number.isFinite(n) && n > 0))];
+  const followers = new Map();
+  const posts = new Map();
+  if (users.length) {
+    const marks = users.map(() => '?').join(',');
+    const fr = await env.DB.prepare(
+      `SELECT followee_id AS id, COUNT(*) AS n FROM follows
+         WHERE followee_id IN (${marks}) GROUP BY followee_id`
+    ).bind(...users).all().catch(() => null);
+    for (const r of (fr?.results || [])) followers.set(Number(r.id), Number(r.n) || 0);
+  }
+  if (codes.length) {
+    const marks = codes.map(() => '?').join(',');
+    const pr = await env.DB.prepare(
+      `SELECT code, COUNT(*) AS n FROM posts
+         WHERE code IN (${marks}) GROUP BY code`
+    ).bind(...codes).all().catch(() => null);
+    for (const r of (pr?.results || [])) posts.set(String(r.code), Number(r.n) || 0);
+  }
+  return {
+    followers: (row) => followers.get(Number(row.user_id)) || 0,
+    posts: (row) => posts.get(String(row.code || '')) || 0,
+  };
+}
+
 function rowToRecord(row) {
   return {
     code: row.code, name: row.name, role: row.role || '', avatarUrl: row.avatar_url || '',
@@ -5556,17 +5610,28 @@ async function recordsApi(request, env, url) {
     // chiqarib tashlanadi (ro'yxat, filtr, sanoq va pagination ham shu
     // javobdan hisoblanadi, shuning uchun ular hech qayerda ko'rinmaydi).
     const rows = await env.DB.prepare(
-      `SELECT ${recordColumnsD1()},
+      // `cards.user_id` — obunachilarni sanash uchun. `RECORD_COLUMNS`
+      // ga qo'shilmadi: u `server/db.js` dagi SELECT_FIELDS bilan
+      // bitma-bit mos bo'lishi kerak va parity qo'riqchisi shuni
+      // tekshiradi. `rowToRecord()` bu ustunni o'qimaydi, ya'ni
+      // javobning qolgan qismi o'zgarmaydi.
+      `SELECT ${recordColumnsD1()}, cards.user_id,
               EXISTS(SELECT 1 FROM nfc_gifts g WHERE g.code = cards.code AND g.status = 'activated') AS is_gift
          FROM cards WHERE hidden_from_directory = 0 AND ${catalogVisibleSql('cards')}
            AND ${ownerAliveSql('cards')}
          ORDER BY ts DESC LIMIT 500`
     ).all();
     const finals = await auctionFinalPricesD1(env);
-    return json((rows.results || []).map((r) => catalogCard(
-      { ...rowToRecord(r), isGift: !!r.is_gift },
-      finals.get(String(r.code || '').toUpperCase()) ?? null,
-    )));
+    // Obunachi va post soni — `socialCountsD1()` izohiga qarang.
+    const n = await socialCountsD1(env, rows.results || []);
+    return json((rows.results || []).map((r) => ({
+      ...catalogCard(
+        { ...rowToRecord(r), isGift: !!r.is_gift },
+        finals.get(String(r.code || '').toUpperCase()) ?? null,
+      ),
+      followers: n.followers(r),
+      posts: n.posts(r),
+    })));
     });
   }
 
@@ -5575,7 +5640,9 @@ async function recordsApi(request, env, url) {
     if (q.length < 2) return json({ records: [] });
     const like = `%${q.toLowerCase()}%`;
     const rows = await env.DB.prepare(
-      `SELECT c.code, c.name, c.role, c.avatar_url, c.tg, c.hashtags, c.theme, c.price, c.ts, c.views,
+      // `c.user_id` — obunachilarni sanash uchun (`socialCountsD1`).
+      // Javobga CHIQMAYDI, faqat hisob uchun o'qiladi.
+      `SELECT c.code, c.user_id, c.name, c.role, c.avatar_url, c.tg, c.hashtags, c.theme, c.price, c.ts, c.views,
               c.profile_type, c.city, c.category_slug, c.verified, c.tier_override,
               EXISTS(SELECT 1 FROM nfc_gifts g WHERE g.code = c.code AND g.status = 'activated') AS is_gift
        FROM cards c LEFT JOIN users u ON u.id = c.user_id
@@ -5588,12 +5655,17 @@ async function recordsApi(request, env, url) {
        ) ORDER BY c.ts DESC LIMIT 60`
     ).bind(like, like, like, like, like, like, like, like, like, like).all();
     const finals = await auctionFinalPricesD1(env);
-    const records = (rows.results || []).map((r) => catalogCard({
-      code: r.code, name: r.name, role: r.role || '', avatarUrl: r.avatar_url || '', tg: r.tg || '',
-      hashtags: parseJsonArray(r.hashtags), theme: r.theme, price: Number(r.price), ts: Number(r.ts), views: Number(r.views),
-      profileType: r.profile_type, city: r.city || '', categorySlug: r.category_slug || '', verified: !!r.verified,
-      tierOverride: r.tier_override || '', isGift: !!r.is_gift,
-    }, finals.get(String(r.code || '').toUpperCase()) ?? null));
+    const n = await socialCountsD1(env, rows.results || []);
+    const records = (rows.results || []).map((r) => ({
+      ...catalogCard({
+        code: r.code, name: r.name, role: r.role || '', avatarUrl: r.avatar_url || '', tg: r.tg || '',
+        hashtags: parseJsonArray(r.hashtags), theme: r.theme, price: Number(r.price), ts: Number(r.ts), views: Number(r.views),
+        profileType: r.profile_type, city: r.city || '', categorySlug: r.category_slug || '', verified: !!r.verified,
+        tierOverride: r.tier_override || '', isGift: !!r.is_gift,
+      }, finals.get(String(r.code || '').toUpperCase()) ?? null),
+      followers: n.followers(r),
+      posts: n.posts(r),
+    }));
     return json({ records });
   }
 

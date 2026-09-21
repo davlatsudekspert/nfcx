@@ -107,8 +107,10 @@ class _Initials extends StatelessWidget {
           begin: const Alignment(-0.6, -1),
           end: const Alignment(0.6, 1),
           colors: [
-            t.accent2.withValues(alpha: t.isDark ? .16 : .26),
-            t.accent3.withValues(alpha: t.isDark ? .07 : .14),
+            // Yorug' mavzuda `washScale` orqali: oq-qora mavzuda
+            // .26 qora kulrang doira berardi.
+            t.wash(t.accent2, t.isDark ? .16 : .26),
+            t.wash(t.accent3, t.isDark ? .07 : .14),
           ],
         ),
       ),

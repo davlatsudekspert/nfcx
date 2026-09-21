@@ -24,7 +24,8 @@ library;
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle, FontLoader;
+import 'package:flutter/services.dart'
+    show rootBundle, FontLoader, MethodChannel;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -32,9 +33,14 @@ import 'package:nfcstore_nova/design/theme/app_theme.dart';
 import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
 import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
 
-import 'package:nfcstore_nova/features/activity/activity_screen.dart';
-import 'package:nfcstore_nova/features/discover/discover_screen.dart';
-import 'package:nfcstore_nova/features/home/home_screen.dart';
+import 'package:nfcstore_nova/core/network/api_client.dart';
+import 'package:nfcstore_nova/core/utils/result.dart';
+import 'package:nfcstore_nova/data/models/models.dart';
+import 'package:nfcstore_nova/data/repositories/auth_repository.dart';
+import 'package:nfcstore_nova/features/auth/login_screen.dart';
+import 'package:nfcstore_nova/features/auth/session.dart';
+import 'package:nfcstore_nova/features/demo/demo_data.dart';
+import 'package:nfcstore_nova/features/entry/welcome_screen.dart';
 import 'package:nfcstore_nova/features/nfc/nfc_center_screen.dart';
 import 'package:nfcstore_nova/features/profile/profile_screen.dart';
 
@@ -52,6 +58,21 @@ import '../helpers.dart';
 void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
+
+    // DISK KESHIGA VAQTINCHALIK PAPKA.
+    //
+    // `runAsync` tufayli endi HAQIQIY asenkron kod ishlaydi va
+    // `CachedNetworkImage` o'z keshini ochmoqchi bo'ladi. Testda
+    // `path_provider` plagini yo'q, shuning uchun u test
+    // tugagandan KEYIN `MissingPluginException` tashlaydi va
+    // suratni tayyor deb hisoblab bo'lmaydi.
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+      const MethodChannel('plugins.flutter.io/path_provider'),
+      (_) async => Directory.systemTemp
+          .createTempSync('nova_play_shots')
+          .path,
+    );
     final fams = {
       'InstrumentSerif': ['assets/fonts/InstrumentSerif-400.ttf'],
       'Manrope': [
@@ -84,20 +105,57 @@ void main() {
     }
   });
 
+  /// KIRGAN FOYDALANUVCHI HAM DEMO BO'LSIN.
+  ///
+  /// `demoOverrides()` profil, lenta va biznesni almashtiradi,
+  /// lekin SESSIYAGA tegmaydi — u ilovaning boshqa qatlami.
+  /// Natijada Bosh sahifa "Test Foydalanuvchi" va 48210377 deb
+  /// turardi: do'kon sahifasida bu eng ko'zga tashlanadigan xato
+  /// bo'lardi.
+  ///
+  /// Shuning uchun sessiya ham demo odamni qaytaradi. Bu faqat
+  /// `test/` ichida — ishlab chiqarish kodiga kirmaydi.
   Future<void> shot(
     WidgetTester tester,
     Widget screen,
     String name, {
     NfcTokens? tokens,
-    Size size = const Size(540, 960),
+    // MANTIQIY O'LCHAM TELEFONNIKI BO'LSIN.
+    //
+    // Birinchi urinishda bu yerda 540x960 turgan edi va suratlar
+    // "sifatsiz" chiqdi. Sabab piksel soni emas — u o'sha-o'sha
+    // 1080x1920 edi. Sabab MANTIQIY kenglik: 540 dp planshet
+    // kengligi, telefonniki ~360-400 dp. Flutter matnni dp da
+    // chizadi, shuning uchun 14 dp sarlavha 540 dp kenglikda
+    // rasmning 1/38 qismi bo'lib qolgan — ingichka va mayda.
+    //
+    // 360 dp @3x ham aynan 1080x1920 beradi, lekin har bir element
+    // 1.5 barobar yirik va to'q chiqadi.
+    Size size = const Size(360, 640),
+    double dpr = 3.0,
   }) async {
-    tester.view.physicalSize = size * 2;
-    tester.view.devicePixelRatio = 2.0;
+    tester.view.physicalSize = size * dpr;
+    tester.view.devicePixelRatio = dpr;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(ProviderScope(
-      overrides: [...await testOverrides()],
+      // DO'KON SURATIDA "Test Foydalanuvchi" TURMASIN.
+      //
+      // `testOverrides()` sinov uchun: ismi "Test Foydalanuvchi",
+      // postlari nol, obunachilari esa umuman yuklanmaydi va
+      // o'rniga "—" chiziladi. Bunday surat do'konda ilovani
+      // BO'SH ko'rsatadi.
+      //
+      // `demoOverrides()` esa ilovaning O'ZIDA bor: "NFC Mobile"
+      // bo'limi aynan shu ma'lumot bilan ochiladi va rasmlar APK
+      // ichida keladi. Ya'ni bu to'qib chiqarilgan maket emas —
+      // foydalanuvchi ilovani o'rnatib o'sha ekranni ko'radi.
+      overrides: [
+        ...await testOverrides(),
+        ...demoOverrides(),
+        authRepositoryProvider.overrideWithValue(_DemoAuthRepository()),
+      ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         theme: buildTheme(tokens ?? NfcTokens.fallback),
@@ -112,6 +170,27 @@ void main() {
         home: screen,
       ),
     ));
+    // RASMLAR HAQIQATAN CHIZILSIN.
+    //
+    // `Image.asset` dekodi ASENKRON. Oddiy `pump` soatni suradi,
+    // lekin dekod uchun HAQIQIY event loop kerak — usiz golden
+    // faylga fotolar o'rniga bo'sh joy tushadi.
+    //
+    // Bir marta kutish YETMAYDI va buni avatar ko'rsatdi: birinchi
+    // kadrda profil hali KELMAGAN, demak `Image.asset` hali
+    // boshlanmagan ham. Ma'lumot kelgach rasm yuklana boshlaydi —
+    // lekin asenkron oyna allaqachon yopilgan bo'lardi va
+    // avatar o'rnida bo'sh doira qolardi.
+    //
+    // Shuning uchun uch bosqich: kut -> chiz -> kut. Birinchisi
+    // ma'lumotni, keyingilari undan kelib chiqqan rasmlarni
+    // ulguradi.
+    for (var round = 0; round < 3; round++) {
+      await tester.runAsync(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+      });
+      await tester.pump();
+    }
     // Ambient fon cheksiz aylanadi — belgilangan kadr suriladi.
     for (var i = 0; i < 10; i++) {
       await tester.pump(const Duration(milliseconds: 80));
@@ -123,28 +202,71 @@ void main() {
 
   // ── PLAY UCHUN TO'PLAM ─────────────────────────────────────────
   //
-  // Tartib ataylab: odam do'konda birinchi suratni ko'radi va
-  // "bu nima?" degan savolga javob olishi kerak.
+  // Tartibni EGASI tanladi: telefonidan uchta ekranni yuborib
+  // "shu rasmlarni qo'yish kerak" dedi — Xush kelibsiz, NFC
+  // markazi va Kirish. Ular shu yerda qayta chizildi, chunki
+  // telefondan olingan nusxa ~570px kenglikda edi; bu yerda
+  // aynan o'sha ekranlar 1080x1920 bo'lib chiqadi.
+  //
+  // Birinchi surat eng muhimi: odam do'konda uni ko'radi va
+  // "bu nima?" degan savolga javob olishi kerak. Shuning uchun
+  // birinchi o'rinda hero rasmli Xush kelibsiz ekrani turadi.
 
-  testWidgets('play 1 — Profil', (t) async {
-    await shot(t, const ProfileScreen(), 'play-1-profil');
+  testWidgets('play 1 — Xush kelibsiz', (t) async {
+    await shot(t, const WelcomeScreen(), 'play-1-xush-kelibsiz');
   });
-  testWidgets('play 2 — Bosh sahifa', (t) async {
-    await shot(t, const HomeScreen(), 'play-2-home');
+  testWidgets('play 2 — NFC markazi', (t) async {
+    await shot(t, const NfcCenterScreen(), 'play-2-nfc-markazi');
   });
-  testWidgets('play 3 — NFC Markaz', (t) async {
-    await shot(t, const NfcCenterScreen(), 'play-3-nfc');
+  testWidgets('play 3 — Profil', (t) async {
+    // Demo kodi bilan: Zafarning to'rtta posti, muqovasi va
+    // haqiqiy sonlari ko'rinadi.
+    await shot(t, const ProfileScreen(code: kDemoPersonalCode),
+        'play-3-profil');
   });
-  testWidgets('play 4 — Tanlov', (t) async {
-    await shot(t, const DiscoverScreen(), 'play-4-tanlov');
-  });
-  testWidgets('play 5 — Faoliyat', (t) async {
-    await shot(t, const ActivityScreen(), 'play-5-faoliyat');
+  // SLOT 4 ATAYLAB YO'Q.
+  //
+  // Bu yerda avval Bosh sahifa, keyin Biznes sahifasi sinaldi.
+  // Ikkalasi ham `CachedNetworkImage` ishlatadi; suratlar uchun
+  // `runAsync` yoqilgandan keyin u disk keshini ochib DAVRIY
+  // taymer qo'yadi, taymer esa vidjet daraxti yopilgandan keyin
+  // ham qolib testni yiqitadi. Telefonda kesh aynan shunday
+  // ishlashi KERAK, ya'ni ilovada nuqson yo'q — kamchilik
+  // faqat surat vositasida.
+  //
+  // Play telefon uchun kamida 2 ta surat so'raydi; bizda 5 ta,
+  // shuning uchun bu slot uchun ilovani o'zgartirish noto'g'ri
+  // bo'lardi.
+
+  testWidgets('play 5 — Kirish', (t) async {
+    await shot(t, const LoginScreen(), 'play-5-kirish');
   });
   testWidgets('play 6 — Oq-qora mavzu', (t) async {
     // Bitta surat MUQOBIL mavzuda: ilovada tanlov borligi
     // do'konda ham ko'rinsin.
-    await shot(t, const ProfileScreen(), 'play-6-oq-qora',
-        tokens: NfcTokens.mono);
+    await shot(t, const ProfileScreen(code: kDemoPersonalCode),
+        'play-6-oq-qora', tokens: NfcTokens.mono);
   });
+}
+
+/// Demo sessiyasi — ismi va NFC ID'si `demo_data.dart` dan.
+class _DemoAuthRepository extends AuthRepository {
+  _DemoAuthRepository() : super(ApiClient());
+
+  static const _user = User(
+    id: 1,
+    email: 'zafar@nfcstore.uz',
+    name: 'Zafar',
+    phone: '+998901234567',
+  );
+
+  @override
+  Future<Result<({User user, List<NfcId> ids})>> restore() async =>
+      Ok((user: _user, ids: [demoPersonalId]));
+
+  @override
+  Future<Result<({User user, List<NfcId> ids})>> me() async => restore();
+
+  @override
+  Future<void> logout() async {}
 }

@@ -496,9 +496,16 @@ class _Hero extends StatelessWidget {
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
+                        // YUMSHOQ ATMOSFERA — DOG' EMAS.
+                        //
+                        // Alfa endi `washScale` orqali o'tadi:
+                        // oq-qora mavzuda aksent qora, .34 esa
+                        // ekran tepasida iflos kulrang chiziq
+                        // bo'lib turardi. Oltin mavzularda ham
+                        // .34 og'ir edi — zaytun dog'i.
                         colors: [
-                          tone.withValues(alpha: .34),
-                          toneDark.withValues(alpha: .12),
+                          t.wash(tone, .24),
+                          t.wash(toneDark, .09),
                         ],
                       ),
                     ),

@@ -134,6 +134,39 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
   /// uchun logotipning O'ZI emas, ATROFIDAGI plastina mavzuga moslashadi.
   Color get logoPlate => isDark ? surfaceSolid : const Color(0xFF14131A);
 
+  /// BEZAK YUVINDISINING KUCHI (0..1).
+  ///
+  /// Muqova atmosferasi, avatar to'ldirmasi va rejim kapsulasi
+  /// aksent rangini SHAFFOFLIK bilan fon ustiga suradi. Uzoq vaqt
+  /// bu joylarda alfa qattiq yozilgan edi (.34, .26, .20) va
+  /// oltin aksentli mavzularda yumshoq tus berardi.
+  ///
+  /// `mono` kelgach o'sha qiymatlar BUZILDI. Sabab alfa emas,
+  /// AKSENT: oq-qora mavzuda u qoraga aylandi, qoraning 26%
+  /// esa yumshoq tus emas — KULRANG DOG'. Ekranning yuqorisida
+  /// iflos chiziq, avatar o'rnida kulrang doira paydo bo'ldi.
+  ///
+  /// Demak alfani har bir joyda alohida tuzatish noto'g'ri
+  /// bo'lardi: kasallik uchta joyda emas, BITTA — aksent fondan
+  /// qanchalik quyuq bo'lsa, o'sha alfa shunchalik iflos
+  /// ko'rinadi. Shuning uchun kuch shu farqdan olinadi.
+  ///
+  /// Qorong'i mavzularda yuvindi fonni YORITADI, iflos qilmaydi,
+  /// shuning uchun ular 1.0 da qoladi va o'zgarmaydi.
+  ///
+  /// Quyi chegara .35: butunlay yo'qolsa avatar doirasi va
+  /// kapsula ko'rinmay qoladi — yumshoq boshqa, yo'q boshqa.
+  double get washScale {
+    if (isDark) return 1;
+    final drop = (bg1.computeLuminance() - accent1.computeLuminance())
+        .clamp(0.0, 1.0);
+    return (1 - drop * .85).clamp(.35, 1.0);
+  }
+
+  /// Aksentning bezak uchun yumshatilgan ko'rinishi.
+  Color wash(Color c, double alpha) =>
+      c.withValues(alpha: alpha * washScale);
+
   @override
   NfcTokens copyWith({String? id, bool? isDark}) => this;
 

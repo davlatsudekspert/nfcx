@@ -169,6 +169,41 @@ void main() {
     }
   });
 
+  test('BEZAK YUVINDISI oq-qora mavzuda IFLOS DOG\u2018 BO\u2018LMAYDI', () {
+    // Egasining shikoyati: "yumshoq mayin baribir qila olmadik".
+    // Ekranning tepasida iflos kulrang chiziq, avatar o‘rnida
+    // kulrang doira, rejim kapsulasida kulrang plastina turardi.
+    //
+    // Uchalasi ham bitta sababdan: aksent rangini SHAFFOFLIK
+    // bilan fonga surish. Oltin aksentda bu yumshoq tus beradi,
+    // `mono` da esa aksent QORA — qoraning 26% i tus emas, dog‘.
+    //
+    // Shuning uchun `washScale` bor va bu test uning HAQIQATAN
+    // ishlayotganini tekshiradi.
+    final m = NfcTokens.mono;
+
+    // 1. Oq-qora mavzuda yuvindi sezilarli darajada susaytiriladi.
+    expect(m.washScale, lessThan(.5),
+        reason: 'qora aksentli yorug‘ mavzuda yuvindi kuchsiz bo‘lsin');
+
+    // 2. Lekin BUTUNLAY yo‘qolmaydi — aks holda avatar doirasi
+    //    va kapsula ko‘rinmay qoladi.
+    expect(m.washScale, greaterThan(0),
+        reason: 'yumshoq boshqa, yo‘q boshqa');
+
+    // 3. Muqova atmosferasi (.24) oq fon ustida deyarli
+    //    sezilmaydigan bo‘lib qolsin.
+    final cover = Color.alphaBlend(m.wash(m.accent1, .24), m.bg1);
+    expect((cover.computeLuminance() - m.bg1.computeLuminance()).abs(),
+        lessThan(.18),
+        reason: 'ekran tepasidagi chiziq fondan uzoqlashmasin');
+
+    // 4. QORONG‘I mavzularga tegilmagan — ular o‘sha-o‘sha.
+    for (final t in NfcTokens.all.where((e) => e.isDark)) {
+      expect(t.washScale, 1.0, reason: t.id);
+    }
+  });
+
   test('Oq-qora mavzu HAQIQATAN rangsiz', () {
     // Egasining so'rovi: "faqat oq va qora". Demak bu mavzuda
     // oltin ham, ko'k ham bo'lmasligi kerak — hamma rang

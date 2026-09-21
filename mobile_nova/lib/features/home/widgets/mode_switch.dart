@@ -59,8 +59,10 @@ class ModeSwitch extends StatelessWidget {
                     height: 32,
                     decoration: BoxDecoration(
                       // TUS, TO'LDIRISH EMAS.
-                      color: (business ? t.accentB : t.accent2)
-                          .withValues(alpha: t.isDark ? .14 : .20),
+                      // Faol tomon — yumshoq tus. `washScale`siz
+                      // oq-qora mavzuda bu kulrang plastina edi.
+                      color: t.wash(business ? t.accentB : t.accent2,
+                          t.isDark ? .14 : .20),
                       borderRadius: R.pill,
                       border: Border.all(
                         color: (business ? t.accentB : t.accent2)
