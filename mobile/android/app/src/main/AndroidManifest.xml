@@ -22,14 +22,13 @@
          "nega kirolmayapman" degan holatga tushardi.
          Shuning uchun zaxira umuman olinmaydi: xavfsizroq ham,
          tushunarliroq ham (yangi telefonda oddiy qayta kirish). -->
+    <!-- "NFCSTORE Classic" — yangi ilova endi shunchaki
+         "NFCSTORE" deb ataladi. Ikkalasi bitta telefonda turishi
+         mumkin, shuning uchun nomlari farq qilishi SHART; aks
+         holda odam qaysi birini ochayotganini bilmaydi.
+         `applicationId` (uz.nfcstore.app) O'ZGARMAYDI —
+         o'rnatilgan ilovalar yangilanishda davom etadi. -->
     <application
-        <!-- "NFCSTORE Classic" — yangi ilova endi shunchaki
-             "NFCSTORE" deb ataladi. Ikkalasi bitta telefonda
-             turishi mumkin, shuning uchun nomlari farq qilishi
-             SHART; aks holda odam qaysi birini ochayotganini
-             bilmaydi.
-             `applicationId` (uz.nfcstore.app) O'ZGARMAYDI —
-             o'rnatilgan ilovalar yangilanishda davom etadi. -->
         android:label="NFCSTORE Classic"
         android:name="${applicationName}"
         android:allowBackup="false"
