@@ -27,6 +27,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { makeChecker } from './lib/d1-harness.mjs';
+import { badTagOpens } from './lib/xml-wellformed.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { check, checkTrue, done } = makeChecker();
@@ -48,51 +49,15 @@ const read = (p) => readFileSync(join(ROOT, p), 'utf8');
 /// Shuning uchun tuzilish shu yerda tekshiriladi: teglar
 /// juftligi va atributlarning teg ichida ekani.
 function assertWellFormedXml(label, xml) {
-  // IZOHLAR OLIB TASHLANMAYDI — TEKSHIRILAYOTGAN NARSA AYNAN
-  // ULARNING JOYI.
-  //
-  // Birinchi urinishda izohlar avval olib tashlangan edi va
-  // tekshiruv haqiqiy xatoni TUTMADI: izoh olib tashlangach,
-  // buzuq manifest yaroqli ko'rinib qolardi.
-  //
-  // Ochiladigan teg (`<application ...>`) ichida `<!--` ham,
-  // bo'sh `<` ham bo'lishi MUMKIN EMAS. Atribut qiymatlari
-  // ichidagi `>` esa tegni tugatmaydi, shuning uchun tirnoqlar
-  // hisobga olinadi.
-  const bad = [];
-  for (let i = 0; i < xml.length; i++) {
-    if (xml[i] !== '<') continue;
-    // Izohning O'ZI — uni butunlay o'tkazib yuboramiz.
-    if (xml.startsWith('<!--', i)) {
-      const close = xml.indexOf('-->', i);
-      i = close < 0 ? xml.length : close + 2;
-      continue;
-    }
-    // Faqat ochiladigan/yopiladigan teg boshi.
-    if (!/[A-Za-z/]/.test(xml[i + 1] || '')) continue;
-
-    let quote = '';
-    let j = i + 1;
-    for (; j < xml.length; j++) {
-      const c = xml[j];
-      if (quote) { if (c === quote) quote = ''; continue; }
-      if (c === '"' || c === "'") { quote = c; continue; }
-      if (c === '>') break;
-      if (c === '<') {
-        bad.push(xml.slice(i, Math.min(j + 40, xml.length)).split('\n')[0]);
-        break;
-      }
-    }
-    i = j;
-  }
-
+  // Mantiq `scripts/lib/xml-wellformed.mjs` da — NUSXA OLINMAYDI.
+  // U yerda `scripts/test-android-manifests.mjs` ham ishlatadi:
+  // ikki nusxa bo'lsa, biri tuzatilib ikkinchisi eskirib qolardi.
+  const bad = badTagOpens(xml);
   if (bad.length) {
     console.log(`  ${label}: teg ichida begona "<":`);
-    for (const b of bad) console.log(`    ${b.trim()}`);
+    for (const b of bad) console.log(`    ${b}`);
   }
   check(`${label}: teg ichida begona "<" yo‘q`, bad.length, 0);
-
-  // Ildiz teg yopilgan.
   checkTrue(`${label}: <manifest> yopilgan`, /<\/manifest>\s*$/.test(xml.trim()));
 }
 
