@@ -935,6 +935,38 @@ async function publicContentApi(request, env, url) {
       : { found: false, active: true });
   }
 
+  // SHAXSIY NFC ID DARAJALARI VA NARXLARI — FAQAT O'QISH.
+  //
+  // NIMA UCHUN KERAK: ilovadagi ID katalogi narxni KO'RSATISHI kerak,
+  // lekin narx ilovada YOZILMASLIGI shart. Ilgari yagona manba
+  // `personalPurchaseQuote()` edi va u faqat BITTA aniq kod uchun
+  // javob berardi — ya'ni "Kumush qancha turadi?" degan savolga
+  // javob olish uchun kod o'ylab topish kerak edi.
+  //
+  // Bu endpoint YANGI NARX JADVALI YARATMAYDI: u `PERSONAL_TIER_PRICE`
+  // ning O'ZINI qaytaradi — xarid oqimi (`personalPurchaseQuote`) va
+  // saytdagi `src/lib/pricing.js` bilan bitta manba. Shuning uchun
+  // katalogdagi summa bilan to'lanadigan summa hech qachon farq
+  // qilmaydi.
+  //
+  // Hech narsa yaratmaydi, hech narsani band qilmaydi, sessiya
+  // talab qilmaydi.
+  if (path === '/api/settings/id-pricing' && request.method === 'GET') {
+    // Tartib ATAYLAB arzondan qimmatga: interfeys ro'yxatni shu
+    // tartibda ko'rsatadi va saralashni o'zi o'ylab topmaydi.
+    const order = ['free', 'silver', 'gold', 'premium', 'exclusive'];
+    return json({
+      tiers: order.map((tier) => ({
+        tier,
+        price: PERSONAL_TIER_PRICE[tier] ?? null,
+        // `exclusive` — "shu summadan boshlanadi", aniq summa
+        // `exclusiveLevel()` dan chiqadi va u kodga bog'liq.
+        from: tier === 'exclusive',
+      })),
+      currency: 'UZS',
+    });
+  }
+
   if (path === '/api/settings/physical-nfc-pricing' && request.method === 'GET') {
     const defaultTiers = [
       { minQty: 1, maxQty: 9, pricePerUnit: 120000 },
@@ -9868,6 +9900,7 @@ async function handleRequest(request, env, url) {
     if (url.pathname === '/api/companies/search' || url.pathname === '/api/categories'
       || url.pathname === '/api/news' || url.pathname.startsWith('/api/tap/')
       || url.pathname === '/api/settings/physical-nfc-pricing'
+      || url.pathname === '/api/settings/id-pricing'
       || url.pathname === '/api/settings/payments-enabled') {
       try {
         const res = await publicContentApi(request, env, url);
