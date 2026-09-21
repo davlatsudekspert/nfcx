@@ -1256,11 +1256,19 @@ async function companyApi(request, env, url) {
          FROM company_posts WHERE company_id = ? ORDER BY created_at DESC LIMIT 60`
     ).bind(id).all();
     const posts = rows.results || [];
-    const likes = await apiComments.likesFor(
-      env,
-      posts.map((row) => ({ kind: 'company_post', id: Number(row.id) })),
-      viewer ? viewer.id : 0,
-    ).catch(() => new Map());
+    const [likes, counts] = await Promise.all([
+      apiComments.likesFor(
+        env,
+        posts.map((row) => ({ kind: 'company_post', id: Number(row.id) })),
+        viewer ? viewer.id : 0,
+      ).catch(() => new Map()),
+      // Izohlar soni — sayt post ostida "Izohlar · 4" ko'rsatadi.
+      // Shaxsiy postlar bilan AYNAN bir manba (`countsFor`).
+      apiComments.countsFor(
+        env,
+        posts.map((row) => ({ kind: 'company_post', id: Number(row.id) })),
+      ).catch(() => new Map()),
+    ]);
     return json({
       posts: posts.map((row) => {
         const like = likes.get(`company_post:${Number(row.id)}`) || { count: 0, liked: false };
@@ -1270,6 +1278,7 @@ async function companyApi(request, env, url) {
           imageUrl: row.image_url || '', videoUrl: row.video_url || '',
           caption: row.caption || '', createdAt: row.created_at,
           likeCount: like.count, liked: like.liked,
+          commentCount: counts.get(`company_post:${Number(row.id)}`) || 0,
         };
       }),
     });
@@ -9007,7 +9016,26 @@ async function listPostsD1(env, code, viewerUserId) {
             EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = ?) AS liked
      FROM posts p WHERE p.code = ? ORDER BY p.created_at DESC, p.id DESC`
   ).bind(viewerUserId == null ? 0 : viewerUserId, code).all();
-  return (rows.results || []).map((r) => postRowToJson(r, r.like_count, r.liked));
+  const list = rows.results || [];
+
+  // IZOHLAR SONI — BITTA guruhlangan so'rov bilan.
+  //
+  // Sayt endi post ostida "Izohlar · 4" ko'rsatadi. Sonsiz u
+  // "izoh yozish" deb turardi va odam ichida gap borligini
+  // BILMASDI — ya'ni mavjud izohlar ko'rinmay qolardi.
+  //
+  // Lenta (`feedApi`) bilan AYNAN bir manba: `apiComments.countsFor`.
+  // O'chirilgan izohlar u yerda sanalmaydi, shuning uchun bu yerda
+  // ham sanalmaydi.
+  const counts = await apiComments.countsFor(
+    env,
+    list.map((r) => ({ kind: 'post', id: Number(r.id) })),
+  ).catch(() => new Map());
+
+  return list.map((r) => ({
+    ...postRowToJson(r, r.like_count, r.liked),
+    commentCount: counts.get(`post:${Number(r.id)}`) || 0,
+  }));
 }
 
 // DELETE /api/posts/:id, POST /api/posts/:id/like — server/index.js bilan

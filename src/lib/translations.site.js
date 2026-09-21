@@ -125,4 +125,23 @@ export const DICT_SITE = {
   // Aktivatsiya: oxirgi qadam — hisob ochish.
   'Oxirgi qadam — hisob oching. Kod va tanlovingiz saqlanib qoladi.': { ru: 'Последний шаг — создайте аккаунт. Код и ваш выбор сохранятся.', en: 'Last step — create an account. Your code and choice are kept.' },
   'Hisobim bor — kirish': { ru: 'У меня есть аккаунт — войти', en: 'I have an account — sign in' },
+  // ─────────────────────────── Izohlar (post ostida) ───────────────────────────
+  //
+  // Izoh tizimi backend'da allaqachon bor edi, lekin uni faqat ilova
+  // chaqirardi: telefonda yozilgan izoh saytda umuman ko'rinmasdi.
+  'Izohlar': { ru: 'Комментарии', en: 'Comments' },
+  'Izoh yozish': { ru: 'Написать комментарий', en: 'Write a comment' },
+  'Izohingiz…': { ru: 'Ваш комментарий…', en: 'Your comment…' },
+  'Hali izoh yo‘q.': { ru: 'Пока нет комментариев.', en: 'No comments yet.' },
+  'Izohlar yuklanmadi.': { ru: 'Не удалось загрузить комментарии.', en: 'Could not load the comments.' },
+  'Izoh yuborilmadi.': { ru: 'Комментарий не отправлен.', en: 'The comment was not sent.' },
+  'Izoh o‘chirilmadi.': { ru: 'Комментарий не удалён.', en: 'The comment was not deleted.' },
+  'Izoh o‘chirilsinmi?': { ru: 'Удалить комментарий?', en: 'Delete the comment?' },
+  'Izoh bo‘sh.': { ru: 'Комментарий пустой.', en: 'The comment is empty.' },
+  'Izoh yozish uchun tizimga kiring.': { ru: 'Войдите, чтобы написать комментарий.', en: 'Sign in to write a comment.' },
+  'Izoh yozish Premium a’zolar uchun.': { ru: 'Комментарии доступны Premium-участникам.', en: 'Commenting is for Premium members.' },
+  'Hisobingiz vaqtincha bloklangan.': { ru: 'Ваш аккаунт временно заблокирован.', en: 'Your account is temporarily blocked.' },
+  'Juda tez yozyapsiz. Biroz kuting.': { ru: 'Вы пишете слишком быстро. Подождите немного.', en: 'You are writing too fast. Please wait a moment.' },
+  'Avval tizimga kiring.': { ru: 'Сначала войдите в систему.', en: 'Please sign in first.' },
+  'Yuklanmoqda…': { ru: 'Загрузка…', en: 'Loading…' },
 };

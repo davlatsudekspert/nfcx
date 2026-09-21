@@ -23,6 +23,7 @@ import ProfileManifest from '../components/ProfileManifest.jsx';
 import CardNumberModal from '../components/CardNumberModal.jsx';
 import ProfileTabs from '../components/ProfileTabs.jsx';
 import StoryGrid from '../components/StoryGrid.jsx';
+import Comments from '../components/Comments.jsx';
 import MediaThumb from '../components/MediaThumb.jsx';
 import { mediaKind } from '../lib/media.js';
 import { useLanguage } from '../lib/i18n.jsx';
@@ -915,6 +916,11 @@ function PostsFeed({ posts, onLike, t }) {
               </button>
               <span className="text-[14px] text-[color:var(--vz-ink-faint)]">{timeAgo(p.createdAt)}</span>
             </div>
+            {/* IZOHLAR — ILOVA BILAN BITTA MANBADAN.
+                Ilgari izoh tizimi backend'da bor edi, lekin uni
+                faqat ilova chaqirardi: telefonda yozilgan izoh
+                saytda umuman ko'rinmasdi. */}
+            <Comments kind="post" id={p.id} initialCount={p.commentCount || 0} />
           </div>
         </div>
         );

@@ -238,4 +238,65 @@ const unbanned = await call('/api/comments/post/10', {
 });
 check('19) muddati o‘tgan ban to‘smaydi', unbanned.status, 201);
 
+// ═══════════════════════════════════════════════════════════════════
+// 20) SAYT UCHUN IZOHLAR SONI
+// ═══════════════════════════════════════════════════════════════════
+//
+// Sayt post ostida "Izohlar · 4" ko'rsatadi. Son bo'lmasa u
+// "izoh yozish" deb turardi va odam ichida gap borligini
+// BILMASDI — ya'ni mavjud izohlar ko'rinmay qolardi.
+//
+// Eng muhimi: O'CHIRILGAN izoh sanalmasligi kerak. Aks holda
+// "Izohlar · 4" yozuvini bosgan odam uchtasini ko'rardi.
+await env.DB.prepare(`UPDATE users SET banned_until = NULL WHERE id = 1`).run();
+
+const listPath = '/api/records/OTH222/posts';
+const postsOf = async () => (await call(listPath, asA)).body?.posts || [];
+
+const fresh = (await postsOf()).find((p) => Number(p.id) === 10);
+checkTrue('20) post ro‘yxatda', !!fresh);
+check('20) sanoq maydoni BOR', typeof fresh?.commentCount, 'number');
+
+const before = Number(fresh?.commentCount) || 0;
+const newId = await write('sayt uchun izoh');
+checkTrue('20) izoh yozildi', Number.isInteger(newId));
+check('20) sanoq oshdi',
+  Number((await postsOf()).find((p) => Number(p.id) === 10)?.commentCount), before + 1);
+
+await call(`/api/comments/${newId}`, { method: 'DELETE', ...asA });
+check('20) o‘chirilgani SANALMAYDI',
+  Number((await postsOf()).find((p) => Number(p.id) === 10)?.commentCount), before);
+
+// ── 21) KOMPANIYA POSTIDA HAM ────────────────────────────────────
+// IKKI QOIDA, IKKALASI HAM SXEMADAN TEKSHIRILDI:
+//   * `tier`, `price`, `updated_at` — NOT NULL;
+//   * `company_id` KATTA HARFDA. Server uni `companyId()` bilan
+//     normallashtiradi ('nova' -> 'NOVA'), shuning uchun kichik
+//     harfli qator hech qachon topilmasdi va ro'yxat bo'sh
+//     kelardi — xato emas, shunchaki bo'sh.
+await env.DB.prepare(
+  `INSERT INTO companies
+     (company_id, owner_user_id, display_name, tier, price, status, created_at, updated_at)
+   VALUES ('NOVA', '2', 'Nova', 'basic', 0, 'active',
+           '2026-01-01 00:00:00', '2026-01-01 00:00:00')`
+).run();
+await env.DB.prepare(
+  `INSERT INTO company_posts (id, company_id, caption, created_at)
+   VALUES (5, 'NOVA', 'kompaniya posti', '2026-01-01 00:00:00')`
+).run();
+
+const coPosts = async () =>
+  (await call('/api/companies/NOVA/posts', asA)).body?.posts || [];
+const coPost = (await coPosts()).find((p) => Number(p.id) === 5);
+checkTrue('21) kompaniya posti ro‘yxatda', !!coPost);
+check('21) sanoq maydoni BOR', typeof coPost?.commentCount, 'number');
+check('21) boshida nol', Number(coPost?.commentCount), 0);
+
+const coComment = (await call('/api/comments/company_post/5', {
+  method: 'POST', ...asA, json: { body: 'narxi qancha?' },
+})).body?.comment?.id;
+checkTrue('21) kompaniya postiga izoh yozildi', Number.isInteger(coComment));
+check('21) sanoq oshdi',
+  Number((await coPosts()).find((p) => Number(p.id) === 5)?.commentCount), 1);
+
 done('Izoh moderatsiyasi');
