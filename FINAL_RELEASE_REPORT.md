@@ -8,12 +8,49 @@ natijalar uchun ishlatilgan.
 
 ## 1. Qisqa javob
 
+Tekshirilgan commit: **`abc2da5`** (`claude/vibrant-einstein-p5lo1i`).
+
 | Nima | Holat |
 |---|---|
 | Sayt (`nfcstore.uz`) | **Ishlaydi**, deploy #322 gacha yashil |
-| Backend (Worker + D1) | **Ishlaydi**, 34 ta qo'riqchi yashil |
-| Android ilova | **Quriladi va sinovlardan o'tadi**; qurilmada to'liq sinalmagan |
+| Backend (Worker + D1) | **Ishlaydi**, CI dagi 38 ta qo'riqchi yashil |
+| Android ilova — qurilish | **YASHIL** — APK #97 (`abc2da5`): universal + ikki ABI + AAB |
+| Android ilova — E2E | **YASHIL** — E2E #36 (`abc2da5`): 91 PASS, **0 FAIL** |
+| Android ilova — qurilmada | **TO'LIQ SINALMAGAN** — NFC yozish va video apparat qismi qo'lda |
 | iOS ilova | **SINALMAGAN** — Mac yo'q, `mobile_nova/IOS_RELEASE_CHECKLIST.md` ga qarang |
+
+### Yakuniy CI holati
+
+| Ish | Raqam | Commit | Natija |
+|---|---|---|---|
+| `nova-apk.yml` | #97 | `abc2da5` | ✅ success |
+| `nova-e2e.yml` | #36 | `abc2da5` | ✅ success |
+
+E2E matritsasi (`abc2da5`):
+
+| Natija | Soni |
+|---|---|
+| ✅ PASS | 91 |
+| ❌ FAIL | **0** |
+| ⚠️ PARTIAL | 2 |
+| 🚧 KNOWN MISSING | 1 |
+| 🛠 BACKEND REQUIRED | 6 |
+| 🔑 CONFIG REQUIRED | 5 |
+| 📱 DEVICE REQUIRED | 2 |
+| 💳 MANUAL PAYMENT TEST REQUIRED | 4 |
+| ⏭ SKIPPED | 1 |
+
+Uchala to'plam ham o'tdi: backend 10, UI 3, oqimlar 15 ta test.
+Sinov obyektlari tozalandi — haqiqiy hisobda axlat qolmadi.
+
+**E2E push bilan ishga tushMAYDI.** `nova-e2e.yml` ning yo'l filtri
+ataylab tor (`mobile_nova/integration_test/**`), chunki ish HAQIQIY
+hisob bilan kiradi: server bitta hisobga 15 daqiqada 5 ta kirish
+beradi (`login:acct:`), har bir ish esa 4 tasini sarflaydi. `lib/`
+o'zgarganda E2E ni QO'LDA ishga tushirish kerak
+(`workflow_dispatch`), va ketma-ket ikki marta ishga tushirmaslik
+kerak — ikkinchisi 429 oladi va hisob EGASI ham 15 daqiqa kira
+olmaydi.
 
 ---
 
@@ -48,6 +85,13 @@ natijalar uchun ishlatilgan.
 
 ### Ilova
 
+* **Kirish ekrani** — yangi vizual: tepada surat (`BoxFit.contain`,
+  hech narsa kesilmaydi), pastda matn va tugmalar. Surat FONSIZ
+  (alfa kanali), shuning uchun qora-champagne va ochiq mavzuda
+  bir xil yaxshi turadi.
+* **Tanlov** — "Postlar" yorlig'i olib tashlandi: bosh sahifaning
+  o'zi lenta edi, ya'ni yorliq o'sha ro'yxatni ikkinchi marta
+  ko'rsatardi.
 * **NFC kartaga yozish** — begona, qayta yoziladigan NFC teg
   endi NFCSTORE profil tegiga aylanadi. Ikki bosqichli:
   tekshirish → ogohlantirish → yozish → **qayta o'qib
@@ -78,6 +122,11 @@ Bularning hech biri topshiriqda yo'q edi — ish davomida chiqdi.
 | 8 | `_dt` faqat ISO satrni o'qirdi | Lentadagi har bir postning `createdAt` i `null` |
 | 9 | `recordCategories()` mavjud bo'lmagan GET ga qarardi | O'lik kod (hech kim chaqirmasdi) |
 | 10 | Ilova branchidagi sayt nusxasi 17 000 satr orqada | **`wrangler.jsonc` da `ASSETS` binding yo'q edi** — o'sha branchdan deploy qilinsa sayt butunlay 500 berardi |
+| 11 | `AndroidManifest.xml` da izoh TEG ICHIDA turardi | **APK umuman qurilmasdi** va E2E ning uchala to'plami YUKLANMASDI. `flutter analyze` ham, `flutter test` ham manifestni o'qimaydi — xato faqat qurishda chiqardi |
+| 12 | `AudioOwner` `StateNotifier` edi va egalik `state` da turardi | **Reels `initState` dan provayderni o'zgartirardi.** E2E test tugagandan KEYIN yiqilardi ("failed after test completion"), ya'ni matritsada 0 FAIL bo'lsa ham ish qizil qolardi va sabab hisobotda UMUMAN ko'rinmasdi |
+| 13 | `recordCatalog()` bo'limlarni element deb o'qirdi | Katalog "9 ta element" deb ko'rsatardi — aslida 9 ta BO'LIM; element bo'yicha qidirilganda hech qachon topilmasdi |
+| 14 | Mijozda katalog BO'LIMI yaratadigan metod yo'q edi | Server elementni bo'limsiz qabul qilmaydi (422 `bad_category`) — ya'ni yozuv katalogiga element qo'shib **umuman bo'lmasdi** |
+| 15 | Lentaning IKKITA mijozi bor edi (`trending()` va `feed()`) | Ikkalasi `/api/feed` ga, lekin `limit` i har xil (30 va 15) — bir joyda ko'ringan post boshqasida yo'qolishi mumkin edi |
 
 ---
 
@@ -87,9 +136,10 @@ Har bir tuzatish uchun test yozildi — aks holda xato qaytib keladi.
 
 | Joy | Soni |
 |---|---|
-| `deploy.yml` (sayt, har deployda) | **34** |
+| `deploy.yml` (sayt, har deployda) | **35** |
 | `nova-apk.yml` (ilova CI) | +3 |
-| Flutter (`flutter test`) | **519** passed, 1 skipped |
+| Flutter (`flutter test`) | **523** passed, 1 skipped |
+| E2E (emulyator, haqiqiy hisob) | **91** PASS, 0 FAIL |
 
 Yangi qo'riqchilar:
 
@@ -101,7 +151,15 @@ Yangi qo'riqchilar:
 * `test-admin-nova-tab.mjs` — admin bo'limidagi har bir tugma;
 * `test-app-identity.mjs` — ikki ilovaning nomi va paket ID'si;
 * `test-catalog-kind-parity.mjs` — server va ilovadagi qoida
-  ajralib ketmasligi.
+  ajralib ketmasligi;
+* `xml-wellformed.mjs` — HAR BIR `AndroidManifest.xml` yaroqli
+  XML ekani. Qo'riqchi ISHLASHI o'lchandi: manifest ataylab
+  buzilganda u yiqildi;
+* `music_test.dart` dagi `_LifecycleAudioProbe` — ovoz reyestrini
+  `initState`/`dispose` dan chaqirish xavfsizligi. Bu ham
+  o'lchandi: eski `StateNotifier` tuzilishi qaytarilganda yiqildi;
+* `ui_regressions_test.dart` — `lib/data/repositories/` ichida
+  `/api/feed` mijozi BITTA bo'lishi.
 
 ---
 
