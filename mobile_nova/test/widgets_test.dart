@@ -263,10 +263,10 @@ void main() {
   });
 
   group('Mavzu tanlash ekrani', () {
-    testWidgets('yettita mavzuni ham ko‘rsatadi', (tester) async {
+    testWidgets('oltita mavzuni ham ko‘rsatadi', (tester) async {
       // BALAND OYNA. Ro'yxat `ListView` ustiga qurilgan va u
       // ekrandan PASTDAGI elementni umuman qurmaydi. Standart
-      // 600px li test oynasida yettinchi mavzu "topilmadi" bo'lib
+      // 600px li test oynasida oxirgi mavzu "topilmadi" bo'lib
       // chiqardi — holbuki telefonda odam pastga tushib ko'radi.
       tester.view.physicalSize = const Size(1080, 4200);
       tester.view.devicePixelRatio = 3;
@@ -280,7 +280,8 @@ void main() {
 
       final l = LUz();
       for (final name in [
-        l.themePearl,
+        // `themePearl` ATAYLAB yo'q: oq mavzu ro'yxatdan olib
+        // tashlangan, ya'ni bu ekranda ham chiqmasligi kerak.
         l.themeGraphite,
         l.themeOcean,
         l.themeAurora,

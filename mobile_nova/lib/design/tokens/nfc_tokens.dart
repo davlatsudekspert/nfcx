@@ -535,7 +535,22 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     ],
   );
 
-  static final all = <NfcTokens>[pearl, graphite, ocean, aurora, midnight, onyx, noir];
+  // TANLASH MUMKIN BO'LGAN MAVZULAR — HAMMASI QORONG'I.
+  //
+  // `pearl` (oq-krem fon) ro'yxatdan OLIB TASHLANDI. U ta'rifi
+  // bilan qoladi, chunki sinovlar undan yorug' palitra namunasi
+  // sifatida foydalanadi — lekin foydalanuvchi uni tanlay olmaydi.
+  //
+  // NIMA UCHUN: qurilmada butun ilova oqarib turgan edi. Sabab
+  // mavzu emas, SAQLANGAN TANLOV: `pearl` eski o'rnatishdan
+  // xotirada qolgan va `byId()` uni tiklab berardi. Noir standart
+  // bo'lgani bilan hech narsa o'zgarmagan edi.
+  //
+  // Ro'yxatdan chiqarilgani bilan tuzalish O'ZI keladi: `byId()`
+  // topa olmagan id uchun `fallback` (noir) qaytaradi, ya'ni eski
+  // tanlov saqlangan qurilmalar keyingi ochilishda Noir'ga
+  // o'tadi. Alohida migratsiya kodi shart emas.
+  static final all = <NfcTokens>[noir, ocean, graphite, aurora, midnight, onyx];
 
   /// STANDART MAVZU — `noir`.
   ///

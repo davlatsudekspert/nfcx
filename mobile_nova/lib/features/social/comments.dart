@@ -283,7 +283,21 @@ class _CommentTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: Theme.of(context).textTheme.titleSmall),
+                // ISM HAM BOSILADI — avatar kabi.
+                //
+                // Avatar allaqachon profilga olib borardi, ism esa
+                // yo'q. Odam esa ko'pincha ISMNI bosadi: u kattaroq
+                // va o'qilib turibdi. Bosilmagach "ishlamayapti" deb
+                // o'ylardi.
+                if (comment.code.isEmpty)
+                  Text(name, style: Theme.of(context).textTheme.titleSmall)
+                else
+                  GestureDetector(
+                    onTap: () => context.push(Routes.user(comment.code)),
+                    behavior: HitTestBehavior.opaque,
+                    child: Text(name,
+                        style: Theme.of(context).textTheme.titleSmall),
+                  ),
                 const SizedBox(height: 2),
                 Text(comment.text,
                     style: Theme.of(context).textTheme.bodyMedium),

@@ -33,6 +33,13 @@ void main() {
         'lib/design/widgets/brand_logo.dart',
         'lib/features/nfc/qr_sheet.dart',
         'lib/features/home/widgets/identity_card.dart',
+        // BEGONA BREND RANGLARI — mavzudan kelmaydi va kelmasligi
+        // ham kerak. Payme hamma joyda o'zining yashil-ko'kida,
+        // Click esa ko'kida. Ularni NFCSTORE palitrasiga bo'yash
+        // odamni chalkashtirardi: u tugmani RANGIDAN taniydi.
+        // Qiymatlar saytdan olingan (`src/pages/PaymentsPage.jsx`)
+        // va ikki joyda bir xil.
+        'lib/features/shop/nfc_id_market.dart',
       };
 
       final offenders = <String>[];

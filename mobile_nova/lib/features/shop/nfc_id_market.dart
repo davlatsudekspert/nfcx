@@ -528,20 +528,19 @@ class NfcIdOrderScreen extends ConsumerWidget {
                 if (o.paymeLink.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(bottom: Gap.md),
-                    child: NovaButton(
+                    child: _PayButton(
                       label: 'Payme',
-                      icon: Icons.account_balance_wallet_rounded,
-                      onPressed: () => openLink(o.paymeLink),
+                      brand: _paymeBrand,
+                      onTap: () => openLink(o.paymeLink),
                     ),
                   ),
                 if (o.clickLink.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(bottom: Gap.md),
-                    child: NovaButton(
+                    child: _PayButton(
                       label: 'Click',
-                      tone: ButtonTone.quiet,
-                      icon: Icons.account_balance_wallet_outlined,
-                      onPressed: () => openLink(o.clickLink),
+                      brand: _clickBrand,
+                      onTap: () => openLink(o.clickLink),
                     ),
                   ),
               ],
@@ -569,6 +568,108 @@ class NfcIdOrderScreen extends ConsumerWidget {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+
+// ─────────────────────────────────────────────── to'lov provayderi
+
+// BREND RANGLARI SAYTDAN OLINGAN — o'ylab topilmagan.
+//
+// `src/pages/PaymentsPage.jsx` da ayni shu ikki qiymat turadi:
+//
+//     { id: 'payme', label: 'Payme', color: '#33c8b6' }
+//     { id: 'click', label: 'Click', color: '#0d6efd' }
+//
+// Ikki joyda ikki xil rang bo'lsa, odam saytda bir xil, ilovada
+// boshqacha tugma ko'rardi va qaysi biri haqiqiy ekaniga
+// ishonmasdi.
+const _paymeBrand = Color(0xFF33C8B6);
+const _clickBrand = Color(0xFF0D6EFD);
+
+/// To'lov provayderi tugmasi — O'Z RANGIDA.
+///
+/// Ilgari ikkalasi ham oddiy NovaButton edi: biri oltin, ikkinchisi
+/// kulrang. Provayder tanlash to'lovdagi eng muhim qadam va odam uni
+/// RANGIDAN taniydi — matnni o'qib emas. Shuning uchun har biri
+/// o'z brend rangida.
+///
+/// Logotip TASVIRI ishlatilmadi: repoda Payme/Click belgilari yo'q
+/// va ularni o'zim chizish — begona brendni taqlid qilish bo'lardi.
+/// O'rniga brend rangi va nomi, NFCSTORE shakllari bilan.
+class _PayButton extends StatelessWidget {
+  const _PayButton({
+    required this.label,
+    required this.brand,
+    required this.onTap,
+  });
+
+  final String label;
+  final Color brand;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    // Brend rangi ustida oq matn har doim o'qiladi (ikkala rang ham
+    // to'yingan va o'rtacha yorug'likda), shuning uchun matn oq.
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: R.gentle,
+        child: Ink(
+          height: 52,
+          decoration: BoxDecoration(
+            color: brand,
+            borderRadius: R.gentle,
+            boxShadow: [
+              BoxShadow(
+                color: brand.withValues(alpha: .34),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: .22),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  label.characters.first,
+                  style: const TextStyle(
+                    fontFamily: AppType.sans,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(width: Gap.md),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontFamily: AppType.sans,
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: .2,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: Gap.md),
+              Icon(Icons.arrow_forward_rounded,
+                  size: 18, color: Colors.white.withValues(alpha: .85)),
+            ],
+          ),
+        ),
       ),
     );
   }

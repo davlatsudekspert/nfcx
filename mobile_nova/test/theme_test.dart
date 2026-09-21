@@ -27,14 +27,25 @@ double _contrast(Color a, Color b) {
 }
 
 void main() {
-  test('yettita mavzu ham mavjud va kaliti takrorlanmaydi', () {
+  test('oltita mavzu ham mavjud va kaliti takrorlanmaydi', () {
     // `noir` — NFCSTORE premium mavzusi, `src/themes.css` dagi
     // saytning qorong'i palitrasidan olingan. Eskilariga tegilmadi.
-    expect(NfcTokens.all.length, 7);
+    expect(NfcTokens.all.length, 6);
     final ids = NfcTokens.all.map((t) => t.id).toSet();
-    expect(ids.length, 7);
+    expect(ids.length, 6);
     expect(ids,
-        {'pearl', 'graphite', 'ocean', 'aurora', 'midnight', 'onyx', 'noir'});
+        {'noir', 'ocean', 'graphite', 'aurora', 'midnight', 'onyx'});
+    // OQ MAVZU TANLANMAYDI.
+    //
+    // `pearl` ta'rifi qoladi (sinovlar undan yorug' palitra namunasi
+    // sifatida foydalanadi), lekin ro'yxatda YO'Q. Qurilmada butun
+    // ilova oqarib turgan edi: sabab standart mavzu emas, eski
+    // o'rnatishdan xotirada qolgan tanlov edi.
+    expect(ids.contains('pearl'), isFalse);
+    // Birinchi o'rin — standart mavzu.
+    expect(NfcTokens.all.first.id, 'noir');
+    // Hamma mavzu qorong'i.
+    expect(NfcTokens.all.every((t) => t.isDark), isTrue);
   });
 
   test('noir AKSENTI shampan oltin', () {

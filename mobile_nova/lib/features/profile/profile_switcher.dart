@@ -39,6 +39,23 @@ Future<void> switchToBusiness(BuildContext context, WidgetRef ref) async {
     return;
   }
 
+  // ALLAQACHON TANLANGAN KOMPANIYA BOR — QAYTA SO'RAMAYMIZ.
+  //
+  // Ilgari bir nechta kompaniyasi bor odamdan "Biznes" tugmasi HAR
+  // BOSILGANDA qaysi kompaniya ekani so'ralardi — hatto o'sha
+  // kompaniya ekranda ochiq turgan bo'lsa ham. Tanlov esa
+  // saqlanadi, ya'ni savolning javobi allaqachon ma'lum edi.
+  //
+  // Tanlovni o'zgartirish yo'li yo'qolmaydi: profil sarlavhasini
+  // bosish `pickWithinCurrentMode()` ni chaqiradi va o'sha varaq
+  // ochiladi. Ya'ni tanlagich YO'Q bo'lib ketmadi — u faqat
+  // so'ralmagan joyda o'zi chiqmaydigan bo'ldi.
+  final saved = ref.read(selectedBusinessProvider);
+  if (saved != null && list.any((b) => b.companyId == saved)) {
+    await ref.read(modeProvider.notifier).set(AppMode.business);
+    return;
+  }
+
   final picked = await _pick<Business>(
     context,
     title: L.of(context).profilePickBusiness,
@@ -100,6 +117,10 @@ Future<void> pickWithinCurrentMode(BuildContext context, WidgetRef ref) async {
   }
   final list = ref.read(personalIdsProvider);
   if (list.length <= 1) return;
+  // Biznes tomonidagi bilan bir xil qoida: tanlangan ID bor bo'lsa
+  // qayta so'ralmaydi.
+  final savedCode = ref.read(selectedPersonalCodeProvider);
+  if (savedCode != null && list.any((e) => e.code == savedCode)) return;
   final picked = await _pick<NfcId>(
     context,
     title: L.of(context).profilePickPersonal,
