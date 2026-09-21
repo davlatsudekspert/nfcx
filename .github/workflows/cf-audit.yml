@@ -38,6 +38,10 @@ jobs:
       CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CF_ACCOUNT: 31c4b3d8ece4b65de515debc4552334a
     steps:
+      # Pastdagi qo'riqchi repodagi skriptni ishga tushiradi.
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Token bormi
         run: |
           if [ -z "$CF_API_TOKEN" ]; then
@@ -186,7 +190,6 @@ jobs:
       # ochganda jonli Workerdagi holat darhol ko'rinsin.
       - name: Jonli Workerda sozlamalar to'liqmi
         if: always()
-        continue-on-error: true
         env:
           CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT: 31c4b3d8ece4b65de515debc4552334a
