@@ -53,6 +53,14 @@ import { createNotification } from './notifications.js';
 
 export const KINDS = ['post', 'company_post', 'story', 'company_story'];
 
+/// LIKE QO'YISA BO'LADIGAN TURLAR.
+///
+/// `KINDS` dan farq qiladi: izohning O'ZIGA ham like qo'yiladi,
+/// lekin izohga izoh yozib bo'lmaydi. Ikkalasini bitta ro'yxatda
+/// saqlash `POST /api/comments/comment/5` kabi ma'nosiz yo'lni
+/// ochib qo'yardi.
+export const LIKE_KINDS = [...KINDS, 'comment'];
+
 // Izoh uzunligi. Instagram'da 2200 — bu yerda 1000 yetarli va
 // bitta izoh ekranni butunlay egallab ketmaydi.
 const MAX_LEN = 1000;
@@ -69,6 +77,18 @@ let schemaReady = null;
 // yondashuv (worker'da alohida migratsiya bosqichi yo'q).
 async function ensureSchema(env) {
   if (!schemaReady) {
+    // ESKI BAZADA JADVAL ALLAQACHON BOR.
+    //
+    // `CREATE TABLE IF NOT EXISTS` mavjud jadvalga yangi ustun
+    // QO'SHMAYDI — u shunchaki hech narsa qilmaydi. Shuning uchun
+    // `parent_id` alohida `ALTER TABLE` bilan qo'shiladi.
+    //
+    // Xatosi ataylab yutiladi: ustun allaqachon bo'lsa SQLite
+    // "duplicate column name" beradi va bu NORMAL holat. Boshqa
+    // hech narsa o'chirilmaydi, o'zgartirilmaydi — faqat qo'shiladi.
+    await env.DB.prepare(
+      `ALTER TABLE content_comments ADD COLUMN parent_id INTEGER`
+    ).run().catch(() => {});
     schemaReady = env.DB.batch([
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS "content_comments" (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -77,10 +97,16 @@ async function ensureSchema(env) {
         user_id INTEGER NOT NULL,
         author_code TEXT NOT NULL DEFAULT '',
         body TEXT NOT NULL,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+        -- JAVOB BO'LSA — OTA IZOH ID'si. Bir qavat: javobga javob
+        -- yozib bo'lmaydi (pastda tekshiriladi). Instagram ham
+        -- shunday: ikki qavatdan chuquri o'qilmay qoladi.
+        parent_id INTEGER
       )`),
       // Asosiy so'rov: "shu kontentning izohlari, yangisi yuqorida".
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_comments_target ON content_comments(target_kind, target_id, created_at DESC)`),
+      // Javoblarni ota izoh bo'yicha yig'ish uchun.
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_comments_parent ON content_comments(parent_id)`),
       // "Mening izohlarim" va o'chirish tekshiruvi uchun.
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_comments_user ON content_comments(user_id)`),
       // Reels'dagi kompaniya post/story like'lari. Shaxsiy kontentning
@@ -216,6 +242,16 @@ export async function targetOwner(env, kind, id) {
     ).bind(id).first();
     return row ? { ok: true, ownerUserId: Number(row.user_id) || 0, ownerCode: String(row.code || '') } : { ok: false };
   }
+  // IZOHNING O'ZI — like qo'yish uchun. O'chirilgan izoh topilmaydi,
+  // ya'ni unga like ham qo'yib bo'lmaydi.
+  if (kind === 'comment') {
+    const row = await env.DB.prepare(
+      `SELECT user_id, author_code FROM content_comments WHERE id = ? AND ${ALIVE}`
+    ).bind(id).first();
+    return row
+      ? { ok: true, ownerUserId: Number(row.user_id) || 0, ownerCode: String(row.author_code || '') }
+      : { ok: false };
+  }
   return { ok: false };
 }
 
@@ -277,6 +313,12 @@ const rowToComment = (r, viewerId, H) => ({
   // Ilova "o'chirish" tugmasini shu bayroqqa qarab ko'rsatadi —
   // huquqni BARIBIR server tekshiradi, bu faqat ko'rinish uchun.
   mine: !!viewerId && Number(r.user_id) === Number(viewerId),
+  // Javob bo'lsa — ota izoh ID'si, aks holda 0.
+  parentId: Number(r.parent_id) || 0,
+  // Izohga qo'yilgan like'lar. `likes` har doim qaytadi (0 bo'lsa
+  // ham), `liked` esa faqat ko'rayotgan odam uchun.
+  likes: Number(r.likes) || 0,
+  liked: !!r.liked,
 });
 
 async function countFor(env, kind, id) {
@@ -354,7 +396,7 @@ export async function handle(request, env, url, H) {
   if (likeMatch && (request.method === 'GET' || request.method === 'POST')) {
     const kind = likeMatch[1];
     const id = Number(likeMatch[2]);
-    if (!KINDS.includes(kind)) return H.json({ error: 'bad_kind' }, 422);
+    if (!LIKE_KINDS.includes(kind)) return H.json({ error: 'bad_kind' }, 422);
     await ensureSchema(env);
 
     const target = await targetOwner(env, kind, id);
@@ -423,18 +465,54 @@ export async function handle(request, env, url, H) {
     //
     // MUALLIF NOMI JOIN ORQALI: izoh yozilgandan keyin odam ismini
     // o'zgartirsa, eski izohlarda ESKI ism qolib ketmasin.
+    // TARTIB: MAVZU BO'YICHA, JAVOB OTASI BILAN BIRGA.
+    //
+    // Oddiy "yangisi yuqorida" tartibida javob otasidan ajralib,
+    // sahifa chegarasida otasisiz qolib ketishi mumkin edi — ilova
+    // uni qayerga qo'yishni bilmasdi.
+    //
+    // `COALESCE(parent_id, id)` — javob uchun otasining ID'si,
+    // oddiy izoh uchun o'zining ID'si. Shu bo'yicha kamayish
+    // tartibida saralaymiz: mavzular yangisidan eskisiga, har
+    // mavzu ichida esa ota birinchi, javoblar ketma-ket.
     const rows = await env.DB.prepare(
       `SELECT cc.*, c.name AS name, c.avatar_url AS avatar_url
          FROM content_comments cc
          LEFT JOIN cards c ON c.code = cc.author_code
         WHERE cc.target_kind = ? AND cc.target_id = ? AND cc.${ALIVE}
-        ORDER BY cc.created_at DESC, cc.id DESC
+        ORDER BY COALESCE(cc.parent_id, cc.id) DESC, cc.id ASC
         LIMIT ? OFFSET ?`
     ).bind(kind, id, limit + 1, (page - 1) * limit).all();
 
     const all = rows.results || [];
+    const page_ = all.slice(0, limit);
+
+    // IZOH LIKE'LARI — BITTA SO'ROVDA.
+    //
+    // Har izoh uchun alohida so'rov yuborilsa, yigirmata izohli
+    // postda yigirmata qo'shimcha so'rov bo'lardi.
+    if (page_.length) {
+      const ids = page_.map((r) => Number(r.id));
+      const marks = ids.map(() => '?').join(',');
+      const counts = await env.DB.prepare(
+        `SELECT target_id, COUNT(*) AS n,
+                MAX(CASE WHEN user_id = ? THEN 1 ELSE 0 END) AS liked
+           FROM content_likes
+          WHERE target_kind = 'comment' AND target_id IN (${marks})
+          GROUP BY target_id`
+      ).bind(viewerId || 0, ...ids).all();
+      const byId = new Map(
+        (counts.results || []).map((r) => [Number(r.target_id), r]),
+      );
+      for (const r of page_) {
+        const hit = byId.get(Number(r.id));
+        r.likes = hit ? Number(hit.n) : 0;
+        r.liked = hit ? !!hit.liked : false;
+      }
+    }
+
     return H.json({
-      comments: all.slice(0, limit).map((r) => rowToComment(r, viewerId, H)),
+      comments: page_.map((r) => rowToComment(r, viewerId, H)),
       hasMore: all.length > limit,
       total: await countFor(env, kind, id),
     });
@@ -487,15 +565,39 @@ export async function handle(request, env, url, H) {
       return H.json({ error: 'too_many_requests' }, 429);
     }
 
-    const body = cleanBody((await readJson(request)).body);
+    const payload = await readJson(request);
+    const body = cleanBody(payload.body);
     if (!body) return H.json({ error: 'empty' }, 422);
+
+    // JAVOB — BIR QAVAT.
+    //
+    // Ota izoh AYNAN shu kontentga tegishli bo'lishi va o'zi javob
+    // BO'LMASLIGI shart. Ikkinchi shart bo'lmasa, javobga javob
+    // yozilib zanjir cho'zilardi va ilovada u o'qilmay qolardi.
+    //
+    // Begona kontentning izohiga javob yozib bo'lmaydi: `parent`
+    // so'rovi `target_kind`/`target_id` bilan cheklangan. Ya'ni
+    // qo'lda yuborilgan so'rov ham izohni boshqa post ostiga
+    // ko'chira olmaydi.
+    let parentId = Number(payload.parentId) || 0;
+    if (parentId) {
+      const parent = await env.DB.prepare(
+        `SELECT id, user_id, parent_id FROM content_comments
+          WHERE id = ? AND target_kind = ? AND target_id = ? AND ${ALIVE}`
+      ).bind(parentId, kind, id).first();
+      if (!parent) return H.json({ error: 'parent_not_found' }, 404);
+      if (Number(parent.parent_id) > 0) {
+        return H.json({ error: 'nested_reply_not_allowed' }, 422);
+      }
+      parentId = Number(parent.id);
+    }
 
     const author = await authorOf(env, user.id);
     const now = H.nowTs();
     const ins = await env.DB.prepare(
-      `INSERT INTO content_comments (target_kind, target_id, user_id, author_code, body, created_at)
-       VALUES (?,?,?,?,?,?) RETURNING id`
-    ).bind(kind, id, user.id, author.code, body, now).first();
+      `INSERT INTO content_comments (target_kind, target_id, user_id, author_code, body, created_at, parent_id)
+       VALUES (?,?,?,?,?,?,?) RETURNING id`
+    ).bind(kind, id, user.id, author.code, body, now, parentId || null).first();
 
     // Bildirishnoma — izoh YOZILGANDAN keyin, javobdan oldin.
     //
@@ -506,8 +608,20 @@ export async function handle(request, env, url, H) {
     //
     // Xatosi yutiladi: bildirishnoma yozilmagani uchun odamning
     // izohi yo'qolib ketishi mumkin emas.
+    // JAVOB BO'LSA — XABAR OTA IZOH MUALLIFIGA.
+    //
+    // Aks holda javob kontent egasiga ketardi va o'ziga savol
+    // berilgan odam bu haqda umuman bilmasdi. Kontent egasi ham,
+    // ota izoh muallifi ham bitta odam bo'lsa — bitta xabar.
+    let recipient = target.ownerUserId;
+    if (parentId) {
+      const pa = await env.DB.prepare(
+        `SELECT user_id FROM content_comments WHERE id = ?`
+      ).bind(parentId).first();
+      if (pa) recipient = Number(pa.user_id) || recipient;
+    }
     await createNotification(env, {
-      recipientUserId: target.ownerUserId,
+      recipientUserId: recipient,
       actorUserId: user.id,
       kind: 'comment',
       targetType: 'comment',
@@ -525,6 +639,9 @@ export async function handle(request, env, url, H) {
         name: author.name,
         avatarUrl: author.avatarUrl,
         body,
+        parentId,
+        likes: 0,
+        liked: false,
         createdAt: tsMs(H, now) || Date.now(),
         mine: true,
       },

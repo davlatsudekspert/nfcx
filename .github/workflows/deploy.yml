@@ -80,6 +80,11 @@ jobs:
         run: node scripts/test-notifications.mjs
       - name: Izoh moderatsiyasi — soft-delete va dalil arxivi
         run: node scripts/test-comment-moderation.mjs
+      # Izohga JAVOB va izohga LIKE. Javob bir qavat, begona
+      # kontentning izohiga javob yozib bo'lmaydi, o'chirilganga
+      # na javob na like, xabar esa ota izoh muallifiga ketadi.
+      - name: Izoh mavzulari — javob va like
+        run: node scripts/test-comment-threads.mjs
       - name: NFCSTORE FEATURED — slot faqat haqiqiy to'lovdan keyin yonadi
         run: node scripts/test-featured.mjs
       # Shaxsiy NFC ID xaridi: narxni SERVER hisoblaydi, bitta kodni
