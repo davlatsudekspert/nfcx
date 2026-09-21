@@ -11,6 +11,7 @@ import { useLanguage } from '../lib/i18n.jsx';
 import ThemeSwitcher from '../components/ThemeSwitcher.jsx';
 import logo from '../assets/logo-128.png';
 import '../company-system.css';
+import Comments from '../components/Comments.jsx';
 
 const fallbackCover = '/business-assets/construction-hero.jpg';
 
@@ -106,6 +107,12 @@ function CompanyPosts({ posts, t }) {
               ? <video src={p.videoUrl} controls playsInline preload="none" />
               : <img src={p.imageUrl} alt={p.caption || ''} loading="lazy" />}
             {p.caption && <p>{p.caption}</p>}
+            {/* IZOHLAR — biznes uchun ENG MUHIM joy.
+                Mijoz "narxi qancha?" degan savolni telefonda
+                yozadi; egasi kompyuterda ishlaydi. Izoh saytda
+                ko'rinmasa, o'sha savol javobsiz qoladi — ya'ni
+                har bir savol yo'qolgan mijoz. */}
+            <Comments kind="company_post" id={p.id} initialCount={p.commentCount || 0} />
           </article>
         ))}
       </div>
