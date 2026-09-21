@@ -4,7 +4,14 @@
     <uses-feature android:name="android.hardware.nfc" android:required="false"/>
 
     <application
-        android:label="NFCSTORE Nova"
+        <!-- TELEFONDA KO'RINADIGAN NOM — "NFCSTORE".
+             "Nova" ichki loyiha nomi edi va u foydalanuvchiga hech
+             narsa demaydi. Do'konda va telefon ekranida brend
+             turishi kerak.
+             `applicationId` (uz.nfcstore.nova) O'ZGARMAYDI: uni
+             o'zgartirish yangi ilova yaratish va o'rnatilganlarni
+             yo'qotish degani. -->
+        android:label="NFCSTORE"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="false">
