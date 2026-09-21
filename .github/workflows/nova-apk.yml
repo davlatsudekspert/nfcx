@@ -99,6 +99,16 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: node scripts/test-nova-api-parity.mjs
 
+      # ── ILOVA NOMI VA PAKET ID ──────────────────────────────────
+      #
+      # Bu tekshiruv `deploy.yml` da EMAS, ataylab: u `main` da
+      # ishlaydi, `main` da esa `mobile_nova/` yo'q va test
+      # "fayl topilmadi" bilan yiqilib, saytning deployini
+      # to'sib qo'yardi. Ikkala ilova ham SHU branchda bor.
+      - name: Ikki ilovaning nomi va paket ID'si
+        working-directory: ${{ github.workspace }}
+        run: node scripts/test-app-identity.mjs
+
       # HAQIQIY IMZO — faqat sozlangan bo'lsa.
       #
       # Uchta secret kerak (Settings -> Secrets and variables ->

@@ -84,8 +84,6 @@ jobs:
         run: node scripts/test-featured.mjs
       - name: Admin "NFCSTORE ILOVASI" — tugmalar haqiqatdan ishlaydimi
         run: node scripts/test-admin-nova-tab.mjs
-      - name: Ikki ilovaning nomi va paket ID'si
-        run: node scripts/test-app-identity.mjs
 
       - name: Worker yiqilsa sabab ko'rinadimi
         run: node scripts/test-worker-error-visibility.mjs
