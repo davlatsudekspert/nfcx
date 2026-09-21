@@ -113,6 +113,92 @@ jobs:
             fail=1
           fi
 
+          echo "── NFC ID bozori (ilovadagi qidirish/katalog/xarid) ──"
+          # Darajalar va narxlar. Ilova katalogni AYNAN shu javobdan
+          # chizadi — narx ilovada yozilmagan, shuning uchun bu
+          # endpoint yiqilsa katalog bo'sh qoladi.
+          out=$(curl -sS --max-time 25 -w '\n<<<%{http_code}>>>' \
+            -H 'accept: application/json' "https://nfcstore.uz/api/settings/id-pricing" || echo '<<<000>>>')
+          code="${out##*<<<}"; code="${code%%>>>*}"
+          body="${out%<<<*}"
+          if [ "$code" = "200" ] && printf '%s' "$body" | grep -q '"tiers"'; then
+            echo "OK    200  /api/settings/id-pricing"
+            echo "      javob: $(printf '%s' "$body" | tr -d '\r\n' | cut -c1-240)"
+          else
+            echo "XATO  $code  /api/settings/id-pricing"
+            echo "      tana: $(printf '%s' "$body" | tr -d '\r\n' | cut -c1-160)"
+            fail=1
+          fi
+
+          # BAND KOD — egasi bor, sotuvda emas. Ilovadagi qidiruv
+          # "Sotilgan" deb ko'rsatishi shunga tayanadi.
+          out=$(curl -sS --max-time 25 -w '\n<<<%{http_code}>>>' \
+            -H 'accept: application/json' "https://nfcstore.uz/api/records/$CODE/quote" || echo '<<<000>>>')
+          code="${out##*<<<}"; code="${code%%>>>*}"
+          body="${out%<<<*}"
+          if [ "$code" = "200" ] && printf '%s' "$body" | grep -q '"taken":true'; then
+            echo "OK    200  /api/records/$CODE/quote (taken)"
+          else
+            echo "XATO  $code  /api/records/$CODE/quote"
+            echo "      tana: $(printf '%s' "$body" | tr -d '\r\n' | cut -c1-160)"
+            fail=1
+          fi
+
+          # BO'SH KOD — narx ko'rinishi va hech narsa BAND
+          # QILINMASLIGI kerak. Bu GET, ya'ni buyurtma yaratmaydi.
+          out=$(curl -sS --max-time 25 -w '\n<<<%{http_code}>>>' \
+            -H 'accept: application/json' "https://nfcstore.uz/api/records/QZX742/quote" || echo '<<<000>>>')
+          code="${out##*<<<}"; code="${code%%>>>*}"
+          body="${out%<<<*}"
+          if [ "$code" = "200" ] && printf '%s' "$body" | grep -q '"amount"'; then
+            echo "OK    200  /api/records/QZX742/quote (narx bor)"
+            echo "      javob: $(printf '%s' "$body" | tr -d '\r\n' | cut -c1-200)"
+          else
+            echo "XATO  $code  /api/records/QZX742/quote"
+            echo "      tana: $(printf '%s' "$body" | tr -d '\r\n' | cut -c1-160)"
+            fail=1
+          fi
+
+          # SESSIYASIZ XARID QILIB BO'LMASLIGI kerak. 401 — to'g'ri.
+          # 2xx bo'lsa — jiddiy: begona odam kod band qila olardi.
+          out=$(curl -sS --max-time 25 -X POST -o /dev/null -w '%{http_code}' \
+            -H 'content-type: application/json' --data '{"name":"smoke"}' \
+            "https://nfcstore.uz/api/records/QZX742" || echo 000)
+          case "$out" in
+            401) echo "OK    401  POST /api/records/QZX742 (sessiya talab qiladi)" ;;
+            2*)  echo "XATO  $out  POST /api/records/QZX742 — SESSIYASIZ BAND QILINDI, jiddiy"; fail=1 ;;
+            404) echo "XATO  404  POST /api/records/:code — deploy qilinmagan"; fail=1 ;;
+            *)   echo "XATO  $out  POST /api/records/QZX742 — kutilmagan javob"; fail=1 ;;
+          esac
+
+          echo "── Saytdagi to'lov oqimi buzilmadimi ──"
+          out=$(curl -sS --max-time 25 -w '\n<<<%{http_code}>>>' \
+            -H 'accept: application/json' "https://nfcstore.uz/api/settings/payments-enabled" || echo '<<<000>>>')
+          code="${out##*<<<}"; code="${code%%>>>*}"
+          if [ "$code" = "200" ]; then
+            echo "OK    200  /api/settings/payments-enabled — $(printf '%s' "${out%<<<*}" | tr -d '\r\n' | cut -c1-120)"
+          else
+            echo "XATO  $code  /api/settings/payments-enabled"; fail=1
+          fi
+
+          out=$(curl -sS --max-time 25 -w '\n<<<%{http_code}>>>' \
+            -H 'accept: application/json' "https://nfcstore.uz/api/settings/physical-nfc-pricing" || echo '<<<000>>>')
+          code="${out##*<<<}"; code="${code%%>>>*}"
+          if [ "$code" = "200" ] && printf '%s' "${out%<<<*}" | grep -q 'pricePerUnit'; then
+            echo "OK    200  /api/settings/physical-nfc-pricing"
+          else
+            echo "XATO  $code  /api/settings/physical-nfc-pricing"; fail=1
+          fi
+
+          # Buyurtmalar — kirmasdan 200 + bo'sh ro'yxat (legacy
+          # xulq). 404/5xx bo'lsa "To'lovlar tarixi" ekrani o'ladi.
+          out=$(curl -sS --max-time 25 -o /dev/null -w '%{http_code}' \
+            -H 'accept: application/json' "https://nfcstore.uz/api/orders" || echo 000)
+          case "$out" in
+            200|401) echo "OK    $out  /api/orders" ;;
+            *) echo "XATO  $out  /api/orders"; fail=1 ;;
+          esac
+
           echo "── Yaroqsiz kod 500 BERMASLIGI kerak ──"
           # Yo'q profil uchun toza 404/200 (SPA) bo'lishi mumkin,
           # lekin 5xx — hech qachon.
