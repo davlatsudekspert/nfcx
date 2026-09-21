@@ -24,6 +24,11 @@ const { env } = makeEnv({
   PAYMENTS_ENABLED: 'true',
   PAYME_MERCHANT_ID: 'test-merchant',
   PAYME_KEY: 'test-key',
+  // Click ham yoqilgan: 9-bo'lim qaytish manzilini tekshiradi.
+  CLICK_SERVICE_ID: 'test-service',
+  CLICK_SECRET_KEY: 'test-click-secret',
+  CLICK_MERCHANT_ID: 'test-click-merchant',
+  CLICK_RETURN_URL: 'https://nfcstore.uz/tolovlar',
 });
 await ensureCoreSchema(env);
 await seedBasic(env);
@@ -157,6 +162,38 @@ let orderId = null;
   check('8) tarixda kod va narx', [mine.code, Number(mine.price)],
     ['QWE321', freeQuote.amount]);
   check('8) kutilayotganiga to‘lov havolasi', typeof mine.payLink, 'string');
+}
+
+// ===== 9) CLICK — QAYTISH MANZILI HAVOLAGA TUSHADI =====
+//
+// 2026-09-15 dagi Worker ko'chishida `CLICK_RETURN_URL` yo'qolgan
+// edi va Click'da to'lovni tugatgan odam saytga umuman qaytmasdi.
+// Kod uni `return_url` sifatida qo'shadi, lekin FAQAT qiymat
+// mavjud bo'lsa — ya'ni yo'qolishi JIM bo'lardi.
+{
+  const res = await get('/api/orders', { cookie: cookie.user });
+  const order = ((await res.json()).orders || []).find((o) => o.id === orderId);
+  const click = order?.payLinks?.click || '';
+  checkTrue('9) Click havolasi bor', click.startsWith('https://my.click.uz/'));
+
+  const u = new URL(click);
+  check('9) qaytish manzili havolada', u.searchParams.get('return_url'),
+    'https://nfcstore.uz/tolovlar');
+  // Summa va buyurtma raqami ham havolada — ikkalasi SERVERDAN.
+  check('9) summa va buyurtma havolada',
+    [u.searchParams.get('amount'), u.searchParams.get('transaction_param')],
+    [String(freeQuote.amount), String(orderId)]);
+
+  // Qiymat olib tashlansa havola baribir quriladi, lekin
+  // `return_url` YO'QOLADI — aynan shu jim uzilish.
+  const saved = env.CLICK_RETURN_URL;
+  delete env.CLICK_RETURN_URL;
+  const res2 = await get('/api/orders', { cookie: cookie.user });
+  const order2 = ((await res2.json()).orders || []).find((o) => o.id === orderId);
+  const click2 = new URL(order2.payLinks.click);
+  check('9) sozlama yo\u2018q -> qaytish manzili yo\u2018q',
+    click2.searchParams.get('return_url'), null);
+  env.CLICK_RETURN_URL = saved;
 }
 
 done();

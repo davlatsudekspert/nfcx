@@ -181,9 +181,28 @@
   // vidjet o'zini umuman ko'rsatmaydi — sayt "buzuq" ko'rinmaydi.
   // Ixtiyoriy: ASSISTANT_MODEL (standart gemini-3.6-flash),
   // ASSISTANT_OFF="1" — kalit turgan holda vidjetni vaqtincha o'chirish.
+  // CLICK'DAN QAYTISH MANZILI.
+  //
+  // 2026-09-15 da Worker almashganda `CLICK_RETURN_URL` ko'chmay
+  // qoldi: u eski `nfcstore-api` da secret sifatida turardi va
+  // Cloudflare secret qiymatini qaytarmagani uchun undan nusxa
+  // olishning iloji yo'q. Natijada Click'da to'lovni tugatgan odam
+  // saytga umuman qaytmasdi — Click sahifasida qolib ketardi.
+  //
+  // BU MAXFIY QIYMAT EMAS — oddiy ommaviy manzil, u har bir
+  // checkout havolasida ochiq ko'rinadi. Shuning uchun secret emas,
+  // shu yerda `vars` ichida: repoda ko'rinib turadi, ko'rib chiqish
+  // mumkin va keyingi Worker ko'chishida yana yo'qolmaydi.
+  //
+  // `/tolovlar` tanlandi (`src/pages/PaymentsPage.jsx`) — u
+  // `dbListMyOrders` bilan buyurtmalar ro'yxatini ko'rsatadi, ya'ni
+  // odam to'lovdan keyin AYNAN o'z buyurtmasining holatini ko'radi.
+  // Holatni baribir SERVER aytadi: qaytish manzili hech qachon
+  // "to'landi" degani emas.
   "vars": {
     "PAYMENTS_ENABLED": "true",
     "PAYME_SANDBOX": "false",
-    "PAYME_CHECKOUT_DOMAIN": "checkout.paycom.uz"
+    "PAYME_CHECKOUT_DOMAIN": "checkout.paycom.uz",
+    "CLICK_RETURN_URL": "https://nfcstore.uz/tolovlar"
   }
 }
