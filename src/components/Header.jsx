@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { navigate, usePathRoute } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import { dbListNotifications, dbUnreadCount, dbList } from '../lib/db.js';
@@ -366,7 +367,15 @@ export default function Header() {
         </div>
       )}
 
-      {iosHint && (
+      {/* `createPortal` — SARLAVHADAN TASHQARIGA (2026-09).
+          Sarlavhada `backdrop-blur` bor; `backdrop-filter` qo'yilgan
+          element ichidagi `position: fixed` bolalar EKRANGA emas,
+          o'sha elementga nisbatan o'lchanadi. Ya'ni bu oyna
+          "butun ekran" o'rniga 64px li sarlavha ichiga siqilib
+          qolardi — aynan iPhone'da, ya'ni u faqat shu yerda
+          ko'rsatiladigan qurilmada. `document.body` ga chiqarilgach,
+          hech qanday o'ram uni kesmaydi. */}
+      {iosHint && createPortal((
         <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 p-4 sm:items-center" onClick={() => setIosHint(null)}>
           <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-base-200 p-5 text-sm" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-2 text-base font-bold"><IconInstall /> {t('Ilovani o‘rnatish')}</div>
@@ -384,7 +393,7 @@ export default function Header() {
             <button className="btn btn-gold btn-block mt-4" onClick={() => setIosHint(null)}>{t('Tushundim')}</button>
           </div>
         </div>
-      )}
+      ), document.body)}
     </header>
   );
 }
