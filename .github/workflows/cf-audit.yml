@@ -1,0 +1,183 @@
+# CLOUDFLARE AUDITI — FAQAT O'QISH.
+#
+# NIMA UCHUN BU FAYL BOR. Ro'yxatdan o'tishda emailga kod kelmay
+# qoldi: server `channel: 'none'` qaytaryapti, ya'ni
+# `emailEnabledD1()` false. Kod tomondan hech narsa o'zgarmagan —
+# bu shart repodagi ENG BIRINCHI commitdan beri bitma-bit bir xil.
+# Demak sabab sozlamada, ya'ni Cloudflare tomonda.
+#
+# Bu workflow HECH NARSANI O'ZGARTIRMAYDI. U faqat savol beradi:
+#   - qaysi Worker haqiqatan `nfcstore.uz` ga xizmat qilyapti;
+#   - o'sha Worker'da qanday secret NOMLARI bor;
+#   - `nfcstore-api` (eski nishon) da ular bormi;
+#   - marshrutlar va custom domain qayerni ko'rsatadi;
+#   - DNS'da Resend uchun SPF/DKIM yozuvlari bormi.
+#
+# MAXFIYLIK: Cloudflare API secret QIYMATLARINI umuman qaytarmaydi
+# — faqat nom va tur (`secret_text`). Shunga qaramay quyida har bir
+# javob SUZGICHDAN o'tkaziladi: faqat `name` va `type` chiqariladi,
+# oddiy `vars` ning qiymati ham yozilmaydi.
+name: Cloudflare auditi (faqat o'qish)
+
+on:
+  workflow_dispatch:
+  # Shu faylning O'ZI o'zgarganda ishga tushadi. `workflow_dispatch`
+  # tugmasi faqat `main` dagi fayldan paydo bo'ladi, audit esa ishchi
+  # branchdan kerak. Boshqa har qanday push'da ishlamaydi.
+  push:
+    paths:
+      - '.github/workflows/cf-audit.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    env:
+      CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: 31c4b3d8ece4b65de515debc4552334a
+    steps:
+      - name: Token bormi
+        run: |
+          if [ -z "$CF_API_TOKEN" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN secret yo'q."
+            exit 1
+          fi
+          echo "Token bor."
+
+      - name: Audit
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess
+
+          TOKEN = os.environ['CF_API_TOKEN']
+          ACC = os.environ['CF_ACCOUNT']
+          V4 = 'https://api.cloudflare.com/client/v4'
+
+          def api(url):
+              out = subprocess.run(
+                  ['curl', '-sS', '-H', f'Authorization: Bearer {TOKEN}', url],
+                  capture_output=True, text=True).stdout
+              try:
+                  return json.loads(out or '{}')
+              except Exception:
+                  return {'success': False, 'errors': [{'message': out[:200]}]}
+
+          def why(r):
+              return json.dumps(r.get('errors'), ensure_ascii=False)[:300]
+
+          WORKERS = ['nfcstore-uz', 'nfcstore-api']
+
+          print('=' * 70)
+          print('1) HISOBDAGI WORKERLAR')
+          print('=' * 70)
+          r = api(f'{V4}/accounts/{ACC}/workers/scripts')
+          if r.get('success'):
+              for s in (r.get('result') or []):
+                  print(f"  {s.get('id'):<24} o'zgartirilgan: {s.get('modified_on')}")
+          else:
+              print('  RAD ETILDI:', why(r))
+
+          print()
+          print('=' * 70)
+          print('2) HAR BIR WORKERNING BOG\'LANISHLARI VA SECRET NOMLARI')
+          print('   (qiymatlar EMAS — faqat nom va tur)')
+          print('=' * 70)
+          for w in WORKERS:
+              print(f'\n--- {w} ---')
+              r = api(f'{V4}/accounts/{ACC}/workers/scripts/{w}/settings')
+              if not r.get('success'):
+                  print('  sozlama o\'qilmadi:', why(r))
+                  continue
+              binds = (r.get('result') or {}).get('bindings') or []
+              if not binds:
+                  print('  bog\'lanish yo\'q')
+              for b in binds:
+                  t = b.get('type', '?')
+                  n = b.get('name', '?')
+                  # Qiymat HECH QACHON chiqarilmaydi.
+                  extra = ''
+                  if t == 'd1':
+                      extra = f"  (db: {b.get('database_name') or b.get('name')})"
+                  elif t == 'r2_bucket':
+                      extra = f"  (bucket: {b.get('bucket_name')})"
+                  elif t == 'plain_text':
+                      extra = '  (oddiy var — qiymati yozilmadi)'
+                  print(f'  {t:<16} {n}{extra}')
+
+              # Secretlar alohida ro'yxatda ham keladi.
+              rs = api(f'{V4}/accounts/{ACC}/workers/scripts/{w}/secrets')
+              if rs.get('success'):
+                  names = sorted((x.get('name') or '?') for x in (rs.get('result') or []))
+                  print(f"  SECRETLAR ({len(names)}): {', '.join(names) or 'yo‘q'}")
+              else:
+                  print('  secret ro\'yxati o\'qilmadi:', why(rs))
+
+              for key in ('RESEND_API_KEY', 'RESEND_FROM'):
+                  have = any((b.get('name') == key) for b in binds)
+                  print(f"  >> {key:<16} {'BOR' if have else 'YO‘Q'}")
+
+          print()
+          print('=' * 70)
+          print('3) OXIRGI DEPLOYLAR')
+          print('=' * 70)
+          for w in WORKERS:
+              print(f'\n--- {w} ---')
+              r = api(f'{V4}/accounts/{ACC}/workers/scripts/{w}/deployments')
+              if not r.get('success'):
+                  print('  o\'qilmadi:', why(r))
+                  continue
+              for d in ((r.get('result') or {}).get('deployments') or [])[:5]:
+                  src = (d.get('annotations') or {}).get('workers/triggered_by', '?')
+                  print(f"  {d.get('created_on')}  {src:<12} id={d.get('id','')[:8]}")
+
+          print()
+          print('=' * 70)
+          print('4) CUSTOM DOMAIN VA MARSHRUTLAR')
+          print('=' * 70)
+          r = api(f'{V4}/accounts/{ACC}/workers/domains')
+          if r.get('success'):
+              for x in (r.get('result') or []):
+                  print(f"  domain  {x.get('hostname'):<22} -> {x.get('service')}")
+          else:
+              print('  domenlar o\'qilmadi:', why(r))
+
+          z = api(f'{V4}/zones?name=nfcstore.uz')
+          zid = ((z.get('result') or [{}])[0] or {}).get('id')
+          if not zid:
+              print('  zona topilmadi:', why(z))
+          else:
+              rr = api(f'{V4}/zones/{zid}/workers/routes')
+              if rr.get('success'):
+                  rows = rr.get('result') or []
+                  if not rows:
+                      print('  marshrut yo\'q (hammasi custom domain orqali)')
+                  for x in rows:
+                      print(f"  route   {x.get('pattern'):<22} -> {x.get('script')}")
+              else:
+                  print('  marshrutlar o\'qilmadi:', why(rr))
+
+              print()
+              print('=' * 70)
+              print('5) DNS — RESEND UCHUN SPF/DKIM')
+              print('=' * 70)
+              dr = api(f'{V4}/zones/{zid}/dns_records?per_page=200')
+              if not dr.get('success'):
+                  print('  DNS o\'qilmadi:', why(dr))
+              else:
+                  rows = dr.get('result') or []
+                  hits = []
+                  for x in rows:
+                      name = (x.get('name') or '').lower()
+                      content = (x.get('content') or '')
+                      low = content.lower()
+                      if ('_domainkey' in name or 'resend' in name or 'resend' in low
+                              or 'v=spf1' in low or '_dmarc' in name or 'send.' in name):
+                          hits.append((x.get('type'), x.get('name'), content))
+                  if not hits:
+                      print('  Resend/SPF/DKIM yozuvi TOPILMADI')
+                  for t, n, c in hits:
+                      print(f'  {t:<6} {n:<40} {c[:90]}')
+                  print(f'  (zonada jami {len(rows)} ta yozuv)')
+          PY
