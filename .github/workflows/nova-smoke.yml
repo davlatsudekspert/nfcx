@@ -57,6 +57,20 @@ jobs:
           probe "/$CODE" 200
           probe "/$(printf '%s' "$CODE" | tr 'A-Z' 'a-z')" 200
 
+          echo "── Bildirishnoma API tirikmi ──"
+          # 401 — endpoint BOR va kirish talab qiladi (to'g'ri).
+          # 404 — deploy qilinmagan. 5xx — yiqilgan.
+          # Hech qanday token yuborilmaydi: bu faqat marshrut
+          # mavjudligini tekshiradi, ma'lumotga tegmaydi.
+          out=$(curl -sS --max-time 25 -o /dev/null -w '%{http_code}' \
+            -H 'accept: application/json' "https://nfcstore.uz/api/notifications" || echo 000)
+          case "$out" in
+            401) echo "OK    401  /api/notifications (endpoint bor, kirish talab qiladi)" ;;
+            404) echo "XATO  404  /api/notifications — deploy qilinmagan"; fail=1 ;;
+            5*)  echo "XATO  $out  /api/notifications — server xatosi"; fail=1 ;;
+            *)   echo "XATO  $out  /api/notifications — kutilmagan javob"; fail=1 ;;
+          esac
+
           echo "── Yaroqsiz kod 500 BERMASLIGI kerak ──"
           # Yo'q profil uchun toza 404/200 (SPA) bo'lishi mumkin,
           # lekin 5xx — hech qachon.
