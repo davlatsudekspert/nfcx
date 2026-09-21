@@ -646,5 +646,7 @@
   "idNameLabel": "Name on the card",
   "idSearchEmpty": "No such NFC ID",
   "themeNoir": "Noir",
-  "idSearchShort": "Find an ID"
+  "idSearchShort": "Find an ID",
+  "commentReply": "Reply",
+  "commentReplyingTo": "Replying to {name}"
 }

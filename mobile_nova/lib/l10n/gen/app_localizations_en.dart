@@ -1616,4 +1616,12 @@ class LEn extends L {
 
   @override
   String get idSearchShort => 'Find an ID';
+
+  @override
+  String get commentReply => 'Reply';
+
+  @override
+  String commentReplyingTo(String name) {
+    return 'Replying to $name';
+  }
 }

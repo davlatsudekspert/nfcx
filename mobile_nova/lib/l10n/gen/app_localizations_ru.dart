@@ -1609,4 +1609,12 @@ class LRu extends L {
 
   @override
   String get idSearchShort => 'Найти ID';
+
+  @override
+  String get commentReply => 'Ответить';
+
+  @override
+  String commentReplyingTo(String name) {
+    return 'Ответ $name';
+  }
 }

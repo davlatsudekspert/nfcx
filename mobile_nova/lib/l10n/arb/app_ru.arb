@@ -646,5 +646,7 @@
   "idNameLabel": "Имя на карте",
   "idSearchEmpty": "Такой NFC ID не найден",
   "themeNoir": "Нуар",
-  "idSearchShort": "Найти ID"
+  "idSearchShort": "Найти ID",
+  "commentReply": "Ответить",
+  "commentReplyingTo": "Ответ {name}"
 }

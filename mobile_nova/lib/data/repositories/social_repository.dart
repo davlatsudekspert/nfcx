@@ -268,10 +268,20 @@ class SocialRepository {
 
   /// Izoh yozish. Server uzunlikni 1000 belgi bilan cheklaydi va
   /// daqiqasiga 10 tadan ortiq izohni rad etadi.
-  Future<Result<Comment>> addComment(String kind, int id, String body) async {
+  /// Izoh yoki JAVOB yozish.
+  ///
+  /// `parentId` berilsa — javob. Server uni tekshiradi: ota izoh
+  /// AYNAN shu kontentga tegishli bo'lishi va o'zi javob bo'lmasligi
+  /// shart (bir qavat). Ya'ni bu yerdan zanjir cho'zib bo'lmaydi.
+  Future<Result<Comment>> addComment(
+    String kind,
+    int id,
+    String body, {
+    int parentId = 0,
+  }) async {
     final res = await _api.post<Map<String, dynamic>>(
       '/api/comments/$kind/$id',
-      {'body': body},
+      {'body': body, if (parentId > 0) 'parentId': parentId},
     );
     return res.map((j) =>
         Comment.fromJson(((j['comment'] ?? j) as Map).cast<String, dynamic>()));
@@ -283,6 +293,21 @@ class SocialRepository {
   /// o'chira oladi. Buni server tekshiradi.
   Future<Result<void>> deleteComment(int commentId) =>
       _api.delete<void>('/api/comments/$commentId');
+
+  /// Izohga like — bosilsa qo'yadi, qayta bosilsa oladi.
+  ///
+  /// Kontent like'lari bilan BIR XIL yo'l va bir xil jadval
+  /// (`content_likes`), faqat turi `comment`. Alohida tizim
+  /// yaratilmadi: sanoq, takrorlanmaslik va tezlik cheklovi
+  /// o'sha joyda allaqachon yozilgan.
+  Future<Result<({bool liked, int count})>> toggleCommentLike(int id) async {
+    final res = await _api
+        .post<Map<String, dynamic>>('/api/content-likes/comment/$id', const {});
+    return res.map((j) => (
+          liked: j['liked'] == true,
+          count: (j['count'] as num?)?.toInt() ?? 0,
+        ));
+  }
 
   /// Kashfiyot lentasi — barcha ommaviy postlar.
   /// Asosiy ekrandagi lenta — HAQIQIY postlar.

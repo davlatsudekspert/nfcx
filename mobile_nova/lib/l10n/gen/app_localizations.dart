@@ -3188,6 +3188,18 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'ID qidirish'**
   String get idSearchShort;
+
+  /// No description provided for @commentReply.
+  ///
+  /// In uz, this message translates to:
+  /// **'Javob berish'**
+  String get commentReply;
+
+  /// No description provided for @commentReplyingTo.
+  ///
+  /// In uz, this message translates to:
+  /// **'{name} ga javob'**
+  String commentReplyingTo(String name);
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

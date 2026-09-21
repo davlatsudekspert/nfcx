@@ -842,6 +842,9 @@ class Comment {
     this.text = '',
     this.mine = false,
     this.createdAt,
+    this.parentId = 0,
+    this.likes = 0,
+    this.liked = false,
   });
 
   final int id;
@@ -858,6 +861,29 @@ class Comment {
 
   final DateTime? createdAt;
 
+  /// Javob bo'lsa — ota izoh ID'si, aks holda 0. Server bir
+  /// qavatdan chuqur javobga ruxsat bermaydi.
+  final int parentId;
+
+  /// Izohga qo'yilgan like'lar soni va ko'rayotgan odamning holati.
+  final int likes;
+  final bool liked;
+
+  bool get isReply => parentId > 0;
+
+  Comment copyWith({int? likes, bool? liked}) => Comment(
+        id: id,
+        code: code,
+        authorName: authorName,
+        authorAvatar: authorAvatar,
+        text: text,
+        mine: mine,
+        createdAt: createdAt,
+        parentId: parentId,
+        likes: likes ?? this.likes,
+        liked: liked ?? this.liked,
+      );
+
   factory Comment.fromJson(Map<String, dynamic> j) => Comment(
         id: _i(j['id']),
         code: _s(j['code']),
@@ -866,6 +892,9 @@ class Comment {
         text: _s(j['text'] ?? j['body']),
         mine: _b(j['mine']),
         createdAt: _dt(j['createdAt']),
+        parentId: _i(j['parentId']),
+        likes: _i(j['likes']),
+        liked: _b(j['liked']),
       );
 }
 

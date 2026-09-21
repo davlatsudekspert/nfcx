@@ -1619,4 +1619,12 @@ class LUz extends L {
 
   @override
   String get idSearchShort => 'ID qidirish';
+
+  @override
+  String get commentReply => 'Javob berish';
+
+  @override
+  String commentReplyingTo(String name) {
+    return '$name ga javob';
+  }
 }

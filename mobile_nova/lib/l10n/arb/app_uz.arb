@@ -649,5 +649,14 @@
   "idPendingHint": "To‘lovni yakunlang — ID shundan keyin biriktiriladi.",
   "idNameLabel": "Kartadagi ism",
   "idSearchEmpty": "Bunday NFC ID topilmadi",
-  "idSearchShort": "ID qidirish"
+  "idSearchShort": "ID qidirish",
+  "commentReply": "Javob berish",
+  "commentReplyingTo": "{name} ga javob",
+  "@commentReplyingTo": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  }
 }
