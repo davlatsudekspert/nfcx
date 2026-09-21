@@ -80,6 +80,8 @@ jobs:
         run: node scripts/test-notifications.mjs
       - name: Izoh moderatsiyasi — soft-delete va dalil arxivi
         run: node scripts/test-comment-moderation.mjs
+      - name: NFCSTORE FEATURED — slot faqat haqiqiy to'lovdan keyin yonadi
+        run: node scripts/test-featured.mjs
 
       - name: Worker yiqilsa sabab ko'rinadimi
         run: node scripts/test-worker-error-visibility.mjs

@@ -17,6 +17,7 @@ import * as apiModeration from './api/moderation.js';
 import * as apiComments from './api/comments.js';
 import * as apiMarketplace from './api/marketplace.js';
 import * as apiNotifications from './api/notifications.js';
+import * as apiFeatured from './api/featured.js';
 
 // API javoblari standart holda KESHLANMAYDI.
 //
@@ -4121,6 +4122,38 @@ async function finalizePaidWebOrderD1(env, orderId) {
   if (order.kind === 'payme_test') {
     if (order.status === 'paid') return { ok: true, alreadyPaid: true };
     if (order.status !== 'pending') return { alreadyProcessed: true };
+    await setWebOrderStatusD1(env, order.id, 'paid');
+    return { ok: true };
+  }
+
+  // ── NFCSTORE FEATURED (kind='featured_slot') ─────────────────────
+  //
+  // Pullik ko'tarilgan slot. SHU YER — slotni yoqadigan YAGONA
+  // joy: mijozning so'rovi faqat "kutilmoqda" holatidagi buyurtma
+  // ochadi, yonishi esa Payme/Click tasdig'idan keyin, shu yerda
+  // bo'ladi.
+  //
+  // `payme_test` kabi UMUMIY mantiqdan OLDIN turadi. Pastdagi kod
+  // `order.code` ni sotib olinayotgan NFC kodi deb hisoblaydi va
+  // uning egasini qidiradi; FEATURED da esa `code` shunchaki
+  // e'lon egasining kartasi — u allaqachon o'sha odamniki, ya'ni
+  // umumiy tarmoq `code_taken` deb noto'g'ri rad etardi.
+  if (order.kind === 'featured_slot') {
+    if (order.status === 'paid') {
+      // Takroriy `PerformTransaction` — slot ikkinchi marta
+      // uzaytirilmaydi (`activateFromOrder` idempotent).
+      await apiFeatured.activateFromOrder(env, H, order);
+      return { ok: true, alreadyPaid: true };
+    }
+    if (order.status !== 'pending') return { alreadyProcessed: true };
+    const res = await apiFeatured.activateFromOrder(env, H, order);
+    if (!res.ok) {
+      // Slot topilmadi yoki holati mos emas. Pul olingan, shuning
+      // uchun buyurtma BARIBIR 'paid' deb belgilanadi va sabab
+      // logga chiqadi — aks holda Payme takror-takror urinardi va
+      // mijozning puli "muallaq" ko'rinardi.
+      console.error('featured slot yoqilmadi', order.id, res.reason);
+    }
     await setWebOrderStatusD1(env, order.id, 'paid');
     return { ok: true };
   }
@@ -9581,7 +9614,7 @@ const H = {
 // bilan tugashini tekshiradi — oxiriga qo'shilsa o'sha qo'riqchi
 // yiqiladi. Tartibning boshqa ahamiyati yo'q: har bir modul o'ziga
 // tegishli bo'lmagan yo'lga `null` qaytaradi.
-const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiMarketplace];
+const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiMarketplace];
 
 // Xavfsizlik header'lari — barcha javoblarga (statik va API). CSP ataylab faqat
 // framing/base/form/object ni cheklaydi (script/style ga tegmaydi — YouTube/Yandex

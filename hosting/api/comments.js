@@ -51,7 +51,7 @@
 
 import { createNotification } from './notifications.js';
 
-const KINDS = ['post', 'company_post', 'story', 'company_story'];
+export const KINDS = ['post', 'company_post', 'story', 'company_story'];
 
 // Izoh uzunligi. Instagram'da 2200 — bu yerda 1000 yetarli va
 // bitta izoh ekranni butunlay egallab ketmaydi.
@@ -180,7 +180,14 @@ function cleanBody(v) {
 /// o'chirish huquqini tekshirish uchun ham egasi kerak.
 ///
 /// Qaytadi: `{ ok, ownerUserId, ownerCode }` yoki `{ ok: false }`.
-async function targetOwner(env, kind, id) {
+/// KONTENT EGASI — to'rt turdagi kontent uchun bitta javob.
+///
+/// EKSPORT QILINGAN, chunki `featured.js` ham AYNAN shu savolni
+/// beradi: "bu postni ko'targan odam uning egasimi?". Nusxa
+/// olinsa, yangi kontent turi qo'shilganda biri yangilanmay
+/// qolardi va begona kontentni pullik slotga qo'yish mumkin
+/// bo'lardi.
+export async function targetOwner(env, kind, id) {
   if (kind === 'post') {
     const row = await env.DB.prepare(
       `SELECT p.code AS code, c.user_id AS user_id FROM posts p JOIN cards c ON c.code = p.code WHERE p.id = ?`
