@@ -143,27 +143,89 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     setState(() => _busy = false);
 
     res.when(
-      ok: (channel) => context.push(
-        Routes.registerVerify,
-        // Hisob BITTA so'rovda yaratiladi (`POST /api/auth/register`),
-        // shuning uchun parol va telefon kod ekraniga olib boriladi.
-        // Faqat xotirada — hech qayerga saqlanmaydi.
-        extra: VerifyArgs(
-          email: _email.text.trim(),
+      // KOD HECH QAYERGA YUBORILMAGAN — BOSHI BERK KO'CHA EDI.
+      //
+      // Server email xizmati o'chiq bo'lsa `channel: 'none'`
+      // qaytaradi (`hosting/api/auth.js` -> `requestRegisterCode`).
+      // Ilova esa baribir kod ekraniga olib borardi: odam hech
+      // qachon kelmaydigan olti raqamni kutib o'tirardi va
+      // ro'yxatdan o'ta olmasdi.
+      //
+      // Server QOIDASI YUMSHATILMAYDI. Aynan o'sha holatda
+      // `POST /api/auth/register` ning O'ZI kod so'ramaydi
+      // (`emailOn` false -> `email_code_required` tekshiruvi
+      // umuman bajarilmaydi). Ya'ni bu yerda kodsiz davom etish —
+      // serverning o'z qarorini bajarish, uni chetlab o'tish emas.
+      ok: (channel) {
+        if (channel == 'none' || channel.isEmpty) {
+          _registerWithoutCode();
+          return;
+        }
+        _goVerify(channel);
+      },
+      err: (e) => setState(() => _error = describeError(l, e)),
+    );
+  }
+
+  void _goVerify(String channel) {
+    context.push(
+      Routes.registerVerify,
+      // Hisob BITTA so'rovda yaratiladi (`POST /api/auth/register`),
+      // shuning uchun parol va telefon kod ekraniga olib boriladi.
+      // Faqat xotirada — hech qayerga saqlanmaydi.
+      extra: VerifyArgs(
+        email: _email.text.trim(),
+        name: _name.text.trim(),
+        phone: Validate.normalizePhone(_phone.text),
+        password: _password.text,
+        // Kod qaysi kanal orqali ketgani — kod ekrani shunga
+        // qarab HAQIQATNI yozadi. Ilgari u har doim
+        // "emailingizga yuborildi" derdi.
+        channel: channel,
+        // Rozilik kod ekraniga olib boriladi: hisob AYNAN
+        // o'sha yerda yaratiladi va server `tosAccepted` ni
+        // shu so'rovda kutadi.
+        tosAccepted: _tos,
+      ),
+    );
+  }
+
+  /// Email xizmati o'chiq bo'lgandagi yo'l: hisob DARHOL yaratiladi.
+  ///
+  /// Kod bo'sh yuboriladi. Agar ikki so'rov orasida email xizmati
+  /// YOQILGAN bo'lsa, server `email_code_required` qaytaradi — o'shanda
+  /// odatdagi kod ekraniga o'tamiz. Ya'ni tasdiqlash talabi hech
+  /// qachon chetlab o'tilmaydi, qaror har doim serverniki.
+  Future<void> _registerWithoutCode() async {
+    final l = L.of(context);
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final res = await ref.read(authRepositoryProvider).register(
           name: _name.text.trim(),
+          email: _email.text.trim(),
           phone: Validate.normalizePhone(_phone.text),
           password: _password.text,
-          // Kod qaysi kanal orqali ketgani — kod ekrani shunga
-          // qarab HAQIQATNI yozadi. Ilgari u har doim
-          // "emailingizga yuborildi" derdi.
-          channel: channel,
-          // Rozilik kod ekraniga olib boriladi: hisob AYNAN
-          // o'sha yerda yaratiladi va server `tosAccepted` ni
-          // shu so'rovda kutadi.
+          code: '',
           tosAccepted: _tos,
-        ),
-      ),
-      err: (e) => setState(() => _error = describeError(l, e)),
+        );
+    if (!mounted) return;
+    setState(() => _busy = false);
+
+    await res.when(
+      ok: (user) async {
+        await ref.read(sessionProvider.notifier).adopt(user);
+        if (!mounted) return;
+        context.go(Routes.profileSetup);
+      },
+      err: (e) async {
+        if (e.code == 'email_code_required' || e.code == 'bad_email_code') {
+          _goVerify('email');
+          return;
+        }
+        setState(() => _error = describeError(l, e));
+      },
     );
   }
 
