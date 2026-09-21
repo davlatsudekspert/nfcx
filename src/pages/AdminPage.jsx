@@ -8,6 +8,7 @@ import { fmt, timeAgo, dateTime } from '../lib/format.js';
 import { adminPreviewUrl, adminCompanyPreviewUrl } from '../lib/preview.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import MarketplaceTab from '../components/admin/MarketplaceTab.jsx';
+import NovaTab from '../components/admin/NovaTab.jsx';
 import { useCategories, catPath } from '../lib/categories.js';
 import { idTier, effectiveAccess } from '../lib/access.js';
 import { TIER_LABEL } from '../lib/pricing.js';
@@ -281,7 +282,7 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
 // bo'limning sarlavhasi siljib ketadi va menyu boshqa sahifani
 // ochadi. Bo'limni yashirish uchun uni faqat `ADMIN_NAV` dan oling:
 // bo'limning o'zi joyida qoladi va indekslar buzilmaydi.
-const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika', 'Security', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar', 'Kategoriyalar', 'Tasdiqlash', 'Talab', 'Moliya', 'Kompaniyalar', 'Trafik', 'Shikoyatlar', 'Marketplace'];
+const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika', 'Security', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar', 'Kategoriyalar', 'Tasdiqlash', 'Talab', 'Moliya', 'Kompaniyalar', 'Trafik', 'Shikoyatlar', 'Marketplace', 'NFCSTORE ILOVASI'];
 
 function StatsTab() {
   const { t } = useLanguage();
@@ -4495,6 +4496,12 @@ const ADMIN_NAV = [
   // MARKETPLACE / AKTIVATSIYA — Uzum Market va boshqa
   // marketplace'larda sotilgan fizik NFC mahsulotlar.
   { index: 22, label: 'Marketplace', icon: 'bag' },
+  // NFCSTORE ILOVASI — ilovaga tegishli moderatsiya va sotuv.
+  //
+  // Indeks 23 — TABS ning OXIRI. O'rtaga qo'yilsa undan keyingi
+  // HAMMA bo'limning sarlavhasi siljib ketardi (TABS izohiga
+  // qarang).
+  { index: 23, label: 'NFCSTORE ILOVASI', icon: 'bell' },
   { index: 13, label: 'Promokodlar', icon: 'tag' },
   { index: 14, label: 'Yangiliklar', icon: 'news' },
   { index: 15, label: 'Kategoriyalar', icon: 'folder' },
@@ -4571,6 +4578,7 @@ function Dashboard({ onLogout, role, totpEnabled, refreshMe }) {
             ular shu faylda va MarketplaceTab ularni import qilsa
             aylanma bog'liqlik hosil bo'lardi. */}
         {tab === 22 && <MarketplaceTab adminApi={adminApi} isManager={isManager} apiErrText={apiErrText} />}
+        {tab === 23 && <NovaTab adminApi={adminApi} apiErrText={apiErrText} />}
       </div>
     </AdminShell>
     </AdminCtx.Provider>

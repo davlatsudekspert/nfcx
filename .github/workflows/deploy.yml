@@ -82,6 +82,8 @@ jobs:
         run: node scripts/test-comment-moderation.mjs
       - name: NFCSTORE FEATURED — slot faqat haqiqiy to'lovdan keyin yonadi
         run: node scripts/test-featured.mjs
+      - name: Admin "NFCSTORE ILOVASI" — tugmalar haqiqatdan ishlaydimi
+        run: node scripts/test-admin-nova-tab.mjs
 
       - name: Worker yiqilsa sabab ko'rinadimi
         run: node scripts/test-worker-error-visibility.mjs
