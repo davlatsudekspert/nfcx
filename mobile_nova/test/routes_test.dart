@@ -37,6 +37,7 @@ void main() {
     Routes.reelCreate,
     Routes.nfcIds,
     Routes.nfcScan,
+    Routes.nfcWrite,
     Routes.nfcHistory,
     Routes.nfcCards,
     Routes.nfcSecurity,

@@ -2678,6 +2678,198 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Hammasini o‘qildi'**
   String get activityMarkAll;
+
+  /// No description provided for @nfcWrite.
+  ///
+  /// In uz, this message translates to:
+  /// **'NFC kartaga yozish'**
+  String get nfcWrite;
+
+  /// No description provided for @nfcWriteSubtitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Boshqa joydan olingan qayta yoziladigan kartani o‘z profilingizga aylantiring'**
+  String get nfcWriteSubtitle;
+
+  /// No description provided for @nfcWriteChooseId.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qaysi profil yozilsin'**
+  String get nfcWriteChooseId;
+
+  /// No description provided for @nfcWriteNoId.
+  ///
+  /// In uz, this message translates to:
+  /// **'Avval NFC ID yarating — tegga yoziladigan profil kerak'**
+  String get nfcWriteNoId;
+
+  /// No description provided for @nfcWriteUrlLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tegga yoziladi'**
+  String get nfcWriteUrlLabel;
+
+  /// No description provided for @nfcWriteStepCheck.
+  ///
+  /// In uz, this message translates to:
+  /// **'1-qadam — kartani tekshirish'**
+  String get nfcWriteStepCheck;
+
+  /// No description provided for @nfcWriteStepCheckHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kartani telefon orqasiga tegizing. Hozircha hech narsa yozilmaydi.'**
+  String get nfcWriteStepCheckHint;
+
+  /// No description provided for @nfcWriteCheckAction.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kartani tekshirish'**
+  String get nfcWriteCheckAction;
+
+  /// No description provided for @nfcWriteStepWrite.
+  ///
+  /// In uz, this message translates to:
+  /// **'2-qadam — yozish'**
+  String get nfcWriteStepWrite;
+
+  /// No description provided for @nfcWriteStepWriteHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'O‘sha kartani yana tegizing.'**
+  String get nfcWriteStepWriteHint;
+
+  /// No description provided for @nfcWriteAction.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kartaga yozish'**
+  String get nfcWriteAction;
+
+  /// No description provided for @nfcWriteAgain.
+  ///
+  /// In uz, this message translates to:
+  /// **'Boshqa kartaga yozish'**
+  String get nfcWriteAgain;
+
+  /// No description provided for @nfcWriteChecking.
+  ///
+  /// In uz, this message translates to:
+  /// **'Karta qidirilmoqda…'**
+  String get nfcWriteChecking;
+
+  /// No description provided for @nfcWriteWriting.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yozilmoqda…'**
+  String get nfcWriteWriting;
+
+  /// No description provided for @nfcWriteVerifying.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tekshirilmoqda…'**
+  String get nfcWriteVerifying;
+
+  /// No description provided for @nfcWriteEmptyTag.
+  ///
+  /// In uz, this message translates to:
+  /// **'Karta bo‘sh — ustiga bemalol yozish mumkin'**
+  String get nfcWriteEmptyTag;
+
+  /// No description provided for @nfcWriteTagHasData.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu kartada allaqachon ma’lumot bor'**
+  String get nfcWriteTagHasData;
+
+  /// No description provided for @nfcWriteOverwriteTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kartadagi ma’lumot o‘chiriladi'**
+  String get nfcWriteOverwriteTitle;
+
+  /// No description provided for @nfcWriteOverwriteBody.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yozilsa, kartadagi quyidagi ma’lumot butunlay o‘chadi va o‘rniga sizning profilingiz yoziladi. Buni qaytarib bo‘lmaydi.'**
+  String get nfcWriteOverwriteBody;
+
+  /// No description provided for @nfcWriteOverwriteConfirm.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ha, ustiga yozilsin'**
+  String get nfcWriteOverwriteConfirm;
+
+  /// No description provided for @nfcWriteCapacity.
+  ///
+  /// In uz, this message translates to:
+  /// **'Karta sig‘imi: {size} bayt'**
+  String nfcWriteCapacity(int size);
+
+  /// No description provided for @nfcWriteDone.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yozildi va tekshirildi'**
+  String get nfcWriteDone;
+
+  /// No description provided for @nfcWriteDoneBody.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kartani telefonga tegizsangiz profilingiz ochiladi.'**
+  String get nfcWriteDoneBody;
+
+  /// No description provided for @nfcWriteErrTimeout.
+  ///
+  /// In uz, this message translates to:
+  /// **'Karta topilmadi. Uni telefon orqasiga, kamera atrofiga tegizib ko‘ring.'**
+  String get nfcWriteErrTimeout;
+
+  /// No description provided for @nfcWriteErrNotNdef.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu kartaga yozib bo‘lmaydi — u NDEF formatini qo‘llamaydi'**
+  String get nfcWriteErrNotNdef;
+
+  /// No description provided for @nfcWriteErrReadOnly.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu karta qulflangan, qayta yozib bo‘lmaydi'**
+  String get nfcWriteErrReadOnly;
+
+  /// No description provided for @nfcWriteErrTooLarge.
+  ///
+  /// In uz, this message translates to:
+  /// **'Manzil karta sig‘imiga sig‘maydi ({need} bayt kerak, {size} bayt bor)'**
+  String nfcWriteErrTooLarge(int need, int size);
+
+  /// No description provided for @nfcWriteErrDifferentTag.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu boshqa karta. Tekshirilgan kartaning o‘zini tegizing.'**
+  String get nfcWriteErrDifferentTag;
+
+  /// No description provided for @nfcWriteErrVerify.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yozildi, lekin qayta o‘qiganda manzil to‘g‘ri chiqmadi. Kartani qayta tegizib ko‘ring.'**
+  String get nfcWriteErrVerify;
+
+  /// No description provided for @nfcWriteErrIo.
+  ///
+  /// In uz, this message translates to:
+  /// **'Karta bilan aloqa uzildi. Kartani qimirlatmasdan qayta urinib ko‘ring.'**
+  String get nfcWriteErrIo;
+
+  /// No description provided for @nfcWriteIosHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'iPhone’da yozish uchun kartani tegizib turing — tizim oynasi ochiladi.'**
+  String get nfcWriteIosHint;
+
+  /// No description provided for @nfcWriteSafety.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kartaga faqat ochiq profil manzili yoziladi. Hech qanday maxfiy kalit yozilmaydi.'**
+  String get nfcWriteSafety;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

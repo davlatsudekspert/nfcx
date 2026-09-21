@@ -32,9 +32,22 @@ class _NfcScanScreenState extends ConsumerState<NfcScanScreen> {
   String? _message;
   String? _resolvedCode;
 
+  /// Xizmat oldindan ushlab olinadi.
+  ///
+  /// `dispose()` ichida `ref.read` Riverpod tomonidan TAQIQLANGAN va
+  /// istisno otadi — ya'ni skanerlash sessiyasi ekran yopilganda
+  /// yopilmay qolardi va NFC antennasi band bo'lib turaverardi.
+  late final NfcService _nfc = ref.read(nfcServiceProvider);
+
+  @override
+  void initState() {
+    super.initState();
+    _nfc;
+  }
+
   @override
   void dispose() {
-    ref.read(nfcServiceProvider).stop();
+    _nfc.stop();
     super.dispose();
   }
 

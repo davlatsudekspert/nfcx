@@ -12,12 +12,21 @@ import 'dart:typed_data';
 /// Yozish/o'qishning O'ZI (`Ndef.write`, sessiya, teg topish)
 /// xizmat qatlamida qoladi va u DEVICE REQUIRED.
 
-/// NDEF URI prefiks jadvali (NFC Forum RTD-URI).
+/// NDEF URI prefiks jadvali (NFC Forum RTD-URI, to'liq 36 ta).
 ///
 /// Birinchi bayt — shu jadvaldagi indeks, qolgani matn. Eng uzun
 /// mos prefiks tanlanadi: `https://www.` uchun 0x02 ishlatilsa
 /// yuklama `https://` (0x04) ga qaraganda 4 bayt qisqaradi, bu
 /// esa kichik teglarda muhim.
+///
+/// JADVAL TO'LIQ BO'LISHI SHART. Avval bu yerda faqat dastlabki 7
+/// ta yozuv turardi va `decodeUriPayload` qolgan indekslarni
+/// prefikssiz deb o'qirdi. O'z tegimizni o'zimiz yozganda bu
+/// sezilmasdi (biz doim `https://` yozamiz), lekin endi ilova
+/// BEGONA teglarni ham o'qiydi — ustiga yozishdan oldin ichida
+/// nima borligini ko'rsatish uchun. O'sha teg `file://` yoki
+/// `ftp://` bilan yozilgan bo'lsa, qisqa jadval manzilni
+/// buzib ko'rsatardi.
 const List<String> kUriPrefixes = [
   '', // 0x00 — prefikssiz
   'http://www.', // 0x01
@@ -26,6 +35,35 @@ const List<String> kUriPrefixes = [
   'https://', // 0x04
   'tel:', // 0x05
   'mailto:', // 0x06
+  'ftp://anonymous:anonymous@', // 0x07
+  'ftp://ftp.', // 0x08
+  'ftps://', // 0x09
+  'sftp://', // 0x0A
+  'smb://', // 0x0B
+  'nfs://', // 0x0C
+  'ftp://', // 0x0D
+  'dav://', // 0x0E
+  'news:', // 0x0F
+  'telnet://', // 0x10
+  'imap:', // 0x11
+  'rtsp://', // 0x12
+  'urn:', // 0x13
+  'pop:', // 0x14
+  'sip:', // 0x15
+  'sips:', // 0x16
+  'tftp:', // 0x17
+  'btspp://', // 0x18
+  'btl2cap://', // 0x19
+  'btgoep://', // 0x1A
+  'tcpobex://', // 0x1B
+  'irdaobex://', // 0x1C
+  'file://', // 0x1D
+  'urn:epc:id:', // 0x1E
+  'urn:epc:tag:', // 0x1F
+  'urn:epc:pat:', // 0x20
+  'urn:epc:raw:', // 0x21
+  'urn:epc:', // 0x22
+  'urn:nfc:', // 0x23
 ];
 
 /// NDEF yozuv turi — qaysi RTD ekanini bildiradi.
@@ -193,4 +231,127 @@ bool isSafeWriteUrl(String raw) {
 String profileTagUrl(String base, String code) {
   final b = base.endsWith('/') ? base.substring(0, base.length - 1) : base;
   return '$b/${Uri.encodeComponent(code)}';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TASHQI (BEGONA) NFC TEGIGA YOZISH
+//
+// Foydalanuvchi NFCSTORE kartasini sotib olishga MAJBUR EMAS: boshqa
+// joydan olingan istalgan qayta yoziladigan NFC teg (NTAG213/215/216
+// stiker, oq karta va h.k.) ham profil tegiga aylantirilishi mumkin.
+//
+// Quyidagilar — o'sha oqimning APPARATSIZ qismi. Sessiya, teg topish
+// va `Ndef.write` xizmat qatlamida (DEVICE REQUIRED), bu yerdagi
+// mantiq esa oddiy `flutter test` da to'liq tekshiriladi.
+// ═══════════════════════════════════════════════════════════════════
+
+/// Tegning apparat identifikatori — o'n oltilik satr sifatida.
+///
+/// NIMA UCHUN KERAK: yozish IKKI BOSQICHLI. Birinchi tegizishda teg
+/// O'QILADI va ichidagi narsa foydalanuvchiga ko'rsatiladi; u
+/// rozilik bergach ikkinchi tegizishda YOZILADI. Ikki tegizish
+/// orasida boshqa teg tutilib qolsa, rozilik berilmagan begona
+/// tegning ustiga yozib yuborilardi. Shuning uchun identifikator
+/// solishtiriladi.
+///
+/// `nfc_manager` umumiy "id" bermaydi — har bir platforma texnologiyasi
+/// o'z xaritasida `identifier` saqlaydi. Shuning uchun ma'lum kalitlar
+/// ketma-ket qaraladi. Hech biri bo'lmasa (iOS'dagi ba'zi teglar)
+/// bo'sh satr qaytadi va CHAQIRUVCHI buni "solishtirib bo'lmaydi" deb
+/// qabul qiladi — yo'qlik "boshqa teg" degani EMAS.
+String tagIdentity(Map<String, dynamic> data) {
+  // Tartib muhim emas — bitta tegda odatda bittasi bo'ladi.
+  const keys = [
+    'nfca', 'nfcb', 'nfcf', 'nfcv',
+    'mifareclassic', 'mifareultralight', 'ndefformatable',
+    'iso7816', 'iso15693',
+  ];
+  for (final k in keys) {
+    final raw = data[k];
+    if (raw is! Map) continue;
+    final id = raw['identifier'];
+    if (id is List && id.isNotEmpty) {
+      return id
+          .map((b) => (b as int).toRadixString(16).padLeft(2, '0'))
+          .join();
+    }
+  }
+  return '';
+}
+
+/// O'qilgan XOM yozuvni tanib olish.
+///
+/// `typeNameFormat` NFC Forum qiymati: 1 — "well known" (RTD).
+/// 2 — MIME turi (vCard shu yerdan keladi).
+const int kTnfWellKnown = 1;
+const int kTnfMime = 2;
+
+/// Bitta xom NDEF yozuvini o'qiladigan ko'rinishga keltiradi.
+///
+/// `nfc_manager` ning sinflariga BOG'LANMAGAN: faqat baytlar kiradi,
+/// shuning uchun telefonsiz sinaladi.
+NdefRecordData classifyRecord({
+  required int typeNameFormat,
+  required List<int> type,
+  required List<int> payload,
+}) {
+  if (typeNameFormat == kTnfWellKnown && type.isNotEmpty) {
+    // 0x55 = 'U' (URI), 0x54 = 'T' (Text).
+    if (type.first == 0x55) {
+      return NdefRecordData(kind: NdefKind.uri, value: decodeUriPayload(payload));
+    }
+    if (type.first == 0x54) {
+      return NdefRecordData(
+        kind: NdefKind.text,
+        value: decodeTextPayload(payload),
+        language: decodeTextLanguage(payload),
+      );
+    }
+  }
+  if (typeNameFormat == kTnfMime) {
+    final mime = utf8.decode(type, allowMalformed: true).toLowerCase();
+    if (mime.contains('vcard') || mime.contains('x-vcard')) {
+      return NdefRecordData(
+        kind: NdefKind.vcard,
+        value: utf8.decode(payload, allowMalformed: true),
+        mimeType: mime,
+      );
+    }
+    return NdefRecordData(
+      kind: NdefKind.unknown,
+      value: utf8.decode(payload, allowMalformed: true),
+      mimeType: mime,
+    );
+  }
+  return const NdefRecordData(kind: NdefKind.unknown, value: '');
+}
+
+/// YOZILGANNI QAYTA O'QIB TASDIQLASH.
+///
+/// "Yozildi" degan yozuv FAQAT shu tekshiruvdan keyin chiqadi.
+/// Teg to'lib qolsa yoki yozish yarim yo'lda uzilsa, `Ndef.write`
+/// ba'zan xato BERMAYDI — tegda esa eski yoki buzuq ma'lumot qoladi.
+/// Yagona ishonchli dalil — qaytadan o'qish.
+///
+/// Solishtirish MAYDA FARQLARGA kechirimli: teg URI ni prefiks
+/// jadvali orqali saqlaydi, shuning uchun `https://www.` va
+/// `https://` bir xil manzilga olib boradi; oxiridagi `/` ham
+/// ahamiyatsiz. Lekin HOST va YO'L aynan mos kelishi shart.
+bool sameWrittenUrl(String expected, String actual) {
+  final a = Uri.tryParse(expected.trim());
+  final b = Uri.tryParse(actual.trim());
+  if (a == null || b == null) return false;
+  if (a.scheme.toLowerCase() != b.scheme.toLowerCase()) return false;
+
+  String host(Uri u) {
+    final h = u.host.toLowerCase();
+    return h.startsWith('www.') ? h.substring(4) : h;
+  }
+
+  String path(Uri u) {
+    final p = u.path;
+    return p.endsWith('/') && p.length > 1 ? p.substring(0, p.length - 1) : p;
+  }
+
+  return host(a) == host(b) && path(a) == path(b) && a.query == b.query;
 }

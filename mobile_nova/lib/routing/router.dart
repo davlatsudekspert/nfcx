@@ -22,6 +22,7 @@ import '../features/demo/demo_screens.dart';
 import '../features/nfc/nfc_ids_screen.dart';
 import '../features/nfc/nfc_misc_screens.dart';
 import '../features/nfc/nfc_scan_screen.dart';
+import '../features/nfc/nfc_write_screen.dart';
 import '../features/profile/profile_edit_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/settings/settings_subscreens.dart';
@@ -122,6 +123,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       // NFC
       GoRoute(path: Routes.nfcIds, builder: (_, __) => const NfcIdsScreen()),
       GoRoute(path: Routes.nfcScan, builder: (_, __) => const NfcScanScreen()),
+      GoRoute(path: Routes.nfcWrite, builder: (_, __) => const NfcWriteScreen()),
       GoRoute(path: Routes.nfcCards, builder: (_, __) => const NfcCardsScreen()),
       GoRoute(path: Routes.nfcHistory, builder: (_, __) => const NfcHistoryScreen()),
       GoRoute(

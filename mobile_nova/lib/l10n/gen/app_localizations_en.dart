@@ -1334,4 +1334,117 @@ class LEn extends L {
 
   @override
   String get activityMarkAll => 'Mark all as read';
+
+  @override
+  String get nfcWrite => 'Write to NFC card';
+
+  @override
+  String get nfcWriteSubtitle =>
+      'Turn any rewritable NFC card or sticker into your profile';
+
+  @override
+  String get nfcWriteChooseId => 'Which profile to write';
+
+  @override
+  String get nfcWriteNoId =>
+      'Create an NFC ID first — a profile is needed to write';
+
+  @override
+  String get nfcWriteUrlLabel => 'Will be written';
+
+  @override
+  String get nfcWriteStepCheck => 'Step 1 — check the card';
+
+  @override
+  String get nfcWriteStepCheckHint =>
+      'Hold the card to the back of your phone. Nothing is written yet.';
+
+  @override
+  String get nfcWriteCheckAction => 'Check the card';
+
+  @override
+  String get nfcWriteStepWrite => 'Step 2 — write';
+
+  @override
+  String get nfcWriteStepWriteHint => 'Hold the same card again.';
+
+  @override
+  String get nfcWriteAction => 'Write to card';
+
+  @override
+  String get nfcWriteAgain => 'Write to another card';
+
+  @override
+  String get nfcWriteChecking => 'Looking for a card…';
+
+  @override
+  String get nfcWriteWriting => 'Writing…';
+
+  @override
+  String get nfcWriteVerifying => 'Verifying…';
+
+  @override
+  String get nfcWriteEmptyTag => 'The card is empty — safe to write';
+
+  @override
+  String get nfcWriteTagHasData => 'This card already holds data';
+
+  @override
+  String get nfcWriteOverwriteTitle => 'The data on the card will be erased';
+
+  @override
+  String get nfcWriteOverwriteBody =>
+      'Writing erases the data below completely and replaces it with your profile. This cannot be undone.';
+
+  @override
+  String get nfcWriteOverwriteConfirm => 'Yes, overwrite';
+
+  @override
+  String nfcWriteCapacity(int size) {
+    return 'Card capacity: $size bytes';
+  }
+
+  @override
+  String get nfcWriteDone => 'Written and verified';
+
+  @override
+  String get nfcWriteDoneBody =>
+      'Hold the card to a phone and your profile opens.';
+
+  @override
+  String get nfcWriteErrTimeout =>
+      'No card found. Hold it against the back of the phone, near the camera.';
+
+  @override
+  String get nfcWriteErrNotNdef =>
+      'This card cannot be written — it does not support the NDEF format';
+
+  @override
+  String get nfcWriteErrReadOnly =>
+      'This card is locked and cannot be rewritten';
+
+  @override
+  String nfcWriteErrTooLarge(int need, int size) {
+    return 'The address does not fit on this card ($need bytes needed, $size available)';
+  }
+
+  @override
+  String get nfcWriteErrDifferentTag =>
+      'That is a different card. Hold the one you checked.';
+
+  @override
+  String get nfcWriteErrVerify =>
+      'The write went through, but reading it back gave a different address. Try again.';
+
+  @override
+  String get nfcWriteErrIo =>
+      'Lost contact with the card. Keep it still and try again.';
+
+  @override
+  String get nfcWriteIosHint =>
+      'On iPhone, hold the card near the phone — the system sheet opens.';
+
+  @override
+  String get nfcWriteSafety =>
+      'Only the public profile address is written. No secret key is ever written to the card.';
 }

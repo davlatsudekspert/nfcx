@@ -43,6 +43,7 @@ abstract final class Routes {
   // NFC
   static const nfcIds = '/nfc/ids';
   static const nfcScan = '/nfc/scan';
+  static const nfcWrite = '/nfc/write';
   static const nfcHistory = '/nfc/history';
   static const nfcCards = '/nfc/cards';
   static const nfcSecurity = '/nfc/security';

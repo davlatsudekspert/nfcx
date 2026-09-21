@@ -530,5 +530,54 @@
   "activityMarkAll": "Отметить всё прочитанным",
   "@activityMarkAll": {
     "description": "Bildirishnoma matni"
-  }
+  },
+  "nfcWrite": "Запись на NFC-карту",
+  "nfcWriteSubtitle": "Превратите любую перезаписываемую карту в свой профиль",
+  "nfcWriteChooseId": "Какой профиль записать",
+  "nfcWriteNoId": "Сначала создайте NFC ID — нужен профиль для записи",
+  "nfcWriteUrlLabel": "Будет записано",
+  "nfcWriteStepCheck": "Шаг 1 — проверить карту",
+  "nfcWriteStepCheckHint": "Поднесите карту к задней части телефона. Пока ничего не записывается.",
+  "nfcWriteCheckAction": "Проверить карту",
+  "nfcWriteStepWrite": "Шаг 2 — запись",
+  "nfcWriteStepWriteHint": "Поднесите ту же карту ещё раз.",
+  "nfcWriteAction": "Записать на карту",
+  "nfcWriteAgain": "Записать на другую карту",
+  "nfcWriteChecking": "Поиск карты…",
+  "nfcWriteWriting": "Запись…",
+  "nfcWriteVerifying": "Проверка…",
+  "nfcWriteEmptyTag": "Карта пустая — можно писать свободно",
+  "nfcWriteTagHasData": "На этой карте уже есть данные",
+  "nfcWriteOverwriteTitle": "Данные на карте будут удалены",
+  "nfcWriteOverwriteBody": "При записи указанные ниже данные будут полностью стёрты и заменены вашим профилем. Это необратимо.",
+  "nfcWriteOverwriteConfirm": "Да, перезаписать",
+  "nfcWriteCapacity": "Ёмкость карты: {size} байт",
+  "@nfcWriteCapacity": {
+    "placeholders": {
+      "size": {
+        "type": "int"
+      }
+    }
+  },
+  "nfcWriteDone": "Записано и проверено",
+  "nfcWriteDoneBody": "Поднесите карту к телефону — откроется ваш профиль.",
+  "nfcWriteErrTimeout": "Карта не найдена. Поднесите её к задней части телефона, ближе к камере.",
+  "nfcWriteErrNotNdef": "На эту карту нельзя писать — она не поддерживает формат NDEF",
+  "nfcWriteErrReadOnly": "Эта карта заблокирована, перезапись невозможна",
+  "nfcWriteErrTooLarge": "Адрес не помещается в карту (нужно {need} байт, доступно {size})",
+  "@nfcWriteErrTooLarge": {
+    "placeholders": {
+      "need": {
+        "type": "int"
+      },
+      "size": {
+        "type": "int"
+      }
+    }
+  },
+  "nfcWriteErrDifferentTag": "Это другая карта. Поднесите ту же, что проверяли.",
+  "nfcWriteErrVerify": "Запись прошла, но при повторном чтении адрес не совпал. Попробуйте ещё раз.",
+  "nfcWriteErrIo": "Связь с картой прервалась. Не двигайте карту и повторите.",
+  "nfcWriteIosHint": "На iPhone держите карту у телефона — откроется системное окно.",
+  "nfcWriteSafety": "На карту записывается только публичный адрес профиля. Секретные ключи не записываются."
 }

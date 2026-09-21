@@ -22,6 +22,25 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<!-- NFC — iOS.
+
+	     Bu matn kartani tegizish oynasida KO'RINADI. Kalit
+	     bo'lmasa CoreNFC sessiyasi UMUMAN ochilmaydi (ilova
+	     darhol yiqiladi), shuning uchun u Android'dagi
+	     `android.permission.NFC` ning aynan muqobili.
+
+	     DIQQAT — BU YETARLI EMAS. iOS'da NFC ishlashi uchun
+	     yana ikkita narsa kerak va ularning IKKALASI HAM Mac
+	     talab qiladi:
+	       1. Xcode'da "Near Field Communication Tag Reading"
+	          imkoniyati yoqilishi (u `Runner.entitlements` ni
+	          loyihaga ulaydi);
+	       2. Apple Developer hisobida shu imkoniyat yoqilgan
+	          provisioning profil.
+	     Shu sababli iOS'dagi NFC hozir SINALMAGAN deb qayd
+	     etiladi — `IOS_RELEASE_CHECKLIST.md` ga qarang. -->
+	<key>NFCReaderUsageDescription</key>
+	<string>NFC kartangizga profil manzilingizni yozish va kartalarni o‘qish uchun kerak.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

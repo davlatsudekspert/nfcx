@@ -135,8 +135,51 @@ class NfcCenterScreen extends ConsumerWidget {
               ],
             ),
           ),
+          const SizedBox(height: Gap.section),
+
+          // BEGONA KARTAGA YOZISH.
+          //
+          // Ataylab aylanma chiplar ichida EMAS, alohida karta
+          // sifatida: bu amal kamdan-kam bajariladi, lekin odamning
+          // boshqa kartasidagi ma'lumotni o'chirishi mumkin —
+          // harakatlanayotgan chipni "tasodifan bosib qo'yish"
+          // holati bu yerda bo'lmasligi kerak.
+          FloatingSurface(
+            solid: true,
+            onTap: () => context.push(Routes.nfcWrite),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: t.accent2.withValues(alpha: .18),
+                    borderRadius: R.tile,
+                  ),
+                  child: Icon(Icons.edit_note_rounded, size: 22, color: t.accent2),
+                ),
+                const SizedBox(width: Gap.lg),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(l.nfcWrite,
+                          style: Theme.of(context).textTheme.titleSmall),
+                      const SizedBox(height: 2),
+                      Text(
+                        l.nfcWriteSubtitle,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded, size: 20, color: t.text3),
+              ],
+            ),
+          ),
+
           if (id != null) ...[
-            const SizedBox(height: Gap.section),
+            const SizedBox(height: Gap.md),
             FloatingSurface(
               onTap: () => context.push(Routes.nfcId(id.code)),
               child: Row(

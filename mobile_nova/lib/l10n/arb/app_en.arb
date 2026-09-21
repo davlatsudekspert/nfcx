@@ -530,5 +530,54 @@
   "activityMarkAll": "Mark all as read",
   "@activityMarkAll": {
     "description": "Bildirishnoma matni"
-  }
+  },
+  "nfcWrite": "Write to NFC card",
+  "nfcWriteSubtitle": "Turn any rewritable NFC card or sticker into your profile",
+  "nfcWriteChooseId": "Which profile to write",
+  "nfcWriteNoId": "Create an NFC ID first — a profile is needed to write",
+  "nfcWriteUrlLabel": "Will be written",
+  "nfcWriteStepCheck": "Step 1 — check the card",
+  "nfcWriteStepCheckHint": "Hold the card to the back of your phone. Nothing is written yet.",
+  "nfcWriteCheckAction": "Check the card",
+  "nfcWriteStepWrite": "Step 2 — write",
+  "nfcWriteStepWriteHint": "Hold the same card again.",
+  "nfcWriteAction": "Write to card",
+  "nfcWriteAgain": "Write to another card",
+  "nfcWriteChecking": "Looking for a card…",
+  "nfcWriteWriting": "Writing…",
+  "nfcWriteVerifying": "Verifying…",
+  "nfcWriteEmptyTag": "The card is empty — safe to write",
+  "nfcWriteTagHasData": "This card already holds data",
+  "nfcWriteOverwriteTitle": "The data on the card will be erased",
+  "nfcWriteOverwriteBody": "Writing erases the data below completely and replaces it with your profile. This cannot be undone.",
+  "nfcWriteOverwriteConfirm": "Yes, overwrite",
+  "nfcWriteCapacity": "Card capacity: {size} bytes",
+  "@nfcWriteCapacity": {
+    "placeholders": {
+      "size": {
+        "type": "int"
+      }
+    }
+  },
+  "nfcWriteDone": "Written and verified",
+  "nfcWriteDoneBody": "Hold the card to a phone and your profile opens.",
+  "nfcWriteErrTimeout": "No card found. Hold it against the back of the phone, near the camera.",
+  "nfcWriteErrNotNdef": "This card cannot be written — it does not support the NDEF format",
+  "nfcWriteErrReadOnly": "This card is locked and cannot be rewritten",
+  "nfcWriteErrTooLarge": "The address does not fit on this card ({need} bytes needed, {size} available)",
+  "@nfcWriteErrTooLarge": {
+    "placeholders": {
+      "need": {
+        "type": "int"
+      },
+      "size": {
+        "type": "int"
+      }
+    }
+  },
+  "nfcWriteErrDifferentTag": "That is a different card. Hold the one you checked.",
+  "nfcWriteErrVerify": "The write went through, but reading it back gave a different address. Try again.",
+  "nfcWriteErrIo": "Lost contact with the card. Keep it still and try again.",
+  "nfcWriteIosHint": "On iPhone, hold the card near the phone — the system sheet opens.",
+  "nfcWriteSafety": "Only the public profile address is written. No secret key is ever written to the card."
 }

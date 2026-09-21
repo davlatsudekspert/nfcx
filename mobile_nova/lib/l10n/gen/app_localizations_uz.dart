@@ -1336,4 +1336,117 @@ class LUz extends L {
 
   @override
   String get activityMarkAll => 'Hammasini o‘qildi';
+
+  @override
+  String get nfcWrite => 'NFC kartaga yozish';
+
+  @override
+  String get nfcWriteSubtitle =>
+      'Boshqa joydan olingan qayta yoziladigan kartani o‘z profilingizga aylantiring';
+
+  @override
+  String get nfcWriteChooseId => 'Qaysi profil yozilsin';
+
+  @override
+  String get nfcWriteNoId =>
+      'Avval NFC ID yarating — tegga yoziladigan profil kerak';
+
+  @override
+  String get nfcWriteUrlLabel => 'Tegga yoziladi';
+
+  @override
+  String get nfcWriteStepCheck => '1-qadam — kartani tekshirish';
+
+  @override
+  String get nfcWriteStepCheckHint =>
+      'Kartani telefon orqasiga tegizing. Hozircha hech narsa yozilmaydi.';
+
+  @override
+  String get nfcWriteCheckAction => 'Kartani tekshirish';
+
+  @override
+  String get nfcWriteStepWrite => '2-qadam — yozish';
+
+  @override
+  String get nfcWriteStepWriteHint => 'O‘sha kartani yana tegizing.';
+
+  @override
+  String get nfcWriteAction => 'Kartaga yozish';
+
+  @override
+  String get nfcWriteAgain => 'Boshqa kartaga yozish';
+
+  @override
+  String get nfcWriteChecking => 'Karta qidirilmoqda…';
+
+  @override
+  String get nfcWriteWriting => 'Yozilmoqda…';
+
+  @override
+  String get nfcWriteVerifying => 'Tekshirilmoqda…';
+
+  @override
+  String get nfcWriteEmptyTag => 'Karta bo‘sh — ustiga bemalol yozish mumkin';
+
+  @override
+  String get nfcWriteTagHasData => 'Bu kartada allaqachon ma’lumot bor';
+
+  @override
+  String get nfcWriteOverwriteTitle => 'Kartadagi ma’lumot o‘chiriladi';
+
+  @override
+  String get nfcWriteOverwriteBody =>
+      'Yozilsa, kartadagi quyidagi ma’lumot butunlay o‘chadi va o‘rniga sizning profilingiz yoziladi. Buni qaytarib bo‘lmaydi.';
+
+  @override
+  String get nfcWriteOverwriteConfirm => 'Ha, ustiga yozilsin';
+
+  @override
+  String nfcWriteCapacity(int size) {
+    return 'Karta sig‘imi: $size bayt';
+  }
+
+  @override
+  String get nfcWriteDone => 'Yozildi va tekshirildi';
+
+  @override
+  String get nfcWriteDoneBody =>
+      'Kartani telefonga tegizsangiz profilingiz ochiladi.';
+
+  @override
+  String get nfcWriteErrTimeout =>
+      'Karta topilmadi. Uni telefon orqasiga, kamera atrofiga tegizib ko‘ring.';
+
+  @override
+  String get nfcWriteErrNotNdef =>
+      'Bu kartaga yozib bo‘lmaydi — u NDEF formatini qo‘llamaydi';
+
+  @override
+  String get nfcWriteErrReadOnly =>
+      'Bu karta qulflangan, qayta yozib bo‘lmaydi';
+
+  @override
+  String nfcWriteErrTooLarge(int need, int size) {
+    return 'Manzil karta sig‘imiga sig‘maydi ($need bayt kerak, $size bayt bor)';
+  }
+
+  @override
+  String get nfcWriteErrDifferentTag =>
+      'Bu boshqa karta. Tekshirilgan kartaning o‘zini tegizing.';
+
+  @override
+  String get nfcWriteErrVerify =>
+      'Yozildi, lekin qayta o‘qiganda manzil to‘g‘ri chiqmadi. Kartani qayta tegizib ko‘ring.';
+
+  @override
+  String get nfcWriteErrIo =>
+      'Karta bilan aloqa uzildi. Kartani qimirlatmasdan qayta urinib ko‘ring.';
+
+  @override
+  String get nfcWriteIosHint =>
+      'iPhone’da yozish uchun kartani tegizib turing — tizim oynasi ochiladi.';
+
+  @override
+  String get nfcWriteSafety =>
+      'Kartaga faqat ochiq profil manzili yoziladi. Hech qanday maxfiy kalit yozilmaydi.';
 }

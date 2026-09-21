@@ -214,9 +214,17 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
   bool _liked = false;
   int _likes = 0;
 
+  /// Audio egaligi reyestri — `initState` da bir marta olinadi.
+  ///
+  /// `dispose()` ichida `ref.read` ishlatib bo'lmaydi (Riverpod
+  /// istisno otadi), reyestr esa konteyner bilan yashaydi va
+  /// vidjetdan uzoq umr ko'radi — `inline_video.dart` dagi naqsh.
+  late final AudioOwner _owner;
+
   @override
   void initState() {
     super.initState();
+    _owner = ref.read(audioOwnerProvider.notifier);
     _liked = widget.post.liked;
     _likes = widget.post.likes;
     if (widget.visible) _open();
@@ -236,7 +244,7 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
     // Video ovoz chiqaradi — ya'ni u audio EGASI bo'ladi. Shu
     // paytda profil musiqasi ijro etilayotgan bo'lsa, u to'xtaydi:
     // ikki manba bir vaqtda ovoz chiqarmaydi.
-    ref.read(audioOwnerProvider.notifier).take(this, _pauseForOther);
+    _owner.take(this, _pauseForOther);
 
     if (_controller != null) {
       await _controller!.play();
@@ -284,14 +292,18 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
     _ready = false;
     await c?.pause();
     await c?.dispose();
-    ref.read(audioOwnerProvider.notifier).release(this);
+    _owner.release(this);
     if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
     _controller?.dispose();
-    ref.read(audioOwnerProvider.notifier).release(this);
+    // `ref.read` EMAS: `dispose()` da u istisno otadi va egalik
+    // HECH QACHON bo'shatilmasdi — Reels yopilgandan keyin ham
+    // audio egasi shu ekranda qolib, keyingi video ovozsiz
+    // boshlanardi. `inline_video.dart` da ham shu naqsh.
+    _owner.release(this);
     super.dispose();
   }
 

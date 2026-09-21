@@ -26,10 +26,20 @@ void main() {
       expect(utf8.decode(p.sublist(1)), 'nfcstore.uz/VIP001');
     });
 
-    test('notanish sxema prefikssiz yoziladi', () {
+    test('jadvaldagi sxema o‘z kodi bilan yoziladi', () {
+      // `ftp://` NFC Forum jadvalida 0x0D. Avval jadval qisqa edi
+      // (7 ta yozuv) va bu yerda 0x00 kutilardi; endi to‘liq 36 ta,
+      // chunki ilova BEGONA teglarni ham o‘qiydi.
       final p = encodeUriPayload('ftp://example.com');
+      expect(p.first, 0x0D);
+      expect(utf8.decode(p.sublist(1)), 'example.com');
+      expect(decodeUriPayload(p), 'ftp://example.com');
+    });
+
+    test('jadvalda umuman yo‘q sxema prefikssiz yoziladi', () {
+      final p = encodeUriPayload('magnet:?xt=urn:btih:abc');
       expect(p.first, 0x00);
-      expect(utf8.decode(p.sublist(1)), 'ftp://example.com');
+      expect(decodeUriPayload(p), 'magnet:?xt=urn:btih:abc');
     });
 
     test('yozib — qayta o‘qiganda AYNAN o‘zi chiqadi', () {

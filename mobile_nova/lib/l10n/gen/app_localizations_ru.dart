@@ -1328,4 +1328,117 @@ class LRu extends L {
 
   @override
   String get activityMarkAll => 'Отметить всё прочитанным';
+
+  @override
+  String get nfcWrite => 'Запись на NFC-карту';
+
+  @override
+  String get nfcWriteSubtitle =>
+      'Превратите любую перезаписываемую карту в свой профиль';
+
+  @override
+  String get nfcWriteChooseId => 'Какой профиль записать';
+
+  @override
+  String get nfcWriteNoId =>
+      'Сначала создайте NFC ID — нужен профиль для записи';
+
+  @override
+  String get nfcWriteUrlLabel => 'Будет записано';
+
+  @override
+  String get nfcWriteStepCheck => 'Шаг 1 — проверить карту';
+
+  @override
+  String get nfcWriteStepCheckHint =>
+      'Поднесите карту к задней части телефона. Пока ничего не записывается.';
+
+  @override
+  String get nfcWriteCheckAction => 'Проверить карту';
+
+  @override
+  String get nfcWriteStepWrite => 'Шаг 2 — запись';
+
+  @override
+  String get nfcWriteStepWriteHint => 'Поднесите ту же карту ещё раз.';
+
+  @override
+  String get nfcWriteAction => 'Записать на карту';
+
+  @override
+  String get nfcWriteAgain => 'Записать на другую карту';
+
+  @override
+  String get nfcWriteChecking => 'Поиск карты…';
+
+  @override
+  String get nfcWriteWriting => 'Запись…';
+
+  @override
+  String get nfcWriteVerifying => 'Проверка…';
+
+  @override
+  String get nfcWriteEmptyTag => 'Карта пустая — можно писать свободно';
+
+  @override
+  String get nfcWriteTagHasData => 'На этой карте уже есть данные';
+
+  @override
+  String get nfcWriteOverwriteTitle => 'Данные на карте будут удалены';
+
+  @override
+  String get nfcWriteOverwriteBody =>
+      'При записи указанные ниже данные будут полностью стёрты и заменены вашим профилем. Это необратимо.';
+
+  @override
+  String get nfcWriteOverwriteConfirm => 'Да, перезаписать';
+
+  @override
+  String nfcWriteCapacity(int size) {
+    return 'Ёмкость карты: $size байт';
+  }
+
+  @override
+  String get nfcWriteDone => 'Записано и проверено';
+
+  @override
+  String get nfcWriteDoneBody =>
+      'Поднесите карту к телефону — откроется ваш профиль.';
+
+  @override
+  String get nfcWriteErrTimeout =>
+      'Карта не найдена. Поднесите её к задней части телефона, ближе к камере.';
+
+  @override
+  String get nfcWriteErrNotNdef =>
+      'На эту карту нельзя писать — она не поддерживает формат NDEF';
+
+  @override
+  String get nfcWriteErrReadOnly =>
+      'Эта карта заблокирована, перезапись невозможна';
+
+  @override
+  String nfcWriteErrTooLarge(int need, int size) {
+    return 'Адрес не помещается в карту (нужно $need байт, доступно $size)';
+  }
+
+  @override
+  String get nfcWriteErrDifferentTag =>
+      'Это другая карта. Поднесите ту же, что проверяли.';
+
+  @override
+  String get nfcWriteErrVerify =>
+      'Запись прошла, но при повторном чтении адрес не совпал. Попробуйте ещё раз.';
+
+  @override
+  String get nfcWriteErrIo =>
+      'Связь с картой прервалась. Не двигайте карту и повторите.';
+
+  @override
+  String get nfcWriteIosHint =>
+      'На iPhone держите карту у телефона — откроется системное окно.';
+
+  @override
+  String get nfcWriteSafety =>
+      'На карту записывается только публичный адрес профиля. Секретные ключи не записываются.';
 }
