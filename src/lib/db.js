@@ -1382,3 +1382,34 @@ export async function dbActivate(payload) {
   if (!res.ok) { const e = new Error('activate'); e.code = data && data.error; throw e; }
   return data;
 }
+
+// ── BILDIRISHNOMALAR — ilova bilan BITTA tizim ──────────────────
+//
+// `o'qildi` holati backendda saqlanadi, shuning uchun telefonda
+// o'qilgan xabar bu yerda ham o'qilgan bo'lib ko'rinadi (va
+// aksincha). Qurilmada hech narsa saqlanmaydi.
+export async function dbListNotifications({ cursor = 0, limit = 30 } = {}) {
+  const q = new URLSearchParams({ limit: String(limit) });
+  if (cursor) q.set('cursor', String(cursor));
+  const res = await fetch(`/api/notifications?${q}`, { credentials: 'same-origin' });
+  const data = await res.json().catch(() => null);
+  return data || { items: [], unreadCount: 0, nextCursor: null };
+}
+
+export async function dbMarkNotificationRead(id) {
+  const res = await fetch(`/api/notifications/${id}/read`, {
+    method: 'POST',
+    credentials: 'same-origin',
+  });
+  const data = await res.json().catch(() => null);
+  return data || { ok: false, unreadCount: 0 };
+}
+
+export async function dbMarkAllNotificationsRead() {
+  const res = await fetch('/api/notifications/read-all', {
+    method: 'POST',
+    credentials: 'same-origin',
+  });
+  const data = await res.json().catch(() => null);
+  return data || { ok: false, unreadCount: 0 };
+}

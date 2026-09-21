@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { navigate, usePathRoute } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
-import { dbUnreadCount, dbList } from '../lib/db.js';
+import { dbListNotifications, dbUnreadCount, dbList } from '../lib/db.js';
 import { MESSAGING_ENABLED } from '../lib/features.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { canInstall, onInstallableChange, promptInstall } from '../lib/pwa.js';
@@ -129,6 +129,8 @@ export default function Header() {
   const myLabel = primaryCard?.name || user?.email || '';
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
+  // Bildirishnomalar — xabarlardan ALOHIDA sanoq.
+  const [notifUnread, setNotifUnread] = useState(0);
   const [installable, setInstallable] = useState(canInstall());
   const [iosHint, setIosHint] = useState(null); // null | 'safari' | 'open-safari'
 
@@ -149,6 +151,25 @@ export default function Header() {
     load();
     const t2 = setInterval(load, 8000);
     return () => clearInterval(t2);
+  }, [user]);
+
+  // BILDIRISHNOMA SANOG'I.
+  //
+  // Xabarlarникидan ANCHA sekin so'raladi (60 s va 8 s). Obuna,
+  // like va izoh — soniyada bir marta yangilanishi shart bo'lmagan
+  // narsalar, har 8 soniyada so'rov yuborish esa bekorga D1 ga yuk
+  // bo'lardi. Sahifa fonga ketganda esa umuman so'ralmaydi.
+  useEffect(() => {
+    if (!user) { setNotifUnread(0); return; }
+    const load = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      dbListNotifications({ limit: 1 })
+        .then((d) => setNotifUnread(Number(d?.unreadCount) || 0))
+        .catch(() => {});
+    };
+    load();
+    const t3 = setInterval(load, 60000);
+    return () => clearInterval(t3);
   }, [user]);
 
   const go = (href) => { setOpen(false); navigate(href); };
@@ -206,8 +227,11 @@ export default function Header() {
             </button>
           )}
           {user && (
-            <button className="btn btn-ghost btn-circle btn-sm" onClick={() => go('/bildirishnomalar')} title={t('Bildirishnomalar')} aria-label={t('Bildirishnomalar')}>
+            <button className="btn btn-ghost btn-circle btn-sm relative" onClick={() => go('/bildirishnomalar')} title={t('Bildirishnomalar')} aria-label={t('Bildirishnomalar')}>
               <IconBell />
+              {notifUnread > 0 && (
+                <span className="badge badge-accent badge-xs absolute -right-1 -top-1">{notifUnread}</span>
+              )}
             </button>
           )}
           {user && (
@@ -307,7 +331,7 @@ export default function Header() {
             {user && (
               <li className={MESSAGING_ENABLED ? '' : 'mt-2 border-t border-white/10 pt-2'}>
                 <button onClick={() => go('/bildirishnomalar')} className="min-h-11 cursor-pointer">
-                  <IconBell /> {t('Bildirishnomalar')}
+                  <IconBell /> {t('Bildirishnomalar')}{notifUnread > 0 && <span className="badge badge-accent badge-xs ml-1">{notifUnread}</span>}
                 </button>
               </li>
             )}

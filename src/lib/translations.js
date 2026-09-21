@@ -274,6 +274,13 @@ const DICT_BASE = {
   // ─────────────────────────── Bildirishnomalar ───────────────────────────
   "Hozircha bildirishnomangiz yo'q.": { ru: 'Пока у вас нет уведомлений.', en: 'You have no notifications yet.' },
   'sizga sovg‘a qilmoqchi': { ru: 'хочет подарить вам', en: 'wants to gift you' },
+  // Bildirishnomalar — jumla mijozda yig'iladi (server faqat `type`
+  // va aktyor ismini beradi), shuning uchun bo'laklar shu yerda.
+  'sizga obuna bo‘ldi': { ru: 'подписался на вас', en: 'followed you' },
+  'postingizni yoqtirdi': { ru: 'оценил ваш пост', en: 'liked your post' },
+  'postingizga izoh yozdi': { ru: 'оставил комментарий к вашему посту', en: 'commented on your post' },
+  'Hammasini o‘qildi': { ru: 'Отметить всё прочитанным', en: 'Mark all as read' },
+  'Foydalanuvchi': { ru: 'Пользователь', en: 'User' },
   "auksionida g'olib bo'ldingiz — to'lov kutilmoqda": { ru: '— вы победили на аукционе, ожидается оплата', en: '— you won the auction, payment pending' },
   "To'lash": { ru: 'Оплатить', en: 'Pay' },
   '{when} murojaatingizga javob keldi': { ru: '{when} пришёл ответ на ваше обращение', en: '{when} you received a reply to your request' },
