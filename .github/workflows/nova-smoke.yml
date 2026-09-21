@@ -113,6 +113,31 @@ jobs:
             fail=1
           fi
 
+          echo "── Ro'yxatda obunachi va post soni bormi ──"
+          # Egasi telefonda ko'rgan nuqson: Tanlov ro'yxatida
+          # hamma "0 obunachi, 0 post" edi, chunki server bu ikki
+          # maydonni UMUMAN yubormasdi. Ilova yo'q maydonni 0 deb
+          # o'qiydi, ya'ni ekrandagi 0 "yo'q" degani emas edi.
+          #
+          # Bu yerda QIYMAT emas, MAYDON BORLIGI tekshiriladi:
+          # jonli bazada kimda nechta obunachi borligi o'zgarib
+          # turadi, maydonning yo'qolishi esa aynan o'sha nuqson.
+          out=$(curl -sS --max-time 25 -w '\n<<<%{http_code}>>>' \
+            -H 'accept: application/json' "https://nfcstore.uz/api/records" || echo '<<<000>>>')
+          code="${out##*<<<}"; code="${code%%>>>*}"
+          body="${out%<<<*}"
+          if [ "$code" != "200" ]; then
+            echo "XATO  $code  /api/records"
+            fail=1
+          elif printf '%s' "$body" | grep -q '"followers"' \
+            && printf '%s' "$body" | grep -q '"posts"'; then
+            echo "OK    200  /api/records (followers va posts yuborilmoqda)"
+          else
+            echo "XATO  200  /api/records — followers/posts maydoni YO'Q"
+            echo "      ro'yxatdagi sonlar telefonda yana 0 bo'lib ko'rinadi"
+            fail=1
+          fi
+
           echo "── Yaroqsiz kod 500 BERMASLIGI kerak ──"
           # Yo'q profil uchun toza 404/200 (SPA) bo'lishi mumkin,
           # lekin 5xx — hech qachon.
