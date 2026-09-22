@@ -11,8 +11,10 @@ import 'package:nfcstore_v2/core/theme.dart';
 import 'package:nfcstore_v2/screens/shell.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(_loadPreviewFonts);
+
   testWidgets('render actual current V2 Home preview', (tester) async {
-    await _loadPreviewFonts();
     tester.view.physicalSize = const Size(430, 932);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
