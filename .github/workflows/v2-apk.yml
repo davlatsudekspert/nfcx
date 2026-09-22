@@ -52,6 +52,17 @@ jobs:
       - name: Unit tests
         run: flutter test --reporter expanded
 
+      - name: Render actual Home preview
+        run: flutter test --update-goldens test/home_preview_golden.dart
+
+      - name: Upload Home preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: nfcstore-v2-home-${{ github.run_number }}
+          path: mobile_v2/test/goldens/home_actual.png
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Build preview APK
         run: flutter build apk --release --build-name=0.1.0 --build-number=${{ github.run_number }}
 
