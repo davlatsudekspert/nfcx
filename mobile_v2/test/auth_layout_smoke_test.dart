@@ -21,7 +21,8 @@ Future<void> _pumpSignedOut(
   await tester.pumpWidget(
     NfcstoreV2App(session: session, theme: theme),
   );
-  await tester.pumpAndSettle();
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 500));
 }
 
 void main() {
@@ -43,7 +44,8 @@ void main() {
       (tester) async {
     await _pumpSignedOut(tester, const Size(430, 932));
     await tester.tap(find.text('Personal yoki Business hisob ochish'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
 
     expect(find.text('Personal'), findsOneWidget);
     expect(find.text('Business'), findsOneWidget);
