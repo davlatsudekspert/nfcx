@@ -124,6 +124,23 @@ class Repository {
           .map(Company.fromJson)
           .toList();
 
+  Future<Company> company(String id) async {
+    final r = _map(await api.get('/api/companies/' + id));
+    final raw = r['company'];
+    return Company.fromJson(raw is Map ? raw.cast<String, dynamic>() : r);
+  }
+
+  Future<List<Product>> companyCatalog(String id) async =>
+      _list(await api.get('/api/companies/' + id + '/catalog'), 'items')
+          .map(Product.fromJson)
+          .toList();
+
+  Future<List<PostItem>> companyPosts(String id) async =>
+      _list(await api.get('/api/companies/' + id + '/posts'), 'posts')
+          .map(PostItem.fromJson)
+          .toList();
+
+
   Future<FollowStats> followStats(String code) async =>
       FollowStats.fromJson(_map(await api.get('/api/follow-stats/' + code)));
 
