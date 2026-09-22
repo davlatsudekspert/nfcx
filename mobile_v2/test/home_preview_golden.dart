@@ -1,4 +1,8 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nfcstore_v2/app.dart';
 import 'package:nfcstore_v2/core/models.dart';
@@ -8,7 +12,7 @@ import 'package:nfcstore_v2/screens/shell.dart';
 
 void main() {
   testWidgets('render actual current V2 Home preview', (tester) async {
-    await loadAppFonts();
+    await _loadPreviewFonts();
     tester.view.physicalSize = const Size(430, 932);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -74,4 +78,28 @@ void main() {
       matchesGoldenFile('goldens/home_actual.png'),
     );
   });
+}
+
+Future<void> _loadPreviewFonts() async {
+  Future<void> loadAsset(String family, String asset) async {
+    final loader = FontLoader(family)..addFont(rootBundle.load(asset));
+    await loader.load();
+  }
+
+  await Future.wait([
+    loadAsset('Manrope', 'assets/fonts/Manrope-400.ttf'),
+    loadAsset('InstrumentSerif', 'assets/fonts/InstrumentSerif-400.ttf'),
+    loadAsset('IBMPlexMono', 'assets/fonts/IBMPlexMono-400.ttf'),
+  ]);
+
+  final flutterRoot = Platform.environment['FLUTTER_ROOT'];
+  if (flutterRoot == null || flutterRoot.isEmpty) return;
+  final file = File(
+    flutterRoot + '/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
+  );
+  if (!await file.exists()) return;
+  final bytes = Uint8List.fromList(await file.readAsBytes());
+  final loader = FontLoader('MaterialIcons')
+    ..addFont(Future.value(ByteData.sublistView(bytes)));
+  await loader.load();
 }
