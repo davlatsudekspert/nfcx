@@ -11,7 +11,7 @@ on:
       - '.github/workflows/v2-apk.yml'
 
 concurrency:
-  group: nfcstore-v2-preview-${{ github.ref }}
+  group: nfcstore-v2-preview-r2-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -53,6 +53,7 @@ jobs:
         run: flutter test --reporter expanded
 
       - name: Render actual Home preview
+        timeout-minutes: 3
         run: flutter test --update-goldens test/home_preview_golden.dart
 
       - name: Upload Home preview
