@@ -446,13 +446,27 @@ qo'shasiz va xatolar mijozgacha yetib bormaydi.
 **Bu bo'lim to'ldirilmasa ilova RAD ETILADI.** Eng ko'p
 uchraydigan rad sabablaridan biri aynan shu.
 
-NFCSTORE ochilganda kirish so'raydi. Google tekshiruvchisi
-hisob ocholmaydi: ro'yxatdan o'tish **Telegram bot tasdiqlagan
-telefon raqamini** talab qiladi (`phone_not_verified`), bu esa
-tekshiruvchida yo'q. Kira olmagan tekshiruvchi ilovani
-"ishlamaydi" deb belgilaydi.
+NFCSTORE ochilganda kirish so'raydi. Kira olmagan tekshiruvchi
+ilovani "ishlamaydi" deb belgilaydi.
 
 Yechim: Play Console'da **tayyor hisob** beriladi.
+
+> **TUZATISH (2026-09-22).** Bu yerda avval "ro'yxatdan o'tish
+> Telegram bot tasdiqlagan telefonni talab qiladi" deb yozilgan
+> edi. NOTO'G'RI. `hosting/api/auth.js` dagi `register()` da
+> shart `emailEnabledD1(env)` ga qarab bo'linadi:
+>
+> * email yoqilgan bo'lsa (production'da AYNAN shunday —
+>   `RESEND_API_KEY` va `RESEND_FROM` jonli Workerda bor)
+>   ro'yxatdan o'tish **email kodi** bilan ketadi, Telegram
+>   umuman ishlatilmaydi;
+> * Telegram faqat email O'CHIQ bo'lganda zaxira yo'l bo'ladi.
+>
+> Ya'ni tekshiruvchi texnik jihatdan o'zi ham ro'yxatdan o'ta
+> oladi. Tayyor hisob berish BARIBIR to'g'ri qaror — tekshiruvchi
+> ro'yxatdan o'tish bilan ovora bo'lmasligi, birinchi ekrandanoq
+> to'ldirilgan profilni ko'rishi kerak — lekin sabab boshqa va
+> hujjat rost gapirishi shart.
 
 ### Qayerda
 
@@ -472,15 +486,15 @@ Qo'shimcha izohga (`Any other instructions`) shuni yozing:
 
 ```
 Sign in with the email and password above.
-Do not use "Register" — registration requires a phone number
-verified through our Telegram bot, which is not available to
-reviewers.
+Please use these credentials rather than creating a new account,
+so you see a profile with real content (NFC ID, posts, stories)
+instead of an empty one.
 ```
 
 ### Demo hisobni KIM yaratadi
 
-**Egasi yaratadi**, chunki ro'yxatdan o'tish Telegram bot
-orqali telefon tasdiqlashni talab qiladi.
+**Egasi yaratadi** — hisob NFC ID biriktirilgan va kontenti
+to'ldirilgan bo'lishi kerak, buni faqat egasi qila oladi.
 
 Hisob quyidagicha bo'lsin:
 
