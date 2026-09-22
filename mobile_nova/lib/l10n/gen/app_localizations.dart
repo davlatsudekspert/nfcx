@@ -1395,6 +1395,54 @@ abstract class L {
   /// **'Kompaniyangizni bir necha qadamda oching'**
   String get bizNoneHint;
 
+  /// No description provided for @bizPitchTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Biznesingiz uchun alohida sahifa'**
+  String get bizPitchTitle;
+
+  /// No description provided for @bizPitchLead.
+  ///
+  /// In uz, this message translates to:
+  /// **'Mijoz NFC kartani tegizadi yoki havolani ochadi — kompaniyangiz, mahsulotlaringiz va narxlaringiz darhol qarshisida.'**
+  String get bizPitchLead;
+
+  /// No description provided for @bizPitchCatalog.
+  ///
+  /// In uz, this message translates to:
+  /// **'Mahsulot va xizmatlar katalogi — narxi bilan'**
+  String get bizPitchCatalog;
+
+  /// No description provided for @bizPitchOrders.
+  ///
+  /// In uz, this message translates to:
+  /// **'Buyurtmani to‘g‘ridan-to‘g‘ri qabul qilish'**
+  String get bizPitchOrders;
+
+  /// No description provided for @bizPitchReach.
+  ///
+  /// In uz, this message translates to:
+  /// **'Postlar, istoryalar va «Tanlov» ro‘yxatida ko‘rinish'**
+  String get bizPitchReach;
+
+  /// No description provided for @bizPitchAddress.
+  ///
+  /// In uz, this message translates to:
+  /// **'O‘z manzilingiz: nfcstore.uz/c/nomingiz'**
+  String get bizPitchAddress;
+
+  /// No description provided for @bizPitchDemo.
+  ///
+  /// In uz, this message translates to:
+  /// **'Namunani ko‘rish'**
+  String get bizPitchDemo;
+
+  /// No description provided for @bizPitchDemoHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Haqiqiy biznes sahifasi qanday ko‘rinishini oching'**
+  String get bizPitchDemoHint;
+
   /// No description provided for @bizId.
   ///
   /// In uz, this message translates to:

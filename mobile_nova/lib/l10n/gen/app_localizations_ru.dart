@@ -670,6 +670,32 @@ class LRu extends L {
   String get bizNoneHint => 'Откройте компанию за несколько шагов';
 
   @override
+  String get bizPitchTitle => 'Отдельная страница для вашего бизнеса';
+
+  @override
+  String get bizPitchLead =>
+      'Клиент подносит NFC-карту или открывает ссылку — ваша компания, товары и цены сразу перед ним.';
+
+  @override
+  String get bizPitchCatalog => 'Каталог товаров и услуг — с ценами';
+
+  @override
+  String get bizPitchOrders => 'Приём заказов напрямую';
+
+  @override
+  String get bizPitchReach => 'Посты, истории и показ в разделе «Обзор»';
+
+  @override
+  String get bizPitchAddress => 'Свой адрес: nfcstore.uz/c/имя';
+
+  @override
+  String get bizPitchDemo => 'Посмотреть пример';
+
+  @override
+  String get bizPitchDemoHint =>
+      'Откройте, как выглядит настоящая страница бизнеса';
+
+  @override
   String get bizId => 'Адрес бизнеса';
 
   @override

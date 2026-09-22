@@ -52,6 +52,23 @@ abstract final class Routes {
       business ? '/story/$code?business=1' : '/story/$code';
   static String user(String code) => '/u/$code';
 
+  /// MUALLIF SAHIFASI — ODAMNIKI YOKI KOMPANIYANIKI.
+  ///
+  /// Lentada, Reels'da va post tafsilotida muallifga bosilganda
+  /// ilgari HAR DOIM `user(code)` ochilardi. Kompaniya postida
+  /// esa `code` — bu `companyId`, ya'ni shaxsiy profil ekrani
+  /// mavjud bo'lmagan kartani so'rardi:
+  ///
+  ///     GET /api/records/NFCSTOREUZ/posts  ->  404 not_found
+  ///
+  /// Ekranda "Xatolik yuz berdi · Topilmadi" chiqardi, "Kuzatish"
+  /// tugmasi esa shaxsiy obuna yo'liga urinib, bosilgach o'z
+  /// holiga qaytardi.
+  ///
+  /// Kompaniya uchun to'g'ri manzil — vitrinasi.
+  static String author(String code, {bool company = false}) =>
+      company ? storefront(code) : user(code);
+
   /// Obunachilar / obunalar ro'yxati — profildagi raqam bosilganda.
   static String followers(String code) => '/u/$code/followers';
   static String following(String code) => '/u/$code/following';

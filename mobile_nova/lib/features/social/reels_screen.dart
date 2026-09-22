@@ -429,7 +429,10 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 PressableScale(
-                  onTap: p.code.isEmpty ? null : () => context.push(Routes.user(p.code)),
+                  onTap: p.code.isEmpty
+                      ? null
+                      : () => context.push(
+                          Routes.author(p.code, company: p.isCompany)),
                   child: Row(
                     children: [
                       Avatar(
@@ -461,7 +464,8 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
                   // NFC ID — Reels ham identity tizimining bir qismi
                   // ekanini ko'rsatadi; bu TikTok'da yo'q bog'lanish.
                   PressableScale(
-                    onTap: () => context.push(Routes.user(p.code)),
+                    onTap: () => context.push(
+                        Routes.author(p.code, company: p.isCompany)),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
                       decoration: BoxDecoration(

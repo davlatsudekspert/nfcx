@@ -10,6 +10,7 @@ import '../../data/repositories/business_repository.dart';
 import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
+import '../../design/widgets/brand_logo.dart';
 import '../../design/widgets/buttons.dart';
 import '../../design/widgets/nova_scaffold.dart';
 import '../../design/widgets/states.dart';
@@ -44,13 +45,18 @@ class BusinessScreen extends ConsumerWidget {
           onRetry: () => ref.invalidate(myBusinessesProvider),
         ),
         data: (items) => items.isEmpty
-            ? StatePanel(
-                icon: Icons.storefront_outlined,
-                title: l.bizNone,
-                message: l.bizNoneHint,
-                actionLabel: l.bizCreate,
-                onAction: () => context.push(Routes.businessOnboard),
-              )
+            // BO'SH FORMA EMAS — TAKLIF.
+            //
+            // Ilgari bu yerda quruq `StatePanel` turardi:
+            // "Sizda biznes hisobi yo'q" va darhol "Biznes
+            // yaratish". Bosgan odam bo'sh anketa ko'rardi va
+            // nima uchun to'ldirayotganini bilmasdi.
+            //
+            // Endi uchta narsa birga: nima berishi, NAMUNANI
+            // ko'rish va shundan keyin yaratish. Namuna eng
+            // ishonarlisi — u ilovada allaqachon bor
+            // (`/demo/business`), shuning uchun tekinga keladi.
+            ? const _BusinessPitch()
             : ListView.separated(
                 padding: const EdgeInsets.fromLTRB(
                   Gap.screenX,
@@ -885,4 +891,101 @@ String formatMoney(int amount, String currency) {
     buf.write(s[i]);
   }
   return '$buf ${currency == 'UZS' ? "so'm" : currency}';
+}
+
+/// BIZNESI YO'Q ODAM UCHUN TAKLIF EKRANI.
+///
+/// Matn sotmaydi — NATIJA sotadi. Shuning uchun markazda
+/// "Namunani ko'rish": odam haqiqiy biznes sahifasini ochib,
+/// o'zinikini tasavvur qiladi.
+class _BusinessPitch extends StatelessWidget {
+  const _BusinessPitch();
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context);
+    final t = context.tokens;
+
+    return NovaScroll(
+      children: [
+        const SizedBox(height: Gap.lg),
+        Center(
+          child: BrandLogo(
+            style: BrandLogoStyle.badge,
+            size: 64,
+            halo: false,
+          ),
+        ),
+        const SizedBox(height: Gap.xl),
+        Text(
+          l.bizPitchTitle,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+        const SizedBox(height: Gap.sm),
+        Text(
+          l.bizPitchLead,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        const SizedBox(height: Gap.xl),
+
+        for (final (icon, text) in [
+          (Icons.inventory_2_outlined, l.bizPitchCatalog),
+          (Icons.receipt_long_outlined, l.bizPitchOrders),
+          (Icons.trending_up_rounded, l.bizPitchReach),
+          (Icons.link_rounded, l.bizPitchAddress),
+        ])
+          Padding(
+            padding: const EdgeInsets.only(bottom: Gap.md),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(icon, size: 19, color: t.accent2),
+                const SizedBox(width: Gap.md),
+                Expanded(
+                  child: Text(text,
+                      style: Theme.of(context).textTheme.bodyLarge),
+                ),
+              ],
+            ),
+          ),
+
+        const SizedBox(height: Gap.lg),
+
+        // NAMUNA — eng kuchli dalil.
+        FloatingSurface(
+          solid: true,
+          onTap: () => context.push(Routes.demoBusiness),
+          child: Row(
+            children: [
+              Icon(Icons.visibility_outlined, size: 20, color: t.accent2),
+              const SizedBox(width: Gap.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(l.bizPitchDemo,
+                        style: Theme.of(context).textTheme.titleSmall),
+                    const SizedBox(height: 2),
+                    Text(l.bizPitchDemoHint,
+                        style: Theme.of(context).textTheme.bodySmall),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, size: 18, color: t.text3),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: Gap.xl),
+        NovaButton(
+          label: l.bizCreate,
+          icon: Icons.add_business_rounded,
+          onPressed: () => context.push(Routes.businessOnboard),
+        ),
+        const SizedBox(height: Gap.xxl),
+      ],
+    );
+  }
 }

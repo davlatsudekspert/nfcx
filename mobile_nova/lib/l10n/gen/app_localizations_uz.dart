@@ -673,6 +673,33 @@ class LUz extends L {
   String get bizNoneHint => 'Kompaniyangizni bir necha qadamda oching';
 
   @override
+  String get bizPitchTitle => 'Biznesingiz uchun alohida sahifa';
+
+  @override
+  String get bizPitchLead =>
+      'Mijoz NFC kartani tegizadi yoki havolani ochadi — kompaniyangiz, mahsulotlaringiz va narxlaringiz darhol qarshisida.';
+
+  @override
+  String get bizPitchCatalog => 'Mahsulot va xizmatlar katalogi — narxi bilan';
+
+  @override
+  String get bizPitchOrders => 'Buyurtmani to‘g‘ridan-to‘g‘ri qabul qilish';
+
+  @override
+  String get bizPitchReach =>
+      'Postlar, istoryalar va «Tanlov» ro‘yxatida ko‘rinish';
+
+  @override
+  String get bizPitchAddress => 'O‘z manzilingiz: nfcstore.uz/c/nomingiz';
+
+  @override
+  String get bizPitchDemo => 'Namunani ko‘rish';
+
+  @override
+  String get bizPitchDemoHint =>
+      'Haqiqiy biznes sahifasi qanday ko‘rinishini oching';
+
+  @override
   String get bizId => 'Biznes manzili';
 
   @override

@@ -70,6 +70,13 @@ class ActiveProfile {
 
   bool get isBusiness => kind == ProfileKind.business;
 
+  /// HAQIQATAN TASDIQLANGANMI (admin qo'ygan belgi).
+  ///
+  /// Kompaniyada bunday maydon hozircha yo'q — biznes profilining
+  /// o'z nishoni bor (do'kon belgisi), shuning uchun u `false`
+  /// qaytaradi va ikkita nishon ustma-ust tushmaydi.
+  bool get verified => isBusiness ? false : id!.verified;
+
   /// Ommaviy manzildagi kod: shaxsiyda NFC kodi, bizneda
   /// `companyId`.
   String get code => isBusiness ? business!.companyId : id!.code;

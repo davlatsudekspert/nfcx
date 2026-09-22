@@ -80,14 +80,16 @@ class FeedCard extends ConsumerWidget {
                 size: 38,
                 onTap: post.code.isEmpty
                     ? null
-                    : () => context.push(Routes.user(post.code)),
+                    : () => context.push(
+                        Routes.author(post.code, company: post.isCompany)),
               ),
               const SizedBox(width: Gap.sm),
               Expanded(
                 child: GestureDetector(
                   onTap: post.code.isEmpty
                       ? null
-                      : () => context.push(Routes.user(post.code)),
+                      : () => context.push(
+                        Routes.author(post.code, company: post.isCompany)),
                   behavior: HitTestBehavior.opaque,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

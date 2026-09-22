@@ -804,8 +804,20 @@ class _HeroAvatar extends StatelessWidget {
               ringColor: business ? t.accentB : null,
             ),
           ),
-          // Nishon FAQAT haqiqiy holat bo'lganda: asosiy ID yoki biznes.
-          if (profile != null && (profile!.isBusiness || profile!.id!.primary))
+          // NISHON FAQAT IKKI HOLATDA: biznes yoki HAQIQIY tasdiq.
+          //
+          // Ilgari shart `profile!.id!.primary` edi — ya'ni ✓
+          // har bir odamning asosiy ID'sida chizilardi. Odam esa
+          // uni Instagram'dagi ko'k belgidek o'qiydi: "bu hisob
+          // tasdiqlangan". Natijada ilova HAMMANI tasdiqlangan
+          // deb ko'rsatib turardi.
+          //
+          // Serverda haqiqiy `cards.verified` maydoni bor va uni
+          // admin qo'yadi — endi nishon aynan shunga bog'liq.
+          // "Asosiy ID" esa ishonch bildiruvchi belgi emas: u
+          // shunchaki qaysi karta birinchi ekanini bildiradi va
+          // NFC ID ro'yxatida allaqachon ko'rinadi.
+          if (profile != null && (profile!.isBusiness || profile!.verified))
             Positioned(
               right: 2,
               bottom: 2,

@@ -154,6 +154,7 @@ class NfcId {
     this.followers = 0,
     this.following = 0,
     this.posts = 0,
+    this.verified = false,
     this.kind = NfcIdKind.personal,
     this.cardLinked = false,
     this.musicUrls = const [],
@@ -175,6 +176,18 @@ class NfcId {
   final int followers;
   final int following;
   final int posts;
+
+  /// HAQIQIY TASDIQLASH — admin qo'yadi (`cards.verified`).
+  ///
+  /// Ilgari bu maydon ilovada UMUMAN yo'q edi. Profil ekrani esa
+  /// avatar ustiga ✓ chizardi — lekin "tasdiqlangan" uchun emas,
+  /// ASOSIY ID uchun. Odam uni Instagram'dagi ko'k belgidek
+  /// o'qiydi, ya'ni ilova har bir foydalanuvchini tasdiqlangan
+  /// deb ko'rsatib turardi.
+  ///
+  /// Server bu maydonni allaqachon yuboradi (`rowToRecord`da
+  /// `verified`), ilova esa o'qimasdi.
+  final bool verified;
   final NfcIdKind kind;
 
   /// Jismoniy karta ulanganmi.
@@ -231,6 +244,7 @@ class NfcId {
         followers: _i(j['followers']),
         following: _i(j['following']),
         posts: _i(j['posts']),
+        verified: _b(j['verified']),
         // TUR — SERVER `profileType` YUBORADI.
         //
         // Ilgari bu yerda faqat `type` va `isCompany` o'qilardi.

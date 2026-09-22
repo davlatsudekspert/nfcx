@@ -673,6 +673,32 @@ class LEn extends L {
   String get bizNoneHint => 'Set up your company in a few steps';
 
   @override
+  String get bizPitchTitle => 'A page of its own for your business';
+
+  @override
+  String get bizPitchLead =>
+      'A customer taps your NFC card or opens the link — your company, products and prices are right there.';
+
+  @override
+  String get bizPitchCatalog =>
+      'Catalogue of products and services, with prices';
+
+  @override
+  String get bizPitchOrders => 'Take orders directly';
+
+  @override
+  String get bizPitchReach => 'Posts, stories and a place in Discover';
+
+  @override
+  String get bizPitchAddress => 'Your own address: nfcstore.uz/c/your-name';
+
+  @override
+  String get bizPitchDemo => 'See an example';
+
+  @override
+  String get bizPitchDemoHint => 'Open a real business page and look around';
+
+  @override
   String get bizId => 'Business address';
 
   @override

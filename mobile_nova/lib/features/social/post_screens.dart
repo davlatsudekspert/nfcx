@@ -115,7 +115,8 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                     size: 44,
                     onTap: p.code.isEmpty
                         ? null
-                        : () => context.push(Routes.user(p.code)),
+                        : () => context.push(
+                            Routes.author(p.code, company: p.isCompany)),
                   ),
                   const SizedBox(width: Gap.md),
                   Expanded(
