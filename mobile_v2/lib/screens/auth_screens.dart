@@ -29,6 +29,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   AccountKind? _kind;
   String _category = 'other';
   bool _codeSent = false;
+  bool _codeRequired = true;
   bool _busy = false;
   bool _terms = false;
   bool _obscure = true;
@@ -92,8 +93,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
       setState(() {
         _codeSent = true;
+        _codeRequired = channel != 'none';
         _message = channel == 'none'
-            ? 'Tasdiqlash xizmati vaqtincha o‘chiq. Davom etishingiz mumkin.'
+            ? 'Tasdiqlash xizmati vaqtincha o‘chiq. Kod kiritmasdan davom etishingiz mumkin.'
             : 'Tasdiqlash kodi emailingizga yuborildi.';
       });
     } on ApiException catch (e) {
@@ -133,7 +135,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       setState(() => _message = 'Email, telefon va parolni to‘liq kiriting.');
       return;
     }
-    if (_codeSent && code.isEmpty) {
+    if (_codeRequired && _codeSent && code.isEmpty) {
       setState(() => _message = 'Emailga kelgan tasdiqlash kodini kiriting.');
       return;
     }
@@ -310,7 +312,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         border: const OutlineInputBorder(),
                       ),
                     ),
-                    if (_codeSent) ...[
+                    if (_codeSent && _codeRequired) ...[
                       const SizedBox(height: 12),
                       TextField(
                         controller: _code,
