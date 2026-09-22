@@ -885,7 +885,7 @@ class _EditorialFeature extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        minHeight: 190,
+        constraints: const BoxConstraints(minHeight: 190),
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: bg,
@@ -1006,7 +1006,7 @@ class _AmbientPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawColor(background);
+    canvas.drawRect(Offset.zero & size, Paint()..color = background);
 
     final phase = progress * math.pi * 2;
     final paintA = Paint()

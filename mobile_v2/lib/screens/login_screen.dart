@@ -616,7 +616,7 @@ class _LoginBackdrop extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawColor(background);
+    canvas.drawRect(Offset.zero & size, Paint()..color = background);
     final phase = t * math.pi * 2;
 
     final a = Paint()
