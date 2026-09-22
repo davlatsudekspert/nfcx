@@ -4,6 +4,7 @@ import '../core/api.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../ui/widgets.dart';
+import 'auth_screens.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -153,6 +154,24 @@ class _LoginScreenState extends State<LoginScreen> {
                               )
                             : const Text('Kirish'),
                       ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                          ),
+                          child: const Text('Ro‘yxatdan o‘tish'),
+                        ),
+                        const Spacer(),
+                        TextButton(
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+                          ),
+                          child: const Text('Parolni unutdingizmi?'),
+                        ),
+                      ],
                     ),
                   ],
                 ),
