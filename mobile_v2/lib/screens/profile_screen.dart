@@ -7,6 +7,8 @@ import '../core/models.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../ui/widgets.dart';
+import 'settings_screen.dart';
+import 'shell.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, this.code});
@@ -30,7 +32,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final current = widget.code ?? SessionScope.of(context).activeProfile?.code ?? '';
+    final current =
+        widget.code ?? SessionScope.of(context).activeProfile?.code ?? '';
     if (current != _loadedCode) {
       _loadedCode = current;
       _load(current);
@@ -86,6 +89,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         isFollowing: !before.isFollowing,
       );
     });
+
     try {
       final repo = SessionScope.read(context).repo;
       if (before.isFollowing) {
@@ -103,33 +107,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _share() async {
     final p = _profile;
     if (p == null) return;
-    await Share.share('https://nfcstore.uz/' + p.code.toLowerCase());
+    await Share.share(
+      'https://nfcstore.uz/' + p.code.toLowerCase(),
+      subject: p.name,
+    );
   }
 
   Future<void> _qr() async {
     final p = _profile;
     if (p == null) return;
     final palette = context.brand;
+
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: palette.surface,
       showDragHandle: true,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 8, 24, 30),
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 6, 24, 30),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Mening QR kodim', style: Theme.of(context).textTheme.headlineMedium),
-            const SizedBox(height: 18),
+            Text(
+              'QR orqali ulashing',
+              style: Theme.of(sheetContext).textTheme.headlineMedium,
+            ),
+            const SizedBox(height: 7),
+            Text(
+              p.name,
+              style: Theme.of(sheetContext).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 19),
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(17),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(26),
               ),
               child: QrImageView(
                 data: 'https://nfcstore.uz/' + p.code.toLowerCase(),
-                size: 220,
+                size: 216,
                 backgroundColor: Colors.white,
               ),
             ),
@@ -139,8 +155,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: TextStyle(
                 fontFamily: 'IBMPlexMono',
                 color: palette.ink,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
-                letterSpacing: 1.2,
+                letterSpacing: 1.5,
               ),
             ),
           ],
@@ -152,19 +169,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final palette = context.brand;
+
     if (_loading && _profile == null) {
       return Scaffold(
-        body: Center(child: CircularProgressIndicator(strokeWidth: 1.8, color: palette.accent)),
+        body: Center(
+          child: CircularProgressIndicator(
+            strokeWidth: 1.6,
+            color: palette.ink,
+          ),
+        ),
       );
     }
 
     if (_error != null && _profile == null) {
       return Scaffold(
-        appBar: widget.code == null ? null : AppBar(backgroundColor: Colors.transparent),
-        body: Center(
-          child: OutlinedButton(
-            onPressed: () => _load(_loadedCode),
-            child: const Text('Qayta urinish'),
+        body: SafeArea(
+          child: Center(
+            child: OutlinedButton(
+              onPressed: () => _load(_loadedCode),
+              child: const Text('Qayta urinish'),
+            ),
           ),
         ),
       );
@@ -175,273 +199,643 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return Scaffold(
         body: SafeArea(
           child: Center(
-            child: Text('Profil topilmadi.', style: Theme.of(context).textTheme.bodyMedium),
+            child: Text(
+              'Profil topilmadi.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
           ),
         ),
       );
     }
 
     return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: RefreshIndicator(
-          onRefresh: () => _load(p.code),
-          color: palette.accent,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 104),
-            children: [
-              Row(
-                children: [
-                  if (!_own) ...[
-                    RoundIcon(icon: Icons.arrow_back_rounded, onTap: () => Navigator.of(context).pop()),
-                    const SizedBox(width: 10),
-                  ],
-                  const Spacer(),
-                  RoundIcon(icon: Icons.ios_share_rounded, onTap: _share),
-                  const SizedBox(width: 9),
-                  RoundIcon(icon: Icons.more_horiz_rounded, onTap: () {}),
-                ],
+      body: RefreshIndicator(
+        onRefresh: () => _load(p.code),
+        color: palette.ink,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
+          slivers: [
+            SliverToBoxAdapter(
+              child: _ProfileHero(
+                profile: p,
+                own: _own,
+                stats: _stats,
+                postCount: _posts.length,
+                onBack: _own ? null : () => Navigator.of(context).pop(),
+                onShare: _share,
+                onQr: _qr,
+                onSettings: _own
+                    ? () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const SettingsScreen(),
+                          ),
+                        )
+                    : null,
               ),
-              const SizedBox(height: 10),
-              Center(
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(18, 22, 18, 0),
+              sliver: SliverToBoxAdapter(
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    BrandAvatar(
-                      url: p.avatarUrl,
-                      size: 88,
-                      goldRing: true,
-                      fallback: p.name,
-                    ),
-                    const SizedBox(height: 13),
-                    Text(
-                      p.name,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineMedium,
-                    ),
-                    if (p.role.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(p.role, style: Theme.of(context).textTheme.bodyMedium),
-                    ],
-                    const SizedBox(height: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: palette.hero,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        p.code,
+                    if (p.about.isNotEmpty) ...[
+                      Text(
+                        'ABOUT',
                         style: TextStyle(
-                          fontFamily: 'IBMPlexMono',
-                          color: palette.heroInk,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 1.6,
+                          color: palette.ink2,
+                          fontSize: 8.5,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.5,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 22),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  StatBlock(value: _posts.length.toString(), label: 'postlar'),
-                  StatBlock(value: _stats.followers.toString(), label: 'obunachilar'),
-                  StatBlock(value: _stats.following.toString(), label: 'obunalar'),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 48,
-                      child: FilledButton.icon(
-                        onPressed: _own ? () {} : _toggleFollow,
-                        icon: Icon(
-                          _own
-                              ? Icons.edit_outlined
-                              : (_stats.isFollowing
-                                  ? Icons.person_remove_alt_1_rounded
-                                  : Icons.person_add_alt_1_rounded),
-                          size: 18,
-                        ),
-                        label: Text(
-                          _own
-                              ? 'Profilni tahrirlash'
-                              : (_stats.isFollowing ? 'Kuzatilmoqda' : 'Kuzatish'),
-                        ),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: palette.hero,
-                          foregroundColor: palette.heroInk,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                      const SizedBox(height: 9),
+                      Text(
+                        p.about,
+                        style: TextStyle(
+                          color: palette.ink,
+                          fontSize: 13.2,
+                          height: 1.5,
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  RoundIcon(icon: Icons.qr_code_2_rounded, onTap: _qr, size: 48),
-                  const SizedBox(width: 8),
-                  RoundIcon(icon: Icons.ios_share_rounded, onTap: _share, size: 48),
-                ],
-              ),
-              if (_own) ...[
-                const SizedBox(height: 26),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text('NFC ID larim', style: Theme.of(context).textTheme.titleLarge),
-                    ),
-                    Text(
-                      'Hammasi',
-                      style: TextStyle(color: palette.ink2, fontSize: 12),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 104,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: SessionScope.of(context).profiles.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 10),
-                    itemBuilder: (context, i) {
-                      final item = SessionScope.of(context).profiles[i];
-                      final selected = item.code == p.code;
-                      return GestureDetector(
-                        onTap: () => SessionScope.read(context).usePersonal(item),
-                        child: Container(
-                          width: 106,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: selected ? palette.hero : palette.surface,
-                            borderRadius: BorderRadius.circular(17),
-                            border: Border.all(
-                              color: selected ? palette.accent : palette.line,
+                      const SizedBox(height: 22),
+                    ],
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SizedBox(
+                            height: 52,
+                            child: FilledButton(
+                              onPressed: _own
+                                  ? () => ShellScope.of(context).selectTab(2)
+                                  : _toggleFollow,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: palette.ink,
+                                foregroundColor: palette.background,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                              ),
+                              child: Text(
+                                _own
+                                    ? 'NFC ID boshqaruvi'
+                                    : (_stats.isFollowing
+                                        ? 'Kuzatilmoqda'
+                                        : 'Kuzatish'),
+                              ),
                             ),
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.code,
-                                style: TextStyle(
-                                  fontFamily: 'IBMPlexMono',
-                                  color: selected ? palette.heroInk : palette.ink,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const Spacer(),
-                              Text(
-                                item.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: selected ? Colors.white : palette.ink,
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                item.views.toString() + ' ko‘rish',
-                                style: TextStyle(
-                                  color: selected
-                                      ? Colors.white.withValues(alpha: .56)
-                                      : palette.ink2,
-                                  fontSize: 8.5,
-                                ),
-                              ),
-                            ],
-                          ),
                         ),
-                      );
-                    },
+                        const SizedBox(width: 9),
+                        _SquareAction(
+                          icon: Icons.qr_code_2_rounded,
+                          onTap: _qr,
+                        ),
+                        const SizedBox(width: 8),
+                        _SquareAction(
+                          icon: Icons.ios_share_rounded,
+                          onTap: _share,
+                        ),
+                      ],
+                    ),
+                    if (_own) ...[
+                      const SizedBox(height: 29),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'NFC ID collection',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(fontSize: 17),
+                            ),
+                          ),
+                          Text(
+                            SessionScope.of(context).profiles.length.toString() +
+                                ' ta',
+                            style: TextStyle(
+                              color: palette.ink2,
+                              fontFamily: 'IBMPlexMono',
+                              fontSize: 9.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 13),
+                      SizedBox(
+                        height: 134,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          physics: const BouncingScrollPhysics(),
+                          itemCount:
+                              SessionScope.of(context).profiles.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(width: 9),
+                          itemBuilder: (context, i) {
+                            final item =
+                                SessionScope.of(context).profiles[i];
+                            return _MiniIdentity(
+                              item: item,
+                              selected: item.code == p.code,
+                              onTap: () {
+                                SessionScope.read(context)
+                                    .usePersonal(item);
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 30),
+                    Row(
+                      children: [
+                        Text(
+                          'Content',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleLarge
+                              ?.copyWith(fontSize: 17),
+                        ),
+                        const Spacer(),
+                        if (_own)
+                          TextButton.icon(
+                            onPressed: () =>
+                                ShellScope.of(context).selectTab(3),
+                            icon: const Icon(
+                              Icons.play_circle_outline_rounded,
+                              size: 17,
+                            ),
+                            label: const Text('Reels'),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 11),
+                  ],
+                ),
+              ),
+            ),
+            if (_posts.isEmpty)
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(18, 0, 18, 30),
+                sliver: SliverToBoxAdapter(
+                  child: Container(
+                    height: 146,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: palette.surface,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: palette.line),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.auto_awesome_outlined,
+                          color: palette.ink2,
+                          size: 27,
+                        ),
+                        const SizedBox(height: 9),
+                        Text(
+                          'Hozircha post yo‘q.',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ],
-              const SizedBox(height: 26),
-              Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      height: 42,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        border: Border(bottom: BorderSide(color: palette.ink, width: 1.5)),
-                      ),
-                      child: Text('Postlar', style: Theme.of(context).textTheme.titleMedium),
-                    ),
-                  ),
-                  Expanded(
-                    child: Container(
-                      height: 42,
-                      alignment: Alignment.center,
-                      child: Text('Reels', style: TextStyle(color: palette.ink2, fontSize: 13)),
-                    ),
-                  ),
-                  Expanded(
-                    child: Container(
-                      height: 42,
-                      alignment: Alignment.center,
-                      child: Text('Saqlangan', style: TextStyle(color: palette.ink2, fontSize: 13)),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              if (_posts.isEmpty)
-                SurfaceCard(
-                  shadow: false,
-                  child: Text(
-                    'Hozircha post yo‘q.',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                )
-              else
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(18, 0, 18, 28),
+                sliver: SliverGrid.builder(
                   itemCount: _posts.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate:
+                      const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 3,
                     crossAxisSpacing: 5,
                     mainAxisSpacing: 5,
-                    childAspectRatio: 1,
+                    childAspectRatio: .92,
                   ),
-                  itemBuilder: (context, i) {
-                    final post = _posts[i];
-                    return ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: post.imageUrl == null
-                          ? ColoredBox(
-                              color: palette.background2,
-                              child: Icon(
-                                post.videoUrl == null
-                                    ? Icons.image_outlined
-                                    : Icons.play_arrow_rounded,
-                                color: palette.ink2,
-                              ),
-                            )
-                          : CachedNetworkImage(
-                              imageUrl: post.imageUrl!,
-                              fit: BoxFit.cover,
-                              errorWidget: (_, __, ___) => ColoredBox(
-                                color: palette.background2,
-                                child: Icon(Icons.broken_image_outlined, color: palette.ink2),
-                              ),
-                            ),
-                    );
-                  },
+                  itemBuilder: (context, i) => _PostTile(
+                    post: _posts[i],
+                  ),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );
   }
+}
+
+class _ProfileHero extends StatelessWidget {
+  const _ProfileHero({
+    required this.profile,
+    required this.own,
+    required this.stats,
+    required this.postCount,
+    required this.onShare,
+    required this.onQr,
+    this.onBack,
+    this.onSettings,
+  });
+
+  final IdentityProfile profile;
+  final bool own;
+  final FollowStats stats;
+  final int postCount;
+  final VoidCallback onShare;
+  final VoidCallback onQr;
+  final VoidCallback? onBack;
+  final VoidCallback? onSettings;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.brand;
+    return Container(
+      constraints: const BoxConstraints(minHeight: 390),
+      padding: EdgeInsets.fromLTRB(
+        18,
+        MediaQuery.paddingOf(context).top + 10,
+        18,
+        24,
+      ),
+      decoration: const BoxDecoration(
+        color: Color(0xFF0F0F0E),
+        borderRadius: BorderRadius.vertical(
+          bottom: Radius.circular(34),
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -34,
+            top: 44,
+            child: SizedBox(
+              width: 190,
+              height: 190,
+              child: CustomPaint(
+                painter: _ProfileSignal(
+                  p.heroInk.withValues(alpha: .13),
+                ),
+              ),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  if (onBack != null)
+                    _HeroAction(
+                      icon: Icons.arrow_back_rounded,
+                      onTap: onBack!,
+                    )
+                  else
+                    Text(
+                      'PROFILE',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: .46),
+                        fontSize: 8.5,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.8,
+                      ),
+                    ),
+                  const Spacer(),
+                  _HeroAction(
+                    icon: Icons.qr_code_2_rounded,
+                    onTap: onQr,
+                  ),
+                  const SizedBox(width: 7),
+                  _HeroAction(
+                    icon: own
+                        ? Icons.settings_outlined
+                        : Icons.ios_share_rounded,
+                    onTap: own ? onSettings! : onShare,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 38),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  BrandAvatar(
+                    url: profile.avatarUrl,
+                    size: 88,
+                    goldRing: true,
+                    fallback: profile.name,
+                  ),
+                  const Spacer(),
+                  Text(
+                    profile.code,
+                    style: TextStyle(
+                      color: p.heroInk,
+                      fontFamily: 'IBMPlexMono',
+                      fontSize: 19,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 19),
+              Text(
+                profile.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xFFF8F6EF),
+                  fontFamily: 'InstrumentSerif',
+                  fontSize: 37,
+                  height: .93,
+                ),
+              ),
+              if (profile.role.isNotEmpty) ...[
+                const SizedBox(height: 9),
+                Text(
+                  profile.role,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: .58),
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+              const Spacer(),
+              Row(
+                children: [
+                  _HeroStat(
+                    value: postCount.toString(),
+                    label: 'post',
+                  ),
+                  const SizedBox(width: 28),
+                  _HeroStat(
+                    value: stats.followers.toString(),
+                    label: 'obunachi',
+                  ),
+                  const SizedBox(width: 28),
+                  _HeroStat(
+                    value: stats.following.toString(),
+                    label: 'obuna',
+                  ),
+                  const Spacer(),
+                  Container(
+                    width: 47,
+                    height: 47,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withValues(alpha: .055),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: .1),
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.contactless_rounded,
+                      color: p.heroInk,
+                      size: 26,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroStat extends StatelessWidget {
+  const _HeroStat({required this.value, required this.label});
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontFamily: 'IBMPlexMono',
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: .42),
+              fontSize: 8.5,
+            ),
+          ),
+        ],
+      );
+}
+
+class _HeroAction extends StatelessWidget {
+  const _HeroAction({required this.icon, required this.onTap});
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white.withValues(alpha: .055),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: .1),
+            ),
+          ),
+          child: Icon(icon, color: Colors.white, size: 18),
+        ),
+      );
+}
+
+class _SquareAction extends StatelessWidget {
+  const _SquareAction({required this.icon, required this.onTap});
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.brand;
+    return InkWell(
+      borderRadius: BorderRadius.circular(17),
+      onTap: onTap,
+      child: Container(
+        width: 52,
+        height: 52,
+        decoration: BoxDecoration(
+          color: p.surface,
+          borderRadius: BorderRadius.circular(17),
+          border: Border.all(color: p.line),
+        ),
+        child: Icon(icon, color: p.ink, size: 20),
+      ),
+    );
+  }
+}
+
+class _MiniIdentity extends StatelessWidget {
+  const _MiniIdentity({
+    required this.item,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IdentityProfile item;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.brand;
+    final bg = selected ? const Color(0xFF111110) : p.surface;
+    final fg = selected ? const Color(0xFFF8F6EF) : p.ink;
+    final muted =
+        selected ? Colors.white.withValues(alpha: .5) : p.ink2;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        width: 154,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: selected ? p.accent.withValues(alpha: .5) : p.line,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              item.code,
+              style: TextStyle(
+                color: selected ? p.heroInk : fg,
+                fontFamily: 'IBMPlexMono',
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              item.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: fg,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              item.role.isEmpty ? 'NFCSTORE identity' : item.role,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: muted,
+                fontSize: 9.2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PostTile extends StatelessWidget {
+  const _PostTile({required this.post});
+  final PostItem post;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.brand;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(13),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (post.imageUrl != null)
+            CachedNetworkImage(
+              imageUrl: post.imageUrl!,
+              fit: BoxFit.cover,
+              errorWidget: (_, __, ___) => ColoredBox(
+                color: p.background2,
+                child: Icon(
+                  Icons.broken_image_outlined,
+                  color: p.ink2,
+                ),
+              ),
+            )
+          else
+            ColoredBox(
+              color: p.background2,
+              child: Icon(
+                post.videoUrl == null
+                    ? Icons.image_outlined
+                    : Icons.play_arrow_rounded,
+                color: p.ink2,
+              ),
+            ),
+          if (post.videoUrl != null)
+            const Positioned(
+              top: 8,
+              right: 8,
+              child: Icon(
+                Icons.play_circle_fill_rounded,
+                color: Colors.white,
+                size: 18,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileSignal extends CustomPainter {
+  const _ProfileSignal(this.color);
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    final origin = Offset(size.width * .12, size.height * .88);
+    for (var i = 0; i < 5; i++) {
+      canvas.drawArc(
+        Rect.fromCircle(
+          center: origin,
+          radius: 38 + i * 25,
+        ),
+        -1.57,
+        1.57,
+        false,
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ProfileSignal oldDelegate) =>
+      oldDelegate.color != color;
 }
