@@ -133,34 +133,69 @@ void _idPlateTests() {
       ]) {
         expect(File(f).readAsStringSync(), contains('IdPlate('), reason: f);
       }
-      // Profil kapsulasi o'z shakliga ega, lekin QOIDA bitta.
+      // Profil kapsulasi o'z shakliga ega (nuqta + kengroq
+      // to'ldirish), lekin RANG QOIDASI bitta — `IdPlate.skin()`.
       expect(
         File('lib/features/profile/profile_screen.dart').readAsStringSync(),
-        contains('IdPlate.isPrecious'),
+        contains('IdPlate.skin('),
       );
     });
 
-    test('OQ mavzuda qimmatlik TESKARI TON bilan beriladi', () {
-      // Birinchi urinish oq mavzuda ISHLAMADI: `mono` da aksent
-      // qora va `washScale` .35, ya'ni fon alfasi
-      // 0.12 x 0.35 = 0.042 — oq ustida deyarli sezilmaydi.
-      // Siyoh ham oddiy matn rangi bilan bir xil edi.
+    test('OQ-QORA mavzuda oltin yo\'q — qimmatlik TESKARI TON bilan', () {
+      // Egasining qat'iy talabi: oq-qora mavzuda faqat oq va
+      // qora. Monoxrom tizimda ierarxiya rang bilan emas, TONNI
+      // ALMASHTIRISH bilan beriladi.
       //
-      // Oltin qo'shib bo'lmaydi (egasining talabi: faqat oq va
-      // qora), shuning uchun ierarxiya TONNI ALMAShTIRISh bilan
-      // beriladi.
+      // Bu shart `skin()` ichida `mono` uchun ALOHIDA shoxobcha
+      // bo'lib turadi. U olib tashlansa toifa ranglari oq-qora
+      // mavzuga ham oqib kirardi.
       final src =
           File('lib/design/widgets/id_plate.dart').readAsStringSync();
-      expect(src, contains('final invert = precious && !t.isDark'));
+      expect(src, contains("t.id == 'mono'"));
       expect(src, contains('t.onAccent'),
           reason: 'teskari fonda siyoh yorug\' bo\'lishi kerak');
+    });
 
-      // Profil kapsulasi ham AYNI qoidada — aks holda profil va
-      // Tanlov boshqa-boshqa gapirardi.
-      expect(
-        File('lib/features/profile/profile_screen.dart').readAsStringSync(),
-        contains('precious && !t.isDark'),
-      );
+    test('profil kapsulasi ranglarni QAYTA YOZMAYDI', () {
+      // Ilgari `_IdPill` ranglarni qo'lda takrorlardi va
+      // `IdPlate` o'zgarganda orqada qolardi: bitta kod Tanlovda
+      // oltin, profilda kulrang ko'rinardi. Endi ikkalasi bitta
+      // funksiyadan o'qiydi.
+      final src =
+          File('lib/features/profile/profile_screen.dart').readAsStringSync();
+      expect(src, contains('IdPlate.skin('));
+      expect(src, isNot(contains('t.wash(t.accent2')),
+          reason: 'rang mantig\'i faqat IdPlate.skin() da bo\'lsin');
+    });
+
+    test('toifa ranglari SAYT bilan aynan bir xil', () {
+      // Ilova va sayt bitta kod haqida boshqa-boshqa rang
+      // ko'rsatsa, odam qaysi biriga ishonishni bilmaydi.
+      // Shuning uchun qiymatlar SOLISHTIRILADI, "ko'chirdim"
+      // degan so'zga ishonilmaydi.
+      final site = File('../src/lib/pricing.js').readAsStringSync();
+      final dart =
+          File('lib/design/widgets/id_plate.dart').readAsStringSync();
+
+      final block = RegExp(r'TIER_COLOR\s*=\s*\{([^}]*)\}')
+          .firstMatch(site)
+          ?.group(1);
+      expect(block, isNotNull, reason: 'saytda TIER_COLOR topilmadi');
+
+      final siteColors = <String, String>{};
+      for (final m in RegExp(r"(\w+)\s*:\s*'#([0-9a-fA-F]{6})'")
+          .allMatches(block!)) {
+        siteColors[m.group(1)!] = m.group(2)!.toUpperCase();
+      }
+      expect(siteColors.length, 5, reason: 'saytda beshta toifa bor');
+
+      for (final e in siteColors.entries) {
+        expect(
+          dart,
+          contains("'${e.key}': Color(0xFF${e.value})"),
+          reason: '${e.key} rangi sayt bilan mos emas (#${e.value})',
+        );
+      }
     });
 
     test('daraja Tanlovga UZATILADI', () {

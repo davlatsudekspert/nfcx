@@ -112,19 +112,34 @@ class NovaIconButton extends StatelessWidget {
     required this.icon,
     required this.onPressed,
     this.tooltip,
-    this.size = 42,
+    this.size = 44,
     this.filled = false,
   });
+
+  /// ANDROID'NING ENG KICHIK BOSISH MAYDONI.
+  ///
+  /// Material qoidasi: bosiladigan har qanday narsa kamida 48 dp
+  /// bo'lishi kerak. Bu bezak emas — o'rtacha barmoq izi taxminan
+  /// shuncha, undan kichigi "bosdim, ochilmadi" degan xatoga olib
+  /// keladi. Ayniqsa sarlavha qatorida, ekranning eng chetida.
+  ///
+  /// Sozlamalar tugmasi 42 dp edi, ya'ni chegaradan past.
+  static const minTapTarget = 48.0;
 
   final IconData icon;
   final VoidCallback? onPressed;
   final String? tooltip;
+
+  /// KO'RINADIGAN doira o'lchami. Bosish maydoni bundan kichik
+  /// bo'lmaydi — pastdagi [minTapTarget] ga qarang.
   final double size;
+
   final bool filled;
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
+    final tap = size < minTapTarget ? minTapTarget : size;
     return Tooltip(
       message: tooltip ?? '',
       child: Semantics(
@@ -132,21 +147,36 @@ class NovaIconButton extends StatelessWidget {
         label: tooltip,
         child: PressableScale(
           onTap: onPressed,
-          child: AnimatedContainer(
-            duration: Motion.theme,
-            width: size,
-            height: size,
-            decoration: BoxDecoration(
-              color: filled ? null : t.surface2,
-              gradient: filled ? t.accentGradient : null,
-              shape: BoxShape.circle,
-              border: Border.all(color: t.border2),
-              boxShadow: filled ? t.shadowTiny : null,
-            ),
-            child: Icon(
-              icon,
-              size: size * .44,
-              color: filled ? t.onAccent : t.text1,
+          // BOSISH MAYDONI DOIRADAN KATTA.
+          //
+          // Doira o'z o'lchamida qoladi (bezak buzilmasin), lekin
+          // `PressableScale` ichidagi `GestureDetector`
+          // `HitTestBehavior.opaque` bilan ishlaydi — ya'ni bu
+          // qutining BUTUN yuzasi bosiladi, faqat doira emas.
+          child: SizedBox(
+            width: tap,
+            height: tap,
+            child: Center(
+              child: AnimatedContainer(
+                duration: Motion.theme,
+                width: size,
+                height: size,
+                decoration: BoxDecoration(
+                  color: filled ? null : t.surface2,
+                  gradient: filled ? t.accentGradient : null,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: t.border2),
+                  boxShadow: filled ? t.shadowTiny : null,
+                ),
+                child: Icon(
+                  icon,
+                  // .44 da 42 dp tugmada ikonka 18.5 dp chiqardi —
+                  // ekranda "ingichka" ko'rinadi. .46 uni 20 dp ga
+                  // ko'taradi, doira esa o'sha-o'sha yumshoq qoladi.
+                  size: size * .46,
+                  color: filled ? t.onAccent : t.text1,
+                ),
+              ),
             ),
           ),
         ),

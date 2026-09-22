@@ -40,6 +40,23 @@ void main() {
         // Qiymatlar saytdan olingan (`src/pages/PaymentsPage.jsx`)
         // va ikki joyda bir xil.
         'lib/features/shop/store_policy.dart',
+        // NFC ID TOIFA RANGLARI — MAVZUDAN KELA OLMAYDI.
+        //
+        // Bronza, kumush, tilla, premium va ekslyuziv — bular
+        // bezak emas, MAHSULOT DARAJASI. Ular saytda ham aynan
+        // shu qiymatlarda (`src/lib/pricing.js` -> `TIER_COLOR`)
+        // va ikkalasi mos kelishi SHART: bitta kod saytda oltin,
+        // ilovada kulrang ko'rinsa odam qaysi biriga ishonishni
+        // bilmaydi.
+        //
+        // Mavzu aksenti bitta rang, ya'ni undan besh darajani
+        // ajratib bo'lmaydi — aynan shuning uchun ilgari hamma
+        // kod bir xil ko'rinardi.
+        //
+        // Moslik `device_findings_test.dart` da SOLISHTIRIB
+        // tekshiriladi, ya'ni bu ro'yxatga qo'shish nazoratsiz
+        // qolmaydi.
+        'lib/design/widgets/id_plate.dart',
       };
 
       final offenders = <String>[];

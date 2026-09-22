@@ -54,10 +54,83 @@ class IdPlate extends StatelessWidget {
   static bool isPrecious(String tier) =>
       tier == 'gold' || tier == 'premium' || tier == 'exclusive';
 
+  /// TOIFA RANGLARI — SAYT BILAN AYNAN BIR XIL.
+  ///
+  /// Manba: `src/lib/pricing.js` dagi `TIER_COLOR`. Qiymatlar
+  /// KO'CHIRILGAN, qaytadan o'ylab topilmagan — aks holda bitta
+  /// kod saytda bir xil, ilovada boshqa xil ko'rinardi va odam
+  /// "qaysi biri to'g'ri" deb o'ylardi.
+  ///
+  /// Bular metall ierarxiyasi, shunchaki chiroyli ranglar emas:
+  /// bronza < kumush < tilla < issiq oltin < titan oltin. Odam
+  /// yonma-yon turgan ikki kodni ko'rib qaysi biri qimmatroq
+  /// ekanini O'QIMASDAN tushunadi.
+  static const tierColors = <String, Color>{
+    'exclusive': Color(0xFFD4AF37), // Titanium Gold
+    'premium': Color(0xFFD8A34A), //   Bronza-oltin
+    'gold': Color(0xFFF0C419), //      Pure Gold
+    'silver': Color(0xFF9AA3AD), //    Chrome Silver
+    'free': Color(0xFFC58A55), //      Bronza
+  };
+
+  /// FON QANCHA RANGLI BO'LADI.
+  ///
+  /// Birinchi urinishda .22 qo'yilgan edi va egasi darhol aytdi:
+  /// "bo'g'adigan rang bo'lib qolmasin". Haq edi — ro'yxatda
+  /// o'nlab qator bor, har birida to'la bo'yalgan kapsula tursa
+  /// ekran shovqinga aylanadi va hech biri ajralib turmaydi.
+  ///
+  /// Saytda ham fon atigi 8% (`--tier-fill` = rang + `14`).
+  /// Toifani MATN va CHEGARA aytadi, fon esa faqat ishora qiladi.
+  static const _fillAlphaDark = .10;
+  static const _fillAlphaLight = .09;
+
+  /// PLASTINKA RANGLARI — BITTA JOYDA.
+  ///
+  /// Profil kapsulasi (`_IdPill`) ham shu funksiyadan o'qiydi.
+  /// Ilgari mantiq ikki faylda ko'chirilgan edi va biri
+  /// o'zgarganda ikkinchisi orqada qolardi: profil va Tanlov
+  /// bitta kod haqida boshqa-boshqa gapirardi.
+  static ({Color fill, Color line, Color ink}) skin(
+    NfcTokens t,
+    String tier, {
+    bool active = true,
+  }) {
+    // `mono` — oq-qora mavzu. Egasining qat'iy talabi: u yerda
+    // FAQAT oq va qora. Ierarxiya rang bilan emas, TONNI
+    // ALMASHTIRISH bilan beriladi — qimmat kod to'la quyuq
+    // plastinkada, ustida yorug' harflar.
+    if (t.id == 'mono') {
+      final invert = active && isPrecious(tier);
+      return (
+        fill: invert ? t.accent2 : t.surface2,
+        line: invert ? t.accent2 : t.border2,
+        ink: !active ? t.text3 : (invert ? t.onAccent : t.text1),
+      );
+    }
+
+    final tone = active ? tierColors[tier] : null;
+    if (tone == null) {
+      return (
+        fill: t.surface2,
+        line: t.border2,
+        ink: active ? t.text1 : t.text3,
+      );
+    }
+    return (
+      fill: tone.withValues(
+          alpha: t.isDark ? _fillAlphaDark : _fillAlphaLight),
+      line: tone.withValues(alpha: t.isDark ? .55 : .48),
+      // Yorug' mavzuda oltin matn oqish fon ustida o'qilmaydi,
+      // shuning uchun siyoh qoraga tortiladi. Toifa baribir
+      // ko'rinadi: rangning o'zi saqlanadi, faqat quyuqlashadi.
+      ink: t.isDark ? tone : Color.lerp(tone, Colors.black, .52)!,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final precious = active && isPrecious(tier);
 
     final (fs, hp, vp, ls) = switch (size) {
       IdPlateSize.small => (11.5, 9.0, 5.0, 1.6),
@@ -65,65 +138,23 @@ class IdPlate extends StatelessWidget {
       IdPlateSize.large => (16.0, 15.0, 9.0, 3.0),
     };
 
-    // QIMMATLIK QANDAY KO'RSATILADI — MAVZUGA QARAB BOShQACHA.
-    //
-    // ## BIRINCHI URINISH IShLAMADI
-    //
-    // Avval bu yerda hamma mavzuda bir xil edi: aksentning
-    // yumshoq yuvindisi va aksent chegarasi. Qorong'i
-    // mavzularda u chiroyli oltin plastinka berardi.
-    //
-    // Egasi esa OQ mavzudan foydalanadi va u yerda "ko'zga zo'r
-    // ko'rinmadi" dedi. O'lchab ko'rilganda sabab ochiq bo'ldi:
-    // `mono` da aksent QORA va `washScale` .35, ya'ni fon
-    // alfasi 0.12 x 0.35 = 0.042 — oq ustida deyarli
-    // SEZILMAYDI. Siyoh ham `accent1` (#111111), ya'ni oddiy
-    // matn rangi bilan bir xil. Qisqasi: qimmat kod oddiysidan
-    // hech nima bilan farq qilmasdi.
-    //
-    // ## OQ-QORADA QIYMAT RANG BILAN EMAS, TESKARI QILISH BILAN
-    //
-    // Oltin qo'shib bo'lmaydi — egasining talabi "faqat oq va
-    // qora". Monoxrom tizimda ierarxiya TONNI ALMAShTIRISh
-    // bilan beriladi: qimmat kod to'la quyuq plastinkada, ustida
-    // yorug' harflar. Bu o'yilgan metall plastinka hissini
-    // beradi va oq sahifada darhol ko'zga tashlanadi.
-    //
-    // Qorong'i mavzularda esa teskarisi ortiqcha bo'lardi —
-    // u yerda oltin yuvindi allaqachon ishlaydi va asosiy
-    // tugma bilan raqobatlashmaydi.
-    final invert = precious && !t.isDark;
-
-    final ink = !active
-        ? t.text3
-        : invert
-            ? t.onAccent
-            : precious
-                ? t.accent1
-                : t.text1;
+    // Ranglar `skin()` dan keladi — profil kapsulasi ham AYNAN
+    // shu funksiyadan o'qiydi, shuning uchun ikkisi hech qachon
+    // ajralib ketmaydi.
+    final c = skin(t, tier, active: active);
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: hp, vertical: vp),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(999),
-        color: invert
-            ? t.accent2
-            : precious
-                ? t.wash(t.accent2, .12)
-                : t.surface2,
-        border: Border.all(
-          color: invert
-              ? t.accent2
-              : precious
-                  ? t.accent2.withValues(alpha: .45)
-                  : t.border2,
-        ),
+        color: c.fill,
+        border: Border.all(color: c.line),
       ),
       child: Text(
         code,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: AppType.monoStyle(color: ink, size: fs).copyWith(
+        style: AppType.monoStyle(color: c.ink, size: fs).copyWith(
           // HARF ORALIG'I — plastinka hissini beradigan asosiy
           // narsa. Usiz kod oddiy matn bo'lib qoladi.
           letterSpacing: ls,

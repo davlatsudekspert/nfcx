@@ -874,34 +874,24 @@ class _IdPill extends StatelessWidget {
     // siyoh rangida chiziladi.
     final dot = active ? t.success : t.text3;
 
-    // QIMMAT KOD AJRALIB TURSIN.
+    // QIMMAT KOD AJRALIB TURSIN — LEKIN QOIDA BITTA JOYDA.
     //
-    // Profil — odam o'z ID'sini eng ko'p ko'radigan joy va u
-    // yerda kod oddiy kulrang kapsulada turardi. Endi daraja
-    // seziladi: `exclusive` yoki `gold` kod oltin yuzada,
-    // qolganlari o'sha-o'sha neytral.
-    final precious = active && IdPlate.isPrecious(tier);
-    // Oq mavzuda qimmatlik TESKARI TON bilan beriladi — sabab
-    // `IdPlate` izohida. Bu yerda ham bir xil qoida bo'lishi
-    // kerak, aks holda profil va Tanlov boshqa-boshqa gapirardi.
-    final invert = precious && !t.isDark;
+    // Profil — odam o'z ID'sini eng ko'p ko'radigan joy. Ilgari
+    // bu yerda ranglar QO'LDA takrorlangan edi va `IdPlate`
+    // o'zgarganda profil orqada qolardi: bitta kod Tanlovda
+    // oltin, profilda kulrang ko'rinardi.
+    //
+    // Endi ikkalasi ham `IdPlate.skin()` dan o'qiydi. Kapsulaning
+    // SHAKLI o'ziniki bo'lib qoladi (nuqta + kengroq to'ldirish),
+    // faqat RANG umumiy.
+    final c = IdPlate.skin(t, tier, active: active);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
       decoration: BoxDecoration(
-        color: invert
-            ? t.accent2
-            : precious
-                ? t.wash(t.accent2, .12)
-                : t.surface2,
+        color: c.fill,
         borderRadius: R.pill,
-        border: Border.all(
-          color: invert
-              ? t.accent2
-              : precious
-                  ? t.accent2.withValues(alpha: .45)
-                  : t.border2,
-        ),
+        border: Border.all(color: c.line),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -922,11 +912,7 @@ class _IdPill extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AppType.monoStyle(
-                color: invert
-                    ? t.onAccent
-                    : precious
-                        ? t.accent1
-                        : t.accent3,
+                color: c.ink,
                 size: 13,
                 weight: FontWeight.w600,
                 letterSpacing: 2.2,
