@@ -63,12 +63,13 @@ class AppSession extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> signUp({
+  Future<bool> signUp({
     required String email,
     required String phone,
     required String password,
     required String code,
     String promoCode = '',
+    Map<String, dynamic>? business,
   }) async {
     final token = await repo.register(
       email: email,
@@ -77,16 +78,40 @@ class AppSession extends ChangeNotifier {
       emailCode: code,
       promoCode: promoCode,
     );
+
     if (token.isEmpty) {
-      await signIn(email, password);
-      return;
+      final fallback = await repo.login(email, password);
+      api.token = fallback;
+      try {
+        await _storage.write(key: _tokenKey, value: fallback);
+      } catch (_) {}
+    } else {
+      try {
+        await _storage.write(key: _tokenKey, value: token);
+      } catch (_) {}
     }
-    try {
-      await _storage.write(key: _tokenKey, value: token);
-    } catch (_) {}
+
     await refresh();
+
+    var businessCreated = business == null;
+    if (business != null) {
+      try {
+        await repo.createCompany(business);
+        await refresh();
+        if (companies.isNotEmpty) {
+          activeCompany = companies.first;
+          businessMode = true;
+        }
+        businessCreated = true;
+      } catch (_) {
+        businessCreated = false;
+        businessMode = false;
+      }
+    }
+
     phase = SessionPhase.signedIn;
     notifyListeners();
+    return businessCreated;
   }
 
 
