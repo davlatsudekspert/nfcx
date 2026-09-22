@@ -456,7 +456,7 @@ class _ProfileHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.brand;
     return Container(
-      constraints: const BoxConstraints(minHeight: 390),
+      height: 390,
       padding: EdgeInsets.fromLTRB(
         18,
         MediaQuery.paddingOf(context).top + 10,
