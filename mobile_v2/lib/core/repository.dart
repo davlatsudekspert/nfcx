@@ -251,6 +251,76 @@ class Repository {
   Future<void> deleteStory(int id) => api.delete('/api/stories/' + id.toString());
 
 
+  Future<({List<CommentItem> comments, bool hasMore, int total})> comments(
+    String kind,
+    int id, {
+    int page = 1,
+    int limit = 30,
+  }) async {
+    final r = _map(
+      await api.get(
+        '/api/comments/' + kind + '/' + id.toString(),
+        query: {'page': page, 'limit': limit},
+      ),
+    );
+    final rawTotal = r['total'];
+    return (
+      comments: _list(r, 'comments').map(CommentItem.fromJson).toList(),
+      hasMore: r['hasMore'] == true,
+      total: rawTotal is num
+          ? rawTotal.round()
+          : int.tryParse('$rawTotal') ?? 0,
+    );
+  }
+
+  Future<({CommentItem comment, int total})> addComment(
+    String kind,
+    int id,
+    String body, {
+    int parentId = 0,
+  }) async {
+    final r = _map(
+      await api.post('/api/comments/' + kind + '/' + id.toString(), {
+        'body': body,
+        if (parentId > 0) 'parentId': parentId,
+      }),
+    );
+    final raw = r['comment'];
+    final rawTotal = r['total'];
+    return (
+      comment: CommentItem.fromJson(
+        raw is Map ? raw.cast<String, dynamic>() : r,
+      ),
+      total: rawTotal is num
+          ? rawTotal.round()
+          : int.tryParse('$rawTotal') ?? 0,
+    );
+  }
+
+  Future<int> deleteComment(int id) async {
+    final r = _map(await api.delete('/api/comments/' + id.toString()));
+    final raw = r['total'];
+    return raw is num ? raw.round() : int.tryParse('$raw') ?? 0;
+  }
+
+  Future<({bool liked, int count})> likeContent(
+    String kind,
+    int id,
+  ) async {
+    final r = _map(
+      await api.post('/api/content-likes/' + kind + '/' + id.toString()),
+    );
+    final raw = r['count'];
+    return (
+      liked: r['liked'] == true,
+      count: raw is num ? raw.round() : int.tryParse('$raw') ?? 0,
+    );
+  }
+
+  Future<({bool liked, int count})> likeComment(int id) =>
+      likeContent('comment', id);
+
+
   Future<void> report({
     required String targetKind,
     required String targetId,
