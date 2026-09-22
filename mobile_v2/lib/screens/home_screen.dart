@@ -5,6 +5,7 @@ import '../core/session.dart';
 import '../core/theme.dart';
 import '../ui/widgets.dart';
 import 'shell.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -94,10 +95,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(width: 9),
                   RoundIcon(
-                    icon: BrandThemeScope.of(context).mode == BrandThemeMode.editorial
-                        ? Icons.dark_mode_outlined
-                        : Icons.light_mode_outlined,
-                    onTap: () => BrandThemeScope.of(context).toggle(),
+                    icon: Icons.settings_outlined,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                    ),
                   ),
                 ],
               ),
@@ -318,32 +319,3 @@ class _EditorialCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.brand;
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 132,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: p.hero,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: p.accent.withValues(alpha: .22)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: p.heroInk, size: 27),
-            const Spacer(),
-            Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                height: 1.25,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
