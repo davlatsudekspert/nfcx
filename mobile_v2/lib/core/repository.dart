@@ -186,6 +186,50 @@ class Repository {
     return raw is num ? raw.round() : int.tryParse('$raw') ?? 0;
   }
 
+  Future<String> uploadMedia(
+    List<int> bytes, {
+    String contentType = 'image/jpeg',
+  }) async {
+    final r = _map(await api.upload('/api/upload-media', bytes, contentType: contentType));
+    final url = (r['url'] ?? '').toString();
+    if (url.isEmpty) throw const ApiException('bad_media');
+    return url;
+  }
+
+  Future<PostItem> addPost(
+    String code, {
+    String? imageUrl,
+    String? videoUrl,
+    String caption = '',
+    required bool agreed,
+  }) async {
+    final r = _map(await api.post('/api/records/' + code + '/posts', {
+      if (imageUrl != null) 'imageUrl': imageUrl,
+      if (videoUrl != null) 'videoUrl': videoUrl,
+      if (caption.isNotEmpty) 'caption': caption,
+      'agreed': agreed,
+    }));
+    return PostItem.fromJson(r);
+  }
+
+  Future<void> addStory(
+    String code, {
+    String? imageUrl,
+    String? videoUrl,
+    String caption = '',
+    required bool agreed,
+  }) =>
+      api.post('/api/records/' + code + '/stories', {
+        if (imageUrl != null) 'imageUrl': imageUrl,
+        if (videoUrl != null) 'videoUrl': videoUrl,
+        if (caption.isNotEmpty) 'caption': caption,
+        'agreed': agreed,
+      });
+
+  Future<void> deletePost(int id) => api.delete('/api/posts/' + id.toString());
+  Future<void> deleteStory(int id) => api.delete('/api/stories/' + id.toString());
+
+
   Future<void> report({
     required String targetKind,
     required String targetId,
