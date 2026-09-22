@@ -8,6 +8,7 @@ import '../core/session.dart';
 import '../core/theme.dart';
 import '../ui/widgets.dart';
 import 'profile_screen.dart';
+import 'business_profile_screen.dart';
 
 enum _DiscoverMode { people, businesses, catalog }
 
@@ -293,6 +294,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         return SurfaceCard(
           shadow: false,
           padding: const EdgeInsets.all(14),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => BusinessProfileScreen(companyId: item.id),
+            ),
+          ),
           child: Row(
             children: [
               BrandAvatar(url: item.logoUrl, size: 52, goldRing: item.verified, fallback: item.name),
