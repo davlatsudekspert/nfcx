@@ -352,12 +352,27 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
     if (!_ready || c == null) {
       return ColoredBox(color: t.surface2);
     }
-    final video = FittedBox(
-      fit: widget.fit,
-      child: SizedBox(
-        width: c.value.size.width,
-        height: c.value.size.height,
-        child: VideoPlayer(c),
+    // BIRINCHI KADR YUMSHOQ OCHILADI.
+    //
+    // Ilgari video tayyor bo'lgan zahoti `ColoredBox` o'rniga
+    // BIR ZUMDA paydo bo'lardi — Reels'da bir sahifadan
+    // ikkinchisiga o'tganda bu chaqnash bo'lib sezilardi.
+    //
+    // 220 ms — ko'z sezadigan, lekin kutishga aylanmaydigan
+    // eng qisqa oraliq. Ovoz va o'ynash mantig'iga tegilmadi:
+    // bu FAQAT chizish.
+    final video = TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+      builder: (_, v, child) => Opacity(opacity: v, child: child),
+      child: FittedBox(
+        fit: widget.fit,
+        child: SizedBox(
+          width: c.value.size.width,
+          height: c.value.size.height,
+          child: VideoPlayer(c),
+        ),
       ),
     );
     if (!widget.tapToToggle) return video;

@@ -368,6 +368,16 @@ class LUz extends L {
   String get homeNoIdHint => 'Do‘kondan karta oling yoki ID yarating';
 
   @override
+  String get homeBizAddress => 'BIZNES MANZILI';
+
+  @override
+  String get homeBizPitchTitle => 'Biznesingizni shu yerga qo‘shing';
+
+  @override
+  String get homeBizPitchHint =>
+      'Katalog, narxlar va buyurtma — mijoz bitta tegishda ko‘radi';
+
+  @override
   String get homeQuickActions => 'Tezkor amallar';
 
   @override

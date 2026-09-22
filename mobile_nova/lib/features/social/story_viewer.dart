@@ -432,42 +432,37 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (s.mediaUrl.isEmpty)
-                    DecoratedBox(
-                      decoration: BoxDecoration(gradient: t.accentGradient),
-                    )
-                  else if (s.isVideo)
-                    // VIDEO ISTORYA. `isVideo` model tomonidan
-                    // TO'G'RI o'qilardi, lekin bu ekran uni UMUMAN
-                    // ishlatmasdi: hamma narsa `CachedNetworkImage`
-                    // bilan chizilardi. Ya'ni video istorya qo'yish
-                    // mumkin edi (kompozitor uni qabul qiladi), lekin
-                    // ko'rgan odam faqat bo'sh quti ko'rardi —
-                    // `errorWidget`.
-                    //
-                    // `contain`: yotiq video ekranga sig'sin, usti
-                    // va osti kesilib ketmasin. Tik video uchun
-                    // farqi yo'q — u baribir ekranni to'ldiradi.
-                    FullBleedMedia(
-                      child: InlineVideo(
-                        key: ValueKey(s.id),
-                        url: s.mediaUrl,
-                        onDuration: _useVideoDuration,
-                        fit: BoxFit.contain,
-                      ),
-                    )
-                  else
-                    // RASM KESILMAYDI. Ilgari `cover` edi: kvadrat
-                    // rasm (masalan logotip) butun ekranni
-                    // to'ldirishi uchun kattalashtirilar va
-                    // hoshiyasi qirqilardi. Endi rasm butunligicha
-                    // ko'rinadi, atrofi esa o'sha rasmning xira
-                    // nusxasi bilan to'ladi.
-                    FullBleedMedia(
-                      backdropUrl: s.mediaUrl,
-                      child: mediaImage(context, s.mediaUrl,
-                          fit: BoxFit.contain),
+                  // ISTORYALAR ORASIDA YUMSHOQ O'TISH.
+                  //
+                  // Ilgari `setState(() => _index++)` media'ni BIR
+                  // ZUMDA almashtirardi: ekran chaqnab ketardi va
+                  // ko'z har o'tishda "sakrash" sezardi.
+                  // Instagram'da o'tish sezilmaydi, chunki kadr
+                  // so'nib, keyingisi ochiladi.
+                  //
+                  // Kalit — istorya `id`si, ya'ni almashuv AYNAN
+                  // yangi istoryaga o'tganda ishga tushadi; ichki
+                  // qayta chizishlar (progress, layk) animatsiya
+                  // qo'zg'atmaydi.
+                  //
+                  // `layoutBuilder`: eski kadr yangisining OSTIDA
+                  // so'nadi. Standart holatda ikkisi markazga
+                  // tekislanadi va o'tish paytida orqadagi qora fon
+                  // bir lahza ko'rinib qolardi.
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 260),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    layoutBuilder: (cur, prev) => Stack(
+                      fit: StackFit.expand,
+                      children: [...prev, if (cur != null) cur],
                     ),
+                    child: _StoryFrame(
+                      key: ValueKey(s.id),
+                      story: s,
+                      onDuration: _useVideoDuration,
+                    ),
+                  ),
                   Positioned.fill(
                     child: IgnorePointer(
                       child: DecoratedBox(
@@ -869,6 +864,57 @@ class _CommentsSheet extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// BITTA ISTORYA KADRI.
+///
+/// Ilgari bu uchlik shart `Stack` ichida to'g'ridan-to'g'ri
+/// turardi. `AnimatedSwitcher` esa BITTA bola kutadi va uni
+/// kalit bo'yicha almashtiradi — shuning uchun kadr alohida
+/// vidjetga ajratildi. Mantiq o'zgarmadi.
+class _StoryFrame extends StatelessWidget {
+  const _StoryFrame({
+    super.key,
+    required this.story,
+    required this.onDuration,
+  });
+
+  final StoryItem story;
+  final ValueChanged<Duration> onDuration;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+
+    if (story.mediaUrl.isEmpty) {
+      return DecoratedBox(
+        decoration: BoxDecoration(gradient: t.accentGradient),
+      );
+    }
+
+    if (story.isVideo) {
+      // `contain`: yotiq video ekranga sig'sin, usti va osti
+      // kesilib ketmasin. Tik video uchun farqi yo'q — u baribir
+      // ekranni to'ldiradi.
+      return FullBleedMedia(
+        child: InlineVideo(
+          key: ValueKey(story.id),
+          url: story.mediaUrl,
+          onDuration: onDuration,
+          fit: BoxFit.contain,
+        ),
+      );
+    }
+
+    // RASM KESILMAYDI. Ilgari `cover` edi: kvadrat rasm (masalan
+    // logotip) butun ekranni to'ldirishi uchun kattalashtirilar va
+    // hoshiyasi qirqilardi. Endi rasm butunligicha ko'rinadi,
+    // atrofi esa o'sha rasmning xira nusxasi bilan to'ladi.
+    return FullBleedMedia(
+      backdropUrl: story.mediaUrl,
+      child: mediaImage(context, story.mediaUrl, fit: BoxFit.contain),
     );
   }
 }

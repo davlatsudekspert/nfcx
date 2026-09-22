@@ -801,6 +801,24 @@ abstract class L {
   /// **'Do‘kondan karta oling yoki ID yarating'**
   String get homeNoIdHint;
 
+  /// No description provided for @homeBizAddress.
+  ///
+  /// In uz, this message translates to:
+  /// **'BIZNES MANZILI'**
+  String get homeBizAddress;
+
+  /// No description provided for @homeBizPitchTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Biznesingizni shu yerga qo‘shing'**
+  String get homeBizPitchTitle;
+
+  /// No description provided for @homeBizPitchHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Katalog, narxlar va buyurtma — mijoz bitta tegishda ko‘radi'**
+  String get homeBizPitchHint;
+
   /// No description provided for @homeQuickActions.
   ///
   /// In uz, this message translates to:

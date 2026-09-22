@@ -76,6 +76,8 @@ void main() {
   });
 
   _idPlateTests();
+  _homeBusinessTests();
+  _motionAndMusicTests();
 
   group('biznesi yo\'q odam', () {
     final src =
@@ -145,6 +147,99 @@ void _idPlateTests() {
         File('lib/features/discover/discover_screen.dart').readAsStringSync(),
         contains('tier: e.tier'),
       );
+    });
+  });
+}
+
+/// ASOSIY SAHIFA BIZNES REJIMIDA.
+///
+/// Egasi: "Meni biznes profillarim bor-da. Bor odamniki ko'rinishi
+/// kerak-da, yo'q odamga 'bo'sa oling' deyishi kerak edi.
+/// Asosiyda meni biznes profilim bo'lsa ham taklif berayapti."
+///
+/// Ikkita holatdan IKKISI ham noto'g'ri edi:
+///
+///   * Kompaniyasi BOR odam "NFC ID hali yo'q — Do'kondan karta
+///     oling" kartasini ko'rardi. Holbuki uning biznes manzili
+///     bor va u o'sha ekranning sarlavhasida turardi.
+///
+///   * Kompaniyasi YO'Q odamga "shaxsiy rejimga qayting" deb
+///     aytilardi — ilova imkoniyatni taklif qilish o'rniga
+///     eshikni yopardi.
+void _homeBusinessTests() {
+  group('Asosiy — biznes rejimi', () {
+    // IZOHLAR HISOBGA OLINMAYDI.
+    //
+    // Hujjatda "ilgari `_NoBusinessCard` turardi" deb yozilgani
+    // qoidabuzarlik emas — u tushuntirish. Ilk urinishda sinov
+    // aynan shu izohdan qizargan edi.
+    final src = File('lib/features/home/home_screen.dart')
+        .readAsStringSync()
+        .replaceAll(RegExp(r'^\s*///?.*$', multiLine: true), '');
+
+    test('kompaniyasi BOR odamga manzil kartasi', () {
+      expect(src, contains('_BizIdentityCard'));
+      // Kompaniya identifikatori ham plastinka bo'lib chiziladi —
+      // shaxsiy kod bilan bir tilda.
+      expect(src, contains('IdPlate(code: company.companyId'));
+    });
+
+    test('kompaniyasi YO\'Q odamga TAKLIF, "qaytib ket" emas', () {
+      expect(src, contains('_BizPitchCard'));
+      expect(src, contains('Routes.demoBusiness'),
+          reason: 'demo eng ishonarli dalil');
+      expect(src, contains('Routes.businessOnboard'));
+      // Eski karta faqat "shaxsiy rejim" tugmasini berardi.
+      expect(src.contains('_NoBusinessCard'), isFalse);
+    });
+
+    test('shaxsiy rejim tegilmagan', () {
+      // Biznes shoxi qo'shilganda shaxsiy yo'l buzilmasligi kerak.
+      expect(src, contains('_NoIdCard'));
+      expect(src, contains('IdentityCard('));
+    });
+  });
+}
+
+/// YUMSHOQ O'TISHLAR VA MUSIQA PLEYERI.
+void _motionAndMusicTests() {
+  group('istorya va Reels o\'tishi', () {
+    test('istoryalar orasida so\'nib-ochilish bor', () {
+      // `setState(() => _index++)` media'ni BIR ZUMDA
+      // almashtirardi: ekran chaqnab ketardi.
+      final src =
+          File('lib/features/social/story_viewer.dart').readAsStringSync();
+      expect(src, contains('AnimatedSwitcher'));
+      // Kalit istorya `id`si bo'lishi kerak, aks holda har bir
+      // ichki qayta chizish animatsiya qo'zg'atardi.
+      expect(src, contains('key: ValueKey(s.id)'));
+    });
+
+    test('video birinchi kadri yumshoq ochiladi', () {
+      final src =
+          File('lib/features/social/inline_video.dart').readAsStringSync();
+      expect(src, contains('TweenAnimationBuilder'));
+      // Bu FAQAT chizish — ovoz va o'ynash mantig'iga tegilmadi.
+      expect(src, contains('VideoPlayer(c)'));
+    });
+  });
+
+  group('musiqa pleyeri', () {
+    final src =
+        File('lib/features/profile/music_player.dart').readAsStringSync();
+
+    test('qo\'shiq NOMI ko\'rsatiladi', () {
+      // Backend'da qo'shiq nomi uchun maydon YO'Q, shuning uchun
+      // nom fayl manzilidan olinadi. To'qib chiqarilmaydi.
+      expect(src, contains('musicTitleOf('));
+      expect(src, contains('Text(\n                  musicTitleOf(url)'));
+    });
+
+    test('pastdagi pleyer — vaqt va surgich bilan', () {
+      expect(src, contains('showModalBottomSheet'));
+      expect(src, contains('Slider('));
+      expect(src, contains('_fmt(state.position)'));
+      expect(src, contains('_fmt(state.duration)'));
     });
   });
 }

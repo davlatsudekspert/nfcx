@@ -368,6 +368,16 @@ class LRu extends L {
   String get homeNoIdHint => 'Закажите карту в магазине или создайте ID';
 
   @override
+  String get homeBizAddress => 'АДРЕС БИЗНЕСА';
+
+  @override
+  String get homeBizPitchTitle => 'Добавьте сюда свой бизнес';
+
+  @override
+  String get homeBizPitchHint =>
+      'Каталог, цены и заказы — клиент увидит одним касанием';
+
+  @override
   String get homeQuickActions => 'Быстрые действия';
 
   @override

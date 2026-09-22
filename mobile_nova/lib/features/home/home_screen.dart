@@ -16,6 +16,7 @@ import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
 import '../../design/widgets/buttons.dart';
 import '../../design/widgets/brand_logo.dart';
+import '../../design/widgets/id_plate.dart';
 import '../../design/widgets/nfc_orb.dart';
 import '../../design/widgets/nova_scaffold.dart';
 import '../../design/widgets/states.dart';
@@ -132,6 +133,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     // Identifikatsiya kartasi, QR va ulashish FAQAT NFC yozuvida
     // ma'noli — kompaniyaning QR kodi shaxsiy yozuvniki emas.
+    final business = active?.isBusiness ?? false;
     final id = active != null && !active.isBusiness ? active.id : null;
 
     if (user == null) return const SizedBox.shrink();
@@ -215,20 +217,46 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-              child: id == null
+              // BIZNES REJIMIDA KOMPANIYA KARTASI CHIQADI.
+              //
+              // Ilgari bu yerda uchta holatdan ikkitasi
+              // noto'g'ri edi:
+              //
+              //   * Kompaniyasi BOR odam biznes rejimida "NFC ID
+              //     hali yo'q — Do'kondan karta oling" kartasini
+              //     ko'rardi. Holbuki uning biznes manzili bor va
+              //     u sarlavhada turardi.
+              //
+              //   * Kompaniyasi YO'Q odamga esa "shaxsiy rejimga
+              //     qayting" deb aytilardi — ya'ni ilova imkoniyatni
+              //     taklif qilish o'rniga eshikni yopardi.
+              //
+              // Sabab 135-qatorda: biznes rejimida `id` ATAYLAB
+              // `null` qilinadi, chunki kompaniyaning QR'i shaxsiy
+              // karta QR'i emas. To'g'ri — lekin "boshqa" degani
+              // "yo'q" degani emas: kompaniyaning ham o'z ommaviy
+              // manzili va QR'i bor.
+              child: business
                   ? (noBusiness
-                        ? _NoBusinessCard(
-                            onPersonal: () => switchToPersonal(context, ref),
-                          )
-                        : _NoIdCard(onShop: () => context.push(Routes.shop)))
-                  : IdentityCard(
+                      ? _BizPitchCard(
+                          onCreate: () =>
+                              context.push(Routes.businessOnboard),
+                          onDemo: () => context.push(Routes.demoBusiness),
+                        )
+                      : _BizIdentityCard(
+                          company: active!.business!,
+                          onTap: () => context.push(Routes.business),
+                        ))
+                  : id == null
+                      ? _NoIdCard(onShop: () => context.push(Routes.shop))
+                      : IdentityCard(
                       user: user,
                       id: id,
                       mode: mode,
                       onTap: () => context.push(Routes.nfcId(id.code)),
                       onQr: () => showQrSheet(context, id),
-                      onShare: () => shareLink(id.publicUrl(kApiBase)),
-                    ),
+                          onShare: () => shareLink(id.publicUrl(kApiBase)),
+                        ),
             ),
             const SizedBox(height: Gap.xxl),
             _QuickActions(mode: mode),
@@ -667,46 +695,6 @@ class _StoryRingPainter extends CustomPainter {
 ///
 /// Bu holat ATAYLAB ko'rsatiladi. Jimgina shaxsiy profilga qaytish
 /// aynan avvalgi xatoning o'zi bo'lardi: tugma "Biznes" da turib,
-/// ekranda shaxsiy ma'lumot ko'rinardi.
-class _NoBusinessCard extends StatelessWidget {
-  const _NoBusinessCard({required this.onPersonal});
-  final VoidCallback onPersonal;
-
-  @override
-  Widget build(BuildContext context) {
-    final l = L.of(context);
-    return FloatingSurface(
-      solid: true,
-      child: Column(
-        children: [
-          Icon(
-            Icons.storefront_outlined,
-            size: 26,
-            color: context.tokens.text3,
-          ),
-          const SizedBox(height: Gap.sm),
-          Text(
-            l.businessNoneTitle,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            l.businessNoneHint,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          const SizedBox(height: Gap.lg),
-          NovaButton(
-            label: l.modePersonal,
-            tone: ButtonTone.quiet,
-            onPressed: onPersonal,
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _NoIdCard extends StatelessWidget {
   const _NoIdCard({required this.onShop});
@@ -1109,6 +1097,120 @@ class _AutoplayFeedState extends State<_AutoplayFeed> {
                 : FeedCard(post: widget.posts[i]),
           ),
       ],
+    );
+  }
+}
+
+/// BIZNES MANZILI KARTASI — shaxsiy "FAOL NFC ID" ning juftligi.
+///
+/// Biznes rejimida odam o'z kompaniyasining ommaviy manzilini va
+/// sonlarini ko'rishi kerak. Ilgari bu yerda "NFC ID hali yo'q"
+/// turardi, ya'ni ilova kompaniyani ko'rmayotgandek edi.
+class _BizIdentityCard extends StatelessWidget {
+  const _BizIdentityCard({required this.company, required this.onTap});
+
+  final Business company;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context);
+    final t = context.tokens;
+    final url = 'nfcstore.uz/c/${company.companyId.toLowerCase()}';
+
+    return FloatingSurface(
+      solid: true,
+      onTap: onTap,
+      borderRadius: R.organic(a: 40, b: 40, c: 40, d: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l.homeBizAddress,
+              style: AppType.monoStyle(color: t.text3, size: 10.5)
+                  .copyWith(letterSpacing: 1.6)),
+          const SizedBox(height: Gap.sm),
+          // Kompaniya identifikatori ham PLASTINKA — shaxsiy kod
+          // bilan bir tilda. Daraja tushunchasi kompaniyada yo'q.
+          IdPlate(code: company.companyId, size: IdPlateSize.large),
+          const SizedBox(height: Gap.sm),
+          Text(url, style: AppType.monoStyle(color: t.text2, size: 12)),
+          const SizedBox(height: Gap.lg),
+          Row(
+            children: [
+              for (final (value, label) in [
+                (formatCount(company.views), l.nfcViews),
+                (formatCount(company.followers), l.profileFollowers),
+              ])
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(value,
+                          style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 2),
+                      Text(label,
+                          style: Theme.of(context).textTheme.bodySmall),
+                    ],
+                  ),
+                ),
+              NovaIconButton(
+                icon: Icons.ios_share_rounded,
+                onPressed: () => shareLink('https://$url'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// BIZNESI YO'Q ODAMGA TAKLIF — "qaytib ket" emas.
+///
+/// Ilgari bu yerda `_NoBusinessCard` turardi va uning yagona
+/// tugmasi "Shaxsiy rejim" edi: ya'ni ilova imkoniyatni taklif
+/// qilish o'rniga eshikni yopardi.
+///
+/// Endi ikkita yo'l: DEMO ni ko'rish va yaratish. Demo birinchi
+/// turadi — odam gapni emas, natijani ko'rsa ishonadi.
+class _BizPitchCard extends StatelessWidget {
+  const _BizPitchCard({required this.onCreate, required this.onDemo});
+
+  final VoidCallback onCreate;
+  final VoidCallback onDemo;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context);
+    final t = context.tokens;
+
+    return FloatingSurface(
+      borderRadius: R.organic(a: 40, b: 40, c: 40, d: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.storefront_rounded, size: 26, color: t.accent2),
+          const SizedBox(height: Gap.md),
+          Text(l.homeBizPitchTitle,
+              style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 4),
+          Text(l.homeBizPitchHint,
+              style: Theme.of(context).textTheme.bodyMedium),
+          const SizedBox(height: Gap.xl),
+          NovaButton(
+            label: l.bizPitchDemo,
+            icon: Icons.visibility_outlined,
+            onPressed: onDemo,
+          ),
+          const SizedBox(height: Gap.sm),
+          NovaButton(
+            label: l.bizCreate,
+            icon: Icons.add_business_rounded,
+            tone: ButtonTone.quiet,
+            onPressed: onCreate,
+          ),
+        ],
+      ),
     );
   }
 }

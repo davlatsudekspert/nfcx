@@ -370,6 +370,16 @@ class LEn extends L {
   String get homeNoIdHint => 'Order a card from the shop or create an ID';
 
   @override
+  String get homeBizAddress => 'BUSINESS ADDRESS';
+
+  @override
+  String get homeBizPitchTitle => 'Add your business here';
+
+  @override
+  String get homeBizPitchHint =>
+      'Catalogue, prices and orders — one tap for your customer';
+
+  @override
   String get homeQuickActions => 'Quick actions';
 
   @override
