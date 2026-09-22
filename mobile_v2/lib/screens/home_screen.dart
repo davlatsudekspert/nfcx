@@ -6,6 +6,7 @@ import '../core/theme.dart';
 import '../ui/widgets.dart';
 import 'shell.dart';
 import 'settings_screen.dart';
+import 'compose_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -163,7 +164,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   ActionTile(
                     icon: Icons.add_box_outlined,
                     label: 'Post qo‘shish',
-                    onTap: () => ShellScope.of(context).selectTab(3),
+                    onTap: () async {
+                      final done = await Navigator.of(context).push<bool>(
+                        MaterialPageRoute(builder: (_) => const ComposeScreen(kind: ComposeKind.post)),
+                      );
+                      if (done == true && mounted) await _load();
+                    },
                   ),
                   ActionTile(
                     icon: Icons.qr_code_2_rounded,
@@ -189,7 +195,12 @@ class _HomeScreenState extends State<HomeScreen> {
                               name: 'Sizning story',
                               avatarUrl: active?.avatarUrl,
                               add: true,
-                              onTap: () => ShellScope.of(context).selectTab(3),
+                              onTap: () async {
+                                final done = await Navigator.of(context).push<bool>(
+                                  MaterialPageRoute(builder: (_) => const ComposeScreen(kind: ComposeKind.story)),
+                                );
+                                if (done == true && mounted) await _load();
+                              },
                             );
                           }
                           final st = _stories[i - 1];
