@@ -76,6 +76,7 @@ class Company {
     this.website = '',
     this.followers = 0,
     this.views = 0,
+    this.following = false,
     this.verified = false,
     this.isOpen,
     this.hoursLabel = '',
@@ -95,6 +96,7 @@ class Company {
   final String website;
   final int followers;
   final int views;
+  final bool following;
   final bool verified;
   final bool? isOpen;
   final String hoursLabel;
@@ -119,6 +121,7 @@ class Company {
       website: _s(j['website']),
       followers: _i(j['followers']),
       views: _i(j['views']),
+      following: _b(j['following'] ?? j['isFollowing']),
       verified: _b(j['verified']),
       isOpen: j['isOpen'] is bool ? j['isOpen'] as bool : null,
       hoursLabel: _s(j['hoursLabel']),
