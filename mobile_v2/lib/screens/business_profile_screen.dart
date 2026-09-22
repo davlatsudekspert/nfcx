@@ -350,7 +350,7 @@ class _BusinessHero extends StatelessWidget {
     final hasCover = (company.coverUrl ?? '').isNotEmpty;
 
     return Container(
-      constraints: const BoxConstraints(minHeight: 420),
+      height: 420,
       decoration: const BoxDecoration(
         color: Color(0xFF111110),
         borderRadius: BorderRadius.vertical(
