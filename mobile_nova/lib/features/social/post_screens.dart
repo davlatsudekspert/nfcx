@@ -504,7 +504,11 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
           case ComposerKind.story:
             // FAQAT STORYLAR. Postlar va lentaga tegilmaydi.
             ref.invalidate(homeStoriesProvider);
-            ref.invalidate(storiesOfProvider(profile.code));
+            // Kompaniya va shaxsiy istoryalar BOShQA provayder
+            // kalitiga tushadi — noto'g'ri kalit yangilansa,
+            // istorya qo'yilgani bilan halqa paydo bo'lmasdi.
+            ref.invalidate(storiesOfProvider(
+                StoryOwner(profile.code, isBusiness: profile.isBusiness)));
           case ComposerKind.post:
             // FAQAT POSTLAR. Story halqasi qayta o'qilmaydi.
             ref.invalidate(homeFeedProvider);

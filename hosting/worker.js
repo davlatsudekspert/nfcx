@@ -9698,10 +9698,47 @@ async function followApi(request, env, url) {
   const statsMatch = path.match(/^\/api\/follow-stats\/([A-Za-z0-9]{1,32})$/);
   if (statsMatch && request.method === 'GET') {
     const code = decodeURIComponent(statsMatch[1]).toUpperCase();
-    const ownerId = await getRecordOwner(env, code);
-    if (!ownerId) return json({ followers: 0, following: 0, isFollowing: false });
     const user = await getCurrentUser(request, env);
-    return json(await getFollowStatsRow(env, ownerId, user?.id));
+
+    const ownerId = await getRecordOwner(env, code);
+    if (ownerId) return json(await getFollowStatsRow(env, ownerId, user?.id));
+
+    // KOMPANIYA OBUNACHILARI — ALOHIDA JADVAL.
+    //
+    // `getRecordOwner()` SHAXSIY karta egasini topadi va kompaniya
+    // identifikatori uchun `null` qaytaradi. Ilgari shu yerda
+    // javob `{followers: 0}` bo'lib tugardi: biznes profilida
+    // obunachilar soni HAR DOIM 0 turardi, holbuki odamlar
+    // obuna bo'lgan va ular `company_follows` da yozilgan edi.
+    //
+    // Nuqson bilinmasdi, chunki 0 — xato emas: ekran uni
+    // "hali hech kim obuna bo'lmagan" deb ko'rsatardi.
+    //
+    // `/api/follow-list/:code` da bu ayni shunday, pastda
+    // allaqachon tuzatilgan — ikkita yo'l bir xil qoidaga
+    // kelsin.
+    //
+    // Kompaniya kimgadir obuna bo'lolmaydi (faqat odam obuna
+    // bo'ladi), shuning uchun `following` har doim 0.
+    const co = await env.DB.prepare(
+      `SELECT company_id FROM companies WHERE company_id = ? AND status = 'active'`
+    ).bind(code).first().catch(() => null);
+    if (!co) return json({ followers: 0, following: 0, isFollowing: false });
+
+    const [cnt, mine] = await Promise.all([
+      env.DB.prepare(`SELECT COUNT(*) AS n FROM company_follows WHERE company_id = ?`)
+        .bind(code).first().catch(() => null),
+      user
+        ? env.DB.prepare(
+            `SELECT 1 AS x FROM company_follows WHERE company_id = ? AND user_id = ?`
+          ).bind(code, user.id).first().catch(() => null)
+        : Promise.resolve(null),
+    ]);
+    return json({
+      followers: Number(cnt?.n || 0),
+      following: 0,
+      isFollowing: !!mine,
+    });
   }
 
   const listMatch = path.match(/^\/api\/follow-list\/([A-Za-z0-9]{1,32})$/);

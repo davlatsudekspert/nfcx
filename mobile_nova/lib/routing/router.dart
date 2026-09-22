@@ -212,7 +212,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/story/:code',
         builder: (_, s) {
           final code = s.pathParameters['code']!;
-          return demoWrap(code, StoryViewerScreen(code: code));
+          // `?business=1` bo'lsa kompaniya istoryalari o'qiladi.
+          final business = s.uri.queryParameters['business'] == '1';
+          return demoWrap(
+            code,
+            StoryViewerScreen(code: code, isBusiness: business),
+          );
         },
       ),
 

@@ -9,6 +9,7 @@ import '../../data/repositories/shop_repository.dart';
 import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
+import '../../design/widgets/brand_logo.dart';
 import '../../design/widgets/buttons.dart';
 import '../../design/widgets/nova_scaffold.dart';
 import '../../design/widgets/states.dart';
@@ -162,7 +163,15 @@ class _ProductTile extends StatelessWidget {
               child: product.imageUrl.isEmpty
                   ? DecoratedBox(
                       decoration: BoxDecoration(gradient: t.accentGradient),
-                      child: Icon(Icons.nfc_rounded, size: 26, color: t.onAccent),
+                      // Mahsulot rasmi bo'lmaganda BRENDIMIZ
+                      // turadi, Android ikonkasi emas.
+                      child: Center(
+                        child: BrandLogo(
+                          style: BrandLogoStyle.markOnly,
+                          size: 44,
+                          tint: t.onAccent,
+                        ),
+                      ),
                     )
                   : CachedNetworkImage(
                       imageUrl: product.imageUrl,
@@ -246,8 +255,13 @@ class ShopProductScreen extends ConsumerWidget {
                   child: p.imageUrl.isEmpty
                       ? DecoratedBox(
                           decoration: BoxDecoration(gradient: t.accentGradient),
-                          child:
-                              Icon(Icons.nfc_rounded, size: 70, color: t.onAccent),
+                          child: Center(
+                            child: BrandLogo(
+                              style: BrandLogoStyle.markOnly,
+                              size: 130,
+                              tint: t.onAccent,
+                            ),
+                          ),
                         )
                       : CachedNetworkImage(
                           imageUrl: p.imageUrl,

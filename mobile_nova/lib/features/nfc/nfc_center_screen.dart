@@ -240,7 +240,25 @@ class NfcCenterScreen extends ConsumerWidget {
                       gradient: t.accentGradient,
                       borderRadius: R.tile,
                     ),
-                    child: Icon(Icons.nfc_rounded, size: 21, color: t.onAccent),
+                    // BRENDIMIZNING BELGISI.
+                    //
+                    // Bu yerda Android'ning standart NFC ikonkasi
+                    // turgan edi — u har ilovada bir xil. Belgi
+                    // oltin sirt ustida, shuning uchun `markOnly`
+                    // + `tint`: aktivning o'zi o'zgarmaydi, rang
+                    // faqat chizishda qo'llanadi.
+                    //
+                    // O'lcham ikonkanikidan katta (21 -> 28),
+                    // chunki belgi KENG lokap: yonida NFC
+                    // to'lqinlari bor va bir xil kenglikda u
+                    // pastroq ko'rinadi.
+                    child: Center(
+                      child: BrandLogo(
+                        style: BrandLogoStyle.markOnly,
+                        size: 28,
+                        tint: t.onAccent,
+                      ),
+                    ),
                   ),
                   const SizedBox(width: Gap.lg),
                   Expanded(

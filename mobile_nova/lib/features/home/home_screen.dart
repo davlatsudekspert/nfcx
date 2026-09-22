@@ -715,13 +715,22 @@ class _NoIdCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = L.of(context);
-    final t = context.tokens;
     return FloatingSurface(
       borderRadius: R.organic(a: 40, b: 40, c: 40, d: 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.nfc_rounded, size: 30, color: t.accent2),
+          // BRENDIMIZNING BELGISI — MATERIAL IKONKASI EMAS.
+          //
+          // Bu yerda `Icons.nfc_rounded` turgan edi: Android'ning
+          // standart NFC belgisi. U har ilovada bir xil va
+          // NFCSTORE'ga hech qanday aloqasi yo'q — odam birinchi
+          // marta ko'radigan kartada begona belgi turardi.
+          //
+          // `badge` uslubi tanlandi, chunki bu karta yuzasining
+          // rangi mavzuga qarab o'zgaradi: nishon o'z fonini olib
+          // yuradi va hamma mavzuda bir xil o'qiladi.
+          const BrandLogo(style: BrandLogoStyle.badge, size: 44, halo: false),
           const SizedBox(height: Gap.md),
           Text(l.homeNoId, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 4),

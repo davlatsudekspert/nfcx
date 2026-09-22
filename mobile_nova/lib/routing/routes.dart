@@ -43,7 +43,13 @@ abstract final class Routes {
 
   static String post(int id, {String code = ''}) =>
       code.isEmpty ? '/post/$id' : '/post/$id?code=${Uri.encodeComponent(code)}';
-  static String story(String code) => '/story/$code';
+  /// Istorya ko'rish oynasi.
+  ///
+  /// `business` — kod kompaniyanikimi. Usiz ekran shaxsiy yo'lni
+  /// chaqirib, kompaniya istoryasini TOPOLMASDI (bo'sh ro'yxat,
+  /// xatosiz).
+  static String story(String code, {bool business = false}) =>
+      business ? '/story/$code?business=1' : '/story/$code';
   static String user(String code) => '/u/$code';
 
   /// Obunachilar / obunalar ro'yxati — profildagi raqam bosilganda.

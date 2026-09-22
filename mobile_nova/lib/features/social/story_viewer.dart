@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/network/api_client.dart';
 import '../../core/utils/sharing.dart';
 import '../../data/models/models.dart';
+import '../../data/repositories/business_repository.dart';
 import '../../data/repositories/social_repository.dart';
 import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
@@ -30,9 +31,56 @@ import '../home/widgets/avatar.dart';
 // its dependencies were overridden" xatosi chiqadi.
 //
 // Ishlab chiqarish xulqi O'ZGARMAYDI.
+/// ISTORYA EGASI — KOD VA U KIMNIKI.
+///
+/// ## NIMA UCHUN FAQAT KOD YETMAYDI
+///
+/// Shaxsiy va kompaniya istoryalari SERVERDA boshqa-boshqa
+/// jadvalda va boshqa manzilda yashaydi:
+///
+///     shaxsiy    -> GET /api/records/:code/stories
+///     kompaniya  -> GET /api/companies/:id/stories
+///
+/// Kod esa ikkalasida ham shunchaki satr. Shuning uchun
+/// `storiesOfProvider` uzoq vaqt FAQAT shaxsiy yo'lni chaqirib
+/// keldi: kompaniya istoryasi saytda ko'rinardi, ilovada esa
+/// yo'q edi — server kompaniya identifikatorini shaxsiy
+/// kartalar orasidan qidirib, bo'sh ro'yxat qaytarardi.
+///
+/// Xato BILINMASDI, chunki bo'sh ro'yxat 404 emas: halqa
+/// shunchaki chizilmasdi va hech qanday ogohlantirish
+/// chiqmasdi.
+@immutable
+class StoryOwner {
+  const StoryOwner(this.code, {this.isBusiness = false});
+
+  final String code;
+  final bool isBusiness;
+
+  @override
+  bool operator ==(Object other) =>
+      other is StoryOwner &&
+      other.code == code &&
+      other.isBusiness == isBusiness;
+
+  @override
+  int get hashCode => Object.hash(code, isBusiness);
+
+  @override
+  String toString() => 'StoryOwner($code, business: $isBusiness)';
+}
+
 final storiesOfProvider = FutureProvider.autoDispose
-    .family<List<StoryItem>, String>(dependencies: [socialRepositoryProvider], (ref, code) async {
-      final res = await ref.watch(socialRepositoryProvider).storiesOf(code);
+    .family<List<StoryItem>, StoryOwner>(
+        dependencies: [socialRepositoryProvider, businessRepositoryProvider],
+        (ref, owner) async {
+      // Manba egasiga qarab tanlanadi — `homeStoriesProvider` ham
+      // ayni shunday qiladi. Ikki joyda ikki xil qoida bo'lsa,
+      // bosh sahifada ko'rinib, profilda ko'rinmaydigan istorya
+      // paydo bo'lardi.
+      final res = owner.isBusiness
+          ? await ref.watch(businessRepositoryProvider).stories(owner.code)
+          : await ref.watch(socialRepositoryProvider).storiesOf(owner.code);
       return res.when(ok: (v) => v, err: (e) => throw e);
     });
 
@@ -43,9 +91,18 @@ final storiesOfProvider = FutureProvider.autoDispose
 /// bo'lgani uchun tanlangan, lekin ramka NFCSTORE vizual tilida:
 /// kapsula shaklidagi progress va yumshoq gradient.
 class StoryViewerScreen extends ConsumerStatefulWidget {
-  const StoryViewerScreen({super.key, required this.code});
+  const StoryViewerScreen({
+    super.key,
+    required this.code,
+    this.isBusiness = false,
+  });
 
   final String code;
+
+  /// Kod kompaniyanikimi. Marshrut `?business=1` orqali uzatadi.
+  final bool isBusiness;
+
+  StoryOwner get owner => StoryOwner(code, isBusiness: isBusiness);
 
   @override
   ConsumerState<StoryViewerScreen> createState() => _StoryViewerScreenState();
@@ -183,7 +240,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
         // Ro'yxat SERVERDAN qayta o'qiladi — mahalliy ro'yxatdan
         // olib qo'yish "o'chdi" deb ko'rsatib, aslida qolib
         // ketishi mumkin edi.
-        ref.invalidate(storiesOfProvider(widget.code));
+        ref.invalidate(storiesOfProvider(widget.owner));
         ref.invalidate(socialRepositoryProvider);
         _close();
       },
@@ -314,7 +371,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
   Widget build(BuildContext context) {
     final l = L.of(context);
     final t = context.tokens;
-    final stories = ref.watch(storiesOfProvider(widget.code));
+    final stories = ref.watch(storiesOfProvider(widget.owner));
 
     // ANDROID ORQASI HAM SHU OQIMDAN O'TADI.
     //

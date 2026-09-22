@@ -556,6 +556,7 @@ class _Hero extends StatelessWidget {
                 // istoryasiz profil avvalgidek ko'rinadi.
                 _AvatarWithStory(
                   code: profile?.code,
+                  isBusiness: business,
                   child: _HeroAvatar(
                     user: user,
                     profile: profile,
@@ -701,9 +702,22 @@ class _DemoNotice extends ConsumerWidget {
 /// ko'ruvchini ochadi. Istoryasi yo'q profilda hech narsa
 /// o'zgarmaydi — hatto bosish ham ishlamaydi.
 class _AvatarWithStory extends ConsumerWidget {
-  const _AvatarWithStory({required this.code, required this.child});
+  const _AvatarWithStory({
+    required this.code,
+    required this.child,
+    this.isBusiness = false,
+  });
 
   final String? code;
+
+  /// Kod kompaniyanikimi.
+  ///
+  /// Shaxsiy va kompaniya istoryalari serverda boshqa manzilda
+  /// yashaydi (`StoryOwner` izohiga qarang). Usiz kompaniya
+  /// istoryasi saytda ko'rinib, ilovada halqa umuman
+  /// chizilmasdi.
+  final bool isBusiness;
+
   final Widget child;
 
   @override
@@ -711,19 +725,30 @@ class _AvatarWithStory extends ConsumerWidget {
     final t = context.tokens;
     if (code == null || code!.isEmpty) return child;
 
-    final stories = ref.watch(storiesOfProvider(code!)).valueOrNull;
+    final owner = StoryOwner(code!, isBusiness: isBusiness);
+    final stories = ref.watch(storiesOfProvider(owner)).valueOrNull;
     if (stories == null || stories.isEmpty) return child;
 
     return GestureDetector(
-      onTap: () => context.push(Routes.story(code!)),
+      onTap: () =>
+          context.push(Routes.story(code!, business: isBusiness)),
       child: Container(
-        padding: const EdgeInsets.all(3),
+        // HALQA QALINLIGI — 3 dan 4.5 ga.
+        //
+        // 3 dp 112 dp li avatar yonida ingichka ip bo'lib
+        // ko'rinardi: "istorya bor" belgisi sezilmasdi. Halqa
+        // belgi, bezak emas — u ko'zga birinchi tashlanishi
+        // kerak.
+        padding: const EdgeInsets.all(4.5),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: t.accentGradient,
         ),
         child: Container(
-          padding: const EdgeInsets.all(3),
+          // Ichki oraliq esa biroz torroq: halqa qalinlashgani
+          // bilan butun doira kattalashib ketmasin, aks holda
+          // avatar sahifadagi boshqa elementlardan uzoqlashadi.
+          padding: const EdgeInsets.all(2.5),
           decoration: BoxDecoration(shape: BoxShape.circle, color: t.bg1),
           child: child,
         ),

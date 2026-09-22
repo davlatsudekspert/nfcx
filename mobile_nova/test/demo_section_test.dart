@@ -253,7 +253,20 @@ void main() {
       final src = File('lib/routing/router.dart').readAsStringSync();
       // Aks holda demo profilning istoryasi bo'sh chiqardi:
       // yangi marshrut demo `ProviderScope` dan tashqarida.
-      expect(src, contains('demoWrap(code, StoryViewerScreen(code: code))'));
+      // MAQSAD TEKShIRILADI, SHAKL EMAS.
+      //
+      // Avval bu yerda marshrutning AYNAN matni yozilgan edi.
+      // Marshrutga `?business=1` parametri qo'shilib, kod ikki
+      // qatorga bo'linganda sinov yiqildi — holbuki demo
+      // o'ramasi joyida edi. Bunday sinov nuqsonni emas,
+      // formatlashni qo'riqlaydi.
+      //
+      // Muhimi: istorya marshruti `demoWrap` ichida bo'lsin.
+      final route = src.substring(src.indexOf("path: '/story/:code'"));
+      final block = route.substring(0, route.indexOf('GoRoute('));
+      expect(block, contains('demoWrap('),
+          reason: 'istorya marshruti demo daraxtiga o\'ralmagan');
+      expect(block, contains('StoryViewerScreen('));
     });
   });
 
