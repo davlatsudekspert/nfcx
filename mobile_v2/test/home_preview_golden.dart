@@ -1,0 +1,76 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:nfcstore_v2/app.dart';
+import 'package:nfcstore_v2/core/models.dart';
+import 'package:nfcstore_v2/core/session.dart';
+import 'package:nfcstore_v2/core/theme.dart';
+import 'package:nfcstore_v2/screens/shell.dart';
+
+void main() {
+  testWidgets('render actual current V2 Home preview', (tester) async {
+    tester.view.physicalSize = const Size(430, 932);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final session = AppSession()
+      ..phase = SessionPhase.signedIn
+      ..user = const AppUser(
+        id: 1,
+        email: 'preview@nfcstore.local',
+      )
+      ..profiles = const [
+        IdentityProfile(
+          code: 'VIP001',
+          name: 'Muhammad',
+          role: 'Digital Identity',
+          about: 'Bitta profil. Barcha havolalar. Bir tegishda.',
+          views: 1248,
+          isPrimary: true,
+        ),
+      ]
+      ..activeProfile = const IdentityProfile(
+        code: 'VIP001',
+        name: 'Muhammad',
+        role: 'Digital Identity',
+        about: 'Bitta profil. Barcha havolalar. Bir tegishda.',
+        views: 1248,
+        isPrimary: true,
+      )
+      ..companies = const [
+        Company(
+          id: 'NOIR01',
+          name: 'NOIR Coffee',
+          city: 'Tashkent',
+          about: 'Specialty coffee, sokin atmosfera va raqamli menyu.',
+          views: 8420,
+          followers: 1240,
+          verified: true,
+        ),
+        Company(
+          id: 'LUMEN7',
+          name: 'Lumen Studio',
+          city: 'Andijan',
+          about: 'Brand, product va digital tajribalar uchun creative studio.',
+          views: 3160,
+          followers: 486,
+          verified: true,
+        ),
+      ];
+    final theme = BrandThemeController();
+    addTearDown(session.dispose);
+    addTearDown(theme.dispose);
+
+    await tester.pumpWidget(
+      NfcstoreV2App(session: session, theme: theme),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 900));
+
+    expect(find.byType(V2Shell), findsOneWidget);
+    await expectLater(
+      find.byType(V2Shell),
+      matchesGoldenFile('goldens/home_actual.png'),
+    );
+  });
+}
