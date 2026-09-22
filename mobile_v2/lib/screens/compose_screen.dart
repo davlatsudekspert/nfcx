@@ -83,9 +83,9 @@ class _ComposeScreenState extends State<ComposeScreen> {
       _message = null;
     });
 
+    final repo = SessionScope.read(context).repo;
     try {
       final bytes = await file.readAsBytes();
-      final repo = SessionScope.read(context).repo;
       final contentType = _video ? 'video/mp4' : 'image/jpeg';
       final mediaUrl = await repo.uploadMedia(bytes, contentType: contentType);
 
