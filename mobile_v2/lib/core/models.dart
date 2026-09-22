@@ -31,6 +31,7 @@ class IdentityProfile {
     this.coverUrl,
     this.about = '',
     this.views = 0,
+    this.price = 0,
     this.verified = false,
     this.isPrimary = false,
   });
@@ -42,6 +43,7 @@ class IdentityProfile {
   final String? coverUrl;
   final String about;
   final int views;
+  final int price;
   final bool verified;
   final bool isPrimary;
 
@@ -53,6 +55,7 @@ class IdentityProfile {
         coverUrl: absoluteUrl(j['bgUrl'] ?? j['coverUrl']),
         about: _s(j['about']),
         views: _i(j['views']),
+        price: _i(j['price']),
         verified: _b(j['verified']),
         isPrimary: _b(j['isPrimary']),
       );
