@@ -8,6 +8,7 @@ import '../core/session.dart';
 import '../core/theme.dart';
 import '../ui/widgets.dart';
 import 'profile_screen.dart';
+import 'compose_screen.dart';
 
 class ReelsScreen extends StatefulWidget {
   const ReelsScreen({super.key});
@@ -170,7 +171,19 @@ class _ReelsScreenState extends State<ReelsScreen> {
                         children: [
                           const Wordmark(compact: true),
                           const Spacer(),
-                          RoundIcon(icon: Icons.add_rounded, size: 42, emphasis: true, onTap: () {}),
+                          RoundIcon(
+                            icon: Icons.add_rounded,
+                            size: 42,
+                            emphasis: true,
+                            onTap: () async {
+                              final done = await Navigator.of(context).push<bool>(
+                                MaterialPageRoute(
+                                  builder: (_) => const ComposeScreen(kind: ComposeKind.post),
+                                ),
+                              );
+                              if (done == true && mounted) await _load();
+                            },
+                          ),
                         ],
                       ),
                       const Spacer(),
