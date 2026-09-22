@@ -73,6 +73,23 @@ class ApiClient {
   Future<dynamic> delete(String path) =>
       _send(() => _http.delete(_uri(path), headers: _headers()));
 
+  Future<dynamic> upload(
+    String path,
+    List<int> bytes, {
+    String contentType = 'image/jpeg',
+  }) =>
+      _send(() async {
+        final request = http.Request('POST', _uri(path))
+          ..headers.addAll({
+            'accept': 'application/json',
+            'x-client': 'android-v2-preview',
+            'content-type': contentType,
+            if ((token ?? '').isNotEmpty) 'authorization': 'Bearer ' + token!,
+          })
+          ..bodyBytes = bytes;
+        return http.Response.fromStream(await _http.send(request));
+      });
+
   Future<dynamic> _send(Future<http.Response> Function() run) async => (await _raw(run)).body;
 
   Future<({dynamic body, Map<String, String> headers})> _raw(
