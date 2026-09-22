@@ -347,6 +347,35 @@ class _EditorialCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.brand;
     return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 132,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: p.hero,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: p.accent.withValues(alpha: .22)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: p.heroInk, size: 27),
+            const Spacer(),
+            Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                height: 1.25,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _ModeSwitch extends StatelessWidget {
   const _ModeSwitch({
@@ -382,7 +411,12 @@ class _ModeSwitch extends StatelessWidget {
                   color: !business ? p.surface : Colors.transparent,
                   borderRadius: BorderRadius.circular(999),
                   boxShadow: !business
-                      ? [BoxShadow(color: p.shadow.withValues(alpha: .45), blurRadius: 8)]
+                      ? [
+                          BoxShadow(
+                            color: p.shadow.withValues(alpha: .45),
+                            blurRadius: 8,
+                          ),
+                        ]
                       : null,
                 ),
                 child: Text(
