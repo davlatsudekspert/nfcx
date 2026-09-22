@@ -294,3 +294,116 @@ class FeedItem {
   final int id;
   final String code;
   final String name;
+  final String authorKind;
+  final String? avatarUrl;
+  final String? imageUrl;
+  final String? videoUrl;
+  final String caption;
+  final int likeCount;
+  final int commentCount;
+  final bool liked;
+  final bool likeable;
+
+  bool get isStory => kind.toLowerCase().contains('story');
+  bool get isCompany =>
+      authorKind == 'company' || kind.toLowerCase().startsWith('company_');
+
+  String get targetKind {
+    final k = kind.toLowerCase();
+    if (k == 'company_post' || k == 'company_story') return k;
+    if (isCompany) return isStory ? 'company_story' : 'company_post';
+    return isStory ? 'story' : 'post';
+  }
+
+  factory FeedItem.fromJson(Map<String, dynamic> j) => FeedItem(
+        kind: _s(j['kind']).isEmpty ? 'post' : _s(j['kind']),
+        id: _i(j['id']),
+        code: _s(j['code']).toUpperCase(),
+        name: _s(j['name']),
+        authorKind: _s(j['authorKind']).isEmpty ? 'card' : _s(j['authorKind']),
+        avatarUrl: absoluteUrl(j['avatarUrl']),
+        imageUrl: absoluteUrl(j['imageUrl']),
+        videoUrl: absoluteUrl(j['videoUrl']),
+        caption: _s(j['caption']),
+        likeCount: _i(j['likeCount']),
+        commentCount: _i(j['commentCount']),
+        liked: _b(j['liked']),
+        likeable: _b(j['likeable']),
+      );
+
+  FeedItem copyWith({int? likeCount, int? commentCount, bool? liked}) => FeedItem(
+        kind: kind,
+        id: id,
+        code: code,
+        name: name,
+        authorKind: authorKind,
+        avatarUrl: avatarUrl,
+        imageUrl: imageUrl,
+        videoUrl: videoUrl,
+        caption: caption,
+        likeCount: likeCount ?? this.likeCount,
+        commentCount: commentCount ?? this.commentCount,
+        liked: liked ?? this.liked,
+        likeable: likeable,
+      );
+}
+
+class CommentItem {
+  const CommentItem({
+    required this.id,
+    required this.targetKind,
+    required this.targetId,
+    required this.code,
+    required this.name,
+    required this.body,
+    this.avatarUrl,
+    this.createdAtMs = 0,
+    this.mine = false,
+    this.parentId = 0,
+    this.likes = 0,
+    this.liked = false,
+  });
+
+  final int id;
+  final String targetKind;
+  final int targetId;
+  final String code;
+  final String name;
+  final String body;
+  final String? avatarUrl;
+  final int createdAtMs;
+  final bool mine;
+  final int parentId;
+  final int likes;
+  final bool liked;
+
+  factory CommentItem.fromJson(Map<String, dynamic> j) => CommentItem(
+        id: _i(j['id']),
+        targetKind: _s(j['targetKind']),
+        targetId: _i(j['targetId']),
+        code: _s(j['code'] ?? j['authorCode']).toUpperCase(),
+        name: _s(j['name'] ?? j['authorName']),
+        body: _s(j['body']),
+        avatarUrl: absoluteUrl(j['avatarUrl'] ?? j['authorAvatar']),
+        createdAtMs: _i(j['createdAtMs'] ?? j['createdAt']),
+        mine: _b(j['mine']),
+        parentId: _i(j['parentId'] ?? j['parent_id']),
+        likes: _i(j['likes']),
+        liked: _b(j['liked']),
+      );
+
+  CommentItem copyWith({int? likes, bool? liked}) => CommentItem(
+        id: id,
+        targetKind: targetKind,
+        targetId: targetId,
+        code: code,
+        name: name,
+        body: body,
+        avatarUrl: avatarUrl,
+        createdAtMs: createdAtMs,
+        mine: mine,
+        parentId: parentId,
+        likes: likes ?? this.likes,
+        liked: liked ?? this.liked,
+      );
+}
