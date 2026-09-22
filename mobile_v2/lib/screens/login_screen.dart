@@ -207,23 +207,23 @@ class _LoginScreenState extends State<LoginScreen>
                         ),
                       ],
                       const SizedBox(height: 30),
-                      Row(
+                      Wrap(
+                        spacing: 7,
+                        runSpacing: 7,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          _FeatureDot(
+                          const _FeatureDot(
                             icon: Icons.contactless_rounded,
                             label: 'NFC',
                           ),
-                          const SizedBox(width: 9),
-                          _FeatureDot(
+                          const _FeatureDot(
                             icon: Icons.play_circle_outline_rounded,
                             label: 'Reels',
                           ),
-                          const SizedBox(width: 9),
-                          _FeatureDot(
+                          const _FeatureDot(
                             icon: Icons.storefront_outlined,
                             label: 'Business',
                           ),
-                          const Spacer(),
                           Text(
                             '2026',
                             style: TextStyle(
