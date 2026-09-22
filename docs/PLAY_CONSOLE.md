@@ -338,8 +338,12 @@ diqqatini to'lov masalasiga qaratadi.
 | Nima | Talab | Holat |
 |---|---|---|
 | Ekran suratlari (telefon) | kamida 2 ta, nisbat 2:1 dan oshmasin | **5 ta tayyor**, 1080×1920 (1.78) |
-| Ilova belgisi | 512×512 PNG | `src/assets/logo-512.png` bor |
-| Feature graphic | 1024×500 PNG/JPG | **YO'Q — yasash kerak** |
+| Ilova belgisi | 512×512 PNG | **tayyor**: `docs/play-assets/play-icon-512.png` |
+| Feature graphic | 1024×500 PNG/JPG | **tayyor**: `docs/play-assets/play-feature-1024x500.png` |
+
+Belgi va feature graphic `docs/play-assets/build.py` bilan
+qayta yasaladi; nega alohida belgi kerak bo'lgani va matn nega
+aynan shunday — `docs/play-assets/README.md` da.
 
 Ekran suratlari `mobile_nova/test/shots/png/play-*.png` da.
 Qayta qurish:
@@ -356,18 +360,47 @@ YUKLANMAYDI. Shuning uchun 16:9 (1080×1920) tanlangan.
 
 ---
 
+## 6.1 IMZO KALITI
+
+`uz.nfcstore.nova` uchun alohida release kaliti yasaldi va CI ga
+uchta secret orqali ulandi: `NOVA_KEYSTORE_BASE64`,
+`NOVA_KEYSTORE_PASSWORD`, `NOVA_KEY_ALIAS`.
+
+    SHA-256: 6F:79:CC:DA:FD:E4:04:CF:BA:29:96:4D:8C:CB:11:0C:
+             0A:49:E0:D4:B9:8E:95:64:0A:68:50:02:68:B0:A9:3C
+    Alias:   nova
+    Amal qiladi: 2054 yilgacha
+
+Qurilish #129 da tasdiqlandi: `SIGNING: RELEASE`. Undan oldingi
+AAB'lar DEBUG kaliti bilan imzolangan va Play ularni qabul
+qilmagan bo'lardi.
+
+**`nova.jks` fayli repozitoriyada YO'Q va bo'lmasligi kerak.**
+U yo'qolsa Play Store'dagi ilovani boshqa yangilab bo'lmaydi —
+faqat yangi paket nomi bilan noldan boshlash qoladi. Egasida
+zaxira nusxasi bo'lishi shart.
+
+Yuqoridagi SHA-256 maxfiy emas: u App Links (`assetlinks.json`)
+uchun ham kerak bo'ladi.
+
+---
+
 ## 7. 12 TESTER — ALOHIDA HUJJAT
 
 Yopiq sinov, testerlarni yig'ish, ularga yuboriladigan matn va
 Google so'raydigan savollar: **`docs/PLAY_TESTERLAR.md`**.
 
-Eng muhim ikki narsa:
+**AKKAUNT TURI HAL QILINDI: `Для себя` (Individual).**
 
-* **Avval akkaunt turini tekshiring** (Settings → Developer
-  account → Account details). **Organization** bo'lsa 14 kunlik
-  yopiq sinov umuman kerak emas.
+Ya'ni **12 tester × 14 kun KERAK**. Organization yo'li ko'rib
+chiqildi va rad etildi: u D-U-N-S raqamini talab qiladi, D&B esa
+YaTT ga uni odatda bermaydi. Kutish vaqti bir xil chiqadi, lekin
+rad javobi xavfi qo'shiladi.
+
 * **Internal testing 14 kunlik hisobga KIRMAYDI.** Soat faqat
   **Closed testing** da yuradi.
+* Soat email yig'ilganda emas, tester Play Store'dan
+  **o'rnatganda** boshlanadi.
 
 ## 8. QAYSI YO'LDAN BOSHLASH
 
