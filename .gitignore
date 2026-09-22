@@ -20,6 +20,19 @@ mobile/.flutter-plugins-dependencies
 mobile/ios/Pods/
 mobile/android/key.properties
 mobile/android/app/*.jks
+
+# IMZO KALITI — HECH QACHON REPOZITORIYAGA TUSHMASIN.
+#
+# Kalit yo'qolsa Play Store'dagi ilovani BOSHQA HECH QACHON
+# yangilab bo'lmaydi. Repozitoriyaga tushsa esa har kim sizning
+# nomingizdan paket imzolaydi.
+#
+# Yuqoridagi ikki qator faqat `mobile/` ni qamrab olardi,
+# `mobile_nova/` esa ochiq qolgan edi.
+mobile_nova/android/key.properties
+mobile_nova/android/app/*.jks
+*.jks
+*.keystore
 mobile/web/
 
 # Golden test farqlari — vaqtinchalik chiqim, saqlanmaydi.
