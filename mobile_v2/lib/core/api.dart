@@ -86,7 +86,7 @@ class ApiClient {
         final request = http.Request('POST', _uri(path))
           ..headers.addAll({
             'accept': 'application/json',
-            'x-client': 'android-v2-preview',
+            'x-client': 'android',
             'content-type': contentType,
             if ((token ?? '').isNotEmpty) 'authorization': 'Bearer ' + token!,
           })
