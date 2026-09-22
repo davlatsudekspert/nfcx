@@ -2197,6 +2197,17 @@ async function ensureCoreSchema(env) {
       )`),
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS "posts_code_idx" ON "posts" ("code", "created_at" DESC)`),
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS "rate_limits" ("key" TEXT PRIMARY KEY NOT NULL, "hits" INTEGER DEFAULT 0 NOT NULL, "window_start" INTEGER NOT NULL)`),
+      // KUNLIK YUKLASH KVOTASI.
+      //
+      // Bitta qator = bitta foydalanuvchining bitta kundagi jami
+      // yuklangan hajmi. `day` o'zgarganda hisob noldan boshlanadi,
+      // shuning uchun alohida tozalash kerak emas: qator qayta
+      // ishlatiladi, jadval foydalanuvchi sonidan oshmaydi.
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS "upload_quota" (
+        "key" TEXT PRIMARY KEY NOT NULL,
+        "bytes" INTEGER DEFAULT 0 NOT NULL,
+        "day" TEXT NOT NULL
+      )`),
       // Eski limit yozuvlari ~1% so'rovda tozalanadi (rateLimitD1). Jadval
       // kaliti faqat `key` bo'lgani uchun `window_start` bo'yicha DELETE
       // butun jadvalni skanerlardi. Bu jadval HAR BIR profil ko'rilishida
@@ -2705,12 +2716,64 @@ async function listStoriesD1(env, kind, ownerId, viewerUserId = null) {
   }));
 }
 
+// Muddati o'tgan istoryaning FAYLINI ham R2 dan o'chiradi.
+//
+// Ilgari faqat D1 qatori o'chirilardi, fayl esa R2 da ABADIY qolardi.
+// Istorya 24 soatdan keyin ko'rinmaydi, lekin uning 100 MB lik videosi
+// joy egallab turaverardi — bu jim o'sadigan, hech kim sezmaydigan
+// xarajat. Eng ko'p joyni aynan shular yeydi, chunki istorya —
+// eng tez-tez va eng katta yuklanadigan narsa.
+//
+// EHTIYOTKORLIK: URL boshqa joyda ham ishlatilayotgan bo'lishi mumkin
+// (odam o'sha faylni postga ham qo'ygan bo'lsa yoki bir xil URL ikki
+// istoryada bo'lsa). Shuning uchun har bir fayl o'chirishdan oldin
+// `posts` va qolgan `stories` bo'yicha tekshiriladi. Noto'g'ri
+// o'chirilgan fayl — odamning postidagi buzuq rasm, uni qaytarib
+// bo'lmaydi.
+async function purgeStoryMediaD1(env, urls) {
+  if (!env.UPLOADS) return;
+  for (const url of new Set(urls.filter(Boolean))) {
+    try {
+      // Faqat istorya uchun yuklangan fayllar. Avatar, muqova yoki
+      // katalog rasmi bu yerga tushmasligi kerak.
+      if (!/^\/uploads\/story_[0-9a-f]+\.[a-z0-9]+$/i.test(url)) continue;
+      const inPosts = await env.DB.prepare(
+        `SELECT 1 FROM posts WHERE image_url = ? OR video_url = ? LIMIT 1`,
+      ).bind(url, url).first();
+      if (inPosts) continue;
+      const inStories = await env.DB.prepare(
+        `SELECT 1 FROM stories WHERE image_url = ? OR video_url = ? LIMIT 1`,
+      ).bind(url, url).first();
+      if (inStories) continue;
+      await env.UPLOADS.delete(url.replace(/^\//, ''));
+    } catch (error) {
+      // Tozalash ishlamasa ham istorya qo'shilishi DAVOM ETADI.
+      console.error('purgeStoryMediaD1', error?.message);
+    }
+  }
+}
+
 async function addStoryD1(env, { kind, ownerId, userId, imageUrl, videoUrl, caption }) {
   const now = new Date();
   // Muddati o'tganlarini shu yerda tozalaymiz — alohida cron kerak
   // bo'lmasin va jadval cheksiz o'smasin.
+  //
+  // Fayl manzillari qator o'chirilishidan OLDIN olinadi: keyin ularni
+  // bilishning iloji yo'q va fayl R2 da yetim bo'lib qoladi.
+  let staleUrls = [];
+  try {
+    const stale = await env.DB.prepare(
+      `SELECT image_url, video_url FROM stories WHERE owner_kind = ? AND owner_id = ? AND expires_at <= ?`,
+    ).bind(kind, ownerId, now.toISOString()).all();
+    staleUrls = (stale.results || []).flatMap((r) => [r.image_url, r.video_url]);
+  } catch (error) {
+    console.error('addStoryD1 stale', error?.message);
+  }
   await env.DB.prepare(`DELETE FROM stories WHERE owner_kind = ? AND owner_id = ? AND expires_at <= ?`)
     .bind(kind, ownerId, now.toISOString()).run();
+  // Qatorlar o'chgach chaqiriladi — shunda `stories` bo'yicha tekshiruv
+  // aynan QOLGAN istoryalarni ko'radi.
+  if (staleUrls.length) await purgeStoryMediaD1(env, staleUrls);
   // CHEGARA FAQAT FAOL STORYLAR BO'YICHA.
   //
   // Yuqoridagi DELETE muddati o'tganlarni tozalaydi, lekin hisob
@@ -6076,6 +6139,88 @@ async function ordersApi(request, env, url) {
 // card video, PDFs, news images) keep working unchanged. ----------
 
 const UPLOAD_CACHE_CONTROL = 'public, max-age=31536000, immutable';
+
+// ── KUNLIK YUKLASH KVOTASI ───────────────────────────────────────────
+//
+// NIMA UCHUN KERAK. Har bir faylning o'z chegarasi bor (istorya 100 MB,
+// rasm 700 KB va hokazo), lekin YUKLASHLAR SONIGA hech qanday chek
+// yo'q edi. Ya'ni bitta odam 100 MB lik videoni ketma-ket yuborib,
+// R2 dagi butun joyni bir necha soatda to'ldirib qo'yishi mumkin edi —
+// ataylab ham, bilmasdan ham (masalan ilova qayta urinishda tsiklga
+// tushib qolsa).
+//
+// Chegara HAJM bo'yicha, urinishlar soni bo'yicha emas: 300 ta kichik
+// rasm bitta videodan ko'ra kamroq joy oladi va odamni bekorga
+// to'xtatish noto'g'ri bo'lardi.
+const UPLOAD_QUOTA_BYTES_PER_DAY = 300 * 1024 * 1024;
+
+const uploadQuotaDayD1 = () => new Date().toISOString().slice(0, 10);
+
+// `streamUploadToR2` xatosini mijozga TUSHUNARLI qilib uzatadi.
+//
+// Ilgari har bir chaqiruvchi faqat `limitMb` ni uzatardi va kvota
+// haqidagi raqamlar (`quotaMb`, `usedMb`) yo'lda yo'qolardi. Natijada
+// ilova "yuklab bo'lmadi" deb ko'rsatardi, lekin NEGA ekanini va
+// qachon yana urinish mumkinligini ayta olmasdi.
+const uploadErrorJsonD1 = (up) => json({
+  error: up.error,
+  ...(up.limitMb ? { limitMb: up.limitMb } : {}),
+  ...(up.quotaMb ? { quotaMb: up.quotaMb } : {}),
+  ...(up.usedMb != null ? { usedMb: up.usedMb } : {}),
+}, up.status);
+
+// Admin kvotaga tushmaydi: yangilik rasmlari va moliya hujjatlari
+// kundalik ish va ular allaqachon admin sessiyasi bilan himoyalangan.
+const uploadQuotaExemptD1 = (actor) => !actor || String(actor).startsWith('admin:');
+
+// Yuklashdan OLDIN: joy bormi.
+//
+// XATO BO'LSA O'TKAZADI. Kvota — suiiste'molga qarshi to'siq, xavfsizlik
+// chegarasi emas. D1 bir lahzaga javob bermasa odamning rasm yuklashini
+// to'xtatish zarari himoyadan kattaroq: bitta fayl o'tib ketadi, xolos.
+async function uploadQuotaCheckD1(env, actor, wantBytes) {
+  if (uploadQuotaExemptD1(actor)) return { ok: true };
+  try {
+    const row = await env.DB.prepare(`SELECT bytes, day FROM upload_quota WHERE key = ?`)
+      .bind(actor).first();
+    const used = row && row.day === uploadQuotaDayD1() ? Number(row.bytes || 0) : 0;
+    if (used + Math.max(0, Number(wantBytes) || 0) > UPLOAD_QUOTA_BYTES_PER_DAY) {
+      return {
+        ok: false,
+        error: 'quota_exceeded',
+        status: 429,
+        quotaMb: Math.round(UPLOAD_QUOTA_BYTES_PER_DAY / (1024 * 1024)),
+        usedMb: Math.round(used / (1024 * 1024)),
+      };
+    }
+  } catch (error) {
+    console.error('uploadQuotaCheckD1', error?.message);
+  }
+  return { ok: true };
+}
+
+// Yuklashdan KEYIN: HAQIQIY hajm qo'shiladi.
+//
+// Tekshiruv `content-length` ga tayanadi, u esa yolg'on bo'lishi
+// mumkin. Shuning uchun hisob faqat R2 ga rostdan yozilgan baytlar
+// bo'yicha yuritiladi — eng yomon holatda chegara bitta faylga
+// oshib ketadi va keyingi urinish to'xtatiladi.
+async function uploadQuotaAddD1(env, actor, bytes) {
+  if (uploadQuotaExemptD1(actor) || !(Number(bytes) > 0)) return;
+  try {
+    await env.DB.prepare(
+      `INSERT INTO upload_quota (key, bytes, day) VALUES (?, ?, ?)
+       ON CONFLICT(key) DO UPDATE SET
+         bytes = CASE WHEN upload_quota.day = excluded.day
+                      THEN upload_quota.bytes + excluded.bytes
+                      ELSE excluded.bytes END,
+         day = excluded.day`,
+    ).bind(actor, Math.round(Number(bytes)), uploadQuotaDayD1()).run();
+  } catch (error) {
+    console.error('uploadQuotaAddD1', error?.message);
+  }
+}
+
 const UPLOAD_IMAGE_RE = /^data:(image\/(png|jpeg|jpg|webp|gif));base64,([A-Za-z0-9+/=]+)$/;
 const UPLOAD_AUDIO_RE = /^data:(audio\/(mpeg|mp3|mp4|ogg|wav|webm|x-m4a|m4a));base64,([A-Za-z0-9+/=]+)$/;
 
@@ -6237,6 +6382,10 @@ async function streamUploadToR2(request, env, opts) {
   if (declaredLen > maxBytes) return { ok: false, error: 'too_large', limitMb, status: 413 };
   if (!request.body) return { ok: false, error: 'bad_file', status: 422 };
   if (!env.UPLOADS) return { ok: false, error: 'r2_unavailable', status: 503 };
+  // Kunlik kvota — tana O'QILISHIDAN OLDIN. Chegaraga yetgan odamning
+  // 100 MB faylini R2 ga yozib, keyin o'chirish behuda xarajat.
+  const quota = await uploadQuotaCheckD1(env, actor, declaredLen);
+  if (!quota.ok) return quota;
 
   // Faqat BOSH QISM o'qiladi (turni aniqlash uchun ~40 bayt), qolgani
   // o'qilmagan holicha R2 ga oqib ketadi. `tee()` ATAYLAB ishlatilmadi:
@@ -6335,6 +6484,7 @@ async function streamUploadToR2(request, env, opts) {
     console.error('streamUploadToR2', error?.message);
     return { ok: false, error: 'upload_failed', status: 500 };
   }
+  await uploadQuotaAddD1(env, actor, total);
   return { ok: true, url: `/uploads/${filename}`, type: sniffed.type, size: total };
 }
 
@@ -6522,7 +6672,7 @@ async function uploadApi(request, env, pathname) {
       accept: ['image/gif', 'video/mp4', 'video/webm'],
       aliases: PROFILE_BG_ALIASES,
     });
-    if (!up.ok) return json({ error: up.error, ...(up.limitMb ? { limitMb: up.limitMb } : {}) }, up.status);
+    if (!up.ok) return uploadErrorJsonD1(up);
     return json({ url: up.url });
   }
 
@@ -6536,7 +6686,7 @@ async function uploadApi(request, env, pathname) {
       // Istoryada faqat rasm/video: PDF yoki mp3 bu yerga tushmasin.
       sniff: sniffMediaTypeD1,
     });
-    if (!up.ok) return json({ error: up.error, ...(up.limitMb ? { limitMb: up.limitMb } : {}) }, up.status);
+    if (!up.ok) return uploadErrorJsonD1(up);
     return json({ url: up.url, kind: up.type.startsWith('video/') ? 'video' : 'image' });
   }
 
@@ -6551,7 +6701,7 @@ async function uploadApi(request, env, pathname) {
     const up = await streamUploadToR2(request, env, {
       prefix: 'news', actor, accept: ['image/', 'video/'],
     });
-    if (!up.ok) return json({ error: up.error, ...(up.limitMb ? { limitMb: up.limitMb } : {}) }, up.status);
+    if (!up.ok) return uploadErrorJsonD1(up);
     return json({ url: up.url, type: up.type, size: up.size });
   }
 
@@ -6561,7 +6711,7 @@ async function uploadApi(request, env, pathname) {
       accept: ['application/pdf', 'text/csv', 'image/png', 'image/jpeg', 'image/webp',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'],
     });
-    if (!up.ok) return json({ error: up.error, ...(up.limitMb ? { limitMb: up.limitMb } : {}) }, up.status);
+    if (!up.ok) return uploadErrorJsonD1(up);
     return json({ url: up.url, type: up.type, size: up.size });
   }
 
@@ -6571,7 +6721,7 @@ async function uploadApi(request, env, pathname) {
       accept: ['image/', 'video/', 'audio/', 'application/pdf'],
       aliases: UPLOAD_TYPE_ALIASES,
     });
-    if (!up.ok) return json({ error: up.error, ...(up.limitMb ? { limitMb: up.limitMb } : {}) }, up.status);
+    if (!up.ok) return uploadErrorJsonD1(up);
     return json({ url: up.url, type: up.type, size: up.size });
   }
 
@@ -6591,7 +6741,7 @@ async function uploadApi(request, env, pathname) {
     const up = await streamUploadToR2(request, env, {
       prefix: 'cardprint', actor, accept: ['image/png'],
     });
-    if (!up.ok) return json({ error: up.error, ...(up.limitMb ? { limitMb: up.limitMb } : {}) }, up.status);
+    if (!up.ok) return uploadErrorJsonD1(up);
     return json({ url: up.url });
   }
 
@@ -6601,7 +6751,7 @@ async function uploadApi(request, env, pathname) {
       accept: ['video/mp4', 'video/webm'],
       aliases: PROFILE_BG_ALIASES,
     });
-    if (!up.ok) return json({ error: up.error, ...(up.limitMb ? { limitMb: up.limitMb } : {}) }, up.status);
+    if (!up.ok) return uploadErrorJsonD1(up);
     return json({ url: up.url });
   }
 
@@ -6624,11 +6774,19 @@ async function uploadApi(request, env, pathname) {
   // avvalgidek 10 MB — musiqa limiti ko'tarilgani unga ta'sir qilmaydi.
   const limit = isAudio ? MUSIC_MAX_MB_D1 * 1024 * 1024 : (isAdmin ? 10 * 1024 * 1024 : imageLimit);
   if (bytes.length > limit) return json({ error: 'too_large' }, 413);
+  // Eski base64 yo'li ham AYNI kvotaga tushadi. Aks holda chegara
+  // shunchaki boshqa endpoint orqali aylanib o'tilardi.
+  const b64Quota = await uploadQuotaCheckD1(env, actor, bytes.length);
+  if (!b64Quota.ok) {
+    return json({ error: b64Quota.error, quotaMb: b64Quota.quotaMb, usedMb: b64Quota.usedMb }, b64Quota.status);
+  }
   const ext = isAudio
     ? ({ mpeg: 'mp3', mp3: 'mp3', mp4: 'm4a', 'x-m4a': 'm4a', m4a: 'm4a', ogg: 'ogg', wav: 'wav', webm: 'webm' })[match[2]]
     : (['jpeg', 'jpg'].includes(match[2]) ? 'jpg' : match[2]);
   const filename = `${isAdmin ? 'news_' : ''}${uploadRandomHex(10)}.${ext}`;
-  return json({ url: await putUploadR2(env, filename, bytes, match[1], actor) });
+  const b64Url = await putUploadR2(env, filename, bytes, match[1], actor);
+  await uploadQuotaAddD1(env, actor, bytes.length);
+  return json({ url: b64Url });
 }
 
 function buildUploadResponseHeaders(r2object, key) {
