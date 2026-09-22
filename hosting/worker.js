@@ -3497,6 +3497,25 @@ function catalogCard(record, auctionFinal = null) {
     ts: record.ts, views: record.views,
     profileType: record.profileType, city: record.city, categorySlug: record.categorySlug,
     verified: record.verified, tierOverride: record.tierOverride || '',
+    // TARIF — KATALOG JAVOBIDA HAM.
+    //
+    // `rowToRecord()` `tier` ni ALLAQACHON hisoblaydi, lekin
+    // `catalogCard()` javobni qo'lda yig'adi va uni tashlab
+    // ketardi. `/api/records/search` esa `rowToRecord()` ni
+    // umuman chaqirmaydi.
+    //
+    // Natijada ilovaga hamma vaqt bo'sh daraja kelardi: Tanlov
+    // ro'yxatida ekslyuziv VIP001 ham, avtomatik berilgan uzun
+    // kod ham BIR XIL ko'rinardi. Odam nega biri qimmat ekanini
+    // bilmasdi.
+    //
+    // `personalIdTierD1` — SOF funksiya (kod + override), ya'ni
+    // uni bu yerda qayta hisoblash xavfsiz va sayt bilan bir
+    // xil natija beradi: ikkita qoida yaratilmadi.
+    tier: personalIdTierD1({
+      code: record.code,
+      tierOverride: record.tierOverride || '',
+    }),
     // 2026-09: katalogda admin sovg'a qilgan kartani "0 so'm" emas,
     // "Sovg'a" deb ko'rsatish uchun. MUHIM: bu bayroq narxdan EMAS,
     // `nfc_gifts` jadvalidagi HAQIQIY sovg'a yozuvidan olinadi

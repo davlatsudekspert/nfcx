@@ -870,6 +870,8 @@ class _IdPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
+    // Teskari (quyuq) fonda yashil nuqta yo'qoladi — u yerda
+    // siyoh rangida chiziladi.
     final dot = active ? t.success : t.text3;
 
     // QIMMAT KOD AJRALIB TURSIN.
@@ -879,14 +881,26 @@ class _IdPill extends StatelessWidget {
     // seziladi: `exclusive` yoki `gold` kod oltin yuzada,
     // qolganlari o'sha-o'sha neytral.
     final precious = active && IdPlate.isPrecious(tier);
+    // Oq mavzuda qimmatlik TESKARI TON bilan beriladi — sabab
+    // `IdPlate` izohida. Bu yerda ham bir xil qoida bo'lishi
+    // kerak, aks holda profil va Tanlov boshqa-boshqa gapirardi.
+    final invert = precious && !t.isDark;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
       decoration: BoxDecoration(
-        color: precious ? t.wash(t.accent2, .12) : t.surface2,
+        color: invert
+            ? t.accent2
+            : precious
+                ? t.wash(t.accent2, .12)
+                : t.surface2,
         borderRadius: R.pill,
         border: Border.all(
-          color: precious ? t.accent2.withValues(alpha: .45) : t.border2,
+          color: invert
+              ? t.accent2
+              : precious
+                  ? t.accent2.withValues(alpha: .45)
+                  : t.border2,
         ),
       ),
       child: Row(
@@ -908,7 +922,11 @@ class _IdPill extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AppType.monoStyle(
-                color: precious ? t.accent1 : t.accent3,
+                color: invert
+                    ? t.onAccent
+                    : precious
+                        ? t.accent1
+                        : t.accent3,
                 size: 13,
                 weight: FontWeight.w600,
                 letterSpacing: 2.2,

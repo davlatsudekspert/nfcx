@@ -140,6 +140,29 @@ void _idPlateTests() {
       );
     });
 
+    test('OQ mavzuda qimmatlik TESKARI TON bilan beriladi', () {
+      // Birinchi urinish oq mavzuda ISHLAMADI: `mono` da aksent
+      // qora va `washScale` .35, ya'ni fon alfasi
+      // 0.12 x 0.35 = 0.042 — oq ustida deyarli sezilmaydi.
+      // Siyoh ham oddiy matn rangi bilan bir xil edi.
+      //
+      // Oltin qo'shib bo'lmaydi (egasining talabi: faqat oq va
+      // qora), shuning uchun ierarxiya TONNI ALMAShTIRISh bilan
+      // beriladi.
+      final src =
+          File('lib/design/widgets/id_plate.dart').readAsStringSync();
+      expect(src, contains('final invert = precious && !t.isDark'));
+      expect(src, contains('t.onAccent'),
+          reason: 'teskari fonda siyoh yorug\' bo\'lishi kerak');
+
+      // Profil kapsulasi ham AYNI qoidada — aks holda profil va
+      // Tanlov boshqa-boshqa gapirardi.
+      expect(
+        File('lib/features/profile/profile_screen.dart').readAsStringSync(),
+        contains('precious && !t.isDark'),
+      );
+    });
+
     test('daraja Tanlovga UZATILADI', () {
       // Vidjet bor, lekin `tier` berilmasa hammasi neytral
       // bo'lib qolardi — ya'ni ish bekor.

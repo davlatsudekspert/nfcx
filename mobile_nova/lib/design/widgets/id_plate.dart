@@ -65,26 +65,58 @@ class IdPlate extends StatelessWidget {
       IdPlateSize.large => (16.0, 15.0, 9.0, 3.0),
     };
 
+    // QIMMATLIK QANDAY KO'RSATILADI — MAVZUGA QARAB BOShQACHA.
+    //
+    // ## BIRINCHI URINISH IShLAMADI
+    //
+    // Avval bu yerda hamma mavzuda bir xil edi: aksentning
+    // yumshoq yuvindisi va aksent chegarasi. Qorong'i
+    // mavzularda u chiroyli oltin plastinka berardi.
+    //
+    // Egasi esa OQ mavzudan foydalanadi va u yerda "ko'zga zo'r
+    // ko'rinmadi" dedi. O'lchab ko'rilganda sabab ochiq bo'ldi:
+    // `mono` da aksent QORA va `washScale` .35, ya'ni fon
+    // alfasi 0.12 x 0.35 = 0.042 — oq ustida deyarli
+    // SEZILMAYDI. Siyoh ham `accent1` (#111111), ya'ni oddiy
+    // matn rangi bilan bir xil. Qisqasi: qimmat kod oddiysidan
+    // hech nima bilan farq qilmasdi.
+    //
+    // ## OQ-QORADA QIYMAT RANG BILAN EMAS, TESKARI QILISH BILAN
+    //
+    // Oltin qo'shib bo'lmaydi — egasining talabi "faqat oq va
+    // qora". Monoxrom tizimda ierarxiya TONNI ALMAShTIRISh
+    // bilan beriladi: qimmat kod to'la quyuq plastinkada, ustida
+    // yorug' harflar. Bu o'yilgan metall plastinka hissini
+    // beradi va oq sahifada darhol ko'zga tashlanadi.
+    //
+    // Qorong'i mavzularda esa teskarisi ortiqcha bo'lardi —
+    // u yerda oltin yuvindi allaqachon ishlaydi va asosiy
+    // tugma bilan raqobatlashmaydi.
+    final invert = precious && !t.isDark;
+
     final ink = !active
         ? t.text3
-        : precious
-            ? t.accent1
-            : t.text1;
+        : invert
+            ? t.onAccent
+            : precious
+                ? t.accent1
+                : t.text1;
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: hp, vertical: vp),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(999),
-        // Qimmat kod yumshoq aksent yuzasida turadi. `wash`
-        // ishlatiladi, chunki oq-qora mavzuda to'g'ridan-to'g'ri
-        // aksent kulrang dog' berardi.
-        color: precious
-            ? t.wash(t.accent2, .12)
-            : t.surface2,
+        color: invert
+            ? t.accent2
+            : precious
+                ? t.wash(t.accent2, .12)
+                : t.surface2,
         border: Border.all(
-          color: precious
-              ? t.accent2.withValues(alpha: .45)
-              : t.border2,
+          color: invert
+              ? t.accent2
+              : precious
+                  ? t.accent2.withValues(alpha: .45)
+                  : t.border2,
         ),
       ),
       child: Text(
