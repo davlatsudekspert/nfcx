@@ -102,7 +102,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 20),
+              _ModeSwitch(
+                business: s.businessMode,
+                businessEnabled: s.companies.isNotEmpty,
+                onChanged: s.setBusinessMode,
+              ),
+              const SizedBox(height: 24),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -319,3 +325,79 @@ class _EditorialCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.brand;
     return GestureDetector(
+
+class _ModeSwitch extends StatelessWidget {
+  const _ModeSwitch({
+    required this.business,
+    required this.businessEnabled,
+    required this.onChanged,
+  });
+
+  final bool business;
+  final bool businessEnabled;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.brand;
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: p.background2,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: p.line),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => onChanged(false),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                height: 36,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: !business ? p.surface : Colors.transparent,
+                  borderRadius: BorderRadius.circular(999),
+                  boxShadow: !business
+                      ? [BoxShadow(color: p.shadow.withValues(alpha: .45), blurRadius: 8)]
+                      : null,
+                ),
+                child: Text(
+                  'Shaxsiy',
+                  style: TextStyle(
+                    color: p.ink,
+                    fontSize: 11.5,
+                    fontWeight: !business ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: businessEnabled ? () => onChanged(true) : null,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                height: 36,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: business ? p.hero : Colors.transparent,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  businessEnabled ? 'Biznes' : 'Biznes yo‘q',
+                  style: TextStyle(
+                    color: business ? p.heroInk : p.ink2,
+                    fontSize: 11.5,
+                    fontWeight: business ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
