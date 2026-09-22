@@ -121,6 +121,7 @@ class _PremiumBottomNav extends StatelessWidget {
             Expanded(
               child: Center(
                 child: GestureDetector(
+                  key: const ValueKey('nav-2'),
                   behavior: HitTestBehavior.opaque,
                   onTap: () => onTap(2),
                   child: AnimatedScale(
@@ -203,6 +204,7 @@ class _NavButton extends StatelessWidget {
     final selected = index == current;
     return Expanded(
       child: InkWell(
+        key: ValueKey('nav-' + index.toString()),
         borderRadius: BorderRadius.circular(22),
         onTap: () => onTap(index),
         child: SizedBox.expand(
