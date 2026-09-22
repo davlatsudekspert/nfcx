@@ -27,11 +27,17 @@ bo'limda yozilgan.
 
 ### 2.1 O'ZBEKCHA (asosiy til)
 
-**Ilova nomi** (30 belgigacha):
+**Ilova nomi** (30 belgigacha) — 25 belgi:
 
 ```
-NFCSTORE — NFC vizitka
+NFCSTORE: Raqamli vizitka
 ```
+
+> Nom **NFCSTORE** bilan boshlanadi — brend birinchi so'z.
+> Qolgani qidiruv uchun: Play'da alohida kalit so'z maydoni
+> yo'q, qidiruv aynan sarlavha va tavsifdagi so'zlarga qaraydi.
+> Ilovaning telefondagi nomi esa sof `NFCSTORE`
+> (`AndroidManifest.xml` dagi `android:label`).
 
 **Qisqa tavsif** (80 belgigacha):
 
@@ -79,10 +85,10 @@ Savol va takliflar: nfcstore.uz
 
 ### 2.2 RUSCHA
 
-**Ilova nomi**:
+**Ilova nomi** — 29 belgi:
 
 ```
-NFCSTORE — NFC визитка
+NFCSTORE: Электронная визитка
 ```
 
 **Qisqa tavsif**:
@@ -130,10 +136,10 @@ NFCSTORE — цифровая личность вместо бумажной в�
 
 ### 2.3 INGLIZCHA
 
-**Ilova nomi**:
+**Ilova nomi** — 27 belgi:
 
 ```
-NFCSTORE — NFC business card
+NFCSTORE: NFC Business Card
 ```
 
 **Qisqa tavsif**:
@@ -350,7 +356,20 @@ YUKLANMAYDI. Shuning uchun 16:9 (1080×1920) tanlangan.
 
 ---
 
-## 7. QAYSI YO'LDAN BOSHLASH
+## 7. 12 TESTER — ALOHIDA HUJJAT
+
+Yopiq sinov, testerlarni yig'ish, ularga yuboriladigan matn va
+Google so'raydigan savollar: **`docs/PLAY_TESTERLAR.md`**.
+
+Eng muhim ikki narsa:
+
+* **Avval akkaunt turini tekshiring** (Settings → Developer
+  account → Account details). **Organization** bo'lsa 14 kunlik
+  yopiq sinov umuman kerak emas.
+* **Internal testing 14 kunlik hisobga KIRMAYDI.** Soat faqat
+  **Closed testing** da yuradi.
+
+## 8. QAYSI YO'LDAN BOSHLASH
 
 **Internal testing** dan boshlashni tavsiya qilaman,
 to'g'ridan-to'g'ri Production'dan emas.
