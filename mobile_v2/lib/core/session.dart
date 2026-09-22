@@ -65,13 +65,17 @@ class AppSession extends ChangeNotifier {
 
   Future<void> signUp({
     required String email,
+    required String phone,
     required String password,
     required String code,
+    String promoCode = '',
   }) async {
     final token = await repo.register(
       email: email,
+      phone: phone,
       password: password,
       emailCode: code,
+      promoCode: promoCode,
     );
     if (token.isEmpty) {
       await signIn(email, password);
