@@ -81,25 +81,27 @@ void main() {
 }
 
 Future<void> _loadPreviewFonts() async {
-  Future<void> loadAsset(String family, String asset) async {
-    final loader = FontLoader(family)..addFont(rootBundle.load(asset));
+  Future<void> loadFile(String family, String path) async {
+    final file = File(path);
+    final bytes = Uint8List.fromList(await file.readAsBytes());
+    final loader = FontLoader(family)
+      ..addFont(Future.value(ByteData.sublistView(bytes)));
     await loader.load();
   }
 
-  await Future.wait([
-    loadAsset('Manrope', 'assets/fonts/Manrope-400.ttf'),
-    loadAsset('InstrumentSerif', 'assets/fonts/InstrumentSerif-400.ttf'),
-    loadAsset('IBMPlexMono', 'assets/fonts/IBMPlexMono-400.ttf'),
-  ]);
+  await loadFile('Manrope', 'assets/fonts/Manrope-400.ttf');
+  await loadFile(
+    'InstrumentSerif',
+    'assets/fonts/InstrumentSerif-400.ttf',
+  );
+  await loadFile('IBMPlexMono', 'assets/fonts/IBMPlexMono-400.ttf');
 
   final flutterRoot = Platform.environment['FLUTTER_ROOT'];
   if (flutterRoot == null || flutterRoot.isEmpty) return;
-  final file = File(
-    flutterRoot + '/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
-  );
-  if (!await file.exists()) return;
-  final bytes = Uint8List.fromList(await file.readAsBytes());
-  final loader = FontLoader('MaterialIcons')
-    ..addFont(Future.value(ByteData.sublistView(bytes)));
-  await loader.load();
+  final iconPath =
+      flutterRoot + '/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf';
+  final iconFile = File(iconPath);
+  if (await iconFile.exists()) {
+    await loadFile('MaterialIcons', iconPath);
+  }
 }
