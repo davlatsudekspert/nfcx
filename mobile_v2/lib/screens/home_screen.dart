@@ -186,8 +186,12 @@ class _HomeScreenState extends State<HomeScreen>
                 children: [
                   Row(
                     children: [
-                      const Wordmark(),
-                      const Spacer(),
+                      Expanded(
+                        child: Wordmark(
+                          compact: MediaQuery.sizeOf(context).width < 390,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       _TopAction(
                         icon: Icons.notifications_none_rounded,
                         onTap: () {},
