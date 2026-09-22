@@ -1,0 +1,64 @@
+name: NFCSTORE V2 Preview APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'chatgpt/**'
+    paths:
+      - 'mobile_v2/**'
+      - '.github/workflows/v2-apk.yml'
+
+concurrency:
+  group: nfcstore-v2-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: mobile_v2
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.35.5
+          channel: stable
+          cache: true
+
+      - name: Dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Build preview APK
+        run: flutter build apk --release --build-name=0.1.0 --build-number=${{ github.run_number }}
+
+      - name: Verify isolated package
+        run: |
+          AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 2>/dev/null | sort -V | tail -1)
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          PKG=$("$AAPT" dump packagename "$APK")
+          echo "Package: $PKG"
+          test "$PKG" = "uz.nfcstore.preview"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: nfcstore-v2-preview-${{ github.run_number }}
+          path: mobile_v2/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
