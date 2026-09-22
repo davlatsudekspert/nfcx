@@ -34,7 +34,7 @@ class NovaApp extends ConsumerWidget {
       curve: Motion.smooth,
       child: Builder(
         builder: (context) => MaterialApp.router(
-          title: 'NFCSTORE Nova',
+          title: 'NFCSTORE',
           debugShowCheckedModeBanner: false,
           theme: Theme.of(context),
           locale: locale,

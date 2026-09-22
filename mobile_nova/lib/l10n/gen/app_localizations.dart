@@ -102,7 +102,7 @@ abstract class L {
   /// No description provided for @appName.
   ///
   /// In uz, this message translates to:
-  /// **'NFCSTORE Nova'**
+  /// **'NFCSTORE'**
   String get appName;
 
   /// No description provided for @actionContinue.

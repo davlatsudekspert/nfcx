@@ -65,9 +65,20 @@ class VerifyScreen extends ConsumerStatefulWidget {
 }
 
 class _VerifyScreenState extends ConsumerState<VerifyScreen> {
-  /// Kod amal qilish muddati. Server ham shu chegarani qo'llaydi;
-  /// bu yerdagisi faqat ko'rinish uchun.
-  static const _ttl = 120;
+  /// Kod amal qilish muddati, soniyada.
+  ///
+  /// QIYMAT SERVERDAN OLINGAN: `hosting/api/auth.js` dagi
+  /// `REGISTER_OTP_TTL_MS = 5 * 60 * 1000`. Emailda ham odamga
+  /// aynan "Kod 5 daqiqa ichida amal qiladi" deb yoziladi.
+  ///
+  /// ILGARI BU YERDA 120 TURARDI va bu haqiqiy nosozlik edi:
+  /// odam kodni ko'rish uchun pochtaga o'tib, ikki daqiqadan
+  /// keyin qaytsa, sanoq allaqachon tugagan bo'lardi. Sanoq
+  /// tugaganda maydon o'chadi (`enabled: !_busy && !_expired`),
+  /// ya'ni SERVER HALI QABUL QILADIGAN kodni yozib bo'lmasdi —
+  /// ekran qotib qolganday ko'rinardi. Ikki qiymat bir xil
+  /// turishini `verify_ttl_test.dart` qo'riqlaydi.
+  static const _ttl = 300;
 
   Timer? _timer;
   int _left = _ttl;

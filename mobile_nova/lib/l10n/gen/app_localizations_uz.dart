@@ -9,7 +9,7 @@ class LUz extends L {
   LUz([String locale = 'uz']) : super(locale);
 
   @override
-  String get appName => 'NFCSTORE Nova';
+  String get appName => 'NFCSTORE';
 
   @override
   String get actionContinue => 'Davom etish';

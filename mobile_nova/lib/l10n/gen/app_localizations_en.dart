@@ -9,7 +9,7 @@ class LEn extends L {
   LEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appName => 'NFCSTORE Nova';
+  String get appName => 'NFCSTORE';
 
   @override
   String get actionContinue => 'Continue';

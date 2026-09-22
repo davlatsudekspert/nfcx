@@ -242,15 +242,13 @@ class BrandLockup extends StatelessWidget {
               color: t.text1,
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            'NOVA',
-            style: AppType.displayStyle(
-              color: t.accent2,
-              size: size * .19,
-              letterSpacing: size * .04,
-            ),
-          ),
+          // NIMA UCHUN BU YERDA "NOVA" YO'Q:
+          //
+          // `nova` — ilovaning ICHKI kod nomi (papka, paket yo'li,
+          // CI ish nomi). Brend esa bitta: NFCSTORE. Odam ekranda
+          // ikkita nom ko'rsa, qaysi biri ilova ekanini bilmaydi —
+          // Play Market'da, saytda va kartada hamma joyda NFCSTORE
+          // yozilgan. Ichki nom foydalanuvchiga ko'rinmaydi.
         ],
       ],
     );

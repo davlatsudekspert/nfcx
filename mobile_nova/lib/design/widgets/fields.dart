@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -148,14 +150,50 @@ class _CodeFieldState extends State<CodeField>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
     // Odam pochtaga o'tib, kodni nusxalab qaytadi — taklif aynan
     // shu daqiqada kerak.
-    if (state == AppLifecycleState.resumed) _checkClipboard();
+    _checkClipboard();
+    _restoreFocus();
+  }
+
+  /// Pochtadan qaytganda klaviaturani QAYTA ochadi.
+  ///
+  /// HAQIQIY NOSOZLIK: odam kodni ko'rish uchun Gmail'ga o'tib
+  /// qaytganida maydon fokusni yo'qotardi va klaviatura ochilmay
+  /// qolardi. Ekranda oltita quti turardi, lekin raqam yozilmasdi —
+  /// ilova qotib qolganday ko'rinardi. Bildirishnoma ustki
+  /// lentada chiqqanda (ilovadan chiqilmaganda) hammasi ishlardi,
+  /// chunki fokus yo'qolmasdi. Aynan shu farq sababni ko'rsatdi.
+  ///
+  /// `autofocus` bu yerda yordam bermaydi: u faqat maydon birinchi
+  /// marta qurilganda ishlaydi, qaytib kirishda emas.
+  void _restoreFocus() {
+    if (!widget.enabled) return;
+    // Kod allaqachon to'liq bo'lsa, klaviaturani ochish bezovta
+    // qiladi: so'rov ketayotgan bo'lishi mumkin.
+    if (_c.text.length >= widget.length) return;
+    // Kadrdan keyin: resume paytida Flutter fokus daraxtini hali
+    // tiklab bo'lmagan bo'ladi va so'rov yo'qolib ketadi.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !widget.enabled) return;
+      if (_focus.hasFocus) return;
+      _focus.requestFocus();
+    });
   }
 
   /// Buferda AYNAN shu uzunlikdagi raqam bormi.
+  ///
+  /// NIMA UCHUN BU YERDA MUDDAT (`timeout`) YO'Q: `Clipboard.getData`
+  /// Android'da platforma oqimiga boradi. Agar o'sha oqim band
+  /// bo'lsa, Dart tomonidagi muddat uni BO'SHATMAYDI — ekran
+  /// baribir javob bermay turardi, biz esa faqat o'zimizni
+  /// aldagan bo'lardik. Shuning uchun ortiqcha chaqiruv
+  /// qilinmaydi: kod allaqachon to'liq bo'lsa, bufer umuman
+  /// o'qilmaydi.
   Future<void> _checkClipboard() async {
     if (!widget.enabled) return;
+    if (_c.text.length >= widget.length) return;
     try {
       final data = await Clipboard.getData(Clipboard.kTextPlain);
       final raw = (data?.text ?? '').trim();
@@ -164,7 +202,8 @@ class _CodeFieldState extends State<CodeField>
       if (!mounted) return;
       setState(() => _fromClipboard = ok && raw != _c.text ? raw : null);
     } catch (_) {
-      // Bufer o'qilmasa — taklif yo'q, xolos. Bu xato emas.
+      // Bufer o'qilmasa — taklif yo'q, xolos. Bu xato emas va
+      // odamga ko'rsatilmaydi.
     }
   }
 

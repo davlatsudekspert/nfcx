@@ -9,7 +9,7 @@ class LRu extends L {
   LRu([String locale = 'ru']) : super(locale);
 
   @override
-  String get appName => 'NFCSTORE Nova';
+  String get appName => 'NFCSTORE';
 
   @override
   String get actionContinue => 'Продолжить';
