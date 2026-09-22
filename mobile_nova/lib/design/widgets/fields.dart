@@ -151,10 +151,16 @@ class _CodeFieldState extends State<CodeField>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) return;
+    // TARTIB MUHIM: avval klaviatura, keyin bufer.
+    //
+    // `Clipboard.getData` platforma kanaliga boradi. Agar u
+    // sekinlashsa, undan KEYIN turgan ish ham kechikadi. Yozish
+    // imkoni — asosiy narsa, taklif esa qulaylik: shuning uchun
+    // asosiy narsa birinchi qo'yiladi.
+    _restoreFocus();
     // Odam pochtaga o'tib, kodni nusxalab qaytadi — taklif aynan
     // shu daqiqada kerak.
     _checkClipboard();
-    _restoreFocus();
   }
 
   /// Pochtadan qaytganda klaviaturani QAYTA ochadi.
@@ -168,6 +174,16 @@ class _CodeFieldState extends State<CodeField>
   ///
   /// `autofocus` bu yerda yordam bermaydi: u faqat maydon birinchi
   /// marta qurilganda ishlaydi, qaytib kirishda emas.
+  ///
+  /// NIMA UCHUN "fokus bormi" deb TEKSHIRILMAYDI: Android'da boshqa
+  /// ilovaga o'tib qaytganda Flutter'ning fokus tuguni ko'pincha
+  /// fokusni USHLAB TURADI — `hasFocus` rost qaytaradi. Lekin
+  /// klaviatura bilan bog'lanish (text input connection) uzilgan
+  /// bo'ladi. Ya'ni "fokus bor" degan javobga ishonib hech narsa
+  /// qilmaslik — aynan nosozlikning o'zi. Shuning uchun bog'lanish
+  /// har safar QAYTADAN quriladi: avval bo'shatiladi, keyingi
+  /// kadrda qayta so'raladi va klaviatura ochilishi ochiq-oydin
+  /// talab qilinadi.
   void _restoreFocus() {
     if (!widget.enabled) return;
     // Kod allaqachon to'liq bo'lsa, klaviaturani ochish bezovta
@@ -177,8 +193,17 @@ class _CodeFieldState extends State<CodeField>
     // tiklab bo'lmagan bo'ladi va so'rov yo'qolib ketadi.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !widget.enabled) return;
-      if (_focus.hasFocus) return;
-      _focus.requestFocus();
+      _focus.unfocus();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !widget.enabled) return;
+        _focus.requestFocus();
+        // Ba'zi qobiqlarda (MIUI, ColorOS) fokus qaytgani bilan
+        // klaviatura o'zi chiqmaydi — ochilishi alohida
+        // so'raladi. Kanal javob bermasa ham ziyoni yo'q.
+        SystemChannels.textInput
+            .invokeMethod<void>('TextInput.show')
+            .catchError((_) {});
+      });
     });
   }
 
@@ -204,6 +229,30 @@ class _CodeFieldState extends State<CodeField>
     } catch (_) {
       // Bufer o'qilmasa — taklif yo'q, xolos. Bu xato emas va
       // odamga ko'rsatilmaydi.
+    }
+  }
+
+  /// Kataklarga bosilganda klaviaturani OCHADI.
+  ///
+  /// ILGARI BU YERDA `_focus.requestFocus()` TURARDI va aynan shu
+  /// nosozlikning ildizi edi: boshqa ilovaga o'tib qaytganda
+  /// Flutter'ning fokus tuguni fokusni USHLAB TURADI
+  /// (`hasFocus == true`), klaviatura bilan bog'lanish esa uzilgan
+  /// bo'ladi. Fokus allaqachon bor bo'lgani uchun `requestFocus()`
+  /// HECH NARSA QILMAYDI — kataklarni necha bosmang, klaviatura
+  /// ochilmaydi. Maydon o'lik qoladi va ilova qotib qolganday
+  /// ko'rinadi.
+  ///
+  /// Shuning uchun fokus bor bo'lsa klaviatura ochilishi ALOHIDA
+  /// so'raladi.
+  void _openKeyboard() {
+    if (!widget.enabled) return;
+    if (_focus.hasFocus) {
+      SystemChannels.textInput
+          .invokeMethod<void>('TextInput.show')
+          .catchError((_) {});
+    } else {
+      _focus.requestFocus();
     }
   }
 
@@ -247,11 +296,31 @@ class _CodeFieldState extends State<CodeField>
           // ko'rinadi. Tizim autofill'i ishlamagan holatlar uchun
           // zaxira yo'l: `oneTimeCode` ishorasi hamma qurilmada
           // ham kafolatlanmaydi.
+          // Kalitlar — NIYATNI qayd qilish uchun.
+          //
+          // Taklif qatori paydo bo'lganda `Column` bolalari
+          // [qutilar] dan [taklif, oraliq, qutilar] ga aylanadi.
+          // Flutter bolalarni pastdan ham solishtirgani uchun
+          // qutilar kalitsiz ham saqlanib qoladi — bu TEKSHIRILDI,
+          // ya'ni kalitlar nosozlikni tuzatmaydi va shunday deb
+          // yozish noto'g'ri bo'lardi.
+          //
+          // Ular baribir qoldirildi: kelajakda bu ro'yxatga yana
+          // bir shart qo'shilsa yoki tartib o'zgarsa, kiritish
+          // maydoni jimgina qayta qurilib ketmasin. Pastdagi test
+          // aynan shuni qo'riqlaydi.
           if (suggestion != null) ...[
-            _ClipboardHint(code: suggestion, onTap: _paste),
-            const SizedBox(height: 10),
+            _ClipboardHint(
+              key: const ValueKey('clipboard-hint'),
+              code: suggestion,
+              onTap: _paste,
+            ),
+            const SizedBox(key: ValueKey('clipboard-hint-gap'), height: 10),
           ],
-          _buildBoxes(context, t, text),
+          KeyedSubtree(
+            key: const ValueKey('code-boxes'),
+            child: _buildBoxes(context, t, text),
+          ),
         ],
       ),
     );
@@ -272,14 +341,29 @@ class _CodeFieldState extends State<CodeField>
                 enabled: widget.enabled,
                 autofocus: true,
                 keyboardType: TextInputType.number,
-                // TIZIM KODNI O'ZI TAKLIF QILSIN.
+                // AUTOFILL ISHORASI ATAYLAB YO'Q — QAYTARMANG.
                 //
-                // `oneTimeCode` — Android va iOS uchun standart
-                // ishora. Kod kelganda klaviatura ustida taklif
-                // chiqadi va odam bitta bosish bilan to'ldiradi.
-                // Ilgari bu ishora yo'q edi, ya'ni tizim maydon
-                // nima uchun ekanini BILMASDI.
-                autofillHints: const [AutofillHints.oneTimeCode],
+                // `autofillHints: [AutofillHints.oneTimeCode]` shu
+                // maydonga qo'shilgan edi va aynan o'shandan keyin
+                // qurilmada quyidagi nosozlik paydo bo'ldi: odam
+                // kodni ko'rish uchun pochtaga o'tib qaytganda
+                // klaviatura umuman ochilmay qolardi va kod
+                // yozilmasdi.
+                //
+                // Sababi: ishora berilganda Android'ning autofill
+                // xizmati maydonni o'z nazoratiga oladi. Boshqa
+                // ilovadan qaytilganda autofill seansi tiklanadi,
+                // lekin kiritish bog'lanishi (input connection)
+                // tiklanmasligi mumkin — maydon tirik ko'rinadi,
+                // ammo hech narsa yozilmaydi.
+                //
+                // Ishorasiz ham odam yutqazmaydi: buferdagi kod
+                // uchun taklif qatori bor va u qurilmada
+                // ISHLAGANI tasdiqlangan.
+                //
+                // Qaytarmoqchi bo'lsangiz — avval HAQIQIY
+                // qurilmada "pochtaga o'tib qaytish" yo'lini
+                // sinab ko'ring, testlar buni ushlamaydi.
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
                   LengthLimitingTextInputFormatter(widget.length),
@@ -289,7 +373,7 @@ class _CodeFieldState extends State<CodeField>
           ),
           Positioned.fill(
             child: GestureDetector(
-              onTap: () => _focus.requestFocus(),
+              onTap: _openKeyboard,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: List.generate(widget.length, (i) {
@@ -337,7 +421,11 @@ class _CodeFieldState extends State<CodeField>
 
 /// Buferdagi kodni taklif qiluvchi qator.
 class _ClipboardHint extends StatelessWidget {
-  const _ClipboardHint({required this.code, required this.onTap});
+  const _ClipboardHint({
+    super.key,
+    required this.code,
+    required this.onTap,
+  });
 
   final String code;
   final VoidCallback onTap;
