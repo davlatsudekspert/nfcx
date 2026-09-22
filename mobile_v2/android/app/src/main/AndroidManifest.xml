@@ -75,8 +75,7 @@
         <!-- ANDROID 11+ PAKET KO'RINISHI — quyidagilarsiz telefon,
              Telegram, WhatsApp va brauzerni ochish JIMGINA ishlamaydi:
              tizim mos ilovani "ko'rmaydi" va `launchUrl` false
-             qaytaradi. Kontakt amallari va Payme/Click to'lov
-             sahifasi shunga bog'liq. -->
+             qaytaradi. Kontakt va tashqi veb-havolalar shunga bog'liq. -->
         <intent>
             <action android:name="android.intent.action.VIEW"/>
             <data android:scheme="https"/>
