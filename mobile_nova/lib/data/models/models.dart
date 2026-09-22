@@ -155,6 +155,7 @@ class NfcId {
     this.following = 0,
     this.posts = 0,
     this.verified = false,
+    this.tier = '',
     this.kind = NfcIdKind.personal,
     this.cardLinked = false,
     this.musicUrls = const [],
@@ -188,6 +189,16 @@ class NfcId {
   /// Server bu maydonni allaqachon yuboradi (`rowToRecord`da
   /// `verified`), ilova esa o'qimasdi.
   final bool verified;
+
+  /// DARAJA — `free` | `silver` | `gold` | `premium` | `exclusive`.
+  ///
+  /// Serverda `personalIdTierD1()` hisoblaydi va `rowToRecord`
+  /// uni ALLAQACHON yuboradi. Ilova esa o'qimasdi: kod hamma
+  /// joyda bir xil kulrang yorliq bo'lib chizilardi.
+  ///
+  /// Holbuki kod — SOTILADIGAN MAHSULOT. Qisqa va nodir kod
+  /// qimmatroq, lekin ekranda buni hech narsa ko'rsatmasdi.
+  final String tier;
   final NfcIdKind kind;
 
   /// Jismoniy karta ulanganmi.
@@ -245,6 +256,7 @@ class NfcId {
         following: _i(j['following']),
         posts: _i(j['posts']),
         verified: _b(j['verified']),
+        tier: _s(j['tier']),
         // TUR — SERVER `profileType` YUBORADI.
         //
         // Ilgari bu yerda faqat `type` va `isCompany` o'qilardi.

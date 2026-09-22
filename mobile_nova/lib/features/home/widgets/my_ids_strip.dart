@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../design/theme/typography.dart';
 import '../../../design/tokens/nfc_tokens.dart';
 import '../../../design/tokens/shapes.dart';
+import '../../../design/widgets/id_plate.dart';
 import '../../../design/widgets/surfaces.dart';
 import '../../../routing/routes.dart';
 import '../../auth/session.dart';
@@ -76,21 +77,26 @@ class MyIdsStrip extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.nfc_rounded,
-                          size: 14, color: t.accent2),
-                      const SizedBox(width: 5),
-                      Expanded(
-                        child: Text(
-                          id.code,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppType.monoStyle(
-                              color: t.text1, size: 13),
+                      // KOD — PLASTINKA.
+                      //
+                      // Ilgari yonida NFC ikonkasi va oddiy matn
+                      // turardi. Endi kodning o'zi ko'zga
+                      // tashlanadi va darajasi rangda ko'rinadi:
+                      // bu odamning o'z ID'siga bo'lgan
+                      // munosabatini o'zgartiradi.
+                      Flexible(
+                        child: IdPlate(
+                          code: id.code,
+                          tier: id.tier,
+                          size: IdPlateSize.small,
+                          active: id.active,
                         ),
                       ),
-                      if (id.cardLinked)
+                      if (id.cardLinked) ...[
+                        const SizedBox(width: 6),
                         Icon(Icons.credit_card_rounded,
                             size: 13, color: t.text3),
+                      ],
                     ],
                   ),
                   Text(

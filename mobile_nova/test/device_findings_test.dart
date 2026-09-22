@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nfcstore_nova/data/models/models.dart';
+import 'package:nfcstore_nova/design/widgets/id_plate.dart';
 import 'package:nfcstore_nova/routing/routes.dart';
 
 /// QURILMADA TOPILGAN NUQSONLAR QAYTIB KELMASIN.
@@ -74,6 +75,8 @@ void main() {
     });
   });
 
+  _idPlateTests();
+
   group('biznesi yo\'q odam', () {
     final src =
         File('lib/features/business/business_screens.dart').readAsStringSync();
@@ -89,6 +92,59 @@ void main() {
 
     test('yaratish tugmasi ham qoladi', () {
       expect(src, contains('Routes.businessOnboard'));
+    });
+  });
+}
+
+/// NFC ID — SOTILADIGAN MAHSULOT, TEXNIK YORLIQ EMAS.
+///
+/// Egasi: "ID larga urg'u bersang, Tanlovda ham. Odam ko'ziga
+/// zo'r ko'rinsa sotib olish harakatiga tushadi."
+///
+/// Kod uchta ekranda uchta xil, hammasi kichkina kulrang yorliq
+/// bo'lib chizilardi. Server esa har kod uchun `tier` ni
+/// ALLAQACHON yuborardi — ilova uni o'qimasdi, ya'ni qimmat kod
+/// bilan bepul kod ekranda bir xil ko'rinardi.
+void _idPlateTests() {
+  group('NFC ID plastinkasi', () {
+    test('model serverdan `tier` o\'qiydi', () {
+      expect(NfcId.fromJson(const {'code': 'A', 'tier': 'gold'}).tier, 'gold');
+      expect(NfcId.fromJson(const {'code': 'A'}).tier, '');
+    });
+
+    test('faqat QIMMAT darajalar oltin bo\'ladi', () {
+      // Hammasi oltin bo'lsa, oltin ma'nosini yo'qotadi.
+      for (final t in ['gold', 'premium', 'exclusive']) {
+        expect(IdPlate.isPrecious(t), isTrue, reason: t);
+      }
+      for (final t in ['free', 'silver', '', 'nomalum']) {
+        expect(IdPlate.isPrecious(t), isFalse, reason: t);
+      }
+    });
+
+    test('Tanlov, tasma va profil BIR XIL plastinkani ishlatadi', () {
+      // Uch joyda uch xil bo'lsa, ular yana bir-biridan
+      // uzoqlashadi.
+      for (final f in [
+        'lib/features/discover/discover_screen.dart',
+        'lib/features/home/widgets/my_ids_strip.dart',
+      ]) {
+        expect(File(f).readAsStringSync(), contains('IdPlate('), reason: f);
+      }
+      // Profil kapsulasi o'z shakliga ega, lekin QOIDA bitta.
+      expect(
+        File('lib/features/profile/profile_screen.dart').readAsStringSync(),
+        contains('IdPlate.isPrecious'),
+      );
+    });
+
+    test('daraja Tanlovga UZATILADI', () {
+      // Vidjet bor, lekin `tier` berilmasa hammasi neytral
+      // bo'lib qolardi — ya'ni ish bekor.
+      expect(
+        File('lib/features/discover/discover_screen.dart').readAsStringSync(),
+        contains('tier: e.tier'),
+      );
     });
   });
 }

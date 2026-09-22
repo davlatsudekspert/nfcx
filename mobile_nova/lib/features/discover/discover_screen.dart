@@ -10,6 +10,7 @@ import '../../data/repositories/discover_repository.dart';
 import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
+import '../../design/widgets/id_plate.dart';
 import '../../design/widgets/nova_scaffold.dart';
 import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
@@ -326,6 +327,7 @@ class _ResultTile extends StatelessWidget {
         title: e.name.isEmpty ? e.code : e.name,
         subtitle: e.role.isEmpty ? l.discoverPeople : e.role,
         badge: e.code,
+        tier: e.tier,
         imageUrl: e.avatarUrl,
         initials: _initials(e.name, e.code),
         rounded: false,
@@ -387,6 +389,7 @@ class _ProfileCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.badge,
+    this.tier = '',
     required this.imageUrl,
     required this.initials,
     required this.stats,
@@ -398,6 +401,10 @@ class _ProfileCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final String badge;
+
+  /// NFC ID darajasi — plastinka rangini shu belgilaydi.
+  /// Kompaniyada daraja tushunchasi yo'q, shuning uchun bo'sh.
+  final String tier;
   final String imageUrl;
   final String initials;
 
@@ -454,16 +461,19 @@ class _ProfileCard extends StatelessWidget {
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                     const SizedBox(height: Gap.sm),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: t.border2),
-                      ),
-                      child: Text(badge,
-                          style: AppType.monoStyle(color: t.text1, size: 11)),
-                    ),
+                    // KOD — MAHSULOT, YORLIQ EMAS.
+                    //
+                    // Ilgari bu yerda kichkina kulrang halqa
+                    // ichida 11 dp matn turardi. Odam uni
+                    // texnik yorliq deb o'qirdi.
+                    //
+                    // Tanlov — ro'yxat emas, VITRINA: odam shu
+                    // yerda boshqalarning ID'sini ko'radi va
+                    // "menikiniyam shunday bo'lsin" deb
+                    // o'ylaydi. Shuning uchun kod bu yerda
+                    // eng ko'zga tashlanadigan element bo'lishi
+                    // kerak.
+                    IdPlate(code: badge, tier: tier),
                   ],
                 ),
               ),

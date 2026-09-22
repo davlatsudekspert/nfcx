@@ -10,6 +10,7 @@ import '../../data/repositories/social_repository.dart';
 import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
+import '../../design/widgets/id_plate.dart';
 import '../../design/widgets/buttons.dart';
 import '../../design/widgets/nova_scaffold.dart';
 import '../../design/widgets/states.dart';
@@ -609,6 +610,8 @@ class _Hero extends StatelessWidget {
                     active: profile!.isBusiness
                         ? profile!.business!.isPublished
                         : profile!.id!.active,
+                    // Kompaniyada daraja tushunchasi yo'q.
+                    tier: profile!.isBusiness ? '' : profile!.id!.tier,
                   ),
                 ],
               ],
@@ -853,21 +856,38 @@ class _HeroAvatar extends StatelessWidget {
 ///
 /// Nuqta bezak emas: ID faol bo'lmasa u so'nik rangda turadi.
 class _IdPill extends StatelessWidget {
-  const _IdPill({required this.code, required this.active});
+  const _IdPill({
+    required this.code,
+    required this.active,
+    this.tier = '',
+  });
   final String code;
   final bool active;
+
+  /// NFC ID darajasi — qimmat kod oltin bo'lib chiziladi.
+  final String tier;
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
     final dot = active ? t.success : t.text3;
 
+    // QIMMAT KOD AJRALIB TURSIN.
+    //
+    // Profil — odam o'z ID'sini eng ko'p ko'radigan joy va u
+    // yerda kod oddiy kulrang kapsulada turardi. Endi daraja
+    // seziladi: `exclusive` yoki `gold` kod oltin yuzada,
+    // qolganlari o'sha-o'sha neytral.
+    final precious = active && IdPlate.isPrecious(tier);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
       decoration: BoxDecoration(
-        color: t.surface2,
+        color: precious ? t.wash(t.accent2, .12) : t.surface2,
         borderRadius: R.pill,
-        border: Border.all(color: t.border2),
+        border: Border.all(
+          color: precious ? t.accent2.withValues(alpha: .45) : t.border2,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -888,10 +908,10 @@ class _IdPill extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AppType.monoStyle(
-                color: t.accent3,
-                size: 11.5,
+                color: precious ? t.accent1 : t.accent3,
+                size: 13,
                 weight: FontWeight.w600,
-                letterSpacing: 1.2,
+                letterSpacing: 2.2,
               ),
             ),
           ),
