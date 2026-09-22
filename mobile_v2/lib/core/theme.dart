@@ -148,6 +148,68 @@ ThemeData buildBrandTheme(BrandPalette p) {
       onSurface: p.ink,
       outline: p.line,
     ),
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+      },
+    ),
+    dividerTheme: DividerThemeData(
+      color: p.line,
+      thickness: .7,
+      space: 1,
+    ),
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: p.surface,
+      modalBackgroundColor: p.surface,
+      surfaceTintColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      showDragHandle: true,
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: p.surface,
+      labelStyle: TextStyle(color: p.ink2, fontSize: 12),
+      hintStyle: TextStyle(color: p.ink2.withValues(alpha: .72), fontSize: 12),
+      prefixIconColor: p.ink2,
+      suffixIconColor: p.ink2,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 16),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(17),
+        borderSide: BorderSide(color: p.line.withValues(alpha: .9)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(17),
+        borderSide: BorderSide(color: p.ink, width: 1.2),
+      ),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(17),
+        borderSide: BorderSide(color: p.line),
+      ),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        minimumSize: const Size(48, 50),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+        ),
+        textStyle: const TextStyle(
+          fontWeight: FontWeight.w700,
+          fontSize: 13.5,
+        ),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: p.ink,
+        textStyle: const TextStyle(
+          fontWeight: FontWeight.w700,
+          fontSize: 12,
+        ),
+      ),
+    ),
     textTheme: TextTheme(
       displaySmall: TextStyle(
         fontFamily: 'InstrumentSerif',
