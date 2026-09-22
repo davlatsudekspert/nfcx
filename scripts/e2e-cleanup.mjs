@@ -1,8 +1,15 @@
-// PRODUKSIYADAGI E2E TEST POSTLARINI TOZALASH
+// PRODUKSIYADAGI E2E TEST IZLARINI TOZALASH
 //
 // NIMA UCHUN. NOVA ilovasining E2E to'plami haqiqiy profilga (VIP001)
-// test postlarini yozadi va o'zidan keyin tozalamaydi. Ular egasining
-// ommaviy profilida yig'ilib, mijozga ko'rinadi.
+// test obyektlarini yozadi. To'plam o'zidan keyin tozalaydi, lekin
+// tozalash XATO BERSA (`Litter.sweep()` faqat hisobotga yozadi va
+// davom etadi) obyekt joyida qoladi. Ular egasining ommaviy
+// profilida yig'ilib, mijozga ko'rinadi.
+//
+// 2026-09-22: egasi postda AYNAN shunday qolib ketgan IZOHNI
+// ko'rsatdi ("NOVA E2E TEST — DELETE · izoh · ..."). Bu skript o'sha
+// paytda faqat POSTLARNI tozalardi — izoh ham, istorya ham
+// qamrab olinmagan edi, ya'ni ikkinchi himoya qatlami teshik edi.
 //
 // BU SKRIPT SAYT KODIGA KIRMAYDI — u qo'lda, bir martalik ish uchun.
 //
@@ -21,6 +28,8 @@
 //      (log, fayl, xato matni) yozilmaydi.
 //
 // ── ISHLATISH ───────────────────────────────────────────────────────
+//
+// Uchala tur ham qamrab olinadi: POST, IZOH va ISTORYA.
 //
 //   # 1) AVVAL KO'RISH (hech narsa o'chmaydi)
 //   NFCSTORE_LOGIN=... NFCSTORE_PASSWORD=... node scripts/e2e-cleanup.mjs
@@ -61,31 +70,92 @@ console.log(`Kirildi. Sizga tegishli NFC ID: ${ownedCodes.join(', ') || '(yo‘q
 if (!ownedCodes.length) { console.log('Profil yo‘q — qiladigan ish yo‘q.'); process.exit(0); }
 
 // ── 2) FAQAT O'Z PROFILLARINGIZDAN O'QIYMIZ ──────────────────────────
+//
+// Har bir nomzod `kind` bilan yuriydi, chunki o'chirish yo'li
+// turlicha: post `/api/posts/:id`, izoh `/api/comments/:id`,
+// istorya `/api/stories/:id`. Bitta ro'yxat — bitta tasdiqlash
+// va bitta zaxira nusxa.
 const candidates = [];
 const snapshot = [];
+
+const owned = new Set(ownedCodes.map((c) => String(c).toUpperCase()));
+
 for (const code of ownedCodes) {
-  const data = await api.req('GET', `/api/records/${encodeURIComponent(code)}/posts`);
+  const enc = encodeURIComponent(code);
+
+  // ── POSTLAR ────────────────────────────────────────────────────────
+  const data = await api.req('GET', `/api/records/${enc}/posts`);
   const posts = (data && data.posts) || [];
   const mine = posts.map((p) => ({ ...p, code }));
-  const hit = mine.filter((p) => isDeletableE2ePost(p, ownedCodes));
-  console.log(`${code}: ${posts.length} ta post, shundan E2E belgisi bilan ${hit.length} ta`);
-  candidates.push(...hit);
-  snapshot.push(...mine);
+  const hitPosts = mine.filter((p) => isDeletableE2ePost(p, ownedCodes));
+  candidates.push(...hitPosts.map((p) => ({
+    kind: 'post', id: p.id, code, text: p.caption, path: `/api/posts/${encodeURIComponent(p.id)}`,
+  })));
+  snapshot.push(...mine.map((p) => ({ kind: 'post', ...p })));
+
+  // ── ISTORYALAR ─────────────────────────────────────────────────────
+  //
+  // Istorya 24 soatdan keyin ko'rinmay qoladi, lekin qatori va
+  // fayli darhol o'chmaydi. Markerli istorya — bizniki.
+  let stories = [];
+  try {
+    const sd = await api.req('GET', `/api/records/${enc}/stories`);
+    stories = (sd && sd.stories) || [];
+  } catch { /* istorya yo'q yoki yopiq — jim o'tamiz */ }
+  const hitStories = stories.filter((st) => isE2eTestCaption(st.caption));
+  candidates.push(...hitStories.map((st) => ({
+    kind: 'istorya', id: st.id, code, text: st.caption, path: `/api/stories/${encodeURIComponent(st.id)}`,
+  })));
+  snapshot.push(...stories.map((st) => ({ kind: 'istorya', code, ...st })));
+
+  // ── IZOHLAR ────────────────────────────────────────────────────────
+  //
+  // Izoh POST ichida yashiringan: ro'yxatda ko'rinmaydi, shuning
+  // uchun uni faqat har bir postni ochib topish mumkin. Aynan
+  // shuning uchun u e'tibordan chetda qolgan edi.
+  //
+  // IKKI SHART BIRGA, postdagi kabi:
+  //   1) matni aynan E2E shaklida;
+  //   2) MUALLIFI o'zimiz (`code` bizniki).
+  // Ikkinchisisiz begona odam shunday izoh yozib, uni
+  // "nomzod" qilib qo'yishi mumkin edi.
+  let comments = 0;
+  for (const post of mine) {
+    let list = [];
+    try {
+      const cd = await api.req('GET', `/api/comments/post/${encodeURIComponent(post.id)}?limit=50`);
+      list = (cd && cd.comments) || [];
+    } catch { continue; }
+    comments += list.length;
+    for (const c of list) {
+      if (!isE2eTestCaption(c.body)) continue;
+      if (!owned.has(String(c.code || '').toUpperCase())) continue;
+      candidates.push({
+        kind: 'izoh', id: c.id, code, text: c.body,
+        path: `/api/comments/${encodeURIComponent(c.id)}`,
+      });
+      snapshot.push({ kind: 'izoh', code, postId: post.id, ...c });
+    }
+  }
+
+  const hit = candidates.filter((x) => x.code === code).length;
+  console.log(`${code}: ${posts.length} ta post, ${stories.length} ta istorya, `
+    + `${comments} ta izoh — shundan E2E belgisi bilan ${hit} ta`);
 }
 
 if (!candidates.length) {
-  console.log('\nE2E test posti topilmadi — qiladigan ish yo‘q.');
+  console.log('\nE2E test izi topilmadi — qiladigan ish yo‘q.');
   process.exit(0);
 }
 
 // ── 3) NIMA O'CHISHINI TO'LIQ KO'RSATAMIZ ────────────────────────────
 console.log(`\nO‘chirishga nomzod: ${candidates.length} ta\n`);
 for (const p of candidates) {
-  console.log(`  [${p.code}] #${p.id}  ${String(p.caption).slice(0, 72)}`);
+  console.log(`  ${p.kind.padEnd(7)} [${p.code}] #${p.id}  ${String(p.text).slice(0, 64)}`);
 }
 
 // Ikkinchi qavat himoya: har biri qoidani QAYTA o'tsin.
-const unsafe = candidates.filter((p) => !isE2eTestCaption(p.caption));
+const unsafe = candidates.filter((p) => !isE2eTestCaption(p.text));
 if (unsafe.length) {
   console.error('\nTO‘XTATILDI: qoidadan o‘tmagan obyekt ro‘yxatga tushdi.');
   process.exit(1);
@@ -101,19 +171,19 @@ if (!APPLY) {
 const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+/, '');
 const backup = `e2e-cleanup-backup-${stamp}.json`;
 writeFileSync(backup, JSON.stringify({ at: new Date().toISOString(), base: BASE,
-  ownedCodes, deleting: candidates, allPosts: snapshot }, null, 2));
+  ownedCodes, deleting: candidates, allItems: snapshot }, null, 2));
 console.log(`\nNusxa saqlandi: ${backup}`);
 
 // ── 5) O'CHIRISH ─────────────────────────────────────────────────────
 let done = 0; let failed = 0;
 for (const p of candidates) {
   try {
-    await api.req('DELETE', `/api/posts/${encodeURIComponent(p.id)}`);
+    await api.req('DELETE', p.path);
     done += 1;
-    console.log(`  o‘chirildi  [${p.code}] #${p.id}`);
+    console.log(`  o‘chirildi  ${p.kind} [${p.code}] #${p.id}`);
   } catch (e) {
     failed += 1;
-    console.log(`  XATO       [${p.code}] #${p.id} — ${String(e.message).slice(0, 80)}`);
+    console.log(`  XATO       ${p.kind} [${p.code}] #${p.id} — ${String(e.message).slice(0, 80)}`);
   }
 }
 console.log(`\nTugadi: ${done} ta o‘chirildi, ${failed} ta xato.`);

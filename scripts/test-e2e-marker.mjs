@@ -5,6 +5,7 @@
 // funksiya sifatida yozilgan va shu yerda har tomondan siqiladi.
 //
 //   node scripts/test-e2e-marker.mjs
+import { readFileSync } from 'node:fs';
 import { makeChecker } from './lib/d1-harness.mjs';
 import { isE2eTestCaption, isDeletableE2ePost, isDeletableE2eStory, isExpired } from './lib/e2e-marker.js';
 
@@ -122,6 +123,52 @@ const { check, checkTrue, done } = makeChecker();
       !isExpired({ expiresAt: v }, now));
   }
   checkTrue('6) obyekt yo‘q — O‘TMAGAN', !isExpired(null, now));
+}
+
+// ── 7) TOZALASH SKRIPTI UCHALA TURNI HAM QAMRAB OLADIMI ──────────────
+//
+// NIMA UCHUN BU YERDA. 2026-09-22 da egasi postda qolib ketgan E2E
+// IZOHINI ko'rsatdi. Marker to'g'ri edi, `Litter` uni o'chirmoqchi
+// ham bo'lgan — lekin o'chirish xato bergan va `sweep()` faqat
+// hisobotga yozib, davom etgan. Ikkinchi himoya qatlami
+// (`e2e-cleanup.mjs`) esa o'sha paytda FAQAT postlarni bilardi.
+//
+// Ya'ni teshik markerda emas, QAMROVDA edi. Shu test aynan qamrovni
+// qo'riqlaydi: kimdir kelajakda turni olib tashlasa, darhol bilinadi.
+{
+  const src = readFileSync(new URL('./e2e-cleanup.mjs', import.meta.url), 'utf8');
+
+  for (const [kind, path] of [
+    ['post', '/api/posts/'],
+    ['izoh', '/api/comments/'],
+    ['istorya', '/api/stories/'],
+  ]) {
+    checkTrue(`7) tozalash "${kind}" turini biladi`, src.includes(`kind: '${kind}'`));
+    checkTrue(`7) "${kind}" uchun o‘chirish yo‘li bor`, src.includes(path));
+  }
+
+  // XAVFSIZLIK QOIDALARI JOYIDA QOLSIN. Bu skript PRODUKSIYA
+  // ma'lumotini o'chiradi — qoidalardan birortasi olib tashlansa,
+  // ro'yxatga tushmagan obyekt ham o'chib ketishi mumkin.
+  checkTrue('7) standart holatda hech narsa o‘chmaydi (--apply shart)',
+    src.includes("includes('--apply')"));
+  checkTrue('7) o‘chirishdan oldin zaxira nusxa yoziladi',
+    src.includes('writeFileSync'));
+  checkTrue('7) ikkinchi qavat: har biri qoidani QAYTA o‘tadi',
+    src.includes('isE2eTestCaption(p.text)'));
+  checkTrue('7) izohda EGALIK ham tekshiriladi',
+    src.includes('owned.has(String(c.code'));
+
+  // Parol hech qayerga chiqmasin.
+  checkTrue('7) parol faqat muhit o‘zgaruvchisidan olinadi',
+    src.includes('process.env.NFCSTORE_PASSWORD'));
+  // TEKSHIRUV TOR BO'LISHI SHART. Birinchi urinishda "console
+  // ichida `password` so'zi" qidirilgan edi va skriptning O'ZINING
+  // ogohlantirishi ("Parolni buyruq qatoriga YOZMANG") qoidabuzarlik
+  // bo'lib chiqdi. Endi QIYMAT izlanadi, so'z emas.
+  checkTrue('7) parol QIYMATI log qilinmaydi',
+    !/console\.[a-z]+\([^)]*\$\{[^}]*password/i.test(src)
+    && !/console\.[a-z]+\(\s*password\b/i.test(src));
 }
 
 done('E2E markeri');
