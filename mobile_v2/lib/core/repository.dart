@@ -60,6 +60,17 @@ class Repository {
   Future<void> requestPasswordReset(String email) =>
       api.post('/api/auth/request-password-reset', {'email': email});
 
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) =>
+      api.post('/api/settings/change-password-direct', {
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+      });
+
+  Future<void> deleteAccount() => api.delete('/api/account');
+
   Future<void> resetPassword({
     required String email,
     required String code,
@@ -259,6 +270,9 @@ class Repository {
         if (caption.isNotEmpty) 'caption': caption,
         'agreed': agreed,
       });
+
+  Future<void> deleteRecord(String code) =>
+      api.delete('/api/records/' + code);
 
   Future<void> deletePost(int id) => api.delete('/api/posts/' + id.toString());
   Future<void> deleteStory(int id) => api.delete('/api/stories/' + id.toString());
