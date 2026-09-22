@@ -265,8 +265,16 @@ class FeedItem {
   final bool liked;
   final bool likeable;
 
-  bool get isStory => kind == 'story';
-  bool get isCompany => authorKind == 'company';
+  bool get isStory => kind.toLowerCase().contains('story');
+  bool get isCompany =>
+      authorKind == 'company' || kind.toLowerCase().startsWith('company_');
+
+  String get targetKind {
+    final k = kind.toLowerCase();
+    if (k == 'company_post' || k == 'company_story') return k;
+    if (isCompany) return isStory ? 'company_story' : 'company_post';
+    return isStory ? 'story' : 'post';
+  }
 
   factory FeedItem.fromJson(Map<String, dynamic> j) => FeedItem(
         kind: _s(j['kind']).isEmpty ? 'post' : _s(j['kind']),
@@ -334,13 +342,13 @@ class CommentItem {
         id: _i(j['id']),
         targetKind: _s(j['targetKind']),
         targetId: _i(j['targetId']),
-        code: _s(j['code']).toUpperCase(),
-        name: _s(j['name']),
+        code: _s(j['code'] ?? j['authorCode']).toUpperCase(),
+        name: _s(j['name'] ?? j['authorName']),
         body: _s(j['body']),
-        avatarUrl: absoluteUrl(j['avatarUrl']),
-        createdAtMs: _i(j['createdAt']),
+        avatarUrl: absoluteUrl(j['avatarUrl'] ?? j['authorAvatar']),
+        createdAtMs: _i(j['createdAtMs'] ?? j['createdAt']),
         mine: _b(j['mine']),
-        parentId: _i(j['parentId']),
+        parentId: _i(j['parentId'] ?? j['parent_id']),
         likes: _i(j['likes']),
         liked: _b(j['liked']),
       );
