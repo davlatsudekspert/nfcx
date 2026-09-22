@@ -162,6 +162,19 @@ class Repository {
 
 
 
+  Future<({bool following, int followers})> toggleCompanyFollow(
+    String id,
+  ) async {
+    final r = _map(await api.post('/api/companies/' + id + '/follow'));
+    final raw = r['followers'];
+    return (
+      following: r['following'] == true,
+      followers:
+          raw is num ? raw.round() : int.tryParse('$raw') ?? 0,
+    );
+  }
+
+
   Future<FollowStats> followStats(String code) async =>
       FollowStats.fromJson(_map(await api.get('/api/follow-stats/' + code)));
 
