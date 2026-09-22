@@ -38,12 +38,39 @@ NFCSTORE: Raqamli vizitka
 > yo'q, qidiruv aynan sarlavha va tavsifdagi so'zlarga qaraydi.
 > Ilovaning telefondagi nomi esa sof `NFCSTORE`
 > (`AndroidManifest.xml` dagi `android:label`).
+>
+> NEGA SARLAVHADA "LENTA" YOKI "REELS" YO'Q. Ular sarlavhaga
+> sig'adi (`NFCSTORE: Vizitka va lenta` — 26 belgi), lekin
+> qidiruvda foyda bermaydi: "reels" yoki "lenta" deb qidirgan
+> odam Instagram'ni izlayapti va o'sha yerga boradi. Sarlavha
+> bizni boshqalardan AJRATADIGAN so'zni ko'tarishi kerak, umumiy
+> so'zni emas. Ijtimoiy tomon qisqa tavsifga qo'yildi.
+>
+> Sarlavhani keyin O'ZGARTIRISH MUMKIN (standart tildan farqli
+> o'laroq), shuning uchun bu qaytarib bo'lmaydigan qaror emas.
 
-**Qisqa tavsif** (80 belgigacha):
+**Qisqa tavsif** (80 belgigacha) — 61 belgi:
 
 ```
-Bitta tegish bilan o'zingizni, ishingizni va do'koningizni ulashing.
+Bitta tegishda ulashing: NFC vizitka, profil, lenta va Reels.
 ```
+
+> Oldingi variant (`Bitta tegish bilan o'zingizni, ishingizni va
+> do'koningizni ulashing`) ALMASHTIRILDI. Egasi uch marta bir
+> narsani aytdi: do'kon sahifasida ilovaning ijtimoiy tomoni
+> ko'rinmaydi.
+>
+> Haq edi. Sarlavhada "vizitka", qisqa tavsifda ham faqat
+> ulashish turardi — odam ilovani tor yordamchi dastur deb
+> tushunardi, holbuki ichida lenta, istorya, Reels va Tanlov bor.
+>
+> Qisqa tavsif sarlavhadan keyingi ENG OG'IR qator: u
+> sarlavhadan keyin darhol o'qiladi VA Play qidiruvida
+> indekslanadi. Shuning uchun ijtimoiy so'zlar aynan shu yerga
+> qo'yildi.
+>
+> `NFC` ham alohida so'z sifatida shu yerda turadi: qidiruv
+> `NFCSTORE` ichidagi `NFC` ni alohida so'z deb tanimaydi.
 
 **To'liq tavsif** (4000 belgigacha):
 
@@ -91,10 +118,10 @@ Savol va takliflar: nfcstore.uz
 NFCSTORE: Электронная визитка
 ```
 
-**Qisqa tavsif**:
+**Qisqa tavsif** — 59 belgi:
 
 ```
-Одним касанием делитесь собой, своим делом и магазином.
+Одно касание: NFC-визитка, профиль, лента, истории и Reels.
 ```
 
 **To'liq tavsif**:
@@ -142,10 +169,10 @@ NFCSTORE — цифровая личность вместо бумажной в�
 NFCSTORE: NFC Business Card
 ```
 
-**Qisqa tavsif**:
+**Qisqa tavsif** — 61 belgi:
 
 ```
-Share yourself, your work and your store with a single tap.
+One tap to share: NFC card, profile, feed, stories and Reels.
 ```
 
 **To'liq tavsif**:
