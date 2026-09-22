@@ -99,4 +99,33 @@ let profileFollowers = null;
   checkTrue('3) user_id javobga chiqmagan', vip?.user_id === undefined);
 }
 
+// ===== 4) TARIF (tier) RO'YXATDA HAM KELADI =====
+//
+// Egasi telefonda ko'rdi: Tanlov ro'yxatida ekslyuziv VIP001 ham,
+// avtomatik berilgan uzun kod ham BIR XIL ko'rinardi — hech biri
+// oltin emas edi.
+//
+// Sabab: `catalogCard()` javobni qo'lda yig'adi va `tier` ni
+// tashlab ketardi. `rowToRecord()` uni hisoblasa ham, katalog
+// javobiga tushmasdi. Ilova esa yo'q maydonni bo'sh deb o'qiydi,
+// ya'ni hamma kod "darajasiz" bo'lib qolardi.
+{
+  const res = await get('/api/records');
+  const body = await res.json();
+  const vip = (Array.isArray(body) ? body : []).find((r) => r.code === 'VIP001');
+
+  checkTrue('4) tier maydoni yuborilgan', vip?.tier !== undefined);
+  checkTrue('4) tier bo\u2018sh emas', String(vip?.tier || '').length > 0);
+
+  // Qidiruvda ham — u `rowToRecord()` ni umuman chaqirmaydi.
+  const sres = await get('/api/records/search?q=Muhammad');
+  const sbody = await sres.json();
+  const svip = (sbody.records || []).find((r) => r.code === 'VIP001');
+  checkTrue('4) qidiruvda ham tier bor', svip?.tier !== undefined);
+
+  // IKKI YO'L BIR XIL JAVOB BERSIN. Aks holda odam ro'yxatda
+  // oltin ko'rib, qidiruvda neytral ko'rardi.
+  check('4) katalog va qidiruv bir xil tier', svip?.tier, vip?.tier);
+}
+
 done();
