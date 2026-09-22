@@ -66,32 +66,97 @@ class Company {
     required this.id,
     required this.name,
     this.logoUrl,
+    this.coverUrl,
     this.about = '',
     this.city = '',
+    this.address = '',
+    this.phone = '',
+    this.telegram = '',
+    this.instagram = '',
+    this.website = '',
     this.followers = 0,
     this.views = 0,
     this.verified = false,
+    this.isOpen,
+    this.hoursLabel = '',
+    this.items = const [],
   });
 
   final String id;
   final String name;
   final String? logoUrl;
+  final String? coverUrl;
   final String about;
   final String city;
+  final String address;
+  final String phone;
+  final String telegram;
+  final String instagram;
+  final String website;
   final int followers;
   final int views;
   final bool verified;
+  final bool? isOpen;
+  final String hoursLabel;
+  final List<Product> items;
 
-  factory Company.fromJson(Map<String, dynamic> j) => Company(
-        id: _s(j['companyId'] ?? j['id']).toUpperCase(),
-        name: _s(j['displayName'] ?? j['name']),
-        logoUrl: absoluteUrl(j['logoUrl']),
-        about: _s(j['about'] ?? j['description']),
-        city: _s(j['city']),
-        followers: _i(j['followers']),
-        views: _i(j['views']),
-        verified: _b(j['verified']),
-      );
+  factory Company.fromJson(Map<String, dynamic> j) {
+    final raw = j['items'] ?? j['catalog'];
+    final products = raw is List
+        ? raw.whereType<Map>().map((e) => Product.fromJson(e.cast<String, dynamic>())).toList()
+        : const <Product>[];
+    return Company(
+      id: _s(j['companyId'] ?? j['id']).toUpperCase(),
+      name: _s(j['displayName'] ?? j['name']),
+      logoUrl: absoluteUrl(j['logoUrl']),
+      coverUrl: absoluteUrl(j['coverUrl']),
+      about: _s(j['about'] ?? j['description']),
+      city: _s(j['city']),
+      address: _s(j['address']),
+      phone: _s(j['phone']),
+      telegram: _s(j['tg'] ?? j['telegram']),
+      instagram: _s(j['instagram']),
+      website: _s(j['website']),
+      followers: _i(j['followers']),
+      views: _i(j['views']),
+      verified: _b(j['verified']),
+      isOpen: j['isOpen'] is bool ? j['isOpen'] as bool : null,
+      hoursLabel: _s(j['hoursLabel']),
+      items: products,
+    );
+  }
+}
+
+class Product {
+  const Product({
+    required this.id,
+    required this.name,
+    this.description = '',
+    this.price = 0,
+    this.salePrice,
+    this.imageUrl,
+  });
+
+  final String id;
+  final String name;
+  final String description;
+  final int price;
+  final int? salePrice;
+  final String? imageUrl;
+
+  int get effectivePrice => salePrice ?? price;
+
+  factory Product.fromJson(Map<String, dynamic> j) {
+    final rawSale = j['promotionPrice'] ?? j['salePrice'];
+    return Product(
+      id: _s(j['id']),
+      name: _s(j['name']),
+      description: _s(j['description'] ?? j['about']),
+      price: _i(j['price']),
+      salePrice: rawSale == null ? null : _i(rawSale),
+      imageUrl: absoluteUrl(j['imageUrl'] ?? j['image']),
+    );
+  }
 }
 
 class FollowStats {
