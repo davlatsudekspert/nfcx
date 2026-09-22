@@ -76,6 +76,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _toggleFollow() async {
+    if (_own || _profile == null) return;
+    final before = _stats;
+    setState(() {
+      _stats = FollowStats(
+        followers: before.followers + (before.isFollowing ? -1 : 1),
+        following: before.following,
+        isFollowing: !before.isFollowing,
+      );
+    });
+    try {
+      final repo = SessionScope.read(context).repo;
+      if (before.isFollowing) {
+        await repo.unfollow(_profile!.code);
+      } else {
+        await repo.follow(_profile!.code);
+      }
+      final fresh = await repo.followStats(_profile!.code);
+      if (mounted) setState(() => _stats = fresh);
+    } catch (_) {
+      if (mounted) setState(() => _stats = before);
+    }
+  }
+
   Future<void> _share() async {
     final p = _profile;
     if (p == null) return;
@@ -235,9 +259,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: SizedBox(
                       height: 48,
                       child: FilledButton.icon(
-                        onPressed: _own ? () {} : null,
-                        icon: Icon(_own ? Icons.edit_outlined : Icons.person_add_alt_1_rounded, size: 18),
-                        label: Text(_own ? 'Profilni tahrirlash' : 'Kuzatish'),
+                        onPressed: _own ? () {} : _toggleFollow,
+                        icon: Icon(
+                          _own
+                              ? Icons.edit_outlined
+                              : (_stats.isFollowing
+                                  ? Icons.person_remove_alt_1_rounded
+                                  : Icons.person_add_alt_1_rounded),
+                          size: 18,
+                        ),
+                        label: Text(
+                          _own
+                              ? 'Profilni tahrirlash'
+                              : (_stats.isFollowing ? 'Kuzatilmoqda' : 'Kuzatish'),
+                        ),
                         style: FilledButton.styleFrom(
                           backgroundColor: palette.hero,
                           foregroundColor: palette.heroInk,
