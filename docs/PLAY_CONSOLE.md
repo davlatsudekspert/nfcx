@@ -524,3 +524,34 @@ tushgan parol keyin butunlay o'chmaydi.
 
 Maxfiylik siyosati havolasi Play Console'da **majburiy**
 maydon (`Store listing → Privacy policy`).
+
+---
+
+## 10. TEKSHIRUVCHI ASOSIY FUNKSIYALARNI QANDAY KO'RADI
+
+App access izohiga qo'shib yozib qo'yish mumkin — tekshiruvchi
+qidirib yurmasin, ilovaning asosiy qiymati birinchi daqiqada
+ko'rinsin.
+
+```
+After signing in:
+
+1. Home — your NFC ID card, QR code and quick actions.
+2. NFC tab — "Write to card": hold any rewritable NFC tag to the
+   phone to turn it into a profile link. Needs a physical NFC tag;
+   without one, the QR code on Home shows the same profile.
+3. Tanlov (Discover) — browse people and businesses, open any
+   profile, follow, like, comment.
+4. Reels — vertical video feed.
+5. Profile — posts, stories, followers, settings, theme switch.
+6. Settings > Account > Delete account — full account deletion
+   from inside the app.
+
+The app is free. There are no in-app purchases and no ads.
+```
+
+**NFC haqida.** NFC yozish jismoniy karta talab qiladi va
+tekshiruvchida u bo'lmasligi mumkin. Shuning uchun izohda QR
+muqobili aniq aytiladi — aks holda tekshiruvchi "funksiya
+ishlamadi" deb belgilashi mumkin. `AndroidManifest.xml` da NFC
+`required="false"`, ya'ni ilova NFC'siz telefonga ham o'rnatiladi.

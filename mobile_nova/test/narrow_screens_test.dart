@@ -51,7 +51,13 @@ void main() {
   };
 
   for (final entry in screens.entries) {
-    for (final locale in const [Locale('uz'), Locale('ru')]) {
+    // UCHALA TIL HAM. Inglizcha ilgari ro'yxatda yo'q edi, holbuki u
+    // `LocaleController.supported` da bor va Play do'konida ham
+    // e'lon qilinadi. Matn uzunligi tilga qarab o'zgaradi — ruscha
+    // eng uzun, lekin inglizchada ham ayrim atamalar uzunroq
+    // ("Subscribers", "Notifications"), ya'ni tekshirilmagan til
+    // qolgani xavf edi.
+    for (final locale in const [Locale('uz'), Locale('ru'), Locale('en')]) {
       for (final vp in viewports.entries) {
       testWidgets(
           '${entry.key} — 320dp ${vp.key}, x1.3 shrift, ${locale.languageCode}',
