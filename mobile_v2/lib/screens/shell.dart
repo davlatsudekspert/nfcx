@@ -4,7 +4,7 @@ import '../core/theme.dart';
 import 'discover_screen.dart';
 import 'home_screen.dart';
 import 'nfc_center_screen.dart';
-import 'profile_screen.dart';
+import 'account_profile_screen.dart';
 import 'reels_screen.dart';
 
 class V2Shell extends StatefulWidget {
@@ -30,7 +30,7 @@ class _V2ShellState extends State<V2Shell> {
       DiscoverScreen(),
       NfcCenterScreen(),
       ReelsScreen(),
-      ProfileScreen(),
+      AccountProfileScreen(),
     ];
 
     return ShellScope(
