@@ -40,7 +40,7 @@ class ApiClient {
 
   Map<String, String> _headers({bool json = false}) => {
         'accept': 'application/json',
-        'x-client': 'android-v2-preview',
+        'x-client': 'android',
         if (json) 'content-type': 'application/json',
         if ((token ?? '').isNotEmpty) 'authorization': 'Bearer $token',
       };
