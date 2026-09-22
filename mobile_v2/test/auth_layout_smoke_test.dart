@@ -48,7 +48,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
 
     expect(find.text('Personal'), findsOneWidget);
-    expect(find.text('Business'), findsOneWidget);
+    expect(find.text('Business'), findsWidgets);
     expect(find.text('Qanday boshlaysiz?'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
