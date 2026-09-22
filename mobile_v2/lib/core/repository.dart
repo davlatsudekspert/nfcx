@@ -26,6 +26,46 @@ class Repository {
     return token;
   }
 
+  Future<String> requestRegisterCode(String email) async {
+    final r = _map(await api.post('/api/auth/request-register-code', {
+      'email': email,
+      'phone': '',
+    }));
+    return (r['channel'] ?? 'email').toString();
+  }
+
+  Future<String> register({
+    required String email,
+    required String password,
+    required String emailCode,
+  }) async {
+    final response = await api.postAuth('/api/auth/register', {
+      'email': email,
+      'password': password,
+      'phone': '',
+      'emailCode': emailCode,
+      'tosAccepted': true,
+    });
+    final token = response.token;
+    if (token.isNotEmpty) api.token = token;
+    return token;
+  }
+
+  Future<void> requestPasswordReset(String email) =>
+      api.post('/api/auth/request-password-reset', {'email': email});
+
+  Future<void> resetPassword({
+    required String email,
+    required String code,
+    required String password,
+  }) =>
+      api.post('/api/auth/reset-password', {
+        'email': email,
+        'code': code,
+        'password': password,
+      });
+
+
   Future<({AppUser? user, List<IdentityProfile> profiles})> me() async {
     final r = _map(await api.get('/api/auth/me'));
     final rawUser = r['user'];
