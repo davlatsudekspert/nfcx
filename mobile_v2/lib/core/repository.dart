@@ -95,4 +95,59 @@ class Repository {
       await api.post('/api/tap/' + code);
     } catch (_) {}
   }
+
+
+  Future<({List<FeedItem> items, bool hasMore})> feed({int page = 1}) async {
+    final r = _map(await api.get('/api/feed', query: {'page': page}));
+    return (
+      items: _list(r, 'feed').map(FeedItem.fromJson).toList(),
+      hasMore: r['hasMore'] == true,
+    );
+  }
+
+  Future<({bool liked, int count})> likePost(int id) async {
+    final r = _map(await api.post('/api/posts/' + id.toString() + '/like'));
+    final raw = r['count'];
+    return (
+      liked: r['liked'] == true,
+      count: raw is num ? raw.round() : int.tryParse('$raw') ?? 0,
+    );
+  }
+
+  Future<({bool liked, int count})> likeStory(int id) async {
+    final r = _map(await api.post('/api/stories/' + id.toString() + '/like'));
+    final raw = r['count'] ?? r['likeCount'];
+    return (
+      liked: r['liked'] == true,
+      count: raw is num ? raw.round() : int.tryParse('$raw') ?? 0,
+    );
+  }
+
+  Future<int> viewStory(int id) async {
+    final r = _map(await api.post('/api/stories/' + id.toString() + '/view'));
+    final raw = r['viewCount'];
+    return raw is num ? raw.round() : int.tryParse('$raw') ?? 0;
+  }
+
+  Future<void> report({
+    required String targetKind,
+    required String targetId,
+    required String reason,
+    String ownerCode = '',
+    String note = '',
+  }) =>
+      api.post('/api/reports', {
+        'targetKind': targetKind,
+        'targetId': targetId,
+        'reason': reason,
+        if (ownerCode.isNotEmpty) 'ownerCode': ownerCode,
+        if (note.isNotEmpty) 'note': note,
+      });
+
+  Future<void> block(String kind, String id) =>
+      api.post('/api/blocks', {'kind': kind, 'id': id});
+
+  Future<void> unblock(String kind, String id) =>
+      api.delete('/api/blocks/' + kind + '/' + id);
+
 }
