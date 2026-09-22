@@ -165,3 +165,66 @@ class PostItem {
     );
   }
 }
+
+class FeedItem {
+  const FeedItem({
+    required this.kind,
+    required this.id,
+    required this.code,
+    required this.name,
+    this.authorKind = 'card',
+    this.avatarUrl,
+    this.imageUrl,
+    this.videoUrl,
+    this.caption = '',
+    this.likeCount = 0,
+    this.liked = false,
+    this.likeable = false,
+  });
+
+  final String kind;
+  final int id;
+  final String code;
+  final String name;
+  final String authorKind;
+  final String? avatarUrl;
+  final String? imageUrl;
+  final String? videoUrl;
+  final String caption;
+  final int likeCount;
+  final bool liked;
+  final bool likeable;
+
+  bool get isStory => kind == 'story';
+  bool get isCompany => authorKind == 'company';
+
+  factory FeedItem.fromJson(Map<String, dynamic> j) => FeedItem(
+        kind: _s(j['kind']).isEmpty ? 'post' : _s(j['kind']),
+        id: _i(j['id']),
+        code: _s(j['code']).toUpperCase(),
+        name: _s(j['name']),
+        authorKind: _s(j['authorKind']).isEmpty ? 'card' : _s(j['authorKind']),
+        avatarUrl: absoluteUrl(j['avatarUrl']),
+        imageUrl: absoluteUrl(j['imageUrl']),
+        videoUrl: absoluteUrl(j['videoUrl']),
+        caption: _s(j['caption']),
+        likeCount: _i(j['likeCount']),
+        liked: _b(j['liked']),
+        likeable: _b(j['likeable']),
+      );
+
+  FeedItem copyWith({int? likeCount, bool? liked}) => FeedItem(
+        kind: kind,
+        id: id,
+        code: code,
+        name: name,
+        authorKind: authorKind,
+        avatarUrl: avatarUrl,
+        imageUrl: imageUrl,
+        videoUrl: videoUrl,
+        caption: caption,
+        likeCount: likeCount ?? this.likeCount,
+        liked: liked ?? this.liked,
+        likeable: likeable,
+      );
+}
