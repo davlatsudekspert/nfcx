@@ -246,6 +246,7 @@ class FeedItem {
     this.videoUrl,
     this.caption = '',
     this.likeCount = 0,
+    this.commentCount = 0,
     this.liked = false,
     this.likeable = false,
   });
@@ -260,6 +261,7 @@ class FeedItem {
   final String? videoUrl;
   final String caption;
   final int likeCount;
+  final int commentCount;
   final bool liked;
   final bool likeable;
 
@@ -277,11 +279,12 @@ class FeedItem {
         videoUrl: absoluteUrl(j['videoUrl']),
         caption: _s(j['caption']),
         likeCount: _i(j['likeCount']),
+        commentCount: _i(j['commentCount']),
         liked: _b(j['liked']),
         likeable: _b(j['likeable']),
       );
 
-  FeedItem copyWith({int? likeCount, bool? liked}) => FeedItem(
+  FeedItem copyWith({int? likeCount, int? commentCount, bool? liked}) => FeedItem(
         kind: kind,
         id: id,
         code: code,
@@ -292,7 +295,68 @@ class FeedItem {
         videoUrl: videoUrl,
         caption: caption,
         likeCount: likeCount ?? this.likeCount,
+        commentCount: commentCount ?? this.commentCount,
         liked: liked ?? this.liked,
         likeable: likeable,
+      );
+}
+
+class CommentItem {
+  const CommentItem({
+    required this.id,
+    required this.targetKind,
+    required this.targetId,
+    required this.code,
+    required this.name,
+    required this.body,
+    this.avatarUrl,
+    this.createdAtMs = 0,
+    this.mine = false,
+    this.parentId = 0,
+    this.likes = 0,
+    this.liked = false,
+  });
+
+  final int id;
+  final String targetKind;
+  final int targetId;
+  final String code;
+  final String name;
+  final String body;
+  final String? avatarUrl;
+  final int createdAtMs;
+  final bool mine;
+  final int parentId;
+  final int likes;
+  final bool liked;
+
+  factory CommentItem.fromJson(Map<String, dynamic> j) => CommentItem(
+        id: _i(j['id']),
+        targetKind: _s(j['targetKind']),
+        targetId: _i(j['targetId']),
+        code: _s(j['code']).toUpperCase(),
+        name: _s(j['name']),
+        body: _s(j['body']),
+        avatarUrl: absoluteUrl(j['avatarUrl']),
+        createdAtMs: _i(j['createdAt']),
+        mine: _b(j['mine']),
+        parentId: _i(j['parentId']),
+        likes: _i(j['likes']),
+        liked: _b(j['liked']),
+      );
+
+  CommentItem copyWith({int? likes, bool? liked}) => CommentItem(
+        id: id,
+        targetKind: targetKind,
+        targetId: targetId,
+        code: code,
+        name: name,
+        body: body,
+        avatarUrl: avatarUrl,
+        createdAtMs: createdAtMs,
+        mine: mine,
+        parentId: parentId,
+        likes: likes ?? this.likes,
+        liked: liked ?? this.liked,
       );
 }
