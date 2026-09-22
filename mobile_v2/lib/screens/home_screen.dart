@@ -72,7 +72,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final s = SessionScope.of(context);
     final p = context.brand;
     final active = s.activeProfile;
-    final firstName = (active?.name ?? 'Do‘st').trim().split(' ').first;
+    final company = s.businessMode && s.companies.isNotEmpty
+        ? (s.activeCompany ?? s.companies.first)
+        : null;
+    final displayName = company?.name ?? active?.name ?? 'Do‘st';
+    final firstName = displayName.trim().split(' ').first;
 
     return Scaffold(
       body: SafeArea(
@@ -120,10 +124,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   BrandAvatar(
-                    url: active?.avatarUrl,
+                    url: company?.logoUrl ?? active?.avatarUrl,
                     size: 74,
                     goldRing: true,
-                    fallback: active?.name ?? '',
+                    fallback: displayName,
                   ),
                 ],
               ),
@@ -133,7 +137,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 22),
-              if (active != null)
+              if (company != null)
+                NfcIdentityCard(
+                  code: company.id,
+                  name: company.name,
+                  role: 'Business account',
+                  onTap: () => ShellScope.of(context).selectTab(4),
+                )
+              else if (active != null)
                 NfcIdentityCard(
                   code: active.code,
                   name: active.name,
@@ -220,9 +231,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    StatBlock(value: active?.views.toString() ?? '0', label: 'ko‘rishlar'),
+                    StatBlock(value: (company?.views ?? active?.views ?? 0).toString(), label: 'ko‘rishlar'),
                     Container(width: 1, height: 36, color: p.line),
-                    StatBlock(value: _stats.followers.toString(), label: 'obunachilar'),
+                    StatBlock(value: (company?.followers ?? _stats.followers).toString(), label: 'obunachilar'),
                     Container(width: 1, height: 36, color: p.line),
                     StatBlock(value: _stats.following.toString(), label: 'obunalar'),
                   ],
