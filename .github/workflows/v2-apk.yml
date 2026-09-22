@@ -56,6 +56,8 @@ jobs:
           test/nfc_link_test.dart
           test/theme_test.dart
           test/auth_layout_smoke_test.dart
+          test/session_flow_test.dart
+          test/shell_navigation_test.dart
           --reporter expanded
 
       - name: Render actual Home preview
