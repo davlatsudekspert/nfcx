@@ -73,21 +73,25 @@ def feature():
     img = glow(img, 300, 250, 520, GOLD, 0.20)
     img = glow(img, 860, 140, 420, (120, 170, 230), 0.10)
 
-    logo = Image.open(MARK).convert('RGBA').resize((300, 300), Image.LANCZOS)
-    img.alpha_composite(logo, (96, 100))
+    logo = Image.open(MARK).convert('RGBA').resize((256, 256), Image.LANCZOS)
+    img.alpha_composite(logo, (96, 122))
 
     img = img.convert('RGB')
     d = ImageDraw.Draw(img)
     serif = ImageFont.truetype(f'{FONTS}/InstrumentSerif-400.ttf', 92)
-    sans = ImageFont.truetype(f'{FONTS}/Manrope-500.ttf', 30)
-    mono = ImageFont.truetype(f'{FONTS}/IBMPlexMono-500.ttf', 22)
+    sans = ImageFont.truetype(f'{FONTS}/Manrope-500.ttf', 32)
+    mono = ImageFont.truetype(f'{FONTS}/IBMPlexMono-500.ttf', 21)
+    mono_s = ImageFont.truetype(f'{FONTS}/IBMPlexMono-500.ttf', 20)
 
-    x = 440
-    d.text((x, 150), 'NFCSTORE', font=serif, fill=INK)
-    # Shior ikki qatorda: bitta qatorda 1024 px ga sig'masdi.
-    d.text((x, 262), 'Raqamli vizitka', font=sans, fill=DIM)
-    d.text((x, 300), 'Bitta tegishda ulashing', font=sans, fill=DIM)
-    d.text((x, 358), 'nfcstore.uz', font=mono, fill=GOLD)
+    # Google feature graphic'ni turli o'lchamda qirqadi, shuning uchun
+    # eng uzun qator o'ng chetdan 100 px dan yaqin kelmasligi kerak.
+    x = 396
+    d.text((x, 140), 'NFCSTORE', font=serif, fill=INK)
+    d.text((x, 254), 'Bitta tegishda ulashing', font=sans, fill=DIM)
+    # Ilova faqat vizitka emas — ijtimoiy tomoni ham shu qatorda.
+    d.text((x, 312), 'Vizitka \u00b7 Lenta \u00b7 Story \u00b7 Reels \u00b7 Tanlov',
+           font=mono, fill=GOLD)
+    d.text((x, 352), 'nfcstore.uz', font=mono_s, fill=DIM)
     img.save(f'{OUT}/play-feature-1024x500.png')
 
 

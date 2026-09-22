@@ -36,6 +36,18 @@ Shriftlar ham ilovadan: `InstrumentSerif` (nom), `Manrope`
 
     python3 docs/play-assets/build.py
 
+## Feature graphic matni
+
+    NFCSTORE
+    Bitta tegishda ulashing
+    Vizitka · Lenta · Story · Reels · Tanlov
+    nfcstore.uz
+
+Uchinchi qator ATAYIN qo'shilgan: ilova faqat vizitka emas,
+ijtimoiy tomoni ham bor. Play qidiruvi feature graphic matnini
+o'qimaydi, lekin odam birinchi shu rasmni ko'radi — "vizitka"
+deb tushunib ketmasligi kerak.
+
 ## Feature graphic haqida ogohlantirish
 
 Google uni turli o'lchamda QIRQADI. Shuning uchun matn markazga
