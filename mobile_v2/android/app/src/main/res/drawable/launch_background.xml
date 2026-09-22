@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ishga tushish foni.
+     Shabloni OQ edi: ilova ochilganda bir lahza oq ekran chaqnab,
+     keyin qora dizaynga o'tardi. Fon ilovaning o'z foniga (Obsidian)
+     tenglashtirildi — ochilish silliq ko'rinadi. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/ic_launcher_background" />
+    <!-- BRENDLANGAN BIRINCHI KADR.
+         Ilgari bu yerda faqat rang turardi: ilova ochilganda bir-ikki
+         soniya BO'M-BO'SH qora ekran ko'rinardi va odam "ochilmadi"
+         deb o'ylardi. Endi darhol medalyon chiqadi — u Flutter
+         splash ekranidagi belgining AYNAN o'zi, ya'ni o'tish
+         sezilmaydi. -->
+    <item android:gravity="center">
+        <bitmap
+            android:gravity="center"
+            android:src="@drawable/launch_logo" />
+    </item>
+</layer-list>
