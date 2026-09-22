@@ -37,9 +37,11 @@ import 'package:nfcstore_nova/core/network/api_client.dart';
 import 'package:nfcstore_nova/core/utils/result.dart';
 import 'package:nfcstore_nova/data/models/models.dart';
 import 'package:nfcstore_nova/data/repositories/auth_repository.dart';
+import 'package:nfcstore_nova/data/repositories/discover_repository.dart';
 import 'package:nfcstore_nova/features/auth/login_screen.dart';
 import 'package:nfcstore_nova/features/auth/session.dart';
 import 'package:nfcstore_nova/features/demo/demo_data.dart';
+import 'package:nfcstore_nova/features/discover/discover_screen.dart';
 import 'package:nfcstore_nova/features/entry/welcome_screen.dart';
 import 'package:nfcstore_nova/features/nfc/nfc_center_screen.dart';
 import 'package:nfcstore_nova/features/profile/profile_screen.dart';
@@ -155,6 +157,13 @@ void main() {
         ...await testOverrides(),
         ...demoOverrides(),
         authRepositoryProvider.overrideWithValue(_DemoAuthRepository()),
+        // TANLOV UCHUN ALOHIDA MANBA.
+        //
+        // `demoOverrides()` profil va lentani almashtiradi, lekin
+        // Tanlov boshqa repozitoriydan o'qiydi. Usiz ro'yxatda
+        // bitta "Test Foydalanuvchi" turardi.
+        discoverRepositoryProvider
+            .overrideWithValue(_ShowcaseDiscoverRepository()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -238,14 +247,38 @@ void main() {
   // shuning uchun bu slot uchun ilovani o'zgartirish noto'g'ri
   // bo'lardi.
 
-  testWidgets('play 5 — Kirish', (t) async {
-    await shot(t, const LoginScreen(), 'play-5-kirish');
+  // REELS SURATI ATAYLAB YO'Q.
+  //
+  // Ijtimoiy tomonni ko'rsatish kerak edi va Reels birinchi
+  // nomzod bo'ldi. Lekin chizib ko'rilganda ekran BO'SH chiqdi:
+  // "Hozircha reels yo'q".
+  //
+  // Sabab — demo ma'lumotida VIDEO yo'q, faqat foto
+  // (`assets/demo/*.jpg`), `reelsProvider` esa `p.isVideo`
+  // bo'yicha filtrlaydi. Ya'ni ekran to'g'ri ishlayapti,
+  // ko'rsatadigan narsa yo'q.
+  //
+  // Bo'sh ekran do'kon sahifasida suratsizdan ham YOMON: odam
+  // ilovani tashlandiq deb o'ylaydi. Shuning uchun Reels o'rniga
+  // Tanlov qo'yildi — u ham ijtimoiy tomonni ko'rsatadi va
+  // ayni paytda NFC ID plastinkalarini sotadi.
+  //
+  // Reels surati demo videosi qo'shilgandan keyin qaytariladi.
+
+  testWidgets('play 5 — Tanlov', (t) async {
+    // Tanlov ayni paytda NFC ID plastinkalarini ham ko'rsatadi —
+    // ya'ni bitta surat ikkita narsani sotadi.
+    await shot(t, const DiscoverScreen(), 'play-5-tanlov');
   });
-  testWidgets('play 6 — Oq-qora mavzu', (t) async {
+
+  testWidgets('play 7 — Kirish', (t) async {
+    await shot(t, const LoginScreen(), 'play-7-kirish');
+  });
+  testWidgets('play 8 — Oq-qora mavzu', (t) async {
     // Bitta surat MUQOBIL mavzuda: ilovada tanlov borligi
     // do'konda ham ko'rinsin.
     await shot(t, const ProfileScreen(code: kDemoPersonalCode),
-        'play-6-oq-qora', tokens: NfcTokens.mono);
+        'play-8-oq-qora', tokens: NfcTokens.mono);
   });
 }
 
@@ -269,4 +302,74 @@ class _DemoAuthRepository extends AuthRepository {
 
   @override
   Future<void> logout() async {}
+}
+
+/// TANLOV UCHUN NAMUNA RO'YXATI.
+///
+/// Turli DARAJADAGI kodlar ataylab tanlangan: ekslyuziv, gold,
+/// silver va bepul. Do'kon sahifasida odam plastinkalar
+/// farqini bir qarashda ko'rishi kerak — aynan shu farq xarid
+/// istagini tug'diradi.
+///
+/// Fotolar ilova ichidagi demo aktivlaridan, ya'ni tarmoqqa
+/// chiqilmaydi va hech kimning haqiqiy profili do'konga
+/// tushmaydi.
+class _ShowcaseDiscoverRepository extends DiscoverRepository {
+  _ShowcaseDiscoverRepository() : super(ApiClient());
+
+  // FOTO FAQAT BITTASIDA.
+  //
+  // Ilk urinishda to'rttasiga ham demo foto berilgan edi va
+  // natijada "Malika" degan ayol ismi yonida ERKAK surati
+  // turdi — demo aktivlarida bitta portret bor.
+  //
+  // Qolganlari bosh harf bilan chiziladi: bu halol (yolg'on
+  // yuz yo'q), toza ko'rinadi va ayni paytda ilovaning bosh
+  // harf avatarini ham ko'rsatadi.
+  static final _people = <NfcId>[
+    NfcId(
+      code: 'VIP001',
+      name: 'Zafar',
+      role: 'Digital creator',
+      avatarUrl: kDemoPortrait,
+      tier: 'exclusive',
+      views: 2840,
+      followers: 1240,
+      posts: 4,
+      primary: true,
+    ),
+    const NfcId(
+      code: 'AZK007',
+      name: 'Malika Yusupova',
+      role: 'Arxitektor',
+      tier: 'gold',
+      views: 918,
+      followers: 342,
+      posts: 12,
+    ),
+    const NfcId(
+      code: 'UZD772',
+      name: 'Bekzod Rahimov',
+      role: 'Restoran egasi',
+      tier: 'silver',
+      views: 465,
+      followers: 128,
+      posts: 7,
+    ),
+    const NfcId(
+      code: '48210377',
+      name: 'Dilnoza Karimova',
+      role: 'Marketolog',
+      tier: 'free',
+      views: 102,
+      followers: 24,
+      posts: 3,
+    ),
+  ];
+
+  @override
+  Future<Result<List<NfcId>>> suggested() async => Ok(_people);
+
+  @override
+  Future<Result<List<NfcId>>> searchPeople(String q) async => Ok(_people);
 }
