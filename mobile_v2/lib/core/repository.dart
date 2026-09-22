@@ -26,25 +26,31 @@ class Repository {
     return token;
   }
 
-  Future<String> requestRegisterCode(String email) async {
+  Future<String> requestRegisterCode({
+    required String email,
+    required String phone,
+  }) async {
     final r = _map(await api.post('/api/auth/request-register-code', {
       'email': email,
-      'phone': '',
+      'phone': phone,
     }));
     return (r['channel'] ?? 'email').toString();
   }
 
   Future<String> register({
     required String email,
+    required String phone,
     required String password,
     required String emailCode,
+    String promoCode = '',
   }) async {
     final response = await api.postAuth('/api/auth/register', {
       'email': email,
+      'phone': phone,
       'password': password,
-      'phone': '',
       'emailCode': emailCode,
       'tosAccepted': true,
+      if (promoCode.trim().isNotEmpty) 'promoCode': promoCode.trim().toUpperCase(),
     });
     final token = response.token;
     if (token.isNotEmpty) api.token = token;
@@ -139,6 +145,21 @@ class Repository {
       _list(await api.get('/api/companies/' + id + '/posts'), 'posts')
           .map(PostItem.fromJson)
           .toList();
+
+  Future<Map<String, dynamic>> checkCompanyId(String id) async =>
+      _map(await api.get('/api/companies/check', query: {'id': id}));
+
+  Future<Map<String, dynamic>> createCompany(Map<String, dynamic> body) async =>
+      _map(await api.post('/api/companies', body));
+
+  Future<IdentityProfile> updateProfile(
+    String code,
+    Map<String, dynamic> body,
+  ) async =>
+      IdentityProfile.fromJson(
+        _map(await api.put('/api/records/' + code, body)),
+      );
+
 
 
   Future<FollowStats> followStats(String code) async =>
