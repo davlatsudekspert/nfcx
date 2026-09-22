@@ -64,6 +64,29 @@ class AppSession extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> signUp({
+    required String email,
+    required String password,
+    required String code,
+  }) async {
+    final token = await repo.register(
+      email: email,
+      password: password,
+      emailCode: code,
+    );
+    if (token.isEmpty) {
+      await signIn(email, password);
+      return;
+    }
+    try {
+      await _storage.write(key: _tokenKey, value: token);
+    } catch (_) {}
+    await refresh();
+    phase = SessionPhase.signedIn;
+    notifyListeners();
+  }
+
+
   Future<void> refresh() async {
     final account = await repo.me();
     user = account.user;
