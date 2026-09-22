@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../core/theme.dart';
+import 'account_profile_screen.dart';
 import 'discover_screen.dart';
 import 'home_screen.dart';
 import 'nfc_center_screen.dart';
-import 'account_profile_screen.dart';
 import 'reels_screen.dart';
 
 class V2Shell extends StatefulWidget {
@@ -18,13 +18,13 @@ class _V2ShellState extends State<V2Shell> {
   int _index = 0;
 
   void _select(int value) {
+    if (value < 0 || value > 4) return;
     if (value == _index) return;
     setState(() => _index = value);
   }
 
   @override
   Widget build(BuildContext context) {
-    final p = context.brand;
     final tabs = const [
       HomeScreen(),
       DiscoverScreen(),
@@ -36,69 +36,141 @@ class _V2ShellState extends State<V2Shell> {
     return ShellScope(
       selectTab: _select,
       currentTab: _index,
-      child: Scaffold(
-        body: Stack(
+      child: PopScope(
+        canPop: _index == 0,
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop && _index != 0) _select(0);
+        },
+        child: Scaffold(
+          extendBody: _index == 3,
+          body: IndexedStack(index: _index, children: tabs),
+          bottomNavigationBar: _PremiumBottomNav(
+            currentIndex: _index,
+            onTap: _select,
+            darkSurface: _index == 3,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PremiumBottomNav extends StatelessWidget {
+  const _PremiumBottomNav({
+    required this.currentIndex,
+    required this.onTap,
+    required this.darkSurface,
+  });
+
+  final int currentIndex;
+  final ValueChanged<int> onTap;
+  final bool darkSurface;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.brand;
+    final bg = darkSurface
+        ? const Color(0xEA090909)
+        : p.surface.withValues(alpha: .985);
+    final active = darkSurface ? Colors.white : p.ink;
+    final inactive = darkSurface
+        ? Colors.white.withValues(alpha: .48)
+        : p.ink2;
+
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      child: Container(
+        height: 70,
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(25),
+          border: Border.all(
+            color: darkSurface
+                ? Colors.white.withValues(alpha: .12)
+                : p.line.withValues(alpha: .9),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: darkSurface ? .32 : .12),
+              blurRadius: 28,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        child: Row(
           children: [
-            IndexedStack(index: _index, children: tabs),
-            Positioned(
-              left: 14,
-              right: 14,
-              bottom: 10,
-              child: SafeArea(
-                top: false,
-                child: Container(
-                  height: 68,
-                  decoration: BoxDecoration(
-                    color: p.surface.withValues(alpha: .97),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: p.line),
-                    boxShadow: [
-                      BoxShadow(
-                        color: p.shadow,
-                        blurRadius: 28,
-                        offset: const Offset(0, 12),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(child: _NavItem(index: 0, active: _index, icon: Icons.home_rounded, label: 'Asosiy', onTap: _select)),
-                      Expanded(child: _NavItem(index: 1, active: _index, icon: Icons.search_rounded, label: 'Tanlov', onTap: _select)),
-                      Expanded(
-                        child: Center(
-                          child: GestureDetector(
-                            onTap: () => _select(2),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 180),
-                              width: 54,
-                              height: 54,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: p.hero,
-                                border: Border.all(color: p.accent.withValues(alpha: .65)),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: p.shadow,
-                                    blurRadius: 18,
-                                    offset: const Offset(0, 7),
-                                  ),
-                                ],
-                              ),
-                              child: Icon(
-                                Icons.contactless_rounded,
-                                color: p.heroInk,
-                                size: 28,
-                              ),
-                            ),
-                          ),
+            _NavButton(
+              index: 0,
+              current: currentIndex,
+              icon: Icons.home_rounded,
+              label: 'Asosiy',
+              activeColor: active,
+              inactiveColor: inactive,
+              onTap: onTap,
+            ),
+            _NavButton(
+              index: 1,
+              current: currentIndex,
+              icon: Icons.explore_outlined,
+              label: 'Kashf',
+              activeColor: active,
+              inactiveColor: inactive,
+              onTap: onTap,
+            ),
+            Expanded(
+              child: Center(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => onTap(2),
+                  child: AnimatedScale(
+                    duration: const Duration(milliseconds: 180),
+                    scale: currentIndex == 2 ? 1.06 : 1,
+                    child: Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.black,
+                        border: Border.all(
+                          color: p.accent.withValues(alpha: .7),
+                          width: 1.2,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: .28),
+                            blurRadius: 16,
+                            offset: const Offset(0, 7),
+                          ),
+                        ],
                       ),
-                      Expanded(child: _NavItem(index: 3, active: _index, icon: Icons.play_circle_outline_rounded, label: 'Reels', onTap: _select)),
-                      Expanded(child: _NavItem(index: 4, active: _index, icon: Icons.person_outline_rounded, label: 'Profil', onTap: _select)),
-                    ],
+                      child: Icon(
+                        Icons.contactless_rounded,
+                        color: p.heroInk,
+                        size: 29,
+                      ),
+                    ),
                   ),
                 ),
               ),
+            ),
+            _NavButton(
+              index: 3,
+              current: currentIndex,
+              icon: Icons.play_circle_outline_rounded,
+              label: 'Reels',
+              activeColor: active,
+              inactiveColor: inactive,
+              onTap: onTap,
+            ),
+            _NavButton(
+              index: 4,
+              current: currentIndex,
+              icon: Icons.person_outline_rounded,
+              label: 'Profil',
+              activeColor: active,
+              inactiveColor: inactive,
+              onTap: onTap,
             ),
           ],
         ),
@@ -107,52 +179,69 @@ class _V2ShellState extends State<V2Shell> {
   }
 }
 
-class _NavItem extends StatelessWidget {
-  const _NavItem({
+class _NavButton extends StatelessWidget {
+  const _NavButton({
     required this.index,
-    required this.active,
+    required this.current,
     required this.icon,
     required this.label,
+    required this.activeColor,
+    required this.inactiveColor,
     required this.onTap,
   });
 
   final int index;
-  final int active;
+  final int current;
   final IconData icon;
   final String label;
+  final Color activeColor;
+  final Color inactiveColor;
   final ValueChanged<int> onTap;
 
   @override
   Widget build(BuildContext context) {
-    final p = context.brand;
-    final selected = index == active;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => onTap(index),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 21, color: selected ? p.ink : p.ink2),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: selected ? p.ink : p.ink2,
-              fontSize: 9.2,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-            ),
+    final selected = index == current;
+    return Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: () => onTap(index),
+        child: SizedBox.expand(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedScale(
+                duration: const Duration(milliseconds: 160),
+                scale: selected ? 1.08 : 1,
+                child: Icon(
+                  icon,
+                  size: 21,
+                  color: selected ? activeColor : inactiveColor,
+                ),
+              ),
+              const SizedBox(height: 4),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 160),
+                style: TextStyle(
+                  color: selected ? activeColor : inactiveColor,
+                  fontSize: 9.3,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  letterSpacing: -.1,
+                ),
+                child: Text(label),
+              ),
+              const SizedBox(height: 3),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                width: selected ? 16 : 0,
+                height: 2,
+                decoration: BoxDecoration(
+                  color: selected ? activeColor : Colors.transparent,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 3),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            width: selected ? 18 : 0,
-            height: 2,
-            decoration: BoxDecoration(
-              color: p.accent,
-              borderRadius: BorderRadius.circular(9),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
