@@ -1,4 +1,4 @@
-package uz.nfcstore.app
+package uz.nfcstore.preview
 
 import io.flutter.embedding.android.FlutterActivity
 
