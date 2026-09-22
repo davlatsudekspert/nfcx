@@ -96,12 +96,4 @@ Future<void> _loadPreviewFonts() async {
   );
   await loadFile('IBMPlexMono', 'assets/fonts/IBMPlexMono-400.ttf');
 
-  final flutterRoot = Platform.environment['FLUTTER_ROOT'];
-  if (flutterRoot == null || flutterRoot.isEmpty) return;
-  final iconPath =
-      flutterRoot + '/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf';
-  final iconFile = File(iconPath);
-  if (await iconFile.exists()) {
-    await loadFile('MaterialIcons', iconPath);
-  }
 }
