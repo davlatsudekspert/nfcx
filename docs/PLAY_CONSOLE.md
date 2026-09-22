@@ -411,3 +411,75 @@ Sabab: Production'ga chiqarilgan ilova hammaga ko'rinadi va
 yomon sharh yozilsa u O'CHMAYDI. Internal testing esa
 bir necha daqiqada tasdiqlanadi, 100 tagacha odamni
 qo'shasiz va xatolar mijozgacha yetib bormaydi.
+
+---
+
+## 9. APP ACCESS — TEKSHIRUVCHI ILOVAGA QANDAY KIRADI
+
+**Bu bo'lim to'ldirilmasa ilova RAD ETILADI.** Eng ko'p
+uchraydigan rad sabablaridan biri aynan shu.
+
+NFCSTORE ochilganda kirish so'raydi. Google tekshiruvchisi
+hisob ocholmaydi: ro'yxatdan o'tish **Telegram bot tasdiqlagan
+telefon raqamini** talab qiladi (`phone_not_verified`), bu esa
+tekshiruvchida yo'q. Kira olmagan tekshiruvchi ilovani
+"ishlamaydi" deb belgilaydi.
+
+Yechim: Play Console'da **tayyor hisob** beriladi.
+
+### Qayerda
+
+Play Console → **Policy and programs → App content →
+App access** → `All or some functionality is restricted`
+→ `Add new instructions`.
+
+Uchta maydon to'ldiriladi:
+
+| Maydon | Nima yoziladi |
+|---|---|
+| Name | `Email va parol bilan kirish` |
+| Username | demo hisobning **email**i |
+| Password | o'sha hisobning **paroli** |
+
+Qo'shimcha izohga (`Any other instructions`) shuni yozing:
+
+```
+Sign in with the email and password above.
+Do not use "Register" — registration requires a phone number
+verified through our Telegram bot, which is not available to
+reviewers.
+```
+
+### Demo hisobni KIM yaratadi
+
+**Egasi yaratadi**, chunki ro'yxatdan o'tish Telegram bot
+orqali telefon tasdiqlashni talab qiladi.
+
+Hisob quyidagicha bo'lsin:
+
+* **Alohida** hisob bo'lsin — o'zingizning asosiy hisobingiz
+  emas. Tekshiruvchi uning ichida harakat qiladi.
+* **NFC ID biriktirilgan** bo'lsin — aks holda tekshiruvchi
+  ilovaning asosiy funksiyasini ko'rmaydi va "kontent yo'q"
+  deb belgilashi mumkin.
+* Profilda **ism, rasm, bir nechta post** bo'lsin. Bo'sh hisob
+  yomon taassurot qoldiradi.
+* Paroli **boshqa hech qayerda ishlatilmasin**.
+* **O'CHIRILMASIN.** Har yangilanishda tekshiruvchi shu hisob
+  bilan kiradi.
+
+### Parol qayerga yoziladi
+
+**FAQAT Play Console'ning shu formasiga.**
+
+Parolni bu hujjatga, repozitoriyaga, commit xabariga, test
+faylga yoki suhbatga YOZMANG. Repozitoriya ochiq va u yerga
+tushgan parol keyin butunlay o'chmaydi.
+
+### Bog'liq havolalar — ikkalasi ham ishlaydi
+
+    Maxfiylik siyosati:  https://nfcstore.uz/maxfiylik
+    Foydalanish shartlari: https://nfcstore.uz/shartlar
+
+Maxfiylik siyosati havolasi Play Console'da **majburiy**
+maydon (`Store listing → Privacy policy`).
