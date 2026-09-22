@@ -191,12 +191,44 @@ jobs:
             echo "::error::NOVA_KEYSTORE_BASE64 bor, lekin PASSWORD yoki ALIAS yo'q."
             exit 1
           fi
-          echo "$KEYSTORE" | base64 -d > android/app/nova.jks
+          # KO'RINMAS BELGILARNI TOZALASH.
+          #
+          # Uchala secret veb-formaga QO'LDA joylanadi. Nusxa olishda
+          # oxiriga yangi qator yoki probel qo'shilib qolishi oddiy hol.
+          # Parolda bitta ko'rinmas belgi qolsa Gradle ETTI DAQIQA
+          # quradi va faqat oxirida "keystore password was incorrect"
+          # deb yiqiladi — ya'ni xato joyidan 7 daqiqa narida chiqadi.
+          PW=$(printf '%s' "$KEYSTORE_PASSWORD" | tr -d '\r\n' \
+                 | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+          ALIAS=$(printf '%s' "$KEY_ALIAS" | tr -d '\r\n' \
+                 | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+
+          # base64 da bo'sh joy MA'NOGA EGA EMAS, shuning uchun
+          # hammasi olib tashlanadi: qatorlarga bo'lib nusxa olingan
+          # qiymat ham ishlaydi.
+          if ! printf '%s' "$KEYSTORE" | tr -d '[:space:]' \
+               | base64 -d > android/app/nova.jks 2>/dev/null; then
+            echo "::error::NOVA_KEYSTORE_BASE64 base64 emas — qiymat to'liq nusxa olinmagan."
+            exit 1
+          fi
+
+          # DARHOL TEKSHIRILADI.
+          #
+          # Kalit va parol mos kelmasa shu yerda, ikki soniyada
+          # to'xtaydi. Eng ko'p uchraydigan sabab: parol bitta fayldan,
+          # base64 esa BOSHQA kalitning faylidan olingan.
+          if ! keytool -list -keystore android/app/nova.jks \
+               -storepass "$PW" -alias "$ALIAS" > /dev/null 2>&1; then
+            echo "::error::Kalit ochilmadi — parol yoki alias mos emas."
+            echo "::error::Uchala secret BITTA faylning ichidan olinishi shart."
+            exit 1
+          fi
+
           cat > android/key.properties <<PROPS
           storeFile=nova.jks
-          storePassword=$KEYSTORE_PASSWORD
-          keyAlias=$KEY_ALIAS
-          keyPassword=$KEYSTORE_PASSWORD
+          storePassword=$PW
+          keyAlias=$ALIAS
+          keyPassword=$PW
           PROPS
           echo "HAQIQIY KALIT bilan imzolanadi."
 
