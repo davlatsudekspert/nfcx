@@ -1,0 +1,59 @@
+name: nfcstore_v2
+description: "NFCSTORE V2 — premium digital identity platform."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.3
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.2
+  cached_network_image: ^3.4.1
+  flutter_secure_storage: ^9.2.2
+  shared_preferences: ^2.3.2
+  qr_flutter: ^4.1.0
+  share_plus: ^10.1.2
+  url_launcher: ^6.3.1
+  nfc_manager: ^3.5.0
+  image_picker: ^1.2.3
+  video_player: ^2.14.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  fonts:
+    - family: InstrumentSerif
+      fonts:
+        - asset: assets/fonts/InstrumentSerif-400.ttf
+          weight: 400
+        - asset: assets/fonts/InstrumentSerif-400Italic.ttf
+          weight: 400
+          style: italic
+    - family: Manrope
+      fonts:
+        - asset: assets/fonts/Manrope-400.ttf
+          weight: 400
+        - asset: assets/fonts/Manrope-500.ttf
+          weight: 500
+        - asset: assets/fonts/Manrope-600.ttf
+          weight: 600
+        - asset: assets/fonts/Manrope-700.ttf
+          weight: 700
+        - asset: assets/fonts/Manrope-800.ttf
+          weight: 800
+    - family: IBMPlexMono
+      fonts:
+        - asset: assets/fonts/IBMPlexMono-400.ttf
+          weight: 400
+        - asset: assets/fonts/IBMPlexMono-500.ttf
+          weight: 500
+        - asset: assets/fonts/IBMPlexMono-600.ttf
+          weight: 600
+        - asset: assets/fonts/IBMPlexMono-700.ttf
+          weight: 700
