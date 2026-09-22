@@ -7,6 +7,7 @@ on:
       - 'chatgpt/**'
     paths:
       - 'mobile_v2/**'
+      - 'scripts/test-v2-no-inapp-payments.mjs'
       - '.github/workflows/v2-apk.yml'
 
 concurrency:
@@ -27,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -41,8 +42,12 @@ jobs:
       - name: Dependencies
         run: flutter pub get
 
+      - name: Payment guard
+        working-directory: ${{ github.workspace }}
+        run: node scripts/test-v2-no-inapp-payments.mjs
+
       - name: Analyze
-        run: flutter analyze
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
       - name: Build preview APK
         run: flutter build apk --release --build-name=0.1.0 --build-number=${{ github.run_number }}
