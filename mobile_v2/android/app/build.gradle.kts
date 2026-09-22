@@ -19,7 +19,7 @@ val keystoreProperties = Properties().apply {
 val hasReleaseKey = keystoreProperties.getProperty("storeFile") != null
 
 android {
-    namespace = "uz.nfcstore.app"
+    namespace = "uz.nfcstore.preview"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -32,7 +32,7 @@ android {
         // Paket nomi — Play Store'da va qurilmada shu ko'rinadi.
         // KEYIN O'ZGARTIRILMAYDI: o'zgarsa Play Store uni BOSHQA ilova
         // deb hisoblaydi va yangilanish o'rnatilmaydi.
-        applicationId = "uz.nfcstore.app"
+        applicationId = "uz.nfcstore.preview"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
