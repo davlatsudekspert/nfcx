@@ -8,6 +8,7 @@ import 'package:nfcstore_v2/screens/shell.dart';
 
 void main() {
   testWidgets('render actual current V2 Home preview', (tester) async {
+    await loadAppFonts();
     tester.view.physicalSize = const Size(430, 932);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
