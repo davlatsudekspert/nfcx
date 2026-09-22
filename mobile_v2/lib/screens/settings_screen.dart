@@ -4,6 +4,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../ui/widgets.dart';
+import 'account_settings_screens.dart';
+import 'shell.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -90,12 +92,41 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: 10),
           _Group(
             items: [
-              _Item(Icons.person_outline_rounded, 'Profilni tahrirlash', () {}),
-              _Item(Icons.storefront_outlined, 'Biznes', () {
-                if (s.companies.isNotEmpty) s.setBusinessMode(true);
+              _Item(Icons.person_outline_rounded, 'Profilni tahrirlash', () async {
+                final profile = s.activeProfile;
+                if (profile == null) return;
+                await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => EditProfileScreen(profile: profile),
+                  ),
+                );
               }),
-              _Item(Icons.badge_outlined, 'NFC ID larim', () {}),
-              _Item(Icons.shield_outlined, 'Xavfsizlik', () {}),
+              _Item(Icons.storefront_outlined, 'Biznes', () async {
+                if (s.companies.isEmpty) {
+                  final created = await Navigator.of(context).push<bool>(
+                    MaterialPageRoute(
+                      builder: (_) => const CreateBusinessScreen(),
+                    ),
+                  );
+                  if (created != true || !context.mounted) return;
+                } else {
+                  s.setBusinessMode(true);
+                }
+                if (!context.mounted) return;
+                Navigator.of(context).pop();
+                ShellScope.of(context).selectTab(4);
+              }),
+              _Item(Icons.badge_outlined, 'NFC ID larim', () {
+                Navigator.of(context).pop();
+                ShellScope.of(context).selectTab(2);
+              }),
+              _Item(Icons.shield_outlined, 'Xavfsizlik', () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const SecurityScreen(),
+                  ),
+                );
+              }),
             ],
           ),
           const SizedBox(height: 20),
@@ -107,7 +138,13 @@ class SettingsScreen extends StatelessWidget {
               _Item(Icons.help_outline_rounded, 'Yordam', () => _web('aloqa')),
               _Item(Icons.gavel_outlined, 'Kontent qoidalari', () => _web('shartlar')),
               _Item(Icons.privacy_tip_outlined, 'Maxfiylik', () => _web('maxfiylik')),
-              _Item(Icons.info_outline_rounded, 'Ilova haqida', () {}),
+              _Item(Icons.info_outline_rounded, 'Ilova haqida', () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const AboutAppScreen(),
+                  ),
+                );
+              }),
             ],
           ),
           const SizedBox(height: 18),
