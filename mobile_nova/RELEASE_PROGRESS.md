@@ -27,8 +27,8 @@ Sessiya uzilsa — shu fayldagi birinchi `[ ]` bandidan davom etiladi.
 - [x] Mavzular: Ivory standart; Noir/Ocean/Graphite/Aurora/Onyx tanlanadi;
       text3 hamma qorong'i mavzuda >= 4.5:1; Graphite sovuq platina, Onyx iliq
 - [x] Edit Profile / Edit Business bo'limlari + doimiy "Saqlash" paneli
-- [ ] Reels: NFCSTORE identiteti (muallif satrida NFC ID plastinka / biznes)
-- [ ] Ekranlar bo'yicha UX audit (loading/empty/error, sheet, keyboard)
+- [x] Reels: NFCSTORE identiteti (NFC ID kapsulasi, champagne halqa, brend imzosi)
+- [x] Ekranlar bo'yicha UX audit (Tanlov: bosh harflar va bo'sh kasb tuzatildi)
 
 ## 2–3. Funksional test va bug-fix
 

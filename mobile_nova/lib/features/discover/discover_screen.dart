@@ -340,7 +340,8 @@ class _ResultTile extends StatelessWidget {
       final e = item as NfcId;
       return _ProfileCard(
         title: e.name.isEmpty ? e.code : e.name,
-        subtitle: e.role.isEmpty ? l.discoverPeople : e.role,
+        // Kasb yo'q bo'lsa — bo'sh (ilgari tab nomi "Odamlar" yozilardi).
+        subtitle: e.role,
         badge: e.code,
         tier: e.tier,
         imageUrl: e.avatarUrl,
@@ -367,7 +368,7 @@ class _ResultTile extends StatelessWidget {
           [e.city, e.subcategory].where((s) => s.isNotEmpty).join(' · ');
       return _ProfileCard(
         title: e.displayName.isEmpty ? e.companyId : e.displayName,
-        subtitle: where.isEmpty ? l.discoverBusinesses : where,
+        subtitle: where,
         badge: e.companyId,
         imageUrl: e.logoUrl,
         initials: _initials(e.displayName, e.companyId),
@@ -384,8 +385,15 @@ class _ResultTile extends StatelessWidget {
     }
   }
 
+  /// Bosh harflar — ilovaning qolgan joylari bilan BIR XIL qoida:
+  /// ikki so'z bo'lsa har birining birinchi harfi (`Test Foydalanuvchi`
+  /// -> `TF`, ilgari `TE` chiqardi), bitta so'z bo'lsa ikki harf.
   String _initials(String name, String fallback) {
-    final s = name.trim().isEmpty ? fallback : name.trim();
+    final s = name.trim().isEmpty ? fallback.trim() : name.trim();
+    final parts = s.split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
     return (s.length >= 2 ? s.substring(0, 2) : s).toUpperCase();
   }
 }
@@ -472,13 +480,15 @@ class _ProfileCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
+                    if (subtitle.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
                     const SizedBox(height: Gap.sm),
                     // KOD — MAHSULOT, YORLIQ EMAS.
                     //
