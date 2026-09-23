@@ -74,6 +74,9 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
 
   CommentRef get _ref => (kind: widget.kind, id: widget.id);
 
+  /// Like so'rovi yo'lda bo'lgan izohlar (qayta bosish himoyasi).
+  final _liking = <int>{};
+
   @override
   void dispose() {
     _text.dispose();
@@ -114,19 +117,33 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
   /// keyin server javobi bilan aniqlashtiriladi. Xato bo'lsa
   /// ro'yxat serverdan qayta o'qiladi — ya'ni ekranda HECH QACHON
   /// serverda bo'lmagan holat qolib ketmaydi.
+  ///
+  /// IKKI MARTA BOSISH LIKE'NI BEKOR QILMAYDI: server "toggle" qiladi va
+  /// yurakcha ro'yxat qayta o'qilgunicha o'zgarmaydi — odam yana bossa
+  /// ikkinchi toggle like'ni olib tashlardi. Shu izoh uchun so'rov va
+  /// ro'yxat yangilanishi tugaguncha qayta bosish e'tiborsiz qoldiriladi
+  /// (`PostLikes` dagi `_busy` bilan bir xil g'oya).
   Future<void> _like(Comment c) async {
+    if (!_liking.add(c.id)) return;
     final l = L.of(context);
-    final res =
-        await ref.read(socialRepositoryProvider).toggleCommentLike(c.id);
-    if (!mounted) return;
-    res.when(
-      ok: (_) => ref.invalidate(commentsProvider(_ref)),
-      err: (e) {
-        ref.invalidate(commentsProvider(_ref));
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(describeError(l, e))));
-      },
-    );
+    try {
+      final res =
+          await ref.read(socialRepositoryProvider).toggleCommentLike(c.id);
+      if (!mounted) return;
+      res.when(
+        ok: (_) {},
+        err: (e) => ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(describeError(l, e)))),
+      );
+      ref.invalidate(commentsProvider(_ref));
+      try {
+        await ref.read(commentsProvider(_ref).future);
+      } catch (_) {
+        // Ro'yxat xatosi ekranning o'z holatida ko'rinadi.
+      }
+    } finally {
+      _liking.remove(c.id);
+    }
   }
 
   Future<void> _delete(Comment c) async {

@@ -16,6 +16,7 @@ import 'package:nfcstore_nova/features/home/widgets/nfc_mobile_section.dart';
 import 'package:nfcstore_nova/features/profile/profile_screen.dart';
 import 'package:nfcstore_nova/features/social/comments.dart';
 import 'package:nfcstore_nova/features/social/post_screens.dart';
+import 'package:nfcstore_nova/design/icons/nova_icons.dart';
 
 import 'helpers.dart';
 
@@ -27,6 +28,7 @@ import 'helpers.dart';
 /// SM-4: izoh yozilayotganda har harfda izohlar ro'yxati qayta
 ///       qurilmaydi.
 /// TS-1: Home'dagi demo rasmlar quti o'lchamida dekodlanadi (~23 MB emas).
+/// UIQ-3: izoh like'ini ikki marta bosish ikkita toggle yubormaydi.
 
 /// `GET /api/companies/X` sonini sanaydi; javobni [gate] ochilguncha
 /// ushlab turadi — ikkala so'rov haqiqatan PARALLEL bo'lsin.
@@ -102,6 +104,33 @@ class _Comments extends SocialRepository {
         hasMore: false,
         total: 20,
       ));
+}
+
+
+class _LikeRepo extends SocialRepository {
+  _LikeRepo() : super(ApiClient());
+
+  int likes = 0;
+  final gate = Completer<void>();
+
+  @override
+  Future<Result<({List<Comment> items, bool hasMore, int total})>> comments(
+    String kind,
+    int id, {
+    int page = 1,
+  }) async =>
+      const Ok((
+        items: [Comment(id: 7, code: 'C7', authorName: 'Odam', text: 'izoh')],
+        hasMore: false,
+        total: 1,
+      ));
+
+  @override
+  Future<Result<({bool liked, int count})>> toggleCommentLike(int id) async {
+    likes++;
+    await gate.future;
+    return const Ok((liked: true, count: 1));
+  }
 }
 
 void main() {
@@ -229,6 +258,43 @@ void main() {
       expect(w, isNotNull);
       expect(w!, lessThanOrEqualTo(1440));
     }
+  });
+
+  testWidgets('UIQ-3: izoh like ikki marta bosilsa — BITTA so‘rov', (tester) async {
+    const premium = User(
+      id: 2,
+      email: 'p@nfcstore.uz',
+      name: 'Premium',
+      phone: '',
+      premium: true,
+    );
+    final repo = _LikeRepo();
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        ...await testOverrides(),
+        socialRepositoryProvider.overrideWithValue(repo),
+        currentUserProvider.overrideWithValue(premium),
+      ],
+      child: wrapScreen(const Scaffold(
+        body: SingleChildScrollView(
+          child: CommentsSection(kind: 'post', id: 1),
+        ),
+      )),
+    ));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    final heart = find.byIcon(NovaIcons.like);
+    expect(heart, findsOneWidget);
+    await tester.tap(heart);
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(heart);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(repo.likes, 1, reason: 'ikkinchi toggle like’ni bekor qilardi');
+
+    repo.gate.complete();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
   });
 }
 
