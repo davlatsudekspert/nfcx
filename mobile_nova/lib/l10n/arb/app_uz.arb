@@ -773,5 +773,10 @@
   "rulesBanSpam": "Spam va aldov",
   "rulesBanInsult": "Haqorat",
   "rulesCardProcess": "Har bir post, reel va istoryada “Shikoyat qilish” bor. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.",
-  "storyCaption": "Istoryaga qisqa matn"
+  "storyCaption": "Istoryaga qisqa matn",
+  "noNfcExplain": "Bu telefon NFC kartani o‘qiy olmaydi va unga yoza olmaydi. Lekin profilingizni baribir ulashasiz — QR kod har qanday telefon kamerasida ochiladi.",
+  "noNfcShareLink": "Havolani ulashish",
+  "noNfcShareHint": "Telegram, SMS…",
+  "noNfcManageHint": "Tahrirlash, asosiy qilish",
+  "noNfcGetHint": "Yangi ID tanlash"
 }

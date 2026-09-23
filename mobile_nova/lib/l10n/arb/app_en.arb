@@ -756,5 +756,10 @@
   "rulesBanSpam": "Spam & scams",
   "rulesBanInsult": "Insults",
   "rulesCardProcess": "Every post, reel and story has “Report”. A moderator reviews reports: violating content is removed, and repeat offenders are blocked.",
-  "storyCaption": "Short text on your story"
+  "storyCaption": "Short text on your story",
+  "noNfcExplain": "This phone can’t read or write NFC cards. You can still share your profile — the QR code opens with any phone camera.",
+  "noNfcShareLink": "Share link",
+  "noNfcShareHint": "Telegram, SMS…",
+  "noNfcManageHint": "Edit, set primary",
+  "noNfcGetHint": "Pick a new ID"
 }

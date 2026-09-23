@@ -3848,6 +3848,36 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Istoryaga qisqa matn'**
   String get storyCaption;
+
+  /// No description provided for @noNfcExplain.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu telefon NFC kartani o‘qiy olmaydi va unga yoza olmaydi. Lekin profilingizni baribir ulashasiz — QR kod har qanday telefon kamerasida ochiladi.'**
+  String get noNfcExplain;
+
+  /// No description provided for @noNfcShareLink.
+  ///
+  /// In uz, this message translates to:
+  /// **'Havolani ulashish'**
+  String get noNfcShareLink;
+
+  /// No description provided for @noNfcShareHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Telegram, SMS…'**
+  String get noNfcShareHint;
+
+  /// No description provided for @noNfcManageHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tahrirlash, asosiy qilish'**
+  String get noNfcManageHint;
+
+  /// No description provided for @noNfcGetHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yangi ID tanlash'**
+  String get noNfcGetHint;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

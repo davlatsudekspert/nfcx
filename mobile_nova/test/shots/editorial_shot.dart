@@ -28,6 +28,7 @@ import 'package:nfcstore_nova/features/auth/session.dart';
 import 'package:nfcstore_nova/features/business/business_forms.dart';
 import 'package:nfcstore_nova/features/business/business_intro.dart';
 import 'package:nfcstore_nova/features/profile/profile_repository.dart';
+import 'package:nfcstore_nova/features/nfc/nfc_service.dart';
 import 'package:nfcstore_nova/features/social/reels_screen.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
@@ -224,6 +225,16 @@ final _reelPosts = [
   ),
 ];
 
+class _Nfc extends NfcService {
+  _Nfc(this.a);
+  final NfcAvailability a;
+  @override
+  Future<NfcAvailability> check() async => a;
+}
+
+/// Suratda NFC holati: `true` — apparati bor.
+bool _shotNfc = true;
+
 class _RichProfile extends ProfileRepository {
   _RichProfile() : super(ApiClient());
 
@@ -333,6 +344,8 @@ Future<List<Override>> _overrides() async {
     discoverRepositoryProvider.overrideWithValue(_RichDiscover()),
     profileRepositoryProvider.overrideWithValue(_RichProfile()),
     reelsProvider.overrideWith((ref) async => _reelPosts),
+    nfcServiceProvider.overrideWithValue(_Nfc(
+        _shotNfc ? NfcAvailability.ready : NfcAvailability.unsupported)),
   ];
 }
 
@@ -616,7 +629,15 @@ void main() {
         (t) => tabShot(t, Routes.reels, 'reels-report-$w', s,
             tapKey: const ValueKey('reel-more'),
             thenKey: const ValueKey('reel-report')));
-    testWidgets('nfc $w', (t) => tabShot(t, Routes.nfc, 'nfc-$w', s));
+    testWidgets('nfc $w', (t) {
+      _shotNfc = true;
+      return tabShot(t, Routes.nfc, 'nfc-$w', s);
+    });
+    testWidgets('nfc-none $w', (t) async {
+      _shotNfc = false;
+      await tabShot(t, Routes.nfc, 'nfc-none-$w', s);
+      _shotNfc = true;
+    });
     testWidgets('nfc-end $w',
         (t) => tabShot(t, Routes.nfc, 'nfc-end-$w', s, end: true));
     testWidgets('profile-end $w',

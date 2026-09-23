@@ -1976,4 +1976,20 @@ class LEn extends L {
 
   @override
   String get storyCaption => 'Short text on your story';
+
+  @override
+  String get noNfcExplain =>
+      'This phone can’t read or write NFC cards. You can still share your profile — the QR code opens with any phone camera.';
+
+  @override
+  String get noNfcShareLink => 'Share link';
+
+  @override
+  String get noNfcShareHint => 'Telegram, SMS…';
+
+  @override
+  String get noNfcManageHint => 'Edit, set primary';
+
+  @override
+  String get noNfcGetHint => 'Pick a new ID';
 }

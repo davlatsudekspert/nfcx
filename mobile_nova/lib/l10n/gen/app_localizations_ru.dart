@@ -1971,4 +1971,20 @@ class LRu extends L {
 
   @override
   String get storyCaption => 'Короткий текст на истории';
+
+  @override
+  String get noNfcExplain =>
+      'Этот телефон не может читать и записывать NFC-карты. Но делиться профилем всё равно можно — QR-код откроется камерой любого телефона.';
+
+  @override
+  String get noNfcShareLink => 'Поделиться ссылкой';
+
+  @override
+  String get noNfcShareHint => 'Telegram, SMS…';
+
+  @override
+  String get noNfcManageHint => 'Изменить, сделать основным';
+
+  @override
+  String get noNfcGetHint => 'Выбрать новый ID';
 }

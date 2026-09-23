@@ -17,6 +17,11 @@ class _ReadyNfc extends NfcService {
   Future<NfcAvailability> check() async => NfcAvailability.ready;
 }
 
+class _NoNfc extends NfcService {
+  @override
+  Future<NfcAvailability> check() async => NfcAvailability.unsupported;
+}
+
 /// NFC markazi — soft editorial.
 ///
 /// Markazda brend muhri (nav'dagi bilan bir xil), atrofida sekin
@@ -59,6 +64,35 @@ void main() {
           reason: 'NFC ID lentasi pastki navigatsiya ostida qoldi');
     });
   }
+
+  testWidgets('NFC yo‘q qurilma: boshi berk ko‘cha emas', (tester) async {
+    tester.view.physicalSize = const Size(360 * 3, 1400 * 3);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        ...await testOverrides(),
+        nfcServiceProvider.overrideWithValue(_NoNfc()),
+      ],
+      child: wrapScreen(const NfcCenterScreen(), tokens: NfcTokens.ivory),
+    ));
+    await settle(tester, frames: 12);
+    final l = await L.delegate.load(const Locale('uz'));
+
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(const ValueKey('no-nfc-panel')), findsOneWidget);
+    // Ishlamaydigan narsa ko'rsatilmaydi.
+    expect(find.byType(ScanCore), findsNothing);
+    expect(find.text(l.nfcScanStart), findsNothing);
+    expect(find.text(l.nfcWrite), findsNothing);
+    // Ishlaydigan yo'llar bor.
+    for (final k in ['no-nfc-qr', 'no-nfc-share', 'no-nfc-ids', 'no-nfc-market']) {
+      expect(find.byKey(ValueKey(k)), findsOneWidget, reason: k);
+    }
+    await tester.tap(find.byKey(const ValueKey('no-nfc-qr')));
+    await settle(tester, frames: 10);
+    expect(find.text(l.nfcQrHint), findsOneWidget, reason: 'QR varag‘i ochilmadi');
+  });
 
   test('manba: markazda eski orb/orbit yo‘q, pastda navSafeBottom', () {
     final src = File('lib/features/nfc/nfc_center_screen.dart')

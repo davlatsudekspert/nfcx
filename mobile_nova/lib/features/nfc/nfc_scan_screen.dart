@@ -13,6 +13,7 @@ import '../../design/widgets/nova_scaffold.dart';
 import '../../design/widgets/states.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
+import 'nfc_center_screen.dart' show NoNfcPanel;
 import 'nfc_service.dart';
 
 /// Kartani o'qish.
@@ -124,12 +125,11 @@ class _NfcScanScreenState extends ConsumerState<NfcScanScreen> {
         ),
         error: (e, __) => StatePanel.fromError(context, asAppError(e)),
         data: (a) => switch (a) {
-          NfcAvailability.unsupported => StatePanel(
-              icon: Icons.do_not_disturb_on_outlined,
-              title: l.nfcUnsupported,
-              message: l.nfcUnsupportedHint,
-              actionLabel: l.nfcMyIds,
-              onAction: () => context.push(Routes.nfcIds),
+          // Boshi berk ko'cha emas: QR, havola, ID boshqaruvi.
+          NfcAvailability.unsupported => const SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                  Gap.screenX, Gap.lg, Gap.screenX, Gap.section),
+              child: NoNfcPanel(),
             ),
           NfcAvailability.disabled => StatePanel(
               icon: Icons.nfc_rounded,

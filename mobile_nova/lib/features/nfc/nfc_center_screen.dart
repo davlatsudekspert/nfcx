@@ -4,6 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/utils/sharing.dart';
+
+import '../../core/network/api_client.dart';
+
 import '../../design/motion/motion.dart';
 import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
@@ -40,6 +44,10 @@ class NfcCenterScreen extends ConsumerWidget {
     final l = L.of(context);
     final id = ref.watch(activeIdProvider);
     final availability = ref.watch(nfcAvailabilityProvider);
+    // NFC APPARATI YO'Q — skaner va "kartaga yozish" bu qurilmada
+    // ishlamaydi. Ular o'rniga ishlaydigan yo'llar ko'rsatiladi
+    // (QR, havola, ID boshqaruvi) — ekran boshi berk ko'cha emas.
+    final noNfc = availability.valueOrNull == NfcAvailability.unsupported;
     final width = MediaQuery.sizeOf(context).width;
 
     // 360 da 120, 430 da 144.
@@ -77,9 +85,15 @@ class NfcCenterScreen extends ConsumerWidget {
             child: availability.when(
               loading: () => const SizedBox(height: Gap.sm),
               error: (_, __) => const SizedBox(height: Gap.sm),
-              data: (a) => _StatusStrip(availability: a),
+              data: (a) => a == NfcAvailability.unsupported
+                  ? const SizedBox.shrink()
+                  : _StatusStrip(availability: a),
             ),
           ),
+          if (noNfc) ...[
+            const SizedBox(height: Gap.lg),
+            const Padding(padding: x, child: NoNfcPanel()),
+          ] else ...[
           const SizedBox(height: Gap.lg),
           Center(
             child: ScanCore(
@@ -116,6 +130,7 @@ class NfcCenterScreen extends ConsumerWidget {
               ],
             ),
           ),
+          ],
           const SizedBox(height: Gap.section),
 
           // BARCHA AMALLAR — BITTA GURUH.
@@ -133,21 +148,23 @@ class NfcCenterScreen extends ConsumerWidget {
             padding: x,
             child: _ActionGroup(
               rows: [
-                _ActionRow(
-                  icon: Icons.edit_note_rounded,
-                  title: l.nfcWrite,
-                  subtitle: l.nfcWriteSubtitle,
-                  onTap: () => context.push(Routes.nfcWrite),
-                ),
+                if (!noNfc)
+                  _ActionRow(
+                    icon: Icons.edit_note_rounded,
+                    title: l.nfcWrite,
+                    subtitle: l.nfcWriteSubtitle,
+                    onTap: () => context.push(Routes.nfcWrite),
+                  ),
                 // Bosh sahifadagi "ID qidirish" ham AYNAN shu ekranni
-                // ochadi — ikkinchi katalog yo'q.
-                _ActionRow(
+                // ochadi — ikkinchi katalog yo'q. NFC'siz qurilmada u
+                // yuqoridagi panelda — takrorlanmaydi.
+                if (!noNfc) _ActionRow(
                   icon: Icons.search_rounded,
                   title: l.idMarketTitle,
                   subtitle: l.idMarketSearchHint,
                   onTap: () => context.push(Routes.nfcMarket),
                 ),
-                if (id != null)
+                if (id != null && !noNfc)
                   _ActionRow(
                     icon: Icons.qr_code_2_rounded,
                     title: l.nfcShowQr,
@@ -500,6 +517,126 @@ class _StatusStrip extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+
+/// NFC APPARATI YO'Q QURILMA — nima qilish mumkinligini aytadi.
+///
+/// Ilgari bu holatda faqat "Bu qurilmada NFC yo'q" yozuvi va skaner
+/// tugmasi turardi (bosilsa ham hech narsa bo'lmasdi). Endi NFC'siz
+/// ham ishlaydigan HAQIQIY yo'llar beriladi:
+///   * QR kod — boshqa odam telefonining kamerasi bilan ochadi;
+///   * havolani ulashish — Telegram, SMS...;
+///   * NFC ID'larni boshqarish va yangi ID olish.
+class NoNfcPanel extends ConsumerWidget {
+  const NoNfcPanel({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = L.of(context);
+    final t = context.tokens;
+    final id = ref.watch(activeIdProvider);
+
+    Widget tile(IconData icon, String title, String hint, VoidCallback onTap,
+            Key key, {bool mono = false}) =>
+        Expanded(
+          child: PressableScale(
+            onTap: onTap,
+            child: Container(
+              key: key,
+              padding: const EdgeInsets.all(Gap.md),
+              height: 118,
+              decoration: BoxDecoration(
+                color: t.surfaceSolid,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: t.border2),
+                boxShadow: t.shadowTiny,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(icon, size: 22, color: t.text1),
+                  const Spacer(),
+                  Text(title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall),
+                  const SizedBox(height: 2),
+                  Text(hint,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      // ID — IBM Plex Mono (shrift qoidasi).
+                      style: mono
+                          ? AppType.monoStyle(
+                              color: t.text2, size: 12, letterSpacing: .8)
+                          : Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
+            ),
+          ),
+        );
+
+    return Column(
+      key: const ValueKey('no-nfc-panel'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(Gap.xl),
+          decoration: BoxDecoration(
+            color: Color.lerp(t.surfaceSolid, t.brandSoft, .35),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: t.brand.withValues(alpha: .45)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const BrandSeal(size: 44, elevated: false),
+                  const SizedBox(width: Gap.md),
+                  Expanded(
+                    child: Text(l.nfcUnsupported,
+                        style: AppType.displayStyle(color: t.text1, size: 24)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: Gap.md),
+              Text(l.noNfcExplain,
+                  style: Theme.of(context).textTheme.bodyMedium),
+            ],
+          ),
+        ),
+        const SizedBox(height: Gap.md),
+        if (id != null) ...[
+          Row(
+            children: [
+              tile(Icons.qr_code_2_rounded, l.nfcShowQr, id.code,
+                  () => showQrSheet(context, id), const ValueKey('no-nfc-qr'),
+                  mono: true),
+              const SizedBox(width: Gap.md),
+              tile(Icons.ios_share_rounded, l.noNfcShareLink,
+                  l.noNfcShareHint,
+                  () => shareLink(id.publicUrl(kApiBase), title: id.name),
+                  const ValueKey('no-nfc-share')),
+            ],
+          ),
+          const SizedBox(height: Gap.md),
+        ],
+        Row(
+          children: [
+            tile(Icons.badge_outlined, l.nfcMyIds, l.noNfcManageHint,
+                () => context.push(Routes.nfcIds),
+                const ValueKey('no-nfc-ids')),
+            const SizedBox(width: Gap.md),
+            tile(Icons.search_rounded, l.idMarketTitle, l.noNfcGetHint,
+                () => context.push(Routes.nfcMarket),
+                const ValueKey('no-nfc-market')),
+          ],
+        ),
+      ],
     );
   }
 }

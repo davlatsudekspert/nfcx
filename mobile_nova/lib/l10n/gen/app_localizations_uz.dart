@@ -1976,4 +1976,20 @@ class LUz extends L {
 
   @override
   String get storyCaption => 'Istoryaga qisqa matn';
+
+  @override
+  String get noNfcExplain =>
+      'Bu telefon NFC kartani o‘qiy olmaydi va unga yoza olmaydi. Lekin profilingizni baribir ulashasiz — QR kod har qanday telefon kamerasida ochiladi.';
+
+  @override
+  String get noNfcShareLink => 'Havolani ulashish';
+
+  @override
+  String get noNfcShareHint => 'Telegram, SMS…';
+
+  @override
+  String get noNfcManageHint => 'Tahrirlash, asosiy qilish';
+
+  @override
+  String get noNfcGetHint => 'Yangi ID tanlash';
 }
