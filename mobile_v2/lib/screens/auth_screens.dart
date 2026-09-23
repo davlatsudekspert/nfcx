@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../core/api.dart';
 import '../core/session.dart';
@@ -316,14 +317,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 12),
                       TextField(
                         controller: _code,
+                        autofocus: true,
                         keyboardType: TextInputType.number,
+                        textInputAction: TextInputAction.done,
+                        autofillHints: const [AutofillHints.oneTimeCode],
+                        inputFormatters: const [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(6),
+                        ],
                         maxLength: 6,
+                        onSubmitted: (_) => _register(),
                         decoration: const InputDecoration(
                           labelText: 'Email tasdiqlash kodi',
+                          hintText: '6 xonali kod',
                           counterText: '',
                           prefixIcon: Icon(Icons.verified_outlined),
                           border: OutlineInputBorder(),
                         ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Kod kelmasa Spam/Junk papkasini ham tekshiring.',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(color: p.ink2),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: _busy ? null : _sendCode,
+                            child: const Text('Qayta yuborish'),
+                          ),
+                        ],
                       ),
                     ],
                     const SizedBox(height: 12),
