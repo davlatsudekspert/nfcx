@@ -21,8 +21,25 @@ Har modul uchun test: `scripts/test-<modul>.mjs` (`scripts/lib/d1-harness.mjs` o
 ## Modullar
 
 `auth`, `account`, `engagement`, `catalog`, `media`, `admin-extra`,
-`admin-finance`, `telegram`, `assistant`, `moderation`, `comments`
+`admin-finance`, `telegram`, `assistant`, `moderation`, `comments`,
+`notifications`, `featured`, `catalog-feed`, `marketplace`
 (shu tartibda chaqiriladi — `worker.js: API_MODULES`).
+
+`catalog-feed` — ilova "Tanlov" katalogi, BARCHA bizneslarning
+mahsulot va xizmatlari: `GET /api/catalog/feed` (`page`, `limit`,
+`q` = nom/tavsif/bo'lim/Business nomi/Business ID/NFC ID,
+`kind` = product|service, `category` = food|fashion|electronics|beauty|
+education|health|home|auto|other (eski card|sticker|... =
+electronics + sub), `sub` = card|sticker|keychain|accessory,
+`sort` = new|price_asc|price_desc). Faqat o'qiydi; manba
+`company_catalog_items` + faol `companies`. Tur va kategoriya
+`listingFields()` bilan aniqlanadi — kompaniya sahifasidagi
+`company.catalog[]` ham AYNAN shu maydonlarni oladi (`kind`,
+`marketCategory`, `sub`, `section`, `images`, `priceOnRequest`).
+Yozish: `POST|PATCH /api/companies/:id/catalog[/:item]` qo'shimcha
+`kind`, `marketCategory`, `images[]` (6 tagacha), `priceOnRequest`
+(faqat xizmat) qabul qiladi; ustunlar `ensureCatalogListingColumns`
+bilan ADD COLUMN orqali qo'shiladi, `company.catalogSchema` = 2.
 
 `comments` — izohlar (`content_comments`): `GET|POST
 /api/comments/:kind/:id`, `DELETE /api/comments/:id`, bu yerda

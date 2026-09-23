@@ -18,6 +18,7 @@ import * as apiComments from './api/comments.js';
 import * as apiMarketplace from './api/marketplace.js';
 import * as apiNotifications from './api/notifications.js';
 import * as apiFeatured from './api/featured.js';
+import * as apiCatalogFeed from './api/catalog-feed.js';
 
 // API javoblari standart holda KESHLANMAYDI.
 //
@@ -663,7 +664,7 @@ async function upstreamAdmin(request, env) {
   } catch { return null; }
 }
 
-function rowCompany(row, items = []) {
+function rowCompany(row, items = [], ownerPremium = false) {
   let gallery = [];
   try { gallery = JSON.parse(row.gallery_json || '[]'); } catch { gallery = []; }
   return {
@@ -687,7 +688,7 @@ function rowCompany(row, items = []) {
     // TARIF HOLATI — interfeys cheklovni OLDINDAN ko'rsatsin, odam
     // tugmani bosib "403" olmasin. Haqiqiy tekshiruv baribir
     // serverda (companyPlanStateD1).
-    plan: companyPlanStateD1(row),
+    plan: companyPlanStateD1(row, Date.now(), ownerPremium),
     customDomain: row.custom_domain || '',
     customDomainStatus: row.custom_domain_status || '',
     customDomainNote: row.custom_domain_note || '',
@@ -696,10 +697,15 @@ function rowCompany(row, items = []) {
     status: row.status, adminNote: row.admin_note || '', rejectedReason: row.rejected_reason || '',
     createdAt: row.created_at, updatedAt: row.updated_at, approvedAt: row.approved_at,
     paidAt: row.paid_at, activatedAt: row.activated_at,
+    // 2 — listing ustunlari (tur, global kategoriya, rasmlar, "narx
+    // kelishiladi") serverda BOR: ilova ularni saqlaydigan formani
+    // ko'rsatadi. 1 — eski baza: maydonlar faqat aniqlanadi.
+    catalogSchema: catalogListingReadyD1() ? 2 : 1,
     catalog: (items || []).map((item) => ({
       id: item.id, name: item.name, category: item.category || '', description: item.description || '',
       price: Number(item.price || 0), promotionPrice: item.promotion_price == null ? null : Number(item.promotion_price),
       imageUrl: item.image_url || '', available: Boolean(item.available), sortOrder: Number(item.sort_order || 0),
+      ...apiCatalogFeed.listingFields(item, row.category),
     })),
   };
 }
@@ -728,14 +734,15 @@ async function companyWithItems(env, id, viewerUserId = null) {
     // Ko'rishlar — kunlik jamlanmadan. Statistika bo'limidagi raqam
     // bilan BIR MANBA: ikkalasi boshqa-boshqa son ko'rsatmasin.
     env.DB.prepare(`SELECT COALESCE(SUM(hits),0) AS n FROM company_stats WHERE company_id = ? AND kind = 'view'`).bind(id).first().catch(() => null),
-    env.DB.prepare(`SELECT COUNT(*) AS n FROM company_follows WHERE company_id = ?`).bind(id).first().catch(() => null),
+    env.DB.prepare(`SELECT COUNT(*) AS n FROM company_follows cf WHERE cf.company_id = ? AND ${visibleUserSql('cf.user_id')}`).bind(id).first().catch(() => null),
     viewerUserId
       ? env.DB.prepare(`SELECT 1 AS x FROM company_follows WHERE company_id = ? AND user_id = ?`).bind(id, viewerUserId).first().catch(() => null)
       : Promise.resolve(null),
   ]);
   if (!row) return null;
+  const ownerPremium = await companyOwnerPremiumD1(env, row.owner_user_id);
   return {
-    ...rowCompany(row, items.results || []),
+    ...rowCompany(row, items.results || [], ownerPremium),
     views: Number(views?.n || 0),
     followers: Number(followers?.n || 0),
     following: !!mine,
@@ -1029,21 +1036,50 @@ async function publicContentApi(request, env, url) {
 //   2) sinov davom etyapti — barcha imkoniyatlar ochiq.
 //   3) sinov tugagan:
 //        plan = 'free' (avtomatik ID)  -> katalogda 5 ta, istorya/post YO'Q;
+//        plan = 'free' + egasida faol PREMIUM (oylik, sayt orqali)
+//                                      -> katalogda 25 ta, istorya/post BOR;
 //        plan = 'paid' (sotib olingan nom) -> cheklovsiz.
+//
+// Premium tugasa biznes yana 5 taga qaytadi — mavjud yozuvlar
+// O'CHIRILMAYDI, faqat yangisini qo'shib bo'lmaydi (egasining qarori,
+// 2026-09: "premium 25 ta").
 const COMPANY_FREE_ITEM_LIMIT = 5;
+const COMPANY_PREMIUM_ITEM_LIMIT = 25;
 
-export function companyPlanStateD1(row, now = Date.now()) {
+export function companyPlanStateD1(row, now = Date.now(), ownerPremium = false) {
   const trial = row?.trial_expires_at || row?.trialExpiresAt || null;
   if (!trial) return { legacy: true, trialActive: false, free: false, itemLimit: null, canPost: true };
   const trialActive = Date.parse(trial) > now;
   if (trialActive) return { legacy: false, trialActive: true, free: false, itemLimit: null, canPost: true, trialEndsAt: trial };
   const free = String(row?.plan || '') === 'free';
+  if (free && ownerPremium) {
+    return {
+      legacy: false, trialActive: false, free: false, premium: true,
+      itemLimit: COMPANY_PREMIUM_ITEM_LIMIT, canPost: true, trialEndsAt: trial,
+    };
+  }
   return {
     legacy: false, trialActive: false, free,
     itemLimit: free ? COMPANY_FREE_ITEM_LIMIT : null,
     canPost: !free,
+    // Ilova "ko'proq kerakmi?" kartasida Premium qancha berishini
+    // oldindan aytadi — raqam faqat shu yerda yashaydi.
+    ...(free ? { premiumItemLimit: COMPANY_PREMIUM_ITEM_LIMIT } : {}),
     trialEndsAt: trial,
   };
+}
+
+// Kompaniya EGASINING Premiumi faolmi (getCurrentUser dagi qoida bilan
+// bir xil: eski muddatsiz `is_premium` yoki oylik `premium_expires_at`).
+// Xato bo'lsa — premium YO'Q deb hisoblanadi (cheklov yumshamaydi).
+async function companyOwnerPremiumD1(env, ownerUserId) {
+  try {
+    const r = await env.DB.prepare(
+      `SELECT (is_premium = 1 OR (premium_expires_at IS NOT NULL AND premium_expires_at > ?)) AS p
+         FROM users WHERE CAST(id AS TEXT) = CAST(? AS TEXT)`
+    ).bind(nowTs(), String(ownerUserId)).first();
+    return !!(r && Number(r.p) === 1);
+  } catch { return false; }
 }
 
 // BEPUL AVTOMATIK COMPANY ID — nom sotib olmagan odam uchun.
@@ -1063,6 +1099,7 @@ async function generateFreeCompanyIdD1(env) {
 
 async function companyApi(request, env, url) {
   await ensureCompanySchema(env);
+  await ensureCatalogListingColumns(env);
   const path = url.pathname;
 
   if (path === '/api/companies/check' && request.method === 'GET') {
@@ -1073,7 +1110,8 @@ async function companyApi(request, env, url) {
     const auth = await upstreamUser(request, env);
     if (!auth) return json({ error: 'unauthorized' }, 401);
     const rows = await env.DB.prepare('SELECT * FROM companies WHERE owner_user_id = ? ORDER BY created_at DESC').bind(String(auth.user.id)).all();
-    return json({ companies: (rows.results || []).map((row) => rowCompany(row)) });
+    const premium = !!auth.user.isPremium;
+    return json({ companies: (rows.results || []).map((row) => rowCompany(row, [], premium)) });
   }
 
   // ── OCHIQ KOMPANIYALAR RO'YXATI (2026-09) ──────────────────────────
@@ -1338,7 +1376,7 @@ async function companyApi(request, env, url) {
       await env.DB.prepare(`INSERT OR IGNORE INTO company_follows (company_id, user_id, created_at) VALUES (?,?,?)`)
         .bind(id, user.id, new Date().toISOString()).run();
     }
-    const cnt = await env.DB.prepare(`SELECT COUNT(*) AS n FROM company_follows WHERE company_id = ?`).bind(id).first();
+    const cnt = await env.DB.prepare(`SELECT COUNT(*) AS n FROM company_follows cf WHERE cf.company_id = ? AND ${visibleUserSql('cf.user_id')}`).bind(id).first();
     return json({ following: !existing, followers: Number(cnt?.n || 0) });
   }
 
@@ -1354,7 +1392,7 @@ async function companyApi(request, env, url) {
     // BEPUL TARIFDA ISTORYA VA POST YOPIQ (egasining qarori). Sinov
     // davomida va sotib olingan nomda ochiq; eski kompaniyalarda
     // (trial_expires_at bo'sh) hech narsa o'zgarmaydi.
-    const planPost = companyPlanStateD1(owned.row);
+    const planPost = companyPlanStateD1(owned.row, Date.now(), !!owned.auth.user.isPremium);
     if (!planPost.canPost) return json({ error: 'plan_locked', feature: 'post' }, 403);
 
     const media = storyMediaD1(body);
@@ -1383,7 +1421,7 @@ async function companyApi(request, env, url) {
     const body = await request.json().catch(() => ({}));
     if (!rulesAcceptedD1(body)) return json({ error: 'rules_not_accepted' }, 422);
     // Post bilan bir xil qoida — bepul tarifda istorya ham yopiq.
-    const planStory = companyPlanStateD1(owned.row);
+    const planStory = companyPlanStateD1(owned.row, Date.now(), !!owned.auth.user.isPremium);
     if (!planStory.canPost) return json({ error: 'plan_locked', feature: 'story' }, 403);
     const media = storyMediaD1(body);
     if (!media.ok) return json({ error: 'bad_image' }, 422);
@@ -1565,13 +1603,31 @@ async function companyApi(request, env, url) {
     // va yashirilmaydi — limit faqat YANGI qo'shishga ta'sir qiladi
     // (egasining qarori). Sinov davomida va sotib olingan nomda limit
     // umuman yo'q.
-    const plan = companyPlanStateD1(owned.row);
+    const plan = companyPlanStateD1(owned.row, Date.now(), !!owned.auth.user.isPremium);
     if (plan.itemLimit != null && Number(count?.n || 0) >= plan.itemLimit) {
-      return json({ error: 'plan_limit_reached', limit: plan.itemLimit }, 409);
+      // `premiumLimit` — ilova "Premium bilan N ta" deb aniq aytadi;
+      // Premium allaqachon bo'lsa keyingi qadam faqat o'z nomi.
+      return json({
+        error: 'plan_limit_reached', limit: plan.itemLimit,
+        premium: !!plan.premium,
+        premiumLimit: plan.premium ? null : COMPANY_PREMIUM_ITEM_LIMIT,
+      }, 409);
     }
-    await env.DB.prepare(`INSERT INTO company_catalog_items(id,company_id,name,category,description,price,promotion_price,image_url,available,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`).bind(
-      uuid, id, name, shortText(body.category, 100), shortText(body.description, 600), price, promo, safeUrl(body.imageUrl), body.available === false ? 0 : 1, Number(count?.n || 0), now, now
-    ).run();
+    const listing = catalogListingBody(body);
+    const images = listing.images || [];
+    const cover = safeUrl(body.imageUrl) || images[0] || '';
+    const finalPrice = listing.priceOnRequest ? 0 : price;
+    const finalPromo = listing.priceOnRequest ? null : promo;
+    if (catalogListingReadyD1()) {
+      await env.DB.prepare(`INSERT INTO company_catalog_items(id,company_id,name,category,description,price,promotion_price,image_url,available,sort_order,created_at,updated_at,kind,market_category,images_json,price_on_request) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(
+        uuid, id, name, shortText(body.category, 100), shortText(body.description, 600), finalPrice, finalPromo, cover, body.available === false ? 0 : 1, Number(count?.n || 0), now, now,
+        listing.kind, listing.market, JSON.stringify(images.filter((u) => u !== cover)), listing.priceOnRequest ? 1 : 0
+      ).run();
+    } else {
+      await env.DB.prepare(`INSERT INTO company_catalog_items(id,company_id,name,category,description,price,promotion_price,image_url,available,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`).bind(
+        uuid, id, name, shortText(body.category, 100), shortText(body.description, 600), finalPrice, finalPromo, cover, body.available === false ? 0 : 1, Number(count?.n || 0), now, now
+      ).run();
+    }
     return json({ company: await companyWithItems(env, id) }, 201);
   }
 
@@ -1587,12 +1643,29 @@ async function companyApi(request, env, url) {
     const price = body.price == null ? old.price : Math.max(0, Math.round(Number(body.price) || 0));
     const promo = body.promotionPrice === undefined ? old.promotion_price : body.promotionPrice == null || body.promotionPrice === '' ? null : Math.max(0, Math.round(Number(body.promotionPrice) || 0));
     if (promo != null && promo >= price) return json({ error: 'bad_promotion_price' }, 422);
-    await env.DB.prepare(`UPDATE company_catalog_items SET name=?,category=?,description=?,price=?,promotion_price=?,image_url=?,available=?,updated_at=? WHERE id=? AND company_id=?`).bind(
+    const listing = catalogListingBody(body, old);
+    let cover = body.imageUrl == null ? old.image_url : safeUrl(body.imageUrl);
+    if (listing.images && !body.imageUrl) cover = listing.images[0] || '';
+    const finalPrice = listing.priceOnRequest ? 0 : price;
+    const finalPromo = listing.priceOnRequest ? null : promo;
+    const base = [
       body.name == null ? old.name : shortText(body.name, 120), body.category == null ? old.category : shortText(body.category, 100),
-      body.description == null ? old.description : shortText(body.description, 600), price, promo,
-      body.imageUrl == null ? old.image_url : safeUrl(body.imageUrl), body.available == null ? old.available : body.available ? 1 : 0,
-      new Date().toISOString(), itemId, id
-    ).run();
+      body.description == null ? old.description : shortText(body.description, 600), finalPrice, finalPromo,
+      cover, body.available == null ? old.available : body.available ? 1 : 0,
+      new Date().toISOString(),
+    ];
+    if (catalogListingReadyD1()) {
+      const images = listing.images == null
+        ? old.images_json ?? '[]'
+        : JSON.stringify(listing.images.filter((u) => u !== cover));
+      await env.DB.prepare(`UPDATE company_catalog_items SET name=?,category=?,description=?,price=?,promotion_price=?,image_url=?,available=?,updated_at=?,kind=?,market_category=?,images_json=?,price_on_request=? WHERE id=? AND company_id=?`).bind(
+        ...base, listing.kind, listing.market, images, listing.priceOnRequest ? 1 : 0, itemId, id
+      ).run();
+    } else {
+      await env.DB.prepare(`UPDATE company_catalog_items SET name=?,category=?,description=?,price=?,promotion_price=?,image_url=?,available=?,updated_at=? WHERE id=? AND company_id=?`).bind(
+        ...base, itemId, id
+      ).run();
+    }
     return json({ company: await companyWithItems(env, id) });
   }
 
@@ -2451,6 +2524,48 @@ async function ensureColumnD1(env, table, column, type) {
   return verifiedColumnJobsD1.get(key);
 }
 
+// UMUMIY KATALOG LISTINGI (2026-09): mahsulot/xizmat turi, global
+// kategoriya, bir nechta rasm va "Narx kelishiladi". Faqat ADD COLUMN —
+// mavjud qatorlar o'zgarmaydi; bo'sh ustunli eski yozuvlar uchun tur va
+// kategoriya `api/catalog-feed.js` dagi qoidalar bilan ANIQLANADI.
+const CATALOG_LISTING_COLUMNS = [
+  ['kind', 'TEXT'],
+  ['market_category', 'TEXT'],
+  ['images_json', 'TEXT'],
+  ['price_on_request', 'INTEGER NOT NULL DEFAULT 0'],
+];
+async function ensureCatalogListingColumns(env) {
+  await Promise.all(CATALOG_LISTING_COLUMNS.map(([c, t]) => ensureColumnD1(env, 'company_catalog_items', c, t)));
+}
+export function catalogListingReadyD1() {
+  return CATALOG_LISTING_COLUMNS.every(([c]) => hasColumnD1('company_catalog_items', c));
+}
+
+// Tana -> listing maydonlari. `old` — PATCH'da mavjud qator.
+function catalogListingBody(body, old = null) {
+  const rawKind = String(body.kind ?? body.type ?? '').trim().toLowerCase();
+  const kind = apiCatalogFeed.LISTING_KINDS.includes(rawKind) ? rawKind : (old ? old.kind ?? null : null);
+  const rawMarket = String(body.marketCategory ?? '').trim().toLowerCase();
+  const market = apiCatalogFeed.MARKET_CATEGORIES.includes(rawMarket)
+    ? rawMarket
+    : (old ? old.market_category ?? null : null);
+  let images = null;
+  if (Array.isArray(body.images)) {
+    images = [];
+    for (const u of body.images.slice(0, 12)) {
+      const safe = safeUrl(u);
+      if (safe && !images.includes(safe)) images.push(safe);
+    }
+    images = images.slice(0, 6);
+  }
+  // "Narx kelishiladi" — FAQAT xizmat uchun (egasining qoidasi).
+  const porRaw = body.priceOnRequest === undefined
+    ? (old ? Number(old.price_on_request || 0) === 1 : false)
+    : Boolean(body.priceOnRequest);
+  const priceOnRequest = porRaw && kind === 'service';
+  return { kind, market, images, priceOnRequest };
+}
+
 // PROFILGA BIRIKTIRILGAN KOMPANIYA.
 const ensureCardCompanyColumn = (env) => ensureColumnD1(env, 'cards', 'company_id', 'TEXT');
 export function cardsHaveCompanyIdD1() { return hasColumnD1('cards', 'company_id'); }
@@ -3256,8 +3371,9 @@ async function socialCountsD1(env, rows) {
   if (users.length) {
     const marks = users.map(() => '?').join(',');
     const fr = await env.DB.prepare(
-      `SELECT followee_id AS id, COUNT(*) AS n FROM follows
-         WHERE followee_id IN (${marks}) GROUP BY followee_id`
+      `SELECT fw.followee_id AS id, COUNT(*) AS n FROM follows fw
+         WHERE fw.followee_id IN (${marks}) AND ${visibleUserSql('fw.follower_id')}
+         GROUP BY fw.followee_id`
     ).bind(...users).all().catch(() => null);
     for (const r of (fr?.results || [])) followers.set(Number(r.id), Number(r.n) || 0);
   }
@@ -5509,7 +5625,7 @@ async function authApi(request, env, url) {
     // bir xil qo'yiladi. Bu `/api/follow-stats/:code` beradigan
     // AYNAN o'sha raqam: ikkinchi manba yaratilmadi.
     const fr = await env.DB.prepare(
-      `SELECT COUNT(*) AS n FROM follows WHERE followee_id = ?`
+      `SELECT COUNT(*) AS n FROM follows fw WHERE fw.followee_id = ? AND ${visibleUserSql('fw.follower_id')}`
     ).bind(user.id).first().catch(() => null);
     const followers = Number(fr?.n) || 0;
 
@@ -9155,6 +9271,28 @@ async function userAccountApi(request, env, url) {
 // down to their one preferred (primary, then oldest) non-hidden card uses a
 // ROW_NUMBER() window function instead — same end result as the Postgres
 // "DISTINCT ON (u.id) ... ORDER BY u.id, c.is_primary DESC, c.ts ASC".
+// ── KO'RINADIGAN OBUNACHI — SON VA RO'YXAT BITTA QOIDADAN (2026-09) ──
+//
+// Tester shikoyati: profilda "5 obunachi" turibdi, bosilsa ro'yxatda
+// 3 kishi chiqadi. Sabab — ikkita har xil qoida edi:
+//
+//   * SON:     `COUNT(*) FROM follows` — hamma qator;
+//   * RO'YXAT: faqat O'CHIRILMAGAN va kamida bitta ommaviy kartasi
+//              bor odamlar (`followListRows`, `companyFollowerRows`).
+//
+// Farq — o'chirilgan hisoblar (masalan tozalangan sinov hisoblari) va
+// katalogdan yashirilgan profillar. Ular ro'yxatda yo'q edi, sanoqda
+// esa bor edi.
+//
+// Endi sanoq AYNAN ro'yxat ko'rsatadigan odamlarni sanaydi. Qoida
+// bitta joyda — kelajakda ro'yxat filtri o'zgarsa, sanoq ham birga
+// o'zgaradi. `col` faqat kod ichidagi qat'iy ustun nomi (masalan
+// `fw.follower_id`), foydalanuvchi kiritmasi emas — injection yo'q.
+function visibleUserSql(col) {
+  return `EXISTS (SELECT 1 FROM users vu WHERE vu.id = ${col} AND vu.deleted_at IS NULL)
+     AND EXISTS (SELECT 1 FROM cards vc WHERE vc.user_id = ${col} AND vc.hidden_from_directory = 0)`;
+}
+
 async function followListRows(env, ownerId, dir) {
   const wantFollowing = dir === 'following';
   // followers: kim ownerId'ga obuna bo'lgan -> u = follower_id tomon, WHERE followee_id = ownerId
@@ -9271,8 +9409,8 @@ async function likeListRowsD1(env, code) {
 async function getFollowStatsRow(env, userId, viewerId) {
   const row = await env.DB.prepare(`
     SELECT
-      (SELECT COUNT(*) FROM follows WHERE followee_id = ?) AS followers,
-      (SELECT COUNT(*) FROM follows WHERE follower_id = ?) AS following,
+      (SELECT COUNT(*) FROM follows fw WHERE fw.followee_id = ? AND ${visibleUserSql('fw.follower_id')}) AS followers,
+      (SELECT COUNT(*) FROM follows fw WHERE fw.follower_id = ? AND ${visibleUserSql('fw.followee_id')}) AS following,
       (SELECT EXISTS(SELECT 1 FROM follows WHERE follower_id = ? AND followee_id = ?)) AS is_following,
       (SELECT as_company_id FROM follows WHERE follower_id = ? AND followee_id = ?) AS as_company_id
   `).bind(userId, userId, viewerId || -1, userId, viewerId || -1, userId).first();
@@ -9903,7 +10041,7 @@ async function followApi(request, env, url) {
     if (!co) return json({ followers: 0, following: 0, isFollowing: false });
 
     const [cnt, mine] = await Promise.all([
-      env.DB.prepare(`SELECT COUNT(*) AS n FROM company_follows WHERE company_id = ?`)
+      env.DB.prepare(`SELECT COUNT(*) AS n FROM company_follows cf WHERE cf.company_id = ? AND ${visibleUserSql('cf.user_id')}`)
         .bind(code).first().catch(() => null),
       user
         ? env.DB.prepare(
@@ -10098,7 +10236,7 @@ const H = {
 // bilan tugashini tekshiradi — oxiriga qo'shilsa o'sha qo'riqchi
 // yiqiladi. Tartibning boshqa ahamiyati yo'q: har bir modul o'ziga
 // tegishli bo'lmagan yo'lga `null` qaytaradi.
-const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiMarketplace];
+const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiMarketplace];
 
 // Xavfsizlik header'lari — barcha javoblarga (statik va API). CSP ataylab faqat
 // framing/base/form/object ni cheklaydi (script/style ga tegmaydi — YouTube/Yandex
