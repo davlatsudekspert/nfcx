@@ -5408,7 +5408,7 @@ export {
 // nfcstore.uz'dagi mavjud sahifa yo'llari bilan to'qnashmasligi uchun —
 // server/index.js'dagi RESERVED_CODES bilan bir xil.
 const RESERVED_CODES = new Set([
-  'LOGIN', 'REGISTER', 'ACCOUNT', 'API', 'ADMIN', 'STATIC', 'UPLOADS', 'AUKSION', 'XABARLAR', 'TOLOVLAR',
+  'LOGIN', 'REGISTER', 'ACCOUNT', 'PRIVACY', 'API', 'ADMIN', 'STATIC', 'UPLOADS', 'AUKSION', 'XABARLAR', 'TOLOVLAR',
 ]);
 
 // ── PROFIL MUSIQASI LIMITI ─────────────────────────────────────────────
