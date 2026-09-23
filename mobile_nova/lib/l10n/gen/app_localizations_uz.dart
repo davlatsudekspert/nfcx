@@ -126,7 +126,8 @@ class LUz extends L {
   String get errOffline => 'Internet aloqasi yo‘q';
 
   @override
-  String get errTimeout => 'Server javob bermadi';
+  String get errTimeout =>
+      'Server javob bermadi. Internetni tekshiring — Wi-Fi bo‘lsa, mobil internetga o‘tib ko‘ring.';
 
   @override
   String get errServer => 'Serverda xatolik';
@@ -1822,4 +1823,12 @@ class LUz extends L {
 
   @override
   String get bizCatOther => 'Boshqa';
+
+  @override
+  String get errEmailSendFailed =>
+      'Kodni emailga yuborib bo‘lmadi. Manzilni tekshirib, bir daqiqadan keyin qayta urinib ko‘ring.';
+
+  @override
+  String get errNameNotAllowed =>
+      'Bu nomdan foydalanib bo‘lmaydi — boshqasini yozing.';
 }

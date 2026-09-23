@@ -126,7 +126,8 @@ class LEn extends L {
   String get errOffline => 'No internet connection';
 
   @override
-  String get errTimeout => 'The server did not respond';
+  String get errTimeout =>
+      'The server did not respond. Check your connection — on Wi-Fi, try mobile data.';
 
   @override
   String get errServer => 'Server error';
@@ -1816,4 +1817,12 @@ class LEn extends L {
 
   @override
   String get bizCatOther => 'Other';
+
+  @override
+  String get errEmailSendFailed =>
+      'We couldn’t email the code. Check the address and try again in a minute.';
+
+  @override
+  String get errNameNotAllowed =>
+      'This name can’t be used — please choose another.';
 }

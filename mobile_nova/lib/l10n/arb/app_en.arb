@@ -39,7 +39,7 @@
   "errBadCode": "The code has 6 digits",
   "errPasswordMismatch": "Passwords do not match",
   "errOffline": "No internet connection",
-  "errTimeout": "The server did not respond",
+  "errTimeout": "The server did not respond. Check your connection — on Wi-Fi, try mobile data.",
   "errServer": "Server error",
   "errUnauthorized": "Session expired, please sign in again",
   "errForbidden": "Access denied",
@@ -708,5 +708,7 @@
   "bizCatClinic": "Clinic",
   "bizCatPharmacy": "Pharmacy",
   "bizCatEducation": "Education",
-  "bizCatOther": "Other"
+  "bizCatOther": "Other",
+  "errEmailSendFailed": "We couldn’t email the code. Check the address and try again in a minute.",
+  "errNameNotAllowed": "This name can’t be used — please choose another."
 }

@@ -126,7 +126,8 @@ class LRu extends L {
   String get errOffline => 'Нет подключения к интернету';
 
   @override
-  String get errTimeout => 'Сервер не ответил';
+  String get errTimeout =>
+      'Сервер не ответил. Проверьте интернет — если это Wi-Fi, попробуйте мобильную сеть.';
 
   @override
   String get errServer => 'Ошибка сервера';
@@ -1809,4 +1810,12 @@ class LRu extends L {
 
   @override
   String get bizCatOther => 'Другое';
+
+  @override
+  String get errEmailSendFailed =>
+      'Не удалось отправить код на почту. Проверьте адрес и попробуйте через минуту.';
+
+  @override
+  String get errNameNotAllowed =>
+      'Это название нельзя использовать — укажите другое.';
 }

@@ -336,7 +336,7 @@ abstract class L {
   /// No description provided for @errTimeout.
   ///
   /// In uz, this message translates to:
-  /// **'Server javob bermadi'**
+  /// **'Server javob bermadi. Internetni tekshiring — Wi-Fi bo‘lsa, mobil internetga o‘tib ko‘ring.'**
   String get errTimeout;
 
   /// No description provided for @errServer.
@@ -3560,6 +3560,18 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Boshqa'**
   String get bizCatOther;
+
+  /// No description provided for @errEmailSendFailed.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kodni emailga yuborib bo‘lmadi. Manzilni tekshirib, bir daqiqadan keyin qayta urinib ko‘ring.'**
+  String get errEmailSendFailed;
+
+  /// No description provided for @errNameNotAllowed.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu nomdan foydalanib bo‘lmaydi — boshqasini yozing.'**
+  String get errNameNotAllowed;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

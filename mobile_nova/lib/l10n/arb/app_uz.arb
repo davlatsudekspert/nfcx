@@ -39,7 +39,7 @@
   "errBadCode": "Kod 6 ta raqamdan iborat",
   "errPasswordMismatch": "Parollar mos kelmadi",
   "errOffline": "Internet aloqasi yo‘q",
-  "errTimeout": "Server javob bermadi",
+  "errTimeout": "Server javob bermadi. Internetni tekshiring — Wi-Fi bo‘lsa, mobil internetga o‘tib ko‘ring.",
   "errServer": "Serverda xatolik",
   "errUnauthorized": "Sessiya tugadi, qaytadan kiring",
   "errForbidden": "Ruxsat yo‘q",
@@ -718,5 +718,7 @@
   "bizCatClinic": "Klinika",
   "bizCatPharmacy": "Dorixona",
   "bizCatEducation": "Ta’lim",
-  "bizCatOther": "Boshqa"
+  "bizCatOther": "Boshqa",
+  "errEmailSendFailed": "Kodni emailga yuborib bo‘lmadi. Manzilni tekshirib, bir daqiqadan keyin qayta urinib ko‘ring.",
+  "errNameNotAllowed": "Bu nomdan foydalanib bo‘lmaydi — boshqasini yozing."
 }

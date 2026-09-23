@@ -20,6 +20,10 @@ String describeError(L l, AppError e) => switch (e.code) {
       'bad_phone' => l.errBadPhone,
       'bad_code' || 'bad_email_code' => l.verifyWrongCode,
       'unauthorized' => l.errUnauthorized,
+      // Email xizmati kodni yubora olmadi (server 503). Ilgari
+      // "Serverda xatolik" chiqardi — odam nima qilishni bilmasdi.
+      'email_send_failed' => l.errEmailSendFailed,
+      'name_not_allowed' => l.errNameNotAllowed,
       _ => switch (e.kind) {
           AppErrorKind.offline => l.errOffline,
           AppErrorKind.timeout => l.errTimeout,
