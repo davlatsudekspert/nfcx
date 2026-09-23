@@ -21,6 +21,7 @@
 // kelajakda yangi jadval qo'shilsa, test darhol ogohlantiradi.
 
 import { archiveStmt } from './content-archive.js';
+import { retireTargetStmts } from './comments.js';
 
 // Kartaning O'ZI bilan birga ketishi kerak bo'lgan jadvallar.
 // Tartib muhim: post_likes postlardan OLDIN (u post_id orqali bog'langan).
@@ -44,6 +45,9 @@ export function cardContentCleanupStmts(env, codeSelect, binds, nowTs) {
     archiveStmt(env, 'story', `owner_kind = 'card' AND owner_id IN (${codeSelect})`, binds, by),
     archiveStmt(env, 'card_video', `code IN (${codeSelect})`, binds, by),
     archiveStmt(env, 'card_file', `code IN (${codeSelect})`, binds, by),
+    // Postlarning izoh va layklari — post raqami qayta ishlatiladi,
+    // aks holda keyingi yangi postga "yopishardi" (comments.js).
+    ...retireTargetStmts(env, 'post', `SELECT id FROM posts WHERE code IN (${codeSelect})`, binds, { reason: 'card_cleanup' }),
     // post_likes → posts orqali; postlar o'chirilishidan OLDIN.
     env.DB.prepare(`DELETE FROM post_likes WHERE post_id IN (SELECT id FROM posts WHERE code IN (${codeSelect}))`).bind(...binds),
     // ISTORYALAR — ALOHIDA, chunki ular kartaga `code` orqali EMAS,

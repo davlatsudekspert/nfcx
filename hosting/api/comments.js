@@ -75,7 +75,7 @@ let schemaReady = null;
 
 // Jadval KERAK BO'LGANDA yaratiladi — moderation.js bilan bir xil
 // yondashuv (worker'da alohida migratsiya bosqichi yo'q).
-async function ensureSchema(env) {
+export async function ensureSchema(env) {
   if (!schemaReady) {
     // ESKI BAZADA JADVAL ALLAQACHON BOR.
     //
@@ -372,6 +372,42 @@ export async function likesFor(env, targets, viewerId = 0) {
     });
   }
   return out;
+}
+
+// ── KONTENT O'CHIRILGANDA — UNING IZOH VA LAYKLARI HAM ────────────
+//
+// `posts.id` — `INTEGER PRIMARY KEY` (AUTOINCREMENT EMAS): eng oxirgi
+// post o'chirilsa, keyingi yangi post AYNAN o'sha raqamni oladi. Izoh
+// va layklar postga FK bilan bog'lanmagan — ya'ni o'chirilgan postning
+// izohlari va layklari BOSHQA odamning yangi postiga "yopishib"
+// qolardi (egasi 2026-09 da E2E test izohini o'z postida ko'rdi).
+// Endi o'chirish batch'iga shu statement'lar qo'shiladi: izohlar
+// arxivga nusxa bilan yumshoq o'chiriladi, layklar ketadi.
+//
+// `idsSql` — o'chirilayotgan kontent raqamlarini beradigan SELECT
+// (yoki `?`), `binds` — unga. Chaqiruvchi avval `ensureSchema(env)`
+// ni kutadi: jadval yo'q bo'lsa butun batch yiqiladi.
+const tsNow = () => new Date().toISOString().replace('T', ' ').replace('Z', '+00');
+
+export function retireTargetStmts(env, kind, idsSql, binds, { reason = 'target_deleted', byUserId = 0, byAdmin = '' } = {}) {
+  const now = tsNow();
+  return [
+    env.DB.prepare(
+      `INSERT INTO content_comment_archive
+         (comment_id, target_kind, target_id, user_id, author_code, body,
+          created_at, deleted_at, deleted_by_user_id, deleted_by_admin, reason)
+       SELECT id, target_kind, target_id, user_id, author_code, body, created_at, ?, ?, ?, ?
+         FROM content_comments
+        WHERE target_kind = ? AND target_id IN (${idsSql}) AND ${ALIVE}`
+    ).bind(now, Number(byUserId) || 0, String(byAdmin || ''), reason, kind, ...binds),
+    env.DB.prepare(
+      `UPDATE content_comments SET deleted_at = ?, deleted_by_user_id = ?, deleted_reason = ?
+        WHERE target_kind = ? AND target_id IN (${idsSql}) AND ${ALIVE}`
+    ).bind(now, Number(byUserId) || 0, reason, kind, ...binds),
+    env.DB.prepare(
+      `DELETE FROM content_likes WHERE target_kind = ? AND target_id IN (${idsSql})`
+    ).bind(kind, ...binds),
+  ];
 }
 
 export async function deleteLikesFor(env, kind, id) {

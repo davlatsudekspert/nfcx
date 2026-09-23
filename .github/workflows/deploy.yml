@@ -99,6 +99,10 @@ jobs:
         run: node scripts/test-content-archive.mjs
       - name: Ilova foydalanuvchilari — kim ishlatyapti (admin)
         run: node scripts/test-app-usage.mjs
+      # posts.id qayta ishlatiladi: o'chirilgan postning izoh va layklari
+      # keyingi yangi postga o'tib qolmasin.
+      - name: Post raqami qayta ishlatilganda eski izoh/layk yopishmaydi
+        run: node scripts/test-post-id-reuse.mjs
       # Manifestdagi yaroqsiz XML ilova qurilishini yiqitadi, lekin
       # `flutter analyze` ham, `flutter test` ham uni o'qimaydi.
       # Eski ilovaning CI'si esa faqat QO'LDA ishga tushadi —

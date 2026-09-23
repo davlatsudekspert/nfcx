@@ -2118,6 +2118,9 @@ async function ensureCoreSchema(env) {
   // Dalil arxivi — o'chirish batch'lari unga yozadi, shuning uchun
   // har qanday API so'rovidan OLDIN mavjud bo'lishi shart.
   const contentArchive = ensureArchiveTable(env);
+  // Izoh jadvallari ham — post o'chirish batch'lari ularga yozadi
+  // (comments.js `retireTargetStmts`); jadval yo'q bo'lsa batch yiqiladi.
+  const commentsSchema = apiComments.ensureSchema(env);
   if (!coreSchemaReady) {
     coreSchemaReady = env.DB.batch([
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS "users" (
@@ -2350,7 +2353,7 @@ async function ensureCoreSchema(env) {
   }
   // Natijalar birga kutiladi. `allSettled` emas, `all` — biror sxema
   // buyrug'i haqiqatan yiqilsa, chaqiruvchi buni bilishi kerak.
-  await Promise.all([adminTables, totpColumn, internalColumn, companyContact, companyExtras, contentArchive, coreSchemaReady]);
+  await Promise.all([adminTables, totpColumn, internalColumn, companyContact, companyExtras, contentArchive, commentsSchema, coreSchemaReady]);
   // PROFILGA BIRIKTIRILGAN KOMPANIYA (2026-09).
   //
   // Bu ALTER `cards` jadvaliga tegadi, `cards` esa yuqoridagi umumiy
@@ -9604,11 +9607,20 @@ async function postsApi(request, env, url) {
           AND ( user_id = ?
              OR code IN (SELECT code FROM cards WHERE user_id = ?) )`;
     const postBinds = [postId, user.id, user.id];
-    // Avval dalil arxiviga nusxa (content-archive.js), keyin o'chirish.
-    const [, res] = await env.DB.batch([
+    // Avval dalil arxiviga nusxa (content-archive.js), keyin postning
+    // izoh va layklari (raqam qayta ishlatiladi — comments.js
+    // `retireTargetStmts` izohiga qarang), OXIRIDA postning o'zi.
+    // Hammasi egalik sharti bilan tanlanadi va bitta batch'da.
+    await apiComments.ensureSchema(env);
+    const ownedPost = `SELECT id FROM posts WHERE ${postWhere}`;
+    const batch = [
       archiveStmt(env, 'post', postWhere, postBinds, { userId: user.id, reason: 'owner' }),
+      ...apiComments.retireTargetStmts(env, 'post', ownedPost, postBinds, { byUserId: user.id }),
+      env.DB.prepare(`DELETE FROM post_likes WHERE post_id IN (${ownedPost})`).bind(...postBinds),
       env.DB.prepare(`DELETE FROM posts WHERE ${postWhere}`).bind(...postBinds),
-    ]);
+    ];
+    const results = await env.DB.batch(batch);
+    const res = results[results.length - 1];
     const changed = Number(res?.meta?.changes || 0);
     if (!changed) return json({ error: 'not_found' }, 404);
     return json({ ok: true });
