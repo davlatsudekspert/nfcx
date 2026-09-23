@@ -447,6 +447,134 @@ enum NfcProductType {
   }
 }
 
+/// Tanlov katalogidagi tovar — `GET /api/catalog/feed` elementi.
+///
+/// Kompaniya katalogidagi [CatalogItem] dan farqi: sotuvchi (kompaniya
+/// nomi va Business ID) shu yerning o'zida keladi — ro'yxatdagi har
+/// kartochka egasini ko'rsatadi.
+class CatalogProduct {
+  const CatalogProduct({
+    required this.id,
+    required this.companyId,
+    this.name = '',
+    this.description = '',
+    this.imageUrl = '',
+    this.price = 0,
+    this.promotionPrice,
+    this.category = '',
+    this.companyName = '',
+    this.companyLogo = '',
+    this.companyTier = '',
+    this.companyCity = '',
+  });
+
+  /// Server UUID'si.
+  final String id;
+  final String companyId;
+  final String name;
+  final String description;
+  final String imageUrl;
+  final int price;
+  final int? promotionPrice;
+  final String category;
+  final String companyName;
+  final String companyLogo;
+  final String companyTier;
+  final String companyCity;
+
+  /// Sevimlilar va marshrut uchun kalit — kompaniya + tovar.
+  String get key => '$companyId/$id';
+
+  NfcProductType get nfcType => NfcProductType.fromCategory(category, name);
+
+  int get effectivePrice =>
+      (promotionPrice != null && promotionPrice! > 0 && promotionPrice! < price)
+          ? promotionPrice!
+          : price;
+
+  bool get hasDiscount => effectivePrice < price;
+
+  /// Chegirma foizi, butun songa yaxlitlangan (`-15%`).
+  int get discountPercent =>
+      hasDiscount && price > 0 ? ((1 - effectivePrice / price) * 100).round() : 0;
+
+  factory CatalogProduct.fromJson(Map<String, dynamic> j) {
+    final c = (j['company'] is Map)
+        ? (j['company'] as Map).cast<String, dynamic>()
+        : const <String, dynamic>{};
+    return CatalogProduct(
+      id: _s(j['id']),
+      companyId: _s(c['companyId'] ?? j['companyId']),
+      name: _s(j['name']),
+      description: _s(j['description']),
+      imageUrl: _u(j['imageUrl']),
+      price: _i(j['price']),
+      promotionPrice:
+          j['promotionPrice'] == null ? null : _i(j['promotionPrice']),
+      category: _s(j['nfcType'] ?? j['category']),
+      companyName: _s(c['displayName']),
+      companyLogo: _u(c['logoUrl']),
+      companyTier: _s(c['tier']),
+      companyCity: _s(c['city']),
+    );
+  }
+
+  /// Kompaniya katalogidagi tovardan (chuqur havola, `extra` yo'q).
+  factory CatalogProduct.fromItem(CatalogItem i, Business b) => CatalogProduct(
+        id: i.key,
+        companyId: b.companyId,
+        name: i.name,
+        description: i.description,
+        imageUrl: i.imageUrl,
+        price: i.price,
+        promotionPrice: i.salePrice,
+        category: i.category,
+        companyName: b.displayName,
+        companyLogo: b.logoUrl,
+      );
+}
+
+/// Katalog saralash tartibi — server `sort` parametri bilan bir xil.
+enum CatalogSort {
+  newest('new'),
+  priceAsc('price_asc'),
+  priceDesc('price_desc');
+
+  const CatalogSort(this.wire);
+  final String wire;
+}
+
+/// Katalogning bitta sahifasi.
+class CatalogFeedPage {
+  const CatalogFeedPage({
+    this.items = const [],
+    this.total = 0,
+    this.hasMore = false,
+    this.counts = const {},
+  });
+
+  final List<CatalogProduct> items;
+  final int total;
+  final bool hasMore;
+
+  /// `all`, `card`, `sticker`, `keychain`, `accessory`, `other`.
+  final Map<String, int> counts;
+
+  factory CatalogFeedPage.fromJson(Map<String, dynamic> j) => CatalogFeedPage(
+        items: [
+          for (final e in (j['items'] as List? ?? const []))
+            if (e is Map) CatalogProduct.fromJson(e.cast<String, dynamic>()),
+        ],
+        total: _i(j['total']),
+        hasMore: _b(j['hasMore']),
+        counts: {
+          if (j['counts'] is Map)
+            for (final e in (j['counts'] as Map).entries)
+              '${e.key}': _i(e.value),
+        },
+      );
+}
+
 /// Katalog elementi — mahsulot yoki xizmat.
 class CatalogItem {
   const CatalogItem({

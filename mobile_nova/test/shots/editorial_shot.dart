@@ -163,7 +163,53 @@ class _RichProfile extends ProfileRepository {
       (followers: 9, following: 11, isFollowing: false));
 }
 
+const _products = [
+  CatalogProduct(
+      id: 'p1', companyId: 'NFCSTORE', name: 'Metall NFC karta',
+      imageUrl: '$_a/m_card_metal.jpg', price: 293000, promotionPrice: 249000,
+      category: 'card', companyName: 'NFCSTORE'),
+  CatalogProduct(
+      id: 'p2', companyId: 'ONEBRAND', name: 'NFC stiker · 5 dona',
+      imageUrl: '$_a/m_stickers.jpg', price: 89000,
+      category: 'sticker', companyName: 'OneBrand'),
+  CatalogProduct(
+      id: 'p3', companyId: 'NFCSTORE', name: 'Premium vizitka to‘plami',
+      imageUrl: '$_a/m_cards.jpg', price: 319000,
+      category: 'card', companyName: 'NFCSTORE'),
+  CatalogProduct(
+      id: 'p4', companyId: 'GIFTUZ', name: 'Sovg‘a to‘plami',
+      imageUrl: '$_a/m_gift_set.jpg', price: 450000, promotionPrice: 405000,
+      category: 'accessory', companyName: 'Gift Uz'),
+  CatalogProduct(
+      id: 'p5', companyId: 'TECHSHOP', name: 'NFC brelok',
+      price: 120000, category: 'keychain', companyName: 'Tech Shop'),
+  CatalogProduct(
+      id: 'p6', companyId: 'NFCSTORE', name: 'Qora mat karta',
+      imageUrl: '$_a/m_hero.jpg', price: 199000,
+      category: 'card', companyName: 'NFCSTORE'),
+];
+
 class _RichDiscover extends FakeDiscoverRepository {
+  @override
+  Future<Result<CatalogFeedPage>> catalogFeed({
+    int page = 1,
+    int limit = 20,
+    String q = '',
+    NfcProductType? category,
+    CatalogSort sort = CatalogSort.newest,
+  }) async {
+    final list = category == null
+        ? _products
+        : _products.where((p) => p.nfcType == category).toList();
+    return Ok(CatalogFeedPage(
+      items: list,
+      total: list.length,
+      counts: const {
+        'all': 6, 'card': 3, 'sticker': 1, 'keychain': 1, 'accessory': 1, 'other': 0,
+      },
+    ));
+  }
+
   @override
   Future<Result<List<NfcId>>> suggested() async => const Ok(_people);
 
@@ -236,7 +282,7 @@ void _size(WidgetTester tester, Size s) {
 /// Router orqali tab ekrani.
 Future<void> tabShot(
     WidgetTester tester, String location, String name, Size s,
-    {bool end = false}) async {
+    {bool end = false, String? tapText, Object? extra}) async {
   _size(tester, s);
   late GoRouter router;
   await tester.pumpWidget(ProviderScope(
@@ -259,8 +305,12 @@ Future<void> tabShot(
     }),
   ));
   await _settle(tester);
-  router.go(location);
+  router.go(location, extra: extra);
   await _settle(tester, 20);
+  if (tapText != null) {
+    await tester.tap(find.text(tapText).hitTestable().first);
+    await _settle(tester, 12);
+  }
   // Asset suratlar asinxron dekodlanadi — birinchi kadrda bo'sh
   // doira qolmasin.
   await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 400)));
@@ -325,6 +375,11 @@ void main() {
     testWidgets('home $w', (t) => tabShot(t, Routes.home, 'home-$w', s));
     testWidgets('discover $w',
         (t) => tabShot(t, Routes.discover, 'discover-$w', s));
+    testWidgets('catalog $w',
+        (t) => tabShot(t, Routes.discover, 'catalog-$w', s, tapText: 'Katalog'));
+    testWidgets('product $w',
+        (t) => tabShot(t, Routes.catalogProduct('NFCSTORE', 'p1'), 'product-$w', s,
+            extra: _products.first));
     testWidgets('nfc $w', (t) => tabShot(t, Routes.nfc, 'nfc-$w', s));
     testWidgets('nfc-end $w',
         (t) => tabShot(t, Routes.nfc, 'nfc-end-$w', s, end: true));

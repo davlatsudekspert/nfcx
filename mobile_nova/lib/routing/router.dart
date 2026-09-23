@@ -19,6 +19,7 @@ import '../features/activity/activity_screen.dart';
 import '../features/business/business_forms.dart';
 import '../features/business/business_screens.dart';
 import '../features/business/business_intro.dart';
+import '../features/discover/catalog_view.dart';
 import '../features/demo/demo_screens.dart';
 import '../features/nfc/nfc_ids_screen.dart';
 import '../features/nfc/nfc_misc_screens.dart';
@@ -273,6 +274,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/c/:companyId',
         builder: (_, s) =>
             StorefrontScreen(companyId: s.pathParameters['companyId']!),
+      ),
+      GoRoute(
+        path: '/catalog/:companyId/:itemId',
+        builder: (_, s) => CatalogProductScreen(
+          companyId: s.pathParameters['companyId']!,
+          itemId: s.pathParameters['itemId']!,
+          initial: s.extra is CatalogProduct ? s.extra as CatalogProduct : null,
+        ),
       ),
       GoRoute(
         path: Routes.demoPersonal,

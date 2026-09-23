@@ -16,6 +16,7 @@ import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
+import 'catalog_view.dart';
 import '../home/widgets/avatar.dart';
 import '../home/widgets/identity_card.dart';
 
@@ -29,7 +30,7 @@ import '../home/widgets/identity_card.dart';
 /// Yorliq bilan birga `discoverRepository.trending()` ham
 /// ketdi: u `/api/feed` ning IKKINCHI mijozi edi, birinchisi —
 /// bosh sahifaning `SocialRepository.feed()` i.
-enum DiscoverTab { people, businesses }
+enum DiscoverTab { people, businesses, catalog }
 
 /// Qidiruv so'rovi — `debounce` bilan.
 ///
@@ -110,6 +111,8 @@ final discoverResultsProvider = FutureProvider.autoDispose((ref) async {
       // ham. Server ro'yxatni allaqachon beradi.
       DiscoverTab.businesses => (await repo.companies())
           .when(ok: (v) => <Object>[..._byBizViews(v)], err: (e) => throw e),
+      // Katalog o'z sahifalovchisi bilan (`catalogFeedProvider`).
+      DiscoverTab.catalog => const <Object>[],
     };
   }
 
@@ -118,6 +121,7 @@ final discoverResultsProvider = FutureProvider.autoDispose((ref) async {
         .when(ok: (v) => <Object>[...v], err: (e) => throw e),
     DiscoverTab.businesses => (await repo.searchBusinesses(q))
         .when(ok: (v) => <Object>[...v], err: (e) => throw e),
+    DiscoverTab.catalog => const <Object>[],
   };
 });
 
@@ -216,6 +220,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
                 for (final e in [
                   (DiscoverTab.people, l.discoverPeople, Icons.person_rounded),
                   (DiscoverTab.businesses, l.discoverBusinesses, Icons.storefront_rounded),
+                  (DiscoverTab.catalog, l.discoverCatalog, Icons.grid_view_rounded),
                 ])
                   Padding(
                     padding: const EdgeInsets.only(right: Gap.sm),
@@ -230,6 +235,9 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
               ],
             ),
           ),
+          if (tab == DiscoverTab.catalog)
+            Expanded(child: CatalogView(query: query))
+          else ...[
           if (query.isEmpty && prefs.recentSearches.isNotEmpty)
             _RecentSearches(
               items: prefs.recentSearches,
@@ -265,6 +273,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
                     ),
             ),
           ),
+          ],
         ],
       ),
     );

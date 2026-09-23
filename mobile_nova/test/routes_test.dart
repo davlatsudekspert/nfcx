@@ -82,6 +82,7 @@ void main() {
     Routes.nfcGift('48210377'),
     Routes.businessProduct('3f2a9c1e-7b1d-4c55-9a0e-2b7f5d1c8e90'),
     Routes.storefront('nova'),
+    Routes.catalogProduct('KARTAUZ', '3f2a9c1e-7b1d-4c55-9a0e-2b7f5d1c8e90'),
     Routes.shopProduct('nfc-black'),
     Routes.paymentResult('success'),
     // "NFC Mobile" bo'limidagi namuna profillar.

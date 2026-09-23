@@ -72,6 +72,26 @@ class DiscoverRepository {
           NfcId.fromJson,
         ).take(60).toList());
   }
+
+  /// Tanlov katalogi — barcha faol bizneslarning tovarlari.
+  ///
+  /// `category` — [NfcProductType.name] (`null` = hammasi).
+  Future<Result<CatalogFeedPage>> catalogFeed({
+    int page = 1,
+    int limit = 20,
+    String q = '',
+    NfcProductType? category,
+    CatalogSort sort = CatalogSort.newest,
+  }) async {
+    final res = await _api.get<Map<String, dynamic>>('/api/catalog/feed', query: {
+      'page': page,
+      'limit': limit,
+      if (q.isNotEmpty) 'q': q,
+      if (category != null) 'category': category.name,
+      'sort': sort.wire,
+    });
+    return res.map(CatalogFeedPage.fromJson);
+  }
 }
 
 // `trending()` OLIB TASHLANDI.

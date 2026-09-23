@@ -720,5 +720,19 @@
   "catalogStickers": "Стикеры",
   "catalogKeychains": "Брелоки",
   "catalogAccessories": "Аксессуары",
-  "catalogOther": "Другое"
+  "catalogOther": "Другое",
+  "discoverCatalog": "Каталог",
+  "catalogAll": "Все",
+  "catalogCount": "{count, plural, one{{count} товар} few{{count} товара} other{{count} товаров}}",
+  "catalogSort": "Сортировка",
+  "catalogSortNew": "Новые",
+  "catalogSortPriceAsc": "Сначала дешевле",
+  "catalogSortPriceDesc": "Сначала дороже",
+  "catalogSoon": "Каталог скоро",
+  "catalogSoonHint": "Здесь появятся товары всех бизнесов в одном списке",
+  "catalogEmptyHint": "Товары появятся здесь, когда бизнесы их добавят",
+  "catalogSeller": "Продавец",
+  "catalogOpenSeller": "Страница продавца",
+  "catalogFavorite": "Избранное",
+  "catalogNoPaymentNote": "Заказ и оплата — по договорённости с продавцом. Избранное хранится на этом телефоне."
 }

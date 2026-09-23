@@ -730,5 +730,26 @@
   "catalogStickers": "Stikerlar",
   "catalogKeychains": "Breloklar",
   "catalogAccessories": "Aksessuarlar",
-  "catalogOther": "Boshqa"
+  "catalogOther": "Boshqa",
+  "discoverCatalog": "Katalog",
+  "catalogAll": "Hammasi",
+  "catalogCount": "{count} ta mahsulot",
+  "catalogSort": "Saralash",
+  "catalogSortNew": "Yangi",
+  "catalogSortPriceAsc": "Avval arzon",
+  "catalogSortPriceDesc": "Avval qimmat",
+  "catalogSoon": "Katalog tez orada",
+  "catalogSoonHint": "Bizneslarning mahsulotlari shu yerda bitta ro‘yxatda chiqadi",
+  "catalogEmptyHint": "Bizneslar mahsulot qo‘shganda shu yerda ko‘rinadi",
+  "catalogSeller": "Sotuvchi",
+  "catalogOpenSeller": "Sotuvchi sahifasi",
+  "catalogFavorite": "Sevimlilar",
+  "catalogNoPaymentNote": "Buyurtma va to‘lov sotuvchi bilan kelishiladi. Sevimlilar shu telefonda saqlanadi.",
+  "@catalogCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

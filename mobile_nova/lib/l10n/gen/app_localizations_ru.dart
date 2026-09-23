@@ -1848,4 +1848,58 @@ class LRu extends L {
 
   @override
   String get catalogOther => 'Другое';
+
+  @override
+  String get discoverCatalog => 'Каталог';
+
+  @override
+  String get catalogAll => 'Все';
+
+  @override
+  String catalogCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count товаров',
+      few: '$count товара',
+      one: '$count товар',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get catalogSort => 'Сортировка';
+
+  @override
+  String get catalogSortNew => 'Новые';
+
+  @override
+  String get catalogSortPriceAsc => 'Сначала дешевле';
+
+  @override
+  String get catalogSortPriceDesc => 'Сначала дороже';
+
+  @override
+  String get catalogSoon => 'Каталог скоро';
+
+  @override
+  String get catalogSoonHint =>
+      'Здесь появятся товары всех бизнесов в одном списке';
+
+  @override
+  String get catalogEmptyHint =>
+      'Товары появятся здесь, когда бизнесы их добавят';
+
+  @override
+  String get catalogSeller => 'Продавец';
+
+  @override
+  String get catalogOpenSeller => 'Страница продавца';
+
+  @override
+  String get catalogFavorite => 'Избранное';
+
+  @override
+  String get catalogNoPaymentNote =>
+      'Заказ и оплата — по договорённости с продавцом. Избранное хранится на этом телефоне.';
 }

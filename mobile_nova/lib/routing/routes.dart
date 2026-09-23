@@ -120,6 +120,10 @@ abstract final class Routes {
       '/business/catalog/${Uri.encodeComponent(key)}';
   static String storefront(String companyId) => '/c/$companyId';
 
+  /// Tanlov katalogidagi tovar sahifasi.
+  static String catalogProduct(String companyId, String itemId) =>
+      '/catalog/${Uri.encodeComponent(companyId)}/${Uri.encodeComponent(itemId)}';
+
   /// "NFC Mobile" bo'limidagi namuna profillar.
   ///
   /// Alohida manzil: demo ekan haqiqiy profil manzillari bilan

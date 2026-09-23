@@ -1861,4 +1861,51 @@ class LUz extends L {
 
   @override
   String get catalogOther => 'Boshqa';
+
+  @override
+  String get discoverCatalog => 'Katalog';
+
+  @override
+  String get catalogAll => 'Hammasi';
+
+  @override
+  String catalogCount(int count) {
+    return '$count ta mahsulot';
+  }
+
+  @override
+  String get catalogSort => 'Saralash';
+
+  @override
+  String get catalogSortNew => 'Yangi';
+
+  @override
+  String get catalogSortPriceAsc => 'Avval arzon';
+
+  @override
+  String get catalogSortPriceDesc => 'Avval qimmat';
+
+  @override
+  String get catalogSoon => 'Katalog tez orada';
+
+  @override
+  String get catalogSoonHint =>
+      'Bizneslarning mahsulotlari shu yerda bitta ro‘yxatda chiqadi';
+
+  @override
+  String get catalogEmptyHint =>
+      'Bizneslar mahsulot qo‘shganda shu yerda ko‘rinadi';
+
+  @override
+  String get catalogSeller => 'Sotuvchi';
+
+  @override
+  String get catalogOpenSeller => 'Sotuvchi sahifasi';
+
+  @override
+  String get catalogFavorite => 'Sevimlilar';
+
+  @override
+  String get catalogNoPaymentNote =>
+      'Buyurtma va to‘lov sotuvchi bilan kelishiladi. Sevimlilar shu telefonda saqlanadi.';
 }

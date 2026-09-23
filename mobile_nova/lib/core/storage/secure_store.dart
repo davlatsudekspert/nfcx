@@ -83,6 +83,7 @@ class Prefs {
   static const _kLock = 'nova.appLock';
   static const _kLockBio = 'nova.appLockBiometric';
   static const _kNotif = 'nova.notif.';
+  static const _kCatalogFav = 'nova.catalogFavorites';
 
   String? get themeId => _p.getString(_kTheme);
   Future<void> setThemeId(String v) => _p.setString(_kTheme, v);
@@ -134,4 +135,11 @@ class Prefs {
   }
 
   Future<void> clearSearches() => _p.remove(_kSearches);
+
+  /// Tanlov katalogidagi sevimli tovarlar (`kompaniya/tovar`).
+  /// Faqat shu qurilmada — serverda saqlash API'si yo'q.
+  List<String> get catalogFavorites =>
+      _p.getStringList(_kCatalogFav) ?? const [];
+  Future<void> setCatalogFavorites(List<String> keys) =>
+      _p.setStringList(_kCatalogFav, keys);
 }

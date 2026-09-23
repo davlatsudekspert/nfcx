@@ -3632,6 +3632,90 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Boshqa'**
   String get catalogOther;
+
+  /// No description provided for @discoverCatalog.
+  ///
+  /// In uz, this message translates to:
+  /// **'Katalog'**
+  String get discoverCatalog;
+
+  /// No description provided for @catalogAll.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hammasi'**
+  String get catalogAll;
+
+  /// No description provided for @catalogCount.
+  ///
+  /// In uz, this message translates to:
+  /// **'{count} ta mahsulot'**
+  String catalogCount(int count);
+
+  /// No description provided for @catalogSort.
+  ///
+  /// In uz, this message translates to:
+  /// **'Saralash'**
+  String get catalogSort;
+
+  /// No description provided for @catalogSortNew.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yangi'**
+  String get catalogSortNew;
+
+  /// No description provided for @catalogSortPriceAsc.
+  ///
+  /// In uz, this message translates to:
+  /// **'Avval arzon'**
+  String get catalogSortPriceAsc;
+
+  /// No description provided for @catalogSortPriceDesc.
+  ///
+  /// In uz, this message translates to:
+  /// **'Avval qimmat'**
+  String get catalogSortPriceDesc;
+
+  /// No description provided for @catalogSoon.
+  ///
+  /// In uz, this message translates to:
+  /// **'Katalog tez orada'**
+  String get catalogSoon;
+
+  /// No description provided for @catalogSoonHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bizneslarning mahsulotlari shu yerda bitta ro‘yxatda chiqadi'**
+  String get catalogSoonHint;
+
+  /// No description provided for @catalogEmptyHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bizneslar mahsulot qo‘shganda shu yerda ko‘rinadi'**
+  String get catalogEmptyHint;
+
+  /// No description provided for @catalogSeller.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sotuvchi'**
+  String get catalogSeller;
+
+  /// No description provided for @catalogOpenSeller.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sotuvchi sahifasi'**
+  String get catalogOpenSeller;
+
+  /// No description provided for @catalogFavorite.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sevimlilar'**
+  String get catalogFavorite;
+
+  /// No description provided for @catalogNoPaymentNote.
+  ///
+  /// In uz, this message translates to:
+  /// **'Buyurtma va to‘lov sotuvchi bilan kelishiladi. Sevimlilar shu telefonda saqlanadi.'**
+  String get catalogNoPaymentNote;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

@@ -720,5 +720,19 @@
   "catalogStickers": "Stickers",
   "catalogKeychains": "Keychains",
   "catalogAccessories": "Accessories",
-  "catalogOther": "Other"
+  "catalogOther": "Other",
+  "discoverCatalog": "Catalog",
+  "catalogAll": "All",
+  "catalogCount": "{count, plural, one{{count} product} other{{count} products}}",
+  "catalogSort": "Sort",
+  "catalogSortNew": "Newest",
+  "catalogSortPriceAsc": "Price: low to high",
+  "catalogSortPriceDesc": "Price: high to low",
+  "catalogSoon": "Catalog coming soon",
+  "catalogSoonHint": "Products from every business will appear here in one list",
+  "catalogEmptyHint": "Products appear here once businesses add them",
+  "catalogSeller": "Seller",
+  "catalogOpenSeller": "Seller page",
+  "catalogFavorite": "Favorites",
+  "catalogNoPaymentNote": "Orders and payment are arranged with the seller. Favorites are stored on this phone."
 }

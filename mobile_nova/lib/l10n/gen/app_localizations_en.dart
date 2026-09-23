@@ -1855,4 +1855,57 @@ class LEn extends L {
 
   @override
   String get catalogOther => 'Other';
+
+  @override
+  String get discoverCatalog => 'Catalog';
+
+  @override
+  String get catalogAll => 'All';
+
+  @override
+  String catalogCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count products',
+      one: '$count product',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get catalogSort => 'Sort';
+
+  @override
+  String get catalogSortNew => 'Newest';
+
+  @override
+  String get catalogSortPriceAsc => 'Price: low to high';
+
+  @override
+  String get catalogSortPriceDesc => 'Price: high to low';
+
+  @override
+  String get catalogSoon => 'Catalog coming soon';
+
+  @override
+  String get catalogSoonHint =>
+      'Products from every business will appear here in one list';
+
+  @override
+  String get catalogEmptyHint =>
+      'Products appear here once businesses add them';
+
+  @override
+  String get catalogSeller => 'Seller';
+
+  @override
+  String get catalogOpenSeller => 'Seller page';
+
+  @override
+  String get catalogFavorite => 'Favorites';
+
+  @override
+  String get catalogNoPaymentNote =>
+      'Orders and payment are arranged with the seller. Favorites are stored on this phone.';
 }
