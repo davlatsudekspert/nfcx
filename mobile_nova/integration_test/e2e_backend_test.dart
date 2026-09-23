@@ -35,6 +35,7 @@ import 'package:nfcstore_nova/data/repositories/auth_repository.dart';
 import 'package:nfcstore_nova/data/repositories/business_repository.dart';
 import 'package:nfcstore_nova/data/repositories/discover_repository.dart';
 import 'package:nfcstore_nova/data/repositories/nfc_repository.dart';
+import 'package:nfcstore_nova/data/repositories/saves_repository.dart';
 import 'package:nfcstore_nova/data/repositories/shop_repository.dart';
 import 'package:nfcstore_nova/data/repositories/social_repository.dart';
 import 'package:nfcstore_nova/features/profile/music_player.dart';
@@ -472,6 +473,54 @@ void main() {
                 }
             }
           }
+      }
+    }
+
+    // ── Saqlanganlar (hisobga bog'langan) ──────────────────────
+    // O'Z hisobimizda sinov yozuvi saqlanadi va DARHOL o'chiriladi.
+    {
+      final saves = SavesRepository(api);
+      const ref = 'E2E/test-save';
+      final put = await saves.set(SaveKind.listing, ref, true);
+      final listed = await saves.list(SaveKind.listing);
+      final removed = await saves.set(SaveKind.listing, ref, false);
+      final after = await saves.list(SaveKind.listing);
+      final okFlow = put.valueOrNull == true &&
+          (listed.valueOrNull ?? const []).contains(ref) &&
+          removed.valueOrNull == false &&
+          !(after.valueOrNull ?? const [ref]).contains(ref);
+      if (okFlow) {
+        report.pass('Saqlanganlar serverda',
+            screen: 'Reels / Katalog',
+            action: 'POST/GET /api/saves',
+            note: 'saqlandi, ro‘yxatda chiqdi, o‘chirildi');
+      } else {
+        fail('Saqlanganlar serverda',
+            screen: 'Reels / Katalog',
+            action: 'POST/GET /api/saves',
+            cause: why(put.errorOrNull ?? listed.errorOrNull ??
+                removed.errorOrNull ?? const AppError(AppErrorKind.unknown)),
+            pathHint: 'hosting/api/saves.js');
+      }
+    }
+
+    // ── Umumiy katalog (mahsulot va xizmatlar) ─────────────────
+    {
+      final feed = await discover.catalogFeed(limit: 5);
+      switch (feed) {
+        case Err(:final error):
+          fail('Umumiy katalog',
+              screen: 'DiscoverScreen — Katalog',
+              action: 'GET /api/catalog/feed',
+              cause: why(error),
+              pathHint: 'hosting/api/catalog-feed.js');
+        case Ok(:final value):
+          report.pass('Umumiy katalog',
+              screen: 'DiscoverScreen — Katalog',
+              action: 'GET /api/catalog/feed',
+              note: '${value.total} ta listing; '
+                  'tovar ${value.counts['product'] ?? 0}, '
+                  'xizmat ${value.counts['service'] ?? 0}');
       }
     }
 
