@@ -15,6 +15,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:ui' show DartPluginRegistrant;
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -47,8 +48,65 @@ List<({String type, int size, int offset})> atomsIn(Uint8List bytes) {
   return out;
 }
 
+/// Bitta videoni ochib o'ynatadi: initialize va birinchi kadr (ms).
+Future<Map<String, Object?>> playOnce(String url, String name) async {
+  Future<T?> step<T>(String what, Future<T> Function() run,
+      {Duration limit = const Duration(seconds: 60)}) async {
+    final sw = Stopwatch()..start();
+    try {
+      return await run().timeout(limit);
+    } catch (e) {
+      out({'stage': 'error', 'url': name, 'step': what,
+        'ms': sw.elapsedMilliseconds, 'error': '$e'.split('\n').first});
+      return null;
+    }
+  }
+
+  final c = VideoPlayerController.networkUrl(Uri.parse(url),
+      videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true));
+  final sw = Stopwatch()..start();
+  final inited = await step<bool>('initialize', () async {
+    await c.initialize();
+    return true;
+  });
+  final initMs = sw.elapsedMilliseconds;
+  int? firstFrameMs;
+  if (c.value.isInitialized) {
+    final first = Completer<int>();
+    void onTick() {
+      if (!first.isCompleted && c.value.position > Duration.zero) {
+        first.complete(sw.elapsedMilliseconds);
+      }
+    }
+    c.addListener(onTick);
+    await step<bool>('play', () async {
+      await c.play();
+      return true;
+    }, limit: const Duration(seconds: 10));
+    firstFrameMs = await step('firstFrame', () => first.future);
+    c.removeListener(onTick);
+  }
+  final dur = c.value.duration;
+  final size = c.value.size;
+  await step<bool>('dispose', () async {
+    await c.dispose();
+    return true;
+  }, limit: const Duration(seconds: 10));
+  return {
+    'url': name,
+    'durationS': dur.inMilliseconds / 1000,
+    'resolution': '${size.width.round()}x${size.height.round()}',
+    'initOk': inited != null,
+    'initMs': initMs,
+    'firstFrameMs': firstFrameMs,
+  };
+}
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  // Usiz `video_player` platforma qismi ro'yxatdan o'tmaydi va
+  // `initialize()` "init() has not been implemented" beradi (2-o'lchov).
+  DartPluginRegistrant.ensureInitialized();
 
   testWidgets('Reels video — server, MP4 tuzilishi, birinchi kadr',
       (tester) async {
@@ -157,54 +215,43 @@ void main() {
       out({'stage': 'download', 'url': name, 'bytes': got, 'ms': dlMs,
         'mbps': dlMs > 0 ? (got * 8 / 1000 / dlMs).toStringAsFixed(1) : null});
 
-      // ── Pleyer: initialize va birinchi kadr (listener) ──────────
-      final c = VideoPlayerController.networkUrl(Uri.parse(v.url));
-      sw = Stopwatch()..start();
-      final inited = await step<bool>('initialize', () async {
-        await c.initialize();
-        return true;
-      },
-          limit: const Duration(seconds: 60));
-      final initMs = sw.elapsedMilliseconds;
-      int? firstFrameMs;
-      if (c.value.isInitialized) {
-        final first = Completer<int>();
-        void onTick() {
-          if (!first.isCompleted && c.value.position > Duration.zero) {
-            first.complete(sw.elapsedMilliseconds);
-          }
-        }
-        c.addListener(onTick);
-        await step<bool>('play', () async {
-          await c.play();
-          return true;
-        }, limit: const Duration(seconds: 10));
-        firstFrameMs = await step('firstFrame', () => first.future,
-            limit: const Duration(seconds: 60));
-        c.removeListener(onTick);
-      }
-      final dur = c.value.duration;
-      final size = c.value.size;
-      await step<bool>('dispose', () async {
-        await c.dispose();
-        return true;
-      },
-          limit: const Duration(seconds: 10));
-      out({
-        'stage': 'video',
-        'url': name,
-        'mb': (v.size / 1048576).toStringAsFixed(2),
-        'durationS': dur.inMilliseconds / 1000,
-        'kbps': dur.inMilliseconds > 0
-            ? (v.size * 8 / dur.inMilliseconds).round()
-            : null,
-        'resolution': '${size.width.round()}x${size.height.round()}',
-        'initOk': inited != null || c.value.isInitialized,
-        'initMs': initMs,
-        'firstFrameMs': firstFrameMs,
-      });
+      final m = await playOnce(v.url, name);
+      final durS = (m['durationS'] as double?) ?? 0;
+      out({'stage': 'video', 'mb': (v.size / 1048576).toStringAsFixed(2),
+        'kbps': durS > 0 ? (v.size * 8 / 1000 / durS).round() : null, ...m});
       // ignore: unused_local_variable
       final _ = tester;
+    }
+
+    // ── Reels ochilishi: ko'rinayotgan + KEYINGISI BIR VAQTDA ─────
+    // `_ReelsScreenState` birinchi kadrda 0-sahifani (visible) va
+    // 1-sahifani (preload) birga ishga tushiradi. Ular tarmoqni
+    // bo'lishadimi — ko'rinayotganning birinchi kadri kechikadimi?
+    if (picked.length >= 2) {
+      final a = picked[0], b = picked[1];
+      final pre = VideoPlayerController.networkUrl(Uri.parse(b.url));
+      final preInit = pre.initialize().then((_) => pre.pause());
+      final m = await playOnce(a.url, a.url.split('/').last);
+      out({'stage': 'concurrent', 'visible': a.url.split('/').last,
+        'preload': b.url.split('/').last, ...m});
+      await preInit.timeout(const Duration(seconds: 30),
+          onTimeout: () {});
+      // Pauzadagi oldindan yuklangan video fonda yuklashda davom
+      // etadimi (trafik)? 5 soniya kutib bufer chegarasini ko'ramiz.
+      final before = pre.value.buffered.isEmpty
+          ? Duration.zero
+          : pre.value.buffered.last.end;
+      await Future<void>.delayed(const Duration(seconds: 5));
+      final after = pre.value.buffered.isEmpty
+          ? Duration.zero
+          : pre.value.buffered.last.end;
+      out({'stage': 'pausedPreload', 'url': b.url.split('/').last,
+        'durationS': pre.value.duration.inMilliseconds / 1000,
+        'bufferedS0': before.inMilliseconds / 1000,
+        'bufferedS5': after.inMilliseconds / 1000,
+        'isPlaying': pre.value.isPlaying});
+      await pre.dispose().timeout(const Duration(seconds: 10),
+          onTimeout: () {});
     }
   }, timeout: const Timeout(Duration(minutes: 20)));
 }
