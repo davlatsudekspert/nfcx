@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/models.dart';
@@ -25,6 +27,7 @@ class _HomeScreenState extends State<HomeScreen>
   late final PageController _identityPages;
 
   List<StoryBubble> _stories = const [];
+  List<FeedItem> _feed = const [];
   FollowStats _stats = const FollowStats();
   bool _loading = true;
   int _identityIndex = 0;
@@ -65,6 +68,7 @@ class _HomeScreenState extends State<HomeScreen>
 
     FollowStats stats = const FollowStats();
     List<StoryBubble> stories = const [];
+    List<FeedItem> feed = const [];
 
     if (active != null) {
       try {
@@ -74,11 +78,16 @@ class _HomeScreenState extends State<HomeScreen>
     try {
       stories = await s.repo.storyFeed();
     } catch (_) {}
+    try {
+      final r = await s.repo.feed(page: 1);
+      feed = r.items.where((e) => !e.isStory).take(5).toList();
+    } catch (_) {}
 
     if (!mounted) return;
     setState(() {
       _stats = stats;
       _stories = stories;
+      _feed = feed;
       _loading = false;
     });
   }
@@ -136,6 +145,44 @@ class _HomeScreenState extends State<HomeScreen>
       );
     }
     return result;
+  }
+
+  Future<void> _toggleFeedLike(int index) async {
+    if (index < 0 || index >= _feed.length) return;
+    final before = _feed[index];
+    if (!before.likeable) return;
+    setState(() {
+      _feed = [..._feed]
+        ..[index] = before.copyWith(
+          liked: !before.liked,
+          likeCount: (before.likeCount + (before.liked ? -1 : 1))
+              .clamp(0, 1 << 30),
+        );
+    });
+    try {
+      final r = await SessionScope.read(context)
+          .repo
+          .likeContent(before.targetKind, before.id);
+      if (!mounted || index >= _feed.length) return;
+      setState(() {
+        _feed = [..._feed]
+          ..[index] = _feed[index].copyWith(
+            liked: r.liked,
+            likeCount: r.count,
+          );
+      });
+    } catch (_) {
+      if (mounted && index < _feed.length) {
+        setState(() => _feed = [..._feed]..[index] = before);
+      }
+    }
+  }
+
+  Future<void> _shareFeed(FeedItem item) async {
+    await Share.share(
+      'https://nfcstore.uz/' + item.code.toLowerCase(),
+      subject: item.name,
+    );
   }
 
   Future<void> _compose(ComposeKind kind) async {
@@ -395,6 +442,42 @@ class _HomeScreenState extends State<HomeScreen>
                       },
                     ),
                   ),
+                  const SizedBox(height: 30),
+                  SectionHeader(
+                    title: 'Lenta',
+                    action: _feed.isEmpty ? 'Reels' : 'Barchasi',
+                    onAction: () => ShellScope.of(context).selectTab(3),
+                  ),
+                  const SizedBox(height: 13),
+                  if (_feed.isEmpty)
+                    _EditorialFeature(
+                      number: 'LIVE',
+                      eyebrow: 'COMMUNITY',
+                      title: 'Kontent shu yerda\njonlanadi.',
+                      body:
+                          'Post, story va Reels joylang. Siz kuzatadigan va yangi profillar kontenti shu oqimda ko‘rinadi.',
+                      icon: Icons.auto_awesome_rounded,
+                      dark: false,
+                      onTap: () => ShellScope.of(context).selectTab(3),
+                    )
+                  else
+                    ...[
+                      for (var i = 0; i < _feed.length; i++) ...[
+                        _HomeFeedCard(
+                          item: _feed[i],
+                          onLike: _feed[i].likeable
+                              ? () => _toggleFeedLike(i)
+                              : null,
+                          onComment: () =>
+                              ShellScope.of(context).selectTab(3),
+                          onShare: () => _shareFeed(_feed[i]),
+                          onOpen: () =>
+                              ShellScope.of(context).selectTab(3),
+                        ),
+                        if (i != _feed.length - 1)
+                          const SizedBox(height: 11),
+                      ],
+                    ],
                   const SizedBox(height: 30),
                   const SectionHeader(title: 'Bugun siz uchun'),
                   const SizedBox(height: 13),
@@ -1218,6 +1301,257 @@ class _PremiumIdCardState extends State<_PremiumIdCard> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeFeedCard extends StatefulWidget {
+  const _HomeFeedCard({
+    required this.item,
+    required this.onComment,
+    required this.onShare,
+    required this.onOpen,
+    this.onLike,
+  });
+
+  final FeedItem item;
+  final VoidCallback? onLike;
+  final VoidCallback onComment;
+  final VoidCallback onShare;
+  final VoidCallback onOpen;
+
+  @override
+  State<_HomeFeedCard> createState() => _HomeFeedCardState();
+}
+
+class _HomeFeedCardState extends State<_HomeFeedCard> {
+  bool _pressed = false;
+
+  String _compact(int n) {
+    if (n >= 1000000) return (n / 1000000).toStringAsFixed(n % 1000000 == 0 ? 0 : 1) + 'M';
+    if (n >= 1000) return (n / 1000).toStringAsFixed(n % 1000 == 0 ? 0 : 1) + 'K';
+    return n.toString();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.brand;
+    final item = widget.item;
+    final hasImage = (item.imageUrl ?? '').isNotEmpty;
+    final hasVideo = (item.videoUrl ?? '').isNotEmpty;
+
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTap: widget.onOpen,
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 130),
+        scale: _pressed ? .988 : 1,
+        child: Container(
+          decoration: BoxDecoration(
+            color: p.surface,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: p.line),
+            boxShadow: [
+              BoxShadow(
+                color: p.shadow.withValues(alpha: .45),
+                blurRadius: 22,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(15, 14, 14, 12),
+                child: Row(
+                  children: [
+                    BrandAvatar(
+                      url: item.avatarUrl,
+                      size: 39,
+                      goldRing: true,
+                      fallback: item.name,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.name.isEmpty ? item.code : item.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            item.code,
+                            style: TextStyle(
+                              color: p.ink2,
+                              fontFamily: 'IBMPlexMono',
+                              fontSize: 8.7,
+                              letterSpacing: .7,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      item.isCompany
+                          ? Icons.storefront_outlined
+                          : Icons.person_outline_rounded,
+                      color: p.ink2,
+                      size: 18,
+                    ),
+                  ],
+                ),
+              ),
+              if (hasImage)
+                AspectRatio(
+                  aspectRatio: 1.16,
+                  child: CachedNetworkImage(
+                    imageUrl: item.imageUrl!,
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) => ColoredBox(
+                      color: p.background2,
+                      child: const Center(
+                        child: CircularProgressIndicator(strokeWidth: 1.4),
+                      ),
+                    ),
+                    errorWidget: (_, __, ___) => ColoredBox(
+                      color: p.background2,
+                      child: Icon(
+                        Icons.broken_image_outlined,
+                        color: p.ink2,
+                      ),
+                    ),
+                  ),
+                )
+              else if (hasVideo)
+                AspectRatio(
+                  aspectRatio: 1.16,
+                  child: Container(
+                    color: const Color(0xFF111110),
+                    alignment: Alignment.center,
+                    child: Container(
+                      width: 58,
+                      height: 58,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: .1),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: .16),
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.play_arrow_rounded,
+                        color: Colors.white,
+                        size: 31,
+                      ),
+                    ),
+                  ),
+                ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(15, 12, 12, 13),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (item.caption.trim().isNotEmpty) ...[
+                      Text(
+                        item.caption.trim(),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: p.ink,
+                          fontSize: 11.7,
+                          height: 1.42,
+                        ),
+                      ),
+                      const SizedBox(height: 11),
+                    ],
+                    Row(
+                      children: [
+                        _FeedAction(
+                          icon: item.liked
+                              ? Icons.favorite_rounded
+                              : Icons.favorite_border_rounded,
+                          label: _compact(item.likeCount),
+                          active: item.liked,
+                          onTap: widget.onLike,
+                        ),
+                        const SizedBox(width: 8),
+                        _FeedAction(
+                          icon: Icons.chat_bubble_outline_rounded,
+                          label: _compact(item.commentCount),
+                          onTap: widget.onComment,
+                        ),
+                        const Spacer(),
+                        _FeedAction(
+                          icon: Icons.send_outlined,
+                          label: 'Ulash',
+                          onTap: widget.onShare,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FeedAction extends StatelessWidget {
+  const _FeedAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.active = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.brand;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(99),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: active ? const Color(0xFFFF5261) : p.ink,
+            ),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                color: p.ink2,
+                fontFamily: 'IBMPlexMono',
+                fontSize: 8.8,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
       ),
     );
