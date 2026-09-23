@@ -145,10 +145,11 @@ class _PremiumBottomNav extends StatelessWidget {
                           ),
                         ],
                       ),
-                      child: Icon(
-                        Icons.contactless_rounded,
-                        color: p.heroInk,
-                        size: 29,
+                      child: ClipOval(
+                        child: Image.asset(
+                          'assets/images/nfcstore_logo_mark.png',
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
                   ),
