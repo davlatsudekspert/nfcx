@@ -74,7 +74,7 @@ DEFINES=(
 rc=0
 
 run_suite() {
-  local file="$1" log="$2" title="$3" limit="$4"
+  local file="$1" log="$2" title="$3" limit="$4" last="$5"
   echo ""
   echo "════════════════════════════════════════════════════"
   echo "  $title  (chegara: $limit)"
@@ -92,6 +92,13 @@ run_suite() {
   if timeout --foreground -s INT -k 30s "$limit" \
       flutter test "$file" -d "$DEVICE" "${DEFINES[@]}" 2>&1 | tee "$log"; then
     echo "[$title] tugadi: o'tdi"
+  elif grep -q "✅ .*${last}" "$log" && ! grep -q "❌" "$log"; then
+    # TESTLARDAN KEYINGI EMULYATOR UZILISHI (#46): hamma test, jumladan
+    # OXIRGISI ham ✅ bilan o'tdi, keyin `adb: device offline` —
+    # flutter ilovani o'chira olmay nol bo'lmagan kod qaytardi. Bu
+    # ilova xatosi emas. Oraliqda uzilsa oxirgi test chiqmaydi va
+    # quyidagi YIQILDI shoxiga tushadi.
+    echo "[$title] tugadi: o'tdi (oxirgi test ✅; keyin qurilma uzildi)"
   else
     echo "[$title] tugadi: YIQILDI"
     rc=1
@@ -99,10 +106,10 @@ run_suite() {
 }
 
 run_suite integration_test/e2e_backend_test.dart e2e-backend.log \
-  "BACKEND — kontrakt va saqlanish" 16m
+  "BACKEND — kontrakt va saqlanish" 16m "8. Chiqish va yakuniy baho"
 
 run_suite integration_test/e2e_ui_test.dart e2e-ui.log \
-  "UI — haqiqiy ekranlar" 10m
+  "UI — haqiqiy ekranlar" 10m "UI 3 — PIN qulfi"
 
 # EKRAN OQIMLARI — screenshotlardan kelgan regressiyalar.
 #
@@ -111,7 +118,7 @@ run_suite integration_test/e2e_ui_test.dart e2e-ui.log \
 # to'plamida FAIL bo'lsa ham workflow yashil qolardi, chunki faqat
 # backend to'plami o'zini baholardi.
 run_suite integration_test/e2e_flows_test.dart e2e-flows.log \
-  "OQIMLAR — profil konteksti, NFC doirasi, lenta" 16m
+  "OQIMLAR — profil konteksti, NFC doirasi, lenta" 16m "Yakuniy baho — kritik FAIL"
 
 echo "$rc" > e2e-exit-code
 
