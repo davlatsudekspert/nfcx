@@ -7,6 +7,7 @@ import '../core/models.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../ui/widgets.dart';
+import '../ui/music_player.dart';
 import 'settings_screen.dart';
 import 'shell.dart';
 
@@ -522,11 +523,51 @@ class _ProfileHero extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  BrandAvatar(
-                    url: profile.avatarUrl,
-                    size: 88,
-                    goldRing: true,
-                    fallback: profile.name,
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      BrandAvatar(
+                        url: profile.avatarUrl,
+                        size: 88,
+                        goldRing: true,
+                        fallback: profile.name,
+                      ),
+                      if (profile.musicUrls.isNotEmpty)
+                        Positioned(
+                          right: -7,
+                          bottom: -7,
+                          child: GestureDetector(
+                            onTap: () => showPremiumMusicPlayer(
+                              context,
+                              urls: profile.musicUrls,
+                              title: profile.name,
+                            ),
+                            child: Container(
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                color: p.heroInk,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: const Color(0xFF0F0F0E),
+                                  width: 3,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: .25),
+                                    blurRadius: 10,
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.graphic_eq_rounded,
+                                color: Colors.black,
+                                size: 17,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                   const Spacer(),
                   Text(
@@ -592,10 +633,12 @@ class _ProfileHero extends StatelessWidget {
                         color: Colors.white.withValues(alpha: .1),
                       ),
                     ),
-                    child: Icon(
-                      Icons.contactless_rounded,
-                      color: p.heroInk,
-                      size: 26,
+                    child: Padding(
+                      padding: const EdgeInsets.all(7),
+                      child: Image.asset(
+                        'assets/images/nfcstore_logo_mark.png',
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
                 ],
