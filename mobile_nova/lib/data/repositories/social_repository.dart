@@ -43,7 +43,7 @@ class SocialRepository {
     }
     final res = company
         ? (await _api.get<Map<String, dynamic>>(
-                '/api/companies/${Uri.encodeComponent(code)}/posts'))
+                '/api/companies/$code/posts'))
             .map((j) => parseList(j['posts'] ?? j['items'], Post.fromJson)
                 .map((p) => p.copyWithKind(authorKind: 'company'))
                 .toList())
