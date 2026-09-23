@@ -9,7 +9,6 @@ import '../../app/providers.dart';
 import '../../core/network/api_client.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/social_repository.dart';
-import '../../design/motion/motion.dart';
 import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
@@ -37,6 +36,7 @@ import '../../data/repositories/business_repository.dart';
 import '../profile/profile_switcher.dart';
 import '../social/visible_fraction.dart';
 import '../../routing/shell.dart';
+import '../../core/media/image_cache.dart';
 
 /// Faol NFC ID ning story'lari.
 final homeStoriesProvider = FutureProvider.autoDispose<List<StoryItem>>((
@@ -526,10 +526,12 @@ class _PortraitAvatar extends StatelessWidget {
                 ? Image.asset(url,
                     fit: BoxFit.cover, errorBuilder: (_, __, ___) => mark())
                 : CachedNetworkImage(
+                    cacheManager: NovaImageCache.manager,
+                    fadeOutDuration: NovaImageCache.fadeOut,
                     imageUrl: url,
                     fit: BoxFit.cover,
                     memCacheWidth: decodeWidth(context, size),
-                    fadeInDuration: Motion.med,
+                    fadeInDuration: NovaImageCache.fadeIn,
                     placeholder: (_, __) => mark(),
                     errorWidget: (_, __, ___) => mark(),
                   ),

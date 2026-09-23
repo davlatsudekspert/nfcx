@@ -91,4 +91,35 @@ void main() {
     expect(s, isNot(contains('MediaQuery.maybeOf(context)')));
     expect(s, contains('decodeWidth(context, side)'));
   });
+
+  // RASMLAR SEKIN OCHILARDI (egasi, 2026-09): sukut bo'yicha 500 ms
+  // xiralashish va 200 faylli kesh. Har bir tarmoq rasmi umumiy
+  // `NovaImageCache` dan o'tishi va qisqa paydo bo'lishi shart.
+  test('har bir tarmoq rasmi NovaImageCache va qisqa fade bilan', () {
+    final files = Directory('lib')
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((f) => f.path.endsWith('.dart'));
+    var seen = 0;
+    for (final f in files) {
+      final lines = f.readAsLinesSync();
+      for (var i = 0; i < lines.length; i++) {
+        final l = lines[i].trim();
+        if (l.startsWith('//') || l.startsWith('///')) continue;
+        if (!l.contains('CachedNetworkImage(') &&
+            !l.contains('CachedNetworkImageProvider(')) {
+          continue;
+        }
+        seen++;
+        final call = lines.skip(i).take(16).join('\n');
+        expect(call, contains('NovaImageCache.manager'),
+            reason: '${f.path}:${i + 1} umumiy keshdan o‘tmaydi');
+        if (l.contains('CachedNetworkImage(')) {
+          expect(call, contains('fadeInDuration: NovaImageCache.fadeIn'),
+              reason: '${f.path}:${i + 1} sukut bo‘yicha 500 ms xiralashadi');
+        }
+      }
+    }
+    expect(seen, greaterThan(5));
+  });
 }

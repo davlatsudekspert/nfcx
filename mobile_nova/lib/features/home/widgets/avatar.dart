@@ -4,6 +4,7 @@ import '../../social/media_frame.dart';
 
 import '../../../design/theme/typography.dart';
 import '../../../design/tokens/nfc_tokens.dart';
+import '../../../core/media/image_cache.dart';
 
 /// Foydalanuvchi rasmi.
 ///
@@ -54,11 +55,13 @@ class Avatar extends StatelessWidget {
                     errorBuilder: (_, __, ___) =>
                         _Initials(initials: initials, size: inner))
                 : CachedNetworkImage(
+                    cacheManager: NovaImageCache.manager,
+                    fadeOutDuration: NovaImageCache.fadeOut,
                     imageUrl: url,
                     fit: BoxFit.cover,
                     // Avatar kichik — to'liq suratni ochish shart emas.
                     memCacheWidth: decodeWidth(context, inner),
-                    fadeInDuration: const Duration(milliseconds: 240),
+                    fadeInDuration: NovaImageCache.fadeIn,
                     placeholder: (_, __) => ColoredBox(color: t.surface2),
                     errorWidget: (_, __, ___) =>
                         _Initials(initials: initials, size: inner),

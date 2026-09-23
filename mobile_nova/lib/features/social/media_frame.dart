@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../design/tokens/nfc_tokens.dart';
 import 'inline_video.dart';
+import '../../core/media/image_cache.dart';
 
 /// MEDIA O'Z SHAKLIGA MOSLASHADI — KESILMAYDI, CHO'ZILMAYDI.
 ///
@@ -110,6 +111,9 @@ Widget mediaImage(
   // qutining kattaroq tomonini to'ldiradi, shuning uchun o'sha olinadi.
   if (screenWidth) {
     return CachedNetworkImage(
+      cacheManager: NovaImageCache.manager,
+      fadeOutDuration: NovaImageCache.fadeOut,
+      fadeInDuration: NovaImageCache.fadeIn,
       imageUrl: url,
       fit: fit,
       alignment: alignment,
@@ -123,6 +127,9 @@ Widget mediaImage(
         .where((v) => v.isFinite && v > 0)
         .fold<double?>(null, (a, v) => a == null || v > a ? v : a);
     return CachedNetworkImage(
+      cacheManager: NovaImageCache.manager,
+      fadeOutDuration: NovaImageCache.fadeOut,
+      fadeInDuration: NovaImageCache.fadeIn,
       imageUrl: url,
       fit: fit,
       alignment: alignment,
@@ -205,7 +212,8 @@ class _AdaptiveMediaState extends State<AdaptiveMedia> {
     final ImageProvider provider = isAssetMedia(widget.url)
         ? AssetImage(widget.url)
         : ResizeImage.resizeIfNeeded(
-            decodeWidth(context), null, CachedNetworkImageProvider(widget.url));
+            decodeWidth(context), null, CachedNetworkImageProvider(widget.url,
+                cacheManager: NovaImageCache.manager));
     final stream = provider.resolve(ImageConfiguration.empty);
     final listener = ImageStreamListener(
       (info, _) {
@@ -308,6 +316,9 @@ class FullBleedMedia extends StatelessWidget {
                   filterQuality: FilterQuality.medium,
                   errorBuilder: (_, __, ___) => const SizedBox.shrink())
               : CachedNetworkImage(
+                  cacheManager: NovaImageCache.manager,
+                  fadeOutDuration: NovaImageCache.fadeOut,
+                  fadeInDuration: NovaImageCache.fadeIn,
                   imageUrl: backdropUrl,
                   fit: BoxFit.cover,
                   memCacheWidth: 32,

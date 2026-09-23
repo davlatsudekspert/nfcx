@@ -17,6 +17,7 @@ import '../profile/profile_repository.dart';
 import 'session.dart';
 import 'signup_intent.dart';
 import '../../core/utils/media_url.dart';
+import '../../core/media/image_cache.dart';
 
 /// Ro'yxatdan o'tgandan keyingi profil to'ldirish.
 ///
@@ -219,6 +220,9 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                       )
                     : _avatarUrl.isNotEmpty
                         ? CachedNetworkImage(
+                            cacheManager: NovaImageCache.manager,
+                            fadeOutDuration: NovaImageCache.fadeOut,
+                            fadeInDuration: NovaImageCache.fadeIn,
                             imageUrl: _avatarUrl,
                             fit: BoxFit.cover,
                             memCacheWidth: decodeWidth(context, 92),

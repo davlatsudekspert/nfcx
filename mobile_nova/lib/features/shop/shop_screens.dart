@@ -19,6 +19,7 @@ import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
 import '../business/business_screens.dart' show formatMoney;
 import 'store_policy.dart';
+import '../../core/media/image_cache.dart';
 
 final shopProductsProvider =
     FutureProvider.autoDispose<List<ShopProduct>>((ref) async {
@@ -175,6 +176,9 @@ class _ProductTile extends StatelessWidget {
                       ),
                     )
                   : CachedNetworkImage(
+                      cacheManager: NovaImageCache.manager,
+                      fadeOutDuration: NovaImageCache.fadeOut,
+                      fadeInDuration: NovaImageCache.fadeIn,
                       imageUrl: product.imageUrl,
                       fit: BoxFit.cover,
                       memCacheWidth: decodeWidth(context, 120),
@@ -266,6 +270,9 @@ class ShopProductScreen extends ConsumerWidget {
                           ),
                         )
                       : CachedNetworkImage(
+                          cacheManager: NovaImageCache.manager,
+                          fadeOutDuration: NovaImageCache.fadeOut,
+                          fadeInDuration: NovaImageCache.fadeIn,
                           imageUrl: p.imageUrl,
                           fit: BoxFit.cover,
                           memCacheWidth: decodeWidth(context),

@@ -30,6 +30,9 @@ dependencies:
   shared_preferences: ^2.3.4
 
   cached_network_image: ^3.4.1
+  # Rasm keshining hajmi (NovaImageCache). Allaqachon cached_network_image
+  # orqali o'rnatilgan — yangi paket yuklanmaydi.
+  flutter_cache_manager: ^3.4.1
   qr_flutter: ^4.1.0
   share_plus: ^10.1.3
   url_launcher: ^6.3.1
