@@ -111,18 +111,25 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 }
 
 
-/// Tab kontenti — har bir tab tirik, almashuv 200ms shaffoflik bilan.
+/// Tab kontenti — har bir tab tirik, almashuv DARHOL.
 ///
-/// `IndexedStack` dan farqi: faol bo'lmagan tab darhol yashirinmaydi,
-/// 200ms ichida xiralashadi, yangisi esa paydo bo'ladi. Qolgani bir xil:
+/// ## NIMA UCHUN ANIMATSIYASIZ
+///
+/// Ilgari tablar 200ms shaffoflik bilan almashardi. Buning uchun
+/// ikkala ekran (chiqayotgan va kirayotgan) har kadrda alohida
+/// qatlamga (`saveLayer`) chizilardi — telefonda aynan shu payt
+/// "qotib o'tyapti" hissini berardi (egasi, 2026-09: "profildan
+/// asosiyga o'tganda qotib qolyapti"). Apple va Samsung ilovalarida
+/// ham pastki menyu tablari darhol almashadi; animatsiya faqat
+/// ekran ICHIGA kirganda bo'ladi.
+///
+/// `IndexedStack` bilan bir xil qoidalar:
 ///
 ///   * har tab o'z holatini saqlaydi (scroll, ochiq ekranlar);
-///   * faol bo'lmagan tab TEGISHNI qabul qilmaydi (`IgnorePointer`);
+///   * yashirin tab chizilmaydi va tegishni qabul qilmaydi (`Offstage`);
 ///   * uning animatsiyalari to'xtaydi (`TickerMode`) — fon, orb,
 ///     video kabi takrorlanuvchi harakatlar yashirin tabda yurmaydi;
-///   * u ekran o'quvchisiga ko'rinmaydi (`ExcludeSemantics`).
-///
-/// "Harakatni kamaytirish" yoqilgan bo'lsa almashuv bir zumda.
+///   * u ekran o'quvchisiga ko'rinmaydi.
 class FadingBranchContainer extends StatelessWidget {
   const FadingBranchContainer({
     super.key,
@@ -133,51 +140,32 @@ class FadingBranchContainer extends StatelessWidget {
   final int currentIndex;
   final List<Widget> children;
 
-  /// 180–240ms oralig'ining o'rtasi.
-  static const duration = Duration(milliseconds: 200);
-
   @override
   Widget build(BuildContext context) {
-    final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
     return Stack(
       fit: StackFit.expand,
       children: [
         for (var i = 0; i < children.length; i++)
-          _Branch(
-            active: i == currentIndex,
-            duration: still ? Duration.zero : duration,
-            child: children[i],
-          ),
+          _Branch(active: i == currentIndex, child: children[i]),
       ],
     );
   }
 }
 
 class _Branch extends StatelessWidget {
-  const _Branch({
-    required this.active,
-    required this.duration,
-    required this.child,
-  });
+  const _Branch({required this.active, required this.child});
 
   final bool active;
-  final Duration duration;
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => IgnorePointer(
-        ignoring: !active,
-        child: ExcludeSemantics(
-          excluding: !active,
-          child: TickerMode(
-            enabled: active,
-            child: AnimatedOpacity(
-              opacity: active ? 1 : 0,
-              duration: duration,
-              curve: Curves.easeOutCubic,
-              child: child,
-            ),
-          ),
+  Widget build(BuildContext context) => Offstage(
+        offstage: !active,
+        child: TickerMode(
+          enabled: active,
+          // Har tab o'z qatlamida: bir tabdagi o'zgarish qolganlarini
+          // qayta chizdirmaydi.
+          child: RepaintBoundary(child: child),
         ),
       );
 }

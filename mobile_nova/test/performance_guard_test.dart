@@ -43,4 +43,51 @@ void main() {
     expect(src('lib/features/home/home_screen.dart'),
         contains('memCacheWidth: decodeWidth(context, size)'));
   });
+
+  // ── Telefonda qotish (egasi, 2026-09: "profildan asosiyga
+  // o'tganda qotib qolyapti") ────────────────────────────────────
+
+  test('router sessiya yangilanganda QAYTA YARATILMAYDI', () {
+    final s = src('lib/routing/router.dart');
+    // `ref.watch(sessionProvider)` har `refresh()` da yangi GoRouter
+    // yaratib, butun ilovani noldan qurardi.
+    expect(s, isNot(contains('= ref.watch(sessionProvider)')));
+    expect(s, contains('refreshListenable: kind'));
+    expect(s, contains('ref.read(sessionProvider)'));
+  });
+
+  test('tablar darhol almashadi — shaffoflik qatlami yo‘q', () {
+    final s = src('lib/routing/shell.dart');
+    expect(s, contains('Offstage('));
+    expect(s, isNot(contains('AnimatedOpacity(')));
+  });
+
+  test('pastki menyu va fon blur ishlatmaydi', () {
+    expect(src('lib/design/widgets/bottom_nav.dart'),
+        isNot(contains('BackdropFilter(')));
+    expect(src('lib/design/widgets/backdrop.dart'),
+        isNot(contains('..maskFilter')));
+  });
+
+  test('profil panjarasida har video o‘z pleerini ochmaydi', () {
+    final s = src('lib/features/profile/profile_screen.dart');
+    expect(s, contains('VideoPoster('));
+    expect(s, isNot(contains('InlineVideo(')));
+    // Muqova navbatda, bitta pleer bilan olinadi va pleer yopiladi.
+    final p = src('lib/features/social/video_poster.dart');
+    expect(p, contains('_tail'));
+    expect(p, contains('await c.dispose()'));
+  });
+
+  test('lentada ekrandan chiqqan video pleeri yopiladi', () {
+    final s = src('lib/features/social/inline_video.dart');
+    expect(s, contains('_release();'));
+    expect(s, contains('widget.active == true && TickerMode.of(context)'));
+  });
+
+  test('rasm qutisi o‘lchamida ochiladi, MediaQuery to‘liq kuzatilmaydi', () {
+    final s = src('lib/features/social/media_frame.dart');
+    expect(s, isNot(contains('MediaQuery.maybeOf(context)')));
+    expect(s, contains('decodeWidth(context, side)'));
+  });
 }

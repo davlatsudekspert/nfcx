@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
 import '../motion/motion.dart';
@@ -82,17 +80,21 @@ class NovaBottomNav extends StatelessWidget {
         // Tugma pill qirrasidan yuqoriga chiqadi — bu ataylab.
         clipBehavior: Clip.none,
         children: [
-          // 1-QATLAM: pill. Blur va clip FAQAT shu yerda.
-          ClipRRect(
-            borderRadius: R.pill,
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-              child: AnimatedContainer(
+          // 1-QATLAM: pill — TO'Q (blur'siz) sirt.
+          //
+          // Ilgari bu yerda `BackdropFilter` (blur 22) turardi. Menyu
+          // HAR ekranda va aylantirish paytida HAR kadrda ostidagi
+          // kontentni qayta xiralashtirardi — telefonda bu eng qimmat
+          // effekt edi. Samsung One UI va Apple'ning o'z ilovalari
+          // kabi endi oddiy to'q sirt: ko'rinishi deyarli bir xil,
+          // narxi esa nol.
+          RepaintBoundary(
+            child: AnimatedContainer(
                 duration: Motion.theme,
                 curve: Motion.smooth,
                 height: kNavHeight,
                 decoration: BoxDecoration(
-                  color: t.surface,
+                  color: t.surfaceSolid,
                   borderRadius: R.pill,
                   border: Border.all(color: t.border2),
                   boxShadow: t.shadowFloat,
@@ -114,7 +116,6 @@ class NovaBottomNav extends StatelessWidget {
                   ],
                 ),
               ),
-            ),
           ),
 
           // 2-QATLAM: markaziy tugma — clipdan tashqarida.

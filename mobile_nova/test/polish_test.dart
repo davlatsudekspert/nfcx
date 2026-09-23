@@ -64,19 +64,18 @@ void main() {
     });
   });
 
-  group('Sahifa o‘tishi — ikki tomonlama', () {
+  group('Sahifa o‘tishi — tizimniki (Apple/Samsung kabi)', () {
     final src =
         File('lib/design/theme/app_theme.dart').readAsStringSync();
 
-    test('CHIQUVCHI sahifa ham harakatlanadi', () {
-      // Ilgari faqat kiruvchisi harakatlanardi, eskisi joyida
-      // qotib turardi va almashuv "sakrash" bo'lib sezilardi.
-      expect(src, contains('secondaryAnimation'));
-      expect(src, contains('outCurve'));
-    });
-
-    test('egri chiziq YUMSHOQ', () {
-      expect(src, contains('Cubic(.22, 1, .36, 1)'));
+    test('Android — Zoom, iPhone — Cupertino', () {
+      // O'zimizning fade+scale o'tishi IKKALA sahifani ham har kadrda
+      // shaffof qatlamga chizardi — telefonda qotish (egasi, 2026-09).
+      // Tizim o'tishlari ikkala sahifani ham harakatlantiradi va
+      // Zoom sahifani rasmga olib harakatlantiradi — eng arzon yo'l.
+      expect(src, contains('ZoomPageTransitionsBuilder()'));
+      expect(src, contains('CupertinoPageTransitionsBuilder()'));
+      expect(src, isNot(contains('_FadeScaleTransitions')));
       // Keskin yoki sakraydigan egri chiziqlar bo'lmasin.
       expect(src, isNot(contains('Curves.bounce')));
       expect(src, isNot(contains('Curves.elasticOut')));

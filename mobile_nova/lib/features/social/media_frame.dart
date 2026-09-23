@@ -72,10 +72,13 @@ bool isAssetMedia(String url) => url.startsWith('assets/');
 /// "ilova qotib ishlayapti"). Rasm ekranda ko'rinadigan kenglikda
 /// ochiladi. Qiymat 120 ga yaxlitlanadi — lenta va o'lchov so'rovi
 /// (`AdaptiveMedia._resolveImage`) BIR XIL keshdan foydalansin.
+///
+/// `MediaQuery.maybeOf` EMAS: u vidjetni MediaQuery'ning HAR
+/// o'zgarishiga (klaviatura ochilishining har kadri ham) bog'lardi.
+/// Faqat kerakli qism o'qiladi.
 int decodeWidth(BuildContext context, [double? logicalWidth]) {
-  final mq = MediaQuery.maybeOf(context);
-  final w = logicalWidth ?? mq?.size.width ?? 400;
-  final dpr = mq?.devicePixelRatio ?? 2;
+  final w = logicalWidth ?? MediaQuery.maybeSizeOf(context)?.width ?? 400;
+  final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 2;
   final px = (w * dpr / 120).ceil() * 120;
   return px.clamp(120, 1440);
 }
@@ -88,6 +91,10 @@ Widget mediaImage(
   String url, {
   required BoxFit fit,
   Alignment alignment = Alignment.center,
+  // `AdaptiveMedia` rasm nisbatini EKRAN kengligidagi nusxadan oladi;
+  // chizish ham AYNAN o'sha nusxadan bo'lishi kerak, aks holda bitta
+  // rasm ikki xil o'lchamda ikki marta ochiladi.
+  bool screenWidth = false,
 }) {
   final t = context.tokens;
   Widget broken() => ColoredBox(
@@ -98,14 +105,34 @@ Widget mediaImage(
     return Image.asset(url,
         fit: fit, alignment: alignment, errorBuilder: (_, __, ___) => broken());
   }
-  return CachedNetworkImage(
-    imageUrl: url,
-    fit: fit,
-    alignment: alignment,
-    memCacheWidth: decodeWidth(context),
-    placeholder: (_, __) => ColoredBox(color: t.surface2),
-    errorWidget: (_, __, ___) => broken(),
-  );
+  // Rasm QUTINING o'lchamida ochiladi, ekran kengligida emas:
+  // katalogdagi 2 ustunli katakcha, profil panjarasining 1/3
+  // katakchasi yoki kichik logotip uchun 1080 px ochish — 4–9 barobar
+  // ortiqcha xotira va aylantirishda qotish edi. `cover` da rasm
+  // qutining kattaroq tomonini to'ldiradi, shuning uchun o'sha olinadi.
+  if (screenWidth) {
+    return CachedNetworkImage(
+      imageUrl: url,
+      fit: fit,
+      alignment: alignment,
+      memCacheWidth: decodeWidth(context),
+      placeholder: (_, __) => ColoredBox(color: t.surface2),
+      errorWidget: (_, __, ___) => broken(),
+    );
+  }
+  return LayoutBuilder(builder: (context, box) {
+    final side = [box.maxWidth, box.maxHeight]
+        .where((v) => v.isFinite && v > 0)
+        .fold<double?>(null, (a, v) => a == null || v > a ? v : a);
+    return CachedNetworkImage(
+      imageUrl: url,
+      fit: fit,
+      alignment: alignment,
+      memCacheWidth: decodeWidth(context, side),
+      placeholder: (_, __) => ColoredBox(color: t.surface2),
+      errorWidget: (_, __, ___) => broken(),
+    );
+  });
 }
 
 /// RO'YXAT ICHIDAGI MEDIA — quti mediaga moslashadi.
@@ -236,7 +263,8 @@ class _AdaptiveMediaState extends State<AdaptiveMedia> {
               }
             },
           )
-        : mediaImage(context, widget.url, fit: BoxFit.cover);
+        : mediaImage(context, widget.url,
+            fit: BoxFit.cover, screenWidth: true);
 
     final framed = AspectRatio(aspectRatio: _aspect, child: child);
     final r = widget.borderRadius;

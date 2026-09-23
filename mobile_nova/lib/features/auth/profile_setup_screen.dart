@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../social/media_frame.dart';
 import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
@@ -220,6 +221,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                         ? CachedNetworkImage(
                             imageUrl: _avatarUrl,
                             fit: BoxFit.cover,
+                            memCacheWidth: decodeWidth(context, 92),
                             width: 92,
                             height: 92,
                           )

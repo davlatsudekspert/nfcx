@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../social/media_frame.dart';
 import '../../core/errors/app_error.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/shop_repository.dart';
@@ -176,6 +177,7 @@ class _ProductTile extends StatelessWidget {
                   : CachedNetworkImage(
                       imageUrl: product.imageUrl,
                       fit: BoxFit.cover,
+                      memCacheWidth: decodeWidth(context, 120),
                       placeholder: (_, __) => ColoredBox(color: t.surface2),
                       errorWidget: (_, __, ___) => ColoredBox(color: t.surface2),
                     ),
@@ -266,6 +268,7 @@ class ShopProductScreen extends ConsumerWidget {
                       : CachedNetworkImage(
                           imageUrl: p.imageUrl,
                           fit: BoxFit.cover,
+                          memCacheWidth: decodeWidth(context),
                           placeholder: (_, __) => ColoredBox(color: t.surface2),
                           errorWidget: (_, __, ___) =>
                               ColoredBox(color: t.surface2),

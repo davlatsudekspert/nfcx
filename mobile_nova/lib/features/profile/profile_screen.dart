@@ -31,7 +31,7 @@ import '../demo/demo_mode.dart';
 import '../demo/demo_mosaic.dart';
 import '../social/engagement.dart';
 import '../social/story_viewer.dart';
-import '../social/inline_video.dart';
+import '../social/video_poster.dart';
 import '../social/media_frame.dart';
 import '../social/moderation.dart';
 import 'music_player.dart';
@@ -1321,21 +1321,18 @@ class _PostsGridState extends ConsumerState<_PostsGrid> {
                           // lekin muqova baribir ko'rinmasdi.
                           //
                           // Server video uchun surat (poster)
-                          // bermaydi, shuning uchun muqovani
-                          // ilovaning o'zi ochadi: `InlineVideo`
-                          // faylni yuklab birinchi kadrni chizadi.
-                          //
-                          // `autoPlay: false` SHART — aks holda
-                          // panjaradagi hamma video bir vaqtda
-                          // o'ynab, ovozlar qo'shilib ketardi va
-                          // telefon qiynalardi.
+                          // bermaydi. Ilgari HAR katakcha o'z
+                          // `InlineVideo` pleerini ochib turardi —
+                          // 10 ta video = 10 ta pleer, telefon
+                          // qotardi. Endi `VideoPoster` navbat
+                          // bilan BITTA pleerda birinchi kadrni
+                          // rasmga oladi va pleerni darhol yopadi.
                           ? Stack(
                               fit: StackFit.expand,
                               children: [
-                                InlineVideo(
+                                VideoPoster(
                                   key: ValueKey('tile-${p.id}'),
                                   url: p.mediaUrls.first,
-                                  autoPlay: false,
                                 ),
                                 const DecoratedBox(
                                   decoration: BoxDecoration(

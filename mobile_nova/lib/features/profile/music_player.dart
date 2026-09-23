@@ -128,7 +128,7 @@ class _MusicControlState extends ConsumerState<MusicControl> {
     if (widget.urls.isEmpty) return const SizedBox.shrink();
     final t = context.tokens;
     final l = L.of(context);
-    final playing = ref.watch(musicPlayerProvider).playing;
+    final playing = ref.watch(musicPlayerProvider.select((s) => s.playing));
 
     return Semantics(
       button: true,

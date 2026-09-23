@@ -629,6 +629,8 @@ class _NoIdCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = L.of(context);
     return FloatingSurface(
+      // Blur'siz: Home har kadrda qayta chiziladi (tezlik, 2026-09).
+      solid: true,
       borderRadius: R.organic(a: 40, b: 40, c: 40, d: 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1244,6 +1246,8 @@ class _BizPitchCard extends StatelessWidget {
     final t = context.tokens;
 
     return FloatingSurface(
+      // Blur'siz: Home har kadrda qayta chiziladi (tezlik, 2026-09).
+      solid: true,
       borderRadius: R.organic(a: 40, b: 40, c: 40, d: 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

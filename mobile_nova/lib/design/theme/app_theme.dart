@@ -98,9 +98,18 @@ ThemeData buildTheme(NfcTokens t) {
     ),
     // Sahifa o'tishi: Concept B "fade + scale" ni talab qiladi, Android'ning
     // pastdan sirg'alishi emas.
+    //
+    // TIZIMNING O'Z O'TISHLARI (2026-09, egasi: "Apple va Samsung
+    // ilovalaridan andoza ol", "boshqa bo'limga juda sekin o'tyapti").
+    //
+    // Ilgari o'zimizning fade+scale bor edi: IKKALA sahifa ham har
+    // kadrda shaffof qatlamga chizilardi — telefonda bu qotish edi.
+    // Endi Android — tizimning `Zoom` o'tishi (Samsung One UI ham shu
+    // uslubda; sahifani bir marta rasmga olib, rasmni harakatlantiradi
+    // — eng arzon yo'l), iPhone — Apple'ning o'ngdan surilishi.
     pageTransitionsTheme: const PageTransitionsTheme(builders: {
-      TargetPlatform.android: _FadeScaleTransitions(),
-      TargetPlatform.iOS: _FadeScaleTransitions(),
+      TargetPlatform.android: ZoomPageTransitionsBuilder(),
+      TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
     }),
   );
 }
@@ -115,50 +124,3 @@ SystemUiOverlayStyle overlayFor(NfcTokens t) => SystemUiOverlayStyle(
           t.isDark ? Brightness.light : Brightness.dark,
     );
 
-/// IPAKDEK egri chiziq.
-///
-/// `easeOutCubic` yaxshi, lekin oxirida hali ham sezilarli
-/// "to'xtash" bor. Bu egri chiziq boshida tezroq ketadi va
-/// oxiriga juda uzoq, deyarli sezilmaydigan sekinlashuv bilan
-/// keladi — harakat "qo'yib yuborilgan" emas, "qo'ndirilgan"
-/// bo'lib seziladi.
-const _silk = Cubic(.22, 1, .36, 1);
-
-class _FadeScaleTransitions extends PageTransitionsBuilder {
-  const _FadeScaleTransitions();
-
-  @override
-  Widget buildTransitions<T>(
-    PageRoute<T> route,
-    BuildContext context,
-    Animation<double> animation,
-    Animation<double> secondaryAnimation,
-    Widget child,
-  ) {
-    // KIRUVCHI sahifa: yumshoq so'nib chiqadi va sal yaqinlashadi.
-    final inCurve = CurvedAnimation(parent: animation, curve: _silk);
-    // CHIQUVCHI sahifa: ORQAGA suriladi va xiralashadi.
-    //
-    // Ilgari faqat kiruvchisi harakatlanardi, eskisi esa joyida
-    // qotib turardi va almashuv "sakrash" bo'lib sezilardi. Ikki
-    // qatlam birga harakatlansa, o'tish chuqur va silliq bo'ladi.
-    final outCurve =
-        CurvedAnimation(parent: secondaryAnimation, curve: _silk);
-
-    return FadeTransition(
-      opacity: Tween(begin: 1.0, end: .0).animate(outCurve),
-      child: ScaleTransition(
-        scale: Tween(begin: 1.0, end: 1.03).animate(outCurve),
-        child: FadeTransition(
-          opacity: inCurve,
-          child: ScaleTransition(
-            // 0.97 dan boshlash — sezilmaydigan, lekin "chuqurlik"
-            // beradigan miqdor.
-            scale: Tween(begin: .97, end: 1.0).animate(inCurve),
-            child: child,
-          ),
-        ),
-      ),
-    );
-  }
-}

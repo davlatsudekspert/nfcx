@@ -182,8 +182,27 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
     if (widget.active == true) {
       _openAndPlay();
     } else if (widget.active == false) {
-      _pauseForOther();
+      _release();
     }
+  }
+
+  /// LENTADA DOMINANTLIKNI YO'QOTDI — pleer TO'LIQ yopiladi.
+  ///
+  /// Ilgari faqat pauza qilinardi: lentada 5 ta video bo'lsa, bittasi
+  /// ko'rilgandan keyin ham uning pleeri (dekoder va bufer) Home tabi
+  /// yashirin turganda ham xotirada qolaverardi. Telefonda bu qotish
+  /// edi. Instagram ham ekrandan chiqqan videoni yopadi; qaytganda
+  /// qayta ochiladi.
+  void _release() {
+    final c = _c;
+    _c = null;
+    _ready = false;
+    _opening = false;
+    c?.setVolume(0);
+    c?.pause();
+    c?.dispose();
+    _owner?.release(this);
+    if (mounted) setState(() {});
   }
 
   /// Ochish + ovoz egaligini olish + ijro.
@@ -221,7 +240,8 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
     // Faqat hozir dominant bo'lgan karta qayta baholanadi.
     // Ekrandan chiqib ketgan videoning `active` i `false`, ya'ni
     // u jim qoladi.
-    if (widget.active == true) _openAndPlay();
+    // Yashirin tabda (Home ko'rinmayotganda) ham boshlanmaydi.
+    if (widget.active == true && TickerMode.of(context)) _openAndPlay();
   }
 
   Future<void> _open() async {
@@ -231,8 +251,12 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
     _opening = true;
     final c = VideoPlayerController.networkUrl(Uri.parse(widget.url));
     _c = c;
+    // `_release()` ochilish davomida chaqirilsa, bu kontroller
+    // endi "eski" — u allaqachon yopilgan.
+    bool stale() => !identical(_c, c);
     try {
       await c.initialize();
+      if (stale()) return;
       if (_gone || !mounted) {
         await c.dispose();
         return;
@@ -265,6 +289,8 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
         widget.onAspect?.call(size.width / size.height);
       }
     } catch (_) {
+      // Yopilgan (eski) kontrollerning xatosi — video buzuq emas.
+      if (stale()) return;
       // Buzuq havola yoki qo'llab-quvvatlanmaydigan format — ilova
       // qulamaydi, o'rnida fon qoladi.
       if (mounted) setState(() => _failed = true);

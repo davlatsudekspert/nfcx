@@ -46,14 +46,34 @@ final _rootKey = GlobalKey<NavigatorState>();
 /// `redirect` yagona qorovul: sessiya holati o'zgarganda (kirdi,
 /// chiqdi, token eskirdi) barcha ekranlar avtomatik to'g'ri joyga
 /// ko'chadi. Har ekranda "kirganmi?" deb tekshirish kerak emas.
+///
+/// ## ROUTER BIR MARTA YARATILADI
+///
+/// Ilgari bu provayder `ref.watch(sessionProvider)` qilardi. Sessiya
+/// har yangilanganda (`refresh()` — profilni tortib yangilash, ID
+/// qo'shish, profilni tahrirlash...) YANGI `GoRouter` yaratilardi:
+/// barcha tablar, ochiq ekranlar va ularning holati noldan
+/// qurilardi, ilova esa Splash orqali Home'ga qaytardi. Telefonda
+/// bu "qotib qoldi" bo'lib ko'rinardi.
+///
+/// Endi router bitta. Sessiyaning faqat TURI (tekshirilmoqda /
+/// anonim / faol) o'zgarganda `refreshListenable` orqali `redirect`
+/// qayta hisoblanadi. Foydalanuvchi ma'lumoti yangilanishi routerga
+/// umuman tegmaydi.
 final routerProvider = Provider<GoRouter>((ref) {
-  final session = ref.watch(sessionProvider);
+  final kind = ValueNotifier<Type>(ref.read(sessionProvider).runtimeType);
+  ref.listen<SessionState>(
+    sessionProvider,
+    (_, next) => kind.value = next.runtimeType,
+  );
 
-  return GoRouter(
+  final router = GoRouter(
     navigatorKey: _rootKey,
     initialLocation: Routes.splash,
     debugLogDiagnostics: false,
+    refreshListenable: kind,
     redirect: (context, state) {
+      final session = ref.read(sessionProvider);
       final loc = state.matchedLocation;
       final authArea = loc == Routes.splash ||
           loc == Routes.welcome ||
@@ -94,12 +114,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
 
       // ---- asosiy tablar --------------------------------------------------
-      // TABLAR ORASIDA MAYIN O'TISH (200ms).
+      // TABLAR DARHOL ALMASHADI (Apple/Samsung kabi).
       //
-      // `indexedStack` tabni keskin almashtiradi — bir kadrda. Egasining
-      // talabi: 180–240ms mayin animatsiya. `FadingBranchContainer` ham
-      // xuddi `IndexedStack` kabi har tabni TIRIK saqlaydi (scroll va
-      // tarix yo'qolmaydi), faqat almashuvni shaffoflik bilan qiladi.
+      // `FadingBranchContainer` xuddi `IndexedStack` kabi har tabni
+      // TIRIK saqlaydi (scroll va tarix yo'qolmaydi). Ilgarigi 200ms
+      // shaffoflik telefonda qotish berardi — sababi `shell.dart` da.
       StatefulShellRoute(
         navigatorContainerBuilder: (_, shell, children) =>
             FadingBranchContainer(
@@ -351,6 +370,11 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
     errorBuilder: (context, state) => _RouteError(location: state.uri.toString()),
   );
+  ref.onDispose(() {
+    router.dispose();
+    kind.dispose();
+  });
+  return router;
 });
 
 /// Noma'lum manzil. Ishlab chiqarishda ko'rinmasligi kerak, lekin

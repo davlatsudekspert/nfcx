@@ -124,8 +124,10 @@ class _AmbientPainter extends CustomPainter {
         r,
         Paint()
           ..shader = RadialGradient(colors: [color, color.withValues(alpha: 0)])
-              .createShader(Rect.fromCircle(center: c, radius: r))
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 40),
+              .createShader(Rect.fromCircle(center: c, radius: r)),
+        // `MaskFilter.blur` OLIB TASHLANDI: radial gradient o'zi
+        // yumshoq, blur esa ko'zga deyarli ko'rinmasdi — lekin u HAR
+        // ekranda, aylantirishning HAR kadrida qayta hisoblanardi.
       );
     }
 
