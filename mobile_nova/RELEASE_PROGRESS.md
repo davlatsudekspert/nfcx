@@ -39,10 +39,11 @@ Sessiya uzilsa — shu fayldagi birinchi `[ ]` bandidan davom etiladi.
 - [ ] NFC Center, scan/write, QR, NFC ID qidirish, pullik ID, sovg'a
 - [ ] settings/themes, deep links/App Links, permissions
 - [ ] sekin internet / server xatosi / timeout holatlari
-- [~] Real hisob E2E (CI `nova-e2e.yml`): #44/#45 backend to'plamida 60 daq
-      osilib bekor bo'lgan. Diagnostika qo'shildi (b34bbbd): har so'rov
-      `[E2E] ->/<-`, har test `[E2E] >>`, to'plam chegaralari 16/10/16m.
-      #46 ishga tushdi — natijasiga qarab sabab tuzatiladi.
+- [x] Real hisob E2E #46: uchala to'plam ishladi, 69 PASS / 0 FAIL, qurilma
+      (release APK launch/resume, 360/390/430 layout) PASS. Osilish sababi:
+      emulyator aloqasi uzilishi (`adb: device offline`) — flutter test
+      qurilmani cheksiz kutgan. Tuzatildi: to'plam chegaralari (b34bbbd) +
+      testlardan keyingi uzilish natijani buzmaydi (648fb15).
 - [x] Qurilma bosqichi (release APK launch/resume, 360/390/430 layout) — PASS (#45)
 
 - [x] Egasi xabari: istorya ochilganda qora ekran — tuzatildi (4d0365d):
@@ -52,6 +53,10 @@ Sessiya uzilsa — shu fayldagi birinchi `[ ]` bandidan davom etiladi.
       audit-verify) — tasdiqlanganlari tuzatiladi.
 - [~] Egasi xabari: Reels'da katta video sekin ochiladi — ildiz sababi
       tekshirilmoqda (serveUpload Range 206 qo'llaydi).
+
+- [ ] KEYIN (egasi): Ivory/Noir chuqur dizayn auditi — typography, surface,
+      elevation, gold me'yori, icon tizimi, WCAG; pastki navigatsiya
+      proporsiyalari (icon/label/active/NFC balans). Funksiyaga tegilmaydi.
 
 ## 4. Performance
 
