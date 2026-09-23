@@ -39,6 +39,11 @@ Sessiya uzilsa — shu fayldagi birinchi `[ ]` bandidan davom etiladi.
 - [ ] NFC Center, scan/write, QR, NFC ID qidirish, pullik ID, sovg'a
 - [ ] settings/themes, deep links/App Links, permissions
 - [ ] sekin internet / server xatosi / timeout holatlari
+- [~] Real hisob E2E (CI `nova-e2e.yml`): #44/#45 backend to'plamida 60 daq
+      osilib bekor bo'lgan. Diagnostika qo'shildi (b34bbbd): har so'rov
+      `[E2E] ->/<-`, har test `[E2E] >>`, to'plam chegaralari 16/10/16m.
+      #46 ishga tushdi — natijasiga qarab sabab tuzatiladi.
+- [x] Qurilma bosqichi (release APK launch/resume, 360/390/430 layout) — PASS (#45)
 
 ## 4. Performance
 
@@ -48,7 +53,12 @@ Sessiya uzilsa — shu fayldagi birinchi `[ ]` bandidan davom etiladi.
 ## 5–6. Release
 
 - [ ] versionName (pubspec) + versionCode (CI run_number)
-- [ ] permissions / App Links / Data Safety mosligi
+- [~] permissions / App Links / Data Safety mosligi
+      * permissions: faqat INTERNET, NFC (required=false); rasm — Photo Picker
+        (READ_MEDIA_* yo'q), kamera — intent (CAMERA yo'q)
+      * App Links: https://nfcstore.uz /u /c /post /story /nfc, autoVerify
+      * [x] BLOCKER tuzatildi (89613bc): sessiya tokeni Auto Backup va
+        telefondan-telefonga ko'chirishdan chiqarildi + resetOnError
 - [ ] signed AAB + APK (CI `nova-apk.yml`)
 
 ## 7. Hisobot
