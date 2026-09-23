@@ -435,6 +435,43 @@ void main() {
               screen: 'ProfileScreen',
               action: 'GET /api/follow-stats/:code',
               note: '${value.followers} / ${value.following}');
+
+          // SON = RO'YXAT (egasining talabi, HAQIQIY ma'lumotda).
+          //
+          // Profildagi "Obunachilar 9" bosilganda ochiladigan ro'yxatda
+          // ham AYNAN 9 kishi bo'lishi kerak. Faqat O'QIYDI.
+          //
+          // Eslatma: server tuzatishi (`visibleUserSql` — o'chirilgan va
+          // yashirin obunachilar sanalmaydi) HOZIRCHA faqat branchda.
+          // Production'ga deploy qilinmaguncha bu qator FAIL bo'lishi
+          // mumkin — bu ilova xatosi emas, deploy kutilmoqda.
+          for (final dir in const ['followers', 'following']) {
+            final list = await profile.followList(personal!.code, dir: dir);
+            final want =
+                dir == 'followers' ? value.followers : value.following;
+            switch (list) {
+              case Err(:final error):
+                partial('Follow count = list ($dir)',
+                    screen: 'ProfileScreen',
+                    action: 'GET /api/follow-list/:code?dir=$dir',
+                    cause: why(error),
+                    pathHint: '/api/follow-list/');
+              case Ok(value: final items):
+                if (items.length == want) {
+                  report.pass('Follow count = list ($dir)',
+                      screen: 'ProfileScreen',
+                      action: 'follow-stats vs follow-list',
+                      note: '$want = ${items.length}');
+                } else {
+                  fail('Follow count = list ($dir)',
+                      screen: 'ProfileScreen',
+                      action: 'follow-stats vs follow-list',
+                      cause: 'son $want, ro‘yxatda ${items.length} — '
+                          'server tuzatishi (visibleUserSql) deploy kutmoqda',
+                      pathHint: 'hosting/worker.js visibleUserSql');
+                }
+            }
+          }
       }
     }
 

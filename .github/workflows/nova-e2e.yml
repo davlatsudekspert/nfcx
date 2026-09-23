@@ -51,6 +51,7 @@ on:
       - 'mobile_nova/integration_test/**'
       - '.github/workflows/nova-e2e.yml'
       - 'tool/e2e_summary.py'
+      - 'tool/e2e_device.sh'
 
 concurrency:
   group: nova-e2e
@@ -172,6 +173,40 @@ jobs:
           disable-animations: false
           script: echo "AVD tayyor"
 
+      # ── HAQIQIY QURILMA: RELEASE APK + LAYOUT, 3 O'LCHAM ────────
+      #
+      # Egasining talabi: yakuniy tekshiruv haqiqiy Android release
+      # APK'da, 360x800 / 390x844 / 430x932 da. Bu bosqich HISOBGA
+      # KIRMAYDI va production'ga yozmaydi: release APK faqat ochiladi
+      # (splash/kirish), layout to'plami esa soxta ma'lumot bilan
+      # ishlaydi. Natija va qurilmada olingan suratlar — artefakt.
+      - name: Qurilma — release APK va layout (360/390/430)
+        id: device
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          working-directory: mobile_nova
+          script: bash ../tool/e2e_device.sh
+
+      - name: Qurilma suratlari va logi
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nova-device-shots
+          path: |
+            mobile_nova/device-shots/
+            mobile_nova/e2e-device.log
+          if-no-files-found: warn
+          retention-days: 14
+
+
       # ── ASOSIY BOSQICH ────────────────────────────────────────
       #
       # `script:` `bash` ORQALI chaqiriladi. Action bu blokni
@@ -263,6 +298,16 @@ jobs:
             mobile_nova/e2e-flows.log
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Qurilma bahosi
+        if: always()
+        run: |
+          dcode=$(cat e2e-device-exit-code 2>/dev/null || echo 1)
+          grep -E "^(DEVICE|LAYOUT)\\|" e2e-device.log 2>/dev/null | sort -u | tee -a "$GITHUB_STEP_SUMMARY" || true
+          if [ "$dcode" != "0" ]; then
+            echo "::error::Qurilma bosqichi yiqildi (release APK yoki layout)."
+            exit 1
+          fi
 
       - name: Yakuniy baho
         if: always()

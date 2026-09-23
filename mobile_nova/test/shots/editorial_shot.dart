@@ -11,12 +11,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nfcstore_nova/app/providers.dart';
-import 'package:nfcstore_nova/core/network/api_client.dart';
-import 'package:nfcstore_nova/core/storage/secure_store.dart';
 import 'package:nfcstore_nova/core/utils/result.dart';
 import 'package:nfcstore_nova/data/models/models.dart';
-import 'package:nfcstore_nova/data/repositories/discover_repository.dart';
-import 'package:nfcstore_nova/data/repositories/social_repository.dart';
 import 'package:nfcstore_nova/design/theme/app_theme.dart';
 import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
 import 'package:nfcstore_nova/features/auth/login_screen.dart';
@@ -27,18 +23,15 @@ import 'package:nfcstore_nova/features/entry/splash_screen.dart';
 import 'package:nfcstore_nova/features/auth/session.dart';
 import 'package:nfcstore_nova/features/business/business_forms.dart';
 import 'package:nfcstore_nova/features/business/business_intro.dart';
-import 'package:nfcstore_nova/features/profile/profile_repository.dart';
-import 'package:nfcstore_nova/features/nfc/nfc_service.dart';
-import 'package:nfcstore_nova/features/social/reels_screen.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
 import '../support/fake_video_platform.dart';
 import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
 import 'package:nfcstore_nova/routing/router.dart';
 import 'package:nfcstore_nova/routing/routes.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../helpers.dart';
+import '../support/rich_fakes.dart';
 
 /// SOFT EDITORIAL — HAQIQIY EKRANLAR, HAQIQIY KONTENT, UCH O'LCHAM.
 ///
@@ -52,251 +45,6 @@ import '../helpers.dart';
 ///
 ///     flutter test --run-skipped -t shots --update-goldens \
 ///       test/shots/editorial_shot.dart
-const _a = 'assets/demo';
-
-const _me = NfcId(
-  code: 'VIP001',
-  name: 'Muhammad Aliyev',
-  role: 'Davlat sud eksperti',
-  bio: 'NFC orqali bir tegishda tanishamiz. Toshkent · 2026',
-  avatarUrl: '$_a/z_portrait.jpg',
-  coverUrl: '$_a/z_cover.jpg',
-  primary: true,
-  views: 1284,
-  followers: 9,
-  following: 11,
-  posts: 9,
-  verified: true,
-  tier: 'exclusive',
-  musicUrls: [
-    'https://nfcstore.uz/uploads/Yulduzlar_ostida.mp3',
-    'https://nfcstore.uz/uploads/Toshkent-kechasi.mp3',
-  ],
-);
-
-const _ids = [
-  _me,
-  NfcId(code: 'UZD772', name: 'Oybek Ergashev', tier: 'gold', views: 312),
-  NfcId(code: 'TTS075', name: 'Tohir Shop', tier: 'silver', views: 88),
-];
-
-const _people = [
-  NfcId(
-      code: 'PPP777',
-      name: 'Mashrabboy',
-      role: 'Yangi g‘oyalar sari',
-      avatarUrl: '$_a/z_post_cafe.jpg',
-      followers: 5,
-      posts: 12,
-      tier: 'premium'),
-  NfcId(
-      code: 'ALI000',
-      name: 'Aliyorbek Toshtemirov',
-      role: 'Hayot davom etadi',
-      avatarUrl: '$_a/z_post_rooftop.jpg',
-      followers: 7,
-      posts: 1,
-      tier: 'gold'),
-  NfcId(
-      code: 'MHR555',
-      name: 'Mohira Mansurova',
-      role: 'Dizayner · brending',
-      followers: 23,
-      posts: 31,
-      tier: 'silver'),
-  NfcId(
-      code: '33932023',
-      name: 'Shaxnoza',
-      role: '',
-      followers: 0,
-      posts: 0),
-];
-
-const _images = [
-  '$_a/z_post_nfc.jpg',
-  '$_a/m_card_metal.jpg',
-  '$_a/z_post_cafe.jpg',
-  '$_a/m_cards.jpg',
-  '$_a/z_post_evening.jpg',
-  '$_a/m_stickers.jpg',
-  '$_a/z_post_rooftop.jpg',
-  '$_a/m_gift_set.jpg',
-  '$_a/m_hero.jpg',
-];
-
-class _RichSocial extends SocialRepository {
-  _RichSocial() : super(ApiClient());
-
-  static final _posts = [
-    for (var i = 0; i < _images.length; i++)
-      Post(
-        id: 100 + i,
-        code: 'VIP001',
-        authorName: 'Muhammad Aliyev',
-        authorAvatar: '$_a/z_portrait.jpg',
-        text: i == 0
-            ? 'NFCSTORE jamoasi bilan yangi metall kartalar ustida ishlayapmiz.'
-            : 'Yangi kun — yangi tanishuvlar.',
-        mediaUrls: [_images[i]],
-        likes: 24 - i,
-        comments: 5,
-        createdAt: DateTime(2026, 9, 22, 12).subtract(Duration(hours: i * 7)),
-      ),
-  ];
-
-  static final _stories = [
-    StoryItem(id: 1, code: 'PPP777', authorName: 'Mashrabboy', authorAvatar: '$_a/z_post_cafe.jpg', likes: 3),
-    StoryItem(id: 2, code: 'ALI000', authorName: 'Aliyorbek', authorAvatar: '$_a/z_post_rooftop.jpg', likes: 1),
-    StoryItem(id: 3, code: 'MHR555', authorName: 'Mohira', likes: 0, seen: true),
-  ];
-
-  @override
-  Future<Result<List<Post>>> feed({int page = 1}) async => Ok(_posts);
-
-  @override
-  Future<Result<List<Post>>> postsOf(String code, {int page = 1}) async =>
-      Ok(code == 'VIP001' ? _posts : const []);
-
-  @override
-  Future<Result<List<StoryItem>>> storiesOf(String code) async => const Ok([]);
-
-  @override
-  Future<Result<List<StoryItem>>> followedStories() async => Ok(_stories);
-
-  @override
-  Future<Result<void>> markStorySeen(int id) async => const Ok(null);
-
-  @override
-  Future<Result<({List<Comment> items, bool hasMore, int total})>> comments(
-          String kind, int id, {int page = 1}) async =>
-      Ok((
-        items: [
-          Comment(
-              id: 1,
-              code: 'ALI000',
-              authorName: 'Aliyorbek',
-              authorAvatar: '$_a/z_post_rooftop.jpg',
-              text: 'Juda chiroyli chiqibdi! Karta qayerdan olinadi?',
-              likes: 4,
-              createdAt: DateTime(2026, 9, 22, 20)),
-          Comment(
-              id: 2,
-              code: 'MHR555',
-              authorName: 'Mohira Mansurova',
-              text: 'Dizayn zo‘r 👏',
-              likes: 2,
-              createdAt: DateTime(2026, 9, 22, 21)),
-          Comment(
-              id: 3,
-              code: 'VIP001',
-              authorName: 'Muhammad Aliyev',
-              authorAvatar: '$_a/z_portrait.jpg',
-              text: 'Rahmat! Profilimdagi havola orqali.',
-              mine: true,
-              createdAt: DateTime(2026, 9, 22, 22)),
-        ],
-        hasMore: false,
-        total: 36,
-      ));
-}
-
-final _reelPosts = [
-  Post(
-    id: 301,
-    code: 'PPP777',
-    authorName: 'Mashrabboy',
-    authorAvatar: '$_a/z_post_cafe.jpg',
-    text: 'Kechki Toshkent — bir tegishda tanishuv. #nfcstore',
-    mediaUrls: const ['https://nfcstore.uz/uploads/reel1.mp4'],
-    isVideo: true,
-    likes: 1284,
-    comments: 36,
-  ),
-  Post(
-    id: 302,
-    code: 'NFCSTORE',
-    authorName: 'NFCSTORE',
-    authorKind: 'company',
-    text: 'Yangi metall kartalar',
-    mediaUrls: const ['https://nfcstore.uz/uploads/reel2.mp4'],
-    isVideo: true,
-    likes: 312,
-    comments: 12,
-  ),
-];
-
-class _Nfc extends NfcService {
-  _Nfc(this.a);
-  final NfcAvailability a;
-  @override
-  Future<NfcAvailability> check() async => a;
-}
-
-/// Suratda NFC holati: `true` — apparati bor.
-bool _shotNfc = true;
-
-class _RichProfile extends ProfileRepository {
-  _RichProfile() : super(ApiClient());
-
-  @override
-  Future<Result<FollowStats>> followStats(String code) async => const Ok(
-      (followers: 9, following: 11, isFollowing: false));
-}
-
-const _products = [
-  CatalogProduct(
-      id: 'p1', companyId: 'NFCSTORE', name: 'Metall NFC karta',
-      imageUrl: '$_a/m_card_metal.jpg', price: 293000, promotionPrice: 249000,
-      category: 'card', companyName: 'NFCSTORE'),
-  CatalogProduct(
-      id: 'p2', companyId: 'ONEBRAND', name: 'NFC stiker · 5 dona',
-      imageUrl: '$_a/m_stickers.jpg', price: 89000,
-      category: 'sticker', companyName: 'OneBrand'),
-  CatalogProduct(
-      id: 'p3', companyId: 'NFCSTORE', name: 'Premium vizitka to‘plami',
-      imageUrl: '$_a/m_cards.jpg', price: 319000,
-      category: 'card', companyName: 'NFCSTORE'),
-  CatalogProduct(
-      id: 'p4', companyId: 'GIFTUZ', name: 'Sovg‘a to‘plami',
-      imageUrl: '$_a/m_gift_set.jpg', price: 450000, promotionPrice: 405000,
-      category: 'accessory', companyName: 'Gift Uz'),
-  CatalogProduct(
-      id: 'p5', companyId: 'TECHSHOP', name: 'NFC brelok',
-      price: 120000, category: 'keychain', companyName: 'Tech Shop'),
-  CatalogProduct(
-      id: 'p6', companyId: 'NFCSTORE', name: 'Qora mat karta',
-      imageUrl: '$_a/m_hero.jpg', price: 199000,
-      category: 'card', companyName: 'NFCSTORE'),
-];
-
-class _RichDiscover extends FakeDiscoverRepository {
-  @override
-  Future<Result<CatalogFeedPage>> catalogFeed({
-    int page = 1,
-    int limit = 20,
-    String q = '',
-    NfcProductType? category,
-    CatalogSort sort = CatalogSort.newest,
-  }) async {
-    final list = category == null
-        ? _products
-        : _products.where((p) => p.nfcType == category).toList();
-    return Ok(CatalogFeedPage(
-      items: list,
-      total: list.length,
-      counts: const {
-        'all': 6, 'card': 3, 'sticker': 1, 'keychain': 1, 'accessory': 1, 'other': 0,
-      },
-    ));
-  }
-
-  @override
-  Future<Result<List<NfcId>>> suggested() async => const Ok(_people);
-
-  @override
-  Future<Result<List<NfcId>>> searchPeople(String q) async => const Ok(_people);
-}
-
 Future<void> _loadFonts() async {
   final families = <String, List<String>>{};
   String? current;
@@ -334,21 +82,6 @@ const sizes = <String, Size>{
   '430': Size(430, 932),
 };
 
-Future<List<Override>> _overrides() async {
-  SharedPreferences.setMockInitialValues({});
-  final prefs = await Prefs.open();
-  return [
-    prefsProvider.overrideWithValue(prefs),
-    authRepositoryProvider.overrideWithValue(FakeAuthRepository(ids: _ids)),
-    socialRepositoryProvider.overrideWithValue(_RichSocial()),
-    discoverRepositoryProvider.overrideWithValue(_RichDiscover()),
-    profileRepositoryProvider.overrideWithValue(_RichProfile()),
-    reelsProvider.overrideWith((ref) async => _reelPosts),
-    nfcServiceProvider.overrideWithValue(_Nfc(
-        _shotNfc ? NfcAvailability.ready : NfcAvailability.unsupported)),
-  ];
-}
-
 Future<void> _settle(WidgetTester tester, [int frames = 16]) async {
   for (var i = 0; i < frames; i++) {
     await tester.pump(const Duration(milliseconds: 80));
@@ -374,7 +107,7 @@ Future<void> tabShot(
   _size(tester, s);
   late GoRouter router;
   await tester.pumpWidget(ProviderScope(
-    overrides: await _overrides(),
+    overrides: await richOverrides(),
     child: Consumer(builder: (context, ref, _) {
       router = ref.watch(routerProvider);
       return MaterialApp.router(
@@ -438,7 +171,7 @@ Future<void> soloShot(
     WidgetTester tester, Widget screen, String name, Size s) async {
   _size(tester, s);
   await tester.pumpWidget(ProviderScope(
-    overrides: await _overrides(),
+    overrides: await richOverrides(),
     child: MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: buildTheme(NfcTokens.ivory),
@@ -502,7 +235,7 @@ Future<void> registerFlowShot(WidgetTester tester, Size s, String w) async {
   addTearDown(() => TestDefaultBinaryMessengerBinding.instance
       .defaultBinaryMessenger
       .setMockMethodCallHandler(SystemChannels.platform, null));
-  final base = await _overrides();
+  final base = await richOverrides();
   final auth = _RegAuth();
   final router = GoRouter(initialLocation: Routes.register, routes: [
     GoRoute(path: Routes.register, builder: (_, __) => const RegisterScreen()),
@@ -587,8 +320,8 @@ void main() {
     TestWidgetsFlutterBinding.ensureInitialized();
     // Video o'rniga demo kadr — Reels suratlari uchun.
     VideoPlayerPlatform.instance = FakeVideoPlatform(frames: const [
-      '$_a/z_post_evening.jpg',
-      '$_a/m_card_metal.jpg',
+      '$richAssets/z_post_evening.jpg',
+      '$richAssets/m_card_metal.jpg',
     ]);
     // Musiqa kesh-menejeri vaqtinchalik papka so'raydi.
     final tmp = Directory.systemTemp.createTempSync('ed_shot').path;
@@ -610,7 +343,7 @@ void main() {
         (t) => tabShot(t, Routes.discover, 'catalog-$w', s, tapText: 'Katalog'));
     testWidgets('product $w',
         (t) => tabShot(t, Routes.catalogProduct('NFCSTORE', 'p1'), 'product-$w', s,
-            extra: _products.first));
+            extra: richProducts.first));
     testWidgets('reels $w', (t) => tabShot(t, Routes.reels, 'reels-$w', s));
     testWidgets('reels-comments $w',
         (t) => tabShot(t, Routes.reels, 'reels-comments-$w', s,
@@ -630,13 +363,13 @@ void main() {
             tapKey: const ValueKey('reel-more'),
             thenKey: const ValueKey('reel-report')));
     testWidgets('nfc $w', (t) {
-      _shotNfc = true;
+      richNfcPresent = true;
       return tabShot(t, Routes.nfc, 'nfc-$w', s);
     });
     testWidgets('nfc-none $w', (t) async {
-      _shotNfc = false;
+      richNfcPresent = false;
       await tabShot(t, Routes.nfc, 'nfc-none-$w', s);
-      _shotNfc = true;
+      richNfcPresent = true;
     });
     testWidgets('nfc-end $w',
         (t) => tabShot(t, Routes.nfc, 'nfc-end-$w', s, end: true));
