@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../core/models.dart';
 import '../core/session.dart';
@@ -412,6 +413,56 @@ class _HomeScreenState extends State<HomeScreen>
                     icon: Icons.storefront_outlined,
                     dark: false,
                     onTap: () => ShellScope.of(context).selectTab(1),
+                  ),
+                  const SizedBox(height: 30),
+                  SectionHeader(
+                    title: 'O‘zingizga mos ID',
+                    action: 'Katalog',
+                    onAction: () => ShellScope.of(context).selectTab(1),
+                  ),
+                  const SizedBox(height: 13),
+                  SizedBox(
+                    height: 154,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: const [
+                        ('DDD000', 'EXCLUSIVE'),
+                        ('BBB888', 'PREMIUM'),
+                        ('VIP001', 'SIGNATURE'),
+                        ('AAA000', 'EXCLUSIVE'),
+                      ].length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 10),
+                      itemBuilder: (context, i) {
+                        const ids = [
+                          ('DDD000', 'EXCLUSIVE'),
+                          ('BBB888', 'PREMIUM'),
+                          ('VIP001', 'SIGNATURE'),
+                          ('AAA000', 'EXCLUSIVE'),
+                        ];
+                        final id = ids[i];
+                        return _PremiumIdCard(
+                          code: id.$1,
+                          tier: id.$2,
+                          dark: i.isEven,
+                          onTap: () => launchUrl(
+                            Uri.parse(
+                              'https://nfcstore.uz/katalog?q=' +
+                                  id.$1.toLowerCase(),
+                            ),
+                            mode: LaunchMode.externalApplication,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Premium ID xaridi ilovada emas — xavfsiz tarzda nfcstore.uz saytida yakunlanadi.',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyMedium
+                        ?.copyWith(fontSize: 10.5),
                   ),
                 ],
               ),
@@ -1044,4 +1095,126 @@ class _AmbientPainter extends CustomPainter {
       oldDelegate.ink != ink ||
       oldDelegate.accent != accent ||
       oldDelegate.background != background;
+}
+
+class _PremiumIdCard extends StatefulWidget {
+  const _PremiumIdCard({
+    required this.code,
+    required this.tier,
+    required this.onTap,
+    required this.dark,
+  });
+
+  final String code;
+  final String tier;
+  final VoidCallback onTap;
+  final bool dark;
+
+  @override
+  State<_PremiumIdCard> createState() => _PremiumIdCardState();
+}
+
+class _PremiumIdCardState extends State<_PremiumIdCard> {
+  bool _down = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.brand;
+    final dark = widget.dark;
+    final fg = dark ? const Color(0xFFF8F6EF) : p.ink;
+    final muted = dark ? Colors.white.withValues(alpha: .5) : p.ink2;
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _down = true),
+      onTapCancel: () => setState(() => _down = false),
+      onTapUp: (_) => setState(() => _down = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 120),
+        scale: _down ? .975 : 1,
+        child: Container(
+          width: 220,
+          padding: const EdgeInsets.all(17),
+          decoration: BoxDecoration(
+            color: dark ? const Color(0xFF10100F) : p.surface,
+            borderRadius: BorderRadius.circular(26),
+            border: Border.all(
+              color: dark
+                  ? p.accent.withValues(alpha: .32)
+                  : p.line,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: dark ? .18 : .07),
+                blurRadius: 24,
+                offset: const Offset(0, 11),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                right: -28,
+                top: -34,
+                child: SizedBox(
+                  width: 110,
+                  height: 110,
+                  child: Opacity(
+                    opacity: dark ? .18 : .08,
+                    child: Image.asset(
+                      'assets/images/nfcstore_logo_mark.png',
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.tier,
+                    style: TextStyle(
+                      color: muted,
+                      fontSize: 8.2,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    widget.code,
+                    style: TextStyle(
+                      color: dark ? p.heroInk : fg,
+                      fontFamily: 'IBMPlexMono',
+                      fontSize: 24,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 2.2,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Text(
+                        'Ko‘rish',
+                        style: TextStyle(
+                          color: muted,
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const Spacer(),
+                      Icon(
+                        Icons.arrow_outward_rounded,
+                        color: fg,
+                        size: 17,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
