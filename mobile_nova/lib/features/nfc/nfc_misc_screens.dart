@@ -10,6 +10,7 @@ import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
 import '../../design/widgets/buttons.dart';
 import '../../design/widgets/fields.dart';
+import '../../design/widgets/id_lux.dart';
 import '../../design/widgets/nova_scaffold.dart';
 import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
@@ -320,10 +321,18 @@ class _NfcGiftScreenState extends ConsumerState<NfcGiftScreen> {
             ),
           ),
           const SizedBox(height: Gap.xl),
-          Text(widget.code,
-              textAlign: TextAlign.center,
-              style: AppType.monoStyle(
-                  color: t.text1, size: 20, letterSpacing: 2.2)),
+          // SOVG'A QILINAYOTGAN ID — mahsulot kartasi: pullik bo'lsa
+          // o'z materialida (qiymati sezilsin), bepul bo'lsa sodda.
+          IdProductCard(
+            code: widget.code,
+            tier: ref
+                    .watch(myIdsProvider)
+                    .where((e) => e.code == widget.code)
+                    .firstOrNull
+                    ?.tier ??
+                '',
+            hero: true,
+          ),
           const SizedBox(height: Gap.sm),
           Text(l.nfcGiftHint,
               textAlign: TextAlign.center,

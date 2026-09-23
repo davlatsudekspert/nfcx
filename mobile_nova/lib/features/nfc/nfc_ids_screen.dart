@@ -10,6 +10,8 @@ import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
 import '../../design/widgets/buttons.dart';
+import '../../design/widgets/id_lux.dart';
+import '../../design/widgets/id_plate.dart';
 import '../../design/widgets/nova_scaffold.dart';
 import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
@@ -103,9 +105,14 @@ class NfcIdTile extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleSmall,
                     ),
-                    Text(
-                      id.code,
-                      style: AppType.monoStyle(color: t.text3, size: 11.5),
+                    const SizedBox(height: 4),
+                    // Kod — daraja plastinkasi: pullik ID bu ro'yxatda
+                    // ham bir qarashda ajralib turadi.
+                    IdPlate(
+                      code: id.code,
+                      tier: id.tier,
+                      size: IdPlateSize.small,
+                      active: id.active,
                     ),
                   ],
                 ),
@@ -212,6 +219,21 @@ class NfcIdDetailScreen extends ConsumerWidget {
       ],
       body: NovaScroll(
         children: [
+          // PULLIK ID — o'z materialida (katalog, profil va qidiruvdagi
+          // bilan bir xil). Bepul ID — avvalgi sokin karta.
+          if (IdLux.of(t, id.tier) != null && id.active)
+            IdProductCard(
+              code: id.code,
+              tier: id.tier,
+              hero: true,
+              eyebrow: l.homeActiveId,
+              footer: Text(
+                id.publicUrl(kApiBase),
+                style: AppType.monoStyle(
+                    color: IdLux.of(t, id.tier)!.soft, size: 11.5),
+              ),
+            )
+          else
           Container(
             padding: const EdgeInsets.all(Gap.xl),
             decoration: BoxDecoration(
