@@ -10360,19 +10360,28 @@ async function handleRequest(request, env, url) {
     // Sozlanmagan bo'lsa 404 — yolg'on, bo'sh ro'yxatli fayl
     // berishdan ko'ra yo'q bo'lgani yaxshi (Android uni keshlaydi).
     if (url.pathname === '/.well-known/assetlinks.json' && ['GET', 'HEAD'].includes(request.method)) {
-      const raw = String(env.ANDROID_APP_FINGERPRINTS || '').trim();
-      const prints = raw.split(/[\s,]+/)
+      const parsePrints = (value) => String(value || '').trim().split(/[\s,]+/)
         .map((v) => v.trim().toUpperCase())
         .filter((v) => /^([0-9A-F]{2}:){31}[0-9A-F]{2}$/.test(v));
-      if (!prints.length) return json({ error: 'not_found' }, 404);
-      return new Response(JSON.stringify([{
+      // IKKI ILOVA (2026-09): eski `uz.nfcstore.app` (Classic) va yangi
+      // `uz.nfcstore.nova` (Play'dagi "NFCSTORE: Raqamli vizitka"). Har
+      // biri o'z kaliti bilan imzolangan — alohida yozuv. Nova uchun
+      // Play App Signing kaliti VA yuklash kaliti (GitHub'dan o'rnatilgan
+      // sinov nusxalari) — ikkalasi ham `ANDROID_NOVA_FINGERPRINTS` da.
+      const statements = [];
+      const classic = parsePrints(env.ANDROID_APP_FINGERPRINTS);
+      if (classic.length) statements.push({ pkg: String(env.ANDROID_APP_PACKAGE || 'uz.nfcstore.app'), prints: classic });
+      const nova = parsePrints(env.ANDROID_NOVA_FINGERPRINTS);
+      if (nova.length) statements.push({ pkg: String(env.ANDROID_NOVA_PACKAGE || 'uz.nfcstore.nova'), prints: nova });
+      if (!statements.length) return json({ error: 'not_found' }, 404);
+      return new Response(JSON.stringify(statements.map((st) => ({
         relation: ['delegate_permission/common.handle_all_urls'],
         target: {
           namespace: 'android_app',
-          package_name: String(env.ANDROID_APP_PACKAGE || 'uz.nfcstore.app'),
-          sha256_cert_fingerprints: prints,
+          package_name: st.pkg,
+          sha256_cert_fingerprints: st.prints,
         },
-      }]), {
+      }))), {
         headers: {
           'content-type': 'application/json',
           // Android tekshiruvni kamdan-kam qiladi, lekin kalit

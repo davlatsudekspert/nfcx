@@ -40,7 +40,9 @@ export const REPORT_REASONS = [
 ];
 
 // Nimaga shikoyat qilish mumkin.
-const REPORT_TARGETS = ['post', 'story', 'company_post', 'record', 'company'];
+// `comment` — izoh (2026-09): ilgari izoh shikoyati `post` bo'lib ketardi
+// va izoh ID'si post ID'si deb o'qilardi. `company_story` — biznes istoriyasi.
+const REPORT_TARGETS = ['post', 'story', 'company_post', 'company_story', 'record', 'company', 'comment'];
 
 // Nimani bloklash mumkin: PROFIL (shaxsiy yoki kompaniya).
 // Alohida postni bloklash emas — odam odatda muallifdan qutulmoqchi

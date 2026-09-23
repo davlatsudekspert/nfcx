@@ -17,6 +17,7 @@ import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../demo/demo_mode.dart';
 import '../social/media_frame.dart';
+import '../social/moderation.dart';
 import '../../routing/routes.dart';
 import '../home/widgets/avatar.dart';
 import '../home/widgets/identity_card.dart';
@@ -423,16 +424,41 @@ class StorefrontScreen extends ConsumerWidget {
     // yorliq va eslatma umuman chizilmaydi.
     final demo = ref.watch(demoModeProvider);
 
+    // O'z biznesimda shikoyat/bloklash menyusi chiqmaydi.
+    final own = ref.watch(myBusinessesProvider).valueOrNull
+            ?.any((b) => b.companyId.toUpperCase() == companyId.toUpperCase()) ??
+        false;
+
     return NovaScaffold(
       showBack: true,
-      actions: demo == null
-          ? null
-          : [
+      actions: demo != null
+          ? [
               Padding(
                 padding: const EdgeInsets.only(right: Gap.sm),
                 child: Capsule(label: l.demoBadge, dense: true),
               ),
-            ],
+            ]
+          : own
+              ? null
+              : [
+                  // Biznesga shikoyat va uni bloklash (Play UGC talabi).
+                  NovaIconButton(
+                    key: const ValueKey('storefront-actions'),
+                    icon: Icons.more_horiz_rounded,
+                    tooltip: l.reportTitle,
+                    onPressed: () => showContentActions(
+                      context,
+                      ref,
+                      target: ReportTarget.company,
+                      targetId: companyId,
+                      ownerCode: companyId,
+                      blockKind: BlockKind.company,
+                      blockId: companyId,
+                      keyPrefix: 'storefront',
+                    ),
+                  ),
+                  const SizedBox(width: Gap.sm),
+                ],
       body: business.when(
         loading: () => const SkeletonList(count: 3),
         error: (e, __) => StatePanel.fromError(

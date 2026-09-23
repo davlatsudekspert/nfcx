@@ -16,6 +16,7 @@ import '../../routing/routes.dart';
 import '../../app/profile_context.dart';
 import '../auth/session.dart';
 import 'comments.dart';
+import 'moderation.dart';
 import '../profile/music_player.dart';
 import 'inline_video.dart';
 import 'media_frame.dart';
@@ -559,6 +560,28 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                                     color: Colors.white,
                                   ),
                                   tooltip: l.actionDelete,
+                                ),
+                              // Begona istoriyada — shikoyat va bloklash.
+                              if (!mine)
+                                IconButton(
+                                  key: const ValueKey('story-actions'),
+                                  onPressed: () => _whilePaused(
+                                    () => showContentActions(
+                                      context,
+                                      ref,
+                                      target: ReportTarget.story,
+                                      targetId: '${s.id}',
+                                      ownerCode: s.code,
+                                      blockKind: BlockKind.record,
+                                      blockId: s.code,
+                                      keyPrefix: 'story',
+                                    ),
+                                  ),
+                                  icon: const Icon(
+                                    Icons.more_horiz_rounded,
+                                    color: Colors.white,
+                                  ),
+                                  tooltip: l.reportTitle,
                                 ),
                               IconButton(
                                 onPressed: _close,

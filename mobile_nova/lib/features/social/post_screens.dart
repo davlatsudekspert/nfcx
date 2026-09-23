@@ -168,14 +168,24 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                     // Backend'da bu yo'l bor edi, ilovada kirish
                     // nuqtasi yo'q edi.
                     NovaIconButton(
+                      key: const ValueKey('post-actions'),
                       icon: Icons.flag_outlined,
                       tooltip: l.reportTitle,
                       size: 38,
-                      onPressed: () => showReportSheet(
+                      // Shikoyat (biznes posti — `company_post`) va
+                      // muallifni bloklash — bitta menyuda.
+                      onPressed: () => showContentActions(
                         context,
-                        target: ReportTarget.post,
+                        ref,
+                        target: p.isCompany
+                            ? ReportTarget.companyPost
+                            : ReportTarget.post,
                         targetId: '${p.id}',
                         ownerCode: p.code,
+                        blockKind:
+                            p.isCompany ? BlockKind.company : BlockKind.record,
+                        blockId: p.code,
+                        keyPrefix: 'post',
                       ),
                     ),
                 ],

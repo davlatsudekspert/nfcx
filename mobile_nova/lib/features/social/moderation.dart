@@ -63,7 +63,11 @@ enum ReportTarget {
   story('story'),
   companyPost('company_post'),
   record('record'),
-  company('company');
+  company('company'),
+
+  /// Izoh — alohida tur. Ilgari izoh shikoyati `post` bo'lib ketardi va
+  /// izoh ID'si post ID'si deb o'qilardi: shikoyat BOSHQA postga tushardi.
+  comment('comment');
 
   const ReportTarget(this.wire);
   final String wire;
@@ -139,6 +143,73 @@ final blocksProvider =
   final res = await ref.watch(moderationRepositoryProvider).blocks();
   return res.when(ok: (v) => v, err: (e) => throw e);
 });
+
+/// SHIKOYAT + BLOKLASH — bitta menyu (post, izoh, istoriya, biznes).
+///
+/// Google Play UGC talabi: har bir kontentdan shikoyat qilish va
+/// muallifni bloklash mumkin bo'lsin. Bloklash — PROFIL darajasida
+/// ([BlockKind]); o'z kontentingizda bloklash qatori chiqmaydi.
+Future<void> showContentActions(
+  BuildContext context,
+  WidgetRef ref, {
+  required ReportTarget target,
+  required String targetId,
+  String ownerCode = '',
+  BlockKind? blockKind,
+  String blockId = '',
+  bool mine = false,
+  String keyPrefix = 'content',
+  VoidCallback? onBlocked,
+}) {
+  final l = L.of(context);
+  return showModalBottomSheet<void>(
+    context: context,
+    useRootNavigator: true,
+    showDragHandle: true,
+    backgroundColor: context.tokens.surfaceSolid,
+    builder: (sheet) => SafeArea(
+      top: false,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            key: ValueKey('$keyPrefix-report'),
+            leading: const Icon(Icons.flag_outlined),
+            title: Text(l.reportTitle),
+            onTap: () {
+              Navigator.of(sheet).pop();
+              showReportSheet(context,
+                  target: target, targetId: targetId, ownerCode: ownerCode);
+            },
+          ),
+          if (!mine && blockKind != null && blockId.isNotEmpty)
+            ListTile(
+              key: ValueKey('$keyPrefix-block'),
+              leading: const Icon(Icons.block_rounded),
+              title: Text(l.reelBlockAuthor),
+              onTap: () async {
+                Navigator.of(sheet).pop();
+                final messenger = ScaffoldMessenger.maybeOf(context);
+                final res = await ref
+                    .read(moderationRepositoryProvider)
+                    .block(blockKind, blockId);
+                res.when(
+                  ok: (_) {
+                    messenger?.showSnackBar(
+                        SnackBar(content: Text(l.reelBlocked)));
+                    onBlocked?.call();
+                  },
+                  err: (e) => messenger?.showSnackBar(
+                      SnackBar(content: Text(describeError(l, e)))),
+                );
+              },
+            ),
+          const SizedBox(height: Gap.sm),
+        ],
+      ),
+    ),
+  );
+}
 
 /// Shikoyat varag'i.
 Future<void> showReportSheet(

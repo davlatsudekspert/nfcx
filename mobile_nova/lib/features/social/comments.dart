@@ -331,7 +331,7 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
   }
 }
 
-class _CommentTile extends StatelessWidget {
+class _CommentTile extends ConsumerWidget {
   const _CommentTile({
     required this.comment,
     required this.ownerCode,
@@ -349,7 +349,7 @@ class _CommentTile extends StatelessWidget {
   final VoidCallback? onReply;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = context.tokens;
     final l = L.of(context);
     final name =
@@ -429,13 +429,20 @@ class _CommentTile extends StatelessWidget {
             )
           else
             IconButton(
+              key: ValueKey('comment-actions-${comment.id}'),
               icon: Icon(Icons.flag_outlined, size: 17, color: t.text3),
               tooltip: l.reportTitle,
-              onPressed: () => showReportSheet(
+              // Izoh shikoyati `comment` turi bilan; muallifni ham
+              // shu yerdan bloklash mumkin.
+              onPressed: () => showContentActions(
                 context,
-                target: ReportTarget.post,
+                ref,
+                target: ReportTarget.comment,
                 targetId: '${comment.id}',
-                ownerCode: ownerCode,
+                ownerCode: comment.code.isEmpty ? ownerCode : comment.code,
+                blockKind: BlockKind.record,
+                blockId: comment.code,
+                keyPrefix: 'comment',
               ),
             ),
         ],
