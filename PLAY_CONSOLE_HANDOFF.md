@@ -25,7 +25,8 @@ ekranigacha olib boriladi.
 | versionName | `1.1.0` (`mobile_nova/pubspec.yaml`) |
 | versionCode | `207` (= CI `github.run_number`; Play'dagi oxirgi — 174) |
 | Commit | `61f2805` (branch `claude/vibrant-einstein-p5lo1i`) |
-| Imzo | RELEASE kaliti, alias `nova`, SHA-256 `6F:79:CC:DA:FD:E4:04:CF:BA:29:96:4D:8C:CB:11:0C:0A:49:E0:D4:B9:8E:95:64:0A:68:50:02:68:B0:A9:3C` |
+| Imzo (upload) | Yuklash (upload) kaliti, alias `nova`, SHA-256 `6F:79:CC:DA:FD:E4:04:CF:BA:29:96:4D:8C:CB:11:0C:0A:49:E0:D4:B9:8E:95:64:0A:68:50:02:68:B0:A9:3C` — AAB shu bilan imzolanadi |
+| Play App Signing | **YOQILGAN**: Play'dan o'rnatilgan nusxalar Google kaliti bilan imzolanadi — SHA-256 `A3:15:12:FC:23:24:9B:EA:78:67:AB:A7:53:C1:19:7A:C4:87:95:63:74:8E:EC:03:22:1C:EA:87:19:61:95:BD` (oldingi: `69:1D:3F:A3:81:40:1B:BB:E6:F5:93:C7:F9:92:22:AC:0F:80:A2:94:63:77:9C:9D:76:A2:7D:9B:DC:B7:B3:6C`) |
 | minSdk / targetSdk | 24 / 36 (Flutter 3.35.5) |
 | Testlar | `flutter analyze — 0 muammo; unit/widget — 799 PASS (CI #207 da ham qayta o'tdi)` |
 | E2E (real hisob) | `__E2E__` |
@@ -147,6 +148,7 @@ Website — `https://nfcstore.uz`.
 |---|---|
 | **Privacy policy** | `https://nfcstore.uz/privacy` (saytda ishlaydi; `/maxfiylik` ham shu sahifa) |
 | **Ads** (Реклама) | **No** — reklama SDK yo'q |
+| **Advertising ID** (Рекламный идентификатор) | **No** — ilova reklama ID ishlatmaydi: `com.google.android.gms.permission.AD_ID` yo'q, reklama/analitika SDK yo'q. targetSdk 36 — bu deklaratsiya MAJBURIY (oldin to'ldirilgan bo'lsa, faqat tekshir) |
 | **App access** | "All or some functionality is restricted" → demo hisob (§3.3) |
 | **Content rating** | §3.4 |
 | **Target audience** | **18 and over** (maxfiylik siyosati: "faqat 18 yoshdan katta") |
@@ -155,7 +157,7 @@ Website — `https://nfcstore.uz`.
 | **Government app** | No |
 | **Financial features** | "My app doesn't provide any financial features" |
 | **Health** | No |
-| **Account deletion** | In-app: Sozlamalar → Hisobni o'chirish. Web: `https://nfcstore.uz/delete-account` |
+| **Account deletion** | In-app: Sozlamalar → Xavfsizlik → Hisobni o'chirish. Web: `https://nfcstore.uz/delete-account` |
 
 ### 3.3 App access — demo hisob
 
@@ -230,8 +232,11 @@ kamera intent orqali (CAMERA yo'q).
 ### 3.7 App Links
 
 `AndroidManifest.xml`: `https://nfcstore.uz` — `/u`, `/c`, `/post`,
-`/story`, `/nfc` (autoVerify). `assetlinks.json` uchun SHA-256 yuqorida
-(§0). Console → `Grow users → Deep links` bo'limida holatini ko'rish
+`/story`, `/nfc` (autoVerify). `assetlinks.json` (`wrangler.jsonc` →
+`ANDROID_NOVA_FINGERPRINTS`) uchala barmoq izini beradi: Play App Signing
+`A3:15…95:BD`, oldingi `69:1D…B3:6C`, upload `6F:79…A9:3C` (§0).
+Console → App integrity dagi "App signing key" SHA-256 shu ro'yxatda
+borligini tekshir. Console → `Grow users → Deep links` bo'limida holatini ko'rish
 mumkin — o'zgartirish shart emas.
 
 ### 3.8 Reliz yaratish (FINAL TUGMASIZ)
@@ -241,7 +246,8 @@ mumkin — o'zgartirish shart emas.
 
 1. App bundles → **Upload** → `NFCSTORE-Mobile.aab` (§1). Play versionCode
    `207` va versionName `1.1.0` ni ko'rsatishi kerak.
-   "Play App Signing" yoqilgan bo'lsa ogohlantirish chiqmaydi.
+   Play App Signing yoqilgan — AAB upload kaliti (`6F:79…A9:3C`) bilan
+   imzolangan bo'lishi kerak; boshqa kalit bo'lsa Console rad etadi.
 2. Release name: `1.1.0 (207)`.
 3. Release notes — §4 dagi matnlar (`<uz>`, `<ru-RU>`, `<en-US>`).
 4. **Next** / **Далее** → "Review release" sahifasi. Xato (qizil)

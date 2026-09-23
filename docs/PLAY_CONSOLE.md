@@ -95,8 +95,8 @@ NIMA QILA OLASIZ
 • Obuna bo'lish, layk, izoh va izohga javob
 • Biznes profili — katalog, narxlar, buyurtma qabul qilish
 • Tanlov — odamlar va bizneslarni topish
-• Mavzular — oltin premium, oq-qora va boshqalar
-• Ilova qulfi — PIN yoki barmoq izi
+• Mavzular — Ivory, Noir (oltin premium) va boshqalar
+• Ilova qulfi — PIN kod
 
 OFFLINE ISHLAYDI
 Profilingizni ko'rsatish uchun internet shart emas: karta
@@ -146,8 +146,8 @@ NFCSTORE — цифровая личность вместо бумажной в�
 • Подписки, лайки, комментарии и ответы на них
 • Бизнес-профиль — каталог, цены, приём заказов
 • Обзор — поиск людей и компаний
-• Темы оформления — золотая премиум, чёрно-белая и другие
-• Блокировка приложения — PIN или отпечаток пальца
+• Темы оформления — Ivory, Noir (золотая премиум) и другие
+• Блокировка приложения — PIN-код
 
 РАБОТАЕТ БЕЗ ИНТЕРНЕТА
 Чтобы показать профиль, интернет не нужен: при касании
@@ -198,8 +198,8 @@ WHAT YOU CAN DO
 • Follow, like, comment and reply to comments
 • Business profile — catalogue, prices, order requests
 • Discover — find people and businesses
-• Themes — gold premium, black and white, and more
-• App lock — PIN or fingerprint
+• Themes — Ivory, Noir (gold premium) and more
+• App lock — PIN code
 
 WORKS OFFLINE
 You do not need a connection to show your profile: tapping
@@ -268,7 +268,7 @@ Bularning hammasiga **YO'Q** deb javob bering:
 | Shikoyat qilish | Post/profil menyusi | `social/moderation.dart` |
 | Foydalanuvchini bloklash | Profil menyusi | `social/moderation.dart` |
 | Maxfiylik siyosati | Sozlamalar → Ilova haqida | `legal_links_test.dart` qo'riqlaydi |
-| Ilova qulfi (PIN / barmoq izi) | Sozlamalar → Xavfsizlik | App Lock |
+| Ilova qulfi (PIN) | Sozlamalar → Xavfsizlik | App Lock |
 
 Bularning barchasi Play'ning foydalanuvchi kontenti bor
 ilovalarga qo'yadigan talablari. Hammasi mavjud.
