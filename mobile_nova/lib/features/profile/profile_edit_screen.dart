@@ -17,6 +17,7 @@ import '../../l10n/gen/app_localizations.dart';
 import '../auth/session.dart';
 import '../home/home_screen.dart';
 import '../home/widgets/avatar.dart';
+import 'contact_editor.dart';
 import 'profile_repository.dart';
 import '../social/media_frame.dart';
 import '../../core/utils/media_url.dart';
@@ -58,6 +59,9 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   /// (`musicLimitD1`). Ilova eng qat'iysini qo'llaydi, shuning
   /// uchun serverga sig'maydigan ro'yxat yuborilmaydi.
   List<String> _music = const [];
+
+  /// Aloqa va havolalar — `ContactEditor` har o'zgarishda yangilaydi.
+  ContactInfo? _contact;
   static const _musicMax = 5;
   double _uploadProgress = 0;
 
@@ -78,6 +82,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     _avatarUrl = id.avatarUrl;
     _coverUrl = id.coverUrl;
     _music = List<String>.from(id.musicUrls);
+    _contact = id.contact;
   }
 
   /// MUSIQA QO'SHISH.
@@ -199,6 +204,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
           avatarUrl: _avatarUrl.isEmpty ? null : _avatarUrl,
           coverUrl: _coverUrl.isEmpty ? null : _coverUrl,
           musicUrls: _music,
+          links: _contact?.toRecordJson(),
         );
     if (!mounted) return;
     setState(() => _busy = false);
@@ -394,8 +400,19 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
             label: l.fieldBio,
             controller: _bio,
             maxLines: 4,
-            maxLength: 300,
+            maxLength: 600,
             enabled: !_busy,
+          ),
+          // ── ALOQA VA HAVOLALAR (sayt bilan teng) ────────────
+          const SizedBox(height: Gap.lg),
+          Text(l.editContactSection.toUpperCase(),
+              style: Theme.of(context).textTheme.labelSmall),
+          const SizedBox(height: Gap.md),
+          ContactEditor(
+            key: const ValueKey('contact-editor'),
+            initial: id.contact,
+            enabled: !_busy,
+            onChanged: (c) => _contact = c,
           ),
           const SizedBox(height: Gap.xl),
           // ── PROFIL MUSIQASI ─────────────────────────────────

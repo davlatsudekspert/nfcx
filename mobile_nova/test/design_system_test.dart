@@ -57,6 +57,11 @@ void main() {
         // tekshiriladi, ya'ni bu ro'yxatga qo'shish nazoratsiz
         // qolmaydi.
         'lib/design/widgets/id_plate.dart',
+        // IJTIMOIY TARMOQ BREND RANGLARI (Telegram ko'ki, WhatsApp
+        // yashili, Instagram pushtisi...). Payme/Click bilan bir xil
+        // sabab: odam tugmani RANGIDAN taniydi. Qiymatlar saytdagi
+        // `CompanyQuickProfilePage.jsx` `quick` ro'yxatidan.
+        'lib/design/widgets/contact_buttons.dart',
       };
 
       final offenders = <String>[];

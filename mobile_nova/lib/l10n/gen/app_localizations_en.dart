@@ -9,6 +9,73 @@ class LEn extends L {
   LEn([String locale = 'en']) : super(locale);
 
   @override
+  String get contactCall => 'Call';
+
+  @override
+  String get contactMap => 'Map';
+
+  @override
+  String get contactWebsite => 'Website';
+
+  @override
+  String get contactLink => 'Link';
+
+  @override
+  String get editContactSection => 'Contacts & links';
+
+  @override
+  String get editContactHint =>
+      'Shown on your profile as round buttons with logos. Empty fields are hidden.';
+
+  @override
+  String get fieldTelegram => 'Telegram (@username or link)';
+
+  @override
+  String get fieldWhatsapp => 'WhatsApp number';
+
+  @override
+  String get fieldInstagram => 'Instagram (@username or link)';
+
+  @override
+  String get fieldFacebook => 'Facebook';
+
+  @override
+  String get fieldX => 'X (Twitter)';
+
+  @override
+  String get fieldLinkedin => 'LinkedIn';
+
+  @override
+  String get fieldWebsite => 'Website';
+
+  @override
+  String get fieldAddress => 'Address';
+
+  @override
+  String get fieldHidePhone => 'Hide phone number';
+
+  @override
+  String get extraLinksTitle => 'Extra links';
+
+  @override
+  String get extraLinkAdd => 'Add link';
+
+  @override
+  String get extraLinkLabel => 'Title';
+
+  @override
+  String get extraLinkUrl => 'URL (https://…)';
+
+  @override
+  String get bizLogo => 'Logo';
+
+  @override
+  String get bizCover => 'Cover image';
+
+  @override
+  String get bizImages => 'Images';
+
+  @override
   String get appName => 'NFCSTORE';
 
   @override

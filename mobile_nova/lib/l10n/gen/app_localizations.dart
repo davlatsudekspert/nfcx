@@ -99,6 +99,138 @@ abstract class L {
     Locale('uz'),
   ];
 
+  /// No description provided for @contactCall.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qo‘ng‘iroq'**
+  String get contactCall;
+
+  /// No description provided for @contactMap.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xarita'**
+  String get contactMap;
+
+  /// No description provided for @contactWebsite.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sayt'**
+  String get contactWebsite;
+
+  /// No description provided for @contactLink.
+  ///
+  /// In uz, this message translates to:
+  /// **'Havola'**
+  String get contactLink;
+
+  /// No description provided for @editContactSection.
+  ///
+  /// In uz, this message translates to:
+  /// **'Aloqa va havolalar'**
+  String get editContactSection;
+
+  /// No description provided for @editContactHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Profilingizda logoli dumaloq tugmalar bo‘lib ko‘rinadi. Bo‘sh qoldirilgani ko‘rinmaydi.'**
+  String get editContactHint;
+
+  /// No description provided for @fieldTelegram.
+  ///
+  /// In uz, this message translates to:
+  /// **'Telegram (@username yoki havola)'**
+  String get fieldTelegram;
+
+  /// No description provided for @fieldWhatsapp.
+  ///
+  /// In uz, this message translates to:
+  /// **'WhatsApp raqami'**
+  String get fieldWhatsapp;
+
+  /// No description provided for @fieldInstagram.
+  ///
+  /// In uz, this message translates to:
+  /// **'Instagram (@username yoki havola)'**
+  String get fieldInstagram;
+
+  /// No description provided for @fieldFacebook.
+  ///
+  /// In uz, this message translates to:
+  /// **'Facebook'**
+  String get fieldFacebook;
+
+  /// No description provided for @fieldX.
+  ///
+  /// In uz, this message translates to:
+  /// **'X (Twitter)'**
+  String get fieldX;
+
+  /// No description provided for @fieldLinkedin.
+  ///
+  /// In uz, this message translates to:
+  /// **'LinkedIn'**
+  String get fieldLinkedin;
+
+  /// No description provided for @fieldWebsite.
+  ///
+  /// In uz, this message translates to:
+  /// **'Veb-sayt'**
+  String get fieldWebsite;
+
+  /// No description provided for @fieldAddress.
+  ///
+  /// In uz, this message translates to:
+  /// **'Manzil'**
+  String get fieldAddress;
+
+  /// No description provided for @fieldHidePhone.
+  ///
+  /// In uz, this message translates to:
+  /// **'Telefon raqamini yashirish'**
+  String get fieldHidePhone;
+
+  /// No description provided for @extraLinksTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qo‘shimcha havolalar'**
+  String get extraLinksTitle;
+
+  /// No description provided for @extraLinkAdd.
+  ///
+  /// In uz, this message translates to:
+  /// **'Havola qo‘shish'**
+  String get extraLinkAdd;
+
+  /// No description provided for @extraLinkLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Nomi'**
+  String get extraLinkLabel;
+
+  /// No description provided for @extraLinkUrl.
+  ///
+  /// In uz, this message translates to:
+  /// **'Manzil (https://…)'**
+  String get extraLinkUrl;
+
+  /// No description provided for @bizLogo.
+  ///
+  /// In uz, this message translates to:
+  /// **'Logotip'**
+  String get bizLogo;
+
+  /// No description provided for @bizCover.
+  ///
+  /// In uz, this message translates to:
+  /// **'Muqova rasmi'**
+  String get bizCover;
+
+  /// No description provided for @bizImages.
+  ///
+  /// In uz, this message translates to:
+  /// **'Rasmlar'**
+  String get bizImages;
+
   /// No description provided for @appName.
   ///
   /// In uz, this message translates to:

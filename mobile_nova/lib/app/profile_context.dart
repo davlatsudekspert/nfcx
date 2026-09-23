@@ -93,6 +93,9 @@ class ActiveProfile {
 
   String get bio => isBusiness ? business!.description : id!.bio;
 
+  /// Profil tepasidagi logoli aloqa tugmalari.
+  ContactInfo get contact => isBusiness ? business!.contact : id!.contact;
+
   int get followers => isBusiness ? business!.followers : id!.followers;
 
   /// Kompaniyada "obunalar" tushunchasi yo'q — u odamlarni

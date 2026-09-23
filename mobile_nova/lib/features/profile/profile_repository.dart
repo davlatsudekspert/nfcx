@@ -72,7 +72,14 @@ class ProfileRepository {
     };
 
     if (name != null) body['name'] = name;
-    if (bio != null) body['bio'] = bio;
+    // SERVER `about` NI O'QIYDI (`hosting/worker.js` validateRecordBody).
+    // Ilgari bu yerda `bio` turardi: yangi matn serverga yetib
+    // bormas, eski `about` esa GET'dan o'zgarmay qaytardi — odam
+    // "saqladim" deb o'ylardi, matn esa jimgina yo'qolardi.
+    if (bio != null) {
+      body['about'] = bio;
+      body.remove('bio');
+    }
     if (role != null) body['role'] = role;
     // `storageUrl` — o'qishdagi `mediaUrl` ning teskarisi. Ekranga
     // to'liq manzil boradi, bazaga esa AYNAN o'sha nisbiy shakl

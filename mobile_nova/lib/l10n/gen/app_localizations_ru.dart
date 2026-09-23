@@ -9,6 +9,73 @@ class LRu extends L {
   LRu([String locale = 'ru']) : super(locale);
 
   @override
+  String get contactCall => 'Позвонить';
+
+  @override
+  String get contactMap => 'Карта';
+
+  @override
+  String get contactWebsite => 'Сайт';
+
+  @override
+  String get contactLink => 'Ссылка';
+
+  @override
+  String get editContactSection => 'Контакты и ссылки';
+
+  @override
+  String get editContactHint =>
+      'В профиле отображаются круглыми кнопками с логотипами. Пустые поля не показываются.';
+
+  @override
+  String get fieldTelegram => 'Telegram (@username или ссылка)';
+
+  @override
+  String get fieldWhatsapp => 'Номер WhatsApp';
+
+  @override
+  String get fieldInstagram => 'Instagram (@username или ссылка)';
+
+  @override
+  String get fieldFacebook => 'Facebook';
+
+  @override
+  String get fieldX => 'X (Twitter)';
+
+  @override
+  String get fieldLinkedin => 'LinkedIn';
+
+  @override
+  String get fieldWebsite => 'Сайт';
+
+  @override
+  String get fieldAddress => 'Адрес';
+
+  @override
+  String get fieldHidePhone => 'Скрыть номер телефона';
+
+  @override
+  String get extraLinksTitle => 'Дополнительные ссылки';
+
+  @override
+  String get extraLinkAdd => 'Добавить ссылку';
+
+  @override
+  String get extraLinkLabel => 'Название';
+
+  @override
+  String get extraLinkUrl => 'Адрес (https://…)';
+
+  @override
+  String get bizLogo => 'Логотип';
+
+  @override
+  String get bizCover => 'Обложка';
+
+  @override
+  String get bizImages => 'Изображения';
+
+  @override
   String get appName => 'NFCSTORE';
 
   @override

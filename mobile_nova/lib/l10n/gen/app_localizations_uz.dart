@@ -9,6 +9,73 @@ class LUz extends L {
   LUz([String locale = 'uz']) : super(locale);
 
   @override
+  String get contactCall => 'Qo‘ng‘iroq';
+
+  @override
+  String get contactMap => 'Xarita';
+
+  @override
+  String get contactWebsite => 'Sayt';
+
+  @override
+  String get contactLink => 'Havola';
+
+  @override
+  String get editContactSection => 'Aloqa va havolalar';
+
+  @override
+  String get editContactHint =>
+      'Profilingizda logoli dumaloq tugmalar bo‘lib ko‘rinadi. Bo‘sh qoldirilgani ko‘rinmaydi.';
+
+  @override
+  String get fieldTelegram => 'Telegram (@username yoki havola)';
+
+  @override
+  String get fieldWhatsapp => 'WhatsApp raqami';
+
+  @override
+  String get fieldInstagram => 'Instagram (@username yoki havola)';
+
+  @override
+  String get fieldFacebook => 'Facebook';
+
+  @override
+  String get fieldX => 'X (Twitter)';
+
+  @override
+  String get fieldLinkedin => 'LinkedIn';
+
+  @override
+  String get fieldWebsite => 'Veb-sayt';
+
+  @override
+  String get fieldAddress => 'Manzil';
+
+  @override
+  String get fieldHidePhone => 'Telefon raqamini yashirish';
+
+  @override
+  String get extraLinksTitle => 'Qo‘shimcha havolalar';
+
+  @override
+  String get extraLinkAdd => 'Havola qo‘shish';
+
+  @override
+  String get extraLinkLabel => 'Nomi';
+
+  @override
+  String get extraLinkUrl => 'Manzil (https://…)';
+
+  @override
+  String get bizLogo => 'Logotip';
+
+  @override
+  String get bizCover => 'Muqova rasmi';
+
+  @override
+  String get bizImages => 'Rasmlar';
+
+  @override
   String get appName => 'NFCSTORE';
 
   @override

@@ -103,6 +103,14 @@ void main() {
       expect(api.sent!['musicUrls'], isEmpty);
     });
 
+    test('bio serverga `about` bo‘lib ketadi (ilgari jimgina yo‘qolardi)',
+        () async {
+      final api = _Api({...serverRecord(), 'about': 'eski matn'});
+      await ProfileRepository(api).updateProfile(code: 'VIP001', bio: 'yangi matn');
+      expect(api.sent!['about'], 'yangi matn');
+      expect(api.sent!.containsKey('bio'), isFalse);
+    });
+
     test('musiqa berilmasa — tegilmaydi', () async {
       final api = _Api(serverRecord());
       await ProfileRepository(api).updateProfile(code: 'VIP001', bio: 'salom');

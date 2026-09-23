@@ -13,6 +13,7 @@ import '../../design/tokens/shapes.dart';
 import '../../design/widgets/id_plate.dart';
 import '../../design/widgets/buttons.dart';
 import '../../design/widgets/nova_scaffold.dart';
+import '../../design/widgets/contact_buttons.dart';
 import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
@@ -205,8 +206,14 @@ class ProfileScreen extends ConsumerWidget {
                       tone: (!isMe && following)
                           ? ButtonTone.outline
                           : ButtonTone.accent,
+                      // BIZNES REJIMIDA — BIZNES TAHRIRI (egasi, 2026-09:
+                      // "biznes profilni tahrirlash yo'q"). Ilgari bu
+                      // tugma har doim shaxsiy NFC ID tahririni ochardi.
                       onPressed: isMe
-                          ? () => context.push(Routes.profileEdit)
+                          ? () => context.push(
+                              ref.read(activeProfileProvider)?.isBusiness ?? false
+                                  ? Routes.businessEdit
+                                  : Routes.profileEdit)
                           : () async {
                               final e = await ref
                                   .read(followOverridesProvider.notifier)
@@ -252,6 +259,15 @@ class ProfileScreen extends ConsumerWidget {
                 ],
               ),
             ),
+            // ALOQA TUGMALARI — saytdagi biznes sahifasidek logoli
+            // dumaloq tugmalar (egasi, 2026-09). Bo'sh bo'lsa chizilmaydi.
+            if (active != null && active.contact.actions().isNotEmpty) ...[
+              const SizedBox(height: Gap.xl),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
+                child: ContactButtons(actions: active.contact.actions()),
+              ),
+            ],
             if (noBusiness) ...[
               const SizedBox(height: Gap.xl),
               Padding(
@@ -651,9 +667,10 @@ class _DemoBio extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (text.isEmpty || ref.watch(demoModeProvider) == null) {
-      return const SizedBox.shrink();
-    }
+    // Haqiqiy profilda ham ko'rinadi (egasi, 2026-09: profil saytdagidek
+    // bo'lsin). Ilgari bio faqat namuna (demo) profilda chiqardi —
+    // odam tahrirda yozgan matnini profilida umuman ko'rmasdi.
+    if (text.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(top: Gap.md),
       child: Text(

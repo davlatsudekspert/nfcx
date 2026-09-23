@@ -23,6 +23,8 @@ import '../discover/listing_labels.dart';
 import '../home/widgets/identity_card.dart' show formatCount;
 import '../profile/profile_repository.dart' show profileRepositoryProvider;
 import '../social/media_frame.dart' show mediaImage;
+import '../profile/contact_editor.dart';
+import '../../core/utils/media_url.dart';
 import 'business_providers.dart';
 import 'business_screens.dart';
 import '../shop/store_policy.dart';
@@ -370,19 +372,25 @@ class BusinessEditScreen extends ConsumerStatefulWidget {
 class _BusinessEditScreenState extends ConsumerState<BusinessEditScreen> {
   final _name = TextEditingController();
   final _city = TextEditingController();
-  final _address = TextEditingController();
-  final _phone = TextEditingController();
-  final _telegram = TextEditingController();
-  final _website = TextEditingController();
   final _description = TextEditingController();
 
   bool _filled = false;
   bool _busy = false;
+  bool _uploading = false;
   String? _error;
+
+  /// Logotip va muqova — ilgari ilovada umuman o'zgartirib
+  /// bo'lmasdi (faqat saytda). Serverga NISBIY yo'l ketadi.
+  String _logoUrl = '';
+  String _coverUrl = '';
+
+  /// Telefon, Telegram, WhatsApp, Instagram, Facebook, sayt, manzil,
+  /// qo'shimcha havolalar — `ContactEditor` yangilaydi.
+  ContactInfo? _contact;
 
   @override
   void dispose() {
-    for (final c in [_name, _city, _address, _phone, _telegram, _website, _description]) {
+    for (final c in [_name, _city, _description]) {
       c.dispose();
     }
     super.dispose();
@@ -393,11 +401,39 @@ class _BusinessEditScreenState extends ConsumerState<BusinessEditScreen> {
     _filled = true;
     _name.text = b.displayName;
     _city.text = b.city;
-    _address.text = b.address;
-    _phone.text = b.phone;
-    _telegram.text = b.telegram;
-    _website.text = b.website;
     _description.text = b.description;
+    _logoUrl = b.logoUrl;
+    _coverUrl = b.coverUrl;
+    _contact = b.contact;
+  }
+
+  Future<void> _pick({required bool cover}) async {
+    final l = L.of(context);
+    final path = await ref.read(listingImagePickerProvider)();
+    if (path == null || !mounted) return;
+    setState(() {
+      _uploading = true;
+      _error = null;
+    });
+    final res = await ref
+        .read(profileRepositoryProvider)
+        .uploadImage(path, kind: cover ? 'cover' : null);
+    if (!mounted) return;
+    setState(() {
+      _uploading = false;
+      res.when(
+        ok: (url) {
+          if (url.isEmpty) {
+            _error = l.uploadFailed;
+          } else if (cover) {
+            _coverUrl = mediaUrl(url);
+          } else {
+            _logoUrl = mediaUrl(url);
+          }
+        },
+        err: (e) => _error = describeError(l, e),
+      );
+    });
   }
 
   Future<void> _save(Business b) async {
@@ -409,11 +445,10 @@ class _BusinessEditScreenState extends ConsumerState<BusinessEditScreen> {
     final res = await ref.read(businessRepositoryProvider).update(b.companyId, {
       'displayName': _name.text.trim(),
       'city': _city.text.trim(),
-      'address': _address.text.trim(),
-      'phone': _phone.text.trim(),
-      'telegram': _telegram.text.trim(),
-      'website': _website.text.trim(),
       'description': _description.text.trim(),
+      if (_logoUrl.isNotEmpty) 'logoUrl': storageUrl(_logoUrl),
+      if (_coverUrl.isNotEmpty) 'coverUrl': storageUrl(_coverUrl),
+      ...(_contact ?? b.contact).toCompanyJson(),
     });
     if (!mounted) return;
     setState(() => _busy = false);
@@ -425,6 +460,38 @@ class _BusinessEditScreenState extends ConsumerState<BusinessEditScreen> {
         context.pop();
       },
       err: (e) => setState(() => _error = describeError(l, e)),
+    );
+  }
+
+  Widget _imageTile({
+    required String label,
+    required String url,
+    required bool cover,
+  }) {
+    final t = context.tokens;
+    return PressableScale(
+      key: ValueKey(cover ? 'biz-cover' : 'biz-logo'),
+      onTap: _busy || _uploading ? null : () => _pick(cover: cover),
+      child: Column(
+        children: [
+          Container(
+            width: cover ? 150 : 88,
+            height: 88,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: t.surface2,
+              shape: cover ? BoxShape.rectangle : BoxShape.circle,
+              borderRadius: cover ? R.gentle : null,
+              border: Border.all(color: t.border1),
+            ),
+            child: url.isEmpty
+                ? Icon(Icons.add_photo_alternate_outlined, color: t.text3)
+                : mediaImage(context, url, fit: BoxFit.cover),
+          ),
+          const SizedBox(height: 6),
+          Text(label, style: Theme.of(context).textTheme.bodySmall),
+        ],
+      ),
     );
   }
 
@@ -445,27 +512,23 @@ class _BusinessEditScreenState extends ConsumerState<BusinessEditScreen> {
       showBack: true,
       body: NovaScroll(
         children: [
+          // LOGOTIP VA MUQOVA (sayt bilan teng).
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _imageTile(label: l.bizLogo, url: _logoUrl, cover: false),
+              const SizedBox(width: Gap.xl),
+              _imageTile(label: l.bizCover, url: _coverUrl, cover: true),
+            ],
+          ),
+          if (_uploading) ...[
+            const SizedBox(height: Gap.md),
+            const LinearProgressIndicator(minHeight: 2),
+          ],
+          const SizedBox(height: Gap.xl),
           NovaField(label: l.bizName, controller: _name, enabled: !_busy),
           const SizedBox(height: Gap.lg),
           NovaField(label: l.bizCity, controller: _city, enabled: !_busy),
-          const SizedBox(height: Gap.lg),
-          NovaField(label: l.bizAddress, controller: _address, enabled: !_busy),
-          const SizedBox(height: Gap.lg),
-          NovaField(
-            label: l.fieldPhone,
-            controller: _phone,
-            keyboardType: TextInputType.phone,
-            enabled: !_busy,
-          ),
-          const SizedBox(height: Gap.lg),
-          NovaField(label: 'Telegram', controller: _telegram, enabled: !_busy),
-          const SizedBox(height: Gap.lg),
-          NovaField(
-            label: l.bizWebsite,
-            controller: _website,
-            keyboardType: TextInputType.url,
-            enabled: !_busy,
-          ),
           const SizedBox(height: Gap.lg),
           NovaField(
             label: l.bizDescription,
@@ -473,6 +536,17 @@ class _BusinessEditScreenState extends ConsumerState<BusinessEditScreen> {
             maxLines: 4,
             maxLength: 1200,
             enabled: !_busy,
+          ),
+          const SizedBox(height: Gap.lg),
+          Text(l.editContactSection.toUpperCase(),
+              style: Theme.of(context).textTheme.labelSmall),
+          const SizedBox(height: Gap.md),
+          ContactEditor(
+            key: const ValueKey('contact-editor'),
+            initial: b.contact,
+            business: true,
+            enabled: !_busy,
+            onChanged: (c) => _contact = c,
           ),
           if (_error != null) ...[
             const SizedBox(height: Gap.lg),
@@ -486,7 +560,9 @@ class _BusinessEditScreenState extends ConsumerState<BusinessEditScreen> {
           ],
           const SizedBox(height: Gap.xxl),
           NovaButton(
-              label: l.actionSave, busy: _busy, onPressed: () => _save(b)),
+              label: l.actionSave,
+              busy: _busy,
+              onPressed: _uploading ? null : () => _save(b)),
         ],
       ),
     );

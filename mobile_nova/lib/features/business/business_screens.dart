@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/utils/external_link.dart';
 import '../../core/network/api_client.dart';
 import '../../core/utils/sharing.dart';
 import '../../data/models/models.dart';
@@ -12,6 +11,7 @@ import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
 import '../../design/widgets/buttons.dart';
 import '../../design/widgets/nova_scaffold.dart';
+import '../../design/widgets/contact_buttons.dart';
 import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
@@ -565,15 +565,17 @@ class StorefrontScreen extends ConsumerWidget {
                 ),
               ),
             ],
-            const SizedBox(height: Gap.xl),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-              child: NovaButton(
-                label: l.bizContactSheet,
-                icon: Icons.contact_phone_rounded,
-                onPressed: () => _showContact(context, b),
+            // ALOQA — saytdagi `/c/:id` sahifasidek logoli dumaloq
+            // tugmalar (egasi, 2026-09). Ilgari bitta "Bog'lanish"
+            // tugmasi ro'yxatli varaq ochardi va Instagram, Facebook,
+            // xarita, qo'shimcha havolalar umuman yo'q edi.
+            if (b.contact.actions().isNotEmpty) ...[
+              const SizedBox(height: Gap.xl),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
+                child: ContactButtons(actions: b.contact.actions()),
               ),
-            ),
+            ],
             SectionHeader(title: l.bizCatalog),
             catalog.when(
               loading: () => const SkeletonList(count: 3),
@@ -627,70 +629,7 @@ class StorefrontScreen extends ConsumerWidget {
   ///
   /// NFCSTORE'da ILOVA ICHIDA YOZISHMA YO'Q — shuning uchun "Yozish"
   /// tugmasi emas, telefon/Telegram/veb-sayt kabi TASHQI kanallar.
-  void _showContact(BuildContext context, Business b) {
-    final l = L.of(context);
-    final options = <(IconData, String, String)>[
-      if (b.phone.isNotEmpty) (Icons.phone_rounded, b.phone, 'tel:${b.phone}'),
-      if (b.telegram.isNotEmpty)
-        (
-          Icons.send_rounded,
-          b.telegram,
-          'https://t.me/${b.telegram.replaceAll('@', '')}',
-        ),
-      if (b.whatsapp.isNotEmpty)
-        (
-          Icons.chat_rounded,
-          b.whatsapp,
-          'https://wa.me/${b.whatsapp.replaceAll(RegExp(r'[^\d]'), '')}',
-        ),
-      if (b.website.isNotEmpty) (Icons.language_rounded, b.website, b.website),
-    ];
 
-    showModalBottomSheet(
-      context: context,
-      // ILDIZ NAVIGATORDA OCHILADI.
-      //
-      // Aks holda varaq TAB navigatorida ochiladi va pastki suzuvchi
-      // navigatsiya paneli uning ustiga chiziladi — varaqning eng
-      // pastki tugmalari panel ostida qolib ko'rinmay qoladi.
-      // Ildiz navigatorda varaq butun ekranni qoplaydi.
-      useRootNavigator: true,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(Gap.lg),
-              child: Text(
-                l.bizContactSheet,
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-            ),
-            if (options.isEmpty)
-              Padding(
-                padding: const EdgeInsets.all(Gap.xl),
-                child: Text(
-                  l.stateEmpty,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ),
-            for (final o in options)
-              ListTile(
-                leading: Icon(o.$1),
-                title: Text(o.$2, maxLines: 1, overflow: TextOverflow.ellipsis),
-                onTap: () {
-                  Navigator.pop(context);
-                  // `openLink` — osilib qolmaydi, ochilmasa manzil
-                  // buferga ko'chadi.
-                  openLink(o.$3);
-                },
-              ),
-            const SizedBox(height: Gap.md),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 /// MAHSULOT TAFSILOTI — pastdan ochiladigan varaq.

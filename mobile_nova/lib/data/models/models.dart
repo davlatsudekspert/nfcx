@@ -7,6 +7,9 @@
 library;
 
 import '../../core/utils/media_url.dart';
+import 'contact_info.dart';
+
+export 'contact_info.dart';
 
 /// `dynamic` dan xavfsiz o'qish yordamchilari.
 String _s(dynamic v, [String d = '']) => v == null ? d : '$v';
@@ -162,6 +165,7 @@ class NfcId {
     this.hiddenFromDirectory = false,
     this.categorySlug = '',
     this.createdAt,
+    this.contact = const ContactInfo(),
   });
 
   final String code;
@@ -238,6 +242,10 @@ class NfcId {
 
   final DateTime? createdAt;
 
+  /// Telefon, Telegram, ijtimoiy tarmoqlar va qo'shimcha havolalar —
+  /// profilda logoli dumaloq tugmalar bo'lib chiqadi.
+  final ContactInfo contact;
+
   /// Ommaviy profil manzili — QR va "ulashish" uchun.
   String publicUrl(String base) => '$base/${Uri.encodeComponent(code)}';
 
@@ -280,6 +288,7 @@ class NfcId {
             j['hidden_from_directory']),
         categorySlug: _s(j['categorySlug'] ?? j['category_slug']),
         createdAt: _dt(j['createdAt'] ?? j['created_at']),
+        contact: ContactInfo.fromRecord(j),
       );
 }
 
@@ -371,6 +380,7 @@ class Business {
     this.views = 0,
     this.catalogSchema = 1,
     this.plan = const CompanyPlan(),
+    this.contact = const ContactInfo(),
   });
 
   /// `nfcstore.uz/c/<companyId>` — vitrinaning ommaviy manzili.
@@ -402,6 +412,10 @@ class Business {
   /// Tarif holati — serverdagi `companyPlanStateD1` natijasi.
   final CompanyPlan plan;
 
+  /// Aloqa tugmalari (telefon, Telegram, WhatsApp, Instagram,
+  /// Facebook, sayt, xarita, qo'shimcha havolalar).
+  final ContactInfo contact;
+
   bool get isPublished => status == 'published' || status == 'active';
 
   factory Business.fromJson(Map<String, dynamic> j) => Business(
@@ -425,6 +439,7 @@ class Business {
         plan: j['plan'] is Map
             ? CompanyPlan.fromJson((j['plan'] as Map).cast<String, dynamic>())
             : const CompanyPlan(),
+        contact: ContactInfo.fromCompany(j),
       );
 }
 
