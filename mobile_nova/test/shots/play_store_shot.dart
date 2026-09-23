@@ -303,11 +303,11 @@ void main() {
     });
   }
 
-  testWidgets('play 8 — Oq-qora mavzu', (t) async {
-    // Bitta surat MUQOBIL mavzuda: ilovada tanlov borligi
-    // do'konda ham ko'rinsin.
+  testWidgets('play 8 — Noir mavzu', (t) async {
+    // Bitta surat MUQOBIL (qorong'i) mavzuda: standart Ivory bo'lgani
+    // uchun oq-qora surat profil surati bilan bir xil chiqardi.
     await shot(t, const ProfileScreen(code: kDemoPersonalCode),
-        'play-8-oq-qora', tokens: NfcTokens.mono);
+        'play-8-noir', tokens: NfcTokens.noir);
   });
 }
 

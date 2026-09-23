@@ -6,7 +6,9 @@ Play Console → **Store listing → Graphics** bo'limiga yuklanadi.
 |---|---|---|
 | `play-icon-512.png` | 512×512 | **App icon** |
 | `play-feature-1024x500.png` | 1024×500 | **Feature graphic** |
-| `../../mobile_nova/test/shots/png/play-*.png` | 1080×1920 | **Phone screenshots** (5 ta) |
+| `telefon/*.png` | 1080×1920, 24-bit PNG | **Phone screenshots** (6 ta; 8-chi — Noir mavzu) |
+| `planshet-7/*.png` | 1200×1920 | **7-inch tablet screenshots** (4 ta) |
+| `planshet-10/*.png` | 1600×2560 | **10-inch tablet screenshots** (4 ta) |
 
 ## Nega yangi belgi yasaldi
 
@@ -53,3 +55,10 @@ deb tushunib ketmasligi kerak.
 Google uni turli o'lchamda QIRQADI. Shuning uchun matn markazga
 yaqin turadi va chetlarda hech narsa yo'q. Agar keyinroq matn
 qo'shsangiz, chetdan kamida 100 px joy qoldiring.
+
+## Skrinshotlarni yangilash (2026-09, 1.1.0)
+
+    cd mobile_nova
+    flutter test test/shots/play_store_shot.dart --run-skipped -t shots --update-goldens
+    # keyin test/shots/png/play-*.png -> docs/play-assets/{telefon,planshet-7,planshet-10}/
+    # va RGB ga o'tkazish (Play skrinshotda alfa kanalni QABUL QILMAYDI)
