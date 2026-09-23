@@ -83,8 +83,29 @@ Sessiya uzilsa — shu fayldagi birinchi `[ ]` bandidan davom etiladi.
 
 ## 4. Performance
 
-- [ ] startup, tab navigation, scroll, Reels video, rasm kesh
-- [ ] takroriy API so'rovlari, keraksiz rebuild, memory leak (controller dispose)
+Audit (2026-09-23, workflow: 4 auditor + har topilma mustaqil verifier;
+faqat kod bilan isbotlangan, ko'rinishni o'zgartirmaydigan tuzatishlar):
+
+- [x] SM-2 profil setkasidan ochilgan post ro'yxatni qayta yuklamaydi (a3c7df6)
+- [x] SM-3 do'kon sahifasi: parallel ikki GET /api/companies/:id -> bitta (a3c7df6)
+- [x] SM-4 izoh yozilganda har harfda ~20 izoh kartasi qayta qurilmaydi (a3c7df6)
+- [x] TS-1 Home demo rasmlari quti o'lchamida (x2) — ~23 MB -> ~10 MB (a3c7df6, 777a909)
+- [x] TS-2 Reels faqat o'z tabiga kirish/chiqishda qayta quriladi (a3c7df6)
+- [~] SM-1 profil setkasi lazy (sliver) — barcha kartalar/video muqovalar
+      birdaniga qurilmasin (alohida worktree'da, review bilan)
+- Har tuzatishga test: test/perf_audit_test.dart; tuzatishsiz yiqiladi
+
+## 4b. UI sifat (hit-area, holatlar, klaviatura)
+
+- [x] UIQ-3 izoh like ikki bosishda bekor bo'lmaydi (434608d)
+- [~] UIQ-1 biznes profil postlari: Retry noto'g'ri provayderni yangilardi
+- [~] UIQ-2 do'kon: Retry'dan keyin katalog xato holatida qolardi
+- [~] UIQ-4 saqlash/kirish tugmasi ikkinchi so'rovni yuborishi mumkin edi
+- [~] UIQ-5 QR oynasi 360x640 + 1.3 shriftda toshardi
+- [~] UI-1..7, UI-11 kichik bosish maydonlari va chip matni kesilishi
+- Rad etildi (ko'rinishni o'zgartiradi, egasi qarori): UI-8 Noir error
+  kontrasti 3.5-3.9:1, UI-9 8.5-9.5 px ma'lumot matni, UI-10 Noir ID
+  kartadagi shaffof yorliqlar
 
 ## 5–6. Release
 
