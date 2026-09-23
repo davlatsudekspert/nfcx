@@ -31,6 +31,7 @@ class NovaField extends StatelessWidget {
     this.autofocus = false,
     this.inputFormatters,
     this.textCapitalization = TextCapitalization.none,
+    this.technical = false,
   });
 
   final String label;
@@ -51,6 +52,10 @@ class NovaField extends StatelessWidget {
   final bool autofocus;
   final List<TextInputFormatter>? inputFormatters;
   final TextCapitalization textCapitalization;
+
+  /// ID/kod kiritiladigan maydon — IBM Plex Mono. `0/O`, `1/I`
+  /// chalkashmasin (egasining shrift qoidasi).
+  final bool technical;
 
   @override
   Widget build(BuildContext context) {
@@ -80,12 +85,19 @@ class NovaField extends StatelessWidget {
           onSubmitted: onSubmitted,
           inputFormatters: inputFormatters,
           textCapitalization: textCapitalization,
-          style: TextStyle(
-            fontFamily: 'Manrope',
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: t.text1,
-          ),
+          style: technical
+              ? AppType.monoStyle(
+                  color: t.text1,
+                  size: 15,
+                  weight: FontWeight.w600,
+                  letterSpacing: 1.6,
+                )
+              : TextStyle(
+                  fontFamily: 'Manrope',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: t.text1,
+                ),
           decoration: InputDecoration(
             hintText: hint,
             errorText: error,

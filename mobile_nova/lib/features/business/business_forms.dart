@@ -292,6 +292,7 @@ class _BusinessOnboardScreenState extends ConsumerState<BusinessOnboardScreen> {
         label: l.bizId,
         controller: _id,
         hint: 'NOMINGIZ',
+        technical: true,
         onChanged: _onIdChanged,
         inputFormatters: [
           FilteringTextInputFormatter.allow(_companyIdChars),

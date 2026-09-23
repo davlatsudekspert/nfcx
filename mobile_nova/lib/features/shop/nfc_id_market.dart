@@ -134,6 +134,7 @@ class _NfcIdMarketScreenState extends ConsumerState<NfcIdMarketScreen> {
             controller: _field,
             onChanged: _onChanged,
             maxLength: 16,
+            technical: true,
             prefix: const Icon(Icons.search_rounded, size: 19),
           ),
           const SizedBox(height: Gap.lg),
@@ -253,13 +254,14 @@ class _IdCard extends ConsumerWidget {
               Expanded(
                 child: Text(
                   quote.code,
-                  // Serif — NFC ID va display nomlar uchun; qolgan
-                  // hamma joyda sans qoladi.
-                  style: TextStyle(
-                    fontFamily: AppType.display,
-                    fontSize: 27,
-                    height: 1.05,
+                  // QIDIRUV NATIJASI — IBM Plex Mono (egasining qoidasi):
+                  // serifda `0/O`, `1/I` bir xil ko'rinib, odam boshqa
+                  // kodni sotib olishi mumkin edi.
+                  style: AppType.monoStyle(
                     color: t.text1,
+                    size: 23,
+                    weight: FontWeight.w600,
+                    letterSpacing: 2.2,
                   ),
                 ),
               ),
@@ -322,11 +324,12 @@ class NfcIdBuyScreen extends ConsumerWidget {
                   children: [
                     Text(
                       q.code,
-                      style: TextStyle(
-                        fontFamily: AppType.display,
-                        fontSize: 38,
-                        height: 1.05,
+                      // Xarid ekrani — sotib olinayotgan kod aniq o'qilsin.
+                      style: AppType.monoStyle(
                         color: t.text1,
+                        size: 30,
+                        weight: FontWeight.w600,
+                        letterSpacing: 3,
                       ),
                     ),
                     const SizedBox(height: Gap.md),
@@ -408,11 +411,11 @@ class NfcIdOrderScreen extends ConsumerWidget {
                         Expanded(
                           child: Text(
                             o.code,
-                            style: TextStyle(
-                              fontFamily: AppType.display,
-                              fontSize: 27,
-                              height: 1.05,
+                            style: AppType.monoStyle(
                               color: t.text1,
+                              size: 22,
+                              weight: FontWeight.w600,
+                              letterSpacing: 2,
                             ),
                           ),
                         ),
