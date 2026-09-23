@@ -161,6 +161,18 @@ jobs:
 
       # Kesh bo'sh bo'lsa AVD ni bir marta yaratib, uni keshlaymiz:
       # keyingi ishlar 3-4 daqiqa tejaydi.
+      #
+      # EMULYATOR GPU: `swangle_indirect` (ANGLE -> SwiftShader Vulkan).
+      #
+      # `swiftshader_indirect` (eski host GLES tarjimoni) E2E #47-#51 va
+      # alohida probe'larda (nova-crash-probe, 2026-09-23) emulyatorni
+      # o'ldirdi: qemu jarayoni ekranlar o'rtasida yo'qoladi, logda
+      # gfxstream `glWaitSync error 0x501`. Bu ILOVA KODIDAN EMAS: #46 da
+      # o'tgan b34bbbd kodi ham yangi emulyatorda 390 dp da qulagan;
+      # xotira yetarli edi (avail 3.5-11 GB, swap 0, OOM yo'q). Xuddi shu
+      # HEAD `swangle_indirect` da release APK + 360/390/430 layout —
+      # 27/27 ekran PASS, Impeller bilan. Ilova, renderer va test
+      # o'zgarmadi — faqat emulyatorning host GPU yo'li.
       - name: AVD ni tayyorlash (faqat kesh bo'sh bo'lsa)
         if: steps.avd-cache.outputs.cache-hit != 'true'
         uses: reactivecircus/android-emulator-runner@v2
@@ -170,7 +182,7 @@ jobs:
           arch: x86_64
           profile: pixel_6
           force-avd-creation: false
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          emulator-options: -no-window -gpu swangle_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
           script: echo "AVD tayyor"
 
@@ -191,7 +203,7 @@ jobs:
           arch: x86_64
           profile: pixel_6
           force-avd-creation: false
-          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          emulator-options: -no-snapshot-save -no-window -gpu swangle_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
           working-directory: mobile_nova
           script: bash ../tool/e2e_device.sh
@@ -236,7 +248,7 @@ jobs:
           arch: x86_64
           profile: pixel_6
           force-avd-creation: false
-          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          emulator-options: -no-snapshot-save -no-window -gpu swangle_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
           working-directory: mobile_nova
           script: bash ../tool/e2e_run.sh
