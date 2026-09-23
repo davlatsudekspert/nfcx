@@ -46,7 +46,30 @@ recover() {
   say "(adb: $DEVICE offline — qayta ulanish)"
   timeout 20 adb reconnect offline >/dev/null 2>&1 || true
   timeout 90 adb -s "$DEVICE" wait-for-device >/dev/null 2>&1 || true
+  alive && return 0
+  # #48: 90 s yetmadi, lekin keyingi E2E to'plami o'sha emulyatorda
+  # ishladi — ya'ni emulyator tirik, adb server aloqasi uzilgan.
+  say "(adb server qayta ishga tushirilmoqda)"
+  timeout 20 adb kill-server >/dev/null 2>&1 || true
+  timeout 20 adb start-server >/dev/null 2>&1 || true
+  timeout 120 adb -s "$DEVICE" wait-for-device >/dev/null 2>&1 || true
   alive
+}
+
+# Nima bo'lganini LOGGA yozadi (artefakt yuklab bo'lmasa ham ko'rinsin).
+diag() {
+  echo "---- DIAG ($1) ----"
+  timeout 10 adb devices -l 2>&1 | sed 's/^/  /'
+  pgrep -fa 'qemu-system|emulator' 2>/dev/null | cut -c1-120 | head -3 | sed 's/^/  proc: /' || echo "  proc: emulyator jarayoni YO'Q"
+  free -m 2>/dev/null | sed 's/^/  host: /'
+  if alive; then
+    A shell uptime 2>&1 | sed 's/^/  uptime: /'
+    A shell cat /proc/meminfo 2>/dev/null | grep -E 'MemTotal|MemAvailable' | sed 's/^/  dev: /'
+    A logcat -d -t 400 2>/dev/null \
+      | grep -iE 'lowmemorykiller|lmkd|kill|FATAL|ANR in|adbd|Out of memory|signal 9' \
+      | tail -25 | cut -c1-200 | sed 's/^/  logcat: /'
+  fi
+  echo "---- /DIAG ----"
 }
 
 say "== Qurilma: $(A shell getprop ro.product.model) / Android $(A shell getprop ro.build.version.release)"
@@ -71,6 +94,7 @@ for spec in "360 1080x2400" "390 1170x2532" "430 1290x2796"; do
   say ""
   say "════ ${tag} dp  (${size} @ 480dpi) ════"
   if ! recover; then
+    diag "recover ${tag}"
     say "DEVICE|${tag}|device|FAIL|emulyator aloqasi uzildi (adb offline) — ilova xatosi emas"
     rc=1
     break
@@ -113,12 +137,15 @@ for spec in "360 1080x2400" "390 1170x2532" "430 1290x2796"; do
   # ── LAYOUT TO'PLAMI ─────────────────────────────────────────
   if timeout --foreground -s INT -k 30s 900 \
       flutter test integration_test/e2e_layout_test.dart -d "$DEVICE" \
-      --dart-define=LAYOUT_TAG="$tag" 2>&1 | tee -a "$LOG" | grep -E "LAYOUT\||<<<LAYOUT_DONE"; then
+      --dart-define=LAYOUT_TAG="$tag" 2>&1 | tee "layout-${tag}.log" | tee -a "$LOG" | grep -E "LAYOUT\||<<<LAYOUT_DONE"; then
     :
   fi
   if ! grep -q "<<<LAYOUT_DONE $tag>>>" "$LOG"; then
     say "DEVICE|${tag}|layout|FAIL|to'plam oxirigacha yetmadi"
     rc=1
+    echo "---- layout-${tag}.log (oxirgi 60 qator) ----"
+    tail -n 60 "layout-${tag}.log" | cut -c1-220
+    diag "layout ${tag}"
   fi
   if grep -q "LAYOUT|${tag}|[a-z-]*|FAIL" "$LOG"; then rc=1; fi
   # Qurilmada chizilgan kadrlar.
