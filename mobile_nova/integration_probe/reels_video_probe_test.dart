@@ -11,7 +11,11 @@
 // Login YO'Q: `/api/feed` ochiq. Shuning uchun kirish chegarasiga
 // (15 daqiqada 5 urinish) tegmaydi va E2E bilan to'qnashmaydi.
 //
-//   flutter test integration_probe/reels_video_probe_test.dart -d <device>
+// QURILMADA ishlashi uchun fayl `integration_test/` ichida bo'lishi
+// shart (CI uni o'sha yerga ko'chiradi — `nova-video-probe.yml`):
+//
+//   cp integration_probe/reels_video_probe_test.dart integration_test/probe/
+//   flutter test integration_test/probe/reels_video_probe_test.dart -d <device>
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';

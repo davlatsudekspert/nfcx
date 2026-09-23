@@ -55,6 +55,18 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
+      # `flutter test` faqat `integration_test/` ICHIDAGI faylni qurilmada
+      # ishga tushiradi (flutter_tools `_shouldRunAsIntegrationTests`).
+      # Boshqa papkadagi fayl HOST'da (flutter_tester) ketadi — 3-o'lchovda
+      # shunday bo'ldi: tarmoq o'lchandi, pleyer esa "init() has not been
+      # implemented". Fayl faqat CI'da ko'chiriladi — repoda
+      # `integration_test/` o'zgarmaydi va real hisobli E2E ishga tushmaydi.
+      - name: Probe'ni integration_test ichiga ko'chirish
+        working-directory: mobile_nova
+        run: |
+          mkdir -p integration_test/probe
+          cp integration_probe/reels_video_probe_test.dart integration_test/probe/
+
       - name: O'lchash
         id: probe
         continue-on-error: true
@@ -69,7 +81,7 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           working-directory: mobile_nova
-          script: flutter test integration_probe/reels_video_probe_test.dart -d emulator-5554 2>&1 | tee probe.log
+          script: flutter test integration_test/probe/reels_video_probe_test.dart -d emulator-5554 2>&1 | tee probe.log
 
       - name: Natija
         if: always()
