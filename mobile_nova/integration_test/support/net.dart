@@ -9,6 +9,8 @@ import 'report.dart';
 
 /// Har bir so'rovni yozib boruvchi Dio interceptori.
 ///
+/// (1.1.0 release oldi yakuniy E2E — 2026-09.)
+///
 /// Repozitoriy metodlari `Result` qaytaradi va xato ichida faqat
 /// `AppErrorKind` bilan status bo'ladi — qaysi manzilga, qanday tana
 /// bilan borilgani ko'rinmaydi. Hisobotda esa aynan shu kerak:
