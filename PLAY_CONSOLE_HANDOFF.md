@@ -147,7 +147,7 @@ Website — `https://nfcstore.uz`.
 | Bo'lim | Javob |
 |---|---|
 | **Privacy policy** | `https://nfcstore.uz/privacy` (saytda ishlaydi; `/maxfiylik` ham shu sahifa) |
-| **Ads** (Реклама) | **No** — reklama SDK yo'q |
+| **Ads** (Реклама) | **Yes (tavsiya, egasi tasdiqlaydi)** — reklama SDK yo'q, LEKIN lentada bizneslar pullik ko'targan postlar "Homiylik / Sponsored" belgisi bilan chiqadi (FEATURED, `feedSponsored`, `hosting/api/featured.js`). Play buni to'g'ridan-to'g'ri sotilgan reklama deb hisoblaydi; "No" tanlansa tekshiruvchi Sponsored postni ko'rib rad etishi mumkin. "Yes" da do'konda "Contains ads" yorlig'i chiqadi |
 | **Advertising ID** (Рекламный идентификатор) | **No** — ilova reklama ID ishlatmaydi: `com.google.android.gms.permission.AD_ID` yo'q, reklama/analitika SDK yo'q. targetSdk 36 — bu deklaratsiya MAJBURIY (oldin to'ldirilgan bo'lsa, faqat tekshir) |
 | **App access** | "All or some functionality is restricted" → demo hisob (§3.3) |
 | **Content rating** | §3.4 |
@@ -188,6 +188,8 @@ tushmaydi (`backup_rules.xml`, `data_extraction_rules.xml`).
 | Savol | Javob |
 |---|---|
 | Collects or shares user data? | **Yes, collects** |
+| Account creation methods | **Username, password and other authentication** (email + parol + emailga yuborilgan tasdiqlash kodi) |
+| Delete some data without deleting account? | **No** (post/izohni o'chirish mumkin, lekin o'chirilgan kontent dalil arxiviga ko'chadi — "HISOBNI O'CHIRISH — BLOKER" ga qarang) |
 | Shared with third parties? | **No** |
 | Encrypted in transit? | **Yes** |
 | Users can request deletion? | **Yes** (ilovada: Sozlamalar → Xavfsizlik → Hisobni o'chirish; saytda `https://nfcstore.uz/delete-account`) — ⚠️ pastdagi "HISOBNI O'CHIRISH — BLOKER" ni o'qi |
@@ -258,6 +260,10 @@ mumkin — o'zgartirish shart emas.
 
 `Test and release → Production` (`Тестирование и выпуск → Рабочая версия`)
 → **Create new release** (`Создать выпуск`):
+
+0. `Production → Countries / regions` (`Страны и регионы`) — agar bu
+   trekda hali mamlakat tanlanmagan bo'lsa, kamida **O'zbekiston** qo'sh
+   (qolganini egasi hal qiladi). Tanlanmasa "Send for review" bloklanadi.
 
 1. App bundles → **Upload** → `NFCSTORE-Mobile.aab` (§1). Play versionCode
    `207` va versionName `1.1.0` ni ko'rsatishi kerak.

@@ -563,7 +563,8 @@ After signing in:
 6. Settings > Security > Delete account — account deletion
    from inside the app.
 
-The app is free. There are no in-app purchases and no ads.
+The app is free. There are no in-app purchases and no ad SDKs.
+Businesses can promote posts; such posts are labelled "Sponsored".
 ```
 
 **NFC haqida.** NFC yozish jismoniy karta talab qiladi va
