@@ -9,6 +9,7 @@ import '../core/theme.dart';
 import '../ui/widgets.dart';
 import 'compose_screen.dart';
 import 'settings_screen.dart';
+import 'notifications_screen.dart';
 import 'shell.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -97,7 +98,7 @@ class _HomeScreenState extends State<HomeScreen>
             : 'Bitta profil. Barcha havolalar. Bir tegishda.',
         statA: (personal?.views ?? 1248).toString(),
         statALabel: 'ko‘rish',
-        statB: _stats.followers > 0 ? _stats.followers.toString() : '193',
+        statB: personal != null ? _stats.followers.toString() : '193',
         statBLabel: 'obunachi',
         avatarUrl: personal?.avatarUrl,
         dark: true,
@@ -195,7 +196,11 @@ class _HomeScreenState extends State<HomeScreen>
                       const SizedBox(width: 8),
                       _TopAction(
                         icon: Icons.notifications_none_rounded,
-                        onTap: () {},
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const NotificationsScreen(),
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 8),
                       _TopAction(
