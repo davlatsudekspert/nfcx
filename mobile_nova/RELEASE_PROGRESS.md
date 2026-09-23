@@ -45,6 +45,14 @@ Sessiya uzilsa — shu fayldagi birinchi `[ ]` bandidan davom etiladi.
       #46 ishga tushdi — natijasiga qarab sabab tuzatiladi.
 - [x] Qurilma bosqichi (release APK launch/resume, 360/390/430 layout) — PASS (#45)
 
+- [x] Egasi xabari: istorya ochilganda qora ekran — tuzatildi (4d0365d):
+      tayyor ro'yxat, surat+halqa, media tayyor bo'lgach taymer, prefetch
+- [~] Kod auditlari (2 agent): funksional 7H/12M/15L, performance 4H/5M/9L.
+      25 ta H/M topilma skeptik workflow bilan tekshirilmoqda (wf nova-release-
+      audit-verify) — tasdiqlanganlari tuzatiladi.
+- [~] Egasi xabari: Reels'da katta video sekin ochiladi — ildiz sababi
+      tekshirilmoqda (serveUpload Range 206 qo'llaydi).
+
 ## 4. Performance
 
 - [ ] startup, tab navigation, scroll, Reels video, rasm kesh
