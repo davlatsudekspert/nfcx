@@ -79,7 +79,8 @@ say "== Qurilma: $(A shell getprop ro.product.model) / Android $(A shell getprop
 A shell settings put secure show_ime_with_hard_keyboard 1 || true
 
 say "== Release APK qurilmoqda"
-if flutter build apk --release --dart-define=NOVA_VERSION=device-e2e >> "$LOG" 2>&1; then
+# Build ham chegaralangan (odatda ~7.5 daq): osilsa aniq FAIL, keyingi bosqich ishlaydi.
+if timeout 1500 flutter build apk --release --dart-define=NOVA_VERSION=device-e2e >> "$LOG" 2>&1; then
   say "Release APK: qurildi"
 else
   say "DEVICE|build|release-apk|FAIL|qurilmadi"

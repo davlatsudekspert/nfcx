@@ -63,8 +63,10 @@ permissions:
 jobs:
   e2e:
     runs-on: ubuntu-latest
-    # Qurilma bosqichi ~20 daq + uch to'plam chegaralari (16+10+16).
-    timeout-minutes: 75
+    # Qurilma bosqichi <= 28 daq + haqiqiy hisob <= 48 daq (to'plam
+    # chegaralari 16+10+16) + tayyorgarlik. Har emulyator qadamining
+    # O'Z chegarasi bor (quyida) — biri osilsa, keyingisi baribir ishlaydi.
+    timeout-minutes: 90
     defaults:
       run:
         working-directory: mobile_nova
@@ -196,6 +198,9 @@ jobs:
       - name: Qurilma — release APK va layout (360/390/430)
         id: device
         continue-on-error: true
+        # FAIL-FAST: odatda 15-17 daq (release build ~7.5 + 3 o'lcham).
+        # Osilsa shu qadam to'xtaydi, real hisobli bosqich baribir yuradi.
+        timeout-minutes: 28
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
@@ -234,6 +239,8 @@ jobs:
       - name: E2E — haqiqiy hisob
         id: e2e
         continue-on-error: true
+        # FAIL-FAST: uch to'plam chegarasi 16+10+16 daq + build/boot.
+        timeout-minutes: 48
         uses: reactivecircus/android-emulator-runner@v2
         env:
           # Mavjud `NFC_LOGIN_*` birinchi; eski nom zaxira (yuqoridagi
