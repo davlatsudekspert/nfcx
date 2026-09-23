@@ -24,9 +24,7 @@ class NfcService {
 
   Future<bool> available() async {
     try {
-      return await NfcManager.instance
-          .isAvailable()
-          .timeout(const Duration(seconds: 3), onTimeout: () => false);
+      return await NfcManager.instance.isAvailable();
     } catch (_) {
       return false;
     }
