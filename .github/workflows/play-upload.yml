@@ -1,0 +1,89 @@
+# GOOGLE PLAY'GA TO'G'RIDAN-TO'G'RI YUKLASH — egasining interneti kerak emas.
+#
+# Egasi (2026-09): "menda zagruzka sekin". Ilgari .aab ni GitHub'dan
+# kompyuterga yuklab, keyin Play Console'ga qayta yuklash kerak edi.
+# Bu workflow faylni GitHub serveridan to'g'ridan-to'g'ri Google
+# Play'ga yuboradi (Play Developer API).
+#
+# Bir martalik sozlash: `PLAY_SERVICE_ACCOUNT_JSON` secreti — Google
+# Cloud service account kaliti (JSON), Play Console'da shu hisobga
+# "sinov treklariga reliz" ruxsati berilgan bo'lishi kerak.
+#
+# FAQAT qo'lda ishga tushadi. Production trekiga yuklamaydi.
+name: Google Play'ga yuklash
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "upload = yuklash, list = faqat treklarni ko'rish"
+        required: true
+        default: upload
+        type: choice
+        options: [upload, list]
+      run_id:
+        description: "Qaysi APK qurilishidan (run ID). Bo'sh — shu branchdagi oxirgi muvaffaqiyatli."
+        required: false
+        default: ''
+      track:
+        description: "Trek nomi. Bo'sh — yopiq sinov treki avtomatik tanlanadi."
+        required: false
+        default: ''
+      status:
+        description: "completed = tekshiruvga yuborish, draft = qoralama"
+        required: true
+        default: completed
+        type: choice
+        options: [completed, draft]
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: play-upload
+  cancel-in-progress: false
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Qurilishni topish
+        id: run
+        if: inputs.mode == 'upload'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.run_id }}
+        run: |
+          if [ -z "$RUN_ID" ]; then
+            RUN_ID=$(gh api "repos/${{ github.repository }}/actions/workflows/nova-apk.yml/runs?branch=${{ github.ref_name }}&status=success&per_page=1" --jq '.workflow_runs[0].id')
+          fi
+          [ -n "$RUN_ID" ] || { echo "::error::Muvaffaqiyatli APK qurilishi topilmadi"; exit 1; }
+          echo "Qurilish: https://github.com/${{ github.repository }}/actions/runs/$RUN_ID"
+          echo "id=$RUN_ID" >> "$GITHUB_OUTPUT"
+
+      - name: .aab ni olish
+        if: inputs.mode == 'upload'
+        uses: actions/download-artifact@v4
+        with:
+          name: NFCSTORE-Mobile-PlayStore-aab
+          run-id: ${{ steps.run.outputs.id }}
+          github-token: ${{ github.token }}
+          path: aab
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --quiet google-auth requests
+
+      - name: Google Play
+        env:
+          PLAY_SA_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          MODE: ${{ inputs.mode }}
+          TRACK: ${{ inputs.track }}
+          STATUS: ${{ inputs.status }}
+          AAB: aab/NFCSTORE-Mobile.aab
+        run: python scripts/play_upload.py
