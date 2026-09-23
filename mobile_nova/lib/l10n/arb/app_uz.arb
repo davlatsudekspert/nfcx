@@ -340,7 +340,11 @@
     "description": "Sozlamalar: jismoniy karta buyurtmalari bo'limi"
   },
   "settingsReferral": "Referal",
-  "settingsReferralHint": "Do‘stingiz sizning kodingiz bilan ro‘yxatdan o‘tsa, ikkovingiz ham chegirma olasiz",
+  "fieldPromo": "Promokod (ixtiyoriy)",
+  "fieldPromoHint": "Do‘stingiz bergan kod",
+  "referralInvited": "Siz taklif qilganlar",
+  "referralNoName": "Yangi foydalanuvchi",
+  "settingsReferralHint": "Do‘stingiz ro‘yxatdan o‘tishda sizning kodingizni yozsa, u shu yerda ko‘rinadi va sizga har bir do‘st uchun 10% chegirma yoziladi",
   "settingsPremium": "Premium",
   "settingsSupport": "Yordam",
   "settingsNews": "Yangiliklar",

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -900,7 +901,13 @@ class ReferralScreen extends ConsumerWidget {
           Text(l.settingsReferralHint,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium),
-          SectionHeader(title: l.profileFollowers),
+          // SARLAVHA "Obunachilar" EMAS edi-yu, shunday yozilgan edi —
+          // bu ro'yxat promokod bilan kelganlar.
+          SectionHeader(
+            title: referrals.valueOrNull == null
+                ? l.referralInvited
+                : '${l.referralInvited} · ${referrals.valueOrNull!.length}',
+          ),
           referrals.when(
             loading: () => const Skeleton(height: 60, radius: R.gentle),
             error: (e, __) => StatePanel.fromError(context, asAppError(e)),
@@ -915,16 +922,77 @@ class ReferralScreen extends ConsumerWidget {
                       for (final r in items)
                         Padding(
                           padding: const EdgeInsets.only(bottom: Gap.sm),
-                          child: FloatingSurface(
-                            solid: true,
-                            padding: const EdgeInsets.all(Gap.lg),
-                            child: Text('${r['email'] ?? r['name'] ?? ''}',
-                                style:
-                                    Theme.of(context).textTheme.bodyLarge),
-                          ),
+                          child: _ReferralRow(r),
                         ),
                     ],
                   ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Promokod bilan kelgan bitta odam.
+///
+/// ILGARI BO'SH EDI: server `referredEmail` yuboradi, bu yerda esa
+/// `email`/`name` o'qilardi — har qator bo'sh karta bo'lib chiqardi
+/// (egasi, 2026-09). Endi server kalitlari o'qiladi; eski kalitlar
+/// zaxira sifatida qoladi.
+class _ReferralRow extends StatelessWidget {
+  const _ReferralRow(this.r);
+
+  final Map<String, dynamic> r;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context);
+    final t = context.tokens;
+    String pick(List<String> keys) {
+      for (final k in keys) {
+        final v = '${r[k] ?? ''}'.trim();
+        if (v.isNotEmpty) return v;
+      }
+      return '';
+    }
+
+    final name = pick(['referredName', 'name']);
+    final email = pick(['referredEmail', 'email']);
+    final title = name.isNotEmpty
+        ? name
+        : (email.isNotEmpty ? email : l.referralNoName);
+    final when = DateTime.tryParse(pick(['createdAt', 'created_at']));
+    final sub = [
+      if (name.isNotEmpty && email.isNotEmpty) email,
+      if (when != null) DateFormat('dd.MM.yyyy').format(when.toLocal()),
+    ].join(' · ');
+
+    return FloatingSurface(
+      solid: true,
+      padding: const EdgeInsets.symmetric(horizontal: Gap.lg, vertical: Gap.md),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: t.surface2,
+            child: Icon(Icons.person_add_alt_1_rounded, size: 18, color: t.text2),
+          ),
+          const SizedBox(width: Gap.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyLarge),
+                if (sub.isNotEmpty)
+                  Text(sub,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall),
+              ],
+            ),
           ),
         ],
       ),

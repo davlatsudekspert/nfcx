@@ -1851,10 +1851,34 @@ abstract class L {
   /// **'Referal'**
   String get settingsReferral;
 
+  /// No description provided for @fieldPromo.
+  ///
+  /// In uz, this message translates to:
+  /// **'Promokod (ixtiyoriy)'**
+  String get fieldPromo;
+
+  /// No description provided for @fieldPromoHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Do‘stingiz bergan kod'**
+  String get fieldPromoHint;
+
+  /// No description provided for @referralInvited.
+  ///
+  /// In uz, this message translates to:
+  /// **'Siz taklif qilganlar'**
+  String get referralInvited;
+
+  /// No description provided for @referralNoName.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yangi foydalanuvchi'**
+  String get referralNoName;
+
   /// No description provided for @settingsReferralHint.
   ///
   /// In uz, this message translates to:
-  /// **'Do‘stingiz sizning kodingiz bilan ro‘yxatdan o‘tsa, ikkovingiz ham chegirma olasiz'**
+  /// **'Do‘stingiz ro‘yxatdan o‘tishda sizning kodingizni yozsa, u shu yerda ko‘rinadi va sizga har bir do‘st uchun 10% chegirma yoziladi'**
   String get settingsReferralHint;
 
   /// No description provided for @settingsPremium.

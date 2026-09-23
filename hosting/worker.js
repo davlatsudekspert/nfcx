@@ -9393,8 +9393,21 @@ async function userAccountApi(request, env, url) {
 
   if (path === '/api/referrals' && request.method === 'GET') {
     if (!user) return json({ referrals: [] });
-    const rows = await env.DB.prepare(`SELECT r.id, r.created_at, u.email AS referred_email FROM referral_uses r JOIN users u ON u.id = r.referred_id WHERE r.referrer_id = ? ORDER BY r.created_at DESC`).bind(user.id).all();
-    return json({ referrals: (rows.results || []).map((r) => ({ id: r.id, createdAt: r.created_at, referredEmail: r.referred_email })) });
+    // Ism ham qaytadi (egasi, 2026-09): ilovada ro'yxat bo'sh
+    // kartalar bo'lib chiqardi. Telefon bilan ochilgan akkauntning
+    // ichki manzili (p998...@nfcstore.local) ko'rsatilmaydi — o'rniga
+    // ism turadi. O'chirilgan akkaunt ro'yxatda qoladi, lekin
+    // ma'lumotsiz (taklif qilingani haqiqat edi).
+    const rows = await env.DB.prepare(`SELECT r.id, r.created_at,
+        CASE WHEN u.deleted_at IS NULL THEN u.email ELSE '' END AS referred_email,
+        CASE WHEN u.deleted_at IS NULL THEN (SELECT c.name FROM cards c WHERE c.user_id = u.id
+          ORDER BY c.is_primary DESC, c.ts ASC LIMIT 1) ELSE '' END AS referred_name
+      FROM referral_uses r JOIN users u ON u.id = r.referred_id WHERE r.referrer_id = ? ORDER BY r.created_at DESC`).bind(user.id).all();
+    return json({ referrals: (rows.results || []).map((r) => ({
+      id: r.id, createdAt: r.created_at,
+      referredEmail: publicEmailD1(r.referred_email),
+      referredName: r.referred_name || '',
+    })) });
   }
 
   // NOTE: GET /api/orders and GET /api/orders/:id are intentionally NOT

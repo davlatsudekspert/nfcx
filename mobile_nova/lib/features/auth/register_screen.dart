@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -43,6 +44,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _password = TextEditingController();
   final _password2 = TextEditingController();
 
+  /// Do'stning PROMOKODI — ixtiyoriy. Ilgari ilovada bu maydon umuman
+  /// yo'q edi (egasi, 2026-09), server esa `promoCode` ni kutardi:
+  /// ilova orqali kelganlar taklif qilgan odamning ro'yxatiga
+  /// tushmasdi va unga 10% chegirma yozilmasdi.
+  final _promo = TextEditingController();
+
   int _step = 0;
 
   /// Hisob turi — birinchi qadam. `null` bo'lsa oldinga o'tilmaydi:
@@ -70,6 +77,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _phone.dispose();
     _password.dispose();
     _password2.dispose();
+    _promo.dispose();
     super.dispose();
   }
 
@@ -215,9 +223,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         // o'sha yerda yaratiladi va server `tosAccepted` ni
         // shu so'rovda kutadi.
         tosAccepted: _tos,
+        promoCode: _promoCode,
       ),
     );
   }
+
+  /// Promokod — bo'shliqsiz, katta harfda (server ham shunday qiladi).
+  String get _promoCode => _promo.text.trim().toUpperCase();
 
   /// Email xizmati o'chiq bo'lgandagi yo'l: hisob DARHOL yaratiladi.
   ///
@@ -238,6 +250,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           password: _password.text,
           code: '',
           tosAccepted: _tos,
+          promoCode: _promoCode,
         );
     if (!mounted) return;
     setState(() => _busy = false);
@@ -383,6 +396,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         controller: _password2,
                         obscure: _obscure,
                         enabled: !_busy,
+                      ),
+                      const SizedBox(height: Gap.lg),
+                      NovaField(
+                        key: const ValueKey('register-promo'),
+                        label: l.fieldPromo,
+                        hint: l.fieldPromoHint,
+                        controller: _promo,
+                        enabled: !_busy,
+                        technical: true,
+                        maxLength: 12,
+                        textCapitalization: TextCapitalization.characters,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp('[A-Za-z0-9]')),
+                        ],
                       ),
                     ],
                   ),

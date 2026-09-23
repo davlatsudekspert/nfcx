@@ -907,8 +907,20 @@ class LRu extends L {
   String get settingsReferral => 'Реферальная программа';
 
   @override
+  String get fieldPromo => 'Промокод (необязательно)';
+
+  @override
+  String get fieldPromoHint => 'Код от друга';
+
+  @override
+  String get referralInvited => 'Вы пригласили';
+
+  @override
+  String get referralNoName => 'Новый пользователь';
+
+  @override
   String get settingsReferralHint =>
-      'Если друг зарегистрируется по вашему коду, скидку получите оба';
+      'Если друг при регистрации укажет ваш код, он появится здесь, а вам начислится скидка 10% за каждого друга';
 
   @override
   String get settingsPremium => 'Premium';

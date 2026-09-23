@@ -911,8 +911,20 @@ class LUz extends L {
   String get settingsReferral => 'Referal';
 
   @override
+  String get fieldPromo => 'Promokod (ixtiyoriy)';
+
+  @override
+  String get fieldPromoHint => 'Do‘stingiz bergan kod';
+
+  @override
+  String get referralInvited => 'Siz taklif qilganlar';
+
+  @override
+  String get referralNoName => 'Yangi foydalanuvchi';
+
+  @override
   String get settingsReferralHint =>
-      'Do‘stingiz sizning kodingiz bilan ro‘yxatdan o‘tsa, ikkovingiz ham chegirma olasiz';
+      'Do‘stingiz ro‘yxatdan o‘tishda sizning kodingizni yozsa, u shu yerda ko‘rinadi va sizga har bir do‘st uchun 10% chegirma yoziladi';
 
   @override
   String get settingsPremium => 'Premium';

@@ -910,8 +910,20 @@ class LEn extends L {
   String get settingsReferral => 'Referral';
 
   @override
+  String get fieldPromo => 'Promo code (optional)';
+
+  @override
+  String get fieldPromoHint => 'Code from a friend';
+
+  @override
+  String get referralInvited => 'People you invited';
+
+  @override
+  String get referralNoName => 'New user';
+
+  @override
   String get settingsReferralHint =>
-      'When a friend signs up with your code you both get a discount';
+      'When a friend enters your code at sign-up, they appear here and you get a 10% discount for each friend';
 
   @override
   String get settingsPremium => 'Premium';
