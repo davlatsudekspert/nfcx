@@ -22,7 +22,9 @@ Future<void> _pumpSignedOut(
     NfcstoreV2App(session: session, theme: theme),
   );
   await tester.pump();
-  await tester.pump(const Duration(milliseconds: 500));
+  // V2 intentionally shows a 1.05 s branded opening before auth.
+  await tester.pump(const Duration(milliseconds: 1500));
+  await tester.pump(const Duration(milliseconds: 450));
 }
 
 void main() {
