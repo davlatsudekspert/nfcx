@@ -1828,4 +1828,13 @@ class LEn extends L {
 
   @override
   String get nfcWriteShort => 'Write card';
+
+  @override
+  String get nfcCardsHint => 'Linked cards and stickers';
+
+  @override
+  String get nfcSecurityHint => 'Block a lost card and stay protected';
+
+  @override
+  String get nfcScanStart => 'Start scanning';
 }

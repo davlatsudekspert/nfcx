@@ -11,6 +11,7 @@ import '../../../routing/routes.dart';
 import '../../auth/session.dart';
 import '../home_screen.dart' show activeIdProvider;
 import 'identity_card.dart' show formatCount;
+import '../../../l10n/gen/app_localizations.dart';
 
 /// "NFC ID'LARIM" — gorizontal lenta.
 ///
@@ -36,8 +37,14 @@ class MyIdsStrip extends ConsumerWidget {
 
     final active = ref.watch(activeIdProvider)?.code;
 
+    // Katta shrift (Sozlamalar -> x1.3) bilan plitka ichidagi uch
+    // qator sig'masdi: balandlik shrift bilan birga o'sadi.
+    final k = (MediaQuery.textScalerOf(context).scale(12) / 12).clamp(1.0, 1.6);
+
     return SizedBox(
-      height: 96,
+      // x1.0 -> 96, x1.3 -> 132 (uchala qator va plastinka ichki
+      // bo'shlig'i birga o'sadi).
+      height: 96 + (k - 1) * 120,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
@@ -63,12 +70,16 @@ class MyIdsStrip extends ConsumerWidget {
                 // Endi farq YENGIL: ichkarida aksentning juda past
                 // tusi, chetida oltin chiziq. Qaysi biri
                 // ishlayotgani baribir bir qarashda ko'rinadi.
+                //
+                // Tus mavzuning `brand` (champagne) oilasidan: ivory'da
+                // aksent QORA, uning tusi esa loyqa kulrang dog' bo'lardi.
                 color: on
-                    ? t.accent2.withValues(alpha: t.isDark ? .10 : .16)
+                    ? Color.lerp(
+                        t.surfaceSolid, t.brandSoft, t.isDark ? .14 : .55)
                     : t.surfaceSolid,
                 borderRadius: R.tile,
                 border: Border.all(
-                  color: on ? t.accent2.withValues(alpha: .55) : t.border2,
+                  color: on ? t.brand.withValues(alpha: .7) : t.border2,
                 ),
               ),
               child: Column(
@@ -109,7 +120,10 @@ class MyIdsStrip extends ConsumerWidget {
                         color: t.text2),
                   ),
                   Text(
-                    '${formatCount(id.views)} ko\u2018rish',
+                    // Tarjimada — rus tilida ham o'zbekcha chiqmasin.
+                    '${formatCount(id.views)} · ${L.of(context).nfcViews.toLowerCase()}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                         fontFamily: AppType.sans,
                         fontSize: 11,

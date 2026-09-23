@@ -52,6 +52,8 @@ class _NfcScanScreenState extends ConsumerState<NfcScanScreen> {
   }
 
   Future<void> _scan() async {
+    // Ikki marta bosish ikkinchi sessiya ochmaydi.
+    if (_state == OrbState.scanning) return;
     final l = L.of(context);
     setState(() {
       _state = OrbState.scanning;
@@ -59,7 +61,13 @@ class _NfcScanScreenState extends ConsumerState<NfcScanScreen> {
       _resolvedCode = null;
     });
 
-    final payload = await ref.read(nfcServiceProvider).readOnce();
+    // Xato bo'lsa ham ekran "Qidirilmoqda…" da QOLMAYDI.
+    String? payload;
+    try {
+      payload = await _nfc.readOnce();
+    } catch (_) {
+      payload = null;
+    }
     if (!mounted) return;
 
     if (payload == null || payload.isEmpty) {

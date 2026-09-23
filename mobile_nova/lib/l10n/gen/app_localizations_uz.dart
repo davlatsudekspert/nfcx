@@ -1834,4 +1834,13 @@ class LUz extends L {
 
   @override
   String get nfcWriteShort => 'Kartaga yozish';
+
+  @override
+  String get nfcCardsHint => 'Ulangan kartalar va stikerlar';
+
+  @override
+  String get nfcSecurityHint => 'Yo‘qolgan kartani bloklash va himoya';
+
+  @override
+  String get nfcScanStart => 'Skanerlashni boshlash';
 }

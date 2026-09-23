@@ -138,18 +138,38 @@ class NfcService {
   Future<String?> readOnce({Duration timeout = const Duration(seconds: 30)}) async {
     final completer = Completer<String?>();
 
-    await NfcManager.instance.startSession(
-      pollingOptions: {
-        NfcPollingOption.iso14443,
-        NfcPollingOption.iso15693,
-      },
-      onDiscovered: (tag) async {
-        if (completer.isCompleted) return;
-        completer.complete(_payloadOf(tag));
-        await stop();
-      },
-    );
-    _sessionOpen = true;
+    // QOTIB QOLMASLIK UCHUN IKKI HIMOYA:
+    //
+    //  * oldingi sessiya (masalan, yozish ekranidan qolgan) yopilmagan
+    //    bo'lsa, Android yangisini ochishda xato beradi — avval
+    //    yopiladi;
+    //  * `startSession` xato bersa ham istisno TASHQARIGA chiqmaydi:
+    //    ilgari u skaner ekranigacha uchib borar va ekran "Qidirilmoqda…"
+    //    holatida abadiy qolardi.
+    await stop();
+    try {
+      await NfcManager.instance.startSession(
+        pollingOptions: {
+          NfcPollingOption.iso14443,
+          NfcPollingOption.iso15693,
+        },
+        onDiscovered: (tag) async {
+          if (completer.isCompleted) return;
+          String? payload;
+          try {
+            payload = _payloadOf(tag);
+          } catch (_) {
+            payload = null;
+          }
+          completer.complete(payload);
+          await stop();
+        },
+      );
+      _sessionOpen = true;
+    } catch (_) {
+      await stop();
+      return null;
+    }
 
     // Cheksiz kutish qurilmaning NFC antennasini band qilib turadi.
     return completer.future.timeout(timeout, onTimeout: () async {
@@ -167,12 +187,20 @@ class NfcService {
   }) async {
     final completer = Completer<TagInspection>();
 
+    // Oldingi sessiya ochiq qolgan bo'lsa — avval yopiladi.
+    await stop();
     try {
       await NfcManager.instance.startSession(
         pollingOptions: {NfcPollingOption.iso14443, NfcPollingOption.iso15693},
         onDiscovered: (tag) async {
           if (completer.isCompleted) return;
-          completer.complete(_inspectTag(tag));
+          TagInspection r;
+          try {
+            r = _inspectTag(tag);
+          } catch (_) {
+            r = const TagInspection(found: false, error: TagError.io);
+          }
+          completer.complete(r);
           await stop();
         },
       );
@@ -248,12 +276,20 @@ class NfcService {
     final message = NdefMessage([NdefRecord.createUri(Uri.parse(url))]);
     final completer = Completer<NfcWriteResult>();
 
+    // Oldingi sessiya ochiq qolgan bo'lsa — avval yopiladi.
+    await stop();
     try {
       await NfcManager.instance.startSession(
         pollingOptions: {NfcPollingOption.iso14443, NfcPollingOption.iso15693},
         onDiscovered: (tag) async {
           if (completer.isCompleted) return;
-          completer.complete(await _writeTag(tag, message, url, expectIdentity));
+          NfcWriteResult r;
+          try {
+            r = await _writeTag(tag, message, url, expectIdentity);
+          } catch (_) {
+            r = const NfcWriteResult(ok: false, error: TagError.io);
+          }
+          if (!completer.isCompleted) completer.complete(r);
           await stop();
         },
       );

@@ -721,5 +721,8 @@
   "bizCatOther": "Boshqa",
   "errEmailSendFailed": "Kodni emailga yuborib bo‘lmadi. Manzilni tekshirib, bir daqiqadan keyin qayta urinib ko‘ring.",
   "errNameNotAllowed": "Bu nomdan foydalanib bo‘lmaydi — boshqasini yozing.",
-  "nfcWriteShort": "Kartaga yozish"
+  "nfcWriteShort": "Kartaga yozish",
+  "nfcCardsHint": "Ulangan kartalar va stikerlar",
+  "nfcSecurityHint": "Yo‘qolgan kartani bloklash va himoya",
+  "nfcScanStart": "Skanerlashni boshlash"
 }

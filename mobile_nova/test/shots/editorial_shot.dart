@@ -225,7 +225,8 @@ void _size(WidgetTester tester, Size s) {
 
 /// Router orqali tab ekrani.
 Future<void> tabShot(
-    WidgetTester tester, String location, String name, Size s) async {
+    WidgetTester tester, String location, String name, Size s,
+    {bool end = false}) async {
   _size(tester, s);
   late GoRouter router;
   await tester.pumpWidget(ProviderScope(
@@ -254,6 +255,16 @@ Future<void> tabShot(
   // doira qolmasin.
   await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 400)));
   await _settle(tester, 4);
+  if (end) {
+    // Ro'yxat oxiri: pastki element nav OSTIDA qolmasligini ko'rish.
+    final list = find.byType(Scrollable).hitTestable().first;
+    for (var i = 0; i < 6; i++) {
+      await tester.drag(list, const Offset(0, -900));
+      await _settle(tester, 4);
+    }
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+    await _settle(tester, 6);
+  }
   await expectLater(
       find.byType(MaterialApp), matchesGoldenFile('png/ed-$name.png'));
 }
@@ -305,6 +316,10 @@ void main() {
     testWidgets('discover $w',
         (t) => tabShot(t, Routes.discover, 'discover-$w', s));
     testWidgets('nfc $w', (t) => tabShot(t, Routes.nfc, 'nfc-$w', s));
+    testWidgets('nfc-end $w',
+        (t) => tabShot(t, Routes.nfc, 'nfc-end-$w', s, end: true));
+    testWidgets('profile-end $w',
+        (t) => tabShot(t, Routes.profile, 'profile-end-$w', s, end: true));
     testWidgets('profile $w',
         (t) => tabShot(t, Routes.profile, 'profile-$w', s));
     testWidgets('biz-intro $w',

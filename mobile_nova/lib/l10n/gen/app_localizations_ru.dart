@@ -1821,4 +1821,13 @@ class LRu extends L {
 
   @override
   String get nfcWriteShort => 'Записать';
+
+  @override
+  String get nfcCardsHint => 'Привязанные карты и стикеры';
+
+  @override
+  String get nfcSecurityHint => 'Блокировка утерянной карты и защита';
+
+  @override
+  String get nfcScanStart => 'Начать сканирование';
 }

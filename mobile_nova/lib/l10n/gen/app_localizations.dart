@@ -3578,6 +3578,24 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Kartaga yozish'**
   String get nfcWriteShort;
+
+  /// No description provided for @nfcCardsHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ulangan kartalar va stikerlar'**
+  String get nfcCardsHint;
+
+  /// No description provided for @nfcSecurityHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yo‘qolgan kartani bloklash va himoya'**
+  String get nfcSecurityHint;
+
+  /// No description provided for @nfcScanStart.
+  ///
+  /// In uz, this message translates to:
+  /// **'Skanerlashni boshlash'**
+  String get nfcScanStart;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {
