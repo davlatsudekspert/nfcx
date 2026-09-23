@@ -212,6 +212,30 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
                 ),
               ],
 
+              // ── Qoidalar eslatmasi ──────────────────────────
+              // Izoh ham ommaviy kontent: haqorat, diniy va siyosiy
+              // targ'ibot taqiqi yozishdan OLDIN ko'rinib tursin.
+              Padding(
+                key: const ValueKey('comment-rules-note'),
+                padding: const EdgeInsets.only(bottom: Gap.sm),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline_rounded, size: 13, color: t.text3),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        l.commentRulesNote,
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(fontSize: 11.5, color: t.text3),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
               // ── Yozish maydoni ──────────────────────────────
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,

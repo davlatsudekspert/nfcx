@@ -20,6 +20,8 @@
 // kod-bog'liq jadvallar ro'yxatini shu ro'yxat bilan solishtiradi —
 // kelajakda yangi jadval qo'shilsa, test darhol ogohlantiradi.
 
+import { archiveStmt } from './content-archive.js';
+
 // Kartaning O'ZI bilan birga ketishi kerak bo'lgan jadvallar.
 // Tartib muhim: post_likes postlardan OLDIN (u post_id orqali bog'langan).
 export const CARD_CONTENT_TABLES = [
@@ -34,7 +36,14 @@ export const CARD_CONTENT_TABLES = [
 // `SELECT code FROM cards WHERE user_id = ?`). `binds` har bir statement
 // uchun qayta ishlatiladi.
 export function cardContentCleanupStmts(env, codeSelect, binds, nowTs) {
+  const by = { reason: 'card_cleanup' };
   const stmts = [
+    // DALIL ARXIVI — HAMMA o'chirishdan OLDIN, o'sha batch ichida
+    // (content-archive.js): post, istoriya, video va fayl nusxasi.
+    archiveStmt(env, 'post', `code IN (${codeSelect})`, binds, by),
+    archiveStmt(env, 'story', `owner_kind = 'card' AND owner_id IN (${codeSelect})`, binds, by),
+    archiveStmt(env, 'card_video', `code IN (${codeSelect})`, binds, by),
+    archiveStmt(env, 'card_file', `code IN (${codeSelect})`, binds, by),
     // post_likes → posts orqali; postlar o'chirilishidan OLDIN.
     env.DB.prepare(`DELETE FROM post_likes WHERE post_id IN (SELECT id FROM posts WHERE code IN (${codeSelect}))`).bind(...binds),
     // ISTORYALAR — ALOHIDA, chunki ular kartaga `code` orqali EMAS,

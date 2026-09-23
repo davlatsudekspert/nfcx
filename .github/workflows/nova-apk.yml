@@ -168,6 +168,8 @@ jobs:
         run: |
           node scripts/test-catalog-feed.mjs
           node scripts/test-catalog-listing.mjs
+          node scripts/test-content-archive.mjs
+          node scripts/test-app-usage.mjs
           node scripts/test-follow-count-consistency.mjs
 
       # HAQIQIY IMZO — faqat sozlangan bo'lsa.

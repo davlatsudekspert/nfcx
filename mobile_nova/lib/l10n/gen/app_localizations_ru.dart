@@ -985,6 +985,10 @@ class LRu extends L {
   String get rulesReminder => 'Публикуя, вы соглашаетесь с правилами контента.';
 
   @override
+  String get commentRulesNote =>
+      'В комментариях запрещены оскорбления, мат, угрозы, религиозная и политическая агитация. На такие комментарии можно пожаловаться — они удаляются.';
+
+  @override
   String get rulesOpen => 'Правила контента';
 
   @override
@@ -1349,7 +1353,7 @@ class LRu extends L {
 
   @override
   String get registerTosRequired =>
-      'Чтобы продолжить, примите условия публичной оферты.';
+      'Чтобы продолжить, примите условия оферты и дайте согласие на обработку персональных данных.';
 
   @override
   String get registerTosPrefix => 'Регистрируясь, я принимаю условия ';
@@ -1358,7 +1362,15 @@ class LRu extends L {
   String get registerTosLink => 'публичной оферты';
 
   @override
-  String get registerTosSuffix => '.';
+  String get registerTosSuffix =>
+      ', даю согласие на обработку моих персональных данных в соответствии с ';
+
+  @override
+  String get registerPrivacyLink => 'политикой конфиденциальности';
+
+  @override
+  String get registerPrivacySuffix =>
+      ' и подтверждаю, что мне исполнилось 18 лет.';
 
   @override
   String get activityFollowed => 'подписался на вас';
@@ -1967,7 +1979,7 @@ class LRu extends L {
 
   @override
   String get rulesCardProcess =>
-      'В каждом посте, reels и истории есть «Пожаловаться». Жалобы проверяет модератор: нарушающий контент удаляется, при повторении аккаунт блокируется.';
+      'В каждом посте, reels, истории и комментарии есть «Пожаловаться». Загруженные фото проверяются автоматически. Жалобы проверяет модератор: нарушающий контент удаляется, при повторении аккаунт блокируется.';
 
   @override
   String get storyCaption => 'Короткий текст на истории';

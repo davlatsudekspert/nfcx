@@ -2001,6 +2001,12 @@ abstract class L {
   /// **'Joylash bilan kontent qoidalariga rozilik bildirasiz.'**
   String get rulesReminder;
 
+  /// Izoh yozish maydoni ustidagi qoidalar eslatmasi
+  ///
+  /// In uz, this message translates to:
+  /// **'Izohda haqorat, so‘kinish, tahdid, diniy yoki siyosiy targ‘ibot taqiqlanadi. Qoidabuzar izoh shikoyat qilinadi va o‘chiriladi.'**
+  String get commentRulesNote;
+
   /// No description provided for @rulesOpen.
   ///
   /// In uz, this message translates to:
@@ -2712,7 +2718,7 @@ abstract class L {
   /// Ro‘yxatdan o‘tishda oferta roziligi
   ///
   /// In uz, this message translates to:
-  /// **'Davom etish uchun ommaviy oferta shartlariga rozilik bering.'**
+  /// **'Davom etish uchun oferta shartlariga va shaxsga doir ma’lumotlaringizni qayta ishlashga rozilik bering.'**
   String get registerTosRequired;
 
   /// Ro‘yxatdan o‘tishda oferta roziligi
@@ -2730,8 +2736,20 @@ abstract class L {
   /// Ro‘yxatdan o‘tishda oferta roziligi
   ///
   /// In uz, this message translates to:
-  /// **' shartlariga roziman.'**
+  /// **' shartlariga roziman, '**
   String get registerTosSuffix;
+
+  /// Ro‘yxatdan o‘tishda shaxsga doir ma’lumotlar roziligi (O‘RQ-547)
+  ///
+  /// In uz, this message translates to:
+  /// **'maxfiylik siyosati'**
+  String get registerPrivacyLink;
+
+  /// Ro‘yxatdan o‘tishda shaxsga doir ma’lumotlar roziligi (O‘RQ-547)
+  ///
+  /// In uz, this message translates to:
+  /// **'ga muvofiq shaxsga doir ma’lumotlarim qayta ishlanishiga rozilik beraman va 18 yoshga to‘lganimni tasdiqlayman.'**
+  String get registerPrivacySuffix;
 
   /// Bildirishnoma matni
   ///
@@ -3840,7 +3858,7 @@ abstract class L {
   /// No description provided for @rulesCardProcess.
   ///
   /// In uz, this message translates to:
-  /// **'Har bir post, reel va istoryada “Shikoyat qilish” bor. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.'**
+  /// **'Har bir post, reel, istoriya va izohda “Shikoyat qilish” bor. Yuklangan rasmlar avtomatik tekshiriladi. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.'**
   String get rulesCardProcess;
 
   /// No description provided for @storyCaption.

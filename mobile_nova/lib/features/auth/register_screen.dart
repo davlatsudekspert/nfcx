@@ -442,12 +442,13 @@ class _Step extends StatelessWidget {
       );
 }
 
-/// OFERTAGA ROZILIK QATORI.
+/// OFERTA VA SHAXSGA DOIR MA'LUMOTLARGA ROZILIK QATORI.
 ///
-/// Matnning "ommaviy oferta" qismi bosilsa sayt ochiladi. Havola
-/// sayt BOSH sahifasiga boradi: alohida oferta sahifasining aniq
-/// yo'li tekshirib tasdiqlanmagan va mavjud bo'lmagan manzilga
-/// yuborish roziliksiz qoldirishdan ham yomon bo'lardi.
+/// Bitta katak — uchta tasdiq: oferta shartlari (`/shartlar`),
+/// maxfiylik siyosati bo'yicha ma'lumotni qayta ishlash (`/privacy`,
+/// O'RQ-547) va 18 yoshga to'lganlik (Google Play UGC talabi).
+/// Ikkala havola saytdagi mavjud sahifalarga ochiladi — to'lov
+/// havolasi emas.
 class _TosRow extends StatelessWidget {
   const _TosRow({required this.value, required this.onChanged});
 
@@ -458,6 +459,12 @@ class _TosRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = L.of(context);
     final t = context.tokens;
+    final link = TextStyle(
+      color: t.accent2,
+      fontWeight: FontWeight.w600,
+      decoration: TextDecoration.underline,
+      decorationColor: t.accent2.withValues(alpha: .5),
+    );
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -493,16 +500,21 @@ class _TosRow extends StatelessWidget {
                   children: [
                     TextSpan(
                       text: l.registerTosLink,
-                      style: TextStyle(
-                        color: t.accent2,
-                        fontWeight: FontWeight.w600,
-                        decoration: TextDecoration.underline,
-                        decorationColor: t.accent2.withValues(alpha: .5),
-                      ),
+                      style: link,
                       recognizer: TapGestureRecognizer()
-                        ..onTap = () => openLink(kApiBase),
+                        ..onTap = () => openLink('$kApiBase/shartlar'),
                     ),
                     TextSpan(text: l.registerTosSuffix),
+                    // O'RQ-547 "Shaxsga doir ma'lumotlar to'g'risida":
+                    // ma'lumotni qayta ishlashga ALOHIDA, aniq rozilik
+                    // va u qaysi hujjat asosida ekani ko'rinishi kerak.
+                    TextSpan(
+                      text: l.registerPrivacyLink,
+                      style: link,
+                      recognizer: TapGestureRecognizer()
+                        ..onTap = () => openLink('$kApiBase/privacy'),
+                    ),
+                    TextSpan(text: l.registerPrivacySuffix),
                   ],
                 ),
               ),

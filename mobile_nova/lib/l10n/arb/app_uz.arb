@@ -369,6 +369,10 @@
   "rulesAccept": "Men qoidalarni o‘qidim va roziman",
   "rulesContinue": "Davom etish",
   "rulesReminder": "Joylash bilan kontent qoidalariga rozilik bildirasiz.",
+  "commentRulesNote": "Izohda haqorat, so‘kinish, tahdid, diniy yoki siyosiy targ‘ibot taqiqlanadi. Qoidabuzar izoh shikoyat qilinadi va o‘chiriladi.",
+  "@commentRulesNote": {
+    "description": "Izoh yozish maydoni ustidagi qoidalar eslatmasi"
+  },
   "rulesOpen": "Kontent qoidalari",
   "rulesNotAccepted": "Kontent qoidalariga rozilik berilmadi.",
   "reportTitle": "Shikoyat qilish",
@@ -515,7 +519,7 @@
   "@themeOnyx": {
     "description": "Mavzu nomi — saytdagi iliq ko‘mir-qora"
   },
-  "registerTosRequired": "Davom etish uchun ommaviy oferta shartlariga rozilik bering.",
+  "registerTosRequired": "Davom etish uchun oferta shartlariga va shaxsga doir ma’lumotlaringizni qayta ishlashga rozilik bering.",
   "@registerTosRequired": {
     "description": "Ro‘yxatdan o‘tishda oferta roziligi"
   },
@@ -527,9 +531,17 @@
   "@registerTosLink": {
     "description": "Ro‘yxatdan o‘tishda oferta roziligi"
   },
-  "registerTosSuffix": " shartlariga roziman.",
+  "registerTosSuffix": " shartlariga roziman, ",
   "@registerTosSuffix": {
     "description": "Ro‘yxatdan o‘tishda oferta roziligi"
+  },
+  "registerPrivacyLink": "maxfiylik siyosati",
+  "@registerPrivacyLink": {
+    "description": "Ro‘yxatdan o‘tishda shaxsga doir ma’lumotlar roziligi (O‘RQ-547)"
+  },
+  "registerPrivacySuffix": "ga muvofiq shaxsga doir ma’lumotlarim qayta ishlanishiga rozilik beraman va 18 yoshga to‘lganimni tasdiqlayman.",
+  "@registerPrivacySuffix": {
+    "description": "Ro‘yxatdan o‘tishda shaxsga doir ma’lumotlar roziligi (O‘RQ-547)"
   },
   "activityFollowed": "sizga obuna bo‘ldi",
   "@activityFollowed": {
@@ -772,7 +784,7 @@
   "rulesBanIllegal": "Noqonuniy",
   "rulesBanSpam": "Spam va aldov",
   "rulesBanInsult": "Haqorat",
-  "rulesCardProcess": "Har bir post, reel va istoryada “Shikoyat qilish” bor. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.",
+  "rulesCardProcess": "Har bir post, reel, istoriya va izohda “Shikoyat qilish” bor. Yuklangan rasmlar avtomatik tekshiriladi. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.",
   "storyCaption": "Istoryaga qisqa matn",
   "noNfcExplain": "Bu telefon NFC kartani o‘qiy olmaydi va unga yoza olmaydi. Lekin profilingizni baribir ulashasiz — QR kod har qanday telefon kamerasida ochiladi.",
   "noNfcShareLink": "Havolani ulashish",
@@ -820,13 +832,40 @@
   "bizListingSchemaOld": "Server hali eski: tur, katalog kategoriyasi va qo‘shimcha rasmlar yangilanishdan keyin saqlanadi. Hozircha ular nom va bo‘limdan avtomatik aniqlanadi.",
   "bizAddService": "Xizmat qo‘shish",
   "bizPlanUsage": "Katalog: {count} / {limit}",
-  "@bizPlanUsage": {"placeholders": {"count": {"type": "int"}, "limit": {"type": "int"}}},
+  "@bizPlanUsage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
   "bizPlanFreeTitle": "Bepul tarif — {limit} ta tovar",
-  "@bizPlanFreeTitle": {"placeholders": {"limit": {"type": "int"}}},
+  "@bizPlanFreeTitle": {
+    "placeholders": {
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
   "bizPlanFreeBody": "Premium (oylik) bilan {premium} tagacha tovar, post va istoriya ochiladi. O‘z nomingizni (Business ID) sotib olsangiz — cheksiz.",
-  "@bizPlanFreeBody": {"placeholders": {"premium": {"type": "int"}}},
+  "@bizPlanFreeBody": {
+    "placeholders": {
+      "premium": {
+        "type": "int"
+      }
+    }
+  },
   "bizPlanPremiumTitle": "Premium — {limit} ta tovar",
-  "@bizPlanPremiumTitle": {"placeholders": {"limit": {"type": "int"}}},
+  "@bizPlanPremiumTitle": {
+    "placeholders": {
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
   "bizPlanPremiumBody": "Cheksiz tovar uchun o‘z nomingizni (Business ID) sotib oling.",
   "bizPlanLimitReached": "Limit to‘ldi: yangi tovar qo‘shish uchun tarifni oshiring. Qo‘shilganlari o‘chmaydi.",
   "bizPlanStoreNotice": "Premium va o‘z nomi saytda rasmiylashtiriladi:",
@@ -834,7 +873,13 @@
   "errPlanLimit": "Tarif limiti to‘ldi. Ko‘proq tovar uchun Premium yoki o‘z nomingiz kerak (sayt orqali).",
   "errPlanLocked": "Bepul tarifda post va istoriya yopiq. Premium (sayt orqali) bilan ochiladi.",
   "errContentBlocked": "Rasm yuklanmadi: {reason}. Bunday kontent qonun va NFCSTORE qoidalariga zid. Xato deb o‘ylasangiz, boshqa rasm tanlang yoki qo‘llab-quvvatlashga yozing.",
-  "@errContentBlocked": {"placeholders": {"reason": {"type": "String"}}},
+  "@errContentBlocked": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
   "blockSexual": "18+ yoki behayo kontent aniqlandi",
   "blockViolence": "zo‘ravonlik yoki qonli kontent aniqlandi",
   "blockExtremism": "ekstremistik yoki terroristik belgi yoki targ‘ibot aniqlandi",

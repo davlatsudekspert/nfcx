@@ -369,6 +369,7 @@
   "rulesAccept": "I have read the rules and agree",
   "rulesContinue": "Continue",
   "rulesReminder": "By publishing you agree to the content rules.",
+  "commentRulesNote": "Insults, swearing, threats, religious or political propaganda are not allowed in comments. Such comments can be reported and are removed.",
   "rulesOpen": "Content rules",
   "rulesNotAccepted": "Content rules were not accepted.",
   "reportTitle": "Report",
@@ -511,7 +512,7 @@
   "@themeOnyx": {
     "description": "Mavzu nomi — saytdagi iliq ko‘mir-qora"
   },
-  "registerTosRequired": "Accept the public offer terms to continue.",
+  "registerTosRequired": "To continue, accept the offer terms and consent to the processing of your personal data.",
   "@registerTosRequired": {
     "description": "Ro‘yxatdan o‘tishda oferta roziligi"
   },
@@ -523,10 +524,12 @@
   "@registerTosLink": {
     "description": "Ro‘yxatdan o‘tishda oferta roziligi"
   },
-  "registerTosSuffix": " terms.",
+  "registerTosSuffix": " terms, consent to the processing of my personal data under the ",
   "@registerTosSuffix": {
     "description": "Ro‘yxatdan o‘tishda oferta roziligi"
   },
+  "registerPrivacyLink": "privacy policy",
+  "registerPrivacySuffix": " and confirm that I am 18 or older.",
   "activityFollowed": "followed you",
   "@activityFollowed": {
     "description": "Bildirishnoma matni"
@@ -755,7 +758,7 @@
   "rulesBanIllegal": "Illegal",
   "rulesBanSpam": "Spam & scams",
   "rulesBanInsult": "Insults",
-  "rulesCardProcess": "Every post, reel and story has “Report”. A moderator reviews reports: violating content is removed, and repeat offenders are blocked.",
+  "rulesCardProcess": "Every post, reel, story and comment has “Report”. Uploaded photos are checked automatically. A moderator reviews reports: violating content is removed, and repeat offenders are blocked.",
   "storyCaption": "Short text on your story",
   "noNfcExplain": "This phone can’t read or write NFC cards. You can still share your profile — the QR code opens with any phone camera.",
   "noNfcShareLink": "Share link",

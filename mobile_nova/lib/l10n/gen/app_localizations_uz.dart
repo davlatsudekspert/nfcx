@@ -991,6 +991,10 @@ class LUz extends L {
       'Joylash bilan kontent qoidalariga rozilik bildirasiz.';
 
   @override
+  String get commentRulesNote =>
+      'Izohda haqorat, so‘kinish, tahdid, diniy yoki siyosiy targ‘ibot taqiqlanadi. Qoidabuzar izoh shikoyat qilinadi va o‘chiriladi.';
+
+  @override
   String get rulesOpen => 'Kontent qoidalari';
 
   @override
@@ -1358,7 +1362,7 @@ class LUz extends L {
 
   @override
   String get registerTosRequired =>
-      'Davom etish uchun ommaviy oferta shartlariga rozilik bering.';
+      'Davom etish uchun oferta shartlariga va shaxsga doir ma’lumotlaringizni qayta ishlashga rozilik bering.';
 
   @override
   String get registerTosPrefix => 'Ro‘yxatdan o‘tish bilan ';
@@ -1367,7 +1371,14 @@ class LUz extends L {
   String get registerTosLink => 'ommaviy oferta';
 
   @override
-  String get registerTosSuffix => ' shartlariga roziman.';
+  String get registerTosSuffix => ' shartlariga roziman, ';
+
+  @override
+  String get registerPrivacyLink => 'maxfiylik siyosati';
+
+  @override
+  String get registerPrivacySuffix =>
+      'ga muvofiq shaxsga doir ma’lumotlarim qayta ishlanishiga rozilik beraman va 18 yoshga to‘lganimni tasdiqlayman.';
 
   @override
   String get activityFollowed => 'sizga obuna bo‘ldi';
@@ -1972,7 +1983,7 @@ class LUz extends L {
 
   @override
   String get rulesCardProcess =>
-      'Har bir post, reel va istoryada “Shikoyat qilish” bor. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.';
+      'Har bir post, reel, istoriya va izohda “Shikoyat qilish” bor. Yuklangan rasmlar avtomatik tekshiriladi. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.';
 
   @override
   String get storyCaption => 'Istoryaga qisqa matn';

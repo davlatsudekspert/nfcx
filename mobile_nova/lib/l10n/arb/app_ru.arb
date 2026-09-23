@@ -369,6 +369,7 @@
   "rulesAccept": "Я прочитал(а) правила и согласен(на)",
   "rulesContinue": "Продолжить",
   "rulesReminder": "Публикуя, вы соглашаетесь с правилами контента.",
+  "commentRulesNote": "В комментариях запрещены оскорбления, мат, угрозы, религиозная и политическая агитация. На такие комментарии можно пожаловаться — они удаляются.",
   "rulesOpen": "Правила контента",
   "rulesNotAccepted": "Согласие с правилами контента не получено.",
   "reportTitle": "Пожаловаться",
@@ -511,7 +512,7 @@
   "@themeOnyx": {
     "description": "Mavzu nomi — saytdagi iliq ko‘mir-qora"
   },
-  "registerTosRequired": "Чтобы продолжить, примите условия публичной оферты.",
+  "registerTosRequired": "Чтобы продолжить, примите условия оферты и дайте согласие на обработку персональных данных.",
   "@registerTosRequired": {
     "description": "Ro‘yxatdan o‘tishda oferta roziligi"
   },
@@ -523,10 +524,12 @@
   "@registerTosLink": {
     "description": "Ro‘yxatdan o‘tishda oferta roziligi"
   },
-  "registerTosSuffix": ".",
+  "registerTosSuffix": ", даю согласие на обработку моих персональных данных в соответствии с ",
   "@registerTosSuffix": {
     "description": "Ro‘yxatdan o‘tishda oferta roziligi"
   },
+  "registerPrivacyLink": "политикой конфиденциальности",
+  "registerPrivacySuffix": " и подтверждаю, что мне исполнилось 18 лет.",
   "activityFollowed": "подписался на вас",
   "@activityFollowed": {
     "description": "Bildirishnoma matni"
@@ -755,7 +758,7 @@
   "rulesBanIllegal": "Незаконное",
   "rulesBanSpam": "Спам и обман",
   "rulesBanInsult": "Оскорбления",
-  "rulesCardProcess": "В каждом посте, reels и истории есть «Пожаловаться». Жалобы проверяет модератор: нарушающий контент удаляется, при повторении аккаунт блокируется.",
+  "rulesCardProcess": "В каждом посте, reels, истории и комментарии есть «Пожаловаться». Загруженные фото проверяются автоматически. Жалобы проверяет модератор: нарушающий контент удаляется, при повторении аккаунт блокируется.",
   "storyCaption": "Короткий текст на истории",
   "noNfcExplain": "Этот телефон не может читать и записывать NFC-карты. Но делиться профилем всё равно можно — QR-код откроется камерой любого телефона.",
   "noNfcShareLink": "Поделиться ссылкой",

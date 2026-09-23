@@ -56,6 +56,16 @@ void main() {
         find.textContaining(l.registerTosLink, findRichText: true),
         findsOneWidget,
       );
+      // O'RQ-547: shaxsga doir ma'lumotlarga ALOHIDA rozilik va
+      // maxfiylik siyosati havolasi, hamda 18+ tasdig'i — shu katakda.
+      expect(
+        find.textContaining(l.registerPrivacyLink, findRichText: true),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('18', findRichText: true),
+        findsWidgets,
+      );
     });
   });
 

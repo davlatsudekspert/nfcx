@@ -22,7 +22,8 @@ Har modul uchun test: `scripts/test-<modul>.mjs` (`scripts/lib/d1-harness.mjs` o
 
 `auth`, `account`, `engagement`, `catalog`, `media`, `admin-extra`,
 `admin-finance`, `telegram`, `assistant`, `moderation`, `comments`,
-`notifications`, `featured`, `catalog-feed`, `saves`, `marketplace`
+`notifications`, `featured`, `catalog-feed`, `saves`, `content-archive`,
+`app-usage`, `marketplace`
 (shu tartibda chaqiriladi — `worker.js: API_MODULES`).
 
 `catalog-feed` — ilova "Tanlov" katalogi, BARCHA bizneslarning
@@ -43,6 +44,20 @@ bilan ADD COLUMN orqali qo'shiladi, `company.catalogSchema` = 2.
 
 `saves` — saqlanganlar, hisobga bog'langan: `GET /api/saves?kind=reel|listing`,
 `POST /api/saves {kind, ref, saved}` (`user_saves`, 1000 tagacha).
+
+`content-archive` — DALIL ARXIVI. Post, istoriya (egasi, admin, muddati
+o'tgan), kompaniya posti, profil videosi va fayli, karta tozalanishi —
+o'chirishdan OLDIN o'sha batch ichida `content_archive` ga nusxa
+(`archiveStmt`); media fayl R2 dan o'chirilmaydi. Faqat admin:
+`GET /api/admin/evidence?source=all|content|comment&kind=&q=&flagged=1`
+(izohlar arxivi ham shu ro'yxatda; har yozuvda muallif va profil egasi —
+email, telefon), `POST /api/admin/evidence/flag {source, id, flagged, note}`
+(`evidence_flags`). Qidiruv va belgilash `admin_activity_log` ga yoziladi.
+
+`app-usage` — ilova foydalanuvchilari. `/api/auth/me` `x-app: nova` bilan
+kelsa `app_users` ga yoziladi (birinchi/oxirgi ochilish, soni, platforma;
+qurilma ID yig'ilmaydi). Admin: `GET /api/admin/app-users?q=&sort=recent|new|opens`
+-> `{stats:{total,today,week,month}, items[{..., profiles[], companies[]}]}`.
 
 Rasm filtri (`image-moderation.js`, modul emas — `uploadApi` chaqiradi):
 foydalanuvchi rasmi Gemini bilan tekshiriladi; 18+/zo'ravonlik/

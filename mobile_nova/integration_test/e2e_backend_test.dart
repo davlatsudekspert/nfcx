@@ -818,6 +818,50 @@ void main() {
             note: 'aks holda server 422 rules_not_accepted qaytarardi');
     }
 
+    // ── O'CHIRISH + DALIL ARXIVI ───────────────────────────────
+    // Alohida sinov posti: o'chirilgach ommaviy ro'yxatdan yo'qoladi.
+    // Server o'chirishdan OLDIN nusxani yopiq arxivga yozadi
+    // (hosting/api/content-archive.js) va ikkalasi bitta batch —
+    // arxiv yozilmasa o'chirish ham bo'lmaydi. Demak muvaffaqiyatli
+    // o'chirish arxiv yo'li productionda ishlayotganini ham ko'rsatadi.
+    if (uploaded != null) {
+      final tmp = await social.createPost(
+        code: code,
+        caption: testLabel('delete'),
+        imageUrl: uploaded,
+      );
+      switch (tmp) {
+        case Err(:final error):
+          fail('Post delete test object',
+              screen: 'PostScreen',
+              action: 'POST /api/records/:code/posts',
+              cause: why(error),
+              pathHint: '/posts');
+        case Ok(:final value):
+          final del = await social.deletePost(value.id);
+          final back = await social.postsOf(code);
+          final gone = back is Ok<List<Post>> &&
+              !back.value.any((p) => p.id == value.id);
+          if (del.isOk && gone) {
+            report.pass('Post delete test object',
+                screen: 'PostScreen',
+                action: 'DELETE /api/posts/:id',
+                note: 'ommadan yo‘qoldi; nusxa dalil arxivida (id=${value.id})');
+          } else {
+            litter.trackResult(
+                'post #${value.id}', () => social.deletePost(value.id));
+            fail('Post delete test object',
+                screen: 'PostScreen',
+                action: 'DELETE /api/posts/:id',
+                cause: del.isOk
+                    ? 'o‘chirildi deyildi, lekin ro‘yxatda hali bor'
+                    : why(del.errorOrNull ??
+                        const AppError(AppErrorKind.unknown)),
+                pathHint: 'hosting/worker.js postsApi + content-archive.js');
+          }
+      }
+    }
+
     // ── SAQLANISH: serverdan qayta o'qish ──────────────────────
     if (postId != null) {
       final again = await social.postsOf(code);

@@ -28,6 +28,8 @@
 // (worker.js'dagi pricing bloki izohiga qarang). access.js o'zgarsa — bu
 // jadvallarni ham qo'lda yangilang.
 
+import { archiveStmt } from './content-archive.js';
+
 const RANK = { free: 0, silver: 1, gold: 2, premium: 3, exclusive: 4 };
 const hasAccess = (access, min) => (RANK[access] ?? 0) >= (RANK[min] ?? 99);
 const FILE_LIMIT = { free: 0, silver: 0, gold: 5, premium: 15, exclusive: 999 };
@@ -85,15 +87,6 @@ async function putR2(env, filename, bytes, contentType, actor) {
     customMetadata: { uploadedAt: new Date().toISOString(), actor: String(actor || '').slice(0, 120) },
   });
   return `/uploads/${filename}`;
-}
-
-// Faqat SHU modul yaratgan fayllar o'chiriladi (file_*.pdf / video_*.mp4) —
-// boshqa /uploads/ obyektlariga (avatar, thumbnail) tegilmaydi.
-async function deleteOwnUpload(env, urlPath, re) {
-  if (!env.UPLOADS || typeof urlPath !== 'string' || !urlPath.startsWith('/uploads/')) return;
-  const name = urlPath.slice('/uploads/'.length);
-  if (!re.test(name)) return;
-  try { await env.UPLOADS.delete(`uploads/${name}`); } catch { /* jim */ }
 }
 
 async function readJson(request) {
@@ -206,8 +199,12 @@ async function handleFiles(request, env, H, code, sub) {
   if (m === 'DELETE') {
     const ctx = await ownerCtx(request, env, H, code);
     if (ctx.res) return ctx.res;
-    const row = await env.DB.prepare(`DELETE FROM card_files WHERE code = ? AND id = ? RETURNING file_url AS fileUrl`).bind(code, id).first();
-    if (row?.fileUrl) await deleteOwnUpload(env, row.fileUrl, /^file_[a-f0-9]+\.pdf$/);
+    // Fayl R2 dan O'CHIRILMAYDI: nusxa dalil arxiviga tushadi
+    // (content-archive.js), manzil esa ishlab turadi.
+    await env.DB.batch([
+      archiveStmt(env, 'card_file', 'code = ? AND id = ?', [code, id], { userId: ctx.user?.id, reason: 'owner' }),
+      env.DB.prepare(`DELETE FROM card_files WHERE code = ? AND id = ?`).bind(code, id),
+    ]);
     return H.json({ ok: true });
   }
   return null;
@@ -352,9 +349,12 @@ async function updateVideo(request, env, H, code, id) {
 async function deleteVideo(request, env, H, code, id) {
   const ctx = await ownerCtx(request, env, H, code);
   if (ctx.res) return ctx.res;
-  const row = await env.DB.prepare(`DELETE FROM card_videos WHERE code = ? AND id = ? RETURNING video_url AS videoUrl`).bind(code, id).first();
-  // Faqat video fayli o'chiriladi (thumbnail kichik JPEG — /api/upload orqali, tegilmaydi).
-  if (row?.videoUrl) await deleteOwnUpload(env, row.videoUrl, /^video_[a-f0-9]+\.mp4$/);
+  // Video fayli R2 dan O'CHIRILMAYDI: nusxa dalil arxiviga tushadi
+  // (content-archive.js), manzil esa ishlab turadi.
+  await env.DB.batch([
+    archiveStmt(env, 'card_video', 'code = ? AND id = ?', [code, id], { userId: ctx.user?.id, reason: 'owner' }),
+    env.DB.prepare(`DELETE FROM card_videos WHERE code = ? AND id = ?`).bind(code, id),
+  ]);
   return H.json({ ok: true });
 }
 

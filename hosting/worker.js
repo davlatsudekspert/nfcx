@@ -20,6 +20,10 @@ import * as apiNotifications from './api/notifications.js';
 import * as apiFeatured from './api/featured.js';
 import * as apiCatalogFeed from './api/catalog-feed.js';
 import * as apiSaves from './api/saves.js';
+import * as apiContentArchive from './api/content-archive.js';
+import * as apiAppUsage from './api/app-usage.js';
+import { recordAppOpen } from './api/app-usage.js';
+import { archiveStmt, ensureArchiveTable, urlArchived } from './api/content-archive.js';
 import { moderateImage, logBlockedUpload } from './api/image-moderation.js';
 
 // API javoblari standart holda KESHLANMAYDI.
@@ -1412,7 +1416,11 @@ async function companyApi(request, env, url) {
 
   if (action === 'posts' && itemId && request.method === 'DELETE') {
     const postId = Number(itemId) || 0;
-    const res = await env.DB.prepare(`DELETE FROM company_posts WHERE id = ? AND company_id = ?`).bind(postId, id).run();
+    // Avval dalil arxiviga nusxa, keyin o'chirish — bitta atomik batch.
+    const [, res] = await env.DB.batch([
+      archiveStmt(env, 'company_post', 'id = ? AND company_id = ?', [postId, id], { userId: owned.auth.user.id, reason: 'owner' }),
+      env.DB.prepare(`DELETE FROM company_posts WHERE id = ? AND company_id = ?`).bind(postId, id),
+    ]);
     if (!Number(res?.meta?.changes || 0)) return json({ error: 'not_found' }, 404);
     await apiComments.deleteLikesFor(env, 'company_post', postId).catch(() => {});
     return json({ ok: true });
@@ -1437,8 +1445,12 @@ async function companyApi(request, env, url) {
   }
 
   if (action === 'stories' && itemId && request.method === 'DELETE') {
-    const res = await env.DB.prepare(`DELETE FROM stories WHERE id = ? AND owner_kind = 'company' AND owner_id = ?`)
-      .bind(Number(itemId) || 0, id).run();
+    const storyWhere = `id = ? AND owner_kind = 'company' AND owner_id = ?`;
+    const storyBinds = [Number(itemId) || 0, id];
+    const [, res] = await env.DB.batch([
+      archiveStmt(env, 'story', storyWhere, storyBinds, { userId: owned.auth.user.id, reason: 'owner' }),
+      env.DB.prepare(`DELETE FROM stories WHERE ${storyWhere}`).bind(...storyBinds),
+    ]);
     if (!Number(res?.meta?.changes || 0)) return json({ error: 'not_found' }, 404);
     return json({ ok: true });
   }
@@ -2103,6 +2115,9 @@ async function ensureCoreSchema(env) {
   const internalColumn = ensureUserInternalColumn(env);
   const companyContact = ensureCompanyContactColumns(env);
   const companyExtras = ensureCompanyExtrasSchema(env);
+  // Dalil arxivi — o'chirish batch'lari unga yozadi, shuning uchun
+  // har qanday API so'rovidan OLDIN mavjud bo'lishi shart.
+  const contentArchive = ensureArchiveTable(env);
   if (!coreSchemaReady) {
     coreSchemaReady = env.DB.batch([
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS "users" (
@@ -2335,7 +2350,7 @@ async function ensureCoreSchema(env) {
   }
   // Natijalar birga kutiladi. `allSettled` emas, `all` — biror sxema
   // buyrug'i haqiqatan yiqilsa, chaqiruvchi buni bilishi kerak.
-  await Promise.all([adminTables, totpColumn, internalColumn, companyContact, companyExtras, coreSchemaReady]);
+  await Promise.all([adminTables, totpColumn, internalColumn, companyContact, companyExtras, contentArchive, coreSchemaReady]);
   // PROFILGA BIRIKTIRILGAN KOMPANIYA (2026-09).
   //
   // Bu ALTER `cards` jadvaliga tegadi, `cards` esa yuqoridagi umumiy
@@ -2862,6 +2877,8 @@ async function purgeStoryMediaD1(env, urls) {
         `SELECT 1 FROM stories WHERE image_url = ? OR video_url = ? LIMIT 1`,
       ).bind(url, url).first();
       if (inStories) continue;
+      // Dalil arxivida turgan fayl O'CHIRILMAYDI.
+      if (await urlArchived(env, url)) continue;
       await env.UPLOADS.delete(url.replace(/^\//, ''));
     } catch (error) {
       // Tozalash ishlamasa ham istorya qo'shilishi DAVOM ETADI.
@@ -2886,8 +2903,14 @@ async function addStoryD1(env, { kind, ownerId, userId, imageUrl, videoUrl, capt
   } catch (error) {
     console.error('addStoryD1 stale', error?.message);
   }
-  await env.DB.prepare(`DELETE FROM stories WHERE owner_kind = ? AND owner_id = ? AND expires_at <= ?`)
-    .bind(kind, ownerId, now.toISOString()).run();
+  // Muddati o'tgan istoriya ham dalil arxiviga tushadi (Instagram
+  // arxivi kabi, lekin faqat admin ko'radi) — keyin o'chiriladi.
+  const staleWhere = `owner_kind = ? AND owner_id = ? AND expires_at <= ?`;
+  const staleBinds = [kind, ownerId, now.toISOString()];
+  await env.DB.batch([
+    archiveStmt(env, 'story', staleWhere, staleBinds, { reason: 'expired' }),
+    env.DB.prepare(`DELETE FROM stories WHERE ${staleWhere}`).bind(...staleBinds),
+  ]);
   // Qatorlar o'chgach chaqiriladi — shunda `stories` bo'yicha tekshiruv
   // aynan QOLGAN istoryalarni ko'radi.
   if (staleUrls.length) await purgeStoryMediaD1(env, staleUrls);
@@ -5613,6 +5636,8 @@ async function authApi(request, env, url) {
   if (path === '/api/auth/me' && request.method === 'GET') {
     const user = await getCurrentUser(request, env);
     if (!user) return json({ user: null, cards: [] });
+    // Ilova (`x-app: nova`) ochilishi — admin "Ilova foydalanuvchilari".
+    await recordAppOpen(env, request, user.id);
     const rows = await env.DB.prepare(`SELECT ${recordColumnsD1()} FROM cards WHERE user_id = ? ORDER BY is_primary DESC, ts DESC`)
       .bind(user.id).all();
     // OBUNACHILAR SONI — KARTA MA'LUMOTIDA HAM.
@@ -9575,12 +9600,15 @@ async function postsApi(request, env, url) {
     // Egalik profil bo'yicha ham tekshiriladi — istoryadagi bilan
     // bir xil sabab (`posts.user_id` eski yozuvlarda bo'lmasligi
     // mumkin, profil esa `posts.code` orqali aniq bog'langan).
-    const res = await env.DB.prepare(
-      `DELETE FROM posts
-        WHERE id = ?
+    const postWhere = `id = ?
           AND ( user_id = ?
-             OR code IN (SELECT code FROM cards WHERE user_id = ?) )`
-    ).bind(postId, user.id, user.id).run();
+             OR code IN (SELECT code FROM cards WHERE user_id = ?) )`;
+    const postBinds = [postId, user.id, user.id];
+    // Avval dalil arxiviga nusxa (content-archive.js), keyin o'chirish.
+    const [, res] = await env.DB.batch([
+      archiveStmt(env, 'post', postWhere, postBinds, { userId: user.id, reason: 'owner' }),
+      env.DB.prepare(`DELETE FROM posts WHERE ${postWhere}`).bind(...postBinds),
+    ]);
     const changed = Number(res?.meta?.changes || 0);
     if (!changed) return json({ error: 'not_found' }, 404);
     return json({ ok: true });
@@ -9720,15 +9748,18 @@ async function storiesApi(request, env, url) {
   // Endi asosiy mezon — PROFIL EGALIGI: istorya `owner_id` da
   // profil kodini saqlaydi, profil esa `cards.user_id` da egasini.
   // `user_id` sharti ham qoldi (eski, kodsiz yozuvlar uchun).
-  const res = await env.DB.prepare(
-    `DELETE FROM stories
-      WHERE id = ?
+  const storyWhere = `id = ?
         AND ( user_id = ?
            OR (owner_kind = 'card'
                AND owner_id IN (SELECT code FROM cards WHERE user_id = ?))
            OR (owner_kind = 'company'
-               AND owner_id IN (SELECT company_id FROM companies WHERE owner_user_id = ?)) )`
-  ).bind(Number(m[1]), user.id, user.id, String(user.id)).run();
+               AND owner_id IN (SELECT company_id FROM companies WHERE owner_user_id = ?)) )`;
+  const storyBinds = [Number(m[1]), user.id, user.id, String(user.id)];
+  // Avval dalil arxiviga nusxa (content-archive.js), keyin o'chirish.
+  const [, res] = await env.DB.batch([
+    archiveStmt(env, 'story', storyWhere, storyBinds, { userId: user.id, reason: 'owner' }),
+    env.DB.prepare(`DELETE FROM stories WHERE ${storyWhere}`).bind(...storyBinds),
+  ]);
   if (!Number(res?.meta?.changes || 0)) return json({ error: 'not_found' }, 404);
   // Layk va ko'rishlar ham ketadi — aks holda ular yetim qoladi.
   await env.DB.batch([
@@ -10278,7 +10309,7 @@ const H = {
 // bilan tugashini tekshiradi — oxiriga qo'shilsa o'sha qo'riqchi
 // yiqiladi. Tartibning boshqa ahamiyati yo'q: har bir modul o'ziga
 // tegishli bo'lmagan yo'lga `null` qaytaradi.
-const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiMarketplace];
+const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiAppUsage, apiMarketplace];
 
 // Xavfsizlik header'lari — barcha javoblarga (statik va API). CSP ataylab faqat
 // framing/base/form/object ni cheklaydi (script/style ga tegmaydi — YouTube/Yandex

@@ -225,8 +225,8 @@ class ContentRulesNote extends ConsumerWidget {
 ///   * qoidabuzarlikda kontent o'chiriladi, hisob bloklanishi mumkin
 ///     (`bannedUntil` — server joylashni 403 `BANNED` bilan rad etadi).
 ///
-/// AVTOMATIK rasm tahlili (AI filtr) YO'Q va bu yerda "bor" deb
-/// aytilmaydi.
+/// Yuklangan rasm serverda avtomatik tekshiriladi
+/// (`hosting/api/image-moderation.js`); video — faqat shikoyat orqali.
 class ContentRulesCard extends StatelessWidget {
   const ContentRulesCard({super.key});
 

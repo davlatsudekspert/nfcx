@@ -988,6 +988,10 @@ class LEn extends L {
   String get rulesReminder => 'By publishing you agree to the content rules.';
 
   @override
+  String get commentRulesNote =>
+      'Insults, swearing, threats, religious or political propaganda are not allowed in comments. Such comments can be reported and are removed.';
+
+  @override
   String get rulesOpen => 'Content rules';
 
   @override
@@ -1355,7 +1359,7 @@ class LEn extends L {
 
   @override
   String get registerTosRequired =>
-      'Accept the public offer terms to continue.';
+      'To continue, accept the offer terms and consent to the processing of your personal data.';
 
   @override
   String get registerTosPrefix => 'By signing up I accept the ';
@@ -1364,7 +1368,14 @@ class LEn extends L {
   String get registerTosLink => 'public offer';
 
   @override
-  String get registerTosSuffix => ' terms.';
+  String get registerTosSuffix =>
+      ' terms, consent to the processing of my personal data under the ';
+
+  @override
+  String get registerPrivacyLink => 'privacy policy';
+
+  @override
+  String get registerPrivacySuffix => ' and confirm that I am 18 or older.';
 
   @override
   String get activityFollowed => 'followed you';
@@ -1972,7 +1983,7 @@ class LEn extends L {
 
   @override
   String get rulesCardProcess =>
-      'Every post, reel and story has “Report”. A moderator reviews reports: violating content is removed, and repeat offenders are blocked.';
+      'Every post, reel, story and comment has “Report”. Uploaded photos are checked automatically. A moderator reviews reports: violating content is removed, and repeat offenders are blocked.';
 
   @override
   String get storyCaption => 'Short text on your story';
