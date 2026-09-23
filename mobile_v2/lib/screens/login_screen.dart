@@ -339,10 +339,11 @@ class _OpeningObject extends StatelessWidget {
                   color: Colors.white.withValues(alpha: .1),
                 ),
               ),
-              child: Icon(
-                Icons.contactless_rounded,
-                color: p.heroInk,
-                size: 27,
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/images/nfcstore_logo_mark.png',
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
           ),
