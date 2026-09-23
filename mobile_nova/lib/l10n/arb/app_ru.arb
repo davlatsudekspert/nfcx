@@ -745,5 +745,15 @@
   "musicPrevious": "Предыдущий",
   "musicNext": "Следующий",
   "musicPlay": "Воспроизвести",
-  "musicPause": "Пауза"
+  "musicPause": "Пауза",
+  "errBanned": "Ваш аккаунт временно заблокирован за нарушение правил — публикация недоступна.",
+  "mediaChange": "Заменить",
+  "rulesCardTitle": "Запрещённый контент",
+  "rulesBan18": "18+",
+  "rulesBanViolence": "Насилие",
+  "rulesBanExtremism": "Экстремизм",
+  "rulesBanIllegal": "Незаконное",
+  "rulesBanSpam": "Спам и обман",
+  "rulesBanInsult": "Оскорбления",
+  "rulesCardProcess": "В каждом посте, reels и истории есть «Пожаловаться». Жалобы проверяет модератор: нарушающий контент удаляется, при повторении аккаунт блокируется."
 }

@@ -1941,4 +1941,36 @@ class LEn extends L {
 
   @override
   String get musicPause => 'Pause';
+
+  @override
+  String get errBanned =>
+      'Your account is temporarily blocked for breaking the rules — you can’t post right now.';
+
+  @override
+  String get mediaChange => 'Change';
+
+  @override
+  String get rulesCardTitle => 'Not allowed';
+
+  @override
+  String get rulesBan18 => '18+';
+
+  @override
+  String get rulesBanViolence => 'Violence';
+
+  @override
+  String get rulesBanExtremism => 'Extremism';
+
+  @override
+  String get rulesBanIllegal => 'Illegal';
+
+  @override
+  String get rulesBanSpam => 'Spam & scams';
+
+  @override
+  String get rulesBanInsult => 'Insults';
+
+  @override
+  String get rulesCardProcess =>
+      'Every post, reel and story has “Report”. A moderator reviews reports: violating content is removed, and repeat offenders are blocked.';
 }

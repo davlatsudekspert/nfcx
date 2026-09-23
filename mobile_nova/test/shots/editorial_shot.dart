@@ -355,6 +355,7 @@ Future<void> tabShot(
     {bool end = false,
     String? tapText,
     Key? tapKey,
+    Key? thenKey,
     Object? extra,
     bool playMusic = false}) async {
   _size(tester, s);
@@ -386,6 +387,10 @@ Future<void> tabShot(
     await _settle(tester, 12);
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
     await _settle(tester, 6);
+  }
+  if (thenKey != null) {
+    await tester.tap(find.byKey(thenKey).hitTestable().first);
+    await _settle(tester, 12);
   }
   if (playMusic) {
     await tester.tap(find.byKey(const ValueKey('music-play')));
@@ -603,6 +608,14 @@ void main() {
     testWidgets('music $w',
         (t) => tabShot(t, Routes.profile, 'music-$w', s,
             tapKey: const ValueKey('music-eq'), playMusic: true));
+    testWidgets('compose-post $w',
+        (t) => tabShot(t, Routes.postCreate, 'compose-post-$w', s));
+    testWidgets('compose-reel $w',
+        (t) => tabShot(t, Routes.reelCreate, 'compose-reel-$w', s));
+    testWidgets('reels-report $w',
+        (t) => tabShot(t, Routes.reels, 'reels-report-$w', s,
+            tapKey: const ValueKey('reel-more'),
+            thenKey: const ValueKey('reel-report')));
     testWidgets('nfc $w', (t) => tabShot(t, Routes.nfc, 'nfc-$w', s));
     testWidgets('nfc-end $w',
         (t) => tabShot(t, Routes.nfc, 'nfc-end-$w', s, end: true));

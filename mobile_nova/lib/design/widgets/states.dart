@@ -24,6 +24,10 @@ String describeError(L l, AppError e) => switch (e.code) {
       // "Serverda xatolik" chiqardi — odam nima qilishni bilmasdi.
       'email_send_failed' => l.errEmailSendFailed,
       'name_not_allowed' => l.errNameNotAllowed,
+      // Moderatsiya: admin hisobni vaqtincha bloklagan (serverdagi
+      // `bannedUntil`). Umumiy "ruxsat yo'q" emas — sabab aytiladi.
+      'BANNED' || 'account_suspended' => l.errBanned,
+      'rules_not_accepted' => l.rulesNotAccepted,
       _ => switch (e.kind) {
           AppErrorKind.offline => l.errOffline,
           AppErrorKind.timeout => l.errTimeout,

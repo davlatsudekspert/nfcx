@@ -1941,4 +1941,36 @@ class LUz extends L {
 
   @override
   String get musicPause => 'Pauza';
+
+  @override
+  String get errBanned =>
+      'Hisobingiz qoidabuzarlik uchun vaqtincha bloklangan — hozir joylay olmaysiz.';
+
+  @override
+  String get mediaChange => 'Almashtirish';
+
+  @override
+  String get rulesCardTitle => 'Taqiqlangan kontent';
+
+  @override
+  String get rulesBan18 => '18+';
+
+  @override
+  String get rulesBanViolence => 'Zo‘ravonlik';
+
+  @override
+  String get rulesBanExtremism => 'Ekstremizm';
+
+  @override
+  String get rulesBanIllegal => 'Noqonuniy';
+
+  @override
+  String get rulesBanSpam => 'Spam va aldov';
+
+  @override
+  String get rulesBanInsult => 'Haqorat';
+
+  @override
+  String get rulesCardProcess =>
+      'Har bir post, reel va istoryada “Shikoyat qilish” bor. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.';
 }

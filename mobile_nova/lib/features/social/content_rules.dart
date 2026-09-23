@@ -213,3 +213,92 @@ class ContentRulesNote extends ConsumerWidget {
     );
   }
 }
+
+
+/// Joylash ekranidagi qoidalar kartasi — NIMA taqiqlangan va NIMA bo'ladi.
+///
+/// Faqat serverda HAQIQATAN bor narsa aytiladi:
+///   * joylashdan oldin rozilik — server ham tekshiradi
+///     (`rules_not_accepted`, 422);
+///   * har bir post/reel/istoryada "Shikoyat qilish" — shikoyatlar
+///     moderatorga tushadi (`/api/reports`, admin paneli);
+///   * qoidabuzarlikda kontent o'chiriladi, hisob bloklanishi mumkin
+///     (`bannedUntil` — server joylashni 403 `BANNED` bilan rad etadi).
+///
+/// AVTOMATIK rasm tahlili (AI filtr) YO'Q va bu yerda "bor" deb
+/// aytilmaydi.
+class ContentRulesCard extends StatelessWidget {
+  const ContentRulesCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final l = L.of(context);
+    final banned = [
+      l.rulesBan18,
+      l.rulesBanViolence,
+      l.rulesBanExtremism,
+      l.rulesBanIllegal,
+      l.rulesBanSpam,
+      l.rulesBanInsult,
+    ];
+    return Container(
+      key: const ValueKey('content-rules-card'),
+      padding: const EdgeInsets.all(Gap.lg),
+      decoration: BoxDecoration(
+        color: t.surfaceSolid,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: t.border2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.shield_outlined, size: 17, color: t.text1),
+              const SizedBox(width: Gap.sm),
+              Expanded(
+                child: Text(l.rulesCardTitle,
+                    style: Theme.of(context).textTheme.titleSmall),
+              ),
+            ],
+          ),
+          const SizedBox(height: Gap.md),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final b in banned)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: t.error.withValues(alpha: .07),
+                    borderRadius: R.pill,
+                    border: Border.all(color: t.error.withValues(alpha: .25)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.block_rounded, size: 12, color: t.error),
+                      const SizedBox(width: 4),
+                      Text(b,
+                          style: TextStyle(
+                            fontFamily: 'Manrope',
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                            color: t.text1,
+                          )),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: Gap.md),
+          Text(l.rulesCardProcess,
+              style: Theme.of(context).textTheme.bodySmall),
+        ],
+      ),
+    );
+  }
+}

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -611,40 +613,78 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
                         ),
                       ],
                     )
-                  : Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.check_circle_rounded,
-                          size: 30,
-                          color: t.success,
+                  // TANLANGAN RASM KO'RINADI — faqat fayl nomi emas.
+                  // Odam nima joylayotganini (va qoidaga mosligini)
+                  // yuborishdan OLDIN ko'rsin. Video uchun belgi +
+                  // nom: kadr olish uchun dekoder kerak bo'lardi.
+                  : _video
+                      ? Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.movie_rounded,
+                                size: 34, color: t.text1),
+                            const SizedBox(height: Gap.sm),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: Gap.xl),
+                              child: Text(
+                                _file!.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            ClipRRect(
+                              borderRadius: R.gentle,
+                              child: Image.file(
+                                File(_file!.path),
+                                key: const ValueKey('composer-preview'),
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Center(
+                                  child: Icon(Icons.image_rounded,
+                                      size: 34, color: t.text3),
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              right: 10,
+                              top: 10,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: t.surfaceSolid.withValues(alpha: .92),
+                                  borderRadius: R.pill,
+                                ),
+                                child: Text(l.mediaChange,
+                                    style: TextStyle(
+                                      fontFamily: AppType.sans,
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: t.text1,
+                                    )),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: Gap.sm),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: Gap.xl,
-                          ),
-                          child: Text(
-                            _file!.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ),
-                      ],
-                    ),
             ),
           ),
-          if (widget.kind != ComposerKind.story) ...[
-            const SizedBox(height: Gap.xl),
-            NovaField(
-              label: l.postCaption,
-              controller: _text,
-              maxLines: 4,
-              maxLength: 600,
-              enabled: !_busy,
-            ),
-          ],
+          // Izoh — istoryada ham (server `caption` ni qabul qiladi),
+          // lekin qisqa: istorya ustida uzun matn o'qilmaydi.
+          const SizedBox(height: Gap.xl),
+          NovaField(
+            key: const ValueKey('composer-caption'),
+            label: l.postCaption,
+            controller: _text,
+            maxLines: widget.kind == ComposerKind.story ? 2 : 4,
+            maxLength: widget.kind == ComposerKind.story ? 200 : 600,
+            enabled: !_busy,
+          ),
           if (_busy && _progress > 0) ...[
             const SizedBox(height: Gap.xl),
             ClipRRect(
@@ -686,7 +726,10 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
               onPressed: () => context.push(Routes.settingsPremium),
             ),
           ],
-          const SizedBox(height: Gap.xxl),
+          const SizedBox(height: Gap.xl),
+          // QOIDALAR — tugmadan OLDIN, ko'rinib turadi.
+          const ContentRulesCard(),
+          const SizedBox(height: Gap.xl),
           // Generic "Chop etish" EMAS: foydalanuvchi nima
           // joylayotganini tugmaning o'zidan bilsin.
           NovaButton(label: action, busy: _busy, onPressed: _publish),

@@ -3782,6 +3782,66 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Pauza'**
   String get musicPause;
+
+  /// No description provided for @errBanned.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hisobingiz qoidabuzarlik uchun vaqtincha bloklangan — hozir joylay olmaysiz.'**
+  String get errBanned;
+
+  /// No description provided for @mediaChange.
+  ///
+  /// In uz, this message translates to:
+  /// **'Almashtirish'**
+  String get mediaChange;
+
+  /// No description provided for @rulesCardTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Taqiqlangan kontent'**
+  String get rulesCardTitle;
+
+  /// No description provided for @rulesBan18.
+  ///
+  /// In uz, this message translates to:
+  /// **'18+'**
+  String get rulesBan18;
+
+  /// No description provided for @rulesBanViolence.
+  ///
+  /// In uz, this message translates to:
+  /// **'Zo‘ravonlik'**
+  String get rulesBanViolence;
+
+  /// No description provided for @rulesBanExtremism.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ekstremizm'**
+  String get rulesBanExtremism;
+
+  /// No description provided for @rulesBanIllegal.
+  ///
+  /// In uz, this message translates to:
+  /// **'Noqonuniy'**
+  String get rulesBanIllegal;
+
+  /// No description provided for @rulesBanSpam.
+  ///
+  /// In uz, this message translates to:
+  /// **'Spam va aldov'**
+  String get rulesBanSpam;
+
+  /// No description provided for @rulesBanInsult.
+  ///
+  /// In uz, this message translates to:
+  /// **'Haqorat'**
+  String get rulesBanInsult;
+
+  /// No description provided for @rulesCardProcess.
+  ///
+  /// In uz, this message translates to:
+  /// **'Har bir post, reel va istoryada “Shikoyat qilish” bor. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.'**
+  String get rulesCardProcess;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

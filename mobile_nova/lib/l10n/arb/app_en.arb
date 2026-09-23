@@ -745,5 +745,15 @@
   "musicPrevious": "Previous",
   "musicNext": "Next",
   "musicPlay": "Play",
-  "musicPause": "Pause"
+  "musicPause": "Pause",
+  "errBanned": "Your account is temporarily blocked for breaking the rules — you can’t post right now.",
+  "mediaChange": "Change",
+  "rulesCardTitle": "Not allowed",
+  "rulesBan18": "18+",
+  "rulesBanViolence": "Violence",
+  "rulesBanExtremism": "Extremism",
+  "rulesBanIllegal": "Illegal",
+  "rulesBanSpam": "Spam & scams",
+  "rulesBanInsult": "Insults",
+  "rulesCardProcess": "Every post, reel and story has “Report”. A moderator reviews reports: violating content is removed, and repeat offenders are blocked."
 }

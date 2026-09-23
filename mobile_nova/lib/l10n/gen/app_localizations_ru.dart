@@ -1936,4 +1936,36 @@ class LRu extends L {
 
   @override
   String get musicPause => 'Пауза';
+
+  @override
+  String get errBanned =>
+      'Ваш аккаунт временно заблокирован за нарушение правил — публикация недоступна.';
+
+  @override
+  String get mediaChange => 'Заменить';
+
+  @override
+  String get rulesCardTitle => 'Запрещённый контент';
+
+  @override
+  String get rulesBan18 => '18+';
+
+  @override
+  String get rulesBanViolence => 'Насилие';
+
+  @override
+  String get rulesBanExtremism => 'Экстремизм';
+
+  @override
+  String get rulesBanIllegal => 'Незаконное';
+
+  @override
+  String get rulesBanSpam => 'Спам и обман';
+
+  @override
+  String get rulesBanInsult => 'Оскорбления';
+
+  @override
+  String get rulesCardProcess =>
+      'В каждом посте, reels и истории есть «Пожаловаться». Жалобы проверяет модератор: нарушающий контент удаляется, при повторении аккаунт блокируется.';
 }
