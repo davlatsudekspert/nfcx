@@ -1679,4 +1679,147 @@ class LUz extends L {
 
   @override
   String get themeIvory => 'Ivory';
+
+  @override
+  String get registerTypeTitle => 'Hisob turi';
+
+  @override
+  String get registerTypeHint =>
+      'Keyin ilova ichida istalgan vaqt o‘zgartirasiz.';
+
+  @override
+  String get registerTypeRequired => 'Hisob turini tanlang';
+
+  @override
+  String get accountPersonalHint => 'Raqamli vizitka, NFC ID, lenta va story';
+
+  @override
+  String get accountBusinessHint =>
+      'Mini-sayt, katalog, buyurtmalar va analitika';
+
+  @override
+  String get bizIntroEyebrow => 'NFCSTORE Business';
+
+  @override
+  String get bizIntroTitle => 'Biznesingiz uchun raqamli vitrina';
+
+  @override
+  String get bizIntroLead =>
+      'Mijoz kartaga tegadi yoki havolani ochadi — kompaniyangiz, mahsulotlaringiz va aloqa bir sahifada.';
+
+  @override
+  String get bizFeatSite => 'Mini-sayt';
+
+  @override
+  String get bizFeatSiteHint =>
+      'Logotip, muqova, manzil va ish vaqti — tayyor sahifa';
+
+  @override
+  String get bizFeatCatalog => 'Katalog';
+
+  @override
+  String get bizFeatCatalogHint =>
+      'Mahsulot va xizmatlar narxi bilan, buyurtma to‘g‘ridan-to‘g‘ri';
+
+  @override
+  String get bizFeatNfc => 'NFC bilan ochilish';
+
+  @override
+  String get bizFeatNfcHint =>
+      'Karta yoki stikerga tegilsa sahifangiz darhol ochiladi';
+
+  @override
+  String get bizFeatContent => 'Post · Story · Reels';
+
+  @override
+  String get bizFeatContentHint =>
+      'Kompaniya nomidan kontent — obunachilar lentasiga chiqadi';
+
+  @override
+  String get bizFeatAnalytics => 'Analitika';
+
+  @override
+  String get bizFeatAnalyticsHint => 'Ko‘rishlar va bosishlar — kunma-kun';
+
+  @override
+  String get bizFeatContacts => 'Kontaktlar';
+
+  @override
+  String get bizFeatContactsHint =>
+      'Telefon, Telegram, WhatsApp va sayt bir bosishda';
+
+  @override
+  String get bizOptionsTitle => 'Qanday boshlaysiz?';
+
+  @override
+  String get bizFreeBadge => 'Bepul';
+
+  @override
+  String get bizFreeTitle => 'Bepul Business ID';
+
+  @override
+  String get bizFreeHint =>
+      'ID avtomatik beriladi, biznes sahifangiz shu yerda, ilovada ochiladi.';
+
+  @override
+  String get bizFreeCta => 'Bepul ochish';
+
+  @override
+  String get bizPremiumBadge => 'Premium';
+
+  @override
+  String get bizPremiumTitle => 'Maxsus nom · Premium ID';
+
+  @override
+  String get bizPremiumHint =>
+      'O‘z nomingiz: nfcstore.uz/c/NOMINGIZ. Narx nom uzunligiga qarab.';
+
+  @override
+  String get bizPremiumCta => 'Nomni tekshirish';
+
+  @override
+  String get bizFreeIdNote => 'Business ID avtomatik beriladi';
+
+  @override
+  String get bizDescriptionMin => 'Kamida 20 belgi';
+
+  @override
+  String get bizReviewNote =>
+      'Sahifangiz qisqa tekshiruvdan keyin ommaga chiqadi.';
+
+  @override
+  String get storeBuyOnSiteBizName => 'Maxsus nom saytda rasmiylashtiriladi:';
+
+  @override
+  String get bizOpenCta => 'Biznes ochish';
+
+  @override
+  String get bizCatRestaurant => 'Restoran';
+
+  @override
+  String get bizCatCafe => 'Kafe';
+
+  @override
+  String get bizCatMarket => 'Market';
+
+  @override
+  String get bizCatShop => 'Do‘kon';
+
+  @override
+  String get bizCatServices => 'Xizmatlar';
+
+  @override
+  String get bizCatConstruction => 'Qurilish';
+
+  @override
+  String get bizCatClinic => 'Klinika';
+
+  @override
+  String get bizCatPharmacy => 'Dorixona';
+
+  @override
+  String get bizCatEducation => 'Ta’lim';
+
+  @override
+  String get bizCatOther => 'Boshqa';
 }

@@ -45,6 +45,8 @@ void main() {
     Routes.profileEdit,
     Routes.business,
     Routes.businessOnboard,
+    Routes.businessOnboardCustom,
+    Routes.businessIntro,
     Routes.businessDashboard,
     Routes.businessEdit,
     Routes.businessCatalog,

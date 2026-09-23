@@ -101,6 +101,16 @@ abstract final class Routes {
   // Biznes
   static const business = '/business';
   static const businessOnboard = '/business/new';
+
+  /// Maxsus nom (pullik) tekshiruvi — o'sha forma, boshqa rejim.
+  /// Xarid ilovada EMAS: nom tekshiriladi, rasmiylashtirish saytda.
+  static const businessOnboardCustom = '/business/new?mode=custom';
+
+  /// Biznes nima berishini tushuntiruvchi kirish ekrani va ikki
+  /// variant (bepul / maxsus nom). "Biznes ochish" tugmalarining
+  /// HAMMASI avval shu yerga keladi — odam bo'sh anketaga emas,
+  /// tanlovga tushadi.
+  static const businessIntro = '/business/intro';
   static const businessDashboard = '/business/dashboard';
   static const businessEdit = '/business/edit';
   static const businessCatalog = '/business/catalog';

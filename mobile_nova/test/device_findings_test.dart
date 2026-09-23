@@ -82,18 +82,42 @@ void main() {
   group('biznesi yo\'q odam', () {
     final src =
         File('lib/features/business/business_screens.dart').readAsStringSync();
+    // Taklif endi alohida `BusinessIntroBody` da — u ham Biznes
+    // bo'limida, ham "Biznes ochish" tugmalarining ekranida turadi.
+    final intro =
+        File('lib/features/business/business_intro.dart').readAsStringSync();
 
     test('bo\'sh forma emas — taklif ekrani', () {
-      expect(src, contains('_BusinessPitch'));
+      expect(src, contains('BusinessIntroBody()'));
     });
 
     test('NAMUNA ko\'rsatiladi', () {
       // Eng ishonarli dalil — haqiqiy sahifani ochib ko'rish.
-      expect(src, contains('Routes.demoBusiness'));
+      expect(intro, contains('Routes.demoBusiness'));
     });
 
-    test('yaratish tugmasi ham qoladi', () {
-      expect(src, contains('Routes.businessOnboard'));
+    test('yaratish tugmasi ham qoladi — ikki variant bilan', () {
+      // Tester: "free biznes yo'q". Bepul yo'l ham, maxsus nom ham
+      // ko'rinib turishi shart.
+      expect(intro, contains('Routes.businessOnboard)'));
+      expect(intro, contains('Routes.businessOnboardCustom'));
+    });
+
+    test('bepul yaratish serverga `auto: true` yuboradi', () {
+      final form = File('lib/features/business/business_forms.dart')
+          .readAsStringSync();
+      expect(form, contains("'auto': true"),
+          reason: 'bepul Business ID server tomonidan beriladi');
+    });
+
+    test('maxsus nom ilovada SOTILMAYDI — faqat tekshiriladi', () {
+      final form = File('lib/features/business/business_forms.dart')
+          .readAsStringSync();
+      // Maxsus nom rejimida yaratish tugmasi yo'q, xarid haqidagi
+      // yozuv bor (Play qoidasi, `store_policy.dart`).
+      expect(form, contains('StoreNotice(text: l.storeBuyOnSiteBizName)'));
+      expect(form.contains("'companyId': _id.text"), isFalse,
+          reason: 'pullik nom ilovadan yaratilmasin');
     });
   });
 }
@@ -246,7 +270,9 @@ void _homeBusinessTests() {
       expect(src, contains('_BizPitchCard'));
       expect(src, contains('Routes.demoBusiness'),
           reason: 'demo eng ishonarli dalil');
-      expect(src, contains('Routes.businessOnboard'));
+      // Yaratish endi Business intro orqali: avval nima berishi va
+      // ikki variant, keyin forma.
+      expect(src, contains('Routes.businessIntro'));
       // Eski karta faqat "shaxsiy rejim" tugmasini berardi.
       expect(src.contains('_NoBusinessCard'), isFalse);
     });

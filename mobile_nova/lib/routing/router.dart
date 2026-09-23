@@ -18,6 +18,7 @@ import '../features/profile/profile_screen.dart';
 import '../features/activity/activity_screen.dart';
 import '../features/business/business_forms.dart';
 import '../features/business/business_screens.dart';
+import '../features/business/business_intro.dart';
 import '../features/demo/demo_screens.dart';
 import '../features/nfc/nfc_ids_screen.dart';
 import '../features/nfc/nfc_misc_screens.dart';
@@ -224,8 +225,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Biznes
       GoRoute(path: Routes.business, builder: (_, __) => const BusinessScreen()),
       GoRoute(
+          path: Routes.businessIntro,
+          builder: (_, __) => const BusinessIntroScreen()),
+      GoRoute(
           path: Routes.businessOnboard,
-          builder: (_, __) => const BusinessOnboardScreen()),
+          builder: (_, s) => BusinessOnboardScreen(
+                custom: s.uri.queryParameters['mode'] == 'custom',
+              )),
       GoRoute(
           path: Routes.businessDashboard,
           builder: (_, __) => const BusinessDashboardScreen()),

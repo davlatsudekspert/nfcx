@@ -240,7 +240,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ? (noBusiness
                       ? _BizPitchCard(
                           onCreate: () =>
-                              context.push(Routes.businessOnboard),
+                              context.push(Routes.businessIntro),
                           onDemo: () => context.push(Routes.demoBusiness),
                         )
                       : _BizIdentityCard(

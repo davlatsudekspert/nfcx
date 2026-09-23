@@ -21,6 +21,7 @@ import '../../routing/routes.dart';
 import '../home/widgets/identity_card.dart' show formatCount;
 import 'business_providers.dart';
 import 'business_screens.dart';
+import '../shop/store_policy.dart';
 
 /// Backend qabul qiladigan yo'nalishlar (`COMPANY_V2_CATEGORIES`).
 ///
@@ -31,9 +32,46 @@ const kBusinessCategories = [
   'construction', 'clinic', 'pharmacy', 'education', 'other',
 ];
 
-/// Biznes ochish — manzil tanlash, ma'lumot va tasdiqlash.
+/// Yo'nalish nomi — foydalanuvchi tilida.
+///
+/// Ilgari chiplarda XOM kalit turardi (`restaurant`, `cafe`,
+/// `construction`) — tester skrinshotida aynan shunday ko'rindi.
+/// Kalit serverga o'zgarmasdan ketadi, faqat KO'RINISHI tarjima.
+String businessCategoryLabel(L l, String slug) => switch (slug) {
+      'restaurant' => l.bizCatRestaurant,
+      'cafe' => l.bizCatCafe,
+      'market' => l.bizCatMarket,
+      'shop' => l.bizCatShop,
+      'services' => l.bizCatServices,
+      'construction' => l.bizCatConstruction,
+      'clinic' => l.bizCatClinic,
+      'pharmacy' => l.bizCatPharmacy,
+      'education' => l.bizCatEducation,
+      _ => l.bizCatOther,
+    };
+
+/// Maxsus nom: 3–15 lotin harfi, shuningdek O' va G'.
+///
+/// Server qoidasi (`hosting/worker.js` -> `companyId()`). Ilgari bu
+/// yerda `[a-z0-9_-]` turardi: raqam va chiziqcha yozish mumkin edi,
+/// server esa ularni jimgina OLIB TASHLAB boshqa nomni tekshirardi —
+/// odam "nfc2" deb yozib, aslida "NFC" ni tekshirgan bo'lardi.
+final _companyIdChars = RegExp(r"[A-Za-z'ʻʼ‘’]");
+
+/// Biznes ochish — ikki rejim.
+///
+///   * BEPUL ([custom] = false) — manzil maydoni YO'Q. Server
+///     `auto: true` bilan tasodifiy, bepul Business ID beradi va
+///     to'lov talab qilmaydi. Tester "free biznes yo'q" degan
+///     edi: server buni qo'llardi, ilova esa bu yo'lni umuman
+///     ko'rsatmasdi.
+///   * MAXSUS NOM ([custom] = true) — faqat TEKSHIRUV: nom bo'shmi va
+///     narxi qancha. Yaratish tugmasi YO'Q — xarid saytda, ilovada
+///     to'lov bo'lmaydi (`store_policy.dart`).
 class BusinessOnboardScreen extends ConsumerStatefulWidget {
-  const BusinessOnboardScreen({super.key});
+  const BusinessOnboardScreen({super.key, this.custom = false});
+
+  final bool custom;
 
   @override
   ConsumerState<BusinessOnboardScreen> createState() =>
@@ -56,6 +94,13 @@ class _BusinessOnboardScreenState extends ConsumerState<BusinessOnboardScreen> {
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    // Tavsif hisoblagichi yozilgan sari yangilansin.
+    _description.addListener(() => setState(() {}));
+  }
+
+  @override
   void dispose() {
     _check?.cancel();
     _id.dispose();
@@ -73,7 +118,7 @@ class _BusinessOnboardScreenState extends ConsumerState<BusinessOnboardScreen> {
       _available = null;
       _price = 0;
     });
-    if (v.trim().length < 2) return;
+    if (v.trim().length < 3) return;
     _check = Timer(const Duration(milliseconds: 450), () async {
       setState(() => _checking = true);
       final res =
@@ -92,17 +137,19 @@ class _BusinessOnboardScreenState extends ConsumerState<BusinessOnboardScreen> {
     });
   }
 
-  Future<void> _create() async {
+  Future<void> _createFree() async {
     final l = L.of(context);
-    if (_available != true) {
-      setState(() => _error = l.bizIdTaken);
-      return;
-    }
     if (Validate.required(_name.text) != null ||
         Validate.required(_city.text) != null ||
-        Validate.phone(_phone.text) != null ||
-        _description.text.trim().length < 20) {
+        Validate.phone(_phone.text) != null) {
       setState(() => _error = l.errRequired);
+      return;
+    }
+    // Server 20 belgidan qisqa tavsifni rad etadi. Ilgari xato umumiy
+    // "maydonlarni to'ldiring" edi — odam tavsifni YOZGAN bo'lsa ham
+    // nima yetishmayotganini bilmasdi.
+    if (_description.text.trim().length < 20) {
+      setState(() => _error = l.bizDescriptionMin);
       return;
     }
 
@@ -111,7 +158,9 @@ class _BusinessOnboardScreenState extends ConsumerState<BusinessOnboardScreen> {
       _error = null;
     });
     final res = await ref.read(businessRepositoryProvider).create({
-      'companyId': _id.text.trim(),
+      // BEPUL YO'L: nom yuborilmaydi, server o'zi beradi.
+      'auto': true,
+      'companyId': '',
       'displayName': _name.text.trim(),
       'category': _category,
       'city': _city.text.trim(),
@@ -133,112 +182,179 @@ class _BusinessOnboardScreenState extends ConsumerState<BusinessOnboardScreen> {
   @override
   Widget build(BuildContext context) {
     final l = L.of(context);
-    final t = context.tokens;
-
     return NovaScaffold(
-      title: l.bizCreate,
+      title: widget.custom ? l.bizPremiumTitle : l.bizFreeTitle,
       showBack: true,
       body: NovaScroll(
-        children: [
-          NovaField(
-            label: l.bizId,
-            controller: _id,
-            hint: l.bizIdHint,
-            enabled: !_busy,
-            onChanged: _onIdChanged,
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[a-z0-9_-]')),
-              LengthLimitingTextInputFormatter(32),
-            ],
-            suffix: _checking
-                ? const Padding(
-                    padding: EdgeInsets.all(14),
-                    child: SizedBox(
-                        width: 15,
-                        height: 15,
-                        child: CircularProgressIndicator(strokeWidth: 2)),
-                  )
-                : _available == null
-                    ? null
-                    : Icon(
-                        _available!
-                            ? Icons.check_circle_rounded
-                            : Icons.cancel_rounded,
-                        color: _available! ? t.success : t.error,
-                        size: 19,
-                      ),
-          ),
-          if (_available != null) ...[
-            const SizedBox(height: Gap.sm),
-            Row(
-              children: [
-                Capsule(
-                  label: _available! ? l.bizIdFree : l.bizIdTaken,
-                  dense: true,
-                  selected: _available!,
-                  tone: _available! ? t.success : t.error,
-                ),
-                if (_available! && _price > 0) ...[
-                  const SizedBox(width: Gap.sm),
-                  Text(formatMoney(_price, 'UZS'),
-                      style: AppType.monoStyle(color: t.text2, size: 12)),
-                ],
-              ],
-            ),
-          ],
-          const SizedBox(height: Gap.lg),
-          NovaField(label: l.bizName, controller: _name, enabled: !_busy),
-          const SizedBox(height: Gap.lg),
-          Text(l.bizCategory,
-              style: Theme.of(context)
-                  .textTheme
-                  .labelMedium
-                  ?.copyWith(color: t.text2)),
-          const SizedBox(height: Gap.sm),
-          Wrap(
-            spacing: Gap.sm,
-            runSpacing: Gap.sm,
-            children: [
-              for (final c in kBusinessCategories)
-                Capsule(
-                  label: c,
-                  dense: true,
-                  selected: _category == c,
-                  onTap: _busy ? null : () => setState(() => _category = c),
-                ),
-            ],
-          ),
-          const SizedBox(height: Gap.lg),
-          NovaField(label: l.bizCity, controller: _city, enabled: !_busy),
-          const SizedBox(height: Gap.lg),
-          PhoneField(label: l.fieldPhone, controller: _phone),
-          const SizedBox(height: Gap.lg),
-          NovaField(
-            label: l.bizDescription,
-            controller: _description,
-            maxLines: 4,
-            maxLength: 1200,
-            enabled: !_busy,
-          ),
-          if (_error != null) ...[
-            const SizedBox(height: Gap.lg),
-            Text(_error!,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontFamily: AppType.sans,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: t.error)),
-          ],
-          const SizedBox(height: Gap.xxl),
-          NovaButton(label: l.bizCreate, busy: _busy, onPressed: _create),
-        ],
+        children: widget.custom ? _customChildren(l) : _freeChildren(l),
       ),
     );
   }
+
+  List<Widget> _freeChildren(L l) {
+    final t = context.tokens;
+    final desc = _description.text.trim().length;
+    return [
+      // Nom so'ralmasligining SABABI ko'rinib tursin — aks holda odam
+      // "manzilimni qayerga yozaman" deb qidiradi.
+      Container(
+        padding: const EdgeInsets.symmetric(
+            horizontal: Gap.lg, vertical: Gap.md),
+        decoration: BoxDecoration(
+          color: t.surface2,
+          borderRadius: R.gentle,
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.auto_awesome_outlined, size: 18, color: t.brandInk),
+            const SizedBox(width: Gap.md),
+            Expanded(
+              child: Text(l.bizFreeIdNote,
+                  style: Theme.of(context).textTheme.bodyMedium),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: Gap.xl),
+      NovaField(label: l.bizName, controller: _name, enabled: !_busy),
+      const SizedBox(height: Gap.lg),
+      Text(l.bizCategory,
+          style: Theme.of(context)
+              .textTheme
+              .labelMedium
+              ?.copyWith(color: t.text2)),
+      const SizedBox(height: Gap.sm),
+      Wrap(
+        spacing: Gap.sm,
+        runSpacing: Gap.sm,
+        children: [
+          for (final c in kBusinessCategories)
+            Capsule(
+              label: businessCategoryLabel(l, c),
+              dense: true,
+              selected: _category == c,
+              onTap: _busy ? null : () => setState(() => _category = c),
+            ),
+        ],
+      ),
+      const SizedBox(height: Gap.lg),
+      NovaField(label: l.bizCity, controller: _city, enabled: !_busy),
+      const SizedBox(height: Gap.lg),
+      PhoneField(label: l.fieldPhone, controller: _phone),
+      const SizedBox(height: Gap.lg),
+      NovaField(
+        label: l.bizDescription,
+        controller: _description,
+        maxLines: 4,
+        maxLength: 1200,
+        enabled: !_busy,
+      ),
+      const SizedBox(height: 6),
+      Text(
+        '${l.bizDescriptionMin} · ${desc.clamp(0, 20)}/20',
+        style: AppType.monoStyle(
+          color: desc >= 20 ? t.success : t.text3,
+          size: 11,
+          letterSpacing: .3,
+        ),
+      ),
+      if (_error != null) ...[
+        const SizedBox(height: Gap.lg),
+        Text(_error!,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                fontFamily: AppType.sans,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: t.error)),
+      ],
+      const SizedBox(height: Gap.xxl),
+      NovaButton(
+        key: const ValueKey('biz-create-free'),
+        label: l.bizFreeCta,
+        busy: _busy,
+        onPressed: _createFree,
+      ),
+      const SizedBox(height: Gap.md),
+      Text(l.bizReviewNote,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodySmall),
+      const SizedBox(height: Gap.xxl),
+    ];
+  }
+
+  List<Widget> _customChildren(L l) {
+    final t = context.tokens;
+    return [
+      Text(l.bizPremiumHint, style: Theme.of(context).textTheme.bodyMedium),
+      const SizedBox(height: Gap.xl),
+      NovaField(
+        label: l.bizId,
+        controller: _id,
+        hint: 'NOMINGIZ',
+        onChanged: _onIdChanged,
+        inputFormatters: [
+          FilteringTextInputFormatter.allow(_companyIdChars),
+          LengthLimitingTextInputFormatter(17),
+          _UpperCase(),
+        ],
+        suffix: _checking
+            ? const Padding(
+                padding: EdgeInsets.all(14),
+                child: SizedBox(
+                    width: 15,
+                    height: 15,
+                    child: CircularProgressIndicator(strokeWidth: 2)),
+              )
+            : _available == null
+                ? null
+                : Icon(
+                    _available!
+                        ? Icons.check_circle_rounded
+                        : Icons.cancel_rounded,
+                    color: _available! ? t.success : t.error,
+                    size: 19,
+                  ),
+      ),
+      const SizedBox(height: Gap.sm),
+      Text(
+        'nfcstore.uz/c/${_id.text.isEmpty ? 'NOMINGIZ' : _id.text}',
+        style: AppType.monoStyle(color: t.text3, size: 12),
+      ),
+      if (_available != null) ...[
+        const SizedBox(height: Gap.md),
+        Row(
+          children: [
+            Capsule(
+              label: _available! ? l.bizIdFree : l.bizIdTaken,
+              dense: true,
+              selected: _available!,
+              tone: _available! ? t.success : t.error,
+            ),
+            if (_available! && _price > 0) ...[
+              const SizedBox(width: Gap.sm),
+              Text(formatMoney(_price, 'UZS'),
+                  style: AppType.monoStyle(color: t.text1, size: 13)),
+            ],
+          ],
+        ),
+      ],
+      const SizedBox(height: Gap.xl),
+      // XARID SAYTDA — manzil MATN, havola emas (Play qoidasi).
+      StoreNotice(text: l.storeBuyOnSiteBizName),
+      const SizedBox(height: Gap.xxl),
+    ];
+  }
 }
 
-/// Biznes ma'lumotlarini tahrirlash.
+/// Maxsus nom katta harflarda yoziladi — server ham shunday saqlaydi.
+class _UpperCase extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+          TextEditingValue oldValue, TextEditingValue newValue) =>
+      newValue.copyWith(text: newValue.text.toUpperCase());
+}
+
 class BusinessEditScreen extends ConsumerStatefulWidget {
   const BusinessEditScreen({super.key});
 

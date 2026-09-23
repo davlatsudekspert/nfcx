@@ -1668,4 +1668,145 @@ class LRu extends L {
 
   @override
   String get themeIvory => 'Айвори';
+
+  @override
+  String get registerTypeTitle => 'Тип аккаунта';
+
+  @override
+  String get registerTypeHint =>
+      'Позже его можно сменить в приложении в любой момент.';
+
+  @override
+  String get registerTypeRequired => 'Выберите тип аккаунта';
+
+  @override
+  String get accountPersonalHint => 'Цифровая визитка, NFC ID, лента и сторис';
+
+  @override
+  String get accountBusinessHint => 'Мини-сайт, каталог, заказы и аналитика';
+
+  @override
+  String get bizIntroEyebrow => 'NFCSTORE Business';
+
+  @override
+  String get bizIntroTitle => 'Цифровая витрина для вашего бизнеса';
+
+  @override
+  String get bizIntroLead =>
+      'Клиент касается карты или открывает ссылку — компания, товары и контакты на одной странице.';
+
+  @override
+  String get bizFeatSite => 'Мини-сайт';
+
+  @override
+  String get bizFeatSiteHint =>
+      'Логотип, обложка, адрес и часы работы — готовая страница';
+
+  @override
+  String get bizFeatCatalog => 'Каталог';
+
+  @override
+  String get bizFeatCatalogHint => 'Товары и услуги с ценами, заказ напрямую';
+
+  @override
+  String get bizFeatNfc => 'Открытие по NFC';
+
+  @override
+  String get bizFeatNfcHint =>
+      'Касание карты или стикера сразу открывает страницу';
+
+  @override
+  String get bizFeatContent => 'Посты · Сторис · Reels';
+
+  @override
+  String get bizFeatContentHint =>
+      'Контент от имени компании — в ленте подписчиков';
+
+  @override
+  String get bizFeatAnalytics => 'Аналитика';
+
+  @override
+  String get bizFeatAnalyticsHint => 'Просмотры и клики — по дням';
+
+  @override
+  String get bizFeatContacts => 'Контакты';
+
+  @override
+  String get bizFeatContactsHint =>
+      'Телефон, Telegram, WhatsApp и сайт в одно касание';
+
+  @override
+  String get bizOptionsTitle => 'С чего начнём?';
+
+  @override
+  String get bizFreeBadge => 'Бесплатно';
+
+  @override
+  String get bizFreeTitle => 'Бесплатный Business ID';
+
+  @override
+  String get bizFreeHint =>
+      'ID выдаётся автоматически, страница бизнеса создаётся прямо в приложении.';
+
+  @override
+  String get bizFreeCta => 'Открыть бесплатно';
+
+  @override
+  String get bizPremiumBadge => 'Premium';
+
+  @override
+  String get bizPremiumTitle => 'Своё имя · Premium ID';
+
+  @override
+  String get bizPremiumHint =>
+      'Своё имя: nfcstore.uz/c/ИМЯ. Цена зависит от длины.';
+
+  @override
+  String get bizPremiumCta => 'Проверить имя';
+
+  @override
+  String get bizFreeIdNote => 'Business ID выдаётся автоматически';
+
+  @override
+  String get bizDescriptionMin => 'Минимум 20 символов';
+
+  @override
+  String get bizReviewNote =>
+      'Страница станет публичной после короткой проверки.';
+
+  @override
+  String get storeBuyOnSiteBizName => 'Своё имя оформляется на сайте:';
+
+  @override
+  String get bizOpenCta => 'Открыть бизнес';
+
+  @override
+  String get bizCatRestaurant => 'Ресторан';
+
+  @override
+  String get bizCatCafe => 'Кафе';
+
+  @override
+  String get bizCatMarket => 'Маркет';
+
+  @override
+  String get bizCatShop => 'Магазин';
+
+  @override
+  String get bizCatServices => 'Услуги';
+
+  @override
+  String get bizCatConstruction => 'Строительство';
+
+  @override
+  String get bizCatClinic => 'Клиника';
+
+  @override
+  String get bizCatPharmacy => 'Аптека';
+
+  @override
+  String get bizCatEducation => 'Образование';
+
+  @override
+  String get bizCatOther => 'Другое';
 }

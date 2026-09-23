@@ -3296,6 +3296,270 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Ivory'**
   String get themeIvory;
+
+  /// No description provided for @registerTypeTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hisob turi'**
+  String get registerTypeTitle;
+
+  /// No description provided for @registerTypeHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Keyin ilova ichida istalgan vaqt o‘zgartirasiz.'**
+  String get registerTypeHint;
+
+  /// No description provided for @registerTypeRequired.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hisob turini tanlang'**
+  String get registerTypeRequired;
+
+  /// No description provided for @accountPersonalHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Raqamli vizitka, NFC ID, lenta va story'**
+  String get accountPersonalHint;
+
+  /// No description provided for @accountBusinessHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Mini-sayt, katalog, buyurtmalar va analitika'**
+  String get accountBusinessHint;
+
+  /// No description provided for @bizIntroEyebrow.
+  ///
+  /// In uz, this message translates to:
+  /// **'NFCSTORE Business'**
+  String get bizIntroEyebrow;
+
+  /// No description provided for @bizIntroTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Biznesingiz uchun raqamli vitrina'**
+  String get bizIntroTitle;
+
+  /// No description provided for @bizIntroLead.
+  ///
+  /// In uz, this message translates to:
+  /// **'Mijoz kartaga tegadi yoki havolani ochadi — kompaniyangiz, mahsulotlaringiz va aloqa bir sahifada.'**
+  String get bizIntroLead;
+
+  /// No description provided for @bizFeatSite.
+  ///
+  /// In uz, this message translates to:
+  /// **'Mini-sayt'**
+  String get bizFeatSite;
+
+  /// No description provided for @bizFeatSiteHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Logotip, muqova, manzil va ish vaqti — tayyor sahifa'**
+  String get bizFeatSiteHint;
+
+  /// No description provided for @bizFeatCatalog.
+  ///
+  /// In uz, this message translates to:
+  /// **'Katalog'**
+  String get bizFeatCatalog;
+
+  /// No description provided for @bizFeatCatalogHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Mahsulot va xizmatlar narxi bilan, buyurtma to‘g‘ridan-to‘g‘ri'**
+  String get bizFeatCatalogHint;
+
+  /// No description provided for @bizFeatNfc.
+  ///
+  /// In uz, this message translates to:
+  /// **'NFC bilan ochilish'**
+  String get bizFeatNfc;
+
+  /// No description provided for @bizFeatNfcHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Karta yoki stikerga tegilsa sahifangiz darhol ochiladi'**
+  String get bizFeatNfcHint;
+
+  /// No description provided for @bizFeatContent.
+  ///
+  /// In uz, this message translates to:
+  /// **'Post · Story · Reels'**
+  String get bizFeatContent;
+
+  /// No description provided for @bizFeatContentHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kompaniya nomidan kontent — obunachilar lentasiga chiqadi'**
+  String get bizFeatContentHint;
+
+  /// No description provided for @bizFeatAnalytics.
+  ///
+  /// In uz, this message translates to:
+  /// **'Analitika'**
+  String get bizFeatAnalytics;
+
+  /// No description provided for @bizFeatAnalyticsHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ko‘rishlar va bosishlar — kunma-kun'**
+  String get bizFeatAnalyticsHint;
+
+  /// No description provided for @bizFeatContacts.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kontaktlar'**
+  String get bizFeatContacts;
+
+  /// No description provided for @bizFeatContactsHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Telefon, Telegram, WhatsApp va sayt bir bosishda'**
+  String get bizFeatContactsHint;
+
+  /// No description provided for @bizOptionsTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qanday boshlaysiz?'**
+  String get bizOptionsTitle;
+
+  /// No description provided for @bizFreeBadge.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bepul'**
+  String get bizFreeBadge;
+
+  /// No description provided for @bizFreeTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bepul Business ID'**
+  String get bizFreeTitle;
+
+  /// No description provided for @bizFreeHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'ID avtomatik beriladi, biznes sahifangiz shu yerda, ilovada ochiladi.'**
+  String get bizFreeHint;
+
+  /// No description provided for @bizFreeCta.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bepul ochish'**
+  String get bizFreeCta;
+
+  /// No description provided for @bizPremiumBadge.
+  ///
+  /// In uz, this message translates to:
+  /// **'Premium'**
+  String get bizPremiumBadge;
+
+  /// No description provided for @bizPremiumTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Maxsus nom · Premium ID'**
+  String get bizPremiumTitle;
+
+  /// No description provided for @bizPremiumHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'O‘z nomingiz: nfcstore.uz/c/NOMINGIZ. Narx nom uzunligiga qarab.'**
+  String get bizPremiumHint;
+
+  /// No description provided for @bizPremiumCta.
+  ///
+  /// In uz, this message translates to:
+  /// **'Nomni tekshirish'**
+  String get bizPremiumCta;
+
+  /// No description provided for @bizFreeIdNote.
+  ///
+  /// In uz, this message translates to:
+  /// **'Business ID avtomatik beriladi'**
+  String get bizFreeIdNote;
+
+  /// No description provided for @bizDescriptionMin.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kamida 20 belgi'**
+  String get bizDescriptionMin;
+
+  /// No description provided for @bizReviewNote.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sahifangiz qisqa tekshiruvdan keyin ommaga chiqadi.'**
+  String get bizReviewNote;
+
+  /// No description provided for @storeBuyOnSiteBizName.
+  ///
+  /// In uz, this message translates to:
+  /// **'Maxsus nom saytda rasmiylashtiriladi:'**
+  String get storeBuyOnSiteBizName;
+
+  /// No description provided for @bizOpenCta.
+  ///
+  /// In uz, this message translates to:
+  /// **'Biznes ochish'**
+  String get bizOpenCta;
+
+  /// No description provided for @bizCatRestaurant.
+  ///
+  /// In uz, this message translates to:
+  /// **'Restoran'**
+  String get bizCatRestaurant;
+
+  /// No description provided for @bizCatCafe.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kafe'**
+  String get bizCatCafe;
+
+  /// No description provided for @bizCatMarket.
+  ///
+  /// In uz, this message translates to:
+  /// **'Market'**
+  String get bizCatMarket;
+
+  /// No description provided for @bizCatShop.
+  ///
+  /// In uz, this message translates to:
+  /// **'Do‘kon'**
+  String get bizCatShop;
+
+  /// No description provided for @bizCatServices.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xizmatlar'**
+  String get bizCatServices;
+
+  /// No description provided for @bizCatConstruction.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qurilish'**
+  String get bizCatConstruction;
+
+  /// No description provided for @bizCatClinic.
+  ///
+  /// In uz, this message translates to:
+  /// **'Klinika'**
+  String get bizCatClinic;
+
+  /// No description provided for @bizCatPharmacy.
+  ///
+  /// In uz, this message translates to:
+  /// **'Dorixona'**
+  String get bizCatPharmacy;
+
+  /// No description provided for @bizCatEducation.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ta’lim'**
+  String get bizCatEducation;
+
+  /// No description provided for @bizCatOther.
+  ///
+  /// In uz, this message translates to:
+  /// **'Boshqa'**
+  String get bizCatOther;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

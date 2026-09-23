@@ -1676,4 +1676,144 @@ class LEn extends L {
 
   @override
   String get themeIvory => 'Ivory';
+
+  @override
+  String get registerTypeTitle => 'Account type';
+
+  @override
+  String get registerTypeHint => 'You can switch it anytime later in the app.';
+
+  @override
+  String get registerTypeRequired => 'Choose an account type';
+
+  @override
+  String get accountPersonalHint => 'Digital card, NFC ID, feed and stories';
+
+  @override
+  String get accountBusinessHint => 'Mini-site, catalog, orders and analytics';
+
+  @override
+  String get bizIntroEyebrow => 'NFCSTORE Business';
+
+  @override
+  String get bizIntroTitle => 'A digital storefront for your business';
+
+  @override
+  String get bizIntroLead =>
+      'A customer taps your card or opens the link — your company, products and contacts on one page.';
+
+  @override
+  String get bizFeatSite => 'Mini-site';
+
+  @override
+  String get bizFeatSiteHint => 'Logo, cover, address and hours — a ready page';
+
+  @override
+  String get bizFeatCatalog => 'Catalog';
+
+  @override
+  String get bizFeatCatalogHint =>
+      'Products and services with prices, direct orders';
+
+  @override
+  String get bizFeatNfc => 'Opens with NFC';
+
+  @override
+  String get bizFeatNfcHint =>
+      'A tap on a card or sticker opens your page instantly';
+
+  @override
+  String get bizFeatContent => 'Posts · Stories · Reels';
+
+  @override
+  String get bizFeatContentHint =>
+      'Content as your company — shown in followers’ feeds';
+
+  @override
+  String get bizFeatAnalytics => 'Analytics';
+
+  @override
+  String get bizFeatAnalyticsHint => 'Views and clicks — day by day';
+
+  @override
+  String get bizFeatContacts => 'Contacts';
+
+  @override
+  String get bizFeatContactsHint =>
+      'Phone, Telegram, WhatsApp and website in one tap';
+
+  @override
+  String get bizOptionsTitle => 'How do you want to start?';
+
+  @override
+  String get bizFreeBadge => 'Free';
+
+  @override
+  String get bizFreeTitle => 'Free Business ID';
+
+  @override
+  String get bizFreeHint =>
+      'An ID is assigned automatically and your business page is created right here in the app.';
+
+  @override
+  String get bizFreeCta => 'Open for free';
+
+  @override
+  String get bizPremiumBadge => 'Premium';
+
+  @override
+  String get bizPremiumTitle => 'Custom name · Premium ID';
+
+  @override
+  String get bizPremiumHint =>
+      'Your own name: nfcstore.uz/c/YOURNAME. Price depends on length.';
+
+  @override
+  String get bizPremiumCta => 'Check a name';
+
+  @override
+  String get bizFreeIdNote => 'Your Business ID is assigned automatically';
+
+  @override
+  String get bizDescriptionMin => 'At least 20 characters';
+
+  @override
+  String get bizReviewNote => 'Your page goes public after a short review.';
+
+  @override
+  String get storeBuyOnSiteBizName =>
+      'Custom names are purchased on the website:';
+
+  @override
+  String get bizOpenCta => 'Open a business';
+
+  @override
+  String get bizCatRestaurant => 'Restaurant';
+
+  @override
+  String get bizCatCafe => 'Café';
+
+  @override
+  String get bizCatMarket => 'Market';
+
+  @override
+  String get bizCatShop => 'Shop';
+
+  @override
+  String get bizCatServices => 'Services';
+
+  @override
+  String get bizCatConstruction => 'Construction';
+
+  @override
+  String get bizCatClinic => 'Clinic';
+
+  @override
+  String get bizCatPharmacy => 'Pharmacy';
+
+  @override
+  String get bizCatEducation => 'Education';
+
+  @override
+  String get bizCatOther => 'Other';
 }
