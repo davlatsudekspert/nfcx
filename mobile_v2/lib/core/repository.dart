@@ -163,6 +163,50 @@ class Repository {
   Future<Map<String, dynamic>> createCompany(Map<String, dynamic> body) async =>
       _map(await api.post('/api/companies', body));
 
+  Company _companyFromEnvelope(dynamic raw) {
+    final r = _map(raw);
+    final company = r['company'];
+    return Company.fromJson(
+      company is Map ? company.cast<String, dynamic>() : r,
+    );
+  }
+
+  Future<Company> updateCompany(
+    String id,
+    Map<String, dynamic> body,
+  ) async =>
+      _companyFromEnvelope(
+        await api.patch('/api/companies/' + id, body),
+      );
+
+  Future<Company> addCompanyCatalogItem(
+    String id,
+    Map<String, dynamic> body,
+  ) async =>
+      _companyFromEnvelope(
+        await api.post('/api/companies/' + id + '/catalog', body),
+      );
+
+  Future<Company> updateCompanyCatalogItem(
+    String id,
+    String itemId,
+    Map<String, dynamic> body,
+  ) async =>
+      _companyFromEnvelope(
+        await api.patch(
+          '/api/companies/' + id + '/catalog/' + itemId,
+          body,
+        ),
+      );
+
+  Future<Company> deleteCompanyCatalogItem(
+    String id,
+    String itemId,
+  ) async =>
+      _companyFromEnvelope(
+        await api.delete('/api/companies/' + id + '/catalog/' + itemId),
+      );
+
   Map<String, dynamic> _profilePayload(IdentityProfile p) => {
         'name': p.name,
         'role': p.role,
