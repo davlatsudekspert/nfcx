@@ -67,7 +67,10 @@ const _me = NfcId(
   posts: 9,
   verified: true,
   tier: 'exclusive',
-  musicUrls: ['https://nfcstore.uz/uploads/track.mp3'],
+  musicUrls: [
+    'https://nfcstore.uz/uploads/Yulduzlar_ostida.mp3',
+    'https://nfcstore.uz/uploads/Toshkent-kechasi.mp3',
+  ],
 );
 
 const _ids = [
@@ -349,7 +352,11 @@ void _size(WidgetTester tester, Size s) {
 /// Router orqali tab ekrani.
 Future<void> tabShot(
     WidgetTester tester, String location, String name, Size s,
-    {bool end = false, String? tapText, Key? tapKey, Object? extra}) async {
+    {bool end = false,
+    String? tapText,
+    Key? tapKey,
+    Object? extra,
+    bool playMusic = false}) async {
   _size(tester, s);
   late GoRouter router;
   await tester.pumpWidget(ProviderScope(
@@ -378,6 +385,12 @@ Future<void> tabShot(
     await tester.tap(find.byKey(tapKey).hitTestable().first);
     await _settle(tester, 12);
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
+    await _settle(tester, 6);
+  }
+  if (playMusic) {
+    await tester.tap(find.byKey(const ValueKey('music-play')));
+    await _settle(tester, 4);
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
     await _settle(tester, 6);
   }
   if (tapText != null) {
@@ -587,6 +600,9 @@ void main() {
     testWidgets('reels-more $w',
         (t) => tabShot(t, Routes.reels, 'reels-more-$w', s,
             tapKey: const ValueKey('reel-more')));
+    testWidgets('music $w',
+        (t) => tabShot(t, Routes.profile, 'music-$w', s,
+            tapKey: const ValueKey('music-eq'), playMusic: true));
     testWidgets('nfc $w', (t) => tabShot(t, Routes.nfc, 'nfc-$w', s));
     testWidgets('nfc-end $w',
         (t) => tabShot(t, Routes.nfc, 'nfc-end-$w', s, end: true));

@@ -76,11 +76,15 @@ void main() {
   group('musiqa varag‘i', () {
     final music = codeOnly(read('lib/features/profile/music_player.dart'));
 
-    test('pastki navigatsiya balandligi hisobga olinadi', () {
-      // Faqat `viewInsets` (klaviatura) hisoblansa, suzuvchi
-      // navigatsiya varaqning ijro tugmasini yopib qo‘yardi.
-      expect(music, contains('navSafeBottom(context)'),
-          reason: 'varaq pastki navigatsiya ostida qolib ketadi');
+    test('pastki navigatsiya varaqni yopmaydi', () {
+      // Varaq ILDIZ navigatorda ochiladi — u tab qobig'i (va suzuvchi
+      // navigatsiya) USTIDAGI marshrut, ya'ni panel uni yopa olmaydi.
+      // Pastda qurilmaning jest paneli uchun `SafeArea` + tizim
+      // bo'shlig'i.
+      expect(music, contains('useRootNavigator: true'),
+          reason: 'varaq tab navigatorida ochilsa, panel ostida qoladi');
+      expect(music, contains('MediaQuery.paddingOf(context).bottom'),
+          reason: 'jest paneli hisobga olinmagan');
     });
   });
 

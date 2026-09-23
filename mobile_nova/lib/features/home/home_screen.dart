@@ -436,6 +436,7 @@ class _IdentityHero extends ConsumerWidget {
             url: avatar,
             initials: user.initials,
             business: profile.isBusiness,
+            ownerName: title,
             music: profile.musicUrls,
             ring: ring,
             onTap: ring == null
@@ -467,11 +468,13 @@ class _PortraitAvatar extends StatelessWidget {
     required this.url,
     required this.initials,
     required this.business,
+    this.ownerName = '',
     this.music = const [],
     this.ring,
     this.onTap,
   });
 
+  final String ownerName;
   final String url;
   final String initials;
   final bool business;
@@ -553,7 +556,12 @@ class _PortraitAvatar extends StatelessWidget {
               Positioned(
                 right: -2,
                 bottom: -2,
-                child: MusicControl(urls: music, size: 26),
+                child: MusicControl(
+                  urls: music,
+                  size: 26,
+                  ownerName: ownerName,
+                  ownerAvatar: url,
+                ),
               ),
             ],
           ),

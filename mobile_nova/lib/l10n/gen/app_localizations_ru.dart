@@ -1924,4 +1924,16 @@ class LRu extends L {
 
   @override
   String get bizFeaturesTitle => 'Что даёт бизнес-профиль';
+
+  @override
+  String get musicPrevious => 'Предыдущий';
+
+  @override
+  String get musicNext => 'Следующий';
+
+  @override
+  String get musicPlay => 'Воспроизвести';
+
+  @override
+  String get musicPause => 'Пауза';
 }

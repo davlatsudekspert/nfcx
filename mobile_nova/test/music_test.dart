@@ -55,7 +55,7 @@ void main() {
         ),
       ));
       await tester.pump();
-      expect(find.byIcon(Icons.music_note_rounded), findsNothing);
+      expect(find.byKey(const ValueKey('music-eq')), findsNothing);
       // Hech qanday bosiladigan yuza qoldirmaydi.
       expect(tester.getSize(find.byType(MusicControl)), Size.zero);
     });
@@ -69,7 +69,8 @@ void main() {
         ),
       ));
       await tester.pump();
-      expect(find.byIcon(Icons.music_note_rounded), findsOneWidget);
+      // Ekvalayzer belgisi (to'xtaganda jim ustunlar).
+    expect(find.byKey(const ValueKey('music-eq')), findsOneWidget);
     });
   });
 

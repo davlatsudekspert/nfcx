@@ -3758,6 +3758,30 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Biznes nima beradi'**
   String get bizFeaturesTitle;
+
+  /// No description provided for @musicPrevious.
+  ///
+  /// In uz, this message translates to:
+  /// **'Oldingi'**
+  String get musicPrevious;
+
+  /// No description provided for @musicNext.
+  ///
+  /// In uz, this message translates to:
+  /// **'Keyingi'**
+  String get musicNext;
+
+  /// No description provided for @musicPlay.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ijro etish'**
+  String get musicPlay;
+
+  /// No description provided for @musicPause.
+  ///
+  /// In uz, this message translates to:
+  /// **'Pauza'**
+  String get musicPause;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

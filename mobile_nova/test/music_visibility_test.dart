@@ -17,7 +17,7 @@ void main() {
   test('profil avatari yonida musiqa belgisi bor', () {
     final src =
         File('lib/features/profile/profile_screen.dart').readAsStringSync();
-    expect(src, contains('MusicControl(urls: profile!.musicUrls'),
+    expect(src, contains('urls: profile!.musicUrls'),
         reason: 'profil ekranida musiqa pleyeri yo‘q');
   });
 
@@ -31,7 +31,8 @@ void main() {
       ),
     ));
     await tester.pump();
-    expect(find.byIcon(Icons.music_note_rounded), findsOneWidget);
+    // Ekvalayzer belgisi (to'xtaganda jim ustunlar).
+    expect(find.byKey(const ValueKey('music-eq')), findsOneWidget);
   });
 
   testWidgets('musiqa YO‘Q bo‘lsa hech narsa chizilmaydi', (tester) async {
@@ -42,6 +43,6 @@ void main() {
       ),
     ));
     await tester.pump();
-    expect(find.byIcon(Icons.music_note_rounded), findsNothing);
+    expect(find.byKey(const ValueKey('music-eq')), findsNothing);
   });
 }

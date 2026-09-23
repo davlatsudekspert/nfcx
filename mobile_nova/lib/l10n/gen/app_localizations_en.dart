@@ -1929,4 +1929,16 @@ class LEn extends L {
 
   @override
   String get bizFeaturesTitle => 'What Business gives you';
+
+  @override
+  String get musicPrevious => 'Previous';
+
+  @override
+  String get musicNext => 'Next';
+
+  @override
+  String get musicPlay => 'Play';
+
+  @override
+  String get musicPause => 'Pause';
 }

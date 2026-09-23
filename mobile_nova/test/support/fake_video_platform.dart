@@ -24,6 +24,7 @@ class FakeVideoPlatform extends VideoPlayerPlatform {
   final disposed = <int>[];
   final playing = <int>{};
   final urls = <int, String>{};
+  final positions = <int, Duration>{};
   final _events = <int, StreamController<VideoEvent>>{};
 
   Set<int> get alive => created.toSet().difference(disposed.toSet());
@@ -74,12 +75,13 @@ class FakeVideoPlatform extends VideoPlayerPlatform {
   @override
   Future<void> setVolume(int playerId, double volume) async {}
   @override
-  Future<void> seekTo(int playerId, Duration position) async {}
+  Future<void> seekTo(int playerId, Duration position) async =>
+      positions[playerId] = position;
   @override
   Future<void> setPlaybackSpeed(int playerId, double speed) async {}
   @override
   Future<Duration> getPosition(int playerId) async =>
-      const Duration(seconds: 4);
+      positions[playerId] ?? Duration.zero;
   @override
   Future<void> setMixWithOthers(bool mixWithOthers) async {}
 

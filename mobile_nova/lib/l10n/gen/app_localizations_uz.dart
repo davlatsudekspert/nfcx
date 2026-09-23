@@ -1929,4 +1929,16 @@ class LUz extends L {
 
   @override
   String get bizFeaturesTitle => 'Biznes nima beradi';
+
+  @override
+  String get musicPrevious => 'Oldingi';
+
+  @override
+  String get musicNext => 'Keyingi';
+
+  @override
+  String get musicPlay => 'Ijro etish';
+
+  @override
+  String get musicPause => 'Pauza';
 }

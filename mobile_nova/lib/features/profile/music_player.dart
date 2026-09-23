@@ -7,9 +7,10 @@ import 'package:video_player/video_player.dart';
 import '../../design/motion/motion.dart';
 import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
-import '../../design/widgets/nova_scaffold.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
+import '../../design/theme/typography.dart';
+import '../social/media_frame.dart' show mediaImage;
 
 /// Profil musiqasi.
 ///
@@ -105,10 +106,16 @@ class MusicControl extends ConsumerStatefulWidget {
     super.key,
     required this.urls,
     required this.size,
+    this.ownerName = '',
+    this.ownerAvatar = '',
   });
 
   final List<String> urls;
   final double size;
+
+  /// Varaqda muqova va sarlavha uchun — kimning profil musiqasi.
+  final String ownerName;
+  final String ownerAvatar;
 
   @override
   ConsumerState<MusicControl> createState() => _MusicControlState();
@@ -126,7 +133,8 @@ class _MusicControlState extends ConsumerState<MusicControl> {
       button: true,
       label: l.musicTitle,
       child: PressableScale(
-        onTap: () => showMusicSheet(context, widget.urls),
+        onTap: () => showMusicSheet(context, widget.urls,
+            ownerName: widget.ownerName, ownerAvatar: widget.ownerAvatar),
         child: Container(
           width: widget.size,
           height: widget.size,
@@ -142,14 +150,16 @@ class _MusicControlState extends ConsumerState<MusicControl> {
               ),
             ],
           ),
+          // EKVALAYZER BELGISI — doim. Ijro etilayotganda ustunlar
+          // harakatlanadi, to'xtaganda jim turadi: "bu profilda
+          // musiqa bor" va "hozir o'ynayapti" bir belgida.
           child: Center(
-            child: playing
-                ? _Equalizer(size: widget.size * .42, color: t.accent2)
-                : Icon(
-                    Icons.music_note_rounded,
-                    size: widget.size * .46,
-                    color: t.accent2,
-                  ),
+            child: _Equalizer(
+              key: const ValueKey('music-eq'),
+              size: widget.size * .44,
+              color: t.brandInk,
+              animate: playing,
+            ),
           ),
         ),
       ),
@@ -163,9 +173,17 @@ class _MusicControlState extends ConsumerState<MusicControl> {
 /// tortadigan animatsiya emas. `reduceMotion` yoqilganda umuman
 /// harakatlanmaydi.
 class _Equalizer extends StatefulWidget {
-  const _Equalizer({required this.size, required this.color});
+  const _Equalizer({
+    super.key,
+    required this.size,
+    required this.color,
+    this.animate = true,
+  });
   final double size;
   final Color color;
+
+  /// `false` — ustunlar jim (musiqa bor, lekin o'ynamayapti).
+  final bool animate;
 
   @override
   State<_Equalizer> createState() => _EqualizerState();
@@ -181,7 +199,17 @@ class _EqualizerState extends State<_Equalizer>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (reduceMotion(context)) {
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(covariant _Equalizer old) {
+    super.didUpdateWidget(old);
+    if (old.animate != widget.animate) _sync();
+  }
+
+  void _sync() {
+    if (!widget.animate || reduceMotion(context)) {
       _c.stop();
       _c.value = .5;
     } else if (!_c.isAnimating) {
@@ -294,6 +322,38 @@ class MusicPlayer extends StateNotifier<MusicState>
   final Ref _ref;
   VideoPlayerController? _c;
 
+  /// Profil musiqalari ro'yxati — oldingi/keyingi uchun.
+  List<String> _queue = const [];
+  List<String> get queue => _queue;
+
+  /// Ro'yxatni o'rnatadi (varaq ochilganda). Ijro BOSHLANMAYDI.
+  void setQueue(List<String> urls) => _queue = List.unmodifiable(urls);
+
+  int get _index => _queue.indexOf(state.url);
+
+  bool get hasNext => _queue.length > 1;
+
+  /// Keyingi qo'shiq (oxiridan keyin — boshiga).
+  Future<void> next() async {
+    if (_queue.isEmpty) return;
+    final i = _index;
+    await play(_queue[(i + 1) % _queue.length]);
+  }
+
+  /// Oldingi. 3 soniyadan ko'p o'ynagan bo'lsa — shu qo'shiq boshiga
+  /// (odatdagi pleyerlar kabi).
+  Future<void> previous() async {
+    if (_queue.isEmpty) return;
+    if (state.position > const Duration(seconds: 3) || _queue.length == 1) {
+      await seek(Duration.zero);
+      return;
+    }
+    final i = _index;
+    await play(_queue[(i - 1 + _queue.length) % _queue.length]);
+  }
+
+  bool _advancing = false;
+
   /// Ilova fonga ketsa musiqa to'xtaydi.
   ///
   /// Qaytganda O'ZI QAYTA BOSHLANMAYDI: ijro har doim foydalanuvchi
@@ -365,9 +425,16 @@ class MusicPlayer extends StateNotifier<MusicState>
       duration: v.duration,
       playing: v.isPlaying,
     );
-    // Oxiriga yetdi — egalikni bo'shatamiz.
+    // Oxiriga yetdi — ro'yxatda keyingisi bo'lsa O'SHANGA o'tiladi
+    // (foydalanuvchi o'zi boshlagan ijroning davomi), bo'lmasa
+    // egalik bo'shatiladi.
     if (v.duration > Duration.zero && v.position >= v.duration) {
-      _ref.read(audioOwnerProvider).release(this);
+      if (_queue.length > 1 && !_advancing) {
+        _advancing = true;
+        next().whenComplete(() => _advancing = false);
+      } else {
+        _ref.read(audioOwnerProvider).release(this);
+      }
     }
   }
 
@@ -415,41 +482,39 @@ final musicPlayerProvider =
     StateNotifierProvider<MusicPlayer, MusicState>(MusicPlayer.new);
 
 /// Mini-pleyer varag'i.
-Future<void> showMusicSheet(BuildContext context, List<String> urls) {
+Future<void> showMusicSheet(
+  BuildContext context,
+  List<String> urls, {
+  String ownerName = '',
+  String ownerAvatar = '',
+}) {
   final t = Theme.of(context).extension<NfcTokens>()!;
   return showModalBottomSheet<void>(
     context: context,
-    // ILDIZ NAVIGATORDA OCHILADI.
-    //
-    // Aks holda varaq TAB navigatorida ochiladi va pastki suzuvchi
-    // navigatsiya paneli uning ustiga chiziladi — varaqning eng
-    // pastki tugmalari panel ostida qolib ko'rinmay qoladi.
-    // Ildiz navigatorda varaq butun ekranni qoplaydi.
+    // ILDIZ NAVIGATORDA — suzuvchi pastki panel varaq ustiga chizilmasin.
     useRootNavigator: true,
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
     builder: (_) => Padding(
-      // PASTKI NAVIGATSIYA PANELNI YOPIB QO'YMASIN.
-      //
-      // Ilgari bu yerda faqat `viewInsets.bottom` (klaviatura)
-      // hisobga olinardi — u esa odatda NOL. Ilovaning pastki
-      // navigatsiyasi SUZUVCHI va varaq ustiga tushardi: ijro
-      // tugmasi va vaqt chizig'i ekran ostida qolib ketardi.
-      // `navSafeBottom` navigatsiya balandligini ham, qurilmaning
-      // jest panelini ham qo'shadi.
       padding: EdgeInsets.only(
-        left: Gap.lg,
-        right: Gap.lg,
+        left: Gap.md,
+        right: Gap.md,
         bottom: MediaQuery.viewInsetsOf(context).bottom +
-            navSafeBottom(context),
+            MediaQuery.paddingOf(context).bottom +
+            Gap.md,
       ),
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: t.surfaceSolid,
-          borderRadius: R.soft,
+          borderRadius: BorderRadius.circular(32),
           border: Border.all(color: t.border2),
+          boxShadow: t.shadowFloat,
         ),
-        child: _MusicSheet(urls: urls),
+        child: _MusicSheet(
+          urls: urls,
+          ownerName: ownerName,
+          ownerAvatar: ownerAvatar,
+        ),
       ),
     ),
   );
@@ -470,9 +535,20 @@ String musicTitleOf(String url) {
   return name.isEmpty ? url : name;
 }
 
-class _MusicSheet extends ConsumerWidget {
-  const _MusicSheet({required this.urls});
+/// Premium pleyer varag'i.
+///
+/// Muqova — profil egasining SURATI (bo'lmasa brend tusidagi sirt).
+/// Qo'shiq nomi — fayl nomidan; ijrochi YO'Q, chunki server uni
+/// saqlamaydi (`musicTitleOf`). Hech narsa to'qib chiqarilmaydi.
+class _MusicSheet extends ConsumerStatefulWidget {
+  const _MusicSheet({
+    required this.urls,
+    this.ownerName = '',
+    this.ownerAvatar = '',
+  });
   final List<String> urls;
+  final String ownerName;
+  final String ownerAvatar;
 
   static String _fmt(Duration d) {
     final m = d.inMinutes.remainder(60).toString();
@@ -481,157 +557,219 @@ class _MusicSheet extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.tokens;
-    final l = L.of(context);
-    final st = ref.watch(musicPlayerProvider);
-    final player = ref.read(musicPlayerProvider.notifier);
-
-    return Padding(
-      padding: const EdgeInsets.all(Gap.xl),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.music_note_rounded, size: 18, color: t.accent2),
-              const SizedBox(width: Gap.sm),
-              Expanded(
-                child: Text(l.musicTitle,
-                    style: Theme.of(context).textTheme.titleMedium),
-              ),
-              IconButton(
-                tooltip: l.actionClose,
-                icon: const Icon(Icons.close_rounded, size: 20),
-                color: t.text3,
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ],
-          ),
-          if (st.failed) ...[
-            const SizedBox(height: Gap.sm),
-            Text(l.musicFailed,
-                style: Theme.of(context).textTheme.bodySmall!
-                    .copyWith(color: t.error)),
-          ],
-          const SizedBox(height: Gap.sm),
-          for (final url in urls) ...[
-            _Track(
-              url: url,
-              active: st.url == url,
-              state: st,
-              onToggle: () => player.toggle(url),
-              onSeek: player.seek,
-            ),
-            if (url != urls.last) const SizedBox(height: Gap.sm),
-          ],
-        ],
-      ),
-    );
-  }
+  ConsumerState<_MusicSheet> createState() => _MusicSheetState();
 }
 
-class _Track extends StatelessWidget {
-  const _Track({
-    required this.url,
-    required this.active,
-    required this.state,
-    required this.onToggle,
-    required this.onSeek,
-  });
-
-  final String url;
-  final bool active;
-  final MusicState state;
-  final VoidCallback onToggle;
-  final ValueChanged<Duration> onSeek;
+class _MusicSheetState extends ConsumerState<_MusicSheet> {
+  @override
+  void initState() {
+    super.initState();
+    ref.read(musicPlayerProvider.notifier).setQueue(widget.urls);
+  }
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final playing = active && state.playing;
-    final total = state.duration.inMilliseconds;
+    final l = L.of(context);
+    final st = ref.watch(musicPlayerProvider);
+    final player = ref.read(musicPlayerProvider.notifier);
+    final current = widget.urls.contains(st.url) ? st.url : widget.urls.first;
+    final active = st.url == current;
+    final playing = active && st.playing;
+    final total = active ? st.duration.inMilliseconds : 0;
+    final pos = active ? st.position : Duration.zero;
+    final many = widget.urls.length > 1;
 
-    return Container(
-      padding: const EdgeInsets.all(Gap.md),
-      decoration: BoxDecoration(
-        color: active ? t.surface2 : Colors.transparent,
-        borderRadius: R.tile,
-        border: Border.all(color: active ? t.border2 : Colors.transparent),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              PressableScale(
-                onTap: onToggle,
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    gradient: t.accentGradient,
-                    shape: BoxShape.circle,
-                  ),
-                  child: active && state.loading
-                      ? Padding(
-                          padding: const EdgeInsets.all(11),
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: t.onAccent,
-                          ),
-                        )
-                      : Icon(
-                          playing
-                              ? Icons.pause_rounded
-                              : Icons.play_arrow_rounded,
-                          size: 21,
-                          color: t.onAccent,
-                        ),
+    Widget round(IconData icon, String tip, VoidCallback? onTap,
+            {Key? key}) =>
+        IconButton(
+          key: key,
+          tooltip: tip,
+          onPressed: onTap,
+          iconSize: 30,
+          color: t.text1,
+          disabledColor: t.text3.withValues(alpha: .4),
+          icon: Icon(icon),
+        );
+
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(Gap.xl, Gap.md, Gap.xl, Gap.lg),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                  color: t.border1, borderRadius: R.pill),
+            ),
+            const SizedBox(height: Gap.lg),
+            // MUQOVA
+            Container(
+              width: 168,
+              height: 168,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(28),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [t.brandSoft, t.brand],
                 ),
+                boxShadow: t.shadowSoft,
               ),
-              const SizedBox(width: Gap.md),
-              Expanded(
-                child: Text(
-                  musicTitleOf(url),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-              ),
+              clipBehavior: Clip.antiAlias,
+              child: widget.ownerAvatar.isNotEmpty
+                  ? mediaImage(context, widget.ownerAvatar, fit: BoxFit.cover)
+                  : Center(
+                      child: _Equalizer(
+                          size: 56, color: t.brandInk, animate: playing)),
+            ),
+            const SizedBox(height: Gap.lg),
+            Text(
+              (widget.ownerName.isEmpty ? l.musicTitle : widget.ownerName)
+                  .toUpperCase(),
+              style: AppType.eyebrow(color: t.brandInk),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              musicTitleOf(current),
+              key: const ValueKey('music-title'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: AppType.displayStyle(color: t.text1, size: 26),
+            ),
+            if (st.failed && active) ...[
+              const SizedBox(height: Gap.sm),
+              Text(l.musicFailed,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall!
+                      .copyWith(color: t.error)),
             ],
-          ),
-          if (active && total > 0) ...[
-            const SizedBox(height: Gap.sm),
+            const SizedBox(height: Gap.md),
+            // PROGRESS + VAQT
             SliderTheme(
               data: SliderThemeData(
-                trackHeight: 2.5,
-                activeTrackColor: t.accent2,
-                inactiveTrackColor: t.border2,
-                thumbColor: t.accent2,
+                trackHeight: 3,
+                activeTrackColor: t.text1,
+                inactiveTrackColor: t.border1,
+                thumbColor: t.text1,
                 thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
                 overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
               ),
               child: Slider(
-                value: state.position.inMilliseconds
-                    .clamp(0, total)
-                    .toDouble(),
-                max: total.toDouble(),
-                onChanged: (v) =>
-                    onSeek(Duration(milliseconds: v.round())),
+                key: const ValueKey('music-progress'),
+                value: total > 0
+                    ? pos.inMilliseconds.clamp(0, total).toDouble()
+                    : 0,
+                max: total > 0 ? total.toDouble() : 1,
+                onChanged: total > 0
+                    ? (v) => player.seek(Duration(milliseconds: v.round()))
+                    : null,
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(_MusicSheet._fmt(pos),
+                      key: const ValueKey('music-pos'),
+                      style: AppType.monoStyle(color: t.text2, size: 11.5)),
+                  Text(_MusicSheet._fmt(active ? st.duration : Duration.zero),
+                      style: AppType.monoStyle(color: t.text2, size: 11.5)),
+                ],
+              ),
+            ),
+            const SizedBox(height: Gap.sm),
+            // BOSHQARUV
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(_MusicSheet._fmt(state.position),
-                    style: Theme.of(context).textTheme.labelMedium),
-                Text(_MusicSheet._fmt(state.duration),
-                    style: Theme.of(context).textTheme.labelMedium),
+                round(Icons.skip_previous_rounded, l.musicPrevious,
+                    active ? player.previous : null,
+                    key: const ValueKey('music-prev')),
+                const SizedBox(width: Gap.lg),
+                PressableScale(
+                  onTap: () => player.toggle(current),
+                  child: Container(
+                    key: const ValueKey('music-play'),
+                    width: 68,
+                    height: 68,
+                    decoration: BoxDecoration(
+                      color: t.text1,
+                      shape: BoxShape.circle,
+                      boxShadow: t.shadowSoft,
+                    ),
+                    child: active && st.loading
+                        ? Padding(
+                            padding: const EdgeInsets.all(22),
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: t.bg1),
+                          )
+                        : Icon(
+                            playing
+                                ? Icons.pause_rounded
+                                : Icons.play_arrow_rounded,
+                            size: 34,
+                            color: t.bg1,
+                            semanticLabel:
+                                playing ? l.musicPause : l.musicPlay,
+                          ),
+                  ),
+                ),
+                const SizedBox(width: Gap.lg),
+                round(Icons.skip_next_rounded, l.musicNext,
+                    many ? player.next : null,
+                    key: const ValueKey('music-next')),
               ],
             ),
+            if (many) ...[
+              const SizedBox(height: Gap.lg),
+              Divider(height: 1, color: t.border2),
+              const SizedBox(height: Gap.sm),
+              for (final url in widget.urls)
+                InkWell(
+                  borderRadius: R.tile,
+                  onTap: () => player.play(url),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 10, horizontal: 6),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 22,
+                          child: url == st.url && st.playing
+                              ? _Equalizer(size: 14, color: t.brandInk)
+                              : Icon(Icons.music_note_rounded,
+                                  size: 16, color: t.text3),
+                        ),
+                        const SizedBox(width: Gap.md),
+                        Expanded(
+                          child: Text(
+                            musicTitleOf(url),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontFamily: AppType.sans,
+                              fontSize: 14,
+                              fontWeight: url == current
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              color: t.text1,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

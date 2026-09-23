@@ -741,5 +741,9 @@
   "reelBlocked": "Blocked — you won’t see their content",
   "setupFreeId": "Free NFC ID",
   "bizShowcaseSample": "Sample",
-  "bizFeaturesTitle": "What Business gives you"
+  "bizFeaturesTitle": "What Business gives you",
+  "musicPrevious": "Previous",
+  "musicNext": "Next",
+  "musicPlay": "Play",
+  "musicPause": "Pause"
 }

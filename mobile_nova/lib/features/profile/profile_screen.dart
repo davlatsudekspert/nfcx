@@ -830,7 +830,12 @@ class _HeroAvatar extends StatelessWidget {
             Positioned(
               left: 0,
               bottom: 0,
-              child: MusicControl(urls: profile!.musicUrls, size: 34),
+              child: MusicControl(
+                urls: profile!.musicUrls,
+                size: 34,
+                ownerName: profile!.name,
+                ownerAvatar: avatar,
+              ),
             ),
           // NISHON FAQAT IKKI HOLATDA: biznes yoki HAQIQIY tasdiq.
           //

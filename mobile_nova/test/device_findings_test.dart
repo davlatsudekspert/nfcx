@@ -317,14 +317,20 @@ void _motionAndMusicTests() {
       // Backend'da qo'shiq nomi uchun maydon YO'Q, shuning uchun
       // nom fayl manzilidan olinadi. To'qib chiqarilmaydi.
       expect(src, contains('musicTitleOf('));
-      expect(src, contains('Text(\n                  musicTitleOf(url)'));
+      // Joriy qo'shiq sarlavhasi va ro'yxatdagi har qator — ikkalasi
+      // ham fayl nomidan.
+      expect(src, contains('musicTitleOf(current)'));
+      expect(src, contains('musicTitleOf(url)'));
     });
 
     test('pastdagi pleyer — vaqt va surgich bilan', () {
       expect(src, contains('showModalBottomSheet'));
       expect(src, contains('Slider('));
-      expect(src, contains('_fmt(state.position)'));
-      expect(src, contains('_fmt(state.duration)'));
+      expect(src, contains('_MusicSheet._fmt(pos)'));
+      expect(src, contains('st.duration'));
+      // Oldingi / keyingi.
+      expect(src, contains('player.previous'));
+      expect(src, contains('player.next'));
     });
   });
 }

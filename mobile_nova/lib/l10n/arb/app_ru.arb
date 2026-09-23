@@ -741,5 +741,9 @@
   "reelBlocked": "Заблокировано — контент автора больше не показывается",
   "setupFreeId": "Бесплатный NFC ID",
   "bizShowcaseSample": "Пример",
-  "bizFeaturesTitle": "Что даёт бизнес-профиль"
+  "bizFeaturesTitle": "Что даёт бизнес-профиль",
+  "musicPrevious": "Предыдущий",
+  "musicNext": "Следующий",
+  "musicPlay": "Воспроизвести",
+  "musicPause": "Пауза"
 }
