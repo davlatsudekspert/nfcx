@@ -50,7 +50,11 @@ class FeedCard extends ConsumerWidget {
       ),
     );
     final mine = ref.watch(isMineProvider(post.code));
-    final following = ref.watch(followingOfProvider(post.code));
+    // O'z postimda "Kuzatish" yo'q — obuna holati so'ralmaydi
+    // (ilgari har o'z posti uchun `/api/follow-stats` ketardi).
+    final following = (mine || post.code.isEmpty)
+        ? false
+        : ref.watch(followingOfProvider(post.code));
 
     final name = post.authorName.isEmpty ? post.code : post.authorName;
     final media = post.mediaUrls.isEmpty ? '' : post.mediaUrls.first;

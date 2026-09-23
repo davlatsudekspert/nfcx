@@ -58,6 +58,7 @@ Future<void> switchToBusiness(BuildContext context, WidgetRef ref) async {
 
   if (list.length == 1) {
     await rememberBusiness(ref, list.first.companyId);
+    if (!context.mounted) return;
     await ref.read(modeProvider.notifier).set(AppMode.business);
     return;
   }
@@ -90,6 +91,7 @@ Future<void> switchToBusiness(BuildContext context, WidgetRef ref) async {
   );
   if (picked == null || !context.mounted) return;
   await rememberBusiness(ref, picked.companyId);
+  if (!context.mounted) return;
   await ref.read(modeProvider.notifier).set(AppMode.business);
 }
 

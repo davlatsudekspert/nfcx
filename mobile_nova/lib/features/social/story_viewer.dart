@@ -366,7 +366,9 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
         // olib qo'yish "o'chdi" deb ko'rsatib, aslida qolib
         // ketishi mumkin edi.
         ref.invalidate(storiesOfProvider(widget.owner));
-        ref.invalidate(socialRepositoryProvider);
+        // Faqat istoryalar qatori — ilgari butun repozitoriy qayta
+        // qurilib, lenta, Reels va izohlar ham qaytadan yuklanardi.
+        ref.invalidate(homeStoriesProvider);
         _close();
       },
       err: (e) {

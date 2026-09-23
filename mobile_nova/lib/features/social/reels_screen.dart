@@ -11,6 +11,7 @@ import 'engagement.dart';
 import 'moderation.dart';
 
 import '../../core/network/api_client.dart';
+import '../../core/utils/result.dart';
 import '../../core/utils/sharing.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/saves_repository.dart';
@@ -56,10 +57,20 @@ final reelsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
   // bo'lishi mumkin (o'z kompaniyangga obuna bo'lsang).
   final byId = <int, Post>{};
 
-  final active = ref.watch(activeProfileProvider);
-  if (active != null) {
-    final mine = await repo.postsOf(active.code);
-    mine.when(
+  // FAQAT KOD KUZATILADI. Profil obyekti har sessiya yangilanishida
+  // (`refresh()`) yangi bo'ladi — butun obyekt kuzatilsa, Reels har
+  // safar qayta yuklanib, o'ynayotgan video to'xtab boshidan
+  // boshlanardi. Kod faqat profil almashganda o'zgaradi.
+  final code = ref.watch(activeProfileProvider.select((p) => p?.code));
+
+  // Ikki so'rov BIR VAQTDA — biri ikkinchisini kutmaydi (birinchi
+  // Reels ochilishi ikki tarmoq aylanishi o'rniga bittasi).
+  final results = await Future.wait<Result<List<Post>>>([
+    if (code != null) repo.postsOf(code),
+    repo.feed(),
+  ]);
+  if (code != null) {
+    results.first.when(
       ok: (items) {
         for (final p in items.where(playable)) {
           byId[p.id] = p;
@@ -69,7 +80,7 @@ final reelsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
     );
   }
 
-  final res = await repo.feed();
+  final res = results.last;
   return res.when(
     ok: (items) {
       for (final p in items.where(playable)) {
@@ -141,7 +152,10 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       extendBody: true,
+      // Qayta yuklashda (profil almashdi) eski lenta turadi — sahifa
+      // joyi va `_index` yangi ro'yxat kelguncha mos qoladi.
       body: reels.when(
+        skipLoadingOnReload: true,
         loading: () => const Center(
           child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
         ),
@@ -507,7 +521,9 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
         .select((m) => m[likeKey(p)] ?? (liked: p.liked, count: p.likes)));
     final saved = ref.watch(savedReelsProvider).contains(likeKey(p));
     final mine = ref.watch(isMineProvider(p.code));
-    final following = ref.watch(followingOfProvider(p.code));
+    // O'z reelimda "Kuzatish" yo'q — obuna holati so'ralmaydi.
+    final following =
+        (mine || p.code.isEmpty) ? false : ref.watch(followingOfProvider(p.code));
     final c = _controller;
     final playing = c != null && _ready && c.value.isPlaying;
     // Telefonning pastki tizim paneli (3 tugmali navigatsiya ~48 dp).

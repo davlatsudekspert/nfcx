@@ -22,9 +22,12 @@ import 'package:nfcstore_nova/features/entry/splash_screen.dart';
 import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
 import 'package:nfcstore_nova/features/settings/app_lock.dart';
 import 'package:nfcstore_nova/features/social/feed_card.dart';
+import 'package:nfcstore_nova/features/profile/profile_repository.dart';
+import 'package:nfcstore_nova/features/social/reels_screen.dart';
 import 'package:nfcstore_nova/features/social/moderation.dart';
 import 'package:nfcstore_nova/core/utils/sharing.dart';
 import 'package:nfcstore_nova/design/widgets/states.dart';
+import 'package:nfcstore_nova/design/widgets/nova_scaffold.dart';
 import 'package:nfcstore_nova/l10n/gen/app_localizations_uz.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -65,6 +68,53 @@ class _FlakyAuth extends FakeAuthRepository {
       return Err(AppError(kind));
     }
     return super.restore();
+  }
+}
+
+/// Haqiqiy `me()` kabi: har chaqiruvda JSON'dan YANGI obyektlar.
+class _FreshAuth extends FakeAuthRepository {
+  @override
+  Future<Result<({User user, List<NfcId> ids})>> restore() async => Ok((
+        user: testUser,
+        ids: [
+          for (final i in testIds)
+            NfcId(code: i.code, name: i.name, primary: i.primary),
+        ],
+      ));
+}
+
+/// `followStats` so'rovlarini sanaydi.
+class _StatsSpy extends ProfileRepository {
+  _StatsSpy() : super(ApiClient());
+  final asked = <String>[];
+
+  @override
+  Future<Result<FollowStats>> followStats(String code) async {
+    asked.add(code);
+    return const Ok((followers: 0, following: 0, isFollowing: false));
+  }
+
+  @override
+  Future<Result<List<NfcId>>> followList(String code,
+          {String dir = 'followers'}) async =>
+      const Ok([]);
+}
+
+/// `feed()` / `postsOf()` necha marta chaqirilganini sanaydi.
+class _CountingSocial extends FakeSocialRepository {
+  int feeds = 0;
+  int own = 0;
+
+  @override
+  Future<Result<List<Post>>> feed({int page = 1}) async {
+    feeds++;
+    return const Ok([]);
+  }
+
+  @override
+  Future<Result<List<Post>>> postsOf(String code, {int page = 1}) async {
+    own++;
+    return const Ok([]);
   }
 }
 
@@ -121,6 +171,25 @@ void main() {
     }
   });
 
+  testWidgets('"Saqlash" paneli klaviatura USTIDA (F-L10)', (tester) async {
+    tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+    tester.view.devicePixelRatio = 3;
+    // Klaviatura ochiq: 300 dp.
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300 * 3);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(wrapScreen(NovaScaffold(
+      title: 'Tahrirlash',
+      body: ListView(children: const [TextField()]),
+      bottomNav: const SizedBox(
+          key: ValueKey('save-bar'), height: 60, width: double.infinity),
+    )));
+    await tester.pump();
+    final bottom =
+        tester.getBottomLeft(find.byKey(const ValueKey('save-bar'))).dy;
+    expect(bottom, lessThanOrEqualTo(844 - 300 + .5),
+        reason: 'panel klaviatura ortida qolmasin');
+  });
+
   testWidgets('qora fonda holat paneli o‘qiladi (F-M4)', (tester) async {
     await tester.pumpWidget(wrapScreen(const Scaffold(
       backgroundColor: Colors.black,
@@ -166,6 +235,58 @@ void main() {
       expect(find.text(LUz().bizNone), findsOneWidget);
       expect(find.text(LUz().bizCreate), findsOneWidget);
     });
+  });
+
+  test('sessiya yangilanishi Reels’ni QAYTA YUKLAMAYDI (P-H3)', () async {
+    final social = _CountingSocial();
+    final c = ProviderContainer(overrides: [
+      ...await testOverrides(),
+      socialRepositoryProvider.overrideWithValue(social),
+      authRepositoryProvider.overrideWithValue(_FreshAuth()),
+    ]);
+    addTearDown(c.dispose);
+    await c.read(sessionProvider.notifier).restore();
+    final sub = c.listen(reelsProvider, (_, __) {});
+    addTearDown(sub.close);
+    await c.read(reelsProvider.future);
+    expect(social.feeds, 1);
+    expect(social.own, 1, reason: 'o‘z videolari ham so‘raladi');
+
+    // Profil tahriri / NFC ID o'zgarishi -> refresh(): o'sha odam.
+    await c.read(sessionProvider.notifier).refresh();
+    await Future<void>.delayed(Duration.zero);
+    await c.read(reelsProvider.future);
+    expect(social.feeds, 1,
+        reason: 'har refresh Reels’ni boshidan yuklab, videoni uzardi');
+  });
+
+  testWidgets('o‘z postim uchun obuna holati SO‘RALMAYDI (P-M3)',
+      (tester) async {
+    final spy = _StatsSpy();
+    final c = ProviderContainer(overrides: [
+      ...await testOverrides(),
+      profileRepositoryProvider.overrideWithValue(spy),
+    ]);
+    addTearDown(c.dispose);
+    // Ilovadagidek: lenta ko'ringanda sessiya allaqachon faol.
+    await c.read(sessionProvider.notifier).restore();
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: c,
+      child: wrapScreen(Scaffold(
+        body: ListView(children: [
+          FeedCard(
+              post: Post(
+                  id: 1, code: testIds.first.code, authorName: 'Men', text: 'a')),
+          const FeedCard(
+              post: Post(id: 2, code: 'TTS075', authorName: 'Boshqa', text: 'b')),
+        ]),
+      )),
+    ));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(spy.asked.contains(testIds.first.code), isFalse,
+        reason: 'o‘z postida "Kuzatish" yo‘q — so‘rov ham kerak emas');
+    expect(spy.asked, contains('TTS075'));
   });
 
   group('Kompaniya posti ochiladi (F-H5)', () {

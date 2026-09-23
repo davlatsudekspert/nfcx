@@ -159,6 +159,7 @@ class ProfileScreen extends ConsumerWidget {
         backgroundColor: t.surfaceSolid,
         onRefresh: () async {
           await ref.read(sessionProvider.notifier).refresh();
+          if (!context.mounted) return;
           if (id != null) ref.invalidate(profilePostsProvider(id.code));
         },
         child: NovaScroll(

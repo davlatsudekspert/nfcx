@@ -81,14 +81,19 @@ class NovaScaffold extends StatelessWidget {
                       ? SafeArea(top: false, child: body)
                       : body,
                 ),
+                // PASTKI PANEL ("Saqlash") KLAVIATURA USTIDA.
+                //
+                // `Scaffold.bottomNavigationBar` klaviaturaga qaramaydi —
+                // ekran pastiga mixlanadi va klaviatura ochilganda uning
+                // ORTIDA qolardi: maydonni to'ldirgan odam saqlash uchun
+                // klaviaturani yopishi kerak edi. Tana esa klaviatura
+                // ustida tugaydi, shuning uchun panel shu yerda.
+                if (bottomNav != null) SafeArea(top: false, child: bottomNav!),
               ],
             ),
           ),
         ),
         floatingActionButton: floating,
-        bottomNavigationBar: bottomNav == null
-            ? null
-            : SafeArea(top: false, child: bottomNav!),
       ),
     );
   }

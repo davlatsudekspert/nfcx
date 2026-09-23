@@ -87,6 +87,9 @@ class ActivityScreen extends ConsumerWidget {
                         await ref
                             .read(activityRepositoryProvider)
                             .markAllRead();
+                        // Kutish paytida ekran yopilgan bo'lsa `ref`
+                        // istisno otadi.
+                        if (!context.mounted) return;
                         ref.invalidate(activityFeedProvider);
                       },
                     ),
@@ -164,6 +167,7 @@ class _EventTile extends ConsumerWidget {
     // sababi bo'lolmaydi.
     if (!event.read) {
       await ref.read(activityRepositoryProvider).markRead(event.id);
+      if (!context.mounted) return;
       ref.invalidate(activityFeedProvider);
     }
     final to = _target;

@@ -43,14 +43,22 @@ import '../../core/media/image_cache.dart';
 final homeStoriesProvider = FutureProvider.autoDispose<List<StoryItem>>((
   ref,
 ) async {
-  final p = ref.watch(activeProfileProvider);
+  // Faqat kod va tur kuzatiladi — sessiya yangilanishi (yangi profil
+  // obyekti, lekin o'sha odam) qatorni qayta yuklamaydi.
+  final p = ref.watch(activeProfileProvider
+      .select((p) => p == null ? null : (code: p.code, biz: p.isBusiness)));
   if (p == null) return const [];
+  final social = ref.watch(socialRepositoryProvider);
   // Kompaniya istoryalari boshqa jadvalda va boshqa manzilda
   // (`/api/companies/:id/stories`). Shaxsiy yo'lni kompaniya kodi
   // bilan chaqirish bo'sh ro'yxat qaytarardi.
-  final res = p.isBusiness
-      ? await ref.watch(businessRepositoryProvider).stories(p.code)
-      : await ref.watch(socialRepositoryProvider).storiesOf(p.code);
+  final ownF = p.biz
+      ? ref.watch(businessRepositoryProvider).stories(p.code)
+      : social.storiesOf(p.code);
+  // Obunalar lentasi BIR VAQTDA so'raladi (ilgari o'zinikidan keyin).
+  final both = await Future.wait([ownF, social.followedStories()]);
+  final res = both[0];
+  final followed = both[1];
   final own = res.when(ok: (v) => v, err: (e) => throw e);
 
   // OBUNA BO'LGANLARNING ISTORYALARI HAM QO'SHILADI.
@@ -62,7 +70,6 @@ final homeStoriesProvider = FutureProvider.autoDispose<List<StoryItem>>((
   //
   // Xatosi YUTILADI: obuna lentasi kelmasa ham o'z istoryang
   // ko'rinaverishi kerak, butun qator yo'qolib qolmasin.
-  final followed = await ref.watch(socialRepositoryProvider).followedStories();
   return [...own, ...followed.valueOrNull ?? const <StoryItem>[]];
 });
 
@@ -141,6 +148,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         backgroundColor: t.surfaceSolid,
         onRefresh: () async {
           await ref.read(sessionProvider.notifier).refresh();
+          if (!mounted) return;
           ref.invalidate(homeStoriesProvider);
           ref.invalidate(homeFeedProvider);
         },

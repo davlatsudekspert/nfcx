@@ -93,4 +93,13 @@ void main() {
     expect(src, contains('business: widget.isBusiness'));
     expect(src, contains("kind: business ? 'company_story' : 'story'"));
   });
+
+  test('istorya o‘chirilganda butun repozitoriy qayta qurilmaydi (P-M2)', () {
+    // `invalidate(socialRepositoryProvider)` lenta, Reels, profil
+    // postlari va izohlarni ham qaytadan yuklardi.
+    final src =
+        File('lib/features/social/story_viewer.dart').readAsStringSync();
+    expect(src, isNot(contains('invalidate(socialRepositoryProvider)')));
+    expect(src, contains('ref.invalidate(homeStoriesProvider)'));
+  });
 }
