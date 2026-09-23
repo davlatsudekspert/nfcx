@@ -406,6 +406,37 @@ class Repository {
       likeContent('comment', id);
 
 
+  Future<({List<NotificationItem> items, int unreadCount})> notifications({
+    int limit = 30,
+    bool unreadOnly = false,
+  }) async {
+    final r = _map(
+      await api.get(
+        '/api/notifications',
+        query: {
+          'limit': limit,
+          if (unreadOnly) 'unread': 1,
+        },
+      ),
+    );
+    final raw = r['unreadCount'];
+    return (
+      items: _list(r, 'items').map(NotificationItem.fromJson).toList(),
+      unreadCount: raw is num ? raw.round() : int.tryParse('$raw') ?? 0,
+    );
+  }
+
+  Future<int> readNotification(int id) async {
+    final r = _map(
+      await api.post('/api/notifications/' + id.toString() + '/read'),
+    );
+    final raw = r['unreadCount'];
+    return raw is num ? raw.round() : int.tryParse('$raw') ?? 0;
+  }
+
+  Future<void> readAllNotifications() =>
+      api.post('/api/notifications/read-all');
+
   Future<void> report({
     required String targetKind,
     required String targetId,
