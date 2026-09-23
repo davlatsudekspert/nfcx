@@ -215,12 +215,39 @@ class _ComposeScreenState extends State<ComposeScreen> {
             shadow: false,
             child: Column(
               children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.shield_outlined, color: p.accent, size: 21),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Xavfsiz kontent',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 9),
+                Text(
+                  'Pornografiya, zo‘ravonlik, ekstremistik yoki diniy adovat qo‘zg‘atuvchi material, noqonuniy kontent, haqorat/so‘kinish, spam, mualliflik huquqini buzuvchi yoki siyosiy provokatsion material joylamang. Qonunga zid kontent uchun foydalanuvchi amaldagi qonunchilik va platforma qoidalari doirasida javobgar bo‘lishi mumkin.',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.copyWith(fontSize: 10.8, height: 1.45),
+                ),
+                const SizedBox(height: 6),
                 CheckboxListTile(
                   value: _agreed,
                   contentPadding: EdgeInsets.zero,
                   onChanged: _busy ? null : (v) => setState(() => _agreed = v == true),
                   title: const Text('Kontent qoidalariga roziman'),
-                  subtitle: const Text('Joylashdan oldin qoidalarni ko‘rib chiqing.'),
+                  subtitle: const Text(
+                    'Media va matn moderatsiyaga yuborilishi, shikoyat qilinishi yoki qoidabuzarlik aniqlansa olib tashlanishi mumkin.',
+                  ),
                   controlAffinity: ListTileControlAffinity.leading,
                 ),
                 Align(
