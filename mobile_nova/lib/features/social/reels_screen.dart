@@ -15,6 +15,7 @@ import '../../core/utils/sharing.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/saves_repository.dart';
 import '../../data/repositories/social_repository.dart';
+import '../../design/widgets/id_plate.dart';
 import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
@@ -217,13 +218,29 @@ class _TopBar extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: Gap.lg, vertical: Gap.sm),
         child: Row(
           children: [
-            Text(
-              l.navReels,
-              style: AppType.displayStyle(
-                color: Colors.white,
-                size: 25,
-                shadows: const [Shadow(color: Colors.black54, blurRadius: 12)],
-              ),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Brend imzosi — Reels NFCSTORE'niki ekani bir qarashda.
+                Text(
+                  'NFCSTORE',
+                  style: AppType.eyebrow(color: IdPlate.goldLight, size: 9)
+                      .copyWith(shadows: const [
+                    Shadow(color: Colors.black54, blurRadius: 8),
+                  ]),
+                ),
+                Text(
+                  l.navReels,
+                  style: AppType.displayStyle(
+                    color: Colors.white,
+                    size: 25,
+                    shadows: const [
+                      Shadow(color: Colors.black54, blurRadius: 12)
+                    ],
+                  ),
+                ),
+              ],
             ),
             const Spacer(),
             NovaIconButton(
@@ -632,6 +649,9 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
                                   ? 'N'
                                   : p.authorName.substring(0, 1).toUpperCase(),
                               size: 40,
+                              // Nozik champagne halqa — NFCSTORE imzosi.
+                              ringColor: IdPlate.gold.withValues(alpha: .8),
+                              ringWidth: 1.4,
                             ),
                             const SizedBox(width: Gap.sm),
                             Flexible(
@@ -672,22 +692,43 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
                 ),
                 if (p.code.isNotEmpty) ...[
                   const SizedBox(height: Gap.sm),
-                  // NFC ID — Reels ham identity tizimining bir qismi.
+                  // NFC ID — REELS'NING NFCSTORE IDENTITETI (egasi, 2026-09:
+                  // "Instagram nusxasi bo'lmasin"). Muallif shunchaki ism
+                  // emas, NFC ID egasi: qora shisha kapsula, champagne
+                  // hoshiya, oltin NFC belgisi va mono kod. Kompaniya
+                  // bo'lsa — do'kon belgisi. Bosilsa muallif profili.
                   PressableScale(
+                    key: const ValueKey('reel-id-chip'),
                     onTap: _openAuthor,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 11, vertical: 6),
+                      padding: const EdgeInsets.fromLTRB(9, 5, 11, 5),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: .16),
+                        color: Colors.black.withValues(alpha: .38),
                         borderRadius: R.pill,
                         border: Border.all(
-                            color: Colors.white.withValues(alpha: .3)),
+                            color: IdPlate.gold.withValues(alpha: .55),
+                            width: .8),
                       ),
-                      child: Text(
-                        p.code,
-                        style: AppType.monoStyle(
-                            color: Colors.white, size: 11, letterSpacing: 1.2),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            p.isCompany
+                                ? Icons.storefront_outlined
+                                : Icons.nfc_rounded,
+                            size: 13,
+                            color: IdPlate.goldLight,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            p.code,
+                            style: AppType.monoStyle(
+                                color: Colors.white,
+                                size: 11.5,
+                                weight: FontWeight.w600,
+                                letterSpacing: 1.4),
+                          ),
+                        ],
                       ),
                     ),
                   ),
