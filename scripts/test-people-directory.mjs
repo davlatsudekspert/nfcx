@@ -63,4 +63,13 @@ check('4) sahifa: 1 ta va yana bor', [r.body.records.length, r.body.hasMore], [1
 r = await call('/api/people?limit=1&offset=1');
 checkTrue('4) keyingi sahifa boshqa', r.body.records[0].code !== '62852493');
 
+// ===== 5) ENG KO'P KO'RILGANLAR (egasi, 2026-09-23) =====
+await env.DB.prepare(`UPDATE cards SET views = 500 WHERE code = 'OTH222'`).run();
+await env.DB.prepare(`UPDATE cards SET views = 50 WHERE code = 'VIP001'`).run();
+r = await call('/api/people?sort=popular&limit=2');
+check('5) popular: ko\'p ko\'rilgan birinchi', codes(r.body.records), ['OTH222', 'VIP001']);
+check('5) popular: qolgani ro\'yxatda emas, lekin yana bor', r.body.hasMore, true);
+check('5) ro\'yxatda yo\'q yangi odam qidiruvda topiladi', codes((await call('/api/people/search?q=anvar')).body.records), ['62852493']);
+check('5) qidiruvda ham ko\'p ko\'rilgan birinchi', codes((await call('/api/people/search?q=test.local')).body.records).slice(0, 1), ['OTH222']);
+
 done();

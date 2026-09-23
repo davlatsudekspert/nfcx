@@ -69,14 +69,17 @@ class DiscoverRepository {
   /// qaytaradi (`json(rows.map(...))`), `search` esa
   /// `{records: [...]}`. `parseList` ikkalasini ham hazm qiladi.
   Future<Result<List<NfcId>>> suggested() async {
-    // `/api/people` — egasi bor profillar, eng yangisi birinchi (egasi,
-    // 2026-09-23: "yangi ro'yxatdan o'tganlar ko'rinmayapti"). Ilgari
-    // `/api/records` — sotuv katalogi — ishlatilardi.
-    final res = await _api.get<dynamic>('/api/people', query: {'limit': '60'});
+    // `/api/people` — egasi bor profillar. Ro'yxatda faqat ENG KO'P
+    // KO'RILGAN 20 kishi (egasi, 2026-09-23: "ro'yxat uzun bo'lmasin,
+    // qolgani qidiruvda chiqsin"). Hamma — shu jumladan yangi ro'yxatdan
+    // o'tganlar — `searchPeople` orqali topiladi. Ilgari `/api/records`
+    // (sotuv katalogi) ishlatilardi va yangi odamlar umuman chiqmasdi.
+    final res = await _api
+        .get<dynamic>('/api/people', query: {'limit': '20', 'sort': 'popular'});
     return res.map((j) => parseList(
           j is Map ? (j['records'] ?? j['items'] ?? j) : j,
           NfcId.fromJson,
-        ).take(60).toList());
+        ).take(20).toList());
   }
 
   /// Tanlov katalogi — barcha faol bizneslarning mahsulot va xizmatlari.

@@ -5911,12 +5911,17 @@ async function recordsApi(request, env, url) {
            OR LOWER(COALESCE(c.hashtags,'')) LIKE ? OR LOWER(COALESCE(u.email,'')) LIKE ?)`
       : '';
     const binds = search ? [like, like, like, like, like, like, like] : [];
+    // `sort=popular` — ENG KO'P KO'RILGANLAR (egasi, 2026-09-23: "ro'yxatda
+    // 20 ta ko'p ko'rilgan chiqsin, qolgani qidiruvda topilsin").
+    // Standart — eng yangilari. Qidiruvda ham avval ko'p ko'rilgan.
+    const popular = search || url.searchParams.get('sort') === 'popular';
+    const order = popular ? 'c.views DESC, c.ts DESC' : 'c.ts DESC';
     const rows = await env.DB.prepare(
       `SELECT c.code, c.user_id, c.name, c.role, c.avatar_url, c.tg, c.hashtags, c.theme, c.price, c.ts, c.views,
               c.profile_type, c.city, c.category_slug, c.verified, c.tier_override
          FROM cards c LEFT JOIN users u ON u.id = c.user_id
         WHERE c.hidden_from_directory = 0 AND c.user_id IS NOT NULL AND ${ownerAliveSql('c')} ${cond}
-        ORDER BY c.ts DESC LIMIT ? OFFSET ?`
+        ORDER BY ${order} LIMIT ? OFFSET ?`
     ).bind(...binds, limit + 1, offset).all();
     const list = rows.results || [];
     const page = list.slice(0, limit);
