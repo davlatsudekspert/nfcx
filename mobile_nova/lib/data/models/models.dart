@@ -413,10 +413,46 @@ class Business {
       );
 }
 
+/// NFC mahsulot turi — Tanlov katalogidagi filtr.
+///
+/// Biznes mahsulot qo'shganda turini tanlaydi va u serverdagi
+/// `category` maydoniga slug bo'lib yoziladi. Eski yozuvlarda bu
+/// maydon erkin matn — ular kalit so'z bo'yicha tasniflanadi.
+/// Qoida serverdagi `nfcTypeOf()` (hosting/api/catalog-feed.js) bilan
+/// AYNAN bir xil: ikkalasi boshqa-boshqa tur ko'rsatmasin.
+enum NfcProductType {
+  card,
+  sticker,
+  keychain,
+  accessory,
+  other;
+
+  static const _words = <NfcProductType, List<String>>{
+    NfcProductType.card: ['card', 'karta', 'карта', 'kartochka'],
+    NfcProductType.sticker: ['sticker', 'stiker', 'стикер', 'наклейка'],
+    NfcProductType.keychain: ['keychain', 'brelok', 'брелок'],
+    NfcProductType.accessory: ['accessory', 'aksessuar', 'аксессуар', 'bilaguzuk', 'браслет', 'bracelet'],
+  };
+
+  static NfcProductType fromCategory(String category, [String name = '']) {
+    final c = category.trim().toLowerCase();
+    for (final t in NfcProductType.values) {
+      if (c == t.name) return t;
+    }
+    final hay = '$c ${name.toLowerCase()}';
+    for (final e in _words.entries) {
+      if (e.value.any(hay.contains)) return e.key;
+    }
+    return NfcProductType.other;
+  }
+}
+
 /// Katalog elementi — mahsulot yoki xizmat.
 class CatalogItem {
   const CatalogItem({
     required this.id,
+    this.ref = '',
+    this.category = '',
     this.name = '',
     this.description = '',
     this.imageUrl = '',
@@ -429,6 +465,21 @@ class CatalogItem {
   });
 
   final int id;
+
+  /// Serverdagi ASL identifikator — satr ko'rinishida.
+  ///
+  /// Kompaniya katalogida id UUID (`crypto.randomUUID()`), ya'ni
+  /// raqam emas: `id` u yerda 0 bo'lib qolardi va tahrirlash/o'chirish
+  /// `.../catalog/0` ga ketardi. Kompaniya amallari [key] dan foydalanadi.
+  final String ref;
+
+  /// Server `category` maydoni (NFC turi slugi yoki erkin matn).
+  final String category;
+
+  /// Amallar uchun kalit: asl satr id, bo'lmasa raqam.
+  String get key => ref.isNotEmpty ? ref : '$id';
+
+  NfcProductType get nfcType => NfcProductType.fromCategory(category, name);
   final String name;
   final String description;
   final String imageUrl;
@@ -449,11 +500,16 @@ class CatalogItem {
 
   factory CatalogItem.fromJson(Map<String, dynamic> j) => CatalogItem(
         id: _i(j['id']),
+        ref: _s(j['id']),
+        category: _s(j['category']),
         name: _s(j['name'] ?? j['title']),
         description: _s(j['description'] ?? j['desc']),
         imageUrl: _u(j['imageUrl'] ?? j['image'] ?? j['photoUrl']),
         price: _i(j['price']),
-        salePrice: j['salePrice'] == null ? null : _i(j['salePrice']),
+        // Kompaniya katalogi chegirmani `promotionPrice` deb yuboradi.
+        salePrice: (j['salePrice'] ?? j['promotionPrice']) == null
+            ? null
+            : _i(j['salePrice'] ?? j['promotionPrice']),
         currency: _s(j['currency'], 'UZS'),
         available: _b(j['available'] ?? j['inStock'], true),
         categoryId: j['categoryId'] == null ? null : _i(j['categoryId']),

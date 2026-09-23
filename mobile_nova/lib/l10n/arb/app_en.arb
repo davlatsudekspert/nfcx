@@ -714,5 +714,11 @@
   "nfcWriteShort": "Write card",
   "nfcCardsHint": "Linked cards and stickers",
   "nfcSecurityHint": "Block a lost card and stay protected",
-  "nfcScanStart": "Start scanning"
+  "nfcScanStart": "Start scanning",
+  "catalogTypeLabel": "Product type",
+  "catalogCards": "Cards",
+  "catalogStickers": "Stickers",
+  "catalogKeychains": "Keychains",
+  "catalogAccessories": "Accessories",
+  "catalogOther": "Other"
 }

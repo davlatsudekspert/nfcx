@@ -538,7 +538,7 @@ class BusinessCatalogScreen extends ConsumerWidget {
                 separatorBuilder: (_, __) => const SizedBox(height: Gap.md),
                 itemBuilder: (context, i) => CatalogTile(
                   item: items[i],
-                  onTap: () => context.push(Routes.businessProduct(items[i].id)),
+                  onTap: () => context.push(Routes.businessProduct(items[i].key)),
                   trailing: NovaIconButton(
                     icon: Icons.delete_outline_rounded,
                     tooltip: l.actionDelete,
@@ -546,7 +546,7 @@ class BusinessCatalogScreen extends ConsumerWidget {
                     onPressed: () async {
                       final res = await ref
                           .read(businessRepositoryProvider)
-                          .deleteItem(b.companyId, items[i].id);
+                          .deleteItem(b.companyId, items[i].key);
                       if (!context.mounted) return;
                       res.when(
                         ok: (_) => ref
@@ -563,12 +563,21 @@ class BusinessCatalogScreen extends ConsumerWidget {
   }
 }
 
+/// NFC mahsulot turining tarjimasi.
+String nfcTypeLabel(L l, NfcProductType t) => switch (t) {
+      NfcProductType.card => l.catalogCards,
+      NfcProductType.sticker => l.catalogStickers,
+      NfcProductType.keychain => l.catalogKeychains,
+      NfcProductType.accessory => l.catalogAccessories,
+      NfcProductType.other => l.catalogOther,
+    };
+
 /// Mahsulot qo'shish / tahrirlash.
 class BusinessProductFormScreen extends ConsumerStatefulWidget {
   const BusinessProductFormScreen({super.key, this.itemId});
 
-  /// `null` — yangi mahsulot.
-  final int? itemId;
+  /// `null` — yangi mahsulot. Aks holda `CatalogItem.key` (server UUID).
+  final String? itemId;
 
   @override
   ConsumerState<BusinessProductFormScreen> createState() =>
@@ -584,6 +593,9 @@ class _BusinessProductFormScreenState
 
   bool _service = false;
   bool _available = true;
+
+  /// NFC mahsulot turi — Tanlov katalogidagi filtr shu bilan ishlaydi.
+  NfcProductType _type = NfcProductType.other;
   bool _filled = false;
   bool _busy = false;
   String? _error;
@@ -606,6 +618,7 @@ class _BusinessProductFormScreenState
     _salePrice.text = (item.salePrice ?? 0) == 0 ? '' : '${item.salePrice}';
     _service = item.isService;
     _available = item.available;
+    _type = item.nfcType;
   }
 
   Future<void> _save(Business b) async {
@@ -619,12 +632,18 @@ class _BusinessProductFormScreenState
       _error = null;
     });
 
+    final sale =
+        int.tryParse(_salePrice.text.replaceAll(RegExp(r'\D'), '')) ?? 0;
     final body = {
       'name': _name.text.trim(),
       'description': _description.text.trim(),
       'price': int.tryParse(_price.text.replaceAll(RegExp(r'\D'), '')) ?? 0,
-      'salePrice':
-          int.tryParse(_salePrice.text.replaceAll(RegExp(r'\D'), '')) ?? 0,
+      // SERVER `promotionPrice` KUTADI. Ilgari faqat `salePrice`
+      // yuborilardi va chegirma jimgina yo'qolardi. 0 — chegirma yo'q
+      // (null bilan tozalanadi).
+      'promotionPrice': sale > 0 ? sale : null,
+      'salePrice': sale,
+      'category': _type == NfcProductType.other ? '' : _type.name,
       'available': _available,
       'type': _service ? 'service' : 'product',
     };
@@ -661,7 +680,7 @@ class _BusinessProductFormScreenState
 
     if (widget.itemId != null) {
       final items = ref.watch(businessCatalogProvider(b.companyId)).valueOrNull;
-      _fillOnce(items?.where((e) => e.id == widget.itemId).firstOrNull);
+      _fillOnce(items?.where((e) => e.key == widget.itemId).firstOrNull);
     }
 
     return NovaScaffold(
@@ -695,6 +714,23 @@ class _BusinessProductFormScreenState
             maxLines: 3,
             maxLength: 600,
             enabled: !_busy,
+          ),
+          const SizedBox(height: Gap.lg),
+          Text(l.catalogTypeLabel,
+              style: Theme.of(context).textTheme.labelMedium),
+          const SizedBox(height: Gap.sm),
+          Wrap(
+            spacing: Gap.sm,
+            runSpacing: Gap.sm,
+            children: [
+              for (final ty in NfcProductType.values)
+                Capsule(
+                  key: ValueKey('nfc-type-${ty.name}'),
+                  label: nfcTypeLabel(l, ty),
+                  selected: _type == ty,
+                  onTap: _busy ? null : () => setState(() => _type = ty),
+                ),
+            ],
           ),
           const SizedBox(height: Gap.lg),
           Row(

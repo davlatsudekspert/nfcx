@@ -116,7 +116,8 @@ abstract final class Routes {
   static const businessCatalog = '/business/catalog';
   static const businessAnalytics = '/business/analytics';
   static const businessProductNew = '/business/catalog/new';
-  static String businessProduct(int id) => '/business/catalog/$id';
+  static String businessProduct(String key) =>
+      '/business/catalog/${Uri.encodeComponent(key)}';
   static String storefront(String companyId) => '/c/$companyId';
 
   /// "NFC Mobile" bo'limidagi namuna profillar.

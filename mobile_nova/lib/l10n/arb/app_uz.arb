@@ -724,5 +724,11 @@
   "nfcWriteShort": "Kartaga yozish",
   "nfcCardsHint": "Ulangan kartalar va stikerlar",
   "nfcSecurityHint": "Yo‘qolgan kartani bloklash va himoya",
-  "nfcScanStart": "Skanerlashni boshlash"
+  "nfcScanStart": "Skanerlashni boshlash",
+  "catalogTypeLabel": "Mahsulot turi",
+  "catalogCards": "Kartalar",
+  "catalogStickers": "Stikerlar",
+  "catalogKeychains": "Breloklar",
+  "catalogAccessories": "Aksessuarlar",
+  "catalogOther": "Boshqa"
 }

@@ -3596,6 +3596,42 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Skanerlashni boshlash'**
   String get nfcScanStart;
+
+  /// No description provided for @catalogTypeLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Mahsulot turi'**
+  String get catalogTypeLabel;
+
+  /// No description provided for @catalogCards.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kartalar'**
+  String get catalogCards;
+
+  /// No description provided for @catalogStickers.
+  ///
+  /// In uz, this message translates to:
+  /// **'Stikerlar'**
+  String get catalogStickers;
+
+  /// No description provided for @catalogKeychains.
+  ///
+  /// In uz, this message translates to:
+  /// **'Breloklar'**
+  String get catalogKeychains;
+
+  /// No description provided for @catalogAccessories.
+  ///
+  /// In uz, this message translates to:
+  /// **'Aksessuarlar'**
+  String get catalogAccessories;
+
+  /// No description provided for @catalogOther.
+  ///
+  /// In uz, this message translates to:
+  /// **'Boshqa'**
+  String get catalogOther;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

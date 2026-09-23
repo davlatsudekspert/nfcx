@@ -714,5 +714,11 @@
   "nfcWriteShort": "Записать",
   "nfcCardsHint": "Привязанные карты и стикеры",
   "nfcSecurityHint": "Блокировка утерянной карты и защита",
-  "nfcScanStart": "Начать сканирование"
+  "nfcScanStart": "Начать сканирование",
+  "catalogTypeLabel": "Тип товара",
+  "catalogCards": "Карты",
+  "catalogStickers": "Стикеры",
+  "catalogKeychains": "Брелоки",
+  "catalogAccessories": "Аксессуары",
+  "catalogOther": "Другое"
 }

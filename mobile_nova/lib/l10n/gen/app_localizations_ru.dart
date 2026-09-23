@@ -1830,4 +1830,22 @@ class LRu extends L {
 
   @override
   String get nfcScanStart => 'Начать сканирование';
+
+  @override
+  String get catalogTypeLabel => 'Тип товара';
+
+  @override
+  String get catalogCards => 'Карты';
+
+  @override
+  String get catalogStickers => 'Стикеры';
+
+  @override
+  String get catalogKeychains => 'Брелоки';
+
+  @override
+  String get catalogAccessories => 'Аксессуары';
+
+  @override
+  String get catalogOther => 'Другое';
 }

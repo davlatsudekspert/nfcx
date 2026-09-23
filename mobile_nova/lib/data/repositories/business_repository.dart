@@ -87,12 +87,13 @@ class BusinessRepository {
         CatalogItem.fromJson(((j['item'] ?? j) as Map).cast<String, dynamic>()));
   }
 
+  /// [itemId] — `CatalogItem.key` (server UUID).
   Future<Result<void>> updateItem(
-          String companyId, int itemId, Map<String, dynamic> body) =>
+          String companyId, String itemId, Map<String, dynamic> body) =>
       // Server PATCH kutadi, PUT emas.
       _api.patch<void>('/api/companies/$companyId/catalog/$itemId', body);
 
-  Future<Result<void>> deleteItem(String companyId, int itemId) =>
+  Future<Result<void>> deleteItem(String companyId, String itemId) =>
       _api.delete<void>('/api/companies/$companyId/catalog/$itemId');
 
   // ---- NFC ID ostidagi katalog -------------------------------------------

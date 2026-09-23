@@ -1843,4 +1843,22 @@ class LUz extends L {
 
   @override
   String get nfcScanStart => 'Skanerlashni boshlash';
+
+  @override
+  String get catalogTypeLabel => 'Mahsulot turi';
+
+  @override
+  String get catalogCards => 'Kartalar';
+
+  @override
+  String get catalogStickers => 'Stikerlar';
+
+  @override
+  String get catalogKeychains => 'Breloklar';
+
+  @override
+  String get catalogAccessories => 'Aksessuarlar';
+
+  @override
+  String get catalogOther => 'Boshqa';
 }

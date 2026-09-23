@@ -260,7 +260,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: ':itemId',
             builder: (_, s) => BusinessProductFormScreen(
-              itemId: int.tryParse(s.pathParameters['itemId'] ?? ''),
+              // Server id'si UUID — raqamga aylantirilmaydi.
+              itemId: s.pathParameters['itemId'],
             ),
           ),
         ],

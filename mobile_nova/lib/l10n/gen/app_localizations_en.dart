@@ -1837,4 +1837,22 @@ class LEn extends L {
 
   @override
   String get nfcScanStart => 'Start scanning';
+
+  @override
+  String get catalogTypeLabel => 'Product type';
+
+  @override
+  String get catalogCards => 'Cards';
+
+  @override
+  String get catalogStickers => 'Stickers';
+
+  @override
+  String get catalogKeychains => 'Keychains';
+
+  @override
+  String get catalogAccessories => 'Accessories';
+
+  @override
+  String get catalogOther => 'Other';
 }

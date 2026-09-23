@@ -21,8 +21,14 @@ Har modul uchun test: `scripts/test-<modul>.mjs` (`scripts/lib/d1-harness.mjs` o
 ## Modullar
 
 `auth`, `account`, `engagement`, `catalog`, `media`, `admin-extra`,
-`admin-finance`, `telegram`, `assistant`, `moderation`, `comments`
+`admin-finance`, `telegram`, `assistant`, `moderation`, `comments`,
+`notifications`, `featured`, `catalog-feed`, `marketplace`
 (shu tartibda chaqiriladi — `worker.js: API_MODULES`).
+
+`catalog-feed` — ilova "Tanlov" katalogi: `GET /api/catalog/feed`
+(`page`, `limit`, `q`, `category` = card|sticker|keychain|accessory|other,
+`sort` = new|price_asc|price_desc). Faqat o'qiydi, migratsiya yo'q;
+manba `company_catalog_items` + faol `companies`.
 
 `comments` — izohlar (`content_comments`): `GET|POST
 /api/comments/:kind/:id`, `DELETE /api/comments/:id`, bu yerda
