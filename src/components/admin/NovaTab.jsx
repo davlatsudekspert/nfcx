@@ -66,6 +66,7 @@ export default function NovaTab({ adminApi, apiErrText }) {
         ))}
       </div>
 
+      {sub === 'users' && <ReviewAccountCard adminApi={adminApi} />}
       {sub === 'users' && <UsersSection adminApi={adminApi} />}
       {sub === 'comments' && <CommentsSection adminApi={adminApi} apiErrText={apiErrText} />}
       {sub === 'archive' && <ArchiveSection adminApi={adminApi} apiErrText={apiErrText} />}
@@ -211,6 +212,56 @@ function CommentsSection({ adminApi, apiErrText }) {
 // Ilova har ochilganda `/api/auth/me` ni `x-app: nova` bilan chaqiradi —
 // server shuni sanaydi (hosting/api/app-usage.js). Kirmagan mehmon va
 // saytdan kirish sanalmaydi.
+// ── GOOGLE PLAY TEKSHIRUVCHISI HISOBI ─────────────────────────────
+// Play Console → "Доступ к приложению" uchun login va parol. Hisob
+// serverda oldindan tasdiqlangan (email kodi so'ralmaydi). Parol faqat
+// shu yerda bir marta ko'rinadi; qayta bosilsa yangisi beriladi va
+// eskisi ishlamay qoladi (hosting/api/app-usage.js `reviewAccount`).
+function ReviewAccountCard({ adminApi }) {
+  const { t } = useLanguage();
+  const [busy, setBusy] = useState(false);
+  const [res, setRes] = useState(null);
+  const [err, setErr] = useState(null);
+  const create = async () => {
+    if (res && !confirm(t('Yangi parol beriladi, eskisi ishlamay qoladi. Davom etasizmi?'))) return;
+    setBusy(true); setErr(null);
+    try {
+      setRes(await adminApi('/review-account', { method: 'POST' }));
+    } catch (e) { setErr(e); }
+    setBusy(false);
+  };
+  const copy = (v) => { try { navigator.clipboard.writeText(v); } catch { /* jim */ } };
+  return (
+    <AdminCard title={t('Google Play tekshiruvchisi hisobi')}>
+      <p className="mb-3 text-[13px] text-[color:var(--vz-ink-faint)]">
+        {t('Play Console → Политика → Доступ к приложению uchun login va parol. Hisob alohida, email kodi so‘ralmaydi, Premium bilan. Parol faqat hozir bir marta ko‘rinadi.')}
+      </p>
+      {err && <LoadError err={err} onRetry={create} />}
+      {res ? (
+        <div className="flex flex-col gap-2 text-[14px]">
+          {[['Login', res.email], [t('Parol'), res.password], ['NFC ID', res.code]].map(([k, v]) => (
+            <div key={k} className="flex flex-wrap items-center gap-2">
+              <span className="w-20 text-[color:var(--vz-ink-faint)]">{k}</span>
+              <code className="rounded-md border border-[color:var(--vz-line)] px-2 py-1 font-mono">{v}</code>
+              <button type="button" onClick={() => copy(v)}
+                className="rounded-lg border border-[color:var(--vz-line)] px-2 py-1 text-[12px]">{t('Nusxa')}</button>
+            </div>
+          ))}
+          <button type="button" onClick={create} disabled={busy}
+            className="mt-1 self-start rounded-lg border border-[color:var(--vz-line)] px-3 py-1.5 text-[13px]">
+            {t('Yangi parol berish')}
+          </button>
+        </div>
+      ) : (
+        <button type="button" onClick={create} disabled={busy}
+          className="rounded-lg border border-[color:var(--vz-accent)] px-4 py-2 text-[13px]">
+          {busy ? t('Yuklanmoqda…') : t('Hisob yaratish va parol olish')}
+        </button>
+      )}
+    </AdminCard>
+  );
+}
+
 function UsersSection({ adminApi }) {
   const { t } = useLanguage();
   const [q, setQ] = useState('');
