@@ -157,6 +157,17 @@ class Repository {
           .map(PostItem.fromJson)
           .toList();
 
+  Future<Map<String, dynamic>> companyStats(
+    String id, {
+    int days = 30,
+  }) async =>
+      _map(
+        await api.get(
+          '/api/companies/' + id + '/stats',
+          query: {'days': days},
+        ),
+      );
+
   Future<Map<String, dynamic>> checkCompanyId(String id) async =>
       _map(await api.get('/api/companies/check', query: {'id': id}));
 
