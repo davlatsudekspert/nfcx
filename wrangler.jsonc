@@ -181,9 +181,36 @@
   // vidjet o'zini umuman ko'rsatmaydi — sayt "buzuq" ko'rinmaydi.
   // Ixtiyoriy: ASSISTANT_MODEL (standart gemini-3.6-flash),
   // ASSISTANT_OFF="1" — kalit turgan holda vidjetni vaqtincha o'chirish.
+  // CLICK'DAN QAYTISH MANZILI.
+  //
+  // 2026-09-15 da Worker almashganda `CLICK_RETURN_URL` ko'chmay
+  // qoldi: u eski `nfcstore-api` da secret sifatida turardi va
+  // Cloudflare secret qiymatini qaytarmagani uchun undan nusxa
+  // olishning iloji yo'q. Natijada Click'da to'lovni tugatgan odam
+  // saytga umuman qaytmasdi — Click sahifasida qolib ketardi.
+  //
+  // BU MAXFIY QIYMAT EMAS — oddiy ommaviy manzil, u har bir
+  // checkout havolasida ochiq ko'rinadi. Shuning uchun secret emas,
+  // shu yerda `vars` ichida: repoda ko'rinib turadi, ko'rib chiqish
+  // mumkin va keyingi Worker ko'chishida yana yo'qolmaydi.
+  //
+  // `/tolovlar` tanlandi (`src/pages/PaymentsPage.jsx`) — u
+  // `dbListMyOrders` bilan buyurtmalar ro'yxatini ko'rsatadi, ya'ni
+  // odam to'lovdan keyin AYNAN o'z buyurtmasining holatini ko'radi.
+  // Holatni baribir SERVER aytadi: qaytish manzili hech qachon
+  // "to'landi" degani emas.
   "vars": {
     "PAYMENTS_ENABLED": "true",
     "PAYME_SANDBOX": "false",
-    "PAYME_CHECKOUT_DOMAIN": "checkout.paycom.uz"
+    "PAYME_CHECKOUT_DOMAIN": "checkout.paycom.uz",
+    "CLICK_RETURN_URL": "https://nfcstore.uz/tolovlar",
+    // ANDROID APP LINKS — "NFCSTORE: Raqamli vizitka" (uz.nfcstore.nova).
+    // Barmoq izlari MAXFIY EMAS (har bir APK ichida ochiq turadi).
+    // 1) Play App Signing kaliti (69:1D…6C) — Play'dan o'rnatilgan
+    //    nusxalar. Play Console → App integrity → App signing dan
+    //    olindi (2026-09-23).
+    // 2) Yuklash (upload) kaliti (6F:79…3C) — GitHub'dan o'rnatilgan
+    //    sinov nusxalari.
+    "ANDROID_NOVA_FINGERPRINTS": "69:1D:3F:A3:81:40:1B:BB:E6:F5:93:C7:F9:92:22:AC:0F:80:A2:94:63:77:9C:9D:76:A2:7D:9B:DC:B7:B3:6C,6F:79:CC:DA:FD:E4:04:CF:BA:29:96:4D:8C:CB:11:0C:0A:49:E0:D4:B9:8E:95:64:0A:68:50:02:68:B0:A9:3C"
   }
 }
