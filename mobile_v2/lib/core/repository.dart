@@ -163,13 +163,59 @@ class Repository {
   Future<Map<String, dynamic>> createCompany(Map<String, dynamic> body) async =>
       _map(await api.post('/api/companies', body));
 
+  Map<String, dynamic> _profilePayload(IdentityProfile p) => {
+        'name': p.name,
+        'role': p.role,
+        'avatarUrl': p.avatarUrl ?? '',
+        'bgUrl': p.coverUrl ?? '',
+        'bgPattern': p.bgPattern,
+        'accentColor': p.accentColor,
+        'bgColor': p.bgColor,
+        'bgAnimated': p.bgAnimated,
+        'linksTransparent': p.linksTransparent,
+        'linkStyle': p.linkStyle,
+        'profileType': p.profileType,
+        'city': p.city,
+        'categorySlug': p.categorySlug,
+        'address': p.address,
+        'latitude': p.latitude,
+        'longitude': p.longitude,
+        'hiddenFromDirectory': p.hiddenFromDirectory,
+        'leadCapture': p.leadCapture,
+        'tg': p.tg,
+        'phone': p.phone,
+        'email': p.email,
+        'linkedin': p.linkedin,
+        'instagram': p.instagram,
+        'about': p.about,
+        'facebook': p.facebook,
+        'twitter': p.twitter,
+        'website': p.website,
+        'cardNumber': p.cardNumber,
+        'theme': p.theme,
+        'hidePhone': p.hidePhone,
+        'companyId': p.companyId,
+        'hashtags': p.hashtags,
+        'extraLinks': p.extraLinks,
+        'musicUrls': p.musicUrls,
+        'cardNumbers': p.cardNumbers,
+        if (p.cardDesign != null) 'cardDesign': p.cardDesign,
+      };
+
   Future<IdentityProfile> updateProfile(
     String code,
     Map<String, dynamic> body,
-  ) async =>
-      IdentityProfile.fromJson(
-        _map(await api.put('/api/records/' + code, body)),
-      );
+  ) async {
+    // Backend profil PUT kontrakti to‘liq record yuborilishini kutadi.
+    // Shuning uchun qisman tahrir boshqa, ko‘rinmayotgan maydonlarni
+    // tasodifan bo‘shatib yubormasligi uchun avval joriy holat bilan
+    // birlashtiriladi.
+    final current = await profile(code);
+    final merged = _profilePayload(current)..addAll(body);
+    return IdentityProfile.fromJson(
+      _map(await api.put('/api/records/' + code, merged)),
+    );
+  }
 
 
 
@@ -238,6 +284,18 @@ class Repository {
     final r = _map(await api.upload('/api/upload-media', bytes, contentType: contentType));
     final url = (r['url'] ?? '').toString();
     if (url.isEmpty) throw const ApiException('bad_media');
+    return url;
+  }
+
+  Future<String> uploadFile(
+    List<int> bytes, {
+    required String contentType,
+  }) async {
+    final r = _map(
+      await api.upload('/api/upload-file', bytes, contentType: contentType),
+    );
+    final url = (r['url'] ?? '').toString();
+    if (url.isEmpty) throw const ApiException('bad_file');
     return url;
   }
 
