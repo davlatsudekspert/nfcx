@@ -8,6 +8,7 @@ import '../core/session.dart';
 import '../core/theme.dart';
 import '../ui/widgets.dart';
 import 'business_manage_screen.dart';
+import 'business_stats_screen.dart';
 import 'social_list_screen.dart';
 
 class BusinessProfileScreen extends StatefulWidget {
@@ -168,6 +169,16 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
                 onBack:
                     widget.own ? null : () => Navigator.of(context).pop(),
                 onShare: () => _share(c),
+                onStats: widget.own
+                    ? () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => BusinessStatsScreen(
+                              companyId: c.id,
+                              companyName: c.name,
+                            ),
+                          ),
+                        )
+                    : null,
                 onFollowers: () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => SocialListScreen(
@@ -362,6 +373,7 @@ class _BusinessHero extends StatelessWidget {
     required this.onFollowers,
     this.onBack,
     this.onManage,
+    this.onStats,
   });
 
   final Company company;
@@ -370,6 +382,7 @@ class _BusinessHero extends StatelessWidget {
   final VoidCallback onFollowers;
   final VoidCallback? onBack;
   final VoidCallback? onManage;
+  final VoidCallback? onStats;
 
   @override
   Widget build(BuildContext context) {
@@ -451,6 +464,13 @@ class _BusinessHero extends StatelessWidget {
                         ),
                       ),
                     const Spacer(),
+                    if (onStats != null) ...[
+                      _HeroButton(
+                        icon: Icons.insights_outlined,
+                        onTap: onStats!,
+                      ),
+                      const SizedBox(width: 7),
+                    ],
                     if (onManage != null) ...[
                       _HeroButton(
                         icon: Icons.tune_rounded,
