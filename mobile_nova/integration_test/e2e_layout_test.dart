@@ -103,16 +103,25 @@ void main() {
 
     final results = <String, String>{};
 
+    // QADAM IZI — emulyator qulasa (E2E #47-#49: 360 dp, Home'dan keyin
+    // qemu jarayoni yo'qoldi) aynan qaysi amalda qulaganini ko'rsatadi.
+    // ignore: avoid_print
+    void step(String s) => print('STEP|$_tag|$s|${DateTime.now().toIso8601String()}');
+
     Future<void> screen(String name, String route,
         {Object? extra, Future<void> Function()? then}) async {
       errors.clear();
+      step('$name go');
       router.go(route, extra: extra);
       await _wait(tester);
+      step('$name waited');
       if (then != null) {
         await then();
         await _wait(tester, 900);
       }
+      step('$name shot');
       await _shot(name);
+      step('$name shot-done');
       final ok = errors.isEmpty;
       results[name] = ok ? 'PASS' : 'FAIL';
       // ignore: avoid_print

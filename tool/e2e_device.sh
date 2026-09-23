@@ -135,16 +135,27 @@ for spec in "360 1080x2400" "390 1170x2532" "430 1290x2796"; do
   A shell am force-stop "$PKG" || true
 
   # ── LAYOUT TO'PLAMI ─────────────────────────────────────────
+  # Qurilma logi fonda HOST faylga yoziladi — emulyator qulasa ham oxirgi
+  # qatorlar (Flutter/Impeller/Vulkan/F-darajali xato) qo'lda qoladi.
+  A logcat -c || true
+  timeout 1200 adb -s "$DEVICE" logcat -v time > "logcat-${tag}.txt" 2>/dev/null &
+  LC_PID=$!
   if timeout --foreground -s INT -k 30s 900 \
       flutter test integration_test/e2e_layout_test.dart -d "$DEVICE" \
       --dart-define=LAYOUT_TAG="$tag" 2>&1 | tee "layout-${tag}.log" | tee -a "$LOG" | grep -E "LAYOUT\||<<<LAYOUT_DONE"; then
     :
   fi
+  kill "$LC_PID" 2>/dev/null || true
   if ! grep -q "<<<LAYOUT_DONE $tag>>>" "$LOG"; then
     say "DEVICE|${tag}|layout|FAIL|to'plam oxirigacha yetmadi"
     rc=1
-    echo "---- layout-${tag}.log (oxirgi 60 qator) ----"
-    tail -n 60 "layout-${tag}.log" | cut -c1-220
+    echo "---- layout-${tag}.log: STEP izi ----"
+    grep -E "^STEP\|" "layout-${tag}.log" | tail -n 20
+    echo "---- logcat-${tag}.txt (oxirgi 80, muhimlari) ----"
+    grep -E " [EF]/|flutter|impeller|Impeller|vulkan|Vulkan|gralloc|EGL|OpenGL|lowmemory|lmkd|Out of memory|FATAL|DEBUG  :" "logcat-${tag}.txt" \
+      | tail -n 80 | cut -c1-220
+    echo "---- logcat-${tag}.txt (eng oxirgi 30 qator) ----"
+    tail -n 30 "logcat-${tag}.txt" | cut -c1-220
     diag "layout ${tag}"
   fi
   if grep -q "LAYOUT|${tag}|[a-z-]*|FAIL" "$LOG"; then rc=1; fi
