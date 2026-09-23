@@ -33,6 +33,7 @@ import '../social/story_viewer.dart';
 import '../social/inline_video.dart';
 import '../social/media_frame.dart';
 import '../social/moderation.dart';
+import 'music_player.dart';
 import 'profile_repository.dart';
 
 // RIVERPOD `dependencies` — DEMO DARAXTI UCHUN SHART.
@@ -807,6 +808,23 @@ class _HeroAvatar extends StatelessWidget {
               ringColor: business ? t.accentB : null,
             ),
           ),
+          // MUSIQA — pastki CHAPDA.
+          //
+          // Play testeri: "Musiqa yo'q". Musiqa tahrirlash ekranida
+          // qo'shilardi, lekin FAQAT bosh sahifa orbida chalinardi —
+          // profilda (o'zimniki ham, boshqa odamniki ham) belgi ham,
+          // pleyer ham yo'q edi. Ya'ni mehmon uni hech qachon
+          // eshitmasdi.
+          //
+          // Chapda turadi: o'ng pastki burchak tasdiq/biznes belgisi
+          // uchun band. Musiqa yo'q bo'lsa `MusicControl` o'zi bo'sh
+          // widget qaytaradi.
+          if ((profile?.musicUrls ?? const <String>[]).isNotEmpty)
+            Positioned(
+              left: 0,
+              bottom: 0,
+              child: MusicControl(urls: profile!.musicUrls, size: 34),
+            ),
           // NISHON FAQAT IKKI HOLATDA: biznes yoki HAQIQIY tasdiq.
           //
           // Ilgari shart `profile!.id!.primary` edi — ya'ni ✓
