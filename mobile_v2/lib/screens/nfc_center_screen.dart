@@ -226,10 +226,13 @@ class _NfcCenterScreenState extends State<NfcCenterScreen>
                                     color: p.heroInk,
                                   ),
                                 )
-                              : Icon(
-                                  Icons.contactless_rounded,
-                                  color: p.heroInk,
-                                  size: 48,
+                              : ClipOval(
+                                  child: Image.asset(
+                                    'assets/images/nfcstore_logo_mark.png',
+                                    width: 84,
+                                    height: 84,
+                                    fit: BoxFit.cover,
+                                  ),
                                 ),
                         ),
                       ),
