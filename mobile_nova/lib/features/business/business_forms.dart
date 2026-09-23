@@ -505,7 +505,8 @@ class _BusinessEditScreenState extends ConsumerState<BusinessEditScreen> {
     if (b == null) {
       return NovaScaffold(
         showBack: true,
-        body: StatePanel(icon: Icons.storefront_outlined, title: l.bizNone),
+        body: businessGateBody(context, ref,
+            StatePanel(icon: Icons.storefront_outlined, title: l.bizNone)),
       );
     }
     _fillOnce(b);
@@ -606,7 +607,8 @@ class BusinessCatalogScreen extends ConsumerWidget {
       return NovaScaffold(
         title: l.bizCatalog,
         showBack: true,
-        body: StatePanel(icon: Icons.storefront_outlined, title: l.bizNone),
+        body: businessGateBody(context, ref,
+            StatePanel(icon: Icons.storefront_outlined, title: l.bizNone)),
       );
     }
 
@@ -681,6 +683,32 @@ class BusinessCatalogScreen extends ConsumerWidget {
                       tooltip: l.actionDelete,
                       size: 36,
                       onPressed: () async {
+                        // Server o'chirishi QAYTARILMAYDI; tugma esa
+                        // mahsulotni ochadigan kartaning yonida — bexosdan
+                        // bosish oson. Boshqa o'chirishlar kabi so'raladi.
+                        final ok = await showDialog<bool>(
+                          context: context,
+                          builder: (dc) => AlertDialog(
+                            title: Text(l.actionDelete,
+                                style: Theme.of(dc).textTheme.titleLarge),
+                            content: Text(item.name,
+                                style: Theme.of(dc).textTheme.bodyMedium),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(dc, false),
+                                child: Text(l.actionCancel),
+                              ),
+                              TextButton(
+                                key: const ValueKey('catalog-delete-confirm'),
+                                onPressed: () => Navigator.pop(dc, true),
+                                child: Text(l.actionDelete,
+                                    style:
+                                        TextStyle(color: dc.tokens.error)),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (ok != true || !context.mounted) return;
                         final res = await ref
                             .read(businessRepositoryProvider)
                             .deleteItem(b.companyId, item.key);
@@ -999,7 +1027,8 @@ class _BusinessProductFormScreenState
     if (b == null) {
       return NovaScaffold(
         showBack: true,
-        body: StatePanel(icon: Icons.storefront_outlined, title: l.bizNone),
+        body: businessGateBody(context, ref,
+            StatePanel(icon: Icons.storefront_outlined, title: l.bizNone)),
       );
     }
 
@@ -1406,7 +1435,8 @@ class BusinessAnalyticsScreen extends ConsumerWidget {
       return NovaScaffold(
         title: l.bizAnalytics,
         showBack: true,
-        body: StatePanel(icon: Icons.insights_outlined, title: l.bizNone),
+        body: businessGateBody(context, ref,
+            StatePanel(icon: Icons.insights_outlined, title: l.bizNone)),
       );
     }
 

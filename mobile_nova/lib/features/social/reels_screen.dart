@@ -149,6 +149,7 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
           context,
           asAppError(e),
           onRetry: () => ref.invalidate(reelsProvider),
+          onDark: true,
         ),
         data: (items) {
           if (items.isEmpty) {
@@ -160,6 +161,7 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
                   message: l.stateEmptyHint,
                   actionLabel: l.reelCreate,
                   onAction: () => context.push(Routes.reelCreate),
+                  onDark: true,
                 ),
                 _TopBar(onCreate: () => context.push(Routes.reelCreate)),
               ],
@@ -603,7 +605,9 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
                   onTap: () => p.code.isEmpty
                       ? shareText(p.text)
                       : shareLink(
-                          '$kApiBase/${Uri.encodeComponent(p.code)}',
+                          p.isCompany
+                              ? '$kApiBase/c/${Uri.encodeComponent(p.code)}'
+                              : '$kApiBase/${Uri.encodeComponent(p.code)}',
                           title: p.authorName),
                 ),
                 const SizedBox(height: Gap.lg),

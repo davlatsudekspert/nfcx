@@ -445,7 +445,8 @@ class _IdentityHero extends ConsumerWidget {
             photoSize: photo,
             onTap: ring == null
                 ? onTap
-                : () => context.push(Routes.story(profile.code)),
+                : () => context.push(Routes.story(profile.code,
+                    business: profile.isBusiness)),
           ),
           const SizedBox(height: Gap.md),
           Text(
@@ -918,6 +919,10 @@ class _StoriesRow extends ConsumerWidget {
     final l = L.of(context);
     final stories = ref.watch(homeStoriesProvider);
     final id = ref.watch(activeIdProvider);
+    // Kodsiz istorya — faol profilning O'ZINIKI. Biznes rejimida u
+    // kompaniya istoryasi: `business` belgisisiz ko'ruvchi shaxsiy
+    // yo'ldan qidirib bo'sh ekran ko'rsatardi.
+    final active = ref.watch(activeProfileProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -976,7 +981,10 @@ class _StoriesRow extends ConsumerWidget {
                     initials: face.initials,
                     seen: s.seen,
                     onTap: () => context.push(
-                      Routes.story(s.code.isEmpty ? (id?.code ?? '') : s.code),
+                      s.code.isEmpty
+                          ? Routes.story(active?.code ?? id?.code ?? '',
+                              business: active?.isBusiness ?? false)
+                          : Routes.story(s.code),
                     ),
                   );
                 },

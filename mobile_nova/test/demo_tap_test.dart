@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:nfcstore_nova/data/models/models.dart';
 import 'package:nfcstore_nova/features/business/business_screens.dart';
 import 'package:nfcstore_nova/features/demo/demo_data.dart';
 import 'package:nfcstore_nova/features/home/widgets/nfc_mobile_section.dart';
@@ -136,7 +137,11 @@ void main() {
             builder: (context) => Center(
               child: CatalogTile(
                 item: item,
-                onTap: () => showProductSheet(context, item),
+                onTap: () => showProductSheet(context, item,
+                    contacts: const [
+                      ContactAction(
+                          kind: ContactKind.phone, url: 'tel:+998900000000'),
+                    ]),
               ),
             ),
           ),
@@ -154,5 +159,34 @@ void main() {
         reason: 'mahsulot tafsiloti ochilmadi');
     expect(find.textContaining(item.description.split(' ').first),
         findsWidgets);
+    // Audit F-M7: "Bog'lanish" faqat varaqni yopmaydi — biznesning
+    // haqiqiy aloqa tugmalari shu yerda.
+    expect(find.byKey(const ValueKey('contact-phone')), findsOneWidget);
+  });
+
+  testWidgets('aloqa yo‘q bo‘lsa — yolg‘on "Bog‘lanish" tugmasi yo‘q',
+      (tester) async {
+    final item = demoCatalog.first;
+    await tester.pumpWidget(ProviderScope(
+      overrides: [...await testOverrides()],
+      child: wrapScreen(
+        Scaffold(
+          body: Builder(
+            builder: (context) => Center(
+              child: CatalogTile(
+                item: item,
+                onTap: () => showProductSheet(context, item),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ));
+    await settle(tester);
+    await tester.tap(find.text(item.name));
+    await settle(tester);
+    final l = await L.delegate.load(const Locale('uz'));
+    expect(find.text(l.demoAddToCart), findsNothing);
+    expect(find.text(item.name), findsWidgets);
   });
 }

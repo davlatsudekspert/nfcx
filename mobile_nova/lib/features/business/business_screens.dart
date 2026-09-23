@@ -147,6 +147,23 @@ String _initials(String name, String fallback) {
 /// Shaxsiy profildan ATAYLAB boshqacha tuzilgan: bu yerda birinchi
 /// o'rinda ko'rsatkichlar va boshqaruv, shaxsiyda esa identity va
 /// kontent turadi.
+/// `activeBusinessProvider == null` — "hali yuklanmadi / xato" ni
+/// "haqiqatan biznes yo'q" dan ajratadi.
+///
+/// Ilgari biznes yaratilgach (ro'yxat qayta yuklanayotganda) panel
+/// "Sizda biznes yo'q — Biznes yaratish" deb turardi; odam yana
+/// yaratishga urinardi. Tarmoq xatosida ham shunday edi va qayta
+/// urinish tugmasi yo'q edi.
+Widget businessGateBody(BuildContext context, WidgetRef ref, Widget empty) {
+  final all = ref.watch(myBusinessesProvider);
+  if (all.isLoading) return const SkeletonList(count: 2);
+  if (all.hasError) {
+    return StatePanel.fromError(context, asAppError(all.error!),
+        onRetry: () => ref.invalidate(myBusinessesProvider));
+  }
+  return empty;
+}
+
 class BusinessDashboardScreen extends ConsumerWidget {
   const BusinessDashboardScreen({super.key});
 
@@ -160,12 +177,16 @@ class BusinessDashboardScreen extends ConsumerWidget {
       return NovaScaffold(
         title: l.bizDashboard,
         showBack: true,
-        body: StatePanel(
-          icon: Icons.storefront_outlined,
-          title: l.bizNone,
-          message: l.bizNoneHint,
-          actionLabel: l.bizCreate,
-          onAction: () => context.push(Routes.businessIntro),
+        body: businessGateBody(
+          context,
+          ref,
+          StatePanel(
+            icon: Icons.storefront_outlined,
+            title: l.bizNone,
+            message: l.bizNoneHint,
+            actionLabel: l.bizCreate,
+            onAction: () => context.push(Routes.businessIntro),
+          ),
         ),
       );
     }
@@ -612,7 +633,8 @@ class StorefrontScreen extends ConsumerWidget {
                               padding: const EdgeInsets.only(bottom: Gap.md),
                               child: CatalogTile(
                                 item: item,
-                                onTap: () => showProductSheet(context, item),
+                                onTap: () => showProductSheet(context, item,
+                                    contacts: b.contact.actions()),
                               ),
                             ),
                         ],
@@ -640,7 +662,11 @@ class StorefrontScreen extends ConsumerWidget {
 ///
 /// Varaq ATAYLAB yangi ekran emas: katalogdan chiqib ketmasdan
 /// qarab, yopib, keyingisiga o'tish mumkin.
-Future<void> showProductSheet(BuildContext context, CatalogItem item) {
+///
+/// `contacts` — biznesning aloqa tugmalari. "Bog'lanish" ilgari
+/// faqat varaqni YOPARDI; endi o'sha tugmalar shu yerda.
+Future<void> showProductSheet(BuildContext context, CatalogItem item,
+    {List<ContactAction> contacts = const []}) {
   return showModalBottomSheet(
     context: context,
     // Ildiz navigatorda — aks holda pastki panel varaq ustiga
@@ -648,14 +674,15 @@ Future<void> showProductSheet(BuildContext context, CatalogItem item) {
     useRootNavigator: true,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (context) => _ProductSheet(item: item),
+    builder: (context) => _ProductSheet(item: item, contacts: contacts),
   );
 }
 
 class _ProductSheet extends StatelessWidget {
-  const _ProductSheet({required this.item});
+  const _ProductSheet({required this.item, this.contacts = const []});
 
   final CatalogItem item;
+  final List<ContactAction> contacts;
 
   @override
   Widget build(BuildContext context) {
@@ -722,11 +749,14 @@ class _ProductSheet extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
+                // "Narx kelishiladi" — plitkadagidek; "0 so'm" emas.
                 Text(
-                  formatMoney(sale ?? item.price, item.currency),
+                  item.priceOnRequest
+                      ? l.catalogPriceOnRequest
+                      : formatMoney(sale ?? item.price, item.currency),
                   style: AppType.monoStyle(color: t.text1, size: 18),
                 ),
-                if (sale != null) ...[
+                if (sale != null && !item.priceOnRequest) ...[
                   const SizedBox(width: Gap.sm),
                   Text(
                     formatMoney(item.price, item.currency),
@@ -738,12 +768,13 @@ class _ProductSheet extends StatelessWidget {
                 ],
               ],
             ),
-            const SizedBox(height: Gap.xl),
-            NovaButton(
-              label: l.demoAddToCart,
-              icon: Icons.chat_bubble_outline_rounded,
-              onPressed: () => Navigator.of(context).pop(),
-            ),
+            if (contacts.isNotEmpty) ...[
+              const SizedBox(height: Gap.xl),
+              Text(l.demoAddToCart,
+                  style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: Gap.md),
+              ContactButtons(actions: contacts),
+            ],
           ],
         ),
       ),

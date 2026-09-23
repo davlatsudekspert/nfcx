@@ -221,8 +221,12 @@ class FeedCard extends ConsumerWidget {
               _CardAction(
                 icon: NovaIcons.share,
                 label: l.actionShare,
+                // Kompaniya sahifasi `/c/<ID>` da; `/<ID>` shaxsiy karta
+                // deb qidiriladi va "topilmadi" (yoki BEGONA odam) chiqardi.
                 onTap: () => shareLink(
-                  '$kApiBase/${Uri.encodeComponent(post.code)}',
+                  post.isCompany
+                      ? '$kApiBase/c/${Uri.encodeComponent(post.code)}'
+                      : '$kApiBase/${Uri.encodeComponent(post.code)}',
                   title: name,
                 ),
               ),

@@ -88,6 +88,7 @@ class StatePanel extends StatelessWidget {
     this.onAction,
     this.technical,
     this.tone,
+    this.onDark = false,
   });
 
   /// Xatodan to'g'ridan-to'g'ri panel yasaydi — har ekranda `switch`
@@ -96,6 +97,7 @@ class StatePanel extends StatelessWidget {
     BuildContext context,
     AppError e, {
     VoidCallback? onRetry,
+    bool onDark = false,
   }) {
     final l = L.of(context);
     return StatePanel(
@@ -115,6 +117,7 @@ class StatePanel extends StatelessWidget {
       // Texnik qator faqat tuzatuvchi uchun: usiz "xatolik yuz berdi"
       // dan boshqa hech narsa bilinmasdi.
       technical: e.technical,
+      onDark: onDark,
     );
   }
 
@@ -126,10 +129,15 @@ class StatePanel extends StatelessWidget {
   final String? technical;
   final Color? tone;
 
+  /// Panel QORA fonda (Reels, istorya) turibdi. Mavzu ranglari (Ivory:
+  /// deyarli qora matn) u yerda ko'rinmasdi — sarlavha ~1.2:1.
+  final bool onDark;
+
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final accent = tone ?? t.accent2;
+    final accent = tone ?? (onDark ? Colors.white : t.accent2);
+    final tt = Theme.of(context).textTheme;
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 34, vertical: 28),
@@ -152,14 +160,18 @@ class StatePanel extends StatelessWidget {
             Text(
               title,
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleLarge,
+              style: onDark
+                  ? tt.titleLarge?.copyWith(color: Colors.white)
+                  : tt.titleLarge,
             ),
             if (message != null) ...[
               const SizedBox(height: Gap.sm),
               Text(
                 message!,
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium,
+                style: onDark
+                    ? tt.bodyMedium?.copyWith(color: Colors.white70)
+                    : tt.bodyMedium,
               ),
             ],
             if (actionLabel != null) ...[

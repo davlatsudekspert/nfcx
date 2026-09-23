@@ -76,4 +76,21 @@ void main() {
     expect(router, contains("queryParameters['business']"));
     expect(router, contains('isBusiness:'));
   });
+
+  test('bosh sahifadagi O\'Z halqasi va doirachasi biznesligini uzatadi', () {
+    // Audit F-M3: biznes rejimida o'z istoryasini bosgan odam bo'sh
+    // ekran ko'rardi — marshrut `business=1` siz ochilardi.
+    final src = File('lib/features/home/home_screen.dart').readAsStringSync();
+    expect(src, contains('business: profile.isBusiness'));
+    expect(src, contains('business: active?.isBusiness'));
+  });
+
+  test('istorya izohi turi EGASIGA qarab (F-M2)', () {
+    // Ko'ruvchining faol profili emas: biznes rejimidagi odam
+    // birovning shaxsiy istoryasiga izoh yozolmasdi (404).
+    final src =
+        File('lib/features/social/story_viewer.dart').readAsStringSync();
+    expect(src, contains('business: widget.isBusiness'));
+    expect(src, contains("kind: business ? 'company_story' : 'story'"));
+  });
 }

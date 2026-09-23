@@ -429,7 +429,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
       useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _CommentsSheet(story: s),
+      builder: (_) => _CommentsSheet(story: s, business: widget.isBusiness),
     ),
   );
 
@@ -495,7 +495,30 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
           final items = stories.valueOrNull ?? _seed;
           if (items == null) {
             if (stories.hasError) {
-              return StatePanel.fromError(context, asAppError(stories.error!));
+              // Qora fonda o'qiladigan matn, qayta urinish va yopish.
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  StatePanel.fromError(
+                    context,
+                    asAppError(stories.error!),
+                    onDark: true,
+                    onRetry: () =>
+                        ref.invalidate(storiesOfProvider(widget.owner)),
+                  ),
+                  SafeArea(
+                    child: Align(
+                      alignment: Alignment.topRight,
+                      child: IconButton(
+                        onPressed: _close,
+                        icon: const Icon(Icons.close_rounded,
+                            color: Colors.white),
+                        tooltip: l.actionClose,
+                      ),
+                    ),
+                  ),
+                ],
+              );
             }
             // QORA EKRAN EMAS: egasining surati va oltin halqa.
             final face = _ownerFace();
@@ -524,6 +547,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                 title: l.stateEmpty,
                 actionLabel: l.actionClose,
                 onAction: _close,
+                onDark: true,
               );
             }
             // Ro'yxat yangilansa (bosh sahifa -> server) JORIY istorya
@@ -1104,20 +1128,23 @@ class _StoryIcon extends StatelessWidget {
 /// Izohlar varag'i.
 ///
 /// Mavjud `CommentsSection` QAYTA ISHLATILADI — istorya uchun
-/// alohida izoh tizimi yozilmaydi. `kind` kontekstga qarab
+/// alohida izoh tizimi yozilmaydi. `kind` istorya EGASIGA qarab
 /// tanlanadi: shaxsiy istorya `story`, kompaniya istoryasi
 /// `company_story`.
 class _CommentsSheet extends ConsumerWidget {
-  const _CommentsSheet({required this.story});
+  const _CommentsSheet({required this.story, required this.business});
 
   final StoryItem story;
+
+  /// Istorya kompaniyaniki (ko'ruvchining `isBusiness` i). Ilgari tur
+  /// KO'RUVCHINING faol profilidan olinardi — biznes rejimidagi odam
+  /// shaxsiy istoryaga izoh yozolmasdi (404) va aksincha.
+  final bool business;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.tokens;
     final l = L.of(context);
-    // Kompaniya istoryasimi — faol profil turiga qarab.
-    final company = ref.watch(activeProfileProvider)?.isBusiness ?? false;
 
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
@@ -1166,7 +1193,7 @@ class _CommentsSheet extends ConsumerWidget {
                   padding: EdgeInsets.only(
                       bottom: Gap.lg + MediaQuery.viewPaddingOf(context).bottom),
                   child: CommentsSection(
-                    kind: company ? 'company_story' : 'story',
+                    kind: business ? 'company_story' : 'story',
                     id: story.id,
                     ownerCode: story.code,
                   ),

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,10 +16,15 @@ import 'package:nfcstore_nova/core/storage/secure_store.dart';
 import 'package:nfcstore_nova/design/theme/app_theme.dart';
 import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
 import 'package:nfcstore_nova/features/auth/session.dart';
+import 'package:nfcstore_nova/features/business/business_providers.dart';
+import 'package:nfcstore_nova/features/business/business_screens.dart';
 import 'package:nfcstore_nova/features/entry/splash_screen.dart';
 import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
 import 'package:nfcstore_nova/features/settings/app_lock.dart';
+import 'package:nfcstore_nova/features/social/feed_card.dart';
 import 'package:nfcstore_nova/features/social/moderation.dart';
+import 'package:nfcstore_nova/core/utils/sharing.dart';
+import 'package:nfcstore_nova/design/widgets/states.dart';
 import 'package:nfcstore_nova/l10n/gen/app_localizations_uz.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -77,8 +84,90 @@ class _PathApi extends ApiClient {
   }
 }
 
-/// Tasdiqlangan audit topilmalari (F-H3, F-H5, F-H6, F-H7, F-M11).
+/// Tasdiqlangan audit topilmalari (F-H3, F-H5, F-H6, F-H7, F-M4, F-M5,
+/// F-M11, F-M12).
 void main() {
+  group('Kompaniya postini ulashish /c/ havolasi (F-M5)', () {
+    for (final company in [true, false]) {
+      testWidgets(company ? 'kompaniya -> /c/<ID>' : 'shaxsiy -> /<KOD>',
+          (tester) async {
+        String? shared;
+        shareInvokerOverride = (t, _) async => shared = t;
+        addTearDown(() => shareInvokerOverride = null);
+        await tester.pumpWidget(ProviderScope(
+          overrides: await testOverrides(),
+          child: wrapScreen(Scaffold(
+            body: ListView(children: [
+              FeedCard(
+                post: Post(
+                  id: 5,
+                  code: 'NFCSTOREUZ',
+                  authorName: 'NFCSTORE',
+                  authorKind: company ? 'company' : 'card',
+                  text: 'salom',
+                ),
+              ),
+            ]),
+          )),
+        ));
+        await tester.pump();
+        await tester.tap(find.byTooltip(LUz().actionShare));
+        await tester.pump();
+        expect(shared, isNotNull);
+        expect(shared!.contains('/c/NFCSTOREUZ'), company);
+        // Ulashish oynasi va Tooltip taymerlari tugasin.
+        await tester.pump(const Duration(seconds: 10));
+      });
+    }
+  });
+
+  testWidgets('qora fonda holat paneli o‘qiladi (F-M4)', (tester) async {
+    await tester.pumpWidget(wrapScreen(const Scaffold(
+      backgroundColor: Colors.black,
+      body: StatePanel(
+          icon: Icons.videocam_off_rounded, title: 'SARLAVHA', onDark: true),
+    )));
+    final style = tester.widget<Text>(find.text('SARLAVHA')).style;
+    expect(style?.color, Colors.white,
+        reason: 'Ivory text1 qora fonda ~1.2:1 — ko‘rinmasdi');
+  });
+
+  group('Biznes yuklanayotganda "biznes yo‘q" deyilmaydi (F-M12)', () {
+    Future<void> pump(WidgetTester tester, Override o) async {
+      await tester.pumpWidget(ProviderScope(
+        overrides: [...await testOverrides(), o],
+        child: wrapScreen(const BusinessDashboardScreen()),
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    testWidgets('yuklanmoqda — skelet, "yarating" tugmasi yo‘q',
+        (tester) async {
+      final never = Completer<List<Business>>();
+      await pump(tester,
+          myBusinessesProvider.overrideWith((ref) => never.future));
+      expect(find.text(LUz().bizNone), findsNothing);
+      expect(find.text(LUz().bizCreate), findsNothing);
+    });
+
+    testWidgets('xato — sabab va qayta urinish', (tester) async {
+      await pump(
+          tester,
+          myBusinessesProvider.overrideWith(
+              (ref) async => throw const AppError(AppErrorKind.offline)));
+      expect(find.text(LUz().bizNone), findsNothing);
+      expect(find.text(LUz().actionRetry), findsOneWidget);
+    });
+
+    testWidgets('haqiqatan yo‘q — "Biznes yaratish"', (tester) async {
+      await pump(tester,
+          myBusinessesProvider.overrideWith((ref) async => const []));
+      expect(find.text(LUz().bizNone), findsOneWidget);
+      expect(find.text(LUz().bizCreate), findsOneWidget);
+    });
+  });
+
   group('Kompaniya posti ochiladi (F-H5)', () {
     test('havola kompaniya belgisini olib yuradi', () {
       expect(Routes.post(7, code: 'ACME', company: true),
