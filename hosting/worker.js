@@ -2166,6 +2166,14 @@ async function ensureCoreSchema(env) {
         "source" TEXT, PRIMARY KEY("code")
       )`),
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS "cards_ts_idx" ON "cards" ("ts" DESC)`),
+      // KO'P FOYDALANUVCHIDA HAM TEZ (egasi, 2026-09: "ko'p odam yuklasa
+      // qotmasin"). Kirish va ro'yxat `users.phone` bo'yicha qidiradi —
+      // indekssiz har so'rov butun jadvalni ko'rib chiqardi. `cards.user_id`
+      // — "mening profillarim" va egalik tekshiruvi (har sahifada);
+      // migratsiyada bor, bu yerda kafolat uchun (IF NOT EXISTS — bor
+      // bo'lsa hech narsa qilmaydi, ma'lumotga tegmaydi).
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS "users_phone_idx" ON "users" ("phone")`),
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS "cards_user_idx" ON "cards" ("user_id")`),
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS "admins" (
         "id" INTEGER PRIMARY KEY NOT NULL, "phone" TEXT NOT NULL, "password_hash" TEXT NOT NULL, "name" TEXT,
         "role" TEXT DEFAULT 'manager' NOT NULL, "totp_secret" TEXT, "totp_enabled" INTEGER DEFAULT 0 NOT NULL,
