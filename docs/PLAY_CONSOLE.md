@@ -93,7 +93,7 @@ NIMA QILA OLASIZ
 • Profil — avatar, muqova, bio, aloqa tugmalari, havolalar
 • Postlar va istoryalar — rasm va video bilan
 • Obuna bo'lish, layk, izoh va izohga javob
-• Biznes profili — katalog, narxlar, buyurtma qabul qilish
+• Biznes profili — katalog, narxlar, mijoz bilan to'g'ridan-to'g'ri aloqa
 • Tanlov — odamlar va bizneslarni topish
 • Mavzular — Ivory, Noir (oltin premium) va boshqalar
 • Ilova qulfi — PIN kod
@@ -105,7 +105,7 @@ tegizilganda havola ochiladi.
 MAXFIYLIK
 Profilingizni Tanlov ro'yxatidan yashirishingiz mumkin.
 Kerak bo'lsa hisobingizni ilovaning o'zidan butunlay
-o'chirasiz: Sozlamalar → Hisobni o'chirish.
+o'chirasiz: Sozlamalar → Xavfsizlik → Hisobni o'chirish.
 
 Savol va takliflar: nfcstore.uz
 ```
@@ -144,7 +144,7 @@ NFCSTORE — цифровая личность вместо бумажной в�
 • Профиль — аватар, обложка, био, кнопки связи, ссылки
 • Посты и истории — с фото и видео
 • Подписки, лайки, комментарии и ответы на них
-• Бизнес-профиль — каталог, цены, приём заказов
+• Бизнес-профиль — каталог, цены, прямая связь с клиентом
 • Обзор — поиск людей и компаний
 • Темы оформления — Ivory, Noir (золотая премиум) и другие
 • Блокировка приложения — PIN-код
@@ -155,8 +155,8 @@ NFCSTORE — цифровая личность вместо бумажной в�
 
 КОНФИДЕНЦИАЛЬНОСТЬ
 Профиль можно скрыть из списка «Обзор». При необходимости
-аккаунт удаляется прямо в приложении: Настройки → Удалить
-аккаунт.
+аккаунт удаляется прямо в приложении: Настройки →
+Безопасность → Удалить аккаунт.
 
 Вопросы и предложения: nfcstore.uz
 ```
@@ -196,7 +196,7 @@ WHAT YOU CAN DO
 • Profile — avatar, cover, bio, contact buttons, links
 • Posts and stories — with photos and video
 • Follow, like, comment and reply to comments
-• Business profile — catalogue, prices, order requests
+• Business profile — catalogue, prices, direct contact with customers
 • Discover — find people and businesses
 • Themes — Ivory, Noir (gold premium) and more
 • App lock — PIN code
@@ -208,7 +208,7 @@ the card opens the link.
 PRIVACY
 You can hide your profile from the Discover list. If you
 want, you can delete your account from inside the app:
-Settings → Delete account.
+Settings → Security → Delete account.
 
 Questions and feedback: nfcstore.uz
 ```
@@ -269,7 +269,7 @@ Bularning hammasiga **YO'Q** deb javob bering:
 
 | Imkoniyat | Ilovada qayerda | Kodda |
 |---|---|---|
-| Hisobni o'chirish | Sozlamalar → Hisobni o'chirish | `settings_subscreens.dart` |
+| Hisobni o'chirish | Sozlamalar → Xavfsizlik → Hisobni o'chirish | `settings_subscreens.dart` |
 | Profilni ro'yxatdan yashirish | Sozlamalar → Maxfiylik → "Profil ommaviy" | `settings_subscreens.dart` |
 | Shikoyat qilish | Post/profil menyusi | `social/moderation.dart` |
 | Foydalanuvchini bloklash | Profil menyusi | `social/moderation.dart` |
@@ -516,6 +516,10 @@ Hisob quyidagicha bo'lsin:
   deb belgilashi mumkin.
 * Profilda **ism, rasm, bir nechta post** bo'lsin. Bo'sh hisob
   yomon taassurot qoldiradi.
+* **Premium faol** bo'lsin (yoki 30 kunlik sinov tugamagan bo'lsin):
+  izoh yozish faqat Premium/sinovdagilarga ochiq (`comments.dart`,
+  server `premium_required`). Aks holda tekshiruvchi "comment" ni
+  sinay olmaydi.
 * Paroli **boshqa hech qayerda ishlatilmasin**.
 * **O'CHIRILMASIN.** Har yangilanishda tekshiruvchi shu hisob
   bilan kiradi.
@@ -552,10 +556,11 @@ After signing in:
    phone to turn it into a profile link. Needs a physical NFC tag;
    without one, the QR code on Home shows the same profile.
 3. Tanlov (Discover) — browse people and businesses, open any
-   profile, follow, like, comment.
+   profile, follow, like; write comments (Premium feature — the
+   demo account has Premium active).
 4. Reels — vertical video feed.
 5. Profile — posts, stories, followers, settings, theme switch.
-6. Settings > Account > Delete account — full account deletion
+6. Settings > Security > Delete account — account deletion
    from inside the app.
 
 The app is free. There are no in-app purchases and no ads.

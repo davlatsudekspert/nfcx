@@ -162,7 +162,8 @@ Website — `https://nfcstore.uz`.
 ### 3.3 App access — demo hisob
 
 `docs/PLAY_CONSOLE.md` §9 va §10. Demo hisobni **egasi** yaratadi
-(NFC ID biriktirilgan, profili to'ldirilgan). Email/parolni faqat
+(NFC ID biriktirilgan, profili to'ldirilgan, **Premium faol** — izoh
+yozish faqat Premium/sinovdagilarga ochiq). Email/parolni faqat
 Console formasiga egasi yozadi. Izoh matni (§10) tayyor, nusxala.
 
 ### 3.4 Content rating (Возрастные ограничения)
@@ -173,7 +174,7 @@ Kategoriya: **Social networking / UGC**.
 |---|---|
 | Users can interact / share content | **Yes** (post, istorya, Reels, izoh, obuna) |
 | Users can share location with each other | **No** (joylashuv ruxsati yo'q) |
-| Digital purchases | **No** (ilovada to'lov yo'q — `store_policy.dart`) |
+| Digital purchases | **No** (ilovada to'lov yo'q — `store_policy.dart`; saytga yo'naltiruvchi matn bor — §7) |
 | Violence / sexual / drugs / gambling / profanity | **No** |
 | Moderation & reporting | Shikoyat, bloklash, admin moderatsiyasi bor |
 
@@ -335,6 +336,15 @@ bo'lmasa 100%.
    yangilab bo'lmaydi).
 
 ## 7. MA'LUM CHEKLOVLAR (release'ni to'xtatmaydi)
+
+* **Anti-steering xavfi (egasining qarori):** NFC ID bozori, post
+  ko'tarish (Featured) va biznes tarif limiti ekranlarida narx va
+  "...saytda rasmiylashtiriladi: nfcstore.uz" matni bor
+  (`kShowSiteNotice = true`, `store_policy.dart:61`). Ilovada xarid
+  tugmasi yo'q, lekin Play Payments qoidasi raqamli tovar uchun tashqi
+  to'lovga yo'naltiruvchi xabarni ham taqiqlaydi — rad etilishi mumkin.
+  Tez chora: `kShowSiteNotice = false` → yangi qurilish (versionCode >
+  207). Egasi buni yuklashdan OLDIN ham tanlashi mumkin.
 
 * Katta video birinchi ochilishda sekinroq bo'lishi mumkin: o'lchovda
   asosiy ulush server tomonda (Worker → R2, videolar edge keshda emas).
