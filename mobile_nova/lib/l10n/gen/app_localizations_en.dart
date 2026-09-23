@@ -1867,8 +1867,8 @@ class LEn extends L {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count products',
-      one: '$count product',
+      other: '$count results',
+      one: '$count result',
     );
     return '$_temp0';
   }
@@ -1890,11 +1890,11 @@ class LEn extends L {
 
   @override
   String get catalogSoonHint =>
-      'Products from every business will appear here in one list';
+      'Products and services from businesses will appear here in one list';
 
   @override
   String get catalogEmptyHint =>
-      'Products appear here once businesses add them';
+      'They appear here when businesses add products or services';
 
   @override
   String get catalogSeller => 'Seller';
@@ -1992,4 +1992,127 @@ class LEn extends L {
 
   @override
   String get noNfcGetHint => 'Pick a new ID';
+
+  @override
+  String get catalogKindProduct => 'Products';
+
+  @override
+  String get catalogKindService => 'Services';
+
+  @override
+  String get listingProduct => 'Product';
+
+  @override
+  String get listingService => 'Service';
+
+  @override
+  String get marketFood => 'Food';
+
+  @override
+  String get marketFashion => 'Fashion';
+
+  @override
+  String get marketElectronics => 'Electronics';
+
+  @override
+  String get marketBeauty => 'Beauty';
+
+  @override
+  String get marketEducation => 'Education';
+
+  @override
+  String get marketHealth => 'Health';
+
+  @override
+  String get marketHome => 'Home & building';
+
+  @override
+  String get marketAuto => 'Auto';
+
+  @override
+  String get marketOther => 'Other';
+
+  @override
+  String get catalogCategoryLabel => 'Category';
+
+  @override
+  String get catalogKindLabel => 'Type';
+
+  @override
+  String get catalogNfcSub => 'NFC products';
+
+  @override
+  String get catalogPriceOnRequest => 'Price on request';
+
+  @override
+  String get catalogUnavailable => 'Unavailable';
+
+  @override
+  String get catalogInStock => 'Available';
+
+  @override
+  String get catalogSearchHint => 'Product, service, business or NFC ID';
+
+  @override
+  String get catalogContact => 'Contact the seller';
+
+  @override
+  String get catalogCall => 'Call';
+
+  @override
+  String get catalogAddress => 'Address';
+
+  @override
+  String get catalogSection => 'Section';
+
+  @override
+  String get catalogOrderNote =>
+      'No in-app payment: order and pay directly with the seller.';
+
+  @override
+  String get catalogFavoritesLocal => 'Favourites are kept on this phone.';
+
+  @override
+  String get bizListingKind => 'What are you listing?';
+
+  @override
+  String get bizMarketCategory => 'Catalogue category';
+
+  @override
+  String get bizMarketCategoryHint =>
+      'Where it appears in the shared catalogue';
+
+  @override
+  String get bizSection => 'Your section';
+
+  @override
+  String get bizSectionHint => 'E.g. Drinks, Salads, Courses';
+
+  @override
+  String get bizPriceOnRequest => 'Price on request';
+
+  @override
+  String get bizPriceOnRequestHint => 'No price shown — customers contact you';
+
+  @override
+  String get bizPhotos => 'Photos';
+
+  @override
+  String get bizAddPhoto => 'Add photo';
+
+  @override
+  String get bizPhotoCover => 'Cover';
+
+  @override
+  String get bizNfcSub => 'NFC product type';
+
+  @override
+  String get bizPriceRequired => 'Enter the product price';
+
+  @override
+  String get bizListingSchemaOld =>
+      'The server is not updated yet: type, catalogue category and extra photos will be saved after the update. For now they are detected from the name and section.';
+
+  @override
+  String get bizAddService => 'Add service';
 }

@@ -697,10 +697,15 @@ function rowCompany(row, items = []) {
     status: row.status, adminNote: row.admin_note || '', rejectedReason: row.rejected_reason || '',
     createdAt: row.created_at, updatedAt: row.updated_at, approvedAt: row.approved_at,
     paidAt: row.paid_at, activatedAt: row.activated_at,
+    // 2 — listing ustunlari (tur, global kategoriya, rasmlar, "narx
+    // kelishiladi") serverda BOR: ilova ularni saqlaydigan formani
+    // ko'rsatadi. 1 — eski baza: maydonlar faqat aniqlanadi.
+    catalogSchema: catalogListingReadyD1() ? 2 : 1,
     catalog: (items || []).map((item) => ({
       id: item.id, name: item.name, category: item.category || '', description: item.description || '',
       price: Number(item.price || 0), promotionPrice: item.promotion_price == null ? null : Number(item.promotion_price),
       imageUrl: item.image_url || '', available: Boolean(item.available), sortOrder: Number(item.sort_order || 0),
+      ...apiCatalogFeed.listingFields(item, row.category),
     })),
   };
 }
@@ -1064,6 +1069,7 @@ async function generateFreeCompanyIdD1(env) {
 
 async function companyApi(request, env, url) {
   await ensureCompanySchema(env);
+  await ensureCatalogListingColumns(env);
   const path = url.pathname;
 
   if (path === '/api/companies/check' && request.method === 'GET') {
@@ -1570,9 +1576,21 @@ async function companyApi(request, env, url) {
     if (plan.itemLimit != null && Number(count?.n || 0) >= plan.itemLimit) {
       return json({ error: 'plan_limit_reached', limit: plan.itemLimit }, 409);
     }
-    await env.DB.prepare(`INSERT INTO company_catalog_items(id,company_id,name,category,description,price,promotion_price,image_url,available,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`).bind(
-      uuid, id, name, shortText(body.category, 100), shortText(body.description, 600), price, promo, safeUrl(body.imageUrl), body.available === false ? 0 : 1, Number(count?.n || 0), now, now
-    ).run();
+    const listing = catalogListingBody(body);
+    const images = listing.images || [];
+    const cover = safeUrl(body.imageUrl) || images[0] || '';
+    const finalPrice = listing.priceOnRequest ? 0 : price;
+    const finalPromo = listing.priceOnRequest ? null : promo;
+    if (catalogListingReadyD1()) {
+      await env.DB.prepare(`INSERT INTO company_catalog_items(id,company_id,name,category,description,price,promotion_price,image_url,available,sort_order,created_at,updated_at,kind,market_category,images_json,price_on_request) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(
+        uuid, id, name, shortText(body.category, 100), shortText(body.description, 600), finalPrice, finalPromo, cover, body.available === false ? 0 : 1, Number(count?.n || 0), now, now,
+        listing.kind, listing.market, JSON.stringify(images.filter((u) => u !== cover)), listing.priceOnRequest ? 1 : 0
+      ).run();
+    } else {
+      await env.DB.prepare(`INSERT INTO company_catalog_items(id,company_id,name,category,description,price,promotion_price,image_url,available,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`).bind(
+        uuid, id, name, shortText(body.category, 100), shortText(body.description, 600), finalPrice, finalPromo, cover, body.available === false ? 0 : 1, Number(count?.n || 0), now, now
+      ).run();
+    }
     return json({ company: await companyWithItems(env, id) }, 201);
   }
 
@@ -1588,12 +1606,29 @@ async function companyApi(request, env, url) {
     const price = body.price == null ? old.price : Math.max(0, Math.round(Number(body.price) || 0));
     const promo = body.promotionPrice === undefined ? old.promotion_price : body.promotionPrice == null || body.promotionPrice === '' ? null : Math.max(0, Math.round(Number(body.promotionPrice) || 0));
     if (promo != null && promo >= price) return json({ error: 'bad_promotion_price' }, 422);
-    await env.DB.prepare(`UPDATE company_catalog_items SET name=?,category=?,description=?,price=?,promotion_price=?,image_url=?,available=?,updated_at=? WHERE id=? AND company_id=?`).bind(
+    const listing = catalogListingBody(body, old);
+    let cover = body.imageUrl == null ? old.image_url : safeUrl(body.imageUrl);
+    if (listing.images && !body.imageUrl) cover = listing.images[0] || '';
+    const finalPrice = listing.priceOnRequest ? 0 : price;
+    const finalPromo = listing.priceOnRequest ? null : promo;
+    const base = [
       body.name == null ? old.name : shortText(body.name, 120), body.category == null ? old.category : shortText(body.category, 100),
-      body.description == null ? old.description : shortText(body.description, 600), price, promo,
-      body.imageUrl == null ? old.image_url : safeUrl(body.imageUrl), body.available == null ? old.available : body.available ? 1 : 0,
-      new Date().toISOString(), itemId, id
-    ).run();
+      body.description == null ? old.description : shortText(body.description, 600), finalPrice, finalPromo,
+      cover, body.available == null ? old.available : body.available ? 1 : 0,
+      new Date().toISOString(),
+    ];
+    if (catalogListingReadyD1()) {
+      const images = listing.images == null
+        ? old.images_json ?? '[]'
+        : JSON.stringify(listing.images.filter((u) => u !== cover));
+      await env.DB.prepare(`UPDATE company_catalog_items SET name=?,category=?,description=?,price=?,promotion_price=?,image_url=?,available=?,updated_at=?,kind=?,market_category=?,images_json=?,price_on_request=? WHERE id=? AND company_id=?`).bind(
+        ...base, listing.kind, listing.market, images, listing.priceOnRequest ? 1 : 0, itemId, id
+      ).run();
+    } else {
+      await env.DB.prepare(`UPDATE company_catalog_items SET name=?,category=?,description=?,price=?,promotion_price=?,image_url=?,available=?,updated_at=? WHERE id=? AND company_id=?`).bind(
+        ...base, itemId, id
+      ).run();
+    }
     return json({ company: await companyWithItems(env, id) });
   }
 
@@ -2450,6 +2485,48 @@ async function ensureColumnD1(env, table, column, type) {
     })());
   }
   return verifiedColumnJobsD1.get(key);
+}
+
+// UMUMIY KATALOG LISTINGI (2026-09): mahsulot/xizmat turi, global
+// kategoriya, bir nechta rasm va "Narx kelishiladi". Faqat ADD COLUMN —
+// mavjud qatorlar o'zgarmaydi; bo'sh ustunli eski yozuvlar uchun tur va
+// kategoriya `api/catalog-feed.js` dagi qoidalar bilan ANIQLANADI.
+const CATALOG_LISTING_COLUMNS = [
+  ['kind', 'TEXT'],
+  ['market_category', 'TEXT'],
+  ['images_json', 'TEXT'],
+  ['price_on_request', 'INTEGER NOT NULL DEFAULT 0'],
+];
+async function ensureCatalogListingColumns(env) {
+  await Promise.all(CATALOG_LISTING_COLUMNS.map(([c, t]) => ensureColumnD1(env, 'company_catalog_items', c, t)));
+}
+export function catalogListingReadyD1() {
+  return CATALOG_LISTING_COLUMNS.every(([c]) => hasColumnD1('company_catalog_items', c));
+}
+
+// Tana -> listing maydonlari. `old` — PATCH'da mavjud qator.
+function catalogListingBody(body, old = null) {
+  const rawKind = String(body.kind ?? body.type ?? '').trim().toLowerCase();
+  const kind = apiCatalogFeed.LISTING_KINDS.includes(rawKind) ? rawKind : (old ? old.kind ?? null : null);
+  const rawMarket = String(body.marketCategory ?? '').trim().toLowerCase();
+  const market = apiCatalogFeed.MARKET_CATEGORIES.includes(rawMarket)
+    ? rawMarket
+    : (old ? old.market_category ?? null : null);
+  let images = null;
+  if (Array.isArray(body.images)) {
+    images = [];
+    for (const u of body.images.slice(0, 12)) {
+      const safe = safeUrl(u);
+      if (safe && !images.includes(safe)) images.push(safe);
+    }
+    images = images.slice(0, 6);
+  }
+  // "Narx kelishiladi" — FAQAT xizmat uchun (egasining qoidasi).
+  const porRaw = body.priceOnRequest === undefined
+    ? (old ? Number(old.price_on_request || 0) === 1 : false)
+    : Boolean(body.priceOnRequest);
+  const priceOnRequest = porRaw && kind === 'service';
+  return { kind, market, images, priceOnRequest };
 }
 
 // PROFILGA BIRIKTIRILGAN KOMPANIYA.

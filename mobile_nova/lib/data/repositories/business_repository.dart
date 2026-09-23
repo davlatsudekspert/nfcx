@@ -75,7 +75,9 @@ class BusinessRepository {
     final res = await _api.get<Map<String, dynamic>>('/api/companies/$companyId');
     return res.map((j) {
       final company = (j['company'] ?? j) as Map;
-      return parseList(company['catalog'], CatalogItem.fromJson);
+      final cat = '${company['category'] ?? ''}';
+      return parseList(company['catalog'],
+          (m) => CatalogItem.fromJson(m, companyCategory: cat));
     });
   }
 

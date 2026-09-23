@@ -844,9 +844,22 @@ class CatalogTile extends StatelessWidget {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    Text(
-                      formatMoney(item.effectivePrice, item.currency),
-                      style: AppType.monoStyle(color: t.text1, size: 13),
+                    Flexible(
+                      child: Text(
+                        item.priceOnRequest
+                            ? l.catalogPriceOnRequest
+                            : formatMoney(item.effectivePrice, item.currency),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: item.priceOnRequest
+                            ? TextStyle(
+                                fontFamily: AppType.sans,
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                                color: t.text1,
+                              )
+                            : AppType.monoStyle(color: t.text1, size: 13),
+                      ),
                     ),
                     if (item.hasDiscount) ...[
                       const SizedBox(width: Gap.sm),

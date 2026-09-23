@@ -369,6 +369,7 @@ class Business {
     this.status = 'draft',
     this.followers = 0,
     this.views = 0,
+    this.catalogSchema = 1,
   });
 
   /// `nfcstore.uz/c/<companyId>` — vitrinaning ommaviy manzili.
@@ -391,6 +392,12 @@ class Business {
   final int followers;
   final int views;
 
+  /// 2 — server listingning qo'shimcha maydonlarini (tur, global
+  /// kategoriya, bir nechta rasm, "narx kelishiladi") SAQLAYDI. 1 —
+  /// eski server: bu maydonlar yuborilsa jimgina yo'qolardi, shuning
+  /// uchun forma ularni ko'rsatmaydi (soxta tanlov bo'lmasin).
+  final int catalogSchema;
+
   bool get isPublished => status == 'published' || status == 'active';
 
   factory Business.fromJson(Map<String, dynamic> j) => Business(
@@ -410,16 +417,36 @@ class Business {
         status: _s(j['status'], 'draft'),
         followers: _i(j['followers']),
         views: _i(j['views']),
+        catalogSchema: _i(j['catalogSchema'], 1),
       );
 }
 
-/// NFC mahsulot turi — Tanlov katalogidagi filtr.
-///
-/// Biznes mahsulot qo'shganda turini tanlaydi va u serverdagi
-/// `category` maydoniga slug bo'lib yoziladi. Eski yozuvlarda bu
-/// maydon erkin matn — ular kalit so'z bo'yicha tasniflanadi.
-/// Qoida serverdagi `nfcTypeOf()` (hosting/api/catalog-feed.js) bilan
-/// AYNAN bir xil: ikkalasi boshqa-boshqa tur ko'rsatmasin.
+// ═══════════════════════════════════════════════════════════════════
+// UMUMIY KATALOG (2026-09, egasining talabi)
+//
+// Katalog faqat NFC mahsulotlari EMAS — barcha bizneslarning istalgan
+// qonuniy mahsuloti yoki xizmati. Har listingda:
+//
+//   * [ListingKind]     — mahsulot yoki xizmat;
+//   * [MarketCategory]  — global kategoriya (dinamik chiplar);
+//   * [NfcProductType]  — FAQAT elektronika ichidagi NFC sub-turi
+//                         (NFCSTORE kartalari, stikerlari...);
+//   * `section`         — biznesning O'Z bo'limi (erkin matn,
+//                         "Ichimliklar"); sayt ham shuni ishlatadi.
+//
+// Server maydonni yubormasa (eski yozuv yoki eski server) tur va
+// kategoriya ANIQLANADI. Qoidalar serverdagi `kindOf` /
+// `marketCategoryOf` / `subOf` (hosting/api/catalog-feed.js) bilan
+// AYNAN bir xil — `test/listing_parity_test.dart` so'z ro'yxatlarini
+// ikkala manbadan o'qib solishtiradi.
+// ═══════════════════════════════════════════════════════════════════
+
+String _norm(String v) => v
+    .trim()
+    .toLowerCase()
+    .replaceAll(RegExp('[‘’ʻʼ`´]'), "'");
+
+/// NFC mahsulot turi — elektronika ichidagi sub-kategoriya.
 enum NfcProductType {
   card,
   sticker,
@@ -427,31 +454,156 @@ enum NfcProductType {
   accessory,
   other;
 
-  static const _words = <NfcProductType, List<String>>{
+  // parity:nfc-words
+  static const words = <NfcProductType, List<String>>{
     NfcProductType.card: ['card', 'karta', 'карта', 'kartochka'],
     NfcProductType.sticker: ['sticker', 'stiker', 'стикер', 'наклейка'],
     NfcProductType.keychain: ['keychain', 'brelok', 'брелок'],
     NfcProductType.accessory: ['accessory', 'aksessuar', 'аксессуар', 'bilaguzuk', 'браслет', 'bracelet'],
   };
+  // parity:end
 
   static NfcProductType fromCategory(String category, [String name = '']) {
-    final c = category.trim().toLowerCase();
+    final c = _norm(category);
     for (final t in NfcProductType.values) {
       if (c == t.name) return t;
     }
-    final hay = '$c ${name.toLowerCase()}';
-    for (final e in _words.entries) {
+    final hay = '$c ${_norm(name)}';
+    for (final e in words.entries) {
       if (e.value.any(hay.contains)) return e.key;
     }
     return NfcProductType.other;
   }
+
+  static NfcProductType? parse(Object? v) {
+    final s = _norm('${v ?? ''}');
+    for (final t in NfcProductType.values) {
+      if (t != NfcProductType.other && t.name == s) return t;
+    }
+    return null;
+  }
+
+  /// NFC sub-turi faqat elektronika ichida — restoran "karta orqali
+  /// to'lov" deb yozsa, u NFC karta bo'lib qolmasin.
+  static NfcProductType? subOf(MarketCategory m, String section, String name) {
+    if (m != MarketCategory.electronics) return null;
+    final t = fromCategory(section, name);
+    return t == NfcProductType.other ? null : t;
+  }
 }
 
-/// Tanlov katalogidagi tovar — `GET /api/catalog/feed` elementi.
+/// Listing turi.
+enum ListingKind {
+  product,
+  service;
+
+  // parity:service-words
+  static const serviceWords = <String>['xizmat', 'услуг', 'service', 'kurs', 'курс', "ta'mirlash", 'ремонт', 'konsultatsiya', 'консультац', 'massaj', 'массаж', 'soch olish', 'стрижк', 'yetkazib berish', 'доставк', 'dars', 'урок'];
+  // parity:end
+
+  // parity:service-companies
+  static const serviceCompanies = <String>{'services', 'clinic', 'education'};
+  // parity:end
+
+  static ListingKind? parse(Object? v) => switch (_norm('${v ?? ''}')) {
+        'product' => ListingKind.product,
+        'service' => ListingKind.service,
+        _ => null,
+      };
+
+  static ListingKind infer(Object? explicit, String companyCategory,
+      [String section = '', String name = '']) {
+    final e = parse(explicit);
+    if (e != null) return e;
+    if (serviceCompanies.contains(_norm(companyCategory))) {
+      return ListingKind.service;
+    }
+    final hay = '${_norm(section)} ${_norm(name)}';
+    return serviceWords.any(hay.contains)
+        ? ListingKind.service
+        : ListingKind.product;
+  }
+}
+
+/// Global katalog kategoriyasi. Tartib — chiplar tartibi.
+enum MarketCategory {
+  food,
+  fashion,
+  electronics,
+  beauty,
+  education,
+  health,
+  home,
+  auto,
+  other;
+
+  // parity:market-words
+  static const words = <MarketCategory, List<String>>{
+    MarketCategory.food: ['taom', 'ovqat', 'palov', "lag'mon", 'somsa', 'shashlik', 'pizza', 'burger', 'lavash', 'kofe', 'coffee', 'ichimlik', 'shirinlik', 'tort', 'salat', "sho'rva", 'еда', 'блюд', 'напит', 'кофе', 'пицц', 'бургер', 'торт', 'десерт', 'food', 'drink', 'meal'],
+    MarketCategory.fashion: ['kiyim', "ko'yla", 'shim', 'poyabzal', 'sumka', 'kurtka', 'futbolka', 'libos', 'одежд', 'обув', 'плать', 'сумк', 'куртк', 'fashion', 'dress', 'shoes', 'clothing'],
+    MarketCategory.electronics: ['nfc', 'telefon', 'smartfon', 'noutbuk', 'kompyuter', 'quloqchin', 'planshet', 'televizor', 'elektron', 'телефон', 'смартфон', 'ноутбук', 'компьютер', 'наушник', 'электрон', 'phone', 'laptop', 'headphone', 'gadget'],
+    MarketCategory.beauty: ['salon', 'soch', 'manikyur', 'pedikyur', 'kosmetika', 'atir', 'parfyum', "go'zallik", 'massaj', 'kiprik', 'makiyaj', 'салон', 'стрижк', 'маникюр', 'космет', 'парфюм', 'массаж', 'beauty', 'cosmetic', 'perfume', 'nail'],
+    MarketCategory.education: ['kurs', 'dars', "ta'lim", "o'quv", 'repetitor', 'trening', 'курс', 'урок', 'обучен', 'репетитор', 'тренинг', 'course', 'lesson', 'training', 'tutor'],
+    MarketCategory.health: ['klinika', 'shifokor', 'doktor', 'tish', 'stomatolog', 'dori', 'apteka', 'tahlil', 'vitamin', 'клиник', 'врач', 'стомат', 'аптек', 'лекарств', 'анализ', 'clinic', 'doctor', 'dental', 'pharmacy'],
+    MarketCategory.home: ['qurilish', "ta'mirlash", 'remont', 'mebel', 'santexnika', "bo'yoq", 'sement', "g'isht", 'deraza', 'строит', 'ремонт', 'мебел', 'сантех', 'краск', 'furniture', 'construction', 'plumbing'],
+    MarketCategory.auto: ['avto', 'mashina', 'shina', 'ehtiyot qism', 'автомоб', 'авто', 'шин', 'запчаст', 'car wash', 'tire'],
+  };
+  // parity:end
+
+  // parity:company-market
+  static const byCompany = <String, MarketCategory>{
+    'restaurant': MarketCategory.food,
+    'cafe': MarketCategory.food,
+    'clinic': MarketCategory.health,
+    'pharmacy': MarketCategory.health,
+    'education': MarketCategory.education,
+    'construction': MarketCategory.home,
+  };
+  // parity:end
+
+  static MarketCategory? parse(Object? v) {
+    final s = _norm('${v ?? ''}');
+    for (final m in MarketCategory.values) {
+      if (m.name == s) return m;
+    }
+    return null;
+  }
+
+  /// Kompaniya sohasi kalit so'zdan USTUN: restoran menyusidagi
+  /// "Uy salati" qurilishga tushib qolmasin.
+  static MarketCategory infer(Object? explicit, String companyCategory,
+      [String section = '', String name = '']) {
+    final e = parse(explicit);
+    if (e != null) return e;
+    if (NfcProductType.parse(section) != null) return MarketCategory.electronics;
+    final c = byCompany[_norm(companyCategory)];
+    if (c != null) return c;
+    if (NfcProductType.fromCategory(section, name) != NfcProductType.other) {
+      return MarketCategory.electronics;
+    }
+    final hay = '${_norm(section)} ${_norm(name)}';
+    for (final m in MarketCategory.values) {
+      if ((words[m] ?? const []).any(hay.contains)) return m;
+    }
+    return MarketCategory.other;
+  }
+}
+
+List<String> _images(Map<String, dynamic> j, String cover) {
+  final out = <String>[];
+  for (final u in [cover, ...(j['images'] is List ? j['images'] as List : const [])]) {
+    final s = _u(u);
+    if (s.isNotEmpty && !out.contains(s)) out.add(s);
+  }
+  return out;
+}
+
+/// Tanlov katalogidagi listing — `GET /api/catalog/feed` elementi.
 ///
 /// Kompaniya katalogidagi [CatalogItem] dan farqi: sotuvchi (kompaniya
-/// nomi va Business ID) shu yerning o'zida keladi — ro'yxatdagi har
-/// kartochka egasini ko'rsatadi.
+/// nomi, Business ID, manzil va aloqa) shu yerning o'zida keladi —
+/// ro'yxatdagi har kartochka egasini ko'rsatadi, sahifada esa
+/// "qo'ng'iroq qilish / yozish" darhol ishlaydi.
 class CatalogProduct {
   const CatalogProduct({
     required this.id,
@@ -459,13 +611,24 @@ class CatalogProduct {
     this.name = '',
     this.description = '',
     this.imageUrl = '',
+    this.images = const [],
     this.price = 0,
     this.promotionPrice,
-    this.category = '',
+    this.priceOnRequest = false,
+    this.available = true,
+    this.kind = ListingKind.product,
+    this.marketCategory = MarketCategory.other,
+    this.sub,
+    this.section = '',
     this.companyName = '',
     this.companyLogo = '',
     this.companyTier = '',
     this.companyCity = '',
+    this.companyAddress = '',
+    this.companyPhone = '',
+    this.companyTelegram = '',
+    this.companyWhatsapp = '',
+    this.companyWebsite = '',
   });
 
   /// Server UUID'si.
@@ -474,25 +637,52 @@ class CatalogProduct {
   final String name;
   final String description;
   final String imageUrl;
+
+  /// Barcha rasmlar, birinchisi — muqova ([imageUrl]).
+  final List<String> images;
   final int price;
   final int? promotionPrice;
-  final String category;
+
+  /// "Narx kelishiladi" — narx ko'rsatilmaydi.
+  final bool priceOnRequest;
+  final bool available;
+  final ListingKind kind;
+  final MarketCategory marketCategory;
+
+  /// NFC sub-turi — faqat elektronika ichida, bo'lmasa `null`.
+  final NfcProductType? sub;
+
+  /// Biznesning o'z bo'limi ("Ichimliklar").
+  final String section;
   final String companyName;
   final String companyLogo;
   final String companyTier;
   final String companyCity;
+  final String companyAddress;
+  final String companyPhone;
+  final String companyTelegram;
+  final String companyWhatsapp;
+  final String companyWebsite;
 
   /// Sevimlilar va marshrut uchun kalit — kompaniya + tovar.
   String get key => '$companyId/$id';
 
-  NfcProductType get nfcType => NfcProductType.fromCategory(category, name);
+  /// Eski nom — NFC sub-turi (bo'lmasa `other`).
+  NfcProductType get nfcType => sub ?? NfcProductType.other;
+
+  bool get isService => kind == ListingKind.service;
+
+  bool get hasContact =>
+      companyPhone.isNotEmpty ||
+      companyTelegram.isNotEmpty ||
+      companyWhatsapp.isNotEmpty;
 
   int get effectivePrice =>
       (promotionPrice != null && promotionPrice! > 0 && promotionPrice! < price)
           ? promotionPrice!
           : price;
 
-  bool get hasDiscount => effectivePrice < price;
+  bool get hasDiscount => !priceOnRequest && effectivePrice < price;
 
   /// Chegirma foizi, butun songa yaxlitlangan (`-15%`).
   int get discountPercent =>
@@ -502,35 +692,68 @@ class CatalogProduct {
     final c = (j['company'] is Map)
         ? (j['company'] as Map).cast<String, dynamic>()
         : const <String, dynamic>{};
+    final name = _s(j['name']);
+    final section = _s(j['section'] ?? j['category']);
+    final companyCategory = _s(c['category']);
+    final market = MarketCategory.infer(
+        j['marketCategory'], companyCategory, section, name);
+    final price = _i(j['price']);
+    final cover = _u(j['imageUrl']);
+    final images = _images(j, cover);
     return CatalogProduct(
       id: _s(j['id']),
       companyId: _s(c['companyId'] ?? j['companyId']),
-      name: _s(j['name']),
+      name: name,
       description: _s(j['description']),
-      imageUrl: _u(j['imageUrl']),
-      price: _i(j['price']),
+      imageUrl: images.isEmpty ? '' : images.first,
+      images: images,
+      price: price,
       promotionPrice:
           j['promotionPrice'] == null ? null : _i(j['promotionPrice']),
-      category: _s(j['nfcType'] ?? j['category']),
+      priceOnRequest: _b(j['priceOnRequest']) || price <= 0,
+      available: _b(j['available'], true),
+      kind: ListingKind.infer(j['kind'], companyCategory, section, name),
+      marketCategory: market,
+      sub: j.containsKey('sub')
+          ? NfcProductType.parse(j['sub'])
+          : NfcProductType.subOf(market, section, name),
+      section: section,
       companyName: _s(c['displayName']),
       companyLogo: _u(c['logoUrl']),
       companyTier: _s(c['tier']),
       companyCity: _s(c['city']),
+      companyAddress: _s(c['address']),
+      companyPhone: _s(c['phone']),
+      companyTelegram: _s(c['telegram']),
+      companyWhatsapp: _s(c['whatsapp']),
+      companyWebsite: _s(c['website']),
     );
   }
 
-  /// Kompaniya katalogidagi tovardan (chuqur havola, `extra` yo'q).
+  /// Kompaniya katalogidagi elementdan (chuqur havola, `extra` yo'q).
   factory CatalogProduct.fromItem(CatalogItem i, Business b) => CatalogProduct(
         id: i.key,
         companyId: b.companyId,
         name: i.name,
         description: i.description,
         imageUrl: i.imageUrl,
+        images: i.images,
         price: i.price,
         promotionPrice: i.salePrice,
-        category: i.category,
+        priceOnRequest: i.priceOnRequest,
+        available: i.available,
+        kind: i.kind,
+        marketCategory: i.marketCategory,
+        sub: i.sub,
+        section: i.category,
         companyName: b.displayName,
         companyLogo: b.logoUrl,
+        companyCity: b.city,
+        companyAddress: b.address,
+        companyPhone: b.phone,
+        companyTelegram: b.telegram,
+        companyWhatsapp: b.whatsapp,
+        companyWebsite: b.website,
       );
 }
 
@@ -557,7 +780,9 @@ class CatalogFeedPage {
   final int total;
   final bool hasMore;
 
-  /// `all`, `card`, `sticker`, `keychain`, `accessory`, `other`.
+  /// `all`, `product`, `service`, [MarketCategory] nomlari va NFC
+  /// sub-turlari (`card`...). Faqat qidiruv qo'llangan sonlar —
+  /// bo'sh kategoriya chipi ko'rsatilmaydi.
   final Map<String, int> counts;
 
   factory CatalogFeedPage.fromJson(Map<String, dynamic> j) => CatalogFeedPage(
@@ -570,7 +795,7 @@ class CatalogFeedPage {
         counts: {
           if (j['counts'] is Map)
             for (final e in (j['counts'] as Map).entries)
-              '${e.key}': _i(e.value),
+              if (e.value is num) '${e.key}': _i(e.value),
         },
       );
 }
@@ -584,12 +809,16 @@ class CatalogItem {
     this.name = '',
     this.description = '',
     this.imageUrl = '',
+    this.images = const [],
     this.price = 0,
     this.salePrice,
     this.currency = 'UZS',
     this.available = true,
     this.categoryId,
-    this.isService = false,
+    this.kind = ListingKind.product,
+    this.marketCategory = MarketCategory.other,
+    this.sub,
+    this.priceOnRequest = false,
   });
 
   final int id;
@@ -601,22 +830,33 @@ class CatalogItem {
   /// `.../catalog/0` ga ketardi. Kompaniya amallari [key] dan foydalanadi.
   final String ref;
 
-  /// Server `category` maydoni (NFC turi slugi yoki erkin matn).
+  /// Biznesning O'Z bo'limi — erkin matn ("Ichimliklar"). Sayt ham
+  /// shu maydon bo'yicha o'z sahifasida filtr chiqaradi.
   final String category;
 
   /// Amallar uchun kalit: asl satr id, bo'lmasa raqam.
   String get key => ref.isNotEmpty ? ref : '$id';
 
-  NfcProductType get nfcType => NfcProductType.fromCategory(category, name);
   final String name;
   final String description;
   final String imageUrl;
+  final List<String> images;
   final int price;
   final int? salePrice;
   final String currency;
   final bool available;
   final int? categoryId;
-  final bool isService;
+  final ListingKind kind;
+  final MarketCategory marketCategory;
+  final NfcProductType? sub;
+
+  /// "Narx kelishiladi" (xizmatlar).
+  final bool priceOnRequest;
+
+  bool get isService => kind == ListingKind.service;
+
+  /// Eski nom — NFC sub-turi (bo'lmasa `other`).
+  NfcProductType get nfcType => sub ?? NfcProductType.other;
 
   /// Chegirma bo'lsa u, bo'lmasa oddiy narx.
   int get effectivePrice =>
@@ -624,25 +864,47 @@ class CatalogItem {
           ? salePrice!
           : price;
 
-  bool get hasDiscount => effectivePrice < price;
+  bool get hasDiscount => !priceOnRequest && effectivePrice < price;
 
-  factory CatalogItem.fromJson(Map<String, dynamic> j) => CatalogItem(
-        id: _i(j['id']),
-        ref: _s(j['id']),
-        category: _s(j['category']),
-        name: _s(j['name'] ?? j['title']),
-        description: _s(j['description'] ?? j['desc']),
-        imageUrl: _u(j['imageUrl'] ?? j['image'] ?? j['photoUrl']),
-        price: _i(j['price']),
-        // Kompaniya katalogi chegirmani `promotionPrice` deb yuboradi.
-        salePrice: (j['salePrice'] ?? j['promotionPrice']) == null
-            ? null
-            : _i(j['salePrice'] ?? j['promotionPrice']),
-        currency: _s(j['currency'], 'UZS'),
-        available: _b(j['available'] ?? j['inStock'], true),
-        categoryId: j['categoryId'] == null ? null : _i(j['categoryId']),
-        isService: _s(j['type']) == 'service' || _b(j['isService']),
-      );
+  /// [companyCategory] — kompaniya sohasi (`restaurant`...). Server
+  /// tur/kategoriyani yubormasa, ular shu soha bo'yicha aniqlanadi.
+  factory CatalogItem.fromJson(Map<String, dynamic> j,
+      {String companyCategory = ''}) {
+    final name = _s(j['name'] ?? j['title']);
+    final section = _s(j['section'] ?? j['category']);
+    final market = MarketCategory.infer(
+        j['marketCategory'], companyCategory, section, name);
+    final price = _i(j['price']);
+    final cover = _u(j['imageUrl'] ?? j['image'] ?? j['photoUrl']);
+    final images = _images(j, cover);
+    // `type` / `isService` — NFC ID ostidagi eski katalog shakli.
+    final explicitKind = j['kind'] ??
+        (_b(j['isService']) ? 'service' : j['type']);
+    return CatalogItem(
+      id: _i(j['id']),
+      ref: _s(j['id']),
+      category: section,
+      name: name,
+      description: _s(j['description'] ?? j['desc']),
+      imageUrl: images.isEmpty ? '' : images.first,
+      images: images,
+      price: price,
+      // Kompaniya katalogi chegirmani `promotionPrice` deb yuboradi.
+      salePrice: (j['salePrice'] ?? j['promotionPrice']) == null
+          ? null
+          : _i(j['salePrice'] ?? j['promotionPrice']),
+      currency: _s(j['currency'], 'UZS'),
+      available: _b(j['available'] ?? j['inStock'], true),
+      categoryId: j['categoryId'] == null ? null : _i(j['categoryId']),
+      kind: ListingKind.infer(explicitKind, companyCategory, section, name),
+      marketCategory: market,
+      sub: j.containsKey('sub')
+          ? NfcProductType.parse(j['sub'])
+          : NfcProductType.subOf(market, section, name),
+      // Server qoidasi bilan bir xil: bayroq yoki narx 0.
+      priceOnRequest: _b(j['priceOnRequest']) || price <= 0,
+    );
+  }
 }
 
 class CatalogCategory {

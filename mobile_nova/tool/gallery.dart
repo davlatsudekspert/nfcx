@@ -294,7 +294,7 @@ const _sampleCatalog = [
     name: 'Brend identifikatsiyasi',
     description: 'Logotip, rang tizimi va qo‘llanma.',
     price: 12000000,
-    isService: true,
+    kind: ListingKind.service,
   ),
   CatalogItem(
     id: 2,
@@ -308,7 +308,7 @@ const _sampleCatalog = [
     name: 'Vitrina sozlash',
     description: 'Katalog, narxlar va analitika.',
     price: 3200000,
-    isService: true,
+    kind: ListingKind.service,
     available: false,
   ),
 ];

@@ -23,6 +23,8 @@ import 'package:nfcstore_nova/features/entry/splash_screen.dart';
 import 'package:nfcstore_nova/features/auth/session.dart';
 import 'package:nfcstore_nova/features/business/business_forms.dart';
 import 'package:nfcstore_nova/features/business/business_intro.dart';
+import 'package:nfcstore_nova/features/business/business_providers.dart';
+import 'package:nfcstore_nova/features/profile/profile_repository.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
 import '../support/fake_video_platform.dart';
@@ -102,6 +104,7 @@ Future<void> tabShot(
     String? tapText,
     Key? tapKey,
     Key? thenKey,
+    Key? afterTextKey,
     Object? extra,
     bool playMusic = false}) async {
   _size(tester, s);
@@ -148,6 +151,12 @@ Future<void> tabShot(
     await tester.tap(find.text(tapText).hitTestable().first);
     await _settle(tester, 12);
   }
+  if (afterTextKey != null) {
+    await tester.ensureVisible(find.byKey(afterTextKey));
+    await _settle(tester, 4);
+    await tester.tap(find.byKey(afterTextKey).hitTestable().first);
+    await _settle(tester, 12);
+  }
   // Asset suratlar asinxron dekodlanadi — birinchi kadrda bo'sh
   // doira qolmasin.
   await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 400)));
@@ -168,10 +177,12 @@ Future<void> tabShot(
 
 /// Routersiz yakka ekran (ro'yxatdan o'tish, biznes formalar).
 Future<void> soloShot(
-    WidgetTester tester, Widget screen, String name, Size s) async {
+    WidgetTester tester, Widget screen, String name, Size s,
+    {List<Override> extra = const [],
+    Future<void> Function(WidgetTester)? prepare}) async {
   _size(tester, s);
   await tester.pumpWidget(ProviderScope(
-    overrides: await richOverrides(),
+    overrides: [...await richOverrides(), ...extra],
     child: MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: buildTheme(NfcTokens.ivory),
@@ -187,11 +198,58 @@ Future<void> soloShot(
     ),
   ));
   await _settle(tester);
+  if (prepare != null) await prepare(tester);
   await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 400)));
   await _settle(tester, 4);
   await expectLater(
       find.byType(MaterialApp), matchesGoldenFile('png/ed-$name.png'));
 }
+
+class _ShotUpload extends RichProfile {
+  var _n = 0;
+  @override
+  Future<Result<String>> uploadImage(String filePath,
+      {String? kind, void Function(int, int)? onProgress}) async {
+    _n++;
+    return Ok(_n.isOdd ? '$richAssets/z_post_rooftop.jpg' : '$richAssets/z_portrait.jpg');
+  }
+}
+
+/// Biznes listing formasi — xizmat, "narx kelishiladi", 2 rasm.
+Future<void> listingFormShot(WidgetTester tester, String name, Size s) =>
+    soloShot(tester, const BusinessProductFormScreen(), name, s,
+        extra: [
+          activeBusinessProvider.overrideWithValue(const Business(
+              companyId: 'GOZALSALON',
+              displayName: 'Go‘zal Salon',
+              category: 'services',
+              catalogSchema: 2)),
+          profileRepositoryProvider.overrideWithValue(_ShotUpload()),
+          listingImagePickerProvider.overrideWithValue(() async => '/tmp/x.jpg'),
+        ],
+        prepare: (t) async {
+          Future<void> tap(String k) async {
+            await t.ensureVisible(find.byKey(ValueKey(k)));
+            await t.tap(find.byKey(ValueKey(k)));
+            await _settle(t, 4);
+          }
+
+          await tap('listing-kind-service');
+          await t.enterText(
+              find.byKey(const ValueKey('listing-name')), 'Soch turmagi va styling');
+          await tap('listing-add-photo');
+          await tap('listing-add-photo');
+          await tap('listing-price-on-request');
+          await t.enterText(find.byType(EditableText).at(1),
+              'To‘y va bayram uchun soch turmagi, styling va maslahat.');
+          await tap('listing-cat-beauty');
+          await t.enterText(
+              find.byKey(const ValueKey('listing-section')), 'Sartaroshlik');
+          FocusManager.instance.primaryFocus?.unfocus();
+          await _settle(t, 4);
+          await t.drag(find.byType(Scrollable).first, const Offset(0, 2000));
+          await _settle(t, 4);
+        });
 
 class _RegAuth extends FakeAuthRepository {
   _RegAuth() : super(signedIn: false, ids: const [
@@ -344,6 +402,16 @@ void main() {
     testWidgets('product $w',
         (t) => tabShot(t, Routes.catalogProduct('NFCSTORE', 'p1'), 'product-$w', s,
             extra: richProducts.first));
+    testWidgets('product-service $w',
+        (t) => tabShot(t, Routes.catalogProduct('GOZALSALON', 'p4'),
+            'product-service-$w', s,
+            extra: richProducts.firstWhere((p) => p.companyId == 'GOZALSALON')));
+    testWidgets('catalog-electronics $w',
+        (t) => tabShot(t, Routes.discover, 'catalog-electronics-$w', s,
+            tapText: 'Katalog',
+            afterTextKey: const ValueKey('catalog-chip-electronics')));
+    testWidgets('listing-form $w',
+        (t) => listingFormShot(t, 'listing-form-$w', Size(s.width, 1750)));
     testWidgets('reels $w', (t) => tabShot(t, Routes.reels, 'reels-$w', s));
     testWidgets('reels-comments $w',
         (t) => tabShot(t, Routes.reels, 'reels-comments-$w', s,

@@ -73,21 +73,26 @@ class DiscoverRepository {
         ).take(60).toList());
   }
 
-  /// Tanlov katalogi — barcha faol bizneslarning tovarlari.
+  /// Tanlov katalogi — barcha faol bizneslarning mahsulot va xizmatlari.
   ///
-  /// `category` — [NfcProductType.name] (`null` = hammasi).
+  /// [kind] — mahsulot/xizmat, [category] — global kategoriya, [sub] —
+  /// NFC sub-turi (faqat elektronika ichida). `null` = hammasi.
   Future<Result<CatalogFeedPage>> catalogFeed({
     int page = 1,
     int limit = 20,
     String q = '',
-    NfcProductType? category,
+    ListingKind? kind,
+    MarketCategory? category,
+    NfcProductType? sub,
     CatalogSort sort = CatalogSort.newest,
   }) async {
     final res = await _api.get<Map<String, dynamic>>('/api/catalog/feed', query: {
       'page': page,
       'limit': limit,
       if (q.isNotEmpty) 'q': q,
+      if (kind != null) 'kind': kind.name,
       if (category != null) 'category': category.name,
+      if (sub != null) 'sub': sub.name,
       'sort': sort.wire,
     });
     return res.map(CatalogFeedPage.fromJson);

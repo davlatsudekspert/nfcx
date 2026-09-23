@@ -19,8 +19,15 @@ class _Repo extends FakeDiscoverRepository {
   _Repo({this.fail});
 
   final AppError? fail;
-  final calls = <({NfcProductType? category, CatalogSort sort, int page})>[];
+  final calls = <({
+    ListingKind? kind,
+    MarketCategory? category,
+    NfcProductType? sub,
+    CatalogSort sort,
+    int page
+  })>[];
 
+  // Umumiy katalog: ovqat, xizmatlar, elektronika (ichida NFC), kiyim.
   static final _all = [
     for (var i = 0; i < 25; i++)
       CatalogProduct(
@@ -28,9 +35,18 @@ class _Repo extends FakeDiscoverRepository {
         companyId: i.isEven ? 'KARTAUZ' : 'TECHSHOP',
         companyName: i.isEven ? 'Karta Uz' : 'Tech Shop',
         name: 'Tovar $i',
-        price: 100000 + i * 1000,
+        price: i == 3 ? 0 : 100000 + i * 1000,
+        priceOnRequest: i == 3,
+        available: i != 5,
         promotionPrice: i == 0 ? 85000 : null,
-        category: i % 3 == 0 ? 'card' : 'sticker',
+        kind: i % 4 == 3 ? ListingKind.service : ListingKind.product,
+        marketCategory: switch (i % 4) {
+          0 => MarketCategory.electronics,
+          1 => MarketCategory.food,
+          2 => MarketCategory.fashion,
+          _ => MarketCategory.beauty,
+        },
+        sub: i % 8 == 0 ? NfcProductType.card : null,
       ),
   ];
 
@@ -39,20 +55,32 @@ class _Repo extends FakeDiscoverRepository {
     int page = 1,
     int limit = 20,
     String q = '',
-    NfcProductType? category,
+    ListingKind? kind,
+    MarketCategory? category,
+    NfcProductType? sub,
     CatalogSort sort = CatalogSort.newest,
   }) async {
-    calls.add((category: category, sort: sort, page: page));
+    calls.add((kind: kind, category: category, sub: sub, sort: sort, page: page));
     if (fail != null) return Err(fail!);
-    final list =
-        category == null ? _all : _all.where((p) => p.nfcType == category).toList();
+    final list = _all
+        .where((p) =>
+            (kind == null || p.kind == kind) &&
+            (category == null || p.marketCategory == category) &&
+            (sub == null || p.sub == sub))
+        .toList();
     final start = (page - 1) * limit;
     final items = list.skip(start).take(limit).toList();
+    final counts = <String, int>{'all': _all.length};
+    for (final p in _all) {
+      counts[p.kind.name] = (counts[p.kind.name] ?? 0) + 1;
+      counts[p.marketCategory.name] = (counts[p.marketCategory.name] ?? 0) + 1;
+      if (p.sub != null) counts[p.sub!.name] = (counts[p.sub!.name] ?? 0) + 1;
+    }
     return Ok(CatalogFeedPage(
       items: items,
       total: list.length,
       hasMore: start + items.length < list.length,
-      counts: const {'all': 25, 'card': 9, 'sticker': 16},
+      counts: counts,
     ));
   }
 }
@@ -89,7 +117,12 @@ void main() {
 
       expect(tester.takeException(), isNull);
       expect(find.text('${l.catalogAll} · 25'), findsOneWidget);
-      expect(find.text('${l.catalogCards} · 9'), findsOneWidget);
+      // Umumiy: tovar/xizmat va global kategoriyalar, NFC emas.
+      expect(find.text('${l.catalogKindProduct} · 19'), findsOneWidget);
+      expect(find.text('${l.catalogKindService} · 6'), findsOneWidget);
+      expect(find.text('${l.marketElectronics} · 7'), findsOneWidget);
+      expect(find.text('${l.catalogCards} · 4'), findsNothing,
+          reason: 'NFC turlari yuqori qatorda emas');
       expect(find.text(l.catalogCount(25)), findsOneWidget);
       expect(find.byType(ProductCard), findsWidgets);
       expect(find.text('Karta Uz'), findsWidgets);
@@ -99,25 +132,60 @@ void main() {
     });
   }
 
-  testWidgets('tur chipi va saralash varag‘i serverga to‘g‘ri so‘rov yuboradi',
+  testWidgets('kategoriya/tur chiplari va saralash varag‘i to‘g‘ri so‘rov yuboradi',
       (tester) async {
     final repo = _Repo();
     await _pump(tester, repo);
     final l = await L.delegate.load(const Locale('uz'));
 
-    await tester.tap(find.byKey(const ValueKey('catalog-chip-card')));
+    await tester.ensureVisible(find.byKey(const ValueKey('catalog-chip-service')));
+    await tester.tap(find.byKey(const ValueKey('catalog-chip-service')));
     await settle(tester, frames: 6);
-    expect(repo.calls.last.category, NfcProductType.card);
+    expect(repo.calls.last.kind, ListingKind.service);
+    expect(repo.calls.last.category, isNull);
+
+    await tester.ensureVisible(find.byKey(const ValueKey('catalog-chip-food')));
+    await tester.tap(find.byKey(const ValueKey('catalog-chip-food')));
+    await settle(tester, frames: 6);
+    expect(repo.calls.last.category, MarketCategory.food);
+    expect(repo.calls.last.kind, isNull, reason: 'bitta qator — bitta tanlov');
     expect(repo.calls.last.page, 1);
+
+    // Elektronika — ichida NFC sub-turlari ikkinchi qatorda.
+    expect(find.byKey(const ValueKey('catalog-sub-card')), findsNothing);
+    await tester.ensureVisible(find.byKey(const ValueKey('catalog-chip-electronics')));
+    await tester.tap(find.byKey(const ValueKey('catalog-chip-electronics')));
+    await settle(tester, frames: 6);
+    await tester.ensureVisible(find.byKey(const ValueKey('catalog-sub-card')));
+    await tester.tap(find.byKey(const ValueKey('catalog-sub-card')));
+    await settle(tester, frames: 6);
+    expect(repo.calls.last.category, MarketCategory.electronics);
+    expect(repo.calls.last.sub, NfcProductType.card);
 
     await tester.tap(find.byKey(const ValueKey('catalog-sort')));
     await settle(tester, frames: 8);
     await tester.tap(find.byKey(const ValueKey('sort-price_asc')));
     await settle(tester, frames: 8);
     expect(repo.calls.last.sort, CatalogSort.priceAsc);
-    expect(repo.calls.last.category, NfcProductType.card,
-        reason: 'saralash tanlangan turni tashlab yubormasin');
+    expect(repo.calls.last.category, MarketCategory.electronics,
+        reason: 'saralash tanlangan kategoriyani tashlab yubormasin');
     expect(find.textContaining(l.catalogSortPriceAsc), findsOneWidget);
+  });
+
+  testWidgets('bo‘sh kategoriya chipi ko‘rsatilmaydi (dinamik)', (tester) async {
+    await _pump(tester, _Repo());
+    expect(find.byKey(const ValueKey('catalog-chip-auto')), findsNothing);
+    expect(find.byKey(const ValueKey('catalog-chip-health')), findsNothing);
+    expect(find.byKey(const ValueKey('catalog-chip-food')), findsOneWidget);
+  });
+
+  testWidgets('narx kelishiladi va mavjud emas kartochkada ko‘rinadi',
+      (tester) async {
+    await _pump(tester, _Repo());
+    final l = await L.delegate.load(const Locale('uz'));
+    expect(find.byKey(const ValueKey('price-on-request')), findsWidgets);
+    expect(find.text(l.catalogPriceOnRequest), findsWidgets);
+    expect(find.byKey(const ValueKey('badge-unavailable')), findsOneWidget);
   });
 
   testWidgets('oxiriga yaqinlashganda keyingi sahifa yuklanadi', (tester) async {

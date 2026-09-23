@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/utils/validators.dart';
 import '../../data/models/models.dart';
@@ -18,7 +19,10 @@ import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
+import '../discover/listing_labels.dart';
 import '../home/widgets/identity_card.dart' show formatCount;
+import '../profile/profile_repository.dart' show profileRepositoryProvider;
+import '../social/media_frame.dart' show mediaImage;
 import 'business_providers.dart';
 import 'business_screens.dart';
 import '../shop/store_policy.dart';
@@ -564,20 +568,42 @@ class BusinessCatalogScreen extends ConsumerWidget {
   }
 }
 
-/// NFC mahsulot turining tarjimasi.
-String nfcTypeLabel(L l, NfcProductType t) => switch (t) {
-      NfcProductType.card => l.catalogCards,
-      NfcProductType.sticker => l.catalogStickers,
-      NfcProductType.keychain => l.catalogKeychains,
-      NfcProductType.accessory => l.catalogAccessories,
-      NfcProductType.other => l.catalogOther,
-    };
+/// Listing rasmi tanlash — testda almashtiriladi (haqiqiy galereya
+/// platforma kanali, widget testida ochilmaydi). `null` — bekor qilindi.
+final listingImagePickerProvider = Provider<Future<String?> Function()>(
+  (ref) => () async {
+    final f = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      // Yuklashdan OLDIN kichraytiriladi (composer bilan bir xil).
+      maxWidth: 1600,
+      imageQuality: 85,
+    );
+    return f?.path;
+  },
+);
 
-/// Mahsulot qo'shish / tahrirlash.
+/// NFCSTORE sub-turlari uchun bo'lim matni. SAYT `category` ni o'z
+/// sahifasida filtr sifatida ko'rsatadi — shuning uchun slug emas,
+/// odam o'qiydigan matn yoziladi (kalit so'z bo'yicha baribir NFC
+/// sub-turi bo'lib taniladi).
+const _nfcSection = <NfcProductType, String>{
+  NfcProductType.card: 'NFC karta',
+  NfcProductType.sticker: 'NFC stiker',
+  NfcProductType.keychain: 'NFC brelok',
+  NfcProductType.accessory: 'NFC aksessuar',
+};
+
+/// Listing (mahsulot yoki xizmat) qo'shish / tahrirlash.
+///
+/// UMUMIY KATALOG: har qanday biznes istalgan qonuniy mahsulot yoki
+/// xizmatni joylaydi — nom, rasmlar, narx / aksiya narxi yoki "Narx
+/// kelishiladi" (faqat xizmat), tavsif, global kategoriya, o'z bo'limi
+/// va mavjudlik. NFC sub-turlari (karta, stiker...) FAQAT NFCSTORE
+/// biznesida ko'rinadi.
 class BusinessProductFormScreen extends ConsumerStatefulWidget {
   const BusinessProductFormScreen({super.key, this.itemId});
 
-  /// `null` — yangi mahsulot. Aks holda `CatalogItem.key` (server UUID).
+  /// `null` — yangi listing. Aks holda `CatalogItem.key` (server UUID).
   final String? itemId;
 
   @override
@@ -591,12 +617,15 @@ class _BusinessProductFormScreenState
   final _description = TextEditingController();
   final _price = TextEditingController();
   final _salePrice = TextEditingController();
+  final _section = TextEditingController();
 
-  bool _service = false;
+  ListingKind _kind = ListingKind.product;
   bool _available = true;
-
-  /// NFC mahsulot turi — Tanlov katalogidagi filtr shu bilan ishlaydi.
-  NfcProductType _type = NfcProductType.other;
+  bool _priceOnRequest = false;
+  MarketCategory? _market;
+  NfcProductType? _sub;
+  List<String> _images = [];
+  bool _uploading = false;
   bool _filled = false;
   bool _busy = false;
   String? _error;
@@ -607,6 +636,7 @@ class _BusinessProductFormScreenState
     _description.dispose();
     _price.dispose();
     _salePrice.dispose();
+    _section.dispose();
     super.dispose();
   }
 
@@ -617,9 +647,42 @@ class _BusinessProductFormScreenState
     _description.text = item.description;
     _price.text = item.price == 0 ? '' : '${item.price}';
     _salePrice.text = (item.salePrice ?? 0) == 0 ? '' : '${item.salePrice}';
-    _service = item.isService;
+    _kind = item.kind;
     _available = item.available;
-    _type = item.nfcType;
+    _priceOnRequest = item.isService && item.priceOnRequest;
+    _market = item.marketCategory;
+    _sub = item.sub;
+    _images = [...item.images];
+    _section.text = _sub != null ? '' : item.category;
+  }
+
+  int _maxImages(Business b) => b.catalogSchema >= 2 ? 6 : 1;
+
+  Future<void> _addImage(Business b) async {
+    final l = L.of(context);
+    final path = await ref.read(listingImagePickerProvider)();
+    if (path == null || !mounted) return;
+    setState(() {
+      _uploading = true;
+      _error = null;
+    });
+    final res = await ref.read(profileRepositoryProvider).uploadImage(path);
+    if (!mounted) return;
+    setState(() {
+      _uploading = false;
+      res.when(
+        ok: (url) {
+          if (url.isEmpty) {
+            _error = l.uploadFailed;
+          } else if (_maxImages(b) == 1) {
+            _images = [url];
+          } else {
+            _images = [..._images, url];
+          }
+        },
+        err: (e) => _error = describeError(l, e),
+      );
+    });
   }
 
   Future<void> _save(Business b) async {
@@ -628,25 +691,40 @@ class _BusinessProductFormScreenState
       setState(() => _error = l.errRequired);
       return;
     }
+    final price = int.tryParse(_price.text.replaceAll(RegExp(r'\D'), '')) ?? 0;
+    final sale =
+        int.tryParse(_salePrice.text.replaceAll(RegExp(r'\D'), '')) ?? 0;
+    final onRequest = _kind == ListingKind.service && _priceOnRequest;
+    // Mahsulotda narx majburiy; xizmatda "Narx kelishiladi" bo'lmasa ham.
+    if (!onRequest && price <= 0) {
+      setState(() => _error = l.bizPriceRequired);
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
     });
 
-    final sale =
-        int.tryParse(_salePrice.text.replaceAll(RegExp(r'\D'), '')) ?? 0;
+    final section = _sub != null ? _nfcSection[_sub]! : _section.text.trim();
     final body = {
       'name': _name.text.trim(),
       'description': _description.text.trim(),
-      'price': int.tryParse(_price.text.replaceAll(RegExp(r'\D'), '')) ?? 0,
-      // SERVER `promotionPrice` KUTADI. Ilgari faqat `salePrice`
-      // yuborilardi va chegirma jimgina yo'qolardi. 0 — chegirma yo'q
-      // (null bilan tozalanadi).
-      'promotionPrice': sale > 0 ? sale : null,
-      'salePrice': sale,
-      'category': _type == NfcProductType.other ? '' : _type.name,
+      'price': onRequest ? 0 : price,
+      // SERVER `promotionPrice` KUTADI. 0 — chegirma yo'q (null bilan
+      // tozalanadi).
+      'promotionPrice': !onRequest && sale > 0 ? sale : null,
+      'salePrice': onRequest ? 0 : sale,
+      'category': section,
       'available': _available,
-      'type': _service ? 'service' : 'product',
+      'imageUrl': _images.isEmpty ? '' : _images.first,
+      // Qo'shimcha maydonlar — eski server ularni e'tiborsiz qoldiradi,
+      // shuning uchun forma ularni faqat `catalogSchema >= 2` da
+      // ko'rsatadi (yuqoridagi izoh). Yuborish zararsiz.
+      'kind': _kind.name,
+      'type': _kind.name,
+      if (_market != null) 'marketCategory': _market!.name,
+      'images': _images,
+      'priceOnRequest': onRequest,
     };
 
     final repo = ref.read(businessRepositoryProvider);
@@ -667,6 +745,23 @@ class _BusinessProductFormScreenState
     );
   }
 
+  Widget _label(BuildContext context, String text, [String? hint]) {
+    final t = context.tokens;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(text, style: Theme.of(context).textTheme.labelMedium),
+        if (hint != null) ...[
+          const SizedBox(height: 2),
+          Text(hint,
+              style: TextStyle(
+                  fontFamily: AppType.sans, fontSize: 12, color: t.text3)),
+        ],
+        const SizedBox(height: Gap.sm),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = L.of(context);
@@ -684,30 +779,132 @@ class _BusinessProductFormScreenState
       _fillOnce(items?.where((e) => e.key == widget.itemId).firstOrNull);
     }
 
+    final full = b.catalogSchema >= 2;
+    final market = _market ??
+        MarketCategory.infer(null, b.category, _section.text, _name.text);
+    final isNfcStore = b.companyId.toUpperCase() == 'NFCSTORE';
+    final maxImages = _maxImages(b);
+    final onRequest = _kind == ListingKind.service && _priceOnRequest;
+
     return NovaScaffold(
-      title: widget.itemId == null ? l.bizAddProduct : l.actionEdit,
+      title: widget.itemId != null
+          ? l.actionEdit
+          : _kind == ListingKind.service
+              ? l.bizAddService
+              : l.bizAddProduct,
       showBack: true,
       body: NovaScroll(
         children: [
+          _label(context, l.bizListingKind),
           Row(
             children: [
-              Capsule(
-                label: l.bizProducts,
-                icon: Icons.inventory_2_rounded,
-                selected: !_service,
-                onTap: () => setState(() => _service = false),
-              ),
-              const SizedBox(width: Gap.sm),
-              Capsule(
-                label: l.bizServices,
-                icon: Icons.design_services_rounded,
-                selected: _service,
-                onTap: () => setState(() => _service = true),
-              ),
+              for (final k in ListingKind.values) ...[
+                if (k != ListingKind.values.first) const SizedBox(width: Gap.sm),
+                Capsule(
+                  key: ValueKey('listing-kind-${k.name}'),
+                  label: kindLabel(l, k),
+                  icon: kindIcon(k),
+                  selected: _kind == k,
+                  onTap: _busy ? null : () => setState(() => _kind = k),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: Gap.xl),
-          NovaField(label: l.bizProductName, controller: _name, enabled: !_busy),
+          NovaField(
+            key: const ValueKey('listing-name'),
+            label: l.bizProductName,
+            controller: _name,
+            enabled: !_busy,
+          ),
+          const SizedBox(height: Gap.lg),
+          _label(context, l.bizPhotos),
+          SizedBox(
+            height: 92,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                for (var i = 0; i < _images.length; i++)
+                  Padding(
+                    padding: const EdgeInsets.only(right: Gap.sm),
+                    child: _PhotoThumb(
+                      key: ValueKey('listing-photo-$i'),
+                      url: _images[i],
+                      cover: i == 0 && _images.length > 1,
+                      coverLabel: l.bizPhotoCover,
+                      onRemove: _busy
+                          ? null
+                          : () => setState(() => _images = [..._images]..removeAt(i)),
+                    ),
+                  ),
+                if (_images.length < maxImages)
+                  _AddPhotoTile(
+                    key: const ValueKey('listing-add-photo'),
+                    label: l.bizAddPhoto,
+                    busy: _uploading,
+                    onTap: _busy || _uploading ? null : () => _addImage(b),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: Gap.lg),
+          if (_kind == ListingKind.service) ...[
+            FloatingSurface(
+              solid: true,
+              padding: const EdgeInsets.symmetric(
+                  horizontal: Gap.lg, vertical: Gap.sm),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(l.bizPriceOnRequest,
+                            style: Theme.of(context).textTheme.bodyLarge),
+                        Text(l.bizPriceOnRequestHint,
+                            style: Theme.of(context).textTheme.bodySmall),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    key: const ValueKey('listing-price-on-request'),
+                    value: _priceOnRequest,
+                    activeThumbColor: t.accent2,
+                    onChanged: _busy
+                        ? null
+                        : (v) => setState(() => _priceOnRequest = v),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: Gap.lg),
+          ],
+          if (!onRequest)
+            Row(
+              children: [
+                Expanded(
+                  child: NovaField(
+                    key: const ValueKey('listing-price'),
+                    label: l.bizPrice,
+                    controller: _price,
+                    keyboardType: TextInputType.number,
+                    enabled: !_busy,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  ),
+                ),
+                const SizedBox(width: Gap.md),
+                Expanded(
+                  child: NovaField(
+                    key: const ValueKey('listing-sale'),
+                    label: l.bizSalePrice,
+                    controller: _salePrice,
+                    keyboardType: TextInputType.number,
+                    enabled: !_busy,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  ),
+                ),
+              ],
+            ),
           const SizedBox(height: Gap.lg),
           NovaField(
             label: l.bizDescription,
@@ -717,47 +914,60 @@ class _BusinessProductFormScreenState
             enabled: !_busy,
           ),
           const SizedBox(height: Gap.lg),
-          Text(l.catalogTypeLabel,
-              style: Theme.of(context).textTheme.labelMedium),
-          const SizedBox(height: Gap.sm),
-          Wrap(
-            spacing: Gap.sm,
-            runSpacing: Gap.sm,
-            children: [
-              for (final ty in NfcProductType.values)
-                Capsule(
-                  key: ValueKey('nfc-type-${ty.name}'),
-                  label: nfcTypeLabel(l, ty),
-                  selected: _type == ty,
-                  onTap: _busy ? null : () => setState(() => _type = ty),
-                ),
-            ],
-          ),
-          const SizedBox(height: Gap.lg),
-          Row(
-            children: [
-              Expanded(
-                child: NovaField(
-                  label: l.bizPrice,
-                  controller: _price,
-                  keyboardType: TextInputType.number,
-                  enabled: !_busy,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                ),
-              ),
-              const SizedBox(width: Gap.md),
-              Expanded(
-                child: NovaField(
-                  label: l.bizSalePrice,
-                  controller: _salePrice,
-                  keyboardType: TextInputType.number,
-                  enabled: !_busy,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: Gap.xl),
+          if (full) ...[
+            _label(context, l.bizMarketCategory, l.bizMarketCategoryHint),
+            Wrap(
+              spacing: Gap.sm,
+              runSpacing: Gap.sm,
+              children: [
+                for (final m in MarketCategory.values)
+                  Capsule(
+                    key: ValueKey('listing-cat-${m.name}'),
+                    label: marketLabel(l, m),
+                    icon: marketIcon(m),
+                    selected: market == m,
+                    onTap: _busy
+                        ? null
+                        : () => setState(() {
+                              _market = m;
+                              if (m != MarketCategory.electronics) _sub = null;
+                            }),
+                  ),
+              ],
+            ),
+            const SizedBox(height: Gap.lg),
+          ],
+          if (isNfcStore && market == MarketCategory.electronics) ...[
+            _label(context, l.bizNfcSub),
+            Wrap(
+              spacing: Gap.sm,
+              runSpacing: Gap.sm,
+              children: [
+                for (final ty in _nfcSection.keys)
+                  Capsule(
+                    key: ValueKey('nfc-type-${ty.name}'),
+                    label: nfcTypeLabel(l, ty),
+                    icon: nfcTypeIcon(ty),
+                    selected: _sub == ty,
+                    onTap: _busy
+                        ? null
+                        : () => setState(() => _sub = _sub == ty ? null : ty),
+                  ),
+              ],
+            ),
+            const SizedBox(height: Gap.lg),
+          ],
+          if (_sub == null) ...[
+            NovaField(
+              key: const ValueKey('listing-section'),
+              label: l.bizSection,
+              hint: l.bizSectionHint,
+              controller: _section,
+              enabled: !_busy,
+              maxLength: 100,
+            ),
+            const SizedBox(height: Gap.lg),
+          ],
           FloatingSurface(
             solid: true,
             padding: const EdgeInsets.symmetric(
@@ -768,6 +978,7 @@ class _BusinessProductFormScreenState
                     child: Text(l.bizAvailable,
                         style: Theme.of(context).textTheme.bodyLarge)),
                 Switch(
+                  key: const ValueKey('listing-available'),
                   value: _available,
                   activeThumbColor: t.accent2,
                   onChanged: _busy ? null : (v) => setState(() => _available = v),
@@ -775,9 +986,25 @@ class _BusinessProductFormScreenState
               ],
             ),
           ),
+          if (!full) ...[
+            const SizedBox(height: Gap.lg),
+            Row(
+              key: const ValueKey('listing-schema-old'),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.info_outline_rounded, size: 16, color: t.text3),
+                const SizedBox(width: Gap.sm),
+                Expanded(
+                  child: Text(l.bizListingSchemaOld,
+                      style: Theme.of(context).textTheme.bodySmall),
+                ),
+              ],
+            ),
+          ],
           if (_error != null) ...[
             const SizedBox(height: Gap.lg),
             Text(_error!,
+                key: const ValueKey('listing-error'),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     fontFamily: AppType.sans,
@@ -787,8 +1014,137 @@ class _BusinessProductFormScreenState
           ],
           const SizedBox(height: Gap.xxl),
           NovaButton(
-              label: l.actionSave, busy: _busy, onPressed: () => _save(b)),
+              key: const ValueKey('listing-save'),
+              label: l.actionSave,
+              busy: _busy,
+              onPressed: _uploading ? null : () => _save(b)),
         ],
+      ),
+    );
+  }
+}
+
+class _PhotoThumb extends StatelessWidget {
+  const _PhotoThumb({
+    super.key,
+    required this.url,
+    required this.cover,
+    required this.coverLabel,
+    this.onRemove,
+  });
+  final String url;
+  final bool cover;
+  final String coverLabel;
+  final VoidCallback? onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return SizedBox(
+      width: 92,
+      height: 92,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ClipRRect(
+            borderRadius: R.tile,
+            child: mediaImage(context, url, fit: BoxFit.cover),
+          ),
+          if (cover)
+            Positioned(
+              left: 6,
+              bottom: 6,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(color: t.text1, borderRadius: R.pill),
+                child: Text(coverLabel,
+                    style: TextStyle(
+                        fontFamily: AppType.sans,
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w700,
+                        color: t.bg1)),
+              ),
+            ),
+          Positioned(
+            right: 2,
+            top: 2,
+            child: Semantics(
+              button: true,
+              label: L.of(context).actionDelete,
+              child: GestureDetector(
+                onTap: onRemove,
+                child: Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    color: t.surfaceSolid.withValues(alpha: .92),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.close_rounded, size: 15, color: t.text1),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AddPhotoTile extends StatelessWidget {
+  const _AddPhotoTile({
+    super.key,
+    required this.label,
+    required this.busy,
+    this.onTap,
+  });
+  final String label;
+  final bool busy;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Semantics(
+      button: true,
+      label: label,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 92,
+          height: 92,
+          decoration: BoxDecoration(
+            color: t.surface2,
+            borderRadius: R.tile,
+            border: Border.all(color: t.border1),
+          ),
+          child: busy
+              ? const Center(
+                  child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2)))
+              : Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.add_photo_alternate_outlined,
+                        size: 22, color: t.text2),
+                    const SizedBox(height: 4),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Text(label,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontFamily: AppType.sans,
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w600,
+                              color: t.text2)),
+                    ),
+                  ],
+                ),
+        ),
       ),
     );
   }

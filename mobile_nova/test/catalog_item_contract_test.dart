@@ -55,16 +55,33 @@ void main() {
     expect(NfcProductType.fromCategory('boshqa'), NfcProductType.other);
   });
 
-  test('server bilan bir xil kalit so‘zlar (hosting/api/catalog-feed.js)', () {
-    final js = File('../hosting/api/catalog-feed.js').readAsStringSync();
-    final block = RegExp(r'const WORDS = \{([\s\S]*?)\};').firstMatch(js)!;
-    for (final line in RegExp(r"(\w+): \[([^\]]*)\]")
-        .allMatches(block.group(1)!)) {
-      final type = NfcProductType.values.byName(line.group(1)!);
-      for (final w in RegExp(r"'([^']+)'").allMatches(line.group(2)!)) {
-        expect(NfcProductType.fromCategory(w.group(1)!), type,
-            reason: 'server "${w.group(1)}" ni $type deydi, ilova boshqacha');
-      }
-    }
+  test('eski yozuv: tur va kategoriya kompaniya sohasidan aniqlanadi', () {
+    final i = CatalogItem.fromJson(
+        const {'id': 'x', 'name': 'Uy salati', 'category': 'Salatlar', 'price': 35000},
+        companyCategory: 'restaurant');
+    expect(i.marketCategory, MarketCategory.food);
+    expect(i.kind, ListingKind.product);
+    expect(i.sub, isNull);
+    expect(i.category, 'Salatlar', reason: 'o‘z bo‘limi saqlanadi');
+  });
+
+  test('yangi server maydonlari o‘qiladi', () {
+    final i = CatalogItem.fromJson(const {
+      'id': 'y',
+      'name': 'Soch turmagi',
+      'category': 'Sartaroshlik',
+      'price': 0,
+      'kind': 'service',
+      'marketCategory': 'beauty',
+      'sub': null,
+      'priceOnRequest': true,
+      'imageUrl': '/uploads/a.jpg',
+      'images': ['/uploads/a.jpg', '/uploads/b.jpg'],
+    });
+    expect(i.isService, isTrue);
+    expect(i.marketCategory, MarketCategory.beauty);
+    expect(i.priceOnRequest, isTrue);
+    expect(i.hasDiscount, isFalse);
+    expect(i.images.length, 2);
   });
 }

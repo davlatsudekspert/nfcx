@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/providers.dart';
 import '../../core/errors/app_error.dart';
+import '../../core/utils/external_link.dart';
 import '../../core/storage/secure_store.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/business_repository.dart';
@@ -18,27 +19,37 @@ import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
-import '../business/business_forms.dart' show nfcTypeLabel;
 import '../business/business_screens.dart' show formatMoney;
 import '../social/media_frame.dart' show mediaImage;
+import 'listing_labels.dart';
 
 // ═══════════════════════════════════════════════════════════════════
 // TANLOV → KATALOG
 //
-// Barcha faol bizneslarning tovarlari bitta 2 ustunli to'rda
-// (`GET /api/catalog/feed`). Har kartochkada: tur, nom, narx
-// (chegirma bo'lsa eski narx chizilgan), sevimli belgisi va SOTUVCHI —
-// kompaniya nomi + Business ID. Kartochka bosilsa tovar sahifasi,
-// sotuvchi qatori bosilsa kompaniya sahifasi ochiladi.
+// UMUMIY KATALOG: barcha faol bizneslarning istalgan mahsuloti va
+// xizmati bitta 2 ustunli to'rda (`GET /api/catalog/feed`). NFC
+// kartalari — elektronika ichidagi bitta sub-kategoriya, xolos.
 //
-// TO'LOV YO'Q: bu ko'rgazma. Odam sotuvchining sahifasiga o'tadi.
+// Chiplar DINAMIK: "Hammasi · Tovarlar · Xizmatlar" va faqat ichida
+// narsa bor global kategoriyalar (Ovqat, Kiyim, Go'zallik...). Har
+// kartochkada: kategoriya, nom, narx yoki "Narx kelishiladi", mavjud
+// emas belgisi, sevimli va SOTUVCHI — kompaniya nomi + Business ID.
+//
+// TO'LOV YO'Q: bu ko'rgazma. Buyurtma va to'lov sotuvchi bilan
+// (qo'ng'iroq, Telegram, WhatsApp yoki uning sahifasi).
 //
 // Endpoint hali production'da bo'lmasa (404) — xato emas, "Katalog
 // tez orada" holati ko'rsatiladi. Ilova serverdan oldin chiqishi mumkin.
 // ═══════════════════════════════════════════════════════════════════
 
-/// Tanlangan tur (`null` — hammasi).
+/// Filtrlar (`null` — hammasi): tur, global kategoriya, NFC sub-turi.
+final catalogKindProvider =
+    StateProvider.autoDispose<ListingKind?>((_) => null);
+
 final catalogCategoryProvider =
+    StateProvider.autoDispose<MarketCategory?>((_) => null);
+
+final catalogSubProvider =
     StateProvider.autoDispose<NfcProductType?>((_) => null);
 
 final catalogSortProvider =
@@ -96,14 +107,20 @@ class CatalogFeedState {
 /// qayta yaratiladi va ro'yxat 1-sahifadan boshlanadi.
 class CatalogFeedController extends StateNotifier<CatalogFeedState> {
   CatalogFeedController(this._repo,
-      {required this.q, required this.category, required this.sort})
+      {required this.q,
+      this.kind,
+      required this.category,
+      this.sub,
+      required this.sort})
       : super(const CatalogFeedState(loading: true)) {
     _load(1);
   }
 
   final DiscoverRepository _repo;
   final String q;
-  final NfcProductType? category;
+  final ListingKind? kind;
+  final MarketCategory? category;
+  final NfcProductType? sub;
   final CatalogSort sort;
 
   static const pageSize = 20;
@@ -113,7 +130,9 @@ class CatalogFeedController extends StateNotifier<CatalogFeedState> {
       page: page,
       limit: pageSize,
       q: q,
+      kind: kind,
       category: category,
+      sub: sub,
       sort: sort,
     );
     if (!mounted) return;
@@ -154,7 +173,9 @@ final catalogFeedProvider = StateNotifierProvider.autoDispose
   return CatalogFeedController(
     ref.watch(discoverRepositoryProvider),
     q: q,
+    kind: ref.watch(catalogKindProvider),
     category: ref.watch(catalogCategoryProvider),
+    sub: ref.watch(catalogSubProvider),
     sort: ref.watch(catalogSortProvider),
   );
 });
@@ -199,41 +220,94 @@ class CatalogView extends ConsumerWidget {
     final l = L.of(context);
     final t = context.tokens;
     final state = ref.watch(catalogFeedProvider(query));
+    final kind = ref.watch(catalogKindProvider);
     final category = ref.watch(catalogCategoryProvider);
+    final sub = ref.watch(catalogSubProvider);
     final sort = ref.watch(catalogSortProvider);
 
     int? count(String k) => state.counts.isEmpty ? null : state.counts[k];
     String chip(String label, int? n) => n == null ? label : '$label · $n';
 
-    final chips = <(NfcProductType?, String)>[
-      (null, chip(l.catalogAll, count('all'))),
-      for (final ty in NfcProductType.values)
-        (ty, chip(nfcTypeLabel(l, ty), count(ty.name))),
+    // DINAMIK: bo'sh kategoriya chipi ko'rsatilmaydi (sonlar hali
+    // kelmagan bo'lsa — faqat "Hammasi"). Tanlangan chip esa soni 0
+    // bo'lsa ham qoladi, aks holda filtrni bekor qilib bo'lmasdi.
+    bool shown(String k, bool selected) =>
+        selected || ((count(k) ?? 0) > 0);
+
+    void pick({ListingKind? k, MarketCategory? m}) {
+      ref.read(catalogKindProvider.notifier).state = k;
+      ref.read(catalogCategoryProvider.notifier).state = m;
+      ref.read(catalogSubProvider.notifier).state = null;
+    }
+
+    final chips = <(String, String, bool, VoidCallback)>[
+      ('all', chip(l.catalogAll, count('all')),
+          kind == null && category == null, () => pick()),
+      for (final k in ListingKind.values)
+        if (shown(k.name, kind == k && category == null))
+          (k.name, chip(kindPluralLabel(l, k), count(k.name)),
+              kind == k && category == null, () => pick(k: k)),
+      for (final m in MarketCategory.values)
+        if (shown(m.name, category == m && kind == null))
+          (m.name, chip(marketLabel(l, m), count(m.name)),
+              category == m && kind == null, () => pick(m: m)),
     ];
+
+    // NFCSTORE mahsulotlari — elektronika ichida ikkinchi qator.
+    final subs = [
+      for (final t in NfcProductType.values)
+        if (t != NfcProductType.other && shown(t.name, sub == t)) t,
+    ];
+    final showSubs = category == MarketCategory.electronics && subs.isNotEmpty;
 
     return Column(
       children: [
         const SizedBox(height: Gap.sm),
+        // Qator ATAYLAB lazy emas: chiplar ~12 ta, hammasi quriladi —
+        // ekrandan tashqaridagi chip ham topiladi va o'qiladi.
         SizedBox(
           height: 40,
-          child: ListView(
+          child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-            children: [
+            child: Row(children: [
               for (final c in chips)
                 Padding(
                   padding: const EdgeInsets.only(right: Gap.sm),
                   child: Capsule(
-                    key: ValueKey('catalog-chip-${c.$1?.name ?? 'all'}'),
+                    key: ValueKey('catalog-chip-${c.$1}'),
                     label: c.$2,
-                    selected: category == c.$1,
-                    onTap: () =>
-                        ref.read(catalogCategoryProvider.notifier).state = c.$1,
+                    selected: c.$3,
+                    onTap: c.$4,
                   ),
                 ),
-            ],
+            ]),
           ),
         ),
+        if (showSubs) ...[
+          const SizedBox(height: Gap.sm),
+          SizedBox(
+            height: 36,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
+              child: Row(children: [
+                for (final t in subs)
+                  Padding(
+                    padding: const EdgeInsets.only(right: Gap.sm),
+                    child: Capsule(
+                      key: ValueKey('catalog-sub-${t.name}'),
+                      label: chip(nfcTypeLabel(l, t), count(t.name)),
+                      icon: nfcTypeIcon(t),
+                      selected: sub == t,
+                      onTap: () => ref.read(catalogSubProvider.notifier).state =
+                          sub == t ? null : t,
+                    ),
+                  ),
+              ]),
+            ),
+          ),
+        ],
         Padding(
           padding: const EdgeInsets.fromLTRB(Gap.screenX, Gap.md, Gap.md, 0),
           child: Row(
@@ -402,7 +476,14 @@ class ProductCard extends ConsumerWidget {
 
     return Semantics(
       button: true,
-      label: '${p.name}, ${formatMoney(p.effectivePrice, 'UZS')}, ${p.companyName}',
+      label: [
+        p.name,
+        p.priceOnRequest
+            ? l.catalogPriceOnRequest
+            : formatMoney(p.effectivePrice, 'UZS'),
+        if (!p.available) l.catalogUnavailable,
+        p.companyName,
+      ].join(', '),
       child: PressableScale(
         scale: .97,
         onTap: () => context.push(
@@ -426,7 +507,17 @@ class ProductCard extends ConsumerWidget {
                   fit: StackFit.expand,
                   children: [
                     _ProductImage(product: p),
-                    if (p.hasDiscount)
+                    if (!p.available)
+                      Positioned(
+                        left: 10,
+                        bottom: 10,
+                        child: _Badge(
+                          key: const ValueKey('badge-unavailable'),
+                          text: l.catalogUnavailable,
+                          muted: true,
+                        ),
+                      )
+                    else if (p.hasDiscount)
                       Positioned(
                         left: 10,
                         top: 10,
@@ -453,8 +544,9 @@ class ProductCard extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        nfcTypeLabel(l, p.nfcType).toUpperCase(),
+                        listingEyebrow(l, p).toUpperCase(),
                         maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: AppType.eyebrow(color: t.brandInk, size: 8.5),
                       ),
                       const SizedBox(height: 3),
@@ -487,49 +579,56 @@ class ProductCard extends ConsumerWidget {
 }
 
 class _ProductImage extends StatelessWidget {
-  const _ProductImage({required this.product});
+  const _ProductImage({required this.product, this.url});
   final CatalogProduct product;
+
+  /// Galereyadagi boshqa rasm (bo'lmasa muqova).
+  final String? url;
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    if (product.imageUrl.isEmpty) {
-      return ColoredBox(
-        color: t.surface2,
-        child: Icon(
-          switch (product.nfcType) {
-            NfcProductType.card => Icons.credit_card_rounded,
-            NfcProductType.sticker => Icons.circle_outlined,
-            NfcProductType.keychain => Icons.key_rounded,
-            NfcProductType.accessory => Icons.watch_outlined,
-            NfcProductType.other => Icons.inventory_2_outlined,
-          },
-          size: 34,
-          color: t.text3,
-        ),
-      );
-    }
-    return mediaImage(context, product.imageUrl, fit: BoxFit.cover);
+    final p = product;
+    final Widget img = (url ?? p.imageUrl).isEmpty
+        ? ColoredBox(
+            color: t.surface2,
+            child: Icon(
+              p.sub != null ? nfcTypeIcon(p.sub!) : marketIcon(p.marketCategory),
+              size: 34,
+              color: t.text3,
+            ),
+          )
+        : mediaImage(context, url ?? p.imageUrl, fit: BoxFit.cover);
+    // Mavjud emas — rasm xiralashadi, lekin ko'rinib turadi.
+    if (p.available) return img;
+    return Opacity(opacity: .45, child: img);
   }
 }
 
 class _Badge extends StatelessWidget {
-  const _Badge({required this.text});
+  const _Badge({super.key, required this.text, this.muted = false});
   final String text;
+
+  /// Ochroq belgi ("Mavjud emas").
+  final bool muted;
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(color: t.text1, borderRadius: R.pill),
+      decoration: BoxDecoration(
+        color: muted ? t.surfaceSolid : t.text1,
+        borderRadius: R.pill,
+        border: muted ? Border.all(color: t.border1) : null,
+      ),
       child: Text(
         text,
         style: TextStyle(
           fontFamily: AppType.sans,
           fontSize: 11,
           fontWeight: FontWeight.w700,
-          color: t.bg1,
+          color: muted ? t.text1 : t.bg1,
         ),
       ),
     );
@@ -601,44 +700,69 @@ class _PriceLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.baseline,
-      textBaseline: TextBaseline.alphabetic,
-      children: [
-        Flexible(
-          child: Text(
-            currency
-                ? formatMoney(product.effectivePrice, 'UZS')
-                : formatMoney(product.effectivePrice, '').trim(),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontFamily: AppType.sans,
-              fontSize: size,
-              fontWeight: FontWeight.w800,
-              color: t.text1,
-            ),
-          ),
+    if (product.priceOnRequest) {
+      return Text(
+        L.of(context).catalogPriceOnRequest,
+        key: const ValueKey('price-on-request'),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontFamily: AppType.sans,
+          fontSize: size * .86,
+          fontWeight: FontWeight.w700,
+          color: t.text1,
         ),
-        if (product.hasDiscount) ...[
-          const SizedBox(width: 6),
+      );
+    }
+    final main = currency
+        ? formatMoney(product.effectivePrice, 'UZS')
+        : formatMoney(product.effectivePrice, '').trim();
+    final old = formatMoney(product.price, '').trim();
+    final mainStyle = TextStyle(
+      fontFamily: AppType.sans,
+      fontSize: size,
+      fontWeight: FontWeight.w800,
+      color: t.text1,
+    );
+    final oldStyle = TextStyle(
+      fontFamily: AppType.sans,
+      fontSize: size * .76,
+      fontWeight: FontWeight.w500,
+      color: t.text3,
+      decoration: TextDecoration.lineThrough,
+    );
+    // ASOSIY NARX HECH QACHON KESILMAYDI ("12 900 0…" bo'lardi). Eski
+    // narx faqat SIG'SA ko'rsatiladi — sig'masa chegirma baribir
+    // rasmdagi "−7%" belgisida ko'rinadi.
+    return LayoutBuilder(builder: (context, c) {
+      final scaler = MediaQuery.textScalerOf(context);
+      double w(String text, TextStyle st) => (TextPainter(
+            text: TextSpan(text: text, style: st),
+            textDirection: TextDirection.ltr,
+            textScaler: scaler,
+            maxLines: 1,
+          )..layout())
+              .width;
+      final showOld = product.hasDiscount &&
+          w(main, mainStyle) + 6 + w(old, oldStyle) <= c.maxWidth;
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
+        children: [
           Flexible(
-            child: Text(
-              formatMoney(product.price, '').trim(),
-              maxLines: 1,
-              overflow: TextOverflow.clip,
-              style: TextStyle(
-                fontFamily: AppType.sans,
-                fontSize: size * .76,
-                fontWeight: FontWeight.w500,
-                color: t.text3,
-                decoration: TextDecoration.lineThrough,
-              ),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(main, maxLines: 1, style: mainStyle),
             ),
           ),
+          if (showOld) ...[
+            const SizedBox(width: 6),
+            Text(old, maxLines: 1, style: oldStyle),
+          ],
         ],
-      ],
-    );
+      );
+    });
   }
 }
 
@@ -742,6 +866,7 @@ Future<void> showCatalogSortSheet(BuildContext context) {
     context: context,
     // Ildiz navigatorda — aks holda varaq pastki panel ostida qoladi.
     useRootNavigator: true,
+    isScrollControlled: true,
     showDragHandle: true,
     backgroundColor: context.tokens.surfaceSolid,
     shape: const RoundedRectangleBorder(
@@ -759,11 +884,12 @@ class _SortSheet extends ConsumerWidget {
     final l = L.of(context);
     final t = context.tokens;
     final sort = ref.watch(catalogSortProvider);
+    final kind = ref.watch(catalogKindProvider);
     final category = ref.watch(catalogCategoryProvider);
 
     return SafeArea(
       top: false,
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(Gap.screenX, 0, Gap.screenX, Gap.xl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -806,7 +932,32 @@ class _SortSheet extends ConsumerWidget {
                 ),
               ),
             const SizedBox(height: Gap.lg),
-            Text(l.catalogTypeLabel.toUpperCase(),
+            Text(l.catalogKindLabel.toUpperCase(),
+                style: AppType.eyebrow(color: t.text3)),
+            const SizedBox(height: Gap.md),
+            Wrap(
+              spacing: Gap.sm,
+              runSpacing: Gap.sm,
+              children: [
+                Capsule(
+                  label: l.catalogAll,
+                  selected: kind == null,
+                  onTap: () =>
+                      ref.read(catalogKindProvider.notifier).state = null,
+                ),
+                for (final k in ListingKind.values)
+                  Capsule(
+                    key: ValueKey('sheet-kind-${k.name}'),
+                    label: kindPluralLabel(l, k),
+                    icon: kindIcon(k),
+                    selected: kind == k,
+                    onTap: () =>
+                        ref.read(catalogKindProvider.notifier).state = k,
+                  ),
+              ],
+            ),
+            const SizedBox(height: Gap.lg),
+            Text(l.catalogCategoryLabel.toUpperCase(),
                 style: AppType.eyebrow(color: t.text3)),
             const SizedBox(height: Gap.md),
             Wrap(
@@ -816,15 +967,20 @@ class _SortSheet extends ConsumerWidget {
                 Capsule(
                   label: l.catalogAll,
                   selected: category == null,
-                  onTap: () =>
-                      ref.read(catalogCategoryProvider.notifier).state = null,
+                  onTap: () {
+                    ref.read(catalogCategoryProvider.notifier).state = null;
+                    ref.read(catalogSubProvider.notifier).state = null;
+                  },
                 ),
-                for (final ty in NfcProductType.values)
+                for (final m in MarketCategory.values)
                   Capsule(
-                    label: nfcTypeLabel(l, ty),
-                    selected: category == ty,
-                    onTap: () =>
-                        ref.read(catalogCategoryProvider.notifier).state = ty,
+                    key: ValueKey('sheet-cat-${m.name}'),
+                    label: marketLabel(l, m),
+                    selected: category == m,
+                    onTap: () {
+                      ref.read(catalogCategoryProvider.notifier).state = m;
+                      ref.read(catalogSubProvider.notifier).state = null;
+                    },
                   ),
               ],
             ),
@@ -899,16 +1055,24 @@ class CatalogProductScreen extends ConsumerWidget {
   }
 }
 
-class _ProductDetail extends ConsumerWidget {
+class _ProductDetail extends ConsumerStatefulWidget {
   const _ProductDetail({required this.product});
   final CatalogProduct product;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ProductDetail> createState() => _ProductDetailState();
+}
+
+class _ProductDetailState extends ConsumerState<_ProductDetail> {
+  int _page = 0;
+
+  @override
+  Widget build(BuildContext context) {
     final l = L.of(context);
     final t = context.tokens;
-    final p = product;
+    final p = widget.product;
     final fav = ref.watch(catalogFavoritesProvider).contains(p.key);
+    final images = p.images.isEmpty ? [p.imageUrl] : p.images;
 
     return NovaScaffold(
       showBack: true,
@@ -929,24 +1093,87 @@ class _ProductDetail extends ConsumerWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  _ProductImage(product: p),
-                  if (p.hasDiscount)
+                  if (images.length > 1)
+                    PageView.builder(
+                      key: const ValueKey('listing-gallery'),
+                      itemCount: images.length,
+                      onPageChanged: (i) => setState(() => _page = i),
+                      itemBuilder: (_, i) =>
+                          _ProductImage(product: p, url: images[i]),
+                    )
+                  else
+                    _ProductImage(product: p),
+                  if (!p.available)
+                    Positioned(
+                      left: 14,
+                      top: 14,
+                      child: _Badge(text: l.catalogUnavailable, muted: true),
+                    )
+                  else if (p.hasDiscount)
                     Positioned(
                       left: 14,
                       top: 14,
                       child: _Badge(text: '−${p.discountPercent}%'),
+                    ),
+                  if (images.length > 1)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 12,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          for (var i = 0; i < images.length; i++)
+                            AnimatedContainer(
+                              duration: Motion.fast,
+                              margin: const EdgeInsets.symmetric(horizontal: 3),
+                              width: i == _page ? 16 : 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: Colors.white
+                                    .withValues(alpha: i == _page ? .95 : .55),
+                                borderRadius: R.pill,
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                 ],
               ),
             ),
           ),
           const SizedBox(height: Gap.xl),
-          Text(nfcTypeLabel(l, p.nfcType).toUpperCase(),
+          Text(listingEyebrow(l, p).toUpperCase(),
               style: AppType.eyebrow(color: t.brandInk)),
           const SizedBox(height: 6),
           Text(p.name, style: AppType.displayStyle(color: t.text1, size: 30)),
           const SizedBox(height: Gap.md),
           _PriceLine(product: p, size: 22),
+          const SizedBox(height: Gap.md),
+          Wrap(
+            spacing: Gap.sm,
+            runSpacing: Gap.sm,
+            children: [
+              _InfoPill(
+                key: const ValueKey('listing-kind'),
+                icon: kindIcon(p.kind),
+                text: kindLabel(l, p.kind),
+              ),
+              _InfoPill(
+                key: const ValueKey('listing-availability'),
+                icon: p.available
+                    ? Icons.check_circle_outline_rounded
+                    : Icons.remove_circle_outline_rounded,
+                text: p.available ? l.catalogInStock : l.catalogUnavailable,
+                tone: p.available ? t.success : t.text3,
+              ),
+              if (p.section.isNotEmpty && NfcProductType.parse(p.section) == null)
+                _InfoPill(
+                  icon: Icons.folder_open_rounded,
+                  text: p.section,
+                ),
+            ],
+          ),
           if (p.description.isNotEmpty) ...[
             const SizedBox(height: Gap.lg),
             Text(p.description, style: Theme.of(context).textTheme.bodyLarge),
@@ -956,6 +1183,7 @@ class _ProductDetail extends ConsumerWidget {
               style: AppType.eyebrow(color: t.text3)),
           const SizedBox(height: Gap.md),
           FloatingSurface(
+            key: const ValueKey('listing-seller'),
             solid: true,
             onTap: () => context.push(Routes.storefront(p.companyId)),
             child: Row(
@@ -974,10 +1202,21 @@ class _ProductDetail extends ConsumerWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        [p.companyId, if (p.companyCity.isNotEmpty) p.companyCity]
-                            .join(' · '),
+                        p.companyId,
                         style: AppType.monoStyle(color: t.text2, size: 12),
                       ),
+                      if (p.companyAddress.isNotEmpty || p.companyCity.isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          [p.companyCity, p.companyAddress]
+                              .where((e) => e.isNotEmpty)
+                              .join(', '),
+                          key: const ValueKey('listing-address'),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -985,6 +1224,48 @@ class _ProductDetail extends ConsumerWidget {
               ],
             ),
           ),
+          if (p.hasContact) ...[
+            const SizedBox(height: Gap.xl),
+            Text(l.catalogContact.toUpperCase(),
+                style: AppType.eyebrow(color: t.text3)),
+            const SizedBox(height: Gap.md),
+            Row(
+              children: [
+                if (p.companyPhone.isNotEmpty)
+                  Expanded(
+                    child: _ContactButton(
+                      key: const ValueKey('contact-call'),
+                      icon: Icons.phone_rounded,
+                      label: l.catalogCall,
+                      onTap: () => openLink(telUrl(p.companyPhone)),
+                    ),
+                  ),
+                if (p.companyTelegram.isNotEmpty) ...[
+                  if (p.companyPhone.isNotEmpty) const SizedBox(width: Gap.sm),
+                  Expanded(
+                    child: _ContactButton(
+                      key: const ValueKey('contact-telegram'),
+                      icon: Icons.send_rounded,
+                      label: 'Telegram',
+                      onTap: () => openLink(telegramUrl(p.companyTelegram)),
+                    ),
+                  ),
+                ],
+                if (p.companyWhatsapp.isNotEmpty) ...[
+                  if (p.companyPhone.isNotEmpty || p.companyTelegram.isNotEmpty)
+                    const SizedBox(width: Gap.sm),
+                  Expanded(
+                    child: _ContactButton(
+                      key: const ValueKey('contact-whatsapp'),
+                      icon: Icons.chat_rounded,
+                      label: 'WhatsApp',
+                      onTap: () => openLink(whatsappUrl(p.companyWhatsapp)),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
           const SizedBox(height: Gap.xl),
           NovaButton(
             label: l.catalogOpenSeller,
@@ -994,11 +1275,105 @@ class _ProductDetail extends ConsumerWidget {
           const SizedBox(height: Gap.md),
           // To'lov ilovada YO'Q — buyurtma va to'lov sotuvchi bilan.
           Text(
-            l.catalogNoPaymentNote,
+            '${l.catalogOrderNote} ${l.catalogFavoritesLocal}',
+            key: const ValueKey('listing-no-payment'),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _InfoPill extends StatelessWidget {
+  const _InfoPill({super.key, required this.icon, required this.text, this.tone});
+  final IconData icon;
+  final String text;
+  final Color? tone;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: t.surfaceSolid,
+        borderRadius: R.pill,
+        border: Border.all(color: t.border1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: tone ?? t.text2),
+          const SizedBox(width: 5),
+          ConstrainedBox(
+            constraints: BoxConstraints(
+                maxWidth: MediaQuery.sizeOf(context).width - 120),
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: AppType.sans,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: t.text1,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ContactButton extends StatelessWidget {
+  const _ContactButton({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Semantics(
+      button: true,
+      label: label,
+      child: PressableScale(
+        scale: .96,
+        onTap: onTap,
+        child: Container(
+          height: 64,
+          decoration: BoxDecoration(
+            color: t.surfaceSolid,
+            borderRadius: R.tile,
+            border: Border.all(color: t.border1),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 19, color: t.text1),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: AppType.sans,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: t.text1,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

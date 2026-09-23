@@ -1860,9 +1860,9 @@ class LRu extends L {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count товаров',
-      few: '$count товара',
-      one: '$count товар',
+      other: '$count результатов',
+      few: '$count результата',
+      one: '$count результат',
     );
     return '$_temp0';
   }
@@ -1884,11 +1884,11 @@ class LRu extends L {
 
   @override
   String get catalogSoonHint =>
-      'Здесь появятся товары всех бизнесов в одном списке';
+      'Товары и услуги бизнесов появятся здесь в одном списке';
 
   @override
   String get catalogEmptyHint =>
-      'Товары появятся здесь, когда бизнесы их добавят';
+      'Появятся здесь, когда бизнесы добавят товары или услуги';
 
   @override
   String get catalogSeller => 'Продавец';
@@ -1987,4 +1987,128 @@ class LRu extends L {
 
   @override
   String get noNfcGetHint => 'Выбрать новый ID';
+
+  @override
+  String get catalogKindProduct => 'Товары';
+
+  @override
+  String get catalogKindService => 'Услуги';
+
+  @override
+  String get listingProduct => 'Товар';
+
+  @override
+  String get listingService => 'Услуга';
+
+  @override
+  String get marketFood => 'Еда';
+
+  @override
+  String get marketFashion => 'Одежда';
+
+  @override
+  String get marketElectronics => 'Электроника';
+
+  @override
+  String get marketBeauty => 'Красота';
+
+  @override
+  String get marketEducation => 'Обучение';
+
+  @override
+  String get marketHealth => 'Здоровье';
+
+  @override
+  String get marketHome => 'Дом и ремонт';
+
+  @override
+  String get marketAuto => 'Авто';
+
+  @override
+  String get marketOther => 'Другое';
+
+  @override
+  String get catalogCategoryLabel => 'Категория';
+
+  @override
+  String get catalogKindLabel => 'Тип';
+
+  @override
+  String get catalogNfcSub => 'NFC-товары';
+
+  @override
+  String get catalogPriceOnRequest => 'Цена договорная';
+
+  @override
+  String get catalogUnavailable => 'Нет в наличии';
+
+  @override
+  String get catalogInStock => 'В наличии';
+
+  @override
+  String get catalogSearchHint => 'Товар, услуга, бизнес или NFC ID';
+
+  @override
+  String get catalogContact => 'Связаться с продавцом';
+
+  @override
+  String get catalogCall => 'Позвонить';
+
+  @override
+  String get catalogAddress => 'Адрес';
+
+  @override
+  String get catalogSection => 'Раздел';
+
+  @override
+  String get catalogOrderNote =>
+      'Оплаты в приложении нет: заказ и оплата — напрямую с продавцом.';
+
+  @override
+  String get catalogFavoritesLocal => 'Избранное хранится на этом телефоне.';
+
+  @override
+  String get bizListingKind => 'Что размещаете?';
+
+  @override
+  String get bizMarketCategory => 'Категория каталога';
+
+  @override
+  String get bizMarketCategoryHint =>
+      'В каком разделе общего каталога появится';
+
+  @override
+  String get bizSection => 'Ваш раздел';
+
+  @override
+  String get bizSectionHint => 'Например: Напитки, Салаты, Курсы';
+
+  @override
+  String get bizPriceOnRequest => 'Цена договорная';
+
+  @override
+  String get bizPriceOnRequestHint =>
+      'Цена не показывается — клиент свяжется с вами';
+
+  @override
+  String get bizPhotos => 'Фото';
+
+  @override
+  String get bizAddPhoto => 'Добавить фото';
+
+  @override
+  String get bizPhotoCover => 'Обложка';
+
+  @override
+  String get bizNfcSub => 'Тип NFC-товара';
+
+  @override
+  String get bizPriceRequired => 'Укажите цену товара';
+
+  @override
+  String get bizListingSchemaOld =>
+      'Сервер ещё не обновлён: тип, категория каталога и доп. фото будут сохраняться после обновления. Пока они определяются автоматически по названию и разделу.';
+
+  @override
+  String get bizAddService => 'Добавить услугу';
 }

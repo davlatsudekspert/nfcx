@@ -209,31 +209,67 @@ class RichProfile extends ProfileRepository {
       (followers: 9, following: 11, isFollowing: false));
 }
 
+/// UMUMIY KATALOG namunasi: NFC — bitta sotuvchi/kategoriya, xolos;
+/// yonida ovqat, kiyim, elektronika, go'zallik va ta'lim xizmatlari.
 const richProducts = [
   CatalogProduct(
       id: 'p1', companyId: 'NFCSTORE', name: 'Metall NFC karta',
-      imageUrl: '$richAssets/m_card_metal.jpg', price: 293000, promotionPrice: 249000,
-      category: 'card', companyName: 'NFCSTORE'),
+      imageUrl: '$richAssets/m_card_metal.jpg',
+      images: ['$richAssets/m_card_metal.jpg', '$richAssets/m_cards.jpg', '$richAssets/m_hero.jpg'],
+      price: 293000, promotionPrice: 249000,
+      marketCategory: MarketCategory.electronics, sub: NfcProductType.card,
+      section: 'NFC karta', companyName: 'NFCSTORE', companyCity: 'Toshkent',
+      companyAddress: 'Amir Temur ko‘chasi, 15', companyPhone: '+998901234567',
+      companyTelegram: '@nfcstore_uz', companyWhatsapp: '+998901234567'),
   CatalogProduct(
-      id: 'p2', companyId: 'ONEBRAND', name: 'NFC stiker · 5 dona',
+      id: 'p2', companyId: 'MILLIYTAOM', name: 'Qahva va desert seti',
+      imageUrl: '$richAssets/z_post_cafe.jpg', price: 65000,
+      marketCategory: MarketCategory.food, section: 'Ichimliklar',
+      companyName: 'Milliy Taom', companyCity: 'Toshkent',
+      companyPhone: '+998712000000'),
+  CatalogProduct(
+      id: 'p3', companyId: 'TECHSHOP', name: 'iPhone 15 Pro 256 GB',
+      imageUrl: '$richAssets/m_iphone.jpg', price: 13900000, promotionPrice: 12900000,
+      marketCategory: MarketCategory.electronics, section: 'Smartfonlar',
+      companyName: 'Tech Shop', companyCity: 'Samarqand'),
+  CatalogProduct(
+      id: 'p4', companyId: 'GOZALSALON', name: 'Soch turmagi va styling',
+      kind: ListingKind.service, marketCategory: MarketCategory.beauty,
+      priceOnRequest: true, section: 'Sartaroshlik',
+      companyName: 'Go‘zal Salon', companyCity: 'Toshkent',
+      companyTelegram: '@gozal_salon'),
+  CatalogProduct(
+      id: 'p5', companyId: 'LINGVO', name: 'Ingliz tili · 3 oylik kurs',
+      kind: ListingKind.service, marketCategory: MarketCategory.education,
+      price: 1200000, section: 'Kurslar',
+      companyName: 'Lingvo Markaz', companyCity: 'Buxoro'),
+  CatalogProduct(
+      id: 'p6', companyId: 'NFCSTORE', name: 'NFC stiker · 5 dona',
       imageUrl: '$richAssets/m_stickers.jpg', price: 89000,
-      category: 'sticker', companyName: 'OneBrand'),
+      marketCategory: MarketCategory.electronics, sub: NfcProductType.sticker,
+      section: 'NFC stiker', companyName: 'NFCSTORE'),
   CatalogProduct(
-      id: 'p3', companyId: 'NFCSTORE', name: 'Premium vizitka to‘plami',
-      imageUrl: '$richAssets/m_cards.jpg', price: 319000,
-      category: 'card', companyName: 'NFCSTORE'),
+      id: 'p7', companyId: 'MODAUZ', name: 'Kuzgi palto',
+      price: 890000, available: false,
+      marketCategory: MarketCategory.fashion, section: 'Ustki kiyim',
+      companyName: 'Moda Uz'),
   CatalogProduct(
-      id: 'p4', companyId: 'GIFTUZ', name: 'Sovg‘a to‘plami',
-      imageUrl: '$richAssets/m_gift_set.jpg', price: 450000, promotionPrice: 405000,
-      category: 'accessory', companyName: 'Gift Uz'),
-  CatalogProduct(
-      id: 'p5', companyId: 'TECHSHOP', name: 'NFC brelok',
-      price: 120000, category: 'keychain', companyName: 'Tech Shop'),
-  CatalogProduct(
-      id: 'p6', companyId: 'NFCSTORE', name: 'Qora mat karta',
-      imageUrl: '$richAssets/m_hero.jpg', price: 199000,
-      category: 'card', companyName: 'NFCSTORE'),
+      id: 'p8', companyId: 'TECHSHOP', name: 'Samsung Galaxy S24',
+      imageUrl: '$richAssets/m_samsung.jpg', price: 9800000,
+      marketCategory: MarketCategory.electronics, section: 'Smartfonlar',
+      companyName: 'Tech Shop'),
 ];
+
+/// Server `counts` qoidasi bilan bir xil: faqat qidiruv qo'llangan sonlar.
+Map<String, int> catalogCountsOf(List<CatalogProduct> list) {
+  final c = <String, int>{'all': list.length};
+  for (final p in list) {
+    c[p.kind.name] = (c[p.kind.name] ?? 0) + 1;
+    c[p.marketCategory.name] = (c[p.marketCategory.name] ?? 0) + 1;
+    if (p.sub != null) c[p.sub!.name] = (c[p.sub!.name] ?? 0) + 1;
+  }
+  return c;
+}
 
 class RichDiscover extends FakeDiscoverRepository {
   @override
@@ -241,18 +277,21 @@ class RichDiscover extends FakeDiscoverRepository {
     int page = 1,
     int limit = 20,
     String q = '',
-    NfcProductType? category,
+    ListingKind? kind,
+    MarketCategory? category,
+    NfcProductType? sub,
     CatalogSort sort = CatalogSort.newest,
   }) async {
-    final list = category == null
-        ? richProducts
-        : richProducts.where((p) => p.nfcType == category).toList();
+    final list = richProducts
+        .where((p) =>
+            (kind == null || p.kind == kind) &&
+            (category == null || p.marketCategory == category) &&
+            (sub == null || p.sub == sub))
+        .toList();
     return Ok(CatalogFeedPage(
       items: list,
       total: list.length,
-      counts: const {
-        'all': 6, 'card': 3, 'sticker': 1, 'keychain': 1, 'accessory': 1, 'other': 0,
-      },
+      counts: catalogCountsOf(richProducts),
     ));
   }
 

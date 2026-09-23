@@ -3648,7 +3648,7 @@ abstract class L {
   /// No description provided for @catalogCount.
   ///
   /// In uz, this message translates to:
-  /// **'{count} ta mahsulot'**
+  /// **'{count} ta natija'**
   String catalogCount(int count);
 
   /// No description provided for @catalogSort.
@@ -3684,13 +3684,13 @@ abstract class L {
   /// No description provided for @catalogSoonHint.
   ///
   /// In uz, this message translates to:
-  /// **'Bizneslarning mahsulotlari shu yerda bitta ro‘yxatda chiqadi'**
+  /// **'Bizneslarning mahsulot va xizmatlari shu yerda bitta ro‘yxatda chiqadi'**
   String get catalogSoonHint;
 
   /// No description provided for @catalogEmptyHint.
   ///
   /// In uz, this message translates to:
-  /// **'Bizneslar mahsulot qo‘shganda shu yerda ko‘rinadi'**
+  /// **'Bizneslar mahsulot yoki xizmat qo‘shganda shu yerda ko‘rinadi'**
   String get catalogEmptyHint;
 
   /// No description provided for @catalogSeller.
@@ -3878,6 +3878,246 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Yangi ID tanlash'**
   String get noNfcGetHint;
+
+  /// No description provided for @catalogKindProduct.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tovarlar'**
+  String get catalogKindProduct;
+
+  /// No description provided for @catalogKindService.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xizmatlar'**
+  String get catalogKindService;
+
+  /// No description provided for @listingProduct.
+  ///
+  /// In uz, this message translates to:
+  /// **'Mahsulot'**
+  String get listingProduct;
+
+  /// No description provided for @listingService.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xizmat'**
+  String get listingService;
+
+  /// No description provided for @marketFood.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ovqat'**
+  String get marketFood;
+
+  /// No description provided for @marketFashion.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kiyim'**
+  String get marketFashion;
+
+  /// No description provided for @marketElectronics.
+  ///
+  /// In uz, this message translates to:
+  /// **'Elektronika'**
+  String get marketElectronics;
+
+  /// No description provided for @marketBeauty.
+  ///
+  /// In uz, this message translates to:
+  /// **'Go‘zallik'**
+  String get marketBeauty;
+
+  /// No description provided for @marketEducation.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ta’lim'**
+  String get marketEducation;
+
+  /// No description provided for @marketHealth.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sog‘liq'**
+  String get marketHealth;
+
+  /// No description provided for @marketHome.
+  ///
+  /// In uz, this message translates to:
+  /// **'Uy va qurilish'**
+  String get marketHome;
+
+  /// No description provided for @marketAuto.
+  ///
+  /// In uz, this message translates to:
+  /// **'Avto'**
+  String get marketAuto;
+
+  /// No description provided for @marketOther.
+  ///
+  /// In uz, this message translates to:
+  /// **'Boshqa'**
+  String get marketOther;
+
+  /// No description provided for @catalogCategoryLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kategoriya'**
+  String get catalogCategoryLabel;
+
+  /// No description provided for @catalogKindLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Turi'**
+  String get catalogKindLabel;
+
+  /// No description provided for @catalogNfcSub.
+  ///
+  /// In uz, this message translates to:
+  /// **'NFC mahsulotlari'**
+  String get catalogNfcSub;
+
+  /// No description provided for @catalogPriceOnRequest.
+  ///
+  /// In uz, this message translates to:
+  /// **'Narx kelishiladi'**
+  String get catalogPriceOnRequest;
+
+  /// No description provided for @catalogUnavailable.
+  ///
+  /// In uz, this message translates to:
+  /// **'Mavjud emas'**
+  String get catalogUnavailable;
+
+  /// No description provided for @catalogInStock.
+  ///
+  /// In uz, this message translates to:
+  /// **'Mavjud'**
+  String get catalogInStock;
+
+  /// No description provided for @catalogSearchHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Mahsulot, xizmat, Business yoki NFC ID'**
+  String get catalogSearchHint;
+
+  /// No description provided for @catalogContact.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sotuvchi bilan bog‘lanish'**
+  String get catalogContact;
+
+  /// No description provided for @catalogCall.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qo‘ng‘iroq'**
+  String get catalogCall;
+
+  /// No description provided for @catalogAddress.
+  ///
+  /// In uz, this message translates to:
+  /// **'Manzil'**
+  String get catalogAddress;
+
+  /// No description provided for @catalogSection.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bo‘lim'**
+  String get catalogSection;
+
+  /// No description provided for @catalogOrderNote.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ilovada to‘lov yo‘q: buyurtma va to‘lov sotuvchi bilan bevosita kelishiladi.'**
+  String get catalogOrderNote;
+
+  /// No description provided for @catalogFavoritesLocal.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sevimlilar shu telefonda saqlanadi.'**
+  String get catalogFavoritesLocal;
+
+  /// No description provided for @bizListingKind.
+  ///
+  /// In uz, this message translates to:
+  /// **'Nima joylaysiz?'**
+  String get bizListingKind;
+
+  /// No description provided for @bizMarketCategory.
+  ///
+  /// In uz, this message translates to:
+  /// **'Katalog kategoriyasi'**
+  String get bizMarketCategory;
+
+  /// No description provided for @bizMarketCategoryHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Umumiy katalogda qaysi bo‘limda chiqadi'**
+  String get bizMarketCategoryHint;
+
+  /// No description provided for @bizSection.
+  ///
+  /// In uz, this message translates to:
+  /// **'O‘z bo‘limingiz'**
+  String get bizSection;
+
+  /// No description provided for @bizSectionHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Masalan: Ichimliklar, Salatlar, Kurslar'**
+  String get bizSectionHint;
+
+  /// No description provided for @bizPriceOnRequest.
+  ///
+  /// In uz, this message translates to:
+  /// **'Narx kelishiladi'**
+  String get bizPriceOnRequest;
+
+  /// No description provided for @bizPriceOnRequestHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Narx ko‘rsatilmaydi — mijoz siz bilan bog‘lanadi'**
+  String get bizPriceOnRequestHint;
+
+  /// No description provided for @bizPhotos.
+  ///
+  /// In uz, this message translates to:
+  /// **'Rasmlar'**
+  String get bizPhotos;
+
+  /// No description provided for @bizAddPhoto.
+  ///
+  /// In uz, this message translates to:
+  /// **'Rasm qo‘shish'**
+  String get bizAddPhoto;
+
+  /// No description provided for @bizPhotoCover.
+  ///
+  /// In uz, this message translates to:
+  /// **'Muqova'**
+  String get bizPhotoCover;
+
+  /// No description provided for @bizNfcSub.
+  ///
+  /// In uz, this message translates to:
+  /// **'NFC mahsulot turi'**
+  String get bizNfcSub;
+
+  /// No description provided for @bizPriceRequired.
+  ///
+  /// In uz, this message translates to:
+  /// **'Mahsulot narxini kiriting'**
+  String get bizPriceRequired;
+
+  /// No description provided for @bizListingSchemaOld.
+  ///
+  /// In uz, this message translates to:
+  /// **'Server hali eski: tur, katalog kategoriyasi va qo‘shimcha rasmlar yangilanishdan keyin saqlanadi. Hozircha ular nom va bo‘limdan avtomatik aniqlanadi.'**
+  String get bizListingSchemaOld;
+
+  /// No description provided for @bizAddService.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xizmat qo‘shish'**
+  String get bizAddService;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

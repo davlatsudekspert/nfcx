@@ -1870,7 +1870,7 @@ class LUz extends L {
 
   @override
   String catalogCount(int count) {
-    return '$count ta mahsulot';
+    return '$count ta natija';
   }
 
   @override
@@ -1890,11 +1890,11 @@ class LUz extends L {
 
   @override
   String get catalogSoonHint =>
-      'Bizneslarning mahsulotlari shu yerda bitta ro‘yxatda chiqadi';
+      'Bizneslarning mahsulot va xizmatlari shu yerda bitta ro‘yxatda chiqadi';
 
   @override
   String get catalogEmptyHint =>
-      'Bizneslar mahsulot qo‘shganda shu yerda ko‘rinadi';
+      'Bizneslar mahsulot yoki xizmat qo‘shganda shu yerda ko‘rinadi';
 
   @override
   String get catalogSeller => 'Sotuvchi';
@@ -1992,4 +1992,127 @@ class LUz extends L {
 
   @override
   String get noNfcGetHint => 'Yangi ID tanlash';
+
+  @override
+  String get catalogKindProduct => 'Tovarlar';
+
+  @override
+  String get catalogKindService => 'Xizmatlar';
+
+  @override
+  String get listingProduct => 'Mahsulot';
+
+  @override
+  String get listingService => 'Xizmat';
+
+  @override
+  String get marketFood => 'Ovqat';
+
+  @override
+  String get marketFashion => 'Kiyim';
+
+  @override
+  String get marketElectronics => 'Elektronika';
+
+  @override
+  String get marketBeauty => 'Go‘zallik';
+
+  @override
+  String get marketEducation => 'Ta’lim';
+
+  @override
+  String get marketHealth => 'Sog‘liq';
+
+  @override
+  String get marketHome => 'Uy va qurilish';
+
+  @override
+  String get marketAuto => 'Avto';
+
+  @override
+  String get marketOther => 'Boshqa';
+
+  @override
+  String get catalogCategoryLabel => 'Kategoriya';
+
+  @override
+  String get catalogKindLabel => 'Turi';
+
+  @override
+  String get catalogNfcSub => 'NFC mahsulotlari';
+
+  @override
+  String get catalogPriceOnRequest => 'Narx kelishiladi';
+
+  @override
+  String get catalogUnavailable => 'Mavjud emas';
+
+  @override
+  String get catalogInStock => 'Mavjud';
+
+  @override
+  String get catalogSearchHint => 'Mahsulot, xizmat, Business yoki NFC ID';
+
+  @override
+  String get catalogContact => 'Sotuvchi bilan bog‘lanish';
+
+  @override
+  String get catalogCall => 'Qo‘ng‘iroq';
+
+  @override
+  String get catalogAddress => 'Manzil';
+
+  @override
+  String get catalogSection => 'Bo‘lim';
+
+  @override
+  String get catalogOrderNote =>
+      'Ilovada to‘lov yo‘q: buyurtma va to‘lov sotuvchi bilan bevosita kelishiladi.';
+
+  @override
+  String get catalogFavoritesLocal => 'Sevimlilar shu telefonda saqlanadi.';
+
+  @override
+  String get bizListingKind => 'Nima joylaysiz?';
+
+  @override
+  String get bizMarketCategory => 'Katalog kategoriyasi';
+
+  @override
+  String get bizMarketCategoryHint => 'Umumiy katalogda qaysi bo‘limda chiqadi';
+
+  @override
+  String get bizSection => 'O‘z bo‘limingiz';
+
+  @override
+  String get bizSectionHint => 'Masalan: Ichimliklar, Salatlar, Kurslar';
+
+  @override
+  String get bizPriceOnRequest => 'Narx kelishiladi';
+
+  @override
+  String get bizPriceOnRequestHint =>
+      'Narx ko‘rsatilmaydi — mijoz siz bilan bog‘lanadi';
+
+  @override
+  String get bizPhotos => 'Rasmlar';
+
+  @override
+  String get bizAddPhoto => 'Rasm qo‘shish';
+
+  @override
+  String get bizPhotoCover => 'Muqova';
+
+  @override
+  String get bizNfcSub => 'NFC mahsulot turi';
+
+  @override
+  String get bizPriceRequired => 'Mahsulot narxini kiriting';
+
+  @override
+  String get bizListingSchemaOld =>
+      'Server hali eski: tur, katalog kategoriyasi va qo‘shimcha rasmlar yangilanishdan keyin saqlanadi. Hozircha ular nom va bo‘limdan avtomatik aniqlanadi.';
+
+  @override
+  String get bizAddService => 'Xizmat qo‘shish';
 }

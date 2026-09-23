@@ -195,7 +195,11 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
                         enabledBorder: InputBorder.none,
                         focusedBorder: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(vertical: 15),
-                        hintText: l.searchHint,
+                        // Katalogda qidiruv mahsulot, xizmat, Business va
+                        // NFC ID bo'yicha (server `q`) — shuni aytadi.
+                        hintText: tab == DiscoverTab.catalog
+                            ? l.catalogSearchHint
+                            : l.searchHint,
                       ),
                     ),
                   ),
