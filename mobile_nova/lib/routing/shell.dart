@@ -60,14 +60,28 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       }
     });
     final items = [
-      NavItem(icon: Icons.home_rounded, label: l.navHome, route: Routes.home),
-      NavItem(icon: Icons.explore_rounded, label: l.navDiscover, route: Routes.discover),
+      // Faol emas — chiziqli, faol — to'la (bir xil vizual og'irlik).
+      NavItem(
+          icon: Icons.home_outlined,
+          activeIcon: Icons.home_rounded,
+          label: l.navHome,
+          route: Routes.home),
+      NavItem(
+          icon: Icons.explore_outlined,
+          activeIcon: Icons.explore_rounded,
+          label: l.navDiscover,
+          route: Routes.discover),
       NavItem(icon: Icons.nfc_rounded, label: l.navNfc, route: Routes.nfc),
       NavItem(
-          icon: Icons.play_circle_rounded,
+          icon: Icons.play_circle_outline_rounded,
+          activeIcon: Icons.play_circle_rounded,
           label: l.navReels,
           route: Routes.reels),
-      NavItem(icon: Icons.person_rounded, label: l.navProfile, route: Routes.profile),
+      NavItem(
+          icon: Icons.person_outline_rounded,
+          activeIcon: Icons.person_rounded,
+          label: l.navProfile,
+          route: Routes.profile),
     ];
 
     return Scaffold(

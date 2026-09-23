@@ -7,17 +7,32 @@ import 'brand_logo.dart';
 import 'surfaces.dart';
 
 class NavItem {
-  const NavItem({required this.icon, required this.label, required this.route});
+  const NavItem({
+    required this.icon,
+    required this.label,
+    required this.route,
+    this.activeIcon,
+  });
+
+  /// Faol emas — chiziqli (outlined) belgi.
   final IconData icon;
+
+  /// Faol — to'la belgi. Berilmasa [icon].
+  final IconData? activeIcon;
   final String label;
   final String route;
 }
 
 /// Nav pillining balandligi.
-const double kNavHeight = 64;
+///
+/// PROPORSIYA (2026-09 audit, egasi: "ikonlar kichik va kuchsiz"):
+/// belgi 24-25 dp + faol kapsula 30 dp + yorliq 11 dp — Material 3 va
+/// iOS tab bar bilan bir o'lchamda. Ilgari 22 dp belgi va 9.5 dp yorliq
+/// markaziy 54 dp tugma yonida yo'qolib ketardi.
+const double kNavHeight = 66;
 
 /// Markaziy NFC tugmasining diametri.
-const double kNavCenterSize = 54;
+const double kNavCenterSize = 56;
 
 /// Markaziy tugma pill QIRRASIDAN qancha yuqoriga chiqishi.
 ///
@@ -199,8 +214,14 @@ class _NavButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
+    // 360 dp va undan tor ekranda bir pog'ona kichik — yorliqlar
+    // (ru: "Главная", "Профиль") katakka sig'adi.
+    final compact = MediaQuery.sizeOf(context).width < 375;
+    final iconSize = compact ? 24.0 : 25.0;
+    final labelSize = compact ? 10.5 : 11.0;
 
-    // Faol — grafit (#171716); faol emas — to'q kulrang (#6E6C68).
+    // Faol — brend rangi, to'la belgi va yumshoq kapsula; faol emas —
+    // chiziqli belgi, `text3` (hamma mavzuda >= 4.5:1).
     final color = selected ? t.accent2 : t.text3;
     return Semantics(
       button: true,
@@ -213,18 +234,32 @@ class _NavButton extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              AnimatedScale(
-                scale: selected ? 1.1 : 1,
+              AnimatedContainer(
                 duration: Motion.fast,
-                curve: Motion.spring,
-                child: Icon(item.icon, size: 22, color: color),
+                curve: Motion.smooth,
+                width: compact ? 50 : 54,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: selected
+                      ? t.accent2.withValues(alpha: t.isDark ? .16 : .09)
+                      : t.accent2.withValues(alpha: 0),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                alignment: Alignment.center,
+                child: Icon(
+                  selected ? (item.activeIcon ?? item.icon) : item.icon,
+                  size: iconSize,
+                  color: color,
+                ),
               ),
               const SizedBox(height: 3),
               AnimatedDefaultTextStyle(
                 duration: Motion.fast,
                 style: TextStyle(
                   fontFamily: 'Manrope',
-                  fontSize: 9.5,
+                  fontSize: labelSize,
+                  height: 1.15,
+                  letterSpacing: .1,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                   color: color,
                 ),
@@ -232,6 +267,10 @@ class _NavButton extends StatelessWidget {
                   item.label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                  // Tizim shrifti kattalashtirilsa ham yorliq katakdan
+                  // chiqmaydi (1.15 dan keyin o'smaydi).
+                  textScaler: MediaQuery.textScalerOf(context)
+                      .clamp(maxScaleFactor: 1.15),
                 ),
               ),
             ],
