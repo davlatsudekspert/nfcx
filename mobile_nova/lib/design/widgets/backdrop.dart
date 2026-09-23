@@ -5,12 +5,17 @@ import 'package:flutter/material.dart';
 import '../motion/motion.dart';
 import '../tokens/nfc_tokens.dart';
 
-/// Har ekranning orqa foni: gradient + sekin suzuvchi ikkita ambient dog'.
+/// Har ekranning orqa foni: gradient + ikkita ambient dog'.
 ///
-/// Concept B'da fon statik emas — u juda sekin "nafas oladi". Bu ilovaga
-/// chuqurlik beradi, lekin diqqatni tortmaydi: to'liq sikl 22 soniya.
+/// SUKUT BO'YICHA QOTGAN (TEZLIK, 2026-09). Ilgari dog'lar 22 soniyalik
+/// siklda to'xtovsiz suzardi: har bir ochiq ekran (tablar va orqadagi
+/// sahifalar ham) sekundiga 60 marta butun ekranni xiralangan dog'lar
+/// bilan qayta chizardi, ustidagi shisha kartalar esa har kadrda qayta
+/// xiralanardi. Harakatni ko'z deyarli sezmasdi, telefon esa qotardi
+/// (egasi: "boshqa bo'limga o'tishda qotyapti"). `animate: true` faqat
+/// alohida, yengil ekranlar uchun (masalan splash).
 class AmbientBackdrop extends StatefulWidget {
-  const AmbientBackdrop({super.key, required this.child, this.animate = true});
+  const AmbientBackdrop({super.key, required this.child, this.animate = false});
 
   final Widget child;
   final bool animate;
@@ -80,8 +85,11 @@ class _AmbientBackdropState extends State<AmbientBackdrop>
       decoration: BoxDecoration(gradient: t.backdrop),
       child: Stack(
         children: [
+          // ALOHIDA QATLAM: fon bir marta chiziladi va ustidagi kontent
+          // o'zgarganda qayta chizilmaydi (TEZLIK, 2026-09).
           Positioned.fill(
-            child: IgnorePointer(
+            child: RepaintBoundary(
+              child: IgnorePointer(
               child: still
                   ? CustomPaint(painter: _AmbientPainter(t, 0))
                   : AnimatedBuilder(
@@ -89,6 +97,7 @@ class _AmbientBackdropState extends State<AmbientBackdrop>
                       builder: (_, __) =>
                           CustomPaint(painter: _AmbientPainter(t, _c.value)),
                     ),
+              ),
             ),
           ),
           widget.child,

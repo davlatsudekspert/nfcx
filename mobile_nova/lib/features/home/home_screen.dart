@@ -26,7 +26,7 @@ import '../../routing/routes.dart';
 import '../auth/session.dart';
 import '../profile/music_player.dart';
 import '../social/feed_card.dart';
-import '../social/media_frame.dart' show isAssetMedia;
+import '../social/media_frame.dart' show decodeWidth, isAssetMedia;
 import '../nfc/qr_sheet.dart';
 import '../shop/nfc_id_market.dart' show tierLabel;
 import 'widgets/avatar.dart';
@@ -531,6 +531,7 @@ class _PortraitAvatar extends StatelessWidget {
                 : CachedNetworkImage(
                     imageUrl: url,
                     fit: BoxFit.cover,
+                    memCacheWidth: decodeWidth(context, size),
                     fadeInDuration: Motion.med,
                     placeholder: (_, __) => mark(),
                     errorWidget: (_, __, ___) => mark(),

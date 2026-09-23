@@ -25,7 +25,7 @@ class NovaScaffold extends StatelessWidget {
     this.onBack,
     this.floating,
     this.padBottom = true,
-    this.animateBackdrop = true,
+    this.animateBackdrop = false,
   });
 
   final Widget body;

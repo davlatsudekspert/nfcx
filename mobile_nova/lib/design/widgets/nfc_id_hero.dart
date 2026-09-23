@@ -124,7 +124,11 @@ class _NfcIdHeroCardState extends State<NfcIdHeroCard>
       _rings.stop();
     } else {
       if (_enter.value == 0 && !_enter.isAnimating) _enter.forward();
-      if (!_rings.isAnimating) _rings.repeat();
+      // Halqalar ochilganda IKKI marta suriladi va to'xtaydi. Doimiy
+      // takrorlash ekranni har kadrda qayta chizdirardi va ustidagi
+      // shisha effektlarni ham qayta hisoblatardi (TEZLIK, 2026-09:
+      // "ilova qotib ishlayapti").
+      if (!_rings.isAnimating && _rings.value == 0) _rings.repeat(count: 2);
     }
   }
 

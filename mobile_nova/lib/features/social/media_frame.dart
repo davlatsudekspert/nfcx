@@ -65,6 +65,21 @@ double clampMediaAspect(double raw) {
 /// u reklama emas, nuqson bo'lib ko'rinadi.
 bool isAssetMedia(String url) => url.startsWith('assets/');
 
+/// RASMNI QANCHA PIKSELDA OCHISH (TEZLIK, 2026-09).
+///
+/// Telefon kamerasidan kelgan surat 4000 px bo'lishi mumkin; uni
+/// to'liq ochish ~60 MB xotira va sekin aylanish degani (egasi:
+/// "ilova qotib ishlayapti"). Rasm ekranda ko'rinadigan kenglikda
+/// ochiladi. Qiymat 120 ga yaxlitlanadi — lenta va o'lchov so'rovi
+/// (`AdaptiveMedia._resolveImage`) BIR XIL keshdan foydalansin.
+int decodeWidth(BuildContext context, [double? logicalWidth]) {
+  final mq = MediaQuery.maybeOf(context);
+  final w = logicalWidth ?? mq?.size.width ?? 400;
+  final dpr = mq?.devicePixelRatio ?? 2;
+  final px = (w * dpr / 120).ceil() * 120;
+  return px.clamp(120, 1440);
+}
+
 /// Rasmni chizadi — manba tarmoq ham, ilova ichi ham bo'lishi
 /// mumkin. Ikkala yo'l BITTA joyda turadi, shuning uchun har bir
 /// ekran buni qaytadan hal qilmaydi.
@@ -87,6 +102,7 @@ Widget mediaImage(
     imageUrl: url,
     fit: fit,
     alignment: alignment,
+    memCacheWidth: decodeWidth(context),
     placeholder: (_, __) => ColoredBox(color: t.surface2),
     errorWidget: (_, __, ___) => broken(),
   );
@@ -131,9 +147,15 @@ class _AdaptiveMediaState extends State<AdaptiveMedia> {
   ImageStream? _stream;
   ImageStreamListener? _listener;
 
+  bool _started = false;
+
+  // `initState` da EMAS: o'lcham `MediaQuery` dan olinadi
+  // (`decodeWidth`), unga esa faqat shu yerdan murojaat qilish mumkin.
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) return;
+    _started = true;
     if (!widget.isVideo) _resolveImage();
   }
 
@@ -153,9 +175,12 @@ class _AdaptiveMediaState extends State<AdaptiveMedia> {
   /// to'g'ri nisbatda quriladi — sakrash ko'rinmaydi.
   void _resolveImage() {
     if (widget.url.isEmpty) return;
+    // Tarmoq rasmi `mediaImage` bilan AYNAN bir xil o'lchamda
+    // so'raladi — ikkinchi (to'liq o'lchamli) nusxa ochilmaydi.
     final ImageProvider provider = isAssetMedia(widget.url)
         ? AssetImage(widget.url)
-        : CachedNetworkImageProvider(widget.url);
+        : ResizeImage.resizeIfNeeded(
+            decodeWidth(context), null, CachedNetworkImageProvider(widget.url));
     final stream = provider.resolve(ImageConfiguration.empty);
     final listener = ImageStreamListener(
       (info, _) {

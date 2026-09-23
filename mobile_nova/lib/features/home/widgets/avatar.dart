@@ -49,6 +49,8 @@ class Avatar extends StatelessWidget {
                 : CachedNetworkImage(
                     imageUrl: url,
                     fit: BoxFit.cover,
+                    // Avatar kichik — to'liq suratni ochish shart emas.
+                    memCacheWidth: decodeWidth(context, inner),
                     fadeInDuration: const Duration(milliseconds: 240),
                     placeholder: (_, __) => ColoredBox(color: t.surface2),
                     errorWidget: (_, __, ___) =>
