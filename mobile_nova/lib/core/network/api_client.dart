@@ -179,28 +179,38 @@ class ApiClient {
   ///
   /// Base64 bu yerda ATAYLAB ishlatilmaydi: u hajmni ~33% oshiradi
   /// va videoda bu o'nlab megabaytga aylanadi.
+  ///
+  /// FAYL DISKDAN OQIM BILAN O'QILADI (64 KB bo'laklar). Ilgari butun
+  /// fayl `readAsBytes()` bilan xotiraga olinardi — 300 MB video
+  /// shuncha RAM talab qilib, eski telefonda ilovani o'ldirardi.
+  /// Yuborish vaqti hajmga qarab: kamida 180 s, ~100 KB/s dan sekin
+  /// bo'lmasa uzilmaydi.
   Future<Result<Map<String, dynamic>>> uploadBinary(
     String path,
-    List<int> bytes,
+    String filePath,
     String contentType, {
     void Function(int sent, int total)? onProgress,
   }) =>
-      _run<Map<String, dynamic>>(
-        () => _dio.post(
+      _run<Map<String, dynamic>>(() async {
+        final file = File(filePath);
+        final len = await file.length();
+        return _dio.post(
           path,
-          data: Stream.fromIterable([bytes]),
+          data: file.openRead(),
           onSendProgress: onProgress,
           options: Options(
             headers: {
               ..._auth,
               'content-type': contentType,
-              'content-length': bytes.length,
+              'content-length': len,
             },
-            sendTimeout: const Duration(seconds: 180),
+            sendTimeout: Duration(seconds: len ~/ (100 * 1024) < 180
+                ? 180
+                : len ~/ (100 * 1024)),
             receiveTimeout: const Duration(seconds: 180),
           ),
-        ),
-      );
+        );
+      });
 
   /// SESSIYA OCHADIGAN SO'ROV — javob TANASI ham, SARLAVHASI ham kerak.
   ///

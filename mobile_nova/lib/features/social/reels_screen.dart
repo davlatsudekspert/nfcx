@@ -136,6 +136,20 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
   final _page = PageController();
   int _index = 0;
 
+  /// Qaysi sahifa O'YNAY BOSHLADI (initialize + play). Keyingi reel
+  /// shundan KEYIN yuklanadi.
+  ///
+  /// O'LCHOV (emulyator, 2026-09): ilgari ko'rinayotgan va keyingi
+  /// reel BIR LAHZADA ochilardi va tarmoqni bo'lishardi; pauzadagi
+  /// oldindan yuklangan video esa 5 soniyada 35 soniyalik videoning
+  /// HAMMASINI yuklab oldi (ExoPlayer pauzada ham buferni to'ldiradi).
+  /// Shuning uchun: avval ko'rinayotgani, keyin FAQAT BITTA keyingisi.
+  int _started = -1;
+
+  void _markStarted(int i) {
+    if (mounted && _started != i) setState(() => _started = i);
+  }
+
   @override
   void dispose() {
     _page.dispose();
@@ -146,6 +160,9 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
   Widget build(BuildContext context) {
     // Reels — pastki navigatsiyaning 4-tabi (`HomeShell.tabRoutes`).
     final onReelsTab = ref.watch(activeTabProvider) == 3;
+    // Tabdan chiqilganda kontrollerlar yo'q qilinadi — qaytganda
+    // ko'rinayotgani yana birinchi bo'lib ochiladi.
+    if (!onReelsTab) _started = -1;
     final l = L.of(context);
     final reels = ref.watch(reelsProvider);
 
@@ -211,6 +228,8 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
                   // Profilda turib Reels ovozini eshitardi.
                   visible: i == _index && onReelsTab,
                   preload: i == _index + 1 && onReelsTab,
+                  preloadNow: _started == _index,
+                  onStarted: () => _markStarted(i),
                 ),
               ),
               _TopBar(onCreate: () => context.push(Routes.reelCreate)),
@@ -278,9 +297,20 @@ class _ReelPage extends ConsumerStatefulWidget {
     required this.post,
     required this.visible,
     this.preload = false,
+    this.preloadNow = true,
+    this.onStarted,
   });
 
   final Post post;
+
+  /// Oldindan yuklash uchun YANGI kontroller qurish mumkinmi —
+  /// ko'rinayotgan reel o'ynay boshladimi. Mavjud kontroller (hozirgina
+  /// ko'rinib turgan sahifa) bunga qaramay saqlanadi.
+  final bool preloadNow;
+
+  /// Ko'rinayotgan sahifa o'ynay boshladi (yoki ochilmadi) — keyingisini
+  /// yuklash mumkin.
+  final VoidCallback? onStarted;
 
   /// Ekranda — o'ynaydi.
   final bool visible;
@@ -354,13 +384,20 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
   @override
   void didUpdateWidget(covariant _ReelPage old) {
     super.didUpdateWidget(old);
-    if (old.visible != widget.visible || old.preload != widget.preload) {
+    if (old.visible != widget.visible ||
+        old.preload != widget.preload ||
+        old.preloadNow != widget.preloadNow) {
       _sync();
     }
   }
 
   void _sync() {
     if (widget.visible || widget.preload) {
+      // Keyingi reel: ko'rinayotgani o'ynay boshlaguncha yangi
+      // kontroller QURILMAYDI (tarmoq ko'rinayotganiga to'liq qoladi).
+      if (!widget.visible && _controller == null && !widget.preloadNow) {
+        return;
+      }
       _activate();
     } else {
       _release();
@@ -384,6 +421,8 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
         _ready = true;
       } catch (_) {
         if (gen == _gen && mounted) setState(() => _failed = true);
+        // Buzuq video keyingisini yuklashni to'sib qo'ymasin.
+        if (gen == _gen && widget.visible) widget.onStarted?.call();
         return;
       }
     }
@@ -395,6 +434,9 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
       _owner.take(this, _pauseForOther);
       await c.setVolume(ref.read(reelsMutedProvider) ? 0 : 1);
       await c.play();
+      // `initialize()` READY holatini kutadi — birinchi kadr ~0.1 s da
+      // (o'lchov). Endi keyingi reel yuklansa bo'ladi.
+      widget.onStarted?.call();
     } else if (widget.visible) {
       // Ustida boshqa ekran — joyida pauza (boshiga qaytmaydi).
       await c.pause();

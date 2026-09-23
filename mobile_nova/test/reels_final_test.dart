@@ -156,6 +156,37 @@ void main() {
     expect(v.alive.map((i) => v.urls[i]).any((u) => u!.contains('a.mp4')), isFalse);
   });
 
+  testWidgets('keyingi reel ko‘rinayotgani O‘YNAY BOSHLAGACH yuklanadi '
+      '(tarmoq bo‘linmaydi)', (tester) async {
+    final v = FakeVideoPlatform(initDelay: const Duration(milliseconds: 600));
+    VideoPlayerPlatform.instance = v;
+    tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final base = await testOverrides();
+    final c = ProviderContainer(overrides: [
+      ...base.where((o) => !identical(o, base[2])),
+      socialRepositoryProvider.overrideWithValue(_Social()),
+      profileRepositoryProvider.overrideWithValue(_Profile()),
+      businessRepositoryProvider.overrideWithValue(_Biz()),
+      reelsProvider.overrideWith((ref) async => _reels),
+      activeTabProvider.overrideWith((ref) => 3),
+    ]);
+    addTearDown(c.dispose);
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: c,
+      child: wrapScreen(const ReelsScreen()),
+    ));
+    await settle(tester, frames: 4); // 320 ms: birinchisi hali ochilmoqda
+    expect(v.created.length, 1,
+        reason: 'ko‘rinayotgani ochilayotganda keyingisi tarmoqni bo‘lmasin');
+
+    await settle(tester, frames: 12);
+    await _flush(tester);
+    expect(v.playing.length, 1);
+    expect(v.alive.length, 2, reason: 'o‘ynay boshlagach — keyingisi tayyorlanadi');
+  });
+
   testWidgets('pastki navigatsiyadan chiqish: hammasi to‘xtaydi, qaytganda ochiladi',
       (tester) async {
     final v = FakeVideoPlatform(initDelay: const Duration(milliseconds: 300));

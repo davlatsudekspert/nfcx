@@ -43,6 +43,8 @@ String describeError(L l, AppError e) => switch (e.code) {
       'premium_required' => l.errCommentPremium,
       'rules_not_accepted' => l.rulesNotAccepted,
       'plan_limit_reached' => l.errPlanLimit,
+      // Server 413 yoki ilovaning oldindan tekshiruvi (100 MB).
+      'too_large' => l.errFileTooLarge,
       'plan_locked' => l.errPlanLocked,
       // AVTOMATIK FILTR rasmni rad etdi — SABAB aytiladi, aks holda
       // odam "nega yuklanmayapti" deb o'ylaydi.

@@ -73,6 +73,7 @@
   "errConflict": "This value is already taken",
   "errRateLimited": "Too many attempts. Please wait",
   "errUnknown": "Something went wrong",
+  "errFileTooLarge": "The file is too large — 100 MB max. Choose a shorter video.",
   "errBadCredentials": "Wrong email or password",
   "errEmailTaken": "This email is already registered. Sign in or reset your password.",
   "errPhoneTaken": "This phone number is already linked to another account. Enter a different number or sign in to that account.",

@@ -55,6 +55,15 @@ class _VideoPosterState extends State<VideoPoster> {
   VideoPlayerController? _c;
   bool _gone = false;
 
+  /// Yashirin bo'lgani uchun navbatdan CHIQDI — ko'ringanda qaytadi.
+  bool _waiting = false;
+
+  void _enqueue() {
+    final next = VideoPoster._tail.then((_) => _capture());
+    // Bitta katakchadagi xato navbatni to'xtatib qo'ymasin.
+    VideoPoster._tail = next.catchError((_) {});
+  }
+
   @override
   void initState() {
     super.initState();
@@ -65,18 +74,30 @@ class _VideoPosterState extends State<VideoPoster> {
       _image = cached;
       return;
     }
-    final next = VideoPoster._tail.then((_) => _capture());
-    // Bitta katakchadagi xato navbatni to'xtatib qo'ymasin.
-    VideoPoster._tail = next.catchError((_) {});
+    _enqueue();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Tab / marshrut yana ko'rindi — navbatga qaytadi.
+    if (TickerMode.of(context) && _waiting && !_gone) {
+      _waiting = false;
+      _enqueue();
+    }
   }
 
   Future<void> _capture() async {
-    // Yashirin tabda (Offstage) kadr chizilmaydi va rasmga olib
-    // bo'lmaydi — tab ko'ringuncha kutamiz.
-    while (mounted && !_gone && !TickerMode.of(context)) {
-      await Future<void>.delayed(const Duration(milliseconds: 500));
-    }
     if (_gone || !mounted) return;
+    // Yashirin tabda (Offstage) yoki ustiga ekran ochilganda kadr
+    // chizilmaydi va rasmga olib bo'lmaydi. Ilgari shu yerda 500 ms
+    // lik aylanishda KUTILARDI — navbat boshini egallab, BUTUN
+    // ilovadagi boshqa muqovalarni (boshqa ekranlarda ham) to'xtatib
+    // qo'yardi. Endi joy bo'shatiladi, ko'ringanda qaytadan navbatga.
+    if (!TickerMode.of(context)) {
+      _waiting = true;
+      return;
+    }
     final c = VideoPlayerController.networkUrl(
       Uri.parse(widget.url),
       videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),

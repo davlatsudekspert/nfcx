@@ -537,6 +537,12 @@ abstract class L {
   /// **'Nimadir noto‘g‘ri ketdi'**
   String get errUnknown;
 
+  /// No description provided for @errFileTooLarge.
+  ///
+  /// In uz, this message translates to:
+  /// **'Fayl juda katta — ko‘pi bilan 100 MB. Qisqaroq video tanlang.'**
+  String get errFileTooLarge;
+
   /// No description provided for @errBadCredentials.
   ///
   /// In uz, this message translates to:

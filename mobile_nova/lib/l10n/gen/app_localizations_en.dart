@@ -231,6 +231,10 @@ class LEn extends L {
   String get errUnknown => 'Something went wrong';
 
   @override
+  String get errFileTooLarge =>
+      'The file is too large — 100 MB max. Choose a shorter video.';
+
+  @override
   String get errBadCredentials => 'Wrong email or password';
 
   @override

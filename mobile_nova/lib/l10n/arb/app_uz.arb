@@ -73,6 +73,7 @@
   "errConflict": "Bu ma’lumot allaqachon band",
   "errRateLimited": "Juda ko‘p urinish. Biroz kuting",
   "errUnknown": "Nimadir noto‘g‘ri ketdi",
+  "errFileTooLarge": "Fayl juda katta — ko‘pi bilan 100 MB. Qisqaroq video tanlang.",
   "errBadCredentials": "Email yoki parol noto‘g‘ri",
   "errEmailTaken": "Bu email allaqachon ro‘yxatdan o‘tgan. «Kirish» orqali kiring yoki parolni tiklang.",
   "errPhoneTaken": "Bu telefon raqam boshqa akkauntga ulangan. Boshqa raqam kiriting yoki o‘sha akkaunt bilan kiring.",

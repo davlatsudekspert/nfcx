@@ -230,6 +230,10 @@ class LRu extends L {
   String get errUnknown => 'Что-то пошло не так';
 
   @override
+  String get errFileTooLarge =>
+      'Файл слишком большой — не более 100 МБ. Выберите видео покороче.';
+
+  @override
   String get errBadCredentials => 'Неверный email или пароль';
 
   @override

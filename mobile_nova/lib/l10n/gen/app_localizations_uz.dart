@@ -231,6 +231,10 @@ class LUz extends L {
   String get errUnknown => 'Nimadir noto‘g‘ri ketdi';
 
   @override
+  String get errFileTooLarge =>
+      'Fayl juda katta — ko‘pi bilan 100 MB. Qisqaroq video tanlang.';
+
+  @override
   String get errBadCredentials => 'Email yoki parol noto‘g‘ri';
 
   @override

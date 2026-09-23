@@ -9,6 +9,9 @@ import '../../core/utils/media_url.dart';
 import '../../core/utils/result.dart';
 import '../../data/models/models.dart';
 
+/// Server yuklash chegarasi — `hosting/worker.js` `UPLOAD_MAX_BYTES`.
+const kUploadMaxBytes = 100 * 1024 * 1024;
+
 /// Profil (backend atamasi: `record`) bilan ishlash.
 ///
 /// Backend'da "profil" alohida obyekt emas: har bir NFC ID ning O'ZI
@@ -112,10 +115,12 @@ class ProfileRepository {
     String filePath, {
     void Function(int sent, int total)? onProgress,
   }) async {
-    final bytes = await File(filePath).readAsBytes();
+    if (await File(filePath).length() > kUploadMaxBytes) {
+      return const Err(AppError(AppErrorKind.validation, code: 'too_large'));
+    }
     final res = await _api.uploadBinary(
       '/api/upload-file',
-      bytes,
+      filePath,
       _audioType(filePath),
       onProgress: onProgress,
     );
@@ -234,11 +239,15 @@ class ProfileRepository {
     String filePath, {
     void Function(int, int)? onProgress,
   }) async {
-    final bytes = await File(filePath).readAsBytes();
+    // Server chegarasi (`UPLOAD_MAX_BYTES`, 100 MB) OLDINDAN tekshiriladi:
+    // aks holda odam butun faylni yuklab bo'lgach 413 olardi.
+    if (await File(filePath).length() > kUploadMaxBytes) {
+      return const Err(AppError(AppErrorKind.validation, code: 'too_large'));
+    }
     final lower = filePath.toLowerCase();
     final type = lower.endsWith('.webm') ? 'video/webm' : 'video/mp4';
     final res = await _api.uploadBinary(
-        '/api/upload-card-video', bytes, type,
+        '/api/upload-card-video', filePath, type,
         onProgress: onProgress);
     return res.map((j) => '${j['url'] ?? j['path'] ?? ''}');
   }
