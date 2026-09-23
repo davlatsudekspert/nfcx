@@ -7083,10 +7083,44 @@ function parseUploadRange(rangeHeader, size) {
 
 // GET/HEAD /uploads/* — R2 read, with HEAD, If-None-Match/304, Range/206,
 // invalid-range/416 and path-traversal protection, matching production.
+// ── RASMLAR CLOUDFLARE CHEGARA KESHIDA (egasi, 2026-09: "rasmlar sekin
+// ochilyapti") ──────────────────────────────────────────────────────
+//
+// Ilgari HAR BIR rasm so'rovi Worker → R2 (head + get, ikki murojaat)
+// orqali uzoq ombordan kelardi: O'zbekistondagi odam har yangi rasm
+// uchun to'liq yo'lni kutardi. Endi RASM (image/*) birinchi marta
+// o'qilgach, odamga eng yaqin Cloudflare serverida saqlanadi va
+// keyingi odamlar uni o'sha yerdan oladi.
+//
+// Faqat rasm va faqat 8 MB gacha: video `Range` so'rovlari bilan
+// qismlab o'qiladi — ular avvalgidek to'g'ridan-to'g'ri R2'dan.
+// Fayl nomlari tasodifiy va hech qachon qayta yozilmaydi
+// (`immutable`), shuning uchun eskirgan nusxa berilmaydi.
+const UPLOAD_EDGE_MAX_BYTES = 8 * 1024 * 1024;
+function uploadEdgeKey(request, url) {
+  if (request.method !== 'GET' || request.headers.get('range')) return null;
+  if (typeof caches === 'undefined' || !caches.default) return null;
+  if (!/\.(jpe?g|png|webp|gif|avif)$/i.test(url.pathname)) return null;
+  return new Request(url.origin + url.pathname, { method: 'GET' });
+}
+
 async function serveUpload(request, env, url) {
   if (!env.UPLOADS) return null;
   const key = decodeURIComponent(url.pathname).replace(/^\//, '');
   if (!key.startsWith('uploads/') || key.includes('..')) return json({ error: 'bad_path' }, 400);
+  const edgeKey = uploadEdgeKey(request, url);
+  if (edgeKey) {
+    try {
+      const hit = await caches.default.match(edgeKey);
+      if (hit) {
+        const etag = hit.headers.get('etag');
+        if (etag && request.headers.get('if-none-match') === etag) {
+          return new Response(null, { status: 304, headers: new Headers(hit.headers) });
+        }
+        return hit;
+      }
+    } catch { /* kesh o'qilmasa — oddiy yo'l */ }
+  }
   const head = await env.UPLOADS.head(key);
   if (!head) return null;
   const headers = buildUploadResponseHeaders(head, key);
@@ -7114,6 +7148,17 @@ async function serveUpload(request, env, url) {
   const obj = await env.UPLOADS.get(key);
   if (!obj) return null;
   headers.set('content-length', String(head.size));
+  if (edgeKey && head.size <= UPLOAD_EDGE_MAX_BYTES
+    && String(headers.get('content-type') || '').startsWith('image/')) {
+    // Bir marta o'qiladi va ikki javob shu bufferdan quriladi:
+    // biri keshga, biri odamga.
+    const buf = typeof obj.arrayBuffer === 'function'
+      ? await obj.arrayBuffer() : await new Response(obj.body).arrayBuffer();
+    try {
+      await caches.default.put(edgeKey, new Response(buf, { status: 200, headers }));
+    } catch { /* kesh yozilmasa ham rasm beriladi */ }
+    return new Response(buf, { status: 200, headers });
+  }
   return new Response(obj.body, { status: 200, headers });
 }
 

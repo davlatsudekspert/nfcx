@@ -111,6 +111,9 @@ jobs:
       # Qayta ishlatilgan post raqami: eski izoh yangi postda ko'rinmasin.
       - name: Eski izoh yangi postga yopishmasin
         run: node scripts/test-comment-recycled-id.mjs
+      # Rasmlar Cloudflare chegara keshida: ikkinchi so'rov R2'ga bormaydi.
+      - name: Rasm chegara keshi
+        run: node scripts/test-upload-edge-cache.mjs
       - name: NFCSTORE FEATURED — slot faqat haqiqiy to'lovdan keyin yonadi
         run: node scripts/test-featured.mjs
       # Shaxsiy NFC ID xaridi: narxni SERVER hisoblaydi, bitta kodni
