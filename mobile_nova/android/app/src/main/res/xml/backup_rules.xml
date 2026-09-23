@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 11 va undan past: avtomatik zaxira.
+     Sessiya tokeni (flutter_secure_storage) Keystore kaliti bilan
+     shifrlangan — kalit qurilmadan chiqmaydi. Fayl yangi telefonga
+     tiklansa, uni o'qib ham, yozib ham bo'lmaydi va foydalanuvchi har
+     ochilishda qayta kirishga majbur bo'lardi. Shuning uchun token
+     fayli zaxiraga KIRMAYDI; mavzu/til kabi sozlamalar kiradi. -->
+<full-backup-content>
+    <exclude domain="sharedpref" path="FlutterSecureStorage.xml"/>
+</full-backup-content>

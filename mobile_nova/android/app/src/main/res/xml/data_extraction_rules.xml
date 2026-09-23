@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+: bulutli zaxira VA telefondan-telefonga ko'chirish.
+     Sabab `backup_rules.xml` dagi bilan bir xil: Keystore bilan
+     shifrlangan sessiya tokeni boshqa qurilmada ochilmaydi. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="FlutterSecureStorage.xml"/>
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="FlutterSecureStorage.xml"/>
+    </device-transfer>
+</data-extraction-rules>

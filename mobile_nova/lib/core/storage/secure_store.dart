@@ -10,7 +10,16 @@ class SecureStore {
   SecureStore([FlutterSecureStorage? storage])
       : _s = storage ??
             const FlutterSecureStorage(
-              aOptions: AndroidOptions(encryptedSharedPreferences: true),
+              // `resetOnError` — shifrlangan fayl ochilmasa (zaxiradan
+              // boshqa qurilmaga tiklangan, Keystore kaliti yo'q) plagin
+              // uni tozalaydi. Aks holda o'qish HAM, yozish HAM har safar
+              // xato berib, sessiya hech qachon saqlanmasdi. Qo'shimcha
+              // himoya: token fayli zaxiradan chiqarilgan
+              // (`res/xml/backup_rules.xml`, `data_extraction_rules.xml`).
+              aOptions: AndroidOptions(
+                encryptedSharedPreferences: true,
+                resetOnError: true,
+              ),
             );
 
   final FlutterSecureStorage _s;
