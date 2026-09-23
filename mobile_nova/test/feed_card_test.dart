@@ -31,13 +31,16 @@ class _FeedRepo extends SocialRepository {
   _FeedRepo() : super(ApiClient());
 
   int likeCalls = 0;
+  final likedCompany = <bool>[];
   bool likeFails = false;
   bool serverLiked = true;
   int serverCount = 9;
 
   @override
-  Future<Result<({bool liked, int count})>> like(int id) async {
+  Future<Result<({bool liked, int count})>> like(int id,
+      {bool company = false}) async {
     likeCalls++;
+    likedCompany.add(company);
     // Haqiqiy tarmoq kabi kechikadi — optimistik holatni ko'rish
     // uchun. Aks holda u darhol almashib ketardi.
     await Future<void>.delayed(const Duration(milliseconds: 40));

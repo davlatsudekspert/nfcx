@@ -1902,4 +1902,17 @@ class LRu extends L {
   @override
   String get catalogNoPaymentNote =>
       'Заказ и оплата — по договорённости с продавцом. Избранное хранится на этом телефоне.';
+
+  @override
+  String get reelSavedLocal => 'Сохранено — на этом телефоне';
+
+  @override
+  String get reelUnsaved => 'Удалено из сохранённых';
+
+  @override
+  String get reelBlockAuthor => 'Заблокировать автора';
+
+  @override
+  String get reelBlocked =>
+      'Заблокировано — контент автора больше не показывается';
 }

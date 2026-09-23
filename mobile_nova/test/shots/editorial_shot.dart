@@ -26,6 +26,10 @@ import 'package:nfcstore_nova/features/auth/session.dart';
 import 'package:nfcstore_nova/features/business/business_forms.dart';
 import 'package:nfcstore_nova/features/business/business_intro.dart';
 import 'package:nfcstore_nova/features/profile/profile_repository.dart';
+import 'package:nfcstore_nova/features/social/reels_screen.dart';
+import 'package:video_player_platform_interface/video_player_platform_interface.dart';
+
+import '../support/fake_video_platform.dart';
 import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
 import 'package:nfcstore_nova/routing/router.dart';
 import 'package:nfcstore_nova/routing/routes.dart';
@@ -155,7 +159,65 @@ class _RichSocial extends SocialRepository {
 
   @override
   Future<Result<void>> markStorySeen(int id) async => const Ok(null);
+
+  @override
+  Future<Result<({List<Comment> items, bool hasMore, int total})>> comments(
+          String kind, int id, {int page = 1}) async =>
+      Ok((
+        items: [
+          Comment(
+              id: 1,
+              code: 'ALI000',
+              authorName: 'Aliyorbek',
+              authorAvatar: '$_a/z_post_rooftop.jpg',
+              text: 'Juda chiroyli chiqibdi! Karta qayerdan olinadi?',
+              likes: 4,
+              createdAt: DateTime(2026, 9, 22, 20)),
+          Comment(
+              id: 2,
+              code: 'MHR555',
+              authorName: 'Mohira Mansurova',
+              text: 'Dizayn zo‘r 👏',
+              likes: 2,
+              createdAt: DateTime(2026, 9, 22, 21)),
+          Comment(
+              id: 3,
+              code: 'VIP001',
+              authorName: 'Muhammad Aliyev',
+              authorAvatar: '$_a/z_portrait.jpg',
+              text: 'Rahmat! Profilimdagi havola orqali.',
+              mine: true,
+              createdAt: DateTime(2026, 9, 22, 22)),
+        ],
+        hasMore: false,
+        total: 36,
+      ));
 }
+
+final _reelPosts = [
+  Post(
+    id: 301,
+    code: 'PPP777',
+    authorName: 'Mashrabboy',
+    authorAvatar: '$_a/z_post_cafe.jpg',
+    text: 'Kechki Toshkent — bir tegishda tanishuv. #nfcstore',
+    mediaUrls: const ['https://nfcstore.uz/uploads/reel1.mp4'],
+    isVideo: true,
+    likes: 1284,
+    comments: 36,
+  ),
+  Post(
+    id: 302,
+    code: 'NFCSTORE',
+    authorName: 'NFCSTORE',
+    authorKind: 'company',
+    text: 'Yangi metall kartalar',
+    mediaUrls: const ['https://nfcstore.uz/uploads/reel2.mp4'],
+    isVideo: true,
+    likes: 312,
+    comments: 12,
+  ),
+];
 
 class _RichProfile extends ProfileRepository {
   _RichProfile() : super(ApiClient());
@@ -265,6 +327,7 @@ Future<List<Override>> _overrides() async {
     socialRepositoryProvider.overrideWithValue(_RichSocial()),
     discoverRepositoryProvider.overrideWithValue(_RichDiscover()),
     profileRepositoryProvider.overrideWithValue(_RichProfile()),
+    reelsProvider.overrideWith((ref) async => _reelPosts),
   ];
 }
 
@@ -284,7 +347,7 @@ void _size(WidgetTester tester, Size s) {
 /// Router orqali tab ekrani.
 Future<void> tabShot(
     WidgetTester tester, String location, String name, Size s,
-    {bool end = false, String? tapText, Object? extra}) async {
+    {bool end = false, String? tapText, Key? tapKey, Object? extra}) async {
   _size(tester, s);
   late GoRouter router;
   await tester.pumpWidget(ProviderScope(
@@ -309,6 +372,12 @@ Future<void> tabShot(
   await _settle(tester);
   router.go(location, extra: extra);
   await _settle(tester, 20);
+  if (tapKey != null) {
+    await tester.tap(find.byKey(tapKey).hitTestable().first);
+    await _settle(tester, 12);
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
+    await _settle(tester, 6);
+  }
   if (tapText != null) {
     await tester.tap(find.text(tapText).hitTestable().first);
     await _settle(tester, 12);
@@ -361,6 +430,11 @@ Future<void> soloShot(
 void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
+    // Video o'rniga demo kadr — Reels suratlari uchun.
+    VideoPlayerPlatform.instance = FakeVideoPlatform(frames: const [
+      '$_a/z_post_evening.jpg',
+      '$_a/m_card_metal.jpg',
+    ]);
     // Musiqa kesh-menejeri vaqtinchalik papka so'raydi.
     final tmp = Directory.systemTemp.createTempSync('ed_shot').path;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -382,6 +456,13 @@ void main() {
     testWidgets('product $w',
         (t) => tabShot(t, Routes.catalogProduct('NFCSTORE', 'p1'), 'product-$w', s,
             extra: _products.first));
+    testWidgets('reels $w', (t) => tabShot(t, Routes.reels, 'reels-$w', s));
+    testWidgets('reels-comments $w',
+        (t) => tabShot(t, Routes.reels, 'reels-comments-$w', s,
+            tapKey: const ValueKey('reel-comments')));
+    testWidgets('reels-more $w',
+        (t) => tabShot(t, Routes.reels, 'reels-more-$w', s,
+            tapKey: const ValueKey('reel-more')));
     testWidgets('nfc $w', (t) => tabShot(t, Routes.nfc, 'nfc-$w', s));
     testWidgets('nfc-end $w',
         (t) => tabShot(t, Routes.nfc, 'nfc-end-$w', s, end: true));

@@ -84,6 +84,7 @@ class Prefs {
   static const _kLockBio = 'nova.appLockBiometric';
   static const _kNotif = 'nova.notif.';
   static const _kCatalogFav = 'nova.catalogFavorites';
+  static const _kSavedReels = 'nova.savedReels';
 
   String? get themeId => _p.getString(_kTheme);
   Future<void> setThemeId(String v) => _p.setString(_kTheme, v);
@@ -142,4 +143,9 @@ class Prefs {
       _p.getStringList(_kCatalogFav) ?? const [];
   Future<void> setCatalogFavorites(List<String> keys) =>
       _p.setStringList(_kCatalogFav, keys);
+
+  /// Saqlangan reel'lar (`p:12`, `c:7`). Faqat shu qurilmada.
+  List<String> get savedReels => _p.getStringList(_kSavedReels) ?? const [];
+  Future<void> setSavedReels(List<String> keys) =>
+      _p.setStringList(_kSavedReels, keys);
 }

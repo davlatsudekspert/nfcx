@@ -1908,4 +1908,16 @@ class LUz extends L {
   @override
   String get catalogNoPaymentNote =>
       'Buyurtma va to‘lov sotuvchi bilan kelishiladi. Sevimlilar shu telefonda saqlanadi.';
+
+  @override
+  String get reelSavedLocal => 'Saqlandi — shu telefonda';
+
+  @override
+  String get reelUnsaved => 'Saqlanganlardan olindi';
+
+  @override
+  String get reelBlockAuthor => 'Muallifni bloklash';
+
+  @override
+  String get reelBlocked => 'Bloklandi — uning kontenti endi ko‘rinmaydi';
 }

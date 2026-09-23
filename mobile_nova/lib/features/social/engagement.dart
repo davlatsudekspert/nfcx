@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/profile_context.dart';
 import '../../core/errors/app_error.dart';
+import '../../core/utils/result.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/social_repository.dart';
 import '../business/business_providers.dart';
@@ -21,7 +22,14 @@ import '../profile/profile_repository.dart';
 /// Bitta postning layk holati.
 typedef LikeState = ({bool liked, int count});
 
-class PostLikes extends StateNotifier<Map<int, LikeState>> {
+/// Layk holati kaliti: tur + id.
+///
+/// Kompaniya va shaxsiy postlarning `id` lari ALOHIDA sanaladi —
+/// faqat `id` bo'yicha saqlansa, kompaniyaning 7-posti bosilganda
+/// shaxsiy 7-postning yuragi ham qizarardi.
+String likeKey(Post p) => '${p.isCompany ? 'c' : 'p'}:${p.id}';
+
+class PostLikes extends StateNotifier<Map<String, LikeState>> {
   PostLikes(this._ref) : super(const {});
   final Ref _ref;
 
@@ -33,13 +41,14 @@ class PostLikes extends StateNotifier<Map<int, LikeState>> {
   /// "eski holati" birinchisining OPTIMISTIK qiymati bo'lardi —
   /// ya'ni xato bo'lganda hech qachon serverda turmagan holatga
   /// "qaytarilardi".
-  final _busy = <int>{};
+  final _busy = <String>{};
 
-  bool isBusy(int id) => _busy.contains(id);
+  bool isBusy(Post p) => _busy.contains(likeKey(p));
 
   /// Postning HOZIRGI holati: mahalliy o'zgarish bo'lsa o'sha,
   /// aks holda serverdan kelgani.
-  LikeState of(Post p) => state[p.id] ?? (liked: p.liked, count: p.likes);
+  LikeState of(Post p) =>
+      state[likeKey(p)] ?? (liked: p.liked, count: p.likes);
 
   /// Bosilganda holat DARHOL o'zgaradi, so'ng server javobi
   /// o'rnatiladi.
@@ -48,18 +57,21 @@ class PostLikes extends StateNotifier<Map<int, LikeState>> {
   /// bo'ladi va chaqiruvchi buni foydalanuvchiga ko'rsatishi
   /// kerak: jimgina orqaga qaytgan yurak odamni chalg'itadi.
   Future<AppError?> toggle(Post p) async {
-    if (_busy.contains(p.id)) return null;
-    _busy.add(p.id);
+    final k = likeKey(p);
+    if (_busy.contains(k)) return null;
+    _busy.add(k);
 
-    final before = state[p.id];
+    final before = state[k];
     final now = of(p);
     state = {
       ...state,
-      p.id: (liked: !now.liked, count: now.count + (now.liked ? -1 : 1)),
+      k: (liked: !now.liked, count: now.count + (now.liked ? -1 : 1)),
     };
 
-    final res = await _ref.read(socialRepositoryProvider).like(p.id);
-    _busy.remove(p.id);
+    final res = await _ref
+        .read(socialRepositoryProvider)
+        .like(p.id, company: p.isCompany);
+    _busy.remove(k);
     // Ekran yopilgan bo'lsa holatga tegmaymiz — `StateNotifier`
     // o'chirilgandan keyin yozish istisno beradi.
     if (!mounted) return null;
@@ -69,15 +81,15 @@ class PostLikes extends StateNotifier<Map<int, LikeState>> {
       // o'rnatiladi: boshqa qurilmadan bosilgan layklar ham
       // hisobga olinadi.
       ok: (v) {
-        state = {...state, p.id: (liked: v.liked, count: v.count)};
+        state = {...state, k: (liked: v.liked, count: v.count)};
         return null;
       },
       err: (e) {
         final m = {...state};
         if (before == null) {
-          m.remove(p.id);
+          m.remove(k);
         } else {
-          m[p.id] = before;
+          m[k] = before;
         }
         state = m;
         return e;
@@ -86,7 +98,8 @@ class PostLikes extends StateNotifier<Map<int, LikeState>> {
   }
 }
 
-final postLikesProvider = StateNotifierProvider<PostLikes, Map<int, LikeState>>(
+final postLikesProvider =
+    StateNotifierProvider<PostLikes, Map<String, LikeState>>(
   PostLikes.new,
 );
 
@@ -132,7 +145,10 @@ class FollowOverrides extends StateNotifier<Map<String, bool>> {
   bool isBusy(String code) => _busy.contains(code);
 
   /// `null` qaytsa — o'tdi, aks holda holat eskisiga qaytgan.
-  Future<AppError?> toggle(String code, {required bool following}) async {
+  ///
+  /// [company] — kod kompaniya identifikatori (Business ID).
+  Future<AppError?> toggle(String code,
+      {required bool following, bool company = false}) async {
     if (_busy.contains(code)) return null;
     _busy.add(code);
 
@@ -140,7 +156,16 @@ class FollowOverrides extends StateNotifier<Map<String, bool>> {
     state = {...state, code: !following};
 
     final repo = _ref.read(profileRepositoryProvider);
-    final res = following ? await repo.unfollow(code) : await repo.follow(code);
+    final Result<void> res;
+    if (company) {
+      final r = await repo.toggleCompanyFollow(code);
+      // Toggle: server holatni o'zi aytadi — kutilgani bilan mos
+      // kelmasa (boshqa qurilmadan o'zgargan), server haqiqati olinadi.
+      if (r case Ok(:final value)) state = {...state, code: value};
+      res = r.map((_) {});
+    } else {
+      res = following ? await repo.unfollow(code) : await repo.follow(code);
+    }
     _busy.remove(code);
     if (!mounted) return null;
 

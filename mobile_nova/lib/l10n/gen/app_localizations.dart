@@ -3716,6 +3716,30 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Buyurtma va to‘lov sotuvchi bilan kelishiladi. Sevimlilar shu telefonda saqlanadi.'**
   String get catalogNoPaymentNote;
+
+  /// No description provided for @reelSavedLocal.
+  ///
+  /// In uz, this message translates to:
+  /// **'Saqlandi — shu telefonda'**
+  String get reelSavedLocal;
+
+  /// No description provided for @reelUnsaved.
+  ///
+  /// In uz, this message translates to:
+  /// **'Saqlanganlardan olindi'**
+  String get reelUnsaved;
+
+  /// No description provided for @reelBlockAuthor.
+  ///
+  /// In uz, this message translates to:
+  /// **'Muallifni bloklash'**
+  String get reelBlockAuthor;
+
+  /// No description provided for @reelBlocked.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bloklandi — uning kontenti endi ko‘rinmaydi'**
+  String get reelBlocked;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

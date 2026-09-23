@@ -1908,4 +1908,16 @@ class LEn extends L {
   @override
   String get catalogNoPaymentNote =>
       'Orders and payment are arranged with the seller. Favorites are stored on this phone.';
+
+  @override
+  String get reelSavedLocal => 'Saved — on this phone';
+
+  @override
+  String get reelUnsaved => 'Removed from saved';
+
+  @override
+  String get reelBlockAuthor => 'Block author';
+
+  @override
+  String get reelBlocked => 'Blocked — you won’t see their content';
 }

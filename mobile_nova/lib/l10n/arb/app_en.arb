@@ -734,5 +734,9 @@
   "catalogSeller": "Seller",
   "catalogOpenSeller": "Seller page",
   "catalogFavorite": "Favorites",
-  "catalogNoPaymentNote": "Orders and payment are arranged with the seller. Favorites are stored on this phone."
+  "catalogNoPaymentNote": "Orders and payment are arranged with the seller. Favorites are stored on this phone.",
+  "reelSavedLocal": "Saved — on this phone",
+  "reelUnsaved": "Removed from saved",
+  "reelBlockAuthor": "Block author",
+  "reelBlocked": "Blocked — you won’t see their content"
 }

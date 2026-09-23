@@ -44,6 +44,11 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^5.0.0
 
+  # Reels testlari: soxta video platformasi (haqiqiy dekodersiz
+  # oldindan yuklash / yo'q qilish / tabdan chiqishni sinash uchun).
+  # `video_player` ning o'zi shu paketga tayanadi — yangi kod emas.
+  video_player_platform_interface: ^6.2.0
+
   # HAQIQIY HISOB E2E — emulyatorda ishlaydi, haqiqiy backendga
   # ulanadi. Oddiy `flutter test` bu papkani ko'rmaydi, shuning uchun
   # sinov hisobisiz ham `flutter test` o'tadi.

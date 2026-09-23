@@ -130,13 +130,28 @@ class Capsule extends StatelessWidget {
               Icon(icon, size: dense ? 13 : 15, color: fg),
               const SizedBox(width: 6),
             ],
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: 'Manrope',
-                fontSize: dense ? 11.5 : 12.5,
-                fontWeight: FontWeight.w600,
-                color: fg,
+            // UZUN YORLIQ EKRANDAN CHIQMAYDI.
+            //
+            // Shikoyat sabablari ("Diniy haqorat, ekstremizm...") tor
+            // ekranda kapsulani ekrandan tashqariga itarardi (RenderFlex
+            // overflow). `Flexible` bu yerda ishlatib bo'lmaydi — kapsula
+            // gorizontal ro'yxatlarda ham turadi (cheksiz kenglik). Shuning
+            // uchun matnga ekran kengligidan kelib chiqqan chegara
+            // beriladi: sig'masa ikki qatorga o'tadi.
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.sizeOf(context).width - 140,
+              ),
+              child: Text(
+                label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: 'Manrope',
+                  fontSize: dense ? 11.5 : 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: fg,
+                ),
               ),
             ),
           ],

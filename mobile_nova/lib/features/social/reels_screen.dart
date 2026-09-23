@@ -4,6 +4,12 @@ import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../app/profile_context.dart';
+import '../../app/providers.dart';
+import '../../core/storage/secure_store.dart';
+import 'comments.dart';
+import 'engagement.dart';
+import 'moderation.dart';
+
 import '../../core/network/api_client.dart';
 import '../../core/utils/sharing.dart';
 import '../../data/models/models.dart';
@@ -75,13 +81,40 @@ final reelsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
   );
 });
 
+/// Saqlangan reel'lar — SHU QURILMADA.
+///
+/// Serverda "saqlash" API'si yo'q. Shuning uchun saqlash telefon
+/// xotirasida turadi va buni odamga aytamiz (snackbar) — soxta
+/// "hisobingizga saqlandi" yo'q.
+class SavedReels extends StateNotifier<Set<String>> {
+  SavedReels(this._prefs) : super(_prefs.savedReels.toSet());
+  final Prefs _prefs;
+
+  /// `true` — endi saqlangan.
+  Future<bool> toggle(Post p) async {
+    final k = likeKey(p);
+    final next = {...state};
+    final added = next.add(k);
+    if (!added) next.remove(k);
+    state = next;
+    await _prefs.setSavedReels(next.toList());
+    return added;
+  }
+}
+
+final savedReelsProvider = StateNotifierProvider<SavedReels, Set<String>>(
+    (ref) => SavedReels(ref.watch(prefsProvider)));
+
 /// Vertikal Reels lentasi.
 ///
-/// XOTIRA BOSHQARUVI: bir vaqtda FAQAT ko'rinib turgan video
-/// yaratiladi va o'ynaydi. Qo'shni sahifalar `PageView` tomonidan
-/// qurilsa ham, ularning kontrolleri `visible: false` bo'lgani uchun
-/// hech narsa yuklamaydi. Shusiz o'nta 1080p video RAM'ni to'ldirib,
-/// ilova o'lardi.
+/// XOTIRA VA SILLIQLIK:
+///   * bir vaqtda ko'pi bilan IKKI video kontrolleri yashaydi —
+///     ko'rinib turgani va KEYINGISI (oldindan yuklangan, pauzada).
+///     Silaganda keyingi video darhol boshlanadi, spinner kutilmaydi;
+///   * qolganlari yo'q qilinadi — o'nta 1080p video RAM'ni to'ldirib
+///     ilovani o'ldirardi;
+///   * Reels tabidan chiqilganda (pastki navigatsiya) HAMMASI to'xtaydi
+///     va yo'q qilinadi — boshqa bo'limda ovoz eshitilmaydi.
 class ReelsScreen extends ConsumerStatefulWidget {
   const ReelsScreen({super.key});
 
@@ -104,15 +137,14 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
     // Reels — pastki navigatsiyaning 4-tabi (`HomeShell.tabRoutes`).
     final onReelsTab = ref.watch(activeTabProvider) == 3;
     final l = L.of(context);
-    final t = context.tokens;
     final reels = ref.watch(reelsProvider);
 
     return Scaffold(
-      backgroundColor: t.bg2,
+      backgroundColor: Colors.black,
       extendBody: true,
       body: reels.when(
-        loading: () => Center(
-          child: CircularProgressIndicator(color: t.accent2, strokeWidth: 2),
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
         ),
         error: (e, __) => StatePanel.fromError(
           context,
@@ -137,21 +169,25 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
           return Stack(
             children: [
               PageView.builder(
+                key: const ValueKey('reels-pager'),
                 controller: _page,
                 scrollDirection: Axis.vertical,
+                // KEYINGI SAHIFA OLDINDAN QURILADI. Usiz `PageView`
+                // faqat ko'rinayotgan sahifani quradi va "oldindan
+                // yuklash" hech qachon ishga tushmasdi — har silashda
+                // spinner kutilardi.
+                allowImplicitScrolling: true,
                 itemCount: items.length,
                 onPageChanged: (i) => setState(() => _index = i),
                 itemBuilder: (context, i) => _ReelPage(
+                  key: ValueKey(likeKey(items[i])),
                   post: items[i],
                   // KO'RINISH IKKI SHARTDAN IBORAT: bu sahifa
                   // ochiqmi VA Reels tabining O'ZI ko'rinyaptimi.
-                  //
-                  // Ikkinchisi shart, chunki tablar
-                  // `IndexedStack` da turadi va boshqa bo'limga
-                  // o'tganda bu ekran O'CHMAYDI — faqat
-                  // berkitiladi. Usiz odam Profilda turib Reels
-                  // ovozini eshitardi.
+                  // Tablar yopilmaydi, faqat berkitiladi — usiz odam
+                  // Profilda turib Reels ovozini eshitardi.
                   visible: i == _index && onReelsTab,
+                  preload: i == _index + 1 && onReelsTab,
                 ),
               ),
               _TopBar(onCreate: () => context.push(Routes.reelCreate)),
@@ -198,10 +234,20 @@ class _TopBar extends StatelessWidget {
 }
 
 class _ReelPage extends ConsumerStatefulWidget {
-  const _ReelPage({required this.post, required this.visible});
+  const _ReelPage({
+    super.key,
+    required this.post,
+    required this.visible,
+    this.preload = false,
+  });
 
   final Post post;
+
+  /// Ekranda — o'ynaydi.
   final bool visible;
+
+  /// Keyingi sahifa — yuklanadi, lekin O'YNAMAYDI va ovozsiz turadi.
+  final bool preload;
 
   @override
   ConsumerState<_ReelPage> createState() => _ReelPageState();
@@ -211,66 +257,86 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
   VideoPlayerController? _controller;
   bool _ready = false;
   bool _failed = false;
-  bool _liked = false;
-  int _likes = 0;
 
-  /// Audio egaligi reyestri — `initState` da bir marta olinadi.
+  /// Izohlar soni — varaqda yangi izoh yozilsa yangilanadi.
+  int? _comments;
+
+  /// Yurak "portlashi" — ikki marta bosilganda.
+  bool _burst = false;
+
+  /// Har bir ochish urinishining raqami.
   ///
-  /// `dispose()` ichida `ref.read` ishlatib bo'lmaydi (Riverpod
-  /// istisno otadi), reyestr esa konteyner bilan yashaydi va
-  /// vidjetdan uzoq umr ko'radi — `inline_video.dart` dagi naqsh.
+  /// NIMA UCHUN. Video yuklanayotgan paytda odam pastki navigatsiya
+  /// bilan boshqa tabga o'tsa, kontroller yo'q qilinadi — lekin
+  /// eski `initialize()` davom etib, keyin YO'Q QILINGAN kontrollerga
+  /// `play()` chaqirardi va sahifa "video ochilmadi" holatida QOTIB
+  /// qolardi (qaytib kelganda ham). Raqam mos kelmasa natija
+  /// tashlab yuboriladi.
+  int _gen = 0;
+
   late final AudioOwner _owner;
 
   @override
   void initState() {
     super.initState();
     _owner = ref.read(audioOwnerProvider);
-    _liked = widget.post.liked;
-    _likes = widget.post.likes;
-    if (widget.visible) _open();
+    _sync();
   }
 
   @override
   void didUpdateWidget(covariant _ReelPage old) {
     super.didUpdateWidget(old);
-    if (widget.visible && !old.visible) {
-      _open();
-    } else if (!widget.visible && old.visible) {
-      _close();
+    if (old.visible != widget.visible || old.preload != widget.preload) {
+      _sync();
     }
   }
 
-  Future<void> _open() async {
-    // Video ovoz chiqaradi — ya'ni u audio EGASI bo'ladi. Shu
-    // paytda profil musiqasi ijro etilayotgan bo'lsa, u to'xtaydi:
-    // ikki manba bir vaqtda ovoz chiqarmaydi.
-    _owner.take(this, _pauseForOther);
-
-    if (_controller != null) {
-      await _controller!.play();
-      return;
+  void _sync() {
+    if (widget.visible || widget.preload) {
+      _activate();
+    } else {
+      _release();
     }
-    final url = widget.post.mediaUrls.first;
-    final c = VideoPlayerController.networkUrl(Uri.parse(url));
-    _controller = c;
-    try {
-      await c.initialize();
-      if (!mounted) return;
-      await c.setLooping(true);
-      // Ovoz holati lentaga tegishli, videoga emas: yangi sahifa
-      // ochilganda ham o'sha tanlov qo'llanadi.
+  }
+
+  Future<void> _activate() async {
+    var c = _controller;
+    if (c == null) {
+      final gen = ++_gen;
+      _failed = false;
+      c = VideoPlayerController.networkUrl(
+        Uri.parse(widget.post.mediaUrls.first),
+        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+      );
+      _controller = c;
+      try {
+        await c.initialize();
+        if (gen != _gen || !mounted) return;
+        await c.setLooping(true);
+        _ready = true;
+      } catch (_) {
+        if (gen == _gen && mounted) setState(() => _failed = true);
+        return;
+      }
+    }
+    if (!mounted || _controller != c || !_ready) return;
+
+    if (widget.visible) {
+      // Video ovoz chiqaradi — u audio EGASI bo'ladi. Profil musiqasi
+      // o'ynayotgan bo'lsa to'xtaydi: ikki manba birga ovoz chiqarmaydi.
+      _owner.take(this, _pauseForOther);
       await c.setVolume(ref.read(reelsMutedProvider) ? 0 : 1);
       await c.play();
-      setState(() => _ready = true);
-    } catch (_) {
-      if (mounted) setState(() => _failed = true);
+    } else {
+      // Oldindan yuklangan: jim va pauzada, boshidan.
+      await c.setVolume(0);
+      await c.pause();
+      await c.seekTo(Duration.zero);
     }
+    if (mounted) setState(() {});
   }
 
-  /// Ovozni o'chirish/yoqish.
-  ///
-  /// Tanlov BUTUN lentaga tegishli (`reelsMutedProvider`), shuning
-  /// uchun keyingi videoga silaganda ham saqlanadi.
+  /// Ovozni o'chirish/yoqish — BUTUN lenta uchun.
   Future<void> _toggleMute() async {
     final next = !ref.read(reelsMutedProvider);
     ref.read(reelsMutedProvider.notifier).state = next;
@@ -278,51 +344,84 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
     if (mounted) setState(() {});
   }
 
-  /// Boshqa audio egalik olganda — videoni to'xtatamiz.
   void _pauseForOther() {
     _controller?.pause();
     if (mounted) setState(() {});
   }
 
-  Future<void> _close() async {
+  void _release() {
     // Kontroller YO'Q QILINADI, faqat to'xtatilmaydi: to'xtatilgan
     // video ham dekoder va bufer xotirasini ushlab turadi.
+    _gen++;
     final c = _controller;
     _controller = null;
     _ready = false;
-    await c?.pause();
-    await c?.dispose();
+    _failed = false;
+    if (c != null) {
+      c.pause().catchError((_) {});
+      c.dispose();
+    }
     _owner.release(this);
     if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    _gen++;
     _controller?.dispose();
-    // `ref.read` EMAS: `dispose()` da u istisno otadi va egalik
-    // HECH QACHON bo'shatilmasdi — Reels yopilgandan keyin ham
-    // audio egasi shu ekranda qolib, keyingi video ovozsiz
-    // boshlanardi. `inline_video.dart` da ham shu naqsh.
+    // `ref.read` EMAS: `dispose()` da u istisno otadi.
     _owner.release(this);
     super.dispose();
   }
 
-  Future<void> _like() async {
-    // Optimistik yangilanish: bosilgan zahoti raqam o'zgaradi. Xato
-    // bo'lsa eski holatga qaytariladi.
-    setState(() {
-      _liked = !_liked;
-      _likes += _liked ? 1 : -1;
+  void _togglePlay() {
+    final c = _controller;
+    if (c == null || !_ready) {
+      // Xato bo'lgan video — bosilsa qayta urinish.
+      if (_failed) {
+        _release();
+        _sync();
+      }
+      return;
+    }
+    setState(() => c.value.isPlaying ? c.pause() : c.play());
+  }
+
+  Future<void> _like({bool onlyOn = false}) async {
+    final likes = ref.read(postLikesProvider.notifier);
+    if (onlyOn && likes.of(widget.post).liked) return;
+    final e = await likes.toggle(widget.post);
+    if (e != null && mounted) _snack(describeError(L.of(context), e));
+  }
+
+  void _doubleTap() {
+    setState(() => _burst = true);
+    _like(onlyOn: true);
+    Future<void>.delayed(const Duration(milliseconds: 650), () {
+      if (mounted) setState(() => _burst = false);
     });
-    final res = await ref.read(socialRepositoryProvider).like(widget.post.id);
-    if (!mounted) return;
-    res.when(
-      ok: (_) {},
-      err: (_) => setState(() {
-        _liked = !_liked;
-        _likes += _liked ? 1 : -1;
-      }),
+  }
+
+  void _snack(String text) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(text)));
+  }
+
+  Future<void> _openComments() async {
+    await showReelComments(
+      context,
+      widget.post,
+      onTotal: (n) {
+        if (mounted) setState(() => _comments = n);
+      },
     );
+  }
+
+  Future<void> _save() async {
+    final l = L.of(context);
+    final on = await ref.read(savedReelsProvider.notifier).toggle(widget.post);
+    if (mounted) _snack(on ? l.reelSavedLocal : l.reelUnsaved);
   }
 
   @override
@@ -331,39 +430,55 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
     final l = L.of(context);
     final p = widget.post;
     final muted = ref.watch(reelsMutedProvider);
+    final like = ref.watch(postLikesProvider
+        .select((m) => m[likeKey(p)] ?? (liked: p.liked, count: p.likes)));
+    final saved = ref.watch(savedReelsProvider).contains(likeKey(p));
+    final mine = ref.watch(isMineProvider(p.code));
+    final following = ref.watch(followingOfProvider(p.code));
+    final c = _controller;
+    final playing = c != null && _ready && c.value.isPlaying;
 
     return GestureDetector(
-      onTap: () {
-        final c = _controller;
-        if (c == null) return;
-        setState(() => c.value.isPlaying ? c.pause() : c.play());
-      },
+      onTap: _togglePlay,
+      onDoubleTap: _doubleTap,
       child: Stack(
         fit: StackFit.expand,
         children: [
-          ColoredBox(color: t.bg2),
-          if (_ready && _controller != null)
-            // `contain` — yotiq yoki kvadrat video kesilmasin.
-            // Ilgari `cover` edi va 16:9 video tik ekranda ikki
-            // yonidan qirqilib, o'rtasi kattalashib ketardi.
+          const ColoredBox(color: Colors.black),
+          if (_ready && c != null)
+            // TIK video (9:16) ekranni TO'LIQ qoplaydi — tepada/pastda
+            // qora chiziq qolmaydi. Yotiq yoki kvadrat video esa
+            // `contain`: uning ikki yoni kesilib ketmasin.
             FittedBox(
-              fit: BoxFit.contain,
+              fit: c.value.aspectRatio <= .75 ? BoxFit.cover : BoxFit.contain,
               child: SizedBox(
-                width: _controller!.value.size.width,
-                height: _controller!.value.size.height,
-                child: VideoPlayer(_controller!),
+                width: c.value.size.width,
+                height: c.value.size.height,
+                child: VideoPlayer(c),
               ),
             )
           else if (_failed)
             Center(
-              child: Icon(Icons.videocam_off_rounded, size: 40, color: t.text3),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.videocam_off_rounded, size: 40, color: t.text3),
+                  const SizedBox(height: Gap.sm),
+                  Text(l.actionRetry,
+                      style: const TextStyle(
+                          fontFamily: AppType.sans,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white70)),
+                ],
+              ),
             )
           else
-            Center(
-              child: CircularProgressIndicator(color: t.accent2, strokeWidth: 2),
+            const Center(
+              child: CircularProgressIndicator(
+                  color: Colors.white70, strokeWidth: 2),
             ),
-          // Pastdagi matn o'qilishi uchun gradient — videoning rangidan
-          // qat'i nazar kontrast saqlanadi.
+          // Pastdagi matn o'qilishi uchun gradient.
           Positioned.fill(
             child: IgnorePointer(
               child: DecoratedBox(
@@ -371,119 +486,186 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
                   gradient: LinearGradient(
                     begin: Alignment.center,
                     end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, Colors.black.withValues(alpha: .72)],
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: .72)
+                    ],
                   ),
                 ),
               ),
             ),
           ),
+          // Pauza belgisi — odam bosganini ko'rsin.
+          if (_ready && !playing && widget.visible)
+            const IgnorePointer(
+              child: Center(
+                child: Icon(Icons.play_arrow_rounded,
+                    size: 72, color: Colors.white70),
+              ),
+            ),
+          IgnorePointer(
+            child: Center(
+              child: AnimatedScale(
+                scale: _burst ? 1 : .4,
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutBack,
+                child: AnimatedOpacity(
+                  opacity: _burst ? 1 : 0,
+                  duration: const Duration(milliseconds: 200),
+                  child: const Icon(Icons.favorite_rounded,
+                      size: 96, color: Colors.white),
+                ),
+              ),
+            ),
+          ),
           Positioned(
-            right: Gap.md,
-            bottom: 150,
+            right: 4,
+            bottom: 132,
             child: Column(
               children: [
                 _Action(
-                  icon: _liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                  label: formatCount(_likes),
-                  tint: _liked ? t.error : Colors.white,
+                  key: const ValueKey('reel-like'),
+                  icon: like.liked
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
+                  label: formatCount(like.count),
+                  tint: like.liked ? t.error : Colors.white,
+                  semantic: l.postLike,
                   onTap: _like,
                 ),
-                const SizedBox(height: Gap.xl),
+                const SizedBox(height: Gap.lg),
                 _Action(
+                  key: const ValueKey('reel-comments'),
                   icon: Icons.mode_comment_outlined,
-                  label: formatCount(p.comments),
-                  onTap: () => context.push(Routes.post(p.id, code: p.code)),
+                  label: formatCount(_comments ?? p.comments),
+                  semantic: l.postComments,
+                  onTap: _openComments,
                 ),
-                const SizedBox(height: Gap.xl),
-                // OVOZ. Ilgari Reels'da ovozni boshqarish umuman
-                // YO'Q edi: video to'liq ovoz bilan boshlanardi va
-                // uni faqat ekrandan chiqib to'xtatish mumkin edi.
+                const SizedBox(height: Gap.lg),
+                _Action(
+                  key: const ValueKey('reel-save'),
+                  icon: saved
+                      ? Icons.bookmark_rounded
+                      : Icons.bookmark_border_rounded,
+                  label: l.actionSave,
+                  semantic: l.actionSave,
+                  onTap: _save,
+                ),
+                const SizedBox(height: Gap.lg),
+                _Action(
+                  key: const ValueKey('reel-share'),
+                  icon: Icons.ios_share_rounded,
+                  label: l.actionShare,
+                  semantic: l.actionShare,
+                  onTap: () => p.code.isEmpty
+                      ? shareText(p.text)
+                      : shareLink(
+                          '$kApiBase/${Uri.encodeComponent(p.code)}',
+                          title: p.authorName),
+                ),
+                const SizedBox(height: Gap.lg),
                 _Action(
                   icon: muted
                       ? Icons.volume_off_rounded
                       : Icons.volume_up_rounded,
-                  label: muted ? l.actionUnmute : l.actionMute,
+                  // Yozuvsiz: "Ovozni o'chirish" ustunni kengaytirib,
+                  // tor ekranda muallif ismini siqib qo'yardi.
+                  label: '',
+                  semantic: muted ? l.actionUnmute : l.actionMute,
                   onTap: _toggleMute,
                 ),
-                const SizedBox(height: Gap.xl),
+                const SizedBox(height: Gap.lg),
                 _Action(
-                  icon: Icons.ios_share_rounded,
-                  label: l.actionShare,
-                  // HAQIQIY ulashish. Ilgari bu tugma ham izoh
-                  // tugmasi kabi post ekranini ochardi: yorlig'i
-                  // "Ulashish" bo'lsa-da, tizim ulashish oynasi
-                  // hech qachon chiqmasdi.
-                  onTap: () => p.code.isEmpty
-                      ? shareText(p.text)
-                      : shareLink('$kApiBase/${Uri.encodeComponent(p.code)}',
-                          title: p.authorName),
+                  key: const ValueKey('reel-more'),
+                  icon: Icons.more_horiz_rounded,
+                  label: '',
+                  semantic: l.reportTitle,
+                  onTap: () => _showMore(context, p),
                 ),
               ],
             ),
           ),
           Positioned(
             left: Gap.lg,
-            right: 80,
-            bottom: 120,
+            right: 72,
+            bottom: 112,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                PressableScale(
-                  onTap: p.code.isEmpty
-                      ? null
-                      : () => context.push(
-                          Routes.author(p.code, company: p.isCompany)),
-                  child: Row(
-                    children: [
-                      Avatar(
-                        url: p.authorAvatar,
-                        initials: p.authorName.isEmpty
-                            ? 'N'
-                            : p.authorName.substring(0, 1).toUpperCase(),
-                        size: 40,
-                      ),
-                      const SizedBox(width: Gap.sm),
-                      Flexible(
-                        child: Text(
-                          p.authorName.isEmpty ? p.code : p.authorName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontFamily: AppType.sans,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
+                Row(
+                  children: [
+                    Flexible(
+                      child: PressableScale(
+                        onTap: p.code.isEmpty
+                            ? null
+                            : () => context.push(
+                                Routes.author(p.code, company: p.isCompany)),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Avatar(
+                              url: p.authorAvatar,
+                              initials: p.authorName.isEmpty
+                                  ? 'N'
+                                  : p.authorName.substring(0, 1).toUpperCase(),
+                              size: 40,
+                            ),
+                            const SizedBox(width: Gap.sm),
+                            Flexible(
+                              child: Text(
+                                p.authorName.isEmpty ? p.code : p.authorName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontFamily: AppType.sans,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
+                    ),
+                    // Obuna — faqat begona muallifga.
+                    if (!mine && p.code.isNotEmpty) ...[
+                      const SizedBox(width: Gap.sm),
+                      _FollowPill(
+                        following: following,
+                        onTap: () async {
+                          final e = await ref
+                              .read(followOverridesProvider.notifier)
+                              .toggle(p.code,
+                                  following: following,
+                                  company: p.isCompany);
+                          if (e != null && context.mounted) {
+                            _snack(describeError(l, e));
+                          }
+                        },
+                      ),
                     ],
-                  ),
+                  ],
                 ),
                 if (p.code.isNotEmpty) ...[
                   const SizedBox(height: Gap.sm),
-                  // NFC ID — Reels ham identity tizimining bir qismi
-                  // ekanini ko'rsatadi; bu TikTok'da yo'q bog'lanish.
+                  // NFC ID — Reels ham identity tizimining bir qismi.
                   PressableScale(
                     onTap: () => context.push(
                         Routes.author(p.code, company: p.isCompany)),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 11, vertical: 6),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: .16),
                         borderRadius: R.pill,
-                        border: Border.all(color: Colors.white.withValues(alpha: .3)),
+                        border: Border.all(
+                            color: Colors.white.withValues(alpha: .3)),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.nfc_rounded, size: 13, color: Colors.white),
-                          const SizedBox(width: 5),
-                          Text(
-                            p.code,
-                            style: AppType.monoStyle(
-                                color: Colors.white, size: 11, letterSpacing: 1.2),
-                          ),
-                        ],
+                      child: Text(
+                        p.code,
+                        style: AppType.monoStyle(
+                            color: Colors.white, size: 11, letterSpacing: 1.2),
                       ),
                     ),
                   ),
@@ -506,7 +688,170 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
               ],
             ),
           ),
+          // Ingichka progress — pastki navigatsiyadan yuqorida.
+          if (_ready && c != null && widget.visible)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 96,
+              child: IgnorePointer(
+                child: VideoProgressIndicator(
+                  c,
+                  allowScrubbing: false,
+                  padding: EdgeInsets.zero,
+                  colors: VideoProgressColors(
+                    playedColor: t.brand,
+                    bufferedColor: Colors.white24,
+                    backgroundColor: Colors.white10,
+                  ),
+                ),
+              ),
+            ),
         ],
+      ),
+    );
+  }
+
+  void _showMore(BuildContext context, Post p) {
+    final l = L.of(context);
+    showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      showDragHandle: true,
+      backgroundColor: context.tokens.surfaceSolid,
+      builder: (sheet) => SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              key: const ValueKey('reel-report'),
+              leading: const Icon(Icons.flag_outlined),
+              title: Text(l.reportTitle),
+              onTap: () {
+                Navigator.of(sheet).pop();
+                showReportSheet(
+                  context,
+                  target: p.isCompany ? ReportTarget.companyPost : ReportTarget.post,
+                  targetId: '${p.id}',
+                  ownerCode: p.code,
+                );
+              },
+            ),
+            if (!ref.read(isMineProvider(p.code)) && p.code.isNotEmpty)
+              ListTile(
+                key: const ValueKey('reel-block'),
+                leading: const Icon(Icons.block_rounded),
+                title: Text(l.reelBlockAuthor),
+                onTap: () async {
+                  Navigator.of(sheet).pop();
+                  final res = await ref.read(moderationRepositoryProvider).block(
+                      p.isCompany ? BlockKind.company : BlockKind.record, p.code);
+                  if (!context.mounted) return;
+                  res.when(
+                    ok: (_) {
+                      _snack(l.reelBlocked);
+                      ref.invalidate(reelsProvider);
+                    },
+                    err: (e) => _snack(describeError(l, e)),
+                  );
+                },
+              ),
+            const SizedBox(height: Gap.sm),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Muallifga obuna — video ustida o'qiladigan shaffof kapsula.
+class _FollowPill extends StatelessWidget {
+  const _FollowPill({required this.following, required this.onTap});
+  final bool following;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context);
+    final label = following ? l.actionFollowing : l.actionFollow;
+    return Semantics(
+      button: true,
+      label: label,
+      child: PressableScale(
+        onTap: onTap,
+        child: Container(
+          key: const ValueKey('reel-follow'),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          decoration: BoxDecoration(
+            color: following ? Colors.transparent : Colors.white,
+            borderRadius: R.pill,
+            border: Border.all(color: Colors.white.withValues(alpha: .7)),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontFamily: AppType.sans,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: following ? Colors.white : Colors.black,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Reel izohlari — video ustidan ochiladigan varaq.
+///
+/// Ilgari izoh tugmasi alohida post ekraniga o'tardi va video
+/// to'xtab, lenta joyi yo'qolardi. Endi varaq ochiladi, video orqada
+/// qoladi. Manba o'sha `CommentsSection` — ikkinchi izoh tizimi yo'q.
+Future<void> showReelComments(
+  BuildContext context,
+  Post p, {
+  ValueChanged<int>? onTotal,
+}) {
+  return showModalBottomSheet<void>(
+    context: context,
+    useRootNavigator: true,
+    isScrollControlled: true,
+    showDragHandle: true,
+    backgroundColor: context.tokens.surfaceSolid,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+    ),
+    builder: (_) => _CommentsSheet(post: p, onTotal: onTotal),
+  );
+}
+
+class _CommentsSheet extends ConsumerWidget {
+  const _CommentsSheet({required this.post, this.onTotal});
+  final Post post;
+  final ValueChanged<int>? onTotal;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final kind = post.isCompany ? 'company_post' : 'post';
+    ref.listen(commentsProvider((kind: kind, id: post.id)), (_, next) {
+      final total = next.valueOrNull?.total;
+      if (total != null) onTotal?.call(total);
+    });
+    return Padding(
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * .72),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.only(bottom: Gap.xl),
+          child: CommentsSection(
+            kind: kind,
+            id: post.id,
+            ownerCode: post.code,
+          ),
+        ),
       ),
     );
   }
@@ -514,37 +859,52 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
 
 class _Action extends StatelessWidget {
   const _Action({
+    super.key,
     required this.icon,
     required this.label,
+    required this.semantic,
     this.tint = Colors.white,
     this.onTap,
   });
 
   final IconData icon;
   final String label;
+  final String semantic;
   final Color tint;
   final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => PressableScale(
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        label: semantic,
+        excludeSemantics: true,
+        child: PressableScale(
         onTap: onTap,
+        scale: .86,
+        child: SizedBox(
+        width: 60,
         child: Column(
           children: [
             Icon(icon, size: 28, color: tint, shadows: const [
               Shadow(color: Colors.black54, blurRadius: 10),
             ]),
             const SizedBox(height: 4),
-            Text(
-              label,
-              style: const TextStyle(
-                fontFamily: AppType.sans,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-                shadows: [Shadow(color: Colors.black54, blurRadius: 10)],
+            if (label.isNotEmpty)
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontFamily: AppType.sans,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  shadows: [Shadow(color: Colors.black54, blurRadius: 10)],
+                ),
               ),
-            ),
           ],
         ),
+      ),
+      ),
       );
 }

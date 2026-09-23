@@ -53,9 +53,17 @@ class SocialRepository {
   /// `Result<void>` edi va javobni TASHLAB YUBORARDI. Natijada
   /// ilova sanoqni o'zi taxmin qilishga majbur bo'lardi va ikki
   /// qurilmadan bosilganda son chalkashardi.
-  Future<Result<({bool liked, int count})>> like(int id) async {
-    final res =
-        await _api.post<Map<String, dynamic>>('/api/posts/$id/like', const {});
+  ///
+  /// KOMPANIYA POSTI BOSHQA YO'LDAN. Kompaniya postlarining `id` lari
+  /// alohida sanaladi: `/api/posts/7/like` kompaniyaning 7-postini
+  /// emas, BEGONA odamning 7-shaxsiy postini yoqtirardi. Server buning
+  /// uchun `/api/content-likes/company_post/:id` beradi (lenta ham
+  /// kompaniya layklarini o'sha jadvaldan o'qiydi).
+  Future<Result<({bool liked, int count})>> like(int id,
+      {bool company = false}) async {
+    final res = await _api.post<Map<String, dynamic>>(
+        company ? '/api/content-likes/company_post/$id' : '/api/posts/$id/like',
+        const {});
     return res.map((j) => (
           liked: j['liked'] == true,
           count: (j['count'] as num?)?.toInt() ?? 0,

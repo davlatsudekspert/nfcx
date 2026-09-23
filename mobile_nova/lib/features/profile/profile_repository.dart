@@ -140,6 +140,17 @@ class ProfileRepository {
   Future<Result<void>> unfollow(String code) =>
       _api.post<void>('/api/unfollow/$code');
 
+  /// KOMPANIYAGA OBUNA — boshqa endpoint.
+  ///
+  /// `/api/follow/:code` faqat NFC yozuvini (shaxsiy ID) taniydi.
+  /// Kompaniya uchun server `POST /api/companies/:id/follow` beradi va
+  /// u holatni TESKARIGA o'giradi; javobdagi `following` — yangi holat.
+  Future<Result<bool>> toggleCompanyFollow(String companyId) async {
+    final res = await _api.post<Map<String, dynamic>>(
+        '/api/companies/$companyId/follow', const {});
+    return res.map((j) => j['following'] == true);
+  }
+
   /// Obuna ko'rsatkichlari — VA tashrifchi obunami.
   ///
   /// `isFollowing` ni server O'ZI hisoblaydi (tashrifchi sessiyasi

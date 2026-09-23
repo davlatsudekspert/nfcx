@@ -100,7 +100,7 @@ class _PostScreenState extends ConsumerState<PostScreen> {
         data: (p) {
           final like = ref.watch(
             postLikesProvider.select(
-              (m) => m[p.id] ?? (liked: p.liked, count: p.likes),
+              (m) => m[likeKey(p)] ?? (liked: p.liked, count: p.likes),
             ),
           );
           final liked = like.liked;

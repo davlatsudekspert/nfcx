@@ -45,7 +45,7 @@ class FeedCard extends ConsumerWidget {
 
     final like = ref.watch(
       postLikesProvider.select(
-        (m) => m[post.id] ?? (liked: post.liked, count: post.likes),
+        (m) => m[likeKey(post)] ?? (liked: post.liked, count: post.likes),
       ),
     );
     final mine = ref.watch(isMineProvider(post.code));
@@ -144,7 +144,8 @@ class FeedCard extends ConsumerWidget {
                   following: following,
                   onTap: () async => reportIfFailed(await ref
                       .read(followOverridesProvider.notifier)
-                      .toggle(post.code, following: following)),
+                      .toggle(post.code,
+                          following: following, company: post.isCompany)),
                 ),
             ],
           ),
