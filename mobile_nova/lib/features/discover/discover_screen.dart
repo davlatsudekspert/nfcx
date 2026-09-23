@@ -386,8 +386,8 @@ class _ResultTile extends StatelessWidget {
   }
 
   /// Bosh harflar — ilovaning qolgan joylari bilan BIR XIL qoida:
-  /// ikki so'z bo'lsa har birining birinchi harfi (`Test Foydalanuvchi`
-  /// -> `TF`, ilgari `TE` chiqardi), bitta so'z bo'lsa ikki harf.
+  /// ikki so'z bo'lsa har birining birinchi harfi (`Aziz Karimov`
+  /// -> `AK`, ilgari `AZ` chiqardi), bitta so'z bo'lsa ikki harf.
   String _initials(String name, String fallback) {
     final s = name.trim().isEmpty ? fallback.trim() : name.trim();
     final parts = s.split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
