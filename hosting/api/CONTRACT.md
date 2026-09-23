@@ -22,7 +22,7 @@ Har modul uchun test: `scripts/test-<modul>.mjs` (`scripts/lib/d1-harness.mjs` o
 
 `auth`, `account`, `engagement`, `catalog`, `media`, `admin-extra`,
 `admin-finance`, `telegram`, `assistant`, `moderation`, `comments`,
-`notifications`, `featured`, `catalog-feed`, `marketplace`
+`notifications`, `featured`, `catalog-feed`, `saves`, `marketplace`
 (shu tartibda chaqiriladi — `worker.js: API_MODULES`).
 
 `catalog-feed` — ilova "Tanlov" katalogi, BARCHA bizneslarning
@@ -40,6 +40,16 @@ Yozish: `POST|PATCH /api/companies/:id/catalog[/:item]` qo'shimcha
 `kind`, `marketCategory`, `images[]` (6 tagacha), `priceOnRequest`
 (faqat xizmat) qabul qiladi; ustunlar `ensureCatalogListingColumns`
 bilan ADD COLUMN orqali qo'shiladi, `company.catalogSchema` = 2.
+
+`saves` — saqlanganlar, hisobga bog'langan: `GET /api/saves?kind=reel|listing`,
+`POST /api/saves {kind, ref, saved}` (`user_saves`, 1000 tagacha).
+
+Rasm filtri (`image-moderation.js`, modul emas — `uploadApi` chaqiradi):
+foydalanuvchi rasmi Gemini bilan tekshiriladi; 18+/zo'ravonlik/
+ekstremizm/giyohvandlik/nafrat bo'lsa 422 `{error:'content_blocked',
+category}`, fayl saqlanmaydi, urinish `content_scan_blocks` ga yoziladi.
+Video/GIF va admin yuklashi tekshirilmaydi; xizmat xatosida yuklash
+to'xtamaydi; `MODERATION_OFF=1` bilan o'chadi.
 
 `comments` — izohlar (`content_comments`): `GET|POST
 /api/comments/:kind/:id`, `DELETE /api/comments/:id`, bu yerda
