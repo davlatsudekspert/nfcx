@@ -900,6 +900,9 @@ class LUz extends L {
   String get settingsPayment => 'To‘lov';
 
   @override
+  String get settingsShopSection => 'NFC karta';
+
+  @override
   String get settingsReferral => 'Referal';
 
   @override

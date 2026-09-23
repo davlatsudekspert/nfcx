@@ -6,6 +6,7 @@ import 'package:video_player/video_player.dart';
 
 import '../../design/motion/motion.dart';
 import '../../design/tokens/nfc_tokens.dart';
+import '../../design/widgets/id_plate.dart';
 import '../../design/tokens/shapes.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
@@ -140,7 +141,8 @@ class _MusicControlState extends ConsumerState<MusicControl> {
           height: widget.size,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: t.surfaceSolid,
+            // O'ynayotganda nishon OLTIN — "hozir yangrayapti".
+            color: playing ? IdPlate.gold : t.surfaceSolid,
             border: Border.all(color: t.bg1, width: widget.size * .08),
             boxShadow: [
               BoxShadow(
@@ -150,15 +152,17 @@ class _MusicControlState extends ConsumerState<MusicControl> {
               ),
             ],
           ),
-          // EKVALAYZER BELGISI — doim. Ijro etilayotganda ustunlar
-          // harakatlanadi, to'xtaganda jim turadi: "bu profilda
-          // musiqa bor" va "hozir o'ynayapti" bir belgida.
+          // MUSIQA NOTASI ♪ — hammaga tanish belgi (egasining talabi,
+          // 2026-09: ustunchali ekvalayzer "xunuk" edi). "Hozir
+          // o'ynayapti" holati nishonning oltin rangida ko'rinadi.
+          // Kalit eski nomida qoldi — testlar va skrinshotlar unga
+          // tayanadi.
           child: Center(
-            child: _Equalizer(
+            child: Icon(
+              Icons.music_note_rounded,
               key: const ValueKey('music-eq'),
-              size: widget.size * .44,
-              color: t.brandInk,
-              animate: playing,
+              size: widget.size * .58,
+              color: playing ? Colors.white : t.brandInk,
             ),
           ),
         ),
@@ -174,7 +178,6 @@ class _MusicControlState extends ConsumerState<MusicControl> {
 /// harakatlanmaydi.
 class _Equalizer extends StatefulWidget {
   const _Equalizer({
-    super.key,
     required this.size,
     required this.color,
     this.animate = true,

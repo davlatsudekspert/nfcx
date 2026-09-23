@@ -730,16 +730,10 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
               ),
             ),
           ],
-          // BOSHI BERK KO'CHA EMAS: darvoza yopiq bo'lsa, uni
-          // ochadigan joyga olib boradigan tugma turadi.
-          if (_locked) ...[
-            const SizedBox(height: Gap.lg),
-            NovaButton(
-              label: l.premiumBuy,
-              icon: Icons.workspace_premium_rounded,
-              onPressed: () => context.push(Routes.settingsPremium),
-            ),
-          ],
+          // Darvoza yopiq bo'lsa sabab yuqoridagi matnda aytiladi.
+          // "Premium sotib olish" tugmasi YO'Q: raqamli obunaga xarid
+          // chaqirig'i Google Play to'lov qoidasiga zid
+          // (`shop/store_policy.dart`).
           const SizedBox(height: Gap.xl),
           // QOIDALAR — tugmadan OLDIN, ko'rinib turadi.
           const ContentRulesCard(),

@@ -47,7 +47,7 @@ void main() {
     final c = await pump(tester, v);
 
     expect(find.byKey(const ValueKey('music-eq')), findsOneWidget,
-        reason: 'avatar yonida ekvalayzer belgisi');
+        reason: 'avatar yonida musiqa belgisi (♪)');
     await tester.tap(find.byType(MusicControl));
     await settle(tester, frames: 10);
 

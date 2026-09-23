@@ -896,6 +896,9 @@ class LRu extends L {
   String get settingsPayment => 'Оплата';
 
   @override
+  String get settingsShopSection => 'NFC-карта';
+
+  @override
   String get settingsReferral => 'Реферальная программа';
 
   @override

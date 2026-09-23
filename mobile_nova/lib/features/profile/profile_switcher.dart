@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/profile_context.dart';
 import '../../app/providers.dart';
+import '../../core/errors/app_error.dart';
 import '../../data/models/models.dart';
 import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
+import '../../design/widgets/states.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../business/business_providers.dart';
 import '../home/widgets/avatar.dart';
@@ -22,7 +24,28 @@ import '../home/widgets/avatar.dart';
 /// (`/api/auth/me` va `/api/my/companies`), shuning uchun bu yerdan
 /// birovning profiliga o'tib bo'lmaydi.
 Future<void> switchToBusiness(BuildContext context, WidgetRef ref) async {
-  final list = await ref.read(myBusinessesProvider.future);
+  // Ro'yxat xato bilan eslab qolingan bo'lishi mumkin (tarmoq uzilgan
+  // payt) — bir marta YANGIDAN so'raladi. Baribir bo'lmasa, tugma jim
+  // qolmaydi: sabab ekranda aytiladi.
+  List<Business> list;
+  try {
+    list = await ref.read(myBusinessesProvider.future);
+  } catch (_) {
+    ref.invalidate(myBusinessesProvider);
+    try {
+      list = await ref.read(myBusinessesProvider.future);
+    } catch (e) {
+      if (context.mounted) {
+        final l = L.of(context);
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(
+            content: Text(e is AppError ? describeError(l, e) : l.errUnknown),
+          ));
+      }
+      return;
+    }
+  }
   if (!context.mounted) return;
 
   // Kompaniya yo'q — rejimni baribir o'zgartiramiz, ekran esa

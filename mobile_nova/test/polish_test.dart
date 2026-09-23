@@ -13,7 +13,11 @@ import 'helpers.dart';
 /// YAKUNIY SAYQAL: sayt havolasi va sahifa o'tishlari.
 void main() {
   group('Bosh menyudagi sayt kartasi', () {
-    testWidgets('ko‘rinadi va SAYTGA olib boradi', (tester) async {
+    testWidgets('ko‘rinadi, lekin BOSILMAYDI; to‘lov bandlari yo‘q',
+        (tester) async {
+      // Google Play to'lov qoidasi (egasining qarori, 2026-09): ilovada
+      // saytga bosiladigan havola yo'q, "To'lovlar tarixi" va "Premium"
+      // menyudan olingan (`shop/store_policy.dart`).
       final opened = <String>[];
       openLinkOverride = (u) async {
         opened.add('$u');
@@ -36,9 +40,20 @@ void main() {
       expect(find.text(l.siteCardBody), findsOneWidget);
       await tester.tap(card);
       await settle(tester);
+      expect(opened, isEmpty, reason: 'sayt kartasi havola bo‘lib qoldi');
 
-      expect(opened, ['https://nfcstore.uz'],
-          reason: 'sayt kartasi bosilganda hech qayerga borilmadi');
+      // Ro'yxat dangasa quriladi (ekrandan tashqaridagisi chizilmaydi),
+      // shuning uchun menyu bandlari manbadan tekshiriladi.
+      final src =
+          File('lib/features/settings/settings_screen.dart').readAsStringSync();
+      expect(src, isNot(contains('Routes.paymentHistory')));
+      expect(src, isNot(contains('Routes.settingsPremium')));
+      expect(src, contains('Routes.orders'),
+          reason: 'jismoniy karta buyurtmalari qolishi kerak');
+      final post =
+          File('lib/features/social/post_screens.dart').readAsStringSync();
+      expect(post, isNot(contains('Routes.settingsPremium')),
+          reason: 'post ekranida Premium xarid tugmasi qolmasin');
     });
 
     test('matn saytga UNDAYDI, quruq havola emas', () async {

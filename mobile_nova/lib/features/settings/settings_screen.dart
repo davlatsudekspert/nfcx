@@ -116,7 +116,13 @@ class SettingsScreen extends ConsumerWidget {
               onTap: () => context.push(Routes.settingsPrivacy),
             ),
           ]),
-          SectionHeader(title: l.settingsPayment),
+          // GOOGLE PLAY TO'LOV QOIDASI (egasining qarori, 2026-09):
+          // "To'lovlar tarixi" va "Premium" menyudan olindi — raqamli
+          // xizmat (Premium, NFC ID) to'lovi saytda, ilova ichida esa
+          // to'lov haqida hech narsa ko'rinmasin. Jismoniy NFC karta
+          // buyurtmalari qoladi: jismoniy tovar Play Billing'dan ozod
+          // (`shop/store_policy.dart`).
+          SectionHeader(title: l.settingsShopSection),
           SettingsGroup(items: [
             SettingsItem(
               icon: Icons.receipt_long_outlined,
@@ -124,19 +130,9 @@ class SettingsScreen extends ConsumerWidget {
               onTap: () => context.push(Routes.orders),
             ),
             SettingsItem(
-              icon: Icons.payments_outlined,
-              label: l.paymentHistory,
-              onTap: () => context.push(Routes.paymentHistory),
-            ),
-            SettingsItem(
               icon: Icons.card_giftcard_outlined,
               label: l.settingsReferral,
               onTap: () => context.push(Routes.settingsReferral),
-            ),
-            SettingsItem(
-              icon: Icons.workspace_premium_outlined,
-              label: l.settingsPremium,
-              onTap: () => context.push(Routes.settingsPremium),
             ),
           ]),
           SectionHeader(title: l.settingsSupport),
@@ -348,7 +344,8 @@ class _SiteCard extends StatelessWidget {
       solid: true,
       padding: const EdgeInsets.all(Gap.lg),
       borderRadius: BorderRadius.circular(24),
-      onTap: () => openLink(kApiBase),
+      // BOSILMAYDI: anti-steering — ilovada saytga bosiladigan havola
+      // yo'q (`shop/store_policy.dart`). Manzil matn sifatida o'qiladi.
       child: Row(
         children: [
           Container(
@@ -373,8 +370,6 @@ class _SiteCard extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: Gap.sm),
-          Icon(Icons.arrow_outward_rounded, size: 18, color: t.text3),
         ],
       ),
     );

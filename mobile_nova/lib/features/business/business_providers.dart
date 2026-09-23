@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/models.dart';
 import '../../data/repositories/business_repository.dart';
+import '../auth/session.dart';
 
 /// Foydalanuvchining biznes hisoblari.
 // RIVERPOD `dependencies` — DEMO DARAXTI UCHUN SHART.
@@ -14,7 +15,17 @@ import '../../data/repositories/business_repository.dart';
 // its dependencies were overridden" xatosi chiqadi.
 //
 // Ishlab chiqarish xulqi O'ZGARMAYDI.
-final myBusinessesProvider = FutureProvider<List<Business>>(dependencies: [businessRepositoryProvider], (ref) async {
+//
+// SESSIYAGA BOG'LANGAN. Ro'yxat kirgan odamga tegishli, shuning uchun
+// hisob almashganda (chiqish → boshqa hisob bilan kirish) yoki
+// kirishdan OLDIN yuklanib xato eslab qolinganda qayta so'raladi.
+// Ilgari u ilova ochilganda bir marta yuklanardi: kirish tugamasdan
+// kelgan 401 abadiy eslab qolinib, "Biznes" tugmasi jim qolardi;
+// boshqa hisobga o'tilganda esa oldingi odamning kompaniyalari
+// ko'rinib turardi.
+final myBusinessesProvider = FutureProvider<List<Business>>(dependencies: [businessRepositoryProvider, currentUserProvider], (ref) async {
+  final userId = ref.watch(currentUserProvider.select((u) => u?.id));
+  if (userId == null) return const <Business>[];
   final res = await ref.watch(businessRepositoryProvider).mine();
   return res.when(ok: (v) => v, err: (e) => throw e);
 });

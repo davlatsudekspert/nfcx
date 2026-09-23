@@ -344,10 +344,14 @@ class _ResultTile extends StatelessWidget {
         imageUrl: e.avatarUrl,
         initials: _initials(e.name, e.code),
         rounded: false,
+        // PROFILDAGI BILAN AYNAN BIR XIL uchta son va tartib:
+        // Postlar · Obunachilar · Obunalar (egasi 2026-09: kartadagi
+        // sonlar profilga kirganda "bir-biriga tushmayapti" edi —
+        // bu yerda Ko'rishlar turardi va tartib boshqa edi).
         stats: [
-          (formatCount(e.views), l.nfcViews),
-          (formatCount(e.followers), l.profileFollowers),
           (formatCount(e.posts), l.profilePosts),
+          (formatCount(e.followers), l.profileFollowers),
+          (formatCount(e.following), l.profileFollowing),
         ],
         onTap: () => context.push(Routes.user(e.code)),
       );

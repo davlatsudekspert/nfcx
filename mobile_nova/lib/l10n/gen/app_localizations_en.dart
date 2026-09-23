@@ -899,6 +899,9 @@ class LEn extends L {
   String get settingsPayment => 'Payment';
 
   @override
+  String get settingsShopSection => 'NFC card';
+
+  @override
   String get settingsReferral => 'Referral';
 
   @override

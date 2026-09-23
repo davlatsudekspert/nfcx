@@ -73,6 +73,16 @@ class IdPlate extends StatelessWidget {
     'free': Color(0xFFC58A55), //      Bronza
   };
 
+  /// BREND OLTINI — istoriya halqasi va "musiqa o'ynayapti" nishoni.
+  ///
+  /// Egasining talabi (2026-09): istoriya halqasi Instagramdagidek
+  /// aniq, rangi esa OLTIN — har mavzuda bir xil (mavzu aksenti
+  /// ba'zi mavzularda ko'k yoki binafsha). Titan oltin (`exclusive`)
+  /// bilan bir oila.
+  static const goldDeep = Color(0xFFB8862B);
+  static const gold = Color(0xFFD4AF37);
+  static const goldLight = Color(0xFFF6DE8D);
+
   /// FON QANCHA RANGLI BO'LADI.
   ///
   /// Birinchi urinishda .22 qo'yilgan edi va egasi darhol aytdi:

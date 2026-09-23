@@ -393,56 +393,57 @@ class _IdentityHero extends ConsumerWidget {
         ? null
         : _StoryRingState(count: mine.length, unseen: mine.any((s) => !s.seen));
 
-    // 360 da 30, 430 da 34 — uzun ism ikki qatorga bo'linadi,
+    // 360 da 28, 430 da 32 — uzun ism ikki qatorga bo'linadi,
     // kesilmaydi.
-    final nameSize = (width * .084).clamp(28.0, 34.0);
+    final nameSize = (width * .078).clamp(26.0, 32.0);
+    // PORTRET MARKAZDA VA KATTA (egasining talabi, 2026-09): 360 da
+    // ~97, 430 da ~116. Istoriya bo'lsa atrofida Instagramdagidek
+    // aniq oltin halqa.
+    final photo = (width * .27).clamp(92.0, 116.0);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppType.displayStyle(color: t.text1, size: nameSize)
-                      .copyWith(height: 1.04),
-                ),
-                if (subtitle.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontFamily: AppType.sans,
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w500,
-                      color: t.text2,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: Gap.lg),
           _PortraitAvatar(
+            key: const ValueKey('home-portrait'),
             url: avatar,
             initials: user.initials,
             business: profile.isBusiness,
             ownerName: title,
             music: profile.musicUrls,
             ring: ring,
+            photoSize: photo,
             onTap: ring == null
                 ? onTap
                 : () => context.push(Routes.story(profile.code)),
           ),
+          const SizedBox(height: Gap.md),
+          Text(
+            title,
+            maxLines: 2,
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+            style: AppType.displayStyle(color: t.text1, size: nameSize)
+                .copyWith(height: 1.04),
+          ),
+          if (subtitle.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              subtitle,
+              maxLines: 1,
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: AppType.sans,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w500,
+                color: t.text2,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -465,6 +466,7 @@ class _StoryRingState {
 /// Surat yo'q bo'lsa — brend belgisi, bo'sh kulrang doira HECH QACHON.
 class _PortraitAvatar extends StatelessWidget {
   const _PortraitAvatar({
+    super.key,
     required this.url,
     required this.initials,
     required this.business,
@@ -472,6 +474,7 @@ class _PortraitAvatar extends StatelessWidget {
     this.music = const [],
     this.ring,
     this.onTap,
+    this.photoSize = 62,
   });
 
   final String ownerName;
@@ -484,20 +487,23 @@ class _PortraitAvatar extends StatelessWidget {
   final _StoryRingState? ring;
   final VoidCallback? onTap;
 
-  static const double _photo = 62;
+  /// Surat diametri (halqasiz).
+  final double photoSize;
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final stroke = ring != null && ring!.unseen ? 2.2 : 1.4;
-    const gap = 3.0;
-    final outer = _photo + (gap + stroke) * 2;
+    final size = photoSize;
+    // Halqa katta portretda ham ANIQ bilinsin: ko'rilmagani qalin.
+    final stroke = ring != null && ring!.unseen ? 3.4 : 2.0;
+    const gap = 3.5;
+    final outer = size + (gap + stroke) * 2;
 
     Widget mark() => ColoredBox(
           color: t.surface2,
           child: Center(
             child: BrandLogo(
-              size: _photo * .56,
+              size: size * .56,
               style: BrandLogoStyle.markOnly,
               tint: t.brandInk,
             ),
@@ -505,8 +511,8 @@ class _PortraitAvatar extends StatelessWidget {
         );
 
     final photo = Container(
-      width: _photo,
-      height: _photo,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: t.surfaceSolid,
@@ -558,7 +564,7 @@ class _PortraitAvatar extends StatelessWidget {
                 bottom: -2,
                 child: MusicControl(
                   urls: music,
-                  size: 26,
+                  size: size >= 90 ? 30 : 26,
                   ownerName: ownerName,
                   ownerAvatar: url,
                 ),
@@ -571,10 +577,10 @@ class _PortraitAvatar extends StatelessWidget {
   }
 }
 
-/// Story halqasi.
+/// Story halqasi — OLTIN.
 ///
-/// Instagram gradienti EMAS: ranglar mavzuning `brand` oilasidan
-/// olinadi, shuning uchun halqa har mavzuda o'zinikidek ko'rinadi.
+/// Instagram gradienti EMAS, lekin Instagramdagidek aniq: oltin
+/// gradient har mavzuda bir xil (brend rangi).
 ///
 /// Ko'rilmagan story — aksent gradientida, aniq va yorug'.
 /// Ko'rilgan story — bitta so'nik ohangda, ingichkaroq. Farq bir
@@ -596,8 +602,12 @@ class _StoryRingPainter extends CustomPainter {
     final r = (size.width - stroke) / 2;
     final rect = Rect.fromCircle(center: c, radius: r);
 
-    // Editorial: halqa champagne — mavzuning `brand` oilasidan.
-    final bright = Color.lerp(t.brand, Colors.white, .45)!;
+    // OLTIN HALQA (egasining talabi, 2026-09): Instagramdagidek bir
+    // qarashda bilinadi, lekin ranglari brendniki — oltin, har
+    // mavzuda bir xil.
+    const goldDeep = IdPlate.goldDeep;
+    const gold = IdPlate.gold;
+    const goldLight = IdPlate.goldLight;
 
     final p = Paint()
       ..style = PaintingStyle.stroke
@@ -606,13 +616,13 @@ class _StoryRingPainter extends CustomPainter {
 
     if (state.unseen) {
       p.shader = SweepGradient(
-        colors: [t.brandInk, bright, t.brandInk, bright, t.brandInk],
+        colors: [goldDeep, goldLight, gold, goldLight, goldDeep],
         stops: const [0, .25, .5, .75, 1],
         transform: const GradientRotation(-math.pi / 2),
       ).createShader(rect);
     } else {
-      // Ko'rilgan: o'sha oila, lekin so'nik — "bor, endi muhim emas".
-      p.color = t.border1;
+      // Ko'rilgan: o'sha oltin, lekin so'nik — "bor, endi muhim emas".
+      p.color = gold.withValues(alpha: .45);
     }
 
     // Bitta story bo'lsa yaxlit halqa. Bir nechta bo'lsa — shuncha

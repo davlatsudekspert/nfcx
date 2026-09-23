@@ -334,6 +334,10 @@
   "settingsNotifications": "Bildirishnomalar",
   "settingsPrivacy": "Maxfiylik",
   "settingsPayment": "To‘lov",
+  "settingsShopSection": "NFC karta",
+  "@settingsShopSection": {
+    "description": "Sozlamalar: jismoniy karta buyurtmalari bo'limi"
+  },
   "settingsReferral": "Referal",
   "settingsReferralHint": "Do‘stingiz sizning kodingiz bilan ro‘yxatdan o‘tsa, ikkovingiz ham chegirma olasiz",
   "settingsPremium": "Premium",

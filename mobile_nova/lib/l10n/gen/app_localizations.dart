@@ -1833,6 +1833,12 @@ abstract class L {
   /// **'To‘lov'**
   String get settingsPayment;
 
+  /// Sozlamalar: jismoniy karta buyurtmalari bo'limi
+  ///
+  /// In uz, this message translates to:
+  /// **'NFC karta'**
+  String get settingsShopSection;
+
   /// No description provided for @settingsReferral.
   ///
   /// In uz, this message translates to:

@@ -3395,6 +3395,7 @@ async function socialCountsD1(env, rows) {
     .map((r) => Number(r.user_id))
     .filter((n) => Number.isFinite(n) && n > 0))];
   const followers = new Map();
+  const following = new Map();
   const posts = new Map();
   if (users.length) {
     const marks = users.map(() => '?').join(',');
@@ -3404,6 +3405,16 @@ async function socialCountsD1(env, rows) {
          GROUP BY fw.followee_id`
     ).bind(...users).all().catch(() => null);
     for (const r of (fr?.results || [])) followers.set(Number(r.id), Number(r.n) || 0);
+    // OBUNALAR — profildagi bilan AYNAN bir xil shart
+    // (`/api/follow-stats/:code`): ro'yxat kartasi va profil bir xil
+    // uchta sonni ko'rsatadi (egasi 2026-09: "sonlar bir-biriga
+    // tushmayapti").
+    const fg = await env.DB.prepare(
+      `SELECT fw.follower_id AS id, COUNT(*) AS n FROM follows fw
+         WHERE fw.follower_id IN (${marks}) AND ${visibleUserSql('fw.followee_id')}
+         GROUP BY fw.follower_id`
+    ).bind(...users).all().catch(() => null);
+    for (const r of (fg?.results || [])) following.set(Number(r.id), Number(r.n) || 0);
   }
   if (codes.length) {
     const marks = codes.map(() => '?').join(',');
@@ -3415,6 +3426,7 @@ async function socialCountsD1(env, rows) {
   }
   return {
     followers: (row) => followers.get(Number(row.user_id)) || 0,
+    following: (row) => following.get(Number(row.user_id)) || 0,
     posts: (row) => posts.get(String(row.code || '')) || 0,
   };
 }
@@ -5858,6 +5870,7 @@ async function recordsApi(request, env, url) {
         finals.get(String(r.code || '').toUpperCase()) ?? null,
       ),
       followers: n.followers(r),
+      following: n.following(r),
       posts: n.posts(r),
     })));
     });
@@ -5892,6 +5905,7 @@ async function recordsApi(request, env, url) {
         tierOverride: r.tier_override || '', isGift: !!r.is_gift,
       }, finals.get(String(r.code || '').toUpperCase()) ?? null),
       followers: n.followers(r),
+      following: n.following(r),
       posts: n.posts(r),
     }));
     return json({ records });
