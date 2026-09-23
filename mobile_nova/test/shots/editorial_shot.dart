@@ -19,7 +19,9 @@ import 'package:nfcstore_nova/data/repositories/discover_repository.dart';
 import 'package:nfcstore_nova/data/repositories/social_repository.dart';
 import 'package:nfcstore_nova/design/theme/app_theme.dart';
 import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
+import 'package:nfcstore_nova/features/auth/login_screen.dart';
 import 'package:nfcstore_nova/features/auth/register_screen.dart';
+import 'package:nfcstore_nova/features/entry/splash_screen.dart';
 import 'package:nfcstore_nova/features/auth/session.dart';
 import 'package:nfcstore_nova/features/business/business_forms.dart';
 import 'package:nfcstore_nova/features/business/business_intro.dart';
@@ -391,6 +393,10 @@ void main() {
         (t) => soloShot(t, const BusinessIntroScreen(), 'biz-intro-$w', s));
     testWidgets('biz-free $w',
         (t) => soloShot(t, const BusinessOnboardScreen(), 'biz-free-$w', s));
+    testWidgets('splash $w',
+        (t) => soloShot(t, const SplashScreen(), 'splash-$w', s));
+    testWidgets('login $w',
+        (t) => soloShot(t, const LoginScreen(), 'login-$w', s));
     testWidgets('register $w',
         (t) => soloShot(t, const RegisterScreen(), 'register-$w', s));
   }

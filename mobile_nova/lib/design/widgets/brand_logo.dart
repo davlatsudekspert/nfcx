@@ -227,7 +227,10 @@ class BrandLockup extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        BrandLogo(size: size),
+        // BREND MUHRI — pastki navigatsiyaning markaziy tugmasi va NFC
+        // markazidagi bilan AYNAN bir element. Egasining talabi: oltin
+        // NFCSTORE belgisi Splash, Login va NFC markazida takrorlansin.
+        BrandSeal(size: size),
         if (showWordmark) ...[
           const SizedBox(height: Gap.lg),
           Text(

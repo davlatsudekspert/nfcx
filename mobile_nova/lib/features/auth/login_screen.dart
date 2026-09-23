@@ -99,7 +99,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       body: NovaScroll(
         padding: const EdgeInsets.fromLTRB(Gap.xxl, Gap.sm, Gap.xxl, Gap.section),
         children: [
-          Center(child: BrandLogo(size: 76)),
+          // Nav, Splash va NFC markazidagi bilan bir xil brend muhri.
+          const Center(child: BrandSeal(size: 76)),
           const SizedBox(height: Gap.xxl),
           Text(l.loginTitle,
               textAlign: TextAlign.center,
