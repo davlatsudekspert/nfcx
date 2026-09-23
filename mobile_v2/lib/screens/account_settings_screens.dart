@@ -439,6 +439,50 @@ class _CreateBusinessScreenState extends State<CreateBusinessScreen> {
             ),
           ),
           const SizedBox(height: 20),
+          Text(
+            'Business nimalar beradi?',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 11),
+          SizedBox(
+            height: 176,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              children: const [
+                _BusinessBenefitCard(
+                  number: '01',
+                  icon: Icons.language_rounded,
+                  title: 'Mini-sayt',
+                  body: 'Logo, aloqa va barcha havolalar bitta premium sahifada.',
+                  dark: true,
+                ),
+                SizedBox(width: 9),
+                _BusinessBenefitCard(
+                  number: '02',
+                  icon: Icons.grid_view_rounded,
+                  title: 'Katalog',
+                  body: 'Mahsulot, xizmat, narx va aksiyalarni ko‘rsating.',
+                ),
+                SizedBox(width: 9),
+                _BusinessBenefitCard(
+                  number: '03',
+                  icon: Icons.contactless_rounded,
+                  title: 'NFC kirish',
+                  body: 'Stol, peshtaxta yoki karta orqali bir tegishda ochilsin.',
+                  dark: true,
+                ),
+                SizedBox(width: 9),
+                _BusinessBenefitCard(
+                  number: '04',
+                  icon: Icons.insights_outlined,
+                  title: 'Reach',
+                  body: 'Ko‘rishlar, obunachilar va kontent faolligini kuzating.',
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 22),
           _Field(controller: _name, label: 'Biznes nomi'),
           const SizedBox(height: 12),
           _Field(
@@ -831,4 +875,98 @@ class _Field extends StatelessWidget {
           counterText: maxLength == null ? null : '',
         ),
       );
+}
+
+class _BusinessBenefitCard extends StatelessWidget {
+  const _BusinessBenefitCard({
+    required this.number,
+    required this.icon,
+    required this.title,
+    required this.body,
+    this.dark = false,
+  });
+
+  final String number;
+  final IconData icon;
+  final String title;
+  final String body;
+  final bool dark;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.brand;
+    final fg = dark ? const Color(0xFFF8F6EF) : p.ink;
+    final muted =
+        dark ? Colors.white.withValues(alpha: .52) : p.ink2;
+    return Container(
+      width: 216,
+      padding: const EdgeInsets.all(17),
+      decoration: BoxDecoration(
+        color: dark ? const Color(0xFF111110) : p.surface,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(
+          color: dark ? p.accent.withValues(alpha: .24) : p.line,
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -20,
+            top: -24,
+            child: Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: dark
+                      ? p.accent.withValues(alpha: .16)
+                      : p.line.withValues(alpha: .8),
+                ),
+              ),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    number,
+                    style: TextStyle(
+                      color: muted,
+                      fontFamily: 'IBMPlexMono',
+                      fontSize: 8.5,
+                    ),
+                  ),
+                  const Spacer(),
+                  Icon(icon, color: dark ? p.heroInk : fg, size: 22),
+                ],
+              ),
+              const Spacer(),
+              Text(
+                title,
+                style: TextStyle(
+                  color: fg,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 7),
+              Text(
+                body,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: muted,
+                  fontSize: 10.2,
+                  height: 1.35,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
