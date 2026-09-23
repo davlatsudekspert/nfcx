@@ -163,59 +163,21 @@ class _CenterNavButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.tokens;
-
     return Semantics(
       button: true,
       selected: selected,
       label: item.label,
       child: PressableScale(
         onTap: onTap,
-        scale: .9,
-        child: AnimatedContainer(
-          duration: Motion.theme,
-          curve: Motion.smooth,
-          width: kNavCenterSize,
-          height: kNavCenterSize,
-          decoration: BoxDecoration(
-            gradient: t.accentGradient,
-            shape: BoxShape.circle,
-            boxShadow: [
-              // Ikki qatlamli soya: biri tugmani sirtdan ko'taradi,
-              // ikkinchisi atrofga mayin nur tarqatadi. Ikkalasi ham
-              // yumshoq — qattiq qora soya yo'q.
-              BoxShadow(
-                color: t.glow,
-                blurRadius: 28,
-                spreadRadius: -2,
-                offset: const Offset(0, 8),
-              ),
-              BoxShadow(
-                color: t.glow.withValues(alpha: .35),
-                blurRadius: 12,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          // Generic NFC ikonkasi EMAS, brend belgisi.
-          //
-          // Tugmaning oltin doirasi o'z holicha qoladi: ichiga na
-          // plastina, na ikkinchi doira qo'yiladi — aks holda
-          // "doira ichida doira" hosil bo'lardi. Belgi to'g'ridan
-          // -to'g'ri oltin sirt ustida, `onAccent` siyohida turadi.
-          //
-          // Kenglik doiraning 60% i. Belgi 1.955:1 bo'lgani uchun
-          // balandligi 30% bo'ladi va eng uzoq burchagi markazdan
-          // 0.35 * diametr uzoqlikda — doira radiusi 0.5, ya'ni
-          // atrofida ~30% zaxira qoladi.
-          child: Center(
-            child: BrandLogo(
-              size: kNavCenterSize * .60,
-              style: BrandLogoStyle.markOnly,
-              tint: t.onAccent,
-              semanticLabel: item.label,
-            ),
-          ),
+        scale: .92,
+        // BREND MUHRI — generic NFC ikonkasi ham, oltin gradient disk
+        // ham emas. Egasining talabi: markaziy tugma NFCSTORE brend
+        // imzosi bo'lsin. Xuddi shu muhr Splash, Login va NFC
+        // markazida ham turadi (`BrandSeal`).
+        child: BrandSeal(
+          size: kNavCenterSize,
+          selected: selected,
+          semanticLabel: item.label,
         ),
       ),
     );

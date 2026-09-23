@@ -254,3 +254,66 @@ class BrandLockup extends StatelessWidget {
     );
   }
 }
+
+
+/// BREND MUHRI — oq disk, champagne halqa, markazda ASL oltin belgi.
+///
+/// Egasining talabi: markaziy NFC tugmasida generic contactless ikon
+/// emas, NFCSTORE oltin belgisi turadi va u Splash, Login va NFC
+/// markazida ham takrorlanadi. Shu vidjet o'sha BITTA element —
+/// to'rt joyda bir xil ko'rinish uchun.
+///
+/// Belgi BO'YALMAYDI: brend aktivining o'z oltini. [selected] da disk
+/// siyoh rangga o'tadi — oltin qora ustida eng yaxshi o'qiladi va
+/// faol holat rang bilan emas, kontrast bilan bildiriladi.
+///
+/// Glow yo'q: faqat ingichka halqa va yumshoq soya.
+class BrandSeal extends StatelessWidget {
+  const BrandSeal({
+    super.key,
+    this.size = 56,
+    this.selected = false,
+    this.elevated = true,
+    this.semanticLabel = 'NFCSTORE',
+  });
+
+  final double size;
+  final bool selected;
+
+  /// Pastki soya — sirt ustida "ko'tarilgan" muhr uchun.
+  final bool elevated;
+  final String semanticLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final ring = (size * .02).clamp(1.0, 1.6);
+    return Semantics(
+      label: semanticLabel,
+      image: true,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: selected ? t.accent2 : t.surfaceSolid,
+          border: Border.all(
+            color: t.brand.withValues(alpha: selected ? .9 : .6),
+            width: ring,
+          ),
+          boxShadow: elevated ? t.shadowFloat : null,
+        ),
+        child: Center(
+          child: Image.asset(
+            BrandLogo.assetMark,
+            width: size * .58,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.medium,
+          ),
+        ),
+      ),
+    );
+  }
+}

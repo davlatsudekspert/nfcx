@@ -93,7 +93,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
 
       // ---- asosiy tablar --------------------------------------------------
-      StatefulShellRoute.indexedStack(
+      // TABLAR ORASIDA MAYIN O'TISH (200ms).
+      //
+      // `indexedStack` tabni keskin almashtiradi — bir kadrda. Egasining
+      // talabi: 180–240ms mayin animatsiya. `FadingBranchContainer` ham
+      // xuddi `IndexedStack` kabi har tabni TIRIK saqlaydi (scroll va
+      // tarix yo'qolmaydi), faqat almashuvni shaffoflik bilan qiladi.
+      StatefulShellRoute(
+        navigatorContainerBuilder: (_, shell, children) =>
+            FadingBranchContainer(
+          currentIndex: shell.currentIndex,
+          children: children,
+        ),
         builder: (_, __, shell) => HomeShell(navigationShell: shell),
         branches: [
           StatefulShellBranch(routes: [
