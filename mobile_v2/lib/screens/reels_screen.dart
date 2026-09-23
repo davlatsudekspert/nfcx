@@ -34,9 +34,14 @@ class _ReelsScreenState extends State<ReelsScreen> {
   String _savedKey(FeedItem item) => item.targetKind + ':' + item.id.toString();
 
   Future<void> _loadSaved() async {
-    final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getStringList('v2_saved_reels') ?? const <String>[];
-    if (mounted) setState(() => _saved = saved.toSet());
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getStringList('v2_saved_reels') ?? const <String>[];
+      if (mounted) setState(() => _saved = saved.toSet());
+    } catch (_) {
+      // Widget tests and rare platform bootstrap failures must not
+      // break Reels or the rest of the shell.
+    }
   }
 
   Future<void> _toggleSaved(FeedItem item) async {
@@ -44,8 +49,13 @@ class _ReelsScreenState extends State<ReelsScreen> {
     final next = {..._saved};
     if (!next.add(key)) next.remove(key);
     setState(() => _saved = next);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('v2_saved_reels', next.toList()..sort());
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('v2_saved_reels', next.toList()..sort());
+    } catch (_) {
+      // The current-session state still works if local persistence
+      // is temporarily unavailable.
+    }
   }
 
   @override
