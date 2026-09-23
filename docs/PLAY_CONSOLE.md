@@ -275,11 +275,14 @@ ilovalarga qo'yadigan talablari. Hammasi mavjud.
 
 ### 3.5 Ruxsatlar
 
-`AndroidManifest.xml` da atigi ikkita:
+`AndroidManifest.xml` da ikkita, yakuniy APK'da (kutubxonalar bilan,
+CI `aapt2 dump permissions`, qurilish #207) to'rtta — hammasi "normal":
 
 ```
 android.permission.INTERNET
 android.permission.NFC
+android.permission.ACCESS_NETWORK_STATE   (video pleyer)
+android.permission.WAKE_LOCK              (video pleyer)
 ```
 
 NFC `required="false"` — ya'ni NFC'siz telefonlar ham
@@ -364,7 +367,8 @@ diqqatini to'lov masalasiga qaratadi.
 
 | Nima | Talab | Holat |
 |---|---|---|
-| Ekran suratlari (telefon) | kamida 2 ta, nisbat 2:1 dan oshmasin | **5 ta tayyor**, 1080×1920 (1.78) |
+| Ekran suratlari (telefon) | kamida 2 ta, nisbat 2:1 dan oshmasin, 24-bit PNG | **6 ta tayyor**, 1080×1920 (1.78): `docs/play-assets/telefon/` |
+| Planshet 7" / 10" | ixtiyoriy | **4 + 4 tayyor**: `docs/play-assets/planshet-7/`, `planshet-10/` |
 | Ilova belgisi | 512×512 PNG | **tayyor**: `docs/play-assets/play-icon-512.png` |
 | Feature graphic | 1024×500 PNG/JPG | **tayyor**: `docs/play-assets/play-feature-1024x500.png` |
 
@@ -372,7 +376,8 @@ Belgi va feature graphic `docs/play-assets/build.py` bilan
 qayta yasaladi; nega alohida belgi kerak bo'lgani va matn nega
 aynan shunday — `docs/play-assets/README.md` da.
 
-Ekran suratlari `mobile_nova/test/shots/png/play-*.png` da.
+Tayyor nusxalar `docs/play-assets/{telefon,planshet-7,planshet-10}/` da
+(1.1.0 kodidan, RGB). Yakuniy reliz qo'llanmasi: `PLAY_CONSOLE_HANDOFF.md`.
 Qayta qurish:
 
 ```

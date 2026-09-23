@@ -67,9 +67,10 @@ Sessiya uzilsa — shu fayldagi birinchi `[ ]` bandidan davom etiladi.
 - [x] Video boshqa ekranda to'xtaydi: lenta (P-H1) va Reels (P-H2) —
       TickerMode; tab almashganda stopAll (avvaldan)
 
-- [ ] KEYIN (egasi): Ivory/Noir chuqur dizayn auditi — typography, surface,
-      elevation, gold me'yori, icon tizimi, WCAG; pastki navigatsiya
-      proporsiyalari (icon/label/active/NFC balans). Funksiyaga tegilmaydi.
+- [x] Ivory/Noir dizayn auditi (theme_matrix_shot: 8 ekran x 2 mavzu x
+      360/390/430, toshish yo'q): Tanlov yorlig'i 8.5->10.5, NFC markazi
+      matni kesilmaydi. Pastki navigatsiya: belgi 24-25, yorliq 10.5-11,
+      faol kapsula + to'la belgi, pill 66, markaz 56 (6632813).
 
 ## 4. Performance
 
@@ -78,14 +79,16 @@ Sessiya uzilsa — shu fayldagi birinchi `[ ]` bandidan davom etiladi.
 
 ## 5–6. Release
 
-- [ ] versionName (pubspec) + versionCode (CI run_number)
+- [x] versionName 1.1.0 (pubspec) + versionCode = CI run_number (#207)
 - [~] permissions / App Links / Data Safety mosligi
       * permissions: faqat INTERNET, NFC (required=false); rasm — Photo Picker
         (READ_MEDIA_* yo'q), kamera — intent (CAMERA yo'q)
       * App Links: https://nfcstore.uz /u /c /post /story /nfc, autoVerify
       * [x] BLOCKER tuzatildi (89613bc): sessiya tokeni Auto Backup va
         telefondan-telefonga ko'chirishdan chiqarildi + resetOnError
-- [ ] signed AAB + APK (CI `nova-apk.yml`)
+- [~] signed AAB + APK (CI `nova-apk.yml` #207) — natija PLAY_CONSOLE_HANDOFF.md da
+- [x] Play skrinshotlar 1.1.0 dan qayta olindi (24-bit PNG), release notes UZ/RU/EN,
+      `PLAY_CONSOLE_HANDOFF.md` (final publish tugmasi BOSILMAYDI)
 
 ## 7. Hisobot
 
