@@ -21,6 +21,7 @@
 //   PATCH  /api/admin/reports/:id    (admin) { status } → { ok, report }
 
 import { archiveStmt } from './content-archive.js';
+import { ensureSchema as ensureCommentsSchema, retireTargetStmts } from './comments.js';
 
 // Shikoyat sabablari. Ro'yxat YOPIQ: erkin matn sabab bo'lsa,
 // adminda saralash imkonsiz bo'lardi va bir xil muammo o'nta xil
@@ -277,8 +278,15 @@ export async function handle(request, env, url, H) {
     // (sessiya kaliti EMAS), izohlar arxividagi bilan bir xil.
     const body = await request.json().catch(() => ({}));
     const adminLabel = `admin#${Number(admin.adminId) || 0}:${String(admin.role || '')}`.slice(0, 64);
+    // Post raqami qayta ishlatiladi — izoh va layklari ham shu batch'da
+    // ketadi, aks holda keyingi yangi postga "yopishardi" (comments.js).
+    await ensureCommentsSchema(env);
+    const retire = kind === 'post'
+      ? retireTargetStmts(env, 'post', '?', [id], { byAdmin: adminLabel, reason: 'target_deleted' })
+      : [];
     const res = await env.DB.batch([
       archiveStmt(env, kind, 'id = ?', [id], { admin: adminLabel, reason: str(body?.reason, 40) || 'admin' }),
+      ...retire,
       ...plan.map((sql) => env.DB.prepare(sql).bind(id)),
     ]);
     // Oxirgi so'rov — asosiy qatorniki. O'zgarish bo'lmasa, bunday
