@@ -589,3 +589,35 @@ class NotificationItem {
         createdAt: createdAt,
       );
 }
+
+class SocialIdentity {
+  const SocialIdentity({
+    required this.kind,
+    required this.code,
+    required this.name,
+    this.avatarUrl,
+    this.verified = false,
+    this.personCode = '',
+    this.personName = '',
+  });
+
+  final String kind;
+  final String code;
+  final String name;
+  final String? avatarUrl;
+  final bool verified;
+  final String personCode;
+  final String personName;
+
+  bool get isCompany => kind == 'company';
+
+  factory SocialIdentity.fromJson(Map<String, dynamic> j) => SocialIdentity(
+        kind: _s(j['kind']).isEmpty ? 'person' : _s(j['kind']),
+        code: _s(j['code']).toUpperCase(),
+        name: _s(j['name']),
+        avatarUrl: absoluteUrl(j['avatarUrl']),
+        verified: _b(j['verified']),
+        personCode: _s(j['personCode']).toUpperCase(),
+        personName: _s(j['personName']),
+      );
+}
