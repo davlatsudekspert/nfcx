@@ -68,7 +68,7 @@ void main() {
     expect(find.byKey(const ValueKey('comment-rules-note')), findsOneWidget);
   });
 
-  testWidgets('sinov muddati hisoblanmaydi — server ham hisoblamaydi',
+  testWidgets('sinov muddatida yoza oladi (egasining qarori)',
       (tester) async {
     final trial = User(
       id: 3,
@@ -78,6 +78,19 @@ void main() {
       trialUntil: DateTime.now().add(const Duration(days: 10)),
     );
     await _pump(tester, trial);
+    expect(find.byKey(const ValueKey('comment-premium-locked')), findsNothing);
+    expect(find.byType(TextField), findsOneWidget);
+  });
+
+  testWidgets('sinov tugagan — yana qulf', (tester) async {
+    final expired = User(
+      id: 4,
+      email: 'e@nfcstore.uz',
+      name: 'Tugagan',
+      phone: '',
+      trialUntil: DateTime.now().subtract(const Duration(days: 1)),
+    );
+    await _pump(tester, expired);
     expect(find.byKey(const ValueKey('comment-premium-locked')), findsOneWidget);
   });
 }

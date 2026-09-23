@@ -165,7 +165,7 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
     final l = L.of(context);
     final t = context.tokens;
     final data = ref.watch(commentsProvider(_ref));
-    // Server izohni faqat Premium'ga yozdiradi. Premium bo'lmaganga
+    // Server izohni Premium'ga va 30 kunlik sinovdagilarga yozdiradi. Qolganga
     // maydon UMUMAN OCHILMAYDI — o'rnida sababi yozilgan qulf kartasi
     // (egasi, 2026-09: "bosilmasin, izoh yozilgandan keyin chiqmasin").
     final canWrite = _serverPremium(ref.watch(currentUserProvider));
@@ -426,12 +426,10 @@ class _PremiumLockedComposer extends StatelessWidget {
   }
 }
 
-/// Server `getCurrentUser().isPremium` bilan BIR XIL hisob. Anonim
-/// holatda eslatma chiqmaydi — u yerda kirish so'raladi.
-bool _serverPremium(User? u) =>
-    u == null ||
-    u.premium ||
-    (u.premiumUntil?.isAfter(DateTime.now()) ?? false);
+/// Server qoidasi bilan BIR XIL: Premium YOKI 30 kunlik sinov muddati
+/// (egasining qarori, 2026-09-23 — `comments.js` `trialActiveFor`).
+/// Anonim holatda karta chiqmaydi — u yerda kirish so'raladi.
+bool _serverPremium(User? u) => u == null || u.premiumActive;
 
 class _CommentTile extends ConsumerWidget {
   const _CommentTile({
