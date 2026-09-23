@@ -13,10 +13,16 @@ import { navigate } from '../lib/router.js';
 // Nima o'chishi va nima qonun bo'yicha saqlanishi ROSTINI yozadi
 // (hosting/api/account.js — "YUMSHOQ O'CHIRISH" izohi).
 
+// Play Console'dagi aloqa manzili bilan BIR XIL (Google shu manzilga
+// yozilgan so'rovni tekshiradi).
+const CONTACT = 'davlatsudekspert@gmail.com';
+// Play'dagi ilova nomi — Google sahifada aynan shu nom ko'rinishini talab qiladi.
+const APP = 'NFCSTORE: Raqamli vizitka';
+
 const T = {
   uz: {
     title: 'Hisobni o‘chirish',
-    lead: 'NFCSTORE hisobingizni va unga bog‘langan ma’lumotlarni o‘chirishingiz mumkin.',
+    lead: `${APP} ilovasi (Google Play) va nfcstore.uz saytidagi NFCSTORE hisobingizni va unga bog‘langan ma’lumotlarni o‘chirishingiz mumkin.`,
     whatH: 'Nima o‘chadi',
     what: [
       'Hisobingizga kira olmaysiz, barcha qurilmalardagi sessiyalar darhol yopiladi.',
@@ -29,7 +35,7 @@ const T = {
     how: [
       'Ilovada: Sozlamalar → Xavfsizlik → “Hisobni o‘chirish”.',
       'Saytda: hisobingizga kiring va shu sahifada pastdagi tugmani bosing.',
-      'Email orqali: support@nfcstore.uz manziliga hisobingiz emaili bilan “Hisobni o‘chirish” deb yozing — 30 kun ichida bajariladi.',
+      `Email orqali: ${CONTACT} manziliga hisobingiz emaili bilan “Hisobni o‘chirish” deb yozing — 30 kun ichida bajariladi.`,
     ],
     login: 'Kirish',
     signedAs: 'Kirgansiz:',
@@ -37,12 +43,12 @@ const T = {
     button: 'Hisobimni o‘chirish',
     busy: 'O‘chirilmoqda…',
     done: 'Hisobingiz o‘chirildi. Barcha qurilmalarda sessiyalar yopildi.',
-    error: 'O‘chirib bo‘lmadi. Qayta urinib ko‘ring yoki support@nfcstore.uz ga yozing.',
+    error: `O‘chirib bo‘lmadi. Qayta urinib ko‘ring yoki ${CONTACT} ga yozing.`,
     privacy: 'Maxfiylik siyosati',
   },
   ru: {
     title: 'Удаление аккаунта',
-    lead: 'Вы можете удалить свой аккаунт NFCSTORE и связанные с ним данные.',
+    lead: `Вы можете удалить аккаунт NFCSTORE в приложении ${APP} (Google Play) и на сайте nfcstore.uz, а также связанные с ним данные.`,
     whatH: 'Что удаляется',
     what: [
       'Вход в аккаунт становится невозможным, сессии на всех устройствах сразу закрываются.',
@@ -55,7 +61,7 @@ const T = {
     how: [
       'В приложении: Настройки → Безопасность → «Удалить аккаунт».',
       'На сайте: войдите в аккаунт и нажмите кнопку ниже на этой странице.',
-      'По email: напишите на support@nfcstore.uz с адреса аккаунта «Удалить аккаунт» — выполняется в течение 30 дней.',
+      `По email: напишите на ${CONTACT} с адреса аккаунта «Удалить аккаунт» — выполняется в течение 30 дней.`,
     ],
     login: 'Войти',
     signedAs: 'Вы вошли:',
@@ -63,12 +69,12 @@ const T = {
     button: 'Удалить мой аккаунт',
     busy: 'Удаление…',
     done: 'Аккаунт удалён. Сессии на всех устройствах закрыты.',
-    error: 'Не удалось удалить. Попробуйте ещё раз или напишите на support@nfcstore.uz.',
+    error: `Не удалось удалить. Попробуйте ещё раз или напишите на ${CONTACT}.`,
     privacy: 'Политика конфиденциальности',
   },
   en: {
     title: 'Delete account',
-    lead: 'You can delete your NFCSTORE account and the data linked to it.',
+    lead: `You can delete your NFCSTORE account used in the ${APP} app (Google Play) and on nfcstore.uz, and the data linked to it.`,
     whatH: 'What is deleted',
     what: [
       'You can no longer sign in; sessions on all devices are closed immediately.',
@@ -81,7 +87,7 @@ const T = {
     how: [
       'In the app: Settings → Security → “Delete account”.',
       'On the website: sign in and press the button below on this page.',
-      'By email: write “Delete account” to support@nfcstore.uz from your account email — completed within 30 days.',
+      `By email: write “Delete account” to ${CONTACT} from your account email — completed within 30 days.`,
     ],
     login: 'Sign in',
     signedAs: 'Signed in as:',
@@ -89,7 +95,7 @@ const T = {
     button: 'Delete my account',
     busy: 'Deleting…',
     done: 'Your account has been deleted. Sessions on all devices are closed.',
-    error: 'Could not delete. Try again or write to support@nfcstore.uz.',
+    error: `Could not delete. Try again or write to ${CONTACT}.`,
     privacy: 'Privacy policy',
   },
 };
@@ -117,7 +123,8 @@ export default function DeleteAccountPage() {
   return (
     <main className="mx-auto w-full max-w-[1800px] px-6 pb-16 sm:px-10 lg:px-14">
       <div className="mx-auto max-w-3xl">
-        <h1 className="pt-14 text-3xl font-extrabold tracking-tight">{t.title}</h1>
+        <div className="pt-14 font-mono text-xs uppercase tracking-wider text-base-content/50" data-testid="app-name">{APP}</div>
+        <h1 className="mt-2 text-3xl font-extrabold tracking-tight">{t.title}</h1>
         <div className="mt-6 space-y-6 text-[15px] leading-relaxed text-base-content/70">
           <p>{t.lead}</p>
           <section>

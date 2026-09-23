@@ -95,4 +95,22 @@ const get = async (env) =>
   check('paket nomi env dan', body[0].target.package_name, 'uz.nfcstore.beta');
 }
 
+// 4) YANGI ILOVA (uz.nfcstore.nova) — alohida yozuv, eski ilovaga tegmaydi.
+{
+  const { env } = makeEnv({ ANDROID_APP_FINGERPRINTS: PRINT_A, ANDROID_NOVA_FINGERPRINTS: `${PRINT_B},${PRINT_A}` });
+  await ensureCoreSchema(env);
+  const body = await (await get(env)).json();
+  check('ikki ilova — ikki yozuv', body.length, 2);
+  check('eski ilova joyida', [body[0].target.package_name, body[0].target.sha256_cert_fingerprints], ['uz.nfcstore.app', [PRINT_A]]);
+  check('nova paketi', body[1].target.package_name, 'uz.nfcstore.nova');
+  check('nova ikki kaliti', body[1].target.sha256_cert_fingerprints, [PRINT_B, PRINT_A]);
+}
+{
+  const { env } = makeEnv({ ANDROID_NOVA_FINGERPRINTS: PRINT_B });
+  await ensureCoreSchema(env);
+  const res = await get(env);
+  check('faqat nova sozlangan — 200', res.status, 200);
+  check('faqat nova yozuvi', (await res.json()).map((x) => x.target.package_name), ['uz.nfcstore.nova']);
+}
+
 done();

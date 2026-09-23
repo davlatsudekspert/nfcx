@@ -509,11 +509,22 @@ function ReportsTab() {
     // uni bu yerdan o'chirib bo'lmaydi (butun profilni o'chirish
     // boshqa, ancha jiddiy amal va bu yerga sig'maydi).
     const kind = r.targetKind;
-    if (!['post', 'story', 'company_post'].includes(kind)) return;
+    if (!['post', 'story', 'company_post', 'comment'].includes(kind)) return;
     if (!confirm(t('Bu kontent butunlay o‘chiriladi. Davom etasizmi?'))) return;
     setBusy(r.id);
     try {
-      await adminApi(`/content/${kind}/${encodeURIComponent(r.targetId)}`, { method: 'DELETE' });
+      if (kind === 'comment') {
+        // IZOH (2026-09): ilova izoh shikoyatini endi `comment` turi
+        // bilan yuboradi. Izoh o'z moderatsiya yo'li orqali o'chiriladi
+        // (dalil arxivi bilan), keyin shikoyat yopiladi.
+        await adminApi(`/comments/${encodeURIComponent(r.targetId)}`, {
+          method: 'DELETE',
+          body: JSON.stringify({ reason: `Shikoyat #${r.id}: ${r.reason}` }),
+        });
+        await adminApi(`/reports/${r.id}`, { method: 'PATCH', body: JSON.stringify({ status: 'resolved' }) });
+      } else {
+        await adminApi(`/content/${kind}/${encodeURIComponent(r.targetId)}`, { method: 'DELETE' });
+      }
       setRows((list) => (list || []).filter((x) => x.id !== r.id));
     } catch (e) {
       setErr(e);
@@ -573,7 +584,7 @@ function ReportsTab() {
                   <td className="text-xs">{t(REPORT_REASON_LABEL[r.reason] || r.reason)}</td>
                   <td className="max-w-[280px] text-xs opacity-80">{r.note}</td>
                   <td className="whitespace-nowrap">
-                    {['post', 'story', 'company_post'].includes(r.targetKind) && (
+                    {['post', 'story', 'company_post', 'comment'].includes(r.targetKind) && (
                       <button
                         type="button"
                         disabled={busy === r.id}

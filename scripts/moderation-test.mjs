@@ -104,6 +104,20 @@ await check('shikoyat: to‘g‘ri so‘rov yoziladi', async () => {
   assert.equal(insert.args[5], 'porn');
 });
 
+await check('shikoyat: izoh `comment` turi bilan yoziladi (post emas)', async () => {
+  for (const kind of ['comment', 'company_story']) {
+    const env = fakeDb();
+    const res = await mod.handle(
+      req('POST', { targetKind: kind, targetId: '51', reason: 'insult', ownerCode: 'vip001' }),
+      env, u('/api/reports'), H,
+    );
+    assert.equal(res.status, 201, kind);
+    const insert = env.calls.find((c) => c.sql.includes('INSERT INTO content_reports'));
+    assert.equal(insert.args[0], kind);
+    assert.equal(insert.args[1], '51');
+  }
+});
+
 await check('shikoyat: kirmagan odam ham yubora oladi', async () => {
   const env = fakeDb();
   const res = await mod.handle(

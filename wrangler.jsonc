@@ -203,6 +203,12 @@
     "PAYMENTS_ENABLED": "true",
     "PAYME_SANDBOX": "false",
     "PAYME_CHECKOUT_DOMAIN": "checkout.paycom.uz",
-    "CLICK_RETURN_URL": "https://nfcstore.uz/tolovlar"
+    "CLICK_RETURN_URL": "https://nfcstore.uz/tolovlar",
+    // ANDROID APP LINKS — "NFCSTORE: Raqamli vizitka" (uz.nfcstore.nova).
+    // Barmoq izlari MAXFIY EMAS (har bir APK ichida ochiq turadi).
+    // Hozir: yuklash (upload) kaliti — GitHub'dan o'rnatilgan nusxalar.
+    // Play'dan o'rnatilganlar uchun Play Console → Setup → App signing
+    // dagi "App signing key" SHA-256 ni vergul bilan SHU QATORGA qo'shing.
+    "ANDROID_NOVA_FINGERPRINTS": "6F:79:CC:DA:FD:E4:04:CF:BA:29:96:4D:8C:CB:11:0C:0A:49:E0:D4:B9:8E:95:64:0A:68:50:02:68:B0:A9:3C"
   }
 }
