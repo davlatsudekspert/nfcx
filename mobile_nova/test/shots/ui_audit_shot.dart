@@ -59,6 +59,13 @@ void main() {
       }
       if (any) await loader.load();
     }
+    final home = Platform.environment['HOME'] ?? '/root';
+    final cup = File('$home/.pub-cache/hosted/pub.dev/cupertino_icons-1.0.8/assets/CupertinoIcons.ttf');
+    if (cup.existsSync()) {
+      await (FontLoader('packages/cupertino_icons/CupertinoIcons')
+            ..addFont(Future.value(cup.readAsBytesSync().buffer.asByteData())))
+          .load();
+    }
     final root = Platform.environment['FLUTTER_ROOT'] ?? '';
     final icons = File(
         '$root/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf');
@@ -78,6 +85,10 @@ void main() {
   }) async {
     tester.view.physicalSize = size * 2;
     tester.view.devicePixelRatio = 2.0;
+    // Haqiqiy telefondagidek: tepada status panel, pastda tizim paneli.
+    tester.view.padding = const FakeViewPadding(top: 64, bottom: 96);
+    tester.view.viewPadding = const FakeViewPadding(top: 64, bottom: 96);
+    addTearDown(tester.view.reset);
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 

@@ -498,20 +498,25 @@ class _Hero extends StatelessWidget {
             // qilamiz. Ustiga `bg1` to'rtburchagi qo'yilsa, uning pastki
             // qirrasi orqadagi jonli fon (backdrop) ustida TO'G'RI CHIZIQ
             // bo'lib ko'rinib qolardi — karta yana paydo bo'lardi.
-            shaderCallback: (rect) => const LinearGradient(
+            shaderCallback: (rect) => LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               // Uch emas, to'rt to'xtash: shaffoflikning O'ZGARISH
               // TEZLIGI ham asta susayadi. Ikki bosqichli chiziqli
               // so'nishda burilish nuqtasi ko'z uchun yengil chiziq
               // (Mach band) bo'lib seziladi.
+              //
+              // MUQOVA YO'Q BO'LSA — TEPADAN HAM ASTA PAYDO BO'LADI.
+              // Nur aynan sarlavha paneli ostidan eng kuchli holatda
+              // boshlanardi va panel bilan orasida KESKIN CHIZIQ
+              // ko'rinardi (2026-09 dizayn tekshiruvi).
               colors: [
+                cover.isEmpty ? const Color(0x00FFFFFF) : Colors.white,
                 Colors.white,
-                Colors.white,
-                Color(0x40FFFFFF),
+                const Color(0x40FFFFFF),
                 Colors.transparent,
               ],
-              stops: [0, .30, .70, 1],
+              stops: const [0, .30, .70, 1],
             ).createShader(rect),
             blendMode: BlendMode.dstIn,
             child: Stack(
@@ -591,7 +596,8 @@ class _Hero extends StatelessWidget {
                     business: business,
                   ),
                 ),
-                const SizedBox(height: Gap.md),
+                // Ism avatarga yopishib qolmasin.
+                const SizedBox(height: Gap.lg),
                 Text(
                   (profile?.name ?? '').isNotEmpty
                       ? profile!.name
@@ -821,18 +827,26 @@ class _HeroAvatar extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               boxShadow: [
+                // Mayinroq nur: ilgari u pastga 20 px tushib, ism
+                // yozuvining ostida jigarrang "dog'" bo'lib turardi.
                 BoxShadow(
                   color: glow,
-                  blurRadius: 46,
-                  offset: const Offset(0, 20),
+                  blurRadius: 40,
+                  offset: const Offset(0, 12),
                 ),
               ],
             ),
+            // HALQA — MAYIN BREND RANGI (bosh sahifadagi portret bilan
+            // bir xil). Ilgari qalin qora siyoh halqa edi va profil
+            // bosh sahifadan og'irroq ko'rinardi.
             child: Avatar(
               url: avatar,
               initials: user.initials,
               size: 112,
-              ringColor: business ? t.accentB : null,
+              ringWidth: 1.6,
+              ringColor: business
+                  ? t.accentB
+                  : t.brand.withValues(alpha: .6),
             ),
           ),
           // MUSIQA — pastki CHAPDA.

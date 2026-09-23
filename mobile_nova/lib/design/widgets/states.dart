@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/errors/app_error.dart';
 import '../../l10n/gen/app_localizations.dart';
@@ -134,15 +136,17 @@ class StatePanel extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 76,
-              height: 76,
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: .12),
-                shape: BoxShape.circle,
-                border: Border.all(color: accent.withValues(alpha: .3)),
+            Semantics(
+              excludeSemantics: true,
+              child: Container(
+                width: 76,
+                height: 76,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: .10),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 30, color: accent),
               ),
-              child: Icon(icon, size: 31, color: accent),
             ),
             const SizedBox(height: Gap.xl),
             Text(
@@ -167,18 +171,12 @@ class StatePanel extends StatelessWidget {
                 expand: false,
               ),
             ],
-            if (technical != null) ...[
-              const SizedBox(height: Gap.lg),
-              Text(
-                technical!,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: 'IBMPlexMono',
-                  fontSize: 10.5,
-                  color: t.text3,
-                ),
-              ),
-            ],
+            // TEXNIK QATOR ("unknown · HTTP 400") ODDIY ODAMGA
+            // KO'RSATILMAYDI — u professional ko'rinmaydi va hech narsa
+            // tushuntirmaydi. Sinov (debug/profile) nusxasida ochiq;
+            // chiqarilgan ilovada belgini UZOQ bosganda chiqadi va
+            // buferga ko'chadi (qo'llab-quvvatlashga yuborish uchun).
+            if (technical != null) _Technical(text: technical!),
           ],
         ),
       ),
@@ -295,4 +293,44 @@ class SkeletonList extends StatelessWidget {
           ),
         ),
       );
+}
+
+class _Technical extends StatefulWidget {
+  const _Technical({required this.text});
+  final String text;
+
+  @override
+  State<_Technical> createState() => _TechnicalState();
+}
+
+class _TechnicalState extends State<_Technical> {
+  bool _shown = !kReleaseMode;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onLongPress: () {
+        setState(() => _shown = true);
+        Clipboard.setData(ClipboardData(text: widget.text)).catchError((_) {});
+      },
+      child: Padding(
+        padding: const EdgeInsets.only(top: Gap.lg),
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 200),
+          opacity: _shown ? 1 : 0,
+          child: Text(
+            widget.text,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'IBMPlexMono',
+              fontSize: 10.5,
+              color: t.text3,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
