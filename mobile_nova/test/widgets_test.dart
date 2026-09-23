@@ -283,11 +283,8 @@ void main() {
   });
 
   group('Mavzu tanlash ekrani', () {
-    testWidgets('oltita mavzuni ko‘rsatadi, “Oq qora” yo‘q', (tester) async {
-      // BALAND OYNA. Ro'yxat `ListView` ustiga qurilgan va u
-      // ekrandan PASTDAGI elementni umuman qurmaydi. Standart
-      // 600px li test oynasida oxirgi mavzu "topilmadi" bo'lib
-      // chiqardi — holbuki telefonda odam pastga tushib ko'radi.
+    testWidgets('release: faqat Ivory (asosiy) va Noir; rangli mavzular yo‘q',
+        (tester) async {
       tester.view.physicalSize = const Size(1080, 4200);
       tester.view.devicePixelRatio = 3;
       addTearDown(tester.view.reset);
@@ -299,25 +296,23 @@ void main() {
       await tester.pump();
 
       final l = LUz();
+      // Egasi (2026-09 final): asosiy ko'rinish — oq/qora + champagne
+      // (ivory). Rangli mavzular keyinroq qo'shimcha variant bo'ladi.
+      expect(find.text(l.themeIvory), findsOneWidget);
+      expect(find.text(l.themeNoir), findsOneWidget);
       for (final name in [
-        // `themePearl` ATAYLAB yo'q: oq mavzu ro'yxatdan olib
-        // tashlangan, ya'ni bu ekranda ham chiqmasligi kerak.
         l.themeGraphite,
         l.themeOcean,
         l.themeAurora,
         l.themeOnyx,
-        l.themeNoir,
-        l.themeIvory,
+        l.themeMono,
       ]) {
-        expect(find.text(name), findsOneWidget, reason: name);
+        expect(find.text(name), findsNothing, reason: name);
       }
-      // "Oq qora" ham YO'Q: ikkita oq mavzu turardi, ivory qoldi
-      // (egasi, 2026-09 surat).
-      expect(find.text(l.themeMono), findsNothing);
       // Har mavzu kartasida logotip — kontrast shu yerda tekshiriladi.
       // Son ro'yxatdan olinadi: mavzu qo'shilganda bu sinov yana
       // qo'lda tuzatilishi shart bo'lmasin.
-      expect(find.byType(BrandLogo), findsNWidgets(NfcTokens.all.length));
+      expect(find.byType(BrandLogo), findsNWidgets(NfcTokens.choices.length));
     });
   });
 

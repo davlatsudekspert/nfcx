@@ -61,7 +61,7 @@ class ThemeSettingsScreen extends ConsumerWidget {
       showBack: true,
       body: NovaScroll(
         children: [
-          for (final t in NfcTokens.all)
+          for (final t in NfcTokens.choices)
             Padding(
               padding: const EdgeInsets.only(bottom: Gap.md),
               child: PressableScale(

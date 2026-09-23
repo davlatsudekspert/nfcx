@@ -153,8 +153,18 @@ void main() {
     expect(NfcTokens.byId('noir').id, 'noir');
     // `mono` tanlagan qurilma endi ivory'ga o'tadi.
     expect(NfcTokens.byId('mono').id, 'ivory');
-    // `ocean` HALI HAM mavjud — o'chirib yuborilmaganiga ishonch.
-    expect(NfcTokens.byId('ocean').id, 'ocean');
+    // RELEASE (egasi, 2026-09 final): rangli mavzular Sozlamalarda
+    // yo'q — ularni oldin tanlagan qurilma ham ivory'ga o'tadi.
+    for (final id in ['ocean', 'graphite', 'aurora', 'onyx']) {
+      expect(NfcTokens.byId(id).id, 'ivory', reason: id);
+    }
+    // Lekin palitralar O'CHIRILMAGAN — keyin qaytarish mumkin.
+    expect(NfcTokens.all.map((t) => t.id), contains('ocean'));
+  });
+
+  test('release: tanlovda faqat ivory (asosiy) va noir, ivory birinchi', () {
+    expect(NfcTokens.extraThemesEnabled, isFalse);
+    expect(NfcTokens.choices.map((t) => t.id).toList(), ['ivory', 'noir']);
   });
 
   test('ivory va oq-qora yorug‘, qolganlari qorong‘i', () {

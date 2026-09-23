@@ -839,6 +839,25 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
   // `fallback` (ivory) ga o'tadi.
   static final all = <NfcTokens>[ivory, noir, ocean, graphite, aurora, onyx];
 
+  /// RELEASE UCHUN TANLANADIGAN MAVZULAR (egasi, 2026-09 final qaror):
+  ///
+  ///   * asosiy va standart — `ivory`: oq/qora + nozik champagne
+  ///     aksent. NFCSTORE'ning asosiy ko'rinishi shu;
+  ///   * `noir` — xuddi shu uslubning qorong'i varianti (saytning
+  ///     qora-shampan brend palitrasi), tunda o'qish uchun.
+  ///
+  /// Rangli mavzular (`ocean`, `graphite`, `aurora`, `onyx`)
+  /// O'CHIRILMADI — keyinroq qo'shimcha variant sifatida qaytishi
+  /// mumkin: [extraThemesEnabled] ni `true` qilish kifoya. `all`
+  /// esa to'liq qoladi: sinovlar har bir palitrada kontrast va
+  /// joylashuvni tekshirishda davom etadi.
+  ///
+  /// Rangli mavzuni oldin tanlagan qurilma keyingi ochilishda
+  /// `ivory` ga o'tadi ([byId] faqat [choices] ichidan qidiradi).
+  static const extraThemesEnabled = false;
+  static final selectable = <NfcTokens>[ivory, noir];
+  static List<NfcTokens> get choices => extraThemesEnabled ? all : selectable;
+
   /// STANDART MAVZU — `noir`.
   ///
   /// Foydalanuvchi hali tanlamagan bo'lsa (birinchi ochilish yoki
@@ -859,7 +878,7 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
   static NfcTokens get fallback => ivory;
 
   static NfcTokens byId(String? id) =>
-      all.firstWhere((t) => t.id == id, orElse: () => fallback);
+      choices.firstWhere((t) => t.id == id, orElse: () => fallback);
 }
 
 /// `context.tokens` — har widget ichida `Theme.of(context).extension<...>()`
