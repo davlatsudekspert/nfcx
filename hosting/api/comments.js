@@ -71,6 +71,12 @@ const MIN_MS = 60_000;
 
 const PAGE_MAX = 50;
 
+// E2E SINOV YOZUVLARI (mobile_nova/integration_test — `kTestMarker`).
+// Robot har ishga tushganda o'z hisobida izoh/post yozib o'chiradi;
+// ular admin ro'yxatlarini to'ldirib yubormasin (egasi, 2026-09).
+export const E2E_MARKER = 'NOVA E2E TEST';
+export const NOT_E2E = (col) => `${col} NOT LIKE '${E2E_MARKER}%'`;
+
 let schemaReady = null;
 
 // Jadval KERAK BO'LGANDA yaratiladi — moderation.js bilan bir xil
@@ -410,6 +416,74 @@ export function retireTargetStmts(env, kind, idsSql, binds, { reason = 'target_d
   ];
 }
 
+// ── BIR MARTALIK TUZATISH: qayta ishlatilgan post raqamlari ──────
+//
+// `retireTargetStmts` qo'shilgunga qadar yopishib qolgan yozuvlar:
+// postning O'ZIDAN OLDIN yozilgan izoh va layk. Bunday bo'lishi mumkin
+// emas — demak u o'chirilgan eski postniki. Egasining ruxsati bilan
+// (2026-09): izohlar arxivga nusxa bilan yumshoq o'chiriladi;
+// `post_likes` avval `post_likes_orphans` ga nusxalanadi, keyin
+// o'chiriladi; `content_likes` ham `content_likes_orphans` ga.
+// Hech narsa izsiz yo'qolmaydi. BIR MARTA bajariladi
+// (`maintenance_runs`), natija soni o'sha yerga yoziladi.
+const REPAIR = 'recycled_post_ids_2026_09';
+const sec = (col) => `substr(replace(${col}, 'T', ' '), 1, 19)`;
+let repairReady = null;
+
+/// Faqat sinov uchun: xotiradagi "bajarildi" belgisini tozalaydi
+/// (bazadagi `maintenance_runs` belgisi o'z joyida qoladi).
+export function resetRepairMemoForTest() { repairReady = null; }
+
+export async function repairRecycledPostIdsOnce(env) {
+  if (!repairReady) {
+    repairReady = (async () => {
+      await ensureSchema(env);
+      await env.DB.prepare(`CREATE TABLE IF NOT EXISTS "maintenance_runs" (
+        name TEXT PRIMARY KEY NOT NULL, ran_at TEXT NOT NULL, details TEXT)`).run();
+      const done = await env.DB.prepare(`SELECT 1 AS x FROM maintenance_runs WHERE name = ?`).bind(REPAIR).first();
+      if (done) return;
+      const orphanComments = `SELECT c.id FROM content_comments c JOIN posts p ON p.id = c.target_id
+        WHERE c.target_kind = 'post' AND ${sec('c.created_at')} < ${sec('p.created_at')}`;
+      const orphanLikes = `SELECT pl.id FROM post_likes pl JOIN posts p ON p.id = pl.post_id
+        WHERE ${sec('pl.created_at')} < ${sec('p.created_at')}`;
+      const orphanCLikes = `SELECT l.rowid FROM content_likes l JOIN posts p ON p.id = l.target_id
+        WHERE l.target_kind = 'post' AND ${sec('l.created_at')} < ${sec('p.created_at')}`;
+      const now = tsNow();
+      const res = await env.DB.batch([
+        env.DB.prepare(`CREATE TABLE IF NOT EXISTS "post_likes_orphans" (
+          id INTEGER, post_id INTEGER, user_id INTEGER, created_at TEXT, moved_at TEXT)`),
+        env.DB.prepare(`CREATE TABLE IF NOT EXISTS "content_likes_orphans" (
+          target_kind TEXT, target_id INTEGER, user_id INTEGER, created_at TEXT, moved_at TEXT)`),
+        env.DB.prepare(
+          `INSERT INTO content_comment_archive
+             (comment_id, target_kind, target_id, user_id, author_code, body,
+              created_at, deleted_at, deleted_by_user_id, deleted_by_admin, reason)
+           SELECT id, target_kind, target_id, user_id, author_code, body, created_at, ?, 0, 'system', 'recycled_post_id'
+             FROM content_comments WHERE id IN (${orphanComments}) AND ${ALIVE}`
+        ).bind(now),
+        env.DB.prepare(
+          `UPDATE content_comments SET deleted_at = ?, deleted_by_user_id = 0, deleted_reason = 'recycled_post_id'
+            WHERE id IN (${orphanComments}) AND ${ALIVE}`
+        ).bind(now),
+        env.DB.prepare(
+          `INSERT INTO post_likes_orphans (id, post_id, user_id, created_at, moved_at)
+           SELECT id, post_id, user_id, created_at, ? FROM post_likes WHERE id IN (${orphanLikes})`
+        ).bind(now),
+        env.DB.prepare(`DELETE FROM post_likes WHERE id IN (${orphanLikes})`),
+        env.DB.prepare(
+          `INSERT INTO content_likes_orphans (target_kind, target_id, user_id, created_at, moved_at)
+           SELECT target_kind, target_id, user_id, created_at, ? FROM content_likes WHERE rowid IN (${orphanCLikes})`
+        ).bind(now),
+        env.DB.prepare(`DELETE FROM content_likes WHERE rowid IN (${orphanCLikes})`),
+      ]);
+      const n = (i) => Number(res?.[i]?.meta?.changes || 0);
+      await env.DB.prepare(`INSERT OR IGNORE INTO maintenance_runs (name, ran_at, details) VALUES (?,?,?)`)
+        .bind(REPAIR, now, JSON.stringify({ comments: n(3), postLikes: n(5), contentLikes: n(7) })).run();
+    })().catch((e) => { repairReady = null; console.error('repairRecycledPostIdsOnce', e?.message); });
+  }
+  await repairReady;
+}
+
 export async function deleteLikesFor(env, kind, id) {
   await ensureSchema(env);
   await env.DB.prepare(
@@ -745,6 +819,7 @@ export async function handle(request, env, url, H) {
       const limit = Math.min(PAGE_MAX, Math.max(1, Number(url.searchParams.get('limit')) || 30));
       const rows = await env.DB.prepare(
         `SELECT * FROM content_comment_archive
+          WHERE ${NOT_E2E('body')}
           ORDER BY deleted_at DESC, id DESC LIMIT ? OFFSET ?`
       ).bind(limit + 1, (page - 1) * limit).all().catch(() => null);
       const all = rows?.results || [];
@@ -775,7 +850,7 @@ export async function handle(request, env, url, H) {
       const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
       const limit = Math.min(PAGE_MAX, Math.max(1, Number(url.searchParams.get('limit')) || 30));
 
-      const conds = [];
+      const conds = [NOT_E2E('cc.body')];
       const args = [];
       if (state === 'live') conds.push(`cc.${ALIVE}`);
       else if (state === 'deleted') conds.push(`cc.deleted_at IS NOT NULL`);

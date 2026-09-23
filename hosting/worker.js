@@ -2120,7 +2120,11 @@ async function ensureCoreSchema(env) {
   const contentArchive = ensureArchiveTable(env);
   // Izoh jadvallari ham — post o'chirish batch'lari ularga yozadi
   // (comments.js `retireTargetStmts`); jadval yo'q bo'lsa batch yiqiladi.
-  const commentsSchema = apiComments.ensureSchema(env);
+  const commentsSchema = apiComments.ensureSchema(env)
+    // Bir martalik tuzatish (egasining ruxsati, 2026-09): yopishib
+    // qolgan eski izoh/layklar — comments.js `repairRecycledPostIdsOnce`.
+    // Xatosi ichida yutiladi: so'rovni hech qachon to'xtatmaydi.
+    .then(() => apiComments.repairRecycledPostIdsOnce(env));
   if (!coreSchemaReady) {
     coreSchemaReady = env.DB.batch([
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS "users" (

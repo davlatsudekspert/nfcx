@@ -262,7 +262,8 @@ export async function handle(request, env, url, H) {
     ? UNION
     : UNION.slice(0, UNION.indexOf('UNION ALL'));
 
-  const conds = [];
+  // E2E sinov yozuvlari (`NOVA E2E TEST ...`) dalil emas — ko'rsatilmaydi.
+  const conds = [`e.body NOT LIKE 'NOVA E2E TEST%'`];
   const binds = [];
   if (EVIDENCE_SOURCES.includes(source)) { conds.push('e.source = ?'); binds.push(source); }
   if (kind && (ARCHIVE_KINDS.includes(kind) || kind === 'comment')) { conds.push('e.kind = ?'); binds.push(kind); }
