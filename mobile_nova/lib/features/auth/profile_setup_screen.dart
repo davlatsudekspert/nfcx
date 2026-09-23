@@ -2,7 +2,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
@@ -13,9 +12,9 @@ import '../../design/widgets/nova_scaffold.dart';
 import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
-import '../../routing/routes.dart';
 import '../profile/profile_repository.dart';
 import 'session.dart';
+import 'signup_intent.dart';
 import '../../core/utils/media_url.dart';
 
 /// Ro'yxatdan o'tgandan keyingi profil to'ldirish.
@@ -108,7 +107,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     if (id == null) {
       // NFC ID hali berilmagan bo'lsa saqlaydigan joy yo'q — Home'da
       // foydalanuvchi ID yaratishi mumkin.
-      if (mounted) context.go(Routes.home);
+      if (mounted) finishSignup(context, ref);
       return;
     }
 
@@ -125,7 +124,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     await res.when(
       ok: (_) async {
         await ref.read(sessionProvider.notifier).refresh();
-        if (mounted) context.go(Routes.home);
+        if (mounted) finishSignup(context, ref);
       },
       err: (e) async => setState(() => _error = describeError(l, e)),
     );
@@ -241,7 +240,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           NovaButton(
             label: l.setupSkip,
             tone: ButtonTone.quiet,
-            onPressed: _busy ? null : () => context.go(Routes.home),
+            onPressed: _busy ? null : () => finishSignup(context, ref),
           ),
         ],
       ),

@@ -29,7 +29,12 @@ void main() {
       // Birinchi qadamda hali ko'rinmaydi.
       expect(find.byType(Checkbox), findsNothing);
 
-      // To'rtta qadamni bosib o'tamiz.
+      // Hisob turi, keyin to'rtta ma'lumot qadami.
+      await tester.tap(find.byKey(const ValueKey('signup-type-personal')));
+      await tester.pump();
+      await tester.tap(find.text(l.actionNext));
+      await settle(tester, frames: 14);
+
       await tester.enterText(find.byType(TextField).first, 'Test Foydalanuvchi');
       await tester.tap(find.text(l.actionNext));
       await settle(tester, frames: 14);

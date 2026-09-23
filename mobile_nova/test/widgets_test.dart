@@ -241,13 +241,24 @@ void main() {
       await tester.pump();
 
       final l = LUz();
-      // 1-qadam: ism.
-      expect(find.text(l.registerStep(1, 4)), findsOneWidget);
+      // 1-qadam: hisob turi. Tanlamasdan o'tib bo'lmaydi.
+      expect(find.text(l.registerStep(1, 5)), findsOneWidget);
+      await tester.tap(find.text(l.actionNext));
+      await settle(tester);
+      expect(find.text(l.registerStep(1, 5)), findsOneWidget);
+      expect(find.text(l.registerTypeRequired), findsOneWidget);
 
+      await tester.tap(find.byKey(const ValueKey('signup-type-personal')));
+      await tester.pump();
+      await tester.tap(find.text(l.actionNext));
+      await settle(tester);
+
+      // 2-qadam: ism.
+      expect(find.text(l.registerStep(2, 5)), findsOneWidget);
       await tester.enterText(find.byType(TextField).first, 'Aziz Karimov');
       await tester.tap(find.text(l.actionNext));
       await settle(tester);
-      expect(find.text(l.registerStep(2, 4)), findsOneWidget);
+      expect(find.text(l.registerStep(3, 5)), findsOneWidget);
     });
 
     testWidgets('qisqa ism bilan oldinga o‘tkazmaydi', (tester) async {
@@ -258,10 +269,15 @@ void main() {
       await tester.pump();
 
       final l = LUz();
+      await tester.tap(find.byKey(const ValueKey('signup-type-personal')));
+      await tester.pump();
+      await tester.tap(find.text(l.actionNext));
+      await settle(tester);
+
       await tester.enterText(find.byType(TextField).first, 'A');
       await tester.tap(find.text(l.actionNext));
       await settle(tester);
-      expect(find.text(l.registerStep(1, 4)), findsOneWidget);
+      expect(find.text(l.registerStep(2, 5)), findsOneWidget);
       expect(find.text(l.errNameShort), findsOneWidget);
     });
   });

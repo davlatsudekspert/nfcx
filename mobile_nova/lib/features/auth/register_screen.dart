@@ -17,6 +17,7 @@ import '../../design/widgets/states.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
 import 'session.dart';
+import 'signup_intent.dart';
 import 'verify_screen.dart';
 
 /// Ro'yxatdan o'tish — Ism → Email → Telefon → Parol → Tasdiqlash.
@@ -32,7 +33,8 @@ class RegisterScreen extends ConsumerStatefulWidget {
 }
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
-  static const _steps = 4;
+  /// 0 — hisob turi, 1 — ism, 2 — email, 3 — telefon, 4 — parol.
+  static const _steps = 5;
 
   final _page = PageController();
   final _name = TextEditingController();
@@ -42,6 +44,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _password2 = TextEditingController();
 
   int _step = 0;
+
+  /// Hisob turi — birinchi qadam. `null` bo'lsa oldinga o'tilmaydi:
+  /// odam ongli tanlashi kerak, jimgina "shaxsiy" qo'yib yuborilmaydi.
+  SignupAccountType? _type;
   bool _busy = false;
 
   /// OMMAVIY OFERTAGA ROZILIK.
@@ -80,14 +86,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   String? _validateStep() {
+    if (_step == 0) {
+      return _type == null ? L.of(context).registerTypeRequired : null;
+    }
     final key = switch (_step) {
-      0 => Validate.name(_name.text),
-      1 => Validate.email(_email.text),
-      2 => Validate.phone(_phone.text),
+      1 => Validate.name(_name.text),
+      2 => Validate.email(_email.text),
+      3 => Validate.phone(_phone.text),
       _ => Validate.password(_password.text),
     };
     if (key != null) return _tr(key);
-    if (_step == 3 && _password.text != _password2.text) {
+    if (_step == 4 && _password.text != _password2.text) {
       return L.of(context).errPasswordMismatch;
     }
     // Rozilik belgilanmagan bo'lsa serverning o'zi 422 qaytaradi.
@@ -276,12 +285,27 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               physics: const NeverScrollableScrollPhysics(),
               children: [
                 _Step(
+                  title: l.registerTypeTitle,
+                  hint: l.registerTypeHint,
+                  child: _TypePicker(
+                    value: _type,
+                    error: _fieldErrors[0],
+                    onChanged: (v) {
+                      setState(() {
+                        _type = v;
+                        _fieldErrors[0] = null;
+                      });
+                      ref.read(signupAccountTypeProvider.notifier).state = v;
+                    },
+                  ),
+                ),
+                _Step(
                   title: l.registerTitle,
                   hint: l.registerNameHint,
                   child: NovaField(
                     label: l.fieldName,
                     controller: _name,
-                    error: _fieldErrors[0],
+                    error: _fieldErrors[1],
                     textCapitalization: TextCapitalization.words,
                     enabled: !_busy,
                   ),
@@ -292,7 +316,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   child: NovaField(
                     label: l.fieldEmail,
                     controller: _email,
-                    error: _fieldErrors[1],
+                    error: _fieldErrors[2],
                     keyboardType: TextInputType.emailAddress,
                     hint: 'siz@example.com',
                     enabled: !_busy,
@@ -304,7 +328,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   child: PhoneField(
                     label: l.fieldPhone,
                     controller: _phone,
-                    error: _fieldErrors[2],
+                    error: _fieldErrors[3],
                   ),
                 ),
                 _Step(
@@ -315,7 +339,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       NovaField(
                         label: l.fieldPassword,
                         controller: _password,
-                        error: _fieldErrors[3],
+                        error: _fieldErrors[4],
                         obscure: _obscure,
                         enabled: !_busy,
                         suffix: IconButton(
@@ -486,6 +510,140 @@ class _TosRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Hisob turi — ikki katta karta.
+///
+/// Tanlangani siyoh chegara va belgi bilan ajraladi, rang bilan emas:
+/// ivory mavzusida oltin faqat brend tafsilotlarida.
+class _TypePicker extends StatelessWidget {
+  const _TypePicker({
+    required this.value,
+    required this.onChanged,
+    this.error,
+  });
+
+  final SignupAccountType? value;
+  final ValueChanged<SignupAccountType> onChanged;
+  final String? error;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context);
+    final t = context.tokens;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _TypeCard(
+          key: const ValueKey('signup-type-personal'),
+          icon: Icons.person_outline_rounded,
+          title: l.modePersonal,
+          hint: l.accountPersonalHint,
+          selected: value == SignupAccountType.personal,
+          onTap: () => onChanged(SignupAccountType.personal),
+        ),
+        const SizedBox(height: Gap.md),
+        _TypeCard(
+          key: const ValueKey('signup-type-business'),
+          icon: Icons.storefront_outlined,
+          title: l.modeBusiness,
+          hint: l.accountBusinessHint,
+          selected: value == SignupAccountType.business,
+          onTap: () => onChanged(SignupAccountType.business),
+        ),
+        if (error != null) ...[
+          const SizedBox(height: Gap.md),
+          Text(
+            error!,
+            style: TextStyle(
+              fontFamily: AppType.sans,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              color: t.error,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _TypeCard extends StatelessWidget {
+  const _TypeCard({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.hint,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String hint;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: title,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.all(Gap.lg),
+          decoration: BoxDecoration(
+            color: t.surfaceSolid,
+            borderRadius: R.gentle,
+            border: Border.all(
+              color: selected ? t.accent2 : t.border2,
+              width: selected ? 1.6 : 1,
+            ),
+            boxShadow: selected ? t.shadowSoft : t.shadowTiny,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: t.surface2,
+                  borderRadius: R.tile,
+                ),
+                child: Icon(icon, size: 21, color: t.text1),
+              ),
+              const SizedBox(width: Gap.md + 2),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: AppType.displayStyle(
+                            color: t.text1, size: 22, height: 1.1)),
+                    const SizedBox(height: 3),
+                    Text(hint, style: Theme.of(context).textTheme.bodySmall),
+                  ],
+                ),
+              ),
+              const SizedBox(width: Gap.sm),
+              AnimatedOpacity(
+                opacity: selected ? 1 : 0,
+                duration: const Duration(milliseconds: 200),
+                child: Icon(Icons.check_circle_rounded,
+                    size: 22, color: t.accent2),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
