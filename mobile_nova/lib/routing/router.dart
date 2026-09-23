@@ -278,6 +278,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             PostScreen(
               id: int.tryParse(s.pathParameters['id'] ?? '') ?? 0,
               code: code,
+              company: s.uri.queryParameters['company'] == '1',
             ),
           );
         },

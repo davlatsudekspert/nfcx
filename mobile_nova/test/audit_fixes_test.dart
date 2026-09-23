@@ -4,10 +4,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nfcstore_nova/app/providers.dart';
+import 'package:nfcstore_nova/core/errors/app_error.dart';
+import 'package:nfcstore_nova/core/network/api_client.dart';
+import 'package:nfcstore_nova/data/repositories/social_repository.dart';
+import 'package:nfcstore_nova/routing/routes.dart';
+import 'package:nfcstore_nova/core/utils/result.dart';
+import 'package:nfcstore_nova/data/models/models.dart';
 import 'package:nfcstore_nova/core/storage/secure_store.dart';
 import 'package:nfcstore_nova/design/theme/app_theme.dart';
 import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
 import 'package:nfcstore_nova/features/auth/session.dart';
+import 'package:nfcstore_nova/features/entry/splash_screen.dart';
 import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
 import 'package:nfcstore_nova/features/settings/app_lock.dart';
 import 'package:nfcstore_nova/features/social/moderation.dart';
@@ -36,8 +43,130 @@ class _LogoutSpy extends FakeAuthRepository {
   Future<void> logout() async => logouts++;
 }
 
-/// Tasdiqlangan audit topilmalari (F-H6, F-H7, F-M11).
+/// Internet yo'q: birinchi [fails] urinish `offline`, keyin sessiya bor.
+class _FlakyAuth extends FakeAuthRepository {
+  _FlakyAuth(this.fails, {this.kind = AppErrorKind.offline});
+  int fails;
+  final AppErrorKind kind;
+  int calls = 0;
+
+  @override
+  Future<Result<({User user, List<NfcId> ids})>> restore() async {
+    calls++;
+    if (fails > 0) {
+      fails--;
+      return Err(AppError(kind));
+    }
+    return super.restore();
+  }
+}
+
+/// Qaysi yo'l so'ralganini yozib boradi; har yo'lga bitta post.
+class _PathApi extends ApiClient {
+  final paths = <String>[];
+
+  @override
+  Future<Result<T>> get<T>(String path,
+      {Map<String, dynamic>? query, bool auth = true}) async {
+    paths.add(path);
+    return Ok({
+      'posts': [
+        {'id': 7, 'code': 'ACME', 'caption': path},
+      ],
+    } as T);
+  }
+}
+
+/// Tasdiqlangan audit topilmalari (F-H3, F-H5, F-H6, F-H7, F-M11).
 void main() {
+  group('Kompaniya posti ochiladi (F-H5)', () {
+    test('havola kompaniya belgisini olib yuradi', () {
+      expect(Routes.post(7, code: 'ACME', company: true),
+          '/post/7?code=ACME&company=1');
+      expect(Routes.post(7, code: 'ABC123'), '/post/7?code=ABC123');
+    });
+
+    test('kompaniya posti kompaniya ro‘yxatidan olinadi', () async {
+      final api = _PathApi();
+      final repo = SocialRepository(api);
+      final r = await repo.postIn('ACME', 7, company: true);
+      expect(api.paths.single, '/api/companies/ACME/posts');
+      final p = (r as Ok<Post>).value;
+      expect(p.isCompany, isTrue,
+          reason: 'layk/izoh/shikoyat kompaniya yo‘lidan ketsin');
+
+      final personal = await repo.postIn('ABC123', 7);
+      expect(api.paths.last, '/api/records/ABC123/posts');
+      expect((personal as Ok<Post>).value.isCompany, isFalse);
+    });
+  });
+
+  group('Sessiya internet yo‘qligida CHIQARIB YUBORMAYDI (F-H3)', () {
+    for (final kind in [
+      AppErrorKind.offline,
+      AppErrorKind.timeout,
+      AppErrorKind.server,
+    ]) {
+      testWidgets('${kind.name} — Splash + sabab, keyin o‘zi tiklanadi',
+          (tester) async {
+        final auth = _FlakyAuth(1, kind: kind);
+        final c = ProviderContainer(overrides: [
+          ...await testOverrides(),
+          authRepositoryProvider.overrideWithValue(auth),
+        ]);
+        addTearDown(c.dispose);
+        await tester.pumpWidget(UncontrolledProviderScope(
+          container: c,
+          child: wrapScreen(const SplashScreen()),
+        ));
+        await tester.pump();
+        await tester.pump();
+        final s = c.read(sessionProvider);
+        expect(s, isA<SessionRestoring>(),
+            reason: 'tarmoq xatosi odamni Welcome ga chiqarmasin');
+        expect((s as SessionRestoring).error?.kind, kind);
+        expect(find.byKey(const ValueKey('splash-error')), findsOneWidget);
+        expect(find.text(LUz().actionRetry), findsOneWidget);
+
+        // Avtomatik qayta urinish (2 s).
+        await tester.pump(const Duration(seconds: 2));
+        await tester.pump();
+        expect(c.read(sessionProvider), isA<SessionActive>());
+        expect(auth.calls, 2);
+      });
+    }
+
+    test('haqiqiy "sessiya yo‘q" (unauthorized) — anonim', () async {
+      final c = ProviderContainer(overrides: [
+        ...await testOverrides(),
+        authRepositoryProvider.overrideWithValue(
+            _FlakyAuth(99, kind: AppErrorKind.unauthorized)),
+      ]);
+      addTearDown(c.dispose);
+      await c.read(sessionProvider.notifier).restore();
+      expect(c.read(sessionProvider), isA<SessionAnonymous>());
+    });
+
+    testWidgets('"Qayta urinish" darhol tiklaydi', (tester) async {
+      final auth = _FlakyAuth(1);
+      final c = ProviderContainer(overrides: [
+        ...await testOverrides(),
+        authRepositoryProvider.overrideWithValue(auth),
+      ]);
+      addTearDown(c.dispose);
+      await tester.pumpWidget(UncontrolledProviderScope(
+        container: c,
+        child: wrapScreen(const SplashScreen()),
+      ));
+      await tester.pump();
+      await tester.pump();
+      await tester.tap(find.text(LUz().actionRetry));
+      await tester.pump();
+      await tester.pump();
+      expect(c.read(sessionProvider), isA<SessionActive>());
+    });
+  });
+
   group('Bloklanganlar ro‘yxati (F-H6)', () {
     for (final w in [320.0, 360.0, 430.0]) {
       testWidgets('${w.toInt()} dp — xatosiz chiziladi, tugmalar bor',

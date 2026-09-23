@@ -36,7 +36,7 @@ import 'moderation.dart';
 import '../../design/icons/nova_icons.dart';
 
 /// Post tafsiloti uchun so'rov: yozuv kodi + post id.
-typedef PostRef = ({String code, int id});
+typedef PostRef = ({String code, int id, bool company});
 
 // RIVERPOD `dependencies` — demo daraxti uchun shart
 // (`profile_repository.dart` dagi izohga qarang).
@@ -45,24 +45,31 @@ final postProvider = FutureProvider.autoDispose.family<Post, PostRef>(
   ref,
   r,
 ) async {
-  final res = await ref.watch(socialRepositoryProvider).postIn(r.code, r.id);
+  final res = await ref.watch(socialRepositoryProvider).postIn(r.code, r.id, company: r.company);
   return res.when(ok: (v) => v, err: (e) => throw e);
 });
 
 /// Post tafsiloti — yoqtirish, izohlar, ulashish.
 class PostScreen extends ConsumerStatefulWidget {
-  const PostScreen({super.key, required this.id, this.code = ''});
+  const PostScreen(
+      {super.key, required this.id, this.code = '', this.company = false});
 
   final int id;
 
   /// Postning yozuvi — usiz backend'dan postni olib bo'lmaydi.
   final String code;
 
+  /// Post kompaniyaniki — `Routes.post(company: true)`.
+  final bool company;
+
   @override
   ConsumerState<PostScreen> createState() => _PostScreenState();
 }
 
 class _PostScreenState extends ConsumerState<PostScreen> {
+  PostRef get _ref =>
+      (code: widget.code, id: widget.id, company: widget.company);
+
   // LAYK HOLATI MAHALLIY EMAS.
   //
   // Ilgari bu yerda `_likedOverride` va `_likeDelta` degan
@@ -86,7 +93,7 @@ class _PostScreenState extends ConsumerState<PostScreen> {
   Widget build(BuildContext context) {
     final l = L.of(context);
     final t = context.tokens;
-    final post = ref.watch(postProvider((code: widget.code, id: widget.id)));
+    final post = ref.watch(postProvider(_ref));
     final myIds = ref.watch(myIdsProvider);
 
     return NovaScaffold(
@@ -98,7 +105,7 @@ class _PostScreenState extends ConsumerState<PostScreen> {
           context,
           asAppError(e),
           onRetry: () =>
-              ref.invalidate(postProvider((code: widget.code, id: widget.id))),
+              ref.invalidate(postProvider(_ref)),
         ),
         data: (p) {
           final like = ref.watch(
@@ -107,7 +114,9 @@ class _PostScreenState extends ConsumerState<PostScreen> {
             ),
           );
           final liked = like.liked;
-          final mine = myIds.any((e) => e.code == p.code);
+          // O'chirish shaxsiy `/api/posts/:id` ga boradi — kompaniya
+          // postida u BEGONA shaxsiy postni o'chirardi.
+          final mine = !p.isCompany && myIds.any((e) => e.code == p.code);
           return NovaScroll(
             children: [
               Row(
@@ -250,7 +259,7 @@ class _PostScreenState extends ConsumerState<PostScreen> {
               // Izohlar — backend'dagi haqiqiy ro'yxat. Ilgari bu
               // yerda o'zgarmas "izohlar yo'q" yozuvi turardi.
               CommentsSection(
-                kind: 'post',
+                kind: p.isCompany ? 'company_post' : 'post',
                 id: p.id,
                 ownerCode: p.code,
                 focusNode: _commentFocus,

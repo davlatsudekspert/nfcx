@@ -28,6 +28,7 @@ abstract final class Routes {
   static const postCreate = '/post/create';
   static const storyCreate = '/story/create';
   static const reelCreate = '/reel/create';
+
   /// Post tafsiloti.
   ///
   /// `code` — postning yozuvi. Backend'da bitta postni id bo'yicha
@@ -41,8 +42,15 @@ abstract final class Routes {
   /// posti ikki xil narsa.
   static String featured(String kind, int id) => '/featured/$kind/$id';
 
-  static String post(int id, {String code = ''}) =>
-      code.isEmpty ? '/post/$id' : '/post/$id?code=${Uri.encodeComponent(code)}';
+  /// `company` — post kompaniyaniki (`code` = kompaniya ID). Usiz
+  /// ekran shaxsiy yozuvlar ro'yxatidan qidirib, kompaniya postini
+  /// TOPOLMASDI ("topilmadi").
+  static String post(int id, {String code = '', bool company = false}) {
+    if (code.isEmpty) return '/post/$id';
+    final c = Uri.encodeComponent(code);
+    return company ? '/post/$id?code=$c&company=1' : '/post/$id?code=$c';
+  }
+
   /// Istorya ko'rish oynasi.
   ///
   /// `business` — kod kompaniyanikimi. Usiz ekran shaxsiy yo'lni

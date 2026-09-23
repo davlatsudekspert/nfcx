@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
@@ -15,8 +17,13 @@ sealed class SessionState {
 }
 
 /// Saqlangan token tekshirilmoqda. Splash shu holatda ko'rinadi.
+///
+/// [error] — oxirgi urinish tarmoq sababli o'xshamadi (internet yo'q,
+/// timeout, 5xx). Token JOYIDA, sessiya qayta urinilmoqda; Splash
+/// sababni va "Qayta urinish" tugmasini ko'rsatadi.
 class SessionRestoring extends SessionState {
-  const SessionRestoring();
+  const SessionRestoring([this.error]);
+  final AppError? error;
 }
 
 class SessionAnonymous extends SessionState {
@@ -43,14 +50,46 @@ class SessionController extends StateNotifier<SessionState> {
   }
 
   final AuthRepository _repo;
+  Timer? _retry;
+  int _attempt = 0;
 
+  /// SESSIYANI TIKLASH.
+  ///
+  /// Faqat haqiqiy "sessiya yo'q" (token yo'q yoki server uni rad
+  /// etdi — `unauthorized`) odamni chiqaradi. Internet yo'qligi,
+  /// timeout yoki server xatosida token saqlanib qoladi — avval bunday
+  /// holatda ham ilova "chiqib ketgan" bo'lib Welcome'ni ko'rsatardi,
+  /// token esa telefonda qolardi. Endi Splash sababni ko'rsatadi va
+  /// o'zi qayta urinadi (2, 4, 8, 16, 30 s ...).
   Future<void> restore() async {
+    _retry?.cancel();
     final res = await _repo.restore();
     if (!mounted) return;
-    state = res.when(
-      ok: (v) => SessionActive(v.user, v.ids),
-      err: (_) => const SessionAnonymous(),
+    res.when(
+      ok: (v) {
+        _attempt = 0;
+        state = SessionActive(v.user, v.ids);
+      },
+      err: (e) {
+        if (e.kind == AppErrorKind.unauthorized) {
+          _attempt = 0;
+          state = const SessionAnonymous();
+          return;
+        }
+        state = SessionRestoring(e);
+        final wait = Duration(seconds: (2 << _attempt).clamp(2, 30));
+        if (_attempt < 4) _attempt++;
+        _retry = Timer(wait, () {
+          if (mounted && state is SessionRestoring) restore();
+        });
+      },
     );
+  }
+
+  @override
+  void dispose() {
+    _retry?.cancel();
+    super.dispose();
   }
 
   /// Kirish muvaffaqiyatli bo'lgach chaqiriladi.

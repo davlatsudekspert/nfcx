@@ -31,11 +31,23 @@ class SocialRepository {
   /// haqiqiy endpoint (`GET /api/records/:code/posts`). Kod ma'lum
   /// bo'lmasa (masalan sovuq deep link) post topib bo'lmaydi va buni
   /// yashirmaymiz: `notFound` qaytadi.
-  Future<Result<Post>> postIn(String code, int id) async {
+  ///
+  /// `company` — `code` kompaniya ID si: postlar
+  /// `/api/companies/:id/posts` dan olinadi (shaxsiy ro'yxatda ular
+  /// yo'q) va `company` turi beriladi — layk, izoh, shikoyat
+  /// kompaniya yo'lidan ketadi.
+  Future<Result<Post>> postIn(String code, int id,
+      {bool company = false}) async {
     if (code.isEmpty) {
       return const Err(AppError(AppErrorKind.notFound));
     }
-    final res = await postsOf(code);
+    final res = company
+        ? (await _api.get<Map<String, dynamic>>(
+                '/api/companies/${Uri.encodeComponent(code)}/posts'))
+            .map((j) => parseList(j['posts'] ?? j['items'], Post.fromJson)
+                .map((p) => p.copyWithKind(authorKind: 'company'))
+                .toList())
+        : await postsOf(code);
     return res.when(
       ok: (items) {
         for (final p in items) {

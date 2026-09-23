@@ -55,7 +55,7 @@ class FeedCard extends ConsumerWidget {
     final name = post.authorName.isEmpty ? post.code : post.authorName;
     final media = post.mediaUrls.isEmpty ? '' : post.mediaUrls.first;
 
-    void openPost() => context.push(Routes.post(post.id, code: post.code));
+    void openPost() => context.push(Routes.post(post.id, code: post.code, company: post.isCompany));
 
     /// Amal yiqilganda holat eskisiga qaytadi. Buni AYTISH kerak:
     /// jimgina orqaga sakragan yurak odamga "bosilmadi" emas,

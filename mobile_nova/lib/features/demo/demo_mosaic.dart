@@ -110,7 +110,7 @@ class _Tile extends StatelessWidget {
     final media = post.mediaUrls.isEmpty ? '' : post.mediaUrls.first;
 
     return PressableScale(
-      onTap: () => context.push(Routes.post(post.id, code: code)),
+      onTap: () => context.push(Routes.post(post.id, code: code, company: post.isCompany)),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(radius),
         child: AspectRatio(

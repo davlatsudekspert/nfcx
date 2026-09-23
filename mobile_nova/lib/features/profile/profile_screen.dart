@@ -1371,7 +1371,8 @@ class _PostsGridState extends ConsumerState<_PostsGrid> {
             children: [
               for (final p in items)
                 PressableScale(
-                  onTap: () => context.push(Routes.post(p.id, code: code)),
+                  onTap: () => context.push(
+                      Routes.post(p.id, code: code, company: company)),
                   child: ClipRRect(
                     borderRadius: R.tile,
                     child: SizedBox(
