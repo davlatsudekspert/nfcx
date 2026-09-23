@@ -11,11 +11,12 @@ on:
   workflow_dispatch:
   push:
     branches: ['claude/**']
+    # `lib/**` OLIB TASHLANDI: emulyator (swiftshader) videoni ochganda
+    # o'chib qolyapti va har ilova o'zgarishida qizil ish qoldirardi.
+    # Qo'lda (workflow_dispatch) yoki o'lchov kodi o'zgarganda ishlaydi.
     paths:
       - 'mobile_nova/integration_perf/**'
       - 'mobile_nova/test_driver/**'
-      - 'mobile_nova/lib/**'
-      - '.github/workflows/nova-perf.yml'
       - 'tool/perf_run.sh'
 
 # E2E bilan BITTA navbat: ikkalasi bir hisobga kiradi, server esa
