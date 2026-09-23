@@ -286,4 +286,21 @@ void main() {
     expect(m.surfaceSolid.computeLuminance(),
         greaterThan(m.bg1.computeLuminance()));
   });
+
+  test('hamma mavzuda text3 karta ustida ham o‘qiladi (>= 4.5:1)', () {
+    for (final t in NfcTokens.all.where((e) => e.id != 'mono')) {
+      expect(_contrast(t.text3, t.surfaceSolid), greaterThanOrEqualTo(4.5),
+          reason: t.id);
+      expect(_contrast(t.text2, t.surfaceSolid), greaterThanOrEqualTo(7),
+          reason: t.id);
+    }
+  });
+
+  test('Graphite sovuq, Onyx iliq — bir-biriga o‘xshamaydi', () {
+    final g = NfcTokens.graphite.accent2;
+    final o = NfcTokens.onyx.accent2;
+    // Graphite aksentida ko'k >= qizil (sovuq), Onyx'da qizil > ko'k.
+    expect(g.b, greaterThanOrEqualTo(g.r));
+    expect(o.r, greaterThan(o.b + .15));
+  });
 }

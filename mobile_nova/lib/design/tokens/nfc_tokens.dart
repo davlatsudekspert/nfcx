@@ -366,6 +366,14 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
   );
 
   // ------------------------------------------------------------- 2 GRAPHITE
+  //
+  // SOVUQ GRAPHITE + PLATINA (egasi, 2026-09: "Graphite va Onyx bir-
+  // biriga o'xshab ketmasin"). Aksent ilgari iliq bej-kulrang
+  // (`#C0BBB2`) edi va Onyx'ning iliq qorasi yonida farqi sezilmasdi;
+  // endi sovuq kumush-platina. Onyx — iliq qora + oltin.
+  //
+  // `text3` — hamma qorong'i mavzuda karta ustida ham >= 5:1 kontrast
+  // ("xira kulrang matn bo'lmasin").
   static final graphite = NfcTokens(
     id: 'graphite',
     isDark: true,
@@ -377,18 +385,18 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     surfaceSolid: hex('#22232A'),
     text1: hex('#F0EFEB'),
     text2: hex('#B8B8BE'),
-    text3: hex('#7A7A82'),
-    accent1: hex('#DFDCD6'),
-    accent2: hex('#C0BBB2'),
-    accent3: hex('#8E8E92'),
-    goldDeep: hex('#A7A199'),
+    text3: hex('#9396A1'),
+    accent1: hex('#E6E9EE'),
+    accent2: hex('#BCC3CD'),
+    accent3: hex('#8A919C'),
+    goldDeep: hex('#9AA2AD'),
     accentB: hex('#8FA0B0'),
     accentBDark: hex('#A8BDD0'),
     accentC: hex('#A8B0C4'),
     accentCDark: hex('#8A94B0'),
     accentD: hex('#8898A8'),
     accentDDark: hex('#A0B4C4'),
-    glow: rgba(220, 220, 224, .22),
+    glow: rgba(200, 208, 220, .18),
     glowB: rgba(143, 160, 176, .22),
     border1: rgba(255, 255, 255, .14),
     border2: rgba(200, 200, 210, .14),
@@ -408,9 +416,9 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     shadowTiny: [
       BoxShadow(color: rgba(0, 0, 0, .23), blurRadius: 17, offset: const Offset(0, 4)),
     ],
-    brand: hex('#C0BBB2'),
-    brandSoft: rgba(192, 187, 178, .28),
-    brandInk: hex('#DFDCD6'),
+    brand: hex('#BCC3CD'),
+    brandSoft: rgba(188, 195, 205, .26),
+    brandInk: hex('#E6E9EE'),
   );
 
   // ---------------------------------------------------------------- 3 OCEAN
@@ -425,7 +433,7 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     surfaceSolid: hex('#152B44'),
     text1: hex('#E8F0F8'),
     text2: hex('#A8C0D8'),
-    text3: hex('#6A88A8'),
+    text3: hex('#89A5C2'),
     accent1: hex('#AFD6E0'),
     accent2: hex('#6FB3C6'),
     accent3: hex('#4A8FB0'),
@@ -473,7 +481,7 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     surfaceSolid: hex('#2A2040'),
     text1: hex('#F4EDF8'),
     text2: hex('#C8B8E0'),
-    text3: hex('#8A7AA8'),
+    text3: hex('#A698C3'),
     accent1: hex('#D3C6E4'),
     accent2: hex('#AE9BCB'),
     accent3: hex('#8A6FB0'),
@@ -666,7 +674,7 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     surfaceSolid: hex('#1D1A15'),
     text1: hex('#F5EFE2'),
     text2: hex('#B5AC99'),
-    text3: hex('#726A5B'),
+    text3: hex('#9C927E'),
     accent1: hex('#E8D4A0'),
     accent2: hex('#C9A96A'),
     accent3: hex('#8E7340'),
@@ -759,7 +767,7 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     surfaceSolid: hex('#142337'),
     text1: hex('#F4F1E8'),
     text2: hex('#AAB4C3'),
-    text3: hex('#7A8699'),
+    text3: hex('#8A96A9'),
     accent1: hex('#E4C97A'),
     accent2: hex('#D6B25E'),
     accent3: hex('#A8853F'),
