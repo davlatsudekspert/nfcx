@@ -112,7 +112,7 @@ const STD_CODE_RE = /^[A-Z]{3}[0-9]{3}$/;      // standart: AAA000
 const LETTER_CODE_RE = /^[A-Z]{3,12}$/;         // premium: faqat harflar — ALI, UZBEKISTAN
 const FREE_ID_RE = /^[0-9]{8}$/;                // ro'yxatdan o'tishda avtomatik beriladigan bepul ID
 const RESERVED_CODES = new Set([
-  'LOGIN', 'REGISTER', 'ACCOUNT', 'API', 'ADMIN', 'STATIC', 'UPLOADS', 'AUKSION', 'XABARLAR', 'TOLOVLAR',
+  'LOGIN', 'REGISTER', 'ACCOUNT', 'PRIVACY', 'API', 'ADMIN', 'STATIC', 'UPLOADS', 'AUKSION', 'XABARLAR', 'TOLOVLAR',
 ]);
 
 function validCode(code) {

@@ -67,6 +67,9 @@ const FaqPage = lazyPage(() => import('./pages/FaqPage.jsx'));
 const ContactPage = lazyPage(() => import('./pages/ContactPage.jsx'));
 const TermsPage = lazyPage(() => import('./pages/TermsPage.jsx'));
 const PrivacyPage = lazyPage(() => import('./pages/PrivacyPage.jsx'));
+// Google Play talabi (2026-09): maxfiylik siyosati va hisobni o'chirish
+// OCHIQ manzillarda bo'lishi kerak — /privacy va /delete-account.
+const DeleteAccountPage = lazyPage(() => import('./pages/DeleteAccountPage.jsx'));
 // AUKSION BEKOR QILINDI (2026-09): AuctionsPage/AuctionPage/AuctionRulesPage
 // fayllari O'CHIRILMADI (admin va backend hali ularga bog'liq bo'lishi
 // mumkin), lekin ILOVAGA UMUMAN YUKLANMAYDI — yo'llar narxlar sahifasiga
@@ -98,6 +101,8 @@ const STATIC_ROUTES = {
   aloqa: ContactPage,
   shartlar: TermsPage,
   maxfiylik: PrivacyPage,
+  privacy: PrivacyPage,
+  'delete-account': DeleteAccountPage,
   // AUKSION BEKOR QILINDI (2026-09). Sahifa fayllari o'chirilmadi (backend
   // hali ularga bog'liq), lekin interfeysdan butunlay olib tashlandi:
   // eski havolalar narxlar sahifasiga yo'naltiriladi — shunda tashqarida
@@ -325,7 +330,8 @@ export default function App() {
     else if (cleanRoute === 'savollar') page = <FaqPage catalog={catalog} />;
     else if (cleanRoute === 'aloqa') page = <ContactPage />;
     else if (cleanRoute === 'shartlar') page = <TermsPage />;
-    else if (cleanRoute === 'maxfiylik') page = <PrivacyPage />;
+    else if (cleanRoute === 'maxfiylik' || cleanRoute === 'privacy') page = <PrivacyPage />;
+    else if (cleanRoute === 'delete-account') page = <DeleteAccountPage />;
     // AUKSION BEKOR QILINDI (2026-09) — sahifa o'rniga yo'naltirish.
     else if (cleanRoute === 'auksion' || isAuctionDetail) page = <PricingRedirect />;
     else if (cleanRoute === 'gifts') page = <GiftsPage catalog={catalog} />;
