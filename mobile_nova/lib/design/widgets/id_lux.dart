@@ -161,7 +161,7 @@ class IdLux {
     badgeInk: Color(0xFF2A1E05),
     icon: Icons.star_rounded,
     texture: LuxTexture.sheen,
-    textureColor: Color(0x1FF6DE8D),
+    textureColor: Color(0x14F6DE8D),
     depth: [
       BoxShadow(color: Color(0x66000000), blurRadius: 18, offset: Offset(0, 8)),
     ],
@@ -534,7 +534,9 @@ class LuxTexturePainter extends CustomPainter {
         for (var x = -size.height; x < size.width; x += step) {
           canvas.drawLine(Offset(x, size.height), Offset(x + size.height * .35, 0), p);
         }
-        _sheen(canvas, size, const Color(0x33FFFFFF));
+        // Yaltirash — juda nozik: qorong'i yuzada oq chiziq "arzon"
+        // ko'rinardi, shuning uchun u tekstura rangidan olinadi.
+        _sheen(canvas, size, color.withValues(alpha: (color.a * 1.6).clamp(0, .16)));
       case LuxTexture.guilloche:
         // Gravyura halqalari o'ng-tepada + nozik yaltirash.
         final c = Offset(size.width * .86, size.height * .18);
