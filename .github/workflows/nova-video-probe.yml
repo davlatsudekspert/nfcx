@@ -14,7 +14,7 @@ on:
   push:
     branches: ['claude/**']
     paths:
-      - 'mobile_nova/integration_perf/reels_video_probe_test.dart'
+      - 'mobile_nova/integration_probe/**'
       - '.github/workflows/nova-video-probe.yml'
 
 concurrency:
@@ -69,7 +69,7 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           working-directory: mobile_nova
-          script: flutter test integration_perf/reels_video_probe_test.dart -d emulator-5554 2>&1 | tee probe.log
+          script: flutter test integration_probe/reels_video_probe_test.dart -d emulator-5554 2>&1 | tee probe.log
 
       - name: Natija
         if: always()

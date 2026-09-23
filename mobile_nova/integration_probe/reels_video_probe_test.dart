@@ -11,7 +11,8 @@
 // Login YO'Q: `/api/feed` ochiq. Shuning uchun kirish chegarasiga
 // (15 daqiqada 5 urinish) tegmaydi va E2E bilan to'qnashmaydi.
 //
-//   flutter test integration_perf/reels_video_probe_test.dart -d <device>
+//   flutter test integration_probe/reels_video_probe_test.dart -d <device>
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -100,71 +101,95 @@ void main() {
 
     for (final v in picked) {
       final name = v.url.split('/').last;
+      Future<T?> step<T>(String what, Future<T> Function() run,
+          {Duration limit = const Duration(seconds: 45)}) async {
+        final sw = Stopwatch()..start();
+        try {
+          final r = await run().timeout(limit);
+          return r;
+        } catch (e) {
+          out({'stage': 'error', 'url': name, 'step': what,
+            'ms': sw.elapsedMilliseconds, 'error': '$e'.split('\n').first});
+          return null;
+        }
+      }
 
-      // ── Range: birinchi 64 KB — TTFB va atomlar ────────────────
+      // ── Range: birinchi 64 KB — TTFB va birinchi atomlar ─────────
       var sw = Stopwatch()..start();
-      final r0 = await dio.get<List<int>>(v.url,
-          options: Options(headers: {'range': 'bytes=0-65535'}));
+      final r0 = await step('range0', () => dio.get<List<int>>(v.url,
+          options: Options(headers: {'range': 'bytes=0-65535'})));
       final ttfb = sw.elapsedMilliseconds;
-      final head = Uint8List.fromList(r0.data ?? const []);
-      final top = atomsIn(head);
+      final top = atomsIn(Uint8List.fromList(r0?.data ?? const []));
+      out({'stage': 'range0', 'url': name, 'status': r0?.statusCode,
+        'ms': ttfb, 'contentRange': r0?.headers.value('content-range'),
+        'firstAtoms': top.map((a) => '${a.type}:${a.size}').join(',')});
 
-      // Yuqori darajadagi atomlarni butun fayl bo'ylab kuzatish (faqat
-      // 16 baytli sarlavhalar o'qiladi — fayl yuklanmaydi).
+      // ── Yuqori darajadagi atomlar butun fayl bo'ylab (16 bayt) ───
       final layout = <String>[];
       var off = 0;
-      for (var i = 0; i < 12 && off >= 0 && off < v.size; i++) {
-        final rr = await dio.get<List<int>>(v.url,
-            options: Options(headers: {'range': 'bytes=$off-${off + 15}'}));
-        final b = Uint8List.fromList(rr.data ?? const []);
+      for (var i = 0; i < 10 && off < v.size; i++) {
+        final rr = await step('atom@$off', () => dio.get<List<int>>(v.url,
+            options: Options(headers: {'range': 'bytes=$off-${off + 15}'})),
+            limit: const Duration(seconds: 20));
+        final b = Uint8List.fromList(rr?.data ?? const []);
         if (b.length < 8) break;
         final bd = ByteData.sublistView(b);
         var size = bd.getUint32(0);
         final type = String.fromCharCodes(b.sublist(4, 8));
         if (size == 1 && b.length >= 16) size = bd.getUint64(8);
         if (size == 0) size = v.size - off;
-        layout.add('$type@$off(${(size / 1048576).toStringAsFixed(2)}MB)');
+        layout.add('$type@$off+$size');
         if (size < 8) break;
         off += size;
       }
       final moovIdx = layout.indexWhere((e) => e.startsWith('moov'));
       final mdatIdx = layout.indexWhere((e) => e.startsWith('mdat'));
+      out({'stage': 'layout', 'url': name, 'layout': layout.join(' '),
+        'moovAtEnd': moovIdx >= 0 && mdatIdx >= 0 && moovIdx > mdatIdx});
 
       // ── O'tkazuvchanlik: 2 MB ───────────────────────────────────
       final want = v.size > 0 && v.size < 2097152 ? v.size : 2097152;
       sw = Stopwatch()..start();
-      final r2 = await dio.get<List<int>>(v.url,
-          options: Options(headers: {'range': 'bytes=0-${want - 1}'}));
+      final r2 = await step('dl2mb', () => dio.get<List<int>>(v.url,
+          options: Options(headers: {'range': 'bytes=0-${want - 1}'})));
       final dlMs = sw.elapsedMilliseconds;
-      final got = r2.data?.length ?? 0;
+      final got = r2?.data?.length ?? 0;
+      out({'stage': 'download', 'url': name, 'bytes': got, 'ms': dlMs,
+        'mbps': dlMs > 0 ? (got * 8 / 1000 / dlMs).toStringAsFixed(1) : null});
 
-      // ── Pleyer: initialize va birinchi kadr ─────────────────────
+      // ── Pleyer: initialize va birinchi kadr (listener) ──────────
       final c = VideoPlayerController.networkUrl(Uri.parse(v.url));
       sw = Stopwatch()..start();
-      int? initMs;
+      final inited = await step<bool>('initialize', () async {
+        await c.initialize();
+        return true;
+      },
+          limit: const Duration(seconds: 60));
+      final initMs = sw.elapsedMilliseconds;
       int? firstFrameMs;
-      String? error;
-      try {
-        await c.initialize().timeout(const Duration(seconds: 60));
-        initMs = sw.elapsedMilliseconds;
-        await c.setVolume(0);
-        await c.play();
-        final limit = DateTime.now().add(const Duration(seconds: 60));
-        while (DateTime.now().isBefore(limit)) {
-          await tester.pump(const Duration(milliseconds: 20));
-          await Future<void>.delayed(const Duration(milliseconds: 20));
-          if (c.value.position > Duration.zero) {
-            firstFrameMs = sw.elapsedMilliseconds;
-            break;
+      if (c.value.isInitialized) {
+        final first = Completer<int>();
+        void onTick() {
+          if (!first.isCompleted && c.value.position > Duration.zero) {
+            first.complete(sw.elapsedMilliseconds);
           }
         }
-      } catch (e) {
-        error = '$e';
+        c.addListener(onTick);
+        await step<bool>('play', () async {
+          await c.play();
+          return true;
+        }, limit: const Duration(seconds: 10));
+        firstFrameMs = await step('firstFrame', () => first.future,
+            limit: const Duration(seconds: 60));
+        c.removeListener(onTick);
       }
       final dur = c.value.duration;
       final size = c.value.size;
-      await c.dispose();
-
+      await step<bool>('dispose', () async {
+        await c.dispose();
+        return true;
+      },
+          limit: const Duration(seconds: 10));
       out({
         'stage': 'video',
         'url': name,
@@ -174,16 +199,12 @@ void main() {
             ? (v.size * 8 / dur.inMilliseconds).round()
             : null,
         'resolution': '${size.width.round()}x${size.height.round()}',
-        'range0Status': r0.statusCode,
-        'ttfbMs': ttfb,
-        'firstAtoms': top.map((a) => a.type).join(','),
-        'layout': layout.join(' '),
-        'moovAtEnd': moovIdx >= 0 && mdatIdx >= 0 && moovIdx > mdatIdx,
-        'downloadMbps': dlMs > 0 ? (got * 8 / 1000 / dlMs).toStringAsFixed(1) : null,
+        'initOk': inited != null || c.value.isInitialized,
         'initMs': initMs,
         'firstFrameMs': firstFrameMs,
-        'error': error,
       });
+      // ignore: unused_local_variable
+      final _ = tester;
     }
   }, timeout: const Timeout(Duration(minutes: 20)));
 }
