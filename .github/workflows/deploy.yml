@@ -101,6 +101,10 @@ jobs:
       # qayta bosilsa yangi parol, jurnalda parol yo'q.
       - name: Google Play tekshiruvchisi hisobi
         run: node scripts/test-review-account.mjs
+      # Ro'yxat: band telefon/email KOD YUBORISHDAN OLDIN aytiladi,
+      # band chiqsa kod yondirilmaydi.
+      - name: Ro'yxatda band telefon/email
+        run: node scripts/test-register-conflict.mjs
       - name: NFCSTORE FEATURED — slot faqat haqiqiy to'lovdan keyin yonadi
         run: node scripts/test-featured.mjs
       # Shaxsiy NFC ID xaridi: narxni SERVER hisoblaydi, bitta kodni
