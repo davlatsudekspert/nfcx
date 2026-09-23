@@ -17,6 +17,7 @@ import '../home/widgets/avatar.dart';
 import '../home/widgets/identity_card.dart';
 import 'engagement.dart';
 import 'media_frame.dart';
+import '../../design/icons/nova_icons.dart';
 
 /// LENTA KARTASI — LAYK, IZOH, ULASHISH VA OBUNA.
 ///
@@ -199,8 +200,8 @@ class FeedCard extends ConsumerWidget {
             children: [
               _CardAction(
                 icon: like.liked
-                    ? Icons.favorite_rounded
-                    : Icons.favorite_border_rounded,
+                    ? NovaIcons.liked
+                    : NovaIcons.like,
                 label: l.postLike,
                 count: like.count,
                 tint: like.liked ? t.error : null,
@@ -211,14 +212,14 @@ class FeedCard extends ConsumerWidget {
               // Izoh — mavjud oqim: post ochiladi va izoh maydoni
               // fokusga keladi. Alohida izoh tizimi yaratilmaydi.
               _CardAction(
-                icon: Icons.mode_comment_outlined,
+                icon: NovaIcons.comment,
                 label: l.postComments,
                 count: post.comments,
                 onTap: openPost,
               ),
               const Spacer(),
               _CardAction(
-                icon: Icons.ios_share_rounded,
+                icon: NovaIcons.share,
                 label: l.actionShare,
                 onTap: () => shareLink(
                   '$kApiBase/${Uri.encodeComponent(post.code)}',

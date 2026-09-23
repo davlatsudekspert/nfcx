@@ -269,11 +269,14 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     surface: hex('#FFFFFF'),
     surface2: hex('#F1EFEA'),
     surfaceSolid: hex('#FFFFFF'),
-    text1: hex('#141414'),
-    text2: hex('#57544E'),
+    // MAYIN SIYOH (egasi, 2026-09: "harflar ham, ranglar ham mayin
+    // bo'lsin"). Qop-qora #141414 oq fonda keskin ko'rinardi; iliq
+    // ko'mir rang o'qilishi bir xil (kontrast ~13:1), lekin yumshoq.
+    text1: hex('#2A2724'),
+    text2: hex('#625D55'),
     text3: hex('#858075'),
-    accent1: hex('#1E1E1E'),
-    accent2: hex('#141414'),
+    accent1: hex('#34302B'),
+    accent2: hex('#2A2724'),
     accent3: hex('#57544E'),
     goldDeep: hex('#8A6D42'),
     // Biznes va boshqa rejim aksentlari — siyohning darajalari,

@@ -27,6 +27,7 @@ import '../../routing/shell.dart';
 import '../home/widgets/avatar.dart';
 import '../home/widgets/identity_card.dart';
 import '../profile/music_player.dart';
+import '../../design/icons/nova_icons.dart';
 
 /// Ovoz o'chirilganmi — BUTUN lenta uchun bitta holat.
 ///
@@ -537,7 +538,7 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
                 child: AnimatedOpacity(
                   opacity: _burst ? 1 : 0,
                   duration: const Duration(milliseconds: 200),
-                  child: const Icon(Icons.favorite_rounded,
+                  child: const Icon(NovaIcons.liked,
                       size: 96, color: Colors.white),
                 ),
               ),
@@ -551,8 +552,8 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
                 _Action(
                   key: const ValueKey('reel-like'),
                   icon: like.liked
-                      ? Icons.favorite_rounded
-                      : Icons.favorite_border_rounded,
+                      ? NovaIcons.liked
+                      : NovaIcons.like,
                   label: formatCount(like.count),
                   tint: like.liked ? t.error : Colors.white,
                   semantic: l.postLike,
@@ -561,7 +562,7 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
                 const SizedBox(height: Gap.lg),
                 _Action(
                   key: const ValueKey('reel-comments'),
-                  icon: Icons.mode_comment_outlined,
+                  icon: NovaIcons.comment,
                   label: formatCount(_comments ?? p.comments),
                   semantic: l.postComments,
                   onTap: _openComments,
@@ -570,8 +571,8 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
                 _Action(
                   key: const ValueKey('reel-save'),
                   icon: saved
-                      ? Icons.bookmark_rounded
-                      : Icons.bookmark_border_rounded,
+                      ? NovaIcons.saved
+                      : NovaIcons.save,
                   label: l.actionSave,
                   semantic: l.actionSave,
                   onTap: _save,
@@ -579,7 +580,7 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
                 const SizedBox(height: Gap.lg),
                 _Action(
                   key: const ValueKey('reel-share'),
-                  icon: Icons.ios_share_rounded,
+                  icon: NovaIcons.share,
                   label: l.actionShare,
                   semantic: l.actionShare,
                   onTap: () => p.code.isEmpty
@@ -591,8 +592,8 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
                 const SizedBox(height: Gap.lg),
                 _Action(
                   icon: muted
-                      ? Icons.volume_off_rounded
-                      : Icons.volume_up_rounded,
+                      ? NovaIcons.muted
+                      : NovaIcons.sound,
                   // Yozuvsiz: "Ovozni o'chirish" ustunni kengaytirib,
                   // tor ekranda muallif ismini siqib qo'yardi.
                   label: '',
@@ -602,7 +603,7 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
                 const SizedBox(height: Gap.lg),
                 _Action(
                   key: const ValueKey('reel-more'),
-                  icon: Icons.more_horiz_rounded,
+                  icon: NovaIcons.more,
                   label: '',
                   semantic: l.reportTitle,
                   onTap: () => _showMore(context, p),

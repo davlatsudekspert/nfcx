@@ -7,7 +7,6 @@ import '../../data/repositories/social_repository.dart';
 import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
-import '../../design/widgets/buttons.dart';
 import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
@@ -15,6 +14,7 @@ import '../../routing/routes.dart';
 import '../auth/session.dart';
 import '../home/widgets/avatar.dart';
 import 'moderation.dart';
+import '../../design/icons/nova_icons.dart';
 
 /// Izohlar.
 ///
@@ -261,34 +261,58 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
                       // 422 kelmaydi.
                       maxLength: 1000,
                       textInputAction: TextInputAction.newline,
+                      onChanged: (_) => setState(() {}),
+                      style: TextStyle(
+                        fontFamily: AppType.sans,
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w500,
+                        height: 1.35,
+                        color: t.text1,
+                      ),
+                      // MAYIN KAPSULA (egasi, 2026-09: "izoh yozish joyi
+                      // qirrali ko'rinyapti"). Ingichka qattiq chegara
+                      // olib tashlandi: yumshoq fon + to'liq yumaloq
+                      // shakl; faqat yozayotganda nozik chegara.
                       decoration: InputDecoration(
                         hintText: l.postAddComment,
+                        hintStyle: TextStyle(
+                          fontFamily: AppType.sans,
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w500,
+                          color: t.text3,
+                        ),
                         counterText: '',
                         filled: true,
                         fillColor: t.surface2,
-                        border: OutlineInputBorder(
-                          borderRadius: R.gentle,
-                          borderSide: BorderSide(color: t.border2),
+                        isDense: true,
+                        border: const OutlineInputBorder(
+                          borderRadius: R.soft,
+                          borderSide: BorderSide.none,
                         ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: R.gentle,
-                          borderSide: BorderSide(color: t.border2),
+                        enabledBorder: const OutlineInputBorder(
+                          borderRadius: R.soft,
+                          borderSide: BorderSide.none,
+                        ),
+                        disabledBorder: const OutlineInputBorder(
+                          borderRadius: R.soft,
+                          borderSide: BorderSide.none,
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: R.gentle,
-                          borderSide: BorderSide(color: t.accent2),
+                          borderRadius: R.soft,
+                          borderSide: BorderSide(
+                              color: t.accent2.withValues(alpha: .35)),
                         ),
                         contentPadding: const EdgeInsets.symmetric(
-                            horizontal: Gap.lg, vertical: Gap.md),
+                            horizontal: 18, vertical: 13),
                       ),
                     ),
                   ),
                   const SizedBox(width: Gap.sm),
-                  NovaIconButton(
-                    icon: Icons.send_rounded,
+                  _SendButton(
+                    ready: _text.text.trim().isNotEmpty && !_busy,
+                    busy: _busy,
                     tooltip: l.actionSend,
-                    size: 48,
-                    onPressed: _busy ? null : _send,
+                    onPressed: _send,
                   ),
                 ],
               ),
@@ -317,7 +341,7 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
                       solid: true,
                       child: Column(
                         children: [
-                          Icon(Icons.mode_comment_outlined,
+                          Icon(NovaIcons.comment,
                               size: 25, color: t.text3),
                           const SizedBox(height: Gap.sm),
                           Text(l.postNoComments,
@@ -508,8 +532,8 @@ class _CommentTile extends ConsumerWidget {
                           // Bosilgan bo'lsa to'la yurakcha va aksent
                           // rangida — holat bir qarashda ko'rinadi.
                           icon: comment.liked
-                              ? Icons.favorite_rounded
-                              : Icons.favorite_border_rounded,
+                              ? NovaIcons.liked
+                              : NovaIcons.like,
                           tone: comment.liked ? t.accent2 : null,
                           label: comment.likes > 0 ? '${comment.likes}' : '',
                           onTap: onLike!,
@@ -523,14 +547,14 @@ class _CommentTile extends ConsumerWidget {
           ),
           if (onDelete != null)
             IconButton(
-              icon: Icon(Icons.delete_outline_rounded, size: 18, color: t.text3),
+              icon: Icon(NovaIcons.delete, size: 17, color: t.text3),
               tooltip: l.actionDelete,
               onPressed: onDelete,
             )
           else
             IconButton(
               key: ValueKey('comment-actions-${comment.id}'),
-              icon: Icon(Icons.flag_outlined, size: 17, color: t.text3),
+              icon: Icon(NovaIcons.report, size: 16, color: t.text3),
               tooltip: l.reportTitle,
               // Izoh shikoyati `comment` turi bilan; muallifni ham
               // shu yerdan bloklash mumkin.
@@ -591,6 +615,62 @@ class _TinyAction extends StatelessWidget {
                 ),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Izoh yuborish — dumaloq, to'lgan tugma (iMessage/Instagram kabi).
+///
+/// Matn bo'sh bo'lsa xira, yozilsa to'q rangga kiradi — odam qachon
+/// yuborish mumkinligini ko'radi. Burchakli qog'oz samolyot o'rniga
+/// yumaloq yuqoriga strelka.
+class _SendButton extends StatelessWidget {
+  const _SendButton({
+    required this.ready,
+    required this.busy,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final bool ready;
+  final bool busy;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Semantics(
+      button: true,
+      enabled: ready,
+      label: tooltip,
+      child: Tooltip(
+        message: tooltip,
+        child: PressableScale(
+          key: const ValueKey('comment-send'),
+          onTap: ready ? onPressed : null,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: ready ? t.accent2 : t.surface2,
+            ),
+            alignment: Alignment.center,
+            child: busy
+                ? SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: t.text3),
+                  )
+                : Icon(NovaIcons.send,
+                    size: 20, color: ready ? t.onAccent : t.text3),
+          ),
         ),
       ),
     );

@@ -57,9 +57,15 @@ void main() {
     // aksentga ulanganida, u har bir asosiy tugma, faol tab va
     // tanlangan chipga tarqalardi — "oz" bo'lishdan to'xtardi.
     final t = NfcTokens.ivory;
-    expect(t.accent2.computeLuminance(), lessThan(.02),
-        reason: 'asosiy aksent qora siyoh');
-    expect(t.text1.computeLuminance(), lessThan(.02));
+    // MAYIN SIYOH (egasi, 2026-09: "ranglarda ham mayinlik"): qop-qora
+    // emas, iliq ko'mir — lekin o'qilishi pasaymasligi shart.
+    expect(t.accent2.computeLuminance(), lessThan(.03),
+        reason: 'asosiy aksent quyuq siyoh');
+    expect(t.text1.computeLuminance(), lessThan(.03));
+    expect(_contrast(t.text1, t.surfaceSolid), greaterThan(12),
+        reason: 'asosiy matn baribir juda aniq o‘qilsin');
+    expect(_contrast(t.text2, t.surfaceSolid), greaterThan(5.5),
+        reason: 'ikkinchi darajali matn AA dan yuqori');
     // Champagne iliq: qizil kanal ko'kdan sezilarli katta.
     expect(t.brand.r - t.brand.b, greaterThan(.15),
         reason: 'brend rangi champagne bo‘lishi kerak');

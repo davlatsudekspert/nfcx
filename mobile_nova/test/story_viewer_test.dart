@@ -15,6 +15,7 @@ import 'package:nfcstore_nova/l10n/gen/app_localizations_uz.dart';
 import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
 
 import 'helpers.dart';
+import 'package:nfcstore_nova/design/icons/nova_icons.dart';
 
 /// ISTORYA KO'RUVCHISI OXIRIGACHA BORISHI KERAK.
 ///
@@ -211,14 +212,14 @@ void main() {
       await pump(tester, repo);
 
       // Boshida to‘ldirilmagan yurak.
-      expect(find.byIcon(Icons.favorite_border_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.favorite_rounded), findsNothing);
+      expect(find.byIcon(NovaIcons.like), findsOneWidget);
+      expect(find.byIcon(NovaIcons.liked), findsNothing);
 
-      await tester.tap(find.byIcon(Icons.favorite_border_rounded));
+      await tester.tap(find.byIcon(NovaIcons.like));
       await tester.pump();
 
       // Server javobi kelmasdan turib ham to‘lgan yurak.
-      expect(find.byIcon(Icons.favorite_rounded), findsOneWidget);
+      expect(find.byIcon(NovaIcons.liked), findsOneWidget);
       await tester.pump(const Duration(milliseconds: 100));
       expect(repo.likeCalls, 1);
       // Server qaytargan sanoq ko‘rinadi — mahalliy taxmin emas.
@@ -229,13 +230,13 @@ void main() {
       final repo = _StoriesRepo([liked0(1)])..likeFails = true;
       await pump(tester, repo);
 
-      await tester.tap(find.byIcon(Icons.favorite_border_rounded));
+      await tester.tap(find.byIcon(NovaIcons.like));
       await tester.pump();
-      expect(find.byIcon(Icons.favorite_rounded), findsOneWidget,
+      expect(find.byIcon(NovaIcons.liked), findsOneWidget,
           reason: 'optimistik o‘zgarish ko‘rinmadi');
 
       await tester.pump(const Duration(milliseconds: 100));
-      expect(find.byIcon(Icons.favorite_border_rounded), findsOneWidget,
+      expect(find.byIcon(NovaIcons.like), findsOneWidget,
           reason: 'xatodan keyin eski holatga qaytmadi');
       expect(repo.likeCalls, 1);
     });

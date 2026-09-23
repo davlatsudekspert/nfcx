@@ -20,6 +20,7 @@ import 'package:nfcstore_nova/l10n/gen/app_localizations_ru.dart';
 import 'package:nfcstore_nova/l10n/gen/app_localizations_uz.dart';
 
 import 'helpers.dart';
+import 'package:nfcstore_nova/design/icons/nova_icons.dart';
 
 /// LENTA KARTASIDAGI AMALLAR.
 ///
@@ -196,12 +197,12 @@ void main() {
         ..serverCount = 42;
       await pump(tester, social: social, profile: _FollowRepo());
 
-      expect(find.byIcon(Icons.favorite_border_rounded), findsOneWidget);
-      await tester.tap(find.byIcon(Icons.favorite_border_rounded));
+      expect(find.byIcon(NovaIcons.like), findsOneWidget);
+      await tester.tap(find.byIcon(NovaIcons.like));
       await tester.pump();
 
       // Server javobi kelmasdan turib ham to‘lgan yurak.
-      expect(find.byIcon(Icons.favorite_rounded), findsOneWidget);
+      expect(find.byIcon(NovaIcons.liked), findsOneWidget);
 
       await tester.pump(const Duration(milliseconds: 100));
       expect(social.likeCalls, 1);
@@ -213,17 +214,17 @@ void main() {
       final social = _FeedRepo()..likeFails = true;
       await pump(tester, social: social, profile: _FollowRepo());
 
-      await tester.tap(find.byIcon(Icons.favorite_border_rounded));
+      await tester.tap(find.byIcon(NovaIcons.like));
       await tester.pump();
       expect(
-        find.byIcon(Icons.favorite_rounded),
+        find.byIcon(NovaIcons.liked),
         findsOneWidget,
         reason: 'optimistik o‘zgarish ko‘rinmadi',
       );
 
       await tester.pump(const Duration(milliseconds: 100));
       expect(
-        find.byIcon(Icons.favorite_border_rounded),
+        find.byIcon(NovaIcons.like),
         findsOneWidget,
         reason: 'xatodan keyin eski holatga qaytmadi',
       );
@@ -344,10 +345,10 @@ void main() {
       await pump(tester, social: social, profile: _FollowRepo());
 
       // Birinchi bosish serverga ketdi va hali javob kelmadi.
-      await tester.tap(find.byIcon(Icons.favorite_border_rounded));
+      await tester.tap(find.byIcon(NovaIcons.like));
       await tester.pump();
       // Ikkinchi bosish AYNAN shu paytda tushadi.
-      await tester.tap(find.byIcon(Icons.favorite_rounded));
+      await tester.tap(find.byIcon(NovaIcons.liked));
       await tester.pump();
 
       await tester.pump(const Duration(milliseconds: 200));
@@ -355,7 +356,7 @@ void main() {
       // Ikki so‘rov ketganda server laykni ikki marta o‘girardi va
       // odam bosgani YO‘QOLARDI.
       expect(social.likeCalls, 1, reason: 'ikki marta so‘rov ketdi');
-      expect(find.byIcon(Icons.favorite_rounded), findsOneWidget);
+      expect(find.byIcon(NovaIcons.liked), findsOneWidget);
     });
 
     testWidgets('obunada ham tez ikki bosish BIR so‘rov', (tester) async {
@@ -380,7 +381,7 @@ void main() {
       final social = _FeedRepo()..likeFails = true;
       await pump(tester, social: social, profile: _FollowRepo());
 
-      await tester.tap(find.byIcon(Icons.favorite_border_rounded));
+      await tester.tap(find.byIcon(NovaIcons.like));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 
@@ -410,7 +411,7 @@ void main() {
     testWidgets('izoh bosilganda POST ekraniga o‘tadi', (tester) async {
       await pump(tester, social: _FeedRepo(), profile: _FollowRepo());
 
-      await tester.tap(find.byIcon(Icons.mode_comment_outlined));
+      await tester.tap(find.byIcon(NovaIcons.comment));
       await tester.pumpAndSettle();
 
       // Post ID VA muallif kodi ikkalasi ham uzatilishi shart:
@@ -440,7 +441,7 @@ void main() {
       await pump(tester, social: _FeedRepo(), profile: _FollowRepo());
       // Tizim varag'i sinovda ochilmaydi, lekin tugma mavjud va
       // bosilganda istisno bermasligi kerak.
-      expect(find.byIcon(Icons.ios_share_rounded), findsOneWidget);
+      expect(find.byIcon(NovaIcons.share), findsOneWidget);
     });
   });
 

@@ -41,6 +41,7 @@ dependencies:
   nfc_manager: ^3.5.0
   app_links: ^6.3.2
   file_picker: ^11.0.3
+  cupertino_icons: ^1.0.8
 
 dev_dependencies:
   flutter_test:

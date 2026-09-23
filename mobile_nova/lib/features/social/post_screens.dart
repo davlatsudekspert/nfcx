@@ -33,6 +33,7 @@ import 'story_viewer.dart';
 import 'media_frame.dart';
 import 'content_rules.dart';
 import 'moderation.dart';
+import '../../design/icons/nova_icons.dart';
 
 /// Post tafsiloti uchun so'rov: yozuv kodi + post id.
 typedef PostRef = ({String code, int id});
@@ -215,8 +216,8 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                 children: [
                   _Action(
                     icon: liked
-                        ? Icons.favorite_rounded
-                        : Icons.favorite_border_rounded,
+                        ? NovaIcons.liked
+                        : NovaIcons.like,
                     label: formatCount(like.count),
                     tint: liked ? t.error : t.text2,
                     onTap: () async {
@@ -232,14 +233,14 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                   ),
                   const SizedBox(width: Gap.xl),
                   _Action(
-                    icon: Icons.mode_comment_outlined,
+                    icon: NovaIcons.comment,
                     label: formatCount(p.comments),
                     tint: t.text2,
                     onTap: _commentFocus.requestFocus,
                   ),
                   const Spacer(),
                   _Action(
-                    icon: Icons.ios_share_rounded,
+                    icon: NovaIcons.share,
                     label: l.actionShare,
                     tint: t.text2,
                     onTap: () => shareText(p.text),

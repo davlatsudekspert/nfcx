@@ -105,10 +105,12 @@ abstract final class AppType {
           letterSpacing: -0.05,
           color: text1,
         ),
+        // ODDIY MATN — 400 (egasi, 2026-09: "harflar yozilishi mayin
+        // bo'lsin"). 500 qalinlikda uzun matn og'ir va keskin ko'rinardi.
         bodyLarge: TextStyle(
           fontFamily: sans,
           fontSize: 15,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w400,
           height: 1.55,
           letterSpacing: 0.05,
           color: text1,
@@ -116,7 +118,7 @@ abstract final class AppType {
         bodyMedium: TextStyle(
           fontFamily: sans,
           fontSize: 13.5,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w400,
           height: 1.55,
           letterSpacing: 0.05,
           color: text2,
@@ -124,7 +126,7 @@ abstract final class AppType {
         bodySmall: TextStyle(
           fontFamily: sans,
           fontSize: 12,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w400,
           height: 1.5,
           letterSpacing: 0.1,
           color: text2,

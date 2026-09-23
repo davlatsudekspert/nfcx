@@ -23,6 +23,7 @@ import 'media_frame.dart';
 import '../home/widgets/avatar.dart';
 import '../business/business_providers.dart';
 import '../profile/profile_repository.dart';
+import '../../design/icons/nova_icons.dart';
 
 // RIVERPOD `dependencies` — DEMO DARAXTI UCHUN SHART.
 //
@@ -709,7 +710,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                           children: [
                             Expanded(
                               child: _StoryAction(
-                                icon: Icons.mode_comment_outlined,
+                                icon: NovaIcons.comment,
                                 label: l.storyCommentHint,
                                 onTap: () => _comments(s),
                               ),
@@ -717,8 +718,8 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                             const SizedBox(width: Gap.sm),
                             _StoryIcon(
                               icon: liked
-                                  ? Icons.favorite_rounded
-                                  : Icons.favorite_border_rounded,
+                                  ? NovaIcons.liked
+                                  : NovaIcons.like,
                               tint: liked ? t.error : Colors.white,
                               label: l.storyLike,
                               count: likeCount,
@@ -726,7 +727,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                             ),
                             const SizedBox(width: Gap.sm),
                             _StoryIcon(
-                              icon: Icons.ios_share_rounded,
+                              icon: NovaIcons.share,
                               tint: Colors.white,
                               label: l.actionShare,
                               // Ulashiladigan narsa — MUALLIFNING OCHIQ
