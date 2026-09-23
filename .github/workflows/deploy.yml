@@ -93,6 +93,10 @@ jobs:
       # avtomatik sinov (E2E) yozuvlari ro'yxatga chiqmaydi.
       - name: Admin shikoyatlar — qidiruv va E2E filtri
         run: node scripts/test-admin-reports-search.mjs
+      # Ilovadagi "Odamlar": yangi ro'yxatdan o'tganlar ko'rinadi, sotuv
+      # katalogi (/api/records) esa o'zgarmaydi.
+      - name: Ilova "Odamlar" ro'yxati
+        run: node scripts/test-people-directory.mjs
       - name: NFCSTORE FEATURED — slot faqat haqiqiy to'lovdan keyin yonadi
         run: node scripts/test-featured.mjs
       # Shaxsiy NFC ID xaridi: narxni SERVER hisoblaydi, bitta kodni

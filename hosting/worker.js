@@ -5885,6 +5885,54 @@ async function recordsApi(request, env, url) {
     });
   }
 
+  // ILOVADAGI "ODAMLAR" — IJTIMOIY RO'YXAT (2026-09-23).
+  //
+  // `/api/records` va `/api/records/search` — saytdagi SOTILADIGAN NFC ID
+  // katalogi: ular ro'yxatdan o'tishdagi avtomatik 8 xonali ID'larni
+  // (`catalogVisibleSql`) ataylab chiqarib tashlaydi. Ilova "Odamlar"
+  // bo'limini ham shu katalogdan olardi — natijada YANGI RO'YXATDAN
+  // O'TGAN hech kim na ro'yxatda, na qidiruvda ko'rinmasdi (egasi:
+  // "anvarbek... profil egasi ko'rinmayapti").
+  //
+  // Bu yo'l katalogga TEGMAYDI. Faqat EGASI BOR, egasi o'chirilmagan va
+  // o'zini katalogdan yashirmagan (`hidden_from_directory = 0`)
+  // profillar. Egasiz (sotuvdagi) ID odam emas — bu yerda yo'q.
+  // Alohida yo'l (query emas), chunki chekka kesh kalitida query yo'q.
+  if ((path === '/api/people' || path === '/api/people/search') && request.method === 'GET') {
+    const search = path === '/api/people/search';
+    const q = String(url.searchParams.get('q') || '').trim().slice(0, 120);
+    if (search && q.length < 2) return json({ records: [] });
+    const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit')) || 60));
+    const offset = Math.max(0, Number(url.searchParams.get('offset')) || 0);
+    const like = `%${q.toLowerCase()}%`;
+    const cond = search
+      ? `AND (LOWER(c.code) LIKE ? OR LOWER(COALESCE(c.name,'')) LIKE ? OR LOWER(COALESCE(c.role,'')) LIKE ?
+           OR LOWER(COALESCE(c.city,'')) LIKE ? OR LOWER(COALESCE(c.tg,'')) LIKE ?
+           OR LOWER(COALESCE(c.hashtags,'')) LIKE ? OR LOWER(COALESCE(u.email,'')) LIKE ?)`
+      : '';
+    const binds = search ? [like, like, like, like, like, like, like] : [];
+    const rows = await env.DB.prepare(
+      `SELECT c.code, c.user_id, c.name, c.role, c.avatar_url, c.tg, c.hashtags, c.theme, c.price, c.ts, c.views,
+              c.profile_type, c.city, c.category_slug, c.verified, c.tier_override
+         FROM cards c LEFT JOIN users u ON u.id = c.user_id
+        WHERE c.hidden_from_directory = 0 AND c.user_id IS NOT NULL AND ${ownerAliveSql('c')} ${cond}
+        ORDER BY c.ts DESC LIMIT ? OFFSET ?`
+    ).bind(...binds, limit + 1, offset).all();
+    const list = rows.results || [];
+    const page = list.slice(0, limit);
+    const n = await socialCountsD1(env, page);
+    const records = page.map((r) => ({
+      code: r.code, name: r.name || '', role: r.role || '', avatarUrl: r.avatar_url || '', tg: r.tg || '',
+      hashtags: parseJsonArray(r.hashtags), theme: r.theme, ts: Number(r.ts), views: Number(r.views || 0),
+      profileType: r.profile_type, city: r.city || '', categorySlug: r.category_slug || '', verified: !!r.verified,
+      tierOverride: r.tier_override || '',
+      followers: n.followers(r),
+      following: n.following(r),
+      posts: n.posts(r),
+    }));
+    return json({ records, hasMore: list.length > limit });
+  }
+
   if (path === '/api/records/search' && request.method === 'GET') {
     const q = String(url.searchParams.get('q') || '').trim().slice(0, 120);
     if (q.length < 2) return json({ records: [] });
@@ -10219,7 +10267,9 @@ async function coreApi(request, env, url) {
     const res = await authApi(request, env, url);
     if (res) return res;
   }
-  if (url.pathname.startsWith('/api/records')) {
+  // `/api/people` — ilovadagi "Odamlar" ro'yxati (recordsApi ichida).
+  if (url.pathname.startsWith('/api/records') || url.pathname === '/api/people'
+    || url.pathname === '/api/people/search') {
     const res = await recordsApi(request, env, url);
     if (res) return res;
   }
@@ -10541,6 +10591,7 @@ async function handleRequest(request, env, url) {
     // through (returns null) for anything not yet ported, so the legacy
     // proxy below still handles it.
     if (url.pathname.startsWith('/api/auth/') || url.pathname.startsWith('/api/records')
+      || url.pathname === '/api/people' || url.pathname === '/api/people/search'
       || url.pathname.startsWith('/api/auction') || url.pathname.startsWith('/api/admin/')
       || url.pathname.startsWith('/api/orders') || url.pathname === '/api/pay/payme'
       || url.pathname === '/api/conversations/unread-count' || url.pathname.startsWith('/api/gift-offers')
