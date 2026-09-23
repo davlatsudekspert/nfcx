@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/typography.dart';
 import '../tokens/nfc_tokens.dart';
+import 'id_lux.dart';
 
 /// NFC ID — O'YILGAN PLASTINKA.
 ///
@@ -167,6 +168,49 @@ class IdPlate extends StatelessWidget {
     // shu funksiyadan o'qiydi, shuning uchun ikkisi hech qachon
     // ajralib ketmaydi.
     final c = skin(t, tier, active: active);
+
+    // PULLIK ID — METALL PLASTINKA (Gold / Premium / Exclusive).
+    //
+    // Endi faqat rangli yozuv emas: material yuza, metall hoshiya va
+    // (Premium/Exclusive'da) folga raqam. Exclusive — qora oniks
+    // ustida oltin: ro'yxatda uni hech narsa bilan adashtirib
+    // bo'lmaydi. Bepul/kumush — o'sha sodda plastinka.
+    final lux = active ? IdLux.of(t, tier) : null;
+    if (lux != null) {
+      return Container(
+        key: ValueKey('id-plate-lux-$tier'),
+        padding: const EdgeInsets.all(1),
+        decoration: BoxDecoration(
+          gradient: lux.edge,
+          borderRadius: BorderRadius.circular(999),
+          boxShadow: [
+            BoxShadow(
+              color: lux.depth.first.color.withValues(
+                  alpha: lux.depth.first.color.a * .6),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: hp - 1, vertical: vp - 1),
+          decoration: BoxDecoration(
+            gradient: lux.surface,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(lux.icon, size: fs * .82, color: lux.soft),
+              SizedBox(width: fs * .4),
+              Flexible(
+                child: LuxIdNumber(code: code, lux: lux, size: fs)
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: hp, vertical: vp),

@@ -57,6 +57,10 @@ void main() {
         // tekshiriladi, ya'ni bu ro'yxatga qo'shish nazoratsiz
         // qolmaydi.
         'lib/design/widgets/id_plate.dart',
+        // PULLIK ID MATERIALLARI (Gold / Premium / Exclusive) — metall
+        // palitrasi mahsulot darajasi, mavzu aksenti emas. Oq-qora
+        // mavzu uchun alohida (faqat oq/qora) variant shu faylda.
+        'lib/design/widgets/id_lux.dart',
         // IJTIMOIY TARMOQ BREND RANGLARI (Telegram ko'ki, WhatsApp
         // yashili, Instagram pushtisi...). Payme/Click bilan bir xil
         // sabab: odam tugmani RANGIDAN taniydi. Qiymatlar saytdagi

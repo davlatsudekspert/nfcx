@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../design/theme/typography.dart';
 import '../../../design/tokens/nfc_tokens.dart';
 import '../../../design/tokens/shapes.dart';
+import '../../../design/widgets/id_lux.dart';
 import '../../../design/widgets/id_plate.dart';
 import '../../../design/widgets/surfaces.dart';
 import '../../../routing/routes.dart';
@@ -46,10 +47,12 @@ class MyIdsStrip extends ConsumerWidget {
     return SizedBox(
       // Karta nisbati (plastik karta ~1.6:1). x1.3 shriftda uch
       // qator sig'ishi uchun balandlik birga o'sadi.
-      height: 120 + (k - 1) * 110,
+      // +18: pastdagi soya kesilib qolmasin (lenta o'z chegarasida
+      // kesadi — kartaning chuqurligi tekis chiziq bo'lib qolardi).
+      height: 120 + 18 + (k - 1) * 110,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
+        padding: const EdgeInsets.fromLTRB(Gap.screenX, 2, Gap.screenX, 16),
         itemCount: ids.length,
         separatorBuilder: (_, __) => const SizedBox(width: Gap.md),
         itemBuilder: (context, i) {
@@ -104,8 +107,193 @@ class _MiniIdCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final l = L.of(context);
+
+    // PULLIK ID — O'Z MATERIALIDA (Gold / Premium / Exclusive):
+    // metall hoshiya, material yuza, tekstura, folga raqam va toifa
+    // belgisi. Bepul ID — sokin champagne karta (pastda).
+    final lux = id.active ? IdLux.of(t, id.tier) : null;
+
     final warm = Color.lerp(t.surfaceSolid, t.brandSoft, t.isDark ? .16 : .38)!;
-    return Container(
+    final edgeW = lux == null ? 0.0 : (on ? 1.8 : 1.2);
+    final ink2 = lux?.soft ?? t.text2;
+    final ink3 = lux?.soft ?? t.text3;
+    final eyebrowInk = lux?.soft ?? t.brandInk;
+
+    final content = Padding(
+      padding: const EdgeInsets.fromLTRB(14, 12, 12, 11),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: lux != null
+                    ? Align(
+                        alignment: Alignment.centerLeft,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: IdTierBadge(tier: id.tier, dense: true),
+                        ),
+                      )
+                    : Text(
+                        'NFC ID',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppType.eyebrow(color: eyebrowInk, size: 8.5),
+                      ),
+              ),
+              if (id.cardLinked)
+                Padding(
+                  padding: const EdgeInsets.only(left: 4),
+                  child: Icon(Icons.credit_card_outlined,
+                      size: 13, color: eyebrowInk),
+                ),
+              // Faol yozuv — faqat nozik yashil nuqta (matn tor
+              // ekran va katta shriftda qatorni sig'dirmasdi).
+              if (on) ...[
+                const SizedBox(width: 6),
+                Semantics(
+                  label: l.nfcActive,
+                  child: Container(
+                    key: const ValueKey('my-id-active-dot'),
+                    width: 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: t.success,
+                      border: Border.all(
+                          color: (lux?.dark ?? t.isDark)
+                              ? const Color(0x66000000)
+                              : const Color(0xCCFFFFFF),
+                          width: 1),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const Spacer(),
+          // KOD. Pullik — katta folga raqam (plastinka ichida plastinka
+          // bo'lmasin). Bepul — sodda `IdPlate` (ID shrift qoidasi:
+          // seriflik katta raqam faqat bosh sahifadagi asosiy kartada).
+          if (lux != null)
+            LuxIdNumber(code: id.code, lux: lux, size: 21)
+          else
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: IdPlate(
+                code: id.code,
+                tier: id.tier,
+                size: IdPlateSize.medium,
+                active: id.active,
+              ),
+            ),
+          const SizedBox(height: 7),
+          Container(
+            height: 1,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [
+                (lux?.hairline ?? t.brand.withValues(alpha: .5)),
+                (lux?.hairline ?? t.brand).withValues(alpha: 0),
+              ]),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  id.name.isEmpty ? '—' : id.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: AppType.sans,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: ink2,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              // Faqat ko'z belgisi + son: "ko'rishlar" so'zi tor
+              // ekran va katta shriftda qatorni sig'dirmasdi.
+              Semantics(
+                label: '${formatCount(id.views)} ${l.nfcViews.toLowerCase()}',
+                excludeSemantics: true,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.visibility_outlined, size: 12, color: ink3),
+                    const SizedBox(width: 3),
+                    Text(
+                      formatCount(id.views),
+                      maxLines: 1,
+                      style: TextStyle(
+                        fontFamily: AppType.sans,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: ink2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    if (lux != null) {
+      return AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        width: 190,
+        padding: EdgeInsets.all(edgeW),
+        decoration: BoxDecoration(
+          borderRadius: _radius,
+          gradient: lux.edge,
+          boxShadow: lux.depth,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(18 - edgeW),
+          child: DecoratedBox(
+            decoration: BoxDecoration(gradient: lux.surface),
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: RepaintBoundary(
+                      child: CustomPaint(
+                        painter: LuxTexturePainter(
+                            texture: lux.texture,
+                            color: lux.textureColor,
+                            scale: .8),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: Container(
+                      margin: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        borderRadius: _inner,
+                        border: Border.all(color: lux.hairline, width: .7),
+                      ),
+                    ),
+                  ),
+                ),
+                content,
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
       width: 190,
       decoration: BoxDecoration(
         borderRadius: _radius,
@@ -149,124 +337,7 @@ class _MiniIdCard extends StatelessWidget {
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 12, 12, 11),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          id.tier.isEmpty
-                              ? 'NFC ID'
-                              : 'NFC ID · ${id.tier.toUpperCase()}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppType.eyebrow(color: t.brandInk, size: 8.5),
-                        ),
-                      ),
-                      if (id.cardLinked)
-                        Padding(
-                          padding: const EdgeInsets.only(left: 4),
-                          child: Icon(Icons.credit_card_rounded,
-                              size: 13, color: t.brandInk),
-                        ),
-                      // Faol yozuv — faqat nozik yashil nuqta (matn tor
-                      // ekran va katta shriftda qatorni sig'dirmasdi).
-                      if (on) ...[
-                        const SizedBox(width: 6),
-                        Semantics(
-                          label: l.nfcActive,
-                          child: Container(
-                            key: const ValueKey('my-id-active-dot'),
-                            width: 7,
-                            height: 7,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: t.success,
-                              boxShadow: [
-                                BoxShadow(
-                                    color: t.success.withValues(alpha: .35),
-                                    blurRadius: 6),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const Spacer(),
-                  // KOD — plastinka (ilovaning ID qoidasi: seriflik katta
-                  // raqam faqat bosh sahifadagi asosiy kartada; qolgan
-                  // hamma joyda daraja rangidagi `IdPlate`).
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: IdPlate(
-                      code: id.code,
-                      tier: id.tier,
-                      size: IdPlateSize.medium,
-                      active: id.active,
-                    ),
-                  ),
-                  const SizedBox(height: 7),
-                  Container(
-                    height: 1,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [
-                        t.brand.withValues(alpha: .5),
-                        t.brand.withValues(alpha: 0),
-                      ]),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          id.name.isEmpty ? '—' : id.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontFamily: AppType.sans,
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600,
-                            color: t.text2,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      // Faqat ko'z belgisi + son: "ko'rishlar" so'zi tor
-                      // ekran va katta shriftda qatorni sig'dirmasdi.
-                      Semantics(
-                        label:
-                            '${formatCount(id.views)} ${l.nfcViews.toLowerCase()}',
-                        excludeSemantics: true,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.visibility_outlined,
-                                size: 12, color: t.text3),
-                            const SizedBox(width: 3),
-                            Text(
-                              formatCount(id.views),
-                              maxLines: 1,
-                              style: TextStyle(
-                                fontFamily: AppType.sans,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: t.text2,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+            content,
           ],
         ),
       ),

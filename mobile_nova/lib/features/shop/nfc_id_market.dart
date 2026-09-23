@@ -11,6 +11,7 @@ import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
 import '../../design/widgets/buttons.dart';
 import '../../design/widgets/fields.dart';
+import '../../design/widgets/id_lux.dart';
 import '../../design/widgets/nova_scaffold.dart';
 import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
@@ -60,14 +61,8 @@ final idOrderProvider =
 String normalizeIdCode(String raw) =>
     raw.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
 
-String tierLabel(L l, String tier) => switch (tier) {
-      'free' => l.idTierFree,
-      'silver' => l.idTierSilver,
-      'gold' => l.idTierGold,
-      'premium' => l.idTierPremium,
-      'exclusive' => l.idTierExclusive,
-      _ => tier,
-    };
+/// Toifa nomi — manba `id_lux.dart` (hamma joyda bitta).
+String tierLabel(L l, String tier) => idTierLabel(l, tier);
 
 /// Kod holati bitta so'zda + rang.
 ({String text, Color color}) quoteState(L l, NfcTokens t, IdQuote q) {
@@ -162,51 +157,115 @@ class _TierCatalog extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = L.of(context);
-    final t = context.tokens;
     final tiers = ref.watch(idPricingProvider);
 
     return tiers.when(
       loading: () => const SkeletonList(count: 4, height: 64),
       error: (e, __) => StatePanel.fromError(context, asAppError(e),
           onRetry: () => ref.invalidate(idPricingProvider)),
-      data: (list) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SectionHeader(title: l.idMarketTiers),
-          for (final tier in list)
-            Padding(
-              padding: const EdgeInsets.only(bottom: Gap.md),
-              child: FloatingSurface(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        tierLabel(l, tier.tier),
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
-                            ?.copyWith(color: t.text1),
-                      ),
-                    ),
-                    if (tier.price != null)
-                      Text(
-                        tier.from
-                            ? '${l.idPriceFrom} ${formatMoney(tier.price!, 'UZS')}'
-                            : formatMoney(tier.price!, 'UZS'),
-                        style: TextStyle(
-                          fontFamily: AppType.sans,
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w700,
-                          color: t.accent1,
-                        ),
-                      )
-                    else
-                      Text(l.idStateNotForSale,
-                          style: Theme.of(context).textTheme.bodySmall),
-                  ],
-                ),
+      data: (list) {
+        // Qimmatidan arzoniga: vitrina eng noyobdan boshlanadi.
+        final sorted = [...list]
+          ..sort((a, b) => IdLux.rank(b.tier).compareTo(IdLux.rank(a.tier)));
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionHeader(title: l.idMarketTiers),
+            for (final tier in sorted)
+              Padding(
+                padding: const EdgeInsets.only(bottom: Gap.md),
+                child: _TierTile(tier: tier),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// BITTA TOIFA — pullik toifa o'z materialida (Gold/Premium/Exclusive),
+/// bepul/kumush esa sodda qator.
+class _TierTile extends StatelessWidget {
+  const _TierTile({required this.tier});
+  final IdTier tier;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context);
+    final t = context.tokens;
+    final lux = IdLux.of(t, tier.tier);
+    final price = tier.price == null ? null : formatMoney(tier.price!, 'UZS');
+
+    if (lux == null) {
+      return FloatingSurface(
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                tierLabel(l, tier.tier),
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(color: t.text1),
               ),
             ),
+            if (price != null)
+              Text(
+                tier.from ? '${l.idPriceFrom} $price' : price,
+                style: TextStyle(
+                  fontFamily: AppType.sans,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                  color: t.text1,
+                ),
+              )
+            else
+              Text(l.idStateNotForSale,
+                  style: Theme.of(context).textTheme.bodySmall),
+          ],
+        ),
+      );
+    }
+
+    return LuxSurface(
+      key: ValueKey('tier-tile-${tier.tier}'),
+      lux: lux,
+      padding: const EdgeInsets.fromLTRB(20, 18, 18, 18),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                IdTierBadge(tier: tier.tier),
+                const SizedBox(height: 14),
+                Text(
+                  tierLabel(l, tier.tier),
+                  style: AppType.displayStyle(color: lux.ink, size: 30)
+                      .copyWith(height: 1),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: Gap.md),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (price != null && tier.from)
+                Text(l.idPriceFrom,
+                    style: AppType.eyebrow(color: lux.soft, size: 8.5)),
+              Text(
+                price ?? l.idStateNotForSale,
+                style: TextStyle(
+                  fontFamily: AppType.sans,
+                  fontSize: price == null ? 13 : 18,
+                  fontWeight: FontWeight.w700,
+                  color: lux.ink,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -244,49 +303,48 @@ class _IdCard extends ConsumerWidget {
     final t = context.tokens;
     final state = quoteState(l, t, quote);
 
-    return FloatingSurface(
+    // QIDIRUV NATIJASI — MAHSULOT KARTASI (`IdProductCard`): pullik
+    // kod o'z materialida, katta mono raqam (serifda `0/O`, `1/I`
+    // adashardi), narx va holat aniq. Pastda "Batafsil" — xarid
+    // tugmasi EMAS (Play qoidasi, `store_policy.dart`).
+    return IdProductCard(
+      code: quote.code,
+      tier: quote.tier,
+      price: quote.purchasable && quote.amount > 0
+          ? formatMoney(quote.amount, 'UZS')
+          : null,
+      status: (state.text, state.color),
       onTap: onTap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  quote.code,
-                  // QIDIRUV NATIJASI — IBM Plex Mono (egasining qoidasi):
-                  // serifda `0/O`, `1/I` bir xil ko'rinib, odam boshqa
-                  // kodni sotib olishi mumkin edi.
-                  style: AppType.monoStyle(
-                    color: t.text1,
-                    size: 23,
-                    weight: FontWeight.w600,
-                    letterSpacing: 2.2,
-                  ),
-                ),
-              ),
-              Capsule(label: state.text, dense: true, tone: state.color),
-            ],
+      footer: onTap == null ? null : _DetailsLink(tier: quote.tier),
+    );
+  }
+}
+
+/// "Batafsil →" — kartaning pastki o'ng burchagida.
+class _DetailsLink extends StatelessWidget {
+  const _DetailsLink({required this.tier});
+  final String tier;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final lux = IdLux.of(t, tier);
+    final c = lux?.ink ?? t.text1;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        Text(
+          L.of(context).actionPreview,
+          style: TextStyle(
+            fontFamily: AppType.sans,
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: c,
           ),
-          if (quote.tier.isNotEmpty) ...[
-            const SizedBox(height: Gap.sm),
-            Text(tierLabel(l, quote.tier),
-                style: Theme.of(context).textTheme.bodySmall),
-          ],
-          if (quote.purchasable && quote.amount > 0) ...[
-            const SizedBox(height: Gap.lg),
-            Text(
-              formatMoney(quote.amount, 'UZS'),
-              style: TextStyle(
-                fontFamily: AppType.sans,
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                color: t.accent1,
-              ),
-            ),
-          ],
-        ],
-      ),
+        ),
+        const SizedBox(width: 4),
+        Icon(Icons.arrow_forward_rounded, size: 16, color: c),
+      ],
     );
   }
 }
@@ -318,41 +376,15 @@ class NfcIdBuyScreen extends ConsumerWidget {
 
           return NovaScroll(
             children: [
-              FloatingSurface(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      q.code,
-                      // Xarid ekrani — sotib olinayotgan kod aniq o'qilsin.
-                      style: AppType.monoStyle(
-                        color: t.text1,
-                        size: 30,
-                        weight: FontWeight.w600,
-                        letterSpacing: 3,
-                      ),
-                    ),
-                    const SizedBox(height: Gap.md),
-                    Capsule(label: state.text, dense: true, tone: state.color),
-                    if (q.tier.isNotEmpty) ...[
-                      const SizedBox(height: Gap.md),
-                      Text(tierLabel(l, q.tier),
-                          style: Theme.of(context).textTheme.bodySmall),
-                    ],
-                    if (q.purchasable && q.amount > 0) ...[
-                      const SizedBox(height: Gap.lg),
-                      Text(
-                        formatMoney(q.amount, 'UZS'),
-                        style: TextStyle(
-                          fontFamily: AppType.sans,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                          color: t.accent1,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
+              // ID SAHIFASI — KATTA MAHSULOT KARTASI.
+              IdProductCard(
+                code: q.code,
+                tier: q.tier,
+                hero: true,
+                price: q.purchasable && q.amount > 0
+                    ? formatMoney(q.amount, 'UZS')
+                    : null,
+                status: (state.text, state.color),
               ),
               // ILOVA ICHIDA SOTILMAYDI — `store_policy.dart` izohi.
               // Ism maydoni ham kerak emas: u faqat xarid uchun edi.

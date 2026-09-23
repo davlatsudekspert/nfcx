@@ -22,6 +22,7 @@ import '../auth/session.dart';
 import '../home/widgets/avatar.dart';
 import '../home/widgets/identity_card.dart';
 import '../shop/nfc_id_market.dart' show tierLabel;
+import '../../design/widgets/id_lux.dart';
 import '../home/widgets/mode_switch.dart';
 import '../home/widgets/my_ids_strip.dart';
 import '../../app/profile_context.dart';
@@ -179,12 +180,12 @@ class ProfileScreen extends ConsumerWidget {
                       : switchToPersonal(context, ref),
                 ),
               ),
-            const SizedBox(height: Gap.xl),
+            const SizedBox(height: Gap.lg),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
               child: _StatCapsules(profile: active),
             ),
-            const SizedBox(height: Gap.xl),
+            const SizedBox(height: Gap.lg),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
               child: Row(
@@ -577,7 +578,11 @@ class _Hero extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const SizedBox(height: 86),
+                // Muqova bo'lsa avatar uning ustiga tushadi (86); muqova
+                // yo'q bo'lsa tepada ortiqcha bo'sh joy qolmasin —
+                // avatar sarlavhaga yaqin, ko'z darhol ism va ID'ga
+                // tushadi (egasi, 2026-09: "yuqoridagi bo'sh joy").
+                SizedBox(height: cover.isEmpty ? 16 : 86),
                 const _DemoNotice(),
                 // ISTORYA HALQASI — FAQAT istorya BOR bo'lsa.
                 //
@@ -954,6 +959,39 @@ class _IdPill extends StatelessWidget {
     // rang ko'rmaydiganlar va oq-qora skrinshot uchun).
     final precious = IdPlate.isPrecious(tier);
 
+    // PULLIK ID — METALL KAPSULA: material yuza, metall hoshiya,
+    // folga raqam va toifa belgisi (`id_lux.dart` — hamma joyda bir xil).
+    final lux = active ? IdLux.of(t, tier) : null;
+    if (lux != null) {
+      return Container(
+        key: const ValueKey('profile-id-pill-lux'),
+        padding: const EdgeInsets.all(1.2),
+        decoration: BoxDecoration(
+          gradient: lux.edge,
+          borderRadius: R.pill,
+          boxShadow: lux.depth,
+        ),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 7, 7, 7),
+          decoration: BoxDecoration(gradient: lux.surface, borderRadius: R.pill),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: dot),
+              ),
+              const SizedBox(width: Gap.sm),
+              Flexible(child: LuxIdNumber(code: code, lux: lux, size: 16)),
+              const SizedBox(width: Gap.md),
+              IdTierBadge(tier: tier, dense: true),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
       decoration: BoxDecoration(
@@ -1079,8 +1117,12 @@ class _StatCapsules extends ConsumerWidget {
     return Column(
       children: [
         _Hairline(color: t.border2),
+        // IXCHAM QATOR (egasi, 2026-09: "post, obunachilar turgan
+        // joyni kichraytir"): raqam va yorliq bir-biriga yaqin,
+        // yuqori-past bo'shliq kichik — lekin bosiladigan maydon
+        // 44 dp dan kam emas.
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: Gap.lg),
+          padding: const EdgeInsets.symmetric(vertical: Gap.sm + 2),
           child: Row(
             children: [
               for (var i = 0; i < items.length; i++)
@@ -1088,34 +1130,38 @@ class _StatCapsules extends ConsumerWidget {
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: items[i].$3,
-                    child: Column(
-                      children: [
-                        Text(
-                          items[i].$1,
-                          maxLines: 1,
-                          style: TextStyle(
-                            fontFamily: AppType.display,
-                            fontFamilyFallback: AppType.displayFallback,
-                            fontSize: 26,
-                            height: 1.05,
-                            color: t.text1,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: 44),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            items[i].$1,
+                            maxLines: 1,
+                            style: TextStyle(
+                              fontFamily: AppType.display,
+                              fontFamilyFallback: AppType.displayFallback,
+                              fontSize: 21,
+                              height: 1.05,
+                              color: t.text1,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          items[i].$2.toUpperCase(),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontFamily: AppType.sans,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 1.1,
-                            color: t.text3,
+                          const SizedBox(height: 2),
+                          Text(
+                            items[i].$2,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: AppType.sans,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: .1,
+                              color: t.text2,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),

@@ -176,7 +176,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: Gap.xl),
+            // Sarlavha va portret orasida ortiqcha bo'sh joy yo'q.
+            const SizedBox(height: Gap.sm),
             if (active != null)
               _IdentityHero(
                 user: user,
@@ -238,6 +239,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           tier: IdPlate.isPrecious(id.tier)
                               ? tierLabel(l, id.tier)
                               : null,
+                          tierCode: id.tier,
                           // Holat faqat ISTISNO bo'lganda: hammada
                           // "Faol" turishi shovqin.
                           statusLabel: id.active ? null : l.nfcInactive,
@@ -418,10 +420,11 @@ class _IdentityHero extends ConsumerWidget {
 
     // 360 da 28, 430 da 32 — uzun ism ikki qatorga bo'linadi,
     // kesilmaydi.
-    final nameSize = (width * .078).clamp(26.0, 32.0);
-    // PORTRET MARKAZDA VA KATTA (egasining talabi, 2026-09): 360 da
-    // ~97, 430 da ~116. Istoriya bo'lsa atrofida Instagramdagidek
-    // aniq oltin halqa.
+    // Ism 26–30: portret va NFC ID karta ierarxiyada ustun turadi.
+    final nameSize = (width * .074).clamp(26.0, 30.0);
+    // PORTRET MARKAZDA VA KATTA (egasining talabi, 2026-09 — ikki
+    // marta: "avatar kichraymasin"): 360 da ~97, 430 da ~116.
+    // Istoriya bo'lsa atrofida Instagramdagidek aniq oltin halqa.
     final photo = (width * .27).clamp(92.0, 116.0);
 
     return Padding(
@@ -766,42 +769,60 @@ class _ActionTile extends StatelessWidget {
       fontWeight: FontWeight.w600,
       color: t.text1,
     );
+    // Katta shriftda (x1.3) ikki qatorli yozuv sig'sin.
+    final k = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.6);
     return Semantics(
       button: true,
       label: label,
       child: PressableScale(
         onTap: onTap,
-        scale: .94,
+        scale: .95,
         child: Container(
-          height: 82,
-          padding: const EdgeInsets.symmetric(horizontal: 5),
+          height: 96 + (k - 1) * 44,
+          padding: const EdgeInsets.fromLTRB(5, 13, 5, 8),
           decoration: BoxDecoration(
             color: t.surfaceSolid,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: t.border2),
             boxShadow: t.shadowTiny,
           ),
+          // IKON HAR DOIM BIR XIL BALANDLIKDA (egasi, 2026-09 polish):
+          // ilgari bir qatorli ("Skanerlash") va ikki qatorli ("Kartaga
+          // yozish") yozuv ikonni har xil joyga surardi. Endi ikon
+          // tepada, yumshoq doira ichida; yozuv uchun ikki qatorlik
+          // joy ajratilgan.
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 22, color: t.text1),
-              const SizedBox(height: 7),
-              // Bir so'z ("Skanerlash") hech qachon so'z o'rtasidan
-              // bo'linmaydi — kerak bo'lsa biroz kichrayadi. Ikki so'z
-              // ("Kartaga yozish") ikki qatorga tushadi.
-              if (label.contains(' '))
-                Text(
-                  label,
-                  maxLines: 2,
-                  textAlign: TextAlign.center,
-                  overflow: TextOverflow.ellipsis,
-                  style: style,
-                )
-              else
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(label, maxLines: 1, style: style),
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: t.surface2,
                 ),
+                child: Icon(icon, size: 21, color: t.text1),
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  // Bir so'z ("Skanerlash") hech qachon so'z o'rtasidan
+                  // bo'linmaydi — kerak bo'lsa biroz kichrayadi. Ikki
+                  // so'z ("Kartaga yozish") ikki qatorga tushadi.
+                  child: label.contains(' ')
+                      ? Text(
+                          label,
+                          maxLines: 2,
+                          textAlign: TextAlign.center,
+                          overflow: TextOverflow.ellipsis,
+                          style: style,
+                        )
+                      : FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(label, maxLines: 1, style: style),
+                        ),
+                ),
+              ),
             ],
           ),
         ),
@@ -859,10 +880,19 @@ class _HomeStats extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
+                          // O'QILADIGAN YORLIQ: 9.5 dp och kulrang
+                          // bosh harflar mayda edi — endi 11 dp,
+                          // ikkinchi darajali matn rangida.
                           child: Text(
-                            cells[i].$2.toUpperCase(),
+                            cells[i].$2,
                             maxLines: 1,
-                            style: AppType.eyebrow(color: t.text3, size: 9.5),
+                            style: TextStyle(
+                              fontFamily: AppType.sans,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: .2,
+                              color: t.text2,
+                            ),
                           ),
                         ),
                       ),
@@ -893,14 +923,14 @@ class _StoriesRow extends ConsumerWidget {
       children: [
         SectionHeader(title: l.homeStories),
         SizedBox(
-          height: 92,
+          height: 100 + (MediaQuery.textScalerOf(context).scale(11) - 11) * 1.4,
           child: stories.when(
             loading: () => ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
               itemCount: 5,
               separatorBuilder: (_, __) => const SizedBox(width: Gap.md),
-              itemBuilder: (_, __) => const Skeleton(height: 62, circle: true),
+              itemBuilder: (_, __) => const Skeleton(height: 66, circle: true),
             ),
             error: (_, __) => const SizedBox.shrink(),
             data: (all) {
@@ -978,7 +1008,7 @@ class _StoryBubble extends StatelessWidget {
     return PressableScale(
       onTap: onTap,
       child: SizedBox(
-        width: 66,
+        width: 72,
         child: Column(
           children: [
             Stack(
@@ -986,7 +1016,7 @@ class _StoryBubble extends StatelessWidget {
                 Avatar(
                   url: avatarUrl,
                   initials: initials,
-                  size: 64,
+                  size: 68,
                   // Ko'rilmagan — qalin OLTIN + ZUMRAD halqa (Instagram
                   // kabi), ko'rilgan — ingichka kulrang chiziq.
                   // "Sizning story" (qo'shish) — istoriya EMAS: halqa
@@ -1000,8 +1030,8 @@ class _StoryBubble extends StatelessWidget {
                     right: 0,
                     bottom: 0,
                     child: Container(
-                      width: 21,
-                      height: 21,
+                      width: 22,
+                      height: 22,
                       decoration: BoxDecoration(
                         gradient: t.accentGradient,
                         shape: BoxShape.circle,
@@ -1016,16 +1046,18 @@ class _StoryBubble extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 6),
             Text(
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
               style: TextStyle(
-                fontFamily: 'Manrope',
-                fontSize: 9.5,
+                fontFamily: AppType.sans,
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: t.text2,
+                // Ko'rilmagan istoriya — to'q, ko'rilgani — sokinroq.
+                color: seen ? t.text3 : t.text1,
               ),
             ),
           ],

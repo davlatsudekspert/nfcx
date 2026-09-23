@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import 'id_lux.dart';
 import '../motion/motion.dart';
 import '../theme/typography.dart';
 import '../tokens/nfc_tokens.dart';
@@ -50,6 +51,7 @@ class NfcIdHeroCard extends StatefulWidget {
     required this.name,
     this.subtitle = '',
     this.tier,
+    this.tierCode = '',
     this.statusLabel,
     this.statusOk = true,
     this.technical = false,
@@ -67,6 +69,11 @@ class NfcIdHeroCard extends StatefulWidget {
 
   /// Toifa belgisi (`EXCLUSIVE`, `PREMIUM`...). `null` — ko'rsatilmaydi.
   final String? tier;
+
+  /// Toifa kodi (`gold`/`premium`/`exclusive`). Pullik bo'lsa yozuv
+  /// o'rniga umumiy metall belgi (`IdTierBadge`) chiziladi — profil,
+  /// katalog va qidiruvdagi bilan AYNAN bir xil.
+  final String tierCode;
 
   /// Pastki o'ngdagi holat (`Faol`). `null` — ko'rsatilmaydi.
   final String? statusLabel;
@@ -330,7 +337,10 @@ class _CardBody extends StatelessWidget {
                           ),
                           if (widget.tier != null) ...[
                             const SizedBox(width: Gap.sm),
-                            _TierChip(label: widget.tier!, t: t),
+                            if (IdLux.isPaid(widget.tierCode))
+                              IdTierBadge(tier: widget.tierCode)
+                            else
+                              _TierChip(label: widget.tier!, t: t),
                           ],
                         ],
                       ),

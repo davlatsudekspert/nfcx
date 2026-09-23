@@ -92,6 +92,8 @@ void main() {
     tester.view.padding = const FakeViewPadding(top: 64, bottom: 96);
     tester.view.viewPadding = const FakeViewPadding(top: 64, bottom: 96);
     addTearDown(tester.view.reset);
+    // Soyalar telefondagidek yumshoq chizilsin (test standarti — qattiq blok).
+    debugDisableShadows = false;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
@@ -124,6 +126,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
     await expectLater(
         find.byType(MaterialApp), matchesGoldenFile('png/$name.png'));
+    debugDisableShadows = true;
   }
 
   testWidgets('audit — Home', (t) async {
