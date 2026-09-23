@@ -157,7 +157,7 @@ Website — `https://nfcstore.uz`.
 | **Government app** | No |
 | **Financial features** | "My app doesn't provide any financial features" |
 | **Health** | No |
-| **Account deletion** | In-app: Sozlamalar → Xavfsizlik → Hisobni o'chirish. Web: `https://nfcstore.uz/delete-account` |
+| **Account deletion** | In-app: Sozlamalar → Xavfsizlik → Hisobni o'chirish. Web: `https://nfcstore.uz/delete-account`. ⚠️ §3.5 dagi "HISOBNI O'CHIRISH — BLOKER" |
 
 ### 3.3 App access — demo hisob
 
@@ -189,7 +189,7 @@ tushmaydi (`backup_rules.xml`, `data_extraction_rules.xml`).
 | Collects or shares user data? | **Yes, collects** |
 | Shared with third parties? | **No** |
 | Encrypted in transit? | **Yes** |
-| Users can request deletion? | **Yes** (ilovada + `https://nfcstore.uz/delete-account`) |
+| Users can request deletion? | **Yes** (ilovada: Sozlamalar → Xavfsizlik → Hisobni o'chirish; saytda `https://nfcstore.uz/delete-account`) — ⚠️ pastdagi "HISOBNI O'CHIRISH — BLOKER" ni o'qi |
 
 Yig'iladigan turlar (hammasi: *Collected*, *not shared*, *not
 processed ephemerally*):
@@ -200,19 +200,33 @@ processed ephemerally*):
 | Personal info | Email address | Required | Account management |
 | Personal info | Phone number | Required | Account management |
 | Personal info | User IDs | Required | Account management, App functionality |
-| Photos and videos | Photos | Optional | App functionality |
-| Photos and videos | Videos | Optional | App functionality |
+| Personal info | Address | Optional | App functionality (profil/biznes kontakt manzili, ommaviy profilda ko'rinadi) |
+| Photos and videos | Photos | Optional | App functionality, Fraud prevention, security, and compliance |
+| Photos and videos | Videos | Optional | App functionality, Fraud prevention, security, and compliance |
 | Audio | Music files | Optional | App functionality (profil musiqasi) |
-| App activity | App interactions (layk, obuna) | Required | App functionality |
-| App activity | Other user-generated content (post, izoh, bio) | Optional | App functionality |
+| App activity | App interactions (layk, obuna, ilova ochilishlari soni va vaqti) | Required | App functionality, Analytics |
+| App activity | Other user-generated content (post, izoh, bio, ijtimoiy tarmoq havolalari, veb-sayt, qo'llab-quvvatlash xabari, shikoyat izohi) | Optional | App functionality, Fraud prevention, security, and compliance |
+| App activity | In-app search history (Tanlov/katalog qidiruvi) | Optional | App functionality ("processed ephemerally" — belgilamang: Worker loglari yoqilgan) |
 
 **YIG'ILMAYDI** (No): Location, Contacts, Calendar, Messages (SMS/DM),
-Health, Financial info (to'lov ilovada yo'q), Web browsing, Search
-history, Device or other IDs, Crash logs, Diagnostics.
+Health, Financial info (to'lov ilovada yo'q), Web browsing, Device or
+other IDs, Crash logs, Diagnostics.
 
 O'chirishdan keyin: profil va kontent darhol ommadan olinadi; qonun
 talabi bo'yicha yopiq arxiv saqlanadi (maxfiylik siyosatida yozilgan) —
 Play formasida "some data may be retained for legal reasons" deb belgila.
+
+> ⚠️ **HISOBNI O'CHIRISH — BLOKER (server, egasining qarori kerak).**
+> Hozir `DELETE /api/account` (`hosting/api/account.js:619-631`) faqat
+> YUMSHOQ o'chirish qiladi: `users.deleted_at` qo'yiladi va sessiyalar
+> o'chadi. Email, telefon, parol xeshi, profil, postlar va R2 media bazada
+> qoladi va qaytariladigan holatda turadi; avtomatik tozalash (cron) yo'q.
+> Google Play buni "deactivation" deb hisoblaydi, o'chirish emas. Xavfsiz
+> yechim rejasi: `ACCOUNT_DELETION_PLAN.md` (grace muddat → shaxsiy
+> ma'lumot va kontentni o'chirish/anonimlash; moliyaviy yozuvlar va dalil
+> arxivi qonun bo'yicha saqlanadi). Server o'zgarishi productionga faqat
+> egasi tasdiqlagandan keyin chiqadi. Shu tuzatilmaguncha Data safety'dagi
+> "Users can request deletion: Yes" javobi kodga to'liq mos emas.
 
 ### 3.6 Ruxsatlar (permissions) — CI tasdiqlagan
 

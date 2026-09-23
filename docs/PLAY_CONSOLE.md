@@ -217,6 +217,10 @@ Questions and feedback: nfcstore.uz
 
 ## 3. DATA SAFETY (Ma'lumotlar xavfsizligi)
 
+> **Yakuniy, tekshirilgan javoblar — `PLAY_CONSOLE_HANDOFF.md` §3.5** (2026-09-23
+> audit: manzil, qidiruv, ilova ochilishlari analitikasi va hisobni
+> o'chirish BLOKERI shu yerda). Ziddiyat bo'lsa handoff ustun.
+
 Bu bo'lim ilova kodidan tekshirildi. `pubspec.yaml` da
 analitika, reklama va crash-reporting kutubxonasi UMUMAN
 YO'Q (Firebase yo'q, AdMob yo'q, Crashlytics yo'q) —
@@ -229,7 +233,7 @@ shuning uchun ko'p savolga "yo'q" javob beriladi.
 | Ma'lumot yig'asizmi yoki ulashasizmi? | **Ha, yig'amiz** |
 | Uchinchi tomon bilan ULASHASIZMI? | **Yo'q** |
 | Uzatishda shifrlanadimi? | **Ha** (hammasi HTTPS) |
-| Foydalanuvchi o'chirishni so'ray oladimi? | **Ha** (Sozlamalar → Hisobni o'chirish) |
+| Foydalanuvchi o'chirishni so'ray oladimi? | **Ha** (Sozlamalar → Xavfsizlik → Hisobni o'chirish) — ⚠️ server hozir faqat yumshoq o'chiradi, `PLAY_CONSOLE_HANDOFF.md` §3.5 BLOKER |
 | Play Families dasturidami? | **Yo'q** |
 
 ### 3.2 Qaysi ma'lumot yig'iladi
@@ -242,6 +246,9 @@ shuning uchun ko'p savolga "yo'q" javob beriladi.
 | Foto va video | Ha | Foydalanuvchi kontenti (avatar, muqova, postlar) | Ixtiyoriy |
 | Boshqa fayllar (audio) | Ha | Profilga musiqa qo'shish | Ixtiyoriy |
 | Boshqa kontent (post, izoh) | Ha | Ilova funksiyasi | Ixtiyoriy |
+| Manzil (profil/biznes kontakti) | Ha | Ilova funksiyasi | Ixtiyoriy |
+| Ilovadagi qidiruv | Ha | Ilova funksiyasi | Ixtiyoriy |
+| Ilova bilan o'zaro ta'sir (layk, obuna, ochilishlar soni) | Ha | Ilova funksiyasi, analitika | Majburiy |
 
 ### 3.3 Qaysi ma'lumot YIG'ILMAYDI
 
@@ -255,7 +262,6 @@ Bularning hammasiga **YO'Q** deb javob bering:
 * Sog'liq va fitnes
 * Moliyaviy ma'lumot — **to'lov kartasi ilovaga kiritilmaydi**,
   to'lov Payme/Click sahifasida bo'ladi
-* Qidiruv tarixi
 * Reklama identifikatori
 * Ilovadagi xatoliklar / diagnostika (crash-reporting yo'q)
 
