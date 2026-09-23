@@ -72,7 +72,10 @@ void main() {
       NfcstoreV2App(session: session, theme: theme),
     );
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 900));
+    // The production app intentionally keeps the branded boot visible
+    // for at least 1.05 s, then cross-fades into the shell.
+    await tester.pump(const Duration(milliseconds: 1500));
+    await tester.pump(const Duration(milliseconds: 450));
 
     expect(find.byType(V2Shell), findsOneWidget);
     await expectLater(
