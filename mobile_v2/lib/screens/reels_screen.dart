@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player/video_player.dart';
 
 import '../core/api.dart';
@@ -28,10 +29,29 @@ class _ReelsScreenState extends State<ReelsScreen> {
   bool _hasMore = true;
   bool _loadingMore = false;
   int _index = 0;
+  Set<String> _saved = <String>{};
+
+  String _savedKey(FeedItem item) => item.targetKind + ':' + item.id.toString();
+
+  Future<void> _loadSaved() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getStringList('v2_saved_reels') ?? const <String>[];
+    if (mounted) setState(() => _saved = saved.toSet());
+  }
+
+  Future<void> _toggleSaved(FeedItem item) async {
+    final key = _savedKey(item);
+    final next = {..._saved};
+    if (!next.add(key)) next.remove(key);
+    setState(() => _saved = next);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('v2_saved_reels', next.toList()..sort());
+  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (_saved.isEmpty) _loadSaved();
     if (_loading && _items.isEmpty) _load();
   }
 
@@ -492,6 +512,17 @@ class _ReelsScreenState extends State<ReelsScreen> {
                                   icon: Icons.send_outlined,
                                   label: 'Ulash',
                                   onTap: () => _share(item),
+                                ),
+                                const SizedBox(height: 17),
+                                _ReelAction(
+                                  icon: _saved.contains(_savedKey(item))
+                                      ? Icons.bookmark_rounded
+                                      : Icons.bookmark_border_rounded,
+                                  label: 'Saqlash',
+                                  color: _saved.contains(_savedKey(item))
+                                      ? p.heroInk
+                                      : Colors.white,
+                                  onTap: () => _toggleSaved(item),
                                 ),
                                 const SizedBox(height: 17),
                                 _ReelAction(
