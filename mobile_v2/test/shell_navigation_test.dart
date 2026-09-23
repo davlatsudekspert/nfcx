@@ -141,7 +141,9 @@ void main() {
       NfcstoreV2App(session: session, theme: theme),
     );
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 700));
+    // Launch gate keeps the premium intro visible for at least 1.05 s.
+    await tester.pump(const Duration(milliseconds: 1500));
+    await tester.pump(const Duration(milliseconds: 450));
     expect(tester.takeException(), isNull);
   }
 
