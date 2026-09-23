@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -488,7 +487,10 @@ class _PortraitAvatar extends StatelessWidget {
     final t = context.tokens;
     final size = photoSize;
     // Halqa katta portretda ham ANIQ bilinsin: ko'rilmagani qalin.
-    final stroke = ring != null && ring!.unseen ? 3.4 : 2.0;
+    // Qalin, butun halqa (Instagram kabi): katta portretda ~6 px.
+    final stroke = ring != null && ring!.unseen
+        ? (size >= 90 ? 6.0 : 3.6)
+        : 1.8;
     const gap = 3.5;
     final outer = size + (gap + stroke) * 2;
 
@@ -571,14 +573,10 @@ class _PortraitAvatar extends StatelessWidget {
   }
 }
 
-/// Story halqasi — OLTIN.
+/// Story halqasi — OLTIN + ZUMRAD, butun va qalin (Instagram kabi).
 ///
-/// Instagram gradienti EMAS, lekin Instagramdagidek aniq: oltin
-/// gradient har mavzuda bir xil (brend rangi).
-///
-/// Ko'rilmagan story — aksent gradientida, aniq va yorug'.
-/// Ko'rilgan story — bitta so'nik ohangda, ingichkaroq. Farq bir
-/// qarashda bilinadi, lekin e'tiborni tortib olmaydi.
+/// Ranglar `IdPlate.storyRing` da — istoriyalar qatori va profil
+/// halqasi ham AYNAN shu gradientni oladi.
 class _StoryRingPainter extends CustomPainter {
   _StoryRingPainter({
     required this.t,
@@ -596,44 +594,17 @@ class _StoryRingPainter extends CustomPainter {
     final r = (size.width - stroke) / 2;
     final rect = Rect.fromCircle(center: c, radius: r);
 
-    // OLTIN HALQA (egasining talabi, 2026-09): Instagramdagidek bir
-    // qarashda bilinadi, lekin ranglari brendniki — oltin, har
-    // mavzuda bir xil.
-    const goldDeep = IdPlate.goldDeep;
-    const gold = IdPlate.gold;
-    const goldLight = IdPlate.goldLight;
-
+    // OLTIN + ZUMRAD (egasining tanlovi, 2026-09): Instagramdagidek
+    // butun, qalin halqa. Ko'rilgani — ingichka kulrang (Instagram).
     final p = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
       ..strokeWidth = stroke;
-
     if (state.unseen) {
-      p.shader = SweepGradient(
-        colors: [goldDeep, goldLight, gold, goldLight, goldDeep],
-        stops: const [0, .25, .5, .75, 1],
-        transform: const GradientRotation(-math.pi / 2),
-      ).createShader(rect);
+      p.shader = IdPlate.storyRing.createShader(rect);
     } else {
-      // Ko'rilgan: o'sha oltin, lekin so'nik — "bor, endi muhim emas".
-      p.color = gold.withValues(alpha: .45);
+      p.color = t.border1;
     }
-
-    // Bitta story bo'lsa yaxlit halqa. Bir nechta bo'lsa — shuncha
-    // bo'lak. Bo'lak soni ataylab cheklangan: 8 tadan ortig'i
-    // punktir chiziqqa aylanib, bezakka aylanardi.
-    final segments = state.count <= 1 ? 1 : math.min(state.count, 8);
-    if (segments == 1) {
-      canvas.drawCircle(c, r, p);
-      return;
-    }
-
-    const gapAngle = .10;
-    final step = 2 * math.pi / segments;
-    for (var i = 0; i < segments; i++) {
-      final start = -math.pi / 2 + i * step + gapAngle / 2;
-      canvas.drawArc(rect, start, step - gapAngle, false, p);
-    }
+    canvas.drawCircle(c, r, p);
   }
 
   @override
@@ -983,9 +954,14 @@ class _StoryBubble extends StatelessWidget {
                 Avatar(
                   url: avatarUrl,
                   initials: initials,
-                  size: 62,
-                  // Ko'rilmagan — champagne, ko'rilgan — so'nik chiziq.
-                  ringColor: seen ? t.border1 : t.brand,
+                  size: 64,
+                  // Ko'rilmagan — qalin OLTIN + ZUMRAD halqa (Instagram
+                  // kabi), ko'rilgan — ingichka kulrang chiziq.
+                  // "Sizning story" (qo'shish) — istoriya EMAS: halqa
+                  // ingichka neytral chiziq, Instagramdagidek.
+                  ringGradient: seen || add ? null : IdPlate.storyRing,
+                  ringColor: seen || add ? t.border1 : null,
+                  ringWidth: seen || add ? 1.4 : 3.2,
                 ),
                 if (add)
                   Positioned(

@@ -83,6 +83,21 @@ class IdPlate extends StatelessWidget {
   static const gold = Color(0xFFD4AF37);
   static const goldLight = Color(0xFFF6DE8D);
 
+  /// ISTORIYA HALQASI — OLTIN + ZUMRAD (egasining tanlovi, 2026-09,
+  /// "3-variant"). Instagramdagidek butun, qalin halqa; rangi bizniki.
+  static const emeraldLight = Color(0xFF5FD3A5);
+  static const emerald = Color(0xFF0E8A67);
+  static const storyRingColors = <Color>[
+    Color(0xFF8C6A1F), goldDeep, gold, goldLight, emeraldLight, emerald,
+    emeraldLight, goldLight, gold, goldDeep, Color(0xFF8C6A1F),
+  ];
+  static const storyRing = SweepGradient(
+    colors: storyRingColors,
+    // Oltin yuqori-chapdan boshlanadi, zumrad o'ng tomonda — namunadagi
+    // kabi.
+    transform: GradientRotation(3.49),
+  );
+
   /// FON QANCHA RANGLI BO'LADI.
   ///
   /// Birinchi urinishda .22 qo'yilgan edi va egasi darhol aytdi:

@@ -750,10 +750,11 @@ class _AvatarWithStory extends ConsumerWidget {
         // ko'rinardi: "istorya bor" belgisi sezilmasdi. Halqa
         // belgi, bezak emas — u ko'zga birinchi tashlanishi
         // kerak.
-        padding: const EdgeInsets.all(4.5),
-        decoration: BoxDecoration(
+        padding: const EdgeInsets.all(5),
+        decoration: const BoxDecoration(
           shape: BoxShape.circle,
-          gradient: t.accentGradient,
+          // OLTIN + ZUMRAD — bosh sahifa va istoriyalar qatori bilan bir xil.
+          gradient: IdPlate.storyRing,
         ),
         child: Container(
           // Ichki oraliq esa biroz torroq: halqa qalinlashgani

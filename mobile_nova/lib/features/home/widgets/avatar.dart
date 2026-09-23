@@ -17,6 +17,8 @@ class Avatar extends StatelessWidget {
     this.size = 44,
     this.ring = true,
     this.ringColor,
+    this.ringGradient,
+    this.ringWidth = 2.2,
     this.onTap,
   });
 
@@ -27,12 +29,17 @@ class Avatar extends StatelessWidget {
   /// Story halqasi — ko'rilmagan story bo'lsa aksent rangida.
   final bool ring;
   final Color? ringColor;
+
+  /// Istoriya halqasi uchun (`IdPlate.storyRing`). Berilsa `ringColor`
+  /// dan ustun turadi.
+  final Gradient? ringGradient;
+  final double ringWidth;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final inner = size - (ring ? 6 : 0);
+    final inner = size - (ring ? (ringWidth + 1.6) * 2 : 0);
 
     final content = ClipOval(
       child: SizedBox(
@@ -63,12 +70,13 @@ class Avatar extends StatelessWidget {
         ? Container(
             width: size,
             height: size,
-            padding: const EdgeInsets.all(2.2),
+            padding: EdgeInsets.all(ringWidth),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: ringColor == null
-                  ? t.accentGradient
-                  : LinearGradient(colors: [ringColor!, ringColor!]),
+              gradient: ringGradient ??
+                  (ringColor == null
+                      ? t.accentGradient
+                      : LinearGradient(colors: [ringColor!, ringColor!])),
             ),
             child: Container(
               padding: const EdgeInsets.all(1.6),
