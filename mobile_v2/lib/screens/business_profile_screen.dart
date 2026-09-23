@@ -8,6 +8,7 @@ import '../core/session.dart';
 import '../core/theme.dart';
 import '../ui/widgets.dart';
 import 'business_manage_screen.dart';
+import 'social_list_screen.dart';
 
 class BusinessProfileScreen extends StatefulWidget {
   const BusinessProfileScreen({
@@ -167,6 +168,15 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
                 onBack:
                     widget.own ? null : () => Navigator.of(context).pop(),
                 onShare: () => _share(c),
+                onFollowers: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => SocialListScreen(
+                      code: c.id,
+                      following: false,
+                      title: 'Business obunachilari',
+                    ),
+                  ),
+                ),
                 onManage: widget.own
                     ? () async {
                         await Navigator.of(context).push(
@@ -349,6 +359,7 @@ class _BusinessHero extends StatelessWidget {
     required this.company,
     required this.own,
     required this.onShare,
+    required this.onFollowers,
     this.onBack,
     this.onManage,
   });
@@ -356,6 +367,7 @@ class _BusinessHero extends StatelessWidget {
   final Company company;
   final bool own;
   final VoidCallback onShare;
+  final VoidCallback onFollowers;
   final VoidCallback? onBack;
   final VoidCallback? onManage;
 
@@ -533,6 +545,7 @@ class _BusinessHero extends StatelessWidget {
                     _HeroStat(
                       value: company.followers.toString(),
                       label: 'followers',
+                      onTap: onFollowers,
                     ),
                     const Spacer(),
                     Container(
@@ -887,33 +900,42 @@ class _HeroStat extends StatelessWidget {
   const _HeroStat({
     required this.value,
     required this.label,
+    this.onTap,
   });
 
   final String value;
   final String label;
+  final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontFamily: 'IBMPlexMono',
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
+  Widget build(BuildContext context) => InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 3),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontFamily: 'IBMPlexMono',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: .42),
+                  fontSize: 8.5,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 3),
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: .42),
-              fontSize: 8.5,
-            ),
-          ),
-        ],
+        ),
       );
 }
 
