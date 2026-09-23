@@ -739,5 +739,7 @@
   "reelUnsaved": "Удалено из сохранённых",
   "reelBlockAuthor": "Заблокировать автора",
   "reelBlocked": "Заблокировано — контент автора больше не показывается",
-  "setupFreeId": "Бесплатный NFC ID"
+  "setupFreeId": "Бесплатный NFC ID",
+  "bizShowcaseSample": "Пример",
+  "bizFeaturesTitle": "Что даёт бизнес-профиль"
 }

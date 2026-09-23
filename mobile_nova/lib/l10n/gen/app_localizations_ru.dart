@@ -1918,4 +1918,10 @@ class LRu extends L {
 
   @override
   String get setupFreeId => 'Бесплатный NFC ID';
+
+  @override
+  String get bizShowcaseSample => 'Пример';
+
+  @override
+  String get bizFeaturesTitle => 'Что даёт бизнес-профиль';
 }

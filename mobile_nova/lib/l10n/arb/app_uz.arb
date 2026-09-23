@@ -756,5 +756,7 @@
   "reelUnsaved": "Saqlanganlardan olindi",
   "reelBlockAuthor": "Muallifni bloklash",
   "reelBlocked": "Bloklandi — uning kontenti endi ko‘rinmaydi",
-  "setupFreeId": "Bepul NFC ID"
+  "setupFreeId": "Bepul NFC ID",
+  "bizShowcaseSample": "Namuna",
+  "bizFeaturesTitle": "Biznes nima beradi"
 }

@@ -739,5 +739,7 @@
   "reelUnsaved": "Removed from saved",
   "reelBlockAuthor": "Block author",
   "reelBlocked": "Blocked — you won’t see their content",
-  "setupFreeId": "Free NFC ID"
+  "setupFreeId": "Free NFC ID",
+  "bizShowcaseSample": "Sample",
+  "bizFeaturesTitle": "What Business gives you"
 }

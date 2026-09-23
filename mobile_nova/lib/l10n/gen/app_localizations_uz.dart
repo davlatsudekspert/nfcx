@@ -1923,4 +1923,10 @@ class LUz extends L {
 
   @override
   String get setupFreeId => 'Bepul NFC ID';
+
+  @override
+  String get bizShowcaseSample => 'Namuna';
+
+  @override
+  String get bizFeaturesTitle => 'Biznes nima beradi';
 }

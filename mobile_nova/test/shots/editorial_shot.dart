@@ -596,6 +596,9 @@ void main() {
         (t) => tabShot(t, Routes.profile, 'profile-$w', s));
     testWidgets('biz-intro $w',
         (t) => soloShot(t, const BusinessIntroScreen(), 'biz-intro-$w', s));
+    testWidgets('biz-intro-full $w',
+        (t) => soloShot(t, const BusinessIntroScreen(), 'biz-intro-full-$w',
+            Size(s.width, 1900)));
     testWidgets('biz-free $w',
         (t) => soloShot(t, const BusinessOnboardScreen(), 'biz-free-$w', s));
     testWidgets('regflow $w', (t) => registerFlowShot(t, s, w));

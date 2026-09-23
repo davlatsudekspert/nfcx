@@ -1923,4 +1923,10 @@ class LEn extends L {
 
   @override
   String get setupFreeId => 'Free NFC ID';
+
+  @override
+  String get bizShowcaseSample => 'Sample';
+
+  @override
+  String get bizFeaturesTitle => 'What Business gives you';
 }

@@ -95,13 +95,24 @@ void main() {
     await _pump(tester);
 
     final l = await L.delegate.load(const Locale('uz'));
-    // Imkoniyatlar ro'yxati tepada; variantlar pastda.
-    expect(find.text(l.bizFeatCatalog), findsOneWidget);
+    // Ekranda ikki aylantiriladigan narsa bor (namuna slaydlari
+    // gorizontal) — vertikal ro'yxat aniq ko'rsatiladi.
+    final list = find.byWidgetPredicate(
+        (w) => w is Scrollable && w.axisDirection == AxisDirection.down).first;
+    // Tepada rasmli namuna (mini-sayt · katalog · analitika), darhol
+    // ostida IKKI YO'L, imkoniyatlar ro'yxati eng pastda.
+    expect(find.byKey(const ValueKey('biz-showcase')), findsOneWidget);
+    expect(find.byKey(const ValueKey('biz-option-free')), findsOneWidget,
+        reason: 'bepul variant birinchi ekranda ko‘rinishi kerak');
     await tester.scrollUntilVisible(
-        find.byKey(const ValueKey('biz-option-premium')), 300);
-    expect(find.byKey(const ValueKey('biz-option-free')), findsOneWidget);
+        find.byKey(const ValueKey('biz-option-premium')), 300,
+        scrollable: list);
     expect(find.byKey(const ValueKey('biz-option-premium')), findsOneWidget);
-    await tester.scrollUntilVisible(find.text(l.bizFreeCta), -200);
+    await tester.scrollUntilVisible(find.text(l.bizFeatContacts), 300,
+        scrollable: list);
+    expect(find.text(l.bizFeatContacts), findsOneWidget);
+    await tester.scrollUntilVisible(find.text(l.bizFreeCta), -300,
+        scrollable: list);
     await tester.tap(find.text(l.bizFreeCta));
     await _pump(tester);
 

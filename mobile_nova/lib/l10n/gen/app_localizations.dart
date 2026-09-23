@@ -3746,6 +3746,18 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Bepul NFC ID'**
   String get setupFreeId;
+
+  /// No description provided for @bizShowcaseSample.
+  ///
+  /// In uz, this message translates to:
+  /// **'Namuna'**
+  String get bizShowcaseSample;
+
+  /// No description provided for @bizFeaturesTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Biznes nima beradi'**
+  String get bizFeaturesTitle;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {
