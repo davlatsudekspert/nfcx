@@ -3290,6 +3290,12 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Oq-qora'**
   String get themeMono;
+
+  /// No description provided for @themeIvory.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ivory'**
+  String get themeIvory;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

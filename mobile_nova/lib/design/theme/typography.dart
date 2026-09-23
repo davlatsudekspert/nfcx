@@ -24,10 +24,32 @@ import 'package:flutter/material.dart';
 ///
 /// Mono (NFC kodlar) ham `w600` dan `w500` ga tushdi va oralig'i
 /// kengaydi: kod texnik bo'lsa ham og'ir bo'lmasligi kerak.
+///
+/// ## UCH QATLAM (2026-09, egasining qarori)
+///
+/// Har bir shriftning BITTA vazifasi bor — aralashtirilmaydi:
+///
+///   * [display] — Instrument Serif. Katta ekran sarlavhalari, odam
+///     va kompaniya ismi, editorial sarlavhalar. Hech qachon tugma
+///     yoki kichik matnda emas;
+///   * [sans] — Manrope. Tugmalar, menyu, oddiy matn, katalog,
+///     filtrlar, formalar — ya'ni ilovaning "ishchi" matni;
+///   * [mono] — IBM Plex Mono. NFC ID kodi, qidiruv natijasidagi kod,
+///     narx jadvali kabi texnik joylar.
+///
+/// [heroIdFamily] (Playfair Display) — FAQAT bitta joyda: bosh
+/// sahifadagi katta dekorativ ID. Kichik ID chip, qidiruv, profil va
+/// katalogda u ISHLATILMAYDI: serifli kichik matnda `0/O` va `1/I`
+/// bir-biriga o'xshab qoladi, NFC ID esa odam og'zaki aytib
+/// beradigan kod. Katta o'lchamda farq aniq ko'rinadi, kichikda —
+/// yo'q.
 abstract final class AppType {
   static const display = 'InstrumentSerif';
   static const sans = 'Manrope';
   static const mono = 'IBMPlexMono';
+
+  /// Faqat [heroId] uchun — sababini sinf izohida qarang.
+  static const heroIdFamily = 'PlayfairDisplay';
 
   /// Sarlavhalar uchun ZAXIRA oila.
   ///
@@ -152,6 +174,43 @@ abstract final class AppType {
         letterSpacing: letterSpacing,
         color: color,
         shadows: shadows,
+      );
+
+  /// BOSH SAHIFADAGI KATTA NFC ID — dekorativ, gravyura hissi.
+  ///
+  /// RAQAMLAR TO'LIQ BALANDLIKDA (`lnum`). Playfair sukut bo'yicha
+  /// "eski uslub" raqamlarini chizadi: `0` kichik `o` harfidek
+  /// pastga tushadi va `VIP001` ko'zga `VIPoo1` bo'lib ko'rinadi.
+  /// Bu jurnal sarlavhasida chiroyli, lekin ID — odam o'qib, og'zaki
+  /// aytib beradigan KOD. Shuning uchun raqamlar harflar bilan bir
+  /// balandlikda turadi va `0` harf `O` dan torroq oval bo'lib
+  /// qoladi.
+  ///
+  /// [size] 40 dan kichik bo'lsa ishlatmang — [monoStyle] ni oling.
+  static TextStyle heroId({required Color color, double size = 52}) =>
+      TextStyle(
+        fontFamily: heroIdFamily,
+        fontSize: size,
+        fontWeight: FontWeight.w500,
+        height: 1.0,
+        letterSpacing: size * .02,
+        color: color,
+        fontFeatures: const [FontFeature.liningFigures()],
+      );
+
+  /// Bo'lim ustidagi kichik yozuv: `BU HAFTA`, `NFC ID · SHAXSIY`.
+  ///
+  /// Katta harf va keng oraliq bilan u sarlavha bilan raqobat
+  /// qilmaydi, lekin ierarxiyani belgilaydi — editorial uslubning
+  /// asosiy "ritm" elementi.
+  static TextStyle eyebrow({required Color color, double size = 10.5}) =>
+      TextStyle(
+        fontFamily: sans,
+        fontSize: size,
+        fontWeight: FontWeight.w600,
+        letterSpacing: size * .19,
+        height: 1.2,
+        color: color,
       );
 
   /// NFC ID, narx, sana — raqamlar qatori "sakramasligi" uchun monospace.

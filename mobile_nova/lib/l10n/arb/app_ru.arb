@@ -663,5 +663,6 @@
   "commentReplyingTo": "Ответ {name}",
   "storeBuyOnSiteId": "Покупка NFC ID оформляется на сайте:",
   "storeBuyOnSitePremium": "Premium оформляется на сайте:",
-  "themeMono": "Чёрно-белая"
+  "themeMono": "Чёрно-белая",
+  "themeIvory": "Айвори"
 }

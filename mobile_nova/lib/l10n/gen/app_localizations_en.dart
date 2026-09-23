@@ -1673,4 +1673,7 @@ class LEn extends L {
 
   @override
   String get themeMono => 'Mono';
+
+  @override
+  String get themeIvory => 'Ivory';
 }

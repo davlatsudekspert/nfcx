@@ -126,8 +126,10 @@ void main() {
   });
 
   group('mavzular', () {
-    test('standart — noir, `ocean` esa saqlangan', () {
-      expect(NfcTokens.fallback.id, 'noir');
+    test('standart — ivory, `noir` va `ocean` esa saqlangan', () {
+      expect(NfcTokens.fallback.id, 'ivory');
+      expect(NfcTokens.all.map((t) => t.id), contains('noir'),
+          reason: '`noir` muqobil mavzu sifatida qolishi kerak');
       expect(NfcTokens.all.map((t) => t.id), contains('ocean'),
           reason: '`ocean` muqobil mavzu sifatida qolishi kerak');
     });

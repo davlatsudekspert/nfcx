@@ -663,5 +663,6 @@
   "commentReplyingTo": "Replying to {name}",
   "storeBuyOnSiteId": "NFC ID purchases are completed on the website:",
   "storeBuyOnSitePremium": "Premium is purchased on the website:",
-  "themeMono": "Mono"
+  "themeMono": "Mono",
+  "themeIvory": "Ivory"
 }

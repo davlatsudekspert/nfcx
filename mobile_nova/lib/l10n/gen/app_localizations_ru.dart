@@ -1665,4 +1665,7 @@ class LRu extends L {
 
   @override
   String get themeMono => 'Чёрно-белая';
+
+  @override
+  String get themeIvory => 'Айвори';
 }

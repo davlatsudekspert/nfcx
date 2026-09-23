@@ -27,13 +27,14 @@ double _contrast(Color a, Color b) {
 }
 
 void main() {
-  test('oltita mavzu ham mavjud va kaliti takrorlanmaydi', () {
-    // `noir` — NFCSTORE premium mavzusi, `src/themes.css` dagi
-    // saytning qorong'i palitrasidan olingan. Eskilariga tegilmadi.
-    expect(NfcTokens.all.length, 6);
+  test('yettita mavzu ham mavjud va kaliti takrorlanmaydi', () {
+    // `ivory` (2026-09) — soft editorial luxury, yangi standart.
+    // `noir` — NFCSTORE qorong'i premium mavzusi, saqlanadi.
+    expect(NfcTokens.all.length, 7);
     final ids = NfcTokens.all.map((t) => t.id).toSet();
-    expect(ids.length, 6);
-    expect(ids, {'noir', 'ocean', 'mono', 'graphite', 'aurora', 'onyx'});
+    expect(ids.length, 7);
+    expect(ids,
+        {'ivory', 'noir', 'ocean', 'mono', 'graphite', 'aurora', 'onyx'});
     // OQ MAVZU TANLANMAYDI.
     //
     // `pearl` ta'rifi qoladi (sinovlar undan yorug' palitra namunasi
@@ -42,15 +43,36 @@ void main() {
     // o'rnatishdan xotirada qolgan tanlov edi.
     expect(ids.contains('pearl'), isFalse);
     // Birinchi o'rin — standart mavzu.
-    expect(NfcTokens.all.first.id, 'noir');
-    // FAQAT BITTA YORUG' MAVZU — `mono` (oq-qora).
+    expect(NfcTokens.all.first.id, 'ivory');
+    // IKKITA YORUG' MAVZU — `ivory` va `mono`.
     //
-    // Qolgani qorong'i. `pearl` olib tashlanganidan keyin yorug'
-    // mavzu umuman yo'q edi; `mono` egasining so'rovi bilan
-    // qaytdi, lekin u BOShQACHA: oq fon, tim qora matn va qora
-    // chegaralar, oltin umuman yo'q.
+    // `mono` — sof oq-qora, oltin umuman yo'q. `ivory` — uning
+    // ustiga juda kam champagne (`brand`) qo'shilgan editorial
+    // variant. Qolgani qorong'i.
     final light = NfcTokens.all.where((t) => !t.isDark).map((t) => t.id);
-    expect(light, ['mono']);
+    expect(light, ['ivory', 'mono']);
+  });
+
+  test('ivory: siyoh aksent, champagne FAQAT brend tokenida', () {
+    // Egasining talabi: "juda oz miqdorda champagne". Agar oltin
+    // aksentga ulanganida, u har bir asosiy tugma, faol tab va
+    // tanlangan chipga tarqalardi — "oz" bo'lishdan to'xtardi.
+    final t = NfcTokens.ivory;
+    expect(t.accent2.computeLuminance(), lessThan(.02),
+        reason: 'asosiy aksent qora siyoh');
+    expect(t.text1.computeLuminance(), lessThan(.02));
+    // Champagne iliq: qizil kanal ko'kdan sezilarli katta.
+    expect(t.brand.r - t.brand.b, greaterThan(.15),
+        reason: 'brend rangi champagne bo‘lishi kerak');
+    // Champagne matn sifatida ham o'qiladi (tier belgisi, kichik yozuv).
+    expect(_contrast(t.brandInk, t.surfaceSolid), greaterThan(4.5));
+    // Kartalar SHAFFOF EMAS: blur ham, fon "suzishi" ham yo'q.
+    expect(t.surface.a, 1.0);
+    expect(t.surface, t.surfaceSolid);
+    // Fon sof oq emas — oq karta undan ko'tarilib turadi.
+    expect(t.bg1, isNot(t.surface));
+    expect(_contrast(t.text3, t.surfaceSolid), greaterThan(3.0),
+        reason: 'uchinchi darajali matn ham o‘qilsin');
   });
 
   test('noir AKSENTI shampan oltin', () {
@@ -113,20 +135,24 @@ void main() {
         reason: 'oq-qora mavzu fonida rang tusi bo\u2018lmasin');
   });
   test('noma’lum kalit STANDART mavzuga tushadi', () {
-    // Egasining qarori (2026-09): ilova birinchi ochilganda
-    // NFCSTORE brend rangida — `noir`. `ocean` o'chirilmadi, u
-    // Sozlamalarda muqobil bo'lib qoladi.
-    expect(NfcTokens.fallback.id, 'noir');
-    expect(NfcTokens.byId('bunday-mavzu-yoq').id, 'noir');
-    expect(NfcTokens.byId(null).id, 'noir');
+    // Egasining qarori (2026-09, ikkinchi): ilova birinchi
+    // ochilganda soft editorial `ivory` da. `noir` va `ocean`
+    // o'chirilmadi — Sozlamalarda tanlanadi va tanlagan odamda
+    // saqlanib qoladi.
+    expect(NfcTokens.fallback.id, 'ivory');
+    expect(NfcTokens.byId('bunday-mavzu-yoq').id, 'ivory');
+    expect(NfcTokens.byId(null).id, 'ivory');
+    expect(NfcTokens.byId('noir').id, 'noir');
     expect(NfcTokens.byId('mono').id, 'mono');
     // `ocean` HALI HAM mavjud — o'chirib yuborilmaganiga ishonch.
     expect(NfcTokens.byId('ocean').id, 'ocean');
   });
 
-  test('faqat oq-qora mavzu yorug‘, qolganlari qorong‘i', () {
+  test('ivory va oq-qora yorug‘, qolganlari qorong‘i', () {
     expect(NfcTokens.mono.isDark, isFalse);
-    for (final t in NfcTokens.all.where((e) => e.id != 'mono')) {
+    expect(NfcTokens.ivory.isDark, isFalse);
+    for (final t in NfcTokens.all
+        .where((e) => e.id != 'mono' && e.id != 'ivory')) {
       expect(t.isDark, isTrue, reason: t.id);
     }
   });

@@ -45,6 +45,9 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     required this.shadowFloat,
     required this.shadowSoft,
     required this.shadowTiny,
+    required this.brand,
+    required this.brandSoft,
+    required this.brandInk,
   });
 
   /// Saqlashda ishlatiladigan barqaror kalit (`pearl`, `midnight`, ...).
@@ -79,6 +82,18 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
   final Color error, success, warn;
   final Color ambient1, ambient2;
   final List<BoxShadow> shadowFloat, shadowSoft, shadowTiny;
+
+  /// BREND CHAMPAGNE — aksentdan ALOHIDA.
+  ///
+  /// `ivory` da aksent QORA: asosiy tugma, faol tab, tanlangan chip
+  /// siyoh rangida. Champagne esa juda kam joyda — NFC ID kartaning
+  /// ichki hoshiyasi, tier belgisi, story halqasi, markaziy NFC
+  /// tugmaning halqasi. Agar u aksentga ulanganida, oltin butun
+  /// tugmalarga tarqalib, "juda kam" bo'lishdan to'xtardi.
+  ///
+  /// `brand` — chiziq va halqa; `brandSoft` — och tus (plita foni,
+  /// hoshiya); `brandInk` — shu oiladagi O'QILADIGAN matn rangi.
+  final Color brand, brandSoft, brandInk;
 
   /// Ekran orqa foni — yuqoridan pastga yumshoq gradient.
   LinearGradient get backdrop => LinearGradient(
@@ -222,8 +237,77 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
       shadowFloat: s(shadowFloat, other.shadowFloat),
       shadowSoft: s(shadowSoft, other.shadowSoft),
       shadowTiny: s(shadowTiny, other.shadowTiny),
+      brand: c(brand, other.brand),
+      brandSoft: c(brandSoft, other.brandSoft),
+      brandInk: c(brandInk, other.brandInk),
     );
   }
+
+  // ------------------------------------------------------------ 0 IVORY
+  //
+  // SOFT EDITORIAL LUXURY — STANDART MAVZU (2026-09, egasining qarori).
+  //
+  // Egasi oq-qora variantni qorong'idan yaxshiroq topdi, lekin u
+  // "chiroyli template"dek ko'rindi — NFCSTORE ruhi sezilmadi. Bu
+  // mavzu o'sha oq-qora asosni oladi va unga BITTA narsa qo'shadi:
+  // juda kam champagne (`brand`). Qolgani o'zgarmaydi:
+  //
+  //   fon      #F6F5F2  iliq oq, sof oq emas — kartalar ajralsin
+  //   karta    #FFFFFF  sof oq, SHAFFOF EMAS (blur yo'q, arzon)
+  //   matn     #141414  qora siyoh
+  //   aksent   #141414  asosiy tugma va faol holat ham siyoh
+  //   brend    #B39566  champagne — faqat hoshiya/halqa/belgi
+  //
+  // Chuqurlik soya bilan: tepada 1px yorug' chiziq, pastda keng va
+  // juda xira iliq soya. Glow ham, gradient fon ham yo'q.
+  static final ivory = NfcTokens(
+    id: 'ivory',
+    isDark: false,
+    bg1: hex('#F6F5F2'),
+    bg2: hex('#F1EFEA'),
+    bgVignette: rgba(0, 0, 0, .025),
+    surface: hex('#FFFFFF'),
+    surface2: hex('#F1EFEA'),
+    surfaceSolid: hex('#FFFFFF'),
+    text1: hex('#141414'),
+    text2: hex('#57544E'),
+    text3: hex('#858075'),
+    accent1: hex('#1E1E1E'),
+    accent2: hex('#141414'),
+    accent3: hex('#57544E'),
+    goldDeep: hex('#8A6D42'),
+    // Biznes va boshqa rejim aksentlari — siyohning darajalari,
+    // rang bilan emas, QUYUQLIK bilan ajraladi (xuddi `mono` kabi).
+    accentB: hex('#2A2A27'),
+    accentBDark: hex('#141414'),
+    accentC: hex('#4A4741'),
+    accentCDark: hex('#2A2824'),
+    accentD: hex('#6E6A62'),
+    accentDDark: hex('#3D3A35'),
+    glow: rgba(179, 149, 102, .16),
+    glowB: rgba(0, 0, 0, .06),
+    border1: rgba(20, 20, 20, .12),
+    border2: rgba(20, 20, 20, .075),
+    error: hex('#9B3B30'),
+    success: hex('#3F6B4A'),
+    warn: hex('#86672A'),
+    ambient1: rgba(179, 149, 102, .05),
+    ambient2: rgba(0, 0, 0, .02),
+    shadowFloat: [
+      BoxShadow(color: rgba(40, 30, 12, .16), blurRadius: 30, spreadRadius: -12, offset: const Offset(0, 16)),
+      BoxShadow(color: rgba(40, 30, 12, .05), blurRadius: 3, offset: const Offset(0, 1)),
+    ],
+    shadowSoft: [
+      BoxShadow(color: rgba(40, 30, 12, .12), blurRadius: 24, spreadRadius: -12, offset: const Offset(0, 12)),
+      BoxShadow(color: rgba(40, 30, 12, .045), blurRadius: 2, offset: const Offset(0, 1)),
+    ],
+    shadowTiny: [
+      BoxShadow(color: rgba(40, 30, 12, .06), blurRadius: 6, offset: const Offset(0, 2)),
+    ],
+    brand: hex('#B39566'),
+    brandSoft: hex('#E7DCC6'),
+    brandInk: hex('#7A5F38'),
+  );
 
   // ---------------------------------------------------------------- 1 PEARL
   static final pearl = NfcTokens(
@@ -268,6 +352,9 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     shadowTiny: [
       BoxShadow(color: rgba(160, 140, 110, .06), blurRadius: 17, offset: const Offset(0, 4)),
     ],
+    brand: hex('#B89552'),
+    brandSoft: hex('#E4D2AB'),
+    brandInk: hex('#8E7550'),
   );
 
   // ------------------------------------------------------------- 2 GRAPHITE
@@ -313,6 +400,9 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     shadowTiny: [
       BoxShadow(color: rgba(0, 0, 0, .23), blurRadius: 17, offset: const Offset(0, 4)),
     ],
+    brand: hex('#C0BBB2'),
+    brandSoft: rgba(192, 187, 178, .28),
+    brandInk: hex('#DFDCD6'),
   );
 
   // ---------------------------------------------------------------- 3 OCEAN
@@ -358,6 +448,9 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     shadowTiny: [
       BoxShadow(color: rgba(0, 10, 25, .27), blurRadius: 17, offset: const Offset(0, 4)),
     ],
+    brand: hex('#6FB3C6'),
+    brandSoft: rgba(111, 179, 198, .28),
+    brandInk: hex('#AFD6E0'),
   );
 
   // --------------------------------------------------------------- 4 AURORA
@@ -403,6 +496,9 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     shadowTiny: [
       BoxShadow(color: rgba(10, 5, 25, .27), blurRadius: 17, offset: const Offset(0, 4)),
     ],
+    brand: hex('#AE9BCB'),
+    brandSoft: rgba(174, 155, 203, .28),
+    brandInk: hex('#D3C6E4'),
   );
 
   // ------------------------------------------------------------- 5 MIDNIGHT
@@ -484,6 +580,10 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     shadowTiny: [
       BoxShadow(color: rgba(0, 0, 0, .06), blurRadius: 6, offset: const Offset(0, 2)),
     ],
+    // Oq-qora mavzuda oltin yo'q — "brend" ham kulrang daraja.
+    brand: hex('#3D3D3D'),
+    brandSoft: rgba(0, 0, 0, .10),
+    brandInk: hex('#141414'),
   );
 
   // ------------------------------------------------------------- 5 MIDNIGHT
@@ -533,6 +633,9 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     shadowTiny: [
       BoxShadow(color: rgba(0, 5, 15, .31), blurRadius: 17, offset: const Offset(0, 4)),
     ],
+    brand: hex('#C9A96A'),
+    brandSoft: rgba(201, 169, 106, .26),
+    brandInk: hex('#E8D4A0'),
   );
 
   /// ONYX — SAYTDAGI BIZNES PROFILNING O'ZI.
@@ -587,6 +690,9 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     shadowTiny: [
       BoxShadow(color: rgba(6, 5, 3, .32), blurRadius: 17, offset: const Offset(0, 4)),
     ],
+    brand: hex('#C9A96A'),
+    brandSoft: rgba(201, 169, 106, .26),
+    brandInk: hex('#E8D4A0'),
   );
 
   // ------------------------------------------------------------ 7 NOIR
@@ -697,6 +803,9 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     shadowTiny: [
       BoxShadow(color: rgba(0, 0, 0, .32), blurRadius: 9, offset: const Offset(0, 3)),
     ],
+    brand: hex('#D6B25E'),
+    brandSoft: rgba(214, 178, 94, .26),
+    brandInk: hex('#E4C97A'),
   );
 
   // TANLASH MUMKIN BO'LGAN MAVZULAR — HAMMASI QORONG'I.
@@ -714,7 +823,7 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
   // topa olmagan id uchun `fallback` (noir) qaytaradi, ya'ni eski
   // tanlov saqlangan qurilmalar keyingi ochilishda Noir'ga
   // o'tadi. Alohida migratsiya kodi shart emas.
-  static final all = <NfcTokens>[noir, ocean, mono, graphite, aurora, onyx];
+  static final all = <NfcTokens>[ivory, noir, ocean, mono, graphite, aurora, onyx];
 
   /// STANDART MAVZU — `noir`.
   ///
@@ -726,7 +835,14 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
   /// sayt bilan bir xil qora-shampan palitrada. `ocean`
   /// O'CHIRILMADI — u Sozlamalarda muqobil mavzu bo'lib qoladi
   /// va uni tanlagan odamda hech narsa o'zgarmaydi.
-  static NfcTokens get fallback => noir;
+  ///
+  /// 2026-09 (ikkinchi qaror): standart `ivory` ga o'tdi — egasi oq
+  /// editorial yo'nalishni tanladi. `noir` O'CHIRILMADI: uni
+  /// Sozlamalarda ANIQ tanlagan odamda u saqlanib qoladi, chunki
+  /// mavzu faqat tanlanganda yoziladi (`ThemeController.select`).
+  /// Hech narsa tanlamagan odam esa keyingi ochilishda ivory'ni
+  /// ko'radi — alohida migratsiya kerak emas.
+  static NfcTokens get fallback => ivory;
 
   static NfcTokens byId(String? id) =>
       all.firstWhere((t) => t.id == id, orElse: () => fallback);

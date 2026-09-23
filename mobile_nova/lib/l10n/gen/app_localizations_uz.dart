@@ -1676,4 +1676,7 @@ class LUz extends L {
 
   @override
   String get themeMono => 'Oq-qora';
+
+  @override
+  String get themeIvory => 'Ivory';
 }
