@@ -53,7 +53,10 @@ let fileId = 0; let fileUrl = '';
   check('PUT /files/:id unknown -> 404', (await call('/api/records/VIP001/files/99999', { method: 'PUT', cookie: cookie.user, json: { title: 'x' } })).status, 404);
   check('DELETE /files/:id no session -> 401', (await call(`/api/records/VIP001/files/${fileId}`, { method: 'DELETE' })).status, 401);
   check('DELETE /files/:id -> ok', await call(`/api/records/VIP001/files/${fileId}`, { method: 'DELETE', cookie: cookie.user }), { status: 200, body: { ok: true } });
-  check('DELETE /files/:id removed R2 object', env.UPLOADS._store.has(fileUrl.slice(1)), false);
+  // Dalil arxivi (content-archive.js): fayl R2 da QOLADI, nusxa arxivda.
+  check('DELETE /files/:id R2 fayli dalil uchun SAQLANDI', env.UPLOADS._store.has(fileUrl.slice(1)), true);
+  const fArch = await env.DB.prepare(`SELECT kind, owner_id, file_url, reason FROM content_archive WHERE kind = 'card_file' AND content_id = ?`).bind(fileId).first();
+  check('DELETE /files/:id -> dalil arxivida', fArch && [fArch.kind, fArch.owner_id, fArch.file_url, fArch.reason], ['card_file', 'VIP001', fileUrl, 'owner']);
   check('GET /files after delete -> 4', (await call('/api/records/VIP001/files')).body.files.length, 4);
 }
 
@@ -130,7 +133,9 @@ let fileId = 0; let fileUrl = '';
   check('PUT /api/videos/:id no session -> 401', (await call(`/api/videos/${c.body.id}`, { method: 'PUT', json: { title: 'x' } })).status, 401);
   check('PUT /api/videos/:id unknown -> 404', (await call('/api/videos/99999', { method: 'PUT', cookie: cookie.user, json: { title: 'x' } })).status, 404);
   check('DELETE /api/videos/:id -> ok', await call(`/api/videos/${c.body.id}`, { method: 'DELETE', cookie: cookie.user }), { status: 200, body: { ok: true } });
-  check('DELETE /api/videos/:id removed R2 object', env.UPLOADS._store.has(c.body.videoUrl.slice(1)), false);
+  check('DELETE /api/videos/:id R2 fayli dalil uchun SAQLANDI', env.UPLOADS._store.has(c.body.videoUrl.slice(1)), true);
+  const vArch = await env.DB.prepare(`SELECT kind, video_url, reason FROM content_archive WHERE kind = 'card_video' AND content_id = ?`).bind(c.body.id).first();
+  check('DELETE /api/videos/:id -> dalil arxivida', vArch && [vArch.kind, vArch.video_url, vArch.reason], ['card_video', c.body.videoUrl, 'owner']);
   check('GET /videos after delete -> 0', (await call('/api/records/VIP001/videos')).body.videos.length, 0);
 }
 

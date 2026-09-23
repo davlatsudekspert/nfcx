@@ -108,7 +108,7 @@ const b64 = await worker.fetch(req('/api/upload', { method: 'POST', cookie: cook
 const b64Body = await b64.json().catch(() => null);
 check('7) base64 yo‘li ham to‘xtatildi', [b64.status, b64Body?.error], [429, 'quota_exceeded']);
 
-// ── 8) MUDDATI O'TGAN ISTORYA FAYLI R2 DAN O'CHADI ───────────────────
+// ── 8) MUDDATI O'TGAN ISTORYA — DALIL ARXIVIGA TUSHADI, FAYL QOLADI ───
 // Kvotani bo'shatamiz, aks holda quyidagi yuklashlar to'xtaydi.
 await env.DB.prepare(`DELETE FROM upload_quota`).run();
 
@@ -128,7 +128,13 @@ const add = await worker.fetch(req('/api/records/VIP001/stories', {
   method: 'POST', cookie: cookie.user, json: { imageUrl: freshUrl, agreed: true },
 }), env);
 checkTrue('8) yangi istorya qo‘shildi', [200, 201].includes(add.status));
-checkTrue('8) muddati o‘tgan istorya FAYLI R2 dan o‘chdi', !(await exists(staleName)));
+// Istoriya lentadan ketadi, lekin nusxasi va fayli dalil arxivida
+// qoladi (content-archive.js) — admin "Dalil arxivi"da ko'radi.
+checkTrue('8) muddati o‘tgan istorya lentadan KETDI',
+  !(await env.DB.prepare(`SELECT 1 AS x FROM stories WHERE image_url = ?`).bind(staleUrl).first()));
+const staleArch = await env.DB.prepare(`SELECT reason, owner_id FROM content_archive WHERE kind = 'story' AND image_url = ?`).bind(staleUrl).first();
+checkTrue('8) muddati o‘tgan istorya DALIL ARXIVIDA (expired)', staleArch?.reason === 'expired' && staleArch?.owner_id === 'VIP001');
+checkTrue('8) muddati o‘tgan istorya FAYLI dalil uchun SAQLANDI', await exists(staleName));
 checkTrue('8) yangi istorya fayli JOYIDA', await exists('story_bbbbbbbbbbbb.jpg'));
 
 // ── 9) POSTDA ISHLATILAYOTGAN FAYL O'CHIRILMAYDI ─────────────────────

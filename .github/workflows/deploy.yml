@@ -93,6 +93,12 @@ jobs:
         run: node scripts/test-nova-id-purchase.mjs
       - name: Admin "NFCSTORE ILOVASI" — tugmalar haqiqatdan ishlaydimi
         run: node scripts/test-admin-nova-tab.mjs
+      # O'chirilgan kontent dalil arxivi: nusxa o'chirishdan OLDIN yoziladi,
+      # fayl R2 da qoladi, arxivni faqat admin ko'radi.
+      - name: Dalil arxivi — o'chirilgan post, istoriya, video, izoh
+        run: node scripts/test-content-archive.mjs
+      - name: Ilova foydalanuvchilari — kim ishlatyapti (admin)
+        run: node scripts/test-app-usage.mjs
       # Manifestdagi yaroqsiz XML ilova qurilishini yiqitadi, lekin
       # `flutter analyze` ham, `flutter test` ham uni o'qimaydi.
       # Eski ilovaning CI'si esa faqat QO'LDA ishga tushadi —

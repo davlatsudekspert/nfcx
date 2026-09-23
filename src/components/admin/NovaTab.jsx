@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AdminCard, AdminLoading, EmptyState, LoadError, StatusBadge } from './AdminUI.jsx';
+import { AdminCard, AdminLoading, EmptyState, KpiCard, LoadError, StatusBadge } from './AdminUI.jsx';
 import { useLanguage } from '../../lib/i18n.jsx';
 
 // ═══════════════════════════════════════════════════════════════════════
 // NFCSTORE ILOVASI
 //
-// Ilovaga tegishli moderatsiya va sotuv bu yerda yig'iladi. Uchta
-// bo'lim, uchalasi ham HAQIQIY endpointlar ustida:
+// Ilovaga tegishli moderatsiya va sotuv bu yerda yig'iladi. To'rtta
+// bo'lim, to'rtalasi ham HAQIQIY endpointlar ustida:
 //
-//   • Izohlar     — `/api/admin/comments`
-//   • Dalil arxivi — `/api/admin/comments/archive`
-//   • FEATURED    — `/api/admin/featured`
+//   • Foydalanuvchilar — `/api/admin/app-users` (ilovani kim ishlatyapti)
+//   • Izohlar          — `/api/admin/comments`
+//   • Dalil arxivi     — `/api/admin/evidence` (o'chirilgan post,
+//                        istoriya, video, fayl VA izohlar; shubhali belgisi)
+//   • FEATURED         — `/api/admin/featured`
 //
 // BO'SH BO'LIM QO'SHILMAYDI. Backendda tayanchi yo'q bo'lim —
 // bosiladigan, lekin hech narsa qilmaydigan tugma degani; bu
@@ -23,6 +25,7 @@ import { useLanguage } from '../../lib/i18n.jsx';
 // ═══════════════════════════════════════════════════════════════════════
 
 const SUBTABS = [
+  ['users', 'Ilova foydalanuvchilari'],
   ['comments', 'Izohlar'],
   ['archive', 'Dalil arxivi'],
   ['featured', 'Ko‘tarilgan postlar'],
@@ -42,7 +45,7 @@ function when(ms) {
 
 export default function NovaTab({ adminApi, apiErrText }) {
   const { t } = useLanguage();
-  const [sub, setSub] = useState('comments');
+  const [sub, setSub] = useState('users');
 
   return (
     <div className="flex flex-col gap-4">
@@ -63,6 +66,7 @@ export default function NovaTab({ adminApi, apiErrText }) {
         ))}
       </div>
 
+      {sub === 'users' && <UsersSection adminApi={adminApi} />}
       {sub === 'comments' && <CommentsSection adminApi={adminApi} apiErrText={apiErrText} />}
       {sub === 'archive' && <ArchiveSection adminApi={adminApi} apiErrText={apiErrText} />}
       {sub === 'featured' && <FeaturedSection adminApi={adminApi} apiErrText={apiErrText} />}
@@ -203,51 +207,289 @@ function CommentsSection({ adminApi, apiErrText }) {
   );
 }
 
-// ── DALIL ARXIVI ────────────────────────────────────────────────────
-function ArchiveSection({ adminApi }) {
+// ── ILOVA FOYDALANUVCHILARI ─────────────────────────────────────────
+// Ilova har ochilganda `/api/auth/me` ni `x-app: nova` bilan chaqiradi —
+// server shuni sanaydi (hosting/api/app-usage.js). Kirmagan mehmon va
+// saytdan kirish sanalmaydi.
+function UsersSection({ adminApi }) {
   const { t } = useLanguage();
+  const [q, setQ] = useState('');
+  const [sort, setSort] = useState('recent');
   const [data, setData] = useState(null);
   const [err, setErr] = useState(null);
 
   const load = useCallback(async () => {
     setErr(null);
     setData(null);
-    try { setData(await adminApi('/comments/archive')); }
-    catch (e) { setErr(e); }
-  }, [adminApi]);
+    try {
+      const params = new URLSearchParams({ sort, limit: '100' });
+      if (q.trim()) params.set('q', q.trim());
+      setData(await adminApi(`/app-users?${params}`));
+    } catch (e) { setErr(e); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminApi, sort]);
 
   useEffect(() => { load(); }, [load]);
 
+  const stats = data?.stats;
   return (
-    <AdminCard title={t('Dalil arxivi')}>
-      {/* NIMA UCHUN ARXIV BOR — moderator buni bilishi kerak.
-          Haqorat yozgan odam uni O'ZI o'chirib yuborishi mumkin va
-          keyin "men bunday yozmadim" deyishi mumkin. Arxiv aynan
-          shu holat uchun. */}
+    <div className="flex flex-col gap-4" data-testid="app-users">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <KpiCard icon="users" label={t('Jami ilova foydalanuvchisi')} value={stats ? stats.total : '—'} />
+        <KpiCard icon="chart" label={t('Bugun ochgan')} value={stats ? stats.today : '—'} />
+        <KpiCard icon="chart" label={t('7 kunda ochgan')} value={stats ? stats.week : '—'} />
+        <KpiCard icon="chart" label={t('30 kunda ochgan')} value={stats ? stats.month : '—'} />
+      </div>
+      <AdminCard
+        title={t('Ilova foydalanuvchilari')}
+        right={
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+              className="rounded-lg border border-[color:var(--vz-line)] bg-transparent px-2 py-1 text-[13px]"
+            >
+              <option value="recent">{t('Oxirgi ochganlar')}</option>
+              <option value="new">{t('Yangi kelganlar')}</option>
+              <option value="opens">{t('Eng ko‘p ochganlar')}</option>
+            </select>
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') load(); }}
+              placeholder={t('Email, telefon yoki NFC ID')}
+              className="w-48 rounded-lg border border-[color:var(--vz-line)] bg-transparent px-2 py-1 text-[13px]"
+            />
+            <button type="button" onClick={load} className="rounded-lg border border-[color:var(--vz-line)] px-3 py-1 text-[13px]">
+              {t('Qidirish')}
+            </button>
+          </div>
+        }
+      >
+        <p className="mb-3 text-[13px] text-[color:var(--vz-ink-faint)]">
+          {t('Ilovaga hisob bilan kirgan odamlar. Sanash shu yangilanishdan boshlandi: ilovani ochgan har bir odam birinchi ochishida ro‘yxatga tushadi.')}
+        </p>
+        {err && <LoadError err={err} onRetry={load} />}
+        {!err && data === null && <AdminLoading rows={5} />}
+        {!err && data && data.items.length === 0 && <EmptyState title={t('Hali hech kim yo‘q')} />}
+        {!err && data && data.items.length > 0 && (
+          <div className="flex flex-col gap-2">
+            {data.items.map((u) => (
+              <div key={u.userId} className="rounded-xl border border-[color:var(--vz-line)] p-3">
+                <div className="flex flex-wrap items-baseline gap-2">
+                  <b className="text-[14px]">{u.email || `user#${u.userId}`}</b>
+                  {u.phone && <span className="text-[13px] text-[color:var(--vz-ink-dim)]">{u.phone}</span>}
+                  <span className="text-[12px] text-[color:var(--vz-ink-faint)]">#{u.userId}</span>
+                  {u.premium && <StatusBadge tone="success">Premium</StatusBadge>}
+                  {u.deleted && <StatusBadge tone="danger">{t('Hisob o‘chirilgan')}</StatusBadge>}
+                </div>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {u.profiles.map((p) => (
+                    <a key={p.code} href={`/${p.code}`} target="_blank" rel="noreferrer"
+                      className="rounded-md border border-[color:var(--vz-line)] px-2 py-0.5 font-mono text-[12px]">
+                      {p.code}{p.name ? ` · ${p.name}` : ''}
+                    </a>
+                  ))}
+                  {u.companies.map((c) => (
+                    <span key={c.id} className="rounded-md border border-[color:var(--vz-accent)] px-2 py-0.5 text-[12px]">
+                      {t('Biznes')}: {c.name || c.id}
+                    </span>
+                  ))}
+                  {u.profiles.length === 0 && u.companies.length === 0 && (
+                    <span className="text-[12px] text-[color:var(--vz-ink-faint)]">{t('Profil yo‘q')}</span>
+                  )}
+                </div>
+                <p className="mt-1 text-[12px] text-[color:var(--vz-ink-faint)]">
+                  {t('Birinchi ochgan')}: {when(Date.parse(u.firstSeen))} · {t('Oxirgi ochgan')}: {when(Date.parse(u.lastSeen))} · {t('Ochilishlar')}: {u.opens}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </AdminCard>
+    </div>
+  );
+}
+
+// ── DALIL ARXIVI ────────────────────────────────────────────────────
+// O'chirilgan post, istoriya, video, fayl va izohlar — kim yozgan,
+// qachon, kim o'chirgan, profil egasi (hosting/api/content-archive.js).
+// Huquqni muhofaza qiluvchi organ so'rasa: qidiring, shubhalilarni
+// belgilang va "Yuklab olish" bilan JSON faylga saqlang.
+const EVIDENCE_KINDS = [
+  ['', 'Hammasi'],
+  ['post', 'Post'],
+  ['company_post', 'Biznes posti'],
+  ['story', 'Istoriya'],
+  ['card_video', 'Video'],
+  ['card_file', 'Fayl'],
+  ['comment', 'Izoh'],
+];
+
+const REASON_LABEL = {
+  owner: 'Egasi o‘chirdi',
+  admin: 'Admin o‘chirdi',
+  expired: 'Muddati tugadi (24 soat)',
+  card_cleanup: 'Profil o‘chirildi',
+};
+
+function Person({ label, p }) {
+  const { t } = useLanguage();
+  if (!p) return null;
+  return (
+    <span>
+      {t(label)}: <b>{p.email || (p.userId ? `user#${p.userId}` : '—')}</b>
+      {p.phone ? ` · ${p.phone}` : ''}
+      {p.deleted ? ` · ${t('Hisob o‘chirilgan')}` : ''}
+    </span>
+  );
+}
+
+function ArchiveSection({ adminApi, apiErrText }) {
+  const { t } = useLanguage();
+  const [kind, setKind] = useState('');
+  const [flagged, setFlagged] = useState(false);
+  const [q, setQ] = useState('');
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState(null);
+
+  const load = useCallback(async () => {
+    setErr(null);
+    setData(null);
+    try {
+      const params = new URLSearchParams({ limit: '100' });
+      if (kind) params.set('kind', kind);
+      if (flagged) params.set('flagged', '1');
+      if (q.trim()) params.set('q', q.trim());
+      setData(await adminApi(`/evidence?${params}`));
+    } catch (e) { setErr(e); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminApi, kind, flagged]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const flag = async (item, on) => {
+    try {
+      let note = '';
+      if (on) {
+        const v = window.prompt(t('Izoh (masalan: so‘rov raqami):'), '');
+        if (v === null) return;
+        note = v.trim();
+      }
+      await adminApi('/evidence/flag', {
+        method: 'POST',
+        body: JSON.stringify({ source: item.source, id: item.id, flagged: on, note }),
+      });
+      load();
+    } catch (e) {
+      window.alert(apiErrText ? apiErrText(e) : t('Amal bajarilmadi.'));
+    }
+  };
+
+  // Ekrandagi ro'yxatni fayl sifatida saqlash — so'rovga ilova qilish uchun.
+  const download = () => {
+    if (!data?.items?.length) return;
+    const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), query: { kind, flagged, q }, items: data.items }, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `nfcstore-dalil-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+
+  return (
+    <AdminCard
+      title={t('Dalil arxivi')}
+      right={
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={kind}
+            onChange={(e) => setKind(e.target.value)}
+            className="rounded-lg border border-[color:var(--vz-line)] bg-transparent px-2 py-1 text-[13px]"
+          >
+            {EVIDENCE_KINDS.map(([k, label]) => <option key={k} value={k}>{t(label)}</option>)}
+          </select>
+          <label className="flex items-center gap-1 text-[13px]">
+            <input type="checkbox" checked={flagged} onChange={(e) => setFlagged(e.target.checked)} />
+            {t('Faqat shubhalilar')}
+          </label>
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') load(); }}
+            placeholder={t('NFC ID, email yoki telefon')}
+            className="w-48 rounded-lg border border-[color:var(--vz-line)] bg-transparent px-2 py-1 text-[13px]"
+          />
+          <button type="button" onClick={load} className="rounded-lg border border-[color:var(--vz-line)] px-3 py-1 text-[13px]">
+            {t('Qidirish')}
+          </button>
+          <button type="button" onClick={download} disabled={!data?.items?.length}
+            className="rounded-lg border border-[color:var(--vz-line)] px-3 py-1 text-[13px] disabled:opacity-40">
+            {t('Yuklab olish')}
+          </button>
+        </div>
+      }
+    >
+      {/* NIMA UCHUN ARXIV BOR — moderator buni bilishi kerak. */}
       <p className="mb-3 text-[13px] text-[color:var(--vz-ink-faint)]">
-        {t('Har bir o‘chirilgan izohning to‘liq nusxasi. Izohni muallifning o‘zi o‘chirgan bo‘lsa ham bu yerda qoladi.')}
+        {t('O‘chirilgan har bir post, istoriya, video, fayl va izohning nusxasi. Muallif o‘zi o‘chirgan bo‘lsa ham shu yerda qoladi. Faqat adminlar ko‘radi; har bir qidiruv jurnalga yoziladi.')}
       </p>
       {err && <LoadError err={err} onRetry={load} />}
       {!err && data === null && <AdminLoading rows={4} />}
-      {!err && data && data.items.length === 0 && (
-        <EmptyState title={t('Arxiv bo‘sh')} />
-      )}
+      {!err && data && data.items.length === 0 && <EmptyState title={t('Arxiv bo‘sh')} />}
       {!err && data && data.items.map((a) => (
-        <div key={a.id} className="mb-3 rounded-xl border border-[color:var(--vz-line)] p-3">
+        <div key={`${a.source}-${a.id}`} data-testid="evidence-item"
+          className={`mb-3 rounded-xl border p-3 ${a.flag ? 'border-red-400' : 'border-[color:var(--vz-line)]'}`}>
           <div className="flex flex-wrap items-baseline gap-2 text-[12px] text-[color:var(--vz-ink-faint)]">
-            <span>{a.authorCode || `user#${a.userId}`}</span>
-            <span>· {a.targetKind}#{a.targetId}</span>
+            <StatusBadge tone="info">{t((EVIDENCE_KINDS.find(([k]) => k === a.kind) || ['', a.kind])[1])}</StatusBadge>
+            {a.owner?.id && (
+              <a className="font-mono" href={a.owner.kind === 'company' ? `/company/${a.owner.id}` : `/${a.owner.id}`} target="_blank" rel="noreferrer">
+                {a.owner.id}{a.owner.name ? ` · ${a.owner.name}` : ''}
+              </a>
+            )}
+            {a.target && <span>· {a.target.kind}#{a.target.id}</span>}
             <span>· {t('yozilgan')}: {when(a.createdAt)}</span>
             <span>· {t('o‘chirilgan')}: {when(a.deletedAt)}</span>
-            {a.restoredAt && <StatusBadge tone="info">{t('Tiklangan')}</StatusBadge>}
+            {a.flag && <StatusBadge tone="danger">{t('Shubhali')}</StatusBadge>}
+            <span className="ml-auto">
+              {a.flag ? (
+                <button type="button" onClick={() => flag(a, false)} className="text-[13px] text-[color:var(--vz-accent)]">
+                  {t('Belgini olib tashlash')}
+                </button>
+              ) : (
+                <button type="button" onClick={() => flag(a, true)} className="text-[13px] text-red-400">
+                  {t('Shubhali deb belgilash')}
+                </button>
+              )}
+            </span>
           </div>
-          <p className="mt-1 whitespace-pre-wrap break-words text-[15px] text-[color:var(--vz-ink-dim)]">
-            {a.body}
-          </p>
-          <p className="mt-1 text-[12px] text-[color:var(--vz-ink-faint)]">
-            {t('Kim')}: {a.deletedByAdmin || (a.deletedByUserId ? `user#${a.deletedByUserId}` : '—')}
-            {a.reason ? ` · ${t('sabab')}: ${a.reason}` : ''}
-          </p>
+          {a.body && (
+            <p className="mt-1 whitespace-pre-wrap break-words text-[15px] text-[color:var(--vz-ink-dim)]">{a.body}</p>
+          )}
+          {(a.imageUrl || a.videoUrl || a.fileUrl) && (
+            <div className="mt-2 flex flex-wrap items-start gap-2">
+              {a.imageUrl && (
+                <a href={a.imageUrl} target="_blank" rel="noreferrer">
+                  <img src={a.imageUrl} alt="" loading="lazy" className="h-28 w-28 rounded-lg object-cover" />
+                </a>
+              )}
+              {a.videoUrl && <video src={a.videoUrl} controls preload="none" className="h-40 max-w-[240px] rounded-lg bg-black" />}
+              {a.fileUrl && <a href={a.fileUrl} target="_blank" rel="noreferrer" className="text-[13px] underline">{t('Faylni ochish')}</a>}
+            </div>
+          )}
+          <div className="mt-2 flex flex-col gap-0.5 text-[12px] text-[color:var(--vz-ink-faint)]">
+            <Person label="Muallif" p={a.author} />
+            {a.owner?.user && <Person label="Profil egasi" p={a.owner.user} />}
+            <span>
+              {t('Kim o‘chirdi')}: {a.deletedBy?.admin || (a.deletedBy?.user ? (a.deletedBy.user.email || `user#${a.deletedBy.user.userId}`) : t('Tizim'))}
+              {a.reason ? ` · ${t(REASON_LABEL[a.reason] || a.reason)}` : ''}
+            </span>
+            {a.flag && (
+              <span className="text-red-400">
+                {t('Shubhali')}: {a.flag.note || '—'} · {a.flag.by} · {when(a.flag.at)}
+              </span>
+            )}
+          </div>
         </div>
       ))}
     </AdminCard>

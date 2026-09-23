@@ -20,6 +20,8 @@
 //   GET    /api/admin/reports        (admin) ?status=&limit= → { reports }
 //   PATCH  /api/admin/reports/:id    (admin) { status } → { ok, report }
 
+import { archiveStmt } from './content-archive.js';
+
 // Shikoyat sabablari. Ro'yxat YOPIQ: erkin matn sabab bo'lsa,
 // adminda saralash imkonsiz bo'lardi va bir xil muammo o'nta xil
 // nom bilan kelardi. Izoh uchun alohida `note` maydoni bor.
@@ -227,7 +229,7 @@ export async function handle(request, env, url, H) {
     ).bind(status, done ? H.nowTs() : null, done ? String(admin.username || admin.id || '') : '', Number(one[1]))
       .first();
     if (!row) return H.json({ error: 'not_found' }, 404);
-    H.logAdminActivity?.(env, admin, 'report_status', `#${one[1]} → ${status}`)?.catch?.(() => {});
+    H.logAdminActivity?.(env, { action: 'report_status', details: `#${one[1]} → ${status}`, ip: H.reqIp?.(request) })?.catch?.(() => {});
     return H.json({ ok: true, report: reportRowToJson(row) });
   }
 
@@ -270,7 +272,15 @@ export async function handle(request, env, url, H) {
       ],
     }[kind];
 
-    const res = await env.DB.batch(plan.map((sql) => env.DB.prepare(sql).bind(id)));
+    // DALIL ARXIVI: o'chirishdan OLDIN, o'sha batch ichida nusxa
+    // (content-archive.js). Kim o'chirgani — admin raqami va roli
+    // (sessiya kaliti EMAS), izohlar arxividagi bilan bir xil.
+    const body = await request.json().catch(() => ({}));
+    const adminLabel = `admin#${Number(admin.adminId) || 0}:${String(admin.role || '')}`.slice(0, 64);
+    const res = await env.DB.batch([
+      archiveStmt(env, kind, 'id = ?', [id], { admin: adminLabel, reason: str(body?.reason, 40) || 'admin' }),
+      ...plan.map((sql) => env.DB.prepare(sql).bind(id)),
+    ]);
     // Oxirgi so'rov — asosiy qatorniki. O'zgarish bo'lmasa, bunday
     // kontent umuman yo'q.
     const changed = Number(res?.[res.length - 1]?.meta?.changes || 0);
@@ -284,7 +294,7 @@ export async function handle(request, env, url, H) {
     ).bind(H.nowTs(), String(admin.username || admin.id || ''), kind, String(id))
       .run().catch(() => {});
 
-    H.logAdminActivity?.(env, admin, 'content_delete', `${kind}#${id}`)?.catch?.(() => {});
+    H.logAdminActivity?.(env, { action: 'content_delete', details: `${kind}#${id} ${adminLabel}`, ip: H.reqIp?.(request) })?.catch?.(() => {});
     return H.json({ ok: true });
   }
 

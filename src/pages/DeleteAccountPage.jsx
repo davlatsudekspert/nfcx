@@ -30,7 +30,7 @@ const T = {
       'Biznes sahifalaringiz ommaga ko‘rinmay qoladi.',
     ],
     keepH: 'Nima saqlanadi va qancha muddat',
-    keep: 'Buyurtma va to‘lov yozuvlari (Payme/Click) buxgalteriya va soliq talablari uchun qonunda belgilangan muddatgacha saqlanadi; xavfsizlik jurnallari 5 yilgacha. Bu ma’lumotlar ommaga ko‘rinmaydi va boshqa maqsadda ishlatilmaydi.',
+    keep: 'Buyurtma va to‘lov yozuvlari (Payme/Click) buxgalteriya va soliq talablari uchun qonunda belgilangan muddatgacha saqlanadi; xavfsizlik jurnallari 5 yilgacha. O‘chirilgan kontent nusxasi (kim, qachon joylagan) yopiq arxivda faqat shikoyatlarni tekshirish va vakolatli davlat organlarining qonuniy so‘rovlari uchun saqlanadi. Bu ma’lumotlar ommaga ko‘rinmaydi va boshqa maqsadda ishlatilmaydi.',
     howH: 'Qanday o‘chiriladi',
     how: [
       'Ilovada: Sozlamalar → Xavfsizlik → “Hisobni o‘chirish”.',
@@ -56,7 +56,7 @@ const T = {
       'Ваши бизнес-страницы перестают быть публичными.',
     ],
     keepH: 'Что сохраняется и как долго',
-    keep: 'Записи заказов и платежей (Payme/Click) хранятся в течение срока, установленного законом для бухгалтерии и налогов; журналы безопасности — до 5 лет. Эти данные не публикуются и не используются в других целях.',
+    keep: 'Записи заказов и платежей (Payme/Click) хранятся в течение срока, установленного законом для бухгалтерии и налогов; журналы безопасности — до 5 лет. Копия удалённого контента (кто и когда опубликовал) хранится в закрытом архиве только для проверки жалоб и законных запросов уполномоченных государственных органов. Эти данные не публикуются и не используются в других целях.',
     howH: 'Как удалить',
     how: [
       'В приложении: Настройки → Безопасность → «Удалить аккаунт».',
@@ -82,7 +82,7 @@ const T = {
       'Your business pages stop being public.',
     ],
     keepH: 'What is kept and for how long',
-    keep: 'Order and payment records (Payme/Click) are kept for the period required by accounting and tax law; security logs for up to 5 years. This data is not public and is not used for any other purpose.',
+    keep: 'Order and payment records (Payme/Click) are kept for the period required by accounting and tax law; security logs for up to 5 years. A copy of deleted content (who posted it and when) is kept in a closed archive only to review reports and answer lawful requests from authorised state bodies. This data is not public and is not used for any other purpose.',
     howH: 'How to delete',
     how: [
       'In the app: Settings → Security → “Delete account”.',

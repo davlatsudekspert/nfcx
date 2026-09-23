@@ -577,6 +577,11 @@ const DICT_BASE = {
     { ru: 'перейдите и оставьте своё имя, фамилию и номер телефона — это нужно для правильной доставки вашей физической NFC-карты. Если сделали — отметьте этот флажок.', en: 'go there and leave your name and phone number — this is needed to deliver your physical NFC card correctly. Once done, tick this box.' },
   'Men': { ru: 'Я прочитал(а)', en: 'I have read' },
   'ommaviy oferta shartlari': { ru: 'условия публичной оферты', en: 'the public offer terms' },
+  // Ro'yxatdan o'tish: shaxsga doir ma'lumotlarga rozilik (O'RQ-547) va 18+.
+  "Shaxsga doir ma'lumotlarimni": { ru: 'Даю согласие на обработку моих персональных данных', en: 'I consent to the processing of my personal data' },
+  'maxfiylik siyosatiga muvofiq': { ru: 'согласно политике конфиденциальности', en: 'under the privacy policy' },
+  "qayta ishlashga rozilik beraman va 18 yoshga to'lganimni tasdiqlayman.": { ru: 'и подтверждаю, что мне исполнилось 18 лет.', en: 'and confirm that I am 18 or older.' },
+  "Davom etish uchun oferta shartlariga va shaxsga doir ma'lumotlarni qayta ishlashga rozilik bering.": { ru: 'Чтобы продолжить, примите условия оферты и дайте согласие на обработку персональных данных.', en: 'To continue, accept the offer terms and consent to the processing of your personal data.' },
   "ni o'qib chiqdim va roziman.": { ru: 'и согласен(на).', en: 'and agree.' },
   "Akkauntsiz band qilish endi mumkin emas — aks holda raqamli tashrif qog'ozingiz hech kimning profiliga bog'lanmay qolib ketishi mumkin. Akkaunt bilan uni keyin /account sahifasidan tahrirlaysiz.":
     { ru: 'Бронирование без аккаунта больше невозможно — иначе ваша визитка может остаться не привязанной ни к одному профилю. С аккаунтом вы потом отредактируете её на странице /account.', en: 'Reserving without an account is no longer possible — otherwise your card could end up linked to no profile. With an account you can edit it later on the /account page.' },

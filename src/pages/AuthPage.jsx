@@ -187,7 +187,7 @@ export default function AuthPage({ mode }) {
       return;
     }
     if (isRegister && !tosAccepted) {
-      setMsg({ type: 'err', text: t('Davom etish uchun ommaviy oferta shartlariga rozilik bering.') });
+      setMsg({ type: 'err', text: t("Davom etish uchun oferta shartlariga va shaxsga doir ma'lumotlarni qayta ishlashga rozilik bering.") });
       return;
     }
     setBusy(true);
@@ -525,7 +525,12 @@ export default function AuthPage({ mode }) {
                 <input type="checkbox" checked={tosAccepted} onChange={(e) => setTosAccepted(e.target.checked)}
                   className="checkbox checkbox-sm mt-0.5" required />
                 <span className="text-xs leading-relaxed text-base-content/75">
-                  {t('Men')} <a href="/shartlar" target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-2">{t('ommaviy oferta shartlari')}</a>{t("ni o'qib chiqdim va roziman.")}
+                  {t('Men')} <a href="/shartlar" target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-2">{t('ommaviy oferta shartlari')}</a>{t("ni o'qib chiqdim va roziman.")}{' '}
+                  {/* O'RQ-547 "Shaxsga doir ma'lumotlar to'g'risida": qayta ishlashga
+                      aniq rozilik va qaysi hujjat asosida ekani; 18+ — ilova bilan bir xil. */}
+                  {t("Shaxsga doir ma'lumotlarimni")}{' '}
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-2">{t('maxfiylik siyosatiga muvofiq')}</a>{' '}
+                  {t("qayta ishlashga rozilik beraman va 18 yoshga to'lganimni tasdiqlayman.")}
                 </span>
               </label>
             )}
