@@ -490,3 +490,56 @@ class CommentItem {
         liked: liked ?? this.liked,
       );
 }
+
+class NotificationItem {
+  const NotificationItem({
+    required this.id,
+    required this.type,
+    required this.title,
+    this.actorCode = '',
+    this.avatarUrl,
+    this.targetType = '',
+    this.targetId = '',
+    this.code = '',
+    this.read = false,
+    this.createdAt = '',
+  });
+
+  final int id;
+  final String type;
+  final String title;
+  final String actorCode;
+  final String? avatarUrl;
+  final String targetType;
+  final String targetId;
+  final String code;
+  final bool read;
+  final String createdAt;
+
+  factory NotificationItem.fromJson(Map<String, dynamic> j) =>
+      NotificationItem(
+        id: _i(j['id']),
+        type: _s(j['type']),
+        title: _s(j['title']),
+        actorCode: _s(j['actorCode']).toUpperCase(),
+        avatarUrl: absoluteUrl(j['avatarUrl']),
+        targetType: _s(j['targetType']),
+        targetId: _s(j['targetId']),
+        code: _s(j['code']).toUpperCase(),
+        read: _b(j['read']),
+        createdAt: _s(j['createdAt']),
+      );
+
+  NotificationItem copyWith({bool? read}) => NotificationItem(
+        id: id,
+        type: type,
+        title: title,
+        actorCode: actorCode,
+        avatarUrl: avatarUrl,
+        targetType: targetType,
+        targetId: targetId,
+        code: code,
+        read: read ?? this.read,
+        createdAt: createdAt,
+      );
+}
