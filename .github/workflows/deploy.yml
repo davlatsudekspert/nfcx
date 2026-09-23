@@ -108,6 +108,9 @@ jobs:
       # Promokod: taklif qilinganlar ro'yxati ism/email/sana bilan.
       - name: Promokod ro'yxati
         run: node scripts/test-referrals.mjs
+      # Qayta ishlatilgan post raqami: eski izoh yangi postda ko'rinmasin.
+      - name: Eski izoh yangi postga yopishmasin
+        run: node scripts/test-comment-recycled-id.mjs
       - name: NFCSTORE FEATURED — slot faqat haqiqiy to'lovdan keyin yonadi
         run: node scripts/test-featured.mjs
       # Shaxsiy NFC ID xaridi: narxni SERVER hisoblaydi, bitta kodni

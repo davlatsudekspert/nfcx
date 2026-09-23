@@ -204,14 +204,14 @@ check('17) mavjud bo‘lmagan izoh 404',
 // natija to'g'ri ko'rinardi va shuning uchun sezilmasdi.
 const oldCid = await write('eski izoh');
 await env.DB.prepare(
-  `UPDATE content_comments SET created_at = '2020-03-05 07:08:09.123+00' WHERE id = ?`
+  `UPDATE content_comments SET created_at = '2026-03-05 07:08:09.123+00' WHERE id = ?`
 ).bind(oldCid).run();
 
 const withOld = await call('/api/comments/post/10');
 const oldRow = (withOld.body?.comments || []).find((c) => c.id === oldCid);
 checkTrue('18) eski izoh ro‘yxatda', !!oldRow);
 check('18) vaqti SAQLANGAN sana, "hozir" emas',
-  new Date(Number(oldRow?.createdAt)).toISOString().slice(0, 10), '2020-03-05');
+  new Date(Number(oldRow?.createdAt)).toISOString().slice(0, 10), '2026-03-05');
 
 // ── 19) BLOKLANGAN ODAM IZOH YOZA OLMAYDI ────────────────────────
 //
