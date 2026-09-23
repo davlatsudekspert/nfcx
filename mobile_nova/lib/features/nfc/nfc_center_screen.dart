@@ -456,7 +456,9 @@ class _ActionRow extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         subtitle,
-                        maxLines: 2,
+                        // 360 dp da ikki qatorga sig'masdi va "..." bilan
+                        // kesilardi (audit 2026-09).
+                        maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                         style: mono
                             ? AppType.monoStyle(
@@ -549,7 +551,10 @@ class NoNfcPanel extends ConsumerWidget {
             child: Container(
               key: key,
               padding: const EdgeInsets.all(Gap.md),
-              height: 118,
+              // Balandlik matnga qarab o'sadi (kamida 118): uzun sarlavha
+              // yoki ikki qatorli izoh kesilmaydi va toshmaydi. Qatordagi
+              // ikkala katak bir xil bo'yda (`IntrinsicHeight`).
+              constraints: const BoxConstraints(minHeight: 118),
               decoration: BoxDecoration(
                 color: t.surfaceSolid,
                 borderRadius: BorderRadius.circular(20),
@@ -560,6 +565,7 @@ class NoNfcPanel extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Icon(icon, size: 22, color: t.text1),
+                  const SizedBox(height: Gap.lg),
                   const Spacer(),
                   Text(title,
                       maxLines: 2,
@@ -567,7 +573,9 @@ class NoNfcPanel extends ConsumerWidget {
                       style: Theme.of(context).textTheme.titleSmall),
                   const SizedBox(height: 2),
                   Text(hint,
-                      maxLines: 1,
+                      // Ikki qator: 360 dp da "Tahrirlash, asosiy qili..."
+                      // bo'lib kesilardi (audit 2026-09).
+                      maxLines: mono ? 1 : 2,
                       overflow: TextOverflow.ellipsis,
                       // ID — IBM Plex Mono (shrift qoidasi).
                       style: mono
@@ -613,7 +621,9 @@ class NoNfcPanel extends ConsumerWidget {
         ),
         const SizedBox(height: Gap.md),
         if (id != null) ...[
-          Row(
+          IntrinsicHeight(
+            child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               tile(Icons.qr_code_2_rounded, l.nfcShowQr, id.code,
                   () => showQrSheet(context, id), const ValueKey('no-nfc-qr'),
@@ -625,9 +635,12 @@ class NoNfcPanel extends ConsumerWidget {
                   const ValueKey('no-nfc-share')),
             ],
           ),
+          ),
           const SizedBox(height: Gap.md),
         ],
-        Row(
+        IntrinsicHeight(
+          child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             tile(Icons.badge_outlined, l.nfcMyIds, l.noNfcManageHint,
                 () => context.push(Routes.nfcIds),
@@ -637,6 +650,7 @@ class NoNfcPanel extends ConsumerWidget {
                 () => context.push(Routes.nfcMarket),
                 const ValueKey('no-nfc-market')),
           ],
+        ),
         ),
       ],
     );

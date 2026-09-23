@@ -548,16 +548,19 @@ class _ProfileCard extends StatelessWidget {
                         Text(stats[i].$1,
                             maxLines: 1,
                             style:
-                                AppType.monoStyle(color: t.text1, size: 12)),
+                                AppType.monoStyle(color: t.text1, size: 13)),
                         const SizedBox(height: 2),
+                        // 8.5 dp o'qilmasdi (audit 2026-09) — ilovaning
+                        // boshqa statistika yorliqlari bilan bir pog'ona.
                         Text(
                           stats[i].$2,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontFamily: AppType.sans,
-                            fontSize: 8.5,
-                            color: t.text3,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w500,
+                            color: t.text2,
                           ),
                         ),
                       ],
