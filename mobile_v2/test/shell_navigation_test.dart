@@ -177,6 +177,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
     expect(find.textContaining('Your identity'), findsOneWidget);
     expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
   });
 
   testWidgets('main shell has no overflow on compact Android-sized viewport',
@@ -189,5 +191,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 350));
       expect(tester.takeException(), isNull);
     }
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
   });
 }
