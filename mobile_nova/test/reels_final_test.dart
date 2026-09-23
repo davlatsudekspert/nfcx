@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:go_router/go_router.dart';
+import 'package:nfcstore_nova/app/providers.dart';
+import 'package:nfcstore_nova/design/theme/app_theme.dart';
+import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
 import 'package:nfcstore_nova/core/network/api_client.dart';
 import 'package:nfcstore_nova/core/utils/result.dart';
 import 'package:nfcstore_nova/data/models/models.dart';
@@ -244,5 +249,74 @@ void main() {
     expect(find.text('PPP777'), findsOneWidget);
     expect(find.text('Toshkent kechasi'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('cheksiz aylanish: oxirgisidan keyin yana birinchisi',
+      (tester) async {
+    final v = FakeVideoPlatform();
+    await _pump(tester, v);
+    // 3 ta reel: a → b → c → yana a (egasi, 2026-09: "loop infinity").
+    for (final want in ['b.mp4', 'c.mp4', 'a.mp4', 'b.mp4']) {
+      await tester.fling(find.byKey(const ValueKey('reels-pager')),
+          const Offset(0, -600), 2000);
+      await settle(tester, frames: 12);
+      await _flush(tester);
+      expect(v.urls[v.playing.single], contains(want));
+    }
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('muallif profiliga o‘tganda video to‘xtaydi, qaytganda davom etadi',
+      (tester) async {
+    final v = FakeVideoPlatform();
+    VideoPlayerPlatform.instance = v;
+    tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final base = await testOverrides();
+    final c = ProviderContainer(overrides: [
+      ...base.where((o) => !identical(o, base[2])),
+      socialRepositoryProvider.overrideWithValue(_Social()),
+      profileRepositoryProvider.overrideWithValue(_Profile()),
+      businessRepositoryProvider.overrideWithValue(_Biz()),
+      reelsProvider.overrideWith((ref) async => _reels),
+      activeTabProvider.overrideWith((ref) => 3),
+    ]);
+    addTearDown(c.dispose);
+    final router = GoRouter(routes: [
+      GoRoute(path: '/', builder: (_, __) => const ReelsScreen()),
+      GoRoute(
+          path: '/u/:code',
+          builder: (_, s) => Scaffold(body: Text('PROFIL ${s.pathParameters['code']}'))),
+    ]);
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: c,
+      child: MaterialApp.router(
+        routerConfig: router,
+        theme: buildTheme(NfcTokens.fallback),
+        locale: const Locale('uz'),
+        supportedLocales: LocaleController.supported,
+        localizationsDelegates: const [
+          L.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+      ),
+    ));
+    await settle(tester, frames: 10);
+    await _flush(tester);
+    expect(v.playing.length, 1, reason: 'reel o‘ynayapti');
+
+    await tester.tap(find.text('Mashrabboy'));
+    await settle(tester, frames: 12);
+    await _flush(tester);
+    expect(find.text('PROFIL PPP777'), findsOneWidget);
+    expect(v.playing, isEmpty, reason: 'profil ochilganda video to‘xtashi kerak');
+
+    router.pop();
+    await settle(tester, frames: 12);
+    await _flush(tester);
+    expect(v.playing.length, 1, reason: 'qaytganda video davom etadi');
   });
 }

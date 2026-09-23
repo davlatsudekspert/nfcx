@@ -293,6 +293,9 @@ class LEn extends L {
   String get verifyWrongCodeHint => 'Check the code and try again';
 
   @override
+  String get verifyCodeAccepted => 'Code confirmed';
+
+  @override
   String get verifyExpired => 'The code has expired';
 
   @override

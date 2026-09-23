@@ -126,6 +126,7 @@ class CodeField extends StatefulWidget {
     required this.onCompleted,
     this.length = 6,
     this.hasError = false,
+    this.success = false,
     this.enabled = true,
     this.controller,
   });
@@ -133,6 +134,10 @@ class CodeField extends StatefulWidget {
   final ValueChanged<String> onCompleted;
   final int length;
   final bool hasError;
+
+  /// Kod QABUL QILINDI — qutilar yashil (egasi, 2026-09: "kod to'g'ri
+  /// deb yashil rangda chiqsin").
+  final bool success;
   final bool enabled;
   final TextEditingController? controller;
 
@@ -402,15 +407,21 @@ class _CodeFieldState extends State<CodeField>
                         height: 62,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          color: t.surface2,
+                          color: widget.success
+                              ? t.success.withValues(alpha: .10)
+                              : t.surface2,
                           borderRadius: R.gentle,
                           border: Border.all(
-                            color: widget.hasError
-                                ? t.error
-                                : active
-                                    ? t.accent2
-                                    : t.border2,
-                            width: active || widget.hasError ? 1.6 : 1,
+                            color: widget.success
+                                ? t.success
+                                : widget.hasError
+                                    ? t.error
+                                    : active
+                                        ? t.accent2
+                                        : t.border2,
+                            width: active || widget.hasError || widget.success
+                                ? 1.6
+                                : 1,
                           ),
                         ),
                         child: Text(
@@ -419,7 +430,11 @@ class _CodeFieldState extends State<CodeField>
                             fontFamily: 'IBMPlexMono',
                             fontSize: 23,
                             fontWeight: FontWeight.w600,
-                            color: widget.hasError ? t.error : t.text1,
+                            color: widget.success
+                                ? t.success
+                                : widget.hasError
+                                    ? t.error
+                                    : t.text1,
                           ),
                         ),
                       ),

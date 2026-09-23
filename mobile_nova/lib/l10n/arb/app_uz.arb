@@ -105,6 +105,7 @@
   "verifyChangeEmail": "Email manzilini o‘zgartirish",
   "verifyWrongCode": "Kod noto‘g‘ri",
   "verifyWrongCodeHint": "Kodni tekshirib, qaytadan kiriting",
+  "verifyCodeAccepted": "Kod tasdiqlandi",
   "verifyExpired": "Kod muddati tugadi",
   "verifyExpiredHint": "Yangi kod so‘rang",
   "verifySuccess": "Email tasdiqlandi",

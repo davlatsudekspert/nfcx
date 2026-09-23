@@ -645,6 +645,12 @@ abstract class L {
   /// **'Kodni tekshirib, qaytadan kiriting'**
   String get verifyWrongCodeHint;
 
+  /// No description provided for @verifyCodeAccepted.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kod tasdiqlandi'**
+  String get verifyCodeAccepted;
+
   /// No description provided for @verifyExpired.
   ///
   /// In uz, this message translates to:

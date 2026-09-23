@@ -291,6 +291,9 @@ class LUz extends L {
   String get verifyWrongCodeHint => 'Kodni tekshirib, qaytadan kiriting';
 
   @override
+  String get verifyCodeAccepted => 'Kod tasdiqlandi';
+
+  @override
   String get verifyExpired => 'Kod muddati tugadi';
 
   @override

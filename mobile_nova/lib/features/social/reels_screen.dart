@@ -174,11 +174,19 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
                 // yuklash" hech qachon ishga tushmasdi — har silashda
                 // spinner kutilardi.
                 allowImplicitScrolling: true,
-                itemCount: items.length,
+                // CHEKSIZ AYLANISH (egasi, 2026-09): reels kam bo'lsa
+                // ham oxiriga yetganda to'xtamaydi — boshidan davom
+                // etadi. `itemCount` yo'q = cheksiz; sahifa raqami
+                // ro'yxat uzunligiga bo'linib qoldiq olinadi.
+                //
+                // KALIT VIRTUAL RAQAM BILAN: bitta reel bo'lsa, qo'shni
+                // sahifalar AYNAN bir post bo'ladi va faqat post
+                // kaliti ikki marta takrorlanib xato berardi.
+                itemCount: items.length == 1 ? 1 : null,
                 onPageChanged: (i) => setState(() => _index = i),
                 itemBuilder: (context, i) => _ReelPage(
-                  key: ValueKey(likeKey(items[i])),
-                  post: items[i],
+                  key: ValueKey('$i:${likeKey(items[i % items.length])}'),
+                  post: items[i % items.length],
                   // KO'RINISH IKKI SHARTDAN IBORAT: bu sahifa
                   // ochiqmi VA Reels tabining O'ZI ko'rinyaptimi.
                   // Tablar yopilmaydi, faqat berkitiladi — usiz odam
@@ -369,6 +377,22 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
     // `ref.read` EMAS: `dispose()` da u istisno otadi.
     _owner.release(this);
     super.dispose();
+  }
+
+  /// MUALLIF PROFILIGA O'TISH — VIDEO TO'XTAYDI (egasi, 2026-09).
+  ///
+  /// Profil sahifasi Reels ustiga ochiladi, Reels tabi esa "faol"
+  /// bo'lib qolaveradi — video orqada ovoz chiqarib o'ynardi.
+  /// O'tishdan oldin pauza, qaytganda davom etadi (Instagram kabi).
+  Future<void> _openAuthor() async {
+    final p = widget.post;
+    if (p.code.isEmpty) return;
+    await _controller?.pause();
+    _owner.release(this);
+    if (mounted) setState(() {});
+    if (!mounted) return;
+    await context.push(Routes.author(p.code, company: p.isCompany));
+    if (mounted) _sync();
   }
 
   void _togglePlay() {
@@ -597,10 +621,7 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
                   children: [
                     Flexible(
                       child: PressableScale(
-                        onTap: p.code.isEmpty
-                            ? null
-                            : () => context.push(
-                                Routes.author(p.code, company: p.isCompany)),
+                        onTap: p.code.isEmpty ? null : _openAuthor,
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -652,8 +673,7 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
                   const SizedBox(height: Gap.sm),
                   // NFC ID — Reels ham identity tizimining bir qismi.
                   PressableScale(
-                    onTap: () => context.push(
-                        Routes.author(p.code, company: p.isCompany)),
+                    onTap: _openAuthor,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 11, vertical: 6),
@@ -846,7 +866,11 @@ class _CommentsSheet extends ConsumerWidget {
         constraints: BoxConstraints(
             maxHeight: MediaQuery.sizeOf(context).height * .72),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: Gap.xl),
+          // Telefonning pastki paneli (jest chizig'i / 3 tugma) ostida
+          // oxirgi izoh va "Javob berish" qolib ketmasin (egasi,
+          // 2026-09 surat).
+          padding: EdgeInsets.only(
+              bottom: Gap.xl + MediaQuery.viewPaddingOf(context).bottom),
           child: CommentsSection(
             kind: kind,
             id: post.id,

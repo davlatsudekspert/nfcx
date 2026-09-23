@@ -291,6 +291,9 @@ class LRu extends L {
   String get verifyWrongCodeHint => 'Проверьте код и введите снова';
 
   @override
+  String get verifyCodeAccepted => 'Код подтверждён';
+
+  @override
   String get verifyExpired => 'Срок действия кода истёк';
 
   @override

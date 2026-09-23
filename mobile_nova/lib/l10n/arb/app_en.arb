@@ -105,6 +105,7 @@
   "verifyChangeEmail": "Change email address",
   "verifyWrongCode": "Wrong code",
   "verifyWrongCodeHint": "Check the code and try again",
+  "verifyCodeAccepted": "Code confirmed",
   "verifyExpired": "The code has expired",
   "verifyExpiredHint": "Request a new code",
   "verifySuccess": "Email verified",

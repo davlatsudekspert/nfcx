@@ -101,6 +101,9 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
   bool _busy = false;
   bool _wrong = false;
   bool _expired = false;
+
+  /// Server kodni qabul qildi — yashil holat, keyin keyingi ekran.
+  bool _ok = false;
   String? _error;
 
   @override
@@ -173,6 +176,12 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
 
     await res.when(
       ok: (user) async {
+        // YASHIL TASDIQ. Ilgari kod qabul qilinganda hech narsa
+        // ko'rinmasdan keyingi ekranga o'tilardi; xato bo'lganda esa
+        // qizil. Odam "to'g'rimi?" deb o'ylab qolardi.
+        setState(() => _ok = true);
+        await Future<void>.delayed(const Duration(milliseconds: 650));
+        if (!mounted) return;
         await ref.read(sessionProvider.notifier).adopt(user);
         if (!mounted) return;
         context.go(Routes.profileSetup);
@@ -226,28 +235,40 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
         padding: const EdgeInsets.fromLTRB(Gap.xxl, Gap.lg, Gap.xxl, Gap.section),
         children: [
           Center(
-            child: Container(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                color: (_expired ? t.warn : t.accent2).withValues(alpha: .13),
+                color: (_ok ? t.success : _expired ? t.warn : t.accent2)
+                    .withValues(alpha: .13),
                 shape: BoxShape.circle,
                 border: Border.all(
-                    color: (_expired ? t.warn : t.accent2).withValues(alpha: .32)),
+                    color: (_ok ? t.success : _expired ? t.warn : t.accent2)
+                        .withValues(alpha: .32)),
               ),
               child: Icon(
-                _expired ? Icons.timer_off_rounded : Icons.mark_email_unread_rounded,
+                _ok
+                    ? Icons.check_rounded
+                    : _expired
+                        ? Icons.timer_off_rounded
+                        : Icons.mark_email_unread_rounded,
                 size: 29,
-                color: _expired ? t.warn : t.accent2,
+                color: _ok ? t.success : _expired ? t.warn : t.accent2,
               ),
             ),
           ),
           const SizedBox(height: Gap.xl),
           Text(
-            _expired ? l.verifyExpired : (_wrong ? l.verifyWrongCode : l.verifyTitle),
+            _ok
+                ? l.verifyCodeAccepted
+                : _expired
+                    ? l.verifyExpired
+                    : (_wrong ? l.verifyWrongCode : l.verifyTitle),
+            key: const ValueKey('verify-title'),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                  color: _wrong ? t.error : t.text1,
+                  color: _ok ? t.success : _wrong ? t.error : t.text1,
                 ),
           ),
           const SizedBox(height: Gap.sm),
@@ -270,7 +291,8 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
           CodeField(
             onCompleted: _verify,
             hasError: _wrong,
-            enabled: !_busy && !_expired,
+            success: _ok,
+            enabled: !_busy && !_expired && !_ok,
           ),
           if (_error != null) ...[
             const SizedBox(height: Gap.xl),

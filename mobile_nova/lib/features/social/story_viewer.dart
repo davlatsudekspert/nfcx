@@ -939,6 +939,10 @@ class _CommentsSheet extends ConsumerWidget {
               ),
               Expanded(
                 child: SingleChildScrollView(
+                  // Pastki tizim paneli ostida oxirgi izoh qolmasin
+                  // (Reels izohlari bilan bir xil tuzatish).
+                  padding: EdgeInsets.only(
+                      bottom: Gap.lg + MediaQuery.viewPaddingOf(context).bottom),
                   child: CommentsSection(
                     kind: company ? 'company_story' : 'story',
                     id: story.id,
