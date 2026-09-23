@@ -269,14 +269,19 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     surface: hex('#FFFFFF'),
     surface2: hex('#F1EFEA'),
     surfaceSolid: hex('#FFFFFF'),
-    // MAYIN SIYOH (egasi, 2026-09: "harflar ham, ranglar ham mayin
-    // bo'lsin"). Qop-qora #141414 oq fonda keskin ko'rinardi; iliq
-    // ko'mir rang o'qilishi bir xil (kontrast ~13:1), lekin yumshoq.
-    text1: hex('#2A2724'),
-    text2: hex('#625D55'),
-    text3: hex('#858075'),
-    accent1: hex('#34302B'),
-    accent2: hex('#2A2724'),
+    // KUCHLI, LEKIN ILIQ SIYOH (egasi, 2026-09: "juda oq va ayrim
+    // yozuvlar xira — asosiy matn va ikonlar deyarli qora, ikkinchi
+    // darajali o'rtacha kulrang, juda och kulrangdan voz kech").
+    // Fon iliq ivory bo'lib qoladi; kontrast matn orqali.
+    // Ierarxiya (egasining aniq talabi): asosiy matn va faol belgilar
+    // #171716 (grafit), ikkinchi darajali #575550, faol bo'lmagan
+    // navigatsiya/belgilar #6E6C68 (~#707070). #AAA–#CCC dagi muhim
+    // yozuv yo'q.
+    text1: hex('#171716'),
+    text2: hex('#575550'),
+    text3: hex('#6E6C68'),
+    accent1: hex('#252422'),
+    accent2: hex('#171716'),
     accent3: hex('#57544E'),
     goldDeep: hex('#8A6D42'),
     // Biznes va boshqa rejim aksentlari — siyohning darajalari,

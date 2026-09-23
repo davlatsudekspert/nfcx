@@ -74,7 +74,10 @@ void main() {
   }
 
   Future<void> tapCard(WidgetTester tester, String code) async {
-    final card = find.byKey(ValueKey('my-id-$code'));
+    // Kartalar kengaygach (190dp) uchinchisi lentaning kesh qismida —
+    // qurilgan, lekin ekrandan tashqarida (offstage). Avval uni ko'rinadigan
+    // joyga suramiz, keyin bosamiz.
+    final card = find.byKey(ValueKey('my-id-$code'), skipOffstage: false);
     await tester.ensureVisible(card);
     await _frames(tester, 6);
     await tester.tap(card);

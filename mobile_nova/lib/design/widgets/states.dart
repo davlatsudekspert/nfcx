@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../core/errors/app_error.dart';
+import '../../core/utils/external_link.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../motion/motion.dart';
 import '../tokens/nfc_tokens.dart';
@@ -313,7 +313,8 @@ class _TechnicalState extends State<_Technical> {
       behavior: HitTestBehavior.opaque,
       onLongPress: () {
         setState(() => _shown = true);
-        Clipboard.setData(ClipboardData(text: widget.text)).catchError((_) {});
+        // Himoyalangan nusxa: kanal javob bermasa ham qotmaydi.
+        copyToClipboard(widget.text);
       },
       child: Padding(
         padding: const EdgeInsets.only(top: Gap.lg),

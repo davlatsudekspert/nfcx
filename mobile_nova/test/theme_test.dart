@@ -59,13 +59,16 @@ void main() {
     final t = NfcTokens.ivory;
     // MAYIN SIYOH (egasi, 2026-09: "ranglarda ham mayinlik"): qop-qora
     // emas, iliq ko'mir — lekin o'qilishi pasaymasligi shart.
-    expect(t.accent2.computeLuminance(), lessThan(.03),
-        reason: 'asosiy aksent quyuq siyoh');
-    expect(t.text1.computeLuminance(), lessThan(.03));
+    // KUCHLI SIYOH (egasi, 2026-09): deyarli qora, iliq.
+    expect(t.accent2.computeLuminance(), lessThan(.012),
+        reason: 'asosiy aksent deyarli qora');
+    expect(t.text1.computeLuminance(), lessThan(.012));
     expect(_contrast(t.text1, t.surfaceSolid), greaterThan(12),
         reason: 'asosiy matn baribir juda aniq o‘qilsin');
-    expect(_contrast(t.text2, t.surfaceSolid), greaterThan(5.5),
-        reason: 'ikkinchi darajali matn AA dan yuqori');
+    expect(_contrast(t.text2, t.surfaceSolid), greaterThan(7),
+        reason: 'ikkinchi darajali matn aniq o‘qilsin');
+    expect(_contrast(t.text3, t.bg1), greaterThan(4.5),
+        reason: 'yordamchi matn ham xira bo‘lmasin (AA)');
     // Champagne iliq: qizil kanal ko'kdan sezilarli katta.
     expect(t.brand.r - t.brand.b, greaterThan(.15),
         reason: 'brend rangi champagne bo‘lishi kerak');

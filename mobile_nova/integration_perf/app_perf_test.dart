@@ -133,7 +133,7 @@ void main() {
 
     final home = navIcon(Icons.home_rounded);
     final discover = navIcon(Icons.explore_rounded);
-    final reels = navIcon(Icons.play_circle_outline_rounded);
+    final reels = navIcon(Icons.play_circle_rounded);
     final profile = navIcon(Icons.person_rounded);
     final nfc = find.descendant(
       of: find.byType(NovaBottomNav),

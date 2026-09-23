@@ -124,7 +124,7 @@ class NfcCenterScreen extends ConsumerWidget {
                 Center(
                   child: NovaButton(
                     label: l.nfcScanStart,
-                    icon: Icons.center_focus_weak_rounded,
+                    icon: Icons.qr_code_scanner_rounded,
                     expand: false,
                     onPressed: () => context.push(Routes.nfcScan),
                   ),

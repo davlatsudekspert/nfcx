@@ -200,6 +200,7 @@ class _NavButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
 
+    // Faol — grafit (#171716); faol emas — to'q kulrang (#6E6C68).
     final color = selected ? t.accent2 : t.text3;
     return Semantics(
       button: true,
@@ -216,7 +217,7 @@ class _NavButton extends StatelessWidget {
                 scale: selected ? 1.1 : 1,
                 duration: Motion.fast,
                 curve: Motion.spring,
-                child: Icon(item.icon, size: 21, color: color),
+                child: Icon(item.icon, size: 22, color: color),
               ),
               const SizedBox(height: 3),
               AnimatedDefaultTextStyle(

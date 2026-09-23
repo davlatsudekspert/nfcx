@@ -173,7 +173,9 @@ class NovaIconButton extends StatelessWidget {
                   // .44 da 42 dp tugmada ikonka 18.5 dp chiqardi —
                   // ekranda "ingichka" ko'rinadi. .46 uni 20 dp ga
                   // ko'taradi, doira esa o'sha-o'sha yumshoq qoladi.
-                  size: size * .46,
+                  // .50 — kichik ekranda ham bir qarashda aniq (egasi,
+                  // 2026-09: "ikonlar ingichka va xira").
+                  size: size * .5,
                   color: filled ? t.onAccent : t.text1,
                 ),
               ),

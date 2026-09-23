@@ -23,6 +23,8 @@ import 'package:nfcstore_nova/features/auth/login_screen.dart';
 import 'package:nfcstore_nova/features/auth/register_screen.dart';
 import 'package:nfcstore_nova/features/social/reels_screen.dart';
 
+import 'package:nfcstore_nova/data/models/models.dart';
+
 import '../helpers.dart';
 
 /// UI/UX AUDIT — ekranlarni STANDART mavzuda suratga oladi.
@@ -82,6 +84,7 @@ void main() {
     String name, {
     NfcTokens? tokens,
     Size size = const Size(390, 844),
+    List<Override> extra = const [],
   }) async {
     tester.view.physicalSize = size * 2;
     tester.view.devicePixelRatio = 2.0;
@@ -93,7 +96,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(ProviderScope(
-      overrides: [...await testOverrides()],
+      overrides: [...await testOverrides(), ...extra],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         theme: buildTheme(tokens ?? NfcTokens.fallback),
@@ -112,6 +115,13 @@ void main() {
     for (var i = 0; i < 10; i++) {
       await tester.pump(const Duration(milliseconds: 80));
     }
+    // Ilova ichidagi (asset) rasmlar test muhitida o'zi yuklanmaydi.
+    await tester.runAsync(() async {
+      for (final e in find.byType(Image).evaluate()) {
+        await precacheImage((e.widget as Image).image, e);
+      }
+    });
+    await tester.pump(const Duration(milliseconds: 200));
     await expectLater(
         find.byType(MaterialApp), matchesGoldenFile('png/$name.png'));
   }
@@ -215,5 +225,38 @@ void main() {
   testWidgets('noir — Faoliyat 360x640', (t) async {
     await shot(t, const ActivityScreen(), 'noir-activity-360',
         tokens: NfcTokens.noir, size: const Size(360, 640));
+  });
+
+  // STORIES: o'z RASMLI istoryam (surat yo'q), begona VIDEO (surat yo'q)
+  // va begona odamning haqiqiy surati — bo'sh oq doira bo'lmasligi kerak.
+  testWidgets('audit — Stories doirachalari', (t) async {
+    await shot(t, const HomeScreen(), 'audit-stories',
+        size: const Size(390, 1500),
+        extra: [
+          homeStoriesProvider.overrideWith((ref) async => const [
+                StoryItem(
+                    id: 1,
+                    code: '48210377',
+                    mediaUrl: 'assets/demo/z_post_cafe.jpg'),
+                StoryItem(
+                    id: 2,
+                    code: 'UZD772',
+                    authorName: 'Oybek Karimov',
+                    mediaUrl: 'https://x/v.mp4',
+                    isVideo: true),
+                StoryItem(
+                    id: 3,
+                    code: 'TTS075',
+                    authorName: 'Zarina',
+                    authorAvatar: 'assets/demo/z_portrait.jpg',
+                    mediaUrl: 'https://x/v2.mp4',
+                    isVideo: true),
+                StoryItem(
+                    id: 4,
+                    code: 'MRK101',
+                    authorName: 'Market',
+                    mediaUrl: 'assets/demo/m_hero.jpg'),
+              ]),
+        ]);
   });
 }

@@ -337,6 +337,35 @@ String _initialsOf(String name) {
   return (parts.first[0] + parts.elementAt(1)[0]).toUpperCase();
 }
 
+/// STORIES DOIRACHASIDA NIMA KO'RINADI — ism, surat, bosh harflar.
+///
+/// Surat tartibi: muallifning surati -> (o'z istoryam bo'lsa) mening
+/// ID'im yoki hisobim surati -> istoryaning O'Z RASMI. VIDEO fayl rasm
+/// o'rnida ochilmaydi (halqa ichi bo'sh oq doira bo'lib qolardi —
+/// egasi, 2026-09 surat), shuning uchun videoda bosh harflar.
+///
+/// Begona odamning ismi yo'q bo'lsa — uning KODI; MENING ismim emas.
+@visibleForTesting
+({String label, String avatarUrl, String initials}) storyFace(
+  StoryItem s, {
+  NfcId? me,
+  String userAvatar = '',
+}) {
+  final own = s.code.isEmpty || s.code == me?.code;
+  final name = s.authorName.isNotEmpty
+      ? s.authorName
+      : own
+          ? (me?.name ?? '')
+          : s.code;
+  final mine = (me?.avatarUrl.isNotEmpty ?? false) ? me!.avatarUrl : userAvatar;
+  final url = s.authorAvatar.isNotEmpty
+      ? s.authorAvatar
+      : own && mine.isNotEmpty
+          ? mine
+          : (s.isVideo ? '' : s.mediaUrl);
+  return (label: name, avatarUrl: url, initials: _initialsOf(name));
+}
+
 /// `https://nfcstore.uz/VIP001` -> `nfcstore.uz/VIP001`.
 String _bareUrl(String url) => url.replaceFirst(RegExp(r'^https?://'), '');
 
@@ -689,8 +718,8 @@ class _QuickActions extends StatelessWidget {
             (Icons.storefront_outlined, l.bizStorefront, Routes.business),
           ]
         : [
-            (Icons.center_focus_weak_rounded, l.nfcScanShort, Routes.nfcScan),
-            (Icons.credit_card_rounded, l.nfcWriteShort, Routes.nfcWrite),
+            (Icons.qr_code_scanner_rounded, l.nfcScanShort, Routes.nfcScan),
+            (Icons.credit_card_outlined, l.nfcWriteShort, Routes.nfcWrite),
             // ID QIDIRISH — NFC Markazdagi AYNAN O'SHA ekran.
             (Icons.search_rounded, l.idSearchShort, Routes.nfcMarket),
             (Icons.add_rounded, l.postCreate, Routes.postCreate),
@@ -904,15 +933,12 @@ class _StoriesRow extends ConsumerWidget {
                     );
                   }
                   final s = items[i - 1];
+                  final face = storyFace(s,
+                      me: id, userAvatar: user.avatarUrl);
                   return _StoryBubble(
-                    label: s.authorName.isEmpty
-                        ? (id?.name ?? '')
-                        : s.authorName,
-                    avatarUrl: s.authorAvatar.isEmpty
-                        ? s.mediaUrl
-                        : s.authorAvatar,
-                    // Begona odamning bosh harflari — O'ZIMIZNIKI emas.
-                    initials: _initialsOf(s.authorName),
+                    label: face.label,
+                    avatarUrl: face.avatarUrl,
+                    initials: face.initials,
                     seen: s.seen,
                     onTap: () => context.push(
                       Routes.story(s.code.isEmpty ? (id?.code ?? '') : s.code),

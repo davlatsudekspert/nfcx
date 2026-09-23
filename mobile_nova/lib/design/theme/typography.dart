@@ -105,8 +105,9 @@ abstract final class AppType {
           letterSpacing: -0.05,
           color: text1,
         ),
-        // ODDIY MATN — 400 (egasi, 2026-09: "harflar yozilishi mayin
-        // bo'lsin"). 500 qalinlikda uzun matn og'ir va keskin ko'rinardi.
+        // Uzun matn (bodyLarge) — 400, yengil o'qiladi. Kichik matnlar
+        // (bodyMedium/Small) — 500: 400 da ular ivory fonda xira
+        // ko'rinardi (egasi, 2026-09: "mayda yozuvlar ham oson o'qilsin").
         bodyLarge: TextStyle(
           fontFamily: sans,
           fontSize: 15,
@@ -118,7 +119,7 @@ abstract final class AppType {
         bodyMedium: TextStyle(
           fontFamily: sans,
           fontSize: 13.5,
-          fontWeight: FontWeight.w400,
+          fontWeight: FontWeight.w500,
           height: 1.55,
           letterSpacing: 0.05,
           color: text2,
@@ -126,7 +127,7 @@ abstract final class AppType {
         bodySmall: TextStyle(
           fontFamily: sans,
           fontSize: 12,
-          fontWeight: FontWeight.w400,
+          fontWeight: FontWeight.w500,
           height: 1.5,
           letterSpacing: 0.1,
           color: text2,

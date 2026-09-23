@@ -64,7 +64,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       NavItem(icon: Icons.explore_rounded, label: l.navDiscover, route: Routes.discover),
       NavItem(icon: Icons.nfc_rounded, label: l.navNfc, route: Routes.nfc),
       NavItem(
-          icon: Icons.play_circle_outline_rounded,
+          icon: Icons.play_circle_rounded,
           label: l.navReels,
           route: Routes.reels),
       NavItem(icon: Icons.person_rounded, label: l.navProfile, route: Routes.profile),

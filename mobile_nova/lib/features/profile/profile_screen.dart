@@ -199,7 +199,7 @@ class ProfileScreen extends ConsumerWidget {
                           ? l.profileEdit
                           : (following ? l.actionFollowing : l.actionFollow),
                       icon: isMe
-                          ? Icons.edit_rounded
+                          ? Icons.edit_outlined
                           : (following
                               ? Icons.check_rounded
                               : Icons.person_add_alt_rounded),
