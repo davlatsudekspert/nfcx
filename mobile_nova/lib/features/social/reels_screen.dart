@@ -446,11 +446,11 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
         children: [
           const ColoredBox(color: Colors.black),
           if (_ready && c != null)
-            // TIK video (9:16) ekranni TO'LIQ qoplaydi — tepada/pastda
-            // qora chiziq qolmaydi. Yotiq yoki kvadrat video esa
-            // `contain`: uning ikki yoni kesilib ketmasin.
+            // `contain` — video HECH QACHON kesilmaydi (egasining
+            // qoidasi, media_fit_test). 9:16 video uzun ekranda tepa va
+            // pastda ingichka qora chiziq qoldiradi — bu kesishdan yaxshi.
             FittedBox(
-              fit: c.value.aspectRatio <= .75 ? BoxFit.cover : BoxFit.contain,
+              fit: BoxFit.contain,
               child: SizedBox(
                 width: c.value.size.width,
                 height: c.value.size.height,
