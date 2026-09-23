@@ -33,11 +33,27 @@ rc=0
 
 say() { echo "$*" | tee -a "$LOG"; }
 
-say "== Qurilma: $(adb -s "$DEVICE" shell getprop ro.product.model) / Android $(adb -s "$DEVICE" shell getprop ro.build.version.release)"
+# HAR adb CHAQIRUVI VAQT CHEGARALI (E2E #47, 2026-09): emulyator 360 dp
+# layout paytida `device offline` bo'ldi va keyingi `adb install`
+# "- waiting for device -" da 60 daqiqa kutib, butun ishni (75 daq.)
+# bekor qildirdi — real hisobli E2E umuman ishlamadi. Endi osilish yo'q:
+# har buyruq chegaralangan, qurilma yo'qolsa bir marta qayta ulanadi,
+# bo'lmasa aniq FAIL yoziladi va keyingi bosqichga o'tiladi.
+A() { timeout 60 adb -s "$DEVICE" "$@"; }
+alive() { [ "$(timeout 10 adb -s "$DEVICE" get-state 2>/dev/null | tr -d '\r')" = "device" ]; }
+recover() {
+  alive && return 0
+  say "(adb: $DEVICE offline — qayta ulanish)"
+  timeout 20 adb reconnect offline >/dev/null 2>&1 || true
+  timeout 90 adb -s "$DEVICE" wait-for-device >/dev/null 2>&1 || true
+  alive
+}
+
+say "== Qurilma: $(A shell getprop ro.product.model) / Android $(A shell getprop ro.build.version.release)"
 
 # Apparat klaviatura bo'lsa ham ekran klaviaturasi chiqsin — klaviatura
 # qatori shunga tayanadi.
-adb -s "$DEVICE" shell settings put secure show_ime_with_hard_keyboard 1 || true
+A shell settings put secure show_ime_with_hard_keyboard 1 || true
 
 say "== Release APK qurilmoqda"
 if flutter build apk --release --dart-define=NOVA_VERSION=device-e2e >> "$LOG" 2>&1; then
@@ -54,43 +70,49 @@ for spec in "360 1080x2400" "390 1170x2532" "430 1290x2796"; do
   size="${spec##* }"
   say ""
   say "════ ${tag} dp  (${size} @ 480dpi) ════"
-  adb -s "$DEVICE" shell wm size "$size"
-  adb -s "$DEVICE" shell wm density 480
+  if ! recover; then
+    say "DEVICE|${tag}|device|FAIL|emulyator aloqasi uzildi (adb offline) — ilova xatosi emas"
+    rc=1
+    break
+  fi
+  A shell wm size "$size"
+  A shell wm density 480
   sleep 3
 
   # ── RELEASE APK ──────────────────────────────────────────────
-  adb -s "$DEVICE" install -r "$APK" >> "$LOG" 2>&1
-  adb -s "$DEVICE" logcat -c || true
-  adb -s "$DEVICE" shell am force-stop "$PKG" || true
-  adb -s "$DEVICE" shell am start -W -n "$PKG/.MainActivity" >> "$LOG" 2>&1
+  timeout 180 adb -s "$DEVICE" install -r "$APK" >> "$LOG" 2>&1
+  A logcat -c || true
+  A shell am force-stop "$PKG" || true
+  A shell am start -W -n "$PKG/.MainActivity" >> "$LOG" 2>&1
   sleep 12
-  adb -s "$DEVICE" exec-out screencap -p > "$OUT/release-${tag}-launch.png" || true
-  pid=$(adb -s "$DEVICE" shell pidof "$PKG" | tr -d '\r')
-  crashes=$(adb -s "$DEVICE" logcat -d -b crash 2>/dev/null | grep -c "$PKG" || true)
-  anr=$(adb -s "$DEVICE" shell dumpsys activity processes 2>/dev/null | grep -c "notResponding=true" || true)
+  timeout 60 adb -s "$DEVICE" exec-out screencap -p > "$OUT/release-${tag}-launch.png" || true
+  pid=$(A shell pidof "$PKG" | tr -d '\r')
+  crashes=$(A logcat -d -b crash 2>/dev/null | grep -c "$PKG" || true)
+  anr=$(A shell dumpsys activity processes 2>/dev/null | grep -c "notResponding=true" || true)
   if [ -n "$pid" ] && [ "$crashes" = "0" ] && [ "$anr" = "0" ]; then
     say "DEVICE|${tag}|release-launch|PASS|pid=${pid}"
   else
     say "DEVICE|${tag}|release-launch|FAIL|pid='${pid}' crash=${crashes} anr=${anr}"
-    adb -s "$DEVICE" logcat -d -b crash >> "$LOG" 2>&1 || true
+    A logcat -d -b crash >> "$LOG" 2>&1 || true
     rc=1
   fi
   # Orqaga (fon) va qaytish — hayot sikli qotmaydimi.
-  adb -s "$DEVICE" shell input keyevent KEYCODE_HOME
+  A shell input keyevent KEYCODE_HOME
   sleep 2
-  adb -s "$DEVICE" shell am start -n "$PKG/.MainActivity" >> "$LOG" 2>&1
+  A shell am start -n "$PKG/.MainActivity" >> "$LOG" 2>&1
   sleep 4
-  adb -s "$DEVICE" exec-out screencap -p > "$OUT/release-${tag}-resume.png" || true
-  if [ -n "$(adb -s "$DEVICE" shell pidof "$PKG" | tr -d '\r')" ]; then
+  timeout 60 adb -s "$DEVICE" exec-out screencap -p > "$OUT/release-${tag}-resume.png" || true
+  if [ -n "$(A shell pidof "$PKG" | tr -d '\r')" ]; then
     say "DEVICE|${tag}|release-resume|PASS|"
   else
     say "DEVICE|${tag}|release-resume|FAIL|jarayon yo'q"
     rc=1
   fi
-  adb -s "$DEVICE" shell am force-stop "$PKG" || true
+  A shell am force-stop "$PKG" || true
 
   # ── LAYOUT TO'PLAMI ─────────────────────────────────────────
-  if flutter test integration_test/e2e_layout_test.dart -d "$DEVICE" \
+  if timeout --foreground -s INT -k 30s 900 \
+      flutter test integration_test/e2e_layout_test.dart -d "$DEVICE" \
       --dart-define=LAYOUT_TAG="$tag" 2>&1 | tee -a "$LOG" | grep -E "LAYOUT\||<<<LAYOUT_DONE"; then
     :
   fi
@@ -101,13 +123,13 @@ for spec in "360 1080x2400" "390 1170x2532" "430 1290x2796"; do
   if grep -q "LAYOUT|${tag}|[a-z-]*|FAIL" "$LOG"; then rc=1; fi
   # Qurilmada chizilgan kadrlar.
   # `Directory.systemTemp` Android'da `cache` yoki `code_cache` bo'ladi.
-  adb -s "$DEVICE" exec-out run-as "$PKG_DEBUG" sh -c \
+  timeout 60 adb -s "$DEVICE" exec-out run-as "$PKG_DEBUG" sh -c \
     'for d in cache code_cache; do if [ -d "$d/nova_shots" ]; then cd "$d/nova_shots" && tar -cf - .; exit; fi; done' \
     | tar -xf - -C "$OUT" 2>/dev/null || say "(kadrlar tortib olinmadi: $tag)"
 done
 
-adb -s "$DEVICE" shell wm size reset || true
-adb -s "$DEVICE" shell wm density reset || true
+A shell wm size reset || true
+A shell wm density reset || true
 
 say ""
 say "== Natija =="
