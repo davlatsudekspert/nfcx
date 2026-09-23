@@ -122,6 +122,8 @@ class ProfileScreen extends ConsumerWidget {
     if (user == null) return const SizedBox.shrink();
 
     return NovaScaffold(
+      // Asosiy tab: pastki bo'shliq `navSafeBottom` da (suzuvchi menyu).
+      padBottom: false,
       showBack: code != null,
       actions: code != null
           ? [

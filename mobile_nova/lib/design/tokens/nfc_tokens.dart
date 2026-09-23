@@ -823,7 +823,13 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
   // topa olmagan id uchun `fallback` (noir) qaytaradi, ya'ni eski
   // tanlov saqlangan qurilmalar keyingi ochilishda Noir'ga
   // o'tadi. Alohida migratsiya kodi shart emas.
-  static final all = <NfcTokens>[ivory, noir, ocean, mono, graphite, aurora, onyx];
+  //
+  // `mono` ("Oq qora") ham 2026-09 da xuddi shu yo'l bilan OLIB
+  // TASHLANDI: egasi Sozlamalarda ikkita oq mavzuni ko'rdi va
+  // bittasi qolsin dedi — `ivory` qoldi. `mono` ta'rifi sinovlar
+  // uchun qoladi; uni tanlagan qurilma keyingi ochilishda
+  // `fallback` (ivory) ga o'tadi.
+  static final all = <NfcTokens>[ivory, noir, ocean, graphite, aurora, onyx];
 
   /// STANDART MAVZU — `noir`.
   ///

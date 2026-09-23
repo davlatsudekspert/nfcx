@@ -101,6 +101,9 @@ class NovaField extends StatelessWidget {
           decoration: InputDecoration(
             hintText: hint,
             errorText: error,
+            // Xato bir qatorga qirqilmasin: "band" sababi va nima
+            // qilish kerakligi to'liq o'qilishi kerak (egasi, 2026-09).
+            errorMaxLines: 3,
             counterText: '',
             prefixIcon: prefix,
             suffixIcon: suffix,

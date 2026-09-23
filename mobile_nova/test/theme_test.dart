@@ -27,14 +27,13 @@ double _contrast(Color a, Color b) {
 }
 
 void main() {
-  test('yettita mavzu ham mavjud va kaliti takrorlanmaydi', () {
+  test('oltita mavzu mavjud va kaliti takrorlanmaydi', () {
     // `ivory` (2026-09) — soft editorial luxury, yangi standart.
     // `noir` — NFCSTORE qorong'i premium mavzusi, saqlanadi.
-    expect(NfcTokens.all.length, 7);
+    expect(NfcTokens.all.length, 6);
     final ids = NfcTokens.all.map((t) => t.id).toSet();
-    expect(ids.length, 7);
-    expect(ids,
-        {'ivory', 'noir', 'ocean', 'mono', 'graphite', 'aurora', 'onyx'});
+    expect(ids.length, 6);
+    expect(ids, {'ivory', 'noir', 'ocean', 'graphite', 'aurora', 'onyx'});
     // OQ MAVZU TANLANMAYDI.
     //
     // `pearl` ta'rifi qoladi (sinovlar undan yorug' palitra namunasi
@@ -44,13 +43,13 @@ void main() {
     expect(ids.contains('pearl'), isFalse);
     // Birinchi o'rin — standart mavzu.
     expect(NfcTokens.all.first.id, 'ivory');
-    // IKKITA YORUG' MAVZU — `ivory` va `mono`.
+    // BITTA YORUG' MAVZU — `ivory`.
     //
-    // `mono` — sof oq-qora, oltin umuman yo'q. `ivory` — uning
-    // ustiga juda kam champagne (`brand`) qo'shilgan editorial
-    // variant. Qolgani qorong'i.
+    // Ilgari `mono` ("Oq qora") ham bor edi va Sozlamalarda ikkita
+    // deyarli bir xil oq mavzu turardi (egasi, 2026-09 surat).
+    // `mono` ro'yxatdan chiqarildi. Qolgani qorong'i.
     final light = NfcTokens.all.where((t) => !t.isDark).map((t) => t.id);
-    expect(light, ['ivory', 'mono']);
+    expect(light, ['ivory']);
   });
 
   test('ivory: siyoh aksent, champagne FAQAT brend tokenida', () {
@@ -143,7 +142,8 @@ void main() {
     expect(NfcTokens.byId('bunday-mavzu-yoq').id, 'ivory');
     expect(NfcTokens.byId(null).id, 'ivory');
     expect(NfcTokens.byId('noir').id, 'noir');
-    expect(NfcTokens.byId('mono').id, 'mono');
+    // `mono` tanlagan qurilma endi ivory'ga o'tadi.
+    expect(NfcTokens.byId('mono').id, 'ivory');
     // `ocean` HALI HAM mavjud — o'chirib yuborilmaganiga ishonch.
     expect(NfcTokens.byId('ocean').id, 'ocean');
   });

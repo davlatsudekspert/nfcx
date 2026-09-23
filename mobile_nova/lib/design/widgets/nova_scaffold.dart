@@ -37,7 +37,18 @@ class NovaScaffold extends StatelessWidget {
   final VoidCallback? onBack;
   final Widget? floating;
 
-  /// Bottom nav ostida kontent qolib ketmasligi uchun pastki bo'shliq.
+  /// Telefonning TIZIM paneli (jest chizig'i yoki 3 tugma) ostida
+  /// kontent qolib ketmasligi uchun pastki bo'shliq.
+  ///
+  /// Ilgari bu maydon HECH NARSA qilmasdi (`padBottom ? null : null`)
+  /// va karkas pastki inset'ni umuman hisobga olmasdi. Android 15
+  /// ilovani chetdan-chetga chizadi, shuning uchun ro'yxatdan o'tish
+  /// ekranidagi "Keyingi" tugmasi tizim tugmalari ostida qolib
+  /// ketardi (egasi, 2026-09 surat).
+  ///
+  /// Asosiy tablar (`false` beradi) o'z pastki bo'shlig'ini
+  /// `navSafeBottom` bilan o'zi hisoblaydi — ular suzuvchi menyu
+  /// ostida turadi.
   final bool padBottom;
   final bool animateBackdrop;
 
@@ -65,14 +76,18 @@ class NovaScaffold extends StatelessWidget {
                   showBack: showBack,
                   onBack: onBack,
                 ),
-                Expanded(child: body),
+                Expanded(
+                  child: bottomNav == null && padBottom
+                      ? SafeArea(top: false, child: body)
+                      : body,
+                ),
               ],
             ),
           ),
         ),
         floatingActionButton: floating,
         bottomNavigationBar: bottomNav == null
-            ? (padBottom ? null : null)
+            ? null
             : SafeArea(top: false, child: bottomNav!),
       ),
     );

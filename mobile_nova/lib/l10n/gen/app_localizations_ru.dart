@@ -154,7 +154,12 @@ class LRu extends L {
   String get errBadCredentials => 'Неверный email или пароль';
 
   @override
-  String get errEmailTaken => 'Этот email уже зарегистрирован';
+  String get errEmailTaken =>
+      'Этот email уже зарегистрирован. Войдите или восстановите пароль.';
+
+  @override
+  String get errPhoneTaken =>
+      'Этот номер телефона уже привязан к другому аккаунту. Укажите другой номер или войдите в тот аккаунт.';
 
   @override
   String get errEndpointMissing => 'Эта функция ещё не включена на сервере';

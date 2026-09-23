@@ -56,6 +56,8 @@ class NfcCenterScreen extends ConsumerWidget {
     const x = EdgeInsets.symmetric(horizontal: Gap.screenX);
 
     return NovaScaffold(
+      // Asosiy tab: pastki bo'shliq `navSafeBottom` da (suzuvchi menyu).
+      padBottom: false,
       title: l.nfcCenter,
       actions: [
         // Kelgan sovg'alar — backend'da bu oqim bor edi, ilovada

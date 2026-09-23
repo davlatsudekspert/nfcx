@@ -172,7 +172,27 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         }
         _goVerify(channel);
       },
-      err: (e) => setState(() => _error = describeError(l, e)),
+      err: (e) {
+        // BAND BO'LSA — O'SHA QADAMGA QAYTAMIZ (egasi, 2026-09 surat).
+        //
+        // Server endi email/telefon bandligini KOD YUBORISHDAN OLDIN
+        // aytadi. Xato oxirgi (parol) qadamda emas, aynan tuzatish
+        // kerak bo'lgan maydon ostida ko'rinadi.
+        final back = switch (e.code) {
+          'phone_taken' => 3,
+          'email_taken' => 2,
+          _ => null,
+        };
+        if (back == null) {
+          setState(() => _error = describeError(l, e));
+          return;
+        }
+        setState(() {
+          _step = back;
+          _fieldErrors[back] = describeError(l, e);
+        });
+        _page.animateToPage(back, duration: Motion.med, curve: Motion.smooth);
+      },
     );
   }
 
@@ -302,6 +322,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 _Step(
                   title: l.registerTitle,
                   hint: l.registerNameHint,
+                  art: Icons.person_outline_rounded,
                   child: NovaField(
                     label: l.fieldName,
                     controller: _name,
@@ -313,6 +334,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 _Step(
                   title: l.fieldEmail,
                   hint: l.registerEmailHint,
+                  art: Icons.mark_email_unread_outlined,
                   child: NovaField(
                     label: l.fieldEmail,
                     controller: _email,
@@ -325,6 +347,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 _Step(
                   title: l.fieldPhone,
                   hint: l.registerPhoneHint,
+                  art: Icons.smartphone_rounded,
                   child: PhoneField(
                     label: l.fieldPhone,
                     controller: _phone,
@@ -419,11 +442,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 }
 
 class _Step extends StatelessWidget {
-  const _Step({required this.title, required this.hint, required this.child});
+  const _Step({
+    required this.title,
+    required this.hint,
+    required this.child,
+    this.art,
+  });
 
   final String title;
   final String hint;
   final Widget child;
+
+  /// Maydon ostidagi bo'sh joy uchun yengil bezak (egasi, 2026-09:
+  /// "ekran o'rtasi bo'sh, biron rasm qo'ysa chiroyli tursa").
+  final IconData? art;
 
   @override
   Widget build(BuildContext context) => SingleChildScrollView(
@@ -437,9 +469,53 @@ class _Step extends StatelessWidget {
             Text(hint, style: Theme.of(context).textTheme.bodyMedium),
             const SizedBox(height: Gap.section),
             child,
+            // Klaviatura ochiq bo'lsa bezak yashiriladi — joy maydonga.
+            if (art != null && MediaQuery.viewInsetsOf(context).bottom == 0) ...[
+              const SizedBox(height: 56),
+              Center(child: _StepArt(icon: art!)),
+            ],
           ],
         ),
       );
+}
+
+/// Qadam bezagi: ichma-ich yupqa halqalar, markazda belgi.
+///
+/// Rasm fayli emas — vektor: ilova hajmi o'smaydi, har mavzuda o'z
+/// ranglarida chiziladi. Champagne faqat bitta ingichka halqada.
+class _StepArt extends StatelessWidget {
+  const _StepArt({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    Widget ring(double size, Color color, {Color? fill}) => Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: fill,
+            border: Border.all(color: color, width: 1),
+          ),
+        );
+    return ExcludeSemantics(
+      child: SizedBox(
+        width: 208,
+        height: 208,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            ring(208, t.border1),
+            ring(160, t.brandSoft),
+            ring(112, t.border2, fill: t.surface),
+            Icon(icon, size: 40, color: t.text2),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// OFERTA VA SHAXSGA DOIR MA'LUMOTLARGA ROZILIK QATORI.

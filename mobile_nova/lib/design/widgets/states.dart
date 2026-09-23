@@ -16,6 +16,10 @@ import 'surfaces.dart';
 String describeError(L l, AppError e) => switch (e.code) {
       'bad_credentials' => l.errBadCredentials,
       'email_taken' => l.errEmailTaken,
+      // Telefon boshqa akkauntda. Ilgari kalit tanilmasdi va umumiy
+      // "Bu ma'lumot allaqachon band" chiqardi — odam NIMA band
+      // ekanini bilmasdi (egasi, 2026-09 surat).
+      'phone_taken' => l.errPhoneTaken,
       'bad_email' => l.errBadEmail,
       'bad_phone' => l.errBadPhone,
       'bad_code' || 'bad_email_code' => l.verifyWrongCode,

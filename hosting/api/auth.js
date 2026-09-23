@@ -502,6 +502,25 @@ async function tgLinkStatus(request, env, H, url) {
 // Telefon/Telegram yo'li OLIB TASHLANMADI: email xizmati o'chirilgan
 // yoki xat ketmagan bo'lsa, eski yo'l zaxira sifatida ishlaydi.
 // Javobdagi `channel` frontendga kod QAYERGA ketganini aytadi.
+// Ro'yxatdan o'tishga TO'SIQ bormi: email yoki telefon boshqa (o'chirilmagan)
+// akkauntda. Xato kaliti yoki null. Telefon noto'g'ri formatda bo'lsa
+// tekshirilmaydi — uni `register` o'zi 422 bilan aytadi.
+async function registerConflict(env, H, email, phone) {
+  if (phone && PHONE_RE.test(phone)) {
+    const p = await env.DB.prepare(
+      `SELECT id FROM users WHERE phone = ? AND deleted_at IS NULL LIMIT 1`
+    ).bind(phone).first();
+    if (p) return 'phone_taken';
+  }
+  if (email) {
+    const e = await env.DB.prepare(
+      `SELECT id FROM users WHERE email = ? AND deleted_at IS NULL LIMIT 1`
+    ).bind(email).first();
+    if (e) return 'email_taken';
+  }
+  return null;
+}
+
 async function requestRegisterCode(request, env, H) {
   const body = await request.json().catch(() => ({}));
   const email = H.cleanStr(body?.email, 120).toLowerCase();
@@ -516,6 +535,15 @@ async function requestRegisterCode(request, env, H) {
   }
 
   if (email && EMAIL_RE.test(email) && H.emailEnabledD1(env)) {
+    // BAND BO'LSA — KOD YUBORILMAYDI (egasi, 2026-09 surat).
+    //
+    // Ilgari band email/telefon faqat OXIRIDA, kod kiritilgandan
+    // keyin tekshirilardi: odam emailini ochib kodni topib kiritardi
+    // va shundan keyingina "band" degan xatoni ko'rardi — kod ham
+    // yonib ketardi. Endi xato darhol, birinchi ekranda chiqadi.
+    // `register` baribir o'zi ham tekshiradi — bu faqat ertaroq aytish.
+    const taken = await registerConflict(env, H, email, normPhone(body?.phone, H));
+    if (taken) return H.json({ error: taken }, 409);
     // Limit EMAIL bo'yicha: bitta manzilga 10 daqiqada 3 ta kod.
     const recent = await countRecentEmailOtps(env, email, 'register', tsAt(Date.now() - REGISTER_OTP_WINDOW_MS));
     if (recent >= REGISTER_OTP_MAX) return H.json({ error: 'too_many_requests' }, 429);
@@ -602,14 +630,6 @@ async function register(request, env, H) {
   if (emailOn && !rawEmail) return H.json({ error: 'email_required' }, 422);
   const email = rawEmail || H.placeholderEmailForD1(extra.phone);
 
-  if (emailOn) {
-    const emailCode = H.cleanStr(body?.emailCode, 6);
-    if (!emailCode) return H.json({ error: 'email_code_required' }, 422);
-    if (!(await verifyAndConsumeEmailOtpCode(env, H, rawEmail, emailCode, 'register'))) {
-      return H.json({ error: 'bad_email_code' }, 422);
-    }
-  }
-
   // Token yuborilgan bo'lsa — raqam FORMDAN emas, TOKENDAN tasdiqlanadi.
   if (extra.linkToken) {
     const link = await getTgLinkRow(env, H, extra.linkToken);
@@ -631,6 +651,17 @@ async function register(request, env, H) {
     // Ichki (ko'rinmas) manzil band bo'lsa, sabab email emas — TELEFON.
     // Odamga "email band" deyish chalkash bo'lardi.
     return H.json({ error: H.isPlaceholderEmailD1(email) ? 'phone_taken' : 'email_taken' }, 409);
+  }
+
+  // KOD band-tekshiruvlardan KEYIN yondiriladi. Ilgari avval kod
+  // yondirilardi, keyin telefon band chiqardi — odam raqamni
+  // to'g'rilab qaytganda kodi allaqachon ishlatilgan bo'lardi.
+  if (emailOn) {
+    const emailCode = H.cleanStr(body?.emailCode, 6);
+    if (!emailCode) return H.json({ error: 'email_code_required' }, 422);
+    if (!(await verifyAndConsumeEmailOtpCode(env, H, rawEmail, emailCode, 'register'))) {
+      return H.json({ error: 'bad_email_code' }, 422);
+    }
   }
 
   if (extra.linkToken) {

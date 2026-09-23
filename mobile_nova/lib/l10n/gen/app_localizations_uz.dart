@@ -154,7 +154,12 @@ class LUz extends L {
   String get errBadCredentials => 'Email yoki parol noto‘g‘ri';
 
   @override
-  String get errEmailTaken => 'Bu email allaqachon ro‘yxatdan o‘tgan';
+  String get errEmailTaken =>
+      'Bu email allaqachon ro‘yxatdan o‘tgan. «Kirish» orqali kiring yoki parolni tiklang.';
+
+  @override
+  String get errPhoneTaken =>
+      'Bu telefon raqam boshqa akkauntga ulangan. Boshqa raqam kiriting yoki o‘sha akkaunt bilan kiring.';
 
   @override
   String get errEndpointMissing => 'Bu imkoniyat serverda hali yoqilmagan';

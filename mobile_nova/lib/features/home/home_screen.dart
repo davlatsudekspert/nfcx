@@ -133,6 +133,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (user == null) return const SizedBox.shrink();
 
     return NovaScaffold(
+      // Asosiy tab: pastki bo'shliq `navSafeBottom` da (suzuvchi menyu).
+      padBottom: false,
       body: RefreshIndicator(
         color: t.accent2,
         backgroundColor: t.surfaceSolid,

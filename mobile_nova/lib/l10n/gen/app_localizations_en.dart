@@ -154,7 +154,12 @@ class LEn extends L {
   String get errBadCredentials => 'Wrong email or password';
 
   @override
-  String get errEmailTaken => 'This email is already registered';
+  String get errEmailTaken =>
+      'This email is already registered. Sign in or reset your password.';
+
+  @override
+  String get errPhoneTaken =>
+      'This phone number is already linked to another account. Enter a different number or sign in to that account.';
 
   @override
   String get errEndpointMissing =>

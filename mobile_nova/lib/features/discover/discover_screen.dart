@@ -151,6 +151,8 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
     final prefs = ref.watch(prefsProvider);
 
     return NovaScaffold(
+      // Asosiy tab: pastki bo'shliq `navSafeBottom` da (suzuvchi menyu).
+      padBottom: false,
       // SARLAVHA YO'Q.
       //
       // "Kashf eting" yozuvi qidiruv maydoni va tablar ustida

@@ -283,7 +283,7 @@ void main() {
   });
 
   group('Mavzu tanlash ekrani', () {
-    testWidgets('oltita mavzuni ham ko‘rsatadi', (tester) async {
+    testWidgets('oltita mavzuni ko‘rsatadi, “Oq qora” yo‘q', (tester) async {
       // BALAND OYNA. Ro'yxat `ListView` ustiga qurilgan va u
       // ekrandan PASTDAGI elementni umuman qurmaydi. Standart
       // 600px li test oynasida oxirgi mavzu "topilmadi" bo'lib
@@ -305,12 +305,15 @@ void main() {
         l.themeGraphite,
         l.themeOcean,
         l.themeAurora,
-        l.themeMono,
         l.themeOnyx,
         l.themeNoir,
+        l.themeIvory,
       ]) {
         expect(find.text(name), findsOneWidget, reason: name);
       }
+      // "Oq qora" ham YO'Q: ikkita oq mavzu turardi, ivory qoldi
+      // (egasi, 2026-09 surat).
+      expect(find.text(l.themeMono), findsNothing);
       // Har mavzu kartasida logotip — kontrast shu yerda tekshiriladi.
       // Son ro'yxatdan olinadi: mavzu qo'shilganda bu sinov yana
       // qo'lda tuzatilishi shart bo'lmasin.

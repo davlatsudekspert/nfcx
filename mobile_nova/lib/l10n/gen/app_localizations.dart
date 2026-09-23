@@ -390,8 +390,14 @@ abstract class L {
   /// No description provided for @errEmailTaken.
   ///
   /// In uz, this message translates to:
-  /// **'Bu email allaqachon ro‘yxatdan o‘tgan'**
+  /// **'Bu email allaqachon ro‘yxatdan o‘tgan. «Kirish» orqali kiring yoki parolni tiklang.'**
   String get errEmailTaken;
+
+  /// No description provided for @errPhoneTaken.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu telefon raqam boshqa akkauntga ulangan. Boshqa raqam kiriting yoki o‘sha akkaunt bilan kiring.'**
+  String get errPhoneTaken;
 
   /// No description provided for @errEndpointMissing.
   ///
