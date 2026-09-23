@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:nfcstore_nova/data/repositories/saves_repository.dart';
 import 'package:nfcstore_nova/app/providers.dart';
 import 'package:nfcstore_nova/core/network/api_client.dart';
 import 'package:nfcstore_nova/core/storage/secure_store.dart';
@@ -310,6 +311,7 @@ Future<List<Override>> richOverrides() async {
     authRepositoryProvider.overrideWithValue(FakeAuthRepository(ids: richIds)),
     socialRepositoryProvider.overrideWithValue(RichSocial()),
     discoverRepositoryProvider.overrideWithValue(RichDiscover()),
+    savesRepositoryProvider.overrideWithValue(FakeSavesRepository()),
     profileRepositoryProvider.overrideWithValue(RichProfile()),
     reelsProvider.overrideWith((ref) async => richReels),
     nfcServiceProvider.overrideWithValue(RichNfc(

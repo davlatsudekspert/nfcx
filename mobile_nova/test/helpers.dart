@@ -11,6 +11,7 @@ import 'package:nfcstore_nova/core/utils/result.dart';
 import 'package:nfcstore_nova/data/models/models.dart';
 import 'package:nfcstore_nova/data/repositories/auth_repository.dart';
 import 'package:nfcstore_nova/data/repositories/discover_repository.dart';
+import 'package:nfcstore_nova/data/repositories/saves_repository.dart';
 import 'package:nfcstore_nova/data/repositories/social_repository.dart';
 import 'package:nfcstore_nova/design/theme/app_theme.dart';
 import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
@@ -91,6 +92,33 @@ class FakeDiscoverRepository extends DiscoverRepository {
   Future<Result<List<NfcId>>> searchPeople(String q) async => const Ok(testIds);
 }
 
+/// Saqlanganlar — xotirada (tarmoqqa chiqmaydi).
+class FakeSavesRepository extends SavesRepository {
+  FakeSavesRepository({Map<SaveKind, Set<String>>? server, this.offline = false})
+      : server = server ?? {},
+        super(ApiClient());
+
+  final Map<SaveKind, Set<String>> server;
+
+  /// `true` — server javob bermaydi (internet yo'q / eski server).
+  bool offline;
+  final calls = <(SaveKind, String, bool)>[];
+
+  @override
+  Future<Result<List<String>>> list(SaveKind kind) async => offline
+      ? const Err(AppError(AppErrorKind.offline))
+      : Ok((server[kind] ?? const <String>{}).toList());
+
+  @override
+  Future<Result<bool>> set(SaveKind kind, String ref, bool saved) async {
+    calls.add((kind, ref, saved));
+    if (offline) return const Err(AppError(AppErrorKind.offline));
+    final s = server.putIfAbsent(kind, () => <String>{});
+    saved ? s.add(ref) : s.remove(ref);
+    return Ok(saved);
+  }
+}
+
 /// Test uchun tayyor `ProviderContainer` overridelari.
 Future<List<Override>> testOverrides({bool signedIn = true}) async {
   SharedPreferences.setMockInitialValues({});
@@ -100,6 +128,7 @@ Future<List<Override>> testOverrides({bool signedIn = true}) async {
     authRepositoryProvider.overrideWithValue(FakeAuthRepository(signedIn: signedIn)),
     socialRepositoryProvider.overrideWithValue(FakeSocialRepository()),
     discoverRepositoryProvider.overrideWithValue(FakeDiscoverRepository()),
+    savesRepositoryProvider.overrideWithValue(FakeSavesRepository()),
   ];
 }
 

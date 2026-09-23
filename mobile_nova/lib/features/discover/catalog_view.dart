@@ -5,10 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../app/providers.dart';
 import '../../core/errors/app_error.dart';
 import '../../core/utils/external_link.dart';
-import '../../core/storage/secure_store.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/business_repository.dart';
 import '../../data/repositories/discover_repository.dart';
+import '../../data/repositories/saves_repository.dart';
 import '../../design/motion/motion.dart';
 import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
@@ -180,28 +180,17 @@ final catalogFeedProvider = StateNotifierProvider.autoDispose
   );
 });
 
-/// Sevimlilar — SHU QURILMADA saqlanadi.
+/// Katalog sevimlilari — HISOBGA bog'langan (`/api/saves`, kind=listing).
 ///
-/// Serverda tovarni saqlash API'si yo'q; sevimlilar boshqa telefonga
-/// ko'chmaydi. Bu ataylab va ekranda shunday aytiladi — soxta
-/// "sinxronlandi" yo'q.
-class CatalogFavorites extends StateNotifier<Set<String>> {
-  CatalogFavorites(this._prefs) : super(_prefs.catalogFavorites.toSet());
-  final Prefs _prefs;
-
-  bool contains(String key) => state.contains(key);
-
-  Future<void> toggle(String key) async {
-    final next = {...state};
-    if (!next.remove(key)) next.add(key);
-    state = next;
-    await _prefs.setCatalogFavorites(next.toList());
-  }
-}
-
+/// Ilgari faqat shu telefonda turardi va telefon almashsa yo'qolardi.
+/// Endi server asosiy manba, telefon xotirasi — tezkor kesh (internet
+/// bo'lmasa ham bosish darhol ishlaydi). Batafsil: `SyncedSaves`.
 final catalogFavoritesProvider =
-    StateNotifierProvider<CatalogFavorites, Set<String>>(
-        (ref) => CatalogFavorites(ref.watch(prefsProvider)));
+    StateNotifierProvider<SyncedSaves, Set<String>>((ref) {
+  final prefs = ref.watch(prefsProvider);
+  return SyncedSaves(ref.watch(savesRepositoryProvider), SaveKind.listing,
+      initial: prefs.catalogFavorites, persist: prefs.setCatalogFavorites);
+});
 
 String _sortLabel(L l, CatalogSort s) => switch (s) {
       CatalogSort.newest => l.catalogSortNew,

@@ -30,6 +30,15 @@ String describeError(L l, AppError e) => switch (e.code) {
       'rules_not_accepted' => l.rulesNotAccepted,
       'plan_limit_reached' => l.errPlanLimit,
       'plan_locked' => l.errPlanLocked,
+      // AVTOMATIK FILTR rasmni rad etdi — SABAB aytiladi, aks holda
+      // odam "nega yuklanmayapti" deb o'ylaydi.
+      'content_blocked' => l.errContentBlocked(switch (e.detail) {
+          'violence' => l.blockViolence,
+          'extremism' => l.blockExtremism,
+          'drugs' => l.blockDrugs,
+          'hate' => l.blockHate,
+          _ => l.blockSexual,
+        }),
       _ => switch (e.kind) {
           AppErrorKind.offline => l.errOffline,
           AppErrorKind.timeout => l.errTimeout,

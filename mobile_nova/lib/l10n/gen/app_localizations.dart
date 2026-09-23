@@ -4178,6 +4178,42 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Bepul tarifda post va istoriya yopiq. Premium (sayt orqali) bilan ochiladi.'**
   String get errPlanLocked;
+
+  /// No description provided for @errContentBlocked.
+  ///
+  /// In uz, this message translates to:
+  /// **'Rasm yuklanmadi: {reason}. Bunday kontent qonun va NFCSTORE qoidalariga zid. Xato deb o‘ylasangiz, boshqa rasm tanlang yoki qo‘llab-quvvatlashga yozing.'**
+  String errContentBlocked(String reason);
+
+  /// No description provided for @blockSexual.
+  ///
+  /// In uz, this message translates to:
+  /// **'18+ yoki behayo kontent aniqlandi'**
+  String get blockSexual;
+
+  /// No description provided for @blockViolence.
+  ///
+  /// In uz, this message translates to:
+  /// **'zo‘ravonlik yoki qonli kontent aniqlandi'**
+  String get blockViolence;
+
+  /// No description provided for @blockExtremism.
+  ///
+  /// In uz, this message translates to:
+  /// **'ekstremistik yoki terroristik belgi yoki targ‘ibot aniqlandi'**
+  String get blockExtremism;
+
+  /// No description provided for @blockDrugs.
+  ///
+  /// In uz, this message translates to:
+  /// **'giyohvand moddalar aniqlandi'**
+  String get blockDrugs;
+
+  /// No description provided for @blockHate.
+  ///
+  /// In uz, this message translates to:
+  /// **'nafrat yoki kamsitish belgisi aniqlandi'**
+  String get blockHate;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

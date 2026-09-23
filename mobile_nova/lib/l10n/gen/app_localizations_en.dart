@@ -2158,4 +2158,24 @@ class LEn extends L {
   @override
   String get errPlanLocked =>
       'Posts and stories are closed on the free plan. Premium (on the website) opens them.';
+
+  @override
+  String errContentBlocked(String reason) {
+    return 'Photo not uploaded: $reason. Such content violates the law and NFCSTORE rules. If this is a mistake, pick another photo or contact support.';
+  }
+
+  @override
+  String get blockSexual => '18+ or explicit content detected';
+
+  @override
+  String get blockViolence => 'violence or gore detected';
+
+  @override
+  String get blockExtremism => 'extremist symbols or propaganda detected';
+
+  @override
+  String get blockDrugs => 'illegal drugs detected';
+
+  @override
+  String get blockHate => 'hateful symbols detected';
 }

@@ -13,6 +13,7 @@ import 'moderation.dart';
 import '../../core/network/api_client.dart';
 import '../../core/utils/sharing.dart';
 import '../../data/models/models.dart';
+import '../../data/repositories/saves_repository.dart';
 import '../../data/repositories/social_repository.dart';
 import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
@@ -86,24 +87,20 @@ final reelsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
 /// Serverda "saqlash" API'si yo'q. Shuning uchun saqlash telefon
 /// xotirasida turadi va buni odamga aytamiz (snackbar) — soxta
 /// "hisobingizga saqlandi" yo'q.
-class SavedReels extends StateNotifier<Set<String>> {
-  SavedReels(this._prefs) : super(_prefs.savedReels.toSet());
-  final Prefs _prefs;
+class SavedReels extends SyncedSaves {
+  SavedReels(SavesRepository repo, Prefs prefs)
+      : super(repo, SaveKind.reel,
+            initial: prefs.savedReels, persist: prefs.setSavedReels);
 
   /// `true` — endi saqlangan.
-  Future<bool> toggle(Post p) async {
-    final k = likeKey(p);
-    final next = {...state};
-    final added = next.add(k);
-    if (!added) next.remove(k);
-    state = next;
-    await _prefs.setSavedReels(next.toList());
-    return added;
-  }
+  Future<bool> toggleReel(Post p) => toggle(likeKey(p));
 }
 
+/// Saqlangan Reels — HISOBGA bog'langan (`/api/saves`), telefon xotirasi
+/// faqat kesh. Batafsil: `SyncedSaves`.
 final savedReelsProvider = StateNotifierProvider<SavedReels, Set<String>>(
-    (ref) => SavedReels(ref.watch(prefsProvider)));
+    (ref) => SavedReels(
+        ref.watch(savesRepositoryProvider), ref.watch(prefsProvider)));
 
 /// Vertikal Reels lentasi.
 ///
@@ -420,7 +417,7 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
 
   Future<void> _save() async {
     final l = L.of(context);
-    final on = await ref.read(savedReelsProvider.notifier).toggle(widget.post);
+    final on = await ref.read(savedReelsProvider.notifier).toggleReel(widget.post);
     if (mounted) _snack(on ? l.reelSavedLocal : l.reelUnsaved);
   }
 

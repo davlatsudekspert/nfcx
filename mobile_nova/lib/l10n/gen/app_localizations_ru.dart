@@ -2153,4 +2153,25 @@ class LRu extends L {
   @override
   String get errPlanLocked =>
       'На бесплатном тарифе посты и истории закрыты. Откроются с Premium (на сайте).';
+
+  @override
+  String errContentBlocked(String reason) {
+    return 'Фото не загружено: $reason. Такой контент нарушает закон и правила NFCSTORE. Если это ошибка — выберите другое фото или напишите в поддержку.';
+  }
+
+  @override
+  String get blockSexual => 'обнаружен контент 18+';
+
+  @override
+  String get blockViolence => 'обнаружено насилие или кровь';
+
+  @override
+  String get blockExtremism =>
+      'обнаружена экстремистская символика или пропаганда';
+
+  @override
+  String get blockDrugs => 'обнаружены наркотики';
+
+  @override
+  String get blockHate => 'обнаружена символика ненависти';
 }

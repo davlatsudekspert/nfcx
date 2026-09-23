@@ -19,6 +19,8 @@ import * as apiMarketplace from './api/marketplace.js';
 import * as apiNotifications from './api/notifications.js';
 import * as apiFeatured from './api/featured.js';
 import * as apiCatalogFeed from './api/catalog-feed.js';
+import * as apiSaves from './api/saves.js';
+import { moderateImage, logBlockedUpload } from './api/image-moderation.js';
 
 // API javoblari standart holda KESHLANMAYDI.
 //
@@ -6760,6 +6762,29 @@ async function profileManifestApi(request, env, url) {
 
 // POST /api/upload, /api/upload-audio, /api/upload-card-video,
 //      /api/upload-profile-bg, /api/upload-card-print, /api/admin/upload
+// ── AVTOMATIK RASM FILTRI (2026-09, egasining talabi) ─────────────────
+// Qonun va qoidaga zid rasm (18+, zo'ravonlik, ekstremizm, giyohvandlik,
+// nafrat) YUKLANMAYDI va odamga SABABI aytiladi (`category`). Batafsil:
+// hosting/api/image-moderation.js. Adminning yuklashlari tekshirilmaydi.
+function contentBlockedJsonD1(category) {
+  return json({ error: 'content_blocked', category }, 422);
+}
+
+// Oqim bilan R2 ga tushgan rasm — o'qib tekshiriladi; bloklansa
+// fayl DARHOL o'chiriladi (hech qayerda ko'rinmasdan).
+async function scanStoredUploadD1(env, up, actor, source) {
+  if (!up?.ok || !String(up.type || '').startsWith('image/')) return null;
+  const key = String(up.url || '').replace(/^\//, '');
+  const obj = await env.UPLOADS.get(key).catch(() => null);
+  if (!obj) return null;
+  const bytes = new Uint8Array(obj.arrayBuffer ? await obj.arrayBuffer() : obj.body);
+  const verdict = await moderateImage(env, bytes, up.type);
+  if (verdict.allowed) return null;
+  await env.UPLOADS.delete(key).catch(() => {});
+  await logBlockedUpload(env, actor, verdict.category, source);
+  return contentBlockedJsonD1(verdict.category);
+}
+
 async function uploadApi(request, env, pathname) {
   const isAdmin = pathname.startsWith('/api/admin/');
   const auth = isAdmin ? await requireAdmin(request, env) : await getCurrentUser(request, env);
@@ -6789,6 +6814,8 @@ async function uploadApi(request, env, pathname) {
       aliases: PROFILE_BG_ALIASES,
     });
     if (!up.ok) return uploadErrorJsonD1(up);
+    const blocked = await scanStoredUploadD1(env, up, actor, 'profile-bg');
+    if (blocked) return blocked;
     return json({ url: up.url });
   }
 
@@ -6803,6 +6830,8 @@ async function uploadApi(request, env, pathname) {
       sniff: sniffMediaTypeD1,
     });
     if (!up.ok) return uploadErrorJsonD1(up);
+    const blocked = await scanStoredUploadD1(env, up, actor, 'media');
+    if (blocked) return blocked;
     return json({ url: up.url, kind: up.type.startsWith('video/') ? 'video' : 'image' });
   }
 
@@ -6838,6 +6867,8 @@ async function uploadApi(request, env, pathname) {
       aliases: UPLOAD_TYPE_ALIASES,
     });
     if (!up.ok) return uploadErrorJsonD1(up);
+    const blocked = await scanStoredUploadD1(env, up, actor, 'file');
+    if (blocked) return blocked;
     return json({ url: up.url, type: up.type, size: up.size });
   }
 
@@ -6858,6 +6889,8 @@ async function uploadApi(request, env, pathname) {
       prefix: 'cardprint', actor, accept: ['image/png'],
     });
     if (!up.ok) return uploadErrorJsonD1(up);
+    const blocked = await scanStoredUploadD1(env, up, actor, 'card-print');
+    if (blocked) return blocked;
     return json({ url: up.url });
   }
 
@@ -6899,6 +6932,15 @@ async function uploadApi(request, env, pathname) {
   const ext = isAudio
     ? ({ mpeg: 'mp3', mp3: 'mp3', mp4: 'm4a', 'x-m4a': 'm4a', m4a: 'm4a', ogg: 'ogg', wav: 'wav', webm: 'webm' })[match[2]]
     : (['jpeg', 'jpg'].includes(match[2]) ? 'jpg' : match[2]);
+  // Foydalanuvchi rasmi (avatar, post, istorya, katalog) SAQLASHDAN
+  // OLDIN tekshiriladi — bloklangan rasm R2 ga umuman tushmaydi.
+  if (!isAudio && !isAdmin) {
+    const verdict = await moderateImage(env, bytes, match[1]);
+    if (!verdict.allowed) {
+      await logBlockedUpload(env, actor, verdict.category, 'upload');
+      return contentBlockedJsonD1(verdict.category);
+    }
+  }
   const filename = `${isAdmin ? 'news_' : ''}${uploadRandomHex(10)}.${ext}`;
   const b64Url = await putUploadR2(env, filename, bytes, match[1], actor);
   await uploadQuotaAddD1(env, actor, bytes.length);
@@ -10236,7 +10278,7 @@ const H = {
 // bilan tugashini tekshiradi — oxiriga qo'shilsa o'sha qo'riqchi
 // yiqiladi. Tartibning boshqa ahamiyati yo'q: har bir modul o'ziga
 // tegishli bo'lmagan yo'lga `null` qaytaradi.
-const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiMarketplace];
+const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiMarketplace];
 
 // Xavfsizlik header'lari — barcha javoblarga (statik va API). CSP ataylab faqat
 // framing/base/form/object ni cheklaydi (script/style ga tegmaydi — YouTube/Yandex

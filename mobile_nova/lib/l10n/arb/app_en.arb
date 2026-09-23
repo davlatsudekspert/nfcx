@@ -811,5 +811,11 @@
   "bizPlanStoreNotice": "Premium and your own name are arranged on the website:",
   "bizPlanTrial": "Trial: no limits for now",
   "errPlanLimit": "Plan limit reached. Premium or your own name (on the website) allows more.",
-  "errPlanLocked": "Posts and stories are closed on the free plan. Premium (on the website) opens them."
+  "errPlanLocked": "Posts and stories are closed on the free plan. Premium (on the website) opens them.",
+  "errContentBlocked": "Photo not uploaded: {reason}. Such content violates the law and NFCSTORE rules. If this is a mistake, pick another photo or contact support.",
+  "blockSexual": "18+ or explicit content detected",
+  "blockViolence": "violence or gore detected",
+  "blockExtremism": "extremist symbols or propaganda detected",
+  "blockDrugs": "illegal drugs detected",
+  "blockHate": "hateful symbols detected"
 }

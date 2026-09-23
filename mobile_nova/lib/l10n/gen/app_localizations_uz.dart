@@ -2158,4 +2158,25 @@ class LUz extends L {
   @override
   String get errPlanLocked =>
       'Bepul tarifda post va istoriya yopiq. Premium (sayt orqali) bilan ochiladi.';
+
+  @override
+  String errContentBlocked(String reason) {
+    return 'Rasm yuklanmadi: $reason. Bunday kontent qonun va NFCSTORE qoidalariga zid. Xato deb o‘ylasangiz, boshqa rasm tanlang yoki qo‘llab-quvvatlashga yozing.';
+  }
+
+  @override
+  String get blockSexual => '18+ yoki behayo kontent aniqlandi';
+
+  @override
+  String get blockViolence => 'zo‘ravonlik yoki qonli kontent aniqlandi';
+
+  @override
+  String get blockExtremism =>
+      'ekstremistik yoki terroristik belgi yoki targ‘ibot aniqlandi';
+
+  @override
+  String get blockDrugs => 'giyohvand moddalar aniqlandi';
+
+  @override
+  String get blockHate => 'nafrat yoki kamsitish belgisi aniqlandi';
 }
