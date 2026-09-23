@@ -37,7 +37,7 @@ void main() {
         File('lib/features/business/business_forms.dart').readAsStringSync();
     expect(src, contains("'promotionPrice':"));
     expect(src, contains("'category':"));
-    expect(src, contains('items[i].key'));
+    expect(src, contains('.deleteItem(b.companyId, item.key)'));
     final repo =
         File('lib/data/repositories/business_repository.dart').readAsStringSync();
     expect(repo, contains('String companyId, String itemId'));

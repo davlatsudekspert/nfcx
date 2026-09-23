@@ -4118,6 +4118,66 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Xizmat qo‘shish'**
   String get bizAddService;
+
+  /// No description provided for @bizPlanUsage.
+  ///
+  /// In uz, this message translates to:
+  /// **'Katalog: {count} / {limit}'**
+  String bizPlanUsage(int count, int limit);
+
+  /// No description provided for @bizPlanFreeTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bepul tarif — {limit} ta tovar'**
+  String bizPlanFreeTitle(int limit);
+
+  /// No description provided for @bizPlanFreeBody.
+  ///
+  /// In uz, this message translates to:
+  /// **'Premium (oylik) bilan {premium} tagacha tovar, post va istoriya ochiladi. O‘z nomingizni (Business ID) sotib olsangiz — cheksiz.'**
+  String bizPlanFreeBody(int premium);
+
+  /// No description provided for @bizPlanPremiumTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Premium — {limit} ta tovar'**
+  String bizPlanPremiumTitle(int limit);
+
+  /// No description provided for @bizPlanPremiumBody.
+  ///
+  /// In uz, this message translates to:
+  /// **'Cheksiz tovar uchun o‘z nomingizni (Business ID) sotib oling.'**
+  String get bizPlanPremiumBody;
+
+  /// No description provided for @bizPlanLimitReached.
+  ///
+  /// In uz, this message translates to:
+  /// **'Limit to‘ldi: yangi tovar qo‘shish uchun tarifni oshiring. Qo‘shilganlari o‘chmaydi.'**
+  String get bizPlanLimitReached;
+
+  /// No description provided for @bizPlanStoreNotice.
+  ///
+  /// In uz, this message translates to:
+  /// **'Premium va o‘z nomi saytda rasmiylashtiriladi:'**
+  String get bizPlanStoreNotice;
+
+  /// No description provided for @bizPlanTrial.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sinov davri: hozircha hech qanday cheklov yo‘q'**
+  String get bizPlanTrial;
+
+  /// No description provided for @errPlanLimit.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tarif limiti to‘ldi. Ko‘proq tovar uchun Premium yoki o‘z nomingiz kerak (sayt orqali).'**
+  String get errPlanLimit;
+
+  /// No description provided for @errPlanLocked.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bepul tarifda post va istoriya yopiq. Premium (sayt orqali) bilan ochiladi.'**
+  String get errPlanLocked;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

@@ -2115,4 +2115,47 @@ class LEn extends L {
 
   @override
   String get bizAddService => 'Add service';
+
+  @override
+  String bizPlanUsage(int count, int limit) {
+    return 'Catalogue: $count / $limit';
+  }
+
+  @override
+  String bizPlanFreeTitle(int limit) {
+    return 'Free plan — $limit items';
+  }
+
+  @override
+  String bizPlanFreeBody(int premium) {
+    return 'With Premium (monthly) — up to $premium items, posts and stories. With your own name (Business ID) — unlimited.';
+  }
+
+  @override
+  String bizPlanPremiumTitle(int limit) {
+    return 'Premium — $limit items';
+  }
+
+  @override
+  String get bizPlanPremiumBody =>
+      'For an unlimited catalogue, buy your own name (Business ID).';
+
+  @override
+  String get bizPlanLimitReached =>
+      'Limit reached: upgrade to add more. Existing items stay.';
+
+  @override
+  String get bizPlanStoreNotice =>
+      'Premium and your own name are arranged on the website:';
+
+  @override
+  String get bizPlanTrial => 'Trial: no limits for now';
+
+  @override
+  String get errPlanLimit =>
+      'Plan limit reached. Premium or your own name (on the website) allows more.';
+
+  @override
+  String get errPlanLocked =>
+      'Posts and stories are closed on the free plan. Premium (on the website) opens them.';
 }

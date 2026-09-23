@@ -2115,4 +2115,47 @@ class LUz extends L {
 
   @override
   String get bizAddService => 'Xizmat qo‘shish';
+
+  @override
+  String bizPlanUsage(int count, int limit) {
+    return 'Katalog: $count / $limit';
+  }
+
+  @override
+  String bizPlanFreeTitle(int limit) {
+    return 'Bepul tarif — $limit ta tovar';
+  }
+
+  @override
+  String bizPlanFreeBody(int premium) {
+    return 'Premium (oylik) bilan $premium tagacha tovar, post va istoriya ochiladi. O‘z nomingizni (Business ID) sotib olsangiz — cheksiz.';
+  }
+
+  @override
+  String bizPlanPremiumTitle(int limit) {
+    return 'Premium — $limit ta tovar';
+  }
+
+  @override
+  String get bizPlanPremiumBody =>
+      'Cheksiz tovar uchun o‘z nomingizni (Business ID) sotib oling.';
+
+  @override
+  String get bizPlanLimitReached =>
+      'Limit to‘ldi: yangi tovar qo‘shish uchun tarifni oshiring. Qo‘shilganlari o‘chmaydi.';
+
+  @override
+  String get bizPlanStoreNotice =>
+      'Premium va o‘z nomi saytda rasmiylashtiriladi:';
+
+  @override
+  String get bizPlanTrial => 'Sinov davri: hozircha hech qanday cheklov yo‘q';
+
+  @override
+  String get errPlanLimit =>
+      'Tarif limiti to‘ldi. Ko‘proq tovar uchun Premium yoki o‘z nomingiz kerak (sayt orqali).';
+
+  @override
+  String get errPlanLocked =>
+      'Bepul tarifda post va istoriya yopiq. Premium (sayt orqali) bilan ochiladi.';
 }

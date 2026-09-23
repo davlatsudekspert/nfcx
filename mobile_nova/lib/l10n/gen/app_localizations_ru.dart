@@ -2111,4 +2111,46 @@ class LRu extends L {
 
   @override
   String get bizAddService => 'Добавить услугу';
+
+  @override
+  String bizPlanUsage(int count, int limit) {
+    return 'Каталог: $count / $limit';
+  }
+
+  @override
+  String bizPlanFreeTitle(int limit) {
+    return 'Бесплатный тариф — $limit товаров';
+  }
+
+  @override
+  String bizPlanFreeBody(int premium) {
+    return 'С Premium (ежемесячно) — до $premium товаров, посты и истории. Со своим именем (Business ID) — без ограничений.';
+  }
+
+  @override
+  String bizPlanPremiumTitle(int limit) {
+    return 'Premium — $limit товаров';
+  }
+
+  @override
+  String get bizPlanPremiumBody =>
+      'Для неограниченного каталога купите своё имя (Business ID).';
+
+  @override
+  String get bizPlanLimitReached =>
+      'Лимит исчерпан: чтобы добавить товар, повысьте тариф. Добавленные не удаляются.';
+
+  @override
+  String get bizPlanStoreNotice => 'Premium и своё имя оформляются на сайте:';
+
+  @override
+  String get bizPlanTrial => 'Пробный период: пока без ограничений';
+
+  @override
+  String get errPlanLimit =>
+      'Лимит тарифа исчерпан. Для большего нужен Premium или своё имя (на сайте).';
+
+  @override
+  String get errPlanLocked =>
+      'На бесплатном тарифе посты и истории закрыты. Откроются с Premium (на сайте).';
 }

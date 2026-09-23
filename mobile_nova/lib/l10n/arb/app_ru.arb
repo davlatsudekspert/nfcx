@@ -801,5 +801,15 @@
   "bizNfcSub": "Тип NFC-товара",
   "bizPriceRequired": "Укажите цену товара",
   "bizListingSchemaOld": "Сервер ещё не обновлён: тип, категория каталога и доп. фото будут сохраняться после обновления. Пока они определяются автоматически по названию и разделу.",
-  "bizAddService": "Добавить услугу"
+  "bizAddService": "Добавить услугу",
+  "bizPlanUsage": "Каталог: {count} / {limit}",
+  "bizPlanFreeTitle": "Бесплатный тариф — {limit} товаров",
+  "bizPlanFreeBody": "С Premium (ежемесячно) — до {premium} товаров, посты и истории. Со своим именем (Business ID) — без ограничений.",
+  "bizPlanPremiumTitle": "Premium — {limit} товаров",
+  "bizPlanPremiumBody": "Для неограниченного каталога купите своё имя (Business ID).",
+  "bizPlanLimitReached": "Лимит исчерпан: чтобы добавить товар, повысьте тариф. Добавленные не удаляются.",
+  "bizPlanStoreNotice": "Premium и своё имя оформляются на сайте:",
+  "bizPlanTrial": "Пробный период: пока без ограничений",
+  "errPlanLimit": "Лимит тарифа исчерпан. Для большего нужен Premium или своё имя (на сайте).",
+  "errPlanLocked": "На бесплатном тарифе посты и истории закрыты. Откроются с Premium (на сайте)."
 }

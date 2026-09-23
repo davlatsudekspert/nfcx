@@ -664,7 +664,7 @@ async function upstreamAdmin(request, env) {
   } catch { return null; }
 }
 
-function rowCompany(row, items = []) {
+function rowCompany(row, items = [], ownerPremium = false) {
   let gallery = [];
   try { gallery = JSON.parse(row.gallery_json || '[]'); } catch { gallery = []; }
   return {
@@ -688,7 +688,7 @@ function rowCompany(row, items = []) {
     // TARIF HOLATI — interfeys cheklovni OLDINDAN ko'rsatsin, odam
     // tugmani bosib "403" olmasin. Haqiqiy tekshiruv baribir
     // serverda (companyPlanStateD1).
-    plan: companyPlanStateD1(row),
+    plan: companyPlanStateD1(row, Date.now(), ownerPremium),
     customDomain: row.custom_domain || '',
     customDomainStatus: row.custom_domain_status || '',
     customDomainNote: row.custom_domain_note || '',
@@ -740,8 +740,9 @@ async function companyWithItems(env, id, viewerUserId = null) {
       : Promise.resolve(null),
   ]);
   if (!row) return null;
+  const ownerPremium = await companyOwnerPremiumD1(env, row.owner_user_id);
   return {
-    ...rowCompany(row, items.results || []),
+    ...rowCompany(row, items.results || [], ownerPremium),
     views: Number(views?.n || 0),
     followers: Number(followers?.n || 0),
     following: !!mine,
@@ -1035,21 +1036,50 @@ async function publicContentApi(request, env, url) {
 //   2) sinov davom etyapti — barcha imkoniyatlar ochiq.
 //   3) sinov tugagan:
 //        plan = 'free' (avtomatik ID)  -> katalogda 5 ta, istorya/post YO'Q;
+//        plan = 'free' + egasida faol PREMIUM (oylik, sayt orqali)
+//                                      -> katalogda 25 ta, istorya/post BOR;
 //        plan = 'paid' (sotib olingan nom) -> cheklovsiz.
+//
+// Premium tugasa biznes yana 5 taga qaytadi — mavjud yozuvlar
+// O'CHIRILMAYDI, faqat yangisini qo'shib bo'lmaydi (egasining qarori,
+// 2026-09: "premium 25 ta").
 const COMPANY_FREE_ITEM_LIMIT = 5;
+const COMPANY_PREMIUM_ITEM_LIMIT = 25;
 
-export function companyPlanStateD1(row, now = Date.now()) {
+export function companyPlanStateD1(row, now = Date.now(), ownerPremium = false) {
   const trial = row?.trial_expires_at || row?.trialExpiresAt || null;
   if (!trial) return { legacy: true, trialActive: false, free: false, itemLimit: null, canPost: true };
   const trialActive = Date.parse(trial) > now;
   if (trialActive) return { legacy: false, trialActive: true, free: false, itemLimit: null, canPost: true, trialEndsAt: trial };
   const free = String(row?.plan || '') === 'free';
+  if (free && ownerPremium) {
+    return {
+      legacy: false, trialActive: false, free: false, premium: true,
+      itemLimit: COMPANY_PREMIUM_ITEM_LIMIT, canPost: true, trialEndsAt: trial,
+    };
+  }
   return {
     legacy: false, trialActive: false, free,
     itemLimit: free ? COMPANY_FREE_ITEM_LIMIT : null,
     canPost: !free,
+    // Ilova "ko'proq kerakmi?" kartasida Premium qancha berishini
+    // oldindan aytadi — raqam faqat shu yerda yashaydi.
+    ...(free ? { premiumItemLimit: COMPANY_PREMIUM_ITEM_LIMIT } : {}),
     trialEndsAt: trial,
   };
+}
+
+// Kompaniya EGASINING Premiumi faolmi (getCurrentUser dagi qoida bilan
+// bir xil: eski muddatsiz `is_premium` yoki oylik `premium_expires_at`).
+// Xato bo'lsa — premium YO'Q deb hisoblanadi (cheklov yumshamaydi).
+async function companyOwnerPremiumD1(env, ownerUserId) {
+  try {
+    const r = await env.DB.prepare(
+      `SELECT (is_premium = 1 OR (premium_expires_at IS NOT NULL AND premium_expires_at > ?)) AS p
+         FROM users WHERE CAST(id AS TEXT) = CAST(? AS TEXT)`
+    ).bind(nowTs(), String(ownerUserId)).first();
+    return !!(r && Number(r.p) === 1);
+  } catch { return false; }
 }
 
 // BEPUL AVTOMATIK COMPANY ID — nom sotib olmagan odam uchun.
@@ -1080,7 +1110,8 @@ async function companyApi(request, env, url) {
     const auth = await upstreamUser(request, env);
     if (!auth) return json({ error: 'unauthorized' }, 401);
     const rows = await env.DB.prepare('SELECT * FROM companies WHERE owner_user_id = ? ORDER BY created_at DESC').bind(String(auth.user.id)).all();
-    return json({ companies: (rows.results || []).map((row) => rowCompany(row)) });
+    const premium = !!auth.user.isPremium;
+    return json({ companies: (rows.results || []).map((row) => rowCompany(row, [], premium)) });
   }
 
   // ── OCHIQ KOMPANIYALAR RO'YXATI (2026-09) ──────────────────────────
@@ -1361,7 +1392,7 @@ async function companyApi(request, env, url) {
     // BEPUL TARIFDA ISTORYA VA POST YOPIQ (egasining qarori). Sinov
     // davomida va sotib olingan nomda ochiq; eski kompaniyalarda
     // (trial_expires_at bo'sh) hech narsa o'zgarmaydi.
-    const planPost = companyPlanStateD1(owned.row);
+    const planPost = companyPlanStateD1(owned.row, Date.now(), !!owned.auth.user.isPremium);
     if (!planPost.canPost) return json({ error: 'plan_locked', feature: 'post' }, 403);
 
     const media = storyMediaD1(body);
@@ -1390,7 +1421,7 @@ async function companyApi(request, env, url) {
     const body = await request.json().catch(() => ({}));
     if (!rulesAcceptedD1(body)) return json({ error: 'rules_not_accepted' }, 422);
     // Post bilan bir xil qoida — bepul tarifda istorya ham yopiq.
-    const planStory = companyPlanStateD1(owned.row);
+    const planStory = companyPlanStateD1(owned.row, Date.now(), !!owned.auth.user.isPremium);
     if (!planStory.canPost) return json({ error: 'plan_locked', feature: 'story' }, 403);
     const media = storyMediaD1(body);
     if (!media.ok) return json({ error: 'bad_image' }, 422);
@@ -1572,9 +1603,15 @@ async function companyApi(request, env, url) {
     // va yashirilmaydi — limit faqat YANGI qo'shishga ta'sir qiladi
     // (egasining qarori). Sinov davomida va sotib olingan nomda limit
     // umuman yo'q.
-    const plan = companyPlanStateD1(owned.row);
+    const plan = companyPlanStateD1(owned.row, Date.now(), !!owned.auth.user.isPremium);
     if (plan.itemLimit != null && Number(count?.n || 0) >= plan.itemLimit) {
-      return json({ error: 'plan_limit_reached', limit: plan.itemLimit }, 409);
+      // `premiumLimit` — ilova "Premium bilan N ta" deb aniq aytadi;
+      // Premium allaqachon bo'lsa keyingi qadam faqat o'z nomi.
+      return json({
+        error: 'plan_limit_reached', limit: plan.itemLimit,
+        premium: !!plan.premium,
+        premiumLimit: plan.premium ? null : COMPANY_PREMIUM_ITEM_LIMIT,
+      }, 409);
     }
     const listing = catalogListingBody(body);
     const images = listing.images || [];

@@ -28,6 +28,8 @@ String describeError(L l, AppError e) => switch (e.code) {
       // `bannedUntil`). Umumiy "ruxsat yo'q" emas — sabab aytiladi.
       'BANNED' || 'account_suspended' => l.errBanned,
       'rules_not_accepted' => l.rulesNotAccepted,
+      'plan_limit_reached' => l.errPlanLimit,
+      'plan_locked' => l.errPlanLocked,
       _ => switch (e.kind) {
           AppErrorKind.offline => l.errOffline,
           AppErrorKind.timeout => l.errTimeout,

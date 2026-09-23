@@ -370,6 +370,7 @@ class Business {
     this.followers = 0,
     this.views = 0,
     this.catalogSchema = 1,
+    this.plan = const CompanyPlan(),
   });
 
   /// `nfcstore.uz/c/<companyId>` — vitrinaning ommaviy manzili.
@@ -398,6 +399,9 @@ class Business {
   /// uchun forma ularni ko'rsatmaydi (soxta tanlov bo'lmasin).
   final int catalogSchema;
 
+  /// Tarif holati — serverdagi `companyPlanStateD1` natijasi.
+  final CompanyPlan plan;
+
   bool get isPublished => status == 'published' || status == 'active';
 
   factory Business.fromJson(Map<String, dynamic> j) => Business(
@@ -418,6 +422,57 @@ class Business {
         followers: _i(j['followers']),
         views: _i(j['views']),
         catalogSchema: _i(j['catalogSchema'], 1),
+        plan: j['plan'] is Map
+            ? CompanyPlan.fromJson((j['plan'] as Map).cast<String, dynamic>())
+            : const CompanyPlan(),
+      );
+}
+
+/// Biznes tarifi (egasining qarori, 2026-09):
+///
+///   * sinov (30 kun) va eski bizneslar — cheklovsiz;
+///   * bepul ID — 5 ta tovar, post/istoriya yopiq;
+///   * bepul ID + Premium (oylik, sayt orqali) — 25 ta, post/istoriya bor;
+///   * sotib olingan nom — cheklovsiz.
+///
+/// Raqamlar SERVERDAN keladi — ilova ularni o'zi o'ylab topmaydi.
+/// Mavjud yozuvlar hech qachon o'chirilmaydi: limit faqat YANGI
+/// qo'shishni to'xtatadi.
+class CompanyPlan {
+  const CompanyPlan({
+    this.itemLimit,
+    this.premiumItemLimit,
+    this.free = false,
+    this.premium = false,
+    this.trialActive = false,
+    this.canPost = true,
+    this.trialEndsAt,
+  });
+
+  /// `null` — cheklov yo'q.
+  final int? itemLimit;
+
+  /// Bepul tarifda: Premium olsa nechta bo'ladi.
+  final int? premiumItemLimit;
+  final bool free;
+  final bool premium;
+  final bool trialActive;
+  final bool canPost;
+  final DateTime? trialEndsAt;
+
+  bool get limited => itemLimit != null;
+
+  bool atLimit(int count) => itemLimit != null && count >= itemLimit!;
+
+  factory CompanyPlan.fromJson(Map<String, dynamic> j) => CompanyPlan(
+        itemLimit: j['itemLimit'] == null ? null : _i(j['itemLimit']),
+        premiumItemLimit:
+            j['premiumItemLimit'] == null ? null : _i(j['premiumItemLimit']),
+        free: _b(j['free']),
+        premium: _b(j['premium']),
+        trialActive: _b(j['trialActive']),
+        canPost: _b(j['canPost'], true),
+        trialEndsAt: DateTime.tryParse(_s(j['trialEndsAt'])),
       );
 }
 

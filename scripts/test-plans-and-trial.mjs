@@ -108,15 +108,42 @@ check('8) post yopiq', [post.status, post.body?.error], [403, 'plan_locked']);
 const story = await j(`/api/companies/${cid}/stories`, { method: 'POST', cookie: cookie.user, json: { agreed: true, imageUrl: '/uploads/a.png' } });
 check('8) istorya yopiq', [story.status, story.body?.error], [403, 'plan_locked']);
 
+// ── 8b) OYLIK PREMIUM — 25 TA, POST/ISTORYA OCHIQ ───────────────────
+// Egasining qarori (2026-09): bepul ID + Premium = 25 ta tovar.
+check('8b) 6-rad javobida Premium limiti aytiladi', [sixth.body?.premium, sixth.body?.premiumLimit], [false, 25]);
+const minePlan = async () => (await j('/api/companies/mine', { cookie: cookie.user })).body?.companies?.find((c) => c.companyId === cid)?.plan;
+check('8b) bepul: premiumItemLimit ko‘rsatiladi', (await minePlan())?.premiumItemLimit, 25);
+await env.DB.prepare(`UPDATE users SET premium_expires_at = ? WHERE id = 1`).bind(inDays(20)).run();
+const pp = await minePlan();
+check('8b) Premium: 25 ta, post ochiq', [pp?.premium, pp?.itemLimit, pp?.canPost], [true, 25, true]);
+check('8b) kompaniya sahifasida ham', (await j(`/api/companies/${cid}`)).body?.company?.plan?.itemLimit, 25);
+for (let i = 6; i <= 25; i += 1) {
+  const r = await addItem(i);
+  if (r.status !== 201) check(`8b) ${i}-yozuv qo‘shildi`, r.status, 201);
+}
+const t26 = await addItem(26);
+check('8b) 26-yozuv rad etildi', [t26.status, t26.body?.limit, t26.body?.premium, t26.body?.premiumLimit], [409, 25, true, null]);
+check('8b) Premium: post ochiq', (await j(`/api/companies/${cid}/posts`, { method: 'POST', cookie: cookie.user, json: { agreed: true, imageUrl: '/uploads/p.png' } })).status, 201);
+// Premium tugadi — yana 5 ta; 25 ta yozuv O'CHMAYDI.
+await env.DB.prepare(`UPDATE users SET premium_expires_at = ? WHERE id = 1`).bind(inDays(-1)).run();
+const back = await addItem(26);
+check('8b) Premium tugagach yana 5 ta limit', [back.status, back.body?.limit], [409, 5]);
+check('8b) 25 ta yozuv saqlandi', ((await j(`/api/companies/${cid}`)).body?.company?.catalog || []).length, 25);
+check('8b) Premium tugagach post yopiq', (await j(`/api/companies/${cid}/posts`, { method: 'POST', cookie: cookie.user, json: { agreed: true, imageUrl: '/uploads/q.png' } })).body?.error, 'plan_locked');
+// Eski (muddatsiz) Premium ham hisoblanadi.
+await env.DB.prepare(`UPDATE users SET premium_expires_at = NULL, is_premium = 1 WHERE id = 1`).run();
+check('8b) eski muddatsiz Premium ham 25 ta', (await minePlan())?.itemLimit, 25);
+await env.DB.prepare(`UPDATE users SET is_premium = 0 WHERE id = 1`).run();
+
 // ── 9) NOM SOTIB OLINSA — CHEKLOV YO'Q ──────────────────────────────
 await env.DB.prepare(`UPDATE companies SET plan = 'paid' WHERE company_id = ?`).bind(cid).run();
-check('9) 6-yozuv endi qo‘shiladi', (await addItem(6)).status, 201);
+check('9) 27-yozuv endi qo‘shiladi', (await addItem(27)).status, 201);
 check('9) post ham ochildi', (await j(`/api/companies/${cid}/posts`, { method: 'POST', cookie: cookie.user, json: { agreed: true, imageUrl: '/uploads/a.png' } })).status, 201);
 
 // ── 10) ESKI KOMPANIYAGA CHEKLOV TEGMAYDI ───────────────────────────
 // `trial_expires_at` bo'sh — bu o'zgarishdan oldin ochilgan kompaniya.
 await env.DB.prepare(`UPDATE companies SET plan = 'free', trial_expires_at = NULL WHERE company_id = ?`).bind(cid).run();
-check('10) eskida limit yo‘q', (await addItem(7)).status, 201);
+check('10) eskida limit yo‘q', (await addItem(28)).status, 201);
 check('10) eskida post ochiq', (await j(`/api/companies/${cid}/posts`, { method: 'POST', cookie: cookie.user, json: { agreed: true, imageUrl: '/uploads/b.png' } })).status, 201);
 
 done();

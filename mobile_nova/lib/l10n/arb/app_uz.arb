@@ -818,5 +818,19 @@
   "bizNfcSub": "NFC mahsulot turi",
   "bizPriceRequired": "Mahsulot narxini kiriting",
   "bizListingSchemaOld": "Server hali eski: tur, katalog kategoriyasi va qo‘shimcha rasmlar yangilanishdan keyin saqlanadi. Hozircha ular nom va bo‘limdan avtomatik aniqlanadi.",
-  "bizAddService": "Xizmat qo‘shish"
+  "bizAddService": "Xizmat qo‘shish",
+  "bizPlanUsage": "Katalog: {count} / {limit}",
+  "@bizPlanUsage": {"placeholders": {"count": {"type": "int"}, "limit": {"type": "int"}}},
+  "bizPlanFreeTitle": "Bepul tarif — {limit} ta tovar",
+  "@bizPlanFreeTitle": {"placeholders": {"limit": {"type": "int"}}},
+  "bizPlanFreeBody": "Premium (oylik) bilan {premium} tagacha tovar, post va istoriya ochiladi. O‘z nomingizni (Business ID) sotib olsangiz — cheksiz.",
+  "@bizPlanFreeBody": {"placeholders": {"premium": {"type": "int"}}},
+  "bizPlanPremiumTitle": "Premium — {limit} ta tovar",
+  "@bizPlanPremiumTitle": {"placeholders": {"limit": {"type": "int"}}},
+  "bizPlanPremiumBody": "Cheksiz tovar uchun o‘z nomingizni (Business ID) sotib oling.",
+  "bizPlanLimitReached": "Limit to‘ldi: yangi tovar qo‘shish uchun tarifni oshiring. Qo‘shilganlari o‘chmaydi.",
+  "bizPlanStoreNotice": "Premium va o‘z nomi saytda rasmiylashtiriladi:",
+  "bizPlanTrial": "Sinov davri: hozircha hech qanday cheklov yo‘q",
+  "errPlanLimit": "Tarif limiti to‘ldi. Ko‘proq tovar uchun Premium yoki o‘z nomingiz kerak (sayt orqali).",
+  "errPlanLocked": "Bepul tarifda post va istoriya yopiq. Premium (sayt orqali) bilan ochiladi."
 }

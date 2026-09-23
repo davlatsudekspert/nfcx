@@ -511,16 +511,43 @@ class BusinessCatalogScreen extends ConsumerWidget {
     }
 
     final catalog = ref.watch(businessCatalogProvider(b.companyId));
+    final count = catalog.valueOrNull?.length ?? 0;
+    final atLimit = b.plan.atLimit(count);
+
+    // LIMITGA YETGANDA forma ochilmaydi: server baribir 409 qaytarardi
+    // va odam hamma narsani yozib bo'lgach "xato" ko'rardi. Buning
+    // o'rniga OLDINDAN nima qilish kerakligi aytiladi.
+    void add() {
+      if (atLimit) {
+        showModalBottomSheet<void>(
+          context: context,
+          useRootNavigator: true,
+          showDragHandle: true,
+          isScrollControlled: true,
+          backgroundColor: context.tokens.surfaceSolid,
+          builder: (_) => SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(
+                  Gap.screenX, 0, Gap.screenX, Gap.xl),
+              child: BusinessPlanCard(plan: b.plan, count: count),
+            ),
+          ),
+        );
+        return;
+      }
+      context.push(Routes.businessProductNew);
+    }
 
     return NovaScaffold(
       title: l.bizCatalog,
       showBack: true,
       actions: [
         NovaIconButton(
+          key: const ValueKey('catalog-add'),
           icon: Icons.add_rounded,
           tooltip: l.bizAddProduct,
-          filled: true,
-          onPressed: () => context.push(Routes.businessProductNew),
+          filled: !atLimit,
+          onPressed: add,
         ),
         const SizedBox(width: Gap.sm),
       ],
@@ -528,41 +555,143 @@ class BusinessCatalogScreen extends ConsumerWidget {
         loading: () => const SkeletonList(count: 4),
         error: (e, __) => StatePanel.fromError(context, asAppError(e),
             onRetry: () => ref.invalidate(businessCatalogProvider(b.companyId))),
-        data: (items) => items.isEmpty
+        data: (items) => items.isEmpty && !b.plan.limited
             ? StatePanel(
                 icon: Icons.inventory_2_outlined,
                 title: l.bizCatalogEmpty,
                 message: l.stateEmptyHint,
                 actionLabel: l.bizAddProduct,
-                onAction: () => context.push(Routes.businessProductNew),
+                onAction: add,
               )
             : ListView.separated(
                 padding: const EdgeInsets.fromLTRB(
                     Gap.screenX, Gap.md, Gap.screenX, 120),
-                itemCount: items.length,
+                itemCount: items.length + 1,
                 separatorBuilder: (_, __) => const SizedBox(height: Gap.md),
-                itemBuilder: (context, i) => CatalogTile(
-                  item: items[i],
-                  onTap: () => context.push(Routes.businessProduct(items[i].key)),
-                  trailing: NovaIconButton(
-                    icon: Icons.delete_outline_rounded,
-                    tooltip: l.actionDelete,
-                    size: 36,
-                    onPressed: () async {
-                      final res = await ref
-                          .read(businessRepositoryProvider)
-                          .deleteItem(b.companyId, items[i].key);
-                      if (!context.mounted) return;
-                      res.when(
-                        ok: (_) => ref
-                            .invalidate(businessCatalogProvider(b.companyId)),
-                        err: (e) => ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(describeError(l, e)))),
-                      );
-                    },
-                  ),
+                itemBuilder: (context, i) {
+                  if (i == 0) {
+                    return BusinessPlanCard(plan: b.plan, count: items.length);
+                  }
+                  final item = items[i - 1];
+                  return CatalogTile(
+                    item: item,
+                    onTap: () => context.push(Routes.businessProduct(item.key)),
+                    trailing: NovaIconButton(
+                      icon: Icons.delete_outline_rounded,
+                      tooltip: l.actionDelete,
+                      size: 36,
+                      onPressed: () async {
+                        final res = await ref
+                            .read(businessRepositoryProvider)
+                            .deleteItem(b.companyId, item.key);
+                        if (!context.mounted) return;
+                        res.when(
+                          ok: (_) => ref
+                              .invalidate(businessCatalogProvider(b.companyId)),
+                          err: (e) => ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(describeError(l, e)))),
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+      ),
+    );
+  }
+}
+
+/// Tarif kartasi: nechta tovar qo'yilgan, limit, keyingi qadam.
+///
+/// PLAY QOIDASI: Premium va nom RAQAMLI xizmat — ilovada xarid tugmasi
+/// ham, saytga bosiladigan havola ham YO'Q ([StoreNotice] — faqat matn).
+class BusinessPlanCard extends StatelessWidget {
+  const BusinessPlanCard({super.key, required this.plan, required this.count});
+
+  final CompanyPlan plan;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context);
+    final t = context.tokens;
+
+    if (plan.trialActive) {
+      return Row(
+        key: const ValueKey('plan-trial'),
+        children: [
+          Icon(Icons.auto_awesome_rounded, size: 16, color: t.brandInk),
+          const SizedBox(width: Gap.sm),
+          Expanded(
+            child: Text(l.bizPlanTrial,
+                style: Theme.of(context).textTheme.bodySmall),
+          ),
+        ],
+      );
+    }
+    if (!plan.limited) return const SizedBox.shrink();
+
+    final limit = plan.itemLimit!;
+    final full = plan.atLimit(count);
+    return FloatingSurface(
+      key: const ValueKey('plan-card'),
+      solid: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  plan.premium
+                      ? l.bizPlanPremiumTitle(limit)
+                      : l.bizPlanFreeTitle(limit),
+                  style: Theme.of(context).textTheme.titleSmall,
                 ),
               ),
+              Text(
+                l.bizPlanUsage(count, limit),
+                key: const ValueKey('plan-usage'),
+                style: AppType.monoStyle(
+                    color: full ? t.error : t.text2, size: 12),
+              ),
+            ],
+          ),
+          const SizedBox(height: Gap.sm),
+          ClipRRect(
+            borderRadius: R.pill,
+            child: LinearProgressIndicator(
+              value: (count / limit).clamp(0.0, 1.0),
+              minHeight: 6,
+              backgroundColor: t.surface2,
+              color: full ? t.error : t.brandInk,
+            ),
+          ),
+          if (full) ...[
+            const SizedBox(height: Gap.md),
+            Text(
+              l.bizPlanLimitReached,
+              key: const ValueKey('plan-limit-reached'),
+              style: TextStyle(
+                fontFamily: AppType.sans,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: t.error,
+              ),
+            ),
+          ],
+          const SizedBox(height: Gap.md),
+          // Premium qancha berishini SERVER aytadi. Eski server buni
+          // bilmaydi — o'shanda Premium haqida va'da berilmaydi.
+          Text(
+            plan.free && plan.premiumItemLimit != null
+                ? l.bizPlanFreeBody(plan.premiumItemLimit!)
+                : l.bizPlanPremiumBody,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: Gap.md),
+          StoreNotice(text: l.bizPlanStoreNotice),
+        ],
       ),
     );
   }

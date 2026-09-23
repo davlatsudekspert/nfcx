@@ -801,5 +801,15 @@
   "bizNfcSub": "NFC product type",
   "bizPriceRequired": "Enter the product price",
   "bizListingSchemaOld": "The server is not updated yet: type, catalogue category and extra photos will be saved after the update. For now they are detected from the name and section.",
-  "bizAddService": "Add service"
+  "bizAddService": "Add service",
+  "bizPlanUsage": "Catalogue: {count} / {limit}",
+  "bizPlanFreeTitle": "Free plan — {limit} items",
+  "bizPlanFreeBody": "With Premium (monthly) — up to {premium} items, posts and stories. With your own name (Business ID) — unlimited.",
+  "bizPlanPremiumTitle": "Premium — {limit} items",
+  "bizPlanPremiumBody": "For an unlimited catalogue, buy your own name (Business ID).",
+  "bizPlanLimitReached": "Limit reached: upgrade to add more. Existing items stay.",
+  "bizPlanStoreNotice": "Premium and your own name are arranged on the website:",
+  "bizPlanTrial": "Trial: no limits for now",
+  "errPlanLimit": "Plan limit reached. Premium or your own name (on the website) allows more.",
+  "errPlanLocked": "Posts and stories are closed on the free plan. Premium (on the website) opens them."
 }
