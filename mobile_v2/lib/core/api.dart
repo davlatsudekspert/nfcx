@@ -64,6 +64,14 @@ class ApiClient {
         () => _http.put(_uri(path), headers: _headers(json: true), body: jsonEncode(body ?? const {})),
       );
 
+  Future<dynamic> patch(String path, [Object? body]) => _send(
+        () => _http.patch(
+          _uri(path),
+          headers: _headers(json: true),
+          body: jsonEncode(body ?? const {}),
+        ),
+      );
+
   Future<AuthResponse> postAuth(String path, Object? body) async {
     final res = await _raw(
       () => _http.post(_uri(path), headers: _headers(json: true), body: jsonEncode(body ?? const {})),
