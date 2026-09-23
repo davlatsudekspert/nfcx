@@ -67,6 +67,15 @@ Sessiya uzilsa — shu fayldagi birinchi `[ ]` bandidan davom etiladi.
 - [x] Video boshqa ekranda to'xtaydi: lenta (P-H1) va Reels (P-H2) —
       TickerMode; tab almashganda stopAll (avvaldan)
 
+- [x] E2E qurilma bosqichi #47-#51 da emulyator (qemu) Home->Tanlov / Profil
+      o'tishida o'ldi. Sabab ILOVA KODI EMAS: alohida probe'larda (har
+      variant yangi emulyatorda) #46 da o'tgan b34bbbd kodi ham qulagan;
+      xotira yetarli (OOM yo'q); logda gfxstream `glWaitSync error 0x501`
+      — emulyatorning `swiftshader_indirect` host GLES tarjimoni. Tuzatish
+      (880d181): nova-e2e emulyatori `-gpu swangle_indirect` — probe'da
+      release APK + 360/390/430 layout 27/27 PASS (Impeller). Story
+      tuzatishi va ilova kodi o'zgarmadi.
+
 - [x] Ivory/Noir dizayn auditi (theme_matrix_shot: 8 ekran x 2 mavzu x
       360/390/430, toshish yo'q): Tanlov yorlig'i 8.5->10.5, NFC markazi
       matni kesilmaydi. Pastki navigatsiya: belgi 24-25, yorliq 10.5-11,
@@ -81,7 +90,8 @@ Sessiya uzilsa — shu fayldagi birinchi `[ ]` bandidan davom etiladi.
 
 - [x] versionName 1.1.0 (pubspec) + versionCode = CI run_number (#207)
 - [~] permissions / App Links / Data Safety mosligi
-      * permissions: faqat INTERNET, NFC (required=false); rasm — Photo Picker
+      * permissions (merged manifest, #207): INTERNET, ACCESS_NETWORK_STATE,
+        WAKE_LOCK, NFC (required=false); rasm — Photo Picker
         (READ_MEDIA_* yo'q), kamera — intent (CAMERA yo'q)
       * App Links: https://nfcstore.uz /u /c /post /story /nfc, autoVerify
       * [x] BLOCKER tuzatildi (89613bc): sessiya tokeni Auto Backup va
