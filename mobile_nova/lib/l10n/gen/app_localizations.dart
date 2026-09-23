@@ -2325,6 +2325,24 @@ abstract class L {
   /// **'PIN noto‘g‘ri'**
   String get lockWrong;
 
+  /// No description provided for @lockForgot.
+  ///
+  /// In uz, this message translates to:
+  /// **'PIN kodni unutdingizmi?'**
+  String get lockForgot;
+
+  /// No description provided for @lockForgotBody.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qulfni tiklash uchun hisobdan chiqasiz va parolingiz bilan qayta kirasiz.'**
+  String get lockForgotBody;
+
+  /// No description provided for @lockForgotConfirm.
+  ///
+  /// In uz, this message translates to:
+  /// **'Chiqish va qulfni tiklash'**
+  String get lockForgotConfirm;
+
   /// No description provided for @lockSetPin.
   ///
   /// In uz, this message translates to:

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../auth/session.dart';
 import '../../app/providers.dart';
 import '../../core/storage/secure_store.dart';
 import '../../design/theme/typography.dart';
@@ -76,12 +77,14 @@ class AppLockState {
 
 class AppLock extends StateNotifier<AppLockState> with WidgetsBindingObserver {
   AppLock(this._prefs, this._store)
-      : super(AppLockState(
+    : super(
+        AppLockState(
           enabled: _prefs.appLock,
           biometric: _prefs.appLockBiometric,
           // Yoqilgan bo'lsa ilova QULFLANGAN holda ochiladi.
           locked: _prefs.appLock,
-        )) {
+        ),
+      ) {
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -173,10 +176,7 @@ class AppLockGate extends ConsumerWidget {
     return Stack(
       children: [
         child,
-        if (locked)
-          const Positioned.fill(
-            child: _LockScreen(),
-          ),
+        if (locked) const Positioned.fill(child: _LockScreen()),
       ],
     );
   }
@@ -192,6 +192,23 @@ class _LockScreen extends ConsumerStatefulWidget {
 class _LockScreenState extends ConsumerState<_LockScreen> {
   String _pin = '';
   bool _wrong = false;
+
+  /// "PIN kodni unutdingizmi?" tasdig'i ochiqmi va bajarilyaptimi.
+  bool _resetAsk = false;
+  bool _resetBusy = false;
+
+  /// PIN UNUTILDI — hisobdan CHIQISH va qulfni tiklash.
+  ///
+  /// Ilgari qulf ekranida bundan boshqa yo'l yo'q edi: PIN unutilsa
+  /// (yoki telefon almashganda PIN yo'qolsa) ilova butunlay yopiq
+  /// qolardi. Avval CHIQILADI — qulf olib tashlanishi hech qachon
+  /// tirik sessiyani ochib qo'ymasligi kerak.
+  Future<void> _forgot() async {
+    setState(() => _resetBusy = true);
+    await ref.read(sessionProvider.notifier).logout();
+    await ref.read(appLockProvider.notifier).disable();
+    if (mounted) setState(() => _resetBusy = false);
+  }
 
   Future<void> _push(String d) async {
     if (_pin.length >= kPinLength) return;
@@ -219,45 +236,97 @@ class _LockScreenState extends ConsumerState<_LockScreen> {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final l = L.of(context);
-    return ColoredBox(
+    // `Material` — qulf `MaterialApp.builder` da, har qanday `Material`
+    // dan TASHQARIDA chiziladi: usiz raqamlar Flutter'ning sariq qo'sh
+    // tagchiziqli "debug" matn uslubini olardi.
+    return Material(
       color: t.bg1,
       child: SafeArea(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const BrandLogo(size: 64, style: BrandLogoStyle.badge),
-            const SizedBox(height: Gap.xl),
-            Text(l.lockTitle, style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: Gap.sm),
-            Text(
-              _wrong ? l.lockWrong : l.lockHint,
-              style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                    color: _wrong ? t.error : t.text3,
+        child: LayoutBuilder(
+          builder: (context, box) => SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: box.maxHeight),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const BrandLogo(size: 64, style: BrandLogoStyle.badge),
+                  const SizedBox(height: Gap.xl),
+                  Text(
+                    l.lockTitle,
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
-            ),
-            const SizedBox(height: Gap.section),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (var i = 0; i < kPinLength; i++)
-                  Container(
-                    width: 13,
-                    height: 13,
-                    margin: const EdgeInsets.symmetric(horizontal: Gap.sm),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: i < _pin.length ? t.accent2 : Colors.transparent,
-                      border: Border.all(
-                        color: i < _pin.length ? t.accent2 : t.border2,
-                        width: 1.4,
-                      ),
+                  const SizedBox(height: Gap.sm),
+                  Text(
+                    _wrong ? l.lockWrong : l.lockHint,
+                    style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                      color: _wrong ? t.error : t.text3,
                     ),
                   ),
-              ],
+                  const SizedBox(height: Gap.section),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      for (var i = 0; i < kPinLength; i++)
+                        Container(
+                          width: 13,
+                          height: 13,
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: Gap.sm,
+                          ),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: i < _pin.length
+                                ? t.accent2
+                                : Colors.transparent,
+                            border: Border.all(
+                              color: i < _pin.length ? t.accent2 : t.border2,
+                              width: 1.4,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: Gap.section),
+                  _Keypad(onDigit: _push, onBack: _back),
+                  const SizedBox(height: Gap.md),
+                  if (!_resetAsk)
+                    NovaButton(
+                      key: const ValueKey('lock-forgot'),
+                      label: l.lockForgot,
+                      tone: ButtonTone.quiet,
+                      expand: false,
+                      onPressed: () => setState(() => _resetAsk = true),
+                    )
+                  else ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: Gap.xl),
+                      child: Text(
+                        l.lockForgotBody,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                    const SizedBox(height: Gap.sm),
+                    NovaButton(
+                      key: const ValueKey('lock-forgot-confirm'),
+                      label: l.lockForgotConfirm,
+                      tone: ButtonTone.danger,
+                      expand: false,
+                      busy: _resetBusy,
+                      onPressed: _resetBusy ? null : _forgot,
+                    ),
+                    NovaButton(
+                      label: l.actionCancel,
+                      tone: ButtonTone.quiet,
+                      expand: false,
+                      onPressed: () => setState(() => _resetAsk = false),
+                    ),
+                  ],
+                  const SizedBox(height: Gap.md),
+                ],
+              ),
             ),
-            const SizedBox(height: Gap.section),
-            _Keypad(onDigit: _push, onBack: _back),
-          ],
+          ),
         ),
       ),
     );
@@ -275,25 +344,25 @@ class _Keypad extends StatelessWidget {
     final t = context.tokens;
 
     Widget key(Widget child, VoidCallback? onTap) => PressableScale(
-          onTap: onTap,
-          child: Container(
-            width: 72,
-            height: 72,
-            margin: const EdgeInsets.all(Gap.sm),
-            decoration: BoxDecoration(
-              color: t.surface2,
-              shape: BoxShape.circle,
-              border: Border.all(color: t.border2),
-            ),
-            alignment: Alignment.center,
-            child: child,
-          ),
-        );
+      onTap: onTap,
+      child: Container(
+        width: 72,
+        height: 72,
+        margin: const EdgeInsets.all(Gap.sm),
+        decoration: BoxDecoration(
+          color: t.surface2,
+          shape: BoxShape.circle,
+          border: Border.all(color: t.border2),
+        ),
+        alignment: Alignment.center,
+        child: child,
+      ),
+    );
 
     Widget digit(String d) => key(
-          Text(d, style: AppType.displayStyle(color: t.text1, size: 25)),
-          () => onDigit(d),
-        );
+      Text(d, style: AppType.displayStyle(color: t.text1, size: 25)),
+      () => onDigit(d),
+    );
 
     return Column(
       children: [
@@ -342,8 +411,9 @@ Future<void> showPinSetup(BuildContext context, WidgetRef ref) async {
   if (pin == null || !context.mounted) return;
   await ref.read(appLockProvider.notifier).enable(pin);
   if (!context.mounted) return;
-  ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(l.lockEnabled)));
+  ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text(l.lockEnabled)));
 }
 
 class _PinSetupSheet extends StatefulWidget {
@@ -410,11 +480,12 @@ class _PinSetupSheetState extends State<_PinSetupSheet> {
             ),
             if (_mismatch) ...[
               const SizedBox(height: Gap.sm),
-              Text(l.lockMismatch,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall!
-                      .copyWith(color: t.error)),
+              Text(
+                l.lockMismatch,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall!.copyWith(color: t.error),
+              ),
             ],
             const SizedBox(height: Gap.xl),
             Row(

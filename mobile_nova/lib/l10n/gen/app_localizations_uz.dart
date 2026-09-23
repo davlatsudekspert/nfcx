@@ -1158,6 +1158,16 @@ class LUz extends L {
   String get lockWrong => 'PIN noto‘g‘ri';
 
   @override
+  String get lockForgot => 'PIN kodni unutdingizmi?';
+
+  @override
+  String get lockForgotBody =>
+      'Qulfni tiklash uchun hisobdan chiqasiz va parolingiz bilan qayta kirasiz.';
+
+  @override
+  String get lockForgotConfirm => 'Chiqish va qulfni tiklash';
+
+  @override
   String get lockSetPin => 'Yangi PIN kod';
 
   @override

@@ -510,7 +510,7 @@ class NfcIdOrderScreen extends ConsumerWidget {
                 NovaButton(
                   label: l.nfcMyIds,
                   icon: Icons.style_rounded,
-                  onPressed: () => context.go(Routes.nfcIds),
+                  onPressed: () => context.push(Routes.nfcIds),
                 ),
               ],
             ],

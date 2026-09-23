@@ -415,18 +415,34 @@ class BlockedScreen extends ConsumerWidget {
                         const SizedBox(width: Gap.md),
                         Expanded(
                           child: Text(b.id,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style:
                                   Theme.of(context).textTheme.titleSmall),
                         ),
-                        NovaButton(
-                          label: l.unblockUser,
-                          tone: ButtonTone.quiet,
-                          onPressed: () async {
-                            await ref
-                                .read(moderationRepositoryProvider)
-                                .unblock(b.kind, b.id);
-                            ref.invalidate(blocksProvider);
-                          },
+                        // `expand: false` — Row ichida cheksiz kenglik
+                        // "BoxConstraints forces an infinite width" berardi
+                        // va blokdan chiqarish tugmasi ko'rinmasdi.
+                        // `Flexible` — tor ekranda (320–360 dp) yorliq
+                        // qisqaradi, qator toshib ketmaydi.
+                        Flexible(
+                          child: NovaButton(
+                            label: l.unblockUser,
+                            tone: ButtonTone.quiet,
+                            expand: false,
+                            onPressed: () async {
+                              final res = await ref
+                                  .read(moderationRepositoryProvider)
+                                  .unblock(b.kind, b.id);
+                              if (!context.mounted) return;
+                              res.when(
+                                ok: (_) => ref.invalidate(blocksProvider),
+                                err: (e) => ScaffoldMessenger.of(context)
+                                    .showSnackBar(SnackBar(
+                                        content: Text(describeError(l, e)))),
+                              );
+                            },
+                          ),
                         ),
                       ],
                     ),

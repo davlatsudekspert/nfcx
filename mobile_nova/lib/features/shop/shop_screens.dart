@@ -436,7 +436,7 @@ class PaymentResultScreen extends StatelessWidget {
         message: message.isEmpty ? null : message,
         tone: tone,
         actionLabel: l.orders,
-        onAction: () => context.go(Routes.orders),
+        onAction: () => context.pushReplacement(Routes.orders),
       ),
     );
   }
@@ -465,7 +465,7 @@ class OrdersScreen extends ConsumerWidget {
                 title: l.ordersEmpty,
                 message: l.stateEmptyHint,
                 actionLabel: l.shopTitle,
-                onAction: () => context.go(Routes.shop),
+                onAction: () => context.push(Routes.shop),
               )
             : ListView.separated(
                 padding: const EdgeInsets.fromLTRB(

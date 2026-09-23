@@ -180,7 +180,9 @@ class _BusinessOnboardScreenState extends ConsumerState<BusinessOnboardScreen> {
       ok: (b) {
         ref.invalidate(myBusinessesProvider);
         rememberBusiness(ref, b.companyId);
-        context.go(Routes.businessDashboard);
+        // `go` EMAS: u tablar qobig'ini o'chirib, orqaga yo'lni yo'qotardi
+        // (biznes yaratgan odam boshqaruv panelida qamalib qolardi).
+        context.pushReplacement(Routes.businessDashboard);
       },
       err: (e) => setState(() => _error = describeError(l, e)),
     );

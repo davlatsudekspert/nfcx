@@ -1155,6 +1155,16 @@ class LEn extends L {
   String get lockWrong => 'Wrong PIN';
 
   @override
+  String get lockForgot => 'Forgot PIN?';
+
+  @override
+  String get lockForgotBody =>
+      'To reset the app lock you will be signed out and sign in again with your password.';
+
+  @override
+  String get lockForgotConfirm => 'Sign out and reset';
+
+  @override
   String get lockSetPin => 'New PIN';
 
   @override

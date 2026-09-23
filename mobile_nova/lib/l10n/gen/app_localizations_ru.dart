@@ -1151,6 +1151,16 @@ class LRu extends L {
   String get lockWrong => 'Неверный PIN';
 
   @override
+  String get lockForgot => 'Забыли PIN-код?';
+
+  @override
+  String get lockForgotBody =>
+      'Чтобы сбросить блокировку, вы выйдете из аккаунта и снова войдёте с паролем.';
+
+  @override
+  String get lockForgotConfirm => 'Выйти и сбросить блокировку';
+
+  @override
   String get lockSetPin => 'Новый PIN-код';
 
   @override
