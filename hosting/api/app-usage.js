@@ -71,7 +71,87 @@ const SORTS = {
   opens: 'a.opens DESC, a.last_seen DESC',
 };
 
+// ── GOOGLE PLAY TEKSHIRUVCHISI HISOBI (2026-09-23) ──────────────────
+//
+// Play Console "Доступ к приложению" bo'limi ilovaga kirish uchun login
+// va parol so'raydi. Egasining SHAXSIY hisobini berish xavfli (haqiqiy
+// profillar, Premium, Google xodimlari parolni ko'radi), oddiy ro'yxatdan
+// o'tish esa email KODINI so'raydi — tekshiruvchi uning pochtasini ocha
+// olmaydi.
+//
+// Shu sababli admin bir tugma bilan ALOHIDA, oldindan tasdiqlangan hisob
+// yaratadi. Parol SERVERDA tasodifiy yaratiladi va FAQAT shu javobda bir
+// marta ko'rsatiladi: kodda, logda va faoliyat jurnalida yo'q. Qayta
+// bosilsa — yangi parol, eski sessiyalar yopiladi (eski parol ishlamaydi).
+export const REVIEW_EMAIL = 'review@nfcstore.uz';
+const REVIEW_NAME = 'Google Review';
+const REVIEW_PREMIUM_DAYS = 120;
+
+function randomPassword() {
+  // Chalkash belgilarsiz (0/O, 1/l/I) — Play Console'ga qo'lda yoziladi.
+  const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  const bytes = new Uint8Array(14);
+  crypto.getRandomValues(bytes);
+  const s = [...bytes].map((b) => abc[b % abc.length]).join('');
+  return `${s.slice(0, 5)}-${s.slice(5, 10)}-${s.slice(10)}`;
+}
+
+async function reviewAccount(request, env, H) {
+  const admin = await H.requireAdmin(request, env);
+  if (!admin) return H.json({ error: 'unauthorized' }, 401);
+  if (admin.role && admin.role !== 'super_admin') return H.json({ error: 'forbidden' }, 403);
+
+  const password = randomPassword();
+  const hash = await H.hashPassword(password);
+  const now = new Date();
+  const premiumUntil = new Date(now.getTime() + REVIEW_PREMIUM_DAYS * 86_400_000).toISOString();
+
+  let user = await env.DB.prepare(`SELECT id FROM users WHERE email = ?`).bind(REVIEW_EMAIL).first();
+  let created = false;
+  if (!user) {
+    user = await env.DB.prepare(
+      `INSERT INTO users (email, password_hash, phone, bot_ack, tos_accepted, created_at)
+       VALUES (?, ?, NULL, 0, 1, ?) ON CONFLICT (email) DO NOTHING RETURNING id`
+    ).bind(REVIEW_EMAIL, hash, H.nowTs()).first();
+    if (!user) user = await env.DB.prepare(`SELECT id FROM users WHERE email = ?`).bind(REVIEW_EMAIL).first();
+    created = true;
+  }
+  if (!user) return H.json({ error: 'create_failed' }, 500);
+  const id = Number(user.id);
+
+  // Parol yangilanadi, hisob faollashtiriladi, eski sessiyalar yopiladi.
+  await env.DB.batch([
+    env.DB.prepare(`UPDATE users SET password_hash = ?, deleted_at = NULL WHERE id = ?`).bind(hash, id),
+    env.DB.prepare(`DELETE FROM sessions WHERE user_id = ?`).bind(id),
+  ]);
+  // Premium — tekshiruvchi HAMMA imkoniyatni ko'rsin (izoh ham). Ustun
+  // bo'lmasa (juda eski baza) — jim o'tadi, kirish baribir ishlaydi.
+  await env.DB.prepare(`UPDATE users SET premium_expires_at = ? WHERE id = ?`)
+    .bind(premiumUntil, id).run().catch(() => {});
+
+  // Bitta shaxsiy NFC ID — ilova bo'sh ochilmasin.
+  const card = await env.DB.prepare(`SELECT code FROM cards WHERE user_id = ? LIMIT 1`).bind(id).first();
+  let code = card?.code || '';
+  if (!code) {
+    const { createFreeAutoId } = await import('./auth.js');
+    await createFreeAutoId(env, id, REVIEW_NAME);
+    code = (await env.DB.prepare(`SELECT code FROM cards WHERE user_id = ? LIMIT 1`).bind(id).first())?.code || '';
+  }
+
+  // Jurnal — PAROLSIZ.
+  H.logAdminActivity?.(env, {
+    action: 'review_account',
+    details: `Google tekshiruvchisi hisobi ${created ? 'yaratildi' : 'paroli yangilandi'}: ${REVIEW_EMAIL}`,
+    ip: H.reqIp?.(request),
+  })?.catch?.(() => {});
+
+  return H.json({ ok: true, created, email: REVIEW_EMAIL, password, code, premiumUntil });
+}
+
 export async function handle(request, env, url, H) {
+  if (url.pathname === '/api/admin/review-account' && request.method === 'POST') {
+    return reviewAccount(request, env, H);
+  }
   if (url.pathname !== '/api/admin/app-users') return null;
   if (request.method !== 'GET') return H.json({ error: 'method_not_allowed' }, 405);
   const admin = await H.requireAdmin(request, env);

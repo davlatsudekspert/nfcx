@@ -509,4 +509,11 @@ export const DICT_ADMIN = {
   // ── Qidiruv (shikoyatlar, ilova foydalanuvchilari) ──
   'So‘z, NFC ID, email yoki sabab': { ru: 'Слово, NFC ID, email или причина', en: 'Word, NFC ID, email or reason' },
   'Ism, NFC ID, kompaniya, email yoki telefon': { ru: 'Имя, NFC ID, компания, email или телефон', en: 'Name, NFC ID, company, email or phone' },
+  // ── Google Play tekshiruvchisi hisobi ──
+  'Google Play tekshiruvchisi hisobi': { ru: 'Аккаунт для проверки Google Play', en: 'Google Play reviewer account' },
+  'Play Console → Политика → Доступ к приложению uchun login va parol. Hisob alohida, email kodi so‘ralmaydi, Premium bilan. Parol faqat hozir bir marta ko‘rinadi.': { ru: 'Логин и пароль для Play Console → Политика → Доступ к приложению. Отдельный аккаунт, без кода из email, с Premium. Пароль показывается только один раз.', en: 'Login and password for Play Console → Policy → App access. A separate account, no email code, with Premium. The password is shown only once.' },
+  'Hisob yaratish va parol olish': { ru: 'Создать аккаунт и получить пароль', en: 'Create account and get password' },
+  'Yangi parol berish': { ru: 'Выдать новый пароль', en: 'Issue a new password' },
+  'Yangi parol beriladi, eskisi ishlamay qoladi. Davom etasizmi?': { ru: 'Будет выдан новый пароль, старый перестанет работать. Продолжить?', en: 'A new password will be issued and the old one will stop working. Continue?' },
+  'Nusxa': { ru: 'Копировать', en: 'Copy' },
 };
