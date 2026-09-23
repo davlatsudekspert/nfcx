@@ -63,6 +63,7 @@ class InlineVideo extends ConsumerStatefulWidget {
     this.autoPlay = true,
     this.looping = false,
     this.onDuration,
+    this.onFailed,
     this.tapToToggle = false,
     this.fit = BoxFit.cover,
     this.onAspect,
@@ -77,6 +78,10 @@ class InlineVideo extends ConsumerStatefulWidget {
   /// Uzunlik ma'lum bo'lgach chaqiriladi (istoryada progress shunga
   /// moslanadi).
   final ValueChanged<Duration>? onDuration;
+
+  /// Video ochilmadi (buzuq havola, format, tarmoq). Istoryada taymer
+  /// shu zahoti oddiy vaqt bilan davom etadi — ko'ruvchi kutib qolmaydi.
+  final VoidCallback? onFailed;
 
   /// Postda: bosish ijro/pauza. Istoryada bosish keyingisiga
   /// o'tkazadi, shuning uchun u yerda YOQILMAYDI.
@@ -294,6 +299,7 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
       // Buzuq havola yoki qo'llab-quvvatlanmaydigan format — ilova
       // qulamaydi, o'rnida fon qoladi.
       if (mounted) setState(() => _failed = true);
+      widget.onFailed?.call();
     }
   }
 

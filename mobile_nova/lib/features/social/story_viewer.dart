@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -24,6 +27,9 @@ import '../home/widgets/avatar.dart';
 import '../business/business_providers.dart';
 import '../profile/profile_repository.dart';
 import '../../design/icons/nova_icons.dart';
+import '../../design/widgets/id_plate.dart';
+import '../../core/media/image_cache.dart';
+import '../home/home_screen.dart' show homeStoriesProvider;
 
 // RIVERPOD `dependencies` — DEMO DARAXTI UCHUN SHART.
 //
@@ -88,6 +94,37 @@ final storiesOfProvider = FutureProvider.autoDispose
       return res.when(ok: (v) => v, err: (e) => throw e);
     });
 
+/// ISTORYA RASMLARINI OLDINDAN YUKLASH (disk keshiga).
+///
+/// Egasi (2026-09): "istorya ochilganda avval qora ekran chiqib, keyin
+/// boshlanyapti". Eng sekin qism — tarmoqdan fayl olish; dekodlash
+/// tez. Shuning uchun keyingi istorya (va bosh sahifadagi birinchi
+/// bir nechta doiracha) rasmi FONDA diskka tushiriladi: bosilganda
+/// u keshdan darhol ochiladi. Video oldindan yuklanmaydi (og'ir).
+final _prefetched = <String>{};
+
+void prefetchStoryImage(StoryItem? s) {
+  if (s == null || s.isVideo) return;
+  final url = s.mediaUrl;
+  if (url.isEmpty || isAssetMedia(url) || !_prefetched.add(url)) return;
+  try {
+    unawaited(NovaImageCache.manager
+        .getSingleFile(url)
+        .then((_) {}, onError: (Object _) => _prefetched.remove(url)));
+  } catch (_) {
+    _prefetched.remove(url);
+  }
+}
+
+/// Bosh sahifa: har odamning BIRINCHI istoryasi (ko'pi bilan [max]).
+void prefetchStoryRow(List<StoryItem> all, {int max = 4}) {
+  final seen = <String>{};
+  for (final s in all) {
+    if (seen.length >= max) break;
+    if (seen.add(s.code)) prefetchStoryImage(s);
+  }
+}
+
 /// Story ko'rish oynasi.
 ///
 /// Chap/o'ng yarmiga tegish oldingi/keyingi story'ga o'tkazadi, bosib
@@ -127,6 +164,30 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
   /// is unsafe" xatosi chiqardi.
   late final AnimationController _progress;
 
+  /// BOSH SAHIFADA ALLAQACHON YUKLANGAN ISTORYALAR.
+  ///
+  /// Ilgari ko'ruvchi har ochilishda ro'yxatni serverdan QAYTA so'rardi
+  /// va javob kelguncha qora ekranda aylanuvchi belgi turardi — holbuki
+  /// o'sha istoryalar bosh sahifada allaqachon bor edi. Endi ular darhol
+  /// ko'rsatiladi, server javobi esa fonda keladi va joriy istorya
+  /// (`id` bo'yicha) o'z joyida qoladi.
+  ///
+  /// `ref.exists` — bosh sahifa provayderi TIRIK bo'lsagina; aks holda
+  /// (App Link, jismoniy karta) keraksiz ikkinchi so'rov boshlanmaydi.
+  List<StoryItem>? _seed;
+
+  /// Joriy istorya va uning MEDIASI tayyorligi.
+  ///
+  /// Taymer faqat media ekranda paydo bo'lgach yuradi. Ilgari u
+  /// ro'yxat kelishi bilan boshlanardi: sekin internetda video 5
+  /// soniyada ochilmasa, istorya KO'RILMASDAN o'tib ketardi.
+  int? _currentId;
+  int? _readyId;
+  Timer? _watchdog;
+  List<StoryItem> _items = const [];
+
+  bool get _mediaReady => _readyId != null && _readyId == _currentId;
+
   @override
   void initState() {
     super.initState();
@@ -135,6 +196,65 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
         if (s == AnimationStatus.completed) _next();
       });
     WidgetsBinding.instance.addObserver(this);
+    _seed = _seedFromHome();
+  }
+
+  List<StoryItem>? _seedFromHome() {
+    if (!ref.exists(homeStoriesProvider)) return null;
+    final all = ref.read(homeStoriesProvider).valueOrNull;
+    if (all == null || all.isEmpty) return null;
+    final p = ref.read(activeProfileProvider);
+    // O'z istoryalarim bosh sahifada kodsiz keladi (server qo'shmaydi).
+    final own = p != null &&
+        p.code == widget.code &&
+        p.isBusiness == widget.isBusiness;
+    final mine = all
+        .where((s) => s.code == widget.code || (own && s.code.isEmpty))
+        .toList();
+    return mine.isEmpty ? null : mine;
+  }
+
+  /// Yangi istorya ko'rsatilmoqda — taymer to'xtaydi va MEDIANI kutadi.
+  ///
+  /// Media hech qachon "tayyor" demasa ham (buzuq video) ko'ruvchi
+  /// osilib qolmasin: 10 soniyadan keyin taymer baribir boshlanadi.
+  void _prepare(int id) {
+    if (!mounted || id != _currentId) return;
+    _watchdog?.cancel();
+    _readyId = null;
+    _progress
+      ..stop()
+      ..duration = _perStory
+      ..reset();
+    _watchdog = Timer(const Duration(seconds: 10), () => _onReady(id));
+    if (mounted) setState(() {});
+  }
+
+  /// Media ekranda — taymer boshlanadi. Video bo'lsa uning uzunligi
+  /// bilan (60 soniyadan oshmaydi).
+  void _onReady(int id, [Duration? d]) {
+    if (!mounted || id != _currentId) return;
+    final video = d != null && d > Duration.zero;
+    // Bir istorya uchun bir marta; kechikib kelgan video uzunligi esa
+    // (qo'riqchi taymerdan keyin) progressni to'g'rilaydi.
+    if (_readyId == id && !video) return;
+    _watchdog?.cancel();
+    _readyId = id;
+    final dur = !video
+        ? _perStory
+        : (d > const Duration(seconds: 60) ? const Duration(seconds: 60) : d);
+    _progress
+      ..duration = dur
+      ..reset();
+    if (!_paused) _progress.forward();
+    setState(() {});
+    final at = _items.indexWhere((e) => e.id == id);
+    if (at >= 0 && at + 1 < _items.length) prefetchStoryImage(_items[at + 1]);
+  }
+
+  /// Pauzadan qaytish — faqat media tayyor bo'lsa.
+  void _resume() {
+    if (_mediaReady && !_paused && mounted) _progress.forward();
   }
 
   /// MEDIANI TO'XTATADI — ekran yopilishidan OLDIN.
@@ -196,6 +316,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
 
   @override
   void dispose() {
+    _watchdog?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _progress.dispose();
     super.dispose();
@@ -234,7 +355,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
         false;
     if (!mounted) return;
     if (!ok) {
-      _progress.forward();
+      _resume();
       return;
     }
     final res = await ref.read(socialRepositoryProvider).deleteStory(s.id);
@@ -249,20 +370,12 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
         _close();
       },
       err: (e) {
-        _progress.forward();
+        _resume();
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(describeError(l, e))));
       },
     );
-  }
-
-  void _start() {
-    _progress
-      ..duration = _perStory
-      ..reset()
-      ..forward();
-    if (_paused) _progress.stop();
   }
 
   /// Varaq/dialog ochilganda taymer to'xtaydi, yopilganda davom
@@ -276,7 +389,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
     } finally {
       if (mounted) {
         _paused = false;
-        _progress.forward();
+        _resume();
       }
     }
   }
@@ -320,24 +433,6 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
     ),
   );
 
-  /// Video uzunligi ma'lum bo'lgach, progress shunga moslanadi.
-  ///
-  /// Aks holda 5 soniyada keyingisiga o'tib ketardi va uzunroq
-  /// video hech qachon oxirigacha ko'rilmasdi.
-  void _useVideoDuration(Duration d) {
-    if (!mounted || d <= Duration.zero) return;
-    // Juda uzun videoni ham cheksiz kutmaymiz.
-    final capped = d > const Duration(seconds: 60)
-        ? const Duration(seconds: 60)
-        : d;
-    setState(() {
-      _progress
-        ..duration = capped
-        ..reset()
-        ..forward();
-    });
-  }
-
   /// "Ko'rildi" belgisini SERVERGA yuborish.
   ///
   /// `markStorySeen` repozitoriyada bor edi va `POST
@@ -353,22 +448,26 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
     ref.read(socialRepositoryProvider).markStorySeen(s.id);
   }
 
+  // Indeks o'zgargach `build` yangi istoryani ko'radi va `_prepare`
+  // uni media tayyorligini kutishga qo'yadi.
   void _next() {
     if (_index + 1 >= _total) {
       _close();
       return;
     }
     setState(() => _index++);
-    _start();
   }
 
   void _prev() {
     if (_index == 0) {
-      _start();
+      // Birinchi istorya — boshidan (media allaqachon ekranda).
+      if (_mediaReady) {
+        _progress.reset();
+        _resume();
+      }
       return;
     }
     setState(() => _index--);
-    _start();
   }
 
   @override
@@ -391,12 +490,34 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
       },
       child: Scaffold(
         backgroundColor: Colors.black,
-        body: stories.when(
-          loading: () => Center(
-            child: CircularProgressIndicator(color: t.accent2, strokeWidth: 2),
-          ),
-          error: (e, __) => StatePanel.fromError(context, asAppError(e)),
-          data: (items) {
+        body: Builder(builder: (context) {
+          // Server javobi bo'lmasa — bosh sahifadagi tayyor ro'yxat.
+          final items = stories.valueOrNull ?? _seed;
+          if (items == null) {
+            if (stories.hasError) {
+              return StatePanel.fromError(context, asAppError(stories.error!));
+            }
+            // QORA EKRAN EMAS: egasining surati va oltin halqa.
+            final face = _ownerFace();
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                _StoryLoading(url: face.avatar, initials: face.initials),
+                SafeArea(
+                  child: Align(
+                    alignment: Alignment.topRight,
+                    child: IconButton(
+                      onPressed: _close,
+                      icon: const Icon(Icons.close_rounded,
+                          color: Colors.white),
+                      tooltip: l.actionClose,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }
+          {
             if (items.isEmpty) {
               return StatePanel(
                 icon: Icons.auto_stories_outlined,
@@ -405,11 +526,24 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                 onAction: _close,
               );
             }
-            if (_total != items.length) {
-              _total = items.length;
-              WidgetsBinding.instance.addPostFrameCallback((_) => _start());
+            // Ro'yxat yangilansa (bosh sahifa -> server) JORIY istorya
+            // o'z joyida qoladi — indeks `id` bo'yicha qayta topiladi.
+            // FAQAT ro'yxatning o'zi almashganda: har `build` da qilinsa
+            // "keyingisi" bosilgan indeksni eski istoryaga qaytarardi.
+            if (!identical(items, _items) && _currentId != null) {
+              final at = items.indexWhere((e) => e.id == _currentId);
+              if (at >= 0) _index = at;
             }
-            final s = items[_index.clamp(0, items.length - 1)];
+            _index = _index.clamp(0, items.length - 1);
+            _items = items;
+            _total = items.length;
+            final s = items[_index];
+            if (_currentId != s.id) {
+              _currentId = s.id;
+              _readyId = null;
+              WidgetsBinding.instance
+                  .addPostFrameCallback((_) => _prepare(s.id));
+            }
             WidgetsBinding.instance.addPostFrameCallback((_) => _markSeen(s));
 
             // "Meniki" — story kodi o'zimning NFC yozuvlarimdan
@@ -462,7 +596,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                 d.localPosition.dx < half ? _prev() : _next();
               },
               onLongPressStart: (_) => _progress.stop(),
-              onLongPressEnd: (_) => _progress.forward(),
+              onLongPressEnd: (_) => _resume(),
               onVerticalDragEnd: (d) {
                 if ((d.primaryVelocity ?? 0) > 260) _close();
               },
@@ -497,7 +631,24 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                     child: _StoryFrame(
                       key: ValueKey(s.id),
                       story: s,
-                      onDuration: _useVideoDuration,
+                      onReady: (d) => _onReady(s.id, d),
+                    ),
+                  ),
+                  // MEDIA YUKLANGUNCHA — qora ekran o'rniga egasining
+                  // surati va oltin halqa; tayyor bo'lgach so'nadi.
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 220),
+                        child: _mediaReady
+                            ? const SizedBox.expand()
+                            : _StoryLoading(
+                                key: const ValueKey('story-loading'),
+                                url: authorAvatar,
+                                initials: _initials(authorName, code),
+                                transparent: true,
+                              ),
+                      ),
                     ),
                   ),
                   Positioned.fill(
@@ -749,8 +900,8 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                 ],
               ),
             );
-          },
-        ),
+          }
+        }),
       ),
     );
   }
@@ -758,6 +909,76 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
   String _initials(String name, String fallback) {
     final s = name.trim().isEmpty ? fallback : name.trim();
     return (s.length >= 2 ? s.substring(0, 2) : s).toUpperCase();
+  }
+
+  /// Ro'yxat hali kelmagan paytda — egasining surati va bosh harflari.
+  ({String avatar, String initials}) _ownerFace() {
+    final code = widget.code;
+    if (widget.isBusiness) {
+      final b = ref
+          .watch(myBusinessesProvider)
+          .valueOrNull
+          ?.where((b) => b.companyId == code)
+          .firstOrNull;
+      return (
+        avatar: b?.logoUrl ?? '',
+        initials: _initials(b?.displayName ?? '', code),
+      );
+    }
+    final id = ref.watch(myIdsProvider).where((e) => e.code == code).firstOrNull;
+    if (id != null) {
+      final avatar = id.avatarUrl.isNotEmpty
+          ? id.avatarUrl
+          : (ref.watch(currentUserProvider)?.avatarUrl ?? '');
+      return (avatar: avatar, initials: _initials(id.name, code));
+    }
+    final pub = ref.watch(publicProfileProvider(code)).valueOrNull;
+    return (
+      avatar: pub?.avatarUrl ?? '',
+      initials: _initials(pub?.name ?? '', code),
+    );
+  }
+}
+
+/// ISTORYA YUKLANMOQDA — qora bo'sh ekran EMAS.
+///
+/// Egasining surati markazda, atrofida ingichka oltin aylanuvchi
+/// halqa (NFCSTORE istorya halqasi rangida). `transparent` — media
+/// ustida (kadr foni ko'rinib turadi), aks holda qora fonda.
+class _StoryLoading extends StatelessWidget {
+  const _StoryLoading({
+    super.key,
+    required this.url,
+    required this.initials,
+    this.transparent = false,
+  });
+
+  final String url;
+  final String initials;
+  final bool transparent;
+
+  @override
+  Widget build(BuildContext context) {
+    final body = Center(
+      child: SizedBox(
+        width: 96,
+        height: 96,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            const SizedBox.expand(
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: IdPlate.goldLight,
+              ),
+            ),
+            Avatar(url: url, initials: initials, size: 82, ring: false),
+          ],
+        ),
+      ),
+    );
+    if (transparent) return body;
+    return ColoredBox(color: Colors.black, child: body);
   }
 }
 
@@ -969,17 +1190,24 @@ class _StoryFrame extends StatelessWidget {
   const _StoryFrame({
     super.key,
     required this.story,
-    required this.onDuration,
+    required this.onReady,
   });
 
   final StoryItem story;
-  final ValueChanged<Duration> onDuration;
+
+  /// Media EKRANDA — taymer shundan keyin yuradi. Videoda uzunligi
+  /// bilan, rasmda `null`.
+  final ValueChanged<Duration?> onReady;
+
+  void _readyNextFrame() =>
+      WidgetsBinding.instance.addPostFrameCallback((_) => onReady(null));
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
 
     if (story.mediaUrl.isEmpty) {
+      _readyNextFrame();
       return DecoratedBox(
         decoration: BoxDecoration(gradient: t.accentGradient),
       );
@@ -993,7 +1221,8 @@ class _StoryFrame extends StatelessWidget {
         child: InlineVideo(
           key: ValueKey(story.id),
           url: story.mediaUrl,
-          onDuration: onDuration,
+          onDuration: onReady,
+          onFailed: () => onReady(null),
           fit: BoxFit.contain,
         ),
       );
@@ -1003,9 +1232,41 @@ class _StoryFrame extends StatelessWidget {
     // logotip) butun ekranni to'ldirishi uchun kattalashtirilar va
     // hoshiyasi qirqilardi. Endi rasm butunligicha ko'rinadi,
     // atrofi esa o'sha rasmning xira nusxasi bilan to'ladi.
+    final url = story.mediaUrl;
+    if (isAssetMedia(url)) {
+      _readyNextFrame();
+      return FullBleedMedia(
+        backdropUrl: url,
+        child: Image.asset(url, fit: BoxFit.contain),
+      );
+    }
     return FullBleedMedia(
-      backdropUrl: story.mediaUrl,
-      child: mediaImage(context, story.mediaUrl, fit: BoxFit.contain),
+      backdropUrl: url,
+      child: LayoutBuilder(builder: (context, box) {
+        final side = [box.maxWidth, box.maxHeight]
+            .where((v) => v.isFinite && v > 0)
+            .fold<double?>(null, (a, v) => a == null || v > a ? v : a);
+        return CachedNetworkImage(
+          cacheManager: NovaImageCache.manager,
+          imageUrl: url,
+          fit: BoxFit.contain,
+          memCacheWidth: decodeWidth(context, side),
+          fadeInDuration: NovaImageCache.fadeIn,
+          fadeOutDuration: NovaImageCache.fadeOut,
+          // Yuklanguncha — shaffof: ustida egasining surati turadi.
+          placeholder: (_, __) => const SizedBox.shrink(),
+          imageBuilder: (_, image) {
+            _readyNextFrame();
+            return Image(image: image, fit: BoxFit.contain);
+          },
+          errorWidget: (_, __, ___) {
+            // Buzuq rasmda ham ko'ruvchi osilib qolmasin.
+            _readyNextFrame();
+            return Icon(Icons.broken_image_outlined,
+                size: 34, color: Colors.white.withValues(alpha: .6));
+          },
+        );
+      }),
     );
   }
 }

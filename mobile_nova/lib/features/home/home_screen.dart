@@ -35,6 +35,7 @@ import '../../app/profile_context.dart';
 import '../../data/repositories/business_repository.dart';
 import '../profile/profile_switcher.dart';
 import '../social/visible_fraction.dart';
+import '../social/story_viewer.dart' show prefetchStoryRow;
 import '../../routing/shell.dart';
 import '../../core/media/image_cache.dart';
 
@@ -947,6 +948,10 @@ class _StoriesRow extends ConsumerWidget {
               for (final s in all) {
                 if (seenCodes.add(s.code)) items.add(s);
               }
+              // Birinchi doirachalar rasmi fonda diskka tushadi —
+              // bosilganda istorya qora ekransiz, darhol ochiladi.
+              WidgetsBinding.instance
+                  .addPostFrameCallback((_) => prefetchStoryRow(all));
               return ListView.separated(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
