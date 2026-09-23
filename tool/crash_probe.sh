@@ -17,6 +17,12 @@
 #   layout       faqat layout 3 o'lcham (release build YO'Q)
 #   stopdaemons  full, lekin har build'dan keyin Gradle/Kotlin daemonlari
 #                to'xtatiladi
+#   skia         layout, Impeller o'rniga Skia (--no-enable-impeller)
+#   noshot       layout, toImage kadrlarisiz (faqat overflow tekshiruvi)
+#
+# 1-probe natijasi (#1): 5/5 variant qulagan — b34bbbd ham; OOM yo'q
+# (avail 3.5-11 GB, swap 0, dmesg bo'sh); gfxstream glestranslator
+# `glWaitSync error 0x501`. Ya'ni kod emas, emulyator GPU yo'li.
 set -u -o pipefail
 
 REF="${PROBE_REF:-HEAD}"
@@ -53,7 +59,15 @@ if [ "$REF" != "HEAD" ]; then
 fi
 say "lib=$(git rev-parse --short HEAD) ref=$REF"
 
-if [ "$MODE" != "layout" ]; then
+FT_EXTRA=""
+case "$MODE" in
+  skia) FT_EXTRA="--no-enable-impeller" ;;
+  noshot) sed -i -E 's#^( *)await _shot\(name\);#\1// probe: kadr olinmaydi#' integration_test/e2e_layout_test.dart
+          grep -c "probe: kadr" integration_test/e2e_layout_test.dart | sed 's/^/  noshot almashtirildi: /' ;;
+esac
+say "gpu=${PROBE_GPU:-?} extra=${FT_EXTRA:-none}"
+
+if [ "$MODE" = "full" ] || [ "$MODE" = "stopdaemons" ]; then
   if timeout 1500 flutter build apk --release --dart-define=NOVA_VERSION=probe > build.log 2>&1; then
     say "release-build|OK"
   else
@@ -81,9 +95,10 @@ for spec in "360 1080x2400" "390 1170x2532" "430 1290x2796"; do
   timeout 60 adb -s "$DEVICE" shell wm density 480
   sleep 3
   timeout --foreground -s INT -k 30s 900 \
-    flutter test integration_test/e2e_layout_test.dart -d "$DEVICE" \
+    flutter test integration_test/e2e_layout_test.dart -d "$DEVICE" $FT_EXTRA \
     --dart-define=LAYOUT_TAG="p$tag" > "probe-$tag.log" 2>&1 || true
   grep -E "^LAYOUT\|" "probe-$tag.log" | sed 's/^/  /'
+  timeout 20 adb -s "$DEVICE" logcat -d 2>/dev/null | grep -iE "rendering backend|impeller|skia" | head -3 | cut -c1-160 | sed 's/^/  render: /'
   if grep -q "<<<LAYOUT_DONE p$tag>>>" "probe-$tag.log"; then
     say "$tag|PASS|"
   else
@@ -105,5 +120,5 @@ echo "---- dmesg (OOM / segfault) ----"
 sudo dmesg -T 2>/dev/null | grep -iE 'out of memory|killed process|oom-kill|oom_reaper|segfault|qemu|traps:' | tail -n 25
 echo "---- emulyator crash fayllari ----"
 find /tmp/android-runner -type f -newer .probe-start 2>/dev/null | head -20
-git checkout -q HEAD -- lib
+git checkout -q HEAD -- lib integration_test
 exit 0

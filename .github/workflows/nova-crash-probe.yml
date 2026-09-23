@@ -24,12 +24,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { ref: b34bbbd, mode: full }
-          - { ref: 4d0365d, mode: full }
-          - { ref: HEAD, mode: full }
-          - { ref: HEAD, mode: layout }
-          - { ref: HEAD, mode: stopdaemons }
-    name: probe ${{ matrix.ref }} ${{ matrix.mode }}
+          # 1-probe: swiftshader_indirect da 5/5 qulagan (b34bbbd ham).
+          # 2-probe: emulyator GPU yo'li va renderer bo'yicha.
+          - { ref: HEAD, mode: layout, gpu: swangle_indirect }
+          - { ref: HEAD, mode: full, gpu: swangle_indirect }
+          - { ref: HEAD, mode: layout, gpu: guest }
+          - { ref: HEAD, mode: skia, gpu: swiftshader_indirect }
+          - { ref: HEAD, mode: noshot, gpu: swiftshader_indirect }
+    name: probe ${{ matrix.ref }} ${{ matrix.mode }} ${{ matrix.gpu }}
     defaults:
       run:
         working-directory: mobile_nova
@@ -72,13 +74,14 @@ jobs:
         env:
           PROBE_REF: ${{ matrix.ref }}
           PROBE_MODE: ${{ matrix.mode }}
+          PROBE_GPU: ${{ matrix.gpu }}
         with:
           api-level: 34
           target: google_apis
           arch: x86_64
           profile: pixel_6
           force-avd-creation: false
-          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          emulator-options: -no-snapshot-save -no-window -gpu ${{ matrix.gpu }} -noaudio -no-boot-anim -camera-back none
           disable-animations: false
           working-directory: mobile_nova
           script: bash ../tool/crash_probe.sh
