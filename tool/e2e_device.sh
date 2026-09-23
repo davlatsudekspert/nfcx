@@ -88,6 +88,32 @@ else
 fi
 APK=build/app/outputs/flutter-apk/app-release.apk
 
+# ── VAQTINCHA: EMULYATOR QULASHINI BISECT (#47-#50) ──────────────
+# 360 dp da Home -> Tanlov o'tishida emulyator (SwiftShader) quladi,
+# #46 (b34bbbd) da o'tgan. Har commitning `lib/` i bilan layout
+# ishga tushiriladi — birinchi qulagani chegara. Aniqlangach olib
+# tashlanadi.
+if [ "${E2E_BISECT:-1}" = "1" ]; then
+  timeout 120 git fetch -q --depth=80 origin "${GITHUB_REF_NAME:-claude/vibrant-einstein-p5lo1i}" 2>/dev/null || true
+  A shell wm size 1080x2400; A shell wm density 480; sleep 3
+  for ref in b34bbbd 4d0365d d1d2142 22a3f32 6632813 HEAD; do
+    if ! recover; then say "BISECT|$ref|skip|emulyator yo'q"; break; fi
+    git checkout -q "$ref" -- lib 2>/dev/null || { say "BISECT|$ref|skip|ref topilmadi"; continue; }
+    say "BISECT|$ref|start|$(date +%T)"
+    timeout --foreground -s INT -k 30s 600 \
+      flutter test integration_test/e2e_layout_test.dart -d "$DEVICE" \
+      --dart-define=LAYOUT_TAG="b-$ref" > "bisect-$ref.log" 2>&1 || true
+    grep -E "^STEP\|" "bisect-$ref.log" | tail -n 3 | sed "s/^/  /"
+    if grep -q "<<<LAYOUT_DONE b-$ref>>>" "bisect-$ref.log"; then
+      say "BISECT|$ref|PASS|"
+    else
+      say "BISECT|$ref|CRASH|oxirgi: $(grep -E '^STEP\|' "bisect-$ref.log" | tail -n1)"
+    fi
+  done
+  git checkout -q HEAD -- lib
+  timeout 60 adb start-server >/dev/null 2>&1 || true
+fi
+
 for spec in "360 1080x2400" "390 1170x2532" "430 1290x2796"; do
   tag="${spec%% *}"
   size="${spec##* }"
