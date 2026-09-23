@@ -160,6 +160,42 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           Text(l.setupSubtitle,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium),
+          // SERVER BERGAN BEPUL NFC ID — birinchi kundan ko'rinsin.
+          //
+          // Server ro'yxatdan o'tishda avtomatik 8 xonali ID beradi
+          // (`createFreeAutoId`). Ilgari odam uni faqat Home'ga
+          // tushgandagina ko'rardi; endi hisob ochilgan zahoti — bu
+          // "menda allaqachon NFC ID bor" degan his beradi.
+          if (ref.watch(myIdsProvider).firstOrNull case final id?) ...[
+            const SizedBox(height: Gap.lg),
+            Center(
+              child: Container(
+                key: const ValueKey('setup-free-id'),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Color.lerp(t.surfaceSolid, t.brandSoft, .5),
+                  borderRadius: R.pill,
+                  border: Border.all(color: t.brand.withValues(alpha: .6)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(l.setupFreeId.toUpperCase(),
+                        style: AppType.eyebrow(color: t.brandInk, size: 9)),
+                    const SizedBox(width: Gap.md),
+                    Text(
+                      id.code,
+                      style: AppType.monoStyle(
+                          color: t.text1,
+                          size: 15,
+                          weight: FontWeight.w600,
+                          letterSpacing: 2.2),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: Gap.section),
           Center(
             child: PressableScale(

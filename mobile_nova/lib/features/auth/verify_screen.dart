@@ -60,6 +60,9 @@ class VerifyScreen extends ConsumerStatefulWidget {
 
   final VerifyArgs args;
 
+  /// Testlar uchun — qayta yuborish oralig'i (soniya).
+  static const resendCooldownForTest = _VerifyScreenState.resendCooldown;
+
   @override
   ConsumerState<VerifyScreen> createState() => _VerifyScreenState();
 }
@@ -80,8 +83,17 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
   /// turishini `verify_ttl_test.dart` qo'riqlaydi.
   static const _ttl = 300;
 
+  /// Qayta yuborish oralig'i — KOD MUDDATIDAN ALOHIDA.
+  ///
+  /// Ilgari "Qayta yuborish" tugmasi faqat 5 daqiqalik muddat TUGAGACH
+  /// chiqardi. Email kechiksa yoki spam papkaga tushsa, odam besh
+  /// daqiqa hech narsa qila olmay o'tirardi. Endi 60 soniyadan keyin
+  /// yangi kod so'rash mumkin; eski kod esa o'z muddatigacha ishlaydi.
+  static const resendCooldown = 60;
+
   Timer? _timer;
   int _left = _ttl;
+  int _resendLeft = resendCooldown;
   bool _busy = false;
   bool _wrong = false;
   bool _expired = false;
@@ -97,12 +109,14 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
     _timer?.cancel();
     setState(() {
       _left = _ttl;
+      _resendLeft = resendCooldown;
       _expired = false;
     });
     _timer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) return t.cancel();
       setState(() {
         _left--;
+        if (_resendLeft > 0) _resendLeft--;
         if (_left <= 0) {
           _expired = true;
           t.cancel();
@@ -284,12 +298,17 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
                 child: CircularProgressIndicator(strokeWidth: 2, color: t.accent2),
               ),
             )
-          else if (_expired || _left <= 0)
-            NovaButton(label: l.verifyResend, onPressed: _resend)
+          else if (_expired || _left <= 0 || _resendLeft <= 0)
+            NovaButton(
+              key: const ValueKey('verify-resend'),
+              label: l.verifyResend,
+              tone: _expired ? ButtonTone.accent : ButtonTone.outline,
+              onPressed: _resend,
+            )
           else
             Center(
               child: Text(
-                l.verifyResendIn(_left),
+                l.verifyResendIn(_resendLeft),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ),

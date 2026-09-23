@@ -5,7 +5,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'
-    show rootBundle, FontLoader, MethodChannel;
+    show rootBundle, FontLoader, MethodChannel, SystemChannels;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -20,6 +20,8 @@ import 'package:nfcstore_nova/data/repositories/social_repository.dart';
 import 'package:nfcstore_nova/design/theme/app_theme.dart';
 import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
 import 'package:nfcstore_nova/features/auth/login_screen.dart';
+import 'package:nfcstore_nova/features/auth/profile_setup_screen.dart';
+import 'package:nfcstore_nova/features/auth/verify_screen.dart';
 import 'package:nfcstore_nova/features/auth/register_screen.dart';
 import 'package:nfcstore_nova/features/entry/splash_screen.dart';
 import 'package:nfcstore_nova/features/auth/session.dart';
@@ -427,6 +429,128 @@ Future<void> soloShot(
       find.byType(MaterialApp), matchesGoldenFile('png/ed-$name.png'));
 }
 
+class _RegAuth extends FakeAuthRepository {
+  _RegAuth() : super(signedIn: false, ids: const [
+          NfcId(code: '48210377', name: 'Aziza Karimova', primary: true),
+        ]);
+  bool done = false;
+
+  @override
+  Future<Result<String>> requestRegisterCode(
+          {String email = '', String phone = ''}) async =>
+      const Ok('email');
+
+  @override
+  Future<Result<User>> register({
+    required String name,
+    required String email,
+    required String phone,
+    required String password,
+    required String code,
+    required bool tosAccepted,
+    String? promoCode,
+  }) async {
+    done = true;
+    return const Ok(User(id: 7, email: 'aziza@example.com', name: 'Aziza Karimova'));
+  }
+
+  @override
+  Future<Result<({User user, List<NfcId> ids})>> restore() async => done
+      ? Ok((user: const User(id: 7, email: 'aziza@example.com', name: 'Aziza Karimova'), ids: ids))
+      : super.restore();
+}
+
+/// Ro'yxatdan o'tish — har qadam alohida surat.
+Future<void> registerFlowShot(WidgetTester tester, Size s, String w) async {
+  _size(tester, s);
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+    if (call.method == 'Clipboard.getData') return {'text': '482913'};
+    return null;
+  });
+  addTearDown(() => TestDefaultBinaryMessengerBinding.instance
+      .defaultBinaryMessenger
+      .setMockMethodCallHandler(SystemChannels.platform, null));
+  final base = await _overrides();
+  final auth = _RegAuth();
+  final router = GoRouter(initialLocation: Routes.register, routes: [
+    GoRoute(path: Routes.register, builder: (_, __) => const RegisterScreen()),
+    GoRoute(
+        path: Routes.registerVerify,
+        builder: (_, st) => VerifyScreen(args: st.extra! as VerifyArgs)),
+    GoRoute(path: Routes.profileSetup, builder: (_, __) => const ProfileSetupScreen()),
+  ]);
+  await tester.pumpWidget(ProviderScope(
+    overrides: [
+      ...base.where((o) => !identical(o, base[1])),
+      authRepositoryProvider.overrideWithValue(auth),
+    ],
+    child: MaterialApp.router(
+      debugShowCheckedModeBanner: false,
+      routerConfig: router,
+      theme: buildTheme(NfcTokens.ivory),
+      locale: const Locale('uz'),
+      supportedLocales: LocaleController.supported,
+      localizationsDelegates: const [
+        L.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+    ),
+  ));
+  await _settle(tester);
+  final l = await L.delegate.load(const Locale('uz'));
+  var n = 0;
+  Future<void> snap(String step) async {
+    n++;
+    await _settle(tester, 10);
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('png/reg-$w-$n-$step.png'));
+  }
+
+  Future<void> next() async {
+    await tester.tap(find.text(l.actionNext).last);
+    await _settle(tester, 10);
+  }
+
+  await tester.tap(find.byKey(const ValueKey('signup-type-personal')));
+  await snap('type');
+  await next();
+  await tester.enterText(find.byType(TextField).hitTestable().first, 'Aziza Karimova');
+  await snap('name');
+  await next();
+  await tester.enterText(find.byType(TextField).hitTestable().first, 'aziza@example.com');
+  await snap('email');
+  await next();
+  await tester.enterText(find.byType(TextField).hitTestable().first, '901234567');
+  await snap('phone');
+  await next();
+  final pw = find.byType(TextField).hitTestable();
+  await tester.enterText(pw.at(0), 'Kuchli-parol-2026');
+  await tester.enterText(pw.at(1), 'Kuchli-parol-2026');
+  await tester.tap(find.byType(Checkbox).last);
+  await snap('password');
+  await tester.tap(find.text(l.actionContinue).last);
+  await _settle(tester, 12);
+  for (final st in const [
+    AppLifecycleState.inactive,
+    AppLifecycleState.hidden,
+    AppLifecycleState.paused,
+    AppLifecycleState.hidden,
+    AppLifecycleState.inactive,
+    AppLifecycleState.resumed,
+  ]) {
+    tester.binding.handleAppLifecycleStateChanged(st);
+    await tester.pump();
+  }
+  await tester.enterText(find.byType(TextField).last, '482');
+  await snap('otp');
+  await tester.enterText(find.byType(TextField).last, '482913');
+  await _settle(tester, 12);
+  await snap('setup');
+}
+
 void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
@@ -474,6 +598,7 @@ void main() {
         (t) => soloShot(t, const BusinessIntroScreen(), 'biz-intro-$w', s));
     testWidgets('biz-free $w',
         (t) => soloShot(t, const BusinessOnboardScreen(), 'biz-free-$w', s));
+    testWidgets('regflow $w', (t) => registerFlowShot(t, s, w));
     testWidgets('splash $w',
         (t) => soloShot(t, const SplashScreen(), 'splash-$w', s));
     testWidgets('login $w',

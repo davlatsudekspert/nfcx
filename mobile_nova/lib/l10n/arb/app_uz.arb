@@ -755,5 +755,6 @@
   "reelSavedLocal": "Saqlandi — shu telefonda",
   "reelUnsaved": "Saqlanganlardan olindi",
   "reelBlockAuthor": "Muallifni bloklash",
-  "reelBlocked": "Bloklandi — uning kontenti endi ko‘rinmaydi"
+  "reelBlocked": "Bloklandi — uning kontenti endi ko‘rinmaydi",
+  "setupFreeId": "Bepul NFC ID"
 }

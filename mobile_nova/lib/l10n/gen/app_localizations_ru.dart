@@ -1915,4 +1915,7 @@ class LRu extends L {
   @override
   String get reelBlocked =>
       'Заблокировано — контент автора больше не показывается';
+
+  @override
+  String get setupFreeId => 'Бесплатный NFC ID';
 }

@@ -1920,4 +1920,7 @@ class LEn extends L {
 
   @override
   String get reelBlocked => 'Blocked — you won’t see their content';
+
+  @override
+  String get setupFreeId => 'Free NFC ID';
 }

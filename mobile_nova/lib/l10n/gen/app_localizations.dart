@@ -3740,6 +3740,12 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Bloklandi — uning kontenti endi ko‘rinmaydi'**
   String get reelBlocked;
+
+  /// No description provided for @setupFreeId.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bepul NFC ID'**
+  String get setupFreeId;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

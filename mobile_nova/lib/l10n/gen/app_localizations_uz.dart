@@ -1920,4 +1920,7 @@ class LUz extends L {
 
   @override
   String get reelBlocked => 'Bloklandi — uning kontenti endi ko‘rinmaydi';
+
+  @override
+  String get setupFreeId => 'Bepul NFC ID';
 }

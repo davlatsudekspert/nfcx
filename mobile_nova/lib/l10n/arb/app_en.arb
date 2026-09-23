@@ -738,5 +738,6 @@
   "reelSavedLocal": "Saved — on this phone",
   "reelUnsaved": "Removed from saved",
   "reelBlockAuthor": "Block author",
-  "reelBlocked": "Blocked — you won’t see their content"
+  "reelBlocked": "Blocked — you won’t see their content",
+  "setupFreeId": "Free NFC ID"
 }
