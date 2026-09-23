@@ -282,6 +282,18 @@ class Repository {
   Future<void> follow(String code) => api.post('/api/follow/' + code);
   Future<void> unfollow(String code) => api.post('/api/unfollow/' + code);
 
+  Future<List<SocialIdentity>> followList(
+    String code, {
+    bool following = false,
+  }) async =>
+      _list(
+        await api.get(
+          '/api/follow-list/' + code,
+          query: {'dir': following ? 'following' : 'followers'},
+        ),
+        'list',
+      ).map(SocialIdentity.fromJson).toList();
+
   Future<void> tap(String code) async {
     try {
       await api.post('/api/tap/' + code);
