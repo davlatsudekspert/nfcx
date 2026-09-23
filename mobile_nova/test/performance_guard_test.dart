@@ -31,8 +31,9 @@ void main() {
 
   test('NFC ID halqalari cheksiz aylanmaydi', () {
     final s = src('lib/design/widgets/nfc_id_hero.dart');
-    expect(s, contains('_rings.repeat(count: 2)'));
-    expect(s, isNot(contains('_rings.repeat();')));
+    // Bir marta o'tadi: takrorlash ekranni har kadrda qayta chizdirardi.
+    expect(s, contains('_rings.forward()'));
+    expect(s, isNot(contains('_rings.repeat(')));
   });
 
   test('tarmoq rasmlari ekran o‘lchamida ochiladi', () {

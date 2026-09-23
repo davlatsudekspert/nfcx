@@ -106,7 +106,7 @@ class _NfcIdHeroCardState extends State<NfcIdHeroCard>
     duration: const Duration(milliseconds: 620),
   );
 
-  /// Halqalarning sekin tashqariga surilishi — takrorlanadi.
+  /// Halqalarning sekin tashqariga surilishi — bir marta.
   late final AnimationController _rings = AnimationController(
     vsync: this,
     duration: const Duration(seconds: 9),
@@ -128,7 +128,11 @@ class _NfcIdHeroCardState extends State<NfcIdHeroCard>
       // takrorlash ekranni har kadrda qayta chizdirardi va ustidagi
       // shisha effektlarni ham qayta hisoblatardi (TEZLIK, 2026-09:
       // "ilova qotib ishlayapti").
-      if (!_rings.isAnimating && _rings.value == 0) _rings.repeat(count: 2);
+      //
+      // Endi BIR marta (2026-09, o'lchov): emulyatorda Home ochilgach
+      // 18 soniya davomida har kadr qayta chizilayotgani ko'rindi —
+      // aynan rasmlar yuklanib, odam aylantira boshlagan paytda.
+      if (!_rings.isAnimating && _rings.value == 0) _rings.forward();
     }
   }
 
