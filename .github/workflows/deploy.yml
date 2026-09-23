@@ -103,6 +103,8 @@ jobs:
       # keyingi yangi postga o'tib qolmasin.
       - name: Post raqami qayta ishlatilganda eski izoh/layk yopishmaydi
         run: node scripts/test-post-id-reuse.mjs
+      - name: Bir martalik tuzatish — yopishgan eski izoh/layk, admin ro'yxatida E2E yo'q
+        run: node scripts/test-recycled-post-repair.mjs
       # Manifestdagi yaroqsiz XML ilova qurilishini yiqitadi, lekin
       # `flutter analyze` ham, `flutter test` ham uni o'qimaydi.
       # Eski ilovaning CI'si esa faqat QO'LDA ishga tushadi —
