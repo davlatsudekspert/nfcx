@@ -55,20 +55,26 @@ class _MusicEditorScreenState extends State<MusicEditorScreen> {
       return;
     }
 
-    final result = await FilePicker.platform.pickFiles(
+    final result = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: const ['mp3', 'm4a', 'aac', 'wav', 'ogg', 'webm'],
       allowMultiple: false,
-      withData: true,
+      withData: false,
     );
     if (result == null || result.files.isEmpty || !mounted) return;
 
     final picked = result.files.single;
-    List<int>? bytes = picked.bytes;
-    if (bytes == null && picked.path != null) {
-      bytes = await File(picked.path!).readAsBytes();
+    final path = picked.path;
+    if (path == null || path.isEmpty) {
+      setState(() => _message = 'Musiqa fayli o‘qilmadi.');
+      return;
     }
-    if (bytes == null || bytes.isEmpty) {
+    if (picked.size > 100 * 1024 * 1024) {
+      setState(() => _message = 'Musiqa 100 MB dan katta bo‘lmasin.');
+      return;
+    }
+    final bytes = await File(path).readAsBytes();
+    if (bytes.isEmpty) {
       setState(() => _message = 'Musiqa fayli o‘qilmadi.');
       return;
     }
