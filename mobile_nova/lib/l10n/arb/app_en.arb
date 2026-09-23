@@ -410,6 +410,7 @@
   "giftNoOffers": "No gift offers yet",
   "profilePickBusiness": "Choose a business profile",
   "profilePickPersonal": "Choose a personal profile",
+  "profileSwitchedTo": "Active profile: {name}",
   "businessNoneTitle": "You have no business profile",
   "businessNoneHint": "Create a business profile or switch back to personal",
   "premiumTitle": "Premium subscription",

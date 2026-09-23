@@ -72,23 +72,16 @@ final homeFeedProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
   return res.when(ok: (v) => v, err: (e) => throw e);
 });
 
-/// Joriy rejimga mos NFC ID.
-///
-/// Biznes rejimida biznes ID'si, shaxsiyda shaxsiysi tanlanadi; mos
-/// keladigani bo'lmasa asosiy ID qaytadi.
-final activeIdProvider = Provider<NfcId?>((ref) {
-  final ids = ref.watch(myIdsProvider);
-  if (ids.isEmpty) return null;
-  final mode = ref.watch(modeProvider);
-  final want = mode == AppMode.business
-      ? NfcIdKind.business
-      : NfcIdKind.personal;
-  final match = ids.where((e) => e.kind == want);
-  if (match.isNotEmpty) {
-    return match.firstWhere((e) => e.primary, orElse: () => match.first);
-  }
-  return ids.firstWhere((e) => e.primary, orElse: () => ids.first);
-});
+/// Faol (tanlangan) shaxsiy NFC ID — NFC yozish, post qo'shish,
+/// profilni tahrirlash shu ID bilan ishlaydi.
+final activeIdProvider = Provider<NfcId?>(
+  // YAGONA MANBA: foydalanuvchi TANLAGAN shaxsiy ID
+  // (`activePersonalProvider`). Ilgari bu yerda o'z mantig'i bor edi
+  // (rejim + `kind` + "asosiy"), ya'ni Tohir tanlansa ham lenta, post
+  // qo'shish, profilni tahrirlash va NFC markazi VIP001 bilan
+  // ishlardi (egasi, 2026-09: "ID almashmayapti").
+  (ref) => ref.watch(activePersonalProvider),
+);
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});

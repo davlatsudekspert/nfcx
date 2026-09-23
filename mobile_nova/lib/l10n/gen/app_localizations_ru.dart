@@ -1110,6 +1110,11 @@ class LRu extends L {
   String get profilePickPersonal => 'Выберите личный профиль';
 
   @override
+  String profileSwitchedTo(String name) {
+    return 'Активный профиль: $name';
+  }
+
+  @override
   String get businessNoneTitle => 'У вас нет бизнес-профиля';
 
   @override

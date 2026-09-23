@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nfcstore_nova/app/profile_context.dart';
 import 'package:nfcstore_nova/app/providers.dart';
 import 'package:nfcstore_nova/core/network/api_client.dart';
 import 'package:nfcstore_nova/core/utils/result.dart';
@@ -114,20 +115,24 @@ void main() {
       expect(reopened.read(modeProvider), AppMode.business);
     });
 
-    test('faol ID rejimga mos ID’ni tanlaydi', () async {
+    test('faol ID — TANLANGAN ID (rejimdan qat’i nazar)', () async {
+      // Ilgari biznes rejimida `kind == business` yozuvi olinardi va
+      // tanlangan ID e'tiborsiz qolardi (egasi, 2026-09: "ID
+      // almashmayapti"). Endi yagona manba — `activePersonalProvider`.
       final container = ProviderContainer(overrides: [
         ...await testOverrides(),
-        // Ikkita ID: bittasi shaxsiy, bittasi biznes.
         myIdsProvider.overrideWithValue(const [
           NfcId(code: 'PERSONAL', primary: true),
-          NfcId(code: 'BIZNES', kind: NfcIdKind.business),
+          NfcId(code: 'IKKINCHI'),
         ]),
       ]);
       addTearDown(container.dispose);
 
       expect(container.read(activeIdProvider)?.code, 'PERSONAL');
+      container.read(selectedPersonalCodeProvider.notifier).state = 'IKKINCHI';
+      expect(container.read(activeIdProvider)?.code, 'IKKINCHI');
       await container.read(modeProvider.notifier).set(AppMode.business);
-      expect(container.read(activeIdProvider)?.code, 'BIZNES');
+      expect(container.read(activeIdProvider)?.code, 'IKKINCHI');
     });
 
     test('mos ID bo‘lmasa asosiy ID qaytadi', () async {

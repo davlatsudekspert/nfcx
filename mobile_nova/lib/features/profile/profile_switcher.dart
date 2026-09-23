@@ -57,7 +57,7 @@ Future<void> switchToBusiness(BuildContext context, WidgetRef ref) async {
   }
 
   if (list.length == 1) {
-    ref.read(selectedBusinessProvider.notifier).state = list.first.companyId;
+    await rememberBusiness(ref, list.first.companyId);
     await ref.read(modeProvider.notifier).set(AppMode.business);
     return;
   }
@@ -89,7 +89,7 @@ Future<void> switchToBusiness(BuildContext context, WidgetRef ref) async {
     imageOf: (b) => b.logoUrl,
   );
   if (picked == null || !context.mounted) return;
-  ref.read(selectedBusinessProvider.notifier).state = picked.companyId;
+  await rememberBusiness(ref, picked.companyId);
   await ref.read(modeProvider.notifier).set(AppMode.business);
 }
 
@@ -111,8 +111,7 @@ Future<void> switchToPersonal(BuildContext context, WidgetRef ref) async {
     imageOf: (e) => e.avatarUrl,
   );
   if (picked == null || !context.mounted) return;
-  ref.read(selectedPersonalCodeProvider.notifier).state = picked.code;
-  await ref.read(modeProvider.notifier).set(AppMode.personal);
+  await selectPersonal(ref, picked.code);
 }
 
 /// Faol profilni ALMASHTIRISH — rejimni o'zgartirmasdan.
@@ -133,17 +132,16 @@ Future<void> pickWithinCurrentMode(BuildContext context, WidgetRef ref) async {
       nameOf: (b) => b.displayName.isEmpty ? b.companyId : b.displayName,
       imageOf: (b) => b.logoUrl,
     );
-    if (picked != null) {
-      ref.read(selectedBusinessProvider.notifier).state = picked.companyId;
-    }
+    if (picked != null) await rememberBusiness(ref, picked.companyId);
     return;
   }
   final list = ref.read(personalIdsProvider);
   if (list.length <= 1) return;
-  // Biznes tomonidagi bilan bir xil qoida: tanlangan ID bor bo'lsa
-  // qayta so'ralmaydi.
-  final savedCode = ref.read(selectedPersonalCodeProvider);
-  if (savedCode != null && list.any((e) => e.code == savedCode)) return;
+  // TANLAGICH HAR SAFAR OCHILADI. Ilgari "tanlangan ID bor bo'lsa
+  // qayta so'ralmaydi" degan qoida bor edi — ya'ni bir marta
+  // tanlagandan keyin boshqa ID'ga o'tishning yo'li yopilardi
+  // (egasi, 2026-09: "boshqa ID'ga o'tmayapti"). Bu funksiyaning
+  // butun vazifasi — aynan tanlash.
   final picked = await _pick<NfcId>(
     context,
     title: L.of(context).profilePickPersonal,
@@ -153,9 +151,7 @@ Future<void> pickWithinCurrentMode(BuildContext context, WidgetRef ref) async {
     nameOf: (e) => e.name.isEmpty ? e.code : e.name,
     imageOf: (e) => e.avatarUrl,
   );
-  if (picked != null) {
-    ref.read(selectedPersonalCodeProvider.notifier).state = picked.code;
-  }
+  if (picked != null) await selectPersonal(ref, picked.code);
 }
 
 Future<T?> _pick<T>(

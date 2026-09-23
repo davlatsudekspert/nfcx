@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/providers.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/business_repository.dart';
 import '../auth/session.dart';
@@ -31,7 +32,21 @@ final myBusinessesProvider = FutureProvider<List<Business>>(dependencies: [busin
 });
 
 /// Joriy tanlangan biznes — birinchisi, agar boshqasi tanlanmagan bo'lsa.
-final selectedBusinessProvider = StateProvider<String?>((_) => null);
+final selectedBusinessProvider = StateProvider<String?>((ref) {
+  try {
+    return ref.watch(prefsProvider).selectedBusiness;
+  } catch (_) {
+    return null;
+  }
+});
+
+/// Tanlangan kompaniyani eslab qolish (holat + telefon xotirasi).
+Future<void> rememberBusiness(WidgetRef ref, String companyId) async {
+  ref.read(selectedBusinessProvider.notifier).state = companyId;
+  try {
+    await ref.read(prefsProvider).setSelectedBusiness(companyId);
+  } catch (_) {/* xotira yo'q — faqat shu sessiya */}
+}
 
 final activeBusinessProvider = Provider<Business?>((ref) {
   final list = ref.watch(myBusinessesProvider).valueOrNull ?? const <Business>[];

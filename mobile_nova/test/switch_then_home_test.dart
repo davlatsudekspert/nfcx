@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,7 +11,8 @@ import 'package:nfcstore_nova/core/utils/result.dart';
 import 'package:nfcstore_nova/data/models/models.dart';
 import 'package:nfcstore_nova/data/repositories/business_repository.dart';
 import 'package:nfcstore_nova/features/auth/session.dart';
-import 'package:nfcstore_nova/features/business/business_providers.dart';
+import 'package:nfcstore_nova/features/home/home_screen.dart' show activeIdProvider;
+import 'package:nfcstore_nova/l10n/gen/app_localizations_uz.dart';
 import 'package:nfcstore_nova/routing/router.dart';
 import 'package:nfcstore_nova/routing/routes.dart';
 
@@ -37,57 +40,107 @@ Future<void> _frames(WidgetTester tester, [int n = 30]) async {
   }
 }
 
-/// PROFILDA ALMASHTIRIB, BOSH SAHIFAGA O'TISH.
+/// PROFILDA ID ALMASHTIRIB, BOSH SAHIFAGA O'TISH — HAQIQIY BOSISHLAR.
 ///
-/// Egasi (2026-09): "profildan almashtirib bosh menyuga o'tsa qotib
-/// qolyapti". Butun ilova (router + tablar) bilan takrorlanadi.
+/// Egasi (2026-09): "profil bo'limidan ID'ni almashtirsangiz, keyin
+/// asosiy bo'limga o'tsangiz, o'sha tanlangan ID chiqyapti, o'zgarmayapti,
+/// boshqa ID'ga ham, biznesga ham o'tmayapti". Sabablari: lenta va bir
+/// qator ekranlar eski manbadan (asosiy ID) o'qirdi, sarlavhadagi
+/// tanlagich bir martadan keyin ochilmasdi, lentadagi ID bosilganda
+/// faol bo'lmasdi.
 void main() {
-  Future<ProviderContainer> boot(WidgetTester tester) async {
+  late ProviderContainer c;
+
+  Future<void> boot(WidgetTester tester) async {
     tester.view.physicalSize = const Size(1170, 2532);
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
-    final container = ProviderContainer(overrides: [
+    c = ProviderContainer(overrides: [
       ...await testOverrides(),
       authRepositoryProvider.overrideWithValue(FakeAuthRepository(ids: _ids)),
       businessRepositoryProvider.overrideWithValue(_BizRepo()),
     ]);
-    addTearDown(container.dispose);
+    addTearDown(c.dispose);
     await tester.pumpWidget(UncontrolledProviderScope(
-      container: container,
+      container: c,
       child: const NovaApp(),
     ));
     await _frames(tester);
-    container.read(routerProvider).go(Routes.profile);
-    await _frames(tester);
-    return container;
   }
 
-  testWidgets('boshqa NFC ID tanlab, bosh sahifaga o‘tish', (tester) async {
-    final c = await boot(tester);
-    c.read(selectedPersonalCodeProvider.notifier).state = 'UZD772';
-    await _frames(tester);
-    c.read(routerProvider).go(Routes.home);
-    await _frames(tester, 60);
+  Future<void> go(WidgetTester tester, String route) async {
+    c.read(routerProvider).go(route);
+    await _frames(tester, 40);
+  }
+
+  Future<void> tapCard(WidgetTester tester, String code) async {
+    final card = find.byKey(ValueKey('my-id-$code'));
+    await tester.ensureVisible(card);
+    await _frames(tester, 6);
+    await tester.tap(card);
+    await _frames(tester, 20);
+  }
+
+  testWidgets('profil lentasidan ID tanlash → bosh sahifa → biznes → boshqa ID',
+      (tester) async {
+    await boot(tester);
+    final l = LUz();
+
+    // 1. Profilda lentadan Tohir.
+    await go(tester, Routes.profile);
+    await tapCard(tester, 'TTS075');
+    expect(c.read(activePersonalProvider)?.code, 'TTS075');
+    expect(c.read(activeIdProvider)?.code, 'TTS075',
+        reason: 'NFC/post/tahrirlash ham tanlangan ID bilan ishlasin');
+    expect(c.read(prefsProvider).selectedPersonal, 'TTS075',
+        reason: 'ilova qayta ochilganda ham shu ID');
+
+    // 2. Profilda yana boshqasi — lenta har safar almashtiradi.
+    await tapCard(tester, 'UZD772');
+    expect(c.read(activePersonalProvider)?.code, 'UZD772');
+
+    // 3. Bosh sahifa o'sha ID'ni ko'rsatadi.
+    await go(tester, Routes.home);
     expect(tester.takeException(), isNull);
-    expect(c.read(activeProfileProvider)?.code, 'UZD772');
     expect(find.text('UZD772'), findsWidgets);
+
+    // 4. Bosh sahifada Biznes.
+    final biz = find.text(l.modeBusiness).first;
+    await tester.ensureVisible(biz);
+    await tester.tap(biz);
+    await _frames(tester, 30);
+    // Ikki kompaniya, hech biri tanlanmagan — tanlagich chiqadi.
+    if (find.text('NFCSTORE').evaluate().isNotEmpty &&
+        c.read(modeProvider) != AppMode.business) {
+      await tester.tap(find.text('NFCSTORE').last);
+      await _frames(tester, 30);
+    }
+    expect(c.read(modeProvider), AppMode.business);
+    expect(c.read(activeProfileProvider)?.isBusiness, isTrue);
+
+    // 5. Shaxsiyga qaytish — tanlagich chiqadi, Tohir tanlanadi.
+    final per = find.text(l.modePersonal).first;
+    await tester.ensureVisible(per);
+    await tester.tap(per);
+    await _frames(tester, 30);
+    expect(find.text(l.profilePickPersonal), findsOneWidget,
+        reason: 'bir nechta ID bor — tanlagich ochilishi kerak');
+    await tester.tap(find.text('Tohir').last);
+    await _frames(tester, 30);
+    expect(c.read(modeProvider), AppMode.personal);
+    expect(c.read(activePersonalProvider)?.code, 'TTS075');
+    expect(find.text('TTS075'), findsWidgets);
+    expect(tester.takeException(), isNull);
   });
 
-  testWidgets('biznesga o‘tib, bosh sahifaga o‘tish', (tester) async {
-    final c = await boot(tester);
-    c.read(selectedBusinessProvider.notifier).state = 'NFCSTOREUZ';
-    await c.read(modeProvider.notifier).set(AppMode.business);
-    await _frames(tester);
-    c.read(routerProvider).go(Routes.home);
-    await _frames(tester, 60);
-    expect(tester.takeException(), isNull);
-    expect(c.read(activeProfileProvider)?.isBusiness, isTrue);
-    expect(find.text('NFCSTORE'), findsWidgets);
-
-    // Va qaytib shaxsiyga.
-    await c.read(modeProvider.notifier).set(AppMode.personal);
-    await _frames(tester, 40);
-    expect(tester.takeException(), isNull);
-    expect(find.text('VIP001'), findsWidgets);
+  test('sarlavhadagi tanlagich HAR SAFAR ochiladi (jim chiqib ketmaydi)', () {
+    final src = File('lib/features/profile/profile_switcher.dart')
+        .readAsStringSync();
+    final body = src
+        .substring(src.indexOf('Future<void> pickWithinCurrentMode'))
+        .split('Future<T?> _pick')
+        .first;
+    expect(body, isNot(contains('savedCode')),
+        reason: 'bir marta tanlagandan keyin tanlagich ochilmay qolardi');
   });
 }

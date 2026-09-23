@@ -78,6 +78,8 @@ class Prefs {
   static const _kTheme = 'nova.theme';
   static const _kLocale = 'nova.locale';
   static const _kMode = 'nova.mode';
+  static const _kSelPersonal = 'nova.selectedPersonal';
+  static const _kSelBusiness = 'nova.selectedBusiness';
   static const _kSearches = 'nova.recentSearches';
   static const _kRules = 'nova.contentRulesAccepted';
   static const _kLock = 'nova.appLock';
@@ -95,6 +97,15 @@ class Prefs {
   /// `personal` yoki `business` — ilova qaysi rejimda ochilgani.
   String? get mode => _p.getString(_kMode);
   Future<void> setMode(String v) => _p.setString(_kMode, v);
+
+  /// Tanlangan shaxsiy NFC ID va kompaniya — ilova qayta ochilganda
+  /// ham o'sha profil faol bo'lsin (Instagram hisob tanlovi kabi).
+  String? get selectedPersonal => _p.getString(_kSelPersonal);
+  Future<void> setSelectedPersonal(String? v) =>
+      v == null ? _p.remove(_kSelPersonal) : _p.setString(_kSelPersonal, v);
+  String? get selectedBusiness => _p.getString(_kSelBusiness);
+  Future<void> setSelectedBusiness(String? v) =>
+      v == null ? _p.remove(_kSelBusiness) : _p.setString(_kSelBusiness, v);
 
   /// Kontent qoidalariga rozilik berilganmi.
   ///

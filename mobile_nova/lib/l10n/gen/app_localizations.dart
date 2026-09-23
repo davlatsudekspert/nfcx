@@ -2247,6 +2247,12 @@ abstract class L {
   /// **'Shaxsiy profilni tanlang'**
   String get profilePickPersonal;
 
+  /// ID lentasidan profil almashganda
+  ///
+  /// In uz, this message translates to:
+  /// **'Faol profil: {name}'**
+  String profileSwitchedTo(String name);
+
   /// No description provided for @businessNoneTitle.
   ///
   /// In uz, this message translates to:

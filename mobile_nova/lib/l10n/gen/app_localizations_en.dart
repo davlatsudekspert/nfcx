@@ -1113,6 +1113,11 @@ class LEn extends L {
   String get profilePickPersonal => 'Choose a personal profile';
 
   @override
+  String profileSwitchedTo(String name) {
+    return 'Active profile: $name';
+  }
+
+  @override
   String get businessNoneTitle => 'You have no business profile';
 
   @override

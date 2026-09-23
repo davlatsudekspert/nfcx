@@ -1116,6 +1116,11 @@ class LUz extends L {
   String get profilePickPersonal => 'Shaxsiy profilni tanlang';
 
   @override
+  String profileSwitchedTo(String name) {
+    return 'Faol profil: $name';
+  }
+
+  @override
   String get businessNoneTitle => 'Sizda biznes profil yo‘q';
 
   @override

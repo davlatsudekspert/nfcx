@@ -416,6 +416,15 @@
   "giftNoOffers": "Hozircha sovg‘a taklifi yo‘q",
   "profilePickBusiness": "Biznes profilni tanlang",
   "profilePickPersonal": "Shaxsiy profilni tanlang",
+  "profileSwitchedTo": "Faol profil: {name}",
+  "@profileSwitchedTo": {
+    "description": "ID lentasidan profil almashganda",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "businessNoneTitle": "Sizda biznes profil yo‘q",
   "businessNoneHint": "Biznes profil yarating yoki shaxsiy rejimga qayting",
   "premiumTitle": "Premium obuna",

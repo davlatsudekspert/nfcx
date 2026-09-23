@@ -9,7 +9,7 @@ import '../../../design/widgets/id_plate.dart';
 import '../../../design/widgets/surfaces.dart';
 import '../../../routing/routes.dart';
 import '../../auth/session.dart';
-import '../home_screen.dart' show activeIdProvider;
+import '../../../app/profile_context.dart';
 import 'identity_card.dart' show formatCount;
 import '../../../l10n/gen/app_localizations.dart';
 
@@ -35,7 +35,9 @@ class MyIdsStrip extends ConsumerWidget {
     final ids = ref.watch(myIdsProvider);
     if (ids.isEmpty) return const SizedBox.shrink();
 
-    final active = ref.watch(activeIdProvider)?.code;
+    // Belgilangan karta = HAQIQATAN faol profil (bosh sahifa va
+    // profil ko'rsatayotgani bilan bir xil manba).
+    final active = ref.watch(activePersonalProvider)?.code;
 
     // Katta shrift (Sozlamalar -> x1.3) bilan plitka ichidagi uch
     // qator sig'masdi: balandlik shrift bilan birga o'sadi.
@@ -54,7 +56,25 @@ class MyIdsStrip extends ConsumerWidget {
           final id = ids[i];
           final on = id.code == active;
           return PressableScale(
-            onTap: () => context.push(Routes.nfcId(id.code)),
+            key: ValueKey('my-id-${id.code}'),
+            // BOSILGANDA SHU ID FAOL BO'LADI (egasi, 2026-09: "profildan
+            // ID almashtiraman"). Faol kartani qayta bosish — uning
+            // sozlamalari (QR, asosiy qilish, sovg'a, tarix).
+            onTap: () async {
+              if (on) {
+                context.push(Routes.nfcId(id.code));
+                return;
+              }
+              await selectPersonal(ref, id.code);
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context)
+                ..hideCurrentSnackBar()
+                ..showSnackBar(SnackBar(
+                  duration: const Duration(seconds: 2),
+                  content: Text(L.of(context).profileSwitchedTo(
+                      id.name.isEmpty ? id.code : id.name)),
+                ));
+            },
             child: Container(
               width: 152,
               padding: const EdgeInsets.all(Gap.md),

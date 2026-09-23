@@ -41,6 +41,8 @@ import 'package:nfcstore_nova/data/repositories/auth_repository.dart';
 import 'package:nfcstore_nova/features/business/business_providers.dart';
 import 'package:nfcstore_nova/features/profile/profile_repository.dart';
 import 'package:nfcstore_nova/features/profile/music_player.dart';
+import 'package:nfcstore_nova/routing/router.dart';
+import 'package:nfcstore_nova/routing/routes.dart';
 
 import 'support/creds.dart';
 import 'support/net.dart';
@@ -256,6 +258,115 @@ void main() {
           businesses.first.companyId;
     }
 
+    await c.read(modeProvider.notifier).set(AppMode.personal);
+  }, timeout: const Timeout(Duration(minutes: 6)));
+
+  // ══════════════════════════════════════════════════════════════
+  // A2. HAQIQIY BOSISH: Profil lentasidan ID → Bosh sahifa → Biznes
+  //
+  // Egasi (2026-09): "profildan ID almashtirsam, bosh sahifada o'sha
+  // qolib ketyapti, boshqa ID'ga ham, biznesga ham o'tmayapti".
+  // Provayderni to'g'ridan-to'g'ri o'zgartirish EMAS — tugmalar bosiladi.
+  // ══════════════════════════════════════════════════════════════
+
+  testWidgets('A2 — ID almashtirish haqiqiy bosishlar bilan', (t) async {
+    const row = 'ID switch — real taps';
+    if (!signedIn) {
+      report.skip(row, 'sessiya ochilmadi');
+      return;
+    }
+    final c = await launchSignedIn(t);
+    final ids = c.read(personalIdsProvider);
+    if (ids.length < 2) {
+      report.skip(row, 'hisobda bittadan kam shaxsiy ID');
+      return;
+    }
+    Future<void> frames([int n = 30]) =>
+        settle(t, frames: n, step: const Duration(milliseconds: 80));
+    Future<void> tapKey(String key) async {
+      final f = find.byKey(ValueKey(key));
+      await t.ensureVisible(f);
+      await frames(8);
+      await t.tap(f);
+      await frames(30);
+    }
+
+    final problems = <String>[];
+    try {
+      final before = c.read(activePersonalProvider)?.code;
+      final target = ids.firstWhere((e) => e.code != before);
+
+      c.read(routerProvider).go(Routes.profile);
+      await frames(40);
+      await tapKey('my-id-${target.code}');
+      if (c.read(activePersonalProvider)?.code != target.code) {
+        problems.add('lentadagi ${target.code} bosildi — faol bo\'lmadi');
+      }
+
+      c.read(routerProvider).go(Routes.home);
+      await frames(40);
+      if (find.text(target.code).evaluate().isEmpty) {
+        problems.add('bosh sahifada ${target.code} ko\'rinmadi');
+      }
+
+      final businesses = await c.read(myBusinessesProvider.future);
+      if (businesses.isNotEmpty) {
+        final biz = find.text('Biznes').first;
+        await t.ensureVisible(biz);
+        await t.tap(biz);
+        await frames(40);
+        if (c.read(modeProvider) != AppMode.business) {
+          // Bir nechta kompaniya — tanlagich: birinchisini bosamiz.
+          final name = businesses.first.displayName.isEmpty
+              ? businesses.first.companyId
+              : businesses.first.displayName;
+          if (find.text(name).evaluate().isNotEmpty) {
+            await t.tap(find.text(name).last);
+            await frames(40);
+          }
+        }
+        if (c.read(modeProvider) != AppMode.business) {
+          problems.add('bosh sahifada Biznes bosildi — rejim o\'zgarmadi');
+        }
+      }
+
+      // Qaytib shaxsiyga, boshqa ID bilan.
+      final back = ids.firstWhere((e) => e.code != target.code);
+      final per = find.text('Shaxsiy').first;
+      await t.ensureVisible(per);
+      await t.tap(per);
+      await frames(40);
+      final label = back.name.isEmpty ? back.code : back.name;
+      if (find.text(label).evaluate().isNotEmpty) {
+        await t.tap(find.text(label).last);
+        await frames(40);
+      }
+      if (c.read(modeProvider) != AppMode.personal) {
+        problems.add('Shaxsiy bosildi — rejim o\'zgarmadi');
+      } else if (c.read(activePersonalProvider)?.code != back.code) {
+        problems.add('tanlagichdan ${back.code} tanlandi — faol bo\'lmadi');
+      }
+      final ex = t.takeException();
+      if (ex != null) problems.add('xato: $ex');
+    } catch (e) {
+      problems.add('oqim yiqildi: $e');
+    }
+
+    if (problems.isEmpty) {
+      report.pass(row,
+          screen: 'Profil → Bosh sahifa',
+          action: 'lentadan ID, Biznes, Shaxsiy + tanlagich',
+          note: '${ids.length} ta ID; hammasi bosish bilan almashdi');
+    } else {
+      report.add(MatrixRow(
+        name: row,
+        verdict: Verdict.fail,
+        screen: 'Profil → Bosh sahifa',
+        action: 'haqiqiy bosishlar',
+        cause: problems.join('; '),
+        layer: 'frontend',
+      ));
+    }
     await c.read(modeProvider.notifier).set(AppMode.personal);
   }, timeout: const Timeout(Duration(minutes: 6)));
 

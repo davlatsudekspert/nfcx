@@ -96,7 +96,7 @@ class _BusinessTile extends ConsumerWidget {
       solid: true,
       padding: const EdgeInsets.all(Gap.lg),
       onTap: () {
-        ref.read(selectedBusinessProvider.notifier).state = business.companyId;
+        rememberBusiness(ref, business.companyId);
         context.push(Routes.businessDashboard);
       },
       child: Row(

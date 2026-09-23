@@ -410,6 +410,7 @@
   "giftNoOffers": "Пока нет предложений подарков",
   "profilePickBusiness": "Выберите бизнес-профиль",
   "profilePickPersonal": "Выберите личный профиль",
+  "profileSwitchedTo": "Активный профиль: {name}",
   "businessNoneTitle": "У вас нет бизнес-профиля",
   "businessNoneHint": "Создайте бизнес-профиль или вернитесь в личный режим",
   "premiumTitle": "Подписка Premium",

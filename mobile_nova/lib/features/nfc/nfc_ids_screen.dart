@@ -15,6 +15,7 @@ import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
+import '../../app/profile_context.dart';
 import '../auth/session.dart';
 import '../home/widgets/identity_card.dart';
 import 'qr_sheet.dart';
@@ -306,6 +307,10 @@ class NfcIdDetailScreen extends ConsumerWidget {
                   onTap: () async {
                     final res =
                         await ref.read(nfcRepositoryProvider).setPrimary(id.code);
+                    if (!context.mounted) return;
+                    // "Asosiy qilish" — odam shu ID bilan ishlamoqchi:
+                    // u butun ilovada FAOL ham bo'ladi.
+                    if (res.isOk) await selectPersonal(ref, id.code);
                     if (!context.mounted) return;
                     res.when(
                       ok: (_) => ref.read(sessionProvider.notifier).refresh(),

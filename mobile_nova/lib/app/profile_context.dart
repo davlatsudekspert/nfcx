@@ -122,7 +122,26 @@ final personalIdsProvider = Provider<List<NfcId>>((ref) {
 });
 
 /// Tanlangan shaxsiy yozuv kodi — bir nechta bo'lganda.
-final selectedPersonalCodeProvider = StateProvider<String?>((_) => null);
+final selectedPersonalCodeProvider = StateProvider<String?>((ref) {
+  // Telefon xotirasi ulanmagan bo'lsa (ba'zi sinovlar) — tanlovsiz.
+  try {
+    return ref.watch(prefsProvider).selectedPersonal;
+  } catch (_) {
+    return null;
+  }
+});
+
+/// FAOL SHAXSIY ID'NI TANLASH — YAGONA YO'L.
+///
+/// Holat va telefon xotirasi birga yangilanadi: ilova qayta ochilganda
+/// ham shu ID faol bo'ladi. Rejim shaxsiyga o'tadi.
+Future<void> selectPersonal(WidgetRef ref, String code) async {
+  ref.read(selectedPersonalCodeProvider.notifier).state = code;
+  try {
+    await ref.read(prefsProvider).setSelectedPersonal(code);
+  } catch (_) {/* xotira yo'q — faqat shu sessiya */}
+  await ref.read(modeProvider.notifier).set(AppMode.personal);
+}
 
 /// TANLANGAN YOZUV — BUTUN RO'YXATDAN QIDIRILADI.
 ///

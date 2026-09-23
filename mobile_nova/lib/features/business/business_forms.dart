@@ -176,7 +176,7 @@ class _BusinessOnboardScreenState extends ConsumerState<BusinessOnboardScreen> {
     res.when(
       ok: (b) {
         ref.invalidate(myBusinessesProvider);
-        ref.read(selectedBusinessProvider.notifier).state = b.companyId;
+        rememberBusiness(ref, b.companyId);
         context.go(Routes.businessDashboard);
       },
       err: (e) => setState(() => _error = describeError(l, e)),
