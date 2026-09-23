@@ -105,6 +105,9 @@ jobs:
       # band chiqsa kod yondirilmaydi.
       - name: Ro'yxatda band telefon/email
         run: node scripts/test-register-conflict.mjs
+      # Promokod: taklif qilinganlar ro'yxati ism/email/sana bilan.
+      - name: Promokod ro'yxati
+        run: node scripts/test-referrals.mjs
       - name: NFCSTORE FEATURED — slot faqat haqiqiy to'lovdan keyin yonadi
         run: node scripts/test-featured.mjs
       # Shaxsiy NFC ID xaridi: narxni SERVER hisoblaydi, bitta kodni
