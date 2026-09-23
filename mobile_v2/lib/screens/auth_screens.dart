@@ -321,7 +321,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         keyboardType: TextInputType.number,
                         textInputAction: TextInputAction.done,
                         autofillHints: const [AutofillHints.oneTimeCode],
-                        inputFormatters: const [
+                        inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly,
                           LengthLimitingTextInputFormatter(6),
                         ],
