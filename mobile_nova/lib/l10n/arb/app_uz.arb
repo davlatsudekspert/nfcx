@@ -901,5 +901,10 @@
   "privacyPolicy": "Maxfiylik siyosati",
   "deleteAccountWhat": "Hisobingiz, barcha NFC ID profillaringiz, postlar, istoriyalar, izohlar va saqlanganlar ommadan darhol olib tashlanadi. Siz qayta kira olmaysiz. Buni qaytarib bo‘lmaydi.",
   "deleteAccountUnderstood": "Tushundim, hisobimni o‘chirish",
-  "deleteAccountDone": "Hisobingiz o‘chirildi"
+  "deleteAccountDone": "Hisobingiz o‘chirildi",
+  "errCommentPremium": "Izoh yozish uchun Premium obuna kerak. Izohlarni esa hamma o‘qiy oladi.",
+  "@errCommentPremium": {
+    "description": "Server `premium_required` (403) — izoh yozish faqat Premium'ga. Sabab aytiladi, umumiy \"Ruxsat yo'q\" emas."
+  },
+  "commentPremiumTitle": "Izoh yozish — Premium a’zolar uchun"
 }

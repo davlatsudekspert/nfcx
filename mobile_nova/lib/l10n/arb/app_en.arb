@@ -826,5 +826,7 @@
   "privacyPolicy": "Privacy policy",
   "deleteAccountWhat": "Your account, all NFC ID profiles, posts, stories, comments and saved items are removed from public view immediately. You will not be able to sign in again. This cannot be undone.",
   "deleteAccountUnderstood": "I understand, delete my account",
-  "deleteAccountDone": "Your account has been deleted"
+  "deleteAccountDone": "Your account has been deleted",
+  "errCommentPremium": "A Premium subscription is required to write comments. Everyone can read them.",
+  "commentPremiumTitle": "Comments are for Premium members"
 }

@@ -434,6 +434,10 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
     final following = ref.watch(followingOfProvider(p.code));
     final c = _controller;
     final playing = c != null && _ready && c.value.isPlaying;
+    // Telefonning pastki tizim paneli (3 tugmali navigatsiya ~48 dp).
+    // Ilgari hisobga olinmasdi: shunday telefonlarda muallif, NFC ID
+    // va izoh pastki menyu ostida qolib ketardi (egasi, 2026-09 surat).
+    final inset = MediaQuery.viewPaddingOf(context).bottom;
 
     return GestureDetector(
       onTap: _togglePlay,
@@ -517,7 +521,7 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
           ),
           Positioned(
             right: 4,
-            bottom: 132,
+            bottom: 132 + inset,
             child: Column(
               children: [
                 _Action(
@@ -585,7 +589,7 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
           Positioned(
             left: Gap.lg,
             right: 72,
-            bottom: 112,
+            bottom: 112 + inset,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -690,7 +694,7 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
             Positioned(
               left: 0,
               right: 0,
-              bottom: 96,
+              bottom: 96 + inset,
               child: IgnorePointer(
                 child: VideoProgressIndicator(
                   c,

@@ -4268,6 +4268,18 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Hisobingiz o‘chirildi'**
   String get deleteAccountDone;
+
+  /// Server `premium_required` (403) — izoh yozish faqat Premium'ga. Sabab aytiladi, umumiy "Ruxsat yo'q" emas.
+  ///
+  /// In uz, this message translates to:
+  /// **'Izoh yozish uchun Premium obuna kerak. Izohlarni esa hamma o‘qiy oladi.'**
+  String get errCommentPremium;
+
+  /// No description provided for @commentPremiumTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Izoh yozish — Premium a’zolar uchun'**
+  String get commentPremiumTitle;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

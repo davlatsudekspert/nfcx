@@ -2210,4 +2210,11 @@ class LEn extends L {
 
   @override
   String get deleteAccountDone => 'Your account has been deleted';
+
+  @override
+  String get errCommentPremium =>
+      'A Premium subscription is required to write comments. Everyone can read them.';
+
+  @override
+  String get commentPremiumTitle => 'Comments are for Premium members';
 }

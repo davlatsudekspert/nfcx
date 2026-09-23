@@ -2207,4 +2207,11 @@ class LRu extends L {
 
   @override
   String get deleteAccountDone => 'Аккаунт удалён';
+
+  @override
+  String get errCommentPremium =>
+      'Чтобы писать комментарии, нужна подписка Premium. Читать их могут все.';
+
+  @override
+  String get commentPremiumTitle => 'Комментарии — для участников Premium';
 }

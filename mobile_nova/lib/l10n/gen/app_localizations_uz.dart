@@ -2211,4 +2211,11 @@ class LUz extends L {
 
   @override
   String get deleteAccountDone => 'Hisobingiz o‘chirildi';
+
+  @override
+  String get errCommentPremium =>
+      'Izoh yozish uchun Premium obuna kerak. Izohlarni esa hamma o‘qiy oladi.';
+
+  @override
+  String get commentPremiumTitle => 'Izoh yozish — Premium a’zolar uchun';
 }

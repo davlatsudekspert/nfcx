@@ -12,6 +12,7 @@ import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
+import '../auth/session.dart';
 import '../home/widgets/avatar.dart';
 import 'moderation.dart';
 
@@ -164,6 +165,10 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
     final l = L.of(context);
     final t = context.tokens;
     final data = ref.watch(commentsProvider(_ref));
+    // Server izohni faqat Premium'ga yozdiradi. Premium bo'lmaganga
+    // maydon UMUMAN OCHILMAYDI — o'rnida sababi yozilgan qulf kartasi
+    // (egasi, 2026-09: "bosilmasin, izoh yozilgandan keyin chiqmasin").
+    final canWrite = _serverPremium(ref.watch(currentUserProvider));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -212,6 +217,10 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
                 ),
               ],
 
+              if (!canWrite)
+                const _PremiumLockedComposer(
+                    key: ValueKey('comment-premium-locked'))
+              else ...[
               // ── Qoidalar eslatmasi ──────────────────────────
               // Izoh ham ommaviy kontent: haqorat, diniy va siyosiy
               // targ'ibot taqiqi yozishdan OLDIN ko'rinib tursin.
@@ -291,6 +300,7 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
                         .bodySmall!
                         .copyWith(color: t.error)),
               ],
+              ],
               const SizedBox(height: Gap.lg),
 
               // ── Ro'yxat ─────────────────────────────────────
@@ -335,7 +345,7 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
                             // Javobga javob yozib bo'lmaydi (server
                             // ham rad etadi), shuning uchun tugma
                             // faqat ota izohda.
-                            onReply: c.isReply
+                            onReply: c.isReply || !canWrite
                                 ? null
                                 : () => setState(() {
                                       _replyTo = c;
@@ -354,6 +364,74 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
     );
   }
 }
+
+/// PREMIUM BO'LMAGANGA — yozish maydoni o'rnida.
+///
+/// Bosilmaydi, klaviatura ochilmaydi. Xarid tugmasi va sayt havolasi
+/// ATAYLAB YO'Q: Google Play raqamli tovar uchun ilovadan tashqari
+/// to'lovga yo'naltirishni taqiqlaydi.
+class _PremiumLockedComposer extends StatelessWidget {
+  const _PremiumLockedComposer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final l = L.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(Gap.md),
+      decoration: BoxDecoration(
+        color: t.surface2,
+        borderRadius: R.gentle,
+        border: Border.all(color: t.border2),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: t.brandSoft,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.lock_rounded, size: 18, color: t.brand),
+          ),
+          const SizedBox(width: Gap.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l.commentPremiumTitle,
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  l.errCommentPremium,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: t.text2, height: 1.35),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Server `getCurrentUser().isPremium` bilan BIR XIL hisob. Anonim
+/// holatda eslatma chiqmaydi — u yerda kirish so'raladi.
+bool _serverPremium(User? u) =>
+    u == null ||
+    u.premium ||
+    (u.premiumUntil?.isAfter(DateTime.now()) ?? false);
 
 class _CommentTile extends ConsumerWidget {
   const _CommentTile({

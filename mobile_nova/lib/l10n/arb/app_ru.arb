@@ -826,5 +826,7 @@
   "privacyPolicy": "Политика конфиденциальности",
   "deleteAccountWhat": "Ваш аккаунт, все профили NFC ID, посты, истории, комментарии и сохранённое сразу скрываются. Войти снова будет нельзя. Это необратимо.",
   "deleteAccountUnderstood": "Понимаю, удалить аккаунт",
-  "deleteAccountDone": "Аккаунт удалён"
+  "deleteAccountDone": "Аккаунт удалён",
+  "errCommentPremium": "Чтобы писать комментарии, нужна подписка Premium. Читать их могут все.",
+  "commentPremiumTitle": "Комментарии — для участников Premium"
 }

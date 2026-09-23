@@ -30,7 +30,11 @@ String describeError(L l, AppError e) => switch (e.code) {
       'name_not_allowed' => l.errNameNotAllowed,
       // Moderatsiya: admin hisobni vaqtincha bloklagan (serverdagi
       // `bannedUntil`). Umumiy "ruxsat yo'q" emas — sabab aytiladi.
-      'BANNED' || 'account_suspended' => l.errBanned,
+      'BANNED' || 'banned' || 'account_suspended' => l.errBanned,
+      // Izoh yozish — faqat Premium (server qoidasi, `comments.js`).
+      // Ilgari umumiy "Ruxsat yo'q" chiqardi va odam sababini bilmasdi
+      // (egasi, 2026-09 surat). Xarid havolasi YO'Q — Play qoidasi.
+      'premium_required' => l.errCommentPremium,
       'rules_not_accepted' => l.rulesNotAccepted,
       'plan_limit_reached' => l.errPlanLimit,
       'plan_locked' => l.errPlanLocked,

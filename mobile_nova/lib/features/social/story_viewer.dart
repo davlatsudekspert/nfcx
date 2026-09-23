@@ -21,6 +21,8 @@ import '../profile/music_player.dart';
 import 'inline_video.dart';
 import 'media_frame.dart';
 import '../home/widgets/avatar.dart';
+import '../business/business_providers.dart';
+import '../profile/profile_repository.dart';
 
 // RIVERPOD `dependencies` — DEMO DARAXTI UCHUN SHART.
 //
@@ -413,7 +415,40 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
             // birida bo'lsa. Egalik huquqini baribir SERVER hal
             // qiladi (o'zganikida 403 keladi); bu shunchaki
             // ishlamaydigan tugmani ko'rsatmaslik uchun.
-            final mine = ref.watch(myIdsProvider).any((e) => e.code == s.code);
+            //
+            // EGASI. `GET /api/records/:code/stories` va kompaniya
+            // yo'li istoryaga egasining kodi, ismi va suratini
+            // QO'SHMAYDI (faqat `/api/stories/feed` qo'shadi). Shuning
+            // uchun o'z istoryangda tepada bo'sh oq doira turardi, ism
+            // yo'q edi, "meniki" ham aniqlanmay, o'chirish o'rniga
+            // shikoyat tugmasi chiqardi (egasi, 2026-09 surat).
+            // Kod marshrutdan, ism va surat profil ma'lumotidan olinadi.
+            final code = s.code.isEmpty ? widget.code : s.code;
+            final business = widget.isBusiness;
+            final ownId = business
+                ? null
+                : ref
+                    .watch(myIdsProvider)
+                    .where((e) => e.code == code)
+                    .firstOrNull;
+            final ownBiz = business
+                ? ref
+                    .watch(myBusinessesProvider)
+                    .valueOrNull
+                    ?.where((b) => b.companyId == code)
+                    .firstOrNull
+                : null;
+            final mine = ownId != null || ownBiz != null;
+            final public = (business || ownId != null ||
+                    (s.authorName.isNotEmpty && s.authorAvatar.isNotEmpty))
+                ? null
+                : ref.watch(publicProfileProvider(code)).valueOrNull;
+            final authorName = s.authorName.isNotEmpty
+                ? s.authorName
+                : (ownId?.name ?? ownBiz?.displayName ?? public?.name ?? '');
+            final authorAvatar = s.authorAvatar.isNotEmpty
+                ? s.authorAvatar
+                : (ownId?.avatarUrl ?? ownBiz?.logoUrl ?? public?.avatarUrl ?? '');
 
             // Mahalliy layk holati bo'lsa o'sha, aks holda serverniki.
             final lk = _likes[s.id];
@@ -480,6 +515,29 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                       ),
                     ),
                   ),
+                  // Pastki amallar (izoh, layk, ulashish) och rasm ustida
+                  // ham o'qilsin — ilgari rasmdagi yozuv bilan qo'shilib
+                  // ketardi.
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    height: 180,
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                            colors: [
+                              Colors.black.withValues(alpha: .6),
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                   SafeArea(
                     child: Column(
                       children: [
@@ -529,15 +587,16 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                           child: Row(
                             children: [
                               Avatar(
-                                url: s.authorAvatar,
-                                initials: _initials(s.authorName, s.code),
+                                url: authorAvatar,
+                                initials: _initials(authorName, code),
                                 size: 38,
-                                onTap: () => context.push(Routes.user(s.code)),
+                                onTap: () => context.push(
+                                    Routes.author(code, company: business)),
                               ),
                               const SizedBox(width: Gap.sm),
                               Expanded(
                                 child: Text(
-                                  s.authorName.isEmpty ? s.code : s.authorName,
+                                  authorName.isEmpty ? code : authorName,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
@@ -571,9 +630,11 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                                       ref,
                                       target: ReportTarget.story,
                                       targetId: '${s.id}',
-                                      ownerCode: s.code,
-                                      blockKind: BlockKind.record,
-                                      blockId: s.code,
+                                      ownerCode: code,
+                                      blockKind: business
+                                          ? BlockKind.company
+                                          : BlockKind.record,
+                                      blockId: code,
                                       keyPrefix: 'story',
                                     ),
                                   ),
@@ -673,7 +734,9 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                               // yo'qoladi va yopiq havola bo'lardi.
                               onTap: () => _whilePaused(
                                 () => shareLink(
-                                  '$kApiBase/${Uri.encodeComponent(s.code)}',
+                                  business
+                                      ? '$kApiBase/c/${Uri.encodeComponent(code)}'
+                                      : '$kApiBase/${Uri.encodeComponent(code)}',
                                 ),
                               ),
                             ),

@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
@@ -292,16 +290,31 @@ class FullBleedMedia extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.tokens;
     return Stack(
       fit: StackFit.expand,
       children: [
-        ColoredBox(color: t.bg1),
+        // Istorya — qorong'i ko'rinish (Instagram kabi). Ilgari bu yerda
+        // mavzuning och `bg1` rangi turardi va fon rasmi chizilmagan
+        // paytda rasm atrofida KULRANG chiziqlar qolardi (egasi, 2026-09).
+        const ColoredBox(color: Colors.black),
+        // XIRA FON — blur filtrisiz. Rasm juda kichik (32 px) ochilib
+        // ekranga cho'ziladi: natija xuddi xiralashgandek ko'rinadi,
+        // lekin har kadrda to'liq ekranli blur hisoblanmaydi.
         if (backdropUrl.isNotEmpty)
-          ImageFiltered(
-            imageFilter: ImageFilter.blur(sigmaX: 34, sigmaY: 34),
-            child: mediaImage(context, backdropUrl, fit: BoxFit.cover),
-          ),
+          isAssetMedia(backdropUrl)
+              ? Image.asset(backdropUrl,
+                  fit: BoxFit.cover,
+                  cacheWidth: 32,
+                  filterQuality: FilterQuality.medium,
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink())
+              : CachedNetworkImage(
+                  imageUrl: backdropUrl,
+                  fit: BoxFit.cover,
+                  memCacheWidth: 32,
+                  filterQuality: FilterQuality.medium,
+                  placeholder: (_, __) => const SizedBox.shrink(),
+                  errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                ),
         // Fon mazmunni yutib yubormasligi uchun qoraytiriladi.
         if (backdropUrl.isNotEmpty)
           ColoredBox(color: Colors.black.withValues(alpha: .35)),
