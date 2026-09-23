@@ -304,6 +304,23 @@ const tsMs = (H, v) => {
   return d && !Number.isNaN(d.getTime()) ? d.getTime() : 0;
 };
 
+/// Foydalanuvchining 30 kunlik sinov muddati hozir ketyaptimi.
+///
+/// `getCurrentUser` bu ustunni o'qiydi, lekin qaytarmaydi — uni
+/// o'zgartirib, butun serverga ta'sir qilish o'rniga shu yerda alohida
+/// o'qiladi. Ustun yo'q (juda eski baza) yoki xato — `false`: qoida
+/// hech qachon xato tufayli YUMSHAMAYDI.
+export async function trialActiveFor(env, userId, H, now = Date.now()) {
+  try {
+    const r = await env.DB.prepare(
+      `SELECT trial_expires_at AS t FROM users WHERE id = ?`
+    ).bind(userId).first();
+    return !!(r && r.t) && tsMs(H, r.t) > now;
+  } catch {
+    return false;
+  }
+}
+
 const rowToComment = (r, viewerId, H) => ({
   id: Number(r.id),
   targetKind: String(r.target_kind),
@@ -666,7 +683,16 @@ export async function handle(request, env, url, H) {
     // O'QISH OCHIQ QOLADI: izohlarni hamma ko'radi. Cheklov faqat
     // YOZISHDA — aks holda lentada gap ketayotgani bilinmay qolardi
     // va Premium olishning ma'nosi ham ko'rinmasdi.
-    if (!user.isPremium) return H.json({ error: 'premium_required' }, 403);
+    //
+    // SINOV MUDDATI HAM KIRADI (egasining qarori, 2026-09-23: "yangi
+    // ro'yxatdan o'tganga 1 oy bepul"). Server yangi hisoblarga 30 kunlik
+    // `users.trial_expires_at` ni allaqachon beradi va boshqa hamma joyda
+    // u Premium darajasida ishlaydi (`effectiveAccessD1`). Faqat izoh uni
+    // hisobga olmasdi. Muddat tugagach yozish yana faqat Premium'ga.
+    // Eski hisoblarda ustun NULL — ular uchun hech narsa o'zgarmaydi.
+    if (!user.isPremium && !(await trialActiveFor(env, user.id, H))) {
+      return H.json({ error: 'premium_required' }, 403);
+    }
 
     const target = await targetOwner(env, kind, id);
     if (!target.ok) return H.json({ error: 'not_found' }, 404);

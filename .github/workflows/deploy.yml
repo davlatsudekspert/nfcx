@@ -85,6 +85,10 @@ jobs:
       # na javob na like, xabar esa ota izoh muallifiga ketadi.
       - name: Izoh mavzulari — javob va like
         run: node scripts/test-comment-threads.mjs
+      # Izoh: Premium YOKI 30 kunlik sinov (egasining qarori, 2026-09-23);
+      # sinov tugagach yana faqat Premium, o'qish hammaga ochiq.
+      - name: Izoh — Premium yoki sinov muddati
+        run: node scripts/test-comment-trial.mjs
       - name: NFCSTORE FEATURED — slot faqat haqiqiy to'lovdan keyin yonadi
         run: node scripts/test-featured.mjs
       # Shaxsiy NFC ID xaridi: narxni SERVER hisoblaydi, bitta kodni

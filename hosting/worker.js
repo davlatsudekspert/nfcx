@@ -3176,6 +3176,11 @@ async function getCurrentUser(request, env) {
   const isBanned = row.bannedUntil && parseDbDate(row.bannedUntil) > new Date();
   return {
     id: row.id, email: publicEmailD1(row.email), phone: row.phone || null, isPremium: !!row.isPremium,
+    // Ilova izoh maydonini sinov muddatida ham ochishi uchun (egasining
+    // qarori, 2026-09-23). Ikkalasi ham shu so'rovda allaqachon o'qilardi,
+    // faqat javobga qo'shilmasdi. Faqat o'zining hisobi — begona emas.
+    trialExpiresAt: row.trialExpiresAt || null,
+    premiumExpiresAt: row.premiumExpiresAt || null,
     bannedUntil: isBanned ? row.bannedUntil : null, strikeCount: row.strikeCount || 0,
     promoCode: row.promoCode || null, pendingDiscountPct: row.pendingDiscountPct || 0,
     // Telegram akkauntga bog'langanmi. Kabinetdagi "Profilingizni
