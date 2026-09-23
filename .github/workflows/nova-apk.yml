@@ -449,6 +449,41 @@ jobs:
           retention-days: 90
           compression-level: 0
 
+      # ── HAR BIR FAYL ALOHIDA (egasi, 2026-09) ─────────────────
+      #
+      # Play Console'ga faqat `.aab` kerak, lekin u 113 MB li umumiy
+      # ZIP ichida edi — butun to'plamni yuklab olish uzoq vaqt
+      # olardi. Endi har fayl o'z artifaktida; umumiy ZIP
+      # (`NFCSTORE-Mobile`) ham pastda qoladi.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NFCSTORE-Mobile-PlayStore-aab
+          path: mobile_nova/release-final/NFCSTORE-Mobile.aab
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NFCSTORE-Mobile-universal-apk
+          path: mobile_nova/release-final/NFCSTORE-Mobile.apk
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NFCSTORE-Mobile-eski-telefon-armeabi-v7a
+          path: mobile_nova/release-final/NFCSTORE-Mobile-armeabi-v7a.apk
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NFCSTORE-Mobile-emulyator-x86_64
+          path: mobile_nova/release-final/NFCSTORE-Mobile-x86_64.apk
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+
       # ── GITHUB RELEASE ────────────────────────────────────────
       #
       # NIMA UCHUN: Actions artefaktlari Azure omboridan beriladi va
