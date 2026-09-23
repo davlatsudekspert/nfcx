@@ -23,6 +23,7 @@ import 'package:nfcstore_nova/features/auth/register_screen.dart';
 import 'package:nfcstore_nova/features/auth/session.dart';
 import 'package:nfcstore_nova/features/business/business_forms.dart';
 import 'package:nfcstore_nova/features/business/business_intro.dart';
+import 'package:nfcstore_nova/features/profile/profile_repository.dart';
 import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
 import 'package:nfcstore_nova/routing/router.dart';
 import 'package:nfcstore_nova/routing/routes.dart';
@@ -154,6 +155,14 @@ class _RichSocial extends SocialRepository {
   Future<Result<void>> markStorySeen(int id) async => const Ok(null);
 }
 
+class _RichProfile extends ProfileRepository {
+  _RichProfile() : super(ApiClient());
+
+  @override
+  Future<Result<FollowStats>> followStats(String code) async => const Ok(
+      (followers: 9, following: 11, isFollowing: false));
+}
+
 class _RichDiscover extends FakeDiscoverRepository {
   @override
   Future<Result<List<NfcId>>> suggested() async => const Ok(_people);
@@ -207,6 +216,7 @@ Future<List<Override>> _overrides() async {
     authRepositoryProvider.overrideWithValue(FakeAuthRepository(ids: _ids)),
     socialRepositoryProvider.overrideWithValue(_RichSocial()),
     discoverRepositoryProvider.overrideWithValue(_RichDiscover()),
+    profileRepositoryProvider.overrideWithValue(_RichProfile()),
   ];
 }
 

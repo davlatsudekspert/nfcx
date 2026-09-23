@@ -20,6 +20,7 @@ import '../../routing/routes.dart';
 import '../auth/session.dart';
 import '../home/widgets/avatar.dart';
 import '../home/widgets/identity_card.dart';
+import '../shop/nfc_id_market.dart' show tierLabel;
 import '../home/widgets/mode_switch.dart';
 import '../home/widgets/my_ids_strip.dart';
 import '../../app/profile_context.dart';
@@ -287,7 +288,13 @@ class ProfileScreen extends ConsumerWidget {
                 child: _BusinessTiles(),
               ),
             ],
-            SectionHeader(title: l.profilePosts),
+            // Sarlavha o'rniga "Postlar | Reels" tablari — ular
+            // `_PostsGrid` ichida (shaxsiy profilda). Kompaniyada
+            // oddiy sarlavha qoladi.
+            if (active == null || active.isBusiness)
+              SectionHeader(title: l.profilePosts)
+            else
+              const SizedBox(height: Gap.xl),
             // Begona profil hali kelmagan yoki kelmadi — SABABNI
             // ko'rsatamiz. Ilgari bu yerda "Do'kondan karta oling
             // yoki ID yarating" chiqardi, ya'ni begona odamning
@@ -904,8 +911,12 @@ class _IdPill extends StatelessWidget {
     // faqat RANG umumiy.
     final c = IdPlate.skin(t, tier, active: active);
 
+    // Qimmat daraja yozuv bilan ham aytiladi (rang yolg'iz yetmaydi:
+    // rang ko'rmaydiganlar va oq-qora skrinshot uchun).
+    final precious = IdPlate.isPrecious(tier);
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
       decoration: BoxDecoration(
         color: c.fill,
         borderRadius: R.pill,
@@ -920,7 +931,10 @@ class _IdPill extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: dot,
-              boxShadow: [BoxShadow(color: dot, blurRadius: 9)],
+              // Nur (glow) emas — ingichka halqa.
+              boxShadow: [
+                BoxShadow(color: dot.withValues(alpha: .18), spreadRadius: 3),
+              ],
             ),
           ),
           const SizedBox(width: Gap.sm),
@@ -931,12 +945,20 @@ class _IdPill extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: AppType.monoStyle(
                 color: c.ink,
-                size: 13,
+                size: 15,
                 weight: FontWeight.w600,
-                letterSpacing: 2.2,
+                letterSpacing: 2.4,
               ),
             ),
           ),
+          if (precious) ...[
+            const SizedBox(width: Gap.md),
+            Text(
+              tierLabel(L.of(context), tier).toUpperCase(),
+              maxLines: 1,
+              style: AppType.eyebrow(color: c.ink.withValues(alpha: .75), size: 9),
+            ),
+          ],
         ],
       ),
     );
@@ -1136,7 +1158,7 @@ class _BusinessTiles extends StatelessWidget {
   }
 }
 
-class _PostsGrid extends ConsumerWidget {
+class _PostsGrid extends ConsumerStatefulWidget {
   const _PostsGrid({required this.code, this.company = false});
   final String code;
 
@@ -1144,7 +1166,25 @@ class _PostsGrid extends ConsumerWidget {
   final bool company;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_PostsGrid> createState() => _PostsGridState();
+}
+
+/// POSTLAR | REELS.
+///
+/// Reels alohida API emas: Reels bo'limi ham aynan shu postlarning
+/// VIDEOLILARIDAN quriladi (`reelsProvider`). Shuning uchun tab
+/// yangi so'rov yubormaydi — bitta ro'yxat ikkiga ajratiladi va
+/// sonlar profildagi "Postlar" soni bilan doim mos keladi.
+///
+/// "Saqlangan" tabi ATAYLAB yo'q: serverda saqlash API'si yo'q,
+/// bo'sh yoki soxta tab ko'rsatilmaydi.
+class _PostsGridState extends ConsumerState<_PostsGrid> {
+  int _tab = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final code = widget.code;
+    final company = widget.company;
     final l = L.of(context);
     final t = context.tokens;
     // Ikki manba ikki xil endpoint: shaxsiy yozuv
@@ -1181,15 +1221,37 @@ class _PostsGrid extends ConsumerWidget {
           onRetry: () => ref.invalidate(profilePostsProvider(code)),
         ),
       ),
-      data: (items) {
+      data: (all) {
+        // Kompaniyada tab yo'q — hammasi bitta to'rda.
+        final tabs = !company;
+        final photos = all.where((p) => !p.isVideo).toList();
+        final reels = all.where((p) => p.isVideo).toList();
+        final items = !tabs ? all : (_tab == 0 ? photos : reels);
+        final bar = tabs
+            ? _GridTabs(
+                index: _tab,
+                labels: [
+                  '${l.profilePosts} · ${photos.length}',
+                  '${l.navReels} · ${reels.length}',
+                ],
+                onChanged: (i) => setState(() => _tab = i),
+              )
+            : const SizedBox.shrink();
         if (items.isEmpty) {
-          return Padding(
+          return Column(children: [
+            bar,
+            Padding(
             padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
             child: FloatingSurface(
               solid: true,
               child: Column(
                 children: [
-                  Icon(Icons.photo_library_outlined, size: 27, color: t.text3),
+                  Icon(
+                      _tab == 1 && tabs
+                          ? Icons.slow_motion_video_rounded
+                          : Icons.photo_library_outlined,
+                      size: 27,
+                      color: t.text3),
                   const SizedBox(height: Gap.sm),
                   Text(
                     l.stateEmpty,
@@ -1198,7 +1260,8 @@ class _PostsGrid extends ConsumerWidget {
                 ],
               ),
             ),
-          );
+          ),
+          ]);
         }
         // DEMO'DA MOZAIK, HAQIQIY PROFILDA 3x3 TO'R.
         //
@@ -1206,11 +1269,16 @@ class _PostsGrid extends ConsumerWidget {
         // bo'lishini ko'rishi kerak, kvadratchalar to'rini emas.
         // Haqiqiy profil UMUMAN o'zgarmaydi.
         if (ref.watch(demoModeProvider) != null) {
-          return DemoMosaicPosts(items: items, code: code);
+          return Column(
+              children: [bar, DemoMosaicPosts(items: items, code: code)]);
         }
         final side =
             (MediaQuery.sizeOf(context).width - Gap.screenX * 2 - 12) / 3;
-        return Padding(
+        // Reels — vertikal (4:5) katakchalar, postlar — kvadrat.
+        final tall = tabs && _tab == 1;
+        return Column(children: [
+          bar,
+          Padding(
           padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
           child: Wrap(
             spacing: 6,
@@ -1223,7 +1291,7 @@ class _PostsGrid extends ConsumerWidget {
                     borderRadius: R.tile,
                     child: SizedBox(
                       width: side,
-                      height: side,
+                      height: tall ? side * 1.25 : side,
                       child: p.mediaUrls.isEmpty
                           ? Container(
                               color: t.surface2,
@@ -1310,8 +1378,77 @@ class _PostsGrid extends ConsumerWidget {
                 ),
             ],
           ),
-        );
+        ),
+        ]);
       },
+    );
+  }
+}
+
+/// Postlar | Reels — ingichka tagchiziqli matn tablari.
+///
+/// Soft editorial: to'ldirilgan segment emas, faqat faol yozuv ostida
+/// qora chiziq; almashuv 200ms.
+class _GridTabs extends StatelessWidget {
+  const _GridTabs({
+    required this.index,
+    required this.labels,
+    required this.onChanged,
+  });
+
+  final int index;
+  final List<String> labels;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(Gap.screenX, 0, Gap.screenX, Gap.md),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: t.border2)),
+        ),
+        child: Row(
+          children: [
+            for (var i = 0; i < labels.length; i++)
+              Semantics(
+                button: true,
+                selected: i == index,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => onChanged(i),
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: Gap.xl),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOutCubic,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(
+                            color: i == index ? t.text1 : Colors.transparent,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                      child: Text(
+                        labels[i],
+                        style: TextStyle(
+                          fontFamily: AppType.sans,
+                          fontSize: 14,
+                          fontWeight:
+                              i == index ? FontWeight.w700 : FontWeight.w500,
+                          color: i == index ? t.text1 : t.text3,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
