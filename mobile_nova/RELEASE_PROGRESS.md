@@ -48,11 +48,24 @@ Sessiya uzilsa — shu fayldagi birinchi `[ ]` bandidan davom etiladi.
 
 - [x] Egasi xabari: istorya ochilganda qora ekran — tuzatildi (4d0365d):
       tayyor ro'yxat, surat+halqa, media tayyor bo'lgach taymer, prefetch
-- [~] Kod auditlari (2 agent): funksional 7H/12M/15L, performance 4H/5M/9L.
-      25 ta H/M topilma skeptik workflow bilan tekshirilmoqda (wf nova-release-
-      audit-verify) — tasdiqlanganlari tuzatiladi.
-- [~] Egasi xabari: Reels'da katta video sekin ochiladi — ildiz sababi
-      tekshirilmoqda (serveUpload Range 206 qo'llaydi).
+- [x] Kod auditlari: 25 ta tasdiqlangan topilmaning HAMMASI tuzatildi
+      (F-H1..F-H7, F-M2..F-M12, F-L1, F-L10, P-H1..P-H4, P-M1..P-M5), har
+      biriga test; asosiylari tuzatishsiz YIQILISHI tekshirildi. 799 PASS.
+- [x] Reels katta video — qurilmada o'lchandi (integration_probe, CI
+      `nova-video-probe.yml`):
+      * birinchi kadr: oddiy video 1.6-2.2 s; 14 MB (moov oxirida) birinchi
+        ochilishda 3.8 s — server o'sha fayl uchun sekin (HEAD 1.2 s,
+        5.6 Mbit/s, qolganlari 0.2 s / 16-17 Mbit/s); ikkinchi ochilishda
+        2.07 s. Ya'ni asosiy ulush — serverning katta faylni sovuq o'qishi
+        (Worker -> R2, videolar edge keshda emas), moov-oxirida kichik ulush
+      * pauzadagi preload 5 s da 35 s videoni TO'LIQ yukladi (ExoPlayer)
+      * tuzatildi (22a3f32): keyingi reel ko'rinayotgani o'ynay boshlagach
+        yuklanadi, faqat BITTA; reelsProvider so'rovlari parallel
+      * tavsiya (server, deploy qilinmadi): video Range so'rovida R2 `head`
+        + `get` o'rniga bitta `get(range: headers)`; yuklashda faststart
+        (moov boshiga) — Android kamera videolari moov'ni oxiriga yozadi
+- [x] Video boshqa ekranda to'xtaydi: lenta (P-H1) va Reels (P-H2) —
+      TickerMode; tab almashganda stopAll (avvaldan)
 
 - [ ] KEYIN (egasi): Ivory/Noir chuqur dizayn auditi — typography, surface,
       elevation, gold me'yori, icon tizimi, WCAG; pastki navigatsiya
