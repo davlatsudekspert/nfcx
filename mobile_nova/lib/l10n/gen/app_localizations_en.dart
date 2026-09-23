@@ -24,6 +24,19 @@ class LEn extends L {
   String get editContactSection => 'Contacts & links';
 
   @override
+  String get editBasicsSection => 'Basics';
+
+  @override
+  String get editBasicsHint =>
+      'Your name and bio appear at the top of your profile';
+
+  @override
+  String get editBrandSection => 'Logo & cover';
+
+  @override
+  String get editIdSection => 'NFC ID';
+
+  @override
   String get editContactHint =>
       'Shown on your profile as round buttons with logos. Empty fields are hidden.';
 

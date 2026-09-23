@@ -24,6 +24,19 @@ class LUz extends L {
   String get editContactSection => 'Aloqa va havolalar';
 
   @override
+  String get editBasicsSection => 'Asosiy ma’lumot';
+
+  @override
+  String get editBasicsHint =>
+      'Ism va qisqa tavsif profilingiz tepasida ko‘rinadi';
+
+  @override
+  String get editBrandSection => 'Logotip va muqova';
+
+  @override
+  String get editIdSection => 'NFC ID';
+
+  @override
   String get editContactHint =>
       'Profilingizda logoli dumaloq tugmalar bo‘lib ko‘rinadi. Bo‘sh qoldirilgani ko‘rinmaydi.';
 

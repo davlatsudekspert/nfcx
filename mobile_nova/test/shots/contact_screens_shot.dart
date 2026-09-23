@@ -118,10 +118,10 @@ void main() {
     await shot(t, const ProfileScreen(), 'cs-profile', h: 1100);
   });
   testWidgets('profil tahriri', (t) async {
-    await shot(t, const ProfileEditScreen(), 'cs-edit', h: 2300);
+    await shot(t, const ProfileEditScreen(), 'cs-edit', h: 2700);
   });
   testWidgets('biznes tahriri', (t) async {
-    await shot(t, const BusinessEditScreen(), 'cs-biz', h: 1900, extra: [
+    await shot(t, const BusinessEditScreen(), 'cs-biz', h: 2300, extra: [
       activeBusinessProvider.overrideWithValue(const Business(
         companyId: 'KARTAUZ',
         displayName: 'Karta Uz',

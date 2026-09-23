@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/utils/validators.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/business_repository.dart';
+import '../../design/widgets/edit_section.dart';
 import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
@@ -512,41 +513,58 @@ class _BusinessEditScreenState extends ConsumerState<BusinessEditScreen> {
       showBack: true,
       body: NovaScroll(
         children: [
-          // LOGOTIP VA MUQOVA (sayt bilan teng).
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          // ── 1. LOGOTIP VA MUQOVA (sayt bilan teng) ──────────
+          EditSection(
+            key: const ValueKey('edit-section-brand'),
+            title: l.editBrandSection,
+            icon: Icons.image_outlined,
+            gap: Gap.md,
             children: [
-              _imageTile(label: l.bizLogo, url: _logoUrl, cover: false),
-              const SizedBox(width: Gap.xl),
-              _imageTile(label: l.bizCover, url: _coverUrl, cover: true),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _imageTile(label: l.bizLogo, url: _logoUrl, cover: false),
+                  const SizedBox(width: Gap.xl),
+                  _imageTile(label: l.bizCover, url: _coverUrl, cover: true),
+                ],
+              ),
+              if (_uploading) const LinearProgressIndicator(minHeight: 2),
             ],
           ),
-          if (_uploading) ...[
-            const SizedBox(height: Gap.md),
-            const LinearProgressIndicator(minHeight: 2),
-          ],
-          const SizedBox(height: Gap.xl),
-          NovaField(label: l.bizName, controller: _name, enabled: !_busy),
-          const SizedBox(height: Gap.lg),
-          NovaField(label: l.bizCity, controller: _city, enabled: !_busy),
-          const SizedBox(height: Gap.lg),
-          NovaField(
-            label: l.bizDescription,
-            controller: _description,
-            maxLines: 4,
-            maxLength: 1200,
-            enabled: !_busy,
+          const SizedBox(height: Gap.xxl),
+          // ── 2. ASOSIY MA'LUMOT ──────────────────────────────
+          EditSection(
+            key: const ValueKey('edit-section-basics'),
+            title: l.editBasicsSection,
+            icon: Icons.storefront_outlined,
+            children: [
+              NovaField(label: l.bizName, controller: _name, enabled: !_busy),
+              NovaField(label: l.bizCity, controller: _city, enabled: !_busy),
+              NovaField(
+                label: l.bizDescription,
+                controller: _description,
+                maxLines: 4,
+                maxLength: 1200,
+                enabled: !_busy,
+              ),
+            ],
           ),
-          const SizedBox(height: Gap.lg),
-          Text(l.editContactSection.toUpperCase(),
-              style: Theme.of(context).textTheme.labelSmall),
-          const SizedBox(height: Gap.md),
-          ContactEditor(
-            key: const ValueKey('contact-editor'),
-            initial: b.contact,
-            business: true,
-            enabled: !_busy,
-            onChanged: (c) => _contact = c,
+          const SizedBox(height: Gap.xxl),
+          // ── 3. ALOQA VA HAVOLALAR ───────────────────────────
+          EditSection(
+            key: const ValueKey('edit-section-contact'),
+            title: l.editContactSection,
+            icon: Icons.link_rounded,
+            hint: l.editContactHint,
+            children: [
+              ContactEditor(
+                key: const ValueKey('contact-editor'),
+                initial: b.contact,
+                business: true,
+                enabled: !_busy,
+                onChanged: (c) => _contact = c,
+              ),
+            ],
           ),
           if (_error != null) ...[
             const SizedBox(height: Gap.lg),
@@ -558,12 +576,16 @@ class _BusinessEditScreenState extends ConsumerState<BusinessEditScreen> {
                     fontWeight: FontWeight.w600,
                     color: context.tokens.error)),
           ],
-          const SizedBox(height: Gap.xxl),
-          NovaButton(
+          // "Saqlash" pastki panelda (doim ko'rinadi) — ro'yxat oxiri
+          // uning ostida qolmasin.
+          const SizedBox(height: 96),
+        ],
+      ),
+      bottomNav: EditSaveBar(
+        child: NovaButton(
               label: l.actionSave,
               busy: _busy,
               onPressed: _uploading ? null : () => _save(b)),
-        ],
       ),
     );
   }

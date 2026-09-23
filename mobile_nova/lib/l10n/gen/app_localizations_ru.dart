@@ -24,6 +24,18 @@ class LRu extends L {
   String get editContactSection => 'Контакты и ссылки';
 
   @override
+  String get editBasicsSection => 'Основное';
+
+  @override
+  String get editBasicsHint => 'Имя и описание видны вверху профиля';
+
+  @override
+  String get editBrandSection => 'Логотип и обложка';
+
+  @override
+  String get editIdSection => 'NFC ID';
+
+  @override
   String get editContactHint =>
       'В профиле отображаются круглыми кнопками с логотипами. Пустые поля не показываются.';
 

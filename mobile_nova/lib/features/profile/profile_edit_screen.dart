@@ -5,6 +5,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../data/models/models.dart';
+import '../../design/widgets/id_plate.dart';
+import '../../design/widgets/id_lux.dart';
+import '../../design/widgets/edit_section.dart';
 import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
@@ -386,113 +389,131 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
               ),
             ),
           ],
-          const SizedBox(height: Gap.section),
-          NovaField(
-            label: l.fieldName,
-            controller: _name,
-            enabled: !_busy,
-            textCapitalization: TextCapitalization.words,
+          const SizedBox(height: Gap.xxl),
+          // ── 1. ASOSIY MA'LUMOT ──────────────────────────────
+          EditSection(
+            key: const ValueKey('edit-section-basics'),
+            title: l.editBasicsSection,
+            icon: Icons.person_outline_rounded,
+            hint: l.editBasicsHint,
+            children: [
+              NovaField(
+                label: l.fieldName,
+                controller: _name,
+                enabled: !_busy,
+                textCapitalization: TextCapitalization.words,
+              ),
+              NovaField(
+                  label: l.bizCategory, controller: _role, enabled: !_busy),
+              NovaField(
+                label: l.fieldBio,
+                controller: _bio,
+                maxLines: 4,
+                maxLength: 600,
+                enabled: !_busy,
+              ),
+            ],
           ),
-          const SizedBox(height: Gap.lg),
-          NovaField(label: l.bizCategory, controller: _role, enabled: !_busy),
-          const SizedBox(height: Gap.lg),
-          NovaField(
-            label: l.fieldBio,
-            controller: _bio,
-            maxLines: 4,
-            maxLength: 600,
-            enabled: !_busy,
+          const SizedBox(height: Gap.xxl),
+          // ── 2. ALOQA VA HAVOLALAR (sayt bilan teng) ─────────
+          EditSection(
+            key: const ValueKey('edit-section-contact'),
+            title: l.editContactSection,
+            icon: Icons.link_rounded,
+            hint: l.editContactHint,
+            children: [
+              ContactEditor(
+                key: const ValueKey('contact-editor'),
+                initial: id.contact,
+                enabled: !_busy,
+                onChanged: (c) => _contact = c,
+              ),
+            ],
           ),
-          // ── ALOQA VA HAVOLALAR (sayt bilan teng) ────────────
-          const SizedBox(height: Gap.lg),
-          Text(l.editContactSection.toUpperCase(),
-              style: Theme.of(context).textTheme.labelSmall),
-          const SizedBox(height: Gap.md),
-          ContactEditor(
-            key: const ValueKey('contact-editor'),
-            initial: id.contact,
-            enabled: !_busy,
-            onChanged: (c) => _contact = c,
-          ),
-          const SizedBox(height: Gap.xl),
-          // ── PROFIL MUSIQASI ─────────────────────────────────
+          const SizedBox(height: Gap.xxl),
+          // ── 3. PROFIL MUSIQASI ──────────────────────────────
           //
           // Ilgari ilovada musiqa qo'shish IMKONI YO'Q edi:
           // `MusicControl` faqat serverdan kelgan ro'yxatni
           // IJRO ETARDI, qo'shish esa faqat saytda mumkin edi.
-          Row(
+          EditSection(
+            key: const ValueKey('edit-section-music'),
+            title: l.profileMusic,
+            icon: Icons.music_note_outlined,
+            gap: Gap.sm,
+            trailing: Text('${_music.length}/$_musicMax',
+                style: AppType.monoStyle(color: t.text2, size: 12)),
             children: [
-              Icon(Icons.music_note_rounded, size: 17, color: t.text3),
-              const SizedBox(width: Gap.sm),
-              Expanded(
-                child: Text(
-                  l.profileMusic,
-                  style: Theme.of(context).textTheme.labelMedium,
+              for (var i = 0; i < _music.length; i++)
+                Container(
+                  padding: const EdgeInsets.fromLTRB(
+                      Gap.md, Gap.xs, Gap.xs, Gap.xs),
+                  decoration: BoxDecoration(
+                    color: t.surface2,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.audiotrack_rounded,
+                          size: 16, color: t.text2),
+                      const SizedBox(width: Gap.md),
+                      Expanded(
+                        child: Text(
+                          // Manzilning oxirgi bo'lagi — fayl nomi.
+                          Uri.parse(_music[i]).pathSegments.isEmpty
+                              ? _music[i]
+                              : Uri.parse(_music[i]).pathSegments.last,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontFamily: AppType.sans,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: t.text1),
+                        ),
+                      ),
+                      NovaIconButton(
+                        icon: Icons.close_rounded,
+                        tooltip: l.actionDelete,
+                        size: 40,
+                        onPressed: _busy
+                            ? null
+                            : () => setState(
+                                () => _music = [..._music]..removeAt(i)),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Text('${_music.length}/$_musicMax',
-                  style: AppType.monoStyle(color: t.text3, size: 11.5)),
+              if (_music.length < _musicMax)
+                NovaButton(
+                  label: l.profileMusicAdd,
+                  icon: Icons.add_rounded,
+                  tone: ButtonTone.quiet,
+                  onPressed: _busy ? null : _pickMusic,
+                ),
             ],
           ),
-          const SizedBox(height: Gap.sm),
-          for (var i = 0; i < _music.length; i++) ...[
-            FloatingSurface(
-              solid: true,
-              padding: const EdgeInsets.fromLTRB(Gap.md, Gap.sm, Gap.sm, Gap.sm),
-              child: Row(
+          const SizedBox(height: Gap.xxl),
+          // ── 4. NFC ID (faqat ko'rish uchun) ─────────────────
+          EditSection(
+            key: const ValueKey('edit-section-id'),
+            title: l.editIdSection,
+            icon: Icons.nfc_rounded,
+            children: [
+              Row(
                 children: [
-                  Icon(Icons.audiotrack_rounded, size: 16, color: t.accent2),
-                  const SizedBox(width: Gap.md),
-                  Expanded(
-                    child: Text(
-                      // Manzilning oxirgi bo'lagi — fayl nomi.
-                      Uri.parse(_music[i]).pathSegments.isEmpty
-                          ? _music[i]
-                          : Uri.parse(_music[i]).pathSegments.last,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                          fontFamily: AppType.sans,
-                          fontSize: 12.5,
-                          color: t.text2),
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: IdPlate(code: id.code, tier: id.tier),
                     ),
                   ),
-                  NovaIconButton(
-                    icon: Icons.close_rounded,
-                    tooltip: l.actionDelete,
-                    size: 34,
-                    onPressed: _busy
-                        ? null
-                        : () => setState(() =>
-                            _music = [..._music]..removeAt(i)),
-                  ),
+                  const SizedBox(width: Gap.sm),
+                  IdTierBadge(tier: id.tier, dense: true),
                 ],
               ),
-            ),
-            const SizedBox(height: Gap.sm),
-          ],
-          if (_music.length < _musicMax)
-            NovaButton(
-              label: l.profileMusicAdd,
-              icon: Icons.add_rounded,
-              tone: ButtonTone.quiet,
-              onPressed: _busy ? null : _pickMusic,
-            ),
-          const SizedBox(height: Gap.lg),
-          FloatingSurface(
-            solid: true,
-            child: Row(
-              children: [
-                Icon(Icons.nfc_rounded, size: 17, color: t.text3),
-                const SizedBox(width: Gap.md),
-                Expanded(
-                  child: Text(id.code,
-                      style: AppType.monoStyle(color: t.text2, size: 12.5)),
-                ),
-                Text(l.fieldEmail,
-                    style: Theme.of(context).textTheme.labelMedium),
-              ],
-            ),
+            ],
           ),
           if (_error != null) ...[
             const SizedBox(height: Gap.lg),
@@ -504,10 +525,14 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                     fontWeight: FontWeight.w600,
                     color: t.error)),
           ],
-          const SizedBox(height: Gap.xxl),
-          NovaButton(
-              label: l.actionSave, busy: _busy, onPressed: () => _save(id)),
+          // "Saqlash" pastki panelda (doim ko'rinadi) — ro'yxat oxiri
+          // uning ostida qolmasin.
+          const SizedBox(height: 96),
         ],
+      ),
+      bottomNav: EditSaveBar(
+        child: NovaButton(
+              label: l.actionSave, busy: _busy, onPressed: () => _save(id)),
       ),
     );
   }

@@ -207,7 +207,12 @@ void main() {
     await settle(tester, frames: 20);
     final l = await L.delegate.load(const Locale('uz'));
 
-    expect(find.text(l.editContactSection.toUpperCase()), findsOneWidget);
+    expect(find.text(l.editContactSection), findsOneWidget);
+    // Tahrir bo'limlarga ajratilgan (egasi, 2026-09).
+    for (final k in ['basics', 'contact', 'music', 'id']) {
+      expect(find.byKey(ValueKey('edit-section-$k'), skipOffstage: false),
+          findsOneWidget, reason: k);
+    }
     // Serverdagi qiymatlar maydonlarda ko'rinadi.
     expect(find.text('eski'), findsOneWidget);
 

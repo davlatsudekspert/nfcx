@@ -110,9 +110,8 @@ class _ContactEditorState extends State<ContactEditor> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(l.editContactHint,
-            style: Theme.of(context).textTheme.bodySmall),
-        const SizedBox(height: Gap.lg),
+        // Izoh endi bo'lim sarlavhasida (`EditSection.hint`) — bu yerda
+        // takrorlanmaydi.
         _field(l.fieldPhone, _phone, type: TextInputType.phone, key: 'edit-phone'),
         if (!widget.business)
           SwitchListTile.adaptive(

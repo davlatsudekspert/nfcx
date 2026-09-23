@@ -129,6 +129,30 @@ abstract class L {
   /// **'Aloqa va havolalar'**
   String get editContactSection;
 
+  /// No description provided for @editBasicsSection.
+  ///
+  /// In uz, this message translates to:
+  /// **'Asosiy ma’lumot'**
+  String get editBasicsSection;
+
+  /// No description provided for @editBasicsHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ism va qisqa tavsif profilingiz tepasida ko‘rinadi'**
+  String get editBasicsHint;
+
+  /// No description provided for @editBrandSection.
+  ///
+  /// In uz, this message translates to:
+  /// **'Logotip va muqova'**
+  String get editBrandSection;
+
+  /// No description provided for @editIdSection.
+  ///
+  /// In uz, this message translates to:
+  /// **'NFC ID'**
+  String get editIdSection;
+
   /// No description provided for @editContactHint.
   ///
   /// In uz, this message translates to:
