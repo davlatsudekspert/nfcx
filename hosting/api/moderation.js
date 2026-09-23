@@ -205,14 +205,47 @@ export async function handle(request, env, url, H) {
     await ensureSchema(env);
     const status = url.searchParams.get('status') || '';
     const limit = Math.min(Number(url.searchParams.get('limit') || 100) || 100, 300);
-    const rows = status && REPORT_STATUSES.includes(status)
-      ? await env.DB.prepare(
-        `SELECT * FROM content_reports WHERE status = ? ORDER BY created_at DESC LIMIT ?`
-      ).bind(status, limit).all()
-      : await env.DB.prepare(
-        `SELECT * FROM content_reports ORDER BY created_at DESC LIMIT ?`
-      ).bind(limit).all();
-    return H.json({ reports: (rows.results || []).map(reportRowToJson) });
+    const offset = Math.max(0, Number(url.searchParams.get('offset') || 0) || 0);
+    // QIDIRUV — istalgan so'z (egasi, 2026-09-23: "so'zni yozsa ham
+    // qidirsin"): sabab, izoh, kontent egasining kodi, nishon va
+    // shikoyatchining emaili/telefoni. Katta-kichik harf farqi yo'q.
+    const q = (url.searchParams.get('q') || '').trim().toLowerCase().slice(0, 80);
+
+    // E2E TEST YOZUVLARI KO'RSATILMAYDI. Avtomatik sinov har safar
+    // o'zining test postiga shikoyat yuboradi (`POST /api/reports`
+    // kontrakti tekshiriladi) va izohiga `NOVA E2E TEST` belgisini
+    // qo'yadi. Ular navbatni to'ldirib, haqiqiy shikoyatni ko'mib
+    // yuborardi. Qatorlar O'CHIRILMAYDI — faqat ro'yxatdan chiqadi.
+    const where = [`(r.note IS NULL OR r.note NOT LIKE '${E2E_NOTE}%')`];
+    const binds = [];
+    if (status && REPORT_STATUSES.includes(status)) { where.push('r.status = ?'); binds.push(status); }
+    const clean = q.replace(/[%_]/g, '');
+    if (q && !clean) where.push('0');
+    else if (q) {
+      where.push(`(LOWER(COALESCE(r.note,'')) LIKE ? OR LOWER(COALESCE(r.reason,'')) LIKE ?
+        OR LOWER(COALESCE(r.owner_code,'')) LIKE ? OR LOWER(r.target_kind || ' ' || r.target_id) LIKE ?
+        OR LOWER(COALESCE(u.email,'')) LIKE ? OR COALESCE(u.phone,'') LIKE ?)`);
+      const like = `%${clean}%`;
+      binds.push(like, like, like, like, like, like);
+    }
+    const sql = `SELECT r.*, u.email AS reporter_email FROM content_reports r
+       LEFT JOIN users u ON u.id = r.reporter_id
+      WHERE ${where.join(' AND ')}
+      ORDER BY r.created_at DESC LIMIT ? OFFSET ?`;
+    const rows = await env.DB.prepare(sql).bind(...binds, limit + 1, offset).all();
+    const list = rows.results || [];
+    // Holat bo'yicha sonlar (E2E'siz) — tugmalar yonida ko'rinadi.
+    const counts = {};
+    const c = await env.DB.prepare(
+      `SELECT status, COUNT(*) AS n FROM content_reports
+        WHERE note IS NULL OR note NOT LIKE '${E2E_NOTE}%' GROUP BY status`
+    ).all().catch(() => null);
+    for (const r of (c?.results || [])) counts[r.status] = Number(r.n) || 0;
+    return H.json({
+      reports: list.slice(0, limit).map(reportRowToJson),
+      hasMore: list.length > limit,
+      counts,
+    });
   }
 
   const one = path.match(/^\/api\/admin\/reports\/(\d+)$/);
@@ -322,5 +355,10 @@ function reportRowToJson(r) {
     createdAt: r.created_at,
     resolvedAt: r.resolved_at || null,
     resolvedBy: r.resolved_by || '',
+    reporterEmail: r.reporter_email || '',
   };
 }
+
+// Avtomatik E2E sinovining belgisi (`integration_test/support/guards.dart`
+// `kTestMarker`). Admin ro'yxatlarida bunday yozuvlar ko'rsatilmaydi.
+const E2E_NOTE = 'NOVA E2E TEST';

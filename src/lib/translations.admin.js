@@ -506,4 +506,7 @@ export const DICT_ADMIN = {
   'Admin o‘chirdi': { ru: 'Удалил администратор', en: 'Deleted by admin' },
   'Muddati tugadi (24 soat)': { ru: 'Истёк срок (24 часа)', en: 'Expired (24 hours)' },
   'Profil o‘chirildi': { ru: 'Профиль удалён', en: 'Profile deleted' },
+  // ── Qidiruv (shikoyatlar, ilova foydalanuvchilari) ──
+  'So‘z, NFC ID, email yoki sabab': { ru: 'Слово, NFC ID, email или причина', en: 'Word, NFC ID, email or reason' },
+  'Ism, NFC ID, kompaniya, email yoki telefon': { ru: 'Имя, NFC ID, компания, email или телефон', en: 'Name, NFC ID, company, email or phone' },
 };

@@ -474,14 +474,37 @@ function ReportsTab() {
   const [err, setErr] = useState(null);
   const [status, setStatus] = useState('new');
   const [busy, setBusy] = useState(0);
+  // QIDIRUV VA SAHIFALASH (egasi, 2026-09-23: "foydalanuvchi ko'paysa
+  // uzun bo'lib ketmasin, so'zni yozsa ham qidirsin"). Server istalgan
+  // so'zni sabab, izoh, egasi kodi, nishon va shikoyatchi emailidan
+  // qidiradi. Avtomatik sinov (E2E) yozuvlari serverda chiqarib
+  // tashlanadi.
+  const PAGE = 50;
+  const [q, setQ] = useState('');
+  const [query, setQuery] = useState('');
+  const [hasMore, setHasMore] = useState(false);
+  const [counts, setCounts] = useState({});
+  const [more, setMore] = useState(false);
 
+  const qs = (s, offset) => {
+    const p = new URLSearchParams({ status: s, limit: String(PAGE), offset: String(offset) });
+    if (query) p.set('q', query);
+    return p.toString();
+  };
   const load = (s = status) => {
     setErr(null); setRows(null);
-    adminApi(`/reports?status=${encodeURIComponent(s)}&limit=200`)
-      .then((d) => setRows(d.reports || []))
+    adminApi(`/reports?${qs(s, 0)}`)
+      .then((d) => { setRows(d.reports || []); setHasMore(!!d.hasMore); setCounts(d.counts || {}); })
       .catch((e) => setErr(e));
   };
-  useEffect(() => { load(status); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [status]);
+  const loadMore = () => {
+    setMore(true);
+    adminApi(`/reports?${qs(status, (rows || []).length)}`)
+      .then((d) => { setRows((list) => [...(list || []), ...(d.reports || [])]); setHasMore(!!d.hasMore); })
+      .catch((e) => setErr(e))
+      .finally(() => setMore(false));
+  };
+  useEffect(() => { load(status); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [status, query]);
 
   const setRowStatus = async (id, next) => {
     setBusy(id);
@@ -509,11 +532,22 @@ function ReportsTab() {
     // uni bu yerdan o'chirib bo'lmaydi (butun profilni o'chirish
     // boshqa, ancha jiddiy amal va bu yerga sig'maydi).
     const kind = r.targetKind;
-    if (!['post', 'story', 'company_post'].includes(kind)) return;
+    if (!['post', 'story', 'company_post', 'comment'].includes(kind)) return;
     if (!confirm(t('Bu kontent butunlay o‘chiriladi. Davom etasizmi?'))) return;
     setBusy(r.id);
     try {
-      await adminApi(`/content/${kind}/${encodeURIComponent(r.targetId)}`, { method: 'DELETE' });
+      if (kind === 'comment') {
+        // IZOH (2026-09): ilova izoh shikoyatini endi `comment` turi
+        // bilan yuboradi. Izoh o'z moderatsiya yo'li orqali o'chiriladi
+        // (dalil arxivi bilan), keyin shikoyat yopiladi.
+        await adminApi(`/comments/${encodeURIComponent(r.targetId)}`, {
+          method: 'DELETE',
+          body: JSON.stringify({ reason: `Shikoyat #${r.id}: ${r.reason}` }),
+        });
+        await adminApi(`/reports/${r.id}`, { method: 'PATCH', body: JSON.stringify({ status: 'resolved' }) });
+      } else {
+        await adminApi(`/content/${kind}/${encodeURIComponent(r.targetId)}`, { method: 'DELETE' });
+      }
       setRows((list) => (list || []).filter((x) => x.id !== r.id));
     } catch (e) {
       setErr(e);
@@ -524,7 +558,7 @@ function ReportsTab() {
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         {Object.entries(REPORT_STATUS_LABEL).map(([key, label]) => (
           <button
             key={key}
@@ -532,9 +566,26 @@ function ReportsTab() {
             onClick={() => setStatus(key)}
             className={`btn btn-xs min-h-9 ${status === key ? 'btn-gold' : 'btn-outline'}`}
           >
-            {t(label)}
+            {t(label)}{counts[key] ? ` · ${counts[key]}` : ''}
           </button>
         ))}
+        <form
+          className="ml-auto flex gap-2"
+          onSubmit={(e) => { e.preventDefault(); setQuery(q.trim()); }}
+        >
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder={t('So‘z, NFC ID, email yoki sabab')}
+            className="input input-bordered input-sm w-56"
+          />
+          <button type="submit" className="btn btn-sm">{t('Qidirish')}</button>
+          {query && (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setQ(''); setQuery(''); }}>
+              {t('Tozalash')}
+            </button>
+          )}
+        </form>
       </div>
 
       {/* Panelning qolgan bo'limlari bilan BIR XIL komponentlar —
@@ -573,7 +624,7 @@ function ReportsTab() {
                   <td className="text-xs">{t(REPORT_REASON_LABEL[r.reason] || r.reason)}</td>
                   <td className="max-w-[280px] text-xs opacity-80">{r.note}</td>
                   <td className="whitespace-nowrap">
-                    {['post', 'story', 'company_post'].includes(r.targetKind) && (
+                    {['post', 'story', 'company_post', 'comment'].includes(r.targetKind) && (
                       <button
                         type="button"
                         disabled={busy === r.id}
@@ -608,6 +659,13 @@ function ReportsTab() {
               ))}
             </tbody>
           </table>
+          {hasMore && (
+            <div className="mt-3 text-center">
+              <button type="button" className="btn btn-outline btn-sm" disabled={more} onClick={loadMore}>
+                {more ? t('Yuklanmoqda…') : t('Ko‘proq ko‘rsatish')}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -215,19 +215,39 @@ function UsersSection({ adminApi }) {
   const { t } = useLanguage();
   const [q, setQ] = useState('');
   const [sort, setSort] = useState('recent');
+  // FILTR va SAHIFALASH (egasi, 2026-09-23: "foydalanuvchi ko'paysa uzun
+  // bo'lib ketmasin, filtr va so'z bo'yicha qidiruv bo'lsin").
+  const [filter, setFilter] = useState('');
   const [data, setData] = useState(null);
   const [err, setErr] = useState(null);
+  const [page, setPage] = useState(1);
+  const [more, setMore] = useState(false);
 
+  const params = (p) => {
+    const ps = new URLSearchParams({ sort, limit: '50', page: String(p) });
+    if (q.trim()) ps.set('q', q.trim());
+    if (filter) ps.set('filter', filter);
+    return ps;
+  };
   const load = useCallback(async () => {
     setErr(null);
     setData(null);
+    setPage(1);
     try {
-      const params = new URLSearchParams({ sort, limit: '100' });
-      if (q.trim()) params.set('q', q.trim());
-      setData(await adminApi(`/app-users?${params}`));
+      setData(await adminApi(`/app-users?${params(1)}`));
     } catch (e) { setErr(e); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminApi, sort]);
+  }, [adminApi, sort, filter]);
+
+  const loadMore = async () => {
+    setMore(true);
+    try {
+      const next = await adminApi(`/app-users?${params(page + 1)}`);
+      setData((d) => ({ ...next, items: [...(d?.items || []), ...(next.items || [])] }));
+      setPage(page + 1);
+    } catch (e) { setErr(e); }
+    setMore(false);
+  };
 
   useEffect(() => { load(); }, [load]);
 
@@ -253,12 +273,22 @@ function UsersSection({ adminApi }) {
               <option value="new">{t('Yangi kelganlar')}</option>
               <option value="opens">{t('Eng ko‘p ochganlar')}</option>
             </select>
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="rounded-lg border border-[color:var(--vz-line)] bg-transparent px-2 py-1 text-[13px]"
+            >
+              <option value="">{t('Hammasi')}</option>
+              <option value="premium">Premium</option>
+              <option value="today">{t('Bugun')}</option>
+              <option value="week">{t('7 kun')}</option>
+            </select>
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') load(); }}
-              placeholder={t('Email, telefon yoki NFC ID')}
-              className="w-48 rounded-lg border border-[color:var(--vz-line)] bg-transparent px-2 py-1 text-[13px]"
+              placeholder={t('Ism, NFC ID, kompaniya, email yoki telefon')}
+              className="w-64 rounded-lg border border-[color:var(--vz-line)] bg-transparent px-2 py-1 text-[13px]"
             />
             <button type="button" onClick={load} className="rounded-lg border border-[color:var(--vz-line)] px-3 py-1 text-[13px]">
               {t('Qidirish')}
@@ -304,6 +334,12 @@ function UsersSection({ adminApi }) {
                 </p>
               </div>
             ))}
+            {data.hasMore && (
+              <button type="button" onClick={loadMore} disabled={more}
+                className="mt-1 self-center rounded-lg border border-[color:var(--vz-line)] px-4 py-1.5 text-[13px]">
+                {more ? t('Yuklanmoqda…') : t('Ko‘proq ko‘rsatish')}
+              </button>
+            )}
           </div>
         )}
       </AdminCard>
