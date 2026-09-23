@@ -7,6 +7,7 @@ import '../core/models.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../ui/widgets.dart';
+import 'business_manage_screen.dart';
 
 class BusinessProfileScreen extends StatefulWidget {
   const BusinessProfileScreen({
@@ -166,6 +167,18 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
                 onBack:
                     widget.own ? null : () => Navigator.of(context).pop(),
                 onShare: () => _share(c),
+                onManage: widget.own
+                    ? () async {
+                        await Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => BusinessManageScreen(
+                              companyId: c.id,
+                            ),
+                          ),
+                        );
+                        if (mounted) await _load();
+                      }
+                    : null,
               ),
             ),
             SliverPadding(
@@ -337,12 +350,14 @@ class _BusinessHero extends StatelessWidget {
     required this.own,
     required this.onShare,
     this.onBack,
+    this.onManage,
   });
 
   final Company company;
   final bool own;
   final VoidCallback onShare;
   final VoidCallback? onBack;
+  final VoidCallback? onManage;
 
   @override
   Widget build(BuildContext context) {
@@ -424,6 +439,13 @@ class _BusinessHero extends StatelessWidget {
                         ),
                       ),
                     const Spacer(),
+                    if (onManage != null) ...[
+                      _HeroButton(
+                        icon: Icons.tune_rounded,
+                        onTap: onManage!,
+                      ),
+                      const SizedBox(width: 7),
+                    ],
                     _HeroButton(
                       icon: Icons.ios_share_rounded,
                       onTap: onShare,
