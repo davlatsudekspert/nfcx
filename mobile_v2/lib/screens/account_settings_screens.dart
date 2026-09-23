@@ -6,6 +6,7 @@ import '../core/models.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../ui/widgets.dart';
+import 'music_editor_screen.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key, required this.profile});
@@ -29,6 +30,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _uploading = false;
   String? _avatarUrl;
   String? _message;
+  late int _musicCount;
 
   @override
   void initState() {
@@ -44,6 +46,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
     _website = TextEditingController(text: p.website);
     _avatarUrl = p.avatarUrl;
+    _musicCount = p.musicUrls.length;
   }
 
   @override
@@ -103,6 +106,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (mounted) setState(() => _message = 'Rasm yuklanmadi.');
     } finally {
       if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  Future<void> _openMusic() async {
+    final fresh = await SessionScope.read(context)
+        .repo
+        .profile(widget.profile.code);
+    if (!mounted) return;
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => MusicEditorScreen(profile: fresh),
+      ),
+    );
+    if (changed == true && mounted) {
+      final updated = await SessionScope.read(context)
+          .repo
+          .profile(widget.profile.code);
+      if (mounted) setState(() => _musicCount = updated.musicUrls.length);
     }
   }
 
@@ -220,6 +241,38 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
           ),
           const SizedBox(height: 28),
+          SurfaceCard(
+            shadow: false,
+            padding: EdgeInsets.zero,
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 4,
+              ),
+              leading: Container(
+                width: 42,
+                height: 42,
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF111110),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Image.asset(
+                  'assets/images/nfcstore_logo_mark.png',
+                  fit: BoxFit.cover,
+                ),
+              ),
+              title: const Text('Profil musiqasi'),
+              subtitle: Text(
+                _musicCount == 0
+                    ? 'Musiqa qo‘shish'
+                    : _musicCount.toString() + ' ta musiqa',
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: _busy ? null : _openMusic,
+            ),
+          ),
+          const SizedBox(height: 18),
           _Field(controller: _name, label: 'Ism va familiya'),
           const SizedBox(height: 12),
           _Field(controller: _role, label: 'Lavozim', maxLength: 60),
