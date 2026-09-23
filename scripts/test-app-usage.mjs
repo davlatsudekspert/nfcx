@@ -47,4 +47,14 @@ check('3) email bo‘yicha', (await call('/api/admin/app-users?q=USER@test.local
 check('3) topilmasa bo‘sh', (await call('/api/admin/app-users?q=yoq', { cookie: cookie.admin })).body.items, []);
 checkTrue('3) statistika qidiruvdan qat’i nazar umumiy', (await call('/api/admin/app-users?q=yoq', { cookie: cookie.admin })).body.stats.total === 2);
 
+// ===== 4) QISMAN VA ISM BO'YICHA QIDIRUV (egasi, 2026-09-23) =====
+const ids = async (q) => (await call(`/api/admin/app-users?${q}`, { cookie: cookie.admin })).body.items.map((i) => i.userId);
+check('4) email qismi', await ids('q=other'), [2]);
+check('4) profil ismi (katta-kichik harfsiz)', await ids('q=muham'), [1]);
+check('4) ikki so\'zli ism qismi', await ids('q=elite%20qur'), [1]);
+check('4) telefon qismi', await ids('q=2222222'), [2]);
+check('4) % belgisi hammani qaytarmaydi', await ids('q=%25'), []);
+await env.DB.prepare(`UPDATE users SET is_premium = 1 WHERE id = 2`).run();
+check('4) filtr: faqat Premium', await ids('filter=premium'), [2]);
+
 done();

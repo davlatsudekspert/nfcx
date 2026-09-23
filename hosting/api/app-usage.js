@@ -24,7 +24,8 @@
 //
 //   GET /api/admin/app-users?q=&sort=recent|new|opens&page=&limit=
 //     -> { stats: { total, today, week, month }, items, hasMore }
-//     `q` — email, telefon, NFC ID yoki foydalanuvchi raqami.
+//     `q` — istalgan so'z: email, telefon, NFC ID, profil ismi, kompaniya.
+//     `filter` — premium | today | week.
 
 let ready;
 async function ensureTable(env) {
@@ -93,11 +94,31 @@ export async function handle(request, env, url, H) {
 
   const conds = [];
   const binds = [];
-  if (q) {
-    conds.push(`(CAST(a.user_id AS TEXT) = ? OR LOWER(u.email) = LOWER(?) OR u.phone = ?
-      OR a.user_id IN (SELECT c.user_id FROM cards c WHERE UPPER(c.code) = UPPER(?)))`);
-    binds.push(q, q, q, q);
+  // QIDIRUV — ISTALGAN SO'Z BO'YICHA (egasi, 2026-09-23: "so'zni yozsa
+  // ham qidirsin"). Ilgari faqat TO'LIQ email/telefon/NFC ID mos kelardi.
+  // Endi qismi ham: email, telefon, foydalanuvchi raqami, NFC ID kodi va
+  // profil ISMI, kompaniya nomi va identifikatori. Katta-kichik harf
+  // farqi yo'q. `%`/`_` foydalanuvchi matnidan olib tashlanadi.
+  const clean = q.toLowerCase().replace(/[%_]/g, '');
+  if (q && !clean) conds.push('0');
+  else if (q) {
+    const like = `%${clean}%`;
+    conds.push(`(CAST(a.user_id AS TEXT) = ? OR LOWER(COALESCE(u.email,'')) LIKE ?
+      OR COALESCE(u.phone,'') LIKE ?
+      OR a.user_id IN (SELECT c.user_id FROM cards c
+                        WHERE LOWER(c.code) LIKE ? OR LOWER(COALESCE(c.name,'')) LIKE ?)
+      OR CAST(a.user_id AS TEXT) IN (SELECT co.owner_user_id FROM companies co
+                        WHERE LOWER(COALESCE(co.display_name,'')) LIKE ? OR LOWER(co.company_id) LIKE ?))`);
+    binds.push(q, like, like, like, like, like, like);
   }
+  // FILTR: `premium` — faqat Premium; `today`/`week` — shu davrda ochganlar.
+  const filter = url.searchParams.get('filter') || '';
+  if (filter === 'premium') {
+    conds.push('(u.is_premium = 1 OR (u.premium_expires_at IS NOT NULL AND u.premium_expires_at > ?))');
+    binds.push(new Date().toISOString());
+  }
+  if (filter === 'today') { conds.push('a.last_seen >= ?'); binds.push(since(1)); }
+  if (filter === 'week') { conds.push('a.last_seen >= ?'); binds.push(since(7)); }
   const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
   const rows = await env.DB.prepare(
     `SELECT a.user_id, a.platform, a.first_seen, a.last_seen, a.opens,

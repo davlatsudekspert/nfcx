@@ -89,6 +89,10 @@ jobs:
       # sinov tugagach yana faqat Premium, o'qish hammaga ochiq.
       - name: Izoh — Premium yoki sinov muddati
         run: node scripts/test-comment-trial.mjs
+      # Admin shikoyatlar: istalgan so'z bo'yicha qidiruv, sahifalash,
+      # avtomatik sinov (E2E) yozuvlari ro'yxatga chiqmaydi.
+      - name: Admin shikoyatlar — qidiruv va E2E filtri
+        run: node scripts/test-admin-reports-search.mjs
       - name: NFCSTORE FEATURED — slot faqat haqiqiy to'lovdan keyin yonadi
         run: node scripts/test-featured.mjs
       # Shaxsiy NFC ID xaridi: narxni SERVER hisoblaydi, bitta kodni
