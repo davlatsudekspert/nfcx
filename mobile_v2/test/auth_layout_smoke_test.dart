@@ -32,12 +32,16 @@ void main() {
     expect(find.text('NFCSTORE'), findsOneWidget);
     expect(find.text('Kirish'), findsOneWidget);
     expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
   });
 
   testWidgets('premium login fits standard modern phone', (tester) async {
     await _pumpSignedOut(tester, const Size(390, 844));
     expect(find.textContaining('More than'), findsOneWidget);
     expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
   });
 
   testWidgets('registration opens and exposes Personal and Business choices',
@@ -51,5 +55,7 @@ void main() {
     expect(find.text('Business'), findsWidgets);
     expect(find.text('Qanday boshlaysiz?'), findsOneWidget);
     expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
   });
 }
