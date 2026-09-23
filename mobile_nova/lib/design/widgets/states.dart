@@ -22,7 +22,11 @@ String describeError(L l, AppError e) => switch (e.code) {
       'unauthorized' => l.errUnauthorized,
       // Email xizmati kodni yubora olmadi (server 503). Ilgari
       // "Serverda xatolik" chiqardi — odam nima qilishni bilmasdi.
-      'email_send_failed' => l.errEmailSendFailed,
+      // Sabab kodi (`http_403`, `http_429`...) oxirida qavsda — egasi
+      // xatoni ko'rib, sababini darhol biladi (kalit, domen, limit).
+      'email_send_failed' => (e.detail ?? '').isEmpty
+          ? l.errEmailSendFailed
+          : '${l.errEmailSendFailed} (${e.detail})',
       'name_not_allowed' => l.errNameNotAllowed,
       // Moderatsiya: admin hisobni vaqtincha bloklagan (serverdagi
       // `bannedUntil`). Umumiy "ruxsat yo'q" emas — sabab aytiladi.

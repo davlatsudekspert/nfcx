@@ -296,8 +296,10 @@ class ApiClient {
     final map = body is Map ? body.cast<String, dynamic>() : const <String, dynamic>{};
     final code = (map['error'] ?? map['code'])?.toString();
     // `content_blocked` — rasm filtri sababni `category` da beradi.
+    // `email_send_failed` — sabab kodi (`http_403`, `network`) `reason` da.
     final detail = map['detail']?.toString() ??
         map['category']?.toString() ??
+        map['reason']?.toString() ??
         (body is String && body.isNotEmpty ? body.substring(0, body.length.clamp(0, 120)) : null);
 
     final kind = switch (status) {

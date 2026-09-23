@@ -1,0 +1,129 @@
+name: NFCSTORE Nova tezlik (profile)
+
+# Ilova tezligini haqiqiy hisob bilan, PROFILE rejimida o'lchaydi:
+# tab almashtirish, lentani aylantirish, Reels. Faqat o'qiydi.
+#
+# Emulyator `swiftshader` (dasturiy GPU) bilan ishlaydi: CHIZISH
+# (raster) vaqti haqiqiy telefondan ancha yuqori chiqadi. QURISH
+# (build, UI thread) vaqti esa telefonga yaqin — asosiy ko'rsatkich.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['claude/**']
+    paths:
+      - 'mobile_nova/integration_perf/**'
+      - 'mobile_nova/test_driver/**'
+      - 'mobile_nova/lib/**'
+      - '.github/workflows/nova-perf.yml'
+      - 'tool/perf_run.sh'
+
+# E2E bilan BITTA navbat: ikkalasi bir hisobga kiradi, server esa
+# 15 daqiqada 5 ta kirishga ruxsat beradi.
+concurrency:
+  group: nova-e2e
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  perf:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    defaults:
+      run:
+        working-directory: mobile_nova
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.35.5
+          channel: stable
+          cache: true
+
+      - name: Bog'liqliklar
+        run: flutter pub get --enforce-lockfile
+
+      - name: KVM ni yoqish
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: AVD keshi
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-34-x86_64
+
+      - name: AVD ni tayyorlash (faqat kesh bo'sh bo'lsa)
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "AVD tayyor"
+
+      - name: Tezlikni o'lchash
+        id: perf
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          NOVA_TEST_LOGIN: ${{ secrets.NFC_LOGIN_EMAIL || secrets.NOVA_TEST_LOGIN }}
+          NOVA_TEST_PASSWORD: ${{ secrets.NFC_LOGIN_PASSWORD || secrets.NOVA_TEST_PASSWORD }}
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          working-directory: mobile_nova
+          script: bash ../tool/perf_run.sh
+
+      - name: Natija jadvali
+        if: always()
+        run: |
+          {
+            echo "## Tezlik (ms) — profile rejimi"
+            echo ""
+            echo '```'
+            grep -h "\[PERF\]" perf.log | sed 's/^.*\[PERF\]/[PERF]/' || echo "natija yo'q"
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Natija fayllari
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nova-perf
+          path: |
+            mobile_nova/perf.log
+            mobile_nova/build/perf.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Holat
+        if: always()
+        run: |
+          if [ "${{ steps.perf.outcome }}" != "success" ]; then
+            echo "::error::O'lchash yakunlanmadi — perf.log ga qarang."
+            exit 1
+          fi
