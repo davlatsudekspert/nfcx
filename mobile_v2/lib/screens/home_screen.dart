@@ -12,6 +12,7 @@ import '../ui/widgets.dart';
 import 'compose_screen.dart';
 import 'settings_screen.dart';
 import 'notifications_screen.dart';
+import 'story_viewer_screen.dart';
 import 'shell.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -422,8 +423,15 @@ class _HomeScreenState extends State<HomeScreen>
                           return _StoryOrb(
                             title: item.name,
                             avatarUrl: item.avatarUrl,
-                            onTap: () =>
-                                ShellScope.of(context).selectTab(3),
+                            onTap: item.stories.isEmpty
+                                ? () => ShellScope.of(context).selectTab(3)
+                                : () => Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => StoryViewerScreen(
+                                          bubble: item,
+                                        ),
+                                      ),
+                                    ),
                           );
                         }
                         const demo = [
