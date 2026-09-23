@@ -319,4 +319,62 @@ void main() {
     await _flush(tester);
     expect(v.playing.length, 1, reason: 'qaytganda video davom etadi');
   });
+
+  testWidgets('Reel yaratish ochilsa video to‘xtaydi, qaytganda davom etadi '
+      '(P-H2)', (tester) async {
+    final v = FakeVideoPlatform();
+    VideoPlayerPlatform.instance = v;
+    tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final base = await testOverrides();
+    final c = ProviderContainer(overrides: [
+      ...base.where((o) => !identical(o, base[2])),
+      socialRepositoryProvider.overrideWithValue(_Social()),
+      profileRepositoryProvider.overrideWithValue(_Profile()),
+      businessRepositoryProvider.overrideWithValue(_Biz()),
+      reelsProvider.overrideWith((ref) async => _reels),
+      activeTabProvider.overrideWith((ref) => 3),
+    ]);
+    addTearDown(c.dispose);
+    // Ilovadagidek: `/reel/create` shell USTIGA ochiladi, tab raqami
+    // o'zgarmaydi — faqat marshrut Reels'ni yopadi.
+    final router = GoRouter(routes: [
+      GoRoute(path: '/', builder: (_, __) => const ReelsScreen()),
+      GoRoute(
+          path: '/reel/create',
+          builder: (_, __) => const Scaffold(body: Text('YARATISH'))),
+    ]);
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: c,
+      child: MaterialApp.router(
+        routerConfig: router,
+        theme: buildTheme(NfcTokens.fallback),
+        locale: const Locale('uz'),
+        supportedLocales: LocaleController.supported,
+        localizationsDelegates: const [
+          L.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+      ),
+    ));
+    await settle(tester, frames: 10);
+    await _flush(tester);
+    expect(v.playing.length, 1, reason: 'reel o‘ynayapti');
+
+    final l = await L.delegate.load(const Locale('uz'));
+    await tester.tap(find.byTooltip(l.reelCreate));
+    await settle(tester, frames: 12);
+    await _flush(tester);
+    expect(find.text('YARATISH'), findsOneWidget);
+    expect(v.playing, isEmpty,
+        reason: 'yaratish ekrani ostida reel ovoz bilan o‘ynamasin');
+
+    router.pop();
+    await settle(tester, frames: 12);
+    await _flush(tester);
+    expect(v.playing.length, 1, reason: 'qaytganda davom etadi');
+  });
 }

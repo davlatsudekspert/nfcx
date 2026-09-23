@@ -301,11 +301,40 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
 
   late final AudioOwner _owner;
 
+  /// Sahifa ekranda — ustiga boshqa ekran (Reel yaratish, izohdagi
+  /// odam profili, ...) ochilmagan. `TickerMode` — Overlay yopilgan
+  /// marshrutni va yashirin tabni shu bilan belgilaydi.
+  ///
+  /// Ilgari faqat tab raqami qaralardi: `/reel/create` yoki izohdan
+  /// `/u/:code` ochilsa, video ORQADA ovoz bilan o'ynayverardi.
+  /// Kontroller YO'Q QILINMAYDI — qaytganda o'sha joydan davom etadi.
+  bool _onStage = true;
+
   @override
   void initState() {
     super.initState();
     _owner = ref.read(audioOwnerProvider);
     _sync();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final on = TickerMode.of(context);
+    if (on == _onStage) return;
+    _onStage = on;
+    // Kadrdan keyin: `AudioOwner` boshqa egani to'xtatadi va u build
+    // paytida `setState` chaqirishi mumkin.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _onStage != on) return;
+      if (!on) {
+        _controller?.pause();
+        _owner.release(this);
+        setState(() {});
+      } else if (widget.visible) {
+        _sync();
+      }
+    });
   }
 
   @override
@@ -346,12 +375,15 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
     }
     if (!mounted || _controller != c || !_ready) return;
 
-    if (widget.visible) {
+    if (widget.visible && _onStage) {
       // Video ovoz chiqaradi — u audio EGASI bo'ladi. Profil musiqasi
       // o'ynayotgan bo'lsa to'xtaydi: ikki manba birga ovoz chiqarmaydi.
       _owner.take(this, _pauseForOther);
       await c.setVolume(ref.read(reelsMutedProvider) ? 0 : 1);
       await c.play();
+    } else if (widget.visible) {
+      // Ustida boshqa ekran — joyida pauza (boshiga qaytmaydi).
+      await c.pause();
     } else {
       // Oldindan yuklangan: jim va pauzada, boshidan.
       await c.setVolume(0);

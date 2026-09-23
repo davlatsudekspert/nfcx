@@ -163,6 +163,16 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
   /// istisnodan KEYIN turgan edi.
   AudioOwner? _owner;
 
+  /// Oxirgi `TickerMode` qiymati — `null` birinchi
+  /// `didChangeDependencies` gacha.
+  ///
+  /// LENTA VIDEOSI FAQAT KO'RINIB TURGANDA O'YNAYDI. Home ustiga post,
+  /// profil yoki sozlamalar ochilsa (ildiz navigator) yoki Home tabi
+  /// pastki navigatsiyasiz yashirilsa ("Barchasi" -> Kashfiyot), Home
+  /// o'lmaydi — ilgari video ORQADA ovoz bilan davom etardi. Overlay
+  /// ham, yashirin tab ham shu signalni o'chiradi.
+  bool? _shown;
+
   @override
   void initState() {
     super.initState();
@@ -171,12 +181,32 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
     _owner = ref.read(audioOwnerProvider);
     WidgetsBinding.instance.addObserver(this);
     // Dangasa rejimda kontroller ham, tarmoq so'rovi ham odam
-    // bosmaguncha YO'Q. Boshqa hamma holatda — avvalgidek.
-    if (widget.active == true) {
-      _openAndPlay();
-    } else if (!widget.lazy && widget.active == null) {
+    // bosmaguncha YO'Q. Lentadagi dominant video
+    // (`active == true`) `didChangeDependencies` da — ko'rinishi
+    // ma'lum bo'lgach — boshlanadi.
+    if (!widget.lazy && widget.active == null) {
       _open();
     }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final on = TickerMode.of(context);
+    if (on == _shown) return;
+    _shown = on;
+    // Istorya, post tafsiloti — avvalgidek (ular o'z ekranini egallaydi).
+    if (widget.active == null) return;
+    // Kadrdan keyin: `take()` boshqa egani to'xtatadi va u build
+    // paytida `setState` chaqirishi mumkin.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _gone || _shown != on) return;
+      if (!on) {
+        _pauseForOther();
+      } else if (widget.active == true) {
+        _openAndPlay();
+      }
+    });
   }
 
   /// Dominantlik o'zgardi — ijro etiladi yoki to'xtatiladi.
@@ -185,7 +215,7 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
     super.didUpdateWidget(old);
     if (widget.active == old.active) return;
     if (widget.active == true) {
-      _openAndPlay();
+      if (_shown != false) _openAndPlay();
     } else if (widget.active == false) {
       _release();
     }
@@ -224,6 +254,8 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
     if (c == null || _gone || !mounted) return;
     // Dominantlik `_open()` davomida o'zgargan bo'lishi mumkin.
     if (widget.active == false) return;
+    // Ochilish paytida ustiga boshqa ekran chiqdi / tab yashirildi.
+    if (widget.active != null && _shown == false) return;
     await c.setVolume(1);
     await c.play();
     if (mounted) setState(() {});
