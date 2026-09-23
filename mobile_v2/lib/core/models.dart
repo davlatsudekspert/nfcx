@@ -1,6 +1,9 @@
 String _s(dynamic v) => v == null ? '' : '$v';
 int _i(dynamic v) => v is num ? v.round() : int.tryParse('$v') ?? 0;
 bool _b(dynamic v) => v == true || v == 1 || '$v'.toLowerCase() == 'true';
+double? _d(dynamic v) => v == null || '$v'.trim().isEmpty
+    ? null
+    : (v is num ? v.toDouble() : double.tryParse('$v'));
 
 String? absoluteUrl(dynamic raw) {
   final v = _s(raw).trim();
@@ -37,9 +40,30 @@ class IdentityProfile {
     this.website = '',
     this.email = '',
     this.address = '',
+    this.companyId = '',
     this.profileType = 'personal',
     this.categorySlug = '',
+    this.linkedin = '',
+    this.facebook = '',
+    this.twitter = '',
+    this.cardNumber = '',
+    this.theme = 'classic',
+    this.linkStyle = 'standard',
+    this.accentColor = '',
+    this.bgColor = '',
+    this.musicUrls = const [],
     this.extraLinks = const [],
+    this.cardNumbers = const [],
+    this.hashtags = const [],
+    this.cardDesign,
+    this.latitude,
+    this.longitude,
+    this.bgPattern = true,
+    this.bgAnimated = true,
+    this.linksTransparent = false,
+    this.hidePhone = false,
+    this.hiddenFromDirectory = false,
+    this.leadCapture = false,
     this.views = 0,
     this.price = 0,
     this.verified = false,
@@ -59,9 +83,30 @@ class IdentityProfile {
   final String website;
   final String email;
   final String address;
+  final String companyId;
   final String profileType;
   final String categorySlug;
+  final String linkedin;
+  final String facebook;
+  final String twitter;
+  final String cardNumber;
+  final String theme;
+  final String linkStyle;
+  final String accentColor;
+  final String bgColor;
+  final List<String> musicUrls;
   final List<Map<String, dynamic>> extraLinks;
+  final List<Map<String, dynamic>> cardNumbers;
+  final List<String> hashtags;
+  final Map<String, dynamic>? cardDesign;
+  final double? latitude;
+  final double? longitude;
+  final bool bgPattern;
+  final bool bgAnimated;
+  final bool linksTransparent;
+  final bool hidePhone;
+  final bool hiddenFromDirectory;
+  final bool leadCapture;
   final int views;
   final int price;
   final bool verified;
@@ -81,15 +126,53 @@ class IdentityProfile {
         website: _s(j['website']),
         email: _s(j['email']),
         address: _s(j['address']),
+        companyId: _s(j['companyId']).toUpperCase(),
         profileType:
             _s(j['profileType']).isEmpty ? 'personal' : _s(j['profileType']),
         categorySlug: _s(j['categorySlug']),
+        linkedin: _s(j['linkedin']),
+        facebook: _s(j['facebook']),
+        twitter: _s(j['twitter']),
+        cardNumber: _s(j['cardNumber']),
+        theme: _s(j['theme']).isEmpty ? 'classic' : _s(j['theme']),
+        linkStyle:
+            _s(j['linkStyle']).isEmpty ? 'standard' : _s(j['linkStyle']),
+        accentColor: _s(j['accentColor']),
+        bgColor: _s(j['bgColor']),
+        musicUrls: j['musicUrls'] is List
+            ? (j['musicUrls'] as List)
+                .map((e) => absoluteUrl(e))
+                .whereType<String>()
+                .toList()
+            : [
+                if (absoluteUrl(j['musicUrl']) case final String u) u,
+              ],
         extraLinks: j['extraLinks'] is List
             ? (j['extraLinks'] as List)
                 .whereType<Map>()
                 .map((e) => e.cast<String, dynamic>())
                 .toList()
             : const [],
+        cardNumbers: j['cardNumbers'] is List
+            ? (j['cardNumbers'] as List)
+                .whereType<Map>()
+                .map((e) => e.cast<String, dynamic>())
+                .toList()
+            : const [],
+        hashtags: j['hashtags'] is List
+            ? (j['hashtags'] as List).map((e) => '$e').toList()
+            : const [],
+        cardDesign: j['cardDesign'] is Map
+            ? (j['cardDesign'] as Map).cast<String, dynamic>()
+            : null,
+        latitude: _d(j['latitude']),
+        longitude: _d(j['longitude']),
+        bgPattern: j.containsKey('bgPattern') ? _b(j['bgPattern']) : true,
+        bgAnimated: j.containsKey('bgAnimated') ? _b(j['bgAnimated']) : true,
+        linksTransparent: _b(j['linksTransparent']),
+        hidePhone: _b(j['hidePhone']),
+        hiddenFromDirectory: _b(j['hiddenFromDirectory']),
+        leadCapture: _b(j['leadCapture']),
         views: _i(j['views']),
         price: _i(j['price']),
         verified: _b(j['verified']),
