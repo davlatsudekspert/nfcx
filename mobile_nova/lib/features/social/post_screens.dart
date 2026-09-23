@@ -40,11 +40,33 @@ typedef PostRef = ({String code, int id, bool company});
 
 // RIVERPOD `dependencies` — demo daraxti uchun shart
 // (`profile_repository.dart` dagi izohga qarang).
+//
+// PROFIL SETKASIDAN OCHILGANDA QAYTA YUKLAMAYDI: alohida `GET
+// /api/posts/:id` yo'q, `postIn` muallifning BUTUN post ro'yxatini
+// qayta yuklab, ichidan qidiradi — profil esa o'sha ro'yxatni allaqachon
+// ushlab turibdi. `ref.exists` ro'yxat provayderini YARATMAYDI, ya'ni
+// lenta va deep link yo'li avvalgidek serverdan oladi. Layk holati
+// alohida `postLikesProvider` da, o'chirilgan post esa ro'yxatdan
+// `_confirmDelete` da invalidate bilan chiqariladi.
 final postProvider = FutureProvider.autoDispose.family<Post, PostRef>(
-    dependencies: [socialRepositoryProvider], (
+    dependencies: [
+      socialRepositoryProvider,
+      profilePostsProvider,
+      companyPostsProvider,
+    ], (
   ref,
   r,
 ) async {
+  if (r.code.isNotEmpty) {
+    final list = r.company
+        ? companyPostsProvider(r.code)
+        : profilePostsProvider(r.code);
+    if (ref.exists(list)) {
+      final hit =
+          ref.read(list).valueOrNull?.where((p) => p.id == r.id).firstOrNull;
+      if (hit != null) return hit;
+    }
+  }
   final res = await ref.watch(socialRepositoryProvider).postIn(r.code, r.id, company: r.company);
   return res.when(ok: (v) => v, err: (e) => throw e);
 });
@@ -297,7 +319,13 @@ class _PostScreenState extends ConsumerState<PostScreen> {
     final res = await ref.read(socialRepositoryProvider).deletePost(p.id);
     if (!mounted) return;
     res.when(
-      ok: (_) => context.pop(),
+      ok: (_) {
+        // Profil setkasi o'chirilgan postni ko'rsatib qolmasin.
+        ref.invalidate(p.isCompany
+            ? companyPostsProvider(p.code)
+            : profilePostsProvider(p.code));
+        context.pop();
+      },
       err: (e) => ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(describeError(l, e)))),

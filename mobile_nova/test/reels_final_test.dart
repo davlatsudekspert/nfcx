@@ -408,4 +408,19 @@ void main() {
     await _flush(tester);
     expect(v.playing.length, 1, reason: 'qaytganda davom etadi');
   });
+
+  testWidgets('TS-2: boshqa tablar orasida o‘tish Reels’ni qayta qurmaydi',
+      (tester) async {
+    final r = await _pump(tester, FakeVideoPlatform());
+    r.c.read(activeTabProvider.notifier).state = 4;
+    await settle(tester, frames: 4);
+    // Profil -> Asosiy: Reels ko'rinmaydi, uni qayta qurish behuda.
+    r.c.read(activeTabProvider.notifier).state = 0;
+    expect(tester.element(find.byType(ReelsScreen)).dirty, isFalse);
+    // Reels'ga qaytish esa albatta qayta quradi.
+    r.c.read(activeTabProvider.notifier).state = 3;
+    expect(tester.element(find.byType(ReelsScreen)).dirty, isTrue);
+    await settle(tester, frames: 4);
+  });
 }
+

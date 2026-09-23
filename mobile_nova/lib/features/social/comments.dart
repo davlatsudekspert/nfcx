@@ -261,7 +261,6 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
                       // 422 kelmaydi.
                       maxLength: 1000,
                       textInputAction: TextInputAction.newline,
-                      onChanged: (_) => setState(() {}),
                       style: TextStyle(
                         fontFamily: AppType.sans,
                         fontSize: 14.5,
@@ -308,11 +307,17 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
                     ),
                   ),
                   const SizedBox(width: Gap.sm),
-                  _SendButton(
-                    ready: _text.text.trim().isNotEmpty && !_busy,
-                    busy: _busy,
-                    tooltip: l.actionSend,
-                    onPressed: _send,
+                  // Har harfda butun izohlar ro'yxati qayta qurilmasin:
+                  // faqat tugma matnga qarab yangilanadi (ilgari
+                  // `onChanged: setState` ~20 izoh kartasini qayta qurardi).
+                  ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: _text,
+                    builder: (_, v, __) => _SendButton(
+                      ready: v.text.trim().isNotEmpty && !_busy,
+                      busy: _busy,
+                      tooltip: l.actionSend,
+                      onPressed: _send,
+                    ),
                   ),
                 ],
               ),

@@ -101,8 +101,25 @@ Widget mediaImage(
         child: Icon(Icons.broken_image_outlined, size: 30, color: t.text3),
       );
   if (isAssetMedia(url)) {
-    return Image.asset(url,
-        fit: fit, alignment: alignment, errorBuilder: (_, __, ___) => broken());
+    Widget asset([int? w]) => Image.asset(url,
+        fit: fit,
+        alignment: alignment,
+        cacheWidth: w,
+        errorBuilder: (_, __, ___) => broken());
+    // Nisbat o'lchovi (`screenWidth`) bilan BIR XIL kalit qolsin.
+    if (screenWidth) return asset();
+    // Ilova ichidagi rasm ham QUTI o'lchamida ochiladi (tarmoqdagidek):
+    // Home'dagi NFC Mobile bo'limi 10 ta demo JPEG'ni to'liq o'lchamda
+    // (~23 MB) ochardi; yashirin tabdagi rasmlar keshdan birinchi
+    // chiqariladi va Profil -> Asosiy qaytishda qayta dekodlanardi.
+    // x1.5: 3:2 gacha landshaft rasm kvadratga `cover` bo'lganda ham
+    // piksel 1:1 dan kam bo'lmaydi — ko'rinish o'zgarmaydi.
+    return LayoutBuilder(builder: (context, box) {
+      final side = [box.maxWidth, box.maxHeight]
+          .where((v) => v.isFinite && v > 0)
+          .fold<double?>(null, (a, v) => a == null || v > a ? v : a);
+      return asset(side == null ? null : decodeWidth(context, side * 1.5));
+    });
   }
   // Rasm QUTINING o'lchamida ochiladi, ekran kengligida emas:
   // katalogdagi 2 ustunli katakcha, profil panjarasining 1/3

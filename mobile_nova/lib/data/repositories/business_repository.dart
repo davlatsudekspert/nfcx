@@ -16,8 +16,25 @@ class BusinessRepository {
     return res.map((j) => parseList(j['companies'], Business.fromJson));
   }
 
+  /// BIR VAQTDAGI IKKI SO'ROV — BITTA. Do'kon sahifasi `byId` va
+  /// `catalog` ni bir kadrda chaqiradi va ikkalasi AYNAN shu
+  /// endpoint'ni o'qiydi. Faqat parallel so'rovlar birlashadi: javob
+  /// kelgach yozuv o'chadi, keyingi chaqiruv (masalan, katalog
+  /// tahriridan keyingi invalidate) baribir serverdan yangisini oladi.
+  final _companyGets = <String, Future<Result<Map<String, dynamic>>>>{};
+
+  Future<Result<Map<String, dynamic>>> _company(String companyId) =>
+      _companyGets[companyId] ??= _api
+          .get<Map<String, dynamic>>('/api/companies/$companyId')
+          // Blok tana ATAYLAB: `=> remove(...)` o'chirilgan Future'ni
+          // qaytarardi va `whenComplete` uni — ya'ni O'ZINI — kutib
+          // qolardi (test bilan topilgan osilish).
+          .whenComplete(() {
+            _companyGets.remove(companyId);
+          });
+
   Future<Result<Business>> byId(String companyId) async {
-    final res = await _api.get<Map<String, dynamic>>('/api/companies/$companyId');
+    final res = await _company(companyId);
     final v = res.valueOrNull;
     if (res case Err(:final error)) return Err(error);
     return Ok(Business.fromJson(
@@ -72,7 +89,7 @@ class BusinessRepository {
   /// javobidagi `company.catalog`. Ilgari bu yerda mavjud bo'lmagan
   /// GET chaqirilardi va katalog hech qachon yuklanmasdi.
   Future<Result<List<CatalogItem>>> catalog(String companyId) async {
-    final res = await _api.get<Map<String, dynamic>>('/api/companies/$companyId');
+    final res = await _company(companyId);
     return res.map((j) {
       final company = (j['company'] ?? j) as Map;
       final cat = '${company['category'] ?? ''}';

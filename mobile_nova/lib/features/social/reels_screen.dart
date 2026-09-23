@@ -159,7 +159,10 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
   @override
   Widget build(BuildContext context) {
     // Reels — pastki navigatsiyaning 4-tabi (`HomeShell.tabRoutes`).
-    final onReelsTab = ref.watch(activeTabProvider) == 3;
+    // `select`: faqat Reels'ga kirish/chiqishda qayta quriladi — ilgari
+    // HAR tab almashishida (Profil -> Asosiy ham) yashirin Reels va
+    // uning 2-3 sahifasi behuda qayta qurilardi.
+    final onReelsTab = ref.watch(activeTabProvider.select((i) => i == 3));
     // Tabdan chiqilganda kontrollerlar yo'q qilinadi — qaytganda
     // ko'rinayotgani yana birinchi bo'lib ochiladi.
     if (!onReelsTab) _started = -1;

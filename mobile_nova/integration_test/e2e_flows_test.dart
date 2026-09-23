@@ -288,7 +288,12 @@ void main() {
     Future<void> frames([int n = 30]) =>
         settle(t, frames: n, step: const Duration(milliseconds: 80));
     Future<void> tapKey(String key) async {
-      final f = find.byKey(ValueKey(key));
+      // `skipOffstage: false`: ID kartalari 190 dp — ikkinchi/uchinchisi
+      // gorizontal lentada QURILGAN, lekin ekrandan tashqarida. Oddiy
+      // finder uni ko'rmasdi va `ensureVisible` "No element" bilan
+      // yiqilardi (E2E #52). Odam ham avval suradi, keyin bosadi —
+      // `switch_then_home_test.dart` dagi bilan bir xil.
+      final f = find.byKey(ValueKey(key), skipOffstage: false);
       await t.ensureVisible(f);
       await frames(8);
       await t.tap(f);
