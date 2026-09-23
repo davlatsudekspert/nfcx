@@ -294,27 +294,73 @@ class FollowStats {
       );
 }
 
+class StoryItem {
+  const StoryItem({
+    required this.id,
+    this.imageUrl,
+    this.videoUrl,
+    this.caption = '',
+    this.likeCount = 0,
+    this.liked = false,
+    this.createdAt = '',
+  });
+
+  final int id;
+  final String? imageUrl;
+  final String? videoUrl;
+  final String caption;
+  final int likeCount;
+  final bool liked;
+  final String createdAt;
+
+  factory StoryItem.fromJson(Map<String, dynamic> j) => StoryItem(
+        id: _i(j['id']),
+        imageUrl: absoluteUrl(j['imageUrl']),
+        videoUrl: absoluteUrl(j['videoUrl']),
+        caption: _s(j['caption']),
+        likeCount: _i(j['likeCount']),
+        liked: _b(j['liked']),
+        createdAt: _s(j['createdAt']),
+      );
+
+  StoryItem copyWith({int? likeCount, bool? liked}) => StoryItem(
+        id: id,
+        imageUrl: imageUrl,
+        videoUrl: videoUrl,
+        caption: caption,
+        likeCount: likeCount ?? this.likeCount,
+        liked: liked ?? this.liked,
+        createdAt: createdAt,
+      );
+}
+
 class StoryBubble {
   const StoryBubble({
     required this.code,
     required this.name,
     this.avatarUrl,
-    this.storyIds = const [],
+    this.stories = const [],
   });
 
   final String code;
   final String name;
   final String? avatarUrl;
-  final List<int> storyIds;
+  final List<StoryItem> stories;
+
+  List<int> get storyIds => stories.map((e) => e.id).toList(growable: false);
 
   factory StoryBubble.fromJson(Map<String, dynamic> j) {
-    final stories = j['stories'];
+    final raw = j['stories'];
     return StoryBubble(
       code: _s(j['code']).toUpperCase(),
       name: _s(j['name']),
       avatarUrl: absoluteUrl(j['avatarUrl']),
-      storyIds: stories is List
-          ? stories.whereType<Map>().map((e) => _i(e['id'])).where((id) => id > 0).toList()
+      stories: raw is List
+          ? raw
+              .whereType<Map>()
+              .map((e) => StoryItem.fromJson(e.cast<String, dynamic>()))
+              .where((e) => e.id > 0)
+              .toList()
           : const [],
     );
   }
