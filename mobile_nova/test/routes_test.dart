@@ -150,6 +150,35 @@ void main() {
         reason: 'App Links filtrida `pathPrefix` yo\'q');
   });
 
+  test('App Links: manifestdagi HAR BIR pathPrefix ilovada ekranga olib boradi',
+      () {
+    // Play/Android havolani ilovaga beradi — ilovada mos marshrut
+    // bo'lmasa odam "topilmadi" ekraniga tushadi. Namuna manzillar
+    // saytdagi haqiqiy havola shakllari.
+    final manifest =
+        File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+    final prefixes = RegExp(r'android:pathPrefix="([^"]+)"')
+        .allMatches(manifest)
+        .map((m) => m.group(1)!)
+        .toSet();
+    expect(prefixes, containsAll(['/u/', '/c/', '/post/', '/story/', '/nfc/']));
+    const samples = {
+      '/u/': '/u/ABC123',
+      '/c/': '/c/acme',
+      '/post/': '/post/42?code=ABC123',
+      '/story/': '/story/ABC123',
+      '/nfc/': '/nfc/id/ABC123',
+    };
+    final router = buildTestRouter();
+    for (final p in prefixes) {
+      final sample = samples[p];
+      expect(sample, isNotNull,
+          reason: 'yangi App Links prefiksi $p uchun namuna yo\'q');
+      expect(routeExists(router, sample!), isTrue,
+          reason: '$sample ilovada marshrutga mos kelmaydi');
+    }
+  });
+
   test('`Routes` dagi HAR BIR statik yo\'l ro\'yxatda bor', () {
     // BU SINOV SINOVNI TEKSHIRADI.
     //
