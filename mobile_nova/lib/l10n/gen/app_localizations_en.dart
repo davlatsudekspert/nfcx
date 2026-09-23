@@ -2178,4 +2178,17 @@ class LEn extends L {
 
   @override
   String get blockHate => 'hateful symbols detected';
+
+  @override
+  String get privacyPolicy => 'Privacy policy';
+
+  @override
+  String get deleteAccountWhat =>
+      'Your account, all NFC ID profiles, posts, stories, comments and saved items are removed from public view immediately. You will not be able to sign in again. This cannot be undone.';
+
+  @override
+  String get deleteAccountUnderstood => 'I understand, delete my account';
+
+  @override
+  String get deleteAccountDone => 'Your account has been deleted';
 }

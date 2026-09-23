@@ -817,5 +817,9 @@
   "blockViolence": "violence or gore detected",
   "blockExtremism": "extremist symbols or propaganda detected",
   "blockDrugs": "illegal drugs detected",
-  "blockHate": "hateful symbols detected"
+  "blockHate": "hateful symbols detected",
+  "privacyPolicy": "Privacy policy",
+  "deleteAccountWhat": "Your account, all NFC ID profiles, posts, stories, comments and saved items are removed from public view immediately. You will not be able to sign in again. This cannot be undone.",
+  "deleteAccountUnderstood": "I understand, delete my account",
+  "deleteAccountDone": "Your account has been deleted"
 }

@@ -2174,4 +2174,17 @@ class LRu extends L {
 
   @override
   String get blockHate => 'обнаружена символика ненависти';
+
+  @override
+  String get privacyPolicy => 'Политика конфиденциальности';
+
+  @override
+  String get deleteAccountWhat =>
+      'Ваш аккаунт, все профили NFC ID, посты, истории, комментарии и сохранённое сразу скрываются. Войти снова будет нельзя. Это необратимо.';
+
+  @override
+  String get deleteAccountUnderstood => 'Понимаю, удалить аккаунт';
+
+  @override
+  String get deleteAccountDone => 'Аккаунт удалён';
 }

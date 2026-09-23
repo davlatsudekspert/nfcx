@@ -361,42 +361,71 @@ class _SecuritySettingsScreenState
     );
   }
 
-  /// Hisobni o'chirish.
+  /// Hisobni o'chirish — HAQIQIY (`DELETE /api/account`).
   ///
-  /// Backend'da bu amal uchun ochiq endpoint yo'q (admin panelidan
-  /// bajariladi), shuning uchun ilova YOLG'ON "o'chirildi" demaydi —
-  /// murojaat qo'llab-quvvatlash xizmatiga yuboriladi.
+  /// Ilgari faqat qo'llab-quvvatlashga murojaat yuborilardi; Google
+  /// Play buni qabul qilmaydi. Endi odam oqibatni o'qiydi, "Tushundim"
+  /// belgisini qo'yadi va tasdiqlaydi; hisob darhol o'chadi va ilova
+  /// kirish ekraniga qaytadi.
   Future<void> _confirmDelete(BuildContext context) async {
     final l = L.of(context);
     final ok = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l.settingsDeleteAccount),
-        content: Text(l.settingsDeleteConfirm),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text(l.actionCancel)),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(l.actionConfirm,
-                style: TextStyle(color: context.tokens.error)),
+      builder: (context) {
+        var understood = false;
+        return StatefulBuilder(
+          builder: (context, setDialog) => AlertDialog(
+            title: Text(l.settingsDeleteAccount),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l.deleteAccountWhat),
+                const SizedBox(height: Gap.md),
+                CheckboxListTile(
+                  key: const ValueKey('delete-understood'),
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  value: understood,
+                  onChanged: (v) => setDialog(() => understood = v ?? false),
+                  title: Text(l.deleteAccountUnderstood),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: Text(l.actionCancel)),
+              TextButton(
+                key: const ValueKey('delete-confirm'),
+                onPressed:
+                    understood ? () => Navigator.pop(context, true) : null,
+                child: Text(l.settingsDeleteAccount,
+                    style: TextStyle(
+                        color: understood
+                            ? context.tokens.error
+                            : context.tokens.text3)),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
-    if (ok != true || !mounted) return;
+    if (ok != true || !context.mounted) return;
 
-    final res = await ref
-        .read(profileRepositoryProvider)
-        .support('ACCOUNT_DELETE_REQUEST');
+    final messenger = ScaffoldMessenger.of(context);
+    final res = await ref.read(profileRepositoryProvider).deleteAccount();
     if (!mounted) return;
-    res.when(
-      ok: (_) => ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(l.supportSent))),
-      err: (e) => ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(describeError(l, e)))),
-    );
+    switch (res) {
+      case Ok():
+        // Server sessiyalarni o'zi yopdi — bu yerda faqat qurilmadagi
+        // token tozalanadi; router kirish ekraniga olib boradi.
+        await ref.read(sessionProvider.notifier).logout();
+        messenger.showSnackBar(SnackBar(content: Text(l.deleteAccountDone)));
+      case Err(:final error):
+        messenger
+            .showSnackBar(SnackBar(content: Text(describeError(l, error))));
+    }
   }
 }
 

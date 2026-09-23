@@ -154,6 +154,14 @@ class SettingsScreen extends ConsumerWidget {
               label: l.rulesOpen,
               onTap: () => ensureContentRules(context, ref, force: true),
             ),
+            // Maxfiylik siyosati — Play talabi: ilova ichidan ham
+            // ochilsin. Bu to'lov havolasi emas (anti-steering qoidasi
+            // faqat xaridga tegishli).
+            SettingsItem(
+              icon: Icons.privacy_tip_outlined,
+              label: l.privacyPolicy,
+              onTap: () => openLink('$kApiBase/privacy'),
+            ),
             SettingsItem(
               icon: Icons.info_outline_rounded,
               label: l.settingsAbout,

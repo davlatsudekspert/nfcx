@@ -4214,6 +4214,30 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'nafrat yoki kamsitish belgisi aniqlandi'**
   String get blockHate;
+
+  /// No description provided for @privacyPolicy.
+  ///
+  /// In uz, this message translates to:
+  /// **'Maxfiylik siyosati'**
+  String get privacyPolicy;
+
+  /// No description provided for @deleteAccountWhat.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hisobingiz, barcha NFC ID profillaringiz, postlar, istoriyalar, izohlar va saqlanganlar ommadan darhol olib tashlanadi. Siz qayta kira olmaysiz. Buni qaytarib bo‘lmaydi.'**
+  String get deleteAccountWhat;
+
+  /// No description provided for @deleteAccountUnderstood.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tushundim, hisobimni o‘chirish'**
+  String get deleteAccountUnderstood;
+
+  /// No description provided for @deleteAccountDone.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hisobingiz o‘chirildi'**
+  String get deleteAccountDone;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

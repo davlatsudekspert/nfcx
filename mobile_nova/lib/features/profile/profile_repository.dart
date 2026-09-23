@@ -289,6 +289,14 @@ class ProfileRepository {
         'newPassword': newPassword,
       });
 
+  /// HISOBNI O'CHIRISH — `DELETE /api/account` (hosting/api/account.js).
+  ///
+  /// Server hisobni o'chirilgan deb belgilaydi va BARCHA sessiyalarni
+  /// yopadi: profillar va kontent saytdan ham, ilovadan ham darhol
+  /// yo'qoladi, odam qayta kira olmaydi. Google Play talabi: o'chirish
+  /// ilova ICHIDA bo'lishi kerak (faqat "murojaat" emas).
+  Future<Result<void>> deleteAccount() => _api.delete<void>('/api/account');
+
   Future<Result<void>> support(String message) =>
       _api.post<void>('/api/support', {'message': message});
 

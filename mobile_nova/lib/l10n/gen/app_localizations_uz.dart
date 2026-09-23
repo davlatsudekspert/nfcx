@@ -2179,4 +2179,17 @@ class LUz extends L {
 
   @override
   String get blockHate => 'nafrat yoki kamsitish belgisi aniqlandi';
+
+  @override
+  String get privacyPolicy => 'Maxfiylik siyosati';
+
+  @override
+  String get deleteAccountWhat =>
+      'Hisobingiz, barcha NFC ID profillaringiz, postlar, istoriyalar, izohlar va saqlanganlar ommadan darhol olib tashlanadi. Siz qayta kira olmaysiz. Buni qaytarib bo‘lmaydi.';
+
+  @override
+  String get deleteAccountUnderstood => 'Tushundim, hisobimni o‘chirish';
+
+  @override
+  String get deleteAccountDone => 'Hisobingiz o‘chirildi';
 }
