@@ -1,4 +1,4 @@
-# NFCSTORE Nova — yakuniy funksional audit
+# NFCSTORE Mobile — yakuniy funksional audit
 
 Statuslar: **DONE** · **PARTIAL** · **BACKEND REQUIRED** ·
 **CONFIG REQUIRED** · **DEVICE REQUIRED** · **FAILED**
@@ -209,7 +209,7 @@ bo'lmasligi.
 Auditdan o'tgan commit AYNAN shu: `c5869f0e103a15597691bb9185cb158ca50eaf70`.
 
 Ishga tushish: <https://github.com/davlatsudekspert/nfcx/actions/runs/35440618646>
-Artefakt (30 kun): `nfcstore-nova-apk`, ID `10583458483`,
+Artefakt (30 kun): `nfcstore-mobile-apk`, ID `10583458483`,
 zip SHA-256 `7b11c85f05d51fbdcdc342f07b394dddedc117e66d3cdbe53c6b88921fe82fa3`
 
 | Fayl | Hajm | SHA-256 |

@@ -1,4 +1,4 @@
-# NFCSTORE Nova
+# NFCSTORE Mobile
 
 Yangi avlod NFCSTORE mobil ilovasi. **Alohida Flutter loyihasi** —
 mavjud `mobile/` ilovasiga tegilmagan.
@@ -6,7 +6,7 @@ mavjud `mobile/` ilovasiga tegilmagan.
 | | |
 |---|---|
 | **Paket nomi** | `uz.nfcstore.nova` |
-| **Ekranda ko‘rinadi** | NFCSTORE Nova |
+| **Ekranda ko‘rinadi** | NFCSTORE |
 | **Versiya** | 1.0.0+1 |
 | **Flutter** | 3.35.5 (stable) |
 | **Backend** | `https://nfcstore.uz` |
@@ -58,8 +58,8 @@ build/app/outputs/bundle/release/app-release.aab
 Android SDK `dl.google.com` dan keladi va ba’zi tarmoqlarda yopiq
 bo‘ladi. Shuning uchun qurish GitHub Actions’da ham sozlangan:
 
-**Actions → «NFCSTORE Nova APK» → Run workflow → Artifacts →
-`nfcstore-nova-apk`**
+**Actions → «NFCSTORE Mobile APK» → Run workflow → Artifacts →
+`nfcstore-mobile-apk`**
 
 Workflow qurishdan oldin `flutter analyze` va `flutter test` ni
 ishlatadi, qurgandan keyin esa paket nomi `uz.nfcstore.nova` ekanini

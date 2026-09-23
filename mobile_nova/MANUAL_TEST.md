@@ -1,4 +1,4 @@
-# NFCSTORE Nova — qurilmada qo'lda sinov protokoli
+# NFCSTORE Mobile — qurilmada qo'lda sinov protokoli
 
 Bu hujjat **emulyator isbotlay olmaydigan** qatorlar uchun. Qolgan
 hammasi avtomatlashtirilgan: `.github/workflows/nova-e2e.yml` haqiqiy
@@ -26,8 +26,8 @@ barmoq izi sensori, tizim oynalari va haqiqiy to'lov.
 
 ## Tayyorgarlik
 
-1. **APK:** Actions → *NFCSTORE Nova APK* → oxirgi ishga tushish →
-   `nfcstore-nova-apk` → `app-arm64-v8a-release.apk` (zamonaviy
+1. **APK:** Actions → *NFCSTORE Mobile APK* → oxirgi ishga tushish →
+   `nfcstore-mobile-apk` → `app-arm64-v8a-release.apk` (zamonaviy
    telefonlar uchun) yoki `app-release.apk` (universal).
 2. **Eski ilovani o'chirmang.** Nova paketi `uz.nfcstore.nova`,
    eskisi `uz.nfcstore.app` — ular yonma-yon turadi. Ikkalasi ham
@@ -260,7 +260,7 @@ Ruxsat bermaguningizcha 6.4-qadamni bajarmang.
 ## 8. STAGE 1 — lenta kartasi va asosiy oqimlar
 
 **Qaysi qurilish:** APK #46, commit `ece12ed` (yoki undan keyingi).
-Actions → *NFCSTORE Nova APK* → `NFCSTORE-Nova-final` artefakti.
+Actions → *NFCSTORE Mobile APK* → `NFCSTORE-Mobile` artefakti.
 
 Bu bo'lim avtomatlashtirilganidan FARQ qiladi. Vidjet testlari soxta
 backend bilan, E2E esa emulyatorda ishlaydi. Quyidagilarni faqat

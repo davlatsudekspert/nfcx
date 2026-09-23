@@ -1,4 +1,4 @@
-# NFCSTORE Nova — do'kon matnlari (UZ / RU / EN)
+# NFCSTORE Mobile — do'kon matnlari (UZ / RU / EN)
 
 > **QOIDA.** Bu yerda faqat ilovada HAQIQATAN ishlaydigan narsa
 > yoziladi. Do'kon matni — va'da emas, tavsif. Tayyor bo'lmagan
@@ -33,7 +33,7 @@
 ## Ilova nomi
 
 ```
-NFCSTORE Nova
+NFCSTORE Mobile
 ```
 
 Google Play sarlavha nomzodi (30 belgigacha):
@@ -79,7 +79,7 @@ nfc,nfc reader,smart card,digital business card,digital profile,qr code,contact 
 ### UZ
 
 ```
-NFCSTORE Nova — bu raqamli tanishuv profili va NFC vositasi
+NFCSTORE Mobile — bu raqamli tanishuv profili va NFC vositasi
 bitta ilovada.
 
 NFC
@@ -115,7 +115,7 @@ Uch til: o'zbek, rus, ingliz. Besh mavzu.
 ### RU
 
 ```
-NFCSTORE Nova — цифровой профиль и NFC-инструмент в одном
+NFCSTORE Mobile — цифровой профиль и NFC-инструмент в одном
 приложении.
 
 NFC
@@ -151,7 +151,7 @@ NFC
 ### EN
 
 ```
-NFCSTORE Nova is a digital identity profile and an NFC tool in
+NFCSTORE Mobile is a digital identity profile and an NFC tool in
 one app.
 
 NFC

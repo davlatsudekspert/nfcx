@@ -105,7 +105,7 @@ def main(paths: list[str]) -> int:
         v = r.get("verdict", "SKIPPED")
         tally[v] = tally.get(v, 0) + 1
 
-    print("## NFCSTORE Nova — haqiqiy hisob E2E\n")
+    print("## NFCSTORE Mobile — haqiqiy hisob E2E\n")
     print("| Natija | Soni |")
     print("|---|---|")
     for v in ORDER:

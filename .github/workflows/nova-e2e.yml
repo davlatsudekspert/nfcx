@@ -27,7 +27,7 @@
 #
 # Ya'ni: ketma-ket ikki marta ishga tushirmang. Ikkinchisi 429 oladi
 # va hisob EGASI ham 15 daqiqa kira olmaydi.
-name: NFCSTORE Nova E2E (real account)
+name: NFCSTORE Mobile E2E (real account)
 
 on:
   workflow_dispatch:

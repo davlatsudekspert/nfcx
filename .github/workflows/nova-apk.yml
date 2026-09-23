@@ -9,9 +9,9 @@
 # quradi va paket nomi `uz.nfcstore.nova`. Eski `mobile/` uchun
 # alohida `android-apk.yml` bor va u o'zgartirilmagan.
 #
-# QANDAY OLINADI: Actions -> "NFCSTORE Nova APK" -> oxirgi ishga
-# tushish -> pastdagi "Artifacts" -> `nfcstore-nova-apk`.
-name: NFCSTORE Nova APK
+# QANDAY OLINADI: Actions -> "NFCSTORE Mobile APK" -> oxirgi ishga
+# tushish -> pastdagi "Artifacts" -> `nfcstore-mobile-apk`.
+name: NFCSTORE Mobile APK
 
 on:
   workflow_dispatch:
@@ -378,15 +378,15 @@ jobs:
           OUT=release-final
           mkdir -p "$OUT"
           cp build/app/outputs/flutter-apk/app-release.apk \
-             "$OUT/NFCSTORE-Nova-final.apk"
+             "$OUT/NFCSTORE-Mobile.apk"
           cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk \
-             "$OUT/NFCSTORE-Nova-final-arm64-v8a.apk"
+             "$OUT/NFCSTORE-Mobile-arm64-v8a.apk"
           cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk \
-             "$OUT/NFCSTORE-Nova-final-armeabi-v7a.apk"
+             "$OUT/NFCSTORE-Mobile-armeabi-v7a.apk"
           cp build/app/outputs/flutter-apk/app-x86_64-release.apk \
-             "$OUT/NFCSTORE-Nova-final-x86_64.apk"
+             "$OUT/NFCSTORE-Mobile-x86_64.apk"
           cp build/app/outputs/bundle/release/app-release.aab \
-             "$OUT/NFCSTORE-Nova-final.aab"
+             "$OUT/NFCSTORE-Mobile.aab"
           ( cd "$OUT" && sha256sum * > SHA256SUMS.txt )
           ls -la "$OUT"
           echo "--- SHA-256 ---"
@@ -398,7 +398,7 @@ jobs:
           AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 2>/dev/null | sort -V | tail -1)
           ALIGN=$(ls "$ANDROID_HOME"/build-tools/*/zipalign 2>/dev/null | sort -V | tail -1)
           APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1)
-          APK=release-final/NFCSTORE-Nova-final.apk
+          APK=release-final/NFCSTORE-Mobile.apk
 
           echo "--- badging ---"
           "$AAPT" dump badging "$APK" | grep -E "^package:|sdkVersion|targetSdkVersion"
@@ -423,7 +423,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: nfcstore-nova-apk
+          name: nfcstore-mobile-apk
           path: |
             mobile_nova/build/app/outputs/flutter-apk/*.apk
             mobile_nova/build/app/outputs/bundle/release/*.aab
@@ -443,8 +443,8 @@ jobs:
       # Zamonaviy Android telefonlarning deyarli hammasi arm64-v8a.
       - uses: actions/upload-artifact@v4
         with:
-          name: NFCSTORE-Nova-telefon
-          path: mobile_nova/release-final/NFCSTORE-Nova-final-arm64-v8a.apk
+          name: NFCSTORE-Mobile-telefon
+          path: mobile_nova/release-final/NFCSTORE-Mobile-arm64-v8a.apk
           if-no-files-found: error
           retention-days: 90
           compression-level: 0
@@ -457,7 +457,7 @@ jobs:
       # LOGIN ham talab qilmaydi: havola to'g'ridan-to'g'ri `.apk`
       # ga olib boradi, ZIP ham yo'q.
       #
-      # Teg QAT'IY: `nova-latest`. Har qurilishda yangilanadi,
+      # Teg QAT'IY: `mobile-latest`. Har qurilishda yangilanadi,
       # shuning uchun havola O'ZGARMAYDI — bir marta saqlab qo'yib,
       # keyin doim o'shani ochish mumkin.
       # QURILISHNI YIQITMAYDI — ATAYLAB.
@@ -485,21 +485,21 @@ jobs:
           cd release-final
           # Eski relizni tegi bilan birga olib tashlaymiz, aks holda
           # `create` "allaqachon bor" deb to'xtardi.
-          gh release delete nova-latest --yes --cleanup-tag 2>/dev/null || true
-          gh release create nova-latest \
-            NFCSTORE-Nova-final-arm64-v8a.apk \
-            NFCSTORE-Nova-final-armeabi-v7a.apk \
-            NFCSTORE-Nova-final.apk \
-            NFCSTORE-Nova-final.aab \
+          gh release delete mobile-latest --yes --cleanup-tag 2>/dev/null || true
+          gh release create mobile-latest \
+            NFCSTORE-Mobile-arm64-v8a.apk \
+            NFCSTORE-Mobile-armeabi-v7a.apk \
+            NFCSTORE-Mobile.apk \
+            NFCSTORE-Mobile.aab \
             SHA256SUMS.txt \
             --target "$GITHUB_SHA" \
-            --title "NFCSTORE Nova — oxirgi qurilish (#${{ github.run_number }})" \
+            --title "NFCSTORE Mobile — oxirgi qurilish (#${{ github.run_number }})" \
             --prerelease \
-            --notes "Telefon uchun: **NFCSTORE-Nova-final-arm64-v8a.apk** — qurilish #${{ github.run_number }}, commit ${{ github.sha }}, branch ${{ github.ref_name }}. Sinov qurilishi: har yangi push'da yangilanadi."
+            --notes "Telefon uchun: **NFCSTORE-Mobile-arm64-v8a.apk** — qurilish #${{ github.run_number }}, commit ${{ github.sha }}, branch ${{ github.ref_name }}. Sinov qurilishi: har yangi push'da yangilanadi."
 
       - uses: actions/upload-artifact@v4
         with:
-          name: NFCSTORE-Nova-final
+          name: NFCSTORE-Mobile
           path: mobile_nova/release-final/*
           if-no-files-found: error
           retention-days: 90

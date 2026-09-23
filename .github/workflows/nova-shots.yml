@@ -18,9 +18,9 @@
 # FAQAT shu yerda, ATAYIN chaqiriladi. `test/shots_gate_test.dart`
 # o'sha sozlama joyida turganini qotiradi.
 #
-# QANDAY OLINADI: Actions -> "NFCSTORE Nova suratlari" -> "Run
+# QANDAY OLINADI: Actions -> "NFCSTORE Mobile suratlari" -> "Run
 # workflow" -> tugagach pastdagi "Artifacts" -> `nova-shots`.
-name: NFCSTORE Nova suratlari
+name: NFCSTORE Mobile suratlari
 
 # PUSH TRIGGERI ATAYIN YO'Q. Bu workflow hech qachon o'zi ishga
 # tushmaydi va hech narsani bloklamaydi — surat kerak bo'lganda

@@ -69,7 +69,7 @@ oling.
 3. **Testing → Closed testing** ← Internal EMAS
 4. **Testers → Create email list** → 12 ta Gmail'ni birdan
    yopishtiring (vergul bilan yoki har qatorga bittadan) → Save
-5. **`NFCSTORE-Nova-final.aab`** ni yuklang → Review release →
+5. **`NFCSTORE-Mobile.aab`** ni yuklang → Review release →
    **Start rollout**
 6. **"Copy link"** — bu opt-in havolasi
 
