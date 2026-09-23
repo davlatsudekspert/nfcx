@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../data/repositories/nfc_repository.dart';
 import '../design/motion/motion.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/profile_setup_screen.dart';
@@ -67,6 +68,19 @@ final routerProvider = Provider<GoRouter>((ref) {
     (_, next) => kind.value = next.runtimeType,
   );
 
+  // KUTILAYOTGAN MANZIL — deep link / NFC karta sessiya tiklanayotganda
+  // (yoki kirilmagan paytda) kelsa, u shu yerda saqlanadi va sessiya
+  // faol bo'lgach AYNAN o'sha joyga olib boriladi. Ilgari Splash ->
+  // Home qayta yo'naltirishi asl manzilni yo'qotardi: kartani
+  // tegizgan odam profil o'rniga bosh sahifani ko'rardi.
+  String? pending;
+  var wasActive = false;
+  String takePending() {
+    final p = pending;
+    pending = null;
+    return (p == null || p.isEmpty || p == Routes.splash) ? Routes.home : p;
+  }
+
   final router = GoRouter(
     navigatorKey: _rootKey,
     initialLocation: Routes.splash,
@@ -75,10 +89,23 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final session = ref.read(sessionProvider);
       final loc = state.matchedLocation;
+      // `/register/setup` — ro'yxatdan o'tgach FAOL sessiya bilan
+      // ochiladi (profil sozlash, biznes tanlovi). U auth hududi
+      // hisoblansa faol sessiya uni darhol Home'ga burardi va bu
+      // ekran hech qachon ko'rinmasdi.
       final authArea = loc == Routes.splash ||
           loc == Routes.welcome ||
           loc.startsWith('/login') ||
-          loc.startsWith('/register');
+          (loc.startsWith('/register') && loc != Routes.profileSetup);
+      final card = _cardLinkTarget(state);
+
+      // Chiqishdan (yoki sessiya tugashidan) keyin turgan ekran
+      // "kutilayotgan manzil" bo'lmaydi — keyingi kirish Home'dan.
+      final loggedOut = session is SessionAnonymous && wasActive;
+      if (session is! SessionActive && !authArea && !loggedOut) {
+        pending = card ?? _pathAndQuery(state.uri);
+      }
+      wasActive = session is SessionActive;
 
       return switch (session) {
         // Token tekshirilmoqda — Splash'dan boshqa joyga o'tkazmaymiz.
@@ -86,7 +113,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         SessionAnonymous() => authArea && loc != Routes.splash
             ? null
             : Routes.welcome,
-        SessionActive() => authArea ? Routes.home : null,
+        SessionActive() => authArea ? takePending() : card,
       };
     },
     routes: [
@@ -150,6 +177,21 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Bular `StatefulShellRoute` DAN TASHQARIDA: to'liq ekranni egallaydi
       // va o'z "orqaga" tarixiga ega bo'ladi.
       GoRoute(path: Routes.profileEdit, builder: (_, __) => const ProfileEditScreen()),
+      // NFC STIKER — `https://nfcstore.uz/t/<token>` (server shunday
+      // yozadi). Token faqat SERVERDA profilga aylanadi.
+      GoRoute(
+        path: '/t/:token',
+        redirect: (_, s) async {
+          final res = await ref
+              .read(nfcRepositoryProvider)
+              .resolveChip(s.pathParameters['token'] ?? '');
+          final chip = res.valueOrNull;
+          if (chip == null || chip.code.isEmpty) return Routes.home;
+          return chip.company
+              ? Routes.storefront(chip.code)
+              : Routes.user(chip.code);
+        },
+      ),
       GoRoute(
         path: '/u/:code',
         builder: (_, s) => ProfileScreen(code: s.pathParameters['code']),
@@ -427,3 +469,24 @@ CustomTransitionPage<T> fadeScalePage<T>({
         );
       },
     );
+
+/// Manzilning yo'li va so'rovi (sxema/xost'siz) — `https://nfcstore.uz/u/X`
+/// -> `/u/X`.
+String _pathAndQuery(Uri u) =>
+    Uri(path: u.path.isEmpty ? '/' : u.path, query: u.hasQuery ? u.query : null)
+        .toString();
+
+/// NFC KARTA HAVOLASI — `https://nfcstore.uz/<CODE>` (ilova o'zi shunday
+/// yozadi) yoki jismoniy karta `/<CODE>?t=<token>`.
+///
+/// Alohida `/:code` marshruti QO'SHILMAYDI — u `/home`, `/shop` kabi
+/// ilova yo'llarini "yutib" yuborardi. Faqat HECH BIR marshrut mos
+/// kelmagan bitta bo'lakli yo'l profilga aylantiriladi.
+String? _cardLinkTarget(GoRouterState s) {
+  if (s.topRoute != null) return null;
+  final seg = s.uri.pathSegments.where((e) => e.isNotEmpty).toList();
+  if (seg.length == 1 && RegExp(r'^[A-Za-z0-9]{2,32}$').hasMatch(seg[0])) {
+    return Routes.user(seg[0].toUpperCase());
+  }
+  return null;
+}

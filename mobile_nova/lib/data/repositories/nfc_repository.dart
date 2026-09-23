@@ -84,9 +84,22 @@ class NfcRepository {
   /// Bu endpoint kartadagi `chipToken` ni NFC ID kodiga aylantiradi —
   /// ilova tokendan kodni O'ZI hisoblab chiqara olmaydi va olmasligi ham
   /// kerak (aks holda kartani soxtalashtirish mumkin bo'lardi).
-  Future<Result<String>> resolveChip(String chipToken) async {
-    final res = await _api.get<Map<String, dynamic>>('/api/tap/$chipToken');
-    return res.map((j) => '${j['code'] ?? j['record']?['code'] ?? ''}');
+  ///
+  /// Server javobi: `{found, active, linkedCode, linkedCompanyId}`
+  /// (`hosting/worker.js`). Ilgari bu yerda `code` o'qilardi — server
+  /// bunday maydon bermaydi, natija DOIM bo'sh edi va kartadagi
+  /// token hech qachon profilga olib bormasdi.
+  Future<Result<({String code, bool company})>> resolveChip(
+      String chipToken) async {
+    final res = await _api
+        .get<Map<String, dynamic>>('/api/tap/${Uri.encodeComponent(chipToken)}');
+    return res.map((j) {
+      final company = '${j['linkedCompanyId'] ?? ''}';
+      if (company.isNotEmpty) return (code: company, company: true);
+      final code =
+          '${j['linkedCode'] ?? j['code'] ?? j['record']?['code'] ?? ''}';
+      return (code: code, company: false);
+    });
   }
 
   // ---- sovg'a qilish ------------------------------------------------------

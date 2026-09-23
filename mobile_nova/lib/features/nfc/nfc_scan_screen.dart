@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/errors/app_error.dart';
 import '../../data/repositories/nfc_repository.dart';
 import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
@@ -85,14 +86,24 @@ class _NfcScanScreenState extends ConsumerState<NfcScanScreen> {
     final segments = uri?.pathSegments.where((s) => s.isNotEmpty).toList() ?? const [];
 
     String? code;
-    if (segments.length >= 2 && segments.first == 'tap') {
+    // Server `/t/<token>` yozadi (stikerlar); eski `/tap/` ham qabul.
+    if (segments.length >= 2 &&
+        (segments.first == 't' || segments.first == 'tap')) {
       final res = await ref.read(nfcRepositoryProvider).resolveChip(segments[1]);
       if (!mounted) return;
-      code = res.valueOrNull;
+      final chip = res.valueOrNull;
+      if (chip != null && chip.company && chip.code.isNotEmpty) {
+        context.push(Routes.storefront(chip.code));
+        return;
+      }
+      code = chip?.code;
       if (code == null || code.isEmpty) {
         setState(() {
           _state = OrbState.error;
-          _message = describeError(l, res.errorOrNull!);
+          // Token bor, lekin hali hech narsaga bog'lanmagan (Ok, bo'sh
+          // kod) — ilgari bu yerda `errorOrNull!` null ustida qulardi.
+          _message = describeError(
+              l, res.errorOrNull ?? const AppError(AppErrorKind.notFound));
         });
         return;
       }
