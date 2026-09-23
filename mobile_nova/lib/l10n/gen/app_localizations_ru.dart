@@ -1968,4 +1968,7 @@ class LRu extends L {
   @override
   String get rulesCardProcess =>
       'В каждом посте, reels и истории есть «Пожаловаться». Жалобы проверяет модератор: нарушающий контент удаляется, при повторении аккаунт блокируется.';
+
+  @override
+  String get storyCaption => 'Короткий текст на истории';
 }

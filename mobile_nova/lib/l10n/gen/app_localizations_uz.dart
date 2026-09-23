@@ -1973,4 +1973,7 @@ class LUz extends L {
   @override
   String get rulesCardProcess =>
       'Har bir post, reel va istoryada “Shikoyat qilish” bor. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.';
+
+  @override
+  String get storyCaption => 'Istoryaga qisqa matn';
 }

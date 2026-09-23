@@ -755,5 +755,6 @@
   "rulesBanIllegal": "Illegal",
   "rulesBanSpam": "Spam & scams",
   "rulesBanInsult": "Insults",
-  "rulesCardProcess": "Every post, reel and story has “Report”. A moderator reviews reports: violating content is removed, and repeat offenders are blocked."
+  "rulesCardProcess": "Every post, reel and story has “Report”. A moderator reviews reports: violating content is removed, and repeat offenders are blocked.",
+  "storyCaption": "Short text on your story"
 }

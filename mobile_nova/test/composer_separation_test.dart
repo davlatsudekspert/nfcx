@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'dart:ui' show Size;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nfcstore_nova/app/profile_context.dart';
@@ -181,15 +182,21 @@ void main() {
       }
     });
 
-    test('Story ekranida izoh maydoni YO‘Q, Postda BOR', () {
-      // Bu ikki oqimni ko‘rinishdan ham ajratadi: story izohsiz,
-      // post izohli.
-      expect(code, contains('widget.kind != ComposerKind.story'));
+    test('Story va Post matn maydoni BOSHQA-BOSHQA', () {
+      // Egasi (2026-09): Post/Story/Reels joylashda caption bo‘lsin.
+      // Server istoryada ham `caption` ni qabul qiladi. Oqimlar
+      // aralashmasligi uchun istoryada boshqa yorliq va qisqa chegara.
+      expect(code, contains('l.storyCaption'));
+      expect(code, contains('l.postCaption'));
+      expect(code, contains('widget.kind == ComposerKind.story ? 200 : 600'));
     });
   });
 
   group('ekran matni haqiqatan ko‘rinadi', () {
     testWidgets('Story composer — Story sarlavhasi va tugmasi', (tester) async {
+      tester.view.physicalSize = const Size(1170, 3600);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
       await tester.pumpWidget(ProviderScope(
         overrides: await testOverrides(),
         child: wrapScreen(const ComposerScreen(kind: ComposerKind.story)),
@@ -204,6 +211,9 @@ void main() {
     });
 
     testWidgets('Post composer — Post sarlavhasi va tugmasi', (tester) async {
+      tester.view.physicalSize = const Size(1170, 3600);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
       await tester.pumpWidget(ProviderScope(
         overrides: await testOverrides(),
         child: wrapScreen(const ComposerScreen(kind: ComposerKind.post)),

@@ -1973,4 +1973,7 @@ class LEn extends L {
   @override
   String get rulesCardProcess =>
       'Every post, reel and story has “Report”. A moderator reviews reports: violating content is removed, and repeat offenders are blocked.';
+
+  @override
+  String get storyCaption => 'Short text on your story';
 }

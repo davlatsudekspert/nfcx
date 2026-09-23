@@ -3842,6 +3842,12 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Har bir post, reel va istoryada “Shikoyat qilish” bor. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.'**
   String get rulesCardProcess;
+
+  /// No description provided for @storyCaption.
+  ///
+  /// In uz, this message translates to:
+  /// **'Istoryaga qisqa matn'**
+  String get storyCaption;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

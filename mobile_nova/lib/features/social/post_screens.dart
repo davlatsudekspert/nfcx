@@ -679,7 +679,11 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
           const SizedBox(height: Gap.xl),
           NovaField(
             key: const ValueKey('composer-caption'),
-            label: l.postCaption,
+            // Istoryada BOSHQA yorliq — ikki oqim ko'rinishdan ham
+            // ajralib tursin (post izohi emas, istorya ustidagi matn).
+            label: widget.kind == ComposerKind.story
+                ? l.storyCaption
+                : l.postCaption,
             controller: _text,
             maxLines: widget.kind == ComposerKind.story ? 2 : 4,
             maxLength: widget.kind == ComposerKind.story ? 200 : 600,
