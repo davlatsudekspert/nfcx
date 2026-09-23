@@ -1,0 +1,92 @@
+# NFCSTORE Mobile — REELS VIDEO O'LCHOVI (emulyatorda).
+#
+# "Katta video sekin ochiladi" shikoyatining ildiz sababini TAXMINSIZ
+# topish uchun: haqiqiy lentadagi videolarda server sarlavhalari, MP4
+# atomlar tartibi (moov boshida/oxirida), tarmoq tezligi, pleyerning
+# initialize va birinchi kadr vaqtlari o'lchanadi.
+#
+# Login YO'Q (`/api/feed` ochiq) — secret ishlatilmaydi, kirish
+# chegarasiga tegmaydi, E2E bilan bir vaqtda ishlashi mumkin.
+name: NFCSTORE Mobile video o'lchovi
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['claude/**']
+    paths:
+      - 'mobile_nova/integration_perf/reels_video_probe_test.dart'
+      - '.github/workflows/nova-video-probe.yml'
+
+concurrency:
+  group: nova-video-probe
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: mobile_nova
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.35.5
+          channel: stable
+          cache: true
+
+      - name: Bog'liqliklar
+        run: flutter pub get --enforce-lockfile
+
+      - name: KVM ni yoqish
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: O'lchash
+        id: probe
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          force-avd-creation: false
+          ram-size: 4096M
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          working-directory: mobile_nova
+          script: flutter test integration_perf/reels_video_probe_test.dart -d emulator-5554 2>&1 | tee probe.log
+
+      - name: Natija
+        if: always()
+        run: |
+          {
+            echo "## Reels video o'lchovi"
+            echo ""
+            echo '```'
+            grep -h "\[PROBE\]" probe.log | sed 's/^.*\[PROBE\]/[PROBE]/' || echo "natija yo'q"
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nova-video-probe
+          path: mobile_nova/probe.log
+          if-no-files-found: warn
+          retention-days: 14
