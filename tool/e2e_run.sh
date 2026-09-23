@@ -74,15 +74,23 @@ DEFINES=(
 rc=0
 
 run_suite() {
-  local file="$1" log="$2" title="$3"
+  local file="$1" log="$2" title="$3" limit="$4"
   echo ""
   echo "════════════════════════════════════════════════════"
-  echo "  $title"
+  echo "  $title  (chegara: $limit)"
   echo "════════════════════════════════════════════════════"
+  # QATTIQ VAQT CHEGARASI (2026-09): ikki ishga tushirishda backend
+  # to'plami "setUpAll" dan keyin 40 daqiqa jim turib qoldi va butun
+  # ish 60 daqiqada bekor qilindi — UI va oqimlar to'plamlari umuman
+  # ishlamadi. Endi bitta to'plam osilsa ham u o'z chegarasida
+  # to'xtatiladi (FAIL deb hisoblanadi), qolganlari ishlaydi. Qaysi
+  # so'rovda to'xtagani `[E2E] ->` / `<-` qatorlaridan ko'rinadi.
+  #
   # `tee` ga `pipefail` kerak, aks holda `flutter test` yiqilsa ham
   # quvurning chiqish kodi `tee` niki bo'lib, 0 bo'lib qolardi —
   # ya'ni qizil sinov yashil ko'rinardi.
-  if flutter test "$file" -d "$DEVICE" "${DEFINES[@]}" 2>&1 | tee "$log"; then
+  if timeout --foreground -s INT -k 30s "$limit" \
+      flutter test "$file" -d "$DEVICE" "${DEFINES[@]}" 2>&1 | tee "$log"; then
     echo "[$title] tugadi: o'tdi"
   else
     echo "[$title] tugadi: YIQILDI"
@@ -91,10 +99,10 @@ run_suite() {
 }
 
 run_suite integration_test/e2e_backend_test.dart e2e-backend.log \
-  "BACKEND — kontrakt va saqlanish"
+  "BACKEND — kontrakt va saqlanish" 16m
 
 run_suite integration_test/e2e_ui_test.dart e2e-ui.log \
-  "UI — haqiqiy ekranlar"
+  "UI — haqiqiy ekranlar" 10m
 
 # EKRAN OQIMLARI — screenshotlardan kelgan regressiyalar.
 #
@@ -103,7 +111,7 @@ run_suite integration_test/e2e_ui_test.dart e2e-ui.log \
 # to'plamida FAIL bo'lsa ham workflow yashil qolardi, chunki faqat
 # backend to'plami o'zini baholardi.
 run_suite integration_test/e2e_flows_test.dart e2e-flows.log \
-  "OQIMLAR — profil konteksti, NFC doirasi, lenta"
+  "OQIMLAR — profil konteksti, NFC doirasi, lenta" 16m
 
 echo "$rc" > e2e-exit-code
 

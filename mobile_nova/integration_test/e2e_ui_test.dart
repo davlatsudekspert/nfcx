@@ -75,6 +75,8 @@ void main() {
   // ══════════════════════════════════════════════════════════════
 
   testWidgets('UI 1 — kirish ekrani va haqiqiy kirish', (t) async {
+    // ignore: avoid_print
+    print("[E2E] >> UI 1 — kirish ekrani va haqiqiy kirish");
     await launch(t);
 
     // Kirmagan foydalanuvchi Welcome ekranida turadi va u yerda
@@ -173,6 +175,8 @@ void main() {
 
   testWidgets('UI 2 — navigatsiya, Tanlov yorlig\'i, mavzu, til',
       (t) async {
+    // ignore: avoid_print
+    print("[E2E] >> UI 2 — navigatsiya, Tanlov yorlig'i, mavzu, til");
     final c = await launch(t);
 
     // ── Pastki navigatsiya ─────────────────────────────────────
@@ -374,6 +378,8 @@ void main() {
   // ══════════════════════════════════════════════════════════════
 
   testWidgets('UI 3 — PIN qulfi', (t) async {
+    // ignore: avoid_print
+    print("[E2E] >> UI 3 — PIN qulfi");
     final c = await launch(t);
     final lock = c.read(appLockProvider.notifier);
 

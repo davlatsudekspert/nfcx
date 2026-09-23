@@ -45,8 +45,28 @@ class RequestLog extends Interceptor {
     all.add(t);
   }
 
+  // JONLI IZ — qaysi so'rovda osilib qolgani CI logida darhol ko'rinsin
+  // (2026-09: ikki ishga tushirish 60 daqiqada "setUpAll" dan keyin jim
+  // turib qoldi, sababini log bermadi). Faqat METOD va YO'L chiqadi —
+  // tana, token va parol HECH QACHON.
+  static int _ms(RequestOptions o) {
+    final t0 = o.extra['e2e_t0'];
+    return t0 is int ? DateTime.now().millisecondsSinceEpoch - t0 : -1;
+  }
+
+  @override
+  void onRequest(RequestOptions o, RequestInterceptorHandler h) {
+    o.extra['e2e_t0'] = DateTime.now().millisecondsSinceEpoch;
+    // ignore: avoid_print
+    print('[E2E] -> ${o.method} ${o.path}');
+    h.next(o);
+  }
+
   @override
   void onResponse(Response<dynamic> res, ResponseInterceptorHandler h) {
+    // ignore: avoid_print
+    print('[E2E] <- ${res.statusCode} ${res.requestOptions.path} '
+        '${_ms(res.requestOptions)}ms');
     _record(Trace(
       method: res.requestOptions.method,
       path: res.requestOptions.path,
@@ -59,6 +79,9 @@ class RequestLog extends Interceptor {
 
   @override
   void onError(DioException e, ErrorInterceptorHandler h) {
+    // ignore: avoid_print
+    print('[E2E] <- ${e.type.name} ${e.requestOptions.path} '
+        '${_ms(e.requestOptions)}ms');
     _record(Trace(
       method: e.requestOptions.method,
       path: e.requestOptions.path,

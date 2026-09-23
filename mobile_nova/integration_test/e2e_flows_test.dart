@@ -117,6 +117,8 @@ void main() {
   // ══════════════════════════════════════════════════════════════
 
   testWidgets('A/H — Shaxsiy va Biznes kontekstlari ALMASHADI', (t) async {
+    // ignore: avoid_print
+    print("[E2E] >> A/H — Shaxsiy va Biznes kontekstlari ALMASHADI");
     if (!signedIn) {
       report.skip('Profile context switch', 'sessiya ochilmadi — kirish chegarasi yoki xato');
       return;
@@ -270,6 +272,8 @@ void main() {
   // ══════════════════════════════════════════════════════════════
 
   testWidgets('A2 — ID almashtirish haqiqiy bosishlar bilan', (t) async {
+    // ignore: avoid_print
+    print("[E2E] >> A2 — ID almashtirish haqiqiy bosishlar bilan");
     const row = 'ID switch — real taps';
     if (!signedIn) {
       report.skip(row, 'sessiya ochilmadi');
@@ -375,6 +379,8 @@ void main() {
   // ══════════════════════════════════════════════════════════════
 
   testWidgets('D — Home orbi NFC skanerini OCHMAYDI', (t) async {
+    // ignore: avoid_print
+    print("[E2E] >> D — Home orbi NFC skanerini OCHMAYDI");
     if (!signedIn) {
       report.skip('Story tap — NFC warning', 'sessiya ochilmadi — kirish chegarasi yoki xato');
       return;
@@ -414,6 +420,8 @@ void main() {
   // ══════════════════════════════════════════════════════════════
 
   testWidgets('F — Kashfiyot bizneslari bo\'sh emas', (t) async {
+    // ignore: avoid_print
+    print("[E2E] >> F — Kashfiyot bizneslari bo'sh emas");
     if (!signedIn) {
       report.skip('Discover businesses', 'sessiya ochilmadi — kirish chegarasi yoki xato');
       return;
@@ -458,6 +466,8 @@ void main() {
   // ══════════════════════════════════════════════════════════════
 
   testWidgets('G — lentadagi postlarda rasm/video manzili bor', (t) async {
+    // ignore: avoid_print
+    print("[E2E] >> G — lentadagi postlarda rasm/video manzili bor");
     if (!signedIn) {
       report.skip('Feed media', 'sessiya ochilmadi — kirish chegarasi yoki xato');
       return;
@@ -532,6 +542,8 @@ void main() {
   // ══════════════════════════════════════════════════════════════
 
   testWidgets('I — biznes boshqaruv ekranlari kontekstni oladi', (t) async {
+    // ignore: avoid_print
+    print("[E2E] >> I — biznes boshqaruv ekranlari kontekstni oladi");
     if (!signedIn) {
       report.skip('Business management', 'sessiya ochilmadi — kirish chegarasi yoki xato');
       return;
@@ -587,6 +599,8 @@ void main() {
   // ══════════════════════════════════════════════════════════════
 
   testWidgets('Media manzillari TO\'LIQ', (t) async {
+    // ignore: avoid_print
+    print("[E2E] >> Media manzillari TO'LIQ");
     if (!signedIn) {
       report.skip('Media URLs', 'sessiya ochilmadi');
       return;
@@ -694,6 +708,8 @@ void main() {
 
   testWidgets('Profil ro\'yxati — egalik qilinganlarning hammasi',
       (t) async {
+    // ignore: avoid_print
+    print("[E2E] >> Profil ro'yxati — egalik qilinganlarning hammasi");
     if (!signedIn) {
       report.skip('Profil ro\'yxati', 'sessiya ochilmadi');
       return;
@@ -712,6 +728,8 @@ void main() {
   }, timeout: const Timeout(Duration(minutes: 3)));
 
   testWidgets('HAR BIR shaxsiy profil — to\'liq tekshiruv', (t) async {
+    // ignore: avoid_print
+    print("[E2E] >> HAR BIR shaxsiy profil — to'liq tekshiruv");
     if (!signedIn) {
       report.skip('Shaxsiy profillar', 'sessiya ochilmadi');
       return;
@@ -795,6 +813,8 @@ void main() {
   }, timeout: const Timeout(Duration(minutes: 8)));
 
   testWidgets('HAR BIR biznes profil — to\'liq tekshiruv', (t) async {
+    // ignore: avoid_print
+    print("[E2E] >> HAR BIR biznes profil — to'liq tekshiruv");
     if (!signedIn) {
       report.skip('Biznes profillar', 'sessiya ochilmadi');
       return;
@@ -864,6 +884,8 @@ void main() {
 
   testWidgets('Profillar ARALASHMAYDI — har biriga alohida o\'tib',
       (t) async {
+    // ignore: avoid_print
+    print("[E2E] >> Profillar ARALASHMAYDI — har biriga alohida o'tib");
     if (!signedIn) {
       report.skip('Profil izolyatsiyasi (har biri)', 'sessiya ochilmadi');
       return;
@@ -928,6 +950,8 @@ void main() {
   // ══════════════════════════════════════════════════════════════
 
   testWidgets('Video media haqiqatan ochiladi', (t) async {
+    // ignore: avoid_print
+    print("[E2E] >> Video media haqiqatan ochiladi");
     if (!signedIn) {
       report.skip('Video media', 'sessiya ochilmadi');
       return;
@@ -1066,6 +1090,8 @@ void main() {
   // ══════════════════════════════════════════════════════════════
 
   testWidgets('Musiqa — haqiqiy play/pause', (t) async {
+    // ignore: avoid_print
+    print("[E2E] >> Musiqa — haqiqiy play/pause");
     if (!signedIn) {
       report.skip('Music player', 'sessiya ochilmadi');
       return;
@@ -1140,6 +1166,8 @@ void main() {
   // ══════════════════════════════════════════════════════════════
 
   testWidgets('Kashfiyot — Odamlar, Bizneslar, Postlar', (t) async {
+    // ignore: avoid_print
+    print("[E2E] >> Kashfiyot — Odamlar, Bizneslar, Postlar");
     if (!signedIn) {
       report.skip('Discover tabs', 'sessiya ochilmadi');
       return;
@@ -1196,6 +1224,8 @@ void main() {
 
   testWidgets('Biznes — tahlil va vitrina haqiqiy kompaniyadan',
       (t) async {
+    // ignore: avoid_print
+    print("[E2E] >> Biznes — tahlil va vitrina haqiqiy kompaniyadan");
     if (!signedIn) {
       report.skip('Business analytics', 'sessiya ochilmadi');
       return;
@@ -1290,6 +1320,8 @@ void main() {
   // ══════════════════════════════════════════════════════════════
 
   testWidgets('Yakuniy baho — kritik FAIL ishni yiqitadi', (t) async {
+    // ignore: avoid_print
+    print("[E2E] >> Yakuniy baho — kritik FAIL ishni yiqitadi");
     final critical = report.criticalFailures;
     // ignore: avoid_print
     print('[E2E][FLOW] kritik FAIL: ${critical.length}');

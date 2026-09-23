@@ -198,6 +198,8 @@ void main() {
   // ══════════════════════════════════════════════════════════════
 
   testWidgets('1. Auth — kirish, sessiya, chiqish', (_) async {
+    // ignore: avoid_print
+    print("[E2E] >> 1. Auth — kirish, sessiya, chiqish");
     if (!hasCreds) {
       for (final row in [
         'Login',
@@ -387,6 +389,8 @@ void main() {
   // ══════════════════════════════════════════════════════════════
 
   testWidgets('2. Profil, biznes, musiqa — haqiqiy ma\'lumot', (_) async {
+    // ignore: avoid_print
+    print("[E2E] >> 2. Profil, biznes, musiqa — haqiqiy ma'lumot");
     if (me == null) {
       report.skip('Personal Profile', 'kirish bo\'lmadi');
       return;
@@ -659,6 +663,8 @@ void main() {
 
   testWidgets('3. Post, story, reel, izoh, like — saqlanish isboti',
       (_) async {
+    // ignore: avoid_print
+    print("[E2E] >> 3. Post, story, reel, izoh, like — saqlanish isboti");
     final code = personal?.code;
     if (code == null) {
       for (final r in [
@@ -1277,6 +1283,8 @@ void main() {
   // ══════════════════════════════════════════════════════════════
 
   testWidgets('4. Follow / unfollow', (_) async {
+    // ignore: avoid_print
+    print("[E2E] >> 4. Follow / unfollow");
     if (!hasSecondAccount) {
       for (final r in [
         'Follow',
@@ -1553,6 +1561,8 @@ void main() {
   // ══════════════════════════════════════════════════════════════
 
   testWidgets('5. Katalog — o\'qish va TEST mahsulot', (_) async {
+    // ignore: avoid_print
+    print("[E2E] >> 5. Katalog — o'qish va TEST mahsulot");
     // KATALOG FAQAT BIZNES YOZUVIDA.
     //
     // Ilgari bu yerda biznes topilmasa SHAXSIY yozuvga tushilardi va
@@ -1743,6 +1753,8 @@ void main() {
 
   testWidgets('6. Sovg\'a, NFC, Tanlov, faoliyat, to\'lov — O\'QISH',
       (_) async {
+    // ignore: avoid_print
+    print("[E2E] >> 6. Sovg'a, NFC, Tanlov, faoliyat, to'lov — O'QISH");
     // ── Sovg'alar — FAQAT O'QISH ───────────────────────────────
     final gifts = await nfc.giftOffers();
     switch (gifts) {
@@ -2014,6 +2026,8 @@ void main() {
   // ══════════════════════════════════════════════════════════════
 
   testWidgets('7. Xato holatlari — haqiqiy javoblar', (_) async {
+    // ignore: avoid_print
+    print("[E2E] >> 7. Xato holatlari — haqiqiy javoblar");
     // Mavjud bo'lmagan yozuv → 404.
     final missing = await profile.byCode('NOVA-E2E-YOQ-BUNDAY-KOD');
     switch (missing) {
@@ -2108,6 +2122,8 @@ void main() {
   // ══════════════════════════════════════════════════════════════
 
   testWidgets('7b. Stage 1 — lenta kartasi amallari', (_) async {
+    // ignore: avoid_print
+    print("[E2E] >> 7b. Stage 1 — lenta kartasi amallari");
     const rows = [
       'Lenta — like javob shakli',
       'Lenta — like sanog\'i serverdan',
@@ -2504,6 +2520,8 @@ void main() {
 
   testWidgets('7c. Reels quvuri — yuklash, yaratish, qayta o\'qish',
       (_) async {
+    // ignore: avoid_print
+    print("[E2E] >> 7c. Reels quvuri — yuklash, yaratish, qayta o'qish");
     const rows = [
       'Reel A — video yuklash',
       'Reel B — reel yaratish',
@@ -2708,6 +2726,8 @@ void main() {
   }, timeout: const Timeout(Duration(minutes: 5)));
 
   testWidgets('8. Chiqish va yakuniy baho', (_) async {
+    // ignore: avoid_print
+    print("[E2E] >> 8. Chiqish va yakuniy baho");
     // TOZALASH CHIQISHDAN OLDIN.
     //
     // Ilgari tozalash faqat `tearDownAll` da edi, ya'ni quyidagi
