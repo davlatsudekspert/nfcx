@@ -17,7 +17,7 @@ import '../../design/tokens/shapes.dart';
 import '../../design/widgets/buttons.dart';
 import '../../design/widgets/brand_logo.dart';
 import '../../design/widgets/id_plate.dart';
-import '../../design/widgets/nfc_orb.dart';
+import '../../design/widgets/nfc_id_hero.dart';
 import '../../design/widgets/nova_scaffold.dart';
 import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
@@ -26,7 +26,9 @@ import '../../routing/routes.dart';
 import '../auth/session.dart';
 import '../profile/music_player.dart';
 import '../social/feed_card.dart';
+import '../social/media_frame.dart' show isAssetMedia;
 import '../nfc/qr_sheet.dart';
+import '../shop/nfc_id_market.dart' show tierLabel;
 import 'widgets/avatar.dart';
 import 'widgets/nfc_mobile_section.dart';
 import 'widgets/identity_card.dart';
@@ -160,14 +162,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               child: Row(
                 children: [
-                  // SALOMLASHUV VA HISOB NOMI OLIB TASHLANDI.
+                  // BREND IMZOSI — sarlavha emas.
                   //
-                  // Bu yerda "Xayrli tong" va hisob login nomi
-                  // (`ali77099`) turardi. Pastda avatar, ism
-                  // ("Muhammad") va lavozim baribir ko'rinadi —
-                  // ya'ni tepadagi blok bir xil ma'lumotni ikkinchi
-                  // marta, lekin XOM ko'rinishda takrorlardi.
-                  const Spacer(),
+                  // "Xayrli tong" va hisob login nomi (`ali77099`) bu
+                  // yerga QAYTMAYDI: ism pastdagi portret qatorida
+                  // bir marta, to'g'ri ko'rinishda turadi.
+                  const Expanded(child: _Wordmark()),
                   NovaIconButton(
                     icon: Icons.notifications_none_rounded,
                     tooltip: l.activityTitle,
@@ -182,6 +182,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ],
               ),
             ),
+            const SizedBox(height: Gap.xl),
+            if (active != null)
+              _IdentityHero(
+                user: user,
+                profile: active,
+                // Portret NFC SKANERGA OLIB BORMAYDI — faqat o'z
+                // profilini (story bo'lsa — story'ni) ochadi. NFC
+                // pastki navigatsiyaning markaziy tugmasida va NFC
+                // markazida.
+                onTap: () => context.push(
+                  active.isBusiness
+                      ? Routes.business
+                      : Routes.nfcId(active.code),
+                ),
+              ),
             const SizedBox(height: Gap.lg),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
@@ -192,50 +207,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     : switchToPersonal(context, ref),
               ),
             ),
-            const SizedBox(height: Gap.xl),
-            if (active != null)
-              _IdentityHero(
-                user: user,
-                profile: active,
-                // ORB SKANERGA OLIB BORMAYDI.
-                //
-                // Ilgari bu yerda `Routes.nfcScan` turardi va orbning
-                // BUTUN yuzasi skanerni ochardi. Avatar esa orb ichida,
-                // ya'ni suratni (yoki story halqasini) bosgan odam NFC
-                // skaneriga tushib, apparati yo'q qurilmada "Bu
-                // qurilmada NFC yo'q" degan xabarni olardi — story
-                // ochilishi kerak bo'lgan joyda.
-                //
-                // NFC endi FAQAT pastki navigatsiyaning markaziy
-                // tugmasi va NFC markazi orqali ochiladi. Orbni bosish
-                // o'z profilini ochadi — bu kutilgan, zararsiz amal.
-                onTap: () => context.push(
-                  active.isBusiness
-                      ? Routes.business
-                      : Routes.nfcId(active.code),
-                ),
-              ),
+            const SizedBox(height: Gap.lg),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
               // BIZNES REJIMIDA KOMPANIYA KARTASI CHIQADI.
               //
-              // Ilgari bu yerda uchta holatdan ikkitasi
-              // noto'g'ri edi:
+              //   * kompaniyasi BOR odamga — uning manzil kartasi;
+              //   * kompaniyasi YO'Q odamga — taklif (intro va demo),
+              //     "shaxsiy rejimga qayting" emas.
               //
-              //   * Kompaniyasi BOR odam biznes rejimida "NFC ID
-              //     hali yo'q — Do'kondan karta oling" kartasini
-              //     ko'rardi. Holbuki uning biznes manzili bor va
-              //     u sarlavhada turardi.
-              //
-              //   * Kompaniyasi YO'Q odamga esa "shaxsiy rejimga
-              //     qayting" deb aytilardi — ya'ni ilova imkoniyatni
-              //     taklif qilish o'rniga eshikni yopardi.
-              //
-              // Sabab 135-qatorda: biznes rejimida `id` ATAYLAB
-              // `null` qilinadi, chunki kompaniyaning QR'i shaxsiy
-              // karta QR'i emas. To'g'ri — lekin "boshqa" degani
-              // "yo'q" degani emas: kompaniyaning ham o'z ommaviy
-              // manzili va QR'i bor.
+              // Biznes rejimida `id` ATAYLAB `null`: kompaniyaning QR'i
+              // shaxsiy karta QR'i emas.
               child: business
                   ? (noBusiness
                       ? _BizPitchCard(
@@ -249,17 +231,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ))
                   : id == null
                       ? _NoIdCard(onShop: () => context.push(Routes.shop))
-                      : IdentityCard(
-                      user: user,
-                      id: id,
-                      mode: mode,
-                      onTap: () => context.push(Routes.nfcId(id.code)),
-                      onQr: () => showQrSheet(context, id),
-                          onShare: () => shareLink(id.publicUrl(kApiBase)),
+                      // NFC ID — EKRANNING QAHRAMONI.
+                      //
+                      // Kod katta serifda, pastida ochiq manzil (mono).
+                      // Ism bu yerda TAKRORLANMAYDI — u tepadagi portret
+                      // qatorida.
+                      : NfcIdHeroCard(
+                          code: id.code,
+                          eyebrow: 'NFC ID · ${l.modePersonal}',
+                          name: _bareUrl(id.publicUrl(kApiBase)),
+                          technical: true,
+                          tier: IdPlate.isPrecious(id.tier)
+                              ? tierLabel(l, id.tier)
+                              : null,
+                          // Holat faqat ISTISNO bo'lganda: hammada
+                          // "Faol" turishi shovqin.
+                          statusLabel: id.active ? null : l.nfcInactive,
+                          statusOk: id.active,
+                          onTap: () => context.push(Routes.nfcId(id.code)),
+                          actions: [
+                            NfcIdHeroAction(
+                              icon: Icons.qr_code_2_rounded,
+                              tooltip: l.nfcShowQr,
+                              onTap: () => showQrSheet(context, id),
+                            ),
+                            NfcIdHeroAction(
+                              icon: Icons.ios_share_rounded,
+                              tooltip: l.actionShare,
+                              onTap: () =>
+                                  shareLink(id.publicUrl(kApiBase)),
+                            ),
+                          ],
                         ),
             ),
-            const SizedBox(height: Gap.xxl),
+            const SizedBox(height: Gap.lg),
             _QuickActions(mode: mode),
+            if (!business && id != null) _HomeStats(id: id),
             _StoriesRow(user: user),
             // BOSH EKRAN TARTIBI:
             //   faol NFC ID karta → tezkor amallar → storylar →
@@ -301,28 +308,60 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 }
 
-/// Home'ning IDENTITY OBYEKTI — markazlashgan NFC orb.
+/// Brend yozuvi — keng harf oralig'i, sarlavha emas, imzo.
+class _Wordmark extends StatelessWidget {
+  const _Wordmark();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        'NFCSTORE',
+        maxLines: 1,
+        style: TextStyle(
+          fontFamily: AppType.sans,
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 13 * .32,
+          color: t.text1,
+        ),
+      ),
+    );
+  }
+}
+
+/// Ismdan ikki bosh harf: `Mohira Mansurova` -> `MM`.
+String _initialsOf(String name) {
+  final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty);
+  if (parts.isEmpty) return '';
+  if (parts.length == 1) {
+    final p = parts.first;
+    return (p.length >= 2 ? p.substring(0, 2) : p).toUpperCase();
+  }
+  return (parts.first[0] + parts.elementAt(1)[0]).toUpperCase();
+}
+
+/// `https://nfcstore.uz/VIP001` -> `nfcstore.uz/VIP001`.
+String _bareUrl(String url) => url.replaceFirst(RegExp(r'^https?://'), '');
+
+/// Home'ning PORTRET QATORI — kim ekanligi.
 ///
-/// Concept B'da Home dashboard emas: uning markazida NFC orb turadi
-/// va ism, rol, NFC ID undan pastda ierarxiya hosil qiladi. Shu
-/// tartibda ekran "boshqaruv paneli" emas, "raqamli shaxs" bo'lib
-/// o'qiladi.
-///
-/// Orb markazida FAQAT belgi — plastina yo'q, shakl yaxlit qoladi.
+/// Soft editorial: chapda katta serif ism va lavozim, o'ngda surat.
+/// Kod bu yerda EMAS — u pastdagi hero kartada, ekranning eng katta
+/// obyekti bo'lib turadi. Ikki joyda ko'rsatilsa, ierarxiya emas,
+/// takror bo'lardi.
 class _IdentityHero extends ConsumerWidget {
   const _IdentityHero({required this.user, required this.profile, this.onTap});
 
   final User user;
 
   /// Faol kontekst — shaxsiy yozuv yoki kompaniya.
-  ///
-  /// Ilgari bu yerda `NfcId` turardi, ya'ni biznes rejimida ham
-  /// shaxsiy yozuv chizilardi.
   final ActiveProfile profile;
 
-  /// Orbni bosish O'Z PROFILINI ochadi. NFC skaneri ATAYLAB emas:
-  /// u faqat pastki navigatsiyaning markaziy tugmasida va NFC
-  /// markazida bo'lishi kerak.
+  /// Suratni bosish O'Z PROFILINI ochadi (story bo'lsa — story'ni).
+  /// NFC skaneri ATAYLAB emas.
   final VoidCallback? onTap;
 
   @override
@@ -330,38 +369,18 @@ class _IdentityHero extends ConsumerWidget {
     final t = context.tokens;
     final width = MediaQuery.sizeOf(context).width;
 
-    // 360 da ~208, 390 da ~226, 430 da ~249 — ekranni egallab
-    // ketmaydi, lekin baribir ekranning eng katta obyekti.
-    // HERO BIROZ IXCHAM.
-    //
-    // Ilgari orb ekran kengligining 58% ini olardi va u bilan
-    // birga halqalar butun yuqori yarmini egallab, lenta ekran
-    // ostiga tushib ketardi.
-    final orb = (width * .50).clamp(176.0, 216.0);
-
     final title = profile.name.isNotEmpty
         ? profile.name
         : (profile.isBusiness ? '' : user.displayName);
     final subtitle = profile.subtitle;
 
-    // Home — "raqamli shaxs" ekrani, shuning uchun orb markazida ODAM
-    // turadi: faol NFC ID'ning surati, u bo'lmasa hisobning surati.
-    // Ikkalasi ham bo'lmasa — brend belgisi. Bo'sh kulrang doira yoki
-    // "surat yo'q" ikonkasi HECH QACHON ko'rsatilmaydi.
-    //
-    // NFC markazida esa bu mantiq YO'Q: u ekran amal haqida, shaxs
-    // haqida emas, shuning uchun u yerda doim belgi turadi.
-    // Biznes kontekstida hisob egasining suratiga QAYTILMAYDI —
-    // kompaniya logotipi bo'lmasa brend belgisi chiziladi.
+    // Biznes kontekstida hisob egasining suratiga QAYTILMAYDI.
     final avatar = profile.avatarUrl.isNotEmpty
         ? profile.avatarUrl
         : (profile.isBusiness ? '' : user.avatarUrl);
 
-    // Story halqasi FAQAT haqiqiy ma'lumotdan. `homeStoriesProvider`
-    // backenddan faol ID ning story lentasini oladi; bizga ularning
-    // ichidan AYNAN SHU ID ga tegishlilari kerak. Hech narsa
-    // to'qilmaydi: so'rov yuklanayotgan bo'lsa ham, xato bo'lsa ham
-    // halqa ko'rsatilmaydi.
+    // Story halqasi FAQAT haqiqiy ma'lumotdan: yuklanayotgan bo'lsa
+    // ham, xato bo'lsa ham halqa chizilmaydi.
     final mine = ref
         .watch(homeStoriesProvider)
         .maybeWhen(
@@ -374,75 +393,61 @@ class _IdentityHero extends ConsumerWidget {
         ? null
         : _StoryRingState(count: mine.length, unseen: mine.any((s) => !s.seen));
 
-    return Column(
-      children: [
-        NfcOrb(
-          size: orb,
-          onTap: onTap,
-          child: avatar.isEmpty
-              ? BrandLogo(
-                  size: orb * kOrbMarkRatio,
-                  style: BrandLogoStyle.markOnly,
-                  // Yadro endi qorong'i — belgi oltin bo'ladi.
-                  tint: t.accent2,
-                )
-              : _OrbAvatar(
-                  url: avatar,
-                  orb: orb,
-                  initials: user.initials,
-                  music: profile.musicUrls,
-                  ring: ring,
-                  // Story BOR bo'lsa — Story Viewer.
-                  //
-                  // Story YO'Q bo'lsa `null` qoladi va bosish orbning
-                  // o'z amaliga o'tadi (profil). Muhimi: ikkala holatda
-                  // ham NFC skaneri OCHILMAYDI.
-                  onOpenStory: ring == null
-                      ? null
-                      : () => context.push(Routes.story(profile.code)),
+    // 360 da 30, 430 da 34 — uzun ism ikki qatorga bo'linadi,
+    // kesilmaydi.
+    final nameSize = (width * .084).clamp(28.0, 34.0);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppType.displayStyle(color: t.text1, size: nameSize)
+                      .copyWith(height: 1.04),
                 ),
-        ),
-        const SizedBox(height: Gap.lg),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: Gap.xxl),
-          child: Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: AppType.displayStyle(color: t.text1, size: 27),
-          ),
-        ),
-        if (subtitle.isNotEmpty) ...[
-          const SizedBox(height: 2),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Gap.xxl),
-            child: Text(
-              subtitle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium,
+                if (subtitle.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: AppType.sans,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w500,
+                      color: t.text2,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
+          const SizedBox(width: Gap.lg),
+          _PortraitAvatar(
+            url: avatar,
+            initials: user.initials,
+            business: profile.isBusiness,
+            music: profile.musicUrls,
+            ring: ring,
+            onTap: ring == null
+                ? onTap
+                : () => context.push(Routes.story(profile.code)),
+          ),
         ],
-        // NFC ID bu yerda TAKRORLANMAYDI: u darhol pastdagi kartada,
-        // katta monospace bilan turadi va ierarxiyani davom ettiradi
-        // (orb -> ism -> rol -> kod). Ikki joyda ko'rsatilsa, u
-        // ierarxiya emas, takror bo'lardi.
-        const SizedBox(height: Gap.lg),
-      ],
+      ),
     );
   }
 }
 
-/// Orb yadrosidagi foydalanuvchi surati.
-///
-/// Yadro organik shakl, uning eng tor joyidagi radiusi `orb * .270`.
-/// Surat doirasi `orb * .46` diametrda — ya'ni radiusi `orb * .23`.
-/// Orasidagi ~15% bo'shliq oltin halqa bo'lib qoladi: surat yadroni
-/// to'lg'azib yubormaydi, nafas va wobble paytida ham qirraga
-/// tegmaydi.
 /// Foydalanuvchining o'z story'lari haqidagi HAQIQIY holat.
 class _StoryRingState {
   const _StoryRingState({required this.count, required this.unseen});
@@ -454,155 +459,104 @@ class _StoryRingState {
   final bool unseen;
 }
 
-class _OrbAvatar extends StatelessWidget {
-  const _OrbAvatar({
+/// Portret surati: champagne hoshiya, story halqasi va musiqa nishoni.
+///
+/// Surat yo'q bo'lsa — brend belgisi, bo'sh kulrang doira HECH QACHON.
+class _PortraitAvatar extends StatelessWidget {
+  const _PortraitAvatar({
     required this.url,
-    required this.orb,
     required this.initials,
+    required this.business,
     this.music = const [],
     this.ring,
-    this.onOpenStory,
+    this.onTap,
   });
 
   final String url;
-  final double orb;
   final String initials;
+  final bool business;
+  final List<String> music;
 
   /// `null` — story yo'q, halqa CHIZILMAYDI.
   final _StoryRingState? ring;
-  final VoidCallback? onOpenStory;
+  final VoidCallback? onTap;
 
-  /// Profil musiqasi. Bo'sh bo'lsa boshqaruv UMUMAN ko'rinmaydi.
-  final List<String> music;
+  static const double _photo = 62;
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    // Halqa bo'lsa surat bir oz kichrayadi — halqa yadro qirrasiga
-    // yaqinlashib qolmasligi uchun. 2% farq ko'zga tashlanmaydi.
-    final d = orb * (ring == null ? .46 : .44);
+    final stroke = ring != null && ring!.unseen ? 2.2 : 1.4;
+    const gap = 3.0;
+    final outer = _photo + (gap + stroke) * 2;
 
-    // Surat yuklanmaguncha yoki xato bo'lganda — bo'sh doira emas,
-    // brend belgisi. Orb hech qachon "sinmaydi".
-    Widget fallback() => Center(
-      child: BrandLogo(
-        size: orb * kOrbMarkRatio,
-        style: BrandLogoStyle.markOnly,
-        // Yadro qorong'i — belgi oltin (yuqoridagi asosiy
-        // chaqiruv bilan bir xil).
-        tint: t.accent2,
+    Widget mark() => ColoredBox(
+          color: t.surface2,
+          child: Center(
+            child: BrandLogo(
+              size: _photo * .56,
+              style: BrandLogoStyle.markOnly,
+              tint: t.brandInk,
+            ),
+          ),
+        );
+
+    final photo = Container(
+      width: _photo,
+      height: _photo,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: t.surfaceSolid,
+        border: ring == null
+            ? Border.all(color: t.brand.withValues(alpha: .55))
+            : null,
+        boxShadow: t.shadowTiny,
+      ),
+      child: ClipOval(
+        child: url.isEmpty
+            ? mark()
+            : isAssetMedia(url)
+                // Demo profillar surati ilova ichida.
+                ? Image.asset(url,
+                    fit: BoxFit.cover, errorBuilder: (_, __, ___) => mark())
+                : CachedNetworkImage(
+                    imageUrl: url,
+                    fit: BoxFit.cover,
+                    fadeInDuration: Motion.med,
+                    placeholder: (_, __) => mark(),
+                    errorWidget: (_, __, ___) => mark(),
+                  ),
       ),
     );
 
-    // Halqa suratdan TASHQARIDA turadi va yadroga tegmaydi:
-    //   surat  d        = orb * .46
-    //   bo'shliq 3.5px + halqa 2.2px  => tashqi diametr d + 11.4
-    //   yadroning eng tor diametri    = orb * .540
-    // 390px ekranda: 104 -> 115.4 va yadro 122 — ya'ni ikki tomondan
-    // ~3.3px oltin ko'rinib turadi. Halqa ataylab ingichka: orbning
-    // o'z halo va pulse halqalari bilan raqobatlashmasligi kerak.
-    const gap = 4.0;
-    final stroke = ring != null && ring!.unseen ? 2.6 : 1.8;
-    final outer = d + (gap + stroke) * 2;
-
-    final photo = SizedBox(
-      width: d,
-      height: d,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          boxShadow: [
-            // Juda yengil soya — surat yadro ichida "yotgandek"
-            // ko'rinsin, lekin atrofida qorong'i halqa hosil
-            // BO'LMASIN: oltin sirtda qora halqa darhol "teshik"
-            // bo'lib o'qiladi.
-            BoxShadow(
-              color: Colors.black.withValues(alpha: .09),
-              blurRadius: 22,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: ClipOval(
+    return Semantics(
+      button: onTap != null,
+      image: true,
+      child: PressableScale(
+        onTap: onTap,
+        child: SizedBox(
+          width: outer + 4,
+          height: outer + 4,
           child: Stack(
-            fit: StackFit.expand,
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
             children: [
-              CachedNetworkImage(
-                imageUrl: url,
-                fit: BoxFit.cover,
-                fadeInDuration: Motion.med,
-                placeholder: (_, __) => fallback(),
-                errorWidget: (_, __, ___) => fallback(),
-              ),
-              // Nozik ichki qirra — surat bilan yadro orasida
-              // yumshoq o'tish, qattiq kesilgan chekka emas.
-              //
-              // Ilgari bu OQ edi, chunki yadro oltin sirt edi.
-              // Yadro qorong'i navy bo'lgach, oq halqa yorqin
-              // chiziq bo'lib ko'rinardi — endi shampan.
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: context.tokens.accent2.withValues(alpha: .38),
-                    width: 1.2,
-                  ),
+              if (ring != null)
+                CustomPaint(
+                  size: Size.square(outer),
+                  painter:
+                      _StoryRingPainter(t: t, state: ring!, stroke: stroke),
                 ),
+              photo,
+              // SURAT YONIDA FAQAT BITTA NISHON — MUSIQA. Musiqa
+              // bo'lmasa `MusicControl` bo'sh widget qaytaradi.
+              Positioned(
+                right: -2,
+                bottom: -2,
+                child: MusicControl(urls: music, size: 26),
               ),
             ],
           ),
-        ),
-      ),
-    );
-
-    // Surat bo'lsa ham brend butunlay yo'qolmaydi: suratning pastki
-    // o'ng chekkasida kichik muhr turadi.
-    //
-    // Muhr ATAYLAB suratning ICHIDA: markazi markazdan `ra - rb - 2`
-    // masofada, ya'ni eng tashqi nuqtasi surat qirrasiga yetmaydi.
-    // Shunda u story halqasiga ham, yadro qirrasiga ham tegmaydi.
-    final rb = d * .15;
-    final off = (d / 2 - rb - 2) / math.sqrt2;
-
-    final avatar = SizedBox(
-      width: d,
-      height: d,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          photo,
-          // SURAT USTIDA FAQAT BITTA NISHON — MUSIQA.
-          //
-          // Ilgari bu yerda ikkita nishon turardi: pastki o'ngda
-          // NFC brend muhri, pastki chapda musiqa tugmasi. Ikkalasi
-          // birga suratning pastki yarmini yopib qo'yardi. Brend
-          // belgisi ekranda allaqachon bor (orbning o'zi, sozlamalar,
-          // yuklanmagan surat o'rnidagi belgi), shuning uchun muhr
-          // olib tashlandi va MUSIQA nishoni uning o'rniga —
-          // pastki o'ngga ko'chirildi.
-          //
-          // Musiqa yo'q bo'lsa `MusicControl` bo'sh widget qaytaradi,
-          // ya'ni surat butunlay ochiq qoladi.
-          Positioned(
-            left: d / 2 + off - rb,
-            top: d / 2 + off - rb,
-            child: MusicControl(urls: music, size: rb * 2),
-          ),
-        ],
-      ),
-    );
-
-    if (ring == null) return avatar;
-
-    return GestureDetector(
-      onTap: onOpenStory,
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: outer,
-        height: outer,
-        child: CustomPaint(
-          painter: _StoryRingPainter(t: t, state: ring!, stroke: stroke),
-          child: Center(child: avatar),
         ),
       ),
     );
@@ -611,9 +565,8 @@ class _OrbAvatar extends StatelessWidget {
 
 /// Story halqasi.
 ///
-/// Instagram gradienti EMAS: ranglar mavzuning o'z aksentlaridan
-/// olinadi, shuning uchun halqa beshala mavzuda ham o'zinikidek
-/// ko'rinadi.
+/// Instagram gradienti EMAS: ranglar mavzuning `brand` oilasidan
+/// olinadi, shuning uchun halqa har mavzuda o'zinikidek ko'rinadi.
 ///
 /// Ko'rilmagan story — aksent gradientida, aniq va yorug'.
 /// Ko'rilgan story — bitta so'nik ohangda, ingichkaroq. Farq bir
@@ -635,19 +588,8 @@ class _StoryRingPainter extends CustomPainter {
     final r = (size.width - stroke) / 2;
     final rect = Rect.fromCircle(center: c, radius: r);
 
-    // HALQA FAQAT YORUG' OHANGDA.
-    //
-    // Birinchi urinishda bu yerda `[accent3, accent1, accent2,
-    // accent3]` sweep gradienti bor edi va halqa deyarli
-    // KO'RINMASDI: u oltin yadro USTIDA turadi, aksentlarning
-    // ko'pchiligi esa o'sha oltinning o'zi. Oltin ustida oltin
-    // yo'qoladi — bu ilovada allaqachon uchragan muammo.
-    //
-    // Shuning uchun halqa doim yadrodan YORUG'ROQ: `accent1` dan
-    // uning oqartirilgan variantigacha. Sweep sheni saqlaydi
-    // (metall yaltirashi), lekin yoyning HECH BIR joyida qorayib
-    // ketmaydi.
-    final bright = Color.lerp(t.accent1, Colors.white, .78)!;
+    // Editorial: halqa champagne — mavzuning `brand` oilasidan.
+    final bright = Color.lerp(t.brand, Colors.white, .45)!;
 
     final p = Paint()
       ..style = PaintingStyle.stroke
@@ -656,13 +598,13 @@ class _StoryRingPainter extends CustomPainter {
 
     if (state.unseen) {
       p.shader = SweepGradient(
-        colors: [t.accent1, bright, t.accent1, bright, t.accent1],
+        colors: [t.brandInk, bright, t.brandInk, bright, t.brandInk],
         stops: const [0, .25, .5, .75, 1],
         transform: const GradientRotation(-math.pi / 2),
       ).createShader(rect);
     } else {
       // Ko'rilgan: o'sha oila, lekin so'nik — "bor, endi muhim emas".
-      p.color = bright.withValues(alpha: .38);
+      p.color = t.border1;
     }
 
     // Bitta story bo'lsa yaxlit halqa. Bir nechta bo'lsa — shuncha
@@ -735,15 +677,11 @@ class _NoIdCard extends StatelessWidget {
   }
 }
 
-/// Tezkor amallar — Concept B'dagi `chip-scroll` kapsulalari.
+/// Tezkor amallar — to'rtta teng plitka.
 ///
-/// Avval bu yerda 104x98 li to'rtburchak plitkalar qatori turardi:
-/// rangli doira + ikki qatorli yozuv. U "boshqaruv paneli" tilida
-/// gapirardi, holbuki Concept B'da Home'ning butun pastki qismi
-/// KAPSULA tilida — orbdan keyin hech qanday karta kelmaydi.
-///
-/// Endi umumiy `Capsule` widgetidan foydalaniladi: bir xil balandlik,
-/// bir xil radius va bir xil bosilish javobi butun ilovada.
+/// Soft editorial: oq plitka, ingichka chegara, yengil soya. Bosilganda
+/// plitka biroz kichrayadi (`PressableScale`) — barmoq javobni sezadi.
+/// Uzun yorliq (rus tili) qisqarmaydi, kichrayib sig'adi.
 class _QuickActions extends StatelessWidget {
   const _QuickActions({required this.mode});
   final AppMode mode;
@@ -756,36 +694,167 @@ class _QuickActions extends StatelessWidget {
     // shunchaki rang o'zgarishi emasligining amaliy isboti.
     final actions = mode == AppMode.business
         ? [
-            (Icons.dashboard_rounded, l.bizDashboard, Routes.businessDashboard),
-            (Icons.inventory_2_rounded, l.bizCatalog, Routes.businessCatalog),
+            (Icons.dashboard_outlined, l.bizDashboard, Routes.businessDashboard),
+            (Icons.inventory_2_outlined, l.bizCatalog, Routes.businessCatalog),
             (Icons.insights_rounded, l.bizAnalytics, Routes.businessAnalytics),
-            (Icons.storefront_rounded, l.bizStorefront, Routes.business),
+            (Icons.storefront_outlined, l.bizStorefront, Routes.business),
           ]
         : [
-            (Icons.nfc_rounded, l.nfcScanShort, Routes.nfcScan),
-            (Icons.badge_rounded, l.nfcMyIds, Routes.nfcIds),
+            (Icons.center_focus_weak_rounded, l.nfcScanShort, Routes.nfcScan),
+            (Icons.credit_card_rounded, l.nfcWriteShort, Routes.nfcWrite),
             // ID QIDIRISH — NFC Markazdagi AYNAN O'SHA ekran.
-            // Ikkinchi katalog yaratilmadi: bu shunchaki qisqa yo'l.
             (Icons.search_rounded, l.idSearchShort, Routes.nfcMarket),
-            (Icons.add_circle_outline_rounded, l.postCreate, Routes.postCreate),
-            (Icons.storefront_rounded, l.homeShop, Routes.shop),
+            (Icons.add_rounded, l.postCreate, Routes.postCreate),
           ];
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-      // Gorizontal ro'yxat EMAS, `Wrap`: rus tilidagi uzun yorliqlar
-      // ("Сканировать", "Аналитика") ekranga sig'masa, qator o'zi
-      // ikkiga bo'linadi va qatori bo'ylab MARKAZDA qoladi — Concept
-      // B'dagi `justify-content:center` shu. Hech narsa gorizontal
-      // aylantirishga yashirinmaydi.
-      child: Wrap(
-        alignment: WrapAlignment.center,
-        spacing: Gap.sm,
-        runSpacing: Gap.sm,
+      child: Row(
         children: [
-          for (final (icon, label, route) in actions)
-            Capsule(icon: icon, label: label, onTap: () => context.push(route)),
+          for (var i = 0; i < actions.length; i++) ...[
+            if (i > 0) const SizedBox(width: Gap.sm + 2),
+            Expanded(
+              child: _ActionTile(
+                icon: actions[i].$1,
+                label: actions[i].$2,
+                onTap: () => context.push(actions[i].$3),
+              ),
+            ),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+class _ActionTile extends StatelessWidget {
+  const _ActionTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final style = TextStyle(
+      fontFamily: AppType.sans,
+      fontSize: 11.5,
+      height: 1.15,
+      fontWeight: FontWeight.w600,
+      color: t.text1,
+    );
+    return Semantics(
+      button: true,
+      label: label,
+      child: PressableScale(
+        onTap: onTap,
+        scale: .94,
+        child: Container(
+          height: 82,
+          padding: const EdgeInsets.symmetric(horizontal: 5),
+          decoration: BoxDecoration(
+            color: t.surfaceSolid,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: t.border2),
+            boxShadow: t.shadowTiny,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 22, color: t.text1),
+              const SizedBox(height: 7),
+              // Bir so'z ("Skanerlash") hech qachon so'z o'rtasidan
+              // bo'linmaydi — kerak bo'lsa biroz kichrayadi. Ikki so'z
+              // ("Kartaga yozish") ikki qatorga tushadi.
+              if (label.contains(' '))
+                Text(
+                  label,
+                  maxLines: 2,
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  style: style,
+                )
+              else
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(label, maxLines: 1, style: style),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Faol NFC ID ning HAQIQIY ko'rsatkichlari: postlar, ko'rishlar,
+/// obunachilar.
+///
+/// "Tegishlar" soni ATAYLAB yo'q: server uni hisoblamaydi, to'qilgan
+/// raqam ko'rsatilmaydi. Obunachilar soni profildagi bilan bir xil
+/// manbadan (server o'chirilgan/yashirin hisoblarni sanamaydi).
+class _HomeStats extends StatelessWidget {
+  const _HomeStats({required this.id});
+  final NfcId id;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final l = L.of(context);
+    final cells = [
+      (id.posts, l.profilePosts),
+      (id.views, l.nfcViews),
+      (id.followers, l.profileFollowers),
+    ];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+          Gap.screenX, Gap.lg, Gap.screenX, 0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        decoration: BoxDecoration(
+          color: t.surfaceSolid,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: t.border2),
+          boxShadow: t.shadowTiny,
+        ),
+        child: IntrinsicHeight(
+          child: Row(
+            children: [
+              for (var i = 0; i < cells.length; i++) ...[
+                if (i > 0) VerticalDivider(width: 1, color: t.border2),
+                Expanded(
+                  child: Column(
+                    children: [
+                      Text(
+                        formatCount(cells[i].$1),
+                        maxLines: 1,
+                        style: AppType.displayStyle(color: t.text1, size: 30)
+                            .copyWith(height: 1.05),
+                      ),
+                      const SizedBox(height: 4),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            cells[i].$2.toUpperCase(),
+                            maxLines: 1,
+                            style: AppType.eyebrow(color: t.text3, size: 9.5),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -853,7 +922,8 @@ class _StoriesRow extends ConsumerWidget {
                     avatarUrl: s.authorAvatar.isEmpty
                         ? s.mediaUrl
                         : s.authorAvatar,
-                    initials: user.initials,
+                    // Begona odamning bosh harflari — O'ZIMIZNIKI emas.
+                    initials: _initialsOf(s.authorName),
                     seen: s.seen,
                     onTap: () => context.push(
                       Routes.story(s.code.isEmpty ? (id?.code ?? '') : s.code),
@@ -902,7 +972,8 @@ class _StoryBubble extends StatelessWidget {
                   url: avatarUrl,
                   initials: initials,
                   size: 62,
-                  ringColor: seen ? t.border2 : null,
+                  // Ko'rilmagan — champagne, ko'rilgan — so'nik chiziq.
+                  ringColor: seen ? t.border1 : t.brand,
                 ),
                 if (add)
                   Positioned(

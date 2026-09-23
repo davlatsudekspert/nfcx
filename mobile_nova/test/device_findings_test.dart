@@ -280,7 +280,8 @@ void _homeBusinessTests() {
     test('shaxsiy rejim tegilmagan', () {
       // Biznes shoxi qo'shilganda shaxsiy yo'l buzilmasligi kerak.
       expect(src, contains('_NoIdCard'));
-      expect(src, contains('IdentityCard('));
+      // Shaxsiy NFC ID endi editorial hero kartada.
+      expect(src, contains('NfcIdHeroCard('));
     });
   });
 }

@@ -3572,6 +3572,12 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Bu nomdan foydalanib bo‘lmaydi — boshqasini yozing.'**
   String get errNameNotAllowed;
+
+  /// No description provided for @nfcWriteShort.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kartaga yozish'**
+  String get nfcWriteShort;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

@@ -51,6 +51,8 @@ class NfcIdHeroCard extends StatefulWidget {
     this.subtitle = '',
     this.tier,
     this.statusLabel,
+    this.statusOk = true,
+    this.technical = false,
     this.onTap,
     this.actions = const [],
   });
@@ -68,6 +70,13 @@ class NfcIdHeroCard extends StatefulWidget {
 
   /// Pastki o'ngdagi holat (`Faol`). `null` — ko'rsatilmaydi.
   final String? statusLabel;
+
+  /// Holat nuqtasi rangi: yashil (`true`) yoki ogohlantirish.
+  final bool statusOk;
+
+  /// `name` texnik matnmi (ochiq manzil) — unda IBM Plex Mono bilan
+  /// chiziladi: `0/O` va `1/I` adashmasin.
+  final bool technical;
   final VoidCallback? onTap;
 
   /// Pastki o'ngdagi kichik doira tugmalar (QR, ulashish).
@@ -354,13 +363,20 @@ class _CardBody extends StatelessWidget {
                                   widget.name,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontFamily: AppType.sans,
-                                    fontSize: 14.5,
-                                    fontWeight: FontWeight.w600,
-                                    height: 1.3,
-                                    color: t.text1,
-                                  ),
+                                  style: widget.technical
+                                      ? AppType.monoStyle(
+                                          color: t.text2,
+                                          size: 12,
+                                          weight: FontWeight.w500,
+                                          letterSpacing: .2,
+                                        )
+                                      : TextStyle(
+                                          fontFamily: AppType.sans,
+                                          fontSize: 14.5,
+                                          fontWeight: FontWeight.w600,
+                                          height: 1.3,
+                                          color: t.text1,
+                                        ),
                                 ),
                                 if (widget.subtitle.isNotEmpty)
                                   Text(
@@ -379,7 +395,10 @@ class _CardBody extends StatelessWidget {
                             ),
                           ),
                           if (widget.statusLabel != null) ...[
-                            _Status(label: widget.statusLabel!, t: t),
+                            _Status(
+                                label: widget.statusLabel!,
+                                ok: widget.statusOk,
+                                t: t),
                             if (widget.actions.isNotEmpty)
                               const SizedBox(width: Gap.md),
                           ],
@@ -422,10 +441,13 @@ class _TierChip extends StatelessWidget {
 }
 
 class _Status extends StatelessWidget {
-  const _Status({required this.label, required this.t});
+  const _Status({required this.label, required this.ok, required this.t});
 
   final String label;
+  final bool ok;
   final NfcTokens t;
+
+  Color get _dot => ok ? t.success : t.warn;
 
   @override
   Widget build(BuildContext context) => Row(
@@ -436,10 +458,10 @@ class _Status extends StatelessWidget {
             height: 6,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: t.success,
+              color: _dot,
               boxShadow: [
                 BoxShadow(
-                  color: t.success.withValues(alpha: .18),
+                  color: _dot.withValues(alpha: .18),
                   spreadRadius: 3,
                 ),
               ],

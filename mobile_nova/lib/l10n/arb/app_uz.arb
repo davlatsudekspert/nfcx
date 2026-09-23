@@ -720,5 +720,6 @@
   "bizCatEducation": "Ta’lim",
   "bizCatOther": "Boshqa",
   "errEmailSendFailed": "Kodni emailga yuborib bo‘lmadi. Manzilni tekshirib, bir daqiqadan keyin qayta urinib ko‘ring.",
-  "errNameNotAllowed": "Bu nomdan foydalanib bo‘lmaydi — boshqasini yozing."
+  "errNameNotAllowed": "Bu nomdan foydalanib bo‘lmaydi — boshqasini yozing.",
+  "nfcWriteShort": "Kartaga yozish"
 }

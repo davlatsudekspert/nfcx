@@ -1825,4 +1825,7 @@ class LEn extends L {
   @override
   String get errNameNotAllowed =>
       'This name can’t be used — please choose another.';
+
+  @override
+  String get nfcWriteShort => 'Write card';
 }

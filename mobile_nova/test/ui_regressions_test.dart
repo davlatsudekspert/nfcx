@@ -33,7 +33,7 @@ void main() {
     // bundan mustasno, shuning uchun aynan hero bloki tekshiriladi.
     final hero = src.substring(
       src.indexOf('_IdentityHero('),
-      src.indexOf('IdentityCard('),
+      src.indexOf('NfcIdHeroCard('),
     );
     expect(hero, isNot(contains('Routes.nfcScan')),
         reason: 'Orbni bosish NFC skanerini ochmasligi kerak: apparati '

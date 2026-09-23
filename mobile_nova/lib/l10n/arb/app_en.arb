@@ -710,5 +710,6 @@
   "bizCatEducation": "Education",
   "bizCatOther": "Other",
   "errEmailSendFailed": "We couldn’t email the code. Check the address and try again in a minute.",
-  "errNameNotAllowed": "This name can’t be used — please choose another."
+  "errNameNotAllowed": "This name can’t be used — please choose another.",
+  "nfcWriteShort": "Write card"
 }

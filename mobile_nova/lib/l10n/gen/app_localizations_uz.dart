@@ -1831,4 +1831,7 @@ class LUz extends L {
   @override
   String get errNameNotAllowed =>
       'Bu nomdan foydalanib bo‘lmaydi — boshqasini yozing.';
+
+  @override
+  String get nfcWriteShort => 'Kartaga yozish';
 }

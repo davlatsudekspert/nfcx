@@ -1818,4 +1818,7 @@ class LRu extends L {
   @override
   String get errNameNotAllowed =>
       'Это название нельзя использовать — укажите другое.';
+
+  @override
+  String get nfcWriteShort => 'Записать';
 }

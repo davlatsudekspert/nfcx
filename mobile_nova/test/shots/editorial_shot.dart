@@ -132,8 +132,8 @@ class _RichSocial extends SocialRepository {
   ];
 
   static final _stories = [
-    StoryItem(id: 1, code: 'PPP777', authorName: 'Mashrabboy', likes: 3),
-    StoryItem(id: 2, code: 'ALI000', authorName: 'Aliyorbek', likes: 1),
+    StoryItem(id: 1, code: 'PPP777', authorName: 'Mashrabboy', authorAvatar: '$_a/z_post_cafe.jpg', likes: 3),
+    StoryItem(id: 2, code: 'ALI000', authorName: 'Aliyorbek', authorAvatar: '$_a/z_post_rooftop.jpg', likes: 1),
     StoryItem(id: 3, code: 'MHR555', authorName: 'Mohira', likes: 0, seen: true),
   ];
 
@@ -250,6 +250,10 @@ Future<void> tabShot(
   await _settle(tester);
   router.go(location);
   await _settle(tester, 20);
+  // Asset suratlar asinxron dekodlanadi — birinchi kadrda bo'sh
+  // doira qolmasin.
+  await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 400)));
+  await _settle(tester, 4);
   await expectLater(
       find.byType(MaterialApp), matchesGoldenFile('png/ed-$name.png'));
 }
@@ -275,6 +279,8 @@ Future<void> soloShot(
     ),
   ));
   await _settle(tester);
+  await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 400)));
+  await _settle(tester, 4);
   await expectLater(
       find.byType(MaterialApp), matchesGoldenFile('png/ed-$name.png'));
 }
