@@ -839,24 +839,11 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
   // `fallback` (ivory) ga o'tadi.
   static final all = <NfcTokens>[ivory, noir, ocean, graphite, aurora, onyx];
 
-  /// RELEASE UCHUN TANLANADIGAN MAVZULAR (egasi, 2026-09 final qaror):
-  ///
-  ///   * asosiy va standart — `ivory`: oq/qora + nozik champagne
-  ///     aksent. NFCSTORE'ning asosiy ko'rinishi shu;
-  ///   * `noir` — xuddi shu uslubning qorong'i varianti (saytning
-  ///     qora-shampan brend palitrasi), tunda o'qish uchun.
-  ///
-  /// Rangli mavzular (`ocean`, `graphite`, `aurora`, `onyx`)
-  /// O'CHIRILMADI — keyinroq qo'shimcha variant sifatida qaytishi
-  /// mumkin: [extraThemesEnabled] ni `true` qilish kifoya. `all`
-  /// esa to'liq qoladi: sinovlar har bir palitrada kontrast va
-  /// joylashuvni tekshirishda davom etadi.
-  ///
-  /// Rangli mavzuni oldin tanlagan qurilma keyingi ochilishda
-  /// `ivory` ga o'tadi ([byId] faqat [choices] ichidan qidiradi).
-  static const extraThemesEnabled = false;
-  static final selectable = <NfcTokens>[ivory, noir];
-  static List<NfcTokens> get choices => extraThemesEnabled ? all : selectable;
+  /// SOZLAMALARDAGI TANLOV — HAMMA MAVZU (egasi, 2026-09: "rangli
+  /// temalarni yashirma"). `ivory` standart va birinchi. Barcha
+  /// mavzularda UI, komponent va joylashuv BIR XIL — faqat rang
+  /// tokenlari o'zgaradi.
+  static List<NfcTokens> get choices => all;
 
   /// STANDART MAVZU — `noir`.
   ///

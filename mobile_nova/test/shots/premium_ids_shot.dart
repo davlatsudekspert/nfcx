@@ -117,9 +117,9 @@ void main() {
         ),
       );
 
+  // Har bir mavzuda — pullik ID o'z qiymatini yo'qotmasin.
   for (final (name, tokens) in [
-    ('premium-ids-ivory', NfcTokens.ivory),
-    ('premium-ids-noir', NfcTokens.noir),
+    for (final t in NfcTokens.all) ('premium-ids-${t.id}', t),
   ]) {
     testWidgets('vitrina — $name', (tester) async {
       await sized(tester, const Size(390, 1180));

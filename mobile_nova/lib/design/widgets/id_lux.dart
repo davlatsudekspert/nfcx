@@ -113,9 +113,18 @@ class IdLux {
   static IdLux? of(NfcTokens t, String tier) {
     if (!isPaid(tier)) return null;
     if (t.id == 'mono') return _mono(tier, t.isDark);
+    // MATERIAL HAR MAVZUDA BIR XIL (egasi, 2026-09: "har bir temada
+    // o'z qiymatini yo'qotmasin va aniq ajralib tursin"). Qorong'i
+    // mavzularda Oltin va Premium ham qorong'i bo'lsa, uchala toifa
+    // qora fonda bir-biriga o'xshab qolardi. Endi:
+    //   Oltin     — har doim yorqin oltin varaq;
+    //   Premium   — har doim shampan-bronza metall;
+    //   Eksklyuziv — har doim qora oniks + oltin folga.
+    // Qorong'i fonda Oltin/Premium metall plastinkadek "yonadi",
+    // Eksklyuziv esa oltin hoshiyasi bilan ajraladi.
     return switch (tier) {
-      'gold' => t.isDark ? _goldDark : _gold,
-      'premium' => t.isDark ? _premiumDark : _premium,
+      'gold' => _gold,
+      'premium' => _premium,
       _ => t.isDark ? _exclusiveDark : _exclusive,
     };
   }
@@ -146,27 +155,6 @@ class IdLux {
     ],
   );
 
-  static const _goldDark = IdLux(
-    tier: 'gold',
-    surface: LinearGradient(begin: _tl, end: _br, colors: [
-      Color(0xFF2E2818), Color(0xFF211C10), Color(0xFF17130A),
-    ]),
-    edge: LinearGradient(begin: _tl, end: _br, colors: [
-      Color(0xFFF3DC92), Color(0xFFB8862B), Color(0xFF6B4F14), Color(0xFFD9B44A),
-    ]),
-    ink: Color(0xFFF2D680),
-    soft: Color(0xFFC4AA70),
-    hairline: Color(0x40D4AF37),
-    badgeFill: LinearGradient(colors: [Color(0xFFF7E2A0), Color(0xFFD9B44A)]),
-    badgeInk: Color(0xFF2A1E05),
-    icon: Icons.star_rounded,
-    texture: LuxTexture.sheen,
-    textureColor: Color(0x14F6DE8D),
-    depth: [
-      BoxShadow(color: Color(0x66000000), blurRadius: 18, offset: Offset(0, 8)),
-    ],
-  );
-
   // ─────────────────────── PREMIUM — shampan-bronza, brushed metal
   static const _premium = IdLux(
     tier: 'premium',
@@ -189,29 +177,6 @@ class IdLux {
     textureColor: Color(0x1A5E3E1C),
     depth: [
       BoxShadow(color: Color(0x2E5E3E1C), blurRadius: 22, offset: Offset(0, 10)),
-    ],
-  );
-
-  static const _premiumDark = IdLux(
-    tier: 'premium',
-    surface: LinearGradient(begin: _tl, end: _br, colors: [
-      Color(0xFF302822), Color(0xFF1F1915), Color(0xFF15110E),
-    ]),
-    edge: LinearGradient(begin: _tl, end: _br, colors: [
-      Color(0xFFEFD6B4), Color(0xFFB07A3C), Color(0xFF4A3016), Color(0xFFD9B489),
-    ]),
-    ink: Color(0xFFF0CFA2),
-    foil: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
-        colors: [Color(0xFFF8E3C4), Color(0xFFD9A868), Color(0xFFF0CFA2)]),
-    soft: Color(0xFFBE9E7E),
-    hairline: Color(0x40D9B489),
-    badgeFill: LinearGradient(colors: [Color(0xFFF1D9B8), Color(0xFFC39462)]),
-    badgeInk: Color(0xFF1E150C),
-    icon: Icons.diamond_outlined,
-    texture: LuxTexture.brushed,
-    textureColor: Color(0x14F0CFA2),
-    depth: [
-      BoxShadow(color: Color(0x73000000), blurRadius: 22, offset: Offset(0, 10)),
     ],
   );
 

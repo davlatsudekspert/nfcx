@@ -283,8 +283,7 @@ void main() {
   });
 
   group('Mavzu tanlash ekrani', () {
-    testWidgets('release: faqat Ivory (asosiy) va Noir; rangli mavzular yo‘q',
-        (tester) async {
+    testWidgets('oltita mavzuni ko‘rsatadi, “Oq qora” yo‘q', (tester) async {
       tester.view.physicalSize = const Size(1080, 4200);
       tester.view.devicePixelRatio = 3;
       addTearDown(tester.view.reset);
@@ -296,19 +295,18 @@ void main() {
       await tester.pump();
 
       final l = LUz();
-      // Egasi (2026-09 final): asosiy ko'rinish — oq/qora + champagne
-      // (ivory). Rangli mavzular keyinroq qo'shimcha variant bo'ladi.
-      expect(find.text(l.themeIvory), findsOneWidget);
-      expect(find.text(l.themeNoir), findsOneWidget);
       for (final name in [
-        l.themeGraphite,
+        l.themeIvory,
+        l.themeNoir,
         l.themeOcean,
+        l.themeGraphite,
         l.themeAurora,
         l.themeOnyx,
-        l.themeMono,
       ]) {
-        expect(find.text(name), findsNothing, reason: name);
+        expect(find.text(name), findsOneWidget, reason: name);
       }
+      // "Oq qora" YO'Q: ikkita oq mavzu turardi, ivory qoldi.
+      expect(find.text(l.themeMono), findsNothing);
       // Har mavzu kartasida logotip — kontrast shu yerda tekshiriladi.
       // Son ro'yxatdan olinadi: mavzu qo'shilganda bu sinov yana
       // qo'lda tuzatilishi shart bo'lmasin.
