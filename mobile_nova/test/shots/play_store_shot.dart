@@ -274,6 +274,35 @@ void main() {
   testWidgets('play 7 — Kirish', (t) async {
     await shot(t, const LoginScreen(), 'play-7-kirish');
   });
+  // ── PLANSHET SURATLARI (Play Console: 7" va 10" majburiy) ──────
+  //
+  // Ilova planshetda ham ishlaydi, shuning uchun Play ikkala o'lcham
+  // uchun ham surat so'raydi. Nisbat 16:10 (2:1 chegarasidan uzoq):
+  //   7"  — 600x960 dp @2x = 1200x1920
+  //   10" — 800x1280 dp @2x = 1600x2560
+  // Ekranlar telefondagi bilan BIR XIL — faqat kengroq.
+  for (final tab in const [
+    ('tab7', Size(600, 960)),
+    ('tab10', Size(800, 1280)),
+  ]) {
+    testWidgets('play ${tab.$1} — Xush kelibsiz', (t) async {
+      await shot(t, const WelcomeScreen(), 'play-${tab.$1}-1-xush-kelibsiz',
+          size: tab.$2, dpr: 2);
+    });
+    testWidgets('play ${tab.$1} — Profil', (t) async {
+      await shot(t, const ProfileScreen(code: kDemoPersonalCode),
+          'play-${tab.$1}-2-profil', size: tab.$2, dpr: 2);
+    });
+    testWidgets('play ${tab.$1} — Tanlov', (t) async {
+      await shot(t, const DiscoverScreen(), 'play-${tab.$1}-3-tanlov',
+          size: tab.$2, dpr: 2);
+    });
+    testWidgets('play ${tab.$1} — NFC markazi', (t) async {
+      await shot(t, const NfcCenterScreen(), 'play-${tab.$1}-4-nfc-markazi',
+          size: tab.$2, dpr: 2);
+    });
+  }
+
   testWidgets('play 8 — Oq-qora mavzu', (t) async {
     // Bitta surat MUQOBIL mavzuda: ilovada tanlov borligi
     // do'konda ham ko'rinsin.
