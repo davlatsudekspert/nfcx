@@ -9,6 +9,7 @@ import '../core/theme.dart';
 import '../ui/widgets.dart';
 import '../ui/music_player.dart';
 import 'settings_screen.dart';
+import 'social_list_screen.dart';
 import 'shell.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -227,6 +228,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 onBack: _own ? null : () => Navigator.of(context).pop(),
                 onShare: _share,
                 onQr: _qr,
+                onFollowers: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => SocialListScreen(
+                      code: p.code,
+                      following: false,
+                      title: 'Obunachilar',
+                    ),
+                  ),
+                ),
+                onFollowing: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => SocialListScreen(
+                      code: p.code,
+                      following: true,
+                      title: 'Obunalar',
+                    ),
+                  ),
+                ),
                 onSettings: _own
                     ? () => Navigator.of(context).push(
                           MaterialPageRoute(
@@ -440,6 +459,8 @@ class _ProfileHero extends StatelessWidget {
     required this.postCount,
     required this.onShare,
     required this.onQr,
+    required this.onFollowers,
+    required this.onFollowing,
     this.onBack,
     this.onSettings,
   });
@@ -450,6 +471,8 @@ class _ProfileHero extends StatelessWidget {
   final int postCount;
   final VoidCallback onShare;
   final VoidCallback onQr;
+  final VoidCallback onFollowers;
+  final VoidCallback onFollowing;
   final VoidCallback? onBack;
   final VoidCallback? onSettings;
 
@@ -616,11 +639,13 @@ class _ProfileHero extends StatelessWidget {
                   _HeroStat(
                     value: stats.followers.toString(),
                     label: 'obunachi',
+                    onTap: onFollowers,
                   ),
                   const SizedBox(width: 28),
                   _HeroStat(
                     value: stats.following.toString(),
                     label: 'obuna',
+                    onTap: onFollowing,
                   ),
                   const Spacer(),
                   Container(
@@ -652,32 +677,45 @@ class _ProfileHero extends StatelessWidget {
 }
 
 class _HeroStat extends StatelessWidget {
-  const _HeroStat({required this.value, required this.label});
+  const _HeroStat({
+    required this.value,
+    required this.label,
+    this.onTap,
+  });
+
   final String value;
   final String label;
+  final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontFamily: 'IBMPlexMono',
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
+  Widget build(BuildContext context) => InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 3),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontFamily: 'IBMPlexMono',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: .42),
+                  fontSize: 8.5,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 3),
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: .42),
-              fontSize: 8.5,
-            ),
-          ),
-        ],
+        ),
       );
 }
 
