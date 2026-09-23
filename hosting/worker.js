@@ -728,7 +728,7 @@ async function companyWithItems(env, id, viewerUserId = null) {
     // Ko'rishlar — kunlik jamlanmadan. Statistika bo'limidagi raqam
     // bilan BIR MANBA: ikkalasi boshqa-boshqa son ko'rsatmasin.
     env.DB.prepare(`SELECT COALESCE(SUM(hits),0) AS n FROM company_stats WHERE company_id = ? AND kind = 'view'`).bind(id).first().catch(() => null),
-    env.DB.prepare(`SELECT COUNT(*) AS n FROM company_follows WHERE company_id = ?`).bind(id).first().catch(() => null),
+    env.DB.prepare(`SELECT COUNT(*) AS n FROM company_follows cf WHERE cf.company_id = ? AND ${visibleUserSql('cf.user_id')}`).bind(id).first().catch(() => null),
     viewerUserId
       ? env.DB.prepare(`SELECT 1 AS x FROM company_follows WHERE company_id = ? AND user_id = ?`).bind(id, viewerUserId).first().catch(() => null)
       : Promise.resolve(null),
@@ -1338,7 +1338,7 @@ async function companyApi(request, env, url) {
       await env.DB.prepare(`INSERT OR IGNORE INTO company_follows (company_id, user_id, created_at) VALUES (?,?,?)`)
         .bind(id, user.id, new Date().toISOString()).run();
     }
-    const cnt = await env.DB.prepare(`SELECT COUNT(*) AS n FROM company_follows WHERE company_id = ?`).bind(id).first();
+    const cnt = await env.DB.prepare(`SELECT COUNT(*) AS n FROM company_follows cf WHERE cf.company_id = ? AND ${visibleUserSql('cf.user_id')}`).bind(id).first();
     return json({ following: !existing, followers: Number(cnt?.n || 0) });
   }
 
@@ -3256,8 +3256,9 @@ async function socialCountsD1(env, rows) {
   if (users.length) {
     const marks = users.map(() => '?').join(',');
     const fr = await env.DB.prepare(
-      `SELECT followee_id AS id, COUNT(*) AS n FROM follows
-         WHERE followee_id IN (${marks}) GROUP BY followee_id`
+      `SELECT fw.followee_id AS id, COUNT(*) AS n FROM follows fw
+         WHERE fw.followee_id IN (${marks}) AND ${visibleUserSql('fw.follower_id')}
+         GROUP BY fw.followee_id`
     ).bind(...users).all().catch(() => null);
     for (const r of (fr?.results || [])) followers.set(Number(r.id), Number(r.n) || 0);
   }
@@ -5509,7 +5510,7 @@ async function authApi(request, env, url) {
     // bir xil qo'yiladi. Bu `/api/follow-stats/:code` beradigan
     // AYNAN o'sha raqam: ikkinchi manba yaratilmadi.
     const fr = await env.DB.prepare(
-      `SELECT COUNT(*) AS n FROM follows WHERE followee_id = ?`
+      `SELECT COUNT(*) AS n FROM follows fw WHERE fw.followee_id = ? AND ${visibleUserSql('fw.follower_id')}`
     ).bind(user.id).first().catch(() => null);
     const followers = Number(fr?.n) || 0;
 
@@ -9155,6 +9156,28 @@ async function userAccountApi(request, env, url) {
 // down to their one preferred (primary, then oldest) non-hidden card uses a
 // ROW_NUMBER() window function instead — same end result as the Postgres
 // "DISTINCT ON (u.id) ... ORDER BY u.id, c.is_primary DESC, c.ts ASC".
+// ── KO'RINADIGAN OBUNACHI — SON VA RO'YXAT BITTA QOIDADAN (2026-09) ──
+//
+// Tester shikoyati: profilda "5 obunachi" turibdi, bosilsa ro'yxatda
+// 3 kishi chiqadi. Sabab — ikkita har xil qoida edi:
+//
+//   * SON:     `COUNT(*) FROM follows` — hamma qator;
+//   * RO'YXAT: faqat O'CHIRILMAGAN va kamida bitta ommaviy kartasi
+//              bor odamlar (`followListRows`, `companyFollowerRows`).
+//
+// Farq — o'chirilgan hisoblar (masalan tozalangan sinov hisoblari) va
+// katalogdan yashirilgan profillar. Ular ro'yxatda yo'q edi, sanoqda
+// esa bor edi.
+//
+// Endi sanoq AYNAN ro'yxat ko'rsatadigan odamlarni sanaydi. Qoida
+// bitta joyda — kelajakda ro'yxat filtri o'zgarsa, sanoq ham birga
+// o'zgaradi. `col` faqat kod ichidagi qat'iy ustun nomi (masalan
+// `fw.follower_id`), foydalanuvchi kiritmasi emas — injection yo'q.
+function visibleUserSql(col) {
+  return `EXISTS (SELECT 1 FROM users vu WHERE vu.id = ${col} AND vu.deleted_at IS NULL)
+     AND EXISTS (SELECT 1 FROM cards vc WHERE vc.user_id = ${col} AND vc.hidden_from_directory = 0)`;
+}
+
 async function followListRows(env, ownerId, dir) {
   const wantFollowing = dir === 'following';
   // followers: kim ownerId'ga obuna bo'lgan -> u = follower_id tomon, WHERE followee_id = ownerId
@@ -9271,8 +9294,8 @@ async function likeListRowsD1(env, code) {
 async function getFollowStatsRow(env, userId, viewerId) {
   const row = await env.DB.prepare(`
     SELECT
-      (SELECT COUNT(*) FROM follows WHERE followee_id = ?) AS followers,
-      (SELECT COUNT(*) FROM follows WHERE follower_id = ?) AS following,
+      (SELECT COUNT(*) FROM follows fw WHERE fw.followee_id = ? AND ${visibleUserSql('fw.follower_id')}) AS followers,
+      (SELECT COUNT(*) FROM follows fw WHERE fw.follower_id = ? AND ${visibleUserSql('fw.followee_id')}) AS following,
       (SELECT EXISTS(SELECT 1 FROM follows WHERE follower_id = ? AND followee_id = ?)) AS is_following,
       (SELECT as_company_id FROM follows WHERE follower_id = ? AND followee_id = ?) AS as_company_id
   `).bind(userId, userId, viewerId || -1, userId, viewerId || -1, userId).first();
@@ -9903,7 +9926,7 @@ async function followApi(request, env, url) {
     if (!co) return json({ followers: 0, following: 0, isFollowing: false });
 
     const [cnt, mine] = await Promise.all([
-      env.DB.prepare(`SELECT COUNT(*) AS n FROM company_follows WHERE company_id = ?`)
+      env.DB.prepare(`SELECT COUNT(*) AS n FROM company_follows cf WHERE cf.company_id = ? AND ${visibleUserSql('cf.user_id')}`)
         .bind(code).first().catch(() => null),
       user
         ? env.DB.prepare(
