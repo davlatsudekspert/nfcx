@@ -51,7 +51,12 @@ for (const m of SRC.matchAll(
 checkTrue('1) bo‘limdan chaqiruvlar topildi', calls.size >= 4);
 
 // Shablon o'zgaruvchilari namuna qiymatga almashtiriladi.
+//
+// Kontent TURI (`${item.deleteKind}`) raqam emas — `/content/1/1`
+// hech qachon mavjud bo'lmagan yo'l va "serverda yo'q" degan YOLG'ON
+// xato berardi. Server qabul qiladigan haqiqiy tur qo'yiladi.
 const concrete = (p) => p
+  .replace(/\$\{[^}]*[kK]ind\}/g, 'post')
   .replace(/\$\{[^}]*\}/g, '1')
   .replace(/\?.*$/, '');
 
@@ -126,5 +131,25 @@ checkTrue('5) qo‘lda faollashtirish yo‘q',
 // Sabab so'ramaydigan o'chirish ham bo'lmasligi kerak.
 checkTrue('5) o‘chirish sababi so‘raladi',
   /reason/.test(CODE) && /prompt\(/.test(CODE));
+
+// ── 6. ILOVAGA TEGISHLI HAMMA NARSA SHU BO'LIMDA ─────────────────
+//
+// Egasining talabi (2026-09): avto-filtr jurnali, ilova kontenti
+// (post, Reels, istoriya) va biznes buyurtmalari ham shu yerda
+// ko'rinsin (hosting/api/app-admin.js). Bo'lim jimgina olib
+// tashlansa yoki yo'li o'zgarsa — shu yerda yiqiladi.
+const concreteCalls = new Set([...calls.values()].map(({ method, path }) => `${method} ${concrete(path)}`));
+for (const want of ['GET /content-blocks', 'GET /app-content', 'GET /company-orders', 'GET /app-users']) {
+  checkTrue(`6) bo‘lim chaqiradi: ${want}`, concreteCalls.has(want));
+}
+// Kontentni o'chirish YANGI yo'l emas — mavjud, arxivlaydigan yo'l.
+checkTrue('6) kontent mavjud DELETE /content/:tur/:id orqali o‘chiriladi',
+  concreteCalls.has('DELETE /content/post/1'));
+checkTrue('6) kontent o‘chirishdan oldin tasdiq so‘raladi', /window\.confirm\(/.test(CODE));
+for (const label of ['Avto-filtr', 'Kontent', 'Buyurtmalar']) {
+  checkTrue(`6) "${label}" sub-tabi bor`, new RegExp(`\\['\\w+', '${label}'\\]`).test(CODE));
+}
+// Izohlar endi sahifalanadi — server `hasMore` beradi.
+checkTrue('6) izohlarda "Yana yuklash"', /Yana yuklash/.test(CODE) && /page \+ 1/.test(CODE));
 
 done('Admin "NFCSTORE ILOVASI"');

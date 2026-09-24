@@ -5,14 +5,22 @@ import { useLanguage } from '../../lib/i18n.jsx';
 // ═══════════════════════════════════════════════════════════════════════
 // NFCSTORE ILOVASI
 //
-// Ilovaga tegishli moderatsiya va sotuv bu yerda yig'iladi. To'rtta
-// bo'lim, to'rtalasi ham HAQIQIY endpointlar ustida:
+// Ilovaga tegishli moderatsiya va sotuv bu yerda yig'iladi. Har bir
+// bo'lim HAQIQIY endpoint ustida:
 //
-//   • Foydalanuvchilar — `/api/admin/app-users` (ilovani kim ishlatyapti)
+//   • Foydalanuvchilar — `/api/admin/app-users` (ilovani kim ishlatyapti,
+//                        platforma va ilova build raqami)
+//   • Kontent          — `/api/admin/app-content` (post, Reels, istoriya,
+//                        biznes posti); o'chirish — `/api/admin/content/:tur/:id`
 //   • Izohlar          — `/api/admin/comments`
+//   • Avto-filtr       — `/api/admin/content-blocks` (yuklashda bloklangan
+//                        rasmlar jurnali, image-moderation.js)
 //   • Dalil arxivi     — `/api/admin/evidence` (o'chirilgan post,
 //                        istoriya, video, fayl VA izohlar; shubhali belgisi)
 //   • FEATURED         — `/api/admin/featured`
+//   • Buyurtmalar      — `/api/admin/company-orders` (biznes katalogidan)
+//
+// Yangi uchtasi — hosting/api/app-admin.js.
 //
 // BO'SH BO'LIM QO'SHILMAYDI. Backendda tayanchi yo'q bo'lim —
 // bosiladigan, lekin hech narsa qilmaydigan tugma degani; bu
@@ -26,9 +34,12 @@ import { useLanguage } from '../../lib/i18n.jsx';
 
 const SUBTABS = [
   ['users', 'Ilova foydalanuvchilari'],
+  ['content', 'Kontent'],
   ['comments', 'Izohlar'],
+  ['blocks', 'Avto-filtr'],
   ['archive', 'Dalil arxivi'],
   ['featured', 'Ko‘tarilgan postlar'],
+  ['orders', 'Buyurtmalar'],
 ];
 
 const SLOT_TONE = {
@@ -41,6 +52,18 @@ function when(ms) {
   if (!ms) return '—';
   const d = new Date(Number(ms));
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString('uz-UZ');
+}
+
+/** Bazadagi matn sana ("2026-09-01 10:00:00", "...+00" yoki ISO) — ms.
+ *  Zonasiz qiymat UTC (SQLite `CURRENT_TIMESTAMP`). */
+function dbMs(v) {
+  if (!v) return null;
+  let s = String(v).trim();
+  if (!s.includes('T')) s = s.replace(' ', 'T');
+  s = s.replace(/(:\d{2}(?:\.\d+)?)([+-]\d{2})$/, '$1$2:00');
+  if (!/(Z|[+-]\d{2}:\d{2})$/.test(s)) s += 'Z';
+  const ms = Date.parse(s);
+  return Number.isNaN(ms) ? null : ms;
 }
 
 export default function NovaTab({ adminApi, apiErrText }) {
@@ -68,9 +91,12 @@ export default function NovaTab({ adminApi, apiErrText }) {
 
       {sub === 'users' && <ReviewAccountCard adminApi={adminApi} />}
       {sub === 'users' && <UsersSection adminApi={adminApi} />}
+      {sub === 'content' && <ContentSection adminApi={adminApi} apiErrText={apiErrText} />}
       {sub === 'comments' && <CommentsSection adminApi={adminApi} apiErrText={apiErrText} />}
+      {sub === 'blocks' && <BlocksSection adminApi={adminApi} />}
       {sub === 'archive' && <ArchiveSection adminApi={adminApi} apiErrText={apiErrText} />}
       {sub === 'featured' && <FeaturedSection adminApi={adminApi} apiErrText={apiErrText} />}
+      {sub === 'orders' && <OrdersSection adminApi={adminApi} />}
     </div>
   );
 }
@@ -82,18 +108,37 @@ function CommentsSection({ adminApi, apiErrText }) {
   const [q, setQ] = useState('');
   const [data, setData] = useState(null);
   const [err, setErr] = useState(null);
+  // SAHIFALASH — server `page` va `hasMore` beradi; ilgari faqat
+  // birinchi 30 ta izoh ko'rinardi.
+  const [page, setPage] = useState(1);
+  const [more, setMore] = useState(false);
 
+  const params = (p) => {
+    const ps = new URLSearchParams({ state, page: String(p) });
+    if (q.trim()) ps.set('q', q.trim());
+    return ps;
+  };
   const load = useCallback(async () => {
     setErr(null);
     setData(null);
+    setPage(1);
     try {
-      const params = new URLSearchParams({ state });
-      if (q.trim()) params.set('q', q.trim());
-      setData(await adminApi(`/comments?${params}`));
+      setData(await adminApi(`/comments?${params(1)}`));
     } catch (e) {
       setErr(e);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminApi, state, q]);
+
+  const loadMore = async () => {
+    setMore(true);
+    try {
+      const next = await adminApi(`/comments?${params(page + 1)}`);
+      setData((d) => ({ ...next, comments: [...(d?.comments || []), ...(next.comments || [])] }));
+      setPage(page + 1);
+    } catch (e) { setErr(e); }
+    setMore(false);
+  };
 
   // Qidiruv har harfda so'rov yubormaydi — faqat tugma bosilganda
   // yoki filtr almashganda.
@@ -202,6 +247,12 @@ function CommentsSection({ adminApi, apiErrText }) {
               )}
             </div>
           ))}
+          {data.hasMore && (
+            <button type="button" onClick={loadMore} disabled={more}
+              className="mt-1 self-center rounded-lg border border-[color:var(--vz-line)] px-4 py-1.5 text-[13px]">
+              {more ? t('Yuklanmoqda…') : t('Yana yuklash')}
+            </button>
+          )}
         </div>
       )}
     </AdminCard>
@@ -382,6 +433,9 @@ function UsersSection({ adminApi }) {
                 </div>
                 <p className="mt-1 text-[12px] text-[color:var(--vz-ink-faint)]">
                   {t('Birinchi ochgan')}: {when(Date.parse(u.firstSeen))} · {t('Oxirgi ochgan')}: {when(Date.parse(u.lastSeen))} · {t('Ochilishlar')}: {u.opens}
+                </p>
+                <p className="mt-0.5 text-[12px] text-[color:var(--vz-ink-faint)]">
+                  {t('Platforma')}: {u.platform || '—'} · {t('Ilova build')}: {u.appBuild ?? '—'} · {t('Ro‘yxatdan o‘tgan')}: {when(dbMs(u.registeredAt))}
                 </p>
               </div>
             ))}
@@ -692,5 +746,463 @@ function FeaturedSection({ adminApi, apiErrText }) {
         </div>
       )}
     </AdminCard>
+  );
+}
+
+// ── KONTENT (post, Reels, istoriya, biznes posti) ───────────────────
+// Ilovada hozir ko'rinib turgan kontent — eng yangisi tepada
+// (hosting/api/app-admin.js). Admin katalogdan yashiringan profilning
+// kontentini ham ko'radi. O'chirish mavjud yo'l orqali:
+// `DELETE /api/admin/content/:tur/:id` — nusxa avval dalil arxiviga
+// tushadi, shikoyatlar yopiladi (hosting/api/moderation.js).
+const CONTENT_KINDS = [
+  ['', 'Hammasi'],
+  ['post', 'Post'],
+  ['reel', 'Reels'],
+  ['story', 'Istoriya'],
+  ['company_post', 'Biznes posti'],
+];
+
+function ContentSection({ adminApi, apiErrText }) {
+  const { t } = useLanguage();
+  const [kind, setKind] = useState('');
+  const [q, setQ] = useState('');
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState(null);
+  const [page, setPage] = useState(1);
+  const [more, setMore] = useState(false);
+
+  const params = (p) => {
+    const ps = new URLSearchParams({ limit: '30', page: String(p) });
+    if (kind) ps.set('kind', kind);
+    if (q.trim()) ps.set('q', q.trim());
+    return ps;
+  };
+  const load = useCallback(async () => {
+    setErr(null);
+    setData(null);
+    setPage(1);
+    try {
+      setData(await adminApi(`/app-content?${params(1)}`));
+    } catch (e) { setErr(e); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminApi, kind]);
+
+  const loadMore = async () => {
+    setMore(true);
+    try {
+      const next = await adminApi(`/app-content?${params(page + 1)}`);
+      setData((d) => ({ ...next, items: [...(d?.items || []), ...(next.items || [])] }));
+      setPage(page + 1);
+    } catch (e) { setErr(e); }
+    setMore(false);
+  };
+
+  useEffect(() => { load(); }, [load]);
+
+  const remove = async (item) => {
+    if (!window.confirm(t('Bu kontent o‘chirilsinmi? Nusxasi dalil arxivida qoladi.'))) return;
+    // SABAB MAJBURIY — izohlardagi kabi; dalil arxiviga yoziladi.
+    const reason = window.prompt(t('O‘chirish sababi (majburiy):'));
+    if (!reason || !reason.trim()) return;
+    try {
+      await adminApi(`/content/${item.deleteKind}/${item.id}`, {
+        method: 'DELETE',
+        body: JSON.stringify({ reason: reason.trim() }),
+      });
+      // Ro'yxat qayta yuklanmaydi — "Yana yuklash" bilan ochilgan
+      // sahifalar joyida qolsin.
+      setData((d) => d && ({
+        ...d,
+        items: d.items.filter((x) => !(x.deleteKind === item.deleteKind && x.id === item.id)),
+      }));
+    } catch (e) {
+      window.alert(apiErrText ? apiErrText(e) : t('Amal bajarilmadi.'));
+    }
+  };
+
+  const stats = data?.stats;
+  return (
+    <div className="flex flex-col gap-4" data-testid="app-content">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <KpiCard icon="folder" label={t('Postlar')} value={stats ? stats.posts : '—'} />
+        <KpiCard icon="activity" label="Reels" value={stats ? stats.reels : '—'} />
+        <KpiCard icon="eye" label={t('Faol istoriyalar (24 soat)')} value={stats ? stats.stories : '—'} />
+        <KpiCard icon="building" label={t('Biznes postlari')} value={stats ? stats.companyPosts : '—'} />
+      </div>
+      <AdminCard
+        title={t('Ilova kontenti')}
+        right={
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={kind}
+              onChange={(e) => setKind(e.target.value)}
+              className="rounded-lg border border-[color:var(--vz-line)] bg-transparent px-2 py-1 text-[13px]"
+            >
+              {CONTENT_KINDS.map(([k, label]) => <option key={k} value={k}>{t(label)}</option>)}
+            </select>
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') load(); }}
+              placeholder={t('Matn, NFC ID, biznes yoki email')}
+              className="w-56 rounded-lg border border-[color:var(--vz-line)] bg-transparent px-2 py-1 text-[13px]"
+            />
+            <button type="button" onClick={load} className="rounded-lg border border-[color:var(--vz-line)] px-3 py-1 text-[13px]">
+              {t('Qidirish')}
+            </button>
+          </div>
+        }
+      >
+        <p className="mb-3 text-[13px] text-[color:var(--vz-ink-faint)]">
+          {t('Ilovada hozir ko‘rinib turgan post, Reels, istoriya va biznes postlari — eng yangisi tepada. O‘chirilgan kontentning nusxasi «Dalil arxivi»da qoladi.')}
+        </p>
+        {err && <LoadError err={err} onRetry={load} />}
+        {!err && data === null && <AdminLoading rows={4} />}
+        {!err && data && data.items.length === 0 && <EmptyState title={t('Kontent topilmadi')} />}
+        {!err && data && data.items.length > 0 && (
+          <div className="flex flex-col gap-3">
+            {data.items.map((c) => (
+              <div key={`${c.deleteKind}-${c.id}`} data-testid="app-content-item"
+                className="rounded-xl border border-[color:var(--vz-line)] p-3">
+                <div className="flex flex-wrap items-baseline gap-2 text-[12px] text-[color:var(--vz-ink-faint)]">
+                  <StatusBadge tone="info">{t((CONTENT_KINDS.find(([k]) => k === c.kind) || ['', c.kind])[1])}</StatusBadge>
+                  {c.isVideo && <StatusBadge tone="accent">{t('Video')}</StatusBadge>}
+                  {c.author.kind === 'company' && <StatusBadge tone="muted">{t('Biznes')}</StatusBadge>}
+                  {c.author.id && (
+                    <a className="font-mono" href={c.author.kind === 'company' ? `/company/${c.author.id}` : `/${c.author.id}`} target="_blank" rel="noreferrer">
+                      {c.author.id}{c.author.name ? ` · ${c.author.name}` : ''}
+                    </a>
+                  )}
+                  <span>· #{c.id}</span>
+                  <span>· {when(c.createdAt)}</span>
+                  <span className="ml-auto">
+                    <button type="button" onClick={() => remove(c)} className="text-[13px] text-red-400">
+                      {t('O‘chirish')}
+                    </button>
+                  </span>
+                </div>
+                {c.text && (
+                  <p className="mt-1 whitespace-pre-wrap break-words text-[15px] text-[color:var(--vz-ink-dim)]">{c.text}</p>
+                )}
+                {(c.imageUrl || c.videoUrl) && (
+                  <div className="mt-2 flex flex-wrap items-start gap-2">
+                    {c.imageUrl && (
+                      <a href={c.imageUrl} target="_blank" rel="noreferrer">
+                        <img src={c.imageUrl} alt="" loading="lazy" className="h-28 w-28 rounded-lg object-cover" />
+                      </a>
+                    )}
+                    {c.videoUrl && <video src={c.videoUrl} controls preload="none" className="h-40 max-w-[240px] rounded-lg bg-black" />}
+                  </div>
+                )}
+                <div className="mt-2 flex flex-col gap-0.5 text-[12px] text-[color:var(--vz-ink-faint)]">
+                  <span>
+                    {t('Yoqtirishlar')}: {c.likes} · {t('Izohlar')}: {c.comments}
+                    {c.views !== null && c.views !== undefined ? ` · ${t('Ko‘rishlar')}: ${c.views}` : ''}
+                    {c.expiresAt ? ` · ${t('Tugaydi')}: ${when(c.expiresAt)}` : ''}
+                  </span>
+                  <Person label="Muallif" p={c.author.user} />
+                </div>
+              </div>
+            ))}
+            {data.hasMore && (
+              <button type="button" onClick={loadMore} disabled={more}
+                className="mt-1 self-center rounded-lg border border-[color:var(--vz-line)] px-4 py-1.5 text-[13px]">
+                {more ? t('Yuklanmoqda…') : t('Yana yuklash')}
+              </button>
+            )}
+          </div>
+        )}
+      </AdminCard>
+    </div>
+  );
+}
+
+// ── AVTO-FILTR ──────────────────────────────────────────────────────
+// Yuklash paytida avtomatik to'xtatilgan rasmlar jurnali
+// (hosting/api/image-moderation.js → `content_scan_blocks`). Rasmning
+// o'zi saqlanmaydi — faqat kim, qachon, qaysi kategoriya va qayerdan.
+const BLOCK_CATEGORIES = [
+  ['sexual', '18+ / porno'],
+  ['violence', 'Zo‘ravonlik'],
+  ['extremism', 'Ekstremizm (diniy/siyosiy)'],
+  ['political', 'Siyosiy'],
+  ['drugs', 'Giyohvandlik'],
+  ['hate', 'Nafrat'],
+];
+
+// Qaysi yuklash yo'lida to'xtatilgan (worker.js `uploadApi`).
+const BLOCK_SOURCES = {
+  upload: 'Rasm (avatar, post, katalog)',
+  media: 'Post / istoriya mediasi',
+  'profile-bg': 'Profil foni',
+  file: 'Fayl',
+  'card-print': 'Karta bosma dizayni',
+};
+
+function BlocksSection({ adminApi }) {
+  const { t } = useLanguage();
+  const [category, setCategory] = useState('');
+  const [q, setQ] = useState('');
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState(null);
+  const [page, setPage] = useState(1);
+  const [more, setMore] = useState(false);
+
+  const params = (p) => {
+    const ps = new URLSearchParams({ limit: '50', page: String(p) });
+    if (category) ps.set('category', category);
+    if (q.trim()) ps.set('q', q.trim());
+    return ps;
+  };
+  const load = useCallback(async () => {
+    setErr(null);
+    setData(null);
+    setPage(1);
+    try {
+      setData(await adminApi(`/content-blocks?${params(1)}`));
+    } catch (e) { setErr(e); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminApi, category]);
+
+  const loadMore = async () => {
+    setMore(true);
+    try {
+      const next = await adminApi(`/content-blocks?${params(page + 1)}`);
+      setData((d) => ({ ...next, items: [...(d?.items || []), ...(next.items || [])] }));
+      setPage(page + 1);
+    } catch (e) { setErr(e); }
+    setMore(false);
+  };
+
+  useEffect(() => { load(); }, [load]);
+
+  const stats = data?.stats;
+  const catLabel = (k) => t((BLOCK_CATEGORIES.find(([c]) => c === k) || ['', k || '—'])[1]);
+  return (
+    <div className="flex flex-col gap-4" data-testid="content-blocks">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <KpiCard icon="shield" label={t('Jami bloklangan')} value={stats ? stats.total : '—'} />
+        <KpiCard icon="chart" label={t('7 kunda')} value={stats ? stats.last7d : '—'} />
+        {BLOCK_CATEGORIES.map(([k, label]) => (
+          <KpiCard key={k} icon="alert" tone="danger" label={t(label)} value={stats ? (stats.byCategory?.[k] || 0) : '—'} />
+        ))}
+      </div>
+      <AdminCard
+        title={t('Avto-filtr jurnali')}
+        right={
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="rounded-lg border border-[color:var(--vz-line)] bg-transparent px-2 py-1 text-[13px]"
+            >
+              <option value="">{t('Hammasi')}</option>
+              {BLOCK_CATEGORIES.map(([k, label]) => <option key={k} value={k}>{t(label)}</option>)}
+            </select>
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') load(); }}
+              placeholder={t('Email yoki telefon')}
+              className="w-48 rounded-lg border border-[color:var(--vz-line)] bg-transparent px-2 py-1 text-[13px]"
+            />
+            <button type="button" onClick={load} className="rounded-lg border border-[color:var(--vz-line)] px-3 py-1 text-[13px]">
+              {t('Qidirish')}
+            </button>
+          </div>
+        }
+      >
+        <p className="mb-3 text-[13px] text-[color:var(--vz-ink-faint)]">
+          {t('Yuklash paytida avtomatik to‘xtatilgan rasmlar. Rasmning o‘zi saqlanmaydi — faqat kim, qachon va qaysi sabab bilan.')}
+        </p>
+        {err && <LoadError err={err} onRetry={load} />}
+        {!err && data === null && <AdminLoading rows={4} />}
+        {!err && data && data.items.length === 0 && <EmptyState icon="shield" title={t('Bloklangan yuklash yo‘q')} />}
+        {!err && data && data.items.length > 0 && (
+          <div className="flex flex-col gap-2">
+            {data.items.map((b) => (
+              <div key={b.id} data-testid="content-block-item" className="rounded-xl border border-[color:var(--vz-line)] p-3">
+                <div className="flex flex-wrap items-baseline gap-2">
+                  <StatusBadge tone="danger">{catLabel(b.category)}</StatusBadge>
+                  {b.user ? (
+                    <>
+                      <b className="text-[14px]">{b.user.email || `user#${b.user.userId}`}</b>
+                      {b.user.phone && <span className="text-[13px] text-[color:var(--vz-ink-dim)]">{b.user.phone}</span>}
+                      <span className="text-[12px] text-[color:var(--vz-ink-faint)]">#{b.user.userId}</span>
+                      {b.user.code && (
+                        <a href={`/${b.user.code}`} target="_blank" rel="noreferrer"
+                          className="rounded-md border border-[color:var(--vz-line)] px-2 py-0.5 font-mono text-[12px]">
+                          {b.user.code}{b.user.name ? ` · ${b.user.name}` : ''}
+                        </a>
+                      )}
+                      {b.user.deleted && <StatusBadge tone="danger">{t('Hisob o‘chirilgan')}</StatusBadge>}
+                    </>
+                  ) : (
+                    <b className="text-[14px]">{b.actorKind === 'admin' ? 'Admin' : (b.actor || '—')}</b>
+                  )}
+                </div>
+                <p className="mt-1 text-[12px] text-[color:var(--vz-ink-faint)]">
+                  {t('Qayerdan')}: {t(BLOCK_SOURCES[b.source] || b.source || '—')} · {when(b.createdAt)}
+                </p>
+              </div>
+            ))}
+            {data.hasMore && (
+              <button type="button" onClick={loadMore} disabled={more}
+                className="mt-1 self-center rounded-lg border border-[color:var(--vz-line)] px-4 py-1.5 text-[13px]">
+                {more ? t('Yuklanmoqda…') : t('Yana yuklash')}
+              </button>
+            )}
+          </div>
+        )}
+      </AdminCard>
+    </div>
+  );
+}
+
+// ── BIZNES KATALOGI BUYURTMALARI ────────────────────────────────────
+// Ilovadagi biznes katalogidan kelgan buyurtmalar — hamma bizneslar
+// bo'yicha (hosting/api/app-admin.js). Holatni biznes egasi o'z
+// kabinetida o'zgartiradi; bu yerda faqat ko'rish.
+const ORDER_STATUS = {
+  new: ['Yangi', 'pending'],
+  done: ['Bajarildi', 'success'],
+  cancelled: ['Bekor qilingan', 'muted'],
+};
+
+function OrdersSection({ adminApi }) {
+  const { t } = useLanguage();
+  const [status, setStatus] = useState('');
+  const [q, setQ] = useState('');
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState(null);
+  const [page, setPage] = useState(1);
+  const [more, setMore] = useState(false);
+
+  const params = (p) => {
+    const ps = new URLSearchParams({ limit: '50', page: String(p) });
+    if (status) ps.set('status', status);
+    if (q.trim()) ps.set('q', q.trim());
+    return ps;
+  };
+  const load = useCallback(async () => {
+    setErr(null);
+    setData(null);
+    setPage(1);
+    try {
+      setData(await adminApi(`/company-orders?${params(1)}`));
+    } catch (e) { setErr(e); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminApi, status]);
+
+  const loadMore = async () => {
+    setMore(true);
+    try {
+      const next = await adminApi(`/company-orders?${params(page + 1)}`);
+      setData((d) => ({ ...next, items: [...(d?.items || []), ...(next.items || [])] }));
+      setPage(page + 1);
+    } catch (e) { setErr(e); }
+    setMore(false);
+  };
+
+  useEffect(() => { load(); }, [load]);
+
+  const stats = data?.stats;
+  return (
+    <div className="flex flex-col gap-4" data-testid="company-orders">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        <KpiCard icon="bag" label={t('Jami buyurtmalar')} value={stats ? stats.total : '—'} />
+        <KpiCard icon="bell" tone="pending" label={t('Yangi (ko‘rilmagan)')} value={stats ? stats.new : '—'} />
+        <KpiCard icon="chart" label={t('7 kunda')} value={stats ? stats.last7d : '—'} />
+      </div>
+      <AdminCard
+        title={t('Biznes katalogi buyurtmalari')}
+        right={
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className="rounded-lg border border-[color:var(--vz-line)] bg-transparent px-2 py-1 text-[13px]"
+            >
+              <option value="">{t('Hammasi')}</option>
+              {Object.entries(ORDER_STATUS).map(([k, [label]]) => <option key={k} value={k}>{t(label)}</option>)}
+            </select>
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') load(); }}
+              placeholder={t('Biznes, mahsulot, mijoz yoki telefon')}
+              className="w-56 rounded-lg border border-[color:var(--vz-line)] bg-transparent px-2 py-1 text-[13px]"
+            />
+            <button type="button" onClick={load} className="rounded-lg border border-[color:var(--vz-line)] px-3 py-1 text-[13px]">
+              {t('Qidirish')}
+            </button>
+          </div>
+        }
+      >
+        <p className="mb-3 text-[13px] text-[color:var(--vz-ink-faint)]">
+          {t('Mijozlar biznes katalogidan qoldirgan buyurtmalar. Holatni biznes egasi o‘z kabinetida o‘zgartiradi.')}
+        </p>
+        {err && <LoadError err={err} onRetry={load} />}
+        {!err && data === null && <AdminLoading rows={4} />}
+        {!err && data && data.items.length === 0 && <EmptyState icon="bag" title={t('Buyurtma yo‘q')} />}
+        {!err && data && data.items.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-[13px]">
+                <thead className="text-[color:var(--vz-ink-faint)]">
+                  <tr>
+                    <th className="py-1 pr-3">#</th>
+                    <th className="py-1 pr-3">{t('Biznes')}</th>
+                    <th className="py-1 pr-3">{t('Mahsulot')}</th>
+                    <th className="py-1 pr-3">{t('Soni')}</th>
+                    <th className="py-1 pr-3">{t('Summa')}</th>
+                    <th className="py-1 pr-3">{t('Mijoz')}</th>
+                    <th className="py-1 pr-3">{t('Holat')}</th>
+                    <th className="py-1">{t('Sana')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.items.map((o) => (
+                    <tr key={o.id} data-testid="company-order-item" className="border-t border-[color:var(--vz-line)] align-top">
+                      <td className="py-1.5 pr-3">{o.id}</td>
+                      <td className="py-1.5 pr-3">
+                        <a className="font-mono" href={`/company/${o.company.id}`} target="_blank" rel="noreferrer">{o.company.id}</a>
+                        {o.company.name && <div>{o.company.name}</div>}
+                        {o.company.owner?.email && (
+                          <div className="text-[12px] text-[color:var(--vz-ink-faint)]">{o.company.owner.email}</div>
+                        )}
+                      </td>
+                      <td className="py-1.5 pr-3">
+                        {o.itemName || '—'}
+                        {o.note && <div className="text-[12px] text-[color:var(--vz-ink-faint)]">{t('Izoh')}: {o.note}</div>}
+                      </td>
+                      <td className="py-1.5 pr-3">{o.qty}</td>
+                      <td className="py-1.5 pr-3">{o.price ? Number(o.price).toLocaleString('uz-UZ') : '—'}</td>
+                      <td className="py-1.5 pr-3">
+                        {o.customerName || '—'}
+                        {o.customerPhone && <div className="text-[12px] text-[color:var(--vz-ink-dim)]">{o.customerPhone}</div>}
+                      </td>
+                      <td className="py-1.5 pr-3">
+                        <StatusBadge tone={(ORDER_STATUS[o.status] || [])[1] || 'muted'}>
+                          {t((ORDER_STATUS[o.status] || [o.status])[0])}
+                        </StatusBadge>
+                      </td>
+                      <td className="py-1.5">{when(o.createdAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {data.hasMore && (
+              <button type="button" onClick={loadMore} disabled={more}
+                className="mt-1 self-center rounded-lg border border-[color:var(--vz-line)] px-4 py-1.5 text-[13px]">
+                {more ? t('Yuklanmoqda…') : t('Yana yuklash')}
+              </button>
+            )}
+          </div>
+        )}
+      </AdminCard>
+    </div>
   );
 }
