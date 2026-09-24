@@ -139,6 +139,8 @@ class _PostScreenState extends ConsumerState<PostScreen> {
             ),
           );
           final liked = like.liked;
+          // PREMIUM: amallar kulrang emas — to'q siyoh ton.
+          final ink = Color.lerp(t.text1, t.text2, .35)!;
           // O'chirish shaxsiy `/api/posts/:id` ga boradi — kompaniya
           // postida u BEGONA shaxsiy postni o'chirardi.
           final mine = !p.isCompany && myIds.any((e) => e.code == p.code);
@@ -254,7 +256,7 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                         ? NovaIcons.liked
                         : NovaIcons.like,
                     label: formatCount(like.count),
-                    tint: liked ? t.error : t.text2,
+                    tint: liked ? t.error : ink,
                     // Izohgacha bo'lgan `Gap.xl` oraliq: 12 + 8.
                     hit: const EdgeInsets.fromLTRB(0, Gap.xl, 12, 0),
                     onTap: () async {
@@ -271,7 +273,7 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                   _Action(
                     icon: NovaIcons.comment,
                     label: formatCount(p.comments),
-                    tint: t.text2,
+                    tint: ink,
                     // O'ngga kengaymaydi: `Spacer` tor ekranda (320 dp,
                     // shrift 1.3) 24 dp bera olmaydi — qator toshib,
                     // Ulashish o'ngga surilardi.
@@ -282,7 +284,7 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                   _Action(
                     icon: NovaIcons.share,
                     label: l.actionShare,
-                    tint: t.text2,
+                    tint: ink,
                     hit: const EdgeInsets.only(top: Gap.xl),
                     onTap: () => shareText(p.text),
                   ),

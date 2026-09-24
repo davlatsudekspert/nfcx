@@ -201,7 +201,7 @@ class FeedCard extends ConsumerWidget {
             ),
           ],
           const SizedBox(height: Gap.sm),
-          Divider(height: 1, color: t.border2),
+          Divider(height: 1, color: t.border1),
           Row(
             children: [
               _CardAction(
@@ -282,7 +282,9 @@ class _CardAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final c = tint ?? t.text2;
+    // PREMIUM: kulrang emas — pastki panel belgilari bilan bir xil
+    // to'q siyoh ton (hamma mavzularda `text1` ga yaqin).
+    final c = tint ?? Color.lerp(t.text1, t.text2, .35)!;
     final n = (count ?? 0) > 0 ? formatCount(count!) : null;
 
     return Semantics(
@@ -364,10 +366,12 @@ class _FollowChip extends StatelessWidget {
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: Gap.md, vertical: 6),
+          // PREMIUM: "Kuzatish" — siyoh kapsula (Ivory'da qora, qorong'i
+          // mavzularda yorug'), "Kuzatilmoqda" — ingichka hoshiyali sirt.
           decoration: BoxDecoration(
-            color: following ? Colors.transparent : t.accent2,
+            color: following ? t.surfaceSolid : t.text1,
             borderRadius: R.pill,
-            border: Border.all(color: following ? t.border2 : t.accent2),
+            border: Border.all(color: following ? t.border1 : t.text1),
           ),
           child: Text(
             label,
@@ -375,7 +379,8 @@ class _FollowChip extends StatelessWidget {
               fontFamily: AppType.sans,
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: following ? t.text2 : t.onAccent,
+              letterSpacing: .2,
+              color: following ? t.text1 : t.surfaceSolid,
             ),
           ),
         ),

@@ -689,6 +689,8 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
                       ? NovaIcons.saved
                       : NovaIcons.save,
                   label: l.actionSave,
+                  // Saqlangan — nozik oltin (premium aksent).
+                  tint: saved ? IdPlate.goldLight : Colors.white,
                   semantic: l.actionSave,
                   onTap: _save,
                 ),

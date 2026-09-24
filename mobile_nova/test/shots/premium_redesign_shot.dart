@@ -93,6 +93,14 @@ void main() {
       }
       await loader.load();
     }
+    // NovaIcons = CupertinoIcons (paket shrifti).
+    final cup = File('${Platform.environment['HOME']}/.pub-cache/hosted/'
+        'pub.dev/cupertino_icons-1.0.9/assets/CupertinoIcons.ttf');
+    if (cup.existsSync()) {
+      await (FontLoader('packages/cupertino_icons/CupertinoIcons')
+            ..addFont(Future.value(cup.readAsBytesSync().buffer.asByteData())))
+          .load();
+    }
     final root = Platform.environment['FLUTTER_ROOT'] ?? '';
     final icons = File(
         '$root/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf');
@@ -200,6 +208,10 @@ void main() {
   testWidgets('Post', (t) async {
     await app(t, Routes.home, 'redesign-$tag-post',
         push: Routes.post(40, code: 'VIP001'));
+  });
+  testWidgets('Lenta', (t) async {
+    await app(t, Routes.home, 'redesign-$tag-feed',
+        size: const Size(390, 2600));
   });
   testWidgets('Profil 360', (t) async {
     await app(t, Routes.profile, 'redesign-$tag-profile-360',
