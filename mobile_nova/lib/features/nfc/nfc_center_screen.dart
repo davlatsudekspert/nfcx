@@ -23,6 +23,7 @@ import '../home/home_screen.dart';
 import '../home/widgets/my_ids_strip.dart';
 import 'nfc_service.dart';
 import 'qr_sheet.dart';
+import '../../design/widgets/brand_icon.dart';
 
 /// NFC markazi — ilovaning vizual o'zagi.
 ///
@@ -509,7 +510,7 @@ class _StatusStrip extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: tone),
+          BrandAwareIcon(icon, size: 16, color: tone),
           const SizedBox(width: Gap.sm),
           Expanded(
             child: Text(

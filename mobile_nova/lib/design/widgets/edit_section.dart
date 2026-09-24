@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/typography.dart';
 import '../tokens/nfc_tokens.dart';
 import '../tokens/shapes.dart';
+import 'brand_icon.dart';
 
 /// TAHRIRLASH EKRANLARINING BO'LIMI — sarlavha, qisqa izoh va bitta
 /// yuza ichida maydonlar.
@@ -43,7 +44,7 @@ class EditSection extends StatelessWidget {
           child: Row(
             children: [
               if (icon != null) ...[
-                Icon(icon, size: 17, color: t.text2),
+                BrandAwareIcon(icon!, size: 17, color: t.text2),
                 const SizedBox(width: Gap.sm),
               ],
               Expanded(

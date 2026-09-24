@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AdminCard, AdminLoading, EmptyState, KpiCard, LoadError, StatusBadge } from './AdminUI.jsx';
 import { useLanguage } from '../../lib/i18n.jsx';
 
@@ -161,7 +161,7 @@ function CommentsSection({ adminApi, apiErrText }) {
       }
       load();
     } catch (e) {
-      window.alert(apiErrText ? apiErrText(e) : t('Amal bajarilmadi.'));
+      window.alert(apiErrText ? apiErrText(e, t, t('Amal bajarilmadi.')) : t('Amal bajarilmadi.'));
     }
   };
 
@@ -316,6 +316,11 @@ function ReviewAccountCard({ adminApi }) {
 function UsersSection({ adminApi }) {
   const { t } = useLanguage();
   const [q, setQ] = useState('');
+  // Qidiruv so'zi `ref` orqali o'qiladi: `load` faqat filtr o'zgarganda
+  // qayta yaratiladi va eski so'zni ushlab qolardi — yozilgan so'z
+  // so'rovga tushmasdi (mustaqil tekshiruv, 2026-09-24).
+  const qRef = useRef('');
+  qRef.current = q;
   const [sort, setSort] = useState('recent');
   // FILTR va SAHIFALASH (egasi, 2026-09-23: "foydalanuvchi ko'paysa uzun
   // bo'lib ketmasin, filtr va so'z bo'yicha qidiruv bo'lsin").
@@ -327,7 +332,7 @@ function UsersSection({ adminApi }) {
 
   const params = (p) => {
     const ps = new URLSearchParams({ sort, limit: '50', page: String(p) });
-    if (q.trim()) ps.set('q', q.trim());
+    if (qRef.current.trim()) ps.set('q', qRef.current.trim());
     if (filter) ps.set('filter', filter);
     return ps;
   };
@@ -491,6 +496,11 @@ function ArchiveSection({ adminApi, apiErrText }) {
   const [kind, setKind] = useState('');
   const [flagged, setFlagged] = useState(false);
   const [q, setQ] = useState('');
+  // Qidiruv so'zi `ref` orqali o'qiladi: `load` faqat filtr o'zgarganda
+  // qayta yaratiladi va eski so'zni ushlab qolardi — yozilgan so'z
+  // so'rovga tushmasdi (mustaqil tekshiruv, 2026-09-24).
+  const qRef = useRef('');
+  qRef.current = q;
   const [data, setData] = useState(null);
   const [err, setErr] = useState(null);
 
@@ -501,7 +511,7 @@ function ArchiveSection({ adminApi, apiErrText }) {
       const params = new URLSearchParams({ limit: '100' });
       if (kind) params.set('kind', kind);
       if (flagged) params.set('flagged', '1');
-      if (q.trim()) params.set('q', q.trim());
+      if (qRef.current.trim()) params.set('q', qRef.current.trim());
       setData(await adminApi(`/evidence?${params}`));
     } catch (e) { setErr(e); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -523,7 +533,7 @@ function ArchiveSection({ adminApi, apiErrText }) {
       });
       load();
     } catch (e) {
-      window.alert(apiErrText ? apiErrText(e) : t('Amal bajarilmadi.'));
+      window.alert(apiErrText ? apiErrText(e, t, t('Amal bajarilmadi.')) : t('Amal bajarilmadi.'));
     }
   };
 
@@ -664,7 +674,7 @@ function FeaturedSection({ adminApi, apiErrText }) {
       });
       load();
     } catch (e) {
-      window.alert(apiErrText ? apiErrText(e) : t('Amal bajarilmadi.'));
+      window.alert(apiErrText ? apiErrText(e, t, t('Amal bajarilmadi.')) : t('Amal bajarilmadi.'));
     }
   };
 
@@ -767,6 +777,11 @@ function ContentSection({ adminApi, apiErrText }) {
   const { t } = useLanguage();
   const [kind, setKind] = useState('');
   const [q, setQ] = useState('');
+  // Qidiruv so'zi `ref` orqali o'qiladi: `load` faqat filtr o'zgarganda
+  // qayta yaratiladi va eski so'zni ushlab qolardi — yozilgan so'z
+  // so'rovga tushmasdi (mustaqil tekshiruv, 2026-09-24).
+  const qRef = useRef('');
+  qRef.current = q;
   const [data, setData] = useState(null);
   const [err, setErr] = useState(null);
   const [page, setPage] = useState(1);
@@ -775,7 +790,7 @@ function ContentSection({ adminApi, apiErrText }) {
   const params = (p) => {
     const ps = new URLSearchParams({ limit: '30', page: String(p) });
     if (kind) ps.set('kind', kind);
-    if (q.trim()) ps.set('q', q.trim());
+    if (qRef.current.trim()) ps.set('q', qRef.current.trim());
     return ps;
   };
   const load = useCallback(async () => {
@@ -791,8 +806,16 @@ function ContentSection({ adminApi, apiErrText }) {
   const loadMore = async () => {
     setMore(true);
     try {
-      const next = await adminApi(`/app-content?${params(page + 1)}`);
-      setData((d) => ({ ...next, items: [...(d?.items || []), ...(next.items || [])] }));
+      // Offset — ro'yxatdagi haqiqiy son: o'chirilgan elementdan keyin
+      // ham hech narsa o'tkazib yuborilmaydi; takrorlar olib tashlanadi.
+      const ps = params(page + 1);
+      ps.set('offset', String(data?.items?.length || 0));
+      const next = await adminApi(`/app-content?${ps}`);
+      setData((d) => {
+        const have = new Set((d?.items || []).map((x) => `${x.deleteKind}-${x.id}`));
+        const fresh = (next.items || []).filter((x) => !have.has(`${x.deleteKind}-${x.id}`));
+        return { ...next, items: [...(d?.items || []), ...fresh] };
+      });
       setPage(page + 1);
     } catch (e) { setErr(e); }
     setMore(false);
@@ -817,7 +840,7 @@ function ContentSection({ adminApi, apiErrText }) {
         items: d.items.filter((x) => !(x.deleteKind === item.deleteKind && x.id === item.id)),
       }));
     } catch (e) {
-      window.alert(apiErrText ? apiErrText(e) : t('Amal bajarilmadi.'));
+      window.alert(apiErrText ? apiErrText(e, t, t('Amal bajarilmadi.')) : t('Amal bajarilmadi.'));
     }
   };
 
@@ -944,6 +967,11 @@ function BlocksSection({ adminApi }) {
   const { t } = useLanguage();
   const [category, setCategory] = useState('');
   const [q, setQ] = useState('');
+  // Qidiruv so'zi `ref` orqali o'qiladi: `load` faqat filtr o'zgarganda
+  // qayta yaratiladi va eski so'zni ushlab qolardi — yozilgan so'z
+  // so'rovga tushmasdi (mustaqil tekshiruv, 2026-09-24).
+  const qRef = useRef('');
+  qRef.current = q;
   const [data, setData] = useState(null);
   const [err, setErr] = useState(null);
   const [page, setPage] = useState(1);
@@ -952,7 +980,7 @@ function BlocksSection({ adminApi }) {
   const params = (p) => {
     const ps = new URLSearchParams({ limit: '50', page: String(p) });
     if (category) ps.set('category', category);
-    if (q.trim()) ps.set('q', q.trim());
+    if (qRef.current.trim()) ps.set('q', qRef.current.trim());
     return ps;
   };
   const load = useCallback(async () => {
@@ -1074,6 +1102,11 @@ function OrdersSection({ adminApi }) {
   const { t } = useLanguage();
   const [status, setStatus] = useState('');
   const [q, setQ] = useState('');
+  // Qidiruv so'zi `ref` orqali o'qiladi: `load` faqat filtr o'zgarganda
+  // qayta yaratiladi va eski so'zni ushlab qolardi — yozilgan so'z
+  // so'rovga tushmasdi (mustaqil tekshiruv, 2026-09-24).
+  const qRef = useRef('');
+  qRef.current = q;
   const [data, setData] = useState(null);
   const [err, setErr] = useState(null);
   const [page, setPage] = useState(1);
@@ -1082,7 +1115,7 @@ function OrdersSection({ adminApi }) {
   const params = (p) => {
     const ps = new URLSearchParams({ limit: '50', page: String(p) });
     if (status) ps.set('status', status);
-    if (q.trim()) ps.set('q', q.trim());
+    if (qRef.current.trim()) ps.set('q', qRef.current.trim());
     return ps;
   };
   const load = useCallback(async () => {

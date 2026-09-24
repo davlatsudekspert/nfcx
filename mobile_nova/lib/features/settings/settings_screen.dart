@@ -16,6 +16,7 @@ import '../../routing/routes.dart';
 import '../auth/session.dart';
 import '../home/widgets/avatar.dart';
 import '../social/content_rules.dart';
+import '../../design/widgets/brand_icon.dart';
 
 /// Ilova versiyasi.
 ///
@@ -292,7 +293,7 @@ class _Row extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: Gap.lg, vertical: 13),
         child: Row(
           children: [
-            Icon(item.icon, size: 19, color: color),
+            BrandAwareIcon(item.icon, size: 19, color: color),
             const SizedBox(width: Gap.lg),
             Expanded(
               child: Text(

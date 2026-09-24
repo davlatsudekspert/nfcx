@@ -13,6 +13,7 @@ import '../demo/demo_data.dart';
 import '../home/widgets/identity_card.dart' show formatCount;
 import '../social/media_frame.dart' show mediaImage;
 import 'business_screens.dart' show formatMoney;
+import '../../design/widgets/brand_icon.dart';
 
 /// BUSINESS OCHISH — KIRISH EKRANI.
 ///
@@ -196,7 +197,7 @@ class _FeatureRow extends StatelessWidget {
               color: t.surface2,
               borderRadius: R.tile,
             ),
-            child: Icon(icon, size: 19, color: t.text1),
+            child: BrandAwareIcon(icon, size: 19, color: t.text1),
           ),
           const SizedBox(width: Gap.md + 2),
           Expanded(

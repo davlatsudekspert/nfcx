@@ -20,6 +20,7 @@ import '../social/media_frame.dart';
 import 'business_providers.dart';
 import 'business_screens.dart' show formatMoney;
 import '../../design/widgets/id_plate.dart';
+import '../../design/widgets/brand_icon.dart';
 
 // ============================================================ TOIFALAR
 //
@@ -1282,7 +1283,7 @@ class StoreInkCover extends StatelessWidget {
         ),
         child: Align(
           alignment: const Alignment(.85, -.1),
-          child: Icon(
+          child: BrandAwareIcon(
             Icons.contactless_outlined,
             size: markSize,
             color: IdPlate.inkCoverMark,

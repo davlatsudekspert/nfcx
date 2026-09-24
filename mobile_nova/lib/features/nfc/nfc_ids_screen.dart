@@ -21,6 +21,7 @@ import '../../app/profile_context.dart';
 import '../auth/session.dart';
 import '../home/widgets/identity_card.dart';
 import 'qr_sheet.dart';
+import '../../design/widgets/brand_icon.dart';
 
 /// Foydalanuvchining barcha NFC ID'lari.
 class NfcIdsScreen extends ConsumerWidget {
@@ -171,7 +172,7 @@ class _Metric extends StatelessWidget {
         label: '$label $value',
         child: Row(
           children: [
-            Icon(icon, size: 13, color: t.text3),
+            BrandAwareIcon(icon, size: 13, color: t.text3),
             const SizedBox(width: 4),
             Text(formatCount(value),
                 style: Theme.of(context).textTheme.labelMedium),

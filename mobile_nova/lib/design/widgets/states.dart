@@ -9,6 +9,7 @@ import '../tokens/nfc_tokens.dart';
 import '../tokens/shapes.dart';
 import 'buttons.dart';
 import 'surfaces.dart';
+import 'brand_icon.dart';
 
 /// Xato KALITINI joriy tildagi jumlaga aylantiradi.
 ///
@@ -160,7 +161,7 @@ class StatePanel extends StatelessWidget {
                   color: accent.withValues(alpha: .10),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, size: 30, color: accent),
+                child: BrandAwareIcon(icon, size: 30, color: accent),
               ),
             ),
             const SizedBox(height: Gap.xl),

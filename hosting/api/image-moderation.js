@@ -175,8 +175,12 @@ async function bodyOf(obj, size) {
 ///   4) hukm so'raladi; 5) fayl Gemini'dan o'chiriladi.
 ///
 /// Natija `moderateImage` bilan bir xil shaklda. Xizmat ishlamasa yoki
-/// 45 soniyada ulgurmasa — yuklash TO'XTATILMAYDI (`checked: false`).
-export async function moderateVideo(env, obj, mime, size) {
+/// muddatda ulgurmasa — yuklash TO'XTATILMAYDI (`checked: false`).
+///
+/// `timeoutMs` — umumiy muddat. Nova ilovasida 45 s (yuklash kutishi
+/// 180 s). Eski ilova va sayt uchun qisqaroq beriladi: eski ilovaning
+/// butun yuklash so'rovi 90 s bilan cheklangan.
+export async function moderateVideo(env, obj, mime, size, { timeoutMs = VIDEO_TIMEOUT_MS } = {}) {
   const type = VIDEO_TYPES[String(mime || '').toLowerCase()];
   if (!moderationEnabled(env)) return { allowed: true, checked: false };
   const len = Number(size ?? obj?.size ?? 0);
@@ -184,8 +188,9 @@ export async function moderateVideo(env, obj, mime, size) {
   const key = apiKey(env);
   const model = String(env.MODERATION_MODEL || env.ASSISTANT_MODEL || DEFAULT_MODEL).trim();
   const ctrl = new AbortController();
-  const deadline = Date.now() + VIDEO_TIMEOUT_MS;
-  const timer = setTimeout(() => ctrl.abort(), VIDEO_TIMEOUT_MS);
+  const budget = Math.max(5_000, Math.min(Number(timeoutMs) || VIDEO_TIMEOUT_MS, VIDEO_TIMEOUT_MS));
+  const deadline = Date.now() + budget;
+  const timer = setTimeout(() => ctrl.abort(), budget);
   let fileName = '';
   try {
     const start = await fetch(`${GEMINI}/upload/v1beta/files`, {
@@ -253,10 +258,15 @@ export async function moderateVideo(env, obj, mime, size) {
     return { allowed: true, checked: false };
   } finally {
     clearTimeout(timer);
-    // Gemini'dagi nusxa darhol o'chiriladi (baribir 48 soatda o'chadi).
+    // Gemini'dagi nusxa o'chiriladi — KUTIB (3 s gacha). Kutilmasa
+    // Worker javob qaytgach so'rovni bekor qiladi va nusxa Google'da
+    // 48 soat qolib, fayllar kvotasini to'ldiradi.
     if (fileName) {
-      fetch(`${GEMINI}/v1beta/${fileName}`, { method: 'DELETE', headers: { 'x-goog-api-key': key } })
-        .catch(() => {});
+      await fetch(`${GEMINI}/v1beta/${fileName}`, {
+        method: 'DELETE',
+        headers: { 'x-goog-api-key': key },
+        signal: AbortSignal.timeout(3_000),
+      }).catch(() => {});
     }
   }
 }

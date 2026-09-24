@@ -34,9 +34,16 @@ class VideoHandoff {
 /// BELGILARSIZ TO'LIQ EKRAN (egasi, 2026-09-24: "lentada ham rolik
 /// bosilsa to'liq ekran, belgilarsiz").
 ///
-/// * video ekran markazida, hech narsa kesilmaydi (`contain`);
-/// * telefonning tizim panellari ham yashiriladi;
-/// * bosish — pauza/davom, pastga surish yoki "orqaga" — yopiladi.
+/// * video ekran markazida, tik video ekranni to'ldiradi;
+/// * REELS BILAN BIR XIL (egasi, 2026-09-24: "yana bir bosganda joyiga
+///   qaytmayapti — Reels'dagidek ishlasin"): BOSISH — lentaga qaytadi,
+///   BOSIB TURISH — pauza, qo'yib yuborilsa davom etadi;
+/// * tepaga yoki pastga surish, "orqaga" — ham yopiladi.
+///
+/// Telefonning tizim panellari YASHIRILMAYDI: `immersiveSticky` dan
+/// qaytish Android'da oyna holatini boshlang'ich holatiga emas, boshqa
+/// rejimga (panel kontent ustida) o'tkazardi. Fon qora, soat va batareya
+/// Instagram'dagidek oq.
 Future<void> openFullscreenVideo(BuildContext context, VideoHandoff h) {
   return Navigator.of(context, rootNavigator: true).push(
     PageRouteBuilder<void>(
@@ -61,13 +68,17 @@ class FullscreenVideo extends StatefulWidget {
 class _FullscreenVideoState extends State<FullscreenVideo> {
   VideoPlayerController get _c => widget.handoff.controller;
 
-  /// Pastga surish masofasi — sahifa barmoq bilan birga siljiydi.
+  /// Surish masofasi (tepaga ham, pastga ham) — sahifa barmoq bilan
+  /// birga siljiydi.
   double _drag = 0;
+
+  /// Bosib turilgan paytda pauza — qo'yib yuborilsa davom etadimi.
+  bool _wasPlaying = false;
+  bool _holding = false;
 
   @override
   void initState() {
     super.initState();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     _c.addListener(_tick);
     _c.setVolume(1);
     _c.play();
@@ -89,8 +100,6 @@ class _FullscreenVideoState extends State<FullscreenVideo> {
   @override
   void dispose() {
     _c.removeListener(_tick);
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
-        overlays: SystemUiOverlay.values);
     if (widget.handoff.orphaned) {
       _c.setVolume(0);
       _c.pause();
@@ -99,25 +108,39 @@ class _FullscreenVideoState extends State<FullscreenVideo> {
     super.dispose();
   }
 
-  void _toggle() {
-    _c.value.isPlaying ? _c.pause() : _c.play();
+  void _close() => Navigator.of(context).maybePop();
+
+  void _holdStart(LongPressStartDetails _) {
+    _wasPlaying = _c.value.isPlaying;
+    _c.pause();
+    setState(() => _holding = true);
+  }
+
+  void _holdEnd(LongPressEndDetails _) {
+    if (_wasPlaying) _c.play();
+    setState(() => _holding = false);
   }
 
   @override
   Widget build(BuildContext context) {
     final v = _c.value;
-    final fade = (1 - _drag / 400).clamp(.4, 1.0);
-    return Scaffold(
+    final fade = (1 - _drag.abs() / 400).clamp(.4, 1.0);
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: Scaffold(
       key: const ValueKey('video-fullscreen'),
       backgroundColor: Colors.black.withValues(alpha: fade),
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: _toggle,
+        onTap: _close,
+        onLongPressStart: _holdStart,
+        onLongPressEnd: _holdEnd,
         onVerticalDragUpdate: (d) =>
-            setState(() => _drag = (_drag + d.delta.dy).clamp(0, 600)),
+            setState(() => _drag = (_drag + d.delta.dy).clamp(-600, 600)),
         onVerticalDragEnd: (d) {
-          if (_drag > 120 || (d.primaryVelocity ?? 0) > 700) {
-            Navigator.of(context).maybePop();
+          final v = (d.primaryVelocity ?? 0).abs();
+          if (_drag.abs() > 110 || v > 700) {
+            _close();
           } else {
             setState(() => _drag = 0);
           }
@@ -140,7 +163,7 @@ class _FullscreenVideoState extends State<FullscreenVideo> {
                   ),
                 ),
               // Yagona belgi — faqat pauzada, odam bosganini bilsin.
-              if (v.isInitialized && !v.isPlaying)
+              if (v.isInitialized && !v.isPlaying && !_holding)
                 const IgnorePointer(
                   child: Center(
                     child: Icon(Icons.play_arrow_rounded,
@@ -151,6 +174,7 @@ class _FullscreenVideoState extends State<FullscreenVideo> {
           ),
         ),
       ),
+    ),
     );
   }
 }

@@ -29,6 +29,7 @@ import '../../data/repositories/shop_repository.dart';
 import 'settings_screen.dart';
 import '../social/moderation.dart';
 import 'app_lock.dart';
+import '../../design/widgets/brand_icon.dart';
 
 // ------------------------------------------------------------------ mavzu
 
@@ -493,7 +494,7 @@ class _NotificationsSettingsScreenState
                         horizontal: Gap.lg, vertical: 5),
                     child: Row(
                       children: [
-                        Icon(r.$3, size: 19, color: t.text1),
+                        BrandAwareIcon(r.$3, size: 19, color: t.text1),
                         const SizedBox(width: Gap.lg),
                         Expanded(
                           child: Text(r.$2,

@@ -45,7 +45,14 @@ export const ORDER_STATUSES = ['new', 'done', 'cancelled'];
 function paging(url, def = 50) {
   const page = Math.max(1, Math.floor(Number(url.searchParams.get('page')) || 1));
   const limit = Math.min(PAGE_MAX, Math.max(1, Math.floor(Number(url.searchParams.get('limit')) || def)));
-  return { page, limit, offset: (page - 1) * limit };
+  // `offset` — "Yana yuklash" ro'yxatdagi HAQIQIY sonni yuboradi: admin
+  // o'rtada element o'chirsa, sahifa raqami bo'yicha keyingi sahifa bitta
+  // elementni o'tkazib yuborardi.
+  const rawOff = url.searchParams.get('offset');
+  const offset = rawOff != null && rawOff !== ''
+    ? Math.max(0, Math.floor(Number(rawOff) || 0))
+    : (page - 1) * limit;
+  return { page, limit, offset };
 }
 
 // Qidiruv so'zi — app-usage.js dagi qoida: kichik harf, `%`/`_`

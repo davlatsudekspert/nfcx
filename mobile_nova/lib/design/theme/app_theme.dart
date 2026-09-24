@@ -107,8 +107,15 @@ ThemeData buildTheme(NfcTokens t) {
     // Endi Android — tizimning `Zoom` o'tishi (Samsung One UI ham shu
     // uslubda; sahifani bir marta rasmga olib, rasmni harakatlantiradi
     // — eng arzon yo'l), iPhone — Apple'ning o'ngdan surilishi.
+    //
+    // 2026-09-24 (egasi: "biror joyga kirsang orqaga qaytish tepada
+    // turibdi — chetdan tortsa ham qaytsa yaxshi bo'lardi"): Android ham
+    // o'ngdan surilib kiradi va CHAP CHETDAN O'NGGA SURIB orqaga
+    // qaytadi (Instagram/Telegram kabi). Bu o'tish ham arzon: faqat
+    // surish (transform), shaffof qatlam yo'q. Tepadagi "orqaga" tugmasi
+    // joyida qoladi.
     pageTransitionsTheme: const PageTransitionsTheme(builders: {
-      TargetPlatform.android: ZoomPageTransitionsBuilder(),
+      TargetPlatform.android: CupertinoPageTransitionsBuilder(),
       TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
     }),
   );

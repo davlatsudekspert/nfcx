@@ -11,6 +11,7 @@ import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
+import '../../design/widgets/brand_icon.dart';
 
 /// BILDIRISHNOMALAR — SAYT BILAN BITTA MANBADAN.
 ///
@@ -204,7 +205,7 @@ class _EventTile extends ConsumerWidget {
             height: 36,
             decoration: BoxDecoration(
                 color: tone.withValues(alpha: .16), shape: BoxShape.circle),
-            child: Icon(icon, size: 16, color: t.isDark ? tone : t.text1),
+            child: BrandAwareIcon(icon, size: 16, color: t.isDark ? tone : t.text1),
           ),
           const SizedBox(width: Gap.md),
           Expanded(

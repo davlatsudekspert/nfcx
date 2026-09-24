@@ -19,6 +19,7 @@ import '../../l10n/gen/app_localizations.dart';
 import '../auth/session.dart';
 import '../home/home_screen.dart';
 import '../profile/profile_repository.dart';
+import '../../design/widgets/brand_icon.dart';
 
 // ---------------------------------------------------------------- kartalar
 
@@ -276,7 +277,7 @@ class NfcHistoryScreen extends ConsumerWidget {
                           decoration: BoxDecoration(
                               color: t.accent2.withValues(alpha: .16),
                               shape: BoxShape.circle),
-                          child: Icon(Icons.nfc_rounded, size: 15, color: t.accent2),
+                          child: BrandAwareIcon(Icons.nfc_rounded, size: 15, color: t.accent2),
                         ),
                         const SizedBox(width: Gap.md),
                         Expanded(

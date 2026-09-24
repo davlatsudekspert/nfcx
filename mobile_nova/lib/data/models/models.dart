@@ -142,6 +142,18 @@ class User {
 /// MUHIM: kod formati BACKEND'niki. Ro'yxatdan o'tganda avtomatik
 /// 8 xonali kod beriladi, do'kondan qisqaroq (qimmatroq) kodlarni
 /// sotib olish mumkin. Ilova formatni O'ZI to'qimaydi va tekshirmaydi.
+/// KO'RINISH UCHUN DARAJA — tekin ID bronza EMAS.
+///
+/// Server 6 belgidan boshqa uzunlikdagi har qanday kodga (ro'yxatdan
+/// o'tganda beriladigan 8 raqamli TEKIN ID ham shu) `free` beradi. Pullik
+/// eng arzon "Bronza" esa 6 belgili `free` kod. Egasi (2026-09-24): "bu
+/// tekin ID bronza emas — oddiy, mavzu bilan bir xil bo'lishi kerak".
+/// Shuning uchun tekin ID darajasiz (`''`) o'qiladi: na bronza rang, na
+/// "BRONZA" yozuvi. Mantiq (post/istorya ruxsati) serverdan keladi —
+/// bu faqat ko'rinish.
+String nfcIdVisualTier(String code, String tier) =>
+    tier == 'free' && code.trim().length != 6 ? '' : tier;
+
 class NfcId {
   const NfcId({
     required this.code,
@@ -264,7 +276,7 @@ class NfcId {
         following: _i(j['following']),
         posts: _i(j['posts']),
         verified: _b(j['verified']),
-        tier: _s(j['tier']),
+        tier: nfcIdVisualTier(_s(j['code']), _s(j['tier'])),
         // TUR — SERVER `profileType` YUBORADI.
         //
         // Ilgari bu yerda faqat `type` va `isCompany` o'qilardi.

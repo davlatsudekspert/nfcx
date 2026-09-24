@@ -48,6 +48,9 @@ globalThis.fetch = async (input, init = {}) => {
   }
   if (u.endsWith('/v1beta/files/abc') && (init.method || 'GET') === 'GET') {
     vid.polls += 1;
+    if (vid.fail === 'hang') {
+      return new Promise((_, rej) => init.signal?.addEventListener('abort', () => rej(new Error('aborted'))));
+    }
     return Response.json({ name: 'files/abc', uri: 'https://generativelanguage.googleapis.com/v1beta/files/abc', state: vid.fail === 'processing' ? 'FAILED' : 'ACTIVE', mimeType: 'video/mp4' });
   }
   if (u.endsWith('/v1beta/files/abc') && init.method === 'DELETE') {
@@ -202,6 +205,39 @@ vid.state = 'ACTIVE';
 const s0 = vid.started;
 check('11) kalitsiz video tekshirilmaydi', (await sendVideo('/api/upload-media', base)).status, 200);
 check('11) kalitsiz — Gemini chaqirilmadi', vid.started - s0, 0);
+
+// 11b) ESKI YO'L — xom MP4 tanasi /api/records/:code/video ga (eski
+// mijozlar). Mustaqil tekshiruv (2026-09-24) bu yo'l filtrni aylanib
+// o'tishini topdi: video tekshirilmay post/Reels bo'lib chiqardi.
+await base.DB.prepare(`UPDATE users SET is_premium = 1 WHERE id = 1`).run().catch(() => {});
+const legacy = async () => {
+  const r = await worker.fetch(req('/api/records/VIP001/video?title=x', {
+    method: 'POST', cookie: cookie.user, body: mp4, headers: { 'content-type': 'video/mp4' },
+  }), env);
+  return { status: r.status, body: await r.json().catch(() => null) };
+};
+verdict = { allowed: false, category: 'sexual' };
+const s1 = vid.started;
+const lb = await legacy();
+check('11b) eski yo‘l: 18+ video bloklandi', [lb.status, lb.body?.error, lb.body?.category], [422, 'content_blocked', 'sexual']);
+checkTrue('11b) eski yo‘l ham Gemini’ga yuborildi', vid.started > s1);
+const cv = await base.DB.prepare(`SELECT COUNT(*) AS n FROM card_videos WHERE code = 'VIP001'`).first().catch(() => ({ n: 0 }));
+check('11b) bloklangan video yozuvi yaratilmadi', Number(cv?.n || 0), 0);
+verdict = { allowed: true, category: 'none' };
+const lok = await legacy();
+check('11b) eski yo‘l: oddiy video o‘tadi', lok.status, 201);
+
+// 11c) Muddat: Nova ilovasi 45 s, qolganlar (eski ilova, sayt) 25 s.
+const { moderateVideo } = await import('../hosting/api/image-moderation.js');
+const slow = { size: 10, arrayBuffer: async () => new ArrayBuffer(10) };
+vid.state = 'PROCESSING';
+vid.fail = 'hang';
+const t0 = Date.now();
+const mv = await moderateVideo(env, slow, 'video/mp4', 10, { timeoutMs: 5_000 });
+check('11c) muddat o‘tdi — video o‘tkaziladi', [mv.allowed, mv.checked], [true, false]);
+checkTrue('11c) berilgan muddatda tugadi', Date.now() - t0 < 9_000);
+vid.fail = '';
+vid.state = 'ACTIVE';
 
 const vlog = await base.DB.prepare(`SELECT category, source FROM content_scan_blocks WHERE source IN ('media','card-video') ORDER BY id`).all();
 checkTrue('11) video bloklari logda', (vlog.results || []).some((r) => r.source === 'card-video' && r.category === 'political'));

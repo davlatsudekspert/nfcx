@@ -155,8 +155,9 @@ void main() {
       expect(c.read(reelsCleanProvider), isTrue);
       expect(find.byType(NovaBottomNav), findsNothing,
           reason: 'toza rejimda pastki panel yo‘q');
-      expect(modes.last, contains('immersiveSticky'),
-          reason: 'tizim panellari ham yashirinadi');
+      // Tizim panellari TEGILMAYDI: immersive'dan qaytish Android'da
+      // oynani boshqa rejimga o'tkazardi (egasining telefoni, 2026-09-24).
+      expect(modes, isEmpty, reason: 'tizim panellari rejimi o‘zgarmaydi');
       final chip = find.byKey(const ValueKey('reel-id-chip')).first;
       final ignoring = tester
           .widgetList<IgnorePointer>(
@@ -170,9 +171,7 @@ void main() {
       await settle(tester, frames: 6);
       expect(c.read(reelsCleanProvider), isFalse);
       expect(find.byType(NovaBottomNav), findsOneWidget);
-      // Odatiy holat: `manual` rejim Flutter'da panellar ro'yxati
-      // (`setEnabledSystemUIOverlays`) bilan yuboriladi.
-      expect(modes.last, 'overlays');
+      expect(modes, isEmpty);
       expect(tester.takeException(), isNull);
     });
 
@@ -266,7 +265,7 @@ void main() {
       expect(r.v.playing, hasLength(1), reason: 'to‘liq ekranda o‘ynaydi');
       expect(r.v.created, hasLength(1),
           reason: 'video QAYTA yuklanmaydi — o‘sha pleer');
-      expect(modes, contains(contains('immersiveSticky')));
+      expect(modes, isEmpty, reason: 'tizim panellari rejimi o‘zgarmaydi');
       // Belgilar yo'q: na like, na izoh, na ulashish.
       expect(find.byIcon(Icons.close_rounded), findsNothing);
 
@@ -276,8 +275,48 @@ void main() {
       expect(find.byKey(const ValueKey('video-fullscreen')), findsNothing);
       expect(r.v.disposed, isEmpty,
           reason: 'lentaga qaytganda pleer yopilmaydi — davom etadi');
-      expect(modes.last, 'overlays', reason: 'tizim panellari qaytdi');
+      expect(modes, isEmpty);
       expect(tester.takeException(), isNull);
+    });
+
+    // Egasi (2026-09-24): "lentada video ochilgan, yana bir bosganda
+    // joyiga qaytmayapti — Reels'dagidek ishlasin".
+    testWidgets('to‘liq ekranda BOSISH — lentaga qaytadi, video davom etadi',
+        (tester) async {
+      final r = await pump(tester);
+      await openFull(tester);
+      await tester.tapAt(const Offset(195, 420));
+      await settle(tester, frames: 8);
+      expect(find.byKey(const ValueKey('video-fullscreen')), findsNothing,
+          reason: 'bitta bosish bilan qaytishi kerak');
+      expect(r.v.disposed, isEmpty);
+      expect(r.v.playing, hasLength(1), reason: 'lentada davom etadi');
+    });
+
+    testWidgets('to‘liq ekranda TEPAGA surish ham yopadi', (tester) async {
+      await pump(tester);
+      await openFull(tester);
+      await tester.drag(find.byKey(const ValueKey('video-fullscreen')),
+          const Offset(0, -300));
+      await settle(tester, frames: 8);
+      expect(find.byKey(const ValueKey('video-fullscreen')), findsNothing);
+    });
+
+    testWidgets('to‘liq ekranda BOSIB TURISH — pauza, qo‘yib yuborilsa davom',
+        (tester) async {
+      final r = await pump(tester);
+      await openFull(tester);
+      final g = await tester.startGesture(const Offset(195, 420));
+      await tester.pump(const Duration(milliseconds: 650));
+      await _flush(tester);
+      expect(r.v.playing, isEmpty, reason: 'bosib turilganda pauza');
+      expect(find.byKey(const ValueKey('video-fullscreen')), findsOneWidget,
+          reason: 'bosib turish yopmaydi');
+      await g.up();
+      await settle(tester, frames: 4);
+      await _flush(tester);
+      expect(r.v.playing, hasLength(1));
+      expect(find.byKey(const ValueKey('video-fullscreen')), findsOneWidget);
     });
 
     testWidgets('to‘liq ekran ochiq turganda karta yo‘qolsa — pleer '

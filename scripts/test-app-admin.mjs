@@ -117,6 +117,11 @@ sqlite.prepare(`INSERT INTO stories (id, owner_kind, owner_id, user_id, image_ur
   check('4) qidiruv: matn', (await admin('/api/admin/app-content?q=boshqa')).body.items.map((i) => i.id), [803]);
   check('4) qidiruv: muallif email', (await admin('/api/admin/app-content?q=other@test')).body.items.map((i) => i.id), [803]);
   check('4) qidiruv: biznes nomi', (await admin('/api/admin/app-content?q=elite')).body.items.map((i) => i.id), [901]);
+  // offset — "Yana yuklash" ro'yxatdagi haqiqiy sonni yuboradi (o'chirishdan
+  // keyin element o'tkazib yuborilmaydi).
+  const allIds = (await admin('/api/admin/app-content?limit=50')).body.items.map((i) => `${i.deleteKind}-${i.id}`);
+  const off = await admin('/api/admin/app-content?limit=2&page=2&offset=1');
+  check('4) offset sahifadan ustun', off.body.items.map((i) => `${i.deleteKind}-${i.id}`), allIds.slice(1, 3));
   const pg = await admin('/api/admin/app-content?limit=2&page=3');
   check('4) sahifalash', [pg.body.items.map((i) => i.id), pg.body.hasMore], [[801], false]);
 

@@ -68,12 +68,15 @@ void main() {
     final src =
         File('lib/design/theme/app_theme.dart').readAsStringSync();
 
-    test('Android — Zoom, iPhone — Cupertino', () {
+    test('Android va iPhone — Cupertino (chetdan surib orqaga)', () {
       // O'zimizning fade+scale o'tishi IKKALA sahifani ham har kadrda
       // shaffof qatlamga chizardi — telefonda qotish (egasi, 2026-09).
-      // Tizim o'tishlari ikkala sahifani ham harakatlantiradi va
-      // Zoom sahifani rasmga olib harakatlantiradi — eng arzon yo'l.
-      expect(src, contains('ZoomPageTransitionsBuilder()'));
+      // Cupertino o'tishi faqat surish (transform) va chap chetdan
+      // surib orqaga qaytishni beradi (egasi, 2026-09-24).
+      expect(
+          RegExp(r'TargetPlatform\.android: CupertinoPageTransitionsBuilder\(\)')
+              .hasMatch(src),
+          isTrue);
       expect(src, contains('CupertinoPageTransitionsBuilder()'));
       expect(src, isNot(contains('_FadeScaleTransitions')));
       // Keskin yoki sakraydigan egri chiziqlar bo'lmasin.

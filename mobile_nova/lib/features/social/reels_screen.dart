@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
@@ -22,6 +21,7 @@ import '../../design/widgets/id_plate.dart';
 import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
+import '../../design/widgets/brand_icon.dart';
 import '../../design/widgets/buttons.dart';
 import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
@@ -152,26 +152,15 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
     if (mounted && _started != i) setState(() => _started = i);
   }
 
-  /// Telefonning tizim panellari hozir yashirinmi.
-  bool _immersive = false;
-
-  /// TOZA REJIMDA TIZIM PANELLARI HAM YASHIRINADI — video haqiqatan
-  /// butun ekranda. Chetdan surilsa panellar vaqtincha chiqadi
-  /// (`immersiveSticky`). Qaytishda odatiy holat tiklanadi.
-  void _systemUi(bool clean) {
-    if (clean == _immersive) return;
-    _immersive = clean;
-    if (clean) {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    } else {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
-          overlays: SystemUiOverlay.values);
-    }
-  }
+  // TIZIM PANELLARI YASHIRILMAYDI (2026-09-24). `immersiveSticky` dan
+  // qaytish Android'da oynani boshlang'ich holatiga emas, panel kontent
+  // USTIDA turadigan rejimga o'tkazardi (egasining telefonida pastki
+  // tizim paneli shaffof bo'lib qoldi). Toza rejim ilova belgilari va
+  // pastki panelni yashiradi; soat/batareya qora fonda oq — Instagram
+  // Reels ham shunday.
 
   @override
   void dispose() {
-    _systemUi(false);
     _page.dispose();
     super.dispose();
   }
@@ -189,7 +178,6 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
     final l = L.of(context);
     final reels = ref.watch(reelsProvider);
     final clean = ref.watch(reelsCleanProvider);
-    ref.listen<bool>(reelsCleanProvider, (_, on) => _systemUi(on));
     // Boshqa tabga o'tildi — toza rejim o'z-o'zidan tugaydi, aks holda
     // boshqa bo'limda pastki panel yashirin qolardi.
     if (!onReelsTab && clean) {
@@ -945,7 +933,7 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
+                          BrandAwareIcon(
                             p.isCompany
                                 ? Icons.storefront_outlined
                                 : Icons.nfc_rounded,
