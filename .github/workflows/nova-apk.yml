@@ -541,3 +541,55 @@ jobs:
           path: mobile_nova/release-final/*
           if-no-files-found: error
           retention-days: 90
+
+      # ── PLAY CONSOLE'GA AVTOMATIK YUKLASH (egasi, 2026-09-24) ──────
+      #
+      # "Play Console'ga ulash kerak — AAB o'zi yuklansin". Play
+      # Console'da `play-upload@…` xizmat hisobi ulangan; uning JSON
+      # kaliti GitHub Secrets'da `PLAY_SERVICE_ACCOUNT_JSON` nomi bilan
+      # turadi (kodga, logga yozilmaydi).
+      #
+      # QORALAMA (draft) sifatida — Internal testing trekiga. Yakuniy
+      # "Rollout / Publish" tugmasini Play Console'da EGASI o'zi bosadi:
+      # testerlarga ham, do'konga ham hech narsa avtomatik chiqmaydi.
+      #
+      # Faqat HAQIQIY release kaliti bilan imzolangan AAB yuklanadi —
+      # debug imzoli paketni Play baribir rad etadi. Kalit yo'q bo'lsa
+      # yoki Play xato bersa, APK qurilishi YIQILMAYDI (APK va reliz
+      # yuqorida allaqachon tayyor), sabab xulosaga yoziladi.
+      - name: Play kaliti bormi
+        id: play
+        env:
+          PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [ -n "$PLAY_JSON" ] && [ -f android/key.properties ]; then
+            echo "ready=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=0" >> "$GITHUB_OUTPUT"
+            echo "Play'ga yuklanmadi: PLAY_SERVICE_ACCOUNT_JSON yoki release kaliti yo'q." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Play Console — Internal testing (qoralama)
+        id: playup
+        if: ${{ steps.play.outputs.ready == '1' }}
+        continue-on-error: true
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: uz.nfcstore.nova
+          releaseFiles: mobile_nova/release-final/NFCSTORE-Mobile.aab
+          track: internal
+          status: draft
+          releaseName: "${{ steps.ver.outputs.name }} (#${{ github.run_number }})"
+
+      - name: Play natijasi
+        if: ${{ steps.play.outputs.ready == '1' }}
+        run: |
+          echo "## Play Console" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ steps.playup.outcome }}" = "success" ]; then
+            echo "AAB #${{ github.run_number }} Internal testing'ga QORALAMA sifatida yuklandi. Rollout — Play Console'da qo'lda." >> "$GITHUB_STEP_SUMMARY"
+            echo "PLAY: UPLOADED draft #${{ github.run_number }}"
+          else
+            echo "AAB Play'ga yuklanmadi — 'Play Console' qadami logiga qarang." >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning::AAB Play'ga yuklanmadi."
+          fi
