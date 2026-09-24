@@ -151,6 +151,9 @@ har tuzatishga mustaqil review. Tasdiqlangan va tuzatilgan:
 - [x] Play skrinshotlar 1.1.0 dan qayta olindi (24-bit PNG), release notes UZ/RU/EN,
       `PLAY_CONSOLE_HANDOFF.md` (final publish tugmasi BOSILMAYDI)
 
+- [x] Yakuniy E2E #60 (92093ae): 97 PASS, 0 FAIL; qurilma 360/390/430 PASS
+- [x] Yakuniy qurilish #219 (92093ae) — PLAY_CONSOLE_HANDOFF.md
+
 ## 7. Hisobot
 
-- [ ] Final hisobot egasiga
+- [x] Final hisobot egasiga (2026-09-24)

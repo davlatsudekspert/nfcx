@@ -29,7 +29,7 @@ ekranigacha olib boriladi.
 | Play App Signing | **YOQILGAN**: Play'dan o'rnatilgan nusxalar Google kaliti bilan imzolanadi — SHA-256 `A3:15:12:FC:23:24:9B:EA:78:67:AB:A7:53:C1:19:7A:C4:87:95:63:74:8E:EC:03:22:1C:EA:87:19:61:95:BD` (oldingi: `69:1D:3F:A3:81:40:1B:BB:E6:F5:93:C7:F9:92:22:AC:0F:80:A2:94:63:77:9C:9D:76:A2:7D:9B:DC:B7:B3:6C`) |
 | minSdk / targetSdk | 24 / 36 (Flutter 3.35.5) |
 | Testlar | `flutter analyze — 0 muammo; unit/widget — 854 PASS, 1 SKIP (CI #219 da ham qayta o'tdi); server skriptlari (CI) — 253/0` |
-| E2E (real hisob) | yakuniy #60 (92093ae) — natija kutilmoqda |
+| E2E (real hisob) | **#60 (92093ae) — PASS**: 97 PASS, 0 FAIL; qurilma 360/390/430 release ishga tushish + 30 layout ekran PASS; qolganlari — PARTIAL 3, BACKEND/CONFIG/DEVICE/MANUAL PAYMENT REQUIRED, SKIPPED 1 (kod xatosi emas: 2-sinov hisobi yo'q, to'lov qo'lda, emulyatorda video/ulashish yo'q). https://github.com/davlatsudekspert/nfcx/actions/runs/35960251762 |
 
 ---
 
