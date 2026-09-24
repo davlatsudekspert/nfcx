@@ -1,17 +1,31 @@
-// AI YORDAMCHI — Google Gemini (Worker versiyasi).
+// AI YORDAMCHI — Claude (Anthropic), zaxirada Google Gemini (Worker versiyasi).
 //
 // Avval bu faqat eski Express serverida bor edi (server/assistant.js) va
 // Worker'ga ko'chirilmagandi: `/api/assistant/status` doim `{enabled:false}`
 // qaytarardi, shuning uchun vidjet saytda umuman ko'rinmasdi. Endi mana shu
 // modul ishlaydi.
 //
+// QAYSI MODEL JAVOB BERADI (egasi, 2026-09-24: "saytda Claude yordamchi
+// bo'lishi kerak"):
+//   • ANTHROPIC_API_KEY bor bo'lsa — Claude;
+//   • bo'lmasa, GEMINI_API_KEY bor bo'lsa — avvalgidek Gemini;
+//   • ikkalasi ham yo'q bo'lsa — vidjet o'zini ko'rsatmaydi.
+// Ya'ni kalit qo'yilguncha sayt avvalgidek ishlaydi, kalit qo'yilgan
+// zahoti Claude'ga o'tadi — alohida deploy kerak emas.
+//
 // SOZLASH (kalit KODGA YOZILMAYDI — faqat Cloudflare secret):
-//     npx wrangler secret put GEMINI_API_KEY
+//     npx wrangler secret put ANTHROPIC_API_KEY
+//     npx wrangler secret put GEMINI_API_KEY      (ixtiyoriy zaxira)
 // Ixtiyoriy o'zgaruvchilar:
-//     ASSISTANT_MODEL   — standart: gemini-3.6-flash
+//     CLAUDE_MODEL      — standart: claude-opus-5
+//     ASSISTANT_MODEL   — Gemini modeli, standart: gemini-3.6-flash
 //     ASSISTANT_OFF=1   — kalit turgan holda ham vidjetni o'chirish
 // Kalit bo'lmasa endpoint 503 beradi va vidjet o'zini ko'rsatmaydi —
 // ya'ni sozlanmagan sayt "buzuq" ko'rinmaydi.
+
+import Anthropic from '@anthropic-ai/sdk';
+
+const CLAUDE_DEFAULT_MODEL = 'claude-opus-5';
 
 const DEFAULT_MODEL = 'gemini-3.6-flash';
 // Model nomi o'chib qolsa (Google eskilarini olib tashlaydi) — assistent
@@ -98,8 +112,49 @@ async function companyContext(env, rawId) {
   ].join('\n');
 }
 
-const apiKey = (env) => String(env.GEMINI_API_KEY || env.AI_API_KEY || '').trim().replace(/^["']|["']$/g, '');
-const enabled = (env) => !!apiKey(env) && String(env.ASSISTANT_OFF || '') !== '1';
+const clean = (v) => String(v || '').trim().replace(/^["']|["']$/g, '');
+const apiKey = (env) => clean(env.GEMINI_API_KEY || env.AI_API_KEY);
+const claudeKey = (env) => clean(env.ANTHROPIC_API_KEY);
+const provider = (env) => (claudeKey(env) ? 'claude' : apiKey(env) ? 'gemini' : '');
+const enabled = (env) => !!provider(env) && String(env.ASSISTANT_OFF || '') !== '1';
+
+const REFUSED = 'Bu savolga javob bera olmayman. Iltimos, NFCSTORE bo‘yicha savol bering yoki @nfcstore_admin ga murojaat qiling.';
+
+// CLAUDE. Mijoz har so'rovda yaratiladi: kalit shu so'rovning `env`
+// idan olinadi va boshqa joyda saqlanmaydi.
+//
+//   • effort `low` — bu qisqa savol-javob, chuqur o'ylash kerak emas;
+//     javob tezroq va arzonroq.
+//   • `fallbacks: 'default'` — Claude xavfsizlik filtri savolni rad
+//     etsa, Anthropic o'zi mos zaxira modelda qayta urinadi.
+//   • tizim matni keshlanadi (`cache_control`); kompaniya ma'lumoti
+//     undan KEYIN turadi, shuning uchun u kesh boshini buzmaydi.
+async function askClaude(env, history, context) {
+  const client = new Anthropic({ apiKey: claudeKey(env), timeout: 20_000, maxRetries: 1 });
+  const model = String(env.CLAUDE_MODEL || CLAUDE_DEFAULT_MODEL).trim();
+  const system = [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }];
+  if (context) system.push({ type: 'text', text: context });
+  // Suhbat foydalanuvchi xabari bilan boshlanishi SHART.
+  const messages = history.map((m) => ({ role: m.role === 'model' ? 'assistant' : 'user', content: m.parts[0].text }));
+  while (messages.length && messages[0].role !== 'user') messages.shift();
+  try {
+    const msg = await client.beta.messages.create({
+      model,
+      max_tokens: 4000,
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      output_config: { effort: 'low' },
+      system,
+      messages,
+    });
+    if (msg.stop_reason === 'refusal') return { refused: true };
+    const reply = msg.content.filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
+    return { reply, model: msg.model };
+  } catch (err) {
+    if (err instanceof Anthropic.APIError) return { error: `HTTP ${err.status ?? 0}` };
+    return { error: String(err?.name || 'error') };
+  }
+}
 
 function extractText(data) {
   const parts = data?.candidates?.[0]?.content?.parts;
@@ -154,7 +209,7 @@ export async function handle(request, env, url, H) {
   if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
   if (!enabled(env)) return json({ error: 'not_configured' }, 503);
 
-  // CHEGARA. Har so'rov Google'da pul turadi, shuning uchun IP bo'yicha
+  // CHEGARA. Har so'rov (Claude yoki Google) pul turadi, shuning uchun IP bo'yicha
   // qat'iy: soatiga 40 ta. Kirgan foydalanuvchi ham shu chegarada —
   // akkaunt ochish cheklovni aylanib o'tish yo'li bo'lib qolmasin.
   const ip = H.reqIp(request);
@@ -177,6 +232,14 @@ export async function handle(request, env, url, H) {
   const context = await companyContext(env, body?.companyId);
   if (context) for (const m of history) m.parts[0].text = m.parts[0].text.split(FENCE).join(' ');
 
+  if (provider(env) === 'claude') {
+    const res = await askClaude(env, history, context);
+    if (res.refused) return json({ reply: REFUSED });
+    if (res.reply) return json({ reply: res.reply, model: res.model });
+    console.error('[assistant] claude', String(res.error || 'empty').slice(0, 300));
+    return json({ error: 'upstream' }, 502);
+  }
+
   const configured = String(env.ASSISTANT_MODEL || DEFAULT_MODEL).trim();
   const models = [configured, ...FALLBACK_MODELS.filter((m) => m !== configured)];
 
@@ -190,7 +253,7 @@ export async function handle(request, env, url, H) {
     if (!res.ok) break;
 
     if (res.data?.promptFeedback?.blockReason) {
-      return json({ reply: 'Bu savolga javob bera olmayman. Iltimos, NFCSTORE bo‘yicha savol bering yoki @nfcstore_admin ga murojaat qiling.' });
+      return json({ reply: REFUSED });
     }
     const reply = extractText(res.data);
     if (reply) return json({ reply, model });
