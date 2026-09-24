@@ -269,8 +269,10 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                     icon: NovaIcons.comment,
                     label: formatCount(p.comments),
                     tint: t.text2,
-                    // O'ngdagisi `Spacer` hisobidan.
-                    hit: const EdgeInsets.fromLTRB(8, Gap.xl, 12, 0),
+                    // O'ngga kengaymaydi: `Spacer` tor ekranda (320 dp,
+                    // shrift 1.3) 24 dp bera olmaydi — qator toshib,
+                    // Ulashish o'ngga surilardi.
+                    hit: const EdgeInsets.fromLTRB(8, Gap.xl, 0, 0),
                     onTap: _commentFocus.requestFocus,
                   ),
                   const Spacer(),
@@ -278,7 +280,7 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                     icon: NovaIcons.share,
                     label: l.actionShare,
                     tint: t.text2,
-                    hit: const EdgeInsets.fromLTRB(12, Gap.xl, 0, 0),
+                    hit: const EdgeInsets.only(top: Gap.xl),
                     onTap: () => shareText(p.text),
                   ),
                 ],

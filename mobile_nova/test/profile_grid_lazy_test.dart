@@ -137,8 +137,77 @@ void main() {
     expect(_posters().evaluate().length, lessThanOrEqualTo(few));
     expect(tester.takeException(), isNull);
 
+    // Review: to'r TEPASIDA ham kesh zonasi bor (SliverMainAxisGroup
+    // xatosi — zaxira 0 edi, yuqoriga aylantirishda qatorlar har
+    // safar qayta qurilardi). To'rning o'rtasida ekran ustida TO'LIQ
+    // yashirin qator ham qurilgan bo'lishi kerak.
+    pos.jumpTo(pos.maxScrollExtent - 200);
+    await settle(tester, frames: 4);
+    final top = tester.getTopLeft(scroll).dy;
+    final tops = find
+        .byWidgetPredicate(
+            (w) =>
+                w.key is ValueKey<String> &&
+                (w.key! as ValueKey<String>).value.startsWith('tile-'),
+            skipOffstage: false)
+        .evaluate()
+        .map((e) =>
+            (e.renderObject! as RenderBox).localToGlobal(Offset.zero).dy - top)
+        .toList();
+    expect(tops, isNotEmpty);
+    // Reels qatori: side * 1.25 baland + 6 oraliq.
+    expect(tops.reduce((a, b) => a < b ? a : b), lessThan(-(side * 1.25 + 6)),
+        reason: 'ekran ustida zaxira qator yo‘q — to‘r keshi faqat pastda');
+
     // Muqova navbatidagi taymerlar tugasin.
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 2));
   });
+
+  testWidgets('bo‘sh va to‘la tab orasida Postlar/Reels paneli qayta yaratilmaydi',
+      (tester) async {
+    VideoPoster.clearCache();
+    VideoPlayerPlatform.instance = FakeVideoPlatform();
+    tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final base = await testOverrides();
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        ...base.where((o) => !identical(o, base[2])),
+        socialRepositoryProvider.overrideWithValue(_PhotosOnly()),
+      ],
+      child: wrapScreen(const ProfileScreen(), tokens: NfcTokens.ivory),
+    ));
+    await settle(tester, frames: 16);
+    final l = await L.delegate.load(const Locale('uz'));
+    final tabs = find.byWidgetPredicate(
+        (w) => w.runtimeType.toString() == '_GridTabs',
+        skipOffstage: false);
+    expect(tabs, findsOneWidget);
+    final before = tester.element(tabs);
+    // Reels tabi bo'sh — ilgari panel boshqa daraxtga o'tib qayta
+    // yaratilardi (chiziq animatsiyasi sakrardi, fokus yo'qolardi).
+    await tester.ensureVisible(find.text('${l.navReels} · 0'));
+    await tester.tap(find.text('${l.navReels} · 0'));
+    await tester.pump(const Duration(milliseconds: 60));
+    expect(identical(tester.element(tabs), before), isTrue,
+        reason: 'panel qayta yaratildi');
+    await settle(tester, frames: 6);
+    expect(tester.takeException(), isNull);
+  });
+}
+
+class _PhotosOnly extends FakeSocialRepository {
+  @override
+  Future<Result<List<Post>>> postsOf(String code, {int page = 1}) async => Ok([
+        for (var i = 0; i < 4; i++)
+          Post(
+            id: i + 1,
+            code: code,
+            text: 'Rasm $i',
+            mediaUrls: const [_photo],
+            createdAt: DateTime(2026),
+          ),
+      ]);
 }

@@ -1345,9 +1345,13 @@ class _PostsGridState extends ConsumerState<_PostsGrid> {
                 onChanged: (i) => setState(() => _tab = i),
               )
             : const SizedBox.shrink();
+        // Tab paneli HAR DOIM guruhning birinchi bolasi: bo'sh va
+        // to'la tab orasida o'tganda u qayta yaratilmaydi (chiziq
+        // animatsiyasi sakramaydi, ekran o'quvchi fokusi yo'qolmaydi).
+        Widget withBar(Widget body) => SliverMainAxisGroup(
+            slivers: [SliverToBoxAdapter(child: bar), body]);
         if (items.isEmpty) {
-          return SliverToBoxAdapter(child: Column(children: [
-            bar,
+          return withBar(SliverToBoxAdapter(child: Column(children: [
             Padding(
             padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
             child: FloatingSurface(
@@ -1369,7 +1373,7 @@ class _PostsGridState extends ConsumerState<_PostsGrid> {
               ),
             ),
           ),
-          ]));
+          ])));
         }
         // DEMO'DA MOZAIK, HAQIQIY PROFILDA 3x3 TO'R.
         //
@@ -1377,10 +1381,10 @@ class _PostsGridState extends ConsumerState<_PostsGrid> {
         // bo'lishini ko'rishi kerak, kvadratchalar to'rini emas.
         // Haqiqiy profil UMUMAN o'zgarmaydi.
         if (ref.watch(demoModeProvider) != null) {
-          return SliverToBoxAdapter(
+          return withBar(SliverToBoxAdapter(
             child: Column(
-                children: [bar, DemoMosaicPosts(items: items, code: code)]),
-          );
+                children: [DemoMosaicPosts(items: items, code: code)]),
+          ));
         }
         final side =
             (MediaQuery.sizeOf(context).width - Gap.screenX * 2 - 12) / 3;
@@ -1398,8 +1402,7 @@ class _PostsGridState extends ConsumerState<_PostsGrid> {
         // turardi — o'sha joylashuv saqlanadi.
         final cols = items.length < 3 ? items.length : 3;
         final inset = (3 - cols) * (side + 6) / 2;
-        return SliverMainAxisGroup(slivers: [
-          SliverToBoxAdapter(child: bar),
+        return withBar(
           SliverPadding(
             padding: EdgeInsets.symmetric(horizontal: Gap.screenX + inset),
             sliver: SliverGrid.builder(
@@ -1503,7 +1506,7 @@ class _PostsGridState extends ConsumerState<_PostsGrid> {
               },
             ),
           ),
-        ]);
+        );
       },
     );
   }

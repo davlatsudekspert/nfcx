@@ -212,13 +212,19 @@ class NovaScroll extends StatelessWidget {
     return CustomScrollView(
       controller: controller,
       physics: physics,
+      // IKKI ALOHIDA SLIVER, guruh EMAS: Flutter 3.35 dagi
+      // `SliverMainAxisGroup` ikkinchi bolaning kesh zonasini noto'g'ri
+      // hisoblaydi — to'r tepasida zaxira bo'lmaydi va yuqoriga
+      // aylantirganda qatorlar har safar qayta quriladi. Padding bir
+      // xil: tepasi ro'yxatda, pasti to'rda.
       slivers: [
         SliverPadding(
-          padding: pad,
-          sliver: SliverMainAxisGroup(slivers: [
-            SliverList.list(children: children),
-            tail,
-          ]),
+          padding: pad.copyWith(bottom: 0),
+          sliver: SliverList.list(children: children),
+        ),
+        SliverPadding(
+          padding: pad.copyWith(top: 0),
+          sliver: tail,
         ),
       ],
     );

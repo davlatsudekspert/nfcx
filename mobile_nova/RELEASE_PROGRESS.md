@@ -91,18 +91,24 @@ faqat kod bilan isbotlangan, ko'rinishni o'zgartirmaydigan tuzatishlar):
 - [x] SM-4 izoh yozilganda har harfda ~20 izoh kartasi qayta qurilmaydi (a3c7df6)
 - [x] TS-1 Home demo rasmlari quti o'lchamida (x2) — ~23 MB -> ~10 MB (a3c7df6, 777a909)
 - [x] TS-2 Reels faqat o'z tabiga kirish/chiqishda qayta quriladi (a3c7df6)
-- [~] SM-1 profil setkasi lazy (sliver) — barcha kartalar/video muqovalar
-      birdaniga qurilmasin (alohida worktree'da, review bilan)
+- [x] SM-1 profil setkasi lazy (sliver) — 60 postli profilda ~18 tadan
+      ko'p katakcha qurilmaydi (5166f49); review 2 regressiya topdi va
+      tuzatildi: bo'sh/to'la tab orasida panel qayta yaratilmaydi, to'r
+      tepasida ham kesh zonasi bor (test/profile_grid_lazy_test.dart)
 - Har tuzatishga test: test/perf_audit_test.dart; tuzatishsiz yiqiladi
 
 ## 4b. UI sifat (hit-area, holatlar, klaviatura)
 
 - [x] UIQ-3 izoh like ikki bosishda bekor bo'lmaydi (434608d)
-- [~] UIQ-1 biznes profil postlari: Retry noto'g'ri provayderni yangilardi
-- [~] UIQ-2 do'kon: Retry'dan keyin katalog xato holatida qolardi
-- [~] UIQ-4 saqlash/kirish tugmasi ikkinchi so'rovni yuborishi mumkin edi
-- [~] UIQ-5 QR oynasi 360x640 + 1.3 shriftda toshardi
-- [~] UI-1..7, UI-11 kichik bosish maydonlari va chip matni kesilishi
+- [x] UIQ-1 biznes profil postlari: Retry noto'g'ri provayderni yangilardi (1946783)
+- [x] UIQ-2 do'kon: Retry'dan keyin katalog xato holatida qolardi (f11cbff)
+- [x] UIQ-4 saqlash/kirish tugmasi ikkinchi so'rovni yuborishi mumkin edi (f11cbff, 494dff7)
+- [x] UIQ-5 QR oynasi 360x640 + 1.3 shriftda toshardi (f11cbff)
+- [x] UI-2/3/4/11 Tanlov chiplari kesilmaydi, tozalash va rasm o'chirish
+      44x44 (4258a6e; review ACCEPT)
+- [x] UI-1/5/6/7 lenta, izoh, post va Reels tugmalarining bosish maydoni
+      (f1002b2); review 320 dp + shrift 1.3 da 2 ta yangi toshish topdi —
+      tuzatildi, test qo'shildi (test/hit_area_social_test.dart, 16 test)
 - Rad etildi (ko'rinishni o'zgartiradi, egasi qarori): UI-8 Noir error
   kontrasti 3.5-3.9:1, UI-9 8.5-9.5 px ma'lumot matni, UI-10 Noir ID
   kartadagi shaffof yorliqlar

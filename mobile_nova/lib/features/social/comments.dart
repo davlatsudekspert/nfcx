@@ -555,19 +555,25 @@ class _CommentTile extends ConsumerWidget {
                           onTap: onReply!,
                         ),
                       if (onLike != null) ...[
-                        _TinyAction(
-                          padLeft: onReply != null ? 8 : 2,
-                          // Qatorda oxirgi: o'ngga kengayishi hech
-                          // narsani surmaydi.
-                          minWidth: 44,
-                          // Bosilgan bo'lsa to'la yurakcha va aksent
-                          // rangida — holat bir qarashda ko'rinadi.
-                          icon: comment.liked
-                              ? NovaIcons.liked
-                              : NovaIcons.like,
-                          tone: comment.liked ? t.accent2 : null,
-                          label: comment.likes > 0 ? '${comment.likes}' : '',
-                          onTap: onLike!,
+                        // `Flexible`: joy bo'lsa 44 keng, tor ekranda
+                        // (320 dp, shrift 1.3) qolgan joyga siqiladi —
+                        // qator eski koddan ko'p toshmaydi.
+                        Flexible(
+                          child: _TinyAction(
+                            padLeft: onReply != null ? 8 : 2,
+                            // Qatorda oxirgi: o'ngga kengayishi hech
+                            // narsani surmaydi.
+                            minWidth: 44,
+                            // Bosilgan bo'lsa to'la yurakcha va aksent
+                            // rangida — holat bir qarashda ko'rinadi.
+                            icon: comment.liked
+                                ? NovaIcons.liked
+                                : NovaIcons.like,
+                            tone: comment.liked ? t.accent2 : null,
+                            label:
+                                comment.likes > 0 ? '${comment.likes}' : '',
+                            onTap: onLike!,
+                          ),
                         ),
                       ],
                     ],

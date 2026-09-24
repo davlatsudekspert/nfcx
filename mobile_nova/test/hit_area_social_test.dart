@@ -409,25 +409,63 @@ void main() {
       await tester.pump();
       expect(find.byIcon(Icons.reply_rounded), findsOneWidget);
     });
+
+    testWidgets('320 dp, shrift 1.3 — 0 laykli izoh qatori toshmaydi', (
+      tester,
+    ) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      _view(tester, width: 320);
+      final social = _Social()
+        ..items = const [
+          Comment(id: 5, code: 'AB12', authorName: 'Ali', text: 'Salom'),
+        ];
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: await _overrides(social),
+          child: wrapScreen(
+            const Scaffold(
+              body: SingleChildScrollView(
+                child: CommentsSection(kind: 'post', id: 1),
+              ),
+            ),
+            locale: const Locale('uz'),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(tester.takeException(), isNull);
+      expect(find.byIcon(NovaIcons.like), findsOneWidget);
+    });
   });
 
   // ───────────────────────────────────────── UI-6: post tafsiloti
   group('UI-6 post tafsiloti amallari', () {
-    Future<_Social> pumpPost(WidgetTester tester) async {
-      _view(tester);
+    Future<_Social> pumpPost(
+      WidgetTester tester, {
+      double width = 390,
+      String loc = 'uz',
+      int likes = 3,
+      int comments = 2,
+    }) async {
+      _view(tester, width: width);
       final social = _Social()
         ..post = Post(
           id: 1,
           code: 'TTS075',
           authorName: 'Tohir',
           text: 'Sinov posti',
-          likes: 3,
-          comments: 2,
+          likes: likes,
+          comments: comments,
         );
       await tester.pumpWidget(
         ProviderScope(
           overrides: await _overrides(social),
-          child: wrapScreen(const PostScreen(id: 1, code: 'TTS075')),
+          child: wrapScreen(
+            const PostScreen(id: 1, code: 'TTS075'),
+            locale: Locale(loc),
+          ),
         ),
       );
       await tester.pump();
@@ -463,7 +501,13 @@ void main() {
       for (final i in [NovaIcons.like, NovaIcons.comment, NovaIcons.share]) {
         final s = _hit<PressableScale>(tester, find.byIcon(i).first);
         expect(s.height, greaterThanOrEqualTo(40), reason: '$i');
-        expect(s.width, greaterThanOrEqualTo(44), reason: '$i');
+        // Izoh tugmasi o'ngga kengaymaydi (320 dp da `Spacer` joy
+        // bera olmaydi) — bir xonali son bilan ~41 keng.
+        expect(
+          s.width,
+          greaterThanOrEqualTo(i == NovaIcons.comment ? 40 : 44),
+          reason: '$i',
+        );
       }
     });
 
@@ -477,6 +521,27 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
       expect(social.postLikes, 1);
+    });
+
+    testWidgets('320 dp, shrift 1.3, ru, katta sonlar — Ulashish surilmaydi', (
+      tester,
+    ) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await pumpPost(
+        tester,
+        width: 320,
+        loc: 'ru',
+        likes: 1234567,
+        comments: 7654321,
+      );
+      expect(tester.takeException(), isNull);
+      // Tuzatishdan oldingi joyi (hit maydoni `Spacer` hisobidan
+      // kengayganda 183.12 ga surilib, qator 3.4 px toshardi).
+      expect(
+        tester.getTopLeft(find.byIcon(NovaIcons.share).first).dx,
+        closeTo(179.77, .01),
+      );
     });
   });
 
