@@ -656,9 +656,14 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
               ),
             ),
           ),
+          // Tugmalar orasidagi `Gap.lg` bo'shliq endi har tugmaning
+          // ICHIDA (`_Action`, tepa va past `Gap.lg / 2`). Ilgari u
+          // bosilmas edi va barmoq sal chetga tushsa video pauzaga
+          // ketardi. Pastki tugmaning `Gap.lg / 2` hoshiyasi uchun
+          // ustun 8 dp pastroqdan boshlanadi — belgilar o'sha joyda.
           Positioned(
             right: 4,
-            bottom: 132 + inset,
+            bottom: 132 - Gap.lg / 2 + inset,
             child: Column(
               children: [
                 _Action(
@@ -671,7 +676,6 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
                   semantic: l.postLike,
                   onTap: _like,
                 ),
-                const SizedBox(height: Gap.lg),
                 _Action(
                   key: const ValueKey('reel-comments'),
                   icon: NovaIcons.comment,
@@ -679,7 +683,6 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
                   semantic: l.postComments,
                   onTap: _openComments,
                 ),
-                const SizedBox(height: Gap.lg),
                 _Action(
                   key: const ValueKey('reel-save'),
                   icon: saved
@@ -689,7 +692,6 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
                   semantic: l.actionSave,
                   onTap: _save,
                 ),
-                const SizedBox(height: Gap.lg),
                 _Action(
                   key: const ValueKey('reel-share'),
                   icon: NovaIcons.share,
@@ -703,7 +705,6 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
                               : '$kApiBase/${Uri.encodeComponent(p.code)}',
                           title: p.authorName),
                 ),
-                const SizedBox(height: Gap.lg),
                 _Action(
                   icon: muted
                       ? NovaIcons.muted
@@ -714,7 +715,6 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
                   semantic: muted ? l.actionUnmute : l.actionMute,
                   onTap: _toggleMute,
                 ),
-                const SizedBox(height: Gap.lg),
                 _Action(
                   key: const ValueKey('reel-more'),
                   icon: NovaIcons.more,
@@ -1045,6 +1045,11 @@ class _Action extends StatelessWidget {
         child: PressableScale(
         onTap: onTap,
         scale: .86,
+        // Shaffof hoshiya — bosish maydoni (ovoz va "yana" tugmalari
+        // ilgari 60x32 edi). Simmetrik: bosilgandagi kichrayish
+        // markazi ham o'zgarmaydi.
+        child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: Gap.lg / 2),
         child: SizedBox(
         width: 60,
         child: Column(
@@ -1068,6 +1073,7 @@ class _Action extends StatelessWidget {
               ),
           ],
         ),
+      ),
       ),
       ),
       );

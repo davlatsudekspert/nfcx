@@ -242,7 +242,8 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                 const SizedBox(height: Gap.lg),
                 Text(p.text, style: Theme.of(context).textTheme.bodyLarge),
               ],
-              const SizedBox(height: Gap.xl),
+              // Tepadagi `Gap.xl` bo'shliq endi `_Action` ICHIDA —
+              // tugmalarning shaffof bosish maydoni (`_Action.hit`).
               Row(
                 children: [
                   _Action(
@@ -251,6 +252,8 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                         : NovaIcons.like,
                     label: formatCount(like.count),
                     tint: liked ? t.error : t.text2,
+                    // Izohgacha bo'lgan `Gap.xl` oraliq: 12 + 8.
+                    hit: const EdgeInsets.fromLTRB(0, Gap.xl, 12, 0),
                     onTap: () async {
                       final e = await ref
                           .read(postLikesProvider.notifier)
@@ -262,11 +265,12 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                             SnackBar(content: Text(describeError(l, e))));
                     },
                   ),
-                  const SizedBox(width: Gap.xl),
                   _Action(
                     icon: NovaIcons.comment,
                     label: formatCount(p.comments),
                     tint: t.text2,
+                    // O'ngdagisi `Spacer` hisobidan.
+                    hit: const EdgeInsets.fromLTRB(8, Gap.xl, 12, 0),
                     onTap: _commentFocus.requestFocus,
                   ),
                   const Spacer(),
@@ -274,6 +278,7 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                     icon: NovaIcons.share,
                     label: l.actionShare,
                     tint: t.text2,
+                    hit: const EdgeInsets.fromLTRB(12, Gap.xl, 0, 0),
                     onTap: () => shareText(p.text),
                   ),
                 ],
@@ -343,6 +348,7 @@ class _Action extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.tint,
+    required this.hit,
     this.onTap,
   });
 
@@ -351,18 +357,27 @@ class _Action extends StatelessWidget {
   final Color tint;
   final VoidCallback? onTap;
 
+  /// SHAFFOF bosish maydoni. Ilgari tugma faqat belgining o'zi —
+  /// 21 dp balandlikda edi. Qo'shilgan joy tepadagi va yondagi
+  /// bo'shliqlar hisobidan: belgi va son AYNAN o'sha joyda.
+  final EdgeInsets hit;
+
   @override
   Widget build(BuildContext context) => PressableScale(
     onTap: onTap,
-    child: Row(
-      children: [
-        Icon(icon, size: 21, color: tint),
-        const SizedBox(width: 5),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(color: tint),
-        ),
-      ],
+    child: Padding(
+      padding: hit,
+      child: Row(
+        children: [
+          Icon(icon, size: 21, color: tint),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style:
+                Theme.of(context).textTheme.labelMedium?.copyWith(color: tint),
+          ),
+        ],
+      ),
     ),
   );
 }

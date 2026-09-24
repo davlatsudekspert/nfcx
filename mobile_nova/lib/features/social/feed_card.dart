@@ -73,7 +73,10 @@ class FeedCard extends ConsumerWidget {
 
     return FloatingSurface(
       solid: true,
-      padding: const EdgeInsets.all(Gap.md),
+      // Pastki hoshiya amallar qatorining ICHIDA (`_CardAction`): u
+      // yerda u bosish maydonining shaffof qismi. Karta balandligi va
+      // belgilar joyi o'zgarmaydi.
+      padding: const EdgeInsets.fromLTRB(Gap.md, Gap.md, Gap.md, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -199,7 +202,6 @@ class FeedCard extends ConsumerWidget {
           ],
           const SizedBox(height: Gap.sm),
           Divider(height: 1, color: t.border2),
-          const SizedBox(height: 2),
           Row(
             children: [
               _CardAction(
@@ -209,22 +211,28 @@ class FeedCard extends ConsumerWidget {
                 label: l.postLike,
                 count: like.count,
                 tint: like.liked ? t.error : null,
+                // Chap cheti karta hoshiyasiga tegib turadi; o'ngga
+                // izohgacha bo'lgan oraliqning yarmi.
+                padRight: 2 + Gap.lg / 2,
                 onTap: () async => reportIfFailed(
                     await ref.read(postLikesProvider.notifier).toggle(post)),
               ),
-              const SizedBox(width: Gap.lg),
               // Izoh — mavjud oqim: post ochiladi va izoh maydoni
               // fokusga keladi. Alohida izoh tizimi yaratilmaydi.
               _CardAction(
                 icon: NovaIcons.comment,
                 label: l.postComments,
                 count: post.comments,
+                // Oraliqning ikkinchi yarmi + o'ngdagi `Spacer` dan.
+                padLeft: 2 + Gap.lg / 2,
+                padRight: Gap.lg,
                 onTap: openPost,
               ),
               const Spacer(),
               _CardAction(
                 icon: NovaIcons.share,
                 label: l.actionShare,
+                padLeft: 24,
                 // Kompaniya sahifasi `/c/<ID>` da; `/<ID>` shaxsiy karta
                 // deb qidiriladi va "topilmadi" (yoki BEGONA odam) chiqardi.
                 onTap: () => shareLink(
@@ -256,6 +264,8 @@ class _CardAction extends StatelessWidget {
     required this.onTap,
     this.count,
     this.tint,
+    this.padLeft = 2,
+    this.padRight = 2,
   });
 
   final IconData icon;
@@ -263,6 +273,11 @@ class _CardAction extends StatelessWidget {
   final VoidCallback onTap;
   final int? count;
   final Color? tint;
+
+  /// Yon tomondagi SHAFFOF bosish maydoni. Belgi joyidan siljimaydi:
+  /// qo'shilgan kenglik qo'shni oraliq yoki `Spacer` hisobidan.
+  final double padLeft;
+  final double padRight;
 
   @override
   Widget build(BuildContext context) {
@@ -275,11 +290,16 @@ class _CardAction extends StatelessWidget {
       label: n == null ? label : '$label: $n',
       child: Tooltip(
         message: label,
-        child: InkResponse(
+        child: _ActionInk(
           onTap: onTap,
-          radius: 26,
+          // Eski (2, 8, 2, 8) qutiga qo'shilgan shaffof qism.
+          extra: EdgeInsets.fromLTRB(padLeft - 2, 2, padRight - 2, Gap.md),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
+            // BOSISH MAYDONI ~48 dp. Ilgari 22x34 edi: barmoq belgidan
+            // sal pastga tushsa hech narsa bo'lmasdi. Tepadagi 10 =
+            // ajratgich ostidagi 2 + eski 8; pastdagisi eski 8 + karta
+            // hoshiyasi (u endi shu yerda). Belgi AYNAN o'sha joyda.
+            padding: EdgeInsets.fromLTRB(padLeft, 10, padRight, 8 + Gap.md),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -303,6 +323,25 @@ class _CardAction extends StatelessWidget {
       ),
     );
   }
+}
+
+/// `_CardAction` ning siyohi: bosilgandagi kulrang doira kattalashgan
+/// quti markaziga emas, ESKI quti (belgi) markaziga chiziladi — shaffof
+/// hoshiya uni siljitmaydi. `InkResponse.getRectCallback` aynan shunday
+/// holatlar uchun (masalan `TableRowInkWell`).
+class _ActionInk extends InkResponse {
+  const _ActionInk({
+    required super.onTap,
+    required super.child,
+    required this.extra,
+  }) : super(radius: 26);
+
+  /// Eski qutiga nisbatan qo'shilgan shaffof hoshiya.
+  final EdgeInsets extra;
+
+  @override
+  RectCallback? getRectCallback(RenderBox referenceBox) =>
+      () => extra.deflateRect(Offset.zero & referenceBox.size);
 }
 
 /// Obuna holati — ikki holat aniq farq qiladi.

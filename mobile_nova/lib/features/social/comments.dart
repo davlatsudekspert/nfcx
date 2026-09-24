@@ -500,9 +500,13 @@ class _CommentTile extends ConsumerWidget {
     final l = L.of(context);
     final name =
         comment.authorName.isEmpty ? comment.code : comment.authorName;
+    final hasActions = onReply != null || onLike != null;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: Gap.md),
+      // Amallar qatori bo'lsa, izohlar orasidagi bo'shliq o'sha
+      // qatorning SHAFFOF bosish maydoniga o'tadi (`_TinyAction`
+      // pastki hoshiyasi). Izoh balandligi o'zgarmaydi.
+      padding: EdgeInsets.only(bottom: hasActions ? 0 : Gap.md),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -539,18 +543,23 @@ class _CommentTile extends ConsumerWidget {
                 Text(comment.text,
                     style: Theme.of(context).textTheme.bodyMedium),
                 // ── Javob va like ──────────────────────────
-                if (onReply != null || onLike != null) ...[
-                  const SizedBox(height: 4),
+                if (hasActions) ...[
                   Row(
                     children: [
                       if (onReply != null)
                         _TinyAction(
                           label: l.commentReply,
+                          // O'ngdagi 12 + yurakchaning chapidagi 8 =
+                          // eski 2 + 16 oraliq + 2.
+                          padRight: 12,
                           onTap: onReply!,
                         ),
                       if (onLike != null) ...[
-                        if (onReply != null) const SizedBox(width: Gap.lg),
                         _TinyAction(
+                          padLeft: onReply != null ? 8 : 2,
+                          // Qatorda oxirgi: o'ngga kengayishi hech
+                          // narsani surmaydi.
+                          minWidth: 44,
                           // Bosilgan bo'lsa to'la yurakcha va aksent
                           // rangida — holat bir qarashda ko'rinadi.
                           icon: comment.liked
@@ -604,12 +613,25 @@ class _CommentTile extends ConsumerWidget {
 /// maydoni va bir xil rangda bo'lishi kerak. Nusxa ko'chirilsa
 /// biri o'zgarib, ikkinchisi ortda qolardi.
 class _TinyAction extends StatelessWidget {
-  const _TinyAction({this.icon, required this.label, this.tone, required this.onTap});
+  const _TinyAction({
+    this.icon,
+    required this.label,
+    this.tone,
+    required this.onTap,
+    this.padLeft = 2,
+    this.padRight = 2,
+    this.minWidth = 0,
+  });
 
   final IconData? icon;
   final String label;
   final Color? tone;
   final VoidCallback onTap;
+
+  /// Yon tomondagi SHAFFOF bosish maydoni — qo'shni oraliq hisobidan.
+  final double padLeft;
+  final double padRight;
+  final double minWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -618,25 +640,31 @@ class _TinyAction extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: Padding(
-        // Barmoq uchun maydon: matnning o'zi juda kichik.
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) Icon(icon, size: 15, color: color),
-            if (icon != null && label.isNotEmpty) const SizedBox(width: 4),
-            if (label.isNotEmpty)
-              Text(
-                label,
-                style: TextStyle(
-                  fontFamily: AppType.sans,
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w700,
-                  color: color,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minWidth: minWidth),
+        child: Padding(
+          // Barmoq uchun maydon: matnning o'zi juda kichik. Ilgari
+          // 19x27 dp edi. Tepadagi 10 = izoh matni ostidagi eski 4 +
+          // 6; pastdagisi eski 6 + izohlar orasidagi 12 (u endi shu
+          // yerda). Yozuv va yurakcha AYNAN o'sha joyda.
+          padding: EdgeInsets.fromLTRB(padLeft, 10, padRight, 6 + Gap.md),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) Icon(icon, size: 15, color: color),
+              if (icon != null && label.isNotEmpty) const SizedBox(width: 4),
+              if (label.isNotEmpty)
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontFamily: AppType.sans,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
