@@ -152,7 +152,8 @@ void _idPlateTests() {
       // Uch joyda uch xil bo'lsa, ular yana bir-biridan
       // uzoqlashadi.
       for (final f in [
-        'lib/features/discover/discover_screen.dart',
+        // Tanlov kartalari premium redizaynda alohida faylda.
+        'lib/features/discover/discover_cards.dart',
         'lib/features/home/widgets/my_ids_strip.dart',
       ]) {
         expect(File(f).readAsStringSync(), contains('IdPlate('), reason: f);
@@ -226,7 +227,7 @@ void _idPlateTests() {
       // Vidjet bor, lekin `tier` berilmasa hammasi neytral
       // bo'lib qolardi — ya'ni ish bekor.
       expect(
-        File('lib/features/discover/discover_screen.dart').readAsStringSync(),
+        File('lib/features/discover/discover_cards.dart').readAsStringSync(),
         contains('tier: e.tier'),
       );
     });

@@ -115,6 +115,28 @@ class BusinessRepository {
   Future<Result<void>> deleteItem(String companyId, String itemId) =>
       _api.delete<void>('/api/companies/$companyId/catalog/$itemId');
 
+  /// KATALOGDAN BUYURTMA — `POST /api/companies/:id/orders`.
+  ///
+  /// Mavjud server oqimi (sayt vitrinasi ham shuni ishlatadi): nom va
+  /// narx serverda KATALOGDAN olinadi, ilova yuborgan narx emas. To'lov
+  /// YO'Q — buyurtma egasining kabinetiga va Telegramiga boradi.
+  /// Egasi buyurtmani yoqmagan bo'lsa server `orders_disabled` qaytaradi.
+  Future<Result<void>> order(
+    String companyId, {
+    String itemId = '',
+    required String name,
+    required String phone,
+    int qty = 1,
+    String note = '',
+  }) =>
+      _api.post<void>('/api/companies/$companyId/orders', {
+        if (itemId.isNotEmpty) 'itemId': itemId,
+        'name': name,
+        'phone': phone,
+        'qty': qty,
+        if (note.isNotEmpty) 'note': note,
+      });
+
   // ---- NFC ID ostidagi katalog -------------------------------------------
   // Restoran menyusi, do'kon mahsulotlari va xizmatlar backend'da
   // NFC ID (record) ostida ham turadi. Bitta universal kirish nuqtasi.

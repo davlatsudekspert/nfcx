@@ -2335,4 +2335,110 @@ class LEn extends L {
 
   @override
   String get commentPremiumTitle => 'Comments are for Premium members';
+
+  @override
+  String get storeSeeAll => 'See all';
+
+  @override
+  String get storeFeatured => 'Featured';
+
+  @override
+  String get storeProducts => 'Products';
+
+  @override
+  String get storeOpenNow => 'Open now';
+
+  @override
+  String get storeClosedNow => 'Closed now';
+
+  @override
+  String storeToday(String open, String close) {
+    return 'Today $open–$close';
+  }
+
+  @override
+  String get storeDayOff => 'Closed today';
+
+  @override
+  String get storePremium => 'Premium';
+
+  @override
+  String get storeDetails => 'Details';
+
+  @override
+  String get storeOrder => 'Order';
+
+  @override
+  String get storeSearchHint => 'Search the catalog';
+
+  @override
+  String get storeCatPromo => 'Deals';
+
+  @override
+  String get storeCatCards => 'NFC cards';
+
+  @override
+  String get storeCatRings => 'NFC rings';
+
+  @override
+  String get storeCatKeychains => 'NFC keychains';
+
+  @override
+  String get storeCatBracelets => 'NFC bracelets';
+
+  @override
+  String get storeCatStickers => 'NFC stickers';
+
+  @override
+  String get storeCatStands => 'NFC stands';
+
+  @override
+  String get storeCatGifts => 'Gifts';
+
+  @override
+  String get storeCatBusiness => 'For business';
+
+  @override
+  String get storeCatOther => 'Other';
+
+  @override
+  String get orderTitle => 'Place an order';
+
+  @override
+  String get orderName => 'Your name';
+
+  @override
+  String get orderPhone => 'Your phone';
+
+  @override
+  String get orderQty => 'Quantity';
+
+  @override
+  String get orderNote => 'Note (optional)';
+
+  @override
+  String get orderSend => 'Send order';
+
+  @override
+  String get orderSent => 'Order sent. The seller will contact you.';
+
+  @override
+  String get orderDisabled =>
+      'This business doesn\'t take in-app orders yet — contact them directly.';
+
+  @override
+  String get orderNoPayment =>
+      'No in-app payment: price and delivery are agreed with the seller.';
+
+  @override
+  String get storeView => 'View';
+
+  @override
+  String get storeNew => 'New';
+
+  @override
+  String get storeOpenShort => 'Open';
+
+  @override
+  String get storeClosedShort => 'Closed';
 }

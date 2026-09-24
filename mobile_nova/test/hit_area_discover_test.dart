@@ -365,8 +365,10 @@ void main() {
       expect(tester.getRect(_iconFinder(recent)),
           const Rect.fromLTRB(33, 202.5, 46, 215.5));
 
+      // Ro'yxat joyida (kartaning boshi o'zgarmagan); ism premium
+      // kartada (2026-09-24) surat o'ng tomonida turadi.
       expect(tester.getTopLeft(find.text(testIds.first.name).first),
-          const Offset(34, 253));
+          offsetMoreOrLessEquals(const Offset(148, 250), epsilon: 1));
     });
 
     testWidgets('1.3: tab va oxirgi qidiruv yorlig‘i kesilmaydi',

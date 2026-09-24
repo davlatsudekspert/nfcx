@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../app/providers.dart';
 import '../../data/models/models.dart';
@@ -10,15 +9,12 @@ import '../../data/repositories/discover_repository.dart';
 import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
-import '../../design/widgets/id_plate.dart';
 import '../../design/widgets/nova_scaffold.dart';
 import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
-import '../../routing/routes.dart';
 import 'catalog_view.dart';
-import '../home/widgets/avatar.dart';
-import '../home/widgets/identity_card.dart';
+import 'discover_cards.dart';
 
 /// TANLOV BO'LIMI — FAQAT ODAMLAR VA BIZNESLAR.
 ///
@@ -90,6 +86,9 @@ List<Business> _byBizViews(List<Business> v) {
   });
   return out;
 }
+
+/// Bizneslar bo'limida tanlangan soha (`all` — hammasi).
+final discoverBizCategoryProvider = StateProvider<String>((ref) => 'all');
 
 final discoverResultsProvider = FutureProvider.autoDispose((ref) async {
   final q = ref.watch(searchQueryProvider);
@@ -282,19 +281,48 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
                 asAppError(e),
                 onRetry: () => ref.invalidate(discoverResultsProvider),
               ),
-              data: (items) => items.isEmpty
-                  ? StatePanel(
-                      icon: Icons.search_off_rounded,
-                      title: query.isEmpty ? l.stateEmpty : l.stateNoResults,
-                      message: query.isEmpty ? l.stateEmptyHint : l.stateNoResultsHint,
-                    )
-                  : ListView.separated(
-                      padding: EdgeInsets.fromLTRB(Gap.screenX, Gap.md,
-                          Gap.screenX, navSafeBottom(context)),
-                      itemCount: items.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: Gap.md),
-                      itemBuilder: (context, i) => _ResultTile(item: items[i]),
+              data: (all) {
+                if (all.isEmpty) {
+                  return StatePanel(
+                    icon: Icons.search_off_rounded,
+                    title: query.isEmpty ? l.stateEmpty : l.stateNoResults,
+                    message:
+                        query.isEmpty ? l.stateEmptyHint : l.stateNoResultsHint,
+                  );
+                }
+                // BIZNES TOIFALARI — rasmli kataklar (egasi, 2026-09-24).
+                final bizCat = ref.watch(discoverBizCategoryProvider);
+                final businesses = tab == DiscoverTab.businesses
+                    ? all.whereType<Business>().toList()
+                    : const <Business>[];
+                final items = tab == DiscoverTab.businesses && bizCat != 'all'
+                    ? businesses
+                        .where((b) =>
+                            (b.category.isEmpty ? 'other' : b.category) ==
+                            bizCat)
+                        .toList()
+                    : all;
+                final list = ListView.separated(
+                  padding: EdgeInsets.fromLTRB(Gap.screenX, Gap.md,
+                      Gap.screenX, navSafeBottom(context)),
+                  itemCount: items.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: Gap.md),
+                  itemBuilder: (context, i) => _ResultTile(item: items[i]),
+                );
+                if (businesses.isEmpty) return list;
+                return Column(
+                  children: [
+                    DiscoverBizCategories(
+                      businesses: businesses,
+                      selected: bizCat,
+                      onSelect: (c) => ref
+                          .read(discoverBizCategoryProvider.notifier)
+                          .state = c,
                     ),
+                    Expanded(child: list),
+                  ],
+                );
+              },
             ),
           ),
           ],
@@ -352,251 +380,9 @@ class _ResultTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l = L.of(context);
-
-    if (item is NfcId) {
-      final e = item as NfcId;
-      return _ProfileCard(
-        title: e.name.isEmpty ? e.code : e.name,
-        // Kasb yo'q bo'lsa — bo'sh (ilgari tab nomi "Odamlar" yozilardi).
-        subtitle: e.role,
-        badge: e.code,
-        tier: e.tier,
-        imageUrl: e.avatarUrl,
-        initials: _initials(e.name, e.code),
-        rounded: false,
-        // PROFILDAGI BILAN AYNAN BIR XIL uchta son va tartib:
-        // Postlar · Obunachilar · Obunalar (egasi 2026-09: kartadagi
-        // sonlar profilga kirganda "bir-biriga tushmayapti" edi —
-        // bu yerda Ko'rishlar turardi va tartib boshqa edi).
-        stats: [
-          (formatCount(e.posts), l.profilePosts),
-          (formatCount(e.followers), l.profileFollowers),
-          (formatCount(e.following), l.profileFollowing),
-        ],
-        onTap: () => context.push(Routes.user(e.code)),
-      );
-    }
-
-    // Faqat ODAM yoki BIZNES keladi — "Postlar" yorlig'i
-    // olib tashlangandan keyin bu ro'yxatga post tushmaydi.
-    {
-      final e = item as Business;
-      final where =
-          [e.city, e.subcategory].where((s) => s.isNotEmpty).join(' · ');
-      return _ProfileCard(
-        title: e.displayName.isEmpty ? e.companyId : e.displayName,
-        subtitle: where,
-        badge: e.companyId,
-        imageUrl: e.logoUrl,
-        initials: _initials(e.displayName, e.companyId),
-        // Biznes — KVADRAT logotip, shaxsiy — dumaloq avatar.
-        // Ikkalasi bir qarashda ajralib tursin.
-        rounded: true,
-        accentBusiness: true,
-        stats: [
-          (formatCount(e.views), l.nfcViews),
-          (formatCount(e.followers), l.profileFollowers),
-        ],
-        onTap: () => context.push(Routes.storefront(e.companyId)),
-      );
-    }
-  }
-
-  /// Bosh harflar — ilovaning qolgan joylari bilan BIR XIL qoida:
-  /// ikki so'z bo'lsa har birining birinchi harfi (`Aziz Karimov`
-  /// -> `AK`, ilgari `AZ` chiqardi), bitta so'z bo'lsa ikki harf.
-  String _initials(String name, String fallback) {
-    final s = name.trim().isEmpty ? fallback.trim() : name.trim();
-    final parts = s.split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[1][0]).toUpperCase();
-    }
-    return (s.length >= 2 ? s.substring(0, 2) : s).toUpperCase();
-  }
-}
-
-/// TANLOV BO'LIMIDAGI PROFIL KARTASI.
-///
-/// Ilgari bu yerda oddiy ro'yxat qatori turardi: kichik avatar,
-/// ism, kod va o'ngda bitta raqam. U "texnik ro'yxat" bo'lib
-/// ko'rinardi va profilga kirishga undamasdi.
-///
-/// Endi "NFC Mobile" demo kartalari bilan BIR XIL tilda: surat
-/// o'ngda kvadrat ramkada, chapda ism, kichik tavsif va kod
-/// kapsulasi, pastda uchta statistika qutisi. Butun yuza
-/// bosiladi.
-///
-/// Rang qat'iy yozilmagan — hammasi `context.tokens` dan, ya'ni
-/// mavzu almashganda karta ham o'zgaradi.
-class _ProfileCard extends StatelessWidget {
-  const _ProfileCard({
-    required this.title,
-    required this.subtitle,
-    required this.badge,
-    this.tier = '',
-    required this.imageUrl,
-    required this.initials,
-    required this.stats,
-    required this.onTap,
-    this.rounded = false,
-    this.accentBusiness = false,
-  });
-
-  final String title;
-  final String subtitle;
-  final String badge;
-
-  /// NFC ID darajasi — plastinka rangini shu belgilaydi.
-  /// Kompaniyada daraja tushunchasi yo'q, shuning uchun bo'sh.
-  final String tier;
-  final String imageUrl;
-  final String initials;
-
-  /// `true` — kvadrat (biznes logotipi), `false` — dumaloq avatar.
-  final bool rounded;
-  final bool accentBusiness;
-  final List<(String, String)> stats;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-
-    // KARTA FON BILAN QO'SHILIB KETMASIN.
-    //
-    // Qora mavzuda `surfaceSolid` va fon bir-biriga juda yaqin
-    // edi, chegara esa neytral — natijada odam kartasi
-    // "ko'rinmas quti" bo'lib qolardi. Endi chetida juda ingichka
-    // shampan chiziq bor: quti emas, lekin chegara sezilib
-    // turadi.
-    // PREMIUM (egasi, 2026-09-24: "hamma joy premium bo'lsin"):
-    // ingichka neytral hoshiya + yumshoq soya, surat ramkasi champagne.
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: t.border1),
-      ),
-      child: FloatingSurface(
-      solid: true,
-      border: false,
-      padding: const EdgeInsets.all(14),
-      borderRadius: BorderRadius.circular(24),
-      onTap: onTap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    if (subtitle.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                    const SizedBox(height: Gap.sm),
-                    // KOD — MAHSULOT, YORLIQ EMAS.
-                    //
-                    // Ilgari bu yerda kichkina kulrang halqa
-                    // ichida 11 dp matn turardi. Odam uni
-                    // texnik yorliq deb o'qirdi.
-                    //
-                    // Tanlov — ro'yxat emas, VITRINA: odam shu
-                    // yerda boshqalarning ID'sini ko'radi va
-                    // "menikiniyam shunday bo'lsin" deb
-                    // o'ylaydi. Shuning uchun kod bu yerda
-                    // eng ko'zga tashlanadigan element bo'lishi
-                    // kerak.
-                    IdPlate(code: badge, tier: tier),
-                  ],
-                ),
-              ),
-              const SizedBox(width: Gap.md),
-              // SURAT — kartaning eng jonli qismi.
-              Container(
-                width: 78,
-                height: 78,
-                decoration: BoxDecoration(
-                  borderRadius:
-                      BorderRadius.circular(rounded ? 20 : 999),
-                  border: Border.all(
-                      color: t.brand.withValues(alpha: .7), width: 1.4),
-                  boxShadow: t.shadowTiny,
-                ),
-                padding: const EdgeInsets.all(3),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(rounded ? 17 : 999),
-                  child: Avatar(
-                    url: imageUrl,
-                    initials: initials,
-                    size: 72,
-                    ring: false,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: Gap.md),
-          // STATISTIKA — PROFILDAGI KABI: qutilar emas, ustida bitta
-          // ingichka chiziq, markazda serif raqam va kichik yorliq.
-          Container(
-            padding: const EdgeInsets.only(top: 10),
-            decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: t.border1)),
-            ),
-            child: Row(
-              children: [
-                for (var i = 0; i < stats.length; i++)
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Text(
-                          stats[i].$1,
-                          maxLines: 1,
-                          style: TextStyle(
-                            fontFamily: AppType.display,
-                            fontFamilyFallback: AppType.displayFallback,
-                            fontSize: 17,
-                            height: 1.05,
-                            color: t.text1,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          stats[i].$2,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontFamily: AppType.sans,
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: .2,
-                            color: t.text2,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-      ),
-    );
+    final i = item;
+    // Faqat ODAM yoki BIZNES keladi.
+    if (i is NfcId) return DiscoverPersonCard(id: i);
+    return DiscoverBusinessCard(business: i as Business);
   }
 }

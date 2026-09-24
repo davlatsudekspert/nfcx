@@ -84,6 +84,19 @@ class IdPlate extends StatelessWidget {
   static const gold = Color(0xFFD4AF37);
   static const goldLight = Color(0xFFF6DE8D);
 
+  /// Oltin ustidagi siyoh (Premium belgisi matni).
+  static const goldInk = Color(0xFF2A2012);
+
+  /// MUQOVASIZ BIZNES VITRINASI — siyoh material + champagne nur.
+  /// Mavzuga bog'liq emas: bu brend materiali (qora karta kabi).
+  static const inkCover = <Color>[
+    Color(0xFF15130F),
+    Color(0xFF2A241A),
+    Color(0xFF0E0D0B),
+  ];
+  static const inkCoverGlow = Color(0x55D8B878);
+  static const inkCoverMark = Color(0x33E9D2A0);
+
   /// ISTORIYA VA AVATAR HALQASI — OLTIN + ZUMRAD (egasining tanlovi,
   /// 2026-09, "3-variant"; premium redizaynda ham SAQLANDI — egasi,
   /// 2026-09-24: "shu kombinatsiya yoqdi"). Instagramdagidek butun,

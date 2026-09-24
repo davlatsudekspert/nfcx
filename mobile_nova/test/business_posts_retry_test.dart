@@ -31,6 +31,11 @@ class _BizRepo extends BusinessRepository {
   Future<Result<List<Business>>> mine() async =>
       const Ok([Business(companyId: 'ELITE', displayName: 'Elite Qurilish')]);
 
+  // Premium vitrina katalogni ham so'raydi — bu sinovda katalog bo'sh.
+  @override
+  Future<Result<List<CatalogItem>>> catalog(String companyId) async =>
+      const Ok([]);
+
   @override
   Future<Result<List<Post>>> posts(String companyId) async {
     postCalls++;

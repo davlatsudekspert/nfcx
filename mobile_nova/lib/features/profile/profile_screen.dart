@@ -27,7 +27,8 @@ import '../home/widgets/mode_switch.dart';
 import '../home/widgets/my_ids_strip.dart';
 import '../../app/profile_context.dart';
 import '../business/business_providers.dart';
-import '../business/business_screens.dart' show CatalogTile, showProductSheet;
+import '../business/store_catalog.dart';
+import '../../core/utils/external_link.dart';
 import '../../data/repositories/business_repository.dart';
 import '../nfc/qr_sheet.dart';
 import 'profile_switcher.dart';
@@ -132,6 +133,10 @@ class ProfileScreen extends ConsumerWidget {
     /// `companyId`. `null` — o'z profilim (tab).
     final target = cid ?? code;
 
+    /// BIZNES PROFILI — premium vitrina (shaxsiy profildan ALOHIDA
+    /// tuzilma): muqova, logotip, Business ID, ish vaqti, katalog.
+    final biz = (active != null && active.isBusiness) ? active.business : null;
+
     // Biznes rejimi tanlangan, lekin hisobda kompaniya yo'q.
     final noBusiness =
         target == null && ref.watch(businessMissingProvider);
@@ -233,10 +238,13 @@ class ProfileScreen extends ConsumerWidget {
               ? const SliverToBoxAdapter()
               : _PostsGrid(code: active.code, company: active.isBusiness),
           children: [
-            _Hero(
-                user: user,
-                profile: active,
-                mode: company ? AppMode.business : mode),
+            if (biz != null)
+              _StorefrontHeader(business: biz)
+            else
+              _Hero(
+                  user: user,
+                  profile: active,
+                  mode: company ? AppMode.business : mode),
             const SizedBox(height: Gap.xl),
             if (isMe && target == null)
               Padding(
@@ -255,7 +263,9 @@ class ProfileScreen extends ConsumerWidget {
             const SizedBox(height: Gap.lg),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-              child: _StatCapsules(profile: active),
+              child: biz != null
+                  ? _StoreStats(business: biz)
+                  : _StatCapsules(profile: active),
             ),
             const SizedBox(height: Gap.lg),
             Padding(
@@ -302,33 +312,39 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(width: Gap.md),
-                  // QR — faqat NFC yozuvida (kompaniyaning QR kodi yo'q).
-                  if (!company) ...[
-                    NovaIconButton(
-                      icon: Icons.qr_code_rounded,
-                      tooltip: l.nfcShowQr,
-                      size: 52,
-                      onPressed: id == null
-                          ? null
-                          : () => showQrSheet(context, id,
-                              urlOverride: demo?.shareUrl),
-                    ),
-                    const SizedBox(width: Gap.sm),
-                  ],
+                  // QR — NFC yozuvida uning manzili, biznesda
+                  // `nfcstore.uz/c/<ID>` (vitrina manzili).
+                  NovaIconButton(
+                    key: const ValueKey('profile-qr'),
+                    icon: Icons.qr_code_rounded,
+                    tooltip: l.nfcShowQr,
+                    size: 52,
+                    onPressed: biz != null
+                        ? () => showQrSheet(
+                            context,
+                            NfcId(code: biz.companyId, name: biz.displayName),
+                            urlOverride: demo?.shareUrl ??
+                                '$kApiBase/c/${Uri.encodeComponent(biz.companyId)}')
+                        : id == null
+                            ? null
+                            : () => showQrSheet(context, id,
+                                urlOverride: demo?.shareUrl),
+                  ),
+                  const SizedBox(width: Gap.sm),
                   NovaIconButton(
                     icon: Icons.ios_share_rounded,
                     tooltip: l.actionShare,
                     size: 52,
-                    onPressed: id == null && !company
+                    onPressed: id == null && biz == null
                         ? null
                         : () async {
                             // Tizim oynasi ochilmasa manzil buferga
                             // ko'chiriladi — odam boshi berk
                             // ko'chada qolmasin.
                             final String url;
-                            if (company) {
+                            if (biz != null) {
                               url = demo?.shareUrl ??
-                                  '$kApiBase/c/${Uri.encodeComponent(cid)}';
+                                  '$kApiBase/c/${Uri.encodeComponent(biz.companyId)}';
                             } else {
                               if (id == null) return;
                               url = demo?.shareUrl ?? id.publicUrl(kApiBase);
@@ -353,10 +369,20 @@ class ProfileScreen extends ConsumerWidget {
                 child: ContactButtons(actions: active.contact.actions()),
               ),
             ],
-            // KATALOG — biznes profilida (ilgari alohida do'kon ekranida).
-            if (company && active != null) ...[
-              SectionHeader(title: l.bizCatalog),
-              _CompanyCatalog(companyId: cid, contacts: active.contact.actions()),
+            // BUYURTMA — egasi yoqqan bo'lsa (mavjud server oqimi).
+            if (biz != null && biz.ordersEnabled && !isMe) ...[
+              const SizedBox(height: Gap.md),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
+                child: NovaButton(
+                  key: const ValueKey('store-order'),
+                  label: l.storeOrder,
+                  icon: Icons.shopping_bag_outlined,
+                  tone: ButtonTone.quiet,
+                  onPressed: () =>
+                      showOrderSheet(context, companyId: biz.companyId),
+                ),
+              ),
             ],
             if (noBusiness) ...[
               const SizedBox(height: Gap.xl),
@@ -390,13 +416,16 @@ class ProfileScreen extends ConsumerWidget {
               ),
               const MyIdsStrip(),
             ],
-            if (mode == AppMode.business && target == null && !noBusiness) ...[
+            if (biz != null && isMe && !noBusiness) ...[
               SectionHeader(title: l.bizTitle),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
                 child: _BusinessTiles(),
               ),
             ],
+            // KATALOG — rasmli toifalar + 4 ta tovar + "Barchasini
+            // ko'rish" (to'liq ro'yxat alohida sahifada).
+            if (biz != null) StoreCatalogPreview(business: biz),
             // Sarlavha o'rniga "Postlar | Reels" tablari — ular
             // `_PostsGrid` ichida (shaxsiy profilda). Kompaniyada
             // oddiy sarlavha qoladi.
@@ -445,49 +474,6 @@ class ProfileScreen extends ConsumerWidget {
               ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// Biznes katalogi — mahsulot plitkalari; bosilsa tafsilot varag'i.
-class _CompanyCatalog extends ConsumerWidget {
-  const _CompanyCatalog({required this.companyId, required this.contacts});
-
-  final String companyId;
-  final List<ContactAction> contacts;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l = L.of(context);
-    final catalog = ref.watch(businessCatalogProvider(companyId));
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-      child: catalog.when(
-        loading: () => const SkeletonList(count: 3),
-        error: (e, __) => StatePanel.fromError(context, asAppError(e),
-            onRetry: () => ref.invalidate(businessCatalogProvider(companyId))),
-        data: (items) => items.isEmpty
-            ? FloatingSurface(
-                solid: true,
-                child: Text(
-                  l.bizCatalogEmpty,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              )
-            : Column(
-                children: [
-                  for (final item in items)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: Gap.md),
-                      child: CatalogTile(
-                        item: item,
-                        onTap: () =>
-                            showProductSheet(context, item, contacts: contacts),
-                      ),
-                    ),
-                ],
-              ),
       ),
     );
   }
@@ -1342,49 +1328,63 @@ class _BusinessTiles extends StatelessWidget {
     final l = L.of(context);
     final t = context.tokens;
     final tiles = [
-      (Icons.dashboard_rounded, l.bizDashboard, Routes.businessDashboard),
-      (Icons.inventory_2_rounded, l.bizCatalog, Routes.businessCatalog),
+      (Icons.dashboard_outlined, l.bizDashboard, Routes.businessDashboard),
+      (Icons.inventory_2_outlined, l.bizCatalog, Routes.businessCatalog),
       (Icons.insights_rounded, l.bizAnalytics, Routes.businessAnalytics),
-      (Icons.storefront_rounded, l.bizStorefront, Routes.business),
+      (Icons.storefront_outlined, l.bizStorefront, Routes.business),
     ];
-    return Wrap(
-      spacing: Gap.md,
-      runSpacing: Gap.md,
-      children: [
-        for (final e in tiles)
-          PressableScale(
-            onTap: () => context.push(e.$3),
-            child: Container(
-              width:
-                  (MediaQuery.sizeOf(context).width -
-                      Gap.screenX * 2 -
-                      Gap.md) /
-                  2,
-              padding: const EdgeInsets.all(Gap.lg),
-              decoration: BoxDecoration(
-                color: t.surface,
-                borderRadius: R.gentle,
-                border: Border.all(color: t.border2),
-                boxShadow: t.shadowTiny,
-              ),
-              child: Row(
-                children: [
-                  Icon(e.$1, size: 19, color: t.accentBDark),
-                  const SizedBox(width: Gap.sm),
-                  Expanded(
-                    child: Text(
-                      e.$2,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleSmall,
+    // PREMIUM KARTALAR (egasi, 2026-09-24): Asosiy sahifadagi tezkor
+    // amallar bilan BIR TIL — siyoh doira ichida sirt rangidagi belgi,
+    // champagne hoshiya, toza oq karta, yengil soya.
+    return LayoutBuilder(builder: (context, c) {
+      final w = (c.maxWidth - Gap.md) / 2;
+      return Wrap(
+        spacing: Gap.md,
+        runSpacing: Gap.md,
+        children: [
+          for (final e in tiles)
+            PressableScale(
+              onTap: () => context.push(e.$3),
+              child: Container(
+                width: w,
+                padding: const EdgeInsets.all(Gap.md),
+                decoration: BoxDecoration(
+                  color: t.surfaceSolid,
+                  borderRadius: R.gentle,
+                  border: Border.all(color: t.border1),
+                  boxShadow: t.shadowSoft,
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: t.text1,
+                        border: Border.all(
+                            color: t.brand.withValues(alpha: .55)),
+                      ),
+                      child: Icon(e.$1, size: 19, color: t.surfaceSolid),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: Gap.sm),
+                    Expanded(
+                      child: Text(
+                        e.$2,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                    ),
+                    Icon(Icons.chevron_right_rounded,
+                        size: 18, color: t.text3),
+                  ],
+                ),
               ),
             ),
-          ),
-      ],
-    );
+        ],
+      );
+    });
   }
 }
 
@@ -1723,4 +1723,384 @@ String? _nameInitials(String name) {
     return (w.length >= 2 ? w.substring(0, 2) : w).toUpperCase();
   }
   return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
+// ============================================================ BIZNES VITRINASI
+
+/// BIZNES PROFILI BOSHI — premium kompaniya vitrinasi (egasi,
+/// 2026-09-24: "business profil oddiy social profil emas, premium
+/// kompaniya vitrinasidek ko'rinsin").
+///
+/// Shaxsiy profildan farqli: keng muqova (banner), uning ustiga
+/// tushgan logotip, Business ID + Premium belgisi, soha va shahar,
+/// tavsif, ish vaqti ("Hozir ochiq · Bugun 09:00–18:00") va manzil.
+/// Muqova bo'lmasa — siyoh fon va champagne nur (demo rasm qo'yilmaydi).
+class _StorefrontHeader extends StatelessWidget {
+  const _StorefrontHeader({required this.business});
+  final Business business;
+
+  static const _coverH = 176.0;
+  static const _logo = 104.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context);
+    final t = context.tokens;
+    final b = business;
+    final name = b.displayName.isEmpty ? b.companyId : b.displayName;
+    final sub = [
+      if (b.subcategory.isNotEmpty) b.subcategory,
+      if (b.city.isNotEmpty) b.city,
+    ].join(' · ');
+    // PREMIUM BELGISI — faqat HAQIQIY asos bo'lsa: egasining Premium
+    // tarifi yoki qimmat Business ID (gold/premium/exclusive). Bepul
+    // ID'ga soxta "Premium" yozilmaydi.
+    // Qimmat daraja ID kapsulasining O'ZIDA (metall + yozuv) — alohida
+    // belgi faqat egasining Premium tarifi uchun (takror bo'lmasin).
+    final premium = b.plan.premium;
+    final badge = l.storePremium;
+
+    return Column(
+      key: const ValueKey('store-header'),
+      children: [
+        SizedBox(
+          height: _coverH + _logo / 2,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // MUQOVA — to'liq kenglik, pastki burchaklari yumaloq.
+              Positioned(
+                left: Gap.screenX,
+                right: Gap.screenX,
+                top: 0,
+                height: _coverH,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      if (b.coverUrl.isNotEmpty)
+                        mediaImage(context, b.coverUrl, fit: BoxFit.cover)
+                      else
+                        const StoreInkCover(),
+                      // Pastda yengil soya — logotip halqasi ajralsin.
+                      const DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Color(0x00000000), Color(0x59000000)],
+                            stops: [.45, 1],
+                          ),
+                        ),
+                      ),
+                      // Champagne ichki hoshiya — premium ramka.
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(28),
+                          border: Border.all(
+                              color: t.brand.withValues(alpha: .35)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // LOGOTIP — muqova ustiga tushadi; istoriya bo'lsa
+              // yashil + oltin halqa (bosh sahifadagi bilan bir xil).
+              Positioned(
+                left: 0,
+                right: 0,
+                top: _coverH - _logo / 2,
+                child: Center(
+                  child: _AvatarWithStory(
+                    code: b.companyId,
+                    isBusiness: true,
+                    child: Container(
+                      width: _logo,
+                      height: _logo,
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            IdPlate.goldLight,
+                            IdPlate.gold,
+                            IdPlate.goldDeep,
+                          ],
+                        ),
+                        boxShadow: t.shadowFloat,
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.all(2.5),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: t.surfaceSolid,
+                        ),
+                        child: Avatar(
+                          url: b.logoUrl,
+                          initials: _nameInitials(name) ?? '?',
+                          size: _logo - 11,
+                          ring: false,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: Gap.md),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
+          child: Column(
+            children: [
+              Text(
+                name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: AppType.displayStyle(
+                    color: t.text1, size: 27, height: 1.12, letterSpacing: -.5),
+              ),
+              if (sub.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(sub,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodySmall),
+              ],
+              const SizedBox(height: Gap.md),
+              Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: Gap.sm,
+                runSpacing: Gap.sm,
+                children: [
+                  _IdPill(
+                      code: b.companyId, active: b.isPublished, tier: b.tier),
+                  if (premium)
+                    Container(
+                      key: const ValueKey('store-premium'),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 7),
+                      decoration: BoxDecoration(
+                        borderRadius: R.pill,
+                        gradient: const LinearGradient(colors: [
+                          IdPlate.goldLight,
+                          IdPlate.gold,
+                          IdPlate.goldDeep,
+                        ]),
+                        boxShadow: t.shadowTiny,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.workspace_premium_rounded,
+                              size: 14, color: IdPlate.goldInk),
+                          const SizedBox(width: 4),
+                          Text(
+                            badge.toUpperCase(),
+                            style: const TextStyle(
+                              fontFamily: AppType.sans,
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.2,
+                              color: IdPlate.goldInk,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+              if (b.description.trim().isNotEmpty) ...[
+                const SizedBox(height: Gap.md),
+                Text(
+                  b.description.trim(),
+                  maxLines: 4,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: t.text2, height: 1.5),
+                ),
+              ],
+              if (b.openNow != null || b.address.isNotEmpty || b.city.isNotEmpty) ...[
+                const SizedBox(height: Gap.md),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: Gap.sm,
+                  runSpacing: Gap.sm,
+                  children: [
+                    if (b.openNow != null)
+                      _InfoChip(
+                        key: const ValueKey('store-hours'),
+                        dot: b.openNow! ? t.success : t.error,
+                        text: [
+                          b.openNow! ? l.storeOpenNow : l.storeClosedNow,
+                          if (b.todayOpen.isNotEmpty && b.todayClose.isNotEmpty)
+                            l.storeToday(b.todayOpen, b.todayClose)
+                          else
+                            l.storeDayOff,
+                        ].join(' · '),
+                      ),
+                    if (b.address.isNotEmpty || b.city.isNotEmpty)
+                      _InfoChip(
+                        key: const ValueKey('store-address'),
+                        icon: Icons.place_outlined,
+                        text: [b.city, b.address]
+                            .where((e) => e.isNotEmpty)
+                            .join(', '),
+                        onTap: () => openLink(
+                            'https://www.google.com/maps/search/?api=1&query='
+                            '${Uri.encodeQueryComponent([b.city, b.address].where((e) => e.isNotEmpty).join(', '))}'),
+                      ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Kichik ma'lumot kapsulasi (ish vaqti, manzil).
+class _InfoChip extends StatelessWidget {
+  const _InfoChip({super.key, required this.text, this.icon, this.dot, this.onTap});
+  final String text;
+  final IconData? icon;
+  final Color? dot;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final chip = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: t.surfaceSolid,
+        borderRadius: R.pill,
+        border: Border.all(color: t.border1),
+        boxShadow: t.shadowTiny,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (dot != null)
+            Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+            )
+          else if (icon != null)
+            Icon(icon, size: 15, color: t.text1),
+          const SizedBox(width: 6),
+          ConstrainedBox(
+            constraints: BoxConstraints(
+                maxWidth: MediaQuery.sizeOf(context).width - Gap.screenX * 2 - 60),
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: AppType.sans,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: t.text1,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    return onTap == null ? chip : PressableScale(onTap: onTap, child: chip);
+  }
+}
+
+/// Biznes statistikasi — Mahsulotlar · Obunachilar · Ko'rishlar · Postlar.
+class _StoreStats extends ConsumerWidget {
+  const _StoreStats({required this.business});
+  final Business business;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = L.of(context);
+    final t = context.tokens;
+    final code = business.companyId;
+    final items =
+        ref.watch(businessCatalogProvider(code)).valueOrNull?.length;
+    final posts = ref.watch(companyPostsProvider(code)).valueOrNull?.length;
+    final followers = ref.watch(followStatsProvider(code)).valueOrNull?.followers ??
+        business.followers;
+    String n(int? v) => v == null ? '—' : formatCount(v);
+
+    final cells = <(String, String, VoidCallback?)>[
+      (n(items), l.storeProducts, () => context.push(Routes.storeCatalog(code))),
+      (n(followers), l.profileFollowers,
+          () => context.push(Routes.followers(code))),
+      (n(business.views), l.nfcViews, null),
+      (n(posts), l.profilePosts, null),
+    ];
+    return Column(
+      key: const ValueKey('store-stats'),
+      children: [
+        _Hairline(color: t.border2),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: Gap.sm),
+          child: Row(
+            children: [
+              for (final c in cells)
+                Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: c.$3,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: 44),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            c.$1,
+                            maxLines: 1,
+                            style: TextStyle(
+                              fontFamily: AppType.display,
+                              fontFamilyFallback: AppType.displayFallback,
+                              fontSize: 19,
+                              height: 1.05,
+                              color: t.text1,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            c.$2,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontFamily: AppType.sans,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: .2,
+                              color: t.text2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        _Hairline(color: t.border2),
+      ],
+    );
+  }
 }

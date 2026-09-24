@@ -13,6 +13,8 @@ import 'package:nfcstore_nova/core/network/api_client.dart';
 import 'package:nfcstore_nova/core/utils/result.dart';
 import 'package:nfcstore_nova/data/models/models.dart';
 import 'package:nfcstore_nova/data/repositories/business_repository.dart';
+import 'package:nfcstore_nova/data/repositories/discover_repository.dart';
+import 'package:nfcstore_nova/features/discover/discover_screen.dart';
 import 'package:nfcstore_nova/data/repositories/social_repository.dart';
 import 'package:nfcstore_nova/features/auth/session.dart';
 import 'package:nfcstore_nova/routing/router.dart';
@@ -27,44 +29,116 @@ import '../helpers.dart';
 class _Biz extends BusinessRepository {
   _Biz() : super(ApiClient());
 
+  static const biz = Business(
+    companyId: 'NFCSTOREUZ',
+    displayName: 'NFCSTORE',
+    subcategory: 'Digital Identity & MarTech',
+    city: 'Toshkent',
+    address: 'Amir Temur ko‘chasi, 12',
+    status: 'published',
+    tier: 'gold',
+    logoUrl: 'assets/demo/m_card_metal.jpg',
+    description: 'NFCSTORE.UZ — shaxsiy va biznes raqamli profillar, noyob '
+        'NFC ID va zamonaviy NFC mahsulotlari bitta platformada.',
+    followers: 128,
+    views: 5400,
+    openNow: true,
+    todayOpen: '09:00',
+    todayClose: '20:00',
+    ordersEnabled: true,
+    contact: ContactInfo(
+      phone: '+998901234567',
+      telegram: 'nfcstoreuz',
+      whatsapp: '+998901234567',
+      instagram: 'nfcstore.uz',
+      facebook: 'nfcstoreuz',
+      address: 'Toshkent',
+    ),
+  );
+
+  static final items = [
+    for (final (i, n, img, p, sp) in [
+      (1, 'NFC ID Karta', 'm_cards.jpg', 220000, 200000),
+      (2, 'NFC Uzuk', 'm_product_duo.jpg', 550000, 500000),
+      (3, 'NFC Brelok', 'm_gift_set.jpg', 110000, 100000),
+      (4, 'NFC Braslet', 'm_card_metal.jpg', 750000, 710000),
+      (5, 'NFC Sticker', 'm_stickers.jpg', 75000, 70000),
+      (6, 'NFC Stend', 'm_stand.jpg', 150000, 130000),
+      (7, 'Korporativ NFC sovg‘a', 'm_hero.jpg', 750000, 710000),
+      (8, 'NFC ID Sovg‘a Konverti', 'm_gift_set.jpg', 330000, 300000),
+    ])
+      CatalogItem(
+        id: i,
+        ref: 'item-$i',
+        name: n,
+        description: 'Raqamli profilingizni bir teginishda ulashing.',
+        imageUrl: 'assets/demo/$img',
+        price: p,
+        salePrice: sp,
+      ),
+  ];
+
   @override
   Future<Result<Business>> byId(String companyId) async =>
-      Ok(Business.fromJson({
-        'companyId': companyId,
-        'displayName': 'NFCSTORE',
-        'category': 'Digital Identity & MarTech',
-        'city': 'Toshkent',
-        'status': 'published',
-        'description': 'NFCSTORE.UZ — shaxsiy va biznes raqamli profillar, '
-            'noyob NFC ID va zamonaviy NFC mahsulotlari bitta platformada.',
-        'phone': '+998901234567',
-        'telegram': 'nfcstoreuz',
-        'whatsapp': '+998901234567',
-        'address': 'Toshkent',
-        'followers': 12,
-      }));
+      Ok(companyId == 'NFCSTOREUZ'
+          ? biz
+          : Business(
+              companyId: companyId,
+              displayName: companyId == 'CAFEUZ' ? 'Bellissimo' : 'Grand Auto',
+              subcategory:
+                  companyId == 'CAFEUZ' ? 'Kafe va restoran' : 'Avtomobil savdosi',
+              city: 'Andijon',
+              address: 'Bobur shoh ko‘chasi 12',
+              coverUrl: companyId == 'CAFEUZ' ? 'assets/demo/z_post_cafe.jpg' : '',
+              openNow: companyId == 'CAFEUZ',
+              todayOpen: '09:00',
+              todayClose: '23:00',
+              followers: 42,
+            ));
 
   @override
   Future<Result<List<CatalogItem>>> catalog(String companyId) async =>
-      Ok([
-        for (final (n, p) in [
-          ('NFC ID Karta', 200000),
-          ('NFC Stend', 130000),
-          ('NFC Sticker', 70000),
-        ])
-          CatalogItem.fromJson({
-            'id': n.hashCode,
-            'name': n,
-            'desc': 'Raqamli profilingizni bir teginishda ulashing.',
-            'price': p,
-          }),
-      ]);
+      Ok(companyId == 'NFCSTOREUZ' ? items : const <CatalogItem>[]);
 
   @override
   Future<Result<List<Post>>> posts(String companyId) async => const Ok([]);
 
   @override
   Future<Result<List<Business>>> mine() async => const Ok([]);
+}
+
+class _Disc extends DiscoverRepository {
+  _Disc() : super(ApiClient());
+
+  static const people = [
+    NfcId(code: 'VIP001', name: 'Muhammad', role: 'Davlat Sud Ekspert',
+        avatarUrl: 'assets/demo/z_portrait.jpg', tier: 'exclusive',
+        posts: 9, followers: 5, following: 12),
+    NfcId(code: 'PPP777', name: 'Mashrabboy',
+        avatarUrl: 'assets/demo/z_post_rooftop.jpg', tier: 'premium',
+        posts: 0, followers: 5, following: 4),
+    NfcId(code: 'ONE111', name: 'One Brand (Abdurahmon)', tier: 'gold',
+        posts: 0, followers: 1, following: 0),
+    NfcId(code: 'ALI011', name: 'Aliyorbek', role: 'Developer',
+        avatarUrl: 'assets/demo/z_post_evening.jpg',
+        posts: 1, followers: 5, following: 3),
+  ];
+
+  @override
+  Future<Result<List<NfcId>>> suggested() async => const Ok(people);
+
+  @override
+  Future<Result<List<Business>>> companies() async => const Ok([
+        Business(companyId: 'NFCSTOREUZ', displayName: 'NFCSTORE',
+            category: 'shop', city: 'Toshkent',
+            coverUrl: 'assets/demo/m_hero.jpg',
+            logoUrl: 'assets/demo/m_card_metal.jpg'),
+        Business(companyId: 'CAFEUZ', displayName: 'Bellissimo',
+            category: 'restaurant', city: 'Andijon',
+            coverUrl: 'assets/demo/z_post_cafe.jpg'),
+        Business(companyId: 'GRANDAUTO', displayName: 'Grand Auto',
+            category: 'services', city: 'Andijon'),
+      ]);
 }
 
 class _Social extends SocialRepository {
@@ -167,6 +241,7 @@ void main() {
   Future<void> app(WidgetTester tester, String route, String name,
       {Size size = const Size(390, 844),
       bool business = false,
+      bool bizTab = false,
       String? push}) async {
     tester.view.physicalSize = size * 2;
     tester.view.devicePixelRatio = 2.0;
@@ -178,6 +253,7 @@ void main() {
       ...await testOverrides(),
       socialRepositoryProvider.overrideWithValue(_Social()),
       businessRepositoryProvider.overrideWithValue(_Biz()),
+      discoverRepositoryProvider.overrideWithValue(_Disc()),
       authRepositoryProvider.overrideWithValue(FakeAuthRepository(ids: const [
         NfcId(
             code: 'VIP001',
@@ -215,6 +291,10 @@ void main() {
     await settle(tester);
     c.read(routerProvider).go(route);
     await settle(tester, 24);
+    if (bizTab) {
+      c.read(discoverTabProvider.notifier).state = DiscoverTab.businesses;
+      await settle(tester, 24);
+    }
     if (push != null) {
       c.read(routerProvider).push(push);
       await settle(tester, 24);
@@ -240,9 +320,39 @@ void main() {
     await app(t, Routes.discover, 'redesign-$tag-user-from-discover',
         push: Routes.user('VIP001'));
   });
+  testWidgets('Tanlov bizneslar', (t) async {
+    await app(t, Routes.discover, 'redesign-$tag-discover-biz',
+        size: const Size(390, 1100), bizTab: true);
+  });
+  testWidgets('Tanlov bizneslar 360', (t) async {
+    await app(t, Routes.discover, 'redesign-$tag-discover-biz-360',
+        size: const Size(360, 1100), bizTab: true);
+  });
   testWidgets('Biznes profil', (t) async {
     await app(t, Routes.discover, 'redesign-$tag-company',
-        size: const Size(390, 1500), push: Routes.storefront('NFCSTOREUZ'));
+        size: const Size(390, 2300), push: Routes.storefront('NFCSTOREUZ'));
+  });
+  testWidgets('Biznes profil 360', (t) async {
+    await app(t, Routes.discover, 'redesign-$tag-company-360',
+        size: const Size(360, 2300), push: Routes.storefront('NFCSTOREUZ'));
+  });
+  testWidgets('Biznes profil ekran', (t) async {
+    await app(t, Routes.discover, 'redesign-$tag-company-fold',
+        push: Routes.storefront('NFCSTOREUZ'));
+  });
+  testWidgets('Biznes katalog', (t) async {
+    await app(t, Routes.discover, 'redesign-$tag-store-catalog',
+        size: const Size(390, 1900),
+        push: Routes.storeCatalog('NFCSTOREUZ'));
+  });
+  testWidgets('Biznes katalog toifa', (t) async {
+    await app(t, Routes.discover, 'redesign-$tag-store-catalog-cat',
+        push: Routes.storeCatalog('NFCSTOREUZ', category: 'promo'));
+  });
+  testWidgets('Biznes tovar', (t) async {
+    await app(t, Routes.discover, 'redesign-$tag-store-product',
+        size: const Size(390, 1500),
+        push: Routes.catalogProduct('NFCSTOREUZ', 'item-1'));
   });
   testWidgets('Tanlov', (t) async {
     await app(t, Routes.discover, 'redesign-$tag-discover',

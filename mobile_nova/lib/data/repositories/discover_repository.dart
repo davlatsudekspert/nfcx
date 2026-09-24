@@ -20,10 +20,27 @@ class DiscoverRepository {
     return res.map((j) => parseList(j['records'] ?? j['items'], NfcId.fromJson));
   }
 
+  /// BIZNES QIDIRUVI — ommaviy kompaniyalar ro'yxati ichidan.
+  ///
+  /// Ilgari `/api/companies/search` chaqirilardi. U kompaniyalarni EMAS,
+  /// biznes turidagi NFC yozuvlarini `results` kalitida qaytaradi, ilova
+  /// esa `companies` ni o'qirdi — ya'ni qidiruv HAR DOIM bo'sh edi.
+  /// Endi `/api/companies` (200 tagacha faol kompaniya) nomi, ID'si,
+  /// sohasi va shahri bo'yicha shu yerda saralanadi.
   Future<Result<List<Business>>> searchBusinesses(String q) async {
-    final res =
-        await _api.get<Map<String, dynamic>>('/api/companies/search', query: {'q': q});
-    return res.map((j) => parseList(j['companies'] ?? j['items'], Business.fromJson));
+    final needle = q.trim().toLowerCase();
+    final res = await companies();
+    return res.map((list) => needle.isEmpty
+        ? list
+        : list
+            .where((b) => [
+                  b.displayName,
+                  b.companyId,
+                  b.category,
+                  b.subcategory,
+                  b.city,
+                ].any((f) => f.toLowerCase().contains(needle)))
+            .toList());
   }
 
   /// Ommaviy bizneslar — qidiruv BO'SH bo'lganda ko'rinadi.

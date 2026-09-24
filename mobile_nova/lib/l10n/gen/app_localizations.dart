@@ -4502,6 +4502,210 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Izoh yozish — Premium a’zolar uchun'**
   String get commentPremiumTitle;
+
+  /// No description provided for @storeSeeAll.
+  ///
+  /// In uz, this message translates to:
+  /// **'Barchasini ko‘rish'**
+  String get storeSeeAll;
+
+  /// No description provided for @storeFeatured.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tavsiya etiladi'**
+  String get storeFeatured;
+
+  /// No description provided for @storeProducts.
+  ///
+  /// In uz, this message translates to:
+  /// **'Mahsulotlar'**
+  String get storeProducts;
+
+  /// No description provided for @storeOpenNow.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hozir ochiq'**
+  String get storeOpenNow;
+
+  /// No description provided for @storeClosedNow.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hozir yopiq'**
+  String get storeClosedNow;
+
+  /// No description provided for @storeToday.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bugun {open}–{close}'**
+  String storeToday(String open, String close);
+
+  /// No description provided for @storeDayOff.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bugun dam olish kuni'**
+  String get storeDayOff;
+
+  /// No description provided for @storePremium.
+  ///
+  /// In uz, this message translates to:
+  /// **'Premium'**
+  String get storePremium;
+
+  /// No description provided for @storeDetails.
+  ///
+  /// In uz, this message translates to:
+  /// **'Batafsil'**
+  String get storeDetails;
+
+  /// No description provided for @storeOrder.
+  ///
+  /// In uz, this message translates to:
+  /// **'Buyurtma berish'**
+  String get storeOrder;
+
+  /// No description provided for @storeSearchHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Katalogdan qidirish'**
+  String get storeSearchHint;
+
+  /// No description provided for @storeCatPromo.
+  ///
+  /// In uz, this message translates to:
+  /// **'Aksiyalar'**
+  String get storeCatPromo;
+
+  /// No description provided for @storeCatCards.
+  ///
+  /// In uz, this message translates to:
+  /// **'NFC kartalar'**
+  String get storeCatCards;
+
+  /// No description provided for @storeCatRings.
+  ///
+  /// In uz, this message translates to:
+  /// **'NFC uzuklar'**
+  String get storeCatRings;
+
+  /// No description provided for @storeCatKeychains.
+  ///
+  /// In uz, this message translates to:
+  /// **'NFC breloklar'**
+  String get storeCatKeychains;
+
+  /// No description provided for @storeCatBracelets.
+  ///
+  /// In uz, this message translates to:
+  /// **'NFC bilakuzuklar'**
+  String get storeCatBracelets;
+
+  /// No description provided for @storeCatStickers.
+  ///
+  /// In uz, this message translates to:
+  /// **'NFC stikerlar'**
+  String get storeCatStickers;
+
+  /// No description provided for @storeCatStands.
+  ///
+  /// In uz, this message translates to:
+  /// **'NFC stendlar'**
+  String get storeCatStands;
+
+  /// No description provided for @storeCatGifts.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sovg‘alar'**
+  String get storeCatGifts;
+
+  /// No description provided for @storeCatBusiness.
+  ///
+  /// In uz, this message translates to:
+  /// **'Biznes uchun'**
+  String get storeCatBusiness;
+
+  /// No description provided for @storeCatOther.
+  ///
+  /// In uz, this message translates to:
+  /// **'Boshqalar'**
+  String get storeCatOther;
+
+  /// No description provided for @orderTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Buyurtma berish'**
+  String get orderTitle;
+
+  /// No description provided for @orderName.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ismingiz'**
+  String get orderName;
+
+  /// No description provided for @orderPhone.
+  ///
+  /// In uz, this message translates to:
+  /// **'Telefon raqamingiz'**
+  String get orderPhone;
+
+  /// No description provided for @orderQty.
+  ///
+  /// In uz, this message translates to:
+  /// **'Soni'**
+  String get orderQty;
+
+  /// No description provided for @orderNote.
+  ///
+  /// In uz, this message translates to:
+  /// **'Izoh (ixtiyoriy)'**
+  String get orderNote;
+
+  /// No description provided for @orderSend.
+  ///
+  /// In uz, this message translates to:
+  /// **'Buyurtmani yuborish'**
+  String get orderSend;
+
+  /// No description provided for @orderSent.
+  ///
+  /// In uz, this message translates to:
+  /// **'Buyurtma yuborildi. Sotuvchi siz bilan bog‘lanadi.'**
+  String get orderSent;
+
+  /// No description provided for @orderDisabled.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu biznes hozircha ilova orqali buyurtma qabul qilmaydi — to‘g‘ridan-to‘g‘ri bog‘laning.'**
+  String get orderDisabled;
+
+  /// No description provided for @orderNoPayment.
+  ///
+  /// In uz, this message translates to:
+  /// **'To‘lov ilovada emas: narx va yetkazib berish sotuvchi bilan kelishiladi.'**
+  String get orderNoPayment;
+
+  /// No description provided for @storeView.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ko‘rish'**
+  String get storeView;
+
+  /// No description provided for @storeNew.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yangi'**
+  String get storeNew;
+
+  /// No description provided for @storeOpenShort.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ochiq'**
+  String get storeOpenShort;
+
+  /// No description provided for @storeClosedShort.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yopiq'**
+  String get storeClosedShort;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

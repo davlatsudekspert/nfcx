@@ -19,6 +19,7 @@ import '../features/profile/profile_screen.dart';
 import '../features/activity/activity_screen.dart';
 import '../features/business/business_forms.dart';
 import '../features/business/business_screens.dart';
+import '../features/business/store_catalog.dart';
 import '../features/business/business_intro.dart';
 import '../features/discover/catalog_view.dart';
 import '../features/demo/demo_screens.dart';
@@ -340,6 +341,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, s) => NavPage(
             child:
                 StorefrontScreen(companyId: s.pathParameters['companyId']!)),
+        routes: [
+          // To'liq katalog — profildagi "Barchasini ko'rish".
+          GoRoute(
+            path: 'catalog',
+            builder: (_, s) => NavPage(
+              child: StoreCatalogScreen(
+                companyId: s.pathParameters['companyId']!,
+                initialCategory: s.uri.queryParameters['cat'] ?? 'all',
+              ),
+            ),
+          ),
+        ],
       ),
       GoRoute(
         path: '/catalog/:companyId/:itemId',

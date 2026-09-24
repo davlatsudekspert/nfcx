@@ -2336,4 +2336,110 @@ class LUz extends L {
 
   @override
   String get commentPremiumTitle => 'Izoh yozish — Premium a’zolar uchun';
+
+  @override
+  String get storeSeeAll => 'Barchasini ko‘rish';
+
+  @override
+  String get storeFeatured => 'Tavsiya etiladi';
+
+  @override
+  String get storeProducts => 'Mahsulotlar';
+
+  @override
+  String get storeOpenNow => 'Hozir ochiq';
+
+  @override
+  String get storeClosedNow => 'Hozir yopiq';
+
+  @override
+  String storeToday(String open, String close) {
+    return 'Bugun $open–$close';
+  }
+
+  @override
+  String get storeDayOff => 'Bugun dam olish kuni';
+
+  @override
+  String get storePremium => 'Premium';
+
+  @override
+  String get storeDetails => 'Batafsil';
+
+  @override
+  String get storeOrder => 'Buyurtma berish';
+
+  @override
+  String get storeSearchHint => 'Katalogdan qidirish';
+
+  @override
+  String get storeCatPromo => 'Aksiyalar';
+
+  @override
+  String get storeCatCards => 'NFC kartalar';
+
+  @override
+  String get storeCatRings => 'NFC uzuklar';
+
+  @override
+  String get storeCatKeychains => 'NFC breloklar';
+
+  @override
+  String get storeCatBracelets => 'NFC bilakuzuklar';
+
+  @override
+  String get storeCatStickers => 'NFC stikerlar';
+
+  @override
+  String get storeCatStands => 'NFC stendlar';
+
+  @override
+  String get storeCatGifts => 'Sovg‘alar';
+
+  @override
+  String get storeCatBusiness => 'Biznes uchun';
+
+  @override
+  String get storeCatOther => 'Boshqalar';
+
+  @override
+  String get orderTitle => 'Buyurtma berish';
+
+  @override
+  String get orderName => 'Ismingiz';
+
+  @override
+  String get orderPhone => 'Telefon raqamingiz';
+
+  @override
+  String get orderQty => 'Soni';
+
+  @override
+  String get orderNote => 'Izoh (ixtiyoriy)';
+
+  @override
+  String get orderSend => 'Buyurtmani yuborish';
+
+  @override
+  String get orderSent => 'Buyurtma yuborildi. Sotuvchi siz bilan bog‘lanadi.';
+
+  @override
+  String get orderDisabled =>
+      'Bu biznes hozircha ilova orqali buyurtma qabul qilmaydi — to‘g‘ridan-to‘g‘ri bog‘laning.';
+
+  @override
+  String get orderNoPayment =>
+      'To‘lov ilovada emas: narx va yetkazib berish sotuvchi bilan kelishiladi.';
+
+  @override
+  String get storeView => 'Ko‘rish';
+
+  @override
+  String get storeNew => 'Yangi';
+
+  @override
+  String get storeOpenShort => 'Ochiq';
+
+  @override
+  String get storeClosedShort => 'Yopiq';
 }

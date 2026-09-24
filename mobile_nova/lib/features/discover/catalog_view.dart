@@ -19,7 +19,9 @@ import '../../design/widgets/contact_buttons.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
+import '../business/business_providers.dart' show storefrontProvider;
 import '../business/business_screens.dart' show formatMoney;
+import '../business/store_catalog.dart' show showOrderSheet;
 import '../social/media_frame.dart' show mediaImage;
 import 'listing_labels.dart';
 
@@ -1074,6 +1076,20 @@ class _ProductDetailState extends ConsumerState<_ProductDetail> {
     final p = widget.product;
     final fav = ref.watch(catalogFavoritesProvider).contains(p.key);
     final images = p.images.isEmpty ? [p.imageUrl] : p.images;
+    // Sotuvchining TO'LIQ ma'lumoti (Instagram, Facebook, buyurtma
+    // yoqilganmi) — vitrina keshida bo'lsa darhol, bo'lmasa fonda.
+    final seller = ref.watch(storefrontProvider(p.companyId)).valueOrNull;
+    final contacts = seller?.contact.actions() ??
+        ContactInfo(
+          phone: p.companyPhone,
+          telegram: p.companyTelegram,
+          whatsapp: p.companyWhatsapp,
+          website: p.companyWebsite,
+          address: [p.companyCity, p.companyAddress]
+              .where((e) => e.isNotEmpty)
+              .join(', '),
+        ).actions();
+    final canOrder = seller?.ordersEnabled ?? false;
 
     return NovaScaffold(
       showBack: true,
@@ -1225,7 +1241,7 @@ class _ProductDetailState extends ConsumerState<_ProductDetail> {
               ],
             ),
           ),
-          if (p.hasContact) ...[
+          if (contacts.isNotEmpty) ...[
             const SizedBox(height: Gap.xl),
             Text(l.catalogContact.toUpperCase(),
                 style: AppType.eyebrow(color: t.text3)),
@@ -1233,22 +1249,27 @@ class _ProductDetailState extends ConsumerState<_ProductDetail> {
             // PROFILDAGI AYNAN O'SHA ALOQA TUGMALARI (egasi, 2026-09-24:
             // "katalogda ko'rganda profil ma'lumotlari chiqsin"):
             // brend logotipli dumaloq tugmalar, bitta qatorda, markazda.
-            ContactButtons(
-              actions: ContactInfo(
-                phone: p.companyPhone,
-                telegram: p.companyTelegram,
-                whatsapp: p.companyWhatsapp,
-                website: p.companyWebsite,
-                address: [p.companyCity, p.companyAddress]
-                    .where((e) => e.isNotEmpty)
-                    .join(', '),
-              ).actions(),
-            ),
+            ContactButtons(actions: contacts),
           ],
           const SizedBox(height: Gap.xl),
+          // BUYURTMA — sotuvchi yoqqan bo'lsa (mavjud server oqimi,
+          // to'lovsiz). Aks holda asosiy tugma — sotuvchi sahifasi.
+          if (canOrder) ...[
+            NovaButton(
+              key: const ValueKey('listing-order'),
+              label: l.storeOrder,
+              icon: Icons.shopping_bag_outlined,
+              onPressed: p.available
+                  ? () => showOrderSheet(context,
+                      companyId: p.companyId, itemId: p.id, itemName: p.name)
+                  : null,
+            ),
+            const SizedBox(height: Gap.md),
+          ],
           NovaButton(
             label: l.catalogOpenSeller,
             icon: Icons.storefront_outlined,
+            tone: canOrder ? ButtonTone.quiet : ButtonTone.accent,
             onPressed: () => context.push(Routes.storefront(p.companyId)),
           ),
           const SizedBox(height: Gap.md),

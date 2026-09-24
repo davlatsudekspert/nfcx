@@ -128,6 +128,11 @@ abstract final class Routes {
       '/business/catalog/${Uri.encodeComponent(key)}';
   static String storefront(String companyId) => '/c/$companyId';
 
+  /// Biznesning to'liq katalogi (ixtiyoriy boshlang'ich toifa).
+  static String storeCatalog(String companyId, {String category = ''}) =>
+      '/c/$companyId/catalog'
+      '${category.isEmpty || category == 'all' ? '' : '?cat=${Uri.encodeQueryComponent(category)}'}';
+
   /// Tanlov katalogidagi tovar sahifasi.
   static String catalogProduct(String companyId, String itemId) =>
       '/catalog/${Uri.encodeComponent(companyId)}/${Uri.encodeComponent(itemId)}';

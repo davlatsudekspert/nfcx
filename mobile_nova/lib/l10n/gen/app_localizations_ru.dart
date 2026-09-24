@@ -2331,4 +2331,110 @@ class LRu extends L {
 
   @override
   String get commentPremiumTitle => 'Комментарии — для участников Premium';
+
+  @override
+  String get storeSeeAll => 'Смотреть все';
+
+  @override
+  String get storeFeatured => 'Рекомендуем';
+
+  @override
+  String get storeProducts => 'Товары';
+
+  @override
+  String get storeOpenNow => 'Сейчас открыто';
+
+  @override
+  String get storeClosedNow => 'Сейчас закрыто';
+
+  @override
+  String storeToday(String open, String close) {
+    return 'Сегодня $open–$close';
+  }
+
+  @override
+  String get storeDayOff => 'Сегодня выходной';
+
+  @override
+  String get storePremium => 'Premium';
+
+  @override
+  String get storeDetails => 'Подробнее';
+
+  @override
+  String get storeOrder => 'Заказать';
+
+  @override
+  String get storeSearchHint => 'Поиск по каталогу';
+
+  @override
+  String get storeCatPromo => 'Акции';
+
+  @override
+  String get storeCatCards => 'NFC-карты';
+
+  @override
+  String get storeCatRings => 'NFC-кольца';
+
+  @override
+  String get storeCatKeychains => 'NFC-брелоки';
+
+  @override
+  String get storeCatBracelets => 'NFC-браслеты';
+
+  @override
+  String get storeCatStickers => 'NFC-стикеры';
+
+  @override
+  String get storeCatStands => 'NFC-стенды';
+
+  @override
+  String get storeCatGifts => 'Подарки';
+
+  @override
+  String get storeCatBusiness => 'Для бизнеса';
+
+  @override
+  String get storeCatOther => 'Другое';
+
+  @override
+  String get orderTitle => 'Оформить заказ';
+
+  @override
+  String get orderName => 'Ваше имя';
+
+  @override
+  String get orderPhone => 'Ваш телефон';
+
+  @override
+  String get orderQty => 'Количество';
+
+  @override
+  String get orderNote => 'Комментарий (необязательно)';
+
+  @override
+  String get orderSend => 'Отправить заказ';
+
+  @override
+  String get orderSent => 'Заказ отправлен. Продавец свяжется с вами.';
+
+  @override
+  String get orderDisabled =>
+      'Этот бизнес пока не принимает заказы через приложение — свяжитесь напрямую.';
+
+  @override
+  String get orderNoPayment =>
+      'Оплаты в приложении нет: цену и доставку согласуйте с продавцом.';
+
+  @override
+  String get storeView => 'Смотреть';
+
+  @override
+  String get storeNew => 'Новый';
+
+  @override
+  String get storeOpenShort => 'Открыто';
+
+  @override
+  String get storeClosedShort => 'Закрыто';
 }

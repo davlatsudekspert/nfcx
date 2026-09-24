@@ -381,6 +381,14 @@ class Business {
     this.catalogSchema = 1,
     this.plan = const CompanyPlan(),
     this.contact = const ContactInfo(),
+    this.hours = const [],
+    this.openNow,
+    this.todayOpen = '',
+    this.todayClose = '',
+    this.ordersEnabled = false,
+    this.gallery = const [],
+    this.tier = '',
+    this.createdAt,
   });
 
   /// `nfcstore.uz/c/<companyId>` — vitrinaning ommaviy manzili.
@@ -416,6 +424,33 @@ class Business {
   /// Facebook, sayt, xarita, qo'shimcha havolalar).
   final ContactInfo contact;
 
+  /// Ish vaqti — 7 kun, 0 = yakshanba (server `normalizeHoursD1`).
+  /// Bo'sh — egasi kiritmagan.
+  final List<BusinessDay> hours;
+
+  /// "Hozir ochiqmi" — SERVER Toshkent vaqti bo'yicha hisoblaydi.
+  /// `null` — ish vaqti kiritilmagan (holat ko'rsatilmaydi).
+  final bool? openNow;
+
+  /// Bugungi ish vaqti ("09:00" / "18:00"); bugun dam — bo'sh.
+  final String todayOpen;
+  final String todayClose;
+
+  /// Katalogdan buyurtma yoqilganmi (`POST /api/companies/:id/orders`).
+  final bool ordersEnabled;
+
+  /// Kompaniya galereyasi (sayt vitrinasidagi rasmlar).
+  final List<String> gallery;
+
+  /// Business ID darajasi — server nom uzunligidan hisoblaydi
+  /// (`free` · `silver` · `gold` · `premium` · `exclusive`).
+  final String tier;
+
+  /// Yaratilgan vaqti — Tanlov'da "Yangi" belgisi uchun.
+  final DateTime? createdAt;
+
+  bool get hasHours => hours.any((d) => !d.closed);
+
   bool get isPublished => status == 'published' || status == 'active';
 
   factory Business.fromJson(Map<String, dynamic> j) => Business(
@@ -440,7 +475,49 @@ class Business {
             ? CompanyPlan.fromJson((j['plan'] as Map).cast<String, dynamic>())
             : const CompanyPlan(),
         contact: ContactInfo.fromCompany(j),
+        hours: j['hours'] is List
+            ? [
+                for (final d in j['hours'] as List)
+                  if (d is Map) BusinessDay.fromJson(d.cast<String, dynamic>())
+              ]
+            : const [],
+        openNow: j['openNow'] is Map ? _b((j['openNow'] as Map)['open']) : null,
+        todayOpen: j['openNow'] is Map && (j['openNow'] as Map)['today'] is Map
+            ? _s(((j['openNow'] as Map)['today'] as Map)['open'])
+            : '',
+        todayClose: j['openNow'] is Map && (j['openNow'] as Map)['today'] is Map
+            ? _s(((j['openNow'] as Map)['today'] as Map)['close'])
+            : '',
+        ordersEnabled: _b(j['ordersEnabled']),
+        tier: _s(j['tier']),
+        createdAt: _dt(j['createdAt']),
+        gallery: j['gallery'] is List
+            ? [
+                for (final g in j['gallery'] as List)
+                  if (_u(g is Map ? (g['url'] ?? g['src']) : g).isNotEmpty)
+                    _u(g is Map ? (g['url'] ?? g['src']) : g)
+              ]
+            : const [],
       );
+}
+
+/// Bir kunlik ish vaqti — server `{closed, open, close}` shakli.
+class BusinessDay {
+  const BusinessDay({this.closed = true, this.open = '', this.close = ''});
+
+  final bool closed;
+  final String open;
+  final String close;
+
+  factory BusinessDay.fromJson(Map<String, dynamic> j) {
+    final open = _s(j['open']);
+    final close = _s(j['close']);
+    return BusinessDay(
+      closed: _b(j['closed']) || open.isEmpty || close.isEmpty,
+      open: open,
+      close: close,
+    );
+  }
 }
 
 /// Biznes tarifi (egasining qarori, 2026-09):
