@@ -188,16 +188,22 @@ const noLimit = () => sqlite.prepare(`DELETE FROM rate_limits`).run();
   }
   check('ro\'yxat: bitta IP dan soatiga 5 ta akkaunt', made, 5);
 
-  // Admin o'chirgan akkaunt emaili qayta ro'yxatdan o'tadi (eski qator tozalanadi)
+  // O'chirilgan (o'chirish navbatidagi) hisob emaili bilan qayta ro'yxat.
+  //
+  // 2026-09 gacha eski qator `DELETE FROM users` bilan o'chirilardi va
+  // CASCADE uning to'lov yozuvlarini ham olib ketardi (ACCOUNT_DELETION_PLAN.md,
+  // B1/B11). Endi 409 `account_pending_deletion`, eski hisob tegilmaydi.
+  // Batafsil: scripts/test-account-deletion-pr1.mjs.
   sqlite.prepare(`INSERT INTO users (id, email, password_hash, deleted_at) VALUES (50, 'gone@test.local', 'x', '2026-01-01 00:00:00+00')`).run();
   sqlite.prepare(`INSERT INTO cards (code, name, price, ts, user_id) VALUES ('GON001', 'Old', 0, 1, 50)`).run();
   noLimit();
+  const logsBefore = sqlite.prepare(`SELECT COUNT(*) AS n FROM admin_activity_log`).get().n;
   res = await post('/api/auth/register', regBody({ email: 'gone@test.local', phone: '+998901231111' }));
   const gone = await res.json();
-  check('register: deleted account email re-registers -> 201', [res.status, gone.user?.email], [201, 'gone@test.local']);
-  check('register: old deleted row + its cards removed', [sqlite.prepare(`SELECT COUNT(*) AS n FROM users WHERE id = 50`).get().n, sqlite.prepare(`SELECT COUNT(*) AS n FROM cards WHERE code = 'GON001'`).get().n], [0, 0]);
-  checkTrue('register: new id differs from deleted one', gone.user.id !== 50);
-  check('register: admin activity logged', sqlite.prepare(`SELECT action FROM admin_activity_log ORDER BY id DESC LIMIT 1`).get()?.action, 'user_deleted');
+  check('register: deleted account email -> 409 account_pending_deletion', [res.status, gone.error], [409, 'account_pending_deletion']);
+  check('register: old deleted row + its cards KEPT', [sqlite.prepare(`SELECT COUNT(*) AS n FROM users WHERE id = 50`).get().n, sqlite.prepare(`SELECT COUNT(*) AS n FROM cards WHERE code = 'GON001'`).get().n], [1, 1]);
+  check('register: no new account created for that email', sqlite.prepare(`SELECT COUNT(*) AS n FROM users WHERE email = 'gone@test.local'`).get().n, 1);
+  check('register: nothing logged (no email in logs)', sqlite.prepare(`SELECT COUNT(*) AS n FROM admin_activity_log`).get().n, logsBefore);
 }
 
 // ===== telefon ko'rinishi (xalqaro) =====

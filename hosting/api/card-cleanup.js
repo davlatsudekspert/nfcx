@@ -14,9 +14,12 @@
 // eski egasining kontenti YANGI egasining profilida ko'rinib qolardi.
 // Bu maxfiylik muammosi.
 //
-// Shu sababli foydalanuvchi/karta o'chirilayotgan HAR BIR joyda shu
-// yordamchi ishlatiladi — UCHALA yo'lda ham (auth.js hardDeleteUser,
-// account.js qayta ro'yxatdan o'tish, account.js egasi o'chirishi). `scripts/test-card-cleanup.mjs` sxemadagi
+// Shu sababli karta o'chirilayotgan HAR BIR joyda shu yordamchi
+// ishlatiladi (account.js egasi o'chirishi, admin-extra.js admin
+// o'chirishi). Foydalanuvchini qayta ro'yxat yoki sovg'a orqali butunlay
+// o'chiradigan eski yo'llar (auth.js hardDeleteUser, account.js sovg'a
+// faollashtirish) 2026-09 da olib tashlandi — ACCOUNT_DELETION_PLAN.md,
+// PR-1. `scripts/test-card-cleanup.mjs` sxemadagi
 // kod-bog'liq jadvallar ro'yxatini shu ro'yxat bilan solishtiradi —
 // kelajakda yangi jadval qo'shilsa, test darhol ogohlantiradi.
 

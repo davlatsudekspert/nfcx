@@ -7,6 +7,7 @@
 import { CARD_CONTENT_TABLES } from '../hosting/api/card-cleanup.js';
 import { makeChecker } from './lib/d1-harness.mjs';
 import { readFileSync } from 'node:fs';
+import { stripComments } from './lib/strip-comments.mjs';
 
 const { check, checkTrue, done } = makeChecker();
 const schema = readFileSync(new URL('../db/d1-migration/0001-schema.sql', import.meta.url), 'utf8');
@@ -51,12 +52,21 @@ const schema = readFileSync(new URL('../db/d1-migration/0001-schema.sql', import
   check('ro\'yxatdagi jadvallar sxemada mavjud va `code` ustuni bor', bad, []);
 }
 
-// ═══ 3. Ikkala o'chirish yo'li ham tozalash yordamchisini chaqiradi ═══
+// ═══ 3. O'chirish yo'llari ═══
+//
+// 2026-09 (ACCOUNT_DELETION_PLAN.md, PR-1): qayta ro'yxatdan o'tish
+// (`auth.js hardDeleteUser`) va sovg'a faollashtirish yo'llari
+// foydalanuvchini `DELETE FROM users` bilan butunlay o'chirardi va
+// CASCADE uning to'lov yozuvlarini ham olib ketardi. Ikkalasi olib
+// tashlandi. Endi bu yerda ular QAYTIB KELMASLIGI tekshiriladi.
 {
   const auth = readFileSync(new URL('../hosting/api/auth.js', import.meta.url), 'utf8');
   const account = readFileSync(new URL('../hosting/api/account.js', import.meta.url), 'utf8');
-  checkTrue('auth.js hardDeleteUser tozalashni chaqiradi', /cardContentCleanupStmts\(/.test(auth));
-  checkTrue('account.js qayta ro\'yxatdan o\'tish yo\'li tozalashni chaqiradi', /cardContentCleanupStmts\(/.test(account));
+  // Izohlar olib tashlanadi: tushuntirishda bu so'zlar bor.
+  const delUsers = /DELETE\s+FROM\s+"?users"?\b/i;
+  check('auth.js foydalanuvchi qatorini o\'chirmaydi (DELETE FROM users yo\'q)', delUsers.test(stripComments(auth)), false);
+  check('account.js foydalanuvchi qatorini o\'chirmaydi (DELETE FROM users yo\'q)', delUsers.test(stripComments(account)), false);
+  checkTrue('account.js karta o\'chirish yo\'li tozalashni chaqiradi', /cardContentCleanupStmts\(/.test(account));
   // Eski NOTO'G'RI da'vo ("... qo'lda tozalanadi; qolganlari CASCADE.")
   // qaytib kelmasin — u tozalashni keraksiz deb o'ylashga olib kelgan edi.
   check('eski xato da\'vo olib tashlangan', /qo'lda tozalanadi; qolganlari CASCADE/.test(auth), false);

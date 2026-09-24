@@ -365,10 +365,28 @@ const freshPostSql = (a = '') => {
     AND rp.id = ${c('target_id')} AND ${sec('rp.created_at')} > ${sec(c('created_at'))})`;
 };
 
+// ── O'CHIRILGAN HISOBNING IZOHI OMMAGA CHIQMAYDI (B5) ────────────
+//
+// Hisob o'chirilganda (`users.deleted_at`) uning profili, postlari va
+// kompaniyasi darhol yashiriladi (`worker.js` dagi `ownerAliveSql`),
+// izohlari esa ro'yxatda ham, sanoqda ham qolib ketardi. Bu yerda
+// aynan o'sha qoida: hech narsa o'chirilmaydi, faqat ko'rsatilmaydi.
+// `deleted_at` tozalansa (hisob tiklansa) izohlar o'z joyiga qaytadi.
+//
+// `NOT EXISTS`, JOIN emas: `users` da qatori yo'q muallifning izohi
+// avvalgidek ko'rinadi. Admin moderatsiya ro'yxati bu filtrni
+// ishlatmaydi — u yerda hamma izoh ko'rinishi kerak.
+//
+// `a` — izohlar jadvalining taxallusi ('' yoki 'cc').
+const authorAliveSql = (a = '') => {
+  const col = a ? `${a}.user_id` : 'content_comments.user_id';
+  return `NOT EXISTS (SELECT 1 FROM users du WHERE du.id = ${col} AND du.deleted_at IS NOT NULL)`;
+};
+
 async function countFor(env, kind, id) {
   const r = await env.DB.prepare(
     `SELECT COUNT(*) AS n FROM content_comments
-      WHERE target_kind = ? AND target_id = ? AND ${ALIVE} AND ${freshPostSql()}`
+      WHERE target_kind = ? AND target_id = ? AND ${ALIVE} AND ${freshPostSql()} AND ${authorAliveSql()}`
   ).bind(kind, id).first();
   return Number(r?.n) || 0;
 }
@@ -389,7 +407,8 @@ export async function countsFor(env, targets) {
   const args = targets.flatMap((t) => [t.kind, t.id]);
   const rows = await env.DB.prepare(
     `SELECT target_kind, target_id, COUNT(*) AS n FROM content_comments
-      WHERE (${where}) AND ${ALIVE} AND ${freshPostSql()} GROUP BY target_kind, target_id`
+      WHERE (${where}) AND ${ALIVE} AND ${freshPostSql()} AND ${authorAliveSql()}
+      GROUP BY target_kind, target_id`
   ).bind(...args).all().catch(() => null);
   for (const r of rows?.results || []) out.set(`${r.target_kind}:${Number(r.target_id)}`, Number(r.n) || 0);
   return out;
@@ -628,6 +647,7 @@ export async function handle(request, env, url, H) {
          FROM content_comments cc
          LEFT JOIN cards c ON c.code = cc.author_code
         WHERE cc.target_kind = ? AND cc.target_id = ? AND cc.${ALIVE} AND ${freshPostSql('cc')}
+          AND ${authorAliveSql('cc')}
         ORDER BY COALESCE(cc.parent_id, cc.id) DESC, cc.id ASC
         LIMIT ? OFFSET ?`
     ).bind(kind, id, limit + 1, (page - 1) * limit).all();

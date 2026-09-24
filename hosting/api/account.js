@@ -626,6 +626,19 @@ export async function handle(request, env, url, H) {
       // Sessiyalar darhol yopiladi: boshqa qurilmada ochiq qolgan
       // ilova o'chirilgan hisob bilan ishlashda davom etmasin.
       env.DB.prepare(`DELETE FROM sessions WHERE user_id = ?`).bind(user.id),
+      // KUTILAYOTGAN SOVG'A TAKLIFLARI BEKOR QILINADI (B14) — o'chirilmaydi,
+      // faqat holati o'zgaradi, `accept`/`reject`/`cancel` bilan bir xil.
+      //
+      // Hisob egasiga KELGAN taklif yuboruvchining kodini qulflab
+      // turardi: kod bo'yicha kutilayotgan taklif bo'lsa yangisi
+      // `ALREADY_PENDING` bilan rad etiladi va javob beradigan odam
+      // endi yo'q. Yuboruvchining "yuborilganlar" ro'yxatida esa
+      // o'chirilgan odamning emaili ko'rinib turardi. Hisob egasi
+      // YUBORGAN taklifni ham endi hech kim yakunlamaydi.
+      env.DB.prepare(
+        `UPDATE gift_offers SET status = 'cancelled', decided_at = ?
+          WHERE status = 'pending' AND (from_user_id = ? OR to_user_id = ?)`
+      ).bind(now, user.id, user.id),
     ]);
     return H.json({ ok: true });
   }
@@ -651,8 +664,8 @@ export async function handle(request, env, url, H) {
     // ro'yxat vaqt o'tib bir-biridan uzoqlashdi va aynan shu yerda
     // ISTORYALAR tushib qoldi.
     //
-    // Endi manba bitta: yangi jadval yordamchiga qo'shilsa, uchala
-    // o'chirish yo'li ham darhol uni tozalaydi.
+    // Endi manba bitta: yangi jadval yordamchiga qo'shilsa, har bir
+    // o'chirish yo'li darhol uni tozalaydi.
     const now = H.nowTs();
     const stmts = [
       ...cardContentCleanupStmts(env, '?', [code], now),
@@ -723,19 +736,17 @@ export async function handle(request, env, url, H) {
       let user = await env.DB.prepare(
         `SELECT id, password_hash AS passwordHash, deleted_at AS deletedAt FROM users WHERE email = ?`
       ).bind(email).first();
+      // O'CHIRISH NAVBATIDAGI HISOB EMAILI — HECH NARSA O'CHIRILMAYDI.
+      //
+      // Ilgari shu yerda eski hisob, uning kartalari va qurilmalari
+      // `DELETE` bilan o'chirilardi. `DELETE FROM users` esa CASCADE
+      // bilan to'lov yozuvlarini ham olib ketardi (B1), bot buyurtmasi
+      // bo'lsa FK xatosi bilan yiqilardi (B2). Aktivatsiya kodi shaxsni
+      // tasdiqlamaydi: kodi bor har kim istalgan emailni yozib, birovning
+      // hisobini o'chira olardi (B11). Endi javob doim 409, hech narsa
+      // yaratilmaydi va o'chirilmaydi.
       if (user && user.deletedAt) {
-        // server/db.js adminDeleteUser tartibi
-        // Kontent ham tozalanadi — aks holda kodlar bo'shab, keyin boshqa
-        // odamga o'tganda eski postlar/menyu o'sha profilda chiqib qolardi
-        // (hosting/api/card-cleanup.js izohiga qarang).
-        await env.DB.batch([
-          ...cardContentCleanupStmts(env, `SELECT code FROM cards WHERE user_id = ?`, [user.id], H.nowTs()),
-          env.DB.prepare(`DELETE FROM physical_cards WHERE owner_user_id = ?`).bind(user.id),
-          env.DB.prepare(`DELETE FROM cards WHERE user_id = ?`).bind(user.id),
-          env.DB.prepare(`UPDATE auctions SET highest_bidder_id = NULL WHERE highest_bidder_id = ?`).bind(user.id),
-          env.DB.prepare(`DELETE FROM users WHERE id = ?`).bind(user.id),
-        ]);
-        user = null;
+        return H.json({ error: 'account_pending_deletion' }, 409);
       }
       if (user) {
         if (!(await H.verifyPassword(password, user.passwordHash))) return H.json({ error: 'email_taken' }, 409);

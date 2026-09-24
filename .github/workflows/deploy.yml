@@ -140,6 +140,16 @@ jobs:
       - name: O'chirilgan hisob kontenti ommaga chiqmaydimi
         run: node scripts/test-deleted-user-content.mjs
 
+      # HISOBNI O'CHIRISH, 1-BOSQICH (ACCOUNT_DELETION_PLAN.md, PR-1).
+      #
+      # O'chirish navbatidagi hisob emaili yoki telefoni bilan qayta
+      # ro'yxatdan o'tish va sovg'a faollashtirish 409 qaytaradi: eski
+      # yo'l `DELETE FROM users` qilardi va CASCADE to'lov yozuvlarini
+      # ham olib ketardi. O'chirilgan hisobning izohlari ko'rinmaydi,
+      # kutilayotgan sovg'a takliflari bekor qilinadi.
+      - name: Hisob o'chirishda qaytarilmas yo'llar yopiqmi
+        run: node scripts/test-account-deletion-pr1.mjs
+
       # PROFIL SAHIFALARINING MAKETI.
       #
       # Ikkala profilda ham (shaxsiy `/:code` va biznes `/c/:id`)
