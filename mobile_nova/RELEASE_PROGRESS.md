@@ -113,7 +113,7 @@ faqat kod bilan isbotlangan, ko'rinishni o'zgartirmaydigan tuzatishlar):
   kontrasti 3.5-3.9:1, UI-9 8.5-9.5 px ma'lumot matni, UI-10 Noir ID
   kartadagi shaffof yorliqlar
 
-## 4c. Release auditi (#207 dan keyingi hamma o'zgarishlar, 61f2805..f478798)
+## 4c. Release auditi (#207 dan keyingi hamma o'zgarishlar, 61f2805..92093ae)
 
 4 yo'nalish (to'g'rilik, layout, performance, release konfiguratsiyasi) +
 har tuzatishga mustaqil review. Tasdiqlangan va tuzatilgan:
@@ -126,6 +126,11 @@ har tuzatishga mustaqil review. Tasdiqlangan va tuzatilgan:
 - [x] App Lock zaxiradan tiklanganda ochib bo'lmaydigan qulf (f478798)
 - [x] o'chirilgan hisob: kirish/qayta ro'yxatda aniq sabab (f478798)
 - [x] docs/PLAY_CONSOLE.md: "to'lov Payme/Click" qarama-qarshiligi (f478798)
+- [x] ID tanlovidagi poyga (E2E #59 topdi): lentadan ID bosilganda karta
+      yo'q qilinib, `ref` StateError otardi va rejim almashmasdi (2c05162,
+      92093ae; test/select_after_dispose_test.dart)
+- [x] E2E CI: qurilma qadami timeout bo'lsa qolgan emulyator o'chiriladi
+      (E2E #58 dagi zanjirli osilish, 5d58f1c)
 - Regression testlari: release_audit_fixes_test, app_lock_test,
   account_deleted_error_test — eski kodda yiqiladi
 - Egasiga (kod xatosi emas): CI da `NOVA_KEYSTORE_BASE64` bo'lmasa AAB
@@ -133,15 +138,15 @@ har tuzatishga mustaqil review. Tasdiqlangan va tuzatilgan:
 
 ## 5–6. Release
 
-- [x] versionName 1.1.0 (pubspec) + versionCode = CI run_number (#217)
+- [x] versionName 1.1.0 (pubspec) + versionCode = CI run_number (#219)
 - [~] permissions / App Links / Data Safety mosligi
-      * permissions (merged manifest, #217): INTERNET, ACCESS_NETWORK_STATE,
+      * permissions (merged manifest, #219): INTERNET, ACCESS_NETWORK_STATE,
         WAKE_LOCK, NFC (required=false); rasm — Photo Picker
         (READ_MEDIA_* yo'q), kamera — intent (CAMERA yo'q)
       * App Links: https://nfcstore.uz /u /c /post /story /nfc, autoVerify
       * [x] BLOCKER tuzatildi (89613bc): sessiya tokeni Auto Backup va
         telefondan-telefonga ko'chirishdan chiqarildi + resetOnError
-- [x] signed AAB + APK (CI `nova-apk.yml` #217, f478798; RELEASE imzo, v2,
+- [x] signed AAB + APK (CI `nova-apk.yml` #219, 92093ae; RELEASE imzo, v2,
       zipalign OK) — SHA-256 va havolalar PLAY_CONSOLE_HANDOFF.md da
 - [x] Play skrinshotlar 1.1.0 dan qayta olindi (24-bit PNG), release notes UZ/RU/EN,
       `PLAY_CONSOLE_HANDOFF.md` (final publish tugmasi BOSILMAYDI)
