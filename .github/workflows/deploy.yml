@@ -114,6 +114,10 @@ jobs:
       # Rasmlar Cloudflare chegara keshida: ikkinchi so'rov R2'ga bormaydi.
       - name: Rasm chegara keshi
         run: node scripts/test-upload-edge-cache.mjs
+      # Avtomatik filtr: rasm VA video (18+, zo'ravonlik, ekstremizm,
+      # siyosiy, giyohvandlik, nafrat) — Gemini soxtalashtiriladi.
+      - name: Avto-filtr — rasm va video
+        run: node scripts/test-content-filter.mjs
       - name: NFCSTORE FEATURED — slot faqat haqiqiy to'lovdan keyin yonadi
         run: node scripts/test-featured.mjs
       # Shaxsiy NFC ID xaridi: narxni SERVER hisoblaydi, bitta kodni
@@ -128,6 +132,10 @@ jobs:
         run: node scripts/test-content-archive.mjs
       - name: Ilova foydalanuvchilari — kim ishlatyapti (admin)
         run: node scripts/test-app-usage.mjs
+      # Admin "NFCSTORE ILOVASI": avto-filtr jurnali, ilova kontenti,
+      # biznes buyurtmalari (faqat admin) va ilova build raqami.
+      - name: Ilova admin — avto-filtr, kontent, buyurtmalar, build
+        run: node scripts/test-app-admin.mjs
       # posts.id qayta ishlatiladi: o'chirilgan postning izoh va layklari
       # keyingi yangi postga o'tib qolmasin.
       - name: Post raqami qayta ishlatilganda eski izoh/layk yopishmaydi

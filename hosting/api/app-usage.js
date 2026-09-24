@@ -17,13 +17,19 @@
 // o'rnatilgan versiyalar ham sanaladi.
 //
 // Qurilma identifikatori YIG'ILMAYDI (Play "Data safety" ga yangi
-// ma'lumot turi qo'shilmasin): faqat hisob, vaqt va platforma.
-// Kirmagan (mehmon) ochilishlar sanalmaydi.
+// ma'lumot turi qo'shilmasin): faqat hisob, vaqt, platforma va ilova
+// BUILD raqami. Kirmagan (mehmon) ochilishlar sanalmaydi.
+//
+// BUILD RAQAMI (2026-09): yangi ilova `x-app-build: <raqam>` yuboradi —
+// admin kim eski versiyada qolganini ko'radi (`app_build` ustuni,
+// ADD COLUMN bilan qo'shiladi). Sarlavhasiz eski versiyalar ham avvalgidek
+// sanaladi; ularda raqam bo'sh (oxirgi ma'lum raqam o'chirilmaydi).
 //
 // ═══ ADMIN ═══
 //
 //   GET /api/admin/app-users?q=&sort=recent|new|opens&page=&limit=
 //     -> { stats: { total, today, week, month }, items, hasMore }
+//     har yozuvda `platform`, `appBuild`, `registeredAt` ham bor.
 //     `q` — istalgan so'z: email, telefon, NFC ID, profil ismi, kompaniya.
 //     `filter` — premium | today | week.
 
@@ -39,13 +45,25 @@ async function ensureTable(env) {
         opens INTEGER NOT NULL DEFAULT 0
       )`),
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_app_users_last ON app_users(last_seen DESC)`),
-    ]).catch((e) => { ready = null; throw e; });
+    ])
+      // Build raqami ustuni — batch'dan TASHQARIDA: ustun allaqachon
+      // bo'lsa ALTER xato beradi va bu normal holat (jim o'tadi).
+      .then(() => env.DB.prepare(`ALTER TABLE app_users ADD COLUMN app_build INTEGER`).run().catch(() => {}))
+      .catch((e) => { ready = null; throw e; });
   }
   await ready;
 }
 
 export const isNovaApp = (request) =>
   String(request?.headers?.get?.('x-app') || '').toLowerCase() === 'nova';
+
+/// `x-app-build` — faqat musbat butun son (9 xonagacha), aks holda `null`.
+export function appBuildOf(request) {
+  const raw = String(request?.headers?.get?.('x-app-build') || '').trim();
+  if (!/^\d{1,9}$/.test(raw)) return null;
+  const n = Number(raw);
+  return n > 0 ? n : null;
+}
 
 /// `/api/auth/me` dan chaqiriladi. Xato bo'lsa jim — kirish buzilmasin.
 export async function recordAppOpen(env, request, userId) {
@@ -54,11 +72,23 @@ export async function recordAppOpen(env, request, userId) {
     await ensureTable(env);
     const now = new Date().toISOString();
     const platform = String(request.headers.get('x-client') || '').toLowerCase().slice(0, 16);
-    await env.DB.prepare(
-      `INSERT INTO app_users (user_id, platform, first_seen, last_seen, opens) VALUES (?, ?, ?, ?, 1)
-       ON CONFLICT(user_id) DO UPDATE SET last_seen = excluded.last_seen,
-         platform = excluded.platform, opens = app_users.opens + 1`
-    ).bind(Number(userId), platform, now, now).run();
+    const build = appBuildOf(request);
+    try {
+      await env.DB.prepare(
+        `INSERT INTO app_users (user_id, platform, first_seen, last_seen, opens, app_build) VALUES (?, ?, ?, ?, 1, ?)
+         ON CONFLICT(user_id) DO UPDATE SET last_seen = excluded.last_seen,
+           platform = excluded.platform, opens = app_users.opens + 1,
+           app_build = COALESCE(excluded.app_build, app_users.app_build)`
+      ).bind(Number(userId), platform, now, now, build).run();
+    } catch {
+      // `app_build` ustuni qo'shilmay qolgan bo'lsa ham ochilish
+      // SANALSIN — avvalgi (build'siz) yozuv.
+      await env.DB.prepare(
+        `INSERT INTO app_users (user_id, platform, first_seen, last_seen, opens) VALUES (?, ?, ?, ?, 1)
+         ON CONFLICT(user_id) DO UPDATE SET last_seen = excluded.last_seen,
+           platform = excluded.platform, opens = app_users.opens + 1`
+      ).bind(Number(userId), platform, now, now).run();
+    }
   } catch (error) {
     console.error('recordAppOpen', error?.message);
   }
@@ -201,8 +231,8 @@ export async function handle(request, env, url, H) {
   if (filter === 'week') { conds.push('a.last_seen >= ?'); binds.push(since(7)); }
   const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
   const rows = await env.DB.prepare(
-    `SELECT a.user_id, a.platform, a.first_seen, a.last_seen, a.opens,
-            u.email, u.phone, u.created_at, u.deleted_at, u.is_premium
+    // `a.*` — `app_build` ustuni hali qo'shilmagan bazada ham so'rov yiqilmasin.
+    `SELECT a.*, u.email, u.phone, u.created_at, u.deleted_at, u.is_premium
        FROM app_users a LEFT JOIN users u ON u.id = a.user_id
        ${where}
       ORDER BY ${order} LIMIT ? OFFSET ?`
@@ -248,6 +278,7 @@ export async function handle(request, env, url, H) {
       premium: !!r.is_premium,
       deleted: !!r.deleted_at,
       platform: r.platform || '',
+      appBuild: r.app_build == null ? null : Number(r.app_build),
       firstSeen: r.first_seen,
       lastSeen: r.last_seen,
       opens: Number(r.opens || 0),

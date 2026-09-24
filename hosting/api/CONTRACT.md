@@ -23,7 +23,7 @@ Har modul uchun test: `scripts/test-<modul>.mjs` (`scripts/lib/d1-harness.mjs` o
 `auth`, `account`, `engagement`, `catalog`, `media`, `admin-extra`,
 `admin-finance`, `telegram`, `assistant`, `moderation`, `comments`,
 `notifications`, `featured`, `catalog-feed`, `saves`, `content-archive`,
-`app-usage`, `marketplace`
+`app-usage`, `app-admin`, `marketplace`
 (shu tartibda chaqiriladi — `worker.js: API_MODULES`).
 
 `catalog-feed` — ilova "Tanlov" katalogi, BARCHA bizneslarning
@@ -56,8 +56,16 @@ email, telefon), `POST /api/admin/evidence/flag {source, id, flagged, note}`
 
 `app-usage` — ilova foydalanuvchilari. `/api/auth/me` `x-app: nova` bilan
 kelsa `app_users` ga yoziladi (birinchi/oxirgi ochilish, soni, platforma;
-qurilma ID yig'ilmaydi). Admin: `GET /api/admin/app-users?q=&sort=recent|new|opens`
--> `{stats:{total,today,week,month}, items[{..., profiles[], companies[]}]}`.
+qurilma ID yig'ilmaydi; `x-app-build` sarlavhasi bo'lsa — `app_build`). Admin: `GET /api/admin/app-users?q=&sort=recent|new|opens`
+-> `{stats:{total,today,week,month}, items[{..., platform, appBuild, registeredAt, profiles[], companies[]}]}`.
+
+`app-admin` — admin "NFCSTORE ILOVASI" uchun FAQAT O'QIYDIGAN ko'rinishlar
+(jadval yo'q bo'lsa bo'sh ro'yxat): `GET /api/admin/content-blocks?category=&q=`
+(avto-filtr jurnali `content_scan_blocks`, muallif `user:<id>` foydalanuvchiga
+ulanadi; `stats.byCategory`), `GET /api/admin/app-content?kind=post|reel|story|company_post&q=`
+(ko'rinib turgan post/Reels/istoriya/biznes posti; o'chirish — mavjud
+`DELETE /api/admin/content/:deleteKind/:id`), `GET /api/admin/company-orders?status=&q=`
+(barcha biznes katalogi buyurtmalari). Hammasida `page`, `limit`, `hasMore`.
 
 Rasm filtri (`image-moderation.js`, modul emas — `uploadApi` chaqiradi):
 foydalanuvchi rasmi Gemini bilan tekshiriladi; 18+/zo'ravonlik/

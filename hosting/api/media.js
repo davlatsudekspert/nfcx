@@ -29,6 +29,7 @@
 // jadvallarni ham qo'lda yangilang.
 
 import { archiveStmt } from './content-archive.js';
+import { moderateVideo, logBlockedUpload } from './image-moderation.js';
 
 const RANK = { free: 0, silver: 1, gold: 2, premium: 3, exclusive: 4 };
 const hasAccess = (access, min) => (RANK[access] ?? 0) >= (RANK[min] ?? 99);
@@ -396,6 +397,18 @@ async function handleVideos(request, env, H, url, code, kind, sub) {
     const thumbUrl = thumbParam;
     const title = titleParam;
     const videoUrl = await putR2(env, `video_${randomHex(12)}.mp4`, bytes, 'video/mp4', `user:${ctx.user.id}`);
+    // AVTOMATIK FILTR — boshqa yuklash yo'llari bilan bir xil. Ilgari bu
+    // eski yo'l tekshiruvsiz edi va filtrni aylanib o'tish mumkin edi.
+    const key = videoUrl.replace(/^\//, '');
+    const stored = await env.UPLOADS.get(key).catch(() => null);
+    const verdict = stored
+      ? await moderateVideo(env, stored, 'video/mp4', bytes.length, { timeoutMs: 25_000 })
+      : { allowed: true };
+    if (!verdict.allowed) {
+      await env.UPLOADS.delete(key).catch(() => {});
+      await logBlockedUpload(env, `user:${ctx.user.id}`, verdict.category, 'card-video');
+      return H.json({ error: 'content_blocked', category: verdict.category }, 422);
+    }
     const row = await env.DB.prepare(
       `INSERT INTO card_videos (code, video_url, thumb_url, title, size_bytes, sort, created_at) VALUES (?, ?, ?, ?, ?, 0, ?) RETURNING ${VIDEO_COLS}`
     ).bind(code, videoUrl, thumbUrl || null, title || null, bytes.length, H.nowTs()).first();

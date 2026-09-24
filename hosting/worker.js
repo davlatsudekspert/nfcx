@@ -22,9 +22,10 @@ import * as apiCatalogFeed from './api/catalog-feed.js';
 import * as apiSaves from './api/saves.js';
 import * as apiContentArchive from './api/content-archive.js';
 import * as apiAppUsage from './api/app-usage.js';
+import * as apiAppAdmin from './api/app-admin.js';
 import { recordAppOpen } from './api/app-usage.js';
 import { archiveStmt, ensureArchiveTable, urlArchived } from './api/content-archive.js';
-import { moderateImage, logBlockedUpload } from './api/image-moderation.js';
+import { moderateImage, moderateVideo, moderationEnabled, logBlockedUpload } from './api/image-moderation.js';
 
 // API javoblari standart holda KESHLANMAYDI.
 //
@@ -6897,15 +6898,22 @@ function contentBlockedJsonD1(category) {
   return json({ error: 'content_blocked', category }, 422);
 }
 
-// Oqim bilan R2 ga tushgan rasm — o'qib tekshiriladi; bloklansa
-// fayl DARHOL o'chiriladi (hech qayerda ko'rinmasdan).
-async function scanStoredUploadD1(env, up, actor, source) {
-  if (!up?.ok || !String(up.type || '').startsWith('image/')) return null;
+// Oqim bilan R2 ga tushgan rasm yoki VIDEO — tekshiriladi; bloklansa
+// fayl DARHOL o'chiriladi (hech qayerda ko'rinmasdan). Video R2 dan
+// Gemini'ga oqim bilan boradi — xotiraga to'liq o'qilmaydi.
+async function scanStoredUploadD1(env, up, actor, source, opts = {}) {
+  const type = String(up?.type || '');
+  const isVideo = type.startsWith('video/');
+  if (!up?.ok || (!type.startsWith('image/') && !isVideo)) return null;
+  // Filtr o'chiq (kalit yo'q) — faylni R2 dan qayta o'qishning keragi yo'q.
+  if (!moderationEnabled(env)) return null;
   const key = String(up.url || '').replace(/^\//, '');
-  const obj = await env.UPLOADS.get(key).catch(() => null);
+  let obj = null;
+  try { obj = await env.UPLOADS.get(key); } catch { obj = null; }
   if (!obj) return null;
-  const bytes = new Uint8Array(obj.arrayBuffer ? await obj.arrayBuffer() : obj.body);
-  const verdict = await moderateImage(env, bytes, up.type);
+  const verdict = isVideo
+    ? await moderateVideo(env, obj, type, up.size, opts)
+    : await moderateImage(env, new Uint8Array(obj.arrayBuffer ? await obj.arrayBuffer() : obj.body), type);
   if (verdict.allowed) return null;
   await env.UPLOADS.delete(key).catch(() => {});
   await logBlockedUpload(env, actor, verdict.category, source);
@@ -6917,6 +6925,9 @@ async function uploadApi(request, env, pathname) {
   const auth = isAdmin ? await requireAdmin(request, env) : await getCurrentUser(request, env);
   if (!auth) return json({ error: 'unauthorized' }, 401);
   const actor = isAdmin ? `admin:${auth.role || 'admin'}` : `user:${auth.id || auth.email || 'authenticated'}`;
+  // Video tekshiruvi muddati: Nova ilovasi yuklashni 180 s kutadi; eski
+  // ilova (butun so'rov 90 s) va sayt uchun qisqaroq.
+  const scanOpts = { timeoutMs: request.headers.get('x-app') === 'nova' ? 45_000 : 25_000 };
   if (!isAdmin && await rateLimitD1(env, 'upload:user:' + auth.id, 40, 60 * 60_000)) return json({ error: 'too_many_requests' }, 429);
 
   // ─── PROFIL FONI UCHUN MEDIA (GIF / video) — 50 MB ───────────────────
@@ -6941,7 +6952,7 @@ async function uploadApi(request, env, pathname) {
       aliases: PROFILE_BG_ALIASES,
     });
     if (!up.ok) return uploadErrorJsonD1(up);
-    const blocked = await scanStoredUploadD1(env, up, actor, 'profile-bg');
+    const blocked = await scanStoredUploadD1(env, up, actor, 'profile-bg', scanOpts);
     if (blocked) return blocked;
     return json({ url: up.url });
   }
@@ -6957,7 +6968,7 @@ async function uploadApi(request, env, pathname) {
       sniff: sniffMediaTypeD1,
     });
     if (!up.ok) return uploadErrorJsonD1(up);
-    const blocked = await scanStoredUploadD1(env, up, actor, 'media');
+    const blocked = await scanStoredUploadD1(env, up, actor, 'media', scanOpts);
     if (blocked) return blocked;
     return json({ url: up.url, kind: up.type.startsWith('video/') ? 'video' : 'image' });
   }
@@ -6994,7 +7005,7 @@ async function uploadApi(request, env, pathname) {
       aliases: UPLOAD_TYPE_ALIASES,
     });
     if (!up.ok) return uploadErrorJsonD1(up);
-    const blocked = await scanStoredUploadD1(env, up, actor, 'file');
+    const blocked = await scanStoredUploadD1(env, up, actor, 'file', scanOpts);
     if (blocked) return blocked;
     return json({ url: up.url, type: up.type, size: up.size });
   }
@@ -7016,7 +7027,7 @@ async function uploadApi(request, env, pathname) {
       prefix: 'cardprint', actor, accept: ['image/png'],
     });
     if (!up.ok) return uploadErrorJsonD1(up);
-    const blocked = await scanStoredUploadD1(env, up, actor, 'card-print');
+    const blocked = await scanStoredUploadD1(env, up, actor, 'card-print', scanOpts);
     if (blocked) return blocked;
     return json({ url: up.url });
   }
@@ -7028,6 +7039,8 @@ async function uploadApi(request, env, pathname) {
       aliases: PROFILE_BG_ALIASES,
     });
     if (!up.ok) return uploadErrorJsonD1(up);
+    const blocked = await scanStoredUploadD1(env, up, actor, 'card-video', scanOpts);
+    if (blocked) return blocked;
     return json({ url: up.url });
   }
 
@@ -10480,7 +10493,7 @@ const H = {
 // bilan tugashini tekshiradi — oxiriga qo'shilsa o'sha qo'riqchi
 // yiqiladi. Tartibning boshqa ahamiyati yo'q: har bir modul o'ziga
 // tegishli bo'lmagan yo'lga `null` qaytaradi.
-const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiAppUsage, apiMarketplace];
+const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiAppUsage, apiAppAdmin, apiMarketplace];
 
 // Xavfsizlik header'lari — barcha javoblarga (statik va API). CSP ataylab faqat
 // framing/base/form/object ni cheklaydi (script/style ga tegmaydi — YouTube/Yandex
