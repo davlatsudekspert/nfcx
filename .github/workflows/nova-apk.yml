@@ -593,3 +593,76 @@ jobs:
             echo "AAB Play'ga yuklanmadi — 'Play Console' qadami logiga qarang." >> "$GITHUB_STEP_SUMMARY"
             echo "::warning::AAB Play'ga yuklanmadi."
           fi
+
+      # ── SAYT UCHUN PLAY IMZOLAGAN APK (egasi, 2026-09-24) ─────────
+      #
+      # "Ilovani saytga qo'y — Play Market'ga chiqquncha odamlar
+      # saytdan yuklab olsin". GitHub'dagi APK bizning yuklash kalitimiz
+      # bilan imzolangan, Play esa ilovani O'Z kaliti bilan qayta
+      # imzolaydi: saytdan GitHub APK'sini o'rnatgan odam keyin Play'dan
+      # YANGILAY OLMAS edi.
+      #
+      # Shuning uchun Play'ning o'zi yasagan universal APK olinadi
+      # (Play Developer API, `generatedApks`) — imzosi Play Market'dagi
+      # bilan bir xil. U alohida, BARQAROR `play-latest` relizga
+      # qo'yiladi: saytdagi havola faqat shu fayl muvaffaqiyatli
+      # olinganda yangilanadi, boshqa qurilishlar unga tegmaydi.
+      - name: Play imzolagan universal APK (sayt uchun)
+        id: playapk
+        if: ${{ steps.playup.outcome == 'success' }}
+        continue-on-error: true
+        env:
+          PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          VC: ${{ steps.ver.outputs.code }}
+        run: |
+          pip install --quiet google-auth requests
+          python3 - <<'PY'
+          import json, os, sys, time
+          import requests
+          from google.oauth2 import service_account
+          from google.auth.transport.requests import Request
+
+          creds = service_account.Credentials.from_service_account_info(
+              json.loads(os.environ["PLAY_JSON"]),
+              scopes=["https://www.googleapis.com/auth/androidpublisher"])
+          creds.refresh(Request())
+          h = {"Authorization": "Bearer " + creds.token}
+          base = ("https://androidpublisher.googleapis.com/androidpublisher/v3/"
+                  "applications/uz.nfcstore.nova/generatedApks/" + os.environ["VC"])
+          # Play APK'larni yuklangandan keyin bir necha daqiqada yasaydi.
+          uni, status = None, 0
+          for _ in range(30):
+              r = requests.get(base, headers=h, timeout=60)
+              status = r.status_code
+              if r.ok:
+                  for g in r.json().get("generatedApks", []):
+                      uni = (g.get("generatedUniversalApk") or {}).get("downloadId") or uni
+              if uni:
+                  break
+              time.sleep(20)
+          if not uni:
+              print("Play universal APK tayyor emas yoki ruxsat yo'q, HTTP", status)
+              sys.exit(1)
+          d = requests.get(base + "/downloads/" + uni + ":download",
+                           params={"alt": "media"}, headers=h, timeout=600, stream=True)
+          d.raise_for_status()
+          with open("NFCSTORE-Play.apk", "wb") as f:
+              for chunk in d.iter_content(1 << 20):
+                  f.write(chunk)
+          print("Olindi:", os.path.getsize("NFCSTORE-Play.apk"), "bayt")
+          PY
+
+      - name: Sayt havolasi — play-latest
+        if: ${{ steps.playapk.outcome == 'success' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha256sum NFCSTORE-Play.apk | awk '{print $1"  NFCSTORE-Play.apk"}' > NFCSTORE-Play.sha256
+          gh release delete play-latest --yes --cleanup-tag 2>/dev/null || true
+          gh release create play-latest NFCSTORE-Play.apk NFCSTORE-Play.sha256 \
+            --target "$GITHUB_SHA" \
+            --title "NFCSTORE — Play imzolagan APK (versionCode ${{ steps.ver.outputs.code }})" \
+            --notes "Saytdagi yuklab olish havolasi uchun. Imzosi Google Play'dagi bilan bir xil — keyin Play Market'dan yangilanadi."
+          echo "## Sayt uchun APK" >> "$GITHUB_STEP_SUMMARY"
+          echo "Play imzolagan APK (versionCode ${{ steps.ver.outputs.code }}) play-latest relizga qo'yildi." >> "$GITHUB_STEP_SUMMARY"
