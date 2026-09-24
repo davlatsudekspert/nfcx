@@ -12,6 +12,7 @@ import 'package:nfcstore_nova/app/providers.dart';
 import 'package:nfcstore_nova/core/network/api_client.dart';
 import 'package:nfcstore_nova/core/utils/result.dart';
 import 'package:nfcstore_nova/data/models/models.dart';
+import 'package:nfcstore_nova/data/repositories/business_repository.dart';
 import 'package:nfcstore_nova/data/repositories/social_repository.dart';
 import 'package:nfcstore_nova/features/auth/session.dart';
 import 'package:nfcstore_nova/routing/router.dart';
@@ -23,6 +24,49 @@ import '../helpers.dart';
 ///
 ///   flutter test test/shots/premium_redesign_shot.dart \
 ///     --run-skipped -t shots --update-goldens
+class _Biz extends BusinessRepository {
+  _Biz() : super(ApiClient());
+
+  @override
+  Future<Result<Business>> byId(String companyId) async =>
+      Ok(Business.fromJson({
+        'companyId': companyId,
+        'displayName': 'NFCSTORE',
+        'category': 'Digital Identity & MarTech',
+        'city': 'Toshkent',
+        'status': 'published',
+        'description': 'NFCSTORE.UZ — shaxsiy va biznes raqamli profillar, '
+            'noyob NFC ID va zamonaviy NFC mahsulotlari bitta platformada.',
+        'phone': '+998901234567',
+        'telegram': 'nfcstoreuz',
+        'whatsapp': '+998901234567',
+        'address': 'Toshkent',
+        'followers': 12,
+      }));
+
+  @override
+  Future<Result<List<CatalogItem>>> catalog(String companyId) async =>
+      Ok([
+        for (final (n, p) in [
+          ('NFC ID Karta', 200000),
+          ('NFC Stend', 130000),
+          ('NFC Sticker', 70000),
+        ])
+          CatalogItem.fromJson({
+            'id': n.hashCode,
+            'name': n,
+            'desc': 'Raqamli profilingizni bir teginishda ulashing.',
+            'price': p,
+          }),
+      ]);
+
+  @override
+  Future<Result<List<Post>>> posts(String companyId) async => const Ok([]);
+
+  @override
+  Future<Result<List<Business>>> mine() async => const Ok([]);
+}
+
 class _Social extends SocialRepository {
   _Social() : super(ApiClient());
 
@@ -133,6 +177,7 @@ void main() {
     final c = ProviderContainer(overrides: [
       ...await testOverrides(),
       socialRepositoryProvider.overrideWithValue(_Social()),
+      businessRepositoryProvider.overrideWithValue(_Biz()),
       authRepositoryProvider.overrideWithValue(FakeAuthRepository(ids: const [
         NfcId(
             code: 'VIP001',
@@ -194,6 +239,10 @@ void main() {
   testWidgets('Tanlov -> profil (pastki panel bilan)', (t) async {
     await app(t, Routes.discover, 'redesign-$tag-user-from-discover',
         push: Routes.user('VIP001'));
+  });
+  testWidgets('Biznes profil', (t) async {
+    await app(t, Routes.discover, 'redesign-$tag-company',
+        size: const Size(390, 1500), push: Routes.storefront('NFCSTOREUZ'));
   });
   testWidgets('Tanlov', (t) async {
     await app(t, Routes.discover, 'redesign-$tag-discover',

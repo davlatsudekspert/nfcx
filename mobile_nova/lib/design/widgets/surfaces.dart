@@ -47,7 +47,8 @@ class FloatingSurface extends StatelessWidget {
       decoration: BoxDecoration(
         color: solid ? t.surfaceSolid : t.surface,
         borderRadius: borderRadius,
-        border: border ? Border.all(color: t.border2, width: 1) : null,
+        // PREMIUM: ingichka hoshiya (hamma kartalar bir tilda).
+        border: border ? Border.all(color: t.border1, width: 1) : null,
         boxShadow: elevated ? t.shadowFloat : t.shadowSoft,
       ),
       child: child,

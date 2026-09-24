@@ -26,6 +26,8 @@ import '../../design/widgets/id_lux.dart';
 import '../home/widgets/mode_switch.dart';
 import '../home/widgets/my_ids_strip.dart';
 import '../../app/profile_context.dart';
+import '../business/business_providers.dart';
+import '../business/business_screens.dart' show CatalogTile, showProductSheet;
 import '../../data/repositories/business_repository.dart';
 import '../nfc/qr_sheet.dart';
 import 'profile_switcher.dart';
@@ -73,10 +75,16 @@ final companyPostsProvider = FutureProvider.autoDispose
 /// avatar, kapsula shaklidagi statistika va ixcham plitkalar — har biri
 /// boshqa shakl va o'lchamda. Kompozitsiya ataylab nosimmetrik.
 class ProfileScreen extends ConsumerWidget {
-  const ProfileScreen({super.key, this.code});
+  const ProfileScreen({super.key, this.code, this.companyId});
 
   /// `null` — o'z profili. Aks holda boshqa foydalanuvchi.
   final String? code;
+
+  /// BIZNES PROFILI (`/c/:companyId`) — shaxsiy profil bilan AYNAN bir
+  /// xil premium ko'rinishda (egasi, 2026-09-24: "Tanlovdan biznes
+  /// profilga kirganda ham shaxsiy profildek premium bo'lsin").
+  /// Qo'shimcha: tavsif va katalog.
+  final String? companyId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -94,19 +102,39 @@ class ProfileScreen extends ConsumerWidget {
     // qachon bo'lmaydi, shuning uchun natija doim `null` edi va
     // ekran serverga umuman murojaat qilmasdi: Kashfiyotdan qaysi
     // odamni tanlasangiz ham bir xil BO'SH panel ochilardi.
-    final isMe = code == null || ids.any((e) => e.code == code);
-    final remote = (code == null || isMe)
+    final cid = companyId;
+    final company = cid != null;
+    final companyRemote = company ? ref.watch(storefrontProvider(cid)) : null;
+    // O'z kompaniyasi — tahrir tugmasi, shikoyat menyusi yo'q.
+    final ownCompany = company &&
+        (ref.watch(myBusinessesProvider).valueOrNull?.any(
+                (b) => b.companyId.toUpperCase() == cid.toUpperCase()) ??
+            false);
+
+    final isMe = company
+        ? ownCompany
+        : code == null || ids.any((e) => e.code == code);
+    final remote = (company || code == null || isMe)
         ? null
         : ref.watch(publicProfileProvider(code!));
-    final other = code == null
+    final other = (company || code == null)
         ? null
         : (ids.where((e) => e.code == code).firstOrNull ?? remote?.valueOrNull);
-    final active = code == null
-        ? ref.watch(activeProfileProvider)
-        : (other == null ? null : ActiveProfile.personal(other));
+    final active = company
+        ? (companyRemote!.valueOrNull == null
+            ? null
+            : ActiveProfile.company(companyRemote.valueOrNull!))
+        : code == null
+            ? ref.watch(activeProfileProvider)
+            : (other == null ? null : ActiveProfile.personal(other));
+
+    /// Begona (yoki ko'rilayotgan) profil kodi: shaxsiy NFC kodi yoki
+    /// `companyId`. `null` — o'z profilim (tab).
+    final target = cid ?? code;
 
     // Biznes rejimi tanlangan, lekin hisobda kompaniya yo'q.
-    final noBusiness = code == null && ref.watch(businessMissingProvider);
+    final noBusiness =
+        target == null && ref.watch(businessMissingProvider);
 
     // QR va ulashish FAQAT NFC yozuvida ma'noga ega — kompaniyaning
     // ommaviy manzili boshqacha quriladi va QR kodi shaxsiy yozuvniki
@@ -115,7 +143,8 @@ class ProfileScreen extends ConsumerWidget {
     final id = active != null && !active.isBusiness ? active.id : null;
 
     // Obuna holati — lenta kartasi bilan BITTA manba.
-    final following = code == null ? false : ref.watch(followingOfProvider(code!));
+    final following =
+        target == null ? false : ref.watch(followingOfProvider(target));
 
     // DEMO holati. Ishlab chiqarishda DOIM `null` — ya'ni pastdagi
     // hech bir shart ishlamaydi va ekran avvalgidek qoladi.
@@ -126,8 +155,8 @@ class ProfileScreen extends ConsumerWidget {
     return NovaScaffold(
       // Asosiy tab: pastki bo'shliq `navSafeBottom` da (suzuvchi menyu).
       padBottom: false,
-      showBack: code != null,
-      actions: code != null
+      showBack: target != null,
+      actions: target != null
           ? [
               // DEMO profilni shikoyat qilish yoki bloklash
               // ma'nosiz — o'rnida "Demo" yorlig'i turadi.
@@ -136,7 +165,25 @@ class ProfileScreen extends ConsumerWidget {
                   padding: const EdgeInsets.only(right: Gap.sm),
                   child: Capsule(label: l.demoBadge, dense: true),
                 )
-              else ...[
+              else if (company && !ownCompany) ...[
+                // Biznesga shikoyat va uni bloklash (Play UGC talabi).
+                NovaIconButton(
+                  key: const ValueKey('storefront-actions'),
+                  icon: Icons.more_horiz_rounded,
+                  tooltip: l.reportTitle,
+                  onPressed: () => showContentActions(
+                    context,
+                    ref,
+                    target: ReportTarget.company,
+                    targetId: cid,
+                    ownerCode: cid,
+                    blockKind: BlockKind.company,
+                    blockId: cid,
+                    keyPrefix: 'storefront',
+                  ),
+                ),
+                const SizedBox(width: Gap.sm),
+              ] else if (!company) ...[
                 // O'ZGANING profili — shikoyat va bloklash.
                 NovaIconButton(
                   icon: Icons.more_horiz_rounded,
@@ -158,6 +205,13 @@ class ProfileScreen extends ConsumerWidget {
         color: t.accent2,
         backgroundColor: t.surfaceSolid,
         onRefresh: () async {
+          if (company) {
+            ref
+              ..invalidate(storefrontProvider(cid))
+              ..invalidate(businessCatalogProvider(cid))
+              ..invalidate(companyPostsProvider(cid));
+            return;
+          }
           await ref.read(sessionProvider.notifier).refresh();
           if (!context.mounted) return;
           // Biznes profilda KOMPANIYA postlari yangilanadi (UIQ-1:
@@ -179,9 +233,12 @@ class ProfileScreen extends ConsumerWidget {
               ? const SliverToBoxAdapter()
               : _PostsGrid(code: active.code, company: active.isBusiness),
           children: [
-            _Hero(user: user, profile: active, mode: mode),
+            _Hero(
+                user: user,
+                profile: active,
+                mode: company ? AppMode.business : mode),
             const SizedBox(height: Gap.xl),
-            if (isMe && code == null)
+            if (isMe && target == null)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
                 child: ModeSwitch(
@@ -226,14 +283,16 @@ class ProfileScreen extends ConsumerWidget {
                       // "biznes profilni tahrirlash yo'q"). Ilgari bu
                       // tugma har doim shaxsiy NFC ID tahririni ochardi.
                       onPressed: isMe
-                          ? () => context.push(
-                              ref.read(activeProfileProvider)?.isBusiness ?? false
-                                  ? Routes.businessEdit
-                                  : Routes.profileEdit)
+                          ? () => context.push(company ||
+                                  (ref.read(activeProfileProvider)?.isBusiness ??
+                                      false)
+                              ? Routes.businessEdit
+                              : Routes.profileEdit)
                           : () async {
                               final e = await ref
                                   .read(followOverridesProvider.notifier)
-                                  .toggle(code!, following: following);
+                                  .toggle(target!,
+                                      following: following, company: company);
                               if (e == null || !context.mounted) return;
                               ScaffoldMessenger.of(context)
                                 ..hideCurrentSnackBar()
@@ -243,28 +302,38 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(width: Gap.md),
-                  NovaIconButton(
-                    icon: Icons.qr_code_rounded,
-                    tooltip: l.nfcShowQr,
-                    size: 52,
-                    onPressed: id == null
-                        ? null
-                        : () => showQrSheet(context, id,
-                            urlOverride: demo?.shareUrl),
-                  ),
-                  const SizedBox(width: Gap.sm),
+                  // QR — faqat NFC yozuvida (kompaniyaning QR kodi yo'q).
+                  if (!company) ...[
+                    NovaIconButton(
+                      icon: Icons.qr_code_rounded,
+                      tooltip: l.nfcShowQr,
+                      size: 52,
+                      onPressed: id == null
+                          ? null
+                          : () => showQrSheet(context, id,
+                              urlOverride: demo?.shareUrl),
+                    ),
+                    const SizedBox(width: Gap.sm),
+                  ],
                   NovaIconButton(
                     icon: Icons.ios_share_rounded,
                     tooltip: l.actionShare,
                     size: 52,
-                    onPressed: id == null
+                    onPressed: id == null && !company
                         ? null
                         : () async {
                             // Tizim oynasi ochilmasa manzil buferga
                             // ko'chiriladi — odam boshi berk
                             // ko'chada qolmasin.
-                            final ok = await shareLink(
-                                demo?.shareUrl ?? id.publicUrl(kApiBase));
+                            final String url;
+                            if (company) {
+                              url = demo?.shareUrl ??
+                                  '$kApiBase/c/${Uri.encodeComponent(cid)}';
+                            } else {
+                              if (id == null) return;
+                              url = demo?.shareUrl ?? id.publicUrl(kApiBase);
+                            }
+                            final ok = await shareLink(url);
                             if (ok || !context.mounted) return;
                             ScaffoldMessenger.of(context)
                               ..hideCurrentSnackBar()
@@ -283,6 +352,11 @@ class ProfileScreen extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
                 child: ContactButtons(actions: active.contact.actions()),
               ),
+            ],
+            // KATALOG — biznes profilida (ilgari alohida do'kon ekranida).
+            if (company && active != null) ...[
+              SectionHeader(title: l.bizCatalog),
+              _CompanyCatalog(companyId: cid, contacts: active.contact.actions()),
             ],
             if (noBusiness) ...[
               const SizedBox(height: Gap.xl),
@@ -307,7 +381,8 @@ class ProfileScreen extends ConsumerWidget {
             // "Hammasi" mavjud boshqaruv ekraniga olib boradi —
             // u o'zgarmadi. Sozlamalar va NFC markazidagi yo'llar
             // ham joyida qoldi.
-            if (code == null && ref.watch(myIdsProvider).isNotEmpty) ...[
+            if (companyId == null &&
+                code == null && ref.watch(myIdsProvider).isNotEmpty) ...[
               SectionHeader(
                 title: l.nfcMyIds,
                 action: l.actionSeeAll,
@@ -315,7 +390,7 @@ class ProfileScreen extends ConsumerWidget {
               ),
               const MyIdsStrip(),
             ],
-            if (mode == AppMode.business && isMe && !noBusiness) ...[
+            if (mode == AppMode.business && target == null && !noBusiness) ...[
               SectionHeader(title: l.bizTitle),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
@@ -333,8 +408,8 @@ class ProfileScreen extends ConsumerWidget {
             // ko'rsatamiz. Ilgari bu yerda "Do'kondan karta oling
             // yoki ID yarating" chiqardi, ya'ni begona odamning
             // profili o'rniga MENGA tegishli maslahat.
-            if (active == null && remote != null)
-              remote.when(
+            if (active == null && (remote ?? companyRemote) != null)
+              (remote ?? companyRemote)!.when(
                 loading: () => const Padding(
                   padding: EdgeInsets.symmetric(horizontal: Gap.screenX),
                   child: SkeletonList(count: 3),
@@ -344,7 +419,15 @@ class ProfileScreen extends ConsumerWidget {
                   child: StatePanel.fromError(
                     context,
                     asAppError(e),
-                    onRetry: () => ref.invalidate(publicProfileProvider(code!)),
+                    onRetry: () {
+                      if (company) {
+                        ref
+                          ..invalidate(storefrontProvider(cid))
+                          ..invalidate(businessCatalogProvider(cid));
+                      } else {
+                        ref.invalidate(publicProfileProvider(code!));
+                      }
+                    },
                   ),
                 ),
                 data: (_) => const SizedBox.shrink(),
@@ -362,6 +445,49 @@ class ProfileScreen extends ConsumerWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Biznes katalogi — mahsulot plitkalari; bosilsa tafsilot varag'i.
+class _CompanyCatalog extends ConsumerWidget {
+  const _CompanyCatalog({required this.companyId, required this.contacts});
+
+  final String companyId;
+  final List<ContactAction> contacts;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = L.of(context);
+    final catalog = ref.watch(businessCatalogProvider(companyId));
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
+      child: catalog.when(
+        loading: () => const SkeletonList(count: 3),
+        error: (e, __) => StatePanel.fromError(context, asAppError(e),
+            onRetry: () => ref.invalidate(businessCatalogProvider(companyId))),
+        data: (items) => items.isEmpty
+            ? FloatingSurface(
+                solid: true,
+                child: Text(
+                  l.bizCatalogEmpty,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              )
+            : Column(
+                children: [
+                  for (final item in items)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: Gap.md),
+                      child: CatalogTile(
+                        item: item,
+                        onTap: () =>
+                            showProductSheet(context, item, contacts: contacts),
+                      ),
+                    ),
+                ],
+              ),
       ),
     );
   }
@@ -859,7 +985,10 @@ class _HeroAvatar extends StatelessWidget {
             // bosh sahifadan og'irroq ko'rinardi.
             child: Avatar(
               url: avatar,
-              initials: user.initials,
+              // Ko'rilayotgan profilning bosh harflari — ilgari begona
+              // odam yoki kompaniyada ham KO'RUVCHINING o'z harflari
+              // ("TF") chiqardi.
+              initials: _nameInitials(profile?.name ?? '') ?? user.initials,
               size: 112,
               ringWidth: 1.6,
               ringColor: business
@@ -1100,7 +1229,8 @@ class _StatCapsules extends ConsumerWidget {
     final items = <(String, String, VoidCallback?)>[
       (n(posts), l.profilePosts, null),
       (
-        n(stats?.followers),
+        // Kompaniyada `follow-stats` bo'lmasa — kompaniyaning o'z soni.
+        n(stats?.followers ?? (business ? profile?.followers : null)),
         l.profileFollowers,
         code.isEmpty ? null : () => context.push(Routes.followers(code)),
       ),
@@ -1580,4 +1710,17 @@ class _GridTabs extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Ismdan ikki harf: "Ali Market" → "AM", "NFCSTORE" → "NF".
+/// Bo'sh ism — `null` (chaqiruvchi o'z zaxirasini beradi).
+String? _nameInitials(String name) {
+  final parts =
+      name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+  if (parts.isEmpty) return null;
+  if (parts.length == 1) {
+    final w = parts.first;
+    return (w.length >= 2 ? w.substring(0, 2) : w).toUpperCase();
+  }
+  return (parts[0][0] + parts[1][0]).toUpperCase();
 }

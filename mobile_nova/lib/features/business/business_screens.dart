@@ -15,14 +15,13 @@ import '../../design/widgets/contact_buttons.dart';
 import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
-import '../demo/demo_mode.dart';
 import '../social/media_frame.dart';
-import '../social/moderation.dart';
 import '../../routing/routes.dart';
 import '../home/widgets/avatar.dart';
 import '../home/widgets/identity_card.dart';
 import 'business_intro.dart';
 import 'business_providers.dart';
+import '../profile/profile_screen.dart';
 
 /// Biznes bo'limining kirish nuqtasi.
 ///
@@ -429,236 +428,19 @@ class _InfoRow extends StatelessWidget {
 }
 
 /// Ommaviy vitrina — mijoz ko'radigan sahifa.
-class StorefrontScreen extends ConsumerWidget {
+class StorefrontScreen extends StatelessWidget {
   const StorefrontScreen({super.key, required this.companyId});
 
   final String companyId;
 
+  /// BIZNES PROFILI — shaxsiy profil bilan BIR XIL premium ekran
+  /// (egasi, 2026-09-24: "Tanlovdan biznes profilga kirganda ham
+  /// shaxsiy profildek premium bo'lsin"). Ilgari bu yerda alohida,
+  /// oddiy vitrina (chapdagi kichik logo, muqova polosasi) turardi.
+  /// Endi markazda logo, nom, ID kapsulasi, statistika, Kuzatish,
+  /// aloqa tugmalari, katalog va postlar — hammasi `ProfileScreen`.
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l = L.of(context);
-    final t = context.tokens;
-    final business = ref.watch(storefrontProvider(companyId));
-    final catalog = ref.watch(businessCatalogProvider(companyId));
-
-    // DEMO holati. Ishlab chiqarishda DOIM `null` — ya'ni pastdagi
-    // yorliq va eslatma umuman chizilmaydi.
-    final demo = ref.watch(demoModeProvider);
-
-    // O'z biznesimda shikoyat/bloklash menyusi chiqmaydi.
-    final own = ref.watch(myBusinessesProvider).valueOrNull
-            ?.any((b) => b.companyId.toUpperCase() == companyId.toUpperCase()) ??
-        false;
-
-    return NovaScaffold(
-      showBack: true,
-      actions: demo != null
-          ? [
-              Padding(
-                padding: const EdgeInsets.only(right: Gap.sm),
-                child: Capsule(label: l.demoBadge, dense: true),
-              ),
-            ]
-          : own
-              ? null
-              : [
-                  // Biznesga shikoyat va uni bloklash (Play UGC talabi).
-                  NovaIconButton(
-                    key: const ValueKey('storefront-actions'),
-                    icon: Icons.more_horiz_rounded,
-                    tooltip: l.reportTitle,
-                    onPressed: () => showContentActions(
-                      context,
-                      ref,
-                      target: ReportTarget.company,
-                      targetId: companyId,
-                      ownerCode: companyId,
-                      blockKind: BlockKind.company,
-                      blockId: companyId,
-                      keyPrefix: 'storefront',
-                    ),
-                  ),
-                  const SizedBox(width: Gap.sm),
-                ],
-      body: business.when(
-        loading: () => const SkeletonList(count: 3),
-        error: (e, __) => StatePanel.fromError(
-          context,
-          asAppError(e),
-          // Katalog ham shu so'rovdan keladi va xatoda qolgan bo'lishi
-          // mumkin — faqat do'konni qayta so'rash uni yangilamasdi.
-          onRetry: () {
-            ref.invalidate(storefrontProvider(companyId));
-            ref.invalidate(businessCatalogProvider(companyId));
-          },
-        ),
-        data: (b) => NovaScroll(
-          padding: const EdgeInsets.only(bottom: 120),
-          children: [
-            if (demo != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  Gap.screenX,
-                  0,
-                  Gap.screenX,
-                  Gap.md,
-                ),
-                // YUMSHOQ KAPSULA — matn har qanday fon ustida
-                // bir xil o'qilsin.
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: Gap.md,
-                    vertical: Gap.sm,
-                  ),
-                  decoration: BoxDecoration(
-                    color: t.surfaceSolid.withValues(alpha: .86),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: t.border2),
-                  ),
-                  child: Text(
-                    l.demoNotice,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: t.text2, height: 1.4),
-                  ),
-                ),
-              ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-              child: ClipRRect(
-                borderRadius: R.organic(a: 34, b: 34, c: 34, d: 14),
-                child: SizedBox(
-                  height: 140,
-                  width: double.infinity,
-                  child: b.coverUrl.isEmpty
-                      ? DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [t.accentB, t.accentCDark],
-                            ),
-                          ),
-                        )
-                      : mediaImage(context, b.coverUrl, fit: BoxFit.cover),
-                ),
-              ),
-            ),
-            const SizedBox(height: Gap.lg),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-              child: Row(
-                children: [
-                  Avatar(
-                    url: b.logoUrl,
-                    initials: _initials(b.displayName, b.companyId),
-                    size: 56,
-                    ring: false,
-                  ),
-                  const SizedBox(width: Gap.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          b.displayName.isEmpty ? b.companyId : b.displayName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        Text(
-                          [
-                            b.city,
-                            b.subcategory,
-                          ].where((s) => s.isNotEmpty).join(' · '),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (b.description.isNotEmpty) ...[
-              const SizedBox(height: Gap.lg),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-                child: Text(
-                  b.description,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ),
-            ],
-            // ALOQA — saytdagi `/c/:id` sahifasidek logoli dumaloq
-            // tugmalar (egasi, 2026-09). Ilgari bitta "Bog'lanish"
-            // tugmasi ro'yxatli varaq ochardi va Instagram, Facebook,
-            // xarita, qo'shimcha havolalar umuman yo'q edi.
-            if (b.contact.actions().isNotEmpty) ...[
-              const SizedBox(height: Gap.xl),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-                child: ContactButtons(actions: b.contact.actions()),
-              ),
-            ],
-            SectionHeader(title: l.bizCatalog),
-            catalog.when(
-              loading: () => const SkeletonList(count: 3),
-              error: (e, __) => Padding(
-                padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-                child: StatePanel.fromError(context, asAppError(e),
-                    onRetry: () =>
-                        ref.invalidate(businessCatalogProvider(companyId))),
-              ),
-              data: (items) => items.isEmpty
-                  ? Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: Gap.screenX,
-                      ),
-                      child: FloatingSurface(
-                        solid: true,
-                        child: Text(
-                          l.bizCatalogEmpty,
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ),
-                    )
-                  : Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: Gap.screenX,
-                      ),
-                      child: Column(
-                        children: [
-                          // PLITKA BOSILADI.
-                          //
-                          // Ilgari bu yerda `onTap` UMUMAN yo'q edi:
-                          // katalogdagi mahsulotni bosish hech narsa
-                          // qilmasdi — o'lik yuza.
-                          for (final item in items)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: Gap.md),
-                              child: CatalogTile(
-                                item: item,
-                                onTap: () => showProductSheet(context, item,
-                                    contacts: b.contact.actions()),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Aloqa varag'i.
-  ///
-  /// NFCSTORE'da ILOVA ICHIDA YOZISHMA YO'Q — shuning uchun "Yozish"
-  /// tugmasi emas, telefon/Telegram/veb-sayt kabi TASHQI kanallar.
-
+  Widget build(BuildContext context) => ProfileScreen(companyId: companyId);
 }
 
 /// MAHSULOT TAFSILOTI — pastdan ochiladigan varaq.

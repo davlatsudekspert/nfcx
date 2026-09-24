@@ -40,12 +40,14 @@ void main() {
       'lib/features/social/post_screens.dart': 'showContentActions(',
       'lib/features/social/comments.dart': 'showContentActions(',
       'lib/features/social/story_viewer.dart': 'showContentActions(',
-      'lib/features/business/business_screens.dart': 'showContentActions(',
+      // Biznes profili endi `ProfileScreen(companyId:)` da.
+      'lib/features/profile/profile_screen.dart#company': 'BlockKind.company',
       'lib/features/social/reels_screen.dart': "ValueKey('reel-block')",
       'lib/features/profile/profile_screen.dart': 'BlockKind.record',
     };
     places.forEach((file, needle) {
-      expect(File(file).readAsStringSync(), contains(needle), reason: file);
+      expect(File(file.split('#').first).readAsStringSync(), contains(needle),
+          reason: file);
     });
     // Biznes posti o'z turi bilan.
     expect(File('lib/features/social/post_screens.dart').readAsStringSync(),

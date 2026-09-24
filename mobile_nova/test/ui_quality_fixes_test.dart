@@ -63,6 +63,10 @@ class _Biz extends BusinessRepository {
   Future<Result<List<CatalogItem>>> catalog(String companyId) async =>
       catalogOffline ? _offline : const Ok([item]);
 
+  // Biznes profili (premium) postlarni ham so'raydi.
+  @override
+  Future<Result<List<Post>>> posts(String companyId) async => const Ok([]);
+
   @override
   Future<Result<Map<String, dynamic>>> stats(String companyId,
           {int days = 30}) async =>

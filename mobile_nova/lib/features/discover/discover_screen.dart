@@ -462,7 +462,6 @@ class _ProfileCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final accent = accentBusiness ? t.accentB : t.accent2;
 
     // KARTA FON BILAN QO'SHILIB KETMASIN.
     //
@@ -471,10 +470,12 @@ class _ProfileCard extends StatelessWidget {
     // "ko'rinmas quti" bo'lib qolardi. Endi chetida juda ingichka
     // shampan chiziq bor: quti emas, lekin chegara sezilib
     // turadi.
+    // PREMIUM (egasi, 2026-09-24: "hamma joy premium bo'lsin"):
+    // ingichka neytral hoshiya + yumshoq soya, surat ramkasi champagne.
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: accent.withValues(alpha: .22)),
+        border: Border.all(color: t.border1),
       ),
       child: FloatingSurface(
       solid: true,
@@ -532,8 +533,9 @@ class _ProfileCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius:
                       BorderRadius.circular(rounded ? 20 : 999),
-                  border: Border.all(color: accent.withValues(alpha: .55),
-                      width: 1.4),
+                  border: Border.all(
+                      color: t.brand.withValues(alpha: .7), width: 1.4),
+                  boxShadow: t.shadowTiny,
                 ),
                 padding: const EdgeInsets.all(3),
                 child: ClipRRect(
@@ -549,27 +551,31 @@ class _ProfileCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: Gap.md),
-          Row(
-            children: [
-              for (var i = 0; i < stats.length; i++) ...[
-                if (i > 0) const SizedBox(width: Gap.sm),
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 9, horizontal: 4),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: t.border2),
-                    ),
+          // STATISTIKA — PROFILDAGI KABI: qutilar emas, ustida bitta
+          // ingichka chiziq, markazda serif raqam va kichik yorliq.
+          Container(
+            padding: const EdgeInsets.only(top: 10),
+            decoration: BoxDecoration(
+              border: Border(top: BorderSide(color: t.border1)),
+            ),
+            child: Row(
+              children: [
+                for (var i = 0; i < stats.length; i++)
+                  Expanded(
                     child: Column(
                       children: [
-                        Text(stats[i].$1,
-                            maxLines: 1,
-                            style:
-                                AppType.monoStyle(color: t.text1, size: 13)),
+                        Text(
+                          stats[i].$1,
+                          maxLines: 1,
+                          style: TextStyle(
+                            fontFamily: AppType.display,
+                            fontFamilyFallback: AppType.displayFallback,
+                            fontSize: 17,
+                            height: 1.05,
+                            color: t.text1,
+                          ),
+                        ),
                         const SizedBox(height: 2),
-                        // 8.5 dp o'qilmasdi (audit 2026-09) — ilovaning
-                        // boshqa statistika yorliqlari bilan bir pog'ona.
                         Text(
                           stats[i].$2,
                           maxLines: 1,
@@ -577,16 +583,16 @@ class _ProfileCard extends StatelessWidget {
                           style: TextStyle(
                             fontFamily: AppType.sans,
                             fontSize: 10.5,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: .2,
                             color: t.text2,
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
               ],
-            ],
+            ),
           ),
         ],
       ),
