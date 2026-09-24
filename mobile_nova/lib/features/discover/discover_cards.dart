@@ -77,47 +77,53 @@ class _Stat extends StatelessWidget {
     final t = context.tokens;
     // Tor katakda belgi yashiriladi — son va yorliq o'qiladigan
     // o'lchamda qoladi (kichraytirilmaydi).
-    return LayoutBuilder(builder: (context, c) {
-      final icon = c.maxWidth >= 84;
-      return Row(
-        children: [
-          if (icon) ...[
-            Icon(this.icon, size: 16, color: Color.lerp(t.text1, t.text2, .35)),
-            const SizedBox(width: 5),
-          ],
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  value,
-                  maxLines: 1,
-                  style: TextStyle(
-                    fontFamily: AppType.display,
-                    fontFamilyFallback: AppType.displayFallback,
-                    fontSize: 16,
-                    height: 1.05,
-                    color: t.text1,
+    return LayoutBuilder(
+      builder: (context, c) {
+        final icon = c.maxWidth >= 84;
+        return Row(
+          children: [
+            if (icon) ...[
+              Icon(
+                this.icon,
+                size: 16,
+                color: Color.lerp(t.text1, t.text2, .35),
+              ),
+              const SizedBox(width: 5),
+            ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    value,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontFamily: AppType.display,
+                      fontFamilyFallback: AppType.displayFallback,
+                      fontSize: 16,
+                      height: 1.05,
+                      color: t.text1,
+                    ),
                   ),
-                ),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontFamily: AppType.sans,
-                    fontSize: 10.5,
-                    height: 1.2,
-                    color: t.text2,
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: AppType.sans,
+                      fontSize: 10.5,
+                      height: 1.2,
+                      color: t.text2,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
-      );
-    });
+          ],
+        );
+      },
+    );
   }
 }
 
@@ -583,27 +589,35 @@ class DiscoverBusinessCard extends ConsumerWidget {
                     ],
                     if (thumbs.isNotEmpty) ...[
                       const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          for (var i = 0; i < 4; i++) ...[
-                            if (i > 0) const SizedBox(width: 5),
-                            Expanded(
-                              child: AspectRatio(
-                                aspectRatio: 1,
-                                child: i < thumbs.length
-                                    ? ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: mediaImage(
-                                          context,
-                                          thumbs[i].imageUrl,
-                                          fit: BoxFit.cover,
-                                        ),
-                                      )
-                                    : const SizedBox(),
+                      // Balandlik QAT'IY (42 dp): keng ekranda (planshet,
+                      // BlueStacks) kataklar kattalashib, pastki qator
+                      // karta tashqarisiga chiqib ketardi.
+                      SizedBox(
+                        height: 42,
+                        child: Row(
+                          children: [
+                            for (var i = 0; i < 4; i++) ...[
+                              if (i > 0) const SizedBox(width: 5),
+                              Flexible(
+                                child: AspectRatio(
+                                  aspectRatio: 1,
+                                  child: i < thumbs.length
+                                      ? ClipRRect(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                          child: mediaImage(
+                                            context,
+                                            thumbs[i].imageUrl,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        )
+                                      : const SizedBox(),
+                                ),
                               ),
-                            ),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
                     ],
                     const SizedBox(height: 8),

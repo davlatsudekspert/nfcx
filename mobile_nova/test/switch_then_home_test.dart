@@ -10,6 +10,7 @@ import 'package:nfcstore_nova/core/network/api_client.dart';
 import 'package:nfcstore_nova/core/utils/result.dart';
 import 'package:nfcstore_nova/data/models/models.dart';
 import 'package:nfcstore_nova/data/repositories/business_repository.dart';
+import 'package:nfcstore_nova/features/business/business_providers.dart';
 import 'package:nfcstore_nova/features/auth/session.dart';
 import 'package:nfcstore_nova/features/home/home_screen.dart' show activeIdProvider;
 import 'package:nfcstore_nova/l10n/gen/app_localizations_uz.dart';
@@ -175,6 +176,35 @@ void main() {
     await _frames(tester, 30);
     expect(c.read(modeProvider), AppMode.personal);
     expect(c.read(activePersonalProvider)?.code, 'VIP001');
+    expect(tester.takeException(), isNull);
+  });
+
+  // Egasi (2026-09-24): "Profilda personal profilni tanlash bor. Lekin
+  // biznes profilni tanlash chiqmayabdi, menda 4 tami bor". Kompaniya
+  // bir marta tanlangach varaq endi umuman chiqmasdi.
+  testWidgets('biznes tanlangan bo‘lsa ham "Biznes" tanlagichni ochadi',
+      (tester) async {
+    await boot(tester);
+    final l = LUz();
+    await c.read(myBusinessesProvider.future);
+    c.read(selectedBusinessProvider.notifier).state = 'ELITE';
+    await c.read(modeProvider.notifier).set(AppMode.business);
+    await go(tester, Routes.profile);
+    expect(c.read(selectedBusinessProvider), 'ELITE');
+
+    final biz = find.text(l.modeBusiness).first;
+    await tester.ensureVisible(biz);
+    await tester.tap(biz);
+    await _frames(tester, 30);
+    expect(find.text(l.profilePickBusiness), findsOneWidget,
+        reason: 'bir nechta biznes bor — tanlagich har safar ochiladi');
+    final row = find.descendant(
+        of: find.byType(BottomSheet), matching: find.text('NFCSTOREUZ'));
+    expect(row, findsOneWidget);
+    await tester.tap(row);
+    await _frames(tester, 30);
+    expect(c.read(selectedBusinessProvider), 'NFCSTOREUZ');
+    expect(c.read(modeProvider), AppMode.business);
     expect(tester.takeException(), isNull);
   });
 

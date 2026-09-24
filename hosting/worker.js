@@ -1135,12 +1135,25 @@ async function companyApi(request, env, url) {
   // Maxfiy maydonlar (egasi, telefoni, to'lov holati) YUBORILMAYDI —
   // faqat sahifada allaqachon ochiq ko'rinadigan ma'lumot.
   if (path === '/api/companies' && request.method === 'GET') {
-    const rows = await env.DB.prepare(
-      `SELECT company_id, display_name, logo_url, cover_url, category, subcategory, city, created_at
-         FROM companies
-        WHERE status = 'active' AND ${companyOwnerAliveSql('companies')}
-        ORDER BY created_at DESC LIMIT 200`
-    ).all();
+    // Tanlov "Bizneslar": ko'p ko'rilganlar tepada (shaxsiy profillar
+    // kabi). Ko'rishlar — company_stats (POST /view) yig'indisi,
+    // obunachilar — faqat ko'rinadigan foydalanuvchilar. Statistika
+    // jadvallari hali yaratilmagan bo'lsa — eski tartibga qaytadi.
+    const base = `SELECT company_id, display_name, logo_url, cover_url, category, subcategory, city, created_at`;
+    const where = `FROM companies
+        WHERE status = 'active' AND ${companyOwnerAliveSql('companies')}`;
+    let rows = await env.DB.prepare(
+      `${base},
+          COALESCE((SELECT SUM(s.hits) FROM company_stats s
+                     WHERE s.company_id = companies.company_id AND s.kind = 'view'), 0) AS views,
+          (SELECT COUNT(*) FROM company_follows cf
+            WHERE cf.company_id = companies.company_id AND ${visibleUserSql('cf.user_id')}) AS followers
+         ${where}
+        ORDER BY views DESC, created_at DESC LIMIT 200`
+    ).all().catch(() => null);
+    if (!rows) {
+      rows = await env.DB.prepare(`${base} ${where} ORDER BY created_at DESC LIMIT 200`).all();
+    }
     return json({
       companies: (rows.results || []).map((r) => ({
         companyId: r.company_id,
@@ -1151,6 +1164,8 @@ async function companyApi(request, env, url) {
         subcategory: r.subcategory || '',
         city: r.city || '',
         createdAt: r.created_at || null,
+        views: Number(r.views) || 0,
+        followers: Number(r.followers) || 0,
       })),
     });
   }

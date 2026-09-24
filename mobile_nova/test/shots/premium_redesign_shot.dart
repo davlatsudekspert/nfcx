@@ -343,6 +343,10 @@ void main() {
     await app(t, Routes.discover, 'redesign-$tag-discover-biz',
         size: const Size(390, 1100), bizTab: true);
   });
+  testWidgets('Tanlov bizneslar keng', (t) async {
+    await app(t, Routes.discover, 'redesign-$tag-discover-biz-wide',
+        size: const Size(560, 1100), bizTab: true);
+  });
   testWidgets('Tanlov bizneslar 360', (t) async {
     await app(t, Routes.discover, 'redesign-$tag-discover-biz-360',
         size: const Size(360, 1100), bizTab: true);

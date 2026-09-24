@@ -82,7 +82,11 @@ List<Business> _byBizViews(List<Business> v) {
     final c = b.views.compareTo(a.views);
     if (c != 0) return c;
     final f = b.followers.compareTo(a.followers);
-    return f != 0 ? f : a.companyId.compareTo(b.companyId);
+    if (f != 0) return f;
+    // Teng bo'lsa — server kabi yangisi oldin.
+    final ta = a.createdAt, tb = b.createdAt;
+    if (ta != null && tb != null && ta != tb) return tb.compareTo(ta);
+    return a.companyId.compareTo(b.companyId);
   });
   return out;
 }

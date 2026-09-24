@@ -61,4 +61,15 @@ const created = await mk('YANGICO', 'Yangi Co');
 check('5) kompaniya yaratish ishlaydi', created.status, 201);
 check('5) lekin faol emas — ro‘yxatda yo‘q', (await j('/api/companies')).body.companies.map((c) => c.companyId), ['NFCSTOREUZ']);
 
+// ── 6) KO'P KO'RILGANLAR TEPADA (Tanlov "Bizneslar") ─────────────────
+// Shaxsiy profillar kabi — tartib ko'rishlar bo'yicha; teng bo'lsa
+// yangisi oldin. Ko'rishlar va obunachilar soni ham keladi.
+await env.DB.prepare(`UPDATE companies SET status='active' WHERE company_id IN ('OTHERCO','YANGICO')`).run();
+await j('/api/companies/NFCSTOREUZ'); // tayyorlov: statistika jadvallari
+await env.DB.prepare(`INSERT INTO company_stats (company_id, day, kind, ref, hits) VALUES ('OTHERCO','2026-09-20','view','',7),('OTHERCO','2026-09-21','view','',5),('NFCSTOREUZ','2026-09-21','view','',3),('YANGICO','2026-09-21','click','',99)`).run();
+const ranked = (await j('/api/companies')).body.companies;
+check('6) ko‘rishlar bo‘yicha tartib', ranked.map((c) => c.companyId), ['OTHERCO', 'NFCSTOREUZ', 'YANGICO']);
+check('6) ko‘rishlar soni (faqat view)', ranked.map((c) => c.views), [12, 3, 0]);
+checkTrue('6) obunachilar soni raqam', ranked.every((c) => typeof c.followers === 'number'));
+
 done();
