@@ -1999,11 +1999,15 @@ void main() {
     }
 
     // ── Hisob o'chirish / email kodi ───────────────────────────
-    backendGap(
+    // Ilovada o'chirish BOR: Sozlamalar → Xavfsizlik → Hisobni o'chirish
+    // → `DELETE /api/account` (features/profile/profile_repository.dart). Haqiqiy sinov
+    // hisobida bajarilmaydi — qaytarib bo'lmaydi. Server tomoni
+    // scripts/test-account-deletion-pr1.mjs da sinalgan.
+    report.skip(
       'Account delete',
-      'ilova ichida haqiqiy o\'chirish endpointi yo\'q; hozir '
-          'qo\'llab-quvvatlashga so\'rov yuboriladi. Google Play ilova '
-          'ichida o\'chirishni TALAB qiladi',
+      'ilovada bor (DELETE /api/account); haqiqiy hisobda '
+          'qaytarilmas amal bajarilmaydi — server testi: '
+          'test-account-deletion-pr1.mjs',
     );
     backendGap(
       'Email OTP',
