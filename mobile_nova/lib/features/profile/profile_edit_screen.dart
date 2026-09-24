@@ -210,7 +210,8 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
           links: _contact?.toRecordJson(),
         );
     if (!mounted) return;
-    setState(() => _busy = false);
+    // Tugma sessiya yangilanguncha BAND qoladi: aks holda `refresh()`
+    // kutilayotganda ikkinchi bosish ikkinchi so'rov yuborardi.
     await res.when(
       ok: (_) async {
         await ref.read(sessionProvider.notifier).refresh();
@@ -221,6 +222,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       },
       err: (e) async => setState(() => _error = describeError(l, e)),
     );
+    if (mounted) setState(() => _busy = false);
   }
 
   @override

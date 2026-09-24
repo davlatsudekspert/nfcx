@@ -79,7 +79,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       password: _password.text,
     );
     if (!mounted) return;
-    setState(() => _busy = false);
+    // `adopt()` tugaguncha tugma band — ikkinchi kirish so'rovi yo'q.
     await res.when(
       ok: (user) async {
         await ref.read(sessionProvider.notifier).adopt(user);
@@ -87,6 +87,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       },
       err: (e) async => setState(() => _formError = describeError(l, e)),
     );
+    if (mounted) setState(() => _busy = false);
   }
 
   @override

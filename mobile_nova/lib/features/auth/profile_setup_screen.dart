@@ -121,8 +121,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           avatarUrl: _avatarUrl.isEmpty ? null : _avatarUrl,
         );
     if (!mounted) return;
-    setState(() => _busy = false);
 
+    // Sessiya yangilanguncha tugma band — ikkinchi bosish yo'q.
     await res.when(
       ok: (_) async {
         await ref.read(sessionProvider.notifier).refresh();
@@ -130,6 +130,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       },
       err: (e) async => setState(() => _error = describeError(l, e)),
     );
+    if (mounted) setState(() => _busy = false);
   }
 
   @override

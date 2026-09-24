@@ -253,8 +253,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           promoCode: _promoCode,
         );
     if (!mounted) return;
-    setState(() => _busy = false);
 
+    // `adopt()` tugaguncha tugma band — ikkinchi hisob so'rovi yo'q.
     await res.when(
       ok: (user) async {
         await ref.read(sessionProvider.notifier).adopt(user);
@@ -269,6 +269,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         setState(() => _error = describeError(l, e));
       },
     );
+    if (mounted) setState(() => _busy = false);
   }
 
   @override

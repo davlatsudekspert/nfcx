@@ -60,94 +60,99 @@ class _QrSheet extends StatelessWidget {
         Gap.xxl,
         Gap.xxl + MediaQuery.viewPaddingOf(context).bottom,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(color: t.border2, borderRadius: R.pill),
-          ),
-          const SizedBox(height: Gap.xl),
-          Text(id.name.isEmpty ? l.nfcShowQr : id.name,
-              style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: Gap.xs),
-          Text(l.nfcQrHint,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: Gap.xl),
-          // QR har doim OQ fonda chiziladi: qorong'i mavzuda mavzu rangi
-          // ishlatilsa skanerlar kodni o'qiy olmasdi.
-          Container(
-            padding: const EdgeInsets.all(Gap.xl),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: R.soft,
-              boxShadow: t.shadowSoft,
+      // Kichik ekran + katta matnda (360x640, 1.3x) mazmun varaqdan
+      // uzun bo'lib pastki tugmalar toshib ketardi. Sig'sa — joylashuv
+      // aynan avvalgidek; sig'masa — varaq ichida aylantiriladi.
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(color: t.border2, borderRadius: R.pill),
             ),
-            child: QrImageView(
-              data: url,
-              size: 216,
-              backgroundColor: Colors.white,
-              eyeStyle: const QrEyeStyle(
-                eyeShape: QrEyeShape.circle,
-                color: Color(0xFF14131A),
+            const SizedBox(height: Gap.xl),
+            Text(id.name.isEmpty ? l.nfcShowQr : id.name,
+                style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: Gap.xs),
+            Text(l.nfcQrHint,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall),
+            const SizedBox(height: Gap.xl),
+            // QR har doim OQ fonda chiziladi: qorong'i mavzuda mavzu rangi
+            // ishlatilsa skanerlar kodni o'qiy olmasdi.
+            Container(
+              padding: const EdgeInsets.all(Gap.xl),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: R.soft,
+                boxShadow: t.shadowSoft,
               ),
-              dataModuleStyle: const QrDataModuleStyle(
-                dataModuleShape: QrDataModuleShape.circle,
-                color: Color(0xFF14131A),
+              child: QrImageView(
+                data: url,
+                size: 216,
+                backgroundColor: Colors.white,
+                eyeStyle: const QrEyeStyle(
+                  eyeShape: QrEyeShape.circle,
+                  color: Color(0xFF14131A),
+                ),
+                dataModuleStyle: const QrDataModuleStyle(
+                  dataModuleShape: QrDataModuleShape.circle,
+                  color: Color(0xFF14131A),
+                ),
+                embeddedImage: const AssetImage(BrandLogo.assetLogo),
+                embeddedImageStyle: const QrEmbeddedImageStyle(size: Size(42, 42)),
               ),
-              embeddedImage: const AssetImage(BrandLogo.assetLogo),
-              embeddedImageStyle: const QrEmbeddedImageStyle(size: Size(42, 42)),
             ),
-          ),
-          const SizedBox(height: Gap.xl),
-          SelectableText(
-            id.code,
-            style: AppType.monoStyle(color: t.text1, size: 17, letterSpacing: 2.4),
-          ),
-          const SizedBox(height: Gap.xl),
-          Row(
-            children: [
-              Expanded(
-                child: NovaButton(
-                  label: l.actionCopy,
-                  tone: ButtonTone.quiet,
-                  icon: Icons.copy_rounded,
-                  onPressed: () async {
-                    // `Clipboard.setData` kanali javob bermasa
-                    // MANGU kutadi — istisno ham tashlamaydi. Shuning
-                    // uchun to'g'ridan-to'g'ri emas, `copyToClipboard`
-                    // orqali: u ichida timeout bilan o'ralgan.
-                    await copyToClipboard(url);
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(l.actionCopied)),
-                      );
-                    }
-                  },
+            const SizedBox(height: Gap.xl),
+            SelectableText(
+              id.code,
+              style: AppType.monoStyle(color: t.text1, size: 17, letterSpacing: 2.4),
+            ),
+            const SizedBox(height: Gap.xl),
+            Row(
+              children: [
+                Expanded(
+                  child: NovaButton(
+                    label: l.actionCopy,
+                    tone: ButtonTone.quiet,
+                    icon: Icons.copy_rounded,
+                    onPressed: () async {
+                      // `Clipboard.setData` kanali javob bermasa
+                      // MANGU kutadi — istisno ham tashlamaydi. Shuning
+                      // uchun to'g'ridan-to'g'ri emas, `copyToClipboard`
+                      // orqali: u ichida timeout bilan o'ralgan.
+                      await copyToClipboard(url);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(l.actionCopied)),
+                        );
+                      }
+                    },
+                  ),
                 ),
-              ),
-              const SizedBox(width: Gap.md),
-              Expanded(
-                child: NovaButton(
-                  label: l.actionShare,
-                  icon: Icons.ios_share_rounded,
-                  onPressed: () async {
-                    // Tizim oynasi ochilmasa `shareLink` manzilni
-                    // buferga ko'chiradi — buni odamga aytamiz,
-                    // aks holda tugma "ishlamadi" bo'lib ko'rinadi.
-                    final ok = await shareLink(url, title: id.name);
-                    if (ok || !context.mounted) return;
-                    ScaffoldMessenger.of(context)
-                      ..hideCurrentSnackBar()
-                      ..showSnackBar(SnackBar(content: Text(l.shareCopied)));
-                  },
+                const SizedBox(width: Gap.md),
+                Expanded(
+                  child: NovaButton(
+                    label: l.actionShare,
+                    icon: Icons.ios_share_rounded,
+                    onPressed: () async {
+                      // Tizim oynasi ochilmasa `shareLink` manzilni
+                      // buferga ko'chiradi — buni odamga aytamiz,
+                      // aks holda tugma "ishlamadi" bo'lib ko'rinadi.
+                      final ok = await shareLink(url, title: id.name);
+                      if (ok || !context.mounted) return;
+                      ScaffoldMessenger.of(context)
+                        ..hideCurrentSnackBar()
+                        ..showSnackBar(SnackBar(content: Text(l.shareCopied)));
+                    },
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

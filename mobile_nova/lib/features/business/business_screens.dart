@@ -485,7 +485,12 @@ class StorefrontScreen extends ConsumerWidget {
         error: (e, __) => StatePanel.fromError(
           context,
           asAppError(e),
-          onRetry: () => ref.invalidate(storefrontProvider(companyId)),
+          // Katalog ham shu so'rovdan keladi va xatoda qolgan bo'lishi
+          // mumkin — faqat do'konni qayta so'rash uni yangilamasdi.
+          onRetry: () {
+            ref.invalidate(storefrontProvider(companyId));
+            ref.invalidate(businessCatalogProvider(companyId));
+          },
         ),
         data: (b) => NovaScroll(
           padding: const EdgeInsets.only(bottom: 120),
@@ -602,7 +607,9 @@ class StorefrontScreen extends ConsumerWidget {
               loading: () => const SkeletonList(count: 3),
               error: (e, __) => Padding(
                 padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-                child: StatePanel.fromError(context, asAppError(e)),
+                child: StatePanel.fromError(context, asAppError(e),
+                    onRetry: () =>
+                        ref.invalidate(businessCatalogProvider(companyId))),
               ),
               data: (items) => items.isEmpty
                   ? Padding(

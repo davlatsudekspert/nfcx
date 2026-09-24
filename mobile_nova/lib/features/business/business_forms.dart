@@ -1544,7 +1544,9 @@ class BusinessAnalyticsScreen extends ConsumerWidget {
           SectionHeader(title: l.bizCatalog),
           catalog.when(
             loading: () => const SkeletonList(count: 3),
-            error: (e, __) => StatePanel.fromError(context, asAppError(e)),
+            error: (e, __) => StatePanel.fromError(context, asAppError(e),
+                onRetry: () =>
+                    ref.invalidate(businessCatalogProvider(b.companyId))),
             data: (items) => items.isEmpty
                 ? FloatingSurface(
                     solid: true,
