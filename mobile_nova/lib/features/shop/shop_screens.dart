@@ -92,7 +92,8 @@ class ShopScreen extends ConsumerWidget {
             children: [
               if (categories.isNotEmpty)
                 SizedBox(
-                  height: 40,
+                  // Shrift bilan o'sadi — 1.3 da yorliq kesilmaydi.
+                  height: Capsule.rowHeight(context),
                   child: ListView(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),

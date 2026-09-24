@@ -206,19 +206,33 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
                     ),
                   ),
                   if (query.isNotEmpty)
+                    // TOZALASH — BOSISH MAYDONI 44x44, BELGI JOYIDA.
+                    //
+                    // Ilgari faqat 18x18 belgining o'zi bosilardi: sal
+                    // chetga tegilsa matn maydoniga tushib, kursor
+                    // surilardi xolos. Shaffof chekka belgini surmaydi:
+                    // o'ngda 0 (belgi avvalgidek qator chetida), yuqori
+                    // va pastda 13 — qator (~50dp) balandligidan oshmaydi.
                     GestureDetector(
+                      behavior: HitTestBehavior.opaque,
                       onTap: () {
                         _controller.clear();
                         ref.read(searchQueryProvider.notifier).submit('');
                       },
-                      child: Icon(Icons.close_rounded, size: 18, color: t.text3),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(26, 13, 0, 13),
+                        child:
+                            Icon(Icons.close_rounded, size: 18, color: t.text3),
+                      ),
                     ),
                 ],
               ),
             ),
           ),
+          // Balandlik shrift bilan o'sadi: qattiq `40` da 1.3 shriftda
+          // "Odamlar"/"Katalog" yorlig'i pastdan kesilardi.
           SizedBox(
-            height: 40,
+            height: Capsule.rowHeight(context),
             child: ListView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
@@ -305,7 +319,7 @@ class _RecentSearches extends StatelessWidget {
       children: [
         SectionHeader(title: l.searchRecent, action: l.searchClear, onAction: onClear),
         SizedBox(
-          height: 36,
+          height: Capsule.rowHeight(context, base: 36, dense: true),
           child: ListView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),

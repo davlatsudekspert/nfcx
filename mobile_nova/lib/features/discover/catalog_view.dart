@@ -254,8 +254,10 @@ class CatalogView extends ConsumerWidget {
         const SizedBox(height: Gap.sm),
         // Qator ATAYLAB lazy emas: chiplar ~12 ta, hammasi quriladi —
         // ekrandan tashqaridagi chip ham topiladi va o'qiladi.
+        // Balandlik shrift bilan o'sadi (`Capsule.rowHeight`): 1.3 da
+        // qattiq `40` yorliqni pastdan kesardi ("Katalog" → "Kataloa").
         SizedBox(
-          height: 40,
+          height: Capsule.rowHeight(context),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
@@ -275,8 +277,15 @@ class CatalogView extends ConsumerWidget {
         ),
         if (showSubs) ...[
           const SizedBox(height: Gap.sm),
+          // NFC SUB-TURLAR QATORI — ASOSIY QATOR BILAN BIR XIL BALANDLIK.
+          //
+          // Ilgari `36` edi: kapsulaning yorlig'iga 15dp qolardi, holbuki
+          // uning qatori 19dp — oddiy shriftda ham "Breloklar", "Karta"
+          // ning pastki qismi (y, р) kesilardi. Qo'shilgan 4dp pastdagi
+          // bo'shliqdan olinadi (quyida `Gap.sm`), ya'ni saralash qatori
+          // va mahsulotlar to'ri joyidan siljimaydi.
           SizedBox(
-            height: 36,
+            height: Capsule.rowHeight(context),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
@@ -298,7 +307,10 @@ class CatalogView extends ConsumerWidget {
           ),
         ],
         Padding(
-          padding: const EdgeInsets.fromLTRB(Gap.screenX, Gap.md, Gap.md, 0),
+          // Sub-turlar qatori 4dp o'sgani uchun bu yerdan 4dp olinadi
+          // (12 → 8): saralash va to'r aynan avvalgi joyida.
+          padding: EdgeInsets.fromLTRB(
+              Gap.screenX, showSubs ? Gap.sm : Gap.md, Gap.md, 0),
           child: Row(
             children: [
               Expanded(

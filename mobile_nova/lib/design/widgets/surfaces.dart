@@ -89,6 +89,25 @@ class Capsule extends StatelessWidget {
   final Color? tone;
   final bool dense;
 
+  /// Kapsulalar qatorining (gorizontal ro'yxat) balandligi.
+  ///
+  /// QATOR SHRIFT BILAN O'SADI, KICHRAYMAYDI.
+  ///
+  /// Qator balandligi qattiq yozilganda (`40`) telefonda shrift
+  /// kattalashtirilsa (ilova 1.3 gacha ruxsat beradi) yorliq pastdan
+  /// kesilardi: "People" → "Peoole", "Katalog" → "Kataloa". Yorliq
+  /// qator balandligini mavzudan meros oladi (`bodyMedium`, 1.55),
+  /// shuning uchun o'sish `1.6` ga ko'paytiriladi.
+  ///
+  /// 1.0 va undan kichik masshtabda [base] aynan o'zi qaytadi — oddiy
+  /// shriftda ko'rinish avvalgidek, hech narsa surilmaydi.
+  static double rowHeight(BuildContext context,
+      {double base = 40, bool dense = false}) {
+    final size = dense ? 11.5 : 12.5;
+    final grow = MediaQuery.textScalerOf(context).scale(size) - size;
+    return grow > 0 ? base + grow * 1.6 : base;
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;

@@ -1323,22 +1323,32 @@ class _PhotoThumb extends StatelessWidget {
                         color: t.bg1)),
               ),
             ),
+          // O'CHIRISH — BOSISH MAYDONI 44x44, DOIRA JOYIDA.
+          //
+          // Ilgari faqat 26x26 doira bosilardi. Maydon rasm ichiga
+          // (chapga va pastga) shaffof chekka bilan kengaytiriladi:
+          // `Stack` chetidan tashqariga chiqib bo'lmaydi (kesiladi).
+          // Doira avvalgidek o'ngdan 2, tepadan 2 da.
           Positioned(
-            right: 2,
-            top: 2,
+            right: 0,
+            top: 0,
             child: Semantics(
               button: true,
               label: L.of(context).actionDelete,
               child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
                 onTap: onRemove,
-                child: Container(
-                  width: 26,
-                  height: 26,
-                  decoration: BoxDecoration(
-                    color: t.surfaceSolid.withValues(alpha: .92),
-                    shape: BoxShape.circle,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 2, 2, 16),
+                  child: Container(
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      color: t.surfaceSolid.withValues(alpha: .92),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.close_rounded, size: 15, color: t.text1),
                   ),
-                  child: Icon(Icons.close_rounded, size: 15, color: t.text1),
                 ),
               ),
             ),
