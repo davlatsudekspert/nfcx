@@ -1,6 +1,16 @@
 # ACCOUNT_DELETION_PLAN.md: hisobni o'chirishning Google Play talabiga mos xavfsiz rejasi
 
-> **Holat: faqat reja.** Kod o'zgartirilmagan, hech narsa deploy qilinmagan, production D1/R2 ga tegilmagan.
+> **Holat (2026-09-24): PR-1 branchda TAYYOR, DEPLOY QILINMAGAN.** Production D1/R2 ga tegilmagan.
+> PR-1 = `3bc9d39` + review tuzatishlari `27cfa45`, `1aafd1b`, `2d11470` (branch `claude/vibrant-einstein-p5lo1i`).
+> Hech bir o'zgarish foydalanuvchi qatorini o'chirmaydi, migratsiya yo'q. Server testlari: `test-account-deletion-pr1` 139/0,
+> `test-account` 128/0, `test-auth` 75/0, `test-admin-extra` 109/0, `test-card-cleanup` 14/0 va boshqalar — hammasi o'tadi.
+> Deploy — faqat egasining ruxsati bilan (`main` ga merge = production). PR-2..4 — hali reja (9-bo'limdagi savollar).
+>
+> PR-1 da yopilgan yo'llar: qayta ro'yxat va sovg'a faollashtirishda hard-delete yo'q (409); o'chirishda kutilayotgan
+> sovg'a takliflari bekor qilinadi (foydalanuvchi va admin o'chirishi — bitta batch); o'chirilgan muallif izohlari,
+> ularga javob va like yashirin; jurnalda email emas `#id`; o'chirilgan yuboruvchining taklifini qabul qilib bo'lmaydi;
+> o'chirilgan qabul qiluvchi ommaviy sovg'alar devorida ko'rinmaydi; yuborilgan eski taklif (email yashirilgan)
+> bekor qilinadi va karta qulfdan chiqadi; `DELETE FROM users` qo'riqchisi butun `hosting/` ni tekshiradi.
 > Sana: 2026-09-23. Qator raqamlari `HEAD a3c7df6` bo'yicha. `hosting/`, `db/` va `wrangler.jsonc` da `49a7d81` va `origin/main` bilan farq yo'q.
 >
 > **Dalillar:**
