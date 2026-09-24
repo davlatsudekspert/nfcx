@@ -225,6 +225,27 @@ jobs:
           retention-days: 14
 
 
+      # QOLIB KETGAN EMULYATORNI O'CHIRISH (E2E #58).
+      #
+      # Qurilma qadami timeout bilan to'xtatilsa, action emulyatorni
+      # o'chirmaydi. Keyingi qadam yangi emulyator ocha olmasdi
+      # ("multiple emulators with the same AVD"), adb esa ESKI, osilgan
+      # emulyatorga ulanib qolardi — natijada UI va OQIMLAR to'plamlari
+      # birinchi testdayoq osilib, butun ish qizil bo'lardi.
+      - name: Qolib ketgan emulyatorni o'chirish
+        if: always()
+        run: |
+          adb devices || true
+          for s in $(adb devices | awk '/^emulator-/{print $1}'); do
+            adb -s "$s" emu kill || true
+          done
+          sleep 5
+          pkill -9 -f qemu-system || true
+          pkill -9 -f crashpad_handler || true
+          rm -f "$HOME/.android/avd/"*.avd/*.lock || true
+          adb kill-server || true
+          echo "Emulyator jarayonlari: $(pgrep -fc qemu-system || true)"
+
       # ── ASOSIY BOSQICH ────────────────────────────────────────
       #
       # `script:` `bash` ORQALI chaqiriladi. Action bu blokni
