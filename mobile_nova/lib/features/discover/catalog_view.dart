@@ -22,6 +22,7 @@ import '../../routing/routes.dart';
 import '../business/business_providers.dart' show storefrontProvider;
 import '../business/business_screens.dart' show formatMoney;
 import '../business/store_catalog.dart' show showOrderSheet;
+import '../social/image_viewer.dart';
 import '../social/media_frame.dart' show mediaImage;
 import 'listing_labels.dart';
 
@@ -1103,7 +1104,11 @@ class _ProductDetailState extends ConsumerState<_ProductDetail> {
       ],
       body: NovaScroll(
         children: [
-          ClipRRect(
+          // Bosilsa — rasm butun ekranda, kattalashtirib ko'riladi.
+          GestureDetector(
+            key: const ValueKey('listing-image'),
+            onTap: () => openImageViewer(context, images, initial: _page),
+            child: ClipRRect(
             borderRadius: BorderRadius.circular(26),
             child: AspectRatio(
               aspectRatio: 1,
@@ -1158,6 +1163,7 @@ class _ProductDetailState extends ConsumerState<_ProductDetail> {
                 ],
               ),
             ),
+          ),
           ),
           const SizedBox(height: Gap.xl),
           Text(listingEyebrow(l, p).toUpperCase(),

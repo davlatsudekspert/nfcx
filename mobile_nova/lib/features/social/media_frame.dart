@@ -169,6 +169,7 @@ class AdaptiveMedia extends StatefulWidget {
     this.autoPlayVideo = true,
     this.loopingVideo = false,
     this.tapToToggleVideo = false,
+    this.fullscreenVideo = false,
     this.borderRadius,
     this.lazyVideo = false,
     this.activeVideo,
@@ -180,6 +181,9 @@ class AdaptiveMedia extends StatefulWidget {
   final bool autoPlayVideo;
   final bool loopingVideo;
   final bool tapToToggleVideo;
+
+  /// Bosilganda video belgilarsiz to'liq ekranda ochiladi.
+  final bool fullscreenVideo;
   final BorderRadius? borderRadius;
 
   /// Video kontrolleri faqat bosilganda qurilsinmi — ro'yxatlar
@@ -275,6 +279,7 @@ class _AdaptiveMediaState extends State<AdaptiveMedia> {
             autoPlay: widget.autoPlayVideo,
             looping: widget.loopingVideo,
             tapToToggle: widget.tapToToggleVideo,
+            fullscreenOnTap: widget.fullscreenVideo,
             lazy: widget.lazyVideo,
             active: widget.activeVideo,
             // Quti videoning o'z nisbatiga kelganda `cover` hech

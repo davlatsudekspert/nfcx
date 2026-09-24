@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
@@ -8,6 +9,7 @@ import '../../app/providers.dart';
 import '../../core/storage/secure_store.dart';
 import 'comments.dart';
 import 'engagement.dart';
+import 'fullscreen_video.dart' show immersiveVideoFit;
 import 'moderation.dart';
 
 import '../../core/network/api_client.dart';
@@ -150,8 +152,26 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
     if (mounted && _started != i) setState(() => _started = i);
   }
 
+  /// Telefonning tizim panellari hozir yashirinmi.
+  bool _immersive = false;
+
+  /// TOZA REJIMDA TIZIM PANELLARI HAM YASHIRINADI — video haqiqatan
+  /// butun ekranda. Chetdan surilsa panellar vaqtincha chiqadi
+  /// (`immersiveSticky`). Qaytishda odatiy holat tiklanadi.
+  void _systemUi(bool clean) {
+    if (clean == _immersive) return;
+    _immersive = clean;
+    if (clean) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    } else {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
+          overlays: SystemUiOverlay.values);
+    }
+  }
+
   @override
   void dispose() {
+    _systemUi(false);
     _page.dispose();
     super.dispose();
   }
@@ -168,8 +188,30 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
     if (!onReelsTab) _started = -1;
     final l = L.of(context);
     final reels = ref.watch(reelsProvider);
+    final clean = ref.watch(reelsCleanProvider);
+    ref.listen<bool>(reelsCleanProvider, (_, on) => _systemUi(on));
+    // Boshqa tabga o'tildi — toza rejim o'z-o'zidan tugaydi, aks holda
+    // boshqa bo'limda pastki panel yashirin qolardi.
+    if (!onReelsTab && clean) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) ref.read(reelsCleanProvider.notifier).state = false;
+      });
+    }
 
-    return Scaffold(
+    // "ORQAGA" AVVAL TOZA REJIMDAN CHIQARADI.
+    //
+    // `PopScope` bu yerda ishlamaydi: Reels — tab ILDIZI, go_router esa
+    // "orqaga" ni pop qila oladigan navigatorga yuboradi (bu — ildiz
+    // navigator) va ilova yopilib qolardi. `BackButtonListener` esa
+    // Router'ning o'zidan birinchi bo'lib so'raladi.
+    return _BackGuard(
+      onBack: () {
+        final c = ref.read(reelsCleanProvider.notifier);
+        if (!onReelsTab || !c.state) return false;
+        c.state = false;
+        return true;
+      },
+      child: Scaffold(
       backgroundColor: Colors.black,
       extendBody: true,
       // Qayta yuklashda (profil almashdi) eski lenta turadi — sahifa
@@ -235,13 +277,56 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
                   onStarted: () => _markStarted(i),
                 ),
               ),
-              _TopBar(onCreate: () => context.push(Routes.reelCreate)),
+              _Chrome(
+                hidden: clean,
+                child:
+                    _TopBar(onCreate: () => context.push(Routes.reelCreate)),
+              ),
             ],
           );
         },
       ),
+      ),
     );
   }
+}
+
+/// "Orqaga" tutqichi — Router bo'lsagina (ilovada doim bor; alohida
+/// ekran sinovida esa yo'q).
+class _BackGuard extends StatelessWidget {
+  const _BackGuard({required this.onBack, required this.child});
+
+  final bool Function() onBack;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (Router.maybeOf(context) == null) return child;
+    return BackButtonListener(
+      onBackButtonPressed: () async => onBack(),
+      child: child,
+    );
+  }
+}
+
+/// Reels ustidagi belgilar — toza rejimda yumshoq yo'qoladi va
+/// bosishni o'tkazib yuboradi (video bosilganda qaytadi).
+class _Chrome extends StatelessWidget {
+  const _Chrome({required this.hidden, required this.child});
+
+  final bool hidden;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+        ignoring: hidden,
+        child: AnimatedOpacity(
+          opacity: hidden ? 0 : 1,
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          child: child,
+        ),
+      );
 }
 
 class _TopBar extends StatelessWidget {
@@ -335,6 +420,11 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
 
   /// Yurak "portlashi" — ikki marta bosilganda.
   bool _burst = false;
+
+  /// Barmoq bosib turilibdi — video pauzada, belgilar yashirin
+  /// (Instagram). Qo'yib yuborilsa davom etadi.
+  bool _holding = false;
+  bool _wasPlaying = false;
 
   /// Har bir ochish urinishining raqami.
   ///
@@ -519,6 +609,32 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
     setState(() => c.value.isPlaying ? c.pause() : c.play());
   }
 
+  /// BITTA BOSISH — TOZA REJIM (Instagram): belgilar, pastki panel va
+  /// tizim panellari yashirinadi, video butun ekranda qoladi. Yana
+  /// bosilsa qaytadi. Pauza — bosib turish ([_holdStart]).
+  void _toggleClean() {
+    if (_failed) {
+      _togglePlay(); // xato bo'lgan video — qayta urinish
+      return;
+    }
+    final clean = ref.read(reelsCleanProvider.notifier);
+    clean.state = !clean.state;
+  }
+
+  void _holdStart(LongPressStartDetails _) {
+    final c = _controller;
+    if (c == null || !_ready) return;
+    _wasPlaying = c.value.isPlaying;
+    c.pause();
+    setState(() => _holding = true);
+  }
+
+  void _holdEnd(LongPressEndDetails _) {
+    if (!_holding) return;
+    if (_wasPlaying && widget.visible) _controller?.play();
+    setState(() => _holding = false);
+  }
+
   Future<void> _like({bool onlyOn = false}) async {
     final likes = ref.read(postLikesProvider.notifier);
     if (onlyOn && likes.of(widget.post).liked) return;
@@ -571,24 +687,35 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
         (mine || p.code.isEmpty) ? false : ref.watch(followingOfProvider(p.code));
     final c = _controller;
     final playing = c != null && _ready && c.value.isPlaying;
-    // Telefonning pastki tizim paneli (3 tugmali navigatsiya ~48 dp).
-    // Ilgari hisobga olinmasdi: shunday telefonlarda muallif, NFC ID
-    // va izoh pastki menyu ostida qolib ketardi (egasi, 2026-09 surat).
-    final inset = MediaQuery.viewPaddingOf(context).bottom;
+    final clean = ref.watch(reelsCleanProvider);
+    final hide = clean || _holding;
+    // PASTKI PANELNING HAQIQIY BALANDLIGI.
+    //
+    // Ilgari `96 + tizim inset'i` deb taxmin qilinardi va ba'zi
+    // telefonlarda aylantirish chizig'i va NFC ID pastki panel ostida
+    // qolib ketardi (egasi, 2026-09-24 surat). Shell `extendBody`
+    // bilan body'ga panelning O'LCHANGAN balandligini (tizim inset'i
+    // bilan) `padding.bottom` qilib beradi — endi aynan shundan
+    // yuqorida turadi, har qanday telefonda.
+    final navH = MediaQuery.paddingOf(context).bottom;
 
     return GestureDetector(
-      onTap: _togglePlay,
+      onTap: _toggleClean,
       onDoubleTap: _doubleTap,
+      onLongPressStart: _holdStart,
+      onLongPressEnd: _holdEnd,
       child: Stack(
         fit: StackFit.expand,
         children: [
           const ColoredBox(color: Colors.black),
           if (_ready && c != null)
-            // `contain` — video HECH QACHON kesilmaydi (egasining
-            // qoidasi, media_fit_test). 9:16 video uzun ekranda tepa va
-            // pastda ingichka qora chiziq qoldiradi — bu kesishdan yaxshi.
+            // INSTAGRAM KABI (egasi, 2026-09-24): tik video ekranni
+            // to'ldiradi — tepa va pastda qora chiziq qolmaydi (chetdan
+            // kesilish ≤ 20%). Yotiq/kvadrat video `contain` — butun
+            // ko'rinadi, yarmi kesilmaydi (media_fit_test).
             FittedBox(
-              fit: BoxFit.contain,
+              fit: immersiveVideoFit(c.value.size, MediaQuery.sizeOf(context)),
+              clipBehavior: Clip.hardEdge,
               child: SizedBox(
                 width: c.value.size.width,
                 height: c.value.size.height,
@@ -618,7 +745,8 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
             ),
           // Pastdagi matn o'qilishi uchun gradient.
           Positioned.fill(
-            child: IgnorePointer(
+            child: _Chrome(
+              hidden: hide,
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -633,8 +761,9 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
               ),
             ),
           ),
-          // Pauza belgisi — odam bosganini ko'rsin.
-          if (_ready && !playing && widget.visible)
+          // Pauza belgisi — video to'xtab qolgan bo'lsa (bosib turish
+          // paytida emas: u yerda belgilar ataylab yo'q).
+          if (_ready && !playing && widget.visible && !_holding)
             const IgnorePointer(
               child: Center(
                 child: Icon(Icons.play_arrow_rounded,
@@ -663,8 +792,10 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
           // ustun 8 dp pastroqdan boshlanadi — belgilar o'sha joyda.
           Positioned(
             right: 4,
-            bottom: 132 - Gap.lg / 2 + inset,
-            child: Column(
+            bottom: navH + 30 - Gap.lg / 2,
+            child: _Chrome(
+              hidden: hide,
+              child: Column(
               children: [
                 _Action(
                   key: const ValueKey('reel-like'),
@@ -726,12 +857,15 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
                 ),
               ],
             ),
+            ),
           ),
           Positioned(
             left: Gap.lg,
             right: 72,
-            bottom: 112 + inset,
-            child: Column(
+            bottom: navH + 30,
+            child: _Chrome(
+              hidden: hide,
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
@@ -849,22 +983,34 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
                 ],
               ],
             ),
+            ),
           ),
-          // Ingichka progress — pastki navigatsiyadan yuqorida.
+          // INGICHKA PROGRESS — Instagram kabi: pastki panelning USTIDA,
+          // chetlardan ichkarida, yumaloq uchli oq chiziq.
           if (_ready && c != null && widget.visible)
             Positioned(
-              left: 0,
-              right: 0,
-              bottom: 96 + inset,
-              child: IgnorePointer(
-                child: VideoProgressIndicator(
-                  c,
-                  allowScrubbing: false,
-                  padding: EdgeInsets.zero,
-                  colors: VideoProgressColors(
-                    playedColor: t.brand,
-                    bufferedColor: Colors.white24,
-                    backgroundColor: Colors.white10,
+              key: const ValueKey('reel-progress'),
+              left: Gap.lg,
+              right: Gap.lg,
+              bottom: navH + 12,
+              child: _Chrome(
+                hidden: hide,
+                child: IgnorePointer(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(2),
+                    child: SizedBox(
+                      height: 2.5,
+                      child: VideoProgressIndicator(
+                        c,
+                        allowScrubbing: false,
+                        padding: EdgeInsets.zero,
+                        colors: const VideoProgressColors(
+                          playedColor: Colors.white,
+                          bufferedColor: Colors.white30,
+                          backgroundColor: Colors.white24,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),

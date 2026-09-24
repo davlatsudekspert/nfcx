@@ -181,6 +181,8 @@ class FeedCard extends ConsumerWidget {
               // sarflash odamning roziligisiz bo'lardi.
               autoPlayVideo: false,
               tapToToggleVideo: true,
+              // Bosish — belgilarsiz to'liq ekran (Instagram).
+              fullscreenVideo: true,
               // Dominant karta bo'lsa dangasalik shart emas — u
               // baribir darhol ochiladi.
               lazyVideo: activeVideo == null,

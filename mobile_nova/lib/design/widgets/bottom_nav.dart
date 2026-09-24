@@ -76,6 +76,7 @@ class NovaBottomNav extends StatelessWidget {
     required this.currentIndex,
     required this.onSelect,
     this.centerIndex = 2,
+    this.onVideo = false,
   });
 
   final List<NavItem> items;
@@ -84,6 +85,13 @@ class NovaBottomNav extends StatelessWidget {
 
   /// Qaysi element ko'tarilgan dumaloq tugma bo'lishi.
   final int centerIndex;
+
+  /// VIDEO USTIDA (Reels) — Instagram uslubi (egasi, 2026-09-24:
+  /// "instagramga o'xshasin"). Qora shaffof shisha kapsula, oq
+  /// belgilar; video butun ekranni egallaydi va panel orqasidan
+  /// ko'rinadi. Markaziy muhr kapsula ICHIDA turadi — tepaga chiqsa
+  /// aylantirish chizig'ini to'sardi.
+  final bool onVideo;
 
   @override
   Widget build(BuildContext context) {
@@ -109,10 +117,15 @@ class NovaBottomNav extends StatelessWidget {
                 curve: Motion.smooth,
                 height: kNavHeight,
                 decoration: BoxDecoration(
-                  color: t.surfaceSolid,
+                  color: onVideo
+                      ? Colors.black.withValues(alpha: .55)
+                      : t.surfaceSolid,
                   borderRadius: R.pill,
-                  border: Border.all(color: t.border2),
-                  boxShadow: t.shadowFloat,
+                  border: Border.all(
+                      color: onVideo
+                          ? Colors.white.withValues(alpha: .16)
+                          : t.border2),
+                  boxShadow: onVideo ? null : t.shadowFloat,
                 ),
                 child: Row(
                   children: [
@@ -125,6 +138,7 @@ class NovaBottomNav extends StatelessWidget {
                             : _NavButton(
                                 item: items[i],
                                 selected: i == currentIndex,
+                                onVideo: onVideo,
                                 onTap: () => onSelect(i),
                               ),
                       ),
@@ -141,7 +155,9 @@ class NovaBottomNav extends StatelessWidget {
           Positioned(
             left: 0,
             right: 0,
-            top: -kNavCenterLift,
+            top: onVideo
+                ? (kNavHeight - kNavCenterSize) / 2
+                : -kNavCenterLift,
             child: Row(
               children: [
                 for (var i = 0; i < items.length; i++)
@@ -208,10 +224,12 @@ class _NavButton extends StatelessWidget {
     required this.item,
     required this.selected,
     required this.onTap,
+    this.onVideo = false,
   });
 
   final NavItem item;
   final bool selected;
+  final bool onVideo;
   final VoidCallback onTap;
 
   @override
@@ -229,9 +247,14 @@ class _NavButton extends StatelessWidget {
     // Faol tab — mavzuning ASOSIY MATN rangidagi kapsula (Ivory'da qora
     // siyoh, qorong'i mavzularda yorug'), ichidagi belgi sirt rangida.
     // Faol emaslari — `text1` ga yaqin to'q ton (kulrang emas).
-    final idle = Color.lerp(t.text1, t.text2, .35)!;
-    final color = selected ? t.text1 : idle;
-    final iconColor = selected ? t.surfaceSolid : color;
+    final idle = onVideo
+        ? Colors.white.withValues(alpha: .78)
+        : Color.lerp(t.text1, t.text2, .35)!;
+    final ink = onVideo ? Colors.white : t.text1;
+    final color = selected ? ink : idle;
+    // Video ustida faol kapsula — yarim shaffof oq (Instagram), belgi oq.
+    final iconColor = selected && !onVideo ? t.surfaceSolid : color;
+    final capsule = onVideo ? Colors.white.withValues(alpha: .2) : t.text1;
     return Semantics(
       button: true,
       selected: selected,
@@ -249,9 +272,9 @@ class _NavButton extends StatelessWidget {
                 width: compact ? 50 : 54,
                 height: 30,
                 decoration: BoxDecoration(
-                  color: selected ? t.text1 : t.text1.withValues(alpha: 0),
+                  color: selected ? capsule : capsule.withValues(alpha: 0),
                   borderRadius: BorderRadius.circular(15),
-                  boxShadow: selected
+                  boxShadow: selected && !onVideo
                       ? [
                           BoxShadow(
                             color: t.text1.withValues(alpha: .22),

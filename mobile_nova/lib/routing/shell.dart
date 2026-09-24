@@ -22,6 +22,15 @@ import 'routes.dart';
 /// Ekranlar ko'rinayotgan-ko'rinmayotganini shu yerdan biladi.
 final activeTabProvider = StateProvider<int>((_) => 0);
 
+/// REELS TOZA REJIMI — video bosilganda hamma belgilar, pastki panel
+/// va telefonning tizim panellari yashiriladi, video butun ekranda
+/// qoladi (egasi, 2026-09-24: "rolik bosilsa to'liq ekran, belgilarsiz").
+/// Yana bosilsa yoki "orqaga" — qaytadi.
+final reelsCleanProvider = StateProvider<bool>((_) => false);
+
+/// Reels tabining raqami (`HomeShell.tabRoutes`).
+const kReelsTab = 3;
+
 /// "Asosiy" tugmasi Home'da turib qayta bosilgan — har bosishda
 /// oshadi. Bosh sahifa buni eshitadi va tepaga suriladi.
 final homeReselectProvider = StateProvider<int>((_) => 0);
@@ -89,16 +98,21 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       }
     });
     final items = navItems(l);
+    final onReels = shell.currentIndex == kReelsTab;
+    final clean = onReels && ref.watch(reelsCleanProvider);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBody: true,
       body: shell,
-      bottomNavigationBar: SafeArea(
+      bottomNavigationBar: clean
+          ? null
+          : SafeArea(
         top: false,
         child: NovaBottomNav(
           items: items,
           currentIndex: shell.currentIndex,
+          onVideo: onReels,
           onSelect: (i) {
             // Tab almashganda ovoz DARHOL to'xtaydi — `dispose()`
             // kelishini kutmasdan, chunki u umuman kelmaydi.

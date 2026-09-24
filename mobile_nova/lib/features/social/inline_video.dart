@@ -4,6 +4,7 @@ import 'package:video_player/video_player.dart';
 
 import '../../design/tokens/nfc_tokens.dart';
 import '../profile/music_player.dart';
+import 'fullscreen_video.dart';
 
 /// Ichki video chizuvchi — istorya va post uchun BITTA joyda.
 ///
@@ -69,6 +70,7 @@ class InlineVideo extends ConsumerStatefulWidget {
     this.onAspect,
     this.lazy = false,
     this.active,
+    this.fullscreenOnTap = false,
   });
 
   final String url;
@@ -119,6 +121,11 @@ class InlineVideo extends ConsumerStatefulWidget {
   /// o'zi o'lchaydi (`VisibleFraction`) va faqat BITTA kartaga
   /// `true` beradi.
   final bool? active;
+
+  /// LENTA VA POST: bosish videoni BELGILARSIZ TO'LIQ EKRANDA ochadi
+  /// (egasi, 2026-09-24). O'sha kontroller o'sha joyidan davom etadi.
+  /// [tapToToggle] dan ustun.
+  final bool fullscreenOnTap;
 
   @override
   ConsumerState<InlineVideo> createState() => _InlineVideoState();
@@ -173,6 +180,13 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
   /// ham, yashirin tab ham shu signalni o'chiradi.
   bool? _shown;
 
+  /// Kontroller hozir to'liq ekran sahifasida.
+  ///
+  /// Sahifa ochilganda lenta "ko'rinmay" qoladi (`TickerMode` o'chadi)
+  /// va video o'zini pauzaga qo'yardi yoki dominantlikni yo'qotib
+  /// yopilardi. Shu payt bu signallar e'tiborsiz qoldiriladi.
+  VideoHandoff? _handoff;
+
   @override
   void initState() {
     super.initState();
@@ -195,6 +209,7 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
     final on = TickerMode.of(context);
     if (on == _shown) return;
     _shown = on;
+    if (_handoff != null) return;
     // Istorya, post tafsiloti — avvalgidek (ular o'z ekranini egallaydi).
     if (widget.active == null) return;
     // Kadrdan keyin: `take()` boshqa egani to'xtatadi va u build
@@ -214,6 +229,7 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
   void didUpdateWidget(covariant InlineVideo old) {
     super.didUpdateWidget(old);
     if (widget.active == old.active) return;
+    if (_handoff != null) return;
     if (widget.active == true) {
       if (_shown != false) _openAndPlay();
     } else if (widget.active == false) {
@@ -345,6 +361,22 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
     if (mounted) setState(() {});
   }
 
+  /// To'liq ekranga o'tish — hali ochilmagan bo'lsa avval ochiladi.
+  Future<void> _openFullscreen() async {
+    if (_handoff != null || _failed) return;
+    _owner?.take(this, _pauseForOther);
+    if (_c == null) await _open();
+    final c = _c;
+    if (c == null || !_ready || _gone || !mounted) return;
+    final h = VideoHandoff(c);
+    _handoff = h;
+    await openFullscreenVideo(context, h);
+    // Karta sahifa ochiq turganda yo'q bo'ldi — kontrollerni sahifa yopdi.
+    if (h.orphaned) return;
+    _handoff = null;
+    if (mounted) setState(() {});
+  }
+
   Future<void> _toggle() async {
     // Dangasa rejim: birinchi bosishda kontroller endi quriladi.
     if (widget.lazy && _c == null && !_failed) {
@@ -376,6 +408,15 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
     WidgetsBinding.instance.removeObserver(this);
     final c = _c;
     _c = null;
+    // To'liq ekran ochiq — kontrollerni o'sha sahifa yopadi (u hali
+    // ko'rsatib turibdi).
+    final h = _handoff;
+    if (h != null && identical(h.controller, c)) {
+      h.orphaned = true;
+      _owner?.release(this);
+      super.dispose();
+      return;
+    }
     // KONTROLLER BIRINCHI YOPILADI. Bu yerda hech narsa undan
     // oldin turmasligi kerak: oldin turgan har qanday chaqiruv
     // istisno tashlasa, video yopilmay qolardi.
@@ -402,7 +443,7 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
     // aslida video joyida va bir bosishda ochiladi.
     if (c == null && widget.lazy) {
       return GestureDetector(
-        onTap: _toggle,
+        onTap: widget.fullscreenOnTap ? _openFullscreen : _toggle,
         behavior: HitTestBehavior.opaque,
         child: ColoredBox(
           color: t.surface2,
@@ -439,6 +480,23 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
         ),
       ),
     );
+    if (widget.fullscreenOnTap) {
+      return GestureDetector(
+        key: const ValueKey('video-open-fullscreen'),
+        onTap: _openFullscreen,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            video,
+            if (!c.value.isPlaying && _handoff == null)
+              const Center(
+                child: Icon(Icons.play_circle_fill_rounded,
+                    size: 54, color: Colors.white),
+              ),
+          ],
+        ),
+      );
+    }
     if (!widget.tapToToggle) return video;
     return GestureDetector(
       onTap: _toggle,

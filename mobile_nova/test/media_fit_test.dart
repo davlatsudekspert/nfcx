@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nfcstore_nova/features/social/fullscreen_video.dart';
 import 'package:nfcstore_nova/features/social/media_frame.dart';
 
 import 'helpers.dart';
@@ -87,9 +88,24 @@ void main() {
       expect(story, contains('BoxFit.contain'));
       expect(story, isNot(contains('fit: BoxFit.cover')),
           reason: 'istoryada hali ham kesuvchi `cover` bor');
-      expect(reels, contains('fit: BoxFit.contain'));
+      // Reels — Instagram kabi (egasi, 2026-09-24): tik video ekranni
+      // to'ldiradi, yotiq/kvadrat video butun ko'rinadi. Qoida bitta
+      // joyda — `immersiveVideoFit`.
+      expect(reels, contains('immersiveVideoFit('));
       expect(reels, isNot(contains('fit: BoxFit.cover')),
-          reason: 'Reels videoni hali ham qirqyapti');
+          reason: 'Reels videoni shartsiz qirqyapti');
+    });
+
+    test('Reels: tik video to‘ldiradi, yotiq va kvadrat — kesilmaydi', () {
+      const phone = Size(390, 844);
+      // 9:16 tik video — chetdan ~18% kesiladi, qora chiziq qolmaydi.
+      expect(immersiveVideoFit(const Size(1080, 1920), phone), BoxFit.cover);
+      // Yotiq (16:9), kvadrat va 4:5 — butun ko'rinadi.
+      expect(immersiveVideoFit(const Size(1920, 1080), phone), BoxFit.contain);
+      expect(immersiveVideoFit(const Size(1080, 1080), phone), BoxFit.contain);
+      expect(immersiveVideoFit(const Size(1080, 1350), phone), BoxFit.contain);
+      // O'lcham noma'lum — xavfsiz tomonga.
+      expect(immersiveVideoFit(Size.zero, phone), BoxFit.contain);
     });
   });
 }

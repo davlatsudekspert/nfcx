@@ -577,7 +577,19 @@ void main() {
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: c,
-          child: wrapScreen(const ReelsScreen()),
+          // Shell `extendBody` bilan body'ga pastki panelning o'lchangan
+          // balandligini beradi: 66 (panel) + 12 (hoshiya), tizim
+          // paneli 0. Reels belgilari aynan shundan yuqorida turadi.
+          child: wrapScreen(
+            Builder(
+              builder: (context) => MediaQuery(
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(padding: const EdgeInsets.only(bottom: 78)),
+                child: const ReelsScreen(),
+              ),
+            ),
+          ),
         ),
       );
       await settle(tester, frames: 10);
@@ -594,21 +606,21 @@ void main() {
 
     testWidgets('belgilar o‘z joyida, ovoz va "yana" >= 48 dp', (tester) async {
       await pumpReels(tester);
-      _at(tester, icon('reel-like'), const Offset(356, 386), center: true);
-      _at(tester, icon('reel-comments'), const Offset(356, 451), center: true);
-      _at(tester, icon('reel-save'), const Offset(356, 516), center: true);
-      _at(tester, icon('reel-share'), const Offset(356, 581), center: true);
+      _at(tester, icon('reel-like'), const Offset(356, 410), center: true);
+      _at(tester, icon('reel-comments'), const Offset(356, 475), center: true);
+      _at(tester, icon('reel-save'), const Offset(356, 540), center: true);
+      _at(tester, icon('reel-share'), const Offset(356, 605), center: true);
       _at(
         tester,
         find.byIcon(NovaIcons.sound).first,
-        const Offset(356, 646),
+        const Offset(356, 670),
         center: true,
       );
-      _at(tester, icon('reel-more'), const Offset(356, 694), center: true);
-      _at(tester, find.text('42').first, const Offset(349.408, 404));
-      _at(tester, find.text('5').first, const Offset(352.766, 469));
-      _at(tester, find.text('Saqlash').first, const Offset(334.889, 534));
-      _at(tester, find.text('Ulashish').first, const Offset(333.170, 599));
+      _at(tester, icon('reel-more'), const Offset(356, 718), center: true);
+      _at(tester, find.text('42').first, const Offset(349.408, 428));
+      _at(tester, find.text('5').first, const Offset(352.766, 493));
+      _at(tester, find.text('Saqlash').first, const Offset(334.889, 558));
+      _at(tester, find.text('Ulashish').first, const Offset(333.170, 623));
 
       // Ilgari 60x32.
       final more = tester.getSize(

@@ -240,6 +240,8 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                   autoPlayVideo: false,
                   loopingVideo: true,
                   tapToToggleVideo: true,
+                  // Bosish — belgilarsiz to'liq ekran (Instagram).
+                  fullscreenVideo: true,
                   borderRadius: R.gentle,
                 ),
               ],
