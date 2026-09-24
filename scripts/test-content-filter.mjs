@@ -29,11 +29,40 @@ const realFetch = globalThis.fetch;
 let verdict = { allowed: true, category: 'none' };
 let mode = 'json'; // json | blockReason | error
 let calls = 0;
-globalThis.fetch = async (input, init) => {
+// Video: Gemini Files API (yuklash sessiyasi → fayl → holat → hukm → o'chirish).
+const vid = { started: 0, uploadedBytes: -1, polls: 0, deleted: [], state: 'ACTIVE', fail: '' };
+globalThis.fetch = async (input, init = {}) => {
   const u = String(input?.url || input);
   if (!u.includes('generativelanguage.googleapis.com')) return realFetch(input, init);
+  const h = new Headers(init.headers || {});
+  if (u.endsWith('/upload/v1beta/files')) {
+    vid.started += 1;
+    if (vid.fail === 'start') return new Response('no', { status: 500 });
+    return new Response('{}', { status: 200, headers: { 'x-goog-upload-url': 'https://generativelanguage.googleapis.com/upload-session/1' } });
+  }
+  if (u.includes('/upload-session/')) {
+    const b = init.body;
+    vid.uploadedBytes = b?.byteLength ?? b?.length ?? -1;
+    check('video: finalize buyrug‘i', h.get('x-goog-upload-command'), 'upload, finalize');
+    return Response.json({ file: { name: 'files/abc', uri: 'https://generativelanguage.googleapis.com/v1beta/files/abc', state: vid.state, mimeType: 'video/mp4' } });
+  }
+  if (u.endsWith('/v1beta/files/abc') && (init.method || 'GET') === 'GET') {
+    vid.polls += 1;
+    return Response.json({ name: 'files/abc', uri: 'https://generativelanguage.googleapis.com/v1beta/files/abc', state: vid.fail === 'processing' ? 'FAILED' : 'ACTIVE', mimeType: 'video/mp4' });
+  }
+  if (u.endsWith('/v1beta/files/abc') && init.method === 'DELETE') {
+    vid.deleted.push('abc');
+    return new Response('{}');
+  }
   calls += 1;
   const body = JSON.parse(init.body);
+  const fileData = body.contents?.[0]?.parts?.find((p) => p.fileData)?.fileData;
+  if (fileData) {
+    vid.promptText = body.contents[0].parts[0].text;
+    vid.fileUri = fileData.fileUri;
+    if (vid.fail === 'generate') return new Response('boom', { status: 500 });
+    return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(verdict) }] }, finishReason: 'STOP' }] });
+  }
   if (!body.contents?.[0]?.parts?.some((p) => p.inlineData?.data)) throw new Error('rasm yuborilmadi');
   if (mode === 'error') return new Response('boom', { status: 500 });
   if (mode === 'blockReason') return Response.json({ promptFeedback: { blockReason: 'SAFETY' } });
@@ -112,11 +141,71 @@ const cats = (log.results || []).map((r) => r.category);
 checkTrue('8) log yozildi', cats.includes('sexual') && cats.includes('extremism') && cats.includes('drugs'));
 check('8) kim yuklagani', log.results[0].actor, 'user:1');
 
-// 9) Format: GIF va video tekshirilmaydi.
+// 9) Format: GIF tekshirilmaydi; rasm funksiyasi videoni qabul qilmaydi
+// (video — alohida `moderateVideo`, 11-bo'lim).
 const g = await moderateImage(env, new Uint8Array([1, 2, 3]), 'image/gif');
 check('9) GIF tekshirilmaydi', [g.allowed, g.checked], [true, false]);
 const v = await moderateImage(env, new Uint8Array([1, 2, 3]), 'video/mp4');
-check('9) video tekshirilmaydi', [v.allowed, v.checked], [true, false]);
+check('9) rasm funksiyasi videoni o‘tkazib yuboradi', [v.allowed, v.checked], [true, false]);
+
+// 9b) Siyosiy toifa (egasi, 2026-09-24).
+verdict = { allowed: false, category: 'political' };
+check('9b) siyosiy targ‘ibot bloklandi', (await up(env)).body?.category, 'political');
+verdict = { allowed: true, category: 'none' };
+
+// ── 11) VIDEO FILTRI ──────────────────────────────────────────────────
+// Reels / post videosi (upload-media), profil videosi (upload-card-video).
+const mp4 = new Uint8Array(4096);
+mp4.set([0, 0, 0, 0x18, 0x66, 0x74, 0x79, 0x70, 0x6d, 0x70, 0x34, 0x32], 0); // ....ftypmp42
+const sendVideo = async (path, e = env) => {
+  const r = await worker.fetch(new Request(`https://nfcstore.uz${path}`, {
+    method: 'POST',
+    headers: { cookie: cookie.user, 'content-type': 'video/mp4', 'content-length': String(mp4.length), 'cf-connecting-ip': '198.51.100.72' },
+    body: mp4,
+  }), e);
+  return { status: r.status, body: await r.json().catch(() => null) };
+};
+
+verdict = { allowed: false, category: 'sexual' };
+const vb = await sendVideo('/api/upload-media');
+check('11) 18+ video bloklandi', [vb.status, vb.body?.error, vb.body?.category], [422, 'content_blocked', 'sexual']);
+check('11) video Gemini’ga to‘liq yuborildi', vid.uploadedBytes, mp4.length);
+checkTrue('11) hukm BUTUN video bo‘yicha so‘raldi', /WHOLE video/.test(vid.promptText || ''));
+checkTrue('11) Gemini’dagi nusxa o‘chirildi', vid.deleted.includes('abc'));
+
+verdict = { allowed: false, category: 'extremism' };
+check('11) diniy ekstremizm videosi', (await sendVideo('/api/upload-media')).body?.category, 'extremism');
+verdict = { allowed: false, category: 'political' };
+check('11) siyosiy video (profil videosi)', (await sendVideo('/api/upload-card-video')).body?.category, 'political');
+
+// Qayta ishlash kutiladi (PROCESSING → ACTIVE).
+verdict = { allowed: true, category: 'none' };
+vid.state = 'PROCESSING';
+const polls0 = vid.polls;
+const vok = await sendVideo('/api/upload-media');
+check('11) oddiy video o‘tdi', [vok.status, vok.body?.kind], [200, 'video']);
+checkTrue('11) holat kutildi', vid.polls > polls0);
+vid.state = 'ACTIVE';
+const vhead = await env.UPLOADS.head(String(vok.body?.url || '').replace(/^\//, ''));
+checkTrue('11) o‘tgan video R2 da bor', !!vhead);
+
+// Xizmat ishlamasa — odam jazolanmaydi (rasm bilan bir xil qoida).
+verdict = { allowed: false, category: 'sexual' };
+for (const f of ['start', 'processing', 'generate']) {
+  vid.fail = f;
+  // "processing" — Gemini videoni qayta ishlay olmadi (FAILED).
+  vid.state = f === 'processing' ? 'PROCESSING' : 'ACTIVE';
+  check(`11) xizmat xatosi (${f}) — video o‘tadi`, (await sendVideo('/api/upload-media')).status, 200);
+}
+vid.fail = '';
+vid.state = 'ACTIVE';
+const s0 = vid.started;
+check('11) kalitsiz video tekshirilmaydi', (await sendVideo('/api/upload-media', base)).status, 200);
+check('11) kalitsiz — Gemini chaqirilmadi', vid.started - s0, 0);
+
+const vlog = await base.DB.prepare(`SELECT category, source FROM content_scan_blocks WHERE source IN ('media','card-video') ORDER BY id`).all();
+checkTrue('11) video bloklari logda', (vlog.results || []).some((r) => r.source === 'card-video' && r.category === 'political'));
+verdict = { allowed: true, category: 'none' };
 
 // ── SAQLANGANLAR ─────────────────────────────────────────────────────
 const s = async (init, c = cookie.user, path = '/api/saves') => {

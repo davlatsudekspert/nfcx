@@ -50,11 +50,12 @@ String describeError(L l, AppError e) => switch (e.code) {
       // Server 413 yoki ilovaning oldindan tekshiruvi (100 MB).
       'too_large' => l.errFileTooLarge,
       'plan_locked' => l.errPlanLocked,
-      // AVTOMATIK FILTR rasmni rad etdi — SABAB aytiladi, aks holda
+      // AVTOMATIK FILTR rasm yoki videoni rad etdi — SABAB aytiladi, aks holda
       // odam "nega yuklanmayapti" deb o'ylaydi.
       'content_blocked' => l.errContentBlocked(switch (e.detail) {
           'violence' => l.blockViolence,
           'extremism' => l.blockExtremism,
+          'political' => l.blockPolitical,
           'drugs' => l.blockDrugs,
           'hate' => l.blockHate,
           _ => l.blockSexual,

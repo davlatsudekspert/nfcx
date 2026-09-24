@@ -90,6 +90,7 @@ void main() {
         l, AppError(AppErrorKind.validation, code: 'content_blocked', detail: cat));
     expect(msg('sexual'), l.errContentBlocked(l.blockSexual));
     expect(msg('extremism'), l.errContentBlocked(l.blockExtremism));
+    expect(msg('political'), l.errContentBlocked(l.blockPolitical));
     expect(msg('violence'), contains(l.blockViolence));
     expect(msg('drugs'), contains(l.blockDrugs));
     expect(msg('hate'), contains(l.blockHate));

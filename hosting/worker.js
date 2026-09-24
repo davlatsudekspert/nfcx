@@ -24,7 +24,7 @@ import * as apiContentArchive from './api/content-archive.js';
 import * as apiAppUsage from './api/app-usage.js';
 import { recordAppOpen } from './api/app-usage.js';
 import { archiveStmt, ensureArchiveTable, urlArchived } from './api/content-archive.js';
-import { moderateImage, logBlockedUpload } from './api/image-moderation.js';
+import { moderateImage, moderateVideo, moderationEnabled, logBlockedUpload } from './api/image-moderation.js';
 
 // API javoblari standart holda KESHLANMAYDI.
 //
@@ -6897,15 +6897,22 @@ function contentBlockedJsonD1(category) {
   return json({ error: 'content_blocked', category }, 422);
 }
 
-// Oqim bilan R2 ga tushgan rasm — o'qib tekshiriladi; bloklansa
-// fayl DARHOL o'chiriladi (hech qayerda ko'rinmasdan).
+// Oqim bilan R2 ga tushgan rasm yoki VIDEO — tekshiriladi; bloklansa
+// fayl DARHOL o'chiriladi (hech qayerda ko'rinmasdan). Video R2 dan
+// Gemini'ga oqim bilan boradi — xotiraga to'liq o'qilmaydi.
 async function scanStoredUploadD1(env, up, actor, source) {
-  if (!up?.ok || !String(up.type || '').startsWith('image/')) return null;
+  const type = String(up?.type || '');
+  const isVideo = type.startsWith('video/');
+  if (!up?.ok || (!type.startsWith('image/') && !isVideo)) return null;
+  // Filtr o'chiq (kalit yo'q) — faylni R2 dan qayta o'qishning keragi yo'q.
+  if (!moderationEnabled(env)) return null;
   const key = String(up.url || '').replace(/^\//, '');
-  const obj = await env.UPLOADS.get(key).catch(() => null);
+  let obj = null;
+  try { obj = await env.UPLOADS.get(key); } catch { obj = null; }
   if (!obj) return null;
-  const bytes = new Uint8Array(obj.arrayBuffer ? await obj.arrayBuffer() : obj.body);
-  const verdict = await moderateImage(env, bytes, up.type);
+  const verdict = isVideo
+    ? await moderateVideo(env, obj, type, up.size)
+    : await moderateImage(env, new Uint8Array(obj.arrayBuffer ? await obj.arrayBuffer() : obj.body), type);
   if (verdict.allowed) return null;
   await env.UPLOADS.delete(key).catch(() => {});
   await logBlockedUpload(env, actor, verdict.category, source);
@@ -7028,6 +7035,8 @@ async function uploadApi(request, env, pathname) {
       aliases: PROFILE_BG_ALIASES,
     });
     if (!up.ok) return uploadErrorJsonD1(up);
+    const blocked = await scanStoredUploadD1(env, up, actor, 'card-video');
+    if (blocked) return blocked;
     return json({ url: up.url });
   }
 

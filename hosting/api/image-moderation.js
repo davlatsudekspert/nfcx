@@ -17,8 +17,11 @@
 //
 // ═══ NIMA QILMAYDI ═══
 //
-//   * VIDEO tekshirilmaydi — Worker ichida videoni kadrlarga bo'lish
-//     imkoni yo'q. Video uchun moderatsiya: shikoyat + admin (avvalgidek).
+//   * VIDEO endi TEKSHIRILADI (2026-09-24, egasi: "rasm va video —
+//     porno, diniy ekstremizm, siyosiy va boshqalar"): R2 dagi fayl
+//     Gemini Files API ga OQIM bilan yuboriladi (base64 emas — Worker
+//     xotirasi 128 MB), qayta ishlanishi kutiladi va hukm so'raladi.
+//     Qarang: `moderateVideo`.
 //   * GIF tekshirilmaydi — Gemini GIF formatini qabul qilmaydi.
 //   * Xizmat ishlamasa (kalit yo'q, tarmoq xatosi, 8 soniyadan oshsa)
 //     yuklash TO'XTATILMAYDI: odam bizning nosozligimiz uchun jazolanmasin.
@@ -29,7 +32,7 @@
 // O'chirish: `MODERATION_OFF=1` (Worker o'zgaruvchisi).
 // Model: `MODERATION_MODEL`, bo'lmasa `ASSISTANT_MODEL`, bo'lmasa standart.
 
-export const BLOCK_CATEGORIES = ['sexual', 'violence', 'extremism', 'drugs', 'hate'];
+export const BLOCK_CATEGORIES = ['sexual', 'violence', 'extremism', 'political', 'drugs', 'hate'];
 
 const DEFAULT_MODEL = 'gemini-3.6-flash';
 const TIMEOUT_MS = 8_000;
@@ -41,11 +44,20 @@ Look at the image and decide if it may be published.
 Block ONLY clear violations:
 - "sexual": nudity, sexual acts, pornographic or sexually explicit content;
 - "violence": graphic violence, gore, severe injury, cruelty to people or animals;
-- "extremism": terrorist or extremist symbols, flags, propaganda, recruitment;
+- "extremism": terrorist or extremist symbols, flags, propaganda, recruitment, including RELIGIOUS extremism (calls to violent jihad, banned religious-extremist groups and their symbols);
+- "political": political propaganda or agitation, election campaigning, calls to protests, riots or overthrowing the government, insulting state symbols (flag, emblem, anthem) or state leaders;
 - "drugs": illegal drugs being sold, used or advertised;
 - "hate": hateful symbols or imagery targeting a group.
 Normal photos (people, food, products, shops, cars, text, memes, swimwear at a beach, medical/educational images without gore, legal products) are ALLOWED.
-Reply with JSON only: {"allowed": true|false, "category": "none|sexual|violence|extremism|drugs|hate"}`;
+Ordinary religious life (mosques, prayer, religious holidays, Quran recitation) and the national flag shown respectfully are ALLOWED.
+Reply with JSON only: {"allowed": true|false, "category": "none|sexual|violence|extremism|political|drugs|hate"}`;
+
+// Video uchun — xuddi shu qoidalar, lekin BUTUN video (kadrlar va
+// ovoz) ko'rib chiqiladi: 18+ sahna oxirida bo'lsa ham topilishi kerak.
+const VIDEO_PROMPT = PROMPT
+  .replace('Look at the image and decide if it may be published.',
+    'Watch the WHOLE video (all frames and the audio/speech) and decide if it may be published. A violation anywhere in the video blocks it.')
+  .replace('Normal photos', 'Normal videos and photos');
 
 const apiKey = (env) => String(env.GEMINI_API_KEY || env.AI_API_KEY || '').trim().replace(/^["']|["']$/g, '');
 
@@ -122,6 +134,130 @@ export async function moderateImage(env, bytes, mime) {
     return { allowed: true, checked: false };
   } finally {
     clearTimeout(timer);
+  }
+}
+
+// ═══ VIDEO ═══════════════════════════════════════════════════════════
+const GEMINI = 'https://generativelanguage.googleapis.com';
+const VIDEO_TIMEOUT_MS = 45_000;
+const VIDEO_POLL_MS = 1_500;
+// Gemini qabul qiladigan video turlari (bizning nomdan uning nomiga).
+const VIDEO_TYPES = {
+  'video/mp4': 'video/mp4',
+  'video/webm': 'video/webm',
+  'video/quicktime': 'video/mov',
+  'video/mov': 'video/mov',
+  'video/3gpp': 'video/3gpp',
+  'video/mpeg': 'video/mpeg',
+  'video/x-msvideo': 'video/avi',
+};
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/// R2 obyektining tanasi — iloji bo'lsa OQIM (xotiraga to'liq
+/// yuklanmaydi), aks holda baytlar (mahalliy sinov muhiti).
+async function bodyOf(obj, size) {
+  if (obj?.body && typeof obj.body.pipeTo === 'function' && typeof FixedLengthStream === 'function') {
+    // eslint-disable-next-line no-undef
+    const { readable, writable } = new FixedLengthStream(size);
+    obj.body.pipeTo(writable).catch(() => {});
+    return readable;
+  }
+  if (typeof obj?.arrayBuffer === 'function') return new Uint8Array(await obj.arrayBuffer());
+  return obj?.body;
+}
+
+/// VIDEONI TEKSHIRISH — Gemini Files API orqali.
+///
+///   1) yuklash sessiyasi ochiladi (resumable, bitta bo'lak);
+///   2) fayl R2 dan to'g'ridan-to'g'ri oqim bilan yuboriladi;
+///   3) Gemini videoni qayta ishlaguncha kutiladi (ACTIVE);
+///   4) hukm so'raladi; 5) fayl Gemini'dan o'chiriladi.
+///
+/// Natija `moderateImage` bilan bir xil shaklda. Xizmat ishlamasa yoki
+/// 45 soniyada ulgurmasa — yuklash TO'XTATILMAYDI (`checked: false`).
+export async function moderateVideo(env, obj, mime, size) {
+  const type = VIDEO_TYPES[String(mime || '').toLowerCase()];
+  if (!moderationEnabled(env)) return { allowed: true, checked: false };
+  const len = Number(size ?? obj?.size ?? 0);
+  if (!type || !obj || !len) return { allowed: true, checked: false };
+  const key = apiKey(env);
+  const model = String(env.MODERATION_MODEL || env.ASSISTANT_MODEL || DEFAULT_MODEL).trim();
+  const ctrl = new AbortController();
+  const deadline = Date.now() + VIDEO_TIMEOUT_MS;
+  const timer = setTimeout(() => ctrl.abort(), VIDEO_TIMEOUT_MS);
+  let fileName = '';
+  try {
+    const start = await fetch(`${GEMINI}/upload/v1beta/files`, {
+      method: 'POST',
+      headers: {
+        'x-goog-api-key': key,
+        'X-Goog-Upload-Protocol': 'resumable',
+        'X-Goog-Upload-Command': 'start',
+        'X-Goog-Upload-Header-Content-Length': String(len),
+        'X-Goog-Upload-Header-Content-Type': type,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ file: { display_name: 'nfcstore-scan' } }),
+      signal: ctrl.signal,
+    });
+    const uploadUrl = start.ok ? start.headers.get('x-goog-upload-url') : null;
+    if (!uploadUrl) return { allowed: true, checked: false };
+
+    const sent = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Length': String(len),
+        'X-Goog-Upload-Offset': '0',
+        'X-Goog-Upload-Command': 'upload, finalize',
+      },
+      body: await bodyOf(obj, len),
+      signal: ctrl.signal,
+    });
+    let file = (await sent.json().catch(() => null))?.file;
+    if (!sent.ok || !file?.name) return { allowed: true, checked: false };
+    fileName = file.name;
+
+    while (file?.state === 'PROCESSING') {
+      if (Date.now() + VIDEO_POLL_MS > deadline) return { allowed: true, checked: false };
+      await sleep(VIDEO_POLL_MS);
+      const st = await fetch(`${GEMINI}/v1beta/${file.name}`, {
+        headers: { 'x-goog-api-key': key },
+        signal: ctrl.signal,
+      });
+      file = st.ok ? await st.json().catch(() => null) : null;
+    }
+    if (file?.state !== 'ACTIVE' || !file?.uri) return { allowed: true, checked: false };
+
+    const res = await fetch(`${GEMINI}/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
+      body: JSON.stringify({
+        contents: [{
+          role: 'user',
+          parts: [
+            { text: VIDEO_PROMPT },
+            { fileData: { mimeType: file.mimeType || type, fileUri: file.uri } },
+          ],
+        }],
+        generationConfig: { temperature: 0, maxOutputTokens: 800, responseMimeType: 'application/json' },
+      }),
+      signal: ctrl.signal,
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok && !data?.promptFeedback?.blockReason) return { allowed: true, checked: false };
+    const v = parseVerdict(data);
+    if (!v) return { allowed: true, checked: false };
+    return { ...v, checked: true };
+  } catch {
+    return { allowed: true, checked: false };
+  } finally {
+    clearTimeout(timer);
+    // Gemini'dagi nusxa darhol o'chiriladi (baribir 48 soatda o'chadi).
+    if (fileName) {
+      fetch(`${GEMINI}/v1beta/${fileName}`, { method: 'DELETE', headers: { 'x-goog-api-key': key } })
+        .catch(() => {});
+    }
   }
 }
 

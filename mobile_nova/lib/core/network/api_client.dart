@@ -13,6 +13,9 @@ import '../utils/result.dart';
 ///
 /// `--dart-define=NOVA_API_BASE=...` bilan almashtiriladi, shuning uchun
 /// staging'ga ulanish uchun kod o'zgartirilmaydi.
+/// CI qurilish raqami (`--dart-define=NOVA_BUILD`), mahalliyda bo'sh.
+const kNovaBuild = String.fromEnvironment('NOVA_BUILD');
+
 const kApiBase = String.fromEnvironment(
   'NOVA_API_BASE',
   defaultValue: 'https://nfcstore.uz',
@@ -63,6 +66,9 @@ class ApiClient {
         'accept': 'application/json',
         'x-client': 'android',
         'x-app': 'nova',
+        // Qurilish raqami (CI beradi) — admin panelda "kim qaysi
+        // versiyada" ko'rinadi. Mahalliy qurilishda yuborilmaydi.
+        if (kNovaBuild.isNotEmpty) 'x-app-build': kNovaBuild,
       },
       // Status kodini o'zimiz tahlil qilamiz — Dio 4xx uchun istisno
       // otmasligi kerak, aks holda `Result` naqshi buzilardi.

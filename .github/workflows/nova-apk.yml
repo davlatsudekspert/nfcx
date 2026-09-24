@@ -266,7 +266,8 @@ jobs:
           flutter build apk --release \
             --build-name=${{ steps.ver.outputs.name }} \
             --build-number=${{ steps.ver.outputs.code }} \
-            --dart-define=NOVA_VERSION=${{ steps.ver.outputs.name }}
+            --dart-define=NOVA_VERSION=${{ steps.ver.outputs.name }} \
+            --dart-define=NOVA_BUILD=${{ steps.ver.outputs.code }}
 
       # ABI bo'yicha bo'lingan APK'lar — arm64 qurilmalar uchun hajm
       # sezilarli kichrayadi.
@@ -275,7 +276,8 @@ jobs:
           flutter build apk --release --split-per-abi \
             --build-name=${{ steps.ver.outputs.name }} \
             --build-number=${{ steps.ver.outputs.code }} \
-            --dart-define=NOVA_VERSION=${{ steps.ver.outputs.name }}
+            --dart-define=NOVA_VERSION=${{ steps.ver.outputs.name }} \
+            --dart-define=NOVA_BUILD=${{ steps.ver.outputs.code }}
 
       # AAB — Play Store uchun yagona qabul qilinadigan format.
       - name: AAB qurish (Play Store)
@@ -283,7 +285,8 @@ jobs:
           flutter build appbundle --release \
             --build-name=${{ steps.ver.outputs.name }} \
             --build-number=${{ steps.ver.outputs.code }} \
-            --dart-define=NOVA_VERSION=${{ steps.ver.outputs.name }}
+            --dart-define=NOVA_VERSION=${{ steps.ver.outputs.name }} \
+            --dart-define=NOVA_BUILD=${{ steps.ver.outputs.code }}
 
       # ESKI ILOVA USTIGA TUSHMASLIGINI TEKSHIRISH.
       #

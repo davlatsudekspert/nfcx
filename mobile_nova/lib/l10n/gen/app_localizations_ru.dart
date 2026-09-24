@@ -2293,7 +2293,7 @@ class LRu extends L {
 
   @override
   String errContentBlocked(String reason) {
-    return 'Фото не загружено: $reason. Такой контент нарушает закон и правила NFCSTORE. Если это ошибка — выберите другое фото или напишите в поддержку.';
+    return 'Не загружено: $reason. Такой контент нарушает закон и правила NFCSTORE. Если это ошибка — выберите другое фото или видео или напишите в поддержку.';
   }
 
   @override
@@ -2304,7 +2304,11 @@ class LRu extends L {
 
   @override
   String get blockExtremism =>
-      'обнаружена экстремистская символика или пропаганда';
+      'обнаружена экстремистская (в т.ч. религиозная) символика или пропаганда';
+
+  @override
+  String get blockPolitical =>
+      'обнаружена политическая агитация или призыв к беспорядкам';
 
   @override
   String get blockDrugs => 'обнаружены наркотики';

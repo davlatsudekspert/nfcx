@@ -2298,7 +2298,7 @@ class LEn extends L {
 
   @override
   String errContentBlocked(String reason) {
-    return 'Photo not uploaded: $reason. Such content violates the law and NFCSTORE rules. If this is a mistake, pick another photo or contact support.';
+    return 'Not uploaded: $reason. Such content violates the law and NFCSTORE rules. If this is a mistake, pick another photo or video, or contact support.';
   }
 
   @override
@@ -2308,7 +2308,12 @@ class LEn extends L {
   String get blockViolence => 'violence or gore detected';
 
   @override
-  String get blockExtremism => 'extremist symbols or propaganda detected';
+  String get blockExtremism =>
+      'extremist (including religious) symbols or propaganda detected';
+
+  @override
+  String get blockPolitical =>
+      'political propaganda or calls to unrest detected';
 
   @override
   String get blockDrugs => 'illegal drugs detected';

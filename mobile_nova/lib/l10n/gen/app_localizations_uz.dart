@@ -2298,7 +2298,7 @@ class LUz extends L {
 
   @override
   String errContentBlocked(String reason) {
-    return 'Rasm yuklanmadi: $reason. Bunday kontent qonun va NFCSTORE qoidalariga zid. Xato deb o‘ylasangiz, boshqa rasm tanlang yoki qo‘llab-quvvatlashga yozing.';
+    return 'Yuklanmadi: $reason. Bunday kontent qonun va NFCSTORE qoidalariga zid. Xato deb o‘ylasangiz, boshqa rasm yoki video tanlang yoki qo‘llab-quvvatlashga yozing.';
   }
 
   @override
@@ -2309,7 +2309,11 @@ class LUz extends L {
 
   @override
   String get blockExtremism =>
-      'ekstremistik yoki terroristik belgi yoki targ‘ibot aniqlandi';
+      'ekstremistik (jumladan diniy) yoki terroristik belgi yoki targ‘ibot aniqlandi';
+
+  @override
+  String get blockPolitical =>
+      'siyosiy targ‘ibot yoki tartibsizlikka chaqiriq aniqlandi';
 
   @override
   String get blockDrugs => 'giyohvand moddalar aniqlandi';

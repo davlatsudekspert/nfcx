@@ -922,7 +922,7 @@
   "bizPlanTrial": "Sinov davri: hozircha hech qanday cheklov yo‘q",
   "errPlanLimit": "Tarif limiti to‘ldi. Ko‘proq tovar uchun Premium yoki o‘z nomingiz kerak (sayt orqali).",
   "errPlanLocked": "Bepul tarifda post va istoriya yopiq. Premium (sayt orqali) bilan ochiladi.",
-  "errContentBlocked": "Rasm yuklanmadi: {reason}. Bunday kontent qonun va NFCSTORE qoidalariga zid. Xato deb o‘ylasangiz, boshqa rasm tanlang yoki qo‘llab-quvvatlashga yozing.",
+  "errContentBlocked": "Yuklanmadi: {reason}. Bunday kontent qonun va NFCSTORE qoidalariga zid. Xato deb o‘ylasangiz, boshqa rasm yoki video tanlang yoki qo‘llab-quvvatlashga yozing.",
   "@errContentBlocked": {
     "placeholders": {
       "reason": {
@@ -932,7 +932,8 @@
   },
   "blockSexual": "18+ yoki behayo kontent aniqlandi",
   "blockViolence": "zo‘ravonlik yoki qonli kontent aniqlandi",
-  "blockExtremism": "ekstremistik yoki terroristik belgi yoki targ‘ibot aniqlandi",
+  "blockExtremism": "ekstremistik (jumladan diniy) yoki terroristik belgi yoki targ‘ibot aniqlandi",
+  "blockPolitical": "siyosiy targ‘ibot yoki tartibsizlikka chaqiriq aniqlandi",
   "blockDrugs": "giyohvand moddalar aniqlandi",
   "blockHate": "nafrat yoki kamsitish belgisi aniqlandi",
   "privacyPolicy": "Maxfiylik siyosati",

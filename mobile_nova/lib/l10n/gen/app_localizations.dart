@@ -4434,7 +4434,7 @@ abstract class L {
   /// No description provided for @errContentBlocked.
   ///
   /// In uz, this message translates to:
-  /// **'Rasm yuklanmadi: {reason}. Bunday kontent qonun va NFCSTORE qoidalariga zid. Xato deb o‘ylasangiz, boshqa rasm tanlang yoki qo‘llab-quvvatlashga yozing.'**
+  /// **'Yuklanmadi: {reason}. Bunday kontent qonun va NFCSTORE qoidalariga zid. Xato deb o‘ylasangiz, boshqa rasm yoki video tanlang yoki qo‘llab-quvvatlashga yozing.'**
   String errContentBlocked(String reason);
 
   /// No description provided for @blockSexual.
@@ -4452,8 +4452,14 @@ abstract class L {
   /// No description provided for @blockExtremism.
   ///
   /// In uz, this message translates to:
-  /// **'ekstremistik yoki terroristik belgi yoki targ‘ibot aniqlandi'**
+  /// **'ekstremistik (jumladan diniy) yoki terroristik belgi yoki targ‘ibot aniqlandi'**
   String get blockExtremism;
+
+  /// No description provided for @blockPolitical.
+  ///
+  /// In uz, this message translates to:
+  /// **'siyosiy targ‘ibot yoki tartibsizlikka chaqiriq aniqlandi'**
+  String get blockPolitical;
 
   /// No description provided for @blockDrugs.
   ///
