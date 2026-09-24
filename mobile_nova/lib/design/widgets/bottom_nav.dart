@@ -193,6 +193,9 @@ class _CenterNavButton extends StatelessWidget {
         child: BrandSeal(
           size: kNavCenterSize,
           selected: selected,
+          // Yorug' mavzuda muhr doim QORA: oltin belgi qora diskda —
+          // oq panel ustidagi yagona to'q nuqta, brend imzosi.
+          ink: true,
           semanticLabel: item.label,
         ),
       ),
@@ -220,9 +223,17 @@ class _NavButton extends StatelessWidget {
     final iconSize = compact ? 24.0 : 25.0;
     final labelSize = compact ? 10.5 : 11.0;
 
-    // Faol — brend rangi, to'la belgi va yumshoq kapsula; faol emas —
-    // chiziqli belgi, `text3` (hamma mavzuda >= 4.5:1).
-    final color = selected ? t.accent2 : t.text3;
+    // PREMIUM OQ-QORA (egasi, 2026-09-24: "ikonkalar qoraroq, aniqroq,
+    // qimmatroq; faol holat premium").
+    //
+    // Yorug' mavzuda faol tab — QORA SIYOH kapsula, ichida oq belgi;
+    // faol emaslari — deyarli qora grafit (kulrang emas), chiziqli
+    // belgi. Rang yo'q, faqat siyoh darajalari. Qorong'i mavzularda
+    // avvalgi yumshoq tus qoladi.
+    final ink = !t.isDark;
+    final idle = ink ? Color.lerp(t.text1, t.text2, .35)! : t.text3;
+    final color = selected ? (ink ? t.text1 : t.accent2) : idle;
+    final iconColor = selected && ink ? t.surfaceSolid : color;
     return Semantics(
       button: true,
       selected: selected,
@@ -241,15 +252,26 @@ class _NavButton extends StatelessWidget {
                 height: 30,
                 decoration: BoxDecoration(
                   color: selected
-                      ? t.accent2.withValues(alpha: t.isDark ? .16 : .09)
-                      : t.accent2.withValues(alpha: 0),
+                      ? (ink ? t.text1 : t.accent2.withValues(alpha: .16))
+                      : (ink ? t.text1 : t.accent2).withValues(alpha: 0),
                   borderRadius: BorderRadius.circular(15),
+                  boxShadow: selected && ink
+                      ? [
+                          BoxShadow(
+                            color: t.text1.withValues(alpha: .22),
+                            blurRadius: 10,
+                            spreadRadius: -3,
+                            offset: const Offset(0, 4),
+                          ),
+                        ]
+                      : null,
                 ),
                 alignment: Alignment.center,
                 child: Icon(
                   selected ? (item.activeIcon ?? item.icon) : item.icon,
-                  size: iconSize,
-                  color: color,
+                  // Kapsula ichida belgi biroz kichik — "nafas" oladi.
+                  size: selected && ink ? iconSize - 3 : iconSize,
+                  color: iconColor,
                 ),
               ),
               const SizedBox(height: 3),

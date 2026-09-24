@@ -161,12 +161,18 @@ class NovaIconButton extends StatelessWidget {
                 duration: Motion.theme,
                 width: size,
                 height: size,
+                // Yorug' mavzuda oq sirt + nozik chegara + yengil soya
+                // (premium redizayn, 2026-09-24): kulrang doira
+                // "o'chirilgan" tugmadek ko'rinardi.
                 decoration: BoxDecoration(
-                  color: filled ? null : t.surface2,
+                  color: filled
+                      ? null
+                      : (t.isDark ? t.surface2 : t.surfaceSolid),
                   gradient: filled ? t.accentGradient : null,
                   shape: BoxShape.circle,
-                  border: Border.all(color: t.border2),
-                  boxShadow: filled ? t.shadowTiny : null,
+                  border: Border.all(
+                      color: t.isDark || filled ? t.border2 : t.border1),
+                  boxShadow: filled || !t.isDark ? t.shadowTiny : null,
                 ),
                 child: Icon(
                   icon,

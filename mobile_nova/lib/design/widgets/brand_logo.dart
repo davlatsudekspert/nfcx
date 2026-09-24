@@ -277,11 +277,16 @@ class BrandSeal extends StatelessWidget {
     this.size = 56,
     this.selected = false,
     this.elevated = true,
+    this.ink = false,
     this.semanticLabel = 'NFCSTORE',
   });
 
   final double size;
   final bool selected;
+
+  /// Yorug' mavzuda disk tanlanmagan holda ham qora siyoh (pastki
+  /// navigatsiya). Qorong'i mavzuda ta'siri yo'q.
+  final bool ink;
 
   /// Pastki soya — sirt ustida "ko'tarilgan" muhr uchun.
   final bool elevated;
@@ -301,9 +306,10 @@ class BrandSeal extends StatelessWidget {
         height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: selected ? t.accent2 : t.surfaceSolid,
+          color: selected || (ink && !t.isDark) ? t.accent2 : t.surfaceSolid,
           border: Border.all(
-            color: t.brand.withValues(alpha: selected ? .9 : .6),
+            color: t.brand
+                .withValues(alpha: selected || (ink && !t.isDark) ? .9 : .6),
             width: ring,
           ),
           boxShadow: elevated ? t.shadowFloat : null,

@@ -281,8 +281,20 @@ class _CardBody extends StatelessWidget {
             colors: [t.surfaceSolid, t.surfaceSolid, warm],
             stops: const [0, .45, 1],
           ),
-          border: Border.all(color: t.brand.withValues(alpha: .38)),
-          boxShadow: t.shadowFloat,
+          // Aniqroq oltin chiziq va champagne tusli chuqur soya —
+          // karta sirtdan ko'tarilgan qimmat buyumdek (redizayn 2026-09-24).
+          border: Border.all(
+              color: t.brand.withValues(alpha: t.isDark ? .38 : .55)),
+          boxShadow: [
+            ...t.shadowFloat,
+            if (!t.isDark)
+              BoxShadow(
+                color: t.brand.withValues(alpha: .18),
+                blurRadius: 34,
+                spreadRadius: -16,
+                offset: const Offset(0, 20),
+              ),
+          ],
         ),
         child: ClipRRect(
           borderRadius: _radius,
@@ -301,6 +313,24 @@ class _CardBody extends StatelessWidget {
                         progress: rings,
                         color: t.brand.withValues(alpha: t.isDark ? .22 : .30),
                       ),
+                    ),
+                  ),
+                ),
+              ),
+              // YUQORI CHETDAGI YORUG'LIK — metall/sirlangan qirra.
+              Positioned(
+                left: 24,
+                right: 24,
+                top: 0,
+                height: 1.2,
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: [
+                        Colors.white.withValues(alpha: 0),
+                        Colors.white.withValues(alpha: t.isDark ? .18 : .95),
+                        Colors.white.withValues(alpha: 0),
+                      ]),
                     ),
                   ),
                 ),

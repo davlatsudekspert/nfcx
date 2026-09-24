@@ -23,6 +23,11 @@ class ModeSwitch extends StatelessWidget {
     final t = context.tokens;
     final l = L.of(context);
     final business = mode == AppMode.business;
+    // PREMIUM OQ-QORA (egasi, 2026-09-24: "toggle chiroyli, qimmat va
+    // aniq"). Yorug' mavzuda faol tomon QORA SIYOH, yozuvi oq — kulrang
+    // "o'chirilgan forma" ko'rinishi yo'q. Qorong'ida — avvalgi tus.
+    final ink = !t.isDark;
+    const h = 44.0;
 
     return Semantics(
       label: business ? l.modeBusiness : l.modePersonal,
@@ -35,12 +40,13 @@ class ModeSwitch extends StatelessWidget {
       // chegara bilan; matn oltin, fon esa qorong'i bo'lib
       // qolaveradi.
       child: Container(
-        height: 38,
+        height: h,
         padding: const EdgeInsets.all(3),
         decoration: BoxDecoration(
-          color: t.surface2,
+          color: ink ? t.surfaceSolid : t.surface2,
           borderRadius: R.pill,
-          border: Border.all(color: t.border2),
+          border: Border.all(color: ink ? t.border1 : t.border2),
+          boxShadow: ink ? t.shadowTiny : null,
         ),
         child: LayoutBuilder(
           builder: (context, c) {
@@ -56,19 +62,30 @@ class ModeSwitch extends StatelessWidget {
                     duration: Motion.med,
                     curve: Motion.smooth,
                     width: w,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      // TUS, TO'LDIRISH EMAS.
-                      // Faol tomon — yumshoq tus. `washScale`siz
-                      // oq-qora mavzuda bu kulrang plastina edi.
-                      color: t.wash(business ? t.accentB : t.accent2,
-                          t.isDark ? .14 : .20),
-                      borderRadius: R.pill,
-                      border: Border.all(
-                        color: (business ? t.accentB : t.accent2)
-                            .withValues(alpha: .5),
-                      ),
-                    ),
+                    height: h - 8,
+                    decoration: ink
+                        ? BoxDecoration(
+                            color: t.text1,
+                            borderRadius: R.pill,
+                            boxShadow: [
+                              BoxShadow(
+                                color: t.text1.withValues(alpha: .24),
+                                blurRadius: 12,
+                                spreadRadius: -4,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
+                          )
+                        : BoxDecoration(
+                            // TUS, TO'LDIRISH EMAS (qorong'i mavzular).
+                            color: t.wash(business ? t.accentB : t.accent2,
+                                .14),
+                            borderRadius: R.pill,
+                            border: Border.all(
+                              color: (business ? t.accentB : t.accent2)
+                                  .withValues(alpha: .5),
+                            ),
+                          ),
                   ),
                 ),
                 Row(
@@ -76,7 +93,8 @@ class ModeSwitch extends StatelessWidget {
                     _Label(
                       text: l.modePersonal,
                       selected: !business,
-                      tone: t.accent2,
+                      tone: ink ? t.surfaceSolid : t.accent2,
+                      height: h - 8,
                       width: w,
                       onTap: () => onChanged(AppMode.personal),
                     ),
@@ -84,7 +102,8 @@ class ModeSwitch extends StatelessWidget {
                     _Label(
                       text: l.modeBusiness,
                       selected: business,
-                      tone: t.accentB,
+                      tone: ink ? t.surfaceSolid : t.accentB,
+                      height: h - 8,
                       width: w,
                       onTap: () => onChanged(AppMode.business),
                     ),
@@ -105,8 +124,11 @@ class _Label extends StatelessWidget {
     required this.selected,
     required this.tone,
     required this.width,
+    required this.height,
     required this.onTap,
   });
+
+  final double height;
 
   final String text;
   final bool selected;
@@ -124,13 +146,14 @@ class _Label extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
         width: width,
-        height: 32,
+        height: height,
         child: Center(
           child: AnimatedDefaultTextStyle(
             duration: Motion.fast,
             style: TextStyle(
               fontFamily: 'Manrope',
-              fontSize: 12.5,
+              fontSize: 13,
+              letterSpacing: .2,
               // Faol yorliq QALIN emas, RANGLI: qalinlik yozuvni
               // "sakrab" ko'rsatardi, chunki kenglik o'zgaradi.
               fontWeight: FontWeight.w600,

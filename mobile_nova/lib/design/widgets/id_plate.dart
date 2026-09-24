@@ -84,18 +84,20 @@ class IdPlate extends StatelessWidget {
   static const gold = Color(0xFFD4AF37);
   static const goldLight = Color(0xFFF6DE8D);
 
-  /// ISTORIYA HALQASI — OLTIN + ZUMRAD (egasining tanlovi, 2026-09,
-  /// "3-variant"). Instagramdagidek butun, qalin halqa; rangi bizniki.
-  static const emeraldLight = Color(0xFF5FD3A5);
-  static const emerald = Color(0xFF0E8A67);
+  /// ISTORIYA VA AVATAR HALQASI — FAQAT CHAMPAGNE OLTIN.
+  ///
+  /// Premium redizayn (egasi, 2026-09-24: "oq + qora + nozik oltin,
+  /// rang-barang emas"): avvalgi oltin + ZUMRAD halqa olib tashlandi —
+  /// yashil yoy qimmat oq-qora sahifada yagona "boshqa" rang bo'lib
+  /// qolardi. Endi bronza → oltin → och champagne → oltin → bronza:
+  /// metall yorqinligi aylanib o'tadi, rang qo'shilmaydi.
   static const storyRingColors = <Color>[
-    Color(0xFF8C6A1F), goldDeep, gold, goldLight, emeraldLight, emerald,
-    emeraldLight, goldLight, gold, goldDeep, Color(0xFF8C6A1F),
+    Color(0xFF7E5E22), goldDeep, gold, goldLight, Color(0xFFFBF1D2),
+    goldLight, gold, goldDeep, Color(0xFF7E5E22),
   ];
   static const storyRing = SweepGradient(
     colors: storyRingColors,
-    // Oltin yuqori-chapdan boshlanadi, zumrad o'ng tomonda — namunadagi
-    // kabi.
+    // Yorug' nuqta yuqori-o'ngda — yorug'lik tepadan tushgandek.
     transform: GradientRotation(3.49),
   );
 

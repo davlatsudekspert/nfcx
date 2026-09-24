@@ -1,0 +1,175 @@
+@Tags(['shots'])
+library;
+
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle, FontLoader;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:nfcstore_nova/app/app.dart';
+import 'package:nfcstore_nova/app/providers.dart';
+import 'package:nfcstore_nova/core/network/api_client.dart';
+import 'package:nfcstore_nova/core/utils/result.dart';
+import 'package:nfcstore_nova/data/models/models.dart';
+import 'package:nfcstore_nova/data/repositories/social_repository.dart';
+import 'package:nfcstore_nova/features/auth/session.dart';
+import 'package:nfcstore_nova/routing/router.dart';
+import 'package:nfcstore_nova/routing/routes.dart';
+
+import '../helpers.dart';
+
+/// PREMIUM REDIZAYN (2026-09) — Home, Profil va pastki navigatsiya.
+///
+///   flutter test test/shots/premium_redesign_shot.dart \
+///     --run-skipped -t shots --update-goldens
+class _Social extends SocialRepository {
+  _Social() : super(ApiClient());
+
+  static final _stories = [
+    StoryItem(
+      id: 1,
+      code: 'VIP001',
+      authorName: 'Muhammad',
+      caption: 'Yangi NFC kartalar',
+      createdAt: DateTime.now().subtract(const Duration(hours: 2)),
+    ),
+  ];
+
+  static final _posts = [
+    for (var i = 0; i < 6; i++)
+      Post(
+        id: 40 + i,
+        code: 'VIP001',
+        authorName: 'Muhammad',
+        text: 'Post $i',
+        mediaUrls: [
+          [
+            'assets/demo/z_post_nfc.jpg',
+            'assets/demo/z_post_cafe.jpg',
+            'assets/demo/z_post_rooftop.jpg',
+            'assets/demo/m_card_metal.jpg',
+            'assets/demo/z_post_evening.jpg',
+            'assets/demo/m_cards.jpg',
+          ][i]
+        ],
+        createdAt: DateTime(2026, 9, 20 - i),
+      ),
+  ];
+
+  @override
+  Future<Result<List<StoryItem>>> storiesOf(String code) async => Ok(_stories);
+  @override
+  Future<Result<List<StoryItem>>> followedStories() async => const Ok([]);
+  @override
+  Future<Result<List<Post>>> feed({int page = 1}) async => Ok(_posts);
+  @override
+  Future<Result<List<Post>>> postsOf(String code, {int page = 1}) async =>
+      Ok(_posts);
+}
+
+void main() {
+  setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    final fams = {
+      'InstrumentSerif': ['assets/fonts/InstrumentSerif-400.ttf'],
+      'Manrope': [
+        'assets/fonts/Manrope-400.ttf',
+        'assets/fonts/Manrope-500.ttf',
+        'assets/fonts/Manrope-600.ttf',
+        'assets/fonts/Manrope-700.ttf',
+      ],
+      'IBMPlexMono': [
+        'assets/fonts/IBMPlexMono-400.ttf',
+        'assets/fonts/IBMPlexMono-500.ttf',
+        'assets/fonts/IBMPlexMono-600.ttf',
+      ],
+      'PlayfairDisplay': ['assets/fonts/PlayfairDisplay-500.ttf'],
+    };
+    for (final f in fams.entries) {
+      final loader = FontLoader(f.key);
+      for (final p in f.value) {
+        if (File(p).existsSync()) loader.addFont(rootBundle.load(p));
+      }
+      await loader.load();
+    }
+    final root = Platform.environment['FLUTTER_ROOT'] ?? '';
+    final icons = File(
+        '$root/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf');
+    if (icons.existsSync()) {
+      await (FontLoader('MaterialIcons')
+            ..addFont(Future.value(icons.readAsBytesSync().buffer.asByteData())))
+          .load();
+    }
+  });
+
+  Future<void> settle(WidgetTester tester, [int n = 16]) async {
+    for (var i = 0; i < n; i++) {
+      await tester.pump(const Duration(milliseconds: 80));
+      // Asset rasmlar haqiqiy vaqtda dekodlanadi.
+      await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 30)));
+    }
+  }
+
+  Future<void> app(WidgetTester tester, String route, String name,
+      {Size size = const Size(390, 844), bool business = false}) async {
+    tester.view.physicalSize = size * 2;
+    tester.view.devicePixelRatio = 2.0;
+    tester.view.padding = const FakeViewPadding(top: 64, bottom: 48);
+    tester.view.viewPadding = const FakeViewPadding(top: 64, bottom: 48);
+    addTearDown(tester.view.reset);
+    debugDisableShadows = false;
+    final c = ProviderContainer(overrides: [
+      ...await testOverrides(),
+      socialRepositoryProvider.overrideWithValue(_Social()),
+      authRepositoryProvider.overrideWithValue(FakeAuthRepository(ids: const [
+        NfcId(
+            code: 'VIP001',
+            name: 'Muhammad',
+            role: 'Davlat Sud Ekspert',
+            avatarUrl: 'assets/demo/z_portrait.jpg',
+            primary: true,
+            tier: 'exclusive',
+            views: 193,
+            followers: 5,
+            following: 4,
+            posts: 9,
+            cardLinked: true),
+        NfcId(code: 'UZD772', name: 'Oybek', views: 2),
+        NfcId(code: 'TTS075', name: 'Tohir', views: 5),
+        NfcId(code: 'ZOZ707', name: 'Shaxnoza', views: 3),
+      ])),
+    ]);
+    addTearDown(c.dispose);
+    await c.read(prefsProvider).setThemeId('ivory');
+    if (business) await c.read(prefsProvider).setMode('business');
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: c,
+      child: const NovaApp(),
+    ));
+    await settle(tester);
+    c.read(routerProvider).go(route);
+    await settle(tester, 24);
+    await expectLater(
+        find.byType(MaterialApp), matchesGoldenFile('png/$name.png'));
+    debugDisableShadows = true;
+  }
+
+  final tag = Platform.environment['SHOT_TAG'] ?? 'now';
+  testWidgets('Home 390', (t) async {
+    await app(t, Routes.home, 'redesign-$tag-home',
+        size: const Size(390, 1400));
+  });
+  testWidgets('Home 390 ekran', (t) async {
+    await app(t, Routes.home, 'redesign-$tag-home-fold');
+  });
+  testWidgets('Profil 390', (t) async {
+    await app(t, Routes.profile, 'redesign-$tag-profile',
+        size: const Size(390, 1250));
+  });
+  testWidgets('Home 360', (t) async {
+    await app(t, Routes.home, 'redesign-$tag-home-360',
+        size: const Size(360, 780));
+  });
+}

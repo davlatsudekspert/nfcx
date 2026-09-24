@@ -772,10 +772,15 @@ class _ActionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
+    // PREMIUM OQ-QORA (egasi, 2026-09-24): yorug' mavzuda belgi QORA
+    // SIYOH doirada, oq chiziq bilan — fintech ilovalardagidek aniq va
+    // qimmat. Kulrang "o'chiq" doira yo'q. Qorong'ida — avvalgidek.
+    final ink = !t.isDark;
     final style = TextStyle(
       fontFamily: AppType.sans,
       fontSize: 11.5,
       height: 1.15,
+      letterSpacing: .1,
       fontWeight: FontWeight.w600,
       color: t.text1,
     );
@@ -793,8 +798,8 @@ class _ActionTile extends StatelessWidget {
           decoration: BoxDecoration(
             color: t.surfaceSolid,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: t.border2),
-            boxShadow: t.shadowTiny,
+            border: Border.all(color: ink ? t.border1 : t.border2),
+            boxShadow: ink ? t.shadowSoft : t.shadowTiny,
           ),
           // IKON HAR DOIM BIR XIL BALANDLIKDA (egasi, 2026-09 polish):
           // ilgari bir qatorli ("Skanerlash") va ikki qatorli ("Kartaga
@@ -808,9 +813,17 @@ class _ActionTile extends StatelessWidget {
                 height: 38,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: t.surface2,
+                  color: ink ? t.text1 : t.surface2,
+                  // Nozik champagne hoshiya — qora doira "tiqilib"
+                  // qolmaydi, zargarlik buyumidek tugallanadi.
+                  border: ink
+                      ? Border.all(
+                          color: t.brand.withValues(alpha: .55), width: 1)
+                      : null,
                 ),
-                child: Icon(icon, size: 21, color: t.text1),
+                child: Icon(icon,
+                    size: ink ? 19 : 21,
+                    color: ink ? t.surfaceSolid : t.text1),
               ),
               const SizedBox(height: 8),
               Expanded(
