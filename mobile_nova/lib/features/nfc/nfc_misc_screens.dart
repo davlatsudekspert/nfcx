@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/utils/validators.dart';
+import '../../core/errors/app_error.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/nfc_repository.dart';
 import '../../design/theme/typography.dart';
@@ -77,7 +78,10 @@ class NfcCardsScreen extends ConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(d.label,
+                              Text(
+                                  d.label.isNotEmpty
+                                      ? d.label
+                                      : (d.code.isNotEmpty ? d.code : 'NFC'),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: Theme.of(context).textTheme.titleSmall),
@@ -85,18 +89,90 @@ class NfcCardsScreen extends ConsumerWidget {
                                 Text(d.code,
                                     style: AppType.monoStyle(
                                         color: t.text3, size: 11)),
+                              // HOLAT YOZUVDA (egasi, 2026-09-24: "bloklash
+                              // ekan, yozib qo'yish kerak — belgidan
+                              // bilinmayapti").
+                              if (d.blockedByOwner)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.block_rounded,
+                                          size: 12, color: t.error),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        l.cardBlocked,
+                                        style: TextStyle(
+                                          fontFamily: AppType.sans,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                          color: t.error,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                             ],
                           ),
                         ),
-                        NovaIconButton(
-                          icon: d.blockedByOwner
-                              ? Icons.lock_open_rounded
-                              : Icons.block_rounded,
-                          tooltip: d.blockedByOwner
+                        const SizedBox(width: Gap.sm),
+                        // YOZUVLI TUGMA — belgi yolg'iz nima qilishini
+                        // aytmasdi.
+                        Tooltip(
+                          message: d.blockedByOwner
                               ? l.nfcUnblockCard
                               : l.nfcBlockCard,
-                          size: 38,
-                          onPressed: () => _toggleBlock(context, ref, d),
+                          child: Semantics(
+                            button: true,
+                            child: PressableScale(
+                              onTap: () => _toggleBlock(context, ref, d),
+                              child: Container(
+                                key: ValueKey('card-block-${d.id}'),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 9),
+                                decoration: BoxDecoration(
+                                  color: d.blockedByOwner
+                                      ? t.text1
+                                      : t.surfaceSolid,
+                                  borderRadius: R.pill,
+                                  border: Border.all(
+                                      color: d.blockedByOwner
+                                          ? t.text1
+                                          : t.error.withValues(alpha: .45)),
+                                  boxShadow: t.shadowTiny,
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      d.blockedByOwner
+                                          ? Icons.lock_open_rounded
+                                          : Icons.block_rounded,
+                                      size: 15,
+                                      color: d.blockedByOwner
+                                          ? t.surfaceSolid
+                                          : t.error,
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      d.blockedByOwner
+                                          ? l.cardUnblock
+                                          : l.cardBlock,
+                                      style: TextStyle(
+                                        fontFamily: AppType.sans,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: d.blockedByOwner
+                                            ? t.surfaceSolid
+                                            : t.error,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -264,11 +340,30 @@ class _NfcGiftScreenState extends ConsumerState<NfcGiftScreen> {
     super.dispose();
   }
 
+  /// Qabul qiluvchi NFC ID'si — tozalangan (harf/raqam, bosh harf).
+  String get _toCode =>
+      _email.text.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+
+  /// Server xato kalitlari — saytdagi `GIFT_ERRORS` bilan bir xil matn.
+  String _giftError(L l, AppError e) => switch (e.code) {
+        'NOT_OWNER' => l.giftErrNotOwner,
+        'NOT_GIFTABLE' => l.giftErrNotGiftable,
+        'RECIPIENT_NOT_FOUND' => l.giftErrNotFound,
+        'CANNOT_GIFT_SELF' => l.giftErrSelf,
+        'ALREADY_PENDING' => l.giftErrPending,
+        'to_code_required' => l.giftErrRequired,
+        _ => describeError(l, e),
+      };
+
   Future<void> _send() async {
     final l = L.of(context);
-    final err = Validate.email(_email.text);
-    if (err != null) {
-      setState(() => _error = l.errBadEmail);
+    final to = _toCode;
+    if (to.length < 3) {
+      setState(() => _error = l.giftErrRequired);
+      return;
+    }
+    if (to == widget.code.toUpperCase()) {
+      setState(() => _error = l.giftErrSelf);
       return;
     }
     setState(() {
@@ -277,12 +372,12 @@ class _NfcGiftScreenState extends ConsumerState<NfcGiftScreen> {
     });
     final res = await ref
         .read(nfcRepositoryProvider)
-        .gift(code: widget.code, email: _email.text.trim());
+        .gift(code: widget.code, toCode: to);
     if (!mounted) return;
     setState(() => _busy = false);
     res.when(
       ok: (_) => setState(() => _sent = true),
-      err: (e) => setState(() => _error = describeError(l, e)),
+      err: (e) => setState(() => _error = _giftError(l, e)),
     );
   }
 
@@ -297,7 +392,7 @@ class _NfcGiftScreenState extends ConsumerState<NfcGiftScreen> {
         body: StatePanel(
           icon: Icons.card_giftcard_rounded,
           title: l.nfcGiftSent,
-          message: _email.text.trim(),
+          message: _toCode,
           tone: t.success,
           actionLabel: l.actionDone,
           onAction: () => context.pop(),
@@ -339,11 +434,19 @@ class _NfcGiftScreenState extends ConsumerState<NfcGiftScreen> {
               style: Theme.of(context).textTheme.bodyMedium),
           const SizedBox(height: Gap.section),
           NovaField(
-            label: l.nfcGiftRecipient,
+            key: const ValueKey('gift-to-code'),
+            label: l.nfcGiftRecipientId,
             controller: _email,
             error: _error,
-            keyboardType: TextInputType.emailAddress,
+            hint: 'VIP001',
+            technical: true,
+            maxLength: 12,
+            textCapitalization: TextCapitalization.characters,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp('[A-Za-z0-9]')),
+            ],
             enabled: !_busy,
+            onSubmitted: (_) => _send(),
           ),
           const SizedBox(height: Gap.xxl),
           NovaButton(label: l.actionConfirm, busy: _busy, onPressed: _send),

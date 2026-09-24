@@ -899,5 +899,21 @@
   "storeView": "Смотреть",
   "storeNew": "Новый",
   "storeOpenShort": "Открыто",
-  "storeClosedShort": "Закрыто"
+  "storeClosedShort": "Закрыто",
+  "nfcGiftRecipientId": "NFC ID получателя",
+  "giftErrNotOwner": "Этот код вам не принадлежит.",
+  "giftErrNotGiftable": "Бесплатный автоматический ID нельзя подарить.",
+  "giftErrNotFound": "Такой NFC ID не найден — получатель должен сначала создать профиль.",
+  "giftErrSelf": "Нельзя подарить самому себе.",
+  "giftErrPending": "Для этого кода подарок уже ожидает ответа.",
+  "giftErrRequired": "Введите NFC ID получателя.",
+  "cardBlock": "Заблокировать",
+  "cardUnblock": "Разблокировать",
+  "cardBlocked": "Заблокирована",
+  "tierHintExclusive": "Самые редкие ID — по фиксированной цене",
+  "tierHintPremium": "Самые редкие и особые комбинации",
+  "tierHintGold": "Красивые и узнаваемые комбинации",
+  "tierHintSilver": "Запоминающиеся номера",
+  "tierHintFree": "Достаточно, чтобы начать",
+  "tierPriceFromSuffix": "от"
 }

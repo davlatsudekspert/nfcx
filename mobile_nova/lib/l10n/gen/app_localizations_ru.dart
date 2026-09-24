@@ -2437,4 +2437,54 @@ class LRu extends L {
 
   @override
   String get storeClosedShort => 'Закрыто';
+
+  @override
+  String get nfcGiftRecipientId => 'NFC ID получателя';
+
+  @override
+  String get giftErrNotOwner => 'Этот код вам не принадлежит.';
+
+  @override
+  String get giftErrNotGiftable =>
+      'Бесплатный автоматический ID нельзя подарить.';
+
+  @override
+  String get giftErrNotFound =>
+      'Такой NFC ID не найден — получатель должен сначала создать профиль.';
+
+  @override
+  String get giftErrSelf => 'Нельзя подарить самому себе.';
+
+  @override
+  String get giftErrPending => 'Для этого кода подарок уже ожидает ответа.';
+
+  @override
+  String get giftErrRequired => 'Введите NFC ID получателя.';
+
+  @override
+  String get cardBlock => 'Заблокировать';
+
+  @override
+  String get cardUnblock => 'Разблокировать';
+
+  @override
+  String get cardBlocked => 'Заблокирована';
+
+  @override
+  String get tierHintExclusive => 'Самые редкие ID — по фиксированной цене';
+
+  @override
+  String get tierHintPremium => 'Самые редкие и особые комбинации';
+
+  @override
+  String get tierHintGold => 'Красивые и узнаваемые комбинации';
+
+  @override
+  String get tierHintSilver => 'Запоминающиеся номера';
+
+  @override
+  String get tierHintFree => 'Достаточно, чтобы начать';
+
+  @override
+  String get tierPriceFromSuffix => 'от';
 }

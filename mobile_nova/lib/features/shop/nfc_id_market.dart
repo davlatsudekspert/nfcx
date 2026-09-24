@@ -189,82 +189,91 @@ class _TierTile extends StatelessWidget {
   const _TierTile({required this.tier});
   final IdTier tier;
 
+  String _hint(L l) => switch (tier.tier) {
+        'exclusive' => l.tierHintExclusive,
+        'premium' => l.tierHintPremium,
+        'gold' => l.tierHintGold,
+        'silver' => l.tierHintSilver,
+        _ => l.tierHintFree,
+      };
+
   @override
   Widget build(BuildContext context) {
     final l = L.of(context);
-    final t = context.tokens;
-    final lux = IdLux.of(t, tier.tier);
-    final price = tier.price == null ? null : formatMoney(tier.price!, 'UZS');
+    // SAYTDAGI DARAJA KARTASI — har mavzuda bir xil (qora fon + o'z
+    // rangiga yumshoq o'tish). Matn doim yorug': fon doim qorong'i.
+    final mix = IdTierMix.of(tier.tier);
+    final price = tier.price == null
+        ? l.idStateNotForSale
+        : tier.from
+            ? '${formatMoney(tier.price!, '').trim()} ${l.tierPriceFromSuffix}'
+            : formatMoney(tier.price!, 'UZS');
 
-    if (lux == null) {
-      return FloatingSurface(
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                tierLabel(l, tier.tier),
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(color: t.text1),
-              ),
-            ),
-            if (price != null)
-              Text(
-                tier.from ? '${l.idPriceFrom} $price' : price,
-                style: TextStyle(
-                  fontFamily: AppType.sans,
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w700,
-                  color: t.text1,
-                ),
-              )
-            else
-              Text(l.idStateNotForSale,
-                  style: Theme.of(context).textTheme.bodySmall),
-          ],
-        ),
-      );
-    }
-
-    return LuxSurface(
+    return Container(
       key: ValueKey('tier-tile-${tier.tier}'),
-      lux: lux,
-      padding: const EdgeInsets.fromLTRB(20, 18, 18, 18),
+      padding: const EdgeInsets.fromLTRB(14, 14, 16, 14),
+      decoration: BoxDecoration(
+        gradient: mix.gradient,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: mix.border),
+        boxShadow: const [
+          BoxShadow(color: Color(0x24000000), blurRadius: 14, offset: Offset(0, 6)),
+        ],
+      ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(color: mix.iconBg, shape: BoxShape.circle),
+            child: Icon(Icons.diamond_outlined, size: 20, color: mix.icon),
+          ),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                IdTierBadge(tier: tier.tier),
-                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        tierLabel(l, tier.tier),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: AppType.sans,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: mix.name,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      price,
+                      style: const TextStyle(
+                        fontFamily: AppType.sans,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
                 Text(
-                  tierLabel(l, tier.tier),
-                  style: AppType.displayStyle(color: lux.ink, size: 30)
-                      .copyWith(height: 1),
+                  _hint(l),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: AppType.sans,
+                    fontSize: 12.5,
+                    height: 1.3,
+                    color: Colors.white70,
+                  ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: Gap.md),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              if (price != null && tier.from)
-                Text(l.idPriceFrom,
-                    style: AppType.eyebrow(color: lux.soft, size: 8.5)),
-              Text(
-                price ?? l.idStateNotForSale,
-                style: TextStyle(
-                  fontFamily: AppType.sans,
-                  fontSize: price == null ? 13 : 18,
-                  fontWeight: FontWeight.w700,
-                  color: lux.ink,
-                ),
-              ),
-            ],
           ),
         ],
       ),

@@ -2442,4 +2442,55 @@ class LUz extends L {
 
   @override
   String get storeClosedShort => 'Yopiq';
+
+  @override
+  String get nfcGiftRecipientId => 'Qabul qiluvchining NFC ID’si';
+
+  @override
+  String get giftErrNotOwner => 'Bu kod sizga tegishli emas.';
+
+  @override
+  String get giftErrNotGiftable =>
+      'Bu avtomatik berilgan bepul ID sovg‘a qilinmaydi.';
+
+  @override
+  String get giftErrNotFound =>
+      'Bunday NFC ID topilmadi — qabul qiluvchi avval o‘z profilini ochgan bo‘lishi kerak.';
+
+  @override
+  String get giftErrSelf => 'O‘zingizga sovg‘a qila olmaysiz.';
+
+  @override
+  String get giftErrPending =>
+      'Bu kod uchun sovg‘a taklifi allaqachon kutilmoqda.';
+
+  @override
+  String get giftErrRequired => 'Qabul qiluvchining NFC ID’sini kiriting.';
+
+  @override
+  String get cardBlock => 'Bloklash';
+
+  @override
+  String get cardUnblock => 'Blokdan chiqarish';
+
+  @override
+  String get cardBlocked => 'Bloklangan';
+
+  @override
+  String get tierHintExclusive => 'Eng noyob ID’lar — qat’iy narxda';
+
+  @override
+  String get tierHintPremium => 'Eng noyob va maxsus kombinatsiyalar';
+
+  @override
+  String get tierHintGold => 'Chiroyli va tanilgan kombinatsiyalar';
+
+  @override
+  String get tierHintSilver => 'Esda qoladigan raqamlar';
+
+  @override
+  String get tierHintFree => 'Boshlash uchun yetarli';
+
+  @override
+  String get tierPriceFromSuffix => 'dan';
 }

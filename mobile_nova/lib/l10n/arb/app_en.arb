@@ -899,5 +899,21 @@
   "storeView": "View",
   "storeNew": "New",
   "storeOpenShort": "Open",
-  "storeClosedShort": "Closed"
+  "storeClosedShort": "Closed",
+  "nfcGiftRecipientId": "Recipient’s NFC ID",
+  "giftErrNotOwner": "This code doesn’t belong to you.",
+  "giftErrNotGiftable": "A free auto-assigned ID can’t be gifted.",
+  "giftErrNotFound": "No such NFC ID — the recipient must create a profile first.",
+  "giftErrSelf": "You can’t gift to yourself.",
+  "giftErrPending": "A gift offer for this code is already pending.",
+  "giftErrRequired": "Enter the recipient’s NFC ID.",
+  "cardBlock": "Block",
+  "cardUnblock": "Unblock",
+  "cardBlocked": "Blocked",
+  "tierHintExclusive": "The rarest IDs — at a fixed price",
+  "tierHintPremium": "The rarest, most special combinations",
+  "tierHintGold": "Beautiful, recognizable combinations",
+  "tierHintSilver": "Memorable numbers",
+  "tierHintFree": "Enough to get started",
+  "tierPriceFromSuffix": "from"
 }

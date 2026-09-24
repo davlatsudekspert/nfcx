@@ -104,8 +104,14 @@ class NfcRepository {
 
   // ---- sovg'a qilish ------------------------------------------------------
 
-  Future<Result<void>> gift({required String code, required String email}) =>
-      _api.post<void>('/api/records/$code/gift', {'email': email});
+  /// SOVG'A TAKLIFI — qabul qiluvchi NFC ID'si bo'yicha.
+  ///
+  /// Server (`hosting/api/account.js`) va sayt (`src/lib/db.js`
+  /// `dbGiftCard`) `toCode` kutadi. Ilgari ilova `email` yuborardi —
+  /// server har safar `to_code_required` (422) qaytarar va ekranda
+  /// "Nimadir noto'g'ri ketdi" chiqardi: sovg'a UMUMAN ishlamasdi.
+  Future<Result<void>> gift({required String code, required String toCode}) =>
+      _api.post<void>('/api/records/$code/gift', {'toCode': toCode});
 
   /// Sovg'a takliflari.
   ///

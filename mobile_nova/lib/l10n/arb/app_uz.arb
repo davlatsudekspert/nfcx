@@ -978,5 +978,21 @@
   "storeView": "Ko‘rish",
   "storeNew": "Yangi",
   "storeOpenShort": "Ochiq",
-  "storeClosedShort": "Yopiq"
+  "storeClosedShort": "Yopiq",
+  "nfcGiftRecipientId": "Qabul qiluvchining NFC ID’si",
+  "giftErrNotOwner": "Bu kod sizga tegishli emas.",
+  "giftErrNotGiftable": "Bu avtomatik berilgan bepul ID sovg‘a qilinmaydi.",
+  "giftErrNotFound": "Bunday NFC ID topilmadi — qabul qiluvchi avval o‘z profilini ochgan bo‘lishi kerak.",
+  "giftErrSelf": "O‘zingizga sovg‘a qila olmaysiz.",
+  "giftErrPending": "Bu kod uchun sovg‘a taklifi allaqachon kutilmoqda.",
+  "giftErrRequired": "Qabul qiluvchining NFC ID’sini kiriting.",
+  "cardBlock": "Bloklash",
+  "cardUnblock": "Blokdan chiqarish",
+  "cardBlocked": "Bloklangan",
+  "tierHintExclusive": "Eng noyob ID’lar — qat’iy narxda",
+  "tierHintPremium": "Eng noyob va maxsus kombinatsiyalar",
+  "tierHintGold": "Chiroyli va tanilgan kombinatsiyalar",
+  "tierHintSilver": "Esda qoladigan raqamlar",
+  "tierHintFree": "Boshlash uchun yetarli",
+  "tierPriceFromSuffix": "dan"
 }

@@ -4706,6 +4706,102 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Yopiq'**
   String get storeClosedShort;
+
+  /// No description provided for @nfcGiftRecipientId.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qabul qiluvchining NFC ID’si'**
+  String get nfcGiftRecipientId;
+
+  /// No description provided for @giftErrNotOwner.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu kod sizga tegishli emas.'**
+  String get giftErrNotOwner;
+
+  /// No description provided for @giftErrNotGiftable.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu avtomatik berilgan bepul ID sovg‘a qilinmaydi.'**
+  String get giftErrNotGiftable;
+
+  /// No description provided for @giftErrNotFound.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bunday NFC ID topilmadi — qabul qiluvchi avval o‘z profilini ochgan bo‘lishi kerak.'**
+  String get giftErrNotFound;
+
+  /// No description provided for @giftErrSelf.
+  ///
+  /// In uz, this message translates to:
+  /// **'O‘zingizga sovg‘a qila olmaysiz.'**
+  String get giftErrSelf;
+
+  /// No description provided for @giftErrPending.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu kod uchun sovg‘a taklifi allaqachon kutilmoqda.'**
+  String get giftErrPending;
+
+  /// No description provided for @giftErrRequired.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qabul qiluvchining NFC ID’sini kiriting.'**
+  String get giftErrRequired;
+
+  /// No description provided for @cardBlock.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bloklash'**
+  String get cardBlock;
+
+  /// No description provided for @cardUnblock.
+  ///
+  /// In uz, this message translates to:
+  /// **'Blokdan chiqarish'**
+  String get cardUnblock;
+
+  /// No description provided for @cardBlocked.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bloklangan'**
+  String get cardBlocked;
+
+  /// No description provided for @tierHintExclusive.
+  ///
+  /// In uz, this message translates to:
+  /// **'Eng noyob ID’lar — qat’iy narxda'**
+  String get tierHintExclusive;
+
+  /// No description provided for @tierHintPremium.
+  ///
+  /// In uz, this message translates to:
+  /// **'Eng noyob va maxsus kombinatsiyalar'**
+  String get tierHintPremium;
+
+  /// No description provided for @tierHintGold.
+  ///
+  /// In uz, this message translates to:
+  /// **'Chiroyli va tanilgan kombinatsiyalar'**
+  String get tierHintGold;
+
+  /// No description provided for @tierHintSilver.
+  ///
+  /// In uz, this message translates to:
+  /// **'Esda qoladigan raqamlar'**
+  String get tierHintSilver;
+
+  /// No description provided for @tierHintFree.
+  ///
+  /// In uz, this message translates to:
+  /// **'Boshlash uchun yetarli'**
+  String get tierHintFree;
+
+  /// No description provided for @tierPriceFromSuffix.
+  ///
+  /// In uz, this message translates to:
+  /// **'dan'**
+  String get tierPriceFromSuffix;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

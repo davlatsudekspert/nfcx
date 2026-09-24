@@ -15,6 +15,7 @@ import 'package:nfcstore_nova/data/models/models.dart';
 import 'package:nfcstore_nova/data/repositories/business_repository.dart';
 import 'package:nfcstore_nova/data/repositories/discover_repository.dart';
 import 'package:nfcstore_nova/features/discover/discover_screen.dart';
+import 'package:nfcstore_nova/features/shop/nfc_id_market.dart';
 import 'package:nfcstore_nova/data/repositories/social_repository.dart';
 import 'package:nfcstore_nova/features/auth/session.dart';
 import 'package:nfcstore_nova/routing/router.dart';
@@ -254,6 +255,13 @@ void main() {
       socialRepositoryProvider.overrideWithValue(_Social()),
       businessRepositoryProvider.overrideWithValue(_Biz()),
       discoverRepositoryProvider.overrideWithValue(_Disc()),
+      idPricingProvider.overrideWith((ref) async => const [
+            IdTier(tier: 'exclusive', price: 490000, from: true),
+            IdTier(tier: 'premium', price: 199000),
+            IdTier(tier: 'gold', price: 149000),
+            IdTier(tier: 'silver', price: 99000),
+            IdTier(tier: 'free', price: 49000),
+          ]),
       authRepositoryProvider.overrideWithValue(FakeAuthRepository(ids: const [
         NfcId(
             code: 'VIP001',
@@ -275,9 +283,10 @@ void main() {
               address: 'Toshkent',
             ),
             cardLinked: true),
-        NfcId(code: 'UZD772', name: 'Oybek', views: 2),
-        NfcId(code: 'TTS075', name: 'Tohir', views: 5),
-        NfcId(code: 'ZOZ707', name: 'Shaxnoza', views: 3),
+        NfcId(code: 'ALI777', name: 'Oybek', tier: 'premium', views: 2),
+        NfcId(code: 'XYZ007', name: 'Tohir', tier: 'gold', views: 5),
+        NfcId(code: 'LOL101', name: 'Shaxnoza', tier: 'silver', views: 3),
+        NfcId(code: 'MXK413', name: 'Aziz', tier: 'free', views: 1),
       ])),
     ]);
     addTearDown(c.dispose);
@@ -319,6 +328,16 @@ void main() {
   testWidgets('Tanlov -> profil (pastki panel bilan)', (t) async {
     await app(t, Routes.discover, 'redesign-$tag-user-from-discover',
         push: Routes.user('VIP001'));
+  });
+  testWidgets('NFC IDlarim', (t) async {
+    await app(t, Routes.nfcIds, 'redesign-$tag-my-ids',
+        size: const Size(390, 1500));
+  });
+  testWidgets('Sovga', (t) async {
+    await app(t, Routes.nfcGift('ALI777'), 'redesign-$tag-gift');
+  });
+  testWidgets('NFC ID olish', (t) async {
+    await app(t, Routes.nfcMarket, 'redesign-$tag-id-market');
   });
   testWidgets('Tanlov bizneslar', (t) async {
     await app(t, Routes.discover, 'redesign-$tag-discover-biz',

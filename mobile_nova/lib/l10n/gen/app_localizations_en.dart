@@ -2441,4 +2441,53 @@ class LEn extends L {
 
   @override
   String get storeClosedShort => 'Closed';
+
+  @override
+  String get nfcGiftRecipientId => 'Recipient’s NFC ID';
+
+  @override
+  String get giftErrNotOwner => 'This code doesn’t belong to you.';
+
+  @override
+  String get giftErrNotGiftable => 'A free auto-assigned ID can’t be gifted.';
+
+  @override
+  String get giftErrNotFound =>
+      'No such NFC ID — the recipient must create a profile first.';
+
+  @override
+  String get giftErrSelf => 'You can’t gift to yourself.';
+
+  @override
+  String get giftErrPending => 'A gift offer for this code is already pending.';
+
+  @override
+  String get giftErrRequired => 'Enter the recipient’s NFC ID.';
+
+  @override
+  String get cardBlock => 'Block';
+
+  @override
+  String get cardUnblock => 'Unblock';
+
+  @override
+  String get cardBlocked => 'Blocked';
+
+  @override
+  String get tierHintExclusive => 'The rarest IDs — at a fixed price';
+
+  @override
+  String get tierHintPremium => 'The rarest, most special combinations';
+
+  @override
+  String get tierHintGold => 'Beautiful, recognizable combinations';
+
+  @override
+  String get tierHintSilver => 'Memorable numbers';
+
+  @override
+  String get tierHintFree => 'Enough to get started';
+
+  @override
+  String get tierPriceFromSuffix => 'from';
 }

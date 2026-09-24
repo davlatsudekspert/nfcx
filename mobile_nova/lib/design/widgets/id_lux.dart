@@ -23,8 +23,8 @@ import '../tokens/nfc_tokens.dart';
 //                Eng noyob — ro'yxatda uni hech narsa bilan
 //                adashtirib bo'lmaydi.
 //
-// Bepul (bronza) va kumush ID — SODDA: bu tizimga kirmaydi
-// (`IdLux.of` -> null) va oddiy plastinka bo'lib qoladi.
+// 2026-09-24: materiallar SAYTDAGI palitradan (`IdTierMix`) — har bir
+// daraja, shu jumladan kumush va bronza, o'z rangida.
 //
 // Glow/neon YO'Q: soya faqat pastga, past shaffoflikda (chuqurlik),
 // yaltirash statik (animatsiyasiz — ro'yxatda o'nlab karta bo'lsa
@@ -111,131 +111,62 @@ class IdLux {
 
   /// `null` — bepul/kumush: sodda ko'rinish.
   static IdLux? of(NfcTokens t, String tier) {
-    if (!isPaid(tier)) return null;
-    if (t.id == 'mono') return _mono(tier, t.isDark);
-    // MATERIAL HAR MAVZUDA BIR XIL (egasi, 2026-09: "har bir temada
-    // o'z qiymatini yo'qotmasin va aniq ajralib tursin"). Qorong'i
-    // mavzularda Oltin va Premium ham qorong'i bo'lsa, uchala toifa
-    // qora fonda bir-biriga o'xshab qolardi. Endi:
-    //   Oltin     — har doim yorqin oltin varaq;
-    //   Premium   — har doim shampan-bronza metall;
-    //   Eksklyuziv — har doim qora oniks + oltin folga.
-    // Qorong'i fonda Oltin/Premium metall plastinkadek "yonadi",
-    // Eksklyuziv esa oltin hoshiyasi bilan ajraladi.
-    return switch (tier) {
-      'gold' => _gold,
-      'premium' => _premium,
-      _ => t.isDark ? _exclusiveDark : _exclusive,
-    };
+    if (t.id == 'mono') return isPaid(tier) ? _mono(tier, t.isDark) : null;
+    // SAYTDAGI PALITRA (egasi, 2026-09-24: "saytdagidek mayin bo'lsin,
+    // dag'allik yo'q; kartalar qaysi tarifda bo'lsa o'sha rangida").
+    // Har bir daraja — qoradan o'z rangiga yumshoq o'tish, ingichka
+    // shaffof hoshiya (`src/pages/PricingPage.jsx` -> `TIER_CARD_MIX`).
+    // Kumush va Bronza ham endi o'z rangida. Material har mavzuda bir
+    // xil — daraja rangi mavzuga qarab o'zgarmaydi.
+    return _site[tier];
+  }
+
+  static final Map<String, IdLux> _site = {
+    for (final e in const {
+      'exclusive': (Icons.workspace_premium_rounded, LuxTexture.guilloche),
+      'premium': (Icons.diamond_outlined, LuxTexture.brushed),
+      'gold': (Icons.star_rounded, LuxTexture.sheen),
+      'silver': (Icons.diamond_outlined, LuxTexture.brushed),
+      'free': (Icons.diamond_outlined, LuxTexture.sheen),
+    }.entries)
+      e.key: _fromMix(e.key, IdTierMix.of(e.key), e.value.$1, e.value.$2),
+  };
+
+  static IdLux _fromMix(
+      String tier, IdTierMix m, IconData icon, LuxTexture texture) {
+    return IdLux(
+      tier: tier,
+      surface: m.gradient,
+      edge: LinearGradient(begin: _tl, end: _br, colors: [
+        m.border,
+        m.name.withValues(alpha: .55),
+        m.border.withValues(alpha: .25),
+        m.border,
+      ]),
+      ink: const Color(0xFFFAF7F0),
+      // Raqam — oq-dan daraja rangiga yumshoq folga.
+      foil: LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [const Color(0xFFFFFFFF), m.name],
+      ),
+      soft: const Color(0xB3FFFFFF),
+      hairline: m.border.withValues(alpha: .28),
+      badgeFill: LinearGradient(colors: [m.iconBg, m.iconBg]),
+      badgeInk: m.name,
+      badgeLine: m.border,
+      icon: icon,
+      texture: texture,
+      textureColor: m.icon.withValues(alpha: .07),
+      depth: const [
+        BoxShadow(color: Color(0x33000000), blurRadius: 18, offset: Offset(0, 8)),
+      ],
+      dark: true,
+    );
   }
 
   static const _tl = Alignment(-1, -1);
   static const _br = Alignment(1, 1);
-
-  // ─────────────────────────────── GOLD — iliq oltin varaq
-  static const _gold = IdLux(
-    tier: 'gold',
-    surface: LinearGradient(begin: _tl, end: _br, colors: [
-      Color(0xFFFFFCF3), Color(0xFFFBF0D2), Color(0xFFF2DFA8),
-    ], stops: [0, .55, 1]),
-    edge: LinearGradient(begin: _tl, end: _br, colors: [
-      Color(0xFFF3DC92), Color(0xFFC9A13B), Color(0xFF9C7A22), Color(0xFFE8CB73),
-    ]),
-    ink: Color(0xFF3B2A06),
-    soft: Color(0xFF6E5418),
-    hairline: Color(0x40B8862B),
-    badgeFill: LinearGradient(colors: [Color(0xFFF7E2A0), Color(0xFFD9B44A)]),
-    badgeInk: Color(0xFF362606),
-    badgeLine: Color(0x80B8862B),
-    icon: Icons.star_rounded,
-    texture: LuxTexture.sheen,
-    textureColor: Color(0x66FFFFFF),
-    depth: [
-      BoxShadow(color: Color(0x24A07A1E), blurRadius: 18, offset: Offset(0, 8)),
-    ],
-  );
-
-  // ─────────────────────── PREMIUM — shampan-bronza, brushed metal
-  static const _premium = IdLux(
-    tier: 'premium',
-    surface: LinearGradient(begin: _tl, end: _br, colors: [
-      Color(0xFFFBF7F2), Color(0xFFF0E4D6), Color(0xFFE0CAB3),
-    ], stops: [0, .5, 1]),
-    edge: LinearGradient(begin: _tl, end: _br, colors: [
-      Color(0xFFEFD6B4), Color(0xFFB07A3C), Color(0xFF5E3E1C), Color(0xFFD9B489),
-    ]),
-    ink: Color(0xFF22160A),
-    foil: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
-        colors: [Color(0xFF3A2612), Color(0xFF1A1008), Color(0xFF5A3A18)]),
-    soft: Color(0xFF6A4D30),
-    hairline: Color(0x3D8A5E2E),
-    badgeFill: LinearGradient(colors: [Color(0xFF2E2923), Color(0xFF141210)]),
-    badgeInk: Color(0xFFEBCB98),
-    badgeLine: Color(0x99B07A3C),
-    icon: Icons.diamond_outlined,
-    texture: LuxTexture.brushed,
-    textureColor: Color(0x1A5E3E1C),
-    depth: [
-      BoxShadow(color: Color(0x2E5E3E1C), blurRadius: 22, offset: Offset(0, 10)),
-    ],
-  );
-
-  // ─────────────────── EXCLUSIVE — qora oniks, oltin folga, gravyura
-  static const _exclusive = IdLux(
-    tier: 'exclusive',
-    surface: LinearGradient(begin: _tl, end: _br, colors: [
-      Color(0xFF2A2621), Color(0xFF161412), Color(0xFF0B0A09),
-    ], stops: [0, .5, 1]),
-    edge: LinearGradient(begin: _tl, end: _br, colors: [
-      Color(0xFFF6DE8D), Color(0xFFB8862B), Color(0xFF5E4410),
-      Color(0xFFD4AF37), Color(0xFFF6DE8D),
-    ]),
-    ink: Color(0xFFF1D98F),
-    foil: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
-        colors: [Color(0xFFFBEBB8), Color(0xFFD4AF37), Color(0xFFA8801F),
-          Color(0xFFF1D98F)], stops: [0, .45, .7, 1]),
-    soft: Color(0xFFCDB88A),
-    hairline: Color(0x4DD4AF37),
-    badgeFill: LinearGradient(colors: [
-      Color(0xFFF8E6A6), Color(0xFFD4AF37), Color(0xFFAE8423),
-    ]),
-    badgeInk: Color(0xFF16130E),
-    icon: Icons.workspace_premium_rounded,
-    texture: LuxTexture.guilloche,
-    textureColor: Color(0x2ED4AF37),
-    depth: [
-      BoxShadow(color: Color(0x47000000), blurRadius: 26, offset: Offset(0, 12)),
-    ],
-    dark: true,
-  );
-
-  static const _exclusiveDark = IdLux(
-    tier: 'exclusive',
-    surface: LinearGradient(begin: _tl, end: _br, colors: [
-      Color(0xFF23201B), Color(0xFF100F0D), Color(0xFF060605),
-    ]),
-    edge: LinearGradient(begin: _tl, end: _br, colors: [
-      Color(0xFFF6DE8D), Color(0xFFB8862B), Color(0xFF5E4410),
-      Color(0xFFD4AF37), Color(0xFFF6DE8D),
-    ]),
-    ink: Color(0xFFF1D98F),
-    foil: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
-        colors: [Color(0xFFFBEBB8), Color(0xFFD4AF37), Color(0xFFA8801F),
-          Color(0xFFF1D98F)], stops: [0, .45, .7, 1]),
-    soft: Color(0xFFCDB88A),
-    hairline: Color(0x4DD4AF37),
-    badgeFill: LinearGradient(colors: [
-      Color(0xFFF8E6A6), Color(0xFFD4AF37), Color(0xFFAE8423),
-    ]),
-    badgeInk: Color(0xFF16130E),
-    icon: Icons.workspace_premium_rounded,
-    texture: LuxTexture.guilloche,
-    textureColor: Color(0x33D4AF37),
-    depth: [
-      BoxShadow(color: Color(0x80000000), blurRadius: 26, offset: Offset(0, 12)),
-    ],
-    dark: true,
-  );
 
   /// OQ-QORA MAVZU — faqat oq va qora (egasining qat'iy talabi).
   /// Ierarxiya tonni almashtirish bilan: Gold oqish, Premium kulrang,
@@ -872,4 +803,77 @@ class _PressState extends State<_Press> {
           child: widget.child,
         ),
       );
+}
+
+
+// ─────────────────────────────────── SAYTDAGI DARAJA KARTALARI
+
+/// "NFC ID olish" narxlar ro'yxati — SAYTDAGI kartalar bilan AYNAN
+/// bir xil (egasi, 2026-09-24: "saytdagi ranglar yumshoq, dag'allik
+/// yo'q — ilovada ham shunday qil"). Qiymatlar ko'chirilgan:
+/// `src/pages/PricingPage.jsx` -> `TIER_CARD_MIX` (qoradan o'z rangiga
+/// 120° diagonal gradient, ingichka shaffof hoshiya, doira ichida belgi).
+class IdTierMix {
+  const IdTierMix({
+    required this.colors,
+    required this.border,
+    required this.iconBg,
+    required this.icon,
+    required this.name,
+  });
+
+  /// Gradient to'xtashlari: 0, ~.37, ~.67, 1.
+  final List<Color> colors;
+  final List<double> stops = const [0, .37, .67, 1];
+  final Color border;
+  final Color iconBg;
+  final Color icon;
+  final Color name;
+
+  /// CSS `linear-gradient(120deg, ...)` — chapdan o'ngga, biroz pastga.
+  LinearGradient get gradient => LinearGradient(
+        begin: const Alignment(-1, -.58),
+        end: const Alignment(1, .58),
+        colors: colors,
+        stops: stops,
+      );
+
+  static IdTierMix of(String tier) => switch (tier) {
+        'exclusive' => const IdTierMix(
+            colors: [Color(0xFF000000), Color(0xFF12100A), Color(0xFF3A3122), Color(0xFFCBBA8D)],
+            border: Color(0x85E6D2AA),
+            iconBg: Color(0x33E6D2AA),
+            icon: Color(0xFFEFE0B8),
+            name: Color(0xFFF1E6C6),
+          ),
+        'premium' => const IdTierMix(
+            colors: [Color(0xFF000000), Color(0xFF150D04), Color(0xFF4A2F0C), Color(0xFFC78E34)],
+            border: Color(0x99D8A34A),
+            iconBg: Color(0x38D8A34A),
+            icon: Color(0xFFF0C98A),
+            name: Color(0xFFF4D29A),
+          ),
+        'gold' => const IdTierMix(
+            colors: [Color(0xFF000000), Color(0xFF171006), Color(0xFF4A3908), Color(0xFFE0B40E)],
+            border: Color(0x8CF0C419),
+            iconBg: Color(0x38F0C419),
+            icon: Color(0xFFF5C815),
+            name: Color(0xFFF8DC4D),
+          ),
+        'silver' => const IdTierMix(
+            colors: [Color(0xFF000000), Color(0xFF0D0F11), Color(0xFF2B3036), Color(0xFF626B76)],
+            border: Color(0x669AA3AD),
+            iconBg: Color(0x2E9AA3AD),
+            icon: Color(0xFFB6BDC7),
+            name: Color(0xFFC6CDD6),
+          ),
+        // Bronza + to'q yashil aralash.
+        _ => const IdTierMix(
+            colors: [Color(0xFF000000), Color(0xFF241708), Color(0xFF704225), Color(0xFF1F513A)],
+            border: Color(0x73C58A55),
+            iconBg: Color(0x33C58A55),
+            icon: Color(0xFFC58A55),
+            name: Color(0xFFDBA876),
+          ),
+      };
 }
