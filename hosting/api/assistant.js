@@ -23,7 +23,11 @@
 // Kalit bo'lmasa endpoint 503 beradi va vidjet o'zini ko'rsatmaydi —
 // ya'ni sozlanmagan sayt "buzuq" ko'rinmaydi.
 
-import Anthropic from '@anthropic-ai/sdk';
+// Claude kutubxonasi FAQAT kerak bo'lganda yuklanadi (dinamik import).
+// Sabab: ilova CI'si va boshqa tekshiruvlar worker.js ni `npm install`
+// qilmasdan import qiladi — statik import u yerda butun serverni
+// yiqitardi. Wrangler dinamik importni ham bundle ichiga oladi.
+const loadAnthropic = () => import('@anthropic-ai/sdk').then((m) => m.default);
 
 const CLAUDE_DEFAULT_MODEL = 'claude-opus-5';
 
@@ -152,6 +156,8 @@ const REFUSED = 'Bu savolga javob bera olmayman. Iltimos, NFCSTORE bo‘yicha sa
 //   • tizim matni keshlanadi (`cache_control`); kompaniya ma'lumoti
 //     undan KEYIN turadi, shuning uchun u kesh boshini buzmaydi.
 async function askClaude(env, history, context) {
+  let Anthropic;
+  try { Anthropic = await loadAnthropic(); } catch { return { error: 'sdk_missing' }; }
   const client = new Anthropic({ apiKey: claudeKey(env), timeout: 20_000, maxRetries: 1 });
   const model = String(env.CLAUDE_MODEL || CLAUDE_DEFAULT_MODEL).trim();
   const system = [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }];
