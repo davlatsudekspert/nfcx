@@ -174,6 +174,10 @@ const vb = await sendVideo('/api/upload-media');
 check('11) 18+ video bloklandi', [vb.status, vb.body?.error, vb.body?.category], [422, 'content_blocked', 'sexual']);
 check('11) video Gemini’ga to‘liq yuborildi', vid.uploadedBytes, mp4.length);
 checkTrue('11) hukm BUTUN video bo‘yicha so‘raldi', /WHOLE video/.test(vid.promptText || ''));
+// Siyosiy toifa TOR (egasi, 2026-09-24): yangilik, rasmiy tadbir, bayram
+// va siyosat haqida gapirish — buzilish EMAS; shubhada — ruxsat.
+checkTrue('11) yangilik va bayramlar ruxsat etilgan', /News reports, official events/.test(vid.promptText || ''));
+checkTrue('11) shubhada — ruxsat', /When unsure, ALLOW/.test(vid.promptText || ''));
 checkTrue('11) Gemini’dagi nusxa o‘chirildi', vid.deleted.includes('abc'));
 
 verdict = { allowed: false, category: 'extremism' };
