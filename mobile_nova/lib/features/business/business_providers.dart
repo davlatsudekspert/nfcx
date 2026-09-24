@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
+import '../../core/storage/secure_store.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/business_repository.dart';
 import '../auth/session.dart';
@@ -44,10 +45,13 @@ final selectedBusinessProvider = StateProvider<String?>((ref) {
 ///
 /// `ref` faqat birinchi `await` gacha — `selectPersonal` dagi sabab bilan.
 Future<void> rememberBusiness(WidgetRef ref, String companyId) async {
-  final prefs = ref.read(prefsProvider);
+  Prefs? prefs;
+  try {
+    prefs = ref.read(prefsProvider);
+  } catch (_) {/* xotira ulanmagan (sinov) */}
   ref.read(selectedBusinessProvider.notifier).state = companyId;
   try {
-    await prefs.setSelectedBusiness(companyId);
+    await prefs?.setSelectedBusiness(companyId);
   } catch (_) {/* xotira yo'q — faqat shu sessiya */}
 }
 

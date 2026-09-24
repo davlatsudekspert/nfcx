@@ -40,6 +40,7 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/storage/secure_store.dart';
 import '../data/models/models.dart';
 import '../features/auth/session.dart';
 import '../features/business/business_providers.dart';
@@ -143,13 +144,22 @@ final selectedPersonalCodeProvider = StateProvider<String?>((ref) {
 /// bosilgan kartani qayta quradi va u yo'q qilinadi — keyin
 /// `ref.read` StateError otardi va rejim almashmay qolardi (E2E #59).
 Future<void> selectPersonal(WidgetRef ref, String code) async {
-  final prefs = ref.read(prefsProvider);
+  final prefs = _prefsOrNull(ref);
   final mode = ref.read(modeProvider.notifier);
   ref.read(selectedPersonalCodeProvider.notifier).state = code;
   try {
-    await prefs.setSelectedPersonal(code);
+    await prefs?.setSelectedPersonal(code);
   } catch (_) {/* xotira yo'q — faqat shu sessiya */}
   await mode.set(AppMode.personal);
+}
+
+/// Telefon xotirasi — ulanmagan bo'lsa (ba'zi sinovlar) `null`.
+Prefs? _prefsOrNull(WidgetRef ref) {
+  try {
+    return ref.read(prefsProvider);
+  } catch (_) {
+    return null;
+  }
 }
 
 /// TANLANGAN YOZUV — BUTUN RO'YXATDAN QIDIRILADI.
