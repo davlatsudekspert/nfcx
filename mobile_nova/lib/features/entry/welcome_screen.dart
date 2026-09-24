@@ -103,6 +103,17 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         child: SafeArea(
           child: Column(
             children: [
+              // ── BREND YOZUVI ──────────────────────────────────
+              //
+              // PREMIUM (egasi, 2026-09-24: "ilovaga kirishni ham
+              // chiroyli qil"). Asosiy sahifa sarlavhasidagi kabi
+              // siyrak NFCSTORE yozuvi, ikki yonida champagne chiziq.
+              // Rasm EMAS — `welcome_screen_test` birinchi `Image` ni
+              // qahramon surat deb o'lchaydi.
+              const Padding(
+                padding: EdgeInsets.only(top: Gap.lg, bottom: Gap.xs),
+                child: _Wordmark(),
+              ),
               // ── TEPA: VIZUAL ──────────────────────────────────
               //
               // `Expanded` — qolgan bo'sh joyning hammasini oladi,
@@ -238,7 +249,7 @@ class _Foreground extends StatelessWidget {
                 ),
           ),
           const SizedBox(height: Gap.md),
-          _Rule(tone: t.accent2),
+          _Rule(tone: t.brand),
           const SizedBox(height: Gap.md),
           Text(
             subtitle,
@@ -286,6 +297,40 @@ class _Rule extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Siyrak NFCSTORE yozuvi — ikki yonida champagne chiziq.
+class _Wordmark extends StatelessWidget {
+  const _Wordmark();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    Widget line() => Container(
+          width: 28,
+          height: 1,
+          color: t.brand.withValues(alpha: .7),
+        );
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        line(),
+        const SizedBox(width: Gap.md),
+        Text(
+          'NFCSTORE',
+          style: TextStyle(
+            fontFamily: 'Manrope',
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 4.2,
+            color: t.text1,
+          ),
+        ),
+        const SizedBox(width: Gap.md - 4.2),
+        line(),
+      ],
     );
   }
 }

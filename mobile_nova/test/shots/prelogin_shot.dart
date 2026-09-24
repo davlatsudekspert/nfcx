@@ -74,7 +74,8 @@ Future<({_Auth auth, L l})> _pump(WidgetTester tester, String initial) async {
     child: MaterialApp.router(
       debugShowCheckedModeBanner: false,
       routerConfig: router,
-      theme: buildTheme(NfcTokens.fallback),
+      theme: buildTheme(
+          NfcTokens.byId(Platform.environment['THEME'] ?? 'ivory')),
       locale: const Locale('uz'),
       supportedLocales: LocaleController.supported,
       localizationsDelegates: const [
@@ -86,12 +87,18 @@ Future<({_Auth auth, L l})> _pump(WidgetTester tester, String initial) async {
     ),
   ));
   await settle(tester);
+  // Asset rasmlar (surat, brend muhri) haqiqiy vaqtda dekodlanadi.
+  for (var i = 0; i < 12; i++) {
+    await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 40)));
+    await tester.pump(const Duration(milliseconds: 60));
+  }
   return (auth: auth, l: await L.delegate.load(const Locale('uz')));
 }
 
 /// Hamma tugma va bosiladigan joy tizim paneli ustida.
 Future<void> _check(WidgetTester tester, String name) async {
-  await expectLater(find.byType(MaterialApp), matchesGoldenFile('png/prelogin-$name.png'));
+  await expectLater(find.byType(MaterialApp), matchesGoldenFile('png/prelogin-${Platform.environment['THEME'] ?? 'ivory'}-$name.png'));
   final limit = _h - _bottom;
   final targets = [
     ...find.byType(NovaButton).hitTestable().evaluate(),

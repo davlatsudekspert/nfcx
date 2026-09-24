@@ -104,8 +104,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         padding: const EdgeInsets.fromLTRB(Gap.xxl, Gap.sm, Gap.xxl, Gap.section),
         children: [
           // Nav, Splash va NFC markazidagi bilan bir xil brend muhri.
-          const Center(child: BrandSeal(size: 76)),
-          const SizedBox(height: Gap.xxl),
+          //
+          // PREMIUM (egasi, 2026-09-24): muhr pastki panel markazidagi
+          // kabi SIYOH diskda — oltin belgi qora ustida; ostida siyrak
+          // NFCSTORE yozuvi.
+          const Center(child: BrandSeal(size: 76, ink: true)),
+          const SizedBox(height: Gap.md),
+          Center(
+            child: Text(
+              'NFCSTORE',
+              style: TextStyle(
+                fontFamily: 'Manrope',
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 4.2,
+                color: t.text1,
+              ),
+            ),
+          ),
+          const SizedBox(height: Gap.xl),
           Text(l.loginTitle,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.displayMedium),
@@ -115,44 +132,64 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
-          const SizedBox(height: Gap.section),
-          NovaField(
-            label: l.fieldEmail,
-            controller: _email,
-            error: _emailErr,
-            keyboardType: TextInputType.emailAddress,
-            hint: 'siz@example.com',
-            enabled: !_busy,
-          ),
-          const SizedBox(height: Gap.lg),
-          NovaField(
-              label: l.fieldPassword,
-              controller: _password,
-              error: _passwordErr,
-              obscure: _obscure,
-              enabled: !_busy,
-              onSubmitted: (_) => _submit(),
-              suffix: IconButton(
-                // Ekran o'quvchi uchun nom — ikonaning o'zi
-                // "ko'rsatish" yoki "yashirish" ekanini aytmaydi.
-                tooltip: _obscure ? l.a11yShowPassword : l.a11yHidePassword,
-                onPressed: () => setState(() => _obscure = !_obscure),
-                icon: Icon(
-                  _obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                  size: 19,
-                  color: t.text3,
-                ),
-              ),
-            ),
-          if (_formError != null) ...[
-            const SizedBox(height: Gap.lg),
-            _ErrorBanner(message: _formError!),
-          ],
           const SizedBox(height: Gap.xxl),
-          NovaButton(
-            label: l.welcomeLogin,
-            busy: _busy,
-            onPressed: _submit,
+          // Forma — toza oq kartada: ingichka hoshiya va yumshoq soya.
+          // Maydonlar karta ichida kulrang, ya'ni aniq ajralib turadi.
+          Container(
+            padding: const EdgeInsets.fromLTRB(
+                Gap.lg, Gap.lg, Gap.lg, Gap.xl),
+            decoration: BoxDecoration(
+              color: t.surfaceSolid,
+              borderRadius: R.soft,
+              border: Border.all(color: t.border1),
+              boxShadow: t.shadowSoft,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                NovaField(
+                  label: l.fieldEmail,
+                  controller: _email,
+                  error: _emailErr,
+                  keyboardType: TextInputType.emailAddress,
+                  hint: 'siz@example.com',
+                  enabled: !_busy,
+                ),
+                const SizedBox(height: Gap.lg),
+                NovaField(
+                  label: l.fieldPassword,
+                  controller: _password,
+                  error: _passwordErr,
+                  obscure: _obscure,
+                  enabled: !_busy,
+                  onSubmitted: (_) => _submit(),
+                  suffix: IconButton(
+                    // Ekran o'quvchi uchun nom — ikonaning o'zi
+                    // "ko'rsatish" yoki "yashirish" ekanini aytmaydi.
+                    tooltip:
+                        _obscure ? l.a11yShowPassword : l.a11yHidePassword,
+                    onPressed: () => setState(() => _obscure = !_obscure),
+                    icon: Icon(
+                      _obscure
+                          ? Icons.visibility_off_rounded
+                          : Icons.visibility_rounded,
+                      size: 19,
+                      color: t.text2,
+                    ),
+                  ),
+                ),
+                if (_formError != null) ...[
+                  const SizedBox(height: Gap.lg),
+                  _ErrorBanner(message: _formError!),
+                ],
+                const SizedBox(height: Gap.xl),
+                NovaButton(
+                  label: l.welcomeLogin,
+                  busy: _busy,
+                  onPressed: _submit,
+                ),
+              ],
+            ),
           ),
           // "KOD BILAN KIRISH" TUGMASI OLIB TASHLANDI.
           //
@@ -191,8 +228,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     style: TextStyle(
                       fontFamily: 'Manrope',
                       fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: t.accent2,
+                      fontWeight: FontWeight.w700,
+                      color: t.text1,
+                      decoration: TextDecoration.underline,
+                      decorationColor: t.brand,
+                      decorationThickness: 1.6,
                     ),
                   ),
                 ),

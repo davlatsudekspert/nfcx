@@ -40,7 +40,9 @@ class NovaButton extends StatelessWidget {
 
     final (bg, fg, border, gradient) = switch (tone) {
       ButtonTone.accent => (null, t.onAccent, null, t.accentGradient),
-      ButtonTone.quiet => (t.surface2, t.text1, t.border2, null),
+      // PREMIUM: ikkinchi darajali tugma — kulrang to'ldirma emas, toza
+      // sirt + ingichka hoshiya + yengil soya (hamma mavzularda).
+      ButtonTone.quiet => (t.surfaceSolid, t.text1, t.border1, null),
       ButtonTone.outline => (Colors.transparent, t.accent2, t.accent2, null),
       ButtonTone.danger => (t.error.withValues(alpha: .14), t.error, t.error.withValues(alpha: .4), null),
     };
@@ -64,7 +66,11 @@ class NovaButton extends StatelessWidget {
               gradient: gradient,
               borderRadius: R.pill,
               border: border == null ? null : Border.all(color: border, width: 1.4),
-              boxShadow: tone == ButtonTone.accent ? t.shadowSoft : null,
+              boxShadow: switch (tone) {
+                ButtonTone.accent => t.shadowSoft,
+                ButtonTone.quiet => t.shadowTiny,
+                _ => null,
+              },
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
