@@ -590,6 +590,13 @@ export async function handle(request, env, url, H) {
       if (card && !card.giftable) return H.json({ error: 'NOT_GIFTABLE' }, 409);
       const toUserId = await H.getRecordOwner(env, toCode);
       if (toUserId == null) return H.json({ error: 'RECIPIENT_NOT_FOUND' }, 409);
+      // O'chirish navbatidagi hisob — yo'q hisob bilan bir xil javob.
+      // Unga yuborilgan taklifni hech kim qabul qilmaydi, kod esa
+      // `ALREADY_PENDING` bilan qulflanib qolardi (B14).
+      const toDeleted = await env.DB.prepare(
+        `SELECT 1 AS x FROM users WHERE id = ? AND deleted_at IS NOT NULL`
+      ).bind(toUserId).first();
+      if (toDeleted) return H.json({ error: 'RECIPIENT_NOT_FOUND' }, 409);
       if (String(toUserId) === String(user.id)) return H.json({ error: 'CANNOT_GIFT_SELF' }, 409);
       const pending = await env.DB.prepare(`SELECT id FROM gift_offers WHERE code = ? AND status = 'pending' LIMIT 1`).bind(code).first();
       if (pending) return H.json({ error: 'ALREADY_PENDING' }, 409);
@@ -745,11 +752,14 @@ export async function handle(request, env, url, H) {
       // tasdiqlamaydi: kodi bor har kim istalgan emailni yozib, birovning
       // hisobini o'chira olardi (B11). Endi javob doim 409, hech narsa
       // yaratilmaydi va o'chirilmaydi.
-      if (user && user.deletedAt) {
-        return H.json({ error: 'account_pending_deletion' }, 409);
-      }
+      //
+      // Bu tekshiruv PAROLDAN KEYIN turadi. Aks holda kodi bor odam
+      // istalgan emailni yozib, u o'chirish navbatidami yoki yo'qmi
+      // bilib olardi. Parol noto'g'ri bo'lsa javob tirik hisobdagidek
+      // `email_taken` bo'ladi.
       if (user) {
         if (!(await H.verifyPassword(password, user.passwordHash))) return H.json({ error: 'email_taken' }, 409);
+        if (user.deletedAt) return H.json({ error: 'account_pending_deletion' }, 409);
       } else {
         const created = await env.DB.prepare(
           `INSERT INTO users (email, password_hash, created_at) VALUES (?, ?, ?) ON CONFLICT (email) DO NOTHING RETURNING id`
@@ -795,7 +805,8 @@ export async function handle(request, env, url, H) {
       await env.DB.prepare(`UPDATE cards SET tier_override = 'exclusive' WHERE code = ?`).bind(code).run().catch(() => {});
 
       const session = await H.createUserSession(env, user.id, request);
-      await H.logAdminActivity(env, { action: 'nfc_gift_activated', details: `${code} — ${email}`, ip: H.reqIp(request) });
+      // Jurnalga email emas, hisob raqami yoziladi (B13).
+      await H.logAdminActivity(env, { action: 'nfc_gift_activated', details: `${code} — #${user.id}`, ip: H.reqIp(request) });
       return H.jsonWithCookie({ ok: true, code }, 201, session.cookie);
     }
   }

@@ -21,6 +21,17 @@
 //   (e) B14: `DELETE /api/account` hisob egasi yuborgan va unga kelgan
 //       kutilayotgan sovg'a takliflarini bekor qiladi (o'chirmaydi).
 //
+// PR-1 review'dan keyingi tuzatishlar:
+//   (b) sovg'a faollashtirishda o'chirilgan email 409 i PAROLDAN KEYIN:
+//       kodi bor odam noto'g'ri parol bilan email holatini bilolmaydi.
+//   (c) jurnalga email emas, `KOD — #userId` yoziladi (B13).
+//   (d) muallifi o'chirilgan (yashirin) izohga javob ham, like ham yo'q.
+//   (f) admin o'chirishi ham kutilayotgan takliflarni bekor qiladi (B14),
+//       jurnalda email yo'q (B13).
+//   (g) avval o'chirilgan hisob bilan qolgan eski kutilayotgan
+//       takliflar ro'yxatda ko'rinmaydi (faqat o'qish filtri).
+//   (h) o'chirilgan hisob kartasiga yangi taklif -> RECIPIENT_NOT_FOUND.
+//
 // Haqiqiy `hosting/worker.js`, in-memory D1 (`scripts/lib/d1-harness.mjs`,
 // foreign key'lar yoqilgan). Production D1/R2 ga TEGMAYDI, tarmoqqa
 // chiqmaydi.
@@ -28,6 +39,7 @@
 //   node scripts/test-account-deletion-pr1.mjs
 import worker from '../hosting/worker.js';
 import { makeEnv, seedBasic, req, cookie, makeChecker } from './lib/d1-harness.mjs';
+import { scryptSync, randomBytes } from 'node:crypto';
 
 const { check, checkTrue, done } = makeChecker();
 const { env, sqlite } = makeEnv({ TELEGRAM_BOT_TOKEN: 'test-token' });
@@ -105,10 +117,17 @@ const finCounts = (uid) => Object.fromEntries(
 const ONE_EACH = Object.fromEntries(FIN_TABLES.map((t) => [t, 1]));
 const userRow = (uid) => sqlite.prepare(`SELECT id, email, password_hash, phone, deleted_at FROM users WHERE id = ?`).get(uid) || null;
 
+// Haqiqiy parol xeshi — worker'dagi `hashPassword` bilan bir xil
+// format: `saltHex:hashHex`, scrypt tuzi esa hex SATRNING o'zi.
+const hashPw = (pw) => {
+  const salt = randomBytes(16).toString('hex');
+  return `${salt}:${scryptSync(pw, salt, 64, { N: 16384, r: 8, p: 1 }).toString('hex')}`;
+};
+
 // O'chirish navbatidagi (soft-deleted) hisob: kartasi, jismoniy
 // kartasi va moliyaviy tarixi bilan.
-function seedDeletedUser(uid, email, phone, code) {
-  sqlite.prepare(`INSERT INTO users (id, email, password_hash, phone, deleted_at) VALUES (?, ?, 'old-hash', ?, '2026-09-01 10:00:00+00')`).run(uid, email, phone);
+function seedDeletedUser(uid, email, phone, code, passwordHash = 'old-hash') {
+  sqlite.prepare(`INSERT INTO users (id, email, password_hash, phone, deleted_at) VALUES (?, ?, ?, ?, '2026-09-01 10:00:00+00')`).run(uid, email, passwordHash, phone);
   sqlite.prepare(`INSERT INTO cards (code, name, price, ts, user_id) VALUES (?, 'Eski egasi', 0, 1, ?)`).run(code, uid);
   sqlite.prepare(`INSERT INTO physical_cards (chip_token, linked_code, owner_user_id, status) VALUES (?, ?, ?, 'delivered')`).run('chip-' + code, code, uid);
   seedFinancial(uid, code);
@@ -223,7 +242,9 @@ const giftBody = (over = {}) => ({ activationCode: 'GIFT-0901', email: 'giftvict
 const giftRow = (code) => sqlite.prepare(`SELECT status, activated_by_user_id FROM nfc_gifts WHERE code = ?`).get(code);
 
 {
-  seedDeletedUser(70, 'giftvictim@test.local', '+998907770070', 'GV0070');
+  // Parol haqiqiy xesh: to'g'ri parol bilan 409 `account_pending_deletion`
+  // yo'liga yetib boriladi, noto'g'risi bilan esa yo'q.
+  seedDeletedUser(70, 'giftvictim@test.local', '+998907770070', 'GV0070', hashPw('secret12'));
   const before = snapshot(70, 'GV0070');
 
   // Aktivatsiya kodi AVVAL tekshiriladi: kodsiz odam email holatini
@@ -231,11 +252,24 @@ const giftRow = (code) => sqlite.prepare(`SELECT status, activated_by_user_id FR
   const wrong = await call('/api/nfc-gifts/GFT901/activate', { method: 'POST', json: giftBody({ activationCode: 'NOPE' }) });
   check('b0) noto‘g‘ri aktivatsiya kodi -> 401 bad_code (email holati oshkor bo‘lmaydi)', [wrong.status, wrong.body], [401, { error: 'bad_code' }]);
 
+  // Kod TO'G'RI, parol NOTO'G'RI: o'chirilgan email ham, tirik hisob
+  // emaili ham bir xil `email_taken` beradi. Ilgari o'chirilgan email
+  // `account_pending_deletion` berardi, ya'ni kodi bor odam istalgan
+  // emailning holatini bilib olardi.
   const logsBefore = n(`SELECT COUNT(*) AS n FROM admin_activity_log`);
+  const probeDeleted = await call('/api/nfc-gifts/GFT901/activate', { method: 'POST', json: giftBody({ password: 'wrongpass1' }) });
+  const probeAlive = await call('/api/nfc-gifts/GFT901/activate', { method: 'POST', json: giftBody({ email: 'three@test.local', password: 'wrongpass1' }) });
+  check('b0) o‘chirilgan email + noto‘g‘ri parol -> 409 email_taken', [probeDeleted.status, probeDeleted.body], [409, { error: 'email_taken' }]);
+  check('b0) javob tirik hisob + noto‘g‘ri parol bilan bir xil (email holati oshkor bo‘lmaydi)',
+    [probeDeleted.status, probeDeleted.body], [probeAlive.status, probeAlive.body]);
+  check('b0) noto‘g‘ri parol: hisob va yozuvlari o‘zgarmadi', snapshot(70, 'GV0070'), before);
+  check('b0) noto‘g‘ri parol: sovg‘a ishlatilmadi', giftRow('GFT901'), { status: 'reserved', activated_by_user_id: null });
+  check('b0) noto‘g‘ri parol: jurnalga hech narsa yozilmadi', n(`SELECT COUNT(*) AS n FROM admin_activity_log`), logsBefore);
+
   captureConsole();
   const r = await call('/api/nfc-gifts/GFT901/activate', { method: 'POST', json: giftBody() });
   restoreConsole();
-  check('b1) o‘chirilgan email bilan faollashtirish -> 409 account_pending_deletion', [r.status, r.body], [409, { error: 'account_pending_deletion' }]);
+  check('b1) o‘chirilgan email (to‘g‘ri parol) bilan faollashtirish -> 409 account_pending_deletion', [r.status, r.body], [409, { error: 'account_pending_deletion' }]);
   check('b1) eski hisob, kartasi, qurilmasi va moliyaviy yozuvlari o‘zgarmadi', snapshot(70, 'GV0070'), before);
   check('b1) moliyaviy yozuvlar joyida', before.fin, ONE_EACH);
   check('b1) sovg‘a ishlatilmadi', giftRow('GFT901'), { status: 'reserved', activated_by_user_id: null });
@@ -249,7 +283,7 @@ const giftRow = (code) => sqlite.prepare(`SELECT status, activated_by_user_id FR
 // qoidasiz FK bor: eski yo'l "FOREIGN KEY constraint failed" bilan
 // yiqilardi. Endi xato yo'q, javob o'sha 409.
 {
-  seedDeletedUser(71, 'botvictim@test.local', '+998907770071', 'BV0071');
+  seedDeletedUser(71, 'botvictim@test.local', '+998907770071', 'BV0071', hashPw('secret12'));
   sqlite.prepare(`INSERT INTO bot_orders (tg_user_id, code, price, status, user_id) VALUES (555, 'BV0071', 49000, 'paid', 71)`).run();
   const before = snapshot(71, 'BV0071');
   const r = await call('/api/nfc-gifts/GFT903/activate', {
@@ -301,12 +335,16 @@ const giftRow = (code) => sqlite.prepare(`SELECT status, activated_by_user_id FR
   check('c3) sovg‘a faollashdi', giftRow('GFT902'), { status: 'activated', activated_by_user_id: nu?.id });
   checkTrue('c3) sessiya berildi', g.setCookie.startsWith('nfc_session='));
   check('c3) jurnal yozildi (avvalgidek)', sqlite.prepare(`SELECT action FROM admin_activity_log ORDER BY id DESC LIMIT 1`).get()?.action, 'nfc_gift_activated');
+  // B13: jurnalda email emas, hisob raqami.
+  check('c3) jurnal: `KOD — #userId`, email yo‘q', sqlite.prepare(`SELECT details FROM admin_activity_log ORDER BY id DESC LIMIT 1`).get()?.details, `GFT902 — #${nu?.id}`);
 
   // Tirik hisob emaili + to'g'ri parol: mavjud hisobga faollashtiriladi.
   const g2 = await call('/api/nfc-gifts/GFT901/activate', {
     method: 'POST', json: giftBody({ email: 'giftnew@test.local', password: 'secret12' }),
   });
   check('c3) tirik hisob (to‘g‘ri parol) -> 201', [g2.status, g2.body], [201, { ok: true, code: 'GFT901' }]);
+  check('c3) jurnalning hech bir qatorida faollashtirgan email yo‘q',
+    n(`SELECT COUNT(*) AS n FROM admin_activity_log WHERE COALESCE(details,'') || COALESCE(old_value,'') || COALESCE(new_value,'') LIKE '%giftnew@test.local%'`), 0);
 }
 
 // =====================================================================
@@ -383,10 +421,118 @@ const giftRow = (code) => sqlite.prepare(`SELECT status, activated_by_user_id FR
   checkTrue('d) admin moderatsiyasi #204 izohini baribir ko‘radi',
     (adm.body?.comments || []).some((c) => c.id === c4));
 
+  // Yashirin izohga javob ham, like ham qo'yib bo'lmaydi. Ilgari
+  // `parentId` bilan qo'lda yuborilgan so'rov unga javob yozardi va
+  // o'chirilgan odamga bildirishnoma ketardi; like ham qabul qilinardi.
+  const likesOf = (cid) => n(`SELECT COUNT(*) AS n FROM content_likes WHERE target_kind = 'comment' AND target_id = ?`, cid);
+  const commentRows = () => n(`SELECT COUNT(*) AS n FROM content_comments`);
+  const rowsBefore = commentRows();
+  const rep = await call('/api/comments/post/81', { method: 'POST', cookie: as3, json: { body: 'yashirin izohga javob', parentId: c4 } });
+  check('d) yashirin izohga javob -> 404 parent_not_found', [rep.status, rep.body], [404, { error: 'parent_not_found' }]);
+  check('d) javob yozilmadi', commentRows(), rowsBefore);
+  const lk = await call(`/api/content-likes/comment/${c4}`, { method: 'POST', cookie: as3 });
+  check('d) yashirin izohga like -> 404 not_found', [lk.status, lk.body], [404, { error: 'not_found' }]);
+  const lkReply = await call(`/api/content-likes/comment/${r4}`, { method: 'POST', cookie: as3 });
+  check('d) yashirin javobga like -> 404 not_found', [lkReply.status, lkReply.body], [404, { error: 'not_found' }]);
+  check('d) like yozilmadi', [likesOf(c4), likesOf(r4)], [0, 0]);
+  // Tirik muallif izohiga like avvalgidek ishlaydi.
+  const lkAlive = await call(`/api/content-likes/comment/${c3}`, { method: 'POST', cookie: cookie.other });
+  check('d) tirik muallif izohiga like -> 200 liked (avvalgidek)', [lkAlive.status, lkAlive.body?.liked, likesOf(c3)], [200, true, 1]);
+
   // Hisob tiklansa — izohlar o'z joyiga qaytadi.
   sqlite.prepare(`UPDATE users SET deleted_at = NULL WHERE id = 204`).run();
   check('d) tiklangach: ro‘yxatda yana 3 ta, total 3', await list(), { ids: all3, total: 3 });
   check('d) tiklangach: post sanog‘i 3', await postCount(), 3);
+
+  // ...va unga yana javob yozish, like qo'yish mumkin.
+  const rep2 = await call('/api/comments/post/81', { method: 'POST', cookie: as3, json: { body: 'endi javob', parentId: c4 } });
+  check('d) tiklangach: izohga javob -> 201', rep2.status, 201);
+  const lk2 = await call(`/api/content-likes/comment/${c4}`, { method: 'POST', cookie: as3 });
+  check('d) tiklangach: izohga like -> 200 liked', [lk2.status, lk2.body?.liked, likesOf(c4)], [200, true, 1]);
+}
+
+// =====================================================================
+// (f) ADMIN O'CHIRISHI HAM KUTILAYOTGAN TAKLIFLARNI BEKOR QILADI (B14)
+//     VA JURNALGA EMAIL YOZMAYDI (B13)
+// =====================================================================
+const insOffer = (code, from, to, status) => sqlite.prepare(
+  `INSERT INTO gift_offers (code, from_user_id, to_user_id, status, created_at) VALUES (?, ?, ?, ?, '2026-09-21 10:00:00+00') RETURNING id`,
+).get(code, from, to, status).id;
+const offerRow = (id) => sqlite.prepare(`SELECT status, decided_at FROM gift_offers WHERE id = ?`).get(id);
+{
+  sqlite.prepare(`INSERT INTO users (id, email, password_hash) VALUES (305, 'five@test.local', 'x')`).run();
+  sqlite.prepare(`INSERT INTO cards (code, name, price, ts, user_id) VALUES ('FIV555', 'Beshinchi', 0, 1, 305)`).run();
+  sqlite.prepare(`INSERT INTO sessions (token, user_id, expires_at) VALUES ('five-token', 305, '2999-01-01T00:00:00.000Z')`).run();
+  const incoming = insOffer('OTH222', 2, 305, 'pending');   // #305 ga kelgan
+  const outgoing = insOffer('FIV555', 305, 203, 'pending'); // #305 yuborgan
+  const history = insOffer('FIV555', 305, 2, 'rejected');   // tarix — tegilmaydi
+  const unrelated = insOffer('THR333', 203, 2, 'pending');  // #305 ga aloqasi yo'q
+  const total = n(`SELECT COUNT(*) AS n FROM gift_offers`);
+
+  const r = await call('/api/admin/users/305/delete', { method: 'POST', cookie: cookie.admin });
+  check('f) admin o‘chirishi -> 200 {ok:true} (javob o‘zgarmagan)', [r.status, r.body], [200, { ok: true }]);
+  checkTrue('f) #305 qatori qoldi, deleted_at qo‘yildi', !!userRow(305)?.deleted_at);
+  check('f) #305 sessiyalari yopildi', n(`SELECT COUNT(*) AS n FROM sessions WHERE user_id = 305`), 0);
+  check('f) #305 ga kelgan taklif bekor qilindi', [offerRow(incoming).status, !!offerRow(incoming).decided_at], ['cancelled', true]);
+  check('f) #305 yuborgan taklif bekor qilindi', [offerRow(outgoing).status, !!offerRow(outgoing).decided_at], ['cancelled', true]);
+  check('f) yakunlangan taklif tegilmadi', offerRow(history), { status: 'rejected', decided_at: null });
+  check('f) begona taklif tegilmadi', offerRow(unrelated), { status: 'pending', decided_at: null });
+  check('f) hech bir taklif o‘chirilmadi', n(`SELECT COUNT(*) AS n FROM gift_offers`), total);
+  sqlite.prepare(`UPDATE gift_offers SET status = 'cancelled' WHERE id = ?`).run(unrelated);
+
+  const log = sqlite.prepare(`SELECT details, old_value FROM admin_activity_log WHERE action = 'user_deleted' ORDER BY id DESC LIMIT 1`).get();
+  check('f) jurnal: old_value hisob raqami, email emas', log?.old_value, '#305');
+  check('f) jurnalning hech bir qatorida #305 emaili yo‘q',
+    n(`SELECT COUNT(*) AS n FROM admin_activity_log WHERE COALESCE(details,'') || COALESCE(old_value,'') || COALESCE(new_value,'') LIKE '%five@test.local%'`), 0);
+}
+
+// =====================================================================
+// (g) AVVAL O'CHIRILGAN HISOB BILAN QOLGAN ESKI KUTILAYOTGAN TAKLIFLAR
+//     RO'YXATDA KO'RINMAYDI (faqat o'qish filtri, qatorlar o'zgarmaydi)
+// =====================================================================
+{
+  // PR-1 dan oldin o'chirilgan hisob: takliflari bekor qilinmagan.
+  sqlite.prepare(`INSERT INTO users (id, email, password_hash, deleted_at) VALUES (306, 'six@test.local', 'x', '2026-09-01 10:00:00+00')`).run();
+  const legacyIn = insOffer('LEG001', 306, 2, 'pending');  // o'chirilgandan #2 ga
+  const legacyOut = insOffer('LEG002', 2, 306, 'pending'); // #2 dan o'chirilganga
+  const aliveIn = insOffer('THR333', 203, 2, 'pending');   // tirik yuboruvchi — ko'rinadi
+  const aliveOut = insOffer('OTH222', 2, 204, 'pending');  // tirik oluvchi — ko'rinadi
+
+  const r = await call('/api/gift-offers', { cookie: cookie.other });
+  const inIds = (r.body?.incoming || []).map((o) => o.id);
+  const outIds = (r.body?.outgoing || []).map((o) => o.id);
+  check('g) GET /api/gift-offers -> 200', r.status, 200);
+  check('g) o‘chirilgan yuboruvchining taklifi kelganlarda yo‘q', inIds.includes(legacyIn), false);
+  check('g) o‘chirilgan oluvchiga taklif yuborilganlarda yo‘q', outIds.includes(legacyOut), false);
+  checkTrue('g) javobda o‘chirilgan hisob emaili yo‘q', !JSON.stringify(r.body).includes('six@test.local'));
+  check('g) tirik yuboruvchi taklifi ko‘rinadi (avvalgidek)',
+    (r.body?.incoming || []).find((o) => o.id === aliveIn)?.fromEmail, 'three@test.local');
+  check('g) tirik oluvchiga taklif ko‘rinadi (avvalgidek)',
+    (r.body?.outgoing || []).find((o) => o.id === aliveOut)?.toEmail, 'four@test.local');
+  check('g) eski qatorlar o‘zgarmadi (tuzatish ishi yo‘q)', [offerRow(legacyIn), offerRow(legacyOut)],
+    [{ status: 'pending', decided_at: null }, { status: 'pending', decided_at: null }]);
+  for (const id of [aliveIn, aliveOut]) sqlite.prepare(`UPDATE gift_offers SET status = 'cancelled' WHERE id = ?`).run(id);
+}
+
+// =====================================================================
+// (h) O'CHIRILGAN HISOB KARTASIGA YANGI TAKLIF -> RECIPIENT_NOT_FOUND
+// =====================================================================
+{
+  // Yuboruvchi kod — shu bo'lim uchun alohida (#2 ning yangi kartasi),
+  // oldingi bo'limlardagi takliflar unga ta'sir qilmasin.
+  // VIC060 — (a1) dagi o'chirish navbatidagi #60 ning kartasi.
+  sqlite.prepare(`INSERT INTO cards (code, name, price, ts, user_id) VALUES ('OTH229', 'Boshqa 2', 0, 2, 2)`).run();
+  const pendingOf = () => n(`SELECT COUNT(*) AS n FROM gift_offers WHERE code = 'OTH229' AND status = 'pending'`);
+  check('h) boshlang‘ich holat: OTH229 bo‘yicha kutilayotgan taklif yo‘q', pendingOf(), 0);
+  const total = n(`SELECT COUNT(*) AS n FROM gift_offers`);
+  const r = await call('/api/records/OTH229/gift', { method: 'POST', cookie: cookie.other, json: { toCode: 'VIC060' } });
+  check('h) o‘chirilgan hisob kartasiga taklif -> 409 RECIPIENT_NOT_FOUND', [r.status, r.body], [409, { error: 'RECIPIENT_NOT_FOUND' }]);
+  check('h) taklif yaratilmadi (kod qulflanmadi)', [n(`SELECT COUNT(*) AS n FROM gift_offers`), pendingOf()], [total, 0]);
+  const unknown = await call('/api/records/OTH229/gift', { method: 'POST', cookie: cookie.other, json: { toCode: 'NOSUCH' } });
+  check('h) javob mavjud bo‘lmagan kod bilan bir xil', [r.status, r.body], [unknown.status, unknown.body]);
+
+  const ok = await call('/api/records/OTH229/gift', { method: 'POST', cookie: cookie.other, json: { toCode: 'THR333' } });
+  check('h) tirik hisob kartasiga taklif -> 201 (avvalgidek)', [ok.status, ok.body?.ok], [201, true]);
 }
 
 done();

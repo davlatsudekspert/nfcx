@@ -250,9 +250,12 @@ export async function targetOwner(env, kind, id) {
   }
   // IZOHNING O'ZI — like qo'yish uchun. O'chirilgan izoh topilmaydi,
   // ya'ni unga like ham qo'yib bo'lmaydi.
+  //
+  // Muallifi o'chirish navbatidagi izoh ham shunday: u ro'yxatda
+  // ko'rinmaydi (`authorAliveSql`), unga like ham bosib bo'lmaydi.
   if (kind === 'comment') {
     const row = await env.DB.prepare(
-      `SELECT user_id, author_code FROM content_comments WHERE id = ? AND ${ALIVE}`
+      `SELECT user_id, author_code FROM content_comments WHERE id = ? AND ${ALIVE} AND ${authorAliveSql()}`
     ).bind(id).first();
     return row
       ? { ok: true, ownerUserId: Number(row.user_id) || 0, ownerCode: String(row.author_code || '') }
@@ -756,11 +759,14 @@ export async function handle(request, env, url, H) {
     // so'rovi `target_kind`/`target_id` bilan cheklangan. Ya'ni
     // qo'lda yuborilgan so'rov ham izohni boshqa post ostiga
     // ko'chira olmaydi.
+    //
+    // Muallifi o'chirish navbatidagi (yashirin) izohga ham javob
+    // yozilmaydi: u ro'yxatda ko'rinmaydi (`authorAliveSql`).
     let parentId = Number(payload.parentId) || 0;
     if (parentId) {
       const parent = await env.DB.prepare(
         `SELECT id, user_id, parent_id FROM content_comments
-          WHERE id = ? AND target_kind = ? AND target_id = ? AND ${ALIVE}`
+          WHERE id = ? AND target_kind = ? AND target_id = ? AND ${ALIVE} AND ${authorAliveSql()}`
       ).bind(parentId, kind, id).first();
       if (!parent) return H.json({ error: 'parent_not_found' }, 404);
       if (Number(parent.parent_id) > 0) {

@@ -9236,9 +9236,12 @@ async function userAccountApi(request, env, url) {
 
   if (path === '/api/gift-offers' && request.method === 'GET') {
     if (!user) return json({ incoming: [], outgoing: [] });
+    // O'chirish navbatidagi hisob bilan bog'liq eski kutilayotgan
+    // takliflar ko'rsatilmaydi: uning emaili chiqmasin (B14). Faqat
+    // o'qishdagi filtr — qatorlar o'zgarmaydi.
     const [incoming, outgoing] = await Promise.all([
-      env.DB.prepare(`SELECT g.id, g.code, g.created_at, u.email AS from_email FROM gift_offers g JOIN users u ON u.id = g.from_user_id WHERE g.to_user_id = ? AND g.status = 'pending' ORDER BY g.created_at DESC`).bind(user.id).all(),
-      env.DB.prepare(`SELECT g.id, g.code, g.created_at, u.email AS to_email FROM gift_offers g JOIN users u ON u.id = g.to_user_id WHERE g.from_user_id = ? AND g.status = 'pending' ORDER BY g.created_at DESC`).bind(user.id).all(),
+      env.DB.prepare(`SELECT g.id, g.code, g.created_at, u.email AS from_email FROM gift_offers g JOIN users u ON u.id = g.from_user_id WHERE g.to_user_id = ? AND g.status = 'pending' AND u.deleted_at IS NULL ORDER BY g.created_at DESC`).bind(user.id).all(),
+      env.DB.prepare(`SELECT g.id, g.code, g.created_at, u.email AS to_email FROM gift_offers g JOIN users u ON u.id = g.to_user_id WHERE g.from_user_id = ? AND g.status = 'pending' AND u.deleted_at IS NULL ORDER BY g.created_at DESC`).bind(user.id).all(),
     ]);
     return json({
       incoming: (incoming.results || []).map((r) => ({ id: r.id, code: r.code, createdAt: r.created_at, fromEmail: r.from_email })),

@@ -6,7 +6,9 @@
 // yangi jadval qo'shilganda u ro'yxatdan tushib qolmasligi kerak.
 import { CARD_CONTENT_TABLES } from '../hosting/api/card-cleanup.js';
 import { makeChecker } from './lib/d1-harness.mjs';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import { stripComments } from './lib/strip-comments.mjs';
 
 const { check, checkTrue, done } = makeChecker();
@@ -59,13 +61,25 @@ const schema = readFileSync(new URL('../db/d1-migration/0001-schema.sql', import
 // foydalanuvchini `DELETE FROM users` bilan butunlay o'chirardi va
 // CASCADE uning to'lov yozuvlarini ham olib ketardi. Ikkalasi olib
 // tashlandi. Endi bu yerda ular QAYTIB KELMASLIGI tekshiriladi.
+//
+// Faqat auth.js/account.js emas: `hosting/` ostidagi HAR BIR .js fayl
+// ko'riladi, aks holda xuddi shu so'rov boshqa modulga (admin, worker)
+// yozilsa test sezmasdi.
 {
   const auth = readFileSync(new URL('../hosting/api/auth.js', import.meta.url), 'utf8');
   const account = readFileSync(new URL('../hosting/api/account.js', import.meta.url), 'utf8');
+  const hostingDir = fileURLToPath(new URL('../hosting/', import.meta.url));
+  const hostingJs = readdirSync(hostingDir, { recursive: true })
+    .map(String)
+    .filter((f) => f.endsWith('.js') && !f.split(path.sep).includes('node_modules'))
+    .sort();
+  checkTrue('hosting/ ostidagi .js fayllar topildi (worker.js, auth.js, account.js, admin-extra.js bilan)',
+    ['worker.js', path.join('api', 'auth.js'), path.join('api', 'account.js'), path.join('api', 'admin-extra.js')]
+      .every((f) => hostingJs.includes(f)));
   // Izohlar olib tashlanadi: tushuntirishda bu so'zlar bor.
   const delUsers = /DELETE\s+FROM\s+"?users"?\b/i;
-  check('auth.js foydalanuvchi qatorini o\'chirmaydi (DELETE FROM users yo\'q)', delUsers.test(stripComments(auth)), false);
-  check('account.js foydalanuvchi qatorini o\'chirmaydi (DELETE FROM users yo\'q)', delUsers.test(stripComments(account)), false);
+  const offenders = hostingJs.filter((f) => delUsers.test(stripComments(readFileSync(path.join(hostingDir, f), 'utf8'))));
+  check(`hosting/**/*.js (${hostingJs.length} ta fayl) foydalanuvchi qatorini o'chirmaydi (DELETE FROM users yo'q)`, offenders, []);
   checkTrue('account.js karta o\'chirish yo\'li tozalashni chaqiradi', /cardContentCleanupStmts\(/.test(account));
   // Eski NOTO'G'RI da'vo ("... qo'lda tozalanadi; qolganlari CASCADE.")
   // qaytib kelmasin — u tozalashni keraksiz deb o'ylashga olib kelgan edi.

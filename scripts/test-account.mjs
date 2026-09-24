@@ -388,7 +388,8 @@ let premiumOrderId;
   const token = setCookie.split(';')[0].split('=')[1];
   const me = await call('/api/auth/me', { cookie: `nfc_session=${token}` });
   check('session cookie logs the new user in', [me.status, me.body?.email || me.body?.user?.email], [200, 'dilnoza@test.local']);
-  check('admin activity logged', sqlite.prepare(`SELECT action, details FROM admin_activity_log ORDER BY id DESC LIMIT 1`).get(), { action: 'nfc_gift_activated', details: 'GIF001 — dilnoza@test.local' });
+  // B13: jurnalga email emas, hisob raqami yoziladi.
+  check('admin activity logged (code — #userId, no email)', sqlite.prepare(`SELECT action, details FROM admin_activity_log ORDER BY id DESC LIMIT 1`).get(), { action: 'nfc_gift_activated', details: `GIF001 — #${newUser.id}` });
   const again = await call('/api/nfc-gifts/GIF001/activate', { method: 'POST', json: base });
   check('activate twice -> 401 bad_code (already activated)', [again.status, again.body], [401, { error: 'bad_code' }]);
   // Record's public GET works and shows it as gift/exclusive
