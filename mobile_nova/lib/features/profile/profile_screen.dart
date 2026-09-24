@@ -164,6 +164,14 @@ class ProfileScreen extends ConsumerWidget {
         },
         child: NovaScroll(
           padding: EdgeInsets.only(bottom: navSafeBottom(context)),
+          // POSTLAR TO'RI — `children` dan KEYIN, sliver (dangasa).
+          // Ilgari u `children` ichida `Wrap` edi va profil ochilishi
+          // bilan HAMMA postning rasmi yuklanib, har video uchun muqova
+          // navbatga qo'yilardi. To'r bo'lmaganda ham bo'sh sliver:
+          // profil kelganda scroll turi (va ichidagi holat) almashmasin.
+          tail: active == null
+              ? const SliverToBoxAdapter()
+              : _PostsGrid(code: active.code, company: active.isBusiness),
           children: [
             _Hero(user: user, profile: active, mode: mode),
             const SizedBox(height: Gap.xl),
@@ -345,9 +353,7 @@ class ProfileScreen extends ConsumerWidget {
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ),
-              )
-            else
-              _PostsGrid(code: active.code, company: active.isBusiness),
+              ),
           ],
         ),
       ),
@@ -1281,30 +1287,37 @@ class _PostsGridState extends ConsumerState<_PostsGrid> {
       company ? companyPostsProvider(code) : profilePostsProvider(code),
     );
 
+    // Natija SLIVER: to'r `NovaScroll.tail` sifatida turadi va faqat
+    // ko'rinadigan katakchalar quriladi. Qolgan holatlar — oddiy
+    // vidjet, `SliverToBoxAdapter` ichida (ko'rinishi o'zgarmagan).
     return posts.when(
-      loading: () => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-        child: Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: List.generate(
-            6,
-            (_) => Skeleton(
-              width:
-                  (MediaQuery.sizeOf(context).width - Gap.screenX * 2 - 12) / 3,
-              height:
-                  (MediaQuery.sizeOf(context).width - Gap.screenX * 2 - 12) / 3,
-              radius: R.tile,
+      loading: () => SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
+          child: Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: List.generate(
+              6,
+              (_) => Skeleton(
+                width:
+                    (MediaQuery.sizeOf(context).width - Gap.screenX * 2 - 12) / 3,
+                height:
+                    (MediaQuery.sizeOf(context).width - Gap.screenX * 2 - 12) / 3,
+                radius: R.tile,
+              ),
             ),
           ),
         ),
       ),
-      error: (e, __) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-        child: StatePanel.fromError(
-          context,
-          asAppError(e),
-          onRetry: () => ref.invalidate(profilePostsProvider(code)),
+      error: (e, __) => SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
+          child: StatePanel.fromError(
+            context,
+            asAppError(e),
+            onRetry: () => ref.invalidate(profilePostsProvider(code)),
+          ),
         ),
       ),
       data: (all) {
@@ -1324,7 +1337,7 @@ class _PostsGridState extends ConsumerState<_PostsGrid> {
               )
             : const SizedBox.shrink();
         if (items.isEmpty) {
-          return Column(children: [
+          return SliverToBoxAdapter(child: Column(children: [
             bar,
             Padding(
             padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
@@ -1347,7 +1360,7 @@ class _PostsGridState extends ConsumerState<_PostsGrid> {
               ),
             ),
           ),
-          ]);
+          ]));
         }
         // DEMO'DA MOZAIK, HAQIQIY PROFILDA 3x3 TO'R.
         //
@@ -1355,30 +1368,48 @@ class _PostsGridState extends ConsumerState<_PostsGrid> {
         // bo'lishini ko'rishi kerak, kvadratchalar to'rini emas.
         // Haqiqiy profil UMUMAN o'zgarmaydi.
         if (ref.watch(demoModeProvider) != null) {
-          return Column(
-              children: [bar, DemoMosaicPosts(items: items, code: code)]);
+          return SliverToBoxAdapter(
+            child: Column(
+                children: [bar, DemoMosaicPosts(items: items, code: code)]),
+          );
         }
         final side =
             (MediaQuery.sizeOf(context).width - Gap.screenX * 2 - 12) / 3;
         // Reels — vertikal (4:5) katakchalar, postlar — kvadrat.
         final tall = tabs && _tab == 1;
-        return Column(children: [
-          bar,
-          Padding(
-          padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-          child: Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              for (final p in items)
-                PressableScale(
+        // DANGASA TO'R: faqat ekranga yaqin katakchalar quriladi.
+        //
+        // Ilgari bu `Wrap` edi — u HAMMA bolasini birdan quradi:
+        // 60 postli profil ochilishi bilan 60 ta rasm yuklanib,
+        // 30 ta video muqovasi navbatga turardi. Katakcha o'lchami,
+        // oralig'i va nisbati AYNAN avvalgidek: kenglik
+        // (ekran - 40 - 12) / 3, oraliq 6, Reels 4:5.
+        //
+        // 1–2 ta postda `Wrap` o'z kengligiga qisqarib, markazda
+        // turardi — o'sha joylashuv saqlanadi.
+        final cols = items.length < 3 ? items.length : 3;
+        final inset = (3 - cols) * (side + 6) / 2;
+        return SliverMainAxisGroup(slivers: [
+          SliverToBoxAdapter(child: bar),
+          SliverPadding(
+            padding: EdgeInsets.symmetric(horizontal: Gap.screenX + inset),
+            sliver: SliverGrid.builder(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: cols,
+                mainAxisSpacing: 6,
+                crossAxisSpacing: 6,
+                childAspectRatio: tall ? 1 / 1.25 : 1,
+              ),
+              itemCount: items.length,
+              itemBuilder: (_, i) {
+                final p = items[i];
+                return PressableScale(
                   onTap: () => context.push(
                       Routes.post(p.id, code: code, company: company)),
                   child: ClipRRect(
                     borderRadius: R.tile,
-                    child: SizedBox(
-                      width: side,
-                      height: tall ? side * 1.25 : side,
+                    // O'lchamni to'r katakchasi beradi.
+                    child: SizedBox.expand(
                       child: p.mediaUrls.isEmpty
                           ? Container(
                               color: t.surface2,
@@ -1459,10 +1490,10 @@ class _PostsGridState extends ConsumerState<_PostsGrid> {
                             ),
                     ),
                   ),
-                ),
-            ],
+                );
+              },
+            ),
           ),
-        ),
         ]);
       },
     );

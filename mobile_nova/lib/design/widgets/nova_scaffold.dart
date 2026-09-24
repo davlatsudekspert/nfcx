@@ -172,25 +172,55 @@ class NovaScroll extends StatelessWidget {
     required this.children,
     this.padding,
     this.controller,
+    this.tail,
   });
 
   final List<Widget> children;
   final EdgeInsets? padding;
   final ScrollController? controller;
 
+  /// [children] dan keyin keladigan SLIVER (masalan, profil
+  /// postlari to'ri) — o'sha padding ichida.
+  ///
+  /// Uzun to'rni oddiy vidjet qilib `children` ga qo'yib bo'lmaydi:
+  /// u bitta element bo'lib, ekranga yaqinlashishi bilan ICHIDAGI
+  /// HAMMA katakchani birdan quradi. Sliver esa faqat ko'rinadiganini.
+  /// `null` bo'lsa — avvalgi `ListView`, hech narsa o'zgarmaydi.
+  final Widget? tail;
+
   @override
-  Widget build(BuildContext context) => ListView(
+  Widget build(BuildContext context) {
+    final pad = padding ??
+        EdgeInsets.fromLTRB(
+          Gap.screenX,
+          Gap.sm,
+          Gap.screenX,
+          navSafeBottom(context),
+        );
+    const physics = BouncingScrollPhysics(
+      parent: AlwaysScrollableScrollPhysics(),
+    );
+    final tail = this.tail;
+    if (tail == null) {
+      return ListView(
         controller: controller,
-        padding: padding ??
-            EdgeInsets.fromLTRB(
-              Gap.screenX,
-              Gap.sm,
-              Gap.screenX,
-              navSafeBottom(context),
-            ),
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
+        padding: pad,
+        physics: physics,
         children: children,
       );
+    }
+    return CustomScrollView(
+      controller: controller,
+      physics: physics,
+      slivers: [
+        SliverPadding(
+          padding: pad,
+          sliver: SliverMainAxisGroup(slivers: [
+            SliverList.list(children: children),
+            tail,
+          ]),
+        ),
+      ],
+    );
+  }
 }
