@@ -194,18 +194,21 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/u/:code',
-        builder: (_, s) => ProfileScreen(code: s.pathParameters['code']),
+        builder: (_, s) =>
+            NavPage(child: ProfileScreen(code: s.pathParameters['code'])),
       ),
       // Profildagi "Obunachilar" / "Obunalar" raqami bosilganda.
       GoRoute(
         path: '/u/:code/followers',
-        builder: (_, s) => FollowListScreen(
-            code: s.pathParameters['code'] ?? '', dir: 'followers'),
+        builder: (_, s) => NavPage(
+            child: FollowListScreen(
+                code: s.pathParameters['code'] ?? '', dir: 'followers')),
       ),
       GoRoute(
         path: '/u/:code/following',
-        builder: (_, s) => FollowListScreen(
-            code: s.pathParameters['code'] ?? '', dir: 'following'),
+        builder: (_, s) => NavPage(
+            child: FollowListScreen(
+                code: s.pathParameters['code'] ?? '', dir: 'following')),
       ),
 
       // NFC
@@ -334,15 +337,19 @@ final routerProvider = Provider<GoRouter>((ref) {
           builder: (_, __) => const BusinessAnalyticsScreen()),
       GoRoute(
         path: '/c/:companyId',
-        builder: (_, s) =>
-            StorefrontScreen(companyId: s.pathParameters['companyId']!),
+        builder: (_, s) => NavPage(
+            child:
+                StorefrontScreen(companyId: s.pathParameters['companyId']!)),
       ),
       GoRoute(
         path: '/catalog/:companyId/:itemId',
-        builder: (_, s) => CatalogProductScreen(
-          companyId: s.pathParameters['companyId']!,
-          itemId: s.pathParameters['itemId']!,
-          initial: s.extra is CatalogProduct ? s.extra as CatalogProduct : null,
+        builder: (_, s) => NavPage(
+          child: CatalogProductScreen(
+            companyId: s.pathParameters['companyId']!,
+            itemId: s.pathParameters['itemId']!,
+            initial:
+                s.extra is CatalogProduct ? s.extra as CatalogProduct : null,
+          ),
         ),
       ),
       GoRoute(

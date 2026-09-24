@@ -26,6 +26,35 @@ final activeTabProvider = StateProvider<int>((_) => 0);
 /// oshadi. Bosh sahifa buni eshitadi va tepaga suriladi.
 final homeReselectProvider = StateProvider<int>((_) => 0);
 
+/// Pastki navigatsiya elementlari — shell ham, tab ustidagi sahifalar
+/// ham ([NavPage]) AYNAN shu ro'yxatni ishlatadi.
+List<NavItem> navItems(L l) {
+  return [
+    // Faol emas — chiziqli, faol — to'la (bir xil vizual og'irlik).
+    NavItem(
+        icon: Icons.home_outlined,
+        activeIcon: Icons.home_rounded,
+        label: l.navHome,
+        route: Routes.home),
+    NavItem(
+        icon: Icons.explore_outlined,
+        activeIcon: Icons.explore_rounded,
+        label: l.navDiscover,
+        route: Routes.discover),
+    NavItem(icon: Icons.nfc_rounded, label: l.navNfc, route: Routes.nfc),
+    NavItem(
+        icon: Icons.play_circle_outline_rounded,
+        activeIcon: Icons.play_circle_rounded,
+        label: l.navReels,
+        route: Routes.reels),
+    NavItem(
+        icon: Icons.person_outline_rounded,
+        activeIcon: Icons.person_rounded,
+        label: l.navProfile,
+        route: Routes.profile),
+];
+}
+
 class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key, required this.navigationShell});
 
@@ -59,30 +88,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         ref.read(activeTabProvider.notifier).state = shell.currentIndex;
       }
     });
-    final items = [
-      // Faol emas — chiziqli, faol — to'la (bir xil vizual og'irlik).
-      NavItem(
-          icon: Icons.home_outlined,
-          activeIcon: Icons.home_rounded,
-          label: l.navHome,
-          route: Routes.home),
-      NavItem(
-          icon: Icons.explore_outlined,
-          activeIcon: Icons.explore_rounded,
-          label: l.navDiscover,
-          route: Routes.discover),
-      NavItem(icon: Icons.nfc_rounded, label: l.navNfc, route: Routes.nfc),
-      NavItem(
-          icon: Icons.play_circle_outline_rounded,
-          activeIcon: Icons.play_circle_rounded,
-          label: l.navReels,
-          route: Routes.reels),
-      NavItem(
-          icon: Icons.person_outline_rounded,
-          activeIcon: Icons.person_rounded,
-          label: l.navProfile,
-          route: Routes.profile),
-    ];
+    final items = navItems(l);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -182,4 +188,41 @@ class _Branch extends StatelessWidget {
           child: RepaintBoundary(child: child),
         ),
       );
+}
+
+
+/// TAB USTIDA OCHILADIGAN SAHIFA — PASTKI NAVIGATSIYA BILAN.
+///
+/// Boshqa odamning profili (`/u/:code`) va biznes vitrinasi (`/c/:id`)
+/// shell'dan tashqarida ochiladi — ilgari u yerda pastki panel YO'Q
+/// edi (egasi, 2026-09-24: "profilga kirib ko'rilganda pastdagi
+/// ikonlar yo'q bo'lib qolyapti"). Endi shu sahifalarda ham o'sha
+/// panel turadi: kelingan tab faol ko'rinadi, istalgan tab bosilsa
+/// o'sha bo'limga qaytiladi.
+class NavPage extends ConsumerWidget {
+  const NavPage({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = L.of(context);
+    final current = ref.watch(activeTabProvider);
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      extendBody: true,
+      body: child,
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: NovaBottomNav(
+          items: navItems(l),
+          currentIndex: current,
+          onSelect: (i) {
+            ref.read(audioOwnerProvider).stopAll();
+            context.go(HomeShell.tabRoutes[i]);
+          },
+        ),
+      ),
+    );
+  }
 }

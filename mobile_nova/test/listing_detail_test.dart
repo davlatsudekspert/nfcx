@@ -79,8 +79,8 @@ void main() {
       expect(find.byKey(const ValueKey('listing-address')), findsOneWidget);
       expect(find.byKey(const ValueKey('listing-no-payment')), findsOneWidget);
 
-      await tester.ensureVisible(find.byKey(const ValueKey('contact-call')));
-      await tester.tap(find.byKey(const ValueKey('contact-call')));
+      await tester.ensureVisible(find.byKey(const ValueKey('contact-phone')));
+      await tester.tap(find.byKey(const ValueKey('contact-phone')));
       await tester.tap(find.byKey(const ValueKey('contact-telegram')));
       await tester.tap(find.byKey(const ValueKey('contact-whatsapp')));
       await settle(tester, frames: 3);
@@ -106,7 +106,7 @@ void main() {
     expect(find.text(l.listingService), findsOneWidget);
     expect(find.text('Sartaroshlik'), findsOneWidget, reason: 'o‘z bo‘limi');
     expect(find.byKey(const ValueKey('contact-telegram')), findsOneWidget);
-    expect(find.byKey(const ValueKey('contact-call')), findsNothing);
+    expect(find.byKey(const ValueKey('contact-phone')), findsNothing);
     expect(find.textContaining('−'), findsNothing, reason: 'chegirma belgisi yo‘q');
   });
 

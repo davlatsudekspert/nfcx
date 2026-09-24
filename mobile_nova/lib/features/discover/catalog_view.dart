@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/providers.dart';
 import '../../core/errors/app_error.dart';
-import '../../core/utils/external_link.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/business_repository.dart';
 import '../../data/repositories/discover_repository.dart';
@@ -16,6 +15,7 @@ import '../../design/tokens/shapes.dart';
 import '../../design/widgets/buttons.dart';
 import '../../design/widgets/nova_scaffold.dart';
 import '../../design/widgets/states.dart';
+import '../../design/widgets/contact_buttons.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
@@ -1230,41 +1230,19 @@ class _ProductDetailState extends ConsumerState<_ProductDetail> {
             Text(l.catalogContact.toUpperCase(),
                 style: AppType.eyebrow(color: t.text3)),
             const SizedBox(height: Gap.md),
-            Row(
-              children: [
-                if (p.companyPhone.isNotEmpty)
-                  Expanded(
-                    child: _ContactButton(
-                      key: const ValueKey('contact-call'),
-                      icon: Icons.phone_rounded,
-                      label: l.catalogCall,
-                      onTap: () => openLink(telUrl(p.companyPhone)),
-                    ),
-                  ),
-                if (p.companyTelegram.isNotEmpty) ...[
-                  if (p.companyPhone.isNotEmpty) const SizedBox(width: Gap.sm),
-                  Expanded(
-                    child: _ContactButton(
-                      key: const ValueKey('contact-telegram'),
-                      icon: Icons.send_rounded,
-                      label: 'Telegram',
-                      onTap: () => openLink(telegramUrl(p.companyTelegram)),
-                    ),
-                  ),
-                ],
-                if (p.companyWhatsapp.isNotEmpty) ...[
-                  if (p.companyPhone.isNotEmpty || p.companyTelegram.isNotEmpty)
-                    const SizedBox(width: Gap.sm),
-                  Expanded(
-                    child: _ContactButton(
-                      key: const ValueKey('contact-whatsapp'),
-                      icon: Icons.chat_rounded,
-                      label: 'WhatsApp',
-                      onTap: () => openLink(whatsappUrl(p.companyWhatsapp)),
-                    ),
-                  ),
-                ],
-              ],
+            // PROFILDAGI AYNAN O'SHA ALOQA TUGMALARI (egasi, 2026-09-24:
+            // "katalogda ko'rganda profil ma'lumotlari chiqsin"):
+            // brend logotipli dumaloq tugmalar, bitta qatorda, markazda.
+            ContactButtons(
+              actions: ContactInfo(
+                phone: p.companyPhone,
+                telegram: p.companyTelegram,
+                whatsapp: p.companyWhatsapp,
+                website: p.companyWebsite,
+                address: [p.companyCity, p.companyAddress]
+                    .where((e) => e.isNotEmpty)
+                    .join(', '),
+              ).actions(),
             ),
           ],
           const SizedBox(height: Gap.xl),
@@ -1324,57 +1302,6 @@ class _InfoPill extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ContactButton extends StatelessWidget {
-  const _ContactButton({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-    return Semantics(
-      button: true,
-      label: label,
-      child: PressableScale(
-        scale: .96,
-        onTap: onTap,
-        child: Container(
-          height: 64,
-          decoration: BoxDecoration(
-            color: t.surfaceSolid,
-            borderRadius: R.tile,
-            border: Border.all(color: t.border1),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 19, color: t.text1),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontFamily: AppType.sans,
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w700,
-                  color: t.text1,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

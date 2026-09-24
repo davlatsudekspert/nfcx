@@ -21,57 +21,45 @@ class ContactButtons extends StatelessWidget {
 
   final List<ContactAction> actions;
 
-  /// Bitta tugma katagining eni va tugmalar orasidagi masofa.
+  /// Katak eni (to'liq o'lcham) va tugmalar orasidagi masofa.
   static const _cell = 68.0;
-  static const _gap = 8.0;
+  static const _gap = 6.0;
+
+  /// Bitta qatorda katak shundan torayib ketmaydi.
+  static const _minCell = 44.0;
 
   @override
   Widget build(BuildContext context) {
     if (actions.isEmpty) return const SizedBox.shrink();
-    // MARKAZDA, TENG ORALIQ BILAN (egasi, 2026-09-24: "markazga
-    // tekislangan, oraliq teng, chapga yoki o'ngga surilmasin").
+    // BITTA QATOR, MARKAZDA, TENG ORALIQ BILAN (egasi, 2026-09-24:
+    // "markazga tekislangan, oraliq teng, sociallar bir qatorda").
     //
     // Ilgari gorizontal ro'yxat edi — qator doim CHAP chetdan
-    // boshlanardi. Endi:
-    //   * sig'sa — bitta qator, ekran markazida;
-    //   * sal sig'masa — katak biroz torayadi (doira o'lchami saqlanadi);
-    //   * umuman sig'masa — TENG qatorlarga bo'linadi (6 -> 3 + 3), har
-    //     qator markazda. Hech qanday tugma ekrandan tashqarida qolmaydi.
+    // boshlanardi. Endi katak eni tugmalar soniga qarab hisoblanadi:
+    // 5-6 ta tugma ham bitta qatorga sig'adi (doira biroz kichrayadi,
+    // brend logotipi o'z rangida qoladi). Juda ko'p bo'lsa (7+) qator
+    // surib ko'riladi — hech bir tugma yashirinmaydi.
     return LayoutBuilder(
       key: const ValueKey('contact-buttons'),
       builder: (context, c) {
         final n = actions.length;
-        final max = c.maxWidth;
-        double need(double cell) => n * cell + (n - 1) * _gap;
-
-        Widget row(List<ContactAction> items, double cell) => Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (var i = 0; i < items.length; i++) ...[
-                  if (i > 0) const SizedBox(width: _gap),
-                  _ContactButton(action: items[i], width: cell),
-                ],
-              ],
-            );
-
-        if (need(_cell) <= max) return row(actions, _cell);
-        final tight = (max - (n - 1) * _gap) / n;
-        if (tight >= 60) return row(actions, tight);
-
-        final perRow = ((max + _gap) / (_cell + _gap)).floor().clamp(1, n);
-        final rows = (n / perRow).ceil();
-        final each = (n / rows).ceil();
-        return Column(
+        final fit = (c.maxWidth - (n - 1) * _gap) / n;
+        final cell = fit.clamp(_minCell, _cell);
+        final row = Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            for (var r = 0; r < rows; r++) ...[
-              if (r > 0) const SizedBox(height: 10),
-              row(
-                actions.sublist(
-                    r * each, ((r + 1) * each).clamp(0, n)),
-                _cell,
-              ),
+            for (var i = 0; i < n; i++) ...[
+              if (i > 0) const SizedBox(width: _gap),
+              _ContactButton(action: actions[i], width: cell),
             ],
           ],
+        );
+        if (fit >= _minCell) return Center(child: row);
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          child: row,
         );
       },
     );
@@ -87,6 +75,8 @@ class _ContactButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final ink = !t.isDark;
+    // Tor katakda doira ham kichrayadi (56 -> 40), nisbat saqlanadi.
+    final circle = (width - 8).clamp(40.0, 56.0);
     final l = L.of(context);
     final spec = _specs[action.kind]!;
     final label = action.kind == ContactKind.link && action.label.isNotEmpty
@@ -112,8 +102,8 @@ class _ContactButton extends StatelessWidget {
           child: Column(
             children: [
               Container(
-                width: 56,
-                height: 56,
+                width: circle,
+                height: circle,
                 decoration: ink
                     // PREMIUM OQ-QORA (2026-09-24): oq sirt, aniq siyoh
                     // chegara va yumshoq soya — doira "yuvilib" ketmaydi.
@@ -122,18 +112,23 @@ class _ContactButton extends StatelessWidget {
                         shape: BoxShape.circle,
                         color: t.surfaceSolid,
                         border: Border.all(
-                            color: t.text1.withValues(alpha: .16), width: 1.1),
+                          color: t.text1.withValues(alpha: .16),
+                          width: 1.1,
+                        ),
                         boxShadow: t.shadowSoft,
                       )
                     : BoxDecoration(
                         shape: BoxShape.circle,
                         // Brend rangining juda nozik foni.
-                        gradient: RadialGradient(colors: [
-                          spec.color.withValues(alpha: .10),
-                          spec.color.withValues(alpha: .04),
-                        ]),
+                        gradient: RadialGradient(
+                          colors: [
+                            spec.color.withValues(alpha: .10),
+                            spec.color.withValues(alpha: .04),
+                          ],
+                        ),
                         border: Border.all(
-                            color: spec.color.withValues(alpha: .16)),
+                          color: spec.color.withValues(alpha: .16),
+                        ),
                         boxShadow: [
                           BoxShadow(
                             color: spec.color.withValues(alpha: .10),
@@ -145,22 +140,24 @@ class _ContactButton extends StatelessWidget {
                 alignment: Alignment.center,
                 child: SvgPicture.string(
                   spec.svg,
-                  width: 25,
-                  height: 25,
+                  width: circle * .44,
+                  height: circle * .44,
                   colorFilter: ColorFilter.mode(spec.color, BlendMode.srcIn),
                 ),
               ),
               const SizedBox(height: 7),
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: AppType.sans,
-                  fontSize: 11.5,
-                  fontWeight: ink ? FontWeight.w600 : FontWeight.w500,
-                  color: ink ? t.text1 : t.text2,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: AppType.sans,
+                    fontSize: width < 60 ? 10.5 : 11.5,
+                    fontWeight: ink ? FontWeight.w600 : FontWeight.w500,
+                    color: ink ? t.text1 : t.text2,
+                  ),
                 ),
               ),
             ],
@@ -180,16 +177,44 @@ class _Spec {
 
 // Ranglar — saytdagi `CompanyQuickProfilePage.jsx` `quick` ro'yxatidan.
 final _specs = <ContactKind, _Spec>{
-  ContactKind.phone: _Spec(const Color(0xFF0E7A3D), _phone, (l) => l.contactCall),
-  ContactKind.telegram: _Spec(const Color(0xFF0F7AB0), _telegram, (_) => 'Telegram'),
-  ContactKind.whatsapp: _Spec(const Color(0xFF0B8A3C), _whatsapp, (_) => 'WhatsApp'),
-  ContactKind.instagram: _Spec(const Color(0xFFB3175A), _instagram, (_) => 'Instagram'),
-  ContactKind.facebook: _Spec(const Color(0xFF0D4FA8), _facebook, (_) => 'Facebook'),
+  ContactKind.phone: _Spec(
+    const Color(0xFF0E7A3D),
+    _phone,
+    (l) => l.contactCall,
+  ),
+  ContactKind.telegram: _Spec(
+    const Color(0xFF0F7AB0),
+    _telegram,
+    (_) => 'Telegram',
+  ),
+  ContactKind.whatsapp: _Spec(
+    const Color(0xFF0B8A3C),
+    _whatsapp,
+    (_) => 'WhatsApp',
+  ),
+  ContactKind.instagram: _Spec(
+    const Color(0xFFB3175A),
+    _instagram,
+    (_) => 'Instagram',
+  ),
+  ContactKind.facebook: _Spec(
+    const Color(0xFF0D4FA8),
+    _facebook,
+    (_) => 'Facebook',
+  ),
   ContactKind.x: _Spec(const Color(0xFF1F1D1A), _x, (_) => 'X'),
-  ContactKind.linkedin: _Spec(const Color(0xFF0A66C2), _linkedin, (_) => 'LinkedIn'),
+  ContactKind.linkedin: _Spec(
+    const Color(0xFF0A66C2),
+    _linkedin,
+    (_) => 'LinkedIn',
+  ),
   ContactKind.email: _Spec(const Color(0xFF8A5A12), _mail, (_) => 'Email'),
   ContactKind.map: _Spec(const Color(0xFFB83A1E), _pin, (l) => l.contactMap),
-  ContactKind.website: _Spec(const Color(0xFF5A4410), _globe, (l) => l.contactWebsite),
+  ContactKind.website: _Spec(
+    const Color(0xFF5A4410),
+    _globe,
+    (l) => l.contactWebsite,
+  ),
   ContactKind.link: _Spec(const Color(0xFF5A4410), _link, (l) => l.contactLink),
 };
 

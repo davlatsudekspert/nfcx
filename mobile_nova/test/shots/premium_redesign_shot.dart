@@ -113,7 +113,9 @@ void main() {
   }
 
   Future<void> app(WidgetTester tester, String route, String name,
-      {Size size = const Size(390, 844), bool business = false}) async {
+      {Size size = const Size(390, 844),
+      bool business = false,
+      String? push}) async {
     tester.view.physicalSize = size * 2;
     tester.view.devicePixelRatio = 2.0;
     tester.view.padding = const FakeViewPadding(top: 64, bottom: 48);
@@ -159,6 +161,10 @@ void main() {
     await settle(tester);
     c.read(routerProvider).go(route);
     await settle(tester, 24);
+    if (push != null) {
+      c.read(routerProvider).push(push);
+      await settle(tester, 24);
+    }
     await expectLater(
         find.byType(MaterialApp), matchesGoldenFile('png/$name.png'));
     debugDisableShadows = true;
@@ -175,6 +181,10 @@ void main() {
   testWidgets('Profil 390', (t) async {
     await app(t, Routes.profile, 'redesign-$tag-profile',
         size: const Size(390, 1250));
+  });
+  testWidgets('Tanlov -> profil (pastki panel bilan)', (t) async {
+    await app(t, Routes.discover, 'redesign-$tag-user-from-discover',
+        push: Routes.user('VIP001'));
   });
   testWidgets('Profil 360', (t) async {
     await app(t, Routes.profile, 'redesign-$tag-profile-360',

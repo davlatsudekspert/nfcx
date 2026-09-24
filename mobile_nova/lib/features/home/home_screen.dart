@@ -877,7 +877,8 @@ class _HomeStats extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(
           Gap.screenX, Gap.lg, Gap.screenX, 0),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 18),
+        // Ixcham (egasi, 2026-09-24: "statistika kichikroq").
+        padding: const EdgeInsets.symmetric(vertical: 13),
         decoration: BoxDecoration(
           color: t.surfaceSolid,
           borderRadius: BorderRadius.circular(22),
@@ -895,10 +896,10 @@ class _HomeStats extends StatelessWidget {
                       Text(
                         formatCount(cells[i].$1),
                         maxLines: 1,
-                        style: AppType.displayStyle(color: t.text1, size: 30)
+                        style: AppType.displayStyle(color: t.text1, size: 24)
                             .copyWith(height: 1.05),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 3),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                         child: FittedBox(

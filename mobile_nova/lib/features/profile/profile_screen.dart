@@ -1135,7 +1135,9 @@ class _StatCapsules extends ConsumerWidget {
         // yuqori-past bo'shliq kichik — lekin bosiladigan maydon
         // 44 dp dan kam emas.
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: Gap.sm + 2),
+          // Yanada ixcham (egasi, 2026-09-24: "statistika kichikroq,
+          // bachkana bo'lmasin").
+          padding: const EdgeInsets.symmetric(vertical: Gap.sm),
           child: Row(
             children: [
               for (var i = 0; i < items.length; i++)
@@ -1154,7 +1156,7 @@ class _StatCapsules extends ConsumerWidget {
                             style: TextStyle(
                               fontFamily: AppType.display,
                               fontFamilyFallback: AppType.displayFallback,
-                              fontSize: 21,
+                              fontSize: 19,
                               height: 1.05,
                               color: t.text1,
                             ),
@@ -1167,9 +1169,9 @@ class _StatCapsules extends ConsumerWidget {
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontFamily: AppType.sans,
-                              fontSize: 11.5,
+                              fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              letterSpacing: .1,
+                              letterSpacing: .2,
                               color: t.text2,
                             ),
                           ),
