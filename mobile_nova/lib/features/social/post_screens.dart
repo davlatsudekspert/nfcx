@@ -415,6 +415,10 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
 
   XFile? _file;
   double _progress = 0;
+
+  /// Video to'liq yuborildi va server javobi (avtomatik tekshiruv)
+  /// kutilmoqda.
+  bool get _checking => _video && _progress >= 1;
   bool _busy = false;
   String? _error;
 
@@ -766,7 +770,10 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
             ClipRRect(
               borderRadius: R.pill,
               child: LinearProgressIndicator(
-                value: _progress,
+                // Fayl to'liq yuborildi — server videoni tekshiryapti:
+                // chiziq "kutish" holatiga o'tadi (egasi, 2026-09-24:
+                // sekinlik sababini qisqa yozib qo'yish).
+                value: _checking ? null : _progress,
                 minHeight: 6,
                 backgroundColor: t.surface2,
                 valueColor: AlwaysStoppedAnimation(t.accent2),
@@ -774,7 +781,10 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
             ),
             const SizedBox(height: Gap.sm),
             Text(
-              l.uploadProgress((_progress * 100).round()),
+              key: _checking ? const ValueKey('video-checking') : null,
+              _checking
+                  ? l.videoChecking
+                  : l.uploadProgress((_progress * 100).round()),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall,
             ),

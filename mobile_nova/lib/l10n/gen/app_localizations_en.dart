@@ -2302,6 +2302,10 @@ class LEn extends L {
   }
 
   @override
+  String get videoChecking =>
+      'Checking the video… This may take a few seconds.';
+
+  @override
   String get blockSexual => '18+ or explicit content detected';
 
   @override

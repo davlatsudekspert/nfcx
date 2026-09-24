@@ -2297,6 +2297,10 @@ class LRu extends L {
   }
 
   @override
+  String get videoChecking =>
+      'Проверяем видео… Это может занять несколько секунд.';
+
+  @override
   String get blockSexual => 'обнаружен контент 18+';
 
   @override

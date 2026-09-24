@@ -45,11 +45,13 @@ Block ONLY clear violations:
 - "sexual": nudity, sexual acts, pornographic or sexually explicit content;
 - "violence": graphic violence, gore, severe injury, cruelty to people or animals;
 - "extremism": terrorist or extremist symbols, flags, propaganda, recruitment, including RELIGIOUS extremism (calls to violent jihad, banned religious-extremist groups and their symbols);
-- "political": political propaganda or agitation, election campaigning, calls to protests, riots or overthrowing the government, insulting state symbols (flag, emblem, anthem) or state leaders;
+- "political": ONLY calls to riots, unrest, unsanctioned protests or overthrowing the government, and insulting or desecrating state symbols (flag, emblem, anthem) or state leaders;
 - "drugs": illegal drugs being sold, used or advertised;
 - "hate": hateful symbols or imagery targeting a group.
 Normal photos (people, food, products, shops, cars, text, memes, swimwear at a beach, medical/educational images without gore, legal products) are ALLOWED.
 Ordinary religious life (mosques, prayer, religious holidays, Quran recitation) and the national flag shown respectfully are ALLOWED.
+News reports, official events and speeches, elections coverage, patriotic content, national holidays (e.g. Independence Day, Navruz), military parades and people simply discussing politics are ALLOWED — they are NOT "political" violations.
+When unsure, ALLOW.
 Reply with JSON only: {"allowed": true|false, "category": "none|sexual|violence|extremism|political|drugs|hate"}`;
 
 // Video uchun — xuddi shu qoidalar, lekin BUTUN video (kadrlar va

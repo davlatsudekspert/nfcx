@@ -4437,6 +4437,12 @@ abstract class L {
   /// **'Yuklanmadi: {reason}. Bunday kontent qonun va NFCSTORE qoidalariga zid. Xato deb o‘ylasangiz, boshqa rasm yoki video tanlang yoki qo‘llab-quvvatlashga yozing.'**
   String errContentBlocked(String reason);
 
+  /// No description provided for @videoChecking.
+  ///
+  /// In uz, this message translates to:
+  /// **'Video tekshirilmoqda… Bu bir necha soniya olishi mumkin.'**
+  String get videoChecking;
+
   /// No description provided for @blockSexual.
   ///
   /// In uz, this message translates to:

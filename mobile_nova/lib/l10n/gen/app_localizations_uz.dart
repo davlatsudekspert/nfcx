@@ -2302,6 +2302,10 @@ class LUz extends L {
   }
 
   @override
+  String get videoChecking =>
+      'Video tekshirilmoqda… Bu bir necha soniya olishi mumkin.';
+
+  @override
   String get blockSexual => '18+ yoki behayo kontent aniqlandi';
 
   @override

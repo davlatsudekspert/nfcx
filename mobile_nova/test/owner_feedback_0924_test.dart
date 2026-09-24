@@ -11,6 +11,7 @@ import 'package:nfcstore_nova/design/widgets/brand_logo.dart';
 import 'package:nfcstore_nova/design/widgets/id_lux.dart';
 import 'package:nfcstore_nova/features/nfc/nfc_center_screen.dart';
 import 'package:nfcstore_nova/features/nfc/nfc_service.dart';
+import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
 
 import 'helpers.dart';
 
@@ -121,5 +122,18 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('ICHKI'), findsNothing, reason: 'surib qaytish ishlamadi');
     expect(find.text('ASOSIY'), findsOneWidget);
+  });
+
+  // Egasi (2026-09-24): video yuklangach tekshiruv biroz vaqt oladi —
+  // odam "qotib qoldi" deb o'ylamasin, qisqa sabab yozilsin.
+  test('video to‘liq yuborilgach "Video tekshirilmoqda…" chiqadi', () async {
+    for (final loc in const [Locale('uz'), Locale('ru'), Locale('en')]) {
+      final l = await L.delegate.load(loc);
+      expect(l.videoChecking.trim(), isNotEmpty);
+    }
+    final src = File('lib/features/social/post_screens.dart').readAsStringSync();
+    expect(src, contains('bool get _checking => _video && _progress >= 1;'));
+    expect(src, contains('value: _checking ? null : _progress'));
+    expect(src, contains('l.videoChecking'));
   });
 }

@@ -855,6 +855,7 @@
   "errPlanLimit": "Plan limit reached. Premium or your own name (on the website) allows more.",
   "errPlanLocked": "Posts and stories are closed on the free plan. Premium (on the website) opens them.",
   "errContentBlocked": "Not uploaded: {reason}. Such content violates the law and NFCSTORE rules. If this is a mistake, pick another photo or video, or contact support.",
+  "videoChecking": "Checking the video… This may take a few seconds.",
   "blockSexual": "18+ or explicit content detected",
   "blockViolence": "violence or gore detected",
   "blockExtremism": "extremist (including religious) symbols or propaganda detected",
