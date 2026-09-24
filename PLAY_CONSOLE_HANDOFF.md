@@ -23,48 +23,55 @@ ekranigacha olib boriladi.
 | Ilova | NFCSTORE (`android:label`) |
 | Paket | `uz.nfcstore.nova` — **o'zgarmaydi** |
 | versionName | `1.1.0` (`mobile_nova/pubspec.yaml`) |
-| versionCode | `207` (= CI `github.run_number`; Play'dagi oxirgi — 174) |
-| Commit | `61f2805` (branch `claude/vibrant-einstein-p5lo1i`) |
+| versionCode | `217` (= CI `github.run_number`; Play'dagi oxirgi — 174) |
+| Commit | `f478798` (branch `claude/vibrant-einstein-p5lo1i`) — ilova kodi shu commitdan keyin o'zgarmagan (keyingi commitlar faqat server/sayt/hujjat) |
 | Imzo (upload) | Yuklash (upload) kaliti, alias `nova`, SHA-256 `6F:79:CC:DA:FD:E4:04:CF:BA:29:96:4D:8C:CB:11:0C:0A:49:E0:D4:B9:8E:95:64:0A:68:50:02:68:B0:A9:3C` — AAB shu bilan imzolanadi |
 | Play App Signing | **YOQILGAN**: Play'dan o'rnatilgan nusxalar Google kaliti bilan imzolanadi — SHA-256 `A3:15:12:FC:23:24:9B:EA:78:67:AB:A7:53:C1:19:7A:C4:87:95:63:74:8E:EC:03:22:1C:EA:87:19:61:95:BD` (oldingi: `69:1D:3F:A3:81:40:1B:BB:E6:F5:93:C7:F9:92:22:AC:0F:80:A2:94:63:77:9C:9D:76:A2:7D:9B:DC:B7:B3:6C`) |
 | minSdk / targetSdk | 24 / 36 (Flutter 3.35.5) |
-| Testlar | `flutter analyze — 0 muammo; unit/widget — 799 PASS (CI #207 da ham qayta o'tdi)` |
-| E2E (real hisob) | `__E2E__` |
+| Testlar | `flutter analyze — 0 muammo; unit/widget — 852 PASS, 1 SKIP (CI #217 da ham qayta o'tdi); server skriptlari (CI) — 253/0` |
+| E2E (real hisob) | #56 (e56cbe7) — PASS; yakuniy #58 (f478798) — natija kutilmoqda |
 
 ---
 
 ## 1. AAB VA APK — QAYERDA
 
-GitHub Actions → **NFCSTORE Mobile APK** workflow, run **#207**:
+GitHub Actions → **NFCSTORE Mobile APK** workflow, run **#217**:
 
-    https://github.com/davlatsudekspert/nfcx/actions/runs/35905383456
+    https://github.com/davlatsudekspert/nfcx/actions/runs/35952446329
 
 Artefaktlar (run sahifasining pastida, "Artifacts"):
 
 | Artefakt nomi | Ichida | Nima uchun |
 |---|---|---|
-| `NFCSTORE-Mobile-PlayStore-aab` | `NFCSTORE-Mobile.aab` (51.8 MB) | **Play Console'ga shu yuklanadi** — to'g'ridan havola: https://github.com/davlatsudekspert/nfcx/actions/runs/35905383456/artifacts/10771351640 |
-| `NFCSTORE-Mobile-universal-apk` | universal APK | har qanday telefonda sinash |
-| `NFCSTORE-Mobile-telefon` | `arm64-v8a` APK | zamonaviy telefon uchun sinov |
+| `NFCSTORE-Mobile-PlayStore-aab` | `NFCSTORE-Mobile.aab` (51.8 MB) | **Play Console'ga shu yuklanadi** — to'g'ridan havola: https://github.com/davlatsudekspert/nfcx/actions/runs/35952446329/artifacts/10788529862 |
+| `NFCSTORE-Mobile-universal-apk` | universal APK (64.0 MB) | har qanday telefonda sinash — https://github.com/davlatsudekspert/nfcx/actions/runs/35952446329/artifacts/10789421488 |
+| `NFCSTORE-Mobile-telefon` | `arm64-v8a` APK (24.8 MB) | zamonaviy telefon uchun sinov — https://github.com/davlatsudekspert/nfcx/actions/runs/35952446329/artifacts/10789860147 |
 | `NFCSTORE-Mobile-eski-telefon-armeabi-v7a` | 32-bit APK | eski telefon |
 | `NFCSTORE-Mobile-emulyator-x86_64` | x86_64 APK | emulyator |
 | `NFCSTORE-Mobile` | hammasi + `SHA256SUMS.txt` | yakuniy to'plam |
 
 CI tasdiqlagan (`aapt2 dump badging`, `apksigner verify`):
 
-    package uz.nfcstore.nova  versionCode=207  versionName=1.1.0  targetSdk=36
+    package uz.nfcstore.nova  versionCode=217  versionName=1.1.0  targetSdk=36
     SIGNING: RELEASE  (barmoq izi yuqoridagi SHA-256 bilan bir xil)
     zipalign: OK   apksigner: Verifies (v2)
 
-> **Qaysi qurilish?** Aynan **#207** (commit `61f2805`) — real hisobli
-> E2E shu commitda o'tkazildi. Keyingi push'lar yangi qurilish (#208+)
-> yasashi va `mobile-latest` GitHub relizini yangilashi mumkin — ular
-> faqat hujjat/test o'zgarishi. Play'ga #207 ni yuklang.
+> **Qaysi qurilish?** Aynan **#217** (commit `f478798`). #207 dan keyin
+> ilova kodi o'zgardi (performance, UI sifati, release auditi tuzatishlari),
+> shuning uchun **#207 ni YUKLAMANG** — Play'ga #217 yuklanadi. #217 dan
+> keyingi push'lar faqat server/sayt/hujjat fayllari: ular yangi APK
+> yasamaydi. Real hisobli E2E shu commitda — §0 dagi "E2E" qatoriga qarang.
 
-SHA-256 (CI logidan, "Yakuniy paketlarni nomlash" qadami):
+SHA-256 (CI logidagi `SHA256SUMS.txt`, `release-final/`):
 
-    b7c0733b4584ed59cbf8178711d5eef6a6bfd42bf37dc304e8756f1413c64198  NFCSTORE-Mobile.aab
-    d9daaf6927f6c9e793b6bc875ae91fc7823b186b63f764166921f461223eefde  NFCSTORE-Mobile.apk
+    9eb3f521626e16d7762fef53bcad7d79302bc2eeafee6a05a73c9e2d4d99b582  NFCSTORE-Mobile.aab   (51 804 183 bayt)
+    31d257b5d481c1b626ed944d3a07c00a56804c7a9ac86ed127a4d8607f9a3c22  NFCSTORE-Mobile.apk   (64 035 315 bayt)
+    a50a155e6b1756767a99f91cc999118b08496487449774da3398d011b88ac9f4  NFCSTORE-Mobile-arm64-v8a.apk
+    182db54b0dad75fa8c752abea9253ec221c67f576f7d278515409ddfc9aad1a6  NFCSTORE-Mobile-armeabi-v7a.apk
+    257f6c8d3d0842177bc17d2b183ec3ec58a0c3397e092c701950030eac329a84  NFCSTORE-Mobile-x86_64.apk
+
+Yuklab olgandan keyin tekshirish: `sha256sum NFCSTORE-Mobile.aab` — yuqoridagi
+bilan bir xil bo'lishi kerak.
 
 ### AAB ni Play'ga yuborishning ikki yo'li
 
@@ -75,7 +82,7 @@ arxivdan `NFCSTORE-Mobile.aab` ni chiqarib, Play Console'dagi relizga
 **B. `Google Play'ga yuklash` workflow** (`.github/workflows/play-upload.yml`).
 Faqat **sinov treklariga** yuklaydi (production'ga EMAS). Ishlatish:
 Actions → "Google Play'ga yuklash" → Run workflow →
-`mode=upload`, `run_id=35905383456`, `track=` (bo'sh — yopiq sinov),
+`mode=upload`, `run_id=35952446329`, `track=` (bo'sh — yopiq sinov),
 `status=draft`. Keyin Console'da shu relizni production'ga "Promote"
 qilish mumkin. `PLAY_SERVICE_ACCOUNT_JSON` secreti bo'lmasa bu yo'l
 ishlamaydi — A yo'lidan bor.
@@ -266,10 +273,10 @@ mumkin — o'zgartirish shart emas.
    (qolganini egasi hal qiladi). Tanlanmasa "Send for review" bloklanadi.
 
 1. App bundles → **Upload** → `NFCSTORE-Mobile.aab` (§1). Play versionCode
-   `207` va versionName `1.1.0` ni ko'rsatishi kerak.
+   `217` va versionName `1.1.0` ni ko'rsatishi kerak.
    Play App Signing yoqilgan — AAB upload kaliti (`6F:79…A9:3C`) bilan
    imzolangan bo'lishi kerak; boshqa kalit bo'lsa Console rad etadi.
-2. Release name: `1.1.0 (207)`.
+2. Release name: `1.1.0 (217)`.
 3. Release notes — §4 dagi matnlar (`<uz>`, `<ru-RU>`, `<en-US>`).
 4. **Next** / **Далее** → "Review release" sahifasi. Xato (qizil)
    bo'lsa — tuzat; ogohlantirish (sariq) bo'lsa — egasiga yoz.
@@ -350,7 +357,7 @@ bo'lmasa 100%.
   tugmasi yo'q, lekin Play Payments qoidasi raqamli tovar uchun tashqi
   to'lovga yo'naltiruvchi xabarni ham taqiqlaydi — rad etilishi mumkin.
   Tez chora: `kShowSiteNotice = false` → yangi qurilish (versionCode >
-  207). Egasi buni yuklashdan OLDIN ham tanlashi mumkin.
+  217). Egasi buni yuklashdan OLDIN ham tanlashi mumkin.
 
 * Katta video birinchi ochilishda sekinroq bo'lishi mumkin: o'lchovda
   asosiy ulush server tomonda (Worker → R2, videolar edge keshda emas).

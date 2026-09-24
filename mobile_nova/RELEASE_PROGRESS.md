@@ -113,17 +113,36 @@ faqat kod bilan isbotlangan, ko'rinishni o'zgartirmaydigan tuzatishlar):
   kontrasti 3.5-3.9:1, UI-9 8.5-9.5 px ma'lumot matni, UI-10 Noir ID
   kartadagi shaffof yorliqlar
 
+## 4c. Release auditi (#207 dan keyingi hamma o'zgarishlar, 61f2805..f478798)
+
+4 yo'nalish (to'g'rilik, layout, performance, release konfiguratsiyasi) +
+har tuzatishga mustaqil review. Tasdiqlangan va tuzatilgan:
+
+- [x] SM-2 regressiyasi: profil ro'yxatidan ochilgan post eskirgan
+      layk/izoh sonini ko'rsatardi — endi har doim serverdan, ro'yxat
+      nusxasi faqat birinchi kadr (2d9c54b)
+- [x] SM-1 regressiyasi: kesh zonasidagi video katakchalar muqovasiz
+      qolardi — endi muqova katakcha chizilganda olinadi (2d9c54b)
+- [x] App Lock zaxiradan tiklanganda ochib bo'lmaydigan qulf (f478798)
+- [x] o'chirilgan hisob: kirish/qayta ro'yxatda aniq sabab (f478798)
+- [x] docs/PLAY_CONSOLE.md: "to'lov Payme/Click" qarama-qarshiligi (f478798)
+- Regression testlari: release_audit_fixes_test, app_lock_test,
+  account_deleted_error_test — eski kodda yiqiladi
+- Egasiga (kod xatosi emas): CI da `NOVA_KEYSTORE_BASE64` bo'lmasa AAB
+  debug-imzo bilan yashil chiqadi (log: SIGNING: DEBUG) — secret joyida
+
 ## 5–6. Release
 
-- [x] versionName 1.1.0 (pubspec) + versionCode = CI run_number (#207)
+- [x] versionName 1.1.0 (pubspec) + versionCode = CI run_number (#217)
 - [~] permissions / App Links / Data Safety mosligi
-      * permissions (merged manifest, #207): INTERNET, ACCESS_NETWORK_STATE,
+      * permissions (merged manifest, #217): INTERNET, ACCESS_NETWORK_STATE,
         WAKE_LOCK, NFC (required=false); rasm — Photo Picker
         (READ_MEDIA_* yo'q), kamera — intent (CAMERA yo'q)
       * App Links: https://nfcstore.uz /u /c /post /story /nfc, autoVerify
       * [x] BLOCKER tuzatildi (89613bc): sessiya tokeni Auto Backup va
         telefondan-telefonga ko'chirishdan chiqarildi + resetOnError
-- [~] signed AAB + APK (CI `nova-apk.yml` #207) — natija PLAY_CONSOLE_HANDOFF.md da
+- [x] signed AAB + APK (CI `nova-apk.yml` #217, f478798; RELEASE imzo, v2,
+      zipalign OK) — SHA-256 va havolalar PLAY_CONSOLE_HANDOFF.md da
 - [x] Play skrinshotlar 1.1.0 dan qayta olindi (24-bit PNG), release notes UZ/RU/EN,
       `PLAY_CONSOLE_HANDOFF.md` (final publish tugmasi BOSILMAYDI)
 

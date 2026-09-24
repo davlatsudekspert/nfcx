@@ -282,7 +282,7 @@ ilovalarga qo'yadigan talablari. Hammasi mavjud.
 ### 3.5 Ruxsatlar
 
 `AndroidManifest.xml` da ikkita, yakuniy APK'da (kutubxonalar bilan,
-CI `aapt2 dump permissions`, qurilish #207) to'rtta — hammasi "normal":
+CI `aapt2 dump permissions`, qurilish #217) to'rtta — hammasi "normal":
 
 ```
 android.permission.INTERNET
