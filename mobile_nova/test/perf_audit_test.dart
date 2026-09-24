@@ -22,7 +22,7 @@ import 'helpers.dart';
 
 /// PERFORMANCE AUDITI (2026-09-23) — tasdiqlangan topilmalar.
 ///
-/// SM-2: profil setkasidan ochilgan post ro'yxatni QAYTA yuklamaydi.
+/// SM-2: (release auditida qayta ko'rildi) post har doim serverdan.
 /// SM-3: do'kon sahifasi bir vaqtda ikki xil `GET /api/companies/:id`
 ///       yubormaydi.
 /// SM-4: izoh yozilayotganda har harfda izohlar ro'yxati qayta
@@ -156,7 +156,11 @@ void main() {
     expect(adapter.calls, 2);
   });
 
-  test('SM-2: profil ro‘yxati bor — post undan olinadi, qayta yuklanmaydi',
+  // Release auditi: ro'yxatdagi nusxani QAYTARISH layk/izoh sonini
+  // sessiya bo'yi eskirtirardi. Nusxa endi faqat birinchi kadr uchun
+  // (`PostScreen`), provayder har doim serverdan oladi —
+  // test/release_audit_fixes_test.dart.
+  test('SM-2: profil ro‘yxati bor — post baribir serverdan yangilanadi',
       () async {
     final repo = _Posts();
     final c = ProviderContainer(overrides: [
@@ -172,8 +176,7 @@ void main() {
     final p = await c
         .read(postProvider((code: 'A', id: 6, company: false)).future);
     expect(p.text, 'ikkinchi');
-    expect(repo.postInCalls, 0, reason: 'ro‘yxat qayta yuklanmasin');
-    expect(repo.postsOfCalls, 1);
+    expect(repo.postInCalls, 1, reason: 'eski nusxa emas — yangi sonlar');
   });
 
   test('SM-2: ro‘yxat yo‘q (lenta/deep link) — serverdan, ro‘yxat YARATILMAYDI',

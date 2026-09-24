@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../design/tokens/nfc_tokens.dart';
@@ -29,6 +30,16 @@ import '../../design/tokens/nfc_tokens.dart';
 ///
 /// Rasmga aylantirib bo'lmasa (eski qurilma, buzuq fayl) — katakcha
 /// tekis fon va ijro belgisi bilan qoladi, ilova qulamaydi.
+///
+/// ## FAQAT CHIZILGAN KATAKCHA
+///
+/// Profil to'ri dangasa (`SliverGrid`): ekran ostidagi ~250 px kesh
+/// zonasidagi katakchalar QURILADI, lekin CHIZILMAYDI. Chizilmagan
+/// qatlamni rasmga olib bo'lmaydi (`toImage` xato beradi) — ilgari
+/// bunday katakcha pleer ochib, videoni yuklab, keyin muqovasiz
+/// abadiy qolardi (release auditi). Endi navbatga katakcha BIRINCHI
+/// MARTA CHIZILGANDA qo'yiladi; pleer ochilgach u chizilmay qolsa
+/// (aylantirib ketilgan) — keyingi chizilishda qayta urinadi.
 class VideoPoster extends StatefulWidget {
   const VideoPoster({super.key, required this.url});
 
@@ -58,7 +69,28 @@ class _VideoPosterState extends State<VideoPoster> {
   /// Yashirin bo'lgani uchun navbatdan CHIQDI — ko'ringanda qaytadi.
   bool _waiting = false;
 
+  /// Navbatda yoki olinmoqda — ikkinchi marta qo'yilmaydi.
+  bool _queued = false;
+
+  /// Oxirgi belgilangandan beri ekranga chizildi.
+  bool _painted = false;
+
+  /// Haqiqiy xato (buzuq fayl, tarmoq) — qayta urinilmaydi.
+  bool _failed = false;
+
+  void _onPaint() {
+    _painted = true;
+    if (_image != null || _queued || _waiting || _failed || _gone) return;
+    _queued = true;
+    // Chizish bosqichida navbat/`setState` mumkin emas — kadrdan keyin.
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (_gone || !mounted) return;
+      _enqueue();
+    });
+  }
+
   void _enqueue() {
+    _queued = true;
     final next = VideoPoster._tail.then((_) => _capture());
     // Bitta katakchadagi xato navbatni to'xtatib qo'ymasin.
     VideoPoster._tail = next.catchError((_) {});
@@ -72,9 +104,8 @@ class _VideoPosterState extends State<VideoPoster> {
       // LRU: oxirgi ishlatilgani oxiriga.
       VideoPoster._cache[widget.url] = cached;
       _image = cached;
-      return;
     }
-    _enqueue();
+    // Aks holda navbatga birinchi chizilishda (`_onPaint`).
   }
 
   @override
@@ -96,6 +127,7 @@ class _VideoPosterState extends State<VideoPoster> {
     // qo'yardi. Endi joy bo'shatiladi, ko'ringanda qaytadan navbatga.
     if (!TickerMode.of(context)) {
       _waiting = true;
+      _queued = false;
       return;
     }
     final c = VideoPlayerController.networkUrl(
@@ -106,11 +138,15 @@ class _VideoPosterState extends State<VideoPoster> {
       await c.initialize().timeout(const Duration(seconds: 15));
       await c.setVolume(0);
       if (_gone || !mounted) return;
+      _painted = false;
       setState(() => _c = c);
       // Birinchi kadr teksturaga tushishi uchun qisqa kutish.
       await Future<void>.delayed(const Duration(milliseconds: 350));
       await WidgetsBinding.instance.endOfFrame;
       if (_gone || !mounted) return;
+      // Pleer kadri ekranga chizilmadi (katakcha kesh zonasida) —
+      // rasmga olib bo'lmaydi. Keyingi chizilishda qayta navbatga.
+      if (!_painted) return;
       final box = _boundary.currentContext?.findRenderObject();
       if (box is RenderRepaintBoundary && box.hasSize) {
         final ratio = math.min(
@@ -130,7 +166,9 @@ class _VideoPosterState extends State<VideoPoster> {
       }
     } catch (_) {
       // Muqova bo'lmaydi — tekis fon qoladi.
+      _failed = true;
     } finally {
+      _queued = false;
       if (mounted && !_gone) setState(() => _c = null);
       await c.dispose();
     }
@@ -143,7 +181,10 @@ class _VideoPosterState extends State<VideoPoster> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      _PaintSignal(onPaint: _onPaint, child: _content(context));
+
+  Widget _content(BuildContext context) {
     final t = context.tokens;
     final image = _image;
     if (image != null) {
@@ -167,5 +208,36 @@ class _VideoPosterState extends State<VideoPoster> {
       );
     }
     return ColoredBox(color: t.surface2);
+  }
+}
+
+/// Bolasi ekranga chizilganda xabar beradi. Kesh zonasidagi (qurilgan,
+/// lekin chizilmagan) katakchani ko'rinadiganidan ajratadi.
+class _PaintSignal extends SingleChildRenderObjectWidget {
+  const _PaintSignal({required this.onPaint, super.child});
+
+  final VoidCallback onPaint;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderPaintSignal(onPaint);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderPaintSignal renderObject,
+  ) =>
+      renderObject.onPaint = onPaint;
+}
+
+class _RenderPaintSignal extends RenderProxyBox {
+  _RenderPaintSignal(this.onPaint);
+
+  VoidCallback onPaint;
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    super.paint(context, offset);
+    onPaint();
   }
 }

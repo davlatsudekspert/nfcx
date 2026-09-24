@@ -41,32 +41,15 @@ typedef PostRef = ({String code, int id, bool company});
 // RIVERPOD `dependencies` — demo daraxti uchun shart
 // (`profile_repository.dart` dagi izohga qarang).
 //
-// PROFIL SETKASIDAN OCHILGANDA QAYTA YUKLAMAYDI: alohida `GET
-// /api/posts/:id` yo'q, `postIn` muallifning BUTUN post ro'yxatini
-// qayta yuklab, ichidan qidiradi — profil esa o'sha ro'yxatni allaqachon
-// ushlab turibdi. `ref.exists` ro'yxat provayderini YARATMAYDI, ya'ni
-// lenta va deep link yo'li avvalgidek serverdan oladi. Layk holati
-// alohida `postLikesProvider` da, o'chirilgan post esa ro'yxatdan
-// `_confirmDelete` da invalidate bilan chiqariladi.
+// HAR OCHILISHDA SERVERDAN. Profil ro'yxatidagi nusxa faqat birinchi
+// kadr uchun o'rinbosar (`PostScreen._placeholder`): profil tabi butun
+// sessiya tirik turadi, o'sha nusxani QAYTARISH esa layk/izoh sonini
+// soatlab eskirgan holda ko'rsatardi (release auditi, SM-2 regressiyasi).
 final postProvider = FutureProvider.autoDispose.family<Post, PostRef>(
-    dependencies: [
-      socialRepositoryProvider,
-      profilePostsProvider,
-      companyPostsProvider,
-    ], (
+    dependencies: [socialRepositoryProvider], (
   ref,
   r,
 ) async {
-  if (r.code.isNotEmpty) {
-    final list = r.company
-        ? companyPostsProvider(r.code)
-        : profilePostsProvider(r.code);
-    if (ref.exists(list)) {
-      final hit =
-          ref.read(list).valueOrNull?.where((p) => p.id == r.id).firstOrNull;
-      if (hit != null) return hit;
-    }
-  }
   final res = await ref.watch(socialRepositoryProvider).postIn(r.code, r.id, company: r.company);
   return res.when(ok: (v) => v, err: (e) => throw e);
 });
@@ -111,11 +94,31 @@ class _PostScreenState extends ConsumerState<PostScreen> {
     super.dispose();
   }
 
+  /// Profil/kompaniya ro'yxati allaqachon yuklangan bo'lsa — undagi
+  /// nusxa. `exists`: ro'yxat provayderi bu yerda YARATILMAYDI.
+  Post? _placeholder() {
+    if (widget.code.isEmpty) return null;
+    final list = widget.company
+        ? companyPostsProvider(widget.code)
+        : profilePostsProvider(widget.code);
+    if (!ref.exists(list)) return null;
+    return ref
+        .read(list)
+        .valueOrNull
+        ?.where((p) => p.id == widget.id)
+        .firstOrNull;
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = L.of(context);
     final t = context.tokens;
-    final post = ref.watch(postProvider(_ref));
+    final fetched = ref.watch(postProvider(_ref));
+    // Server javobi kelguncha — profil setkasidagi nusxa (skelet
+    // o'rniga darhol post). Javob kelgach yangi sonlar bilan almashadi.
+    final cached =
+        fetched.hasValue || fetched.hasError ? null : _placeholder();
+    final post = cached != null ? AsyncData(cached) : fetched;
     final myIds = ref.watch(myIdsProvider);
 
     return NovaScaffold(
