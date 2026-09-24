@@ -17,6 +17,7 @@ import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import { readFollowAs, rememberFollowAs } from '../lib/followIdentity.js';
 import ProfileActionCluster from '../components/ProfileActionCluster.jsx';
+import AppDownloadCard from '../components/AppDownloadCard.jsx';
 import MusicRing from '../components/MusicRing.jsx';
 import ProfileQrModal from '../components/ProfileQrModal.jsx';
 import ProfileManifest from '../components/ProfileManifest.jsx';
@@ -2346,6 +2347,10 @@ export default function ProfilePage({ code, catalog, initialTab }) {
                 TAKRORLANMAYDI — ular allaqachon yuqorida to'liq nomli
                 tugmalar sifatida ko'rsatilgan. Pastda faqat NFCSTORE'ning
                 rasmiy kanali qoladi. */}
+
+            {/* NFCSTORE ilovasi — egasining kontentidan keyin, rasmiy
+                kanallar oldida (egasi, 2026-09-24). */}
+            <AppDownloadCard />
 
             {/* NFCSTORE'ning o'z rasmiy kanallari — har doim, har bir profilda bir xil. */}
             <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>

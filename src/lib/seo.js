@@ -155,6 +155,12 @@ export const SEO_ROUTES = {
     ru: { title: 'Контакты', description: 'Связаться с NFCSTORE — поддержка и сотрудничество.' },
     en: { title: 'Contact', description: 'Contact NFCSTORE — support and partnership.' },
   },
+  'ilova-yuklash': {
+    path: '/ilova-yuklash',
+    uz: { title: 'NFCSTORE ilovasi — Android', description: "NFCSTORE Android ilovasini yuklab oling: raqamli vizitka, NFC, Reels va biznes katalogi bitta ilovada." },
+    ru: { title: 'Приложение NFCSTORE — Android', description: 'Скачайте Android-приложение NFCSTORE: цифровая визитка, NFC, Reels и бизнес-каталог в одном приложении.' },
+    en: { title: 'NFCSTORE app — Android', description: 'Download the NFCSTORE Android app: digital business card, NFC, Reels and business catalog in one app.' },
+  },
   shartlar: {
     path: '/shartlar',
     uz: { title: 'Foydalanish shartlari', description: 'NFCSTORE.UZ ommaviy oferta va foydalanish shartlari.' },

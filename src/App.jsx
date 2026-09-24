@@ -58,6 +58,7 @@ const SettingsPage = lazyPage(() => import('./pages/SettingsPage.jsx'));
 const PricingPage = lazyPage(() => import('./pages/PricingPage.jsx'));
 const HowItWorksPage = lazyPage(() => import('./pages/HowItWorksPage.jsx'));
 const NewsPage = lazyPage(() => import('./pages/NewsPage.jsx'));
+const AppDownloadPage = lazyPage(() => import('./pages/AppDownloadPage.jsx'));
 const CatalogPage = lazyPage(() => import('./pages/CatalogPage.jsx'));
 const RankingPage = lazyPage(() => import('./pages/RankingPage.jsx'));
 const CompaniesPage = lazyPage(() => import('./pages/CompaniesPage.jsx'));
@@ -110,6 +111,8 @@ const STATIC_ROUTES = {
   xabarlar: MessagesPage,
   tolovlar: PaymentsPage,
   'karta-dizayni': CardDesignerPage,
+  // Android ilovasini saytdan yuklab olish (Play'ga chiqquncha).
+  'ilova-yuklash': AppDownloadPage,
   // MARKETPLACE'DA SOTILGAN MAHSULOTNI FAOLLASHTIRISH.
   // Konvertdagi QR aynan shu manzilni ochadi. Aktivatsiya kodi
   // URL'GA QO'SHILMAYDI — u faqat POST tanasida ketadi (brauzer
@@ -332,6 +335,7 @@ export default function App() {
     else if (cleanRoute === 'qollanma') page = <GuideRedirect />;
     else if (cleanRoute === 'tolovlar') page = <PaymentsPage />;
     else if (cleanRoute === 'karta-dizayni') page = <CardDesignerPage />;
+    else if (cleanRoute === 'ilova-yuklash') page = <AppDownloadPage />;
     // MARKETPLACE MAHSULOTINI FAOLLASHTIRISH.
     //
     // `bare`: saytning sarlavhasi va menyusi KO'RSATILMAYDI. Bu

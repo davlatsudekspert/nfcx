@@ -144,4 +144,37 @@ export const DICT_SITE = {
   'Juda tez yozyapsiz. Biroz kuting.': { ru: 'Вы пишете слишком быстро. Подождите немного.', en: 'You are writing too fast. Please wait a moment.' },
   'Avval tizimga kiring.': { ru: 'Сначала войдите в систему.', en: 'Please sign in first.' },
   'Yuklanmoqda…': { ru: 'Загрузка…', en: 'Loading…' },
+  // ─────────────────────────── Android ilovasi (/ilova-yuklash, profil kartasi) ───────────────────────────
+  'Android ilovasi': { ru: 'Android-приложение', en: 'Android app' },
+  'NFCSTORE ilovasini': { ru: 'Скачайте приложение', en: 'Get the NFCSTORE' },
+  'yuklab oling': { ru: 'NFCSTORE', en: 'app' },
+  "Ilova tez orada Google Play'da chiqadi. Hozircha uni shu yerdan o'rnating — keyin Play Market orqali yangilanadi.": {
+    ru: 'Скоро приложение появится в Google Play. Пока установите его отсюда — потом оно будет обновляться через Play Маркет.',
+    en: 'The app is coming to Google Play soon. For now, install it from here — later it will update through the Play Store.' },
+  "Hozircha ilova faqat Android uchun. iPhone versiyasi tez orada — shu vaqtgacha profilingiz saytda to'liq ishlaydi.": {
+    ru: 'Пока приложение только для Android. Версия для iPhone скоро — а до тех пор ваш профиль полностью работает на сайте.',
+    en: 'For now the app is Android only. The iPhone version is coming soon — until then your profile works fully on the website.' },
+  'Yuklab olish (Android)': { ru: 'Скачать (Android)', en: 'Download (Android)' },
+  'Beta versiya · ~65 MB': { ru: 'Бета-версия · ~65 МБ', en: 'Beta version · ~65 MB' },
+  'Raqamli vizitkangiz doim telefoningizda': { ru: 'Цифровая визитка всегда в телефоне', en: 'Your digital business card always on your phone' },
+  'NFC karta va stikerlarga profil yozish': { ru: 'Запись профиля на NFC-карты и стикеры', en: 'Write your profile to NFC cards and stickers' },
+  'Lenta, Reels va istoriyalar': { ru: 'Лента, Reels и истории', en: 'Feed, Reels and stories' },
+  'Biznes sahifasi va katalog': { ru: 'Бизнес-страница и каталог', en: 'Business page and catalog' },
+  "Qanday o'rnatiladi": { ru: 'Как установить', en: 'How to install' },
+  "«Yuklab olish» tugmasini bosing — fayl telefoningizga tushadi.": {
+    ru: 'Нажмите «Скачать» — файл загрузится на телефон.', en: 'Tap “Download” — the file is saved to your phone.' },
+  "Faylni oching. Telefon so'rasa, brauzerga «noma'lum manbalardan o'rnatish»ga ruxsat bering.": {
+    ru: 'Откройте файл. Если телефон спросит, разрешите браузеру «установку из неизвестных источников».',
+    en: 'Open the file. If your phone asks, allow the browser to “install unknown apps”.' },
+  "«O'rnatish» tugmasini bosing. Play Protect ogohlantirsa — «Baribir o'rnatish»ni tanlang.": {
+    ru: 'Нажмите «Установить». Если Play Защита предупредит — выберите «Всё равно установить».',
+    en: 'Tap “Install”. If Play Protect warns you, choose “Install anyway”.' },
+  'Ilovani oching va NFCSTORE hisobingiz bilan kiring.': {
+    ru: 'Откройте приложение и войдите в свой аккаунт NFCSTORE.', en: 'Open the app and sign in with your NFCSTORE account.' },
+  "Fayl Google Play imzosi bilan — ilova Play Market'ga chiqqach, uni o'chirmasdan Play orqali yangilaysiz. Muammo bo'lsa: @nfcstore_admin": {
+    ru: 'Файл подписан Google Play — когда приложение выйдет в Play Маркет, вы обновите его через Play без удаления. Если что-то не так: @nfcstore_admin',
+    en: 'The file carries the Google Play signature — once the app is in the Play Store you can update it there without reinstalling. Problems? @nfcstore_admin' },
+  'NFCSTORE ilovasi': { ru: 'Приложение NFCSTORE', en: 'NFCSTORE app' },
+  "O'z raqamli vizitkangizni yarating — Android uchun": {
+    ru: 'Создайте свою цифровую визитку — для Android', en: 'Create your own digital business card — for Android' },
 };
