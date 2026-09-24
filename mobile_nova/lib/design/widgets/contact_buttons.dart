@@ -21,31 +21,72 @@ class ContactButtons extends StatelessWidget {
 
   final List<ContactAction> actions;
 
+  /// Bitta tugma katagining eni va tugmalar orasidagi masofa.
+  static const _cell = 68.0;
+  static const _gap = 8.0;
+
   @override
   Widget build(BuildContext context) {
     if (actions.isEmpty) return const SizedBox.shrink();
-    return SizedBox(
-      height: 92,
-      child: ListView.separated(
-        key: const ValueKey('contact-buttons'),
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        padding: EdgeInsets.zero,
-        itemCount: actions.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 6),
-        itemBuilder: (context, i) => _ContactButton(action: actions[i]),
-      ),
+    // MARKAZDA, TENG ORALIQ BILAN (egasi, 2026-09-24: "markazga
+    // tekislangan, oraliq teng, chapga yoki o'ngga surilmasin").
+    //
+    // Ilgari gorizontal ro'yxat edi — qator doim CHAP chetdan
+    // boshlanardi. Endi:
+    //   * sig'sa — bitta qator, ekran markazida;
+    //   * sal sig'masa — katak biroz torayadi (doira o'lchami saqlanadi);
+    //   * umuman sig'masa — TENG qatorlarga bo'linadi (6 -> 3 + 3), har
+    //     qator markazda. Hech qanday tugma ekrandan tashqarida qolmaydi.
+    return LayoutBuilder(
+      key: const ValueKey('contact-buttons'),
+      builder: (context, c) {
+        final n = actions.length;
+        final max = c.maxWidth;
+        double need(double cell) => n * cell + (n - 1) * _gap;
+
+        Widget row(List<ContactAction> items, double cell) => Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                for (var i = 0; i < items.length; i++) ...[
+                  if (i > 0) const SizedBox(width: _gap),
+                  _ContactButton(action: items[i], width: cell),
+                ],
+              ],
+            );
+
+        if (need(_cell) <= max) return row(actions, _cell);
+        final tight = (max - (n - 1) * _gap) / n;
+        if (tight >= 60) return row(actions, tight);
+
+        final perRow = ((max + _gap) / (_cell + _gap)).floor().clamp(1, n);
+        final rows = (n / perRow).ceil();
+        final each = (n / rows).ceil();
+        return Column(
+          children: [
+            for (var r = 0; r < rows; r++) ...[
+              if (r > 0) const SizedBox(height: 10),
+              row(
+                actions.sublist(
+                    r * each, ((r + 1) * each).clamp(0, n)),
+                _cell,
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 }
 
 class _ContactButton extends StatelessWidget {
-  const _ContactButton({required this.action});
+  const _ContactButton({required this.action, this.width = 68});
   final ContactAction action;
+  final double width;
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
+    final ink = !t.isDark;
     final l = L.of(context);
     final spec = _specs[action.kind]!;
     final label = action.kind == ContactKind.link && action.label.isNotEmpty
@@ -67,28 +108,40 @@ class _ContactButton extends StatelessWidget {
             ..showSnackBar(SnackBar(content: Text(l.shareCopied)));
         },
         child: SizedBox(
-          width: 68,
+          width: width,
           child: Column(
             children: [
               Container(
-                width: 58,
-                height: 58,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  // Brend rangining juda nozik foni — mayin, keskin emas.
-                  gradient: RadialGradient(colors: [
-                    spec.color.withValues(alpha: .10),
-                    spec.color.withValues(alpha: .04),
-                  ]),
-                  border: Border.all(color: spec.color.withValues(alpha: .16)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: spec.color.withValues(alpha: .10),
-                      blurRadius: 14,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
-                ),
+                width: 56,
+                height: 56,
+                decoration: ink
+                    // PREMIUM OQ-QORA (2026-09-24): oq sirt, aniq siyoh
+                    // chegara va yumshoq soya — doira "yuvilib" ketmaydi.
+                    // Brend rangi faqat LOGOTIPDA qoladi.
+                    ? BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: t.surfaceSolid,
+                        border: Border.all(
+                            color: t.text1.withValues(alpha: .16), width: 1.1),
+                        boxShadow: t.shadowSoft,
+                      )
+                    : BoxDecoration(
+                        shape: BoxShape.circle,
+                        // Brend rangining juda nozik foni.
+                        gradient: RadialGradient(colors: [
+                          spec.color.withValues(alpha: .10),
+                          spec.color.withValues(alpha: .04),
+                        ]),
+                        border: Border.all(
+                            color: spec.color.withValues(alpha: .16)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: spec.color.withValues(alpha: .10),
+                            blurRadius: 14,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
                 alignment: Alignment.center,
                 child: SvgPicture.string(
                   spec.svg,
@@ -106,8 +159,8 @@ class _ContactButton extends StatelessWidget {
                 style: TextStyle(
                   fontFamily: AppType.sans,
                   fontSize: 11.5,
-                  fontWeight: FontWeight.w500,
-                  color: t.text2,
+                  fontWeight: ink ? FontWeight.w600 : FontWeight.w500,
+                  color: ink ? t.text1 : t.text2,
                 ),
               ),
             ],

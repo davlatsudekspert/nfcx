@@ -135,6 +135,14 @@ void main() {
             followers: 5,
             following: 4,
             posts: 9,
+            contact: ContactInfo(
+              phone: '+998901234567',
+              telegram: 'nfcstoreuz',
+              whatsapp: '+998901234567',
+              instagram: 'nfcstore.uz',
+              facebook: 'nfcstoreuz',
+              address: 'Toshkent',
+            ),
             cardLinked: true),
         NfcId(code: 'UZD772', name: 'Oybek', views: 2),
         NfcId(code: 'TTS075', name: 'Tohir', views: 5),
@@ -167,6 +175,14 @@ void main() {
   testWidgets('Profil 390', (t) async {
     await app(t, Routes.profile, 'redesign-$tag-profile',
         size: const Size(390, 1250));
+  });
+  testWidgets('Profil 360', (t) async {
+    await app(t, Routes.profile, 'redesign-$tag-profile-360',
+        size: const Size(360, 1100));
+  });
+  testWidgets('Profil 430', (t) async {
+    await app(t, Routes.profile, 'redesign-$tag-profile-430',
+        size: const Size(430, 1100));
   });
   testWidgets('Home 360', (t) async {
     await app(t, Routes.home, 'redesign-$tag-home-360',
