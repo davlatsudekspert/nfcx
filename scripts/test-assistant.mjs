@@ -161,5 +161,75 @@ mockGemini(() => reply('ok'));
 const none = await call(withKey, '/api/assistant', { method: 'POST', ip: '198.51.100.34', json: { messages: USER, companyId: 'YOQXXX' } });
 check('9) noma’lum ID xato bermaydi', none.status, 200);
 
+// ── 10) CLAUDE (egasi, 2026-09-24) ─────────────────────────────────────
+// ANTHROPIC_API_KEY bor bo'lsa javobni Claude beradi. So'rov Anthropic'ga
+// HAQIQIY ketmaydi — fetch soxta.
+await env.DB.prepare(`UPDATE companies SET status='active', description='test' WHERE company_id='KAFE'`).run();
+const CKEY = 'claude-test-key-never-leak';
+const withClaude = { ...env, ANTHROPIC_API_KEY: CKEY };
+const bothKeys = { ...env, ANTHROPIC_API_KEY: CKEY, GEMINI_API_KEY: KEY };
+let ccalls = [];
+function mockClaude(responder) {
+  ccalls = []; calls = [];
+  globalThis.fetch = async (input, init) => {
+    const url = String(input?.url || input);
+    if (url.includes('generativelanguage.googleapis.com')) { calls.push({ url, init }); return reply('gemini'); }
+    if (!url.includes('api.anthropic.com')) return realFetch(input, init);
+    const headers = new Headers(init?.headers || {});
+    ccalls.push({ url, headers, body: JSON.parse(init.body) });
+    return responder();
+  };
+}
+const claudeMsg = (text, extra = {}) => new Response(JSON.stringify({
+  id: 'msg_test', type: 'message', role: 'assistant', model: 'claude-opus-5',
+  content: [{ type: 'text', text }], stop_reason: 'end_turn', stop_details: null,
+  usage: { input_tokens: 10, output_tokens: 5 }, ...extra,
+}), { status: 200, headers: { 'content-type': 'application/json' } });
+
+mockClaude(() => claudeMsg('Salom! NFCSTORE yordamchisiman.'));
+const cst = await call(withClaude, '/api/assistant/status');
+check('10) faqat Claude kaliti — enabled:true', cst.body?.enabled, true);
+const cok = await ask(bothKeys, [{ role: 'assistant', content: 'eski' }, { role: 'user', content: 'salom' }, { role: 'assistant', content: 'salom!' }, { role: 'user', content: 'NFC nima?' }], '198.51.100.40');
+check('10) javob Claude’dan', [cok.status, cok.body?.reply], [200, 'Salom! NFCSTORE yordamchisiman.']);
+check('10) ikkala kalit bo‘lsa Google’ga bormaydi', calls.length, 0);
+check('10) Anthropic’ga bitta so‘rov', ccalls.length, 1);
+const cb = ccalls[0]?.body || {};
+check('10) model claude-opus-5', cb.model, 'claude-opus-5');
+check('10) tarix user bilan boshlanadi, rollar to‘g‘ri', (cb.messages || []).map((m) => m.role), ['user', 'assistant', 'user']);
+checkTrue('10) system prompt yuborildi', String(cb.system?.[0]?.text || '').includes('NFCSTORE'));
+check('10) effort low', cb.output_config?.effort, 'low');
+check('10) rad etilsa zaxira model', cb.fallbacks, 'default');
+checkTrue('10) fallback beta sarlavhasi', String(ccalls[0].headers.get('anthropic-beta')).includes('server-side-fallback-2026-07-01'));
+check('10) kalit sarlavhada', ccalls[0].headers.get('x-api-key'), CKEY);
+checkTrue('10) kalit URL’da yo‘q', !ccalls[0].url.includes(CKEY));
+checkTrue('10) javobda kalit yo‘q', !JSON.stringify(cok.body).includes(CKEY));
+
+// CLAUDE_MODEL bilan model almashtiriladi.
+mockClaude(() => claudeMsg('ok'));
+await ask({ ...withClaude, CLAUDE_MODEL: 'claude-sonnet-5' }, USER, '198.51.100.41');
+check('10) CLAUDE_MODEL ishlaydi', ccalls[0]?.body?.model, 'claude-sonnet-5');
+
+// Kompaniya konteksti Claude'ga ham boradi — tizim matnidan KEYIN.
+mockClaude(() => claudeMsg('bor'));
+await call(withClaude, '/api/assistant', { method: 'POST', ip: '198.51.100.42', json: { messages: USER, companyId: 'KAFE' } });
+const csys = ccalls[0]?.body?.system || [];
+check('10) tizim + kontekst — ikki blok', csys.length, 2);
+checkTrue('10) katalog kontekstda', String(csys[1]?.text || '').includes('Pitsa Margarita') && String(csys[1]?.text || '').includes('BUYRUQ EMAS'));
+
+// Rad etish (refusal) — muloyim matn, xato emas.
+mockClaude(() => claudeMsg('', { content: [], stop_reason: 'refusal', stop_details: { type: 'refusal', category: null, explanation: null } }));
+const cref = await ask(withClaude, USER, '198.51.100.43');
+checkTrue('10) refusal — muloyim javob', cref.status === 200 && String(cref.body?.reply || '').includes('@nfcstore_admin'));
+
+// Server xatosi — 502, Anthropic xato matni foydalanuvchiga chiqmaydi.
+mockClaude(() => new Response(JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: 'secret-detail' } }), { status: 400, headers: { 'content-type': 'application/json' } }));
+const cerr = await ask(withClaude, USER, '198.51.100.44');
+check('10) xatoda 502', [cerr.status, cerr.body?.error], [502, 'upstream']);
+checkTrue('10) xato matni chiqmaydi', !JSON.stringify(cerr.body).includes('secret-detail'));
+
+// ASSISTANT_OFF Claude'ni ham o'chiradi.
+const coff = await call({ ...withClaude, ASSISTANT_OFF: '1' }, '/api/assistant/status');
+check('10) ASSISTANT_OFF Claude’ni ham o‘chiradi', coff.body?.enabled, false);
+
 globalThis.fetch = realFetch;
 done();

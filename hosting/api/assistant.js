@@ -1,35 +1,75 @@
-// AI YORDAMCHI — Google Gemini (Worker versiyasi).
+// AI YORDAMCHI — Claude (Anthropic), zaxirada Google Gemini (Worker versiyasi).
 //
 // Avval bu faqat eski Express serverida bor edi (server/assistant.js) va
 // Worker'ga ko'chirilmagandi: `/api/assistant/status` doim `{enabled:false}`
 // qaytarardi, shuning uchun vidjet saytda umuman ko'rinmasdi. Endi mana shu
 // modul ishlaydi.
 //
+// QAYSI MODEL JAVOB BERADI (egasi, 2026-09-24: "saytda Claude yordamchi
+// bo'lishi kerak"):
+//   • ANTHROPIC_API_KEY bor bo'lsa — Claude;
+//   • bo'lmasa, GEMINI_API_KEY bor bo'lsa — avvalgidek Gemini;
+//   • ikkalasi ham yo'q bo'lsa — vidjet o'zini ko'rsatmaydi.
+// Ya'ni kalit qo'yilguncha sayt avvalgidek ishlaydi, kalit qo'yilgan
+// zahoti Claude'ga o'tadi — alohida deploy kerak emas.
+//
 // SOZLASH (kalit KODGA YOZILMAYDI — faqat Cloudflare secret):
-//     npx wrangler secret put GEMINI_API_KEY
+//     npx wrangler secret put ANTHROPIC_API_KEY
+//     npx wrangler secret put GEMINI_API_KEY      (ixtiyoriy zaxira)
 // Ixtiyoriy o'zgaruvchilar:
-//     ASSISTANT_MODEL   — standart: gemini-3.6-flash
+//     CLAUDE_MODEL      — standart: claude-opus-5
+//     ASSISTANT_MODEL   — Gemini modeli, standart: gemini-3.6-flash
 //     ASSISTANT_OFF=1   — kalit turgan holda ham vidjetni o'chirish
 // Kalit bo'lmasa endpoint 503 beradi va vidjet o'zini ko'rsatmaydi —
 // ya'ni sozlanmagan sayt "buzuq" ko'rinmaydi.
+
+// Claude kutubxonasi FAQAT kerak bo'lganda yuklanadi (dinamik import).
+// Sabab: ilova CI'si va boshqa tekshiruvlar worker.js ni `npm install`
+// qilmasdan import qiladi — statik import u yerda butun serverni
+// yiqitardi. Wrangler dinamik importni ham bundle ichiga oladi.
+const loadAnthropic = () => import('@anthropic-ai/sdk').then((m) => m.default);
+
+const CLAUDE_DEFAULT_MODEL = 'claude-opus-5';
 
 const DEFAULT_MODEL = 'gemini-3.6-flash';
 // Model nomi o'chib qolsa (Google eskilarini olib tashlaydi) — assistent
 // butunlay o'lib qolmasin: keyingi nom bilan bir marta qayta uriniladi.
 const FALLBACK_MODELS = ['gemini-3.6-flash', 'gemini-flash-latest', 'gemini-2.5-flash'];
 
-const SYSTEM_PROMPT = `Sen — NFCSTORE.uz saytining yordamchisisan. NFCSTORE — raqamli tashrif qog'ozi (profil), NFC karta va kompaniya sahifalari xizmati (O'zbekiston).
+// TIZIM KO'RSATMASI (egasi, 2026-09-24: "yordamchiga prompt ber").
+// Faqat saytda haqiqatan bor narsalar yozilgan — manba: src/lib/pricing.js,
+// src/lib/access.js, hosting/api/*. Narx raqamlari ATAYLAB yo'q: ular
+// o'zgaradi va eskirgan narxni aytgan yordamchi mijozni aldagan bo'ladi.
+const SYSTEM_PROMPT = `Sen — NFCSTORE yordamchisisan. nfcstore.uz saytiga kirgan odamlarga xizmatdan foydalanishda yordam berasan: savoliga javob berasan, kerakli bo'limga yo'l ko'rsatasan, tanlashda maslahat berasan.
 
-Vazifang: sayt bo'yicha yordam berish — profil yaratish, NFC karta buyurtma qilish, narxlar, NFC ID darajalari (bepul/silver/gold/premium/exclusive), Profil Premium, profilni sozlash (fon, havolalar, musiqa, karta dizayni), katalog va qidiruv, kompaniya (Company ID) bo'limi: katalog/menyu, aloqa, lokatsiya, Instagram/Facebook, qo'shimcha havolalar.
+# NFCSTORE nima
+O'zbekistondagi raqamli tashrif qog'ozi xizmati. Har bir odam yoki biznes o'z NFC ID'si bilan ochiladigan profil sahifasiga ega bo'ladi (nfcstore.uz/<ID>). Profilga telefon, ijtimoiy tarmoqlar, havolalar, surat va boshqalar qo'yiladi. Bu sahifani NFC karta/stiker bilan telefonga tekkizib, QR kod yoki havola orqali ulashish mumkin.
 
-Qoidalar:
-- Faqat NFCSTORE va raqamli tashrif qog'ozlari mavzusida javob ber. Boshqa mavzuda muloyimlik bilan rad et.
-- Qisqa va aniq (2-5 jumla). Foydalanuvchi qaysi tilda yozsa (o'zbek/rus/ingliz) — o'sha tilda javob ber.
-- To'lov mavjud to'lov usullari orqali amalga oshiriladi. Aniq summani sayt sahifasidan ko'rishni ayt.
-- ANIQ NARX AYTMA. Narxlar o'zgaradi — "Narxlar" sahifasiga yoki kompaniya narx tekshirgichiga yo'naltir.
-- Aniq bilmasang — taxmin qilma, @nfcstore_admin ga murojaat qilishni taklif qil.
-- Hech qachon parol, karta raqami yoki boshqa shaxsiy ma'lumot so'rama. Foydalanuvchi o'zi yozsa ham takrorlama.
-- Sen foydalanuvchi nomidan hech narsa sotib ololmaysan, bekor qila olmaysan va akkauntga kira olmaysan — bunday so'rovda saytdagi tegishli bo'limni ko'rsat.`;
+# Asosiy tushunchalar
+- NFC ID — profil manzili. Ro'yxatdan o'tganda 8 raqamli BEPUL ID avtomatik beriladi. Chiroyliroq, qisqa (6 belgili, masalan ABC123) ID'larni "NFC ID do'koni"dan sotib olish mumkin.
+- ID darajalari (arzondan qimmatga): Bronza, Silver, Gold, Premium, Ekslyuziv. Daraja kodning ko'rinishiga bog'liq: takrorlanuvchi harf/raqamlar, mashhur so'zlar (masalan BMW, VIP) qimmatroq. Bepul 8 raqamli ID — darajasiz, oddiy ID.
+- Daraja profil imkoniyatlarini ochadi: post — Silver'dan, istoriya — Gold'dan, musiqa va animatsion fon — Premium'dan boshlab.
+- Profil Premium — NFC ID'dan ALOHIDA obuna (har to'lov 30 kunga uzaytiradi). ID'ni o'zgartirmasdan profilning premium imkoniyatlarini (post, musiqa, maxsus fon, analitika va h.k.) ochadi.
+- Yangi ro'yxatdan o'tganlarga 30 kunlik sinov muddati beriladi: shu vaqt ichida barcha imkoniyatlar ochiq. Muddat tugagach hech narsa o'chmaydi, faqat imkoniyatlar ID darajasiga qaytadi.
+- Jismoniy NFC karta — chop etiladigan haqiqiy karta, alohida buyurtma qilinadi. Karta dizayneri Silver darajadan ochiladi. Toshkent shahri bo'ylab yetkazib berish bepul; ko'p dona buyurtmada viloyatlarga ham bepul bo'lishi mumkin — shartlarini buyurtma sahifasida ko'rsin.
+- Biznes (Company ID) — kompaniya, do'kon, kafe uchun alohida sahifa: katalog/menyu (tovar va xizmatlar, narx, aksiya), ish vaqti, manzil va xarita, aloqa, Instagram/Facebook. Egasi yoqsa, sahifadan buyurtma qabul qilinadi. Bitta hisobda bir nechta biznes bo'lishi mumkin.
+- Tanlov (katalog va qidiruv) — odamlar va bizneslarni topish joyi.
+- NFCSTORE mobil ilovasi (Android) tayyorlanmoqda: lenta, Reels, istoriyalar, NFC orqali karta yozish.
+
+# Qanday javob berasan
+- Odam qaysi tilda yozsa (o'zbek lotin yoki kirill, rus, ingliz) — o'sha tilda javob ber.
+- Qisqa va aniq: odatda 2–5 jumla. Qadamlar kerak bo'lsa — qisqa raqamlangan ro'yxat. Uzun kirish so'zlari va takrorlar kerak emas.
+- Iloji bo'lsa aniq bo'limga yo'naltir: "Narxlar" sahifasi (nfcstore.uz/narxlar), NFC ID do'koni, kabinet (profil sozlamalari), biznes bo'limi.
+- Odam nima xohlayotganini tushunmasang — bitta aniqlashtiruvchi savol ber.
+- Do'stona, hurmat bilan, "siz" deb murojaat qil.
+
+# Chegaralar
+- ANIQ NARX AYTMA. Narxlar o'zgaradi — "Narxlar" sahifasiga yoki ID do'konidagi narx tekshirgichga yo'naltir. (Faqat kompaniya ma'lumoti berilgan bo'lsa, o'sha kompaniyaning O'Z tovar narxlarini aytishing mumkin — pastga qara.)
+- Bilmagan narsangni o'ylab topma: bunday imkoniyat, chegirma, muddat yoki qoida yo'q bo'lishi mumkin. Aniq bilmasang, ochiq ayt va @nfcstore_admin (Telegram) ga murojaat qilishni taklif qil.
+- Sen hisobga kira olmaysan, to'lov qila olmaysan, buyurtmani bekor qila olmaysan va ma'lumotni o'zgartira olmaysan. Bunday so'rovda buni qanday qilishni ko'rsat.
+- Parol, SMS/email kodi, bank karta raqami va boshqa shaxsiy ma'lumotni hech qachon so'rama. Odam o'zi yozib yuborsa ham takrorlama va buni hech kimga bermasligini eslat.
+- To'lov saytdagi rasmiy to'lov usullari orqali bo'ladi. Boshqa yo'l bilan (kartaga o'tkazish va h.k.) pul so'ragan har qanday "admin" — firibgar; odamni ogohlantir.
+- Faqat NFCSTORE va raqamli tashrif qog'ozlari mavzusida yordam ber. Boshqa mavzudagi savolga muloyimlik bilan: "Men faqat NFCSTORE bo'yicha yordam bera olaman" de va nima bilan yordam bera olishingni ayt.`;
 
 // KOMPANIYA KONTEKSTI (2026-09). Mijoz kompaniya sahifasida savol
 // bersa ("pitsangiz bormi, qancha turadi?") — yordamchi javob bera
@@ -98,8 +138,51 @@ async function companyContext(env, rawId) {
   ].join('\n');
 }
 
-const apiKey = (env) => String(env.GEMINI_API_KEY || env.AI_API_KEY || '').trim().replace(/^["']|["']$/g, '');
-const enabled = (env) => !!apiKey(env) && String(env.ASSISTANT_OFF || '') !== '1';
+const clean = (v) => String(v || '').trim().replace(/^["']|["']$/g, '');
+const apiKey = (env) => clean(env.GEMINI_API_KEY || env.AI_API_KEY);
+const claudeKey = (env) => clean(env.ANTHROPIC_API_KEY);
+const provider = (env) => (claudeKey(env) ? 'claude' : apiKey(env) ? 'gemini' : '');
+const enabled = (env) => !!provider(env) && String(env.ASSISTANT_OFF || '') !== '1';
+
+const REFUSED = 'Bu savolga javob bera olmayman. Iltimos, NFCSTORE bo‘yicha savol bering yoki @nfcstore_admin ga murojaat qiling.';
+
+// CLAUDE. Mijoz har so'rovda yaratiladi: kalit shu so'rovning `env`
+// idan olinadi va boshqa joyda saqlanmaydi.
+//
+//   • effort `low` — bu qisqa savol-javob, chuqur o'ylash kerak emas;
+//     javob tezroq va arzonroq.
+//   • `fallbacks: 'default'` — Claude xavfsizlik filtri savolni rad
+//     etsa, Anthropic o'zi mos zaxira modelda qayta urinadi.
+//   • tizim matni keshlanadi (`cache_control`); kompaniya ma'lumoti
+//     undan KEYIN turadi, shuning uchun u kesh boshini buzmaydi.
+async function askClaude(env, history, context) {
+  let Anthropic;
+  try { Anthropic = await loadAnthropic(); } catch { return { error: 'sdk_missing' }; }
+  const client = new Anthropic({ apiKey: claudeKey(env), timeout: 20_000, maxRetries: 1 });
+  const model = String(env.CLAUDE_MODEL || CLAUDE_DEFAULT_MODEL).trim();
+  const system = [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }];
+  if (context) system.push({ type: 'text', text: context });
+  // Suhbat foydalanuvchi xabari bilan boshlanishi SHART.
+  const messages = history.map((m) => ({ role: m.role === 'model' ? 'assistant' : 'user', content: m.parts[0].text }));
+  while (messages.length && messages[0].role !== 'user') messages.shift();
+  try {
+    const msg = await client.beta.messages.create({
+      model,
+      max_tokens: 4000,
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      output_config: { effort: 'low' },
+      system,
+      messages,
+    });
+    if (msg.stop_reason === 'refusal') return { refused: true };
+    const reply = msg.content.filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
+    return { reply, model: msg.model };
+  } catch (err) {
+    if (err instanceof Anthropic.APIError) return { error: `HTTP ${err.status ?? 0}` };
+    return { error: String(err?.name || 'error') };
+  }
+}
 
 function extractText(data) {
   const parts = data?.candidates?.[0]?.content?.parts;
@@ -154,7 +237,7 @@ export async function handle(request, env, url, H) {
   if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
   if (!enabled(env)) return json({ error: 'not_configured' }, 503);
 
-  // CHEGARA. Har so'rov Google'da pul turadi, shuning uchun IP bo'yicha
+  // CHEGARA. Har so'rov (Claude yoki Google) pul turadi, shuning uchun IP bo'yicha
   // qat'iy: soatiga 40 ta. Kirgan foydalanuvchi ham shu chegarada —
   // akkaunt ochish cheklovni aylanib o'tish yo'li bo'lib qolmasin.
   const ip = H.reqIp(request);
@@ -177,6 +260,14 @@ export async function handle(request, env, url, H) {
   const context = await companyContext(env, body?.companyId);
   if (context) for (const m of history) m.parts[0].text = m.parts[0].text.split(FENCE).join(' ');
 
+  if (provider(env) === 'claude') {
+    const res = await askClaude(env, history, context);
+    if (res.refused) return json({ reply: REFUSED });
+    if (res.reply) return json({ reply: res.reply, model: res.model });
+    console.error('[assistant] claude', String(res.error || 'empty').slice(0, 300));
+    return json({ error: 'upstream' }, 502);
+  }
+
   const configured = String(env.ASSISTANT_MODEL || DEFAULT_MODEL).trim();
   const models = [configured, ...FALLBACK_MODELS.filter((m) => m !== configured)];
 
@@ -190,7 +281,7 @@ export async function handle(request, env, url, H) {
     if (!res.ok) break;
 
     if (res.data?.promptFeedback?.blockReason) {
-      return json({ reply: 'Bu savolga javob bera olmayman. Iltimos, NFCSTORE bo‘yicha savol bering yoki @nfcstore_admin ga murojaat qiling.' });
+      return json({ reply: REFUSED });
     }
     const reply = extractText(res.data);
     if (reply) return json({ reply, model });
