@@ -165,15 +165,19 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(Gap.screenX, Gap.sm, Gap.screenX, Gap.md),
             child: Container(
+              // Yorug' mavzuda oq sirt + nozik chegara + yengil soya
+              // (premium redizayn, 2026-09-24).
               decoration: BoxDecoration(
-                color: t.surface2,
+                color: t.surfaceSolid,
                 borderRadius: R.pill,
-                border: Border.all(color: t.border2),
+                border: Border.all(color: t.border1),
+                boxShadow: t.shadowTiny,
               ),
               padding: const EdgeInsets.symmetric(horizontal: Gap.lg),
               child: Row(
                 children: [
-                  Icon(Icons.search_rounded, size: 19, color: t.text3),
+                  Icon(Icons.search_rounded,
+                      size: 19, color: t.text1),
                   const SizedBox(width: Gap.md),
                   Expanded(
                     child: TextField(

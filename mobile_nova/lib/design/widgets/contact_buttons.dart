@@ -74,7 +74,6 @@ class _ContactButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final ink = !t.isDark;
     // Tor katakda doira ham kichrayadi (56 -> 40), nisbat saqlanadi.
     final circle = (width - 8).clamp(40.0, 56.0);
     final l = L.of(context);
@@ -104,39 +103,20 @@ class _ContactButton extends StatelessWidget {
               Container(
                 width: circle,
                 height: circle,
-                decoration: ink
-                    // PREMIUM OQ-QORA (2026-09-24): oq sirt, aniq siyoh
-                    // chegara va yumshoq soya — doira "yuvilib" ketmaydi.
-                    // Brend rangi faqat LOGOTIPDA qoladi.
-                    ? BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: t.surfaceSolid,
-                        border: Border.all(
-                          color: t.text1.withValues(alpha: .16),
-                          width: 1.1,
-                        ),
-                        boxShadow: t.shadowSoft,
-                      )
-                    : BoxDecoration(
-                        shape: BoxShape.circle,
-                        // Brend rangining juda nozik foni.
-                        gradient: RadialGradient(
-                          colors: [
-                            spec.color.withValues(alpha: .10),
-                            spec.color.withValues(alpha: .04),
-                          ],
-                        ),
-                        border: Border.all(
-                          color: spec.color.withValues(alpha: .16),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: spec.color.withValues(alpha: .10),
-                            blurRadius: 14,
-                            offset: const Offset(0, 5),
-                          ),
-                        ],
-                      ),
+                // PREMIUM (2026-09-24): sirt doira, aniq chegara va
+                // yumshoq soya — doira "yuvilib" ketmaydi; brend rangi
+                // faqat LOGOTIPDA. Qorong'i mavzularda doira iliq OQ:
+                // brend logotiplari (Facebook ko'ki va h.k.) to'q fonda
+                // ko'rinmay qolardi.
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: t.isDark ? const Color(0xFFF7F4EE) : t.surfaceSolid,
+                  border: Border.all(
+                    color: t.text1.withValues(alpha: .16),
+                    width: 1.1,
+                  ),
+                  boxShadow: t.shadowSoft,
+                ),
                 alignment: Alignment.center,
                 child: SvgPicture.string(
                   spec.svg,
@@ -155,8 +135,8 @@ class _ContactButton extends StatelessWidget {
                   style: TextStyle(
                     fontFamily: AppType.sans,
                     fontSize: width < 60 ? 10.5 : 11.5,
-                    fontWeight: ink ? FontWeight.w600 : FontWeight.w500,
-                    color: ink ? t.text1 : t.text2,
+                    fontWeight: FontWeight.w600,
+                    color: t.text1,
                   ),
                 ),
               ),

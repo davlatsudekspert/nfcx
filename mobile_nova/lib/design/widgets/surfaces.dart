@@ -122,7 +122,16 @@ class Capsule extends StatelessWidget {
     // `nfcstore.uz/c/...` dagi til: fon qorong'i qolaveradi,
     // tanlov esa nozik tus + ingichka oltin chiziq + oltin matn
     // bilan ko'rsatiladi.
-    final fg = selected ? accent : t.text2;
+    //
+    // PREMIUM OQ-QORA (2026-09-24): yorug' mavzuda ODDIY filtr chipi
+    // (rangsiz, `tone` berilmagan) — faol bo'lsa QORA SIYOH, yozuvi oq;
+    // faol bo'lmasa oq sirt + nozik chegara, yozuv to'q. Holat
+    // yorliqlari (`tone`: ogohlantirish, xato) o'z rangidagi tusda
+    // qoladi. Qorong'i mavzularda — avvalgidek.
+    final ink = tone == null;
+    final fg = ink
+        ? (selected ? t.surfaceSolid : t.text1)
+        : (selected ? accent : t.text2);
 
     return PressableScale(
       onTap: onTap,
@@ -133,15 +142,22 @@ class Capsule extends StatelessWidget {
           horizontal: dense ? 12 : 15,
           vertical: dense ? 7 : 9.5,
         ),
-        decoration: BoxDecoration(
-          color: selected
-              ? accent.withValues(alpha: t.isDark ? .13 : .18)
-              : t.surface2,
-          borderRadius: R.pill,
-          border: Border.all(
-            color: selected ? accent.withValues(alpha: .55) : t.border2,
-          ),
-        ),
+        decoration: ink
+            ? BoxDecoration(
+                color: selected ? t.text1 : t.surfaceSolid,
+                borderRadius: R.pill,
+                border: Border.all(color: selected ? t.text1 : t.border1),
+                boxShadow: selected ? null : t.shadowTiny,
+              )
+            : BoxDecoration(
+                color: selected
+                    ? accent.withValues(alpha: t.isDark ? .13 : .18)
+                    : t.surface2,
+                borderRadius: R.pill,
+                border: Border.all(
+                  color: selected ? accent.withValues(alpha: .55) : t.border2,
+                ),
+              ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [

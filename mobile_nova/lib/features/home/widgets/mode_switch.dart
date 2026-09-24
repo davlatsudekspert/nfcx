@@ -23,10 +23,10 @@ class ModeSwitch extends StatelessWidget {
     final t = context.tokens;
     final l = L.of(context);
     final business = mode == AppMode.business;
-    // PREMIUM OQ-QORA (egasi, 2026-09-24: "toggle chiroyli, qimmat va
-    // aniq"). Yorug' mavzuda faol tomon QORA SIYOH, yozuvi oq — kulrang
-    // "o'chirilgan forma" ko'rinishi yo'q. Qorong'ida — avvalgi tus.
-    final ink = !t.isDark;
+    // PREMIUM (egasi, 2026-09-24: "toggle chiroyli, qimmat va aniq",
+    // "hamma temalarda ham"). Faol tomon mavzuning asosiy matn rangida
+    // (Ivory'da qora siyoh), yozuvi sirt rangida — kulrang "o'chirilgan
+    // forma" ko'rinishi yo'q.
     const h = 44.0;
 
     return Semantics(
@@ -43,10 +43,10 @@ class ModeSwitch extends StatelessWidget {
         height: h,
         padding: const EdgeInsets.all(3),
         decoration: BoxDecoration(
-          color: ink ? t.surfaceSolid : t.surface2,
+          color: t.surfaceSolid,
           borderRadius: R.pill,
-          border: Border.all(color: ink ? t.border1 : t.border2),
-          boxShadow: ink ? t.shadowTiny : null,
+          border: Border.all(color: t.border1),
+          boxShadow: t.shadowTiny,
         ),
         child: LayoutBuilder(
           builder: (context, c) {
@@ -63,29 +63,18 @@ class ModeSwitch extends StatelessWidget {
                     curve: Motion.smooth,
                     width: w,
                     height: h - 8,
-                    decoration: ink
-                        ? BoxDecoration(
-                            color: t.text1,
-                            borderRadius: R.pill,
-                            boxShadow: [
-                              BoxShadow(
-                                color: t.text1.withValues(alpha: .24),
-                                blurRadius: 12,
-                                spreadRadius: -4,
-                                offset: const Offset(0, 5),
-                              ),
-                            ],
-                          )
-                        : BoxDecoration(
-                            // TUS, TO'LDIRISH EMAS (qorong'i mavzular).
-                            color: t.wash(business ? t.accentB : t.accent2,
-                                .14),
-                            borderRadius: R.pill,
-                            border: Border.all(
-                              color: (business ? t.accentB : t.accent2)
-                                  .withValues(alpha: .5),
-                            ),
-                          ),
+                    decoration: BoxDecoration(
+                      color: t.text1,
+                      borderRadius: R.pill,
+                      boxShadow: [
+                        BoxShadow(
+                          color: t.text1.withValues(alpha: .24),
+                          blurRadius: 12,
+                          spreadRadius: -4,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 Row(
@@ -93,7 +82,7 @@ class ModeSwitch extends StatelessWidget {
                     _Label(
                       text: l.modePersonal,
                       selected: !business,
-                      tone: ink ? t.surfaceSolid : t.accent2,
+                      tone: t.surfaceSolid,
                       height: h - 8,
                       width: w,
                       onTap: () => onChanged(AppMode.personal),
@@ -102,7 +91,7 @@ class ModeSwitch extends StatelessWidget {
                     _Label(
                       text: l.modeBusiness,
                       selected: business,
-                      tone: ink ? t.surfaceSolid : t.accentB,
+                      tone: t.surfaceSolid,
                       height: h - 8,
                       width: w,
                       onTap: () => onChanged(AppMode.business),

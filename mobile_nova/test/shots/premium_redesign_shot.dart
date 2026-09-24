@@ -152,7 +152,8 @@ void main() {
       ])),
     ]);
     addTearDown(c.dispose);
-    await c.read(prefsProvider).setThemeId('ivory');
+    await c.read(prefsProvider)
+        .setThemeId(Platform.environment['THEME'] ?? 'ivory');
     if (business) await c.read(prefsProvider).setMode('business');
     await tester.pumpWidget(UncontrolledProviderScope(
       container: c,
@@ -185,6 +186,20 @@ void main() {
   testWidgets('Tanlov -> profil (pastki panel bilan)', (t) async {
     await app(t, Routes.discover, 'redesign-$tag-user-from-discover',
         push: Routes.user('VIP001'));
+  });
+  testWidgets('Tanlov', (t) async {
+    await app(t, Routes.discover, 'redesign-$tag-discover',
+        size: const Size(390, 1200));
+  });
+  testWidgets('NFC markazi', (t) async {
+    await app(t, Routes.nfc, 'redesign-$tag-nfc', size: const Size(390, 1200));
+  });
+  testWidgets('Reels', (t) async {
+    await app(t, Routes.reels, 'redesign-$tag-reels');
+  });
+  testWidgets('Post', (t) async {
+    await app(t, Routes.home, 'redesign-$tag-post',
+        push: Routes.post(40, code: 'VIP001'));
   });
   testWidgets('Profil 360', (t) async {
     await app(t, Routes.profile, 'redesign-$tag-profile-360',

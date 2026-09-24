@@ -434,14 +434,17 @@ class _ActionRow extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(Gap.lg, 14, Gap.md, 14),
           child: Row(
             children: [
+              // Premium (2026-09-24): kulrang kvadrat o'rniga doira —
+              // sirt, nozik chegara, siyoh belgi (hamma mavzuda).
               Container(
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: t.surface2,
-                  borderRadius: BorderRadius.circular(14),
+                  color: t.surfaceSolid,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: t.border1),
                 ),
-                child: Icon(icon, size: 20, color: t.text1),
+                child: Icon(icon, size: 19, color: t.text1),
               ),
               const SizedBox(width: Gap.lg),
               Expanded(
@@ -558,13 +561,25 @@ class NoNfcPanel extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: t.surfaceSolid,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: t.border2),
-                boxShadow: t.shadowTiny,
+                border: Border.all(color: t.border1),
+                boxShadow: t.shadowSoft,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(icon, size: 22, color: t.text1),
+                  // Asosiy sahifadagi tezkor amallar bilan bir til:
+                  // siyoh doira, champagne hoshiya, sirt rangidagi belgi.
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: t.text1,
+                      border: Border.all(
+                          color: t.brand.withValues(alpha: .55), width: 1),
+                    ),
+                    child: Icon(icon, size: 19, color: t.surfaceSolid),
+                  ),
                   const SizedBox(height: Gap.lg),
                   const Spacer(),
                   Text(title,

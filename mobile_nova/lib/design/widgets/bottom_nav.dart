@@ -223,17 +223,15 @@ class _NavButton extends StatelessWidget {
     final iconSize = compact ? 24.0 : 25.0;
     final labelSize = compact ? 10.5 : 11.0;
 
-    // PREMIUM OQ-QORA (egasi, 2026-09-24: "ikonkalar qoraroq, aniqroq,
-    // qimmatroq; faol holat premium").
+    // PREMIUM (egasi, 2026-09-24: "ikonkalar qoraroq, aniqroq,
+    // qimmatroq; faol holat premium" va "hamma temalarda ham").
     //
-    // Yorug' mavzuda faol tab — QORA SIYOH kapsula, ichida oq belgi;
-    // faol emaslari — deyarli qora grafit (kulrang emas), chiziqli
-    // belgi. Rang yo'q, faqat siyoh darajalari. Qorong'i mavzularda
-    // avvalgi yumshoq tus qoladi.
-    final ink = !t.isDark;
-    final idle = ink ? Color.lerp(t.text1, t.text2, .35)! : t.text3;
-    final color = selected ? (ink ? t.text1 : t.accent2) : idle;
-    final iconColor = selected && ink ? t.surfaceSolid : color;
+    // Faol tab — mavzuning ASOSIY MATN rangidagi kapsula (Ivory'da qora
+    // siyoh, qorong'i mavzularda yorug'), ichidagi belgi sirt rangida.
+    // Faol emaslari — `text1` ga yaqin to'q ton (kulrang emas).
+    final idle = Color.lerp(t.text1, t.text2, .35)!;
+    final color = selected ? t.text1 : idle;
+    final iconColor = selected ? t.surfaceSolid : color;
     return Semantics(
       button: true,
       selected: selected,
@@ -251,11 +249,9 @@ class _NavButton extends StatelessWidget {
                 width: compact ? 50 : 54,
                 height: 30,
                 decoration: BoxDecoration(
-                  color: selected
-                      ? (ink ? t.text1 : t.accent2.withValues(alpha: .16))
-                      : (ink ? t.text1 : t.accent2).withValues(alpha: 0),
+                  color: selected ? t.text1 : t.text1.withValues(alpha: 0),
                   borderRadius: BorderRadius.circular(15),
-                  boxShadow: selected && ink
+                  boxShadow: selected
                       ? [
                           BoxShadow(
                             color: t.text1.withValues(alpha: .22),
@@ -270,7 +266,7 @@ class _NavButton extends StatelessWidget {
                 child: Icon(
                   selected ? (item.activeIcon ?? item.icon) : item.icon,
                   // Kapsula ichida belgi biroz kichik — "nafas" oladi.
-                  size: selected && ink ? iconSize - 3 : iconSize,
+                  size: selected ? iconSize - 3 : iconSize,
                   color: iconColor,
                 ),
               ),
