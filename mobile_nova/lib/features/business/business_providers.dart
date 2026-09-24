@@ -41,10 +41,13 @@ final selectedBusinessProvider = StateProvider<String?>((ref) {
 });
 
 /// Tanlangan kompaniyani eslab qolish (holat + telefon xotirasi).
+///
+/// `ref` faqat birinchi `await` gacha — `selectPersonal` dagi sabab bilan.
 Future<void> rememberBusiness(WidgetRef ref, String companyId) async {
+  final prefs = ref.read(prefsProvider);
   ref.read(selectedBusinessProvider.notifier).state = companyId;
   try {
-    await ref.read(prefsProvider).setSelectedBusiness(companyId);
+    await prefs.setSelectedBusiness(companyId);
   } catch (_) {/* xotira yo'q — faqat shu sessiya */}
 }
 

@@ -138,12 +138,18 @@ final selectedPersonalCodeProvider = StateProvider<String?>((ref) {
 ///
 /// Holat va telefon xotirasi birga yangilanadi: ilova qayta ochilganda
 /// ham shu ID faol bo'ladi. Rejim shaxsiyga o'tadi.
+///
+/// `ref` FAQAT BIRINCHI `await` GACHA ishlatiladi: tanlov o'zgarishi
+/// bosilgan kartani qayta quradi va u yo'q qilinadi — keyin
+/// `ref.read` StateError otardi va rejim almashmay qolardi (E2E #59).
 Future<void> selectPersonal(WidgetRef ref, String code) async {
+  final prefs = ref.read(prefsProvider);
+  final mode = ref.read(modeProvider.notifier);
   ref.read(selectedPersonalCodeProvider.notifier).state = code;
   try {
-    await ref.read(prefsProvider).setSelectedPersonal(code);
+    await prefs.setSelectedPersonal(code);
   } catch (_) {/* xotira yo'q — faqat shu sessiya */}
-  await ref.read(modeProvider.notifier).set(AppMode.personal);
+  await mode.set(AppMode.personal);
 }
 
 /// TANLANGAN YOZUV — BUTUN RO'YXATDAN QIDIRILADI.

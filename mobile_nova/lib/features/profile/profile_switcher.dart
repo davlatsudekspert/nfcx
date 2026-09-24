@@ -56,10 +56,12 @@ Future<void> switchToBusiness(BuildContext context, WidgetRef ref) async {
     return;
   }
 
+  // Rejim notifier'i OLDINDAN olinadi: tanlov o'zgarishi chaqirgan
+  // vidjetni qayta qurib yo'q qilishi mumkin (`selectPersonal` izohi).
+  final mode = ref.read(modeProvider.notifier);
   if (list.length == 1) {
     await rememberBusiness(ref, list.first.companyId);
-    if (!context.mounted) return;
-    await ref.read(modeProvider.notifier).set(AppMode.business);
+    await mode.set(AppMode.business);
     return;
   }
 
@@ -91,8 +93,7 @@ Future<void> switchToBusiness(BuildContext context, WidgetRef ref) async {
   );
   if (picked == null || !context.mounted) return;
   await rememberBusiness(ref, picked.companyId);
-  if (!context.mounted) return;
-  await ref.read(modeProvider.notifier).set(AppMode.business);
+  await mode.set(AppMode.business);
 }
 
 /// Shaxsiy rejimga o'tish — bir nechta NFC ID bo'lsa tanlatadi.
