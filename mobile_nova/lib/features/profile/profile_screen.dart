@@ -160,7 +160,13 @@ class ProfileScreen extends ConsumerWidget {
         onRefresh: () async {
           await ref.read(sessionProvider.notifier).refresh();
           if (!context.mounted) return;
-          if (id != null) ref.invalidate(profilePostsProvider(id.code));
+          // Biznes profilda KOMPANIYA postlari yangilanadi (UIQ-1:
+          // ilgari faqat shaxsiy ro'yxat yangilanardi).
+          if (active != null && active.isBusiness) {
+            ref.invalidate(companyPostsProvider(active.code));
+          } else if (id != null) {
+            ref.invalidate(profilePostsProvider(id.code));
+          }
         },
         child: NovaScroll(
           padding: EdgeInsets.only(bottom: navSafeBottom(context)),
@@ -1316,7 +1322,10 @@ class _PostsGridState extends ConsumerState<_PostsGrid> {
           child: StatePanel.fromError(
             context,
             asAppError(e),
-            onRetry: () => ref.invalidate(profilePostsProvider(code)),
+            // To'r qaysi manbani ko'rsatsa, o'shani qayta o'qiydi (UIQ-1).
+            onRetry: () => ref.invalidate(company
+                ? companyPostsProvider(code)
+                : profilePostsProvider(code)),
           ),
         ),
       ),
