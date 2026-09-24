@@ -77,7 +77,9 @@ const schema = readFileSync(new URL('../db/d1-migration/0001-schema.sql', import
     ['worker.js', path.join('api', 'auth.js'), path.join('api', 'account.js'), path.join('api', 'admin-extra.js')]
       .every((f) => hostingJs.includes(f)));
   // Izohlar olib tashlanadi: tushuntirishda bu so'zlar bor.
-  const delUsers = /DELETE\s+FROM\s+"?users"?\b/i;
+  // `main.users`, `"users"`, `` `users` `` va `[users]` ham ushlanadi
+  // (sinovi: scripts/test-account-deletion-pr1.mjs, (m) bo'lim).
+  const delUsers = /DELETE\s+FROM\s+(?:main\.)?[`"\[]?users[`"\]]?\b/i;
   const offenders = hostingJs.filter((f) => delUsers.test(stripComments(readFileSync(path.join(hostingDir, f), 'utf8'))));
   check(`hosting/**/*.js (${hostingJs.length} ta fayl) foydalanuvchi qatorini o'chirmaydi (DELETE FROM users yo'q)`, offenders, []);
   checkTrue('account.js karta o\'chirish yo\'li tozalashni chaqiradi', /cardContentCleanupStmts\(/.test(account));

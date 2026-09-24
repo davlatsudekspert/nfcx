@@ -9432,6 +9432,15 @@ async function userAccountApi(request, env, url) {
     const id = Number(giftAction[1]); const action = giftAction[2];
     const offer = await env.DB.prepare(`SELECT id, code, from_user_id, to_user_id FROM gift_offers WHERE id = ? AND status = 'pending'`).bind(id).first();
     if (!offer) return json({ error: 'not_found' }, 404);
+    // O'chirilgan yuboruvchining eski taklifi QABUL qilinmaydi: aks holda
+    // o'chirilgan hisob kartasi oluvchiga o'tib ketardi. Javob noma'lum
+    // taklif bilan bir xil. Rad etish va bekor qilish avvalgidek.
+    if (action === 'accept') {
+      const senderDeleted = await env.DB.prepare(
+        `SELECT 1 AS x FROM users WHERE id = ? AND deleted_at IS NOT NULL`
+      ).bind(offer.from_user_id).first();
+      if (senderDeleted) return json({ error: 'not_found' }, 404);
+    }
     if (action === 'cancel') {
       if (Number(offer.from_user_id) !== Number(user.id)) return json({ error: 'forbidden' }, 403);
       await env.DB.prepare(`UPDATE gift_offers SET status = 'cancelled', decided_at = ? WHERE id = ? AND status = 'pending'`).bind(nowTs(), id).run();

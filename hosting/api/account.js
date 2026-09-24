@@ -447,12 +447,15 @@ export async function handle(request, env, url, H) {
     const offset = (page - 1) * limit;
     // Postgres LATERAL join o'rniga korrelyatsiyalangan sub-so'rovlar
     // (qabul qiluvchining asosiy/eng eski kartasi). from_user_id HECH QACHON
-    // tanlanmaydi (privacy).
+    // tanlanmaydi (privacy). O'chirilgan oluvchi yashirin oluvchi kabi:
+    // ismi va kartasi kodi chiqmaydi (hisob tiklansa qaytadi).
     const rows = await env.DB.prepare(
       `SELECT g.code, g.decided_at AS date,
               (SELECT name FROM cards WHERE user_id = g.to_user_id ORDER BY is_primary DESC, ts ASC LIMIT 1) AS recipientName,
               (SELECT code FROM cards WHERE user_id = g.to_user_id ORDER BY is_primary DESC, ts ASC LIMIT 1) AS recipientCode,
-              COALESCE((SELECT hidden_from_directory FROM cards WHERE user_id = g.to_user_id ORDER BY is_primary DESC, ts ASC LIMIT 1), 1) AS hidden
+              CASE WHEN EXISTS (SELECT 1 FROM users du WHERE du.id = g.to_user_id AND du.deleted_at IS NOT NULL) THEN 1
+                   ELSE COALESCE((SELECT hidden_from_directory FROM cards WHERE user_id = g.to_user_id ORDER BY is_primary DESC, ts ASC LIMIT 1), 1)
+              END AS hidden
        FROM gift_offers g
        WHERE g.status = 'accepted' AND g.decided_at >= ?
        ORDER BY g.decided_at DESC LIMIT ? OFFSET ?`
@@ -601,9 +604,16 @@ export async function handle(request, env, url, H) {
       const pending = await env.DB.prepare(`SELECT id FROM gift_offers WHERE code = ? AND status = 'pending' LIMIT 1`).bind(code).first();
       if (pending) return H.json({ error: 'ALREADY_PENDING' }, 409);
 
+      // INSERT SHARTLI: yuqoridagi tekshiruvdan keyin oluvchi o'chirilgan
+      // bo'lsa (parallel `DELETE /api/account`) qator yozilmaydi va javob
+      // o'sha RECIPIENT_NOT_FOUND.
       const row = await env.DB.prepare(
-        `INSERT INTO gift_offers (code, from_user_id, to_user_id, status, created_at) VALUES (?, ?, ?, 'pending', ?) RETURNING id`
-      ).bind(code, user.id, toUserId, H.nowTs()).first();
+        `INSERT INTO gift_offers (code, from_user_id, to_user_id, status, created_at)
+         SELECT ?, ?, ?, 'pending', ?
+          WHERE EXISTS (SELECT 1 FROM users WHERE id = ? AND deleted_at IS NULL)
+         RETURNING id`
+      ).bind(code, user.id, toUserId, H.nowTs(), toUserId).first();
+      if (!row) return H.json({ error: 'RECIPIENT_NOT_FOUND' }, 409);
       return H.json({ ok: true, id: row.id }, 201);
     }
   }

@@ -36,6 +36,19 @@
 //       o'zgarmaydi.
 //   (h) o'chirilgan hisob kartasiga yangi taklif -> RECIPIENT_NOT_FOUND.
 //
+// PR-1 review'ning ikkinchi davri:
+//   (i) o'chirilgan yuboruvchining eski taklifini QABUL qilib bo'lmaydi
+//       (404, noma'lum taklif bilan bir xil) — aks holda o'chirilgan
+//       hisob kartasi boshqa odamga o'tib ketardi. Rad etish avvalgidek.
+//   (j) yangi taklif: tekshiruvdan keyin, INSERT dan oldin oluvchi
+//       o'chirilsa ham taklif yozilmaydi (shartli INSERT).
+//   (k) sayt: emaili yashirilgan (o'chirilgan) oluvchiga yuborilgan
+//       taklif bo'sh ism bilan emas, "o'chirilgan hisob" deb ko'rinadi.
+//   (l) ommaviy "Sovg'alar" devori: o'chirilgan oluvchining ismi va
+//       kartasi kodi ko'rinmaydi (yashirin oluvchi kabi). Faqat o'qish.
+//   (m) `test-card-cleanup.mjs` qo'riqchisi `main.users`, `"users"`,
+//       `` `users` ``, `[users]` yozilishlarini ham ushlaydi.
+//
 // Haqiqiy `hosting/worker.js`, in-memory D1 (`scripts/lib/d1-harness.mjs`,
 // foreign key'lar yoqilgan). Production D1/R2 ga TEGMAYDI, tarmoqqa
 // chiqmaydi.
@@ -43,7 +56,9 @@
 //   node scripts/test-account-deletion-pr1.mjs
 import worker from '../hosting/worker.js';
 import { makeEnv, seedBasic, req, cookie, makeChecker } from './lib/d1-harness.mjs';
+import { stripComments } from './lib/strip-comments.mjs';
 import { scryptSync, randomBytes } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 
 const { check, checkTrue, done } = makeChecker();
 const { env, sqlite } = makeEnv({ TELEGRAM_BOT_TOKEN: 'test-token' });
@@ -584,6 +599,165 @@ const offerRow = (id) => sqlite.prepare(`SELECT status, decided_at FROM gift_off
 
   const ok = await call('/api/records/OTH229/gift', { method: 'POST', cookie: cookie.other, json: { toCode: 'THR333' } });
   check('h) tirik hisob kartasiga taklif -> 201 (avvalgidek)', [ok.status, ok.body?.ok], [201, true]);
+}
+
+// =====================================================================
+// (i) O'CHIRILGAN YUBORUVCHINING ESKI TAKLIFINI QABUL QILIB BO'LMAYDI
+//     Ilgari qabul qilinsa o'chirilgan hisob kartasi oluvchiga o'tardi.
+//     Rad etish avvalgidek ishlaydi (bekor qilish — (g) da).
+// =====================================================================
+{
+  // PR-1 dan oldin o'chirilgan hisob: takliflari bekor qilinmagan,
+  // kartalari hali o'zida.
+  seedDeletedUser(80, 'sender80@test.local', '+998907770080', 'DS0080');
+  sqlite.prepare(`INSERT INTO cards (code, name, price, ts, user_id) VALUES ('DS0081', 'Eski egasi 2', 0, 2, 80)`).run();
+  const accId = insOffer('DS0080', 80, 203, 'pending');
+  const rejId = insOffer('DS0081', 80, 203, 'pending');
+  const cardOwner = (code) => sqlite.prepare(`SELECT user_id FROM cards WHERE code = ?`).get(code)?.user_id;
+
+  const acc = await call(`/api/gift-offers/${accId}/accept`, { method: 'POST', cookie: as3 });
+  check('i) o‘chirilgan yuboruvchi taklifini qabul qilish -> 404 not_found', [acc.status, acc.body], [404, { error: 'not_found' }]);
+  const unknown = await call('/api/gift-offers/999999/accept', { method: 'POST', cookie: as3 });
+  check('i) javob mavjud bo‘lmagan taklif bilan bir xil', [acc.status, acc.body], [unknown.status, unknown.body]);
+  check('i) karta o‘chirilgan hisobda qoldi (oluvchiga o‘tmadi)', cardOwner('DS0080'), 80);
+  check('i) taklif holati o‘zgarmadi', offerRow(accId), { status: 'pending', decided_at: null });
+
+  const rej = await call(`/api/gift-offers/${rejId}/reject`, { method: 'POST', cookie: as3 });
+  check('i) rad etish avvalgidek -> 200 {ok:true}', [rej.status, rej.body], [200, { ok: true }]);
+  check('i) taklif rejected bo‘ldi', [offerRow(rejId)?.status, !!offerRow(rejId)?.decided_at], ['rejected', true]);
+  check('i) rad etishda karta joyida', cardOwner('DS0081'), 80);
+
+  // Tirik yuboruvchining taklifi avvalgidek qabul qilinadi.
+  sqlite.prepare(`INSERT INTO cards (code, name, price, ts, user_id) VALUES ('OTH231', 'Boshqa 4', 0, 4, 2)`).run();
+  const aliveId = insOffer('OTH231', 2, 203, 'pending');
+  const ok = await call(`/api/gift-offers/${aliveId}/accept`, { method: 'POST', cookie: as3 });
+  check('i) tirik yuboruvchi taklifini qabul qilish -> 200 {ok, code} (avvalgidek)', [ok.status, ok.body], [200, { ok: true, code: 'OTH231' }]);
+  check('i) karta yangi egaga o‘tdi', cardOwner('OTH231'), 203);
+}
+
+// =====================================================================
+// (j) YANGI TAKLIF: TEKSHIRUV BILAN INSERT ORASIDA OLUVCHI O'CHIRILSA
+//     Oldindan tekshiruv o'tgan bo'lsa ham taklif yozilmaydi — INSERT
+//     o'zi shartli. Aks holda o'chirilgan hisobga taklif qolib, kod
+//     `ALREADY_PENDING` bilan qulflanardi.
+// =====================================================================
+{
+  sqlite.prepare(`INSERT INTO users (id, email, password_hash) VALUES (307, 'seven@test.local', 'x')`).run();
+  sqlite.prepare(`INSERT INTO cards (code, name, price, ts, user_id) VALUES ('SEV777', 'Yettinchi', 0, 1, 307)`).run();
+  sqlite.prepare(`INSERT INTO cards (code, name, price, ts, user_id) VALUES ('OTH232', 'Boshqa 5', 0, 5, 2)`).run();
+  const pendingOf = () => n(`SELECT COUNT(*) AS n FROM gift_offers WHERE code = 'OTH232' AND status = 'pending'`);
+  const total = n(`SELECT COUNT(*) AS n FROM gift_offers`);
+
+  // Poyga: hamma tekshiruv o'tgach, taklif yozilishidan OLDIN boshqa
+  // so'rov #307 hisobini o'chirib bo'ladi.
+  const realPrepare = env.DB.prepare;
+  let raced = false;
+  env.DB.prepare = (sql) => {
+    if (!raced && /^\s*INSERT\s+INTO\s+gift_offers\b/i.test(sql)) {
+      raced = true;
+      sqlite.prepare(`UPDATE users SET deleted_at = '2026-09-24 10:00:00+00' WHERE id = 307`).run();
+    }
+    return realPrepare(sql);
+  };
+  let r;
+  try {
+    r = await call('/api/records/OTH232/gift', { method: 'POST', cookie: cookie.other, json: { toCode: 'SEV777' } });
+  } finally {
+    env.DB.prepare = realPrepare;
+  }
+  checkTrue('j) poyga sodir bo‘ldi: INSERT oldidan oluvchi o‘chirildi', raced && !!userRow(307)?.deleted_at);
+  check('j) poyga -> 409 RECIPIENT_NOT_FOUND', [r.status, r.body], [409, { error: 'RECIPIENT_NOT_FOUND' }]);
+  check('j) taklif yozilmadi (kod qulflanmadi)', [n(`SELECT COUNT(*) AS n FROM gift_offers`), pendingOf()], [total, 0]);
+
+  // Poygasiz: tirik oluvchiga javob o'zgarmagan — 201 {ok:true, id}.
+  sqlite.prepare(`UPDATE users SET deleted_at = NULL WHERE id = 307`).run();
+  const ok = await call('/api/records/OTH232/gift', { method: 'POST', cookie: cookie.other, json: { toCode: 'SEV777' } });
+  const row = sqlite.prepare(`SELECT id, code, from_user_id, to_user_id, status FROM gift_offers WHERE code = 'OTH232' AND status = 'pending'`).get();
+  check('j) poygasiz -> 201 {ok:true, id} (javob o‘zgarmagan)', [ok.status, ok.body], [201, { ok: true, id: row?.id }]);
+  check('j) taklif to‘g‘ri yozildi', row && [row.code, row.from_user_id, row.to_user_id, row.status], ['OTH232', 2, 307, 'pending']);
+}
+
+// =====================================================================
+// (k) SAYT: O'CHIRILGAN OLUVCHIGA YUBORILGAN TAKLIF QATORI
+//     Server bunday taklifda `toEmail: ''` qaytaradi ((g) ga qarang).
+//     Ilgari qator "KOD — ga yuborilgan…" bo'lib, ism o'rni bo'sh
+//     qolardi. Endi o'rniga tarjimasi bor "o'chirilgan hisob" turadi.
+// =====================================================================
+{
+  const src = stripComments(readFileSync(new URL('../src/pages/AccountPage.jsx', import.meta.url), 'utf8'));
+  const start = src.indexOf('outgoing.map(');
+  const row = start >= 0 ? src.slice(start, src.indexOf('</div>', start)) : '';
+  checkTrue('k) AccountPage: yuborilgan takliflar qatori topildi',
+    row.includes('g.toEmail') && row.includes("t('ga yuborilgan, javob kutilmoqda')"));
+  check('k) toEmail yolg‘iz chiqarilmaydi (bo‘sh bo‘lsa ism o‘rni bo‘sh qolardi)', /\{\s*g\.toEmail\s*\}/.test(row), false);
+  checkTrue('k) toEmail bo‘sh bo‘lsa t(‘o‘chirilgan hisob’) ko‘rinadi',
+    /\{\s*g\.toEmail\s*\|\|\s*t\(\s*'o‘chirilgan hisob'\s*\)\s*\}/.test(row));
+  const { DICT } = await import('../src/lib/translations.js');
+  check('k) "o‘chirilgan hisob" tarjimasi bor (ru, en)', DICT['o‘chirilgan hisob'],
+    { ru: 'удалённый аккаунт', en: 'deleted account' });
+}
+
+// =====================================================================
+// (l) OMMAVIY "SOVG'ALAR" DEVORI: O'CHIRILGAN OLUVCHI YASHIRIN
+//     Ismi ham, kartasi kodi ham chiqmaydi — `hidden_from_directory`
+//     bilan bir xil. Faqat o'qish: hisob tiklansa yana ko'rinadi.
+// =====================================================================
+{
+  sqlite.prepare(`INSERT OR REPLACE INTO admin_settings (key, value) VALUES ('public_gifts_cutoff', '2020-01-01')`).run();
+  sqlite.prepare(`INSERT INTO users (id, email, password_hash, deleted_at) VALUES (308, 'eight@test.local', 'x', '2026-09-23 10:00:00+00')`).run();
+  sqlite.prepare(`INSERT INTO cards (code, name, price, ts, user_id, is_primary) VALUES ('EIG888', 'Sakkizinchi Ism', 0, 1, 308, 1)`).run();
+  sqlite.prepare(`INSERT INTO users (id, email, password_hash) VALUES (309, 'nine@test.local', 'x')`).run();
+  sqlite.prepare(`INSERT INTO cards (code, name, price, ts, user_id, is_primary) VALUES ('NIN999', 'Toqqizinchi', 0, 1, 309, 1)`).run();
+  const gift = (code, to, decided) => sqlite.prepare(
+    `INSERT INTO gift_offers (code, from_user_id, to_user_id, status, created_at, decided_at) VALUES (?, 2, ?, 'accepted', '2026-09-22 09:00:00+00', ?)`,
+  ).run(code, to, decided);
+  gift('GWD308', 308, '2026-09-22 10:00:00+00');
+  gift('GWA309', 309, '2026-09-22 11:00:00+00');
+  const offersBefore = sqlite.prepare(`SELECT * FROM gift_offers ORDER BY id`).all();
+
+  const wall = async () => (await call('/api/gifts/public?limit=24')).body;
+  const pick = (w, code) => (w?.gifts || []).find((g) => g.code === code) || null;
+  const w = await wall();
+  check('l) o‘chirilgan oluvchi: ism va kod null (yashirin oluvchi kabi)', pick(w, 'GWD308'),
+    { code: 'GWD308', recipientName: null, recipientCode: null, date: '2026-09-22 10:00:00+00' });
+  checkTrue('l) javobda o‘chirilgan hisob ismi ham, kartasi kodi ham yo‘q',
+    !JSON.stringify(w).includes('Sakkizinchi') && !JSON.stringify(w).includes('EIG888'));
+  check('l) tirik oluvchi avvalgidek ko‘rinadi', pick(w, 'GWA309'),
+    { code: 'GWA309', recipientName: 'Toqqizinchi', recipientCode: 'NIN999', date: '2026-09-22 11:00:00+00' });
+  check('l) GET qatorlarni o‘zgartirmadi', sqlite.prepare(`SELECT * FROM gift_offers ORDER BY id`).all(), offersBefore);
+
+  sqlite.prepare(`UPDATE users SET deleted_at = NULL WHERE id = 308`).run();
+  check('l) hisob tiklangach ism va kod qaytadi', pick(await wall(), 'GWD308'),
+    { code: 'GWD308', recipientName: 'Sakkizinchi Ism', recipientCode: 'EIG888', date: '2026-09-22 10:00:00+00' });
+}
+
+// =====================================================================
+// (m) QO'RIQCHI: `DELETE FROM users` NING BOSHQA YOZILISHLARI HAM
+//     `scripts/test-card-cleanup.mjs` dagi regex shu yerda tekshiriladi:
+//     ilgari `main.users`, `` `users` `` va `[users]` undan o'tib ketardi.
+// =====================================================================
+{
+  const guard = readFileSync(new URL('./test-card-cleanup.mjs', import.meta.url), 'utf8');
+  const lit = guard.match(/const delUsers = \/(.+)\/([a-z]*);/);
+  let re = null;
+  try { re = lit && new RegExp(lit[1], lit[2]); } catch { re = null; }
+  checkTrue('m) test-card-cleanup.mjs dagi qo‘riqchi regex topildi', !!re);
+  const must = [
+    'DELETE FROM users WHERE id = ?',
+    'delete from "users" where id = ?',
+    'DELETE FROM main.users WHERE id = ?',
+    'DELETE FROM `users` WHERE id = ?',
+    'DELETE FROM [users] WHERE id = ?',
+    'DELETE\n  FROM main."users" WHERE id = ?',
+  ];
+  const mustNot = [
+    'DELETE FROM user_sessions WHERE user_id = ?',
+    'DELETE FROM users_archive WHERE id = ?',
+    'DELETE FROM sessions WHERE user_id = ?',
+    'UPDATE users SET deleted_at = ? WHERE id = ?',
+  ];
+  check('m) hamma yozilish ushlanadi', must.filter((s) => !re?.test(s)), []);
+  check('m) boshqa jadvallar ushlanmaydi', mustNot.filter((s) => !re || re.test(s)), []);
 }
 
 done();
