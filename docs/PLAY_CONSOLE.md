@@ -260,8 +260,8 @@ Bularning hammasiga **YO'Q** deb javob bering:
 * Kalendar
 * SMS, qo'ng'iroqlar tarixi
 * Sog'liq va fitnes
-* Moliyaviy ma'lumot — **to'lov kartasi ilovaga kiritilmaydi**,
-  to'lov Payme/Click sahifasida bo'ladi
+* Moliyaviy ma'lumot — **ilovada to'lov yo'q** (`canPayInApp()` =
+  false); karta ma'lumoti ilovaga kiritilmaydi
 * Reklama identifikatori
 * Ilovadagi xatoliklar / diagnostika (crash-reporting yo'q)
 

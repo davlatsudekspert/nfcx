@@ -54,7 +54,12 @@ class VideoPoster extends StatefulWidget {
 
   /// Sinov uchun.
   @visibleForTesting
-  static void clearCache() => _cache.clear();
+  static void clearCache() {
+    _cache.clear();
+    // Oldingi testning zonasida tugagan navbat keyingi testda
+    // hech qachon davom etmaydi.
+    _tail = Future<void>.value();
+  }
 
   @override
   State<VideoPoster> createState() => _VideoPosterState();

@@ -2080,6 +2080,10 @@ class LEn extends L {
       'Your account is temporarily blocked for breaking the rules — you can’t post right now.';
 
   @override
+  String get errAccountDeleted =>
+      'This account has been deleted or is being deleted. You can’t sign in or register with this email right now.';
+
+  @override
   String get mediaChange => 'Change';
 
   @override

@@ -2080,6 +2080,10 @@ class LUz extends L {
       'Hisobingiz qoidabuzarlik uchun vaqtincha bloklangan — hozir joylay olmaysiz.';
 
   @override
+  String get errAccountDeleted =>
+      'Bu hisob o‘chirilgan yoki o‘chirish jarayonida. Bu email bilan hozir kirish yoki qayta ro‘yxatdan o‘tish mumkin emas.';
+
+  @override
   String get mediaChange => 'Almashtirish';
 
   @override

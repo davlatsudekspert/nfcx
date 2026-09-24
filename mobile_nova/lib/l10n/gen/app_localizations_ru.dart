@@ -2075,6 +2075,10 @@ class LRu extends L {
       'Ваш аккаунт временно заблокирован за нарушение правил — публикация недоступна.';
 
   @override
+  String get errAccountDeleted =>
+      'Этот аккаунт удалён или находится в процессе удаления. Войти или зарегистрироваться с этим email сейчас нельзя.';
+
+  @override
   String get mediaChange => 'Заменить';
 
   @override

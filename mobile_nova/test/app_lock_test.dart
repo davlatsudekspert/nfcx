@@ -9,7 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// Xotiradagi Keystore o'rinbosari.
 class _FakeSecure extends SecureStore {
-  _FakeSecure() : super(const FlutterSecureStorage());
+  _FakeSecure([this._pin]) : super(const FlutterSecureStorage());
   String? _pin;
 
   @override
@@ -23,14 +23,18 @@ class _FakeSecure extends SecureStore {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  Future<ProviderContainer> container({bool locked = false}) async {
+  Future<ProviderContainer> container({
+    bool locked = false,
+    String? pin,
+  }) async {
     SharedPreferences.setMockInitialValues(
       locked ? {'nova.appLock': true} : {},
     );
     final prefs = await Prefs.open();
     final c = ProviderContainer(overrides: [
       prefsProvider.overrideWithValue(prefs),
-      secureStoreProvider.overrideWithValue(_FakeSecure()),
+      secureStoreProvider.overrideWithValue(
+          _FakeSecure(pin ?? (locked ? '1234' : null))),
     ]);
     addTearDown(c.dispose);
     return c;
@@ -47,6 +51,30 @@ void main() {
     test('yoqilgan bo‘lsa ilova QULFLANGAN holda ochiladi', () async {
       final c = await container(locked: true);
       expect(c.read(appLockProvider).locked, isTrue);
+      // PIN joyida — qulf o'z holicha qoladi.
+      await Future<void>.delayed(Duration.zero);
+      expect(c.read(appLockProvider).locked, isTrue);
+      expect(c.read(appLockProvider).enabled, isTrue);
+    });
+
+    // Release auditi: "qulf yoqilgan" belgisi zaxiradan tiklanadi, PIN
+    // (xavfsiz xotira) esa ko'chirilmaydi — ilova hech qachon mos
+    // kelmaydigan PIN bilan qulflanib qolardi.
+    test('zaxiradan tiklangan qurilma: PIN yo‘q — qulf o‘chadi', () async {
+      SharedPreferences.setMockInitialValues({'nova.appLock': true});
+      final prefs = await Prefs.open();
+      final c = ProviderContainer(overrides: [
+        prefsProvider.overrideWithValue(prefs),
+        secureStoreProvider.overrideWithValue(_FakeSecure()),
+      ]);
+      addTearDown(c.dispose);
+      c.read(appLockProvider);
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+      final s = c.read(appLockProvider);
+      expect(s.locked, isFalse, reason: 'ochib bo‘lmaydigan qulf');
+      expect(s.enabled, isFalse);
+      expect(prefs.appLock, isFalse);
     });
 
     test('PIN o‘rnatilgandan keyin qulf yoqiladi va ekran ochiq qoladi',

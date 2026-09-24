@@ -37,6 +37,10 @@ String describeError(L l, AppError e) => switch (e.code) {
       // Moderatsiya: admin hisobni vaqtincha bloklagan (serverdagi
       // `bannedUntil`). Umumiy "ruxsat yo'q" emas — sabab aytiladi.
       'BANNED' || 'banned' || 'account_suspended' => l.errBanned,
+      // Hisob o'chirilgan (kirish — 403) yoki o'chirish navbatida (shu
+      // email bilan qayta ro'yxat — 409). Ilgari "Ruxsat yo'q" va
+      // "Bu ma'lumot allaqachon band" chiqardi.
+      'account_deleted' || 'account_pending_deletion' => l.errAccountDeleted,
       // Izoh yozish — faqat Premium (server qoidasi, `comments.js`).
       // Ilgari umumiy "Ruxsat yo'q" chiqardi va odam sababini bilmasdi
       // (egasi, 2026-09 surat). Xarid havolasi YO'Q — Play qoidasi.

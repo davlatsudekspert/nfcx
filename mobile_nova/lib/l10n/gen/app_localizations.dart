@@ -4035,6 +4035,12 @@ abstract class L {
   /// **'Hisobingiz qoidabuzarlik uchun vaqtincha bloklangan — hozir joylay olmaysiz.'**
   String get errBanned;
 
+  /// No description provided for @errAccountDeleted.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu hisob o‘chirilgan yoki o‘chirish jarayonida. Bu email bilan hozir kirish yoki qayta ro‘yxatdan o‘tish mumkin emas.'**
+  String get errAccountDeleted;
+
   /// No description provided for @mediaChange.
   ///
   /// In uz, this message translates to:

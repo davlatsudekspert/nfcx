@@ -86,6 +86,24 @@ class AppLock extends StateNotifier<AppLockState> with WidgetsBindingObserver {
         ),
       ) {
     WidgetsBinding.instance.addObserver(this);
+    if (_prefs.appLock) _dropIfPinLost();
+  }
+
+  /// ZAXIRADAN TIKLANGAN QURILMA.
+  ///
+  /// "Qulf yoqilgan" belgisi oddiy sozlamalarda — u bulutli zaxira va
+  /// telefondan-telefonga ko'chirishda tiklanadi. PIN esa xavfsiz
+  /// xotirada va ATAYLAB ko'chirilmaydi. Natijada ilova hech qachon
+  /// mos kelmaydigan PIN bilan qulflangan holda ochilardi (release
+  /// auditi). PIN yo'q bo'lsa — qulf o'chiriladi.
+  Future<void> _dropIfPinLost() async {
+    String? pin;
+    try {
+      pin = await _store.readPin();
+    } catch (_) {
+      pin = null;
+    }
+    if (pin == null && mounted) await disable();
   }
 
   final Prefs _prefs;
