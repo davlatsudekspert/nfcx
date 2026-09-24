@@ -300,6 +300,12 @@ void main() {
       await frames(30);
     }
 
+    // Tanlagich qatori — varaq ICHIDAN, noyob KOD bo'yicha. Bir odamning
+    // hamma ID'sida ism bir xil bo'ladi: ism bo'yicha `.last` boshqa
+    // ID qatorini bosardi (E2E #53: "VIP001 tanlandi — faol bo'lmadi").
+    Finder inSheet(String code) => find.descendant(
+        of: find.byType(BottomSheet), matching: find.text(code));
+
     final problems = <String>[];
     try {
       final before = c.read(activePersonalProvider)?.code;
@@ -326,11 +332,9 @@ void main() {
         await frames(40);
         if (c.read(modeProvider) != AppMode.business) {
           // Bir nechta kompaniya — tanlagich: birinchisini bosamiz.
-          final name = businesses.first.displayName.isEmpty
-              ? businesses.first.companyId
-              : businesses.first.displayName;
-          if (find.text(name).evaluate().isNotEmpty) {
-            await t.tap(find.text(name).last);
+          final row = inSheet(businesses.first.companyId);
+          if (row.evaluate().isNotEmpty) {
+            await t.tap(row.first);
             await frames(40);
           }
         }
@@ -345,10 +349,12 @@ void main() {
       await t.ensureVisible(per);
       await t.tap(per);
       await frames(40);
-      final label = back.name.isEmpty ? back.code : back.name;
-      if (find.text(label).evaluate().isNotEmpty) {
-        await t.tap(find.text(label).last);
+      final row = inSheet(back.code);
+      if (row.evaluate().isNotEmpty) {
+        await t.tap(row.first);
         await frames(40);
+      } else {
+        problems.add('tanlagich varag\'ida ${back.code} topilmadi');
       }
       if (c.read(modeProvider) != AppMode.personal) {
         problems.add('Shaxsiy bosildi — rejim o\'zgarmadi');

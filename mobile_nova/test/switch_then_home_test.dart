@@ -51,13 +51,13 @@ Future<void> _frames(WidgetTester tester, [int n = 30]) async {
 void main() {
   late ProviderContainer c;
 
-  Future<void> boot(WidgetTester tester) async {
+  Future<void> boot(WidgetTester tester, {List<NfcId> ids = _ids}) async {
     tester.view.physicalSize = const Size(1170, 2532);
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
     c = ProviderContainer(overrides: [
       ...await testOverrides(),
-      authRepositoryProvider.overrideWithValue(FakeAuthRepository(ids: _ids)),
+      authRepositoryProvider.overrideWithValue(FakeAuthRepository(ids: ids)),
       businessRepositoryProvider.overrideWithValue(_BizRepo()),
     ]);
     addTearDown(c.dispose);
@@ -133,6 +133,48 @@ void main() {
     expect(c.read(modeProvider), AppMode.personal);
     expect(c.read(activePersonalProvider)?.code, 'TTS075');
     expect(find.text('TTS075'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  // E2E #53: haqiqiy hisobda bir odamning hamma ID'sida ism BIR XIL.
+  // Ism bo'yicha `.last` boshqa qatorni bosardi — E2E oqimi endi
+  // varaq ichidan noyob KOD bo'yicha bosadi. Shu yo'l shu yerda sinaladi.
+  testWidgets('bir xil ismli ID lar — tanlagichda kod bo‘yicha to‘g‘ri ID',
+      (tester) async {
+    await boot(tester, ids: const [
+      NfcId(code: 'VIP001', name: 'Davlat', primary: true),
+      NfcId(code: 'UZD772', name: 'Davlat'),
+      NfcId(code: 'TTS075', name: 'Davlat'),
+    ]);
+    final l = LUz();
+    await go(tester, Routes.profile);
+    await tapCard(tester, 'UZD772');
+    expect(c.read(activePersonalProvider)?.code, 'UZD772');
+
+    await go(tester, Routes.home);
+    final biz = find.text(l.modeBusiness).first;
+    await tester.ensureVisible(biz);
+    await tester.tap(biz);
+    await _frames(tester, 30);
+    final bizRow = find.descendant(
+        of: find.byType(BottomSheet), matching: find.text('ELITE'));
+    if (bizRow.evaluate().isNotEmpty) {
+      await tester.tap(bizRow.first);
+      await _frames(tester, 30);
+    }
+    expect(c.read(modeProvider), AppMode.business);
+
+    final per = find.text(l.modePersonal).first;
+    await tester.ensureVisible(per);
+    await tester.tap(per);
+    await _frames(tester, 30);
+    final row = find.descendant(
+        of: find.byType(BottomSheet), matching: find.text('VIP001'));
+    expect(row, findsOneWidget);
+    await tester.tap(row.first);
+    await _frames(tester, 30);
+    expect(c.read(modeProvider), AppMode.personal);
+    expect(c.read(activePersonalProvider)?.code, 'VIP001');
     expect(tester.takeException(), isNull);
   });
 
