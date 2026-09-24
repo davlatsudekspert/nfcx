@@ -27,9 +27,13 @@
 //   (c) jurnalga email emas, `KOD — #userId` yoziladi (B13).
 //   (d) muallifi o'chirilgan (yashirin) izohga javob ham, like ham yo'q.
 //   (f) admin o'chirishi ham kutilayotgan takliflarni bekor qiladi (B14),
-//       jurnalda email yo'q (B13).
+//       jurnalda email yo'q (B13). Uchala yozuv bitta batch'da
+//       (`DELETE /api/account` dagi kabi).
 //   (g) avval o'chirilgan hisob bilan qolgan eski kutilayotgan
-//       takliflar ro'yxatda ko'rinmaydi (faqat o'qish filtri).
+//       takliflar: KELGANI ko'rinmaydi; YUBORILGANI ko'rinadi, lekin
+//       oluvchi emaili '' — egasi uni bekor qilib, kodini yana sovg'a
+//       qila oladi (qulf abadiy qolmaydi). Faqat o'qish, qatorlar
+//       o'zgarmaydi.
 //   (h) o'chirilgan hisob kartasiga yangi taklif -> RECIPIENT_NOT_FOUND.
 //
 // Haqiqiy `hosting/worker.js`, in-memory D1 (`scripts/lib/d1-harness.mjs`,
@@ -469,8 +473,28 @@ const offerRow = (id) => sqlite.prepare(`SELECT status, decided_at FROM gift_off
   const unrelated = insOffer('THR333', 203, 2, 'pending');  // #305 ga aloqasi yo'q
   const total = n(`SELECT COUNT(*) AS n FROM gift_offers`);
 
-  const r = await call('/api/admin/users/305/delete', { method: 'POST', cookie: cookie.admin });
+  // Uchala yozuv (deleted_at, sessiyalar, takliflar) BITTA
+  // `env.DB.batch` da ketishi kerak — `DELETE /api/account` dagi kabi.
+  // Alohida `run()` lar yarim yo'lda to'xtasa hisob o'chirilgan-u
+  // sessiyasi ochiq qolardi. Harness batch'i tranzaksiya emas, shuning
+  // uchun bu yerda chaqiruvning o'zi tekshiriladi.
+  const batches = [];
+  const realBatch = env.DB.batch;
+  env.DB.batch = function (stmts) {
+    batches.push(stmts.map((st) => String(st._sql).replace(/\s+/g, ' ').trim()));
+    return realBatch.call(this, stmts);
+  };
+  let r;
+  try {
+    r = await call('/api/admin/users/305/delete', { method: 'POST', cookie: cookie.admin });
+  } finally {
+    env.DB.batch = realBatch;
+  }
   check('f) admin o‘chirishi -> 200 {ok:true} (javob o‘zgarmagan)', [r.status, r.body], [200, { ok: true }]);
+  const delBatch = batches.find((b) => b.some((q) => q.startsWith('UPDATE users SET deleted_at')));
+  check('f) deleted_at, sessiyalar va takliflar bitta batch’da',
+    (delBatch || []).map((q) => q.split(' ').slice(0, 3).join(' ')),
+    ['UPDATE users SET', 'DELETE FROM sessions', 'UPDATE gift_offers SET']);
   checkTrue('f) #305 qatori qoldi, deleted_at qo‘yildi', !!userRow(305)?.deleted_at);
   check('f) #305 sessiyalari yopildi', n(`SELECT COUNT(*) AS n FROM sessions WHERE user_id = 305`), 0);
   check('f) #305 ga kelgan taklif bekor qilindi', [offerRow(incoming).status, !!offerRow(incoming).decided_at], ['cancelled', true]);
@@ -488,30 +512,57 @@ const offerRow = (id) => sqlite.prepare(`SELECT status, decided_at FROM gift_off
 
 // =====================================================================
 // (g) AVVAL O'CHIRILGAN HISOB BILAN QOLGAN ESKI KUTILAYOTGAN TAKLIFLAR
-//     RO'YXATDA KO'RINMAYDI (faqat o'qish filtri, qatorlar o'zgarmaydi)
+//     Kelgani ko'rinmaydi; yuborilgani emailsiz ko'rinadi va bekor
+//     qilinadi — kod abadiy qulflanib qolmaydi. GET qatorlarni o'zgartirmaydi.
 // =====================================================================
 {
   // PR-1 dan oldin o'chirilgan hisob: takliflari bekor qilinmagan.
   sqlite.prepare(`INSERT INTO users (id, email, password_hash, deleted_at) VALUES (306, 'six@test.local', 'x', '2026-09-01 10:00:00+00')`).run();
+  // #2 ning haqiqiy kartasi: eski taklif shu kodni qulflab turibdi.
+  sqlite.prepare(`INSERT INTO cards (code, name, price, ts, user_id) VALUES ('OTH228', 'Boshqa 3', 0, 3, 2)`).run();
   const legacyIn = insOffer('LEG001', 306, 2, 'pending');  // o'chirilgandan #2 ga
-  const legacyOut = insOffer('LEG002', 2, 306, 'pending'); // #2 dan o'chirilganga
+  const legacyOut = insOffer('OTH228', 2, 306, 'pending'); // #2 dan o'chirilganga
   const aliveIn = insOffer('THR333', 203, 2, 'pending');   // tirik yuboruvchi — ko'rinadi
   const aliveOut = insOffer('OTH222', 2, 204, 'pending');  // tirik oluvchi — ko'rinadi
 
   const r = await call('/api/gift-offers', { cookie: cookie.other });
   const inIds = (r.body?.incoming || []).map((o) => o.id);
-  const outIds = (r.body?.outgoing || []).map((o) => o.id);
+  const legacyOutItem = (r.body?.outgoing || []).find((o) => o.id === legacyOut);
   check('g) GET /api/gift-offers -> 200', r.status, 200);
   check('g) o‘chirilgan yuboruvchining taklifi kelganlarda yo‘q', inIds.includes(legacyIn), false);
-  check('g) o‘chirilgan oluvchiga taklif yuborilganlarda yo‘q', outIds.includes(legacyOut), false);
+  // Yuboruvchi o'z taklifini ko'rishi SHART: aks holda "Bekor qilish"
+  // tugmasi yo'q, kod esa `ALREADY_PENDING` bilan abadiy qulflangan.
+  check('g) o‘chirilgan oluvchiga taklif yuborilganlarda BOR, toEmail bo‘sh',
+    legacyOutItem && { id: legacyOutItem.id, code: legacyOutItem.code, toEmail: legacyOutItem.toEmail },
+    { id: legacyOut, code: 'OTH228', toEmail: '' });
   checkTrue('g) javobda o‘chirilgan hisob emaili yo‘q', !JSON.stringify(r.body).includes('six@test.local'));
   check('g) tirik yuboruvchi taklifi ko‘rinadi (avvalgidek)',
     (r.body?.incoming || []).find((o) => o.id === aliveIn)?.fromEmail, 'three@test.local');
   check('g) tirik oluvchiga taklif ko‘rinadi (avvalgidek)',
     (r.body?.outgoing || []).find((o) => o.id === aliveOut)?.toEmail, 'four@test.local');
-  check('g) eski qatorlar o‘zgarmadi (tuzatish ishi yo‘q)', [offerRow(legacyIn), offerRow(legacyOut)],
+  check('g) GET eski qatorlarni o‘zgartirmadi (tuzatish ishi yo‘q)', [offerRow(legacyIn), offerRow(legacyOut)],
     [{ status: 'pending', decided_at: null }, { status: 'pending', decided_at: null }]);
-  for (const id of [aliveIn, aliveOut]) sqlite.prepare(`UPDATE gift_offers SET status = 'cancelled' WHERE id = ?`).run(id);
+
+  // Qulf haqiqatan bor: yangi taklif rad etiladi.
+  const locked = await call('/api/records/OTH228/gift', { method: 'POST', cookie: cookie.other, json: { toCode: 'THR333' } });
+  check('g) bekor qilishdan oldin: OTH228 qulflangan -> 409 ALREADY_PENDING', [locked.status, locked.body], [409, { error: 'ALREADY_PENDING' }]);
+
+  // Ro'yxatdagi id bilan bekor qilinadi (sayt/ilova aynan shuni chaqiradi).
+  const cancel = await call(`/api/gift-offers/${legacyOutItem?.id}/cancel`, { method: 'POST', cookie: cookie.other });
+  check('g) ro‘yxatdagi id bilan bekor qilish -> 200 {ok:true}', [cancel.status, cancel.body], [200, { ok: true }]);
+  check('g) eski taklif cancelled bo‘ldi', [offerRow(legacyOut)?.status, !!offerRow(legacyOut)?.decided_at], ['cancelled', true]);
+  const after = await call('/api/gift-offers', { cookie: cookie.other });
+  check('g) bekor qilingach yuborilganlarda yo‘q',
+    (after.body?.outgoing || []).some((o) => o.id === legacyOut), false);
+
+  // Qulf ochildi: shu kartani tirik odamga yana sovg'a qila oladi.
+  const again = await call('/api/records/OTH228/gift', { method: 'POST', cookie: cookie.other, json: { toCode: 'THR333' } });
+  check('g) OTH228 ni tirik hisobga yana taklif qila oladi -> 201', [again.status, again.body?.ok], [201, true]);
+
+  check('g) o‘chirilgandan kelgan eski taklif tegilmadi', offerRow(legacyIn), { status: 'pending', decided_at: null });
+  for (const id of [aliveIn, aliveOut, again.body?.id].filter(Boolean)) {
+    sqlite.prepare(`UPDATE gift_offers SET status = 'cancelled' WHERE id = ?`).run(id);
+  }
 }
 
 // =====================================================================

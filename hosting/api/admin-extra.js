@@ -303,20 +303,26 @@ export async function handle(request, env, url, H) {
   if (userDelete && method === 'POST') {
     if (!isSuper) return forbidden();
     const id = Number(userDelete[1]);
-    const user = await env.DB.prepare(`SELECT id, deleted_at FROM users WHERE id = ?`).bind(id).first();
+    const user = await env.DB.prepare(`SELECT id FROM users WHERE id = ?`).bind(id).first();
     if (!user) return H.json({ error: 'not_found' }, 404);
     // Legacy adminDeleteUser (server/db.js) hard-delete qilar edi; D1'da
     // yozuvlar saqlanib qoladi (deleted_at) — getCurrentUser deleted_at'li
     // foydalanuvchini tanimaydi, sessiyalar esa darhol yo'q qilinadi.
+    //
+    // Uchala qadam BITTA batch'da — `DELETE /api/account` dagi kabi:
+    // yarim yo'lda to'xtab, hisob o'chirilgan-u sessiyasi ochiq yoki
+    // taklifi kutilayotgan holda qolmasin.
     const now = H.nowTs();
-    await env.DB.prepare(`UPDATE users SET deleted_at = COALESCE(deleted_at, ?) WHERE id = ?`).bind(now, id).run();
-    await env.DB.prepare(`DELETE FROM sessions WHERE user_id = ?`).bind(id).run();
-    // Kutilayotgan sovg'a takliflari bekor qilinadi (B14) — `DELETE
-    // /api/account` dagi bilan bir xil UPDATE, hech narsa o'chirilmaydi.
-    await env.DB.prepare(
-      `UPDATE gift_offers SET status = 'cancelled', decided_at = ?
-        WHERE status = 'pending' AND (from_user_id = ? OR to_user_id = ?)`
-    ).bind(now, id, id).run();
+    await env.DB.batch([
+      env.DB.prepare(`UPDATE users SET deleted_at = COALESCE(deleted_at, ?) WHERE id = ?`).bind(now, id),
+      env.DB.prepare(`DELETE FROM sessions WHERE user_id = ?`).bind(id),
+      // Kutilayotgan sovg'a takliflari bekor qilinadi (B14) — `DELETE
+      // /api/account` dagi bilan bir xil UPDATE, hech narsa o'chirilmaydi.
+      env.DB.prepare(
+        `UPDATE gift_offers SET status = 'cancelled', decided_at = ?
+          WHERE status = 'pending' AND (from_user_id = ? OR to_user_id = ?)`
+      ).bind(now, id, id),
+    ]);
     // Jurnalga email emas, hisob raqami yoziladi (B13).
     await H.logAdminActivity(env, { action: 'user_deleted', details: `Foydalanuvchi #${id} o'chirildi (soft-delete, sessiyalar yopildi)`, oldValue: `#${id}`, ip });
     return H.json({ ok: true });

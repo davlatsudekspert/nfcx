@@ -9237,11 +9237,20 @@ async function userAccountApi(request, env, url) {
   if (path === '/api/gift-offers' && request.method === 'GET') {
     if (!user) return json({ incoming: [], outgoing: [] });
     // O'chirish navbatidagi hisob bilan bog'liq eski kutilayotgan
-    // takliflar ko'rsatilmaydi: uning emaili chiqmasin (B14). Faqat
-    // o'qishdagi filtr — qatorlar o'zgarmaydi.
+    // takliflar (PR-1 dan oldin o'chirilgan hisoblar — ularniki bekor
+    // qilinmagan). Faqat o'qish, qatorlar o'zgarmaydi (B14).
+    //
+    //  - KELGANLAR: o'chirilgan yuboruvchining taklifi ko'rsatilmaydi.
+    //    Kod o'chirilgan odamniki — qabul qilish ma'nosiz.
+    //  - YUBORILGANLAR: taklif QOLADI, faqat oluvchi emaili yashiriladi
+    //    (`/api/referrals` dagi kabi ''). Taklif ro'yxatdan olib
+    //    tashlansa, kutilayotgan qator kodni `ALREADY_PENDING` bilan
+    //    qulflab turaverardi va egasi
+    //    "Bekor qilish" ni (POST /api/gift-offers/:id/cancel) bosa
+    //    olmay, o'z kartasini boshqa hech kimga sovg'a qila olmasdi.
     const [incoming, outgoing] = await Promise.all([
       env.DB.prepare(`SELECT g.id, g.code, g.created_at, u.email AS from_email FROM gift_offers g JOIN users u ON u.id = g.from_user_id WHERE g.to_user_id = ? AND g.status = 'pending' AND u.deleted_at IS NULL ORDER BY g.created_at DESC`).bind(user.id).all(),
-      env.DB.prepare(`SELECT g.id, g.code, g.created_at, u.email AS to_email FROM gift_offers g JOIN users u ON u.id = g.to_user_id WHERE g.from_user_id = ? AND g.status = 'pending' AND u.deleted_at IS NULL ORDER BY g.created_at DESC`).bind(user.id).all(),
+      env.DB.prepare(`SELECT g.id, g.code, g.created_at, CASE WHEN u.deleted_at IS NULL THEN u.email ELSE '' END AS to_email FROM gift_offers g JOIN users u ON u.id = g.to_user_id WHERE g.from_user_id = ? AND g.status = 'pending' ORDER BY g.created_at DESC`).bind(user.id).all(),
     ]);
     return json({
       incoming: (incoming.results || []).map((r) => ({ id: r.id, code: r.code, createdAt: r.created_at, fromEmail: r.from_email })),
