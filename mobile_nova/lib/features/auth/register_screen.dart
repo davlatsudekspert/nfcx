@@ -290,13 +290,36 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(l.registerStep(_step + 1, _steps),
-                    style: Theme.of(context).textTheme.labelSmall),
+                // PREMIUM (egasi, 2026-09-24: "ro'yxatdan o'tishni ham
+                // kirishdek premium qil"): o'ngda siyrak NFCSTORE yozuvi.
+                Row(
+                  children: [
+                    Text(l.registerStep(_step + 1, _steps),
+                        style: Theme.of(context).textTheme.labelSmall),
+                    const Spacer(),
+                    Text(
+                      'NFCSTORE',
+                      style: TextStyle(
+                        fontFamily: 'Manrope',
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 3.6,
+                        color: t.text1,
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: Gap.sm),
                 // Qadam ko'rsatkichi — to'rtta segment.
                 Row(
                   children: List.generate(_steps, (i) {
-                    final done = i <= _step;
+                    // O'tilgan — siyoh, joriy — champagne, oldindagi —
+                    // ingichka chiziq.
+                    final color = i < _step
+                        ? t.text1
+                        : i == _step
+                            ? t.brand
+                            : t.border1;
                     return Expanded(
                       child: Padding(
                         padding: EdgeInsets.only(right: i == _steps - 1 ? 0 : 5),
@@ -305,7 +328,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           curve: Motion.smooth,
                           height: 3.5,
                           decoration: BoxDecoration(
-                            color: done ? t.accent2 : t.border2,
+                            color: color,
                             borderRadius: R.pill,
                           ),
                         ),
@@ -324,6 +347,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 _Step(
                   title: l.registerTypeTitle,
                   hint: l.registerTypeHint,
+                  // Turlar o'zi kartalar — ikkinchi karta kerak emas.
+                  card: false,
                   child: _TypePicker(
                     value: _type,
                     error: _fieldErrors[0],
@@ -390,7 +415,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                 ? Icons.visibility_off_rounded
                                 : Icons.visibility_rounded,
                             size: 19,
-                            color: t.text3,
+                            color: t.text2,
                           ),
                         ),
                       ),
@@ -478,7 +503,11 @@ class _Step extends StatelessWidget {
     required this.hint,
     required this.child,
     this.art,
+    this.card = true,
   });
+
+  /// Maydonlar toza oq kartada (Kirish ekranidagi kabi).
+  final bool card;
 
   final String title;
   final String hint;
@@ -498,8 +527,24 @@ class _Step extends StatelessWidget {
             Text(title, style: Theme.of(context).textTheme.displayMedium),
             const SizedBox(height: Gap.sm),
             Text(hint, style: Theme.of(context).textTheme.bodyMedium),
-            const SizedBox(height: Gap.section),
-            child,
+            const SizedBox(height: Gap.xxl),
+            if (card)
+              Builder(builder: (context) {
+                final t = context.tokens;
+                return Container(
+                  padding: const EdgeInsets.fromLTRB(
+                      Gap.lg, Gap.lg, Gap.lg, Gap.xl),
+                  decoration: BoxDecoration(
+                    color: t.surfaceSolid,
+                    borderRadius: R.soft,
+                    border: Border.all(color: t.border1),
+                    boxShadow: t.shadowSoft,
+                  ),
+                  child: child,
+                );
+              })
+            else
+              child,
             // Klaviatura ochiq bo'lsa bezak yashiriladi — joy maydonga.
             if (art != null && MediaQuery.viewInsetsOf(context).bottom == 0) ...[
               const SizedBox(height: 56),
@@ -538,10 +583,22 @@ class _StepArt extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
+            // PREMIUM: markaz — brend muhridek siyoh disk, champagne
+            // halqa; tashqi halqalar ingichka.
             ring(208, t.border1),
-            ring(160, t.brandSoft),
-            ring(112, t.border2, fill: t.surface),
-            Icon(icon, size: 40, color: t.text2),
+            ring(160, t.brand.withValues(alpha: .55)),
+            Container(
+              width: 104,
+              height: 104,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: t.text1,
+                border: Border.all(
+                    color: t.brand.withValues(alpha: .7), width: 1.4),
+                boxShadow: t.shadowSoft,
+              ),
+            ),
+            Icon(icon, size: 38, color: t.surfaceSolid),
           ],
         ),
       ),
@@ -567,10 +624,10 @@ class _TosRow extends StatelessWidget {
     final l = L.of(context);
     final t = context.tokens;
     final link = TextStyle(
-      color: t.accent2,
-      fontWeight: FontWeight.w600,
+      color: t.text1,
+      fontWeight: FontWeight.w700,
       decoration: TextDecoration.underline,
-      decorationColor: t.accent2.withValues(alpha: .5),
+      decorationColor: t.brand,
     );
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -581,8 +638,8 @@ class _TosRow extends StatelessWidget {
           child: Checkbox(
             value: value,
             onChanged: (v) => onChanged(v ?? false),
-            activeColor: t.accent2,
-            checkColor: t.onAccent,
+            activeColor: t.text1,
+            checkColor: t.surfaceSolid,
             side: BorderSide(color: t.border2, width: 1.4),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(7),
@@ -723,21 +780,30 @@ class _TypeCard extends StatelessWidget {
             color: t.surfaceSolid,
             borderRadius: R.gentle,
             border: Border.all(
-              color: selected ? t.accent2 : t.border2,
+              color: selected ? t.text1 : t.border1,
               width: selected ? 1.6 : 1,
             ),
-            boxShadow: selected ? t.shadowSoft : t.shadowTiny,
+            boxShadow: t.shadowSoft,
           ),
           child: Row(
             children: [
-              Container(
+              // Tanlangani — siyoh doira, oltin hoshiya, ichida sirt
+              // rangidagi belgi (Asosiy sahifadagi tezkor amallar kabi).
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: t.surface2,
-                  borderRadius: R.tile,
+                  color: selected ? t.text1 : t.surface2,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: selected
+                        ? t.brand.withValues(alpha: .55)
+                        : t.border1,
+                  ),
                 ),
-                child: Icon(icon, size: 21, color: t.text1),
+                child: Icon(icon,
+                    size: 21, color: selected ? t.surfaceSolid : t.text1),
               ),
               const SizedBox(width: Gap.md + 2),
               Expanded(
@@ -757,7 +823,7 @@ class _TypeCard extends StatelessWidget {
                 opacity: selected ? 1 : 0,
                 duration: const Duration(milliseconds: 200),
                 child: Icon(Icons.check_circle_rounded,
-                    size: 22, color: t.accent2),
+                    size: 22, color: t.text1),
               ),
             ],
           ),

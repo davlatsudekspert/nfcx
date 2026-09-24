@@ -407,9 +407,10 @@ class _CodeFieldState extends State<CodeField>
                         height: 62,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
+                          // PREMIUM: toza sirt katak, faol katak siyoh.
                           color: widget.success
                               ? t.success.withValues(alpha: .10)
-                              : t.surface2,
+                              : t.surfaceSolid,
                           borderRadius: R.gentle,
                           border: Border.all(
                             color: widget.success
@@ -417,8 +418,10 @@ class _CodeFieldState extends State<CodeField>
                                 : widget.hasError
                                     ? t.error
                                     : active
-                                        ? t.accent2
-                                        : t.border2,
+                                        ? t.text1
+                                        : filled
+                                            ? t.border2
+                                            : t.border1,
                             width: active || widget.hasError || widget.success
                                 ? 1.6
                                 : 1,

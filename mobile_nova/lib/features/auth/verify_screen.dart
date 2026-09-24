@@ -239,13 +239,24 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
               duration: const Duration(milliseconds: 220),
               width: 72,
               height: 72,
+              // PREMIUM: kutish holatida — siyoh disk, champagne hoshiya
+              // (Kirish ekranidagi brend muhri kabi). Muvaffaqiyat va
+              // muddati o'tgan holat o'z ma'no rangida qoladi.
               decoration: BoxDecoration(
-                color: (_ok ? t.success : _expired ? t.warn : t.accent2)
-                    .withValues(alpha: .13),
+                color: _ok
+                    ? t.success.withValues(alpha: .13)
+                    : _expired
+                        ? t.warn.withValues(alpha: .13)
+                        : t.text1,
                 shape: BoxShape.circle,
                 border: Border.all(
-                    color: (_ok ? t.success : _expired ? t.warn : t.accent2)
-                        .withValues(alpha: .32)),
+                    color: _ok
+                        ? t.success.withValues(alpha: .32)
+                        : _expired
+                            ? t.warn.withValues(alpha: .32)
+                            : t.brand.withValues(alpha: .7),
+                    width: 1.4),
+                boxShadow: _ok || _expired ? null : t.shadowSoft,
               ),
               child: Icon(
                 _ok
@@ -254,7 +265,7 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
                         ? Icons.timer_off_rounded
                         : Icons.mark_email_unread_rounded,
                 size: 29,
-                color: _ok ? t.success : _expired ? t.warn : t.accent2,
+                color: _ok ? t.success : _expired ? t.warn : t.surfaceSolid,
               ),
             ),
           ),
@@ -350,8 +361,11 @@ class _VerifyScreenState extends ConsumerState<VerifyScreen> {
                   style: TextStyle(
                     fontFamily: 'Manrope',
                     fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: t.accent2,
+                    fontWeight: FontWeight.w700,
+                    color: t.text1,
+                    decoration: TextDecoration.underline,
+                    decorationColor: t.brand,
+                    decorationThickness: 1.6,
                   ),
                 ),
               ),
