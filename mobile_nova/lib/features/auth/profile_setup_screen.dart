@@ -113,7 +113,12 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       return;
     }
 
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      // Avval yuklangan surat foizi qolib, saqlash paytida eskirgan
+      // halqa ko'rinmasin.
+      _uploadProgress = 0;
+    });
     final res = await ref.read(profileRepositoryProvider).updateProfile(
           code: id.code,
           name: _name.text.trim(),
@@ -123,14 +128,17 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     if (!mounted) return;
 
     // Sessiya yangilanguncha tugma band — ikkinchi bosish yo'q.
-    await res.when(
-      ok: (_) async {
-        await ref.read(sessionProvider.notifier).refresh();
-        if (mounted) finishSignup(context, ref);
-      },
-      err: (e) async => setState(() => _error = describeError(l, e)),
-    );
-    if (mounted) setState(() => _busy = false);
+    try {
+      await res.when(
+        ok: (_) async {
+          await ref.read(sessionProvider.notifier).refresh();
+          if (mounted) finishSignup(context, ref);
+        },
+        err: (e) async => setState(() => _error = describeError(l, e)),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override

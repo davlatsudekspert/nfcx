@@ -197,6 +197,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     final l = L.of(context);
     setState(() {
       _busy = true;
+      _uploadProgress = 0;
       _error = null;
     });
     final res = await ref.read(profileRepositoryProvider).updateProfile(
@@ -212,17 +213,20 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     if (!mounted) return;
     // Tugma sessiya yangilanguncha BAND qoladi: aks holda `refresh()`
     // kutilayotganda ikkinchi bosish ikkinchi so'rov yuborardi.
-    await res.when(
-      ok: (_) async {
-        await ref.read(sessionProvider.notifier).refresh();
-        if (!mounted) return;
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(l.profileSaved)));
-        context.pop();
-      },
-      err: (e) async => setState(() => _error = describeError(l, e)),
-    );
-    if (mounted) setState(() => _busy = false);
+    try {
+      await res.when(
+        ok: (_) async {
+          await ref.read(sessionProvider.notifier).refresh();
+          if (!mounted) return;
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(l.profileSaved)));
+          context.pop();
+        },
+        err: (e) async => setState(() => _error = describeError(l, e)),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override

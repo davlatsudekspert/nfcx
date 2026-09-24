@@ -481,18 +481,21 @@ class _NfcIdEditScreenState extends ConsumerState<NfcIdEditScreen> {
         );
     if (!mounted) return;
     // Sessiya yangilanguncha tugma band — ikkinchi bosish yo'q.
-    await res.when(
-      ok: (_) async {
-        await ref.read(sessionProvider.notifier).refresh();
-        if (mounted) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(l.profileSaved)));
-          context.pop();
-        }
-      },
-      err: (e) async => setState(() => _error = describeError(l, e)),
-    );
-    if (mounted) setState(() => _busy = false);
+    try {
+      await res.when(
+        ok: (_) async {
+          await ref.read(sessionProvider.notifier).refresh();
+          if (mounted) {
+            ScaffoldMessenger.of(context)
+                .showSnackBar(SnackBar(content: Text(l.profileSaved)));
+            context.pop();
+          }
+        },
+        err: (e) async => setState(() => _error = describeError(l, e)),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override

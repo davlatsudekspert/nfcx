@@ -347,7 +347,12 @@ void main() {
       // Eng pastki tugmalarga aylantirib yetib boriladi.
       await tester.scrollUntilVisible(
           find.widgetWithText(NovaButton, l.actionShare), 80,
-          scrollable: find.byType(Scrollable).last);
+          // Varaqning O'Z aylantirgichi (SelectableText ichidagisi emas).
+          scrollable: find
+              .ancestor(
+                  of: find.byType(QrImageView),
+                  matching: find.byType(Scrollable))
+              .first);
       expect(find.widgetWithText(NovaButton, l.actionShare), findsOneWidget);
       expect(tester.takeException(), isNull);
     });

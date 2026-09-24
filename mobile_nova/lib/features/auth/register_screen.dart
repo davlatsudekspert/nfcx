@@ -255,21 +255,24 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (!mounted) return;
 
     // `adopt()` tugaguncha tugma band — ikkinchi hisob so'rovi yo'q.
-    await res.when(
-      ok: (user) async {
-        await ref.read(sessionProvider.notifier).adopt(user);
-        if (!mounted) return;
-        context.go(Routes.profileSetup);
-      },
-      err: (e) async {
-        if (e.code == 'email_code_required' || e.code == 'bad_email_code') {
-          _goVerify('email');
-          return;
-        }
-        setState(() => _error = describeError(l, e));
-      },
-    );
-    if (mounted) setState(() => _busy = false);
+    try {
+      await res.when(
+        ok: (user) async {
+          await ref.read(sessionProvider.notifier).adopt(user);
+          if (!mounted) return;
+          context.go(Routes.profileSetup);
+        },
+        err: (e) async {
+          if (e.code == 'email_code_required' || e.code == 'bad_email_code') {
+            _goVerify('email');
+            return;
+          }
+          setState(() => _error = describeError(l, e));
+        },
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override

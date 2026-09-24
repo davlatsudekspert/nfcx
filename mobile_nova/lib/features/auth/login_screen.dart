@@ -80,14 +80,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
     if (!mounted) return;
     // `adopt()` tugaguncha tugma band — ikkinchi kirish so'rovi yo'q.
-    await res.when(
-      ok: (user) async {
-        await ref.read(sessionProvider.notifier).adopt(user);
-        if (mounted) context.go(Routes.home);
-      },
-      err: (e) async => setState(() => _formError = describeError(l, e)),
-    );
-    if (mounted) setState(() => _busy = false);
+    try {
+      await res.when(
+        ok: (user) async {
+          await ref.read(sessionProvider.notifier).adopt(user);
+          if (mounted) context.go(Routes.home);
+        },
+        err: (e) async => setState(() => _formError = describeError(l, e)),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override

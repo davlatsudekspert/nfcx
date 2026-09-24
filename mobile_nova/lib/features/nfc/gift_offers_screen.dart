@@ -50,17 +50,20 @@ class _GiftOffersScreenState extends ConsumerState<GiftOffersScreen> {
     if (!mounted) return;
     // Sessiya yangilanguncha shu taklif tugmalari band — ikkinchi
     // bosish ikkinchi so'rov yubormaydi.
-    await res.when(
-      ok: (_) async {
-        ref.invalidate(giftOffersProvider);
-        // Qabul qilinganda yangi ID ro'yxatga qo'shiladi, shuning
-        // uchun sessiya qayta o'qiladi.
-        await ref.read(sessionProvider.notifier).refresh();
-      },
-      err: (e) async => ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(describeError(l, e)))),
-    );
-    if (mounted) setState(() => _busyId = null);
+    try {
+      await res.when(
+        ok: (_) async {
+          ref.invalidate(giftOffersProvider);
+          // Qabul qilinganda yangi ID ro'yxatga qo'shiladi, shuning
+          // uchun sessiya qayta o'qiladi.
+          await ref.read(sessionProvider.notifier).refresh();
+        },
+        err: (e) async => ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(describeError(l, e)))),
+      );
+    } finally {
+      if (mounted) setState(() => _busyId = null);
+    }
   }
 
   @override
