@@ -19,6 +19,9 @@ import { useLanguage } from '../../lib/i18n.jsx';
 //                        istoriya, video, fayl VA izohlar; shubhali belgisi)
 //   • FEATURED         — `/api/admin/featured`
 //   • Buyurtmalar      — `/api/admin/company-orders` (biznes katalogidan)
+//   • O'chirish navbati — `/api/admin/account-deletions` (hisobini o'chirishni
+//                        so'raganlar, 30 kunlik muddat, to'siqlar; faqat
+//                        super_admin — hosting/api/account-purge.js)
 //
 // Yangi uchtasi — hosting/api/app-admin.js.
 //
@@ -40,6 +43,7 @@ const SUBTABS = [
   ['archive', 'Dalil arxivi'],
   ['featured', 'Ko‘tarilgan postlar'],
   ['orders', 'Buyurtmalar'],
+  ['deletions', 'O‘chirish navbati'],
 ];
 
 const SLOT_TONE = {
@@ -97,6 +101,7 @@ export default function NovaTab({ adminApi, apiErrText }) {
       {sub === 'archive' && <ArchiveSection adminApi={adminApi} apiErrText={apiErrText} />}
       {sub === 'featured' && <FeaturedSection adminApi={adminApi} apiErrText={apiErrText} />}
       {sub === 'orders' && <OrdersSection adminApi={adminApi} />}
+      {sub === 'deletions' && <DeletionsSection adminApi={adminApi} apiErrText={apiErrText} />}
     </div>
   );
 }
@@ -1237,5 +1242,157 @@ function OrdersSection({ adminApi }) {
         )}
       </AdminCard>
     </div>
+  );
+}
+
+// ── O'CHIRISH NAVBATI ───────────────────────────────────────────────
+// Hisobini o'chirishni so'raganlar: 30 kunlik muddat qachon tugaydi,
+// butunlay o'chirishga nima to'sqinlik qilyapti (balans, buyurtma...),
+// tekshiruv (hold). Tiklash — faqat butunlay o'chirilmasdan OLDIN.
+// "Hozir tozalash" faqat 30 kun o'tgan hisob uchun va faqat server
+// `ACCOUNT_PURGE_MODE=on` bo'lsa ishlaydi (hosting/api/account-purge.js).
+const DEL_STATES = [
+  ['all', 'Hammasi'],
+  ['waiting', '30 kun kutilmoqda'],
+  ['due', 'Muddati o‘tgan'],
+  ['blocked', 'To‘siq bor'],
+  ['held', 'Tekshiruvda (hold)'],
+  ['unreviewed', 'Ko‘rib chiqilmagan'],
+  ['purged', 'Butunlay o‘chirilgan'],
+];
+const DEL_REASON = {
+  balance: 'Pul qoldig‘i bor',
+  pending_order: 'To‘lov kutilayotgan buyurtma',
+  bot_order: 'Bot buyurtmasi kutilmoqda',
+  auction: 'Faol auksion',
+  payout: 'Sotuvchiga to‘lov qilinmagan',
+  physical_card: 'Yetkazilmagan karta',
+  legal_hold: 'Tekshiruv (hold)',
+};
+const DEL_SOURCE = { self: 'Egasi', admin: 'Admin', email: 'Email so‘rovi' };
+const DEL_MODE = {
+  off: ['muted', 'O‘chiq'],
+  'dry-run': ['pending', 'Sinov (faqat sanaydi)'],
+  on: ['success', 'Yoqilgan'],
+};
+
+function DeletionsSection({ adminApi, apiErrText }) {
+  const { t } = useLanguage();
+  const [state, setState] = useState('all');
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState(null);
+  const [busy, setBusy] = useState(0);
+
+  const load = useCallback(async () => {
+    setErr(null);
+    setData(null);
+    try { setData(await adminApi(`/account-deletions?state=${state}`)); } catch (e) { setErr(e); }
+  }, [adminApi, state]);
+  useEffect(() => { load(); }, [load]);
+
+  const fail = (e) => window.alert(apiErrText ? apiErrText(e, t, t('Amal bajarilmadi.')) : t('Amal bajarilmadi.'));
+  const act = async (id, path, init, done) => {
+    setBusy(id);
+    try {
+      const r = await adminApi(`/account-deletions/${id}/${path}`, init);
+      if (done) done(r);
+      await load();
+    } catch (e) { fail(e); } finally { setBusy(0); }
+  };
+  const restore = (it) => {
+    if (!window.confirm(t('Hisob tiklansinmi? Egasi yana kira oladi.'))) return;
+    act(it.id, 'restore', { method: 'POST' });
+  };
+  const review = (it) => act(it.id, 'review', { method: 'POST' });
+  const hold = (it) => {
+    const note = window.prompt(t('Tekshiruv sababi (masalan: so‘rov raqami):'), '');
+    if (note === null || !note.trim()) return;
+    act(it.id, 'hold', { method: 'POST', body: JSON.stringify({ note: note.trim() }) });
+  };
+  const unhold = (it) => act(it.id, 'hold', { method: 'DELETE' });
+  const dryRun = (it) => act(it.id, 'purge', { method: 'POST', body: JSON.stringify({ dryRun: true }) }, (r) => {
+    const c = r?.counts || {};
+    const lines = r?.status === 'blocked'
+      ? [t('To‘siq bor') + ': ' + (r.blockers || []).map((b) => t(DEL_REASON[b] || b)).join(', ')]
+      : Object.entries(c).map(([k, v]) => `${k}: ${v}`);
+    window.alert(`#${it.id} — ${t('Nima o‘chishi (sinov)')}\n\n${lines.join('\n') || '—'}`);
+  });
+  const purgeNow = (it) => {
+    const typed = window.prompt(t('Qaytarib bo‘lmaydi. Tasdiqlash uchun yozing:') + ` PURGE #${it.id}`, '');
+    if (typed === null) return;
+    act(it.id, 'purge', { method: 'POST', body: JSON.stringify({ dryRun: false, confirm: typed.trim() }) });
+  };
+
+  const mode = DEL_MODE[data?.mode] || DEL_MODE.off;
+  const now = Date.now();
+  return (
+    <AdminCard
+      title={t('O‘chirish navbati')}
+      right={
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge tone={mode[0]}>{t('Avtomatik o‘chirish')}: {t(mode[1])}</StatusBadge>
+          <select
+            value={state}
+            onChange={(e) => setState(e.target.value)}
+            className="rounded-lg border border-[color:var(--vz-line)] bg-transparent px-2 py-1 text-[13px]"
+            data-testid="deletions-state"
+          >
+            {DEL_STATES.map(([k, label]) => <option key={k} value={k}>{t(label)}</option>)}
+          </select>
+        </div>
+      }
+    >
+      <p className="mb-3 text-[13px] text-[color:var(--vz-ink-dim)]">
+        {t('So‘rovdan keyin hisob darhol yopiladi va 30 kundan keyin butunlay o‘chiriladi. Shu muddat ichida egasi yozsa — “Tiklash”.')}
+      </p>
+      {err ? <LoadError err={err} onRetry={load} /> : !data ? <AdminLoading rows={4} /> : !data.items?.length ? (
+        <EmptyState icon="users" title={t('Hozircha so‘rov yo‘q')} />
+      ) : (
+        <div className="flex flex-col gap-2" data-testid="deletions-list">
+          {data.items.map((it) => {
+            const due = it.purgeAfter && it.purgeAfter <= now;
+            return (
+              <div key={it.id} className="rounded-xl border border-[color:var(--vz-line)] p-3 text-[13px]">
+                <div className="flex flex-wrap items-center gap-2">
+                  <b className="text-[color:var(--vz-ink)]">#{it.id}</b>
+                  {it.email ? <span className="break-all">{it.email}</span> : null}
+                  <StatusBadge tone="muted">{t(DEL_SOURCE[it.source] || 'Noma’lum manba')}</StatusBadge>
+                  {it.purgedAt ? <StatusBadge tone="danger">{t('Butunlay o‘chirilgan')}</StatusBadge> : null}
+                  {!it.purgedAt && !it.reviewed && it.source !== 'self' && it.source !== 'email'
+                    ? <StatusBadge tone="pending">{t('Ko‘rib chiqilmagan')}</StatusBadge> : null}
+                  {it.blockedReason ? (
+                    <StatusBadge tone="pending">
+                      {t('To‘siq bor')}: {it.blockedReason.split(',').map((b) => t(DEL_REASON[b] || b)).join(', ')}
+                    </StatusBadge>
+                  ) : null}
+                  {it.overdue ? <StatusBadge tone="danger">{t('Kechikkan')}</StatusBadge> : null}
+                  {it.hold ? <StatusBadge tone="info">{t('Tekshiruvda (hold)')}: {it.hold.note}</StatusBadge> : null}
+                </div>
+                <div className="mt-1 text-[color:var(--vz-ink-dim)]">
+                  {t('So‘ralgan')}: {when(it.requestedAt)} · {it.purgedAt
+                    ? `${t('O‘chirilgan')}: ${when(it.purgedAt)}`
+                    : `${t('Butunlay o‘chadi')}: ${when(it.purgeAfter)}`}
+                </div>
+                {!it.purgedAt ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button type="button" className="btn btn-xs" disabled={busy === it.id} onClick={() => restore(it)}>{t('Tiklash')}</button>
+                    {!it.reviewed && it.source !== 'self' && it.source !== 'email' ? (
+                      <button type="button" className="btn btn-xs" disabled={busy === it.id} onClick={() => review(it)}>{t('Ko‘rib chiqildi')}</button>
+                    ) : null}
+                    {it.hold
+                      ? <button type="button" className="btn btn-xs" disabled={busy === it.id} onClick={() => unhold(it)}>{t('Tekshiruvni yopish')}</button>
+                      : <button type="button" className="btn btn-xs" disabled={busy === it.id} onClick={() => hold(it)}>{t('Tekshiruvga olish')}</button>}
+                    <button type="button" className="btn btn-xs" disabled={busy === it.id} onClick={() => dryRun(it)}>{t('Nima o‘chishi (sinov)')}</button>
+                    {data.mode === 'on' && due ? (
+                      <button type="button" className="btn btn-xs btn-error" disabled={busy === it.id} onClick={() => purgeNow(it)}>{t('Hozir tozalash')}</button>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </AdminCard>
   );
 }

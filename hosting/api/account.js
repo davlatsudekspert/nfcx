@@ -1,4 +1,5 @@
 import { cardContentCleanupStmts } from './card-cleanup.js';
+import { ensurePurgeSchema, purgeAfterMs, idQuarantined } from './account-purge.js';
 // hosting/api/account.js — CONTRACT.md ga qarang. Route topilmasa null qaytaradi.
 //
 // server/index.js (Express) dagi quyidagi yo'llarning D1 porti — javob
@@ -447,12 +448,15 @@ export async function handle(request, env, url, H) {
     const offset = (page - 1) * limit;
     // Postgres LATERAL join o'rniga korrelyatsiyalangan sub-so'rovlar
     // (qabul qiluvchining asosiy/eng eski kartasi). from_user_id HECH QACHON
-    // tanlanmaydi (privacy).
+    // tanlanmaydi (privacy). O'chirilgan oluvchi yashirin oluvchi kabi:
+    // ismi va kartasi kodi chiqmaydi (hisob tiklansa qaytadi).
     const rows = await env.DB.prepare(
       `SELECT g.code, g.decided_at AS date,
               (SELECT name FROM cards WHERE user_id = g.to_user_id ORDER BY is_primary DESC, ts ASC LIMIT 1) AS recipientName,
               (SELECT code FROM cards WHERE user_id = g.to_user_id ORDER BY is_primary DESC, ts ASC LIMIT 1) AS recipientCode,
-              COALESCE((SELECT hidden_from_directory FROM cards WHERE user_id = g.to_user_id ORDER BY is_primary DESC, ts ASC LIMIT 1), 1) AS hidden
+              CASE WHEN EXISTS (SELECT 1 FROM users du WHERE du.id = g.to_user_id AND du.deleted_at IS NOT NULL) THEN 1
+                   ELSE COALESCE((SELECT hidden_from_directory FROM cards WHERE user_id = g.to_user_id ORDER BY is_primary DESC, ts ASC LIMIT 1), 1)
+              END AS hidden
        FROM gift_offers g
        WHERE g.status = 'accepted' AND g.decided_at >= ?
        ORDER BY g.decided_at DESC LIMIT ? OFFSET ?`
@@ -590,13 +594,27 @@ export async function handle(request, env, url, H) {
       if (card && !card.giftable) return H.json({ error: 'NOT_GIFTABLE' }, 409);
       const toUserId = await H.getRecordOwner(env, toCode);
       if (toUserId == null) return H.json({ error: 'RECIPIENT_NOT_FOUND' }, 409);
+      // O'chirish navbatidagi hisob — yo'q hisob bilan bir xil javob.
+      // Unga yuborilgan taklifni hech kim qabul qilmaydi, kod esa
+      // `ALREADY_PENDING` bilan qulflanib qolardi (B14).
+      const toDeleted = await env.DB.prepare(
+        `SELECT 1 AS x FROM users WHERE id = ? AND deleted_at IS NOT NULL`
+      ).bind(toUserId).first();
+      if (toDeleted) return H.json({ error: 'RECIPIENT_NOT_FOUND' }, 409);
       if (String(toUserId) === String(user.id)) return H.json({ error: 'CANNOT_GIFT_SELF' }, 409);
       const pending = await env.DB.prepare(`SELECT id FROM gift_offers WHERE code = ? AND status = 'pending' LIMIT 1`).bind(code).first();
       if (pending) return H.json({ error: 'ALREADY_PENDING' }, 409);
 
+      // INSERT SHARTLI: yuqoridagi tekshiruvdan keyin oluvchi o'chirilgan
+      // bo'lsa (parallel `DELETE /api/account`) qator yozilmaydi va javob
+      // o'sha RECIPIENT_NOT_FOUND.
       const row = await env.DB.prepare(
-        `INSERT INTO gift_offers (code, from_user_id, to_user_id, status, created_at) VALUES (?, ?, ?, 'pending', ?) RETURNING id`
-      ).bind(code, user.id, toUserId, H.nowTs()).first();
+        `INSERT INTO gift_offers (code, from_user_id, to_user_id, status, created_at)
+         SELECT ?, ?, ?, 'pending', ?
+          WHERE EXISTS (SELECT 1 FROM users WHERE id = ? AND deleted_at IS NULL)
+         RETURNING id`
+      ).bind(code, user.id, toUserId, H.nowTs(), toUserId).first();
+      if (!row) return H.json({ error: 'RECIPIENT_NOT_FOUND' }, 409);
       return H.json({ ok: true, id: row.id }, 201);
     }
   }
@@ -620,14 +638,38 @@ export async function handle(request, env, url, H) {
     const user = await H.getCurrentUser(request, env);
     if (!user) return H.json({ error: 'unauthorized' }, 401);
     const now = H.nowTs();
+    // `deletion_source = 'self'` — faqat egasi so'ragan hisob 30 kundan
+    // keyin avtomatik purge navbatiga tushadi (account-purge.js). Ustun
+    // qo'shilmay qolsa ham o'chirish so'rovi ishlayveradi: manbasi
+    // yozilmagan hisob admin ko'rib chiqquncha kutadi (xavfsiz tomon).
+    const sourceCol = await ensurePurgeSchema(env).catch(() => false);
     await env.DB.batch([
-      env.DB.prepare(`UPDATE users SET deleted_at = COALESCE(deleted_at, ?) WHERE id = ?`)
+      env.DB.prepare(sourceCol
+        ? `UPDATE users SET deleted_at = COALESCE(deleted_at, ?), deletion_source = COALESCE(deletion_source, 'self') WHERE id = ?`
+        : `UPDATE users SET deleted_at = COALESCE(deleted_at, ?) WHERE id = ?`)
         .bind(now, user.id),
       // Sessiyalar darhol yopiladi: boshqa qurilmada ochiq qolgan
       // ilova o'chirilgan hisob bilan ishlashda davom etmasin.
       env.DB.prepare(`DELETE FROM sessions WHERE user_id = ?`).bind(user.id),
+      // KUTILAYOTGAN SOVG'A TAKLIFLARI BEKOR QILINADI (B14) — o'chirilmaydi,
+      // faqat holati o'zgaradi, `accept`/`reject`/`cancel` bilan bir xil.
+      //
+      // Hisob egasiga KELGAN taklif yuboruvchining kodini qulflab
+      // turardi: kod bo'yicha kutilayotgan taklif bo'lsa yangisi
+      // `ALREADY_PENDING` bilan rad etiladi va javob beradigan odam
+      // endi yo'q. Yuboruvchining "yuborilganlar" ro'yxatida esa
+      // o'chirilgan odamning emaili ko'rinib turardi. Hisob egasi
+      // YUBORGAN taklifni ham endi hech kim yakunlamaydi.
+      env.DB.prepare(
+        `UPDATE gift_offers SET status = 'cancelled', decided_at = ?
+          WHERE status = 'pending' AND (from_user_id = ? OR to_user_id = ?)`
+      ).bind(now, user.id, user.id),
     ]);
-    return H.json({ ok: true });
+    // Qachon butunlay o'chirilishi — birinchi so'rov vaqtidan 30 kun
+    // (takroriy so'rov muddatni uzaytirmaydi: `COALESCE`).
+    const row = await env.DB.prepare(`SELECT deleted_at FROM users WHERE id = ?`).bind(user.id).first().catch(() => null);
+    const after = purgeAfterMs(row?.deleted_at || now);
+    return H.json({ ok: true, purgeAfter: after ? new Date(after).toISOString() : null });
   }
 
   // Foydalanuvchi O'Z NFC ID'sini butunlay o'chiradi (server/db.js deleteOwnCard).
@@ -651,8 +693,8 @@ export async function handle(request, env, url, H) {
     // ro'yxat vaqt o'tib bir-biridan uzoqlashdi va aynan shu yerda
     // ISTORYALAR tushib qoldi.
     //
-    // Endi manba bitta: yangi jadval yordamchiga qo'shilsa, uchala
-    // o'chirish yo'li ham darhol uni tozalaydi.
+    // Endi manba bitta: yangi jadval yordamchiga qo'shilsa, har bir
+    // o'chirish yo'li darhol uni tozalaydi.
     const now = H.nowTs();
     const stmts = [
       ...cardContentCleanupStmts(env, '?', [code], now),
@@ -723,22 +765,23 @@ export async function handle(request, env, url, H) {
       let user = await env.DB.prepare(
         `SELECT id, password_hash AS passwordHash, deleted_at AS deletedAt FROM users WHERE email = ?`
       ).bind(email).first();
-      if (user && user.deletedAt) {
-        // server/db.js adminDeleteUser tartibi
-        // Kontent ham tozalanadi — aks holda kodlar bo'shab, keyin boshqa
-        // odamga o'tganda eski postlar/menyu o'sha profilda chiqib qolardi
-        // (hosting/api/card-cleanup.js izohiga qarang).
-        await env.DB.batch([
-          ...cardContentCleanupStmts(env, `SELECT code FROM cards WHERE user_id = ?`, [user.id], H.nowTs()),
-          env.DB.prepare(`DELETE FROM physical_cards WHERE owner_user_id = ?`).bind(user.id),
-          env.DB.prepare(`DELETE FROM cards WHERE user_id = ?`).bind(user.id),
-          env.DB.prepare(`UPDATE auctions SET highest_bidder_id = NULL WHERE highest_bidder_id = ?`).bind(user.id),
-          env.DB.prepare(`DELETE FROM users WHERE id = ?`).bind(user.id),
-        ]);
-        user = null;
-      }
+      // O'CHIRISH NAVBATIDAGI HISOB EMAILI — HECH NARSA O'CHIRILMAYDI.
+      //
+      // Ilgari shu yerda eski hisob, uning kartalari va qurilmalari
+      // `DELETE` bilan o'chirilardi. `DELETE FROM users` esa CASCADE
+      // bilan to'lov yozuvlarini ham olib ketardi (B1), bot buyurtmasi
+      // bo'lsa FK xatosi bilan yiqilardi (B2). Aktivatsiya kodi shaxsni
+      // tasdiqlamaydi: kodi bor har kim istalgan emailni yozib, birovning
+      // hisobini o'chira olardi (B11). Endi javob doim 409, hech narsa
+      // yaratilmaydi va o'chirilmaydi.
+      //
+      // Bu tekshiruv PAROLDAN KEYIN turadi. Aks holda kodi bor odam
+      // istalgan emailni yozib, u o'chirish navbatidami yoki yo'qmi
+      // bilib olardi. Parol noto'g'ri bo'lsa javob tirik hisobdagidek
+      // `email_taken` bo'ladi.
       if (user) {
         if (!(await H.verifyPassword(password, user.passwordHash))) return H.json({ error: 'email_taken' }, 409);
+        if (user.deletedAt) return H.json({ error: 'account_pending_deletion' }, 409);
       } else {
         const created = await env.DB.prepare(
           `INSERT INTO users (email, password_hash, created_at) VALUES (?, ?, ?) ON CONFLICT (email) DO NOTHING RETURNING id`
@@ -749,6 +792,10 @@ export async function handle(request, env, url, H) {
       }
 
       // 2) Karta (server/db.js createRecord — ON CONFLICT DO NOTHING).
+      //
+      // O'chirilgan hisobning kodi 90 kun hech kimga berilmaydi
+      // (egasining qarori, account-purge.js `idQuarantined`).
+      if (await idQuarantined(env, 'card', code)) return H.json({ error: 'code_taken' }, 409);
       const extraLinks = [];
       if (youtube) extraLinks.push({ label: 'YouTube', url: youtube });
       if (tiktok) extraLinks.push({ label: 'TikTok', url: tiktok });
@@ -784,7 +831,8 @@ export async function handle(request, env, url, H) {
       await env.DB.prepare(`UPDATE cards SET tier_override = 'exclusive' WHERE code = ?`).bind(code).run().catch(() => {});
 
       const session = await H.createUserSession(env, user.id, request);
-      await H.logAdminActivity(env, { action: 'nfc_gift_activated', details: `${code} — ${email}`, ip: H.reqIp(request) });
+      // Jurnalga email emas, hisob raqami yoziladi (B13).
+      await H.logAdminActivity(env, { action: 'nfc_gift_activated', details: `${code} — #${user.id}`, ip: H.reqIp(request) });
       return H.jsonWithCookie({ ok: true, code }, 201, session.cookie);
     }
   }

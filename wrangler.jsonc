@@ -199,7 +199,27 @@
   // odam to'lovdan keyin AYNAN o'z buyurtmasining holatini ko'radi.
   // Holatni baribir SERVER aytadi: qaytish manzili hech qachon
   // "to'landi" degani emas.
+  // KUNLIK CRON: har kuni 21:30 UTC (Toshkent 02:30) — o'chirish so'ralganiga
+  // 30 kun bo'lgan hisoblar (`scheduled` handler, hosting/worker.js).
+  // Bu fayl cron'ning YAGONA manbai: Dashboard'dagi boshqa cron deploy'da o'chadi.
+  "triggers": { "crons": ["30 21 * * *"] },
   "vars": {
+    // HISOBNI BUTUNLAY O'CHIRISH (hosting/api/account-purge.js,
+    // ACCOUNT_DELETION_PLAN.md). Egasining qarori (2026-09-25): 30 kunlik
+    // o'ylash muddati, pullik ID'lar 90 kundan keyin qayta beriladi.
+    //   ACCOUNT_PURGE_MODE: off | dry-run | on. `dry-run` — kunlik cron faqat
+    //     SANAYDI va logga yozadi (`evt: account_purge`), bazaga TEGMAYDI.
+    //     `on` ga faqat egasining ruxsati bilan o'tiladi.
+    //   ACCOUNT_PURGE_R2: fayllarni R2 dan o'chirish — alohida, keyinroq.
+    //   Qolgan to'rttasi egasi javob bermagan savollar: javobgacha "off"
+    //   (ma'lumot SAQLANADI).
+    "ACCOUNT_PURGE_MODE": "dry-run",
+    "ACCOUNT_PURGE_R2": "off",
+    "PURGE_MAX_USERS": "3",
+    "PURGE_SUPPORT_MESSAGES": "off",
+    "PURGE_COMPANY_ORDERS": "off",
+    "PURGE_CONVERSATIONS": "off",
+    "SCRUB_ADMIN_LOG": "off",
     "PAYMENTS_ENABLED": "true",
     "PAYME_SANDBOX": "false",
     "PAYME_CHECKOUT_DOMAIN": "checkout.paycom.uz",

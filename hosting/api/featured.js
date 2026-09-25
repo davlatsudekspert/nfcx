@@ -59,7 +59,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 let schemaReady = null;
 
-async function ensureSchema(env) {
+export async function ensureSchema(env) {
   if (!schemaReady) {
     schemaReady = env.DB.batch([
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS "featured_slots" (

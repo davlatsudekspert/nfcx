@@ -34,7 +34,7 @@
 //     `filter` — premium | today | week.
 
 let ready;
-async function ensureTable(env) {
+export async function ensureTable(env) {
   if (!ready) {
     ready = env.DB.batch([
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS "app_users" (

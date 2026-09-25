@@ -730,6 +730,7 @@ const DICT_BASE = {
   "Jonli oldindan ko'rish — real vaqtda yangilanadi": { ru: 'Живой предпросмотр — обновляется в реальном времени', en: 'Live preview — updates in real time' },
   "Sovg'a takliflari": { ru: 'Предложения подарков', en: 'Gift offers' },
   'ga yuborilgan, javob kutilmoqda': { ru: '— отправлено, ожидается ответ', en: '— sent, awaiting a reply' },
+  'o‘chirilgan hisob': { ru: 'удалённый аккаунт', en: 'deleted account' },
   'Qabul qilish': { ru: 'Принять', en: 'Accept' },
   'Rad etish': { ru: 'Отклонить', en: 'Decline' },
   "Qabul qilib bo'lmadi — taklif allaqachon ishlangan bo'lishi mumkin.": { ru: 'Не удалось принять — возможно, предложение уже обработано.', en: 'Could not accept — the offer may already have been processed.' },

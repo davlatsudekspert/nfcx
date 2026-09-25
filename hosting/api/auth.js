@@ -1,4 +1,4 @@
-import { cardContentCleanupStmts } from './card-cleanup.js';
+import { idQuarantined } from './account-purge.js';
 // hosting/api/auth.js — ro'yxatdan o'tish (Telegram OTP) va parolni tiklash.
 // CONTRACT.md ga qarang. Route topilmasa null qaytaradi.
 //
@@ -261,29 +261,17 @@ async function verifyAndConsumePasswordResetCode(env, H, userId, code) {
 
 // ---------- users / cards / promo ----------
 
-// Foydalanuvchini BUTUNLAY o'chiradi (server/db.js adminDeleteUser porti) —
-// admin o'chirgan akkauntning emaili bo'shab, qayta ro'yxatdan o'tish
-// mumkin bo'ladi.
+// `hardDeleteUser` OLIB TASHLANDI (ACCOUNT_DELETION_PLAN.md, PR-1, B1/B11).
 //
-// 2026-09 TUZATISH: bu yerdagi eski izohda "qolganlari CASCADE" deyilgan
-// edi va bu NOTO'G'RI — `posts`, `menu_items`, `products`, `card_gallery`
-// va h.k. `cards` ga FK bilan bog'lanmagan (sxemada FK umuman yo'q),
-// shuning uchun hech narsa cascade bo'lmaydi. Natijada kartalar
-// o'chirilgach, ularning kontenti (postlar, menyu, galereya, MIJOZ
-// LIDLARI) bazada qolib ketardi va o'sha KOD keyin boshqa odamga o'tsa,
-// eski egasining ma'lumotlari yangi profilda ko'rinardi.
-// Endi kontent `cardContentCleanupStmts()` orqali tozalanadi.
-async function hardDeleteUser(env, userId) {
-  const codeSelect = `SELECT code FROM cards WHERE user_id = ?`;
-  await env.DB.batch([
-    ...cardContentCleanupStmts(env, codeSelect, [userId], new Date().toISOString()),
-    env.DB.prepare(`DELETE FROM physical_cards WHERE owner_user_id = ?`).bind(userId),
-    env.DB.prepare(`DELETE FROM cards WHERE user_id = ?`).bind(userId),
-    env.DB.prepare(`UPDATE bot_orders SET user_id = NULL WHERE user_id = ?`).bind(userId),
-    env.DB.prepare(`UPDATE auctions SET highest_bidder_id = NULL WHERE highest_bidder_id = ?`).bind(userId),
-    env.DB.prepare(`DELETE FROM users WHERE id = ?`).bind(userId),
-  ]);
-}
+// U o'chirilgan hisob emaili bilan qayta ro'yxatdan o'tilganda eski
+// qatorni `DELETE FROM users` bilan o'chirardi. Sxemadagi
+// `ON DELETE CASCADE` esa shu bilan birga `transactions`,
+// `wallet_topups`, `web_orders`, `bids`, `premium_requests` va
+// `support_messages` ni ham QAYTARILMAS o'chirardi. Email xizmati
+// o'chiq bo'lsa, buni emailni yoki telefonni biladigan BEGONA odam
+// ham qo'zg'ata olardi. Endi bu holatda 409 `account_pending_deletion`
+// qaytadi (`finishRegistration`), `users` qatori hech qachon
+// o'chirilmaydi. Xavfsiz purge (tombstone) keyingi bosqichda (PR-2).
 
 // Akkaunt ochish uchun SHART bo'lgan ustunlar soni. Qolganlari
 // ixtiyoriy va ular yo'q bo'lsa ham ro'yxat ishlayveradi.
@@ -364,6 +352,9 @@ export async function createFreeAutoId(env, userId, name, opts = {}) {
   const source = opts.source || 'registration_auto';
   for (let i = 0; i < 8; i++) {
     const code = String(Math.floor(10_000_000 + Math.random() * 89_999_999));
+    // O'chirilgan hisobning kodi 90 kun boshqa odamga berilmaydi
+    // (egasining qarori, account-purge.js `idQuarantined`).
+    if (await idQuarantined(env, 'card', code)) continue;
     const row = await env.DB.prepare(
       // `source = 'registration_auto'` — kartaning ISHONCHLI manba belgisi.
       // Katalog aynan shu belgi bo'yicha bu ID'ni ro'yxat/qidiruv/filtr va
@@ -677,14 +668,20 @@ async function register(request, env, H) {
 // tekshirilgandan KEYIN bajariladi. Ikki yo'l uchun bitta joyda turadi:
 // nusxa bo'lsa, vaqt o'tib biri o'zgarib, ikkinchisi eskirib qolardi.
 async function finishRegistration(request, env, H, { email, password, extra, existing, body }) {
+  // O'CHIRISH NAVBATIDAGI HISOB EMAILI (yoki faqat telefonli hisobning
+  // ichki manzili) — HECH NARSA O'CHIRILMAYDI.
+  //
+  // Ilgari eski qator shu yerda `DELETE FROM users` bilan o'chirilardi
+  // va CASCADE uning to'lov yozuvlarini ham olib ketardi (B1). Email
+  // xizmati o'chiq bo'lsa kod so'ralmaydi, ya'ni buni begona odam ham
+  // qila olardi (B11). Endi eski hisob tegilmaydi, odamga "hisob
+  // o'chirish navbatida, qo'llab-quvvatlashga yozing" deyiladi.
+  //
+  // Tekshiruv shu yerda, kod tekshirilgandan KEYIN: email xizmati
+  // yoqiq bo'lsa hisob o'chirish navbatida ekanini faqat emailning
+  // egasi bilib oladi. Jurnalga yozilmaydi — unda email bo'lardi (B13).
   if (existing?.deleted_at) {
-    // Admin o'chirgan akkaunt emaili — eski qator butunlay tozalanadi, jurnalga yoziladi.
-    await hardDeleteUser(env, existing.id);
-    await H.logAdminActivity(env, {
-      action: 'user_deleted',
-      details: `O'chirilgan email qayta ro'yxatdan o'tdi: ${email} (eski #${existing.id} tozalandi)`,
-      ip: H.reqIp(request),
-    });
+    return H.json({ error: 'account_pending_deletion' }, 409);
   }
 
   const user = await createUser(env, H, {
@@ -845,7 +842,9 @@ async function requestEmailReset(request, env, H) {
 
   const ip = H.reqIp(request);
   if (await H.rateLimitD1(env, `emailreset:ip:${ip}`, 10, 60 * 60_000)) return H.json({ error: 'rate_limited' }, 429);
-  if (await H.rateLimitD1(env, `emailreset:to:${email}`, 3, 60 * 60_000)) return ok();
+  // Kalitda xom email emas, uning xeshi (B13): `rate_limits` jadvali
+  // hisob o'chirilgandan keyin ham bir muddat qoladi.
+  if (await H.rateLimitD1(env, `emailreset:to:${await H.sha256Hex(email)}`, 3, 60 * 60_000)) return ok();
   if (!H.emailEnabledD1(env)) return ok();
 
   // Placeholder email (raqam bilan ro'yxatdan o'tganlar) hech qachon

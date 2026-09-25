@@ -41,7 +41,7 @@ const BOT_MSG_WINDOW_MS = 60 * 60_000;
 const BOT_MSG_MAX_PER_WINDOW = 10;
 
 let botMsgSchema = null;
-async function ensureBotMessages(env) {
+export async function ensureBotMessages(env) {
   if (!botMsgSchema) {
     botMsgSchema = env.DB.prepare(`CREATE TABLE IF NOT EXISTS "bot_messages" (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

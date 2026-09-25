@@ -1,5 +1,6 @@
 import { PENDING_ORDER_TTL_MS } from './order-window.js';
 import { cardContentCleanupStmts } from './card-cleanup.js';
+import { ensurePurgeSchema, idQuarantined } from './account-purge.js';
 // hosting/api/admin-extra.js — CONTRACT.md ga qarang. Route topilmasa null qaytaradi.
 //
 // server/admin.js (Express) dagi quyidagi admin route'larning D1 porti.
@@ -303,14 +304,34 @@ export async function handle(request, env, url, H) {
   if (userDelete && method === 'POST') {
     if (!isSuper) return forbidden();
     const id = Number(userDelete[1]);
-    const user = await env.DB.prepare(`SELECT id, email, deleted_at FROM users WHERE id = ?`).bind(id).first();
+    const user = await env.DB.prepare(`SELECT id FROM users WHERE id = ?`).bind(id).first();
     if (!user) return H.json({ error: 'not_found' }, 404);
     // Legacy adminDeleteUser (server/db.js) hard-delete qilar edi; D1'da
     // yozuvlar saqlanib qoladi (deleted_at) — getCurrentUser deleted_at'li
     // foydalanuvchini tanimaydi, sessiyalar esa darhol yo'q qilinadi.
-    await env.DB.prepare(`UPDATE users SET deleted_at = COALESCE(deleted_at, ?) WHERE id = ?`).bind(H.nowTs(), id).run();
-    await env.DB.prepare(`DELETE FROM sessions WHERE user_id = ?`).bind(id).run();
-    await H.logAdminActivity(env, { action: 'user_deleted', details: `Foydalanuvchi #${id} o'chirildi (soft-delete, sessiyalar yopildi)`, oldValue: user.email, ip });
+    //
+    // Uchala qadam BITTA batch'da — `DELETE /api/account` dagi kabi:
+    // yarim yo'lda to'xtab, hisob o'chirilgan-u sessiyasi ochiq yoki
+    // taklifi kutilayotgan holda qolmasin.
+    const now = H.nowTs();
+    // `deletion_source = 'admin'` — admin (moderatsiya yoki firibgarlik)
+    // o'chirgan hisob super_admin ko'rib chiqmaguncha purge qilinmaydi
+    // (account-purge.js, "O'chirish navbati").
+    const sourceCol = await ensurePurgeSchema(env).catch(() => false);
+    await env.DB.batch([
+      env.DB.prepare(sourceCol
+        ? `UPDATE users SET deleted_at = COALESCE(deleted_at, ?), deletion_source = COALESCE(deletion_source, 'admin') WHERE id = ?`
+        : `UPDATE users SET deleted_at = COALESCE(deleted_at, ?) WHERE id = ?`).bind(now, id),
+      env.DB.prepare(`DELETE FROM sessions WHERE user_id = ?`).bind(id),
+      // Kutilayotgan sovg'a takliflari bekor qilinadi (B14) — `DELETE
+      // /api/account` dagi bilan bir xil UPDATE, hech narsa o'chirilmaydi.
+      env.DB.prepare(
+        `UPDATE gift_offers SET status = 'cancelled', decided_at = ?
+          WHERE status = 'pending' AND (from_user_id = ? OR to_user_id = ?)`
+      ).bind(now, id, id),
+    ]);
+    // Jurnalga email emas, hisob raqami yoziladi (B13).
+    await H.logAdminActivity(env, { action: 'user_deleted', details: `Foydalanuvchi #${id} o'chirildi (soft-delete, sessiyalar yopildi)`, oldValue: `#${id}`, ip });
     return H.json({ ok: true });
   }
 
@@ -330,6 +351,8 @@ export async function handle(request, env, url, H) {
     }
     // server/db.js createNfcGift
     if (await env.DB.prepare(`SELECT 1 AS x FROM cards WHERE code = ?`).bind(code).first()) return H.json({ error: 'CODE_TAKEN' }, 409);
+    // O'chirilgan hisobning kodi 90 kun hech kimga berilmaydi (account-purge.js).
+    if (await idQuarantined(env, 'card', code)) return H.json({ error: 'CODE_QUARANTINED' }, 409);
     if (await env.DB.prepare(`SELECT 1 AS x FROM nfc_gifts WHERE code = ? AND status = 'reserved'`).bind(code).first()) return H.json({ error: 'ALREADY_RESERVED' }, 409);
     for (let i = 0; i < 8; i++) {
       const activationCode = generateActivationCode();

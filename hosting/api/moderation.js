@@ -65,7 +65,7 @@ let schemaReady = null;
 // Jadvallar KERAK BO'LGANDA yaratiladi — worker'ning boshqa
 // bo'limlari kabi. Migratsiya skripti yo'q va bo'lishi ham shart
 // emas: `IF NOT EXISTS` ikkinchi chaqiruvda hech narsa qilmaydi.
-async function ensureSchema(env) {
+export async function ensureSchema(env) {
   if (!schemaReady) {
     schemaReady = env.DB.batch([
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS "content_reports" (

@@ -14,9 +14,12 @@
 // eski egasining kontenti YANGI egasining profilida ko'rinib qolardi.
 // Bu maxfiylik muammosi.
 //
-// Shu sababli foydalanuvchi/karta o'chirilayotgan HAR BIR joyda shu
-// yordamchi ishlatiladi — UCHALA yo'lda ham (auth.js hardDeleteUser,
-// account.js qayta ro'yxatdan o'tish, account.js egasi o'chirishi). `scripts/test-card-cleanup.mjs` sxemadagi
+// Shu sababli karta o'chirilayotgan HAR BIR joyda shu yordamchi
+// ishlatiladi (account.js egasi o'chirishi, admin-extra.js admin
+// o'chirishi). Foydalanuvchini qayta ro'yxat yoki sovg'a orqali butunlay
+// o'chiradigan eski yo'llar (auth.js hardDeleteUser, account.js sovg'a
+// faollashtirish) 2026-09 da olib tashlandi — ACCOUNT_DELETION_PLAN.md,
+// PR-1. `scripts/test-card-cleanup.mjs` sxemadagi
 // kod-bog'liq jadvallar ro'yxatini shu ro'yxat bilan solishtiradi —
 // kelajakda yangi jadval qo'shilsa, test darhol ogohlantiradi.
 
@@ -36,8 +39,11 @@ export const CARD_CONTENT_TABLES = [
 // jadvalidan kod tanlaydigan to'liq SELECT (masalan
 // `SELECT code FROM cards WHERE user_id = ?`). `binds` har bir statement
 // uchun qayta ishlatiladi.
-export function cardContentCleanupStmts(env, codeSelect, binds, nowTs) {
-  const by = { reason: 'card_cleanup' };
+//
+// `by` — arxiv yozuvida kim va nima sababli o'chirgani (standart:
+// `card_cleanup`; hisob purge'i `account_purge` beradi).
+export function cardContentCleanupStmts(env, codeSelect, binds, nowTs, by = { reason: 'card_cleanup' }) {
+  const retire = { reason: by.reason || 'card_cleanup', byUserId: by.userId || 0, byAdmin: by.admin || '' };
   const stmts = [
     // DALIL ARXIVI — HAMMA o'chirishdan OLDIN, o'sha batch ichida
     // (content-archive.js): post, istoriya, video va fayl nusxasi.
@@ -47,7 +53,7 @@ export function cardContentCleanupStmts(env, codeSelect, binds, nowTs) {
     archiveStmt(env, 'card_file', `code IN (${codeSelect})`, binds, by),
     // Postlarning izoh va layklari — post raqami qayta ishlatiladi,
     // aks holda keyingi yangi postga "yopishardi" (comments.js).
-    ...retireTargetStmts(env, 'post', `SELECT id FROM posts WHERE code IN (${codeSelect})`, binds, { reason: 'card_cleanup' }),
+    ...retireTargetStmts(env, 'post', `SELECT id FROM posts WHERE code IN (${codeSelect})`, binds, retire),
     // post_likes → posts orqali; postlar o'chirilishidan OLDIN.
     env.DB.prepare(`DELETE FROM post_likes WHERE post_id IN (SELECT id FROM posts WHERE code IN (${codeSelect}))`).bind(...binds),
     // ISTORYALAR — ALOHIDA, chunki ular kartaga `code` orqali EMAS,
@@ -62,6 +68,9 @@ export function cardContentCleanupStmts(env, codeSelect, binds, nowTs) {
     //
     // Layk va ko'rishlar istoryaning O'ZIDAN OLDIN o'chadi (ular
     // `story_id` orqali bog'langan).
+    // Istoriyalarga yozilgan izohlar ham arxivga o'tadi va yashiriladi —
+    // istoriya raqami qayta ishlatilsa, eski izoh yangisiga yopishmasin.
+    ...retireTargetStmts(env, 'story', `SELECT id FROM stories WHERE owner_kind = 'card' AND owner_id IN (${codeSelect})`, binds, retire),
     env.DB.prepare(`DELETE FROM story_likes WHERE story_id IN (SELECT id FROM stories WHERE owner_kind = 'card' AND owner_id IN (${codeSelect}))`).bind(...binds),
     env.DB.prepare(`DELETE FROM story_views WHERE story_id IN (SELECT id FROM stories WHERE owner_kind = 'card' AND owner_id IN (${codeSelect}))`).bind(...binds),
     env.DB.prepare(`DELETE FROM stories WHERE owner_kind = 'card' AND owner_id IN (${codeSelect})`).bind(...binds),

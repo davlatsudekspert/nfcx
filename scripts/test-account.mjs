@@ -178,11 +178,19 @@ let premiumOrderId;
   check('GET /api/payments no cookie -> 401', r.status, 401);
   const r2 = await call('/api/payments', { cookie: cookie.user });
   check('GET /api/payments -> {payments, pendingPayout}', [r2.status, r2.body.payments.length, r2.body.pendingPayout, Object.keys(r2.body.payments[0]).sort()],
-    [200, 1, 0, ['code', 'createdAt', 'id', 'kind', 'price', 'status']]);
+    // `paymentProvider` — Payme va Click ni AJRATADI (`account.js`:
+    // click/payme tranzaksiya id'siga qarab). Maydon serverga keyin
+    // qo'shilgan, bu kutilma esa orqada qolgan va to'lov tarixi
+    // testi shu sababdan qizil turardi. Mahsulot to'g'ri ishlayapti.
+    [200, 1, 0, ['code', 'createdAt', 'id', 'kind', 'paymentProvider', 'price', 'status']]);
   sqlite.prepare(`UPDATE users SET pending_payout = 15000 WHERE id = 1`).run();
   check('pendingPayout reflected', (await call('/api/payments', { cookie: cookie.user })).body.pendingPayout, 15000);
   const one = await call(`/api/payments/${premiumOrderId}`, { cookie: cookie.user });
-  check('GET /api/payments/:id -> {id, kind, status, price}', [one.status, one.body], [200, { id: premiumOrderId, kind: 'premium_upgrade', status: 'pending', price: 20000 }]);
+  // To'lov hali boshlanmagani uchun `paymentProvider` null — lekin
+  // maydonning O'ZI javobda bo'lishi shart, aks holda ilova
+  // "Payme orqali" deb yoza olmaydi.
+  check('GET /api/payments/:id -> {id, kind, status, price, paymentProvider}', [one.status, one.body],
+    [200, { id: premiumOrderId, kind: 'premium_upgrade', status: 'pending', price: 20000, paymentProvider: null }]);
   const notMine = await call(`/api/payments/${premiumOrderId}`, { cookie: cookie.other });
   check('GET /api/payments/:id other user -> 404', [notMine.status, notMine.body], [404, { error: 'not_found' }]);
   check('GET /api/payments/:id no cookie -> 401', (await call(`/api/payments/${premiumOrderId}`)).status, 401);
@@ -270,7 +278,10 @@ let premiumOrderId;
   // to'ldirilgan holat scripts/test-card-print-order.mjs da tekshiriladi.
   check('web_orders physical row', { ...row, payload: JSON.parse(row.payload) }, {
     user_id: 1, code: 'VIP001', kind: 'physical_card_order', price: 200000, status: 'pending',
-    payload: { ...shipping, shippingCarrier: '', quantity: 1, designFrontUrl: '', designBackUrl: '', printSpec: '' },
+    // `finish` — karta yuzasi. Server uni ruxsat etilgan ro'yxatdan
+    // tekshiradi va berilmasa birinchisini qo'yadi (`FINISHES[0]` =
+    // `matte_black`), ya'ni buyurtmada u HAR DOIM bo'ladi.
+    payload: { ...shipping, shippingCarrier: '', quantity: 1, finish: 'matte_black', designFrontUrl: '', designBackUrl: '', printSpec: '' },
   });
   // free-tier kod uchun feature_locked (physicalCardDesigner min silver)
   sqlite.prepare(`INSERT INTO cards (code, name, price, ts, user_id) VALUES ('12345678', 'Free', 0, 2000, 1)`).run();
@@ -377,7 +388,8 @@ let premiumOrderId;
   const token = setCookie.split(';')[0].split('=')[1];
   const me = await call('/api/auth/me', { cookie: `nfc_session=${token}` });
   check('session cookie logs the new user in', [me.status, me.body?.email || me.body?.user?.email], [200, 'dilnoza@test.local']);
-  check('admin activity logged', sqlite.prepare(`SELECT action, details FROM admin_activity_log ORDER BY id DESC LIMIT 1`).get(), { action: 'nfc_gift_activated', details: 'GIF001 — dilnoza@test.local' });
+  // B13: jurnalga email emas, hisob raqami yoziladi.
+  check('admin activity logged (code — #userId, no email)', sqlite.prepare(`SELECT action, details FROM admin_activity_log ORDER BY id DESC LIMIT 1`).get(), { action: 'nfc_gift_activated', details: `GIF001 — #${newUser.id}` });
   const again = await call('/api/nfc-gifts/GIF001/activate', { method: 'POST', json: base });
   check('activate twice -> 401 bad_code (already activated)', [again.status, again.body], [401, { error: 'bad_code' }]);
   // Record's public GET works and shows it as gift/exclusive

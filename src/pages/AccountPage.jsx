@@ -1556,7 +1556,7 @@ function GiftOffersPanel({ onChanged, onCount }) {
         ))}
         {outgoing.map((g) => (
           <div key={'out' + g.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm">
-            <span><b className="font-mono">{g.code}</b> — <span className="text-base-content/60">{g.toEmail}</span>{t('ga yuborilgan, javob kutilmoqda')}</span>
+            <span><b className="font-mono">{g.code}</b> — <span className="text-base-content/60">{g.toEmail || t('o‘chirilgan hisob')}</span>{t('ga yuborilgan, javob kutilmoqda')}</span>
             <button className="btn btn-ghost btn-xs min-h-11" disabled={busy === g.id} onClick={() => cancel(g.id)}>{t('Bekor qilish')}</button>
           </div>
         ))}
