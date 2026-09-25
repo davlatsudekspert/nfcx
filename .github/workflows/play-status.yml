@@ -1,0 +1,50 @@
+# PLAY HOLATI — FAQAT O'QISH (2026-09-25).
+#
+# "Testerga eski versiya chiqyapti" kabi savollarga taxminsiz javob:
+# har bir trekda (internal, alpha=yopiq, beta=ochiq, production) qaysi
+# versiyalar qaysi holatda turgani. Edit ochiladi, o'qiladi va
+# COMMIT QILINMASDAN o'chiriladi — Play'da hech narsa o'zgarmaydi.
+name: Play holati (faqat o'qish)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['claude/**']
+    paths: ['.github/workflows/play-status.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Treklar
+        env:
+          PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          pip install --quiet google-auth requests
+          python3 - <<'PY'
+          import json, os, requests
+          from google.oauth2 import service_account
+          from google.auth.transport.requests import Request
+          creds = service_account.Credentials.from_service_account_info(
+              json.loads(os.environ["PLAY_JSON"]),
+              scopes=["https://www.googleapis.com/auth/androidpublisher"])
+          creds.refresh(Request())
+          h = {"Authorization": "Bearer " + creds.token}
+          base = "https://androidpublisher.googleapis.com/androidpublisher/v3/applications/uz.nfcstore.nova"
+          edit = requests.post(base + "/edits", headers=h, timeout=60).json()["id"]
+          try:
+              tracks = requests.get(f"{base}/edits/{edit}/tracks", headers=h, timeout=60).json().get("tracks", [])
+              for t in tracks:
+                  print(f"== TREK: {t.get('track')}")
+                  for r in t.get("releases", []):
+                      print(f"   {r.get('status'):<11} codes={r.get('versionCodes')} name={r.get('name')!r} fraction={r.get('userFraction')}")
+              bundles = requests.get(f"{base}/edits/{edit}/bundles", headers=h, timeout=60).json().get("bundles", [])
+              codes = sorted(b.get("versionCode") for b in bundles)
+              print("== Yuklangan AAB versionCode'lar:", codes[:3], "...", codes[-5:], f"(jami {len(codes)})")
+          finally:
+              requests.delete(f"{base}/edits/{edit}", headers=h, timeout=60)
+              print("Edit o'chirildi — Play'da hech narsa o'zgarmadi.")
+          PY
