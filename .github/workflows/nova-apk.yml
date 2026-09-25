@@ -661,11 +661,34 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # FAYL HAQIQATAN SHU QURILISHNIKIMI — saytga eski yoki boshqa
+          # versiya chiqib ketmasin.
+          AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 2>/dev/null | sort -V | tail -1)
+          GOT=$("$AAPT" dump badging NFCSTORE-Play.apk | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p" | head -1)
+          if [ "$GOT" != "${{ steps.ver.outputs.code }}" ]; then
+            echo "::error::Play APK versionCode $GOT, kutilgan ${{ steps.ver.outputs.code }} — saytga qo'yilmadi."
+            exit 1
+          fi
+          echo "Play APK versionCode: $GOT"
           sha256sum NFCSTORE-Play.apk | awk '{print $1"  NFCSTORE-Play.apk"}' > NFCSTORE-Play.sha256
           gh release delete play-latest --yes --cleanup-tag 2>/dev/null || true
           gh release create play-latest NFCSTORE-Play.apk NFCSTORE-Play.sha256 \
             --target "$GITHUB_SHA" \
             --title "NFCSTORE — Play imzolagan APK (versionCode ${{ steps.ver.outputs.code }})" \
             --notes "Saytdagi yuklab olish havolasi uchun. Imzosi Google Play'dagi bilan bir xil — keyin Play Market'dan yangilanadi."
+          # QORALAMA BO'LIB QOLMASIN (#238 da shunday bo'ldi: teg endigina
+          # o'chirilgan paytda reliz qoralama holatida qolib ketdi va
+          # saytdagi havola 404 berdi). Chiqariladi va tekshiriladi.
+          for i in 1 2 3 4 5; do
+            gh release edit play-latest --draft=false >/dev/null 2>&1 || true
+            if [ "$(gh release view play-latest --json isDraft -q .isDraft 2>/dev/null)" = "false" ]; then
+              break
+            fi
+            sleep 5
+          done
+          if [ "$(gh release view play-latest --json isDraft -q .isDraft 2>/dev/null)" != "false" ]; then
+            echo "::error::play-latest qoralama bo'lib qoldi — saytdagi havola ishlamaydi."
+            exit 1
+          fi
           echo "## Sayt uchun APK" >> "$GITHUB_STEP_SUMMARY"
           echo "Play imzolagan APK (versionCode ${{ steps.ver.outputs.code }}) play-latest relizga qo'yildi." >> "$GITHUB_STEP_SUMMARY"
