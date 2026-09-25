@@ -28,6 +28,7 @@ import '../profile/contact_editor.dart';
 import '../../core/utils/media_url.dart';
 import 'business_providers.dart';
 import 'business_screens.dart';
+import 'store_catalog.dart';
 import '../shop/store_policy.dart';
 
 /// Backend qabul qiladigan yo'nalishlar (`COMPANY_V2_CATEGORIES`).
@@ -595,12 +596,94 @@ class _BusinessEditScreenState extends ConsumerState<BusinessEditScreen> {
 }
 
 /// Katalog boshqaruvi.
-class BusinessCatalogScreen extends ConsumerWidget {
+///
+/// 2026-09-25 (egasi: "katalog bosilsa oddiy ro'yxat chiqyapti — chiroyli
+/// joylash kerak"). Endi vitrinadagi AYNAN o'sha rasmli kartalar: ikki
+/// ustunli to'r, rasmli toifa chiplari. Farqi — karta bosilsa tahrirlash
+/// ochiladi, rasm ustidagi "⋯" menyuda tahrirlash / vitrinada ko'rish /
+/// o'chirish. To'r oxirida "Tovar qo'shish" kartasi.
+class BusinessCatalogScreen extends ConsumerStatefulWidget {
   const BusinessCatalogScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<BusinessCatalogScreen> createState() =>
+      _BusinessCatalogScreenState();
+}
+
+class _BusinessCatalogScreenState extends ConsumerState<BusinessCatalogScreen> {
+  String _cat = 'all';
+
+  Future<void> _delete(Business b, CatalogItem item) async {
     final l = L.of(context);
+    // Server o'chirishi QAYTARILMAYDI — boshqa o'chirishlar kabi so'raladi.
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dc) => AlertDialog(
+        title: Text(l.actionDelete, style: Theme.of(dc).textTheme.titleLarge),
+        content: Text(item.name, style: Theme.of(dc).textTheme.bodyMedium),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dc, false),
+            child: Text(l.actionCancel),
+          ),
+          TextButton(
+            key: const ValueKey('catalog-delete-confirm'),
+            onPressed: () => Navigator.pop(dc, true),
+            child: Text(l.actionDelete, style: TextStyle(color: dc.tokens.error)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final res =
+        await ref.read(businessRepositoryProvider).deleteItem(b.companyId, item.key);
+    if (!mounted) return;
+    res.when(
+      ok: (_) => ref.invalidate(businessCatalogProvider(b.companyId)),
+      err: (e) => ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(describeError(l, e)))),
+    );
+  }
+
+  Widget _menu(Business b, CatalogItem item) {
+    final l = L.of(context);
+    final t = context.tokens;
+    return PopupMenuButton<String>(
+      key: ValueKey('catalog-menu-${item.key}'),
+      tooltip: MaterialLocalizations.of(context).showMenuTooltip,
+      color: t.surfaceSolid,
+      position: PopupMenuPosition.under,
+      onSelected: (v) => switch (v) {
+        'edit' => context.push(Routes.businessProduct(item.key)),
+        'view' => openStoreProduct(context, item, b),
+        _ => _delete(b, item),
+      },
+      itemBuilder: (_) => [
+        PopupMenuItem(value: 'edit', child: Text(l.actionEdit)),
+        PopupMenuItem(value: 'view', child: Text(l.bizStorefront)),
+        PopupMenuItem(
+          value: 'delete',
+          key: ValueKey('catalog-delete-${item.key}'),
+          child: Text(l.actionDelete, style: TextStyle(color: t.error)),
+        ),
+      ],
+      child: Container(
+        width: 34,
+        height: 34,
+        decoration: BoxDecoration(
+          color: t.surfaceSolid.withValues(alpha: .92),
+          shape: BoxShape.circle,
+          boxShadow: t.shadowTiny,
+        ),
+        child: Icon(Icons.more_horiz_rounded, size: 20, color: t.text1),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context);
+    final t = context.tokens;
     final b = ref.watch(activeBusinessProvider);
 
     if (b == null) {
@@ -657,73 +740,122 @@ class BusinessCatalogScreen extends ConsumerWidget {
         loading: () => const SkeletonList(count: 4),
         error: (e, __) => StatePanel.fromError(context, asAppError(e),
             onRetry: () => ref.invalidate(businessCatalogProvider(b.companyId))),
-        data: (items) => items.isEmpty && !b.plan.limited
-            ? StatePanel(
-                icon: Icons.inventory_2_outlined,
-                title: l.bizCatalogEmpty,
-                message: l.stateEmptyHint,
-                actionLabel: l.bizAddProduct,
-                onAction: add,
-              )
-            : ListView.separated(
-                padding: const EdgeInsets.fromLTRB(
-                    Gap.screenX, Gap.md, Gap.screenX, 120),
-                itemCount: items.length + 1,
-                separatorBuilder: (_, __) => const SizedBox(height: Gap.md),
-                itemBuilder: (context, i) {
-                  if (i == 0) {
-                    return BusinessPlanCard(plan: b.plan, count: items.length);
-                  }
-                  final item = items[i - 1];
-                  return CatalogTile(
-                    item: item,
-                    onTap: () => context.push(Routes.businessProduct(item.key)),
-                    trailing: NovaIconButton(
-                      icon: Icons.delete_outline_rounded,
-                      tooltip: l.actionDelete,
-                      size: 36,
-                      onPressed: () async {
-                        // Server o'chirishi QAYTARILMAYDI; tugma esa
-                        // mahsulotni ochadigan kartaning yonida — bexosdan
-                        // bosish oson. Boshqa o'chirishlar kabi so'raladi.
-                        final ok = await showDialog<bool>(
-                          context: context,
-                          builder: (dc) => AlertDialog(
-                            title: Text(l.actionDelete,
-                                style: Theme.of(dc).textTheme.titleLarge),
-                            content: Text(item.name,
-                                style: Theme.of(dc).textTheme.bodyMedium),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(dc, false),
-                                child: Text(l.actionCancel),
-                              ),
-                              TextButton(
-                                key: const ValueKey('catalog-delete-confirm'),
-                                onPressed: () => Navigator.pop(dc, true),
-                                child: Text(l.actionDelete,
-                                    style:
-                                        TextStyle(color: dc.tokens.error)),
-                              ),
-                            ],
-                          ),
-                        );
-                        if (ok != true || !context.mounted) return;
-                        final res = await ref
-                            .read(businessRepositoryProvider)
-                            .deleteItem(b.companyId, item.key);
-                        if (!context.mounted) return;
-                        res.when(
-                          ok: (_) => ref
-                              .invalidate(businessCatalogProvider(b.companyId)),
-                          err: (e) => ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(describeError(l, e)))),
-                        );
-                      },
-                    ),
-                  );
-                },
+        data: (items) {
+          if (items.isEmpty && !b.plan.limited) {
+            return StatePanel(
+              icon: Icons.inventory_2_outlined,
+              title: l.bizCatalogEmpty,
+              message: l.stateEmptyHint,
+              actionLabel: l.bizAddProduct,
+              onAction: add,
+            );
+          }
+          final cats = storeCategories(l, items);
+          final active =
+              cats.where((c) => c.id == _cat).firstOrNull ?? cats.first;
+          return ListView(
+            padding: const EdgeInsets.only(top: Gap.md, bottom: 120),
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
+                child: BusinessPlanCard(plan: b.plan, count: items.length),
               ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                    Gap.screenX, Gap.md, Gap.screenX, Gap.md),
+                child: Text(
+                  '${items.length} · ${l.storeProducts}',
+                  style: AppType.displayStyle(color: t.text1, size: 22),
+                ),
+              ),
+              if (cats.length > 1) ...[
+                StoreCategoryStrip(
+                  categories: cats,
+                  selected: active.id,
+                  onSelect: (c) => setState(() => _cat = c.id),
+                ),
+                const SizedBox(height: Gap.md),
+              ],
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
+                child: LayoutBuilder(
+                  builder: (context, c) {
+                    const gap = Gap.md;
+                    final w = (c.maxWidth - gap) / 2;
+                    return Wrap(
+                      key: const ValueKey('owner-catalog-grid'),
+                      spacing: gap,
+                      runSpacing: gap,
+                      children: [
+                        for (final i in active.items)
+                          StoreProductCard(
+                            item: i,
+                            business: b,
+                            width: w,
+                            ctaLabel: l.actionEdit,
+                            onTap: () =>
+                                context.push(Routes.businessProduct(i.key)),
+                            action: _menu(b, i),
+                          ),
+                        if (!atLimit && active.id == 'all')
+                          _AddProductCard(width: w, onTap: add),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// To'r oxiridagi "Tovar qo'shish" kartasi — tovar kartasi o'lchamida.
+class _AddProductCard extends StatelessWidget {
+  const _AddProductCard({required this.width, required this.onTap});
+  final double width;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context);
+    final t = context.tokens;
+    return PressableScale(
+      scale: .97,
+      onTap: onTap,
+      child: Container(
+        key: const ValueKey('catalog-add-card'),
+        width: width,
+        height: width + StoreProductCard.bodyHeight,
+        decoration: BoxDecoration(
+          color: t.surface2,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: t.border2, width: 1.2),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(color: t.text1, shape: BoxShape.circle),
+              child: Icon(Icons.add_rounded, color: t.surfaceSolid, size: 28),
+            ),
+            const SizedBox(height: Gap.md),
+            Text(
+              l.bizAddProduct,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: AppType.sans,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+                color: t.text1,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

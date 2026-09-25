@@ -33,6 +33,7 @@ import 'widgets/identity_card.dart';
 import 'widgets/mode_switch.dart';
 import '../../app/profile_context.dart';
 import '../../data/repositories/business_repository.dart';
+import '../business/store_catalog.dart' show StoreCatalogPreview;
 import '../../data/repositories/discover_repository.dart';
 import '../discover/catalog_view.dart' show ProductCard;
 import '../discover/discover_screen.dart'
@@ -305,6 +306,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             const SizedBox(height: Gap.lg),
             _QuickActions(mode: mode),
             if (!business && id != null) _HomeStats(id: id),
+            // BIZNES REJIMIDA — o'z tovarlari darhol bosh sahifada
+            // (egasi: "takliflar asosiy menyuda chiqsin"). Vitrinadagi
+            // AYNAN o'sha blok: toifalar, 4 ta tovar, "Barchasini ko'rish".
+            if (business && active?.business != null) ...[
+              StoreCatalogPreview(business: active!.business!),
+              const SizedBox(height: Gap.lg),
+            ],
             _StoriesRow(user: user),
             // BOSH EKRAN TARTIBI:
             //   faol NFC ID karta → tezkor amallar → storylar →

@@ -390,11 +390,20 @@ class StoreProductCard extends StatelessWidget {
     required this.item,
     required this.business,
     this.width,
+    this.onTap,
+    this.action,
+    this.ctaLabel,
   });
 
   final CatalogItem item;
   final Business business;
   final double? width;
+
+  /// Egasining katalogida: bosilganda tahrirlash ochiladi (vitrinadagi
+  /// tovar oynasi emas), rasm ustida "⋯" menyu va pastda "Tahrirlash".
+  final VoidCallback? onTap;
+  final Widget? action;
+  final String? ctaLabel;
 
   /// Rasm ostidagi matn qismining balandligi (grid uchun).
   static const bodyHeight = 146.0;
@@ -414,7 +423,7 @@ class StoreProductCard extends StatelessWidget {
       label: '${i.name}, $price',
       child: PressableScale(
         scale: .97,
-        onTap: () => openStoreProduct(context, i, business),
+        onTap: onTap ?? () => openStoreProduct(context, i, business),
         child: Container(
           key: ValueKey('store-product-${i.key}'),
           width: width,
@@ -458,6 +467,8 @@ class StoreProductCard extends StatelessWidget {
                         top: 10,
                         child: _Tag(text: '−${discountPercent(i)}%'),
                       ),
+                    if (action != null)
+                      Positioned(right: 6, top: 6, child: action!),
                   ],
                 ),
               ),
@@ -529,7 +540,7 @@ class StoreProductCard extends StatelessWidget {
                       Row(
                         children: [
                           Text(
-                            l.storeDetails,
+                            ctaLabel ?? l.storeDetails,
                             style: TextStyle(
                               fontFamily: AppType.sans,
                               fontSize: 11.5,
