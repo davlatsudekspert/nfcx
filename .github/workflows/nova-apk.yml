@@ -581,6 +581,9 @@ jobs:
           track: internal
           status: draft
           releaseName: "${{ steps.ver.outputs.name }} (#${{ github.run_number }})"
+          # «Что нового» — mobile_nova/distribution/whatsnew/whatsnew-<til>.
+          # Faylsiz qoralamada Play'ning standart matni qolardi.
+          whatsNewDirectory: mobile_nova/distribution/whatsnew
 
       - name: Play natijasi
         if: ${{ steps.play.outputs.ready == '1' }}

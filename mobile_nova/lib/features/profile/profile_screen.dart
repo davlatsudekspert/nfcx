@@ -924,6 +924,10 @@ class _AvatarWithStory extends ConsumerWidget {
   }
 }
 
+/// Profil avatari. Egasi (2026-09-25): "avatar kichkina bo'lib qolgan,
+/// kattalashtirish kerak" — 112 dan 136 ga.
+const double _heroAvatar = 136;
+
 class _HeroAvatar extends StatelessWidget {
   const _HeroAvatar({
     required this.user,
@@ -948,8 +952,8 @@ class _HeroAvatar extends StatelessWidget {
         : (business ? '' : user.avatarUrl);
 
     return SizedBox(
-      width: 112,
-      height: 112,
+      width: _heroAvatar,
+      height: _heroAvatar,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -975,7 +979,7 @@ class _HeroAvatar extends StatelessWidget {
               // odam yoki kompaniyada ham KO'RUVCHINING o'z harflari
               // ("TF") chiqardi.
               initials: _nameInitials(profile?.name ?? '') ?? user.initials,
-              size: 112,
+              size: _heroAvatar,
               ringWidth: 1.6,
               ringColor: business
                   ? t.accentB
@@ -1740,7 +1744,8 @@ class _StorefrontHeader extends StatelessWidget {
   final Business business;
 
   static const _coverH = 176.0;
-  static const _logo = 104.0;
+  // Egasi (2026-09-25): avatar/logotip kattaroq — 104 dan 124 ga.
+  static const _logo = 124.0;
 
   @override
   Widget build(BuildContext context) {

@@ -432,9 +432,11 @@ class _IdentityHero extends ConsumerWidget {
     // Ism 26–30: portret va NFC ID karta ierarxiyada ustun turadi.
     final nameSize = (width * .074).clamp(26.0, 30.0);
     // PORTRET MARKAZDA VA KATTA (egasining talabi, 2026-09 — ikki
-    // marta: "avatar kichraymasin"): 360 da ~97, 430 da ~116.
+    // marta: "avatar kichraymasin"; 2026-09-25 uchinchi marta: "avatar
+    // kichkina bo'lib qolgan, kattalashtirish kerak"): 360 da ~122,
+    // 390 da ~133 (keng telefonda UiScale bilan yana kattalashadi).
     // Istoriya bo'lsa atrofida Instagramdagidek aniq oltin halqa.
-    final photo = (width * .27).clamp(92.0, 116.0);
+    final photo = (width * .34).clamp(116.0, 140.0);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
