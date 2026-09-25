@@ -527,6 +527,8 @@
   "demoCatalogBtn": "Katalogni ko‘rish",
   "demoBuyBtn": "NFC ID olish",
   "demoNotice": "Bu namuna ma’lumot — sizning profilingizga ta’sir qilmaydi.",
+  "sampleBusinessNotice": "Namuna profil — biznesingiz sahifasi shunday ko‘rinishi mumkin. Buyurtma qabul qilinmaydi.",
+  "sampleBadge": "Namuna",
   "demoViewProfile": "Profilni ko‘rish",
   "demoViewBusiness": "Biznes profilni ko‘rish",
   "demoBizSubtitle": "Business NFC Profile",

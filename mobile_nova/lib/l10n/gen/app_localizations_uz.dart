@@ -1420,6 +1420,13 @@ class LUz extends L {
       'Bu namuna ma’lumot — sizning profilingizga ta’sir qilmaydi.';
 
   @override
+  String get sampleBusinessNotice =>
+      'Namuna profil — biznesingiz sahifasi shunday ko‘rinishi mumkin. Buyurtma qabul qilinmaydi.';
+
+  @override
+  String get sampleBadge => 'Namuna';
+
+  @override
   String get demoViewProfile => 'Profilni ko‘rish';
 
   @override

@@ -1411,6 +1411,13 @@ class LRu extends L {
   String get demoNotice => 'Это пример — на ваш профиль он не влияет.';
 
   @override
+  String get sampleBusinessNotice =>
+      'Пример профиля — так может выглядеть страница вашего бизнеса. Заказы не принимаются.';
+
+  @override
+  String get sampleBadge => 'Пример';
+
+  @override
   String get demoViewProfile => 'Открыть профиль';
 
   @override

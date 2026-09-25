@@ -85,6 +85,9 @@ List<NfcId> _byViews(List<NfcId> v) {
 List<Business> _byBizViews(List<Business> v) {
   final out = [...v];
   out.sort((a, b) {
+    // NAMUNA bizneslar (to'qima) har doim OXIRIDA — haqiqiy
+    // bizneslar birinchi ko'rinsin (server ham shunday tartiblaydi).
+    if (a.isDemo != b.isDemo) return a.isDemo ? 1 : -1;
     final c = b.views.compareTo(a.views);
     if (c != 0) return c;
     final f = b.followers.compareTo(a.followers);

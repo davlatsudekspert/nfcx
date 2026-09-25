@@ -513,6 +513,8 @@
   "demoCatalogBtn": "Open the catalog",
   "demoBuyBtn": "Get an NFC ID",
   "demoNotice": "This is sample data — it does not affect your profile.",
+  "sampleBusinessNotice": "Sample profile — this is how your business page could look. Orders are not accepted.",
+  "sampleBadge": "Sample",
   "demoViewProfile": "View the profile",
   "demoViewBusiness": "View the business profile",
   "demoBizSubtitle": "Business NFC Profile",

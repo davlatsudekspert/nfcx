@@ -71,6 +71,9 @@ class ActiveProfile {
 
   bool get isBusiness => kind == ProfileKind.business;
 
+  /// Namuna (to'qima) biznes profili — serverdan `demo: true`.
+  bool get isDemo => isBusiness && business!.isDemo;
+
   /// HAQIQATAN TASDIQLANGANMI (admin qo'ygan belgi).
   ///
   /// Kompaniyada bunday maydon hozircha yo'q — biznes profilining

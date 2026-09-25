@@ -385,7 +385,11 @@ class DiscoverBusinessCard extends ConsumerWidget {
     final isNew =
         business.createdAt != null &&
         DateTime.now().difference(business.createdAt!).inDays <= 30;
-    final String? badge = IdPlate.isPrecious(b.tier)
+    // NAMUNA biznes (to'qima) — boshqa hamma belgidan ustun: "Yangi"
+    // yoki "Aksiya" deb ko'rsatilsa, odam haqiqiy do'kon deb o'ylardi.
+    final String? badge = (business.isDemo || b.isDemo)
+        ? l.sampleBadge
+        : IdPlate.isPrecious(b.tier)
         ? tierLabel(l, b.tier)
         : b.plan.premium
         ? l.storePremium

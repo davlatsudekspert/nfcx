@@ -513,6 +513,8 @@
   "demoCatalogBtn": "Открыть каталог",
   "demoBuyBtn": "Получить NFC ID",
   "demoNotice": "Это пример — на ваш профиль он не влияет.",
+  "sampleBusinessNotice": "Пример профиля — так может выглядеть страница вашего бизнеса. Заказы не принимаются.",
+  "sampleBadge": "Пример",
   "demoViewProfile": "Открыть профиль",
   "demoViewBusiness": "Открыть бизнес-профиль",
   "demoBizSubtitle": "Business NFC Profile",

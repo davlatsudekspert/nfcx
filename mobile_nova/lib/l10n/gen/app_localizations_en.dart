@@ -1417,6 +1417,13 @@ class LEn extends L {
       'This is sample data — it does not affect your profile.';
 
   @override
+  String get sampleBusinessNotice =>
+      'Sample profile — this is how your business page could look. Orders are not accepted.';
+
+  @override
+  String get sampleBadge => 'Sample';
+
+  @override
   String get demoViewProfile => 'View the profile';
 
   @override

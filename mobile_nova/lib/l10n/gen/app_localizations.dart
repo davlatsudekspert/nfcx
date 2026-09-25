@@ -2823,6 +2823,18 @@ abstract class L {
   /// **'Bu namuna ma’lumot — sizning profilingizga ta’sir qilmaydi.'**
   String get demoNotice;
 
+  /// No description provided for @sampleBusinessNotice.
+  ///
+  /// In uz, this message translates to:
+  /// **'Namuna profil — biznesingiz sahifasi shunday ko‘rinishi mumkin. Buyurtma qabul qilinmaydi.'**
+  String get sampleBusinessNotice;
+
+  /// No description provided for @sampleBadge.
+  ///
+  /// In uz, this message translates to:
+  /// **'Namuna'**
+  String get sampleBadge;
+
   /// No description provided for @demoViewProfile.
   ///
   /// In uz, this message translates to:

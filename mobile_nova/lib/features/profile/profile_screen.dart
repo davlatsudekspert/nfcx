@@ -708,7 +708,7 @@ class _Hero extends StatelessWidget {
                 // avatar sarlavhaga yaqin, ko'z darhol ism va ID'ga
                 // tushadi (egasi, 2026-09: "yuqoridagi bo'sh joy").
                 SizedBox(height: cover.isEmpty ? 16 : 86),
-                const _DemoNotice(),
+                _DemoNotice(sample: profile?.isDemo ?? false),
                 // ISTORYA HALQASI — FAQAT istorya BOR bo'lsa.
                 //
                 // Ilgari profil ekrani istoryani umuman
@@ -827,11 +827,17 @@ class _DemoBio extends ConsumerWidget {
 /// istalgan joyiga qo'yish mumkin va ishlab chiqarishda u
 /// UMUMAN chizilmaydi.
 class _DemoNotice extends ConsumerWidget {
-  const _DemoNotice();
+  const _DemoNotice({this.sample = false});
+
+  /// Serverdagi NAMUNA biznes (to'qima profil, 2026-09-25): kapsula
+  /// ishlab chiqarishda ham chiqadi — tashrifchi aldanmasin.
+  final bool sample;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (ref.watch(demoModeProvider) == null) return const SizedBox.shrink();
+    if (!sample && ref.watch(demoModeProvider) == null) {
+      return const SizedBox.shrink();
+    }
     final t = context.tokens;
     // YUMSHOQ KAPSULA.
     //
@@ -850,7 +856,8 @@ class _DemoNotice extends ConsumerWidget {
           border: Border.all(color: t.border2),
         ),
         child: Text(
-          L.of(context).demoNotice,
+          sample ? L.of(context).sampleBusinessNotice : L.of(context).demoNotice,
+          key: sample ? const ValueKey('sample-business-notice') : null,
           textAlign: TextAlign.center,
           style: Theme.of(context)
               .textTheme
@@ -1021,7 +1028,11 @@ class _HeroAvatar extends StatelessWidget {
           // "Asosiy ID" esa ishonch bildiruvchi belgi emas: u
           // shunchaki qaysi karta birinchi ekanini bildiradi va
           // NFC ID ro'yxatida allaqachon ko'rinadi.
-          if (profile != null && (profile!.isBusiness || profile!.verified))
+          //
+          // NAMUNA biznesda nishon YO'Q: u to'qima profil, tasdiqlangan
+          // emas — o'rniga tepada «Namuna» kapsulasi turadi.
+          if (profile != null &&
+              ((profile!.isBusiness && !profile!.isDemo) || profile!.verified))
             Positioned(
               right: 2,
               bottom: 2,
@@ -1878,6 +1889,11 @@ class _StorefrontHeader extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodySmall),
+              ],
+              // NAMUNA biznes — to'qima profil ekanini aytib turadi.
+              if (b.isDemo) ...[
+                const SizedBox(height: Gap.md),
+                const _DemoNotice(sample: true),
               ],
               const SizedBox(height: Gap.md),
               Wrap(

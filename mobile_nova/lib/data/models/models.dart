@@ -401,6 +401,7 @@ class Business {
     this.gallery = const [],
     this.tier = '',
     this.createdAt,
+    this.isDemo = false,
   });
 
   /// `nfcstore.uz/c/<companyId>` — vitrinaning ommaviy manzili.
@@ -463,6 +464,10 @@ class Business {
 
   bool get hasHours => hours.any((d) => !d.closed);
 
+  /// NAMUNA biznes (serverdagi `demo: true`, 2026-09-25): to'qima
+  /// profil — «Namuna» deb ko'rsatiladi, "tasdiqlangan" belgisi yo'q.
+  final bool isDemo;
+
   bool get isPublished => status == 'published' || status == 'active';
 
   factory Business.fromJson(Map<String, dynamic> j) => Business(
@@ -503,6 +508,7 @@ class Business {
         ordersEnabled: _b(j['ordersEnabled']),
         tier: _s(j['tier']),
         createdAt: _dt(j['createdAt']),
+        isDemo: _b(j['demo']),
         gallery: j['gallery'] is List
             ? [
                 for (final g in j['gallery'] as List)
