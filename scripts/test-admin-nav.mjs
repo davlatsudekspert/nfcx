@@ -26,10 +26,13 @@ const tabs = [...tabsLine[1].matchAll(/(['"])((?:\\.|(?!\1).)*)\1/g)].map((m) =>
 // tashlash yoki tartibni o'zgartirish MUMKIN EMAS — indekslar
 // `ADMIN_NAV` da qattiq yozilgan. Shuning uchun boshlanishi aynan
 // mos kelishi tekshiriladi: qo'shish o'tadi, siljitish yiqiladi.
-const FROZEN = ['Umumiy', 'Statistika', 'Foydalanuvchilar', 'Buyurtmalar', "To'lanishi kerak pullar",
-  'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika',
-  'Security', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar', 'Kategoriyalar',
-  'Tasdiqlash', 'Talab', 'Moliya', 'Kompaniyalar'];
+// 2026-09-25: ba'zi bo'limlar nomi aniqlashtirildi ("Umumiy" ->
+// "Boshqaruv markazi", "Bildirishnomalar" -> "Murojaatlar", "Security" -> "Xavfsizlik",
+// "Tasdiqlash" -> "Tasdiqlash (verified)", "Kompaniyalar" -> "Business ID"). O'RINLAR o'zgarmadi — test aynan shuni qo'riqlaydi.
+const FROZEN = ['Boshqaruv markazi', 'Statistika', 'Foydalanuvchilar', 'Buyurtmalar', "To'lanishi kerak pullar",
+  'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Murojaatlar', 'Tashqi analitika',
+  'Xavfsizlik', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar', 'Kategoriyalar',
+  'Tasdiqlash (verified)', 'Talab', 'Moliya', 'Business ID', 'Trafik', 'Shikoyatlar', 'Marketplace', 'NFCSTORE ILOVASI'];
 check('TABS boshlanishi o‘zgarmadi (indekslar qotirilgan)', tabs.slice(0, FROZEN.length), FROZEN);
 checkTrue('TABS qisqarmadi', tabs.length >= FROZEN.length);
 
@@ -53,7 +56,7 @@ check('takroriy indeks yo‘q', nav.filter((n) => (seen.has(n.index) ? true : (s
 // ── AUKSION menyuda BO'LMASIN (egasining qarori) ─────────────────────
 // Bo'limlarning o'zi va bazadagi ma'lumot joyida qoladi — faqat
 // menyudan olingan.
-const hidden = ['Auksionlar', "Auksion so'rovlari", 'Talab'];
+const hidden = ['Auksionlar', "Auksion so'rovlari", 'Talab', "To'lanishi kerak pullar", 'Tashqi analitika'];
 for (const label of hidden) {
   checkTrue(`"${label}" TABS da qoldi (indeks buzilmasin)`, tabs.includes(label));
   checkTrue(`"${label}" menyuda YO‘Q`, !nav.some((n) => n.label === label));

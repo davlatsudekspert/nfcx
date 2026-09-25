@@ -34,6 +34,14 @@ const ICON_PATHS = {
   eye: 'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
   heart: 'M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z',
   download: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M7 10l5 5 5-5 M12 15V3',
+  crown: 'M2 19h20 M3 7l4.5 4L12 4l4.5 7L21 7l-2 9H5z',
+  phone: 'M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z M11 18h2',
+  flag: 'M4 22V4 M4 4h13l-2 4 2 4H4',
+  search: 'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z M21 21l-4.35-4.35',
+  user: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
+  arrow: 'M5 12h14 M13 6l6 6-6 6',
+  x: 'M18 6L6 18 M6 6l12 12',
+  clock: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 6v6l4 2',
 };
 
 export function AdminIcon({ name, className = 'h-[18px] w-[18px]' }) {
@@ -48,7 +56,7 @@ export function AdminIcon({ name, className = 'h-[18px] w-[18px]' }) {
 const ROLE_LABEL = { super_admin: 'Super Admin', manager: 'Manager', content_manager: 'Content Manager' };
 
 // ── Qobiq: lg da chap nav (240px), kichik ekranda tepada gorizontal aylanuvchi nav ──
-export function AdminShell({ nav, activeIndex, onSelect, title, role, onLogout, banner, children }) {
+export function AdminShell({ nav, activeIndex, onSelect, title, role, onLogout, banner, badges = {}, headerExtra = null, children }) {
   const { t } = useLanguage();
   const stripRef = useRef(null);
 
@@ -62,6 +70,7 @@ export function AdminShell({ nav, activeIndex, onSelect, title, role, onLogout, 
 
   const navBtn = (item, mobile) => {
     const on = activeIndex === item.index;
+    const count = item.badgeKey ? Number(badges[item.badgeKey] || 0) : 0;
     return (
       <button
         key={item.index}
@@ -76,9 +85,25 @@ export function AdminShell({ nav, activeIndex, onSelect, title, role, onLogout, 
       >
         <AdminIcon name={item.icon} className="h-[18px] w-[18px] shrink-0" />
         <span className="truncate">{t(item.label)}</span>
+        {/* Kutilayotgan ish soni — admin qayerga qarash kerakligini
+            menyuning o'zidan ko'radi. */}
+        {count > 0 && (
+          <span className={`ml-auto shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${mobile ? 'bg-black/25' : ''}`}
+            style={mobile ? undefined : { background: 'rgba(212,175,90,.18)', color: 'var(--vz-gold-2)' }}
+            aria-label={t('{n} ta kutilmoqda', { n: count })}>
+            {count > 99 ? '99+' : count}
+          </span>
+        )}
       </button>
     );
   };
+  // Yon menyu guruhlari (ketma-ket kelgan bir xil `group`).
+  const groups = [];
+  for (const item of nav) {
+    const last = groups[groups.length - 1];
+    if (last && last.name === (item.group || '')) last.items.push(item);
+    else groups.push({ name: item.group || '', items: [item] });
+  }
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--color-page-bg)', color: 'var(--vz-ink)' }}>
@@ -88,7 +113,14 @@ export function AdminShell({ nav, activeIndex, onSelect, title, role, onLogout, 
           <span className="font-display text-[15px] font-semibold tracking-[0.14em]">NFCSTORE</span>
         </div>
         <nav className="admin-scroll flex-1 overflow-y-auto py-3" aria-label={t('Admin bo‘limlari')}>
-          {nav.map((item) => navBtn(item, false))}
+          {groups.map((g) => (
+            <div key={g.name || 'root'} className="mb-2">
+              {g.name && (
+                <div className="px-5 pb-1.5 pt-3 text-[10.5px] font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--vz-ink-3)' }}>{t(g.name)}</div>
+              )}
+              {g.items.map((item) => navBtn(item, false))}
+            </div>
+          ))}
         </nav>
         <div className="border-t px-5 py-4 text-[13px]" style={{ borderColor: 'var(--vz-line)', color: 'var(--vz-ink-3)' }}>
           <span className="vz-badge vz-badge--muted">{ROLE_LABEL[role] || role || 'Admin'}</span>
@@ -105,6 +137,7 @@ export function AdminShell({ nav, activeIndex, onSelect, title, role, onLogout, 
               <h1 className="truncate font-display text-[18px] font-semibold">{title}</h1>
             </div>
             <div className="flex shrink-0 items-center gap-2">
+              {headerExtra}
               <LanguageSwitcher />
               <span className="vz-badge vz-badge--muted hidden sm:inline-flex">{ROLE_LABEL[role] || role || 'Admin'}</span>
               <button type="button" className="btn btn-ghost-vz btn-sm min-h-11 gap-1.5 px-3" onClick={onLogout}>
@@ -164,7 +197,7 @@ export function AdminCard({ title, right, children, className = '', pad = true }
 
 export function KpiCard({ icon = 'chart', label, value, sub, tone = 'accent' }) {
   return (
-    <div className="vz-card min-w-0 p-5">
+    <div className="vz-card min-w-0 p-4 sm:p-5">
       <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${ICON_TONE[tone] || ICON_TONE.accent}`}>
         <AdminIcon name={icon} className="h-[20px] w-[20px]" />
       </span>

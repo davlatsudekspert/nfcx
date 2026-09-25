@@ -282,151 +282,174 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
 // bo'limning sarlavhasi siljib ketadi va menyu boshqa sahifani
 // ochadi. Bo'limni yashirish uchun uni faqat `ADMIN_NAV` dan oling:
 // bo'limning o'zi joyida qoladi va indekslar buzilmaydi.
-const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika', 'Security', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar', 'Kategoriyalar', 'Tasdiqlash', 'Talab', 'Moliya', 'Kompaniyalar', 'Trafik', 'Shikoyatlar', 'Marketplace', 'NFCSTORE ILOVASI'];
+const TABS = ['Boshqaruv markazi', 'Statistika', 'Foydalanuvchilar', 'Buyurtmalar', "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Murojaatlar', 'Tashqi analitika', 'Xavfsizlik', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar', 'Kategoriyalar', 'Tasdiqlash (verified)', 'Talab', 'Moliya', 'Business ID', 'Trafik', 'Shikoyatlar', 'Marketplace', 'NFCSTORE ILOVASI', 'Premium obunachilar'];
 
-function StatsTab() {
+// ═══ BOSHQARUV MARKAZI (2026-09-25) ═══
+//
+// Bosh sahifa endi "raqamlar ko'rgazmasi" emas, ish joyi: tepada
+// HAQIQIY tushum (faqat Payme/Click), keyin "E'tibor talab qiladi" —
+// har bir kutilayotgan ish bosilganda o'sha bo'limni ochadi. Ma'lumot
+// `/api/admin/overview` dan (hosting/api/admin-control.js), faqat o'qiladi.
+const CHANNEL_TEXT = { payme: 'Payme', click: 'Click' };
+const KIND_TEXT = { card_purchase: 'NFC ID', premium_upgrade: 'Premium', physical_card_order: 'Jismoniy karta', featured_slot: 'Tavsiya (FEATURED)', auction_payment: 'Auksion', premium_follow: 'Obuna' };
+
+function ControlCenter() {
   const { t } = useLanguage();
-  const [stats, setStats] = useState(null);
-  const [wallet, setWallet] = useState(null);
-  const [series, setSeries] = useState(null);
-  const [range, setRange] = useState('30d');
-  const [customFrom, setCustomFrom] = useState('');
-  const [customTo, setCustomTo] = useState('');
+  const { goTo, isSuper } = useAdmin();
+  const [d, setD] = useState(null);
+  const [err, setErr] = useState(null);
   const [exporting, setExporting] = useState(false);
   const [exportMsg, setExportMsg] = useState(null);
-  const [loadErr, setLoadErr] = useState(null);
-  const load = () => {
-    setLoadErr(null); setStats(null);
-    adminApi('/stats').then(setStats).catch((e) => setLoadErr(e));
-    adminApi('/platform-wallet').then((d) => setWallet(d || {})).catch(() => {});
-    adminApi('/analytics').then((d) => setSeries(d.commissionSeries || [])).catch(() => {});
-  };
-  useEffect(() => { load(); }, []);
+  const load = () => { setErr(null); adminApi('/overview').then(setD).catch((e) => setErr(e)); };
+  useEffect(() => { load(); const id = setInterval(load, 60_000); return () => clearInterval(id); }, []);
 
-  // Backend endi CSV qaytaradi (text/csv).
   const exportCsv = async () => {
-    if (range === 'custom' && (!customFrom || !customTo)) { setExportMsg(t('Boshlanish va tugash sanasini tanlang.')); return; }
     setExporting(true); setExportMsg(null);
     try {
-      const qs = range === 'custom'
-        ? `range=custom&from=${customFrom}&to=${customTo}`
-        : `range=${range}`;
-      const res = await fetch(`/api/admin/export-stats?${qs}`, { credentials: 'same-origin' });
+      const res = await fetch('/api/admin/export-stats?range=30d', { credentials: 'same-origin' });
       if (!res.ok) throw new Error('export_failed');
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `nfcstore_statistika_${range}.csv`;
-      a.click();
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement('a'); a.href = url; a.download = 'nfcstore_statistika_30d.csv'; a.click();
       URL.revokeObjectURL(url);
-    } catch {
-      setExportMsg(t('CSV faylni yuklab bo‘lmadi.'));
-    } finally {
-      setExporting(false);
-    }
+    } catch { setExportMsg(t('CSV faylni yuklab bo‘lmadi.')); } finally { setExporting(false); }
   };
 
-  if (loadErr) return <LoadError err={loadErr} onRetry={load} title={t("Statistikani yuklab bo'lmadi.")} />;
-  if (!stats) return <AdminLoading rows={6} />;
+  if (err) return <LoadError err={err} onRetry={load} title={t("Boshqaruv markazini yuklab bo'lmadi.")} />;
+  if (!d) return <AdminLoading rows={8} />;
+  const q = d.queue || {};
+  const tasks = [
+    { n: q.pendingOrders, icon: 'bag', tone: 'pending', title: t('To‘lov kutilayotgan buyurtmalar'),
+      hint: q.stalePendingOrders ? t('{n} tasi 24 soatdan eski — kod band turibdi', { n: q.stalePendingOrders }) : t('Mijoz to‘lovni yakunlashini kutmoqda'), go: () => goTo(3) },
+    { n: q.physicalToPrint, icon: 'idcard', tone: 'accent', title: t('Chop etish / jo‘natish kerak bo‘lgan kartalar'), hint: t('Jismoniy NFC kartalar'), go: () => goTo(7) },
+    { n: q.companyReview, icon: 'building', tone: 'info', title: t('Ko‘rib chiqiladigan Business ID arizalari'), hint: t('Tasdiqlash yoki rad etish'), go: () => goTo(19) },
+    { n: q.companyActivate, icon: 'building', tone: 'accent', title: t('Faollashtirish kutayotgan bizneslar'), hint: t('To‘lov bosqichida'), go: () => goTo(19) },
+    { n: q.domainsPending, icon: 'plug', tone: 'info', title: t('Tasdiqlanmagan o‘z domenlari'), hint: t('CNAME va SSL tekshiruvi'), go: () => goTo(19) },
+    { n: q.reports, icon: 'flag', tone: 'danger', title: t('Ochiq shikoyatlar'), hint: t('Kontent bo‘yicha'), go: () => goTo(21) },
+    { n: q.supportUnanswered, icon: 'bell', tone: 'pending', title: t('Javob berilmagan murojaatlar'), hint: t('Foydalanuvchilar yozgan'), go: () => goTo(8) },
+    ...(isSuper && d.deletions ? [{ n: q.deletionsNeedAction, icon: 'alert', tone: 'danger', title: t('Hisob o‘chirish navbati — qaror kerak'), hint: t('Tekshirilmagan yoki to‘xtab qolgan'), go: () => goTo(23) }] : []),
+  ];
+  const open = tasks.filter((x) => x.n > 0);
+  const Money = ({ v }) => <>{fmt(v)} <span className="text-[0.55em] font-normal" style={{ color: 'var(--vz-ink-3)' }}>{t("so'm")}</span></>;
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="mr-1 text-xs" style={{ color: 'var(--vz-ink-3)' }}>{t("Davr:")}</span>
-          {[['today', 'Bugun'], ['7d', '7 kun'], ['30d', '30 kun'], ['month', 'Shu oy'], ['custom', 'Custom']].map(([v, l]) => (
-            <button
-              key={v}
-              type="button"
-              onClick={() => setRange(v)}
-              className={`btn btn-sm min-h-11 ${range === v ? 'btn-gold' : 'btn-ghost-vz'}`}
-            >
-              {t(l)}
-            </button>
-          ))}
-          {range === 'custom' && (
-            <span className="flex flex-wrap items-center gap-1">
-              <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="vz-input w-auto py-1" aria-label={t('Boshlanish sanasi')} />
-              <span className="text-xs" style={{ color: 'var(--vz-ink-3)' }}>{'\u2014'}</span>
-              <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="vz-input w-auto py-1" aria-label={t('Tugash sanasi')} />
-            </span>
-          )}
+      {/* Tushum — faqat Payme/Click, qaytarilmagan */}
+      <section className="vz-card relative overflow-hidden p-6">
+        <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(212,175,90,.18), transparent)' }} />
+        <div className="relative flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <span className="vz-kicker">{t('Tushum — Payme va Click')}</span>
+            <div className="mt-2 break-words font-display text-[40px] font-semibold leading-none tracking-tight" style={{ color: 'var(--vz-gold-2)' }}>
+              <Money v={d.revenue.today.total} />
+            </div>
+            <div className="mt-2 text-[13px]" style={{ color: 'var(--vz-ink-2)' }}>{t('Bugun')} · {t('{n} ta to‘lov', { n: d.revenue.today.count })}</div>
+          </div>
+          <div className="grid w-full grid-cols-2 gap-3 sm:w-auto">
+            {[['7 kun', d.revenue.d7], ['30 kun', d.revenue.d30]].map(([l, r]) => (
+              <div key={l} className="vz-panel min-w-0 px-4 py-3 sm:min-w-[150px]">
+                <div className="text-[12px] uppercase tracking-wider" style={{ color: 'var(--vz-ink-3)' }}>{t(l)}</div>
+                <div className="mt-1 font-display text-[22px] font-semibold leading-none"><Money v={r.total} /></div>
+                <div className="mt-1 text-[12px]" style={{ color: 'var(--vz-ink-3)' }}>{t('{n} ta to‘lov', { n: r.count })}</div>
+              </div>
+            ))}
+          </div>
         </div>
+        <p className="relative mt-4 text-xs" style={{ color: 'var(--vz-ink-3)' }}>{t('Qo‘lda tasdiqlangan, eski, sinov va qaytarilgan to‘lovlar bu raqamga kirmaydi.')}</p>
+        {d.revenue.refunded30?.count > 0 && (
+          <button type="button" onClick={() => goTo(3, { view: 'refunded' })}
+            className="relative mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold"
+            style={{ background: 'color-mix(in srgb, var(--danger) 14%, transparent)', color: 'var(--danger)' }}>
+            {t('Qaytarish so‘ralgan (30 kun): {n} ta · {sum} so‘m', { n: d.revenue.refunded30.count, sum: fmt(d.revenue.refunded30.total) })}
+            <AdminIcon name="arrow" className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </section>
+
+      {/* Asosiy ko'rsatkichlar */}
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <KpiCard icon="users" tone="info" label={t('Foydalanuvchilar')} value={fmt(d.users.total)} sub={t('Bugun +{a} · 7 kunda +{b}', { a: d.users.today, b: d.users.d7 })} />
+        <KpiCard icon="phone" tone="success" label={t('Ilovada faol')} value={fmt(d.app.day)} sub={t('24 soatda · 7 kunda {n}', { n: fmt(d.app.week) })} />
+        <KpiCard icon="crown" tone="accent" label={t('Premium obunachilar')} value={fmt(d.premium.active)} sub={d.premium.expiring7d ? t('{n} tasi 7 kunda tugaydi', { n: d.premium.expiring7d }) : t('Sinov muddatida: {n}', { n: d.premium.trial })} />
+        <KpiCard icon="idcard" tone="muted" label={t('NFC ID lar')} value={fmt(d.cards.total)} sub={t('Band qilingan profillar')} />
+      </div>
+
+      {/* E'tibor talab qiladi */}
+      <AdminCard title={t('E‘tibor talab qiladi')} right={<span className="text-xs" style={{ color: 'var(--vz-ink-3)' }}>{t('Har daqiqada yangilanadi')}</span>} pad={false}>
+        {open.length === 0 ? (
+          <div className="flex items-center gap-3 px-5 py-6 text-sm" style={{ color: 'var(--vz-ink-2)' }}>
+            <span className="flex h-9 w-9 items-center justify-center rounded-full" style={{ background: 'var(--success-soft, rgba(54,211,153,.12))', color: 'var(--success)' }}><AdminIcon name="check" className="h-5 w-5" /></span>
+            {t('Hozircha kutilayotgan ish yo‘q — hammasi joyida.')}
+          </div>
+        ) : (
+          <ul className="divide-y" style={{ borderColor: 'var(--vz-line)' }}>
+            {open.map((x) => (
+              <li key={x.title} style={{ borderColor: 'var(--vz-line)' }}>
+                <button type="button" onClick={x.go} className="group flex w-full items-center gap-4 px-5 py-3.5 text-left transition-colors hover:bg-white/[0.03]">
+                  <span className="font-display min-w-[44px] text-[26px] font-semibold leading-none tabular-nums" style={{ color: x.tone === 'danger' ? 'var(--danger)' : 'var(--vz-gold-2)' }}>{x.n}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[15px] font-semibold" style={{ color: 'var(--vz-ink)' }}>{x.title}</span>
+                    <span className="block text-[13px]" style={{ color: 'var(--vz-ink-3)' }}>{x.hint}</span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-1 text-[13px] font-semibold" style={{ color: 'var(--vz-gold-2)' }}>
+                    <span className="hidden sm:inline">{t('Ochish')}</span> <AdminIcon name="arrow" className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {q.blocks24h > 0 && (
+          <div className="border-t px-5 py-3 text-[13px]" style={{ borderColor: 'var(--vz-line)', color: 'var(--vz-ink-3)' }}>
+            {t('Avto-filtr 24 soatda {n} ta taqiqlangan faylni to‘xtatdi.', { n: q.blocks24h })}{' '}
+            <button type="button" className="link link-hover" style={{ color: 'var(--vz-gold-2)' }} onClick={() => goTo(23)}>{t('Ko‘rish')}</button>
+          </div>
+        )}
+      </AdminCard>
+
+      {/* Oxirgi to'lovlar va yangi foydalanuvchilar */}
+      <div className="grid gap-5 lg:grid-cols-2">
+        <AdminCard title={t('Oxirgi to‘lovlar (Payme/Click)')} right={<button type="button" className="btn btn-ghost-vz btn-xs min-h-9" onClick={() => goTo(3)}>{t('Hammasi')}</button>}>
+          {d.recent.payments.length === 0 ? <EmptyState icon="bank" title={t('Hozircha to‘lov yo‘q.')} /> : (
+            <ul className="space-y-2.5">
+              {d.recent.payments.map((p) => (
+                <li key={p.id} className="flex items-center justify-between gap-3 text-sm">
+                  <span className="min-w-0">
+                    <span className="font-mono font-semibold">{p.code}</span>
+                    <span className="ml-2 text-xs" style={{ color: 'var(--vz-ink-3)' }}>{t(KIND_TEXT[p.kind] || p.kind)} · {CHANNEL_TEXT[p.channel] || p.channel}</span>
+                    <span className="block truncate text-xs" style={{ color: 'var(--vz-ink-3)' }}>{p.email || '—'} · {timeAgo(new Date(String(p.createdAt).replace(' ', 'T').replace('+00', 'Z')).getTime())}</span>
+                  </span>
+                  <span className="shrink-0 font-semibold" style={{ color: 'var(--vz-gold-2)' }}>{fmt(p.amount)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </AdminCard>
+        <AdminCard title={t('Yangi foydalanuvchilar')} right={<button type="button" className="btn btn-ghost-vz btn-xs min-h-9" onClick={() => goTo(2)}>{t('Hammasi')}</button>}>
+          {d.recent.signups.length === 0 ? <EmptyState icon="users" title={t("Hozircha foydalanuvchi yo'q.")} /> : (
+            <ul className="space-y-2.5">
+              {d.recent.signups.map((u) => (
+                <li key={u.id} className="flex items-center justify-between gap-3 text-sm">
+                  <button type="button" className="min-w-0 text-left" onClick={() => goTo(2, { userId: u.id })}>
+                    <span className="block truncate font-semibold hover:underline">{u.email}</span>
+                    <span className="block text-xs" style={{ color: 'var(--vz-ink-3)' }}>{u.code ? <span className="font-mono">{u.code}</span> : t('ID yo‘q')} · {u.source === 'web' ? t('Sayt') : t('Ilova')}</span>
+                  </button>
+                  <span className="shrink-0 text-xs" style={{ color: 'var(--vz-ink-3)' }}>{timeAgo(new Date(String(u.createdAt).replace(' ', 'T').replace('+00', 'Z')).getTime())}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </AdminCard>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        {exportMsg && <span role="alert" className="vz-err">{exportMsg}</span>}
         <button type="button" className="btn btn-outline-gold btn-sm min-h-11 gap-1.5" disabled={exporting} onClick={exportCsv}>
-          {exporting ? <span className="loading loading-spinner loading-xs"></span> : <><AdminIcon name="download" className="h-4 w-4" /> {t("CSV yuklab olish")}</>}
+          {exporting ? <span className="loading loading-spinner loading-xs"></span> : <><AdminIcon name="download" className="h-4 w-4" /> {t('Statistika CSV (30 kun)')}</>}
         </button>
       </div>
-      {exportMsg && <div role="alert" className="vz-err">{exportMsg}</div>}
-
-      <div className="vz-card p-6">
-        <div className="grid items-center gap-6 lg:grid-cols-[1fr_320px]">
-          <div className="min-w-0">
-            <span className="vz-kicker">{t('Payme va Click orqali tushgan summa')}</span>
-            <div className="mt-2 break-words font-display text-[38px] font-semibold leading-none tracking-tight" style={{ color: 'var(--vz-gold-2)' }}>
-              {wallet === null ? '\u2014' : fmt(wallet.balance || 0)} <span className="text-2xl">{t("so'm")}</span>
-            </div>
-            <p className="mt-2 max-w-md text-xs leading-relaxed" style={{ color: 'var(--vz-ink-2)' }}>{t('Faqat Payme yoki Click orqali to‘langan va qaytarilmagan buyurtmalar. Sinov va ichki akkauntlar hisobga kirmaydi.')}</p>
-            {/* «Boshqa» — hisobga kirmagan yozuvlar (o'chirilmagan): egasi
-                ularni ko'radi, lekin jami summaga qo'shilmaydi. */}
-            {wallet && (Number(wallet.otherOrders) > 0 || Number(wallet.refundedOrders) > 0) && (
-              <p className="mt-1.5 max-w-md text-xs leading-relaxed" style={{ color: 'var(--vz-ink-3)' }}>
-                {Number(wallet.otherOrders) > 0 && t('«Boshqa» (qo‘lda, eski, sinov, bot): {n} ta — {sum} so‘m, hisobga kirmagan.', { n: wallet.otherOrders, sum: fmt(wallet.otherTotal || 0) })}
-                {Number(wallet.otherOrders) > 0 && Number(wallet.refundedOrders) > 0 && ' '}
-                {Number(wallet.refundedOrders) > 0 && t('Qaytarilgan: {n} ta — {sum} so‘m.', { n: wallet.refundedOrders, sum: fmt(wallet.refundedTotal || 0) })}
-              </p>
-            )}
-          </div>
-          <div className="hidden h-24 lg:block">
-            {series && series.length > 1 && (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={series} margin={{ top: 6, right: 4, bottom: 0, left: 4 }}>
-                  <Line type="monotone" dataKey="total" stroke="var(--accent-primary)" strokeWidth={2} dot={false} />
-                  <Tooltip {...chartTooltip} formatter={(v) => [fmt(v) + " so'm", t('Komissiya')]} labelFormatter={() => ''} />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        <KpiCard icon="users" tone="info" label={t("Foydalanuvchilar")} value={fmt(stats.userCount)} />
-        <KpiCard icon="idcard" tone="success" label={t("Band qilingan NFC ID")} value={fmt(stats.cardCount)} />
-        <KpiCard icon="bag" tone="accent" label={t("Jami savdo (NFC ID)")} value={`${fmt(stats.totalCardSalesValue)} ${t("so'm")}`} />
-        <KpiCard icon="clipboard" tone="muted" label={t("Kutilayotgan buyurtmalar")} value={fmt(stats.pendingWebOrders)} />
-      </div>
-
-      {series && series.length > 1 && (
-        <AdminCard title={t("Platforma komissiyasi \u2014 kunlar bo'yicha (30 kun)")}>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={series}>
-                <CartesianGrid {...chartGrid} />
-                <XAxis dataKey="day" {...chartAxis} />
-                <YAxis {...chartAxis} width={44} />
-                <Tooltip {...chartTooltip} formatter={(v) => [fmt(v) + " so'm", t('Komissiya')]} />
-                <Line type="monotone" dataKey="total" name={t('Komissiya')} stroke="var(--accent-primary)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </AdminCard>
-      )}
     </div>
   );
 }
-
-const KIND_LABEL = {
-  topup: "Hamyon to'ldirish",
-  bid_hold: 'Auksion bandlash',
-  bid_release: 'Auksion bo\u2019shatish',
-  auction_win: 'Auksion yutish',
-  auction_sale: 'Auksion savdosi (sotuvchi)',
-  refund: 'Qaytarish',
-  admin_adjust: 'Admin tuzatishi',
-  card_purchase: 'Premium obuna',
-  platform_commission: 'Platforma komissiyasi',
-};
-const PIE_COLORS = ['#f5a524', '#3abff8', '#36d399', '#f87272', '#a78bfa', '#fb7185', '#94a3b8'];
 
 // ═══ TRAFIK: kim kirdi, nechta profil ochildi, qayerdan ═══
 //
@@ -919,22 +942,27 @@ function AnalyticsTab() {
   if (loadErr) return <LoadError err={loadErr} onRetry={load} title={t("Analitikani yuklab bo'lmadi.")} />;
   if (!data) return <AdminLoading rows={6} />;
 
-  const breakdown = (data.breakdown || []).map((b) => ({ ...b, label: t(KIND_LABEL[b.kind] || b.kind) }));
-
+  // Eski komissiya grafigi, «Daromad turlari» diagrammasi va qo'lda balans
+  // tuzatishlari olib tashlandi (2026-09-25): ular eski hamyon tizimidan.
+  // Tushum grafigi — faqat Payme/Click.
+  const revenue = data.revenueSeries || [];
+  const revTotal = revenue.reduce((n, r) => n + r.total, 0);
   return (
     <div className="space-y-5">
-      <AdminCard title={t("Platforma komissiyasi \u2014 kunlar bo'yicha (30 kun)")}>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data.commissionSeries}>
-              <CartesianGrid {...chartGrid} />
-              <XAxis dataKey="day" {...chartAxis} />
-              <YAxis {...chartAxis} width={44} />
-              <Tooltip {...chartTooltip} formatter={(v) => [fmt(v) + " so'm", t('Komissiya')]} />
-              <Line type="monotone" dataKey="total" name={t('Komissiya')} stroke="var(--accent-primary)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+      <AdminCard title={t('Tushum — Payme va Click (30 kun)')} right={<span className="text-sm font-semibold" style={{ color: 'var(--vz-gold-2)' }}>{fmt(revTotal)} {t("so'm")}</span>}>
+        {revenue.length === 0 ? <EmptyState icon="bank" title={t('30 kun ichida Payme/Click orqali to‘lov bo‘lmagan.')} /> : (
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={revenue}>
+                <CartesianGrid {...chartGrid} />
+                <XAxis dataKey="day" {...chartAxis} tickFormatter={(d) => String(d).slice(5)} />
+                <YAxis {...chartAxis} width={70} tickFormatter={(v) => fmt(v)} />
+                <Tooltip {...chartTooltip} formatter={(v) => [fmt(v) + " so'm", t('Tushum')]} />
+                <Bar dataKey="total" name={t('Tushum')} fill="var(--accent-primary)" radius={[4, 4, 0, 0]} maxBarSize={26} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </AdminCard>
 
       <div className="grid gap-5 lg:grid-cols-2">
@@ -943,7 +971,7 @@ function AnalyticsTab() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.signupsSeries}>
                 <CartesianGrid {...chartGrid} />
-                <XAxis dataKey="day" {...chartAxis} />
+                <XAxis dataKey="day" {...chartAxis} tickFormatter={(d) => String(d).slice(5)} />
                 <YAxis {...chartAxis} width={32} allowDecimals={false} />
                 <Tooltip {...chartTooltip} />
                 <Bar dataKey="count" name={t("Ro'yxatdan o'tish")} fill="#5aa9e0" radius={[4, 4, 0, 0]} maxBarSize={26} />
@@ -957,7 +985,7 @@ function AnalyticsTab() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.cardsSeries}>
                 <CartesianGrid {...chartGrid} />
-                <XAxis dataKey="day" {...chartAxis} />
+                <XAxis dataKey="day" {...chartAxis} tickFormatter={(d) => String(d).slice(5)} />
                 <YAxis {...chartAxis} width={32} allowDecimals={false} />
                 <Tooltip {...chartTooltip} />
                 <Bar dataKey="count" name={t("Band qilingan")} fill="#7fb28e" radius={[4, 4, 0, 0]} maxBarSize={26} />
@@ -966,321 +994,403 @@ function AnalyticsTab() {
           </div>
         </AdminCard>
       </div>
-
-      <AdminCard title={t("Daromad turlari bo'yicha taqsimot")}>
-        <div className="grid items-center gap-5 lg:grid-cols-2">
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={breakdown} dataKey="total" nameKey="label" cx="50%" cy="50%" innerRadius={52} outerRadius={88} paddingAngle={2} stroke="none">
-                  {breakdown.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
-                </Pie>
-                <Tooltip {...chartTooltip} formatter={(v) => fmt(v) + " so'm"} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="space-y-2">
-            {breakdown.map((b, i) => (
-              <div key={b.kind} className="flex items-center justify-between gap-3 border-b pb-2 text-sm last:border-0" style={{ borderColor: 'var(--vz-line)' }}>
-                <span className="flex min-w-0 items-center gap-2 break-words" style={{ color: 'var(--vz-ink-2)' }}>
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
-                  {b.label}
-                </span>
-                <span className="shrink-0 font-semibold">{fmt(b.total)} <span className="text-xs font-normal" style={{ color: 'var(--vz-ink-3)' }}>{t("so'm")}</span></span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </AdminCard>
-
-      <ManualAdjustmentsSection />
     </div>
   );
 }
 
-// Qo'lda kiritilgan balans tuzatishlari — DIQQAT: bular yuqoridagi
-// "Daromad turlari bo'yicha taqsimot" grafigiga ATAYLAB kirmaydi, chunki
-// bu real platforma daromadi emas. Faqat audit uchun, alohida ko'rsatiladi.
-function ManualAdjustmentsSection() {
+// Server vaqti ikki shaklda keladi ("…T…Z" va "… …+00") — ikkalasini ham o'qiymiz.
+const tsMs = (v) => (v ? new Date(String(v).replace(' ', 'T').replace(/\+00$/, 'Z')).getTime() : 0);
+const SUSPEND_REASONS = ['Diniy-ekstremistik kontent', 'Litsenziyasiz diniy material tarqatish', 'Uyatsiz/odobsiz kontent', 'Ruxsatsiz shaxsiy rasm tarqatish', 'Spam', 'Boshqa foydalanuvchiga tahdid', 'Boshqa qoidabuzarlik'];
+const USER_FILTERS = [['all', 'Hammasi'], ['premium', 'Premium'], ['flagged', 'Sinov va ichki'], ['blocked', 'Bloklangan'], ['deleted', 'O‘chirilgan']];
+
+function UserStatusBadges({ u }) {
   const { t } = useLanguage();
-  const [list, setList] = useState(null);
-  const [loadErr, setLoadErr] = useState(null);
-  const load = () => { setLoadErr(null); adminApi('/manual-adjustments').then((d) => setList(d.adjustments || [])).catch((e) => setLoadErr(e)); };
-  useEffect(() => { load(); }, []);
-  if (loadErr) return <LoadError err={loadErr} onRetry={load} title={t("Qo'lda kiritilgan tuzatishlarni yuklab bo'lmadi.")} />;
-  if (!list) return <AdminLoading rows={2} />;
-  if (list.length === 0) return null;
-  const total = list.reduce((s, a) => s + a.amount, 0);
+  const blocked = !u.deletedAt && u.suspendedUntil && new Date(u.suspendedUntil) > new Date();
   return (
-    <div className="vz-card p-5">
-      <div className="flex flex-wrap items-center gap-2 text-sm font-bold">
-        <AdminIcon name="alert" className="h-4 w-4 text-[color:var(--warning)]" /> {t("Qo'lda kiritilgan balans tuzatishlari")}
-        <span className="vz-badge vz-badge--muted">{t('Daromadga kirmaydi')}</span>
-      </div>
-      <p className="mt-1 text-xs" style={{ color: 'var(--vz-ink-2)' }}>
-        {t("Bu yozuvlar xodim tomonidan qo'lda kiritilgan (masalan sinov maqsadida) — real savdo/komissiya emas, shuning uchun yuqoridagi daromad grafigiga qo'shilmaydi. Jami:")} <b className={total >= 0 ? 'text-success' : 'text-error'}>{fmt(total)} {t("so'm")}</b>.
-      </p>
-      <div className="mt-3 overflow-x-auto">
-        <table className="table table-sm">
-          <thead><tr><th>{t('Foydalanuvchi')}</th><th>{t('Summa')}</th><th>{t('Izoh')}</th><th>{t('Vaqt')}</th></tr></thead>
-          <tbody>
-            {list.map((a) => (
-              <tr key={a.id}>
-                <td className="text-xs">{a.email || `#${a.userId}`}</td>
-                <td className={`font-semibold ${a.amount >= 0 ? 'text-success' : 'text-error'}`}>{a.amount >= 0 ? '+' : ''}{fmt(a.amount)} {t("so'm")}</td>
-                <td className="max-w-xs break-words text-xs text-base-content/60">{a.note}</td>
-                <td className="whitespace-nowrap text-xs text-base-content/50">{timeAgo(new Date(a.createdAt).getTime())}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <span className="inline-flex flex-wrap gap-1">
+      {u.premium && <span className="vz-badge vz-badge--gold">{t('Premium')}</span>}
+      {!u.premium && u.trial && <span className="vz-badge vz-badge--info">{t('Sinov muddati')}</span>}
+      {u.isTest && <span className="vz-badge vz-badge--muted">{t('SINOV')}</span>}
+      {u.isInternal && <span className="vz-badge vz-badge--warn">{t('ICHKI')}</span>}
+      {blocked && <span className="vz-badge vz-badge--danger">{t('Bloklangan')}</span>}
+      {u.deletedAt && <span className="vz-badge vz-badge--danger">{t("O'CHIRILGAN")}</span>}
+    </span>
   );
 }
 
-function UsersTab() {
+// FOYDALANUVCHILAR — server tomonda qidiruv, holat filtrlari va har bir
+// odam uchun to'liq kartochka (UserDrawer). "Balansni tuzatish" va
+// "Balans" ustunlari olib tashlandi (2026-09-25): hamyon ishlatilmaydi.
+function UsersTab({ initialQuery = '', openUserId = null }) {
   const { t } = useLanguage();
-  const { isSuper, isManager } = useAdmin();
-  const { confirm, dialog } = useConfirm();
   const [users, setUsers] = useState(null);
   const [loadErr, setLoadErr] = useState(null);
   const [shown, setShown] = useState(50);
-  const [actErr, setActErr] = useState(null);
+  const [q, setQ] = useState(initialQuery);
+  const [debounced, setDebounced] = useState(initialQuery);
+  const [filter, setFilter] = useState('all');
+  const [openId, setOpenId] = useState(openUserId);
+
+  useEffect(() => { const id = setTimeout(() => setDebounced(q.trim()), 350); return () => clearTimeout(id); }, [q]);
+  const load = () => {
+    setLoadErr(null);
+    const qs = new URLSearchParams({ limit: '300' });
+    if (debounced) qs.set('q', debounced);
+    return adminApi(`/users?${qs}`).then((d) => setUsers(Array.isArray(d?.users) ? d.users : [])).catch((e) => setLoadErr(e));
+  };
+  useEffect(() => { setUsers(null); setShown(50); load(); }, [debounced]);
+  useEffect(() => { setShown(50); }, [filter]);
+
+  if (loadErr) return <LoadError err={loadErr} onRetry={() => load()} title={t("Foydalanuvchilarni yuklab bo'lmadi.")} />;
+  const now = new Date();
+  const filtered = (users || []).filter((u) => {
+    if (filter === 'premium') return u.premium;
+    if (filter === 'flagged') return u.isTest || u.isInternal;
+    if (filter === 'blocked') return !u.deletedAt && u.suspendedUntil && new Date(u.suspendedUntil) > now;
+    if (filter === 'deleted') return !!u.deletedAt;
+    return true;
+  });
+  const visible = filtered.slice(0, shown);
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-full border px-4 sm:max-w-md" style={{ borderColor: 'var(--vz-line)', background: 'var(--vz-card)' }}>
+          <AdminIcon name="search" className="h-4 w-4 shrink-0 text-[color:var(--vz-ink-3)]" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Email, telefon yoki NFC ID')}
+            aria-label={t('Foydalanuvchini qidirish')} className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
+        </label>
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('Holat bo‘yicha')}>
+          {USER_FILTERS.map(([v, l]) => (
+            <button key={v} type="button" aria-pressed={filter === v} onClick={() => setFilter(v)}
+              className={`btn btn-sm min-h-11 ${filter === v ? 'btn-gold' : 'btn-ghost-vz'}`}>{t(l)}</button>
+          ))}
+        </div>
+      </div>
+      {!users ? <AdminLoading rows={8} />
+        : users.length === 0 ? <EmptyState icon="users" title={debounced ? t('Hech narsa topilmadi.') : t("Hozircha foydalanuvchi yo'q.")} hint={debounced ? t("Qidiruv so'zini o'zgartirib ko'ring.") : null} />
+        : filtered.length === 0 ? <EmptyState icon="users" title={t('Bu filtr bo‘yicha foydalanuvchi yo‘q.')} />
+        : (
+          <div className="vz-card overflow-x-auto">
+            <table className="table table-sm">
+              <thead><tr><th>{t('Foydalanuvchi')}</th><th>{t('NFC ID')}</th><th>{t('Holat')}</th><th>{t("Ro'yxatdan o'tgan")}</th><th className="text-right"></th></tr></thead>
+              <tbody>
+                {visible.map((u) => (
+                  <tr key={u.id} className={`cursor-pointer hover:bg-white/[0.03] ${u.isTest ? 'opacity-60' : ''}`} onClick={() => setOpenId(u.id)}>
+                    <td className="min-w-[200px]">
+                      <div className="font-medium" style={{ color: 'var(--vz-ink)' }}>{u.email}</div>
+                      <div className="font-mono text-xs" style={{ color: 'var(--vz-ink-3)' }}>#{u.id}{u.phone ? ` · ${u.phone}` : ''}</div>
+                    </td>
+                    <td>
+                      {u.codes?.length ? (
+                        <span className="flex flex-wrap gap-1">
+                          {u.codes.slice(0, 4).map((c) => (
+                            <a key={c} href={adminPreviewUrl(c)} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                              className="badge badge-ghost badge-sm font-mono hover:badge-accent" title={t('Profilni yangi oynada ochish')}>{c}</a>
+                          ))}
+                          {u.codes.length > 4 && <span className="text-xs" style={{ color: 'var(--vz-ink-3)' }}>+{u.codes.length - 4}</span>}
+                        </span>
+                      ) : <span style={{ color: 'var(--vz-ink-3)' }}>—</span>}
+                    </td>
+                    <td><UserStatusBadges u={u} /></td>
+                    <td className="whitespace-nowrap text-xs" style={{ color: 'var(--vz-ink-3)' }}>{timeAgo(tsMs(u.createdAt))}</td>
+                    <td className="text-right">
+                      <button type="button" className="btn btn-ghost-vz btn-xs min-h-9 gap-1" onClick={(e) => { e.stopPropagation(); setOpenId(u.id); }}>
+                        {t('Kartochka')} <AdminIcon name="arrow" className="h-3.5 w-3.5" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="px-4 pb-3"><LoadMore shown={visible.length} total={filtered.length} onMore={setShown} /></div>
+          </div>
+        )}
+      {users && <div className="text-xs" style={{ color: 'var(--vz-ink-3)' }}>{t('Ko‘rsatilgan: {n}', { n: fmt(filtered.length) })}{users.length >= 300 ? ` · ${t('aniqroq qidiring — faqat oxirgi 300 ta')}` : ''}</div>}
+      {openId && <UserDrawer userId={openId} onClose={() => setOpenId(null)} onChanged={() => load()} />}
+    </div>
+  );
+}
+
+// PREMIUM OBUNACHILAR — kim to'lagan, qachon tugaydi. Tugashiga 7 kun
+// qolganlar alohida: ularga eslatma yuborish yoki bog'lanish mumkin.
+const PREMIUM_FILTERS = [['active', 'Faol'], ['expiring', '7 kunda tugaydi'], ['trial', 'Sinov muddati'], ['expired', 'Tugagan'], ['all', 'Hammasi']];
+function PremiumUsersTab() {
+  const { t } = useLanguage();
+  const [filter, setFilter] = useState('active');
   const [q, setQ] = useState('');
-  const [adjustFor, setAdjustFor] = useState(null);
-  const [suspendFor, setSuspendFor] = useState(null);
-  const [suspendDays, setSuspendDays] = useState('7');
-  const [suspendReason, setSuspendReason] = useState('Spam');
-  const [modBusy, setModBusy] = useState(null);
-  const [amount, setAmount] = useState('');
-  const [note, setNote] = useState('');
+  const [debounced, setDebounced] = useState('');
+  const [rows, setRows] = useState(null);
+  const [err, setErr] = useState(null);
+  const [openId, setOpenId] = useState(null);
+  useEffect(() => { const id = setTimeout(() => setDebounced(q.trim()), 350); return () => clearTimeout(id); }, [q]);
+  const load = () => {
+    setErr(null); setRows(null);
+    const qs = new URLSearchParams({ filter });
+    if (debounced) qs.set('q', debounced);
+    adminApi(`/premium-users?${qs}`).then((d) => setRows(d.users || [])).catch((e) => setErr(e));
+  };
+  useEffect(() => { load(); }, [filter, debounced]);
+  const daysLeft = (until) => (until ? Math.ceil((tsMs(until) - Date.now()) / 86_400_000) : null);
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('Holat bo‘yicha')}>
+          {PREMIUM_FILTERS.map(([v, l]) => (
+            <button key={v} type="button" aria-pressed={filter === v} onClick={() => setFilter(v)}
+              className={`btn btn-sm min-h-11 ${filter === v ? 'btn-gold' : 'btn-ghost-vz'}`}>{t(l)}</button>
+          ))}
+        </div>
+        <label className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-full border px-4 sm:max-w-xs" style={{ borderColor: 'var(--vz-line)', background: 'var(--vz-card)' }}>
+          <AdminIcon name="search" className="h-4 w-4 shrink-0 text-[color:var(--vz-ink-3)]" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Email, telefon yoki NFC ID')} aria-label={t('Qidirish')} className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
+        </label>
+      </div>
+      {err ? <LoadError err={err} onRetry={load} title={t("Premium obunachilarni yuklab bo'lmadi.")} />
+        : !rows ? <AdminLoading rows={6} />
+        : rows.length === 0 ? <EmptyState icon="crown" title={t('Bu ro‘yxat bo‘sh.')} />
+        : (
+          <div className="vz-card overflow-x-auto">
+            <table className="table table-sm">
+              <thead><tr><th>{t('Foydalanuvchi')}</th><th>{t('NFC ID')}</th><th>{t('Tugash sanasi')}</th><th>{t('Oxirgi to‘lov')}</th><th className="text-right"></th></tr></thead>
+              <tbody>
+                {rows.map((u) => {
+                  const left = daysLeft(u.until);
+                  return (
+                    <tr key={u.id} className="cursor-pointer hover:bg-white/[0.03]" onClick={() => setOpenId(u.id)}>
+                      <td className="min-w-[200px]">
+                        <div className="font-medium">{u.email}</div>
+                        <div className="text-xs" style={{ color: 'var(--vz-ink-3)' }}>{u.phone || `#${u.id}`}{u.isTest ? ` · ${t('SINOV')}` : ''}{u.isInternal ? ` · ${t('ICHKI')}` : ''}</div>
+                      </td>
+                      <td className="font-mono text-xs">{u.codes.slice(0, 3).join(', ') || '—'}</td>
+                      <td className="whitespace-nowrap">
+                        {u.legacy ? <span className="vz-badge vz-badge--gold">{t('Muddatsiz')}</span> : u.until ? (
+                          <span className="flex flex-col">
+                            <span className="text-sm">{dateTime(tsMs(u.until))}</span>
+                            <span className="text-xs" style={{ color: left != null && left <= 7 && left >= 0 ? 'var(--warning)' : left < 0 ? 'var(--danger)' : 'var(--vz-ink-3)' }}>
+                              {left < 0 ? t('{n} kun oldin tugagan', { n: -left }) : t('{n} kun qoldi', { n: left })}
+                              {u.state === 'trial' ? ` · ${t('sinov')}` : ''}
+                            </span>
+                          </span>
+                        ) : '—'}
+                      </td>
+                      <td className="whitespace-nowrap text-xs" style={{ color: 'var(--vz-ink-3)' }}>{u.lastPaidAt ? `${dateTime(tsMs(u.lastPaidAt))} · ${t('{n} marta', { n: u.paidCount })}` : '—'}</td>
+                      <td className="text-right"><button type="button" className="btn btn-ghost-vz btn-xs min-h-9" onClick={(e) => { e.stopPropagation(); setOpenId(u.id); }}>{t('Kartochka')}</button></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      {openId && <UserDrawer userId={openId} onClose={() => setOpenId(null)} onChanged={load} />}
+    </div>
+  );
+}
+
+// FOYDALANUVCHI KARTOCHKASI — bitta odam haqida hamma narsa bir joyda:
+// ID'lar, bizneslar, buyurtmalar (to'lov kanali bilan), jismoniy kartalar,
+// murojaatlar, ilova faolligi va boshqaruv amallari (rolga qarab).
+function UserDrawer({ userId, onClose, onChanged }) {
+  const { t } = useLanguage();
+  const { isSuper, isManager } = useAdmin();
+  const { confirm, dialog } = useConfirm();
+  const [d, setD] = useState(null);
+  const [err, setErr] = useState(null);
+  const [actErr, setActErr] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [toggleBusy, setToggleBusy] = useState(null);
+  const [suspendOpen, setSuspendOpen] = useState(false);
+  const [days, setDays] = useState('7');
+  const [reason, setReason] = useState('Spam');
+  const load = () => { setErr(null); return adminApi(`/users/${userId}/detail`).then(setD).catch((e) => setErr(e)); };
+  useEffect(() => { load(); }, [userId]);
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
-  const load = () => { setLoadErr(null); return adminApi('/users').then((d) => setUsers(Array.isArray(d?.users) ? d.users : [])).catch((e) => setLoadErr(e)); };
-  useEffect(() => { load(); }, []);
-  useEffect(() => { setShown(50); }, [q]);
-
-  const run = async (fn) => {
-    setActErr(null);
-    try { await fn(); } catch (e) { setActErr(apiErrText(e, t)); }
+  const act = async (fn) => {
+    setBusy(true); setActErr(null);
+    try { await fn(); await load(); onChanged?.(); } catch (e) { setActErr(apiErrText(e, t)); } finally { setBusy(false); }
   };
-
-  const toggleTest = async (u) => {
-    setToggleBusy(u.id);
-    try { await run(async () => { await adminApi(`/users/${u.id}/set-test`, { method: 'POST', body: JSON.stringify({ isTest: !u.isTest }) }); await load(); }); }
-    finally { setToggleBusy(null); }
-  };
-  // Ichki akkaunt: summalari umumiy hisobga kirmaydi, lekin akkauntning
-  // o'zi va buyurtmalari avvalgidek ko'rinadi.
-  const toggleInternal = async (u) => {
-    setToggleBusy(u.id);
-    try { await run(async () => { await adminApi(`/users/${u.id}/set-internal`, { method: 'POST', body: JSON.stringify({ isInternal: !u.isInternal }) }); await load(); }); }
-    finally { setToggleBusy(null); }
-  };
-
-  const submitSuspend = async (userId) => {
-    setModBusy(userId);
-    try {
-      await run(async () => {
-        await adminApi(`/users/${userId}/suspend`, { method: 'POST', body: JSON.stringify({ days: Number(suspendDays), reason: suspendReason }) });
-        setSuspendFor(null);
-        await load();
-      });
-    } finally {
-      setModBusy(null);
-    }
-  };
-  const unsuspend = async (u) => {
-    setModBusy(u.id);
-    try { await run(async () => { await adminApi(`/users/${u.id}/unsuspend`, { method: 'POST' }); await load(); }); } finally { setModBusy(null); }
-  };
-  // Backend soft-delete qiladi: yozuv `deleted_at` bilan saqlanadi,
-  // sessiyalar yopiladi. Qator ataylab qoladi — buyurtma va to'lov
-  // tarixi shu id ga bog'langan.
-  //
-  // MATN NIMA UCHUN SHUNDAY BATAFSIL: ilgari bu yerda faqat "kira
-  // olmaydi" deb yozilgandi va admin o'chirgach profil saytda ham,
-  // ilovada ham turaverishi kutilmagan bo'lardi (endi ko'rinmaydi —
-  // izohi `hosting/worker.js` dagi `ownerAliveSql` tepasida). Kod
-  // bo'shashi uchun esa profilni alohida o'chirish kerak.
-  const deleteUser = async (u) => {
+  const u = d?.user;
+  const blocked = u && !u.deletedAt && u.suspendedUntil && new Date(u.suspendedUntil) > new Date();
+  const deleteUser = async () => {
     const ok = await confirm({
       title: t("Foydalanuvchini o'chirish"),
       message: t("{email} akkaunti o'chirilgan deb belgilanadi: foydalanuvchi kira olmaydi va barcha sessiyalari yopiladi. Uning profillari, postlari va storylari saytda ham, ilovada ham ko'rinmay qoladi — katalog, qidiruv va Reels'dan chiqib ketadi. Ma'lumotlar bazada qoladi (buyurtma va to'lov tarixi uchun). Kodni butunlay bo'shatish kerak bo'lsa, profilni alohida o'chiring.", { email: u.email }),
-      confirmLabel: t("O'chirish"),
-      danger: true,
+      confirmLabel: t("O'chirish"), danger: true,
     });
-    if (!ok) return;
-    setModBusy(u.id);
-    try { await run(async () => { await adminApi(`/users/${u.id}/delete`, { method: 'POST' }); await load(); }); } finally { setModBusy(null); }
+    if (ok) act(() => adminApi(`/users/${u.id}/delete`, { method: 'POST' }));
   };
+  const premiumText = !u ? '' : u.premium.state === 'active' ? (u.premium.legacy ? t('Premium (muddatsiz)') : t('Premium — {d} gacha', { d: dateTime(tsMs(u.premium.until)) }))
+    : u.premium.state === 'trial' ? t('Sinov muddati — {d} gacha', { d: dateTime(tsMs(u.premium.until)) })
+      : u.premium.state === 'expired' ? t('Premium tugagan ({d})', { d: dateTime(tsMs(u.premium.until)) }) : t('Bepul');
 
-  const submitAdjust = async () => {
-    const val = Math.round(Number(amount));
-    if (!val) return;
-    setBusy(true);
-    try {
-      await run(async () => {
-        await adminApi(`/users/${adjustFor}/adjust-balance`, { method: 'POST', body: JSON.stringify({ amount: val, note }) });
-        setAdjustFor(null); setAmount(''); setNote('');
-        await load();
-      });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  if (loadErr) return <LoadError err={loadErr} onRetry={load} title={t("Foydalanuvchilarni yuklab bo'lmadi.")} />;
-  if (!users) return <AdminLoading rows={8} />;
-  const query = q.trim().toLowerCase();
-  const filtered = !query ? users : users.filter((u) =>
-    (u.email || '').toLowerCase().includes(query) ||
-    (u.codes || []).some((c) => c.toLowerCase().includes(query))
-  );
-  const visible = filtered.slice(0, shown);
   return (
-    <div>
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/60" onClick={onClose}>
       {dialog}
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder={t("Email yoki NFC ID bo'yicha qidirish...")}
-          className="vz-input w-full sm:max-w-sm"
-          aria-label={t("Email yoki NFC ID bo'yicha qidirish...")}
-        />
-        <span className="text-xs" style={{ color: 'var(--vz-ink-3)' }}>{t('Jami')}: {fmt(users.length)}</span>
-      </div>
-      {actErr && <div role="alert" className="vz-err mb-3">{actErr}</div>}
-      {users.length === 0 ? <EmptyState icon="users" title={t("Hozircha foydalanuvchi yo'q.")} />
-        : filtered.length === 0 ? <EmptyState icon="users" title={t("Hech narsa topilmadi.")} hint={t("Qidiruv so'zini o'zgartirib ko'ring.")} />
-        : (
-    <div className="overflow-x-auto">
-      <table className="table table-sm">
-        <thead>
-          <tr><th className="w-8 text-base-content/40">#</th><th>Email</th><th>{t('Telefon')}</th><th>{t('Bot')}</th><th>{t('Balans')}</th><th>{t('Bandlangan')}</th><th>{t('Kartalar')}</th><th>{t("Ro'yxatdan o'tgan")}</th><th></th></tr>
-        </thead>
-        <tbody>
-          {visible.map((u, i) => (
-            <tr key={u.id} className={u.isTest ? 'opacity-50' : ''}>
-              <td className="text-xs tabular-nums text-base-content/40">{i + 1}</td>
-              <td>
-                {/* EMAIL BOSILSA — o'sha odamning profili YANGI OYNADA.
-                    Egasining talabi: "ustiga bossa target blank bilan
-                    o'sha odamning profiliga otishi kerak, faqat ko'rish
-                    bo'lsin".
-
-                    FAQAT KO'RISH o'z-o'zidan ta'minlanadi: ochilgan
-                    sahifa oddiy ommaviy profil, admin uning egasi emas
-                    — tahrirlash tugmalari umuman chizilmaydi.
-
-                    `?preview=1` — ko'rish hisobiga tushmasin (izohi
-                    src/lib/preview.js da).
-
-                    Kartasi yo'q odamning profili ham yo'q, shuning
-                    uchun havola chizilmaydi — bosilib "topilmadi"
-                    sahifasiga tushmasin. */}
-                {u.codes?.length ? (
-                  <a href={adminPreviewUrl(u.codes[0])} target="_blank" rel="noopener noreferrer"
-                    className="link link-hover font-medium text-accent"
-                    title={t('Profilni yangi oynada ochish')}>
-                    {u.email} <span aria-hidden="true" className="text-xs opacity-60">↗</span>
-                  </a>
-                ) : u.email}
-                {' '}{u.isTest && <span className="badge badge-ghost badge-xs ml-1">{t("SINOV")}</span>}
-                {/* ICHKI AKKAUNT — egasining o'z akkaunti. Buyurtmalari
-                    ro'yxatda ko'rinadi, lekin pul hisobiga kirmaydi. */}
-                {u.isInternal && <span className="badge badge-warning badge-xs ml-1">{t("ICHKI")}</span>}
-                {u.deletedAt && <span className="badge badge-error badge-xs ml-1">{t("O'CHIRILGAN")}</span>}
-                {!u.deletedAt && u.suspendedUntil && new Date(u.suspendedUntil) > new Date() && (
-                  <div className="mt-0.5 text-[13px] text-error">{t('Bloklangan:')} {t(u.suspendReason)} ({timeAgo(new Date(u.suspendedUntil).getTime())} {t('gacha')})</div>
-                )}
-              </td>
-              <td className="font-mono text-xs">{u.phone || '—'}</td>
-              <td>{u.botAck ? <span className="vz-badge vz-badge--ok">{t('Ha')}</span> : <span className="vz-badge vz-badge--muted">{t("Yo'q")}</span>}</td>
-              <td className="font-semibold">{fmt(u.balance)}</td>
-              <td className="text-base-content/50">{fmt(u.heldBalance)}</td>
-              {/* Har bir karta ALOHIDA havola: bitta odamda bir nechta
-                  profil bo'lishi mumkin va emaildagi havola faqat
-                  birinchisini ochadi. */}
-              <td>
-                {u.codes?.length ? (
-                  <span className="flex flex-wrap gap-1">
-                    {u.codes.map((c) => (
-                      <a key={c} href={adminPreviewUrl(c)} target="_blank" rel="noopener noreferrer"
-                        className="badge badge-ghost badge-sm font-mono hover:badge-accent"
-                        title={t('Profilni yangi oynada ochish')}>{c}</a>
-                    ))}
-                  </span>
-                ) : <span className="text-base-content/40">{u.cardCount}</span>}
-              </td>
-              <td className="text-xs text-base-content/50">{timeAgo(new Date(u.createdAt).getTime())}</td>
-              <td className="flex flex-wrap gap-1">
-                {isSuper && <button className="btn btn-ghost btn-xs min-h-9" onClick={() => setAdjustFor(u.id)}>{t('Balansni tuzatish')}</button>}
-                {isSuper && (
-                  <button className="btn btn-ghost btn-xs min-h-9" disabled={toggleBusy === u.id} onClick={() => toggleTest(u)}>
-                    {u.isTest ? t('Sinovdan chiqarish') : t("Sinov deb belgilash")}
-                  </button>
-                )}
-                {isSuper && (
-                  <button className="btn btn-ghost btn-xs min-h-9" disabled={toggleBusy === u.id} onClick={() => toggleInternal(u)}>
-                    {u.isInternal ? t('Hisobga qo‘shish') : t('Hisobga qo‘shmaslik')}
-                  </button>
-                )}
-                {isManager && !u.deletedAt && (
-                  u.suspendedUntil && new Date(u.suspendedUntil) > new Date() ? (
-                    <button className="btn btn-success btn-xs min-h-9" disabled={modBusy === u.id} onClick={() => unsuspend(u)}>{t('Blokdan chiqarish')}</button>
-                  ) : (
-                    <button className="btn btn-warning btn-xs min-h-9" onClick={() => setSuspendFor(suspendFor === u.id ? null : u.id)}>{t('Bloklash')}</button>
-                  )
-                )}
-                {isSuper && !u.deletedAt && (
-                  <button className="btn btn-error btn-xs min-h-9" disabled={modBusy === u.id} onClick={() => deleteUser(u)}>{t("O'chirish")}</button>
-                )}
-                {suspendFor === u.id && (
-                  <div className="vz-panel mt-2 flex w-full flex-wrap items-center gap-1.5 p-2">
-                    <select value={suspendReason} onChange={(e) => setSuspendReason(e.target.value)} className="vz-input w-auto min-w-0 py-1" aria-label={t('Sabab')}>
-                      <option>{t('Diniy-ekstremistik kontent')}</option>
-                      <option>{t('Litsenziyasiz diniy material tarqatish')}</option>
-                      <option>{t('Uyatsiz/odobsiz kontent')}</option>
-                      <option>{t('Ruxsatsiz shaxsiy rasm tarqatish')}</option>
-                      <option>{t('Spam')}</option>
-                      <option>{t('Boshqa foydalanuvchiga tahdid')}</option>
-                      <option>{t('Boshqa qoidabuzarlik')}</option>
-                    </select>
-                    <input type="number" value={suspendDays} onChange={(e) => setSuspendDays(e.target.value)} placeholder={t("Kun")} className="vz-input w-20 py-1" aria-label={t('Kun')} />
-                    <button className="btn btn-warning btn-xs min-h-9" disabled={modBusy === u.id} onClick={() => submitSuspend(u.id)}>{t('Tasdiqlash')}</button>
-                  </div>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <LoadMore shown={visible.length} total={filtered.length} onMore={setShown} />
-    </div>
-        )}
-
-      {adjustFor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setAdjustFor(null)}>
-          <div className="vz-card w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-            <div className="font-display text-lg font-semibold">{t("Balansni qo'lda tuzatish")}</div>
-            <p className="mt-1 text-xs" style={{ color: 'var(--vz-ink-2)' }}>{t("Musbat son — qo'shadi, manfiy son — ayiradi. Har doim audit jurnaliga yoziladi.")}</p>
-            <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={t("masalan 50000 yoki -20000")}
-              className="vz-input mt-3" />
-            <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("Sabab (masalan: qo'lda Payme tasdiqlandi)")}
-              className="vz-input mt-2" />
-            <div className="mt-4 flex gap-2">
-              <button className="btn btn-gold flex-1" onClick={submitAdjust} disabled={busy}>
-                {busy ? <span className="loading loading-spinner loading-xs"></span> : t('Tasdiqlash')}
-              </button>
-              <button className="btn btn-ghost-vz" onClick={() => setAdjustFor(null)}>{t('Bekor')}</button>
-            </div>
+      <aside role="dialog" aria-modal="true" aria-label={t('Foydalanuvchi kartochkasi')} onClick={(e) => e.stopPropagation()}
+        className="admin-scroll h-full w-full max-w-[640px] overflow-y-auto border-l shadow-2xl" style={{ background: 'var(--color-page-bg)', borderColor: 'var(--vz-line)' }}>
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b px-5 py-4 backdrop-blur-md" style={{ background: 'var(--nav-bg)', borderColor: 'var(--vz-line)' }}>
+          <div className="min-w-0">
+            <div className="vz-kicker">{t('Foydalanuvchi kartochkasi')}</div>
+            <div className="truncate font-display text-lg font-semibold">{u ? u.email : '…'}</div>
           </div>
+          <button type="button" className="btn btn-ghost-vz btn-sm min-h-11 min-w-11" onClick={onClose} aria-label={t('Yopish')}><AdminIcon name="x" className="h-5 w-5" /></button>
         </div>
-      )}
+        <div className="space-y-5 p-5">
+          {err ? <LoadError err={err} onRetry={load} /> : !d ? <AdminLoading rows={8} /> : (
+            <>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-mono text-xs" style={{ color: 'var(--vz-ink-3)' }}>#{u.id}</span>
+                <UserStatusBadges u={{ ...u, premium: u.premium.state === 'active', trial: u.premium.state === 'trial' }} />
+              </div>
+              {actErr && <div role="alert" className="vz-err">{actErr}</div>}
+
+              <div className="grid gap-2 sm:grid-cols-2">
+                {[
+                  [t('Telefon'), u.phone || '—'],
+                  [t("Ro'yxatdan o'tgan"), `${dateTime(tsMs(u.createdAt))} · ${u.signupSource === 'web' ? t('Sayt') : t('Ilova')}`],
+                  [t('Obuna'), premiumText],
+                  [t('Hisobga kirgan to‘lovlar'), `${fmt(d.totals.countedPaid)} ${t("so'm")}`],
+                  [t('Ilova'), d.app ? t('{p} · oxirgi: {d} · {n} marta', { p: d.app.platform || '—', d: timeAgo(tsMs(d.app.lastSeen)), n: d.app.opens }) : t('Ishlatmagan')],
+                  [t('Telegram'), u.telegram ? t('Bog‘langan') : t('Bog‘lanmagan')],
+                ].map(([k, v]) => (
+                  <div key={k} className="vz-panel px-3.5 py-2.5">
+                    <div className="text-[11.5px] uppercase tracking-wider" style={{ color: 'var(--vz-ink-3)' }}>{k}</div>
+                    <div className="mt-0.5 break-words text-sm" style={{ color: 'var(--vz-ink)' }}>{v}</div>
+                  </div>
+                ))}
+              </div>
+              {blocked && <div className="vz-err">{t('Bloklangan:')} {t(u.suspendReason || '')} — {dateTime(tsMs(u.suspendedUntil))} {t('gacha')}</div>}
+              {d.openReports > 0 && <div className="vz-err">{t('Bu odamning profillariga {n} ta ochiq shikoyat bor.', { n: d.openReports })}</div>}
+
+              <AdminCard title={t('NFC ID lar ({n})', { n: d.cards.length })}>
+                {d.cards.length === 0 ? <div className="text-sm" style={{ color: 'var(--vz-ink-3)' }}>{t('ID yo‘q')}</div> : (
+                  <ul className="space-y-2">
+                    {d.cards.map((c) => (
+                      <li key={c.code} className="flex items-center justify-between gap-3 text-sm">
+                        <span className="min-w-0">
+                          <a href={adminPreviewUrl(c.code)} target="_blank" rel="noopener noreferrer" className="font-mono font-semibold hover:underline" style={{ color: 'var(--vz-gold-2)' }}>{c.code}</a>
+                          <span className="ml-2 break-words" style={{ color: 'var(--vz-ink-2)' }}>{c.name}</span>
+                        </span>
+                        <span className="flex shrink-0 items-center gap-1 text-xs" style={{ color: 'var(--vz-ink-3)' }}>
+                          {c.verified && <span className="vz-badge vz-badge--ok">{t('Tasdiqlangan')}</span>}
+                          {c.type === 'business' && <span className="vz-badge vz-badge--muted">{t('Biznes')}</span>}
+                          <AdminIcon name="eye" className="h-3.5 w-3.5" /> {fmt(c.views)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </AdminCard>
+
+              {d.companies.length > 0 && (
+                <AdminCard title={t('Business ID ({n})', { n: d.companies.length })}>
+                  <ul className="space-y-2 text-sm">
+                    {d.companies.map((c) => (
+                      <li key={c.id} className="flex items-center justify-between gap-3">
+                        <span className="min-w-0"><span className="font-mono font-semibold">{c.id}</span> <span style={{ color: 'var(--vz-ink-2)' }}>{c.name}</span></span>
+                        <span className="vz-badge vz-badge--muted">{c.status}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </AdminCard>
+              )}
+
+              <AdminCard title={t('Buyurtmalar va to‘lovlar ({n})', { n: d.orders.length })} pad={false}>
+                {d.orders.length === 0 ? <div className="px-5 py-4 text-sm" style={{ color: 'var(--vz-ink-3)' }}>{t("Hozircha buyurtma yo'q.")}</div> : (
+                  <ul className="divide-y" style={{ borderColor: 'var(--vz-line)' }}>
+                    {d.orders.map((o) => {
+                      const st = ORDER_STATUS_LABEL[o.status] || { text: o.status, cls: 'badge-ghost' };
+                      const ch = o.status === 'paid' ? CHANNEL_LABEL[o.channel] : null;
+                      return (
+                        <li key={o.id} className="flex items-center justify-between gap-3 px-5 py-3" style={{ borderColor: 'var(--vz-line)' }}>
+                          <div className="min-w-0">
+                            <div className="truncate text-sm"><span className="font-mono font-semibold">{o.code}</span> <span style={{ color: 'var(--vz-ink-3)' }}>{t(KIND_TEXT[o.kind] || o.kind)}</span></div>
+                            <div className="mt-0.5 text-xs" style={{ color: 'var(--vz-ink-3)' }}>{dateTime(tsMs(o.createdAt))}</div>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <div className="text-sm font-semibold tabular-nums">{fmt(o.amount)}</div>
+                            <div className="mt-1 flex justify-end gap-1">
+                              {ch && <span className={`vz-badge ${VZ_BADGE[ch.cls]}`}>{t(ch.text)}</span>}
+                              {o.refunded && <span className="vz-badge vz-badge--danger">{t('Qaytarilgan')}</span>}
+                              <span className={`vz-badge ${VZ_BADGE[st.cls] || 'vz-badge--muted'}`}>{t(st.text)}</span>
+                            </div>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </AdminCard>
+
+              {d.physicalCards.length > 0 && (
+                <AdminCard title={t('Jismoniy kartalar ({n})', { n: d.physicalCards.length })}>
+                  <ul className="space-y-1.5 text-sm">
+                    {d.physicalCards.map((p) => (
+                      <li key={p.id} className="flex items-center justify-between gap-3">
+                        <span>#{p.id} <span className="font-mono">{p.code || '—'}</span></span>
+                        <span className="flex gap-1">{!p.active && <span className="vz-badge vz-badge--danger">{t('Bloklangan')}</span>}<span className="vz-badge vz-badge--muted">{t(CARD_STATUS_LABEL[p.status] || p.status)}</span></span>
+                      </li>
+                    ))}
+                  </ul>
+                </AdminCard>
+              )}
+
+              {d.support.length > 0 && (
+                <AdminCard title={t('Murojaatlar ({n})', { n: d.support.length })}>
+                  <ul className="space-y-3 text-sm">
+                    {d.support.map((m) => (
+                      <li key={m.id}>
+                        <div className="flex items-center justify-between gap-2 text-xs" style={{ color: 'var(--vz-ink-3)' }}>
+                          <span>{dateTime(tsMs(m.createdAt))}</span>
+                          <span className={`vz-badge ${m.status === 'pending' ? 'vz-badge--warn' : 'vz-badge--ok'}`}>{m.status === 'pending' ? t('Kutilmoqda') : t('Javob berilgan')}</span>
+                        </div>
+                        <div className="mt-1 whitespace-pre-wrap break-words" style={{ color: 'var(--vz-ink)' }}>{m.message}</div>
+                        {m.reply && <div className="mt-1 whitespace-pre-wrap break-words border-l-2 pl-2" style={{ borderColor: 'var(--vz-gold)', color: 'var(--vz-ink-2)' }}>{m.reply}</div>}
+                      </li>
+                    ))}
+                  </ul>
+                </AdminCard>
+              )}
+
+              {(isManager || isSuper) && !u.deletedAt && (
+                <AdminCard title={t('Boshqaruv')}>
+                  <div className="flex flex-wrap gap-2">
+                    {isManager && (blocked
+                      ? <button className="btn btn-success btn-sm min-h-11" disabled={busy} onClick={() => act(() => adminApi(`/users/${u.id}/unsuspend`, { method: 'POST' }))}>{t('Blokdan chiqarish')}</button>
+                      : <button className="btn btn-warning btn-sm min-h-11" disabled={busy} onClick={() => setSuspendOpen((v) => !v)}>{t('Bloklash')}</button>)}
+                    {isSuper && (
+                      <button className="btn btn-ghost-vz btn-sm min-h-11" disabled={busy} onClick={() => act(() => adminApi(`/users/${u.id}/set-test`, { method: 'POST', body: JSON.stringify({ isTest: !u.isTest }) }))}>
+                        {u.isTest ? t('Sinovdan chiqarish') : t('Sinov deb belgilash')}
+                      </button>
+                    )}
+                    {isSuper && (
+                      <button className="btn btn-ghost-vz btn-sm min-h-11" disabled={busy} onClick={() => act(() => adminApi(`/users/${u.id}/set-internal`, { method: 'POST', body: JSON.stringify({ isInternal: !u.isInternal }) }))}>
+                        {u.isInternal ? t('Hisobga qo‘shish') : t('Hisobga qo‘shmaslik')}
+                      </button>
+                    )}
+                    {isSuper && <button className="btn btn-error btn-sm min-h-11" disabled={busy} onClick={deleteUser}>{t("O'chirish")}</button>}
+                  </div>
+                  {suspendOpen && !blocked && (
+                    <div className="vz-panel mt-3 flex flex-wrap items-center gap-2 p-3">
+                      <select value={reason} onChange={(e) => setReason(e.target.value)} className="vz-input w-auto min-w-0" aria-label={t('Sabab')}>
+                        {SUSPEND_REASONS.map((r) => <option key={r} value={r}>{t(r)}</option>)}
+                      </select>
+                      <input type="number" min="1" value={days} onChange={(e) => setDays(e.target.value)} className="vz-input w-24" aria-label={t('Kun')} />
+                      <span className="text-xs" style={{ color: 'var(--vz-ink-3)' }}>{t('kun')}</span>
+                      <button className="btn btn-warning btn-sm min-h-11" disabled={busy} onClick={() => act(async () => { await adminApi(`/users/${u.id}/suspend`, { method: 'POST', body: JSON.stringify({ days: Number(days), reason }) }); setSuspendOpen(false); })}>{t('Tasdiqlash')}</button>
+                    </div>
+                  )}
+                  <p className="mt-3 text-xs" style={{ color: 'var(--vz-ink-3)' }}>{t('«Sinov» — akkaunt ro‘yxatlardan va hisobdan yashiriladi. «Hisobga qo‘shmaslik» — o‘z akkauntingiz: ko‘rinadi, lekin pul va statistikaga kirmaydi.')}</p>
+                </AdminCard>
+              )}
+            </>
+          )}
+        </div>
+      </aside>
     </div>
   );
 }
@@ -1453,6 +1563,8 @@ function PhysicalCardDesign({ order }) {
 // va Click orqali to'langanlar bo'yicha. Qolgan "to'langan" yozuvlar
 // (qo'lda tasdiqlangan, eski, sinov, Telegram bot) — «Boshqa»: ular
 // o'chirilmaydi, faqat jami summaga qo'shilmaydi.
+// daisyUI badge sinfi -> panelning o'z belgisi (kartochka ichida).
+const VZ_BADGE = { 'badge-success': 'vz-badge--ok', 'badge-warning': 'vz-badge--warn', 'badge-ghost': 'vz-badge--muted', 'badge-error': 'vz-badge--danger' };
 const CHANNEL_LABEL = {
   payme: { text: 'Payme', cls: 'badge-success' },
   click: { text: 'Click', cls: 'badge-success' },
@@ -1474,11 +1586,12 @@ function ChannelBadge({ channel, refunded }) {
 const ORDER_VIEWS = [
   ['paid', 'Payme/Click to‘langan'],
   ['pending', 'Kutilmoqda'],
+  ['refunded', 'Qaytarilgan'],
   ['other', 'Boshqa'],
   ['all', 'Hammasi'],
 ];
 
-function OrdersTab() {
+function OrdersTab({ initialView = null }) {
   const { t } = useLanguage();
   const { isSuper } = useAdmin();
   const { confirm, dialog } = useConfirm();
@@ -1491,7 +1604,7 @@ function OrdersTab() {
   // "Sinov" deb belgilangan foydalanuvchilarniki shunchaki ko'rsatilmaydi.
   const [includeTest, setIncludeTest] = useState(false);
   // Standart ko'rinish — Payme/Click orqali to'langanlar (egasining qarori).
-  const [view, setView] = useState('paid');
+  const [view, setView] = useState(ORDER_VIEWS.some(([v]) => v === initialView) ? initialView : 'paid');
   const load = (withTest = includeTest, v = view) => {
     setLoadErr(null); setOrders(null);
     const qs = new URLSearchParams({ view: v });
@@ -1579,6 +1692,7 @@ function OrdersTab() {
         ))}
       </div>
       {view === 'paid' && <p className="text-xs" style={{ color: 'var(--vz-ink-3)' }}>{t('Faqat Payme yoki Click orqali to‘langan buyurtmalar — hisob-kitob shular bo‘yicha.')}</p>}
+      {view === 'refunded' && <p className="text-xs" style={{ color: 'var(--vz-ink-3)' }}>{t('Payme/Click orqali to‘lanib, keyin qaytarish so‘ralgan buyurtmalar. Pulni qaytarish Payme/Click kabinetida qo‘lda bajariladi; bu yerda faqat ro‘yxat.')}</p>}
       {view === 'other' && <p className="text-xs" style={{ color: 'var(--vz-ink-3)' }}>{t('«Boshqa»: qo‘lda tasdiqlangan, eski, sinov, qaytarilgan, bekor qilingan va Telegram bot buyurtmalari. Hisobga kirmaydi, o‘chirilmagan.')}</p>}
     </div>
   );
@@ -2568,6 +2682,8 @@ function NotificationsTab() {
 
 function PhysicalCardsTab() {
   const { t } = useLanguage();
+  // Holat va bloklash — manager va undan yuqori (server ham tekshiradi).
+  const { isManager } = useAdmin();
   const { confirm, dialog } = useConfirm();
   const [cards, setCards] = useState(null);
   const [busy, setBusy] = useState(null);
@@ -2626,7 +2742,7 @@ function PhysicalCardsTab() {
               <td className="max-w-xs break-words text-xs">{c.shippingAddress}</td>
               <td>{c.active ? <span className="vz-badge vz-badge--ok">{t('Faol')}</span> : <span className="vz-badge vz-badge--muted">{t('bloklangan')}</span>}</td>
               <td>
-                <select className="vz-input w-auto py-1" value={c.status} onChange={(e) => setStatus(c, e.target.value)} aria-label={t('Holat')}>
+                <select className="vz-input w-auto py-1" value={c.status} disabled={!isManager} onChange={(e) => setStatus(c, e.target.value)} aria-label={t('Holat')}>
                   {CARD_STATUS.map((cs) => <option key={cs} value={cs}>{t(CARD_STATUS_LABEL[cs])}</option>)}
                 </select>
                 {/* Xizmat va kuzatuv raqami — "Jo'natildi" ga o'tkazishdan
@@ -2655,7 +2771,7 @@ function PhysicalCardsTab() {
               <td>
                 <button
                   className={`btn btn-xs ${c.active ? 'btn-error' : 'btn-success'}`}
-                  disabled={busy === c.id || !c.linkedCode}
+                  disabled={busy === c.id || !c.linkedCode || !isManager}
                   onClick={() => toggleActive(c)}
                 >
                   {busy === c.id ? <span className="loading loading-spinner loading-xs"></span> : (c.active ? t('Bloklash') : t('Blokdan chiqarish'))}
@@ -3153,6 +3269,7 @@ function CategoriesTab() {
 // beradi/oladi (haqiqiy shaxs / rasmiy biznes).
 function VerificationTab() {
   const { t } = useLanguage();
+  const { isSuper } = useAdmin();
   const [code, setCode] = useState('');
   const [found, setFound] = useState(null);
   const [rows, setRows] = useState(null);
@@ -3204,19 +3321,8 @@ function VerificationTab() {
     finally { setBusy(false); }
   };
 
-  const [viewsInput, setViewsInput] = useState('');
-  const saveViews = async () => {
-    if (!found) return;
-    const v = Number(viewsInput);
-    if (!Number.isFinite(v) || v < 0) return;
-    setBusy(true);
-    try {
-      const row = await adminApi(`/records/${encodeURIComponent(found.code)}/views`, { method: 'POST', body: JSON.stringify({ views: v }) });
-      setFound({ ...found, views: row.views });
-      setViewsInput('');
-    } catch (e) { setErr(apiErrText(e, t)); }
-    finally { setBusy(false); }
-  };
+  // «Ko'rishlar sonini o'zgartirish» olib tashlandi (2026-09-25): profil
+  // statistikasini qo'lda soxtalashtirish imkoni bo'lmasin.
 
   return (
     <div className="space-y-6">
@@ -3237,20 +3343,16 @@ function VerificationTab() {
                   <span>{found.role || '—'}</span> · {found.verified ? <span className="vz-badge vz-badge--ok">{t('Tasdiqlangan')}</span> : <span className="vz-badge vz-badge--muted">{t('Tasdiqlanmagan')}</span>} · <span className="inline-flex items-center gap-1"><AdminIcon name="eye" className="h-3.5 w-3.5" /> {fmt(found.views ?? 0)}</span>
                 </div>
               </div>
-              <button className="btn btn-error btn-sm min-h-11"
-                disabled={busy} onClick={removeProfile}>
-                {t('Profilni o‘chirish')}
-              </button>
+              {isSuper && (
+                <button className="btn btn-error btn-sm min-h-11"
+                  disabled={busy} onClick={removeProfile}>
+                  {t('Profilni o‘chirish')}
+                </button>
+              )}
               <button className={`btn btn-sm min-h-11 ${found.verified ? 'btn-ghost-vz' : 'btn-gold'}`}
                 disabled={busy} onClick={() => toggle(found.code, !found.verified)}>
                 {found.verified ? t('Tasdiqni olib tashlash') : t('Tasdiqlash')}
               </button>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 border-t pt-2" style={{ borderColor: 'var(--vz-line)' }}>
-              <span className="text-xs" style={{ color: 'var(--vz-ink-2)' }}>{t('Ko‘rishlar sonini o‘zgartirish')}:</span>
-              <input type="number" min="0" value={viewsInput} onChange={(e) => setViewsInput(e.target.value)}
-                placeholder={String(found.views ?? 0)} className="vz-input w-28 py-1" aria-label={t('Ko‘rishlar sonini o‘zgartirish')} />
-              <button className="btn btn-ghost-vz btn-sm min-h-11" disabled={busy || viewsInput === ''} onClick={saveViews}>{t('Saqlash')}</button>
             </div>
           </div>
         )}
@@ -3922,7 +4024,9 @@ function FinanceDocs() {
 // (free = FREE, boshqa har qanday daraja = PRO).
 // ═══════════════════════════════════════════════════════════════════
 
-const COMPANY_SUBTABS = [['requests', 'Company ID arizalari'], ['overview', 'Eski tizim — umumiy'], ['list', 'Eski biznes profillar'], ['pricing', 'Eski tariflar'], ['log', 'Eski jurnal']];
+// «Eski tizim — umumiy», «Eski tariflar» va «Eski jurnal» menyudan olindi
+// (2026-09-25): hozirgi qoidalarga zid. Komponentlar joyida.
+const COMPANY_SUBTABS = [['requests', 'Business ID arizalari'], ['list', 'Eski biznes profillar']];
 
 const COMPANY_ACTION_LABEL = {
   company_suspended: 'Kompaniya bloklandi',
@@ -4296,6 +4400,9 @@ function CompanyPricingSubtab() {
 
 function CompanyIdRequests() {
   const { t } = useLanguage();
+  // Server bilan bir xil: tasdiqlash/rad etish/bloklash — manager+;
+  // "faol" qilish (to'lovsiz ochish) va nom qoidalari — faqat super_admin.
+  const { isSuper, isManager } = useAdmin();
   const { confirm, dialog } = useConfirm();
   const [data, setData] = useState(null);
   const [err, setErr] = useState(null);
@@ -4386,12 +4493,14 @@ function CompanyIdRequests() {
         : rows.length === 0 ? <EmptyState icon="building" title={t('Ariza topilmadi.')} />
         : (
       <div className="overflow-x-auto"><table className="table table-sm"><thead><tr><th>Company ID</th><th>{t('Kompaniya')}</th><th>{t('Egasi')}</th><th>{t('Tarif / narx')}</th><th>{t('Status')}</th><th>{t('Amal')}</th></tr></thead><tbody>
-        {rows.map((company) => <tr key={company.companyId}><td><b className="font-mono" style={{ color: 'var(--vz-gold-2)' }}>{company.companyId}</b><div className="text-[13px] text-base-content/35">/c/{company.companyId.toLowerCase()}</div></td><td className="break-words"><b>{company.displayName}</b><div className="text-[13px] text-base-content/45">{company.category} · {company.city}</div>{company.sourceCardCode && <div className="text-[13px] text-warning">{t('nusxa')}: {company.sourceCardCode}</div>}</td><td><div className="break-words text-xs">{company.ownerEmail || company.ownerUserId}</div></td><td><b>{company.tier?.toUpperCase()}</b><div className="whitespace-nowrap text-[13px] text-base-content/45">{fmt(company.price)} {t("so'm")}</div></td><td><StatusBadge tone={tone[company.status] || 'muted'}>{t(labels[company.status] || company.status)}</StatusBadge></td><td><div className="flex flex-wrap gap-1">{company.status === 'pending_review' && <><button className="btn btn-success btn-xs min-h-9" disabled={!!busy} onClick={() => setStatus(company.companyId, 'approved')}>{t('Tasdiqlash')}</button><button className="btn btn-error btn-xs min-h-9" disabled={!!busy} onClick={() => setStatus(company.companyId, 'rejected')}>{t('Rad etish')}</button></>}{['approved','payment_pending','paid'].includes(company.status) && <button className="btn btn-outline-gold btn-xs min-h-9" disabled={!!busy} onClick={() => setStatus(company.companyId, 'active')}>{t('Faollashtirish')}</button>}{company.status === 'active' && <button className="btn btn-warning btn-xs min-h-9" disabled={!!busy} onClick={() => setStatus(company.companyId, 'suspended')}>{t('Bloklash')}</button>}{company.status === 'suspended' && <button className="btn btn-success btn-xs min-h-9" disabled={!!busy} onClick={() => setStatus(company.companyId, 'active')}>{t('Qayta ochish')}</button>}<a className="btn btn-ghost btn-xs min-h-9 min-w-9" href={`/company/${company.companyId.toLowerCase()}`} target="_blank" rel="noreferrer" aria-label={t('Ochish')}>↗</a></div></td></tr>)}
+        {rows.map((company) => <tr key={company.companyId}><td><b className="font-mono" style={{ color: 'var(--vz-gold-2)' }}>{company.companyId}</b><div className="text-[13px] text-base-content/35">/c/{company.companyId.toLowerCase()}</div></td><td className="break-words"><b>{company.displayName}</b><div className="text-[13px] text-base-content/45">{company.category} · {company.city}</div>{company.sourceCardCode && <div className="text-[13px] text-warning">{t('nusxa')}: {company.sourceCardCode}</div>}</td><td><div className="break-words text-xs">{company.ownerEmail || company.ownerUserId}</div></td><td><b>{company.tier?.toUpperCase()}</b><div className="whitespace-nowrap text-[13px] text-base-content/45">{fmt(company.price)} {t("so'm")}</div></td><td><StatusBadge tone={tone[company.status] || 'muted'}>{t(labels[company.status] || company.status)}</StatusBadge></td><td><div className="flex flex-wrap gap-1">{isManager && company.status === 'pending_review' && <><button className="btn btn-success btn-xs min-h-9" disabled={!!busy} onClick={() => setStatus(company.companyId, 'approved')}>{t('Tasdiqlash')}</button><button className="btn btn-error btn-xs min-h-9" disabled={!!busy} onClick={() => setStatus(company.companyId, 'rejected')}>{t('Rad etish')}</button></>}{isSuper && ['approved','payment_pending','paid'].includes(company.status) && <button className="btn btn-outline-gold btn-xs min-h-9" disabled={!!busy} onClick={() => setStatus(company.companyId, 'active')}>{t('Faollashtirish')}</button>}{isManager && company.status === 'active' && <button className="btn btn-warning btn-xs min-h-9" disabled={!!busy} onClick={() => setStatus(company.companyId, 'suspended')}>{t('Bloklash')}</button>}{isSuper && company.status === 'suspended' && <button className="btn btn-success btn-xs min-h-9" disabled={!!busy} onClick={() => setStatus(company.companyId, 'active')}>{t('Qayta ochish')}</button>}<a className="btn btn-ghost btn-xs min-h-9 min-w-9" href={`/company/${company.companyId.toLowerCase()}`} target="_blank" rel="noreferrer" aria-label={t('Ochish')}>↗</a></div></td></tr>)}
       </tbody></table></div>
         )}
     </AdminCard>
     <AdminCard title={t('Company ID rezerv va narx override')}>
+      {isSuper ? (
       <form className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6" onSubmit={saveRule}><input required pattern="[A-Za-z]{3,15}" value={rule.companyId} onChange={(e) => setRule((old) => ({ ...old, companyId:e.target.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,15) }))} placeholder="COMPANYID" className="vz-input min-w-0 font-mono" aria-label="Company ID"/><select value={rule.rule} onChange={(e) => setRule((old) => ({ ...old, rule:e.target.value }))} className="vz-input min-w-0" aria-label={t('Qoida')}><option value="reserved">Reserved</option><option value="off_sale">Off sale</option><option value="blocked">Blocked</option><option value="exclusive">Exclusive</option><option value="allow">Allow</option></select><select value={rule.tierOverride} onChange={(e) => setRule((old) => ({ ...old, tierOverride:e.target.value }))} className="vz-input min-w-0" aria-label={t('Tarif')}><option value="">Auto tier</option><option value="silver">Silver</option><option value="gold">Gold</option><option value="premium">Premium</option><option value="exclusive">Exclusive</option></select><input type="number" min="0" value={rule.priceOverride} onChange={(e) => setRule((old) => ({ ...old, priceOverride:e.target.value }))} placeholder={t('Maxsus narx')} className="vz-input min-w-0" aria-label={t('Maxsus narx')}/><input value={rule.note} onChange={(e) => setRule((old) => ({ ...old, note:e.target.value }))} placeholder={t('Admin izohi')} className="vz-input min-w-0" aria-label={t('Admin izohi')}/><button className="btn btn-gold min-h-11" disabled={busy === 'rule'}>{t('Saqlash')}</button></form>
+      ) : <p className="text-xs" style={{ color: 'var(--vz-ink-3)' }}>{t('Qoida va narxni faqat super admin o‘zgartiradi.')}</p>}
       {rules.length > 0 && <div className="mt-4 flex flex-wrap gap-2">{rules.slice(0,20).map((entry) => { const id = entry.company_id || entry.companyId; const price = entry.price_override ?? entry.priceOverride; return <span key={id} className="vz-badge vz-badge--muted font-mono">{id} · {entry.rule}{price != null ? ` · ${fmt(price)}` : ''}</span>; })}</div>}
     </AdminCard>
     {/* PREMIUM KOMPANIYA NOMLARI (2026-09) — auksion o'rniga qat'iy narx.
@@ -4423,8 +4532,8 @@ function CompanyIdRequests() {
                     {d.note && <div className="mt-1 text-xs text-base-content/45">{d.note}</div>}
                   </td>
                   <td className="whitespace-nowrap">
-                    {d.status !== 'active' && <button className="btn btn-xs btn-gold" disabled={busy === `dom${d.companyId}`} onClick={() => setDomainStatus(d.companyId, 'active')}>{t('Faollashtirish')}</button>}
-                    {d.status !== 'rejected' && <button className="btn btn-xs btn-ghost-vz ml-1" disabled={busy === `dom${d.companyId}`} onClick={() => setDomainStatus(d.companyId, 'rejected')}>{t('Rad etish')}</button>}
+                    {isManager && d.status !== 'active' && <button className="btn btn-xs btn-gold" disabled={busy === `dom${d.companyId}`} onClick={() => setDomainStatus(d.companyId, 'active')}>{t('Faollashtirish')}</button>}
+                    {isManager && d.status !== 'rejected' && <button className="btn btn-xs btn-ghost-vz ml-1" disabled={busy === `dom${d.companyId}`} onClick={() => setDomainStatus(d.companyId, 'rejected')}>{t('Rad etish')}</button>}
                   </td>
                 </tr>
               ))}
@@ -4625,43 +4734,46 @@ function CompaniesTab() {
 }
 
 // Sidebar navigatsiyasi — index = haqiqiy TABS indeksi (content switch o'zgarmaydi).
+//
+// GURUHLAR (2026-09-25, "haqiqiy boshqaruv paneli"): bo'limlar vazifa
+// bo'yicha 5 guruhga ajratildi. `badge` — `/api/admin/overview` dagi
+// "kutilayotgan ish" soni (0 bo'lsa ko'rinmaydi).
+//
+// MENYUDAN OLINGANLAR (bo'limning o'zi va indeksi joyida — `?tab=N`
+// bilan baribir ochiladi, bazadagi ma'lumotga tegilmagan):
+//   4  «To'lanishi kerak pullar» — endi hech narsa qo'shilmaydi;
+//   5, 6, 17 — auksion (2026-09 da bekor qilingan);
+//   9  «Tashqi analitika» — hisoblagich saytga o'rnatilmagan.
 const ADMIN_NAV = [
-  { index: 0, label: 'Umumiy', icon: 'dashboard' },
-  { index: 1, label: 'Statistika', icon: 'chart' },
-  { index: 20, label: 'Trafik', icon: 'activity' },
-  { index: 21, label: 'Shikoyatlar', icon: 'shield' },
-  { index: 2, label: 'Foydalanuvchilar', icon: 'users' },
-  { index: 19, label: 'Kompaniyalar', icon: 'building' },
-  { index: 3, label: 'Buyurtmalar', icon: 'bag' },
-  { index: 4, label: "To'lanishi kerak pullar", icon: 'wallet' },
-  { index: 18, label: 'Moliya', icon: 'bank', superOnly: true },
-  // AUKSION BEKOR QILINDI (2026-09) — yon menyudan olib tashlandi.
-  // Bo'limlarning O'ZI (AuctionsTab / AuctionRequestsTab) o'chirilmadi
-  // va indekslar (5, 6) ham o'zgartirilmadi: eski auksionlar tarixi
-  // kerak bo'lsa, /admin?tab=5 orqali baribir ochiladi. Indekslarni
-  // siljitish esa qolgan hamma bo'limning manzilini buzardi.
-  // "Talab" ham auksionning bir qismi (kodga talab yig'ib, auksion
-  // boshlanadi). Auksion bekor qilingani uchun u ham menyudan
-  // olindi — bo'limning o'zi va bazadagi ma'lumot joyida.
-  { index: 7, label: 'Jismoniy kartalar', icon: 'idcard' },
-  { index: 8, label: 'Bildirishnomalar', icon: 'bell' },
-  { index: 9, label: 'Tashqi analitika', icon: 'activity' },
-  { index: 12, label: 'Gift NFC ID', icon: 'gift' },
+  { index: 0, label: 'Boshqaruv markazi', icon: 'dashboard', group: 'Asosiy' },
+  { index: 1, label: 'Statistika', icon: 'chart', group: 'Asosiy' },
+  { index: 20, label: 'Trafik', icon: 'activity', group: 'Asosiy' },
+
+  { index: 2, label: 'Foydalanuvchilar', icon: 'users', group: 'Foydalanuvchilar' },
+  { index: 24, label: 'Premium obunachilar', icon: 'crown', group: 'Foydalanuvchilar' },
+  { index: 19, label: 'Business ID', icon: 'building', group: 'Foydalanuvchilar', badgeKey: 'companyRequests' },
+  { index: 16, label: 'Tasdiqlash (verified)', icon: 'check', group: 'Foydalanuvchilar' },
+  { index: 8, label: 'Murojaatlar', icon: 'bell', group: 'Foydalanuvchilar', badgeKey: 'supportUnanswered' },
+
+  { index: 3, label: 'Buyurtmalar', icon: 'bag', group: 'Savdo', badgeKey: 'pendingOrders' },
+  { index: 18, label: 'Moliya', icon: 'bank', group: 'Savdo', superOnly: true },
+  { index: 7, label: 'Jismoniy kartalar', icon: 'idcard', group: 'Savdo', badgeKey: 'physicalToPrint' },
   // MARKETPLACE / AKTIVATSIYA — Uzum Market va boshqa
   // marketplace'larda sotilgan fizik NFC mahsulotlar.
-  { index: 22, label: 'Marketplace', icon: 'bag' },
+  { index: 22, label: 'Marketplace', icon: 'bag', group: 'Savdo' },
+  { index: 12, label: 'Gift NFC ID', icon: 'gift', group: 'Savdo' },
+  { index: 13, label: 'Promokodlar', icon: 'tag', group: 'Savdo' },
+
   // NFCSTORE ILOVASI — ilovaga tegishli moderatsiya va sotuv.
-  //
-  // Indeks 23 — TABS ning OXIRI. O'rtaga qo'yilsa undan keyingi
-  // HAMMA bo'limning sarlavhasi siljib ketardi (TABS izohiga
-  // qarang).
-  { index: 23, label: 'NFCSTORE ILOVASI', icon: 'bell' },
-  { index: 13, label: 'Promokodlar', icon: 'tag' },
-  { index: 14, label: 'Yangiliklar', icon: 'news' },
-  { index: 15, label: 'Kategoriyalar', icon: 'folder' },
-  { index: 16, label: 'Tasdiqlash', icon: 'check' },
-  { index: 10, label: 'Security', icon: 'shield' },
-  { index: 11, label: 'Adminlar', icon: 'usercheck', superOnly: true },
+  // Indeks 23 — TABS oxirida (o'rtaga qo'yilsa keyingi bo'limlarning
+  // sarlavhasi siljib ketardi — TABS izohiga qarang).
+  { index: 23, label: 'NFCSTORE ILOVASI', icon: 'phone', group: 'Kontent', badgeKey: 'accountDeletions' },
+  { index: 21, label: 'Shikoyatlar', icon: 'flag', group: 'Kontent', badgeKey: 'reports' },
+  { index: 14, label: 'Yangiliklar', icon: 'news', group: 'Kontent' },
+  { index: 15, label: 'Kategoriyalar', icon: 'folder', group: 'Kontent' },
+
+  { index: 10, label: 'Xavfsizlik', icon: 'shield', group: 'Tizim' },
+  { index: 11, label: 'Adminlar', icon: 'usercheck', group: 'Tizim', superOnly: true },
 ];
 
 function Dashboard({ onLogout, role, totpEnabled, refreshMe }) {
@@ -4681,11 +4793,36 @@ function Dashboard({ onLogout, role, totpEnabled, refreshMe }) {
     return Number.isInteger(n) && n >= 0 && n < TABS.length ? n : 0;
   });
   const [secSub, setSecSub] = useState(null);
+  // Menyu yonidagi "kutilayotgan ish" sonlari — har daqiqada yangilanadi.
+  const [badges, setBadges] = useState({});
+  useEffect(() => {
+    let alive = true;
+    const pull = () => adminApi('/overview').then((d) => { if (alive) setBadges(d?.badges || {}); }).catch(() => {});
+    pull();
+    const id = setInterval(pull, 60_000);
+    return () => { alive = false; clearInterval(id); };
+  }, [tab]);
+  const [search, setSearch] = useState('');
   const logout = async () => { try { await adminApi('/logout', { method: 'POST' }); } catch { /* baribir chiqamiz */ } onLogout(); };
   const isSuperAdmin = role === 'super_admin';
   const isManager = isSuperAdmin || role === 'manager';
   const nav = ADMIN_NAV.filter((n) => !n.superOnly || isSuperAdmin);
   const goTo = (index, sub) => { setSecSub(sub || null); setTab(index); };
+  // Tezkor qidiruv (sarlavhada): email, telefon yoki NFC ID — Foydalanuvchilar bo'limida ochiladi.
+  const onSearch = (e) => {
+    e.preventDefault();
+    const q = search.trim();
+    if (q) goTo(2, { q });
+  };
+  const headerSearch = (
+    <form onSubmit={onSearch} className="hidden md:block" role="search">
+      <label className="flex h-10 items-center gap-2 rounded-full border px-3.5" style={{ borderColor: 'var(--vz-line)', background: 'var(--vz-card)' }}>
+        <AdminIcon name="search" className="h-4 w-4 shrink-0 text-[color:var(--vz-ink-3)]" />
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('Email, telefon yoki NFC ID')}
+          aria-label={t('Foydalanuvchini qidirish')} className="w-44 bg-transparent text-[13.5px] outline-none placeholder:text-[color:var(--vz-ink-3)] lg:w-56" />
+      </label>
+    </form>
+  );
   const ctx = { role, isSuper: isSuperAdmin, isManager, totpEnabled, refreshMe, goTo };
 
   const banner = totpEnabled === false ? (
@@ -4704,12 +4841,14 @@ function Dashboard({ onLogout, role, totpEnabled, refreshMe }) {
       role={role}
       onLogout={logout}
       banner={banner}
+      badges={badges}
+      headerExtra={headerSearch}
     >
       <div className="min-w-0">
-        {tab === 0 && <StatsTab />}
+        {tab === 0 && <ControlCenter />}
         {tab === 1 && <AnalyticsTab />}
-        {tab === 2 && <UsersTab />}
-        {tab === 3 && <OrdersTab />}
+        {tab === 2 && <UsersTab key={JSON.stringify(secSub || {})} initialQuery={secSub?.q || ''} openUserId={secSub?.userId || null} />}
+        {tab === 3 && <OrdersTab key={JSON.stringify(secSub || {})} initialView={secSub?.view || null} />}
         {tab === 4 && <PendingPayoutsTab />}
         {tab === 5 && <AuctionsTab />}
         {tab === 6 && <AuctionRequestsTab />}
@@ -4733,6 +4872,7 @@ function Dashboard({ onLogout, role, totpEnabled, refreshMe }) {
             aylanma bog'liqlik hosil bo'lardi. */}
         {tab === 22 && <MarketplaceTab adminApi={adminApi} isManager={isManager} apiErrText={apiErrText} />}
         {tab === 23 && <NovaTab adminApi={adminApi} apiErrText={apiErrText} />}
+        {tab === 24 && <PremiumUsersTab />}
       </div>
     </AdminShell>
     </AdminCtx.Provider>

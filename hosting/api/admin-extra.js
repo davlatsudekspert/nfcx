@@ -177,7 +177,8 @@ export async function handle(request, env, url, H) {
   const companyTier = path.match(/^\/api\/admin\/companies\/([A-Za-z0-9]+)\/tier$/);
   const limitsDelete = path.match(/^\/api\/admin\/company-settings\/limits\/([a-z]+)\/([a-z]+)$/);
   const paymeTest = path === '/api/admin/payme-test-order';
-  const known = path === '/api/admin/categories' || catId || recVerify || recViews || userDelete
+  // `recDelete` ro'yxatda YO'Q edi — "Profilni o'chirish" tugmasi 404 olardi.
+  const known = path === '/api/admin/categories' || catId || recVerify || recViews || recDelete || userDelete
     || (path === '/api/admin/nfc-gifts' && method === 'POST') || webConfirm || webCancel || botConfirm
     || path === '/api/admin/export-stats' || companyStatus || companyTier
     || path === '/api/admin/company-settings/limits' || limitsDelete
@@ -255,6 +256,8 @@ export async function handle(request, env, url, H) {
   // (`cardContentCleanupStmts`), ya'ni yangi jadval qo'shilsa bu
   // yo'l ham darhol uni tozalaydi.
   if (recDelete && method === 'DELETE') {
+    // Profil va butun kontent butunlay o'chiriladi — faqat super_admin.
+    if (!isSuper) return forbidden();
     const code = recDelete[1].toUpperCase();
     const card = await env.DB.prepare(`SELECT code, is_primary AS isPrimary, user_id AS userId FROM cards WHERE code = ?`)
       .bind(code).first();
@@ -289,6 +292,9 @@ export async function handle(request, env, url, H) {
     return H.json({ code: row.code, name: row.name, verified: !!row.verified });
   }
   if (recViews && method === 'POST') {
+    // Ko'rishlar sonini qo'lda o'zgartirish UI dan olib tashlandi
+    // (2026-09-25) — statistika soxtalashtirilmasin. Yo'l faqat super_admin.
+    if (!isSuper) return forbidden();
     const code = recViews[1].toUpperCase();
     const body = await readBody();
     const views = Number(body.views);
@@ -545,6 +551,9 @@ export async function handle(request, env, url, H) {
 
   // ---------- Kompaniyalar (business profil = cards.profile_type='business') ----------
   if (companyStatus && method === 'POST') {
+    // Katalogdan yashirish/ko'rsatish — moderatsiya amali, manager+.
+    // (Tarifni o'zgartirish esa pastda — faqat super_admin.)
+    if (!['super_admin', 'manager'].includes(admin.role)) return forbidden();
     const code = companyStatus[1].toUpperCase();
     const body = await readBody();
     // Frontend {hidden:boolean} yuboradi; {status:'suspended'|'active'} ham qabul qilinadi.
@@ -556,6 +565,7 @@ export async function handle(request, env, url, H) {
     return H.json({ code: row.code, name: row.name, hiddenFromDirectory: !!row.hiddenFromDirectory });
   }
   if (companyTier && method === 'POST') {
+    if (!isSuper) return forbidden();
     const code = companyTier[1].toUpperCase();
     const body = await readBody();
     const tier = body.tier ? String(body.tier).toLowerCase() : null;

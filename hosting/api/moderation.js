@@ -260,7 +260,7 @@ export async function handle(request, env, url, H) {
     const row = await env.DB.prepare(
       `UPDATE content_reports SET status = ?, resolved_at = ?, resolved_by = ?
         WHERE id = ? RETURNING *`
-    ).bind(status, done ? H.nowTs() : null, done ? String(admin.username || admin.id || '') : '', Number(one[1]))
+    ).bind(status, done ? H.nowTs() : null, done ? `admin#${admin.adminId || ''}` : '', Number(one[1]))
       .first();
     if (!row) return H.json({ error: 'not_found' }, 404);
     H.logAdminActivity?.(env, { action: 'report_status', details: `#${one[1]} → ${status}`, ip: H.reqIp?.(request) })?.catch?.(() => {});

@@ -375,6 +375,8 @@ export async function handle(request, env, url, H) {
 
     const stopMatch = path.match(/^\/api\/admin\/featured\/(\d+)\/stop$/);
     if (stopMatch && method === 'POST') {
+      // Pullik e'lonni to'xtatish — manager+.
+      if (!H.roleAtLeast(admin, 'manager')) return H.json({ error: 'forbidden' }, 403);
       const body = await readJson();
       // SABAB MAJBURIY — odamning puliga olingan e'lon to'xtatilyapti.
       const reason = H.shortText(body.reason || '', 200).trim();

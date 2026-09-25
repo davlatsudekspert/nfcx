@@ -129,7 +129,8 @@ function randomPassword() {
 async function reviewAccount(request, env, H) {
   const admin = await H.requireAdmin(request, env);
   if (!admin) return H.json({ error: 'unauthorized' }, 401);
-  if (admin.role && admin.role !== 'super_admin') return H.json({ error: 'forbidden' }, 403);
+  // Rol bo'sh bo'lsa ham rad etiladi (ilgari `admin.role &&` o'tkazib yuborardi).
+  if (admin.role !== 'super_admin') return H.json({ error: 'forbidden' }, 403);
 
   const password = randomPassword();
   const hash = await H.hashPassword(password);
