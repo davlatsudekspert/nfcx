@@ -72,18 +72,17 @@ async function sticker80(url, label) {
   ${waves(0, -21.5, [10.8, 14.2, 17.4], 33, 1.5)}
   ${badge(0, -21.5, 15)}
   ${text(0, -3.2, 7.4, 800, 1.35, 'NFCSTORE')}
-  ${text(0, 2.6, 3.2, 600, 0.12, 'nfcstore.uz')}
-  <path d="M-17 6.8H-3.2 M3.2 6.8H17" stroke="${GOLD}" stroke-width="0.3"/>
-  <path d="M0 5.5 L1.3 6.8 L0 8.1 L-1.3 6.8Z" fill="none" stroke="${GOLD}" stroke-width="0.3"/>
-  ${await qrSvg(url, -19.5, 10.3, 17)}
+  <path d="M-17 2.8H-3.2 M3.2 2.8H17" stroke="${GOLD}" stroke-width="0.3"/>
+  <path d="M0 1.5 L1.3 2.8 L0 4.1 L-1.3 2.8Z" fill="none" stroke="${GOLD}" stroke-width="0.3"/>
+  ${await qrSvg(url, -21.5, 6.8, 19.5)}
   <g fill="none" stroke="${GOLD}" stroke-width="0.55" stroke-linecap="round">
-    <rect x="1.4" y="10.8" width="5.4" height="9" rx="1.1"/>
-    <path d="${arc(4.1, 15.3, 4.6, -40, 40)} ${arc(4.1, 15.3, 6.4, -40, 40)}"/>
+    <rect x="1.4" y="7.6" width="5.6" height="9.4" rx="1.1"/>
+    <path d="${arc(4.2, 12.3, 4.8, -40, 40)} ${arc(4.2, 12.3, 6.7, -40, 40)}"/>
   </g>
-  ${text(1.2, 23.6, 3.35, 800, 0, 'Telefonni', 'start')}
-  ${text(1.2, 27.4, 3.35, 800, 0, 'tekkizing', 'start')}
-  ${text(1.2, 30.6, 2.1, 500, 0, 'profil ochiladi', 'start')}
-  ${text(-11, 30.4, label ? 1.7 : 1.95, 600, label ? 0.25 : 0.05, label || 'Ilovani yuklang', 'middle')}`;
+  ${text(1.2, 21.4, 3.5, 800, 0, 'Telefonni', 'start')}
+  ${text(1.2, 25.4, 3.5, 800, 0, 'tekkizing', 'start')}
+  ${text(1.2, 28.8, 2.2, 500, 0, 'profil ochiladi', 'start')}
+  ${text(-11.75, 29.6, label ? 1.7 : 2.05, 600, label ? 0.25 : 0.05, label || 'Ilovani yuklang', 'middle')}`;
 }
 function sticker30() {
   return `<circle r="${15 + BLEED}" fill="${BLACK}"/>
