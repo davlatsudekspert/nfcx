@@ -200,6 +200,8 @@ jobs:
         run: node scripts/test-qr-sticker-redirect.mjs
       - name: Katalog — ommabop tartib va tovar ko'rishlari
         run: node scripts/test-catalog-popular.mjs
+      - name: Shikoyatlar — kontentning o'zi ko'rinadi
+        run: node scripts/test-admin-reports-preview.mjs
 
       # PROFIL SAHIFALARINING MAKETI.
       #
