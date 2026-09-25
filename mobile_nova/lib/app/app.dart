@@ -9,6 +9,7 @@ import '../routing/router.dart';
 import 'providers.dart';
 import '../features/settings/app_lock.dart';
 import '../features/auth/session.dart';
+import 'ui_scale.dart';
 
 class NovaApp extends ConsumerWidget {
   const NovaApp({super.key});
@@ -58,7 +59,11 @@ class NovaApp extends ConsumerWidget {
               // Qulf butun ilovaning USTIGA chiziladi va marshrutni
               // almashtirmaydi: ochilganda foydalanuvchi qayerda edi,
               // o'sha yerda qoladi.
-              child: AppLockGate(child: child ?? const SizedBox.shrink()),
+              // Keng telefonlarda butun ilova mutanosib kattalashadi
+              // (ui_scale.dart).
+              child: UiScale(
+                child: AppLockGate(child: child ?? const SizedBox.shrink()),
+              ),
             );
           },
         ),
