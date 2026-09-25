@@ -1,3 +1,4 @@
+import { phoneProblem, emailTypoSuggestion, emailDomainAccepts } from './contact-check.js';
 import { idQuarantined } from './account-purge.js';
 // hosting/api/auth.js — ro'yxatdan o'tish (Telegram OTP) va parolni tiklash.
 // CONTRACT.md ga qarang. Route topilmasa null qaytaradi.
@@ -128,6 +129,8 @@ function validateRegisterExtra(body, H) {
   const tosAccepted = body.tosAccepted === true;
   const linkToken = H.cleanStr(body.linkToken, 64);
   if (!PHONE_RE.test(phone)) return { error: 'Telefon raqamini to’g’ri kiriting (masalan +998901234567).' };
+  // Davlat bo'yicha uzunlik (contact-check.js): raqam yetmasa — qabul yo'q.
+  if (phoneProblem(phone)) return { error: 'bad_phone', reason: phoneProblem(phone) };
   if (!tosAccepted) return { error: 'Davom etish uchun ommaviy oferta shartlariga rozilik bering.' };
   // Telegram tasdig'i endi ro'yxatdan o'tishda TALAB QILINMAYDI (2026-09).
   //
@@ -516,6 +519,19 @@ async function requestRegisterCode(request, env, H) {
   const body = await request.json().catch(() => ({}));
   const email = H.cleanStr(body?.email, 120).toLowerCase();
 
+  // TEKSHIRUV KOD YUBORILISHIDAN OLDIN (egasi, 2026-09-25: "gmail xato
+  // yozilsa ham kod ketdi deyapti"). hosting/api/contact-check.js.
+  if (body?.phone) {
+    const ph = normPhone(body.phone, H);
+    const problem = ph ? phoneProblem(ph) : 'phone_short';
+    if (problem) return H.json({ error: 'bad_phone', reason: problem }, 422);
+  }
+  if (email) {
+    if (!EMAIL_RE.test(email)) return H.json({ error: 'bad_email' }, 422);
+    const suggestion = emailTypoSuggestion(email);
+    if (suggestion) return H.json({ error: 'email_typo', detail: suggestion }, 422);
+  }
+
   // Email yozilgan, lekin xizmat O'CHIQ: kod umuman kerak emas
   // (`register` ham o'sha holatda kod so'ramaydi). Frontendga shuni
   // ochiq aytamiz — aks holda u Telegram yo'liga tushib, botni
@@ -541,6 +557,11 @@ async function requestRegisterCode(request, env, H) {
     // Begona manzilga xat yog'dirmaslik uchun IP bo'yicha ham cheklov.
     if (await H.rateLimitD1(env, 'regcode:ip:' + H.reqIp(request), 10, REGISTER_OTP_WINDOW_MS)) {
       return H.json({ error: 'too_many_requests' }, 429);
+    }
+    // Domen pochta qabul qiladimi (DNS MX). Yo'q bo'lsa — kod "ketdi"
+    // deyilmaydi. DNS javob bermasa (`null`) — to'sib qo'yilmaydi.
+    if (await emailDomainAccepts(env, email) === false) {
+      return H.json({ error: 'email_domain_invalid' }, 422);
     }
     const code = await createEmailOtpCode(env, H, email, 'register', REGISTER_OTP_TTL_MS);
     const sent = await sendEmailOtp(env, H, email, 'register', code);
@@ -596,7 +617,7 @@ async function register(request, env, H) {
   if (password.length < 6) return H.json({ error: 'Parol kamida 6 belgidan iborat bo’lishi kerak.' }, 422);
 
   const extra = validateRegisterExtra(body || {}, H);
-  if (extra.error) return H.json({ error: extra.error }, 422);
+  if (extra.error) return H.json({ error: extra.error, ...(extra.reason ? { reason: extra.reason } : {}) }, 422);
 
   // TEZLIK CHEKLOVI. Ilgari ro'yxatdan o'tishda Telegram tasdig'i to'siq
   // bo'lib turardi; endi u yo'q, ya'ni bitta skript minglab akkaunt ochib
@@ -618,6 +639,9 @@ async function register(request, env, H) {
   const emailOn = H.emailEnabledD1(env);
   const rawEmail = H.cleanStr(body?.email, 120).toLowerCase();
   if (rawEmail && !EMAIL_RE.test(rawEmail)) return H.json({ error: 'Email formati noto’g’ri.' }, 422);
+  if (rawEmail && emailTypoSuggestion(rawEmail)) {
+    return H.json({ error: 'email_typo', detail: emailTypoSuggestion(rawEmail) }, 422);
+  }
   if (emailOn && !rawEmail) return H.json({ error: 'email_required' }, 422);
   const email = rawEmail || H.placeholderEmailForD1(extra.phone);
 

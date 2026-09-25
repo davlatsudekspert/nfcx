@@ -737,6 +737,11 @@ const DICT_BASE = {
   'Kontent allaqachon o‘chirilgan': { ru: 'Контент уже удалён', en: 'Content already removed' },
   'To‘liq ochish': { ru: 'Открыть полностью', en: 'Open full size' },
   'Matn yo‘q': { ru: 'Без текста', en: 'No text' },
+  // Ro'yxatda email va telefon tekshiruvi
+  'Email formati noto’g’ri.': { ru: 'Неверный формат email.', en: 'Invalid email format.' },
+  'Raqam to‘liq emas — hamma raqamlarini kiriting.': { ru: 'Номер неполный — введите все цифры.', en: 'The number is incomplete — enter all digits.' },
+  'Manzilda xato bor shekilli. {email} demoqchimisiz?': { ru: 'Похоже, в адресе ошибка. Вы имели в виду {email}?', en: 'Looks like a typo. Did you mean {email}?' },
+  'Bunday pochta manzili topilmadi — tekshirib qayta yozing.': { ru: 'Такой почтовый адрес не найден — проверьте и введите снова.', en: 'This email domain doesn’t exist — check and try again.' },
   // Musiqa kutubxonasi (admin)
   'Audio fayl topilmadi.': { ru: 'Аудиофайлы не найдены.', en: 'No audio files found.' },
   'Fayl hali o‘qilmoqda — bir soniyadan keyin qayta bosing.': { ru: 'Файл ещё читается — нажмите снова через секунду.', en: 'The file is still being read — press again in a second.' },

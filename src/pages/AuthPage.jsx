@@ -40,7 +40,14 @@ function errText(err, t, botLink) {
   if (key === 'link_not_confirmed') return t('Telegram tasdig‘i topilmadi yoki muddati o‘tgan. «Telegramda tasdiqlash» tugmasini qayta bosing.');
   if (key === 'link_phone_mismatch') return t('Botda tasdiqlangan raqam bu akkauntdagi raqamga mos kelmadi.');
   if (key === 'bot_not_configured') return t('Telegram bot hozir sozlanmagan. Birozdan so‘ng urinib ko‘ring.');
+  // Server raqam uzunligini davlat bo'yicha tekshiradi (contact-check.js).
+  if (key === 'bad_phone' && err?.reason === 'phone_short') return t('Raqam to‘liq emas — hamma raqamlarini kiriting.');
   if (key === 'bad_phone') return t("Telefon raqamini to'g'ri kiriting.");
+  // Emaildagi imlo xatosi (gmial.com) va pochta qabul qilmaydigan domen —
+  // kod YUBORILMAYDI, sabab aytiladi.
+  if (key === 'email_typo') return t('Manzilda xato bor shekilli. {email} demoqchimisiz?', { email: err?.detail || '' });
+  if (key === 'email_domain_invalid') return t('Bunday pochta manzili topilmadi — tekshirib qayta yozing.');
+  if (key === 'bad_email') return t('Email formati noto’g’ri.');
   if (key === 'tg_send_failed') return t("Telegram orqali kod yuborib bo'lmadi. Birozdan so'ng qayta urining.");
   // ---- Emailga kod yuborish xatolari ----
   // Jo'natuvchi manzil noto'g'ri sozlangan — bu MIJOZNING xatosi emas,
