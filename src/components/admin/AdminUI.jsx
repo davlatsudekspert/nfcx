@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../../lib/i18n.jsx';
 import LanguageSwitcher from '../LanguageSwitcher.jsx';
 import logo from '../../assets/logo-128.png';
+import '../../admin-theme.css';
 
 // ── Ikonlar (feather uslubi, stroke=currentColor) ──────────────────────────
 const ICON_PATHS = {
@@ -42,6 +43,8 @@ const ICON_PATHS = {
   arrow: 'M5 12h14 M13 6l6 6-6 6',
   x: 'M18 6L6 18 M6 6l12 12',
   clock: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 6v6l4 2',
+  sun: 'M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10z M12 1v2 M12 21v2 M4.22 4.22l1.42 1.42 M18.36 18.36l1.42 1.42 M1 12h2 M21 12h2 M4.22 19.78l1.42-1.42 M18.36 5.64l1.42-1.42',
+  moon: 'M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z',
 };
 
 export function AdminIcon({ name, className = 'h-[18px] w-[18px]' }) {
@@ -56,9 +59,31 @@ export function AdminIcon({ name, className = 'h-[18px] w-[18px]' }) {
 const ROLE_LABEL = { super_admin: 'Super Admin', manager: 'Manager', content_manager: 'Content Manager' };
 
 // ── Qobiq: lg da chap nav (240px), kichik ekranda tepada gorizontal aylanuvchi nav ──
+// Kunduzgi / tungi rejim. Birinchi marta — qurilmaning o'z rejimi
+// (telefon/kompyuter sozlamasi), keyin admin tanlagani eslab qolinadi.
+// localStorage ishlamasa (maxfiy oyna) — shunchaki tizim rejimi.
+const ADMIN_THEME_KEY = 'nfc_admin_theme';
+function initialAdminTheme() {
+  try {
+    const saved = window.localStorage.getItem(ADMIN_THEME_KEY);
+    if (saved === 'light' || saved === 'dark') return saved;
+  } catch { /* saqlash yopiq */ }
+  try { return window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark'; } catch { return 'dark'; }
+}
+export function useAdminTheme() {
+  const [mode, setMode] = useState(initialAdminTheme);
+  const toggle = () => setMode((m) => {
+    const next = m === 'dark' ? 'light' : 'dark';
+    try { window.localStorage.setItem(ADMIN_THEME_KEY, next); } catch { /* saqlash yopiq */ }
+    return next;
+  });
+  return [mode, toggle];
+}
+
 export function AdminShell({ nav, activeIndex, onSelect, title, role, onLogout, banner, badges = {}, headerExtra = null, children }) {
   const { t } = useLanguage();
   const stripRef = useRef(null);
+  const [mode, toggleMode] = useAdminTheme();
 
   // Mobil nav'da faol tugma ko'rinib turishi uchun.
   useEffect(() => {
@@ -106,8 +131,8 @@ export function AdminShell({ nav, activeIndex, onSelect, title, role, onLogout, 
   }
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--color-page-bg)', color: 'var(--vz-ink)' }}>
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r lg:flex" style={{ background: 'var(--color-page-bg)', borderColor: 'var(--vz-line)' }}>
+    <div className="admin-root min-h-screen" data-admin-theme={mode}>
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r lg:flex" style={{ background: 'var(--surface-soft)', borderColor: 'var(--vz-line)' }}>
         <div className="flex h-16 items-center gap-2.5 border-b px-5" style={{ borderColor: 'var(--vz-line)' }}>
           <img src={logo} alt="" className="h-8 w-8 object-contain" />
           <span className="font-display text-[15px] font-semibold tracking-[0.14em]">NFCSTORE</span>
@@ -138,6 +163,10 @@ export function AdminShell({ nav, activeIndex, onSelect, title, role, onLogout, 
             </div>
             <div className="flex shrink-0 items-center gap-2">
               {headerExtra}
+              <button type="button" onClick={toggleMode} className="btn btn-ghost-vz btn-sm h-11 min-h-11 w-11 px-0"
+                aria-label={mode === 'dark' ? t('Kunduzgi rejim') : t('Tungi rejim')} title={mode === 'dark' ? t('Kunduzgi rejim') : t('Tungi rejim')}>
+                <AdminIcon name={mode === 'dark' ? 'sun' : 'moon'} className="h-[18px] w-[18px]" />
+              </button>
               <LanguageSwitcher />
               <span className="vz-badge vz-badge--muted hidden sm:inline-flex">{ROLE_LABEL[role] || role || 'Admin'}</span>
               <button type="button" className="btn btn-ghost-vz btn-sm min-h-11 gap-1.5 px-3" onClick={onLogout}>
@@ -311,7 +340,7 @@ export function LoadMore({ shown, total, onMore, step = 50 }) {
 // Ogohlantirish banneri (masalan 2FA yoqilmagan)
 export function WarnBanner({ children, action }) {
   return (
-    <div role="alert" className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 text-sm sm:px-6 lg:px-8" style={{ background: 'var(--warning-soft)', borderColor: 'var(--warning)', color: 'var(--warning)' }}>
+    <div role="alert" className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 text-sm sm:px-6 lg:px-8" style={{ background: 'var(--warning-soft)', borderColor: 'color-mix(in srgb, var(--warning) 28%, transparent)', color: 'var(--warning)' }}>
       <span className="flex min-w-0 items-center gap-2 break-words">
         <AdminIcon name="alert" className="h-4 w-4 shrink-0" />
         <span className="min-w-0">{children}</span>

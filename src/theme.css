@@ -510,6 +510,9 @@ body:has(.vz-owner-dock) { --owner-dock-h: 62px }
   padding: 4px 8px;
 }
 .admin-panel .badge { border: 0; font-weight: 600; }
+/* Jadvaldagi kichik belgi (Payme, To'landi...) — ichki bo'shliq nolga
+   tushib, matn pill'dan chiqib ketardi. Aniq qiymat beramiz. */
+.admin-panel .badge, .admin-panel .badge-sm { width: auto; white-space: nowrap; padding-inline: 0.55rem; height: auto; min-height: 1.35rem; line-height: 1.2; border-radius: 999px; }
 .admin-panel .btn-xs { height: 1.65rem; min-height: 1.65rem; border-radius: 8px; }
 
 /* Matn belgilanganda (Ctrl+A ham) — nafis, mavzuga mos oltin fon.

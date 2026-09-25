@@ -1,0 +1,191 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   ADMIN PANEL RANGLARI — KUNDUZGI VA TUNGI REJIM (2026-09-25)
+   ───────────────────────────────────────────────────────────────────────
+   Admin panelda kun bo'yi ishlanadi, shuning uchun uning ranglari
+   saytdan alohida va ko'zni charchatmaydigan qilib tanlangan
+   (Apple / Samsung tizim ranglari yo'lidan):
+     * tun: sof qora EMAS, yumshoq grafit (#121214) — sof qora fonda oq
+       matn "nur sochadi" va ko'z tez charchaydi;
+     * matn sof oq emas (#ECECEE), ikkinchi darajali matn kulrang;
+     * oltin — xira, kam to'yingan: urg'u uchun, ko'zga tegmaydi;
+     * kun: och kulrang fon (#F2F2F7) va oq kartalar, to'q oltin matn.
+   Rejim `.admin-root[data-admin-theme]` da; tanlov brauzerda saqlanadi.
+   Saytning o'z mavzulariga (themes.css) TEGILMAYDI — hammasi shu
+   blok ichida.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.admin-root[data-admin-theme="dark"] {
+  color-scheme: dark;
+  --bg-primary: #121214;
+  --bg-secondary: #161618;
+  --bg-gradient-a: #141416;
+  --bg-gradient-b: #18181b;
+  --surface-soft: #161618;
+  --surface: #1c1c1f;
+  --surface-elevated: #222226;
+  --surface-raised: #2a2a2e;
+  --surface-inset: #0f0f11;
+  --tint-base: #ffffff;
+  --shade-base: #000000;
+  --inset-base: #000000;
+
+  --text-primary: #ececee;
+  --text-secondary: #b4b4ba;
+  --text-muted: #8e8e95;
+  --text-faint: #6c6c72;
+
+  --accent-primary: #cdae6a;
+  --accent-secondary: #dcbf80;
+  --accent-deep: #a8843a;
+  --accent-ink: #1a1408;
+  --accent-soft: rgba(205, 174, 106, 0.12);
+
+  --border: #2c2c31;
+  --border-soft: #242428;
+  --border-strong: #3a3a40;
+  --border-accent: rgba(205, 174, 106, 0.4);
+
+  --shadow: 0 12px 30px -18px rgba(0, 0, 0, 0.6);
+  --scrim: rgba(0, 0, 0, 0.6);
+
+  --success: #5fbf86;
+  --success-soft: rgba(95, 191, 134, 0.14);
+  --warning: #e2b45c;
+  --warning-soft: rgba(226, 180, 92, 0.1);
+  --danger: #e0665a;
+  --danger-soft: rgba(224, 102, 90, 0.14);
+  --info: #7fb1ff;
+  --link: #6aaeff;
+
+  --input-bg: #17171a;
+  --input-border: #2e2e33;
+  --nav-bg: rgba(18, 18, 20, 0.82);
+  --card-bg: #1c1c1f;
+  --modal-bg: #222226;
+  --pill-bg: #2a2a2e;
+  --pill-text: #ececee;
+  --admin-info-text: #8fbaff;
+}
+
+.admin-root[data-admin-theme="light"] {
+  color-scheme: light;
+  --bg-primary: #f2f2f7;
+  --bg-secondary: #ebebf0;
+  --bg-gradient-a: #f4f4f8;
+  --bg-gradient-b: #ececf1;
+  --surface-soft: #f7f7fa;
+  --surface: #ffffff;
+  --surface-elevated: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-inset: #e9e9ee;
+  --tint-base: #1c1c1e;
+  --shade-base: #3a3a3c;
+  --inset-base: #c7c7cc;
+
+  --text-primary: #1c1c1e;
+  --text-secondary: #3c3c43;
+  --text-muted: #6c6c72;
+  --text-faint: #8e8e93;
+
+  /* Oq fonda o'qilishi uchun to'qroq oltin; oltin tugmada oq matn. */
+  --accent-primary: #9a7629;
+  --accent-secondary: #8c6b22;
+  --accent-deep: #6e5217;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(154, 118, 41, 0.1);
+
+  --border: #e0e0e6;
+  --border-soft: #ebebf0;
+  --border-strong: #c7c7cc;
+  --border-accent: rgba(140, 107, 34, 0.35);
+
+  --shadow: 0 10px 28px -20px rgba(0, 0, 0, 0.28);
+  --scrim: rgba(0, 0, 0, 0.35);
+
+  --success: #2e8b57;
+  --success-soft: rgba(46, 139, 87, 0.12);
+  --warning: #9a6400;
+  --warning-soft: rgba(196, 140, 30, 0.1);
+  --danger: #c23b30;
+  --danger-soft: rgba(194, 59, 48, 0.1);
+  --info: #2f6db4;
+  --link: #0a64d6;
+
+  --input-bg: #ffffff;
+  --input-border: #d1d1d6;
+  --nav-bg: rgba(242, 242, 247, 0.86);
+  --card-bg: #ffffff;
+  --modal-bg: #ffffff;
+  --pill-bg: #1c1c1e;
+  --pill-text: #ffffff;
+  --admin-info-text: #2f6db4;
+}
+
+/* Ko'prik: themes.css dagi :root ko'prigi qiymatlarni :root da hisoblab
+   bo'lgan — admin ichida ularni shu rejim ranglaridan QAYTA hisoblaymiz. */
+.admin-root {
+  --color-page-bg: var(--bg-primary);
+  --root-bg: var(--bg-primary);
+  --color-base-100: var(--surface);
+  --color-base-200: var(--surface-elevated);
+  --color-base-300: var(--surface-raised);
+  --color-base-content: var(--text-primary);
+  --color-primary: var(--accent-primary);
+  --color-primary-content: var(--accent-ink);
+  --color-secondary: var(--accent-secondary);
+  --color-secondary-content: var(--accent-ink);
+  --color-accent: var(--accent-primary);
+  --color-accent-content: var(--accent-ink);
+  --color-neutral: var(--surface-elevated);
+  --color-neutral-content: var(--text-primary);
+  --color-info: var(--info);
+  --color-info-content: var(--accent-ink);
+  --color-success: var(--success);
+  --color-success-content: #ffffff;
+  --color-warning: var(--warning);
+  --color-warning-content: var(--accent-ink);
+  --color-error: var(--danger);
+  --color-error-content: #ffffff;
+
+  --vz-gold: var(--accent-primary);
+  --vz-gold-2: var(--accent-secondary);
+  --vz-gold-3: var(--accent-deep);
+  --vz-gold-ink: var(--accent-ink);
+  --vz-bg: var(--bg-primary);
+  --vz-bg-2: var(--bg-secondary);
+  --vz-bg-a: var(--bg-gradient-a);
+  --vz-bg-b: var(--bg-gradient-b);
+  --vz-card: var(--surface);
+  --vz-card-2: var(--surface-elevated);
+  --vz-line: var(--border);
+  --vz-ink: var(--text-primary);
+  --vz-ink-2: var(--text-secondary);
+  --vz-ink-3: var(--text-muted);
+  --vz-ink-dim: var(--text-secondary);
+  --vz-ink-faint: var(--text-faint);
+  --vz-accent: var(--accent-primary);
+  --vz-danger: var(--danger);
+  --vz-link: var(--link);
+  --vz-shadow: var(--shadow);
+  --vz-pill: var(--pill-bg);
+  --accent-text: var(--accent-secondary);
+  --accent-a08: color-mix(in srgb, var(--accent-primary) 8%, transparent);
+  --accent-a14: color-mix(in srgb, var(--accent-primary) 14%, transparent);
+  --accent-a22: color-mix(in srgb, var(--accent-primary) 22%, transparent);
+  --accent-a25: color-mix(in srgb, var(--accent-primary) 25%, transparent);
+  --accent-a45: color-mix(in srgb, var(--accent-primary) 45%, transparent);
+  --shadow-cast: color-mix(in srgb, var(--shade-base) 55%, transparent);
+
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Kartalar tekis — gradient va og'ir soya ko'zni chalg'itadi. */
+.admin-root .vz-card { background: var(--surface); }
+.admin-root[data-admin-theme="light"] .vz-card { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), var(--shadow); }
+.admin-root .vz-badge--info { color: var(--admin-info-text); }
+/* Oltin tugmaning yorqin nuri — faqat biroz. */
+.admin-root .btn-gold { box-shadow: 0 6px 16px -10px color-mix(in srgb, var(--accent-primary) 55%, transparent); }
+/* Yorug' rejimda oq "hover" ko'rinmaydi — kulrang soya bilan. */
+.admin-root[data-admin-theme="light"] .hover\:bg-white\/\[0\.03\]:hover { background-color: rgba(0, 0, 0, 0.03); }

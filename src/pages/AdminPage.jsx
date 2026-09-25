@@ -956,7 +956,7 @@ function AnalyticsTab() {
               <BarChart data={revenue}>
                 <CartesianGrid {...chartGrid} />
                 <XAxis dataKey="day" {...chartAxis} tickFormatter={(d) => String(d).slice(5)} />
-                <YAxis {...chartAxis} width={70} tickFormatter={(v) => fmt(v)} />
+                <YAxis {...chartAxis} width={48} tickFormatter={compactMoney} />
                 <Tooltip {...chartTooltip} formatter={(v) => [fmt(v) + " so'm", t('Tushum')]} />
                 <Bar dataKey="total" name={t('Tushum')} fill="var(--accent-primary)" radius={[4, 4, 0, 0]} maxBarSize={26} />
               </BarChart>
@@ -1070,7 +1070,24 @@ function UsersTab({ initialQuery = '', openUserId = null }) {
         : users.length === 0 ? <EmptyState icon="users" title={debounced ? t('Hech narsa topilmadi.') : t("Hozircha foydalanuvchi yo'q.")} hint={debounced ? t("Qidiruv so'zini o'zgartirib ko'ring.") : null} />
         : filtered.length === 0 ? <EmptyState icon="users" title={t('Bu filtr bo‘yicha foydalanuvchi yo‘q.')} />
         : (
-          <div className="vz-card overflow-x-auto">
+          <>
+          {/* Telefon: jadval o'rniga bosiladigan kartochkalar ro'yxati. */}
+          <ul className="vz-card divide-y sm:hidden" style={{ borderColor: 'var(--vz-line)' }}>
+            {visible.map((u) => (
+              <li key={u.id} style={{ borderColor: 'var(--vz-line)' }}>
+                <button type="button" onClick={() => setOpenId(u.id)} className={`flex w-full items-center gap-3 px-4 py-3 text-left ${u.isTest ? 'opacity-60' : ''}`}>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium" style={{ color: 'var(--vz-ink)' }}>{u.email}</span>
+                    <span className="mt-0.5 block truncate font-mono text-xs" style={{ color: 'var(--vz-ink-3)' }}>{u.codes?.length ? u.codes.slice(0, 3).join(' · ') : `#${u.id}`} · {timeAgo(tsMs(u.createdAt))}</span>
+                    <span className="mt-1 block"><UserStatusBadges u={u} /></span>
+                  </span>
+                  <AdminIcon name="arrow" className="h-4 w-4 shrink-0 text-[color:var(--vz-gold-2)]" />
+                </button>
+              </li>
+            ))}
+            {visible.length < filtered.length && <li className="px-4 py-2" style={{ borderColor: 'var(--vz-line)' }}><LoadMore shown={visible.length} total={filtered.length} onMore={setShown} /></li>}
+          </ul>
+          <div className="vz-card hidden overflow-x-auto sm:block">
             <table className="table table-sm">
               <thead><tr><th>{t('Foydalanuvchi')}</th><th>{t('NFC ID')}</th><th>{t('Holat')}</th><th>{t("Ro'yxatdan o'tgan")}</th><th className="text-right"></th></tr></thead>
               <tbody>
@@ -1104,6 +1121,7 @@ function UsersTab({ initialQuery = '', openUserId = null }) {
             </table>
             <div className="px-4 pb-3"><LoadMore shown={visible.length} total={filtered.length} onMore={setShown} /></div>
           </div>
+          </>
         )}
       {users && <div className="text-xs" style={{ color: 'var(--vz-ink-3)' }}>{t('Ko‘rsatilgan: {n}', { n: fmt(filtered.length) })}{users.length >= 300 ? ` · ${t('aniqroq qidiring — faqat oxirgi 300 ta')}` : ''}</div>}
       {openId && <UserDrawer userId={openId} onClose={() => setOpenId(null)} onChanged={() => load()} />}
@@ -1149,7 +1167,30 @@ function PremiumUsersTab() {
         : !rows ? <AdminLoading rows={6} />
         : rows.length === 0 ? <EmptyState icon="crown" title={t('Bu ro‘yxat bo‘sh.')} />
         : (
-          <div className="vz-card overflow-x-auto">
+          <>
+          <ul className="vz-card divide-y sm:hidden" style={{ borderColor: 'var(--vz-line)' }}>
+            {rows.map((u) => {
+              const left = daysLeft(u.until);
+              return (
+                <li key={u.id} style={{ borderColor: 'var(--vz-line)' }}>
+                  <button type="button" onClick={() => setOpenId(u.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium" style={{ color: 'var(--vz-ink)' }}>{u.email}</span>
+                      <span className="mt-0.5 block truncate font-mono text-xs" style={{ color: 'var(--vz-ink-3)' }}>{u.codes.slice(0, 3).join(' · ') || u.phone || `#${u.id}`}</span>
+                    </span>
+                    <span className="shrink-0 text-right text-xs">
+                      {u.legacy ? <span className="vz-badge vz-badge--gold">{t('Muddatsiz')}</span> : u.until ? (
+                        <span style={{ color: left != null && left <= 7 && left >= 0 ? 'var(--warning)' : left < 0 ? 'var(--danger)' : 'var(--vz-ink-2)' }}>
+                          {left < 0 ? t('{n} kun oldin tugagan', { n: -left }) : t('{n} kun qoldi', { n: left })}
+                        </span>
+                      ) : '—'}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="vz-card hidden overflow-x-auto sm:block">
             <table className="table table-sm">
               <thead><tr><th>{t('Foydalanuvchi')}</th><th>{t('NFC ID')}</th><th>{t('Tugash sanasi')}</th><th>{t('Oxirgi to‘lov')}</th><th className="text-right"></th></tr></thead>
               <tbody>
@@ -1181,6 +1222,7 @@ function PremiumUsersTab() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       {openId && <UserDrawer userId={openId} onClose={() => setOpenId(null)} onChanged={load} />}
     </div>
@@ -1395,6 +1437,8 @@ function UserDrawer({ userId, onClose, onChanged }) {
   );
 }
 
+// Grafik o'qi uchun ixcham summa: 1 600 000 -> 1.6M (qator bo'linmasin).
+const compactMoney = (v) => (v >= 1e6 ? `${+(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `${Math.round(v / 1e3)}K` : String(v));
 const ORDER_STATUS_LABEL = {
   paid: { text: "To'landi", cls: 'badge-success' },
   pending: { text: 'Kutilmoqda', cls: 'badge-warning' },
@@ -2517,9 +2561,6 @@ function SecurityTab({ initialSub }) {
         )
       )}
 
-      <div className="vz-empty mt-6 text-xs">
-        {t("Rejalashtirilgan (hali qo‘shilmagan): Avtomatik backup.")}
-      </div>
     </div>
   );
 }
@@ -2607,8 +2648,9 @@ function AdminsTab() {
       </div>
       )}
       <div className="mt-4 text-xs break-words" style={{ color: 'var(--vz-ink-2)' }}>
-        <b>Manager:</b> {t("Buyurtmalar, Foydalanuvchilar, NFC ID, Support — Security va Adminlar bo'limlariga kira olmaydi.")}<br />
-        <b>Content Manager:</b> {t('Bannerlar, sayt matnlari, Support, Xabarlashuv.')}
+        <b>Manager:</b> {t('Buyurtmalar, jismoniy kartalar, Business ID arizalarini tasdiqlash yoki rad etish, marketplace va auksionlar, foydalanuvchini bloklash.')}<br />
+        <b>Content Manager:</b> {t('Bo‘limlarni ko‘radi; pul, karta, Business ID va marketplace amallarini bajara olmaydi.')}<br />
+        <b>Super Admin:</b> {t('Hammasi, shu jumladan: Moliya, Xavfsizlik, Adminlar, to‘lovsiz faollashtirish, nom qoidalari va narxlar, profilni o‘chirish.')}
       </div>
     </div>
   );
@@ -2728,59 +2770,58 @@ function PhysicalCardsTab() {
   if (loadErr) return <LoadError err={loadErr} onRetry={load} title={t("Jismoniy kartalarni yuklab bo'lmadi.")} />;
   if (!cards) return <AdminLoading />;
   if (cards.length === 0) return <EmptyState icon="idcard" title={t("Hozircha jismoniy karta buyurtmasi yo'q.")} />;
+  // Har karta — alohida kartochka: telefonda ham hamma maydon ko'rinadi
+  // (jadvalda holat va kuzatuv raqami ekrandan chiqib ketardi).
   return (
-    <div className="overflow-x-auto">
+    <div className="space-y-3">
       {dialog}
-      {actErr && <div role="alert" className="vz-err mb-3">{actErr}</div>}
-      <table className="table table-sm">
-        <thead><tr><th>{t('Profil')}</th><th>{t('Egasi')}</th><th>{t('Manzil')}</th><th>{t('Faolmi')}</th><th>{t('Holat')}</th><th></th></tr></thead>
-        <tbody>
-          {cards.map((c) => (
-            <tr key={c.id}>
-              <td className="font-mono">{c.linkedCode || '—'}</td>
-              <td className="break-words text-xs">{c.ownerEmail}<br />{c.shippingPhone}</td>
-              <td className="max-w-xs break-words text-xs">{c.shippingAddress}</td>
-              <td>{c.active ? <span className="vz-badge vz-badge--ok">{t('Faol')}</span> : <span className="vz-badge vz-badge--muted">{t('bloklangan')}</span>}</td>
-              <td>
-                <select className="vz-input w-auto py-1" value={c.status} disabled={!isManager} onChange={(e) => setStatus(c, e.target.value)} aria-label={t('Holat')}>
-                  {CARD_STATUS.map((cs) => <option key={cs} value={cs}>{t(CARD_STATUS_LABEL[cs])}</option>)}
-                </select>
-                {/* Xizmat va kuzatuv raqami — "Jo'natildi" ga o'tkazishdan
-                    OLDIN to'ldiriladi: holat o'zgarganda ular birga
-                    yuboriladi va mijozga Telegram xabari shu ma'lumot
-                    bilan ketadi. */}
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  <select
-                    className="vz-input w-auto py-1 text-xs"
-                    value={shipOf(c).carrier}
-                    onChange={(e) => setShipField(c.id, 'carrier', e.target.value)}
-                    aria-label={t('Yetkazib berish xizmati')}
-                  >
-                    <option value="">{t('Xizmat...')}</option>
-                    {CARRIERS.map((x) => <option key={x} value={x}>{x}</option>)}
-                  </select>
-                  <input
-                    className="vz-input w-32 py-1 text-xs"
-                    value={shipOf(c).tracking}
-                    onChange={(e) => setShipField(c.id, 'tracking', e.target.value)}
-                    placeholder={t('Kuzatuv raqami')}
-                    aria-label={t('Kuzatuv raqami')}
-                  />
-                </div>
-              </td>
-              <td>
-                <button
-                  className={`btn btn-xs ${c.active ? 'btn-error' : 'btn-success'}`}
-                  disabled={busy === c.id || !c.linkedCode || !isManager}
-                  onClick={() => toggleActive(c)}
-                >
-                  {busy === c.id ? <span className="loading loading-spinner loading-xs"></span> : (c.active ? t('Bloklash') : t('Blokdan chiqarish'))}
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {actErr && <div role="alert" className="vz-err">{actErr}</div>}
+      <div className="grid gap-3 xl:grid-cols-2">
+        {cards.map((c) => (
+          <article key={c.id} className="vz-card min-w-0 p-4 sm:p-5">
+            <header className="flex flex-wrap items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="font-mono text-base font-semibold" style={{ color: 'var(--vz-gold-2)' }}>{c.linkedCode || '—'}</div>
+                <div className="mt-0.5 break-words text-xs" style={{ color: 'var(--vz-ink-3)' }}>#{c.id} · {c.ownerEmail || '—'}{c.shippingPhone ? ` · ${c.shippingPhone}` : ''}</div>
+              </div>
+              <span className="flex gap-1">
+                <span className="vz-badge vz-badge--muted">{t(CARD_STATUS_LABEL[c.status] || c.status)}</span>
+                {c.active ? <span className="vz-badge vz-badge--ok">{t('Faol')}</span> : <span className="vz-badge vz-badge--danger">{t('bloklangan')}</span>}
+              </span>
+            </header>
+            <div className="vz-panel mt-3 px-3 py-2 text-sm">
+              <div className="text-[11px] uppercase tracking-wider" style={{ color: 'var(--vz-ink-3)' }}>{t('Manzil')}</div>
+              <div className="break-words" style={{ color: c.shippingAddress ? 'var(--vz-ink)' : 'var(--vz-ink-3)' }}>{c.shippingAddress || '—'}</div>
+            </div>
+            {/* Xizmat va kuzatuv raqami — "Jo'natildi" ga o'tkazishdan
+                OLDIN to'ldiriladi: holat o'zgarganda ular birga
+                yuboriladi va mijozga Telegram xabari shu ma'lumot
+                bilan ketadi. */}
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              <select className="vz-input min-w-0 py-2 text-sm" value={shipOf(c).carrier} disabled={!isManager}
+                onChange={(e) => setShipField(c.id, 'carrier', e.target.value)} aria-label={t('Yetkazib berish xizmati')}>
+                <option value="">{t('Xizmat...')}</option>
+                {CARRIERS.map((x) => <option key={x} value={x}>{x}</option>)}
+              </select>
+              <input className="vz-input min-w-0 py-2 text-sm" value={shipOf(c).tracking} disabled={!isManager}
+                onChange={(e) => setShipField(c.id, 'tracking', e.target.value)} placeholder={t('Kuzatuv raqami')} aria-label={t('Kuzatuv raqami')} />
+              <select className="vz-input min-w-0 py-2 text-sm" value={c.status} disabled={!isManager} onChange={(e) => setStatus(c, e.target.value)} aria-label={t('Holat')}>
+                {CARD_STATUS.map((cs) => <option key={cs} value={cs}>{t(CARD_STATUS_LABEL[cs])}</option>)}
+              </select>
+            </div>
+            <div className="mt-3 flex justify-end">
+              <button
+                type="button"
+                className={`btn btn-sm min-h-10 ${c.active ? 'btn-ghost-vz text-error' : 'btn-success'}`}
+                disabled={busy === c.id || !c.linkedCode || !isManager}
+                onClick={() => toggleActive(c)}
+              >
+                {busy === c.id ? <span className="loading loading-spinner loading-xs"></span> : (c.active ? t('Bloklash') : t('Blokdan chiqarish'))}
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
     </div>
   );
 }
@@ -3499,7 +3540,7 @@ function FinanceDashboard({ rangeQs, ready, onGoRates }) {
               <LineChart data={daily}>
                 <CartesianGrid {...chartGrid} />
                 <XAxis dataKey="kun" {...chartAxis} />
-                <YAxis {...chartAxis} width={70} tickFormatter={(v) => fmt(v)} />
+                <YAxis {...chartAxis} width={48} tickFormatter={compactMoney} />
                 <Tooltip {...chartTooltip} formatter={(v) => fmt(v) + " so'm"} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 <Line type="monotone" dataKey="gross" name={t('Gross')} stroke="#d8a34a" strokeWidth={2} dot={false} />
@@ -4480,7 +4521,7 @@ function CompanyIdRequests() {
   return <div className="space-y-5">
     {dialog}
     {actErr && <div role="alert" className="vz-err">{actErr}</div>}
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       <KpiCard icon="clipboard" tone="pending" label={t('Tekshiruvdagi arizalar')} value={(data?.counts || []).find((r) => r.status === 'pending_review')?.count || 0} />
       <KpiCard icon="check" tone="info" label={t('Tasdiqlangan')} value={(data?.counts || []).find((r) => r.status === 'approved')?.count || 0} />
       <KpiCard icon="wallet" tone="pending" label={t('To‘lov kutilmoqda')} value={(data?.counts || []).find((r) => r.status === 'payment_pending')?.count || 0} />

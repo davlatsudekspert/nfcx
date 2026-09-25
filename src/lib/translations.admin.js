@@ -710,4 +710,9 @@ export const DICT_ADMIN = {
   "Gift NFC ID": { ru: "Подарочные NFC ID", en: "Gift NFC IDs" },
   "Talab": { ru: "Спрос", en: "Demand" },
   "Savdo": { ru: "Продажи", en: "Sales" },
+  'Kunduzgi rejim': { ru: 'Дневной режим', en: 'Light mode' },
+  'Tungi rejim': { ru: 'Ночной режим', en: 'Dark mode' },
+  'Buyurtmalar, jismoniy kartalar, Business ID arizalarini tasdiqlash yoki rad etish, marketplace va auksionlar, foydalanuvchini bloklash.': { ru: 'Заказы, физические карты, одобрение или отклонение заявок Business ID, маркетплейс и аукционы, блокировка пользователей.', en: 'Orders, physical cards, approving or rejecting Business ID requests, marketplace and auctions, blocking users.' },
+  'Bo‘limlarni ko‘radi; pul, karta, Business ID va marketplace amallarini bajara olmaydi.': { ru: 'Видит разделы; не может выполнять действия с деньгами, картами, Business ID и маркетплейсом.', en: 'Can view sections; cannot act on money, cards, Business ID or the marketplace.' },
+  'Hammasi, shu jumladan: Moliya, Xavfsizlik, Adminlar, to‘lovsiz faollashtirish, nom qoidalari va narxlar, profilni o‘chirish.': { ru: 'Всё, включая: финансы, безопасность, админов, активацию без оплаты, правила имён и цены, удаление профилей.', en: 'Everything, including finance, security, admins, activation without payment, name rules and prices, deleting profiles.' },
 };
