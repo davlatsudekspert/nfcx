@@ -1,4 +1,5 @@
 import { useLanguage } from '../lib/i18n.jsx';
+import { OPERATOR } from './PrivacyPage.jsx';
 
 // Uzun huquqiy matn — tilga qarab tanlanadi. Dizayn / tuzilma o'zgarmaydi,
 // faqat matn tarjimasi. Yuridik matn ishlab chiqarishdan oldin ona tili
@@ -6,7 +7,7 @@ import { useLanguage } from '../lib/i18n.jsx';
 const CONTENT = {
   uz: {
     title: 'Ommaviy oferta',
-    updated: 'Oxirgi yangilanish: 2026',
+    updated: 'Oxirgi yangilanish: 2026-yil 25-sentabr',
     intro: "Ushbu Ommaviy oferta (keyingi o'rinlarda — Oferta) NFCSTORE (nfcstore.uz) ma'muriyati va platformadan foydalanuvchi (keyingi o'rinlarda — Mijoz) o'rtasida raqamli tashrif qog'ozlarini xarid qilish, auksionlarda qatnashish va raqamli profil xizmatlaridan foydalanishda to'lovlarni amalga oshirish shartlarini belgilaydi.",
     sections: [
       {
@@ -61,7 +62,7 @@ const CONTENT = {
   },
   ru: {
     title: 'Публичная оферта',
-    updated: 'Последнее обновление: 2026',
+    updated: 'Последнее обновление: 25 сентября 2026',
     intro: 'Настоящая Публичная оферта (далее — Оферта) определяет условия осуществления платежей между администрацией NFCSTORE (nfcstore.uz) и пользователем платформы (далее — Клиент) при покупке цифровых визиток, участии в аукционах и использовании сервисов цифрового профиля.',
     sections: [
       {
@@ -116,7 +117,7 @@ const CONTENT = {
   },
   en: {
     title: 'Public Offer',
-    updated: 'Last updated: 2026',
+    updated: 'Last updated: 25 September 2026',
     intro: 'This Public Offer (hereinafter — the Offer) defines the terms of payment between the administration of NFCSTORE (nfcstore.uz) and the platform user (hereinafter — the Customer) when purchasing digital cards, taking part in auctions and using digital profile services.',
     sections: [
       {
@@ -170,6 +171,34 @@ const CONTENT = {
     ],
   },
 };
+
+// IJROCHI REKVIZITLARI — ofertadagi «NFCSTORE ma'muriyati» kim ekani.
+// To'lovlar shu YATT hisobiga tushadi; ma'lumot PrivacyPage.jsx `OPERATOR`
+// dan olinadi (bitta manba — ikki sahifada ikki xil yozilib qolmasin).
+const REQUISITES = {
+  uz: {
+    h: '6. Ijrochi rekvizitlari',
+    p: [
+      `6.1. Ushbu Ofertada «NFCSTORE ma'muriyati» deganda ijrochi — yakka tartibdagi tadbirkor ${OPERATOR.name} tushuniladi.`,
+      `Manzil: ${OPERATOR.region.uz}.${OPERATOR.tin ? ` STIR: ${OPERATOR.tin}.` : ''} Sayt: nfcstore.uz. Murojaat uchun: davlatsudekspert@gmail.com.`,
+    ],
+  },
+  ru: {
+    h: '6. Реквизиты исполнителя',
+    p: [
+      `6.1. В настоящей Оферте под «администрацией NFCSTORE» понимается исполнитель — индивидуальный предприниматель ${OPERATOR.name}.`,
+      `Адрес: ${OPERATOR.region.ru}.${OPERATOR.tin ? ` ИНН: ${OPERATOR.tin}.` : ''} Сайт: nfcstore.uz. Для обращений: davlatsudekspert@gmail.com.`,
+    ],
+  },
+  en: {
+    h: '6. Details of the provider',
+    p: [
+      `6.1. In this Offer, “the administration of NFCSTORE” means the provider — individual entrepreneur ${OPERATOR.name}.`,
+      `Address: ${OPERATOR.region.en}, Uzbekistan.${OPERATOR.tin ? ` TIN: ${OPERATOR.tin}.` : ''} Website: nfcstore.uz. Contact: davlatsudekspert@gmail.com.`,
+    ],
+  },
+};
+for (const lang of Object.keys(CONTENT)) CONTENT[lang].sections.push(REQUISITES[lang]);
 
 export default function TermsPage() {
   const { lang } = useLanguage();
