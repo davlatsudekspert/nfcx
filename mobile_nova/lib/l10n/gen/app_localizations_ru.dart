@@ -1036,7 +1036,7 @@ class LRu extends L {
 
   @override
   String get settingsDeleteConfirm =>
-      'Аккаунт будет удалён навсегда. Действие необратимо.';
+      'Аккаунт сразу закроется и через 30 дней будет удалён полностью. После этого его нельзя вернуть.';
 
   @override
   String get settingsDeleteTypeEmail => 'Введите свой email для подтверждения';
@@ -2325,13 +2325,14 @@ class LRu extends L {
 
   @override
   String get deleteAccountWhat =>
-      'Ваш аккаунт, все профили NFC ID, посты, истории, комментарии и сохранённое сразу скрываются. Войти снова будет нельзя. Это необратимо.';
+      'После запроса вы выйдете из аккаунта на всех устройствах; профили NFC ID, бизнес-страницы, посты, истории и комментарии сразу скрываются. Через 30 дней аккаунт и связанные данные удаляются полностью (если есть остаток средств, активный заказ или идёт проверка — после их завершения). Оплата за NFC ID и Business ID не возвращается, 90 дней эти ID никому не выдаются. Записи платежей и архив доказательств хранятся по закону — подробнее: nfcstore.uz/delete-account';
 
   @override
   String get deleteAccountUnderstood => 'Понимаю, удалить аккаунт';
 
   @override
-  String get deleteAccountDone => 'Аккаунт удалён';
+  String get deleteAccountDone =>
+      'Запрос принят. Аккаунт будет полностью удалён через 30 дней.';
 
   @override
   String get errCommentPremium =>
@@ -2534,4 +2535,9 @@ class LRu extends L {
 
   @override
   String get forgotHelp => 'Нет доступа к почте? Помощь в Telegram:';
+
+  @override
+  String authAccountPendingDeletion(String date, String contact) {
+    return 'Этот аккаунт в очереди на удаление: $date он будет удалён полностью. Чтобы отменить, напишите на $contact.';
+  }
 }

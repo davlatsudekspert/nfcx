@@ -2100,7 +2100,7 @@ abstract class L {
   /// No description provided for @settingsDeleteConfirm.
   ///
   /// In uz, this message translates to:
-  /// **'Hisob butunlay o‘chiriladi. Bu amalni qaytarib bo‘lmaydi.'**
+  /// **'Hisobingiz darhol yopiladi va 30 kundan keyin butunlay o‘chiriladi. Shundan keyin uni qaytarib bo‘lmaydi.'**
   String get settingsDeleteConfirm;
 
   /// No description provided for @settingsDeleteTypeEmail.
@@ -4488,7 +4488,7 @@ abstract class L {
   /// No description provided for @deleteAccountWhat.
   ///
   /// In uz, this message translates to:
-  /// **'Hisobingiz, barcha NFC ID profillaringiz, postlar, istoriyalar, izohlar va saqlanganlar ommadan darhol olib tashlanadi. Siz qayta kira olmaysiz. Buni qaytarib bo‘lmaydi.'**
+  /// **'So‘rovdan keyin barcha qurilmalarda hisobdan chiqasiz; NFC ID profillaringiz, biznes sahifalaringiz, postlar, istoriyalar va izohlar darhol yashiriladi. 30 kundan keyin hisob va unga bog‘langan ma’lumotlar butunlay o‘chiriladi (balans, faol buyurtma yoki tekshiruv bo‘lsa — ular hal bo‘lgach). NFC ID va Business ID’lar uchun to‘langan pul qaytarilmaydi, ular 90 kun hech kimga berilmaydi. To‘lov yozuvlari va dalil arxivi qonun bo‘yicha saqlanadi — batafsil: nfcstore.uz/delete-account'**
   String get deleteAccountWhat;
 
   /// No description provided for @deleteAccountUnderstood.
@@ -4500,7 +4500,7 @@ abstract class L {
   /// No description provided for @deleteAccountDone.
   ///
   /// In uz, this message translates to:
-  /// **'Hisobingiz o‘chirildi'**
+  /// **'So‘rov qabul qilindi. Hisob 30 kundan keyin butunlay o‘chiriladi.'**
   String get deleteAccountDone;
 
   /// Server `premium_required` (403) — izoh yozish faqat Premium'ga. Sabab aytiladi, umumiy "Ruxsat yo'q" emas.
@@ -4886,6 +4886,12 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Emailga kira olmayapsizmi? Telegram orqali yordam:'**
   String get forgotHelp;
+
+  /// No description provided for @authAccountPendingDeletion.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu hisob o‘chirish navbatida: {date} kuni butunlay o‘chiriladi. Bekor qilish uchun {contact} ga yozing.'**
+  String authAccountPendingDeletion(String date, String contact);
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

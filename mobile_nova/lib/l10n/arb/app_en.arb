@@ -385,7 +385,7 @@
     }
   },
   "settingsDeleteAccount": "Delete account",
-  "settingsDeleteConfirm": "Your account will be deleted permanently. This cannot be undone.",
+  "settingsDeleteConfirm": "Your account will be closed now and permanently deleted after 30 days. After that it cannot be restored.",
   "settingsDeleteTypeEmail": "Type your email address to confirm",
   "themePearl": "Pearl",
   "themeGraphite": "Graphite",
@@ -863,9 +863,9 @@
   "blockDrugs": "illegal drugs detected",
   "blockHate": "hateful symbols detected",
   "privacyPolicy": "Privacy policy",
-  "deleteAccountWhat": "Your account, all NFC ID profiles, posts, stories, comments and saved items are removed from public view immediately. You will not be able to sign in again. This cannot be undone.",
+  "deleteAccountWhat": "After the request you are signed out on all devices; your NFC ID profiles, business pages, posts, stories and comments are hidden immediately. After 30 days the account and its data are permanently deleted (if there is a balance, an active order or an investigation — once these are resolved). Payments for NFC IDs and Business IDs are not refunded; these IDs are not given to anyone for 90 days. Payment records and the evidence archive are kept as required by law — details: nfcstore.uz/delete-account",
   "deleteAccountUnderstood": "I understand, delete my account",
-  "deleteAccountDone": "Your account has been deleted",
+  "deleteAccountDone": "Request received. Your account will be permanently deleted in 30 days.",
   "errCommentPremium": "A Premium subscription is required to write comments. Everyone can read them.",
   "commentPremiumTitle": "Comments are for Premium members",
   "storeSeeAll": "See all",
@@ -929,5 +929,6 @@
   "forgotSpamHint": "No email? Check your Spam folder too.",
   "forgotResend": "Send again",
   "forgotBackToLogin": "Back to sign in",
-  "forgotHelp": "Can’t access your email? Get help on Telegram:"
+  "forgotHelp": "Can’t access your email? Get help on Telegram:",
+  "authAccountPendingDeletion": "This account is scheduled for deletion: it will be permanently deleted on {date}. To cancel, write to {contact}."
 }

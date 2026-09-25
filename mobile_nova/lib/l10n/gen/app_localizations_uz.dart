@@ -1041,7 +1041,7 @@ class LUz extends L {
 
   @override
   String get settingsDeleteConfirm =>
-      'Hisob butunlay o‘chiriladi. Bu amalni qaytarib bo‘lmaydi.';
+      'Hisobingiz darhol yopiladi va 30 kundan keyin butunlay o‘chiriladi. Shundan keyin uni qaytarib bo‘lmaydi.';
 
   @override
   String get settingsDeleteTypeEmail =>
@@ -2330,13 +2330,14 @@ class LUz extends L {
 
   @override
   String get deleteAccountWhat =>
-      'Hisobingiz, barcha NFC ID profillaringiz, postlar, istoriyalar, izohlar va saqlanganlar ommadan darhol olib tashlanadi. Siz qayta kira olmaysiz. Buni qaytarib bo‘lmaydi.';
+      'So‘rovdan keyin barcha qurilmalarda hisobdan chiqasiz; NFC ID profillaringiz, biznes sahifalaringiz, postlar, istoriyalar va izohlar darhol yashiriladi. 30 kundan keyin hisob va unga bog‘langan ma’lumotlar butunlay o‘chiriladi (balans, faol buyurtma yoki tekshiruv bo‘lsa — ular hal bo‘lgach). NFC ID va Business ID’lar uchun to‘langan pul qaytarilmaydi, ular 90 kun hech kimga berilmaydi. To‘lov yozuvlari va dalil arxivi qonun bo‘yicha saqlanadi — batafsil: nfcstore.uz/delete-account';
 
   @override
   String get deleteAccountUnderstood => 'Tushundim, hisobimni o‘chirish';
 
   @override
-  String get deleteAccountDone => 'Hisobingiz o‘chirildi';
+  String get deleteAccountDone =>
+      'So‘rov qabul qilindi. Hisob 30 kundan keyin butunlay o‘chiriladi.';
 
   @override
   String get errCommentPremium =>
@@ -2540,4 +2541,9 @@ class LUz extends L {
 
   @override
   String get forgotHelp => 'Emailga kira olmayapsizmi? Telegram orqali yordam:';
+
+  @override
+  String authAccountPendingDeletion(String date, String contact) {
+    return 'Bu hisob o‘chirish navbatida: $date kuni butunlay o‘chiriladi. Bekor qilish uchun $contact ga yozing.';
+  }
 }

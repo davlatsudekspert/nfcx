@@ -41,7 +41,10 @@ String describeError(L l, AppError e) => switch (e.code) {
       // Hisob o'chirilgan (kirish — 403) yoki o'chirish navbatida (shu
       // email bilan qayta ro'yxat — 409). Ilgari "Ruxsat yo'q" va
       // "Bu ma'lumot allaqachon band" chiqardi.
-      'account_deleted' || 'account_pending_deletion' => l.errAccountDeleted,
+      // Hisob o'chirish navbatida bo'lsa (parol to'g'ri) server butunlay
+      // o'chirish sanasini beradi — odamga sana va bekor qilish yo'li aytiladi.
+      'account_deleted' => _pendingDeletion(l, e.detail),
+      'account_pending_deletion' => l.errAccountDeleted,
       // Izoh yozish — faqat Premium (server qoidasi, `comments.js`).
       // Ilgari umumiy "Ruxsat yo'q" chiqardi va odam sababini bilmasdi
       // (egasi, 2026-09 surat). Xarid havolasi YO'Q — Play qoidasi.
@@ -354,4 +357,15 @@ class _TechnicalState extends State<_Technical> {
       ),
     );
   }
+}
+
+/// O'chirish navbatidagi hisob: "{sana} kuni butunlay o'chiriladi".
+/// Sana kelmasa (eski server) — umumiy matn.
+const _deletionContact = 'davlatsudekspert@gmail.com';
+String _pendingDeletion(L l, String? iso) {
+  final d = iso == null ? null : DateTime.tryParse(iso);
+  if (d == null) return l.errAccountDeleted;
+  final x = d.toLocal();
+  String two(int v) => v.toString().padLeft(2, '0');
+  return l.authAccountPendingDeletion('${two(x.day)}.${two(x.month)}.${x.year}', _deletionContact);
 }

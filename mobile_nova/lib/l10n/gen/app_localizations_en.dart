@@ -1040,7 +1040,7 @@ class LEn extends L {
 
   @override
   String get settingsDeleteConfirm =>
-      'Your account will be deleted permanently. This cannot be undone.';
+      'Your account will be closed now and permanently deleted after 30 days. After that it cannot be restored.';
 
   @override
   String get settingsDeleteTypeEmail => 'Type your email address to confirm';
@@ -2330,13 +2330,14 @@ class LEn extends L {
 
   @override
   String get deleteAccountWhat =>
-      'Your account, all NFC ID profiles, posts, stories, comments and saved items are removed from public view immediately. You will not be able to sign in again. This cannot be undone.';
+      'After the request you are signed out on all devices; your NFC ID profiles, business pages, posts, stories and comments are hidden immediately. After 30 days the account and its data are permanently deleted (if there is a balance, an active order or an investigation — once these are resolved). Payments for NFC IDs and Business IDs are not refunded; these IDs are not given to anyone for 90 days. Payment records and the evidence archive are kept as required by law — details: nfcstore.uz/delete-account';
 
   @override
   String get deleteAccountUnderstood => 'I understand, delete my account';
 
   @override
-  String get deleteAccountDone => 'Your account has been deleted';
+  String get deleteAccountDone =>
+      'Request received. Your account will be permanently deleted in 30 days.';
 
   @override
   String get errCommentPremium =>
@@ -2538,4 +2539,9 @@ class LEn extends L {
 
   @override
   String get forgotHelp => 'Can’t access your email? Get help on Telegram:';
+
+  @override
+  String authAccountPendingDeletion(String date, String contact) {
+    return 'This account is scheduled for deletion: it will be permanently deleted on $date. To cancel, write to $contact.';
+  }
 }

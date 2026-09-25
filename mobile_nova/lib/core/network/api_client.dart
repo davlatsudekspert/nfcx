@@ -313,9 +313,12 @@ class ApiClient {
     final code = (map['error'] ?? map['code'])?.toString();
     // `content_blocked` — rasm filtri sababni `category` da beradi.
     // `email_send_failed` — sabab kodi (`http_403`, `network`) `reason` da.
+    // `account_deleted` — hisob qachon butunlay o'chirilishi `purgeAfter` da
+    // (ISO sana, hosting/api/account-purge.js).
     final detail = map['detail']?.toString() ??
         map['category']?.toString() ??
         map['reason']?.toString() ??
+        map['purgeAfter']?.toString() ??
         (body is String && body.isNotEmpty ? body.substring(0, body.length.clamp(0, 120)) : null);
 
     final kind = switch (status) {

@@ -388,7 +388,7 @@
     }
   },
   "settingsDeleteAccount": "Hisobni o‘chirish",
-  "settingsDeleteConfirm": "Hisob butunlay o‘chiriladi. Bu amalni qaytarib bo‘lmaydi.",
+  "settingsDeleteConfirm": "Hisobingiz darhol yopiladi va 30 kundan keyin butunlay o‘chiriladi. Shundan keyin uni qaytarib bo‘lmaydi.",
   "settingsDeleteTypeEmail": "Tasdiqlash uchun email manzilingizni yozing",
   "themePearl": "Marvarid",
   "themeGraphite": "Grafit",
@@ -938,9 +938,9 @@
   "blockDrugs": "giyohvand moddalar aniqlandi",
   "blockHate": "nafrat yoki kamsitish belgisi aniqlandi",
   "privacyPolicy": "Maxfiylik siyosati",
-  "deleteAccountWhat": "Hisobingiz, barcha NFC ID profillaringiz, postlar, istoriyalar, izohlar va saqlanganlar ommadan darhol olib tashlanadi. Siz qayta kira olmaysiz. Buni qaytarib bo‘lmaydi.",
+  "deleteAccountWhat": "So‘rovdan keyin barcha qurilmalarda hisobdan chiqasiz; NFC ID profillaringiz, biznes sahifalaringiz, postlar, istoriyalar va izohlar darhol yashiriladi. 30 kundan keyin hisob va unga bog‘langan ma’lumotlar butunlay o‘chiriladi (balans, faol buyurtma yoki tekshiruv bo‘lsa — ular hal bo‘lgach). NFC ID va Business ID’lar uchun to‘langan pul qaytarilmaydi, ular 90 kun hech kimga berilmaydi. To‘lov yozuvlari va dalil arxivi qonun bo‘yicha saqlanadi — batafsil: nfcstore.uz/delete-account",
   "deleteAccountUnderstood": "Tushundim, hisobimni o‘chirish",
-  "deleteAccountDone": "Hisobingiz o‘chirildi",
+  "deleteAccountDone": "So‘rov qabul qilindi. Hisob 30 kundan keyin butunlay o‘chiriladi.",
   "errCommentPremium": "Izoh yozish uchun Premium obuna kerak. Izohlarni esa hamma o‘qiy oladi.",
   "@errCommentPremium": {
     "description": "Server `premium_required` (403) — izoh yozish faqat Premium'ga. Sabab aytiladi, umumiy \"Ruxsat yo'q\" emas."
@@ -1015,5 +1015,16 @@
   "forgotSpamHint": "Xat kelmasa, «Spam» papkasini ham ko‘ring.",
   "forgotResend": "Qayta yuborish",
   "forgotBackToLogin": "Kirishga qaytish",
-  "forgotHelp": "Emailga kira olmayapsizmi? Telegram orqali yordam:"
+  "forgotHelp": "Emailga kira olmayapsizmi? Telegram orqali yordam:",
+  "authAccountPendingDeletion": "Bu hisob o‘chirish navbatida: {date} kuni butunlay o‘chiriladi. Bekor qilish uchun {contact} ga yozing.",
+  "@authAccountPendingDeletion": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "contact": {
+        "type": "String"
+      }
+    }
+  }
 }
