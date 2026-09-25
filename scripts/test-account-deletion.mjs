@@ -594,7 +594,7 @@ const PURGE_POLICY = {
   card_videos: 'A', card_team: 'A', card_leads: 'A', card_events: 'A', card_likes: 'A', post_likes: 'A', content_likes: 'A',
   content_comments: 'A', follows: 'A', company_follows: 'A', user_saves: 'A', notifications: 'A', user_blocks: 'A',
   blocked_users: 'A', messages: 'A', conversations: 'A(flag)', auction_demand_votes: 'A', auction_requests: 'A',
-  support_messages: 'A(flag)', companies: 'A', company_posts: 'A', company_stats: 'A', company_catalog_items: 'A',
+  support_messages: 'A(flag)', companies: 'A', company_posts: 'A', company_stats: 'A', company_catalog_items: 'A', company_catalog_item_views: 'A',
   company_orders: 'A(flag)', catalog_item_reactions: 'A', catalog_item_views: 'A', catalog_promotions: 'A', gift_offers: 'B',
   transactions: 'B', wallet_topups: 'B', web_orders: 'B', bids: 'B', premium_requests: 'B', auctions: 'B', bot_orders: 'B',
   physical_cards: 'B', featured_slots: 'B', company_payments: 'B', nfc_gifts: 'B', referral_uses: 'B', marketplace_activations: 'B',
