@@ -8,9 +8,11 @@
 // Belgi — O'ZIMIZNING "N" (NFC Forum N-Mark EMAS: u ularning tovar belgisi).
 //
 //   node tools/print/sticker.mjs [chiqish_papkasi]
-//       -> namuna fayllar (QR: nfcstore.uz/t/NAMUNA)
+//       -> ASOSIY: umumiy QR (nfcstore.uz/qr-1 -> ilovani yuklash), hamma
+//          stiker bir xil; QR_BATCH=2 — keyingi partiya (analitikada alohida)
 //   node tools/print/sticker.mjs <papka> stiker-manzillari.csv
-//       -> admin > Marketplace > "Stiker manzillari (CSV)" dan partiya:
+//       -> (ixtiyoriy) har stikerga O'Z QR'i, chip bilan bir xil manzil —
+//          admin > Marketplace > "Stiker manzillari (CSV)" dan partiya:
 //          har stiker alohida sahifa, tartib saqlanadi (chiplar ham shu
 //          tartibda yoziladi; QR ostidagi 4 belgi — mos chipni topish uchun).
 // Talab: playwright (global) — Chromium bilan vektor PDF.
@@ -80,9 +82,8 @@ async function sticker80(url, label) {
   </g>
   ${text(1.2, 23.6, 3.35, 800, 0, 'Telefonni', 'start')}
   ${text(1.2, 27.4, 3.35, 800, 0, 'tekkizing', 'start')}
-  ${text(1.2, 30.4, 2.1, 500, 0, "yoki QR'ni", 'start')}
-  ${text(1.2, 33.0, 2.1, 500, 0, 'skanerlang', 'start')}
-  ${label ? text(-11, 30.4, 1.7, 600, 0.25, label, 'middle') : ''}`;
+  ${text(1.2, 30.6, 2.1, 500, 0, 'profil ochiladi', 'start')}
+  ${text(-11, 30.4, label ? 1.7 : 1.95, 600, label ? 0.25 : 0.05, label || 'Ilovani yuklang', 'middle')}`;
 }
 function sticker30() {
   return `<circle r="${15 + BLEED}" fill="${BLACK}"/>
@@ -131,7 +132,10 @@ if (tokens) {
   await pdf(`partiya-80mm-MIRROR-${tokens.length}ta.pdf`, S80, bodies, true);
   console.log('partiya:', tokens.length);
 } else {
-  const s80 = await sticker80('https://nfcstore.uz/t/NAMUNA', 'NAMUNA');
+  // UMUMIY QR: hamma stikerda bir xil — ilovani yuklash (server /qr-1 ni
+  // yo'naltiradi, keyin qayta bosmasdan o'zgartirsa bo'ladi). Chip esa
+  // har stikerda o'z /t/<token> manzilini ochadi.
+  const s80 = await sticker80(`https://nfcstore.uz/qr-${process.env.QR_BATCH || '1'}`, '');
   await pdf('NFCSTORE-80mm-BOSISH-mirror.pdf', S80, [s80], true);
   await pdf('NFCSTORE-80mm-korinishi.pdf', S80, [s80], false);
   await png('NFCSTORE-80mm-korinishi.png', S80, s80, false);
