@@ -180,21 +180,21 @@ const REQUISITES = {
     h: '6. Ijrochi rekvizitlari',
     p: [
       `6.1. Ushbu Ofertada «NFCSTORE ma'muriyati» deganda ijrochi — yakka tartibdagi tadbirkor ${OPERATOR.name} tushuniladi.`,
-      `Manzil: ${OPERATOR.region.uz}.${OPERATOR.tin ? ` STIR: ${OPERATOR.tin}.` : ''} Sayt: nfcstore.uz. Murojaat uchun: davlatsudekspert@gmail.com.`,
+      `Manzil: ${OPERATOR.region.uz}. YATT davlat ro'yxatidan o'tkazilganligi to'g'risidagi guvohnoma: № ${OPERATOR.regNo}, ${OPERATOR.regDate}. Sayt: nfcstore.uz. Murojaat uchun: davlatsudekspert@gmail.com.`,
     ],
   },
   ru: {
     h: '6. Реквизиты исполнителя',
     p: [
       `6.1. В настоящей Оферте под «администрацией NFCSTORE» понимается исполнитель — индивидуальный предприниматель ${OPERATOR.name}.`,
-      `Адрес: ${OPERATOR.region.ru}.${OPERATOR.tin ? ` ИНН: ${OPERATOR.tin}.` : ''} Сайт: nfcstore.uz. Для обращений: davlatsudekspert@gmail.com.`,
+      `Адрес: ${OPERATOR.region.ru}. Свидетельство о государственной регистрации ИП: № ${OPERATOR.regNo} от ${OPERATOR.regDate}. Сайт: nfcstore.uz. Для обращений: davlatsudekspert@gmail.com.`,
     ],
   },
   en: {
     h: '6. Details of the provider',
     p: [
       `6.1. In this Offer, “the administration of NFCSTORE” means the provider — individual entrepreneur ${OPERATOR.name}.`,
-      `Address: ${OPERATOR.region.en}, Uzbekistan.${OPERATOR.tin ? ` TIN: ${OPERATOR.tin}.` : ''} Website: nfcstore.uz. Contact: davlatsudekspert@gmail.com.`,
+      `Address: ${OPERATOR.region.en}, Uzbekistan. State registration certificate: No. ${OPERATOR.regNo} of ${OPERATOR.regDate}. Website: nfcstore.uz. Contact: davlatsudekspert@gmail.com.`,
     ],
   },
 };

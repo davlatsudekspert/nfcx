@@ -12,14 +12,16 @@ const APP = 'NFCSTORE: Raqamli vizitka';
 // OPERATOR — shaxsga doir ma'lumotlar bazasining egasi (to'lovlar shu
 // YATT hisobiga tushadi) va ishlov berish uchun mas'ul shaxs. Davlat
 // reyestriga berilgan arizadagi (2026-09-25) ma'lumot bilan bir xil.
-// STIR bo'sh bo'lsa, matnda chiqmaydi. TermsPage.jsx ham shundan oladi.
+// Rekvizit — YATT guvohnomasidagi ro'yxat raqami va faoliyat manzili
+// (JShShIR/pasport saytga CHIQARILMAYDI). TermsPage.jsx ham shundan oladi.
 export const OPERATOR = {
   name: 'Abduraxmonova Shaxnozaxon Xasanboyevna',
-  tin: '',
-  region: { uz: "Andijon viloyati, Shaxrixon tumani", ru: 'Андижанская область, Шахриханский район', en: 'Shakhrikhan district, Andijan region' },
+  regNo: '7199859',
+  regDate: '08.10.2025',
+  region: { uz: "Andijon viloyati, Shahrixon tumani, Bo'ston ko'chasi, 8-uy", ru: 'Андижанская область, Шахриханский район, ул. Бустон, дом 8', en: "8 Bo'ston street, Shahrixon district, Andijan region" },
   officer: "Abduraxmonov Yo'ldoshali Toshtemirovich",
 };
-const tinText = (label) => (OPERATOR.tin ? `, ${label}: ${OPERATOR.tin}` : '');
+const regText = (label) => `, ${label} ${OPERATOR.regNo} (${OPERATOR.regDate})`;
 
 const CONTENT = {
   uz: {
@@ -27,7 +29,7 @@ const CONTENT = {
     updated: 'Oxirgi yangilanish: 2026-yil 25-sentabr',
     intro: `Ushbu siyosat ${APP} ilovasi (Google Play) va nfcstore.uz sayti (birgalikda — NFCSTORE) qanday ma'lumot yig'ishi, nima uchun ishlatishi, kimga yuborishi va qanday saqlashini tushuntiradi.`,
     sections: [
-      { h: "Operator", p: `Shaxsga doir ma'lumotlar operatori va ma'lumotlar bazasining egasi — yakka tartibdagi tadbirkor ${OPERATOR.name}${tinText('STIR')} (${OPERATOR.region.uz}). Ma'lumotlarga ishlov berish uchun mas'ul shaxs — ${OPERATOR.officer}, ma'lumotlar bazasi administratori. Murojaat uchun: ${CONTACT}.` },
+      { h: "Operator", p: `Shaxsga doir ma'lumotlar operatori va ma'lumotlar bazasining egasi — yakka tartibdagi tadbirkor ${OPERATOR.name}${regText("YATT davlat ro'yxatidan o'tkazilganligi to'g'risidagi guvohnoma №")} (${OPERATOR.region.uz}). Ma'lumotlarga ishlov berish uchun mas'ul shaxs — ${OPERATOR.officer}, ma'lumotlar bazasi administratori. Murojaat uchun: ${CONTACT}.` },
       { h: "Qanday ma'lumot yig'amiz", list: [
         "Hisob: elektron pochta, parol (faqat xeshlangan holda), telefon raqami.",
         "Profil: ism, profil rasmi va muqova, bio, lavozim, kontaktlar va ijtimoiy tarmoq havolalari, profil musiqasi.",
@@ -66,7 +68,7 @@ const CONTENT = {
     updated: 'Последнее обновление: 25 сентября 2026',
     intro: `Эта политика объясняет, какие данные собирают приложение ${APP} (Google Play) и сайт nfcstore.uz (вместе — NFCSTORE), зачем они используются, кому передаются и как хранятся.`,
     sections: [
-      { h: 'Оператор', p: `Оператор персональных данных и владелец базы данных — индивидуальный предприниматель ${OPERATOR.name}${tinText('ИНН')} (${OPERATOR.region.ru}). Ответственный за обработку персональных данных — ${OPERATOR.officer}, администратор базы данных. Для обращений: ${CONTACT}.` },
+      { h: 'Оператор', p: `Оператор персональных данных и владелец базы данных — индивидуальный предприниматель ${OPERATOR.name}${regText('свидетельство о государственной регистрации ИП №')} (${OPERATOR.region.ru}). Ответственный за обработку персональных данных — ${OPERATOR.officer}, администратор базы данных. Для обращений: ${CONTACT}.` },
       { h: 'Какие данные мы собираем', list: [
         'Аккаунт: электронная почта, пароль (только в виде хеша), номер телефона.',
         'Профиль: имя, фото профиля и обложка, био, должность, контакты и ссылки на соцсети, музыка профиля.',
@@ -105,7 +107,7 @@ const CONTENT = {
     updated: 'Last updated: 25 September 2026',
     intro: `This policy explains what data the ${APP} app (Google Play) and the nfcstore.uz website (together — NFCSTORE) collect, why, who it is sent to and how it is kept.`,
     sections: [
-      { h: 'Operator', p: `The personal data operator and owner of the database is the individual entrepreneur ${OPERATOR.name}${tinText('TIN')} (${OPERATOR.region.en}, Uzbekistan). The person responsible for processing personal data is ${OPERATOR.officer}, database administrator. Contact: ${CONTACT}.` },
+      { h: 'Operator', p: `The personal data operator and owner of the database is the individual entrepreneur ${OPERATOR.name}${regText('state registration certificate No.')} (${OPERATOR.region.en}, Uzbekistan). The person responsible for processing personal data is ${OPERATOR.officer}, database administrator. Contact: ${CONTACT}.` },
       { h: 'What data we collect', list: [
         'Account: email, password (hashed only), phone number.',
         'Profile: name, profile photo and cover, bio, job title, contacts and social links, profile music.',
