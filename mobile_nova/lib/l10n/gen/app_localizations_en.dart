@@ -2013,6 +2013,15 @@ class LEn extends L {
   String get catalogSortNew => 'Newest';
 
   @override
+  String get catalogSortPopular => 'Popular';
+
+  @override
+  String get homeCatalog => 'From the catalog';
+
+  @override
+  String get homeCatalogMore => 'See all';
+
+  @override
   String get catalogSortPriceAsc => 'Price: low to high';
 
   @override

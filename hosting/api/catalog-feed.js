@@ -61,7 +61,15 @@
 //     &category=food   global kategoriya; eski NFC slugi (card...) ham
 //                      qabul qilinadi = electronics + shu sub
 //     &sub=card        NFC sub-turi
-//     &sort=new        new | price_asc | price_desc
+//     &sort=new        new | price_asc | price_desc | popular
+//                      popular — oxirgi 30 kunda eng ko'p ko'rilgan
+//                      (ko'rish teng bo'lsa — yangisi oldin)
+//
+//   POST /api/catalog/items/:id/view
+//     Mahsulot/xizmat sahifasi ochilganda. Bir odam bir mahsulotni
+//     KUNIGA BIR MARTA sanaladi (PRIMARY KEY) — qayta ochish yoki
+//     sahifani yangilash hisobni oshirmaydi. Odam: hisob bo'lsa user
+//     id, bo'lmasa IP + brauzer — faqat SHA-256 izi saqlanadi.
 //
 // `counts` — faqat `q` qo'llangan sonlar: chiplar "Ovqat · 12" deb
 // yozilsin va bo'sh kategoriya chipi umuman ko'rsatilmasin (dinamik).
@@ -184,7 +192,39 @@ export function listingFields(row, companyCategory) {
   };
 }
 
-const SORTS = ['new', 'price_asc', 'price_desc'];
+const SORTS = ['new', 'price_asc', 'price_desc', 'popular'];
+export const POPULAR_WINDOW_DAYS = 30;
+
+let viewsReady = null;
+export function ensureItemViews(env) {
+  viewsReady ||= env.DB.batch([
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS company_catalog_item_views (
+      item_id TEXT NOT NULL, visitor_key TEXT NOT NULL, view_day TEXT NOT NULL, created_at TEXT NOT NULL,
+      PRIMARY KEY (item_id, visitor_key, view_day)
+    )`),
+    env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_company_item_views_day ON company_catalog_item_views(view_day, item_id)`),
+  ]).catch((e) => { viewsReady = null; throw e; });
+  return viewsReady;
+}
+
+async function sha256(v) {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(v));
+  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Oxirgi N kun ko'rishlari: item_id -> son. Jadval hali yo'q bo'lsa — bo'sh.
+async function recentViews(env, now) {
+  const since = new Date(now - POPULAR_WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
+  try {
+    const r = await env.DB.prepare(
+      `SELECT item_id, COUNT(*) AS n FROM company_catalog_item_views WHERE view_day >= ? GROUP BY item_id`
+    ).bind(since).all();
+    return new Map((r.results || []).map((x) => [String(x.item_id), Number(x.n || 0)]));
+  } catch (error) {
+    if (/no such table/i.test(String(error?.message || error))) return new Map();
+    throw error;
+  }
+}
 const SCAN_CAP = 2000;
 const MAX_LIMIT = 50;
 
@@ -236,6 +276,37 @@ function itemJson(r) {
 }
 
 export async function handle(request, env, url, H) {
+  const viewMatch = url.pathname.match(/^\/api\/catalog\/items\/([A-Za-z0-9_-]{1,80})\/view$/);
+  if (viewMatch) {
+    if (request.method !== 'POST') return H.json({ error: 'method_not_allowed' }, 405);
+    const itemId = viewMatch[1];
+    // Faqat mavjud va faol biznesning mahsuloti sanaladi.
+    let ok = null;
+    try {
+      ok = await env.DB.prepare(
+        `SELECT 1 AS ok FROM company_catalog_items i JOIN companies c ON c.company_id = i.company_id
+          WHERE CAST(i.id AS TEXT) = ? AND c.status = 'active'`
+      ).bind(itemId).first();
+    } catch (error) {
+      if (!/no such table/i.test(String(error?.message || error))) throw error;
+    }
+    if (!ok) return H.json({ error: 'not_found' }, 404);
+    // Bir IP'dan soatiga 120 tadan ortig'i jim tashlab yuboriladi —
+    // UA almashtirib reytingni sun'iy ko'tarib bo'lmasin.
+    if (await H.rateLimitD1(env, `catalog-view:ip:${H.reqIp(request)}`, 120, 3_600_000)) return H.json({ ok: true });
+    await ensureItemViews(env);
+    const user = await H.getCurrentUser(request, env).catch(() => null);
+    // Kirgan foydalanuvchi — `u:<id>` (akkaunt o'chirilganda purge shu
+    // bo'yicha tozalaydi); mehmon — IP+UA xeshi, xom IP saqlanmaydi.
+    const who = user?.id != null
+      ? `u:${user.id}`
+      : `v:${await sha256(`${H.reqIp(request)}|${request.headers.get('user-agent') || ''}`)}`;
+    const now = new Date();
+    await env.DB.prepare(
+      `INSERT OR IGNORE INTO company_catalog_item_views (item_id, visitor_key, view_day, created_at) VALUES (?, ?, ?, ?)`
+    ).bind(itemId, who, now.toISOString().slice(0, 10), now.toISOString()).run();
+    return H.json({ ok: true });
+  }
   if (url.pathname !== '/api/catalog/feed') return null;
   if (request.method !== 'GET') {
     return H.json({ error: 'method_not_allowed' }, 405);
@@ -310,6 +381,8 @@ export async function handle(request, env, url, H) {
 
   const avail = (r) => (Number(r.available ?? 1) === 1 ? 0 : 1);
   const dir = sort === 'price_asc' ? 1 : sort === 'price_desc' ? -1 : 0;
+  const views = sort === 'popular' ? await recentViews(env, Date.now()) : null;
+  const pop = (r) => (views ? views.get(String(r.id)) || 0 : 0);
   // Barqaror: mavjudlari oldin; narx bo'yicha saralashda "Narx
   // kelishiladi" oxirida; qolgan hollarda asl (yangisi oldin) tartib.
   list = list
@@ -317,6 +390,7 @@ export async function handle(request, env, url, H) {
     .sort((a, b) => avail(a.r) - avail(b.r)
       || (dir && (Number(a.r.listing.priceOnRequest) - Number(b.r.listing.priceOnRequest)))
       || (dir && (a.p - b.p) * dir)
+      || (views && pop(b.r) - pop(a.r))
       || a.idx - b.idx)
     .map((x) => x.r);
 

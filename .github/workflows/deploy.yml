@@ -198,6 +198,8 @@ jobs:
       # bosib bo'lmaydi, manzil ishlashdan to'xtasa butun partiya o'ladi.
       - name: Stiker QR yo'naltirishi ishlaydimi
         run: node scripts/test-qr-sticker-redirect.mjs
+      - name: Katalog — ommabop tartib va tovar ko'rishlari
+        run: node scripts/test-catalog-popular.mjs
 
       # PROFIL SAHIFALARINING MAKETI.
       #

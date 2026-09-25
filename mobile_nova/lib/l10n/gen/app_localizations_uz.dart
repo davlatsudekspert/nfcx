@@ -2013,6 +2013,15 @@ class LUz extends L {
   String get catalogSortNew => 'Yangi';
 
   @override
+  String get catalogSortPopular => 'Ommabop';
+
+  @override
+  String get homeCatalog => 'Tanlovdan';
+
+  @override
+  String get homeCatalogMore => 'Hammasi';
+
+  @override
   String get catalogSortPriceAsc => 'Avval arzon';
 
   @override

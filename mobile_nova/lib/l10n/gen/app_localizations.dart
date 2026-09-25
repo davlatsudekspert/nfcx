@@ -3909,6 +3909,24 @@ abstract class L {
   /// **'Yangi'**
   String get catalogSortNew;
 
+  /// No description provided for @catalogSortPopular.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ommabop'**
+  String get catalogSortPopular;
+
+  /// No description provided for @homeCatalog.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tanlovdan'**
+  String get homeCatalog;
+
+  /// No description provided for @homeCatalogMore.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hammasi'**
+  String get homeCatalogMore;
+
   /// No description provided for @catalogSortPriceAsc.
   ///
   /// In uz, this message translates to:

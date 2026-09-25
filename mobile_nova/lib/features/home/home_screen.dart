@@ -33,6 +33,10 @@ import 'widgets/identity_card.dart';
 import 'widgets/mode_switch.dart';
 import '../../app/profile_context.dart';
 import '../../data/repositories/business_repository.dart';
+import '../../data/repositories/discover_repository.dart';
+import '../discover/catalog_view.dart' show ProductCard;
+import '../discover/discover_screen.dart'
+    show DiscoverTab, discoverInitialTabProvider, discoverTabProvider;
 import '../profile/profile_switcher.dart';
 import '../social/visible_fraction.dart';
 import '../social/story_viewer.dart' show prefetchStoryRow;
@@ -71,6 +75,17 @@ final homeStoriesProvider = FutureProvider.autoDispose<List<StoryItem>>((
   // Xatosi YUTILADI: obuna lentasi kelmasa ham o'z istoryang
   // ko'rinaverishi kerak, butun qator yo'qolib qolmasin.
   return [...own, ...followed.valueOrNull ?? const <StoryItem>[]];
+});
+
+/// «Tanlovdan» qatori — katalogning eng ko'p ko'rilgan tovar va
+/// xizmatlari (oxirgi 30 kun; teng bo'lsa yangisi oldin). Tartibni
+/// SERVER beradi, ilova qayta saralamaydi.
+final homeCatalogProvider =
+    FutureProvider.autoDispose<List<CatalogProduct>>((ref) async {
+  final res = await ref
+      .watch(discoverRepositoryProvider)
+      .catalogFeed(limit: HomeCatalogRow.limit, sort: CatalogSort.popular);
+  return res.when(ok: (v) => v.items, err: (e) => throw e);
 });
 
 /// Lentaning boshidagi postlar.
@@ -150,6 +165,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           await ref.read(sessionProvider.notifier).refresh();
           if (!mounted) return;
           ref.invalidate(homeStoriesProvider);
+          ref.invalidate(homeCatalogProvider);
           ref.invalidate(homeFeedProvider);
         },
         child: NovaScroll(
@@ -291,6 +307,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             // ilovaga birinchi kirgan odam pastga tushmasdan
             // "bu ilova nima beradi" degan savolga javob olsin.
             const NfcMobileSection(),
+
+            // «TANLOVDAN» — lentadan OLDIN. Postlar joyida qoladi;
+            // bu qator faqat gorizontal, bosh sahifani cho'zmaydi.
+            const HomeCatalogRow(),
 
             // HAQIQIY LENTA — tanishtiruv bo'limidan KEYIN.
             //
@@ -1099,6 +1119,68 @@ class _StoryBubble extends StatelessWidget {
   }
 }
 
+
+/// «Tanlovdan» — katalogdan gorizontal qator (eng ko'p ko'rilganlar).
+///
+/// Katalog bo'sh yoki kelmasa qator UMUMAN chizilmaydi: bosh
+/// sahifada "xato" yoki bo'sh quti ko'rinmasin — lenta va boshqa
+/// bo'limlar joyida qoladi. «Hammasi» Tanlovning Katalog bo'limini
+/// ochadi.
+class HomeCatalogRow extends ConsumerWidget {
+  const HomeCatalogRow({super.key});
+
+  /// Qatorda nechta tovar.
+  static const limit = 8;
+
+  /// Karta kengligi — katalog to'ridagi kartadan biroz tor, keyingisi
+  /// chetdan ko'rinib "suriladi" degan ishorani beradi.
+  static const _cardW = 156.0;
+
+  void _openAll(BuildContext context, WidgetRef ref) {
+    ref.read(discoverInitialTabProvider.notifier).state = DiscoverTab.catalog;
+    if (ref.exists(discoverTabProvider)) {
+      ref.read(discoverTabProvider.notifier).state = DiscoverTab.catalog;
+    }
+    context.go(Routes.discover);
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = L.of(context);
+    final items = ref.watch(homeCatalogProvider).valueOrNull;
+    if (items == null || items.isEmpty) return const SizedBox.shrink();
+
+    // Katalog to'ridagi bilan bir xil hisob: kvadrat rasm + ma'lumot
+    // qismi (katta shriftda o'sadi).
+    final k = (MediaQuery.textScalerOf(context).scale(12) / 12).clamp(1.0, 1.6);
+    final height = _cardW + 124 + (k - 1) * 70;
+
+    return Column(
+      key: const ValueKey('home-catalog-row'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeader(
+          title: l.homeCatalog,
+          action: l.homeCatalogMore,
+          onAction: () => _openAll(context, ref),
+        ),
+        SizedBox(
+          height: height,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
+            itemCount: items.length,
+            separatorBuilder: (_, __) => const SizedBox(width: Gap.md),
+            itemBuilder: (_, i) => SizedBox(
+              width: _cardW,
+              child: ProductCard(product: items[i]),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 /// Bosh sahifadagi lenta.
 ///

@@ -115,6 +115,9 @@ const EXPRESSIONS = new Map([
   // (`shop_repository.dart`). Server ham aynan shunday
   // normallashtiradi, shuning uchun namuna sifatida tayyor kod.
   ['code.toUpperCase()', 'VIP001'],
+  // Katalog tovari ko'rildi (`discover_repository.dart`). Tovar
+  // yo'q bo'lsa server `not_found` beradi — marshrut baribir BOR.
+  ['Uri.encodeComponent(itemId)', 'item-1'],
 ]);
 
 function concrete(path) {

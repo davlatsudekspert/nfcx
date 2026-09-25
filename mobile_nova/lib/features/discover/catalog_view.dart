@@ -197,6 +197,7 @@ final catalogFavoritesProvider =
 
 String _sortLabel(L l, CatalogSort s) => switch (s) {
       CatalogSort.newest => l.catalogSortNew,
+      CatalogSort.popular => l.catalogSortPopular,
       CatalogSort.priceAsc => l.catalogSortPriceAsc,
       CatalogSort.priceDesc => l.catalogSortPriceDesc,
     };
@@ -1069,6 +1070,16 @@ class _ProductDetail extends ConsumerStatefulWidget {
 
 class _ProductDetailState extends ConsumerState<_ProductDetail> {
   int _page = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Ko'rish sanog'i — fonda, sahifani kutdirmaydi.
+    ref
+        .read(discoverRepositoryProvider)
+        .catalogItemViewed(widget.product.id)
+        .catchError((_) {});
+  }
 
   @override
   Widget build(BuildContext context) {

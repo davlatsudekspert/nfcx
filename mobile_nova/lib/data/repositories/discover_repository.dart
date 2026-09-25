@@ -123,6 +123,17 @@ class DiscoverRepository {
     });
     return res.map(CatalogFeedPage.fromJson);
   }
+
+  /// Tovar sahifasi ochildi — «Ommabop» tartibi uchun.
+  ///
+  /// Server bir kishini bir kunda bir marta sanaydi, shuning uchun
+  /// qayta ochish reytingni ko'tarmaydi. Natija KUTILMAYDI va xatosi
+  /// yutiladi: sanoq ishlamasa ham tovar sahifasi ochilaveradi.
+  Future<void> catalogItemViewed(String itemId) async {
+    if (itemId.isEmpty) return;
+    await _api.post<Object?>(
+        '/api/catalog/items/${Uri.encodeComponent(itemId)}/view');
+  }
 }
 
 // `trending()` OLIB TASHLANDI.

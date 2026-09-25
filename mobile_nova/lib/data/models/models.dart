@@ -919,6 +919,9 @@ class CatalogProduct {
 /// Katalog saralash tartibi — server `sort` parametri bilan bir xil.
 enum CatalogSort {
   newest('new'),
+
+  /// Oxirgi 30 kunda eng ko'p ko'rilgan (server hisoblaydi).
+  popular('popular'),
   priceAsc('price_asc'),
   priceDesc('price_desc');
 

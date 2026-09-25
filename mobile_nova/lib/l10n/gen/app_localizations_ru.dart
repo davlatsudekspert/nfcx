@@ -2007,6 +2007,15 @@ class LRu extends L {
   String get catalogSortNew => 'Новые';
 
   @override
+  String get catalogSortPopular => 'Популярные';
+
+  @override
+  String get homeCatalog => 'Из каталога';
+
+  @override
+  String get homeCatalogMore => 'Все';
+
+  @override
   String get catalogSortPriceAsc => 'Сначала дешевле';
 
   @override

@@ -403,6 +403,9 @@ export function purgeStmts(env, u, now, ref, cfg, counts = {}) {
     add(['story_likes', 'stories'], `DELETE FROM story_likes WHERE story_id IN (SELECT id FROM stories WHERE owner_kind = 'company' AND owner_id IN (${COS}))`);
     add(['story_views', 'stories'], `DELETE FROM story_views WHERE story_id IN (SELECT id FROM stories WHERE owner_kind = 'company' AND owner_id IN (${COS}))`);
     add(['stories'], `DELETE FROM stories WHERE owner_kind = 'company' AND owner_id IN (${COS})`);
+    // Tovar ko'rishlari (`catalog-feed.js`) — tovarlar bilan birga ketadi.
+    add(['company_catalog_item_views', 'company_catalog_items'],
+      `DELETE FROM company_catalog_item_views WHERE item_id IN (SELECT CAST(id AS TEXT) FROM company_catalog_items WHERE company_id IN (${COS}))`);
     const companyTables = ['company_posts', 'company_stats', 'company_follows', 'company_catalog_items'];
     // Biznes mijozlarining buyurtmalari (ism, telefon) — egasi javob bermaguncha saqlanadi.
     if (flag('PURGE_COMPANY_ORDERS')) companyTables.push('company_orders');
@@ -417,6 +420,7 @@ export function purgeStmts(env, u, now, ref, cfg, counts = {}) {
   // 5) FOYDALANUVCHI ID'SI BO'YICHA. Tombstone tufayli CASCADE yo'q —
   //    har biri aniq yoziladi.
   add(['content_likes'], `DELETE FROM content_likes WHERE user_id = ${id}`);
+  add(['company_catalog_item_views'], `DELETE FROM company_catalog_item_views WHERE visitor_key = 'u:${id}'`);
   add(['post_likes'], `DELETE FROM post_likes WHERE user_id = ${id}`);
   add(['card_likes'], `DELETE FROM card_likes WHERE user_id = ${id}`);
   add(['story_likes'], `DELETE FROM story_likes WHERE user_id = ${id}`);

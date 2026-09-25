@@ -58,8 +58,14 @@ class SearchQuery extends StateNotifier<String> {
 final searchQueryProvider =
     StateNotifierProvider.autoDispose<SearchQuery, String>((_) => SearchQuery());
 
-final discoverTabProvider =
-    StateProvider.autoDispose<DiscoverTab>((_) => DiscoverTab.people);
+/// Tanlov ochilganda qaysi bo'lim turadi. Asosiydagi «Tanlovdan»
+/// qatorining «Hammasi» tugmasi uni `catalog` qiladi — Tanlov hali
+/// bir marta ham ochilmagan bo'lsa ham to'g'ri bo'limga tushadi.
+final discoverInitialTabProvider =
+    StateProvider<DiscoverTab>((_) => DiscoverTab.people);
+
+final discoverTabProvider = StateProvider.autoDispose<DiscoverTab>(
+    (ref) => ref.read(discoverInitialTabProvider));
 
 /// Ko'rishlar bo'yicha kamayish tartibida.
 ///

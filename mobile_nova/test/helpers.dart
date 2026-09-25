@@ -90,6 +90,26 @@ class FakeDiscoverRepository extends DiscoverRepository {
 
   @override
   Future<Result<List<NfcId>>> searchPeople(String q) async => const Ok(testIds);
+
+  /// Katalog — sukut bo'yicha bo'sh (Asosiydagi «Tanlovdan» qatori
+  /// chizilmaydi, tarmoqqa chiqilmaydi).
+  @override
+  Future<Result<CatalogFeedPage>> catalogFeed({
+    int page = 1,
+    int limit = 20,
+    String q = '',
+    ListingKind? kind,
+    MarketCategory? category,
+    NfcProductType? sub,
+    CatalogSort sort = CatalogSort.newest,
+  }) async =>
+      const Ok(CatalogFeedPage());
+
+  /// Tovar ko'rishlari — tarmoqqa chiqmaydi, faqat yoziladi.
+  final viewed = <String>[];
+
+  @override
+  Future<void> catalogItemViewed(String itemId) async => viewed.add(itemId);
 }
 
 /// Saqlanganlar — xotirada (tarmoqqa chiqmaydi).
