@@ -2561,4 +2561,31 @@ class LUz extends L {
   String authAccountPendingDeletion(String date, String contact) {
     return 'Bu hisob o‘chirish navbatida: $date kuni butunlay o‘chiriladi. Bekor qilish uchun $contact ga yozing.';
   }
+
+  @override
+  String get musicAdd => 'Musiqa qo‘shish';
+
+  @override
+  String get musicSearch => 'Qo‘shiq yoki ijrochi';
+
+  @override
+  String get musicEmpty => 'Hozircha musiqa yo‘q';
+
+  @override
+  String get musicUse => 'Shu musiqani ishlatish';
+
+  @override
+  String get musicRemove => 'Musiqani olib tashlash';
+
+  @override
+  String get musicChange => 'Almashtirish';
+
+  @override
+  String get musicLicensed => 'Faqat NFCSTORE kutubxonasidagi ruxsatli musiqa';
+
+  @override
+  String get reelPickMedia => 'Rasm yoki video tanlash';
+
+  @override
+  String get reelPhotoHint => 'Rasm Reels’da 10 soniya ko‘rinadi';
 }

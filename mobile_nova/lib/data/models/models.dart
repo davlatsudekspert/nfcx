@@ -1202,9 +1202,23 @@ class Post {
     this.kind = 'post',
     this.authorKind = 'card',
     this.featured = false,
+    this.music,
+    this.reel = false,
+    this.imageSeconds = 10,
   });
 
   final int id;
+
+  /// Postga qo'yilgan musiqa (NFCSTORE kutubxonasidan) — bo'lmasa `null`.
+  final MusicTrack? music;
+
+  /// Rasmli reel: rasm Reels'da ham chiqadi va [imageSeconds] soniya
+  /// turadi (egasi: "reelsga rasm ham qo'yilsin, default 10 sekund").
+  final bool reel;
+  final int imageSeconds;
+
+  /// Reels'da ko'rsatiladimi: video yoki rasmli reel.
+  bool get inReels => isVideo || reel;
 
   /// Muallifning NFC ID kodi — profilga o'tish uchun.
   final String code;
@@ -1264,6 +1278,9 @@ class Post {
         kind: kind ?? this.kind,
         authorKind: authorKind ?? this.authorKind,
         featured: featured,
+        music: music,
+        reel: reel,
+        imageSeconds: imageSeconds,
       );
 
   Post copyWith({int? likes, bool? liked, bool? saved, int? comments}) => Post(
@@ -1285,6 +1302,9 @@ class Post {
         // va u yo'qolsa odam like bosgan zahoti "Homiylik" yozuvi
         // o'chib ketardi — ya'ni to'langan joylashuv yashirinardi.
         featured: featured,
+        music: music,
+        reel: reel,
+        imageSeconds: imageSeconds,
       );
 
   factory Post.fromJson(Map<String, dynamic> j) {
@@ -1339,8 +1359,65 @@ class Post {
           _s(j['type']) == 'reel',
       kind: _s(j['kind'], 'post'),
       authorKind: _s(j['authorKind'], 'card'),
+      music: j['music'] is Map
+          ? MusicTrack.fromJson((j['music'] as Map).cast<String, dynamic>())
+          : null,
+      reel: _b(j['reel']),
+      imageSeconds: _i(j['imageSeconds'], 10).clamp(3, 60),
     );
   }
+}
+
+/// NFCSTORE musiqa kutubxonasidagi trek (`GET /api/music`) yoki postga
+/// qo'yilgan musiqa (`post.music`, u yerda [start] ham bor).
+class MusicTrack {
+  const MusicTrack({
+    required this.id,
+    this.title = '',
+    this.artist = '',
+    this.genre = '',
+    this.durationSec = 0,
+    this.audioUrl = '',
+    this.clipUrl = '',
+    this.start = 0,
+    this.uses = 0,
+  });
+
+  final int id;
+  final String title;
+  final String artist;
+  final String genre;
+  final int durationSec;
+  final String audioUrl;
+
+  /// 30 soniyalik eng yaxshi bo'lak — tinglash va postda shu o'ynaydi.
+  final String clipUrl;
+
+  /// To'liq trekda boshlanish nuqtasi (soniya).
+  final int start;
+  final int uses;
+
+  /// Postda o'ynaladigan manba: boshlanish nuqtasi tanlanmagan bo'lsa —
+  /// 30 soniyalik eng yaxshi bo'lak, aks holda to'liq trek.
+  String get playUrl => start == 0 && clipUrl.isNotEmpty ? clipUrl : audioUrl;
+
+  /// Qaysi joydan boshlanadi ([playUrl] ga nisbatan).
+  Duration get playFrom =>
+      start == 0 && clipUrl.isNotEmpty ? Duration.zero : Duration(seconds: start);
+
+  String get label => artist.isEmpty ? title : '$title · $artist';
+
+  factory MusicTrack.fromJson(Map<String, dynamic> j) => MusicTrack(
+        id: _i(j['id']),
+        title: _s(j['title']),
+        artist: _s(j['artist']),
+        genre: _s(j['genre']),
+        durationSec: _i(j['durationSec']),
+        audioUrl: _u(j['audioUrl']),
+        clipUrl: _u(j['clipUrl']),
+        start: _i(j['start']),
+        uses: _i(j['uses']),
+      );
 }
 
 class StoryItem {

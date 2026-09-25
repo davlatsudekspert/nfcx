@@ -4922,6 +4922,60 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Bu hisob o‘chirish navbatida: {date} kuni butunlay o‘chiriladi. Bekor qilish uchun {contact} ga yozing.'**
   String authAccountPendingDeletion(String date, String contact);
+
+  /// No description provided for @musicAdd.
+  ///
+  /// In uz, this message translates to:
+  /// **'Musiqa qo‘shish'**
+  String get musicAdd;
+
+  /// No description provided for @musicSearch.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qo‘shiq yoki ijrochi'**
+  String get musicSearch;
+
+  /// No description provided for @musicEmpty.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hozircha musiqa yo‘q'**
+  String get musicEmpty;
+
+  /// No description provided for @musicUse.
+  ///
+  /// In uz, this message translates to:
+  /// **'Shu musiqani ishlatish'**
+  String get musicUse;
+
+  /// No description provided for @musicRemove.
+  ///
+  /// In uz, this message translates to:
+  /// **'Musiqani olib tashlash'**
+  String get musicRemove;
+
+  /// No description provided for @musicChange.
+  ///
+  /// In uz, this message translates to:
+  /// **'Almashtirish'**
+  String get musicChange;
+
+  /// No description provided for @musicLicensed.
+  ///
+  /// In uz, this message translates to:
+  /// **'Faqat NFCSTORE kutubxonasidagi ruxsatli musiqa'**
+  String get musicLicensed;
+
+  /// No description provided for @reelPickMedia.
+  ///
+  /// In uz, this message translates to:
+  /// **'Rasm yoki video tanlash'**
+  String get reelPickMedia;
+
+  /// No description provided for @reelPhotoHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Rasm Reels’da 10 soniya ko‘rinadi'**
+  String get reelPhotoHint;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

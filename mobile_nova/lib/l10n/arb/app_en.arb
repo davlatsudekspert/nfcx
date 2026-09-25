@@ -935,5 +935,14 @@
   "forgotResend": "Send again",
   "forgotBackToLogin": "Back to sign in",
   "forgotHelp": "Can’t access your email? Get help on Telegram:",
-  "authAccountPendingDeletion": "This account is scheduled for deletion: it will be permanently deleted on {date}. To cancel, write to {contact}."
+  "authAccountPendingDeletion": "This account is scheduled for deletion: it will be permanently deleted on {date}. To cancel, write to {contact}.",
+  "musicAdd": "Add music",
+  "musicSearch": "Song or artist",
+  "musicEmpty": "No music yet",
+  "musicUse": "Use this music",
+  "musicRemove": "Remove music",
+  "musicChange": "Change",
+  "musicLicensed": "Only licensed music from the NFCSTORE library",
+  "reelPickMedia": "Choose a photo or video",
+  "reelPhotoHint": "The photo shows in Reels for 10 seconds"
 }

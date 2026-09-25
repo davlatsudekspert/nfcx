@@ -1031,5 +1031,14 @@
         "type": "String"
       }
     }
-  }
+  },
+  "musicAdd": "Musiqa qo‘shish",
+  "musicSearch": "Qo‘shiq yoki ijrochi",
+  "musicEmpty": "Hozircha musiqa yo‘q",
+  "musicUse": "Shu musiqani ishlatish",
+  "musicRemove": "Musiqani olib tashlash",
+  "musicChange": "Almashtirish",
+  "musicLicensed": "Faqat NFCSTORE kutubxonasidagi ruxsatli musiqa",
+  "reelPickMedia": "Rasm yoki video tanlash",
+  "reelPhotoHint": "Rasm Reels’da 10 soniya ko‘rinadi"
 }

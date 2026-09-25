@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,6 +12,8 @@ import 'comments.dart';
 import 'engagement.dart';
 import 'fullscreen_video.dart' show immersiveVideoFit;
 import 'moderation.dart';
+import 'media_frame.dart' show mediaImage;
+import 'music_picker.dart';
 
 import '../../core/network/api_client.dart';
 import '../../core/utils/result.dart';
@@ -53,7 +57,8 @@ final reelsMutedProvider = StateProvider<bool>((_) => false);
 /// bo'lim baribir ishlashi kerak.
 final reelsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
   final repo = ref.watch(socialRepositoryProvider);
-  bool playable(Post p) => p.isVideo && p.mediaUrls.isNotEmpty;
+  // Video YOKI rasmli reel (rasm 10 soniya turadi — egasi, 2026-09-25).
+  bool playable(Post p) => p.inReels && p.mediaUrls.isNotEmpty;
 
   // `id` bo'yicha yig'iladi: bir video ikkala manbada ham
   // bo'lishi mumkin (o'z kompaniyangga obuna bo'lsang).
@@ -263,6 +268,17 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
                   preload: i == _index + 1 && onReelsTab,
                   preloadNow: _started == _index,
                   onStarted: () => _markStarted(i),
+                  // Rasmli reel vaqti tugadi — keyingisiga o'tiladi.
+                  // Bitta reel bo'lsa — o'zi boshidan aylanadi.
+                  onFinished: items.length < 2
+                      ? null
+                      : () {
+                          if (!_page.hasClients) return;
+                          _page.nextPage(
+                            duration: const Duration(milliseconds: 380),
+                            curve: Curves.easeOutCubic,
+                          );
+                        },
                 ),
               ),
               _Chrome(
@@ -375,9 +391,13 @@ class _ReelPage extends ConsumerStatefulWidget {
     this.preload = false,
     this.preloadNow = true,
     this.onStarted,
+    this.onFinished,
   });
 
   final Post post;
+
+  /// Rasmli reel o'z vaqtini tugatdi (`null` — boshidan aylanadi).
+  final VoidCallback? onFinished;
 
   /// Oldindan yuklash uchun YANGI kontroller qurish mumkinmi —
   /// ko'rinayotgan reel o'ynay boshladimi. Mavjud kontroller (hozirgina
@@ -398,10 +418,106 @@ class _ReelPage extends ConsumerStatefulWidget {
   ConsumerState<_ReelPage> createState() => _ReelPageState();
 }
 
-class _ReelPageState extends ConsumerState<_ReelPage> {
+class _ReelPageState extends ConsumerState<_ReelPage>
+    with SingleTickerProviderStateMixin {
   VideoPlayerController? _controller;
   bool _ready = false;
   bool _failed = false;
+
+  // ── RASMLI REEL VA MUSIQA (2026-09-25) ─────────────────────────────
+  //
+  // Rasmli reel: video kontroller YO'Q, o'rniga [_clock] — rasm
+  // `imageSeconds` (standart 10) soniya turadi, keyin keyingi reel.
+  // Musiqa: alohida audio kontroller [_music]. Video postda musiqa bo'lsa
+  // videoning o'z ovozi o'chiriladi (musiqa uning o'rnini oladi).
+  // Oldindan yuklanayotgan (keyingi) sahifada musiqa YUKLANMAYDI —
+  // tarmoq ko'rinayotgan reelniki.
+  bool get _photo => !widget.post.isVideo;
+  AnimationController? _clock;
+  VideoPlayerController? _music;
+  bool _musicReady = false;
+
+  AnimationController get _photoClock => _clock ??= AnimationController(
+        vsync: this,
+        duration: Duration(seconds: widget.post.imageSeconds),
+      )..addStatusListener(_onClock);
+
+  void _onClock(AnimationStatus s) {
+    if (s != AnimationStatus.completed || !mounted) return;
+    if (!widget.visible || !_onStage) return;
+    final next = widget.onFinished;
+    if (next != null) {
+      next();
+    } else {
+      _clock?.forward(from: 0);
+    }
+  }
+
+  /// Musiqa kontrolleri (faqat ko'rinayotgan sahifada). Ochilmasa —
+  /// reel jim o'ynayveradi, xato ko'rsatilmaydi.
+  Future<VideoPlayerController?> _ensureMusic() async {
+    final m = widget.post.music;
+    if (m == null || m.playUrl.isEmpty) return null;
+    final have = _music;
+    if (have != null) return _musicReady ? have : null;
+    final c = VideoPlayerController.networkUrl(
+      Uri.parse(m.playUrl),
+      videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+    );
+    _music = c;
+    try {
+      await c.initialize();
+      if (!mounted || _music != c) return null;
+      await c.setLooping(true);
+      if (m.playFrom > Duration.zero) await c.seekTo(m.playFrom);
+      _musicReady = true;
+      return c;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void _disposeMusic() {
+    final m = _music;
+    _music = null;
+    _musicReady = false;
+    if (m != null) {
+      m.pause().catchError((_) {});
+      m.dispose();
+    }
+  }
+
+  Future<void> _activatePhoto() async {
+    // Video yo'lida `initialize()` kutilgani uchun ota ekranga xabar
+    // (`onStarted`) va audio egaligi har doim BUILD DAN KEYIN keladi.
+    // Rasmda kutadigan narsa yo'q — shuning uchun bir kadr kechiktiramiz:
+    // aks holda `initState` ichidan otaning `setState` i chaqirilib,
+    // "setState() called during build" bilan yiqilardi.
+    final gen = _gen;
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted || gen != _gen) return;
+    _ready = true;
+    _failed = false;
+    final clock = _photoClock;
+    if (widget.visible && _onStage) {
+      _owner.take(this, _pauseForOther);
+      widget.onStarted?.call();
+      if (clock.isCompleted) clock.reset();
+      clock.forward();
+      final m = await _ensureMusic();
+      if (m != null && mounted && widget.visible && _onStage && clock.isAnimating) {
+        await m.setVolume(ref.read(reelsMutedProvider) ? 0 : 1);
+        await m.play();
+      }
+    } else if (widget.visible) {
+      clock.stop();
+      await _music?.pause();
+    } else {
+      clock.reset();
+      _disposeMusic();
+    }
+    if (mounted) setState(() {});
+  }
 
   /// Izohlar soni — varaqda yangi izoh yozilsa yangilanadi.
   int? _comments;
@@ -454,6 +570,8 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
       if (!mounted || _onStage != on) return;
       if (!on) {
         _controller?.pause();
+        _music?.pause();
+        _clock?.stop();
         _owner.release(this);
         setState(() {});
       } else if (widget.visible) {
@@ -486,6 +604,7 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
   }
 
   Future<void> _activate() async {
+    if (_photo) return _activatePhoto();
     var c = _controller;
     if (c == null) {
       final gen = ++_gen;
@@ -513,14 +632,23 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
       // Video ovoz chiqaradi — u audio EGASI bo'ladi. Profil musiqasi
       // o'ynayotgan bo'lsa to'xtaydi: ikki manba birga ovoz chiqarmaydi.
       _owner.take(this, _pauseForOther);
-      await c.setVolume(ref.read(reelsMutedProvider) ? 0 : 1);
+      final muted = ref.read(reelsMutedProvider);
+      final m = await _ensureMusic();
+      if (!mounted || _controller != c) return;
+      // Musiqa bor — videoning o'z ovozi o'chadi, musiqa chaladi.
+      await c.setVolume(m != null || muted ? 0 : 1);
       await c.play();
+      if (m != null) {
+        await m.setVolume(muted ? 0 : 1);
+        await m.play();
+      }
       // `initialize()` READY holatini kutadi — birinchi kadr ~0.1 s da
       // (o'lchov). Endi keyingi reel yuklansa bo'ladi.
       widget.onStarted?.call();
     } else if (widget.visible) {
       // Ustida boshqa ekran — joyida pauza (boshiga qaytmaydi).
       await c.pause();
+      await _music?.pause();
     } else {
       // Oldindan yuklangan: jim va pauzada, boshidan.
       await c.setVolume(0);
@@ -534,12 +662,18 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
   Future<void> _toggleMute() async {
     final next = !ref.read(reelsMutedProvider);
     ref.read(reelsMutedProvider.notifier).state = next;
-    await _controller?.setVolume(next ? 0 : 1);
+    if (_music != null && _musicReady) {
+      await _music?.setVolume(next ? 0 : 1);
+    } else {
+      await _controller?.setVolume(next ? 0 : 1);
+    }
     if (mounted) setState(() {});
   }
 
   void _pauseForOther() {
     _controller?.pause();
+    _music?.pause();
+    _clock?.stop();
     if (mounted) setState(() {});
   }
 
@@ -555,6 +689,8 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
       c.pause().catchError((_) {});
       c.dispose();
     }
+    _disposeMusic();
+    _clock?.reset();
     _owner.release(this);
     if (mounted) setState(() {});
   }
@@ -563,6 +699,8 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
   void dispose() {
     _gen++;
     _controller?.dispose();
+    _music?.dispose();
+    _clock?.dispose();
     // `ref.read` EMAS: `dispose()` da u istisno otadi.
     _owner.release(this);
     super.dispose();
@@ -577,6 +715,8 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
     final p = widget.post;
     if (p.code.isEmpty) return;
     await _controller?.pause();
+    await _music?.pause();
+    _clock?.stop();
     _owner.release(this);
     if (mounted) setState(() {});
     if (!mounted) return;
@@ -585,6 +725,19 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
   }
 
   void _togglePlay() {
+    if (_photo) {
+      final clock = _photoClock;
+      setState(() {
+        if (clock.isAnimating) {
+          clock.stop();
+          _music?.pause();
+        } else {
+          clock.forward();
+          _music?.play();
+        }
+      });
+      return;
+    }
     final c = _controller;
     if (c == null || !_ready) {
       // Xato bo'lgan video — bosilsa qayta urinish.
@@ -594,7 +747,15 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
       }
       return;
     }
-    setState(() => c.value.isPlaying ? c.pause() : c.play());
+    setState(() {
+      if (c.value.isPlaying) {
+        c.pause();
+        _music?.pause();
+      } else {
+        c.play();
+        if (_musicReady) _music?.play();
+      }
+    });
   }
 
   /// BITTA BOSISH — TOZA REJIM (Instagram): belgilar, pastki panel va
@@ -610,17 +771,43 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
   }
 
   void _holdStart(LongPressStartDetails _) {
+    if (_photo) {
+      if (!_ready) return;
+      _wasPlaying = _photoClock.isAnimating;
+      _photoClock.stop();
+      _music?.pause();
+      setState(() => _holding = true);
+      return;
+    }
     final c = _controller;
     if (c == null || !_ready) return;
     _wasPlaying = c.value.isPlaying;
     c.pause();
+    _music?.pause();
     setState(() => _holding = true);
   }
 
   void _holdEnd(LongPressEndDetails _) {
     if (!_holding) return;
-    if (_wasPlaying && widget.visible) _controller?.play();
+    if (_wasPlaying && widget.visible) {
+      if (_photo) {
+        _photoClock.forward();
+      } else {
+        _controller?.play();
+      }
+      if (_musicReady) _music?.play();
+    }
     setState(() => _holding = false);
+  }
+
+  /// Musiqa belgisi bosildi — reel to'xtaydi, «Shu musiqani ishlatish».
+  Future<void> _openMusic(MusicTrack track) async {
+    await _controller?.pause();
+    await _music?.pause();
+    _clock?.stop();
+    if (!mounted) return;
+    await showMusicUseSheet(context, track);
+    if (mounted) _sync();
   }
 
   Future<void> _like({bool onlyOn = false}) async {
@@ -674,7 +861,9 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
     final following =
         (mine || p.code.isEmpty) ? false : ref.watch(followingOfProvider(p.code));
     final c = _controller;
-    final playing = c != null && _ready && c.value.isPlaying;
+    final playing = _photo
+        ? (_ready && (_clock?.isAnimating ?? false))
+        : c != null && _ready && c.value.isPlaying;
     final clean = ref.watch(reelsCleanProvider);
     final hide = clean || _holding;
     // PASTKI PANELNING HAQIQIY BALANDLIGI.
@@ -696,7 +885,26 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
         fit: StackFit.expand,
         children: [
           const ColoredBox(color: Colors.black),
-          if (_ready && c != null)
+          if (_photo)
+            // RASMLI REEL: orqada xiralashgan nusxa ekranni to'ldiradi,
+            // ustida rasmning o'zi BUTUN ko'rinadi (kesilmaydi).
+            Stack(
+              key: const ValueKey('reel-photo'),
+              fit: StackFit.expand,
+              children: [
+                ImageFiltered(
+                  imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+                  child: Opacity(
+                    opacity: .55,
+                    // Faqat xira FON — cho'zilishi ko'rinmaydi. Asosiy rasm
+                    // pastda `contain`: Reels'da media KESILMAYDI.
+                    child: mediaImage(context, p.mediaUrls.first, fit: BoxFit.fill),
+                  ),
+                ),
+                mediaImage(context, p.mediaUrls.first, fit: BoxFit.contain),
+              ],
+            )
+          else if (_ready && c != null)
             // INSTAGRAM KABI (egasi, 2026-09-24): tik video ekranni
             // to'ldiradi — tepa va pastda qora chiziq qolmaydi (chetdan
             // kesilish ≤ 20%). Yotiq/kvadrat video `contain` — butun
@@ -954,6 +1162,15 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
                     ),
                   ),
                 ],
+                if (p.music != null) ...[
+                  const SizedBox(height: Gap.sm),
+                  MusicChip(
+                    key: const ValueKey('reel-music'),
+                    track: p.music!,
+                    onDark: true,
+                    onTap: () => _openMusic(p.music!),
+                  ),
+                ],
                 if (p.text.isNotEmpty) ...[
                   const SizedBox(height: Gap.sm),
                   Text(
@@ -975,6 +1192,33 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
           ),
           // INGICHKA PROGRESS — Instagram kabi: pastki panelning USTIDA,
           // chetlardan ichkarida, yumaloq uchli oq chiziq.
+          if (_photo && _ready && widget.visible && _clock != null)
+            Positioned(
+              key: const ValueKey('reel-photo-progress'),
+              left: Gap.lg,
+              right: Gap.lg,
+              bottom: navH + 12,
+              child: _Chrome(
+                hidden: hide,
+                child: IgnorePointer(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(2),
+                    child: SizedBox(
+                      height: 2.5,
+                      child: AnimatedBuilder(
+                        animation: _clock!,
+                        builder: (_, __) => LinearProgressIndicator(
+                          value: _clock!.value,
+                          minHeight: 2.5,
+                          color: Colors.white,
+                          backgroundColor: Colors.white24,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           if (_ready && c != null && widget.visible)
             Positioned(
               key: const ValueKey('reel-progress'),

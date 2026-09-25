@@ -2559,4 +2559,31 @@ class LEn extends L {
   String authAccountPendingDeletion(String date, String contact) {
     return 'This account is scheduled for deletion: it will be permanently deleted on $date. To cancel, write to $contact.';
   }
+
+  @override
+  String get musicAdd => 'Add music';
+
+  @override
+  String get musicSearch => 'Song or artist';
+
+  @override
+  String get musicEmpty => 'No music yet';
+
+  @override
+  String get musicUse => 'Use this music';
+
+  @override
+  String get musicRemove => 'Remove music';
+
+  @override
+  String get musicChange => 'Change';
+
+  @override
+  String get musicLicensed => 'Only licensed music from the NFCSTORE library';
+
+  @override
+  String get reelPickMedia => 'Choose a photo or video';
+
+  @override
+  String get reelPhotoHint => 'The photo shows in Reels for 10 seconds';
 }

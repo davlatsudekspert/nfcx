@@ -112,6 +112,9 @@ class SocialRepository {
     String caption = '',
     String imageUrl = '',
     String videoUrl = '',
+    int? musicId,
+    int musicStart = 0,
+    bool reel = false,
   }) async {
     if (imageUrl.isEmpty && videoUrl.isEmpty) {
       return const Err(AppError(
@@ -124,6 +127,10 @@ class SocialRepository {
       if (imageUrl.isNotEmpty) 'imageUrl': imageUrl,
       if (videoUrl.isNotEmpty) 'videoUrl': videoUrl,
       'caption': caption,
+      // Musiqa va rasmli reel — hosting/api/music.js (`readPostExtras`).
+      if (musicId != null) 'musicId': musicId,
+      if (musicId != null && musicStart > 0) 'musicStart': musicStart,
+      if (reel) 'reel': true,
       // Backend kontent qoidalariga roziliksiz post yaratmaydi:
       // `rulesAcceptedD1` tekshiruvi, aks holda 422
       // `rules_not_accepted`.

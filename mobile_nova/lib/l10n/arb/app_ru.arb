@@ -935,5 +935,14 @@
   "forgotResend": "Отправить ещё раз",
   "forgotBackToLogin": "Вернуться ко входу",
   "forgotHelp": "Нет доступа к почте? Помощь в Telegram:",
-  "authAccountPendingDeletion": "Этот аккаунт в очереди на удаление: {date} он будет удалён полностью. Чтобы отменить, напишите на {contact}."
+  "authAccountPendingDeletion": "Этот аккаунт в очереди на удаление: {date} он будет удалён полностью. Чтобы отменить, напишите на {contact}.",
+  "musicAdd": "Добавить музыку",
+  "musicSearch": "Песня или исполнитель",
+  "musicEmpty": "Пока нет музыки",
+  "musicUse": "Использовать эту музыку",
+  "musicRemove": "Убрать музыку",
+  "musicChange": "Заменить",
+  "musicLicensed": "Только разрешённая музыка из библиотеки NFCSTORE",
+  "reelPickMedia": "Выбрать фото или видео",
+  "reelPhotoHint": "Фото показывается в Reels 10 секунд"
 }

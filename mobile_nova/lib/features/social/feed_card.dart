@@ -17,6 +17,7 @@ import '../home/widgets/avatar.dart';
 import '../home/widgets/identity_card.dart';
 import 'engagement.dart';
 import 'media_frame.dart';
+import 'music_picker.dart' show MusicChip;
 import '../../design/icons/nova_icons.dart';
 
 /// LENTA KARTASI — LAYK, IZOH, ULASHISH VA OBUNA.
@@ -187,6 +188,14 @@ class FeedCard extends ConsumerWidget {
               // baribir darhol ochiladi.
               lazyVideo: activeVideo == null,
               activeVideo: activeVideo,
+            ),
+          ],
+          // Postdagi musiqa — bosilsa tinglash va «Shu musiqani ishlatish».
+          if (post.music != null) ...[
+            const SizedBox(height: Gap.md),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: MusicChip(track: post.music!),
             ),
           ],
           if (post.text.isNotEmpty) ...[

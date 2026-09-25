@@ -247,6 +247,9 @@ class BusinessRepository {
     String caption = '',
     String imageUrl = '',
     String videoUrl = '',
+    int? musicId,
+    int musicStart = 0,
+    bool reel = false,
   }) {
     if (imageUrl.isEmpty && videoUrl.isEmpty) {
       return Future.value(const Err(AppError(
@@ -259,6 +262,9 @@ class BusinessRepository {
       if (imageUrl.isNotEmpty) 'imageUrl': imageUrl,
       if (videoUrl.isNotEmpty) 'videoUrl': videoUrl,
       'caption': caption,
+      if (musicId != null) 'musicId': musicId,
+      if (musicId != null && musicStart > 0) 'musicStart': musicStart,
+      if (reel) 'reel': true,
       'agreed': true,
     });
   }

@@ -2555,4 +2555,32 @@ class LRu extends L {
   String authAccountPendingDeletion(String date, String contact) {
     return 'Этот аккаунт в очереди на удаление: $date он будет удалён полностью. Чтобы отменить, напишите на $contact.';
   }
+
+  @override
+  String get musicAdd => 'Добавить музыку';
+
+  @override
+  String get musicSearch => 'Песня или исполнитель';
+
+  @override
+  String get musicEmpty => 'Пока нет музыки';
+
+  @override
+  String get musicUse => 'Использовать эту музыку';
+
+  @override
+  String get musicRemove => 'Убрать музыку';
+
+  @override
+  String get musicChange => 'Заменить';
+
+  @override
+  String get musicLicensed =>
+      'Только разрешённая музыка из библиотеки NFCSTORE';
+
+  @override
+  String get reelPickMedia => 'Выбрать фото или видео';
+
+  @override
+  String get reelPhotoHint => 'Фото показывается в Reels 10 секунд';
 }

@@ -33,6 +33,7 @@ import 'story_viewer.dart';
 import 'media_frame.dart';
 import 'content_rules.dart';
 import 'moderation.dart';
+import 'music_picker.dart';
 import '../../design/icons/nova_icons.dart';
 
 /// Post tafsiloti uchun so'rov: yozuv kodi + post id.
@@ -245,6 +246,13 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                   borderRadius: R.gentle,
                 ),
               ],
+              if (p.music != null) ...[
+                const SizedBox(height: Gap.lg),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: MusicChip(track: p.music!),
+                ),
+              ],
               if (p.text.isNotEmpty) ...[
                 const SizedBox(height: Gap.lg),
                 Text(p.text, style: Theme.of(context).textTheme.bodyLarge),
@@ -430,7 +438,37 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
   /// "ilova buzuq" deb o'ylaydi.
   bool _locked = false;
 
-  bool get _video => widget.kind == ComposerKind.reel;
+  /// Tanlangan fayl VIDEOmi. Reel endi rasm ham bo'la oladi (egasi:
+  /// "reelsga rasm ham qo'yilsin, default 10 sekund bo'lsin").
+  bool _fileIsVideo = false;
+  bool get _video => _file != null && _fileIsVideo;
+
+  /// Reel — rasm yoki video; post — faqat rasm; istorya — avvalgidek.
+  bool get _isReel => widget.kind == ComposerKind.reel;
+
+  /// Postga qo'yilgan musiqa (NFCSTORE kutubxonasidan).
+  MusicTrack? _music;
+
+  /// Musiqa qo'shsa bo'ladimi — post va reel (istoryada hozircha yo'q).
+  bool get _musicAllowed => widget.kind != ComposerKind.story;
+
+  @override
+  void initState() {
+    super.initState();
+    // «Shu musiqani ishlatish» dan kelindi — trek oldindan tanlangan.
+    final pending = ref.read(pendingComposerMusicProvider);
+    if (pending != null && _musicAllowed) {
+      _music = pending;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) ref.read(pendingComposerMusicProvider.notifier).state = null;
+      });
+    }
+  }
+
+  Future<void> _pickMusic() async {
+    final picked = await showMusicPicker(context);
+    if (picked != null && mounted) setState(() => _music = picked);
+  }
 
   @override
   void dispose() {
@@ -438,8 +476,8 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
     super.dispose();
   }
 
-  Future<void> _pick(ImageSource source) async {
-    final f = _video
+  Future<void> _pick(ImageSource source, {bool video = false}) async {
+    final f = video
         ? await _picker.pickVideo(source: source)
         // Yuklashdan OLDIN kichraytiriladi: 12 MP telefon rasmi mobil
         // internetda daqiqalab ketardi va serverda ham keraksiz.
@@ -448,7 +486,12 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
             maxWidth: 1600,
             imageQuality: 85,
           );
-    if (f != null && mounted) setState(() => _file = f);
+    if (f != null && mounted) {
+      setState(() {
+        _file = f;
+        _fileIsVideo = video;
+      });
+    }
   }
 
   Future<void> _publish() async {
@@ -558,6 +601,8 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
               caption: caption,
               imageUrl: image,
               videoUrl: video,
+              musicId: _music?.id,
+              reel: _isReel && video.isEmpty,
             )
             .then((r) => r.map((_) => null)),
       (ComposerKind.post || ComposerKind.reel, false) =>
@@ -567,6 +612,8 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
               caption: caption,
               imageUrl: image,
               videoUrl: video,
+              musicId: _music?.id,
+              reel: _isReel && video.isEmpty,
             )
             .then((r) => r.map((_) => null)),
     };
@@ -676,7 +723,7 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          _video
+                          _isReel
                               ? Icons.videocam_rounded
                               : Icons.add_photo_alternate_rounded,
                           size: 34,
@@ -684,7 +731,7 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
                         ),
                         const SizedBox(height: Gap.sm),
                         Text(
-                          _video ? l.mediaPickVideo : l.mediaPickPhoto,
+                          _isReel ? l.reelPickMedia : l.mediaPickPhoto,
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       ],
@@ -750,6 +797,73 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
                         ),
             ),
           ),
+          // Rasmli reel — Reels'da necha soniya turishi aytiladi.
+          if (_isReel && _file != null && !_fileIsVideo) ...[
+            const SizedBox(height: Gap.sm),
+            Row(
+              key: const ValueKey('reel-photo-hint'),
+              children: [
+                Icon(Icons.timer_outlined, size: 15, color: t.text3),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(l.reelPhotoHint,
+                      style: Theme.of(context).textTheme.bodySmall),
+                ),
+              ],
+            ),
+          ],
+          // MUSIQA — NFCSTORE kutubxonasidan (post va reel).
+          if (_musicAllowed) ...[
+            const SizedBox(height: Gap.lg),
+            _music == null
+                ? PressableScale(
+                    onTap: _busy ? null : _pickMusic,
+                    child: Container(
+                      key: const ValueKey('composer-music-add'),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: Gap.lg, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: t.surfaceSolid,
+                        borderRadius: R.gentle,
+                        border: Border.all(color: t.border2),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.music_note_rounded, color: t.text1),
+                          const SizedBox(width: Gap.md),
+                          Expanded(
+                            child: Text(l.musicAdd,
+                                style: TextStyle(
+                                    fontFamily: AppType.sans,
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: t.text1)),
+                          ),
+                          Icon(Icons.chevron_right_rounded, color: t.text3),
+                        ],
+                      ),
+                    ),
+                  )
+                : Row(
+                    key: const ValueKey('composer-music-picked'),
+                    children: [
+                      Flexible(
+                        child: MusicChip(
+                          track: _music!,
+                          onTap: _busy ? () {} : _pickMusic,
+                        ),
+                      ),
+                      const SizedBox(width: Gap.xs),
+                      IconButton(
+                        key: const ValueKey('composer-music-remove'),
+                        tooltip: l.musicRemove,
+                        onPressed:
+                            _busy ? null : () => setState(() => _music = null),
+                        icon: Icon(Icons.close_rounded, color: t.text2),
+                      ),
+                    ],
+                  ),
+          ],
           // Izoh — istoryada ham (server `caption` ni qabul qiladi),
           // lekin qisqa: istorya ustida uzun matn o'qilmaydi.
           const SizedBox(height: Gap.xl),
@@ -845,22 +959,47 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Reel: rasm HAM, video HAM. Istorya: avvalgidek (rasm).
             ListTile(
+              key: const ValueKey('pick-gallery-photo'),
               leading: const Icon(Icons.photo_library_rounded),
-              title: Text(l.mediaGallery),
+              title: Text(_isReel ? l.mediaPickPhoto : l.mediaGallery),
+              subtitle: _isReel ? Text(l.mediaGallery) : null,
               onTap: () {
                 Navigator.pop(context);
                 _pick(ImageSource.gallery);
               },
             ),
+            if (_isReel)
+              ListTile(
+                key: const ValueKey('pick-gallery-video'),
+                leading: const Icon(Icons.video_library_rounded),
+                title: Text(l.mediaPickVideo),
+                subtitle: Text(l.mediaGallery),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pick(ImageSource.gallery, video: true);
+                },
+              ),
             ListTile(
               leading: const Icon(Icons.photo_camera_rounded),
-              title: Text(l.mediaCamera),
+              title: Text(_isReel ? l.mediaPickPhoto : l.mediaCamera),
+              subtitle: _isReel ? Text(l.mediaCamera) : null,
               onTap: () {
                 Navigator.pop(context);
                 _pick(ImageSource.camera);
               },
             ),
+            if (_isReel)
+              ListTile(
+                leading: const Icon(Icons.videocam_rounded),
+                title: Text(l.mediaPickVideo),
+                subtitle: Text(l.mediaCamera),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pick(ImageSource.camera, video: true);
+                },
+              ),
           ],
         ),
       ),
