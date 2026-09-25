@@ -209,6 +209,22 @@ jobs:
       - name: Hisobni butunlay o'chirish (purge) to'g'rimi
         run: node scripts/test-account-deletion.mjs
 
+      # TO'LOVLAR — FAQAT PAYME/CLICK HISOBGA (egasining qarori, 2026-09-25).
+      #
+      # Admin daromadi, Moliya va Excel faqat Payme/Click orqali tushgan
+      # va qaytarilmagan pulni hisoblaydi; qo'lda tasdiqlangan, eski,
+      # sinov va bot yozuvlari «Boshqa»da (o'chirilmaydi). Click Prepare/
+      # Complete marshruti ulanmagan edi — endi imzo, summa va takror
+      # so'rovlar bilan tekshiriladi.
+      - name: Click to'lovi (Prepare/Complete) ishlaydimi
+        run: node scripts/test-click-webhook.mjs
+
+      - name: Admin daromadi faqat Payme/Click bo'yichami
+        run: node scripts/test-admin-revenue.mjs
+
+      - name: Moliya bo'limi va Excel hisobot to'g'rimi
+        run: node scripts/test-admin-finance.mjs
+
       # PROFIL SAHIFALARINING MAKETI.
       #
       # Ikkala profilda ham (shaxsiy `/:code` va biznes `/c/:id`)

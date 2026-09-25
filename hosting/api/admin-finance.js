@@ -6,7 +6,7 @@
 // shakllari legacy Express bilan bir xil (src/pages/AdminPage.jsx FinanceTab
 // shunga bog'langan). /api/admin/finance/overview core dispatch'da (worker.js).
 //
-//   GET    /api/admin/finance/transactions   ?range=|from=&to=&type=|kind=&status=&q=&page=&limit=
+//   GET    /api/admin/finance/transactions   ?range=|from=&to=&type=|kind=&status=&channel=&q=&page=&limit=
 //   GET    /api/admin/finance/reconciliation ?year=YYYY | ?period=YYYY-MM
 //   POST   /api/admin/finance/bank-actual    {period, actualAmount, note}
 //   GET    /api/admin/finance/rates
@@ -24,7 +24,7 @@ const PREFIX = '/api/admin/finance/';
 const RATE_SCOPES = ['payme', 'bank', 'tax'];
 const EXPENSE_CATEGORIES = ['hosting', 'domain', 'ads', 'printing', 'delivery', 'office', 'salary', 'tax', 'bank', 'other'];
 const DOC_TYPES = ['payme_report', 'bank_statement', 'tax', 'invoice', 'receipt', 'other'];
-const TX_KINDS = ['card_purchase', 'auction_payment', 'premium_upgrade', 'premium_follow', 'physical_card_order'];
+const TX_KINDS = ['card_purchase', 'auction_payment', 'premium_upgrade', 'premium_follow', 'physical_card_order', 'featured_slot', 'payme_test'];
 const TX_STATUSES = ['paid', 'cancelled', 'failed_code_taken'];
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
 const YM_RE = /^\d{4}-\d{2}$/;
@@ -139,17 +139,51 @@ async function getRates(env) {
   return { current, history };
 }
 
+// ---------- to'lov kanali (egasining qarori, 2026-09-25) ----------
+// Hisob-kitob FAQAT Payme/Click orqali tushgan va qaytarilmagan pul
+// bo'yicha. Guruhlar worker.js dagi `revenueBucketSqlD1` dan (H orqali)
+// olinadi — admin panelning hamma joyida (Umumiy, Moliya, Excel) raqam
+// BITTA manbadan chiqadi:
+//   counted  — tushum (Payme/Click, sinov/ichki akkaunt emas);
+//   refunded — qaytarilgan: `grossSales` ga KIRMAYDI (u allaqachon
+//              ularsiz) va `refunds` da faqat ma'lumot — ikki marta
+//              ayirilmaydi;
+//   other    — «Boshqa»: qo'lda tasdiqlangan, eski, Payme sinovi, sinov/
+//              ichki akkaunt to'lovlari va eski Telegram bot buyurtmalari.
+// Hech narsa o'chirilmaydi.
+const TX_CHANNELS = ['counted', 'other', 'refunded', 'payme', 'click', 'manual', 'test', 'legacy', 'bot'];
+const WIN_SQL = `substr(w.created_at,1,10) BETWEEN date(?) AND date(?)`;
+// bot_orders bazaviy sxemada bor; tekshiruv — u yo'q bazada butun ro'yxat
+// (UNION) yiqilmasligi uchun. Bir baza uchun bir marta.
+const tableSeen = new WeakMap();
+function hasTable(env, name) {
+  let m = tableSeen.get(env.DB);
+  if (!m) { m = new Map(); tableSeen.set(env.DB, m); }
+  if (!m.has(name)) {
+    m.set(name, env.DB.prepare(`SELECT 1 AS x FROM sqlite_master WHERE type = 'table' AND name = ?`).bind(name).first()
+      .then((r) => !!r).catch(() => false));
+  }
+  return m.get(name);
+}
+async function botPaidTotal(env, fromIso, toIso) {
+  if (!(await hasTable(env, 'bot_orders'))) return { total: 0, n: 0 };
+  const r = await env.DB.prepare(`SELECT COALESCE(SUM(price),0) AS total, COUNT(*) AS n FROM bot_orders WHERE status = 'paid' AND substr(created_at,1,10) BETWEEN date(?) AND date(?)`)
+    .bind(fromIso, toIso).first().catch(() => null);
+  return { total: Number(r?.total || 0), n: Number(r?.n || 0) };
+}
+
 // ---------- davr hisob-kitobi (legacy financeComputePeriod porti) ----------
 const paymeFeeFor = (price, p) => Math.round(price * (Number(p.pct) || 0) / 100) + (Number(p.fixed) || 0);
-async function computePeriod(env, fromIso, toIso) {
-  const [web, bot] = await Promise.all([
-    env.DB.prepare(`SELECT kind, price, substr(created_at,1,10) AS day FROM web_orders WHERE status = 'paid' AND substr(created_at,1,10) BETWEEN date(?) AND date(?)`).bind(fromIso, toIso).all(),
-    env.DB.prepare(`SELECT price, substr(created_at,1,10) AS day FROM bot_orders WHERE status = 'paid' AND substr(created_at,1,10) BETWEEN date(?) AND date(?)`).bind(fromIso, toIso).all().catch(() => ({ results: [] })),
+async function computePeriod(env, H, fromIso, toIso) {
+  await H.ensureWebOrderTimestampColumns(env);
+  const sumOf = (bucket) => env.DB.prepare(`SELECT COALESCE(SUM(w.price),0) AS total, COUNT(*) AS n FROM web_orders w WHERE ${H.revenueBucketSqlD1(bucket, 'w')} AND ${WIN_SQL}`).bind(fromIso, toIso).first();
+  const [web, refundRow, otherRow, bot] = await Promise.all([
+    env.DB.prepare(`SELECT w.kind, w.price, substr(w.created_at,1,10) AS day FROM web_orders w WHERE ${H.revenueBucketSqlD1('counted', 'w')} AND ${WIN_SQL}`).bind(fromIso, toIso).all(),
+    sumOf('refunded'),
+    sumOf('other'),
+    botPaidTotal(env, fromIso, toIso),
   ]);
-  const orders = [
-    ...(web.results || []).map((r) => ({ price: Number(r.price) || 0, kind: r.kind || 'card_purchase', day: r.day })),
-    ...(bot.results || []).map((r) => ({ price: Number(r.price) || 0, kind: 'card_purchase', day: r.day })),
-  ];
+  const orders = (web.results || []).map((r) => ({ price: Number(r.price) || 0, kind: r.kind || 'card_purchase', day: r.day }));
   const paymeOn = rateCache(env, 'payme');
   let grossSales = 0; let paymeFee = 0; const byType = {};
   for (const o of orders) {
@@ -162,7 +196,9 @@ async function computePeriod(env, fromIso, toIso) {
   const toDate = ymd(toIso);
   const [paymeParams, bankParams, taxParams] = await Promise.all([rateOn(env, 'payme', toDate), rateOn(env, 'bank', toDate), rateOn(env, 'tax', toDate)]);
   const paymeMode = paymeParams.mode === 'separate' ? 'separate' : 'settlement_deducted';
-  const refunds = 0; // Refund — hozircha tizimda ma'lumot yo'q. Kelajakda alohida jadval.
+  // Faqat ma'lumot: `grossSales` allaqachon qaytarilganlarsiz (yuqoriga qarang).
+  const refunds = Number(refundRow?.total || 0);
+  const refundCount = Number(refundRow?.n || 0);
 
   const exp = await env.DB.prepare(`SELECT COALESCE(SUM(amount),0) AS total FROM finance_expenses WHERE spent_on BETWEEN ? AND ?`).bind(ymd(fromIso), toDate).first();
   const manualExpenses = Number(exp?.total || 0);
@@ -171,10 +207,10 @@ async function computePeriod(env, fromIso, toIso) {
   // Davr uchun umuman yozuv bo'lmasa — "hali kiritilmagan" (null), 0 bilan aralashmasin.
   const actualBankSettlement = Number(bank?.n || 0) > 0 ? Number(bank.total || 0) : null;
 
-  const expectedBankSettlement = paymeMode === 'settlement_deducted' ? grossSales - refunds - paymeFee : grossSales - refunds;
+  const expectedBankSettlement = paymeMode === 'settlement_deducted' ? grossSales - paymeFee : grossSales;
   const reconciliationDifference = actualBankSettlement != null ? actualBankSettlement - expectedBankSettlement : null;
   // §8: Payme komissiyasi soliq bazasidan AVTOMATIK chiqarilmaydi.
-  const taxBase = grossSales - refunds;
+  const taxBase = grossSales;
   const turnoverPct = Number(taxParams.turnoverPct) || 0;
   const turnoverTax = Math.round(taxBase * turnoverPct / 100);
   const socialMonthly = Number(taxParams.socialMonthly) || 0;
@@ -184,18 +220,22 @@ async function computePeriod(env, fromIso, toIso) {
   const netCashFlow = settlementForNet - bankFees - turnoverTax - socialTax - manualExpenses;
   return {
     fromIso, toIso, months,
-    grossSales, refunds, paymeFee, paymeMode,
+    grossSales, refunds, refundCount, paymeFee, paymeMode,
     expectedBankSettlement, actualBankSettlement, reconciliationDifference,
     taxBase, turnoverPct, turnoverTax, socialMonthly, socialTax,
     bankFees, manualExpenses, netCashFlow,
     orderCount: orders.length,
+    // «Boshqa» — hisobga kirmagan "to'langan" yozuvlar (qo'lda, eski, sinov, bot).
+    otherGross: Number(otherRow?.total || 0) + bot.total,
+    otherCount: Number(otherRow?.n || 0) + bot.n,
     byType: Object.entries(byType).map(([kind, total]) => ({ kind, total })).sort((a, b) => b.total - a.total),
     rates: { payme: paymeParams, bank: bankParams, tax: taxParams },
     ratesConfigured: Boolean((Number(paymeParams.pct) || Number(paymeParams.fixed)) || Number(taxParams.turnoverPct) || Number(taxParams.socialMonthly) || Number(bankParams.monthlyFee)),
   };
 }
-async function dailyBreakdown(env, fromIso, toIso) {
-  const rows = (await env.DB.prepare(`SELECT substr(created_at,1,10) AS day, COALESCE(SUM(price),0) AS gross, COUNT(*) AS orders FROM web_orders WHERE status = 'paid' AND substr(created_at,1,10) BETWEEN date(?) AND date(?) GROUP BY substr(created_at,1,10) ORDER BY day`).bind(fromIso, toIso).all()).results || [];
+async function dailyBreakdown(env, H, fromIso, toIso) {
+  await H.ensureWebOrderTimestampColumns(env);
+  const rows = (await env.DB.prepare(`SELECT substr(w.created_at,1,10) AS day, COALESCE(SUM(w.price),0) AS gross, COUNT(*) AS orders FROM web_orders w WHERE ${H.revenueBucketSqlD1('counted', 'w')} AND ${WIN_SQL} GROUP BY substr(w.created_at,1,10) ORDER BY day`).bind(fromIso, toIso).all()).results || [];
   const paymeOn = rateCache(env, 'payme');
   const out = [];
   for (const r of rows) {
@@ -207,11 +247,12 @@ async function dailyBreakdown(env, fromIso, toIso) {
   return out;
 }
 // Oy bo'yicha reconciliation: expected (hisob) ↔ actual (admin kiritgan).
-async function monthlyReconciliation(env, year) {
+async function monthlyReconciliation(env, H, year) {
   const y = String(year);
+  await H.ensureWebOrderTimestampColumns(env);
   const [actuals, sales] = await Promise.all([
     env.DB.prepare(`SELECT period, actual_amount, note, updated_at FROM finance_bank_actuals WHERE period LIKE ? ORDER BY period`).bind(`${y}-%`).all(),
-    env.DB.prepare(`SELECT substr(created_at,1,7) AS period, COALESCE(SUM(price),0) AS gross, COUNT(*) AS orders FROM web_orders WHERE status = 'paid' AND substr(created_at,1,4) = ? GROUP BY substr(created_at,1,7)`).bind(y).all(),
+    env.DB.prepare(`SELECT substr(w.created_at,1,7) AS period, COALESCE(SUM(w.price),0) AS gross, COUNT(*) AS orders FROM web_orders w WHERE ${H.revenueBucketSqlD1('counted', 'w')} AND substr(w.created_at,1,4) = ? GROUP BY substr(w.created_at,1,7)`).bind(y).all(),
   ]);
   const actualMap = Object.fromEntries((actuals.results || []).map((a) => [a.period, a]));
   const salesMap = Object.fromEntries((sales.results || []).map((s) => [s.period, s]));
@@ -232,35 +273,58 @@ async function monthlyReconciliation(env, year) {
   return out;
 }
 
-// Tranzaksiyalar ro'yxati (sayt + bot buyurtmalari birlashtirilgan, legacy shakl).
-async function listTransactions(env, { fromIso, toIso, type = '', status = '', q = '', page = 1, limit = 50 }) {
-  const lim = Math.min(200, Math.max(10, Number(limit) || 50));
+// Tranzaksiyalar ro'yxati — sayt + bot buyurtmalari BITTA so'rovda
+// (UNION ALL). Ilgari bot qatorlari alohida olinib HAR SAHIFAGA qayta
+// qo'shilardi va `total` noto'g'ri chiqardi; endi sahifalash ikkala
+// manba ustida birga.
+//   channel: '' (hammasi) | counted (hisobga kirgan: Payme/Click) |
+//            other («Boshqa»: to'langan, lekin hisobga kirmagan) |
+//            refunded | payme | click | manual | test | legacy | bot
+async function listTransactions(env, H, { fromIso, toIso, type = '', status = '', channel = '', q = '', page = 1, limit = 50, maxLimit = 200 }) {
+  const lim = Math.min(maxLimit, Math.max(10, Number(limit) || 50));
   const pg = Math.max(1, Number(page) || 1);
   const off = (pg - 1) * lim;
+  await H.ensureWebOrderTimestampColumns(env);
   const args = [fromIso, toIso];
-  const where = [`w.status <> 'pending'`, `substr(w.created_at,1,10) BETWEEN date(?) AND date(?)`];
+  const where = [`w.status <> 'pending'`, WIN_SQL];
   if (type) { args.push(type); where.push(`w.kind = ?`); }
   if (status) { args.push(status); where.push(`w.status = ?`); }
-  if (q) { const like = `%${q}%`; args.push(like, like, like); where.push(`(LOWER(w.code) LIKE LOWER(?) OR LOWER(u.email) LIKE LOWER(?) OR LOWER(w.payme_transaction_id) LIKE LOWER(?))`); }
-  const [web, cnt] = await Promise.all([
-    env.DB.prepare(`SELECT w.id, 'web' AS source, w.kind, w.code, w.price AS amount, w.status, w.payme_transaction_id AS paymeTxnId, u.email AS userEmail, w.created_at AS createdAt
-      FROM web_orders w LEFT JOIN users u ON u.id = w.user_id WHERE ${where.join(' AND ')} ORDER BY w.created_at DESC, w.id DESC LIMIT ? OFFSET ?`).bind(...args, lim, off).all(),
-    env.DB.prepare(`SELECT COUNT(*) AS n FROM web_orders w LEFT JOIN users u ON u.id = w.user_id WHERE ${where.join(' AND ')}`).bind(...args).first(),
-  ]);
-  let bot = [];
-  if (!type || type === 'card_purchase') {
-    const bArgs = [fromIso, toIso];
-    const bWhere = [`status <> 'pending'`, `substr(created_at,1,10) BETWEEN date(?) AND date(?)`];
-    if (status) { bArgs.push(status); bWhere.push(`status = ?`); }
-    if (q) { bArgs.push(`%${q}%`); bWhere.push(`LOWER(code) LIKE LOWER(?)`); }
-    const r = await env.DB.prepare(`SELECT id, 'bot' AS source, 'card_purchase' AS kind, code, price AS amount, status, NULL AS paymeTxnId, tg_name AS userEmail, created_at AS createdAt
-      FROM bot_orders WHERE ${bWhere.join(' AND ')} ORDER BY created_at DESC LIMIT 100`).bind(...bArgs).all().catch(() => ({ results: [] }));
-    bot = r.results || [];
+  if (q) { const like = `%${q}%`; args.push(like, like, like, like); where.push(`(LOWER(w.code) LIKE LOWER(?) OR LOWER(u.email) LIKE LOWER(?) OR LOWER(w.payme_transaction_id) LIKE LOWER(?) OR LOWER(w.click_transaction_id) LIKE LOWER(?))`); }
+  const parts = [`SELECT w.id, 'web' AS source, w.kind, w.code, w.price AS amount, w.status,
+      w.payme_transaction_id AS paymeTxnId, w.click_transaction_id AS clickTxnId, u.email AS userEmail, w.created_at AS createdAt,
+      ${H.webOrderChannelSqlD1('w')} AS channel,
+      (w.status = 'paid' AND w.cancel_time IS NOT NULL) AS refunded,
+      (w.user_id IN ${H.TEST_USER_IDS_D1}) AS testUser,
+      (CASE WHEN ${H.revenueBucketSqlD1('counted', 'w')} THEN 'counted'
+            WHEN ${H.revenueBucketSqlD1('refunded', 'w')} THEN 'refunded'
+            WHEN w.status = 'paid' THEN 'other' ELSE '' END) AS bucket
+    FROM web_orders w LEFT JOIN users u ON u.id = w.user_id WHERE ${where.join(' AND ')}`];
+  // Bot faqat NFC ID sotgan (kind = card_purchase); u hech qachon hisobga kirmaydi.
+  if ((!type || type === 'card_purchase') && await hasTable(env, 'bot_orders')) {
+    const bWhere = [`b.status <> 'pending'`, `substr(b.created_at,1,10) BETWEEN date(?) AND date(?)`];
+    args.push(fromIso, toIso);
+    if (status) { args.push(status); bWhere.push(`b.status = ?`); }
+    if (q) { args.push(`%${q}%`); bWhere.push(`LOWER(b.code) LIKE LOWER(?)`); }
+    parts.push(`SELECT b.id, 'bot', 'card_purchase', b.code, b.price, b.status, NULL, NULL, b.tg_name, b.created_at, 'bot', 0, 0,
+        (CASE WHEN b.status = 'paid' THEN 'other' ELSE '' END)
+      FROM bot_orders b WHERE ${bWhere.join(' AND ')}`);
   }
-  const items = [...(web.results || []), ...bot]
-    .map((r) => ({ ...r, amount: Number(r.amount) }))
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  return { items, total: Number(cnt?.n || 0) + bot.length, page: pg, limit: lim };
+  const outer = []; const outerArgs = [];
+  if (['counted', 'refunded', 'other'].includes(channel)) { outer.push(`t.bucket = ?`); outerArgs.push(channel); }
+  else if (channel) { outer.push(`t.channel = ?`); outerArgs.push(channel); }
+  const from = `(${parts.join(' UNION ALL ')}) t${outer.length ? ` WHERE ${outer.join(' AND ')}` : ''}`;
+  const [rows, cnt] = await Promise.all([
+    // "2026-03-05T10:00" va "2026-03-05 10:00" ikkala shakl ham bor —
+    // sana va soat alohida solishtiriladi ('T' belgisi tartibni buzmasin).
+    env.DB.prepare(`SELECT t.* FROM ${from} ORDER BY substr(t.createdAt,1,10) DESC, substr(t.createdAt,12,8) DESC, t.source DESC, t.id DESC LIMIT ? OFFSET ?`).bind(...args, ...outerArgs, lim, off).all(),
+    env.DB.prepare(`SELECT COUNT(*) AS n, COALESCE(SUM(CASE WHEN t.status = 'paid' THEN t.amount END),0) AS paidSum FROM ${from}`).bind(...args, ...outerArgs).first(),
+  ]);
+  const items = (rows.results || []).map((r) => ({
+    id: r.id, source: r.source, kind: r.kind, code: r.code, amount: Number(r.amount), status: r.status,
+    paymeTxnId: r.paymeTxnId || null, clickTxnId: r.clickTxnId || null, userEmail: r.userEmail, createdAt: r.createdAt,
+    channel: String(r.channel || ''), refunded: !!Number(r.refunded || 0), testUser: !!Number(r.testUser || 0), bucket: String(r.bucket || ''),
+  }));
+  return { items, total: Number(cnt?.n || 0), paidAmount: Number(cnt?.paidSum || 0), page: pg, limit: lim };
 }
 
 const expenseRow = (r) => ({ id: r.id, title: r.title, category: r.category, amount: Number(r.amount), spentOn: String(r.spent_on).slice(0, 10), note: r.note, createdAt: r.created_at });
@@ -328,10 +392,15 @@ function buildXlsx(sheets) {
 }
 
 // Buxgalter uchun paket — jamlama + tranzaksiyalar + kunlik + oylik solishtirish.
-async function buildReport(env, r) {
-  const [ov, daily, tx] = await Promise.all([computePeriod(env, r.fromIso, r.toIso), dailyBreakdown(env, r.fromIso, r.toIso), listTransactions(env, { fromIso: r.fromIso, toIso: r.toIso, limit: 200, page: 1 })]);
+// Tranzaksiyalar varag'i — hisobga KIRGAN to'lovlar (jamlama bilan bir xil
+// manba); «Boshqa» faqat jamlamada son va summa sifatida. Buxgalterga
+// HAMMA qator kerak: chegara katta, oshsa varaqda ochiq yoziladi.
+const REPORT_TX_MAX = 5000;
+const CHANNEL_LABEL = { payme: 'Payme', click: 'Click', manual: 'Qo‘lda', test: 'Sinov', legacy: 'Eski', bot: 'Bot' };
+async function buildReport(env, H, r) {
+  const [ov, daily, tx] = await Promise.all([computePeriod(env, H, r.fromIso, r.toIso), dailyBreakdown(env, H, r.fromIso, r.toIso), listTransactions(env, H, { fromIso: r.fromIso, toIso: r.toIso, channel: 'counted', limit: REPORT_TX_MAX, maxLimit: REPORT_TX_MAX, page: 1 })]);
   const year = new Date(r.toIso).getUTCFullYear();
-  const recon = await monthlyReconciliation(env, year);
+  const recon = await monthlyReconciliation(env, H, year);
   return { overview: ov, daily, transactions: tx, reconciliation: { year, months: recon }, range: r.range };
 }
 function reportXlsx({ overview: ov, daily, transactions: tx, reconciliation }) {
@@ -339,7 +408,8 @@ function reportXlsx({ overview: ov, daily, transactions: tx, reconciliation }) {
     ['MOLIYA HISOBOTI (ichki / dastlabki)', ''],
     ['Oraliq', `${ov.fromIso.slice(0, 10)} … ${ov.toIso.slice(0, 10)}`],
     [],
-    ['Jami savdo (gross)', ov.grossSales], ['Refund', ov.refunds], ['Payme komissiyasi', ov.paymeFee],
+    ['Jami savdo — Payme/Click (qaytarilganlarsiz)', ov.grossSales], ['To‘langan buyurtmalar', ov.orderCount],
+    ['Qaytarilgan (refund) — jamiga kirmagan', ov.refunds], ['Payme komissiyasi', ov.paymeFee],
     ['Payme rejimi', ov.paymeMode === 'settlement_deducted' ? 'Settlementdan ushlanadi' : 'Alohida'],
     ['Payme’dan kutilgan tushum (expected)', ov.expectedBankSettlement],
     ['Bankka real tushgan (actual)', ov.actualBankSettlement == null ? 'kiritilmagan' : ov.actualBankSettlement],
@@ -350,13 +420,16 @@ function reportXlsx({ overview: ov, daily, transactions: tx, reconciliation }) {
     [],
     ['SOF PUL OQIMI', ov.netCashFlow],
     [],
+    ['«Boshqa» — hisobga kirmagan (qo‘lda, eski, sinov, bot)', ov.otherGross], ['«Boshqa» yozuvlar soni', ov.otherCount],
+    [],
     ['To‘lov turi bo‘yicha:', ''],
     ...ov.byType.map((b) => [b.kind, b.total]),
   ];
-  const txRows = tx.items.map((t) => [String(t.createdAt).slice(0, 10), t.source, t.kind, t.code, t.amount, t.status, t.paymeTxnId || '', t.userEmail || '']);
+  const txRows = tx.items.map((t) => [String(t.createdAt).slice(0, 10), CHANNEL_LABEL[t.channel] || t.channel, t.kind, t.code, t.amount, t.status, t.paymeTxnId || t.clickTxnId || '', t.userEmail || '']);
+  if (tx.total > tx.items.length) txRows.push([], [`Diqqat: ${tx.total} tadan faqat birinchi ${tx.items.length} tasi — oraliqni qisqartiring`]);
   return buildXlsx([
     { name: 'Jamlama', rows: summary, widths: [40, 20] },
-    { name: 'Tranzaksiyalar', rows: [['Sana', 'Manba', 'Tur', 'Kod', 'Summa', 'Holat', 'Payme txn', 'Foydalanuvchi'], ...txRows], widths: [12, 8, 16, 12, 14, 14, 26, 26] },
+    { name: 'Tranzaksiyalar', rows: [['Sana', 'Kanal', 'Tur', 'Kod', 'Summa', 'Holat', 'Payme/Click txn', 'Foydalanuvchi'], ...txRows], widths: [12, 8, 16, 12, 14, 14, 26, 26] },
     { name: 'Kunlik', rows: [['Kun', 'Buyurtma', 'Gross', 'Payme fee', 'Expected'], ...daily.map((d) => [d.day, d.orders, d.gross, d.paymeFee, d.expected])], widths: [12, 10, 14, 14, 14] },
     { name: `Solishtirish ${reconciliation.year}`, rows: [['Oy', 'Buyurtma', 'Gross', 'Payme fee', 'Expected', 'Actual', 'Farq', 'Holat'], ...reconciliation.months.map((m) => [m.period, m.orders, m.gross, m.paymeFee, m.expected, m.actual == null ? '' : m.actual, m.diff == null ? '' : m.diff, m.status])], widths: [10, 10, 14, 14, 14, 14, 12, 12] },
   ]);
@@ -424,10 +497,12 @@ export async function handle(request, env, url, H) {
       if (r.error) return H.json({ error: r.error }, 422);
       const type = H.cleanStr(url.searchParams.get('type') || url.searchParams.get('kind'), 24);
       const status = H.cleanStr(url.searchParams.get('status'), 20);
+      const channel = H.cleanStr(url.searchParams.get('channel'), 12);
       if (type && !TX_KINDS.includes(type)) return H.json({ error: 'bad_type' }, 422);
       if (status && !TX_STATUSES.includes(status)) return H.json({ error: 'bad_status' }, 422);
-      const data = await listTransactions(env, {
-        fromIso: r.fromIso, toIso: r.toIso, type, status,
+      if (channel && !TX_CHANNELS.includes(channel)) return H.json({ error: 'bad_channel' }, 422);
+      const data = await listTransactions(env, H, {
+        fromIso: r.fromIso, toIso: r.toIso, type, status, channel,
         q: H.cleanStr(url.searchParams.get('q'), 60),
         page: Number(url.searchParams.get('page')) || 1,
         limit: Number(url.searchParams.get('limit')) || 50,
@@ -441,7 +516,7 @@ export async function handle(request, env, url, H) {
       if (period && !validYm(period)) return H.json({ error: 'bad_period' }, 422);
       const year = period ? Number(period.slice(0, 4)) : yearParam ? Number(yearParam) : new Date().getUTCFullYear();
       if (!Number.isInteger(year) || year < 2000 || year > 2100) return H.json({ error: 'bad_year' }, 422);
-      const months = await monthlyReconciliation(env, year);
+      const months = await monthlyReconciliation(env, H, year);
       if (period) return H.json({ year, period, month: months.find((m) => m.period === period) || null, months: months.filter((m) => m.period === period) });
       return H.json({ year, months });
     }
@@ -570,7 +645,7 @@ export async function handle(request, env, url, H) {
     case 'reports': {
       const r = parseRange(url);
       if (r.error) return H.json({ error: r.error }, 422);
-      const data = await buildReport(env, r);
+      const data = await buildReport(env, H, r);
       if (route.name === 'reports' || url.searchParams.get('format') === 'json') return H.json(data);
       const bytes = reportXlsx(data);
       await H.logAdminActivity(env, { action: 'finance_report_exported', details: `Oraliq: ${r.range}`, ip });

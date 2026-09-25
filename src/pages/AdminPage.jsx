@@ -298,7 +298,7 @@ function StatsTab() {
   const load = () => {
     setLoadErr(null); setStats(null);
     adminApi('/stats').then(setStats).catch((e) => setLoadErr(e));
-    adminApi('/platform-wallet').then((d) => setWallet(d.balance)).catch(() => {});
+    adminApi('/platform-wallet').then((d) => setWallet(d || {})).catch(() => {});
     adminApi('/analytics').then((d) => setSeries(d.commissionSeries || [])).catch(() => {});
   };
   useEffect(() => { load(); }, []);
@@ -361,11 +361,20 @@ function StatsTab() {
       <div className="vz-card p-6">
         <div className="grid items-center gap-6 lg:grid-cols-[1fr_320px]">
           <div className="min-w-0">
-            <span className="vz-kicker">{t("To‘langan buyurtmalar summasi")}</span>
+            <span className="vz-kicker">{t('Payme va Click orqali tushgan summa')}</span>
             <div className="mt-2 break-words font-display text-[38px] font-semibold leading-none tracking-tight" style={{ color: 'var(--vz-gold-2)' }}>
-              {wallet === null ? '\u2014' : fmt(wallet)} <span className="text-2xl">{t("so'm")}</span>
+              {wallet === null ? '\u2014' : fmt(wallet.balance || 0)} <span className="text-2xl">{t("so'm")}</span>
             </div>
-            <p className="mt-2 max-w-md text-xs leading-relaxed" style={{ color: 'var(--vz-ink-2)' }}>{t("Haqiqatan to‘langan buyurtmalar yig‘indisi. Sinov va ichki akkauntlar hisobga kirmaydi.")}</p>
+            <p className="mt-2 max-w-md text-xs leading-relaxed" style={{ color: 'var(--vz-ink-2)' }}>{t('Faqat Payme yoki Click orqali to‘langan va qaytarilmagan buyurtmalar. Sinov va ichki akkauntlar hisobga kirmaydi.')}</p>
+            {/* «Boshqa» — hisobga kirmagan yozuvlar (o'chirilmagan): egasi
+                ularni ko'radi, lekin jami summaga qo'shilmaydi. */}
+            {wallet && (Number(wallet.otherOrders) > 0 || Number(wallet.refundedOrders) > 0) && (
+              <p className="mt-1.5 max-w-md text-xs leading-relaxed" style={{ color: 'var(--vz-ink-3)' }}>
+                {Number(wallet.otherOrders) > 0 && t('«Boshqa» (qo‘lda, eski, sinov, bot): {n} ta — {sum} so‘m, hisobga kirmagan.', { n: wallet.otherOrders, sum: fmt(wallet.otherTotal || 0) })}
+                {Number(wallet.otherOrders) > 0 && Number(wallet.refundedOrders) > 0 && ' '}
+                {Number(wallet.refundedOrders) > 0 && t('Qaytarilgan: {n} ta — {sum} so‘m.', { n: wallet.refundedOrders, sum: fmt(wallet.refundedTotal || 0) })}
+              </p>
+            )}
           </div>
           <div className="hidden h-24 lg:block">
             {series && series.length > 1 && (
@@ -1440,6 +1449,35 @@ function PhysicalCardDesign({ order }) {
   );
 }
 
+// TO'LOV KANALI (egasining qarori, 2026-09-25): hisob-kitob FAQAT Payme
+// va Click orqali to'langanlar bo'yicha. Qolgan "to'langan" yozuvlar
+// (qo'lda tasdiqlangan, eski, sinov, Telegram bot) — «Boshqa»: ular
+// o'chirilmaydi, faqat jami summaga qo'shilmaydi.
+const CHANNEL_LABEL = {
+  payme: { text: 'Payme', cls: 'badge-success' },
+  click: { text: 'Click', cls: 'badge-success' },
+  manual: { text: "Qo'lda", cls: 'badge-warning' },
+  test: { text: 'Sinov', cls: 'badge-ghost' },
+  legacy: { text: 'Eski', cls: 'badge-ghost' },
+  bot: { text: 'Bot', cls: 'badge-ghost' },
+};
+function ChannelBadge({ channel, refunded }) {
+  const { t } = useLanguage();
+  const c = CHANNEL_LABEL[channel];
+  return (
+    <span className="inline-flex flex-wrap gap-1">
+      {c ? <span className={`badge badge-sm ${c.cls}`}>{t(c.text)}</span> : <span className="text-base-content/40">—</span>}
+      {refunded && <span className="badge badge-sm badge-error">{t('Qaytarilgan')}</span>}
+    </span>
+  );
+}
+const ORDER_VIEWS = [
+  ['paid', 'Payme/Click to‘langan'],
+  ['pending', 'Kutilmoqda'],
+  ['other', 'Boshqa'],
+  ['all', 'Hammasi'],
+];
+
 function OrdersTab() {
   const { t } = useLanguage();
   const { isSuper } = useAdmin();
@@ -1452,25 +1490,37 @@ function OrdersTab() {
   // Sinov buyurtmalari standart holatda YASHIRIN. Ular o'chirilmagan —
   // "Sinov" deb belgilangan foydalanuvchilarniki shunchaki ko'rsatilmaydi.
   const [includeTest, setIncludeTest] = useState(false);
-  const load = (withTest = includeTest) => {
+  // Standart ko'rinish — Payme/Click orqali to'langanlar (egasining qarori).
+  const [view, setView] = useState('paid');
+  const load = (withTest = includeTest, v = view) => {
     setLoadErr(null); setOrders(null);
-    return adminApi(`/orders${withTest ? '?includeTest=1' : ''}`)
+    const qs = new URLSearchParams({ view: v });
+    if (withTest) qs.set('includeTest', '1');
+    return adminApi(`/orders?${qs}`)
       .then((d) => setOrders(Array.isArray(d?.orders) ? d.orders : []))
       .catch((e) => setLoadErr(e));
   };
-  useEffect(() => { load(includeTest); }, [includeTest]);
+  useEffect(() => { setShown(50); load(includeTest, view); }, [includeTest, view]);
 
   const confirmPayment = async (o) => {
     const ok = await confirm({
       title: t("To'lovni qo'lda tasdiqlash"),
-      message: t("To'lovni qo'lda tasdiqlaysizmi? Bu haqiqiy to'lov kelganini o'zingiz tekshirganingizni bildiradi.") + ` (${o.code} — ${fmt(o.amount)} ${t("so'm")})`,
+      message: t("To'lovni qo'lda tasdiqlaysizmi? Bu haqiqiy to'lov kelganini o'zingiz tekshirganingizni bildiradi.") + ` (${o.code} — ${fmt(o.amount)} ${t("so'm")}) ` + t('Qo‘lda tasdiqlangan to‘lov «Boshqa»ga tushadi va daromad hisobiga kirmaydi.'),
       confirmLabel: t("Tasdiqlash"),
     });
     if (!ok) return;
     setBusy(o.id); setActErr(null);
     try {
       const path = o.source === 'bot' ? `/bot-orders/${o.id}/confirm-payment` : `/orders/${o.id}/confirm-payment`;
-      await adminApi(path, { method: 'POST' });
+      const r = await adminApi(path, { method: 'POST' });
+      // Server 200 bilan {ok:false, reason} qaytarishi mumkin (masalan kod
+      // allaqachon boshqa egada). Ilgari bu jim o'tib ketardi va admin
+      // "tasdiqlandi" deb o'ylardi.
+      if (r && r.ok === false) {
+        setActErr(r.reason === 'code_taken'
+          ? t("Tasdiqlab bo'lmadi — bu kod allaqachon boshqa egada.")
+          : t("Tasdiqlab bo'lmadi: {reason}", { reason: String(r.reason || '?') }));
+      }
       await load();
     }
     catch (e) { setActErr(e.status === 403 ? t("Ruxsat yo'q") : e.status === 409 || e.status === 404 ? t("Tasdiqlab bo'lmadi — buyurtma allaqachon ishlangan yoki topilmadi.") : apiErrText(e, t)); }
@@ -1481,10 +1531,14 @@ function OrdersTab() {
   // Backend faol Payme tranzaksiyasi bor buyurtmani rad etadi (409
   // payme_active) — hosting/api/admin-extra.js izohiga qarang.
   const cancelOrder = async (o) => {
+    // `message`/`confirmLabel` — ConfirmDialog aynan shu nomlarni kutadi
+    // (ilgari `text`/`confirmText` berilardi va oynada matn chiqmasdi).
     const ok = await confirm({
       title: t('Buyurtmani bekor qilish'),
-      text: t("«{code}» uchun kutilayotgan buyurtma bekor qilinadi va kod qayta sotuvga chiqadi. To'langan buyurtmalarga ta'sir qilmaydi.", { code: o.code }),
-      confirmText: t('Bekor qilish'),
+      message: t("«{code}» uchun kutilayotgan buyurtma bekor qilinadi va kod qayta sotuvga chiqadi. To'langan buyurtmalarga ta'sir qilmaydi.", { code: o.code }),
+      confirmLabel: t('Buyurtmani bekor qilish'),
+      cancelLabel: t('Yopish'),
+      danger: true,
     });
     if (!ok) return;
     setBusy(o.id); setActErr(null);
@@ -1494,7 +1548,7 @@ function OrdersTab() {
     } catch (e) {
       setActErr(
         e.status === 403 ? t("Ruxsat yo'q")
-          : e.status === 409 && e.body?.error === 'payme_active'
+          : e.status === 409 && e.code === 'payme_active'
             ? t("Bu buyurtmada faol Payme tranzaksiyasi bor — 24 soat o'tgach bekor qilish mumkin.")
             : e.status === 409 ? t("Bekor qilib bo'lmadi — buyurtma allaqachon ishlangan.")
               : apiErrText(e, t),
@@ -1502,7 +1556,9 @@ function OrdersTab() {
     } finally { setBusy(null); }
   };
 
-  if (loadErr) return <LoadError err={loadErr} onRetry={load} title={t("Buyurtmalarni yuklab bo'lmadi.")} />;
+  // `() => load()`: tugma hodisasi (event) `withTest` o'rniga tushib,
+  // sinov buyurtmalarini ham yuklab yubormasin.
+  if (loadErr) return <LoadError err={loadErr} onRetry={() => load()} title={t("Buyurtmalarni yuklab bo'lmadi.")} />;
   if (!orders) return <AdminLoading rows={8} />;
   // Sinov buyurtmalarini ko'rsatish/yashirish. O'CHIRISH EMAS —
   // yozuvlar joyida qoladi, faqat ro'yxatda ko'rinmaydi.
@@ -1512,15 +1568,30 @@ function OrdersTab() {
         <span>{t('Sinov foydalanuvchilar buyurtmalarini ham ko‘rsatish')}</span>
       </label>
   );
-  if (orders.length === 0) return <>{testToggle}<EmptyState icon="bag" title={t("Hozircha buyurtma yo'q.")} /></>;
+  const viewChips = (
+    <div className="mb-3 space-y-1.5">
+      <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={t('Buyurtmalar ko‘rinishi')}>
+        {ORDER_VIEWS.map(([v, l]) => (
+          <button key={v} type="button" aria-pressed={view === v} onClick={() => setView(v)}
+            className={`btn btn-sm min-h-11 ${view === v ? 'btn-gold' : 'btn-ghost-vz'}`}>
+            {t(l)}
+          </button>
+        ))}
+      </div>
+      {view === 'paid' && <p className="text-xs" style={{ color: 'var(--vz-ink-3)' }}>{t('Faqat Payme yoki Click orqali to‘langan buyurtmalar — hisob-kitob shular bo‘yicha.')}</p>}
+      {view === 'other' && <p className="text-xs" style={{ color: 'var(--vz-ink-3)' }}>{t('«Boshqa»: qo‘lda tasdiqlangan, eski, sinov, qaytarilgan, bekor qilingan va Telegram bot buyurtmalari. Hisobga kirmaydi, o‘chirilmagan.')}</p>}
+    </div>
+  );
+  if (orders.length === 0) return <>{viewChips}{testToggle}{dialog}<EmptyState icon="bag" title={t("Hozircha buyurtma yo'q.")} /></>;
   const visible = orders.slice(0, shown);
   return (
     <div className="overflow-x-auto">
+      {viewChips}
       {testToggle}
       {dialog}
       {actErr && <div role="alert" className="vz-err mb-3">{actErr}</div>}
       <table className="table table-sm">
-        <thead><tr><th>{t('Manba')}</th><th>{t('Kod')}</th><th>{t('Foydalanuvchi')}</th><th>{t('Narx')}</th><th>{t('Holat')}</th><th>{t('Vaqt')}</th><th></th></tr></thead>
+        <thead><tr><th>{t('Manba')}</th><th>{t('Kod')}</th><th>{t('Foydalanuvchi')}</th><th>{t('Narx')}</th><th>{t('To‘lov')}</th><th>{t('Holat')}</th><th>{t('Vaqt')}</th><th></th></tr></thead>
         <tbody>
           {visible.map((o) => (
             <Fragment key={o.source + o.id}>
@@ -1529,6 +1600,9 @@ function OrdersTab() {
               <td className="font-mono">{o.code}</td>
               <td className="text-xs">{o.source === 'bot' ? (o.tgUsername ? '@' + o.tgUsername : o.tgName) : ('#' + o.userId)}</td>
               <td>{fmt(o.amount)}</td>
+              {/* Kanal faqat to'langan yozuvda ma'noli: kutilayotgan buyurtmada
+                  hali to'lov yo'q. */}
+              <td>{o.status === 'paid' ? <ChannelBadge channel={o.channel} refunded={o.refunded} /> : <span className="text-base-content/40">—</span>}</td>
               <td>{(() => { const st = ORDER_STATUS_LABEL[o.status] || { text: `Noma'lum holat (${o.status})`, cls: 'badge-ghost' }; return <span className={`badge badge-sm ${st.cls}`}>{t(st.text)}</span>; })()}</td>
               <td className="whitespace-nowrap text-xs text-base-content/50">{timeAgo(new Date(o.createdAt).getTime())}</td>
               <td>
@@ -1553,7 +1627,7 @@ function OrdersTab() {
                 ham, bu yerda to'langan variant turadi. */}
             {o.kind === 'physical_card_order' && (
               <tr>
-                <td colSpan={7} className="bg-black/20">
+                <td colSpan={8} className="bg-black/20">
                   <PhysicalCardDesign order={o} />
                 </td>
               </tr>
@@ -3207,7 +3281,14 @@ function VerificationTab() {
 // ═══════════════════════════════════════════════════════════════════
 const FIN_RANGES = [['today', 'Bugun'], ['7d', '7 kun'], ['30d', '30 kun'], ['month', 'Shu oy'], ['prev_month', "O'tgan oy"], ['custom', 'Custom']];
 const FIN_SUBTABS = [['dashboard', 'Dashboard'], ['transactions', 'Tranzaksiyalar'], ['reconcile', 'Solishtirish'], ['rates', 'Tarif va soliqlar'], ['reports', 'Hisobotlar'], ['docs', 'Hujjatlar']];
-const FIN_TYPE_LABEL = { card_purchase: 'NFC ID xaridi', auction_payment: 'Auksion', premium_upgrade: 'Premium', premium_follow: 'Obuna', physical_card_order: 'Jismoniy karta' };
+const FIN_TYPE_LABEL = { card_purchase: 'NFC ID xaridi', auction_payment: 'Auksion', premium_upgrade: 'Premium', premium_follow: 'Obuna', physical_card_order: 'Jismoniy karta', featured_slot: 'Tavsiya (FEATURED)', payme_test: 'Payme sinovi' };
+// Moliya tranzaksiyalari filtri — hosting/api/admin-finance.js `channel`.
+const FIN_CHANNELS = [
+  ['counted', 'Hisobga kirgan (Payme/Click)'],
+  ['other', '«Boshqa» (hisobga kirmagan)'],
+  ['refunded', 'Qaytarilgan'],
+  ['', 'Hammasi'],
+];
 const FIN_DOC_LABEL = { payme_report: 'Payme hisobot', bank_statement: 'Bank ko‘chirmasi', tax: 'Soliq hujjati', invoice: 'Hisob-faktura', receipt: 'Chek', other: 'Boshqa' };
 const FIN_RECON_TONE = { matched: 'success', difference: 'danger', pending: 'muted' };
 const FIN_RECON_LABEL = { matched: 'Mos', difference: 'Farq bor', pending: 'Kutilmoqda' };
@@ -3285,9 +3366,16 @@ function FinanceDashboard({ rangeQs, ready, onGoRates }) {
       )}
 
       <div className="vz-card p-5">
-        <span className="vz-kicker">{t('Jami savdo (gross)')}</span>
+        <span className="vz-kicker">{t('Jami savdo — Payme/Click')}</span>
         <div className="mt-1 break-words font-display text-[30px] font-semibold tracking-tight" style={{ color: 'var(--vz-gold-2)' }}>{money(o.grossSales)}</div>
         <div className="mt-1 text-[13px]" style={{ color: 'var(--vz-ink-3)' }}>{o.orderCount} {t('ta to‘langan buyurtma')} · {o.fromIso?.slice(0, 10)} … {o.toIso?.slice(0, 10)}</div>
+        {(Number(o.otherCount) > 0 || Number(o.refundCount) > 0) && (
+          <div className="mt-1 text-[13px]" style={{ color: 'var(--vz-ink-3)' }}>
+            {Number(o.otherCount) > 0 && t('«Boshqa» (qo‘lda, eski, sinov, bot): {n} ta — {sum} so‘m, hisobga kirmagan.', { n: o.otherCount, sum: fmt(o.otherGross || 0) })}
+            {Number(o.otherCount) > 0 && Number(o.refundCount) > 0 && ' '}
+            {Number(o.refundCount) > 0 && t('Qaytarilgan: {n} ta — {sum} so‘m.', { n: o.refundCount, sum: fmt(o.refunds || 0) })}
+          </div>
+        )}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -3341,24 +3429,29 @@ function FinanceTransactions({ rangeQs, ready }) {
   const [data, setData] = useState(null);
   const [type, setType] = useState('');
   const [status, setStatus] = useState('');
+  // Standart — faqat hisobga kirgan (Payme/Click) to'lovlar.
+  const [channel, setChannel] = useState('counted');
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
   const [err, setErr] = useState(null);
 
-  useEffect(() => { setPage(1); }, [rangeQs, type, status, q]);
+  useEffect(() => { setPage(1); }, [rangeQs, type, status, channel, q]);
   const load = () => {
     if (!ready) return;
     setData(null); setErr(null);
-    const qs = `${rangeQs}&type=${type}&status=${status}&q=${encodeURIComponent(q)}&page=${page}`;
+    const qs = `${rangeQs}&type=${type}&status=${status}&channel=${channel}&q=${encodeURIComponent(q)}&page=${page}`;
     adminApi(`/finance/transactions?${qs}`).then(setData).catch((e) => setErr(e));
   };
-  useEffect(() => { load(); }, [rangeQs, ready, type, status, q, page]);
+  useEffect(() => { load(); }, [rangeQs, ready, type, status, channel, q, page]);
 
   if (!ready) return <EmptyState icon="bank" title={t('Sanani tanlang')} />;
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
+        <select value={channel} onChange={(e) => setChannel(e.target.value)} className="vz-input w-auto min-w-0" aria-label={t('To‘lov kanali')}>
+          {FIN_CHANNELS.map(([v, l]) => <option key={v || 'all'} value={v}>{t(l)}</option>)}
+        </select>
         <select value={type} onChange={(e) => setType(e.target.value)} className="vz-input w-auto min-w-0" aria-label={t('Barcha turlar')}>
           <option value="">{t('Barcha turlar')}</option>
           {Object.entries(FIN_TYPE_LABEL).map(([k, l]) => <option key={k} value={k}>{t(l)}</option>)}
@@ -3369,7 +3462,7 @@ function FinanceTransactions({ rangeQs, ready }) {
           <option value="cancelled">{t('Bekor qilingan')}</option>
           <option value="failed_code_taken">{t('Kod band bo‘lib qolgan')}</option>
         </select>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Kod / email / Payme txn')} className="vz-input min-w-0 flex-1" aria-label={t('Kod / email / Payme txn')} />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Kod / email / Payme yoki Click txn')} className="vz-input min-w-0 flex-1" aria-label={t('Kod / email / Payme yoki Click txn')} />
       </div>
 
       {err ? <LoadError err={err} onRetry={load} title={t("Tranzaksiyalarni yuklab bo'lmadi.")} />
@@ -3379,17 +3472,20 @@ function FinanceTransactions({ rangeQs, ready }) {
           <>
             <div className="overflow-x-auto">
               <table className="table table-sm">
-                <thead><tr><th>{t('Sana')}</th><th>{t('Manba')}</th><th>{t('Tur')}</th><th>{t('Kod')}</th><th>{t('Summa')}</th><th>{t('Holat')}</th><th>Payme txn</th><th>{t('Foydalanuvchi')}</th></tr></thead>
+                <thead><tr><th>{t('Sana')}</th><th>{t('To‘lov')}</th><th>{t('Tur')}</th><th>{t('Kod')}</th><th>{t('Summa')}</th><th>{t('Holat')}</th><th>{t('Payme / Click txn')}</th><th>{t('Foydalanuvchi')}</th></tr></thead>
                 <tbody>
                   {data.items.map((r) => (
                     <tr key={`${r.source}-${r.id}`}>
                       <td className="whitespace-nowrap text-xs text-base-content/60">{dateTime(new Date(r.createdAt).getTime())}</td>
-                      <td className="text-xs uppercase text-base-content/45">{r.source}</td>
+                      <td className="text-xs">
+                        {r.status === 'paid' ? <ChannelBadge channel={r.channel} refunded={r.refunded} /> : <span className="text-base-content/40">—</span>}
+                        {r.testUser && <span className="badge badge-sm badge-ghost ml-1">{t('Sinov akk.')}</span>}
+                      </td>
                       <td className="text-xs">{t(FIN_TYPE_LABEL[r.kind] || r.kind)}</td>
                       <td className="font-mono text-xs">{r.code}</td>
                       <td className="font-semibold">{money(r.amount)}</td>
                       <td><StatusBadge tone={r.status === 'paid' ? 'success' : r.status === 'cancelled' ? 'muted' : 'danger'}>{r.status}</StatusBadge></td>
-                      <td className="max-w-[160px] truncate font-mono text-[14px] text-base-content/45">{r.paymeTxnId || '—'}</td>
+                      <td className="max-w-[160px] truncate font-mono text-[14px] text-base-content/45">{r.paymeTxnId || r.clickTxnId || '—'}</td>
                       <td className="max-w-[180px] truncate text-xs text-base-content/60">{r.userEmail || '—'}</td>
                     </tr>
                   ))}
@@ -3397,7 +3493,7 @@ function FinanceTransactions({ rangeQs, ready }) {
               </table>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs" style={{ color: 'var(--vz-ink-2)' }}>
-              <span>{t('Jami')}: {data.total}</span>
+              <span>{t('Jami')}: {data.total}{data.paidAmount != null && ` · ${money(data.paidAmount)}`}</span>
               <div className="flex items-center gap-1">
                 <button className="btn btn-ghost-vz btn-xs min-h-9 min-w-9" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} aria-label={t('Oldingi sahifa')}>←</button>
                 <span className="px-2 py-1">{page}</span>
