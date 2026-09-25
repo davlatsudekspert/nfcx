@@ -1,10 +1,11 @@
+import { NEWS_ENABLED } from '../lib/features.js';
 import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import logo from '../assets/logo-128.png';
 
 const COLS = [
   { title: 'Mahsulot', links: [['Narxlar', '/narxlar'], ['Qanday ishlaydi', '/qanday-ishlaydi'], ['Katalog', '/katalog'], ['Kompaniyalar', '/kompaniyalar'], ['Biznes kabinet', '/business'], ['Android ilovasi', '/ilova-yuklash']] },
-  { title: 'Kompaniya', links: [['Yangiliklar', '/yangiliklar'], ['Savollar', '/savollar'], ['Aloqa', '/aloqa']] },
+  { title: 'Kompaniya', links: [...(NEWS_ENABLED ? [['Yangiliklar', '/yangiliklar']] : []), ['Savollar', '/savollar'], ['Aloqa', '/aloqa']] },
   { title: 'Huquqiy', links: [['Foydalanish shartlari', '/shartlar'], ['Maxfiylik siyosati', '/maxfiylik']] },
 ];
 

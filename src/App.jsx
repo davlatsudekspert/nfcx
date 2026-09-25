@@ -13,7 +13,7 @@ import Footer from './components/Footer.jsx';
 import AiAssistant from './components/AiAssistant.jsx';
 import HomePage from './pages/HomePage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
-import { MESSAGING_ENABLED } from './lib/features.js';
+import { MESSAGING_ENABLED, NEWS_ENABLED } from './lib/features.js';
 
 // ═══════════════════════════════════════════════════════════════════════
 // SAHIFA BO'LAGI YUKLANMAGANDA — SAYT O'ZINI TIKLAYDI (2026-09)
@@ -325,7 +325,7 @@ export default function App() {
     else if (cleanRoute === 'sozlamalar') page = <SettingsPage />;
     else if (cleanRoute === 'narxlar') page = <PricingPage catalog={catalog} refreshCatalog={refreshCatalog} />;
     else if (cleanRoute === 'qanday-ishlaydi') page = <HowItWorksPage />;
-    else if (cleanRoute === 'yangiliklar') page = <NewsPage />;
+    else if (cleanRoute === 'yangiliklar') page = NEWS_ENABLED ? <NewsPage /> : <GuideRedirect />;
     else if (cleanRoute === 'katalog') page = <CatalogPage catalog={catalog} />;
     else if (cleanRoute === 'reyting') page = <RankingPage catalog={catalog} />;
     else if (cleanRoute === 'kompaniyalar') page = <CompaniesPage catalog={catalog} />;
@@ -356,7 +356,7 @@ export default function App() {
     else if (cleanRoute === 'business') { page = <BusinessEntryPage />; bare = true; }
     else if (cleanRoute === 'biznes-namuna') { page = <BusinessPublicDemoPage />; bare = true; }
     else if (cleanRoute === 'admin') { page = <AdminPage />; bare = true; }
-    else if (isNewsDetail) page = <NewsPage key={cleanRoute} newsId={cleanRoute.slice('yangiliklar/'.length)} />;
+    else if (isNewsDetail) page = NEWS_ENABLED ? <NewsPage key={cleanRoute} newsId={cleanRoute.slice('yangiliklar/'.length)} /> : <GuideRedirect />;
     else if (cleanRoute === 'xabarlar' && MESSAGING_ENABLED) page = <MessagesPage />;
     else if (isMessagesDetail && MESSAGING_ENABLED) page = <MessagesPage key={cleanRoute} id={cleanRoute.slice('xabarlar/'.length)} />;
     else page = <HomePage catalog={catalog} refreshCatalog={refreshCatalog} />;

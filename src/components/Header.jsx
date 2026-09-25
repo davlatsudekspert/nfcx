@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { navigate, usePathRoute } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import { dbListNotifications, dbUnreadCount, dbList } from '../lib/db.js';
-import { MESSAGING_ENABLED } from '../lib/features.js';
+import { MESSAGING_ENABLED, NEWS_ENABLED } from '../lib/features.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { canInstall, onInstallableChange, promptInstall } from '../lib/pwa.js';
 import LanguageSwitcher from './LanguageSwitcher.jsx';
@@ -88,7 +88,7 @@ function HeaderSearch({ onNavigate }) {
 
 const NAV = [
   ['Narxlar', '/narxlar'],
-  ['Yangiliklar', '/yangiliklar'],
+  ...(NEWS_ENABLED ? [['Yangiliklar', '/yangiliklar']] : []),
   ['Katalog', '/katalog'],
   ['Reyting', '/reyting'],
   ['Kompaniyalar', '/kompaniyalar'],
@@ -97,7 +97,7 @@ const NAV = [
 ];
 
 const DESKTOP_NAV = [
-  ['Yangiliklar', '/yangiliklar'],
+  ...(NEWS_ENABLED ? [['Yangiliklar', '/yangiliklar']] : []),
   ['Narxlar', '/narxlar'],
   ['Katalog', '/katalog'],
   ['Reyting', '/reyting'],

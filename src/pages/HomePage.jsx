@@ -1,3 +1,4 @@
+import { NEWS_ENABLED } from '../lib/features.js';
 import { useEffect, useRef, useState } from 'react';
 import PhysicalCardCta from '../components/PhysicalCardCta.jsx';
 import { dbGet } from '../lib/db.js';
@@ -87,7 +88,7 @@ function RevealSection({ id, children }) {
 
 const TEASERS = [
   { href: '/narxlar', title: 'Narxlar', desc: "Kalkulyator bilan aniq narxni hisoblang va naqshlar qanday ta'sir qilishini ko'ring.", go: "Narxlarni ko'rish →" },
-  { href: '/yangiliklar', title: 'Yangiliklar', desc: "Ishga tushirish sanasi, yangi ID'lar, aksiyalar va platforma yangiliklari.", go: "Yangiliklarni ko'rish →" },
+  ...(NEWS_ENABLED ? [{ href: '/yangiliklar', title: 'Yangiliklar', desc: "Ishga tushirish sanasi, yangi ID'lar, aksiyalar va platforma yangiliklari.", go: "Yangiliklarni ko'rish →" }] : []),
   { href: '/katalog', title: 'Katalog', desc: "Barcha band qilingan raqamli tashrif qog'ozlar ro'yxati.", go: "Katalogni ochish →" },
   { href: '/savollar', title: 'Savollar', desc: "Profil, NFC karta, kontakt saqlash va xavfsizlik bo'yicha javoblar.", go: 'FAQ →' },
 ];
