@@ -944,5 +944,9 @@
   "musicChange": "Change",
   "musicLicensed": "Only licensed music from the NFCSTORE library",
   "reelPickMedia": "Choose a photo or video",
-  "reelPhotoHint": "The photo shows in Reels for 10 seconds"
+  "reelPhotoHint": "The photo shows in Reels for 10 seconds",
+  "errPhoneShort": "The number is incomplete — enter all digits",
+  "errEmailTypo": "Looks like a typo. Did you mean {email}?",
+  "errEmailDomain": "This email domain doesn’t exist — check and try again",
+  "phoneCountryTitle": "Choose country"
 }

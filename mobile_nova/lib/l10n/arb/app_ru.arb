@@ -944,5 +944,9 @@
   "musicChange": "Заменить",
   "musicLicensed": "Только разрешённая музыка из библиотеки NFCSTORE",
   "reelPickMedia": "Выбрать фото или видео",
-  "reelPhotoHint": "Фото показывается в Reels 10 секунд"
+  "reelPhotoHint": "Фото показывается в Reels 10 секунд",
+  "errPhoneShort": "Номер неполный — введите все цифры",
+  "errEmailTypo": "Похоже, в адресе ошибка. Вы имели в виду {email}?",
+  "errEmailDomain": "Такой почтовый адрес не найден — проверьте и введите снова",
+  "phoneCountryTitle": "Выберите страну"
 }

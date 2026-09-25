@@ -1040,5 +1040,14 @@
   "musicChange": "Almashtirish",
   "musicLicensed": "Faqat NFCSTORE kutubxonasidagi ruxsatli musiqa",
   "reelPickMedia": "Rasm yoki video tanlash",
-  "reelPhotoHint": "Rasm Reels’da 10 soniya ko‘rinadi"
+  "reelPhotoHint": "Rasm Reels’da 10 soniya ko‘rinadi",
+  "errPhoneShort": "Raqam to‘liq emas — hamma raqamlarini kiriting",
+  "errEmailTypo": "Manzilda xato bor shekilli. {email} demoqchimisiz?",
+  "@errEmailTypo": {
+    "placeholders": {
+      "email": {"type": "String"}
+    }
+  },
+  "errEmailDomain": "Bunday pochta manzili topilmadi — tekshirib qayta yozing",
+  "phoneCountryTitle": "Davlatni tanlang"
 }

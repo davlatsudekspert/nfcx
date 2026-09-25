@@ -2588,4 +2588,19 @@ class LUz extends L {
 
   @override
   String get reelPhotoHint => 'Rasm Reels’da 10 soniya ko‘rinadi';
+
+  @override
+  String get errPhoneShort => 'Raqam to‘liq emas — hamma raqamlarini kiriting';
+
+  @override
+  String errEmailTypo(String email) {
+    return 'Manzilda xato bor shekilli. $email demoqchimisiz?';
+  }
+
+  @override
+  String get errEmailDomain =>
+      'Bunday pochta manzili topilmadi — tekshirib qayta yozing';
+
+  @override
+  String get phoneCountryTitle => 'Davlatni tanlang';
 }

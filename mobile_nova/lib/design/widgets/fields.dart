@@ -1,6 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+
+import '../../core/utils/phone_countries.dart';
+import '../../l10n/gen/app_localizations.dart';
 import 'package:flutter/services.dart';
 
 import '../theme/typography.dart';
@@ -500,7 +503,9 @@ class _ClipboardHint extends StatelessWidget {
   }
 }
 
-/// `+998` prefiksi bilan telefon maydoni.
+/// Telefon maydoni. Standart `+998`; [onCountryChanged] berilsa prefiks
+/// bosiladi va davlat tanlanadi (ro'yxatdan o'tish — chet eldagi o'zbeklar
+/// uchun, egasi 2026-09-25).
 class PhoneField extends StatelessWidget {
   const PhoneField({
     super.key,
@@ -508,40 +513,105 @@ class PhoneField extends StatelessWidget {
     required this.controller,
     this.error,
     this.onChanged,
+    this.country = PhoneCountry.uz,
+    this.onCountryChanged,
   });
 
   final String label;
   final TextEditingController controller;
   final String? error;
   final ValueChanged<String>? onChanged;
+  final PhoneCountry country;
+  final ValueChanged<PhoneCountry>? onCountryChanged;
+
+  Future<void> _pick(BuildContext context) async {
+    final t = context.tokens;
+    final l = L.of(context);
+    final picked = await showModalBottomSheet<PhoneCountry>(
+      context: context,
+      useRootNavigator: true,
+      showDragHandle: true,
+      isScrollControlled: true,
+      backgroundColor: t.surfaceSolid,
+      builder: (ctx) => SizedBox(
+        height: MediaQuery.sizeOf(ctx).height * .7,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: Text(l.phoneCountryTitle,
+                  style: Theme.of(ctx).textTheme.titleLarge),
+            ),
+            Expanded(
+              child: ListView(
+                key: const ValueKey('phone-countries'),
+                children: [
+                  for (final c in PhoneCountry.all)
+                    ListTile(
+                      key: ValueKey('phone-country-${c.iso}'),
+                      leading: Text(c.flag, style: const TextStyle(fontSize: 24)),
+                      title: Text(c.name),
+                      trailing: Text('+${c.dial}',
+                          style: TextStyle(
+                              fontFamily: 'IBMPlexMono',
+                              fontWeight: FontWeight.w600,
+                              color: t.text2)),
+                      selected: c == country,
+                      onTap: () => Navigator.of(ctx).pop(c),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (picked != null) onCountryChanged?.call(picked);
+  }
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
+    final pickable = onCountryChanged != null;
+    final prefixText = Text(
+      pickable ? '${country.flag} +${country.dial}' : '+${country.dial}',
+      style: TextStyle(
+        fontFamily: 'IBMPlexMono',
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+        color: t.text2,
+      ),
+    );
     return NovaField(
       label: label,
       controller: controller,
       error: error,
       onChanged: onChanged,
       keyboardType: TextInputType.phone,
-      hint: '90 123 45 67',
+      hint: country.hint,
       inputFormatters: [
         FilteringTextInputFormatter.allow(RegExp(r'[\d\s]')),
-        LengthLimitingTextInputFormatter(12),
+        LengthLimitingTextInputFormatter(country.max + 4),
       ],
       prefix: Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
         child: Center(
           widthFactor: 1,
-          child: Text(
-            '+998',
-            style: TextStyle(
-              fontFamily: 'IBMPlexMono',
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: t.text2,
-            ),
-          ),
+          child: pickable
+              ? InkWell(
+                  key: const ValueKey('phone-country'),
+                  onTap: () => _pick(context),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      prefixText,
+                      Icon(Icons.arrow_drop_down_rounded, color: t.text2),
+                    ],
+                  ),
+                )
+              : prefixText,
         ),
       ),
     );

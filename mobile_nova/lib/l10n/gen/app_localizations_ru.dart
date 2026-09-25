@@ -2583,4 +2583,19 @@ class LRu extends L {
 
   @override
   String get reelPhotoHint => 'Фото показывается в Reels 10 секунд';
+
+  @override
+  String get errPhoneShort => 'Номер неполный — введите все цифры';
+
+  @override
+  String errEmailTypo(String email) {
+    return 'Похоже, в адресе ошибка. Вы имели в виду $email?';
+  }
+
+  @override
+  String get errEmailDomain =>
+      'Такой почтовый адрес не найден — проверьте и введите снова';
+
+  @override
+  String get phoneCountryTitle => 'Выберите страну';
 }

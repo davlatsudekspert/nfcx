@@ -66,6 +66,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   /// noto'g'ri. Endi qiymat shu yerdan, odamning o'zidan keladi.
   bool _tos = false;
   bool _obscure = true;
+
+  /// Telefon davlati — standart O'zbekiston (egasi, 2026-09-25).
+  PhoneCountry _country = PhoneCountry.uz;
+
+  /// Emaildagi imlo xatosi uchun taklif (`gmial.com` → `gmail.com`).
+  /// Bir marta ko'rsatiladi: odam o'z manzilini qoldirib yana bossa,
+  /// qaror serverniki.
+  String? _emailSuggestion;
+  String? _suggestedFor;
   String? _error;
   final _fieldErrors = <int, String?>{};
 
@@ -87,6 +96,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       'errRequired' => l.errRequired,
       'errBadEmail' => l.errBadEmail,
       'errBadPhone' => l.errBadPhone,
+      'errPhoneShort' => l.errPhoneShort,
       'errPasswordShort' => l.errPasswordShort,
       'errNameShort' => l.errNameShort,
       _ => l.errUnknown,
@@ -100,10 +110,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final key = switch (_step) {
       1 => Validate.name(_name.text),
       2 => Validate.email(_email.text),
-      3 => Validate.phone(_phone.text),
+      3 => Validate.phone(_phone.text, country: _country),
       _ => Validate.password(_password.text),
     };
     if (key != null) return _tr(key);
+    if (_step == 2) {
+      final text = _email.text.trim();
+      final sug = Validate.emailSuggestion(text);
+      if (sug != null && _suggestedFor != text) {
+        _emailSuggestion = sug;
+        _suggestedFor = text;
+        return L.of(context).errEmailTypo(sug);
+      }
+    }
     if (_step == 4 && _password.text != _password2.text) {
       return L.of(context).errPasswordMismatch;
     }
@@ -154,7 +173,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     // olmasdi.
     final res = await ref.read(authRepositoryProvider).requestRegisterCode(
           email: _email.text.trim(),
-          phone: Validate.normalizePhone(_phone.text),
+          phone: Validate.normalizePhone(_phone.text, country: _country),
         );
     if (!mounted) return;
     setState(() => _busy = false);
@@ -187,10 +206,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         // aytadi. Xato oxirgi (parol) qadamda emas, aynan tuzatish
         // kerak bo'lgan maydon ostida ko'rinadi.
         final back = switch (e.code) {
-          'phone_taken' => 3,
-          'email_taken' => 2,
+          'phone_taken' || 'bad_phone' => 3,
+          'email_taken' || 'email_typo' || 'email_domain_invalid' || 'bad_email' => 2,
           _ => null,
         };
+        if (e.code == 'email_typo' && (e.detail ?? '').isNotEmpty) {
+          _emailSuggestion = e.detail;
+          _suggestedFor = _email.text.trim();
+        }
         if (back == null) {
           setState(() => _error = describeError(l, e));
           return;
@@ -213,7 +236,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       extra: VerifyArgs(
         email: _email.text.trim(),
         name: _name.text.trim(),
-        phone: Validate.normalizePhone(_phone.text),
+        phone: Validate.normalizePhone(_phone.text, country: _country),
         password: _password.text,
         // Kod qaysi kanal orqali ketgani — kod ekrani shunga
         // qarab HAQIQATNI yozadi. Ilgari u har doim
@@ -246,7 +269,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final res = await ref.read(authRepositoryProvider).register(
           name: _name.text.trim(),
           email: _email.text.trim(),
-          phone: Validate.normalizePhone(_phone.text),
+          phone: Validate.normalizePhone(_phone.text, country: _country),
           password: _password.text,
           code: '',
           tosAccepted: _tos,
@@ -377,7 +400,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   title: l.fieldEmail,
                   hint: l.registerEmailHint,
                   art: Icons.mark_email_unread_outlined,
-                  child: NovaField(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      NovaField(
                     label: l.fieldEmail,
                     controller: _email,
                     error: _fieldErrors[2],
@@ -385,6 +411,23 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     hint: 'siz@example.com',
                     enabled: !_busy,
                   ),
+                      // «gmail.com demoqchimisiz?» — bosilsa manzil to'g'rilanadi.
+                      if (_emailSuggestion != null &&
+                          _fieldErrors[2] != null) ...[
+                        const SizedBox(height: 8),
+                        ActionChip(
+                          key: const ValueKey('email-suggestion'),
+                          avatar: const Icon(Icons.auto_fix_high_rounded, size: 18),
+                          label: Text(_emailSuggestion!),
+                          onPressed: () => setState(() {
+                            _email.text = _emailSuggestion!;
+                            _emailSuggestion = null;
+                            _fieldErrors[2] = null;
+                          }),
+                        ),
+                      ],
+                    ],
+                  )
                 ),
                 _Step(
                   title: l.fieldPhone,
@@ -394,6 +437,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     label: l.fieldPhone,
                     controller: _phone,
                     error: _fieldErrors[3],
+                    country: _country,
+                    onCountryChanged: (c) => setState(() {
+                      _country = c;
+                      _fieldErrors[3] = null;
+                    }),
                   ),
                 ),
                 _Step(

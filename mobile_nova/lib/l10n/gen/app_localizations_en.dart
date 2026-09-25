@@ -2586,4 +2586,19 @@ class LEn extends L {
 
   @override
   String get reelPhotoHint => 'The photo shows in Reels for 10 seconds';
+
+  @override
+  String get errPhoneShort => 'The number is incomplete — enter all digits';
+
+  @override
+  String errEmailTypo(String email) {
+    return 'Looks like a typo. Did you mean $email?';
+  }
+
+  @override
+  String get errEmailDomain =>
+      'This email domain doesn’t exist — check and try again';
+
+  @override
+  String get phoneCountryTitle => 'Choose country';
 }

@@ -29,12 +29,13 @@ void main() {
       expect(Validate.normalizePhone(''), '');
     });
 
-    test('faqat O‘zbekiston formatini qabul qiladi', () {
+    test('standart O‘zbekiston: 9 raqam; kam bo‘lsa — «to‘liq emas»', () {
       expect(Validate.phone('901234567'), isNull);
       expect(Validate.phone('+998901234567'), isNull);
       expect(Validate.phone(''), 'errRequired');
-      expect(Validate.phone('12345'), 'errBadPhone');
-      // Rossiya raqami — bu ilova uchun noto'g'ri.
+      // Raqam yetmaydi — aniq sabab (2026-09-25, egasi).
+      expect(Validate.phone('12345'), 'errPhoneShort');
+      // Davlat O'zbekiston tanlangan, raqam esa Rossiyaniki — rad.
       expect(Validate.phone('+79161234567'), 'errBadPhone');
     });
   });

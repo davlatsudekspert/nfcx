@@ -24,7 +24,11 @@ String describeError(L l, AppError e) => switch (e.code) {
       // ekanini bilmasdi (egasi, 2026-09 surat).
       'phone_taken' => l.errPhoneTaken,
       'bad_email' => l.errBadEmail,
-      'bad_phone' => l.errBadPhone,
+      // Server raqam uzunligini davlat bo'yicha tekshiradi
+      // (hosting/api/contact-check.js): yetmasa — `phone_short`.
+      'bad_phone' => e.detail == 'phone_short' ? l.errPhoneShort : l.errBadPhone,
+      'email_typo' => l.errEmailTypo(e.detail ?? ''),
+      'email_domain_invalid' => l.errEmailDomain,
       'bad_code' || 'bad_email_code' => l.verifyWrongCode,
       'unauthorized' => l.errUnauthorized,
       // Email xizmati kodni yubora olmadi (server 503). Ilgari

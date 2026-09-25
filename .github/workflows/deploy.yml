@@ -206,6 +206,8 @@ jobs:
         run: node scripts/test-music-library.mjs
       - name: Postga musiqa va rasmli reel
         run: node scripts/test-post-music.mjs
+      - name: Ro'yxat — email imlosi, domen va telefon uzunligi
+        run: node scripts/test-register-contact-check.mjs
 
       # PROFIL SAHIFALARINING MAKETI.
       #

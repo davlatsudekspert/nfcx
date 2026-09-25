@@ -4976,6 +4976,30 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Rasm Reels’da 10 soniya ko‘rinadi'**
   String get reelPhotoHint;
+
+  /// No description provided for @errPhoneShort.
+  ///
+  /// In uz, this message translates to:
+  /// **'Raqam to‘liq emas — hamma raqamlarini kiriting'**
+  String get errPhoneShort;
+
+  /// No description provided for @errEmailTypo.
+  ///
+  /// In uz, this message translates to:
+  /// **'Manzilda xato bor shekilli. {email} demoqchimisiz?'**
+  String errEmailTypo(String email);
+
+  /// No description provided for @errEmailDomain.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bunday pochta manzili topilmadi — tekshirib qayta yozing'**
+  String get errEmailDomain;
+
+  /// No description provided for @phoneCountryTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Davlatni tanlang'**
+  String get phoneCountryTitle;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {
