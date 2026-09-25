@@ -239,6 +239,11 @@ jobs:
       - name: Admin amallari rol bo'yicha yopiqmi
         run: node scripts/test-admin-roles.mjs
 
+      # STIKERDAGI UMUMIY QR (/qr-<partiya>) — oynadagi stikerni qayta
+      # bosib bo'lmaydi, manzil ishlashdan to'xtasa butun partiya o'ladi.
+      - name: Stiker QR yo'naltirishi ishlaydimi
+        run: node scripts/test-qr-sticker-redirect.mjs
+
       # PROFIL SAHIFALARINING MAKETI.
       #
       # Ikkala profilda ham (shaxsiy `/:code` va biznes `/c/:id`)

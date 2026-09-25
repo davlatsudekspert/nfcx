@@ -11051,6 +11051,27 @@ async function handleRequest(request, env, url) {
     //                         va "karta o'chirilgan" xabari ishlaydi)
     //   biznes/kompaniya   -> /c/<companyId>
     //   noma'lum token     -> bosh sahifa (yolg'on va'da bermaymiz)
+    // STIKERDAGI UMUMIY QR — /qr-<partiya> (2026-09-25).
+    //
+    // Marketplace stikerida chip har xil (/t/<token>), QR esa HAMMADA BIR
+    // XIL: har stikerga alohida QR bosish va uni chipga moslash kerak
+    // bo'lmasin. QR ilovani yuklash sahifasini ochadi. Manzil to'g'ridan-
+    // to'g'ri sahifa emas, ATAYLAB shu yo'naltirish: stiker oynada yillab
+    // turadi, qayerga olib borishini (Play Market, Uzum sahifasi) keyin
+    // qayta bosmasdan shu yerda o'zgartiramiz. Partiya raqami UTM'ga
+    // tushadi — qaysi partiya qancha skanerlanganini analitika ko'rsatadi.
+    // Tire bor — profil kodi (faqat harf/raqam) bilan to'qnashmaydi.
+    // 302 + no-store: brauzer yo'naltirishni abadiy eslab qolmasin.
+    const qrSticker = url.pathname.match(/^\/qr-(\d{1,4})\/?$/);
+    if (qrSticker && request.method === 'GET') {
+      return new Response(null, {
+        status: 302,
+        headers: {
+          location: `/ilova-yuklash?utm_source=stiker&utm_medium=qr&utm_campaign=qr-${qrSticker[1]}`,
+          'cache-control': 'no-store',
+        },
+      });
+    }
     const tapRedirect = url.pathname.match(/^\/t\/([A-Za-z0-9_-]{1,64})\/?$/);
     if (tapRedirect && request.method === 'GET') {
       const to = (pathname) => new Response(null, {
