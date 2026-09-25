@@ -28,7 +28,10 @@ require('fs').mkdirSync(OUT, { recursive: true });
 
 const GOLD = '#C9A55A';   // yumshoq oltin
 const BLACK = '#0B0B0B';  // to'q qora (bosmaxona: rich black)
-const CREAM = '#F3EAD3';  // QR foni (skaner uchun och fon kerak)
+// QR — oltin fon, qora nuqtalar ("N" belgisi bilan bir uslubda). Nuqtalar
+// fondan TO'Q bo'lishi shart: teskari (oltin nuqta, qora fon) QR'ni ba'zi
+// telefonlar o'qimaydi.
+const QR_BG = GOLD;
 const BLEED = 1.5;        // mm, kesish xatosi oq chiziq qoldirmasin
 
 const f = (n) => Number(n.toFixed(3));
@@ -55,7 +58,7 @@ async function qrSvg(url, x, y, size) {
   const n = q.modules.size; const pad = size * 0.07; const m = (size - 2 * pad) / n;
   let d = '';
   for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.modules.get(r, c)) d += `M${f(x + pad + c * m)} ${f(y + pad + r * m)}h${f(m)}v${f(m)}h-${f(m)}z`;
-  return `<rect x="${x}" y="${y}" width="${size}" height="${size}" rx="1.4" fill="${CREAM}"/><path d="${d}" fill="${BLACK}"/>`;
+  return `<rect x="${x}" y="${y}" width="${size}" height="${size}" rx="1.4" fill="${QR_BG}"/><path d="${d}" fill="${BLACK}"/>`;
 }
 const text = (x, y, size, weight, spacing, str, anchor = 'middle', fill = GOLD) =>
   `<text x="${f(x + (anchor === 'middle' ? spacing / 2 : 0))}" y="${y}" font-family="Manrope" font-size="${size}" font-weight="${weight}" letter-spacing="${spacing}" text-anchor="${anchor}" fill="${fill}">${str}</text>`;
