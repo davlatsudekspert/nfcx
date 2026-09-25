@@ -46,14 +46,16 @@ addCard.run('INTR01', 'Ichki', 100000, ts, 3, 'personal');
 addCard.run('TESTBIZ', 'Sinov biznes', 0, ts, 2, 'business');
 
 // BUYURTMALAR — har uchala akkauntdan bittadan to'langan + bittadan kutilayotgan.
+// To'langanlari Payme orqali (daromad faqat Payme/Click'dan hisoblanadi —
+// test-admin-revenue.mjs ga qarang); bu test esa SINOV/ICHKI filtrini qo'riqlaydi.
 const addOrder = sqlite.prepare(
-  `INSERT INTO web_orders (id, user_id, code, price, payload, status, created_at) VALUES (?,?,?,?,'{}',?,?)`);
-addOrder.run(1, 1, 'REAL01', 500000, 'paid', now);
-addOrder.run(2, 2, 'TEST01', 900000, 'paid', now);
-addOrder.run(3, 3, 'INTR01', 700000, 'paid', now);
-addOrder.run(4, 1, 'REAL01', 100000, 'pending', now);
-addOrder.run(5, 2, 'TEST01', 100000, 'pending', now);
-addOrder.run(6, 3, 'INTR01', 100000, 'pending', now);
+  `INSERT INTO web_orders (id, user_id, code, price, payload, status, created_at, payme_transaction_id) VALUES (?,?,?,?,'{}',?,?,?)`);
+addOrder.run(1, 1, 'REAL01', 500000, 'paid', now, 'pm-1');
+addOrder.run(2, 2, 'TEST01', 900000, 'paid', now, 'pm-2');
+addOrder.run(3, 3, 'INTR01', 700000, 'paid', now, 'pm-3');
+addOrder.run(4, 1, 'REAL01', 100000, 'pending', now, null);
+addOrder.run(5, 2, 'TEST01', 100000, 'pending', now, null);
+addOrder.run(6, 3, 'INTR01', 100000, 'pending', now, null);
 
 // TRANZAKSIYALAR — komissiya.
 const addTx = sqlite.prepare(

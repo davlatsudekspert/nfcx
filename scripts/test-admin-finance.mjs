@@ -18,7 +18,7 @@ await env.DB.prepare(`INSERT INTO web_orders (id, user_id, code, price, payload,
 await env.DB.prepare(`INSERT INTO web_orders (id, user_id, code, price, payload, status, created_at, kind, payme_transaction_id) VALUES (2, 1, 'VIP001', 50000, '{}', 'paid', '2026-03-20 12:30:00', 'premium_upgrade', 'payme-abc-2')`).run();
 await env.DB.prepare(`INSERT INTO web_orders (id, user_id, code, price, payload, status, created_at, kind) VALUES (3, 2, 'OTH222', 49000, '{}', 'cancelled', '2026-03-21T09:00:00.000Z', 'card_purchase')`).run();
 await env.DB.prepare(`INSERT INTO web_orders (id, user_id, code, price, payload, status, created_at, kind) VALUES (4, 2, 'OTH222', 49000, '{}', 'pending', '2026-03-22T09:00:00.000Z', 'card_purchase')`).run();
-await env.DB.prepare(`INSERT INTO web_orders (id, user_id, code, price, payload, status, created_at, kind) VALUES (5, 1, 'BIZ777', 300000, '{}', 'paid', '2026-04-02T09:00:00.000Z', 'card_purchase')`).run();
+await env.DB.prepare(`INSERT INTO web_orders (id, user_id, code, price, payload, status, created_at, kind, click_transaction_id) VALUES (5, 1, 'BIZ777', 300000, '{}', 'paid', '2026-04-02T09:00:00.000Z', 'card_purchase', 'click-5')`).run();
 await env.DB.prepare(`INSERT INTO bot_orders (id, tg_user_id, tg_name, code, price, status, created_at) VALUES (1, 555, 'Bot Foydalanuvchi', 'BOT111', 99000, 'paid', '2026-03-10T08:00:00.000Z')`).run();
 await env.DB.prepare(`INSERT INTO bot_orders (id, tg_user_id, tg_name, code, price, status, created_at) VALUES (2, 556, 'Bot Pending', 'BOT222', 99000, 'pending', '2026-03-11T08:00:00.000Z')`).run();
 
@@ -63,6 +63,7 @@ for (const [label, fn] of [
   ["transactions from=' OR 1=1 --", () => get(`${F}/transactions?from=${encodeURIComponent("' OR 1=1 --")}`)],
   ['transactions type=bogus', () => get(`${F}/transactions?range=month&type=bogus`)],
   ['transactions status=bogus', () => get(`${F}/transactions?range=month&status=bogus`)],
+  ['transactions channel=bogus', () => get(`${F}/transactions?range=month&channel=bogus`)],
   ['reconciliation period=2026-13', () => get(`${F}/reconciliation?period=2026-13`)],
   ['reconciliation year=abc', () => get(`${F}/reconciliation?year=abc`)],
   ['bank-actual bad period', () => post(`${F}/bank-actual`, { period: '2026/03', actualAmount: 1 })],
@@ -90,9 +91,10 @@ for (const [label, fn] of [
   check('transactions: total/page/limit shape', [data.total, data.page, data.limit], [4, 1, 50]);
   check('transactions: sorted newest first', data.items.map((i) => `${i.source}-${i.id}`), ['web-3', 'web-2', 'bot-1', 'web-1']);
   const w = data.items.find((i) => i.source === 'web' && i.id === 1);
-  check('transactions: web item shape', w, { id: 1, source: 'web', kind: 'card_purchase', code: 'VIP001', amount: 199000, status: 'paid', paymeTxnId: 'payme-abc-1', userEmail: 'user@test.local', createdAt: '2026-03-05T10:00:00.000Z' });
+  check('transactions: web item shape', w, { id: 1, source: 'web', kind: 'card_purchase', code: 'VIP001', amount: 199000, status: 'paid', paymeTxnId: 'payme-abc-1', clickTxnId: null, userEmail: 'user@test.local', createdAt: '2026-03-05T10:00:00.000Z', channel: 'payme', refunded: false, testUser: false, bucket: 'counted' });
   const b = data.items.find((i) => i.source === 'bot');
-  check('transactions: bot item shape', [b.kind, b.code, b.amount, b.paymeTxnId, b.userEmail], ['card_purchase', 'BOT111', 99000, null, 'Bot Foydalanuvchi']);
+  check('transactions: bot item shape', [b.kind, b.code, b.amount, b.paymeTxnId, b.userEmail, b.channel, b.bucket], ['card_purchase', 'BOT111', 99000, null, 'Bot Foydalanuvchi', 'bot', 'other']);
+  check('transactions: cancelled row has no bucket', data.items.find((i) => i.id === 3 && i.source === 'web').bucket, '');
 }
 {
   const { data } = await get(`${F}/transactions?from=2026-03-01&to=2026-03-31&status=paid`);
@@ -115,8 +117,11 @@ for (const [label, fn] of [
   check('transactions q= SQL-ish text is bound, not interpolated -> 0 rows', inj.data.items.length, 0);
 }
 {
+  // Ilgari bot qatorlari HAR sahifaga qayta qo'shilardi — endi bitta so'rov (UNION ALL).
   const { data } = await get(`${F}/transactions?from=2026-03-01&to=2026-04-30&limit=10&page=2`);
-  check('transactions limit clamps to 10; page 2 has no web rows (4 web total) -> only bot row', [data.limit, data.page, data.items.map((i) => i.source)], [10, 2, ['bot']]);
+  check('transactions limit clamps to 10; page 2 empty (5 rows) — bot row not repeated', [data.limit, data.page, data.items.length, data.total], [10, 2, 0, 5]);
+  const p1 = await get(`${F}/transactions?from=2026-03-01&to=2026-04-30&limit=10&page=1`);
+  check('transactions page 1: web + bot together, total 5', [p1.data.items.length, p1.data.total, p1.data.items.filter((i) => i.source === 'bot').length], [5, 5, 1]);
 }
 
 // ---------- rates ----------
@@ -152,7 +157,7 @@ for (const [label, fn] of [
 }
 
 // ---------- reconciliation + bank-actual ----------
-// March web paid gross = 199000 + 50000 = 249000 (bot_orders not counted, legacy parity); payme 2% -> fee 4980; expected 244020
+// March web paid gross = 199000 + 50000 = 249000 (faqat Payme/Click; bot_orders «Boshqa»); payme 2% -> fee 4980; expected 244020
 {
   const { res, data } = await get(`${F}/reconciliation?year=2026`);
   check('GET reconciliation?year -> 200, 12 months', [res.status, data.year, data.months.length], [200, 2026, 12]);
@@ -240,18 +245,86 @@ let docId = 0; let uploadedUrl = '';
 {
   const { res, data } = await get(`${F}/reports?from=2026-03-01&to=2026-03-31`);
   check('GET reports (JSON) -> 200 shape', [res.status, Object.keys(data).sort()], [200, ['daily', 'overview', 'range', 'reconciliation', 'transactions']]);
-  // gross = 199000 + 50000 + bot 99000 = 348000; payme 2% -> 3980 + 1000 + 1980 = 6960 (settlement_deducted)
+  // gross = FAQAT Payme/Click: 199000 + 50000 = 249000 (bot 99000 — «Boshqa»); payme 2% -> 3980 + 1000 = 4980 (settlement_deducted)
   const o = data.overview;
-  check('reports overview: gross incl. bot, paymeFee, expected, orderCount', [o.grossSales, o.paymeFee, o.paymeMode, o.expectedBankSettlement, o.orderCount], [348000, 6960, 'settlement_deducted', 341040, 3]);
-  check('reports overview: bank actual + reconciliation diff', [o.actualBankSettlement, o.reconciliationDifference], [240000, 240000 - 341040]);
-  check('reports overview: tax 4% of base, bank monthly fee, ratesConfigured', [o.taxBase, o.turnoverPct, o.turnoverTax, o.bankFees, o.ratesConfigured, o.months], [348000, 4, 13920, 25000, true, ['2026-03']]);
+  check('reports overview: gross Payme/Click only, paymeFee, expected, orderCount', [o.grossSales, o.paymeFee, o.paymeMode, o.expectedBankSettlement, o.orderCount], [249000, 4980, 'settlement_deducted', 244020, 2]);
+  check('reports overview: bot -> «Boshqa», no refunds', [o.otherGross, o.otherCount, o.refunds, o.refundCount], [99000, 1, 0, 0]);
+  check('reports overview: bank actual + reconciliation diff', [o.actualBankSettlement, o.reconciliationDifference], [240000, 240000 - 244020]);
+  check('reports overview: tax 4% of base, bank monthly fee, ratesConfigured', [o.taxBase, o.turnoverPct, o.turnoverTax, o.bankFees, o.ratesConfigured, o.months], [249000, 4, 9960, 25000, true, ['2026-03']]);
   check('reports overview: manualExpenses only within range (Reklama deleted)', o.manualExpenses, 0);
-  check('reports overview: netCashFlow = actual - bankFees - turnoverTax - socialTax - expenses', o.netCashFlow, 240000 - 25000 - 13920 - 0 - 0);
-  check('reports overview: byType sorted desc', o.byType, [{ kind: 'card_purchase', total: 298000 }, { kind: 'premium_upgrade', total: 50000 }]);
+  check('reports overview: netCashFlow = actual - bankFees - turnoverTax - socialTax - expenses', o.netCashFlow, 240000 - 25000 - 9960 - 0 - 0);
+  check('reports overview: byType sorted desc', o.byType, [{ kind: 'card_purchase', total: 199000 }, { kind: 'premium_upgrade', total: 50000 }]);
   check('reports daily: web-only days with fee/expected', data.daily, [{ day: '2026-03-05', gross: 199000, orders: 1, paymeFee: 3980, expected: 195020 }, { day: '2026-03-20', gross: 50000, orders: 1, paymeFee: 1000, expected: 49000 }]);
-  check('reports transactions/reconciliation nested', [data.transactions.items.length, data.reconciliation.year, data.reconciliation.months.length], [4, 2026, 12]);
+  check('reports transactions (faqat hisobga kirgan) / reconciliation nested', [data.transactions.items.map((i) => i.id), data.reconciliation.year, data.reconciliation.months.length], [[2, 1], 2026, 12]);
   const fmt = await get(`${F}/report?from=2026-03-01&to=2026-03-31&format=json`);
-  check('GET report?format=json -> same JSON shape', [fmt.res.status, fmt.data.overview.grossSales], [200, 348000]);
+  check('GET report?format=json -> same JSON shape', [fmt.res.status, fmt.data.overview.grossSales], [200, 249000]);
+}
+
+// ---------- to'lov kanallari: faqat Payme/Click hisobga (egasining qarori, 2026-09-25) ----------
+// May 2026 — alohida oy, yuqoridagi mart/aprel tekshiruvlariga tegmaydi.
+{
+  await env.DB.prepare(`INSERT INTO users (id, email, password_hash, created_at, is_internal) VALUES (3, 'owner@test.local', 'x', '2026-01-01 00:00:00', 1)`).run();
+  const add = (id, user, code, price, created, kind, payme, click, cancel) => env.DB.prepare(
+    `INSERT INTO web_orders (id, user_id, code, price, payload, status, created_at, kind, payme_transaction_id, click_transaction_id, cancel_time)
+     VALUES (?, ?, ?, ?, '{}', 'paid', ?, ?, ?, ?, ?)`).bind(id, user, code, price, created, kind, payme, click, cancel).run();
+  await add(20, 1, 'PAY020', 100000, '2026-05-02T10:00:00.000Z', 'card_purchase', 'pm-20', null, null);   // Payme
+  await add(21, 1, 'CLK021', 200000, '2026-05-03 11:00:00', 'premium_upgrade', null, 'ck-21', null);       // Click
+  await add(22, 1, 'MAN022', 30000, '2026-05-04T10:00:00.000Z', 'card_purchase', 'pm-22', null, null);     // qo'lda
+  await add(23, 1, 'LEG023', 40000, '2026-05-05T10:00:00.000Z', 'card_purchase', null, null, null);        // eski
+  await add(24, 1, 'TST024', 1000, '2026-05-06T10:00:00.000Z', 'payme_test', 'pm-24', null, null);         // Payme sinovi
+  await add(25, 1, 'REF025', 60000, '2026-05-07T10:00:00.000Z', 'card_purchase', 'pm-25', null, '2026-05-08 10:00:00'); // qaytarilgan
+  await add(26, 3, 'OWN026', 500000, '2026-05-09T10:00:00.000Z', 'card_purchase', 'pm-26', null, null);    // ichki akkaunt
+  await env.DB.prepare(`INSERT INTO admin_activity_log (action, details, old_value, new_value, created_at)
+    VALUES ('payment_confirmed_manually', 'web_orders #22 (card_purchase, MAN022)', 'pending', 'paid', '2026-05-04 10:05:00')`).run();
+  await env.DB.prepare(`INSERT INTO bot_orders (id, tg_user_id, tg_name, code, price, status, created_at) VALUES (3, 557, 'Bot May', 'BOT333', 99000, 'paid', '2026-05-10T08:00:00.000Z')`).run();
+
+  const { data } = await get(`${F}/reports?from=2026-05-01&to=2026-05-31`);
+  const o = data.overview;
+  check('May: gross = faqat Payme + Click (qaytarilgansiz)', [o.grossSales, o.orderCount], [300000, 2]);
+  check('May: qaytarilgan alohida, jamidan ikki marta ayirilmaydi', [o.refunds, o.refundCount, o.taxBase], [60000, 1, 300000]);
+  check('May: «Boshqa» = qo‘lda + eski + sinov + ichki akkaunt + bot', [o.otherGross, o.otherCount], [30000 + 40000 + 1000 + 500000 + 99000, 5]);
+  check('May: kunlik faqat hisobga kirganlar', data.daily.map((d) => [d.day, d.gross]), [['2026-05-02', 100000], ['2026-05-03', 200000]]);
+  // Moliya bosh sahifasi (worker.js /finance/overview) — xuddi shu guruhlar.
+  const ov = (await get(`${F}/overview?range=custom&from=2026-05-01&to=2026-05-31`)).data.overview;
+  check('May /finance/overview: gross, «Boshqa», qaytarilgan — Excel bilan bir xil',
+    [ov.grossSales, ov.orderCount, ov.otherGross, ov.otherCount, ov.refunds, ov.refundCount],
+    [300000, 2, 670000, 5, 60000, 1]);
+  const rec = await get(`${F}/reconciliation?period=2026-05`);
+  check('May: reconciliation gross/orders faqat Payme/Click', [rec.data.month.gross, rec.data.month.orders], [300000, 2]);
+
+  const tx = async (qs) => (await get(`${F}/transactions?from=2026-05-01&to=2026-05-31${qs}`)).data;
+  const ids = (d) => d.items.map((i) => `${i.source}-${i.id}`);
+  const counted = await tx('&channel=counted');
+  check('channel=counted -> Payme/Click, yig‘indi', [ids(counted), counted.total, counted.paidAmount], [['web-21', 'web-20'], 2, 300000]);
+  check('channel=other -> qo‘lda, eski, sinov, ichki, bot', ids(await tx('&channel=other')), ['bot-3', 'web-26', 'web-24', 'web-23', 'web-22']);
+  check('channel=refunded', ids(await tx('&channel=refunded')), ['web-25']);
+  check('channel=payme (kanal bo‘yicha, hisobdan qat’i nazar)', ids(await tx('&channel=payme')), ['web-26', 'web-25', 'web-20']);
+  check('channel=click / manual / legacy / test / bot',
+    [ids(await tx('&channel=click')), ids(await tx('&channel=manual')), ids(await tx('&channel=legacy')), ids(await tx('&channel=test')), ids(await tx('&channel=bot'))],
+    [['web-21'], ['web-22'], ['web-23'], ['web-24'], ['bot-3']]);
+  const all = await tx('');
+  const byId = Object.fromEntries(all.items.filter((i) => i.source === 'web').map((i) => [i.id, i]));
+  check('belgilar: ichki akkaunt, qaytarilgan', [byId[26].testUser, byId[26].bucket, byId[25].refunded, byId[25].bucket, byId[20].testUser], [true, 'other', true, 'refunded', false]);
+  const clickQ = await tx('&q=CK-21');
+  check('q= Click tranzaksiya raqami bo‘yicha ham topadi', ids(clickQ), ['web-21']);
+  check('channel + type birga', ids(await tx('&channel=counted&type=premium_upgrade')), ['web-21']);
+
+  // Sahifalash web + bot ustida BIRGA: mart..may = 13 qator, har biri bir marta.
+  const p1 = await get(`${F}/transactions?from=2026-03-01&to=2026-05-31&limit=10&page=1`);
+  const p2 = await get(`${F}/transactions?from=2026-03-01&to=2026-05-31&limit=10&page=2`);
+  const seen = [...ids(p1.data), ...ids(p2.data)];
+  check('sahifalash: 10 + 3, takror yo‘q, total 13', [p1.data.items.length, p2.data.items.length, new Set(seen).size, p1.data.total], [10, 3, 13, 13]);
+
+  // Excel: tranzaksiyalar varag'ida faqat hisobga kirganlar, «Boshqa» jamlamada.
+  const res = await worker.fetch(req(`${F}/report?from=2026-05-01&to=2026-05-31`, { cookie: cookie.admin }), env);
+  const text = Buffer.from(new Uint8Array(await res.arrayBuffer())).toString('utf8');
+  checkTrue('Excel: Payme/Click qatorlari bor', text.includes('PAY020') && text.includes('CLK021') && text.includes('ck-21'));
+  checkTrue('Excel: hisobga kirmaganlar varaqda yo‘q', !['MAN022', 'LEG023', 'TST024', 'OWN026', 'REF025', 'BOT333'].some((c) => text.includes(c)));
+  checkTrue('Excel: «Boshqa» va qaytarilgan jamlamada', text.includes('«Boshqa» — hisobga kirmagan') && text.includes('Qaytarilgan (refund)'));
+
+  // Hech narsa o'chirilmadi.
+  const n = await env.DB.prepare(`SELECT COUNT(*) AS n FROM web_orders WHERE id BETWEEN 20 AND 26`).first();
+  check('hech bir yozuv o‘chirilmadi', n.n, 7);
 }
 
 // ---------- admin activity log ----------

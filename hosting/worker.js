@@ -3104,6 +3104,11 @@ async function ensureWebOrderTimestampColumns(env) {
       // shu ustun to'ldiriladi. `catch` — ustun allaqachon bo'lsa jim
       // o'tadi (boshqa ALTER'lar bilan bir xil naqsh).
       await env.DB.prepare(`ALTER TABLE web_orders ADD COLUMN click_transaction_id TEXT`).run().catch(() => {});
+      // To'lov kanali (`webOrderChannelSqlD1`) HAR buyurtma uchun jurnaldan
+      // "qo'lda tasdiqlangan" yozuvini qidiradi. Indekssiz har qatorga
+      // butun jurnal o'qilardi (D1 "rows read" — pul va vaqt). Qo'shimcha,
+      // hech narsani o'zgartirmaydi.
+      await env.DB.prepare(`CREATE INDEX IF NOT EXISTS admin_activity_log_action_idx ON admin_activity_log (action)`).run().catch(() => {});
     })();
   }
   await webOrderTimestampColumnsReady;
@@ -5030,6 +5035,31 @@ function checkoutLinksD1(env, orderId, amountSom) {
 
 // Click so'rovi form-encoded keladi; ba'zi sinov vositalari JSON yuboradi —
 // ikkalasi ham qabul qilinadi.
+// Click tranzaksiyalari — Payme'dagi `web_orders.payme_*` ustunlarining
+// hamkasbi, alohida jadvalda (bitta buyurtmaga bir nechta urinish
+// bo'lishi mumkin). Faqat qo'shiladi, hech narsa o'chirilmaydi.
+const clickTableJobs = new WeakMap();
+async function ensureClickTableD1(env) {
+  if (!clickTableJobs.has(env.DB)) {
+    const job = env.DB.batch([
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS "click_transactions" (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        click_trans_id TEXT NOT NULL UNIQUE,
+        order_id INTEGER NOT NULL,
+        amount TEXT,
+        click_paydoc_id TEXT,
+        status TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )`),
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_click_tx_order ON click_transactions(order_id)`),
+    ]);
+    clickTableJobs.set(env.DB, job);
+    job.catch(() => clickTableJobs.delete(env.DB));
+  }
+  await clickTableJobs.get(env.DB);
+}
+
 async function clickParamsD1(request) {
   const ctype = String(request.headers.get('content-type') || '').toLowerCase();
   try {
@@ -5132,6 +5162,11 @@ async function handleClickCompleteD1(env, p) {
   }
   await env.DB.prepare(`UPDATE click_transactions SET status = 'paid', updated_at = ? WHERE id = ?`)
     .bind(now, tx.id).run();
+  // Buyurtmaga Click raqami yoziladi — `payme_transaction_id` ning
+  // hamkasbi. Admin panel to'lov kanalini (Payme / Click / qo'lda) shu
+  // ustundan biladi. Xato jim: to'lov allaqachon yakunlangan.
+  await env.DB.prepare(`UPDATE web_orders SET click_transaction_id = COALESCE(click_transaction_id, ?) WHERE id = ?`)
+    .bind(String(p.click_trans_id), order.id).run().catch(() => {});
 
   return {
     click_trans_id: p.click_trans_id,
@@ -8191,6 +8226,52 @@ const NOT_TEST_CARD_D1 = `(user_id IS NULL OR user_id NOT IN ${TEST_USER_IDS_D1}
 // esa KO'RINISH uchun — faqat sinovni yashiradi.
 const HIDDEN_USER_IDS_D1 = '(SELECT id FROM users WHERE is_test = 1)';
 
+// TO'LOV KANALI — ADMIN HISOB-KITOBI (egasining qarori, 2026-09-25):
+// "hisob-kitob faqat Payme va Click orqali to'langanlar bo'yicha; eski,
+// qo'lda tasdiqlangan va sinov to'lovlari alohida («Boshqa»), jamiga
+// qo'shilmaydi". Yozuvlar O'CHIRILMAYDI — faqat qaysi biri hisobga
+// kirishi belgilanadi.
+//   'payme' | 'click' — to'lov tizimi orqali (HAQIQIY tushum);
+//   'manual' — admin "Qo'lda tasdiqlash" bosgan (jurnalda yozuvi bor;
+//              Payme tranzaksiyasi boshlangan bo'lsa ham — pul Payme
+//              orqali o'tmagan);
+//   'test'   — Payme sinov buyurtmasi (`kind = 'payme_test'`);
+//   'legacy' — to'lov tizimi raqami yo'q eski yozuv.
+// Qaytarilgan (refund) to'lov: Payme CancelTransaction to'langan buyurtma
+// holatini 'paid' qoldiradi va faqat `cancel_time` qo'yadi — u tushumga
+// kirmaydi. `cancel_time` ustuni `ensureWebOrderTimestampColumns()` da.
+function webOrderChannelSqlD1(alias = 'w') {
+  return `(CASE
+    WHEN ${alias}.kind = 'payme_test' THEN 'test'
+    WHEN EXISTS (SELECT 1 FROM admin_activity_log mcl
+                  WHERE mcl.action = 'payment_confirmed_manually' AND mcl.new_value = 'paid'
+                    AND mcl.details LIKE 'web_orders #' || ${alias}.id || ' (%') THEN 'manual'
+    WHEN ${alias}.click_transaction_id IS NOT NULL THEN 'click'
+    WHEN ${alias}.payme_transaction_id IS NOT NULL THEN 'payme'
+    ELSE 'legacy' END)`;
+}
+// Haqiqiy tushum: Payme yoki Click orqali to'langan va qaytarilmagan.
+function gatewayRevenueSqlD1(alias = 'w') {
+  return `(${alias}.status = 'paid' AND ${alias}.cancel_time IS NULL AND ${webOrderChannelSqlD1(alias)} IN ('payme','click'))`;
+}
+// HISOB GURUHLARI — "to'langan" yozuvlar admin hisobida (Umumiy, Moliya,
+// Excel) UCH guruhga bo'linadi; ustma-ust tushmaydi, yig'indisi = hamma
+// to'langan yozuvlar:
+//   'counted'  — TUSHUM: Payme/Click, qaytarilmagan, sinov/ichki akkaunt emas;
+//   'refunded' — Payme/Click orqali to'lanib, keyin qaytarilgan (sinov/ichki emas);
+//   'other'    — «Boshqa»: qolgani — qo'lda tasdiqlangan, eski, Payme sinovi
+//                va sinov/ichki akkauntlarning to'lovlari.
+// Eski Telegram bot buyurtmalari (`bot_orders`) ham «Boshqa» — ularni
+// chaqiruvchi alohida jadvaldan qo'shadi. 'counted' AYNAN
+// `gatewayRevenueSqlD1` + sinov/ichki filtri.
+function revenueBucketSqlD1(bucket, alias = 'w') {
+  const gateway = `${webOrderChannelSqlD1(alias)} IN ('payme','click') AND ${alias}.user_id NOT IN ${TEST_USER_IDS_D1}`;
+  if (bucket === 'counted') return `(${alias}.status = 'paid' AND ${alias}.cancel_time IS NULL AND ${gateway})`;
+  if (bucket === 'refunded') return `(${alias}.status = 'paid' AND ${alias}.cancel_time IS NOT NULL AND ${gateway})`;
+  if (bucket === 'other') return `(${alias}.status = 'paid' AND NOT (${gateway}))`;
+  throw new Error(`revenueBucketSqlD1: ${bucket}`);
+}
+
 // SANA SOLISHTIRISH — `datetime(created_at)` ISHLATILMAYDI.
 //
 // TOPILGAN XATO (2026-09): bazadagi vaqtlar IKKI XIL yozilgan —
@@ -8261,12 +8342,22 @@ async function adminCoreApi(request, env, url, admin) {
   // Jadval o'chirilmadi: u eski moliyaviy yozuv va uni o'chirish
   // tarixni yo'qotardi. Shunchaki endi ko'rsatilmaydi.
   if (path === '/api/admin/platform-wallet' && request.method === 'GET') {
-    const row = await env.DB.prepare(
-      `SELECT COALESCE(SUM(price), 0) AS total, COUNT(*) AS n FROM web_orders
-       WHERE status = 'paid'
-         AND (user_id IS NULL OR user_id NOT IN (SELECT id FROM users WHERE is_test = 1 OR is_internal = 1))`
-    ).first();
-    return json({ balance: Number(row?.total || 0), paidOrders: Number(row?.n || 0) });
+    // Faqat Payme/Click orqali tushgan va qaytarilmagan pul (yuqoridagi
+    // `gatewayRevenueSqlD1`). Qaytarilganlar va «Boshqa» (qo'lda, eski,
+    // sinov, bot) alohida — jamiga qo'shilmaydi.
+    await ensureWebOrderTimestampColumns(env);
+    const sumOf = (bucket) => env.DB.prepare(`SELECT COALESCE(SUM(w.price), 0) AS total, COUNT(*) AS n FROM web_orders w WHERE ${revenueBucketSqlD1(bucket, 'w')}`).first();
+    const [row, refunded, other, bot] = await Promise.all([
+      sumOf('counted'),
+      sumOf('refunded'),
+      sumOf('other'),
+      env.DB.prepare(`SELECT COALESCE(SUM(price), 0) AS total, COUNT(*) AS n FROM bot_orders WHERE status = 'paid'`).first().catch(() => null),
+    ]);
+    return json({
+      balance: Number(row?.total || 0), paidOrders: Number(row?.n || 0),
+      refundedTotal: Number(refunded?.total || 0), refundedOrders: Number(refunded?.n || 0),
+      otherTotal: Number(other?.total || 0) + Number(bot?.total || 0), otherOrders: Number(other?.n || 0) + Number(bot?.n || 0),
+    });
   }
 
   if (path === '/api/admin/analytics' && request.method === 'GET') {
@@ -8468,15 +8559,38 @@ async function adminCoreApi(request, env, url, admin) {
     // ular bilan ishlash kerak, shuning uchun ro'yxatdan yashirilmaydi
     // — faqat pul va statistika hisobiga kirmaydi (yuqoridagi
     // HIDDEN_USER_IDS_D1 izohiga qarang).
-    const testFilter = includeTest ? '' : ` WHERE user_id NOT IN ${HIDDEN_USER_IDS_D1}`;
+    // KO'RINISH (egasining qarori, 2026-09-25): `view=paid` — Payme/Click
+    // orqali to'langanlar (haqiqiy tushum); `pending` — to'lov kutilmoqda;
+    // `other` — «Boshqa»: qo'lda tasdiqlangan, eski, sinov, qaytarilgan,
+    // bekor qilingan va eski Telegram bot buyurtmalari; `all` (standart) —
+    // hammasi. Hech narsa o'chirilmaydi.
+    const view = ['paid', 'pending', 'other', 'all'].includes(url.searchParams.get('view')) ? url.searchParams.get('view') : 'all';
+    await ensureWebOrderTimestampColumns(env);
+    const conds = [];
+    if (!includeTest) conds.push(`w.user_id NOT IN ${HIDDEN_USER_IDS_D1}`);
+    if (view === 'paid') conds.push(gatewayRevenueSqlD1('w'));
+    if (view === 'pending') conds.push(`w.status = 'pending'`);
+    if (view === 'other') conds.push(`w.status <> 'pending' AND NOT ${gatewayRevenueSqlD1('w')}`);
+    const where = conds.length ? ` WHERE ${conds.join(' AND ')}` : '';
+    const withBot = view === 'other' || view === 'all';
     const [web, bot] = await Promise.all([
-      env.DB.prepare(`SELECT id, 'web' AS source, user_id, code, price AS amount, status, created_at, kind, payload FROM web_orders${testFilter} ORDER BY created_at DESC LIMIT 100`).all(),
-      env.DB.prepare(`SELECT id, 'bot' AS source, tg_user_id AS user_id, code, price AS amount, status, created_at, tg_username, tg_name FROM bot_orders ORDER BY created_at DESC LIMIT 100`).all(),
+      env.DB.prepare(`SELECT w.id, 'web' AS source, w.user_id, w.code, w.price AS amount, w.status, w.created_at, w.kind, w.payload,
+          ${webOrderChannelSqlD1('w')} AS channel, (w.status = 'paid' AND w.cancel_time IS NOT NULL) AS refunded,
+          w.payme_transaction_id, w.click_transaction_id
+        FROM web_orders w${where} ORDER BY w.created_at DESC LIMIT 100`).all(),
+      withBot
+        ? env.DB.prepare(`SELECT id, 'bot' AS source, tg_user_id AS user_id, code, price AS amount, status, created_at, tg_username, tg_name, 'bot' AS channel FROM bot_orders ORDER BY created_at DESC LIMIT 100`).all()
+        : Promise.resolve({ results: [] }),
     ]);
     const orders = [...(web.results || []), ...(bot.results || [])]
       .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 100)
       .map((r) => {
-        const base = { id: r.id, source: r.source, userId: r.user_id, code: r.code, amount: Number(r.amount), status: r.status, createdAt: r.created_at, kind: r.kind || '', tgUsername: r.tg_username, tgName: r.tg_name };
+        const base = {
+          id: r.id, source: r.source, userId: r.user_id, code: r.code, amount: Number(r.amount), status: r.status, createdAt: r.created_at, kind: r.kind || '', tgUsername: r.tg_username, tgName: r.tg_name,
+          // To'lov kanali: payme | click | manual | test | legacy | bot.
+          channel: String(r.channel || ''), refunded: !!Number(r.refunded || 0),
+          paymeTransactionId: r.payme_transaction_id || null, clickTransactionId: r.click_transaction_id || null,
+        };
         // Jismoniy karta buyurtmasi — admin nima chop etishi kerakligini
         // AYNAN shu yerdan ko'radi: bosma maket (old/orqa) va manzil.
         // Butun `payload` qaytarilmaydi — faqat kerakli maydonlar.
@@ -8674,15 +8788,24 @@ async function adminCoreApi(request, env, url, admin) {
     const end = range === 'prev_month' ? "datetime('now','start of month','-1 second')" : range === 'custom' && /^\d{4}-\d{2}-\d{2}$/.test(to || '') ? `datetime('${to}T23:59:59')` : "datetime('now')";
     // Kun darajasidagi chegara (yuqoridagi DAY_COL_D1 izohiga qarang).
     const WIN = `${DAY_COL_D1} BETWEEN date(${start}) AND date(${end})`;
-    const [sales, daily, expenses, bank] = await Promise.all([
+    await ensureWebOrderTimestampColumns(env);
+    const [sales, daily, expenses, bank, otherSales, botSales, refundSales] = await Promise.all([
       // SINOV FOYDALANUVCHILAR HISOBGA OLINMAYDI (2026-09). Egasining
       // o'z sinov to'lovlari umumiy hisobni buzardi — statistika buni
       // allaqachon chiqarib tashlardi, moliya bo'limi esa yo'q.
       // Yozuvlar O'CHIRILMAYDI, faqat hisobga kirmaydi.
-      env.DB.prepare(`SELECT COUNT(*) AS order_count, COALESCE(SUM(price),0) AS gross FROM web_orders WHERE status = 'paid'${TEST_USER_FILTER_D1} AND ${WIN}`).first(),
-      env.DB.prepare(`SELECT substr(created_at,1,10) AS day, COALESCE(SUM(price),0) AS gross FROM web_orders WHERE status = 'paid'${TEST_USER_FILTER_D1} AND ${WIN} GROUP BY substr(created_at,1,10) ORDER BY day`).all(),
+      //
+      // Tushum — FAQAT Payme/Click (egasining qarori, 2026-09-25;
+      // `gatewayRevenueSqlD1` izohiga qarang).
+      env.DB.prepare(`SELECT COUNT(*) AS order_count, COALESCE(SUM(w.price),0) AS gross FROM web_orders w WHERE ${gatewayRevenueSqlD1('w')}${TEST_USER_FILTER_D1.replace('user_id', 'w.user_id')} AND ${WIN.replace(DAY_COL_D1, DAY_COL_D1.replace(/created_at/g, 'w.created_at'))}`).first(),
+      env.DB.prepare(`SELECT substr(w.created_at,1,10) AS day, COALESCE(SUM(w.price),0) AS gross FROM web_orders w WHERE ${gatewayRevenueSqlD1('w')}${TEST_USER_FILTER_D1.replace('user_id', 'w.user_id')} AND ${WIN.replace(DAY_COL_D1, DAY_COL_D1.replace(/created_at/g, 'w.created_at'))} GROUP BY substr(w.created_at,1,10) ORDER BY day`).all(),
       env.DB.prepare(`SELECT COALESCE(SUM(amount),0) AS total FROM finance_expenses WHERE datetime(spent_on) BETWEEN ${start} AND ${end}`).first(),
       env.DB.prepare(`SELECT COUNT(*) AS n, COALESCE(SUM(actual_amount),0) AS total FROM finance_bank_actuals WHERE period BETWEEN substr(${start},1,7) AND substr(${end},1,7)`).first(),
+      // «Boshqa»: shu davrda "to'langan", lekin Payme/Click orqali emas — faqat ma'lumot uchun.
+      env.DB.prepare(`SELECT COUNT(*) AS n, COALESCE(SUM(w.price),0) AS gross FROM web_orders w WHERE ${revenueBucketSqlD1('other', 'w')} AND ${WIN.replace(DAY_COL_D1, DAY_COL_D1.replace(/created_at/g, 'w.created_at'))}`).first(),
+      env.DB.prepare(`SELECT COUNT(*) AS n, COALESCE(SUM(price),0) AS gross FROM bot_orders WHERE status = 'paid' AND ${WIN}`).first().catch(() => null),
+      // Qaytarilgan — faqat ma'lumot (grossSales allaqachon ularsiz).
+      env.DB.prepare(`SELECT COUNT(*) AS n, COALESCE(SUM(w.price),0) AS gross FROM web_orders w WHERE ${revenueBucketSqlD1('refunded', 'w')} AND ${WIN.replace(DAY_COL_D1, DAY_COL_D1.replace(/created_at/g, 'w.created_at'))}`).first(),
     ]);
     const gross = Number(sales.gross || 0); const manualExpenses = Number(expenses.total || 0);
     // finance_bank_actuals'da davr uchun umuman yozuv bo'lmasa (n === 0) —
@@ -8693,7 +8816,7 @@ async function adminCoreApi(request, env, url, admin) {
     // Sof pul oqimi — haqiqiy bank tushumi hali kiritilmagan bo'lsa, kutilgan
     // (gross) qiymatga tayanadi, original'dagi settlementForNet fallback'i kabi.
     const netCashFlow = (actualBankSettlement != null ? actualBankSettlement : gross) - manualExpenses;
-    return json({ overview: { grossSales: gross, orderCount: Number(sales.order_count || 0), fromIso: from || null, toIso: to || null, ratesConfigured: false, paymeFee: 0, paymeMode: 'separate', expectedBankSettlement: gross, actualBankSettlement, reconciliationDifference, taxBase: gross, turnoverPct: 0, turnoverTax: 0, socialTax: 0, bankFees: 0, manualExpenses, netCashFlow }, daily: (daily.results || []).map((r) => ({ day: r.day, gross: Number(r.gross), expected: Number(r.gross) })) });
+    return json({ overview: { grossSales: gross, orderCount: Number(sales.order_count || 0), otherGross: Number(otherSales?.gross || 0) + Number(botSales?.gross || 0), otherCount: Number(otherSales?.n || 0) + Number(botSales?.n || 0), refunds: Number(refundSales?.gross || 0), refundCount: Number(refundSales?.n || 0), fromIso: from || null, toIso: to || null, ratesConfigured: false, paymeFee: 0, paymeMode: 'separate', expectedBankSettlement: gross, actualBankSettlement, reconciliationDifference, taxBase: gross, turnoverPct: 0, turnoverTax: 0, socialTax: 0, bankFees: 0, manualExpenses, netCashFlow }, daily: (daily.results || []).map((r) => ({ day: r.day, gross: Number(r.gross), expected: Number(r.gross) })) });
   }
 
   // ---------- news (Yangiliklar) — faqat admin joylaydi/tahrirlaydi/o'chiradi ----------
@@ -10439,6 +10562,23 @@ async function coreApi(request, env, url) {
     const res = await ordersApi(request, env, url);
     if (res) return res;
   }
+  // CLICK SHOP-API — Prepare va Complete (hosting/worker.js `handleClickRequestD1`).
+  //
+  // Kod bor edi, lekin marshrut ULANMAGAN edi: Click kabinetidagi
+  // manzilga kelgan so'rov bu yerga yetib bormasdi, `click_transactions`
+  // jadvali ham yaratilmasdi. Natijada Click orqali to'lov oxiriga
+  // yetmasdi (admin tekshiruvi, 2026-09-25). Click kabinetida:
+  //   Prepare:  https://nfcstore.uz/api/pay/click/prepare
+  //   Complete: https://nfcstore.uz/api/pay/click/complete
+  // (bitta manzil so'ralsa — /api/pay/click, `action` bo'yicha ajratiladi).
+  const clickAction = url.pathname === '/api/pay/click' ? null
+    : url.pathname === '/api/pay/click/prepare' ? 0
+      : url.pathname === '/api/pay/click/complete' ? 1 : undefined;
+  if (clickAction !== undefined && request.method === 'POST') {
+    await ensureClickTableD1(env);
+    await ensureWebOrderTimestampColumns(env);
+    return json(await handleClickRequestD1(env, request, clickAction));
+  }
   if (url.pathname === '/api/pay/payme' && request.method === 'POST') {
     // Payme Merchant API — server/index.js'dagi POST /api/pay/payme bilan
     // AYNAN bir xil kontrakt/tartib (payments o'chiq -> keyin Basic Auth ->
@@ -10531,6 +10671,9 @@ const H = {
   personalPriceForCode, personalTierFromCode, personalCodeTierOverride, isPersonalCodePurchasable,
   usersHaveTrialColumnsD1, trialEndsAtD1, premiumExtendD1,
   signupSourceD1, usersHaveSignupSourceD1, isMobileClientD1,
+  // To'lov kanali va haqiqiy (Payme/Click) tushum — moliya moduli ham
+  // AYNAN shu qoidani ishlatadi (ikki nusxa bo'lmasin).
+  webOrderChannelSqlD1, gatewayRevenueSqlD1, revenueBucketSqlD1, ensureWebOrderTimestampColumns,
   // SINOV/ICHKI AKKAUNTLAR — BITTA MANBA, MODULLAR UCHUN HAM.
   //
   // `hosting/api/marketplace.js` statistikasi ham "o'zimiz qilgan ish
@@ -10757,6 +10900,7 @@ async function handleRequest(request, env, url) {
       || url.pathname === '/api/people' || url.pathname === '/api/people/search'
       || url.pathname.startsWith('/api/auction') || url.pathname.startsWith('/api/admin/')
       || url.pathname.startsWith('/api/orders') || url.pathname === '/api/pay/payme'
+      || url.pathname === '/api/pay/click' || url.pathname.startsWith('/api/pay/click/')
       || url.pathname === '/api/conversations/unread-count' || url.pathname.startsWith('/api/gift-offers')
       || url.pathname === '/api/referrals' || url.pathname === '/api/auctions/won/pending'
       || url.pathname.startsWith('/api/follow') || url.pathname.startsWith('/api/unfollow')
