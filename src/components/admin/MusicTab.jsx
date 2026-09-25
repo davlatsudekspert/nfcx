@@ -74,15 +74,29 @@ export async function readId3(file) {
   return out;
 }
 
+// Davomiylik. Ba'zi brauzerlar (masalan Yandex) `loadedmetadata` ni umuman
+// yubormaydi — shunda ro'yxat hech qachon chiqmasdi. 4 s dan keyin fayl
+// hajmidan taxmin qilinadi (192 kbps).
 function audioDuration(file) {
+  const guess = Math.round((file.size * 8) / 192000);
   return new Promise((resolve) => {
-    const url = URL.createObjectURL(file);
-    const a = new Audio();
-    const done = (v) => { URL.revokeObjectURL(url); resolve(v); };
-    a.preload = 'metadata';
-    a.onloadedmetadata = () => done(Number.isFinite(a.duration) ? Math.round(a.duration) : 0);
-    a.onerror = () => done(0);
-    a.src = url;
+    let url = '';
+    let settled = false;
+    const done = (v) => {
+      if (settled) return;
+      settled = true;
+      if (url) URL.revokeObjectURL(url);
+      resolve(v > 0 ? v : guess);
+    };
+    setTimeout(() => done(0), 4000);
+    try {
+      url = URL.createObjectURL(file);
+      const a = new Audio();
+      a.preload = 'metadata';
+      a.onloadedmetadata = () => done(Number.isFinite(a.duration) ? Math.round(a.duration) : 0);
+      a.onerror = () => done(0);
+      a.src = url;
+    } catch { done(0); }
   });
 }
 
@@ -119,19 +133,34 @@ export default function MusicTab({ adminApi, apiErrText, isManager }) {
     e.target.value = '';
     if (!files.length) return;
     setErr(null);
-    const clips = new Map(files.filter((f) => CLIP_RE.test(f.name)).map((f) => [baseName(f.name), f]));
-    const fulls = files.filter((f) => !CLIP_RE.test(f.name));
-    const items = await Promise.all(fulls.map(async (f) => {
-      const tag = await readId3(f).catch(() => ({}));
-      const g = genres.includes(tag.genre) ? tag.genre : 'Boshqa';
-      return {
-        key: f.name + f.size, file: f, clip: clips.get(baseName(f.name)) || null,
-        title: tag.title || baseName(f.name).replace(/[-_]+/g, ' '),
-        artist: tag.artist || '', genre: g, source: tag.source || '',
-        durationSec: await audioDuration(f), state: 'ready', error: '',
-      };
+    const isClip = (f) => CLIP_RE.test(f.name);
+    const fullNames = new Set(files.filter((f) => !isClip(f)).map((f) => baseName(f.name)));
+    const clips = new Map(files.filter(isClip).map((f) => [baseName(f.name), f]));
+    // To'liq trek + juft 30 s bo'lak. Juftsiz 30 s bo'lak ham o'zi alohida
+    // trek bo'ladi (egasi faqat `-30s.mp3` larni tanlaganda ro'yxat bo'sh
+    // chiqib qolgan edi).
+    const fulls = files.filter((f) => !isClip(f) || !fullNames.has(baseName(f.name)));
+    const items = fulls.map((f) => ({
+      key: f.name + f.size, file: f, clip: isClip(f) ? null : clips.get(baseName(f.name)) || null,
+      title: baseName(f.name).replace(/[-_]+/g, ' '), artist: '', genre: 'Boshqa', source: '',
+      durationSec: 0, state: 'reading', error: '',
     }));
+    if (!items.length) { setErr(t('Audio fayl topilmadi.')); return; }
+    // Ro'yxat DARHOL chiqadi; teglar va davomiylik keyin (parallel) to'ldiriladi.
     setQueue((q) => [...q, ...items]);
+    await Promise.all(items.map(async (it) => {
+      const tag = await readId3(it.file).catch(() => ({}));
+      const durationSec = await audioDuration(it.file);
+      setQueue((q) => q.map((x) => (x.key !== it.key ? x : {
+        ...x,
+        title: tag.title || x.title,
+        artist: tag.artist || x.artist,
+        genre: genres.includes(tag.genre) ? tag.genre : x.genre,
+        source: tag.source || x.source,
+        durationSec,
+        state: x.state === 'reading' ? 'ready' : x.state,
+      })));
+    }));
   };
 
   const patchItem = (key, patch) => setQueue((q) => q.map((x) => (x.key === key ? { ...x, ...patch } : x)));
@@ -140,6 +169,7 @@ export default function MusicTab({ adminApi, apiErrText, isManager }) {
     setBusy(true); setErr(null);
     for (const it of queue) {
       if (it.state === 'done') continue;
+      if (it.state === 'reading') { patchItem(it.key, { state: 'error', error: t('Fayl hali o‘qilmoqda — bir soniyadan keyin qayta bosing.') }); continue; }
       if (!it.title.trim() || !it.source.trim()) { patchItem(it.key, { state: 'error', error: t('Nomi va manbasini kiriting.') }); continue; }
       patchItem(it.key, { state: 'uploading', error: '' });
       try {
@@ -220,7 +250,7 @@ export default function MusicTab({ adminApi, apiErrText, isManager }) {
               </div>
             ))}
             <div className="flex gap-2 pt-1">
-              <button type="button" className="btn btn-gold btn-sm min-h-11" onClick={uploadAll} disabled={busy}>
+              <button type="button" className="btn btn-gold btn-sm min-h-11" onClick={uploadAll} disabled={busy || queue.some((x) => x.state === 'reading')}>
                 {busy ? <span className="loading loading-spinner loading-xs" /> : t('Kutubxonaga qo‘shish') + ` (${queue.length})`}
               </button>
               <button type="button" className="btn btn-ghost-vz btn-sm min-h-11" onClick={() => setQueue([])} disabled={busy}>{t('Bekor')}</button>

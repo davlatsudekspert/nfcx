@@ -738,6 +738,8 @@ const DICT_BASE = {
   'To‘liq ochish': { ru: 'Открыть полностью', en: 'Open full size' },
   'Matn yo‘q': { ru: 'Без текста', en: 'No text' },
   // Musiqa kutubxonasi (admin)
+  'Audio fayl topilmadi.': { ru: 'Аудиофайлы не найдены.', en: 'No audio files found.' },
+  'Fayl hali o‘qilmoqda — bir soniyadan keyin qayta bosing.': { ru: 'Файл ещё читается — нажмите снова через секунду.', en: 'The file is still being read — press again in a second.' },
   '30 s bo‘lak bor': { ru: 'Есть фрагмент 30 с', en: '30 s clip included' },
   '30 s bo‘lak yo‘q': { ru: 'Нет фрагмента 30 с', en: 'No 30 s clip' },
   'Bir nechta faylni birdan tanlang. «nom.mp3» va «nom-30s.mp3» juftlanadi: to‘liq trek va 30 soniyalik bo‘lak.': { ru: 'Выберите несколько файлов сразу. «name.mp3» и «name-30s.mp3» объединяются: полный трек и фрагмент 30 секунд.', en: 'Select several files at once. “name.mp3” and “name-30s.mp3” are paired: full track and a 30-second clip.' },
