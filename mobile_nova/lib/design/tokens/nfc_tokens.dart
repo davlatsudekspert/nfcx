@@ -317,6 +317,106 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     brandInk: hex('#7A5F38'),
   );
 
+  // ---------------------------------------------------------------- PUDRA
+  /// PUDRA — iliq pushti-krem fon, oq kartalar, rose-gold urg'u
+  /// (brendning oltini pushtiga moyil). Tugmalar to'q rose.
+  static final pudra = NfcTokens(
+    id: 'pudra',
+    isDark: false,
+    bg1: hex('#F8F1EE'),
+    bg2: hex('#F1E4DF'),
+    bgVignette: rgba(74, 36, 44, .05),
+    surface: hex('#FFFFFF'),
+    surface2: hex('#F1E4DF'),
+    surfaceSolid: hex('#FFFFFF'),
+    text1: hex('#2B1B1E'),
+    text2: hex('#634B50'),
+    text3: hex('#7A6468'),
+    accent1: hex('#A35A6A'),
+    accent2: hex('#8E4656'),
+    accent3: hex('#6E4A50'),
+    goldDeep: hex('#8A4E45'),
+    accentB: hex('#A35A6A'),
+    accentBDark: hex('#8E4656'),
+    accentC: hex('#6E4A50'),
+    accentCDark: hex('#2B1B1E'),
+    accentD: hex('#634B50'),
+    accentDDark: hex('#2B1B1E'),
+    glow: rgba(192, 138, 125, .18),
+    glowB: rgba(74, 36, 44, .06),
+    border1: rgba(74, 36, 44, .14),
+    border2: rgba(74, 36, 44, .085),
+    error: hex('#A8333F'),
+    success: hex('#3F6B4A'),
+    warn: hex('#8A6320'),
+    ambient1: rgba(192, 138, 125, .07),
+    ambient2: rgba(74, 36, 44, .02),
+    shadowFloat: [
+      BoxShadow(color: rgba(74, 36, 44, .16), blurRadius: 30, spreadRadius: -12, offset: const Offset(0, 16)),
+      BoxShadow(color: rgba(74, 36, 44, .05), blurRadius: 3, offset: const Offset(0, 1)),
+    ],
+    shadowSoft: [
+      BoxShadow(color: rgba(74, 36, 44, .12), blurRadius: 24, spreadRadius: -12, offset: const Offset(0, 12)),
+      BoxShadow(color: rgba(74, 36, 44, .045), blurRadius: 2, offset: const Offset(0, 1)),
+    ],
+    shadowTiny: [
+      BoxShadow(color: rgba(74, 36, 44, .06), blurRadius: 6, offset: const Offset(0, 2)),
+    ],
+    brand: hex('#C08A7D'),
+    brandSoft: hex('#F2DDD6'),
+    brandInk: hex('#8A4E45'),
+  );
+
+  // ---------------------------------------------------------------- SAKURA
+  /// SAKURA — sovuqroq, yorqinroq pushti: och gulobi fon, oq
+  /// kartalar, rezavor (berry) tugmalar.
+  static final sakura = NfcTokens(
+    id: 'sakura',
+    isDark: false,
+    bg1: hex('#FBF2F6'),
+    bg2: hex('#F5E3EC'),
+    bgVignette: rgba(70, 20, 50, .05),
+    surface: hex('#FFFFFF'),
+    surface2: hex('#F5E3EC'),
+    surfaceSolid: hex('#FFFFFF'),
+    text1: hex('#2A1622'),
+    text2: hex('#634558'),
+    text3: hex('#7A5E6E'),
+    accent1: hex('#C0507F'),
+    accent2: hex('#A63C6A'),
+    accent3: hex('#7A4262'),
+    goldDeep: hex('#9A3A66'),
+    accentB: hex('#C0507F'),
+    accentBDark: hex('#A63C6A'),
+    accentC: hex('#7A4262'),
+    accentCDark: hex('#2A1622'),
+    accentD: hex('#634558'),
+    accentDDark: hex('#2A1622'),
+    glow: rgba(208, 122, 160, .18),
+    glowB: rgba(70, 20, 50, .06),
+    border1: rgba(70, 20, 50, .14),
+    border2: rgba(70, 20, 50, .085),
+    error: hex('#A8333F'),
+    success: hex('#3F6B4A'),
+    warn: hex('#8A6320'),
+    ambient1: rgba(208, 122, 160, .07),
+    ambient2: rgba(70, 20, 50, .02),
+    shadowFloat: [
+      BoxShadow(color: rgba(70, 20, 50, .16), blurRadius: 30, spreadRadius: -12, offset: const Offset(0, 16)),
+      BoxShadow(color: rgba(70, 20, 50, .05), blurRadius: 3, offset: const Offset(0, 1)),
+    ],
+    shadowSoft: [
+      BoxShadow(color: rgba(70, 20, 50, .12), blurRadius: 24, spreadRadius: -12, offset: const Offset(0, 12)),
+      BoxShadow(color: rgba(70, 20, 50, .045), blurRadius: 2, offset: const Offset(0, 1)),
+    ],
+    shadowTiny: [
+      BoxShadow(color: rgba(70, 20, 50, .06), blurRadius: 6, offset: const Offset(0, 2)),
+    ],
+    brand: hex('#D07AA0'),
+    brandSoft: hex('#F7DCE9'),
+    brandInk: hex('#9A3A66'),
+  );
+
   // ---------------------------------------------------------------- 1 PEARL
   static final pearl = NfcTokens(
     id: 'pearl',
