@@ -26,6 +26,8 @@ import * as apiAppAdmin from './api/app-admin.js';
 import * as apiAccountPurge from './api/account-purge.js';
 // Admin boshqaruv markazi (overview, premium obunachilar, foydalanuvchi kartochkasi) — faqat o'qiydi.
 import * as apiAdminControl from './api/admin-control.js';
+// Musiqa kutubxonasi (admin yuklaydi, ilova faqat yoqilgan treklarni ko'radi).
+import * as apiMusic from './api/music.js';
 import { idQuarantined, notQuarantinedSql, purgeAfterMs, runScheduledPurge } from './api/account-purge.js';
 import { recordAppOpen } from './api/app-usage.js';
 import { archiveStmt, ensureArchiveTable, urlArchived } from './api/content-archive.js';
@@ -7064,6 +7066,15 @@ async function uploadApi(request, env, pathname) {
     return json({ url: up.url, type: up.type, size: up.size });
   }
 
+  // Musiqa kutubxonasi: to'liq trek va 30 s bo'lak (faqat audio, 100 MB).
+  if (pathname === '/api/admin/upload-audio') {
+    const up = await streamUploadToR2(request, env, {
+      prefix: 'music', actor, accept: ['audio/'], aliases: UPLOAD_TYPE_ALIASES,
+    });
+    if (!up.ok) return uploadErrorJsonD1(up);
+    return json({ url: up.url, type: up.type, size: up.size });
+  }
+
   if (pathname === '/api/admin/upload-doc') {
     const up = await streamUploadToR2(request, env, {
       prefix: 'fin', actor, sniff: sniffDocTypeD1,
@@ -10734,7 +10745,7 @@ const H = {
 // bilan tugashini tekshiradi — oxiriga qo'shilsa o'sha qo'riqchi
 // yiqiladi. Tartibning boshqa ahamiyati yo'q: har bir modul o'ziga
 // tegishli bo'lmagan yo'lga `null` qaytaradi.
-const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiAppUsage, apiAppAdmin, apiAccountPurge, apiAdminControl, apiMarketplace];
+const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiAppUsage, apiAppAdmin, apiAccountPurge, apiAdminControl, apiMusic, apiMarketplace];
 
 // Xavfsizlik header'lari — barcha javoblarga (statik va API). CSP ataylab faqat
 // framing/base/form/object ni cheklaydi (script/style ga tegmaydi — YouTube/Yandex
@@ -10871,7 +10882,7 @@ async function handleRequest(request, env, url) {
     }
 
     if (request.method === 'POST'
-      && ['/api/upload', '/api/upload-audio', '/api/upload-card-video', '/api/upload-profile-bg', '/api/upload-media', '/api/upload-file', '/api/upload-card-print', '/api/admin/upload', '/api/admin/upload-file', '/api/admin/upload-doc'].includes(url.pathname)) {
+      && ['/api/upload', '/api/upload-audio', '/api/upload-card-video', '/api/upload-profile-bg', '/api/upload-media', '/api/upload-file', '/api/upload-card-print', '/api/admin/upload', '/api/admin/upload-file', '/api/admin/upload-audio', '/api/admin/upload-doc'].includes(url.pathname)) {
       try {
         return await uploadApi(request, env, url.pathname);
       } catch (error) {

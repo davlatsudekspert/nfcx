@@ -710,10 +710,11 @@ const uploadTooLarge = () => new Error('Maksimal hajm \u2014 100 MB.');
 // Faylni (yoki Blob'ni) xom binar sifatida yuklaydi va /uploads/...
 // manzilini qaytaradi. Saytdagi barcha fayl tanlash joylari shu yerga
 // keladi.
-export async function dbUploadFileBinary(file, { admin = false, doc = false } = {}) {
+export async function dbUploadFileBinary(file, { admin = false, doc = false, audio = false } = {}) {
   if (!file || file.size === 0) throw new Error('Fayl tanlanmadi.');
   if (file.size > UPLOAD_MAX_BYTES) throw uploadTooLarge();
-  const path = doc ? '/api/admin/upload-doc' : admin ? '/api/admin/upload-file' : '/api/upload-file';
+  // `audio` — admin musiqa kutubxonasi (faqat audio qabul qilinadi).
+  const path = audio ? '/api/admin/upload-audio' : doc ? '/api/admin/upload-doc' : admin ? '/api/admin/upload-file' : '/api/upload-file';
   const res = await fetch(path, {
     method: 'POST',
     headers: { 'Content-Type': file.type || 'application/octet-stream' },
