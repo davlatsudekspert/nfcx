@@ -89,8 +89,10 @@ void main() {
         (tester) async {
       await pumpSection(tester);
       final l = await L.delegate.load(const Locale('uz'));
-      // Statistika qutilaridan biri — kartaning "bo'sh" joyi.
-      await tapOn(tester, find.text(l.profileFollowers).first);
+      // Statistika qatori — kartaning "bo'sh" joyi (2026-09-25 dan
+      // bitta ixcham qator).
+      expect(l.profileFollowers, isNotEmpty);
+      await tapOn(tester, find.byKey(const ValueKey('demo-stats')).first);
       expect(went, [Routes.demoPersonal]);
     });
 

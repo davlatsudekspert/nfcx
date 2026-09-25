@@ -158,40 +158,35 @@ class _MiniStats extends StatelessWidget {
 
   final List<(String, String)> items;
 
+  // BITTA QATOR (2026-09-25). Ilgari har raqam alohida ramkali
+  // qutida edi (HTML prototipidagi `.stats`) — ular joy olib,
+  // ostidagi suratlar 44 px lik ingichka tasmaga qisilgan edi.
+  // Demo kartada asosiysi — MAZMUN (suratlar), raqamlar faqat
+  // ishora; shuning uchun ular bitta ixcham qatorga o'tdi.
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    return Row(
-      children: [
-        for (var i = 0; i < items.length; i++) ...[
-          if (i > 0) const SizedBox(width: Gap.sm),
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 4),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: t.border2),
-              ),
-              child: Column(
-                children: [
-                  Text(items[i].$1,
-                      maxLines: 1,
-                      style: AppType.monoStyle(color: t.text1, size: 12)),
-                  const SizedBox(height: 2),
-                  Text(items[i].$2,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontFamily: AppType.sans,
-                        fontSize: 8.5,
-                        color: t.text3,
-                      )),
-                ],
-              ),
+    final label = TextStyle(
+      fontFamily: AppType.sans,
+      fontSize: 11.5,
+      color: t.text3,
+    );
+    return Text.rich(
+      key: const ValueKey('demo-stats'),
+      TextSpan(
+        children: [
+          for (var i = 0; i < items.length; i++) ...[
+            if (i > 0) TextSpan(text: '   ·   ', style: label),
+            TextSpan(
+              text: items[i].$1,
+              style: AppType.monoStyle(color: t.text1, size: 12.5),
             ),
-          ),
+            TextSpan(text: ' ${items[i].$2.toLowerCase()}', style: label),
+          ],
         ],
-      ],
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
     );
   }
 }
@@ -209,27 +204,30 @@ class _Thumbs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    return SizedBox(
-      height: 44,
-      child: Row(
-        children: [
-          for (var i = 0; i < urls.length; i++) ...[
-            if (i > 0) const SizedBox(width: 7),
-            Expanded(
+    // KVADRAT (2026-09-25): 44 px balandlikdagi tasmada surat
+    // chetlaridan qirqilib, nima ekani tushunilmasdi. Endi har biri
+    // to'liq kvadrat — post va tovar suratlari butun ko'rinadi.
+    return Row(
+      children: [
+        for (var i = 0; i < urls.length; i++) ...[
+          if (i > 0) const SizedBox(width: 7),
+          Expanded(
+            child: AspectRatio(
+              aspectRatio: 1,
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(11),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: t.border2),
                 ),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(11),
+                  borderRadius: BorderRadius.circular(12),
                   child: mediaImage(context, urls[i], fit: BoxFit.cover),
                 ),
               ),
             ),
-          ],
+          ),
         ],
-      ),
+      ],
     );
   }
 }
@@ -284,11 +282,9 @@ class _DemoCard extends StatelessWidget {
                   children: [
                     _Badge(badge),
                     const SizedBox(height: Gap.sm),
-                    Text(title,
-                        style: Theme.of(context).textTheme.titleLarge),
+                    Text(title, style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 3),
-                    Text(role,
-                        style: Theme.of(context).textTheme.bodySmall),
+                    Text(role, style: Theme.of(context).textTheme.bodySmall),
                     const SizedBox(height: Gap.md),
                     trailing,
                   ],
@@ -305,22 +301,20 @@ class _DemoCard extends StatelessWidget {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(18),
-                    child: mediaImage(context, image,
-                        fit: BoxFit.cover),
+                    child: mediaImage(context, image, fit: BoxFit.cover),
                   ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: Gap.md),
-          _MiniStats(items: stats),
-          const SizedBox(height: 9),
           _Thumbs(urls: thumbs),
+          const SizedBox(height: 10),
+          _MiniStats(items: stats),
           const SizedBox(height: Gap.md),
           NovaButton(label: cta, icon: ctaIcon, onPressed: onTap),
           const SizedBox(height: Gap.sm),
-          Text(l.demoNotice,
-              style: Theme.of(context).textTheme.bodySmall),
+          Text(l.demoNotice, style: Theme.of(context).textTheme.bodySmall),
         ],
       ),
     );
