@@ -493,6 +493,30 @@ const REPORT_REASON_LABEL = {
   other: 'Boshqa',
 };
 
+// Shikoyat qilingan kontentning qisqa ko'rinishi: rasm/video, matn, muallif.
+function ReportPreview({ p, t }) {
+  if (!p) return <span className="opacity-50">—</span>;
+  if (p.missing) return <span className="vz-badge">{t('Kontent allaqachon o‘chirilgan')}</span>;
+  const media = p.videoUrl || p.imageUrl;
+  return (
+    <div className="flex items-start gap-2">
+      {media ? (
+        <a href={media} target="_blank" rel="noreferrer" className="shrink-0" title={t('To‘liq ochish')}>
+          {p.videoUrl ? (
+            <video src={p.videoUrl} muted preload="metadata" className="h-14 w-14 rounded-lg object-cover" />
+          ) : (
+            <img src={p.imageUrl} alt="" loading="lazy" className="h-14 w-14 rounded-lg object-cover" />
+          )}
+        </a>
+      ) : null}
+      <div className="min-w-0">
+        {p.text ? <div className="line-clamp-3 whitespace-pre-line break-words">{p.text}</div> : <div className="opacity-50">{t('Matn yo‘q')}</div>}
+        {p.author ? <div className="mt-1 font-mono opacity-60">{p.author}{p.videoUrl ? ' · video' : ''}</div> : null}
+      </div>
+    </div>
+  );
+}
+
 const REPORT_STATUS_LABEL = {
   new: 'Yangi',
   reviewing: 'Ko‘rilmoqda',
@@ -637,6 +661,7 @@ function ReportsTab() {
                 <th>#</th>
                 <th>{t('Sana')}</th>
                 <th>{t('Nishon')}</th>
+                <th>{t('Kontent')}</th>
                 <th>{t('Sabab')}</th>
                 <th>{t('Izoh')}</th>
                 <th />
@@ -652,6 +677,11 @@ function ReportsTab() {
                     {' · '}
                     <span className="font-mono font-bold">{r.targetId}</span>
                     {r.ownerCode ? <div className="opacity-60">{r.ownerCode}</div> : null}
+                  </td>
+                  {/* SHIKOYAT QILINGAN KONTENTNING O'ZI — o'chirishdan oldin
+                      admin nimani o'chirayotganini ko'rsin (2026-09-25). */}
+                  <td className="min-w-[220px] max-w-[340px] text-xs">
+                    <ReportPreview p={r.preview} t={t} />
                   </td>
                   <td className="text-xs">{t(REPORT_REASON_LABEL[r.reason] || r.reason)}</td>
                   <td className="max-w-[280px] text-xs opacity-80">{r.note}</td>

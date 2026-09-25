@@ -241,8 +241,10 @@ export async function handle(request, env, url, H) {
         WHERE note IS NULL OR note NOT LIKE '${E2E_NOTE}%' GROUP BY status`
     ).all().catch(() => null);
     for (const r of (c?.results || [])) counts[r.status] = Number(r.n) || 0;
+    const page = list.slice(0, limit).map(reportRowToJson);
+    await attachPreviews(env, page);
     return H.json({
-      reports: list.slice(0, limit).map(reportRowToJson),
+      reports: page,
       hasMore: list.length > limit,
       counts,
     });
@@ -340,6 +342,58 @@ export async function handle(request, env, url, H) {
   }
 
   return null;
+}
+
+// SHIKOYAT QILINGAN KONTENTNING O'ZI (egasi, 2026-09-25: "kontentni
+// o'chirish turibdi — uni qanaqa kontentligini bilishimiz kerak emasmi").
+// Admin o'chirishdan OLDIN nimani o'chirayotganini ko'rsin: matn, rasm
+// yoki video va muallif. Har tur bittadan so'rov (N+1 emas). Kontent
+// allaqachon o'chirilgan bo'lsa `preview.missing = true`. Jadval hali
+// yo'q bo'lsa ro'yxat yiqilmaydi — ko'rinish shunchaki bo'lmaydi.
+async function attachPreviews(env, reports) {
+  const byKind = {};
+  for (const r of reports) (byKind[r.targetKind] ||= new Set()).add(String(r.targetId));
+  const found = new Map(); // `${kind}:${id}` -> preview
+  // `sqls` — birinchisi ishlamasa (eski bazada ustun yo'q) keyingisi.
+  const q = async (kind, sqls, ids, map) => {
+    if (!ids?.size) return;
+    const list = [...ids].slice(0, 300);
+    for (const sql of [].concat(sqls)) {
+      try {
+        const rows = await env.DB.prepare(sql.replace('(?)', `(${list.map(() => '?').join(',')})`)).bind(...list).all();
+        for (const row of rows.results || []) found.set(`${kind}:${String(row.k)}`, map(row));
+        return;
+      } catch (error) {
+        if (/no such table/i.test(String(error?.message || error))) return;
+        if (!/no such column/i.test(String(error?.message || error))) throw error;
+      }
+    }
+  };
+  const media = (row) => ({ imageUrl: row.image_url || '', videoUrl: row.video_url || '' });
+  await q('post', `SELECT CAST(id AS TEXT) AS k, code, caption, image_url, video_url, created_at FROM posts WHERE CAST(id AS TEXT) IN (?)`,
+    byKind.post, (r) => ({ text: r.caption || '', author: r.code || '', createdAt: r.created_at || '', ...media(r) }));
+  await q('story', `SELECT CAST(id AS TEXT) AS k, owner_kind, owner_id, caption, image_url, video_url, created_at FROM stories WHERE CAST(id AS TEXT) IN (?)`,
+    byKind.story, (r) => ({ text: r.caption || '', author: r.owner_id || '', createdAt: r.created_at || '', ...media(r) }));
+  await q('company_story', `SELECT CAST(id AS TEXT) AS k, owner_id, caption, image_url, video_url, created_at FROM stories WHERE CAST(id AS TEXT) IN (?)`,
+    byKind.company_story, (r) => ({ text: r.caption || '', author: r.owner_id || '', createdAt: r.created_at || '', ...media(r) }));
+  await q('company_post', `SELECT CAST(id AS TEXT) AS k, company_id, caption, image_url, video_url, created_at FROM company_posts WHERE CAST(id AS TEXT) IN (?)`,
+    byKind.company_post, (r) => ({ text: r.caption || '', author: r.company_id || '', createdAt: r.created_at || '', ...media(r) }));
+  await q('comment', [
+    `SELECT CAST(id AS TEXT) AS k, author_code, body, created_at, deleted_at FROM content_comments WHERE CAST(id AS TEXT) IN (?)`,
+    `SELECT CAST(id AS TEXT) AS k, author_code, body, created_at, NULL AS deleted_at FROM content_comments WHERE CAST(id AS TEXT) IN (?)`,
+  ],
+    byKind.comment, (r) => ({ text: r.body || '', author: r.author_code || '', createdAt: r.created_at || '', imageUrl: '', videoUrl: '',
+      ...(r.deleted_at ? { missing: true } : {}) }));
+  await q('record', `SELECT UPPER(code) AS k, name, avatar_url FROM cards WHERE UPPER(code) IN (?)`,
+    new Set([...(byKind.record || [])].map((x) => x.toUpperCase())),
+    (r) => ({ text: r.name || '', author: r.k, imageUrl: r.avatar_url || '', videoUrl: '' }));
+  await q('company', `SELECT company_id AS k, display_name, logo_url FROM companies WHERE company_id IN (?)`,
+    byKind.company, (r) => ({ text: r.display_name || '', author: r.k, imageUrl: r.logo_url || '', videoUrl: '' }));
+  for (const r of reports) {
+    const key = r.targetKind === 'record' ? `record:${r.targetId.toUpperCase()}` : `${r.targetKind}:${r.targetId}`;
+    const p = found.get(key);
+    r.preview = p ? { missing: false, ...p, text: String(p.text).slice(0, 400) } : { missing: true, text: '', author: '', imageUrl: '', videoUrl: '' };
+  }
 }
 
 function reportRowToJson(r) {
