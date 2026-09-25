@@ -84,7 +84,7 @@ export default function NovaTab({ adminApi, apiErrText }) {
             onClick={() => setSub(key)}
             className={`rounded-lg px-3 py-1.5 text-[14px] transition ${
               sub === key
-                ? 'bg-[color:var(--vz-accent)] text-black'
+                ? 'bg-[color:var(--vz-accent)] text-[color:var(--accent-ink)]'
                 : 'border border-[color:var(--vz-line)] text-[color:var(--vz-ink-dim)]'
             }`}
           >

@@ -596,7 +596,7 @@ function ReportsTab() {
             key={key}
             type="button"
             onClick={() => setStatus(key)}
-            className={`btn btn-xs min-h-9 ${status === key ? 'btn-gold' : 'btn-outline'}`}
+            className={`btn btn-xs min-h-9 ${status === key ? 'btn-gold' : 'btn-ghost-vz'}`}
           >
             {t(label)}{counts[key] ? ` · ${counts[key]}` : ''}
           </button>
@@ -693,7 +693,7 @@ function ReportsTab() {
           </table>
           {hasMore && (
             <div className="mt-3 text-center">
-              <button type="button" className="btn btn-outline btn-sm" disabled={more} onClick={loadMore}>
+              <button type="button" className="btn btn-ghost-vz btn-sm" disabled={more} onClick={loadMore}>
                 {more ? t('Yuklanmoqda…') : t('Ko‘proq ko‘rsatish')}
               </button>
             </div>
@@ -1290,7 +1290,7 @@ function UserDrawer({ userId, onClose, onChanged }) {
               </div>
               {actErr && <div role="alert" className="vz-err">{actErr}</div>}
 
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid grid-cols-2 gap-2">
                 {[
                   [t('Telefon'), u.phone || '—'],
                   [t("Ro'yxatdan o'tgan"), `${dateTime(tsMs(u.createdAt))} · ${u.signupSource === 'web' ? t('Sayt') : t('Ilova')}`],
@@ -1299,7 +1299,7 @@ function UserDrawer({ userId, onClose, onChanged }) {
                   [t('Ilova'), d.app ? t('{p} · oxirgi: {d} · {n} marta', { p: d.app.platform || '—', d: timeAgo(tsMs(d.app.lastSeen)), n: d.app.opens }) : t('Ishlatmagan')],
                   [t('Telegram'), u.telegram ? t('Bog‘langan') : t('Bog‘lanmagan')],
                 ].map(([k, v]) => (
-                  <div key={k} className="vz-panel px-3.5 py-2.5">
+                  <div key={k} className="vz-panel min-w-0 px-3 py-2.5">
                     <div className="text-[11.5px] uppercase tracking-wider" style={{ color: 'var(--vz-ink-3)' }}>{k}</div>
                     <div className="mt-0.5 break-words text-sm" style={{ color: 'var(--vz-ink)' }}>{v}</div>
                   </div>

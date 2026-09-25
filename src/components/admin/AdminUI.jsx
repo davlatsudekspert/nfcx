@@ -159,7 +159,7 @@ export function AdminShell({ nav, activeIndex, onSelect, title, role, onLogout, 
           <div className="flex h-16 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-3">
               <img src={logo} alt="" className="h-7 w-7 shrink-0 object-contain lg:hidden" />
-              <h1 className="truncate font-display text-[18px] font-semibold">{title}</h1>
+              <h1 className="truncate font-display text-[16px] font-semibold sm:text-[18px]">{title}</h1>
             </div>
             <div className="flex shrink-0 items-center gap-2">
               {headerExtra}
