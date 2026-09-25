@@ -1371,8 +1371,7 @@ async function companyApi(request, env, url) {
         posts.map((row) => ({ kind: 'company_post', id: Number(row.id) })),
       ).catch(() => new Map()),
     ]);
-    return json({
-      posts: posts.map((row) => {
+    const shaped = posts.map((row) => {
         const like = likes.get(`company_post:${Number(row.id)}`) || { count: 0, liked: false };
         return {
           id: Number(row.id), code: id,
@@ -1382,8 +1381,9 @@ async function companyApi(request, env, url) {
           likeCount: like.count, liked: like.liked,
           commentCount: counts.get(`company_post:${Number(row.id)}`) || 0,
         };
-      }),
-    });
+      });
+    await apiMusic.attachPostExtras(env, shaped.map((o) => ({ kind: 'company_post', id: o.id, obj: o })));
+    return json({ posts: shaped });
   }
   if (action === 'stories' && !itemId && request.method === 'GET') {
     const viewer = await getCurrentUser(request, env).catch(() => null);
@@ -1431,12 +1431,15 @@ async function companyApi(request, env, url) {
     if (!media.ok) return json({ error: 'bad_image' }, 422);
     const cnt = await env.DB.prepare(`SELECT COUNT(*) AS n FROM company_posts WHERE company_id = ?`).bind(id).first();
     if (Number(cnt?.n || 0) >= COMPANY_POST_MAX) return json({ error: 'limit_reached', limit: COMPANY_POST_MAX }, 409);
+    const extrasIn = await apiMusic.readPostExtras(env, body, { hasImage: !!media.imageUrl && !media.videoUrl });
+    if (!extrasIn.ok) return json({ error: extrasIn.error }, 422);
     const row = await env.DB.prepare(
       `INSERT INTO company_posts (company_id, image_url, video_url, caption, created_at) VALUES (?,?,?,?,?)
        RETURNING id, image_url, video_url, caption, created_at`
     ).bind(id, media.imageUrl, media.videoUrl, String(body?.caption || '').slice(0, 600), new Date().toISOString()).first();
+    const extras = await apiMusic.savePostExtras(env, 'company_post', Number(row.id), extrasIn.extras);
     return json({
-      post: { id: Number(row.id), imageUrl: row.image_url || '', videoUrl: row.video_url || '', caption: row.caption || '', createdAt: row.created_at },
+      post: { id: Number(row.id), imageUrl: row.image_url || '', videoUrl: row.video_url || '', caption: row.caption || '', createdAt: row.created_at, ...extras },
     }, 201);
   }
 
@@ -6200,11 +6203,16 @@ async function recordsApi(request, env, url) {
       const limit = POST_LIMIT_D1[access] ?? 0;
       const cnt = await env.DB.prepare(`SELECT COUNT(*) AS n FROM posts WHERE code = ?`).bind(code).first();
       if (Number(cnt?.n || 0) >= limit) return json({ error: 'limit_reached', limit }, 409);
+      // Musiqa va rasmli reel (hosting/api/music.js) — post yozilishidan
+      // OLDIN tekshiriladi: yomon musiqa bilan post yarim yozilib qolmasin.
+      const extrasIn = await apiMusic.readPostExtras(env, body, { hasImage: okImg && !okVid });
+      if (!extrasIn.ok) return json({ error: extrasIn.error }, 422);
       const row = await env.DB.prepare(
         `INSERT INTO posts (code, user_id, image_url, video_url, caption) VALUES (?, ?, ?, ?, ?)
          RETURNING id, code, image_url, video_url, caption, created_at`
       ).bind(code, user.id, okImg ? imageUrl : null, okVid ? videoUrl : null, caption || null).first();
-      return json(postRowToJson(row, 0, false), 201);
+      const extras = await apiMusic.savePostExtras(env, 'post', Number(row.id), extrasIn.extras);
+      return json({ ...postRowToJson(row, 0, false), ...extras }, 201);
     }
 
     // ── ISTORYA (shaxsiy profil) ──────────────────────────────────────
@@ -9985,10 +9993,12 @@ async function listPostsD1(env, code, viewerUserId) {
     list.map((r) => ({ kind: 'post', id: Number(r.id) })),
   ).catch(() => new Map());
 
-  return list.map((r) => ({
+  const out = list.map((r) => ({
     ...postRowToJson(r, r.like_count, r.liked),
     commentCount: counts.get(`post:${Number(r.id)}`) || 0,
   }));
+  await apiMusic.attachPostExtras(env, out.map((o) => ({ kind: 'post', id: o.id, obj: o })));
+  return out;
 }
 
 // DELETE /api/posts/:id, POST /api/posts/:id/like — server/index.js bilan
@@ -10291,7 +10301,7 @@ async function shapeFeedRows(env, rows, viewerId) {
     viewerId,
   ).catch(() => new Map());
 
-  return rows.map((r) => {
+  const shaped = rows.map((r) => {
     const d = parseDbDate(r.created_at);
     const target = commentTargetKind(r);
     const companyLike = target === 'company_post'
@@ -10315,6 +10325,11 @@ async function shapeFeedRows(env, rows, viewerId) {
       commentCount: commentCounts.get(`${target}:${Number(r.id)}`) || 0,
     };
   });
+  // Musiqa va rasmli reel — faqat postlar (istoryada hozircha yo'q).
+  await apiMusic.attachPostExtras(env, shaped
+    .filter((o) => o.kind === 'post')
+    .map((o) => ({ kind: o.commentKind === 'company_post' ? 'company_post' : 'post', id: o.id, obj: o })));
+  return shaped;
 }
 
 async function feedApi(request, env, url) {

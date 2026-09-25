@@ -172,3 +172,128 @@ export async function handle(request, env, url, H) {
 
   return null;
 }
+
+// ═══ POSTGA MUSIQA VA RASMLI REEL (2026-09-25, 2-bosqich) ═══════════════
+//
+// Egasi: "reelsga musiqa qo'yish joyi yo'q", "reelsga rasm ham qo'yilsin,
+// default 10 sekund bo'lsin".
+//
+// NIMA UCHUN ALOHIDA JADVAL. `posts` / `company_posts` ga ustun qo'shilsa,
+// lentaning UNION so'rovi, profil, kompaniya va arxiv so'rovlari — hammasi
+// o'zgarishi kerak edi. Bu yerda esa post yaratilganda bitta qator
+// yoziladi, ro'yxatlar esa javobni BITTA qo'shimcha so'rov bilan to'ldiradi.
+// Eski postlarga tegilmaydi.
+//
+// POST ID QAYTA ISHLATILADI (posts jadvalida AUTOINCREMENT yo'q — 75-vazifa,
+// "eski izoh yangi postga yopishmasin"). Shuning uchun HAR yangi postda
+// eski qator avval o'chiriladi: o'chirilgan postning musiqasi yangi postga
+// "yopishib" qolmaydi.
+export const REEL_IMAGE_SECONDS = 10;
+const EXTRA_KINDS = new Set(['post', 'company_post']);
+
+let extrasReady = null;
+function ensureExtras(env) {
+  extrasReady ||= env.DB.prepare(`CREATE TABLE IF NOT EXISTS post_extras (
+      post_kind TEXT NOT NULL,
+      post_id INTEGER NOT NULL,
+      music_id INTEGER,
+      music_start INTEGER NOT NULL DEFAULT 0,
+      reel INTEGER NOT NULL DEFAULT 0,
+      image_seconds INTEGER NOT NULL DEFAULT 10,
+      created_at TEXT NOT NULL,
+      PRIMARY KEY (post_kind, post_id)
+    )`).run().catch((e) => { extrasReady = null; throw e; });
+  return extrasReady;
+}
+
+function musicJson(t, start) {
+  return {
+    id: Number(t.id), title: t.title, artist: t.artist || '', genre: t.genre || 'Boshqa',
+    durationSec: Number(t.duration_sec || 0), audioUrl: t.audio_url, clipUrl: t.clip_url || '',
+    start: Math.max(0, Number(start || 0)),
+  };
+}
+
+/// So'rov tanasidan musiqa va reel belgisini o'qiydi va TEKSHIRADI —
+/// post yozilishidan OLDIN (yomon musiqa bilan post yarim yozilib qolmasin).
+/// → { ok, extras } | { ok:false, error }
+export async function readPostExtras(env, body, { hasImage }) {
+  const rawId = body?.musicId;
+  const reel = !!body?.reel && hasImage;
+  const out = { musicId: null, musicStart: 0, reel, track: null };
+  if (rawId != null && rawId !== '' && rawId !== 0) {
+    const id = Number(rawId);
+    if (!Number.isInteger(id) || id <= 0) return { ok: false, error: 'bad_music' };
+    let t = null;
+    try {
+      t = await env.DB.prepare(`SELECT * FROM music_tracks WHERE id = ? AND enabled = 1`).bind(id).first();
+    } catch (e) {
+      if (!/no such table/i.test(String(e?.message || e))) throw e;
+    }
+    if (!t) return { ok: false, error: 'bad_music' };
+    out.musicId = id;
+    out.track = t;
+    const dur = Number(t.duration_sec || 0);
+    const s = Math.round(Number(body?.musicStart) || 0);
+    out.musicStart = Math.max(0, dur > 0 ? Math.min(s, Math.max(0, dur - 5)) : s);
+  }
+  return { ok: true, extras: out };
+}
+
+/// Yangi post uchun qatorni yozadi (eski qatorni o'chirib) va musiqaning
+/// `uses` hisobini oshiradi. Javobga qo'shiladigan maydonlarni qaytaradi.
+export async function savePostExtras(env, kind, postId, ex) {
+  if (!EXTRA_KINDS.has(kind)) return {};
+  await ensureExtras(env);
+  const stmts = [env.DB.prepare(`DELETE FROM post_extras WHERE post_kind = ? AND post_id = ?`).bind(kind, postId)];
+  if (ex.musicId || ex.reel) {
+    stmts.push(env.DB.prepare(
+      `INSERT INTO post_extras (post_kind, post_id, music_id, music_start, reel, image_seconds, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
+    ).bind(kind, postId, ex.musicId, ex.musicStart, ex.reel ? 1 : 0, REEL_IMAGE_SECONDS, new Date().toISOString()));
+  }
+  if (ex.musicId) {
+    stmts.push(env.DB.prepare(`UPDATE music_tracks SET uses = uses + 1 WHERE id = ?`).bind(ex.musicId));
+  }
+  await env.DB.batch(stmts);
+  const extra = {};
+  if (ex.track) extra.music = musicJson(ex.track, ex.musicStart);
+  if (ex.reel) { extra.reel = true; extra.imageSeconds = REEL_IMAGE_SECONDS; }
+  return extra;
+}
+
+/// Ro'yxatdagi postlarga `music` / `reel` ni qo'shadi — BITTA so'rov.
+/// `items`: [{ kind: 'post'|'company_post', id, obj }]. Jadval yo'q bo'lsa
+/// yoki xato bo'lsa ro'yxat o'zgarmaydi (lenta yiqilmaydi).
+export async function attachPostExtras(env, items) {
+  const list = items.filter((i) => EXTRA_KINDS.has(i.kind) && Number(i.id) > 0);
+  if (!list.length) return;
+  try {
+    const out = new Map();
+    for (let i = 0; i < list.length; i += 80) {
+      const part = list.slice(i, i + 80);
+      const where = part.map(() => '(e.post_kind = ? AND e.post_id = ?)').join(' OR ');
+      const args = part.flatMap((x) => [x.kind, Number(x.id)]);
+      const r = await env.DB.prepare(
+        `SELECT e.post_kind, e.post_id, e.music_start, e.reel, e.image_seconds,
+                t.id AS t_id, t.title, t.artist, t.genre, t.duration_sec, t.audio_url, t.clip_url, t.enabled
+           FROM post_extras e LEFT JOIN music_tracks t ON t.id = e.music_id
+          WHERE ${where}`
+      ).bind(...args).all();
+      for (const row of r.results || []) out.set(`${row.post_kind}:${Number(row.post_id)}`, row);
+    }
+    for (const it of list) {
+      const row = out.get(`${it.kind}:${Number(it.id)}`);
+      if (!row) continue;
+      // Admin yashirgan trek eski postlarda ham jim bo'ladi.
+      if (row.t_id && Number(row.enabled) === 1) {
+        it.obj.music = musicJson({ ...row, id: row.t_id }, row.music_start);
+      }
+      if (Number(row.reel) === 1) {
+        it.obj.reel = true;
+        it.obj.imageSeconds = Number(row.image_seconds) || REEL_IMAGE_SECONDS;
+      }
+    }
+  } catch (e) {
+    if (!/no such table/i.test(String(e?.message || e))) console.error('post extras', e?.message || e);
+  }
+}

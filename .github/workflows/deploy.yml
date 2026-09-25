@@ -249,6 +249,8 @@ jobs:
         run: node scripts/test-admin-reports-preview.mjs
       - name: Musiqa kutubxonasi (ruxsat, manzil, o'chirish)
         run: node scripts/test-music-library.mjs
+      - name: Postga musiqa va rasmli reel
+        run: node scripts/test-post-music.mjs
 
       # PROFIL SAHIFALARINING MAKETI.
       #
