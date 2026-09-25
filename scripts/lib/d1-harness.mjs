@@ -11,7 +11,10 @@ import { ensureCoreSchema } from '../../hosting/worker.js';
 export const sha256Hex = (text) => createHash('sha256').update(text).digest('hex');
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export function makeEnv(extraEnv = {}) {
+// `opts.atomicBatch` — D1 kabi: `batch()` BITTA tranzaksiya, bitta statement
+// yiqilsa hammasi rollback. Standart holatda (eski testlar uchun) statement'lar
+// ketma-ket, tranzaksiyasiz bajariladi — mavjud testlar o'zgarmaydi.
+export function makeEnv(extraEnv = {}, opts = {}) {
   const sqlite = new DatabaseSync(':memory:');
   function makeStmt(sql) {
     return {
@@ -19,7 +22,8 @@ export function makeEnv(extraEnv = {}) {
       bind(...args) { this._args = args; return this; },
       async first() { const row = sqlite.prepare(this._sql).get(...this._args); return row === undefined ? null : row; },
       async all() { return { results: sqlite.prepare(this._sql).all(...this._args) }; },
-      async run() { const info = sqlite.prepare(this._sql).run(...this._args); return { success: true, meta: { changes: info.changes, last_row_id: info.lastInsertRowid } }; },
+      _runSync() { const info = sqlite.prepare(this._sql).run(...this._args); return { success: true, meta: { changes: info.changes, last_row_id: info.lastInsertRowid } }; },
+      async run() { return this._runSync(); },
     };
   }
   const store = new Map();
@@ -65,11 +69,30 @@ export function makeEnv(extraEnv = {}) {
     },
     async head(key) { const o = store.get(key); if (!o) return null; return { size: o.bytes.length, httpEtag: o.httpEtag, writeHttpMetadata(h) { if (o.httpMetadata.contentType) h.set('content-type', o.httpMetadata.contentType); } }; },
     async get(key, options = {}) { const o = store.get(key); if (!o) return null; let bytes = o.bytes; if (options.range) bytes = bytes.slice(options.range.offset, options.range.offset + options.range.length); return { body: bytes, httpEtag: o.httpEtag, writeHttpMetadata(h) { if (o.httpMetadata.contentType) h.set('content-type', o.httpMetadata.contentType); } }; },
-    async delete(key) { store.delete(key); },
+    // R2 kabi: bitta kalit yoki kalitlar massivi (1000 tagacha).
+    async delete(key) { for (const k of Array.isArray(key) ? key : [key]) store.delete(k); },
     _store: store,
   };
   const env = {
-    DB: { prepare: (sql) => makeStmt(sql), async batch(stmts) { const out = []; for (const s of stmts) out.push(await s.run()); return out; }, exec: (sql) => sqlite.exec(sql) },
+    DB: {
+      prepare: (sql) => makeStmt(sql),
+      async batch(stmts) {
+        if (!opts.atomicBatch) { const out = []; for (const s of stmts) out.push(await s.run()); return out; }
+        // SINXRON: statement'lar orasida `await` yo'q — parallel batch'lar
+        // (masalan `ensureCoreSchema` ichidagi `Promise.all`) bitta
+        // tranzaksiyaga aralashib ketmaydi.
+        sqlite.exec('BEGIN');
+        try {
+          const out = stmts.map((s) => s._runSync());
+          sqlite.exec('COMMIT');
+          return out;
+        } catch (e) {
+          sqlite.exec('ROLLBACK');
+          throw e;
+        }
+      },
+      exec: (sql) => sqlite.exec(sql),
+    },
     UPLOADS,
     ASSETS: { fetch: async () => new Response('not found', { status: 404 }) },
     ...extraEnv,

@@ -154,6 +154,16 @@ jobs:
       - name: Hisob o'chirishda qaytarilmas yo'llar yopiqmi
         run: node scripts/test-account-deletion-pr1.mjs
 
+      # HISOBNI BUTUNLAY O'CHIRISH (PURGE) — hosting/api/account-purge.js.
+      #
+      # 30 kun ichida hech narsa o'chmaydi; dry-run bazaga tegmaydi;
+      # purge shaxsiy ma'lumotni o'chiradi, to'lov yozuvlarini (ismsiz)
+      # va dalil arxivini saqlaydi; o'chirilgan hisobning ID'lari 90 kun
+      # hech kimga berilmaydi; loglarda email/telefon yo'q. Yangi jadval
+      # purge siyosatiga kiritilmasa test yiqiladi.
+      - name: Hisobni butunlay o'chirish (purge) to'g'rimi
+        run: node scripts/test-account-deletion.mjs
+
       # PROFIL SAHIFALARINING MAKETI.
       #
       # Ikkala profilda ham (shaxsiy `/:code` va biznes `/c/:id`)

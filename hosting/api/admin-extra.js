@@ -1,5 +1,6 @@
 import { PENDING_ORDER_TTL_MS } from './order-window.js';
 import { cardContentCleanupStmts } from './card-cleanup.js';
+import { ensurePurgeSchema, idQuarantined } from './account-purge.js';
 // hosting/api/admin-extra.js — CONTRACT.md ga qarang. Route topilmasa null qaytaradi.
 //
 // server/admin.js (Express) dagi quyidagi admin route'larning D1 porti.
@@ -313,8 +314,14 @@ export async function handle(request, env, url, H) {
     // yarim yo'lda to'xtab, hisob o'chirilgan-u sessiyasi ochiq yoki
     // taklifi kutilayotgan holda qolmasin.
     const now = H.nowTs();
+    // `deletion_source = 'admin'` — admin (moderatsiya yoki firibgarlik)
+    // o'chirgan hisob super_admin ko'rib chiqmaguncha purge qilinmaydi
+    // (account-purge.js, "O'chirish navbati").
+    const sourceCol = await ensurePurgeSchema(env).catch(() => false);
     await env.DB.batch([
-      env.DB.prepare(`UPDATE users SET deleted_at = COALESCE(deleted_at, ?) WHERE id = ?`).bind(now, id),
+      env.DB.prepare(sourceCol
+        ? `UPDATE users SET deleted_at = COALESCE(deleted_at, ?), deletion_source = COALESCE(deletion_source, 'admin') WHERE id = ?`
+        : `UPDATE users SET deleted_at = COALESCE(deleted_at, ?) WHERE id = ?`).bind(now, id),
       env.DB.prepare(`DELETE FROM sessions WHERE user_id = ?`).bind(id),
       // Kutilayotgan sovg'a takliflari bekor qilinadi (B14) — `DELETE
       // /api/account` dagi bilan bir xil UPDATE, hech narsa o'chirilmaydi.
@@ -344,6 +351,8 @@ export async function handle(request, env, url, H) {
     }
     // server/db.js createNfcGift
     if (await env.DB.prepare(`SELECT 1 AS x FROM cards WHERE code = ?`).bind(code).first()) return H.json({ error: 'CODE_TAKEN' }, 409);
+    // O'chirilgan hisobning kodi 90 kun hech kimga berilmaydi (account-purge.js).
+    if (await idQuarantined(env, 'card', code)) return H.json({ error: 'CODE_QUARANTINED' }, 409);
     if (await env.DB.prepare(`SELECT 1 AS x FROM nfc_gifts WHERE code = ? AND status = 'reserved'`).bind(code).first()) return H.json({ error: 'ALREADY_RESERVED' }, 409);
     for (let i = 0; i < 8; i++) {
       const activationCode = generateActivationCode();

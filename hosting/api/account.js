@@ -1,4 +1,5 @@
 import { cardContentCleanupStmts } from './card-cleanup.js';
+import { ensurePurgeSchema, purgeAfterMs, idQuarantined } from './account-purge.js';
 // hosting/api/account.js — CONTRACT.md ga qarang. Route topilmasa null qaytaradi.
 //
 // server/index.js (Express) dagi quyidagi yo'llarning D1 porti — javob
@@ -637,8 +638,15 @@ export async function handle(request, env, url, H) {
     const user = await H.getCurrentUser(request, env);
     if (!user) return H.json({ error: 'unauthorized' }, 401);
     const now = H.nowTs();
+    // `deletion_source = 'self'` — faqat egasi so'ragan hisob 30 kundan
+    // keyin avtomatik purge navbatiga tushadi (account-purge.js). Ustun
+    // qo'shilmay qolsa ham o'chirish so'rovi ishlayveradi: manbasi
+    // yozilmagan hisob admin ko'rib chiqquncha kutadi (xavfsiz tomon).
+    const sourceCol = await ensurePurgeSchema(env).catch(() => false);
     await env.DB.batch([
-      env.DB.prepare(`UPDATE users SET deleted_at = COALESCE(deleted_at, ?) WHERE id = ?`)
+      env.DB.prepare(sourceCol
+        ? `UPDATE users SET deleted_at = COALESCE(deleted_at, ?), deletion_source = COALESCE(deletion_source, 'self') WHERE id = ?`
+        : `UPDATE users SET deleted_at = COALESCE(deleted_at, ?) WHERE id = ?`)
         .bind(now, user.id),
       // Sessiyalar darhol yopiladi: boshqa qurilmada ochiq qolgan
       // ilova o'chirilgan hisob bilan ishlashda davom etmasin.
@@ -657,7 +665,11 @@ export async function handle(request, env, url, H) {
           WHERE status = 'pending' AND (from_user_id = ? OR to_user_id = ?)`
       ).bind(now, user.id, user.id),
     ]);
-    return H.json({ ok: true });
+    // Qachon butunlay o'chirilishi — birinchi so'rov vaqtidan 30 kun
+    // (takroriy so'rov muddatni uzaytirmaydi: `COALESCE`).
+    const row = await env.DB.prepare(`SELECT deleted_at FROM users WHERE id = ?`).bind(user.id).first().catch(() => null);
+    const after = purgeAfterMs(row?.deleted_at || now);
+    return H.json({ ok: true, purgeAfter: after ? new Date(after).toISOString() : null });
   }
 
   // Foydalanuvchi O'Z NFC ID'sini butunlay o'chiradi (server/db.js deleteOwnCard).
@@ -780,6 +792,10 @@ export async function handle(request, env, url, H) {
       }
 
       // 2) Karta (server/db.js createRecord — ON CONFLICT DO NOTHING).
+      //
+      // O'chirilgan hisobning kodi 90 kun hech kimga berilmaydi
+      // (egasining qarori, account-purge.js `idQuarantined`).
+      if (await idQuarantined(env, 'card', code)) return H.json({ error: 'code_taken' }, 409);
       const extraLinks = [];
       if (youtube) extraLinks.push({ label: 'YouTube', url: youtube });
       if (tiktok) extraLinks.push({ label: 'TikTok', url: tiktok });

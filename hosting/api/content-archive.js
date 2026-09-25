@@ -213,7 +213,51 @@ async function peopleFor(env, userIds, cardCodes, companyIds) {
       deleted: !!r.deleted_at, bannedUntil: r.banned_until || null,
     });
   }
+  // BUTUNLAY O'CHIRILGAN (purge) hisob: jonli qatorda email ham, telefon
+  // ham yo'q (tombstone). Dalil uchun ular purge paytida
+  // `evidence_identity` ga olingan (account-purge.js) — faqat shu yerda,
+  // faqat admin uchun ko'rsatiladi.
+  for (const r of await q(`SELECT user_id, email, phone FROM evidence_identity WHERE user_id IN (%)`, numeric)) {
+    const cur = users.get(String(r.user_id));
+    if (!cur || !/@deleted\.invalid$/i.test(cur.email || '')) continue;
+    users.set(String(r.user_id), { ...cur, email: r.email || '', phone: r.phone || '', purged: true });
+  }
+  for (const u of users.values()) {
+    if (/@deleted\.invalid$/i.test(u.email || '') && !u.purged) users.set(u.userId, { ...u, email: '', phone: '', purged: true });
+  }
   return { users, cards, companies };
+}
+
+// KOD YOKI BUSINESS ID QAYTA SOTILGAN BO'LSA — o'chirilgan kontentning
+// egasi JONLI jadvaldan emas, egalik tarixidan olinadi: o'sha kontent
+// o'chirilgan paytdagi egasi. Aks holda eski kontent YANGI egasining
+// ismi, emaili va telefoni bilan ko'rinardi (B6).
+//
+// Qoida: shu kod/ID uchun kontent o'chirilgan paytdan KEYINGI eng yaqin
+// "bo'shatildi" yozuvi — o'sha paytdagi egasi. Bunday yozuv bo'lmasa kod
+// o'shandan beri qo'l almashmagan: jonli egasi to'g'ri.
+const secOf = (v) => String(v || '').replace('T', ' ').slice(0, 19);
+async function ownerHistoryFor(env, keys) {
+  const out = new Map();   // "kind|OWNERID" -> [{ userId, at }] (vaqt bo'yicha)
+  if (!keys.length) return out;
+  const r = await env.DB.prepare(
+    `SELECT owner_kind, owner_id, user_id, released_at FROM evidence_owner_history
+      WHERE (owner_kind || '|' || UPPER(owner_id)) IN (${keys.map(() => '?').join(',')})`
+  ).bind(...keys).all().catch(() => null);
+  for (const x of r?.results || []) {
+    const k = `${x.owner_kind}|${String(x.owner_id).toUpperCase()}`;
+    if (!out.has(k)) out.set(k, []);
+    out.get(k).push({ userId: String(x.user_id), at: secOf(x.released_at) });
+  }
+  for (const list of out.values()) list.sort((a, b) => a.at.localeCompare(b.at));
+  return out;
+}
+function ownerAt(history, kind, ownerId, deletedAt) {
+  const list = history.get(`${kind}|${String(ownerId).toUpperCase()}`);
+  if (!list) return null;
+  const d = secOf(deletedAt);
+  const hit = list.find((h) => h.at >= d);
+  return hit ? hit.userId : null;
 }
 
 const userCard = (people, id) => (id ? people.users.get(String(id)) || { userId: String(id), email: '', phone: '', deleted: false } : null);
@@ -270,9 +314,15 @@ export async function handle(request, env, url, H) {
   if (flaggedOnly) conds.push('f.archive_id IS NOT NULL');
   if (q) {
     // Kod, foydalanuvchi raqami yoki email — muallif ham, profil egasi ham.
+    // Purge qilingan muallif emaili/telefoni `evidence_identity` da.
+    const identity = await env.DB.prepare(`SELECT 1 AS x FROM sqlite_master WHERE type = 'table' AND name = 'evidence_identity'`)
+      .first().catch(() => null);
     conds.push(`(UPPER(e.owner_id) = UPPER(?) OR UPPER(e.author_code) = UPPER(?) OR e.user_id = ?
-      OR e.user_id IN (SELECT CAST(u.id AS TEXT) FROM users u WHERE LOWER(u.email) = LOWER(?) OR u.phone = ?))`);
-    binds.push(q, q, q, q, q);
+      OR e.user_id IN (SELECT CAST(u.id AS TEXT) FROM users u WHERE LOWER(u.email) = LOWER(?) OR u.phone = ?)`
+      + (identity ? `
+      OR e.user_id IN (SELECT CAST(i.user_id AS TEXT) FROM evidence_identity i WHERE LOWER(i.email) = LOWER(?) OR i.phone = ?)` : '')
+      + `)`);
+    binds.push(q, q, q, q, q, ...(identity ? [q, q] : []));
   }
   const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
   const rows = await env.DB.prepare(
@@ -293,17 +343,32 @@ export async function handle(request, env, url, H) {
     if (r.deleted_by_user_id) userIds.add(String(r.deleted_by_user_id));
     if (r.owner_id) (r.owner_kind === 'company' ? companyIds : cardCodes).add(String(r.owner_id));
   }
+  // Egalik tarixi (qayta sotilgan kod/ID uchun o'sha paytdagi egasi).
+  const histKeys = [...new Set(pageRows.filter((r) => r.owner_id)
+    .map((r) => `${r.owner_kind === 'company' ? 'company' : 'card'}|${String(r.owner_id).toUpperCase()}`))];
+  const history = await ownerHistoryFor(env, histKeys);
+  for (const r of pageRows) {
+    if (!r.owner_id) continue;
+    const past = ownerAt(history, r.owner_kind === 'company' ? 'company' : 'card', r.owner_id, r.deleted_at);
+    if (past) { r._pastOwner = past; userIds.add(past); }
+  }
   const people = await peopleFor(env, userIds, cardCodes, companyIds);
 
   if (q) {
-    await H.logAdminActivity?.(env, { action: 'evidence_search', details: `${adminLabel} q=${q}`.slice(0, 500), ip })?.catch?.(() => {});
+    // Jurnalga xom qidiruv (email yoki telefon bo'lishi mumkin) EMAS, uning
+    // turi va xeshi yoziladi (B13). Kod/ID/raqam — ochiq, ular PII emas.
+    const kindOfQ = /@/.test(q) ? 'email' : /^\+?\d{9,15}$/.test(q) ? 'phone' : 'id';
+    const shown = kindOfQ === 'id' ? q : `${kindOfQ}:${String(await H.sha256Hex(q.toLowerCase())).slice(0, 12)}`;
+    await H.logAdminActivity?.(env, { action: 'evidence_search', details: `${adminLabel} q=${shown}`.slice(0, 500), ip })?.catch?.(() => {});
   }
 
   return H.json({
     items: pageRows.map((r) => {
       const ownerKind = String(r.owner_kind || '');
       const ownerId = String(r.owner_id || '');
-      const ownerRec = ownerKind === 'company' ? people.companies.get(ownerId) : people.cards.get(ownerId.toUpperCase());
+      const liveRec = ownerKind === 'company' ? people.companies.get(ownerId) : people.cards.get(ownerId.toUpperCase());
+      // Kod keyin qo'l almashgan bo'lsa — o'chirilgan paytdagi egasi.
+      const ownerRec = r._pastOwner ? { name: '', userId: r._pastOwner } : liveRec;
       return {
         source: r.source,
         id: Number(r.id),

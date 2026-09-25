@@ -23,6 +23,8 @@ import * as apiSaves from './api/saves.js';
 import * as apiContentArchive from './api/content-archive.js';
 import * as apiAppUsage from './api/app-usage.js';
 import * as apiAppAdmin from './api/app-admin.js';
+import * as apiAccountPurge from './api/account-purge.js';
+import { idQuarantined, notQuarantinedSql, purgeAfterMs, runScheduledPurge } from './api/account-purge.js';
 import { recordAppOpen } from './api/app-usage.js';
 import { archiveStmt, ensureArchiveTable, urlArchived } from './api/content-archive.js';
 import { moderateImage, moderateVideo, moderationEnabled, logBlockedUpload } from './api/image-moderation.js';
@@ -764,6 +766,10 @@ async function companyAvailability(env, rawId) {
     env.DB.prepare('SELECT * FROM company_id_rules WHERE company_id = ?').bind(id).first(),
   ]);
   const pricing = companyPricing(id, rule);
+  // O'chirilgan hisobning Business ID'si 90 kun (va biznes mijozlarining
+  // buyurtmalari saqlanib turgan bo'lsa undan ham uzoq) BAND ko'rinadi —
+  // account-purge.js `idQuarantined`. Sababi oshkor qilinmaydi.
+  const quarantined = !taken && await idQuarantined(env, 'company', id);
   // Brend uchun himoyalangan nom — narx ham, sotib olish ham yo'q.
   // Bu bloklashning boshqa turlaridan AJRATILADI: interfeys "band" emas,
   // "brend uchun himoyalangan" deb ko'rsatadi va rasmiy vakilga admin
@@ -789,7 +795,7 @@ async function companyAvailability(env, rawId) {
     if (alternatives.length === 3) break;
   }
   return {
-    companyId: id, valid: true, available: !taken && !blocked,
+    companyId: id, valid: true, available: !taken && !quarantined && !blocked,
     // `brandReserved` ALOHIDA bayroq: interfeys "band qilingan" emas,
     // "brend uchun himoyalangan" deb ko'rsatishi va rasmiy vakilga
     // murojaat yo'lini berishi uchun.
@@ -805,7 +811,7 @@ async function companyAvailability(env, rawId) {
     premiumName: !!premium,
     premiumLevel: premium ? premium.level : null,
     premiumPrice: premium ? premium.price : null,
-    reason: taken ? 'Bu ID band'
+    reason: (taken || quarantined) ? 'Bu ID band'
       : reserved === 'blocked' ? 'Bu nomdan foydalanish taqiqlangan'
         : reserved === 'brand' ? 'Bu nom brend uchun himoyalangan'
           : reserved === 'crypto' ? 'Bu nom alohida toifaga saqlangan'
@@ -4640,6 +4646,14 @@ async function finalizePaidWebOrderD1(env, orderId) {
   const existing = await getRecord(env, order.code);
   if (existing) return resolveExisting(existing);
 
+  // O'chirilgan hisobning kodi 90 kun hech kimga berilmaydi (account-purge.js).
+  // Xarid oldindan rad etiladi (`/quote` va buyurtma yaratish); bu yer
+  // oxirgi himoya — xuddi "kod band" holatidek yakunlanadi.
+  if (await idQuarantined(env, 'card', order.code)) {
+    await setWebOrderStatusD1(env, order.id, 'failed_code_taken');
+    return { ok: false, reason: 'code_taken' };
+  }
+
   // CASE A — record umuman yo'q: yaratamiz.
   const created = await createRecordD1(env, { ...order.payload, code: order.code, price: order.price });
   if (created) {
@@ -5615,7 +5629,9 @@ async function authApi(request, env, url) {
     // Brute-force / scrypt CPU-DoS himoyasi: IP bo'yicha 10, hisob
     // bo'yicha 5 urinish / 15 daqiqa (D1).
     if (await rateLimitD1(env, 'login:ip:' + reqIp(request), 10, 15 * 60_000)
-      || await rateLimitD1(env, 'login:acct:' + (asPhone || login), 5, 15 * 60_000)) {
+      // Kalitda xom email/telefon emas, xeshi (B13): `rate_limits` qatori
+      // hisob o'chirilgandan keyin ham bir muddat qoladi.
+      || await rateLimitD1(env, 'login:acct:' + await sha256Hex(asPhone || login), 5, 15 * 60_000)) {
       return json({ error: 'too_many_requests' }, 429);
     }
     // Telefon bo'yicha qidirishda `deleted_at IS NULL` shart — bitta raqam
@@ -5630,7 +5646,13 @@ async function authApi(request, env, url) {
           WHERE phone = ? AND deleted_at IS NULL ORDER BY id ASC LIMIT 1`
       ).bind(asPhone).first();
     if (!row || !(await verifyPassword(password, row.password_hash))) return json({ error: 'bad_credentials' }, 401);
-    if (row.deleted_at) return json({ error: 'account_deleted' }, 403);
+    // Parol TO'G'RI bo'lgandan keyin: hisob borligi begonaga oshkor bo'lmaydi.
+    // `purgeAfter` — hisob qachon butunlay o'chiriladi (ungacha egasi
+    // qo'llab-quvvatlashga yozib, bekor qildirishi mumkin).
+    if (row.deleted_at) {
+      const after = purgeAfterMs(row.deleted_at);
+      return json({ error: 'account_deleted', purgeAfter: after ? new Date(after).toISOString() : null }, 403);
+    }
     if (row.suspended_until && parseDbDate(row.suspended_until) > new Date()) {
       return json({ error: 'account_suspended', suspendedUntil: row.suspended_until, reason: row.suspend_reason }, 403);
     }
@@ -5855,7 +5877,9 @@ async function recordsApi(request, env, url) {
   const quoteMatch = path.match(/^\/api\/records\/([A-Za-z0-9]+)\/quote$/);
   if (quoteMatch && request.method === 'GET') {
     const code = String(quoteMatch[1] || '').toUpperCase();
-    const taken = await getRecord(env, code);
+    // O'chirilgan hisobning kodi 90 kun "band" ko'rinadi (account-purge.js).
+    // Sababi oshkor qilinmaydi — oddiy band koddek.
+    const taken = await getRecord(env, code) || await idQuarantined(env, 'card', code);
     if (taken) {
       return json({ code, taken: true, purchasable: false, reason: 'already_taken' });
     }
@@ -6268,6 +6292,8 @@ async function recordsApi(request, env, url) {
       if (!quote.purchasable) return json({ error: quote.reason || 'not_purchasable' }, 409);
 
       if (await getRecord(env, code)) return json({ error: 'already_taken' }, 409);
+      // O'chirilgan hisobning kodi — 90 kunlik karantin (account-purge.js).
+      if (await idQuarantined(env, 'card', code)) return json({ error: 'already_taken' }, 409);
 
       // Band qilish oqimi to'lov tizimi tayyor bo'lmaguncha butunlay
       // yopiq — legacy server/index.js bilan bir xil xulq.
@@ -7495,6 +7521,7 @@ async function auctionsPublicApi(request, env, url) {
     const note = cleanStr(body.note, 300);
     if (!/^[A-Z0-9]{3,16}$/.test(code) || isBlockedCode(code)) return json({ error: 'bad_code' }, 422);
     if (await env.DB.prepare(`SELECT 1 FROM cards WHERE code = ?`).bind(code).first()) return json({ error: 'code_taken' }, 409);
+    if (await idQuarantined(env, 'card', code)) return json({ error: 'code_taken' }, 409);
     const existing = await env.DB.prepare(`SELECT id FROM auction_requests WHERE user_id = ? AND code = ? AND status = 'pending'`).bind(user.id, code).first();
     if (existing) return json({ error: 'ALREADY_PENDING' }, 409);
     const row = await env.DB.prepare(`INSERT INTO auction_requests (user_id, code, note, created_at) VALUES (?, ?, ?, ?) RETURNING id`)
@@ -9085,6 +9112,7 @@ async function adminAuctionsApi(request, env, url, admin) {
     if (buyNowPrice && buyNowPrice <= startPrice) return json({ error: 'buy_now_too_low' }, 422);
     if (minStep < 1_000) return json({ error: 'bad_input' }, 422);
     if (await env.DB.prepare(`SELECT 1 FROM cards WHERE code = ?`).bind(code).first()) return json({ error: 'code_taken' }, 409);
+    if (await idQuarantined(env, 'card', code)) return json({ error: 'code_taken' }, 409);
     if (await env.DB.prepare(`SELECT 1 FROM auctions WHERE code = ? AND status = 'active'`).bind(code).first()) return json({ error: 'already_in_auction' }, 409);
     const endsAt = new Date(Date.now() + hours * 3600_000).toISOString();
     const auction = await env.DB.prepare(
@@ -9194,6 +9222,7 @@ async function adminAuctionsApi(request, env, url, admin) {
     const approved = await env.DB.prepare(`UPDATE auction_requests SET status = 'approved' WHERE id = ? AND status = 'pending' RETURNING id, code`).bind(Number(approveReqMatch[1])).first();
     if (!approved) return json({ error: 'not_found' }, 404);
     if (await env.DB.prepare(`SELECT 1 FROM cards WHERE code = ?`).bind(approved.code).first()) return json({ error: 'code_taken' }, 409);
+    if (await idQuarantined(env, 'card', approved.code)) return json({ error: 'code_taken' }, 409);
     let row = await env.DB.prepare(
       `INSERT INTO auction_demand (code, created_at) VALUES (?, ?) ON CONFLICT(code) DO NOTHING RETURNING *`
     ).bind(approved.code, nowTs()).first();
@@ -9216,6 +9245,7 @@ async function adminAuctionsApi(request, env, url, admin) {
     const code = String(body.code || '').toUpperCase().trim();
     if (!/^[A-Z0-9]{3,16}$/.test(code) || isBlockedCode(code)) return json({ error: 'bad_code' }, 422);
     if (await env.DB.prepare(`SELECT 1 FROM cards WHERE code = ?`).bind(code).first()) return json({ error: 'code_taken' }, 409);
+    if (await idQuarantined(env, 'card', code)) return json({ error: 'code_taken' }, 409);
     const startPrice = Math.max(10000, Math.round(Number(body.startPrice) || 250000));
     const minStep = Math.max(1000, Math.round(Number(body.minStep) || 25000));
     const row = await env.DB.prepare(
@@ -10514,7 +10544,7 @@ const H = {
 // bilan tugashini tekshiradi — oxiriga qo'shilsa o'sha qo'riqchi
 // yiqiladi. Tartibning boshqa ahamiyati yo'q: har bir modul o'ziga
 // tegishli bo'lmagan yo'lga `null` qaytaradi.
-const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiAppUsage, apiAppAdmin, apiMarketplace];
+const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiAppUsage, apiAppAdmin, apiAccountPurge, apiMarketplace];
 
 // Xavfsizlik header'lari — barcha javoblarga (statik va API). CSP ataylab faqat
 // framing/base/form/object ni cheklaydi (script/style ga tegmaydi — YouTube/Yandex
@@ -10565,6 +10595,19 @@ export default {
         url,
       );
     }
+  },
+  // KUNLIK CRON (wrangler.jsonc `triggers.crons`): o'chirish so'ralganiga
+  // 30 kun bo'lgan hisoblarni butunlay o'chirish (hosting/api/account-purge.js).
+  // `ACCOUNT_PURGE_MODE` = off | dry-run | on — standart `off`. Logga
+  // faqat SONLAR yoziladi, email/telefon/id emas.
+  async scheduled(controller, env, ctx) {
+    ctx.waitUntil((async () => {
+      try {
+        await runScheduledPurge(env, H);
+      } catch (e) {
+        console.error('account_purge', String(e?.message || e).slice(0, 200));
+      }
+    })());
   },
 };
 

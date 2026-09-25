@@ -992,6 +992,12 @@ export async function handle(request, env, url, H) {
         `SELECT * FROM content_comments WHERE id = ?`
       ).bind(id).first().catch(() => null);
       if (!row) return H.json({ error: 'not_found' }, 404);
+      // Muallifi butunlay o'chirilgan (purge) izoh tiklanmaydi: matni
+      // allaqachon bo'shatilgan, nusxasi faqat dalil arxivida
+      // (account-purge.js). Aks holda bo'sh izoh qayta chiqardi.
+      if (String(row.deleted_reason || '') === 'account_purge') {
+        return H.json({ error: 'account_purged' }, 409);
+      }
 
       await env.DB.prepare(
         `UPDATE content_comments

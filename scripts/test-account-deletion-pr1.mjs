@@ -211,7 +211,9 @@ function snapshot(uid, code) {
   checkTrue('a2) bepul ID berilgan', /^\d{8}$/.test(code || ''));
 
   const del = await call('/api/account', { method: 'DELETE', cookie: `nfc_session=${token}` });
-  check('a2) hisob ilovadan o‘chirildi (soft)', [del.status, del.body], [200, { ok: true }]);
+  // PR-2: javobga `purgeAfter` (so'rovdan +30 kun) qo'shildi — qolgani o'zgarmagan.
+  check('a2) hisob ilovadan o‘chirildi (soft)', [del.status, del.body?.ok], [200, true]);
+  checkTrue('a2) purgeAfter ~ +30 kun', Math.abs(Date.parse(del.body?.purgeAfter) - Date.now() - 30 * 86_400_000) < 120_000);
   const before = snapshot(uid, code);
   checkTrue('a2) deleted_at qo‘yilgan', !!before.user?.deleted_at);
 
@@ -385,7 +387,7 @@ const giftRow = (code) => sqlite.prepare(`SELECT status, activated_by_user_id FR
   check('e) o‘chirishdan oldin: #2 kodi qulflangan -> 409 ALREADY_PENDING', [locked.status, locked.body], [409, { error: 'ALREADY_PENDING' }]);
 
   const del = await call('/api/account', { method: 'DELETE', cookie: cookie.user });
-  check('e) DELETE /api/account -> 200 {ok:true} (javob o‘zgarmagan)', [del.status, del.body], [200, { ok: true }]);
+  check('e) DELETE /api/account -> 200 {ok:true} (+ purgeAfter, PR-2)', [del.status, del.body?.ok, typeof del.body?.purgeAfter], [200, true, 'string']);
   checkTrue('e) #1 qatori qoldi, deleted_at qo‘yildi', !!userRow(1)?.deleted_at);
   check('e) #1 sessiyalari yopildi', n(`SELECT COUNT(*) AS n FROM sessions WHERE user_id = 1`), 0);
 

@@ -26,7 +26,7 @@ const MAX_PER_KIND = 1000;
 const REF_RE = /^[A-Za-z0-9'_:/.-]{1,120}$/;
 
 let ready;
-async function ensureTable(env) {
+export async function ensureTable(env) {
   if (!ready) {
     ready = env.DB.batch([
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS user_saves (

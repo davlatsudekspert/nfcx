@@ -1,3 +1,4 @@
+import { idQuarantined } from './account-purge.js';
 // hosting/api/auth.js — ro'yxatdan o'tish (Telegram OTP) va parolni tiklash.
 // CONTRACT.md ga qarang. Route topilmasa null qaytaradi.
 //
@@ -351,6 +352,9 @@ export async function createFreeAutoId(env, userId, name, opts = {}) {
   const source = opts.source || 'registration_auto';
   for (let i = 0; i < 8; i++) {
     const code = String(Math.floor(10_000_000 + Math.random() * 89_999_999));
+    // O'chirilgan hisobning kodi 90 kun boshqa odamga berilmaydi
+    // (egasining qarori, account-purge.js `idQuarantined`).
+    if (await idQuarantined(env, 'card', code)) continue;
     const row = await env.DB.prepare(
       // `source = 'registration_auto'` — kartaning ISHONCHLI manba belgisi.
       // Katalog aynan shu belgi bo'yicha bu ID'ni ro'yxat/qidiruv/filtr va
@@ -838,7 +842,9 @@ async function requestEmailReset(request, env, H) {
 
   const ip = H.reqIp(request);
   if (await H.rateLimitD1(env, `emailreset:ip:${ip}`, 10, 60 * 60_000)) return H.json({ error: 'rate_limited' }, 429);
-  if (await H.rateLimitD1(env, `emailreset:to:${email}`, 3, 60 * 60_000)) return ok();
+  // Kalitda xom email emas, uning xeshi (B13): `rate_limits` jadvali
+  // hisob o'chirilgandan keyin ham bir muddat qoladi.
+  if (await H.rateLimitD1(env, `emailreset:to:${await H.sha256Hex(email)}`, 3, 60 * 60_000)) return ok();
   if (!H.emailEnabledD1(env)) return ok();
 
   // Placeholder email (raqam bilan ro'yxatdan o'tganlar) hech qachon
