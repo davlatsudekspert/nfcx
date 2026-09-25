@@ -1,0 +1,88 @@
+From dc3e84b2c31e1285dd3828ac866aa44925c17202 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 25 Sep 2026 07:33:39 +0000
+Subject: [PATCH 3/3] Admin panel: light-mode fixes, softer filter chips,
+ compact phone card
+
+- Reports filter chips and 'load more' use the soft ghost style
+  (thick outline looked harsh, especially in day mode)
+- App tab chip text follows the accent ink colour (readable in day mode)
+- User card facts in two columns on phones; smaller header title
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ src/components/admin/AdminUI.jsx | 2 +-
+ src/components/admin/NovaTab.jsx | 2 +-
+ src/pages/AdminPage.jsx          | 8 ++++----
+ 3 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/src/components/admin/AdminUI.jsx b/src/components/admin/AdminUI.jsx
+index 7f5f607..5f53497 100644
+--- a/src/components/admin/AdminUI.jsx
++++ b/src/components/admin/AdminUI.jsx
+@@ -159,7 +159,7 @@ export function AdminShell({ nav, activeIndex, onSelect, title, role, onLogout,
+           <div className="flex h-16 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+             <div className="flex min-w-0 items-center gap-3">
+               <img src={logo} alt="" className="h-7 w-7 shrink-0 object-contain lg:hidden" />
+-              <h1 className="truncate font-display text-[18px] font-semibold">{title}</h1>
++              <h1 className="truncate font-display text-[16px] font-semibold sm:text-[18px]">{title}</h1>
+             </div>
+             <div className="flex shrink-0 items-center gap-2">
+               {headerExtra}
+diff --git a/src/components/admin/NovaTab.jsx b/src/components/admin/NovaTab.jsx
+index da3fed1..62e3c07 100644
+--- a/src/components/admin/NovaTab.jsx
++++ b/src/components/admin/NovaTab.jsx
+@@ -84,7 +84,7 @@ export default function NovaTab({ adminApi, apiErrText }) {
+             onClick={() => setSub(key)}
+             className={`rounded-lg px-3 py-1.5 text-[14px] transition ${
+               sub === key
+-                ? 'bg-[color:var(--vz-accent)] text-black'
++                ? 'bg-[color:var(--vz-accent)] text-[color:var(--accent-ink)]'
+                 : 'border border-[color:var(--vz-line)] text-[color:var(--vz-ink-dim)]'
+             }`}
+           >
+diff --git a/src/pages/AdminPage.jsx b/src/pages/AdminPage.jsx
+index 6f8c77f..46a56eb 100644
+--- a/src/pages/AdminPage.jsx
++++ b/src/pages/AdminPage.jsx
+@@ -596,7 +596,7 @@ function ReportsTab() {
+             key={key}
+             type="button"
+             onClick={() => setStatus(key)}
+-            className={`btn btn-xs min-h-9 ${status === key ? 'btn-gold' : 'btn-outline'}`}
++            className={`btn btn-xs min-h-9 ${status === key ? 'btn-gold' : 'btn-ghost-vz'}`}
+           >
+             {t(label)}{counts[key] ? ` · ${counts[key]}` : ''}
+           </button>
+@@ -693,7 +693,7 @@ function ReportsTab() {
+           </table>
+           {hasMore && (
+             <div className="mt-3 text-center">
+-              <button type="button" className="btn btn-outline btn-sm" disabled={more} onClick={loadMore}>
++              <button type="button" className="btn btn-ghost-vz btn-sm" disabled={more} onClick={loadMore}>
+                 {more ? t('Yuklanmoqda…') : t('Ko‘proq ko‘rsatish')}
+               </button>
+             </div>
+@@ -1290,7 +1290,7 @@ function UserDrawer({ userId, onClose, onChanged }) {
+               </div>
+               {actErr && <div role="alert" className="vz-err">{actErr}</div>}
+ 
+-              <div className="grid gap-2 sm:grid-cols-2">
++              <div className="grid grid-cols-2 gap-2">
+                 {[
+                   [t('Telefon'), u.phone || '—'],
+                   [t("Ro'yxatdan o'tgan"), `${dateTime(tsMs(u.createdAt))} · ${u.signupSource === 'web' ? t('Sayt') : t('Ilova')}`],
+@@ -1299,7 +1299,7 @@ function UserDrawer({ userId, onClose, onChanged }) {
+                   [t('Ilova'), d.app ? t('{p} · oxirgi: {d} · {n} marta', { p: d.app.platform || '—', d: timeAgo(tsMs(d.app.lastSeen)), n: d.app.opens }) : t('Ishlatmagan')],
+                   [t('Telegram'), u.telegram ? t('Bog‘langan') : t('Bog‘lanmagan')],
+                 ].map(([k, v]) => (
+-                  <div key={k} className="vz-panel px-3.5 py-2.5">
++                  <div key={k} className="vz-panel min-w-0 px-3 py-2.5">
+                     <div className="text-[11.5px] uppercase tracking-wider" style={{ color: 'var(--vz-ink-3)' }}>{k}</div>
+                     <div className="mt-0.5 break-words text-sm" style={{ color: 'var(--vz-ink)' }}>{v}</div>
+                   </div>
+-- 
+2.43.0
+
