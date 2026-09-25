@@ -209,6 +209,11 @@ jobs:
       - name: Hisobni butunlay o'chirish (purge) to'g'rimi
         run: node scripts/test-account-deletion.mjs
 
+      # DALIL ARXIVI 6 OYLIK MUDDATI (account-purge.js runEvidenceRetention):
+      # eski nusxa o'chadi, "shubhali" va legal hold qoladi, dry-run tegmaydi.
+      - name: Dalil arxivi 6 oydan keyin tozalanadimi
+        run: node scripts/test-evidence-retention.mjs
+
       # TO'LOVLAR — FAQAT PAYME/CLICK HISOBGA (egasining qarori, 2026-09-25).
       #
       # Admin daromadi, Moliya va Excel faqat Payme/Click orqali tushgan

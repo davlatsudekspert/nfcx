@@ -754,10 +754,81 @@ export async function drainPurgeMediaQueue(env, { limit = 50 } = {}) {
 // ── CRON ─────────────────────────────────────────────────────────────
 
 /// `scheduled` handler'i chaqiradi. Loglarga faqat sonlar yoziladi.
-export async function runScheduledPurge(env, H, { now = Date.now() } = {}) {
-  const mode = purgeMode(env);
+// ── DALIL ARXIVI MUDDATI: 6 OY (egasining qarori, 2026-09-25) ─────────
+//
+// O'chirilgan kontent nusxasi (`content_archive`), izohlar arxivi
+// (`content_comment_archive`) va purge qilingan muallifning email/telefoni
+// (`evidence_identity`) 6 oydan keyin avtomatik o'chiriladi — qonundagi
+// "keragidan ortiq saqlamaslik" talabi, maxfiylik siyosatida yozilgan.
+//
+// ISTISNO (tergov/ish uchun ushlab turish): admin "shubhali" deb
+// belgilagan yozuv (`evidence_flags`) va `account_legal_holds` dagi
+// foydalanuvchining yozuvlari o'chirilmaydi — belgi olinmaguncha.
+//
+// Arxivdagi media fayllar R2 dan darhol o'chirilmaydi: manzillari
+// `purge_media_queue` ga tushadi va `drainPurgeMediaQueue` (R2 o'chirish
+// yoqilganda) ularni boshqa joyda ishlatilmayotganini tekshirib o'chiradi.
+//
+// EVIDENCE_RETENTION_MODE: on | dry-run | off (standart: dry-run —
+// faqat sanaydi). Bitta atomik batch: yarim o'chirilgan holat bo'lmaydi.
+export const EVIDENCE_RETENTION_DAYS = 183;
+export function retentionMode(env) {
+  const m = String(env?.EVIDENCE_RETENTION_MODE ?? 'dry-run').trim().toLowerCase();
+  return PURGE_MODES.includes(m) ? m : 'dry-run';
+}
+export async function runEvidenceRetention(env, { now = Date.now(), mode = retentionMode(env) } = {}) {
   if (mode === 'off') return { mode };
+  const names = new Set(((await env.DB.prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`).all()).results || []).map((r) => r.name));
+  const has = (t) => names.has(t);
+  const cutoff = new Date(now - EVIDENCE_RETENTION_DAYS * DAY_MS).toISOString().slice(0, 10);
+  const day = (c) => `substr(replace(${c}, 'T', ' '), 1, 10)`;
+  const holdUser = (col) => (has('account_legal_holds') ? ` AND CAST(${col} AS TEXT) NOT IN (SELECT CAST(user_id AS TEXT) FROM account_legal_holds)` : '');
+  const notFlagged = (src, col) => (has('evidence_flags') ? ` AND ${col} NOT IN (SELECT archive_id FROM evidence_flags WHERE source = '${src}')` : '');
+  const contentWhere = `${day('deleted_at')} < ?${notFlagged('content', 'id')}${holdUser('user_id')}`;
+  const commentWhere = `${day('deleted_at')} < ?${notFlagged('comment', 'id')}${holdUser('user_id')}`;
+  // Muallifning email/telefoni — muddati o'tgan VA undan arxivda hech narsa qolmaganda.
+  const identityWhere = `${day('captured_at')} < ?${holdUser('user_id')}`
+    + (has('content_archive') ? ` AND CAST(user_id AS TEXT) NOT IN (SELECT user_id FROM content_archive)` : '')
+    + (has('content_comment_archive') ? ` AND user_id NOT IN (SELECT user_id FROM content_comment_archive)` : '');
+
+  const out = { mode, cutoff, content: 0, comments: 0, identities: 0, mediaQueued: 0 };
+  const count = async (table, where) => Number((await env.DB.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE ${where}`).bind(cutoff).first())?.n || 0);
+  if (has('content_archive')) out.content = await count('content_archive', contentWhere);
+  if (has('content_comment_archive')) out.comments = await count('content_comment_archive', commentWhere);
+  if (mode !== 'on') {
+    // evidence_identity: arxiv hali o'chmagan — taxminiy son (o'chirilgach ko'proq bo'lishi mumkin).
+    if (has('evidence_identity')) out.identities = await count('evidence_identity', identityWhere);
+    return out;
+  }
+  const stmts = [];
+  const nowTs = tsAt(now);
+  if (has('content_archive')) {
+    if (has('purge_media_queue')) {
+      const media = ['image_url', 'video_url', 'file_url']
+        .map((c) => `SELECT ${c} AS url FROM content_archive WHERE ${contentWhere} AND ${c} IS NOT NULL AND ${c} <> ''`).join(' UNION ');
+      out.mediaQueued = Number((await env.DB.prepare(`SELECT COUNT(*) AS n FROM (${media})`).bind(cutoff, cutoff, cutoff).first())?.n || 0);
+      stmts.push(env.DB.prepare(`INSERT OR IGNORE INTO purge_media_queue (url, queued_at, attempts) SELECT url, ?, 0 FROM (${media})`).bind(nowTs, cutoff, cutoff, cutoff));
+    }
+    if (has('evidence_flags')) stmts.push(env.DB.prepare(`DELETE FROM evidence_flags WHERE source = 'content' AND archive_id NOT IN (SELECT id FROM content_archive)`));
+    stmts.push(env.DB.prepare(`DELETE FROM content_archive WHERE ${contentWhere}`).bind(cutoff));
+  }
+  if (has('content_comment_archive')) stmts.push(env.DB.prepare(`DELETE FROM content_comment_archive WHERE ${commentWhere}`).bind(cutoff));
+  if (has('evidence_identity')) stmts.push(env.DB.prepare(`DELETE FROM evidence_identity WHERE ${identityWhere}`).bind(cutoff));
+  if (!stmts.length) return out;
+  const res = await env.DB.batch(stmts);
+  if (has('evidence_identity')) out.identities = Number(res[res.length - 1]?.meta?.changes || 0);
+  return out;
+}
+
+export async function runScheduledPurge(env, H, { now = Date.now() } = {}) {
+  // Arxiv muddati — hisob o'chirish rejimidan MUSTAQIL (o'z bayrog'i bor).
+  let retention;
+  try { retention = await runEvidenceRetention(env, { now }); } catch (e) { retention = { error: String(e?.message || e).slice(0, 200) }; }
+  console.log(JSON.stringify({ evt: 'evidence_retention', ...retention }));
+  const mode = purgeMode(env);
+  if (mode === 'off') return { mode, retention };
   const res = await runAccountPurge(env, H, { mode, limit: Number(env.PURGE_MAX_USERS) || 3, now });
+  res.retention = retention;
   if (mode === 'on' && String(env.ACCOUNT_PURGE_R2 || 'off').trim().toLowerCase() === 'on') {
     res.r2 = await drainPurgeMediaQueue(env, { limit: 50 });
   }
