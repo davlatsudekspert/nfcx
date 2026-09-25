@@ -202,6 +202,8 @@ jobs:
         run: node scripts/test-catalog-popular.mjs
       - name: Shikoyatlar — kontentning o'zi ko'rinadi
         run: node scripts/test-admin-reports-preview.mjs
+      - name: Musiqa kutubxonasi (ruxsat, manzil, o'chirish)
+        run: node scripts/test-music-library.mjs
 
       # PROFIL SAHIFALARINING MAKETI.
       #
