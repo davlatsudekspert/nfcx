@@ -16,6 +16,11 @@ export const DICT_SITE = {
   'Kompaniya haqida qisqa ma’lumot.': { ru: 'Краткая информация о компании.', en: 'A short description of the company.' },
   'Kompaniya saytini to‘liq ochish': { ru: 'Открыть полный сайт компании', en: 'Open the full company page' },
   'NFC orqali ochildi': { ru: 'Открыто через NFC', en: 'Opened via NFC' },
+  // Namuna (demo) bizneslar — to'qima profillar.
+  'Namuna': { ru: 'Пример', en: 'Sample' },
+  'Namuna profil': { ru: 'Пример профиля', en: 'Sample profile' },
+  'Bu namuna profil: biznesingiz sahifasi shunday ko‘rinishi mumkin.': { ru: 'Это пример профиля: так может выглядеть страница вашего бизнеса.', en: 'This is a sample profile: your business page could look like this.' },
+  'O‘z biznesingizni oching': { ru: 'Откройте свой бизнес', en: 'Open your own business' },
   'Kurslar': { ru: 'Курсы', en: 'Courses' },
   'Takliflar': { ru: 'Предложения', en: 'Offers' },
   'Menyuni ko‘rish': { ru: 'Смотреть меню', en: 'View menu' },

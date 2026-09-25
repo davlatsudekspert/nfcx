@@ -253,6 +253,8 @@ jobs:
         run: node scripts/test-post-music.mjs
       - name: Ro'yxat — email imlosi, domen va telefon uzunligi
         run: node scripts/test-register-contact-check.mjs
+      - name: Namuna bizneslar (yaratish, belgi, buyurtma, lenta, o'chirish, rasmlar)
+        run: node scripts/test-demo-businesses.mjs
 
       # PROFIL SAHIFALARINING MAKETI.
       #

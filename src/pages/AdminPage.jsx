@@ -10,6 +10,7 @@ import { useLanguage } from '../lib/i18n.jsx';
 import MarketplaceTab from '../components/admin/MarketplaceTab.jsx';
 import NovaTab from '../components/admin/NovaTab.jsx';
 import MusicTab from '../components/admin/MusicTab.jsx';
+import DemoBusinessesTab from '../components/admin/DemoBusinessesTab.jsx';
 import { useCategories, catPath } from '../lib/categories.js';
 import { idTier, effectiveAccess } from '../lib/access.js';
 import { TIER_LABEL } from '../lib/pricing.js';
@@ -283,7 +284,7 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
 // bo'limning sarlavhasi siljib ketadi va menyu boshqa sahifani
 // ochadi. Bo'limni yashirish uchun uni faqat `ADMIN_NAV` dan oling:
 // bo'limning o'zi joyida qoladi va indekslar buzilmaydi.
-const TABS = ['Boshqaruv markazi', 'Statistika', 'Foydalanuvchilar', 'Buyurtmalar', "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Murojaatlar', 'Tashqi analitika', 'Xavfsizlik', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar', 'Kategoriyalar', 'Tasdiqlash (verified)', 'Talab', 'Moliya', 'Business ID', 'Trafik', 'Shikoyatlar', 'Marketplace', 'NFCSTORE ILOVASI', 'Premium obunachilar', 'Musiqa kutubxonasi'];
+const TABS = ['Boshqaruv markazi', 'Statistika', 'Foydalanuvchilar', 'Buyurtmalar', "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Murojaatlar', 'Tashqi analitika', 'Xavfsizlik', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar', 'Kategoriyalar', 'Tasdiqlash (verified)', 'Talab', 'Moliya', 'Business ID', 'Trafik', 'Shikoyatlar', 'Marketplace', 'NFCSTORE ILOVASI', 'Premium obunachilar', 'Musiqa kutubxonasi', 'Namuna bizneslar'];
 
 // ═══ BOSHQARUV MARKAZI (2026-09-25) ═══
 //
@@ -4843,6 +4844,7 @@ const ADMIN_NAV = [
   { index: 21, label: 'Shikoyatlar', icon: 'flag', group: 'Kontent', badgeKey: 'reports' },
   // Ilovada rasm/videoga qo'yiladigan musiqa (hosting/api/music.js).
   { index: 25, label: 'Musiqa kutubxonasi', icon: 'music', group: 'Kontent' },
+  { index: 26, label: 'Namuna bizneslar', icon: 'building', group: 'Kontent' },
   { index: 14, label: 'Yangiliklar', icon: 'news', group: 'Kontent' },
   { index: 15, label: 'Kategoriyalar', icon: 'folder', group: 'Kontent' },
 
@@ -4948,6 +4950,7 @@ function Dashboard({ onLogout, role, totpEnabled, refreshMe }) {
         {tab === 23 && <NovaTab adminApi={adminApi} apiErrText={apiErrText} />}
         {tab === 24 && <PremiumUsersTab />}
         {tab === 25 && <MusicTab adminApi={adminApi} apiErrText={apiErrText} isManager={isManager} />}
+        {tab === 26 && <DemoBusinessesTab adminApi={adminApi} apiErrText={apiErrText} isManager={isManager} />}
       </div>
     </AdminShell>
     </AdminCtx.Provider>

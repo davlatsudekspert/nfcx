@@ -28,6 +28,7 @@ import * as apiAccountPurge from './api/account-purge.js';
 import * as apiAdminControl from './api/admin-control.js';
 // Musiqa kutubxonasi (admin yuklaydi, ilova faqat yoqilgan treklarni ko'radi).
 import * as apiMusic from './api/music.js';
+import * as apiDemoBusinesses from './api/demo-businesses.js';
 import { idQuarantined, notQuarantinedSql, purgeAfterMs, runScheduledPurge } from './api/account-purge.js';
 import { recordAppOpen } from './api/app-usage.js';
 import { archiveStmt, ensureArchiveTable, urlArchived } from './api/content-archive.js';
@@ -677,12 +678,19 @@ async function upstreamAdmin(request, env) {
   } catch { return null; }
 }
 
+const isDemoOwnerD1 = (owner) => String(owner ?? '') === apiDemoBusinesses.DEMO_OWNER;
+// SQL: namuna bo'lmagan kompaniya (lenta va umumiy katalog uchun).
+const notDemoCompanySql = (alias) => `CAST(${alias}.owner_user_id AS TEXT) <> '${apiDemoBusinesses.DEMO_OWNER}'`;
+
 function rowCompany(row, items = [], ownerPremium = false) {
   let gallery = [];
   try { gallery = JSON.parse(row.gallery_json || '[]'); } catch { gallery = []; }
   return {
     id: row.id, companyId: row.company_id, ownerUserId: row.owner_user_id,
     ownerEmail: row.owner_email || '', displayName: row.display_name,
+    // NAMUNA biznes (api/demo-businesses.js): sayt va ilova «Namuna»
+    // belgisini ko'rsatadi, "Tasdiqlangan" belgisini emas.
+    demo: isDemoOwnerD1(row.owner_user_id),
     category: row.category || 'other', subcategory: row.subcategory || '',
     city: row.city || '', address: row.address || '', description: row.description || '',
     phone: row.phone || '', telegram: row.telegram || '', whatsapp: row.whatsapp || '', website: row.website || '',
@@ -1147,10 +1155,11 @@ async function companyApi(request, env, url) {
   // faqat sahifada allaqachon ochiq ko'rinadigan ma'lumot.
   if (path === '/api/companies' && request.method === 'GET') {
     // Tanlov "Bizneslar": ko'p ko'rilganlar tepada (shaxsiy profillar
-    // kabi). Ko'rishlar — company_stats (POST /view) yig'indisi,
+    // kabi). NAMUNA bizneslar har doim OXIRIDA — haqiqiy bizneslar
+    // birinchi ko'rinsin. Ko'rishlar — company_stats (POST /view) yig'indisi,
     // obunachilar — faqat ko'rinadigan foydalanuvchilar. Statistika
     // jadvallari hali yaratilmagan bo'lsa — eski tartibga qaytadi.
-    const base = `SELECT company_id, display_name, logo_url, cover_url, category, subcategory, city, created_at`;
+    const base = `SELECT company_id, display_name, logo_url, cover_url, category, subcategory, city, created_at, owner_user_id`;
     const where = `FROM companies
         WHERE status = 'active' AND ${companyOwnerAliveSql('companies')}`;
     let rows = await env.DB.prepare(
@@ -1160,10 +1169,10 @@ async function companyApi(request, env, url) {
           (SELECT COUNT(*) FROM company_follows cf
             WHERE cf.company_id = companies.company_id AND ${visibleUserSql('cf.user_id')}) AS followers
          ${where}
-        ORDER BY views DESC, created_at DESC LIMIT 200`
+        ORDER BY ${notDemoCompanySql('companies')} DESC, views DESC, created_at DESC LIMIT 200`
     ).all().catch(() => null);
     if (!rows) {
-      rows = await env.DB.prepare(`${base} ${where} ORDER BY created_at DESC LIMIT 200`).all();
+      rows = await env.DB.prepare(`${base} ${where} ORDER BY ${notDemoCompanySql('companies')} DESC, created_at DESC LIMIT 200`).all();
     }
     return json({
       companies: (rows.results || []).map((r) => ({
@@ -1177,6 +1186,7 @@ async function companyApi(request, env, url) {
         createdAt: r.created_at || null,
         views: Number(r.views) || 0,
         followers: Number(r.followers) || 0,
+        ...(isDemoOwnerD1(r.owner_user_id) ? { demo: true } : {}),
       })),
     });
   }
@@ -1291,6 +1301,8 @@ async function companyApi(request, env, url) {
   if (action === 'orders' && !itemId && request.method === 'POST') {
     const row = await env.DB.prepare(`SELECT status, orders_enabled, display_name, owner_user_id FROM companies WHERE company_id = ?`).bind(id).first();
     if (!row || row.status !== 'active') return json({ error: 'not_found' }, 404);
+    // Namuna biznes — buyurtma HECH QACHON qabul qilinmaydi.
+    if (isDemoOwnerD1(row.owner_user_id)) return json({ error: 'demo_business' }, 409);
     if (Number(row.orders_enabled || 0) !== 1) return json({ error: 'orders_disabled' }, 409);
     if (await rateLimitD1(env, `cord:${reqIp(request)}`, 10, 60 * 60_000)) return json({ error: 'too_many_requests' }, 429);
 
@@ -2680,6 +2692,15 @@ const ensureCompanyPlanColumns = async (env) => {
   await ensureColumnD1(env, 'companies', 'trial_expires_at', 'TEXT');
   await ensureColumnD1(env, 'companies', 'plan', 'TEXT');
 };
+// Kompaniya jadvallari + keyin qo'shilgan hamma ustunlar (ish vaqti,
+// buyurtma, kontaktlar, tarif, katalog listingi) — modullar uchun.
+async function ensureCompanyTablesD1(env) {
+  await ensureCompanySchema(env);
+  await ensureCompanyExtrasSchema(env);
+  await ensureCompanyContactColumns(env);
+  await ensureCompanyPlanColumns(env);
+  await ensureCatalogListingColumns(env);
+}
 // `X-Client` sarlavhasidan manbani aniqlaydi.
 //
 // Ilova nima yuborishidan qat'i nazar ishlaydi: "android", "ios" yoki
@@ -10261,7 +10282,7 @@ const FEED_UNION_SQL = `SELECT * FROM (
                cp.image_url, cp.video_url, cp.caption, cp.created_at,
                0, 0
           FROM company_posts cp JOIN companies co ON co.company_id = cp.company_id
-         WHERE co.status = 'active' AND ${companyOwnerAliveSql('co')}
+         WHERE co.status = 'active' AND ${companyOwnerAliveSql('co')} AND ${notDemoCompanySql('co')}
         UNION ALL
         SELECT 'story', s.id, s.owner_id, 'card',
                c.name, c.avatar_url,
@@ -10280,7 +10301,7 @@ const FEED_UNION_SQL = `SELECT * FROM (
                EXISTS(SELECT 1 FROM story_likes sl WHERE sl.story_id = s.id AND sl.user_id = ?)
           FROM stories s JOIN companies co ON co.company_id = s.owner_id
          WHERE s.owner_kind = 'company' AND s.expires_at > ?
-           AND co.status = 'active' AND ${companyOwnerAliveSql('co')}
+           AND co.status = 'active' AND ${companyOwnerAliveSql('co')} AND ${notDemoCompanySql('co')}
 )`;
 
 /// Lenta qatorlarini o'qiladigan ko'rinishga keltiradi.
@@ -10747,6 +10768,9 @@ const H = {
   // To'lov kanali va haqiqiy (Payme/Click) tushum — moliya moduli ham
   // AYNAN shu qoidani ishlatadi (ikki nusxa bo'lmasin).
   webOrderChannelSqlD1, gatewayRevenueSqlD1, revenueBucketSqlD1, ensureWebOrderTimestampColumns,
+  // NAMUNA BIZNESLAR (api/demo-businesses.js) — kompaniya jadvallari
+  // va barcha qo'shimcha ustunlar bir chaqiruvda.
+  ensureCompanyTablesD1, nowTs,
   // SINOV/ICHKI AKKAUNTLAR — BITTA MANBA, MODULLAR UCHUN HAM.
   //
   // `hosting/api/marketplace.js` statistikasi ham "o'zimiz qilgan ish
@@ -10760,7 +10784,7 @@ const H = {
 // bilan tugashini tekshiradi — oxiriga qo'shilsa o'sha qo'riqchi
 // yiqiladi. Tartibning boshqa ahamiyati yo'q: har bir modul o'ziga
 // tegishli bo'lmagan yo'lga `null` qaytaradi.
-const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiAppUsage, apiAppAdmin, apiAccountPurge, apiAdminControl, apiMusic, apiMarketplace];
+const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiAppUsage, apiAppAdmin, apiAccountPurge, apiAdminControl, apiMusic, apiDemoBusinesses, apiMarketplace];
 
 // Xavfsizlik header'lari — barcha javoblarga (statik va API). CSP ataylab faqat
 // framing/base/form/object ni cheklaydi (script/style ga tegmaydi — YouTube/Yandex

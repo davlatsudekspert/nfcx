@@ -78,6 +78,8 @@
 // (mobile_nova/lib/data/models/models.dart) bilan AYNAN bir xil —
 // o'zgarsa ikkalasini birga o'zgartiring.
 
+import { DEMO_OWNER } from './demo-businesses.js';
+
 export const NFC_TYPES = ['card', 'sticker', 'keychain', 'accessory'];
 export const MARKET_CATEGORIES = ['food', 'fashion', 'electronics', 'beauty', 'education', 'health', 'home', 'auto', 'other'];
 export const LISTING_KINDS = ['product', 'service'];
@@ -331,6 +333,10 @@ export async function handle(request, env, url, H) {
     // Egasi o'chirilgan kompaniya ko'rinmaydi (worker.js dagi
     // companyOwnerAliveSql bilan bir xil qoida).
     `NOT EXISTS (SELECT 1 FROM users du WHERE CAST(du.id AS TEXT) = CAST(c.owner_user_id AS TEXT) AND du.deleted_at IS NOT NULL)`,
+    // NAMUNA bizneslar (api/demo-businesses.js) umumiy katalogga
+    // tushmaydi — haqiqiy sotuvchilarning tovarlari orasida to'qima
+    // tovar turmasin. Ular faqat o'z profilida ko'rinadi.
+    `CAST(c.owner_user_id AS TEXT) <> '${DEMO_OWNER}'`,
   ];
   const args = [];
   if (q) {

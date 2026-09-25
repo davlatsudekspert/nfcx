@@ -382,12 +382,22 @@ export default function CompanyQuickProfilePage({ companyId }) {
 
           <h1 className="qp-name break-words">
             {company.displayName}
-            <i className="qp-verified" title={t('Tasdiqlangan kompaniya')} aria-label={t('Tasdiqlangan kompaniya')}>✓</i>
+            {company.demo
+              ? <span className="qp-demo">{t('Namuna')}</span>
+              : <i className="qp-verified" title={t('Tasdiqlangan kompaniya')} aria-label={t('Tasdiqlangan kompaniya')}>✓</i>}
           </h1>
           {/* QISQA tanishtiruv (soha). Uzun tavsif ATAYLAB bu yerda
               emas: u to'rt qatorga cho'zilib, pastdagi kontent oynasini
               yeb qo'yardi. To'liq tavsif "Ma'lumot" bo'limida. */}
           <p className="qp-sub break-words">{company.subcategory || company.categoryLabel || t('Kompaniya')}</p>
+          {/* NAMUNA biznes: to'qima profil — tashrifchi aldanmasin va
+              o'z biznesini ochishga taklif qilinsin. */}
+          {company.demo && (
+            <p className="qp-demo-note">
+              {t('Bu namuna profil: biznesingiz sahifasi shunday ko‘rinishi mumkin.')}{' '}
+              <a href="/company/create" onClick={(e) => { e.preventDefault(); navigate('/company/create'); }}>{t('O‘z biznesingizni oching')} →</a>
+            </p>
+          )}
 
           {/* META QATOR — shahar va ish vaqti yonma-yon. Ilgari ular
               ikki alohida satr edi va nom ostida uchta kulrang qator

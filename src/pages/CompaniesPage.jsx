@@ -261,7 +261,7 @@ function RealCompanyCard({ item, categories, lang, t }) {
         {item.bgUrl || item.avatarUrl
           ? <img src={item.bgUrl || item.avatarUrl} alt="" />
           : <span>{(item.name || item.code).slice(0, 2).toUpperCase()}</span>}
-        <em>{isCompany ? t('Kompaniya') : t('Biznes profil')}</em>
+        <em>{item.demo ? t('Namuna') : isCompany ? t('Kompaniya') : t('Biznes profil')}</em>
       </div>
       <div className="co-real-body">
         <span className="co-real-logo">{item.avatarUrl ? <img src={item.avatarUrl} alt="" /> : (item.name || item.code).slice(0, 2).toUpperCase()}</span>
@@ -323,9 +323,11 @@ export default function CompaniesPage({ catalog = [] }) {
       categorySlug: c.category || '',
       avatarUrl: c.logoUrl || '',
       bgUrl: c.coverUrl || '',
-      verified: true,
+      // NAMUNA biznes (to'qima) — "tasdiqlangan" emas va ro'yxat OXIRIDA.
+      verified: !c.demo,
+      demo: !!c.demo,
       // Tartib uchun: kompaniyada `ts` yo'q, yaratilgan sanasidan olamiz.
-      ts: c.createdAt ? Date.parse(c.createdAt) || 0 : 0,
+      ts: c.demo ? 0 : c.createdAt ? Date.parse(c.createdAt) || 0 : 0,
       hiddenFromDirectory: false,
       profileType: 'business',
     }));
