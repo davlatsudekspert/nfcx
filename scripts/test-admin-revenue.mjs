@@ -93,6 +93,7 @@ check('raqamsiz "to‘langan" yozuv daromadga kirmaydi, «Boshqa»ga tushadi', [
   const other = await list('?view=other');
   check('view=other: «Boshqa» (qo‘lda, eski, sinov, qaytarilgan, bekor, bot)',
     other.map((o) => `${o.source}-${o.id}`).sort(), ['bot-1', 'bot-2', 'web-10', 'web-12', 'web-4', 'web-7', 'web-8', 'web-9'].sort());
+  check('view=refunded: faqat qaytarilgan Payme/Click', (await list('?view=refunded')).map((o) => o.id), [10]);
   const pending = await list('?view=pending');
   check('view=pending', pending.map((o) => o.id), [3]);
   const all = await list('');

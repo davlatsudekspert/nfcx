@@ -582,6 +582,10 @@ export async function handle(request, env, url, H) {
     const admin = await H.requireAdmin(request, env);
     if (!admin) return H.json({ error: 'unauthorized' }, 401);
     const ip = H.reqIp(request);
+    // O'zgartirishlar (mahsulot, kod partiyasi, aktivatsiya, stiker) —
+    // manager+; interfeys ham ularni faqat manager'ga ko'rsatadi.
+    // Ko'rish (GET) istalgan adminga.
+    if (method !== 'GET' && !H.roleAtLeast(admin, 'manager')) return H.json({ error: 'forbidden' }, 403);
 
     // ── MAHSULOTLAR ───────────────────────────────────────────────
     if (path === '/api/admin/marketplace/products' && method === 'GET') {

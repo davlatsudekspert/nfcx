@@ -185,6 +185,15 @@ jobs:
       - name: Moliya bo'limi va Excel hisobot to'g'rimi
         run: node scripts/test-admin-finance.mjs
 
+      # ADMIN BOSHQARUV MARKAZI (2026-09-25): bosh sahifa, Premium
+      # obunachilar va foydalanuvchi kartochkasi faqat o'qiydi; tushum faqat
+      # Payme/Click. Rollar: xavfli amallar serverda ham rol bo'yicha yopiq.
+      - name: Admin boshqaruv markazi to'g'ri sanaydimi
+        run: node scripts/test-admin-control.mjs
+
+      - name: Admin amallari rol bo'yicha yopiqmi
+        run: node scripts/test-admin-roles.mjs
+
       # PROFIL SAHIFALARINING MAKETI.
       #
       # Ikkala profilda ham (shaxsiy `/:code` va biznes `/c/:id`)

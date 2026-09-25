@@ -24,6 +24,8 @@ import * as apiContentArchive from './api/content-archive.js';
 import * as apiAppUsage from './api/app-usage.js';
 import * as apiAppAdmin from './api/app-admin.js';
 import * as apiAccountPurge from './api/account-purge.js';
+// Admin boshqaruv markazi (overview, premium obunachilar, foydalanuvchi kartochkasi) — faqat o'qiydi.
+import * as apiAdminControl from './api/admin-control.js';
 import { idQuarantined, notQuarantinedSql, purgeAfterMs, runScheduledPurge } from './api/account-purge.js';
 import { recordAppOpen } from './api/app-usage.js';
 import { archiveStmt, ensureArchiveTable, urlArchived } from './api/content-archive.js';
@@ -1714,6 +1716,12 @@ async function companyAdminApi(request, env, url) {
   if (!admin) return json({ error: 'unauthorized' }, 401);
   if (!(await checkIpWhitelist(request, env, reqIp(request)))) return json({ error: 'ip_not_whitelisted' }, 403);
   const path = url.pathname;
+  // ROL TEKSHIRUVI (2026-09-25 audit): ilgari bu yerdagi HAR BIR amal
+  // istalgan adminga (content_manager ham) ochiq edi — Business ID
+  // arizasini to'lovsiz "to'langan/faol" qilish, nom narxini o'zgartirish.
+  //   manager+    — arizani ko'rib chiqish (tasdiqlash/rad), domen holati;
+  //   super_admin — "paid"/"active" (pul bilan bog'liq) va nom qoidalari/narxi.
+  const forbiddenUnless = (role) => (roleAtLeast(admin, role) ? null : json({ error: 'forbidden' }, 403));
   if (path === '/api/admin/company-requests' && request.method === 'GET') {
     const status = shortText(url.searchParams.get('status'), 30);
     const rows = status && COMPANY_STATUSES.has(status)
@@ -1740,6 +1748,8 @@ async function companyAdminApi(request, env, url) {
   }
   const domainMatch = path.match(/^\/api\/admin\/company-domains\/([^/]{3,40})$/);
   if (domainMatch && request.method === 'PATCH') {
+    const denied = forbiddenUnless('manager');
+    if (denied) return denied;
     const id = companyId(decodeCompanySeg(domainMatch[1]));
     if (!id) return json({ error: 'not_found' }, 404);
     const body = await request.json().catch(() => ({}));
@@ -1759,6 +1769,8 @@ async function companyAdminApi(request, env, url) {
     const body = await request.json().catch(() => ({}));
     const status = shortText(body.status, 30);
     if (!COMPANY_STATUSES.has(status)) return json({ error: 'bad_status' }, 422);
+    const denied = forbiddenUnless(['paid', 'active'].includes(status) ? 'super_admin' : 'manager');
+    if (denied) return denied;
     const company = await setCompanyStatus(env, id, status, `admin:${admin.role || 'admin'}`, body.note);
     if (!company) return json({ error: 'not_found' }, 404);
     return json({ company });
@@ -1829,7 +1841,8 @@ async function companyAdminApi(request, env, url) {
       }),
       text: 'NFCSTORE sinov xati. Resend sozlamalari ishlayapti.',
     });
-    await logAdminActivity(env, { action: 'email_test', details: to, ip });
+    // `ip` bu funksiyada e'lon qilinmagan edi — xat ketib, javob 503 bo'lardi.
+    await logAdminActivity(env, { action: 'email_test', details: to, ip: reqIp(request) });
     return json(result, 200);
   }
   if (path === '/api/admin/company-id-rules' && request.method === 'GET') {
@@ -1837,6 +1850,8 @@ async function companyAdminApi(request, env, url) {
     return json({ rules: rows.results || [] });
   }
   if (path === '/api/admin/company-id-rules' && request.method === 'PUT') {
+    const denied = forbiddenUnless('super_admin');
+    if (denied) return denied;
     const body = await request.json().catch(() => ({}));
     const id = companyId(body.companyId);
     const rule = ['reserved', 'off_sale', 'blocked', 'exclusive', 'allow'].includes(body.rule) ? body.rule : 'reserved';
@@ -8361,7 +8376,8 @@ async function adminCoreApi(request, env, url, admin) {
   }
 
   if (path === '/api/admin/analytics' && request.method === 'GET') {
-    const [breakdownRows, commissions, signups, cards] = await Promise.all([
+    await ensureWebOrderTimestampColumns(env);
+    const [breakdownRows, commissions, signups, cards, revenue] = await Promise.all([
       // Bu ikkisi ilgari sinovni UMUMAN tekshirmasdi: o'z sinov
       // to'lovlaringiz "Daromad turlari" va komissiya grafigiga
       // qo'shilib ketardi, ro'yxatdan o'tish grafigi esa toza edi —
@@ -8370,12 +8386,17 @@ async function adminCoreApi(request, env, url, admin) {
       env.DB.prepare(`SELECT substr(created_at, 1, 10) AS day, COALESCE(SUM(amount), 0) AS total FROM transactions WHERE kind = 'platform_commission'${TEST_USER_FILTER_D1} AND ${DAY_COL_D1} >= date('now', '-29 days') GROUP BY substr(created_at, 1, 10) ORDER BY day`).all(),
       env.DB.prepare(`SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS count FROM users WHERE is_test = 0 AND is_internal = 0 AND ${DAY_COL_D1} >= date('now', '-29 days') GROUP BY substr(created_at, 1, 10) ORDER BY day`).all(),
       env.DB.prepare(`SELECT strftime('%Y-%m-%d', ts / 1000, 'unixepoch') AS day, COUNT(*) AS count FROM cards WHERE ts >= (unixepoch('now', '-29 days') * 1000) AND ${NOT_TEST_CARD_D1} GROUP BY strftime('%Y-%m-%d', ts / 1000, 'unixepoch') ORDER BY day`).all(),
+      // Kunlik HAQIQIY tushum — faqat Payme/Click (revenueBucketSqlD1 'counted').
+      // Eski komissiya grafigi o'rniga (2026-09-25).
+      env.DB.prepare(`SELECT substr(w.created_at, 1, 10) AS day, COALESCE(SUM(w.price), 0) AS total, COUNT(*) AS count FROM web_orders w
+        WHERE ${revenueBucketSqlD1('counted', 'w')} AND substr(w.created_at, 1, 10) >= date('now', '-29 days') GROUP BY substr(w.created_at, 1, 10) ORDER BY day`).all(),
     ]);
     return json({
       breakdown: (breakdownRows.results || []).map((r) => ({ kind: r.kind, count: Number(r.count), total: Number(r.total) })),
       commissionSeries: (commissions.results || []).map((r) => ({ day: r.day, total: Number(r.total) })),
       signupsSeries: (signups.results || []).map((r) => ({ day: r.day, count: Number(r.count) })),
       cardsSeries: (cards.results || []).map((r) => ({ day: r.day, count: Number(r.count) })),
+      revenueSeries: (revenue.results || []).map((r) => ({ day: r.day, total: Number(r.total), count: Number(r.count) })),
     });
   }
 
@@ -8563,14 +8584,16 @@ async function adminCoreApi(request, env, url, admin) {
     // orqali to'langanlar (haqiqiy tushum); `pending` — to'lov kutilmoqda;
     // `other` — «Boshqa»: qo'lda tasdiqlangan, eski, sinov, qaytarilgan,
     // bekor qilingan va eski Telegram bot buyurtmalari; `all` (standart) —
-    // hammasi. Hech narsa o'chirilmaydi.
-    const view = ['paid', 'pending', 'other', 'all'].includes(url.searchParams.get('view')) ? url.searchParams.get('view') : 'all';
+    // hammasi; `refunded` — Payme/Click orqali to'lanib, keyin qaytarilgan
+    // (qo'lda ko'rib chiqiladi). Hech narsa o'chirilmaydi.
+    const view = ['paid', 'pending', 'other', 'refunded', 'all'].includes(url.searchParams.get('view')) ? url.searchParams.get('view') : 'all';
     await ensureWebOrderTimestampColumns(env);
     const conds = [];
     if (!includeTest) conds.push(`w.user_id NOT IN ${HIDDEN_USER_IDS_D1}`);
     if (view === 'paid') conds.push(gatewayRevenueSqlD1('w'));
     if (view === 'pending') conds.push(`w.status = 'pending'`);
     if (view === 'other') conds.push(`w.status <> 'pending' AND NOT ${gatewayRevenueSqlD1('w')}`);
+    if (view === 'refunded') conds.push(revenueBucketSqlD1('refunded', 'w'));
     const where = conds.length ? ` WHERE ${conds.join(' AND ')}` : '';
     const withBot = view === 'other' || view === 'all';
     const [web, bot] = await Promise.all([
@@ -8697,6 +8720,8 @@ async function adminCoreApi(request, env, url, admin) {
 
   const physicalStatusMatch = path.match(/^\/api\/admin\/physical-cards\/(\d+)\/status$/);
   if (physicalStatusMatch && request.method === 'POST') {
+    // Mijozga Telegram xabari ketadi va buyurtma holati o'zgaradi — manager+.
+    if (!roleAtLeast(admin, 'manager')) return json({ error: 'forbidden' }, 403);
     const body = await request.json().catch(() => ({}));
     const status = String(body.status || '');
     if (!['pending', 'printing', 'shipped', 'delivered'].includes(status)) return json({ error: 'bad_status' }, 422);
@@ -8742,6 +8767,8 @@ async function adminCoreApi(request, env, url, admin) {
 
   const physicalActiveMatch = path.match(/^\/api\/admin\/physical-cards\/(\d+)\/active$/);
   if (physicalActiveMatch && request.method === 'POST') {
+    // Mijozning kartasini bloklash — manager+.
+    if (!roleAtLeast(admin, 'manager')) return json({ error: 'forbidden' }, 403);
     const body = await request.json().catch(() => ({}));
     const active = body.active !== false;
     const row = await env.DB.prepare(`UPDATE physical_cards SET active = ? WHERE id = ? RETURNING id, linked_code`)
@@ -9029,20 +9056,34 @@ async function adminCoreApi(request, env, url, admin) {
   }
 
   if (path === '/api/admin/users' && request.method === 'GET') {
+    // SERVERDA QIDIRUV (2026-09-25): ilgari faqat oxirgi 200 kishi olinib,
+    // qidiruv brauzerda bo'lardi — 201-chi foydalanuvchini topib bo'lmasdi.
+    // `q` — email, telefon yoki NFC ID bo'lagi.
+    const q = cleanStr(url.searchParams.get('q'), 60).toLowerCase();
+    const limit = Math.min(500, Math.max(20, Number(url.searchParams.get('limit')) || 200));
+    const trial = usersHaveTrialColumnsD1();
+    const where = q ? `WHERE LOWER(email) LIKE ? OR phone LIKE ? OR EXISTS (SELECT 1 FROM cards cq WHERE cq.user_id = users.id AND LOWER(cq.code) LIKE ?)` : '';
+    const binds = q ? [`%${q}%`, `%${q}%`, `%${q}%`] : [];
     const rows = await env.DB.prepare(
-      `SELECT id, email, phone, bot_ack, balance, held_balance, created_at, is_test, is_internal,
+      `SELECT id, email, phone, bot_ack, balance, held_balance, created_at, is_test, is_internal, is_premium,
               suspended_until, suspend_reason, deleted_at,
+              ${trial ? 'premium_expires_at, trial_expires_at' : 'NULL AS premium_expires_at, NULL AS trial_expires_at'},
               (SELECT COUNT(*) FROM cards WHERE user_id = users.id) AS card_count,
               (SELECT GROUP_CONCAT(code) FROM cards WHERE user_id = users.id) AS codes
-       FROM users ORDER BY created_at DESC LIMIT 200`
-    ).all();
+       FROM users ${where} ORDER BY created_at DESC LIMIT ?`
+    ).bind(...binds, limit).all();
+    const nowIso = new Date().toISOString();
     const users = (rows.results || []).map((r) => ({
       id: r.id, email: r.email, phone: r.phone, botAck: !!r.bot_ack, balance: Number(r.balance),
       heldBalance: Number(r.held_balance), createdAt: r.created_at, isTest: !!r.is_test, isInternal: !!r.is_internal,
       suspendedUntil: r.suspended_until, suspendReason: r.suspend_reason, deletedAt: r.deleted_at,
       cardCount: Number(r.card_count), codes: r.codes ? r.codes.split(',') : [],
+      // Premium: eski muddatsiz belgi yoki premium_expires_at kelajakda; sinov muddati alohida.
+      premium: Number(r.is_premium) === 1 || (!!r.premium_expires_at && String(r.premium_expires_at) > nowIso),
+      premiumUntil: r.premium_expires_at || null,
+      trial: !!r.trial_expires_at && String(r.trial_expires_at) > nowIso,
     }));
-    return json({ users });
+    return json({ users, q, limit });
   }
 
   // Ichki akkaunt belgisi — pul hisobiga kirmasin.
@@ -9216,6 +9257,12 @@ async function adminAuctionRow(env, r) {
 async function adminAuctionsApi(request, env, url, admin) {
   const path = url.pathname;
   const ip = reqIp(request);
+  // Auksion pul bilan bog'liq (bandlangan mablag'lar, g'olib to'lovi):
+  // o'zgartirish manager+, sotuvchiga to'lov belgisi — faqat super_admin.
+  if (request.method !== 'GET' && /^\/api\/admin\/(auctions|auction-requests|auction-demand)(\/|$)/.test(path)) {
+    const need = /\/mark-payout-paid$/.test(path) ? 'super_admin' : 'manager';
+    if (!roleAtLeast(admin, need)) return json({ error: 'forbidden' }, 403);
+  }
 
   if (path === '/api/admin/auctions' && request.method === 'GET') {
     const rows = await env.DB.prepare(`SELECT * FROM auctions ORDER BY created_at DESC LIMIT 100`).all();
@@ -10687,7 +10734,7 @@ const H = {
 // bilan tugashini tekshiradi — oxiriga qo'shilsa o'sha qo'riqchi
 // yiqiladi. Tartibning boshqa ahamiyati yo'q: har bir modul o'ziga
 // tegishli bo'lmagan yo'lga `null` qaytaradi.
-const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiAppUsage, apiAppAdmin, apiAccountPurge, apiMarketplace];
+const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiAppUsage, apiAppAdmin, apiAccountPurge, apiAdminControl, apiMarketplace];
 
 // Xavfsizlik header'lari — barcha javoblarga (statik va API). CSP ataylab faqat
 // framing/base/form/object ni cheklaydi (script/style ga tegmaydi — YouTube/Yandex
