@@ -24,7 +24,7 @@ import '../../routing/routes.dart';
 import '../auth/session.dart';
 import '../profile/music_player.dart';
 import '../social/feed_card.dart';
-import '../social/media_frame.dart' show decodeWidth, isAssetMedia;
+import '../social/media_frame.dart' show decodeWidth, isAssetMedia, mediaImage;
 import '../nfc/qr_sheet.dart';
 import '../shop/nfc_id_market.dart' show tierLabel;
 import 'widgets/avatar.dart';
@@ -172,51 +172,68 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           controller: _scroll,
           padding: EdgeInsets.only(bottom: navSafeBottom(context)),
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                Gap.screenX,
-                Gap.sm,
-                Gap.screenX,
-                0,
-              ),
-              child: Row(
+            // PROFIL FONI ASOSIYDA HAM (egasi, 2026-09-25: "profilda
+            // tepada fon bor — o'sha asosiyda ham chiqsin"). Profil
+            // ekranidagi bilan bir xil: to'liq kenglik, pastga qarab
+            // fonga singib ketadi, avatar uning ustiga tushadi, ism esa
+            // fondan PASTDA — matn surat ustida qolmaydi. Fon
+            // qo'yilmagan bo'lsa hech narsa o'zgarmaydi.
+            _CoverBackdrop(
+              url: active?.coverUrl ?? '',
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // BREND IMZOSI — sarlavha emas.
-                  //
-                  // "Xayrli tong" va hisob login nomi (`ali77099`) bu
-                  // yerga QAYTMAYDI: ism pastdagi portret qatorida
-                  // bir marta, to'g'ri ko'rinishda turadi.
-                  const Expanded(child: _Wordmark()),
-                  NovaIconButton(
-                    icon: Icons.notifications_none_rounded,
-                    tooltip: l.activityTitle,
-                    onPressed: () => context.push(Routes.activity),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    Gap.screenX,
+                    Gap.sm,
+                    Gap.screenX,
+                    0,
                   ),
-                  const SizedBox(width: Gap.sm),
-                  NovaIconButton(
-                    icon: Icons.settings_outlined,
-                    tooltip: l.settings,
-                    onPressed: () => context.push(Routes.settings),
+                  child: Row(
+                    children: [
+                      // BREND IMZOSI — sarlavha emas.
+                      //
+                      // "Xayrli tong" va hisob login nomi (`ali77099`) bu
+                      // yerga QAYTMAYDI: ism pastdagi portret qatorida
+                      // bir marta, to'g'ri ko'rinishda turadi.
+                      Expanded(
+                        child: _Wordmark(
+                            onImage: (active?.coverUrl ?? '').isNotEmpty),
+                      ),
+                      NovaIconButton(
+                        icon: Icons.notifications_none_rounded,
+                        tooltip: l.activityTitle,
+                        onPressed: () => context.push(Routes.activity),
+                      ),
+                      const SizedBox(width: Gap.sm),
+                      NovaIconButton(
+                        icon: Icons.settings_outlined,
+                        tooltip: l.settings,
+                        onPressed: () => context.push(Routes.settings),
+                      ),
+                    ],
+                  ),
+                ),
+                // Sarlavha va portret orasida ortiqcha bo'sh joy yo'q.
+                const SizedBox(height: Gap.sm),
+                if (active != null)
+                  _IdentityHero(
+                    user: user,
+                    profile: active,
+                    // Portret NFC SKANERGA OLIB BORMAYDI — faqat o'z
+                    // profilini (story bo'lsa — story'ni) ochadi. NFC
+                    // pastki navigatsiyaning markaziy tugmasida va NFC
+                    // markazida.
+                    onTap: () => context.push(
+                      active.isBusiness
+                          ? Routes.business
+                          : Routes.nfcId(active.code),
+                    ),
                   ),
                 ],
               ),
             ),
-            // Sarlavha va portret orasida ortiqcha bo'sh joy yo'q.
-            const SizedBox(height: Gap.sm),
-            if (active != null)
-              _IdentityHero(
-                user: user,
-                profile: active,
-                // Portret NFC SKANERGA OLIB BORMAYDI — faqat o'z
-                // profilini (story bo'lsa — story'ni) ochadi. NFC
-                // pastki navigatsiyaning markaziy tugmasida va NFC
-                // markazida.
-                onTap: () => context.push(
-                  active.isBusiness
-                      ? Routes.business
-                      : Routes.nfcId(active.code),
-                ),
-              ),
             const SizedBox(height: Gap.lg),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
@@ -335,7 +352,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
 /// Brend yozuvi — keng harf oralig'i, sarlavha emas, imzo.
 class _Wordmark extends StatelessWidget {
-  const _Wordmark();
+  const _Wordmark({this.onImage = false});
+
+  /// Profil foni ustida — oq yozuv va yumshoq soya: qorong'i
+  /// suratda ham, yorug'ida ham o'qiladi.
+  final bool onImage;
 
   @override
   Widget build(BuildContext context) {
@@ -350,9 +371,58 @@ class _Wordmark extends StatelessWidget {
           fontSize: 13,
           fontWeight: FontWeight.w700,
           letterSpacing: 13 * .32,
-          color: t.text1,
+          color: onImage ? Colors.white : t.text1,
+          shadows: onImage
+              ? const [Shadow(color: Color(0x99000000), blurRadius: 8)]
+              : null,
         ),
       ),
+    );
+  }
+}
+
+/// Asosiy sahifa tepasidagi profil foni — `profile_screen.dart` dagi
+/// `_Hero` atmosferasi bilan bir xil qoida: surat O'ZI shaffoflashadi
+/// (ustiga fon rangidagi to'rtburchak qo'yilmaydi, aks holda pastda
+/// keskin chiziq ko'rinadi).
+class _CoverBackdrop extends StatelessWidget {
+  const _CoverBackdrop({required this.url, required this.child});
+
+  final String url;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (url.isEmpty) return child;
+    final width = MediaQuery.sizeOf(context).width;
+    // Sarlavha qatori + avatarning ~60 foizi: ism fondan pastda qoladi.
+    final photo = (width * .34).clamp(116.0, 140.0);
+    final height = 64 + photo * .62;
+    return Stack(
+      children: [
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: height,
+          child: ShaderMask(
+            shaderCallback: (rect) => const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.white,
+                Colors.white,
+                Color(0x40FFFFFF),
+                Colors.transparent,
+              ],
+              stops: [0, .45, .8, 1],
+            ).createShader(rect),
+            blendMode: BlendMode.dstIn,
+            child: mediaImage(context, url, fit: BoxFit.cover),
+          ),
+        ),
+        child,
+      ],
     );
   }
 }

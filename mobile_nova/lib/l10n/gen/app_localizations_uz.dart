@@ -1815,6 +1815,12 @@ class LUz extends L {
   String get themeIvory => 'Ivory';
 
   @override
+  String get themePudra => 'Pudra';
+
+  @override
+  String get themeSakura => 'Sakura';
+
+  @override
   String get registerTypeTitle => 'Hisob turi';
 
   @override

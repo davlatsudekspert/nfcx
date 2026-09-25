@@ -706,6 +706,8 @@
   "storeBuyOnSitePremium": "Premium оформляется на сайте:",
   "themeMono": "Чёрно-белая",
   "themeIvory": "Айвори",
+  "themePudra": "Пудра",
+  "themeSakura": "Сакура",
   "registerTypeTitle": "Тип аккаунта",
   "registerTypeHint": "Позже его можно сменить в приложении в любой момент.",
   "registerTypeRequired": "Выберите тип аккаунта",

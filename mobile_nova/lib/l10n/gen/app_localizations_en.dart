@@ -1812,6 +1812,12 @@ class LEn extends L {
   String get themeIvory => 'Ivory';
 
   @override
+  String get themePudra => 'Powder';
+
+  @override
+  String get themeSakura => 'Sakura';
+
+  @override
   String get registerTypeTitle => 'Account type';
 
   @override

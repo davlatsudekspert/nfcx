@@ -706,6 +706,8 @@
   "storeBuyOnSitePremium": "Premium is purchased on the website:",
   "themeMono": "Mono",
   "themeIvory": "Ivory",
+  "themePudra": "Powder",
+  "themeSakura": "Sakura",
   "registerTypeTitle": "Account type",
   "registerTypeHint": "You can switch it anytime later in the app.",
   "registerTypeRequired": "Choose an account type",

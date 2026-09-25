@@ -3543,6 +3543,18 @@ abstract class L {
   /// **'Ivory'**
   String get themeIvory;
 
+  /// No description provided for @themePudra.
+  ///
+  /// In uz, this message translates to:
+  /// **'Pudra'**
+  String get themePudra;
+
+  /// No description provided for @themeSakura.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sakura'**
+  String get themeSakura;
+
   /// No description provided for @registerTypeTitle.
   ///
   /// In uz, this message translates to:

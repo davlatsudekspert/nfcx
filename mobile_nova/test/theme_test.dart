@@ -27,13 +27,14 @@ double _contrast(Color a, Color b) {
 }
 
 void main() {
-  test('oltita mavzu mavjud va kaliti takrorlanmaydi', () {
+  test('sakkizta mavzu mavjud va kaliti takrorlanmaydi', () {
     // `ivory` (2026-09) — soft editorial luxury, yangi standart.
     // `noir` — NFCSTORE qorong'i premium mavzusi, saqlanadi.
-    expect(NfcTokens.all.length, 6);
+    // `pudra` va `sakura` (2026-09-25) — qizlar uchun och pushti.
+    expect(NfcTokens.all.length, 8);
     final ids = NfcTokens.all.map((t) => t.id).toSet();
-    expect(ids.length, 6);
-    expect(ids, {'ivory', 'noir', 'ocean', 'graphite', 'aurora', 'onyx'});
+    expect(ids.length, 8);
+    expect(ids, {'ivory', 'pudra', 'sakura', 'noir', 'ocean', 'graphite', 'aurora', 'onyx'});
     // OQ MAVZU TANLANMAYDI.
     //
     // `pearl` ta'rifi qoladi (sinovlar undan yorug' palitra namunasi
@@ -48,8 +49,13 @@ void main() {
     // Ilgari `mono` ("Oq qora") ham bor edi va Sozlamalarda ikkita
     // deyarli bir xil oq mavzu turardi (egasi, 2026-09 surat).
     // `mono` ro'yxatdan chiqarildi. Qolgani qorong'i.
+    //
+    // 2026-09-25: qizlar uchun ikkita och PUSHTI mavzu qo'shildi
+    // (egasining qarori). Ular oq emas — Ivory'ga o'xshash ikkinchi
+    // oq mavzu hamon YO'Q (`mono` va `pearl` ro'yxatda emas).
     final light = NfcTokens.all.where((t) => !t.isDark).map((t) => t.id);
-    expect(light, ['ivory']);
+    expect(light, ['ivory', 'pudra', 'sakura']);
+    expect(ids.contains('mono'), isFalse);
   });
 
   test('ivory: siyoh aksent, champagne FAQAT brend tokenida', () {
@@ -155,21 +161,23 @@ void main() {
     expect(NfcTokens.byId('mono').id, 'ivory');
     // Rangli mavzular Sozlamalarda tanlanadi va saqlanadi (egasi,
     // 2026-09: "rangli temalarni yashirma").
-    for (final id in ['noir', 'ocean', 'graphite', 'aurora', 'onyx']) {
+    for (final id in ['pudra', 'sakura', 'noir', 'ocean', 'graphite', 'aurora', 'onyx']) {
       expect(NfcTokens.byId(id).id, id);
     }
   });
 
   test('tanlovda hamma mavzu, ivory birinchi (standart)', () {
     expect(NfcTokens.choices.map((t) => t.id).toList(),
-        ['ivory', 'noir', 'ocean', 'graphite', 'aurora', 'onyx']);
+        ['ivory', 'pudra', 'sakura', 'noir', 'ocean', 'graphite', 'aurora', 'onyx']);
   });
 
-  test('ivory va oq-qora yorug‘, qolganlari qorong‘i', () {
+  test('ivory, pudra, sakura va oq-qora yorug‘, qolganlari qorong‘i', () {
+    const light = {'mono', 'ivory', 'pudra', 'sakura'};
+    for (final id in light.where((e) => e != 'mono')) {
+      expect(NfcTokens.byId(id).isDark, isFalse, reason: id);
+    }
     expect(NfcTokens.mono.isDark, isFalse);
-    expect(NfcTokens.ivory.isDark, isFalse);
-    for (final t in NfcTokens.all
-        .where((e) => e.id != 'mono' && e.id != 'ivory')) {
+    for (final t in NfcTokens.all.where((e) => !light.contains(e.id))) {
       expect(t.isDark, isTrue, reason: t.id);
     }
   });

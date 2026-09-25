@@ -945,7 +945,11 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
   // bittasi qolsin dedi — `ivory` qoldi. `mono` ta'rifi sinovlar
   // uchun qoladi; uni tanlagan qurilma keyingi ochilishda
   // `fallback` (ivory) ga o'tadi.
-  static final all = <NfcTokens>[ivory, noir, ocean, graphite, aurora, onyx];
+  //
+  // `pudra` va `sakura` (2026-09-25, egasi: "qizlar uchun tema — hech
+  // birini o'chirmasdan qo'sh") — ikkita och pushti mavzu, Ivory'dan
+  // keyin, yorug' mavzular yonma-yon tursin.
+  static final all = <NfcTokens>[ivory, pudra, sakura, noir, ocean, graphite, aurora, onyx];
 
   /// SOZLAMALARDAGI TANLOV — HAMMA MAVZU (egasi, 2026-09: "rangli
   /// temalarni yashirma"). `ivory` standart va birinchi. Barcha

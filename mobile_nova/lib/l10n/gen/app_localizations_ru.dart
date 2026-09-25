@@ -1804,6 +1804,12 @@ class LRu extends L {
   String get themeIvory => 'Айвори';
 
   @override
+  String get themePudra => 'Пудра';
+
+  @override
+  String get themeSakura => 'Сакура';
+
+  @override
   String get registerTypeTitle => 'Тип аккаунта';
 
   @override
