@@ -220,6 +220,11 @@
     "PURGE_COMPANY_ORDERS": "off",
     "PURGE_CONVERSATIONS": "off",
     "SCRUB_ADMIN_LOG": "off",
+    // DALIL ARXIVI MUDDATI — 6 oy (egasining qarori, 2026-09-25): o'chirilgan
+    // kontent nusxasi, izohlar arxivi va muallif email/telefoni 6 oydan keyin
+    // shu kunlik cron'da o'chadi. "Shubhali" belgilangan yozuv va legal hold
+    // dagi foydalanuvchiniki qoladi. on | dry-run | off.
+    "EVIDENCE_RETENTION_MODE": "on",
     "PAYMENTS_ENABLED": "true",
     "PAYME_SANDBOX": "false",
     "PAYME_CHECKOUT_DOMAIN": "checkout.paycom.uz",
