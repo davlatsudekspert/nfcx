@@ -178,6 +178,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   ),
                 ),
+                // Parolni unutgan odam uchun (egasi, 2026-09-25). Yozilgan
+                // email tiklash ekraniga olib o'tiladi.
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: PressableScale(
+                    key: const ValueKey('login-forgot'),
+                    onTap: _busy
+                        ? null
+                        : () => context.push(Routes.forgotPassword,
+                            extra: _email.text.trim()),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 10, 2, 2),
+                      child: Text(
+                        l.loginForgot,
+                        style: TextStyle(
+                          fontFamily: 'Manrope',
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: t.text2,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
                 if (_formError != null) ...[
                   const SizedBox(height: Gap.lg),
                   _ErrorBanner(message: _formError!),

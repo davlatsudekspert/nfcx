@@ -919,5 +919,15 @@
   "tierHintFree": "Enough to get started",
   "tierPriceFromSuffix": "from",
   "updateReady": "A new version has been downloaded",
-  "updateRestart": "Restart"
+  "updateRestart": "Restart",
+  "loginForgot": "Forgot password?",
+  "forgotTitle": "Reset password",
+  "forgotSubtitle": "Enter your account email — we’ll send a link to set a new password.",
+  "forgotSend": "Send link",
+  "forgotSentTitle": "Check your email",
+  "forgotSentBody": "If {email} is registered, we’ve sent it a link. Tap the button in the email, set a new password and sign in here. The link is valid for 30 minutes.",
+  "forgotSpamHint": "No email? Check your Spam folder too.",
+  "forgotResend": "Send again",
+  "forgotBackToLogin": "Back to sign in",
+  "forgotHelp": "Can’t access your email? Get help on Telegram:"
 }

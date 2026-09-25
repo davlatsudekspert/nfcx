@@ -2505,4 +2505,37 @@ class LEn extends L {
 
   @override
   String get updateRestart => 'Restart';
+
+  @override
+  String get loginForgot => 'Forgot password?';
+
+  @override
+  String get forgotTitle => 'Reset password';
+
+  @override
+  String get forgotSubtitle =>
+      'Enter your account email — we’ll send a link to set a new password.';
+
+  @override
+  String get forgotSend => 'Send link';
+
+  @override
+  String get forgotSentTitle => 'Check your email';
+
+  @override
+  String forgotSentBody(String email) {
+    return 'If $email is registered, we’ve sent it a link. Tap the button in the email, set a new password and sign in here. The link is valid for 30 minutes.';
+  }
+
+  @override
+  String get forgotSpamHint => 'No email? Check your Spam folder too.';
+
+  @override
+  String get forgotResend => 'Send again';
+
+  @override
+  String get forgotBackToLogin => 'Back to sign in';
+
+  @override
+  String get forgotHelp => 'Can’t access your email? Get help on Telegram:';
 }

@@ -2507,4 +2507,37 @@ class LUz extends L {
 
   @override
   String get updateRestart => 'Qayta ishga tushirish';
+
+  @override
+  String get loginForgot => 'Parolni unutdingizmi?';
+
+  @override
+  String get forgotTitle => 'Parolni tiklash';
+
+  @override
+  String get forgotSubtitle =>
+      'Hisobingiz emailini kiriting — yangi parol qo‘yish uchun havola yuboramiz.';
+
+  @override
+  String get forgotSend => 'Havola yuborish';
+
+  @override
+  String get forgotSentTitle => 'Pochtangizni tekshiring';
+
+  @override
+  String forgotSentBody(String email) {
+    return 'Agar $email ro‘yxatdan o‘tgan bo‘lsa, unga havola yubordik. Xatdagi tugmani bosing, yangi parol qo‘ying va shu yerga qaytib kiring. Havola 30 daqiqa amal qiladi.';
+  }
+
+  @override
+  String get forgotSpamHint => 'Xat kelmasa, «Spam» papkasini ham ko‘ring.';
+
+  @override
+  String get forgotResend => 'Qayta yuborish';
+
+  @override
+  String get forgotBackToLogin => 'Kirishga qaytish';
+
+  @override
+  String get forgotHelp => 'Emailga kira olmayapsizmi? Telegram orqali yordam:';
 }

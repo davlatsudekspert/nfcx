@@ -24,6 +24,7 @@ void main() {
     Routes.welcome,
     Routes.login,
     Routes.loginVerify,
+    Routes.forgotPassword,
     Routes.register,
     Routes.registerVerify,
     Routes.profileSetup,

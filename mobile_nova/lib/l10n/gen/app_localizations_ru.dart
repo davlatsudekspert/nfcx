@@ -2501,4 +2501,37 @@ class LRu extends L {
 
   @override
   String get updateRestart => 'Перезапустить';
+
+  @override
+  String get loginForgot => 'Забыли пароль?';
+
+  @override
+  String get forgotTitle => 'Восстановление пароля';
+
+  @override
+  String get forgotSubtitle =>
+      'Введите email аккаунта — мы пришлём ссылку для нового пароля.';
+
+  @override
+  String get forgotSend => 'Отправить ссылку';
+
+  @override
+  String get forgotSentTitle => 'Проверьте почту';
+
+  @override
+  String forgotSentBody(String email) {
+    return 'Если $email зарегистрирован, мы отправили на него ссылку. Нажмите кнопку в письме, задайте новый пароль и войдите здесь. Ссылка действует 30 минут.';
+  }
+
+  @override
+  String get forgotSpamHint => 'Если письма нет, проверьте папку «Спам».';
+
+  @override
+  String get forgotResend => 'Отправить ещё раз';
+
+  @override
+  String get forgotBackToLogin => 'Вернуться ко входу';
+
+  @override
+  String get forgotHelp => 'Нет доступа к почте? Помощь в Telegram:';
 }

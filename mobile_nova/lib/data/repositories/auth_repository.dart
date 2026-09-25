@@ -124,6 +124,23 @@ class AuthRepository {
     return res.map((j) => '${j['channel'] ?? ''}'.trim().toLowerCase());
   }
 
+  /// PAROLNI TIKLASH HAVOLASI (egasi, 2026-09-25: "parolni unutsa
+  /// nima qiladi").
+  ///
+  ///     POST /api/auth/request-email-reset {email} → {ok:true} | 429
+  ///
+  /// Server emailga bir martalik havola yuboradi (30 daqiqa):
+  /// `nfcstore.uz/login?reset=…`. Havola brauzerda ochiladi, odam
+  /// yangi parol qo'yadi va ilovaga qaytib kiradi. Server AKKAUNT
+  /// BOR-YO'QLIGINI OSHKOR QILMAYDI — javob har doim `ok`, shuning
+  /// uchun ekran ham "yuborildi" emas, "ro'yxatdan o'tgan bo'lsa
+  /// yuborildi" deydi.
+  Future<Result<void>> requestPasswordResetEmail(String email) async {
+    final res = await _api.post<Map<String, dynamic>>(
+        '/api/auth/request-email-reset', {'email': email.trim()});
+    return res.map((_) {});
+  }
+
   // `requestEmailCode` / `verifyEmailCode` OLIB TASHLANDI.
   //
   // Ular `/api/auth/request-email-code` va

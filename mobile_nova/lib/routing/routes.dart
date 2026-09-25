@@ -10,6 +10,7 @@ abstract final class Routes {
   // Auth
   static const login = '/login';
   static const loginVerify = '/login/verify';
+  static const forgotPassword = '/login/forgot';
   static const register = '/register';
   static const registerVerify = '/register/verify';
   static const profileSetup = '/register/setup';

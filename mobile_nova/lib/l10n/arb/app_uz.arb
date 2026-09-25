@@ -998,5 +998,22 @@
   "tierHintFree": "Boshlash uchun yetarli",
   "tierPriceFromSuffix": "dan",
   "updateReady": "Yangi versiya yuklandi",
-  "updateRestart": "Qayta ishga tushirish"
+  "updateRestart": "Qayta ishga tushirish",
+  "loginForgot": "Parolni unutdingizmi?",
+  "forgotTitle": "Parolni tiklash",
+  "forgotSubtitle": "Hisobingiz emailini kiriting — yangi parol qo‘yish uchun havola yuboramiz.",
+  "forgotSend": "Havola yuborish",
+  "forgotSentTitle": "Pochtangizni tekshiring",
+  "forgotSentBody": "Agar {email} ro‘yxatdan o‘tgan bo‘lsa, unga havola yubordik. Xatdagi tugmani bosing, yangi parol qo‘ying va shu yerga qaytib kiring. Havola 30 daqiqa amal qiladi.",
+  "@forgotSentBody": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "forgotSpamHint": "Xat kelmasa, «Spam» papkasini ham ko‘ring.",
+  "forgotResend": "Qayta yuborish",
+  "forgotBackToLogin": "Kirishga qaytish",
+  "forgotHelp": "Emailga kira olmayapsizmi? Telegram orqali yordam:"
 }

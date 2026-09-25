@@ -4826,6 +4826,66 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Qayta ishga tushirish'**
   String get updateRestart;
+
+  /// No description provided for @loginForgot.
+  ///
+  /// In uz, this message translates to:
+  /// **'Parolni unutdingizmi?'**
+  String get loginForgot;
+
+  /// No description provided for @forgotTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Parolni tiklash'**
+  String get forgotTitle;
+
+  /// No description provided for @forgotSubtitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hisobingiz emailini kiriting — yangi parol qo‘yish uchun havola yuboramiz.'**
+  String get forgotSubtitle;
+
+  /// No description provided for @forgotSend.
+  ///
+  /// In uz, this message translates to:
+  /// **'Havola yuborish'**
+  String get forgotSend;
+
+  /// No description provided for @forgotSentTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Pochtangizni tekshiring'**
+  String get forgotSentTitle;
+
+  /// No description provided for @forgotSentBody.
+  ///
+  /// In uz, this message translates to:
+  /// **'Agar {email} ro‘yxatdan o‘tgan bo‘lsa, unga havola yubordik. Xatdagi tugmani bosing, yangi parol qo‘ying va shu yerga qaytib kiring. Havola 30 daqiqa amal qiladi.'**
+  String forgotSentBody(String email);
+
+  /// No description provided for @forgotSpamHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xat kelmasa, «Spam» papkasini ham ko‘ring.'**
+  String get forgotSpamHint;
+
+  /// No description provided for @forgotResend.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qayta yuborish'**
+  String get forgotResend;
+
+  /// No description provided for @forgotBackToLogin.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kirishga qaytish'**
+  String get forgotBackToLogin;
+
+  /// No description provided for @forgotHelp.
+  ///
+  /// In uz, this message translates to:
+  /// **'Emailga kira olmayapsizmi? Telegram orqali yordam:'**
+  String get forgotHelp;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

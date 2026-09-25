@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../data/repositories/nfc_repository.dart';
 import '../design/motion/motion.dart';
+import '../features/auth/forgot_password_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/profile_setup_screen.dart';
 import '../features/auth/register_screen.dart';
@@ -121,6 +122,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: Routes.splash, builder: (_, __) => const SplashScreen()),
       GoRoute(path: Routes.welcome, builder: (_, __) => const WelcomeScreen()),
       GoRoute(path: Routes.login, builder: (_, __) => const LoginScreen()),
+      GoRoute(
+        path: Routes.forgotPassword,
+        builder: (_, s) =>
+            ForgotPasswordScreen(initialEmail: s.extra as String? ?? ''),
+      ),
       GoRoute(
         path: Routes.loginVerify,
         builder: (_, s) => VerifyScreen(
