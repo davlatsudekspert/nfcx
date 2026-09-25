@@ -2495,4 +2495,10 @@ class LRu extends L {
 
   @override
   String get tierPriceFromSuffix => 'от';
+
+  @override
+  String get updateReady => 'Новая версия загружена';
+
+  @override
+  String get updateRestart => 'Перезапустить';
 }

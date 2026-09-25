@@ -6,6 +6,7 @@ import '../design/widgets/bottom_nav.dart';
 import '../features/profile/music_player.dart';
 import '../l10n/gen/app_localizations.dart';
 import 'routes.dart';
+import '../core/update/app_update.dart';
 
 /// Beshta asosiy tabni ushlab turuvchi karkas.
 ///
@@ -83,6 +84,15 @@ class HomeShell extends ConsumerStatefulWidget {
 }
 
 class _HomeShellState extends ConsumerState<HomeShell> {
+  @override
+  void initState() {
+    super.initState();
+    // Yangi versiya bormi — Play'dan so'raladi (app_update.dart).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) AppUpdate.checkOnce(context);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = L.of(context);

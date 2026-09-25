@@ -996,5 +996,7 @@
   "tierHintGold": "Chiroyli va tanilgan kombinatsiyalar",
   "tierHintSilver": "Esda qoladigan raqamlar",
   "tierHintFree": "Boshlash uchun yetarli",
-  "tierPriceFromSuffix": "dan"
+  "tierPriceFromSuffix": "dan",
+  "updateReady": "Yangi versiya yuklandi",
+  "updateRestart": "Qayta ishga tushirish"
 }

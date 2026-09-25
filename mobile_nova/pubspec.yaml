@@ -43,6 +43,7 @@ dependencies:
   file_picker: ^11.0.3
   cupertino_icons: ^1.0.8
   flutter_svg: ^2.3.0
+  in_app_update: 4.2.5
 
 dev_dependencies:
   flutter_test:

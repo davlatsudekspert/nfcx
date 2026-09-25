@@ -917,5 +917,7 @@
   "tierHintGold": "Красивые и узнаваемые комбинации",
   "tierHintSilver": "Запоминающиеся номера",
   "tierHintFree": "Достаточно, чтобы начать",
-  "tierPriceFromSuffix": "от"
+  "tierPriceFromSuffix": "от",
+  "updateReady": "Новая версия загружена",
+  "updateRestart": "Перезапустить"
 }

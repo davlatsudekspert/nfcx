@@ -4814,6 +4814,18 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'dan'**
   String get tierPriceFromSuffix;
+
+  /// No description provided for @updateReady.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yangi versiya yuklandi'**
+  String get updateReady;
+
+  /// No description provided for @updateRestart.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qayta ishga tushirish'**
+  String get updateRestart;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

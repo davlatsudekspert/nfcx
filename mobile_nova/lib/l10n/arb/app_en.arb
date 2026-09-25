@@ -917,5 +917,7 @@
   "tierHintGold": "Beautiful, recognizable combinations",
   "tierHintSilver": "Memorable numbers",
   "tierHintFree": "Enough to get started",
-  "tierPriceFromSuffix": "from"
+  "tierPriceFromSuffix": "from",
+  "updateReady": "A new version has been downloaded",
+  "updateRestart": "Restart"
 }

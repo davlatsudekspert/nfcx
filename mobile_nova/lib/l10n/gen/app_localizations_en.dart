@@ -2499,4 +2499,10 @@ class LEn extends L {
 
   @override
   String get tierPriceFromSuffix => 'from';
+
+  @override
+  String get updateReady => 'A new version has been downloaded';
+
+  @override
+  String get updateRestart => 'Restart';
 }

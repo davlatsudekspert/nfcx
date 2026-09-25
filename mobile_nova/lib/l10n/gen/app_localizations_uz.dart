@@ -2501,4 +2501,10 @@ class LUz extends L {
 
   @override
   String get tierPriceFromSuffix => 'dan';
+
+  @override
+  String get updateReady => 'Yangi versiya yuklandi';
+
+  @override
+  String get updateRestart => 'Qayta ishga tushirish';
 }
