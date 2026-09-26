@@ -840,6 +840,11 @@ async function companyAvailability(env, rawId) {
   };
 }
 
+/// Yangi biznes profil avtomatik tasdiqlansinmi (standart — ha).
+function companyAutoApproveD1(env) {
+  return String(env?.COMPANY_AUTO_APPROVE ?? 'on').trim().toLowerCase() !== 'off';
+}
+
 async function setCompanyStatus(env, id, status, actor, note = '') {
   if (!COMPANY_STATUSES.has(status)) throw new Error('bad_status');
   const row = await env.DB.prepare('SELECT status FROM companies WHERE company_id = ?').bind(id).first();
@@ -1240,6 +1245,16 @@ async function companyApi(request, env, url) {
     } catch (error) {
       if (String(error?.message).toLowerCase().includes('unique')) return json({ error: 'company_id_taken' }, 409);
       throw error;
+    }
+    // AVTO-TASDIQ (egasi, 2026-09-26): "biznes profil ro'yxatdan o'tganda
+    // admin avto tasdiqlasin". Ariza admin navbatida kutmaydi:
+    //   * bepul (avto ID) — darhol `active` (profil ochiq, katalogda ko'rinadi);
+    //   * nom tanlangan (pullik) — `approved`: egasi darhol to'lovga o'tadi,
+    //     faollashuv avvalgidek to'lovdan keyin.
+    // Taqiqlangan nomlar yuqorida allaqachon rad etilgan; admin keyin ham
+    // "Bloklash" bilan to'xtata oladi. O'chirish: COMPANY_AUTO_APPROVE=off.
+    if (companyAutoApproveD1(env)) {
+      await setCompanyStatus(env, id, wantsAuto ? 'active' : 'approved', 'auto', 'Avtomatik tasdiqlandi');
     }
     return json({ company: await companyWithItems(env, id) }, 201);
   }
