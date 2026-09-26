@@ -110,12 +110,22 @@ class NfcCardsScreen extends ConsumerWidget {
                               // BIZNES STIKERI — kod `linked_code` da emas,
                               // `linked_company_id` da turadi. Ilgari
                               // ko'rinmasdi (egasi, 2026-09-26).
-                              if (d.code.isEmpty && d.business)
-                                Text('${l.cardLinkedBusiness} · ${d.companyId}',
+                              // Kod — shaxsiy ID kabi alohida qatorda (bir
+                              // qatorga yozilganda tugma yonida qirqilardi).
+                              if (d.code.isEmpty && d.business) ...[
+                                Text(d.companyId,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: AppType.monoStyle(
                                         color: t.text3, size: 11)),
+                                Text(l.cardLinkedBusiness,
+                                    style: TextStyle(
+                                      fontFamily: AppType.sans,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: t.accent2,
+                                    )),
+                              ],
                               // HOLAT YOZUVDA (egasi, 2026-09-24: "bloklash
                               // ekan, yozib qo'yish kerak — belgidan
                               // bilinmayapti").

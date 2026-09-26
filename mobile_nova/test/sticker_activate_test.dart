@@ -412,7 +412,8 @@ void main() {
         NfcDevice(id: 1, label: 'Kafe Nur', companyId: 'C-KAFE1'),
         NfcDevice(id: 2, label: 'Ali', code: 'ALI777'),
       ]);
-      expect(find.text('${l.cardLinkedBusiness} · C-KAFE1'), findsOneWidget);
+      expect(find.text('C-KAFE1'), findsOneWidget);
+      expect(find.text(l.cardLinkedBusiness), findsOneWidget);
       expect(find.text('ALI777'), findsOneWidget);
       expect(find.byIcon(Icons.storefront_rounded), findsOneWidget);
       expect(find.byTooltip(l.stickerActivate), findsOneWidget);
