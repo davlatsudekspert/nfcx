@@ -16,11 +16,16 @@ import { PhoneRow } from '../components/PhoneShot.jsx';
 // jonli olinadi: admin narxni o'zgartirsa, bu sahifa ham o'zgaradi.
 // Buyurtma katalogda o'chiq, shuning uchun "Buyurtma berish" Telegramga
 // olib boradi.
+//
+// NARXLAR HOZIRCHA YASHIRIN (egasi, 2026-09-26: "narxlarni hozircha olib
+// tashla, tez kunda deb qo'y"). `SHOW_PRICES = true` qilinsa jonli narxlar
+// va "Katalogda ko'rish" tugmasi qaytadi.
 // ═══════════════════════════════════════════════════════════════════════
 
 const SHOP_ID = 'NFCSTOREUZ';
 const ORDER_URL = 'https://t.me/nfcstoreuz';
 const SHOP_PATH = '/c/nfcstoreuz';
+const SHOW_PRICES = false;
 
 // Mahsulot → katalogdagi nomi (narx shu bo'yicha topiladi).
 const PRODUCTS = [
@@ -63,6 +68,7 @@ const CONTENT = {
     },
     newTag: 'Yangi',
     askPrice: 'Narxini so‘rang',
+    priceSoon: 'Narxi tez kunda',
     sum: 'so‘m',
     inCatalog: 'Katalogda ko‘rish',
     showK: 'Telefonda aynan shu ochiladi',
@@ -119,6 +125,7 @@ const CONTENT = {
     },
     newTag: 'Новинка',
     askPrice: 'Узнать цену',
+    priceSoon: 'Цена скоро',
     sum: 'сум',
     inCatalog: 'Смотреть в каталоге',
     showK: 'Вот что откроется на телефоне',
@@ -175,6 +182,7 @@ const CONTENT = {
     },
     newTag: 'New',
     askPrice: 'Ask for price',
+    priceSoon: 'Price coming soon',
     sum: 'UZS',
     inCatalog: 'View in catalog',
     showK: 'This is what opens on the phone',
@@ -205,6 +213,7 @@ const CONTENT = {
 function useCatalogPrices() {
   const [prices, setPrices] = useState({});
   useEffect(() => {
+    if (!SHOW_PRICES) return undefined;
     let alive = true;
     fetch(`/api/companies/${SHOP_ID}`, { headers: { accept: 'application/json' } })
       .then((r) => (r.ok ? r.json() : null))
@@ -314,9 +323,11 @@ export default function StickersPage() {
                   <h3 className="text-[20px] font-bold text-[color:var(--vz-ink)]">{name}</h3>
                   <p className="flex-1 text-[15px] leading-relaxed text-[color:var(--vz-ink-2)]">{desc}</p>
                   <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-                    <b className="text-[20px] text-[color:var(--vz-ink)]">{price ? `${fmt(price)} ${c.sum}` : c.askPrice}</b>
+                    {SHOW_PRICES
+                      ? <b className="text-[20px] text-[color:var(--vz-ink)]">{price ? `${fmt(price)} ${c.sum}` : c.askPrice}</b>
+                      : <span className="rounded-full bg-[var(--accent-a14)] px-3 py-1.5 text-[13px] font-bold uppercase tracking-wider text-[color:var(--accent-text)]" data-testid="price-soon">{c.priceSoon}</span>}
                     <div className="flex flex-wrap gap-2">
-                      {p.catalog && <button type="button" onClick={() => navigate(SHOP_PATH)} className="btn btn-outline btn-sm min-h-10 rounded-full">{c.inCatalog}</button>}
+                      {SHOW_PRICES && p.catalog && <button type="button" onClick={() => navigate(SHOP_PATH)} className="btn btn-outline btn-sm min-h-10 rounded-full">{c.inCatalog}</button>}
                       <a href={ORDER_URL} target="_blank" rel="noopener noreferrer" className="btn btn-gold btn-sm min-h-10 no-underline">{c.order}</a>
                     </div>
                   </div>
