@@ -134,7 +134,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
       <section className="relative overflow-hidden">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(720px_420px_at_50%_0%,var(--accent-a14),transparent_70%),radial-gradient(420px_320px_at_10%_90%,rgba(180,140,50,0.08),transparent_60%)]"></div>
 
-        <div className="relative z-[1] mx-auto w-full max-w-[1800px] px-6 pb-10 pt-14 sm:px-10 lg:px-14 md:pt-20 lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:items-center lg:gap-10 lg:pb-4 lg:pt-6 xl:grid-cols-[minmax(0,1fr)_560px] xl:gap-16 xl:pt-8">
+        <div className="relative z-[1] mx-auto w-full max-w-[1800px] px-6 pb-10 pt-14 sm:px-10 lg:px-14 md:pt-20 lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:items-center lg:gap-10 lg:pb-2 lg:pt-4 xl:grid-cols-[minmax(0,1fr)_560px] xl:gap-16 xl:pt-4">
           {/* ===== CHAP USTUN: sarlavha, CTA, afzalliklar, NFC ID qidiruvi ===== */}
           <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
           <Reveal>
@@ -256,7 +256,9 @@ export default function HomePage({ catalog, refreshCatalog }) {
           <div className="mt-10 flex flex-col items-center lg:mt-0 lg:items-stretch">
           {/* ===== Karta — qahramon (V1) ===== */}
           <Reveal delay="[transition-delay:160ms]" className="relative flex w-full justify-center overflow-visible lg:justify-self-center">
-            <div className="hidden lg:block">
+            {/* Katta ekranda vizual sal kichraytiriladi (layout ham) — pastdagi
+                namuna bizneslar birinchi ekranga to'liq sig'sin (2026-09-26). */}
+            <div className="hidden lg:block lg:-my-[20px] lg:scale-90 xl:-my-[35px] xl:scale-[0.86]">
               <NeonOrbitCard code="AAA000" name={t('SIZNING ISMINGIZ')} finish="showcase" />
             </div>
             <div className="relative lg:hidden">
@@ -269,7 +271,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
 
           {/* Stats — faqat haqiqiy ko'rsatkichlar */}
           <Reveal delay="[transition-delay:320ms]" className="w-full">
-            <div className="mx-auto mt-10 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-3 lg:max-w-none lg:mt-8">
+            <div className="mx-auto mt-10 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-3 lg:max-w-none lg:mt-4">
               <div className="vz-card--flat vz-card min-w-0 px-4 py-3">
                 <div className="font-display text-2xl font-semibold text-[color:var(--accent-text)]"><CountUp value={catalog.length} /></div>
                 <div className="text-xs text-[color:var(--vz-ink-2)]">{t('Band qilingan')}</div>
