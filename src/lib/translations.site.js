@@ -156,6 +156,9 @@ export const DICT_SITE = {
   'Yuklanmoqda…': { ru: 'Загрузка…', en: 'Loading…' },
   // ─────────────────────────── Android ilovasi (/ilova-yuklash, profil kartasi) ───────────────────────────
   'Android ilovasi': { ru: 'Android-приложение', en: 'Android app' },
+  'Stikerlar': { ru: 'Наклейки', en: 'Stickers' },
+  'NFC stikerlar': { ru: 'NFC-наклейки', en: 'NFC stickers' },
+  'NFCSTORE ilovasi': { ru: 'Приложение NFCSTORE', en: 'NFCSTORE app' },
   'NFCSTORE ilovasini': { ru: 'Скачайте приложение', en: 'Get the NFCSTORE' },
   'yuklab oling': { ru: 'NFCSTORE', en: 'app' },
   "Ilova tez orada Google Play'da chiqadi. Hozircha uni shu yerdan o'rnating — keyin Play Market orqali yangilanadi.": {

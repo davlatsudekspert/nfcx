@@ -29,6 +29,7 @@ import * as apiAdminControl from './api/admin-control.js';
 // Musiqa kutubxonasi (admin yuklaydi, ilova faqat yoqilgan treklarni ko'radi).
 import * as apiMusic from './api/music.js';
 import * as apiDemoBusinesses from './api/demo-businesses.js';
+import { ensureNewsSeed } from './api/news-seed.js';
 import { idQuarantined, notQuarantinedSql, purgeAfterMs, runScheduledPurge } from './api/account-purge.js';
 import { recordAppOpen } from './api/app-usage.js';
 import { archiveStmt, ensureArchiveTable, urlArchived } from './api/content-archive.js';
@@ -930,6 +931,8 @@ async function publicContentApi(request, env, url) {
   }
 
   if (path === '/api/news' && request.method === 'GET') {
+    // NFCSTORE'ning o'z yangiliklari (api/news-seed.js) — bir marta qo'shiladi.
+    await ensureNewsSeed(env);
     const [rows, visitor] = await Promise.all([
       env.DB.prepare(`SELECT n.*, (SELECT COUNT(*) FROM news_likes l WHERE l.news_id = n.id) AS like_count
         FROM news n WHERE published = 1 ORDER BY created_at DESC LIMIT 100`).all(),
@@ -8903,6 +8906,7 @@ async function adminCoreApi(request, env, url, admin) {
 
   // ---------- news (Yangiliklar) — faqat admin joylaydi/tahrirlaydi/o'chiradi ----------
   if (path === '/api/admin/news' && request.method === 'GET') {
+    await ensureNewsSeed(env);
     const rows = await env.DB.prepare(`SELECT n.*, (SELECT COUNT(*) FROM news_likes l WHERE l.news_id = n.id) AS like_count
       FROM news n ORDER BY n.created_at DESC LIMIT 100`).all();
     return json({ news: (rows.results || []).map(newsRow) });

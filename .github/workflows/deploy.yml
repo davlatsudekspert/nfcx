@@ -259,6 +259,8 @@ jobs:
         run: node scripts/test-company-auto-approve.mjs
       - name: Shikoyatlar — kim kimdan, o'chib ketgan kontent shikoyati yopiladi
         run: node scripts/test-admin-reports-people.mjs
+      - name: NFCSTORE yangiliklari seed (bir marta, o'chirilsa qaytmaydi)
+        run: node scripts/test-news-seed.mjs
 
       # PROFIL SAHIFALARINING MAKETI.
       #

@@ -88,6 +88,7 @@ function HeaderSearch({ onNavigate }) {
 
 const NAV = [
   ['Narxlar', '/narxlar'],
+  ['Stikerlar', '/stikerlar'],
   ...(NEWS_ENABLED ? [['Yangiliklar', '/yangiliklar']] : []),
   ['Katalog', '/katalog'],
   ['Reyting', '/reyting'],
@@ -99,6 +100,7 @@ const NAV = [
 const DESKTOP_NAV = [
   ...(NEWS_ENABLED ? [['Yangiliklar', '/yangiliklar']] : []),
   ['Narxlar', '/narxlar'],
+  ['Stikerlar', '/stikerlar'],
   ['Katalog', '/katalog'],
   ['Reyting', '/reyting'],
   ['Kompaniyalar', '/kompaniyalar'],

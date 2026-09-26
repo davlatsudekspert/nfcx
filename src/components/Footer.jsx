@@ -4,7 +4,7 @@ import { useLanguage } from '../lib/i18n.jsx';
 import logo from '../assets/logo-128.png';
 
 const COLS = [
-  { title: 'Mahsulot', links: [['Narxlar', '/narxlar'], ['Qanday ishlaydi', '/qanday-ishlaydi'], ['Katalog', '/katalog'], ['Kompaniyalar', '/kompaniyalar'], ['Biznes kabinet', '/business'], ['Android ilovasi', '/ilova-yuklash']] },
+  { title: 'Mahsulot', links: [['Narxlar', '/narxlar'], ['NFC stikerlar', '/stikerlar'], ['Qanday ishlaydi', '/qanday-ishlaydi'], ['Katalog', '/katalog'], ['Kompaniyalar', '/kompaniyalar'], ['Biznes kabinet', '/business'], ['NFCSTORE ilovasi', '/ilova-yuklash']] },
   { title: 'Kompaniya', links: [...(NEWS_ENABLED ? [['Yangiliklar', '/yangiliklar']] : []), ['Savollar', '/savollar'], ['Aloqa', '/aloqa']] },
   { title: 'Huquqiy', links: [['Foydalanish shartlari', '/shartlar'], ['Maxfiylik siyosati', '/maxfiylik']] },
 ];

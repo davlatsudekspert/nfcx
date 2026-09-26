@@ -157,9 +157,15 @@ export const SEO_ROUTES = {
   },
   'ilova-yuklash': {
     path: '/ilova-yuklash',
-    uz: { title: 'NFCSTORE ilovasi — Android', description: "NFCSTORE Android ilovasini yuklab oling: raqamli vizitka, NFC, Reels va biznes katalogi bitta ilovada." },
-    ru: { title: 'Приложение NFCSTORE — Android', description: 'Скачайте Android-приложение NFCSTORE: цифровая визитка, NFC, Reels и бизнес-каталог в одном приложении.' },
-    en: { title: 'NFCSTORE app — Android', description: 'Download the NFCSTORE Android app: digital business card, NFC, Reels and business catalog in one app.' },
+    uz: { title: 'NFCSTORE ilovasi — Android, App Store tez kunda', description: "NFCSTORE ilovasi: raqamli vizitka, istalgan NFC karta va stikerni bog'lash, shaxsiy va biznes profil, katalog, Reels, Ivory/Noir mavzulari. Android uchun yuklab oling." },
+    ru: { title: 'Приложение NFCSTORE — Android, App Store скоро', description: 'Приложение NFCSTORE: цифровая визитка, привязка любой NFC-карты и наклейки, личный и бизнес-профиль, каталог, Reels, темы Ivory/Noir. Скачайте для Android.' },
+    en: { title: 'NFCSTORE app — Android, App Store soon', description: 'The NFCSTORE app: digital business card, link any NFC card or sticker, personal and business profiles, catalog, Reels, Ivory/Noir themes. Download for Android.' },
+  },
+  stikerlar: {
+    path: '/stikerlar',
+    uz: { title: 'NFC stikerlar — do‘kon, mashina va kafe uchun', description: "Eshik, vitrina yoki mashina oynasiga NFC stiker: telefon tekkizilsa narxlar, katalog, ish vaqti va Telegram ochiladi. Yopiq paytda ham savdo." },
+    ru: { title: 'NFC-наклейки — для магазина, машины и кафе', description: 'NFC-наклейка на дверь, витрину или стекло машины: приложил телефон — открылись цены, каталог, часы работы и Telegram. Продажи даже когда закрыто.' },
+    en: { title: 'NFC stickers — for shops, cars and cafés', description: 'An NFC sticker on the door, window or car glass: tap a phone and prices, catalog, hours and Telegram open. Sell even when you are closed.' },
   },
   shartlar: {
     path: '/shartlar',

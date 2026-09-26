@@ -2,14 +2,11 @@
 // faqat saytda ko'rinishini vaqtincha to'xtatish uchun.
 export const MESSAGING_ENABLED = false;
 
-// YANGILIKLAR — VAQTINCHA YOPIQ (egasining qarori, 2026-09-25):
-// shaxsiy ma'lumotlar bazasini ro'yxatdan o'tkazish arizasi javobi
-// kelguncha saytda "Yangiliklar" ko'rinmaydi — menyu, footer, bosh
-// sahifa va /yangiliklar (u yerga kirgan bosh sahifaga o'tadi).
-// Yangiliklar O'CHIRILMAYDI: admin paneldan yozish va /api/news
-// (ilova) avvalgidek ishlaydi. Qayta ochish: `true` qiling va
-// public/sitemap.xml ga /yangiliklar qatorini qaytaring.
-export const NEWS_ENABLED = false;
+// YANGILIKLAR — QAYTA OCHILDI (egasining qarori, 2026-09-26): ilova,
+// mavzular va stikerlar savdosi haqidagi yangiliklar saytda ko'rinadi.
+// (2026-09-25 da vaqtincha yopilgan edi.) Yopish kerak bo'lsa: `false`
+// qiling va public/sitemap.xml dan /yangiliklar qatorini olib tashlang.
+export const NEWS_ENABLED = true;
 
 // To'lov tizimi (Payme) yoqilgan/yoqilmaganligi — bu yerda EMAS.
 // src/lib/paymentsEnabled.jsx'dagi usePaymentsEnabled() hookini ishlating:
