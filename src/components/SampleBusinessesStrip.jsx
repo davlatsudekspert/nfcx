@@ -13,7 +13,10 @@ import { useLanguage } from '../lib/i18n.jsx';
 // bo'lim umuman chizilmaydi.
 // ═══════════════════════════════════════════════════════════════════════
 
-export default function SampleBusinessesStrip() {
+/// `compact` — Kompaniyalar sahifasi uchun: qisqa sarlavha, tavsif va
+/// tugmalarsiz, sahifa chetiga chiqmaydi. `fallback` — namunalar yo'q
+/// bo'lsa (admin o'chirgan) o'rniga chiziladigan narsa.
+export default function SampleBusinessesStrip({ compact = false, fallback = null }) {
   const { t } = useLanguage();
   const [items, setItems] = useState(null);
 
@@ -25,31 +28,41 @@ export default function SampleBusinessesStrip() {
     return () => { alive = false; };
   }, []);
 
-  if (!items || items.length === 0) return null;
+  if (!items) return null;
+  if (items.length === 0) return fallback;
 
   const open = (id) => navigate(`/c/${String(id).toLowerCase()}`);
 
   return (
-    <section id="namuna-bizneslar" className="mt-12 md:mt-16" aria-labelledby="namuna-bizneslar-title">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <h2 id="namuna-bizneslar-title" className="vz-h2 text-[color:var(--vz-ink)]">{t('Bizneslar NFCSTORE’da qanday ko‘rinadi')}</h2>
-          <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-[color:var(--vz-ink-2)]">
-            {t('Har sohadan namuna profillar: menyu, narxlar, ish vaqti va postlar. Birini oching — biznesingiz sahifasi ham shunday bo‘ladi.')}
-          </p>
+    <section id={compact ? 'namuna-profillar' : 'namuna-bizneslar'} className={compact ? 'mt-7 text-left' : 'mt-12 md:mt-16'} aria-labelledby="namuna-bizneslar-title">
+      {compact ? (
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 id="namuna-bizneslar-title" className="text-[18px] font-bold text-[color:var(--vz-ink)] sm:text-[20px]">{t('Namuna profillar')}</h2>
+          <span className="hidden text-[12.5px] text-[color:var(--vz-ink-3)] sm:inline">{t('Biznesingiz sahifasi shunday bo‘ladi')} →</span>
         </div>
-        <button type="button" onClick={() => navigate('/kompaniyalar')} className="shrink-0 text-[14px] font-bold text-[color:var(--accent-text)]">
-          {t('Hammasi')} →
-        </button>
-      </div>
+      ) : (
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="min-w-0">
+            <h2 id="namuna-bizneslar-title" className="vz-h2 text-[color:var(--vz-ink)]">{t('Bizneslar NFCSTORE’da qanday ko‘rinadi')}</h2>
+            <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-[color:var(--vz-ink-2)]">
+              {t('Har sohadan namuna profillar: menyu, narxlar, ish vaqti va postlar. Birini oching — biznesingiz sahifasi ham shunday bo‘ladi.')}
+            </p>
+          </div>
+          <button type="button" onClick={() => navigate('/kompaniyalar')} className="shrink-0 text-[14px] font-bold text-[color:var(--accent-text)]">
+            {t('Hammasi')} →
+          </button>
+        </div>
+      )}
 
-      <div className="-mx-6 mt-6 flex snap-x snap-mandatory scroll-px-6 gap-4 overflow-x-auto px-6 pb-3 sm:-mx-10 sm:scroll-px-10 sm:px-10 lg:-mx-14 lg:scroll-px-14 lg:px-14" style={{ scrollbarWidth: 'thin' }}>
+      <div className={compact
+        ? 'mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3'
+        : '-mx-6 mt-6 flex snap-x snap-mandatory scroll-px-6 gap-4 overflow-x-auto px-6 pb-3 sm:-mx-10 sm:scroll-px-10 sm:px-10 lg:-mx-14 lg:scroll-px-14 lg:px-14'} style={{ scrollbarWidth: 'thin' }}>
         {items.map((c) => (
           <button
             key={c.companyId}
             type="button"
             onClick={() => open(c.companyId)}
-            className="vz-card group relative w-[248px] shrink-0 snap-start overflow-hidden p-0 text-left transition-transform duration-300 hover:-translate-y-1 sm:w-[272px]"
+            className={`vz-card group relative shrink-0 snap-start overflow-hidden p-0 text-left transition-transform duration-300 hover:-translate-y-1 ${compact ? 'w-[208px] sm:w-[232px]' : 'w-[248px] sm:w-[272px]'}`}
             aria-label={`${c.displayName} — ${t('Namuna')}`}
           >
             <div className="relative aspect-[16/10] w-full overflow-hidden bg-[var(--vz-card-2)]">
@@ -74,9 +87,11 @@ export default function SampleBusinessesStrip() {
         ))}
       </div>
 
-      <button type="button" onClick={() => navigate('/company/create')} className="btn btn-gold mt-5">
-        {t('O‘z biznesingizni oching')}
-      </button>
+      {!compact && (
+        <button type="button" onClick={() => navigate('/company/create')} className="btn btn-gold mt-5">
+          {t('O‘z biznesingizni oching')}
+        </button>
+      )}
     </section>
   );
 }

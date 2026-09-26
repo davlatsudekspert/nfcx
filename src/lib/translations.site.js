@@ -21,6 +21,8 @@ export const DICT_SITE = {
   'Namuna profil': { ru: 'Пример профиля', en: 'Sample profile' },
   'Bu namuna profil: biznesingiz sahifasi shunday ko‘rinishi mumkin.': { ru: 'Это пример профиля: так может выглядеть страница вашего бизнеса.', en: 'This is a sample profile: your business page could look like this.' },
   'O‘z biznesingizni oching': { ru: 'Откройте свой бизнес', en: 'Open your own business' },
+  'Namuna profillar': { ru: 'Примеры профилей', en: 'Sample profiles' },
+  'Biznesingiz sahifasi shunday bo‘ladi': { ru: 'Так будет выглядеть страница вашего бизнеса', en: 'Your business page will look like this' },
   'Bizneslar NFCSTORE’da qanday ko‘rinadi': { ru: 'Как бизнесы выглядят в NFCSTORE', en: 'How businesses look on NFCSTORE' },
   'Har sohadan namuna profillar: menyu, narxlar, ish vaqti va postlar. Birini oching — biznesingiz sahifasi ham shunday bo‘ladi.': { ru: 'Примеры профилей из разных сфер: меню, цены, часы работы и посты. Откройте любой — страница вашего бизнеса будет такой же.', en: 'Sample profiles from many industries: menus, prices, opening hours and posts. Open one — your business page will look like this too.' },
   'Hammasi': { ru: 'Все', en: 'All' },

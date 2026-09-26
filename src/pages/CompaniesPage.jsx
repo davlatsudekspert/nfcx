@@ -1,3 +1,4 @@
+import SampleBusinessesStrip from '../components/SampleBusinessesStrip.jsx';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLanguage } from '../lib/i18n.jsx';
 import { navigate } from '../lib/router.js';
@@ -323,16 +324,17 @@ export default function CompaniesPage({ catalog = [] }) {
       categorySlug: c.category || '',
       avatarUrl: c.logoUrl || '',
       bgUrl: c.coverUrl || '',
-      // NAMUNA biznes (to'qima) — "tasdiqlangan" emas va ro'yxat OXIRIDA.
+      // NAMUNA biznes (to'qima) — "tasdiqlangan" emas. Ro'yxatda BIRINCHI
+      // (egasi, 2026-09-26: "birinchi namunalarni qo'y, chiroyli chiqadi").
       verified: !c.demo,
       demo: !!c.demo,
       // Tartib uchun: kompaniyada `ts` yo'q, yaratilgan sanasidan olamiz.
-      ts: c.demo ? 0 : c.createdAt ? Date.parse(c.createdAt) || 0 : 0,
+      ts: c.createdAt ? Date.parse(c.createdAt) || 0 : 0,
       hiddenFromDirectory: false,
       profileType: 'business',
     }));
     return [...catalog.filter((item) => item.profileType === 'business' && !item.hiddenFromDirectory), ...asCards]
-      .sort((a, b) => (b.ts || 0) - (a.ts || 0))
+      .sort((a, b) => (Number(!!b.demo) - Number(!!a.demo)) || (b.ts || 0) - (a.ts || 0))
       .filter((item) => !query
         || item.code.includes(query)
         || (item.name || '').toUpperCase().includes(query)
@@ -372,15 +374,20 @@ export default function CompaniesPage({ catalog = [] }) {
           <span aria-hidden="true">⌕</span><input value={q} onChange={(event) => setQ(event.target.value)} placeholder={t('Kompaniya nomi, mahsulot, taom yoki xizmat')} aria-label={t('Qidirish')} /><button type="submit" className="vz-tap" aria-busy={searching}>{searching ? '•••' : t('Qidirish')}</button>
         </form>
 
-        <div className="co-quick-row">
-          <span>{t('Tezkor misollar')}:</span>
-          {QUICK_EXAMPLES.map((example) => (
-            <button type="button" className={example.tone} key={example.query} onClick={() => setQ(example.query)}>
-              <i>{example.icon}</i><span><b>{example.title}</b><small>{t(example.meta)}</small></span>
-            </button>
-          ))}
-          <button type="button" className="all" onClick={search}>{t('Barchasini ko‘rish')} <b>→</b></button>
-        </div>
+        {/* NAMUNA PROFILLAR (2026-09-26, egasi: "namuna profillar tepada
+            ko'rinsa — kirganda bilinadi"). Namunalar bo'lmasa — eski
+            "Tezkor misollar" qatori chiqadi. */}
+        <SampleBusinessesStrip compact fallback={(
+          <div className="co-quick-row">
+            <span>{t('Tezkor misollar')}:</span>
+            {QUICK_EXAMPLES.map((example) => (
+              <button type="button" className={example.tone} key={example.query} onClick={() => setQ(example.query)}>
+                <i>{example.icon}</i><span><b>{example.title}</b><small>{t(example.meta)}</small></span>
+              </button>
+            ))}
+            <button type="button" className="all" onClick={search}>{t('Barchasini ko‘rish')} <b>→</b></button>
+          </div>
+        )} />
       </section>
 
       {/* Avval bu yerda IKKITA bir xil kartochka (telefon maketi bilan)
