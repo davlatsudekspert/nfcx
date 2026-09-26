@@ -200,8 +200,9 @@ class _SampleCard extends StatelessWidget {
   }
 }
 
-/// Asosiy sahifa uchun: FAQAT biznesi yo'q odamga (ro'yxat kelib bo'sh
-/// chiqqanda). Biznesi bor odamga namuna kerak emas — joy egallamaydi.
+/// Asosiy sahifa uchun (shaxsiy rejim): FAQAT biznesi yo'q odamga (ro'yxat
+/// kelib bo'sh chiqqanda). Egasi (2026-09-26): "biznesi yo'qlarga
+/// ko'ringani yaxshi" — lekin Stories'dan keyin, pastga surmasdan ko'rinsin.
 class HomeSampleBusinesses extends ConsumerWidget {
   const HomeSampleBusinesses({super.key});
 

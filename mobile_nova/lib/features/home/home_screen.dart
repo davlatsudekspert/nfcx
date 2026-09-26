@@ -315,6 +315,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               const SizedBox(height: Gap.lg),
             ],
             _StoriesRow(user: user),
+            // NAMUNA BIZNESLAR — faqat biznesi yo'q odamga, shaxsiy
+            // rejimda, Stories'dan keyin (pastga surmasdan ko'rinsin).
+            if (!business) const HomeSampleBusinesses(),
             // BOSH EKRAN TARTIBI:
             //   faol NFC ID karta → tezkor amallar → storylar →
             //   NFC Mobile.
@@ -333,10 +336,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             // ilovaga birinchi kirgan odam pastga tushmasdan
             // "bu ilova nima beradi" degan savolga javob olsin.
             const NfcMobileSection(),
-
-            // NAMUNA BIZNESLAR — faqat biznesi yo'q odamga, shaxsiy
-            // rejimda: "biznes sahifasi qanday bo'ladi" ko'rib chiqsin.
-            if (!business) const HomeSampleBusinesses(),
 
             // «TANLOVDAN» — lentadan OLDIN. Postlar joyida qoladi;
             // bu qator faqat gorizontal, bosh sahifani cho'zmaydi.

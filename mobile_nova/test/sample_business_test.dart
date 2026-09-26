@@ -131,6 +131,11 @@ void main() {
     expect(find.byKey(const ValueKey('sample-businesses')), findsNothing);
   });
 
+  testWidgets('Asosiy: namuna yo‘q bo‘lsa joy egallamaydi', (tester) async {
+    await pumpStrip(tester, const Scaffold(body: HomeSampleBusinesses()), list: const []);
+    expect(find.byKey(const ValueKey('sample-businesses')), findsNothing);
+  });
+
   testWidgets('Biznes ochish ekrani: «Sahifangiz shunday ko‘rinadi»', (tester) async {
     await pumpStrip(tester, const Scaffold(body: BusinessIntroBody()));
     await tester.scrollUntilVisible(find.text(LUz().sampleBusinessesIntroTitle), 300,
