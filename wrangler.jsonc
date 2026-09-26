@@ -213,7 +213,7 @@
     //   ACCOUNT_PURGE_R2: fayllarni R2 dan o'chirish — alohida, keyinroq.
     //   Qolgan to'rttasi egasi javob bermagan savollar: javobgacha "off"
     //   (ma'lumot SAQLANADI).
-    "ACCOUNT_PURGE_MODE": "dry-run",
+    "ACCOUNT_PURGE_MODE": "on",
     "ACCOUNT_PURGE_R2": "off",
     "PURGE_MAX_USERS": "3",
     "PURGE_SUPPORT_MESSAGES": "off",
