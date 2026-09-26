@@ -173,9 +173,11 @@
 
   /* Matn */
   --text-primary: #171716;
-  --text-secondary: #575550;
-  --text-muted: #6e6c68;
-  --text-faint: #8a8782;
+  /* 2026-09-26: to'qroq (egasi: "xira qora bo'lib turibdi") — ikkinchi
+     darajali matn ham och fonda aniq o'qilsin. */
+  --text-secondary: #3f3d39;
+  --text-muted: #55534f;
+  --text-faint: #6f6c67;
   --text-on-accent: #ffffff;
 
   /* Accent */
@@ -1062,3 +1064,41 @@ html[data-theme="pearl"] .vz-nav__link:hover,
 html[data-theme="pearl"] .vz-nav__link:focus-visible { color: #000000; }
 html[data-theme="pearl"] .vz-nav__link[aria-current="page"] { color: #000000; font-weight: 700; }
 html[data-theme="pearl"] header .btn-ghost { color: #121211; font-weight: 600; }
+
+/* IVORY: "yarim shaffof" matn klasslari (text-base-content/45 kabi, saytda
+   ~550 joyda) och fonda kulrang bo'lib xira ko'rinardi. Faqat Ivory'da
+   shaffoflik ko'tariladi — ierarxiya saqlanadi (70 hali ham 45 dan to'q),
+   lekin eng xirasi ham aniq o'qiladi. */
+html[data-theme="pearl"] .text-base-content\/30 { color: color-mix(in oklab, var(--color-base-content) 56%, transparent); }
+html[data-theme="pearl"] .text-base-content\/35 { color: color-mix(in oklab, var(--color-base-content) 60%, transparent); }
+html[data-theme="pearl"] .text-base-content\/40 { color: color-mix(in oklab, var(--color-base-content) 64%, transparent); }
+html[data-theme="pearl"] .text-base-content\/45 { color: color-mix(in oklab, var(--color-base-content) 68%, transparent); }
+html[data-theme="pearl"] .text-base-content\/50 { color: color-mix(in oklab, var(--color-base-content) 72%, transparent); }
+html[data-theme="pearl"] .text-base-content\/55 { color: color-mix(in oklab, var(--color-base-content) 76%, transparent); }
+html[data-theme="pearl"] .text-base-content\/60 { color: color-mix(in oklab, var(--color-base-content) 80%, transparent); }
+html[data-theme="pearl"] .text-base-content\/65 { color: color-mix(in oklab, var(--color-base-content) 84%, transparent); }
+html[data-theme="pearl"] .text-base-content\/70 { color: color-mix(in oklab, var(--color-base-content) 88%, transparent); }
+html[data-theme="pearl"] .text-base-content\/75 { color: color-mix(in oklab, var(--color-base-content) 90%, transparent); }
+html[data-theme="pearl"] .text-base-content\/80 { color: color-mix(in oklab, var(--color-base-content) 93%, transparent); }
+html[data-theme="pearl"] .text-base-content\/85 { color: color-mix(in oklab, var(--color-base-content) 95%, transparent); }
+
+/* BIZNES KABINET — telefon ko'rinishi. Ekran HAR DOIM qora (muqova rasmi
+   ustida qora parda), shuning uchun ichidagi matn mavzudan qat'i nazar
+   oq bo'lishi kerak. Ilgari Ivory'da qora siyoh qora ekranga tushib,
+   yozuvlar ko'rinmasdi. Tokenlar shu element ichida qayta belgilanadi. */
+.cw-phone-screen {
+  --text-primary: #f4f1e8;
+  --text-secondary: rgba(244, 241, 232, 0.74);
+  --text-muted: rgba(244, 241, 232, 0.58);
+  --text-faint: rgba(244, 241, 232, 0.45);
+  --tint-base: #ffffff;
+  --shade-base: #000000;
+  --inset-base: #000000;
+  --color-base-content: #f4f1e8;
+  color: #f4f1e8;
+}
+
+/* Biznes kabinet chap menyusi — Ivory'da to'qroq (avval eng xira
+   `--text-faint` edi). Tanlangan bo'lim o'z rangida qoladi. */
+html[data-theme="pearl"] .cw-sidebar nav button { color: var(--text-secondary); }
+html[data-theme="pearl"] .cw-sidebar nav button.active { color: var(--text-primary); font-weight: 600; }
