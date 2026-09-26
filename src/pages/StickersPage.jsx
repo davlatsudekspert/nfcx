@@ -247,7 +247,7 @@ export default function StickersPage() {
   return (
     <main className="mx-auto w-full max-w-[1800px] px-6 pb-20 sm:px-10 lg:px-14">
       {/* ── HERO ── */}
-      <section className="grid items-center gap-10 pt-10 md:pt-14 lg:grid-cols-[1.05fr_.95fr]">
+      <section className="grid items-center gap-10 pt-10 md:pt-14 lg:grid-cols-[.9fr_1.1fr]">
         <div className="flex flex-col items-start gap-5">
           <span className="vz-kicker">{c.kicker}</span>
           <h1 className="vz-h1 max-w-[16ch] text-[color:var(--vz-ink)]">{c.title}</h1>
@@ -264,10 +264,20 @@ export default function StickersPage() {
             ))}
           </ul>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <img src="/stikerlar/avto.jpg" alt="" className="col-span-2 aspect-[16/10] w-full rounded-2xl object-cover object-[center_40%]" />
-          <img src="/stikerlar/sticker.jpg" alt="" className="aspect-square w-full rounded-2xl object-cover" />
-          <img src="/stikerlar/stend.jpg" alt="" className="aspect-square w-full rounded-2xl object-cover" />
+        {/* UCHALA PLAKAT BIR XIL (egasi, 2026-09-26: "rasmlar katta-kichik
+            bo'lib ketibdi, hammasini bir tartibda qil"). Hammasi 4:5 —
+            ilgari tik plakatlar yotiq va kvadrat qilib kesilib, sarlavha
+            va belgilar qirqilardi. Avto plakati `avto-4x5.jpg` ga oldindan
+            kesilgan (stiker, sarlavha va belgilar qoladi). Telefonda —
+            yonga suriladigan lenta, kompyuterda — uch ustun. */}
+        <div className="-mx-6 flex snap-x snap-mandatory gap-3 overflow-x-auto px-6 pb-2 [scrollbar-width:none] sm:-mx-10 sm:px-10 md:mx-0 md:grid md:grid-cols-3 md:overflow-visible md:px-0 md:pb-0">
+          {[
+            ['/stikerlar/avto-4x5.jpg', 'NFC Avto Sticker'],
+            ['/stikerlar/sticker.jpg', 'NFC Sticker'],
+            ['/stikerlar/stend.jpg', 'NFC Stend'],
+          ].map(([src, alt]) => (
+            <img key={src} src={src} alt={alt} decoding="async" className="aspect-[4/5] w-[62vw] max-w-[280px] shrink-0 snap-center rounded-2xl object-cover shadow-[0_22px_44px_-26px_rgba(0,0,0,.6)] ring-1 ring-black/10 md:w-full md:max-w-none" />
+          ))}
         </div>
       </section>
 
