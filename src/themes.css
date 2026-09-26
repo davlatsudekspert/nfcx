@@ -1102,3 +1102,8 @@ html[data-theme="pearl"] .text-base-content\/85 { color: color-mix(in oklab, var
    `--text-faint` edi). Tanlangan bo'lim o'z rangida qoladi. */
 html[data-theme="pearl"] .cw-sidebar nav button { color: var(--text-secondary); }
 html[data-theme="pearl"] .cw-sidebar nav button.active { color: var(--text-primary); font-weight: 600; }
+
+/* Tanlanmagan radio/checkbox doirachasi Ivory'da deyarli ko'rinmasdi
+   (hisob sahifasi — "Profilda kompaniya"). Aniq ko'rinadigan hoshiya. */
+html[data-theme="pearl"] .radio,
+html[data-theme="pearl"] .checkbox { border-color: rgba(23, 23, 22, 0.5); border-width: 1.5px; }
