@@ -15,6 +15,7 @@ import AppWelcomeModal from './components/AppWelcomeModal.jsx';
 import HomePage from './pages/HomePage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import { MESSAGING_ENABLED, NEWS_ENABLED } from './lib/features.js';
+import { QR_STICKER_RE, qrStickerTarget } from './lib/qrSticker.js';
 
 // ═══════════════════════════════════════════════════════════════════════
 // SAHIFA BO'LAGI YUKLANMAGANDA — SAYT O'ZINI TIKLAYDI (2026-09)
@@ -39,6 +40,13 @@ import { MESSAGING_ENABLED, NEWS_ENABLED } from './lib/features.js';
 // soniya ichida ikkinchi marta qayta yuklanmaydi — o'shanda xato
 // odatdagidek yuqoriga uzatiladi.
 const CHUNK_RELOAD_KEY = 'nfcx:chunk-reload';
+
+// /qr-N -> NFC qo'llanmasi. `location.replace`: orqaga bosilganda yana
+// /qr-N ga (va qayta yo'naltirishga) qaytib qolmasin; UTM va #avto saqlanadi.
+function QrStickerRedirect({ batch }) {
+  useEffect(() => { window.location.replace(qrStickerTarget(batch)); }, [batch]);
+  return null;
+}
 
 function lazyPage(load) {
   return lazy(() => load().catch((err) => {
@@ -270,6 +278,9 @@ export default function App() {
   // `src/pages/TapRedirectPage.jsx` da). Shuning uchun yo'naltirish
   // shu yerda ham bor.
   const tapMatch = cleanRoute.match(/^t\/([A-Za-z0-9_-]{1,64})$/);
+  // Stikerdagi QR (/qr-1, /qr-2) — xuddi shu sababli bu yerda ham
+  // yo'naltiriladi (src/lib/qrSticker.js).
+  const qrStickerMatch = cleanRoute.match(QR_STICKER_RE);
   const companyQuickMatch = companyIdFromRoute(cleanRoute, /^c\/([^/]{1,40})$/);
   const companyPublicMatch = companyIdFromRoute(cleanRoute, /^company\/([^/]{1,40})$/);
   const companyWorkspaceMatch = companyIdFromRoute(cleanRoute, /^workspace\/([^/]{1,40})$/);
@@ -285,6 +296,10 @@ export default function App() {
   }
   if (!page && tapMatch) {
     page = <TapRedirectPage key={cleanRoute} token={tapMatch[1]} />;
+    bare = true;
+  }
+  if (!page && qrStickerMatch) {
+    page = <QrStickerRedirect batch={qrStickerMatch[1]} />;
     bare = true;
   }
   if (!page && cleanRoute === 'company/create') {
