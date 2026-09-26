@@ -16,7 +16,10 @@ import { useLanguage } from '../lib/i18n.jsx';
 /// `compact` — Kompaniyalar sahifasi uchun: qisqa sarlavha, tavsif va
 /// tugmalarsiz, sahifa chetiga chiqmaydi. `fallback` — namunalar yo'q
 /// bo'lsa (admin o'chirgan) o'rniga chiziladigan narsa.
-export default function SampleBusinessesStrip({ compact = false, fallback = null }) {
+/// `tight` — bosh sahifa hero'si ichida: tepadagi bo'shliq kichik, sarlavha
+/// ixchamroq — namunalar birinchi ekranda ko'rinsin (egasi, 2026-09-26:
+/// "pastda ko'rinmay turgan biznes profillarni teparoqqa chiqar").
+export default function SampleBusinessesStrip({ compact = false, fallback = null, tight = false }) {
   const { t } = useLanguage();
   const [items, setItems] = useState(null);
 
@@ -34,7 +37,7 @@ export default function SampleBusinessesStrip({ compact = false, fallback = null
   const open = (id) => navigate(`/c/${String(id).toLowerCase()}`);
 
   return (
-    <section id={compact ? 'namuna-profillar' : 'namuna-bizneslar'} className={compact ? 'mt-7 text-left' : 'mt-12 md:mt-16'} aria-labelledby="namuna-bizneslar-title">
+    <section id={compact ? 'namuna-profillar' : 'namuna-bizneslar'} className={compact ? 'mt-7 text-left' : tight ? 'relative z-[2] mt-2 md:mt-4' : 'mt-12 md:mt-16'} aria-labelledby="namuna-bizneslar-title">
       {compact ? (
         <div className="flex items-baseline justify-between gap-3">
           <h2 id="namuna-bizneslar-title" className="text-[18px] font-bold text-[color:var(--vz-ink)] sm:text-[20px]">{t('Namuna profillar')}</h2>
@@ -43,8 +46,8 @@ export default function SampleBusinessesStrip({ compact = false, fallback = null
       ) : (
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
-            <h2 id="namuna-bizneslar-title" className="vz-h2 text-[color:var(--vz-ink)]">{t('Bizneslar NFCSTORE’da qanday ko‘rinadi')}</h2>
-            <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-[color:var(--vz-ink-2)]">
+            <h2 id="namuna-bizneslar-title" className={tight ? 'font-display text-[26px] font-semibold leading-tight text-[color:var(--vz-ink)] sm:text-[30px]' : 'vz-h2 text-[color:var(--vz-ink)]'}>{t('Bizneslar NFCSTORE’da qanday ko‘rinadi')}</h2>
+            <p className={`mt-2 max-w-2xl text-[15px] leading-relaxed text-[color:var(--vz-ink-2)]${tight ? ' hidden sm:block' : ''}`}>
               {t('Har sohadan namuna profillar: menyu, narxlar, ish vaqti va postlar. Birini oching — biznesingiz sahifasi ham shunday bo‘ladi.')}
             </p>
           </div>
@@ -56,7 +59,7 @@ export default function SampleBusinessesStrip({ compact = false, fallback = null
 
       <div className={compact
         ? 'mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3'
-        : '-mx-6 mt-6 flex snap-x snap-mandatory scroll-px-6 gap-4 overflow-x-auto px-6 pb-3 sm:-mx-10 sm:scroll-px-10 sm:px-10 lg:-mx-14 lg:scroll-px-14 lg:px-14'} style={{ scrollbarWidth: 'thin' }}>
+        : `-mx-6 ${tight ? 'mt-4' : 'mt-6'} flex snap-x snap-mandatory scroll-px-6 gap-4 overflow-x-auto px-6 pb-3 sm:-mx-10 sm:scroll-px-10 sm:px-10 lg:-mx-14 lg:scroll-px-14 lg:px-14`} style={{ scrollbarWidth: 'thin' }}>
         {items.map((c) => (
           <button
             key={c.companyId}

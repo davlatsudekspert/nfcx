@@ -134,7 +134,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
       <section className="relative overflow-hidden">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(720px_420px_at_50%_0%,var(--accent-a14),transparent_70%),radial-gradient(420px_320px_at_10%_90%,rgba(180,140,50,0.08),transparent_60%)]"></div>
 
-        <div className="relative z-[1] mx-auto w-full max-w-[1800px] px-6 pb-10 pt-14 sm:px-10 lg:px-14 md:pt-20 lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:items-center lg:gap-10 lg:pb-8 lg:pt-8 xl:grid-cols-[minmax(0,1fr)_560px] xl:gap-16 xl:pt-12">
+        <div className="relative z-[1] mx-auto w-full max-w-[1800px] px-6 pb-10 pt-14 sm:px-10 lg:px-14 md:pt-20 lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:items-center lg:gap-10 lg:pb-4 lg:pt-6 xl:grid-cols-[minmax(0,1fr)_560px] xl:gap-16 xl:pt-8">
           {/* ===== CHAP USTUN: sarlavha, CTA, afzalliklar, NFC ID qidiruvi ===== */}
           <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
           <Reveal>
@@ -287,6 +287,14 @@ export default function HomePage({ catalog, refreshCatalog }) {
           </div>
         </div>
 
+        {/* NAMUNA BIZNESLAR — HERO ICHIDA, birinchi ekranda ko'rinsin
+            (egasi, 2026-09-26: "pastda ko'rinmay turgan biznes profillarni
+            teparoqqa chiqar"). Avval u yugurib turuvchi ID qatoridan keyin,
+            pastda edi. */}
+        <div className="relative z-[2] mx-auto w-full max-w-[1800px] px-6 pb-8 sm:px-10 lg:px-14">
+          <SampleBusinessesStrip tight />
+        </div>
+
         {/* Marquee — so'nggi band qilingan ID'lar */}
         {recent.length > 0 && (
           <Reveal>
@@ -314,9 +322,6 @@ export default function HomePage({ catalog, refreshCatalog }) {
           menyu bilan chetlari to'g'ri kelmasdi. Qolgan 20 ta sahifa
           allaqachon 1800px ishlatadi — endi bu ham shunday. */}
       <div className="mx-auto w-full max-w-[1800px] px-6 pb-20 sm:px-10 lg:px-14">
-        {/* ================= NAMUNA BIZNESLAR (karusel) ================= */}
-        <SampleBusinessesStrip />
-
         {/* ================= KIMLAR UCHUN ================= */}
         <RevealSection id="kimlar-uchun">
           <h2 className="vz-h2 text-[color:var(--vz-ink)]">{t('Kimlar uchun')}</h2>
