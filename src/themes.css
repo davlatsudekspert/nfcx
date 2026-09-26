@@ -178,11 +178,11 @@
 
   /* Accent */
   --accent-primary: #252422;
-  --accent-secondary: #7a5f38;
+  --accent-secondary: #3d3b37;
   --accent-deep: #141414;
   --accent-soft: rgba(23, 23, 22, 0.08);
   --accent-ink: #ffffff;
-  --accent-glow: rgba(179, 149, 102, 0.16);
+  --accent-glow: rgba(23, 23, 22, 0.12);
 
   /* Chegara (border) */
   --border: #e3e1dc;
@@ -220,15 +220,15 @@
   /* NAMUNA (showcase) NFC karta — FAQAT marketing/demo kartalar uchun.
      Foydalanuvchining haqiqiy kartasi (tarif finish'i, Card Designer
      tanlovi, profildagi karta) bu tokenlarga BOG'LIQ EMAS. */
-  --showcase-card-bg: linear-gradient(135deg, #fffdf7 0%, #d9c9a4 50%, #efe1c4 100%);
-  --showcase-card-fg: #2a2114;
-  --showcase-card-sub: rgba(42, 33, 20, 0.58);
-  --showcase-card-code: #6a4f18;
-  --showcase-card-border: #b0894a;
-  --showcase-card-sheen: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.55) 40%, rgba(255, 255, 255, 0.85) 50%, rgba(255, 255, 255, 0.55) 60%, transparent);
-  --showcase-card-gloss: rgba(255, 255, 255, 0.3);
-  --showcase-card-shadow: 0 20px 45px rgba(92, 74, 44, 0.28), 0 2px 8px rgba(92, 74, 44, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.85);
-  --showcase-card-rim: 0 0 0 1px rgba(156, 122, 50, 0.3), 0 0 40px rgba(199, 168, 99, 0.35), 0 28px 70px rgba(92, 74, 44, 0.32);
+  --showcase-card-bg: linear-gradient(135deg, #2c2b28 0%, #151514 52%, #22211f 100%);
+  --showcase-card-fg: #f4f1e8;
+  --showcase-card-sub: rgba(244, 241, 232, 0.6);
+  --showcase-card-code: #f4f1e8;
+  --showcase-card-border: rgba(255, 255, 255, 0.16);
+  --showcase-card-sheen: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.07) 40%, rgba(255, 255, 255, 0.16) 50%, rgba(255, 255, 255, 0.07) 60%, transparent);
+  --showcase-card-gloss: rgba(255, 255, 255, 0.1);
+  --showcase-card-shadow: 0 20px 45px rgba(23, 23, 22, 0.32), 0 2px 8px rgba(23, 23, 22, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --showcase-card-rim: 0 0 0 1px rgba(23, 23, 22, 0.35), 0 28px 60px rgba(23, 23, 22, 0.3);
 
   /* BREND va PROMO bloklari — logotip plitasi/halqasi, promo karta
      ramkasi va brend suratlarining mavzuga moslashuvi.
