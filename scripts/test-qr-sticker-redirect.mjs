@@ -9,6 +9,7 @@
 //   node scripts/test-qr-sticker-redirect.mjs
 import worker from '../hosting/worker.js';
 import { makeEnv, seedBasic, req, makeChecker } from './lib/d1-harness.mjs';
+import { readFileSync, existsSync } from 'node:fs';
 
 const { check, checkTrue, done } = makeChecker();
 const { env } = makeEnv({});
@@ -25,5 +26,23 @@ check('/qr-12/: partiya raqami', r2.headers.get('location')?.endsWith('utm_campa
 for (const p of ['/qr-', '/qr-abc', '/qr-12345', '/vip001']) {
   const x = await worker.fetch(req(p), env);
   checkTrue(`${p}: ushlanmaydi`, !(x.status === 302 && (x.headers.get('location') || '').includes('utm_source=stiker')));
+}
+// BRAUZER NAVIGATSIYASI (2026-09-26): Cloudflare statik qatlami telefon
+// brauzeridagi navigatsiyani index.html bilan javob beradi va Worker
+// ishlamaydi — /qr-1 BOSH SAHIFANI ochgan edi. Shuning uchun SPA ham
+// yo'naltiradi (src/lib/qrSticker.js) va u serverdagi bilan BIR XIL bo'lishi
+// shart. src/ faqat asosiy (sayt) daraxtda bor — dev branch'da tekshiruv
+// o'tkazib yuboriladi.
+const lib = new URL('../src/lib/qrSticker.js', import.meta.url);
+if (existsSync(lib)) {
+  const { qrStickerTarget, QR_STICKER_RE } = await import(lib.href);
+  for (const n of ['1', '2', '12']) {
+    const w = await worker.fetch(req(`/qr-${n}`), env);
+    check(`SPA = server: /qr-${n}`, qrStickerTarget(n), w.headers.get('location'));
+  }
+  checkTrue('SPA naqshi qr-1 ni taniydi', QR_STICKER_RE.test('qr-1'));
+  checkTrue('SPA naqshi profil kodini ushlamaydi', !QR_STICKER_RE.test('vip001') && !QR_STICKER_RE.test('qr-') && !QR_STICKER_RE.test('qr-12345'));
+  const app = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8');
+  checkTrue('App.jsx /qr-N ni yo\'naltiradi', /QR_STICKER_RE/.test(app) && /<QrStickerRedirect\b/.test(app) && /location\.replace\(qrStickerTarget/.test(app));
 }
 done();
