@@ -253,6 +253,21 @@ let deviceId = 0;
   });
   const hop = await worker.fetch(req('/t/CHIP-BIZ-UI'), env);
   check('7) stiker kompaniya sahifasini ochdi', hop.headers.get('location'), '/c/myco');
+
+  // ── "VAQTINCHA O'CHIRISH" BIZNES STIKERIDA HAM ISHLAYDI (2026-09-26) ──
+  // Ilgari o'chirilgan biznes stikeri ham /c/<id> ni ochaverardi.
+  await call(`/api/my/nfc-devices/${dev.id}`, {
+    method: 'PUT', headers: { cookie: cookie.user, 'content-type': 'application/json' },
+    body: JSON.stringify({ blocked: true }),
+  });
+  const off = await worker.fetch(req('/t/CHIP-BIZ-UI'), env);
+  check('7) o\'chirilgan biznes stikeri kompaniyani ochmaydi', off.headers.get('location'), '/nfc-stiker?stiker=ochiq-emas');
+  await call(`/api/my/nfc-devices/${dev.id}`, {
+    method: 'PUT', headers: { cookie: cookie.user, 'content-type': 'application/json' },
+    body: JSON.stringify({ blocked: false }),
+  });
+  const on = await worker.fetch(req('/t/CHIP-BIZ-UI'), env);
+  check('7) qayta yoqilgach yana kompaniya ochiladi', on.headers.get('location'), '/c/myco');
 }
 
 done('NFC qurilmalari');

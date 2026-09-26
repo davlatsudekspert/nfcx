@@ -2,7 +2,8 @@
 //
 // Oynaga yopishtirilgan stikerni qayta bosib bo'lmaydi: QR manzili
 // ishlamay qolsa, butun partiya "o'lik" bo'ladi. Bu test qo'riqlaydi:
-//   * /qr-1 -> ilova sahifasi, partiya UTM'da, 302 va no-store;
+//   * /qr-1 (avto stiker) -> /nfc-stiker#avto qo'llanmasi, partiya UTM'da, 302 va no-store;
+//   * /qr-2 (tashqi stiker) -> /nfc-stiker (bo'limsiz);
 //   * boshqa shakllar (qr-, qr-abc, profil kodlari) ushlanmaydi.
 //
 //   node scripts/test-qr-sticker-redirect.mjs
@@ -15,8 +16,10 @@ await seedBasic(env);
 
 const r = await worker.fetch(req('/qr-1'), env);
 check('/qr-1: 302', r.status, 302);
-check('/qr-1: ilova sahifasi va partiya UTM', r.headers.get('location'), '/ilova-yuklash?utm_source=stiker&utm_medium=qr&utm_campaign=qr-1');
+check('/qr-1: NFC qo\'llanmasi, avto bo\'limi va partiya UTM', r.headers.get('location'), '/nfc-stiker?utm_source=stiker&utm_medium=qr&utm_campaign=qr-1#avto');
 check('/qr-1: keshlanmaydi', r.headers.get('cache-control'), 'no-store');
+const rT = await worker.fetch(req('/qr-2'), env);
+check('/qr-2: tashqi stiker — qo\'llanma, bo\'limsiz', rT.headers.get('location'), '/nfc-stiker?utm_source=stiker&utm_medium=qr&utm_campaign=qr-2');
 const r2 = await worker.fetch(req('/qr-12/'), env);
 check('/qr-12/: partiya raqami', r2.headers.get('location')?.endsWith('utm_campaign=qr-12'), true);
 for (const p of ['/qr-', '/qr-abc', '/qr-12345', '/vip001']) {
