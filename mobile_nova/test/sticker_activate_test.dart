@@ -456,6 +456,17 @@ void main() {
       expect(c.computeLuminance(), lessThan(.05),
           reason: 'Ivory kartasi qora bo‘lishi kerak');
     }
+    // Yozuvlar mayin oq — oltin/jigarrang emas (saytdagi namuna karta).
+    for (final text in ['NFC ID', 'ALI777']) {
+      final color = tester.widget<Text>(find.text(text)).style!.color!;
+      // Rang kuchi (chroma): #F4F1E8 ≈ .05, oltin #C9A227 ≈ .64.
+      final chroma = [color.r, color.g, color.b].reduce((a, b) => a > b ? a : b) -
+          [color.r, color.g, color.b].reduce((a, b) => a < b ? a : b);
+      expect(chroma, lessThan(.12),
+          reason: '$text oltin/jigarrang bo‘lib qoldi');
+      expect(color.computeLuminance(), greaterThan(.3),
+          reason: '$text qora kartada ko‘rinmaydi');
+    }
     // Boshqa mavzular o'z ko'rinishida qoladi.
     final pearl = await cardColors(NfcTokens.pearl);
     expect(pearl.first.computeLuminance(), greaterThan(.5));

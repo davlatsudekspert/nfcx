@@ -379,8 +379,8 @@ class _CardBody extends StatelessWidget {
                         height: 1,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(colors: [
-                            t.brand.withValues(alpha: .55),
-                            t.brand.withValues(alpha: 0),
+                            ink.rule,
+                            ink.rule.withValues(alpha: 0),
                           ]),
                         ),
                       ),
@@ -577,6 +577,7 @@ class _CardInk {
     required this.inner,
     required this.eyebrow,
     required this.chipBorder,
+    required this.rule,
     required this.text1,
     required this.text2,
     required this.actionBg,
@@ -593,6 +594,9 @@ class _CardInk {
   final Color inner;
   final Color eyebrow;
   final Color chipBorder;
+
+  /// ID ostidagi ingichka chiziq.
+  final Color rule;
   final Color text1;
   final Color text2;
   final Color actionBg;
@@ -611,13 +615,17 @@ class _CardInk {
           BoxShadow(color: Color(0x52171716), blurRadius: 45, offset: Offset(0, 20)),
           BoxShadow(color: Color(0x33171716), blurRadius: 8, offset: Offset(0, 2)),
         ],
-        rings: t.brand.withValues(alpha: .30),
+        // FAQAT OQ-QORA — saytdagi namuna karta (`src/themes.css`
+        // `--showcase-card-*`): oltin ham, jigarrang ham yo'q (egasi,
+        // 2026-09-26: "karta qora, yozuvlari oq mayin bo'lsin").
+        rings: Colors.white.withValues(alpha: .07),
         edge: .10,
-        inner: t.brand.withValues(alpha: .30),
-        eyebrow: t.brandSoft,
-        chipBorder: t.brandSoft.withValues(alpha: .55),
+        inner: Colors.white.withValues(alpha: .08),
+        eyebrow: _fg.withValues(alpha: .60),
+        chipBorder: Colors.white.withValues(alpha: .28),
+        rule: Colors.white.withValues(alpha: .22),
         text1: _fg,
-        text2: _fg.withValues(alpha: .62),
+        text2: _fg.withValues(alpha: .60),
         actionBg: Colors.white.withValues(alpha: .08),
         actionBorder: Colors.white.withValues(alpha: .18),
         actionShadow: const [],
@@ -646,6 +654,7 @@ class _CardInk {
       inner: t.brand.withValues(alpha: .22),
       eyebrow: t.brandInk,
       chipBorder: t.brand.withValues(alpha: .6),
+      rule: t.brand.withValues(alpha: .55),
       text1: t.text1,
       text2: t.text2,
       actionBg: t.surfaceSolid,
