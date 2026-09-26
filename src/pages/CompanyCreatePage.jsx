@@ -8,6 +8,20 @@ import { fmt } from '../lib/format.js';
 import logo from '../assets/logo-128.png';
 import '../company-system.css';
 
+// `?next=` — kompaniya ochilgach QAYERGA qaytish (masalan, marketplace
+// aktivatsiya paneli: /activate). Faqat SHU saytdagi yo'l qabul qilinadi
+// (AuthPage bilan bir xil himoya): "/" bilan boshlanadi, "//" emas,
+// origin o'zgarmaydi — begona saytga olib chiqib ketib bo'lmaydi.
+function readNextPath() {
+  try {
+    const raw = new URLSearchParams(window.location.search).get('next') || '';
+    if (!raw.startsWith('/') || raw.startsWith('//') || raw.startsWith('/\\')) return '';
+    const u = new URL(raw, window.location.origin);
+    if (u.origin !== window.location.origin) return '';
+    return u.pathname + u.search;
+  } catch { return ''; }
+}
+
 const categories = [
   ['restaurant', 'Restoran / kafe'], ['market', 'Do‘kon / market'], ['services', 'Xizmatlar'],
   ['construction', 'Qurilish'], ['clinic', 'Tibbiyot'], ['pharmacy', 'Dorixona'],
@@ -32,6 +46,7 @@ export default function CompanyCreatePage() {
   const nameBlocked = companyNameBlocked(form.displayName);
   const [mineState, setMineState] = useState('idle'); // idle | loading | error | ready
   const [mineTick, setMineTick] = useState(0);
+  const [nextPath] = useState(readNextPath);
 
   useEffect(() => {
     if (!user) return;
@@ -68,7 +83,7 @@ export default function CompanyCreatePage() {
       </main>
     );
   }
-  if (!user) return <main className="cc-state"><div className="cc-logo"><img src={logo} alt="NFCSTORE" /></div><h1>{t('Kompaniya ochish uchun kiring')}</h1><p>{t('Company ID akkauntingizga biriktiriladi.')}</p><button type="button" className="vz-tap" onClick={() => navigate('/login')}>{t('Kirish')}</button></main>;
+  if (!user) return <main className="cc-state"><div className="cc-logo"><img src={logo} alt="NFCSTORE" /></div><h1>{t('Kompaniya ochish uchun kiring')}</h1><p>{t('Company ID akkauntingizga biriktiriladi.')}</p><button type="button" className="vz-tap" onClick={() => navigate(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`)}>{t('Kirish')}</button></main>;
 
   const submit = async (event) => {
     event.preventDefault();
@@ -81,16 +96,20 @@ export default function CompanyCreatePage() {
     setBusy(true); setError('');
     try {
       const data = await createCompany(freeMode ? { ...form, companyId: '', auto: true } : form);
-      navigate(`/workspace/${data.company.companyId.toLowerCase()}`);
+      const id = data.company.companyId;
+      // Qayerdan kelgan bo'lsa (aktivatsiya paneli) — o'sha yerga, yangi
+      // kompaniya tanlangan holda qaytadi. Aks holda — boshqaruv markazi.
+      if (nextPath) navigate(`${nextPath}${nextPath.includes('?') ? '&' : '?'}company=${encodeURIComponent(id)}`);
+      else navigate(`/workspace/${id.toLowerCase()}`);
     } catch (err) {
       setError(({ company_id_taken: t('Bu Company ID hozirgina band qilindi.'), company_id_reserved: t('Bu Company ID admin rezervida.'), bad_company_id: t('Company ID faqat 3–15 ta lotin harfidan iborat bo‘ladi.'), name_not_allowed: t('Kompaniya nomida ushbu so‘zdan foydalanish mumkin emas.') })[err.message] || t('So‘rovni yuborib bo‘lmadi. Qayta urinib ko‘ring.'));
     } finally { setBusy(false); }
   };
 
   return <main className="cc-page">
-    <header className="cc-header"><button type="button" className="vz-tap" onClick={() => navigate('/')}><i><img src={logo} alt="NFCSTORE" /></i><b>NFCSTORE</b></button><span>{t('COMPANY ACCOUNT')}</span><button type="button" className="vz-tap" onClick={() => navigate('/account')}>← {t('Kabinet')}</button></header>
+    <header className="cc-header"><button type="button" className="vz-tap" onClick={() => navigate('/')}><i><img src={logo} alt="NFCSTORE" /></i><b>NFCSTORE</b></button><span>{t('COMPANY ACCOUNT')}</span><button type="button" className="vz-tap" onClick={() => navigate(nextPath || '/account')}>← {nextPath ? t('Orqaga') : t('Kabinet')}</button></header>
     <div className="cc-layout">
-      <section className="cc-intro"><span className="cc-kicker">{t('YANGI TIZIM · SHAXSIY NFC ID’DAN ALOHIDA')}</span><h1>{t('Kompaniyangiz uchun')} <em>{t('alohida ID')}</em></h1><p>{t('Company ID kompaniya NFC profili, public sahifasi va boshqaruv markazini bir-biriga bog‘laydi. Mavjud shaxsiy NFC kartalaringiz o‘z holicha qoladi.')}</p><div className="cc-flow"><div><b>01</b><span>{t('ID tanlash')}</span></div><i>→</i><div><b>02</b><span>{t('Admin tekshiruvi')}</span></div><i>→</i><div><b>03</b><span>Payme</span></div><i>→</i><div><b>04</b><span>{t('Faollashadi')}</span></div></div>
+      <section className="cc-intro"><span className="cc-kicker">{t('YANGI TIZIM · SHAXSIY NFC ID’DAN ALOHIDA')}</span><h1>{t('Kompaniyangiz uchun')} <em>{t('alohida ID')}</em></h1><p>{t('Company ID kompaniya NFC profili, public sahifasi va boshqaruv markazini bir-biriga bog‘laydi. Mavjud shaxsiy NFC kartalaringiz o‘z holicha qoladi.')}</p><div className="cc-flow"><div><b>01</b><span>{t('ID tanlash')}</span></div><i>→</i><div><b>02</b><span>{t('Avto tasdiq')}</span></div><i>→</i><div><b>03</b><span>Payme</span></div><i>→</i><div><b>04</b><span>{t('Faollashadi')}</span></div></div>
         {mineState === 'loading' && <div className="cc-existing" aria-busy="true"><span>{t('SIZNING KOMPANIYALARINGIZ')}</span><div className="vz-skel mt-3" style={{ height: 56, borderRadius: 14 }} /></div>}
         {mineState === 'error' && <div className="cc-existing"><span>{t('SIZNING KOMPANIYALARINGIZ')}</span><div className="vz-empty mt-3" role="alert"><b>{t("Server bilan aloqa yo'q")}</b><button type="button" className="btn btn-outline-gold btn-sm mt-1" onClick={() => setMineTick((n) => n + 1)}>{t('Qayta urinish')}</button></div></div>}
         {mineState === 'ready' && mine.length > 0 && <div className="cc-existing"><span>{t('SIZNING KOMPANIYALARINGIZ')}</span>{mine.map((company) => <button type="button" key={company.companyId} onClick={() => navigate(`/workspace/${company.companyId.toLowerCase()}`)}><div className="min-w-0"><b className="break-words">{company.displayName}</b><small>{company.companyId}</small></div><strong data-status={company.status}>{t(COMPANY_STATUS[company.status]) || company.status}</strong><i>→</i></button>)}</div>}
@@ -158,7 +177,7 @@ export default function CompanyCreatePage() {
           {form.sourceCardCode && <label className="wide cc-copy"><input type="checkbox" checked onChange={(e) => setForm((old) => ({ ...old, sourceCardCode: e.target.checked ? form.sourceCardCode : '' }))} /><div><b>{t('{code} dagi eski biznes ma’lumotini qoralamaga nusxalash', { code: form.sourceCardCode })}</b><span>{t('Asl NFC ID va uning profili o‘zgarmaydi.')}</span></div></label>}
         </div>
         {error && <p className="cc-error" role="alert">{error}</p>}
-        <button type="submit" className="cc-submit vz-tap" disabled={busy || (!freeMode && !check?.available) || nameBlocked}>{busy ? t('Yuborilmoqda…') : t('Admin tekshiruviga yuborish →')}</button>
+        <button type="submit" className="cc-submit vz-tap" disabled={busy || (!freeMode && !check?.available) || nameBlocked}>{busy ? t('Yuborilmoqda…') : t('Kompaniyani ochish →')}</button>
         <p className="cc-legal">{t('ID qidirish uni band qilmaydi. Ariza serverda saqlangandan keyingina ID rezervlanadi.')}</p>
       </form>
     </div>

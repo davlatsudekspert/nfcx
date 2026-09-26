@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { authLogin, authRegister, authRequestRegisterCode, useAuth } from '../lib/auth.jsx';
 import { navigate } from '../lib/router.js';
+import { markAppWelcome } from '../lib/appDownload.js';
 import { normalizePhone, prettyPhone } from '../lib/phone.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { dbGetTelegramBotUsername, dbAuthResetPassword } from '../lib/db.js';
@@ -225,6 +226,8 @@ export default function AuthPage({ mode }) {
         });
       } else await authLogin(email.trim(), password);
       setFailCount(0);
+      // Yangi hisob — sahifa almashgach "ilovani yuklab oling" oynasi chiqadi.
+      if (isRegister) markAppWelcome();
       await refresh();
       // `?next=` — qayerdan kelgan bo'lsa, o'sha yerga qaytadi.
       // Biznes kirish eshigi (/business) shu orqali ishlaydi: odam

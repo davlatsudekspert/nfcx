@@ -707,7 +707,12 @@ function gatedEnv(env, sqlNeedle) {
 
   // Biznes uchun YANGI oqim yozilmagan — saytning o'z kompaniya
   // ochish sahifasiga yuboriladi.
-  checkTrue('15) kompaniya ochish mavjud oqimga yuboradi', /navigate\('\/company\/create'\)/.test(page));
+  checkTrue('15) kompaniya ochish mavjud oqimga yuboradi', /navigate\(`\/company\/create\?next=\$\{authNext\}`\)/.test(page));
+  // Kompaniya ochilgach AVTOMATIK aktivatsiya paneliga qaytadi (2026-09-26):
+  // ochish sahifasi `?next=` ni o'qiydi, yangi ID bilan qaytaradi.
+  const create = readFileSync(new URL('../src/pages/CompanyCreatePage.jsx', import.meta.url), 'utf8');
+  checkTrue('15) kompaniya ochish ?next= ni o‘qiydi', /readNextPath/.test(create) && /company=\$\{encodeURIComponent\(id\)\}/.test(create));
+  checkTrue('15) panel yangi kompaniyani tanlaydi', /takeCreatedCompanyFromUrl/.test(page));
   checkTrue('15) sahifada kompaniya YARATISH so‘rovi yo‘q', !/\/api\/companies/.test(page));
 }
 

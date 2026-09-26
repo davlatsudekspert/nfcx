@@ -65,6 +65,20 @@ function takeDeviceFromUrl() {
   window.history.replaceState(null, '', clean);
   return d;
 }
+// `?company=` — /company/create dan qaytishda. Manzildan darhol olinadi
+// (tarixda qolmasin); faqat tanlovni oldindan belgilash uchun — egalikni
+// server baribir tekshiradi.
+function takeCreatedCompanyFromUrl() {
+  if (typeof window === 'undefined') return '';
+  const params = new URLSearchParams(window.location.search);
+  const id = (params.get('company') || '').toUpperCase().replace(/[^A-Z0-9‘’'ʻ]/g, '').slice(0, 40);
+  if (!params.has('company')) return '';
+  params.delete('company');
+  const clean = window.location.pathname + (params.toString() ? `?${params}` : '');
+  window.history.replaceState(null, '', clean);
+  return id;
+}
+
 function clearDevice() {
   try { sessionStorage.removeItem(DEVICE_KEY); } catch { /* private rejim */ }
 }
@@ -103,6 +117,8 @@ export default function ActivatePage() {
   const [code, setCode] = useState(() => prettyInput(readStoredCode()));
   // Tekkizilgan stiker (bo'lsa). Manzildan bir marta olinadi.
   const [deviceToken] = useState(takeDeviceFromUrl);
+  // Kompaniya ochish sahifasidan qaytganda keladigan yangi Company ID.
+  const [justCreated] = useState(takeCreatedCompanyFromUrl);
   const [product, setProduct] = useState(null);
   const [kind, setKind] = useState(readStoredKind);
   const [options, setOptions] = useState(null);
@@ -199,12 +215,16 @@ export default function ActivatePage() {
       // ko'rsatilmaydi (pastdagi ro'yxatga qarang).
       const list = kind === 'business' ? o.business : o.personal;
       if (list.length > 0) {
-        const primary = kind === 'business' ? list[0] : (list.find((x) => x.isPrimary) || list[0]);
+        // Kompaniya ochish sahifasidan qaytgan bo'lsa — AYNAN o'sha yangi
+        // kompaniya tanlanadi (`?company=`, bir martalik).
+        const fresh = kind === 'business' && justCreated
+          ? list.find((x) => String(x.companyId).toUpperCase() === justCreated) : null;
+        const primary = fresh || (kind === 'business' ? list[0] : (list.find((x) => x.isPrimary) || list[0]));
         setChoice(kind === 'business' ? primary.companyId : primary.code);
       }
     }).catch(() => { if (alive) setOptions({ personal: [], business: [] }); });
     return () => { alive = false; };
-  }, [kind, user]);
+  }, [kind, user, justCreated]);
 
   const submitCode = async (e) => {
     e.preventDefault();
@@ -435,10 +455,14 @@ export default function ActivatePage() {
                     O'Z kompaniya ochish oqimiga yuboramiz. Kod
                     `sessionStorage` da qoladi va odam qaytganda shu
                     yerdan davom etadi. */}
-                <button type="button" className="ac-primary" onClick={() => navigate('/company/create')}>
+                {/* `?next=` — kompaniya ochilgach odam AVTOMATIK shu panelga,
+                    yangi kompaniya tanlangan holda qaytadi (egasi,
+                    2026-09-26: "ochib bo'lgandan keyin aktivatsiya
+                    paneliga qaytishi kerak"). */}
+                <button type="button" className="ac-primary" onClick={() => navigate(`/company/create?next=${authNext}`)}>
                   {t('Kompaniya ochish')}
                 </button>
-                <p className="ac-note">{t('Kompaniya ochilgach shu sahifaga qayting — kod saqlanib qoladi.')}</p>
+                <p className="ac-note">{t('Kompaniya ochilgach shu sahifaga avtomatik qaytasiz — kod saqlanib qoladi.')}</p>
               </div>
             )}
           </div>

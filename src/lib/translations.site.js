@@ -187,4 +187,16 @@ export const DICT_SITE = {
   'NFCSTORE ilovasi': { ru: 'Приложение NFCSTORE', en: 'NFCSTORE app' },
   "O'z raqamli vizitkangizni yarating — Android uchun": {
     ru: 'Создайте свою цифровую визитку — для Android', en: 'Create your own digital business card — for Android' },
+  // Ro'yxatdan keyin "ilovani yuklab oling" oynasi, avto-tasdiq, aktivatsiyaga qaytish (2026-09-26)
+  'Xush kelibsiz! NFCSTORE ilovasini yuklab oling': { ru: 'Добро пожаловать! Скачайте приложение NFCSTORE', en: 'Welcome! Get the NFCSTORE app' },
+  'Vizitkangiz, lenta, Reels va NFC kartaga yozish — hammasi telefoningizda. Hisobingiz bilan kirasiz, hech narsa qayta kiritilmaydi.': {
+    ru: 'Визитка, лента, Reels и запись на NFC-карту — всё в телефоне. Войдите своим аккаунтом, ничего вводить заново не нужно.',
+    en: 'Your card, feed, Reels and NFC writing — all on your phone. Sign in with your account, nothing to re-enter.' },
+  'Tez kunda': { ru: 'Скоро', en: 'Coming soon' },
+  'Keyinroq': { ru: 'Позже', en: 'Later' },
+  'Avto tasdiq': { ru: 'Автоодобрение', en: 'Auto-approval' },
+  'Kompaniyani ochish →': { ru: 'Открыть компанию →', en: 'Open the company →' },
+  'Kompaniya ochilgach shu sahifaga avtomatik qaytasiz — kod saqlanib qoladi.': {
+    ru: 'После создания компании вы автоматически вернётесь на эту страницу — код сохранится.',
+    en: 'Once the company is created you will return here automatically — your code is saved.' },
 };

@@ -11,6 +11,7 @@ import { PaymentsEnabledProvider } from './lib/paymentsEnabled.jsx';
 import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
 import AiAssistant from './components/AiAssistant.jsx';
+import AppWelcomeModal from './components/AppWelcomeModal.jsx';
 import HomePage from './pages/HomePage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import { MESSAGING_ENABLED, NEWS_ENABLED } from './lib/features.js';
@@ -382,6 +383,8 @@ export default function App() {
               sahifasida mijoz "ish vaqtingiz qanday, pitsangiz bormi"
               deb so'raydi. Lekin FAQAT ochiq kompaniya sahifalarida:
               kabinet va admin ichida u ortiqcha. */}
+          {/* Ro'yxatdan o'tgandan keyin bir marta: "ilovani yuklab oling". */}
+          <AppWelcomeModal />
           {bare ? (<>{renderedPage}{showAssistantOnBare && <AiAssistant />}</>) : (
             <>
               <Header />

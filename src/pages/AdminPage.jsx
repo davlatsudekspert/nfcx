@@ -526,6 +526,110 @@ const REPORT_STATUS_LABEL = {
   rejected: 'Rad etildi',
 };
 
+// KIM → KIMGA (egasi, 2026-09-26: "kimdan kelgan, kimni yozgani").
+function ReportPeople({ r, t }) {
+  const rep = r.reporter;
+  const who = !rep ? '—' : rep.guest ? t('Mehmon (kirmagan)') : (rep.code || rep.email || `user#${rep.userId}`);
+  const author = r.author ? (r.author.code || '—') : (r.ownerCode || '—');
+  return (
+    <div className="text-xs leading-snug">
+      <div><span className="opacity-50">{t('Kimdan')}:</span> <b className="font-mono">{who}</b>{rep && !rep.guest && rep.name ? <span className="opacity-70"> · {rep.name}</span> : null}</div>
+      <div className="mt-0.5"><span className="opacity-50">{t('Kimga')}:</span> <b className="font-mono">{author}</b>{r.author?.name ? <span className="opacity-70"> · {r.author.name}</span> : null}</div>
+    </div>
+  );
+}
+
+// SHIKOYAT TAFSILOTI — qatorni bosganda: to'liq kontent, shikoyatchi,
+// muallif, sabab, izoh va amallar bir joyda.
+function ReportDetail({ r, t, busy, onClose, onDelete, onStatus }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  const p = r.preview || {};
+  const rep = r.reporter || {};
+  const media = p.videoUrl || p.imageUrl;
+  const profileUrl = r.author
+    ? (r.author.kind === 'company' ? `/c/${r.author.code.toLowerCase()}` : `/${r.author.code.toLowerCase()}`)
+    : '';
+  const reporterUrl = !rep.guest && rep.code ? `/${rep.code.toLowerCase()}` : '';
+  const canDelete = ['post', 'story', 'company_post', 'comment'].includes(r.targetKind) && !p.missing;
+  const Row = ({ label, children }) => (
+    <div className="grid grid-cols-[110px_1fr] gap-2 py-1.5 text-sm">
+      <span className="opacity-50">{label}</span><span className="min-w-0 break-words">{children}</span>
+    </div>
+  );
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
+      <div className="vz-card max-h-[88vh] w-full max-w-2xl overflow-y-auto p-6" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" data-testid="report-detail">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="font-display text-lg font-semibold">{t('Shikoyat')} #{r.id}</div>
+            <div className="text-xs opacity-60">{String(r.createdAt || '').slice(0, 16)} · {t(REPORT_STATUS_LABEL[r.status] || r.status)}</div>
+          </div>
+          <CloseButton onClick={onClose} />
+        </div>
+
+        <div className="mt-4 rounded-xl border border-white/10 p-4">
+          <div className="mb-2 text-xs font-bold uppercase tracking-wider opacity-60">{t('Kontent')} · <span className="font-mono">{r.targetKind} #{r.targetId}</span></div>
+          {p.missing ? (
+            <span className="vz-badge">{t('Kontent allaqachon o‘chirilgan')}</span>
+          ) : (
+            <>
+              {media && (p.videoUrl
+                ? <video src={p.videoUrl} controls preload="metadata" className="mb-3 max-h-[46vh] w-full rounded-lg bg-black object-contain" />
+                : <img src={p.imageUrl} alt="" className="mb-3 max-h-[46vh] w-full rounded-lg object-contain" />)}
+              {(p.fullText || p.text)
+                ? <div className="whitespace-pre-line break-words text-sm">{p.fullText || p.text}</div>
+                : <div className="text-sm opacity-50">{t('Matn yo‘q')}</div>}
+            </>
+          )}
+        </div>
+
+        <div className="mt-4 divide-y divide-white/5">
+          <Row label={t('Kimdan')}>
+            {rep.guest ? (
+              <>{t('Mehmon (kirmagan)')}{rep.ip ? <span className="font-mono opacity-60"> · IP {rep.ip}</span> : null}</>
+            ) : (
+              <>
+                {rep.code ? (reporterUrl ? <a href={reporterUrl} target="_blank" rel="noreferrer" className="font-mono font-bold">{rep.code}</a> : <b className="font-mono">{rep.code}</b>) : null}
+                {rep.name ? <span> · {rep.name}</span> : null}
+                <div className="text-xs opacity-70">{[rep.email, rep.phone].filter(Boolean).join(' · ') || `user#${rep.userId}`}</div>
+              </>
+            )}
+          </Row>
+          <Row label={t('Kimga')}>
+            {r.author ? (
+              <>
+                <a href={profileUrl} target="_blank" rel="noreferrer" className="font-mono font-bold">{r.author.code}</a>
+                {r.author.name ? <span> · {r.author.name}</span> : null}
+                <span className="opacity-60"> · {r.author.kind === 'company' ? t('Kompaniya') : t('Shaxsiy profil')}</span>
+                {r.author.email ? <div className="text-xs opacity-70">{r.author.email}</div> : null}
+              </>
+            ) : (r.ownerCode || '—')}
+          </Row>
+          <Row label={t('Sabab')}>{t(REPORT_REASON_LABEL[r.reason] || r.reason)}</Row>
+          <Row label={t('Izoh')}>{r.note || <span className="opacity-50">—</span>}</Row>
+          {r.resolvedAt ? <Row label={t('Yopilgan')}>{String(r.resolvedAt).slice(0, 16)}{r.resolvedBy ? ` · ${r.resolvedBy}` : ''}</Row> : null}
+        </div>
+
+        <div className="mt-5 flex flex-wrap gap-2">
+          {canDelete && (
+            <button type="button" disabled={busy} onClick={onDelete} className="btn btn-error btn-sm">{t('Kontentni o‘chirish')}</button>
+          )}
+          {r.status !== 'resolved' && (
+            <button type="button" disabled={busy} onClick={() => onStatus('resolved')} className="btn btn-success btn-sm">{t('Hal qilindi')}</button>
+          )}
+          {r.status !== 'rejected' && (
+            <button type="button" disabled={busy} onClick={() => onStatus('rejected')} className="btn btn-ghost btn-sm">{t('Rad etish')}</button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ReportsTab() {
   const { t } = useLanguage();
   const [rows, setRows] = useState(null);
@@ -543,6 +647,8 @@ function ReportsTab() {
   const [hasMore, setHasMore] = useState(false);
   const [counts, setCounts] = useState({});
   const [more, setMore] = useState(false);
+  const [openId, setOpenId] = useState(0);
+  const opened = (rows || []).find((r) => r.id === openId) || null;
 
   const qs = (s, offset) => {
     const p = new URLSearchParams({ status: s, limit: String(PAGE), offset: String(offset) });
@@ -570,6 +676,7 @@ function ReportsTab() {
       await adminApi(`/reports/${id}`, { method: 'PATCH', body: JSON.stringify({ status: next }) });
       // Ro'yxatdan olib tashlaymiz: joriy filtrga endi tushmaydi.
       setRows((list) => (list || []).filter((r) => r.id !== id));
+      setOpenId(0);
     } catch (e) {
       setErr(e);
     } finally {
@@ -604,9 +711,12 @@ function ReportsTab() {
         });
         await adminApi(`/reports/${r.id}`, { method: 'PATCH', body: JSON.stringify({ status: 'resolved' }) });
       } else {
+        // Kontent allaqachon yo'q bo'lsa ham server shikoyatni yopadi
+        // (`alreadyGone`) — navbatda qayta paydo bo'lmaydi.
         await adminApi(`/content/${kind}/${encodeURIComponent(r.targetId)}`, { method: 'DELETE' });
       }
       setRows((list) => (list || []).filter((x) => x.id !== r.id));
+      setOpenId(0);
     } catch (e) {
       setErr(e);
     } finally {
@@ -655,6 +765,16 @@ function ReportsTab() {
         <EmptyState icon="shield" title={t('Bu holatda shikoyat yo‘q.')} />
       )}
 
+      {opened && (
+        <ReportDetail
+          r={opened}
+          t={t}
+          busy={busy === opened.id}
+          onClose={() => setOpenId(0)}
+          onDelete={() => removeContent(opened)}
+          onStatus={(next) => setRowStatus(opened.id, next)}
+        />
+      )}
       {!err && rows !== null && rows.length > 0 && (
         <div className="overflow-x-auto">
           <table className="table table-sm">
@@ -663,6 +783,7 @@ function ReportsTab() {
                 <th>#</th>
                 <th>{t('Sana')}</th>
                 <th>{t('Nishon')}</th>
+                <th>{t('Kimdan → Kimga')}</th>
                 <th>{t('Kontent')}</th>
                 <th>{t('Sabab')}</th>
                 <th>{t('Izoh')}</th>
@@ -671,7 +792,7 @@ function ReportsTab() {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.id}>
+                <tr key={r.id} className="cursor-pointer hover:bg-white/5" onClick={() => setOpenId(r.id)} title={t('To‘liq ko‘rish')}>
                   <td className="font-mono text-xs">{r.id}</td>
                   <td className="whitespace-nowrap text-xs">{String(r.createdAt || '').slice(0, 16)}</td>
                   <td className="text-xs">
@@ -680,6 +801,7 @@ function ReportsTab() {
                     <span className="font-mono font-bold">{r.targetId}</span>
                     {r.ownerCode ? <div className="opacity-60">{r.ownerCode}</div> : null}
                   </td>
+                  <td className="min-w-[180px]"><ReportPeople r={r} t={t} /></td>
                   {/* SHIKOYAT QILINGAN KONTENTNING O'ZI — o'chirishdan oldin
                       admin nimani o'chirayotganini ko'rsin (2026-09-25). */}
                   <td className="min-w-[220px] max-w-[340px] text-xs">
@@ -687,8 +809,8 @@ function ReportsTab() {
                   </td>
                   <td className="text-xs">{t(REPORT_REASON_LABEL[r.reason] || r.reason)}</td>
                   <td className="max-w-[280px] text-xs opacity-80">{r.note}</td>
-                  <td className="whitespace-nowrap">
-                    {['post', 'story', 'company_post', 'comment'].includes(r.targetKind) && (
+                  <td className="whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                    {['post', 'story', 'company_post', 'comment'].includes(r.targetKind) && !r.preview?.missing && (
                       <button
                         type="button"
                         disabled={busy === r.id}

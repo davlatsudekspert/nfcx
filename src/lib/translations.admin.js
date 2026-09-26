@@ -733,4 +733,11 @@ export const DICT_ADMIN = {
   '{n} post': { ru: '{n} постов', en: '{n} posts' },
   'Ochish': { ru: 'Открыть', en: 'Open' },
   'Yaratilmagan': { ru: 'Не создан', en: 'Not created' },
+  'Kimdan': { ru: 'От кого', en: 'From' },
+  'Kimga': { ru: 'Кому', en: 'About' },
+  'Kimdan → Kimga': { ru: 'От кого → Кому', en: 'From → About' },
+  'Mehmon (kirmagan)': { ru: 'Гость (не вошёл)', en: 'Guest (not signed in)' },
+  'Shikoyat': { ru: 'Жалоба', en: 'Report' },
+  'Yopilgan': { ru: 'Закрыта', en: 'Closed' },
+  'To‘liq ko‘rish': { ru: 'Открыть полностью', en: 'View in full' },
 };

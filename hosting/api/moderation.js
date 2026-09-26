@@ -228,7 +228,7 @@ export async function handle(request, env, url, H) {
       const like = `%${clean}%`;
       binds.push(like, like, like, like, like, like);
     }
-    const sql = `SELECT r.*, u.email AS reporter_email FROM content_reports r
+    const sql = `SELECT r.*, u.email AS reporter_email, u.phone AS reporter_phone FROM content_reports r
        LEFT JOIN users u ON u.id = r.reporter_id
       WHERE ${where.join(' AND ')}
       ORDER BY r.created_at DESC LIMIT ? OFFSET ?`;
@@ -243,6 +243,7 @@ export async function handle(request, env, url, H) {
     for (const r of (c?.results || [])) counts[r.status] = Number(r.n) || 0;
     const page = list.slice(0, limit).map(reportRowToJson);
     await attachPreviews(env, page);
+    await attachPeople(env, page);
     return H.json({
       reports: page,
       hasMore: list.length > limit,
@@ -327,18 +328,24 @@ export async function handle(request, env, url, H) {
     // Oxirgi so'rov — asosiy qatorniki. O'zgarish bo'lmasa, bunday
     // kontent umuman yo'q.
     const changed = Number(res?.[res.length - 1]?.meta?.changes || 0);
-    if (!changed) return H.json({ error: 'not_found' }, 404);
 
     // Shu kontentga tegishli shikoyatlar avtomatik yopiladi —
     // admin ularni qo'lda bosib chiqmasin.
+    //
+    // KONTENT ALLAQACHON YO'Q BO'LSA HAM (egasi, 2026-09-26: "o'chirib
+    // yuborsam yana paydo bo'lyapti"). Ilgari bu holatda 404 qaytarilib,
+    // shikoyat "Yangi" bo'lib qolaverardi — admin har safar o'chirishni
+    // bosar, lekin navbatdan hech narsa ketmasdi. Muallif o'zi o'chirgan
+    // yoki boshqa admin avval o'chirgan kontent uchun maqsad bajarilgan:
+    // shikoyatlar yopiladi va javob `alreadyGone: true`.
     await env.DB.prepare(
       `UPDATE content_reports SET status = 'resolved', resolved_at = ?, resolved_by = ?
         WHERE target_kind = ? AND target_id = ? AND status <> 'resolved'`
     ).bind(H.nowTs(), String(admin.username || admin.id || ''), kind, String(id))
       .run().catch(() => {});
 
-    H.logAdminActivity?.(env, { action: 'content_delete', details: `${kind}#${id} ${adminLabel}`, ip: H.reqIp?.(request) })?.catch?.(() => {});
-    return H.json({ ok: true });
+    H.logAdminActivity?.(env, { action: 'content_delete', details: `${kind}#${id} ${adminLabel}${changed ? '' : ' (allaqachon yo‘q)'}`, ip: H.reqIp?.(request) })?.catch?.(() => {});
+    return H.json(changed ? { ok: true } : { ok: true, alreadyGone: true });
   }
 
   return null;
@@ -392,7 +399,64 @@ async function attachPreviews(env, reports) {
   for (const r of reports) {
     const key = r.targetKind === 'record' ? `record:${r.targetId.toUpperCase()}` : `${r.targetKind}:${r.targetId}`;
     const p = found.get(key);
-    r.preview = p ? { missing: false, ...p, text: String(p.text).slice(0, 400) } : { missing: true, text: '', author: '', imageUrl: '', videoUrl: '' };
+    r.preview = p ? { missing: false, ...p, text: String(p.text).slice(0, 400), fullText: String(p.text).slice(0, 4000) } : { missing: true, text: '', author: '', imageUrl: '', videoUrl: '' };
+  }
+}
+
+// KIM KIMDAN SHIKOYAT QILDI (egasi, 2026-09-26: "kimdan kelgan, kimni
+// yozgani — to'liq bosganda ko'rsin"). Har bir shikoyatga:
+//   • `reporter` — shikoyatchining NFC ID si va ismi (asosiy profili);
+//     kirmagan (mehmon) bo'lsa — yo'q, admin IP ni ko'radi;
+//   • `author`   — kontent muallifining ismi (shaxsiy profil yoki kompaniya).
+// Ikki-uchta so'rov (N+1 emas); jadval/ustun yo'q bo'lsa jim o'tadi.
+async function attachPeople(env, reports) {
+  const safe = async (sql, binds) => {
+    try { return (await env.DB.prepare(sql).bind(...binds).all()).results || []; } catch { return []; }
+  };
+  const inList = (n) => Array.from({ length: n }, () => '?').join(',');
+
+  const userIds = [...new Set(reports.map((r) => r.reporterId).filter((x) => x != null))].slice(0, 300);
+  const byUser = new Map();
+  if (userIds.length) {
+    const rows = await safe(
+      `SELECT user_id, code, name, is_primary FROM cards WHERE user_id IN (${inList(userIds.length)})
+        ORDER BY is_primary DESC, ts ASC`, userIds,
+    ).then((r) => r.length ? r : safe(
+      `SELECT user_id, code, name, 0 AS is_primary FROM cards WHERE user_id IN (${inList(userIds.length)}) ORDER BY ts ASC`, userIds,
+    ));
+    for (const row of rows) if (!byUser.has(Number(row.user_id))) byUser.set(Number(row.user_id), { code: row.code || '', name: row.name || '' });
+  }
+
+  const authorOf = (r) => String(r.preview?.author || r.ownerCode || '').trim();
+  const companyKinds = new Set(['company', 'company_post', 'company_story']);
+  const codes = [...new Set(reports.filter((r) => !companyKinds.has(r.targetKind)).map(authorOf).filter(Boolean).map((c) => c.toUpperCase()))].slice(0, 300);
+  const cos = [...new Set(reports.filter((r) => companyKinds.has(r.targetKind)).map(authorOf).filter(Boolean).map((c) => c.toUpperCase()))].slice(0, 300);
+  const cardName = new Map();
+  if (codes.length) {
+    for (const row of await safe(`SELECT UPPER(code) AS k, name, user_id FROM cards WHERE UPPER(code) IN (${inList(codes.length)})`, codes)) {
+      cardName.set(row.k, { name: row.name || '', userId: row.user_id == null ? null : Number(row.user_id) });
+    }
+  }
+  const coName = new Map();
+  if (cos.length) {
+    for (const row of await safe(`SELECT UPPER(company_id) AS k, display_name, owner_email FROM companies WHERE UPPER(company_id) IN (${inList(cos.length)})`, cos)) {
+      coName.set(row.k, { name: row.display_name || '', email: row.owner_email || '' });
+    }
+  }
+  for (const r of reports) {
+    const rep = r.reporterId != null ? byUser.get(Number(r.reporterId)) : null;
+    r.reporter = r.reporterId == null
+      ? { guest: true, ip: r.reporterIp || '' }
+      : { guest: false, userId: r.reporterId, email: r.reporterEmail, phone: r.reporterPhone, code: rep?.code || '', name: rep?.name || '' };
+    const a = authorOf(r);
+    if (!a) { r.author = null; continue; }
+    if (companyKinds.has(r.targetKind)) {
+      const c = coName.get(a.toUpperCase());
+      r.author = { kind: 'company', code: a.toUpperCase(), name: c?.name || '', email: c?.email || '' };
+    } else {
+      const c = cardName.get(a.toUpperCase());
+      r.author = { kind: 'personal', code: a.toUpperCase(), name: c?.name || '' };
+    }
   }
 }
 
@@ -410,6 +474,8 @@ function reportRowToJson(r) {
     resolvedAt: r.resolved_at || null,
     resolvedBy: r.resolved_by || '',
     reporterEmail: r.reporter_email || '',
+    reporterPhone: r.reporter_phone || '',
+    reporterIp: r.reporter_ip || '',
   };
 }
 

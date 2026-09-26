@@ -255,6 +255,10 @@ jobs:
         run: node scripts/test-register-contact-check.mjs
       - name: Namuna bizneslar (yaratish, belgi, buyurtma, lenta, o'chirish, rasmlar)
         run: node scripts/test-demo-businesses.mjs
+      - name: Biznes profil avto-tasdiq (bepul — active, pullik — approved, bayroq)
+        run: node scripts/test-company-auto-approve.mjs
+      - name: Shikoyatlar — kim kimdan, o'chib ketgan kontent shikoyati yopiladi
+        run: node scripts/test-admin-reports-people.mjs
 
       # PROFIL SAHIFALARINING MAKETI.
       #
