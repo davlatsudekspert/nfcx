@@ -38,18 +38,18 @@ export default function NeonOrbitCard({ code = 'AAA000', name, finish = 'black' 
 
       <div className="absolute right-[4%] top-[2%] z-[2] flex h-[88px] w-[88px] animate-[floatY_5s_ease-in-out_infinite] flex-col items-center justify-center gap-1.5 rounded-3xl border border-[color:var(--accent-primary)]/22 bg-gradient-to-br from-[color:var(--surface-elevated)] to-[color:var(--bg-primary)] text-[color:var(--accent-text)] shadow-[0_18px_40px_var(--shadow-cast),0_0_22px_var(--accent-a14)] [animation-delay:0.6s]">
         <IconWave />
-        <span className="font-mono text-[9px] tracking-[0.14em] text-[color:var(--accent-text)]/65">NFC TAP</span>
+        <span className="font-mono text-[10px] font-semibold tracking-[0.14em] text-[color:var(--accent-text)]">NFC TAP</span>
       </div>
       <div className="absolute bottom-[6%] left-0 z-[2] flex h-[88px] w-[88px] animate-[floatY_5s_ease-in-out_infinite] flex-col items-center justify-center gap-1.5 rounded-3xl border border-[color:var(--accent-primary)]/22 bg-gradient-to-br from-[color:var(--surface-elevated)] to-[color:var(--bg-primary)] text-[color:var(--accent-text)] shadow-[0_18px_40px_var(--shadow-cast),0_0_22px_var(--accent-a14)] [animation-delay:1.4s]">
         <IconWave />
-        <span className="font-mono text-[9px] tracking-[0.14em] text-[color:var(--accent-text)]/65">NFC TAG</span>
+        <span className="font-mono text-[10px] font-semibold tracking-[0.14em] text-[color:var(--accent-text)]">NFC TAG</span>
       </div>
 
       <div className="absolute left-[6%] top-[13%] z-[2] flex animate-[floatY_5s_ease-in-out_infinite] flex-col items-center [animation-delay:1s]">
         <span className="z-[1] -mb-1.5 h-[34px] w-[34px] rounded-full border-[5px] border-[color:var(--accent-primary)] border-t-[color:var(--accent-secondary)] border-l-[color:var(--accent-secondary)] shadow-md"></span>
         <div className="flex h-[118px] w-[78px] flex-col items-center justify-center gap-2 rounded-[20px] border border-[color:var(--accent-primary)]/18 bg-gradient-to-b from-[color:var(--surface-raised)] via-[color:var(--bg-secondary)] to-[color:var(--surface-elevated)] text-[color:var(--accent-text)] shadow-[0_20px_44px_var(--shadow-cast),0_0_20px_var(--accent-a14)]">
           <IconWave />
-          <b className="font-mono text-[14px] tracking-[0.2em] text-[color:var(--accent-text)]/60">NFC</b>
+          <b className="font-mono text-[14px] tracking-[0.2em] text-[color:var(--accent-text)]/85">NFC</b>
         </div>
       </div>
     </div>
