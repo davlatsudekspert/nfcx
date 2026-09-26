@@ -1052,3 +1052,13 @@ html[data-theme="pearl"] main.bg-page-bg > section:first-of-type::after {
   --company-panel: var(--surface);
   --company-line: var(--border-accent);
 }
+
+/* IVORY: yuqori menyu yozuvlari TO'Q QORA (egasi, 2026-09-26: "xira qora
+   bo'lib turibdi, qora qilish kerak"). Umumiy qoida matnni 88% shaffoflik
+   bilan chizadi — och fonda bu kulrangga o'xshab qolardi. Faqat Ivory'da:
+   to'la siyoh rangi va biroz qalinroq shrift; joriy sahifa — eng qalin. */
+html[data-theme="pearl"] .vz-nav__link { color: #121211; font-weight: 550; }
+html[data-theme="pearl"] .vz-nav__link:hover,
+html[data-theme="pearl"] .vz-nav__link:focus-visible { color: #000000; }
+html[data-theme="pearl"] .vz-nav__link[aria-current="page"] { color: #000000; font-weight: 700; }
+html[data-theme="pearl"] header .btn-ghost { color: #121211; font-weight: 600; }
