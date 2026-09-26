@@ -1,0 +1,82 @@
+import { useEffect, useState } from 'react';
+import { listPublicCompanies } from '../lib/company.js';
+import { navigate } from '../lib/router.js';
+import { useLanguage } from '../lib/i18n.jsx';
+
+// ═══════════════════════════════════════════════════════════════════════
+// BOSH SAHIFA: NAMUNA BIZNESLAR KARUSELI (2026-09-26)
+//
+// Egasi: "odam kirganda ko'rinadigan joyga joylansin" — tanlangan
+// variant: bosh sahifada karusel. Namunalar (`demo: true`,
+// hosting/api/demo-businesses.js) yonma-yon suriladigan kartochkalarda;
+// bosilsa profil ochiladi. Namunalar yo'q bo'lsa (admin o'chirgan) —
+// bo'lim umuman chizilmaydi.
+// ═══════════════════════════════════════════════════════════════════════
+
+export default function SampleBusinessesStrip() {
+  const { t } = useLanguage();
+  const [items, setItems] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    listPublicCompanies()
+      .then((list) => { if (alive) setItems((list || []).filter((c) => c.demo)); })
+      .catch(() => { if (alive) setItems([]); });
+    return () => { alive = false; };
+  }, []);
+
+  if (!items || items.length === 0) return null;
+
+  const open = (id) => navigate(`/c/${String(id).toLowerCase()}`);
+
+  return (
+    <section id="namuna-bizneslar" className="mt-12 md:mt-16" aria-labelledby="namuna-bizneslar-title">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h2 id="namuna-bizneslar-title" className="vz-h2 text-[color:var(--vz-ink)]">{t('Bizneslar NFCSTORE’da qanday ko‘rinadi')}</h2>
+          <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-[color:var(--vz-ink-2)]">
+            {t('Har sohadan namuna profillar: menyu, narxlar, ish vaqti va postlar. Birini oching — biznesingiz sahifasi ham shunday bo‘ladi.')}
+          </p>
+        </div>
+        <button type="button" onClick={() => navigate('/kompaniyalar')} className="shrink-0 text-[14px] font-bold text-[color:var(--accent-text)]">
+          {t('Hammasi')} →
+        </button>
+      </div>
+
+      <div className="-mx-6 mt-6 flex snap-x snap-mandatory scroll-px-6 gap-4 overflow-x-auto px-6 pb-3 sm:-mx-10 sm:scroll-px-10 sm:px-10 lg:-mx-14 lg:scroll-px-14 lg:px-14" style={{ scrollbarWidth: 'thin' }}>
+        {items.map((c) => (
+          <button
+            key={c.companyId}
+            type="button"
+            onClick={() => open(c.companyId)}
+            className="vz-card group relative w-[248px] shrink-0 snap-start overflow-hidden p-0 text-left transition-transform duration-300 hover:-translate-y-1 sm:w-[272px]"
+            aria-label={`${c.displayName} — ${t('Namuna')}`}
+          >
+            <div className="relative aspect-[16/10] w-full overflow-hidden bg-[var(--vz-card-2)]">
+              {c.coverUrl && (
+                <img src={c.coverUrl} alt="" loading="lazy" decoding="async"
+                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+              )}
+              <span className="absolute left-3 top-3 rounded-full border border-dashed border-[color:var(--accent-primary)] bg-black/55 px-2.5 py-1 text-[10.5px] font-extrabold uppercase tracking-[.12em] text-[color:var(--accent-text)] backdrop-blur-sm">
+                {t('Namuna')}
+              </span>
+            </div>
+            <div className="flex items-center gap-3 p-4">
+              <span className="-mt-10 h-14 w-14 shrink-0 overflow-hidden rounded-full border-2 border-[color:var(--accent-primary)] bg-[var(--vz-card)] shadow-lg">
+                {c.logoUrl && <img src={c.logoUrl} alt="" loading="lazy" className="h-full w-full object-cover" />}
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-[16px] font-bold text-[color:var(--vz-ink)]">{c.displayName}</span>
+                <span className="block truncate text-[13px] text-[color:var(--vz-ink-3)]">{c.subcategory || c.city}</span>
+              </span>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      <button type="button" onClick={() => navigate('/company/create')} className="btn btn-gold mt-5">
+        {t('O‘z biznesingizni oching')}
+      </button>
+    </section>
+  );
+}

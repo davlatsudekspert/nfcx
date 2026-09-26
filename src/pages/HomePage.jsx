@@ -1,6 +1,7 @@
 import { NEWS_ENABLED } from '../lib/features.js';
 import { useEffect, useRef, useState } from 'react';
 import PhysicalCardCta from '../components/PhysicalCardCta.jsx';
+import SampleBusinessesStrip from '../components/SampleBusinessesStrip.jsx';
 import { dbGet } from '../lib/db.js';
 import { parseAnyCode, priceForCode } from '../lib/pricing.js';
 import { reservedStatus } from '../lib/brandReserved.js';
@@ -313,6 +314,9 @@ export default function HomePage({ catalog, refreshCatalog }) {
           menyu bilan chetlari to'g'ri kelmasdi. Qolgan 20 ta sahifa
           allaqachon 1800px ishlatadi — endi bu ham shunday. */}
       <div className="mx-auto w-full max-w-[1800px] px-6 pb-20 sm:px-10 lg:px-14">
+        {/* ================= NAMUNA BIZNESLAR (karusel) ================= */}
+        <SampleBusinessesStrip />
+
         {/* ================= KIMLAR UCHUN ================= */}
         <RevealSection id="kimlar-uchun">
           <h2 className="vz-h2 text-[color:var(--vz-ink)]">{t('Kimlar uchun')}</h2>
