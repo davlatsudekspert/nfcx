@@ -49,8 +49,8 @@ export const THEMES = [
     id: 'pearl',
     label: 'Ivory',
     hint: 'Ilova · Oq',
-    bg: '#f6f5f2',
-    dots: ['#f6f5f2', '#ffffff', '#171716'],
+    bg: '#efebe3',
+    dots: ['#efebe3', '#f8f6f1', '#171716'],
   },
   {
     // ILOVADAGI "NOIR" (qora) — ranglar mobile_nova bilan bir xil.

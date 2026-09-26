@@ -144,23 +144,25 @@
    temani ilovadagi oq-qora temadan ol"). Qiymatlar mobile_nova
    `NfcTokens.ivory` dan: iliq ivory fon, oq kartalar, QORA siyoh va
    tugmalar, oltin faqat brend urg'usida. Ichki nomi `pearl` qoldi —
-   saqlangan tanlovlar va CSS qoidalari buzilmasin. */
+   saqlangan tanlovlar va CSS qoidalari buzilmasin.
+   FON "SUTLI" (egasi, 2026-09-26: "oppoq fon ko'zni oladi"): fon va
+   kartalar sof oq emas — iliq sut rangi; yozuvlar avvalgidek QORA. */
 [data-theme="pearl"] {
   color-scheme: light;
 
   /* Fon */
-  --bg-primary: #f6f5f2;
-  --bg-secondary: #f1efea;
-  --bg-gradient-a: #f8f7f4;
-  --bg-gradient-b: #efede8;
+  --bg-primary: #efebe3;
+  --bg-secondary: #ebe6dc;
+  --bg-gradient-a: #f1ede6;
+  --bg-gradient-b: #e8e2d7;
 
   /* Yuzalar (surface) — pastdan yuqoriga qatlam narvoni:
      bg-primary < bg-secondary < surface-soft < surface < surface-elevated < surface-raised */
-  --surface-soft: #faf9f6;
-  --surface: #ffffff;
-  --surface-elevated: #ffffff;
-  --surface-raised: #ffffff;
-  --surface-inset: #eceae4;
+  --surface-soft: #f4f1eb;
+  --surface: #f8f6f1;
+  --surface-elevated: #faf8f4;
+  --surface-raised: #fbf9f5;
+  --surface-inset: #e6e1d7;
   --surface-sheen: linear-gradient(160deg, rgba(255, 255, 255, 0.6) 0%, rgba(23, 23, 22, 0.03) 100%);
 
   /* Yarim shaffof qoplama asoslari: tint = yoritadi, shade = parda va soya,
@@ -185,9 +187,9 @@
   --accent-glow: rgba(23, 23, 22, 0.12);
 
   /* Chegara (border) */
-  --border: #e3e1dc;
-  --border-soft: #ecebe6;
-  --border-strong: #cfccc5;
+  --border: #dfd9cd;
+  --border-soft: #e8e3da;
+  --border-strong: #cdc6b8;
   --border-accent: rgba(23, 23, 22, 0.22);
 
   /* Soya va nur */
@@ -207,13 +209,13 @@
   --link: #2f6db4;
 
   /* Komponentlar */
-  --input-bg: #ffffff;
+  --input-bg: #fbf9f5;
   --input-border: #d9d6cf;
   --button-bg: linear-gradient(135deg, #34332f, #171716);
   --button-text: #ffffff;
-  --nav-bg: rgba(246, 245, 242, 0.92);
-  --card-bg: #ffffff;
-  --modal-bg: #ffffff;
+  --nav-bg: rgba(239, 235, 227, 0.92);
+  --card-bg: #f8f6f1;
+  --modal-bg: #faf8f4;
   --pill-bg: #171716;
   --pill-text: #ffffff;
 
