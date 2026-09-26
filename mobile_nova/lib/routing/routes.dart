@@ -97,6 +97,15 @@ abstract final class Routes {
   static const nfcHistory = '/nfc/history';
   static const nfcCards = '/nfc/cards';
   static const nfcSecurity = '/nfc/security';
+
+  /// Sotib olingan stikerni faollashtirish. `d` — tekkizilgan, hali
+  /// ulanmagan stikerning tokeni (bo'lmasa kod bilan, keyin tekkiziladi).
+  static const nfcActivate = '/nfc/activate';
+  static String nfcActivateSticker(String token) =>
+      token.isEmpty ? nfcActivate : '$nfcActivate?d=${Uri.encodeQueryComponent(token)}';
+
+  /// Stiker holati: `off` — egasi o'chirgan, `unknown` — bazada yo'q.
+  static String stickerStatus(String kind) => '/nfc/sticker/$kind';
   static String nfcId(String code) => '/nfc/id/$code';
   static String nfcIdEdit(String code) => '/nfc/id/$code/edit';
   static String nfcGift(String code) => '/nfc/id/$code/gift';

@@ -5030,6 +5030,234 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Davlatni tanlang'**
   String get phoneCountryTitle;
+
+  /// No description provided for @stickerActivate.
+  ///
+  /// In uz, this message translates to:
+  /// **'Stikerni faollashtirish'**
+  String get stickerActivate;
+
+  /// No description provided for @stickerActivateHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sotib olingan stiker yoki karta — konvertdagi kod bilan'**
+  String get stickerActivateHint;
+
+  /// No description provided for @activateCodeTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Konvertdagi kodni kiriting'**
+  String get activateCodeTitle;
+
+  /// No description provided for @activateCodeHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kod konvert ichida yozilgan: NF-XXXX-XXXX. Katta-kichik harf farqi yo‘q.'**
+  String get activateCodeHint;
+
+  /// No description provided for @activateCodeLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Aktivatsiya kodi'**
+  String get activateCodeLabel;
+
+  /// No description provided for @activateStickerTapped.
+  ///
+  /// In uz, this message translates to:
+  /// **'Stiker aniqlandi — kodni kiriting, u shu profilga ulanadi.'**
+  String get activateStickerTapped;
+
+  /// No description provided for @activateKindTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Stiker qaysi profilni ochsin?'**
+  String get activateKindTitle;
+
+  /// No description provided for @activateKindPersonal.
+  ///
+  /// In uz, this message translates to:
+  /// **'Shaxsiy'**
+  String get activateKindPersonal;
+
+  /// No description provided for @activateKindPersonalHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Siz haqingizda: kontaktlar va ijtimoiy tarmoqlar'**
+  String get activateKindPersonalHint;
+
+  /// No description provided for @activateKindBusiness.
+  ///
+  /// In uz, this message translates to:
+  /// **'Biznes'**
+  String get activateKindBusiness;
+
+  /// No description provided for @activateKindBusinessHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Do‘kon yoki kompaniya: narxlar, katalog, ish vaqti'**
+  String get activateKindBusinessHint;
+
+  /// No description provided for @activateKindNote.
+  ///
+  /// In uz, this message translates to:
+  /// **'Keyin saytdagi kabinetdan («NFC karta») o‘zgartirsa bo‘ladi.'**
+  String get activateKindNote;
+
+  /// No description provided for @activatePickPersonal.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qaysi profilga ulaymiz?'**
+  String get activatePickPersonal;
+
+  /// No description provided for @activatePickBusiness.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qaysi kompaniyaga ulaymiz?'**
+  String get activatePickBusiness;
+
+  /// No description provided for @activateNewId.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yangi NFC ID'**
+  String get activateNewId;
+
+  /// No description provided for @activateNewIdHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sizga bepul NFC ID beriladi'**
+  String get activateNewIdHint;
+
+  /// No description provided for @activateNoCompany.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sizda hali biznes profil yo‘q. Avval uni oching — keyin shu yerga qaytasiz.'**
+  String get activateNoCompany;
+
+  /// No description provided for @activateCreateCompany.
+  ///
+  /// In uz, this message translates to:
+  /// **'Biznes profil ochish'**
+  String get activateCreateCompany;
+
+  /// No description provided for @activateSubmit.
+  ///
+  /// In uz, this message translates to:
+  /// **'Faollashtirish'**
+  String get activateSubmit;
+
+  /// No description provided for @activateDoneTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Stiker faollashtirildi'**
+  String get activateDoneTitle;
+
+  /// No description provided for @activateDoneBound.
+  ///
+  /// In uz, this message translates to:
+  /// **'Stiker profilingizga ulandi. Telefonni tekkizib ko‘ring.'**
+  String get activateDoneBound;
+
+  /// No description provided for @activateDoneTapNow.
+  ///
+  /// In uz, this message translates to:
+  /// **'Endi stikerni telefonga tekkizing — u shu profilga ulanadi. Buni 7 kun ichida qiling.'**
+  String get activateDoneTapNow;
+
+  /// No description provided for @activateTapSticker.
+  ///
+  /// In uz, this message translates to:
+  /// **'Stikerni tekkizish'**
+  String get activateTapSticker;
+
+  /// No description provided for @activateAttached.
+  ///
+  /// In uz, this message translates to:
+  /// **'Stiker ulandi — endi tekkizilganda sahifangiz ochiladi.'**
+  String get activateAttached;
+
+  /// No description provided for @activateOpenProfile.
+  ///
+  /// In uz, this message translates to:
+  /// **'Profilni ochish'**
+  String get activateOpenProfile;
+
+  /// No description provided for @activateNotSticker.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu NFCSTORE stikeri emas. Konvertdagi stikerni tekkizing.'**
+  String get activateNotSticker;
+
+  /// No description provided for @activateErrBadCode.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kod noto‘g‘ri. Konvertdagi kodni qayta tekshiring.'**
+  String get activateErrBadCode;
+
+  /// No description provided for @activateErrExpired.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu kodning muddati tugagan.'**
+  String get activateErrExpired;
+
+  /// No description provided for @activateErrUsed.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu kod allaqachon faollashtirilgan.'**
+  String get activateErrUsed;
+
+  /// No description provided for @activateErrBlocked.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu kod bloklangan — qo‘llab-quvvatlashga yozing.'**
+  String get activateErrBlocked;
+
+  /// No description provided for @activateErrBusy.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kod hozir faollashtirilmoqda. Bir daqiqadan keyin qayta urinib ko‘ring.'**
+  String get activateErrBusy;
+
+  /// No description provided for @activateErrTaken.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu stiker allaqachon boshqa profilga ulangan.'**
+  String get activateErrTaken;
+
+  /// No description provided for @activateErrNoPending.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ulash uchun faollashtirilgan kod topilmadi. Avval konvertdagi kodni kiriting.'**
+  String get activateErrNoPending;
+
+  /// No description provided for @stickerOffTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Stiker o‘chirilgan'**
+  String get stickerOffTitle;
+
+  /// No description provided for @stickerOffBody.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu stikerni egasi vaqtincha o‘chirib qo‘ygan.'**
+  String get stickerOffBody;
+
+  /// No description provided for @stickerUnknownTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Stiker topilmadi'**
+  String get stickerUnknownTitle;
+
+  /// No description provided for @stickerUnknownBody.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu stiker NFCSTORE’da ro‘yxatga olinmagan.'**
+  String get stickerUnknownBody;
+
+  /// No description provided for @cardLinkedBusiness.
+  ///
+  /// In uz, this message translates to:
+  /// **'Biznes profil'**
+  String get cardLinkedBusiness;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

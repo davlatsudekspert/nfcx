@@ -92,6 +92,28 @@ class _NfcScanScreenState extends ConsumerState<NfcScanScreen> {
       final res = await ref.read(nfcRepositoryProvider).resolveChip(segments[1]);
       if (!mounted) return;
       final chip = res.valueOrNull;
+      // Sotilgan, lekin ULANMAGAN stiker — faollashtirishga, token bilan
+      // (shu stiker faollashtirishda bog'lanadi).
+      if (chip != null && chip.unlinked) {
+        setState(() => _state = OrbState.idle);
+        context.push(Routes.nfcActivateSticker(segments[1]));
+        return;
+      }
+      // Egasi o'chirib qo'ygan — profil ochilmaydi (sayt kabi).
+      if (chip != null && chip.found && !chip.active) {
+        setState(() {
+          _state = OrbState.error;
+          _message = '${l.stickerOffTitle}. ${l.stickerOffBody}';
+        });
+        return;
+      }
+      if (chip != null && !chip.found) {
+        setState(() {
+          _state = OrbState.error;
+          _message = l.stickerUnknownBody;
+        });
+        return;
+      }
       if (chip != null && chip.company && chip.code.isNotEmpty) {
         context.push(Routes.storefront(chip.code));
         return;

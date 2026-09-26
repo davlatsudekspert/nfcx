@@ -332,6 +332,7 @@ class NfcDevice {
     this.lastSeen,
     this.active = true,
     this.blockedByOwner = false,
+    this.companyId = '',
   });
 
   final int id;
@@ -339,6 +340,15 @@ class NfcDevice {
 
   /// Qaysi NFC ID'ga bog'langan.
   final String code;
+
+  /// Biznesga ulangan bo'lsa — kompaniya ID (`linkedCompanyId`).
+  ///
+  /// Ilgari o'qilmasdi: biznesga ulangan stiker ro'yxatda faqat
+  /// "•••• XXXX" bo'lib turardi va qaysi kompaniyaniki ekani
+  /// ko'rinmasdi (egasi, 2026-09-26).
+  final String companyId;
+
+  bool get business => companyId.isNotEmpty;
   final DateTime? lastSeen;
   final bool active;
 
@@ -359,10 +369,16 @@ class NfcDevice {
   /// kartani shundan ajratadi.
   factory NfcDevice.fromJson(Map<String, dynamic> j) {
     final tail = _s(j['tokenTail']);
+    final companyName = _s(j['linkedCompanyName']);
     return NfcDevice(
       id: _i(j['id']),
-      label: _s(j['linkedName'] ?? j['label'] ?? j['name'],
+      label: _s(
+          j['linkedName'] ??
+              (companyName.isNotEmpty ? companyName : null) ??
+              j['label'] ??
+              j['name'],
           tail.isEmpty ? 'NFC' : '•••• $tail'),
+      companyId: _s(j['linkedCompanyId']),
       code: _s(j['linkedCode'] ?? j['code'] ?? j['recordCode']),
       lastSeen: _dt(j['lastSeen'] ?? j['updatedAt'] ?? j['createdAt']),
       active: _b(j['active'], true),

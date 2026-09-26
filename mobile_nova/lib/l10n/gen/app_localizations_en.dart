@@ -2618,4 +2618,134 @@ class LEn extends L {
 
   @override
   String get phoneCountryTitle => 'Choose country';
+
+  @override
+  String get stickerActivate => 'Activate a sticker';
+
+  @override
+  String get stickerActivateHint =>
+      'A purchased sticker or card — with the code from the envelope';
+
+  @override
+  String get activateCodeTitle => 'Enter the code from the envelope';
+
+  @override
+  String get activateCodeHint =>
+      'The code is inside the envelope: NF-XXXX-XXXX. Case doesn’t matter.';
+
+  @override
+  String get activateCodeLabel => 'Activation code';
+
+  @override
+  String get activateStickerTapped =>
+      'Sticker detected — enter the code and it will be linked to your profile.';
+
+  @override
+  String get activateKindTitle => 'Which profile should the sticker open?';
+
+  @override
+  String get activateKindPersonal => 'Personal';
+
+  @override
+  String get activateKindPersonalHint => 'About you: contacts and social links';
+
+  @override
+  String get activateKindBusiness => 'Business';
+
+  @override
+  String get activateKindBusinessHint =>
+      'Shop or company: prices, catalog, hours';
+
+  @override
+  String get activateKindNote =>
+      'You can change it later in your account on the website (“NFC card”).';
+
+  @override
+  String get activatePickPersonal => 'Which profile should we link?';
+
+  @override
+  String get activatePickBusiness => 'Which company should we link?';
+
+  @override
+  String get activateNewId => 'New NFC ID';
+
+  @override
+  String get activateNewIdHint => 'You’ll get a free NFC ID';
+
+  @override
+  String get activateNoCompany =>
+      'You don’t have a business profile yet. Open one first, then come back here.';
+
+  @override
+  String get activateCreateCompany => 'Open a business profile';
+
+  @override
+  String get activateSubmit => 'Activate';
+
+  @override
+  String get activateDoneTitle => 'Sticker activated';
+
+  @override
+  String get activateDoneBound =>
+      'The sticker is linked to your profile. Try tapping your phone on it.';
+
+  @override
+  String get activateDoneTapNow =>
+      'Now tap your phone on the sticker — it will be linked to this profile. Do it within 7 days.';
+
+  @override
+  String get activateTapSticker => 'Tap the sticker';
+
+  @override
+  String get activateAttached =>
+      'Sticker linked — tapping it now opens your page.';
+
+  @override
+  String get activateOpenProfile => 'Open profile';
+
+  @override
+  String get activateNotSticker =>
+      'This isn’t an NFCSTORE sticker. Tap the sticker from the envelope.';
+
+  @override
+  String get activateErrBadCode =>
+      'Wrong code. Check the code in the envelope.';
+
+  @override
+  String get activateErrExpired => 'This code has expired.';
+
+  @override
+  String get activateErrUsed => 'This code has already been activated.';
+
+  @override
+  String get activateErrBlocked => 'This code is blocked — contact support.';
+
+  @override
+  String get activateErrBusy =>
+      'The code is being activated right now. Try again in a minute.';
+
+  @override
+  String get activateErrTaken =>
+      'This sticker is already linked to another profile.';
+
+  @override
+  String get activateErrNoPending =>
+      'No activated code to link to. Enter the code from the envelope first.';
+
+  @override
+  String get stickerOffTitle => 'Sticker switched off';
+
+  @override
+  String get stickerOffBody =>
+      'Its owner has temporarily switched this sticker off.';
+
+  @override
+  String get stickerUnknownTitle => 'Sticker not found';
+
+  @override
+  String get stickerUnknownBody =>
+      'This sticker isn’t registered with NFCSTORE.';
+
+  @override
+  String get cardLinkedBusiness => 'Business profile';
 }

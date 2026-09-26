@@ -89,17 +89,77 @@ class NfcRepository {
   /// (`hosting/worker.js`). Ilgari bu yerda `code` o'qilardi — server
   /// bunday maydon bermaydi, natija DOIM bo'sh edi va kartadagi
   /// token hech qachon profilga olib bormasdi.
-  Future<Result<({String code, bool company})>> resolveChip(
-      String chipToken) async {
+  ///
+  /// `found`/`active` HAM qaytariladi (2026-09-26). Ilgari ular
+  /// tashlab yuborilardi va natijada:
+  ///   * egasi O'CHIRIB QO'YGAN stiker ilovada baribir profilni ochardi
+  ///     (sayt esa "o'chirilgan" deydi);
+  ///   * hali ULANMAGAN (sotilgan, lekin faollashtirilmagan) stiker
+  ///     bosh sahifaga tashlab yuborardi — faollashtirishga emas.
+  Future<Result<ChipLookup>> resolveChip(String chipToken) async {
     final res = await _api
         .get<Map<String, dynamic>>('/api/tap/${Uri.encodeComponent(chipToken)}');
-    return res.map((j) {
-      final company = '${j['linkedCompanyId'] ?? ''}';
-      if (company.isNotEmpty) return (code: company, company: true);
-      final code =
-          '${j['linkedCode'] ?? j['code'] ?? j['record']?['code'] ?? ''}';
-      return (code: code, company: false);
+    return res.map(ChipLookup.fromJson);
+  }
+
+  // ---- sotib olingan stikerni faollashtirish -----------------------------
+  //
+  // Sayt bilan AYNAN bir xil server oqimi (`hosting/api/marketplace.js`,
+  // sayt: `src/pages/ActivatePage.jsx`). Ilovada alohida mantiq yo'q —
+  // hamma tekshiruv (kod, egalik, stiker bandligi) serverda.
+
+  /// Kodni tekshirish — hech narsa o'zgarmaydi. Kirish shart emas.
+  Future<Result<ActivationCheck>> activationCheck(String code) async {
+    final res = await _api.post<Map<String, dynamic>>(
+        '/api/activate/check', {'code': code});
+    return res.map(ActivationCheck.fromJson);
+  }
+
+  /// Tanlash uchun o'z profillari: shaxsiy ID'lar va kompaniyalar.
+  Future<Result<ActivationOptions>> activationOptions() async {
+    final res = await _api.get<Map<String, dynamic>>('/api/activate/options');
+    return res.map(ActivationOptions.fromJson);
+  }
+
+  /// FAOLLASHTIRISH — haqiqiy kodni SARFLAYDI (bir martalik).
+  ///
+  /// `deviceToken` — odam tekkizgan stiker (`/t/<token>`): u bo'lsa
+  /// stiker shu yerning o'zida bog'lanadi. Shaxsiy profilda
+  /// `profileCode` bo'sh bo'lsa server yangi bepul ID ajratadi.
+  Future<Result<ActivationResult>> activateSticker({
+    required String code,
+    required bool business,
+    String profileCode = '',
+    String companyId = '',
+    String deviceToken = '',
+  }) async {
+    final res = await _api.post<Map<String, dynamic>>('/api/activate', {
+      'code': code,
+      'profileKind': business ? 'business' : 'personal',
+      if (!business && profileCode.isNotEmpty) 'profileCode': profileCode,
+      if (business) 'companyId': companyId,
+      if (deviceToken.isNotEmpty) 'deviceToken': deviceToken,
     });
+    return res.map((j) => ActivationResult.fromJson(
+        (j['result'] as Map?)?.cast<String, dynamic>() ?? const {}));
+  }
+
+  /// Faollashtirilgan kodga KEYIN tekkizilgan stikerni bog'lash
+  /// (QR orqali faollashtirilgan bo'lsa). 7 kun ichida.
+  Future<Result<ActivationResult>> attachSticker({
+    required String deviceToken,
+    String code = '',
+  }) async {
+    final res = await _api.post<Map<String, dynamic>>(
+        '/api/activate/attach-sticker', {
+      'deviceToken': deviceToken,
+      if (code.isNotEmpty) 'code': code,
+    });
+    return res.map((j) => ActivationResult(
+          profileKind: '${j['profileKind'] ?? ''}',
+          profileCode: '${j['profileCode'] ?? ''}',
+          deviceBound: true,
+        ));
   }
 
   // ---- sovg'a qilish ------------------------------------------------------
@@ -148,6 +208,120 @@ class NfcRepository {
 
   Future<Result<void>> cancelGift(int id) =>
       _api.post<void>('/api/gift-offers/$id/cancel');
+}
+
+/// `/api/tap/<token>` natijasi.
+class ChipLookup {
+  const ChipLookup({
+    required this.found,
+    required this.active,
+    required this.code,
+    required this.company,
+  });
+
+  /// Stiker bazada bormi (noma'lum token — `false`).
+  final bool found;
+
+  /// Egasi o'chirib qo'ymaganmi.
+  final bool active;
+
+  /// Bog'langan NFC ID yoki kompaniya ID. Bo'sh — hali ulanmagan.
+  final String code;
+  final bool company;
+
+  /// Sotilgan, lekin hali faollashtirilmagan stiker.
+  bool get unlinked => found && code.isEmpty;
+
+  /// `GET /api/tap/<token>` javobi (`hosting/worker.js`):
+  /// `{found, active, linkedCode, linkedCompanyId}`.
+  factory ChipLookup.fromJson(Map<String, dynamic> j) {
+    final company = '${j['linkedCompanyId'] ?? ''}';
+    final code = company.isNotEmpty
+        ? company
+        : '${j['linkedCode'] ?? j['code'] ?? j['record']?['code'] ?? ''}';
+    return ChipLookup(
+      // Eski server `found` bermasdi — bog'langan kod bo'lsa topilgan.
+      found: j['found'] is bool ? j['found'] as bool : code.isNotEmpty,
+      active: j['active'] is bool ? j['active'] as bool : true,
+      code: code,
+      company: company.isNotEmpty,
+    );
+  }
+}
+
+/// Kod tekshiruvi (`POST /api/activate/check`).
+class ActivationCheck {
+  const ActivationCheck({this.productName = '', this.already});
+
+  final String productName;
+
+  /// Kodni SHU odam avval faollashtirgan bo'lsa — natija.
+  final ActivationResult? already;
+
+  factory ActivationCheck.fromJson(Map<String, dynamic> j) {
+    final product = (j['product'] as Map?)?.cast<String, dynamic>();
+    final result = (j['result'] as Map?)?.cast<String, dynamic>();
+    return ActivationCheck(
+      productName: '${product?['name'] ?? result?['productName'] ?? ''}',
+      already: j['alreadyActivated'] == true && result != null
+          ? ActivationResult.fromJson(result)
+          : null,
+    );
+  }
+}
+
+/// Faollashtirish uchun tanlanadigan profillar.
+class ActivationOptions {
+  const ActivationOptions({this.personal = const [], this.business = const []});
+
+  final List<({String code, String name, bool isPrimary})> personal;
+  final List<({String companyId, String name})> business;
+
+  factory ActivationOptions.fromJson(Map<String, dynamic> j) =>
+      ActivationOptions(
+        personal: [
+          for (final e in (j['personal'] as List? ?? const []).whereType<Map>())
+            (
+              code: '${e['code'] ?? ''}',
+              name: '${e['name'] ?? ''}',
+              isPrimary: e['isPrimary'] == true,
+            ),
+        ].where((e) => e.code.isNotEmpty).toList(),
+        business: [
+          for (final e in (j['business'] as List? ?? const []).whereType<Map>())
+            (
+              companyId: '${e['companyId'] ?? ''}',
+              name: '${e['displayName'] ?? ''}',
+            ),
+        ].where((e) => e.companyId.isNotEmpty).toList(),
+      );
+}
+
+/// Faollashtirish natijasi.
+class ActivationResult {
+  const ActivationResult({
+    this.profileKind = '',
+    this.profileCode = '',
+    this.productName = '',
+    this.deviceBound = false,
+  });
+
+  final String profileKind;
+  final String profileCode;
+  final String productName;
+
+  /// Stiker SHU amalda bog'landimi. `false` — endi stikerga tekkizish
+  /// kerak (QR bilan kelgan odam).
+  final bool deviceBound;
+
+  bool get business => profileKind == 'business';
+
+  factory ActivationResult.fromJson(Map<String, dynamic> j) => ActivationResult(
+        profileKind: '${j['profileKind'] ?? ''}',
+        profileCode: '${j['profileCode'] ?? ''}',
+        productName: '${j['productName'] ?? ''}',
+        deviceBound: j['deviceBound'] == true,
+      );
 }
 
 final nfcRepositoryProvider = Provider<NfcRepository>(

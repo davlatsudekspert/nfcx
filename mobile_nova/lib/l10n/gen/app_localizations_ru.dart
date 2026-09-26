@@ -2615,4 +2615,133 @@ class LRu extends L {
 
   @override
   String get phoneCountryTitle => 'Выберите страну';
+
+  @override
+  String get stickerActivate => 'Активировать наклейку';
+
+  @override
+  String get stickerActivateHint =>
+      'Купленная наклейка или карта — по коду из конверта';
+
+  @override
+  String get activateCodeTitle => 'Введите код из конверта';
+
+  @override
+  String get activateCodeHint =>
+      'Код написан внутри конверта: NF-XXXX-XXXX. Регистр не важен.';
+
+  @override
+  String get activateCodeLabel => 'Код активации';
+
+  @override
+  String get activateStickerTapped =>
+      'Наклейка определена — введите код, и она привяжется к профилю.';
+
+  @override
+  String get activateKindTitle => 'Какой профиль будет открывать наклейка?';
+
+  @override
+  String get activateKindPersonal => 'Личный';
+
+  @override
+  String get activateKindPersonalHint => 'О вас: контакты и соцсети';
+
+  @override
+  String get activateKindBusiness => 'Бизнес';
+
+  @override
+  String get activateKindBusinessHint =>
+      'Магазин или компания: цены, каталог, часы работы';
+
+  @override
+  String get activateKindNote =>
+      'Позже можно поменять в кабинете на сайте («NFC-карта»).';
+
+  @override
+  String get activatePickPersonal => 'К какому профилю привязать?';
+
+  @override
+  String get activatePickBusiness => 'К какой компании привязать?';
+
+  @override
+  String get activateNewId => 'Новый NFC ID';
+
+  @override
+  String get activateNewIdHint => 'Вам выдадут бесплатный NFC ID';
+
+  @override
+  String get activateNoCompany =>
+      'У вас ещё нет бизнес-профиля. Сначала откройте его — потом вернётесь сюда.';
+
+  @override
+  String get activateCreateCompany => 'Открыть бизнес-профиль';
+
+  @override
+  String get activateSubmit => 'Активировать';
+
+  @override
+  String get activateDoneTitle => 'Наклейка активирована';
+
+  @override
+  String get activateDoneBound =>
+      'Наклейка привязана к вашему профилю. Попробуйте приложить телефон.';
+
+  @override
+  String get activateDoneTapNow =>
+      'Теперь приложите телефон к наклейке — она привяжется к этому профилю. Сделайте это в течение 7 дней.';
+
+  @override
+  String get activateTapSticker => 'Приложить наклейку';
+
+  @override
+  String get activateAttached =>
+      'Наклейка привязана — теперь при касании откроется ваша страница.';
+
+  @override
+  String get activateOpenProfile => 'Открыть профиль';
+
+  @override
+  String get activateNotSticker =>
+      'Это не наклейка NFCSTORE. Приложите наклейку из конверта.';
+
+  @override
+  String get activateErrBadCode => 'Неверный код. Проверьте код в конверте.';
+
+  @override
+  String get activateErrExpired => 'Срок действия кода истёк.';
+
+  @override
+  String get activateErrUsed => 'Этот код уже активирован.';
+
+  @override
+  String get activateErrBlocked =>
+      'Этот код заблокирован — напишите в поддержку.';
+
+  @override
+  String get activateErrBusy =>
+      'Код сейчас активируется. Попробуйте через минуту.';
+
+  @override
+  String get activateErrTaken =>
+      'Эта наклейка уже привязана к другому профилю.';
+
+  @override
+  String get activateErrNoPending =>
+      'Не найден активированный код для привязки. Сначала введите код из конверта.';
+
+  @override
+  String get stickerOffTitle => 'Наклейка отключена';
+
+  @override
+  String get stickerOffBody => 'Владелец временно отключил эту наклейку.';
+
+  @override
+  String get stickerUnknownTitle => 'Наклейка не найдена';
+
+  @override
+  String get stickerUnknownBody =>
+      'Эта наклейка не зарегистрирована в NFCSTORE.';
+
+  @override
+  String get cardLinkedBusiness => 'Бизнес-профиль';
 }

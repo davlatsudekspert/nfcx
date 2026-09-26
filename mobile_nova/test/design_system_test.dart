@@ -66,6 +66,13 @@ void main() {
         // sabab: odam tugmani RANGIDAN taniydi. Qiymatlar saytdagi
         // `CompanyQuickProfilePage.jsx` `quick` ro'yxatidan.
         'lib/design/widgets/contact_buttons.dart',
+        // IVORY NFC ID KARTASI — saytdagi qora namuna karta MATERIALI
+        // (egasi, 2026-09-26: "sitedagi qora qilingan kartani ilovada
+        // ham qilish kerak"). `id_lux.dart` dagi metall kabi bu mavzu
+        // aksenti emas, mahsulot ko'rinishi; boshqa mavzular kartani
+        // hamon tokenlardan chizadi (`_CardInk.of`). Qoralik
+        // `sticker_activate_test.dart` da o'lchab tekshiriladi.
+        'lib/design/widgets/nfc_id_hero.dart',
       };
 
       final offenders = <String>[];

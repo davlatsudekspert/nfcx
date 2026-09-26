@@ -16,6 +16,7 @@ import '../../design/widgets/nova_scaffold.dart';
 import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
+import '../../routing/routes.dart';
 import '../auth/session.dart';
 import '../home/home_screen.dart';
 import '../profile/profile_repository.dart';
@@ -41,6 +42,16 @@ class NfcCardsScreen extends ConsumerWidget {
     return NovaScaffold(
       title: l.nfcCards,
       showBack: true,
+      // Sotib olingan stiker/kartani shu yerdan ham ulash mumkin —
+      // ilgari faqat saytda edi (egasi, 2026-09-26).
+      actions: [
+        NovaIconButton(
+          icon: Icons.add_rounded,
+          tooltip: l.stickerActivate,
+          onPressed: () => context.push(Routes.nfcActivate),
+        ),
+        const SizedBox(width: Gap.sm),
+      ],
       body: devices.when(
         loading: () => const SkeletonList(count: 3),
         error: (e, __) => StatePanel.fromError(context, asAppError(e),
@@ -49,7 +60,9 @@ class NfcCardsScreen extends ConsumerWidget {
             ? StatePanel(
                 icon: Icons.credit_card_off_rounded,
                 title: l.stateEmpty,
-                message: l.nfcHoldCard,
+                message: l.stickerActivateHint,
+                actionLabel: l.stickerActivate,
+                onAction: () => context.push(Routes.nfcActivate),
               )
             : ListView.separated(
                 padding:
@@ -71,8 +84,12 @@ class NfcCardsScreen extends ConsumerWidget {
                             borderRadius: R.tile,
                             border: Border.all(color: t.border2),
                           ),
-                          child: Icon(Icons.credit_card_rounded,
-                              size: 20, color: t.accent2),
+                          child: Icon(
+                              d.business
+                                  ? Icons.storefront_rounded
+                                  : Icons.credit_card_rounded,
+                              size: 20,
+                              color: t.accent2),
                         ),
                         const SizedBox(width: Gap.md),
                         Expanded(
@@ -88,6 +105,15 @@ class NfcCardsScreen extends ConsumerWidget {
                                   style: Theme.of(context).textTheme.titleSmall),
                               if (d.code.isNotEmpty)
                                 Text(d.code,
+                                    style: AppType.monoStyle(
+                                        color: t.text3, size: 11)),
+                              // BIZNES STIKERI — kod `linked_code` da emas,
+                              // `linked_company_id` da turadi. Ilgari
+                              // ko'rinmasdi (egasi, 2026-09-26).
+                              if (d.code.isEmpty && d.business)
+                                Text('${l.cardLinkedBusiness} · ${d.companyId}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     style: AppType.monoStyle(
                                         color: t.text3, size: 11)),
                               // HOLAT YOZUVDA (egasi, 2026-09-24: "bloklash

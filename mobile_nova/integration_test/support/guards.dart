@@ -19,6 +19,8 @@ const forbiddenCalls = <String, String>{
   'setPrimary': 'asosiy NFC ID ni almashtiradi',
   'unlinkDevice': 'haqiqiy jismoniy kartani uzadi',
   'resolveChip': 'haqiqiy chip tokenini sarflaydi',
+  'activateSticker': 'haqiqiy aktivatsiya kodini sarflaydi',
+  'attachSticker': 'haqiqiy stikerni hisobga bog\'laydi',
 
   // ── Sovg'a — ID boshqa odamga o'tadi ────────────────────────
   'gift': 'haqiqiy NFC ID ni sovg\'a qiladi',

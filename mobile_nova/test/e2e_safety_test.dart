@@ -46,6 +46,8 @@ void main() {
       'setPrimary(': 'asosiy NFC ID ni almashtiradi',
       'unlinkDevice(': 'haqiqiy jismoniy kartani uzadi',
       'resolveChip(': 'haqiqiy chip tokenini sarflaydi',
+      'activateSticker(': 'haqiqiy aktivatsiya kodini sarflaydi',
+      'attachSticker(': 'haqiqiy stikerni hisobga bog\'laydi',
       'acceptGift(': 'haqiqiy sovg\'ani qabul qiladi',
       'rejectGift(': 'haqiqiy sovg\'ani rad etadi',
       'cancelGift(': 'haqiqiy sovg\'ani bekor qiladi',

@@ -42,6 +42,7 @@ void main() {
     Routes.nfcWrite,
     Routes.nfcHistory,
     Routes.nfcCards,
+    Routes.nfcActivate,
     Routes.nfcSecurity,
     Routes.profileEdit,
     Routes.business,

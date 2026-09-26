@@ -27,6 +27,7 @@ import '../features/demo/demo_screens.dart';
 import '../features/nfc/nfc_ids_screen.dart';
 import '../features/nfc/nfc_misc_screens.dart';
 import '../features/nfc/nfc_scan_screen.dart';
+import '../features/nfc/sticker_activate_screen.dart';
 import '../features/nfc/nfc_write_screen.dart';
 import '../features/social/featured_screen.dart';
 import '../features/profile/follow_list_screen.dart';
@@ -193,11 +194,31 @@ final routerProvider = Provider<GoRouter>((ref) {
               .read(nfcRepositoryProvider)
               .resolveChip(s.pathParameters['token'] ?? '');
           final chip = res.valueOrNull;
-          if (chip == null || chip.code.isEmpty) return Routes.home;
+          // Tarmoq xatosi — avvalgidek bosh sahifa.
+          if (chip == null) return Routes.home;
+          // Sotilgan, lekin hali ULANMAGAN stiker — faollashtirishga
+          // (ilgari bosh sahifaga tashlab yuborardi). Token o'zi bilan
+          // ketadi: faollashtirishda aynan shu stiker bog'lanadi.
+          if (chip.unlinked) {
+            return Routes.nfcActivateSticker(s.pathParameters['token'] ?? '');
+          }
+          if (!chip.found) return Routes.stickerStatus('unknown');
+          // Egasi o'chirib qo'ygan — profil OCHILMAYDI (sayt kabi).
+          if (!chip.active) return Routes.stickerStatus('off');
           return chip.company
               ? Routes.storefront(chip.code)
               : Routes.user(chip.code);
         },
+      ),
+      GoRoute(
+        path: Routes.nfcActivate,
+        builder: (_, s) => StickerActivateScreen(
+            deviceToken: s.uri.queryParameters['d'] ?? ''),
+      ),
+      GoRoute(
+        path: '/nfc/sticker/:kind',
+        builder: (_, s) =>
+            StickerStatusScreen(off: s.pathParameters['kind'] == 'off'),
       ),
       GoRoute(
         path: '/u/:code',

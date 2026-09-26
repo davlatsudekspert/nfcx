@@ -262,10 +262,7 @@ class _CardBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Sirt: yuqori chapda sof karta rangi, pastki o'ngda unga
-    // champagne tusi aralashgan. Yorug' mavzuda bu fil suyagi rangini
-    // beradi; qorong'ida esa mavzu yuzalari orasida qoladi.
-    final warm = Color.lerp(t.surfaceSolid, t.brandSoft, t.isDark ? .18 : .42)!;
+    final ink = _CardInk.of(t);
     final code = widget.code;
 
     return Semantics(
@@ -278,23 +275,13 @@ class _CardBody extends StatelessWidget {
           gradient: LinearGradient(
             begin: const Alignment(-.9, -1),
             end: const Alignment(1, 1),
-            colors: [t.surfaceSolid, t.surfaceSolid, warm],
-            stops: const [0, .45, 1],
+            colors: ink.bg,
+            stops: ink.stops,
           ),
           // Aniqroq oltin chiziq va champagne tusli chuqur soya —
           // karta sirtdan ko'tarilgan qimmat buyumdek (redizayn 2026-09-24).
-          border: Border.all(
-              color: t.brand.withValues(alpha: t.isDark ? .38 : .55)),
-          boxShadow: [
-            ...t.shadowFloat,
-            if (!t.isDark)
-              BoxShadow(
-                color: t.brand.withValues(alpha: .18),
-                blurRadius: 34,
-                spreadRadius: -16,
-                offset: const Offset(0, 20),
-              ),
-          ],
+          border: Border.all(color: ink.border),
+          boxShadow: ink.shadow,
         ),
         child: ClipRRect(
           borderRadius: _radius,
@@ -311,7 +298,7 @@ class _CardBody extends StatelessWidget {
                     child: CustomPaint(
                       painter: _GuillochePainter(
                         progress: rings,
-                        color: t.brand.withValues(alpha: t.isDark ? .22 : .30),
+                        color: ink.rings,
                       ),
                     ),
                   ),
@@ -328,7 +315,7 @@ class _CardBody extends StatelessWidget {
                     decoration: BoxDecoration(
                       gradient: LinearGradient(colors: [
                         Colors.white.withValues(alpha: 0),
-                        Colors.white.withValues(alpha: t.isDark ? .18 : .95),
+                        Colors.white.withValues(alpha: ink.edge),
                         Colors.white.withValues(alpha: 0),
                       ]),
                     ),
@@ -342,8 +329,7 @@ class _CardBody extends StatelessWidget {
                     margin: const EdgeInsets.all(7),
                     decoration: BoxDecoration(
                       borderRadius: _inner,
-                      border: Border.all(
-                          color: t.brand.withValues(alpha: .22)),
+                      border: Border.all(color: ink.inner),
                     ),
                   ),
                 ),
@@ -362,7 +348,7 @@ class _CardBody extends StatelessWidget {
                               widget.eyebrow.toUpperCase(),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: AppType.eyebrow(color: t.brandInk),
+                              style: AppType.eyebrow(color: ink.eyebrow),
                             ),
                           ),
                           if (widget.tier != null) ...[
@@ -370,7 +356,7 @@ class _CardBody extends StatelessWidget {
                             if (IdLux.isPaid(widget.tierCode))
                               IdTierBadge(tier: widget.tierCode)
                             else
-                              _TierChip(label: widget.tier!, t: t),
+                              _TierChip(label: widget.tier!, ink: ink),
                           ],
                         ],
                       ),
@@ -384,7 +370,7 @@ class _CardBody extends StatelessWidget {
                             code ?? '—',
                             maxLines: 1,
                             style: AppType.heroId(
-                                color: t.text1, size: idSize),
+                                color: ink.text1, size: idSize),
                           ),
                         ),
                       ),
@@ -413,7 +399,7 @@ class _CardBody extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                   style: widget.technical
                                       ? AppType.monoStyle(
-                                          color: t.text2,
+                                          color: ink.text2,
                                           size: 12,
                                           weight: FontWeight.w500,
                                           letterSpacing: .2,
@@ -423,7 +409,7 @@ class _CardBody extends StatelessWidget {
                                           fontSize: 14.5,
                                           fontWeight: FontWeight.w600,
                                           height: 1.3,
-                                          color: t.text1,
+                                          color: ink.text1,
                                         ),
                                 ),
                                 if (widget.subtitle.isNotEmpty)
@@ -436,7 +422,7 @@ class _CardBody extends StatelessWidget {
                                       fontSize: 12,
                                       fontWeight: FontWeight.w500,
                                       height: 1.35,
-                                      color: t.text2,
+                                      color: ink.text2,
                                     ),
                                   ),
                               ],
@@ -446,13 +432,14 @@ class _CardBody extends StatelessWidget {
                             _Status(
                                 label: widget.statusLabel!,
                                 ok: widget.statusOk,
-                                t: t),
+                                t: t,
+                                ink: ink),
                             if (widget.actions.isNotEmpty)
                               const SizedBox(width: Gap.md),
                           ],
                           for (var i = 0; i < widget.actions.length; i++) ...[
                             if (i > 0) const SizedBox(width: Gap.sm),
-                            _RoundAction(action: widget.actions[i], t: t),
+                            _RoundAction(action: widget.actions[i], ink: ink),
                           ],
                         ],
                       ),
@@ -469,31 +456,33 @@ class _CardBody extends StatelessWidget {
 }
 
 class _TierChip extends StatelessWidget {
-  const _TierChip({required this.label, required this.t});
+  const _TierChip({required this.label, required this.ink});
 
   final String label;
-  final NfcTokens t;
+  final _CardInk ink;
 
   @override
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.fromLTRB(9, 4, 8, 3),
         decoration: BoxDecoration(
           borderRadius: R.pill,
-          border: Border.all(color: t.brand.withValues(alpha: .6)),
+          border: Border.all(color: ink.chipBorder),
         ),
         child: Text(
           label.toUpperCase(),
-          style: AppType.eyebrow(color: t.brandInk, size: 9),
+          style: AppType.eyebrow(color: ink.eyebrow, size: 9),
         ),
       );
 }
 
 class _Status extends StatelessWidget {
-  const _Status({required this.label, required this.ok, required this.t});
+  const _Status(
+      {required this.label, required this.ok, required this.t, required this.ink});
 
   final String label;
   final bool ok;
   final NfcTokens t;
+  final _CardInk ink;
 
   Color get _dot => ok ? t.success : t.warn;
 
@@ -522,7 +511,7 @@ class _Status extends StatelessWidget {
               fontFamily: AppType.sans,
               fontSize: 11.5,
               fontWeight: FontWeight.w600,
-              color: t.text2,
+              color: ink.text2,
             ),
           ),
         ],
@@ -530,10 +519,10 @@ class _Status extends StatelessWidget {
 }
 
 class _RoundAction extends StatelessWidget {
-  const _RoundAction({required this.action, required this.t});
+  const _RoundAction({required this.action, required this.ink});
 
   final NfcIdHeroAction action;
-  final NfcTokens t;
+  final _CardInk ink;
 
   @override
   Widget build(BuildContext context) => Tooltip(
@@ -554,17 +543,116 @@ class _RoundAction extends StatelessWidget {
                   height: 34,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: t.surfaceSolid,
-                    border: Border.all(color: t.border1),
-                    boxShadow: t.shadowTiny,
+                    color: ink.actionBg,
+                    border: Border.all(color: ink.actionBorder),
+                    boxShadow: ink.actionShadow,
                   ),
-                  child: Icon(action.icon, size: 16, color: t.text1),
+                  child: Icon(action.icon, size: 16, color: ink.text1),
                 ),
               ),
             ),
           ),
         ),
       );
+}
+
+/// Kartaning ranglari.
+///
+/// IVORY'DA KARTA QORA (egasi, 2026-09-26: "saytdagi qora qilingan kartani
+/// ilovada ham qilish kerak"). Sayt Pearl mavzusidagi namuna karta bilan
+/// AYNAN bir xil: grafit #2C2B28 → #151514 → #22211F, iliq oq yozuv
+/// #F4F1E8, oq 16% hoshiya (src/themes.css `--showcase-card-*`). Oq fonda
+/// qora karta — ekrandagi eng aniq obyekt; champagne halqa va ichki ramka
+/// qora ustida ham brend imzosi bo'lib qoladi. Porlash va nur yo'q.
+///
+/// Boshqa mavzularda karta avvalgidek mavzu yuzasidan chiziladi.
+class _CardInk {
+  const _CardInk({
+    required this.bg,
+    required this.stops,
+    required this.border,
+    required this.shadow,
+    required this.rings,
+    required this.edge,
+    required this.inner,
+    required this.eyebrow,
+    required this.chipBorder,
+    required this.text1,
+    required this.text2,
+    required this.actionBg,
+    required this.actionBorder,
+    required this.actionShadow,
+  });
+
+  final List<Color> bg;
+  final List<double> stops;
+  final Color border;
+  final List<BoxShadow> shadow;
+  final Color rings;
+  final double edge;
+  final Color inner;
+  final Color eyebrow;
+  final Color chipBorder;
+  final Color text1;
+  final Color text2;
+  final Color actionBg;
+  final Color actionBorder;
+  final List<BoxShadow> actionShadow;
+
+  static const _fg = Color(0xFFF4F1E8);
+
+  factory _CardInk.of(NfcTokens t) {
+    if (t.id == 'ivory') {
+      return _CardInk(
+        bg: const [Color(0xFF2C2B28), Color(0xFF151514), Color(0xFF22211F)],
+        stops: const [0, .52, 1],
+        border: Colors.white.withValues(alpha: .16),
+        shadow: const [
+          BoxShadow(color: Color(0x52171716), blurRadius: 45, offset: Offset(0, 20)),
+          BoxShadow(color: Color(0x33171716), blurRadius: 8, offset: Offset(0, 2)),
+        ],
+        rings: t.brand.withValues(alpha: .30),
+        edge: .10,
+        inner: t.brand.withValues(alpha: .30),
+        eyebrow: t.brandSoft,
+        chipBorder: t.brandSoft.withValues(alpha: .55),
+        text1: _fg,
+        text2: _fg.withValues(alpha: .62),
+        actionBg: Colors.white.withValues(alpha: .08),
+        actionBorder: Colors.white.withValues(alpha: .18),
+        actionShadow: const [],
+      );
+    }
+    // Sirt: yuqori chapda sof karta rangi, pastki o'ngda unga
+    // champagne tusi aralashgan. Yorug' mavzuda bu fil suyagi rangini
+    // beradi; qorong'ida esa mavzu yuzalari orasida qoladi.
+    final warm = Color.lerp(t.surfaceSolid, t.brandSoft, t.isDark ? .18 : .42)!;
+    return _CardInk(
+      bg: [t.surfaceSolid, t.surfaceSolid, warm],
+      stops: const [0, .45, 1],
+      border: t.brand.withValues(alpha: t.isDark ? .38 : .55),
+      shadow: [
+        ...t.shadowFloat,
+        if (!t.isDark)
+          BoxShadow(
+            color: t.brand.withValues(alpha: .18),
+            blurRadius: 34,
+            spreadRadius: -16,
+            offset: const Offset(0, 20),
+          ),
+      ],
+      rings: t.brand.withValues(alpha: t.isDark ? .22 : .30),
+      edge: t.isDark ? .18 : .95,
+      inner: t.brand.withValues(alpha: .22),
+      eyebrow: t.brandInk,
+      chipBorder: t.brand.withValues(alpha: .6),
+      text1: t.text1,
+      text2: t.text2,
+      actionBg: t.surfaceSolid,
+      actionBorder: t.border1,
+      actionShadow: t.shadowTiny,
+    );
+  }
 }
 
 /// Konsentrik ingichka halqalar — NFC to'lqini, gravyura uslubida.

@@ -175,6 +175,14 @@ class NfcCenterScreen extends ConsumerWidget {
                     mono: true,
                     onTap: () => showQrSheet(context, id),
                   ),
+                // Sotib olingan stiker/karta — konvertdagi kod bilan.
+                // Ilgari bu faqat saytda edi (egasi, 2026-09-26).
+                _ActionRow(
+                  icon: Icons.add_card_rounded,
+                  title: l.stickerActivate,
+                  subtitle: l.stickerActivateHint,
+                  onTap: () => context.push(Routes.nfcActivate),
+                ),
                 _ActionRow(
                   icon: Icons.credit_card_rounded,
                   title: l.nfcCards,

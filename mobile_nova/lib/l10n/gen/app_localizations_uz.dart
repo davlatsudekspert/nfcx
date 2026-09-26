@@ -2620,4 +2620,134 @@ class LUz extends L {
 
   @override
   String get phoneCountryTitle => 'Davlatni tanlang';
+
+  @override
+  String get stickerActivate => 'Stikerni faollashtirish';
+
+  @override
+  String get stickerActivateHint =>
+      'Sotib olingan stiker yoki karta — konvertdagi kod bilan';
+
+  @override
+  String get activateCodeTitle => 'Konvertdagi kodni kiriting';
+
+  @override
+  String get activateCodeHint =>
+      'Kod konvert ichida yozilgan: NF-XXXX-XXXX. Katta-kichik harf farqi yo‘q.';
+
+  @override
+  String get activateCodeLabel => 'Aktivatsiya kodi';
+
+  @override
+  String get activateStickerTapped =>
+      'Stiker aniqlandi — kodni kiriting, u shu profilga ulanadi.';
+
+  @override
+  String get activateKindTitle => 'Stiker qaysi profilni ochsin?';
+
+  @override
+  String get activateKindPersonal => 'Shaxsiy';
+
+  @override
+  String get activateKindPersonalHint =>
+      'Siz haqingizda: kontaktlar va ijtimoiy tarmoqlar';
+
+  @override
+  String get activateKindBusiness => 'Biznes';
+
+  @override
+  String get activateKindBusinessHint =>
+      'Do‘kon yoki kompaniya: narxlar, katalog, ish vaqti';
+
+  @override
+  String get activateKindNote =>
+      'Keyin saytdagi kabinetdan («NFC karta») o‘zgartirsa bo‘ladi.';
+
+  @override
+  String get activatePickPersonal => 'Qaysi profilga ulaymiz?';
+
+  @override
+  String get activatePickBusiness => 'Qaysi kompaniyaga ulaymiz?';
+
+  @override
+  String get activateNewId => 'Yangi NFC ID';
+
+  @override
+  String get activateNewIdHint => 'Sizga bepul NFC ID beriladi';
+
+  @override
+  String get activateNoCompany =>
+      'Sizda hali biznes profil yo‘q. Avval uni oching — keyin shu yerga qaytasiz.';
+
+  @override
+  String get activateCreateCompany => 'Biznes profil ochish';
+
+  @override
+  String get activateSubmit => 'Faollashtirish';
+
+  @override
+  String get activateDoneTitle => 'Stiker faollashtirildi';
+
+  @override
+  String get activateDoneBound =>
+      'Stiker profilingizga ulandi. Telefonni tekkizib ko‘ring.';
+
+  @override
+  String get activateDoneTapNow =>
+      'Endi stikerni telefonga tekkizing — u shu profilga ulanadi. Buni 7 kun ichida qiling.';
+
+  @override
+  String get activateTapSticker => 'Stikerni tekkizish';
+
+  @override
+  String get activateAttached =>
+      'Stiker ulandi — endi tekkizilganda sahifangiz ochiladi.';
+
+  @override
+  String get activateOpenProfile => 'Profilni ochish';
+
+  @override
+  String get activateNotSticker =>
+      'Bu NFCSTORE stikeri emas. Konvertdagi stikerni tekkizing.';
+
+  @override
+  String get activateErrBadCode =>
+      'Kod noto‘g‘ri. Konvertdagi kodni qayta tekshiring.';
+
+  @override
+  String get activateErrExpired => 'Bu kodning muddati tugagan.';
+
+  @override
+  String get activateErrUsed => 'Bu kod allaqachon faollashtirilgan.';
+
+  @override
+  String get activateErrBlocked =>
+      'Bu kod bloklangan — qo‘llab-quvvatlashga yozing.';
+
+  @override
+  String get activateErrBusy =>
+      'Kod hozir faollashtirilmoqda. Bir daqiqadan keyin qayta urinib ko‘ring.';
+
+  @override
+  String get activateErrTaken =>
+      'Bu stiker allaqachon boshqa profilga ulangan.';
+
+  @override
+  String get activateErrNoPending =>
+      'Ulash uchun faollashtirilgan kod topilmadi. Avval konvertdagi kodni kiriting.';
+
+  @override
+  String get stickerOffTitle => 'Stiker o‘chirilgan';
+
+  @override
+  String get stickerOffBody => 'Bu stikerni egasi vaqtincha o‘chirib qo‘ygan.';
+
+  @override
+  String get stickerUnknownTitle => 'Stiker topilmadi';
+
+  @override
+  String get stickerUnknownBody => 'Bu stiker NFCSTORE’da ro‘yxatga olinmagan.';
+
+  @override
+  String get cardLinkedBusiness => 'Biznes profil';
 }
