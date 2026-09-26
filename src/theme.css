@@ -1178,6 +1178,16 @@ body.pricing-bg footer{background:var(--color-page-bg);}
 .cat-price { font-size: 15px; font-weight: 800; color: color-mix(in srgb, var(--tint-base) 88%, transparent); white-space: nowrap; }
 .cat-when { font-size: 11.5px; color: color-mix(in srgb, var(--tint-base) 38%, transparent); white-space: nowrap; }
 
+/* TARIF MATERIALI — qora karta, oq yozuv (CatalogCard `cat-card--mix`).
+   Fon va hoshiya JSX'dan (`TIER_CARD_MIX`); bu yerda faqat ichki
+   elementlar qora yuzaga moslashadi. Chap tarif chizig'i olib tashlandi —
+   material rangining o'zi tarifni aytadi. */
+.cat-card--mix { color: #f4f1e8; box-shadow: 0 14px 34px -18px rgba(0, 0, 0, .55); }
+.cat-card--mix::before { display: none; }
+.cat-card--mix .cat-av { border-color: rgba(255, 255, 255, .22); background: rgba(255, 255, 255, .06); color: #f4f1e8; }
+.cat-card--mix .cat-chips > span { color: rgba(244, 241, 232, .62); border: 1px solid rgba(255, 255, 255, .14); }
+.cat-card--mix .cat-rule { background: linear-gradient(90deg, rgba(255, 255, 255, .22), transparent); }
+
 /* Hover — RASM emas, KARTANING O'ZI kattalashadi.
    Avval avatar 1.75 barobar kattayib kartadan tashqariga chiqib ketardi va
    qo'shni kartalar ustiga tushardi. Endi butun karta bir tekis kattalashadi:

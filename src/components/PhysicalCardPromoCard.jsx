@@ -84,14 +84,14 @@ export default function PhysicalCardPromoCard() {
               src={brandLockup}
               alt="NFCSTORE"
               className="h-[34px] w-auto shrink-0 sm:h-[42px]"
-              style={{ filter: 'var(--brand-mark-filter)' }}
+              style={{ filter: 'var(--promo-mark-filter, var(--brand-mark-filter))' }}
             />
             <img
               src={brandMark}
               alt=""
               aria-hidden="true"
               className="mt-0.5 h-[38px] w-[38px] shrink-0 object-contain"
-              style={{ filter: 'var(--brand-mark-filter)' }}
+              style={{ filter: 'var(--promo-mark-filter, var(--brand-mark-filter))' }}
             />
           </span>
 
@@ -110,8 +110,8 @@ export default function PhysicalCardPromoCard() {
             <span
               className="inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-[15px] font-extrabold"
               style={{
-                background: 'var(--button-bg)',
-                color: 'var(--button-text)',
+                background: 'var(--promo-btn-bg, var(--button-bg))',
+                color: 'var(--promo-btn-ink, var(--button-text))',
                 boxShadow: '0 6px 18px -8px var(--accent-glow)',
               }}
             >

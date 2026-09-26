@@ -3,7 +3,7 @@ import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { useCategories, catPath } from '../lib/categories.js';
 import { IconEye } from './Icons.jsx';
-import { tierForCode, TIER_COLOR, TIER_LABEL, TIER_EMOJI } from '../lib/pricing.js';
+import { tierForCode, TIER_COLOR, TIER_LABEL, TIER_EMOJI, TIER_CARD_MIX } from '../lib/pricing.js';
 
 // ═══════════════════════════════════════════════════════════════════════
 // KATALOG KARTASI — YAGONA ta'rif (2026-09)
@@ -22,17 +22,28 @@ export default function CatalogCard({ item: it, idx = 0 }) {
   const cats = useCategories();
   const cp = catPath(cats, it.categorySlug, lang);
   const tier = it.tierOverride || tierForCode(it.code);
-  const tc = TIER_COLOR[tier] || '#8a8a8a';
+  // TARIF MATERIALI (egasi, 2026-09-26: "kartalarni o'zining tarifi bilan
+  // rang qilib qo'y, sariqliklarni olib tashla"). Ilgari hamma karta
+  // och fonda oltin hoshiyali edi — Ekslyuziv, Premium va Gold uchalasi
+  // ham sarg'ish bo'lib, bir-biridan ajralmasdi. Endi karta Narxlar
+  // sahifasidagi tarif kartasi bilan AYNAN bir xil: qoradan tarif rangiga
+  // yumshoq o'tish, oq yozuv. Mavzuga bog'liq emas — ID hamma joyda bir xil.
+  const mix = TIER_CARD_MIX[tier] || TIER_CARD_MIX.silver;
+  const tc = mix.nameColor || TIER_COLOR[tier] || '#c6cdd6';
 
   return (
     <button
       type="button"
-      className="cat-card cat-card--v2 tier-shine min-w-0 cursor-pointer rounded-2xl p-5 text-left"
+      className="cat-card cat-card--v2 cat-card--mix tier-shine min-w-0 cursor-pointer rounded-2xl p-5 text-left"
       style={{
+        background: mix.background,
+        border: mix.border,
+        // Ichki matnlar `--tint-base` dan olinadi — qora kartada oq.
+        '--tint-base': '#ffffff',
+        '--text-primary': '#f4f1e8',
         '--tier': tc,
-        '--tier-line': tc + 'b3',
-        '--tier-glow': tc + '3d',
-        '--tier-fill': tc + '14',
+        '--tier-line': mix.iconBg,
+        '--tier-glow': mix.iconBg,
         '--shine-delay': `${(idx % 7) * 0.55}s`,
       }}
       onClick={() => navigate('/' + it.code)}
@@ -63,7 +74,7 @@ export default function CatalogCard({ item: it, idx = 0 }) {
         <span className="cat-meta">
           <span
             className="shrink-0 rounded-full px-2 py-0.5 text-[13px] font-bold uppercase tracking-wide"
-            style={{ color: tc, background: tc + '1f', border: `1px solid ${tc}44` }}
+            style={{ color: mix.iconColor, background: mix.iconBg, border: mix.border }}
           >
             {TIER_EMOJI[tier] ? TIER_EMOJI[tier] + ' ' : ''}{t(TIER_LABEL[tier] || tier)}
           </span>
@@ -74,9 +85,9 @@ export default function CatalogCard({ item: it, idx = 0 }) {
       </div>
       {it.role && <div className="cat-role">{it.role}</div>}
       {(cp || it.city) && (
-        <div className="mt-2 flex flex-wrap gap-1.5 text-[14px] text-base-content/45">
-          {cp && <span className="rounded-full border border-white/10 px-2 py-0.5">{cp}</span>}
-          {it.city && <span className="rounded-full border border-white/10 px-2 py-0.5">{it.city}</span>}
+        <div className="cat-chips mt-2 flex flex-wrap gap-1.5 text-[14px]">
+          {cp && <span className="rounded-full px-2 py-0.5">{cp}</span>}
+          {it.city && <span className="rounded-full px-2 py-0.5">{it.city}</span>}
         </div>
       )}
       <div className="cat-rule" />
@@ -96,7 +107,7 @@ export default function CatalogCard({ item: it, idx = 0 }) {
             ko'rsatadi va keyinchalik bu ID'lar sotuvga qo'yilsa,
             yorliq o'zi o'zgaradi. */}
         {(it.isGift || it.notForSale)
-          ? <span className="rounded-full bg-[color:var(--vz-gold,#d4af5a)]/15 px-2.5 py-0.5 text-[13px] font-bold text-[color:var(--accent-text)]">{t("Sovg'a")}</span>
+          ? <span className="rounded-full px-2.5 py-0.5 text-[13px] font-bold" style={{ color: mix.nameColor, background: mix.iconBg }}>{t("Sovg'a")}</span>
           : <span className="cat-price">{t("{n} so'm", { n: fmt(it.price) })}</span>}
         <span className="cat-when">{timeAgo(it.ts)}</span>
       </div>

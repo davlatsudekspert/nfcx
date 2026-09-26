@@ -236,11 +236,18 @@
      ramkasi va brend suratlarining mavzuga moslashuvi.
      Logotipning O'ZI (shakli, nisbati, fayli) o'zgarmaydi — faqat uni
      o'rab turgan yuza, halqa, nur va yumshoq rang moslashuvi. */
-  --promo-inner-bg: linear-gradient(160deg, #fffdf7 0%, #f3ead7 55%, #e9dcc2 100%);
-  --promo-ink: #2a2114;
-  --promo-code: #6a4f18;
-  --promo-frame: linear-gradient(140deg, #fffaf0 0%, #d8bd80 22%, #9c7a32 46%, #f1e2bd 62%, #b99a55 82%, #fdf6e6 100%);
-  --promo-glow: rgba(199, 168, 99, 0.34);
+  /* Promo (katalogdagi "O'zingiz xohlagan uslubda") — QORA karta, oq
+     yozuv: namuna karta (`--showcase-card-*`) bilan bir xil material.
+     Egasi, 2026-09-26: "anu karta ham qora, yozuvlari oq bo'lsin,
+     sariqliklarni olib tashla". Oltin ramka o'rniga grafit hoshiya. */
+  --promo-inner-bg: linear-gradient(135deg, #2c2b28 0%, #151514 52%, #22211f 100%);
+  --promo-ink: #f4f1e8;
+  --promo-code: rgba(244, 241, 232, 0.62);
+  --promo-frame: linear-gradient(140deg, #4a4843 0%, #1c1b19 40%, #353430 70%, #121211 100%);
+  --promo-glow: rgba(23, 23, 22, 0.22);
+  --promo-mark-filter: grayscale(1) brightness(1.7) contrast(0.9);
+  --promo-btn-bg: #f4f1e8;
+  --promo-btn-ink: #151514;
   --brand-plate: radial-gradient(circle at 50% 38%, #ffffff 0%, #ece9e2 72%);
   --brand-ring: rgba(122, 95, 56, 0.45);
   --brand-mark-filter: saturate(1.08) brightness(0.72);

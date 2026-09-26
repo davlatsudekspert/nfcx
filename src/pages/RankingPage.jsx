@@ -3,7 +3,7 @@ import { fmt } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { useAuth } from '../lib/auth.jsx';
-import { tierForCode, TIER_LABEL, TIER_COLOR } from '../lib/pricing.js';
+import { tierForCode, TIER_LABEL, TIER_CARD_MIX } from '../lib/pricing.js';
 import { initials } from '../lib/format.js';
 
 // 1/2/3-o'rin uchun maxsus medal ranglari.
@@ -17,25 +17,29 @@ function TopCard({ rank, item }) {
   const { t } = useLanguage();
   const m = MEDAL[rank];
   const tier = item.tierOverride || tierForCode(item.code);
+  const mix = TIER_CARD_MIX[tier] || TIER_CARD_MIX.silver;
   const big = rank === 1;
+  // TARIF MATERIALI — katalog kartasi bilan bir xil qora karta, oq yozuv
+  // (egasi, 2026-09-26: "sariqliklarni olib tashla, karta o'z tarifi
+  // rangida"). O'rinni medal belgisi aytadi; karta rangi — tarifni.
   return (
     <button
       onClick={() => navigate('/' + item.code)}
-      className={`flex cursor-pointer flex-col items-center rounded-2xl border p-5 text-center transition hover:-translate-y-1 ${big ? 'sm:scale-110' : ''}`}
-      style={{ borderColor: `${m.ring}55`, background: `linear-gradient(180deg, ${m.ring}14, transparent 60%)` }}
+      className={`flex cursor-pointer flex-col items-center rounded-2xl p-5 text-center text-[#f4f1e8] shadow-[0_14px_34px_-18px_rgba(0,0,0,.55)] transition hover:-translate-y-1 ${big ? 'sm:scale-110' : ''}`}
+      style={{ background: mix.background, border: mix.border }}
     >
-      <div className="text-3xl">{m.emoji}</div>
+      <div className="text-3xl" aria-label={m.label}>{m.emoji}</div>
       <div
         className="mt-2 flex h-16 w-16 items-center justify-center rounded-full text-xl font-extrabold"
-        style={{ background: `${m.ring}22`, color: m.ring, border: `2px solid ${m.ring}` }}
+        style={{ background: 'rgba(255,255,255,.07)', color: '#f4f1e8', border: '1.5px solid rgba(255,255,255,.28)' }}
       >
         {initials(item.name)}
       </div>
       <div className="mt-3 max-w-[140px] truncate font-semibold">{item.name}</div>
-      <div className="mt-0.5 font-mono text-xs text-base-content/50">{item.code}</div>
-      <div className="mt-2 text-lg font-extrabold" style={{ color: m.ring }}>{fmt(item.views || 0)}</div>
-      <div className="text-[13px] uppercase tracking-widest text-base-content/40">{t("ko'rish")}</div>
-      <span className="mt-2 text-[14px] font-semibold" style={{ color: TIER_COLOR[tier] }}>{t(TIER_LABEL[tier])}</span>
+      <div className="mt-0.5 font-mono text-xs text-[#f4f1e8]/60">{item.code}</div>
+      <div className="mt-2 text-lg font-extrabold">{fmt(item.views || 0)}</div>
+      <div className="text-[13px] uppercase tracking-widest text-[#f4f1e8]/50">{t("ko'rish")}</div>
+      <span className="mt-2 rounded-full px-2.5 py-0.5 text-[13px] font-bold uppercase tracking-wide" style={{ color: mix.iconColor, background: mix.iconBg, border: mix.border }}>{t(TIER_LABEL[tier])}</span>
     </button>
   );
 }
@@ -47,7 +51,7 @@ function TopCard({ rank, item }) {
 function RankRow({ rank, item, maxViews }) {
   const { t } = useLanguage();
   const tier = item.tierOverride || tierForCode(item.code);
-  const tc = TIER_COLOR[tier] || '#8a8a8a';
+  const mix = TIER_CARD_MIX[tier] || TIER_CARD_MIX.silver;
   const views = Number(item.views) || 0;
   // Eng kam 2% — 0 ga yaqin natijalarda ham chiziq ko'rinib tursin.
   const pct = maxViews > 0 ? Math.max(2, Math.round((views / maxViews) * 100)) : 0;
@@ -63,7 +67,8 @@ function RankRow({ rank, item, maxViews }) {
         <span className="rank-cap block">{t("ko'rish")}</span>
         <span className="rank-bar block" aria-hidden="true"><span style={{ width: `${pct}%` }} /></span>
       </span>
-      <span className="rank-chip" style={{ color: tc, background: tc + '1f', border: `1px solid ${tc}44` }}>
+      {/* Tarif belgisi — kichik qora material, tarif rangidagi yozuv. */}
+      <span className="rank-chip" style={{ color: mix.nameColor, background: mix.background, border: mix.border }}>
         {t(TIER_LABEL[tier] || tier)}
       </span>
     </button>

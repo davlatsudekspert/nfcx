@@ -311,6 +311,48 @@ export const TIER_GRADIENT = {
   free: 'linear-gradient(135deg, #A66A3F 0%, #C58A55 30%, #347A54 65%, #1F513A 100%)',
 };
 // Premium, Gold va Ekslyuziv — qirol/olmos emoji; Silver — yulduzcha.
+// TARIF KARTASI MATERIALI — qoradan tarif rangiga yumshoq o'tish.
+// Narxlar sahifasi, katalog kartalari va ilova (`mobile_nova` IdTierMix)
+// AYNAN shu qiymatlarni ishlatadi: bitta ID hamma joyda bir xil ko'rinadi.
+export const TIER_CARD_MIX = {
+  exclusive: {
+    background: 'linear-gradient(120deg, #000 0%, #12100a 38%, #3a3122 68%, #cbba8d 100%)',
+    border: '1px solid rgba(230,210,170,0.52)',
+    iconBg: 'rgba(230,210,170,0.20)',
+    iconColor: '#efe0b8',
+    nameColor: '#f1e6c6',
+  },
+  premium: {
+    background: 'linear-gradient(120deg, #000 0%, #150d04 36%, #4a2f0c 66%, #c78e34 100%)',
+    border: '1px solid rgba(216,163,74,0.6)',
+    iconBg: 'rgba(216,163,74,0.22)',
+    iconColor: '#f0c98a',
+    nameColor: '#f4d29a',
+  },
+  gold: {
+    background: 'linear-gradient(120deg, #000 0%, #171006 38%, #4a3908 68%, #e0b40e 100%)',
+    border: '1px solid rgba(240,196,25,0.55)',
+    iconBg: 'rgba(240,196,25,0.22)',
+    iconColor: '#f5c815',
+    nameColor: '#f8dc4d',
+  },
+  silver: {
+    background: 'linear-gradient(120deg, #000 0%, #0d0f11 40%, #2b3036 70%, #626b76 100%)',
+    border: '1px solid rgba(154,163,173,0.4)',
+    iconBg: 'rgba(154,163,173,0.18)',
+    iconColor: '#b6bdc7',
+    nameColor: '#c6cdd6',
+  },
+  // Bronza + to'q yashil aralash (avvalgi sof zumrad yashildan farqli).
+  free: {
+    background: 'linear-gradient(120deg, #000 0%, #241708 35%, #704225 60%, #1F513A 100%)',
+    border: '1px solid rgba(197,138,85,0.45)',
+    iconBg: 'rgba(197,138,85,0.20)',
+    iconColor: '#C58A55',
+    nameColor: '#dba876',
+  },
+};
+
 export const TIER_EMOJI = { exclusive: '\u{1F48E}', premium: '\u{1F451}', gold: '\u{1F451}', silver: '\u2728', free: '' };
 
 // TASHQI (outer) sahifa foni \u2014 NFC ID darajasining VIZUAL IDENTITY'si.
