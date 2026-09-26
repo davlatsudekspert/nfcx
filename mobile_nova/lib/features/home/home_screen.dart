@@ -34,6 +34,7 @@ import 'widgets/mode_switch.dart';
 import '../../app/profile_context.dart';
 import '../../data/repositories/business_repository.dart';
 import '../business/store_catalog.dart' show StoreCatalogPreview;
+import '../business/sample_businesses.dart' show HomeSampleBusinesses;
 import '../../data/repositories/discover_repository.dart';
 import '../discover/catalog_view.dart' show ProductCard;
 import '../discover/discover_screen.dart'
@@ -332,6 +333,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             // ilovaga birinchi kirgan odam pastga tushmasdan
             // "bu ilova nima beradi" degan savolga javob olsin.
             const NfcMobileSection(),
+
+            // NAMUNA BIZNESLAR — faqat biznesi yo'q odamga, shaxsiy
+            // rejimda: "biznes sahifasi qanday bo'ladi" ko'rib chiqsin.
+            if (!business) const HomeSampleBusinesses(),
 
             // «TANLOVDAN» — lentadan OLDIN. Postlar joyida qoladi;
             // bu qator faqat gorizontal, bosh sahifani cho'zmaydi.

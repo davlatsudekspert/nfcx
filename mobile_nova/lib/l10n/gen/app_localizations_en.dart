@@ -1424,6 +1424,16 @@ class LEn extends L {
   String get sampleBadge => 'Sample';
 
   @override
+  String get sampleBusinessesTitle => 'Sample profiles';
+
+  @override
+  String get sampleBusinessesHint =>
+      'This is how a business page looks — open one';
+
+  @override
+  String get sampleBusinessesIntroTitle => 'Your page will look like this';
+
+  @override
   String get demoViewProfile => 'View the profile';
 
   @override

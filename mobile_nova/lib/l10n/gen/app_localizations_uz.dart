@@ -1427,6 +1427,16 @@ class LUz extends L {
   String get sampleBadge => 'Namuna';
 
   @override
+  String get sampleBusinessesTitle => 'Namuna profillar';
+
+  @override
+  String get sampleBusinessesHint =>
+      'Biznesingiz sahifasi shunday ko‘rinadi — birini oching';
+
+  @override
+  String get sampleBusinessesIntroTitle => 'Sahifangiz shunday ko‘rinadi';
+
+  @override
   String get demoViewProfile => 'Profilni ko‘rish';
 
   @override

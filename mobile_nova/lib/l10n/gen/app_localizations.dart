@@ -2835,6 +2835,24 @@ abstract class L {
   /// **'Namuna'**
   String get sampleBadge;
 
+  /// No description provided for @sampleBusinessesTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Namuna profillar'**
+  String get sampleBusinessesTitle;
+
+  /// No description provided for @sampleBusinessesHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Biznesingiz sahifasi shunday ko‘rinadi — birini oching'**
+  String get sampleBusinessesHint;
+
+  /// No description provided for @sampleBusinessesIntroTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sahifangiz shunday ko‘rinadi'**
+  String get sampleBusinessesIntroTitle;
+
   /// No description provided for @demoViewProfile.
   ///
   /// In uz, this message translates to:

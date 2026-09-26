@@ -13,6 +13,7 @@ import '../../design/widgets/nova_scaffold.dart';
 import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
+import '../business/sample_businesses.dart' show SampleBusinessesStrip;
 import 'catalog_view.dart';
 import 'discover_cards.dart';
 
@@ -308,19 +309,42 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
                 final businesses = tab == DiscoverTab.businesses
                     ? all.whereType<Business>().toList()
                     : const <Business>[];
+                // NAMUNA PROFILLAR — "Hammasi" tanlanganda tepada alohida
+                // qator (gorizontal), pastda faqat HAQIQIY bizneslar.
+                // Soha tanlansa namunalar oddiy ro'yxatda (oxirida).
+                final samples = tab == DiscoverTab.businesses &&
+                        bizCat == 'all' &&
+                        query.isEmpty
+                    ? [for (final b in businesses) if (b.isDemo) b]
+                    : const <Business>[];
                 final items = tab == DiscoverTab.businesses && bizCat != 'all'
                     ? businesses
                         .where((b) =>
                             (b.category.isEmpty ? 'other' : b.category) ==
                             bizCat)
                         .toList()
-                    : all;
+                    : samples.isNotEmpty
+                        ? [
+                            for (final o in all)
+                              if (o is! Business || !o.isDemo) o
+                          ]
+                        : all;
+                final head = samples.isNotEmpty ? 1 : 0;
                 final list = ListView.separated(
-                  padding: EdgeInsets.fromLTRB(Gap.screenX, Gap.md,
-                      Gap.screenX, navSafeBottom(context)),
-                  itemCount: items.length,
+                  padding: EdgeInsets.only(
+                      top: Gap.md, bottom: navSafeBottom(context)),
+                  itemCount: items.length + head,
                   separatorBuilder: (_, __) => const SizedBox(height: Gap.md),
-                  itemBuilder: (context, i) => _ResultTile(item: items[i]),
+                  itemBuilder: (context, i) => i < head
+                      ? Padding(
+                          padding: const EdgeInsets.only(bottom: Gap.sm),
+                          child: SampleBusinessesStrip(items: samples),
+                        )
+                      : Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: Gap.screenX),
+                          child: _ResultTile(item: items[i - head]),
+                        ),
                 );
                 if (businesses.isEmpty) return list;
                 return Column(

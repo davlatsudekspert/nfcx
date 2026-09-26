@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../design/theme/typography.dart';
@@ -13,6 +14,7 @@ import '../demo/demo_data.dart';
 import '../home/widgets/identity_card.dart' show formatCount;
 import '../social/media_frame.dart' show mediaImage;
 import 'business_screens.dart' show formatMoney;
+import 'sample_businesses.dart';
 import '../../design/widgets/brand_icon.dart';
 
 /// BUSINESS OCHISH — KIRISH EKRANI.
@@ -112,6 +114,11 @@ class BusinessIntroBody extends StatelessWidget {
             onPressed: () => context.push(Routes.businessOnboardCustom),
           ),
         ),
+
+        // NAMUNA PROFILLAR — tayyor bizneslar sahifasi qanday ko'rinadi.
+        // Variantlardan keyin: tugmalar pastga surilmasin. Namuna yo'q
+        // bo'lsa bo'sh joy ham qolmaydi.
+        const _SampleSection(),
 
         const SizedBox(height: Gap.section),
         Text(l.bizFeaturesTitle.toUpperCase(),
@@ -288,6 +295,24 @@ class _OptionCard extends StatelessWidget {
 /// (sahifa, katalog, statistika) va ichidagi ma'lumot — ilovadagi
 /// "NFC Market" namunasi (`demo_data.dart`). Har slaydda "NAMUNA"
 /// yozuvi bor: bu odamning sahifasi emas, ko'rinishi.
+class _SampleSection extends ConsumerWidget {
+  const _SampleSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final has = ref.watch(sampleBusinessesProvider).valueOrNull?.isNotEmpty ??
+        false;
+    if (!has) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: Gap.section),
+      child: SampleBusinessesStrip(
+        title: L.of(context).sampleBusinessesIntroTitle,
+        horizontalPadding: 0,
+      ),
+    );
+  }
+}
+
 class _Showcase extends StatefulWidget {
   const _Showcase();
 

@@ -1418,6 +1418,16 @@ class LRu extends L {
   String get sampleBadge => 'Пример';
 
   @override
+  String get sampleBusinessesTitle => 'Примеры профилей';
+
+  @override
+  String get sampleBusinessesHint =>
+      'Так выглядит страница бизнеса — откройте любой';
+
+  @override
+  String get sampleBusinessesIntroTitle => 'Так будет выглядеть ваша страница';
+
+  @override
   String get demoViewProfile => 'Открыть профиль';
 
   @override
