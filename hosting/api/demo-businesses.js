@@ -53,7 +53,7 @@ export const DEMO_BUSINESSES = [
       ['To‘y oshi', 'Milliy taomlar', 45000, null, 'Lazer guruch, qo‘y go‘shti, sariq sabzi, no‘xat va mayiz bilan. 1 porsiya.', 'Pot of food'],
       ['Qozon kabob', 'Milliy taomlar', 65000, 58000, 'Yosh qo‘y go‘shti kartoshka bilan qozonda qovurilgan.', 'Meat on bone'],
       ['Lag‘mon', 'Milliy taomlar', 38000, null, 'Qo‘lda cho‘zilgan xamir, go‘sht va sabzavotli suyuq lag‘mon.', 'Spaghetti'],
-      ['Manti (5 dona)', 'Milliy taomlar', 35000, null, 'Bug‘da pishgan, qo‘y go‘shti va piyozli.', 'Dumpling'],
+      ['Manti (6 dona)', 'Milliy taomlar', 40000, null, 'Bug‘da pishgan, qo‘y go‘shti va piyozli.', 'Dumpling'],
       ['Chuchvara', 'Milliy taomlar', 32000, null, 'Qatiq va ko‘katlar bilan tortiladi.', 'Bowl with spoon'],
       ['Qo‘y shashlik (1 six)', 'Shashlik', 22000, null, 'Ko‘mirda pishgan, piyoz va sirka bilan.', 'Poultry leg'],
       ['Tandir somsa', 'Pishiriqlar', 12000, null, 'Qo‘y go‘shti va dumba yog‘i bilan, tandirdan issiq.', 'Stuffed flatbread'],
