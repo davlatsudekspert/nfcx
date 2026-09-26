@@ -322,7 +322,7 @@ export default function AppDownloadPage() {
 
       {/* ── STIKERLAR BILAN ── */}
       <section className="vz-card mt-16 grid items-center gap-6 overflow-hidden p-6 sm:p-8 md:mt-24 md:grid-cols-[auto_1fr_auto]">
-        <img src="/stikerlar/oyna.png" alt="" loading="lazy" className="h-24 w-24 drop-shadow-[0_10px_20px_rgba(0,0,0,.45)]" />
+        <img src="/stikerlar/oyna-nfc.png" alt="" loading="lazy" className="h-24 w-24 drop-shadow-[0_10px_20px_rgba(0,0,0,.45)]" />
         <div>
           <h2 className="text-[22px] font-bold text-[color:var(--vz-ink)]">{c.stickerT}</h2>
           <p className="mt-1 text-[15px] text-[color:var(--vz-ink-2)]">{c.stickerP}</p>

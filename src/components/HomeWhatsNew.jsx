@@ -149,8 +149,8 @@ export default function HomeWhatsNew() {
               <span className={GO}>{c.stGo} <Arrow /></span>
             </div>
             <div className="relative w-[112px] self-center sm:w-[150px]">
-              <img src="/stikerlar/tashqi.png" alt="" loading="lazy" className="w-full drop-shadow-[0_18px_30px_rgba(0,0,0,.7)] transition-transform duration-500 group-hover:-rotate-2" />
-              <img src="/stikerlar/oyna.png" alt="" loading="lazy" className="absolute -bottom-5 -left-6 w-[62%] drop-shadow-[0_14px_24px_rgba(0,0,0,.7)]" />
+              <img src="/stikerlar/tashqi-nfc.png" alt="" loading="lazy" className="w-full drop-shadow-[0_18px_30px_rgba(0,0,0,.7)] transition-transform duration-500 group-hover:-rotate-2" />
+              <img src="/stikerlar/oyna-nfc.png" alt="" loading="lazy" className="absolute -bottom-5 -left-6 w-[62%] drop-shadow-[0_14px_24px_rgba(0,0,0,.7)]" />
             </div>
           </div>
         </a>

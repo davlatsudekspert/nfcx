@@ -909,7 +909,7 @@ const DICT_BASE = {
   'Davom etish uchun hisobingizga kiring yoki yangi hisob oching. Kod saqlanib qoladi.': { ru: 'Войдите в аккаунт или создайте новый. Код сохранится.', en: 'Sign in or create an account. Your code is saved.' },
   'Ro‘yxatdan o‘tish': { ru: 'Регистрация', en: 'Sign up' },
   'Qanday profil kerak?': { ru: 'Какой профиль нужен?', en: 'Which profile do you need?' },
-  'Buni keyin ham o‘zgartirish mumkin emas — shuning uchun o‘ylab tanlang.': { ru: 'Изменить это позже нельзя — выбирайте внимательно.', en: 'This cannot be changed later — choose carefully.' },
+  'Stiker nimani ochishini keyin kabinetdagi «NFC karta» bo‘limidan o‘zgartirsa ham bo‘ladi.': { ru: 'Что открывает наклейка, можно поменять позже в кабинете, в разделе «NFC-карта».', en: 'You can change what the sticker opens later in your account, under “NFC card”.' },
   'Kontaktlaringiz, ijtimoiy tarmoqlaringiz va shaxsiy NFC profilingiz.': { ru: 'Ваши контакты, соцсети и личный NFC-профиль.', en: 'Your contacts, social links and personal NFC profile.' },
   'Kompaniyangiz, katalogingiz, aloqa ma’lumotlari va statistikangiz.': { ru: 'Ваша компания, каталог, контакты и статистика.', en: 'Your company, catalogue, contacts and statistics.' },
   'Qaysi profilga bog‘laymiz?': { ru: 'К какому профилю привязать?', en: 'Which profile should it link to?' },

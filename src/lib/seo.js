@@ -161,6 +161,12 @@ export const SEO_ROUTES = {
     ru: { title: 'Приложение NFCSTORE — Android, App Store скоро', description: 'Приложение NFCSTORE: цифровая визитка, привязка любой NFC-карты и наклейки, личный и бизнес-профиль, каталог, Reels, темы Ivory/Noir. Скачайте для Android.' },
     en: { title: 'NFCSTORE app — Android, App Store soon', description: 'The NFCSTORE app: digital business card, link any NFC card or sticker, personal and business profiles, catalog, Reels, Ivory/Noir themes. Download for Android.' },
   },
+  'nfc-stiker': {
+    path: '/nfc-stiker',
+    uz: { title: 'NFC stiker qanday ishlaydi', description: "Telefonni stikerga tekkizing — sahifa o'zi ochiladi. iPhone va Android ko'rsatmasi, stikerni profilga ulash, avto stiker va NFCSTORE ilovasi." },
+    ru: { title: 'Как работает NFC-наклейка', description: 'Приложите телефон к наклейке — страница откроется сама. Инструкция для iPhone и Android, подключение наклейки, автонаклейка и приложение NFCSTORE.' },
+    en: { title: 'How the NFC sticker works', description: 'Tap your phone on the sticker and the page opens. iPhone and Android guide, linking a sticker, the car sticker and the NFCSTORE app.' },
+  },
   stikerlar: {
     path: '/stikerlar',
     uz: { title: 'NFC stikerlar — do‘kon, mashina va kafe uchun', description: "Eshik, vitrina yoki mashina oynasiga NFC stiker: telefon tekkizilsa narxlar, katalog, ish vaqti va Telegram ochiladi. Yopiq paytda ham savdo." },

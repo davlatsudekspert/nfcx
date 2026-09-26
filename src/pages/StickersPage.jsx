@@ -30,8 +30,8 @@ const SHOW_PRICES = false;
 // Mahsulot → katalogdagi nomi (narx shu bo'yicha topiladi).
 const PRODUCTS = [
   { key: 'mini', img: '/stikerlar/sticker.jpg', catalog: 'NFC Sticker' },
-  { key: 'oyna', img: '/stikerlar/avto.jpg', design: '/stikerlar/oyna.png', catalog: 'Avto NFC Sticker' },
-  { key: 'tashqi', design: '/stikerlar/tashqi.png', catalog: null, isNew: true },
+  { key: 'oyna', img: '/stikerlar/avto.jpg', design: '/stikerlar/oyna-nfc.png', catalog: 'Avto NFC Sticker' },
+  { key: 'tashqi', design: '/stikerlar/tashqi-nfc.png', catalog: null, isNew: true },
   { key: 'stend', img: '/stikerlar/stend.jpg', catalog: 'NFC Stend' },
 ];
 
@@ -39,10 +39,10 @@ const CONTENT = {
   uz: {
     kicker: 'NFC stikerlar · do‘kon, mashina, kafe uchun',
     title: 'Do‘koningiz yopiq bo‘lsa ham ochiq',
-    lead: 'Eshikka, vitrinaga yoki mashina oynasiga bitta stiker. Odam telefonini tekkizadi yoki QR’ni skanerlaydi — sahifangiz ochiladi: narxlar, katalog, ish vaqti, manzil va Telegram. Mijoz ketib qolmaydi.',
+    lead: 'Eshikka, vitrinaga yoki mashina oynasiga bitta NFC stiker. Odam telefonini tekkizadi — sahifangiz ochiladi: narxlar, katalog, ish vaqti, manzil va Telegram. Kamera ham, ilova ham shart emas. Mijoz ketib qolmaydi.',
     order: 'Buyurtma berish',
     how: 'Qanday ishlaydi',
-    trust: ['Batareya va internet shart emas', 'Hamma telefonda: NFC yoki QR', 'Ma’lumotni istalgan vaqtda o‘zgartirasiz'],
+    trust: ['Batareya va internet shart emas', 'NFC deyarli har bir zamonaviy telefonda bor', 'Ma’lumotni istalgan vaqtda o‘zgartirasiz'],
     whyK: 'Nega foydali',
     whyT: 'Bitta stiker — kechayu kunduz ishlaydigan sotuvchi',
     why: [
@@ -55,7 +55,7 @@ const CONTENT = {
     stepsT: 'Uch harakat — mijoz sahifangizda',
     steps: [
       ['Yopishtiring', 'Eshik, vitrina, kassa, stol yoki mashina oynasiga. Stiker sahifangizga bog‘lanadi.'],
-      ['Tekkizadi', 'NFC’li telefonda ilovasiz ochiladi. NFC yo‘q bo‘lsa — shu stikerdagi QR.'],
+      ['Tekkizadi', 'Telefonning orqasini stikerga yaqinlashtiradi — ilovasiz, kamerasiz. Bilmaganlar uchun stikerdagi QR «qanday ishlaydi» qo‘llanmasini ochadi.'],
       ['Sahifa ochiladi', 'Ish vaqti, narxlar, katalog, manzil, Telegram va buyurtma.'],
     ],
     prodK: 'Mahsulotlar',
@@ -84,10 +84,11 @@ const CONTENT = {
     appCap: ['Bir tegishda tanishuv', 'NFC markazi: karta va stikerlar', 'Sizning profilingiz'],
     faqT: 'Savollar',
     faq: [
-      ['iPhone’da ishlaydimi?', 'Ha. iPhone XS va yangilarida tekkizish kifoya. Eski telefonlarda stikerdagi QR ishlaydi.'],
+      ['iPhone’da ishlaydimi?', 'Ha. iPhone XS va yangilarida tekkizish kifoya. iPhone 7–X da Boshqaruv markazidagi «NFC Tag Reader» bilan o‘qiladi.'],
       ['Internet yoki batareya kerakmi?', 'Stikerga — yo‘q. Sahifani ochish uchun mijozning telefonida internet bo‘lsa yetadi.'],
       ['Ma’lumotni keyin o‘zgartirsa bo‘ladimi?', 'Ha, istalgan vaqtda. Stikerni qayta yopishtirish shart emas — sahifa o‘zgaradi.'],
-      ['Tonirovkali oynaga bo‘ladimi?', 'Oddiy tonirovkaga — ha. Metall plyonkali (atermal) tonirovka NFC’ni to‘sishi mumkin, bunday oynada QR ishlaydi.'],
+      ['Tonirovkali oynaga bo‘ladimi?', 'Oddiy tonirovkaga — ha. Metall plyonkali (atermal) tonirovka NFC’ni to‘sishi mumkin — bunday oynada avval namuna bilan tekshirib beramiz.'],
+      ['Stikerdagi QR nima uchun?', 'NFC nimaligini bilmaganlar uchun: QR «qanday ishlaydi» sahifasini ochadi — tekkizish ko‘rsatmasi, stikerni ilovada ulash qo‘llanmasi va NFCSTORE ilovasi. Do‘kon sahifasining o‘zi NFC orqali ochiladi.'],
       ['Metall eshikka-chi?', 'Oddiy chip metallda ishlamaydi. Buning uchun tashqi stikerning «anti-metall» varianti bor — buyurtmada ayting.'],
     ],
     finalT: 'Birinchi mijozingiz ertaga eshik oldida bo‘ladi',
@@ -96,10 +97,10 @@ const CONTENT = {
   ru: {
     kicker: 'NFC-наклейки · для магазина, машины, кафе',
     title: 'Ваш магазин открыт, даже когда закрыт',
-    lead: 'Одна наклейка на дверь, витрину или стекло машины. Человек прикладывает телефон или сканирует QR — открывается ваша страница: цены, каталог, часы работы, адрес и Telegram. Клиент не уходит.',
+    lead: 'Одна NFC-наклейка на дверь, витрину или стекло машины. Человек прикладывает телефон — открывается ваша страница: цены, каталог, часы работы, адрес и Telegram. Не нужны ни камера, ни приложение. Клиент не уходит.',
     order: 'Заказать',
     how: 'Как это работает',
-    trust: ['Без батареек и интернета', 'Работает на любом телефоне: NFC или QR', 'Данные меняете в любой момент'],
+    trust: ['Без батареек и интернета', 'NFC есть почти в каждом современном телефоне', 'Данные меняете в любой момент'],
     whyK: 'Зачем это нужно',
     whyT: 'Одна наклейка — продавец, который работает круглосуточно',
     why: [
@@ -112,7 +113,7 @@ const CONTENT = {
     stepsT: 'Три действия — и клиент на вашей странице',
     steps: [
       ['Наклейте', 'На дверь, витрину, кассу, стол или стекло машины. Наклейка привязывается к вашей странице.'],
-      ['Прикладывают телефон', 'На телефоне с NFC открывается без приложения. Нет NFC — QR на той же наклейке.'],
+      ['Прикладывают телефон', 'Подносят заднюю сторону телефона к наклейке — без приложения и камеры. Для тех, кто не знает, QR на наклейке открывает инструкцию «как это работает».'],
       ['Открывается страница', 'Часы работы, цены, каталог, адрес, Telegram и заказ.'],
     ],
     prodK: 'Товары',
@@ -141,10 +142,11 @@ const CONTENT = {
     appCap: ['Знакомство в одно касание', 'NFC-центр: карты и наклейки', 'Ваш профиль'],
     faqT: 'Вопросы',
     faq: [
-      ['Работает на iPhone?', 'Да. На iPhone XS и новее достаточно приложить телефон. На старых телефонах работает QR на наклейке.'],
+      ['Работает на iPhone?', 'Да. На iPhone XS и новее достаточно приложить телефон. На iPhone 7–X — через «Считыватель NFC-меток» в Пункте управления.'],
       ['Нужны интернет или батарейка?', 'Наклейке — нет. Для открытия страницы достаточно интернета на телефоне клиента.'],
       ['Можно потом изменить данные?', 'Да, в любой момент. Переклеивать не нужно — меняется страница.'],
-      ['Можно на тонированное стекло?', 'На обычную тонировку — да. Атермальная тонировка с металлом может блокировать NFC, тогда работает QR.'],
+      ['Можно на тонированное стекло?', 'На обычную тонировку — да. Атермальная тонировка с металлом может блокировать NFC — на таком стекле сначала проверим образцом.'],
+      ['Зачем на наклейке QR?', 'Для тех, кто не знает про NFC: QR открывает страницу «как это работает» — инструкцию, как приложить телефон, как подключить наклейку в приложении, и приложение NFCSTORE. Сама страница магазина открывается через NFC.'],
       ['А на металлическую дверь?', 'Обычный чип на металле не работает. Для этого есть уличная наклейка с анти-металл чипом — укажите в заказе.'],
     ],
     finalT: 'Первый клиент будет у двери уже завтра',
@@ -153,10 +155,10 @@ const CONTENT = {
   en: {
     kicker: 'NFC stickers · for shops, cars and cafés',
     title: 'Your shop stays open even when it’s closed',
-    lead: 'One sticker on the door, the window or the car glass. People tap their phone or scan the QR and your page opens: prices, catalog, hours, address and Telegram. Customers don’t walk away.',
+    lead: 'One NFC sticker on the door, the window or the car glass. People tap their phone and your page opens: prices, catalog, hours, address and Telegram. No camera, no app. Customers don’t walk away.',
     order: 'Order now',
     how: 'How it works',
-    trust: ['No battery or internet needed', 'Works on any phone: NFC or QR', 'Change your info any time'],
+    trust: ['No battery or internet needed', 'Almost every modern phone has NFC', 'Change your info any time'],
     whyK: 'Why it pays off',
     whyT: 'One sticker — a salesperson that works around the clock',
     why: [
@@ -169,7 +171,7 @@ const CONTENT = {
     stepsT: 'Three steps — and the customer is on your page',
     steps: [
       ['Stick it', 'On the door, window, till, table or car glass. The sticker is linked to your page.'],
-      ['They tap', 'Opens without an app on NFC phones. No NFC — the QR on the same sticker.'],
+      ['They tap', 'They hold the back of the phone to the sticker — no app, no camera. For those who don’t know how, the QR on the sticker opens a “how it works” guide.'],
       ['Your page opens', 'Hours, prices, catalog, address, Telegram and orders.'],
     ],
     prodK: 'Products',
@@ -198,10 +200,11 @@ const CONTENT = {
     appCap: ['Meet in one tap', 'NFC Center: cards and stickers', 'Your profile'],
     faqT: 'Questions',
     faq: [
-      ['Does it work on iPhone?', 'Yes. On iPhone XS and newer a tap is enough. Older phones use the QR on the sticker.'],
+      ['Does it work on iPhone?', 'Yes. On iPhone XS and newer a tap is enough. On iPhone 7–X use “NFC Tag Reader” in Control Center.'],
       ['Does it need internet or a battery?', 'The sticker doesn’t. The customer’s phone just needs internet to open the page.'],
       ['Can I change the info later?', 'Yes, any time. No need to re-stick — the page changes.'],
-      ['Tinted glass?', 'Regular tint is fine. Metallic (athermal) tint can block NFC — the QR still works.'],
+      ['Tinted glass?', 'Regular tint is fine. Metallic (athermal) tint can block NFC — on such glass we test with a sample first.'],
+      ['Why is there a QR on the sticker?', 'For people who don’t know NFC: the QR opens a “how it works” page — how to tap, how to link the sticker in the app, and the NFCSTORE app. The shop page itself opens via NFC.'],
       ['Metal doors?', 'A regular chip doesn’t work on metal. Choose the outdoor sticker with an anti-metal chip — mention it in your order.'],
     ],
     finalT: 'Your first customer can be at the door tomorrow',

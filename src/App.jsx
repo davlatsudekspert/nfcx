@@ -61,6 +61,7 @@ const HowItWorksPage = lazyPage(() => import('./pages/HowItWorksPage.jsx'));
 const NewsPage = lazyPage(() => import('./pages/NewsPage.jsx'));
 const AppDownloadPage = lazyPage(() => import('./pages/AppDownloadPage.jsx'));
 const StickersPage = lazyPage(() => import('./pages/StickersPage.jsx'));
+const NfcStickerHelpPage = lazyPage(() => import('./pages/NfcStickerHelpPage.jsx'));
 const CatalogPage = lazyPage(() => import('./pages/CatalogPage.jsx'));
 const RankingPage = lazyPage(() => import('./pages/RankingPage.jsx'));
 const CompaniesPage = lazyPage(() => import('./pages/CompaniesPage.jsx'));
@@ -122,6 +123,8 @@ const STATIC_ROUTES = {
   'ilova-yuklash': AppDownloadPage,
   // NFC stikerlar do'koni (do'kon, mashina, kafe uchun).
   stikerlar: StickersPage,
+  // Stikerlardagi QR (/qr-1, /qr-2) shu qo'llanmaga olib keladi.
+  'nfc-stiker': NfcStickerHelpPage,
   // MARKETPLACE'DA SOTILGAN MAHSULOTNI FAOLLASHTIRISH.
   // Konvertdagi QR aynan shu manzilni ochadi. Aktivatsiya kodi
   // URL'GA QO'SHILMAYDI — u faqat POST tanasida ketadi (brauzer
@@ -347,6 +350,7 @@ export default function App() {
     else if (cleanRoute === 'karta-dizayni') page = <CardDesignerPage />;
     else if (cleanRoute === 'ilova-yuklash') page = <AppDownloadPage />;
     else if (cleanRoute === 'stikerlar') page = <StickersPage />;
+    else if (cleanRoute === 'nfc-stiker') page = <NfcStickerHelpPage />;
     // MARKETPLACE MAHSULOTINI FAOLLASHTIRISH.
     //
     // `bare`: saytning sarlavhasi va menyusi KO'RSATILMAYDI. Bu

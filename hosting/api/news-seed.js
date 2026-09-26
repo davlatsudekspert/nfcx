@@ -104,10 +104,61 @@ Switch themes in one tap with the palette icon at the top of the site — your c
     },
   },
   {
-    image: IMG('stikerlar-savdosi.jpg'),
+    image: IMG('stikerlar-savdosi-2.jpg'),
     uz: {
       title: 'NFC stikerlar savdosi boshlandi: do‘kon, mashina va kafe uchun',
-      body: `Endi eshik, vitrina yoki mashina oynasiga bitta stiker yopishtirasiz — odam telefonini tekkizadi yoki QR’ni skanerlaydi va sahifangiz ochiladi: narxlar, katalog, ish vaqti, manzil va Telegram.
+      body: `Endi eshik, vitrina yoki mashina oynasiga bitta NFC stiker yopishtirasiz — odam telefonini stikerga tekkizadi va sahifangiz ochiladi: narxlar, katalog, ish vaqti, manzil va Telegram. Kamerani ochish ham, ilova ham shart emas.
+
+Nega foydali:
+• Do‘kon yopiq bo‘lsa ham mijoz narxlarni ko‘radi va egasiga yozadi.
+• Qog‘oz narx varag‘i kerak emas — narxni telefondan bir marta o‘zgartirasiz.
+• Mashinadagi stiker — shahar bo‘ylab yuradigan reklama: xohlasangiz shaxsiy, xohlasangiz biznes profilingiz ochiladi.
+• Stikerga batareya kerak emas; NFC deyarli barcha zamonaviy telefonlarda bor.
+• NFC nimaligini bilmaganlar uchun stikerdagi QR «qanday ishlaydi» qo‘llanmasini ochadi (nfcstore.uz/nfc-stiker).
+
+Turlari: mini stiker, oyna ichidan yopishtiriladigan avto stiker, tashqi stiker (yomg‘ir va quyoshga chidamli) va stol stendi. Batafsil va buyurtma — nfcstore.uz/stikerlar.`,
+    },
+    ru: {
+      title: 'Стартовали продажи NFC-наклеек: для магазина, машины и кафе',
+      body: `Одна NFC-наклейка на дверь, витрину или стекло машины — человек прикладывает телефон к наклейке, и открывается ваша страница: цены, каталог, часы работы, адрес и Telegram. Не нужны ни камера, ни приложение.
+
+Почему это выгодно:
+• Даже когда магазин закрыт, клиент видит цены и пишет владельцу.
+• Бумажные ценники не нужны — цена меняется один раз с телефона.
+• Наклейка на машине — реклама, которая ездит по городу: открывается личный или бизнес-профиль, как вы выберете.
+• Наклейке не нужна батарейка; NFC есть почти в каждом современном телефоне.
+• Для тех, кто не знает про NFC, QR на наклейке открывает инструкцию «как это работает» (nfcstore.uz/nfc-stiker).
+
+Виды: мини-наклейка, автонаклейка на стекло изнутри, уличная наклейка (не боится дождя и солнца) и настольная подставка. Подробнее и заказ — nfcstore.uz/stikerlar.`,
+    },
+    en: {
+      title: 'NFC sticker sales are open: for shops, cars and cafés',
+      body: `Put one NFC sticker on your door, shop window or car glass — people tap their phone on it and your page opens: prices, catalog, hours, address and Telegram. No camera, no app.
+
+Why it pays off:
+• Even when you are closed, customers see your prices and message you.
+• No paper price tags — change a price once on your phone.
+• A sticker on your car is an ad that drives around the city: it opens your personal or business profile, your choice.
+• The sticker needs no battery; almost every modern phone has NFC.
+• For people who don’t know NFC, the QR on the sticker opens a “how it works” guide (nfcstore.uz/nfc-stiker).
+
+Types: mini sticker, inside-the-glass car sticker, outdoor sticker (rain and sun resistant) and a table stand. Details and orders — nfcstore.uz/stikerlar.`,
+    },
+  },
+];
+
+// TUZATISH (egasi, 2026-09-26): stikerdagi QR do'kon sahifasini EMAS,
+// "qanday ishlaydi" qo'llanmasini (/nfc-stiker) ochadi — do'kon sahifasi
+// faqat NFC orqali ochiladi. Birinchi matnda "yoki QR'ni skanerlaydi" deb
+// noto'g'ri va'da berilgan edi. Bazadagi yangilik FAQAT o'zgartirilmagan
+// bo'lsa yangilanadi (admin tahriri ustidan yozilmaydi); yangi bazada
+// SEED_NEWS allaqachon to'g'ri matn bilan tushadi va bu tuzatish hech
+// narsa qilmaydi.
+export const NEWS_FIX_KEY = 'news-2026-09-26-fix-nfc-qr';
+const STICKER_TITLE_UZ = 'NFC stikerlar savdosi boshlandi: do‘kon, mashina va kafe uchun';
+export const NEWS_FIX_FROM = {
+  image: IMG('stikerlar-savdosi.jpg'),
+  uz: `Endi eshik, vitrina yoki mashina oynasiga bitta stiker yopishtirasiz — odam telefonini tekkizadi yoki QR’ni skanerlaydi va sahifangiz ochiladi: narxlar, katalog, ish vaqti, manzil va Telegram.
 
 Nega foydali:
 • Do‘kon yopiq bo‘lsa ham mijoz narxlarni ko‘radi va egasiga yozadi.
@@ -116,10 +167,7 @@ Nega foydali:
 • Batareya va internet shart emas, hamma telefonda ishlaydi.
 
 Turlari: mini stiker, oyna ichidan yopishtiriladigan stiker, tashqi stiker (yomg‘ir va quyoshga chidamli) va stol stendi. Batafsil va buyurtma — nfcstore.uz/stikerlar.`,
-    },
-    ru: {
-      title: 'Стартовали продажи NFC-наклеек: для магазина, машины и кафе',
-      body: `Одна наклейка на дверь, витрину или стекло машины — человек прикладывает телефон или сканирует QR, и открывается ваша страница: цены, каталог, часы работы, адрес и Telegram.
+  ru: `Одна наклейка на дверь, витрину или стекло машины — человек прикладывает телефон или сканирует QR, и открывается ваша страница: цены, каталог, часы работы, адрес и Telegram.
 
 Почему это выгодно:
 • Даже когда магазин закрыт, клиент видит цены и пишет владельцу.
@@ -128,10 +176,7 @@ Turlari: mini stiker, oyna ichidan yopishtiriladigan stiker, tashqi stiker (yomg
 • Не нужны батарейка и интернет, работает на любом телефоне.
 
 Виды: мини-наклейка, наклейка на стекло изнутри, уличная наклейка (не боится дождя и солнца) и настольная подставка. Подробнее и заказ — nfcstore.uz/stikerlar.`,
-    },
-    en: {
-      title: 'NFC sticker sales are open: for shops, cars and cafés',
-      body: `Put one sticker on your door, shop window or car glass — people tap their phone or scan the QR and your page opens: prices, catalog, hours, address and Telegram.
+  en: `Put one sticker on your door, shop window or car glass — people tap their phone or scan the QR and your page opens: prices, catalog, hours, address and Telegram.
 
 Why it pays off:
 • Even when you are closed, customers see your prices and message you.
@@ -140,9 +185,25 @@ Why it pays off:
 • No battery or internet needed, works on any phone.
 
 Types: mini sticker, inside-the-glass sticker, outdoor sticker (rain and sun resistant) and a table stand. Details and orders — nfcstore.uz/stikerlar.`,
-    },
-  },
-];
+};
+
+async function applyNewsFix(env) {
+  const fixed = await env.DB.prepare(`SELECT 1 AS ok FROM content_seeds WHERE key = ?`).bind(NEWS_FIX_KEY).first();
+  if (fixed) return;
+  const to = SEED_NEWS[2];
+  const now = new Date().toISOString().replace('T', ' ').replace('Z', '+00');
+  // Har bir ustun alohida: admin faqat rus matnini tahrirlagan bo'lsa,
+  // o'zbek va ingliz matni baribir tuzatiladi, rus matniga tegilmaydi.
+  const upd = (col, from, val) => env.DB.prepare(`UPDATE news SET ${col} = ?, updated_at = ? WHERE title = ? AND ${col} = ?`)
+    .bind(val, now, STICKER_TITLE_UZ, from);
+  await env.DB.batch([
+    upd('body', NEWS_FIX_FROM.uz, to.uz.body),
+    upd('body_ru', NEWS_FIX_FROM.ru, to.ru.body),
+    upd('body_en', NEWS_FIX_FROM.en, to.en.body),
+    upd('image_url', NEWS_FIX_FROM.image, to.image),
+    env.DB.prepare(`INSERT OR IGNORE INTO content_seeds (key, applied_at) VALUES (?, ?)`).bind(NEWS_FIX_KEY, now),
+  ]);
+}
 
 let seeded = null;
 
@@ -153,7 +214,7 @@ export function ensureNewsSeed(env, nowIso = new Date()) {
   seeded = (async () => {
     await env.DB.prepare(`CREATE TABLE IF NOT EXISTS content_seeds (key TEXT PRIMARY KEY, applied_at TEXT NOT NULL)`).run();
     const done = await env.DB.prepare(`SELECT 1 AS ok FROM content_seeds WHERE key = ?`).bind(NEWS_SEED_KEY).first();
-    if (done) return false;
+    if (done) { await applyNewsFix(env); return false; }
     const base = nowIso instanceof Date ? nowIso.getTime() : Date.parse(nowIso);
     const ts = (i) => new Date(base - i * 60000).toISOString().replace('T', ' ').replace('Z', '+00');
     const stmts = SEED_NEWS.map((n, i) => env.DB.prepare(`INSERT INTO news (title, body, title_ru, title_en, body_ru, body_en, image_url, published, created_at, updated_at)
@@ -161,6 +222,7 @@ export function ensureNewsSeed(env, nowIso = new Date()) {
       .bind(n.uz.title, n.uz.body, n.ru.title, n.en.title, n.ru.body, n.en.body, n.image, ts(i), ts(i), NEWS_SEED_KEY));
     stmts.push(env.DB.prepare(`INSERT OR IGNORE INTO content_seeds (key, applied_at) VALUES (?, ?)`).bind(NEWS_SEED_KEY, ts(0)));
     await env.DB.batch(stmts);
+    await applyNewsFix(env);
     return true;
   })().catch((err) => { seeded = null; console.error('news seed failed', err?.message || err); return false; });
   return seeded;

@@ -360,7 +360,7 @@ export default function ActivatePage() {
         <section className="ac-card">
           <div className="ac-badge">{product.name || t('NFC mahsulot')}</div>
           <h1>{t('Qanday profil kerak?')}</h1>
-          <p className="ac-sub">{t('Buni keyin ham o‘zgartirish mumkin emas — shuning uchun o‘ylab tanlang.')}</p>
+          <p className="ac-sub">{t('Stiker nimani ochishini keyin kabinetdagi «NFC karta» bo‘limidan o‘zgartirsa ham bo‘ladi.')}</p>
           <div className="ac-choices">
             <button type="button" className="ac-choice" onClick={() => { setKind('personal'); storeKind('personal'); setChoice(''); }}>
               <span className="ac-choice-ic" aria-hidden="true">{'\u{1F464}'}</span>

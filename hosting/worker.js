@@ -11131,12 +11131,19 @@ async function handleRequest(request, env, url) {
     // tushadi — qaysi partiya qancha skanerlanganini analitika ko'rsatadi.
     // Tire bor — profil kodi (faqat harf/raqam) bilan to'qnashmaydi.
     // 302 + no-store: brauzer yo'naltirishni abadiy eslab qolmasin.
+    //
+    // 2026-09-26 (egasi): QR endi "NFC qanday ishlaydi" qo'llanmasini ochadi
+    // (/nfc-stiker: tekkizish ko'rsatmasi, stikerni ulash, ilova). Ko'p odam
+    // stikerni "oddiy QR" deb o'ylaydi — asosiysi NFC. Partiyalar:
+    //   qr-1 — avto stiker (80 mm, oyna ichidan) -> #avto bo'limi
+    //   qr-2 — tashqi stiker (100 mm, eshik/vitrina)
     const qrSticker = url.pathname.match(/^\/qr-(\d{1,4})\/?$/);
     if (qrSticker && request.method === 'GET') {
+      const section = qrSticker[1] === '1' ? '#avto' : '';
       return new Response(null, {
         status: 302,
         headers: {
-          location: `/ilova-yuklash?utm_source=stiker&utm_medium=qr&utm_campaign=qr-${qrSticker[1]}`,
+          location: `/nfc-stiker?utm_source=stiker&utm_medium=qr&utm_campaign=qr-${qrSticker[1]}${section}`,
           'cache-control': 'no-store',
         },
       });
@@ -11151,13 +11158,22 @@ async function handleRequest(request, env, url) {
         await ensureCoreSchema(env);
         const token = tapRedirect[1];
         const row = await env.DB.prepare(
-          `SELECT linked_code, linked_company_id FROM physical_cards WHERE chip_token = ?`
+          `SELECT linked_code, linked_company_id, active, blocked_by_owner FROM physical_cards WHERE chip_token = ?`
         ).bind(token).first()
           // Eski bazada `linked_company_id` ustuni bo'lmasligi mumkin.
           .catch(() => env.DB.prepare(`SELECT linked_code FROM physical_cards WHERE chip_token = ?`)
             .bind(token).first());
         if (!row) return to('/');
         if (row.linked_code) return to(`/${String(row.linked_code).toLowerCase()}?t=${encodeURIComponent(token)}`);
+        // BIZNESGA ULANGAN STIKER O'CHIRILGAN BO'LSA (2026-09-26): ilgari
+        // to'g'ridan-to'g'ri /c/<id> ochilardi va kabinetdagi "Vaqtincha
+        // o'chirish" biznes stikerida ishlamasdi (shaxsiy profilda `?t=`
+        // orqali tekshiruv bor, kompaniya sahifasida yo'q). Endi o'chirilgan
+        // stiker kompaniya sahifasini ochmaydi — "stiker o'chirilgan" xabari
+        // bilan NFC qo'llanmasiga boradi.
+        if (row.linked_company_id && (Number(row.blocked_by_owner) === 1 || Number(row.active) === 0)) {
+          return to('/nfc-stiker?stiker=ochiq-emas');
+        }
         if (row.linked_company_id) return to(`/c/${String(row.linked_company_id).toLowerCase()}`);
         // Qurilma bor, lekin hali hech qayerga bog'lanmagan — demak
         // mahsulot sotilgan, ammo faollashtirilmagan.
