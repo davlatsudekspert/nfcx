@@ -199,4 +199,13 @@ export const DICT_SITE = {
   'Kompaniya ochilgach shu sahifaga avtomatik qaytasiz — kod saqlanib qoladi.': {
     ru: 'После создания компании вы автоматически вернётесь на эту страницу — код сохранится.',
     en: 'Once the company is created you will return here automatically — your code is saved.' },
+  // Bosh sahifa: namuna bizneslar — motivatsiya qatori va afzalliklar (2026-09-26)
+  'Biznesingiz uchun tayyor mini-sayt: menyu, narxlar, ish vaqti, manzil va postlar — saytda ham, ilovada ham.': {
+    ru: 'Готовый мини-сайт для вашего бизнеса: меню, цены, часы работы, адрес и посты — на сайте и в приложении.',
+    en: 'A ready-made mini-site for your business: menu, prices, hours, address and posts — on the web and in the app.' },
+  'O‘z biznesingizni oching — bepul': { ru: 'Откройте свой бизнес — бесплатно', en: 'Open your business — free' },
+  '5 daqiqada tayyor': { ru: 'Готово за 5 минут', en: 'Ready in 5 minutes' },
+  'Mijoz NFC yoki QR orqali bir tegishda ochadi': { ru: 'Клиент открывает одним касанием NFC или по QR', en: 'Customers open it with one NFC tap or a QR scan' },
+  'Ilovada ham ko‘rinadi': { ru: 'Виден и в приложении', en: 'Also shown in the app' },
+  'Katalog va buyurtmalar bir joyda': { ru: 'Каталог и заказы в одном месте', en: 'Catalog and orders in one place' },
 };

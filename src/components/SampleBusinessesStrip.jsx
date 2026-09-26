@@ -47,9 +47,17 @@ export default function SampleBusinessesStrip({ compact = false, fallback = null
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
             <h2 id="namuna-bizneslar-title" className={tight ? 'font-display text-[26px] font-semibold leading-tight text-[color:var(--vz-ink)] sm:text-[30px]' : 'vz-h2 text-[color:var(--vz-ink)]'}>{t('Bizneslar NFCSTORE’da qanday ko‘rinadi')}</h2>
-            <p className={`mt-2 max-w-2xl text-[15px] leading-relaxed text-[color:var(--vz-ink-2)]${tight ? ' lg:hidden' : ''}`}>
-              {t('Har sohadan namuna profillar: menyu, narxlar, ish vaqti va postlar. Birini oching — biznesingiz sahifasi ham shunday bo‘ladi.')}
-            </p>
+            {tight ? (
+              // Bosh sahifada — bitta qisqa, jalb qiluvchi qator (egasi,
+              // 2026-09-26: "motivatsiya qiladigan jumla qo'shaylik").
+              <p className="mt-1.5 max-w-3xl text-[15px] leading-relaxed text-[color:var(--vz-ink-2)]">
+                {t('Biznesingiz uchun tayyor mini-sayt: menyu, narxlar, ish vaqti, manzil va postlar — saytda ham, ilovada ham.')}
+              </p>
+            ) : (
+              <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-[color:var(--vz-ink-2)]">
+                {t('Har sohadan namuna profillar: menyu, narxlar, ish vaqti va postlar. Birini oching — biznesingiz sahifasi ham shunday bo‘ladi.')}
+              </p>
+            )}
           </div>
           <button type="button" onClick={() => navigate('/kompaniyalar')} className="shrink-0 text-[14px] font-bold text-[color:var(--accent-text)]">
             {t('Hammasi')} →
@@ -91,9 +99,20 @@ export default function SampleBusinessesStrip({ compact = false, fallback = null
       </div>
 
       {!compact && (
-        <button type="button" onClick={() => navigate('/company/create')} className="btn btn-gold mt-5">
-          {t('O‘z biznesingizni oching')}
-        </button>
+        <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3">
+          <button type="button" onClick={() => navigate('/company/create')} className="btn btn-gold">
+            {t('O‘z biznesingizni oching — bepul')}
+          </button>
+          {/* AFZALLIKLAR — odamni harakatga undaydigan qisqa va'dalar. */}
+          <ul className="flex flex-wrap gap-x-5 gap-y-2 text-[14px] text-[color:var(--vz-ink-2)]">
+            {['5 daqiqada tayyor', 'Mijoz NFC yoki QR orqali bir tegishda ochadi', 'Ilovada ham ko‘rinadi', 'Katalog va buyurtmalar bir joyda'].map((x) => (
+              <li key={x} className="flex items-center gap-1.5">
+                <span aria-hidden="true" className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[var(--accent-a14)] text-[11px] font-bold text-[color:var(--accent-text)]">✓</span>
+                {t(x)}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </section>
   );
