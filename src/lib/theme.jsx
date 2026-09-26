@@ -45,11 +45,20 @@ export const THEMES = [
     dots: ['#050403', '#141210', '#d4af5a'],
   },
   {
+    // ILOVADAGI "IVORY" (oq) — ranglar mobile_nova bilan bir xil.
     id: 'pearl',
-    label: 'Pearl',
-    hint: 'Champagne',
-    bg: '#f3eee3',
-    dots: ['#f3eee3', '#fffdf8', '#c7a863'],
+    label: 'Ivory',
+    hint: 'Ilova · Oq',
+    bg: '#f6f5f2',
+    dots: ['#f6f5f2', '#ffffff', '#171716'],
+  },
+  {
+    // ILOVADAGI "NOIR" (qora) — ranglar mobile_nova bilan bir xil.
+    id: 'midnight',
+    label: 'Noir',
+    hint: 'Ilova · Qora',
+    bg: '#07111f',
+    dots: ['#07111f', '#16283e', '#d6b25e'],
   },
   {
     id: 'graphite',
@@ -71,13 +80,6 @@ export const THEMES = [
     hint: 'Violet',
     bg: '#181125',
     dots: ['#181125', '#33264b', '#b79ce2'],
-  },
-  {
-    id: 'midnight',
-    label: 'Midnight',
-    hint: 'Soft Gold',
-    bg: '#0d1524',
-    dots: ['#0d1524', '#21314c', '#d6b478'],
   },
 ];
 

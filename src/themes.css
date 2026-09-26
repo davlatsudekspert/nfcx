@@ -140,77 +140,82 @@
    gold accent. Sariq yoki yaltiroq metall gold YO‘Q; soyalar yumshoq
    va tarqalgan, qattiq qora soya yo‘q.
    ─────────────────────────────────────────────────────────────────── */
+/* IVORY — ILOVADAGI OQ MAVZU BILAN BIR XIL (egasi, 2026-09-26: "fon va
+   temani ilovadagi oq-qora temadan ol"). Qiymatlar mobile_nova
+   `NfcTokens.ivory` dan: iliq ivory fon, oq kartalar, QORA siyoh va
+   tugmalar, oltin faqat brend urg'usida. Ichki nomi `pearl` qoldi —
+   saqlangan tanlovlar va CSS qoidalari buzilmasin. */
 [data-theme="pearl"] {
   color-scheme: light;
 
   /* Fon */
-  --bg-primary: #f3eee3;
-  --bg-secondary: #f7f3ea;
-  --bg-gradient-a: #f8f4ec;
-  --bg-gradient-b: #efe7d9;
+  --bg-primary: #f6f5f2;
+  --bg-secondary: #f1efea;
+  --bg-gradient-a: #f8f7f4;
+  --bg-gradient-b: #efede8;
 
   /* Yuzalar (surface) — pastdan yuqoriga qatlam narvoni:
      bg-primary < bg-secondary < surface-soft < surface < surface-elevated < surface-raised */
-  --surface-soft: #fbf8f2;
-  --surface: #fffdf8;
+  --surface-soft: #faf9f6;
+  --surface: #ffffff;
   --surface-elevated: #ffffff;
   --surface-raised: #ffffff;
-  --surface-inset: #ece5d7;
-  --surface-sheen: linear-gradient(160deg, rgba(255, 255, 255, 0.6) 0%, rgba(150, 120, 70, 0.045) 100%);
+  --surface-inset: #eceae4;
+  --surface-sheen: linear-gradient(160deg, rgba(255, 255, 255, 0.6) 0%, rgba(23, 23, 22, 0.03) 100%);
 
   /* Yarim shaffof qoplama asoslari: tint = yoritadi, shade = parda va soya,
      inset = panelni ichkariga botiradi (yorug mavzuda ham togri ishlaydi) */
-  --tint-base: #23201a;
-  --shade-base: #2b2519;
-  --inset-base: #cdc1a8;
+  --tint-base: #171716;
+  --shade-base: #171716;
+  --inset-base: #cfccc4;
 
   /* Matn */
-  --text-primary: #23201a;
-  --text-secondary: #4f4739;
-  --text-muted: #6b6252;
-  --text-faint: #8a8070;
-  --text-on-accent: #140f04;
+  --text-primary: #171716;
+  --text-secondary: #575550;
+  --text-muted: #6e6c68;
+  --text-faint: #8a8782;
+  --text-on-accent: #ffffff;
 
   /* Accent */
-  --accent-primary: #9c7a32;
-  --accent-secondary: #c7a863;
-  --accent-deep: #7c5f22;
-  --accent-soft: rgba(156, 122, 50, 0.12);
-  --accent-ink: #140f04;
-  --accent-glow: rgba(199, 168, 99, 0.38);
+  --accent-primary: #252422;
+  --accent-secondary: #7a5f38;
+  --accent-deep: #141414;
+  --accent-soft: rgba(23, 23, 22, 0.08);
+  --accent-ink: #ffffff;
+  --accent-glow: rgba(179, 149, 102, 0.16);
 
   /* Chegara (border) */
-  --border: #ded3bf;
-  --border-soft: #eae2d2;
-  --border-strong: #c9b99e;
-  --border-accent: rgba(156, 122, 50, 0.34);
+  --border: #e3e1dc;
+  --border-soft: #ecebe6;
+  --border-strong: #cfccc5;
+  --border-accent: rgba(23, 23, 22, 0.22);
 
   /* Soya va nur */
-  --shadow: 0 18px 40px -22px rgba(92, 74, 44, 0.36);
-  --shadow-soft: 0 10px 26px -18px rgba(92, 74, 44, 0.26);
-  --glow: 0 0 22px -10px rgba(199, 168, 99, 0.6);
-  --scrim: rgba(40, 34, 24, 0.55);
+  --shadow: 0 16px 30px -12px rgba(40, 30, 12, 0.16), 0 1px 3px rgba(40, 30, 12, 0.05);
+  --shadow-soft: 0 12px 24px -12px rgba(40, 30, 12, 0.12), 0 1px 2px rgba(40, 30, 12, 0.045);
+  --glow: 0 0 22px -10px rgba(179, 149, 102, 0.45);
+  --scrim: rgba(23, 23, 22, 0.5);
 
   /* Holat ranglari */
-  --success: #3e7a55;
-  --success-soft: rgba(62, 122, 85, 0.14);
-  --warning: #9c742a;
-  --warning-soft: rgba(156, 116, 42, 0.16);
-  --danger: #b0463a;
-  --danger-soft: rgba(176, 70, 58, 0.13);
+  --success: #3f6b4a;
+  --success-soft: rgba(63, 107, 74, 0.12);
+  --warning: #86672a;
+  --warning-soft: rgba(134, 103, 42, 0.14);
+  --danger: #9b3b30;
+  --danger-soft: rgba(155, 59, 48, 0.12);
   --info: #3c6e9f;
   --link: #2f6db4;
 
   /* Komponentlar */
   --input-bg: #ffffff;
-  --input-border: #d6c9b2;
-  --button-bg: linear-gradient(135deg, #d0b273, #9c7a32);
-  --button-text: #140f04;
-  --nav-bg: rgba(247, 243, 234, 0.92);
-  --card-bg: #fffdf8;
-  --modal-bg: #fffdf8;
-  --pill-bg: #2b2519;
-  --pill-text: #fbf7f0;
+  --input-border: #d9d6cf;
+  --button-bg: linear-gradient(135deg, #34332f, #171716);
+  --button-text: #ffffff;
+  --nav-bg: rgba(246, 245, 242, 0.92);
+  --card-bg: #ffffff;
+  --modal-bg: #ffffff;
+  --pill-bg: #171716;
+  --pill-text: #ffffff;
 
   /* NAMUNA (showcase) NFC karta — FAQAT marketing/demo kartalar uchun.
      Foydalanuvchining haqiqiy kartasi (tarif finish'i, Card Designer
@@ -234,8 +239,8 @@
   --promo-code: #6a4f18;
   --promo-frame: linear-gradient(140deg, #fffaf0 0%, #d8bd80 22%, #9c7a32 46%, #f1e2bd 62%, #b99a55 82%, #fdf6e6 100%);
   --promo-glow: rgba(199, 168, 99, 0.34);
-  --brand-plate: radial-gradient(circle at 50% 38%, #fffdf8 0%, #ece2cc 72%);
-  --brand-ring: rgba(156, 122, 50, 0.55);
+  --brand-plate: radial-gradient(circle at 50% 38%, #ffffff 0%, #ece9e2 72%);
+  --brand-ring: rgba(122, 95, 56, 0.45);
   --brand-mark-filter: saturate(1.08) brightness(0.72);
   --media-tint-filter: brightness(1.26) saturate(1.06) contrast(0.9);
 }
@@ -562,50 +567,53 @@
    CTA, active holat, ikona, nozik ramka. Sovuq ko‘k yoki gaming
    ko‘rinish YO‘Q.
    ─────────────────────────────────────────────────────────────────── */
+/* NOIR — ILOVADAGI QORA MAVZU BILAN BIR XIL (2026-09-26). Qiymatlar
+   mobile_nova `NfcTokens.noir` dan: chuqur navy fon, bir-ikki ton
+   ochroq navy yuzalar, oltin aksent. Ichki nomi `midnight` qoldi. */
 [data-theme="midnight"] {
   color-scheme: dark;
 
   /* Fon */
-  --bg-primary: #0d1524;
-  --bg-secondary: #121c2e;
-  --bg-gradient-a: #101a2b;
-  --bg-gradient-b: #0a1120;
+  --bg-primary: #07111f;
+  --bg-secondary: #050b14;
+  --bg-gradient-a: #0b1828;
+  --bg-gradient-b: #050b14;
 
   /* Yuzalar (surface) — pastdan yuqoriga qatlam narvoni:
      bg-primary < bg-secondary < surface-soft < surface < surface-elevated < surface-raised */
-  --surface-soft: #162238;
-  --surface: #1a2840;
-  --surface-elevated: #21314c;
-  --surface-raised: #293b59;
-  --surface-inset: #09101c;
+  --surface-soft: #0e1a2a;
+  --surface: #142337;
+  --surface-elevated: #16283e;
+  --surface-raised: #1c3049;
+  --surface-inset: #050b14;
   --surface-sheen: linear-gradient(160deg, rgba(239, 215, 166, 0.04) 0%, rgba(0, 0, 0, 0.06) 100%);
 
   /* Yarim shaffof qoplama asoslari: tint = yoritadi, shade = parda va soya,
      inset = panelni ichkariga botiradi (yorug mavzuda ham togri ishlaydi) */
-  --tint-base: #eeeae0;
-  --shade-base: #050a12;
-  --inset-base: #050a12;
+  --tint-base: #f4f1e8;
+  --shade-base: #03070d;
+  --inset-base: #03070d;
 
   /* Matn */
-  --text-primary: #eeeae0;
-  --text-secondary: #bcc3ce;
-  --text-muted: #8f98a6;
-  --text-faint: #747d8c;
-  --text-on-accent: #1a1308;
+  --text-primary: #f4f1e8;
+  --text-secondary: #aab4c3;
+  --text-muted: #8a96a9;
+  --text-faint: #6c788b;
+  --text-on-accent: #07111f;
 
   /* Accent */
-  --accent-primary: #d6b478;
-  --accent-secondary: #efd7a6;
-  --accent-deep: #a8874a;
-  --accent-soft: rgba(214, 180, 120, 0.12);
-  --accent-ink: #1a1308;
-  --accent-glow: rgba(214, 180, 120, 0.36);
+  --accent-primary: #d6b25e;
+  --accent-secondary: #e4c97a;
+  --accent-deep: #a8853f;
+  --accent-soft: rgba(214, 178, 94, 0.12);
+  --accent-ink: #07111f;
+  --accent-glow: rgba(228, 201, 122, 0.30);
 
   /* Chegara (border) */
-  --border: #273751;
-  --border-soft: #1f2e45;
-  --border-strong: #364b6b;
-  --border-accent: rgba(214, 180, 120, 0.32);
+  --border: #2a3b52;
+  --border-soft: #1d2c40;
+  --border-strong: #3a4e69;
+  --border-accent: rgba(214, 178, 94, 0.30);
 
   /* Soya va nur */
   --shadow: 0 20px 46px -24px rgba(3, 8, 16, 0.82);
@@ -614,25 +622,25 @@
   --scrim: rgba(5, 10, 18, 0.66);
 
   /* Holat ranglari */
-  --success: #74c49a;
-  --success-soft: rgba(116, 196, 154, 0.14);
-  --warning: #ddb871;
-  --warning-soft: rgba(221, 184, 113, 0.16);
-  --danger: #dd8279;
-  --danger-soft: rgba(221, 130, 121, 0.15);
+  --success: #7fb28e;
+  --success-soft: rgba(127, 178, 142, 0.14);
+  --warning: #e0b458;
+  --warning-soft: rgba(224, 180, 88, 0.16);
+  --danger: #c9573f;
+  --danger-soft: rgba(201, 87, 63, 0.15);
   --info: #89b6df;
   --link: #8fc0f0;
 
   /* Komponentlar */
-  --input-bg: #111b2c;
-  --input-border: #2f4160;
-  --button-bg: linear-gradient(135deg, #efd7a6, #b6924f);
-  --button-text: #1a1308;
-  --nav-bg: rgba(13, 21, 36, 0.9);
-  --card-bg: #1a2840;
-  --modal-bg: #21314c;
-  --pill-bg: #22314a;
-  --pill-text: #eeeae0;
+  --input-bg: #0e1a2a;
+  --input-border: #2a3b52;
+  --button-bg: linear-gradient(135deg, #e4c97a, #a8853f);
+  --button-text: #07111f;
+  --nav-bg: rgba(7, 17, 31, 0.9);
+  --card-bg: #142337;
+  --modal-bg: #16283e;
+  --pill-bg: #16283e;
+  --pill-text: #f4f1e8;
 
   /* NAMUNA (showcase) NFC karta — FAQAT marketing/demo kartalar uchun.
      Foydalanuvchining haqiqiy kartasi (tarif finish'i, Card Designer
@@ -651,13 +659,13 @@
      ramkasi va brend suratlarining mavzuga moslashuvi.
      Logotipning O'ZI (shakli, nisbati, fayli) o'zgarmaydi — faqat uni
      o'rab turgan yuza, halqa, nur va yumshoq rang moslashuvi. */
-  --promo-inner-bg: linear-gradient(160deg, #1a2740 0%, #101a2e 55%, #0a1220 100%);
+  --promo-inner-bg: linear-gradient(160deg, #16283e 0%, #0e1a2a 55%, #07111f 100%);
   --promo-ink: #f2e9d6;
-  --promo-code: #d6b478;
+  --promo-code: #d6b25e;
   --promo-frame: linear-gradient(140deg, #f7e9c8 0%, #d6b478 22%, #8d6f34 46%, #eedcb4 62%, #b3924f 82%, #f4e6c4 100%);
   --promo-glow: rgba(214, 180, 120, 0.28);
-  --brand-plate: radial-gradient(circle at 50% 38%, #18243a 0%, #0d1524 72%);
-  --brand-ring: rgba(214, 180, 120, 0.5);
+  --brand-plate: radial-gradient(circle at 50% 38%, #16283e 0%, #07111f 72%);
+  --brand-ring: rgba(214, 178, 94, 0.5);
   --brand-mark-filter: saturate(0.85) brightness(1.08);
   --media-tint-filter: hue-rotate(-8deg) saturate(0.95) contrast(1.03);
 }
@@ -756,6 +764,21 @@
   --company-line: var(--border-accent);
 }
 
+
+
+/* IVORY (ilova bilan bir xil): asosiy tugma QORA siyoh, oltin faqat
+   brend urg'usida (sarlavha ustidagi kichik yozuv, NFC karta). */
+html[data-theme="pearl"] .btn-gold {
+  background: linear-gradient(135deg, #34332f, #171716);
+  color: #ffffff;
+  box-shadow: 0 12px 24px -12px rgba(40, 30, 12, 0.35);
+}
+
+/* Yorug' mavzuda hero'ning pastki pardasi QORA emas, sahifa foniga
+   so'nadi — ilgari oq fon ustida qoramtir chiziq (band) paydo bo'lardi. */
+html[data-theme="pearl"] main.bg-page-bg > section:first-of-type::after {
+  background: linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--bg-primary) 70%, transparent) 70%, var(--bg-primary) 100%);
+}
 
 /* Yorug' (Pearl) mavzuda matn uchun accent TO'QROQ bo'ladi — krem fon
    ustida och oltin o'qilmaydi. Standart (qora-oltin) mavzuda esa
