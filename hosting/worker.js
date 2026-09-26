@@ -11137,9 +11137,10 @@ async function handleRequest(request, env, url) {
     // stikerni "oddiy QR" deb o'ylaydi — asosiysi NFC. Partiyalar:
     //   qr-1 — avto stiker (80 mm, oyna ichidan) -> #avto bo'limi
     //   qr-2 — tashqi stiker (100 mm, eshik/vitrina)
+    //   qr-3 — NFC karta (Uzum, orqa tomon) -> #ulash bo'limi
     const qrSticker = url.pathname.match(/^\/qr-(\d{1,4})\/?$/);
     if (qrSticker && request.method === 'GET') {
-      const section = qrSticker[1] === '1' ? '#avto' : '';
+      const section = qrSticker[1] === '1' ? '#avto' : qrSticker[1] === '3' ? '#ulash' : '';
       return new Response(null, {
         status: 302,
         headers: {

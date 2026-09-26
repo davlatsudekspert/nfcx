@@ -10,10 +10,11 @@
 //
 //   qr-1 — avto stiker (80 mm, oyna ichidan) -> qo'llanmaning #avto bo'limi
 //   qr-2 — do'kon stikeri (100 mm)            -> qo'llanma boshi
+//   qr-3 — NFC karta (Uzum, orqa tomon)       -> #ulash (kartani ulash bo'limi)
 export const QR_STICKER_RE = /^qr-(\d{1,4})$/;
 
 export function qrStickerTarget(batch) {
   const n = String(batch);
-  const section = n === '1' ? '#avto' : '';
+  const section = n === '1' ? '#avto' : n === '3' ? '#ulash' : '';
   return `/nfc-stiker?utm_source=stiker&utm_medium=qr&utm_campaign=qr-${n}${section}`;
 }
