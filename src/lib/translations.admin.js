@@ -234,6 +234,7 @@ export const DICT_ADMIN = {
   '{n} ta kod yaratildi': { ru: 'Создано кодов: {n}', en: '{n} codes created' },
   'Bu kodlar BOSHQA KO‘RSATILMAYDI. Yopishdan oldin chop eting yoki CSV yuklab oling.': { ru: 'Эти коды БОЛЬШЕ НЕ БУДУТ показаны. Распечатайте или скачайте CSV перед закрытием.', en: 'These codes will NOT be shown again. Print or download the CSV before closing.' },
   'Chop etish (A4)': { ru: 'Печать (A4)', en: 'Print (A4)' },
+  'Kod yorliqlari (A4, 48 ta)': { ru: 'Наклейки с кодами (A4, 48 шт.)', en: 'Code labels (A4, 48 per sheet)' },
 
   // ── STIKER YOZISH ──────────────────────────────────────────────
   'Amal qilish muddati': { ru: 'Срок действия', en: 'Valid until' },

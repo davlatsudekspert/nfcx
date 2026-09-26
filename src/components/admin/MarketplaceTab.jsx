@@ -1018,6 +1018,50 @@ function BatchResult({ batch, t, onDone, adminApi, apiErrText }) {
     }
   };
 
+  // ── KOD YORLIQLARI (egasi, 2026-09-26) ─────────────────────────
+  //
+  // NFC KARTA uchun premium qo'llanma UV bosmada OLDINDAN bosiladi —
+  // hammasi bir xil. Har konvertdagi HAR XIL kod esa kichik yorliqqa
+  // chiqariladi va qo'llanma orqasidagi ramkaga yopishtiriladi.
+  //
+  // O'lcham — standart A4 yorliq qog'ozi: 45.7 × 21.2 mm, varaqda 48 ta
+  // (4 ustun × 12 qator; yuqori chet 21.5 mm, yon chet 9.75 mm, ustunlar
+  // orasi 2.5 mm). Qo'llanmadagi ramka 48 × 23.5 mm — yorliq ichiga
+  // bemalol tushadi.
+  //
+  // Yorliqda FAQAT kod va kichik sarlavha: QR yo'q (u qo'llanmaning
+  // o'zida bor), kod QR'ga ham yozilmaydi — xavfsizlik qoidasi
+  // `buildPrintPage` dagi bilan bir xil.
+  //
+  // Kesilmagan (butun) yorliq qog'ozi uchun har yorliq atrofida juda
+  // och uzuq chiziq bor — qaychi bilan kesish oson, kesilgach ko'rinmaydi.
+  const printLabels = () => {
+    setMsg('');
+    const w = window.open('', '_blank');
+    if (!w) {
+      setMsg(t('Brauzer yangi oynani bloklab qo‘ydi. Manzil satridagi ruxsatni yoqing va qayta urinib ko‘ring.'));
+      return;
+    }
+    const esc = (x) => String(x).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+    const labels = codes.map((c) => `<div class="l"><span class="t">FAOLLASHTIRISH KODI</span><b>${esc(c.code)}</b></div>`);
+    const pages = [];
+    for (let i = 0; i < labels.length; i += 48) pages.push(`<section class="p">${labels.slice(i, i + 48).join('')}</section>`);
+    w.document.open();
+    w.document.write(`<!doctype html><html lang="uz"><head><meta charset="utf-8"><title>NFCSTORE — ${esc(sku)} — kod yorliqlari</title><style>
+      @page{size:A4;margin:0}
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:system-ui,sans-serif;color:#111;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      .p{width:210mm;height:297mm;padding:21.5mm 9.75mm 0;display:grid;grid-template-columns:repeat(4,45.7mm);grid-auto-rows:21.2mm;column-gap:2.5mm;break-after:page;page-break-after:always}
+      .p:last-child{break-after:auto;page-break-after:auto}
+      .l{outline:.15mm dashed #d6d6d6;outline-offset:-.075mm;display:flex;flex-direction:column;align-items:center;justify-content:center}
+      .t{font:800 5.6pt/1 system-ui;letter-spacing:.14em;color:#6b6b6b}
+      .l b{margin-top:1.6mm;font:700 12.5pt/1 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.06em}
+    </style></head><body>${pages.join('')}</body></html>`);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 300);
+  };
+
   const buildPrintPage = async (w) => {
     const QRCode = await import('qrcode');
     const origin = window.location.origin;
@@ -1144,6 +1188,7 @@ function BatchResult({ batch, t, onDone, adminApi, apiErrText }) {
       </div>
       <div className="mk-batch-actions">
         <button type="button" className="btn btn-gold" onClick={print}>{t('Chop etish (A4)')}</button>
+        <button type="button" className="btn" onClick={printLabels}>{t('Kod yorliqlari (A4, 48 ta)')}</button>
         <button type="button" className="btn" onClick={csv}>{t('CSV yuklab olish')}</button>
         <button type="button" className="btn" onClick={stickersCsv} disabled={!stickerCount}>
           {t('Stiker manzillari (CSV)')}
