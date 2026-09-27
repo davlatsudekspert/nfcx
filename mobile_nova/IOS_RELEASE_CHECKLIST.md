@@ -1,127 +1,115 @@
 # iOS relizi — nima tayyor, nima yo'q
 
-**Holat: iOS SINALMAGAN.** Bu hujjat "tayyor" demaydi — u
-**nimani hali qilib bo'lmasligini** va Mac kelganda **aniq nima
-qilish kerakligini** yozib qo'yadi.
+**Holat (2026-09-27): ilova iOS'da QURILADI va iPhone
+simulyatorida OCHILADI.** Haqiqiy iPhone'da hali sinalmagan —
+buning uchun Apple Developer hisobi va TestFlight kerak.
 
-Sabab oddiy: iOS ilovasini qurish, imzolash va qurilmada sinash
-**faqat macOS + Xcode** bilan bo'ladi. Ular bu muhitda yo'q.
-Shuning uchun quyidagi hech bir qator "PASS" deb belgilanmagan.
+Mac yo'q — hamma narsa GitHub'ning macOS runner'ida:
+`.github/workflows/nova-ios.yml`.
 
 ---
 
-## 1. Kodda nima tayyor
+## 1. Tayyor va CI'da tekshiriladigan
 
-| Narsa | Holat | Izoh |
+| Narsa | Holat | Qayerda |
 |---|---|---|
-| Flutter kodi platformaga bog'liq emas | ✅ | `dart:io` ning platformaga xos yo'llari yo'q |
-| Ilova nomi | ✅ | `CFBundleDisplayName` = `NFCSTORE` |
-| NFC matni | ✅ | `NFCReaderUsageDescription` qo'shildi |
-| NFC entitlement fayli | ✅ | `ios/Runner/Runner.entitlements`, faqat `NDEF` |
-| Kamera / galereya matnlari | ⚠️ | Quyida, 3-bo'limga qarang |
+| Imzosiz release build (`flutter build ios --release --no-codesign`) | ✅ | `nova-ios.yml` → `build` |
+| iPhone 16 Pro Max simulyatorida ochilish, 35 soniya yiqilmaslik | ✅ | `nova-ios.yml` → `simulator`, suratlar artefaktda |
+| Ilova nomi `NFCSTORE` | ✅ | `Info.plist` `CFBundleDisplayName` |
+| NFC matni | ✅ | `NFCReaderUsageDescription` |
+| Kamera / galereya / mikrofon / galereyaga saqlash matnlari | ✅ | `Info.plist` — bo'lmasa iOS ilovani yopadi |
+| NFC entitlement — **faqat `TAG`** | ✅ | `ios/Runner/Runner.entitlements` |
+| Entitlement loyihaga ulangan | ✅ | `CODE_SIGN_ENTITLEMENTS` — Debug/Release/Profile |
+| Faqat iPhone (`TARGETED_DEVICE_FAMILY = 1`) | ✅ | iPad'da NFC yo'q |
+| Faqat vertikal (iPhone) | ✅ | `UISupportedInterfaceOrientations` |
+| Shifrlash e'lon qilingan (`ITSAppUsesNonExemptEncryption = false`) | ✅ | faqat HTTPS |
 
-`scripts/test-app-identity.mjs` iOS nomini har bir qurilishda
-tekshiradi.
+CI qo'riqchisi (`Info.plist qo'riqchisi` qadami) yuqoridagilardan
+biri yo'qolsa build'ni QIZIL qiladi.
+
+### Nima uchun `TAG`, `NDEF` emas
+
+`nfc_manager` iOS'da faqat `NFCTagReaderSession` ishlatadi — u
+`TAG` formatini talab qiladi. `NDEF` qiymatini esa Apple
+taqiqlagan: yuklashda **ITMS-90778 "NDEF is disallowed"**. Fayl
+avval faqat `NDEF` bilan turgan edi — TestFlight'ga yuklab
+bo'lmasdi va telefonda NFC umuman ishlamasdi.
+
+### Nima uchun faqat iPhone
+
+- iPad'da NFC o'qigich yo'q — ilovaning asosiy vazifasi ishlamaydi;
+- iPad yoqilsa App Store 13" iPad suratlarini ham talab qiladi va
+  tekshiruvchi iPad'da ham sinaydi — iPad uchun dizayn qilinmagan.
+
+iPad'da ilova baribir o'rnatiladi — iPhone ko'rinishida.
 
 ---
 
-## 2. NFC — YETARLI EMAS, Mac kerak
+## 2. Apple hisobi ochilgach
 
-`Info.plist` va `Runner.entitlements` qo'shildi, **lekin ular
-o'zlaricha ishlamaydi**. Yana ikkita narsa kerak va ikkalasi ham
-Mac talab qiladi:
+1. **Bundle ID.** Hozir `uz.nfcstore.nfcstoreNova` (Flutter
+   yaratgan). Android'da `uz.nfcstore.nova`. App Store Connect'da
+   ilova yaratilgach bundle ID **o'zgartirib bo'lmaydi** — egasi
+   qarori bilan oldindan hal qilinadi.
+2. **API kalit** — App Store Connect → Users and Access →
+   Integrations → App Store Connect API → yangi kalit (Admin).
+   `.p8` fayl, Key ID va Issuer ID **faqat GitHub Secrets'ga**
+   qo'yiladi — chatga, kodga, logga EMAS.
+3. **TestFlight job** `nova-ios.yml` ga qo'shiladi: imzo, build
+   raqami (`github.run_number`), yuklash.
+4. **App Store Connect sozlamalari:** narx — bepul; "Make this app
+   available on Mac" — O'CHIRILADI (Mac'da NFC yo'q); maxfiylik
+   siyosati `https://nfcstore.uz/privacy`; App Privacy so'rovnomasi.
+5. **Tekshiruvchi uchun:** sinov akkaunti (App Store Connect'dagi
+   maxsus maydonga egasi o'zi kiritadi) va NFC videosi — telefon
+   stikerga tekkiziladi → profil ochiladi.
 
-1. **Xcode'da imkoniyatni yoqish.**
-   `Runner` target → *Signing & Capabilities* → **+ Capability** →
-   *Near Field Communication Tag Reading*.
-   Bu `Runner.entitlements` ni loyihaga ulaydi
-   (`CODE_SIGN_ENTITLEMENTS` sozlamasi). Fayl hozir bor, lekin
-   `project.pbxproj` ga **ulanmagan** — uni qo'lda tahrirlash
-   xavfli va bu yerdan tekshirib bo'lmaydi.
+---
 
-2. **Apple Developer hisobida imkoniyat yoqilgan provisioning
-   profil.** Aks holda imzo bosqichida yiqiladi.
-
-Shundan keyin qurilmada sinaladigan narsalar:
+## 3. Haqiqiy iPhone'da sinaladigan (TestFlight)
 
 - [ ] Karta o'qish (`NfcScanScreen`) — tizim oynasi ochiladimi;
 - [ ] Kartaga yozish (`NfcWriteScreen`) — ikki bosqichli oqim;
 - [ ] Qulflangan kartada aniq sabab chiqadimi;
-- [ ] Yozgandan keyin qayta o'qib tasdiqlash ishlaydimi.
-
-**Android'dan farqi bor va u kodda hisobga olingan:**
-`NdefFormatable` — faqat Android. iOS'da formatlanmagan teg
-`notNdef` sababini beradi. Bu **to'g'ri xulq**: iOS'da bo'sh,
-formatlanmagan tegni formatlash imkoniyati yo'q va uni bor deb
-ko'rsatish yolg'on bo'lardi.
-
----
-
-## 3. Mac kelganda birinchi yuriladigan yo'l
-
-```bash
-cd mobile_nova
-flutter pub get
-flutter build ios --release --no-codesign   # avval imzosiz: kod qurilyaptimi
-open ios/Runner.xcworkspace                 # keyin Xcode'da imzo va imkoniyat
-```
-
-Xcode'da:
-
-1. *Signing & Capabilities* → jamoa (Team) tanlanadi;
-2. **Near Field Communication Tag Reading** qo'shiladi;
-3. Bundle ID tekshiriladi — u Android'dagi `uz.nfcstore.nova`
-   bilan bir xil bo'lishi SHART EMAS, lekin App Store Connect'da
-   ro'yxatdan o'tgan bo'lishi kerak.
-
-Keyin quyidagilar qurilmada sinaladi (hech biri hozir
-tekshirilmagan):
-
-- [ ] Ilova ochiladi va bosh sahifa yuklanadi;
+- [ ] Yozgandan keyin qayta o'qib tasdiqlash ishlaydimi;
 - [ ] Kirish / ro'yxatdan o'tish (email kodi keladimi);
-- [ ] Post, istorya, reels — media yuklanadi va o'ynaydi;
-- [ ] **Video ilova fonga ketganda to'xtaydimi** — Android'da bu
-      `WidgetsBindingObserver` bilan hal qilingan, iOS'da xulq
-      boshqacha bo'lishi mumkin;
+- [ ] Post, istoriya, reels — media yuklanadi va o'ynaydi;
+- [ ] Video ilova fonga ketganda to'xtaydimi;
 - [ ] Ulashish (`share_plus`) tizim oynasini ochadimi;
-- [ ] `nfcstore.uz/KOD` havolasi ilovada ochiladimi
-      (Universal Links — bu **alohida sozlash**, Android App
-      Links bilan bir xil emas: `apple-app-site-association`
-      fayli saytga qo'yilishi kerak);
-- [ ] To'lov havolasi tashqi brauzerda ochiladimi;
-- [ ] Xavfsiz zona (notch / Dynamic Island) — pastki menyu va
-      yuqori panel to'g'ri joylashadimi.
+- [ ] Xavfsiz zona (Dynamic Island) — yuqori va pastki panel.
+
+**Android'dan farqi kodda hisobga olingan:** `NdefFormatable` —
+faqat Android. iOS'da formatlanmagan teg `notNdef` sababini beradi —
+iOS'da uni formatlash imkoniyati yo'q. Zavoddan keladigan NTAG213
+stikerlar odatda allaqachon NDEF formatida bo'ladi.
 
 ---
 
-## 4. Ataylab QILINMAGAN narsalar
+## 4. App Review xavflari
 
-**`project.pbxproj` qo'lda tahrirlanmadi.** Entitlement faylini
-loyihaga ulash uchun uni o'zgartirish mumkin edi, lekin:
+| Xavf | Holat |
+|---|---|
+| Shikoyat va bloklash (1.2 — foydalanuvchi kontenti) | ✅ bor (`lib/features/social/moderation.dart`) |
+| Hisobni ilova ichida o'chirish (5.1.1(v)) | ✅ bor |
+| Ilova ichida raqamli xarid yo'q (`canPayInApp` → `false`) | ✅ |
+| Pullik NFC ID narxlari va "nfcstore.uz" yozuvi (3.1.1 anti-steering) | ⚠️ Apple Google'dan qattiqroq — egasining qarori kutilmoqda |
+| Tekshiruvchida NFC stiker yo'q | ⚠️ review notes'ga video havolasi |
 
-- natijani bu yerda tekshirib bo'lmaydi (Xcode yo'q);
-- buzilgan `pbxproj` butun iOS qurilishini yiqitadi va sababi
-  juda tushunarsiz bo'ladi.
+---
 
-Xcode buni bir bosishda, to'g'ri qiladi.
+## 5. Ataylab QILINMAGAN narsalar
 
 **Universal Links sozlanmadi.** `apple-app-site-association`
 faylida App ID (Team ID + bundle ID) bo'lishi kerak — Team ID esa
-Apple hisobidan olinadi va u hozir yo'q. Taxmin qilib yozilgan
-fayl havolalarni **jimgina** ishlamaydigan qiladi, ya'ni eng
-yomon holat.
+Apple hisobidan olinadi. Taxmin qilib yozilgan fayl havolalarni
+**jimgina** ishlamaydigan qiladi.
 
-**`CFBundleVersion` / build raqami avtomatlashtirilmadi.** Android
-tomonda bu `nova-apk.yml` da bor; iOS uchun u App Store Connect
-oqimiga bog'liq va u hali tanlanmagan.
+**`PrivacyInfo.xcprivacy` qo'shilmadi.** Runner kodi "sababi
+talab qilinadigan" API'larni to'g'ridan-to'g'ri chaqirmaydi;
+plaginlar o'z manifestlari bilan keladi. Yuklashda ITMS-91053
+ogohlantirishi chiqsa — o'shanda qo'shiladi.
 
----
-
-## 5. Qisqa javob
-
-Agar kimdir "iOS tayyormi?" deb so'rasa:
-
-> Kod tayyor, sozlamalar qo'yilgan. Lekin **hech kim iPhone'da
-> ochib ko'rmagan** — shuning uchun "ishlaydi" deb aytish
-> mumkin emas. Mac kelganda yuqoridagi ro'yxat bo'yicha
-> yuriladi va shundan keyin javob beriladi.
+**ISO 7816 AID ro'yxati qo'shilmadi**
+(`com.apple.developer.nfc.readersession.iso7816.select-identifiers`).
+Hozirgi stikerlar NTAG213 (Type 2) — unga kerak emas. NTAG424 DNA
+(ROSTAP) boshlanganda qaytiladi.

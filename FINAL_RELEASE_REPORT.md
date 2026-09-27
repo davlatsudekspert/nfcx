@@ -17,7 +17,7 @@ Tekshirilgan commit: **`abc2da5`** (`claude/vibrant-einstein-p5lo1i`).
 | Android ilova — qurilish | **YASHIL** — APK #97 (`abc2da5`): universal + ikki ABI + AAB |
 | Android ilova — E2E | **YASHIL** — E2E #36 (`abc2da5`): 91 PASS, **0 FAIL** |
 | Android ilova — qurilmada | **TO'LIQ SINALMAGAN** — NFC yozish va video apparat qismi qo'lda |
-| iOS ilova | **SINALMAGAN** — Mac yo'q, `mobile_nova/IOS_RELEASE_CHECKLIST.md` ga qarang |
+| iOS ilova | **QURILADI, simulyatorda OCHILADI** (CI macOS, `nova-ios.yml`); haqiqiy iPhone'da SINALMAGAN — `mobile_nova/IOS_RELEASE_CHECKLIST.md` |
 
 ### Yakuniy CI holati
 
@@ -183,7 +183,7 @@ bo'lardi.
 
 1. **Telefonda sinash** — `mobile_nova/MANUAL_TEST.md`, ayniqsa
    §1B (NFC yozish) va §1C (video).
-2. **Mac kelganda** — `mobile_nova/IOS_RELEASE_CHECKLIST.md`.
+2. **Apple hisobi ochilgach** — `mobile_nova/IOS_RELEASE_CHECKLIST.md`.
 3. **FEATURED narxlari** — hozir 29 000 / 69 000 / 119 000 so'm.
    Admin `admin_settings` dagi `featured_pricing` kaliti bilan
    o'zgartira oladi; kodga tegish shart emas.

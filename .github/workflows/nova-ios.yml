@@ -71,7 +71,23 @@ jobs:
           grep -q 'CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;' \
             ios/Runner.xcodeproj/project.pbxproj \
             || { echo "::error::NFC entitlement loyihaga ulanmagan"; exit 1; }
-          echo "Info.plist va entitlement joyida"
+          # nfc_manager iOS'da NFCTagReaderSession ishlatadi — TAG shart.
+          # NDEF esa Apple tomonidan taqiqlangan: yuklashda ITMS-90778.
+          F=$(/usr/libexec/PlistBuddy -c "Print :com.apple.developer.nfc.readersession.formats" \
+                ios/Runner/Runner.entitlements)
+          echo "$F" | grep -qE '^[[:space:]]*TAG$' \
+            || { echo "::error::Runner.entitlements da TAG yo'q — iPhone'da NFC ishlamaydi"; exit 1; }
+          if echo "$F" | grep -qE '^[[:space:]]*NDEF$'; then
+            echo "::error::Runner.entitlements da NDEF bor — App Store ITMS-90778 bilan rad etadi"
+            exit 1
+          fi
+          # Faqat iPhone: iPad'da NFC yo'q, iPad yoqilsa App Store
+          # iPad suratlarini ham talab qiladi.
+          if grep -q 'TARGETED_DEVICE_FAMILY = "1,2";' ios/Runner.xcodeproj/project.pbxproj; then
+            echo "::error::iPad yoqilgan (TARGETED_DEVICE_FAMILY) — ilova faqat iPhone uchun"
+            exit 1
+          fi
+          echo "Info.plist, NFC entitlement (TAG) va qurilma turi joyida"
 
       - name: iOS build (imzosiz, release)
         run: flutter build ios --release --no-codesign

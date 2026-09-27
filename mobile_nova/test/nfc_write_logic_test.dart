@@ -262,13 +262,16 @@ void main() {
       expect(plist, contains('NFCReaderUsageDescription'));
     });
 
-    test('iOS: NDEF entitlement fayli bor va FAQAT NDEF so‘raydi', () {
+    test('iOS: NFC entitlement FAQAT TAG so‘raydi, NDEF yo‘q', () {
       final e = File('ios/Runner/Runner.entitlements').readAsStringSync();
       expect(e, contains('com.apple.developer.nfc.readersession.formats'));
-      expect(e, contains('NDEF'));
-      // Xom `TAG` formati kerak emas; Apple uni alohida
-      // asoslashni talab qiladi va rad etilishi mumkin.
-      expect(e.contains('<string>TAG</string>'), isFalse);
+      // `nfc_manager` iOS'da faqat NFCTagReaderSession ishlatadi — u
+      // `TAG` ni talab qiladi. `NDEF` qiymatini esa Apple taqiqlagan:
+      // App Store'ga yuklash ITMS-90778 "NDEF is disallowed" bilan
+      // rad etiladi. Bu test avval AYNAN TESKARISINI talab qilgan
+      // edi — shu holatda iPhone'da NFC umuman ishlamasdi.
+      expect(e, contains('<string>TAG</string>'));
+      expect(e.contains('<string>NDEF</string>'), isFalse);
     });
   });
 }

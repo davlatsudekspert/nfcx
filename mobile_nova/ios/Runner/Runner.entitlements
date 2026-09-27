@@ -2,13 +2,20 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- NDEF — bizga aynan shu format kerak: teg ichidagi URI
-	     yozuvini o'qish va yozish. `TAG` formati (xom APDU)
-	     SO'RALMAYDI: u kerak emas va Apple uni alohida
-	     asoslashni talab qiladi. -->
+	<!-- TAG — `nfc_manager` iOS'da FAQAT NFCTagReaderSession
+	     ishlatadi (SwiftNfcManagerPlugin.swift), u esa aynan shu
+	     formatni talab qiladi. Tegdagi NDEF yozuvini o'qish va yozish
+	     ham shu sessiya ichida bo'ladi — alohida ruxsat kerak emas.
+
+	     `NDEF` qiymati QO'YILMAYDI: Apple uni taqiqlagan. Fayl
+	     avval faqat `NDEF` bilan turgan edi — shunda App Store'ga
+	     yuklash ITMS-90778 "NDEF is disallowed" xatosi bilan rad
+	     etilardi, telefonda esa sessiya ochilmay NFC umuman
+	     ishlamasdi. CI (`nova-ios.yml`) buni qaytib kelishdan
+	     qo'riqlaydi. -->
 	<key>com.apple.developer.nfc.readersession.formats</key>
 	<array>
-		<string>NDEF</string>
+		<string>TAG</string>
 	</array>
 </dict>
 </plist>
