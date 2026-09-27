@@ -11,19 +11,15 @@
 #     chiqmaydi.
 #   * Yozishdan oldingi katalog nusxasi va natija artefakt bo'lib qoladi.
 #
-# `workflow_dispatch` ni API chaqirishi uchun fayl standart branchda
-# turishi kerak, shuning uchun sinov branchida push bilan ishga tushadi —
-# faqat skript yoki shu fayl o'zgarganda.
+# 2026-09-27: BAJARILDI (run 36331959928) — 2 ta mahsulot yangilandi,
+# 4 ta qo'shildi, 6/6 saytda "Narxi tez kunda" bilan. `plan.json` yana
+# DRY RUN. Push trigger olib tashlandi: reja tahriri egasining hisobiga
+# o'z-o'zidan kirmasin — endi faqat qo'lda (workflow_dispatch).
 # ═══════════════════════════════════════════════════════════════════════
 name: NFCSTORE do'koni — mahsulotlar
 
 on:
   workflow_dispatch:
-  push:
-    branches: ['claude/**']
-    paths:
-      - 'scripts/nfcstore-shop/**'
-      - '.github/workflows/nfcstore-shop.yml'
 
 # E2E (va nova-perf) bilan BITTA navbat: hammasi bir hisobga kiradi,
 # server esa 15 daqiqada 5 ta kirishga ruxsat beradi. Birga ishlasa 429
