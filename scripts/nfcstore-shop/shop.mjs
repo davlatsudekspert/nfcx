@@ -62,6 +62,24 @@ async function imageBytes(rel) {
 
 const mime = (rel) => (/\.png$/i.test(rel) ? 'image/png' : 'image/jpeg');
 
+// Server bir hisobga 15 daqiqada 5 ta kirish beradi (qat'iy oyna; rad
+// etilgan urinish hisoblanmaydi). Workflow E2E bilan bitta navbatda,
+// lekin oldingi E2E oynani to'ldirib ketgan bo'lishi mumkin — shuning
+// uchun 429 da 5 daqiqadan kutib, 4 marta qayta urinamiz: jami 20 daqiqa
+// 15 daqiqalik oynadan uzun, ya'ni oyna albatta yangilanadi.
+const LOGIN_WAIT_MS = Number(process.env.SHOP_LOGIN_WAIT_MS || 5 * 60_000);
+async function loginPatiently(api, email, password, retries = 4) {
+  for (let i = 0; ; i++) {
+    try {
+      return await api.login(email, password);
+    } catch (e) {
+      if (e.status !== 429 || i >= retries) throw e;
+      line(`Kirish chegarasi to‘lgan (429) — ${Math.round(LOGIN_WAIT_MS / 60_000)} daqiqa kutamiz (${i + 1}/${retries}).`);
+      await new Promise((r) => setTimeout(r, LOGIN_WAIT_MS));
+    }
+  }
+}
+
 async function main() {
   const { plan, problems } = await loadPlan();
   const APPLY = plan.apply === true;
@@ -91,7 +109,7 @@ async function main() {
     process.exit(2);
   }
   const api = new NfcstoreApi({ base: BASE });
-  await api.login(email, password);
+  await loginPatiently(api, email, password);
   line('Kirildi (hisob ma’lumoti chop etilmaydi).');
 
   // 2) Egalik — ro'yxat SERVERDAN.
