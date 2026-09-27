@@ -127,7 +127,8 @@ void main() {
       Object? extra,
       bool end = false,
       NfcTokens? tokens,
-      Key? tapKey}) {
+      Key? tapKey,
+      double? tapAlign}) {
     testWidgets('iphone $name', (t) async {
       _iosInsets(t);
       await _realShadows(() => tabShot(t, location, 'iphone-$name', _iphone,
@@ -135,7 +136,8 @@ void main() {
           extra: extra,
           end: end,
           tokens: tokens,
-          tapKey: tapKey));
+          tapKey: tapKey,
+          tapAlign: tapAlign));
     }, variant: ios);
   }
 
@@ -170,6 +172,22 @@ void main() {
         ]),
   ]);
   tab('12-profile-end', Routes.profile, end: true);
+  // Egasi (2026-09-27): "profil bo'limlaridan rasm tashla, mp3 player
+  // ham ishlaydimi" — postlar va reels tablari, musiqa pleeri va
+  // kontent yaratish oynalari.
+  tab('13-profile-posts', Routes.profile,
+      tapKey: const ValueKey('profile-grid-tab-0'), tapAlign: .1);
+  tab('14-profile-reels', Routes.profile,
+      tapKey: const ValueKey('profile-grid-tab-1'), tapAlign: .1);
+  testWidgets('iphone 15-music-playing', (t) async {
+    _iosInsets(t);
+    await _realShadows(() => tabShot(
+        t, Routes.profile, 'iphone-15-music-playing', _iphone,
+        tapKey: const ValueKey('music-eq'), playMusic: true));
+  }, variant: ios);
+  tab('16-compose-post', Routes.postCreate);
+  tab('17-compose-reel', Routes.reelCreate);
+  tab('18-compose-story', Routes.storyCreate);
 
   // HAMMA MAVZU — egasining talabi (2026-09-27): "boshqa temalarga
   // ham e'tibor ber, ayollar temasi ham bor", "o'zing test qilib chiq

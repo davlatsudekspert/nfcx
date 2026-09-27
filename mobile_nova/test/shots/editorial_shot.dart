@@ -107,6 +107,7 @@ Future<void> tabShot(
     Key? afterTextKey,
     Object? extra,
     bool playMusic = false,
+    double? tapAlign,
     NfcTokens? tokens}) async {
   _size(tester, s);
   late GoRouter router;
@@ -133,6 +134,13 @@ Future<void> tabShot(
   router.go(location, extra: extra);
   await _settle(tester, 20);
   if (tapKey != null) {
+    // Ekrandan pastda turgan element (masalan, profil tablari) avval
+    // ko'rinadigan joyga — ekran tepasidan `tapAlign` ulushida.
+    if (tapAlign != null) {
+      await Scrollable.ensureVisible(tester.element(find.byKey(tapKey).first),
+          alignment: tapAlign);
+      await _settle(tester, 6);
+    }
     await tester.tap(find.byKey(tapKey).hitTestable().first);
     await _settle(tester, 12);
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));

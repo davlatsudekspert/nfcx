@@ -182,6 +182,50 @@ jobs:
             exit 1
           fi
 
+      # HAQIQIY MEDIA (egasi, 2026-09-27: "mp3 player ham ishlaydimi",
+      # "reels qo'yish, post qo'yishni ham tekshir").
+      #  * profil pleeri serverdagi haqiqiy mp3 ni o'ynaydi va to'xtaydi;
+      #  * iPhone kamerasi beradigan HEVC .mov yuklashdan oldin H.264
+      #    .mp4 ga o'tadi (AppDelegate.swift) va o'ynaydi.
+      # Manba — lentadagi eng kichik haqiqiy video, runner'da macOS'ning
+      # o'z `avconvert` i bilan HEVC .mov qilinadi va simulyatorga lokal
+      # HTTP orqali beriladi (simulyator Mac tarmog'idan foydalanadi).
+      - name: iPhone media — mp3 pleer va video eksport (haqiqiy)
+        run: |
+          set -e
+          UDID=${{ steps.sim.outputs.udid }}
+          M=/tmp/nova-media
+          mkdir -p "$M"
+          curl -sSf "https://nfcstore.uz/api/feed?limit=30" > "$M/feed.json"
+          best=""; bestsize=999999999
+          for v in $(python3 -c "import json; print(' '.join(p['videoUrl'] for p in json.load(open('$M/feed.json'))['feed'] if p.get('videoUrl')))"); do
+            size=$(curl -sSfI "https://nfcstore.uz$v" | awk 'tolower($1)=="content-length:"{print $2+0}' | tail -1)
+            if [ -n "$size" ] && [ "$size" -gt 100000 ] && [ "$size" -lt "$bestsize" ]; then best=$v; bestsize=$size; fi
+          done
+          test -n "$best" || { echo "::error::lentada video topilmadi"; exit 1; }
+          MP3=$(curl -sSf https://nfcstore.uz/api/music | python3 -c "import json,sys; print(json.load(sys.stdin)['tracks'][0]['audioUrl'])")
+          echo "video: $best ($bestsize bayt)  mp3: $MP3"
+          curl -sSfL -o "$M/src.mp4" "https://nfcstore.uz$best"
+          if avconvert --source "$M/src.mp4" --preset PresetHEVCHighestQuality --output "$M/sample.mov" --replace; then
+            echo "Manba: HEVC .mov (iPhone formati)"
+          else
+            echo "::warning::avconvert HEVC .mov yasay olmadi — H.264 manba bilan sinaladi"
+            cp "$M/src.mp4" "$M/sample.mov"
+          fi
+          python3 -c "b=open('$M/sample.mov','rb').read(); print('konteyner:', b[8:12], 'HEVC:', b'hvc1' in b or b'hev1' in b, 'hajm:', len(b))"
+          (cd "$M" && python3 -m http.server 8765 >/dev/null 2>&1 &)
+          sleep 1
+          curl -sSfI http://127.0.0.1:8765/sample.mov | head -1
+          # Test `integration_ios/` da turadi: `integration_test/` ga
+          # qo'shilsa har push haqiqiy hisobli Android E2E ni ham
+          # ishga tushirardi (nova-e2e.yml yo'l filtri). Ishga tushirish
+          # uchun vaqtincha ko'chiriladi (nova-video-probe.yml kabi).
+          mkdir -p integration_test/ios
+          cp integration_ios/ios_media_test.dart integration_test/ios/
+          flutter test integration_test/ios/ios_media_test.dart -d "$UDID" \
+            --dart-define=MP3_URL="https://nfcstore.uz$MP3" \
+            --dart-define=MOV_URL=http://127.0.0.1:8765/sample.mov
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:

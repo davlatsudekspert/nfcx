@@ -133,7 +133,10 @@ void main() {
     }
     final src = File('lib/features/social/post_screens.dart').readAsStringSync();
     expect(src, contains('bool get _checking => _video && _progress >= 1;'));
-    expect(src, contains('value: _checking ? null : _progress'));
+    // 2026-09-27: iPhone'da yuklashdan oldingi tayyorlash (H.264 MP4)
+    // ham xuddi shunday "kutish" chizig'i bilan ko'rsatiladi.
+    expect(src, contains('value: _checking || _preparing ? null : _progress'));
     expect(src, contains('l.videoChecking'));
+    expect(src, contains('l.videoPreparing'));
   });
 }

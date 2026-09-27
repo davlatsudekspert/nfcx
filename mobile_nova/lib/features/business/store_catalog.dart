@@ -414,7 +414,7 @@ class StoreProductCard extends StatelessWidget {
     final t = context.tokens;
     final i = item;
     final price = i.priceOnRequest
-        ? l.catalogPriceOnRequest
+        ? (i.priceSoon ? l.catalogPriceSoon : l.catalogPriceOnRequest)
         : formatMoney(i.effectivePrice, i.currency);
     final eyebrow = storeItemLabel(l, i);
 

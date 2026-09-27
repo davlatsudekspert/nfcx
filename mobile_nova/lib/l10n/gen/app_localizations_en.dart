@@ -2223,6 +2223,9 @@ class LEn extends L {
   String get catalogPriceOnRequest => 'Price on request';
 
   @override
+  String get catalogPriceSoon => 'Price coming soon';
+
+  @override
   String get catalogUnavailable => 'Unavailable';
 
   @override
@@ -2355,6 +2358,9 @@ class LEn extends L {
   @override
   String get videoChecking =>
       'Checking the video… This may take a few seconds.';
+
+  @override
+  String get videoPreparing => 'Preparing the video… A few seconds.';
 
   @override
   String get blockSexual => '18+ or explicit content detected';

@@ -871,6 +871,7 @@
   "catalogKindLabel": "Turi",
   "catalogNfcSub": "NFC mahsulotlari",
   "catalogPriceOnRequest": "Narx kelishiladi",
+  "catalogPriceSoon": "Narxi tez kunda",
   "catalogUnavailable": "Mavjud emas",
   "catalogInStock": "Mavjud",
   "catalogSearchHint": "Mahsulot, xizmat, Business yoki NFC ID",
@@ -947,6 +948,7 @@
     }
   },
   "videoChecking": "Video tekshirilmoqda… Bu bir necha soniya olishi mumkin.",
+  "videoPreparing": "Video tayyorlanmoqda… Bir necha soniya.",
   "blockSexual": "18+ yoki behayo kontent aniqlandi",
   "blockViolence": "zo‘ravonlik yoki qonli kontent aniqlandi",
   "blockExtremism": "ekstremistik (jumladan diniy) yoki terroristik belgi yoki targ‘ibot aniqlandi",

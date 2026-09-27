@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../app/profile_context.dart';
+import '../../core/media/video_prep.dart';
 import '../../core/utils/sharing.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/business_repository.dart';
@@ -434,6 +435,10 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
   /// Video to'liq yuborildi va server javobi (avtomatik tekshiruv)
   /// kutilmoqda.
   bool get _checking => _video && _progress >= 1;
+
+  /// iPhone: video yuklashdan oldin H.264 MP4 ga o'tkazilmoqda
+  /// (core/media/video_prep.dart).
+  bool _preparing = false;
   bool _busy = false;
   String? _error;
 
@@ -555,9 +560,22 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
       // `data:` URL bo'lib `/api/upload` ga, video esa xom binar
       // bo'lib `/api/upload-card-video` ga ketadi.
       final repo = ref.read(profileRepositoryProvider);
+      // iPhone videosi (.MOV, ko'pincha HEVC) hamma telefonda
+      // o'ynaydigan H.264 MP4 ga o'tkaziladi; Android'da fayl o'sha.
+      var path = _file!.path;
+      if (_video) {
+        setState(() => _preparing = true);
+        path = await prepareVideoForUpload(path);
+        if (!mounted) return;
+        setState(() => _preparing = false);
+      }
       final up = _video
-          ? await repo.uploadVideo(_file!.path, onProgress: progress)
-          : await repo.uploadImage(_file!.path, onProgress: progress);
+          ? await repo.uploadVideo(path, onProgress: progress)
+          : await repo.uploadImage(path, onProgress: progress);
+      // Eksport qilingan vaqtinchalik nusxa — yuklangach kerak emas.
+      if (path != _file!.path) {
+        File(path).delete().ignore();
+      }
       if (!mounted) return;
       final url = up.valueOrNull;
       if (url == null || url.isEmpty) {
@@ -886,15 +904,16 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
             maxLength: widget.kind == ComposerKind.story ? 200 : 600,
             enabled: !_busy,
           ),
-          if (_busy && _progress > 0) ...[
+          if (_busy && (_progress > 0 || _preparing)) ...[
             const SizedBox(height: Gap.xl),
             ClipRRect(
               borderRadius: R.pill,
               child: LinearProgressIndicator(
                 // Fayl to'liq yuborildi — server videoni tekshiryapti:
                 // chiziq "kutish" holatiga o'tadi (egasi, 2026-09-24:
-                // sekinlik sababini qisqa yozib qo'yish).
-                value: _checking ? null : _progress,
+                // sekinlik sababini qisqa yozib qo'yish). iPhone'da
+                // yuklashdan oldingi tayyorlash ham shunday.
+                value: _checking || _preparing ? null : _progress,
                 minHeight: 6,
                 backgroundColor: t.surface2,
                 valueColor: AlwaysStoppedAnimation(t.accent2),
@@ -902,10 +921,16 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
             ),
             const SizedBox(height: Gap.sm),
             Text(
-              key: _checking ? const ValueKey('video-checking') : null,
-              _checking
-                  ? l.videoChecking
-                  : l.uploadProgress((_progress * 100).round()),
+              key: _preparing
+                  ? const ValueKey('video-preparing')
+                  : _checking
+                      ? const ValueKey('video-checking')
+                      : null,
+              _preparing
+                  ? l.videoPreparing
+                  : _checking
+                      ? l.videoChecking
+                      : l.uploadProgress((_progress * 100).round()),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall,
             ),

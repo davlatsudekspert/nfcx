@@ -1,0 +1,62 @@
+# ═══════════════════════════════════════════════════════════════════════
+# NFCSTORE DO'KONI — YANGI MAHSULOTLAR (egasi, 2026-09-27)
+#
+# `scripts/nfcstore-shop/shop.mjs` ni ishga tushiradi.
+#
+#   * STANDART — DRY RUN: kiradi, do'kon egaligini va rejani ko'rsatadi,
+#     HECH NARSA YOZMAYDI. Yozish faqat `plan.json` da `"apply": true`
+#     bo'lsa — ya'ni alohida, ko'rinadigan commit bilan (egasi
+#     tasdiqlagandan keyin).
+#   * Login/parol faqat GitHub Secrets'dan; qiymatlar (email ham) logga
+#     chiqmaydi.
+#   * Yozishdan oldingi katalog nusxasi va natija artefakt bo'lib qoladi.
+#
+# `workflow_dispatch` ni API chaqirishi uchun fayl standart branchda
+# turishi kerak, shuning uchun sinov branchida push bilan ishga tushadi —
+# faqat skript yoki shu fayl o'zgarganda.
+# ═══════════════════════════════════════════════════════════════════════
+name: NFCSTORE do'koni — mahsulotlar
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['claude/**']
+    paths:
+      - 'scripts/nfcstore-shop/**'
+      - '.github/workflows/nfcstore-shop.yml'
+
+concurrency:
+  group: nfcstore-shop
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  shop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: API mijozi qo'riqchisi (parol/email endpointlari yo'q)
+        run: node scripts/test-demo-fill.mjs
+
+      - name: Do'kon — reja (apply bo'lsa yozish)
+        env:
+          NFCSTORE_LOGIN: ${{ secrets.NFC_LOGIN_EMAIL || secrets.NOVA_TEST_LOGIN }}
+          NFCSTORE_PASSWORD: ${{ secrets.NFC_LOGIN_PASSWORD || secrets.NOVA_TEST_PASSWORD }}
+          SHOP_OUT: shop-report
+        run: node scripts/nfcstore-shop/shop.mjs
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nfcstore-shop-report
+          path: shop-report/
+          if-no-files-found: ignore
+          retention-days: 30

@@ -796,6 +796,7 @@ class CatalogProduct {
     this.price = 0,
     this.promotionPrice,
     this.priceOnRequest = false,
+    this.priceSoon = false,
     this.available = true,
     this.kind = ListingKind.product,
     this.marketCategory = MarketCategory.other,
@@ -826,6 +827,11 @@ class CatalogProduct {
 
   /// "Narx kelishiladi" — narx ko'rsatilmaydi.
   final bool priceOnRequest;
+
+  /// "Narxi tez kunda" — narx hali e'lon qilinmagan. Server bunday
+  /// tovarda [priceOnRequest] ni ham true yuboradi (eski ilova uchun),
+  /// shuning uchun yozuv tanlashda bu BIRINCHI tekshiriladi.
+  final bool priceSoon;
   final bool available;
   final ListingKind kind;
   final MarketCategory marketCategory;
@@ -892,6 +898,7 @@ class CatalogProduct {
       promotionPrice:
           j['promotionPrice'] == null ? null : _i(j['promotionPrice']),
       priceOnRequest: _b(j['priceOnRequest']) || price <= 0,
+      priceSoon: _b(j['priceSoon']),
       available: _b(j['available'], true),
       kind: ListingKind.infer(j['kind'], companyCategory, section, name),
       marketCategory: market,
@@ -922,6 +929,7 @@ class CatalogProduct {
         price: i.price,
         promotionPrice: i.salePrice,
         priceOnRequest: i.priceOnRequest,
+        priceSoon: i.priceSoon,
         available: i.available,
         kind: i.kind,
         marketCategory: i.marketCategory,
@@ -1003,6 +1011,7 @@ class CatalogItem {
     this.marketCategory = MarketCategory.other,
     this.sub,
     this.priceOnRequest = false,
+    this.priceSoon = false,
   });
 
   final int id;
@@ -1036,6 +1045,9 @@ class CatalogItem {
 
   /// "Narx kelishiladi" (xizmatlar).
   final bool priceOnRequest;
+
+  /// "Narxi tez kunda" — [CatalogProduct.priceSoon] bilan bir xil ma'no.
+  final bool priceSoon;
 
   bool get isService => kind == ListingKind.service;
 
@@ -1087,6 +1099,7 @@ class CatalogItem {
           : NfcProductType.subOf(market, section, name),
       // Server qoidasi bilan bir xil: bayroq yoki narx 0.
       priceOnRequest: _b(j['priceOnRequest']) || price <= 0,
+      priceSoon: _b(j['priceSoon']),
     );
   }
 }

@@ -484,7 +484,7 @@ class ProductCard extends ConsumerWidget {
       label: [
         p.name,
         p.priceOnRequest
-            ? l.catalogPriceOnRequest
+            ? (p.priceSoon ? l.catalogPriceSoon : l.catalogPriceOnRequest)
             : formatMoney(p.effectivePrice, 'UZS'),
         if (!p.available) l.catalogUnavailable,
         p.companyName,
@@ -706,8 +706,9 @@ class _PriceLine extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     if (product.priceOnRequest) {
+      final l = L.of(context);
       return Text(
-        L.of(context).catalogPriceOnRequest,
+        product.priceSoon ? l.catalogPriceSoon : l.catalogPriceOnRequest,
         key: const ValueKey('price-on-request'),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,

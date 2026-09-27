@@ -541,7 +541,9 @@ class _ProductSheet extends StatelessWidget {
                 // "Narx kelishiladi" — plitkadagidek; "0 so'm" emas.
                 Text(
                   item.priceOnRequest
-                      ? l.catalogPriceOnRequest
+                      ? (item.priceSoon
+                          ? l.catalogPriceSoon
+                          : l.catalogPriceOnRequest)
                       : formatMoney(sale ?? item.price, item.currency),
                   style: AppType.monoStyle(color: t.text1, size: 18),
                 ),
@@ -632,7 +634,9 @@ class CatalogTile extends StatelessWidget {
                     Flexible(
                       child: Text(
                         item.priceOnRequest
-                            ? l.catalogPriceOnRequest
+                            ? (item.priceSoon
+                                ? l.catalogPriceSoon
+                                : l.catalogPriceOnRequest)
                             : formatMoney(item.effectivePrice, item.currency),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

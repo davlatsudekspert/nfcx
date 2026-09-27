@@ -1690,6 +1690,7 @@ class _GridTabs extends StatelessWidget {
                 button: true,
                 selected: i == index,
                 child: GestureDetector(
+                  key: ValueKey('profile-grid-tab-$i'),
                   behavior: HitTestBehavior.opaque,
                   onTap: () => onChanged(i),
                   child: Padding(

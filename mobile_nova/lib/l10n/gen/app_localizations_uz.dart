@@ -2223,6 +2223,9 @@ class LUz extends L {
   String get catalogPriceOnRequest => 'Narx kelishiladi';
 
   @override
+  String get catalogPriceSoon => 'Narxi tez kunda';
+
+  @override
   String get catalogUnavailable => 'Mavjud emas';
 
   @override
@@ -2355,6 +2358,9 @@ class LUz extends L {
   @override
   String get videoChecking =>
       'Video tekshirilmoqda… Bu bir necha soniya olishi mumkin.';
+
+  @override
+  String get videoPreparing => 'Video tayyorlanmoqda… Bir necha soniya.';
 
   @override
   String get blockSexual => '18+ yoki behayo kontent aniqlandi';

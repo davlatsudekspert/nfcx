@@ -4311,6 +4311,12 @@ abstract class L {
   /// **'Narx kelishiladi'**
   String get catalogPriceOnRequest;
 
+  /// No description provided for @catalogPriceSoon.
+  ///
+  /// In uz, this message translates to:
+  /// **'Narxi tez kunda'**
+  String get catalogPriceSoon;
+
   /// No description provided for @catalogUnavailable.
   ///
   /// In uz, this message translates to:
@@ -4538,6 +4544,12 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Video tekshirilmoqda… Bu bir necha soniya olishi mumkin.'**
   String get videoChecking;
+
+  /// No description provided for @videoPreparing.
+  ///
+  /// In uz, this message translates to:
+  /// **'Video tayyorlanmoqda… Bir necha soniya.'**
+  String get videoPreparing;
 
   /// No description provided for @blockSexual.
   ///
