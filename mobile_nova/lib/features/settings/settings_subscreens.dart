@@ -504,7 +504,6 @@ class _NotificationsSettingsScreenState
                         ),
                         Switch(
                           value: _values[r.$1]!,
-                          activeThumbColor: t.accent2,
                           onChanged: (v) => _set(r.$1, v),
                         ),
                       ],
@@ -690,7 +689,6 @@ class _Toggle extends StatelessWidget {
                   Text(label, style: Theme.of(context).textTheme.bodyLarge)),
           Switch(
             value: value,
-            activeThumbColor: t.accent2,
             onChanged: onChanged,
           ),
         ],

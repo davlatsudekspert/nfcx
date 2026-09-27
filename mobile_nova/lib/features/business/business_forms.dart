@@ -1272,7 +1272,6 @@ class _BusinessProductFormScreenState
                   Switch(
                     key: const ValueKey('listing-price-on-request'),
                     value: _priceOnRequest,
-                    activeThumbColor: t.accent2,
                     onChanged: _busy
                         ? null
                         : (v) => setState(() => _priceOnRequest = v),
@@ -1383,7 +1382,6 @@ class _BusinessProductFormScreenState
                 Switch(
                   key: const ValueKey('listing-available'),
                   value: _available,
-                  activeThumbColor: t.accent2,
                   onChanged: _busy ? null : (v) => setState(() => _available = v),
                 ),
               ],

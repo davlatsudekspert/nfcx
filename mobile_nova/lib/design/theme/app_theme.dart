@@ -36,6 +36,14 @@ ThemeData buildTheme(NfcTokens t) {
     dividerTheme: DividerThemeData(color: t.border2, thickness: 1, space: 1),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: t.surfaceSolid,
+      // TUGMA ANIQ KO'RINSIN (egasi, 2026-09-27, telefon surati: "Yangi
+      // versiya yuklandi" xabarida "Qayta ishga tushirish" oq fonda xira
+      // sariq bo'lib, bosadigan joy ko'rinmasdi). Ilgari rang berilmagan
+      // edi — Material o'zi `inversePrimary` (och rang) qo'yardi. Endi
+      // hamma xabar tugmasi — asosiy matn rangidagi to'la kapsula.
+      actionTextColor: t.surfaceSolid,
+      actionBackgroundColor: t.text1,
+      disabledActionTextColor: t.text2,
       contentTextStyle: TextStyle(
         fontFamily: AppType.sans,
         fontSize: 13.5,
@@ -43,8 +51,24 @@ ThemeData buildTheme(NfcTokens t) {
         color: t.text1,
       ),
       behavior: SnackBarBehavior.floating,
-      shape: const RoundedRectangleBorder(borderRadius: R.gentle),
+      // Oq sahifada oq xabar "yo'qolib" ketmasin — nozik chegara.
+      shape: RoundedRectangleBorder(
+        borderRadius: R.gentle,
+        side: BorderSide(color: t.border2),
+      ),
       elevation: 0,
+    ),
+    // SOZLAMALAR KALITLARI (2026-09-27 audit): ilgari yoqilgan kalitning
+    // dumaloq tutqichi ham, yo'lakchasi ham `accent2` edi — tutqich
+    // yo'lakchaga qo'shilib ko'rinmay qolardi. Endi: yoqilgan — to'q
+    // yo'lakcha ustida och tutqich; o'chiq — sirt ustida aniq chegara.
+    switchTheme: SwitchThemeData(
+      thumbColor: WidgetStateProperty.resolveWith((s) =>
+          s.contains(WidgetState.selected) ? scheme.onPrimary : t.text2),
+      trackColor: WidgetStateProperty.resolveWith((s) =>
+          s.contains(WidgetState.selected) ? t.accent2 : t.surface2),
+      trackOutlineColor: WidgetStateProperty.resolveWith((s) =>
+          s.contains(WidgetState.selected) ? t.accent2 : t.text3),
     ),
     dialogTheme: DialogThemeData(
       backgroundColor: t.surfaceSolid,
