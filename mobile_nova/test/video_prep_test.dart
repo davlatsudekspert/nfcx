@@ -26,7 +26,7 @@ void main() {
     addTearDown(() => messenger.setMockMethodCallHandler(videoPrepChannel, null));
   }
 
-  test('Android: fayl o‘zgarmaydi, kanal chaqirilmaydi', () async {
+  test('Android: kanal chaqirilmaydi; o‘qib bo‘lmas fayl — asl yo‘l', () async {
     mock((_) async => '/tmp/boshqa.mp4');
     expect(await prepareVideoForUpload('/tmp/IMG_0001.mp4'), '/tmp/IMG_0001.mp4');
     expect(calls, isEmpty);

@@ -561,7 +561,8 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
       // bo'lib `/api/upload-card-video` ga ketadi.
       final repo = ref.read(profileRepositoryProvider);
       // iPhone videosi (.MOV, ko'pincha HEVC) hamma telefonda
-      // o'ynaydigan H.264 MP4 ga o'tkaziladi; Android'da fayl o'sha.
+      // o'ynaydigan H.264 MP4 ga o'tkaziladi; Android'da `moov` fayl
+      // boshiga ko'chiriladi — Reels'da darhol ochiladi.
       var path = _file!.path;
       if (_video) {
         setState(() => _preparing = true);

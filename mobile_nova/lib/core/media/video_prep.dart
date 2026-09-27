@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+
+import 'mp4_faststart.dart';
 
 /// IPHONE VIDEOSI → H.264 MP4 (egasi, 2026-09-27: "reels qo'yish, post
 /// qo'yishni ham tekshir").
@@ -15,16 +19,23 @@ import 'package:flutter/services.dart';
 /// video ham 1080p ga tushadi — yuklash bir necha barobar tezroq,
 /// `moov` fayl boshida bo'lgani uchun ijro ham darhol boshlanadi.
 ///
-/// Android va boshqa platformada fayl O'ZGARMAYDI. Eksport biror
-/// sababdan o'xshamasa ham asl fayl yuboriladi: eng yomon holatda
-/// avvalgidek ishlaydi, foydalanuvchi to'xtab qolmaydi.
+/// Android'da video qayta siqilmaydi, faqat `moov` fayl boshiga
+/// ko'chiriladi ([mp4Faststart]) — Android kamerasi uni oxiriga yozadi
+/// va Reels'da har video 1-2 soniya qora ekran bilan ochilardi (egasi,
+/// 2026-09-27). Biror qadam o'xshamasa ham asl fayl yuboriladi: eng
+/// yomon holatda avvalgidek ishlaydi, foydalanuvchi to'xtab qolmaydi.
 const videoPrepChannel = MethodChannel('uz.nfcstore.nova/video');
 
-/// Yuklashga tayyor video yo'li. iOS'da — yangi vaqtinchalik `.mp4`
-/// (chaqiruvchi yuklagandan keyin o'chirishi mumkin), boshqa joyda —
+/// Yuklashga tayyor video yo'li: yangi vaqtinchalik `.mp4` (chaqiruvchi
+/// yuklagandan keyin o'chiradi) yoki o'zgartirish kerak bo'lmasa —
 /// [path] ning o'zi.
 Future<String> prepareVideoForUpload(String path) async {
-  if (kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) return path;
+  if (kIsWeb) return path;
+  if (defaultTargetPlatform != TargetPlatform.iOS) {
+    final dir = Directory.systemTemp.path;
+    final out = '$dir/nova_fs_${DateTime.now().microsecondsSinceEpoch}.mp4';
+    return await mp4Faststart(path, outPath: out) ?? path;
+  }
   try {
     final out = await videoPrepChannel
         .invokeMethod<String>('toMp4', <String, Object>{'path': path});

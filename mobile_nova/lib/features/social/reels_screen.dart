@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
@@ -635,18 +636,27 @@ class _ReelPageState extends ConsumerState<_ReelPage>
       // o'ynayotgan bo'lsa to'xtaydi: ikki manba birga ovoz chiqarmaydi.
       _owner.take(this, _pauseForOther);
       final muted = ref.read(reelsMutedProvider);
-      final m = await _ensureMusic();
-      if (!mounted || _controller != c) return;
-      // Musiqa bor — videoning o'z ovozi o'chadi, musiqa chaladi.
-      await c.setVolume(m != null || muted ? 0 : 1);
+      final hasMusic = (widget.post.music?.playUrl ?? '').isNotEmpty;
+      // VIDEO MUSIQANI KUTMAYDI (egasi, 2026-09-27: "keyingisiga
+      // o'tishda qora ekran 1-2 soniya"). Ilgari `play()` musiqa fayli
+      // tarmoqdan ochilguncha kutardi. Endi video darhol boshlanadi
+      // (musiqali reelda o'z ovozisiz), musiqa tayyor bo'lgach qo'shiladi.
+      await c.setVolume(hasMusic || muted ? 0 : 1);
       await c.play();
-      if (m != null) {
-        await m.setVolume(muted ? 0 : 1);
-        await m.play();
-      }
       // `initialize()` READY holatini kutadi — birinchi kadr ~0.1 s da
       // (o'lchov). Endi keyingi reel yuklansa bo'ladi.
       widget.onStarted?.call();
+      if (hasMusic) {
+        final m = await _ensureMusic();
+        if (!mounted || _controller != c) return;
+        if (m == null) {
+          // Musiqa ochilmadi — videoning o'z ovozi.
+          if (!muted) await c.setVolume(1);
+        } else if (widget.visible && _onStage) {
+          await m.setVolume(muted ? 0 : 1);
+          await m.play();
+        }
+      }
     } else if (widget.visible) {
       // Ustida boshqa ekran — joyida pauza (boshiga qaytmaydi).
       await c.pause();
@@ -937,10 +947,7 @@ class _ReelPageState extends ConsumerState<_ReelPage>
               ),
             )
           else
-            const Center(
-              child: CircularProgressIndicator(
-                  color: Colors.white70, strokeWidth: 2),
-            ),
+            const _LateSpinner(),
           // Pastdagi matn o'qilishi uchun gradient.
           Positioned.fill(
             child: _Chrome(
@@ -1461,4 +1468,43 @@ class _Action extends StatelessWidget {
       ),
       ),
       );
+}
+
+
+/// Yuklanish belgisi faqat KECHIKSA chiqadi (0.5 s dan keyin).
+///
+/// Oldindan yuklangan yoki tez ochilgan video uchun bir lahzalik
+/// aylanayotgan doira "qotyapti" degan his berardi (egasi, 2026-09-27).
+class _LateSpinner extends StatefulWidget {
+  const _LateSpinner();
+
+  @override
+  State<_LateSpinner> createState() => _LateSpinnerState();
+}
+
+class _LateSpinnerState extends State<_LateSpinner> {
+  bool _show = false;
+  Timer? _t;
+
+  @override
+  void initState() {
+    super.initState();
+    _t = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) setState(() => _show = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _t?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => _show
+      ? const Center(
+          child: CircularProgressIndicator(
+              color: Colors.white70, strokeWidth: 2),
+        )
+      : const SizedBox.shrink();
 }
