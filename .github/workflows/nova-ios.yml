@@ -1,0 +1,89 @@
+# NFCSTORE NOVA — iOS BUILD (imzosiz)
+#
+# NIMA UCHUN: iOS ilovasini faqat macOS + Xcode quradi. Bizda Mac yo'q,
+# lekin GitHub'ning macOS runner'ida Xcode tayyor turibdi. Bu workflow
+# `mobile_nova/` ni iOS uchun IMZOSIZ quradi va shu bilan kod, plaginlar
+# (CocoaPods) va sozlamalar iOS'da yig'ilishini tekshiradi.
+#
+# BU NIMA EMAS: bu hali App Store / TestFlight'ga yuklash emas. Imzo
+# uchun Apple Developer hisobi va App Store Connect API kaliti kerak;
+# ular GitHub secrets'ga qo'yilgach, TestFlight bosqichi shu faylga
+# qo'shiladi (IOS_RELEASE_CHECKLIST.md ga qarang).
+#
+# NARX: macOS runner daqiqasi Linux'dan qimmat, shuning uchun bu
+# workflow faqat iOS'ga tegishli fayllar o'zgarganda yoki qo'lda
+# ishga tushadi.
+name: NFCSTORE iOS build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, 'claude/**']
+    paths:
+      - 'mobile_nova/ios/**'
+      - 'mobile_nova/pubspec.yaml'
+      - 'mobile_nova/pubspec.lock'
+      - '.github/workflows/nova-ios.yml'
+
+concurrency:
+  group: nova-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: mobile_nova
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Android build bilan AYNAN bir xil Flutter versiyasi.
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.35.5
+          channel: stable
+          cache: true
+
+      - name: Xcode versiyasi
+        run: xcodebuild -version
+
+      - name: Paketlar
+        run: flutter pub get
+
+      # Ilova ochilgan zahoti yiqilmasligi uchun zarur kalitlar.
+      # Ulardan biri yo'qolsa build QIZIL bo'lsin — telefonda emas,
+      # shu yerda bilinsin.
+      - name: Info.plist qo'riqchisi
+        run: |
+          set -e
+          P=ios/Runner/Info.plist
+          for k in NFCReaderUsageDescription NSCameraUsageDescription \
+                   NSPhotoLibraryUsageDescription NSMicrophoneUsageDescription; do
+            /usr/libexec/PlistBuddy -c "Print :$k" "$P" >/dev/null \
+              || { echo "::error::$k Info.plist da yo'q"; exit 1; }
+          done
+          grep -q 'CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;' \
+            ios/Runner.xcodeproj/project.pbxproj \
+            || { echo "::error::NFC entitlement loyihaga ulanmagan"; exit 1; }
+          echo "Info.plist va entitlement joyida"
+
+      - name: iOS build (imzosiz, release)
+        run: flutter build ios --release --no-codesign
+
+      - name: Natijani yig'ish
+        run: |
+          cd build/ios/iphoneos
+          ls -la
+          zip -qry ../../../Runner-unsigned.app.zip Runner.app
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nfcstore-ios-unsigned
+          path: mobile_nova/Runner-unsigned.app.zip
+          retention-days: 7

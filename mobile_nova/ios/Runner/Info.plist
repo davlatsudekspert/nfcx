@@ -41,6 +41,21 @@
 	     etiladi — `IOS_RELEASE_CHECKLIST.md` ga qarang. -->
 	<key>NFCReaderUsageDescription</key>
 	<string>NFC kartangizga profil manzilingizni yozish va kartalarni o‘qish uchun kerak.</string>
+	<!-- Rasm / video tanlash va suratga olish (image_picker, file_picker).
+	     Bu kalitlar bo'lmasa iOS ilovani galereya yoki kamera
+	     ochilgan ZAHOTI yopib yuboradi va App Store buni rad etadi. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Profil rasmi, post va istoriya uchun suratga olish uchun kerak.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Galereyadan rasm va video tanlab, profil, post va istoriyaga qo‘yish uchun kerak.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Video yozishda ovozni ham yozib olish uchun kerak.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>QR kod va rasmlarni galereyaga saqlash uchun kerak.</string>
+	<!-- Ilova shifrlashni faqat standart HTTPS uchun ishlatadi:
+	     App Store Connect har yuklashda eksport so'rovini bermasin. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
@@ -50,8 +65,6 @@
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
