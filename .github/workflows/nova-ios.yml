@@ -81,6 +81,12 @@ jobs:
             echo "::error::Runner.entitlements da NDEF bor — App Store ITMS-90778 bilan rad etadi"
             exit 1
           fi
+          # Bundle ID — Android bilan bir xil. App Store Connect'da
+          # ilova yaratilgach uni o'zgartirib bo'lmaydi.
+          N=$(grep -c 'PRODUCT_BUNDLE_IDENTIFIER = uz.nfcstore.nova;' \
+                ios/Runner.xcodeproj/project.pbxproj || true)
+          [ "$N" = 3 ] \
+            || { echo "::error::Bundle ID uz.nfcstore.nova emas (3 konfiguratsiyadan $N tasi)"; exit 1; }
           # Faqat iPhone: iPad'da NFC yo'q, iPad yoqilsa App Store
           # iPad suratlarini ham talab qiladi.
           if grep -q 'TARGETED_DEVICE_FAMILY = "1,2";' ios/Runner.xcodeproj/project.pbxproj; then

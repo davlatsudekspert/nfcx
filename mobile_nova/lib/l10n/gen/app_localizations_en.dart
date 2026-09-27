@@ -1823,6 +1823,9 @@ class LEn extends L {
   String get storeBuyOnSitePremium => 'Premium is purchased on the website:';
 
   @override
+  String get storeBuyOnSitePhysical => 'Orders are placed on the website:';
+
+  @override
   String get themeMono => 'Mono';
 
   @override
@@ -1924,6 +1927,9 @@ class LEn extends L {
   @override
   String get bizPremiumHint =>
       'Your own name: nfcstore.uz/c/YOURNAME. Price depends on length.';
+
+  @override
+  String get bizPremiumHintIos => 'Your own name: nfcstore.uz/c/YOURNAME.';
 
   @override
   String get bizPremiumCta => 'Check a name';
@@ -2314,6 +2320,9 @@ class LEn extends L {
       'Limit reached: upgrade to add more. Existing items stay.';
 
   @override
+  String get bizPlanLimitReachedIos => 'Limit reached. Existing items stay.';
+
+  @override
   String get bizPlanStoreNotice =>
       'Premium and your own name are arranged on the website:';
 
@@ -2327,6 +2336,13 @@ class LEn extends L {
   @override
   String get errPlanLocked =>
       'Posts and stories are closed on the free plan. Premium (on the website) opens them.';
+
+  @override
+  String get errPlanLimitIos => 'Plan limit reached.';
+
+  @override
+  String get errPlanLockedIos =>
+      'Posts and stories are closed on the free plan.';
 
   @override
   String errContentBlocked(String reason) {

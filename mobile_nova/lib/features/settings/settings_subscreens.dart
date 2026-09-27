@@ -766,6 +766,13 @@ class _PaymentRow extends StatelessWidget {
     return int.tryParse('$v') ?? 0;
   }
 
+  /// Jismoniy karta to'lovimi. Qolganlari (NFC ID, Premium, auksion)
+  /// raqamli: iPhone'da ularning summasi va "to'lash mumkin" izohi
+  /// ko'rsatilmaydi (`store_policy.dart`).
+  bool get _physical => '${row['kind'] ?? ''}' == 'physical_card_order';
+
+  bool get _showAmount => showDigitalPrices || _physical;
+
   String _kind(L l) => switch ('${row['kind'] ?? ''}') {
         'card_purchase' => l.payKindCard,
         'physical_card_order' => l.payKindPhysical,
@@ -819,7 +826,7 @@ class _PaymentRow extends StatelessWidget {
                 // TUGALLANMAGAN TO'LOV SHUNDAYLIGINI AYTADI.
                 // Ilgari qatorda xom "pending" so'zi turardi va
                 // odam to'lovi o'tdimi, yo'qmi bilmasdi.
-                if ('${row['status'] ?? ''}' == 'pending') ...[
+                if ('${row['status'] ?? ''}' == 'pending' && _showAmount) ...[
                   const SizedBox(height: 2),
                   Text(l.payPendingHint,
                       style: Theme.of(context).textTheme.bodySmall),
@@ -827,11 +834,13 @@ class _PaymentRow extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: Gap.md),
-          Text(
-            formatMoney(_price, 'UZS'),
-            style: AppType.monoStyle(color: t.text1, size: 13),
-          ),
+          if (_showAmount) ...[
+            const SizedBox(width: Gap.md),
+            Text(
+              formatMoney(_price, 'UZS'),
+              style: AppType.monoStyle(color: t.text1, size: 13),
+            ),
+          ],
         ],
       ),
     );
@@ -1145,7 +1154,8 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen>
 
           // NARX FAQAT SERVERDAN KELGANDA ko'rsatiladi. Buyurtma hali
           // yaratilmagan bo'lsa ilova summani TAXMIN QILMAYDI.
-          if (offer != null) ...[
+          // iPhone'da raqamli narx yo'q (`store_policy.dart`).
+          if (offer != null && showDigitalPrices) ...[
             const SizedBox(height: Gap.section),
             Center(
               child: Capsule(

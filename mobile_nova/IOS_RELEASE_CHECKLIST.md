@@ -23,6 +23,9 @@ Mac yo'q — hamma narsa GitHub'ning macOS runner'ida:
 | Faqat iPhone (`TARGETED_DEVICE_FAMILY = 1`) | ✅ | iPad'da NFC yo'q |
 | Faqat vertikal (iPhone) | ✅ | `UISupportedInterfaceOrientations` |
 | Shifrlash e'lon qilingan (`ITSAppUsesNonExemptEncryption = false`) | ✅ | faqat HTTPS |
+| Bundle ID `uz.nfcstore.nova` (Android bilan bir xil) | ✅ | `project.pbxproj`, 3 konfiguratsiya |
+| Ilova belgisi — NFCSTORE (avval Flutter standart logosi edi), alfa kanalsiz | ✅ | `AppIcon.appiconset`, manba: `assets/brand/nfcstore_mark.png` |
+| Ochilish ekrani foni — Ivory `#F6F5F2` (oq chaqnash yo'q) | ✅ | `LaunchScreen.storyboard` |
 
 CI qo'riqchisi (`Info.plist qo'riqchisi` qadami) yuqoridagilardan
 biri yo'qolsa build'ni QIZIL qiladi.
@@ -47,10 +50,11 @@ iPad'da ilova baribir o'rnatiladi — iPhone ko'rinishida.
 
 ## 2. Apple hisobi ochilgach
 
-1. **Bundle ID.** Hozir `uz.nfcstore.nfcstoreNova` (Flutter
-   yaratgan). Android'da `uz.nfcstore.nova`. App Store Connect'da
-   ilova yaratilgach bundle ID **o'zgartirib bo'lmaydi** — egasi
-   qarori bilan oldindan hal qilinadi.
+1. **Bundle ID — `uz.nfcstore.nova`**, Android bilan bir xil
+   (egasining qarori, 2026-09-27). App Store Connect'da ilova
+   yaratilgach bundle ID **o'zgartirib bo'lmaydi** — shuning uchun
+   uni `nova-ios.yml` qo'riqchisi va
+   `scripts/test-app-identity.mjs` tekshiradi.
 2. **API kalit** — App Store Connect → Users and Access →
    Integrations → App Store Connect API → yangi kalit (Admin).
    `.p8` fayl, Key ID va Issuer ID **faqat GitHub Secrets'ga**
@@ -92,7 +96,7 @@ stikerlar odatda allaqachon NDEF formatida bo'ladi.
 | Shikoyat va bloklash (1.2 — foydalanuvchi kontenti) | ✅ bor (`lib/features/social/moderation.dart`) |
 | Hisobni ilova ichida o'chirish (5.1.1(v)) | ✅ bor |
 | Ilova ichida raqamli xarid yo'q (`canPayInApp` → `false`) | ✅ |
-| Pullik NFC ID narxlari va "nfcstore.uz" yozuvi (3.1.1 anti-steering) | ⚠️ Apple Google'dan qattiqroq — egasining qarori kutilmoqda |
+| Raqamli mahsulot narxi va "saytda oling" yozuvi (3.1.1 anti-steering) | ✅ iPhone'da yashirin (egasining qarori, 2026-09-27) — `isAppStoreBuild` / `showDigitalPrices`, `store_policy.dart`; Android o'zgarmagan |
 | Tekshiruvchida NFC stiker yo'q | ⚠️ review notes'ga video havolasi |
 
 ---

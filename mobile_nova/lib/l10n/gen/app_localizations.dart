@@ -3561,6 +3561,12 @@ abstract class L {
   /// **'Premium obunani saytdan olasiz:'**
   String get storeBuyOnSitePremium;
 
+  /// No description provided for @storeBuyOnSitePhysical.
+  ///
+  /// In uz, this message translates to:
+  /// **'Buyurtma saytda rasmiylashtiriladi:'**
+  String get storeBuyOnSitePhysical;
+
   /// No description provided for @themeMono.
   ///
   /// In uz, this message translates to:
@@ -3752,6 +3758,12 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'O‘z nomingiz: nfcstore.uz/c/NOMINGIZ. Narx nom uzunligiga qarab.'**
   String get bizPremiumHint;
+
+  /// No description provided for @bizPremiumHintIos.
+  ///
+  /// In uz, this message translates to:
+  /// **'O‘z nomingiz: nfcstore.uz/c/NOMINGIZ.'**
+  String get bizPremiumHintIos;
 
   /// No description provided for @bizPremiumCta.
   ///
@@ -4467,6 +4479,12 @@ abstract class L {
   /// **'Limit to‘ldi: yangi tovar qo‘shish uchun tarifni oshiring. Qo‘shilganlari o‘chmaydi.'**
   String get bizPlanLimitReached;
 
+  /// No description provided for @bizPlanLimitReachedIos.
+  ///
+  /// In uz, this message translates to:
+  /// **'Limit to‘ldi. Qo‘shilganlari o‘chmaydi.'**
+  String get bizPlanLimitReachedIos;
+
   /// No description provided for @bizPlanStoreNotice.
   ///
   /// In uz, this message translates to:
@@ -4490,6 +4508,18 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Bepul tarifda post va istoriya yopiq. Premium (sayt orqali) bilan ochiladi.'**
   String get errPlanLocked;
+
+  /// No description provided for @errPlanLimitIos.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tarif limiti to‘ldi.'**
+  String get errPlanLimitIos;
+
+  /// No description provided for @errPlanLockedIos.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bepul tarifda post va istoriya yopiq.'**
+  String get errPlanLockedIos;
 
   /// No description provided for @errContentBlocked.
   ///

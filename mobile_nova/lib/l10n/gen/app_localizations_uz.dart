@@ -1826,6 +1826,9 @@ class LUz extends L {
   String get storeBuyOnSitePremium => 'Premium obunani saytdan olasiz:';
 
   @override
+  String get storeBuyOnSitePhysical => 'Buyurtma saytda rasmiylashtiriladi:';
+
+  @override
   String get themeMono => 'Oq-qora';
 
   @override
@@ -1930,6 +1933,9 @@ class LUz extends L {
   @override
   String get bizPremiumHint =>
       'O‘z nomingiz: nfcstore.uz/c/NOMINGIZ. Narx nom uzunligiga qarab.';
+
+  @override
+  String get bizPremiumHintIos => 'O‘z nomingiz: nfcstore.uz/c/NOMINGIZ.';
 
   @override
   String get bizPremiumCta => 'Nomni tekshirish';
@@ -2314,6 +2320,10 @@ class LUz extends L {
       'Limit to‘ldi: yangi tovar qo‘shish uchun tarifni oshiring. Qo‘shilganlari o‘chmaydi.';
 
   @override
+  String get bizPlanLimitReachedIos =>
+      'Limit to‘ldi. Qo‘shilganlari o‘chmaydi.';
+
+  @override
   String get bizPlanStoreNotice =>
       'Premium va o‘z nomi saytda rasmiylashtiriladi:';
 
@@ -2327,6 +2337,12 @@ class LUz extends L {
   @override
   String get errPlanLocked =>
       'Bepul tarifda post va istoriya yopiq. Premium (sayt orqali) bilan ochiladi.';
+
+  @override
+  String get errPlanLimitIos => 'Tarif limiti to‘ldi.';
+
+  @override
+  String get errPlanLockedIos => 'Bepul tarifda post va istoriya yopiq.';
 
   @override
   String errContentBlocked(String reason) {

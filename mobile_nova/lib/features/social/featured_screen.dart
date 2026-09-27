@@ -149,12 +149,14 @@ class _PackageTile extends StatelessWidget {
               style: Theme.of(context).textTheme.titleSmall,
             ),
           ),
-          Text(
-            // Narx do'kon bilan BIR XIL ko'rinishda — ikki joyda
-            // ikki xil yozilishi odamni ikkilantirardi.
-            formatMoney(pack.price, 'UZS'),
-            style: AppType.monoStyle(color: t.text1, size: 14),
-          ),
+          // Narx do'kon bilan BIR XIL ko'rinishda — ikki joyda
+          // ikki xil yozilishi odamni ikkilantirardi. iPhone'da
+          // raqamli narx yo'q (`store_policy.dart`).
+          if (showDigitalPrices)
+            Text(
+              formatMoney(pack.price, 'UZS'),
+              style: AppType.monoStyle(color: t.text1, size: 14),
+            ),
         ],
       ),
     );

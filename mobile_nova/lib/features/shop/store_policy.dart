@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../design/theme/typography.dart';
@@ -60,6 +61,34 @@ const kSiteHost = 'nfcstore.uz';
 /// atrofidagi ekranlarga tegilmaydi.
 const kShowSiteNotice = true;
 
+/// APP STORE (iPhone) — RAQAMLI XARIDGA ISHORA YO'Q.
+///
+/// ## NIMA UCHUN
+///
+/// Apple 3.1.1: raqamli mahsulot faqat In-App Purchase bilan
+/// sotiladi; tashqi xaridga yo'naltiruvchi matn, tugma yoki havola
+/// taqiqlangan. 3.1.3(f) IAP'siz ishlashga ruxsat beradi — agar
+/// ilovada xarid ham, "saytdan oling" degan chaqiriq ham bo'lmasa.
+/// Apple bu borada Google'dan qattiqroq: Play'da qoldirilgan yozuv
+/// (`kShowSiteNotice`) iPhone'da rad etish sababi bo'lardi.
+///
+/// Egasining qarori (2026-09-27): iPhone versiyasida raqamli
+/// mahsulot (NFC ID, Premium, o'z nomi, FEATURED) NARXI va SAYT
+/// YOZUVI ko'rsatilmaydi. ID bo'sh yoki bandligi, sotib olingan
+/// narsaning holati ko'rinaveradi. ANDROID O'ZGARMAYDI.
+///
+/// Jismoniy tovar (NFC karta, katalogdagi mahsulotlar) bu qoidadan
+/// tashqarida — Apple 3.1.5(a) ularni tashqi to'lov bilan sotishni
+/// o'zi talab qiladi, narxi iPhone'da ham ko'rinadi.
+///
+/// `Platform.isIOS` emas, `defaultTargetPlatform`: testda
+/// `debugDefaultTargetPlatformOverride` bilan iPhone sinaladi.
+bool get isAppStoreBuild => defaultTargetPlatform == TargetPlatform.iOS;
+
+/// Raqamli mahsulot narxi ko'rsatilsinmi. Android'da — ha,
+/// iPhone'da — yo'q (`isAppStoreBuild`).
+bool get showDigitalPrices => !isAppStoreBuild;
+
 /// Buyurtma turlari (`web_orders.kind`) — server bilan bir xil nom.
 class OrderKind {
   static const nfcId = 'card_purchase';
@@ -118,10 +147,15 @@ bool canPayInApp(String kind) => false;
 /// Tugma emas, havola emas — tinch izoh. Ekran "buzuq" ko'rinmasligi
 /// uchun u xuddi boshqa kartalar kabi chiziladi.
 class StoreNotice extends StatelessWidget {
-  const StoreNotice({super.key, required this.text});
+  const StoreNotice({super.key, required this.text, this.physical = false});
 
   /// Nima sotib olinayotgani — "NFC ID" yoki "Premium".
   final String text;
+
+  /// JISMONIY tovar (NFC karta) xaridi. Faqat shunday yozuv
+  /// iPhone'da ham ko'rinadi — Apple 3.1.5(a) jismoniy tovarni
+  /// tashqi to'lov bilan sotishga ruxsat beradi.
+  final bool physical;
 
   @override
   Widget build(BuildContext context) {
@@ -129,6 +163,8 @@ class StoreNotice extends StatelessWidget {
     // qismi avvalgidek ishlaydi, chunki bu shunchaki izoh
     // kartasi edi.
     if (!kShowSiteNotice) return const SizedBox.shrink();
+    // iPhone'da raqamli xarid haqida yozuv YO'Q (`isAppStoreBuild`).
+    if (isAppStoreBuild && !physical) return const SizedBox.shrink();
 
     final t = context.tokens;
     return Container(

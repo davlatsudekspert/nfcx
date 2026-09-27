@@ -115,6 +115,22 @@ void main() {
     expect(find.widgetWithText(TextButton, kSiteHost), findsNothing);
   });
 
+  // iPHONE (egasining qarori, 2026-09-27): limit va hisoblagich
+  // qoladi, "sotib oling / tarifni oshiring / saytda" — YO'Q
+  // (Apple 3.1.1, `store_policy.dart`). Android yuqoridagi testlarda.
+  testWidgets('iPhone: 5 / 5 — limit aytiladi, xarid chaqirig‘i yo‘q',
+      (tester) async {
+    await _pump(tester, _biz({'free': true, 'itemLimit': 5, 'premiumItemLimit': 25, 'canPost': false}), 5);
+    final l = await L.delegate.load(const Locale('uz'));
+    expect(tester.takeException(), isNull);
+    expect(find.text(l.bizPlanUsage(5, 5)), findsOneWidget);
+    expect(find.text(l.bizPlanLimitReachedIos), findsOneWidget);
+    expect(find.text(l.bizPlanLimitReached), findsNothing);
+    expect(find.text(l.bizPlanFreeBody(25)), findsNothing);
+    expect(find.text(l.bizPlanStoreNotice), findsNothing);
+    expect(find.text(kSiteHost), findsNothing);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
   testWidgets('Premium: 25 ta, cheksiz uchun o‘z nomi', (tester) async {
     await _pump(tester, _biz({'premium': true, 'itemLimit': 25, 'canPost': true}), 12);
     final l = await L.delegate.load(const Locale('uz'));

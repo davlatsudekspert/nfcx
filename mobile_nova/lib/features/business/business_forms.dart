@@ -296,7 +296,9 @@ class _BusinessOnboardScreenState extends ConsumerState<BusinessOnboardScreen> {
   List<Widget> _customChildren(L l) {
     final t = context.tokens;
     return [
-      Text(l.bizPremiumHint, style: Theme.of(context).textTheme.bodyMedium),
+      // iPhone'da "Narx nom uzunligiga qarab" yo'q (`store_policy.dart`).
+      Text(showDigitalPrices ? l.bizPremiumHint : l.bizPremiumHintIos,
+          style: Theme.of(context).textTheme.bodyMedium),
       const SizedBox(height: Gap.xl),
       NovaField(
         label: l.bizId,
@@ -342,7 +344,9 @@ class _BusinessOnboardScreenState extends ConsumerState<BusinessOnboardScreen> {
               selected: _available!,
               tone: _available! ? t.success : t.error,
             ),
-            if (_available! && _price > 0) ...[
+            // O'z nomi — raqamli mahsulot: iPhone'da narx yo'q
+            // (`showDigitalPrices`, `store_policy.dart`).
+            if (_available! && _price > 0 && showDigitalPrices) ...[
               const SizedBox(width: Gap.sm),
               Text(formatMoney(_price, 'UZS'),
                   style: AppType.monoStyle(color: t.text1, size: 13)),
@@ -930,7 +934,10 @@ class BusinessPlanCard extends StatelessWidget {
           if (full) ...[
             const SizedBox(height: Gap.md),
             Text(
-              l.bizPlanLimitReached,
+              // iPhone'da "tarifni oshiring" yo'q (`store_policy.dart`).
+              showDigitalPrices
+                  ? l.bizPlanLimitReached
+                  : l.bizPlanLimitReachedIos,
               key: const ValueKey('plan-limit-reached'),
               style: TextStyle(
                 fontFamily: AppType.sans,
@@ -940,15 +947,21 @@ class BusinessPlanCard extends StatelessWidget {
               ),
             ),
           ],
-          const SizedBox(height: Gap.md),
           // Premium qancha berishini SERVER aytadi. Eski server buni
           // bilmaydi — o'shanda Premium haqida va'da berilmaydi.
-          Text(
-            plan.free && plan.premiumItemLimit != null
-                ? l.bizPlanFreeBody(plan.premiumItemLimit!)
-                : l.bizPlanPremiumBody,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+          //
+          // iPhone'da bu matn YO'Q: "o'z nomingizni sotib oling" —
+          // ilovada sotilmaydigan raqamli mahsulotga chaqiriq
+          // (`store_policy.dart`). Limit va hisoblagich qoladi.
+          if (showDigitalPrices) ...[
+            const SizedBox(height: Gap.md),
+            Text(
+              plan.free && plan.premiumItemLimit != null
+                  ? l.bizPlanFreeBody(plan.premiumItemLimit!)
+                  : l.bizPlanPremiumBody,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
           const SizedBox(height: Gap.md),
           StoreNotice(text: l.bizPlanStoreNotice),
         ],

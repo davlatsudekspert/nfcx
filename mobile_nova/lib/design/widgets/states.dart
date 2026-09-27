@@ -11,6 +11,12 @@ import 'buttons.dart';
 import 'surfaces.dart';
 import 'brand_icon.dart';
 
+/// iPhone (App Store) — raqamli xaridga ishora yo'q.
+///
+/// `shop/store_policy.dart` dagi `isAppStoreBuild` bilan AYNAN bir
+/// xil. Nusxa ataylab: dizayn qatlami `features/` ni import qilmaydi.
+bool get _appStore => defaultTargetPlatform == TargetPlatform.iOS;
+
 /// Xato KALITINI joriy tildagi jumlaga aylantiradi.
 ///
 /// Server kalitiga aniq javob bo'lsa o'sha ishlatiladi; bo'lmasa xato
@@ -54,10 +60,12 @@ String describeError(L l, AppError e) => switch (e.code) {
       // (egasi, 2026-09 surat). Xarid havolasi YO'Q — Play qoidasi.
       'premium_required' => l.errCommentPremium,
       'rules_not_accepted' => l.rulesNotAccepted,
-      'plan_limit_reached' => l.errPlanLimit,
+      // iPhone'da "(sayt orqali)" degan xarid ishorasi yo'q —
+      // `shop/store_policy.dart` dagi `isAppStoreBuild` izohi.
+      'plan_limit_reached' => _appStore ? l.errPlanLimitIos : l.errPlanLimit,
       // Server 413 yoki ilovaning oldindan tekshiruvi (100 MB).
       'too_large' => l.errFileTooLarge,
-      'plan_locked' => l.errPlanLocked,
+      'plan_locked' => _appStore ? l.errPlanLockedIos : l.errPlanLocked,
       // AVTOMATIK FILTR rasm yoki videoni rad etdi — SABAB aytiladi, aks holda
       // odam "nega yuklanmayapti" deb o'ylaydi.
       'content_blocked' => l.errContentBlocked(switch (e.detail) {

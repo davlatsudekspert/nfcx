@@ -1815,6 +1815,9 @@ class LRu extends L {
   String get storeBuyOnSitePremium => 'Premium оформляется на сайте:';
 
   @override
+  String get storeBuyOnSitePhysical => 'Заказ оформляется на сайте:';
+
+  @override
   String get themeMono => 'Чёрно-белая';
 
   @override
@@ -1917,6 +1920,9 @@ class LRu extends L {
   @override
   String get bizPremiumHint =>
       'Своё имя: nfcstore.uz/c/ИМЯ. Цена зависит от длины.';
+
+  @override
+  String get bizPremiumHintIos => 'Своё имя: nfcstore.uz/c/ИМЯ.';
 
   @override
   String get bizPremiumCta => 'Проверить имя';
@@ -2310,6 +2316,10 @@ class LRu extends L {
       'Лимит исчерпан: чтобы добавить товар, повысьте тариф. Добавленные не удаляются.';
 
   @override
+  String get bizPlanLimitReachedIos =>
+      'Лимит исчерпан. Добавленные не удаляются.';
+
+  @override
   String get bizPlanStoreNotice => 'Premium и своё имя оформляются на сайте:';
 
   @override
@@ -2322,6 +2332,13 @@ class LRu extends L {
   @override
   String get errPlanLocked =>
       'На бесплатном тарифе посты и истории закрыты. Откроются с Premium (на сайте).';
+
+  @override
+  String get errPlanLimitIos => 'Лимит тарифа исчерпан.';
+
+  @override
+  String get errPlanLockedIos =>
+      'На бесплатном тарифе посты и истории закрыты.';
 
   @override
   String errContentBlocked(String reason) {

@@ -14,6 +14,7 @@ import '../demo/demo_data.dart';
 import '../home/widgets/identity_card.dart' show formatCount;
 import '../social/media_frame.dart' show mediaImage;
 import 'business_screens.dart' show formatMoney;
+import '../shop/store_policy.dart';
 import 'sample_businesses.dart';
 import '../../design/widgets/brand_icon.dart';
 
@@ -106,7 +107,8 @@ class BusinessIntroBody extends StatelessWidget {
           premium: true,
           badge: l.bizPremiumBadge,
           title: l.bizPremiumTitle,
-          hint: l.bizPremiumHint,
+          // iPhone'da narx haqida gap yo'q (`store_policy.dart`).
+          hint: showDigitalPrices ? l.bizPremiumHint : l.bizPremiumHintIos,
           cta: NovaButton(
             label: l.bizPremiumCta,
             tone: ButtonTone.outline,

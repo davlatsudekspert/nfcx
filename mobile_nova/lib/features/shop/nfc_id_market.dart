@@ -203,11 +203,15 @@ class _TierTile extends StatelessWidget {
     // SAYTDAGI DARAJA KARTASI — har mavzuda bir xil (qora fon + o'z
     // rangiga yumshoq o'tish). Matn doim yorug': fon doim qorong'i.
     final mix = IdTierMix.of(tier.tier);
-    final price = tier.price == null
+    // iPhone'da raqamli narx yo'q (`showDigitalPrices`,
+    // `store_policy.dart`). "Sotuvda emas" narx emas, holat — qoladi.
+    final String? price = tier.price == null
         ? l.idStateNotForSale
-        : tier.from
-            ? '${formatMoney(tier.price!, '').trim()} ${l.tierPriceFromSuffix}'
-            : formatMoney(tier.price!, 'UZS');
+        : !showDigitalPrices
+            ? null
+            : tier.from
+                ? '${formatMoney(tier.price!, '').trim()} ${l.tierPriceFromSuffix}'
+                : formatMoney(tier.price!, 'UZS');
 
     return Container(
       key: ValueKey('tier-tile-${tier.tier}'),
@@ -248,16 +252,18 @@ class _TierTile extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      price,
-                      style: const TextStyle(
-                        fontFamily: AppType.sans,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
+                    if (price != null) ...[
+                      const SizedBox(width: 8),
+                      Text(
+                        price,
+                        style: const TextStyle(
+                          fontFamily: AppType.sans,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 3),
@@ -319,7 +325,7 @@ class _IdCard extends ConsumerWidget {
     return IdProductCard(
       code: quote.code,
       tier: quote.tier,
-      price: quote.purchasable && quote.amount > 0
+      price: showDigitalPrices && quote.purchasable && quote.amount > 0
           ? formatMoney(quote.amount, 'UZS')
           : null,
       status: (state.text, state.color),
@@ -390,7 +396,7 @@ class NfcIdBuyScreen extends ConsumerWidget {
                 code: q.code,
                 tier: q.tier,
                 hero: true,
-                price: q.purchasable && q.amount > 0
+                price: showDigitalPrices && q.purchasable && q.amount > 0
                     ? formatMoney(q.amount, 'UZS')
                     : null,
                 status: (state.text, state.color),
@@ -437,7 +443,13 @@ class NfcIdOrderScreen extends ConsumerWidget {
           final (label, tone, hint) = switch (o.status) {
             'paid' => (l.idOrderPaid, t.success, l.idPaidHint),
             'cancelled' => (l.idOrderCancelled, t.text3, ''),
-            'pending' => (l.idOrderPending, t.warn, l.idPendingHint),
+            // "To'lovni yakunlang" — tashqi to'lovga chaqiriq:
+            // iPhone'da yo'q (`store_policy.dart`).
+            'pending' => (
+                l.idOrderPending,
+                t.warn,
+                showDigitalPrices ? l.idPendingHint : '',
+              ),
             _ => (l.idOrderFailed, t.error, ''),
           };
 
@@ -463,23 +475,26 @@ class NfcIdOrderScreen extends ConsumerWidget {
                         Capsule(label: label, dense: true, tone: tone),
                       ],
                     ),
-                    const SizedBox(height: Gap.lg),
-                    Row(
-                      children: [
-                        Expanded(
-                            child: Text(l.checkoutTotal,
-                                style: Theme.of(context).textTheme.bodySmall)),
-                        Text(
-                          formatMoney(o.total, 'UZS'),
-                          style: TextStyle(
-                            fontFamily: AppType.sans,
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                            color: t.accent1,
+                    // Summa — raqamli mahsulot narxi: iPhone'da yo'q.
+                    if (showDigitalPrices) ...[
+                      const SizedBox(height: Gap.lg),
+                      Row(
+                        children: [
+                          Expanded(
+                              child: Text(l.checkoutTotal,
+                                  style: Theme.of(context).textTheme.bodySmall)),
+                          Text(
+                            formatMoney(o.total, 'UZS'),
+                            style: TextStyle(
+                              fontFamily: AppType.sans,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: t.accent1,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                     if (hint.isNotEmpty) ...[
                       const SizedBox(height: Gap.md),
                       Text(hint, style: Theme.of(context).textTheme.bodySmall),

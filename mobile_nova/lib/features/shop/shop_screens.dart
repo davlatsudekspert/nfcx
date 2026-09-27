@@ -397,7 +397,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           // Narx va mahsulot yuqorida QOLDI — odam nima
           // olayotganini va qanchaligini ko'radi, faqat
           // rasmiylashtirish saytda bo'ladi.
-          StoreNotice(text: l.storeBuyOnSiteId),
+          //
+          // JISMONIY tovar — iPhone'da ham ko'rinadi (Apple 3.1.5(a)).
+          // iPhone'da matn "NFC ID xaridi" emas, "buyurtma": raqamli
+          // xaridga ishora bo'lmasin (`store_policy.dart`).
+          StoreNotice(
+            text: isAppStoreBuild
+                ? l.storeBuyOnSitePhysical
+                : l.storeBuyOnSiteId,
+            physical: true,
+          ),
           const SizedBox(height: Gap.xxl),
         ],
       ),

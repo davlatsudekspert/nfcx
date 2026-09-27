@@ -74,22 +74,42 @@ function iosName(plist) {
   return m ? m[1] : '';
 }
 
+/// ILOVANING iOS BUNDLE ID LARI — `RunnerTests` dan tashqari.
+///
+/// Uchta konfiguratsiya (Debug/Release/Profile) — uchalasi bir xil
+/// bo'lishi kerak: biri farq qilsa, TestFlight'ga boshqa ilova
+/// bo'lib ketadi. Bundle ID App Store Connect'da ilova yaratilgach
+/// O'ZGARTIRIB BO'LMAYDI — Android'dagi `applicationId` bilan bir
+/// xil qaytarib bo'lmaydigan xato.
+function iosBundleIds(pbxproj) {
+  return [...pbxproj.matchAll(/PRODUCT_BUNDLE_IDENTIFIER = ([^;]+);/g)]
+    .map((m) => m[1].trim())
+    .filter((id) => !id.endsWith('.RunnerTests'));
+}
+
 const APPS = [
   {
     name: 'Nova (yangi)',
     manifest: 'mobile_nova/android/app/src/main/AndroidManifest.xml',
     gradle: 'mobile_nova/android/app/build.gradle.kts',
     plist: 'mobile_nova/ios/Runner/Info.plist',
+    pbxproj: 'mobile_nova/ios/Runner.xcodeproj/project.pbxproj',
     label: 'NFCSTORE',
     appId: 'uz.nfcstore.nova',
+    // Egasining qarori (2026-09-27): iOS ham Android bilan bir xil.
+    // Flutter yaratgan `uz.nfcstore.nfcstoreNova` hech qayerda
+    // ro'yxatdan o'tmagan edi.
+    iosId: 'uz.nfcstore.nova',
   },
   {
     name: 'Classic (eski)',
     manifest: 'mobile/android/app/src/main/AndroidManifest.xml',
     gradle: 'mobile/android/app/build.gradle.kts',
     plist: 'mobile/ios/Runner/Info.plist',
+    pbxproj: 'mobile/ios/Runner.xcodeproj/project.pbxproj',
     label: 'NFCSTORE Classic',
     appId: 'uz.nfcstore.app',
+    iosId: 'uz.nfcstore.nfcstore',
   },
 ];
 
@@ -104,6 +124,36 @@ for (const app of APPS) {
   const gradle = read(app.gradle);
   const m = gradle.match(/applicationId\s*=\s*"([^"]+)"/);
   check(`${app.name}: paket ID`, m ? m[1] : '', app.appId);
+
+  const bundles = iosBundleIds(read(app.pbxproj));
+  check(`${app.name}: iOS konfiguratsiyalar soni`, bundles.length, 3);
+  checkTrue(
+    `${app.name}: iOS bundle ID = ${app.iosId} (${[...new Set(bundles)].join(', ')})`,
+    bundles.length > 0 && bundles.every((id) => id === app.iosId),
+  );
+}
+
+checkTrue(
+  'iOS bundle ID lari FARQ qiladi',
+  APPS[0].iosId !== APPS[1].iosId,
+);
+
+// ── iOS BELGISI — NFCSTORE, ALFA KANALSIZ ────────────────────────
+//
+// Nova'da iOS belgisi uzoq vaqt Flutter'ning STANDART ko'k logosi
+// bo'lib qolgan edi — hech kim iPhone'da ochib ko'rmagani uchun
+// sezilmadi. App Store esa:
+//   * shaffof yoki alfa kanalli 1024 belgini yuklashda RAD ETADI;
+//   * "placeholder" belgili ilovani ko'rib chiqishda rad etadi.
+// PNG IHDR'dagi rang turi: 2 = RGB (alfa yo'q), 6 = RGBA.
+{
+  const icon = readFileSync(join(ROOT,
+    'mobile_nova/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png'));
+  check('iOS 1024 belgi: PNG rang turi RGB (alfa yo‘q)', icon[25], 2);
+  const { createHash } = await import('node:crypto');
+  const sha = createHash('sha256').update(icon).digest('hex');
+  checkTrue('iOS belgisi Flutter standart logosi EMAS',
+    sha !== '7770183009e914112de7d8ef1d235a6a30c5834424858e0d2f8253f6b8d31926');
 }
 
 // ── ENG MUHIMI: NOMLAR BIR XIL EMAS ──────────────────────────────

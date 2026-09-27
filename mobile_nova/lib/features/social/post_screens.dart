@@ -33,6 +33,7 @@ import 'story_viewer.dart';
 import 'media_frame.dart';
 import 'content_rules.dart';
 import 'moderation.dart';
+import '../shop/store_policy.dart';
 import 'music_picker.dart';
 import '../../design/icons/nova_icons.dart';
 
@@ -183,17 +184,23 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                     // Begona postni ko'tarish serverda ham
                     // to'siladi (403), lekin tugmani ko'rsatib
                     // keyin rad etish — odamni bekorga yugurtirish.
-                    NovaIconButton(
-                      icon: Icons.trending_up_rounded,
-                      tooltip: l.featuredTitle,
-                      size: 38,
-                      onPressed: () => context.push(
-                        Routes.featured(
-                          p.isCompany ? 'company_post' : 'post',
-                          p.id,
+                    //
+                    // iPhone'da YO'Q: ekran faqat pullik xizmat
+                    // xaridi, narx va sayt yozuvisiz u bo'sh qoladi
+                    // (`store_policy.dart`). Ko'tarilgan postlar
+                    // lentada iPhone'da ham ko'rinadi.
+                    if (!isAppStoreBuild)
+                      NovaIconButton(
+                        icon: Icons.trending_up_rounded,
+                        tooltip: l.featuredTitle,
+                        size: 38,
+                        onPressed: () => context.push(
+                          Routes.featured(
+                            p.isCompany ? 'company_post' : 'post',
+                            p.id,
+                          ),
                         ),
                       ),
-                    ),
                     NovaIconButton(
                       icon: Icons.delete_outline_rounded,
                       tooltip: l.actionDelete,
