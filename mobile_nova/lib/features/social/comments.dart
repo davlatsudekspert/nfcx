@@ -441,7 +441,7 @@ class _PremiumLockedComposer extends StatelessWidget {
               color: t.brandSoft,
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.lock_rounded, size: 18, color: t.brand),
+            child: Icon(Icons.lock_rounded, size: 18, color: t.labelInk),
           ),
           const SizedBox(width: Gap.md),
           Expanded(

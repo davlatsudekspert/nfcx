@@ -352,7 +352,9 @@ class _TopBar extends StatelessWidget {
                 // Brend imzosi — Reels NFCSTORE'niki ekani bir qarashda.
                 Text(
                   'NFCSTORE',
-                  style: AppType.eyebrow(color: IdPlate.goldLight, size: 9)
+                  style: AppType.eyebrow(
+                          color: context.tokens.goldOnDark(IdPlate.goldLight),
+                          size: 9)
                       .copyWith(shadows: const [
                     Shadow(color: Colors.black54, blurRadius: 8),
                   ]),
@@ -1017,7 +1019,9 @@ class _ReelPageState extends ConsumerState<_ReelPage>
                       : NovaIcons.save,
                   label: l.actionSave,
                   // Saqlangan — nozik oltin (premium aksent).
-                  tint: saved ? IdPlate.goldLight : Colors.white,
+                  tint: saved
+                      ? context.tokens.goldOnDark(IdPlate.goldLight)
+                      : Colors.white,
                   semantic: l.actionSave,
                   onTap: _save,
                 ),

@@ -142,7 +142,11 @@ class _MusicControlState extends ConsumerState<MusicControl> {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             // O'ynayotganda nishon OLTIN — "hozir yangrayapti".
-            color: playing ? IdPlate.gold : t.surfaceSolid,
+            // Oltin disk faqat qora-oltin mavzuda (`goldTheme`);
+            // boshqalarida mavzuning o'z aksenti — sariq emas.
+            color: playing
+                ? (t.goldTheme ? IdPlate.gold : t.accent2)
+                : t.surfaceSolid,
             border: Border.all(color: t.bg1, width: widget.size * .08),
             boxShadow: [
               BoxShadow(
@@ -162,7 +166,9 @@ class _MusicControlState extends ConsumerState<MusicControl> {
               Icons.music_note_rounded,
               key: const ValueKey('music-eq'),
               size: widget.size * .58,
-              color: playing ? Colors.white : t.brandInk,
+              color: playing
+                  ? (t.goldTheme ? Colors.white : t.onAccent)
+                  : t.labelInk,
             ),
           ),
         ),
@@ -627,13 +633,13 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
                   ? mediaImage(context, widget.ownerAvatar, fit: BoxFit.cover)
                   : Center(
                       child: _Equalizer(
-                          size: 56, color: t.brandInk, animate: playing)),
+                          size: 56, color: t.labelInk, animate: playing)),
             ),
             const SizedBox(height: Gap.lg),
             Text(
               (widget.ownerName.isEmpty ? l.musicTitle : widget.ownerName)
                   .toUpperCase(),
-              style: AppType.eyebrow(color: t.brandInk),
+              style: AppType.eyebrow(color: t.labelInk),
             ),
             const SizedBox(height: 4),
             Text(
@@ -746,7 +752,7 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
                         SizedBox(
                           width: 22,
                           child: url == st.url && st.playing
-                              ? _Equalizer(size: 14, color: t.brandInk)
+                              ? _Equalizer(size: 14, color: t.labelInk)
                               : Icon(Icons.music_note_rounded,
                                   size: 16, color: t.text3),
                         ),

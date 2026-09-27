@@ -11,11 +11,25 @@ void main() {
       .where((l) => !l.trimLeft().startsWith('//'))
       .join('\n');
 
-  test('bitta brend muhri uch joyda', () {
-    expect(code('lib/design/widgets/bottom_nav.dart'), contains('BrandSeal('));
-    expect(code('lib/features/nfc/nfc_center_screen.dart'),
-        contains('BrandSeal('));
-    expect(code('lib/features/auth/login_screen.dart'), contains('BrandSeal('));
+  test('brend muhri — pastki nav va NFC markazi, QORA diskda', () {
+    final nav = code('lib/design/widgets/bottom_nav.dart');
+    final nfc = code('lib/features/nfc/nfc_center_screen.dart');
+    expect(nav, contains('BrandSeal('));
+    expect(nfc, contains('BrandSeal('));
+    // Egasi (2026-09-27): NFC markazidagi oq disk "qolib ketgan" edi —
+    // hamma muhr logo kabi QORA (`ink: true`), oq disk qolmasin.
+    for (final m in RegExp(r'BrandSeal\(([^)]*)\)').allMatches(nfc)) {
+      expect(m.group(1), contains('ink: true'),
+          reason: 'NFC markazida oq muhr qolgan: ${m.group(0)}');
+    }
+  });
+
+  // Egasi (2026-09-27): "kirish logolari ham bir xil bo'lsin" — Login
+  // ham Splash kabi ilova belgisi (qora plastina, oltin belgi).
+  test('Login — ilova belgisi, oq muhr emas', () {
+    final login = code('lib/features/auth/login_screen.dart');
+    expect(login, contains('BrandAppIcon('));
+    expect(login, isNot(contains('BrandSeal(')));
   });
 
   // Egasining qarori (2026-09-27): Splash'dagi logo "logo bilan bir

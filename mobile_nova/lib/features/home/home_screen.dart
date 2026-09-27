@@ -648,7 +648,7 @@ class _PortraitAvatar extends StatelessWidget {
             child: BrandLogo(
               size: size * .56,
               style: BrandLogoStyle.markOnly,
-              tint: t.brandInk,
+              tint: t.labelInk,
             ),
           ),
         );

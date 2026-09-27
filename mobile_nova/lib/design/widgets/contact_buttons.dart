@@ -8,9 +8,18 @@ import '../theme/typography.dart';
 import '../tokens/nfc_tokens.dart';
 import 'surfaces.dart';
 
-/// ALOQA TUGMALARI — saytdagi biznes sahifasidek logoli DUMALOQ
-/// tugmalar (egasi, 2026-09: "linklar saytning biznes sahifasidek
-/// dumaloq button bo'lsin, hamma linklar logosi bilan").
+/// ALOQA TUGMALARI — iPhone ish stolidagi ILOVA BELGILARI kabi.
+///
+/// Egasi (2026-09-27): "profildagi Telegram, Instagram — hammasi
+/// to'lib, iPhone'da rabochiy stolda ko'rinadigandek bo'lsin;
+/// kattaligi emas, ko'rinishi". Endi har tugma o'z brendining
+/// rangidagi (Instagram — o'z gradienti) silliq burchakli plitka,
+/// ichida OQ logotip. Oq fondagi rangli logotip qorong'i mavzularda
+/// yuvilib ketardi — to'la plitka har mavzuda bir xil o'qiladi.
+/// O'lcham avvalgidek (56 → 40, tor qatorda kichrayadi).
+///
+/// (Ilgari: saytdagi biznes sahifasidek oq doira ichida rangli logo —
+/// egasi, 2026-09.)
 ///
 /// Logotiplar saytdagi `src/components/Icons.jsx` dagi AYNAN o'sha
 /// SVG chizmalar va o'sha brend ranglari (`CompanyQuickProfilePage`):
@@ -103,26 +112,29 @@ class _ContactButton extends StatelessWidget {
               Container(
                 width: circle,
                 height: circle,
-                // PREMIUM (2026-09-24): sirt doira, aniq chegara va
-                // yumshoq soya — doira "yuvilib" ketmaydi; brend rangi
-                // faqat LOGOTIPDA. Qorong'i mavzularda doira iliq OQ:
-                // brend logotiplari (Facebook ko'ki va h.k.) to'q fonda
-                // ko'rinmay qolardi.
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: t.isDark ? const Color(0xFFF7F4EE) : t.surfaceSolid,
-                  border: Border.all(
-                    color: t.text1.withValues(alpha: .16),
-                    width: 1.1,
+                // iPHONE BELGISI: brend rangidagi superellips plitka
+                // (burchak ~22.4% — iOS belgisi nisbati), yuqoridan
+                // yorug'roq gradient, ostida o'z rangidagi yumshoq soya.
+                decoration: ShapeDecoration(
+                  shape: RoundedSuperellipseBorder(
+                    borderRadius: BorderRadius.circular(circle * .2237),
                   ),
-                  boxShadow: t.shadowSoft,
+                  gradient: spec.gradient,
+                  shadows: [
+                    BoxShadow(
+                      color: spec.gradient.colors.last.withValues(alpha: .30),
+                      blurRadius: circle * .22,
+                      offset: Offset(0, circle * .07),
+                    ),
+                  ],
                 ),
                 alignment: Alignment.center,
                 child: SvgPicture.string(
                   spec.svg,
-                  width: circle * .44,
-                  height: circle * .44,
-                  colorFilter: ColorFilter.mode(spec.color, BlendMode.srcIn),
+                  width: circle * .5,
+                  height: circle * .5,
+                  colorFilter:
+                      const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                 ),
               ),
               const SizedBox(height: 7),
@@ -149,53 +161,59 @@ class _ContactButton extends StatelessWidget {
 }
 
 class _Spec {
-  const _Spec(this.color, this.svg, this.label);
-  final Color color;
+  const _Spec(this.gradient, this.svg, this.label);
+
+  /// iPhone belgisidagidek: yuqorisi yorug'roq, pasti to'qroq.
+  final LinearGradient gradient;
   final String svg;
   final String Function(L) label;
 }
 
-// Ranglar — saytdagi `CompanyQuickProfilePage.jsx` `quick` ro'yxatidan.
+/// Yuqoridan pastga ikki rangli gradient — iOS belgilarining uslubi.
+LinearGradient _v(int top, int bottom) => LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [Color(top), Color(bottom)],
+    );
+
+// Ranglar — brendlarning iPhone belgilaridagi rangi (Telegram ko'ki,
+// WhatsApp va Telefon yashili, Instagram gradienti va h.k.).
 final _specs = <ContactKind, _Spec>{
-  ContactKind.phone: _Spec(
-    const Color(0xFF0E7A3D),
-    _phone,
-    (l) => l.contactCall,
-  ),
-  ContactKind.telegram: _Spec(
-    const Color(0xFF0F7AB0),
-    _telegram,
-    (_) => 'Telegram',
-  ),
-  ContactKind.whatsapp: _Spec(
-    const Color(0xFF0B8A3C),
-    _whatsapp,
-    (_) => 'WhatsApp',
-  ),
+  ContactKind.phone: _Spec(_v(0xFF5FE06A, 0xFF1DB93A), _phone,
+      (l) => l.contactCall),
+  ContactKind.telegram: _Spec(_v(0xFF3FC1FB, 0xFF0A87D1), _telegram,
+      (_) => 'Telegram'),
+  ContactKind.whatsapp: _Spec(_v(0xFF5EF07D, 0xFF23C04A), _whatsapp,
+      (_) => 'WhatsApp'),
   ContactKind.instagram: _Spec(
-    const Color(0xFFB3175A),
+    const LinearGradient(
+      begin: Alignment.bottomLeft,
+      end: Alignment.topRight,
+      colors: [
+        Color(0xFFFDC468),
+        Color(0xFFF77737),
+        Color(0xFFE1306C),
+        Color(0xFFC13584),
+        Color(0xFF833AB4),
+      ],
+      stops: [0, .25, .5, .72, 1],
+    ),
     _instagram,
     (_) => 'Instagram',
   ),
-  ContactKind.facebook: _Spec(
-    const Color(0xFF0D4FA8),
-    _facebook,
-    (_) => 'Facebook',
-  ),
-  ContactKind.x: _Spec(const Color(0xFF1F1D1A), _x, (_) => 'X'),
-  ContactKind.linkedin: _Spec(
-    const Color(0xFF0A66C2),
-    _linkedin,
-    (_) => 'LinkedIn',
-  ),
-  ContactKind.email: _Spec(const Color(0xFF8A5A12), _mail, (_) => 'Email'),
-  ContactKind.map: _Spec(const Color(0xFFB83A1E), _pin, (l) => l.contactMap),
-  ContactKind.website: _Spec(
-    const Color(0xFF5A4410),
-    _globe,
-    (l) => l.contactWebsite,
-  ),
-  ContactKind.link: _Spec(const Color(0xFF5A4410), _link, (l) => l.contactLink),
+  ContactKind.facebook: _Spec(_v(0xFF2DB0FF, 0xFF0866FF), _facebook,
+      (_) => 'Facebook'),
+  ContactKind.x: _Spec(_v(0xFF3A3A3C, 0xFF000000), _x, (_) => 'X'),
+  ContactKind.linkedin: _Spec(_v(0xFF2A8BE0, 0xFF0A66C2), _linkedin,
+      (_) => 'LinkedIn'),
+  ContactKind.email: _Spec(_v(0xFF49A6FF, 0xFF1666F2), _mail,
+      (_) => 'Email'),
+  ContactKind.map: _Spec(_v(0xFFFF7A59, 0xFFE0352B), _pin,
+      (l) => l.contactMap),
+  ContactKind.website: _Spec(_v(0xFF636366, 0xFF2C2C2E), _globe,
+      (l) => l.contactWebsite),
+  ContactKind.link: _Spec(_v(0xFF636366, 0xFF2C2C2E), _link,
+      (l) => l.contactLink),
 };
 
 // ── Saytdagi `src/components/Icons.jsx` chizmalari ───────────────────

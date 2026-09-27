@@ -117,7 +117,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                     ? Icons.lock_reset_rounded
                     : Icons.mark_email_read_rounded,
                 size: 30,
-                color: t.brand,
+                color: t.labelInk,
               ),
             ),
           ),

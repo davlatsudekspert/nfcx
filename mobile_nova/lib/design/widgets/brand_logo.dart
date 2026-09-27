@@ -355,6 +355,14 @@ class BrandSeal extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final ring = (size * .02).clamp(1.0, 1.6);
+    // DISK. Yorug' mavzuda faol yoki `ink` — siyoh (Ivory'da qora,
+    // Pudra/Sakura'da to'q atirgul). Qorong'i mavzuda disk DOIM
+    // qorong'i: u yerda aksent YORUG' (oltin, kumush, havorang) va
+    // faol holatda oltin belgi oltin disk ustida ko'rinmay qolardi
+    // (Noir/Grafit iPhone suratlari, 2026-09-27). Faollik u yerda
+    // yorqin aksent halqa bilan bildiriladi.
+    final inkDisk = (selected || ink) && !t.isDark;
+    final darkActive = selected && t.isDark;
     return Semantics(
       label: semanticLabel,
       image: true,
@@ -365,11 +373,12 @@ class BrandSeal extends StatelessWidget {
         height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: selected || (ink && !t.isDark) ? t.accent2 : t.surfaceSolid,
+          color: inkDisk ? t.accent2 : t.surfaceSolid,
           border: Border.all(
-            color: t.brand
-                .withValues(alpha: selected || (ink && !t.isDark) ? .9 : .6),
-            width: ring,
+            color: darkActive
+                ? t.accent1
+                : t.brand.withValues(alpha: inkDisk ? .9 : .6),
+            width: darkActive ? ring * 1.8 : ring,
           ),
           boxShadow: elevated ? t.shadowFloat : null,
         ),

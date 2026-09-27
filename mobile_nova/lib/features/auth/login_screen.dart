@@ -108,7 +108,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           // PREMIUM (egasi, 2026-09-24): muhr pastki panel markazidagi
           // kabi SIYOH diskda — oltin belgi qora ustida; ostida siyrak
           // NFCSTORE yozuvi.
-          const Center(child: BrandSeal(size: 76, ink: true)),
+          // Egasi (2026-09-27): kirish logolari ham ilova belgisi kabi —
+          // Splash bilan bir xil qora plastina, oltin belgi.
+          const Center(child: BrandAppIcon(size: 76)),
           const SizedBox(height: Gap.md),
           Center(
             child: Text(

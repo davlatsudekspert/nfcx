@@ -992,10 +992,10 @@ class _StoryLoading extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            const SizedBox.expand(
+            SizedBox.expand(
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: IdPlate.goldLight,
+                color: context.tokens.goldOnDark(IdPlate.goldLight),
               ),
             ),
             Avatar(url: url, initials: initials, size: 82, ring: false),

@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Ilova ochilayotgandagi fon. Flutter yuklanguncha shu ko'rinadi,
-     shuning uchun u Midnight mavzuning foniga yaqin: oq chaqnash yo'q. -->
+<!-- Ilova ochilayotgandagi fon — Flutter yuklanguncha shu ko'rinadi.
+
+     Ivory (#F6F5F2) — iPhone'dagi LaunchScreen va Dart Splash foni
+     bilan AYNAN bir xil: ochilishda rang sakrashi yo'q. Belgi bu
+     yerda chizilmaydi: Splash o'zi ilova belgisini (qora plastina,
+     oltin belgi) ko'rsatadi; och fondagi oltin belgi esa oqarib,
+     "sarg'ayib" ko'rinardi (egasi, 2026-09-27). Android 12+ da tizim
+     o'zi ilova belgisini ko'rsatadi — `values-v31/styles.xml`. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@color/launch_background"/>
-    <item>
-        <bitmap
-            android:gravity="center"
-            android:src="@drawable/ic_launcher_foreground"/>
-    </item>
 </layer-list>

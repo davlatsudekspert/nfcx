@@ -58,7 +58,8 @@ class _InitialsTile extends StatelessWidget {
       child: Center(
         child: Text(
           text,
-          style: AppType.displayStyle(color: IdPlate.goldLight, size: 34),
+          style: AppType.displayStyle(
+              color: context.tokens.goldOnDark(IdPlate.goldLight), size: 34),
         ),
       ),
     );
@@ -455,17 +456,20 @@ class DiscoverBusinessCard extends ConsumerWidget {
                               ),
                               borderRadius: R.pill,
                               border: Border.all(
-                                color: IdPlate.gold.withValues(alpha: .7),
+                                color: context.tokens
+                                    .goldOnDark(IdPlate.gold)
+                                    .withValues(alpha: .7),
                               ),
                             ),
                             child: Text(
                               badge.toUpperCase(),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: AppType.sans,
                                 fontSize: 9.5,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: .8,
-                                color: IdPlate.goldLight,
+                                color: context.tokens
+                                    .goldOnDark(IdPlate.goldLight),
                               ),
                             ),
                           ),
@@ -488,19 +492,21 @@ class DiscoverBusinessCard extends ConsumerWidget {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.grid_view_rounded,
                                   size: 12,
-                                  color: IdPlate.goldLight,
+                                  color: context.tokens
+                                      .goldOnDark(IdPlate.goldLight),
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
                                   '${items.length}',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontFamily: AppType.sans,
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
-                                    color: IdPlate.goldLight,
+                                    color: context.tokens
+                                        .goldOnDark(IdPlate.goldLight),
                                   ),
                                 ),
                               ],
@@ -897,7 +903,9 @@ class _BizCell extends StatelessWidget {
                     ? Icon(
                         icon,
                         size: 26,
-                        color: active ? IdPlate.goldLight : t.text1,
+                        color: active
+                            ? t.goldOnDark(IdPlate.goldLight)
+                            : t.text1,
                       )
                     : mediaImage(context, image, fit: BoxFit.cover),
               ),

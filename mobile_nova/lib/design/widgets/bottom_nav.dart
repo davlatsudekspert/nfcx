@@ -321,3 +321,45 @@ class _NavButton extends StatelessWidget {
     );
   }
 }
+
+
+/// PASTKI MENYU OSTIDAGI SO'NISH.
+///
+/// Menyu suzib turadi (`extendBody`) va uning ostidagi uy chizig'i
+/// hududida (iPhone'da 34 pt) kontent — story qatori, ro'yxat
+/// oxiri — ko'rinib qolardi. Egasi (2026-09-27, iPhone surati):
+/// "pastdagi ikonkalar tepada bo'lib ketmaganmi?" — menyu joyida edi,
+/// lekin ostidagi kontent uni "ko'tarilgan" qilib ko'rsatardi.
+///
+/// Endi menyu orqasida fon rangidagi silliq so'nish: yuqori qirrasi
+/// shaffof (kontent menyu tepasigacha ko'rinadi), pastga qarab to'liq
+/// fon — iPhone ilovalaridagidek toza. Reels'da O'CHIQ: video butun
+/// ekranni egallaydi.
+class NavScrim extends StatelessWidget {
+  const NavScrim({super.key, required this.child, this.enabled = true});
+
+  final Widget child;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!enabled) return child;
+    final bg = context.tokens.bg2;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          stops: const [0, .42, .7, 1],
+          colors: [
+            bg.withValues(alpha: 0),
+            bg.withValues(alpha: .78),
+            bg.withValues(alpha: .96),
+            bg,
+          ],
+        ),
+      ),
+      child: child,
+    );
+  }
+}

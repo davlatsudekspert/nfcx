@@ -322,7 +322,9 @@ class _ScanCoreState extends State<ScanCore>
                     child: child,
                   );
                 },
-                child: BrandSeal(size: widget.size, elevated: true),
+                // Egasi (2026-09-27): oq disk "qolib ketgan" — logo va
+                // pastki navdagi kabi QORA disk, oltin belgi.
+                child: BrandSeal(size: widget.size, elevated: true, ink: true),
               ),
             ),
           ],
@@ -629,7 +631,7 @@ class NoNfcPanel extends ConsumerWidget {
             children: [
               Row(
                 children: [
-                  const BrandSeal(size: 44, elevated: false),
+                  const BrandSeal(size: 44, elevated: false, ink: true),
                   const SizedBox(width: Gap.md),
                   Expanded(
                     child: Text(l.nfcUnsupported,

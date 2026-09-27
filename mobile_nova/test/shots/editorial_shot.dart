@@ -106,7 +106,8 @@ Future<void> tabShot(
     Key? thenKey,
     Key? afterTextKey,
     Object? extra,
-    bool playMusic = false}) async {
+    bool playMusic = false,
+    NfcTokens? tokens}) async {
   _size(tester, s);
   late GoRouter router;
   await tester.pumpWidget(ProviderScope(
@@ -116,7 +117,7 @@ Future<void> tabShot(
       return MaterialApp.router(
         debugShowCheckedModeBanner: false,
         routerConfig: router,
-        theme: buildTheme(NfcTokens.ivory),
+        theme: buildTheme(tokens ?? NfcTokens.ivory),
         locale: const Locale('uz'),
         supportedLocales: LocaleController.supported,
         localizationsDelegates: const [
@@ -179,13 +180,14 @@ Future<void> tabShot(
 Future<void> soloShot(
     WidgetTester tester, Widget screen, String name, Size s,
     {List<Override> extra = const [],
-    Future<void> Function(WidgetTester)? prepare}) async {
+    Future<void> Function(WidgetTester)? prepare,
+    NfcTokens? tokens}) async {
   _size(tester, s);
   await tester.pumpWidget(ProviderScope(
     overrides: [...await richOverrides(), ...extra],
     child: MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: buildTheme(NfcTokens.ivory),
+      theme: buildTheme(tokens ?? NfcTokens.ivory),
       locale: const Locale('uz'),
       supportedLocales: LocaleController.supported,
       localizationsDelegates: const [

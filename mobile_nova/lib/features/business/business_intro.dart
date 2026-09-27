@@ -72,7 +72,7 @@ class BusinessIntroBody extends StatelessWidget {
           Gap.screenX, Gap.md, Gap.screenX, Gap.section),
       children: [
         Text(l.bizIntroEyebrow.toUpperCase(),
-            style: AppType.eyebrow(color: t.brandInk)),
+            style: AppType.eyebrow(color: t.labelInk)),
         const SizedBox(height: Gap.sm),
         Text(l.bizIntroTitle,
             style: AppType.displayStyle(
@@ -272,7 +272,7 @@ class _OptionCard extends StatelessWidget {
             child: Text(
               badge.toUpperCase(),
               style: AppType.eyebrow(
-                  color: premium ? t.brandInk : t.text2, size: 9.5),
+                  color: premium ? t.labelInk : t.text2, size: 9.5),
             ),
           ),
           const SizedBox(height: Gap.md),
@@ -378,7 +378,7 @@ class _ShowcaseState extends State<_Showcase> {
                         ),
                         child: Text(l.bizShowcaseSample.toUpperCase(),
                             style: AppType.eyebrow(
-                                color: t.brandInk, size: 8.5)),
+                                color: t.labelInk, size: 8.5)),
                       ),
                     ),
                   ],

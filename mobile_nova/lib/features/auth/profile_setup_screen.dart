@@ -192,7 +192,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(l.setupFreeId.toUpperCase(),
-                        style: AppType.eyebrow(color: t.brandInk, size: 9)),
+                        style: AppType.eyebrow(color: t.labelInk, size: 9)),
                     const SizedBox(width: Gap.md),
                     Text(
                       id.code,

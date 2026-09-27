@@ -149,6 +149,47 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
   /// uchun logotipning O'ZI emas, ATROFIDAGI plastina mavzuga moslashadi.
   Color get logoPlate => isDark ? surfaceSolid : const Color(0xFF14131A);
 
+  /// OLTIN MAVZU — Noir va Onyx: qora + oltin, brend belgisi kabi.
+  /// Faqat shu mavzularda yozuv va ikonkalar oltin bo'lishi mumkin.
+  bool get goldTheme => id == 'noir' || id == 'onyx';
+
+  /// Qorong'i sirt (Reels, story, qora plitka) ustidagi AKSENT yozuv
+  /// va ikonka rangi.
+  ///
+  /// Egasining talabi (2026-09-27): "oq-qora temada sariq harflar
+  /// qolmasin — yozuv va ikonkalar", "boshqa temalarga ham e'tibor
+  /// ber, ayollar temasi ham bor". Ilgari bu joylarda `IdPlate.gold*`
+  /// QATTIQ yozilgan edi va HAR mavzuda sariq chiqardi — Ivory'da
+  /// ham, pushti Sakura'da ham. Endi:
+  ///
+  /// * Noir, Onyx — o'sha oltin (mavzuning o'zi qora-oltin);
+  /// * Ivory, Grafit, oq-qora — kumush-oq;
+  /// * Pudra, Sakura — mavzuning o'z atirgul/pushti rangining och
+  ///   tusi; qorong'i Okean, Aurora — o'z brend siyohi.
+  ///
+  /// NFC ID darajalari (Eksklyuziv, Premium, Oltin), story halqasi
+  /// va brend belgisi bunga KIRMAYDI — egasi: "ularning rangiga
+  /// tegma".
+  Color goldOnDark(Color gold) => switch (id) {
+        'noir' || 'onyx' => gold,
+        'ivory' || 'graphite' || 'mono' => const Color(0xFFEDEDED),
+        _ => isDark ? brandInk : Color.lerp(brand, Colors.white, .6)!,
+      };
+
+  /// YORUG' sirt ustidagi brend YOZUVI va IKONKASI (eyebrow, kichik
+  /// belgilar).
+  ///
+  /// `brandInk` Ivory'da jigarrang-oltin (#7A5F38) — mayda yozuvda
+  /// "sariq harf" bo'lib ko'rinardi. Ivory (oq-qora editorial) va
+  /// oq-qora mavzuda yozuv NEYTRAL siyohda; qolganlarida o'z brend
+  /// siyohi (Pudra — atirgul, Sakura — pushti, Noir — oltin).
+  ///
+  /// NFC ID kartalari `brandInk` da qoladi — egasi: "ID'larga tegma".
+  Color get labelInk => switch (id) {
+        'ivory' || 'mono' => text2,
+        _ => brandInk,
+      };
+
   /// BEZAK YUVINDISINING KUCHI (0..1).
   ///
   /// Muqova atmosferasi, avatar to'ldirmasi va rejim kapsulasi

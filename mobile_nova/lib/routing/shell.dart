@@ -117,37 +117,40 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       body: shell,
       bottomNavigationBar: clean
           ? null
-          : SafeArea(
-        top: false,
-        child: NovaBottomNav(
-          items: items,
-          currentIndex: shell.currentIndex,
-          onVideo: onReels,
-          onSelect: (i) {
-            // Tab almashganda ovoz DARHOL to'xtaydi — `dispose()`
-            // kelishini kutmasdan, chunki u umuman kelmaydi.
-            if (i != shell.currentIndex) {
-              ref.read(audioOwnerProvider).stopAll();
-            }
-            // ASOSIY TABGA QAYTA BOSISH — TEPAGA QAYTARADI.
-            //
-            // Boshqa tabdan bosilganda shunchaki Home'ga o'tadi
-            // (pastdagi `goBranch`). Home'da turib bosilganda esa
-            // ro'yxat animatsiya bilan eng tepaga qaytadi — bu
-            // odatiy mobil xulq va odam uni kutadi.
-            //
-            // Signal sanoqchi orqali: `bool` bo'lsa ketma-ket
-            // ikkinchi bosish "o'zgarish yo'q" bo'lib ketardi.
-            if (i == 0 && shell.currentIndex == 0) {
-              ref.read(homeReselectProvider.notifier).state++;
-            }
-            shell.goBranch(
-              i,
-              // Faol tabga qayta bosilsa uning ildiziga qaytadi — bu
-              // odatiy mobil xatti-harakat.
-              initialLocation: i == shell.currentIndex,
-            );
-          },
+          : NavScrim(
+        enabled: !onReels,
+        child: SafeArea(
+          top: false,
+          child: NovaBottomNav(
+            items: items,
+            currentIndex: shell.currentIndex,
+            onVideo: onReels,
+            onSelect: (i) {
+              // Tab almashganda ovoz DARHOL to'xtaydi — `dispose()`
+              // kelishini kutmasdan, chunki u umuman kelmaydi.
+              if (i != shell.currentIndex) {
+                ref.read(audioOwnerProvider).stopAll();
+              }
+              // ASOSIY TABGA QAYTA BOSISH — TEPAGA QAYTARADI.
+              //
+              // Boshqa tabdan bosilganda shunchaki Home'ga o'tadi
+              // (pastdagi `goBranch`). Home'da turib bosilganda esa
+              // ro'yxat animatsiya bilan eng tepaga qaytadi — bu
+              // odatiy mobil xulq va odam uni kutadi.
+              //
+              // Signal sanoqchi orqali: `bool` bo'lsa ketma-ket
+              // ikkinchi bosish "o'zgarish yo'q" bo'lib ketardi.
+              if (i == 0 && shell.currentIndex == 0) {
+                ref.read(homeReselectProvider.notifier).state++;
+              }
+              shell.goBranch(
+                i,
+                // Faol tabga qayta bosilsa uning ildiziga qaytadi — bu
+                // odatiy mobil xatti-harakat.
+                initialLocation: i == shell.currentIndex,
+              );
+            },
+          ),
         ),
       ),
     );
@@ -236,15 +239,17 @@ class NavPage extends ConsumerWidget {
       backgroundColor: Colors.transparent,
       extendBody: true,
       body: child,
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: NovaBottomNav(
-          items: navItems(l),
-          currentIndex: current,
-          onSelect: (i) {
-            ref.read(audioOwnerProvider).stopAll();
-            context.go(HomeShell.tabRoutes[i]);
-          },
+      bottomNavigationBar: NavScrim(
+        child: SafeArea(
+          top: false,
+          child: NovaBottomNav(
+            items: navItems(l),
+            currentIndex: current,
+            onSelect: (i) {
+              ref.read(audioOwnerProvider).stopAll();
+              context.go(HomeShell.tabRoutes[i]);
+            },
+          ),
         ),
       ),
     );

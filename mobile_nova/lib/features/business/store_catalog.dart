@@ -483,7 +483,7 @@ class StoreProductCard extends StatelessWidget {
                         eyebrow.toUpperCase(),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppType.eyebrow(color: t.brandInk, size: 8.5),
+                        style: AppType.eyebrow(color: t.labelInk, size: 8.5),
                       ),
                       const SizedBox(height: 3),
                       Text(
@@ -552,7 +552,7 @@ class StoreProductCard extends StatelessWidget {
                           Icon(
                             Icons.arrow_forward_rounded,
                             size: 13,
-                            color: t.brandInk,
+                            color: t.labelInk,
                           ),
                         ],
                       ),
@@ -696,7 +696,7 @@ class StoreCatalogPreview extends ConsumerWidget {
                     Icon(
                       Icons.arrow_forward_rounded,
                       size: 14,
-                      color: t.brandInk,
+                      color: t.labelInk,
                     ),
                   ],
                 ),
@@ -881,7 +881,7 @@ class _StoreCatalogScreenState extends ConsumerState<StoreCatalogScreen> {
                 Text(
                   (b.displayName.isEmpty ? b.companyId : b.displayName)
                       .toUpperCase(),
-                  style: AppType.eyebrow(color: t.brandInk),
+                  style: AppType.eyebrow(color: t.labelInk),
                 ),
                 const SizedBox(height: 4),
                 Text(

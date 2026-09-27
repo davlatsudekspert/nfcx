@@ -552,7 +552,7 @@ class ProductCard extends ConsumerWidget {
                         listingEyebrow(l, p).toUpperCase(),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppType.eyebrow(color: t.brandInk, size: 8.5),
+                        style: AppType.eyebrow(color: t.labelInk, size: 8.5),
                       ),
                       const SizedBox(height: 3),
                       Text(
@@ -1178,7 +1178,7 @@ class _ProductDetailState extends ConsumerState<_ProductDetail> {
           ),
           const SizedBox(height: Gap.xl),
           Text(listingEyebrow(l, p).toUpperCase(),
-              style: AppType.eyebrow(color: t.brandInk)),
+              style: AppType.eyebrow(color: t.labelInk)),
           const SizedBox(height: 6),
           Text(p.name, style: AppType.displayStyle(color: t.text1, size: 30)),
           const SizedBox(height: Gap.md),

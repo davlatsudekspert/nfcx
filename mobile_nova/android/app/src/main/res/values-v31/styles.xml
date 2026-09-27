@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ANDROID 12+ TIZIM OCHILISH EKRANI.
+
+         Android 12 dan boshlab tizim o'z ochilish ekranini chizadi:
+         markazda ilova belgisi (qora plastina, oltin belgi — iOS belgisi
+         bilan bir xil), fon esa shu yerdan. Ivory (#F6F5F2) — iPhone
+         LaunchScreen va Dart Splash bilan bir xil fon (egasi, 2026-09-27:
+         "APK ilovada ham bir xil bo'lsin"). -->
+    <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <item name="android:windowBackground">@drawable/launch_background</item>
+        <item name="android:windowSplashScreenBackground">@color/launch_background</item>
+    </style>
+    <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <item name="android:windowBackground">?android:colorBackground</item>
+    </style>
+</resources>

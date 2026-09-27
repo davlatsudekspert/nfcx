@@ -216,7 +216,7 @@ class _BusinessOnboardScreenState extends ConsumerState<BusinessOnboardScreen> {
         ),
         child: Row(
           children: [
-            Icon(Icons.auto_awesome_outlined, size: 18, color: t.brandInk),
+            Icon(Icons.auto_awesome_outlined, size: 18, color: t.labelInk),
             const SizedBox(width: Gap.md),
             Expanded(
               child: Text(l.bizFreeIdNote,
@@ -884,7 +884,7 @@ class BusinessPlanCard extends StatelessWidget {
       return Row(
         key: const ValueKey('plan-trial'),
         children: [
-          Icon(Icons.auto_awesome_rounded, size: 16, color: t.brandInk),
+          Icon(Icons.auto_awesome_rounded, size: 16, color: t.labelInk),
           const SizedBox(width: Gap.sm),
           Expanded(
             child: Text(l.bizPlanTrial,
@@ -928,7 +928,7 @@ class BusinessPlanCard extends StatelessWidget {
               value: (count / limit).clamp(0.0, 1.0),
               minHeight: 6,
               backgroundColor: t.surface2,
-              color: full ? t.error : t.brandInk,
+              color: full ? t.error : t.labelInk,
             ),
           ),
           if (full) ...[
