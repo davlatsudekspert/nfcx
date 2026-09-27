@@ -64,6 +64,8 @@ jobs:
           [ -n "$RUN_ID" ] || { echo "::error::Muvaffaqiyatli APK qurilishi topilmadi"; exit 1; }
           echo "Qurilish: https://github.com/${{ github.repository }}/actions/runs/$RUN_ID"
           echo "id=$RUN_ID" >> "$GITHUB_OUTPUT"
+          # nova-apk.yml: versionCode = shu qurilishning run_number'i.
+          echo "code=$(gh api "repos/${{ github.repository }}/actions/runs/$RUN_ID" --jq .run_number)" >> "$GITHUB_OUTPUT"
 
       - name: .aab ni olish
         if: inputs.mode == 'upload'
@@ -85,5 +87,6 @@ jobs:
           MODE: ${{ inputs.mode }}
           TRACK: ${{ inputs.track }}
           STATUS: ${{ inputs.status }}
+          VERSION_CODE: ${{ steps.run.outputs.code }}
           AAB: aab/NFCSTORE-Mobile.aab
         run: python scripts/play_upload.py

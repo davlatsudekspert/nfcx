@@ -66,6 +66,24 @@ def release_name(vc):
     return vc
 
 
+def release_notes():
+    """«Nima yangi» — APK qurilishi ishlatadigan fayllardan (whatsnew-<til>)."""
+    base = "mobile_nova/distribution/whatsnew"
+    out = []
+    try:
+        names = sorted(os.listdir(base))
+    except OSError:
+        return out
+    for n in names:
+        if not n.startswith("whatsnew-"):
+            continue
+        with open(os.path.join(base, n), encoding="utf-8") as fh:
+            text = fh.read().strip()[:500]
+        if text:
+            out.append({"language": n[len("whatsnew-"):], "text": text})
+    return out
+
+
 def main():
     mode = (os.environ.get("MODE") or "list").strip()
     raw = os.environ.get("PLAY_SA_JSON", "").strip()
@@ -114,19 +132,31 @@ def main():
             fail(f"'{want}' treki topilmadi. Bor treklar: {', '.join(ids)}")
     print(f"Treklar: {', '.join(wants)}")
 
-    path = os.environ["AAB"]
-    size = os.path.getsize(path) // (1024 * 1024)
-    print(f"Yuklanmoqda: {os.path.basename(path)} ({size} MB)")
-    with open(path, "rb") as f:
-        up = s.post(
-            f"{UPLOAD}/edits/{edit}/bundles",
-            params={"uploadType": "media"},
-            headers={"Content-Type": "application/octet-stream"},
-            data=f,
-            timeout=900,
-        )
-    vc = str(check(up, ".aab yuklash")["versionCode"])
-    print(f"Yuklandi: versionCode {vc}")
+    # APK qurilishi (nova-apk.yml) har .aab ni ichki trekka o'zi yuklaydi.
+    # Shu versionCode Play'da bo'lsa — qayta yuklanmaydi (Play baribir
+    # "already been used" deb rad etadi), borini trekka qo'yamiz.
+    known = (os.environ.get("VERSION_CODE") or "").strip()
+    have = {str(b.get("versionCode")) for b in
+            check(s.get(f"{API}/edits/{edit}/bundles"), "yuklanganlar").get("bundles", [])}
+    if known and known in have:
+        vc = known
+        print(f"versionCode {vc} Play'da allaqachon bor — qayta yuklanmaydi.")
+    else:
+        path = os.environ["AAB"]
+        size = os.path.getsize(path) // (1024 * 1024)
+        print(f"Yuklanmoqda: {os.path.basename(path)} ({size} MB)")
+        with open(path, "rb") as f:
+            up = s.post(
+                f"{UPLOAD}/edits/{edit}/bundles",
+                params={"uploadType": "media"},
+                headers={"Content-Type": "application/octet-stream"},
+                data=f,
+                timeout=900,
+            )
+        vc = str(check(up, ".aab yuklash")["versionCode"])
+        if known and vc != known:
+            fail(f"Yuklangan versionCode {vc}, kutilgani {known} — hech narsa saqlanmadi.")
+        print(f"Yuklandi: versionCode {vc}")
 
     status = (os.environ.get("STATUS") or "completed").strip()
     done = []
@@ -135,7 +165,11 @@ def main():
         # (yuklangan .aab commit'dan keyin ilovada qoladi).
         if i > 0:
             edit = check(s.post(f"{API}/edits"), "edit ochish")["id"]
-        body = {"track": want, "releases": [{"name": release_name(vc), "versionCodes": [vc], "status": status}]}
+        rel = {"name": release_name(vc), "versionCodes": [vc], "status": status}
+        notes = release_notes()
+        if notes:
+            rel["releaseNotes"] = notes
+        body = {"track": want, "releases": [rel]}
         check(s.put(f"{API}/edits/{edit}/tracks/{want}", json=body), f"{want}: trekka qo'yish")
         check(s.post(f"{API}/edits/{edit}:commit"), f"{want}: saqlash (commit)")
         print(f"TAYYOR: {vc} -> {want} ({status})")
