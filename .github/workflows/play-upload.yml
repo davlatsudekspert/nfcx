@@ -26,7 +26,7 @@ on:
         required: false
         default: ''
       track:
-        description: "Trek nomi. Bo'sh — yopiq sinov treki avtomatik tanlanadi."
+        description: "Trek nomi (vergul bilan bir nechta: internal,NFCSTORE). Bo'sh — yopiq sinov treki avtomatik tanlanadi."
         required: false
         default: ''
       status:

@@ -17,6 +17,12 @@ Rejimlar:
            o'zgarmaydi.
   upload — .aab yuklanadi, tanlangan sinov trekiga yangi reliz
            qo'yiladi va tekshiruvga yuboriladi.
+
+Bir nechta trek (egasi, 2026-09-27: "konsolda o'zi aktiv bo'lsin"):
+  TRACK="internal,NFCSTORE" — .aab BIR marta yuklanadi, keyin har trek
+  ALOHIDA edit bilan saqlanadi: ichki sinov darhol faol bo'ladi, yopiq
+  trek Google tekshiruvidan keyin o'zi faol bo'ladi. Yopiq trek
+  saqlanmasa ham ichki trekdagi reliz joyida qoladi.
 """
 import json
 import os
@@ -46,6 +52,18 @@ def check(r, what):
             msg = f"HTTP {r.status_code}"
         fail(f"{what}: {msg}")
     return r.json() if r.content else {}
+
+
+def release_name(vc):
+    """Konsoldagi nom egasinikiday: "1.1.0 (#261)"."""
+    try:
+        with open("mobile_nova/pubspec.yaml", encoding="utf-8") as fh:
+            for ln in fh:
+                if ln.startswith("version:"):
+                    return f"{ln.split(':', 1)[1].strip().split('+')[0]} (#{vc})"
+    except OSError:
+        pass
+    return vc
 
 
 def main():
@@ -80,18 +98,21 @@ def main():
         s.delete(f"{API}/edits/{edit}")
         return
 
-    want = (os.environ.get("TRACK") or "").strip()
+    raw_tracks = (os.environ.get("TRACK") or "").strip()
     ids = [t["track"] for t in tracks]
-    if not want:
+    if raw_tracks:
+        wants = [w.strip() for w in raw_tracks.split(",") if w.strip()]
+    else:
         # Egasining yopiq sinov treki "NFCSTORE" nomli maxsus trek;
         # bo'lmasa standart yopiq trek — `alpha`.
         custom = [i for i in ids if i not in STANDARD]
-        want = custom[0] if len(custom) == 1 else "alpha"
-    if want == "production":
-        fail("Production trekiga bu skript yuklamaydi — faqat sinov treklari.")
-    if ids and want not in ids:
-        fail(f"'{want}' treki topilmadi. Bor treklar: {', '.join(ids)}")
-    print(f"Trek: {want}")
+        wants = [custom[0] if len(custom) == 1 else "alpha"]
+    for want in wants:
+        if want == "production":
+            fail("Production trekiga bu skript yuklamaydi — faqat sinov treklari.")
+        if ids and want not in ids:
+            fail(f"'{want}' treki topilmadi. Bor treklar: {', '.join(ids)}")
+    print(f"Treklar: {', '.join(wants)}")
 
     path = os.environ["AAB"]
     size = os.path.getsize(path) // (1024 * 1024)
@@ -108,14 +129,21 @@ def main():
     print(f"Yuklandi: versionCode {vc}")
 
     status = (os.environ.get("STATUS") or "completed").strip()
-    body = {"track": want, "releases": [{"name": vc, "versionCodes": [vc], "status": status}]}
-    check(s.put(f"{API}/edits/{edit}/tracks/{want}", json=body), "trekka qo'yish")
-    check(s.post(f"{API}/edits/{edit}:commit"), "saqlash (commit)")
-    print(f"TAYYOR: {vc} -> {want} ({status}). Play Console'da tekshiruv holatini ko'ring.")
+    done = []
+    for i, want in enumerate(wants):
+        # Birinchi trek .aab yuklangan edit'da; qolganlari yangi edit'da
+        # (yuklangan .aab commit'dan keyin ilovada qoladi).
+        if i > 0:
+            edit = check(s.post(f"{API}/edits"), "edit ochish")["id"]
+        body = {"track": want, "releases": [{"name": release_name(vc), "versionCodes": [vc], "status": status}]}
+        check(s.put(f"{API}/edits/{edit}/tracks/{want}", json=body), f"{want}: trekka qo'yish")
+        check(s.post(f"{API}/edits/{edit}:commit"), f"{want}: saqlash (commit)")
+        print(f"TAYYOR: {vc} -> {want} ({status})")
+        done.append(want)
     summ = os.environ.get("GITHUB_STEP_SUMMARY")
     if summ:
         with open(summ, "a", encoding="utf-8") as fh:
-            fh.write(f"## Google Play\n\nversionCode **{vc}** -> trek **{want}** ({status})\n")
+            fh.write(f"## Google Play\n\nversionCode **{vc}** -> {', '.join(f'**{d}**' for d in done)} ({status})\n")
 
 
 if __name__ == "__main__":
