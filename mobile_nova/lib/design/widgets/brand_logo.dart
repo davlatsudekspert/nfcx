@@ -227,10 +227,15 @@ class BrandLockup extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // BREND MUHRI — pastki navigatsiyaning markaziy tugmasi va NFC
-        // markazidagi bilan AYNAN bir element. Egasining talabi: oltin
-        // NFCSTORE belgisi Splash, Login va NFC markazida takrorlansin.
-        BrandSeal(size: size),
+        // ILOVA BELGISI — telefon ekranidagi belgi bilan AYNAN bir xil.
+        //
+        // Egasining qarori (2026-09-27): "logo bilan bir xil qilib
+        // qo'y, qora qilib". Ilgari bu yerda oq disk (`BrandSeal`)
+        // turardi — Ivory fonda oltin belgi oqarib, sarg'ayib
+        // ko'rinardi. Endi odam uy ekranidagi belgini bosadi va
+        // ochilgan ekranda o'sha belgini ko'radi. Oltin NFCSTORE
+        // belgisi o'zgarmadi — faqat foni qora.
+        BrandAppIcon(size: size),
         if (showWordmark) ...[
           const SizedBox(height: Gap.lg),
           Text(
@@ -258,6 +263,60 @@ class BrandLockup extends StatelessWidget {
   }
 }
 
+
+/// ILOVA BELGISI — qora plastina, ASL oltin belgi, iPhone belgisining
+/// silliq (superellips) burchaklari.
+///
+/// Telefon ekranidagi ilova belgisi (iOS `AppIcon`, Android launcher)
+/// aynan shu brend aktividan yasalgan — shuning uchun ochilish
+/// ekranidagi logo belgining davomi bo'lib ko'rinadi.
+///
+/// Rasm — brend aktivining o'zi (`nfcstore_logo.jpg`): qayta
+/// chizilmaydi, bo'yalmaydi, cho'zilmaydi. `FilterQuality.high` —
+/// 800px aktiv kichraytirilganda belgi qirralari va to'lqinlar
+/// xiralashmasin, oltin "yuvilib" sarg'aymasin.
+class BrandAppIcon extends StatelessWidget {
+  const BrandAppIcon({super.key, this.size = 104, this.elevated = true});
+
+  final double size;
+
+  /// Yumshoq pastki soya — belgi ivory fonda "ko'tarilib" tursin.
+  final bool elevated;
+
+  @override
+  Widget build(BuildContext context) {
+    // iOS ilova belgisining burchak nisbati (~22.4%).
+    final radius = BorderRadius.circular(size * .2237);
+    return Semantics(
+      label: 'NFCSTORE',
+      image: true,
+      child: DecoratedBox(
+        decoration: ShapeDecoration(
+          shape: RoundedSuperellipseBorder(borderRadius: radius),
+          shadows: elevated
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: .18),
+                    blurRadius: size * .22,
+                    offset: Offset(0, size * .07),
+                  ),
+                ]
+              : null,
+        ),
+        child: ClipRSuperellipse(
+          borderRadius: radius,
+          child: Image.asset(
+            BrandLogo.assetLogo,
+            width: size,
+            height: size,
+            fit: BoxFit.cover,
+            filterQuality: FilterQuality.high,
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 /// BREND MUHRI — oq disk, champagne halqa, markazda ASL oltin belgi.
 ///

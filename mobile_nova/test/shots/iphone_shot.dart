@@ -89,6 +89,19 @@ void _iosInsets(WidgetTester t) {
   addTearDown(t.view.resetViewPadding);
 }
 
+/// HAQIQIY SOYALAR. `flutter_test` soyalarni odatda qattiq bo'yoq
+/// qilib chizadi (`debugDisableShadows`) — surat solishtirish barqaror
+/// bo'lsin deb. Bu yerda maqsad telefondagi ko'rinish, shuning uchun
+/// yumshoq soya yoqiladi va test oxirida qaytariladi.
+Future<void> _realShadows(Future<void> Function() body) async {
+  debugDisableShadows = false;
+  try {
+    await body();
+  } finally {
+    debugDisableShadows = true;
+  }
+}
+
 void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
@@ -111,15 +124,16 @@ void main() {
       {String? tapText, Object? extra, bool end = false}) {
     testWidgets('iphone $name', (t) async {
       _iosInsets(t);
-      await tabShot(t, location, 'iphone-$name', _iphone,
-          tapText: tapText, extra: extra, end: end);
+      await _realShadows(() => tabShot(t, location, 'iphone-$name', _iphone,
+          tapText: tapText, extra: extra, end: end));
     }, variant: ios);
   }
 
   void solo(String name, Widget screen, {List<Override> extra = const []}) {
     testWidgets('iphone $name', (t) async {
       _iosInsets(t);
-      await soloShot(t, screen, 'iphone-$name', _iphone, extra: extra);
+      await _realShadows(
+          () => soloShot(t, screen, 'iphone-$name', _iphone, extra: extra));
     }, variant: ios);
   }
 
