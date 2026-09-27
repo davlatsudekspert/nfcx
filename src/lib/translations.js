@@ -1574,6 +1574,7 @@ const DICT_BASE = {
   'Dan boshlab': { ru: 'От', en: 'From' },
   'Kelishiladi': { ru: 'Договорная', en: 'Negotiable' },
   'Narx kelishiladi': { ru: 'Цена договорная', en: 'Price negotiable' },
+  'Narxi tez kunda': { ru: 'Цена скоро', en: 'Price coming soon' },
   // 'dan' — mavjud kalit (pastroqda, narx oraliqlari uchun) qayta ishlatiladi.
 
   "NFC ID sozlamalari": { ru: 'Настройки NFC ID', en: 'NFC ID settings' },

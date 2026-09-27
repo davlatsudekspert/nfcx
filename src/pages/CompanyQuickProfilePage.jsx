@@ -492,7 +492,7 @@ export default function CompanyQuickProfilePage({ companyId }) {
                   </div>
                   <div className="qp-item-txt">
                     <b className="break-words">{item.name}</b>
-                    <strong>{fmt(item.price)} {t('so‘m')}</strong>
+                    <strong>{item.priceSoon ? t('Narxi tez kunda') : item.priceOnRequest ? t('Narx kelishiladi') : `${fmt(item.price)} ${t('so‘m')}`}</strong>
                     {company.ordersEnabled && (
                       <button type="button" className="qp-order vz-tap" onClick={() => { companyEvent(company.companyId, 'item', String(item.id)); setOrderItem(item); }}>
                         {t('Buyurtma berish')}

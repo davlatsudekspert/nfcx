@@ -245,6 +245,8 @@ jobs:
         run: node scripts/test-qr-sticker-redirect.mjs
       - name: Katalog — ommabop tartib va tovar ko'rishlari
         run: node scripts/test-catalog-popular.mjs
+      - name: Katalog — "Narxi tez kunda" va ochiq javobda egasining emaili yo'q
+        run: node scripts/test-catalog-price-soon.mjs
       - name: Shikoyatlar — kontentning o'zi ko'rinadi
         run: node scripts/test-admin-reports-preview.mjs
       - name: Musiqa kutubxonasi (ruxsat, manzil, o'chirish)

@@ -1,7 +1,7 @@
 // UMUMIY KATALOG LISTINGI — kompaniya katalogiga yozish (2026-09).
 //
 // Tekshiriladi:
-//   * yangi ustunlar ADD COLUMN bilan qo'shiladi, `catalogSchema: 2`;
+//   * yangi ustunlar ADD COLUMN bilan qo'shiladi, `catalogSchema: 3`;
 //   * mahsulot/xizmat turi, global kategoriya, bir nechta rasm saqlanadi;
 //   * "Narx kelishiladi" FAQAT xizmatda: narx 0 va aksiya yo'q bo'ladi;
 //     mahsulotda bu bayroq e'tiborsiz qoladi;
@@ -36,7 +36,8 @@ const s1 = await add({
   images: ['/uploads/a.jpg', '/uploads/b.jpg', 'javascript:alert(1)', '/uploads/a.jpg'],
 });
 check('POST 201', s1.status, 201);
-check('catalogSchema 2', s1.body.company.catalogSchema, 2);
+// 3 — listing ustunlari + "Narxi tez kunda" (test-catalog-price-soon.mjs).
+check('catalogSchema 3', s1.body.company.catalogSchema, 3);
 const hair = find(s1, 'Soch turmagi');
 check('tur saqlandi', hair.kind, 'service');
 check('global kategoriya saqlandi', hair.marketCategory, 'beauty');

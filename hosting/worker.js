@@ -722,7 +722,9 @@ function rowCompany(row, items = [], ownerPremium = false) {
     // 2 — listing ustunlari (tur, global kategoriya, rasmlar, "narx
     // kelishiladi") serverda BOR: ilova ularni saqlaydigan formani
     // ko'rsatadi. 1 — eski baza: maydonlar faqat aniqlanadi.
-    catalogSchema: catalogListingReadyD1() ? 2 : 1,
+    // 3 — qo'shimcha "Narxi tez kunda" (`priceSoon`) ham saqlanadi.
+    // Ilova `>= 2` bilan tekshiradi, shuning uchun 3 uni buzmaydi.
+    catalogSchema: catalogListingReadyD1() ? (catalogPriceSoonReadyD1() ? 3 : 2) : 1,
     catalog: (items || []).map((item) => ({
       id: item.id, name: item.name, category: item.category || '', description: item.description || '',
       price: Number(item.price || 0), promotionPrice: item.promotion_price == null ? null : Number(item.promotion_price),
@@ -1284,6 +1286,16 @@ async function companyApi(request, env, url) {
       const auth = await upstreamUser(request, env);
       if (!auth || String(auth.user.id) !== String(company.ownerUserId)) return json({ error: 'not_active' }, 404);
     }
+    // MAXFIYLIK (2026-09-27): bu javobni istalgan tashrifchi, kirmagan
+    // holda ham oladi. Ilgari unda egasining EMAILI va admin izohlari
+    // ham bor edi. Ular faqat egasiga (o'z ish joyi sahifasi shu
+    // javobni o'qiydi) qoladi; admin panel o'z endpointlaridan oladi.
+    if (!viewer || String(viewer.id) !== String(company.ownerUserId)) {
+      delete company.ownerEmail;
+      delete company.adminNote;
+      delete company.rejectedReason;
+      delete company.customDomainNote;
+    }
     return json({ company });
   }
 
@@ -1689,12 +1701,16 @@ async function companyApi(request, env, url) {
     const listing = catalogListingBody(body);
     const images = listing.images || [];
     const cover = safeUrl(body.imageUrl) || images[0] || '';
-    const finalPrice = listing.priceOnRequest ? 0 : price;
-    const finalPromo = listing.priceOnRequest ? null : promo;
+    const soon = listing.priceSoon && catalogPriceSoonReadyD1();
+    const hidePrice = listing.priceOnRequest || soon;
+    const finalPrice = hidePrice ? 0 : price;
+    const finalPromo = hidePrice ? null : promo;
     if (catalogListingReadyD1()) {
-      await env.DB.prepare(`INSERT INTO company_catalog_items(id,company_id,name,category,description,price,promotion_price,image_url,available,sort_order,created_at,updated_at,kind,market_category,images_json,price_on_request) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(
+      const soonCol = catalogPriceSoonReadyD1();
+      await env.DB.prepare(`INSERT INTO company_catalog_items(id,company_id,name,category,description,price,promotion_price,image_url,available,sort_order,created_at,updated_at,kind,market_category,images_json,price_on_request${soonCol ? ',price_soon' : ''}) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?${soonCol ? ',?' : ''})`).bind(
         uuid, id, name, shortText(body.category, 100), shortText(body.description, 600), finalPrice, finalPromo, cover, body.available === false ? 0 : 1, Number(count?.n || 0), now, now,
-        listing.kind, listing.market, JSON.stringify(images.filter((u) => u !== cover)), listing.priceOnRequest ? 1 : 0
+        listing.kind, listing.market, JSON.stringify(images.filter((u) => u !== cover)), listing.priceOnRequest ? 1 : 0,
+        ...(soonCol ? [soon ? 1 : 0] : [])
       ).run();
     } else {
       await env.DB.prepare(`INSERT INTO company_catalog_items(id,company_id,name,category,description,price,promotion_price,image_url,available,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`).bind(
@@ -1719,8 +1735,11 @@ async function companyApi(request, env, url) {
     const listing = catalogListingBody(body, old);
     let cover = body.imageUrl == null ? old.image_url : safeUrl(body.imageUrl);
     if (listing.images && !body.imageUrl) cover = listing.images[0] || '';
-    const finalPrice = listing.priceOnRequest ? 0 : price;
-    const finalPromo = listing.priceOnRequest ? null : promo;
+    const soonCol = catalogPriceSoonReadyD1();
+    const soon = listing.priceSoon && soonCol;
+    const hidePrice = listing.priceOnRequest || soon;
+    const finalPrice = hidePrice ? 0 : price;
+    const finalPromo = hidePrice ? null : promo;
     const base = [
       body.name == null ? old.name : shortText(body.name, 120), body.category == null ? old.category : shortText(body.category, 100),
       body.description == null ? old.description : shortText(body.description, 600), finalPrice, finalPromo,
@@ -1731,8 +1750,9 @@ async function companyApi(request, env, url) {
       const images = listing.images == null
         ? old.images_json ?? '[]'
         : JSON.stringify(listing.images.filter((u) => u !== cover));
-      await env.DB.prepare(`UPDATE company_catalog_items SET name=?,category=?,description=?,price=?,promotion_price=?,image_url=?,available=?,updated_at=?,kind=?,market_category=?,images_json=?,price_on_request=? WHERE id=? AND company_id=?`).bind(
-        ...base, listing.kind, listing.market, images, listing.priceOnRequest ? 1 : 0, itemId, id
+      await env.DB.prepare(`UPDATE company_catalog_items SET name=?,category=?,description=?,price=?,promotion_price=?,image_url=?,available=?,updated_at=?,kind=?,market_category=?,images_json=?,price_on_request=?${soonCol ? ',price_soon=?' : ''} WHERE id=? AND company_id=?`).bind(
+        ...base, listing.kind, listing.market, images, listing.priceOnRequest ? 1 : 0,
+        ...(soonCol ? [soon ? 1 : 0] : []), itemId, id
       ).run();
     } else {
       await env.DB.prepare(`UPDATE company_catalog_items SET name=?,category=?,description=?,price=?,promotion_price=?,image_url=?,available=?,updated_at=? WHERE id=? AND company_id=?`).bind(
@@ -2639,10 +2659,21 @@ const CATALOG_LISTING_COLUMNS = [
   ['price_on_request', 'INTEGER NOT NULL DEFAULT 0'],
 ];
 async function ensureCatalogListingColumns(env) {
-  await Promise.all(CATALOG_LISTING_COLUMNS.map(([c, t]) => ensureColumnD1(env, 'company_catalog_items', c, t)));
+  await Promise.all([
+    ...CATALOG_LISTING_COLUMNS.map(([c, t]) => ensureColumnD1(env, 'company_catalog_items', c, t)),
+    ensureColumnD1(env, 'company_catalog_items', 'price_soon', 'INTEGER NOT NULL DEFAULT 0'),
+  ]);
 }
 export function catalogListingReadyD1() {
   return CATALOG_LISTING_COLUMNS.every(([c]) => hasColumnD1('company_catalog_items', c));
+}
+// "NARXI TEZ KUNDA" (egasi, 2026-09-27): mahsulot bor, narxi hali e'lon
+// qilinmagan. "Narx kelishiladi"dan farqi — savdolashish emas,
+// vaqtinchalik holat; mahsulot turiga ham qo'yiladi. ALOHIDA ustun va
+// alohida tayyorlik: u yo'q bo'lsa ham listing ustunlari (yuqorida)
+// avvalgidek yoziladi.
+export function catalogPriceSoonReadyD1() {
+  return hasColumnD1('company_catalog_items', 'price_soon');
 }
 
 // Tana -> listing maydonlari. `old` — PATCH'da mavjud qator.
@@ -2666,8 +2697,17 @@ function catalogListingBody(body, old = null) {
   const porRaw = body.priceOnRequest === undefined
     ? (old ? Number(old.price_on_request || 0) === 1 : false)
     : Boolean(body.priceOnRequest);
-  const priceOnRequest = porRaw && kind === 'service';
-  return { kind, market, images, priceOnRequest };
+  // "Narxi tez kunda" yuborilmasa eski holat saqlanadi — bu bayroqni
+  // bilmaydigan mijoz (eski ilova, sayt formasi) uni tasodifan
+  // o'chirmasin. Lekin o'sha mijoz aniq NARX yozib yuborsa, narx
+  // e'lon qilingan bo'ladi: bayroq tushadi, aks holda narx 0 ga
+  // aylanib, egasi yozgan raqam yo'qolardi.
+  const priceGiven = body.price != null && Math.round(Number(body.price) || 0) > 0;
+  const priceSoon = body.priceSoon === undefined
+    ? (old ? Number(old.price_soon || 0) === 1 && !priceGiven : false)
+    : Boolean(body.priceSoon);
+  const priceOnRequest = porRaw && kind === 'service' && !priceSoon;
+  return { kind, market, images, priceOnRequest, priceSoon };
 }
 
 // PROFILGA BIRIKTIRILGAN KOMPANIYA.

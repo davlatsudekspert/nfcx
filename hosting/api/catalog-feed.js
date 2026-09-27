@@ -43,7 +43,11 @@
 //                   serverdagi eski `category` maydoni; sayt uni o'z
 //                   sahifasida filtr sifatida ishlatadi, shuning uchun
 //                   u yerga slug YOZILMAYDI
-//   priceOnRequest  "Narx kelishiladi" (xizmatlar uchun)
+//   priceOnRequest  narx KO'RSATILMAYDI ("Narx kelishiladi" yoki pastdagi
+//                   holat) — eski ilova faqat shu maydonni biladi
+//   priceSoon       "Narxi tez kunda" — narx hali e'lon qilinmagan
+//                   (priceOnRequest ham true bo'ladi; yangi mijoz shu
+//                   yozuvni ko'rsatadi, eskisi "Narx kelishiladi")
 //
 // Yangi ustunlar (kind, market_category, images_json, price_on_request)
 // worker.js dagi `ensureCatalogListingColumns` bilan QO'SHILADI (faqat
@@ -191,6 +195,7 @@ export function listingFields(row, companyCategory) {
     section,
     images: parseImages(row.images_json, row.image_url),
     priceOnRequest: Number(row.price_on_request || 0) === 1 || price <= 0,
+    priceSoon: Number(row.price_soon || 0) === 1 && price <= 0,
   };
 }
 
@@ -254,6 +259,7 @@ function itemJson(r) {
     promotionPrice: promo,
     effectivePrice: effectivePrice(price, promo),
     priceOnRequest: f.priceOnRequest,
+    priceSoon: f.priceSoon,
     available: Number(r.available ?? 1) === 1,
     kind: f.kind,
     marketCategory: f.marketCategory,
