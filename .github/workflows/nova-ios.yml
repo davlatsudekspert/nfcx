@@ -87,3 +87,82 @@ jobs:
           name: nfcstore-ios-unsigned
           path: mobile_nova/Runner-unsigned.app.zip
           retention-days: 7
+
+  # ─────────────────────────────────────────────────────────────────
+  # SIMULYATOR: ilova haqiqiy iPhone simulyatorida ochiladimi.
+  #
+  # Imzo kerak emas. Ilova o'rnatiladi, ishga tushiriladi va bir necha
+  # soniya oralig'ida ekran surati olinadi. Suratlar artefakt bo'lib
+  # chiqadi — ilova yiqilsa, bu yerda ko'rinadi (va jurnalda sabab).
+  # Surat o'lchami 6.9" iPhone — App Store talab qiladigan o'lcham.
+  # ─────────────────────────────────────────────────────────────────
+  simulator:
+    runs-on: macos-15
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: mobile_nova
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.35.5
+          channel: stable
+          cache: true
+
+      - name: Paketlar
+        run: flutter pub get
+
+      - name: Simulyator uchun build
+        run: flutter build ios --simulator --debug
+
+      - name: iPhone simulyatorini yoqish
+        id: sim
+        run: |
+          set -e
+          xcrun simctl list devices available | grep -E "iPhone" || true
+          UDID=$(xcrun simctl list devices available -j | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)['devices']
+          pref=['iPhone 16 Pro Max','iPhone 15 Pro Max','iPhone 16 Pro','iPhone 16']
+          allv=[x for k,v in d.items() if 'iOS' in k for x in v]
+          for p in pref:
+            for x in allv:
+              if x['name']==p: print(x['udid']); raise SystemExit
+          print([x for x in allv if 'iPhone' in x['name']][0]['udid'])")
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          # Tizim tili o'zbekcha bo'lmasa ham ilova o'z tilida ochiladi.
+          xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --wifiBars 3 || true
+
+      - name: O'rnatish, ishga tushirish va suratga olish
+        run: |
+          set -e
+          UDID=${{ steps.sim.outputs.udid }}
+          mkdir -p ../ios-shots
+          xcrun simctl install "$UDID" build/ios/iphonesimulator/Runner.app
+          BID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" build/ios/iphonesimulator/Runner.app/Info.plist)
+          echo "Bundle ID: $BID"
+          xcrun simctl launch --console-pty "$UDID" "$BID" > ../ios-shots/app-log.txt 2>&1 &
+          for t in 4 10 20 35; do
+            sleep $([ $t = 4 ] && echo 4 || echo 8)
+            xcrun simctl io "$UDID" screenshot "../ios-shots/shot-${t}s.png"
+          done
+          # Ilova hali tirikmi (yiqilmaganmi)
+          if xcrun simctl spawn "$UDID" launchctl list | grep -q "$BID"; then
+            echo "Ilova ishlab turibdi"
+          else
+            echo "::error::Ilova simulyatorda yiqildi — app-log.txt ga qarang"
+            tail -80 ../ios-shots/app-log.txt || true
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nfcstore-ios-simulator-shots
+          path: ios-shots/
+          retention-days: 14
