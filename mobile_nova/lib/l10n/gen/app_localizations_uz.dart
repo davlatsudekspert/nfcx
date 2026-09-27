@@ -1736,6 +1736,9 @@ class LUz extends L {
   String get idMarketTiers => 'Darajalar va narxlar';
 
   @override
+  String get idMarketTiersIos => 'Darajalar';
+
+  @override
   String get idMarketMinChars => 'Kamida 3 belgi kiriting';
 
   @override
@@ -2535,6 +2538,9 @@ class LUz extends L {
 
   @override
   String get tierHintExclusive => 'Eng noyob ID’lar — qat’iy narxda';
+
+  @override
+  String get tierHintExclusiveIos => 'Eng noyob ID’lar';
 
   @override
   String get tierHintPremium => 'Eng noyob va maxsus kombinatsiyalar';

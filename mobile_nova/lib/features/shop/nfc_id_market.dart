@@ -170,7 +170,9 @@ class _TierCatalog extends ConsumerWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SectionHeader(title: l.idMarketTiers),
+            // iPhone'da narx yo'q — sarlavhada ham "narxlar" yo'q.
+            SectionHeader(
+                title: showDigitalPrices ? l.idMarketTiers : l.idMarketTiersIos),
             for (final tier in sorted)
               Padding(
                 padding: const EdgeInsets.only(bottom: Gap.md),
@@ -190,7 +192,9 @@ class _TierTile extends StatelessWidget {
   final IdTier tier;
 
   String _hint(L l) => switch (tier.tier) {
-        'exclusive' => l.tierHintExclusive,
+        // "qat'iy narxda" — iPhone'da narxga ishora yo'q.
+        'exclusive' =>
+          showDigitalPrices ? l.tierHintExclusive : l.tierHintExclusiveIos,
         'premium' => l.tierHintPremium,
         'gold' => l.tierHintGold,
         'silver' => l.tierHintSilver,

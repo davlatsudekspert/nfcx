@@ -3387,6 +3387,12 @@ abstract class L {
   /// **'Darajalar va narxlar'**
   String get idMarketTiers;
 
+  /// No description provided for @idMarketTiersIos.
+  ///
+  /// In uz, this message translates to:
+  /// **'Darajalar'**
+  String get idMarketTiersIos;
+
   /// No description provided for @idMarketMinChars.
   ///
   /// In uz, this message translates to:
@@ -4874,6 +4880,12 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Eng noyob ID’lar — qat’iy narxda'**
   String get tierHintExclusive;
+
+  /// No description provided for @tierHintExclusiveIos.
+  ///
+  /// In uz, this message translates to:
+  /// **'Eng noyob ID’lar'**
+  String get tierHintExclusiveIos;
 
   /// No description provided for @tierHintPremium.
   ///

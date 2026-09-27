@@ -144,6 +144,8 @@ void main() {
           'showDigitalPrices && q.purchasable',
           'showDigitalPrices ? l.idPendingHint',
           'if (showDigitalPrices) ...[',
+          'showDigitalPrices ? l.idMarketTiers : l.idMarketTiersIos',
+          'showDigitalPrices ? l.tierHintExclusive : l.tierHintExclusiveIos',
         ],
         'lib/features/social/featured_screen.dart': ['if (showDigitalPrices)'],
         'lib/features/settings/settings_subscreens.dart': [
@@ -189,6 +191,8 @@ void main() {
         'errPlanLockedIos',
         'bizPlanLimitReachedIos',
         'bizPremiumHintIos',
+        'idMarketTiersIos',
+        'tierHintExclusiveIos',
       ];
       const banned = [
         'sayt', 'сайт', 'website', 'site', //

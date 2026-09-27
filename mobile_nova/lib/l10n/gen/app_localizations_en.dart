@@ -1732,6 +1732,9 @@ class LEn extends L {
   String get idMarketTiers => 'Tiers and prices';
 
   @override
+  String get idMarketTiersIos => 'Tiers';
+
+  @override
   String get idMarketMinChars => 'Enter at least 3 characters';
 
   @override
@@ -2533,6 +2536,9 @@ class LEn extends L {
 
   @override
   String get tierHintExclusive => 'The rarest IDs — at a fixed price';
+
+  @override
+  String get tierHintExclusiveIos => 'The rarest IDs';
 
   @override
   String get tierHintPremium => 'The rarest, most special combinations';

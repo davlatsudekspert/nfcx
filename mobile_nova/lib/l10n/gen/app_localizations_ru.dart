@@ -1726,6 +1726,9 @@ class LRu extends L {
   String get idMarketTiers => 'Уровни и цены';
 
   @override
+  String get idMarketTiersIos => 'Уровни';
+
+  @override
   String get idMarketMinChars => 'Введите минимум 3 символа';
 
   @override
@@ -2530,6 +2533,9 @@ class LRu extends L {
 
   @override
   String get tierHintExclusive => 'Самые редкие ID — по фиксированной цене';
+
+  @override
+  String get tierHintExclusiveIos => 'Самые редкие ID';
 
   @override
   String get tierHintPremium => 'Самые редкие и особые комбинации';
