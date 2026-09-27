@@ -128,7 +128,8 @@ void main() {
       bool end = false,
       NfcTokens? tokens,
       Key? tapKey,
-      double? tapAlign}) {
+      double? tapAlign,
+      double? scroll}) {
     testWidgets('iphone $name', (t) async {
       _iosInsets(t);
       await _realShadows(() => tabShot(t, location, 'iphone-$name', _iphone,
@@ -137,7 +138,8 @@ void main() {
           end: end,
           tokens: tokens,
           tapKey: tapKey,
-          tapAlign: tapAlign));
+          tapAlign: tapAlign,
+          scroll: scroll));
     }, variant: ios);
   }
 
@@ -188,6 +190,10 @@ void main() {
   tab('16-compose-post', Routes.postCreate);
   tab('17-compose-reel', Routes.reelCreate);
   tab('18-compose-story', Routes.storyCreate);
+  // Instagram kabi: pastga aylantirilganda panel ixcham (03-home — to'liq).
+  tab('19-home-scrolled', Routes.home, scroll: 700);
+  tab('20-home-scrolled-noir', Routes.home,
+      scroll: 700, tokens: NfcTokens.noir);
 
   // HAMMA MAVZU — egasining talabi (2026-09-27): "boshqa temalarga
   // ham e'tibor ber, ayollar temasi ham bor", "o'zing test qilib chiq

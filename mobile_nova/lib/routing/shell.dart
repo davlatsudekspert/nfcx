@@ -84,6 +84,9 @@ class HomeShell extends ConsumerStatefulWidget {
 }
 
 class _HomeShellState extends ConsumerState<HomeShell> {
+  /// Lenta pastga aylantirilsa panel kichrayadi (Instagram kabi).
+  final _minimizer = NavMinimizer();
+
   @override
   void initState() {
     super.initState();
@@ -91,6 +94,12 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) AppUpdate.checkOnce(context);
     });
+  }
+
+  @override
+  void dispose() {
+    _minimizer.dispose();
+    super.dispose();
   }
 
   @override
@@ -105,6 +114,9 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       final cur = ref.read(activeTabProvider);
       if (cur != shell.currentIndex) {
         ref.read(activeTabProvider.notifier).state = shell.currentIndex;
+        // Boshqa bo'limga o'tildi (qaysi yo'l bilan bo'lsa ham) —
+        // panel to'liq holiga qaytadi.
+        _minimizer.expand();
       }
     });
     final items = navItems(l);
@@ -114,42 +126,52 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBody: true,
-      body: shell,
+      // Reels'da videolar vertikal aylanadi — u yerda panel doim to'liq.
+      body: NotificationListener<ScrollNotification>(
+        onNotification: (n) => onReels ? false : _minimizer.handle(n),
+        child: shell,
+      ),
       bottomNavigationBar: clean
           ? null
           : NavScrim(
         enabled: !onReels,
         child: SafeArea(
           top: false,
-          child: NovaBottomNav(
-            items: items,
-            currentIndex: shell.currentIndex,
-            onVideo: onReels,
-            onSelect: (i) {
-              // Tab almashganda ovoz DARHOL to'xtaydi — `dispose()`
-              // kelishini kutmasdan, chunki u umuman kelmaydi.
-              if (i != shell.currentIndex) {
-                ref.read(audioOwnerProvider).stopAll();
-              }
-              // ASOSIY TABGA QAYTA BOSISH — TEPAGA QAYTARADI.
-              //
-              // Boshqa tabdan bosilganda shunchaki Home'ga o'tadi
-              // (pastdagi `goBranch`). Home'da turib bosilganda esa
-              // ro'yxat animatsiya bilan eng tepaga qaytadi — bu
-              // odatiy mobil xulq va odam uni kutadi.
-              //
-              // Signal sanoqchi orqali: `bool` bo'lsa ketma-ket
-              // ikkinchi bosish "o'zgarish yo'q" bo'lib ketardi.
-              if (i == 0 && shell.currentIndex == 0) {
-                ref.read(homeReselectProvider.notifier).state++;
-              }
-              shell.goBranch(
-                i,
-                // Faol tabga qayta bosilsa uning ildiziga qaytadi — bu
-                // odatiy mobil xatti-harakat.
-                initialLocation: i == shell.currentIndex,
-              );
-            },
+          // Faqat panel qayta chiziladi — tab kontenti emas.
+          child: ValueListenableBuilder<bool>(
+            valueListenable: _minimizer,
+            builder: (context, compact, _) => NovaBottomNav(
+              items: items,
+              currentIndex: shell.currentIndex,
+              onVideo: onReels,
+              compact: compact,
+              onSelect: (i) {
+                _minimizer.expand();
+                // Tab almashganda ovoz DARHOL to'xtaydi — `dispose()`
+                // kelishini kutmasdan, chunki u umuman kelmaydi.
+                if (i != shell.currentIndex) {
+                  ref.read(audioOwnerProvider).stopAll();
+                }
+                // ASOSIY TABGA QAYTA BOSISH — TEPAGA QAYTARADI.
+                //
+                // Boshqa tabdan bosilganda shunchaki Home'ga o'tadi
+                // (pastdagi `goBranch`). Home'da turib bosilganda esa
+                // ro'yxat animatsiya bilan eng tepaga qaytadi — bu
+                // odatiy mobil xulq va odam uni kutadi.
+                //
+                // Signal sanoqchi orqali: `bool` bo'lsa ketma-ket
+                // ikkinchi bosish "o'zgarish yo'q" bo'lib ketardi.
+                if (i == 0 && shell.currentIndex == 0) {
+                  ref.read(homeReselectProvider.notifier).state++;
+                }
+                shell.goBranch(
+                  i,
+                  // Faol tabga qayta bosilsa uning ildiziga qaytadi — bu
+                  // odatiy mobil xatti-harakat.
+                  initialLocation: i == shell.currentIndex,
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -226,29 +248,50 @@ class _Branch extends StatelessWidget {
 /// ikonlar yo'q bo'lib qolyapti"). Endi shu sahifalarda ham o'sha
 /// panel turadi: kelingan tab faol ko'rinadi, istalgan tab bosilsa
 /// o'sha bo'limga qaytiladi.
-class NavPage extends ConsumerWidget {
+class NavPage extends ConsumerStatefulWidget {
   const NavPage({super.key, required this.child});
 
   final Widget child;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NavPage> createState() => _NavPageState();
+}
+
+class _NavPageState extends ConsumerState<NavPage> {
+  // Bu sahifalarda ham panel asosiy tablardagidek kichrayadi.
+  final _minimizer = NavMinimizer();
+
+  @override
+  void dispose() {
+    _minimizer.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l = L.of(context);
     final current = ref.watch(activeTabProvider);
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBody: true,
-      body: child,
+      body: NotificationListener<ScrollNotification>(
+        onNotification: _minimizer.handle,
+        child: widget.child,
+      ),
       bottomNavigationBar: NavScrim(
         child: SafeArea(
           top: false,
-          child: NovaBottomNav(
-            items: navItems(l),
-            currentIndex: current,
-            onSelect: (i) {
-              ref.read(audioOwnerProvider).stopAll();
-              context.go(HomeShell.tabRoutes[i]);
-            },
+          child: ValueListenableBuilder<bool>(
+            valueListenable: _minimizer,
+            builder: (context, compact, _) => NovaBottomNav(
+              items: navItems(l),
+              currentIndex: current,
+              compact: compact,
+              onSelect: (i) {
+                ref.read(audioOwnerProvider).stopAll();
+                context.go(HomeShell.tabRoutes[i]);
+              },
+            ),
           ),
         ),
       ),

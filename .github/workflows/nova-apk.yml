@@ -549,9 +549,13 @@ jobs:
       # kaliti GitHub Secrets'da `PLAY_SERVICE_ACCOUNT_JSON` nomi bilan
       # turadi (kodga, logga yozilmaydi).
       #
-      # QORALAMA (draft) sifatida — Internal testing trekiga. Yakuniy
-      # "Rollout / Publish" tugmasini Play Console'da EGASI o'zi bosadi:
-      # testerlarga ham, do'konga ham hech narsa avtomatik chiqmaydi.
+      # Internal testing trekiga DARHOL FAOL (completed) — egasi,
+      # 2026-09-27: "APK konsolda o'zi aktiv bo'ladigan qilib qo'y,
+      # ruxsat beraman". Ilgari QORALAMA edi va har versiyada Play
+      # Console'da qo'lda "Rollout" bosish kerak bo'lardi. Ichki sinov
+      # Google tekshiruvisiz, faqat ichki testerlarga chiqadi.
+      # PRODUCTION'ga bu qadam HECH QACHON yuklamaydi (track: internal);
+      # yopiq trek ("NFCSTORE") — play-upload.yml orqali.
       #
       # Faqat HAQIQIY release kaliti bilan imzolangan AAB yuklanadi —
       # debug imzoli paketni Play baribir rad etadi. Kalit yo'q bo'lsa
@@ -569,7 +573,7 @@ jobs:
             echo "Play'ga yuklanmadi: PLAY_SERVICE_ACCOUNT_JSON yoki release kaliti yo'q." >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Play Console — Internal testing (qoralama)
+      - name: Play Console — Internal testing (darhol faol)
         id: playup
         if: ${{ steps.play.outputs.ready == '1' }}
         continue-on-error: true
@@ -579,10 +583,10 @@ jobs:
           packageName: uz.nfcstore.nova
           releaseFiles: mobile_nova/release-final/NFCSTORE-Mobile.aab
           track: internal
-          status: draft
+          status: completed
           releaseName: "${{ steps.ver.outputs.name }} (#${{ github.run_number }})"
           # «Что нового» — mobile_nova/distribution/whatsnew/whatsnew-<til>.
-          # Faylsiz qoralamada Play'ning standart matni qolardi.
+          # Faylsiz relizda Play'ning standart matni qolardi.
           whatsNewDirectory: mobile_nova/distribution/whatsnew
 
       - name: Play natijasi
@@ -590,8 +594,8 @@ jobs:
         run: |
           echo "## Play Console" >> "$GITHUB_STEP_SUMMARY"
           if [ "${{ steps.playup.outcome }}" = "success" ]; then
-            echo "AAB #${{ github.run_number }} Internal testing'ga QORALAMA sifatida yuklandi. Rollout — Play Console'da qo'lda." >> "$GITHUB_STEP_SUMMARY"
-            echo "PLAY: UPLOADED draft #${{ github.run_number }}"
+            echo "AAB #${{ github.run_number }} Internal testing'da FAOL (completed) — ichki testerlarga darhol chiqdi." >> "$GITHUB_STEP_SUMMARY"
+            echo "PLAY: UPLOADED completed #${{ github.run_number }}"
           else
             echo "AAB Play'ga yuklanmadi — 'Play Console' qadami logiga qarang." >> "$GITHUB_STEP_SUMMARY"
             echo "::warning::AAB Play'ga yuklanmadi."

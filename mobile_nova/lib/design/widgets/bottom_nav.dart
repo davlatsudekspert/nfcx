@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+import 'dart:ui' show lerpDouble;
+
 import 'package:flutter/material.dart';
 
 import '../motion/motion.dart';
@@ -42,6 +45,24 @@ const double kNavCenterSize = 56;
 /// o'zgarib ketardi.
 const double kNavCenterLift = 12;
 
+/// IXCHAM (KICHRAYGAN) PANEL — Instagram kabi (egasi, 2026-09-27,
+/// iPhone surati bilan: "tepaga tortsangiz kattalashadi, pastga
+/// tortganingizda kichrayadi"; "APK'da ham, iOS'da ham ishlasin").
+///
+/// Lenta pastga aylantirilganda kapsula pastlashadi va torayadi,
+/// yorliqlar yashirinadi, markaziy muhr kichrayib kapsula ICHIGA
+/// tushadi. Tepaga qaytilganda — asl holi. Qarorni [NavMinimizer]
+/// qabul qiladi.
+const double kNavCompactHeight = 50;
+
+/// Ixcham holatdagi markaziy muhr diametri.
+const double kNavCenterCompactSize = 40;
+
+/// Ixcham kapsula eni — to'liq enining shu ulushi, lekin
+/// [kNavCompactMaxWidth] dan keng emas (katta ekranda ham ixcham).
+const double kNavCompactWidthFactor = .8;
+const double kNavCompactMaxWidth = 300;
+
 /// Suzuvchi pastki navigatsiya — markazda ko'tarilgan NFC tugmasi.
 ///
 /// Concept B'da nav ekran tubiga yopishmaydi, u ustida SUZADI va
@@ -77,6 +98,7 @@ class NovaBottomNav extends StatelessWidget {
     required this.onSelect,
     this.centerIndex = 2,
     this.onVideo = false,
+    this.compact = false,
   });
 
   final List<NavItem> items;
@@ -93,90 +115,158 @@ class NovaBottomNav extends StatelessWidget {
   /// aylantirish chizig'ini to'sardi.
   final bool onVideo;
 
+  /// Ixcham holat ([NavMinimizer]). Video ustida (Reels) hisobga
+  /// olinmaydi — u yerda panel doim to'liq.
+  final bool compact;
+
   @override
   Widget build(BuildContext context) {
+    // "Harakatni kamaytirish" yoqilgan bo'lsa — animatsiyasiz.
+    final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(end: compact && !onVideo ? 1 : 0),
+      duration: still ? Duration.zero : Motion.fast,
+      curve: Motion.smooth,
+      builder: (context, k, _) => _bar(context, k),
+    );
+  }
+
+  /// [k]: 0 — to'liq, 1 — ixcham.
+  Widget _bar(BuildContext context, double k) {
     final t = context.tokens;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(Gap.lg, 0, Gap.lg, Gap.md),
-      child: Stack(
-        // Tugma pill qirrasidan yuqoriga chiqadi — bu ataylab.
-        clipBehavior: Clip.none,
-        children: [
-          // 1-QATLAM: pill — TO'Q (blur'siz) sirt.
-          //
-          // Ilgari bu yerda `BackdropFilter` (blur 22) turardi. Menyu
-          // HAR ekranda va aylantirish paytida HAR kadrda ostidagi
-          // kontentni qayta xiralashtirardi — telefonda bu eng qimmat
-          // effekt edi. Samsung One UI va Apple'ning o'z ilovalari
-          // kabi endi oddiy to'q sirt: ko'rinishi deyarli bir xil,
-          // narxi esa nol.
-          RepaintBoundary(
-            child: AnimatedContainer(
-                duration: Motion.theme,
-                curve: Motion.smooth,
-                height: kNavHeight,
-                decoration: BoxDecoration(
-                  color: onVideo
-                      ? Colors.black.withValues(alpha: .55)
-                      : t.surfaceSolid,
-                  borderRadius: R.pill,
-                  border: Border.all(
-                      color: onVideo
-                          ? Colors.white.withValues(alpha: .16)
-                          : t.border2),
-                  boxShadow: onVideo ? null : t.shadowFloat,
-                ),
-                child: Row(
-                  children: [
-                    for (var i = 0; i < items.length; i++)
-                      Expanded(
-                        child: i == centerIndex
-                            // Joy band qilinadi, lekin bo'sh: tugma
-                            // ustki qatlamda chiziladi.
-                            ? const SizedBox.expand()
-                            : _NavButton(
-                                item: items[i],
-                                selected: i == currentIndex,
-                                onVideo: onVideo,
-                                onTap: () => onSelect(i),
-                              ),
-                      ),
-                  ],
-                ),
-              ),
-          ),
-
-          // 2-QATLAM: markaziy tugma — clipdan tashqarida.
-          //
-          // Qator pilldagi bilan BIR XIL tuzilgan (teng `Expanded`
-          // kataklar), shuning uchun tugma har qanday element sonida
-          // ham aynan o'z katagining markazida turadi.
-          Positioned(
-            left: 0,
-            right: 0,
-            top: onVideo
+      // TASHQI O'LCHAM O'ZGARMAYDI — kichrayish faqat ichkarida.
+      // `extendBody` bilan Scaffold panel balandligini kontentning
+      // pastki hoshiyasiga qo'shadi: balandlik animatsiyada har kadrda
+      // o'zgarsa, butun ekran har kadrda qayta joylashardi (qotish).
+      child: SizedBox(
+        height: kNavHeight,
+        child: LayoutBuilder(
+          builder: (context, box) {
+            final full = box.maxWidth;
+            final narrow = math.min(
+              full,
+              math.min(full * kNavCompactWidthFactor, kNavCompactMaxWidth),
+            );
+            final w = lerpDouble(full, narrow, k)!;
+            final h = lerpDouble(kNavHeight, kNavCompactHeight, k)!;
+            final seal = lerpDouble(kNavCenterSize, kNavCenterCompactSize, k)!;
+            final sealTop = onVideo
                 ? (kNavHeight - kNavCenterSize) / 2
-                : -kNavCenterLift,
-            child: Row(
-              children: [
-                for (var i = 0; i < items.length; i++)
-                  Expanded(
-                    child: i == centerIndex
-                        ? Center(
-                            child: _CenterNavButton(
+                : lerpDouble(
+                    -kNavCenterLift,
+                    (kNavCompactHeight - kNavCenterCompactSize) / 2,
+                    k,
+                  )!;
+            return Align(
+              // Pastki qirra joyida qoladi — kapsula pastga "o'tiradi".
+              alignment: Alignment.bottomCenter,
+              child: SizedBox(
+                key: const ValueKey('nav-capsule'),
+                width: w,
+                height: h,
+                child: _capsule(t, k, h, seal, sealTop),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _capsule(
+    NfcTokens t,
+    double k,
+    double h,
+    double seal,
+    double sealTop,
+  ) {
+    return Stack(
+      // Tugma pill qirrasidan yuqoriga chiqadi — bu ataylab.
+      clipBehavior: Clip.none,
+      children: [
+        // 1-QATLAM: pill — TO'Q (blur'siz) sirt.
+        //
+        // Ilgari bu yerda `BackdropFilter` (blur 22) turardi. Menyu
+        // HAR ekranda va aylantirish paytida HAR kadrda ostidagi
+        // kontentni qayta xiralashtirardi — telefonda bu eng qimmat
+        // effekt edi. Samsung One UI va Apple'ning o'z ilovalari
+        // kabi endi oddiy to'q sirt: ko'rinishi deyarli bir xil,
+        // narxi esa nol.
+        //
+        // O'lchamni ota `SizedBox` beradi (ixchamlashda har kadrda);
+        // `AnimatedContainer` faqat rangni (Reels'ga o'tish) silliqlaydi.
+        Positioned.fill(
+          child: RepaintBoundary(
+            child: AnimatedContainer(
+              duration: Motion.theme,
+              curve: Motion.smooth,
+              decoration: BoxDecoration(
+                color: onVideo
+                    ? Colors.black.withValues(alpha: .55)
+                    : t.surfaceSolid,
+                borderRadius: R.pill,
+                border: Border.all(
+                  color: onVideo
+                      ? Colors.white.withValues(alpha: .16)
+                      : t.border2,
+                ),
+                boxShadow: onVideo ? null : t.shadowFloat,
+              ),
+              child: Row(
+                children: [
+                  for (var i = 0; i < items.length; i++)
+                    Expanded(
+                      child: i == centerIndex
+                          // Joy band qilinadi, lekin bo'sh: tugma
+                          // ustki qatlamda chiziladi.
+                          ? const SizedBox.expand()
+                          : _NavButton(
                               item: items[i],
                               selected: i == currentIndex,
+                              onVideo: onVideo,
+                              k: k,
+                              height: h,
                               onTap: () => onSelect(i),
                             ),
-                          )
-                        : const SizedBox(height: kNavCenterSize),
-                  ),
-              ],
+                    ),
+                ],
+              ),
             ),
           ),
-        ],
-      ),
+        ),
+
+        // 2-QATLAM: markaziy tugma — clipdan tashqarida.
+        //
+        // Qator pilldagi bilan BIR XIL tuzilgan (teng `Expanded`
+        // kataklar), shuning uchun tugma har qanday element sonida
+        // ham aynan o'z katagining markazida turadi. Ixcham holatda
+        // muhr kichrayib kapsula ichiga tushadi.
+        Positioned(
+          left: 0,
+          right: 0,
+          top: sealTop,
+          child: Row(
+            children: [
+              for (var i = 0; i < items.length; i++)
+                Expanded(
+                  child: i == centerIndex
+                      ? Center(
+                          child: _CenterNavButton(
+                            item: items[i],
+                            selected: i == currentIndex,
+                            size: seal,
+                            onTap: () => onSelect(i),
+                          ),
+                        )
+                      : SizedBox(height: seal),
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -187,11 +277,13 @@ class _CenterNavButton extends StatelessWidget {
     required this.item,
     required this.selected,
     required this.onTap,
+    this.size = kNavCenterSize,
   });
 
   final NavItem item;
   final bool selected;
   final VoidCallback onTap;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
@@ -207,7 +299,7 @@ class _CenterNavButton extends StatelessWidget {
         // imzosi bo'lsin. Xuddi shu muhr Splash, Login va NFC
         // markazida ham turadi (`BrandSeal`).
         child: BrandSeal(
-          size: kNavCenterSize,
+          size: size,
           selected: selected,
           // Yorug' mavzuda muhr doim QORA: oltin belgi qora diskda —
           // oq panel ustidagi yagona to'q nuqta, brend imzosi.
@@ -225,6 +317,8 @@ class _NavButton extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.onVideo = false,
+    this.k = 0,
+    this.height = kNavHeight,
   });
 
   final NavItem item;
@@ -232,14 +326,20 @@ class _NavButton extends StatelessWidget {
   final bool onVideo;
   final VoidCallback onTap;
 
+  /// 0 — to'liq, 1 — ixcham (yorliqsiz, kichikroq belgi).
+  final double k;
+  final double height;
+
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
     // 360 dp va undan tor ekranda bir pog'ona kichik — yorliqlar
     // (ru: "Главная", "Профиль") katakka sig'adi.
-    final compact = MediaQuery.sizeOf(context).width < 375;
-    final iconSize = compact ? 24.0 : 25.0;
-    final labelSize = compact ? 10.5 : 11.0;
+    final small = MediaQuery.sizeOf(context).width < 375;
+    final iconSize = lerpDouble(small ? 24.0 : 25.0, 22, k)!;
+    final labelSize = small ? 10.5 : 11.0;
+    // Yorliq ixchamlashda so'nadi va balandligi yig'iladi.
+    final show = (1 - k).clamp(0.0, 1.0);
 
     // PREMIUM (egasi, 2026-09-24: "ikonkalar qoraroq, aniqroq,
     // qimmatroq; faol holat premium" va "hamma temalarda ham").
@@ -262,58 +362,78 @@ class _NavButton extends StatelessWidget {
       child: PressableScale(
         onTap: onTap,
         child: SizedBox(
-          height: kNavHeight,
+          height: height,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              AnimatedContainer(
-                duration: Motion.fast,
-                curve: Motion.smooth,
-                width: compact ? 50 : 54,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: selected ? capsule : capsule.withValues(alpha: 0),
-                  borderRadius: BorderRadius.circular(15),
-                  boxShadow: selected && !onVideo
-                      ? [
-                          BoxShadow(
-                            color: t.text1.withValues(alpha: .22),
-                            blurRadius: 10,
-                            spreadRadius: -3,
-                            offset: const Offset(0, 4),
-                          ),
-                        ]
-                      : null,
-                ),
-                alignment: Alignment.center,
-                child: Icon(
-                  selected ? (item.activeIcon ?? item.icon) : item.icon,
-                  // Kapsula ichida belgi biroz kichik — "nafas" oladi.
-                  size: selected ? iconSize - 3 : iconSize,
-                  color: iconColor,
-                ),
-              ),
-              const SizedBox(height: 3),
-              AnimatedDefaultTextStyle(
-                duration: Motion.fast,
-                style: TextStyle(
-                  fontFamily: 'Manrope',
-                  fontSize: labelSize,
-                  height: 1.15,
-                  letterSpacing: .1,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                  color: color,
-                ),
-                child: Text(
-                  item.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  // Tizim shrifti kattalashtirilsa ham yorliq katakdan
-                  // chiqmaydi (1.15 dan keyin o'smaydi).
-                  textScaler: MediaQuery.textScalerOf(context)
-                      .clamp(maxScaleFactor: 1.15),
+              // O'lcham — ixchamlashda har kadrda (SizedBox); tanlanish
+              // rangi — `AnimatedContainer` silliqlaydi.
+              SizedBox(
+                width: lerpDouble(small ? 50 : 54, 42, k),
+                height: lerpDouble(30, 28, k),
+                child: AnimatedContainer(
+                  duration: Motion.fast,
+                  curve: Motion.smooth,
+                  decoration: BoxDecoration(
+                    color: selected ? capsule : capsule.withValues(alpha: 0),
+                    borderRadius: BorderRadius.circular(15),
+                    boxShadow: selected && !onVideo
+                        ? [
+                            BoxShadow(
+                              color: t.text1.withValues(alpha: .22),
+                              blurRadius: 10,
+                              spreadRadius: -3,
+                              offset: const Offset(0, 4),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    selected ? (item.activeIcon ?? item.icon) : item.icon,
+                    // Kapsula ichida belgi biroz kichik — "nafas" oladi.
+                    size: selected ? iconSize - 3 : iconSize,
+                    color: iconColor,
+                  ),
                 ),
               ),
+              // Ixcham holatda yorliq umuman qurilmaydi (ekran
+              // o'quvchisiga nom baribir `Semantics` dan boradi).
+              if (show > .01) ...[
+                SizedBox(height: 3 * show),
+                ClipRect(
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    heightFactor: show,
+                    child: Opacity(
+                      opacity: show,
+                      child: AnimatedDefaultTextStyle(
+                        duration: Motion.fast,
+                        style: TextStyle(
+                          fontFamily: 'Manrope',
+                          fontSize: labelSize,
+                          height: 1.15,
+                          letterSpacing: .1,
+                          fontWeight: selected
+                              ? FontWeight.w700
+                              : FontWeight.w600,
+                          color: color,
+                        ),
+                        child: Text(
+                          item.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          // Tizim shrifti kattalashtirilsa ham yorliq
+                          // katakdan chiqmaydi (1.15 dan keyin o'smaydi).
+                          textScaler: MediaQuery.textScalerOf(
+                            context,
+                          ).clamp(maxScaleFactor: 1.15),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -321,7 +441,6 @@ class _NavButton extends StatelessWidget {
     );
   }
 }
-
 
 /// PASTKI MENYU OSTIDAGI SO'NISH.
 ///
@@ -361,5 +480,58 @@ class NavScrim extends StatelessWidget {
       ),
       child: child,
     );
+  }
+}
+
+/// PANEL QACHON IXCHAM BO'LADI — aylantirish yo'nalishidan.
+///
+/// Instagram (iOS 26) kabi (egasi, 2026-09-27): lenta pastga
+/// aylantirilsa panel kichrayadi, tepaga qaytilsa kattalashadi.
+/// Karkas (`HomeShell`, `NavPage`) tab kontentini
+/// `NotificationListener<ScrollNotification>(onNotification: handle)`
+/// bilan o'raydi va qiymatni [NovaBottomNav.compact] ga beradi.
+///
+/// Qoidalar:
+///   * faqat VERTIKAL aylantirish (story qatori, gorizontal karusellar
+///     panelga ta'sir qilmaydi);
+///   * ro'yxat boshiga [topZone] dan yaqin — doim to'liq;
+///   * bir yo'nalishda [threshold] dan ko'p surilganda almashadi —
+///     barmoq titrashi panelni "pirpiratmaydi";
+///   * iOS'dagi "prujina" (ro'yxat chetidan chiqib qaytish) hisobga
+///     olinmaydi — aks holda pastda turib panel o'zi ochilib ketardi;
+///   * tab almashganda karkas [expand] chaqiradi.
+class NavMinimizer extends ValueNotifier<bool> {
+  NavMinimizer() : super(false);
+
+  static const double threshold = 18;
+  static const double topZone = 64;
+
+  double _run = 0;
+
+  /// `NotificationListener` uchun: bildirishnomani to'xtatmaydi.
+  bool handle(ScrollNotification n) {
+    if (n is! ScrollUpdateNotification) return false;
+    final m = n.metrics;
+    if (m.axis != Axis.vertical) return false;
+    if (m.pixels <= m.minScrollExtent + topZone) {
+      expand();
+      return false;
+    }
+    if (m.outOfRange) return false;
+    final d = n.scrollDelta ?? 0;
+    if (d == 0) return false;
+    if ((d > 0) != (_run > 0)) _run = 0;
+    _run += d;
+    if (_run > threshold) {
+      value = true;
+    } else if (_run < -threshold) {
+      value = false;
+    }
+    return false;
+  }
+
+  void expand() {
+    _run = 0;
+    value = false;
   }
 }

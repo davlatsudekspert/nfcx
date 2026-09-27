@@ -108,6 +108,7 @@ Future<void> tabShot(
     Object? extra,
     bool playMusic = false,
     double? tapAlign,
+    double? scroll,
     NfcTokens? tokens}) async {
   _size(tester, s);
   late GoRouter router;
@@ -170,6 +171,15 @@ Future<void> tabShot(
   // doira qolmasin.
   await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 400)));
   await _settle(tester, 4);
+  if (scroll != null) {
+    // Lentaning o'rtasi: pastga aylantirilgandagi holat (masalan,
+    // Instagram kabi ixcham pastki panel).
+    await tester.drag(
+        find.byType(Scrollable).hitTestable().first, Offset(0, -scroll));
+    await _settle(tester, 8);
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+    await _settle(tester, 6);
+  }
   if (end) {
     // Ro'yxat oxiri: pastki element nav OSTIDA qolmasligini ko'rish.
     final list = find.byType(Scrollable).hitTestable().first;
