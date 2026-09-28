@@ -2776,4 +2776,17 @@ class LEn extends L {
 
   @override
   String get cardLinkedBusiness => 'Business profile';
+
+  @override
+  String get timeJustNow => 'Just now';
+
+  @override
+  String timeMinutesAgo(int n) {
+    return '$n min ago';
+  }
+
+  @override
+  String timeHoursAgo(int n) {
+    return '$n h ago';
+  }
 }

@@ -1101,5 +1101,10 @@
   "stickerOffBody": "Bu stikerni egasi vaqtincha o‘chirib qo‘ygan.",
   "stickerUnknownTitle": "Stiker topilmadi",
   "stickerUnknownBody": "Bu stiker NFCSTORE’da ro‘yxatga olinmagan.",
-  "cardLinkedBusiness": "Biznes profil"
+  "cardLinkedBusiness": "Biznes profil",
+  "timeJustNow": "Hozirgina",
+  "timeMinutesAgo": "{n} daqiqa oldin",
+  "@timeMinutesAgo": {"placeholders": {"n": {"type": "int"}}},
+  "timeHoursAgo": "{n} soat oldin",
+  "@timeHoursAgo": {"placeholders": {"n": {"type": "int"}}}
 }

@@ -325,7 +325,7 @@ class NfcHistoryScreen extends ConsumerWidget {
                                   overflow: TextOverflow.ellipsis,
                                   style: Theme.of(context).textTheme.titleSmall),
                               if (e.createdAt != null)
-                                Text(_relative(e.createdAt!, l),
+                                Text(relativeTime(e.createdAt!, l),
                                     style: Theme.of(context).textTheme.bodySmall),
                             ],
                           ),
@@ -345,12 +345,21 @@ class NfcHistoryScreen extends ConsumerWidget {
 /// `intl` ning to'liq nisbiy formatlagichi uchta til uchun alohida
 /// ma'lumot talab qiladi; bu yerdagi ehtiyoj kichik, shuning uchun
 /// oddiy va tarjima qilingan variant ishlatiladi.
-String _relative(DateTime at, L l) {
-  final d = DateTime.now().difference(at);
-  if (d.inMinutes < 1) return l.stateLoading;
-  if (d.inHours < 1) return '${d.inMinutes} min';
-  if (d.inDays < 1) return '${d.inHours} h';
-  return '${at.day}.${at.month.toString().padLeft(2, '0')}.${at.year}';
+///
+/// Sana TELEFON vaqtida (Toshkent, UTC+5): server `...Z` (UTC) beradi —
+/// ilgari kun o'zgartirilmasdan olinardi va tungi 00:00–05:00 dagi
+/// hodisa bir kun oldingi sana bilan chiqardi. "Hozirgina" o'rnida esa
+/// "Yuklanmoqda…" yozilardi (egasi, 2026-09-28: "soatlarni bizning
+/// soatga moslab ol, +5 Toshkent").
+@visibleForTesting
+String relativeTime(DateTime at, L l, {DateTime? now}) {
+  final local = at.toLocal();
+  final d = (now ?? DateTime.now()).difference(local);
+  if (d.inMinutes < 1) return l.timeJustNow;
+  if (d.inHours < 1) return l.timeMinutesAgo(d.inMinutes);
+  if (d.inDays < 1) return l.timeHoursAgo(d.inHours);
+  String two(int v) => v.toString().padLeft(2, '0');
+  return '${two(local.day)}.${two(local.month)}.${local.year}';
 }
 
 // ----------------------------------------------------------------- sovg'a

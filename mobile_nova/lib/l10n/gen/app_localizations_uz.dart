@@ -2780,4 +2780,17 @@ class LUz extends L {
 
   @override
   String get cardLinkedBusiness => 'Biznes profil';
+
+  @override
+  String get timeJustNow => 'Hozirgina';
+
+  @override
+  String timeMinutesAgo(int n) {
+    return '$n daqiqa oldin';
+  }
+
+  @override
+  String timeHoursAgo(int n) {
+    return '$n soat oldin';
+  }
 }

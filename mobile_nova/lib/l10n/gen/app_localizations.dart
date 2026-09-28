@@ -5312,6 +5312,24 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Biznes profil'**
   String get cardLinkedBusiness;
+
+  /// No description provided for @timeJustNow.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hozirgina'**
+  String get timeJustNow;
+
+  /// No description provided for @timeMinutesAgo.
+  ///
+  /// In uz, this message translates to:
+  /// **'{n} daqiqa oldin'**
+  String timeMinutesAgo(int n);
+
+  /// No description provided for @timeHoursAgo.
+  ///
+  /// In uz, this message translates to:
+  /// **'{n} soat oldin'**
+  String timeHoursAgo(int n);
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

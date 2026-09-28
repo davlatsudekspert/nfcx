@@ -2773,4 +2773,17 @@ class LRu extends L {
 
   @override
   String get cardLinkedBusiness => 'Бизнес-профиль';
+
+  @override
+  String get timeJustNow => 'Только что';
+
+  @override
+  String timeMinutesAgo(int n) {
+    return '$n мин назад';
+  }
+
+  @override
+  String timeHoursAgo(int n) {
+    return '$n ч назад';
+  }
 }

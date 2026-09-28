@@ -1000,5 +1000,10 @@
   "stickerOffBody": "Владелец временно отключил эту наклейку.",
   "stickerUnknownTitle": "Наклейка не найдена",
   "stickerUnknownBody": "Эта наклейка не зарегистрирована в NFCSTORE.",
-  "cardLinkedBusiness": "Бизнес-профиль"
+  "cardLinkedBusiness": "Бизнес-профиль",
+  "timeJustNow": "Только что",
+  "timeMinutesAgo": "{n} мин назад",
+  "@timeMinutesAgo": {"placeholders": {"n": {"type": "int"}}},
+  "timeHoursAgo": "{n} ч назад",
+  "@timeHoursAgo": {"placeholders": {"n": {"type": "int"}}}
 }

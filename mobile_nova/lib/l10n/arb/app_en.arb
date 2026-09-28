@@ -1000,5 +1000,10 @@
   "stickerOffBody": "Its owner has temporarily switched this sticker off.",
   "stickerUnknownTitle": "Sticker not found",
   "stickerUnknownBody": "This sticker isn’t registered with NFCSTORE.",
-  "cardLinkedBusiness": "Business profile"
+  "cardLinkedBusiness": "Business profile",
+  "timeJustNow": "Just now",
+  "timeMinutesAgo": "{n} min ago",
+  "@timeMinutesAgo": {"placeholders": {"n": {"type": "int"}}},
+  "timeHoursAgo": "{n} h ago",
+  "@timeHoursAgo": {"placeholders": {"n": {"type": "int"}}}
 }
