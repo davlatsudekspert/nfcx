@@ -1,52 +1,59 @@
 {
   "companyId": "NFCSTOREUZ",
-  "apply": false,
+  "apply": true,
+  "_izoh": "2026-09-28 egasi: 100×100 -> 10×10 sm; Shaharlar seriyasidan xira umumiy rasm olib tashlanadi; hamma mahsulot narxi -> 'Narxi tez kunda'. Eski narxlar report.json (restore) da.",
   "updates": [
     {
-      "id": "9b5d9b47-6b6d-4116-9803-1af864b869b5",
-      "expectName": "Avto NFC Sticker",
-      "set": {
-        "name": "Avto NFC stiker Ø80",
-        "category": "Avto aksessuarlar",
-        "description": "Mashina old oynasiga ICHKARIDAN yopishtiriladi — yomg‘ir va yuvish tegmaydi. Tashqaridan: «Telefonni tekkizing · Moshina egasiga aloqa». O‘tkinchi telefonini tekkizadi — sahifangiz ochiladi: qo‘ng‘iroq, Telegram, xabar. Ikki tomonlama bosma: ichkaridan haydovchiga toza qora-oltin dizayn ko‘rinadi. Ø80 mm, batareya va ilova kerak emas."
-      },
-      "images": ["img/avto-1.jpg", "img/avto-2.jpg", "img/avto-3.jpg"]
+      "id": "b9fa1d77-794a-4b7a-b972-aecb1dce7c02",
+      "expectName": "NFC ID Karta"
     },
     {
-      "id": "4e57277b-4ec6-474e-99cd-57a9e2df84df",
-      "expectName": "NFC Sticker",
+      "id": "5a080c62-4874-463c-a8e2-e07129e24b75",
+      "expectName": "NFC Uzuk"
+    },
+    {
+      "id": "3b28db6e-9277-4e02-ade3-ad94acfc35b9",
+      "expectName": "NFC Brelok"
+    },
+    {
+      "id": "b201b164-83e9-42e7-8546-65e74edc513d",
+      "expectName": "NFC Braslet"
+    },
+    {
+      "id": "12a0241b-a33b-4128-a6a5-8b913d8d9678",
+      "expectName": "NFC Stend"
+    },
+    {
+      "id": "51eb1c8c-e315-4536-a5a9-a245c702df7b",
+      "expectName": "Korporativ NFC sovg‘a"
+    },
+    {
+      "id": "cb601021-59e7-4572-a026-be2cc058eea9",
+      "expectName": "NFC ID Sovg‘a Konverti"
+    },
+    {
+      "id": "0bbae585-8d1d-4a71-801d-ad8cdaeacf94",
+      "expectName": "Do‘kon oynasi uchun NFC stiker 100×100",
       "set": {
-        "name": "NFC stiker Ø30 — epoksid",
-        "category": "NFC teglar",
-        "description": "Kichik dumaloq NFC stiker, ustida qalin shaffof epoksid gumbaz — tirnalmaydi, suvdan qo‘rqmaydi, oltin belgi yaltirab turadi. Kassa, peshtaxta, noutbuk, menyu papkasi yoki eshik yoniga. Telefon tekkizilganda sahifangiz ochiladi. Ø30 mm."
-      },
-      "images": ["img/epoksid-1.jpg", "img/epoksid-2.jpg"]
+        "name": "Do‘kon oynasi uchun NFC stiker 10×10 sm",
+        "description": "Vitrina yoki eshik oynasiga ICHKARIDAN yopishtiriladi — yomg‘ir tegmaydi, o‘g‘irlab bo‘lmaydi. Ko‘chadan: «Yopiq bo‘lsa ham — ochiq · Telefonni tekkizing». Mijoz telefonini tekkizadi — do‘kon sahifangiz ochiladi: katalog, narxlar, ish vaqti, aloqa. Kichik QR NFC’ni bilmaydiganlarga qo‘llanmani ochadi. Ichkaridan toza dizayn. 10×10 sm."
+      }
+    },
+    {
+      "id": "0209a82f-7c5e-4781-ba9c-5abe5fc91787",
+      "expectName": "Tashqi NFC stiker — do‘kon nomi bilan 100×100",
+      "set": {
+        "name": "Tashqi NFC stiker — do‘kon nomi bilan 10×10 sm",
+        "description": "Eshik, devor yoki darvozaga tashqaridan yopishtiriladi. Tepada do‘koningiz nomi uchun oltin ramkali joy — nomingiz bosib beriladi. Himoya laminati quyosh va yomg‘irga chidaydi. Metall eshik uchun anti-metall chipli varianti bor — buyurtmada ayting. 10×10 sm."
+      }
+    },
+    {
+      "id": "00f90f16-8c8a-46e3-94b2-1e2cfbe18587",
+      "expectName": "NFC ID karta — Shaharlar seriyasi",
+      "dropImages": [
+        "/uploads/file_f34eda846329ec3b9eedfe00.jpg"
+      ]
     }
   ],
-  "items": [
-    {
-      "name": "Do‘kon oynasi uchun NFC stiker 100×100",
-      "category": "Biznes NFC",
-      "description": "Vitrina yoki eshik oynasiga ICHKARIDAN yopishtiriladi — yomg‘ir tegmaydi, o‘g‘irlab bo‘lmaydi. Ko‘chadan: «Yopiq bo‘lsa ham — ochiq · Telefonni tekkizing». Mijoz telefonini tekkizadi — do‘kon sahifangiz ochiladi: katalog, narxlar, ish vaqti, aloqa. Kichik QR NFC’ni bilmaydiganlarga qo‘llanmani ochadi. Ichkaridan toza dizayn. 100×100 mm.",
-      "images": ["img/oyna-1.jpg", "img/oyna-2.jpg", "img/oyna-3.jpg"]
-    },
-    {
-      "name": "Tashqi NFC stiker — do‘kon nomi bilan 100×100",
-      "category": "Biznes NFC",
-      "description": "Eshik, devor yoki darvozaga tashqaridan yopishtiriladi. Tepada do‘koningiz nomi uchun oltin ramkali joy — nomingiz bosib beriladi. Himoya laminati quyosh va yomg‘irga chidaydi. Metall eshik uchun anti-metall chipli varianti bor — buyurtmada ayting. 100×100 mm.",
-      "images": ["img/tashqi-1.jpg", "img/tashqi-2.jpg"]
-    },
-    {
-      "name": "NFC ID karta — Shaharlar seriyasi",
-      "category": "NFC kartalar",
-      "description": "Samarqand, Toshkent, Buxoro, Xiva, Dubay va Istanbul — har bir karta o‘z shahrining oltin chizmasi bilan. Qora karta, NFC chip ichida: telefonga tekkizilganda profilingiz ochiladi. Orqasida Registon chizmasi va nfcstore.uz. Buyurtmada shaharni tanlang.",
-      "images": ["img/shahar-1.jpg", "img/shahar-2.jpg", "img/shahar-3.jpg", "img/shahar-4.jpg", "img/shahar-5.jpg"]
-    },
-    {
-      "name": "Metall NFC ID karta — qora va oltin",
-      "category": "NFC kartalar",
-      "description": "Og‘ir metall karta: qora qoplama, oltin rang gravyura — dafna gulchambari va NFCSTORE belgisi. Telefonga tekkizilganda profilingiz ochiladi. Muhim uchrashuvlar va qimmatbaho sovg‘a uchun.",
-      "images": ["img/metall-1.jpg", "img/metall-2.jpg", "img/metall-3.jpg"]
-    }
-  ]
+  "items": []
 }

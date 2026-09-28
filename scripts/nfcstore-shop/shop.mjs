@@ -40,15 +40,19 @@ export async function loadPlan(url = new URL('plan.json', HERE)) {
   if (!/^[A-Z0-9]{3,15}$/.test(String(plan.companyId || ''))) problems.push('companyId noto‘g‘ri');
   const all = [...(plan.updates || []), ...(plan.items || [])];
   for (const [i, it] of all.entries()) {
-    const name = it.set?.name ?? it.name;
+    const name = it.set?.name ?? it.name ?? it.expectName;
     if (!name) problems.push(`#${i}: nom yo‘q`);
-    if (!Array.isArray(it.images) || !it.images.length) problems.push(`${name}: rasm yo‘q`);
+    // Yangilashda rasm ixtiyoriy: bo'lmasa mavjud rasmlar qoladi
+    // (faqat `dropImages` dagilari olib tashlanadi).
+    const needImages = !(plan.updates || []).includes(it);
+    if (needImages && (!Array.isArray(it.images) || !it.images.length)) problems.push(`${name}: rasm yo‘q`);
     if ((it.images || []).length > 6) problems.push(`${name}: 6 tadan ko‘p rasm (server 6 tasini saqlaydi)`);
   }
   for (const u of plan.updates || []) {
-    if (!u.id || !u.expectName) problems.push(`${u.set?.name}: id/expectName yo‘q`);
+    if (!u.id || !u.expectName) problems.push(`${u.set?.name ?? u.expectName}: id/expectName yo‘q`);
+    if (u.dropImages && !Array.isArray(u.dropImages)) problems.push(`${u.expectName}: dropImages ro‘yxat emas`);
   }
-  const names = all.map((it) => it.set?.name ?? it.name);
+  const names = all.map((it) => it.set?.name ?? it.name ?? it.expectName);
   if (new Set(names).size !== names.length) problems.push('nomlar takrorlanadi');
   return { plan, problems };
 }
@@ -95,7 +99,7 @@ async function main() {
   // 1) Rasmlar joyidami — kirishdan OLDIN.
   const missing = [];
   for (const it of [...(plan.updates || []), ...(plan.items || [])]) {
-    for (const rel of it.images) if (!(await imageBytes(rel))) missing.push(rel);
+    for (const rel of it.images || []) if (!(await imageBytes(rel))) missing.push(rel);
   }
   if (missing.length) {
     missing.forEach((m) => line(`RASM YO‘Q: ${m}`));
@@ -134,12 +138,19 @@ async function main() {
   const byName = new Map(catalog.map((c) => [String(c.name), c]));
   for (const u of plan.updates || []) {
     const cur = byId.get(String(u.id));
+    const want = u.set?.name ?? u.expectName;
+    const drop = u.dropImages || [];
     let status;
     if (!cur) status = 'TOPILMADI — o‘tkaziladi';
-    else if (cur.name === u.set.name && cur.priceSoon) status = 'allaqachon yangilangan';
-    else if (cur.name !== u.expectName && cur.name !== u.set.name) status = `TO‘XTADI: nomi "${cur.name}" (kutilgan "${u.expectName}")`;
+    else if (cur.name !== u.expectName && cur.name !== want) status = `TO‘XTADI: nomi "${cur.name}" (kutilgan "${u.expectName}")`;
+    else if (
+      cur.name === want && cur.priceSoon
+      && (u.set?.description == null || cur.description === u.set.description)
+      && !drop.some((x) => (cur.images || []).includes(x))
+    ) status = 'allaqachon yangilangan';
     else status = 'YANGILANADI';
-    rows.push({ kind: 'yangilash', name: u.set.name, was: cur ? `${cur.name} · ${cur.price ? cur.price + ' so‘m' : 'narxsiz'}` : '—', images: u.images.length, status, u, cur });
+    const imgCount = u.images ? u.images.length : (cur?.images || []).filter((x) => !drop.includes(x)).length;
+    rows.push({ kind: 'yangilash', name: want, was: cur ? `${cur.name} · ${cur.price ? cur.price + ' so‘m' : 'narxsiz'}` : '—', images: imgCount, status, u, cur });
   }
   for (const it of plan.items || []) {
     const cur = byName.get(it.name);
@@ -181,7 +192,23 @@ async function main() {
     if (r.status !== 'YANGILANADI' && r.status !== 'QO‘SHILADI') continue;
     const src = r.u || r.it;
     const urls = [];
-    for (const rel of src.images) urls.push(await upload(rel));
+    for (const rel of src.images || []) urls.push(await upload(rel));
+    if (r.u && !r.u.images) {
+      // Faqat narx/nom/tavsif (+ ixtiyoriy rasmni olib tashlash): boshqa
+      // maydonlarga tegilmaydi — server PATCH'i yuborilmaganini saqlaydi.
+      const drop = r.u.dropImages || [];
+      const body = { ...(r.u.set || {}), promotionPrice: null, priceSoon: true };
+      if (drop.length) {
+        const keep = (r.cur.images || []).filter((x) => !drop.includes(x));
+        if (!keep.length) throw new Error(`${r.name}: hamma rasm olib tashlanardi`);
+        body.images = keep;
+        body.imageUrl = keep[0];
+      }
+      await api.patchCatalogItem(plan.companyId, r.u.id, body);
+      report.updated.push({ id: r.u.id, restore: pick(r.cur) });
+      line(`  ✓ yangilandi: ${r.name}`);
+      continue;
+    }
     const body = {
       ...(r.u ? r.u.set : { name: r.it.name, category: r.it.category, description: r.it.description }),
       kind: 'product',
