@@ -1116,5 +1116,14 @@
   "@discoverRank": {
     "description": "Tanlov → Odamlar: ko‘rishlar bo‘yicha o‘rin (ekran o‘quvchi uchun).",
     "placeholders": {"n": {"type": "int"}}
+  },
+  "contactCard": "Karta",
+  "fieldCardNumber": "Karta raqami (Humo, Uzcard, Visa)",
+  "cardSheetTitle": "Karta raqami",
+  "cardCopy": "Raqamni nusxalash",
+  "cardCopied": "Karta raqami nusxalandi",
+  "cardQrNote": "QR kodda faqat karta raqami yozilgan — bu to‘lov havolasi emas.",
+  "@contactCard": {
+    "description": "Aloqa qatoridagi plastik (bank) karta tugmasi — bosilsa raqam, QR va nusxalash oynasi."
   }
 }

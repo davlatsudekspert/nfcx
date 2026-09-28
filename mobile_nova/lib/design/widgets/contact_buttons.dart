@@ -6,6 +6,7 @@ import '../../data/models/contact_info.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../theme/typography.dart';
 import '../tokens/nfc_tokens.dart';
+import 'card_number_sheet.dart';
 import 'surfaces.dart';
 
 /// ALOQA TUGMALARI — iPhone ish stolidagi ILOVA BELGILARI kabi.
@@ -87,7 +88,9 @@ class _ContactButton extends StatelessWidget {
     final circle = (width - 8).clamp(40.0, 56.0);
     final l = L.of(context);
     final spec = _specs[action.kind]!;
-    final label = action.kind == ContactKind.link && action.label.isNotEmpty
+    final label = (action.kind == ContactKind.link ||
+                action.kind == ContactKind.card) &&
+            action.label.isNotEmpty
         ? action.label
         : spec.label(l);
     return Semantics(
@@ -99,6 +102,12 @@ class _ContactButton extends StatelessWidget {
         // Hech qachon qotmaydi: `openLink` 5 soniyada to'xtaydi va
         // ochilmasa havolani buferga ko'chiradi — odamga shuni aytamiz.
         onTap: () async {
+          // KARTA — havola emas: QR va raqam oynasi.
+          if (action.kind == ContactKind.card) {
+            await showCardNumberSheet(context,
+                number: action.url, label: action.label);
+            return;
+          }
           final ok = await openLink(action.url);
           if (ok || !context.mounted) return;
           ScaffoldMessenger.maybeOf(context)
@@ -212,6 +221,11 @@ final _specs = <ContactKind, _Spec>{
       (l) => l.contactMap),
   ContactKind.website: _Spec(_v(0xFF636366, 0xFF2C2C2E), _globe,
       (l) => l.contactWebsite),
+  // PLASTIK KARTA (egasi, 2026-09-28: "bu qatorda plastik karta ham
+  // qo'yiladi, unga ham shularga moslab logo qilib qo'y"). Bank yo'q —
+  // NFCSTORE oltini (issiq tilla → to'q oltin), ichida oq karta.
+  ContactKind.card: _Spec(_v(0xFFF2D08A, 0xFFB8862B), _card,
+      (l) => l.contactCard),
   ContactKind.link: _Spec(_v(0xFF636366, 0xFF2C2C2E), _link,
       (l) => l.contactLink),
 };
@@ -237,5 +251,8 @@ const _pin =
     '<svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21.5s7-6.1 7-11.2A7 7 0 0 0 5 10.3c0 5.1 7 11.2 7 11.2z"/><circle cx="12" cy="10" r="2.6"/></svg>';
 const _globe =
     '<svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.7 2.6 4 5.7 4 9s-1.3 6.4-4 9c-2.7-2.6-4-5.7-4-9s1.3-6.4 4-9Z"/></svg>';
+// Saytdagi `IconBankCard`: karta, magnit tasma, raqam chizig'i.
+const _card =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="2.8"/><path d="M2.5 9.6h19"/><path d="M6 14.4h3.4"/></svg>';
 const _link =
     '<svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 14.5 14.5 9.5"/><path d="M11 6.5 12.6 4.9a3.7 3.7 0 0 1 5.2 5.2L16.2 11.7"/><path d="M13 17.5 11.4 19.1a3.7 3.7 0 0 1-5.2-5.2L7.8 12.3"/></svg>';

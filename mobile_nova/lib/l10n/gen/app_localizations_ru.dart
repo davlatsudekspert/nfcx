@@ -2796,4 +2796,23 @@ class LRu extends L {
   String discoverRank(int n) {
     return '$n-е место';
   }
+
+  @override
+  String get contactCard => 'Номер карты';
+
+  @override
+  String get fieldCardNumber => 'Номер карты (Humo, Uzcard, Visa)';
+
+  @override
+  String get cardSheetTitle => 'Номер карты';
+
+  @override
+  String get cardCopy => 'Скопировать номер';
+
+  @override
+  String get cardCopied => 'Номер карты скопирован';
+
+  @override
+  String get cardQrNote =>
+      'В QR-коде только номер карты — это не ссылка на оплату.';
 }

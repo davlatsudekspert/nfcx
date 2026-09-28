@@ -1007,5 +1007,11 @@
   "timeHoursAgo": "{n} ч назад",
   "@timeHoursAgo": {"placeholders": {"n": {"type": "int"}}},
   "discoverViews": "{count} просм.",
-  "discoverRank": "{n}-е место"
+  "discoverRank": "{n}-е место",
+  "contactCard": "Номер карты",
+  "fieldCardNumber": "Номер карты (Humo, Uzcard, Visa)",
+  "cardSheetTitle": "Номер карты",
+  "cardCopy": "Скопировать номер",
+  "cardCopied": "Номер карты скопирован",
+  "cardQrNote": "В QR-коде только номер карты — это не ссылка на оплату."
 }

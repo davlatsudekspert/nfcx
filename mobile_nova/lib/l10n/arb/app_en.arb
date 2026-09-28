@@ -1007,5 +1007,11 @@
   "timeHoursAgo": "{n} h ago",
   "@timeHoursAgo": {"placeholders": {"n": {"type": "int"}}},
   "discoverViews": "{count} views",
-  "discoverRank": "#{n}"
+  "discoverRank": "#{n}",
+  "contactCard": "Card",
+  "fieldCardNumber": "Card number (Humo, Uzcard, Visa)",
+  "cardSheetTitle": "Card number",
+  "cardCopy": "Copy number",
+  "cardCopied": "Card number copied",
+  "cardQrNote": "The QR code contains only the card number — it is not a payment link."
 }

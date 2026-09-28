@@ -2799,4 +2799,23 @@ class LEn extends L {
   String discoverRank(int n) {
     return '#$n';
   }
+
+  @override
+  String get contactCard => 'Card';
+
+  @override
+  String get fieldCardNumber => 'Card number (Humo, Uzcard, Visa)';
+
+  @override
+  String get cardSheetTitle => 'Card number';
+
+  @override
+  String get cardCopy => 'Copy number';
+
+  @override
+  String get cardCopied => 'Card number copied';
+
+  @override
+  String get cardQrNote =>
+      'The QR code contains only the card number — it is not a payment link.';
 }

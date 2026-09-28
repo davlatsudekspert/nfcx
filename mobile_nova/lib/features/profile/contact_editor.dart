@@ -48,6 +48,7 @@ class _ContactEditorState extends State<ContactEditor> {
   late final _li = TextEditingController(text: widget.initial.linkedin);
   late final _web = TextEditingController(text: widget.initial.website);
   late final _addr = TextEditingController(text: widget.initial.address);
+  late final _card = TextEditingController(text: widget.initial.cardNumber);
   late bool _hidePhone = widget.initial.hidePhone;
   late final List<(TextEditingController, TextEditingController)> _links = [
     for (final l in widget.initial.extraLinks)
@@ -58,7 +59,7 @@ class _ContactEditorState extends State<ContactEditor> {
 
   @override
   void dispose() {
-    for (final c in [_phone, _tg, _wa, _email, _ig, _fb, _x, _li, _web, _addr]) {
+    for (final c in [_phone, _tg, _wa, _email, _ig, _fb, _x, _li, _web, _addr, _card]) {
       c.dispose();
     }
     for (final (a, b) in _links) {
@@ -81,6 +82,8 @@ class _ContactEditorState extends State<ContactEditor> {
       linkedin: _li.text.trim(),
       website: _web.text.trim(),
       address: _addr.text.trim(),
+      // Faqat raqamlar va bo'shliq; server 34 belgigacha saqlaydi.
+      cardNumber: _card.text.replaceAll(RegExp(r'[^\d ]'), '').trim(),
       extraLinks: [
         for (final (a, b) in _links)
           if (b.text.trim().isNotEmpty)
@@ -138,6 +141,8 @@ class _ContactEditorState extends State<ContactEditor> {
         ],
         _field(l.fieldWebsite, _web, type: TextInputType.url, key: 'edit-website'),
         _field(l.fieldAddress, _addr, key: 'edit-address'),
+        _field(l.fieldCardNumber, _card,
+            type: TextInputType.number, key: 'edit-card'),
         const SizedBox(height: Gap.sm),
         Text(l.extraLinksTitle.toUpperCase(),
             style: Theme.of(context).textTheme.labelSmall),

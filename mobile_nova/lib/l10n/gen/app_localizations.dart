@@ -5342,6 +5342,42 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'{n}-o‘rin'**
   String discoverRank(int n);
+
+  /// Aloqa qatoridagi plastik (bank) karta tugmasi — bosilsa raqam, QR va nusxalash oynasi.
+  ///
+  /// In uz, this message translates to:
+  /// **'Karta'**
+  String get contactCard;
+
+  /// No description provided for @fieldCardNumber.
+  ///
+  /// In uz, this message translates to:
+  /// **'Karta raqami (Humo, Uzcard, Visa)'**
+  String get fieldCardNumber;
+
+  /// No description provided for @cardSheetTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Karta raqami'**
+  String get cardSheetTitle;
+
+  /// No description provided for @cardCopy.
+  ///
+  /// In uz, this message translates to:
+  /// **'Raqamni nusxalash'**
+  String get cardCopy;
+
+  /// No description provided for @cardCopied.
+  ///
+  /// In uz, this message translates to:
+  /// **'Karta raqami nusxalandi'**
+  String get cardCopied;
+
+  /// No description provided for @cardQrNote.
+  ///
+  /// In uz, this message translates to:
+  /// **'QR kodda faqat karta raqami yozilgan — bu to‘lov havolasi emas.'**
+  String get cardQrNote;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

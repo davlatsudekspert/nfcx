@@ -2803,4 +2803,23 @@ class LUz extends L {
   String discoverRank(int n) {
     return '$n-o‘rin';
   }
+
+  @override
+  String get contactCard => 'Karta';
+
+  @override
+  String get fieldCardNumber => 'Karta raqami (Humo, Uzcard, Visa)';
+
+  @override
+  String get cardSheetTitle => 'Karta raqami';
+
+  @override
+  String get cardCopy => 'Raqamni nusxalash';
+
+  @override
+  String get cardCopied => 'Karta raqami nusxalandi';
+
+  @override
+  String get cardQrNote =>
+      'QR kodda faqat karta raqami yozilgan — bu to‘lov havolasi emas.';
 }

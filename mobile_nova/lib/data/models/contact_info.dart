@@ -41,6 +41,28 @@ class ExtraLink {
   }
 }
 
+/// PLASTIK (BANK) KARTA RAQAMI — pul o'tkazish uchun (sayt:
+/// `record.cardNumbers`, `{label, number}`; masalan `Humo`).
+class CardNumber {
+  const CardNumber({this.label = '', required this.number});
+  final String label;
+  final String number;
+
+  Map<String, dynamic> toJson() => {'label': label, 'number': number};
+
+  static List<CardNumber> listFrom(Object? raw) {
+    if (raw is! List) return const [];
+    return [
+      for (final e in raw)
+        if (e is Map && '${e['number'] ?? ''}'.trim().isNotEmpty)
+          CardNumber(
+            label: '${e['label'] ?? ''}'.trim(),
+            number: '${e['number']}'.trim(),
+          ),
+    ];
+  }
+}
+
 class ContactInfo {
   const ContactInfo({
     this.phone = '',
@@ -57,6 +79,8 @@ class ContactInfo {
     this.latitude,
     this.longitude,
     this.extraLinks = const [],
+    this.cardNumber = '',
+    this.cardNumbers = const [],
   });
 
   final String phone;
@@ -73,6 +97,13 @@ class ContactInfo {
   final double? latitude;
   final double? longitude;
   final List<ExtraLink> extraLinks;
+
+  /// Asosiy karta raqami (`cardNumber`) — profil ham, biznes ham.
+  final String cardNumber;
+
+  /// Qo'shimcha kartalar (faqat shaxsiy profil, saytda kiritiladi).
+  /// Ilova ularni ko'rsatadi va saqlashda O'ZGARTIRMAY qaytaradi.
+  final List<CardNumber> cardNumbers;
 
   static String _s(Object? v) => v == null ? '' : '$v'.trim();
   static double? _d(Object? v) => v == null ? null : double.tryParse('$v');
@@ -92,6 +123,8 @@ class ContactInfo {
         latitude: _d(j['latitude']),
         longitude: _d(j['longitude']),
         extraLinks: ExtraLink.listFrom(j['extraLinks']),
+        cardNumber: _s(j['cardNumber']),
+        cardNumbers: CardNumber.listFrom(j['cardNumbers']),
       );
 
   /// Biznes (`rowCompany`).
@@ -106,6 +139,7 @@ class ContactInfo {
         latitude: _d(j['latitude']),
         longitude: _d(j['longitude']),
         extraLinks: ExtraLink.listFrom(j['extraLinks']),
+        cardNumber: _s(j['cardNumber']),
       );
 
   /// `PUT /api/records/:code` kalitlari. Server `tg`/`instagram`/...
@@ -123,6 +157,11 @@ class ContactInfo {
         'website': website,
         'address': address,
         'extraLinks': [for (final l in extraLinks) l.toJson()],
+        'cardNumber': cardNumber,
+        // `cardNumbers` (qo'shimcha kartalar) ATAYLAB yuborilmaydi: ilova
+        // ularni tahrirlamaydi, saqlashda esa serverdagi joriy yozuv
+        // ustiga yoziladi (`ProfileRepository.update`) — ular o'zgarmay
+        // qoladi.
       };
 
   /// `PATCH /api/companies/:id` kalitlari (server ko'pi bilan 8 ta
@@ -136,6 +175,7 @@ class ContactInfo {
         'website': website,
         'address': address,
         'extraLinks': [for (final l in extraLinks.take(8)) l.toJson()],
+        'cardNumber': cardNumber,
       };
 
   ContactInfo copyWith({
@@ -151,6 +191,7 @@ class ContactInfo {
     String? website,
     String? address,
     List<ExtraLink>? extraLinks,
+    String? cardNumber,
   }) =>
       ContactInfo(
         phone: phone ?? this.phone,
@@ -167,11 +208,13 @@ class ContactInfo {
         latitude: latitude,
         longitude: longitude,
         extraLinks: extraLinks ?? this.extraLinks,
+        cardNumber: cardNumber ?? this.cardNumber,
+        cardNumbers: cardNumbers,
       );
 
   /// Ekranda ko'rsatiladigan tugmalar — saytdagi tartibda:
   /// telefon, Telegram, WhatsApp, Instagram, Facebook, X, LinkedIn,
-  /// email, xarita, veb-sayt, qo'shimcha havolalar.
+  /// email, xarita, veb-sayt, karta raqamlari, qo'shimcha havolalar.
   List<ContactAction> actions() {
     final out = <ContactAction>[];
     void add(ContactKind k, String url, [String label = '']) {
@@ -202,6 +245,12 @@ class ContactInfo {
           'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(address)}');
     }
     add(ContactKind.website, _web(website));
+    // Karta: `url` o'rnida RAQAMNING O'ZI (havola emas) — tugma uni
+    // ochmaydi, raqam/QR/nusxalash oynasini ko'rsatadi.
+    add(ContactKind.card, cardNumber);
+    for (final c in cardNumbers) {
+      add(ContactKind.card, c.number, c.label);
+    }
     for (final l in extraLinks) {
       add(ContactKind.link, _web(l.url), l.label);
     }
@@ -226,6 +275,9 @@ enum ContactKind {
   email,
   map,
   website,
+
+  /// Plastik (bank) karta — `url` da karta raqami.
+  card,
   link,
 }
 
