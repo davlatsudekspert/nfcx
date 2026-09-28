@@ -1,6 +1,6 @@
 {
   "companyId": "NFCSTOREUZ",
-  "apply": true,
+  "apply": false,
   "_izoh": "2026-09-28 egasi: 100×100 -> 10×10 sm; Shaharlar seriyasidan xira umumiy rasm olib tashlanadi; hamma mahsulot narxi -> 'Narxi tez kunda'. Eski narxlar report.json (restore) da.",
   "updates": [
     {
