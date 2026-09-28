@@ -1414,7 +1414,7 @@ function UserDrawer({ userId, onClose, onChanged }) {
   const deleteUser = async () => {
     const ok = await confirm({
       title: t("Foydalanuvchini o'chirish"),
-      message: t("{email} akkaunti o'chirilgan deb belgilanadi: foydalanuvchi kira olmaydi va barcha sessiyalari yopiladi. Uning profillari, postlari va storylari saytda ham, ilovada ham ko'rinmay qoladi — katalog, qidiruv va Reels'dan chiqib ketadi. Ma'lumotlar bazada qoladi (buyurtma va to'lov tarixi uchun). Kodni butunlay bo'shatish kerak bo'lsa, profilni alohida o'chiring.", { email: u.email }),
+      message: t("{email} akkaunti o'chirilgan deb belgilanadi: foydalanuvchi kira olmaydi va barcha sessiyalari yopiladi. Uning profillari, postlari va storylari saytda ham, ilovada ham ko'rinmay qoladi — katalog, qidiruv va Reels'dan chiqib ketadi. Ma'lumotlar bazada qoladi (buyurtma va to'lov tarixi uchun). Kodni butunlay bo'shatish kerak bo'lsa, profilni alohida o'chiring. DIQQAT: hisob 30 kun «O'chirish navbati»da turadi — shu vaqt ichida bu email bilan qayta ro'yxatdan o'tib bo'lmaydi. Adashib o'chirilgan bo'lsa, shu kartochkadagi «Tiklash» tugmasini bosing.", { email: u.email }),
       confirmLabel: t("O'chirish"), danger: true,
     });
     if (ok) act(() => adminApi(`/users/${u.id}/delete`, { method: 'POST' }));
@@ -1552,6 +1552,22 @@ function UserDrawer({ userId, onClose, onChanged }) {
                 </AdminCard>
               )}
 
+              {/* TIKLASH — o'chirilgan hisob kartochkasining o'zida (egasi, 2026-09-28:
+                  "tiklash yo'qku"). Ilgari faqat «NFCSTORE ILOVASI» → «O'chirish
+                  navbati» ichida edi. Butunlay o'chirilgunga (30 kun) qadar ishlaydi. */}
+              {isSuper && u.deletedAt && (
+                <AdminCard title={t('Boshqaruv')}>
+                  <div className="text-sm" style={{ color: 'var(--vz-ink-2)' }}>
+                    {t("Hisob o'chirilgan. 30 kun ichida tiklash mumkin — egasi o'sha email va eski paroli bilan qayta kiradi.")}
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button type="button" className="btn btn-success btn-sm min-h-11" disabled={busy}
+                      onClick={() => act(() => adminApi(`/account-deletions/${u.id}/restore`, { method: 'POST' }))}>
+                      {t('Tiklash')}
+                    </button>
+                  </div>
+                </AdminCard>
+              )}
               {(isManager || isSuper) && !u.deletedAt && (
                 <AdminCard title={t('Boshqaruv')}>
                   <div className="flex flex-wrap gap-2">

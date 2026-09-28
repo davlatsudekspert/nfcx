@@ -507,8 +507,22 @@ async function registerConflict(env, H, email, phone) {
     if (p) return 'phone_taken';
   }
   if (email) {
+    // O'CHIRISH NAVBATIDAGI HISOB EMAILI HAM BAND (egasi, 2026-09-28:
+    // "admin paneldan o'chirdim, qayta ro'yxatdan o'taman desam kod
+    // gmailga boryapti, yozsam 'band' chiqyapti").
+    //
+    // Ilgari bu yerda `deleted_at IS NULL` turardi: navbatdagi emailga
+    // kod YUBORILARDI, odam uni kiritardi va faqat oxirida
+    // `account_pending_deletion` olardi — kod yonib ketardi, ekranda
+    // esa tushunarsiz xato. Endi xat umuman ketmaydi, javob faol
+    // hisobdagi bilan AYNAN bir xil `email_taken` ("Kirish orqali
+    // kiring") — begona odam hisob o'chirilganini bilmaydi (B13).
+    // Egasining o'zi "Kirish" bilan kirsa, to'g'ri paroldan keyin
+    // o'chirish sanasini ko'radi (`account_deleted`, worker.js).
+    // Purge'dan keyin email `deleted-<id>@deleted.invalid` bo'ladi —
+    // manzil yana bo'sh.
     const e = await env.DB.prepare(
-      `SELECT id FROM users WHERE email = ? AND deleted_at IS NULL LIMIT 1`
+      `SELECT id FROM users WHERE email = ? LIMIT 1`
     ).bind(email).first();
     if (e) return 'email_taken';
   }
