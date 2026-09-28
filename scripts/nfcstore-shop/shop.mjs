@@ -51,6 +51,10 @@ export async function loadPlan(url = new URL('plan.json', HERE)) {
   for (const u of plan.updates || []) {
     if (!u.id || !u.expectName) problems.push(`${u.set?.name ?? u.expectName}: id/expectName yo‘q`);
     if (u.dropImages && !Array.isArray(u.dropImages)) problems.push(`${u.expectName}: dropImages ro‘yxat emas`);
+    // `replaceImages`: { "/uploads/eski.png": "img/yangi.jpg" } — o'sha
+    // rasmning yengil nusxasi, tartib va muqova saqlanadi.
+    if (u.replaceImages && (typeof u.replaceImages !== 'object' || Array.isArray(u.replaceImages))) problems.push(`${u.expectName}: replaceImages obyekt emas`);
+    if (u.replaceImages && u.images) problems.push(`${u.expectName}: images va replaceImages birga bo‘lmaydi`);
   }
   const names = all.map((it) => it.set?.name ?? it.name ?? it.expectName);
   if (new Set(names).size !== names.length) problems.push('nomlar takrorlanadi');
@@ -99,7 +103,7 @@ async function main() {
   // 1) Rasmlar joyidami — kirishdan OLDIN.
   const missing = [];
   for (const it of [...(plan.updates || []), ...(plan.items || [])]) {
-    for (const rel of it.images || []) if (!(await imageBytes(rel))) missing.push(rel);
+    for (const rel of [...(it.images || []), ...Object.values(it.replaceImages || {})]) if (!(await imageBytes(rel))) missing.push(rel);
   }
   if (missing.length) {
     missing.forEach((m) => line(`RASM YO‘Q: ${m}`));
@@ -147,6 +151,7 @@ async function main() {
       cur.name === want && cur.priceSoon
       && (u.set?.description == null || cur.description === u.set.description)
       && !drop.some((x) => (cur.images || []).includes(x))
+      && !Object.keys(u.replaceImages || {}).some((x) => (cur.images || []).includes(x) || cur.imageUrl === x)
     ) status = 'allaqachon yangilangan';
     else status = 'YANGILANADI';
     const imgCount = u.images ? u.images.length : (cur?.images || []).filter((x) => !drop.includes(x)).length;
@@ -198,6 +203,14 @@ async function main() {
       // maydonlarga tegilmaydi — server PATCH'i yuborilmaganini saqlaydi.
       const drop = r.u.dropImages || [];
       const body = { ...(r.u.set || {}), promotionPrice: null, priceSoon: true };
+      const swap = r.u.replaceImages || {};
+      if (Object.keys(swap).length) {
+        const to = new Map();
+        for (const [old, rel] of Object.entries(swap)) to.set(old, await upload(rel));
+        const cur = (r.cur.images || []).length ? r.cur.images : [r.cur.imageUrl].filter(Boolean);
+        body.images = cur.map((x) => to.get(x) || x);
+        body.imageUrl = to.get(r.cur.imageUrl) || body.images[0];
+      }
       if (drop.length) {
         const keep = (r.cur.images || []).filter((x) => !drop.includes(x));
         if (!keep.length) throw new Error(`${r.name}: hamma rasm olib tashlanardi`);

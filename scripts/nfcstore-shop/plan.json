@@ -1,58 +1,56 @@
 {
   "companyId": "NFCSTOREUZ",
-  "apply": false,
-  "_izoh": "2026-09-28 egasi: 100×100 -> 10×10 sm; Shaharlar seriyasidan xira umumiy rasm olib tashlanadi; hamma mahsulot narxi -> 'Narxi tez kunda'. Eski narxlar report.json (restore) da.",
+  "apply": true,
+  "_izoh": "2026-09-28: 7 ta mahsulotning 1.7–2.3 MB PNG rasmi o‘sha rasmning JPEG nusxasiga (250–410 KB) almashtiriladi — telefonda tez ochilsin. Eski fayllar o‘chirilmaydi; qaytarish uchun report.json.",
   "updates": [
     {
       "id": "b9fa1d77-794a-4b7a-b972-aecb1dce7c02",
-      "expectName": "NFC ID Karta"
+      "expectName": "NFC ID Karta",
+      "replaceImages": {
+        "/uploads/file_66f03da119efac7d28deeb5d.png": "img/karta-1.jpg"
+      }
     },
     {
       "id": "5a080c62-4874-463c-a8e2-e07129e24b75",
-      "expectName": "NFC Uzuk"
+      "expectName": "NFC Uzuk",
+      "replaceImages": {
+        "/uploads/file_34fd694c5017b9805ad4fe19.png": "img/uzuk-1.jpg"
+      }
     },
     {
       "id": "3b28db6e-9277-4e02-ade3-ad94acfc35b9",
-      "expectName": "NFC Brelok"
+      "expectName": "NFC Brelok",
+      "replaceImages": {
+        "/uploads/file_d740880ae72cfa6a39dbf2f2.png": "img/brelok-1.jpg"
+      }
     },
     {
       "id": "b201b164-83e9-42e7-8546-65e74edc513d",
-      "expectName": "NFC Braslet"
+      "expectName": "NFC Braslet",
+      "replaceImages": {
+        "/uploads/file_3333a82e7d939cf11baff693.png": "img/braslet-1.jpg"
+      }
     },
     {
       "id": "12a0241b-a33b-4128-a6a5-8b913d8d9678",
-      "expectName": "NFC Stend"
+      "expectName": "NFC Stend",
+      "replaceImages": {
+        "/uploads/file_bb30e79cedd5fad6351aac65.png": "img/stend-1.jpg"
+      }
     },
     {
       "id": "51eb1c8c-e315-4536-a5a9-a245c702df7b",
-      "expectName": "Korporativ NFC sovg‘a"
+      "expectName": "Korporativ NFC sovg‘a",
+      "replaceImages": {
+        "/uploads/file_3a17d419e54dc46dd32023cd.png": "img/korporativ-1.jpg"
+      }
     },
     {
       "id": "cb601021-59e7-4572-a026-be2cc058eea9",
-      "expectName": "NFC ID Sovg‘a Konverti"
-    },
-    {
-      "id": "0bbae585-8d1d-4a71-801d-ad8cdaeacf94",
-      "expectName": "Do‘kon oynasi uchun NFC stiker 100×100",
-      "set": {
-        "name": "Do‘kon oynasi uchun NFC stiker 10×10 sm",
-        "description": "Vitrina yoki eshik oynasiga ICHKARIDAN yopishtiriladi — yomg‘ir tegmaydi, o‘g‘irlab bo‘lmaydi. Ko‘chadan: «Yopiq bo‘lsa ham — ochiq · Telefonni tekkizing». Mijoz telefonini tekkizadi — do‘kon sahifangiz ochiladi: katalog, narxlar, ish vaqti, aloqa. Kichik QR NFC’ni bilmaydiganlarga qo‘llanmani ochadi. Ichkaridan toza dizayn. 10×10 sm."
+      "expectName": "NFC ID Sovg‘a Konverti",
+      "replaceImages": {
+        "/uploads/file_b4d5de31d17e7c56c39fce65.png": "img/konvert-1.jpg"
       }
-    },
-    {
-      "id": "0209a82f-7c5e-4781-ba9c-5abe5fc91787",
-      "expectName": "Tashqi NFC stiker — do‘kon nomi bilan 100×100",
-      "set": {
-        "name": "Tashqi NFC stiker — do‘kon nomi bilan 10×10 sm",
-        "description": "Eshik, devor yoki darvozaga tashqaridan yopishtiriladi. Tepada do‘koningiz nomi uchun oltin ramkali joy — nomingiz bosib beriladi. Himoya laminati quyosh va yomg‘irga chidaydi. Metall eshik uchun anti-metall chipli varianti bor — buyurtmada ayting. 10×10 sm."
-      }
-    },
-    {
-      "id": "00f90f16-8c8a-46e3-94b2-1e2cfbe18587",
-      "expectName": "NFC ID karta — Shaharlar seriyasi",
-      "dropImages": [
-        "/uploads/file_f34eda846329ec3b9eedfe00.jpg"
-      ]
     }
   ],
   "items": []
