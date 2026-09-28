@@ -8,6 +8,7 @@ import '../../design/tokens/shapes.dart';
 import '../../design/widgets/buttons.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
+import 'nfc_card_3d.dart';
 
 /// ILOVANI BIRINCHI OCHGANDAGI EKRAN.
 ///
@@ -21,9 +22,8 @@ import '../../routing/routes.dart';
 ///
 /// Endi ekran ikkiga bo'lingan:
 ///
-///   * TEPA — vizual. Surat `BoxFit.contain` bilan to'liq
-///     ko'rinadi: hech narsa kesilmaydi, telefon ham, NFC kartasi
-///     ham, profil/reels/izoh kartochkalari ham joyida turadi.
+///   * TEPA — vizual (aylanadigan NFCSTORE kartasi). Karta
+///     `BoxFit.contain` bilan to'liq ko'rinadi — hech narsa kesilmaydi.
 ///   * PAST — sarlavha, tavsif va ikkita tugma. Ular suratning
 ///     ostida, o'z fonida turadi — parda kerak emas, matn har
 ///     qanday mavzuda toza o'qiladi.
@@ -32,16 +32,13 @@ import '../../routing/routes.dart';
 /// xalaqit bermaydi. `welcome_screen_test.dart` buni har bir
 /// ekran o'lchamida o'lchab tekshiradi.
 ///
-/// ## SURAT FONSIZ — MAVZU BILAN QO'SHILADI
+/// ## VIZUAL: AYLANADIGAN NFCSTORE KARTASI (2026-09-28)
 ///
-/// `assets/welcome/nfc_hero.webp` da FON YO'Q (alfa kanali).
-/// Shuning uchun u qora–champagne mavzuda qora ustida, ochiq
-/// mavzuda esa och fon ustida turadi — qirqilgan to'rtburchak
-/// ko'rinmaydi.
-///
-/// Suratning pastki cheti `ShaderMask` bilan asta so'nadi va
-/// matnga yumshoq o'tadi; orqasida esa mavzuning oltin nuri
-/// (`t.glow`) nafas oladi.
+/// Ilgari bu yerda statik surat (`nfc_hero.webp`, 310 KB) turardi.
+/// Egasi: "GIF'ga o'xshagan bo'lsin — NFC karta NFCSTORE aylanib
+/// tursin, 3D". Endi [NfcCard3D]: metall kartaning haqiqiy old va
+/// orqa dizayni perspektiva bilan aylanadi, orqada NFC to'lqinlari,
+/// ostida soya. Rasmlar FONSIZ (alfa) — har qanday mavzuda turadi.
 ///
 /// ## RANG: MATN DOIM MAVZUDAN
 ///
@@ -52,10 +49,10 @@ import '../../routing/routes.dart';
 ///
 /// ## ANIMATSIYA
 ///
-/// Bitta 5 soniyalik kontroller: oltin nur nafas oladi va surat
-/// 3px suziydi. Keskin zoom, silkinish yoki tez o'tish yo'q.
-/// Tizimda "animatsiyani kamaytirish" yoqilgan bo'lsa harakat
-/// UMUMAN bo'lmaydi.
+/// Bitta 10 soniyalik kontroller: karta old → orqa → old aylanadi,
+/// oltin nur nafas oladi, to'lqinlar tarqaladi. Keskin zoom yoki
+/// silkinish yo'q. Tizimda "animatsiyani kamaytirish" yoqilgan
+/// bo'lsa harakat UMUMAN bo'lmaydi — karta qiya holda turadi.
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
 
@@ -65,15 +62,20 @@ class WelcomeScreen extends StatefulWidget {
 
 class _WelcomeScreenState extends State<WelcomeScreen>
     with SingleTickerProviderStateMixin {
-  static const _asset = 'assets/welcome/nfc_hero.webp';
-
   late final AnimationController _c;
 
   @override
   void initState() {
     super.initState();
-    _c = AnimationController(vsync: this, duration: const Duration(seconds: 5))
+    _c = AnimationController(vsync: this, duration: const Duration(seconds: 10))
       ..repeat();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Orqa tomon birinchi burilishda "miltillamasin" — oldindan.
+    precacheImage(const AssetImage(NfcCard3D.back), context);
   }
 
   @override
@@ -148,14 +150,17 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           ),
                         ),
 
-                        // Suratning o'zi — hech narsa kesilmasin.
+                        // Aylanadigan karta — hech narsa kesilmaydi.
                         Padding(
-                          padding: EdgeInsets.only(
-                            left: Gap.lg,
-                            right: Gap.lg,
-                            top: Gap.sm + breathe * 3,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: Gap.lg, vertical: Gap.sm),
+                          child: RepaintBoundary(
+                            child: NfcCard3D(
+                              progress: p,
+                              glow: t.glow,
+                              still: still,
+                            ),
                           ),
-                          child: _FadingHero(asset: _asset),
                         ),
                       ],
                     );
@@ -175,39 +180,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// Surat, pastki cheti asta so'nadi.
-///
-/// So'nish `ShaderMask` + `BlendMode.dstIn` bilan: gradientning
-/// SHAFFOFLIGI suratga ko'chiriladi, rangi emas. Shuning uchun u
-/// qora mavzuda ham, och mavzuda ham bir xil ishlaydi — fon
-/// rangini bilishi shart emas.
-class _FadingHero extends StatelessWidget {
-  const _FadingHero({required this.asset});
-
-  final String asset;
-
-  @override
-  Widget build(BuildContext context) {
-    return ShaderMask(
-      shaderCallback: (rect) => const LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [Colors.white, Colors.white, Color(0x00FFFFFF)],
-        stops: [0.0, 0.86, 1.0],
-      ).createShader(rect),
-      blendMode: BlendMode.dstIn,
-      child: Image.asset(
-        asset,
-        fit: BoxFit.contain,
-        alignment: Alignment.bottomCenter,
-        // Surat yuklanmasa EKRAN BUZILMASIN: bo'sh joy qoladi,
-        // matn va tugmalar joyida turaveradi.
-        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
       ),
     );
   }

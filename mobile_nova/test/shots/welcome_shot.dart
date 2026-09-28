@@ -59,8 +59,9 @@ void main() {
     WidgetTester tester,
     Size size,
     NfcTokens t,
-    String name,
-  ) async {
+    String name, {
+    Duration at = const Duration(milliseconds: 1600),
+  }) async {
     tester.view.physicalSize = size * 2;
     tester.view.devicePixelRatio = 2.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -90,9 +91,12 @@ void main() {
       for (final e in tester.widgetList<Image>(find.byType(Image))) {
         await precacheImage(e.image, tester.element(find.byType(MaterialApp)));
       }
+      // Kartaning orqa tomoni — aylanganda ko'rinadi.
+      await precacheImage(const AssetImage('assets/welcome/card_back.webp'),
+          tester.element(find.byType(MaterialApp)));
     });
     // Animatsiya o'rtasidagi kadr — nur ko'rinadigan payt.
-    await tester.pump(const Duration(milliseconds: 1600));
+    await tester.pump(at);
     await expectLater(
         find.byType(MaterialApp), matchesGoldenFile('png/$name.png'));
   }
@@ -114,4 +118,11 @@ void main() {
   testWidgets('welcome 320x780 ocean', (t) async {
     await shot(t, const Size(320, 780), NfcTokens.ocean, 'welcome-320-ocean');
   });
+  // Aylanish kadrlari: old, burilish, orqa, qaytish.
+  for (final ms in [0, 3000, 3900, 5000, 8200, 9300]) {
+    testWidgets('welcome kadr $ms', (t) async {
+      await shot(t, const Size(390, 844), NfcTokens.noir, 'welcome-frame-$ms',
+          at: Duration(milliseconds: ms));
+    });
+  }
 }

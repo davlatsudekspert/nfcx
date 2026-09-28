@@ -73,6 +73,12 @@ void main() {
         // hamon tokenlardan chizadi (`_CardInk.of`). Qoralik
         // `sticker_activate_test.dart` da o'lchab tekshiriladi.
         'lib/design/widgets/nfc_id_hero.dart',
+        // KIRISH EKRANIDAGI 3D KARTA — haqiqiy metall kartaning
+        // MATERIALI (oltin qirra, metall yaltirog'i, NFC signali
+        // kartadagi bosma oltin bilan bir xil). Kartaning o'zi rasm,
+        // uning rangi mavzuga qarab o'zgarmaydi; orqa fon nuri esa
+        // mavzudan (`t.glow`) keladi.
+        'lib/features/entry/nfc_card_3d.dart',
       };
 
       final offenders = <String>[];
