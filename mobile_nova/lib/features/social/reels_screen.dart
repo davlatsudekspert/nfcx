@@ -449,7 +449,13 @@ class _ReelPageState extends ConsumerState<_ReelPage>
     if (s != AnimationStatus.completed || !mounted) return;
     if (!widget.visible || !_onStage) return;
     final next = widget.onFinished;
-    if (next != null) {
+    // USTIDA VARAQ OCHIQ (izohlar, ulashish, menyu) — keyingisiga
+    // O'TILMAYDI, shu reel boshidan aylanadi (Instagram kabi). Egasi
+    // (2026-09-28, BlueStacks): izoh yozayotganda rasmli reel tugab
+    // keyingisiga o'tib ketardi, varaq esa oldingi reelniki bo'lib
+    // qolardi — izoh ekrandagiga emas, oldingisiga yozilardi.
+    final covered = ModalRoute.of(context)?.isCurrent == false;
+    if (next != null && !covered) {
       next();
     } else {
       _clock?.forward(from: 0);
