@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
 import '../../core/errors/app_error.dart';
+import '../../core/media/image_prep.dart';
 import '../../core/network/api_client.dart';
 import '../../core/utils/media_url.dart';
 import '../../core/utils/result.dart';
@@ -219,9 +220,18 @@ class ProfileRepository {
     String? kind,
     void Function(int, int)? onProgress,
   }) async {
-    final file = File(filePath);
-    final bytes = await file.readAsBytes();
-    final mime = _imageMime(filePath, bytes);
+    // Katta rasm (PNG skrinshot, 12 MP) telefonda kichraytirilib JPEG
+    // bo'ladi — iPhone'da ham, Android'da ham (image_prep.dart). Muqova
+    // biroz kattaroq qoladi.
+    final prepared = await prepareImageForUpload(filePath,
+        maxSide: kind == 'cover' ? 2048 : kImagePrepMaxSide);
+    final List<int> bytes;
+    try {
+      bytes = await File(prepared).readAsBytes();
+    } finally {
+      if (prepared != filePath) File(prepared).delete().ignore();
+    }
+    final mime = _imageMime(prepared, bytes);
     if (mime == null) {
       return const Err(AppError(
         AppErrorKind.validation,

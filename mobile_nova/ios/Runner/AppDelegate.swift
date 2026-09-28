@@ -26,15 +26,86 @@ enum NovaVideoExport {
     let channel = FlutterMethodChannel(
       name: "uz.nfcstore.nova/video", binaryMessenger: messenger)
     channel.setMethodCallHandler { call, result in
-      guard call.method == "toMp4",
-        let args = call.arguments as? [String: Any],
+      guard let args = call.arguments as? [String: Any],
         let path = args["path"] as? String
       else {
         result(FlutterMethodNotImplemented)
         return
       }
-      toMp4(path: path, result: result)
+      switch call.method {
+      case "toMp4":
+        toMp4(path: path, result: result)
+      case "toJpeg":
+        guard let out = args["out"] as? String else {
+          result(nil)
+          return
+        }
+        let maxSide = args["maxSide"] as? Int ?? 1600
+        let quality = args["quality"] as? Int ?? 85
+        DispatchQueue.global(qos: .userInitiated).async {
+          let res = toJpeg(path: path, out: out, maxSide: maxSide, quality: quality)
+          DispatchQueue.main.async { result(res) }
+        }
+      default:
+        result(FlutterMethodNotImplemented)
+      }
     }
+  }
+
+  /// Rasm yuklashdan oldin: uzun tomoni `maxSide` gacha, JPEG (Dart:
+  /// lib/core/media/image_prep.dart). `image_picker` PNG'ni siqmaydi —
+  /// skrinshot 2 MB bo'lib ketardi, server esa 700 KB dan kattasini
+  /// qabul qilmaydi. Shaffof piksel bo'lsa, natija kichraymasa yoki
+  /// xato — `nil` (Dart asl faylni yuboradi). `UIImage` EXIF burilishini
+  /// o'zi hisobga oladi.
+  static func toJpeg(path: String, out: String, maxSide: Int, quality: Int) -> String? {
+    guard let image = UIImage(contentsOfFile: path), let cg = image.cgImage else { return nil }
+    if hasTransparency(cg) { return nil }
+    let w = image.size.width
+    let h = image.size.height
+    guard w > 0, h > 0 else { return nil }
+    let scale = min(1.0, CGFloat(maxSide) / max(w, h))
+    let size = CGSize(width: (w * scale).rounded(), height: (h * scale).rounded())
+    let format = UIGraphicsImageRendererFormat.default()
+    format.scale = 1
+    format.opaque = true
+    let drawn = UIGraphicsImageRenderer(size: size, format: format).image { _ in
+      image.draw(in: CGRect(origin: .zero, size: size))
+    }
+    guard let data = drawn.jpegData(compressionQuality: CGFloat(quality) / 100) else { return nil }
+    let original = (try? FileManager.default.attributesOfItem(atPath: path)[.size] as? Int) ?? 0
+    if original > 0 && data.count >= original { return nil }
+    do {
+      try data.write(to: URL(fileURLWithPath: out))
+      return out
+    } catch {
+      return nil
+    }
+  }
+
+  static func hasTransparency(_ cg: CGImage) -> Bool {
+    switch cg.alphaInfo {
+    case .none, .noneSkipFirst, .noneSkipLast:
+      return false
+    default:
+      break
+    }
+    let w = cg.width
+    let h = cg.height
+    var px = [UInt8](repeating: 0, count: w * h * 4)
+    guard
+      let ctx = CGContext(
+        data: &px, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+        space: CGColorSpaceCreateDeviceRGB(),
+        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+    else { return true }
+    ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+    var i = 3
+    while i < px.count {
+      if px[i] != 255 { return true }
+      i += 4
+    }
+    return false
   }
 
   static func toMp4(path: String, result: @escaping FlutterResult) {
