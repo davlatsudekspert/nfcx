@@ -7314,10 +7314,51 @@ function uploadEdgeKey(request, url) {
   return new Request(url.origin + url.pathname, { method: 'GET' });
 }
 
-async function serveUpload(request, env, url) {
+// ── VIDEOLAR HAM CHEGARA KESHIDA (egasi, 2026-09-28: "Reels'da keyingi
+// videoga o'tganda qora ekran, o'rtada aylana, 1-2 soniya"; ruxsat
+// berildi) ─────────────────────────────────────────────────────────────
+//
+// O'lchov: rasm keshdan (HIT) kelardi, video esa har safar Worker → R2
+// (TTFB ~0.6 s), pleyer esa bitta video uchun bir necha qism so'raydi.
+// Endi video BIRINCHI so'rovdan keyin fonda (`waitUntil`) to'liq holda
+// yaqin Cloudflare serveriga yoziladi; keyingi so'rovlar — shu jumladan
+// `Range` qismlari — o'sha yerdan: Cloudflare keshi to'liq 200 javobdan
+// kerakli qismni o'zi 206 qilib beradi. Birinchi so'rov avvalgidek
+// R2'dan va KUTTIRMAYDI. Fayl nomlari tasodifiy va qayta yozilmaydi
+// (`immutable`) — eskirgan nusxa bo'lmaydi.
+const UPLOAD_VIDEO_EDGE_MAX_BYTES = 200 * 1024 * 1024;
+const UPLOAD_VIDEO_EDGE_TTL = 24 * 60 * 60;
+const uploadVideoFilling = new Set();
+function uploadVideoEdgeUrl(request, url) {
+  if (request.method !== 'GET') return null;
+  if (typeof caches === 'undefined' || !caches.default) return null;
+  if (!/\.(mp4|webm)$/i.test(url.pathname)) return null;
+  return url.origin + url.pathname;
+}
+
+async function serveUpload(request, env, url, ctx) {
   if (!env.UPLOADS) return null;
   const key = decodeURIComponent(url.pathname).replace(/^\//, '');
   if (!key.startsWith('uploads/') || key.includes('..')) return json({ error: 'bad_path' }, 400);
+  const videoEdgeUrl = uploadVideoEdgeUrl(request, url);
+  if (videoEdgeUrl) {
+    try {
+      const range = request.headers.get('range');
+      const hit = await caches.default.match(new Request(videoEdgeUrl, {
+        method: 'GET', headers: range ? { range } : {},
+      }));
+      if (hit) {
+        const etag = hit.headers.get('etag');
+        if (!range && etag && request.headers.get('if-none-match') === etag) {
+          return new Response(null, { status: 304, headers: new Headers(hit.headers) });
+        }
+        const out = new Response(hit.body, hit);
+        out.headers.set('cache-control', UPLOAD_CACHE_CONTROL);
+        out.headers.set('x-nfc-edge', 'hit');
+        return out;
+      }
+    } catch { /* kesh o'qilmasa — oddiy yo'l */ }
+  }
   const edgeKey = uploadEdgeKey(request, url);
   if (edgeKey) {
     try {
@@ -7334,6 +7375,25 @@ async function serveUpload(request, env, url) {
   const head = await env.UPLOADS.head(key);
   if (!head) return null;
   const headers = buildUploadResponseHeaders(head, key);
+  if (videoEdgeUrl && ctx?.waitUntil && head.size > 0 && head.size <= UPLOAD_VIDEO_EDGE_MAX_BYTES
+    && !uploadVideoFilling.has(key)) {
+    uploadVideoFilling.add(key);
+    ctx.waitUntil((async () => {
+      try {
+        const full = await env.UPLOADS.get(key);
+        if (!full) return;
+        const h = buildUploadResponseHeaders(head, key);
+        h.set('content-length', String(head.size));
+        // Chegaradagi nusxa 1 kun yashaydi: o'chirilgan (hisob o'chirish,
+        // moderatsiya) video uzog'i bilan bir kunda keshdan ham ketadi.
+        h.set('cache-control', `public, max-age=${UPLOAD_VIDEO_EDGE_TTL}`);
+        await caches.default.put(new Request(videoEdgeUrl, { method: 'GET' }),
+          new Response(full.body, { status: 200, headers: h }));
+      } catch { /* kesh yozilmasa — keyingi safar yana urinadi */ } finally {
+        uploadVideoFilling.delete(key);
+      }
+    })());
+  }
   if (request.headers.get('if-none-match') === head.httpEtag) {
     return new Response(null, { status: 304, headers });
   }
@@ -10861,10 +10921,10 @@ function withSecurityHeaders(res, url) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     try {
-      const res = await handleRequest(request, env, url);
+      const res = await handleRequest(request, env, url, ctx);
       return withSecurityHeaders(res, url);
     } catch (error) {
       // ── NIMA UCHUN BU YERDA TUTQICH BOR ───────────────────────────
@@ -10923,7 +10983,7 @@ function schemaErrorDetailD1(error) {
   return /no such (column|table)|has no column|unknown column/i.test(msg) ? msg.slice(0, 160) : '';
 }
 
-async function handleRequest(request, env, url) {
+async function handleRequest(request, env, url, ctx) {
 
     // ── ANDROID APP LINKS ──────────────────────────────────────────────
     // Jismoniy NFC kartani tegizganda Android brauzer o'rniga ilovani
@@ -10991,7 +11051,7 @@ async function handleRequest(request, env, url) {
 
     if (url.pathname.startsWith('/uploads/') && ['GET', 'HEAD'].includes(request.method)) {
       try {
-        const res = await serveUpload(request, env, url);
+        const res = await serveUpload(request, env, url, ctx);
         if (res) return res;
       } catch (error) {
         console.error('r2 read', error);
