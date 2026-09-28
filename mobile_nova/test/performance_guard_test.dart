@@ -37,8 +37,11 @@ void main() {
   });
 
   test('tarmoq rasmlari ekran o‘lchamida ochiladi', () {
-    expect(src('lib/features/social/media_frame.dart'),
-        contains('memCacheWidth: decodeWidth(context)'));
+    // `net(width)` — bitta joy; o'lcham ekran/quti kengligidan.
+    final mf = src('lib/features/social/media_frame.dart');
+    expect(mf, contains('if (screenWidth) return net(decodeWidth(context));'));
+    expect(mf, contains('return net(decodeWidth(context, side));'));
+    expect(mf, contains('memCacheWidth: width,'));
     expect(src('lib/features/home/widgets/avatar.dart'),
         contains('memCacheWidth: decodeWidth(context, inner)'));
     expect(src('lib/features/home/home_screen.dart'),

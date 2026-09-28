@@ -85,6 +85,56 @@ int decodeWidth(BuildContext context, [double? logicalWidth]) {
 /// Rasmni chizadi — manba tarmoq ham, ilova ichi ham bo'lishi
 /// mumkin. Ikkala yo'l BITTA joyda turadi, shuning uchun har bir
 /// ekran buni qaytadan hal qilmaydi.
+/// SAHIFA "SAKRAB" OCHILMASIN (egasi, 2026-09-28: "mahsulot va demolar
+/// sekin ochilyapti, ochganda sakrash bo'ladi").
+///
+/// Katalog katakchasi rasmni kichik (katakcha) o'lchamda ochadi, tovar
+/// sahifasi esa o'sha rasmni ekran kengligida QAYTA ochadi — bu boshqa
+/// kesh kaliti. Shu orada kulrang bo'sh quti turardi va rasm keyin
+/// "sakrab" chiqardi. Endi har URL qaysi o'lchamda ochilgani eslab
+/// qolinadi; katta rasm tayyor bo'lguncha o'rnida XOTIRADAGI kichik
+/// nusxa turadi (xuddi Instagram'dagi kabi), keyin katta nusxa ustiga
+/// jimgina chiqadi.
+final _decodedWidths = <String, int>{};
+const _decodedWidthsMax = 400;
+
+/// ENG KICHIK o'lcham saqlanadi: katta sahifa qayta qurilganda ham
+/// (sotuvchi ma'lumoti kelishi, galereya varag'i) o'rinbosar o'sha
+/// kichik nusxa bo'lib qoladi — kulrangga qaytib "miltillamaydi".
+void _rememberDecode(String url, int width) {
+  final prev = _decodedWidths.remove(url);
+  _decodedWidths[url] = prev == null || width < prev ? width : prev;
+  if (_decodedWidths.length > _decodedWidthsMax) {
+    _decodedWidths.remove(_decodedWidths.keys.first);
+  }
+}
+
+/// Testlar uchun: shu URL eng kichik qaysi o'lchamda ochilgan.
+@visibleForTesting
+int? smallestDecodeWidth(String url) => _decodedWidths[url];
+
+/// Katta rasm tayyor bo'lguncha — xotiradagi kichik nusxa (bo'lsa).
+/// Kalit `CachedNetworkImage(memCacheWidth:)` niki bilan AYNAN bir xil:
+/// `ResizeImage(CachedNetworkImageProvider(url), width)`.
+Widget _placeholder(BuildContext context, String url, int target,
+    {required BoxFit fit, required Alignment alignment}) {
+  final t = context.tokens;
+  final prev = _decodedWidths[url];
+  if (prev == null || prev >= target) return ColoredBox(color: t.surface2);
+  return Image(
+    image: ResizeImage(
+      CachedNetworkImageProvider(url, cacheManager: NovaImageCache.manager),
+      width: prev,
+    ),
+    fit: fit,
+    alignment: alignment,
+    gaplessPlayback: true,
+    errorBuilder: (_, __, ___) => ColoredBox(color: t.surface2),
+    frameBuilder: (_, child, frame, sync) =>
+        frame == null ? ColoredBox(color: t.surface2) : child,
+  );
+}
+
 Widget mediaImage(
   BuildContext context,
   String url, {
@@ -128,7 +178,9 @@ Widget mediaImage(
   // katakchasi yoki kichik logotip uchun 1080 px ochish — 4–9 barobar
   // ortiqcha xotira va aylantirishda qotish edi. `cover` da rasm
   // qutining kattaroq tomonini to'ldiradi, shuning uchun o'sha olinadi.
-  if (screenWidth) {
+  Widget net(int width) {
+    final ph = _placeholder(context, url, width, fit: fit, alignment: alignment);
+    _rememberDecode(url, width);
     return CachedNetworkImage(
       cacheManager: NovaImageCache.manager,
       fadeOutDuration: NovaImageCache.fadeOut,
@@ -136,26 +188,18 @@ Widget mediaImage(
       imageUrl: url,
       fit: fit,
       alignment: alignment,
-      memCacheWidth: decodeWidth(context),
-      placeholder: (_, __) => ColoredBox(color: t.surface2),
+      memCacheWidth: width,
+      placeholder: (_, __) => ph,
       errorWidget: (_, __, ___) => broken(),
     );
   }
+
+  if (screenWidth) return net(decodeWidth(context));
   return LayoutBuilder(builder: (context, box) {
     final side = [box.maxWidth, box.maxHeight]
         .where((v) => v.isFinite && v > 0)
         .fold<double?>(null, (a, v) => a == null || v > a ? v : a);
-    return CachedNetworkImage(
-      cacheManager: NovaImageCache.manager,
-      fadeOutDuration: NovaImageCache.fadeOut,
-      fadeInDuration: NovaImageCache.fadeIn,
-      imageUrl: url,
-      fit: fit,
-      alignment: alignment,
-      memCacheWidth: decodeWidth(context, side),
-      placeholder: (_, __) => ColoredBox(color: t.surface2),
-      errorWidget: (_, __, ___) => broken(),
-    );
+    return net(decodeWidth(context, side));
   });
 }
 

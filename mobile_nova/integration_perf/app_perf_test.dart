@@ -27,6 +27,9 @@ import 'package:nfcstore_nova/core/utils/result.dart';
 import 'package:nfcstore_nova/data/repositories/auth_repository.dart';
 import 'package:nfcstore_nova/design/widgets/bottom_nav.dart';
 import 'package:nfcstore_nova/design/widgets/brand_logo.dart';
+import 'package:nfcstore_nova/features/discover/catalog_view.dart';
+import 'package:nfcstore_nova/routing/router.dart';
+import 'package:nfcstore_nova/routing/routes.dart';
 
 import '../integration_test/support/creds.dart';
 import '../integration_test/support/net.dart';
@@ -165,6 +168,38 @@ void main() {
     await measure('08_tab_discover_first', () => tab(discover));
     await wait(3000);
     await measure('09_discover_scroll', scroll);
+
+    // Egasi (2026-09-28): "mahsulot va demolar sekin ochilyapti, ochganda
+    // sakrash bo'ladi". Tovar sahifasi — katalogdagi birinchi kartadan.
+    final router = container.read(routerProvider);
+    Future<void> back() async {
+      router.pop();
+      await wait(1500);
+    }
+
+    final card = find.byType(ProductCard);
+    if (card.evaluate().isNotEmpty) {
+      await measure('09a_product_open', () async {
+        await t.tap(card.first, warnIfMissed: false);
+        await wait(2500);
+      });
+      await measure('09b_product_scroll', () => scroll(times: 1));
+      await measure('09c_product_back', back);
+    } else {
+      // ignore: avoid_print
+      print('[PERF] 09a_product_open SKIP: katalog kartasi topilmadi');
+    }
+    await measure('09d_demo_personal_open', () async {
+      router.push(Routes.demoPersonal);
+      await wait(2500);
+    });
+    await measure('09e_demo_personal_back', back);
+    await measure('09f_demo_business_open', () async {
+      router.push(Routes.demoBusiness);
+      await wait(2500);
+    });
+    await measure('09g_demo_business_back', back);
+
     await measure('10_tab_nfc_first', () => tab(nfc.first));
     await measure('11_tab_reels_first', () async {
       await tab(reels);
