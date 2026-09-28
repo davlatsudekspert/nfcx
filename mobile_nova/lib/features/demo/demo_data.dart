@@ -254,9 +254,14 @@ class DemoProfileRepository extends ProfileRepository {
   Future<Result<void>> unfollow(String code) async => const Ok(null);
 
   @override
+  // Biznes demosi o'z sonini beradi: ilgari ikkalasi ham shaxsiy
+  // profilnikini qaytarardi — Asosiy'dagi kartada "3.1K obunachi",
+  // sahifa ochilganda esa "1.2K" chiqardi (dizayn auditi, 2026-09-28).
   Future<Result<FollowStats>> followStats(String code) async => Ok((
-        followers: demoPersonalId.followers,
-        following: demoPersonalId.following,
+        followers: code == kDemoBusinessId
+            ? demoBusiness.followers
+            : demoPersonalId.followers,
+        following: code == kDemoBusinessId ? 0 : demoPersonalId.following,
         // Demo hech qachon haqiqiy obunani ko'rsatmaydi.
         isFollowing: false,
       ));

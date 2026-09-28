@@ -10,6 +10,7 @@ import '../../../l10n/gen/app_localizations.dart';
 import '../../../routing/routes.dart';
 import '../../demo/demo_data.dart';
 import '../../social/media_frame.dart';
+import 'identity_card.dart' show formatCount;
 
 /// "NFC MOBILE" — bosh sahifadagi tanishtiruv bo'limi.
 ///
@@ -322,15 +323,10 @@ class _DemoCard extends StatelessWidget {
 }
 
 /// Raqamni bo'sh joy bilan ajratadi: `2840` → `2 840`.
-String _n(int v) {
-  final s = v.toString();
-  final b = StringBuffer();
-  for (var i = 0; i < s.length; i++) {
-    if (i > 0 && (s.length - i) % 3 == 0) b.write(' ');
-    b.write(s[i]);
-  }
-  return '$b';
-}
+// Profil va Asosiy'dagi raqamlar bilan BIR XIL ko'rinish (`1.2K`):
+// ilgari "2 840" monoshriftda yozilardi — bo'shliq keng chiqib, "2"
+// alohida son bo'lib ko'rinardi (dizayn auditi, 2026-09-28).
+String _n(int v) => formatCount(v);
 
 class _PersonalCard extends StatelessWidget {
   const _PersonalCard();
@@ -377,7 +373,7 @@ class _BusinessCard extends StatelessWidget {
       stats: [
         (_n(demoBusiness.views), l.nfcViews),
         (_n(demoBusiness.followers), l.profileFollowers),
-        (_n(demoCatalog.length), l.bizCatalog),
+        (_n(demoCatalog.length), l.bizProducts),
       ],
       thumbs: demoCatalog.take(4).map((c) => c.imageUrl).toList(),
       cta: l.demoViewBusiness,

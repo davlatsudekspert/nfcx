@@ -54,8 +54,8 @@ void main() {
   group('A — STORY oqimi', () {
     test('sarlavha va tugma matni Storyga XOS', () {
       final uz = LUz();
-      expect(uz.storyCreate, 'Story qo‘shish');
-      expect(uz.storyPublish, 'Storyni joylash');
+      expect(uz.storyCreate, 'Istoriya qo‘shish');
+      expect(uz.storyPublish, 'Istoriyani joylash');
     });
 
     test('Story STORY endpointiga yozadi', () {

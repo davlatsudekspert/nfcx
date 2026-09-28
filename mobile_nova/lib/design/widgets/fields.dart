@@ -66,16 +66,19 @@ class NovaField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 7),
-          child: Text(
-            label,
-            style: Theme.of(context)
-                .textTheme
-                .labelMedium
-                ?.copyWith(color: t.text2),
+        // Bo'sh yorliq — ko'rsatilmaydi (sarlavha allaqachon aytib
+        // turgan joyda ikkinchi marta yozilmasin).
+        if (label.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 7),
+            child: Text(
+              label,
+              style: Theme.of(context)
+                  .textTheme
+                  .labelMedium
+                  ?.copyWith(color: t.text2),
+            ),
           ),
-        ),
         TextField(
           controller: controller,
           keyboardType: keyboardType,

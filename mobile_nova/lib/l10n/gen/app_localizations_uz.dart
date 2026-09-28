@@ -474,10 +474,10 @@ class LUz extends L {
   String get homeQuickActions => 'Tezkor amallar';
 
   @override
-  String get homeStories => 'Stories';
+  String get homeStories => 'Istoriyalar';
 
   @override
-  String get homeYourStory => 'Sizning story';
+  String get homeYourStory => 'Istoriyangiz';
 
   @override
   String get homePosts => 'Postlar';
@@ -672,10 +672,10 @@ class LUz extends L {
   String get searchClear => 'Tozalash';
 
   @override
-  String get storyCreate => 'Story qo‘shish';
+  String get storyCreate => 'Istoriya qo‘shish';
 
   @override
-  String get storyDeleteConfirm => 'Bu story o‘chirilsinmi?';
+  String get storyDeleteConfirm => 'Bu istoriya o‘chirilsinmi?';
 
   @override
   String get postCreate => 'Post qo‘shish';
@@ -705,7 +705,7 @@ class LUz extends L {
   String get reelCreate => 'Reel qo‘shish';
 
   @override
-  String get storyPublish => 'Storyni joylash';
+  String get storyPublish => 'Istoriyani joylash';
 
   @override
   String get postPublish => 'Postni joylash';
@@ -790,7 +790,7 @@ class LUz extends L {
 
   @override
   String get bizPitchReach =>
-      'Postlar, istoryalar va «Tanlov» ro‘yxatida ko‘rinish';
+      'Postlar, istoriyalar va «Tanlov» ro‘yxatida ko‘rinish';
 
   @override
   String get bizPitchAddress => 'O‘z manzilingiz: nfcstore.uz/c/nomingiz';
@@ -1245,7 +1245,7 @@ class LUz extends L {
   String get premiumTitle => 'Premium obuna';
 
   @override
-  String get premiumTagline => 'Reels, istorya va to‘liq imkoniyatlar';
+  String get premiumTagline => 'Reels, istoriya va to‘liq imkoniyatlar';
 
   @override
   String get premiumPerMonth => 'oyiga';
@@ -1277,7 +1277,7 @@ class LUz extends L {
   String get premiumPerkVideo => 'Video post va Reels';
 
   @override
-  String get premiumPerkStory => 'Istorya qo‘yish';
+  String get premiumPerkStory => 'Istoriya qo‘yish';
 
   @override
   String get premiumPerkPosts => 'Ko‘proq post (60 tagacha)';
@@ -1324,7 +1324,8 @@ class LUz extends L {
   String get premiumLockedVideo => 'Video post va Reels uchun Premium kerak.';
 
   @override
-  String get premiumLockedStory => 'Istorya qo‘yish uchun darajangiz yetmaydi.';
+  String get premiumLockedStory =>
+      'Istoriya qo‘yish uchun darajangiz yetmaydi.';
 
   @override
   String get premiumLockedPost => 'Post qo‘yish uchun darajangiz yetmaydi.';
@@ -1854,7 +1855,8 @@ class LUz extends L {
   String get registerTypeRequired => 'Hisob turini tanlang';
 
   @override
-  String get accountPersonalHint => 'Raqamli vizitka, NFC ID, lenta va story';
+  String get accountPersonalHint =>
+      'Raqamli vizitka, NFC ID, lenta va istoriya';
 
   @override
   String get accountBusinessHint =>
@@ -1892,7 +1894,7 @@ class LUz extends L {
       'Karta yoki stikerga tegilsa sahifangiz darhol ochiladi';
 
   @override
-  String get bizFeatContent => 'Post · Story · Reels';
+  String get bizFeatContent => 'Post · Istoriya · Reels';
 
   @override
   String get bizFeatContentHint =>
@@ -2153,7 +2155,7 @@ class LUz extends L {
       'Har bir post, reel, istoriya va izohda “Shikoyat qilish” bor. Yuklangan rasmlar avtomatik tekshiriladi. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.';
 
   @override
-  String get storyCaption => 'Istoryaga qisqa matn';
+  String get storyCaption => 'Istoriyaga qisqa matn';
 
   @override
   String get noNfcExplain =>

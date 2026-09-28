@@ -1002,13 +1002,13 @@ abstract class L {
   /// No description provided for @homeStories.
   ///
   /// In uz, this message translates to:
-  /// **'Stories'**
+  /// **'Istoriyalar'**
   String get homeStories;
 
   /// No description provided for @homeYourStory.
   ///
   /// In uz, this message translates to:
-  /// **'Sizning story'**
+  /// **'Istoriyangiz'**
   String get homeYourStory;
 
   /// No description provided for @homePosts.
@@ -1386,13 +1386,13 @@ abstract class L {
   /// No description provided for @storyCreate.
   ///
   /// In uz, this message translates to:
-  /// **'Story qo‘shish'**
+  /// **'Istoriya qo‘shish'**
   String get storyCreate;
 
   /// No description provided for @storyDeleteConfirm.
   ///
   /// In uz, this message translates to:
-  /// **'Bu story o‘chirilsinmi?'**
+  /// **'Bu istoriya o‘chirilsinmi?'**
   String get storyDeleteConfirm;
 
   /// No description provided for @postCreate.
@@ -1452,7 +1452,7 @@ abstract class L {
   /// No description provided for @storyPublish.
   ///
   /// In uz, this message translates to:
-  /// **'Storyni joylash'**
+  /// **'Istoriyani joylash'**
   String get storyPublish;
 
   /// No description provided for @postPublish.
@@ -1614,7 +1614,7 @@ abstract class L {
   /// No description provided for @bizPitchReach.
   ///
   /// In uz, this message translates to:
-  /// **'Postlar, istoryalar va «Tanlov» ro‘yxatida ko‘rinish'**
+  /// **'Postlar, istoriyalar va «Tanlov» ro‘yxatida ko‘rinish'**
   String get bizPitchReach;
 
   /// No description provided for @bizPitchAddress.
@@ -2490,7 +2490,7 @@ abstract class L {
   /// No description provided for @premiumTagline.
   ///
   /// In uz, this message translates to:
-  /// **'Reels, istorya va to‘liq imkoniyatlar'**
+  /// **'Reels, istoriya va to‘liq imkoniyatlar'**
   String get premiumTagline;
 
   /// No description provided for @premiumPerMonth.
@@ -2550,7 +2550,7 @@ abstract class L {
   /// No description provided for @premiumPerkStory.
   ///
   /// In uz, this message translates to:
-  /// **'Istorya qo‘yish'**
+  /// **'Istoriya qo‘yish'**
   String get premiumPerkStory;
 
   /// No description provided for @premiumPerkPosts.
@@ -2640,7 +2640,7 @@ abstract class L {
   /// No description provided for @premiumLockedStory.
   ///
   /// In uz, this message translates to:
-  /// **'Istorya qo‘yish uchun darajangiz yetmaydi.'**
+  /// **'Istoriya qo‘yish uchun darajangiz yetmaydi.'**
   String get premiumLockedStory;
 
   /// No description provided for @premiumLockedPost.
@@ -3618,7 +3618,7 @@ abstract class L {
   /// No description provided for @accountPersonalHint.
   ///
   /// In uz, this message translates to:
-  /// **'Raqamli vizitka, NFC ID, lenta va story'**
+  /// **'Raqamli vizitka, NFC ID, lenta va istoriya'**
   String get accountPersonalHint;
 
   /// No description provided for @accountBusinessHint.
@@ -3684,7 +3684,7 @@ abstract class L {
   /// No description provided for @bizFeatContent.
   ///
   /// In uz, this message translates to:
-  /// **'Post · Story · Reels'**
+  /// **'Post · Istoriya · Reels'**
   String get bizFeatContent;
 
   /// No description provided for @bizFeatContentHint.
@@ -4176,7 +4176,7 @@ abstract class L {
   /// No description provided for @storyCaption.
   ///
   /// In uz, this message translates to:
-  /// **'Istoryaga qisqa matn'**
+  /// **'Istoriyaga qisqa matn'**
   String get storyCaption;
 
   /// No description provided for @noNfcExplain.

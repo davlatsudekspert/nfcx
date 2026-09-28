@@ -124,7 +124,9 @@ class _NfcIdMarketScreenState extends ConsumerState<NfcIdMarketScreen> {
       body: NovaScroll(
         children: [
           NovaField(
-            label: l.idMarketTitle,
+            // Sarlavha ("NFC ID olish") tepada turibdi — maydon ustida
+            // ikkinchi marta yozilmaydi (dizayn auditi, 2026-09-28).
+            label: '',
             hint: l.idMarketSearchHint,
             controller: _field,
             onChanged: _onChanged,

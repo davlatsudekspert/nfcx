@@ -473,10 +473,10 @@ class LRu extends L {
   String get homeQuickActions => 'Быстрые действия';
 
   @override
-  String get homeStories => 'Stories';
+  String get homeStories => 'Истории';
 
   @override
-  String get homeYourStory => 'Ваша story';
+  String get homeYourStory => 'Ваша история';
 
   @override
   String get homePosts => 'Посты';
@@ -668,10 +668,10 @@ class LRu extends L {
   String get searchClear => 'Очистить';
 
   @override
-  String get storyCreate => 'Добавить story';
+  String get storyCreate => 'Добавить историю';
 
   @override
-  String get storyDeleteConfirm => 'Удалить эту story?';
+  String get storyDeleteConfirm => 'Удалить эту историю?';
 
   @override
   String get postCreate => 'Добавить пост';
@@ -701,7 +701,7 @@ class LRu extends L {
   String get reelCreate => 'Добавить reel';
 
   @override
-  String get storyPublish => 'Опубликовать story';
+  String get storyPublish => 'Опубликовать историю';
 
   @override
   String get postPublish => 'Опубликовать пост';
@@ -1843,7 +1843,7 @@ class LRu extends L {
   String get registerTypeRequired => 'Выберите тип аккаунта';
 
   @override
-  String get accountPersonalHint => 'Цифровая визитка, NFC ID, лента и сторис';
+  String get accountPersonalHint => 'Цифровая визитка, NFC ID, лента и истории';
 
   @override
   String get accountBusinessHint => 'Мини-сайт, каталог, заказы и аналитика';
@@ -1879,7 +1879,7 @@ class LRu extends L {
       'Касание карты или стикера сразу открывает страницу';
 
   @override
-  String get bizFeatContent => 'Посты · Сторис · Reels';
+  String get bizFeatContent => 'Посты · Истории · Reels';
 
   @override
   String get bizFeatContentHint =>
