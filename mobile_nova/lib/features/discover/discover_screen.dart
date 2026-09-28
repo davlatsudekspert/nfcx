@@ -343,7 +343,15 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
                       : Padding(
                           padding: const EdgeInsets.symmetric(
                               horizontal: Gap.screenX),
-                          child: _ResultTile(item: items[i - head]),
+                          child: _ResultTile(
+                            item: items[i - head],
+                            // O'rin faqat ko'rishlar bo'yicha saralangan
+                            // ro'yxatda (Odamlar, qidiruvsiz) — saytdagi
+                            // Reyting bilan bir xil tartib.
+                            rank: tab == DiscoverTab.people && query.isEmpty
+                                ? i - head + 1
+                                : null,
+                          ),
                         ),
                 );
                 if (businesses.isEmpty) return list;
@@ -412,14 +420,15 @@ class _RecentSearches extends StatelessWidget {
 }
 
 class _ResultTile extends StatelessWidget {
-  const _ResultTile({required this.item});
+  const _ResultTile({required this.item, this.rank});
   final Object item;
+  final int? rank;
 
   @override
   Widget build(BuildContext context) {
     final i = item;
     // Faqat ODAM yoki BIZNES keladi.
-    if (i is NfcId) return DiscoverPersonCard(id: i);
+    if (i is NfcId) return DiscoverPersonCard(id: i, rank: rank);
     return DiscoverBusinessCard(business: i as Business);
   }
 }

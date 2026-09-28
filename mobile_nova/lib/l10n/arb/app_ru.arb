@@ -1005,5 +1005,7 @@
   "timeMinutesAgo": "{n} мин назад",
   "@timeMinutesAgo": {"placeholders": {"n": {"type": "int"}}},
   "timeHoursAgo": "{n} ч назад",
-  "@timeHoursAgo": {"placeholders": {"n": {"type": "int"}}}
+  "@timeHoursAgo": {"placeholders": {"n": {"type": "int"}}},
+  "discoverViews": "{count} просм.",
+  "discoverRank": "{n}-е место"
 }

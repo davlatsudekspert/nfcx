@@ -67,6 +67,141 @@ class _InitialsTile extends StatelessWidget {
 }
 
 /// Belgili statistika katakchasi: belgi, son, yorliq.
+/// `👁 276 ko'rish` — profil necha marta ko'rilgan (saytdagi Reyting
+/// bilan bir xil son: ikkalasi ham `views` maydonidan).
+///
+/// [onPhoto] — tor kartada surat ustida: to'q shisha yorliq, faqat son
+/// (`👁 276`), har mavzuda o'qiladi.
+class ViewsChip extends StatelessWidget {
+  const ViewsChip({super.key, required this.views, this.onPhoto = false});
+  final int views;
+  final bool onPhoto;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final l = L.of(context);
+    if (onPhoto) {
+      return Semantics(
+        label: l.discoverViews(formatCount(views)),
+        excludeSemantics: true,
+        child: Container(
+          key: const ValueKey('discover-views'),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: .6),
+            borderRadius: R.pill,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.visibility_outlined,
+                  size: 13, color: Colors.white),
+              const SizedBox(width: 3),
+              Flexible(
+                child: Text(
+                  formatCount(views),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: AppType.sans,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
+                    height: 1,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    final ink = Color.lerp(t.text1, t.text2, .35)!;
+    return Row(
+      key: const ValueKey('discover-views'),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.visibility_outlined, size: 15, color: ink),
+        const SizedBox(width: 4),
+        Flexible(
+          child: Text(
+            l.discoverViews(formatCount(views)),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontFamily: AppType.sans,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: ink,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// O'rin belgisi. 1–3 — medal (tilla, kumush, bronza: `IdPlate`
+/// daraja ranglari, saytdagi Reyting kabi); 4 dan — to'q shisha
+/// ustida `#4`. Surat ustida turadi, shuning uchun har mavzuda
+/// o'qiladi (fon rasmga bog'liq emas).
+class RankBadge extends StatelessWidget {
+  const RankBadge({super.key, required this.rank});
+  final int rank;
+
+  static Color? medal(int rank) => switch (rank) {
+        1 => IdPlate.tierColors['gold'],
+        2 => IdPlate.tierColors['silver'],
+        3 => IdPlate.tierColors['free'], // bronza
+        _ => null,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context);
+    final m = medal(rank);
+    final text = m != null ? '$rank' : '#$rank';
+    return Semantics(
+      label: l.discoverRank(rank),
+      excludeSemantics: true,
+      child: Container(
+        key: ValueKey('discover-rank-$rank'),
+        constraints: const BoxConstraints(minWidth: 26),
+        height: 26,
+        padding: const EdgeInsets.symmetric(horizontal: 7),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: m ?? Colors.black.withValues(alpha: .62),
+          borderRadius: R.pill,
+          border: Border.all(
+            color: m != null
+                ? Colors.white.withValues(alpha: .7)
+                : Colors.white.withValues(alpha: .25),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: .28),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontFamily: AppType.sans,
+            fontSize: 12.5,
+            fontWeight: FontWeight.w800,
+            height: 1,
+            color: m != null ? IdPlate.goldInk : Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _Stat extends StatelessWidget {
   const _Stat({required this.icon, required this.value, required this.label});
   final IconData icon;
@@ -174,9 +309,21 @@ class _ViewPill extends StatelessWidget {
 
 // ================================================================ ODAM
 
+/// Odam kartasi.
+///
+/// KO'RISHLAR SONI VA O'RIN (egasi, 2026-09-28: "saytda reytingda
+/// chiqar edi, bu yerda soni ko'rinmayapti"). Ro'yxat saytdagi
+/// Reyting bilan bir xil tartibda (ko'rishlar bo'yicha) edi, lekin
+/// sonning o'zi yo'q edi. Endi IdPlate yonida `👁 276 ko'rish`, suratning
+/// burchagida esa o'rin: 1–3 — tilla, kumush, bronza medal (sayt
+/// Reytingidagi kabi), keyingilari `#4`. [rank] faqat saralangan
+/// ro'yxatda (qidiruvsiz) beriladi — qidiruv natijasida o'rin ma'nosiz.
 class DiscoverPersonCard extends ConsumerWidget {
-  const DiscoverPersonCard({super.key, required this.id});
+  const DiscoverPersonCard({super.key, required this.id, this.rank});
   final NfcId id;
+
+  /// Ko'rishlar bo'yicha o'rin (1 dan). `null` — ko'rsatilmaydi.
+  final int? rank;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -222,11 +369,35 @@ class DiscoverPersonCard extends ConsumerWidget {
                   // SURAT — katta kvadrat, kartaning asosiy urg'usi.
                   SizedBox(
                     width: photo,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(18),
-                      child: e.avatarUrl.isEmpty
-                          ? _InitialsTile(text: _initials(e.name, e.code))
-                          : mediaImage(context, e.avatarUrl, fit: BoxFit.cover),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(18),
+                          child: e.avatarUrl.isEmpty
+                              ? _InitialsTile(text: _initials(e.name, e.code))
+                              : mediaImage(context, e.avatarUrl,
+                                  fit: BoxFit.cover),
+                        ),
+                        if (rank != null)
+                          Positioned(
+                            left: 6,
+                            top: 6,
+                            child: RankBadge(rank: rank!),
+                          ),
+                        // Tor ekran / katta shrift: ID yonida joy yo'q —
+                        // son surat pastida qisqa yorliq bo'lib turadi.
+                        if (compact)
+                          Positioned(
+                            left: 6,
+                            bottom: 6,
+                            right: 6,
+                            child: Align(
+                              alignment: Alignment.bottomLeft,
+                              child: ViewsChip(views: e.views, onPhoto: true),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -291,10 +462,18 @@ class DiscoverPersonCard extends ConsumerWidget {
                           ],
                         ),
                         const SizedBox(height: 8),
-                        IdPlate(
-                          code: e.code,
-                          tier: e.tier,
-                          size: IdPlateSize.small,
+                        Row(
+                          children: [
+                            IdPlate(
+                              code: e.code,
+                              tier: e.tier,
+                              size: IdPlateSize.small,
+                            ),
+                            if (!compact) ...[
+                              const SizedBox(width: 8),
+                              Flexible(child: ViewsChip(views: e.views)),
+                            ],
+                          ],
                         ),
                         const SizedBox(height: 10),
                         Container(

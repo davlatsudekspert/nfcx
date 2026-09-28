@@ -5330,6 +5330,18 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'{n} soat oldin'**
   String timeHoursAgo(int n);
+
+  /// Tanlov → Odamlar kartasi: profil necha marta ko‘rilgan (saytdagi Reyting bilan bir xil son).
+  ///
+  /// In uz, this message translates to:
+  /// **'{count} ko‘rish'**
+  String discoverViews(String count);
+
+  /// Tanlov → Odamlar: ko‘rishlar bo‘yicha o‘rin (ekran o‘quvchi uchun).
+  ///
+  /// In uz, this message translates to:
+  /// **'{n}-o‘rin'**
+  String discoverRank(int n);
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

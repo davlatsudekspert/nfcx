@@ -2789,4 +2789,14 @@ class LEn extends L {
   String timeHoursAgo(int n) {
     return '$n h ago';
   }
+
+  @override
+  String discoverViews(String count) {
+    return '$count views';
+  }
+
+  @override
+  String discoverRank(int n) {
+    return '#$n';
+  }
 }

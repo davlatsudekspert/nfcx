@@ -2786,4 +2786,14 @@ class LRu extends L {
   String timeHoursAgo(int n) {
     return '$n ч назад';
   }
+
+  @override
+  String discoverViews(String count) {
+    return '$count просм.';
+  }
+
+  @override
+  String discoverRank(int n) {
+    return '$n-е место';
+  }
 }

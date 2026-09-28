@@ -1106,5 +1106,15 @@
   "timeMinutesAgo": "{n} daqiqa oldin",
   "@timeMinutesAgo": {"placeholders": {"n": {"type": "int"}}},
   "timeHoursAgo": "{n} soat oldin",
-  "@timeHoursAgo": {"placeholders": {"n": {"type": "int"}}}
+  "@timeHoursAgo": {"placeholders": {"n": {"type": "int"}}},
+  "discoverViews": "{count} ko‘rish",
+  "discoverRank": "{n}-o‘rin",
+  "@discoverViews": {
+    "description": "Tanlov → Odamlar kartasi: profil necha marta ko‘rilgan (saytdagi Reyting bilan bir xil son).",
+    "placeholders": {"count": {"type": "String"}}
+  },
+  "@discoverRank": {
+    "description": "Tanlov → Odamlar: ko‘rishlar bo‘yicha o‘rin (ekran o‘quvchi uchun).",
+    "placeholders": {"n": {"type": "int"}}
+  }
 }

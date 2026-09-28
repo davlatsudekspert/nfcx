@@ -2793,4 +2793,14 @@ class LUz extends L {
   String timeHoursAgo(int n) {
     return '$n soat oldin';
   }
+
+  @override
+  String discoverViews(String count) {
+    return '$count ko‘rish';
+  }
+
+  @override
+  String discoverRank(int n) {
+    return '$n-o‘rin';
+  }
 }
