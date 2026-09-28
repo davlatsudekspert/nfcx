@@ -105,6 +105,7 @@ async function main() {
   for (const it of [...(plan.updates || []), ...(plan.items || [])]) {
     for (const rel of [...(it.images || []), ...Object.values(it.replaceImages || {})]) if (!(await imageBytes(rel))) missing.push(rel);
   }
+  for (const rel of Object.values(plan.company?.logoReplace || {})) if (!(await imageBytes(rel))) missing.push(rel);
   if (missing.length) {
     missing.forEach((m) => line(`RASM YO‘Q: ${m}`));
     if (APPLY) process.exit(2);
@@ -160,6 +161,13 @@ async function main() {
   for (const it of plan.items || []) {
     const cur = byName.get(it.name);
     rows.push({ kind: 'yangi', name: it.name, was: '—', images: it.images.length, status: cur ? 'mavjud — o‘tkaziladi' : 'QO‘SHILADI', it, cur });
+  }
+  // Kompaniya logotipi: o'sha rasmning yengil nusxasi (faqat logoUrl
+  // yuboriladi — server PATCH'i qolgan maydonlarni saqlaydi).
+  const logoSwap = Object.entries(plan.company?.logoReplace || {});
+  const logoTodo = logoSwap.filter(([from]) => company?.logoUrl === from);
+  for (const [from] of logoSwap) {
+    line(`  logotip   │ ${from.slice(-40).padEnd(44)} │ ${company?.logoUrl === from ? 'ALMASHTIRILADI' : 'allaqachon / boshqa logo — tegilmaydi'}`);
   }
   line('');
   for (const r of rows) line(`  ${r.kind.padEnd(9)} │ ${r.name.slice(0, 44).padEnd(44)} │ ${String(r.images).padStart(2)} rasm │ ${r.status}`);
@@ -244,6 +252,12 @@ async function main() {
       line(`  ✓ qo‘shildi: ${body.name}`);
     }
   }
+  for (const [from, rel] of logoTodo) {
+    const url = await upload(rel);
+    await api.patchCompany(plan.companyId, { logoUrl: url });
+    report.company = { restore: { logoUrl: from }, logoUrl: url };
+    line(`  ✓ logotip almashtirildi: ${url}`);
+  }
   await writeFile(`${OUT}/report.json`, JSON.stringify(report, null, 2));
 
   // 6) TEKSHIRUV — tashrifchi ko'zi bilan (kirmagan holda).
@@ -254,6 +268,7 @@ async function main() {
     return !c || !c.priceSoon || !(c.images || []).length;
   });
   const leak = 'ownerEmail' in (pub?.company || {});
+  if (report.company && pub?.company?.logoUrl !== report.company.logoUrl) bad.push('logotip saytda yangilanmadi');
   line(`\nTekshiruv: ${want.length - bad.length}/${want.length} mahsulot saytda "Narxi tez kunda" bilan ko‘rinadi.`);
   await summary(`\n* Tekshiruv: **${want.length - bad.length}/${want.length}** mahsulot saytda "Narxi tez kunda" bilan\n* Ochiq javobda egasining emaili: ${leak ? '**BOR (xato)**' : 'yo‘q'}`);
   await api.logout();
