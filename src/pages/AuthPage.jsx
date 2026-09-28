@@ -358,15 +358,18 @@ export default function AuthPage({ mode }) {
                   </>
                 )}
 
-                <button className="btn btn-gold w-full" disabled={busy || !linkToken}>
+                {/* Email havolasi bilan kelganda `linkToken` (Telegram) bo'lmaydi —
+                    havolaning o'zi isbot. Ilgari shart faqat `!linkToken` edi va
+                    tugma bu yo'lda HECH QACHON bosilmasdi (egasi, 2026-09-28). */}
+                <button className="btn btn-gold w-full" disabled={busy || !(linkToken || resetToken)}>
                   {busy ? <span className="loading loading-spinner loading-sm"></span> : t('Parolni yangilash')}
                 </button>
               </form>
               {msg && <div className={`alert mt-4 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(msg.text)}</span></div>}
-              <p className="mt-3 text-xs leading-relaxed text-base-content/45">
+              {!resetToken && <p className="mt-3 text-xs leading-relaxed text-base-content/45">
                 {t('Telefon raqamingiz akkauntdagi raqam bilan mos kelishi kerak. Bot:')}{' '}
                 <a href={BOT_LINK} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent underline underline-offset-2"><IconTelegram width={12} height={12} /> @{botUsername}</a>
-              </p>
+              </p>}
               <div className="mt-4 text-center text-sm text-base-content/55">
                 <button type="button" onClick={closeForgot} className="min-h-11 cursor-pointer underline underline-offset-2 hover:text-base-content">{t('Kirish sahifasiga qaytish')}</button>
               </div>
