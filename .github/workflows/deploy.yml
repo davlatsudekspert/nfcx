@@ -78,6 +78,11 @@ jobs:
       # tekshiradi.
       - name: Bildirishnomalar (obuna / like / izoh)
         run: node scripts/test-notifications.mjs
+      # Muddati (24 soat) o'tgan "kutilmoqda" buyurtmalar kunlik cron va
+      # admin ro'yxatida yopiladi; yangi, to'langan va Payme maydonlariga
+      # tegilmaydi.
+      - name: Eskirgan buyurtmalarni avtomatik yopish
+        run: node scripts/test-order-expire-sweep.mjs
       - name: Izoh moderatsiyasi — soft-delete va dalil arxivi
         run: node scripts/test-comment-moderation.mjs
       # Izohga JAVOB va izohga LIKE. Javob bir qavat, begona

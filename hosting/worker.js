@@ -9,7 +9,7 @@ import * as apiCatalog from './api/catalog.js';
 import * as apiMedia from './api/media.js';
 import * as apiEngagement from './api/engagement.js';
 import * as apiAdminExtra from './api/admin-extra.js';
-import { PENDING_ORDER_TTL_MS, PENDING_EXPIRES_MS_SQL } from './api/order-window.js';
+import { PENDING_ORDER_TTL_MS, PENDING_EXPIRES_MS_SQL, CREATED_AT_EPOCH_SQL } from './api/order-window.js';
 import * as apiAdminFinance from './api/admin-finance.js';
 import * as apiTelegram from './api/telegram.js';
 import * as apiAssistant from './api/assistant.js';
@@ -4501,6 +4501,38 @@ async function activeWebOrderByCodeD1(env, code) {
   return null;
 }
 
+// MUDDATI O'TGAN BUYURTMALARNI YOPISH — HAMMASINI BIRDAN (egasi,
+// 2026-09-28: "buyurtmalar osilib o'tmasligi kerak").
+//
+// `activeWebOrderByCodeD1` muddati o'tganini faqat KIMDIR SHU KODNI
+// qayta sotib olmoqchi bo'lganda yopardi. Hech kim so'ramasa buyurtma
+// admin ro'yxatida kunlab "Kutilmoqda" bo'lib turardi (4, 6, 11 kun).
+//
+// Qoida o'sha-o'sha: 24 soat (`PENDING_ORDER_TTL_MS`) — Payme
+// tranzaksiyasining o'z muddati 12 soat, ya'ni undan keyin to'lov o'tib
+// qolishi mumkin emas. Faqat `status` o'zgaradi, xuddi yakka yo'ldagi
+// kabi: `cancel_time`/`cancel_reason` Payme protokoliniki, ularga
+// tegilmaydi. Vaqti o'qib bo'lmaydigan qator (NULL) — tegilmaydi.
+// Reklama sloti buyurtmasi yopilsa, slotning o'zi ham "kutilmoqda"da
+// qolib ketmasin.
+async function expireStaleWebOrdersD1(env, nowMs = Date.now()) {
+  const cutoff = Math.floor((nowMs - PENDING_ORDER_TTL_MS) / 1000);
+  const rows = await env.DB.prepare(
+    `UPDATE web_orders SET status = 'cancelled'
+      WHERE status = 'pending'
+        AND ${CREATED_AT_EPOCH_SQL} IS NOT NULL
+        AND CAST(${CREATED_AT_EPOCH_SQL} AS INTEGER) <= ?
+      RETURNING id, kind`
+  ).bind(cutoff).all();
+  const done = rows?.results || [];
+  const slotOrders = done.filter((r) => r.kind === 'featured_slot').map((r) => Number(r.id));
+  for (const id of slotOrders) {
+    await env.DB.prepare(`UPDATE featured_slots SET status = 'cancelled' WHERE order_id = ? AND status = 'pending'`)
+      .bind(id).run().catch(() => {});
+  }
+  return done.length;
+}
+
 // Shaxsiy vizitka (NFC ID) yozuvini yaratish — server/db.js'dagi
 // createRecord() bilan bir xil ustunlar to'plami (qolgan RECORD_COLUMNS
 // ustunlari jadval DEFAULT qiymatlarida qoladi — legacy ham xuddi shunday
@@ -5611,7 +5643,7 @@ export {
   clickEnabledD1, clickCheckoutReadyD1, clickCheckoutLinkD1, clickSignD1, handleClickRequestD1,
   emailEnabledD1, sendEmailD1, emailShellD1,
   createWebOrderD1, createPendingWebOrderD1, getWebOrderD1, getWebOrderByPaymeIdD1, setWebOrderPaymeIdD1,
-  setWebOrderStatusD1, activeWebOrderByCodeD1, createRecordD1, attachCardToUserD1,
+  setWebOrderStatusD1, activeWebOrderByCodeD1, expireStaleWebOrdersD1, createRecordD1, attachCardToUserD1,
   finalizePaidWebOrderD1, handlePaymeRequestD1, verifyPaymeAuthD1, paymeAuthReasonD1, paymentsEnabledD1,
   paymeCheckoutLinkD1, checkoutLinksD1, getRecord, getRecordOwner, PAYME_ERR, ensureCoreSchema,
   validateRecordBody, updateRecord, parseMusicUrls,
@@ -8721,6 +8753,9 @@ async function adminCoreApi(request, env, url, admin) {
   }
 
   if (path === '/api/admin/orders' && request.method === 'GET') {
+    // Ro'yxatdan oldin muddati o'tganlarni yopamiz — admin eskirgan
+    // "Kutilmoqda"ni ko'rmasin (kunlik cron'ni kutib o'tirmasdan).
+    await expireStaleWebOrdersD1(env).catch(() => {});
     // SINOV BUYURTMALARI YASHIRILADI (2026-09, egasining so'rovi:
     // "statistikalarni nol qilib yubor — o'zimiz qilgan ishlar bular").
     //
@@ -10965,6 +11000,12 @@ export default {
         await runScheduledPurge(env, H);
       } catch (e) {
         console.error('account_purge', String(e?.message || e).slice(0, 200));
+      }
+      try {
+        const n = await expireStaleWebOrdersD1(env);
+        if (n) console.log('orders_expired', n);
+      } catch (e) {
+        console.error('orders_expire', String(e?.message || e).slice(0, 120));
       }
     })());
   },
