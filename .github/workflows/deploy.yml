@@ -83,6 +83,10 @@ jobs:
       # tegilmaydi.
       - name: Eskirgan buyurtmalarni avtomatik yopish
         run: node scripts/test-order-expire-sweep.mjs
+      # Google/Yandex: bizneslar sitemap'i va profil kartochkalari. Shaxsiy
+      # NFC ID hech qachon sitemap'da emas va har doim noindex (maxfiylik).
+      - name: SEO — biznes sitemap va profil kartochkalari
+        run: node scripts/test-seo-profiles.mjs
       - name: Izoh moderatsiyasi — soft-delete va dalil arxivi
         run: node scripts/test-comment-moderation.mjs
       # Izohga JAVOB va izohga LIKE. Javob bir qavat, begona

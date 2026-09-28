@@ -8335,6 +8335,152 @@ async function newsShellResponse(env, url, id) {
   return new Response(out, { status: 200, headers });
 }
 
+// ── BIZNES VA SHAXSIY PROFIL: GOOGLE VA TELEGRAM KARTOCHKASI ──────────
+//
+// Egasi (2026-09-28): "biznes profillar Google'da chiqsin, qonunga zid
+// bo'lmasin". Yangiliklardagi usulning o'zi: robot (Googlebot, Telegram,
+// WhatsApp) JavaScript ishlatmaydi, shuning uchun SPA qobig'iga shu
+// sahifaning sarlavhasi, tavsifi va rasmi yoziladi. Brauzer uchun farq
+// yo'q — Cloudflare navigatsiya so'rovini (Sec-Fetch-Mode: navigate)
+// Worker'ga olib kelmay, index.html'ni to'g'ridan-to'g'ri beradi.
+//
+// MAXFIYLIK:
+//   • Biznes — ochiq tijorat sahifasi (katalogda ham bor). Sitemap'ga
+//     kiradi. NAMUNA bizneslar esa soxta: `noindex`, sitemap'da yo'q.
+//   • Shaxsiy NFC ID — odamning ism-sharifi, telefoni. Kartochkada FAQAT
+//     ism va rasm (odam havolani o'zi ulashadi), tavsifda shaxsiy
+//     ma'lumot YO'Q, va HAR DOIM `noindex` — qidiruvga ataylab berilmaydi.
+export function injectProfileOg(html, meta) {
+  let out = String(html || '');
+  const pageTitle = `${meta.title} — NFCSTORE`;
+  out = out.replace(/<title>[\s\S]*?<\/title>/i, `<title>${ogTextEscape(pageTitle)}</title>`);
+  out = ogReplaceMeta(out, 'name', 'description', meta.description);
+  out = ogReplaceMeta(out, 'property', 'og:title', pageTitle);
+  out = ogReplaceMeta(out, 'property', 'og:description', meta.description);
+  out = ogReplaceMeta(out, 'property', 'og:type', 'profile');
+  out = ogReplaceMeta(out, 'property', 'og:url', meta.url);
+  out = ogReplaceMeta(out, 'property', 'og:image', meta.image);
+  out = ogReplaceMeta(out, 'property', 'og:image:alt', meta.title);
+  out = ogReplaceMeta(out, 'name', 'twitter:card', 'summary_large_image');
+  out = ogReplaceMeta(out, 'name', 'twitter:title', pageTitle);
+  out = ogReplaceMeta(out, 'name', 'twitter:description', meta.description);
+  out = ogReplaceMeta(out, 'name', 'twitter:image', meta.image);
+  if (meta.noindex) out = ogReplaceMeta(out, 'name', 'robots', 'noindex, follow');
+  if (/<link[^>]*\srel="canonical"[^>]*>/i.test(out)) {
+    out = out.replace(/<link[^>]*\srel="canonical"[^>]*>/i, `<link rel="canonical" href="${ogAttrEscape(meta.url)}" />`);
+  } else {
+    out = out.replace(/<\/head>/i, `  <link rel="canonical" href="${ogAttrEscape(meta.url)}" />\n</head>`);
+  }
+  if (!meta.usesFallbackImage) {
+    out = ogRemoveMeta(out, 'property', 'og:image:width');
+    out = ogRemoveMeta(out, 'property', 'og:image:height');
+  }
+  return out;
+}
+
+// Biznes sahifasining kanonik manzili — ilova va karta ulashadigan
+// `nfcstore.uz/c/<ID>`. O' va G' dagi apostrof URL'da qoladi.
+function companyPublicUrl(origin, companyId) {
+  return `${origin}/c/${encodeURIComponent(String(companyId))}`;
+}
+
+async function profileShell(env, url) {
+  const shell = await env.ASSETS.fetch(new Request(new URL('/', url), { method: 'GET' }));
+  if (!shell.ok) return null;
+  const html = await shell.text();
+  if (!/<\/head>/i.test(html)) return null;
+  return { shell, html };
+}
+
+function profileShellResponse(shell, html, maxAge) {
+  const headers = new Headers(shell.headers);
+  headers.set('content-type', 'text/html; charset=utf-8');
+  headers.set('cache-control', `public, max-age=${maxAge}`);
+  headers.delete('content-length');
+  headers.delete('etag');
+  return new Response(html, { status: 200, headers });
+}
+
+// /c/:id va /company/:id — faqat FAOL, egasi o'chirilmagan biznes.
+async function companyShellResponse(env, url, rawId) {
+  let id = '';
+  try { id = normalizeCompanyIdD1(decodeURIComponent(rawId)); } catch { return null; }
+  if (!id) return null;
+  const row = await env.DB.prepare(
+    `SELECT company_id, display_name, description, logo_url, cover_url, city, owner_user_id
+       FROM companies
+      WHERE company_id = ? AND status = 'active' AND ${companyOwnerAliveSql('companies')}`
+  ).bind(id).first().catch(() => null);
+  if (!row) return null;
+  const got = await profileShell(env, url);
+  if (!got) return null;
+  const origin = url.origin;
+  const name = String(row.display_name || row.company_id).trim();
+  const city = String(row.city || '').trim();
+  const description = ogExcerpt(row.description)
+    || `${name}${city ? ` — ${city}` : ''}. Aloqa, manzil, katalog va ish vaqti NFCSTORE sahifasida.`;
+  const picked = row.cover_url || row.logo_url;
+  const html = injectProfileOg(got.html, {
+    title: name,
+    description,
+    url: companyPublicUrl(origin, row.company_id),
+    image: ogAbsolute(picked, origin) || origin + OG_FALLBACK_IMAGE,
+    usesFallbackImage: !picked,
+    noindex: isDemoOwnerD1(row.owner_user_id),
+  });
+  return profileShellResponse(got.shell, html, 300);
+}
+
+// /:kod — shaxsiy NFC ID. Egasi bor va o'chirilmagan bo'lsa, faqat ism
+// va rasm. Topilmasa `null` — oddiy SPA (sahifa baribir ochiladi).
+const PERSONAL_SHELL_RE = /^\/([A-Za-z0-9]{3,20})\/?$/;
+async function personalShellResponse(env, url, rawCode) {
+  const code = String(rawCode || '').toUpperCase();
+  const row = await env.DB.prepare(
+    `SELECT code, name, avatar_url, user_id FROM cards WHERE code = ?`
+  ).bind(code).first().catch(() => null);
+  if (!row || row.user_id == null || row.user_id === '') return null;
+  if (await ownerDeletedD1(env, row.user_id)) return null;
+  const name = String(row.name || '').trim();
+  if (!name) return null;
+  const got = await profileShell(env, url);
+  if (!got) return null;
+  const origin = url.origin;
+  const html = injectProfileOg(got.html, {
+    title: name,
+    description: 'NFCSTORE raqamli profili — bir tegishda tanishing.',
+    url: `${origin}/${encodeURIComponent(row.code)}`,
+    image: ogAbsolute(row.avatar_url, origin) || origin + OG_FALLBACK_IMAGE,
+    usesFallbackImage: !row.avatar_url,
+    noindex: true,
+  });
+  return profileShellResponse(got.shell, html, 300);
+}
+
+// /sitemap-business.xml — FAOL, haqiqiy (namuna va sinov emas) bizneslar.
+// /sitemap.xml (statik indeks) shu faylga va statik sahifalarga ishora
+// qiladi. Shaxsiy profillar ATAYLAB yo'q (maxfiylik, yuqoriga qarang).
+function xmlEscape(value) {
+  return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+
+export async function businessSitemapXml(env, origin) {
+  const rows = await env.DB.prepare(
+    `SELECT company_id, updated_at FROM companies
+      WHERE status = 'active' AND ${companyOwnerAliveSql('companies')}
+        AND ${notDemoCompanySql('companies')}
+        AND CAST(owner_user_id AS TEXT) NOT IN (SELECT CAST(id AS TEXT) FROM users WHERE is_test = 1)
+      ORDER BY updated_at DESC LIMIT 5000`
+  ).all();
+  const items = (rows?.results || []).map((r) => {
+    const day = String(r.updated_at || '').slice(0, 10);
+    const lastmod = /^\d{4}-\d{2}-\d{2}$/.test(day) ? `<lastmod>${day}</lastmod>` : '';
+    return `  <url><loc>${xmlEscape(companyPublicUrl(origin, r.company_id))}</loc>${lastmod}<changefreq>weekly</changefreq><priority>0.7</priority></url>`;
+  });
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${items.join('\n')}${items.length ? '\n' : ''}</urlset>\n`;
+}
+
 // ── KOMPANIYANING O'Z DOMENI ─────────────────────────────────────────
 // menu.kompaniya.uz -> aynan o'sha kompaniyaning sahifasi.
 //
@@ -11230,6 +11376,45 @@ async function handleRequest(request, env, url, ctx) {
     // Ulashilgan yangilik havolasi (/yangiliklar/12) — Telegram/WhatsApp/
     // Facebook botlari uchun meta teglar shu maqolaniki bo'lsin. Brauzer
     // uchun farq yo'q: aynan o'sha SPA qobig'i qaytadi.
+    // Bizneslar sitemap'i (Google/Yandex) — /sitemap.xml indeksidan.
+    if (url.pathname === '/sitemap-business.xml' && ['GET', 'HEAD'].includes(request.method)) {
+      try {
+        await ensureCoreSchema(env);
+        const xml = await businessSitemapXml(env, url.origin);
+        return new Response(request.method === 'HEAD' ? null : xml, {
+          status: 200,
+          headers: { 'content-type': 'application/xml; charset=utf-8', 'cache-control': 'public, max-age=3600' },
+        });
+      } catch (error) {
+        console.error('business sitemap', error?.message);
+        return new Response('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>\n', {
+          status: 200, headers: { 'content-type': 'application/xml; charset=utf-8', 'cache-control': 'public, max-age=300' },
+        });
+      }
+    }
+
+    // Biznes va shaxsiy profil havolasi — robot uchun o'z kartochkasi.
+    // Faqat asosiy domenda (kompaniyaning o'z domeni pastda alohida).
+    if (request.method === 'GET' && /(^|\.)nfcstore\.uz$|^localhost$|^127\.0\.0\.1$/.test(url.hostname)) {
+      const companyShellMatch = url.pathname.match(/^\/(?:c|company)\/([^/]{1,80})\/?$/);
+      try {
+        if (companyShellMatch) {
+          await ensureCoreSchema(env);
+          const shell = await companyShellResponse(env, url, companyShellMatch[1]);
+          if (shell) return shell;
+        } else {
+          const personalMatch = url.pathname.match(PERSONAL_SHELL_RE);
+          if (personalMatch) {
+            await ensureCoreSchema(env);
+            const shell = await personalShellResponse(env, url, personalMatch[1]);
+            if (shell) return shell;
+          }
+        }
+      } catch (error) {
+        console.error('profile shell', url.pathname, error?.message);
+      }
+    }
+
     const newsShellMatch = url.pathname.match(/^\/yangiliklar\/(\d{1,12})\/?$/);
     if (newsShellMatch && request.method === 'GET') {
       try {
