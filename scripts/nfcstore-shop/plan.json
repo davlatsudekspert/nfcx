@@ -1,6 +1,6 @@
 {
   "companyId": "NFCSTOREUZ",
-  "apply": true,
+  "apply": false,
   "_izoh": "2026-09-28: NFCSTORE logotipi 2048 px / 1.36 MB edi — lentadagi har post avatari, katalog va kompaniyalar ro‘yxatida yuklanardi. O‘sha rasm 640 px / 35 KB JPEG ga almashtiriladi (faqat logoUrl). Eski fayl o‘chirilmaydi; qaytarish uchun report.json.",
   "updates": [],
   "items": [],
