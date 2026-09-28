@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -19,11 +20,13 @@ import 'mp4_faststart.dart';
 /// video ham 1080p ga tushadi — yuklash bir necha barobar tezroq,
 /// `moov` fayl boshida bo'lgani uchun ijro ham darhol boshlanadi.
 ///
-/// Android'da video qayta siqilmaydi, faqat `moov` fayl boshiga
-/// ko'chiriladi ([mp4Faststart]) — Android kamerasi uni oxiriga yozadi
-/// va Reels'da har video 1-2 soniya qora ekran bilan ochilardi (egasi,
-/// 2026-09-27). Biror qadam o'xshamasa ham asl fayl yuboriladi: eng
-/// yomon holatda avvalgidek ishlaydi, foydalanuvchi to'xtab qolmaydi.
+/// Android'da: katta video (qisqa tomoni > 1080 yoki bitreyti > 8 Mbit/s)
+/// Media3 Transformer bilan 1080p H.264 ~6 Mbit/s ga tushadi (egasi,
+/// 2026-09-28: "katta video yuklashda o'zi moslash" — "ha, albatta");
+/// so'ng `moov` fayl boshiga ko'chiriladi ([mp4Faststart]) — Android
+/// kamerasi uni oxiriga yozadi va Reels'da video 1-2 soniya qora ekran
+/// bilan ochilardi (2026-09-27). Biror qadam o'xshamasa ham asl fayl
+/// yuboriladi: eng yomon holatda avvalgidek, foydalanuvchi to'xtamaydi.
 const videoPrepChannel = MethodChannel('uz.nfcstore.nova/video');
 
 /// Yuklashga tayyor video yo'li: yangi vaqtinchalik `.mp4` (chaqiruvchi
@@ -33,8 +36,30 @@ Future<String> prepareVideoForUpload(String path) async {
   if (kIsWeb) return path;
   if (defaultTargetPlatform != TargetPlatform.iOS) {
     final dir = Directory.systemTemp.path;
-    final out = '$dir/nova_fs_${DateTime.now().microsecondsSinceEpoch}.mp4';
-    return await mp4Faststart(path, outPath: out) ?? path;
+    final stamp = DateTime.now().microsecondsSinceEpoch;
+    // 1) Katta video — Android'ning Media3 Transformer'i bilan 1080p
+    //    H.264 ga (MainActivity / VideoCompressor.kt). Kichik video
+    //    yoki xato — `null`, asl fayl bilan davom etamiz.
+    String? small;
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      try {
+        small = await videoPrepChannel.invokeMethod<String>('compress',
+            <String, Object>{'path': path, 'out': '$dir/nova_c_$stamp.mp4'}
+        ).timeout(const Duration(minutes: 4));
+      } on PlatformException {
+        small = null;
+      } on MissingPluginException {
+        small = null;
+      } on TimeoutException {
+        small = null;
+      }
+      if (small != null && small.isEmpty) small = null;
+    }
+    final base = small ?? path;
+    // 2) `moov` fayl boshida bo'lsin — Reels'da darhol ochiladi.
+    final fs = await mp4Faststart(base, outPath: '$dir/nova_fs_$stamp.mp4');
+    if (fs != null && small != null) File(small).delete().ignore();
+    return fs ?? base;
   }
   try {
     final out = await videoPrepChannel

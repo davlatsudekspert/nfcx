@@ -10,7 +10,7 @@ import 'package:nfcstore_nova/core/media/video_prep.dart';
 ///
 /// iPhone videosi .MOV/HEVC bo'ladi — Android va brauzerda o'ynamasligi
 /// mumkin. iOS'da yuklashdan oldin H.264 .mp4 ga o'tkaziladi; Android'da
-/// fayl o'zgarmaydi; eksport xato bersa asl fayl yuboriladi.
+/// katta video 1080p H.264 ga siqiladi (2026-09-28); xato bo'lsa asl fayl.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   final messenger =
@@ -26,10 +26,24 @@ void main() {
     addTearDown(() => messenger.setMockMethodCallHandler(videoPrepChannel, null));
   }
 
-  test('Android: kanal chaqirilmaydi; o‘qib bo‘lmas fayl — asl yo‘l', () async {
-    mock((_) async => '/tmp/boshqa.mp4');
-    expect(await prepareVideoForUpload('/tmp/IMG_0001.mp4'), '/tmp/IMG_0001.mp4');
-    expect(calls, isEmpty);
+  group('Android', () {
+    setUp(() => debugDefaultTargetPlatformOverride = TargetPlatform.android);
+    tearDown(() => debugDefaultTargetPlatformOverride = null);
+
+    test('katta video — siqilgan nusxa yuboriladi', () async {
+      mock((_) async => '/tmp/nova_c_1.mp4');
+      expect(await prepareVideoForUpload('/tmp/VID_1.mp4'), '/tmp/nova_c_1.mp4');
+      expect(calls.single.method, 'compress');
+      expect((calls.single.arguments as Map)['path'], '/tmp/VID_1.mp4');
+      expect((calls.single.arguments as Map)['out'], endsWith('.mp4'));
+    });
+
+    test('kichik video yoki xato — asl fayl (yuklash to‘xtamaydi)', () async {
+      mock((_) async => null);
+      expect(await prepareVideoForUpload('/tmp/VID_2.mp4'), '/tmp/VID_2.mp4');
+      mock((_) async => throw PlatformException(code: 'x'));
+      expect(await prepareVideoForUpload('/tmp/VID_3.mp4'), '/tmp/VID_3.mp4');
+    });
   });
 
   group('iPhone', () {
@@ -84,6 +98,25 @@ void main() {
       expect(swift, contains('shouldOptimizeForNetworkUse = true'));
       // HEVC presetiga tushib qolmasin — maqsad aynan H.264.
       expect(swift, isNot(contains('AVAssetExportPresetHEVC')));
+    });
+
+    test('Android tomoni: kanal, 1080p H.264, HDR→SDR, media3 versiyasi bir', () {
+      final kt = code('android/app/src/main/kotlin/uz/nfcstore/nova/MainActivity.kt');
+      expect(kt, contains('"${videoPrepChannel.name}"'));
+      expect(kt, contains('"compress"'));
+      final c = code(
+          'android/app/src/main/kotlin/uz/nfcstore/nova/VideoCompressor.kt');
+      expect(c, contains('Presentation.createForShortSide(SHORT_SIDE)'));
+      expect(c, contains('SHORT_SIDE = 1080'));
+      expect(c, contains('MimeTypes.VIDEO_H264'));
+      expect(c, contains('HDR_MODE_TONE_MAP_HDR_TO_SDR_USING_OPEN_GL'));
+      // Media3 modullari bitta versiyada (video_player_android bilan).
+      final g = File('android/app/build.gradle.kts').readAsStringSync();
+      final vers = RegExp(r'androidx\.media3:media3-[a-z]+:([0-9.]+)')
+          .allMatches(g)
+          .map((m) => m.group(1))
+          .toSet();
+      expect(vers, hasLength(1), reason: 'media3 versiyalari aralash: $vers');
     });
   });
 }

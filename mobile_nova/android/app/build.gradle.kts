@@ -98,3 +98,12 @@ android {
 flutter {
     source = "../.."
 }
+
+// VIDEO MOSLASH (VideoCompressor.kt). Versiya AYNAN video_player_android
+// ishlatadigan Media3 bilan bir xil (1.9.2) — turli versiyali media3
+// modullari bir ilovada aralashsa, ijro buziladi.
+dependencies {
+    implementation("androidx.media3:media3-transformer:1.9.2")
+    implementation("androidx.media3:media3-effect:1.9.2")
+    implementation("androidx.media3:media3-common:1.9.2")
+}
