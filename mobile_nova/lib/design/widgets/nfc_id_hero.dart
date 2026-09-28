@@ -354,7 +354,12 @@ class _CardBody extends StatelessWidget {
                           if (widget.tier != null) ...[
                             const SizedBox(width: Gap.sm),
                             if (IdLux.isPaid(widget.tierCode))
-                              IdTierBadge(tier: widget.tierCode)
+                              IdTierBadge(
+                                tier: widget.tierCode,
+                                // Ivory kartasi qora; boshqa yorug' mavzuda oq.
+                                onLight: context.tokens.id != 'ivory' &&
+                                    !context.tokens.isDark,
+                              )
                             else
                               _TierChip(label: widget.tier!, ink: ink),
                           ],

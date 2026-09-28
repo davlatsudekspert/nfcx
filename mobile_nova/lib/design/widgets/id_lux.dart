@@ -242,10 +242,18 @@ class IdTierBadge extends StatelessWidget {
     required this.tier,
     this.dense = false,
     this.plain = false,
+    this.onLight = false,
   });
 
   final String tier;
   final bool dense;
+
+  /// Belgi OCH yuzada turibdi (Pudra, Sakura, Pearl mavzularidagi oq
+  /// karta). Daraja rangi qora karta uchun tanlangan — och fonda "oltin
+  /// ustida oq" yo'qolib ketardi (egasi, 2026-09-28: ruxsat berdi).
+  /// Shunda kapsula qora bo'ladi, yozuv va belgi o'sha daraja rangida —
+  /// rang o'zgarmaydi, faqat foni.
+  final bool onLight;
 
   /// Bepul/kumush toifani ham ko'rsatish (katalogda).
   final bool plain;
@@ -277,7 +285,7 @@ class IdTierBadge extends StatelessWidget {
       key: ValueKey('tier-badge-$tier'),
       padding: pad,
       decoration: BoxDecoration(
-        gradient: lux.badgeFill,
+        gradient: onLight ? _onLightFill : lux.badgeFill,
         borderRadius: BorderRadius.circular(999),
         border: lux.badgeLine == null
             ? null
@@ -299,6 +307,9 @@ class IdTierBadge extends StatelessWidget {
     );
   }
 }
+
+const _onLightFill =
+    LinearGradient(colors: [Color(0xFF26221D), Color(0xFF14120F)]);
 
 // ───────────────────────────────────────────────────────── yuza
 
