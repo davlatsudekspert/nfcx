@@ -58,7 +58,7 @@ void main() {
     expect(ids.contains('mono'), isFalse);
   });
 
-  test('ivory: siyoh aksent, champagne FAQAT brend tokenida', () {
+  test('ivory: siyoh aksent, brend chizig‘i neytral (sariq yo‘q)', () {
     // Egasining talabi: "juda oz miqdorda champagne". Agar oltin
     // aksentga ulanganida, u har bir asosiy tugma, faol tab va
     // tanlangan chipga tarqalardi — "oz" bo'lishdan to'xtardi.
@@ -75,10 +75,14 @@ void main() {
         reason: 'ikkinchi darajali matn aniq o‘qilsin');
     expect(_contrast(t.text3, t.bg1), greaterThan(4.5),
         reason: 'yordamchi matn ham xira bo‘lmasin (AA)');
-    // Champagne iliq: qizil kanal ko'kdan sezilarli katta.
-    expect(t.brand.r - t.brand.b, greaterThan(.15),
-        reason: 'brend rangi champagne bo‘lishi kerak');
-    // Champagne matn sifatida ham o'qiladi (tier belgisi, kichik yozuv).
+    // SARIQ YO'Q (egasi, 2026-09-28): oq-qora mavzuda brend chizig'i
+    // NEYTRAL — qizil va ko'k kanal deyarli teng (champagne #B39566 da
+    // farq .30 edi). Hoshiya, halqa, avatar, fon nuri — hammasi shu.
+    for (final c in [t.brand, t.brandSoft, t.brandInk, t.glow, t.ambient1]) {
+      expect((c.r - c.b).abs(), lessThan(.03),
+          reason: 'ivory da sariq/champagne tus qaytmasin: $c');
+    }
+    // Brend siyohi matn sifatida ham o'qiladi (tier belgisi, kichik yozuv).
     expect(_contrast(t.brandInk, t.surfaceSolid), greaterThan(4.5));
     // Kartalar SHAFFOF EMAS: blur ham, fon "suzishi" ham yo'q.
     expect(t.surface.a, 1.0);

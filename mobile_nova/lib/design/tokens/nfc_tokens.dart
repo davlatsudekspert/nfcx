@@ -291,13 +291,19 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
   // Egasi oq-qora variantni qorong'idan yaxshiroq topdi, lekin u
   // "chiroyli template"dek ko'rindi — NFCSTORE ruhi sezilmadi. Bu
   // mavzu o'sha oq-qora asosni oladi va unga BITTA narsa qo'shadi:
-  // juda kam champagne (`brand`). Qolgani o'zgarmaydi:
+  // juda kam brend chizig'i (`brand`). Qolgani o'zgarmaydi:
   //
   //   fon      #F6F5F2  iliq oq, sof oq emas — kartalar ajralsin
   //   karta    #FFFFFF  sof oq, SHAFFOF EMAS (blur yo'q, arzon)
   //   matn     #141414  qora siyoh
   //   aksent   #141414  asosiy tugma va faol holat ham siyoh
-  //   brend    #B39566  champagne — faqat hoshiya/halqa/belgi
+  //   brend    #8F8F8C  kumush-grafit — faqat hoshiya/halqa/belgi
+  //
+  // SARIQ YO'Q (egasi, 2026-09-28: "sariq ranglar hali ham bor ekan").
+  // Ilgari `brand` champagne (#B39566) edi va NFC ID kartochkalari
+  // hoshiyasi, halqalari, avatar halqasi sariq ko'rinardi. Endi oq-qora
+  // mavzuda brend chizig'i NEYTRAL kumush; oltin faqat brend muhrining
+  // o'zida (N logo) va pullik ID materiallarida (`id_lux.dart`) qoladi.
   //
   // Chuqurlik soya bilan: tepada 1px yorug' chiziq, pastda keng va
   // juda xira iliq soya. Glow ham, gradient fon ham yo'q.
@@ -333,29 +339,29 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     accentCDark: hex('#2A2824'),
     accentD: hex('#6E6A62'),
     accentDDark: hex('#3D3A35'),
-    glow: rgba(179, 149, 102, .16),
+    glow: rgba(0, 0, 0, .07),
     glowB: rgba(0, 0, 0, .06),
     border1: rgba(20, 20, 20, .12),
     border2: rgba(20, 20, 20, .075),
     error: hex('#9B3B30'),
     success: hex('#3F6B4A'),
     warn: hex('#86672A'),
-    ambient1: rgba(179, 149, 102, .05),
+    ambient1: rgba(0, 0, 0, .03),
     ambient2: rgba(0, 0, 0, .02),
     shadowFloat: [
-      BoxShadow(color: rgba(40, 30, 12, .16), blurRadius: 30, spreadRadius: -12, offset: const Offset(0, 16)),
-      BoxShadow(color: rgba(40, 30, 12, .05), blurRadius: 3, offset: const Offset(0, 1)),
+      BoxShadow(color: rgba(20, 20, 20, .16), blurRadius: 30, spreadRadius: -12, offset: const Offset(0, 16)),
+      BoxShadow(color: rgba(20, 20, 20, .05), blurRadius: 3, offset: const Offset(0, 1)),
     ],
     shadowSoft: [
-      BoxShadow(color: rgba(40, 30, 12, .12), blurRadius: 24, spreadRadius: -12, offset: const Offset(0, 12)),
-      BoxShadow(color: rgba(40, 30, 12, .045), blurRadius: 2, offset: const Offset(0, 1)),
+      BoxShadow(color: rgba(20, 20, 20, .12), blurRadius: 24, spreadRadius: -12, offset: const Offset(0, 12)),
+      BoxShadow(color: rgba(20, 20, 20, .045), blurRadius: 2, offset: const Offset(0, 1)),
     ],
     shadowTiny: [
-      BoxShadow(color: rgba(40, 30, 12, .06), blurRadius: 6, offset: const Offset(0, 2)),
+      BoxShadow(color: rgba(20, 20, 20, .06), blurRadius: 6, offset: const Offset(0, 2)),
     ],
-    brand: hex('#B39566'),
-    brandSoft: hex('#E7DCC6'),
-    brandInk: hex('#7A5F38'),
+    brand: hex('#8F8F8C'),
+    brandSoft: hex('#E4E4E2'),
+    brandInk: hex('#4A4A48'),
   );
 
   // ---------------------------------------------------------------- PUDRA
