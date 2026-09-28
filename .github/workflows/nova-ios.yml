@@ -21,6 +21,8 @@ on:
     branches: [main, 'claude/**']
     paths:
       - 'mobile_nova/ios/**'
+      - 'mobile_nova/integration_ios/**'
+      - 'mobile_nova/lib/core/media/**'
       - 'mobile_nova/pubspec.yaml'
       - 'mobile_nova/pubspec.lock'
       - '.github/workflows/nova-ios.yml'

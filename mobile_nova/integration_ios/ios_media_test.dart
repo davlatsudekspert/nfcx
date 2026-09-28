@@ -1,9 +1,13 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:nfcstore_nova/core/media/image_prep.dart';
 import 'package:nfcstore_nova/core/media/video_prep.dart';
 import 'package:nfcstore_nova/features/profile/music_player.dart';
 import 'package:video_player/video_player.dart';
@@ -24,6 +28,36 @@ Future<void> _wait(WidgetTester t, bool Function() done, {int tries = 120}) asyn
   for (var i = 0; i < tries && !done(); i++) {
     await t.pump(const Duration(milliseconds: 250));
   }
+}
+
+
+/// Shovqinli (siqilmaydigan) PNG — skrinshot/dizayn rasmi o'rnida.
+/// [holeAlpha] < 255 bo'lsa chap-yuqori burchak shaffof (logotip kabi).
+Future<File> _png(Directory dir, String name, int w, int h,
+    {int holeAlpha = 255}) async {
+  final px = Uint8List(w * h * 4);
+  var seed = 7;
+  for (var i = 0; i < w * h; i++) {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    px[i * 4] = seed & 0xff;
+    px[i * 4 + 1] = (seed >> 8) & 0xff;
+    px[i * 4 + 2] = (seed >> 16) & 0xff;
+    final x = i % w, y = i ~/ w;
+    px[i * 4 + 3] = (x < 40 && y < 40) ? holeAlpha : 255;
+  }
+  final done = Completer<ui.Image>();
+  ui.decodeImageFromPixels(px, w, h, ui.PixelFormat.rgba8888, done.complete);
+  final img = await done.future;
+  final data = await img.toByteData(format: ui.ImageByteFormat.png);
+  final f = File('${dir.path}/$name');
+  await f.writeAsBytes(data!.buffer.asUint8List());
+  return f;
+}
+
+Future<(int, int)> _size(File f) async {
+  final codec = await ui.instantiateImageCodec(await f.readAsBytes());
+  final fr = await codec.getNextFrame();
+  return (fr.image.width, fr.image.height);
 }
 
 void main() {
@@ -102,5 +136,33 @@ void main() {
     print('MEDIA|video|${v.value.size.width.round()}x'
         '${v.value.size.height.round()}|davomiylik=${v.value.duration}|'
         'pozitsiya=${v.value.position}|mp4=${bytes.length} bayt');
+  });
+
+  // Egasi (2026-09-28): "rasm qo'yilganda razmerni ham telefonga moslab
+  // oladimi — iOS'da ham". Swift `toJpeg` HAQIQATDA ishlaydi.
+  testWidgets('rasm: katta PNG → 1600 px JPEG; shaffof PNG tegilmaydi',
+      (t) async {
+    final dir = await Directory.systemTemp.createTemp('nova_img');
+    final big = await _png(dir, 'Screenshot.png', 2400, 1800);
+    final before = await big.length();
+    expect(before, greaterThan(kImagePrepMinBytes));
+
+    final out = await t.runAsync(() => prepareImageForUpload(big.path));
+    expect(out, isNot(big.path), reason: 'JPEG ga o‘tmadi — asl fayl qaytdi');
+    final jpg = File(out!);
+    final head = await jpg.openRead(0, 3).first;
+    expect(head.sublist(0, 3), [0xFF, 0xD8, 0xFF], reason: 'JPEG emas');
+    final after = await jpg.length();
+    expect(after, lessThan(before));
+    final (w, h) = (await t.runAsync(() => _size(jpg)))!;
+    expect(w, 1600, reason: 'uzun tomoni 1600 px');
+    expect(h, 1200, reason: 'nisbat saqlanadi (4:3)');
+
+    final logo = await _png(dir, 'logo.png', 1400, 1400, holeAlpha: 0);
+    expect(await logo.length(), greaterThan(kImagePrepMinBytes));
+    final same = await t.runAsync(() => prepareImageForUpload(logo.path));
+    expect(same, logo.path, reason: 'shaffof rasm JPEG bo‘lib qoldi');
+    // ignore: avoid_print
+    print('MEDIA|rasm|png=$before bayt -> jpg=$after bayt|${w}x$h');
   });
 }
