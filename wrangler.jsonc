@@ -38,6 +38,9 @@
   // hosting/worker.js'dagi /api/* logikasi HECH QACHON ishga tushmasdi.
   "main": "./dist/server/index.js",
   "compatibility_date": "2026-08-31",
+  // Browser navigation must reach /app and existing dynamic Worker routes.
+  // Keep asset-first serving and avoid a route allowlist that could bypass /api/*.
+  "compatibility_flags": ["assets_navigation_has_no_effect"],
   // SMART PLACEMENT (2026-09, tezlik).
   //
   // Muammo: Worker odatda FOYDALANUVCHIGA eng yaqin serverda ishlaydi,
@@ -204,6 +207,7 @@
   // Bu fayl cron'ning YAGONA manbai: Dashboard'dagi boshqa cron deploy'da o'chadi.
   "triggers": { "crons": ["30 21 * * *"] },
   "vars": {
+    "APP_DOWNLOAD_URL": "https://github.com/davlatsudekspert/nfcstore-downloads/releases/download/v1.1.0-build276/NFCSTORE-Play.apk",
     // HISOBNI BUTUNLAY O'CHIRISH (hosting/api/account-purge.js,
     // ACCOUNT_DELETION_PLAN.md). Egasining qarori (2026-09-25): 30 kunlik
     // o'ylash muddati, pullik ID'lar 90 kundan keyin qayta beriladi.
