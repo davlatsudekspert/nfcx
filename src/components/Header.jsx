@@ -221,8 +221,11 @@ export default function Header() {
           ))}
           <a href={APP_APK_URL} className="vz-nav__link inline-flex items-center gap-1.5" aria-label={t('Ilovani yuklab olish')}>
             <IconInstall />
-            <span className="2xl:hidden">{t('Ilova')}</span>
-            <span className="hidden 2xl:inline">{t('Ilovani yuklab olish')}</span>
+            <span className="flex flex-col items-start gap-0.5">
+              <span className="2xl:hidden">{t('Ilova')}</span>
+              <span className="hidden 2xl:inline">{t('Ilovani yuklab olish')}</span>
+              <span className="text-[10px] font-normal leading-none opacity-60">Android</span>
+            </span>
           </a>
         </nav>
 
@@ -323,7 +326,11 @@ export default function Header() {
             ))}
             <li>
               <a href={APP_APK_URL} className="vz-nav-m__link" onClick={() => setOpen(false)}>
-                <IconInstall /> {t('Ilovani yuklab olish')}
+                <IconInstall />
+                <span className="flex flex-col items-start gap-1">
+                  <span>{t('Ilovani yuklab olish')}</span>
+                  <span className="text-xs font-normal leading-none opacity-60">Android</span>
+                </span>
               </a>
             </li>
             {/* TELEFONDA HAM HAMMASI KO'RINSIN (2026-09, egasining
