@@ -93,7 +93,7 @@ ni `1.1.0+1` qiling — faqat birinchi qismi muhim.
    `flutter test`, so'ng APK + AAB).
 2. Qurilish xulosasida tekshiring: imzo **haqiqiy kalit** deb
    yozilganmi, ruxsatlar ro'yxatida kutilmagan narsa bormi.
-3. Fayllar: <https://github.com/davlatsudekspert/nfcx/releases/tag/apk-latest>
+3. Fayllar: <https://nfcstore.uz/app>
    - `app-release.apk` — telefonga to'g'ridan-to'g'ri o'rnatish
      (sayt, Telegram, sinov).
    - `app-arm64-v8a-release.apk` — kichikroq, zamonaviy telefonlar.

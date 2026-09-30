@@ -1,14 +1,5 @@
-// NFCSTORE ANDROID ILOVASI — SAYTDAN YUKLAB OLISH (egasi, 2026-09-24).
-//
-// "Play Market'ga chiqquncha ilovani saytga qo'yib turamiz; NFC orqali
-// ochilgan profilda ham 'ilovani yuklang' bo'lsin."
-//
-// Fayl — Google Play'ning O'ZI imzolagan universal APK
-// (.github/workflows/nova-apk.yml → `play-latest` reliz). Imzosi Play
-// Market'dagi bilan bir xil, shuning uchun saytdan o'rnatgan odam
-// ilova Play'ga chiqqach uni Play'dan bemalol yangilaydi.
-export const APP_APK_URL =
-  'https://github.com/davlatsudekspert/nfcx/releases/download/play-latest/NFCSTORE-Play.apk';
+// Doimiy yuklab olish manzili. Haqiqiy APK/Play manzili Worker APP_DOWNLOAD_URL sozlamasida.
+export const APP_APK_URL = '/app';
 
 // Sahifa manzili. Tire bilan — profil kodi (harf/raqam) bo'lib
 // qolmasin: nfcstore.uz/ilova kabi so'z kimningdir harfli ID'si
@@ -30,7 +21,7 @@ export function isIos() {
 // APK sahifasiga (/ilova-yuklash) olib boradi; ilova Play'da hammaga
 // chiqqan kuni shu bayroqni `true` qilish kifoya.
 export const PLAY_STORE_LIVE = false;
-export const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=uz.nfcstore.nova';
+export const PLAY_STORE_URL = APP_APK_URL;
 // iPhone ilovasi hali yo'q — tugma "Tez kunda" bo'lib turadi.
 export const APP_STORE_URL = '';
 

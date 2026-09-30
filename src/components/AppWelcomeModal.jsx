@@ -2,10 +2,9 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../lib/auth.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
-import { navigate } from '../lib/router.js';
 import { backdropProps } from '../lib/backdrop.js';
 import {
-  APP_PAGE_PATH, APP_STORE_URL, PLAY_STORE_LIVE, PLAY_STORE_URL,
+  APP_APK_URL, APP_STORE_URL, PLAY_STORE_LIVE,
   clearAppWelcome, hasAppWelcome,
 } from '../lib/appDownload.js';
 import CloseButton from './CloseButton.jsx';
@@ -75,8 +74,7 @@ export default function AppWelcomeModal() {
   const close = () => setOpen(false);
   const openPlay = () => {
     close();
-    if (PLAY_STORE_LIVE) window.open(PLAY_STORE_URL, '_blank', 'noopener');
-    else navigate(APP_PAGE_PATH);
+    window.location.assign(APP_APK_URL);
   };
   const storeBtn = 'flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition';
 
