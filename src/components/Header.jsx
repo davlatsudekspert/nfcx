@@ -10,6 +10,7 @@ import LanguageSwitcher from './LanguageSwitcher.jsx';
 import ThemeSwitcher from './ThemeSwitcher.jsx';
 import { IconBell, IconChat, IconInstall } from './Icons.jsx';
 import logo from '../assets/logo-128.png';
+import { APP_APK_URL } from '../lib/appDownload.js';
 
 // Navbar jonli qidiruv — ID (kod) yoki ism bo'yicha. Yozilgan sari
 // katalogdan mos profillar ochiluvchi ro'yxatda chiqadi.
@@ -218,6 +219,11 @@ export default function Header() {
               {t(label)}
             </button>
           ))}
+          <a href={APP_APK_URL} className="vz-nav__link inline-flex items-center gap-1.5" aria-label={t('Ilovani yuklab olish')}>
+            <IconInstall />
+            <span className="2xl:hidden">{t('Ilova')}</span>
+            <span className="hidden 2xl:inline">{t('Ilovani yuklab olish')}</span>
+          </a>
         </nav>
 
         <div className="flex-1 xl:hidden" />
@@ -315,6 +321,11 @@ export default function Header() {
                 </button>
               </li>
             ))}
+            <li>
+              <a href={APP_APK_URL} className="vz-nav-m__link" onClick={() => setOpen(false)}>
+                <IconInstall /> {t('Ilovani yuklab olish')}
+              </a>
+            </li>
             {/* TELEFONDA HAM HAMMASI KO'RINSIN (2026-09, egasining
                 shikoyati: "telefonda tepadagi menyu kesilib qolyapti").
                 Sabab: "Bildirishnomalar" va "To'lovlar" FAQAT kompyuter
