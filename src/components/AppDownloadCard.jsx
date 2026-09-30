@@ -1,6 +1,5 @@
 import { useLanguage } from '../lib/i18n.jsx';
-import { navigate } from '../lib/router.js';
-import { APP_PAGE_PATH, isIos } from '../lib/appDownload.js';
+import { APP_APK_URL, isIos } from '../lib/appDownload.js';
 
 // "ILOVANI YUKLAB OLING" — OCHIQ PROFIL SAHIFASIDA (egasi, 2026-09-24).
 //
@@ -12,14 +11,9 @@ import { APP_PAGE_PATH, isIos } from '../lib/appDownload.js';
 export default function AppDownloadCard() {
   const { t } = useLanguage();
   if (isIos()) return null;
-  const open = (e) => {
-    e.preventDefault();
-    navigate(APP_PAGE_PATH);
-  };
   return (
     <a
-      href={APP_PAGE_PATH}
-      onClick={open}
+      href={APP_APK_URL}
       data-testid="profile-app-download"
       className="mt-8 flex items-center gap-3.5 rounded-2xl p-3.5 no-underline transition hover:-translate-y-0.5"
       style={{

@@ -11170,7 +11170,24 @@ function schemaErrorDetailD1(error) {
   return /no such (column|table)|has no column|unknown column/i.test(msg) ? msg.slice(0, 160) : '';
 }
 
+export function appDownloadTarget(env) {
+  try {
+    const target = new URL(String(env.APP_DOWNLOAD_URL || '').trim());
+    if (target.protocol !== 'https:' || target.username || target.password) return null;
+    if (['nfcstore.uz', 'www.nfcstore.uz'].includes(target.hostname)
+      && /^\/app\/?$/.test(target.pathname)) return null;
+    return target.href;
+  } catch { return null; }
+}
+
 async function handleRequest(request, env, url, ctx) {
+    // Same 302 + no-store mechanism as /qr-N; one configurable APK/Play target.
+    if (/^\/app\/?$/.test(url.pathname) && ['GET', 'HEAD'].includes(request.method)) {
+      const target = appDownloadTarget(env);
+      if (!target) return json({ error: 'app_download_not_configured' }, 503);
+      return new Response(null, { status: 302, headers: { location: target, 'cache-control': 'no-store' } });
+    }
+
 
     // ── ANDROID APP LINKS ──────────────────────────────────────────────
     // Jismoniy NFC kartani tegizganda Android brauzer o'rniga ilovani

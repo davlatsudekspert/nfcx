@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLanguage } from '../lib/i18n.jsx';
 import { navigate } from '../lib/router.js';
-import { APP_PAGE_PATH } from '../lib/appDownload.js';
+import { APP_APK_URL } from '../lib/appDownload.js';
 import { PhoneRow } from '../components/PhoneShot.jsx';
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -375,7 +375,7 @@ export default function StickersPage() {
         <div className="mx-auto flex max-w-3xl flex-col items-center gap-4 text-center">
           <h2 className="vz-h2 text-[color:var(--vz-ink)]">{c.appT}</h2>
           <p className="text-[16px] leading-relaxed text-[color:var(--vz-ink-2)]">{c.app}</p>
-          <button type="button" onClick={() => navigate(APP_PAGE_PATH)} className="btn btn-gold min-h-12 px-7">{c.appBtn}</button>
+          <button type="button" onClick={() => window.location.assign(APP_APK_URL)} className="btn btn-gold min-h-12 px-7">{c.appBtn}</button>
         </div>
         <div className="mx-auto mt-10 max-w-[980px]">
           <PhoneRow cols="md:grid-cols-3" items={[
