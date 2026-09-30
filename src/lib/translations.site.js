@@ -2,6 +2,8 @@
 // Ommaviy sahifalar (kompaniyalar, sovg'alar, xabarlar, auksion, narxlar,
 // katalog) va umumiy holat matnlari (xato / bo'sh / qayta urinish).
 export const DICT_SITE = {
+  'Ilova': { ru: 'Приложение', en: 'App' },
+  'Ilovani yuklab olish': { ru: 'Скачать приложение', en: 'Download the app' },
   // ─────────────────────────── Umumiy holatlar ───────────────────────────
   "Server bilan aloqa yo'q": { ru: 'Нет связи с сервером', en: 'No connection to the server' },
   "Server bilan aloqa yo'q. Qayta urinish": { ru: 'Нет связи с сервером. Повторить', en: 'No connection to the server. Retry' },
