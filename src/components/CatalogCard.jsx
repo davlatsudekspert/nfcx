@@ -60,7 +60,7 @@ export default function CatalogCard({ item: it, idx = 0 }) {
         <span className="cat-idwrap">
           {/* `nfcstore.uz/` prefiksi olib tashlandi — kartaning
               istalgan joyi bosilsa profil ochilaveradi. */}
-          <span className="cat-id" style={it.kind === 'company' ? { overflowWrap: 'anywhere' } : undefined}>{it.code.toUpperCase()}</span>
+          <span className="cat-id" style={it.kind === 'company' ? { overflowWrap: 'anywhere', whiteSpace: 'normal', textOverflow: 'clip', overflow: 'visible', fontSize: '18px', letterSpacing: '0.04em', lineHeight: 1.3 } : undefined}>{it.code.toUpperCase()}</span>
           {/* 2026-09: FAQAT asosiy ko'rinadigan ism. Avval yonida
               Telegram username ham chiqardi ("Ali · davlatsudekspert").
               Bu FAQAT katalog kartasiga tegishli — public profil,
