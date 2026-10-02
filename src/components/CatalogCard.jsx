@@ -46,7 +46,7 @@ export default function CatalogCard({ item: it, idx = 0 }) {
         '--tier-glow': mix.iconBg,
         '--shine-delay': `${(idx % 7) * 0.55}s`,
       }}
-      onClick={() => navigate('/' + it.code)}
+      onClick={() => navigate(it.kind === 'company' ? `/c/${it.code.toLowerCase()}` : '/' + it.code)}
     >
       {/* ── Bosh qism: dumaloq profil rasmi + ID + ism ──
           Rasm AVTOMATIK: profilga qo'yilgan bo'lsa shu yerda ham
@@ -60,7 +60,7 @@ export default function CatalogCard({ item: it, idx = 0 }) {
         <span className="cat-idwrap">
           {/* `nfcstore.uz/` prefiksi olib tashlandi — kartaning
               istalgan joyi bosilsa profil ochilaveradi. */}
-          <span className="cat-id">{it.code.toUpperCase()}</span>
+          <span className="cat-id" style={it.kind === 'company' ? { overflowWrap: 'anywhere' } : undefined}>{it.code.toUpperCase()}</span>
           {/* 2026-09: FAQAT asosiy ko'rinadigan ism. Avval yonida
               Telegram username ham chiqardi ("Ali · davlatsudekspert").
               Bu FAQAT katalog kartasiga tegishli — public profil,
@@ -106,7 +106,9 @@ export default function CatalogCard({ item: it, idx = 0 }) {
             egasi bor ekslyuziv): Sovg'alar sahifasi faqat birinchisini
             ko'rsatadi va keyinchalik bu ID'lar sotuvga qo'yilsa,
             yorliq o'zi o'zgaradi. */}
-        {(it.isGift || it.notForSale)
+        {it.kind === 'company'
+          ? <span className="cat-price">{t('Kompaniya')}</span>
+          : (it.isGift || it.notForSale)
           ? <span className="rounded-full px-2.5 py-0.5 text-[13px] font-bold" style={{ color: mix.nameColor, background: mix.iconBg }}>{t("Sovg'a")}</span>
           : <span className="cat-price">{t("{n} so'm", { n: fmt(it.price) })}</span>}
         <span className="cat-when">{timeAgo(it.ts)}</span>
