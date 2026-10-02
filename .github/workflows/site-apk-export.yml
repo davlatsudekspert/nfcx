@@ -1,0 +1,34 @@
+name: Inspect website APK variants
+on:
+  push:
+    branches: [claude/site-apk-export-278]
+    paths: [.github/workflows/site-apk-export.yml]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Install Google API client
+        run: pip install --quiet google-auth requests
+      - name: Inspect official APK variants for version 278
+        env:
+          PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          python3 - <<'PY'
+          import json, os, requests
+          from google.oauth2 import service_account
+          from google.auth.transport.requests import Request
+          c=service_account.Credentials.from_service_account_info(json.loads(os.environ["PLAY_JSON"]),scopes=["https://www.googleapis.com/auth/androidpublisher"])
+          c.refresh(Request())
+          r=requests.get("https://androidpublisher.googleapis.com/androidpublisher/v3/applications/uz.nfcstore.nova/generatedApks/278",headers={"Authorization":"Bearer "+c.token},timeout=60)
+          print("HTTP",r.status_code)
+          r.raise_for_status()
+          for g in r.json().get("generatedApks",[]):
+              print("CERT",g.get("certificateSha256Hash"))
+              print("UNPROTECTED_STANDALONE",json.dumps(g.get("unprotectedGeneratedStandaloneApks",[])))
+              print("UNPROTECTED_SPLIT_COUNT",len(g.get("unprotectedGeneratedSplitApks",[])))
+              ti=g.get("targetingInfo",{})
+              print("TARGETING",json.dumps(ti))
+          PY
