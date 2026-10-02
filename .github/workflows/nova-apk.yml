@@ -681,6 +681,17 @@ jobs:
             exit 1
           fi
           echo "Play APK versionCode: $GOT"
+          # Saytdagi APK Play'dan o'rnatishni talab qilmasin.
+          python3 - <<'PY'
+          import zipfile
+          with zipfile.ZipFile("NFCSTORE-Play.apk") as apk:
+              for name in apk.namelist():
+                  if name.endswith(".dex"):
+                      data = apk.read(name)
+                      if b"com/pairip/licensecheck" in data or b"com.pairip.licensecheck" in data:
+                          raise SystemExit("::error::Sayt APK'sida Google Play installer check bor; reliz chiqarilmadi.")
+          print("Website APK installer check: absent")
+          PY
           sha256sum NFCSTORE-Play.apk | awk '{print $1"  NFCSTORE-Play.apk"}' > NFCSTORE-Play.sha256
           gh release delete play-latest --yes --cleanup-tag 2>/dev/null || true
           gh release create play-latest NFCSTORE-Play.apk NFCSTORE-Play.sha256 \
