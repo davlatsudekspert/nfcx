@@ -1764,7 +1764,7 @@ class _StorefrontHeader extends StatelessWidget {
     final l = L.of(context);
     final t = context.tokens;
     final b = business;
-    final name = b.displayName.isEmpty ? b.companyId : b.displayName;
+    final name = b.brandName;
     final sub = [
       if (b.subcategory.isNotEmpty) b.subcategory,
       if (b.city.isNotEmpty) b.city,
@@ -1858,7 +1858,7 @@ class _StorefrontHeader extends StatelessWidget {
                         ),
                         child: Avatar(
                           url: b.logoUrl,
-                          initials: _nameInitials(name) ?? '?',
+                          initials: _nameInitials(b.displayName.isEmpty ? name : b.displayName) ?? '?',
                           size: _logo - 11,
                           ring: false,
                         ),
@@ -1877,12 +1877,21 @@ class _StorefrontHeader extends StatelessWidget {
             children: [
               Text(
                 name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+                key: const ValueKey('store-brand-name'),
+                softWrap: true,
                 textAlign: TextAlign.center,
                 style: AppType.displayStyle(
                     color: t.text1, size: 27, height: 1.12, letterSpacing: -.5),
               ),
+              if (b.secondaryName.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  b.secondaryName,
+                  key: const ValueKey('store-secondary-name'),
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
               if (sub.isNotEmpty) ...[
                 const SizedBox(height: 4),
                 Text(sub,

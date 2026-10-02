@@ -85,6 +85,45 @@ void main() {
     expect(find.text(LUz().storeNew.toUpperCase()), findsNothing);
   });
 
+  test('business brand: ID, namuna va takroriy nom', () {
+    const real = Business(companyId: 'diordesinger', displayName: '22.studio.uz');
+    expect(real.brandName, 'DIORDESINGER');
+    expect(real.secondaryName, '22.studio.uz');
+    const same = Business(companyId: 'ELITE', displayName: 'elite');
+    expect(same.secondaryName, isEmpty);
+    const emptyId = Business(companyId: '', displayName: 'Biznes');
+    expect(emptyId.brandName, 'Biznes');
+    expect(emptyId.secondaryName, isEmpty);
+    const sample = Business(companyId: 'NAMUNAKAFE', displayName: 'Kofe Burchak', isDemo: true);
+    expect(sample.brandName, 'Kofe Burchak');
+    expect(sample.secondaryName, isEmpty);
+  });
+
+  testWidgets('haqiqiy profil: ID katta, nom kichik', (tester) async {
+    await pump(tester, const ProfileScreen(companyId: 'NAMUNAKAFE'), demo: false);
+    final brand = tester.widget<Text>(find.byKey(const ValueKey('store-brand-name')));
+    final secondary = tester.widget<Text>(find.byKey(const ValueKey('store-secondary-name')));
+    expect(brand.data, 'NAMUNAKAFE');
+    expect(secondary.data, 'Kofe Burchak');
+    expect(brand.maxLines, isNull);
+    expect(brand.style!.fontSize!, greaterThan(secondary.style!.fontSize!));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('namuna profil: asosiy nom saqlanadi', (tester) async {
+    await pump(tester, const ProfileScreen(companyId: 'NAMUNAKAFE'), demo: true);
+    expect(tester.widget<Text>(find.byKey(const ValueKey('store-brand-name'))).data, 'Kofe Burchak');
+    expect(find.byKey(const ValueKey('store-secondary-name')), findsNothing);
+  });
+
+  testWidgets('Tanlov: biznes ID va kichik nom', (tester) async {
+    const b = Business(companyId: 'NAMUNAKAFE', displayName: 'Kofe Burchak');
+    await pump(tester, const Scaffold(body: DiscoverBusinessCard(business: b)), demo: false);
+    expect(tester.widget<Text>(find.byKey(const ValueKey('discover-business-brand'))).data, 'NAMUNAKAFE');
+    expect(tester.widget<Text>(find.byKey(const ValueKey('discover-business-secondary'))).data, 'Kofe Burchak');
+    expect(tester.takeException(), isNull);
+  });
+
   // ── NAMUNA KARUSELI (2026-09-26): biznes ochish, Asosiy, Tanlov ──
   final samples = [
     for (final (id, name) in [('NAMUNAKAFE', 'Kofe Burchak'), ('NAMUNABARBER', 'Ustoz Barber')])

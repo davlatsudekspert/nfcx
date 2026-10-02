@@ -486,6 +486,24 @@ class Business {
 
   bool get isPublished => status == 'published' || status == 'active';
 
+  /// Haqiqiy biznesning brendi — Company ID; namunada ko'rgazmali nom.
+  String get brandName {
+    final id = companyId.trim();
+    final name = displayName.trim();
+    return isDemo || id.isEmpty
+        ? (name.isEmpty ? id : name)
+        : id.toUpperCase();
+  }
+
+  String get secondaryName {
+    final name = displayName.trim();
+    return !isDemo &&
+            name.isNotEmpty &&
+            name.toUpperCase() != brandName.toUpperCase()
+        ? name
+        : '';
+  }
+
   factory Business.fromJson(Map<String, dynamic> j) => Business(
         companyId: _s(j['companyId'] ?? j['id']),
         displayName: _s(j['displayName'] ?? j['name']),

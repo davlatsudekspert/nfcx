@@ -112,13 +112,18 @@ class _BusinessTile extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  business.displayName.isEmpty
-                      ? business.companyId
-                      : business.displayName,
-                  maxLines: 1,
+                  business.brandName,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
+                if (business.secondaryName.isNotEmpty)
+                  Text(
+                    business.secondaryName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 Text(
                   'nfcstore.uz/c/${business.companyId}',
                   maxLines: 1,
@@ -191,7 +196,7 @@ class BusinessDashboardScreen extends ConsumerWidget {
     }
 
     return NovaScaffold(
-      title: b.displayName.isEmpty ? b.companyId : b.displayName,
+      title: b.brandName,
       showBack: true,
       actions: [
         NovaIconButton(

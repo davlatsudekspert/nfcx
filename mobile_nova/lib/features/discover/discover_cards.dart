@@ -541,7 +541,7 @@ class DiscoverBusinessCard extends ConsumerWidget {
         ref.watch(businessCatalogProvider(id)).valueOrNull ??
         const <CatalogItem>[];
     final b = full ?? business;
-    final name = b.displayName.isEmpty ? b.companyId : b.displayName;
+    final name = b.brandName;
     final cover = b.coverUrl.isNotEmpty ? b.coverUrl : business.coverUrl;
     final mine =
         ref
@@ -602,9 +602,10 @@ class DiscoverBusinessCard extends ConsumerWidget {
         ),
         child: SizedBox(
           height:
-              184 +
+              208 +
+              (b.secondaryName.isNotEmpty ? 24 : 0) +
               (MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.4) - 1) *
-                  90,
+                  120,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -735,7 +736,8 @@ class DiscoverBusinessCard extends ConsumerWidget {
                             children: [
                               Text(
                                 name,
-                                maxLines: 1,
+                                key: const ValueKey('discover-business-brand'),
+                                maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   fontFamily: AppType.sans,
@@ -744,6 +746,18 @@ class DiscoverBusinessCard extends ConsumerWidget {
                                   color: t.text1,
                                 ),
                               ),
+                              if (b.secondaryName.isNotEmpty)
+                                Text(
+                                  b.secondaryName,
+                                  key: const ValueKey('discover-business-secondary'),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontFamily: AppType.sans,
+                                    fontSize: 11,
+                                    color: t.text2,
+                                  ),
+                                ),
                               if (category.isNotEmpty)
                                 Text(
                                   category,
