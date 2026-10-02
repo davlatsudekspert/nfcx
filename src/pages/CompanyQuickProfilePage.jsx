@@ -380,12 +380,15 @@ export default function CompanyQuickProfilePage({ companyId }) {
             )}
           </div>
 
-          <h1 className="qp-name break-words">
-            {company.displayName}
+          <h1 className="qp-name break-words" style={{ overflowWrap: 'anywhere' }}>
+            {company.demo ? company.displayName : (company.companyId || company.displayName)}
             {company.demo
               ? <span className="qp-demo">{t('Namuna')}</span>
               : <i className="qp-verified" title={t('Tasdiqlangan kompaniya')} aria-label={t('Tasdiqlangan kompaniya')}>✓</i>}
           </h1>
+          {!company.demo && company.displayName && company.displayName !== company.companyId && (
+            <p className="qp-sub break-words" style={{ fontSize: '16px' }}>{company.displayName}</p>
+          )}
           {/* QISQA tanishtiruv (soha). Uzun tavsif ATAYLAB bu yerda
               emas: u to'rt qatorga cho'zilib, pastdagi kontent oynasini
               yeb qo'yardi. To'liq tavsif "Ma'lumot" bo'limida. */}
