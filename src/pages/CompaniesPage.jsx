@@ -266,7 +266,7 @@ function RealCompanyCard({ item, categories, lang, t }) {
       </div>
       <div className="co-real-body">
         <span className="co-real-logo">{item.avatarUrl ? <img src={item.avatarUrl} alt="" /> : (item.name || item.code).slice(0, 2).toUpperCase()}</span>
-        <div><h3>{item.name || item.code}{item.verified && <i>✓</i>}</h3><p>{path || item.role || t('Kompaniya')}</p><small>{item.city ? `⌖ ${item.city}` : `nfcstore.uz${href}`}</small></div>
+        <div><h3>{isCompany && !item.demo ? item.code : (item.name || item.code)}{item.verified && <i>✓</i>}</h3>{isCompany && !item.demo && item.name !== item.code && <p>{item.name}</p>}<p>{path || item.role || t('Kompaniya')}</p><small>{item.city ? `⌖ ${item.city}` : `nfcstore.uz${href}`}</small></div>
       </div>
       {item.matchLabel && <div className="co-match">✨ {t('Mos natija')}: <b>{item.matchLabel}</b>{item.matchPrice != null && <> · {fmt(item.matchPrice)} {t("so'm")}</>}</div>}
       <span className="co-real-link">{t('Profilga o‘tish')} →</span>

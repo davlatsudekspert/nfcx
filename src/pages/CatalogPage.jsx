@@ -6,6 +6,7 @@ import { dbSearchRecords } from '../lib/db.js';
 import { useCategories, catName, findCat } from '../lib/categories.js';
 import PhysicalCardPromoCard from '../components/PhysicalCardPromoCard.jsx';
 import CatalogCard from '../components/CatalogCard.jsx';
+import { listPublicCompanies, companyTier } from '../lib/company.js';
 import { IconEye } from '../components/Icons.jsx';
 
 const TYPE_TABS = [
@@ -29,6 +30,27 @@ export default function CatalogPage({ catalog }) {
   // doim pastda qolib ketardi).
   const [sort, setSort] = useState('views');
   const [serverHits, setServerHits] = useState([]);
+  const [companies, setCompanies] = useState([]);
+  useEffect(() => {
+    let live = true;
+    listPublicCompanies()
+      .then((rows) => { if (live) setCompanies(rows.filter((c) => !c.demo)); })
+      .catch(() => { if (live) setCompanies([]); });
+    return () => { live = false; };
+  }, []);
+  const companyCards = companies.map((c) => ({
+    kind: 'company',
+    code: c.companyId,
+    name: c.displayName || c.companyId,
+    profileType: 'business',
+    role: c.subcategory || '',
+    city: c.city || '',
+    categorySlug: c.category || '',
+    avatarUrl: c.logoUrl || '',
+    views: Number(c.views) || 0,
+    ts: Date.parse(c.createdAt || '') || 0,
+    tierOverride: companyTier(c.companyId),
+  }));
 
   // Serverда qidiruv (email/telefon bo'yicha ham) — 2+ belgi, debounce.
   useEffect(() => {
@@ -45,8 +67,8 @@ export default function CatalogPage({ catalog }) {
 
   // Katalog + serverда topilganlar (kod bo'yicha dedupe).
   const serverCodes = new Set(serverHits.map((r) => r.code));
-  const source = [...catalog];
-  for (const r of serverHits) if (!source.some((m) => m.code === r.code)) source.push(r);
+  const source = [...catalog, ...companyCards];
+  for (const r of serverHits) if (!source.some((m) => m.kind !== 'company' && m.code === r.code)) source.push(r);
 
   const SORTERS = {
     views: (a, b) => (b.views || 0) - (a.views || 0) || b.ts - a.ts,
@@ -86,7 +108,7 @@ export default function CatalogPage({ catalog }) {
         <div>
           <span className="vz-kicker">{t('Katalog')}</span>
           <h1 className="vz-h1 mt-4 max-w-3xl">{t('Barcha band qilingan')} <span className="text-[var(--vz-gold-2)]">{t("raqamli tashrif qog'ozlar")}</span></h1>
-          <p className="vz-lead mt-3">{t("Jami {n} ta raqamli tashrif qog'ozi band qilingan. Kod yoki ism bo'yicha qidiring.", { n: fmt(catalog.length) })}</p>
+          <p className="vz-lead mt-3">{t("Jami {n} ta raqamli tashrif qog'ozi band qilingan. Kod yoki ism bo'yicha qidiring.", { n: fmt(catalog.length + companyCards.length) })}</p>
           <div className="mt-6 flex max-w-md items-center rounded-lg border border-white/15 bg-black/40 focus-within:border-[var(--vz-gold)]">
             <span className="shrink-0 pl-3 font-mono text-xs text-base-content/40">{t('qidirish')}</span>
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('ABZ007 yoki ism...')} autoComplete="off" aria-label={t('qidirish')} className="min-h-11 w-full min-w-0 bg-transparent px-2 py-3 text-sm outline-none" />
@@ -168,7 +190,7 @@ export default function CatalogPage({ catalog }) {
               {(query || anyFilter) && <button type="button" className="btn btn-outline-gold btn-sm mt-2" onClick={() => { setQ(''); setType('all'); setMainCat(''); setSubCat(''); }}>{t('Filtrlarni tozalash')}</button>}
             </div>
           )}
-          {filtered.map((it, idx) => <CatalogCard key={it.code} item={it} idx={idx} />)}
+          {filtered.map((it, idx) => <CatalogCard key={`${it.kind === 'company' ? 'c' : 'p'}:${it.code}`} item={it} idx={idx} />)}
         </div>
       </section>
     </main>
