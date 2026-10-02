@@ -425,6 +425,7 @@ jobs:
           du -h release-final/* >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: nfcstore-mobile-apk
           path: |
@@ -445,6 +446,7 @@ jobs:
       #
       # Zamonaviy Android telefonlarning deyarli hammasi arm64-v8a.
       - uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: NFCSTORE-Mobile-telefon
           path: mobile_nova/release-final/NFCSTORE-Mobile-arm64-v8a.apk
@@ -459,6 +461,7 @@ jobs:
       # olardi. Endi har fayl o'z artifaktida; umumiy ZIP
       # (`NFCSTORE-Mobile`) ham pastda qoladi.
       - uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: NFCSTORE-Mobile-PlayStore-aab
           path: mobile_nova/release-final/NFCSTORE-Mobile.aab
@@ -466,6 +469,7 @@ jobs:
           retention-days: 90
           compression-level: 0
       - uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: NFCSTORE-Mobile-universal-apk
           path: mobile_nova/release-final/NFCSTORE-Mobile.apk
@@ -473,6 +477,7 @@ jobs:
           retention-days: 90
           compression-level: 0
       - uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: NFCSTORE-Mobile-eski-telefon-armeabi-v7a
           path: mobile_nova/release-final/NFCSTORE-Mobile-armeabi-v7a.apk
@@ -480,6 +485,7 @@ jobs:
           retention-days: 90
           compression-level: 0
       - uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: NFCSTORE-Mobile-emulyator-x86_64
           path: mobile_nova/release-final/NFCSTORE-Mobile-x86_64.apk
@@ -536,6 +542,7 @@ jobs:
             --notes "Telefon uchun: **NFCSTORE-Mobile-arm64-v8a.apk** — qurilish #${{ github.run_number }}, commit ${{ github.sha }}, branch ${{ github.ref_name }}. Sinov qurilishi: har yangi push'da yangilanadi."
 
       - uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: NFCSTORE-Mobile
           path: mobile_nova/release-final/*
