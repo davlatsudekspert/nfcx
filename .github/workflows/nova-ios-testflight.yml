@@ -1,0 +1,355 @@
+# NFCSTORE (Nova) iOS -> TestFlight
+#
+# Manba: `claude/vibrant-einstein-p5lo1i` branchidagi `mobile_nova/`
+# (bundle `uz.nfcstore.nova`). Kod shu branchdan AYNAN o'z holicha
+# olinadi — bu workflow ilova kodiga hech narsa yozmaydi va commit
+# qilmaydi. Imzo mantiqi `ui/theme-controls` dagi ishlagan
+# `nova-testflight.yml` dan olingan.
+#
+# Faqat TestFlight: build App Store Connect'ga yuklanadi va Apple qayta
+# ishlaydi. App Store review'ga YUBORILMAYDI, reliz QILINMAYDI.
+name: NFCSTORE iOS TestFlight (mobile_nova)
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload_testflight:
+        description: "TestFlight'ga yuklash (NOVA_APPSTORE_* secretlari kerak)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: nova-ios-testflight
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  signed:
+    runs-on: macos-15
+    timeout-minutes: 75
+    defaults:
+      run:
+        working-directory: mobile_nova
+        shell: bash
+    env:
+      SOURCE_BRANCH: claude/vibrant-einstein-p5lo1i
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+      IOS_TEAM_ID: 5Z9CT2W378
+      IOS_BUNDLE_ID: uz.nfcstore.nova
+      UPLOAD: ${{ inputs.upload_testflight }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/vibrant-einstein-p5lo1i
+
+      # TARGET QO'RIQCHISI: boshqa loyiha yoki bundle bo'lsa — to'xtash.
+      - name: Target tekshiruvi
+        run: |
+          set -euo pipefail
+          P=ios/Runner.xcodeproj/project.pbxproj
+          N=$(grep -c 'PRODUCT_BUNDLE_IDENTIFIER = uz.nfcstore.nova;' "$P" || true)
+          [ "$N" = 3 ] || { echo "::error::Runner bundle ID uz.nfcstore.nova emas ($N/3)"; exit 1; }
+          if grep -q 'uz.nfcstore.app' "$P"; then echo "::error::uz.nfcstore.app topildi"; exit 1; fi
+          NAME=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' ios/Runner/Info.plist)
+          [ "$NAME" = "NFCSTORE" ] || { echo "::error::Ilova nomi '$NAME'"; exit 1; }
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
+          echo "IOS_VERSION=$VERSION" >> "$GITHUB_ENV"
+          SHA=$(git rev-parse HEAD)
+          echo "TARGET = mobile_nova / uz.nfcstore.nova / $SOURCE_BRANCH @ ${SHA:0:7} (v$VERSION)"
+          echo "**TARGET:** mobile_nova / uz.nfcstore.nova / \`$SOURCE_BRANCH\` @ \`${SHA:0:7}\` — v$VERSION" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Secretlar
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.NOVA_IOS_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.NOVA_IOS_CERTIFICATE_PASSWORD }}
+          PROFILE_BASE64: ${{ secrets.NOVA_IOS_PROFILE_BASE64 }}
+          API_KEY_ID: ${{ secrets.NOVA_APPSTORE_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.NOVA_APPSTORE_ISSUER_ID }}
+          API_PRIVATE_KEY: ${{ secrets.NOVA_APPSTORE_PRIVATE_KEY }}
+        run: |
+          MISSING=""
+          [ -n "$CERTIFICATE_BASE64" ]   || MISSING="$MISSING NOVA_IOS_CERTIFICATE_BASE64"
+          [ -n "$CERTIFICATE_PASSWORD" ] || MISSING="$MISSING NOVA_IOS_CERTIFICATE_PASSWORD"
+          [ -n "$PROFILE_BASE64" ]       || MISSING="$MISSING NOVA_IOS_PROFILE_BASE64"
+          if [ "$UPLOAD" = "true" ]; then
+            [ -n "$API_KEY_ID" ]      || MISSING="$MISSING NOVA_APPSTORE_KEY_ID"
+            [ -n "$API_ISSUER_ID" ]   || MISSING="$MISSING NOVA_APPSTORE_ISSUER_ID"
+            [ -n "$API_PRIVATE_KEY" ] || MISSING="$MISSING NOVA_APPSTORE_PRIVATE_KEY"
+          fi
+          if [ -n "$MISSING" ]; then
+            echo "::error::Yetishmayotgan secret(lar):$MISSING"
+            echo "**Yetishmayotgan secretlar:**$MISSING" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "Barcha kerakli secretlar bor."
+
+      # App Store Connect: ilova yozuvi bormi va keyingi build raqami.
+      # Faqat O'QISH (GET) — hech narsa yaratilmaydi.
+      - name: App Store Connect tekshiruvi
+        if: env.UPLOAD == 'true'
+        env:
+          API_KEY_ID: ${{ secrets.NOVA_APPSTORE_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.NOVA_APPSTORE_ISSUER_ID }}
+          API_PRIVATE_KEY: ${{ secrets.NOVA_APPSTORE_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          umask 077
+          KEYDIR="$HOME/.appstoreconnect/private_keys"
+          mkdir -p "$KEYDIR"
+          KEYFILE="$KEYDIR/AuthKey_$API_KEY_ID.p8"
+          if printf '%s' "$API_PRIVATE_KEY" | grep -q 'BEGIN PRIVATE KEY'; then
+            printf '%s\n' "$API_PRIVATE_KEY" > "$KEYFILE"
+          else
+            printf '%s' "$API_PRIVATE_KEY" | base64 --decode > "$KEYFILE"
+          fi
+          export ASC_KEY_FILE="$KEYFILE"
+          echo "ASC_KEY_FILE=$KEYFILE" >> "$GITHUB_ENV"
+
+          python3 -m venv "$RUNNER_TEMP/ascvenv"
+          "$RUNNER_TEMP/ascvenv/bin/pip" install --quiet pyjwt cryptography
+          echo "ASC_PY=$RUNNER_TEMP/ascvenv/bin/python" >> "$GITHUB_ENV"
+
+          cat > "$RUNNER_TEMP/asc.py" <<'PY'
+          import json, os, sys, time, urllib.error, urllib.parse, urllib.request
+          import jwt
+
+          KEY_ID = os.environ['API_KEY_ID']
+          ISSUER = os.environ['API_ISSUER_ID']
+          PKEY = open(os.environ['ASC_KEY_FILE']).read()
+          BUNDLE = os.environ['IOS_BUNDLE_ID']
+
+          def token():
+              now = int(time.time())
+              return jwt.encode({'iss': ISSUER, 'iat': now, 'exp': now + 1100, 'aud': 'appstoreconnect-v1'},
+                                PKEY, algorithm='ES256', headers={'kid': KEY_ID, 'typ': 'JWT'})
+
+          def get(path, params=None):
+              url = 'https://api.appstoreconnect.apple.com' + path
+              if params:
+                  url += '?' + urllib.parse.urlencode(params)
+              req = urllib.request.Request(url, headers={'Authorization': 'Bearer ' + token()})
+              try:
+                  with urllib.request.urlopen(req, timeout=60) as r:
+                      return json.load(r)
+              except urllib.error.HTTPError as e:
+                  print(f'::error::App Store Connect API {e.code}: {e.read().decode()[:400]}')
+                  sys.exit(1)
+
+          def env_out(**kv):
+              with open(os.environ['GITHUB_ENV'], 'a') as f:
+                  for k, v in kv.items():
+                      f.write(f'{k}={v}\n')
+
+          def summary(line):
+              with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+                  f.write(line + '\n')
+
+          cmd = sys.argv[1]
+          if cmd == 'precheck':
+              apps = [a for a in get('/v1/apps', {'filter[bundleId]': BUNDLE})['data']
+                      if a['attributes']['bundleId'] == BUNDLE]
+              if not apps:
+                  print(f"::error::App Store Connect'da {BUNDLE} uchun ilova yozuvi yo'q.")
+                  sys.exit(1)
+              app = apps[0]
+              builds = get('/v1/builds', {'filter[app]': app['id'], 'limit': 200,
+                                          'sort': '-uploadedDate', 'fields[builds]': 'version'})['data']
+              nums = sorted(int(b['attributes']['version']) for b in builds
+                            if b['attributes']['version'].isdigit())
+              nxt = max(nums + [301]) + 1
+              print(f"App: {app['attributes']['name']} ({app['id']}), oxirgi buildlar: {nums[-5:]}, yangi build: {nxt}")
+              env_out(ASC_APP_ID=app['id'], IOS_BUILD_NUMBER=nxt)
+          elif cmd == 'status':
+              app, num, ver = os.environ['ASC_APP_ID'], os.environ['IOS_BUILD_NUMBER'], os.environ['IOS_VERSION']
+              deadline = time.time() + 1800
+              state, build = 'NOT_VISIBLE_YET', None
+              while time.time() < deadline:
+                  data = get('/v1/builds', {'filter[app]': app, 'filter[version]': num,
+                                            'filter[preReleaseVersion.version]': ver})['data']
+                  if data:
+                      build = data[0]
+                      state = build['attributes']['processingState']
+                      print('processingState:', state)
+                      if state != 'PROCESSING':
+                          break
+                  else:
+                      print("Build hali App Store Connect API'da ko'rinmadi...")
+                  time.sleep(30)
+              beta = '-'
+              if build:
+                  d = get(f"/v1/builds/{build['id']}/buildBetaDetail")['data']['attributes']
+                  beta = d.get('internalBuildState') or '-'
+              print(f'RESULT version={ver} build={num} processingState={state} internalTestFlight={beta}')
+              summary(f'- version: **{ver}**\n- build number: **{num}**\n'
+                      f'- processingState: **{state}**\n- TestFlight (internal): **{beta}**')
+              if state in ('INVALID', 'FAILED'):
+                  sys.exit(1)
+          PY
+          "$RUNNER_TEMP/ascvenv/bin/python" "$RUNNER_TEMP/asc.py" precheck
+
+      - name: Build raqami (yuklashsiz)
+        if: env.UPLOAD != 'true'
+        run: echo "IOS_BUILD_NUMBER=$((300 + ${{ github.run_number }}))" >> "$GITHUB_ENV"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.35.5
+          channel: stable
+          cache: true
+
+      - name: Xcode va paketlar
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          flutter pub get --enforce-lockfile
+
+      # ---- nova-testflight.yml dan (ishlagan) ----
+      - name: Imzo sertifikati va profil
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.NOVA_IOS_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.NOVA_IOS_CERTIFICATE_PASSWORD }}
+          PROFILE_BASE64: ${{ secrets.NOVA_IOS_PROFILE_BASE64 }}
+        run: |
+          set -euo pipefail
+          umask 077
+          SIGN_DIR="$RUNNER_TEMP/nova-signing"
+          mkdir -p "$SIGN_DIR"
+          printf '%s' "$CERTIFICATE_BASE64" | base64 --decode > "$SIGN_DIR/distribution.p12"
+          printf '%s' "$PROFILE_BASE64" | base64 --decode > "$SIGN_DIR/profile.mobileprovision"
+          security cms -D -i "$SIGN_DIR/profile.mobileprovision" > "$SIGN_DIR/profile.plist"
+          python3 - <<'PY'
+          import os, plistlib, datetime
+          p = plistlib.load(open(os.environ['RUNNER_TEMP'] + '/nova-signing/profile.plist', 'rb'))
+          assert p['TeamIdentifier'] == [os.environ['IOS_TEAM_ID']], 'team'
+          assert p['Entitlements']['application-identifier'] == os.environ['IOS_TEAM_ID'] + '.' + os.environ['IOS_BUNDLE_ID'], 'app id'
+          assert not p['Entitlements'].get('get-task-allow', True), 'not a distribution profile'
+          assert p['ExpirationDate'] > datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None), 'profile expired'
+          assert 'TAG' in p['Entitlements']['com.apple.developer.nfc.readersession.formats'], 'no NFC TAG'
+          print('Profile:', p['Name'], p['UUID'], 'expires', p['ExpirationDate'])
+          with open(os.environ['GITHUB_ENV'], 'a') as f:
+              f.write('IOS_PROFILE_UUID=' + p['UUID'] + '\n')
+              f.write('IOS_PROFILE_NAME=' + p['Name'] + '\n')
+          PY
+          KEYCHAIN_PASSWORD=$(openssl rand -hex 32)
+          echo "::add-mask::$KEYCHAIN_PASSWORD"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$SIGN_DIR/build.keychain-db"
+          security set-keychain-settings -lut 21600 "$SIGN_DIR/build.keychain-db"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$SIGN_DIR/build.keychain-db"
+          security import "$SIGN_DIR/distribution.p12" -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$SIGN_DIR/build.keychain-db"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$SIGN_DIR/build.keychain-db" >/dev/null
+          security list-keychains -d user -s "$SIGN_DIR/build.keychain-db" "$HOME/Library/Keychains/login.keychain-db"
+          security find-identity -v -p codesigning "$SIGN_DIR/build.keychain-db" | grep 'Apple Distribution'
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' "$SIGN_DIR/profile.plist")
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          cp "$SIGN_DIR/profile.mobileprovision" "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
+          rm -f "$SIGN_DIR/distribution.p12"
+
+      # Imzo sozlamasi faqat runner'dagi vaqtinchalik nusxada — commit yo'q.
+      - name: Runner imzosini sozlash (vaqtinchalik)
+        run: |
+          set -euo pipefail
+          ruby -rxcodeproj - <<'RUBY'
+          project = Xcodeproj::Project.open('ios/Runner.xcodeproj')
+          target = project.targets.find { |t| t.name == 'Runner' }
+          raise 'Runner target missing' unless target
+          target.build_configurations.each do |config|
+            config.build_settings['DEVELOPMENT_TEAM'] = ENV.fetch('IOS_TEAM_ID')
+            config.build_settings['CODE_SIGN_STYLE'] = 'Manual'
+            config.build_settings['CODE_SIGN_IDENTITY'] = 'Apple Distribution'
+            config.build_settings['CODE_SIGN_IDENTITY[sdk=iphoneos*]'] = 'Apple Distribution'
+            config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = ENV.fetch('IOS_PROFILE_NAME')
+          end
+          project.save
+          RUBY
+          python3 - <<'PY'
+          import os, plistlib
+          e = plistlib.load(open('ios/Runner/Runner.entitlements', 'rb'))
+          assert e['com.apple.developer.nfc.readersession.formats'] == ['TAG']
+          options = {'method': 'app-store-connect', 'destination': 'export',
+                     'teamID': os.environ['IOS_TEAM_ID'], 'signingStyle': 'manual',
+                     'signingCertificate': 'Apple Distribution',
+                     'provisioningProfiles': {os.environ['IOS_BUNDLE_ID']: os.environ['IOS_PROFILE_NAME']},
+                     'manageAppVersionAndBuildNumber': False, 'stripSwiftSymbols': True,
+                     'uploadSymbols': True}
+          plistlib.dump(options, open(os.environ['RUNNER_TEMP'] + '/nova-signing/ExportOptions.plist', 'wb'))
+          PY
+
+      - name: Imzolangan IPA
+        run: |
+          set -euo pipefail
+          flutter build ipa --release \
+            --build-name="$IOS_VERSION" --build-number="$IOS_BUILD_NUMBER" \
+            --dart-define=NOVA_VERSION="$IOS_VERSION" --dart-define=NOVA_BUILD="$IOS_BUILD_NUMBER" \
+            --export-options-plist="$RUNNER_TEMP/nova-signing/ExportOptions.plist"
+          test "$(find build/ios/ipa -maxdepth 1 -name '*.ipa' | wc -l | tr -d ' ')" = 1
+          cp build/ios/ipa/*.ipa NFCSTORE-iOS.ipa
+
+      - name: Imzo va entitlement tekshiruvi
+        run: |
+          set -euo pipefail
+          CHECK_DIR="$RUNNER_TEMP/nova-ipa-check"
+          mkdir -p "$CHECK_DIR"
+          unzip -q NFCSTORE-iOS.ipa -d "$CHECK_DIR"
+          APP="$CHECK_DIR/Payload/Runner.app"
+          codesign --verify --deep --strict "$APP"
+          codesign -d --entitlements :- "$APP" > "$CHECK_DIR/entitlements.plist" 2>/dev/null
+          security cms -D -i "$APP/embedded.mobileprovision" > "$CHECK_DIR/profile.plist"
+          python3 - <<'PY'
+          import os, plistlib
+          base = os.environ['RUNNER_TEMP'] + '/nova-ipa-check/'
+          p = plistlib.load(open(base + 'Payload/Runner.app/Info.plist', 'rb'))
+          e = plistlib.load(open(base + 'entitlements.plist', 'rb'))
+          profile = plistlib.load(open(base + 'profile.plist', 'rb'))
+          assert p['CFBundleIdentifier'] == os.environ['IOS_BUNDLE_ID']
+          assert p['CFBundleDisplayName'] == 'NFCSTORE'
+          assert p['CFBundleShortVersionString'] == os.environ['IOS_VERSION']
+          assert p['CFBundleVersion'] == os.environ['IOS_BUILD_NUMBER']
+          assert int(p['DTSDKName'].removeprefix('iphoneos').split('.')[0]) >= 26
+          assert e['application-identifier'] == os.environ['IOS_TEAM_ID'] + '.' + os.environ['IOS_BUNDLE_ID']
+          assert not e.get('get-task-allow', True)
+          assert e['com.apple.developer.nfc.readersession.formats'] == ['TAG']
+          assert profile['UUID'] == os.environ['IOS_PROFILE_UUID']
+          msg = f"IPA verified: {p['CFBundleIdentifier']} {p['CFBundleShortVersionString']} ({p['CFBundleVersion']}), SDK {p['DTSDKName']}, NFC TAG, App Store profile"
+          print(msg)
+          open(os.environ['GITHUB_STEP_SUMMARY'], 'a').write('- ' + msg + '\n')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nfcstore-ios-${{ env.IOS_VERSION }}-${{ env.IOS_BUILD_NUMBER }}
+          path: mobile_nova/NFCSTORE-iOS.ipa
+          if-no-files-found: error
+          retention-days: 30
+
+      # Faqat TestFlight'ga topshirish. Review/reliz chaqiruvlari YO'Q.
+      - name: TestFlight'ga yuklash
+        if: env.UPLOAD == 'true'
+        env:
+          API_KEY_ID: ${{ secrets.NOVA_APPSTORE_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.NOVA_APPSTORE_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          xcrun altool --validate-app --type ios --file NFCSTORE-iOS.ipa --apiKey "$API_KEY_ID" --apiIssuer "$API_ISSUER_ID"
+          xcrun altool --upload-app --type ios --file NFCSTORE-iOS.ipa --apiKey "$API_KEY_ID" --apiIssuer "$API_ISSUER_ID"
+          echo "- upload: **success** ($IOS_VERSION ($IOS_BUILD_NUMBER))" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: TestFlight processing holati
+        if: env.UPLOAD == 'true'
+        env:
+          API_KEY_ID: ${{ secrets.NOVA_APPSTORE_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.NOVA_APPSTORE_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          "$ASC_PY" "$RUNNER_TEMP/asc.py" status
+
+      - name: Tozalash
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/nova-signing/build.keychain-db" 2>/dev/null || true
+          if [ -n "${IOS_PROFILE_UUID:-}" ]; then
+            rm -f "$HOME/Library/MobileDevice/Provisioning Profiles/$IOS_PROFILE_UUID.mobileprovision"
+          fi
+          rm -rf "$RUNNER_TEMP/nova-signing" "$RUNNER_TEMP/nova-ipa-check" "$HOME/.appstoreconnect/private_keys" "$RUNNER_TEMP/asc.py"
