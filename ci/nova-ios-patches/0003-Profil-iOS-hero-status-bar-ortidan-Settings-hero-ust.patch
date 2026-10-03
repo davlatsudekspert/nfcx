@@ -1,0 +1,308 @@
+From 93416b7bc3f2d6c0661e5e46943a38e7bd4fd4bd Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 3 Oct 2026 19:13:42 +0000
+Subject: [PATCH 3/4] Profil (iOS): hero status bar ortidan, Settings hero
+ ustida
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+iPhone'da (xavfsiz hudud 59 pt) profil tanasi SafeArea + sarlavha
+qatori OSTIDAN boshlanardi: muqova ekran tepasidan 119 px pastda
+chiqib, ustida katta bo'sh (Ivory'da oq) zona qolar, Settings tugmasi
+o'sha zonada uzilib turardi.
+
+- NovaScaffold.heroBehindBar (sukut: false — boshqa ekranlar
+  o'zgarmaydi): tana ekran tepasidan chiziladi, tugmalar qatori
+  alohida fonsiz uning ustida (xavfsiz hududdan 16 px, o'ngdan 20 px).
+- ProfileScreen: muqova/atmosfera y=0 dan, balandligi xavfsiz hudud +
+  qator qadar oshgan; avatar, ism va ID avvalgi joyida (qator ostida).
+  Biznes vitrinasi kartasi tugmalar ostidan boshlanadi.
+  RefreshIndicator.edgeOffset shunga mos.
+- profile_hero_top_test: Ivory va Noir — hero y=0, Settings 59+16 px,
+  o'ngdan 16–24 px; eski kodda yiqiladi (hero top 119).
+- profile_grid_lazy_test: ko'rinadigan balandlik ~56 px oshgani uchun
+  chegara 18 -> 21 (bitta qator; to'r baribir dangasa, 60 dan 21).
+
+To'liq to'plam: 1077 o'tdi, analyze toza.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01WqgHSnzY8F5vsV7piKkJh7
+---
+ .../lib/design/widgets/nova_scaffold.dart     | 56 +++++++++++++-
+ .../lib/features/profile/profile_screen.dart  | 20 ++++-
+ mobile_nova/test/profile_grid_lazy_test.dart  |  8 +-
+ mobile_nova/test/profile_hero_top_test.dart   | 76 +++++++++++++++++++
+ 4 files changed, 152 insertions(+), 8 deletions(-)
+ create mode 100644 mobile_nova/test/profile_hero_top_test.dart
+
+diff --git a/mobile_nova/lib/design/widgets/nova_scaffold.dart b/mobile_nova/lib/design/widgets/nova_scaffold.dart
+index 377da6a7..d92e0317 100644
+--- a/mobile_nova/lib/design/widgets/nova_scaffold.dart
++++ b/mobile_nova/lib/design/widgets/nova_scaffold.dart
+@@ -26,6 +26,7 @@ class NovaScaffold extends StatelessWidget {
+     this.floating,
+     this.padBottom = true,
+     this.animateBackdrop = false,
++    this.heroBehindBar = false,
+   });
+ 
+   final Widget body;
+@@ -52,6 +53,28 @@ class NovaScaffold extends StatelessWidget {
+   final bool padBottom;
+   final bool animateBackdrop;
+ 
++  /// HERO STATUS BAR ORTIDAN BOSHLANADI (profil ekrani).
++  ///
++  /// Oddiy rejimda tana `SafeArea` va sarlavha qatori OSTIDAN
++  /// boshlanadi. iPhone'da tepadagi xavfsiz hudud katta (Dynamic
++  /// Island), shuning uchun muqova pastdan boshlanib, ustida katta
++  /// bo'sh (Ivory'da oq) zona qolardi (egasi, 2026-10).
++  ///
++  /// `true` bo'lsa tana ekranning ENG TEPASIDAN chiziladi, tugmalar
++  /// qatori esa alohida fon/AppBar'siz uning USTIGA qo'yiladi.
++  /// Tana o'z kontentini [heroTopInset] qadar pastga suradi — matn va
++  /// tugmalar status bar ostida qolmaydi, faqat fon u yerga chiqadi.
++  final bool heroBehindBar;
++
++  /// [heroBehindBar] rejimida tugmalar qatorining balandligi:
++  /// tepada 16 px, 44 px tugma, pastda 4 px.
++  static const heroBarExtent = Gap.lg + 44 + Gap.xs;
++
++  /// [heroBehindBar] rejimida kontent boshlanadigan masofa (ekran
++  /// tepasidan): xavfsiz hudud + tugmalar qatori.
++  static double heroTopInset(BuildContext context) =>
++      MediaQuery.viewPaddingOf(context).top + heroBarExtent;
++
+   @override
+   Widget build(BuildContext context) {
+     final t = context.tokens;
+@@ -65,7 +88,32 @@ class NovaScaffold extends StatelessWidget {
+         resizeToAvoidBottomInset: true,
+         body: AmbientBackdrop(
+           animate: animateBackdrop,
+-          child: SafeArea(
++          child: heroBehindBar
++              ? Stack(
++                  children: [
++                    Positioned.fill(
++                      child: SafeArea(top: false, bottom: false, child: body),
++                    ),
++                    if (hasBar)
++                      Positioned(
++                        top: 0,
++                        left: 0,
++                        right: 0,
++                        child: SafeArea(
++                          bottom: false,
++                          child: _Bar(
++                            title: title,
++                            leading: leading,
++                            actions: actions,
++                            showBack: showBack,
++                            onBack: onBack,
++                            overHero: true,
++                          ),
++                        ),
++                      ),
++                  ],
++                )
++              : SafeArea(
+             bottom: false,
+             child: Column(
+               children: [
+@@ -106,8 +154,10 @@ class _Bar extends StatelessWidget {
+     this.actions,
+     required this.showBack,
+     this.onBack,
++    this.overHero = false,
+   });
+ 
++  final bool overHero;
+   final String? title;
+   final Widget? leading;
+   final List<Widget>? actions;
+@@ -117,7 +167,9 @@ class _Bar extends StatelessWidget {
+   @override
+   Widget build(BuildContext context) {
+     return Padding(
+-      padding: const EdgeInsets.fromLTRB(Gap.md, Gap.sm, Gap.md, Gap.xs),
++      // Hero ustida: xavfsiz hududdan keyin 16 px, o'ngda 12 + 8 = 20 px.
++      padding: EdgeInsets.fromLTRB(
++          Gap.md, overHero ? Gap.lg : Gap.sm, Gap.md, Gap.xs),
+       child: Row(
+         children: [
+           if (showBack)
+diff --git a/mobile_nova/lib/features/profile/profile_screen.dart b/mobile_nova/lib/features/profile/profile_screen.dart
+index 40bfa683..50c40a8a 100644
+--- a/mobile_nova/lib/features/profile/profile_screen.dart
++++ b/mobile_nova/lib/features/profile/profile_screen.dart
+@@ -157,9 +157,13 @@ class ProfileScreen extends ConsumerWidget {
+ 
+     if (user == null) return const SizedBox.shrink();
+ 
++    // Hero (muqova) status bar ortidan boshlanadi, tugmalar uning ustida.
++    final heroTop = NovaScaffold.heroTopInset(context);
++
+     return NovaScaffold(
+       // Asosiy tab: pastki bo'shliq `navSafeBottom` da (suzuvchi menyu).
+       padBottom: false,
++      heroBehindBar: true,
+       showBack: target != null,
+       actions: target != null
+           ? [
+@@ -207,6 +211,7 @@ class ProfileScreen extends ConsumerWidget {
+               const SizedBox(width: Gap.sm),
+             ],
+       body: RefreshIndicator(
++        edgeOffset: heroTop,
+         color: t.accent2,
+         backgroundColor: t.surfaceSolid,
+         onRefresh: () async {
+@@ -239,7 +244,11 @@ class ProfileScreen extends ConsumerWidget {
+               : _PostsGrid(code: active.code, company: active.isBusiness),
+           children: [
+             if (biz != null)
+-              _StorefrontHeader(business: biz)
++              // Vitrina muqovasi — yumaloq karta: tugmalar ostidan boshlanadi.
++              Padding(
++                padding: EdgeInsets.only(top: heroTop),
++                child: _StorefrontHeader(business: biz),
++              )
+             else
+               _Hero(
+                   user: user,
+@@ -611,6 +620,11 @@ class _Hero extends StatelessWidget {
+     // shuning uchun UNI TO'QIB CHIQARMAYMIZ.
+     final subtitle = (profile?.subtitle ?? '').trim();
+ 
++    // Muqova status bar ORTIDAN boshlanadi; kontent esa tugmalar
++    // qatoridan keyin — kompozitsiya avvalgidek, faqat tepada bo'sh
++    // zona qolmaydi.
++    final heroTop = NovaScaffold.heroTopInset(context);
++
+     return Stack(
+       children: [
+         // Atmosfera: to'liq kenglik, hoshiyasiz, pastda fonga so'nadi.
+@@ -618,7 +632,7 @@ class _Hero extends StatelessWidget {
+           top: 0,
+           left: 0,
+           right: 0,
+-          height: 150,
++          height: 150 + heroTop,
+           child: ShaderMask(
+             // So'nishni SCRIM bilan emas, muqovaning O'ZINI shaffoflashtirib
+             // qilamiz. Ustiga `bg1` to'rtburchagi qo'yilsa, uning pastki
+@@ -707,7 +721,7 @@ class _Hero extends StatelessWidget {
+                 // yo'q bo'lsa tepada ortiqcha bo'sh joy qolmasin —
+                 // avatar sarlavhaga yaqin, ko'z darhol ism va ID'ga
+                 // tushadi (egasi, 2026-09: "yuqoridagi bo'sh joy").
+-                SizedBox(height: cover.isEmpty ? 16 : 86),
++                SizedBox(height: heroTop + (cover.isEmpty ? 16 : 86)),
+                 _DemoNotice(sample: profile?.isDemo ?? false),
+                 // ISTORYA HALQASI — FAQAT istorya BOR bo'lsa.
+                 //
+diff --git a/mobile_nova/test/profile_grid_lazy_test.dart b/mobile_nova/test/profile_grid_lazy_test.dart
+index 7ef9322c..f09092d4 100644
+--- a/mobile_nova/test/profile_grid_lazy_test.dart
++++ b/mobile_nova/test/profile_grid_lazy_test.dart
+@@ -85,9 +85,11 @@ void main() {
+ 
+     // Katakcha kengligi AVVALGIDEK: (ekran - 2*20 - 2*6) / 3.
+     const side = (390 - 40 - 12) / 3;
+-    // Ekran + Flutter'ning 250 px kesh zonasi — ko'pi bilan ~6 qator.
+-    // `Wrap` da har doim 30 tadan 30 tasi qurilardi.
+-    const few = 18;
++    // Ekran + Flutter'ning 250 px kesh zonasi — ko'pi bilan ~7 qator.
++    // Profil tanasi status bar ortidan boshlanadi (`heroBehindBar`):
++    // ko'rinadigan balandlik sarlavha qatoricha (~56 px) oshgan, ya'ni
++    // bitta qator ko'p. `Wrap` da har doim 30 tadan 30 tasi qurilardi.
++    const few = 21;
+ 
+     // ── Postlar tabi: 30 ta rasm ───────────────────────────────
+     final photos = _photoTiles().evaluate().length;
+diff --git a/mobile_nova/test/profile_hero_top_test.dart b/mobile_nova/test/profile_hero_top_test.dart
+new file mode 100644
+index 00000000..336bcbde
+--- /dev/null
++++ b/mobile_nova/test/profile_hero_top_test.dart
+@@ -0,0 +1,76 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
++import 'package:nfcstore_nova/design/widgets/buttons.dart';
++import 'package:nfcstore_nova/features/profile/profile_screen.dart';
++
++import 'helpers.dart';
++
++/// PROFIL HERO STATUS BAR ORTIDAN BOSHLANADI (egasi, 2026-10, iPhone).
++///
++/// iPhone'da tepadagi xavfsiz hudud katta (59 pt). Ilgari tana
++/// `SafeArea` + sarlavha qatori OSTIDAN boshlanardi: muqova pastdan
++/// chiqib, ustida katta bo'sh (Ivory'da oq) zona qolar, Settings
++/// tugmasi esa o'sha bo'sh zonada "uzilib" turardi.
++///
++/// Endi: muqova ekranning y=0 nuqtasidan, Settings tugmasi hero
++/// USTIDA — xavfsiz hududdan 16 px pastda, o'ng chetdan 20 px ichkarida.
++/// Matn va tugmalar status bar ostiga tushmaydi.
++void main() {
++  const topInset = 59.0;
++
++  for (final theme in [
++    ('Ivory', NfcTokens.ivory),
++    ('Noir', NfcTokens.noir),
++  ]) {
++    testWidgets('${theme.$1}: hero tepadan, Settings hero ustida',
++        (tester) async {
++      tester.view.physicalSize = const Size(393 * 3, 852 * 3);
++      tester.view.devicePixelRatio = 3;
++      tester.view.padding = const FakeViewPadding(top: topInset * 3);
++      tester.view.viewPadding = const FakeViewPadding(top: topInset * 3);
++      addTearDown(tester.view.reset);
++
++      final base = await testOverrides();
++      await tester.pumpWidget(ProviderScope(
++        overrides: base,
++        child: wrapScreen(const ProfileScreen(), tokens: theme.$2),
++      ));
++      await settle(tester, frames: 12);
++      expect(tester.takeException(), isNull);
++
++      // 1) Hero fon (muqova/atmosfera) ekranning eng tepasidan.
++      final hero = find.byType(ShaderMask).first;
++      final heroRect = tester.getRect(hero);
++      expect(heroRect.top, 0, reason: 'hero status bar ortidan boshlanmadi');
++      expect(heroRect.bottom,
++          greaterThan(topInset + 64),
++          reason: 'hero tugmalar qatoridan pastgacha tushishi kerak');
++
++      // 2) Settings — hero ustida, xavfsiz hududdan 16 px, o'ngdan 20 px.
++      final settings = find.ancestor(
++        of: find.byIcon(Icons.settings_outlined),
++        matching: find.byType(NovaIconButton),
++      );
++      expect(settings, findsOneWidget);
++      final s = tester.getRect(settings);
++      expect(s.top, closeTo(topInset + 16, 2.5),
++          reason: 'Settings xavfsiz hududdan keyin ~16 px bo‘lishi kerak');
++      expect(393 - s.right, inInclusiveRange(16, 24),
++          reason: 'Settings o‘ng chetdan 16–20 px ichkarida bo‘lishi kerak');
++      expect(s.top, greaterThanOrEqualTo(heroRect.top));
++      expect(s.bottom, lessThan(heroRect.bottom),
++          reason: 'Settings hero ustida turishi kerak');
++
++      // 3) Kontent (ism va avatar) status bar ostiga tushmaydi.
++      final firstText = find.descendant(
++          of: find.byType(ProfileScreen), matching: find.byType(Text));
++      for (final e in firstText.evaluate().take(3)) {
++        final r = tester.getRect(find.byWidget(e.widget).first);
++        expect(r.top, greaterThan(topInset),
++            reason: 'matn status bar ostida qoldi');
++      }
++    });
++  }
++}
+-- 
+2.43.0
+

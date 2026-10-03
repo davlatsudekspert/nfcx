@@ -49,6 +49,29 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: claude/vibrant-einstein-p5lo1i
+          path: .
+      - uses: actions/checkout@v4
+        with:
+          path: self
+
+      # iOS TUZATISHLARI — `ci/nova-ios-patches/*.patch` (faqat
+      # mobile_nova/): Android 280 dagi mavzu tugmalari, profil hero,
+      # Reels video. Nova branchi o'zgartirilmaydi — patch faqat shu
+      # runner'dagi nusxaga qo'llanadi.
+      - name: iOS patch'lari
+        working-directory: .
+        run: |
+          set -euo pipefail
+          git config user.name "NFCSTORE CI"
+          git config user.email "ci@nfcstore.uz"
+          BASE=$(git rev-parse --short HEAD)
+          ls self/ci/nova-ios-patches/*.patch
+          git am --3way self/ci/nova-ios-patches/*.patch
+          if git diff --name-only "$BASE" HEAD | grep -v '^mobile_nova/'; then
+            echo "::error::patch mobile_nova/ dan tashqariga tegadi"; exit 1
+          fi
+          echo "**Manba:** \`claude/vibrant-einstein-p5lo1i\` @ \`$BASE\` + $(find self/ci/nova-ios-patches -name '*.patch' | wc -l | tr -d ' ') ta iOS patch" >> "$GITHUB_STEP_SUMMARY"
+          git log --oneline -6
 
       # TARGET QO'RIQCHISI: boshqa loyiha yoki bundle bo'lsa — to'xtash.
       - name: Target tekshiruvi
@@ -218,6 +241,13 @@ jobs:
           set -euo pipefail
           xcodebuild -version
           flutter pub get --enforce-lockfile
+
+      # Ulashilgan Flutter kod (Android ham) — hamma test o'tmasa build yo'q.
+      - name: Analyze va testlar
+        run: |
+          set -euo pipefail
+          flutter analyze --no-fatal-infos
+          flutter test --reporter=compact 2>&1 | tail -5
 
       # ---- nova-testflight.yml dan (ishlagan) ----
       - name: Imzo sertifikati va profil

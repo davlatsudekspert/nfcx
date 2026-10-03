@@ -1,0 +1,273 @@
+From f81240e7343426cd23648f10c0f8246600a30643 Mon Sep 17 00:00:00 2001
+From: davlatsudekspert <davlatsudekspert@gmail.com>
+Date: Sat, 3 Oct 2026 05:54:12 +0500
+Subject: [PATCH 1/4] Match selected controls to each theme while preserving
+ light themes
+
+---
+ mobile_nova/lib/design/tokens/nfc_tokens.dart |   8 ++
+ .../lib/design/widgets/bottom_nav.dart        |   9 +-
+ .../lib/features/home/home_screen.dart        |   8 +-
+ .../features/home/widgets/mode_switch.dart    |  15 +--
+ mobile_nova/test/theme_controls_test.dart     | 108 ++++++++++++++++++
+ 5 files changed, 129 insertions(+), 19 deletions(-)
+ create mode 100644 mobile_nova/test/theme_controls_test.dart
+
+diff --git a/mobile_nova/lib/design/tokens/nfc_tokens.dart b/mobile_nova/lib/design/tokens/nfc_tokens.dart
+index 768ca0fc..381ea18d 100644
+--- a/mobile_nova/lib/design/tokens/nfc_tokens.dart
++++ b/mobile_nova/lib/design/tokens/nfc_tokens.dart
+@@ -142,6 +142,14 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
+     return darkScore >= lightScore ? dark : Colors.white;
+   }
+ 
++  /// Faol boshqaruv sirti: yorug' mavzuda siyoh, qorong'ida o'z aksenti.
++  /// Matn rangi fon uchun ishlatilmaydi: Ocean, Aurora va oltin mavzular
++  /// bir xil oq kapsulaga aylanib qolmasin.
++  Color get controlFill => isDark ? accent2 : text1;
++
++  /// [controlFill] ustidagi o'qiladigan yozuv va ikonka.
++  Color get onControl => isDark ? onAccent : surfaceSolid;
++
+   /// Logotip orqasidagi plastina rangi.
+   ///
+   /// Brend logotipi QORA fonli JPG. Yorug' mavzuda uni to'g'ridan-to'g'ri
+diff --git a/mobile_nova/lib/design/widgets/bottom_nav.dart b/mobile_nova/lib/design/widgets/bottom_nav.dart
+index fd27feff..834da98c 100644
+--- a/mobile_nova/lib/design/widgets/bottom_nav.dart
++++ b/mobile_nova/lib/design/widgets/bottom_nav.dart
+@@ -344,8 +344,7 @@ class _NavButton extends StatelessWidget {
+     // PREMIUM (egasi, 2026-09-24: "ikonkalar qoraroq, aniqroq,
+     // qimmatroq; faol holat premium" va "hamma temalarda ham").
+     //
+-    // Faol tab — mavzuning ASOSIY MATN rangidagi kapsula (Ivory'da qora
+-    // siyoh, qorong'i mavzularda yorug'), ichidagi belgi sirt rangida.
++    // Faol tab kapsulasi ham rejim almashtirgichi kabi mavzu aksentida.
+     // Faol emaslari — `text1` ga yaqin to'q ton (kulrang emas).
+     final idle = onVideo
+         ? Colors.white.withValues(alpha: .78)
+@@ -353,8 +352,8 @@ class _NavButton extends StatelessWidget {
+     final ink = onVideo ? Colors.white : t.text1;
+     final color = selected ? ink : idle;
+     // Video ustida faol kapsula — yarim shaffof oq (Instagram), belgi oq.
+-    final iconColor = selected && !onVideo ? t.surfaceSolid : color;
+-    final capsule = onVideo ? Colors.white.withValues(alpha: .2) : t.text1;
++    final iconColor = selected && !onVideo ? t.onControl : color;
++    final capsule = onVideo ? Colors.white.withValues(alpha: .2) : t.controlFill;
+     return Semantics(
+       button: true,
+       selected: selected,
+@@ -380,7 +379,7 @@ class _NavButton extends StatelessWidget {
+                     boxShadow: selected && !onVideo
+                         ? [
+                             BoxShadow(
+-                              color: t.text1.withValues(alpha: .22),
++                              color: t.controlFill.withValues(alpha: .22),
+                               blurRadius: 10,
+                               spreadRadius: -3,
+                               offset: const Offset(0, 4),
+diff --git a/mobile_nova/lib/features/home/home_screen.dart b/mobile_nova/lib/features/home/home_screen.dart
+index 1c32cd8f..d0e8e5f6 100644
+--- a/mobile_nova/lib/features/home/home_screen.dart
++++ b/mobile_nova/lib/features/home/home_screen.dart
+@@ -876,9 +876,7 @@ class _ActionTile extends StatelessWidget {
+   @override
+   Widget build(BuildContext context) {
+     final t = context.tokens;
+-    // PREMIUM (egasi, 2026-09-24): belgi SIYOH doirada (`text1`), sirt
+-    // rangidagi chiziq bilan — fintech ilovalardagidek aniq va qimmat.
+-    // Hamma mavzuda: Ivory'da qora doira, qorong'ida yorug' doira.
++    // Tezkor tugma ham rejim va navigatsiya kapsulasi rangida.
+     final style = TextStyle(
+       fontFamily: AppType.sans,
+       fontSize: 11.5,
+@@ -916,13 +914,13 @@ class _ActionTile extends StatelessWidget {
+                 height: 38,
+                 decoration: BoxDecoration(
+                   shape: BoxShape.circle,
+-                  color: t.text1,
++                  color: t.controlFill,
+                   // Nozik champagne hoshiya — siyoh doira "tiqilib"
+                   // qolmaydi, zargarlik buyumidek tugallanadi.
+                   border: Border.all(
+                       color: t.brand.withValues(alpha: .55), width: 1),
+                 ),
+-                child: Icon(icon, size: 19, color: t.surfaceSolid),
++                child: Icon(icon, size: 19, color: t.onControl),
+               ),
+               const SizedBox(height: 8),
+               Expanded(
+diff --git a/mobile_nova/lib/features/home/widgets/mode_switch.dart b/mobile_nova/lib/features/home/widgets/mode_switch.dart
+index 7b4a0d3c..804903d7 100644
+--- a/mobile_nova/lib/features/home/widgets/mode_switch.dart
++++ b/mobile_nova/lib/features/home/widgets/mode_switch.dart
+@@ -23,10 +23,7 @@ class ModeSwitch extends StatelessWidget {
+     final t = context.tokens;
+     final l = L.of(context);
+     final business = mode == AppMode.business;
+-    // PREMIUM (egasi, 2026-09-24: "toggle chiroyli, qimmat va aniq",
+-    // "hamma temalarda ham"). Faol tomon mavzuning asosiy matn rangida
+-    // (Ivory'da qora siyoh), yozuvi sirt rangida — kulrang "o'chirilgan
+-    // forma" ko'rinishi yo'q.
++    // Faol kapsula va yozuv bir xil, mavzuga mos rang juftligidan olinadi.
+     const h = 44.0;
+ 
+     return Semantics(
+@@ -64,11 +61,11 @@ class ModeSwitch extends StatelessWidget {
+                     width: w,
+                     height: h - 8,
+                     decoration: BoxDecoration(
+-                      color: t.text1,
++                      color: t.controlFill,
+                       borderRadius: R.pill,
+                       boxShadow: [
+                         BoxShadow(
+-                          color: t.text1.withValues(alpha: .24),
++                          color: t.controlFill.withValues(alpha: .24),
+                           blurRadius: 12,
+                           spreadRadius: -4,
+                           offset: const Offset(0, 5),
+@@ -82,7 +79,7 @@ class ModeSwitch extends StatelessWidget {
+                     _Label(
+                       text: l.modePersonal,
+                       selected: !business,
+-                      tone: t.surfaceSolid,
++                      tone: t.onControl,
+                       height: h - 8,
+                       width: w,
+                       onTap: () => onChanged(AppMode.personal),
+@@ -91,7 +88,7 @@ class ModeSwitch extends StatelessWidget {
+                     _Label(
+                       text: l.modeBusiness,
+                       selected: business,
+-                      tone: t.surfaceSolid,
++                      tone: t.onControl,
+                       height: h - 8,
+                       width: w,
+                       onTap: () => onChanged(AppMode.business),
+@@ -122,7 +119,7 @@ class _Label extends StatelessWidget {
+   final String text;
+   final bool selected;
+ 
+-  /// Faol yorliq rangi — shaxsiyda shampan, bizneda platina-yashil.
++  /// Faol kapsula ustidagi kontrastli yozuv.
+   final Color tone;
+   final double width;
+   final VoidCallback onTap;
+diff --git a/mobile_nova/test/theme_controls_test.dart b/mobile_nova/test/theme_controls_test.dart
+new file mode 100644
+index 00000000..6312becf
+--- /dev/null
++++ b/mobile_nova/test/theme_controls_test.dart
+@@ -0,0 +1,108 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_localizations/flutter_localizations.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/app/providers.dart';
++import 'package:nfcstore_nova/design/theme/app_theme.dart';
++import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
++import 'package:nfcstore_nova/design/widgets/bottom_nav.dart';
++import 'package:nfcstore_nova/features/home/widgets/mode_switch.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
++
++double contrast(Color a, Color b) {
++  final x = a.computeLuminance(), y = b.computeLuminance();
++  return ((x > y ? x : y) + .05) / ((x < y ? x : y) + .05);
++}
++
++Widget themed(NfcTokens t, Widget child) => MaterialApp(
++      theme: buildTheme(t),
++      locale: const Locale('uz'),
++      supportedLocales: L.supportedLocales,
++      localizationsDelegates: const [
++        L.delegate,
++        GlobalMaterialLocalizations.delegate,
++        GlobalWidgetsLocalizations.delegate,
++        GlobalCupertinoLocalizations.delegate,
++      ],
++      home: Scaffold(body: child),
++    );
++
++void main() {
++  for (final t in NfcTokens.all) {
++    test('${t.id}: control text remains readable', () {
++      expect(contrast(t.onControl, t.controlFill), greaterThanOrEqualTo(4.5));
++      if (t.isDark) {
++        expect(t.controlFill, t.accent2);
++        expect(t.controlFill, isNot(t.text1));
++      } else {
++        expect(t.controlFill, t.text1);
++        expect(t.onControl, t.surfaceSolid);
++      }
++    });
++
++    testWidgets('${t.id}: selection moves and uses theme colors', (tester) async {
++      var mode = AppMode.personal;
++      await tester.pumpWidget(themed(
++        t,
++        StatefulBuilder(builder: (context, setState) => Center(
++          child: SizedBox(
++            width: 320,
++            child: ModeSwitch(
++              mode: mode,
++              onChanged: (value) => setState(() => mode = value),
++            ),
++          ),
++        )),
++      ));
++      await tester.pumpAndSettle();
++      final capsule = find.descendant(
++        of: find.byType(ModeSwitch),
++        matching: find.byType(AnimatedContainer),
++      );
++      expect((tester.widget<AnimatedContainer>(capsule).decoration as BoxDecoration).color,
++          t.controlFill);
++      expect(tester.widget<AnimatedAlign>(find.byType(AnimatedAlign)).alignment,
++          Alignment.centerLeft);
++      final l = L.of(tester.element(find.byType(ModeSwitch)));
++      final selectedText = tester.element(find.text(l.modePersonal));
++      expect(DefaultTextStyle.of(selectedText).style.color, t.onControl);
++      await tester.tap(find.text(l.modeBusiness));
++      await tester.pumpAndSettle();
++      expect(mode, AppMode.business);
++      expect(tester.widget<AnimatedAlign>(find.byType(AnimatedAlign)).alignment,
++          Alignment.centerRight);
++      expect(DefaultTextStyle.of(tester.element(find.text(l.modeBusiness))).style.color,
++          t.onControl);
++      expect(tester.takeException(), isNull);
++    });
++
++    testWidgets('${t.id}: active navigation icon uses matching ink', (tester) async {
++      const activeIcon = Icons.home_rounded;
++      await tester.pumpWidget(themed(
++        t,
++        const Align(
++          alignment: Alignment.bottomCenter,
++          child: NovaBottomNav(
++            items: [
++              NavItem(icon: Icons.home_outlined, activeIcon: activeIcon,
++                  label: 'Asosiy', route: '/'),
++              NavItem(icon: Icons.person_outline, label: 'Profil', route: '/profile'),
++            ],
++            centerIndex: -1,
++            currentIndex: 0,
++            onSelect: ignoreSelection,
++          ),
++        ),
++      ));
++      await tester.pumpAndSettle();
++      final icon = tester.widget<Icon>(find.byIcon(activeIcon));
++      expect(icon.color, t.onControl);
++      final fills = tester.widgetList<AnimatedContainer>(
++        find.byType(AnimatedContainer),
++      ).map((w) => (w.decoration as BoxDecoration?)?.color);
++      expect(fills, contains(t.controlFill));
++      expect(tester.takeException(), isNull);
++    });
++  }
++}
++
++void ignoreSelection(int _) {}
+-- 
+2.43.0
+

@@ -1,0 +1,100 @@
+From 97662ea5ff6c73650ff29faf4b22cc1fdfabb765 Mon Sep 17 00:00:00 2001
+From: davlatsudekspert <davlatsudekspert@gmail.com>
+Date: Sat, 3 Oct 2026 05:59:44 +0500
+Subject: [PATCH 2/4] Apply matching theme colors to filters and business
+ actions
+
+---
+ mobile_nova/lib/design/widgets/surfaces.dart  |  6 ++---
+ .../lib/features/profile/profile_screen.dart  |  4 ++--
+ mobile_nova/test/theme_controls_test.dart     | 24 +++++++++++++++++++
+ 3 files changed, 29 insertions(+), 5 deletions(-)
+
+diff --git a/mobile_nova/lib/design/widgets/surfaces.dart b/mobile_nova/lib/design/widgets/surfaces.dart
+index 46835313..dc156041 100644
+--- a/mobile_nova/lib/design/widgets/surfaces.dart
++++ b/mobile_nova/lib/design/widgets/surfaces.dart
+@@ -131,7 +131,7 @@ class Capsule extends StatelessWidget {
+     // qoladi. Qorong'i mavzularda — avvalgidek.
+     final ink = tone == null;
+     final fg = ink
+-        ? (selected ? t.surfaceSolid : t.text1)
++        ? (selected ? t.onControl : t.text1)
+         : (selected ? accent : t.text2);
+ 
+     return PressableScale(
+@@ -145,9 +145,9 @@ class Capsule extends StatelessWidget {
+         ),
+         decoration: ink
+             ? BoxDecoration(
+-                color: selected ? t.text1 : t.surfaceSolid,
++                color: selected ? t.controlFill : t.surfaceSolid,
+                 borderRadius: R.pill,
+-                border: Border.all(color: selected ? t.text1 : t.border1),
++                border: Border.all(color: selected ? t.controlFill : t.border1),
+                 boxShadow: selected ? null : t.shadowTiny,
+               )
+             : BoxDecoration(
+diff --git a/mobile_nova/lib/features/profile/profile_screen.dart b/mobile_nova/lib/features/profile/profile_screen.dart
+index 3ac65d52..40bfa683 100644
+--- a/mobile_nova/lib/features/profile/profile_screen.dart
++++ b/mobile_nova/lib/features/profile/profile_screen.dart
+@@ -1376,11 +1376,11 @@ class _BusinessTiles extends StatelessWidget {
+                       height: 38,
+                       decoration: BoxDecoration(
+                         shape: BoxShape.circle,
+-                        color: t.text1,
++                        color: t.controlFill,
+                         border: Border.all(
+                             color: t.brand.withValues(alpha: .55)),
+                       ),
+-                      child: Icon(e.$1, size: 19, color: t.surfaceSolid),
++                      child: Icon(e.$1, size: 19, color: t.onControl),
+                     ),
+                     const SizedBox(width: Gap.sm),
+                     Expanded(
+diff --git a/mobile_nova/test/theme_controls_test.dart b/mobile_nova/test/theme_controls_test.dart
+index 6312becf..92360bdd 100644
+--- a/mobile_nova/test/theme_controls_test.dart
++++ b/mobile_nova/test/theme_controls_test.dart
+@@ -5,6 +5,7 @@ import 'package:nfcstore_nova/app/providers.dart';
+ import 'package:nfcstore_nova/design/theme/app_theme.dart';
+ import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
+ import 'package:nfcstore_nova/design/widgets/bottom_nav.dart';
++import 'package:nfcstore_nova/design/widgets/surfaces.dart';
+ import 'package:nfcstore_nova/features/home/widgets/mode_switch.dart';
+ import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
+ 
+@@ -75,6 +76,29 @@ void main() {
+       expect(tester.takeException(), isNull);
+     });
+ 
++    testWidgets('${t.id}: filter and status capsules keep their colors', (tester) async {
++      await tester.pumpWidget(themed(
++        t,
++        Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
++          const Capsule(label: 'Selected', selected: true),
++          Capsule(label: 'Warning', selected: true, tone: t.warn),
++        ])),
++      ));
++      await tester.pumpAndSettle();
++      final selected = find.widgetWithText(Capsule, 'Selected');
++      final decoration = tester.widget<AnimatedContainer>(find.descendant(
++        of: selected, matching: find.byType(AnimatedContainer),
++      )).decoration as BoxDecoration;
++      expect(decoration.color, t.controlFill);
++      expect(tester.widget<Text>(find.text('Selected')).style?.color, t.onControl);
++      final warning = tester.widget<AnimatedContainer>(find.descendant(
++        of: find.widgetWithText(Capsule, 'Warning'),
++        matching: find.byType(AnimatedContainer),
++      )).decoration as BoxDecoration;
++      expect(warning.color, t.warn.withValues(alpha: t.isDark ? .13 : .18));
++      expect(tester.takeException(), isNull);
++    });
++
+     testWidgets('${t.id}: active navigation icon uses matching ink', (tester) async {
+       const activeIcon = Icons.home_rounded;
+       await tester.pumpWidget(themed(
+-- 
+2.43.0
+
