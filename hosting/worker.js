@@ -11383,6 +11383,8 @@ async function handleRequest(request, env, url, ctx) {
         if (res) return res;
       } catch (error) {
         console.error('r2 read', error);
+        // Audit: ombor xatosi foydalanuvchiga 404 bo'lib ko'rinadi — sababi logda qolsin.
+        await uzLogError(env, { method: request.method, path: url.pathname, status: 404, detail: `upload read: ${String(error?.message || error)}` });
       }
       return json({ error: 'not_found' }, 404);
     }

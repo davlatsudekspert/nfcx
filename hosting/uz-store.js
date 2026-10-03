@@ -378,9 +378,13 @@ function rangeHeader(range) {
 }
 
 async function s3Error(res, what) {
-  const text = await res.text().catch(() => '');
+  const text = res.uzErrorText ?? await res.text().catch(() => '');
   const code = /<Code>([^<]+)<\/Code>/.exec(text)?.[1] || '';
-  return new Error(`uz-s3 ${what}: HTTP ${res.status}${code ? ` ${code}` : ''}`);
+  const msg = /<Message>([^<]+)<\/Message>/.exec(text)?.[1] || '';
+  // 403 da soat farqi (bizning x-amz-date ↔ server Date) — imzo xatosi tashxisi uchun.
+  const skew = res.status === 403 && res.uzSignedAt && res.headers.get('date')
+    ? ` skew=${Math.round((Date.parse(res.headers.get('date')) - res.uzSignedAt) / 1000)}s` : '';
+  return new Error(`uz-s3 ${what}: HTTP ${res.status}${code ? ` ${code}` : ''}${msg ? ` (${msg.slice(0, 80)})` : ''}${skew}`);
 }
 
 export function uzBucket({ endpoint, bucket, keyId, secret, region = 'garage', fetch: doFetch = (...a) => fetch(...a) }) {
@@ -390,8 +394,18 @@ export function uzBucket({ endpoint, bucket, keyId, secret, region = 'garage', f
   async function request(method, key, { query = '', headers = {}, body = null } = {}) {
     const url = `${base}/${encodeKeyPath(key)}${query ? `?${query}` : ''}`;
     const payloadHash = body ? await sha256Hex(body) : EMPTY_SHA;
-    const signed = await signV4({ method, url, headers, payloadHash, keyId, secret, region });
-    return doFetch(url, { method, headers: signed, body: body || undefined });
+    let res;
+    // 403 (masalan "Invalid signature") — bir marta yangi imzo bilan qayta.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const now = new Date();
+      const signed = await signV4({ method, url, headers, payloadHash, keyId, secret, region, now });
+      res = await doFetch(url, { method, headers: signed, body: body || undefined });
+      res.uzSignedAt = now.getTime();
+      if (res.status !== 403) return res;
+      res.uzErrorText = await res.text().catch(() => '');
+      if (attempt === 0) console.warn('uz_s3_403_retry', method, String(key).slice(0, 80), res.uzErrorText.slice(0, 160));
+    }
+    return res;
   }
 
   const bucketApi = {
@@ -525,18 +539,24 @@ const tagStore = (o, src) => {
 export function withR2Fallback(uz, r2, onEvent = async () => {}) {
   return {
     ...uz,
+    // UZ da yo'q (null) YOKI UZ xato bersa — R2 dan; ikkalasi ham qayd etiladi
+    // ('head'/'get' yoki 'head-error'/'get-error' + xato matni).
     async head(key) {
-      const a = await uz.head(key);
+      let a; let err = null;
+      try { a = await uz.head(key); } catch (e) { err = e; }
       if (a) return tagStore(a, 'uz');
       const b = await r2.head(key);
-      if (b) await onEvent('head', key);
+      if (b || err) await onEvent(err ? 'head-error' : 'head', err ? `${key} ${String(err.message).slice(0, 200)}` : key);
+      if (!b && err) throw err;
       return tagStore(b, 'r2');
     },
     async get(key, options) {
-      const a = await uz.get(key, options);
+      let a; let err = null;
+      try { a = await uz.get(key, options); } catch (e) { err = e; }
       if (a) return tagStore(a, 'uz');
       const b = await r2.get(key, options);
-      if (b) await onEvent('get', key);
+      if (b || err) await onEvent(err ? 'get-error' : 'get', err ? `${key} ${String(err.message).slice(0, 200)}` : key);
+      if (!b && err) throw err;
       return tagStore(b, 'r2');
     },
     async delete(keys) {

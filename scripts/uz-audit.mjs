@@ -51,7 +51,7 @@ let fallbackReads = 0;
   if (await hasTable('_uz_fallback_log')) {
     const g = (await db.prepare(`SELECT op, COUNT(*) AS n, MIN(ts) AS a, MAX(ts) AS b FROM "_uz_fallback_log" GROUP BY op`).all()).results;
     for (const r of g) say(`${r.op}: ${r.n} ta (${r.a} … ${r.b})`);
-    fallbackReads = g.filter((r) => r.op === 'head' || r.op === 'get').reduce((a, r) => a + r.n, 0);
+    fallbackReads = g.filter((r) => ['head', 'get', 'head-error', 'get-error'].includes(r.op)).reduce((a, r) => a + r.n, 0);
     const last = (await db.prepare(`SELECT ts, op, key FROM "_uz_fallback_log" ORDER BY id DESC LIMIT 8`).all()).results;
     for (const r of last) say(`  ${r.ts} ${r.op} ${String(r.key).slice(0, 90)}`);
     if (!g.length) say('yozuv yo\'q — R2 dan bitta ham fayl o\'qilmagan');

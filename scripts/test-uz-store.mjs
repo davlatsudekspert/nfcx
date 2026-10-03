@@ -385,4 +385,30 @@ try {
   check('yozish probi: fayl faqat audit/ ostida', auditKeys.length === 1 && auditKeys[0].startsWith('audit/probe-'), true);
 }
 
+// ── 403 da bir marta qayta urinish; UZ xatosida R2 fallback ──
+{
+  const sf = s3Fetch({ bucket: 'rt' });
+  let fail = 1; let calls = 0;
+  const flaky = async (url, init) => { calls++; if (fail > 0 && (init?.method === 'HEAD')) { fail--; return new Response('<Error><Code>AccessDenied</Code><Message>Forbidden: Invalid signature</Message></Error>', { status: 403, headers: { date: new Date().toUTCString() } }); } return sf(url, init); };
+  const rb = uzBucket({ endpoint: 'https://s3.uz.test', bucket: 'rt', keyId: 'k', secret: 's', fetch: flaky });
+  await rb.put('uploads/r.png', new Uint8Array([7]));
+  calls = 0;
+  const h = await rb.head('uploads/r.png');
+  check('403 → yangi imzo bilan qayta: muvaffaqiyat', [h?.size, calls], [1, 2]);
+  fail = 5;
+  let msg = '';
+  try { await rb.head('uploads/r.png'); } catch (e) { msg = e.message; }
+  checkTrue('ikki marta 403 → xato matnida kod, xabar va soat farqi', /HTTP 403 AccessDenied \(Forbidden: Invalid signature\) skew=-?\d+s/.test(msg));
+  const r2m = { async head(k) { return k === 'uploads/r.png' ? { key: k, size: 1 } : null; }, async get() { return null; }, async delete() {} };
+  const ev = [];
+  fail = 5;
+  const fb2 = withR2Fallback(rb, r2m, async (op, key) => { ev.push(op); });
+  const got = await fb2.head('uploads/r.png');
+  check('UZ xato bersa — R2 dan, "head-error" qayd etiladi', [got?.nfcStore, ev], ['r2', ['head-error']]);
+  fail = 5;
+  let thrown = false;
+  try { await fb2.head('uploads/none.png'); } catch { thrown = true; }
+  check('UZ xato, R2 da ham yo‘q — xato yashirilmaydi', thrown, true);
+}
+
 done();
