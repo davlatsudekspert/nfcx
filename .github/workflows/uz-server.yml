@@ -41,9 +41,17 @@ jobs:
           # Maxfiy so'zlar bor qatorlar annotatsiyaga tushmasin.
           clean() { grep -viE 'secret|token|password|parol|key id|rpc_|admin_' | tail -n "${1:-15}"; }
 
-          if ! R 'echo ok' >/dev/null 2>&1; then
-            echo "::error title=SSH::Serverga ulanib bo'lmadi (IP, parol yoki 22-port)"; exit 1
+          # Diagnostika: port ochiqmi va SSH nima deydi (xabarlarda maxfiy narsa yo'q).
+          for p in 22 80 443; do
+            if timeout 8 bash -c "echo > /dev/tcp/$HOST/$p" 2>/dev/null; then st=ochiq; else st="yopiq/javob yo'q"; fi
+            echo "::notice title=Port $p::$st"
+          done
+          printf '%s' "$SSHPASS" | grep -q '[[:space:]]' && echo "::warning title=Parol::secret qiymatida probel yoki yangi qator bor"
+          if ! R 'echo ok' > ssh.out 2>&1; then
+            tail -n 3 ssh.out | grep -viE 'password|parol' | while IFS= read -r l; do echo "::error title=SSH javobi::$l"; done
+            echo "::error title=SSH::Serverga ulanib bo'lmadi"; exit 1
           fi
+          echo "::notice title=SSH::ulandi"
 
           if [ "$ACTION" = setup ]; then
             if R 'QUIET=1 bash -s' < ops/uz-server/setup.sh > setup.out 2>&1; then
