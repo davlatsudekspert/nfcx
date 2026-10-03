@@ -18,9 +18,10 @@ name: NFCSTORE iOS build
 on:
   workflow_dispatch:
   push:
-    branches: [main, 'claude/**']
+    branches: [main, 'claude/**', 'ui/theme-controls']
     paths:
       - 'mobile_nova/ios/**'
+      - 'mobile_nova/lib/**'
       - 'mobile_nova/integration_ios/**'
       - 'mobile_nova/lib/core/media/**'
       - 'mobile_nova/pubspec.yaml'
