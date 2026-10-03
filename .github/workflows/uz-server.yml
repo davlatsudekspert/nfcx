@@ -12,7 +12,7 @@ on:
         required: true
         default: status
         type: choice
-        options: [status, setup, log, test, probe, dryrun, audit, copy-media, copy-db, cutover, finalize-media, recover]
+        options: [status, setup, log, diag, test, probe, dryrun, audit, copy-media, copy-db, cutover, finalize-media, recover]
       confirm:
         description: "cutover uchun aynan: KOCHIR"
         required: false
@@ -126,7 +126,7 @@ jobs:
           fi
 
           # ── KO'CHIRISH (Cloudflare'da faqat O'QISH — hech narsa o'chirilmaydi) ──
-          case "$ACTION" in probe|dryrun|audit|copy-media|copy-db|cutover|finalize-media|recover)
+          case "$ACTION" in probe|diag|dryrun|audit|copy-media|copy-db|cutover|finalize-media|recover)
             export CF_API_TOKEN="$CF_TOKEN" CF_ACCOUNT CLOUDFLARE_API_TOKEN="$CF_TOKEN" CLOUDFLARE_ACCOUNT_ID="$CF_ACCOUNT"
             [ -n "$CF_TOKEN" ] || { echo "::error::CLOUDFLARE_API_TOKEN secret yo'q"; exit 1; }
             DBT=$(R '. /srv/nfcstore/secrets.env && printf %s "$DB_TOKEN"')
@@ -248,6 +248,26 @@ jobs:
             echo "::$lvl title=dryrun (jonli Worker → UZ)::$(clean 20 < d.out | joined) ."
             rm -f b.out h.out d.out c.out
             [ $lvl = notice ] || exit 1
+          fi
+
+          # ── DIAGNOSTIKA: Garage/Caddy xatolari va takroriy S3 so'rovlar (faqat o'qish) ──
+          if [ "$ACTION" = diag ]; then
+            R 'cd /srv/nfcstore && echo "== garage (2 soat, xato/ogohlantirish)"; docker compose logs --since 2h --no-log-prefix garage 2>&1 | grep -iE "error|warn" | sed -E "s/^[0-9TZ:. -]+//" | sort | uniq -c | sort -rn | head -12; echo "== caddy (2 soat)"; docker compose logs --since 2h --no-log-prefix caddy 2>&1 | grep -iE "error|warn" | tail -6; echo "== soat"; date -u; echo "== garage status"; docker compose exec -T garage /garage status 2>&1 | tail -6' > g.out 2>&1
+            echo "::notice title=diag · server loglari::$(clean 40 < g.out | cut -c1-300 | joined) ."
+            node -e "
+            import('./hosting/uz-store.js').then(async (m) => {
+              const b = m.uzBucket({ endpoint: process.env.UZ_S3_ENDPOINT, bucket: process.env.UZ_S3_BUCKET, keyId: process.env.UZ_S3_KEY_ID, secret: process.env.UZ_S3_SECRET });
+              const keys = (await b.list({ prefix: 'uploads/', limit: 12 })).objects.map((o) => o.key);
+              const stat = {}; const ex = [];
+              for (let round = 0; round < 4; round++) await Promise.all(keys.map(async (k) => {
+                const t0 = Date.now();
+                try { const h = await b.head(k); const g = h && await b.get(k); if (g) await g.arrayBuffer(); stat.ok = (stat.ok || 0) + 1; }
+                catch (e) { const c = String(e.message).replace(/uploads\/\S+/, 'KEY'); stat[c] = (stat[c] || 0) + 1; if (ex.length < 4) ex.push(k + ' ' + e.message + ' ' + (Date.now() - t0) + 'ms'); }
+              }));
+              console.log('runner → Garage (12 fayl × 4, parallel): ' + JSON.stringify(stat)); ex.forEach((x) => console.log('  ' + x));
+            });" > d.out 2>&1
+            echo "::notice title=diag · S3 takroriy so'rovlar::$(clean 10 < d.out | joined) ."
+            rm -f g.out d.out
           fi
 
           # ── O'TISHDAN KEYINGI AUDIT (hech narsa o'chirilmaydi) ──
