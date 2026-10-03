@@ -8,7 +8,7 @@
 // Haqiqiy serverda faqat vaqtinchalik `_uz_conformance_*` jadvali va
 // `_uz_conformance/` kalitlari ishlatiladi, oxirida o'chiriladi.
 import { DatabaseSync } from 'node:sqlite';
-import { uzDb, uzBucket, signV4, isWriteSql, withUzStores, handleUzExport, uzMaintenance, uzMaintenanceBypass, maintenanceResponse, rowLiteralSql, rowColumnsSql, rowPairs, digestPairs, insertForPairs } from '../hosting/uz-store.js';
+import { uzDb, uzBucket, signV4, isWriteSql, withUzStores, handleUzExport, uzMaintenance, uzMaintenanceBypass, maintenanceResponse, rowLiteralSql, rowColumnsSql, rowPairs, digestPairs, insertForPairs, withR2Fallback, uzLogError, uzWriteProbe } from '../hosting/uz-store.js';
 import { hranaFetch } from './lib/hrana-fake.mjs';
 import { s3Fetch } from './lib/s3-fake.mjs';
 
@@ -349,6 +349,40 @@ try {
   await cdb.prepare('SELECT 1').first(); await cdb.prepare('SELECT 2').first();
   check('ketma-ket await — har biri alohida HTTP', calls, 2);
   await cdb.exec('DROP TABLE IF EXISTS co');
+}
+
+// ── Post-cutover audit: fallback hodisasi, manba belgisi, xato logi, yozish probi ──
+{
+  const sf = s3Fetch({ bucket: 'fb' });
+  const uzB = uzBucket({ endpoint: 'https://s3.uz.test', bucket: 'fb', keyId: 'k', secret: 's', fetch: sf });
+  const r2store = new Map([['uploads/old.png', new Uint8Array([1, 2, 3])]]);
+  const r2 = {
+    async head(k) { return r2store.has(k) ? { key: k, size: r2store.get(k).length } : null; },
+    async get(k) { return r2store.has(k) ? { key: k, size: r2store.get(k).length, arrayBuffer: async () => r2store.get(k).buffer } : null; },
+    async delete(ks) { for (const k of [].concat(ks)) r2store.delete(k); },
+  };
+  const events = [];
+  const fb = withR2Fallback(uzB, r2, async (op, key) => { events.push(`${op}:${key}`); });
+  await uzB.put('uploads/new.png', new Uint8Array([9]));
+  const a = await fb.head('uploads/new.png');
+  check('fallback: UZ dagi fayl — manba uz, hodisa yo‘q', [a?.nfcStore, events.length], ['uz', 0]);
+  const b = await fb.get('uploads/old.png');
+  check('fallback: faqat R2 dagi fayl — manba r2, hodisa yozildi', [b?.nfcStore, events], ['r2', ['get:uploads/old.png']]);
+  check('fallback: ikkalasida yo‘q — null, hodisa yo‘q', [await fb.head('uploads/none.png'), events.length], [null, 1]);
+  await fb.delete(['uploads/old.png']);
+  check('fallback: o‘chirish R2 mirror ham qayd etiladi', events.at(-1), 'delete-mirror:uploads/old.png');
+
+  const edb = uzDb({ url: 'https://db.uz.test', token: 'test-token', fetch: hranaFetch(new DatabaseSync(':memory:')) });
+  await uzLogError({ UZ_STORE_ACTIVE: '1', DB: edb }, { method: 'GET', path: '/api/feed', status: 503, detail: '{"error":"core_api_unavailable"}' });
+  await uzLogError({ DB: edb }, { method: 'GET', path: '/x', status: 500 });   // UZ faol emas — yozilmaydi
+  const logged = (await edb.prepare('SELECT method, path, status FROM _uz_error_log').all()).results;
+  check('xato logi: faqat UZ faol bo‘lsa, yo‘l va status', logged.map((r) => `${r.method} ${r.path} ${r.status}`), ['GET /api/feed 503']);
+
+  const probe = await uzWriteProbe({ DB: edb, UPLOADS: uzB });
+  checkTrue('yozish probi: baza ok', /^ok /.test(probe.db));
+  checkTrue('yozish probi: media put/get/range/head ok', /^ok put\/get\/range\/head/.test(probe.media));
+  const auditKeys = (await uzB.list({ prefix: 'audit/' })).objects.map((o) => o.key);
+  check('yozish probi: fayl faqat audit/ ostida', auditKeys.length === 1 && auditKeys[0].startsWith('audit/probe-'), true);
 }
 
 done();
