@@ -1,0 +1,368 @@
+# iOS -> TESTFLIGHT (Mac'siz)
+#
+# GitHub'ning macOS runnerida iOS release build qilinadi, Apple
+# Distribution sertifikati bilan imzolanadi va App Store Connect API
+# kaliti orqali TestFlight'ga yuklanadi.
+#
+# FAQAT TESTFLIGHT. Bu workflow App Store'ga reliz QILMAYDI va
+# tekshiruvga (review) YUBORMAYDI: yuklangan build App Store Connect ->
+# TestFlight bo'limida paydo bo'ladi, xolos. Production reliz — qo'lda,
+# egasining qarori bilan.
+#
+# SECRETS (Settings -> Secrets and variables -> Actions):
+#   IOS_CERTIFICATE_BASE64           — Apple Distribution .p12, base64
+#   IOS_CERTIFICATE_PASSWORD         — .p12 paroli
+#   IOS_PROVISIONING_PROFILE_BASE64  — App Store profili (.mobileprovision), base64
+#   APP_STORE_CONNECT_API_KEY_ID     — API kalit ID (masalan ABC123XYZ9)
+#   APP_STORE_CONNECT_ISSUER_ID      — Issuer ID (UUID)
+#   APP_STORE_CONNECT_API_KEY_P8     — AuthKey_XXXX.p8 fayl MATNI (yoki uning base64'i)
+#
+# Team ID va bundle ID secret EMAS: team ID profilning o'zidan,
+# bundle ID esa Xcode loyihasidan o'qiladi (o'zgartirilmaydi).
+#
+# IMZO SECRETLARI YO'Q BO'LSA: imzosiz build (`--no-codesign`) qilinadi —
+# loyiha macOS'da kompilyatsiya bo'lishini tekshirish uchun. Yuklash
+# bo'lmaydi.
+#
+# Batafsil yo'riqnoma: mobile/docs/IOS_TESTFLIGHT.md
+name: iOS TestFlight
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: "TestFlight'ga yuklansinmi? (o'chirilsa faqat IPA artifact)"
+        type: boolean
+        default: true
+      build_number:
+        description: "Build raqami (bo'sh — avtomatik: run number)"
+        required: false
+        default: ''
+  # VAQTINCHA: imzosiz tekshiruv uchun (workflow hali main'da yo'q). Olib tashlanadi.
+  push:
+    branches: [claude/wizardly-einstein-8cx2p4]
+    paths: [.github/workflows/ios-testflight.yml]
+
+concurrency:
+  group: ios-testflight-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: mobile
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ENG YANGI BARQAROR XCODE. App Store Connect eski SDK bilan
+      # qurilgan buildlarni rad etadi (2026-aprel'dan Xcode 26 / iOS 26
+      # SDK talab qilinadi), runner'dagi standart Xcode esa har doim
+      # ham eng yangisi emas. Beta versiyalar tashlab o'tiladi.
+      - name: Xcode tanlash
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app 2>/dev/null | grep -vi beta | sort -V | tail -1)
+          if [ -n "$XCODE" ]; then
+            sudo xcode-select -s "$XCODE/Contents/Developer"
+          fi
+          xcodebuild -version
+          MAJOR=$(xcodebuild -version | head -1 | awk '{print $2}' | cut -d. -f1)
+          if [ "$MAJOR" -lt 26 ]; then
+            echo "::warning::Xcode $MAJOR — App Store Connect Xcode 26+ bilan qurilgan buildni talab qilishi mumkin."
+          fi
+
+      # Versiya Android workflow'lari bilan bir xil: ilova shu
+      # versiyada yozilgan va sinovdan o'tgan.
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.4
+          channel: stable
+          cache: true
+
+      - name: Bog'liqliklar
+        run: flutter pub get --enforce-lockfile
+
+      # VERSIYA. Ko'rinadigan versiya (CFBundleShortVersionString)
+      # pubspec.yaml'dan olinadi va o'zgartirilmaydi. Build raqami
+      # (CFBundleVersion) esa har ishga tushishda oshadi: App Store
+      # Connect bir xil raqamli ikkinchi buildni qabul qilmaydi.
+      - name: Versiya raqami
+        id: ver
+        env:
+          RUN: ${{ github.run_number }}
+          OVERRIDE: ${{ inputs.build_number }}
+        run: |
+          NAME=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
+          CODE=${OVERRIDE:-$RUN}
+          if ! [[ "$CODE" =~ ^[0-9]+$ ]]; then
+            echo "::error::Build raqami butun son bo'lishi kerak: '$CODE'"
+            exit 1
+          fi
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+          echo "Versiya: $NAME ($CODE)"
+
+      # Bundle ID loyihadan o'qiladi — workflow uni hech qachon
+      # o'zgartirmaydi, faqat profil bilan mosligini tekshiradi.
+      - name: Bundle ID
+        id: app
+        run: |
+          IDS=$(grep -o 'PRODUCT_BUNDLE_IDENTIFIER = [^;]*' ios/Runner.xcodeproj/project.pbxproj \
+            | sed 's/.*= //; s/"//g' | grep -v 'RunnerTests' | sort -u)
+          if [ "$(echo "$IDS" | wc -l | tr -d ' ')" != "1" ]; then
+            echo "::error::Runner uchun bitta bundle ID kutilgan, topildi: $IDS"
+            exit 1
+          fi
+          echo "bundle_id=$IDS" >> "$GITHUB_OUTPUT"
+          echo "Bundle ID: $IDS"
+
+      # TEKSHIRUV SKRIPT ICHIDA: qadam darajasidagi `if:` `secrets`
+      # kontekstini ko'rmaydi.
+      - name: Imzo secretlari
+        id: mode
+        env:
+          P12: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          PROFILE: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          ASC_ISSUER: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          ASC_P8: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8 }}
+          UPLOAD: ${{ github.event_name == 'workflow_dispatch' && inputs.upload }}
+        run: |
+          if [ -z "$P12" ] && [ -z "$PROFILE" ]; then
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "upload=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Imzo secretlari sozlanmagan — faqat imzosiz tekshiruv build qilinadi, TestFlight'ga yuklanmaydi."
+            exit 0
+          fi
+          MISSING=""
+          [ -n "$P12" ]          || MISSING="$MISSING IOS_CERTIFICATE_BASE64"
+          [ -n "$P12_PASSWORD" ] || MISSING="$MISSING IOS_CERTIFICATE_PASSWORD"
+          [ -n "$PROFILE" ]      || MISSING="$MISSING IOS_PROVISIONING_PROFILE_BASE64"
+          if [ "$UPLOAD" = "true" ]; then
+            [ -n "$ASC_KEY_ID" ] || MISSING="$MISSING APP_STORE_CONNECT_API_KEY_ID"
+            [ -n "$ASC_ISSUER" ] || MISSING="$MISSING APP_STORE_CONNECT_ISSUER_ID"
+            [ -n "$ASC_P8" ]     || MISSING="$MISSING APP_STORE_CONNECT_API_KEY_P8"
+          fi
+          if [ -n "$MISSING" ]; then
+            echo "::error::Quyidagi secret(lar) yo'q:$MISSING"
+            exit 1
+          fi
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+          echo "upload=$UPLOAD" >> "$GITHUB_OUTPUT"
+
+      # ---------- IMZOSIZ TEKSHIRUV ----------
+      - name: iOS build (imzosiz tekshiruv)
+        if: steps.mode.outputs.signed == 'false'
+        run: |
+          flutter build ios --release --no-codesign \
+            --build-name=${{ steps.ver.outputs.name }} \
+            --build-number=${{ steps.ver.outputs.code }} \
+            --dart-define=APP_VERSION=${{ steps.ver.outputs.name }}+${{ steps.ver.outputs.code }}
+          echo "## iOS: imzosiz build muvaffaqiyatli" >> "$GITHUB_STEP_SUMMARY"
+          echo "Loyiha macOS'da kompilyatsiya bo'ladi. TestFlight uchun imzo secretlarini qo'shing (mobile/docs/IOS_TESTFLIGHT.md)." >> "$GITHUB_STEP_SUMMARY"
+
+      # ---------- IMZO ----------
+      # Sertifikat VAQTINCHALIK keychain'ga qo'yiladi (paroli har safar
+      # tasodifiy) va ish oxirida o'chiriladi. Fayllar faqat
+      # $RUNNER_TEMP ichida turadi — repoga hech narsa yozilmaydi.
+      - name: Sertifikat va profilni o'rnatish
+        id: sign
+        if: steps.mode.outputs.signed == 'true'
+        env:
+          P12: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          PROFILE: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          BUNDLE_ID: ${{ steps.app.outputs.bundle_id }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN="$RUNNER_TEMP/nfcstore-signing.keychain-db"
+          KC_PASS=$(openssl rand -base64 24)
+          echo "::add-mask::$KC_PASS"
+
+          echo "$P12" | base64 --decode > "$RUNNER_TEMP/dist.p12"
+          echo "$PROFILE" | base64 --decode > "$RUNNER_TEMP/app.mobileprovision"
+
+          security create-keychain -p "$KC_PASS" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KC_PASS" "$KEYCHAIN"
+          if ! security import "$RUNNER_TEMP/dist.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"; then
+            echo "::error::.p12 import bo'lmadi. Parol noto'g'ri yoki fayl OpenSSL 3 bilan '-legacy' siz eksport qilingan (yo'riqnomaga qarang)."
+            exit 1
+          fi
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KC_PASS" "$KEYCHAIN" > /dev/null
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          rm -f "$RUNNER_TEMP/dist.p12"
+
+          # Distribution identity — nom emas, SHA-1 bo'yicha: keychain'da
+          # eski "iPhone Distribution" ham bo'lsa adashmasin.
+          IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN" \
+            | grep -E '"(Apple|iPhone) Distribution' | head -1 | awk '{print $2}' || true)
+          if [ -z "$IDENTITY" ]; then
+            echo "::error::.p12 ichida Apple Distribution sertifikati topilmadi (Development emas, Distribution kerak)."
+            security find-identity -v -p codesigning "$KEYCHAIN" || true
+            exit 1
+          fi
+
+          # PROFILNI TEKSHIRISH — xato bo'lsa xcodebuild'ning tushunarsiz
+          # xabari o'rniga aniq sabab chiqsin.
+          PLIST="$RUNNER_TEMP/profile.plist"
+          security cms -D -i "$RUNNER_TEMP/app.mobileprovision" > "$PLIST"
+          PB=/usr/libexec/PlistBuddy
+          UUID=$($PB -c "Print :UUID" "$PLIST")
+          PNAME=$($PB -c "Print :Name" "$PLIST")
+          TEAM=$($PB -c "Print :TeamIdentifier:0" "$PLIST")
+          APPID=$($PB -c "Print :Entitlements:application-identifier" "$PLIST")
+          EXPIRES=$($PB -c "Print :ExpirationDate" "$PLIST")
+          echo "Profil: $PNAME ($UUID), team $TEAM, $APPID, muddati: $EXPIRES"
+
+          if [ "$APPID" != "$TEAM.$BUNDLE_ID" ]; then
+            echo "::error::Profil boshqa ilova uchun: '$APPID'. Kutilgan: '$TEAM.$BUNDLE_ID'."
+            exit 1
+          fi
+          if $PB -c "Print :ProvisionedDevices" "$PLIST" > /dev/null 2>&1; then
+            echo "::error::Bu Ad Hoc/Development profil. 'App Store Connect' (App Store) turidagi profil kerak."
+            exit 1
+          fi
+          if [ "$($PB -c 'Print :Entitlements:get-task-allow' "$PLIST" 2>/dev/null || echo false)" = "true" ]; then
+            echo "::error::Profil Development turida (get-task-allow=true). App Store profili kerak."
+            exit 1
+          fi
+          if ! $PB -c "Print :Entitlements:com.apple.developer.nfc.readersession.formats" "$PLIST" > /dev/null 2>&1; then
+            echo "::error::Profilda NFC Tag Reading imkoniyati yo'q. App ID'da 'NFC Tag Reading' ni yoqib, profilni qayta yarating."
+            exit 1
+          fi
+
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles" \
+                   "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"
+          cp "$RUNNER_TEMP/app.mobileprovision" "$HOME/Library/MobileDevice/Provisioning Profiles/$UUID.mobileprovision"
+          cp "$RUNNER_TEMP/app.mobileprovision" "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles/$UUID.mobileprovision"
+
+          # QO'LDA IMZO — faqat shu runner ichida. Release.xcconfig faqat
+          # Runner targetiga ulangan, shuning uchun Pods targetlariga
+          # profil tegmaydi. O'zgarish commit qilinmaydi.
+          cat >> ios/Flutter/Release.xcconfig <<XC
+
+          // CI: TestFlight imzosi (ios-testflight.yml qo'shgan, commit qilinmaydi)
+          CODE_SIGN_STYLE = Manual
+          DEVELOPMENT_TEAM = $TEAM
+          CODE_SIGN_IDENTITY = $IDENTITY
+          CODE_SIGN_IDENTITY[sdk=iphoneos*] = $IDENTITY
+          PROVISIONING_PROFILE_SPECIFIER = $UUID
+          XC
+
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<PL
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>export</string>
+            <key>teamID</key><string>$TEAM</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>signingCertificate</key><string>$IDENTITY</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>$BUNDLE_ID</key><string>$UUID</string>
+            </dict>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+            <key>uploadSymbols</key><true/>
+          </dict>
+          </plist>
+          PL
+          echo "Imzo tayyor: identity $IDENTITY"
+
+      - name: IPA qurish
+        if: steps.mode.outputs.signed == 'true'
+        run: |
+          flutter build ipa --release \
+            --build-name=${{ steps.ver.outputs.name }} \
+            --build-number=${{ steps.ver.outputs.code }} \
+            --dart-define=APP_VERSION=${{ steps.ver.outputs.name }}+${{ steps.ver.outputs.code }} \
+            --export-options-plist="$RUNNER_TEMP/ExportOptions.plist"
+
+      # TAYYOR IPA ICHINI TEKSHIRISH: versiya, bundle ID va NFC
+      # entitlement haqiqatan imzoda borligi.
+      - name: IPA tekshiruvi
+        id: ipa
+        if: steps.mode.outputs.signed == 'true'
+        env:
+          BUNDLE_ID: ${{ steps.app.outputs.bundle_id }}
+        run: |
+          set -euo pipefail
+          IPA=$(ls build/ios/ipa/*.ipa | head -1)
+          [ -f "$IPA" ] || { echo "::error::IPA topilmadi"; exit 1; }
+          rm -rf "$RUNNER_TEMP/ipa" && mkdir "$RUNNER_TEMP/ipa"
+          unzip -q "$IPA" -d "$RUNNER_TEMP/ipa"
+          APP=$(ls -d "$RUNNER_TEMP"/ipa/Payload/*.app | head -1)
+          PB=/usr/libexec/PlistBuddy
+          GOT_ID=$($PB -c "Print :CFBundleIdentifier" "$APP/Info.plist")
+          VER=$($PB -c "Print :CFBundleShortVersionString" "$APP/Info.plist")
+          BUILD=$($PB -c "Print :CFBundleVersion" "$APP/Info.plist")
+          [ "$GOT_ID" = "$BUNDLE_ID" ] || { echo "::error::IPA bundle ID '$GOT_ID' != '$BUNDLE_ID'"; exit 1; }
+          codesign -d --entitlements :- "$APP" > "$RUNNER_TEMP/ent.plist" 2>/dev/null
+          grep -q 'com.apple.developer.nfc.readersession.formats' "$RUNNER_TEMP/ent.plist" \
+            || { echo "::error::Imzolangan ilovada NFC entitlement yo'q"; exit 1; }
+          echo "path=$IPA" >> "$GITHUB_OUTPUT"
+          {
+            echo "## iOS IPA"
+            echo "- Bundle ID: \`$GOT_ID\`"
+            echo "- Versiya: **$VER ($BUILD)**"
+            echo "- Hajmi: $(du -h "$IPA" | cut -f1)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: steps.mode.outputs.signed == 'true'
+        with:
+          name: nfcstore-ios-ipa
+          path: mobile/build/ios/ipa/*.ipa
+          if-no-files-found: error
+          retention-days: 14
+
+      # ---------- TESTFLIGHT ----------
+      # App Store Connect API kaliti bilan. Apple ID paroli ishlatilmaydi.
+      # Yuklash faqat build'ni App Store Connect'ga topshiradi — u
+      # TestFlight'da paydo bo'ladi; App Store'ga reliz QILINMAYDI.
+      - name: TestFlight'ga yuklash
+        if: steps.mode.outputs.upload == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          ASC_ISSUER: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          ASC_P8: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8 }}
+          IPA: ${{ steps.ipa.outputs.path }}
+        run: |
+          set -euo pipefail
+          KEYDIR="$HOME/.appstoreconnect/private_keys"
+          mkdir -p "$KEYDIR"
+          # Secret'ga .p8 matni ham, uning base64'i ham qo'yilishi mumkin.
+          if printf '%s' "$ASC_P8" | grep -q 'BEGIN PRIVATE KEY'; then
+            printf '%s\n' "$ASC_P8" > "$KEYDIR/AuthKey_$ASC_KEY_ID.p8"
+          else
+            printf '%s' "$ASC_P8" | base64 --decode > "$KEYDIR/AuthKey_$ASC_KEY_ID.p8"
+          fi
+          chmod 600 "$KEYDIR/AuthKey_$ASC_KEY_ID.p8"
+
+          xcrun altool --upload-app --type ios --file "$IPA" \
+            --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER"
+
+          {
+            echo "## TestFlight"
+            echo "Build App Store Connect'ga yuklandi. Apple uni 5–30 daqiqada qayta ishlaydi,"
+            echo "keyin u **App Store Connect -> Apps -> NFCSTORE -> TestFlight** bo'limida ko'rinadi."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # TOZALASH — har doim, xato bo'lsa ham.
+      - name: Tozalash
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/nfcstore-signing.keychain-db" 2>/dev/null || true
+          rm -f "$HOME/Library/MobileDevice/Provisioning Profiles/"*.mobileprovision \
+                "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles/"*.mobileprovision \
+                "$HOME"/.appstoreconnect/private_keys/*.p8 \
+                "$RUNNER_TEMP"/*.mobileprovision "$RUNNER_TEMP"/*.p12 "$RUNNER_TEMP"/profile.plist

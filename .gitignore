@@ -20,6 +20,13 @@ mobile/.flutter-plugins-dependencies
 mobile/ios/Pods/
 mobile/android/key.properties
 mobile/android/app/*.jks
+
+# Apple imzo fayllari — faqat GitHub Secrets'da turadi, repoga HECH QACHON.
+*.p12
+*.p8
+*.mobileprovision
+*.cer
+*.certSigningRequest
 mobile/web/
 
 # Golden test farqlari — vaqtinchalik chiqim, saqlanmaydi.
