@@ -1,0 +1,23 @@
+{
+  "name": "hasharchilar",
+  "main": "worker/index.js",
+  "compatibility_date": "2025-01-01",
+  // Statik React build (dist/) shu Worker bilan birga xizmat qiladi.
+  // Faqat /api/* so'rovlari Worker kodiga tushadi, qolganlari SPA.
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "hasharchilar",
+      // `wrangler d1 create hasharchilar` natijasidagi ID ni shu yerga qo'ying
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID"
+    }
+  ],
+  "r2_buckets": [
+    { "binding": "PHOTOS", "bucket_name": "hasharchilar-photos" }
+  ]
+}

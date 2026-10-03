@@ -1,36 +1,7 @@
 @import "tailwindcss";
-@plugin "daisyui" {
-  themes: false;
-}
-@plugin "daisyui/theme" {
-  name: "hashar";
-  default: true;
-  color-scheme: light;
-  --color-primary: #10B981;
-  --color-primary-content: #ffffff;
-  --color-secondary: #F59E0B;
-  --color-secondary-content: #1f1300;
-  --color-accent: #F59E0B;
-  --color-accent-content: #1f1300;
-  --color-neutral: #0f172a;
-  --color-neutral-content: #f8fafc;
-  --color-base-100: #ffffff;
-  --color-base-200: #f1f5f9;
-  --color-base-300: #e2e8f0;
-  --color-base-content: #0f172a;
-  --color-success: #10B981;
-  --color-success-content: #ffffff;
-  --color-warning: #F59E0B;
-  --color-warning-content: #1f1300;
-  --radius-box: 1.5rem;
-  --radius-selector: 9999px;
-  --radius-field: 0.75rem;
-  --size-selector: 0.25rem;
-  --size-field: 0.25rem;
-  --border: 1px;
-  --depth: 0;
-  --noise: 0;
-}
 @import "leaflet/dist/leaflet.css";
+
+body { @apply bg-slate-50 text-slate-900 antialiased; }
 .leaflet-container { font-family: inherit; }
 .hashar-pin { background: none; border: none; }
+.leaflet-popup-content-wrapper { border-radius: 1rem; }
