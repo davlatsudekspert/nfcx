@@ -575,16 +575,24 @@ export const rowLiteralSql = (cols) => cols
   .join(` || ',' || `);
 
 // ── USTUNMA-USTUN KO'RINISH (eksport va tekshiruv) ─────────────────────
-// D1 da bitta satr 2 MB dan oshmasligi kerak: butun qatorni bitta satrga
-// yig'ish (va matnni hex qilib ikki baravar kattalashtirish) katta maydonli
-// qatorda yiqiladi. Shuning uchun har ustun ALOHIDA: tur + qiymat.
-//   integer/real — quote() (aniq: 2^53 dan katta son, REAL to'liq aniqlikda)
-//   text         — matnning o'zi; NUL bayt bo'lsa 'texthex' + hex (kam uchraydi)
-//   blob         — hex; null — NULL
-const colTypeSql = (c) => `CASE WHEN typeof(${qid(c)}) = 'text' AND instr(CAST(${qid(c)} AS BLOB), X'00') > 0 THEN 'texthex' ELSE typeof(${qid(c)}) END`;
-const colValueSql = (c) => `CASE typeof(${qid(c)}) WHEN 'integer' THEN quote(${qid(c)}) WHEN 'real' THEN quote(${qid(c)}) WHEN 'blob' THEN hex(${qid(c)}) WHEN 'text' THEN CASE WHEN instr(CAST(${qid(c)} AS BLOB), X'00') > 0 THEN hex(CAST(${qid(c)} AS BLOB)) ELSE ${qid(c)} END ELSE NULL END`;
-export const rowColumnsSql = (cols) => cols.map((c, i) => `${colTypeSql(c)} AS "t${i}", ${colValueSql(c)} AS "v${i}"`).join(', ');
-export const rowPairs = (row, n) => Array.from({ length: n }, (_, i) => [row[`t${i}`], row[`v${i}`] ?? null]);
+// D1 cheklovlari: bitta satr ≤ 2 MB (butun qatorni bitta satrga yig'ib
+// bo'lmaydi) va natijada ≤ 100 ustun (har ustunga ikkita ustun ham bo'lmaydi).
+// Shuning uchun har ustun — BITTA natija ustuni, tur esa bitta harf prefiks:
+//   i — integer (quote: 2^53 dan katta son ham aniq)   r — real (quote: to'liq aniqlik)
+//   t — matnning o'zi (hex siz)   x — NUL baytli matn, hex   b — blob, hex   NULL — null
+const colEncSql = (c) => {
+  const q = qid(c);
+  return `CASE typeof(${q}) WHEN 'integer' THEN 'i' || quote(${q}) WHEN 'real' THEN 'r' || quote(${q}) WHEN 'blob' THEN 'b' || hex(${q}) WHEN 'text' THEN CASE WHEN instr(CAST(${q} AS BLOB), X'00') > 0 THEN 'x' || hex(CAST(${q} AS BLOB)) ELSE 't' || ${q} END ELSE NULL END`;
+};
+export const rowColumnsSql = (cols, offset = 0) => cols.map((c, i) => `${colEncSql(c)} AS "c${i + offset}"`).join(', ');
+const ENC_TYPE = { i: 'integer', r: 'real', t: 'text', x: 'texthex', b: 'blob' };
+export const rowPairs = (row, n) => Array.from({ length: n }, (_, i) => {
+  const v = row[`c${i}`];
+  if (v == null) return ['null', null];
+  const t = ENC_TYPE[String(v)[0]];
+  if (!t) throw new Error(`noma'lum tur belgisi: ${String(v)[0]}`);
+  return [t, String(v).slice(1)];
+});
 
 // Tekshiruv xeshi — D1 (Worker), mahalliy fayl va UZ uchun AYNAN bir xil.
 // Uzunlik prefiksi bilan: qiymat ichidagi belgi chegarani buzolmaydi.
@@ -656,24 +664,39 @@ export async function handleUzExport(request, env) {
   const def = master.find((r) => r.type === 'table' && r.name === table);
   if (!def) return json({ error: 'no_table' });
   const cols = await exportColumns(db, table);
-  const sel = rowColumnsSql(cols);
+  // D1 natijasida ≤ 100 ustun: ko'p ustunli jadval guruhlarga bo'linib so'raladi.
+  const CHUNK = 90;
+  const chunks = [];
+  for (let i = 0; i < cols.length; i += CHUNK) chunks.push([i, cols.slice(i, i + CHUNK)]);
+  async function select(build, binds, withRowid) {
+    let merged = null; let rq = null;
+    for (const [off, cc] of chunks) {
+      const res = (await db.prepare(build(`${withRowid ? 'quote(rowid) AS _rq, ' : ''}${rowColumnsSql(cc, off)}`)).bind(...binds).all()).results;
+      if (!merged) { merged = res.map((r) => ({ ...r })); rq = res.map((r) => r._rq); continue; }
+      // Guruhlar orasida qatorlar o'zgarmagan bo'lishi shart.
+      if (res.length !== merged.length || (withRowid && res.some((r, k) => r._rq !== rq[k]))) throw new Error('export_unstable');
+      res.forEach((r, k) => Object.assign(merged[k], r));
+    }
+    return merged || [];
+  }
+  const order = cols.map(qid).join(', ');
 
   if (op === 'rows') {
     const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 500, 1), 5000);
     if (/\bWITHOUT\s+ROWID\b/i.test(def.sql)) {
       const offset = Math.max(Number(url.searchParams.get('offset')) || 0, 0);
-      const rows = (await db.prepare(`SELECT ${sel} FROM ${qid(table)} ORDER BY ${cols.map(qid).join(', ')} LIMIT ? OFFSET ?`).bind(limit, offset).all()).results;
+      const rows = await select((s) => `SELECT ${s} FROM ${qid(table)} ORDER BY ${order} LIMIT ? OFFSET ?`, [limit, offset], false);
       return json({ cols, rowid: false, rows: rows.map((r) => [null, rowPairs(r, cols.length)]), next: rows.length === limit ? offset + limit : null });
     }
     const after = String(url.searchParams.get('after') || '-9223372036854775808');
     if (!/^-?\d{1,19}$/.test(after)) return json({ error: 'bad_after' });
     // rowid matn sifatida keladi va CAST qilinadi: 2^53 dan katta rowid ham aniq.
-    const rows = (await db.prepare(`SELECT quote(rowid) AS _rq, ${sel} FROM ${qid(table)} WHERE rowid > CAST(? AS INTEGER) ORDER BY rowid LIMIT ?`).bind(after, limit).all()).results;
+    const rows = await select((s) => `SELECT ${s} FROM ${qid(table)} WHERE rowid > CAST(? AS INTEGER) ORDER BY rowid LIMIT ?`, [after, limit], true);
     return json({ cols, rowid: true, rows: rows.map((r) => [r._rq, rowPairs(r, cols.length)]), next: rows.length === limit ? rows[rows.length - 1]._rq : null });
   }
 
   if (op === 'digest') {
-    const rows = (await db.prepare(`SELECT ${sel} FROM ${qid(table)} ORDER BY ${cols.map(qid).join(', ')}`).all()).results;
+    const rows = await select((s) => `SELECT ${s} FROM ${qid(table)} ORDER BY ${order}`, [], false);
     return json({ count: rows.length, sha: await digestPairs(rows.map((r) => rowPairs(r, cols.length))) });
   }
   return json({ error: 'bad_op' });

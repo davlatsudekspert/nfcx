@@ -268,6 +268,11 @@ try {
   check('eksport: keyingi sahifa', [r2.rows, r2.next], [[['3', [['integer', '3'], ['null', null], ['null', null]]]], null]);
   const r3 = await (await call('/__uz/export?op=rows&table=w', KEY)).json();
   check('eksport: WITHOUT ROWID', [r3.rowid, r3.rows], [false, [[null, [['text', 'a'], ['blob', '01']]], [null, [['text', 'b'], ['null', null]]]]]);
+  // 120 ustunli jadval — D1 ning 100 ustun chegarasi: guruhlarga bo'linib birlashtiriladi.
+  sq.exec(`CREATE TABLE wide (${Array.from({ length: 120 }, (_, i) => `k${i} TEXT`).join(', ')})`);
+  sq.prepare(`INSERT INTO wide VALUES (${Array.from({ length: 120 }, () => '?').join(', ')})`).run(...Array.from({ length: 120 }, (_, i) => `v${i}`));
+  const wr = await (await call('/__uz/export?op=rows&table=wide', KEY)).json();
+  check('eksport: 120 ustun (guruhlab) — hamma qiymat joyida', [wr.rows.length, wr.rows[0][1].length, wr.rows[0][1][0], wr.rows[0][1][119]], [1, 120, ['text', 'v0'], ['text', 'v119']]);
   check('eksport: noma‘lum jadval rad etiladi', (await (await call('/__uz/export?op=rows&table=p%22;DROP', KEY)).json()).error, 'no_table');
   const dg = await (await call('/__uz/export?op=digest&table=p', KEY)).json();
   check('eksport: digest = uz-migrate bilan bir xil algoritm', dg, { count: 3, sha: await digestPairs([[['integer', '1'], ['text', 'Ali'], ['real', '1.0']], [['integer', '2'], ['text', 'Вали'], ['real', '2.5']], [['integer', '3'], ['null', null], ['null', null]]]) });
