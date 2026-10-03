@@ -69,6 +69,11 @@ jobs:
 
       - name: .aab ni olish
         if: inputs.mode == 'upload'
+        # Artefakt yo'q bo'lishi mumkin (muddati o'tgan yoki qurilish uni
+        # saqlamagan). Shu versionCode Play'da allaqachon bo'lsa, .aab
+        # kerak emas — skript uni faqat yangi trekka qo'yadi. Yo'q bo'lsa,
+        # skriptning o'zi aniq xato beradi.
+        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: NFCSTORE-Mobile-PlayStore-aab

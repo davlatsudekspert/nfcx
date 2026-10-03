@@ -143,6 +143,8 @@ def main():
         print(f"versionCode {vc} Play'da allaqachon bor — qayta yuklanmaydi.")
     else:
         path = os.environ["AAB"]
+        if not os.path.exists(path):
+            fail(f"versionCode {known or '?'} Play'da yo'q va .aab artefakti topilmadi — avval APK qurilishini qayta ishga tushiring.")
         size = os.path.getsize(path) // (1024 * 1024)
         print(f"Yuklanmoqda: {os.path.basename(path)} ({size} MB)")
         with open(path, "rb") as f:
