@@ -8,7 +8,7 @@
 // Haqiqiy serverda faqat vaqtinchalik `_uz_conformance_*` jadvali va
 // `_uz_conformance/` kalitlari ishlatiladi, oxirida o'chiriladi.
 import { DatabaseSync } from 'node:sqlite';
-import { uzDb, uzBucket, signV4, isWriteSql, withUzStores, handleUzExport, uzMaintenance, maintenanceResponse } from '../hosting/uz-store.js';
+import { uzDb, uzBucket, signV4, isWriteSql, withUzStores, handleUzExport, uzMaintenance, uzMaintenanceBypass, maintenanceResponse, rowLiteralSql, rowDigestSql } from '../hosting/uz-store.js';
 import { hranaFetch } from './lib/hrana-fake.mjs';
 import { s3Fetch } from './lib/s3-fake.mjs';
 
@@ -111,6 +111,13 @@ try {
 
   check('json_extract va datetime', await db.prepare(`SELECT json_extract('{"a":{"b":5}}', '$.a.b') AS j, length(datetime('now')) AS l`).first(), { j: 5, l: 19 });
 
+  // sqld so'rovni qayta yozadi: qo'shtirnoqdagi kalit so'z nomi o'zgarmaydi.
+  check('kalit so‘z alias qo‘shtirnoqda saqlanadi', await db.prepare(`SELECT 1 AS "following", 2 AS "plan"`).first(), { following: 1, plan: 2 });
+  // Yolg'iz surrogat (emoji o'rtasidan kesilgan) — so'rov yiqilmaydi, D1 kabi U+FFFD.
+  const cut = '😀😀'.slice(0, 3);
+  await db.prepare(`INSERT INTO ${T} (code) VALUES (?)`).bind(cut).run();
+  check('yolg‘iz surrogat — U+FFFD bilan saqlanadi', await db.prepare(`SELECT code FROM ${T} WHERE code LIKE '😀%'`).first('code'), '😀\uFFFD');
+
   // D1 kabi tashqi kalitlar: ON DELETE CASCADE va yo'q ota-qator xatosi.
   await db.batch([
     db.prepare(`CREATE TABLE ${T}_p (id INTEGER PRIMARY KEY)`),
@@ -195,6 +202,11 @@ try {
   const mr = await bucket.get(k3, { range: { offset: 5 * 1024 * 1024 - 2, length: 4 } });
   check('multipart: bo‘laklar chegarasi to‘g‘ri ulangan', Array.from(await bytesOf(mr)), Array.from(big.subarray(5 * 1024 * 1024 - 2, 5 * 1024 * 1024 + 2)));
 
+  const k5 = `${P}/mp-ret.bin`; keys.push(k5);
+  const mp5 = await bucket.createMultipartUpload(k5, { httpMetadata: { contentType: 'video/mp4' } });
+  const ret = await mp5.complete([await mp5.uploadPart(1, new Uint8Array(5 * 1024 * 1024)), await mp5.uploadPart(2, new Uint8Array(3))]);
+  check('multipart complete: HEAD siz natija (hajm, tur)', [ret.size, ret.httpMetadata.contentType, /^".+"$/.test(ret.httpEtag)], [5 * 1024 * 1024 + 3, 'video/mp4', true]);
+
   const k4 = `${P}/abort.bin`;
   const ab = await bucket.createMultipartUpload(k4);
   await ab.uploadPart(1, new Uint8Array(10));
@@ -208,7 +220,7 @@ try {
     seen.push(...page.objects.map((o) => [o.key, o.size]));
     cursor = page.truncated ? page.cursor : undefined;
   } while (cursor);
-  check('list: sahifalab hamma kalit', seen.sort(), [[k1, 1000], [k2, 5], [k3, big.length]].sort());
+  check('list: sahifalab hamma kalit', seen.sort(), [[k1, 1000], [k2, 5], [k3, big.length], [k5, 5 * 1024 * 1024 + 3]].sort());
 
   await bucket.delete(k1);
   check('delete: o‘chdi', await bucket.head(k1), null);
@@ -251,20 +263,44 @@ try {
   check('eksport: ustunlar', sc.columns.p, ['id', 'name', 'score']);
   check('eksport: AUTOINCREMENT', sc.sequence, [{ name: 'p', seq: 3 }]);
   const r1 = await (await call('/__uz/export?op=rows&table=p&limit=2', KEY)).json();
-  check('eksport: qatorlar quote() bilan, sahifa', r1.rows, [['1', "1,'Ali',1.0"], ['2', "2,'Вали',2.5"]]);
+  check('eksport: qatorlar (TEXT hex orqali), sahifa', r1.rows, [['1', "1,CAST(X'416C69' AS TEXT),1.0"], ['2', "2,CAST(X'D092D0B0D0BBD0B8' AS TEXT),2.5"]]);
   const r2 = await (await call(`/__uz/export?op=rows&table=p&limit=2&after=${r1.next}`, KEY)).json();
   check('eksport: keyingi sahifa', [r2.rows, r2.next], [[['3', '3,NULL,NULL']], null]);
   const r3 = await (await call('/__uz/export?op=rows&table=w', KEY)).json();
-  check('eksport: WITHOUT ROWID', [r3.rowid, r3.rows], [false, [[null, "'a',X'01'"], [null, "'b',NULL"]]]);
+  check('eksport: WITHOUT ROWID', [r3.rowid, r3.rows], [false, [[null, "CAST(X'61' AS TEXT),X'01'"], [null, "CAST(X'62' AS TEXT),NULL"]]]);
   check('eksport: noma‘lum jadval rad etiladi', (await (await call('/__uz/export?op=rows&table=p%22;DROP', KEY)).json()).error, 'no_table');
   const dg = await (await call('/__uz/export?op=digest&table=p', KEY)).json();
   const { createHash } = await import('node:crypto');
-  check('eksport: digest = uz-migrate bilan bir xil algoritm', dg, { count: 3, sha: createHash('sha256').update("1,'Ali',1.0\n2,'Вали',2.5\n3,NULL,NULL\n").digest('hex') });
+  check('eksport: digest = uz-migrate bilan bir xil algoritm', dg, { count: 3, sha: createHash('sha256').update("1,T416C69,1.0\n2,TD092D0B0D0BBD0B8,2.5\n3,NULL,NULL\n").digest('hex') });
+}
+
+// ── Qator literali va xeshi: NUL, REAL aniqligi, BLOB ────────────────
+{
+  const sq = new DatabaseSync(':memory:');
+  sq.exec(`CREATE TABLE a (id INTEGER PRIMARY KEY, t TEXT, r REAL, b BLOB);
+    INSERT INTO a VALUES (1, 'salom' || char(0) || ' dunyo', 0.30000000000000004, X'00FF'), (2, '', 1e308, NULL), (3, 'Ўзбек 🇺🇿', -2.5, X'');
+    CREATE TABLE b (id INTEGER PRIMARY KEY, t TEXT, r REAL, b BLOB);`);
+  const cols = ['id', 't', 'r', 'b'];
+  for (const { q } of sq.prepare(`SELECT ${rowLiteralSql(cols)} AS q FROM a`).all()) sq.exec(`INSERT INTO b VALUES (${q})`);
+  const dig = (t) => sq.prepare(`SELECT ${rowDigestSql(cols)} AS q FROM ${t} ORDER BY id`).all().map((r) => r.q).join('\n');
+  check('literal: NUL bilan matn baytma-bayt tiklanadi', sq.prepare(`SELECT length(CAST(t AS BLOB)) n FROM b WHERE id = 1`).get().n, 12);
+  check('literal: REAL aniq, BLOB aniq', sq.prepare(`SELECT quote(r) r, hex(b) b FROM b WHERE id = 1`).get(), { r: '3.000000000000000445e-01', b: '00FF' });
+  check('xesh: manba va nusxa bir xil', dig('a') === dig('b'), true);
+  sq.exec(`UPDATE b SET t = 'salom' WHERE id = 1`);
+  check('xesh: NUL dan keyingi qism yo‘qolsa — FARQ', dig('a') === dig('b'), false);
 }
 
 // ── Texnik ishlar rejimi ─────────────────────────────────────────────
 {
   check('UZ_MAINTENANCE=on', [uzMaintenance({ UZ_MAINTENANCE: 'on' }), uzMaintenance({})], [true, false]);
+  const K = 'z'.repeat(40);
+  const rq = (h) => new Request('https://nfcstore.uz/api/feed', { headers: h });
+  check('texnik rejim: kalit bilan o‘tadi, kalitsiz/noto‘g‘ri/qisqa — yo‘q', [
+    await uzMaintenanceBypass(rq({ 'x-uz-export-key': K }), { UZ_EXPORT_KEY: K }),
+    await uzMaintenanceBypass(rq({}), { UZ_EXPORT_KEY: K }),
+    await uzMaintenanceBypass(rq({ 'x-uz-export-key': 'y'.repeat(40) }), { UZ_EXPORT_KEY: K }),
+    await uzMaintenanceBypass(rq({ 'x-uz-export-key': 'off' }), { UZ_EXPORT_KEY: 'off' }),
+  ], [true, false, false, false]);
   const api = maintenanceResponse(new Request('https://nfcstore.uz/api/feed', { headers: { accept: 'text/html' } }));
   check('texnik rejim: API — 503 JSON', [api.status, api.headers.get('content-type').split(';')[0], api.headers.get('retry-after')], [503, 'application/json', '300']);
   const page = maintenanceResponse(new Request('https://nfcstore.uz/ABC123', { headers: { accept: 'text/html' } }));

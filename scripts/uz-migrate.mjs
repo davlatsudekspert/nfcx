@@ -6,8 +6,10 @@
 // faqat o'qiladi (D1 eksporti, R2 ro'yxati va yuklab olish).
 //
 //   node scripts/uz-migrate.mjs r2-probe                 — R2: nechta fayl, jami hajm
-//   node scripts/uz-migrate.mjs r2-copy                  — R2 → Garage (bor bo'lsa o'tkazib yuboradi)
-//   node scripts/uz-migrate.mjs r2-verify                — har fayl: bor, hajmi va turi bir xil
+//   node scripts/uz-migrate.mjs r2-copy [--missing-only] — R2 → Garage (bor bo'lsa o'tkazib yuboradi)
+//   node scripts/uz-migrate.mjs r2-verify [--no-content] — har fayl: bor, hajmi, md5/mazmuni, turi bir xil
+//   node scripts/uz-migrate.mjs r2-prune                 — R2 da YO'Q fayllarni Garage'dan o'chirish (faqat o'tishdan oldin)
+//   node scripts/uz-migrate.mjs mark-cutover             — UZ bazasiga "jonli" belgisi (keyin --replace taqiqlanadi)
 //   node scripts/uz-migrate.mjs d1-pull d1.sqlite        — D1 → fayl, Worker eksporti orqali (+ SHA-256 tekshiruv)
 //   node scripts/uz-migrate.mjs d1-verify-uz             — D1 (Worker) ↔ UZ: har jadval SHA-256
 //   node scripts/uz-migrate.mjs db-import d1.sqlite [--replace]
@@ -18,7 +20,7 @@
 // UZ_EXPORT_URL (https://nfcstore.uz/__uz/export), UZ_EXPORT_KEY — vaqtinchalik.
 import { DatabaseSync } from 'node:sqlite';
 import { createHash } from 'node:crypto';
-import { uzDb, uzBucket } from '../hosting/uz-store.js';
+import { uzDb, uzBucket, rowLiteralSql, rowDigestSql } from '../hosting/uz-store.js';
 
 const E = process.env;
 const [cmd, ...args] = process.argv.slice(2);
@@ -45,7 +47,7 @@ async function r2List() {
     const u = new URL(`${CF()}/objects`);
     u.searchParams.set('per_page', '1000');
     if (cursor) u.searchParams.set('cursor', cursor);
-    const res = await fetch(u, { headers: cfHeaders() });
+    const res = await fetch(u, { headers: cfHeaders(), signal: AbortSignal.timeout(120_000) });
     const body = await res.json().catch(() => ({}));
     if (!res.ok || body.success === false) {
       throw new Error(`R2 ro'yxati: HTTP ${res.status} ${JSON.stringify(body.errors || []).slice(0, 200)}`);
@@ -62,7 +64,7 @@ async function r2List() {
 }
 
 async function r2Get(key) {
-  const res = await fetch(`${CF()}/objects/${encodeURIComponent(key)}`, { headers: cfHeaders() });
+  const res = await fetch(`${CF()}/objects/${encodeURIComponent(key)}`, { headers: cfHeaders(), signal: AbortSignal.timeout(600_000) });
   if (!res.ok) throw new Error(`R2 get ${key}: HTTP ${res.status}`);
   return { bytes: new Uint8Array(await res.arrayBuffer()), headers: res.headers };
 }
@@ -102,18 +104,28 @@ async function pool(items, n, fn) {
 }
 
 const PART = 16 * 1024 * 1024;
+// Shu hajmgacha BITTA PUT (Garage ETag = md5 — tekshiruv oson). Caddy chegarasi 250 MB.
+const SINGLE_MAX = 200 * 1024 * 1024;
 
 async function copyOne(b, o, stats) {
   const r2Etag = String(o.etag || '').replace(/"/g, '');
   const plainMd5 = /^[0-9a-f]{32}$/.test(r2Etag);
   const have = await b.head(o.key);
+  // --missing-only (o'tishdan keyin): UZ dagi faylga HECH QACHON tegilmaydi.
+  if (have && flag('--missing-only')) { stats.skipped++; return; }
   if (have && have.size === Number(o.size) && (!plainMd5 || have.etag === r2Etag)) { stats.skipped++; return; }
-  const { bytes, headers } = await r2Get(o.key);
+  let got;
+  try { got = await r2Get(o.key); } catch (e) {
+    // Ro'yxatdan keyin R2 dan o'chirilgan (hisob o'chirish) — nusxalanmaydi.
+    if (/HTTP 404/.test(e.message)) { stats.gone = (stats.gone || 0) + 1; return; }
+    throw e;
+  }
+  const { bytes, headers } = got;
   if (bytes.length !== Number(o.size)) throw new Error(`${o.key}: hajm ${bytes.length} ≠ ${o.size}`);
   const sum = md5(bytes);
   if (plainMd5 && sum !== r2Etag) throw new Error(`${o.key}: R2 dan buzuq yuklandi (md5)`);
   const meta = { httpMetadata: r2HttpMeta(o, headers), customMetadata: o.custom_metadata || o.customMetadata || {} };
-  if (bytes.length <= PART) {
+  if (bytes.length <= SINGLE_MAX) {
     const put = await b.put(o.key, bytes, meta);
     if (put.etag !== sum) throw new Error(`${o.key}: Garage md5 mos emas`);
   } else {
@@ -142,7 +154,7 @@ async function r2Copy() {
       }
     }
   });
-  say(`R2 → Garage: jami ${list.length}, ko'chirildi ${stats.copied} (${mb(stats.bytes)}), oldin bor edi ${stats.skipped}, xato ${stats.failed.length}`);
+  say(`R2 → Garage: jami ${list.length}, ko'chirildi ${stats.copied} (${mb(stats.bytes)}), oldin bor edi ${stats.skipped}, shu orada o'chirilgan ${stats.gone || 0}, xato ${stats.failed.length}`);
   for (const f of stats.failed.slice(0, 20)) say(`  XATO ${f}`);
   if (stats.failed.length) process.exit(1);
 }
@@ -159,6 +171,21 @@ async function r2Verify() {
     const e = String(o.etag || '').replace(/"/g, '');
     if (/^[0-9a-f]{32}$/.test(e) && d.etag !== e) badMd5.push(o.key);
   }
+  // ETag bilan solishtirib bo'lmaydiganlar (multipart): mazmun to'liq yuklab
+  // olinib SHA-256 bilan solishtiriladi — R2 dan ham, Garage dan ham.
+  const bContent = bucket();
+  const opaque = flag('--no-content') ? [] : src.filter((o) => have.has(o.key) && !badSize.includes(o.key)
+    && !(/^[0-9a-f]{32}$/.test(String(o.etag || '').replace(/"/g, '')) && /^[0-9a-f]{32}$/.test(have.get(o.key).etag)));
+  const badContent = [];
+  await pool(opaque, 3, async (o) => {
+    const [r2, uz] = await Promise.all([r2Get(o.key), bContent.get(o.key)]);
+    const uzBytes = new Uint8Array(await uz.arrayBuffer());
+    const a = createHash('sha256').update(r2.bytes).digest('hex');
+    const b = createHash('sha256').update(uzBytes).digest('hex');
+    if (a !== b) badContent.push(o.key);
+  });
+  // md5 farqi faqat ikkala ETag ham oddiy md5 bo'lsa haqiqiy farq.
+  badMd5.splice(0, badMd5.length, ...badMd5.filter((k) => /^[0-9a-f]{32}$/.test(have.get(k).etag)));
   // Turi (content-type) — tasodifiy 40 ta faylda HEAD bilan.
   const b = bucket();
   const sample = src.filter((o) => have.has(o.key)).filter((_, i, a) => i % Math.max(1, Math.floor(a.length / 40)) === 0).slice(0, 40);
@@ -174,10 +201,45 @@ async function r2Verify() {
   const srcBytes = src.reduce((n, o) => n + Number(o.size), 0);
   const dstBytes = dstReal.reduce((n, o) => n + o.size, 0);
   say(`R2: ${src.length} fayl, ${mb(srcBytes)} · Garage: ${dstReal.length} fayl, ${mb(dstBytes)}`);
-  say(`yo'q: ${missing.length} · hajmi boshqa: ${badSize.length} · md5 boshqa: ${badMd5.length} · turi boshqa (${sample.length} tadan): ${badType.length} · faqat Garage'da: ${extra.length}`);
-  for (const k of [...missing, ...badSize, ...badMd5, ...badType].slice(0, 15)) say(`  ${k}`);
-  if (missing.length || badSize.length || badMd5.length || badType.length) process.exit(1);
+  say(`yo'q: ${missing.length} · hajmi boshqa: ${badSize.length} · md5 boshqa: ${badMd5.length} · mazmuni boshqa (${opaque.length} ta to'liq solishtirildi): ${badContent.length} · turi boshqa (${sample.length} tadan): ${badType.length} · faqat Garage'da: ${extra.length}`);
+  for (const k of [...missing, ...badSize, ...badMd5, ...badContent, ...badType, ...extra.map((o) => `faqat Garage'da: ${o.key}`)].slice(0, 15)) say(`  ${k}`);
+  // Faqat Garage'da qolgan fayl = R2 da O'CHIRILGAN fayl (hisob o'chirish,
+  // moderatsiya). U O'zbekistonda ham bo'lmasligi kerak — r2-prune.
+  if (missing.length || badSize.length || badMd5.length || badContent.length || badType.length || extra.length) process.exit(1);
   say('R2 TEKSHIRUVI: HAMMASI MOS');
+}
+
+async function r2Prune() {
+  need('CF_API_TOKEN', 'CF_ACCOUNT', 'UZ_S3_ENDPOINT', 'UZ_S3_KEY_ID', 'UZ_S3_SECRET');
+  const [src, dst] = await Promise.all([r2List(), uzListAll(bucket())]);
+  // R2 ro'yxati bo'sh yoki keskin kichik bo'lsa — API xatosi bo'lishi mumkin: to'xtaymiz.
+  if (!src.length || src.length < dst.length * 0.5) {
+    console.error(`R2 ro'yxati shubhali (R2 ${src.length}, Garage ${dst.length}) — prune to'xtatildi`);
+    process.exit(1);
+  }
+  const keep = new Set(src.map((o) => o.key));
+  const extra = dst.map((o) => o.key).filter((k) => !k.startsWith('_uz_conformance/') && !keep.has(k));
+  const b = bucket();
+  for (let i = 0; i < extra.length; i += 100) await b.delete(extra.slice(i, i + 100));
+  say(`Garage'dan o'chirildi (R2 da yo'q — o'chirilgan fayllar): ${extra.length}`);
+  for (const k of extra.slice(0, 10)) say(`  ${k}`);
+}
+
+async function markCutover() {
+  need('UZ_DB_URL', 'UZ_DB_TOKEN');
+  const t = openTarget();
+  await t.batch([
+    t.prepare(`CREATE TABLE IF NOT EXISTS "_uz_cutover" (at TEXT NOT NULL, note TEXT)`),
+    t.prepare(`INSERT INTO "_uz_cutover" (at, note) VALUES (?, ?)`).bind(new Date().toISOString(), 'D1/R2 → UZ'),
+  ]);
+  say('UZ bazasiga "jonli" belgisi yozildi — endi D1 dan --replace taqiqlangan');
+}
+
+// Faqat OCHISHDAN OLDINGI qaytarishda: belgi yozilgan, lekin sayt D1 ga qaytdi.
+async function unmarkCutover() {
+  need('UZ_DB_URL', 'UZ_DB_TOKEN');
+  await openTarget().prepare(`DROP TABLE IF EXISTS "_uz_cutover"`).run();
+  say('"jonli" belgisi olib tashlandi (sayt D1 da qoldi)');
 }
 
 async function r2Probe() {
@@ -207,9 +269,10 @@ function tableColumns(local, table) {
   return local.prepare(`PRAGMA table_xinfo(${qid(table)})`).all().filter((c) => !c.hidden).map((c) => c.name);
 }
 
-// Qatorning aniq SQL ko'rinishi: quote() turini saqlaydi (INTEGER/REAL/TEXT/BLOB).
+// Qator xeshi uchun SQL — Worker eksportidagi bilan AYNAN bir xil (uz-store.js):
+// TEXT hex orqali (NUL bayt ham hisobga olinadi), qolgani quote().
 function rowsSql(table, cols) {
-  return `SELECT ${cols.map((c) => `quote(${qid(c)})`).join(` || ',' || `)} AS q FROM ${qid(table)} ORDER BY ${cols.map(qid).join(', ')}`;
+  return `SELECT ${rowDigestSql(cols)} AS q FROM ${qid(table)} ORDER BY ${cols.map(qid).join(', ')}`;
 }
 
 async function tableDigest(run, table, cols) {
@@ -266,7 +329,12 @@ async function dbImport(file) {
   need('UZ_DB_URL', 'UZ_DB_TOKEN');
   const local = openLocal(file);
   const target = openTarget();
-  const existing = (await target.prepare(`SELECT type, name FROM sqlite_master WHERE type IN ('table','view','trigger') AND name NOT LIKE 'sqlite_%'`).all()).results;
+  const existing = (await target.prepare(`SELECT type, name FROM sqlite_master WHERE type IN ('table','view','trigger') AND substr(name, 1, 7) <> 'sqlite_'`).all()).results;
+  // O'tish bo'lib o'tgan bazani eski D1 nusxasi bilan HECH QACHON almashtirmaymiz.
+  if (existing.some((r) => r.name === '_uz_cutover')) {
+    console.error('UZ bazasi jonli (_uz_cutover belgisi bor) — D1 dan qayta yozish TAQIQLANGAN');
+    process.exit(1);
+  }
   if (existing.length && !flag('--replace')) {
     console.error(`UZ bazasi bo'sh emas (${existing.length} obyekt). Qayta yozish uchun --replace.`);
     process.exit(1);
@@ -297,9 +365,8 @@ async function dbImport(file) {
     const rowidAlias = pk.length === 1 && /^integer$/i.test(pk[0].type);
     // Yashirin rowid ham saqlansin (INTEGER PRIMARY KEY bo'lmagan jadvallarda).
     const keepRowid = !withoutRowid && !rowidAlias;
-    const selCols = keepRowid ? ['rowid', ...cols] : cols;
     const insCols = keepRowid ? ['rowid', ...cols] : cols;
-    const sel = `SELECT ${selCols.map((c) => (c === 'rowid' ? 'quote(rowid)' : `quote(${qid(c)})`)).join(` || ',' || `)} AS q FROM ${qid(name)}`;
+    const sel = `SELECT ${keepRowid ? `quote(rowid) || ',' || ` : ''}${rowLiteralSql(cols)} AS q FROM ${qid(name)}`;
     const head = `INSERT INTO ${qid(name)} (${insCols.map((c) => (c === 'rowid' ? 'rowid' : qid(c))).join(', ')}) VALUES `;
     let chunk = [];
     const flush = async () => {
@@ -426,6 +493,9 @@ async function d1VerifyUz() {
 }
 
 const commands = {
+  'r2-prune': r2Prune,
+  'mark-cutover': markCutover,
+  'unmark-cutover': unmarkCutover,
   'd1-pull': () => d1Pull(args.find((a) => !a.startsWith('--'))),
   'd1-verify-uz': d1VerifyUz,
   'r2-probe': r2Probe,

@@ -87,9 +87,10 @@ export function s3Fetch({ bucket = 'test-bucket' } = {}) {
       }
       const all = new Uint8Array(chunks.reduce((s, c) => s + c.length, 0));
       let off = 0; for (const c of chunks) { all.set(c, off); off += c.length; }
-      store.set(key, entry(all, up.meta, `${etagOf(all)}-${parts.length}`));
+      const mpEtag = `${etagOf(all)}-${parts.length}`;
+      store.set(key, entry(all, up.meta, mpEtag));
       uploads.delete(q.get('uploadId'));
-      return xml(200, `<CompleteMultipartUploadResult><Key>${key}</Key></CompleteMultipartUploadResult>`);
+      return xml(200, `<CompleteMultipartUploadResult><Key>${key}</Key><ETag>&quot;${mpEtag}&quot;</ETag></CompleteMultipartUploadResult>`);
     }
     if (method === 'DELETE' && q.has('uploadId')) { uploads.delete(q.get('uploadId')); return new Response(null, { status: 204 }); }
 

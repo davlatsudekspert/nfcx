@@ -24,10 +24,21 @@ const toValue = (v) => {
 
 const READ_RE = /^\s*(select|values|pragma\s+\w+\s*(\(|;|$))/i;
 
+// Haqiqiy sqld so'rovni o'z parseri bilan QAYTA YOZIB bajaradi: qo'shtirnoqsiz
+// SQLite kalit so'zi bo'lgan nom (`AS following`, `ADD COLUMN plan`) KATTA harf
+// bilan qaytadi (yagona istisno — bitta CREATE TABLE). Soxta server ham shunday
+// qiladi, aks holda bunday xato testlarda ko'rinmasdi.
+export const SQLITE_KEYWORDS = new Set('ABORT ACTION ADD AFTER ALL ALTER ALWAYS ANALYZE AND AS ASC ATTACH AUTOINCREMENT BEFORE BEGIN BETWEEN BY CASCADE CASE CAST CHECK COLLATE COLUMN COMMIT CONFLICT CONSTRAINT CREATE CROSS CURRENT CURRENT_DATE CURRENT_TIME CURRENT_TIMESTAMP DATABASE DEFAULT DEFERRABLE DEFERRED DELETE DESC DETACH DISTINCT DO DROP EACH ELSE END ESCAPE EXCEPT EXCLUDE EXCLUSIVE EXISTS EXPLAIN FAIL FILTER FIRST FOLLOWING FOR FOREIGN FROM FULL GENERATED GLOB GROUP GROUPS HAVING IF IGNORE IMMEDIATE IN INDEX INDEXED INITIALLY INNER INSERT INSTEAD INTERSECT INTO IS ISNULL JOIN KEY LAST LEFT LIKE LIMIT MATCH MATERIALIZED NATURAL NO NOT NOTHING NOTNULL NULL NULLS OF OFFSET ON OR ORDER OTHERS OUTER OVER PARTITION PLAN PRAGMA PRECEDING PRIMARY QUERY RAISE RANGE RECURSIVE REFERENCES REGEXP REINDEX RELEASE RENAME REPLACE RESTRICT RETURNING RIGHT ROLLBACK ROW ROWS SAVEPOINT SELECT SET TABLE TEMP TEMPORARY THEN TIES TO TRANSACTION TRIGGER UNBOUNDED UNION UNIQUE UPDATE USING VACUUM VALUES VIEW VIRTUAL WHEN WHERE WINDOW WITH WITHOUT'.split(' '));
+export function sqldRewrite(sql) {
+  if (/^\s*CREATE\s+TABLE\b/i.test(sql)) return sql;
+  return sql.replace(/\b(AS|ADD\s+COLUMN)(\s+)([A-Za-z_][A-Za-z0-9_]*)\b/gi,
+    (m, kw, sp, name) => (SQLITE_KEYWORDS.has(name.toUpperCase()) ? `${kw}${sp}${name.toUpperCase()}` : m));
+}
+
 export function hranaFetch(sqlite, { token = 'test-token', log } = {}) {
   function execute(stmt) {
     const args = (stmt.args || []).map(fromArg);
-    const st = sqlite.prepare(stmt.sql);
+    const st = sqlite.prepare(sqldRewrite(stmt.sql));
     const cols = st.columns().map((c) => ({ name: c.name, decltype: c.type }));
     let rows = [];
     let affected = 0;

@@ -60,7 +60,9 @@ export function toHrana(v) {
     // D1 kabi: butun son — INTEGER, kasr — REAL.
     return Number.isSafeInteger(v) ? { type: 'integer', value: String(v) } : { type: 'float', value: v };
   }
-  if (typeof v === 'string') return { type: 'text', value: v };
+  // Yolg'iz surrogat (emoji o'rtasidan kesilgan matn) — sqld butun so'rovni
+  // rad etadi, D1 esa saqlaydi va U+FFFD qilib qaytaradi. Biz ham shunday.
+  if (typeof v === 'string') return { type: 'text', value: typeof v.toWellFormed === 'function' ? v.toWellFormed() : v };
   const bytes = bytesOf(v);
   if (bytes) return { type: 'blob', base64: b64encode(bytes) };
   throw d1TypeError(v);
@@ -118,17 +120,29 @@ export const isWriteSql = (sql) => WRITE_SQL_RE.test(String(sql || ''));
 // `PRAGMA foreign_keys = ON` bilan boshlanadi — xuddi D1 dagidek.
 // `foreignKeys: false` — faqat ko'chirish vositasi uchun (jadvallar
 // tartibi muhim bo'lmasin).
+// Tarmoq/HTTP xatolari soni (SQL xatolari emas) — ensureCoreSchema sxema
+// belgisini faqat shu davrda tarmoq xatosi bo'lmagan bo'lsa yozadi.
+let netErrors = 0;
+export const uzDbNetErrors = () => netErrors;
+
 export function uzDb({ url, token, fetch: doFetch = (...a) => fetch(...a), foreignKeys = true }) {
   const endpoint = `${String(url).replace(/\/+$/, '')}/v2/pipeline`;
   const pragma = { type: 'execute', stmt: { sql: `PRAGMA foreign_keys = ${foreignKeys ? 'ON' : 'OFF'}`, want_rows: false } };
 
   async function pipeline(requests) {
-    const res = await doFetch(endpoint, {
-      method: 'POST',
-      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ baton: null, requests: [pragma, ...requests, { type: 'close' }] }),
-    });
+    let res;
+    try {
+      res = await doFetch(endpoint, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ baton: null, requests: [pragma, ...requests, { type: 'close' }] }),
+      });
+    } catch (e) {
+      netErrors++;
+      throw new Error(`D1_ERROR: uz-db network ${String(e?.message || e).slice(0, 120)}`);
+    }
     if (!res.ok) {
+      netErrors++;
       const text = await res.text().catch(() => '');
       throw new Error(`D1_ERROR: uz-db HTTP ${res.status} ${text.slice(0, 120)}`);
     }
@@ -423,11 +437,13 @@ export function uzBucket({ endpoint, bucket, keyId, secret, region = 'garage', f
       const uploadId = /<UploadId>([^<]+)<\/UploadId>/.exec(await res.text())?.[1];
       if (!uploadId) throw new Error('uz-s3 multipart create: UploadId yo‘q');
       const q = `uploadId=${s3Encode(uploadId)}`;
+      const sizes = new Map();
       return {
         key,
         uploadId,
         async uploadPart(partNumber, value) {
           const body = await bodyBytes(value);
+          sizes.set(partNumber, body.length);
           const r = await request('PUT', key, { query: `partNumber=${partNumber}&${q}`, body });
           if (!r.ok) throw await s3Error(r, 'multipart part');
           return { partNumber, etag: String(r.headers.get('etag') || '').replace(/^"|"$/g, '') };
@@ -440,7 +456,16 @@ export function uzBucket({ endpoint, bucket, keyId, secret, region = 'garage', f
           const text = await r.text();
           // S3 xatoni 200 bilan ham qaytarishi mumkin — tanada <Error>.
           if (!r.ok || /<Error>/.test(text)) throw new Error(`uz-s3 multipart complete: HTTP ${r.status}`);
-          return bucketApi.head(key);
+          // Fayl saqlandi — qo'shimcha HEAD qilinmaydi (u yiqilsa saqlangan
+          // fayl "xato" deb hisoblanib, yetim qolardi). Javobdan quriladi.
+          const etag = (/<ETag>([^<]*)<\/ETag>/.exec(text)?.[1] || '').replace(/&quot;/g, '"').replace(/^"|"$/g, '');
+          const { httpMetadata = {}, customMetadata = {} } = opts;
+          return {
+            key, version: etag, etag, httpEtag: `"${etag}"`,
+            size: parts.reduce((n, p) => n + (sizes.get(p.partNumber) || 0), 0),
+            uploaded: new Date(), httpMetadata, customMetadata, checksums: {}, storageClass: 'Standard',
+            writeHttpMetadata(h) { for (const [f, hd] of HTTP_META) if (httpMetadata[f]) h.set(hd, httpMetadata[f]); },
+          };
         },
         async abort() {
           const r = await request('DELETE', key, { query: q });
@@ -467,6 +492,15 @@ function withR2Fallback(uz, r2) {
 
 export const uzStoreEnabled = (env) => String(env?.UZ_STORE || '').trim().toLowerCase() === 'on';
 export const uzMaintenance = (env) => String(env?.UZ_MAINTENANCE || '').trim().toLowerCase() === 'on';
+
+// Texnik rejimda ham o'tadigan so'rov: faqat vaqtinchalik eksport kaliti bilan
+// (ko'chirish workflow'ining yakuniy tekshiruvlari). Kalit yo'q — false.
+export async function uzMaintenanceBypass(request, env) {
+  const key = String(env?.UZ_EXPORT_KEY || '');
+  const given = request.headers.get('x-uz-export-key') || '';
+  if (key.length < 32 || !given) return false;
+  return sameSecret(key, given);
+}
 
 const wrapped = new WeakMap();
 
@@ -532,6 +566,17 @@ export function maintenanceResponse(request) {
 const EXPORT_SKIP = (n) => /^(sqlite_|_cf_)/.test(String(n || ''));
 const qid = (s) => `"${String(s).replace(/"/g, '""')}"`;
 
+// Qatorning aniq SQL ko'rinishi va xeshi (uz-migrate.mjs ham AYNAN shularni
+// ishlatadi). quote() matnni NUL baytda kesib qo'yadi — shuning uchun TEXT
+// hex orqali: CAST(X'..' AS TEXT) baytma-bayt bir xil tiklanadi. INTEGER,
+// REAL (aniq, %!.20e gacha), BLOB va NULL uchun quote() aniq.
+export const rowLiteralSql = (cols) => cols
+  .map((c) => `CASE typeof(${qid(c)}) WHEN 'text' THEN 'CAST(X''' || hex(${qid(c)}) || ''' AS TEXT)' ELSE quote(${qid(c)}) END`)
+  .join(` || ',' || `);
+export const rowDigestSql = (cols) => cols
+  .map((c) => `CASE typeof(${qid(c)}) WHEN 'text' THEN 'T' || hex(${qid(c)}) ELSE quote(${qid(c)}) END`)
+  .join(` || ',' || `);
+
 async function sameSecret(a, b) {
   const [x, y] = await Promise.all([sha256Hex(String(a)), sha256Hex(String(b))]);
   let diff = 0;
@@ -541,7 +586,7 @@ async function sameSecret(a, b) {
 
 async function exportTables(db) {
   const master = (await db.prepare(`SELECT type, name, tbl_name, sql FROM sqlite_master
-    WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND tbl_name NOT LIKE '_cf_%' ORDER BY rowid`).all()).results
+    WHERE sql IS NOT NULL AND substr(name, 1, 7) <> 'sqlite_' AND substr(name, 1, 4) <> '_cf_' AND substr(tbl_name, 1, 4) <> '_cf_' ORDER BY rowid`).all()).results
     .filter((r) => !EXPORT_SKIP(r.name) && !EXPORT_SKIP(r.tbl_name));
   return master;
 }
@@ -574,7 +619,7 @@ export async function handleUzExport(request, env) {
   const def = master.find((r) => r.type === 'table' && r.name === table);
   if (!def) return json({ error: 'no_table' });
   const cols = await exportColumns(db, table);
-  const lit = cols.map((c) => `quote(${qid(c)})`).join(` || ',' || `);
+  const lit = rowLiteralSql(cols);
 
   if (op === 'rows') {
     const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 1000, 1), 5000);
@@ -589,7 +634,7 @@ export async function handleUzExport(request, env) {
   }
 
   if (op === 'digest') {
-    const rows = (await db.prepare(`SELECT ${lit} AS q FROM ${qid(table)} ORDER BY ${cols.map(qid).join(', ')}`).all()).results;
+    const rows = (await db.prepare(`SELECT ${rowDigestSql(cols)} AS q FROM ${qid(table)} ORDER BY ${cols.map(qid).join(', ')}`).all()).results;
     return json({ count: rows.length, sha: await sha256Hex(rows.map((r) => `${r.q}\n`).join('')) });
   }
   return json({ error: 'bad_op' });
