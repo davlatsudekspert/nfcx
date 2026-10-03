@@ -1,7 +1,7 @@
 // O'zbekiston serverida yangi isolate'ning birinchi so'rovi nechta tashqi
 // so'rov (subrequest) yuboradi. Har "isolate" — alohida jarayon (modul
-// keshlari toza). Sxema belgisi (ensureCoreSchema) bo'lmasa ~60 ta bo'lardi:
-// Workers Free'da chegara 50, Paid'da esa Toshkentgacha bir necha soniya.
+// keshlari toza). Sxema belgisi (ensureCoreSchema) va birlashtirishsiz ~65 ta
+// bo'lardi — Workers Free'da chegara 50 (jonli sinovda aynan shu yiqildi).
 //   node scripts/test-uz-cold-start.mjs
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync, mkdtempSync } from 'node:fs';
@@ -59,7 +59,9 @@ const run = (ver, r = '/api/feed') => {
   return JSON.parse(out.slice(out.lastIndexOf('@@') + 2));
 };
 const first = run('v1');
-check('1-isolate (yangi versiya): sxema to‘liq tekshiriladi', first.status === 200 && first.n > 20, `(${first.n} so‘rov, HTTP ${first.status})`);
+// To'liq tekshiruv belgisiz isolate'dan ko'p so'rov qiladi, lekin parallel
+// so'rovlar bitta HTTP ga birlashadi — Free chegarasidan (50) ancha kam.
+check('1-isolate (yangi versiya): sxema to‘liq tekshiriladi va ≤ 40 so‘rov', first.status === 200 && first.n > 12 && first.n <= 40, `(${first.n} so‘rov, HTTP ${first.status})`);
 const marker = new DatabaseSync(db).prepare(`SELECT COUNT(*) AS c FROM maintenance_runs WHERE name = 'core_schema:v1'`).get().c;
 check('belgi yozildi (core_schema:v1)', marker === 1);
 for (const r of ['/api/feed', '/api/auth/me', '/api/records']) {
@@ -71,6 +73,6 @@ const vf = run('vf', 'FAULT');
 const vfMarker = new DatabaseSync(db).prepare(`SELECT COUNT(*) AS c FROM maintenance_runs WHERE name = 'core_schema:vf'`).get().c;
 check('ALTER da tarmoq uzilsa — shu isolate ikkinchi so‘rovdan keyin ham belgi YOZMAYDI', vfMarker === 0, `(belgi: ${vfMarker})`);
 const v2 = run('v2');
-check('yangi versiya (v2): sxema yana to‘liq tekshiriladi', v2.n > 20, `(${v2.n} so‘rov)`);
+check('yangi versiya (v2): sxema yana to‘liq tekshiriladi (≤ 40)', v2.n > 12 && v2.n <= 40, `(${v2.n} so‘rov)`);
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

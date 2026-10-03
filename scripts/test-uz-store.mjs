@@ -319,4 +319,36 @@ try {
   check('texnik rejim: sahifa — 503 HTML', [page.status, page.headers.get('content-type').split(';')[0]], [503, 'text/html']);
 }
 
+// ── Birlashtirish: parallel so'rovlar BITTA HTTP da, xatolar alohida ──
+{
+  let calls = 0;
+  // UZ_TEST_DB_URL berilsa — HAQIQIY sqld da (xatodan keyin pipeline davom etadimi).
+  const hf = E.UZ_TEST_DB_URL ? (...a) => fetch(...a) : hranaFetch(new DatabaseSync(':memory:'));
+  const cdb = E.UZ_TEST_DB_URL
+    ? uzDb({ url: E.UZ_TEST_DB_URL, token: E.UZ_TEST_DB_TOKEN, fetch: (...a) => { calls++; return hf(...a); } })
+    : uzDb({ url: 'https://db.uz.test', token: 'test-token', fetch: (...a) => { calls++; return hf(...a); } });
+  await cdb.exec('DROP TABLE IF EXISTS co; CREATE TABLE co (id INTEGER PRIMARY KEY, v TEXT NOT NULL)');
+  calls = 0;
+  const res = await Promise.allSettled([
+    cdb.prepare('INSERT INTO co (id, v) VALUES (1, ?)').bind('a').run(),
+    cdb.prepare('INSERT INTO co (id, v) VALUES (1, ?)').bind('dup').run(),       // PK xatosi — faqat o'zi
+    cdb.batch([cdb.prepare('INSERT INTO co (id, v) VALUES (2, ?)').bind('b'),
+      cdb.prepare('INSERT INTO co (id, v) VALUES (3, NULL)')]),                   // NOT NULL — butun batch bekor
+    cdb.prepare('INSERT INTO co (id, v) VALUES (4, ?)').bind('d').run(),
+    cdb.prepare('SELECT COUNT(*) AS n FROM co').first('n'),
+  ]);
+  check('birlashtirish: 5 ta parallel so‘rov — 1 HTTP', calls, 1);
+  check('birlashtirish: har biri o‘z natijasi/xatosi', res.map((r) => r.status), ['fulfilled', 'rejected', 'rejected', 'fulfilled', 'fulfilled']);
+  checkTrue('birlashtirish: PK xatosi D1 matni bilan', /UNIQUE constraint failed/.test(String(res[1].reason?.message)));
+  const rows = (await cdb.prepare('SELECT id, v FROM co ORDER BY id').all()).results.map((r) => `${r.id}${r.v}`);
+  check('birlashtirish: batch yaxlit bekor, qolganlar yozildi', rows, ['1a', '4d']);
+  calls = 0;
+  await Promise.all(Array.from({ length: 130 }, (_, i) => cdb.prepare('SELECT ? AS x').bind(i).first('x')));
+  check('birlashtirish: 130 so‘rov — 60 talik bo‘laklarda 3 HTTP', calls, 3);
+  calls = 0;
+  await cdb.prepare('SELECT 1').first(); await cdb.prepare('SELECT 2').first();
+  check('ketma-ket await — har biri alohida HTTP', calls, 2);
+  await cdb.exec('DROP TABLE IF EXISTS co');
+}
+
 done();
