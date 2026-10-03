@@ -1,0 +1,128 @@
+name: UZ server (MYCLOUD VPS)
+
+# O'zbekistondagi ma'lumotlar serveri (reyestr, 547-son Qonun 27-1-modda).
+# Serverga SSH orqali faqat shu workflow kiradi; parol GitHub Secrets'da
+# (UZ_VPS_HOST, UZ_VPS_PASSWORD). Natija ANNOTATSIYA bo'lib chiqadi —
+# maxfiy qiymatlar (parol, baza tokeni, S3 kaliti) hech qayerga yozilmaydi.
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "status = faqat tekshirish, setup = sozlash (qayta ishga tushirish xavfsiz), log = oxirgi sozlash jurnali, test = adapterlarni haqiqiy serverda sinash"
+        required: true
+        default: status
+        type: choice
+        options: [status, setup, log, test]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: uz-server
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        if: ${{ inputs.action == 'test' }}
+        with:
+          node-version: 22
+
+      - name: Server
+        env:
+          SSHPASS: ${{ secrets.UZ_VPS_PASSWORD }}
+          HOST: ${{ secrets.UZ_VPS_HOST }}
+          ACTION: ${{ inputs.action }}
+        run: |
+          set -uo pipefail
+          [ -n "$HOST" ] && [ -n "$SSHPASS" ] || { echo "::error::UZ_VPS_HOST / UZ_VPS_PASSWORD secretlari yo'q"; exit 1; }
+          sudo apt-get install -y -qq sshpass >/dev/null
+          R() { sshpass -e ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=8 -o LogLevel=ERROR root@"$HOST" "$@"; }
+          # Maxfiy so'zlar bor qatorlar annotatsiyaga tushmasin.
+          # Uzun hex (tokenlar), Garage kalit ID'si va "Secret key" qatorlari yashiriladi.
+          clean() { grep -viE 'secret key|password|parol' | sed -E 's/[0-9a-fA-F]{32,}/<hex>/g; s/GK[0-9a-fA-F]{8,}/GK<id>/g' | tail -n "${1:-15}"; }
+          # GitHub bitta qadamda faqat 10 ta annotatsiya ko'rsatadi — jurnal
+          # BITTA annotatsiyaga yig'iladi (%0A = yangi qator).
+          joined() { sed -e 's/%/%25/g' -e 's/\r//g' | sed ':a;N;$!ba;s/\n/%0A/g'; }
+
+          # Diagnostika: port ochiqmi va SSH nima deydi (xabarlarda maxfiy narsa yo'q).
+          ports=""
+          for p in 22 80 443; do
+            if timeout 8 bash -c "echo > /dev/tcp/$HOST/$p" 2>/dev/null; then st=ochiq; else st="yopiq"; fi
+            ports="$ports $p:$st"
+          done
+          echo "::notice title=Portlar::$ports"
+          printf '%s' "$SSHPASS" | grep -q '[[:space:]]' && echo "::warning title=Parol::secret qiymatida probel yoki yangi qator bor"
+          if ! R 'echo ok' > ssh.out 2>&1; then
+            tail -n 3 ssh.out | grep -viE 'password|parol' | while IFS= read -r l; do echo "::error title=SSH javobi::$l"; done
+            echo "::error title=SSH::Serverga ulanib bo'lmadi"; exit 1
+          fi
+          echo "::notice title=SSH::ulandi"
+
+          # Sozlash serverda FONDA ishlaydi (nohup): SSH uzilib qolsa ham
+          # (apt uzoq kutganda shunday bo'ldi — "Broken pipe") o'rnatish
+          # yarim qolmaydi. Bu yerdan faqat tugashini kuzatamiz.
+          if [ "$ACTION" = setup ]; then
+            R 'cat > /root/nfcstore-setup.sh && chmod 700 /root/nfcstore-setup.sh' < ops/uz-server/setup.sh
+            R 'bash -s' <<'EOS' | while IFS= read -r l; do echo "::notice title=Setup::$l"; done
+          if [ -f /root/nfcstore-setup.pid ] && kill -0 "$(cat /root/nfcstore-setup.pid)" 2>/dev/null; then
+            echo "allaqachon ishlayapti — kuzatyapman"; exit 0
+          fi
+          rm -f /root/nfcstore-setup.rc
+          nohup setsid bash -c 'QUIET=1 bash /root/nfcstore-setup.sh > /root/nfcstore-setup.out 2>&1; echo $? > /root/nfcstore-setup.rc' </dev/null >/dev/null 2>&1 &
+          echo $! > /root/nfcstore-setup.pid
+          echo "fonda boshlandi"
+          EOS
+            rc=""
+            for i in $(seq 1 100); do
+              sleep 15
+              rc=$(R 'cat /root/nfcstore-setup.rc 2>/dev/null' 2>/dev/null || true)
+              [ -n "$rc" ] && break
+            done
+            R 'tail -n 40 /root/nfcstore-setup.out' > setup.out 2>&1 || true
+            if [ "$rc" = 0 ]; then
+              echo "::notice title=Setup::muvaffaqiyatli tugadi"
+              echo "::notice title=setup log::$(clean 8 < setup.out | joined)"
+            else
+              echo "::error title=Setup::${rc:+kod $rc bilan }tugamadi — oxirgi qatorlar pastda"
+              echo "::error title=setup log::$(clean 30 < setup.out | joined)"
+              exit 1
+            fi
+          fi
+          if [ "$ACTION" = log ]; then
+            R 'cat /root/nfcstore-setup.rc 2>/dev/null || echo "hali tugamagan"; tail -n 40 /root/nfcstore-setup.out 2>/dev/null' > setup.out 2>&1 || true
+            echo "::notice title=setup log::$(clean 40 < setup.out | joined)"
+          fi
+
+          # hosting/uz-store.js adapterlari HAQIQIY sqld va Garage bilan
+          # (scripts/test-uz-store.mjs: vaqtinchalik jadval/kalitlar, oxirida
+          # o'chiriladi). Kalitlar serverdan o'qiladi va darhol yashiriladi.
+          if [ "$ACTION" = test ]; then
+            DBT=$(R '. /srv/nfcstore/secrets.env && printf %s "$DB_TOKEN"')
+            S3K=$(R '. /srv/nfcstore/s3.env && printf %s "$S3_KEY_ID"')
+            S3S=$(R '. /srv/nfcstore/s3.env && printf %s "$S3_SECRET"')
+            for v in "$DBT" "$S3K" "$S3S"; do [ -n "$v" ] && echo "::add-mask::$v"; done
+            UZ_TEST_DB_URL=https://db.nfcstore.uz UZ_TEST_DB_TOKEN="$DBT" \
+            UZ_TEST_S3_ENDPOINT=https://s3.nfcstore.uz UZ_TEST_S3_BUCKET=nfcstore-uploads \
+            UZ_TEST_S3_KEY_ID="$S3K" UZ_TEST_S3_SECRET="$S3S" \
+              node scripts/test-uz-store.mjs > t.out 2>&1; trc=$?
+            if [ "$trc" = 0 ]; then lvl=notice; else lvl=error; fi
+            echo "::$lvl title=uz-store test::$(grep -E 'FAIL|passed|baza|actual|expected|Error' t.out | clean 40 | joined)"
+          fi
+
+          R 'uptime -p; df -h / | tail -1 | awk "{print \"disk: \"\$3\" / \"\$2\" (\"\$5\")\"}"; free -m | awk "/Mem:/{print \"ram: \"\$3\"MB / \"\$2\"MB\"}"; docker ps --format "{{.Names}}: {{.Status}}" 2>/dev/null || echo "docker: yoq"' \
+            > vps.out 2>&1 || true
+          echo "::notice title=VPS::$(clean 20 < vps.out | joined)"
+
+          TOKEN=$(R '[ -f /srv/nfcstore/secrets.env ] && . /srv/nfcstore/secrets.env && printf %s "${DB_TOKEN:-}"' 2>/dev/null || true)
+          [ -n "$TOKEN" ] && echo "::add-mask::$TOKEN"
+          q='{"statements":["select 1"]}'
+          A=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 -H "Authorization: Bearer ${TOKEN:-x}" -H 'Content-Type: application/json' -d "$q" https://db.nfcstore.uz/ || echo ERR)
+          N=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 -H 'Content-Type: application/json' -d "$q" https://db.nfcstore.uz/ || echo ERR)
+          S3=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://s3.nfcstore.uz/ || echo ERR)
+          echo "::notice title=db.nfcstore.uz::token bilan HTTP $A (kutilgan 200), tokensiz HTTP $N (kutilgan 401)"
+          echo "::notice title=s3.nfcstore.uz::HTTPS HTTP $S3 (403/400 — ombor javob beryapti)"
