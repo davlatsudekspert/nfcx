@@ -1,0 +1,134 @@
+From 4137c19e97f2c83aa4f5c2ea9434fbdd94784e87 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 3 Oct 2026 19:54:37 +0000
+Subject: [PATCH 4/4] Reels: video ochilishiga 20 s chegara, osilsa "qayta
+ urinish"
+
+`initialize()` javob bermay osilib qolsa reel qora/aylanuvchi holda
+abadiy turardi va keyingi reelni oldindan yuklash ham kutib qolardi.
+Endi 20 s dan keyin "qayta urinish" holati; bosilsa yangi pleyer bilan
+qayta ochiladi (mavjud mantiq), keyingi reel yuklanishda davom etadi.
+
+reels_init_timeout_test: eski kodda yiqiladi.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01WqgHSnzY8F5vsV7piKkJh7
+---
+ .../lib/features/social/reels_screen.dart     | 14 +++-
+ mobile_nova/test/reels_init_timeout_test.dart | 72 +++++++++++++++++++
+ 2 files changed, 85 insertions(+), 1 deletion(-)
+ create mode 100644 mobile_nova/test/reels_init_timeout_test.dart
+
+diff --git a/mobile_nova/lib/features/social/reels_screen.dart b/mobile_nova/lib/features/social/reels_screen.dart
+index 2b79fd5a..8f993e47 100644
+--- a/mobile_nova/lib/features/social/reels_screen.dart
++++ b/mobile_nova/lib/features/social/reels_screen.dart
+@@ -108,6 +108,16 @@ final reelsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
+ /// Serverda "saqlash" API'si yo'q. Shuning uchun saqlash telefon
+ /// xotirasida turadi va buni odamga aytamiz (snackbar) — soxta
+ /// "hisobingizga saqlandi" yo'q.
++
++
++/// REELS VIDEOSINI OCHISH CHEGARASI (egasi, 2026-10: "bir video
++/// yuklanmasa keyingisiga o'tish va retry ishlasin").
++///
++/// `initialize()` javob bermay osilib qolsa, reel qora/aylanuvchi holda
++/// abadiy turardi va keyingi reelni oldindan yuklash ham kutib qolardi.
++/// Muddat o'tsa — "qayta urinish" holati (bosilsa yangi pleyer).
++const reelsInitTimeout = Duration(seconds: 20);
++
+ class SavedReels extends SyncedSaves {
+   SavedReels(SavesRepository repo, Prefs prefs)
+       : super(repo, SaveKind.reel,
+@@ -624,7 +634,9 @@ class _ReelPageState extends ConsumerState<_ReelPage>
+       );
+       _controller = c;
+       try {
+-        await c.initialize();
++        // Osilib qolgan ochilish reelni abadiy qora qoldirmasin va
++        // keyingisini yuklashni to'smasin: muddat o'tsa — "qayta urinish".
++        await c.initialize().timeout(reelsInitTimeout);
+         if (gen != _gen || !mounted) return;
+         await c.setLooping(true);
+         _ready = true;
+diff --git a/mobile_nova/test/reels_init_timeout_test.dart b/mobile_nova/test/reels_init_timeout_test.dart
+new file mode 100644
+index 00000000..434cd357
+--- /dev/null
++++ b/mobile_nova/test/reels_init_timeout_test.dart
+@@ -0,0 +1,72 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/data/repositories/social_repository.dart';
++import 'package:nfcstore_nova/features/social/reels_screen.dart';
++import 'package:nfcstore_nova/routing/shell.dart';
++import 'package:video_player_platform_interface/video_player_platform_interface.dart';
++
++import 'helpers.dart';
++import 'support/fake_video_platform.dart';
++
++/// REELS: OSILGAN VIDEO ABADIY QORA QOLMAYDI (egasi, 2026-10).
++///
++/// `initialize()` javob bermasa reel [reelsInitTimeout] dan keyin
++/// "qayta urinish" holatiga o'tadi; bosilsa yangi pleyer bilan ochiladi.
++final _reels = [
++  for (var i = 1; i <= 3; i++)
++    Post(
++      id: i,
++      code: 'VID00$i',
++      authorName: 'Video $i',
++      text: 'video-$i',
++      mediaUrls: ['https://nfcstore.uz/uploads/v$i.mp4'],
++      isVideo: true,
++    ),
++];
++
++Future<FakeVideoPlatform> _pump(WidgetTester tester,
++    {Duration initDelay = Duration.zero}) async {
++  final fake = FakeVideoPlatform(initDelay: initDelay);
++  VideoPlayerPlatform.instance = fake;
++  tester.view.physicalSize = const Size(390 * 3, 844 * 3);
++  tester.view.devicePixelRatio = 3;
++  addTearDown(tester.view.reset);
++  final base = await testOverrides();
++  final c = ProviderContainer(overrides: [
++    ...base.where((o) => !identical(o, base[2])),
++    socialRepositoryProvider.overrideWithValue(FakeSocialRepository()),
++    reelsProvider.overrideWith((ref) async => _reels),
++    activeTabProvider.overrideWith((ref) => 3),
++  ]);
++  addTearDown(c.dispose);
++  await tester.pumpWidget(UncontrolledProviderScope(
++    container: c,
++    child: wrapScreen(const ReelsScreen()),
++  ));
++  await settle(tester, frames: 10);
++  return fake;
++}
++
++void main() {
++  testWidgets('ochilish osilib qolsa — qayta urinish, abadiy qora emas',
++      (tester) async {
++    final fake = await _pump(tester, initDelay: const Duration(hours: 1));
++    expect(fake.created, isNotEmpty);
++    expect(find.byIcon(Icons.videocam_off_rounded), findsNothing);
++    await tester.pump(reelsInitTimeout + const Duration(seconds: 1));
++    await settle(tester, frames: 6);
++    expect(find.byIcon(Icons.videocam_off_rounded), findsWidgets,
++        reason: 'osilgan video "qayta urinish" holatiga o‘tmadi');
++    // Bosish — qaytadan ochishga urinadi (yangi pleyer).
++    final before = fake.created.length;
++    await tester.tap(find.byIcon(Icons.videocam_off_rounded).first);
++    await settle(tester, frames: 6);
++    expect(fake.created.length, greaterThan(before));
++
++    // Soxta "osilgan" ochilish taymerlari tugasin.
++    await tester.pumpWidget(const SizedBox());
++    await tester.pump(const Duration(hours: 2));
++  });
++}
+-- 
+2.43.0
+
