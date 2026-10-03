@@ -3,7 +3,7 @@
 Workflow: `.github/workflows/ios-testflight.yml` (Actions → **iOS TestFlight** → Run workflow).
 U faqat TestFlight'ga build yuklaydi. App Store'ga reliz va review'ga yuborish qo'lda qilinadi.
 
-- Bundle ID: `uz.nfcstore.nfcstore` (Xcode loyihasidan olinadi; Android'da `uz.nfcstore.app`)
+- Bundle ID: `uz.nfcstore.app` (Android Classic bilan bir xil; workflow uni Xcode loyihasidan o'qiydi)
 - Versiya: `pubspec.yaml` → `1.0.0`; build raqami = workflow run raqami
 - Imzo: Apple Distribution `.p12` + App Store provisioning profile (qo'lda imzo)
 - Yuklash: App Store Connect API kaliti (`xcrun altool`), Apple ID paroli ishlatilmaydi
@@ -13,7 +13,7 @@ U faqat TestFlight'ga build yuklaydi. App Store'ga reliz va review'ga yuborish q
 
 ### 1.1 App ID — developer.apple.com → Account → Certificates, Identifiers & Profiles → Identifiers
 1. **+** → *App IDs* → *App* → Continue.
-2. Description: `NFCSTORE`, Bundle ID: **Explicit** → `uz.nfcstore.nfcstore`.
+2. Description: `NFCSTORE`, Bundle ID: **Explicit** → `uz.nfcstore.app`.
 3. Capabilities ro'yxatidan **NFC Tag Reading** ni belgilang → Continue → Register.
    (App ID allaqachon bo'lsa — uni ochib NFC Tag Reading'ni yoqing va Save.)
 
@@ -39,7 +39,7 @@ openssl pkcs12 -export -legacy -inkey nfcstore_dist.key -in distribution.pem \
 
 ### 1.3 Provisioning profile
 1. Profiles → **+** → Distribution → **App Store Connect** → Continue.
-2. App ID: `uz.nfcstore.nfcstore` → Continue.
+2. App ID: `uz.nfcstore.app` → Continue.
 3. 1.2-bandda yaratilgan sertifikatni tanlang → Continue.
 4. Nomi: `NFCSTORE App Store` → Generate → **Download** (`.mobileprovision`).
 
@@ -47,7 +47,7 @@ App ID'da capability o'zgarsa, profilni qayta yarating va secret'ni yangilang.
 
 ### 1.4 App Store Connect'da ilova yozuvi — appstoreconnect.apple.com → Apps
 **+** → *New App* → Platform: iOS, Name: `NFCSTORE` (band bo'lsa boshqa nom),
-Primary language, Bundle ID: `uz.nfcstore.nfcstore`, SKU: `nfcstore-ios` → Create.
+Primary language, Bundle ID: `uz.nfcstore.app`, SKU: `nfcstore-ios` → Create.
 Bu yozuvsiz yuklash "No suitable application records" xatosi bilan tugaydi.
 
 ### 1.5 App Store Connect API kaliti
