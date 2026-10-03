@@ -387,7 +387,7 @@ async function s3Error(res, what) {
   return new Error(`uz-s3 ${what}: HTTP ${res.status}${code ? ` ${code}` : ''}${msg ? ` (${msg.slice(0, 80)})` : ''}${skew}`);
 }
 
-export function uzBucket({ endpoint, bucket, keyId, secret, region = 'garage', fetch: doFetch = (...a) => fetch(...a) }) {
+export function uzBucket({ endpoint, bucket, keyId, secret, region = 'garage', fetch: doFetch = (...a) => fetch(...a), onRetry = null }) {
   const base = `${String(endpoint).replace(/\/+$/, '')}/${s3Encode(bucket)}`;
   const EMPTY_SHA = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
 
@@ -403,7 +403,12 @@ export function uzBucket({ endpoint, bucket, keyId, secret, region = 'garage', f
       res.uzSignedAt = now.getTime();
       if (res.status !== 403) return res;
       res.uzErrorText = await res.text().catch(() => '');
-      if (attempt === 0) console.warn('uz_s3_403_retry', method, String(key).slice(0, 80), res.uzErrorText.slice(0, 160));
+      if (attempt === 0) {
+        const serverDate = Date.parse(res.headers.get('date') || '');
+        const skew = Number.isFinite(serverDate) ? Math.round((serverDate - now.getTime()) / 1000) : null;
+        console.warn('uz_s3_403_retry', method, String(key).slice(0, 80), res.uzErrorText.slice(0, 160), skew);
+        if (onRetry) await onRetry({ method, key: String(key).slice(0, 200), skew, message: (/<Message>([^<]+)</.exec(res.uzErrorText)?.[1] || '').slice(0, 120) }).catch(() => {});
+      }
     }
     return res;
   }
@@ -581,6 +586,17 @@ async function logFallback(db, op, key) {
   } catch { /* log yozilmasa ham so'rov davom etadi */ }
 }
 
+// Garage 403 dan keyin muvaffaqiyatli qayta urinishlar (foydalanuvchi xato
+// ko'rmagan, lekin sababni o'lchash uchun): usul, kalit, soat farqi, xabar.
+async function logS3Retry(db, { method, key, skew, message }) {
+  try {
+    await db.batch([db.prepare(`CREATE TABLE IF NOT EXISTS "_uz_s3_retry_log" (
+      "id" INTEGER PRIMARY KEY, "ts" TEXT NOT NULL, "method" TEXT, "key" TEXT, "skew" INTEGER, "message" TEXT)`),
+    db.prepare(`INSERT INTO "_uz_s3_retry_log" ("ts", "method", "key", "skew", "message") VALUES (?, ?, ?, ?, ?)`)
+      .bind(new Date().toISOString(), method, key, skew, message)]);
+  } catch { /* */ }
+}
+
 // 5xx javoblar — yo'l (query'siz: unda token bo'lishi mumkin), status, xato matni.
 export async function uzLogError(env, { method, path, status, detail }) {
   if (!env?.UZ_STORE_ACTIVE || !env.DB) return;
@@ -651,12 +667,13 @@ export function withUzStores(env) {
     console.error('uz_store_misconfigured', missing.join(','));
     return env;
   }
+  const fallback = String(env.UZ_UPLOADS_FALLBACK || '').trim().toLowerCase() === 'r2' && env.UPLOADS;
+  const db = uzDb({ url: env.UZ_DB_URL, token: env.UZ_DB_TOKEN });
   const bucket = uzBucket({
     endpoint: env.UZ_S3_ENDPOINT, bucket: env.UZ_S3_BUCKET,
     keyId: env.UZ_S3_KEY_ID, secret: env.UZ_S3_SECRET, region: env.UZ_S3_REGION || 'garage',
+    onRetry: (info) => logS3Retry(db, info),
   });
-  const fallback = String(env.UZ_UPLOADS_FALLBACK || '').trim().toLowerCase() === 'r2' && env.UPLOADS;
-  const db = uzDb({ url: env.UZ_DB_URL, token: env.UZ_DB_TOKEN });
   const out = {
     ...env,
     DB: db,

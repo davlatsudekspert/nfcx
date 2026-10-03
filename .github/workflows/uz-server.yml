@@ -288,7 +288,7 @@ jobs:
           if head: secs.insert(0, 'skript\n' + head)
           # Xulosa birinchi; qolganlari juftlab (GitHub: qadamga 10 ta notice).
           secs.sort(key=lambda x: 0 if x.startswith('Xulosa') else 1)
-          groups = [secs[:2]] + [secs[i:i + 2] for i in range(2, len(secs), 2)]
+          groups = [secs[:2]] + [secs[i:i + 3] for i in range(2, len(secs), 3)]
           for g in groups[:6]:
               titles = [x.partition('\n')[0].strip() for x in g]
               body = '\n'.join(f"▸ {x.partition(chr(10))[0].strip()}\n{x.partition(chr(10))[2].strip()}" for x in g)

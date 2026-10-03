@@ -71,6 +71,16 @@ let fallbackReads = 0;
   } else say('jadval hali yo\'q — 5xx javob bo\'lmagan');
 }
 
+// ── 2b) Garage 403 → muvaffaqiyatli qayta urinishlar (foydalanuvchi ko'rmagan) ──
+{
+  sec('Garage 403 qayta urinishlari (_uz_s3_retry_log)');
+  if (await hasTable('_uz_s3_retry_log')) {
+    const g = (await db.prepare(`SELECT method, message, COUNT(*) AS n, MIN(skew) AS lo, MAX(skew) AS hi, MAX(ts) AS b FROM "_uz_s3_retry_log" GROUP BY method, message ORDER BY n DESC LIMIT 6`).all()).results;
+    for (const r of g) say(`${r.n}× ${r.method} "${r.message}" soat farqi ${r.lo}…${r.hi} s (oxirgi ${r.b})`);
+    if (!g.length) say('yo\'q');
+  } else say('yo\'q — 403 qayta urinish bo\'lmagan');
+}
+
 // ── 3) Haqiqiy foydalanuvchi yozuvlari (organik write) ───────────────
 {
   sec("O'tishdan keyingi haqiqiy yozuvlar (UZ bazasi)");
@@ -214,8 +224,14 @@ await db.prepare(`INSERT OR REPLACE INTO "_uz_audit_state" ("k", "v", "ts") VALU
 const runs = (await db.prepare(`SELECT ts, v FROM "_uz_audit_state" WHERE k LIKE 'run:%' ORDER BY ts`).all()).results.map((r) => ({ ts: r.ts, ...JSON.parse(r.v) }));
 sec('Xulosa');
 say(`bu audit: ${verdict}`);
-say(`auditlar tarixi: ${runs.map((r) => `${r.ts.slice(5, 16)} ${r.verdict === 'TOZA' ? 'toza' : 'MUAMMO'}`).join(' · ')}`);
-const ready = hours >= 24 && !problems.length && fallbackReads === 0 && r2Only === 0 && runs.every((r) => r.verdict === 'TOZA');
-say(`finalize-media sharti (≥24 soat, hamma auditlar toza, fallback 0, faqat-R2 0): ${ready ? 'BAJARILDI' : `hali yo'q (${hours.toFixed(1)} soat)`}`);
+say(`auditlar tarixi: ${runs.map((r) => `${r.ts.slice(5, 16)} ${r.verdict === 'TOZA' ? 'toza' : 'muammoli'}`).join(' · ')}`);
+// 24 soatlik "toza" oraliq OXIRGI muammoli auditdan keyin boshlanadi va
+// shu oraliqda kamida 5 ta audit bo'lishi kerak (muntazam kuzatuv).
+const lastBad = [...runs].reverse().find((r) => r.verdict !== 'TOZA');
+const cleanRuns = lastBad ? runs.filter((r) => r.ts > lastBad.ts) : runs;
+const cleanHours = cleanRuns.length ? (Date.now() - Date.parse(cleanRuns[0].ts)) / 3.6e6 : 0;
+const ready = !problems.length && cleanHours >= 24 && cleanRuns.length >= 5 && fallbackReads === 0 && r2Only === 0;
+say(`toza oraliq: ${cleanHours.toFixed(1)} soat, ${cleanRuns.length} audit${lastBad ? ` (oxirgi muammoli audit: ${lastBad.ts.slice(0, 16)})` : ''}`);
+say(`finalize-media sharti (≥24 soat uzluksiz toza, ≥5 audit, R2 fallback 0, faqat-R2 fayl 0): ${ready ? 'BAJARILDI' : 'hali yo\'q'}`);
 if (GATE && !ready) process.exit(3);
 if (problems.length) process.exit(1);
