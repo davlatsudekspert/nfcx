@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # NFCSTORE — O'zbekistondagi ma'lumotlar serveri (MYCLOUD VPS, Ubuntu 24.04).
 #
-#   curl -fsSL <shu faylning raw havolasi> | sudo bash
+#   curl -fsSL https://nfcstore.uz/uz-setup.sh | sudo bash
+#   QUIET=1 — oxirida kalitlarni ekranga chiqarmaydi (GitHub Actions uchun).
 #
 # Nima o'rnatadi (hammasi Docker ichida, /srv/nfcstore):
 #   • sqld (libSQL)  — baza, SQLite bilan mos (Cloudflare D1 o'rniga)
@@ -169,6 +170,11 @@ echo "30 3 * * * root /usr/local/bin/nfcstore-backup >> /var/log/nfcstore-backup
 DBOK=$(docker compose --env-file "$ROOT/secrets.env" exec -T caddy wget -qO- \
   --header 'Content-Type: application/json' --post-data '{"statements":["select 1"]}' http://sqld:8080/ 2>/dev/null || true)
 echo; echo "Baza ichki tekshiruvi: ${DBOK:-JAVOB YOQ}"
+
+if [ "${QUIET:-0}" = 1 ]; then
+  echo; echo "TAYYOR. Kalitlar faqat serverda: /srv/nfcstore/secrets.env, /srv/nfcstore/s3.env"
+  exit 0
+fi
 
 cat <<DONE
 

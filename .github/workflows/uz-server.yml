@@ -1,0 +1,68 @@
+name: UZ server (MYCLOUD VPS)
+
+# O'zbekistondagi ma'lumotlar serveri (reyestr, 547-son Qonun 27-1-modda).
+# Serverga SSH orqali faqat shu workflow kiradi; parol GitHub Secrets'da
+# (UZ_VPS_HOST, UZ_VPS_PASSWORD). Natija ANNOTATSIYA bo'lib chiqadi —
+# maxfiy qiymatlar (parol, baza tokeni, S3 kaliti) hech qayerga yozilmaydi.
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "status = faqat tekshirish, setup = sozlash (qayta ishga tushirish xavfsiz)"
+        required: true
+        default: status
+        type: choice
+        options: [status, setup]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: uz-server
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Server
+        env:
+          SSHPASS: ${{ secrets.UZ_VPS_PASSWORD }}
+          HOST: ${{ secrets.UZ_VPS_HOST }}
+          ACTION: ${{ inputs.action }}
+        run: |
+          set -uo pipefail
+          [ -n "$HOST" ] && [ -n "$SSHPASS" ] || { echo "::error::UZ_VPS_HOST / UZ_VPS_PASSWORD secretlari yo'q"; exit 1; }
+          sudo apt-get install -y -qq sshpass >/dev/null
+          R() { sshpass -e ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -o LogLevel=ERROR root@"$HOST" "$@"; }
+          # Maxfiy so'zlar bor qatorlar annotatsiyaga tushmasin.
+          clean() { grep -viE 'secret|token|password|parol|key id|rpc_|admin_' | tail -n "${1:-15}"; }
+
+          if ! R 'echo ok' >/dev/null 2>&1; then
+            echo "::error title=SSH::Serverga ulanib bo'lmadi (IP, parol yoki 22-port)"; exit 1
+          fi
+
+          if [ "$ACTION" = setup ]; then
+            if R 'QUIET=1 bash -s' < ops/uz-server/setup.sh > setup.out 2>&1; then
+              echo "::notice title=Setup::muvaffaqiyatli tugadi"
+            else
+              echo "::error title=Setup::xato bilan tugadi — oxirgi qatorlar pastda"
+              clean 25 < setup.out | while IFS= read -r l; do echo "::error title=setup log::$l"; done
+              exit 1
+            fi
+          fi
+
+          R 'uptime -p; df -h / | tail -1 | awk "{print \"disk: \"\$3\" / \"\$2\" (\"\$5\")\"}"; free -m | awk "/Mem:/{print \"ram: \"\$3\"MB / \"\$2\"MB\"}"; docker ps --format "{{.Names}}: {{.Status}}" 2>/dev/null || echo "docker: yoq"' \
+            | while IFS= read -r l; do echo "::notice title=VPS::$l"; done
+
+          TOKEN=$(R '[ -f /srv/nfcstore/secrets.env ] && . /srv/nfcstore/secrets.env && printf %s "${DB_TOKEN:-}"' 2>/dev/null || true)
+          [ -n "$TOKEN" ] && echo "::add-mask::$TOKEN"
+          q='{"statements":["select 1"]}'
+          A=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 -H "Authorization: Bearer ${TOKEN:-x}" -H 'Content-Type: application/json' -d "$q" https://db.nfcstore.uz/ || echo ERR)
+          N=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 -H 'Content-Type: application/json' -d "$q" https://db.nfcstore.uz/ || echo ERR)
+          S3=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://s3.nfcstore.uz/ || echo ERR)
+          echo "::notice title=db.nfcstore.uz::token bilan HTTP $A (kutilgan 200), tokensiz HTTP $N (kutilgan 401)"
+          echo "::notice title=s3.nfcstore.uz::HTTPS HTTP $S3 (403/400 — ombor javob beryapti)"
