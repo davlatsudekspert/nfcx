@@ -29,6 +29,7 @@ import * as apiAdminControl from './api/admin-control.js';
 // Musiqa kutubxonasi (admin yuklaydi, ilova faqat yoqilgan treklarni ko'radi).
 import * as apiMusic from './api/music.js';
 import * as apiDemoBusinesses from './api/demo-businesses.js';
+import { withUzStores, uzMaintenance, uzMaintenanceBypass, maintenanceResponse, handleUzExport, uzDbNetErrors } from './uz-store.js';
 import { ensureNewsSeed } from './api/news-seed.js';
 import { idQuarantined, notQuarantinedSql, purgeAfterMs, runScheduledPurge } from './api/account-purge.js';
 import { recordAppOpen } from './api/app-usage.js';
@@ -2191,8 +2192,57 @@ async function totpVerify({ secret, token, afterCounter }) {
 // the two session-store tables the old Express server kept in memory) ----------
 
 let coreSchemaReady;
+
+// ── SXEMA BELGISI (faqat O'zbekiston serverida) ───────────────────────
+// Har yangi isolate'ning birinchi so'rovi quyidagi ~60 ta DDL/tekshiruvni
+// bajaradi. D1 da bu sezilmaydi, Toshkentdagi serverga esa har biri
+// tarmoq aylanmasi (bir necha soniya). Shuning uchun: shu DEPLOY VERSIYASI
+// uchun sxema bir marta to'liq tekshirilgach `maintenance_runs` ga belgi
+// yoziladi; keyingi isolate'lar 1 ta so'rov bilan o'tadi. Kod (yoki
+// secret) o'zgarsa versiya ID o'zgaradi — tekshiruv yana to'liq bajariladi.
+let coreSchemaMarker;
+let coreSchemaMarkerWritten = false;
+// Shu isolate'dagi BIRINCHI to'liq tekshiruv boshlangandagi tarmoq xatolari
+// soni. Keyingi chaqiruvlar keshlangan (xatosi yutilgan) ALTER'larni qayta
+// bajarmaydi — shuning uchun solishtirish butun isolate bo'yicha.
+let coreSchemaNetBaseline = null;
+// ensureCoreSchema ichidagi ensureColumnD1 lar to'ldiradigan ustun keshi
+// (hasColumnD1 shuni o'qiydi): belgi topilganda ham bitta so'rov bilan to'ldiriladi.
+const CORE_GATED_COLUMNS = [
+  ['cards', 'company_id'], ['card_likes', 'as_company_id'],
+  ['users', 'trial_expires_at'], ['users', 'premium_expires_at'], ['users', 'signup_source'],
+];
+let coreColumnsSeeded;
+function seedCoreColumnsD1(env) {
+  if (!coreColumnsSeeded) coreColumnsSeeded = seedCoreColumnsOnceD1(env);
+  return coreColumnsSeeded;
+}
+async function seedCoreColumnsOnceD1(env) {
+  const tables = [...new Set(CORE_GATED_COLUMNS.map(([t]) => t))];
+  const res = await env.DB.batch(tables.map((t) => env.DB.prepare(`PRAGMA table_info(${t})`))).catch(() => null);
+  if (!res) return false;
+  tables.forEach((t, i) => {
+    for (const c of res[i]?.results || []) if (c?.name) verifiedColumnsD1.set(`${t}.${c.name}`, true);
+  });
+  return CORE_GATED_COLUMNS.every(([t, c]) => hasColumnD1(t, c));
+}
+const coreSchemaMarkerName = (env) => `core_schema:${env.CF_VERSION_METADATA?.id || ''}`;
+const coreSchemaMarkerOn = (env) => !!(env.UZ_STORE_ACTIVE && env.CF_VERSION_METADATA?.id);
+function coreSchemaAlreadyEnsured(env) {
+  if (!coreSchemaMarkerOn(env)) return false;
+  if (!coreSchemaMarker) {
+    coreSchemaMarker = env.DB.prepare(`SELECT 1 AS x FROM maintenance_runs WHERE name = ?`)
+      .bind(coreSchemaMarkerName(env)).first().then(Boolean).catch(() => false);
+  }
+  return coreSchemaMarker;
+}
+
 async function ensureCoreSchema(env) {
   if (!env.DB) throw new Error('d1_unavailable');
+  // Belgi bor VA kerakli ustunlar haqiqatan joyida — 2 so'rov bilan tayyor.
+  // Biror ustun yo'q bo'lsa (kutilmagan holat) — to'liq tekshiruvga tushamiz.
+  if (await coreSchemaAlreadyEnsured(env) && await seedCoreColumnsD1(env)) return;
+  if (coreSchemaNetBaseline === null) coreSchemaNetBaseline = uzDbNetErrors();
   // Admin auth's own tables/columns are ensured FIRST and independently of
   // the shared batch below — see ensureAdminAuthTables()'s comment. This
   // order matters: if these ran after `await coreSchemaReady`, a rejected
@@ -2475,6 +2525,18 @@ async function ensureCoreSchema(env) {
   // no-op (swallowed by its own .catch), leaving the columns missing.
   await ensureWebOrderTimestampColumns(env);
   await ensureCardSourceColumn(env);
+  // Tarmoq xatosi bo'lgan bo'lsa (ALTER'lar .catch bilan yutiladi) belgi
+  // YOZILMAYDI — keyingi isolate tekshiruvni qaytadan to'liq bajaradi.
+  if (coreSchemaMarkerOn(env) && !coreSchemaMarkerWritten && uzDbNetErrors() === coreSchemaNetBaseline) {
+    coreSchemaMarkerWritten = true;
+    coreSchemaMarker = Promise.resolve(true);
+    await env.DB.batch([
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS "maintenance_runs" (
+        name TEXT PRIMARY KEY NOT NULL, ran_at TEXT NOT NULL, details TEXT)`),
+      env.DB.prepare(`INSERT OR IGNORE INTO maintenance_runs (name, ran_at, details) VALUES (?, ?, 'ensureCoreSchema')`)
+        .bind(coreSchemaMarkerName(env), new Date().toISOString()),
+    ]).catch(() => { coreSchemaMarkerWritten = false; });
+  }
 }
 
 // ── cards.source — kartaning ISHONCHLI manba belgisi (2026-09) ───────────
@@ -2637,7 +2699,9 @@ async function ensureColumnD1(env, table, column, type) {
   if (verifiedColumnsD1.get(key)) return true;
   if (!verifiedColumnJobsD1.has(key)) {
     verifiedColumnJobsD1.set(key, (async () => {
-      await env.DB.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`).run().catch(() => {});
+      // Ustun nomi qo'shtirnoqda: `plan` kabi kalit so'zlarni sqld katta
+      // harf bilan (PLAN) yaratib yuborardi. D1 da natija bir xil.
+      await env.DB.prepare(`ALTER TABLE ${table} ADD COLUMN "${column}" ${type}`).run().catch(() => {});
       const info = await env.DB.prepare(`PRAGMA table_info(${table})`).all().catch(() => null);
       const has = (info?.results || []).some((c) => String(c?.name || '') === column);
       if (has) verifiedColumnsD1.set(key, true);
@@ -10208,10 +10272,12 @@ async function likeListRowsD1(env, code) {
 }
 
 async function getFollowStatsRow(env, userId, viewerId) {
+  // "following" — SQLite kalit so'zi: qo'shtirnoqsiz yozilsa sqld (O'zbekiston
+  // serveri) so'rovni qayta yozganda ustun nomi FOLLOWING bo'lib qaytadi.
   const row = await env.DB.prepare(`
     SELECT
       (SELECT COUNT(*) FROM follows fw WHERE fw.followee_id = ? AND ${visibleUserSql('fw.follower_id')}) AS followers,
-      (SELECT COUNT(*) FROM follows fw WHERE fw.follower_id = ? AND ${visibleUserSql('fw.followee_id')}) AS following,
+      (SELECT COUNT(*) FROM follows fw WHERE fw.follower_id = ? AND ${visibleUserSql('fw.followee_id')}) AS "following",
       (SELECT EXISTS(SELECT 1 FROM follows WHERE follower_id = ? AND followee_id = ?)) AS is_following,
       (SELECT as_company_id FROM follows WHERE follower_id = ? AND followee_id = ?) AS as_company_id
   `).bind(userId, userId, viewerId || -1, userId, viewerId || -1, userId).first();
@@ -11089,7 +11155,7 @@ const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, a
 // Xavfsizlik header'lari — barcha javoblarga (statik va API). CSP ataylab faqat
 // framing/base/form/object ni cheklaydi (script/style ga tegmaydi — YouTube/Yandex
 // embed va Tailwind inline style buzilmasin).
-function withSecurityHeaders(res, url) {
+function withSecurityHeaders(res, url, dataOrigin) {
   const out = new Response(res.body, res);
   const h = out.headers;
   if (!h.has('x-content-type-options')) h.set('x-content-type-options', 'nosniff');
@@ -11098,15 +11164,37 @@ function withSecurityHeaders(res, url) {
   if (!h.has('permissions-policy')) h.set('permissions-policy', 'camera=(), microphone=(), geolocation=(self), payment=()');
   if (!h.has('content-security-policy')) h.set('content-security-policy', "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self' https://checkout.paycom.uz https://*.payme.uz https://*.paycom.uz");
   if (url.protocol === 'https:' && !h.has('strict-transport-security')) h.set('strict-transport-security', 'max-age=31536000; includeSubDomains');
+  // Ma'lumot qayerdan kelgani (tekshiruv uchun): "uz" — O'zbekiston serveri.
+  if (dataOrigin) h.set('x-nfc-data', dataOrigin);
   return out;
 }
 
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    // Baza O'zbekiston serveriga ko'chirilayotgan daqiqalar — hech kim
+    // yozmasin (hosting/uz-store.js). Yoqilgan bo'lsa env.DB/UPLOADS
+    // o'sha serverga qaraydi, aks holda D1/R2 — avvalgidek.
+    // Ko'chirish uchun D1 eksporti — faqat vaqtinchalik UZ_EXPORT_KEY bilan,
+    // texnik ishlar rejimida ham (aynan o'shanda kerak). Aks holda 404.
+    if (url.pathname === '/__uz/export') {
+      const exp = await handleUzExport(request, env).catch((e) => json({ error: 'export_failed', detail: String(e?.message || e).slice(0, 200) }, 500));
+      if (exp) return withSecurityHeaders(exp, url);
+    }
+    // Ko'chirish tekshiruvi texnik rejim YOQIQ turganda o'tadi (vaqtinchalik
+    // eksport kaliti bilan) — oddiy foydalanuvchilar esa 503 oladi.
+    if (uzMaintenance(env) && !(await uzMaintenanceBypass(request, env))) {
+      return withSecurityHeaders(maintenanceResponse(request), url);
+    }
+    env = withUzStores(env);
+    // Ko'chirish tekshiruvi: qaysi ombor faol va qaysi versiya (faqat kalit bilan).
+    if (url.pathname === '/__uz/ping' && await uzMaintenanceBypass(request, env)) {
+      return withSecurityHeaders(json({ store: env.UZ_STORE_ACTIVE ? 'uz' : 'd1', version: env.CF_VERSION_METADATA?.id || '' }), url,
+        env.UZ_STORE_ACTIVE ? 'uz' : '');
+    }
     try {
       const res = await handleRequest(request, env, url, ctx);
-      return withSecurityHeaders(res, url);
+      return withSecurityHeaders(res, url, env.UZ_STORE_ACTIVE ? 'uz' : '');
     } catch (error) {
       // ── NIMA UCHUN BU YERDA TUTQICH BOR ───────────────────────────
       //
@@ -11141,6 +11229,8 @@ export default {
   // `ACCOUNT_PURGE_MODE` = off | dry-run | on — standart `off`. Logga
   // faqat SONLAR yoziladi, email/telefon/id emas.
   async scheduled(controller, env, ctx) {
+    if (uzMaintenance(env)) return;
+    env = withUzStores(env);
     ctx.waitUntil((async () => {
       try {
         await runScheduledPurge(env, H);

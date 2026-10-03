@@ -68,8 +68,11 @@ GARAGE_ADMIN_TOKEN=$(openssl rand -hex 32)
 SECRETS
 fi
 chmod 600 "$ROOT/secrets.env"
+# Oddiy `docker compose ...` (--env-file siz) ham tokenni o'qisin: .env -> secrets.env
+ln -sf secrets.env "$ROOT/.env"
 # shellcheck disable=SC1091
 . "$ROOT/secrets.env"
+[ "${#DB_TOKEN}" -ge 32 ] || { echo "DB_TOKEN bo'sh yoki qisqa — to'xtatildi"; exit 1; }
 
 step "3/7 Sozlama fayllari"
 cat > "$ROOT/garage/garage.toml" <<TOML
@@ -133,7 +136,7 @@ services:
     environment:
       DB_HOST: ${DB_HOST}
       S3_HOST: ${S3_HOST}
-      DB_TOKEN: \${DB_TOKEN}
+      DB_TOKEN: \${DB_TOKEN:?DB_TOKEN yoq - secrets.env bilan ishga tushiring}
     volumes:
       - ${ROOT}/Caddyfile:/etc/caddy/Caddyfile:ro
       - ${ROOT}/caddy/data:/data
@@ -184,12 +187,22 @@ chmod 600 "$ROOT/s3.env"
 step "7/7 Har kecha zaxira (03:30, 14 kun)"
 cat > /usr/local/bin/nfcstore-backup <<'BACKUP'
 #!/usr/bin/env bash
+# Har kecha: baza (14 kun) va fayllar (7 kun). Garage bloklari o'zgarmaydi
+# (xesh nomli), shuning uchun fayl nusxasi QATTIQ HAVOLA (cp -al) — har kun
+# 640 MB emas, faqat yangi bloklar joy egallaydi. Metama'lumot va baza
+# sqlite3 .backup bilan (ishlab turganda ham izchil).
 set -euo pipefail
 ROOT=/srv/nfcstore; D=$(date +%F); OUT="$ROOT/backups/$D"; mkdir -p "$OUT"
 DB=$(find "$ROOT/sqld" -type f -name data -path '*dbs/default*' | head -1)
-[ -n "$DB" ] && sqlite3 "$DB" ".backup '$OUT/db.sqlite'"
-tar -C "$ROOT/garage" -czf "$OUT/garage.tgz" meta data
+[ -n "$DB" ] || { echo "$(date -Is) XATO: sqld bazasi topilmadi"; exit 1; }
+sqlite3 "$DB" ".backup '$OUT/db.sqlite'"
+GM=$(find "$ROOT/garage/meta" -maxdepth 1 -type f -name 'db.sqlite' | head -1)
+[ -n "$GM" ] && sqlite3 "$GM" ".backup '$OUT/garage-meta.sqlite'"
+rm -rf "$OUT/garage-data"
+cp -al "$ROOT/garage/data" "$OUT/garage-data"
+find "$ROOT/backups" -mindepth 2 -maxdepth 2 -name garage-data -type d -mtime +7 -exec rm -rf {} +
 find "$ROOT/backups" -mindepth 1 -maxdepth 1 -type d -mtime +14 -exec rm -rf {} +
+echo "$(date -Is) zaxira tayyor: $OUT ($(du -sh "$OUT" | cut -f1))"
 BACKUP
 chmod 700 /usr/local/bin/nfcstore-backup
 echo "30 3 * * * root /usr/local/bin/nfcstore-backup >> /var/log/nfcstore-backup.log 2>&1" > /etc/cron.d/nfcstore-backup

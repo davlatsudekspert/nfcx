@@ -1,0 +1,508 @@
+// Cloudflare D1/R2 → O'zbekiston serveri (sqld + Garage) ko'chirish vositasi.
+//
+// FAQAT GitHub Actions'dan (.github/workflows/uz-server.yml) ishlatiladi —
+// kalitlar muhit o'zgaruvchilarida keladi va hech qayerga yozilmaydi.
+// Cloudflare tomonida HECH NARSA o'zgartirilmaydi va o'chirilmaydi:
+// faqat o'qiladi (D1 eksporti, R2 ro'yxati va yuklab olish).
+//
+//   node scripts/uz-migrate.mjs r2-probe                 — R2: nechta fayl, jami hajm
+//   node scripts/uz-migrate.mjs r2-copy [--missing-only] — R2 → Garage (bor bo'lsa o'tkazib yuboradi)
+//   node scripts/uz-migrate.mjs r2-verify [--no-content] — har fayl: bor, hajmi, md5/mazmuni, turi bir xil
+//   node scripts/uz-migrate.mjs r2-prune                 — R2 da YO'Q fayllarni Garage'dan o'chirish (faqat o'tishdan oldin)
+//   node scripts/uz-migrate.mjs mark-cutover             — UZ bazasiga "jonli" belgisi (keyin --replace taqiqlanadi)
+//   node scripts/uz-migrate.mjs d1-pull d1.sqlite        — D1 → fayl, Worker eksporti orqali (+ SHA-256 tekshiruv)
+//   node scripts/uz-migrate.mjs d1-verify-uz             — D1 (Worker) ↔ UZ: har jadval SHA-256
+//   node scripts/uz-migrate.mjs db-import d1.sqlite [--replace]
+//   node scripts/uz-migrate.mjs db-verify d1.sqlite      — har jadval: qatorlar soni va SHA-256
+//
+// Muhit: CF_API_TOKEN, CF_ACCOUNT, R2_BUCKET; UZ_DB_URL, UZ_DB_TOKEN;
+// UZ_S3_ENDPOINT, UZ_S3_BUCKET, UZ_S3_KEY_ID, UZ_S3_SECRET;
+// UZ_EXPORT_URL (https://nfcstore.uz/__uz/export), UZ_EXPORT_KEY — vaqtinchalik.
+import { DatabaseSync } from 'node:sqlite';
+import { createHash } from 'node:crypto';
+import { uzDb, uzBucket, rowLiteralSql, rowDigestSql } from '../hosting/uz-store.js';
+
+const E = process.env;
+const [cmd, ...args] = process.argv.slice(2);
+const flag = (f) => args.includes(f);
+const say = (...a) => console.log(...a);
+const md5 = (b) => createHash('md5').update(b).digest('hex');
+const sha256 = (s) => createHash('sha256').update(s).digest('hex');
+const mb = (n) => `${(n / 1024 / 1024).toFixed(1)} MB`;
+
+function need(...names) {
+  const miss = names.filter((n) => !E[n]);
+  if (miss.length) { console.error(`Muhit o'zgaruvchisi yo'q: ${miss.join(', ')}`); process.exit(2); }
+}
+
+// ── Cloudflare R2 (REST API, faqat o'qish) ────────────────────────────
+
+const CF = () => `${E.CF_API_BASE || 'https://api.cloudflare.com'}/client/v4/accounts/${E.CF_ACCOUNT}/r2/buckets/${E.R2_BUCKET || 'nfcstore-uploads'}`;
+const cfHeaders = () => ({ authorization: `Bearer ${E.CF_API_TOKEN}` });
+
+async function r2List() {
+  const out = [];
+  let cursor = '';
+  for (let page = 0; page < 1000; page++) {
+    const u = new URL(`${CF()}/objects`);
+    u.searchParams.set('per_page', '1000');
+    if (cursor) u.searchParams.set('cursor', cursor);
+    const res = await fetch(u, { headers: cfHeaders(), signal: AbortSignal.timeout(120_000) });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok || body.success === false) {
+      throw new Error(`R2 ro'yxati: HTTP ${res.status} ${JSON.stringify(body.errors || []).slice(0, 200)}`);
+    }
+    const items = body.result || [];
+    out.push(...items);
+    const info = body.result_info || {};
+    cursor = info.cursor || '';
+    if (!items.length || !cursor || info.is_truncated === false) break;
+  }
+  // Takroriy kalitlar bo'lmasin (sahifalash xatosidan himoya).
+  const byKey = new Map(out.map((o) => [o.key, o]));
+  return [...byKey.values()].sort((a, b) => (a.key < b.key ? -1 : 1));
+}
+
+async function r2Get(key) {
+  const res = await fetch(`${CF()}/objects/${encodeURIComponent(key)}`, { headers: cfHeaders(), signal: AbortSignal.timeout(600_000) });
+  if (!res.ok) throw new Error(`R2 get ${key}: HTTP ${res.status}`);
+  return { bytes: new Uint8Array(await res.arrayBuffer()), headers: res.headers };
+}
+
+const r2HttpMeta = (o, headers) => {
+  const hm = o.http_metadata || o.httpMetadata || {};
+  const m = {};
+  const ct = hm.contentType || hm.content_type || headers?.get('content-type');
+  if (ct) m.contentType = ct;
+  const cc = hm.cacheControl || hm.cache_control || headers?.get('cache-control');
+  if (cc) m.cacheControl = cc;
+  for (const f of ['contentDisposition', 'contentEncoding', 'contentLanguage']) if (hm[f]) m[f] = hm[f];
+  return m;
+};
+
+const bucket = () => uzBucket({
+  endpoint: E.UZ_S3_ENDPOINT, bucket: E.UZ_S3_BUCKET || 'nfcstore-uploads',
+  keyId: E.UZ_S3_KEY_ID, secret: E.UZ_S3_SECRET, region: E.UZ_S3_REGION || 'garage',
+});
+
+async function uzListAll(b, prefix = '') {
+  const out = [];
+  let cursor;
+  do {
+    const page = await b.list({ prefix, cursor });
+    out.push(...page.objects);
+    cursor = page.truncated ? page.cursor : undefined;
+  } while (cursor);
+  return out;
+}
+
+async function pool(items, n, fn) {
+  let i = 0;
+  await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => {
+    while (i < items.length) { const it = items[i++]; await fn(it); }
+  }));
+}
+
+const PART = 16 * 1024 * 1024;
+// Shu hajmgacha BITTA PUT (Garage ETag = md5 — tekshiruv oson). Caddy chegarasi 250 MB.
+const SINGLE_MAX = 200 * 1024 * 1024;
+
+async function copyOne(b, o, stats) {
+  const r2Etag = String(o.etag || '').replace(/"/g, '');
+  const plainMd5 = /^[0-9a-f]{32}$/.test(r2Etag);
+  const have = await b.head(o.key);
+  // --missing-only (o'tishdan keyin): UZ dagi faylga HECH QACHON tegilmaydi.
+  if (have && flag('--missing-only')) { stats.skipped++; return; }
+  if (have && have.size === Number(o.size) && (!plainMd5 || have.etag === r2Etag)) { stats.skipped++; return; }
+  let got;
+  try { got = await r2Get(o.key); } catch (e) {
+    // Ro'yxatdan keyin R2 dan o'chirilgan (hisob o'chirish) — nusxalanmaydi.
+    if (/HTTP 404/.test(e.message)) { stats.gone = (stats.gone || 0) + 1; return; }
+    throw e;
+  }
+  const { bytes, headers } = got;
+  if (bytes.length !== Number(o.size)) throw new Error(`${o.key}: hajm ${bytes.length} ≠ ${o.size}`);
+  const sum = md5(bytes);
+  if (plainMd5 && sum !== r2Etag) throw new Error(`${o.key}: R2 dan buzuq yuklandi (md5)`);
+  const meta = { httpMetadata: r2HttpMeta(o, headers), customMetadata: o.custom_metadata || o.customMetadata || {} };
+  if (bytes.length <= SINGLE_MAX) {
+    const put = await b.put(o.key, bytes, meta);
+    if (put.etag !== sum) throw new Error(`${o.key}: Garage md5 mos emas`);
+  } else {
+    const mp = await b.createMultipartUpload(o.key, meta);
+    try {
+      const parts = [];
+      for (let off = 0, n = 1; off < bytes.length; off += PART, n++) parts.push(await mp.uploadPart(n, bytes.subarray(off, off + PART)));
+      await mp.complete(parts);
+    } catch (e) { await mp.abort().catch(() => {}); throw e; }
+    const h = await b.head(o.key);
+    if (h?.size !== bytes.length) throw new Error(`${o.key}: multipart hajmi mos emas`);
+  }
+  stats.copied++; stats.bytes += bytes.length;
+}
+
+async function r2Copy() {
+  need('CF_API_TOKEN', 'CF_ACCOUNT', 'UZ_S3_ENDPOINT', 'UZ_S3_KEY_ID', 'UZ_S3_SECRET');
+  const list = await r2List();
+  const b = bucket();
+  const stats = { copied: 0, skipped: 0, bytes: 0, failed: [] };
+  await pool(list, 6, async (o) => {
+    for (let attempt = 1; ; attempt++) {
+      try { await copyOne(b, o, stats); return; } catch (e) {
+        if (attempt >= 3) { stats.failed.push(`${o.key}: ${e.message}`); return; }
+        await new Promise((r) => setTimeout(r, 2000 * attempt));
+      }
+    }
+  });
+  say(`R2 → Garage: jami ${list.length}, ko'chirildi ${stats.copied} (${mb(stats.bytes)}), oldin bor edi ${stats.skipped}, shu orada o'chirilgan ${stats.gone || 0}, xato ${stats.failed.length}`);
+  for (const f of stats.failed.slice(0, 20)) say(`  XATO ${f}`);
+  if (stats.failed.length) process.exit(1);
+}
+
+async function r2Verify() {
+  need('CF_API_TOKEN', 'CF_ACCOUNT', 'UZ_S3_ENDPOINT', 'UZ_S3_KEY_ID', 'UZ_S3_SECRET');
+  const [src, dst] = await Promise.all([r2List(), uzListAll(bucket())]);
+  const have = new Map(dst.map((o) => [o.key, o]));
+  const missing = []; const badSize = []; const badMd5 = [];
+  for (const o of src) {
+    const d = have.get(o.key);
+    if (!d) { missing.push(o.key); continue; }
+    if (d.size !== Number(o.size)) badSize.push(o.key);
+    const e = String(o.etag || '').replace(/"/g, '');
+    if (/^[0-9a-f]{32}$/.test(e) && d.etag !== e) badMd5.push(o.key);
+  }
+  // ETag bilan solishtirib bo'lmaydiganlar (multipart): mazmun to'liq yuklab
+  // olinib SHA-256 bilan solishtiriladi — R2 dan ham, Garage dan ham.
+  const bContent = bucket();
+  const opaque = flag('--no-content') ? [] : src.filter((o) => have.has(o.key) && !badSize.includes(o.key)
+    && !(/^[0-9a-f]{32}$/.test(String(o.etag || '').replace(/"/g, '')) && /^[0-9a-f]{32}$/.test(have.get(o.key).etag)));
+  const badContent = [];
+  await pool(opaque, 3, async (o) => {
+    const [r2, uz] = await Promise.all([r2Get(o.key), bContent.get(o.key)]);
+    const uzBytes = new Uint8Array(await uz.arrayBuffer());
+    const a = createHash('sha256').update(r2.bytes).digest('hex');
+    const b = createHash('sha256').update(uzBytes).digest('hex');
+    if (a !== b) badContent.push(o.key);
+  });
+  // md5 farqi faqat ikkala ETag ham oddiy md5 bo'lsa haqiqiy farq.
+  badMd5.splice(0, badMd5.length, ...badMd5.filter((k) => /^[0-9a-f]{32}$/.test(have.get(k).etag)));
+  // Turi (content-type) — tasodifiy 40 ta faylda HEAD bilan.
+  const b = bucket();
+  const sample = src.filter((o) => have.has(o.key)).filter((_, i, a) => i % Math.max(1, Math.floor(a.length / 40)) === 0).slice(0, 40);
+  const badType = [];
+  await pool(sample, 6, async (o) => {
+    const h = await b.head(o.key);
+    const want = r2HttpMeta(o).contentType;
+    if (want && h?.httpMetadata.contentType !== want) badType.push(`${o.key} (${h?.httpMetadata.contentType} ≠ ${want})`);
+  });
+  const srcKeys = new Set(src.map((o) => o.key));
+  const dstReal = dst.filter((o) => !o.key.startsWith('_uz_conformance/'));
+  const extra = dstReal.filter((o) => !srcKeys.has(o.key));
+  const srcBytes = src.reduce((n, o) => n + Number(o.size), 0);
+  const dstBytes = dstReal.reduce((n, o) => n + o.size, 0);
+  say(`R2: ${src.length} fayl, ${mb(srcBytes)} · Garage: ${dstReal.length} fayl, ${mb(dstBytes)}`);
+  say(`yo'q: ${missing.length} · hajmi boshqa: ${badSize.length} · md5 boshqa: ${badMd5.length} · mazmuni boshqa (${opaque.length} ta to'liq solishtirildi): ${badContent.length} · turi boshqa (${sample.length} tadan): ${badType.length} · faqat Garage'da: ${extra.length}`);
+  for (const k of [...missing, ...badSize, ...badMd5, ...badContent, ...badType, ...extra.map((o) => `faqat Garage'da: ${o.key}`)].slice(0, 15)) say(`  ${k}`);
+  // Faqat Garage'da qolgan fayl = R2 da O'CHIRILGAN fayl (hisob o'chirish,
+  // moderatsiya). U O'zbekistonda ham bo'lmasligi kerak — r2-prune.
+  if (missing.length || badSize.length || badMd5.length || badContent.length || badType.length || extra.length) process.exit(1);
+  say('R2 TEKSHIRUVI: HAMMASI MOS');
+}
+
+async function r2Prune() {
+  need('CF_API_TOKEN', 'CF_ACCOUNT', 'UZ_S3_ENDPOINT', 'UZ_S3_KEY_ID', 'UZ_S3_SECRET');
+  const [src, dst] = await Promise.all([r2List(), uzListAll(bucket())]);
+  // R2 ro'yxati bo'sh yoki keskin kichik bo'lsa — API xatosi bo'lishi mumkin: to'xtaymiz.
+  if (!src.length || src.length < dst.length * 0.5) {
+    console.error(`R2 ro'yxati shubhali (R2 ${src.length}, Garage ${dst.length}) — prune to'xtatildi`);
+    process.exit(1);
+  }
+  const keep = new Set(src.map((o) => o.key));
+  const extra = dst.map((o) => o.key).filter((k) => !k.startsWith('_uz_conformance/') && !keep.has(k));
+  const b = bucket();
+  for (let i = 0; i < extra.length; i += 100) await b.delete(extra.slice(i, i + 100));
+  say(`Garage'dan o'chirildi (R2 da yo'q — o'chirilgan fayllar): ${extra.length}`);
+  for (const k of extra.slice(0, 10)) say(`  ${k}`);
+}
+
+async function markCutover() {
+  need('UZ_DB_URL', 'UZ_DB_TOKEN');
+  const t = openTarget();
+  await t.batch([
+    t.prepare(`CREATE TABLE IF NOT EXISTS "_uz_cutover" (at TEXT NOT NULL, note TEXT)`),
+    t.prepare(`INSERT INTO "_uz_cutover" (at, note) VALUES (?, ?)`).bind(new Date().toISOString(), 'D1/R2 → UZ'),
+  ]);
+  say('UZ bazasiga "jonli" belgisi yozildi — endi D1 dan --replace taqiqlangan');
+}
+
+// Faqat OCHISHDAN OLDINGI qaytarishda: belgi yozilgan, lekin sayt D1 ga qaytdi.
+async function unmarkCutover() {
+  need('UZ_DB_URL', 'UZ_DB_TOKEN');
+  await openTarget().prepare(`DROP TABLE IF EXISTS "_uz_cutover"`).run();
+  say('"jonli" belgisi olib tashlandi (sayt D1 da qoldi)');
+}
+
+async function r2Probe() {
+  need('CF_API_TOKEN', 'CF_ACCOUNT');
+  const list = await r2List();
+  const total = list.reduce((n, o) => n + Number(o.size), 0);
+  const big = list.filter((o) => Number(o.size) > PART).length;
+  const withMeta = list.filter((o) => r2HttpMeta(o).contentType).length;
+  const prefixes = {};
+  for (const o of list) { const p = o.key.split('/')[0]; prefixes[p] = (prefixes[p] || 0) + 1; }
+  say(`R2: ${list.length} fayl, ${mb(total)}, 16 MB dan kattasi ${big} ta, content-type bilan ${withMeta} ta`);
+  say(`papkalar: ${JSON.stringify(prefixes)}`);
+  if (list[0]) say(`namuna maydonlari: ${Object.keys(list[0]).join(', ')}`);
+}
+
+// ── D1 (eksport fayli) → sqld ─────────────────────────────────────────
+
+const qid = (s) => `"${String(s).replace(/"/g, '""')}"`;
+const SKIP_TABLE = (n) => /^sqlite_/.test(n) || /^_cf_/.test(n) || /^_uz_/.test(n);
+
+function localSchema(local) {
+  return local.prepare(`SELECT type, name, tbl_name, sql FROM sqlite_master WHERE sql IS NOT NULL ORDER BY rowid`).all()
+    .filter((r) => !SKIP_TABLE(r.name) && !SKIP_TABLE(r.tbl_name));
+}
+
+function tableColumns(local, table) {
+  return local.prepare(`PRAGMA table_xinfo(${qid(table)})`).all().filter((c) => !c.hidden).map((c) => c.name);
+}
+
+// Qator xeshi uchun SQL — Worker eksportidagi bilan AYNAN bir xil (uz-store.js):
+// TEXT hex orqali (NUL bayt ham hisobga olinadi), qolgani quote().
+function rowsSql(table, cols) {
+  return `SELECT ${rowDigestSql(cols)} AS q FROM ${qid(table)} ORDER BY ${cols.map(qid).join(', ')}`;
+}
+
+async function tableDigest(run, table, cols) {
+  const rows = await run(rowsSql(table, cols));
+  const h = createHash('sha256');
+  for (const r of rows) h.update(`${r.q}\n`);
+  return { count: rows.length, sha: h.digest('hex') };
+}
+
+async function compare(local, target) {
+  const schema = localSchema(local);
+  const tables = schema.filter((r) => r.type === 'table').map((r) => r.name);
+  const runLocal = async (sql) => local.prepare(sql).all();
+  const runTarget = async (sql) => (await target.prepare(sql).all()).results;
+  const report = [];
+  let ok = true;
+  for (const t of tables) {
+    const cols = tableColumns(local, t);
+    const [a, b] = await Promise.all([tableDigest(runLocal, t, cols), tableDigest(runTarget, t, cols).catch((e) => ({ count: -1, sha: e.message }))]);
+    const same = a.count === b.count && a.sha === b.sha;
+    if (!same) ok = false;
+    report.push({ t, n: a.count, same, target: b.count });
+  }
+  // AUTOINCREMENT hisoblagichlari (keyingi ID) ham bir xil bo'lsin.
+  const seqL = local.prepare(`SELECT name, seq FROM sqlite_sequence ORDER BY name`).all().filter((r) => !SKIP_TABLE(r.name));
+  const seqT = (await target.prepare(`SELECT name, seq FROM sqlite_sequence ORDER BY name`).all().catch(() => ({ results: [] }))).results.filter((r) => !SKIP_TABLE(r.name));
+  const seqSame = JSON.stringify(seqL.map((r) => [r.name, Number(r.seq)])) === JSON.stringify(seqT.map((r) => [r.name, Number(r.seq)]));
+  if (!seqSame) ok = false;
+  // Sxema: indekslar, triggerlar, ko'rinishlar nomlari.
+  const tSchema = (await target.prepare(`SELECT type, name FROM sqlite_master WHERE sql IS NOT NULL ORDER BY type, name`).all()).results
+    .filter((r) => !SKIP_TABLE(r.name)).map((r) => `${r.type}:${r.name}`);
+  const lSchema = schema.map((r) => `${r.type}:${r.name}`).sort();
+  const schemaSame = JSON.stringify(lSchema) === JSON.stringify([...tSchema].sort());
+  if (!schemaSame) ok = false;
+  return { ok, report, seqSame, schemaSame, lSchema, tSchema };
+}
+
+function printCompare(c) {
+  const rows = c.report.reduce((n, r) => n + r.n, 0);
+  say(`jadvallar: ${c.report.length} · qatorlar: ${rows} · sxema mos: ${c.schemaSame ? 'ha' : 'YO‘Q'} · AUTOINCREMENT mos: ${c.seqSame ? 'ha' : 'YO‘Q'}`);
+  const bad = c.report.filter((r) => !r.same);
+  for (const r of bad.slice(0, 20)) say(`  MOS EMAS: ${r.t} (D1 ${r.n} qator, UZ ${r.target})`);
+  if (!c.schemaSame) {
+    const l = new Set(c.lSchema); const t = new Set(c.tSchema);
+    say(`  sxema farqi: faqat D1: ${[...l].filter((x) => !t.has(x)).slice(0, 8).join(', ')} · faqat UZ: ${[...t].filter((x) => !l.has(x)).slice(0, 8).join(', ')}`);
+  }
+  say(c.ok ? 'BAZA TEKSHIRUVI: HAMMASI MOS (har jadval qatorlari soni va SHA-256)' : 'BAZA TEKSHIRUVI: FARQ BOR');
+}
+
+const openLocal = (file) => new DatabaseSync(file, { readOnly: true });
+const openTarget = () => uzDb({ url: E.UZ_DB_URL, token: E.UZ_DB_TOKEN, foreignKeys: false });
+
+async function dbImport(file) {
+  need('UZ_DB_URL', 'UZ_DB_TOKEN');
+  const local = openLocal(file);
+  const target = openTarget();
+  const existing = (await target.prepare(`SELECT type, name FROM sqlite_master WHERE type IN ('table','view','trigger') AND substr(name, 1, 7) <> 'sqlite_'`).all()).results;
+  // O'tish bo'lib o'tgan bazani eski D1 nusxasi bilan HECH QACHON almashtirmaymiz.
+  if (existing.some((r) => r.name === '_uz_cutover')) {
+    console.error('UZ bazasi jonli (_uz_cutover belgisi bor) — D1 dan qayta yozish TAQIQLANGAN');
+    process.exit(1);
+  }
+  if (existing.length && !flag('--replace')) {
+    console.error(`UZ bazasi bo'sh emas (${existing.length} obyekt). Qayta yozish uchun --replace.`);
+    process.exit(1);
+  }
+  if (existing.length) {
+    // Avvalgi SINOV nusxasini olib tashlash (workflow buni faqat UZ_STORE
+    // yoqilmaganda ruxsat beradi — jonli bazaga tegilmaydi).
+    const drops = [
+      ...existing.filter((r) => r.type === 'view').map((r) => `DROP VIEW IF EXISTS ${qid(r.name)}`),
+      ...existing.filter((r) => r.type === 'trigger').map((r) => `DROP TRIGGER IF EXISTS ${qid(r.name)}`),
+      ...existing.filter((r) => r.type === 'table').map((r) => `DROP TABLE IF EXISTS ${qid(r.name)}`),
+    ];
+    await target.batch(drops.map((s) => target.prepare(s)));
+    await target.prepare(`DELETE FROM sqlite_sequence`).run().catch(() => {});
+    say(`UZ bazasidagi avvalgi nusxa tozalandi (${existing.length} obyekt)`);
+  }
+
+  const schema = localSchema(local);
+  const tables = schema.filter((r) => r.type === 'table');
+  await target.batch(tables.map((r) => target.prepare(r.sql)));
+
+  let total = 0;
+  for (const { name } of tables) {
+    const cols = tableColumns(local, name);
+    const withoutRowid = /\bWITHOUT\s+ROWID\b/i.test(tables.find((t) => t.name === name).sql);
+    const info = local.prepare(`PRAGMA table_info(${qid(name)})`).all();
+    const pk = info.filter((c) => c.pk);
+    const rowidAlias = pk.length === 1 && /^integer$/i.test(pk[0].type);
+    // Yashirin rowid ham saqlansin (INTEGER PRIMARY KEY bo'lmagan jadvallarda).
+    const keepRowid = !withoutRowid && !rowidAlias;
+    const insCols = keepRowid ? ['rowid', ...cols] : cols;
+    const sel = `SELECT ${keepRowid ? `quote(rowid) || ',' || ` : ''}${rowLiteralSql(cols)} AS q FROM ${qid(name)}`;
+    const head = `INSERT INTO ${qid(name)} (${insCols.map((c) => (c === 'rowid' ? 'rowid' : qid(c))).join(', ')}) VALUES `;
+    let chunk = [];
+    const flush = async () => {
+      if (!chunk.length) return;
+      await target.batch(chunk.map((v) => target.prepare(`${head}(${v})`)));
+      chunk = [];
+    };
+    for (const r of local.prepare(sel).iterate()) {
+      chunk.push(r.q);
+      total++;
+      if (chunk.length >= 200) await flush();
+    }
+    await flush();
+  }
+
+  const rest = schema.filter((r) => r.type !== 'table');
+  if (rest.length) await target.batch(rest.map((r) => target.prepare(r.sql)));
+
+  const seq = local.prepare(`SELECT name, seq FROM sqlite_sequence`).all().filter((r) => !SKIP_TABLE(r.name));
+  if (seq.length) {
+    await target.batch([
+      target.prepare(`DELETE FROM sqlite_sequence`),
+      ...seq.map((r) => target.prepare(`INSERT INTO sqlite_sequence (name, seq) VALUES (?, ?)`).bind(r.name, Number(r.seq))),
+    ]);
+  }
+  say(`D1 → UZ: ${tables.length} jadval, ${total} qator, ${rest.length} indeks/trigger/ko'rinish yozildi`);
+
+  const fk = (await target.prepare(`PRAGMA foreign_key_check`).all()).results.length;
+  const ic = (await target.prepare(`PRAGMA integrity_check`).first())?.integrity_check;
+  say(`integrity_check: ${ic} · foreign_key_check: ${fk} ta (D1 dagi bilan bir xil bo'lishi kerak)`);
+  const c = await compare(local, target);
+  printCompare(c);
+  if (!c.ok || ic !== 'ok') process.exit(1);
+}
+
+async function dbVerify(file) {
+  need('UZ_DB_URL', 'UZ_DB_TOKEN');
+  const c = await compare(openLocal(file), openTarget());
+  printCompare(c);
+  if (!c.ok) process.exit(1);
+}
+
+// ── D1 → fayl, Worker eksporti orqali ────────────────────────────────
+
+async function exp(params) {
+  const u = new URL(E.UZ_EXPORT_URL || 'https://nfcstore.uz/__uz/export');
+  for (const [k, v] of Object.entries(params)) u.searchParams.set(k, String(v));
+  for (let attempt = 1; ; attempt++) {
+    const res = await fetch(u, { headers: { 'x-uz-export-key': E.UZ_EXPORT_KEY, 'cache-control': 'no-cache' } });
+    if (res.ok) {
+      const body = await res.json();
+      if (body.error) throw new Error(`eksport: ${body.error} ${body.detail || ''}`);
+      return body;
+    }
+    if (attempt >= 4) throw new Error(`eksport HTTP ${res.status} (${params.op} ${params.table || ''})`);
+    await new Promise((r) => setTimeout(r, 3000 * attempt));
+  }
+}
+
+async function d1Pull(file) {
+  need('UZ_EXPORT_KEY');
+  const { master, sequence, columns } = await exp({ op: 'schema' });
+  const local = new DatabaseSync(file);
+  local.exec('PRAGMA foreign_keys = OFF; PRAGMA journal_mode = OFF; PRAGMA synchronous = OFF');
+  const tables = master.filter((r) => r.type === 'table');
+  for (const t of tables) local.exec(t.sql);
+  let total = 0;
+  for (const t of tables) {
+    const cols = columns[t.name];
+    const info = local.prepare(`PRAGMA table_info(${qid(t.name)})`).all();
+    const pk = info.filter((c) => c.pk);
+    const rowidAlias = pk.length === 1 && /^integer$/i.test(pk[0].type);
+    let cursor = {};
+    local.exec('BEGIN');
+    for (;;) {
+      const page = await exp({ op: 'rows', table: t.name, limit: 2000, ...cursor });
+      if (JSON.stringify(page.cols) !== JSON.stringify(cols)) throw new Error(`${t.name}: ustunlar o'zgardi`);
+      const keepRowid = page.rowid && !rowidAlias;
+      const head = `INSERT INTO ${qid(t.name)} (${[...(keepRowid ? ['rowid'] : []), ...cols.map(qid)].join(', ')}) VALUES `;
+      for (const [rq, q] of page.rows) { local.exec(`${head}(${keepRowid ? `${rq},` : ''}${q})`); total++; }
+      if (page.next == null) break;
+      cursor = page.rowid ? { after: page.next } : { offset: page.next };
+    }
+    local.exec('COMMIT');
+  }
+  for (const r of master.filter((x) => x.type !== 'table')) local.exec(r.sql);
+  if (sequence.length) {
+    local.exec('DELETE FROM sqlite_sequence');
+    const ins = local.prepare('INSERT INTO sqlite_sequence (name, seq) VALUES (?, ?)');
+    for (const r of sequence) ins.run(r.name, r.seq);
+  }
+  say(`D1 → fayl: ${tables.length} jadval, ${total} qator, ${master.length - tables.length} indeks/trigger/ko'rinish`);
+  // Yuklangan nusxa D1 ning o'zi bilan AYNAN bir xilmi (Worker hisoblagan SHA-256).
+  const runLocal = async (sql) => local.prepare(sql).all();
+  const bad = [];
+  for (const t of tables) {
+    const [src, mine] = await Promise.all([exp({ op: 'digest', table: t.name }), tableDigest(runLocal, t.name, columns[t.name])]);
+    if (src.count !== mine.count || src.sha !== mine.sha) bad.push(`${t.name} (D1 ${src.count}, fayl ${mine.count})`);
+  }
+  local.close();
+  say(bad.length ? `D1 ↔ fayl: FARQ — ${bad.slice(0, 10).join(', ')}` : `D1 ↔ fayl: ${tables.length} jadval SHA-256 bilan AYNAN bir xil`);
+  if (bad.length) process.exit(1);
+}
+
+async function d1VerifyUz() {
+  need('UZ_EXPORT_KEY', 'UZ_DB_URL', 'UZ_DB_TOKEN');
+  const { master, columns, sequence } = await exp({ op: 'schema' });
+  const target = openTarget();
+  const runTarget = async (sql) => (await target.prepare(sql).all()).results;
+  const tables = master.filter((r) => r.type === 'table');
+  const bad = []; let rows = 0;
+  for (const t of tables) {
+    const [src, dst] = await Promise.all([exp({ op: 'digest', table: t.name }), tableDigest(runTarget, t.name, columns[t.name]).catch((e) => ({ count: -1, sha: e.message }))]);
+    rows += src.count;
+    if (src.count !== dst.count || src.sha !== dst.sha) bad.push(`${t.name} (D1 ${src.count}, UZ ${dst.count})`);
+  }
+  const seqT = (await target.prepare('SELECT name, seq FROM sqlite_sequence').all().catch(() => ({ results: [] }))).results;
+  const norm = (a) => JSON.stringify(a.filter((r) => !SKIP_TABLE(r.name)).map((r) => [r.name, Number(r.seq)]).sort());
+  const seqOk = norm(sequence) === norm(seqT);
+  say(`D1 (jonli) ↔ UZ: ${tables.length} jadval, ${rows} qator · farq: ${bad.length} · AUTOINCREMENT mos: ${seqOk ? 'ha' : 'YO‘Q'}`);
+  for (const b of bad.slice(0, 15)) say(`  MOS EMAS: ${b}`);
+  if (bad.length || !seqOk) process.exit(1);
+  say('D1 ↔ UZ: HAMMASI MOS');
+}
+
+const commands = {
+  'r2-prune': r2Prune,
+  'mark-cutover': markCutover,
+  'unmark-cutover': unmarkCutover,
+  'd1-pull': () => d1Pull(args.find((a) => !a.startsWith('--'))),
+  'd1-verify-uz': d1VerifyUz,
+  'r2-probe': r2Probe,
+  'r2-copy': r2Copy,
+  'r2-verify': r2Verify,
+  'db-import': () => dbImport(args.find((a) => !a.startsWith('--'))),
+  'db-verify': () => dbVerify(args.find((a) => !a.startsWith('--'))),
+};
+if (!commands[cmd]) { console.error(`buyruq: ${Object.keys(commands).join(' | ')}`); process.exit(2); }
+await commands[cmd]().catch((e) => { console.error(`XATO: ${e.message}`); process.exit(1); });

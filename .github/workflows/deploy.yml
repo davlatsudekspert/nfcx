@@ -87,6 +87,18 @@ jobs:
       # NFC ID hech qachon sitemap'da emas va har doim noindex (maxfiylik).
       - name: SEO — biznes sitemap va profil kartochkalari
         run: node scripts/test-seo-profiles.mjs
+      # O'zbekiston serveri (547-son Qonun, 27-1-modda): env.DB/UPLOADS
+      # adapterlari (hosting/uz-store.js) D1/R2 kabi ishlaydimi va asosiy
+      # oqimlar adapter orqali ham o'zgarishsiz o'tadimi.
+      - name: UZ server adapterlari (sqld/Garage) — D1/R2 bilan moslik
+        run: |
+          node scripts/test-uz-store.mjs
+          node scripts/test-uz-sql-keywords.mjs
+          node scripts/test-uz-cold-start.mjs
+          for t in test-auth test-account-deletion test-media test-stories test-seo-profiles test-order-expire-sweep test-follow-count-consistency test-company-follow-stats test-upload-edge-cache test-audio-upload; do
+            echo "== UZ adapter: $t"; UZ_ADAPTER_TEST=1 node scripts/$t.mjs | tail -n 1
+            [ "${PIPESTATUS[0]}" = 0 ] || exit 1
+          done
       - name: Izoh moderatsiyasi — soft-delete va dalil arxivi
         run: node scripts/test-comment-moderation.mjs
       # Izohga JAVOB va izohga LIKE. Javob bir qavat, begona

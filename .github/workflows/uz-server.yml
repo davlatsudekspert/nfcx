@@ -8,11 +8,15 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: "status = faqat tekshirish, setup = sozlash (qayta ishga tushirish xavfsiz), log = oxirgi sozlash jurnali"
+        description: "status = faqat tekshirish, setup = sozlash (qayta ishga tushirish xavfsiz), log = oxirgi sozlash jurnali, test = adapterlarni haqiqiy serverda sinash, probe = Cloudflare'dagi ma'lumotlar hajmi (faqat o'qish), copy-media = R2 → UZ, copy-db = D1 → UZ (sinov nusxasi), cutover = sayt O'zbekiston serveriga o'tadi (texnik rejim ~5-10 daqiqa), finalize-media = o'tishdan keyin kech kelgan fayllar va R2 zaxira o'qishini o'chirish, recover = texnik rejimda qolib ketgan saytni tiklash"
         required: true
         default: status
         type: choice
-        options: [status, setup, log]
+        options: [status, setup, log, test, probe, copy-media, copy-db, cutover, finalize-media, recover]
+      confirm:
+        description: "cutover uchun aynan: KOCHIR"
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -24,16 +28,27 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        if: ${{ inputs.action != 'status' && inputs.action != 'setup' && inputs.action != 'log' }}
+        with:
+          node-version: 22
 
       - name: Server
+        timeout-minutes: 60
         env:
           SSHPASS: ${{ secrets.UZ_VPS_PASSWORD }}
           HOST: ${{ secrets.UZ_VPS_HOST }}
           ACTION: ${{ inputs.action }}
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CONFIRM: ${{ inputs.confirm }}
+          CF_ACCOUNT: 31c4b3d8ece4b65de515debc4552334a
         run: |
+          # GitHub `bash -e` bilan ishga tushiradi; bu skript esa xatolarni o'zi
+          # tekshiradi (`cmd; rc=$?`, `|| exit 1`) — shuning uchun -e o'chiriladi.
+          set +e
           set -uo pipefail
           [ -n "$HOST" ] && [ -n "$SSHPASS" ] || { echo "::error::UZ_VPS_HOST / UZ_VPS_PASSWORD secretlari yo'q"; exit 1; }
           sudo apt-get install -y -qq sshpass >/dev/null
@@ -94,6 +109,235 @@ jobs:
             echo "::notice title=setup log::$(clean 40 < setup.out | joined)"
           fi
 
+          # hosting/uz-store.js adapterlari HAQIQIY sqld va Garage bilan
+          # (scripts/test-uz-store.mjs: vaqtinchalik jadval/kalitlar, oxirida
+          # o'chiriladi). Kalitlar serverdan o'qiladi va darhol yashiriladi.
+          if [ "$ACTION" = test ]; then
+            DBT=$(R '. /srv/nfcstore/secrets.env && printf %s "$DB_TOKEN"')
+            S3K=$(R '. /srv/nfcstore/s3.env && printf %s "$S3_KEY_ID"')
+            S3S=$(R '. /srv/nfcstore/s3.env && printf %s "$S3_SECRET"')
+            for v in "$DBT" "$S3K" "$S3S"; do [ -n "$v" ] && echo "::add-mask::$v"; done
+            UZ_TEST_DB_URL=https://db.nfcstore.uz UZ_TEST_DB_TOKEN="$DBT" \
+            UZ_TEST_S3_ENDPOINT=https://s3.nfcstore.uz UZ_TEST_S3_BUCKET=nfcstore-uploads \
+            UZ_TEST_S3_KEY_ID="$S3K" UZ_TEST_S3_SECRET="$S3S" \
+              node scripts/test-uz-store.mjs > t.out 2>&1 && trc=0 || trc=$?
+            if [ "$trc" = 0 ]; then lvl=notice; else lvl=error; fi
+            echo "::$lvl title=uz-store test::$(grep -E 'FAIL|passed|baza|actual|expected|Error' t.out | clean 40 | joined)"
+          fi
+
+          # ── KO'CHIRISH (Cloudflare'da faqat O'QISH — hech narsa o'chirilmaydi) ──
+          case "$ACTION" in probe|copy-media|copy-db|cutover|finalize-media|recover)
+            export CF_API_TOKEN="$CF_TOKEN" CF_ACCOUNT CLOUDFLARE_API_TOKEN="$CF_TOKEN" CLOUDFLARE_ACCOUNT_ID="$CF_ACCOUNT"
+            [ -n "$CF_TOKEN" ] || { echo "::error::CLOUDFLARE_API_TOKEN secret yo'q"; exit 1; }
+            DBT=$(R '. /srv/nfcstore/secrets.env && printf %s "$DB_TOKEN"')
+            S3K=$(R '. /srv/nfcstore/s3.env && printf %s "$S3_KEY_ID"')
+            S3S=$(R '. /srv/nfcstore/s3.env && printf %s "$S3_SECRET"')
+            for v in "$DBT" "$S3K" "$S3S"; do [ -n "$v" ] && echo "::add-mask::$v"; done
+            [ -n "$DBT" ] && [ -n "$S3K" ] && [ -n "$S3S" ] || { echo "::error title=server::kalitlar o'qilmadi"; exit 1; }
+            export UZ_DB_URL=https://db.nfcstore.uz UZ_DB_TOKEN="$DBT" UZ_S3_ENDPOINT=https://s3.nfcstore.uz \
+              UZ_S3_BUCKET=nfcstore-uploads UZ_S3_KEY_ID="$S3K" UZ_S3_SECRET="$S3S"
+            W="npx --yes wrangler@4.129.0"
+            mig() { node scripts/uz-migrate.mjs "$@" > m.out 2>&1; local rc=$?; [ $rc = 0 ] && lvl=notice || lvl=error
+              echo "::$lvl title=$1::$(clean 30 < m.out | joined)"; return $rc; }
+            # Jonli sayt O'zbekiston bazasiga o'tgan bo'lsa (UZ_STORE secret bor) —
+            # D1 dan qayta yozish TAQIQLANADI: yangi ma'lumotlar ustidan eski yozilmasin.
+            # Tekshirib bo'lmasa ham — xavfsiz tomonga: "jonli" deb hisoblanadi.
+            live() { $W secret list --name nfcstore-uz > sl.json 2>/dev/null || return 0; grep -q '"UZ_STORE"' sl.json; }
+            # D1 ni Worker beradi (GitHub tokenida D1 ruxsati yo'q). Kalit faqat
+            # shu ish davomida yashaydi va oxirida o'chiriladi.
+            key_on() {
+              EXPORT_KEY=$(openssl rand -hex 32); echo "::add-mask::$EXPORT_KEY"
+              printf %s "$EXPORT_KEY" | $W secret put UZ_EXPORT_KEY --name nfcstore-uz > /dev/null 2> w.err \
+                || { echo "::error title=UZ_EXPORT_KEY::$(clean 5 < w.err | joined) ."; return 1; }
+              export UZ_EXPORT_KEY="$EXPORT_KEY" UZ_EXPORT_URL=https://nfcstore.uz/__uz/export
+              for i in $(seq 1 36); do
+                [ "$(curl -s -o /dev/null -w '%{http_code}' -H "x-uz-export-key: $EXPORT_KEY" "$UZ_EXPORT_URL?op=schema&_=$i")" = 200 ] && return 0
+                sleep 5
+              done
+              echo "::error title=eksport::Worker eksport kalitini qabul qilmadi (yangi kod deploy qilinganmi?)"; return 1
+            }
+            key_off() { $W secret delete UZ_EXPORT_KEY --name nfcstore-uz > /dev/null 2>&1 \
+              || printf off | $W secret put UZ_EXPORT_KEY --name nfcstore-uz > /dev/null 2>&1 || true; }
+          esac
+          if [ "$ACTION" = probe ]; then
+            # Wrangler xatoni ba'zan stdout'ga yozadi — ikkalasi ham ko'rsatiladi.
+            if $W d1 execute DB --remote --json --command "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%'" > t.json 2> w.err; then
+              echo "::notice title=D1::jadvallar: $(python3 -c "import json;print(len(json.load(open('t.json'))[0]['results']))" 2>&1)"
+            else
+              echo "::error title=D1 (wrangler)::$(cat t.json w.err | grep -v '^\s*$' | clean 12 | joined) ."
+            fi
+            $W d1 info DB --json > i.json 2> w.err \
+              && echo "::notice title=D1 info::$(python3 -c "import json;d=json.load(open('i.json'));print({k:d.get(k) for k in ('database_size','num_tables','running_in_region','version')})" 2>&1)" \
+              || echo "::error title=D1 info::$(cat i.json w.err | grep -v '^\s*$' | clean 8 | joined) ."
+            mig r2-probe || true
+            # Hisobdagi Worker'lar (eski nfcstore-api ham D1/R2 ga ulangan bo'lishi mumkin).
+            curl -s --max-time 30 -H "Authorization: Bearer $CF_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT/workers/scripts" > ws.json || true
+            echo "::notice title=Worker'lar::$(python3 -c "import json;d=json.load(open('ws.json'));print(', '.join(sorted(s.get('id','') for s in d.get('result') or [])) or d.get('errors'))" 2>&1)"
+            live && echo "::warning title=UZ_STORE::jonli sayt allaqachon UZ bazasida" || echo "::notice title=UZ_STORE::hali yoqilmagan (sayt D1/R2 da)"
+          fi
+          if [ "$ACTION" = copy-media ]; then
+            # O'tishdan keyin R2 eskirgan: undan nusxalash UZ da o'chirilgan fayllarni qaytarardi.
+            if live; then echo "::error title=copy-media::UZ_STORE yoqilgan — R2 dan qayta nusxalash taqiqlangan (finalize-media ishlating)"; exit 1; fi
+            # R2 — hali asosiy manba: undan o'chirilgan fayllar Garage'dan ham o'chiriladi.
+            mig r2-copy && mig r2-prune && mig r2-verify || exit 1
+          fi
+          # O'tishdan keyin: R2 ga kech yozilgan (eski versiya so'rovlari) fayllar UZ ga
+          # qo'shiladi — faqat UZ da YO'Q kalitlar, hech narsa ustidan yozilmaydi; keyin
+          # UZ_UPLOADS_FALLBACK o'chiriladi (shundan so'ng R2 umuman o'qilmaydi).
+          if [ "$ACTION" = finalize-media ]; then
+            live || { echo "::error title=finalize-media::UZ_STORE yoqilmagan"; exit 1; }
+            # Faqat R2 zaxira o'qishi YOQIQ bo'lsa: u o'chirilgandan keyin UZ da
+            # o'chirilgan fayllar R2 dan qaytib kelmasin (o'chirish ikkalasidan
+            # faqat zaxira yoqiq paytda bajariladi).
+            grep -q '"UZ_UPLOADS_FALLBACK"' sl.json || { echo "::error title=finalize-media::UZ_UPLOADS_FALLBACK yo'q — allaqachon yakunlangan"; exit 1; }
+            mig r2-copy --missing-only || exit 1
+            if $W secret delete UZ_UPLOADS_FALLBACK --name nfcstore-uz > /dev/null 2>&1; then
+              echo "::notice title=finalize-media::R2 zaxira o'qishi o'chirildi — fayllar faqat O'zbekistonda"
+            else
+              echo "::error title=finalize-media::UZ_UPLOADS_FALLBACK o'chirilmadi"; exit 1
+            fi
+          fi
+          if [ "$ACTION" = copy-db ]; then
+            if live; then echo "::error title=copy-db::UZ_STORE yoqilgan — jonli bazani D1 nusxasi bilan almashtirish taqiqlangan"; exit 1; fi
+            R '/usr/local/bin/nfcstore-backup' > /dev/null 2>&1 || { echo "::error title=zaxira::server zaxirasi olinmadi"; exit 1; }
+            key_on || { key_off; exit 1; }
+            trap key_off EXIT
+            mig d1-pull d1.sqlite || exit 1
+            key_off
+            mig db-import d1.sqlite --replace || { rm -f d1.sqlite; exit 1; }
+            # Tenglik: main'dagi HAQIQIY worker kodi ikki marta (D1 nusxasi / UZ server)
+            # bir xil ochiq so'rovlarga — javoblar bir xil bo'lishi kerak.
+            cp hosting/uz-store.js "$RUNNER_TEMP/uz-store.js"
+            git fetch -q --depth=1 origin main && git checkout -q FETCH_HEAD -- hosting wrangler.jsonc
+            cp "$RUNNER_TEMP/uz-store.js" hosting/uz-store.js
+            node scripts/uz-parity.mjs d1.sqlite > p.out 2>&1 && prc=0 || prc=$?
+            [ $prc = 0 ] && lvl=notice || lvl=error
+            echo "::$lvl title=tenglik (worker D1 ↔ UZ)::$(grep -E 'tenglik|FARQ|fayllar|FAYL|Error' p.out | clean 20 | joined) ."
+            rm -f d1.sql d1.sqlite
+          fi
+
+          # ── TIKLASH (qo'lda): o'tish yarim qolgan / texnik rejimda qotib qolgan bo'lsa ──
+          # _uz_cutover belgisi YO'Q — sayt hali ochilmagan: UZ_STORE olib tashlanadi,
+          # sayt avvalgidek D1/R2 da. Belgi BOR — sayt UZ da ochilgan: faqat texnik
+          # rejim va eksport kaliti olib tashlanadi (UZ_STORE qoladi, ma'lumot UZ da).
+          if [ "$ACTION" = recover ]; then
+            M=$(node -e "import('./hosting/uz-store.js').then(async m=>{const d=m.uzDb({url:process.env.UZ_DB_URL,token:process.env.UZ_DB_TOKEN});const r=await d.prepare(\"SELECT COUNT(*) AS c FROM sqlite_master WHERE name='_uz_cutover'\").first('c');console.log(r?'yes':'no')}).catch(()=>console.log('err'))")
+            case "$M" in
+              no) $W secret delete UZ_STORE --name nfcstore-uz > /dev/null 2>&1 || true
+                  live && { echo "::error title=recover::UZ_STORE o'chmadi"; exit 1; }
+                  echo "::notice title=recover::o'tish bo'lmagan — sayt D1/R2 da";;
+              yes) echo "::notice title=recover::o'tish bo'lgan — sayt UZ da qoladi";;
+              *) echo "::error title=recover::UZ bazasini o'qib bo'lmadi — hech narsa o'zgartirilmadi"; exit 1;;
+            esac
+            $W secret delete UZ_MAINTENANCE --name nfcstore-uz > /dev/null 2>&1 || true
+            key_off
+            echo "::notice title=recover::texnik rejim va eksport kaliti olib tashlandi"
+          fi
+
+          # ── O'TISH: sayt O'zbekiston serveriga (tunda, texnik rejim ~5-10 daqiqa) ──
+          # Barcha tekshiruvlar texnik rejim YOQIQ turganda (eksport kaliti bilan)
+          # o'tadi. Ochishdan oldin biror narsa xato bo'lsa: UZ_STORE o'chiriladi,
+          # texnik rejim olib tashlanadi — sayt avvalgidek D1/R2 da, UZ ga birorta
+          # foydalanuvchi yozuvi tushmagan. Ochilgandan keyin avtomatik qaytarish YO'Q.
+          if [ "$ACTION" = cutover ]; then
+            [ "$CONFIRM" = "KOCHIR" ] || { echo "::error title=cutover::confirm maydoniga aynan KOCHIR yozing"; exit 1; }
+            if live; then echo "::error title=cutover::UZ_STORE allaqachon yoqilgan"; exit 1; fi
+            R '/usr/local/bin/nfcstore-backup' > /dev/null 2>&1 || { echo "::error title=zaxira::server zaxirasi olinmadi"; exit 1; }
+            STORE_SET=0; MARKED=0
+            ST="$RUNNER_TEMP/cutover.state"
+            restore() {
+              trap - EXIT INT TERM
+              rm -f "$RUNNER_TEMP/uz.json" d1.sqlite
+              if [ "$STORE_SET" = 1 ] && ! $W secret delete UZ_STORE --name nfcstore-uz > /dev/null 2>&1 && live; then
+                # UZ_STORE hali bor va o'chmadi — saytni ochmaymiz (yarim holatda ochilib qolmasin).
+                key_off
+                echo "::error title=QAYTARISH TUGAMADI::UZ_STORE o'chirilmadi — texnik rejim YOQIQ qoldirildi, recover amalini ishga tushiring"
+                return
+              fi
+              [ "$MARKED" = 1 ] && mig unmark-cutover
+              $W secret delete UZ_MAINTENANCE --name nfcstore-uz > /dev/null 2>&1 || true
+              key_off
+              rm -f "$ST"
+              echo "::error title=O'TISH BEKOR QILINDI::sayt avvalgidek D1/R2 da (UZ ga foydalanuvchi yozuvi tushmagan)"
+            }
+            key_on || { key_off; exit 1; }
+            trap restore EXIT
+            trap 'restore; exit 1' INT TERM
+            # O'z qayta urinishimiz: curl --retry texnik sahifaning Retry-After: 300
+            # sarlavhasiga bo'ysunib, har chaqiruvda ~15 daqiqa kutardi.
+            code() { local c=000 t; for t in 1 2 3; do
+                c=$(curl -s --max-time 25 -o /dev/null -w '%{http_code}' -H 'cache-control: no-cache' "$@") || c=000
+                case "$c" in 000|502|504|520|521|522|524) sleep 3;; *) break;; esac
+              done; echo "$c"; }
+            K=(-H "x-uz-export-key: $UZ_EXPORT_KEY")
+            T0=$(date +%s)
+            echo maint > "$ST"
+            printf on | $W secret put UZ_MAINTENANCE --name nfcstore-uz > /dev/null 2> w.err || { echo "::error title=texnik rejim::$(clean 5 < w.err | joined) ."; exit 1; }
+            for i in $(seq 1 36); do [ "$(code "https://nfcstore.uz/api/feed?_=m$i")" = 503 ] && break; sleep 5; done
+            [ "$(code "https://nfcstore.uz/api/feed?_=mm")" = 503 ] || { echo "::error title=texnik rejim::yoqilmadi"; exit 1; }
+            sleep 60  # eski versiyadagi so'rovlar (sekin yuklashlar) tugasin
+            echo "::notice title=1. texnik rejim::yoqildi ($(( $(date +%s) - T0 )) s)"
+            mig r2-copy && mig r2-prune && mig r2-verify --no-content \
+              && mig d1-pull d1.sqlite && mig db-import d1.sqlite --replace && mig d1-verify-uz || exit 1
+            python3 - <<'PYJ'
+          import json, os
+          keys = ['UZ_DB_URL', 'UZ_DB_TOKEN', 'UZ_S3_ENDPOINT', 'UZ_S3_BUCKET', 'UZ_S3_KEY_ID', 'UZ_S3_SECRET']
+          data = {k: os.environ[k] for k in keys}
+          data['UZ_STORE'] = 'on'
+          data['UZ_UPLOADS_FALLBACK'] = 'r2'
+          assert all(data.values()), 'bo\'sh qiymat'
+          path = os.path.join(os.environ['RUNNER_TEMP'], 'uz.json')
+          fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+          with os.fdopen(fd, 'w') as f: json.dump(data, f)
+          PYJ
+            [ -s "$RUNNER_TEMP/uz.json" ] || { echo "::error title=secret bulk::uz.json yaratilmadi"; exit 1; }
+            STORE_SET=1; echo store > "$ST"
+            $W secret bulk "$RUNNER_TEMP/uz.json" --name nfcstore-uz > /dev/null 2> w.err || { echo "::error title=secret bulk::$(clean 5 < w.err | joined) ."; exit 1; }
+            rm -f "$RUNNER_TEMP/uz.json"
+            ok=0
+            for i in $(seq 1 36); do
+              (curl -s --max-time 20 "${K[@]}" "https://nfcstore.uz/__uz/ping?_=p$i" || true) | grep -q '"store":"uz"' && { ok=1; break; }
+              sleep 5
+            done
+            [ $ok = 1 ] || { echo "::error title=2. UZ yoqilmadi::Worker UZ omborini ko'rsatmadi"; exit 1; }
+            # Kech o'zgarishlar: D1 eksportdan beri o'zgarmaganmi, R2 ga kech fayl tushganmi.
+            mig d1-verify-uz && mig r2-copy || exit 1
+            CODE=$(python3 -c "import sqlite3;c=sqlite3.connect('d1.sqlite');r=c.execute(\"SELECT code FROM cards WHERE code IS NOT NULL AND user_id IS NOT NULL ORDER BY ts DESC LIMIT 1\").fetchone();print(r[0] if r else '')" 2>/dev/null)
+            UP=""; for t in 1 2 3; do
+              UP=$(node -e "import('./hosting/uz-store.js').then(async m=>{const b=m.uzBucket({endpoint:process.env.UZ_S3_ENDPOINT,bucket:process.env.UZ_S3_BUCKET,keyId:process.env.UZ_S3_KEY_ID,secret:process.env.UZ_S3_SECRET});const l=await b.list({prefix:'uploads/',limit:1});console.log(l.objects[0]?.key||'')})" 2>/dev/null) || UP=""
+              [ -n "$UP" ] && break; sleep 3
+            done
+            F=$(code "${K[@]}" "https://nfcstore.uz/api/feed?_=s1")
+            P=$([ -n "$CODE" ] && code "${K[@]}" "https://nfcstore.uz/$CODE?_=s2" || echo -)
+            U=$([ -n "$UP" ] && code "${K[@]}" "https://nfcstore.uz/$UP" || echo -)
+            echo "::notice title=3. tekshiruv (texnik rejimda)::api/feed $F · profil $P · fayl $U"
+            if [ "$F" != 200 ] || [ "$P" = 500 ] || [ "$P" = 503 ] || [ "$U" != 200 ]; then
+              echo "::error title=3. tekshiruv::sayt UZ omborida to'g'ri javob bermadi"; exit 1
+            fi
+            MARKED=1; echo marked > "$ST"
+            mig mark-cutover || exit 1
+            # ── OCHISH ── shu nuqtadan keyin foydalanuvchilar UZ ga yozadi; orqaga avtomatik qaytish yo'q.
+            trap - EXIT INT TERM
+            echo opened > "$ST"
+            if ! $W secret delete UZ_MAINTENANCE --name nfcstore-uz > /dev/null 2>&1 \
+              && ! { printf off | $W secret put UZ_MAINTENANCE --name nfcstore-uz > /dev/null 2>&1; }; then
+              echo "::error title=OCHISH::UZ_MAINTENANCE o'chirilmadi — sayt 503 da; recover amalini ishga tushiring"; exit 1
+            fi
+            key_off
+            rm -f d1.sqlite
+            pub=0
+            for i in $(seq 1 36); do
+              h=$(curl -s --max-time 20 -D - -o /dev/null -H 'cache-control: no-cache' "https://nfcstore.uz/api/feed?_=o$i") || h=''
+              if echo "$h" | head -1 | grep -q ' 200' && echo "$h" | grep -qi '^x-nfc-data: uz'; then pub=1; break; fi
+              sleep 5
+            done
+            if [ $pub = 1 ]; then
+              echo "::notice title=4. O'TISH TUGADI::sayt O'zbekiston serverida ochildi (x-nfc-data: uz) · jami $(( $(date +%s) - T0 )) s"
+            else
+              echo "::warning title=4. ochiq tekshiruv::ochiq so'rovda x-nfc-data: uz ko'rinmadi — qo'lda tekshiring (orqaga qaytarilmadi)"
+            fi
+          fi
+
           R 'uptime -p; df -h / | tail -1 | awk "{print \"disk: \"\$3\" / \"\$2\" (\"\$5\")\"}"; free -m | awk "/Mem:/{print \"ram: \"\$3\"MB / \"\$2\"MB\"}"; docker ps --format "{{.Names}}: {{.Status}}" 2>/dev/null || echo "docker: yoq"' \
             > vps.out 2>&1 || true
           echo "::notice title=VPS::$(clean 20 < vps.out | joined)"
@@ -103,6 +347,39 @@ jobs:
           q='{"statements":["select 1"]}'
           A=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 -H "Authorization: Bearer ${TOKEN:-x}" -H 'Content-Type: application/json' -d "$q" https://db.nfcstore.uz/ || echo ERR)
           N=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 -H 'Content-Type: application/json' -d "$q" https://db.nfcstore.uz/ || echo ERR)
+          E=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 -H 'Authorization: Bearer ' -H 'Content-Type: application/json' -d "$q" https://db.nfcstore.uz/ || echo ERR)
           S3=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://s3.nfcstore.uz/ || echo ERR)
-          echo "::notice title=db.nfcstore.uz::token bilan HTTP $A (kutilgan 200), tokensiz HTTP $N (kutilgan 401)"
+          echo "::notice title=db.nfcstore.uz::token bilan HTTP $A (kutilgan 200), tokensiz HTTP $N, bo'sh token HTTP $E (kutilgan 401)"
           echo "::notice title=s3.nfcstore.uz::HTTPS HTTP $S3 (403/400 — ombor javob beryapti)"
+
+      # O'tish ish bekor qilinganda / vaqti tugaganda ham saytni qaytaradi (Server
+      # qadamidagi trap SIGKILL dan oldin ulgurmasligi mumkin). Holat fayli:
+      # maint/store/marked — sayt hali OCHILMAGAN: D1/R2 ga qaytariladi;
+      # opened — sayt UZ da ochilgan: hech narsaga tegilmaydi.
+      - name: Cutover cleanup
+        if: ${{ always() && inputs.action == 'cutover' }}
+        env:
+          SSHPASS: ${{ secrets.UZ_VPS_PASSWORD }}
+          HOST: ${{ secrets.UZ_VPS_HOST }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 31c4b3d8ece4b65de515debc4552334a
+        run: |
+          set +e
+          s=$(cat "$RUNNER_TEMP/cutover.state" 2>/dev/null)
+          case "$s" in maint|store|marked) ;; *) echo "holat: ${s:-yoq} - tozalash kerak emas"; exit 0;; esac
+          W="npx --yes wrangler@4.129.0"
+          live() { $W secret list --name nfcstore-uz > sl.json 2>/dev/null || return 0; grep -q '"UZ_STORE"' sl.json; }
+          if [ "$s" != maint ]; then
+            $W secret delete UZ_STORE --name nfcstore-uz > /dev/null 2>&1
+            if live; then echo "::error title=TOZALASH::UZ_STORE o'chmadi — texnik rejim YOQIQ qoldirildi, recover amalini ishga tushiring"; exit 1; fi
+          fi
+          if [ "$s" = marked ]; then
+            DBT=$(sshpass -e ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -o LogLevel=ERROR root@"$HOST" '. /srv/nfcstore/secrets.env && printf %s "$DB_TOKEN"')
+            [ -n "$DBT" ] && echo "::add-mask::$DBT"
+            UZ_DB_URL=https://db.nfcstore.uz UZ_DB_TOKEN="$DBT" node scripts/uz-migrate.mjs unmark-cutover > /dev/null 2>&1 \
+              || echo "::warning title=TOZALASH::_uz_cutover belgisi olib tashlanmadi — recover dan oldin tekshiring"
+          fi
+          $W secret delete UZ_MAINTENANCE --name nfcstore-uz > /dev/null 2>&1
+          $W secret delete UZ_EXPORT_KEY --name nfcstore-uz > /dev/null 2>&1
+          rm -f "$RUNNER_TEMP/cutover.state"
+          echo "::error title=O'TISH TO'XTATILDI::ish yarim qoldi — sayt D1/R2 ga qaytarildi (UZ ga foydalanuvchi yozuvi tushmagan)"
