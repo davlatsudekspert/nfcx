@@ -85,9 +85,11 @@ void main() {
 
     // Katakcha kengligi AVVALGIDEK: (ekran - 2*20 - 2*6) / 3.
     const side = (390 - 40 - 12) / 3;
-    // Ekran + Flutter'ning 250 px kesh zonasi — ko'pi bilan ~6 qator.
-    // `Wrap` da har doim 30 tadan 30 tasi qurilardi.
-    const few = 18;
+    // Ekran + Flutter'ning 250 px kesh zonasi — ko'pi bilan ~7 qator.
+    // Profil tanasi status bar ortidan boshlanadi (`heroBehindBar`):
+    // ko'rinadigan balandlik sarlavha qatoricha (~56 px) oshgan, ya'ni
+    // bitta qator ko'p. `Wrap` da har doim 30 tadan 30 tasi qurilardi.
+    const few = 21;
 
     // ── Postlar tabi: 30 ta rasm ───────────────────────────────
     final photos = _photoTiles().evaluate().length;

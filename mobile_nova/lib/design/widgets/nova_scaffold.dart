@@ -26,6 +26,7 @@ class NovaScaffold extends StatelessWidget {
     this.floating,
     this.padBottom = true,
     this.animateBackdrop = false,
+    this.heroBehindBar = false,
   });
 
   final Widget body;
@@ -52,6 +53,28 @@ class NovaScaffold extends StatelessWidget {
   final bool padBottom;
   final bool animateBackdrop;
 
+  /// HERO STATUS BAR ORTIDAN BOSHLANADI (profil ekrani).
+  ///
+  /// Oddiy rejimda tana `SafeArea` va sarlavha qatori OSTIDAN
+  /// boshlanadi. iPhone'da tepadagi xavfsiz hudud katta (Dynamic
+  /// Island), shuning uchun muqova pastdan boshlanib, ustida katta
+  /// bo'sh (Ivory'da oq) zona qolardi (egasi, 2026-10).
+  ///
+  /// `true` bo'lsa tana ekranning ENG TEPASIDAN chiziladi, tugmalar
+  /// qatori esa alohida fon/AppBar'siz uning USTIGA qo'yiladi.
+  /// Tana o'z kontentini [heroTopInset] qadar pastga suradi — matn va
+  /// tugmalar status bar ostida qolmaydi, faqat fon u yerga chiqadi.
+  final bool heroBehindBar;
+
+  /// [heroBehindBar] rejimida tugmalar qatorining balandligi:
+  /// tepada 16 px, 44 px tugma, pastda 4 px.
+  static const heroBarExtent = Gap.lg + 44 + Gap.xs;
+
+  /// [heroBehindBar] rejimida kontent boshlanadigan masofa (ekran
+  /// tepasidan): xavfsiz hudud + tugmalar qatori.
+  static double heroTopInset(BuildContext context) =>
+      MediaQuery.viewPaddingOf(context).top + heroBarExtent;
+
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
@@ -65,7 +88,32 @@ class NovaScaffold extends StatelessWidget {
         resizeToAvoidBottomInset: true,
         body: AmbientBackdrop(
           animate: animateBackdrop,
-          child: SafeArea(
+          child: heroBehindBar
+              ? Stack(
+                  children: [
+                    Positioned.fill(
+                      child: SafeArea(top: false, bottom: false, child: body),
+                    ),
+                    if (hasBar)
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: SafeArea(
+                          bottom: false,
+                          child: _Bar(
+                            title: title,
+                            leading: leading,
+                            actions: actions,
+                            showBack: showBack,
+                            onBack: onBack,
+                            overHero: true,
+                          ),
+                        ),
+                      ),
+                  ],
+                )
+              : SafeArea(
             bottom: false,
             child: Column(
               children: [
@@ -106,8 +154,10 @@ class _Bar extends StatelessWidget {
     this.actions,
     required this.showBack,
     this.onBack,
+    this.overHero = false,
   });
 
+  final bool overHero;
   final String? title;
   final Widget? leading;
   final List<Widget>? actions;
@@ -117,7 +167,9 @@ class _Bar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(Gap.md, Gap.sm, Gap.md, Gap.xs),
+      // Hero ustida: xavfsiz hududdan keyin 16 px, o'ngda 12 + 8 = 20 px.
+      padding: EdgeInsets.fromLTRB(
+          Gap.md, overHero ? Gap.lg : Gap.sm, Gap.md, Gap.xs),
       child: Row(
         children: [
           if (showBack)

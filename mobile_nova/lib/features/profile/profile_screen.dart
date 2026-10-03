@@ -157,9 +157,13 @@ class ProfileScreen extends ConsumerWidget {
 
     if (user == null) return const SizedBox.shrink();
 
+    // Hero (muqova) status bar ortidan boshlanadi, tugmalar uning ustida.
+    final heroTop = NovaScaffold.heroTopInset(context);
+
     return NovaScaffold(
       // Asosiy tab: pastki bo'shliq `navSafeBottom` da (suzuvchi menyu).
       padBottom: false,
+      heroBehindBar: true,
       showBack: target != null,
       actions: target != null
           ? [
@@ -207,6 +211,7 @@ class ProfileScreen extends ConsumerWidget {
               const SizedBox(width: Gap.sm),
             ],
       body: RefreshIndicator(
+        edgeOffset: heroTop,
         color: t.accent2,
         backgroundColor: t.surfaceSolid,
         onRefresh: () async {
@@ -239,7 +244,11 @@ class ProfileScreen extends ConsumerWidget {
               : _PostsGrid(code: active.code, company: active.isBusiness),
           children: [
             if (biz != null)
-              _StorefrontHeader(business: biz)
+              // Vitrina muqovasi — yumaloq karta: tugmalar ostidan boshlanadi.
+              Padding(
+                padding: EdgeInsets.only(top: heroTop),
+                child: _StorefrontHeader(business: biz),
+              )
             else
               _Hero(
                   user: user,
@@ -611,6 +620,11 @@ class _Hero extends StatelessWidget {
     // shuning uchun UNI TO'QIB CHIQARMAYMIZ.
     final subtitle = (profile?.subtitle ?? '').trim();
 
+    // Muqova status bar ORTIDAN boshlanadi; kontent esa tugmalar
+    // qatoridan keyin — kompozitsiya avvalgidek, faqat tepada bo'sh
+    // zona qolmaydi.
+    final heroTop = NovaScaffold.heroTopInset(context);
+
     return Stack(
       children: [
         // Atmosfera: to'liq kenglik, hoshiyasiz, pastda fonga so'nadi.
@@ -618,7 +632,7 @@ class _Hero extends StatelessWidget {
           top: 0,
           left: 0,
           right: 0,
-          height: 150,
+          height: 150 + heroTop,
           child: ShaderMask(
             // So'nishni SCRIM bilan emas, muqovaning O'ZINI shaffoflashtirib
             // qilamiz. Ustiga `bg1` to'rtburchagi qo'yilsa, uning pastki
@@ -707,7 +721,7 @@ class _Hero extends StatelessWidget {
                 // yo'q bo'lsa tepada ortiqcha bo'sh joy qolmasin —
                 // avatar sarlavhaga yaqin, ko'z darhol ism va ID'ga
                 // tushadi (egasi, 2026-09: "yuqoridagi bo'sh joy").
-                SizedBox(height: cover.isEmpty ? 16 : 86),
+                SizedBox(height: heroTop + (cover.isEmpty ? 16 : 86)),
                 _DemoNotice(sample: profile?.isDemo ?? false),
                 // ISTORYA HALQASI — FAQAT istorya BOR bo'lsa.
                 //
