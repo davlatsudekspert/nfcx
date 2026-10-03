@@ -15,7 +15,7 @@ import 'package:video_player/video_player.dart';
 
 void out(Map<String, Object?> m) {
   // ignore: avoid_print
-  print('[FLOW] ${jsonEncode(m)}');
+  print('[FLOW] ${jsonEncode({'ts': DateTime.now().millisecondsSinceEpoch / 1000, ...m})}');
 }
 
 void main() {

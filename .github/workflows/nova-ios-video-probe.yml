@@ -85,13 +85,11 @@ jobs:
           LOGPID=$!
           ( flutter test integration_test/probe/reels_flow_probe_test.dart --dart-define=VIEW=texture -d "$UDID" > flow.log 2>&1; echo "EXIT $?" >> flow.log ) &
           for _ in $(seq 1 900); do grep -q 'Xcode build done' flow.log 2>/dev/null && break; grep -q '^EXIT ' flow.log && break; sleep 1; done
-          T0=$(date +%s)
           n=0
           while ! grep -q '^EXIT ' flow.log; do
             n=$((n+1)); xcrun simctl io "$UDID" screenshot "$RUNNER_TEMP/s$n.png" >/dev/null 2>&1 || true
-            echo "$n $(( $(date +%s) - T0 ))" >> "$RUNNER_TEMP/shots.txt"
-            sleep 2
-            [ $n -ge 240 ] && break
+            echo "$n $(python3 -c 'import time; print(f"{time.time():.1f}")')" >> "$RUNNER_TEMP/shots.txt"
+            [ $n -ge 400 ] && break
           done
           kill $LOGPID 2>/dev/null || true
           : > "$RUNNER_TEMP/pix.txt"
@@ -111,7 +109,7 @@ jobs:
                   i = off + y * row + x * bpp
                   l = .2126 * b[i + 2] + .7152 * b[i + 1] + .0722 * b[i]
                   tot += 1; lit += l > 24
-          print(f't={sys.argv[2]}s yorug={100 * lit / tot:.0f}%')
+          print(f'{sys.argv[2]}={100 * lit / tot:.0f}%')
           PY
           done < "$RUNNER_TEMP/shots.txt"
           {
@@ -146,13 +144,11 @@ jobs:
           LOGPID=$!
           ( flutter test integration_test/probe/reels_flow_probe_test.dart --dart-define=VIEW=platform -d "$UDID" > flow.log 2>&1; echo "EXIT $?" >> flow.log ) &
           for _ in $(seq 1 900); do grep -q 'Xcode build done' flow.log 2>/dev/null && break; grep -q '^EXIT ' flow.log && break; sleep 1; done
-          T0=$(date +%s)
           n=0
           while ! grep -q '^EXIT ' flow.log; do
             n=$((n+1)); xcrun simctl io "$UDID" screenshot "$RUNNER_TEMP/s$n.png" >/dev/null 2>&1 || true
-            echo "$n $(( $(date +%s) - T0 ))" >> "$RUNNER_TEMP/shots.txt"
-            sleep 2
-            [ $n -ge 240 ] && break
+            echo "$n $(python3 -c 'import time; print(f"{time.time():.1f}")')" >> "$RUNNER_TEMP/shots.txt"
+            [ $n -ge 400 ] && break
           done
           kill $LOGPID 2>/dev/null || true
           : > "$RUNNER_TEMP/pix.txt"
@@ -172,7 +168,7 @@ jobs:
                   i = off + y * row + x * bpp
                   l = .2126 * b[i + 2] + .7152 * b[i + 1] + .0722 * b[i]
                   tot += 1; lit += l > 24
-          print(f't={sys.argv[2]}s yorug={100 * lit / tot:.0f}%')
+          print(f'{sys.argv[2]}={100 * lit / tot:.0f}%')
           PY
           done < "$RUNNER_TEMP/shots.txt"
           {
