@@ -8,11 +8,11 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: "status = faqat tekshirish, setup = sozlash (qayta ishga tushirish xavfsiz)"
+        description: "status = faqat tekshirish, setup = sozlash (qayta ishga tushirish xavfsiz), log = oxirgi sozlash jurnali"
         required: true
         default: status
         type: choice
-        options: [status, setup]
+        options: [status, setup, log]
 
 permissions:
   contents: read
@@ -37,7 +37,7 @@ jobs:
           set -uo pipefail
           [ -n "$HOST" ] && [ -n "$SSHPASS" ] || { echo "::error::UZ_VPS_HOST / UZ_VPS_PASSWORD secretlari yo'q"; exit 1; }
           sudo apt-get install -y -qq sshpass >/dev/null
-          R() { sshpass -e ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -o LogLevel=ERROR root@"$HOST" "$@"; }
+          R() { sshpass -e ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=8 -o LogLevel=ERROR root@"$HOST" "$@"; }
           # Maxfiy so'zlar bor qatorlar annotatsiyaga tushmasin.
           clean() { grep -viE 'secret|token|password|parol|key id|rpc_|admin_' | tail -n "${1:-15}"; }
 
@@ -53,14 +53,39 @@ jobs:
           fi
           echo "::notice title=SSH::ulandi"
 
+          # Sozlash serverda FONDA ishlaydi (nohup): SSH uzilib qolsa ham
+          # (apt uzoq kutganda shunday bo'ldi — "Broken pipe") o'rnatish
+          # yarim qolmaydi. Bu yerdan faqat tugashini kuzatamiz.
           if [ "$ACTION" = setup ]; then
-            if R 'QUIET=1 bash -s' < ops/uz-server/setup.sh > setup.out 2>&1; then
+            R 'cat > /root/nfcstore-setup.sh && chmod 700 /root/nfcstore-setup.sh' < ops/uz-server/setup.sh
+            R 'bash -s' <<'EOS' | while IFS= read -r l; do echo "::notice title=Setup::$l"; done
+          if [ -f /root/nfcstore-setup.pid ] && kill -0 "$(cat /root/nfcstore-setup.pid)" 2>/dev/null; then
+            echo "allaqachon ishlayapti — kuzatyapman"; exit 0
+          fi
+          rm -f /root/nfcstore-setup.rc
+          nohup setsid bash -c 'QUIET=1 bash /root/nfcstore-setup.sh > /root/nfcstore-setup.out 2>&1; echo $? > /root/nfcstore-setup.rc' </dev/null >/dev/null 2>&1 &
+          echo $! > /root/nfcstore-setup.pid
+          echo "fonda boshlandi"
+          EOS
+            rc=""
+            for i in $(seq 1 100); do
+              sleep 15
+              rc=$(R 'cat /root/nfcstore-setup.rc 2>/dev/null' 2>/dev/null || true)
+              [ -n "$rc" ] && break
+            done
+            R 'tail -n 40 /root/nfcstore-setup.out' > setup.out 2>&1 || true
+            if [ "$rc" = 0 ]; then
               echo "::notice title=Setup::muvaffaqiyatli tugadi"
+              clean 6 < setup.out | while IFS= read -r l; do echo "::notice title=setup log::$l"; done
             else
-              echo "::error title=Setup::xato bilan tugadi — oxirgi qatorlar pastda"
+              echo "::error title=Setup::${rc:+kod $rc bilan }tugamadi — oxirgi qatorlar pastda"
               clean 25 < setup.out | while IFS= read -r l; do echo "::error title=setup log::$l"; done
               exit 1
             fi
+          fi
+          if [ "$ACTION" = log ]; then
+            R 'cat /root/nfcstore-setup.rc 2>/dev/null || echo "hali tugamagan"; tail -n 40 /root/nfcstore-setup.out 2>/dev/null' > setup.out 2>&1 || true
+            clean 30 < setup.out | while IFS= read -r l; do echo "::notice title=setup log::$l"; done
           fi
 
           R 'uptime -p; df -h / | tail -1 | awk "{print \"disk: \"\$3\" / \"\$2\" (\"\$5\")\"}"; free -m | awk "/Mem:/{print \"ram: \"\$3\"MB / \"\$2\"MB\"}"; docker ps --format "{{.Names}}: {{.Status}}" 2>/dev/null || echo "docker: yoq"' \

@@ -30,16 +30,18 @@ step() { echo; echo "==> $*"; }
 step "1/7 Paketlar"
 export DEBIAN_FRONTEND=noninteractive
 # Yangi serverda Ubuntu fonda o'z yangilanishlarini o'rnatadi (unattended-upgrades)
-# — apt band bo'ladi yoki yarim qolgan bo'ladi. Avval kutamiz, keyin tuzatamiz.
-for i in $(seq 1 90); do
-  pgrep -x apt-get >/dev/null || pgrep -x apt >/dev/null || pgrep -x dpkg >/dev/null \
-    || pgrep -f unattended-upgr >/dev/null || break
+# — apt band bo'ladi yoki yarim qolgan bo'ladi. Qulf bo'shashini kutamiz, keyin
+# yarim qolganini tuzatamiz. (`pgrep unattended-upgr` yaramaydi: Ubuntu'da
+# `unattended-upgrade-shutdown` doim ishlab turadi va kutish hech tugamaydi.)
+for i in $(seq 1 180); do
+  fuser /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/lib/apt/lists/lock >/dev/null 2>&1 || break
   [ "$i" = 1 ] && echo "apt band — Ubuntu yangilanishlari tugashini kutyapman..."
   sleep 5
 done
-dpkg --configure -a
-apt-get update -qq
-apt-get install -y -qq docker.io docker-compose-v2 ufw sqlite3 curl jq openssl ca-certificates >/dev/null
+for i in $(seq 1 60); do dpkg --configure -a && break; sleep 5; done
+APT="apt-get -o DPkg::Lock::Timeout=900 -y -qq"
+$APT update
+$APT install docker.io docker-compose-v2 ufw sqlite3 curl jq openssl ca-certificates psmisc >/dev/null
 systemctl enable --now docker >/dev/null
 
 step "2/7 Papkalar va maxfiy kalitlar"
