@@ -135,10 +135,15 @@ jobs:
             live() { $W secret list --name nfcstore-uz > sl.json 2>/dev/null || return 0; grep -q '"UZ_STORE"' sl.json; }
           esac
           if [ "$ACTION" = probe ]; then
-            $W d1 execute DB --remote --json --command "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%'" > t.json 2> w.err \
-              && echo "::notice title=D1::jadvallar: $(python3 -c "import json;print(len(json.load(open('t.json'))[0]['results']))")" \
-              || echo "::error title=D1 (wrangler)::$(clean 6 < w.err | joined)"
-            $W d1 info DB --json > i.json 2>/dev/null && echo "::notice title=D1 info::$(python3 -c "import json;d=json.load(open('i.json'));print({k:d.get(k) for k in ('database_size','num_tables','running_in_region','version')})")"
+            # Wrangler xatoni ba'zan stdout'ga yozadi — ikkalasi ham ko'rsatiladi.
+            if $W d1 execute DB --remote --json --command "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%'" > t.json 2> w.err; then
+              echo "::notice title=D1::jadvallar: $(python3 -c "import json;print(len(json.load(open('t.json'))[0]['results']))" 2>&1)"
+            else
+              echo "::error title=D1 (wrangler)::$(cat t.json w.err | grep -v '^\s*$' | clean 12 | joined) ."
+            fi
+            $W d1 info DB --json > i.json 2> w.err \
+              && echo "::notice title=D1 info::$(python3 -c "import json;d=json.load(open('i.json'));print({k:d.get(k) for k in ('database_size','num_tables','running_in_region','version')})" 2>&1)" \
+              || echo "::error title=D1 info::$(cat i.json w.err | grep -v '^\s*$' | clean 8 | joined) ."
             mig r2-probe || true
             live && echo "::warning title=UZ_STORE::jonli sayt allaqachon UZ bazasida" || echo "::notice title=UZ_STORE::hali yoqilmagan (sayt D1/R2 da)"
           fi
@@ -152,7 +157,15 @@ jobs:
             node -e "const {DatabaseSync}=require('node:sqlite');const fs=require('fs');const d=new DatabaseSync('d1.sqlite');d.exec(fs.readFileSync('d1.sql','utf8'));" 2> l.err \
               || { echo "::error title=D1 dump yuklash::$(clean 10 < l.err | joined)"; exit 1; }
             echo "::notice title=D1 export::$(wc -c < d1.sql) bayt SQL"
-            mig db-import d1.sqlite --replace || exit 1
+            mig db-import d1.sqlite --replace || { rm -f d1.sql d1.sqlite; exit 1; }
+            # Tenglik: main'dagi HAQIQIY worker kodi ikki marta (D1 nusxasi / UZ server)
+            # bir xil ochiq so'rovlarga — javoblar bir xil bo'lishi kerak.
+            cp hosting/uz-store.js "$RUNNER_TEMP/uz-store.js"
+            git fetch -q --depth=1 origin main && git checkout -q FETCH_HEAD -- hosting wrangler.jsonc
+            cp "$RUNNER_TEMP/uz-store.js" hosting/uz-store.js
+            node scripts/uz-parity.mjs d1.sqlite > p.out 2>&1; prc=$?
+            [ $prc = 0 ] && lvl=notice || lvl=error
+            echo "::$lvl title=tenglik (worker D1 ↔ UZ)::$(grep -E 'tenglik|FARQ|fayllar|FAYL|Error' p.out | clean 20 | joined) ."
             rm -f d1.sql d1.sqlite
           fi
 
