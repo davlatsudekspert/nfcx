@@ -113,21 +113,29 @@ export const isWriteSql = (sql) => WRITE_SQL_RE.test(String(sql || ''));
 
 // ── D1 adapter (sqld, Hrana v2 HTTP pipeline) ─────────────────────────
 
-export function uzDb({ url, token, fetch: doFetch = (...a) => fetch(...a) }) {
+// D1 tashqi kalitlarni DOIM tekshiradi (ON DELETE CASCADE ishlaydi),
+// SQLite/sqld esa standart holatda yo'q. Shuning uchun har so'rov oqimi
+// `PRAGMA foreign_keys = ON` bilan boshlanadi — xuddi D1 dagidek.
+// `foreignKeys: false` — faqat ko'chirish vositasi uchun (jadvallar
+// tartibi muhim bo'lmasin).
+export function uzDb({ url, token, fetch: doFetch = (...a) => fetch(...a), foreignKeys = true }) {
   const endpoint = `${String(url).replace(/\/+$/, '')}/v2/pipeline`;
+  const pragma = { type: 'execute', stmt: { sql: `PRAGMA foreign_keys = ${foreignKeys ? 'ON' : 'OFF'}`, want_rows: false } };
 
   async function pipeline(requests) {
     const res = await doFetch(endpoint, {
       method: 'POST',
       headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ baton: null, requests: [...requests, { type: 'close' }] }),
+      body: JSON.stringify({ baton: null, requests: [pragma, ...requests, { type: 'close' }] }),
     });
     if (!res.ok) {
       const text = await res.text().catch(() => '');
       throw new Error(`D1_ERROR: uz-db HTTP ${res.status} ${text.slice(0, 120)}`);
     }
     const body = await res.json();
-    return body.results || [];
+    const results = body.results || [];
+    if (results[0]?.type !== 'ok') throw d1Error(results[0]?.error);
+    return results.slice(1);
   }
 
   const stmtJson = (sql, args) => ({ sql, args: args.map(toHrana), want_rows: true });
@@ -375,6 +383,27 @@ export function uzBucket({ endpoint, bucket, keyId, secret, region = 'garage', f
         httpMetadata, customMetadata, checksums: {}, storageClass: 'Standard',
         writeHttpMetadata(h) { for (const [f, hd] of HTTP_META) if (httpMetadata[f]) h.set(hd, httpMetadata[f]); },
       };
+    },
+
+    // R2 `list` (ListObjectsV2): { objects, truncated, cursor }.
+    async list(options = {}) {
+      const q = new URLSearchParams({ 'list-type': '2', 'max-keys': String(Math.min(Number(options.limit) || 1000, 1000)) });
+      if (options.prefix) q.set('prefix', options.prefix);
+      if (options.cursor) q.set('continuation-token', options.cursor);
+      const query = [...q.entries()].map(([k, v]) => `${s3Encode(k)}=${s3Encode(v)}`).join('&');
+      const url = `${base}?${query}`;
+      const signed = await signV4({ method: 'GET', url, payloadHash: EMPTY_SHA, keyId, secret, region });
+      const res = await doFetch(url, { method: 'GET', headers: signed });
+      if (!res.ok) throw await s3Error(res, 'list');
+      const xml = await res.text();
+      const unxml = (t) => t.replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+      const tag = (src, name) => { const m = new RegExp(`<${name}>([\\s\\S]*?)</${name}>`).exec(src); return m ? unxml(m[1]) : null; };
+      const objects = [...xml.matchAll(/<Contents>([\s\S]*?)<\/Contents>/g)].map(([, c]) => {
+        const etag = String(tag(c, 'ETag') || '').replace(/^"|"$/g, '');
+        return { key: tag(c, 'Key'), size: Number(tag(c, 'Size') || 0), etag, httpEtag: `"${etag}"`, uploaded: new Date(tag(c, 'LastModified') || 0) };
+      });
+      const truncated = tag(xml, 'IsTruncated') === 'true';
+      return { objects, truncated, cursor: truncated ? tag(xml, 'NextContinuationToken') : undefined, delimitedPrefixes: [] };
     },
 
     // R2 kabi: bitta kalit yoki kalitlar massivi; yo'q kalit — xato emas.

@@ -48,6 +48,18 @@ export function s3Fetch({ bucket = 'test-bucket' } = {}) {
     const key = rest.map(decodeURIComponent).join('/');
     const q = u.searchParams;
 
+    if (method === 'GET' && q.get('list-type') === '2') {
+      const prefix = q.get('prefix') || '';
+      const max = Number(q.get('max-keys') || 1000);
+      const after = q.get('continuation-token') || '';
+      const all = [...store.keys()].filter((k) => k.startsWith(prefix) && k > after).sort();
+      const page = all.slice(0, max);
+      const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+      const items = page.map((k) => { const o = store.get(k); return `<Contents><Key>${esc(k)}</Key><Size>${o.bytes.length}</Size><ETag>&quot;${o.etag}&quot;</ETag><LastModified>${o.uploaded.toISOString()}</LastModified></Contents>`; }).join('');
+      const more = all.length > max;
+      return xml(200, `<ListBucketResult><IsTruncated>${more}</IsTruncated>${items}${more ? `<NextContinuationToken>${esc(page[page.length - 1])}</NextContinuationToken>` : ''}</ListBucketResult>`);
+    }
+
     if (method === 'POST' && q.has('uploads')) {
       const id = `up${nextUpload++}`;
       const meta = {};

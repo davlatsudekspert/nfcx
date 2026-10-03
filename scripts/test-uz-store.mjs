@@ -111,10 +111,21 @@ try {
 
   check('json_extract va datetime', await db.prepare(`SELECT json_extract('{"a":{"b":5}}', '$.a.b') AS j, length(datetime('now')) AS l`).first(), { j: 5, l: 19 });
 
+  // D1 kabi tashqi kalitlar: ON DELETE CASCADE va yo'q ota-qator xatosi.
+  await db.batch([
+    db.prepare(`CREATE TABLE ${T}_p (id INTEGER PRIMARY KEY)`),
+    db.prepare(`CREATE TABLE ${T}_c (id INTEGER PRIMARY KEY, pid INTEGER REFERENCES ${T}_p(id) ON DELETE CASCADE)`),
+    db.prepare(`INSERT INTO ${T}_p (id) VALUES (1)`),
+    db.prepare(`INSERT INTO ${T}_c (id, pid) VALUES (10, 1)`),
+  ]);
+  await db.prepare(`DELETE FROM ${T}_p WHERE id = 1`).run();
+  check('FK: ON DELETE CASCADE ishlaydi (D1 kabi)', await db.prepare(`SELECT COUNT(*) AS c FROM ${T}_c`).first('c'), 0);
+  checkTrue('FK: yo‘q ota-qator — FOREIGN KEY xatosi', /FOREIGN KEY constraint failed/i.test(await errOf(db.prepare(`INSERT INTO ${T}_c (id, pid) VALUES (11, 99)`).run()) || ''));
+
   const ex = await db.exec(`UPDATE ${T} SET n = 0 WHERE code = 'E1'; UPDATE ${T} SET n = 1 WHERE code = 'E1'`);
   check('exec: statement soni', ex.count, 2);
 } finally {
-  await db.prepare(`DROP TABLE IF EXISTS ${T}`).run().catch(() => {});
+  for (const t of [`${T}_c`, `${T}_p`, T]) await db.prepare(`DROP TABLE IF EXISTS ${t}`).run().catch(() => {});
 }
 
 // isWriteSql — batch BEGIN turi uchun
@@ -189,6 +200,15 @@ try {
   await ab.uploadPart(1, new Uint8Array(10));
   await ab.abort();
   check('multipart abort: obyekt yo‘q', await bucket.head(k4), null);
+
+  // list: sahifalab (limit 2) — barcha kalitlar, hajmlar bilan
+  const seen = []; let cursor;
+  do {
+    const page = await bucket.list({ prefix: `${P}/`, limit: 2, cursor });
+    seen.push(...page.objects.map((o) => [o.key, o.size]));
+    cursor = page.truncated ? page.cursor : undefined;
+  } while (cursor);
+  check('list: sahifalab hamma kalit', seen.sort(), [[k1, 1000], [k2, 5], [k3, big.length]].sort());
 
   await bucket.delete(k1);
   check('delete: o‘chdi', await bucket.head(k1), null);

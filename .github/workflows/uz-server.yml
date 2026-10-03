@@ -8,11 +8,11 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: "status = faqat tekshirish, setup = sozlash (qayta ishga tushirish xavfsiz), log = oxirgi sozlash jurnali, test = adapterlarni haqiqiy serverda sinash"
+        description: "status = faqat tekshirish, setup = sozlash (qayta ishga tushirish xavfsiz), log = oxirgi sozlash jurnali, test = adapterlarni haqiqiy serverda sinash, probe = Cloudflare'dagi ma'lumotlar hajmi (faqat o'qish), copy-media = R2 → UZ, copy-db = D1 → UZ (sinov nusxasi)"
         required: true
         default: status
         type: choice
-        options: [status, setup, log, test]
+        options: [status, setup, log, test, probe, copy-media, copy-db]
 
 permissions:
   contents: read
@@ -28,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        if: ${{ inputs.action == 'test' }}
+        if: ${{ inputs.action != 'status' && inputs.action != 'setup' && inputs.action != 'log' }}
         with:
           node-version: 22
 
@@ -37,6 +37,8 @@ jobs:
           SSHPASS: ${{ secrets.UZ_VPS_PASSWORD }}
           HOST: ${{ secrets.UZ_VPS_HOST }}
           ACTION: ${{ inputs.action }}
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: 31c4b3d8ece4b65de515debc4552334a
         run: |
           set -uo pipefail
           [ -n "$HOST" ] && [ -n "$SSHPASS" ] || { echo "::error::UZ_VPS_HOST / UZ_VPS_PASSWORD secretlari yo'q"; exit 1; }
@@ -112,6 +114,46 @@ jobs:
               node scripts/test-uz-store.mjs > t.out 2>&1; trc=$?
             if [ "$trc" = 0 ]; then lvl=notice; else lvl=error; fi
             echo "::$lvl title=uz-store test::$(grep -E 'FAIL|passed|baza|actual|expected|Error' t.out | clean 40 | joined)"
+          fi
+
+          # ── KO'CHIRISH (Cloudflare'da faqat O'QISH — hech narsa o'chirilmaydi) ──
+          case "$ACTION" in probe|copy-media|copy-db)
+            export CF_API_TOKEN="$CF_TOKEN" CF_ACCOUNT CLOUDFLARE_API_TOKEN="$CF_TOKEN" CLOUDFLARE_ACCOUNT_ID="$CF_ACCOUNT"
+            [ -n "$CF_TOKEN" ] || { echo "::error::CLOUDFLARE_API_TOKEN secret yo'q"; exit 1; }
+            DBT=$(R '. /srv/nfcstore/secrets.env && printf %s "$DB_TOKEN"')
+            S3K=$(R '. /srv/nfcstore/s3.env && printf %s "$S3_KEY_ID"')
+            S3S=$(R '. /srv/nfcstore/s3.env && printf %s "$S3_SECRET"')
+            for v in "$DBT" "$S3K" "$S3S"; do [ -n "$v" ] && echo "::add-mask::$v"; done
+            export UZ_DB_URL=https://db.nfcstore.uz UZ_DB_TOKEN="$DBT" UZ_S3_ENDPOINT=https://s3.nfcstore.uz \
+              UZ_S3_BUCKET=nfcstore-uploads UZ_S3_KEY_ID="$S3K" UZ_S3_SECRET="$S3S"
+            W="npx --yes wrangler@4.129.0"
+            mig() { node scripts/uz-migrate.mjs "$@" > m.out 2>&1; local rc=$?; [ $rc = 0 ] && lvl=notice || lvl=error
+              echo "::$lvl title=$1::$(clean 30 < m.out | joined)"; return $rc; }
+            # Jonli sayt O'zbekiston bazasiga o'tgan bo'lsa (UZ_STORE secret bor) —
+            # D1 dan qayta yozish TAQIQLANADI: yangi ma'lumotlar ustidan eski yozilmasin.
+            # Tekshirib bo'lmasa ham — xavfsiz tomonga: "jonli" deb hisoblanadi.
+            live() { $W secret list --name nfcstore-uz > sl.json 2>/dev/null || return 0; grep -q '"UZ_STORE"' sl.json; }
+          esac
+          if [ "$ACTION" = probe ]; then
+            $W d1 execute DB --remote --json --command "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%'" > t.json 2> w.err \
+              && echo "::notice title=D1::jadvallar: $(python3 -c "import json;print(len(json.load(open('t.json'))[0]['results']))")" \
+              || echo "::error title=D1 (wrangler)::$(clean 6 < w.err | joined)"
+            $W d1 info DB --json > i.json 2>/dev/null && echo "::notice title=D1 info::$(python3 -c "import json;d=json.load(open('i.json'));print({k:d.get(k) for k in ('database_size','num_tables','running_in_region','version')})")"
+            mig r2-probe || true
+            live && echo "::warning title=UZ_STORE::jonli sayt allaqachon UZ bazasida" || echo "::notice title=UZ_STORE::hali yoqilmagan (sayt D1/R2 da)"
+          fi
+          if [ "$ACTION" = copy-media ]; then
+            mig r2-copy && mig r2-verify || exit 1
+          fi
+          if [ "$ACTION" = copy-db ]; then
+            if live; then echo "::error title=copy-db::UZ_STORE yoqilgan — jonli bazani D1 nusxasi bilan almashtirish taqiqlangan"; exit 1; fi
+            R '/usr/local/bin/nfcstore-backup' > /dev/null 2>&1 || true
+            $W d1 export DB --remote --output d1.sql > w.out 2>&1 || { echo "::error title=D1 export::$(clean 10 < w.out | joined)"; exit 1; }
+            node -e "const {DatabaseSync}=require('node:sqlite');const fs=require('fs');const d=new DatabaseSync('d1.sqlite');d.exec(fs.readFileSync('d1.sql','utf8'));" 2> l.err \
+              || { echo "::error title=D1 dump yuklash::$(clean 10 < l.err | joined)"; exit 1; }
+            echo "::notice title=D1 export::$(wc -c < d1.sql) bayt SQL"
+            mig db-import d1.sqlite --replace || exit 1
+            rm -f d1.sql d1.sqlite
           fi
 
           R 'uptime -p; df -h / | tail -1 | awk "{print \"disk: \"\$3\" / \"\$2\" (\"\$5\")\"}"; free -m | awk "/Mem:/{print \"ram: \"\$3\"MB / \"\$2\"MB\"}"; docker ps --format "{{.Names}}: {{.Status}}" 2>/dev/null || echo "docker: yoq"' \
