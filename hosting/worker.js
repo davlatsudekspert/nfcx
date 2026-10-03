@@ -2515,16 +2515,24 @@ async function ensureCoreSchema(env) {
   // bajarilishi shart. Parallel qo'yilganda toza bazada ALTER jadval
   // hali yo'q paytda ishga tushib, jimgina yiqilardi va ustun umuman
   // qo'shilmasdi (aynan shu ikki testda chiqdi).
-  await ensureCardCompanyColumn(env);
-  await ensureCardLikeCompanyColumn(env);
-  await ensureTrialColumns(env);
-  await ensureSignupSourceColumn(env);
+  //
   // web_orders itself is created just above (inside the shared batch) —
-  // this must run AFTER it, not before, or the ALTER TABLE below would
-  // target a table that doesn't exist yet on a fresh DB and silently
-  // no-op (swallowed by its own .catch), leaving the columns missing.
-  await ensureWebOrderTimestampColumns(env);
-  await ensureCardSourceColumn(env);
+  // ensureWebOrderTimestampColumns must run AFTER it, not before, or the
+  // ALTER TABLE would target a table that doesn't exist yet on a fresh DB
+  // and silently no-op (swallowed by its own .catch).
+  //
+  // Oltitasi bir-biriga bog'liq emas (har biri boshqa ustun) — batch'dan
+  // KEYIN, lekin o'zaro PARALLEL: O'zbekiston serverida har ketma-ket
+  // `await` alohida tashqi so'rov, parallellari esa bitta so'rovga
+  // birlashadi (Workers Free: so'rovga 50 ta chegara).
+  await Promise.all([
+    ensureCardCompanyColumn(env),
+    ensureCardLikeCompanyColumn(env),
+    ensureTrialColumns(env),
+    ensureSignupSourceColumn(env),
+    ensureWebOrderTimestampColumns(env),
+    ensureCardSourceColumn(env),
+  ]);
   // Tarmoq xatosi bo'lgan bo'lsa (ALTER'lar .catch bilan yutiladi) belgi
   // YOZILMAYDI — keyingi isolate tekshiruvni qaytadan to'liq bajaradi.
   if (coreSchemaMarkerOn(env) && !coreSchemaMarkerWritten && uzDbNetErrors() === coreSchemaNetBaseline) {

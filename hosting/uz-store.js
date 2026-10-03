@@ -129,7 +129,17 @@ export function uzDb({ url, token, fetch: doFetch = (...a) => fetch(...a), forei
   const endpoint = `${String(url).replace(/\/+$/, '')}/v2/pipeline`;
   const pragma = { type: 'execute', stmt: { sql: `PRAGMA foreign_keys = ${foreignKeys ? 'ON' : 'OFF'}`, want_rows: false } };
 
-  async function pipeline(requests) {
+  // BIR HTTP SO'ROVGA BIRLASHTIRISH. Cloudflare bitta Worker so'roviga
+  // tashqi so'rovlar sonini cheklaydi (Free: 50). Bir vaqtda (parallel
+  // promise'lardan) kelgan statement'lar navbatga yig'iladi va bitta
+  // pipeline bilan yuboriladi. Har biri pipeline'da MUSTAQIL so'rov —
+  // natijasi va xatosi alohida; tranzaksiya (batch) bitta so'rov ichida
+  // yaxlit qoladi, boshqalar unga aralashmaydi.
+  const MAX_PER_HTTP = 60;
+  let queue = [];
+  let scheduled = false;
+
+  async function send(requests) {
     let res;
     try {
       res = await doFetch(endpoint, {
@@ -150,6 +160,30 @@ export function uzDb({ url, token, fetch: doFetch = (...a) => fetch(...a), forei
     const results = body.results || [];
     if (results[0]?.type !== 'ok') throw d1Error(results[0]?.error);
     return results.slice(1);
+  }
+
+  function flush() {
+    scheduled = false;
+    while (queue.length) {
+      const group = [];
+      let size = 0;
+      while (queue.length && (!group.length || size + queue[0].requests.length <= MAX_PER_HTTP)) {
+        const item = queue.shift();
+        group.push(item);
+        size += item.requests.length;
+      }
+      send(group.flatMap((g) => g.requests)).then((results) => {
+        let k = 0;
+        for (const g of group) { g.resolve(results.slice(k, k + g.requests.length)); k += g.requests.length; }
+      }, (err) => { for (const g of group) g.reject(err); });
+    }
+  }
+
+  function pipeline(requests) {
+    return new Promise((resolve, reject) => {
+      queue.push({ requests, resolve, reject });
+      if (!scheduled) { scheduled = true; setTimeout(flush, 0); }
+    });
   }
 
   const stmtJson = (sql, args) => ({ sql, args: args.map(toHrana), want_rows: true });
