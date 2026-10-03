@@ -46,10 +46,12 @@ jobs:
           joined() { sed -e 's/%/%25/g' -e 's/\r//g' | sed ':a;N;$!ba;s/\n/%0A/g'; }
 
           # Diagnostika: port ochiqmi va SSH nima deydi (xabarlarda maxfiy narsa yo'q).
+          ports=""
           for p in 22 80 443; do
-            if timeout 8 bash -c "echo > /dev/tcp/$HOST/$p" 2>/dev/null; then st=ochiq; else st="yopiq/javob yo'q"; fi
-            echo "::notice title=Port $p::$st"
+            if timeout 8 bash -c "echo > /dev/tcp/$HOST/$p" 2>/dev/null; then st=ochiq; else st="yopiq"; fi
+            ports="$ports $p:$st"
           done
+          echo "::notice title=Portlar::$ports"
           printf '%s' "$SSHPASS" | grep -q '[[:space:]]' && echo "::warning title=Parol::secret qiymatida probel yoki yangi qator bor"
           if ! R 'echo ok' > ssh.out 2>&1; then
             tail -n 3 ssh.out | grep -viE 'password|parol' | while IFS= read -r l; do echo "::error title=SSH javobi::$l"; done
@@ -93,7 +95,8 @@ jobs:
           fi
 
           R 'uptime -p; df -h / | tail -1 | awk "{print \"disk: \"\$3\" / \"\$2\" (\"\$5\")\"}"; free -m | awk "/Mem:/{print \"ram: \"\$3\"MB / \"\$2\"MB\"}"; docker ps --format "{{.Names}}: {{.Status}}" 2>/dev/null || echo "docker: yoq"' \
-            | while IFS= read -r l; do echo "::notice title=VPS::$l"; done
+            > vps.out 2>&1 || true
+          echo "::notice title=VPS::$(clean 20 < vps.out | joined)"
 
           TOKEN=$(R '[ -f /srv/nfcstore/secrets.env ] && . /srv/nfcstore/secrets.env && printf %s "${DB_TOKEN:-}"' 2>/dev/null || true)
           [ -n "$TOKEN" ] && echo "::add-mask::$TOKEN"
