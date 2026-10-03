@@ -20,7 +20,7 @@
 // UZ_EXPORT_URL (https://nfcstore.uz/__uz/export), UZ_EXPORT_KEY — vaqtinchalik.
 import { DatabaseSync } from 'node:sqlite';
 import { createHash } from 'node:crypto';
-import { uzDb, uzBucket, rowLiteralSql, rowDigestSql } from '../hosting/uz-store.js';
+import { uzDb, uzBucket, rowColumnsSql, rowPairs, digestPairs, insertForPairs } from '../hosting/uz-store.js';
 
 const E = process.env;
 const [cmd, ...args] = process.argv.slice(2);
@@ -269,17 +269,15 @@ function tableColumns(local, table) {
   return local.prepare(`PRAGMA table_xinfo(${qid(table)})`).all().filter((c) => !c.hidden).map((c) => c.name);
 }
 
-// Qator xeshi uchun SQL — Worker eksportidagi bilan AYNAN bir xil (uz-store.js):
-// TEXT hex orqali (NUL bayt ham hisobga olinadi), qolgani quote().
+// Qator xeshi — Worker eksportidagi bilan AYNAN bir xil (uz-store.js):
+// ustunma-ustun tur + qiymat, JS da SHA-256 (D1 ning 2 MB satr chegarasi yo'q).
 function rowsSql(table, cols) {
-  return `SELECT ${rowDigestSql(cols)} AS q FROM ${qid(table)} ORDER BY ${cols.map(qid).join(', ')}`;
+  return `SELECT ${rowColumnsSql(cols)} FROM ${qid(table)} ORDER BY ${cols.map(qid).join(', ')}`;
 }
 
 async function tableDigest(run, table, cols) {
   const rows = await run(rowsSql(table, cols));
-  const h = createHash('sha256');
-  for (const r of rows) h.update(`${r.q}\n`);
-  return { count: rows.length, sha: h.digest('hex') };
+  return { count: rows.length, sha: await digestPairs(rows.map((r) => rowPairs(r, cols.length))) };
 }
 
 async function compare(local, target) {
@@ -365,17 +363,15 @@ async function dbImport(file) {
     const rowidAlias = pk.length === 1 && /^integer$/i.test(pk[0].type);
     // Yashirin rowid ham saqlansin (INTEGER PRIMARY KEY bo'lmagan jadvallarda).
     const keepRowid = !withoutRowid && !rowidAlias;
-    const insCols = keepRowid ? ['rowid', ...cols] : cols;
-    const sel = `SELECT ${keepRowid ? `quote(rowid) || ',' || ` : ''}${rowLiteralSql(cols)} AS q FROM ${qid(name)}`;
-    const head = `INSERT INTO ${qid(name)} (${insCols.map((c) => (c === 'rowid' ? 'rowid' : qid(c))).join(', ')}) VALUES `;
+    const sel = `SELECT ${keepRowid ? 'quote(rowid) AS _rq, ' : ''}${rowColumnsSql(cols)} FROM ${qid(name)}`;
     let chunk = [];
     const flush = async () => {
       if (!chunk.length) return;
-      await target.batch(chunk.map((v) => target.prepare(`${head}(${v})`)));
+      await target.batch(chunk.map(({ sql, args }) => target.prepare(sql).bind(...args)));
       chunk = [];
     };
     for (const r of local.prepare(sel).iterate()) {
-      chunk.push(r.q);
+      chunk.push(insertForPairs(name, cols, rowPairs(r, cols.length), keepRowid ? r._rq : null));
       total++;
       if (chunk.length >= 200) await flush();
     }
@@ -414,16 +410,18 @@ async function dbVerify(file) {
 async function exp(params) {
   const u = new URL(E.UZ_EXPORT_URL || 'https://nfcstore.uz/__uz/export');
   for (const [k, v] of Object.entries(params)) u.searchParams.set(k, String(v));
-  for (let attempt = 1; ; attempt++) {
-    const res = await fetch(u, { headers: { 'x-uz-export-key': E.UZ_EXPORT_KEY, 'cache-control': 'no-cache' } });
+  let last = '';
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const res = await fetch(u, { headers: { 'x-uz-export-key': E.UZ_EXPORT_KEY, 'cache-control': 'no-cache' }, signal: AbortSignal.timeout(120_000) }).catch((e) => ({ ok: false, status: 0, text: async () => String(e?.message || e) }));
     if (res.ok) {
       const body = await res.json();
       if (body.error) throw new Error(`eksport: ${body.error} ${body.detail || ''}`);
       return body;
     }
-    if (attempt >= 4) throw new Error(`eksport HTTP ${res.status} (${params.op} ${params.table || ''})`);
-    await new Promise((r) => setTimeout(r, 3000 * attempt));
+    last = `HTTP ${res.status} ${(await res.text().catch(() => '')).slice(0, 300)}`;
+    await new Promise((r) => setTimeout(r, 2000 * attempt));
   }
+  throw new Error(`eksport ${last} (${params.op} ${params.table || ''} limit=${params.limit ?? ''})`);
 }
 
 async function d1Pull(file) {
@@ -440,13 +438,24 @@ async function d1Pull(file) {
     const pk = info.filter((c) => c.pk);
     const rowidAlias = pk.length === 1 && /^integer$/i.test(pk[0].type);
     let cursor = {};
+    let limit = 500;
     local.exec('BEGIN');
     for (;;) {
-      const page = await exp({ op: 'rows', table: t.name, limit: 2000, ...cursor });
+      let page;
+      // Sahifa yiqilsa (katta qatorlar) — kichraytirib qayta: 500 → 125 → 31 → 7 → 1.
+      for (;;) {
+        try { page = await exp({ op: 'rows', table: t.name, limit, ...cursor }); break; } catch (e) {
+          if (limit === 1) throw e;
+          limit = Math.max(1, Math.floor(limit / 4));
+        }
+      }
       if (JSON.stringify(page.cols) !== JSON.stringify(cols)) throw new Error(`${t.name}: ustunlar o'zgardi`);
       const keepRowid = page.rowid && !rowidAlias;
-      const head = `INSERT INTO ${qid(t.name)} (${[...(keepRowid ? ['rowid'] : []), ...cols.map(qid)].join(', ')}) VALUES `;
-      for (const [rq, q] of page.rows) { local.exec(`${head}(${keepRowid ? `${rq},` : ''}${q})`); total++; }
+      for (const [rq, pairs] of page.rows) {
+        const { sql, args } = insertForPairs(t.name, cols, pairs, keepRowid ? rq : null);
+        local.prepare(sql).run(...args);
+        total++;
+      }
       if (page.next == null) break;
       cursor = page.rowid ? { after: page.next } : { offset: page.next };
     }
