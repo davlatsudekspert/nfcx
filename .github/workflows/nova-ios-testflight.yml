@@ -30,7 +30,50 @@ permissions:
   contents: read
 
 jobs:
+  # TESTLAR — Android CI (nova-apk.yml) bilan bir xil muhitda (Linux).
+  # Hamma test o'tmasa imzolangan build boshlanmaydi.
+  tests:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: mobile_nova
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/vibrant-einstein-p5lo1i
+      - uses: actions/checkout@v4
+        with:
+          path: self
+      - name: iOS patch'lari
+        working-directory: .
+        run: |
+          set -euo pipefail
+          git config user.name "NFCSTORE CI"
+          git config user.email "ci@nfcstore.uz"
+          git am --3way self/ci/nova-ios-patches/*.patch
+          git log --oneline -5
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.35.5
+          channel: stable
+          cache: true
+      - name: Analyze va testlar
+        run: |
+          set -euo pipefail
+          flutter pub get --enforce-lockfile
+          flutter analyze --no-fatal-infos
+          if ! flutter test --reporter=expanded > "$RUNNER_TEMP/test.log" 2>&1; then
+            grep -B4 -A60 -E "EXCEPTION CAUGHT|Expected:|\[E\]" "$RUNNER_TEMP/test.log" | head -300
+            tail -5 "$RUNNER_TEMP/test.log"
+            exit 1
+          fi
+          tail -3 "$RUNNER_TEMP/test.log"
+          echo "- testlar: $(tail -1 "$RUNNER_TEMP/test.log" | grep -o '+[0-9]*' | head -1) o'tdi (Linux)" >> "$GITHUB_STEP_SUMMARY"
+
   signed:
+    needs: tests
     if: github.event_name == 'workflow_dispatch'
     runs-on: macos-15
     timeout-minutes: 75
@@ -241,18 +284,6 @@ jobs:
           set -euo pipefail
           xcodebuild -version
           flutter pub get --enforce-lockfile
-
-      # Ulashilgan Flutter kod (Android ham) — hamma test o'tmasa build yo'q.
-      - name: Analyze va testlar
-        run: |
-          set -euo pipefail
-          flutter analyze --no-fatal-infos
-          if ! flutter test --reporter=expanded > "$RUNNER_TEMP/test.log" 2>&1; then
-            grep -B4 -A60 -E "EXCEPTION CAUGHT|Expected:|\[E\]" "$RUNNER_TEMP/test.log" | head -300
-            tail -5 "$RUNNER_TEMP/test.log"
-            exit 1
-          fi
-          tail -3 "$RUNNER_TEMP/test.log"
 
       # ---- nova-testflight.yml dan (ishlagan) ----
       - name: Imzo sertifikati va profil
