@@ -111,6 +111,12 @@ def main():
             f"{r.get('status')}:{'/'.join(r.get('versionCodes', []) or ['-'])}"
             for r in t.get("releases", [])) or "bo'sh"
         print(f"  {t['track']}: {rel}")
+        # Annotatsiya — GitHub API'dan ham o'qiladi (loglar yuklab olinmaydigan
+        # muhitlarda treklar holatini ko'rish uchun). Faqat trek nomi, holat
+        # va versionCode — maxfiy narsa yo'q.
+        names = "; ".join(f"{r.get('name') or '-'} [{r.get('status')}]"
+                          for r in t.get("releases", [])) or "bo'sh"
+        print(f"::notice title=Play trek {t['track']}::{rel} | {names}")
 
     if mode != "upload":
         s.delete(f"{API}/edits/{edit}")
