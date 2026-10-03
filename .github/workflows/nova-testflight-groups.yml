@@ -1,0 +1,132 @@
+# NFCSTORE (uz.nfcstore.nova) — TestFlight build holati va internal guruh.
+#
+# Faqat TestFlight: build holatini o'qiydi, internal guruh(lar)ga
+# biriktirilganini tekshiradi va bo'lmasa biriktiradi. App Store
+# review'ga yuborish yoki reliz chaqiruvlari YO'Q.
+name: NFCSTORE TestFlight internal guruh
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_number:
+        description: "Build raqami (masalan 303)"
+        required: true
+      group:
+        description: "Internal guruh nomi (bo'sh — hamma internal guruh)"
+        required: false
+        default: 'NFCSTORE Internal'
+  # Ro'yxatdan o'tkazish uchun; push'da job ishlamaydi.
+  push:
+    branches: [claude/wizardly-einstein-8cx2p4]
+    paths: [.github/workflows/nova-testflight-groups.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  groups:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      IOS_BUNDLE_ID: uz.nfcstore.nova
+      BUILD: ${{ inputs.build_number }}
+      GROUP: ${{ inputs.group }}
+    steps:
+      - name: TestFlight
+        env:
+          API_KEY_ID: ${{ secrets.NOVA_APPSTORE_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.NOVA_APPSTORE_ISSUER_ID }}
+          API_PRIVATE_KEY: ${{ secrets.NOVA_APPSTORE_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          umask 077
+          KEYFILE="$RUNNER_TEMP/key.p8"
+          if printf '%s' "$API_PRIVATE_KEY" | grep -q 'BEGIN PRIVATE KEY'; then
+            printf '%s\n' "$API_PRIVATE_KEY" > "$KEYFILE"
+          else
+            BODY=$(printf '%s' "$API_PRIVATE_KEY" | tr -d ' \r\n')
+            if printf '%s' "$BODY" | base64 --decode | grep -aq 'BEGIN PRIVATE KEY'; then
+              printf '%s' "$BODY" | base64 --decode > "$KEYFILE"
+            else
+              { echo '-----BEGIN PRIVATE KEY-----'; printf '%s\n' "$BODY" | fold -w 64; echo '-----END PRIVATE KEY-----'; } > "$KEYFILE"
+            fi
+          fi
+          pip install --quiet pyjwt cryptography
+          ASC_KEY_FILE="$KEYFILE" python3 - <<'PY'
+          import json, os, sys, time, urllib.error, urllib.parse, urllib.request
+          import jwt
+          KEY = open(os.environ['ASC_KEY_FILE']).read()
+          def tok():
+              n = int(time.time())
+              return jwt.encode({'iss': os.environ['API_ISSUER_ID'], 'iat': n, 'exp': n + 1100,
+                                 'aud': 'appstoreconnect-v1'}, KEY, algorithm='ES256',
+                                headers={'kid': os.environ['API_KEY_ID'], 'typ': 'JWT'})
+          def call(method, path, params=None, body=None):
+              url = 'https://api.appstoreconnect.apple.com' + path
+              if params: url += '?' + urllib.parse.urlencode(params)
+              data = json.dumps(body).encode() if body is not None else None
+              req = urllib.request.Request(url, data=data, method=method, headers={
+                  'Authorization': 'Bearer ' + tok(), 'Content-Type': 'application/json'})
+              try:
+                  with urllib.request.urlopen(req, timeout=60) as r:
+                      raw = r.read()
+                      return json.loads(raw) if raw else {}
+              except urllib.error.HTTPError as e:
+                  print(f'::error::{method} {path} -> {e.code}: {e.read().decode()[:500]}')
+                  sys.exit(1)
+          def summary(s):
+              open(os.environ['GITHUB_STEP_SUMMARY'], 'a').write(s + '\n'); print(s)
+
+          bundle, num, want = os.environ['IOS_BUNDLE_ID'], os.environ['BUILD'], os.environ['GROUP'].strip()
+          app = [a for a in call('GET', '/v1/apps', {'filter[bundleId]': bundle})['data']
+                 if a['attributes']['bundleId'] == bundle][0]
+          build = None
+          deadline = time.time() + 1800
+          while time.time() < deadline:
+              d = call('GET', '/v1/builds', {'filter[app]': app['id'], 'filter[version]': num,
+                                             'include': 'preReleaseVersion'})
+              if d['data']:
+                  build = d['data'][0]
+                  st = build['attributes']['processingState']
+                  print('processingState:', st)
+                  if st != 'PROCESSING': break
+              else:
+                  print("build hali ko'rinmadi")
+              time.sleep(30)
+          if not build:
+              print(f'::error::build {num} topilmadi'); sys.exit(1)
+          a = build['attributes']
+          ver = next((i['attributes']['version'] for i in build.get('included', [])
+                      if i['type'] == 'preReleaseVersions'), '?')
+          bd = call('GET', f"/v1/builds/{build['id']}/buildBetaDetail")['data']['attributes']
+          summary(f"## {bundle} {ver} ({num})\n- processingState: **{a['processingState']}**"
+                  f"\n- expired: {a.get('expired')}\n- usesNonExemptEncryption: {a.get('usesNonExemptEncryption')}"
+                  f"\n- internalBuildState: **{bd.get('internalBuildState')}**")
+          if a['processingState'] != 'VALID':
+              print('::error::build VALID emas'); sys.exit(1)
+
+          groups = call('GET', f"/v1/apps/{app['id']}/betaGroups", {'limit': 50})['data']
+          internal = [g for g in groups if g['attributes'].get('isInternalGroup')]
+          summary('### Internal guruhlar')
+          for g in internal:
+              ga = g['attributes']
+              testers = call('GET', f"/v1/betaGroups/{g['id']}/betaTesters", {'limit': 200})['data']
+              summary(f"- {ga['name']}: testerlar={len(testers)}, hasAccessToAllBuilds={ga.get('hasAccessToAllBuilds')}")
+          targets = [g for g in internal if not want or g['attributes']['name'] == want]
+          if not targets:
+              print(f"::error::'{want}' internal guruhi topilmadi; mavjud: {[g['attributes']['name'] for g in internal]}")
+              sys.exit(1)
+          for g in targets:
+              have = call('GET', f"/v1/betaGroups/{g['id']}/builds", {'limit': 200})['data']
+              if any(b['id'] == build['id'] for b in have):
+                  summary(f"- build {num} allaqachon '{g['attributes']['name']}' guruhida")
+              elif g['attributes'].get('hasAccessToAllBuilds'):
+                  summary(f"- '{g['attributes']['name']}' barcha buildlarga avtomatik ega (hasAccessToAllBuilds)")
+              else:
+                  call('POST', f"/v1/betaGroups/{g['id']}/relationships/builds",
+                       body={'data': [{'type': 'builds', 'id': build['id']}]})
+                  summary(f"- build {num} '{g['attributes']['name']}' guruhiga biriktirildi")
+          bd = call('GET', f"/v1/builds/{build['id']}/buildBetaDetail")['data']['attributes']
+          summary(f"- internalBuildState (yakuniy): **{bd.get('internalBuildState')}**")
+          PY
