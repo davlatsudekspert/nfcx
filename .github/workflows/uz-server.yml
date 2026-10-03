@@ -226,12 +226,15 @@ jobs:
             KF=(-H "x-uz-export-key: $UZ_EXPORT_KEY" -H "x-uz-force: 1" -H 'cache-control: no-cache')
             CODE=$(node -e "import('./hosting/uz-store.js').then(async m=>{const d=m.uzDb({url:process.env.UZ_DB_URL,token:process.env.UZ_DB_TOKEN});console.log(await d.prepare('SELECT code FROM cards WHERE code IS NOT NULL AND user_id IS NOT NULL ORDER BY ts DESC LIMIT 1').first('code')||'')}).catch(()=>console.log(''))")
             UP=$(node -e "import('./hosting/uz-store.js').then(async m=>{const b=m.uzBucket({endpoint:process.env.UZ_S3_ENDPOINT,bucket:process.env.UZ_S3_BUCKET,keyId:process.env.UZ_S3_KEY_ID,secret:process.env.UZ_S3_SECRET});const l=await b.list({prefix:'uploads/',limit:1});console.log(l.objects[0]?.key||'')}).catch(()=>console.log(''))")
+            # Haqiqiy UZ ma'lumotida har sahifa nechta tashqi so'rov qiladi (Node'da, jonli saytga tegmaydi).
+            node scripts/uz-subrequests.mjs /api/feed ${CODE:+/$CODE} ${CODE:+/$CODE} ${UP:+/$UP} /api/feed > c.out 2>&1
+            echo "::notice title=dryrun so'rovlar soni (Node, haqiqiy UZ)::$(grep '→' c.out | clean 10 | joined) ."
             hit() { local c; c=$(curl -s --max-time 40 -o b.out -D h.out -w '%{http_code} %{time_total}s' "${KF[@]}" "$1") || c="000 $c"
               local d; d=$(grep -i '^x-nfc-data:' h.out | tr -d '\r' | cut -d' ' -f2)
               printf '%s → %s data=%s' "$2" "$c" "${d:-d1}"
               case "$c" in 200*|206*) [ "${2%-2}" = ping ] && printf ' %s' "$(head -c 400 b.out)";; *) printf ' | %s' "$(head -c 300 b.out | tr -d '\r\n')";; esac; echo; }
             {
-              hit "https://nfcstore.uz/__uz/ping?probe=1&_=d1" ping
+              hit "https://nfcstore.uz/__uz/ping?probe=1&key=$UP&_=d1" ping
               hit "https://nfcstore.uz/api/feed?_=d2" api/feed
               [ -n "$CODE" ] && hit "https://nfcstore.uz/$CODE?_=d3" profil || echo "profil → kod topilmadi"
               [ -n "$UP" ] && hit "https://nfcstore.uz/$UP" fayl || echo "fayl → UZ omborida topilmadi"
@@ -241,7 +244,7 @@ jobs:
             # Hamma qator 200/206 va data=uz bo'lishi, ping'da xato bo'lmasligi shart.
             if [ -s d.out ] && ! grep -vE '→ (200|206) [^ ]+ data=uz' d.out | grep -q . && ! grep -q 'xato' d.out; then lvl=notice; else lvl=error; fi
             echo "::$lvl title=dryrun (jonli Worker → UZ)::$(clean 20 < d.out | joined) ."
-            rm -f b.out h.out d.out
+            rm -f b.out h.out d.out c.out
             [ $lvl = notice ] || exit 1
           fi
 

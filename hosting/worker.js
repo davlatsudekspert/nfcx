@@ -11200,6 +11200,8 @@ export default {
         out.db = await env.DB.prepare('SELECT 1 AS one').first('one').then((v) => `ok ${v} ${Date.now() - t0}ms`, (e) => `xato: ${String(e?.message || e).slice(0, 200)}`);
         const t1 = Date.now();
         out.bucket = await env.UPLOADS.list({ prefix: 'uploads/', limit: 1 }).then((l) => `ok ${l.objects.length} ${Date.now() - t1}ms`, (e) => `xato: ${String(e?.message || e).slice(0, 200)}`);
+        const key = url.searchParams.get('key');
+        if (key) out.head = await env.UPLOADS.head(key).then((h) => (h ? `ok ${h.size}` : 'null'), (e) => `xato: ${String(e?.message || e).slice(0, 200)}`);
       }
       return withSecurityHeaders(json(out), url, env.UZ_STORE_ACTIVE ? 'uz' : '');
     }
