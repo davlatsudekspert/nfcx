@@ -8,7 +8,7 @@
 // Haqiqiy serverda faqat vaqtinchalik `_uz_conformance_*` jadvali va
 // `_uz_conformance/` kalitlari ishlatiladi, oxirida o'chiriladi.
 import { DatabaseSync } from 'node:sqlite';
-import { uzDb, uzBucket, signV4, isWriteSql, withUzStores } from '../hosting/uz-store.js';
+import { uzDb, uzBucket, signV4, isWriteSql, withUzStores, handleUzExport, uzMaintenance, maintenanceResponse } from '../hosting/uz-store.js';
 import { hranaFetch } from './lib/hrana-fake.mjs';
 import { s3Fetch } from './lib/s3-fake.mjs';
 
@@ -229,6 +229,46 @@ try {
   checkTrue('yoqilgan — DB adapter', typeof w.DB.prepare === 'function' && w.DB !== base.DB);
   checkTrue('yoqilgan — UPLOADS adapter', typeof w.UPLOADS.createMultipartUpload === 'function');
   check('bir marta o‘raladi (kesh)', withUzStores(fullEnv) === w, true);
+}
+
+// ── D1 eksporti (vaqtinchalik kalit bilan) ───────────────────────────
+{
+  const sq = new DatabaseSync(':memory:');
+  sq.exec(`CREATE TABLE p (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, score REAL);
+    INSERT INTO p (name, score) VALUES ('Ali', 1.0), ('Вали', 2.5), (NULL, NULL);
+    CREATE TABLE w (k TEXT PRIMARY KEY, v BLOB) WITHOUT ROWID; INSERT INTO w VALUES ('a', X'01'), ('b', NULL);`);
+  const run = (sql, a) => { const st = sq.prepare(sql); return st.columns().length ? { results: st.all(...a).map((r) => ({ ...r })) } : (st.run(...a), { results: [] }); };
+  const st = (sql, a = []) => ({ bind: (...b) => st(sql, b), all: async () => run(sql, a) });
+  const D = { prepare: (sql) => st(sql) };
+  const KEY = 'k'.repeat(40);
+  const call = (path, key, env = { DB: D, UZ_EXPORT_KEY: KEY }) => handleUzExport(new Request(`https://nfcstore.uz${path}`, { headers: key ? { 'x-uz-export-key': key } : {} }), env);
+  check('eksport: boshqa yo‘l — null', await call('/api/feed', KEY), null);
+  check('eksport: kalitsiz — 404', (await call('/__uz/export?op=schema')).status, 404);
+  check('eksport: noto‘g‘ri kalit — 404', (await call('/__uz/export?op=schema', 'x'.repeat(40))).status, 404);
+  check('eksport: secret qisqa/yo‘q — 404 (o‘chiq)', (await call('/__uz/export?op=schema', 'short', { DB: D, UZ_EXPORT_KEY: 'short' })).status, 404);
+  const sc = await (await call('/__uz/export?op=schema', KEY)).json();
+  check('eksport: sxema jadvallari', sc.master.filter((r) => r.type === 'table').map((r) => r.name), ['p', 'w']);
+  check('eksport: ustunlar', sc.columns.p, ['id', 'name', 'score']);
+  check('eksport: AUTOINCREMENT', sc.sequence, [{ name: 'p', seq: 3 }]);
+  const r1 = await (await call('/__uz/export?op=rows&table=p&limit=2', KEY)).json();
+  check('eksport: qatorlar quote() bilan, sahifa', r1.rows, [['1', "1,'Ali',1.0"], ['2', "2,'Вали',2.5"]]);
+  const r2 = await (await call(`/__uz/export?op=rows&table=p&limit=2&after=${r1.next}`, KEY)).json();
+  check('eksport: keyingi sahifa', [r2.rows, r2.next], [[['3', '3,NULL,NULL']], null]);
+  const r3 = await (await call('/__uz/export?op=rows&table=w', KEY)).json();
+  check('eksport: WITHOUT ROWID', [r3.rowid, r3.rows], [false, [[null, "'a',X'01'"], [null, "'b',NULL"]]]);
+  check('eksport: noma‘lum jadval rad etiladi', (await (await call('/__uz/export?op=rows&table=p%22;DROP', KEY)).json()).error, 'no_table');
+  const dg = await (await call('/__uz/export?op=digest&table=p', KEY)).json();
+  const { createHash } = await import('node:crypto');
+  check('eksport: digest = uz-migrate bilan bir xil algoritm', dg, { count: 3, sha: createHash('sha256').update("1,'Ali',1.0\n2,'Вали',2.5\n3,NULL,NULL\n").digest('hex') });
+}
+
+// ── Texnik ishlar rejimi ─────────────────────────────────────────────
+{
+  check('UZ_MAINTENANCE=on', [uzMaintenance({ UZ_MAINTENANCE: 'on' }), uzMaintenance({})], [true, false]);
+  const api = maintenanceResponse(new Request('https://nfcstore.uz/api/feed', { headers: { accept: 'text/html' } }));
+  check('texnik rejim: API — 503 JSON', [api.status, api.headers.get('content-type').split(';')[0], api.headers.get('retry-after')], [503, 'application/json', '300']);
+  const page = maintenanceResponse(new Request('https://nfcstore.uz/ABC123', { headers: { accept: 'text/html' } }));
+  check('texnik rejim: sahifa — 503 HTML', [page.status, page.headers.get('content-type').split(';')[0]], [503, 'text/html']);
 }
 
 done();

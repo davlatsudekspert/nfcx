@@ -8,11 +8,14 @@
 //   node scripts/uz-migrate.mjs r2-probe                 — R2: nechta fayl, jami hajm
 //   node scripts/uz-migrate.mjs r2-copy                  — R2 → Garage (bor bo'lsa o'tkazib yuboradi)
 //   node scripts/uz-migrate.mjs r2-verify                — har fayl: bor, hajmi va turi bir xil
+//   node scripts/uz-migrate.mjs d1-pull d1.sqlite        — D1 → fayl, Worker eksporti orqali (+ SHA-256 tekshiruv)
+//   node scripts/uz-migrate.mjs d1-verify-uz             — D1 (Worker) ↔ UZ: har jadval SHA-256
 //   node scripts/uz-migrate.mjs db-import d1.sqlite [--replace]
 //   node scripts/uz-migrate.mjs db-verify d1.sqlite      — har jadval: qatorlar soni va SHA-256
 //
 // Muhit: CF_API_TOKEN, CF_ACCOUNT, R2_BUCKET; UZ_DB_URL, UZ_DB_TOKEN;
-// UZ_S3_ENDPOINT, UZ_S3_BUCKET, UZ_S3_KEY_ID, UZ_S3_SECRET.
+// UZ_S3_ENDPOINT, UZ_S3_BUCKET, UZ_S3_KEY_ID, UZ_S3_SECRET;
+// UZ_EXPORT_URL (https://nfcstore.uz/__uz/export), UZ_EXPORT_KEY — vaqtinchalik.
 import { DatabaseSync } from 'node:sqlite';
 import { createHash } from 'node:crypto';
 import { uzDb, uzBucket } from '../hosting/uz-store.js';
@@ -339,7 +342,92 @@ async function dbVerify(file) {
   if (!c.ok) process.exit(1);
 }
 
+// ── D1 → fayl, Worker eksporti orqali ────────────────────────────────
+
+async function exp(params) {
+  const u = new URL(E.UZ_EXPORT_URL || 'https://nfcstore.uz/__uz/export');
+  for (const [k, v] of Object.entries(params)) u.searchParams.set(k, String(v));
+  for (let attempt = 1; ; attempt++) {
+    const res = await fetch(u, { headers: { 'x-uz-export-key': E.UZ_EXPORT_KEY, 'cache-control': 'no-cache' } });
+    if (res.ok) {
+      const body = await res.json();
+      if (body.error) throw new Error(`eksport: ${body.error} ${body.detail || ''}`);
+      return body;
+    }
+    if (attempt >= 4) throw new Error(`eksport HTTP ${res.status} (${params.op} ${params.table || ''})`);
+    await new Promise((r) => setTimeout(r, 3000 * attempt));
+  }
+}
+
+async function d1Pull(file) {
+  need('UZ_EXPORT_KEY');
+  const { master, sequence, columns } = await exp({ op: 'schema' });
+  const local = new DatabaseSync(file);
+  local.exec('PRAGMA foreign_keys = OFF; PRAGMA journal_mode = OFF; PRAGMA synchronous = OFF');
+  const tables = master.filter((r) => r.type === 'table');
+  for (const t of tables) local.exec(t.sql);
+  let total = 0;
+  for (const t of tables) {
+    const cols = columns[t.name];
+    const info = local.prepare(`PRAGMA table_info(${qid(t.name)})`).all();
+    const pk = info.filter((c) => c.pk);
+    const rowidAlias = pk.length === 1 && /^integer$/i.test(pk[0].type);
+    let cursor = {};
+    local.exec('BEGIN');
+    for (;;) {
+      const page = await exp({ op: 'rows', table: t.name, limit: 2000, ...cursor });
+      if (JSON.stringify(page.cols) !== JSON.stringify(cols)) throw new Error(`${t.name}: ustunlar o'zgardi`);
+      const keepRowid = page.rowid && !rowidAlias;
+      const head = `INSERT INTO ${qid(t.name)} (${[...(keepRowid ? ['rowid'] : []), ...cols.map(qid)].join(', ')}) VALUES `;
+      for (const [rq, q] of page.rows) { local.exec(`${head}(${keepRowid ? `${rq},` : ''}${q})`); total++; }
+      if (page.next == null) break;
+      cursor = page.rowid ? { after: page.next } : { offset: page.next };
+    }
+    local.exec('COMMIT');
+  }
+  for (const r of master.filter((x) => x.type !== 'table')) local.exec(r.sql);
+  if (sequence.length) {
+    local.exec('DELETE FROM sqlite_sequence');
+    const ins = local.prepare('INSERT INTO sqlite_sequence (name, seq) VALUES (?, ?)');
+    for (const r of sequence) ins.run(r.name, r.seq);
+  }
+  say(`D1 → fayl: ${tables.length} jadval, ${total} qator, ${master.length - tables.length} indeks/trigger/ko'rinish`);
+  // Yuklangan nusxa D1 ning o'zi bilan AYNAN bir xilmi (Worker hisoblagan SHA-256).
+  const runLocal = async (sql) => local.prepare(sql).all();
+  const bad = [];
+  for (const t of tables) {
+    const [src, mine] = await Promise.all([exp({ op: 'digest', table: t.name }), tableDigest(runLocal, t.name, columns[t.name])]);
+    if (src.count !== mine.count || src.sha !== mine.sha) bad.push(`${t.name} (D1 ${src.count}, fayl ${mine.count})`);
+  }
+  local.close();
+  say(bad.length ? `D1 ↔ fayl: FARQ — ${bad.slice(0, 10).join(', ')}` : `D1 ↔ fayl: ${tables.length} jadval SHA-256 bilan AYNAN bir xil`);
+  if (bad.length) process.exit(1);
+}
+
+async function d1VerifyUz() {
+  need('UZ_EXPORT_KEY', 'UZ_DB_URL', 'UZ_DB_TOKEN');
+  const { master, columns, sequence } = await exp({ op: 'schema' });
+  const target = openTarget();
+  const runTarget = async (sql) => (await target.prepare(sql).all()).results;
+  const tables = master.filter((r) => r.type === 'table');
+  const bad = []; let rows = 0;
+  for (const t of tables) {
+    const [src, dst] = await Promise.all([exp({ op: 'digest', table: t.name }), tableDigest(runTarget, t.name, columns[t.name]).catch((e) => ({ count: -1, sha: e.message }))]);
+    rows += src.count;
+    if (src.count !== dst.count || src.sha !== dst.sha) bad.push(`${t.name} (D1 ${src.count}, UZ ${dst.count})`);
+  }
+  const seqT = (await target.prepare('SELECT name, seq FROM sqlite_sequence').all().catch(() => ({ results: [] }))).results;
+  const norm = (a) => JSON.stringify(a.filter((r) => !SKIP_TABLE(r.name)).map((r) => [r.name, Number(r.seq)]).sort());
+  const seqOk = norm(sequence) === norm(seqT);
+  say(`D1 (jonli) ↔ UZ: ${tables.length} jadval, ${rows} qator · farq: ${bad.length} · AUTOINCREMENT mos: ${seqOk ? 'ha' : 'YO‘Q'}`);
+  for (const b of bad.slice(0, 15)) say(`  MOS EMAS: ${b}`);
+  if (bad.length || !seqOk) process.exit(1);
+  say('D1 ↔ UZ: HAMMASI MOS');
+}
+
 const commands = {
+  'd1-pull': () => d1Pull(args.find((a) => !a.startsWith('--'))),
+  'd1-verify-uz': d1VerifyUz,
   'r2-probe': r2Probe,
   'r2-copy': r2Copy,
   'r2-verify': r2Verify,

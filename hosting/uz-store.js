@@ -519,3 +519,78 @@ export function maintenanceResponse(request) {
     },
   });
 }
+
+// ── D1 EKSPORTI (ko'chirish uchun, faqat vaqtinchalik kalit bilan) ─────
+//
+// GitHub tokenida D1 ruxsati yo'q, Worker'da esa D1 bog'lanishi bor —
+// shuning uchun bazani Worker o'zi beradi. Yo'l FAQAT `UZ_EXPORT_KEY`
+// secret'i mavjud bo'lganda ishlaydi (ko'chirish workflow'i uni bir
+// necha daqiqaga qo'yadi va darhol o'chiradi); aks holda oddiy 404.
+// Faqat o'qiydi: sxema, qatorlar (quote() — tur aniq saqlanadi) va
+// har jadval uchun SHA-256 (uz-migrate.mjs dagi bilan AYNAN bir xil).
+
+const EXPORT_SKIP = (n) => /^(sqlite_|_cf_)/.test(String(n || ''));
+const qid = (s) => `"${String(s).replace(/"/g, '""')}"`;
+
+async function sameSecret(a, b) {
+  const [x, y] = await Promise.all([sha256Hex(String(a)), sha256Hex(String(b))]);
+  let diff = 0;
+  for (let i = 0; i < x.length; i++) diff |= x.charCodeAt(i) ^ y.charCodeAt(i);
+  return diff === 0;
+}
+
+async function exportTables(db) {
+  const master = (await db.prepare(`SELECT type, name, tbl_name, sql FROM sqlite_master
+    WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND tbl_name NOT LIKE '_cf_%' ORDER BY rowid`).all()).results
+    .filter((r) => !EXPORT_SKIP(r.name) && !EXPORT_SKIP(r.tbl_name));
+  return master;
+}
+
+async function exportColumns(db, table) {
+  const info = (await db.prepare(`PRAGMA table_xinfo(${qid(table)})`).all()).results;
+  return info.filter((c) => !Number(c.hidden)).map((c) => c.name);
+}
+
+export async function handleUzExport(request, env) {
+  const url = new URL(request.url);
+  if (url.pathname !== '/__uz/export') return null;
+  const key = String(env.UZ_EXPORT_KEY || '');
+  const notFound = () => new Response('not found', { status: 404 });
+  if (key.length < 32 || request.method !== 'GET') return notFound();
+  if (!(await sameSecret(key, request.headers.get('x-uz-export-key') || ''))) return notFound();
+  const db = env.DB;
+  const json = (o) => new Response(JSON.stringify(o), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+  const master = await exportTables(db);
+  const op = url.searchParams.get('op');
+
+  if (op === 'schema') {
+    const sequence = await db.prepare(`SELECT name, seq FROM sqlite_sequence`).all().then((r) => r.results).catch(() => []);
+    const columns = {};
+    for (const t of master.filter((r) => r.type === 'table')) columns[t.name] = await exportColumns(db, t.name);
+    return json({ master, sequence: sequence.filter((r) => !EXPORT_SKIP(r.name)), columns });
+  }
+
+  const table = url.searchParams.get('table');
+  const def = master.find((r) => r.type === 'table' && r.name === table);
+  if (!def) return json({ error: 'no_table' });
+  const cols = await exportColumns(db, table);
+  const lit = cols.map((c) => `quote(${qid(c)})`).join(` || ',' || `);
+
+  if (op === 'rows') {
+    const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 1000, 1), 5000);
+    if (/\bWITHOUT\s+ROWID\b/i.test(def.sql)) {
+      const offset = Math.max(Number(url.searchParams.get('offset')) || 0, 0);
+      const rows = (await db.prepare(`SELECT ${lit} AS q FROM ${qid(table)} ORDER BY ${cols.map(qid).join(', ')} LIMIT ? OFFSET ?`).bind(limit, offset).all()).results;
+      return json({ cols, rowid: false, rows: rows.map((r) => [null, r.q]), next: rows.length === limit ? offset + limit : null });
+    }
+    const after = Number(url.searchParams.get('after') || -9007199254740991);
+    const rows = (await db.prepare(`SELECT rowid AS _r, quote(rowid) AS _rq, ${lit} AS q FROM ${qid(table)} WHERE rowid > ? ORDER BY rowid LIMIT ?`).bind(after, limit).all()).results;
+    return json({ cols, rowid: true, rows: rows.map((r) => [r._rq, r.q]), next: rows.length === limit ? rows[rows.length - 1]._r : null });
+  }
+
+  if (op === 'digest') {
+    const rows = (await db.prepare(`SELECT ${lit} AS q FROM ${qid(table)} ORDER BY ${cols.map(qid).join(', ')}`).all()).results;
+    return json({ count: rows.length, sha: await sha256Hex(rows.map((r) => `${r.q}\n`).join('')) });
+  }
+  return json({ error: 'bad_op' });
+}
