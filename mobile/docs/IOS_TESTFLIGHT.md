@@ -73,8 +73,13 @@ GitHub → repo → Settings → Secrets and variables → Actions → **New rep
 Team ID kerak emas: workflow uni profildan o'qiydi.
 
 ## 3. Ishga tushirish
+*Run workflow* tugmasi faqat workflow fayli `main` branchda bo'lsa ko'rinadi.
+
 Actions → **iOS TestFlight** → *Run workflow* → branch tanlang → `upload` belgilangan → Run.
 Imzo secretlari bo'lmasa workflow faqat imzosiz tekshiruv build qiladi.
+
+Tekshirilgan muhit (2026-10): macOS 26.6, Xcode 26.6, Flutter 3.47.4, altool 26.40.1;
+imzosiz release build muvaffaqiyatli (`Runner.app` 24.2 MB).
 
 ## 4. Natija
 App Store Connect → Apps → NFCSTORE → **TestFlight** → iOS builds. Apple qayta ishlashi 5–30 daqiqa.

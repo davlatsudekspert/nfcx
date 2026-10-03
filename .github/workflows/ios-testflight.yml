@@ -38,10 +38,6 @@ on:
         description: "Build raqami (bo'sh — avtomatik: run number)"
         required: false
         default: ''
-  # VAQTINCHA: imzosiz tekshiruv uchun (workflow hali main'da yo'q). Olib tashlanadi.
-  push:
-    branches: [claude/wizardly-einstein-8cx2p4]
-    paths: [.github/workflows/ios-testflight.yml]
 
 concurrency:
   group: ios-testflight-${{ github.ref }}
