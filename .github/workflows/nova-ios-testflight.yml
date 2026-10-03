@@ -330,7 +330,10 @@ jobs:
           open(os.environ['GITHUB_STEP_SUMMARY'], 'a').write('- ' + msg + '\n')
           PY
 
+      # Nusxa sifatida saqlash — ixtiyoriy: Actions xotirasi to'lgan
+      # bo'lsa ham TestFlight yuklashni to'xtatmaydi.
       - uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: nfcstore-ios-${{ env.IOS_VERSION }}-${{ env.IOS_BUILD_NUMBER }}
           path: mobile_nova/NFCSTORE-iOS.ipa
