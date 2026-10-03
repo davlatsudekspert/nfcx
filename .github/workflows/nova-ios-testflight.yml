@@ -108,8 +108,16 @@ jobs:
           if printf '%s' "$API_PRIVATE_KEY" | grep -q 'BEGIN PRIVATE KEY'; then
             printf '%s\n' "$API_PRIVATE_KEY" > "$KEYFILE"
           else
-            printf '%s' "$API_PRIVATE_KEY" | base64 --decode > "$KEYFILE"
+            # Secret uch ko'rinishda bo'lishi mumkin: to'liq PEM, PEM'ning
+            # base64'i yoki sarlavhasiz kalit tanasi (DER base64).
+            BODY=$(printf '%s' "$API_PRIVATE_KEY" | tr -d ' \r\n')
+            if printf '%s' "$BODY" | base64 --decode | grep -aq 'BEGIN PRIVATE KEY'; then
+              printf '%s' "$BODY" | base64 --decode > "$KEYFILE"
+            else
+              { echo '-----BEGIN PRIVATE KEY-----'; printf '%s\n' "$BODY" | fold -w 64; echo '-----END PRIVATE KEY-----'; } > "$KEYFILE"
+            fi
           fi
+          openssl pkey -in "$KEYFILE" -noout || { echo "::error::NOVA_APPSTORE_PRIVATE_KEY yaroqli .p8 kalit emas"; exit 1; }
           export ASC_KEY_FILE="$KEYFILE"
           echo "ASC_KEY_FILE=$KEYFILE" >> "$GITHUB_ENV"
 
