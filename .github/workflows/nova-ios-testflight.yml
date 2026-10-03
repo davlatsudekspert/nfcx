@@ -17,6 +17,10 @@ on:
         description: "TestFlight'ga yuklash (NOVA_APPSTORE_* secretlari kerak)"
         type: boolean
         default: false
+  # VAQTINCHA: workflow'ni ro'yxatdan o'tkazish uchun. Push'da job ishlamaydi.
+  push:
+    branches: [claude/wizardly-einstein-8cx2p4]
+    paths: [.github/workflows/nova-ios-testflight.yml]
 
 concurrency:
   group: nova-ios-testflight
@@ -27,6 +31,7 @@ permissions:
 
 jobs:
   signed:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: macos-15
     timeout-minutes: 75
     defaults:
