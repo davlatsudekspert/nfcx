@@ -74,15 +74,16 @@ jobs:
 
       # Reels oqimi: A o'ynaydi -> B oldindan yuklanadi -> swipe -> B
       # o'ynaydi -> orqaga A. Ekran har 2 s suratga olinadi (yorqinlik).
-      - name: Reels oqimi (iOS simulator)
+      - name: Reels oqimi — texture
         run: |
           set -e
+          rm -f flow.log "$RUNNER_TEMP"/s*.png "$RUNNER_TEMP"/s*.bmp "$RUNNER_TEMP/shots.txt"
           UDID=${{ steps.sim.outputs.udid }}
           xcrun simctl spawn "$UDID" log stream --style compact \
             --predicate 'subsystem BEGINSWITH "com.apple.avfoundation" OR subsystem BEGINSWITH "com.apple.coremedia" OR eventMessage CONTAINS[c] "AVPlayer" OR eventMessage CONTAINS[c] "FigPlayer"' \
             > "$RUNNER_TEMP/av.log" 2>&1 &
           LOGPID=$!
-          ( flutter test integration_test/probe/reels_flow_probe_test.dart -d "$UDID" > flow.log 2>&1; echo "EXIT $?" >> flow.log ) &
+          ( flutter test integration_test/probe/reels_flow_probe_test.dart --dart-define=VIEW=texture -d "$UDID" > flow.log 2>&1; echo "EXIT $?" >> flow.log ) &
           for _ in $(seq 1 900); do grep -q 'Xcode build done' flow.log 2>/dev/null && break; grep -q '^EXIT ' flow.log && break; sleep 1; done
           T0=$(date +%s)
           n=0
@@ -114,7 +115,68 @@ jobs:
           PY
           done < "$RUNNER_TEMP/shots.txt"
           {
-            echo "## Reels oqimi (iOS simulator)"
+            echo "## Reels oqimi — texture"
+            echo '```'
+            grep -o '\[FLOW\].*' flow.log | cut -c1-600
+            grep '^EXIT' flow.log
+            echo '```'
+            echo "### Ekran (markaz yorqinligi, test boshidan)"
+            echo '```'
+            tr '\n' ' ' < "$RUNNER_TEMP/pix.txt"; echo
+            echo '```'
+            echo "### AVFoundation/CoreMedia xatolari"
+            echo '```'
+            grep -iE "error|fail|-1[0-9]{4}|stall|timeout" "$RUNNER_TEMP/av.log" | cut -c1-260 | head -40
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          grep -o '\[FLOW\].*' flow.log | cut -c1-600
+          cat "$RUNNER_TEMP/pix.txt" | tr '\n' ' '; echo
+          grep -iE "error|fail|-1[0-9]{4}|stall|timeout" "$RUNNER_TEMP/av.log" | cut -c1-260 | head -40 || true
+          tail -30 flow.log
+      # Reels oqimi: A o'ynaydi -> B oldindan yuklanadi -> swipe -> B
+      # o'ynaydi -> orqaga A. Ekran har 2 s suratga olinadi (yorqinlik).
+      - name: Reels oqimi — platform
+        run: |
+          set -e
+          rm -f flow.log "$RUNNER_TEMP"/s*.png "$RUNNER_TEMP"/s*.bmp "$RUNNER_TEMP/shots.txt"
+          UDID=${{ steps.sim.outputs.udid }}
+          xcrun simctl spawn "$UDID" log stream --style compact \
+            --predicate 'subsystem BEGINSWITH "com.apple.avfoundation" OR subsystem BEGINSWITH "com.apple.coremedia" OR eventMessage CONTAINS[c] "AVPlayer" OR eventMessage CONTAINS[c] "FigPlayer"' \
+            > "$RUNNER_TEMP/av.log" 2>&1 &
+          LOGPID=$!
+          ( flutter test integration_test/probe/reels_flow_probe_test.dart --dart-define=VIEW=platform -d "$UDID" > flow.log 2>&1; echo "EXIT $?" >> flow.log ) &
+          for _ in $(seq 1 900); do grep -q 'Xcode build done' flow.log 2>/dev/null && break; grep -q '^EXIT ' flow.log && break; sleep 1; done
+          T0=$(date +%s)
+          n=0
+          while ! grep -q '^EXIT ' flow.log; do
+            n=$((n+1)); xcrun simctl io "$UDID" screenshot "$RUNNER_TEMP/s$n.png" >/dev/null 2>&1 || true
+            echo "$n $(( $(date +%s) - T0 ))" >> "$RUNNER_TEMP/shots.txt"
+            sleep 2
+            [ $n -ge 240 ] && break
+          done
+          kill $LOGPID 2>/dev/null || true
+          : > "$RUNNER_TEMP/pix.txt"
+          while read -r i t; do
+            [ -f "$RUNNER_TEMP/s$i.png" ] || continue
+            sips -s format bmp "$RUNNER_TEMP/s$i.png" --out "$RUNNER_TEMP/s$i.bmp" >/dev/null 2>&1 || continue
+            python3 - "$RUNNER_TEMP/s$i.bmp" "$t" >> "$RUNNER_TEMP/pix.txt" <<'PY'
+          import struct, sys
+          b = open(sys.argv[1], 'rb').read()
+          off = struct.unpack('<I', b[10:14])[0]
+          w, h = struct.unpack('<ii', b[18:26]); h = abs(h)
+          bpp = struct.unpack('<H', b[28:30])[0] // 8
+          row = (w * bpp + 3) & ~3
+          lit = tot = 0
+          for y in range(h // 4, 3 * h // 4, 10):
+              for x in range(w // 4, 3 * w // 4, 10):
+                  i = off + y * row + x * bpp
+                  l = .2126 * b[i + 2] + .7152 * b[i + 1] + .0722 * b[i]
+                  tot += 1; lit += l > 24
+          print(f't={sys.argv[2]}s yorug={100 * lit / tot:.0f}%')
+          PY
+          done < "$RUNNER_TEMP/shots.txt"
+          {
+            echo "## Reels oqimi — platform"
             echo '```'
             grep -o '\[FLOW\].*' flow.log | cut -c1-600
             grep '^EXIT' flow.log

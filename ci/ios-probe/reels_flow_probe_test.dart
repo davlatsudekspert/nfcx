@@ -91,9 +91,15 @@ void main() {
       ),
     ));
 
+    // `--dart-define=VIEW=platform` — iOS'da native AVPlayerLayer.
+    const view = String.fromEnvironment('VIEW', defaultValue: 'texture');
+    out({'view': view});
     VideoPlayerController make(String u) => VideoPlayerController.networkUrl(
         Uri.parse(u),
-        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true));
+        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+        viewType: view == 'platform'
+            ? VideoViewType.platformView
+            : VideoViewType.textureView);
 
     // A — ko'rinayotgan reel.
     final a = make(urls[0]);
