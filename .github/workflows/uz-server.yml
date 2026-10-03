@@ -12,7 +12,7 @@ on:
         required: true
         default: status
         type: choice
-        options: [status, setup, log, test, probe, copy-media, copy-db, cutover, finalize-media, recover]
+        options: [status, setup, log, test, probe, dryrun, copy-media, copy-db, cutover, finalize-media, recover]
       confirm:
         description: "cutover uchun aynan: KOCHIR"
         required: false
@@ -126,7 +126,7 @@ jobs:
           fi
 
           # ── KO'CHIRISH (Cloudflare'da faqat O'QISH — hech narsa o'chirilmaydi) ──
-          case "$ACTION" in probe|copy-media|copy-db|cutover|finalize-media|recover)
+          case "$ACTION" in probe|dryrun|copy-media|copy-db|cutover|finalize-media|recover)
             export CF_API_TOKEN="$CF_TOKEN" CF_ACCOUNT CLOUDFLARE_API_TOKEN="$CF_TOKEN" CLOUDFLARE_ACCOUNT_ID="$CF_ACCOUNT"
             [ -n "$CF_TOKEN" ] || { echo "::error::CLOUDFLARE_API_TOKEN secret yo'q"; exit 1; }
             DBT=$(R '. /srv/nfcstore/secrets.env && printf %s "$DB_TOKEN"')
@@ -214,6 +214,35 @@ jobs:
             [ $prc = 0 ] && lvl=notice || lvl=error
             echo "::$lvl title=tenglik (worker D1 ↔ UZ)::$(grep -E 'tenglik|FARQ|fayllar|FAYL|Error' p.out | clean 20 | joined) ."
             rm -f d1.sql d1.sqlite
+          fi
+
+          # ── SINOV (texnik rejimSIZ): jonli Worker bitta so'rovni UZ omborida bajaradi ──
+          # Vaqtinchalik kalit + `x-uz-force: 1` — foydalanuvchilar D1/R2 da qoladi.
+          # UZ dagi nusxa keyin cutover'da baribir --replace bilan qayta yoziladi.
+          if [ "$ACTION" = dryrun ]; then
+            if live; then echo "::error title=dryrun::UZ_STORE yoqilgan — sinov kerak emas"; exit 1; fi
+            key_on || { key_off; exit 1; }
+            trap key_off EXIT
+            KF=(-H "x-uz-export-key: $UZ_EXPORT_KEY" -H "x-uz-force: 1" -H 'cache-control: no-cache')
+            CODE=$(node -e "import('./hosting/uz-store.js').then(async m=>{const d=m.uzDb({url:process.env.UZ_DB_URL,token:process.env.UZ_DB_TOKEN});console.log(await d.prepare('SELECT code FROM cards WHERE code IS NOT NULL AND user_id IS NOT NULL ORDER BY ts DESC LIMIT 1').first('code')||'')}).catch(()=>console.log(''))")
+            UP=$(node -e "import('./hosting/uz-store.js').then(async m=>{const b=m.uzBucket({endpoint:process.env.UZ_S3_ENDPOINT,bucket:process.env.UZ_S3_BUCKET,keyId:process.env.UZ_S3_KEY_ID,secret:process.env.UZ_S3_SECRET});const l=await b.list({prefix:'uploads/',limit:1});console.log(l.objects[0]?.key||'')}).catch(()=>console.log(''))")
+            hit() { local c; c=$(curl -s --max-time 40 -o b.out -D h.out -w '%{http_code} %{time_total}s' "${KF[@]}" "$1") || c="000 $c"
+              local d; d=$(grep -i '^x-nfc-data:' h.out | tr -d '\r' | cut -d' ' -f2)
+              printf '%s → %s data=%s' "$2" "$c" "${d:-d1}"
+              case "$c" in 200*|206*) [ "${2%-2}" = ping ] && printf ' %s' "$(head -c 400 b.out)";; *) printf ' | %s' "$(head -c 300 b.out | tr -d '\r\n')";; esac; echo; }
+            {
+              hit "https://nfcstore.uz/__uz/ping?probe=1&_=d1" ping
+              hit "https://nfcstore.uz/api/feed?_=d2" api/feed
+              [ -n "$CODE" ] && hit "https://nfcstore.uz/$CODE?_=d3" profil || echo "profil → kod topilmadi"
+              [ -n "$UP" ] && hit "https://nfcstore.uz/$UP" fayl || echo "fayl → UZ omborida topilmadi"
+              hit "https://nfcstore.uz/api/feed?_=d4" api/feed-2
+              hit "https://nfcstore.uz/__uz/ping?probe=1&_=d5" ping-2
+            } > d.out 2>&1
+            # Hamma qator 200/206 va data=uz bo'lishi, ping'da xato bo'lmasligi shart.
+            if [ -s d.out ] && ! grep -vE '→ (200|206) [^ ]+ data=uz' d.out | grep -q . && ! grep -q 'xato' d.out; then lvl=notice; else lvl=error; fi
+            echo "::$lvl title=dryrun (jonli Worker → UZ)::$(clean 20 < d.out | joined) ."
+            rm -f b.out h.out d.out
+            [ $lvl = notice ] || exit 1
           fi
 
           # ── TIKLASH (qo'lda): o'tish yarim qolgan / texnik rejimda qotib qolgan bo'lsa ──
@@ -312,7 +341,7 @@ jobs:
             U=$([ -n "$UP" ] && code "${K[@]}" "https://nfcstore.uz/$UP" || echo -)
             echo "::notice title=3. tekshiruv (texnik rejimda)::api/feed $F · profil $P · fayl $U"
             if [ "$F" != 200 ] || [ "$P" = 500 ] || [ "$P" = 503 ] || [ "$U" != 200 ]; then
-              echo "::error title=3. tekshiruv::sayt UZ omborida to'g'ri javob bermadi"; exit 1
+              echo "::error title=3. tekshiruv::sayt UZ omborida to'g'ri javob bermadi — api/feed $F · profil $P · fayl $U"; exit 1
             fi
             MARKED=1; echo marked > "$ST"
             mig mark-cutover || exit 1

@@ -11186,11 +11186,22 @@ export default {
     if (uzMaintenance(env) && !(await uzMaintenanceBypass(request, env))) {
       return withSecurityHeaders(maintenanceResponse(request), url);
     }
-    env = withUzStores(env);
+    // Ko'chirish sinovi: vaqtinchalik kalit + `x-uz-force: 1` — faqat SHU
+    // so'rov O'zbekiston omborida bajariladi, sayt foydalanuvchilari esa
+    // avvalgidek D1/R2 da qoladi (o'tishdan oldin jonli muhitda tekshirish).
+    const uzForce = request.headers.get('x-uz-force') === '1' && await uzMaintenanceBypass(request, env);
+    env = withUzStores(uzForce ? { ...env, UZ_STORE: 'on' } : env);
     // Ko'chirish tekshiruvi: qaysi ombor faol va qaysi versiya (faqat kalit bilan).
     if (url.pathname === '/__uz/ping' && await uzMaintenanceBypass(request, env)) {
-      return withSecurityHeaders(json({ store: env.UZ_STORE_ACTIVE ? 'uz' : 'd1', version: env.CF_VERSION_METADATA?.id || '' }), url,
-        env.UZ_STORE_ACTIVE ? 'uz' : '');
+      const out = { store: env.UZ_STORE_ACTIVE ? 'uz' : 'd1', version: env.CF_VERSION_METADATA?.id || '' };
+      if (url.searchParams.get('probe') === '1') {
+        // Worker → baza / ombor ulanishi (xato matni bilan, qiymatlarsiz).
+        const t0 = Date.now();
+        out.db = await env.DB.prepare('SELECT 1 AS one').first('one').then((v) => `ok ${v} ${Date.now() - t0}ms`, (e) => `xato: ${String(e?.message || e).slice(0, 200)}`);
+        const t1 = Date.now();
+        out.bucket = await env.UPLOADS.list({ prefix: 'uploads/', limit: 1 }).then((l) => `ok ${l.objects.length} ${Date.now() - t1}ms`, (e) => `xato: ${String(e?.message || e).slice(0, 200)}`);
+      }
+      return withSecurityHeaders(json(out), url, env.UZ_STORE_ACTIVE ? 'uz' : '');
     }
     try {
       const res = await handleRequest(request, env, url, ctx);
