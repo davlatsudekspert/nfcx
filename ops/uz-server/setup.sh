@@ -29,6 +29,15 @@ step() { echo; echo "==> $*"; }
 
 step "1/7 Paketlar"
 export DEBIAN_FRONTEND=noninteractive
+# Yangi serverda Ubuntu fonda o'z yangilanishlarini o'rnatadi (unattended-upgrades)
+# — apt band bo'ladi yoki yarim qolgan bo'ladi. Avval kutamiz, keyin tuzatamiz.
+for i in $(seq 1 90); do
+  pgrep -x apt-get >/dev/null || pgrep -x apt >/dev/null || pgrep -x dpkg >/dev/null \
+    || pgrep -f unattended-upgr >/dev/null || break
+  [ "$i" = 1 ] && echo "apt band — Ubuntu yangilanishlari tugashini kutyapman..."
+  sleep 5
+done
+dpkg --configure -a
 apt-get update -qq
 apt-get install -y -qq docker.io docker-compose-v2 ufw sqlite3 curl jq openssl ca-certificates >/dev/null
 systemctl enable --now docker >/dev/null
