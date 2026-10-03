@@ -8,7 +8,7 @@
 // Haqiqiy serverda faqat vaqtinchalik `_uz_conformance_*` jadvali va
 // `_uz_conformance/` kalitlari ishlatiladi, oxirida o'chiriladi.
 import { DatabaseSync } from 'node:sqlite';
-import { uzDb, uzBucket, signV4, isWriteSql, withUzStores, handleUzExport, uzMaintenance, uzMaintenanceBypass, maintenanceResponse, rowLiteralSql, rowDigestSql } from '../hosting/uz-store.js';
+import { uzDb, uzBucket, signV4, isWriteSql, withUzStores, handleUzExport, uzMaintenance, uzMaintenanceBypass, maintenanceResponse, rowLiteralSql, rowColumnsSql, rowPairs, digestPairs, insertForPairs } from '../hosting/uz-store.js';
 import { hranaFetch } from './lib/hrana-fake.mjs';
 import { s3Fetch } from './lib/s3-fake.mjs';
 
@@ -263,31 +263,38 @@ try {
   check('eksport: ustunlar', sc.columns.p, ['id', 'name', 'score']);
   check('eksport: AUTOINCREMENT', sc.sequence, [{ name: 'p', seq: 3 }]);
   const r1 = await (await call('/__uz/export?op=rows&table=p&limit=2', KEY)).json();
-  check('eksport: qatorlar (TEXT hex orqali), sahifa', r1.rows, [['1', "1,CAST(X'416C69' AS TEXT),1.0"], ['2', "2,CAST(X'D092D0B0D0BBD0B8' AS TEXT),2.5"]]);
+  check('eksport: qatorlar (ustunma-ustun), sahifa', r1.rows, [['1', [['integer', '1'], ['text', 'Ali'], ['real', '1.0']]], ['2', [['integer', '2'], ['text', 'Вали'], ['real', '2.5']]]]);
   const r2 = await (await call(`/__uz/export?op=rows&table=p&limit=2&after=${r1.next}`, KEY)).json();
-  check('eksport: keyingi sahifa', [r2.rows, r2.next], [[['3', '3,NULL,NULL']], null]);
+  check('eksport: keyingi sahifa', [r2.rows, r2.next], [[['3', [['integer', '3'], ['null', null], ['null', null]]]], null]);
   const r3 = await (await call('/__uz/export?op=rows&table=w', KEY)).json();
-  check('eksport: WITHOUT ROWID', [r3.rowid, r3.rows], [false, [[null, "CAST(X'61' AS TEXT),X'01'"], [null, "CAST(X'62' AS TEXT),NULL"]]]);
+  check('eksport: WITHOUT ROWID', [r3.rowid, r3.rows], [false, [[null, [['text', 'a'], ['blob', '01']]], [null, [['text', 'b'], ['null', null]]]]]);
   check('eksport: noma‘lum jadval rad etiladi', (await (await call('/__uz/export?op=rows&table=p%22;DROP', KEY)).json()).error, 'no_table');
   const dg = await (await call('/__uz/export?op=digest&table=p', KEY)).json();
-  const { createHash } = await import('node:crypto');
-  check('eksport: digest = uz-migrate bilan bir xil algoritm', dg, { count: 3, sha: createHash('sha256').update("1,T416C69,1.0\n2,TD092D0B0D0BBD0B8,2.5\n3,NULL,NULL\n").digest('hex') });
+  check('eksport: digest = uz-migrate bilan bir xil algoritm', dg, { count: 3, sha: await digestPairs([[['integer', '1'], ['text', 'Ali'], ['real', '1.0']], [['integer', '2'], ['text', 'Вали'], ['real', '2.5']], [['integer', '3'], ['null', null], ['null', null]]]) });
 }
 
-// ── Qator literali va xeshi: NUL, REAL aniqligi, BLOB ────────────────
+// ── Ustunma-ustun ko'rinish: NUL, REAL aniqligi, BLOB, katta son, 2.5 MB matn ──
 {
   const sq = new DatabaseSync(':memory:');
-  sq.exec(`CREATE TABLE a (id INTEGER PRIMARY KEY, t TEXT, r REAL, b BLOB);
-    INSERT INTO a VALUES (1, 'salom' || char(0) || ' dunyo', 0.30000000000000004, X'00FF'), (2, '', 1e308, NULL), (3, 'Ўзбек 🇺🇿', -2.5, X'');
-    CREATE TABLE b (id INTEGER PRIMARY KEY, t TEXT, r REAL, b BLOB);`);
-  const cols = ['id', 't', 'r', 'b'];
-  for (const { q } of sq.prepare(`SELECT ${rowLiteralSql(cols)} AS q FROM a`).all()) sq.exec(`INSERT INTO b VALUES (${q})`);
-  const dig = (t) => sq.prepare(`SELECT ${rowDigestSql(cols)} AS q FROM ${t} ORDER BY id`).all().map((r) => r.q).join('\n');
-  check('literal: NUL bilan matn baytma-bayt tiklanadi', sq.prepare(`SELECT length(CAST(t AS BLOB)) n FROM b WHERE id = 1`).get().n, 12);
-  check('literal: REAL aniq, BLOB aniq', sq.prepare(`SELECT quote(r) r, hex(b) b FROM b WHERE id = 1`).get(), { r: '3.000000000000000445e-01', b: '00FF' });
-  check('xesh: manba va nusxa bir xil', dig('a') === dig('b'), true);
+  sq.exec(`CREATE TABLE a (id INTEGER PRIMARY KEY, t TEXT, r REAL, b BLOB, n);
+    INSERT INTO a VALUES (1, 'salom' || char(0) || ' dunyo', 0.30000000000000004, X'00FF', 9007199254740993),
+      (2, '', 1e308, NULL, -1), (3, 'Ўзбек 🇺🇿', -2.5, X'', NULL);
+    CREATE TABLE b (id INTEGER PRIMARY KEY, t TEXT, r REAL, b BLOB, n);`);
+  sq.prepare(`INSERT INTO a VALUES (4, ?, 2.0, NULL, 1.5)`).run('x'.repeat(2_500_000));
+  const cols = ['id', 't', 'r', 'b', 'n'];
+  for (const r of sq.prepare(`SELECT ${rowColumnsSql(cols)} FROM a`).all()) {
+    const { sql, args } = insertForPairs('b', cols, rowPairs(r, cols.length));
+    sq.prepare(sql).run(...args);
+  }
+  const dig = (t) => digestPairs(sq.prepare(`SELECT ${rowColumnsSql(cols)} FROM ${t} ORDER BY id`).all().map((r) => rowPairs(r, cols.length)));
+  check('juftlik: NUL bilan matn baytma-bayt tiklanadi', sq.prepare(`SELECT length(CAST(t AS BLOB)) n FROM b WHERE id = 1`).get().n, 12);
+  check('juftlik: REAL, BLOB, 2^53+2 aniq', sq.prepare(`SELECT quote(r) r, hex(b) b, quote(n) n FROM b WHERE id = 1`).get(), { r: '3.000000000000000445e-01', b: '00FF', n: '9007199254740993' });
+  check('juftlik: turlar saqlanadi (REAL 2.0, ustunsiz 1.5)', sq.prepare(`SELECT typeof(r) r, typeof(n) n FROM b WHERE id = 4`).get(), { r: 'real', n: 'real' });
+  check('juftlik: 2.5 MB matn hex siz (D1 2 MB chegarasi)', sq.prepare(`SELECT length(t) n FROM b WHERE id = 4`).get().n, 2_500_000);
+  check('xesh: manba va nusxa bir xil', await dig('a') === await dig('b'), true);
   sq.exec(`UPDATE b SET t = 'salom' WHERE id = 1`);
-  check('xesh: NUL dan keyingi qism yo‘qolsa — FARQ', dig('a') === dig('b'), false);
+  check('xesh: NUL dan keyingi qism yo‘qolsa — FARQ', await dig('a') === await dig('b'), false);
+  check('literal (UZ ga yozish): NUL matn', sq.prepare(`SELECT ${rowLiteralSql(['t'])} AS q FROM a WHERE id = 1`).get().q, "CAST(X'73616C6F6D002064756E796F' AS TEXT)");
 }
 
 // ── Texnik ishlar rejimi ─────────────────────────────────────────────

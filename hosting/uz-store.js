@@ -566,16 +566,53 @@ export function maintenanceResponse(request) {
 const EXPORT_SKIP = (n) => /^(sqlite_|_cf_)/.test(String(n || ''));
 const qid = (s) => `"${String(s).replace(/"/g, '""')}"`;
 
-// Qatorning aniq SQL ko'rinishi va xeshi (uz-migrate.mjs ham AYNAN shularni
-// ishlatadi). quote() matnni NUL baytda kesib qo'yadi — shuning uchun TEXT
-// hex orqali: CAST(X'..' AS TEXT) baytma-bayt bir xil tiklanadi. INTEGER,
-// REAL (aniq, %!.20e gacha), BLOB va NULL uchun quote() aniq.
+// Qatorning aniq SQL ko'rinishi (UZ ga yozish uchun, uz-migrate.mjs db-import).
+// quote() matnni NUL baytda kesib qo'yadi — shuning uchun TEXT hex orqali:
+// CAST(X'..' AS TEXT) baytma-bayt bir xil tiklanadi. INTEGER, REAL (aniq,
+// %!.20e gacha), BLOB va NULL uchun quote() aniq.
 export const rowLiteralSql = (cols) => cols
   .map((c) => `CASE typeof(${qid(c)}) WHEN 'text' THEN 'CAST(X''' || hex(${qid(c)}) || ''' AS TEXT)' ELSE quote(${qid(c)}) END`)
   .join(` || ',' || `);
-export const rowDigestSql = (cols) => cols
-  .map((c) => `CASE typeof(${qid(c)}) WHEN 'text' THEN 'T' || hex(${qid(c)}) ELSE quote(${qid(c)}) END`)
-  .join(` || ',' || `);
+
+// ── USTUNMA-USTUN KO'RINISH (eksport va tekshiruv) ─────────────────────
+// D1 da bitta satr 2 MB dan oshmasligi kerak: butun qatorni bitta satrga
+// yig'ish (va matnni hex qilib ikki baravar kattalashtirish) katta maydonli
+// qatorda yiqiladi. Shuning uchun har ustun ALOHIDA: tur + qiymat.
+//   integer/real — quote() (aniq: 2^53 dan katta son, REAL to'liq aniqlikda)
+//   text         — matnning o'zi; NUL bayt bo'lsa 'texthex' + hex (kam uchraydi)
+//   blob         — hex; null — NULL
+const colTypeSql = (c) => `CASE WHEN typeof(${qid(c)}) = 'text' AND instr(CAST(${qid(c)} AS BLOB), X'00') > 0 THEN 'texthex' ELSE typeof(${qid(c)}) END`;
+const colValueSql = (c) => `CASE typeof(${qid(c)}) WHEN 'integer' THEN quote(${qid(c)}) WHEN 'real' THEN quote(${qid(c)}) WHEN 'blob' THEN hex(${qid(c)}) WHEN 'text' THEN CASE WHEN instr(CAST(${qid(c)} AS BLOB), X'00') > 0 THEN hex(CAST(${qid(c)} AS BLOB)) ELSE ${qid(c)} END ELSE NULL END`;
+export const rowColumnsSql = (cols) => cols.map((c, i) => `${colTypeSql(c)} AS "t${i}", ${colValueSql(c)} AS "v${i}"`).join(', ');
+export const rowPairs = (row, n) => Array.from({ length: n }, (_, i) => [row[`t${i}`], row[`v${i}`] ?? null]);
+
+// Tekshiruv xeshi — D1 (Worker), mahalliy fayl va UZ uchun AYNAN bir xil.
+// Uzunlik prefiksi bilan: qiymat ichidagi belgi chegarani buzolmaydi.
+const canonRow = (pairs) => pairs.map(([t, v]) => (v == null ? `${t}:` : `${t}:${String(v).length}:${v}`)).join('\u0001');
+export async function digestPairs(rows) {
+  return sha256Hex(enc.encode(rows.map((p) => `${canonRow(p)}\n`).join('')));
+}
+
+// Juftlikdan INSERT: matn — bog'langan parametr (? — hajmi oshmaydi),
+// qolgani — aniq SQL literal.
+export function insertForPairs(table, cols, pairs, rowidLiteral = null) {
+  const names = []; const vals = []; const args = [];
+  if (rowidLiteral != null) { names.push('rowid'); vals.push(String(rowidLiteral)); }
+  cols.forEach((c, i) => {
+    const [t, v] = pairs[i];
+    names.push(qid(c));
+    if (v == null || t === 'null') vals.push('NULL');
+    else if (t === 'text') { vals.push('?'); args.push(String(v)); }
+    else if (t === 'texthex' || t === 'blob') {
+      if (!/^[0-9A-Fa-f]*$/.test(String(v))) throw new Error('noto‘g‘ri hex');
+      vals.push(t === 'blob' ? `X'${v}'` : `CAST(X'${v}' AS TEXT)`);
+    } else if (t === 'integer' || t === 'real') {
+      if (!/^-?[0-9][0-9.eE+-]*$/.test(String(v))) throw new Error(`noto'g'ri son: ${String(v).slice(0, 30)}`);
+      vals.push(String(v));
+    } else throw new Error(`noma'lum tur: ${t}`);
+  });
+  return { sql: `INSERT INTO ${qid(table)} (${names.join(', ')}) VALUES (${vals.join(', ')})`, args };
+}
 
 async function sameSecret(a, b) {
   const [x, y] = await Promise.all([sha256Hex(String(a)), sha256Hex(String(b))]);
@@ -619,23 +656,25 @@ export async function handleUzExport(request, env) {
   const def = master.find((r) => r.type === 'table' && r.name === table);
   if (!def) return json({ error: 'no_table' });
   const cols = await exportColumns(db, table);
-  const lit = rowLiteralSql(cols);
+  const sel = rowColumnsSql(cols);
 
   if (op === 'rows') {
-    const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 1000, 1), 5000);
+    const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 500, 1), 5000);
     if (/\bWITHOUT\s+ROWID\b/i.test(def.sql)) {
       const offset = Math.max(Number(url.searchParams.get('offset')) || 0, 0);
-      const rows = (await db.prepare(`SELECT ${lit} AS q FROM ${qid(table)} ORDER BY ${cols.map(qid).join(', ')} LIMIT ? OFFSET ?`).bind(limit, offset).all()).results;
-      return json({ cols, rowid: false, rows: rows.map((r) => [null, r.q]), next: rows.length === limit ? offset + limit : null });
+      const rows = (await db.prepare(`SELECT ${sel} FROM ${qid(table)} ORDER BY ${cols.map(qid).join(', ')} LIMIT ? OFFSET ?`).bind(limit, offset).all()).results;
+      return json({ cols, rowid: false, rows: rows.map((r) => [null, rowPairs(r, cols.length)]), next: rows.length === limit ? offset + limit : null });
     }
-    const after = Number(url.searchParams.get('after') || -9007199254740991);
-    const rows = (await db.prepare(`SELECT rowid AS _r, quote(rowid) AS _rq, ${lit} AS q FROM ${qid(table)} WHERE rowid > ? ORDER BY rowid LIMIT ?`).bind(after, limit).all()).results;
-    return json({ cols, rowid: true, rows: rows.map((r) => [r._rq, r.q]), next: rows.length === limit ? rows[rows.length - 1]._r : null });
+    const after = String(url.searchParams.get('after') || '-9223372036854775808');
+    if (!/^-?\d{1,19}$/.test(after)) return json({ error: 'bad_after' });
+    // rowid matn sifatida keladi va CAST qilinadi: 2^53 dan katta rowid ham aniq.
+    const rows = (await db.prepare(`SELECT quote(rowid) AS _rq, ${sel} FROM ${qid(table)} WHERE rowid > CAST(? AS INTEGER) ORDER BY rowid LIMIT ?`).bind(after, limit).all()).results;
+    return json({ cols, rowid: true, rows: rows.map((r) => [r._rq, rowPairs(r, cols.length)]), next: rows.length === limit ? rows[rows.length - 1]._rq : null });
   }
 
   if (op === 'digest') {
-    const rows = (await db.prepare(`SELECT ${rowDigestSql(cols)} AS q FROM ${qid(table)} ORDER BY ${cols.map(qid).join(', ')}`).all()).results;
-    return json({ count: rows.length, sha: await sha256Hex(rows.map((r) => `${r.q}\n`).join('')) });
+    const rows = (await db.prepare(`SELECT ${sel} FROM ${qid(table)} ORDER BY ${cols.map(qid).join(', ')}`).all()).results;
+    return json({ count: rows.length, sha: await digestPairs(rows.map((r) => rowPairs(r, cols.length))) });
   }
   return json({ error: 'bad_op' });
 }
