@@ -81,7 +81,7 @@ gets = 0;
 r = await get('/uploads/v1.mp4', { range: 'bytes=0-9' });
 check('4) video range 206 (R2)', r.status, 206);
 check('4) R2 qismi to‘g‘ri', Array.from(r.bytes), Array.from(vid.slice(0, 10)));
-check('4) javobda edge-hit yo‘q', r.headers.get('x-nfc-edge'), null);
+check('4) javobda edge-hit yo‘q (birinchi so‘rov — miss)', r.headers.get('x-nfc-edge'), 'miss');
 await settle();
 check('4) video to‘liq keshga yozildi', cache.get('https://nfcstore.uz/uploads/v1.mp4')?.bytes.length, 64);
 check('4) keshdagi baytlar asl', Array.from(cache.get('https://nfcstore.uz/uploads/v1.mp4').bytes), Array.from(vid));

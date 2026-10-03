@@ -211,6 +211,12 @@ async function r2Verify() {
 
 async function r2Prune() {
   need('CF_API_TOKEN', 'CF_ACCOUNT', 'UZ_S3_ENDPOINT', 'UZ_S3_KEY_ID', 'UZ_S3_SECRET');
+  // O'tishdan keyin Garage — asosiy ombor: R2 da yo'q fayllar foydalanuvchilarning
+  // YANGI yuklagan fayllari. Ularni o'chirish taqiqlanadi (qat'iy to'xtash).
+  if (E.UZ_DB_URL) {
+    const live = await uzDb({ url: E.UZ_DB_URL, token: E.UZ_DB_TOKEN }).prepare(`SELECT COUNT(*) AS c FROM sqlite_master WHERE name = '_uz_cutover'`).first('c');
+    if (live) { console.error("r2-prune taqiqlangan: o'tish bo'lgan (_uz_cutover) — Garage asosiy ombor"); process.exit(1); }
+  } else { console.error('r2-prune: UZ_DB_URL kerak (o\'tish belgisini tekshirish uchun)'); process.exit(1); }
   const [src, dst] = await Promise.all([r2List(), uzListAll(bucket())]);
   // R2 ro'yxati bo'sh yoki keskin kichik bo'lsa — API xatosi bo'lishi mumkin: to'xtaymiz.
   if (!src.length || src.length < dst.length * 0.5) {

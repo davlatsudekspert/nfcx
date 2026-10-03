@@ -29,7 +29,7 @@ import * as apiAdminControl from './api/admin-control.js';
 // Musiqa kutubxonasi (admin yuklaydi, ilova faqat yoqilgan treklarni ko'radi).
 import * as apiMusic from './api/music.js';
 import * as apiDemoBusinesses from './api/demo-businesses.js';
-import { withUzStores, uzMaintenance, uzMaintenanceBypass, maintenanceResponse, handleUzExport, uzDbNetErrors } from './uz-store.js';
+import { withUzStores, uzMaintenance, uzMaintenanceBypass, maintenanceResponse, handleUzExport, uzDbNetErrors, uzLogError, uzWriteProbe } from './uz-store.js';
 import { ensureNewsSeed } from './api/news-seed.js';
 import { idQuarantined, notQuarantinedSql, purgeAfterMs, runScheduledPurge } from './api/account-purge.js';
 import { recordAppOpen } from './api/app-usage.js';
@@ -7472,13 +7472,18 @@ async function serveUpload(request, env, url, ctx) {
         if (etag && request.headers.get('if-none-match') === etag) {
           return new Response(null, { status: 304, headers: new Headers(hit.headers) });
         }
-        return hit;
+        const out = new Response(hit.body, hit);
+        out.headers.set('x-nfc-edge', 'hit');
+        return out;
       }
     } catch { /* kesh o'qilmasa — oddiy yo'l */ }
   }
   const head = await env.UPLOADS.head(key);
   if (!head) return null;
   const headers = buildUploadResponseHeaders(head, key);
+  // Audit: chegara keshi (hit/miss/bypass) va fayl qayerdan berildi (uz/r2).
+  headers.set('x-nfc-edge', edgeKey || videoEdgeUrl ? 'miss' : 'bypass');
+  headers.set('x-nfc-store', head.nfcStore || (env.UZ_STORE_ACTIVE ? 'uz' : 'r2'));
   if (videoEdgeUrl && ctx?.waitUntil && head.size > 0 && head.size <= UPLOAD_VIDEO_EDGE_MAX_BYTES
     && !uploadVideoFilling.has(key)) {
     uploadVideoFilling.add(key);
@@ -11210,11 +11215,18 @@ export default {
         out.bucket = await env.UPLOADS.list({ prefix: 'uploads/', limit: 1 }).then((l) => `ok ${l.objects.length} ${Date.now() - t1}ms`, (e) => `xato: ${String(e?.message || e).slice(0, 200)}`);
         const key = url.searchParams.get('key');
         if (key) out.head = await env.UPLOADS.head(key).then((h) => (h ? `ok ${h.size}` : 'null'), (e) => `xato: ${String(e?.message || e).slice(0, 200)}`);
+        // Sintetik yozish/o'qish: alohida audit jadvali va `audit/` fayl (foydalanuvchi ma'lumotiga tegmaydi).
+        if (url.searchParams.get('write') === '1' && env.UZ_STORE_ACTIVE) out.write = await uzWriteProbe(env);
       }
       return withSecurityHeaders(json(out), url, env.UZ_STORE_ACTIVE ? 'uz' : '');
     }
     try {
       const res = await handleRequest(request, env, url, ctx);
+      // Post-cutover audit: 5xx javoblar O'zbekiston bazasidagi _uz_error_log ga.
+      if (res.status >= 500 && env.UZ_STORE_ACTIVE) {
+        const detail = /json/.test(res.headers.get('content-type') || '') ? await res.clone().text().catch(() => '') : '';
+        await uzLogError(env, { method: request.method, path: url.pathname, status: res.status, detail });
+      }
       return withSecurityHeaders(res, url, env.UZ_STORE_ACTIVE ? 'uz' : '');
     } catch (error) {
       // ── NIMA UCHUN BU YERDA TUTQICH BOR ───────────────────────────
@@ -11239,6 +11251,7 @@ export default {
       // cookie ham, tokenning birorta bo'lagi ham tushmaydi.
       console.error('worker fetch', request.method, url.pathname, error?.stack || error?.message);
       const detail = String((error && error.message) || error || '').slice(0, 200);
+      await uzLogError(env, { method: request.method, path: url.pathname, status: 500, detail });
       return withSecurityHeaders(
         json({ error: 'worker_error', path: url.pathname, detail }, 500),
         url,

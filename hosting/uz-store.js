@@ -513,13 +513,93 @@ export function uzBucket({ endpoint, bucket, keyId, secret, region = 'garage', f
 
 // ── Ko'chirish davri: avval O'zbekiston, topilmasa R2 ──────────────────
 
-function withR2Fallback(uz, r2) {
+// Har bir fallback (R2 dan o'qish) va R2 dagi mirror o'chirish `onEvent` ga
+// beriladi — O'zbekiston bazasidagi `_uz_fallback_log` ga yoziladi (audit:
+// finalize-media faqat fallback ishlatilmaganda). Qaytgan obyekt manbasi
+// `nfcStore` xossasida ('uz' | 'r2') — /uploads/ javobida x-nfc-store.
+const tagStore = (o, src) => {
+  if (o && typeof o === 'object') { try { Object.defineProperty(o, 'nfcStore', { value: src, configurable: true }); } catch { /* */ } }
+  return o;
+};
+
+export function withR2Fallback(uz, r2, onEvent = async () => {}) {
   return {
     ...uz,
-    async head(key) { return (await uz.head(key)) || (await r2.head(key)); },
-    async get(key, options) { return (await uz.get(key, options)) || (await r2.get(key, options)); },
-    async delete(keys) { await uz.delete(keys); await r2.delete(keys); },
+    async head(key) {
+      const a = await uz.head(key);
+      if (a) return tagStore(a, 'uz');
+      const b = await r2.head(key);
+      if (b) await onEvent('head', key);
+      return tagStore(b, 'r2');
+    },
+    async get(key, options) {
+      const a = await uz.get(key, options);
+      if (a) return tagStore(a, 'uz');
+      const b = await r2.get(key, options);
+      if (b) await onEvent('get', key);
+      return tagStore(b, 'r2');
+    },
+    async delete(keys) {
+      await uz.delete(keys);
+      await r2.delete(keys);
+      await onEvent('delete-mirror', [].concat(keys).join(','));
+    },
   };
+}
+
+// ── Audit loglari (O'zbekiston bazasida, faqat qo'shiladi) ─────────────
+const FALLBACK_LOG_SQL = `CREATE TABLE IF NOT EXISTS "_uz_fallback_log" (
+  "id" INTEGER PRIMARY KEY, "ts" TEXT NOT NULL, "op" TEXT NOT NULL, "key" TEXT)`;
+const ERROR_LOG_SQL = `CREATE TABLE IF NOT EXISTS "_uz_error_log" (
+  "id" INTEGER PRIMARY KEY, "ts" TEXT NOT NULL, "method" TEXT, "path" TEXT, "status" INTEGER, "detail" TEXT)`;
+
+async function logFallback(db, op, key) {
+  console.warn('uz_r2_fallback', op, String(key).slice(0, 200));
+  try {
+    await db.batch([db.prepare(FALLBACK_LOG_SQL),
+      db.prepare(`INSERT INTO "_uz_fallback_log" ("ts", "op", "key") VALUES (?, ?, ?)`).bind(new Date().toISOString(), op, String(key).slice(0, 500))]);
+  } catch { /* log yozilmasa ham so'rov davom etadi */ }
+}
+
+// 5xx javoblar — yo'l (query'siz: unda token bo'lishi mumkin), status, xato matni.
+export async function uzLogError(env, { method, path, status, detail }) {
+  if (!env?.UZ_STORE_ACTIVE || !env.DB) return;
+  try {
+    await env.DB.batch([env.DB.prepare(ERROR_LOG_SQL),
+      env.DB.prepare(`INSERT INTO "_uz_error_log" ("ts", "method", "path", "status", "detail") VALUES (?, ?, ?, ?, ?)`)
+        .bind(new Date().toISOString(), String(method || ''), String(path || '').slice(0, 200), Number(status) || 0, String(detail || '').slice(0, 300))]);
+  } catch { /* */ }
+}
+
+// Sintetik yozish/o'qish (faqat kalit bilan, /__uz/ping?probe=1&write=1):
+// foydalanuvchi ma'lumotiga tegmaydi — alohida jadval va `audit/` fayllar,
+// hech narsa o'chirilmaydi.
+export async function uzWriteProbe(env) {
+  const out = {};
+  const nonce = crypto.randomUUID();
+  const ts = new Date().toISOString();
+  try {
+    const t0 = Date.now();
+    await env.DB.batch([
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS "_uz_audit_probe" ("id" INTEGER PRIMARY KEY, "ts" TEXT NOT NULL, "nonce" TEXT NOT NULL)`),
+      env.DB.prepare(`INSERT INTO "_uz_audit_probe" ("ts", "nonce") VALUES (?, ?)`).bind(ts, nonce),
+    ]);
+    const back = await env.DB.prepare(`SELECT ts FROM "_uz_audit_probe" WHERE nonce = ?`).bind(nonce).first('ts');
+    out.db = back === ts ? `ok ${Date.now() - t0}ms` : `xato: o'qilgan qiymat boshqa`;
+  } catch (e) { out.db = `xato: ${String(e?.message || e).slice(0, 160)}`; }
+  try {
+    const t0 = Date.now();
+    const bytes = crypto.getRandomValues(new Uint8Array(65536));
+    const key = `audit/probe-${ts.replace(/[:.]/g, '-')}-${nonce.slice(0, 8)}.bin`;
+    await env.UPLOADS.put(key, bytes, { httpMetadata: { contentType: 'application/octet-stream' } });
+    const full = new Uint8Array(await (await env.UPLOADS.get(key)).arrayBuffer());
+    const part = new Uint8Array(await (await env.UPLOADS.get(key, { range: { offset: 1000, length: 100 } })).arrayBuffer());
+    const head = await env.UPLOADS.head(key);
+    const same = full.length === bytes.length && full.every((b, i) => b === bytes[i]);
+    const rangeOk = part.length === 100 && part.every((b, i) => b === bytes[1000 + i]);
+    out.media = same && rangeOk && head?.size === 65536 ? `ok put/get/range/head ${Date.now() - t0}ms (${head?.nfcStore || 'uz'})` : `xato: full=${same} range=${rangeOk} head=${head?.size}`;
+  } catch (e) { out.media = `xato: ${String(e?.message || e).slice(0, 160)}`; }
+  return out;
 }
 
 // ── Worker kirish nuqtasi uchun ───────────────────────────────────────
@@ -556,10 +636,11 @@ export function withUzStores(env) {
     keyId: env.UZ_S3_KEY_ID, secret: env.UZ_S3_SECRET, region: env.UZ_S3_REGION || 'garage',
   });
   const fallback = String(env.UZ_UPLOADS_FALLBACK || '').trim().toLowerCase() === 'r2' && env.UPLOADS;
+  const db = uzDb({ url: env.UZ_DB_URL, token: env.UZ_DB_TOKEN });
   const out = {
     ...env,
-    DB: uzDb({ url: env.UZ_DB_URL, token: env.UZ_DB_TOKEN }),
-    UPLOADS: fallback ? withR2Fallback(bucket, env.UPLOADS) : bucket,
+    DB: db,
+    UPLOADS: fallback ? withR2Fallback(bucket, env.UPLOADS, (op, key) => logFallback(db, op, key)) : bucket,
     UZ_STORE_ACTIVE: '1',
   };
   wrapped.set(env, out);
