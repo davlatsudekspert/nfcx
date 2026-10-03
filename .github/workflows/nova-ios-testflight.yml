@@ -247,7 +247,12 @@ jobs:
         run: |
           set -euo pipefail
           flutter analyze --no-fatal-infos
-          flutter test --reporter=compact 2>&1 | tail -5
+          if ! flutter test --reporter=expanded > "$RUNNER_TEMP/test.log" 2>&1; then
+            grep -B4 -A60 -E "EXCEPTION CAUGHT|Expected:|\[E\]" "$RUNNER_TEMP/test.log" | head -300
+            tail -5 "$RUNNER_TEMP/test.log"
+            exit 1
+          fi
+          tail -3 "$RUNNER_TEMP/test.log"
 
       # ---- nova-testflight.yml dan (ishlagan) ----
       - name: Imzo sertifikati va profil
