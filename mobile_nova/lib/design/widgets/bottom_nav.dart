@@ -344,8 +344,7 @@ class _NavButton extends StatelessWidget {
     // PREMIUM (egasi, 2026-09-24: "ikonkalar qoraroq, aniqroq,
     // qimmatroq; faol holat premium" va "hamma temalarda ham").
     //
-    // Faol tab — mavzuning ASOSIY MATN rangidagi kapsula (Ivory'da qora
-    // siyoh, qorong'i mavzularda yorug'), ichidagi belgi sirt rangida.
+    // Faol tab kapsulasi ham rejim almashtirgichi kabi mavzu aksentida.
     // Faol emaslari — `text1` ga yaqin to'q ton (kulrang emas).
     final idle = onVideo
         ? Colors.white.withValues(alpha: .78)
@@ -353,8 +352,8 @@ class _NavButton extends StatelessWidget {
     final ink = onVideo ? Colors.white : t.text1;
     final color = selected ? ink : idle;
     // Video ustida faol kapsula — yarim shaffof oq (Instagram), belgi oq.
-    final iconColor = selected && !onVideo ? t.surfaceSolid : color;
-    final capsule = onVideo ? Colors.white.withValues(alpha: .2) : t.text1;
+    final iconColor = selected && !onVideo ? t.onControl : color;
+    final capsule = onVideo ? Colors.white.withValues(alpha: .2) : t.controlFill;
     return Semantics(
       button: true,
       selected: selected,
@@ -380,7 +379,7 @@ class _NavButton extends StatelessWidget {
                     boxShadow: selected && !onVideo
                         ? [
                             BoxShadow(
-                              color: t.text1.withValues(alpha: .22),
+                              color: t.controlFill.withValues(alpha: .22),
                               blurRadius: 10,
                               spreadRadius: -3,
                               offset: const Offset(0, 4),

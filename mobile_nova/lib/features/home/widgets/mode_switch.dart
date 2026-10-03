@@ -23,10 +23,7 @@ class ModeSwitch extends StatelessWidget {
     final t = context.tokens;
     final l = L.of(context);
     final business = mode == AppMode.business;
-    // PREMIUM (egasi, 2026-09-24: "toggle chiroyli, qimmat va aniq",
-    // "hamma temalarda ham"). Faol tomon mavzuning asosiy matn rangida
-    // (Ivory'da qora siyoh), yozuvi sirt rangida — kulrang "o'chirilgan
-    // forma" ko'rinishi yo'q.
+    // Faol kapsula va yozuv bir xil, mavzuga mos rang juftligidan olinadi.
     const h = 44.0;
 
     return Semantics(
@@ -64,11 +61,11 @@ class ModeSwitch extends StatelessWidget {
                     width: w,
                     height: h - 8,
                     decoration: BoxDecoration(
-                      color: t.text1,
+                      color: t.controlFill,
                       borderRadius: R.pill,
                       boxShadow: [
                         BoxShadow(
-                          color: t.text1.withValues(alpha: .24),
+                          color: t.controlFill.withValues(alpha: .24),
                           blurRadius: 12,
                           spreadRadius: -4,
                           offset: const Offset(0, 5),
@@ -82,7 +79,7 @@ class ModeSwitch extends StatelessWidget {
                     _Label(
                       text: l.modePersonal,
                       selected: !business,
-                      tone: t.surfaceSolid,
+                      tone: t.onControl,
                       height: h - 8,
                       width: w,
                       onTap: () => onChanged(AppMode.personal),
@@ -91,7 +88,7 @@ class ModeSwitch extends StatelessWidget {
                     _Label(
                       text: l.modeBusiness,
                       selected: business,
-                      tone: t.surfaceSolid,
+                      tone: t.onControl,
                       height: h - 8,
                       width: w,
                       onTap: () => onChanged(AppMode.business),
@@ -122,7 +119,7 @@ class _Label extends StatelessWidget {
   final String text;
   final bool selected;
 
-  /// Faol yorliq rangi — shaxsiyda shampan, bizneda platina-yashil.
+  /// Faol kapsula ustidagi kontrastli yozuv.
   final Color tone;
   final double width;
   final VoidCallback onTap;

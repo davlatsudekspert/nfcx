@@ -142,6 +142,14 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     return darkScore >= lightScore ? dark : Colors.white;
   }
 
+  /// Faol boshqaruv sirti: yorug' mavzuda siyoh, qorong'ida o'z aksenti.
+  /// Matn rangi fon uchun ishlatilmaydi: Ocean, Aurora va oltin mavzular
+  /// bir xil oq kapsulaga aylanib qolmasin.
+  Color get controlFill => isDark ? accent2 : text1;
+
+  /// [controlFill] ustidagi o'qiladigan yozuv va ikonka.
+  Color get onControl => isDark ? onAccent : surfaceSolid;
+
   /// Logotip orqasidagi plastina rangi.
   ///
   /// Brend logotipi QORA fonli JPG. Yorug' mavzuda uni to'g'ridan-to'g'ri

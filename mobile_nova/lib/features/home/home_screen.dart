@@ -876,9 +876,7 @@ class _ActionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    // PREMIUM (egasi, 2026-09-24): belgi SIYOH doirada (`text1`), sirt
-    // rangidagi chiziq bilan — fintech ilovalardagidek aniq va qimmat.
-    // Hamma mavzuda: Ivory'da qora doira, qorong'ida yorug' doira.
+    // Tezkor tugma ham rejim va navigatsiya kapsulasi rangida.
     final style = TextStyle(
       fontFamily: AppType.sans,
       fontSize: 11.5,
@@ -916,13 +914,13 @@ class _ActionTile extends StatelessWidget {
                 height: 38,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: t.text1,
+                  color: t.controlFill,
                   // Nozik champagne hoshiya — siyoh doira "tiqilib"
                   // qolmaydi, zargarlik buyumidek tugallanadi.
                   border: Border.all(
                       color: t.brand.withValues(alpha: .55), width: 1),
                 ),
-                child: Icon(icon, size: 19, color: t.surfaceSolid),
+                child: Icon(icon, size: 19, color: t.onControl),
               ),
               const SizedBox(height: 8),
               Expanded(
