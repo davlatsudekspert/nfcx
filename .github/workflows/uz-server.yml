@@ -41,6 +41,9 @@ jobs:
           # Maxfiy so'zlar bor qatorlar annotatsiyaga tushmasin.
           # Uzun hex (tokenlar), Garage kalit ID'si va "Secret key" qatorlari yashiriladi.
           clean() { grep -viE 'secret key|password|parol' | sed -E 's/[0-9a-fA-F]{32,}/<hex>/g; s/GK[0-9a-fA-F]{8,}/GK<id>/g' | tail -n "${1:-15}"; }
+          # GitHub bitta qadamda faqat 10 ta annotatsiya ko'rsatadi — jurnal
+          # BITTA annotatsiyaga yig'iladi (%0A = yangi qator).
+          joined() { sed -e 's/%/%25/g' -e 's/\r//g' | sed ':a;N;$!ba;s/\n/%0A/g'; }
 
           # Diagnostika: port ochiqmi va SSH nima deydi (xabarlarda maxfiy narsa yo'q).
           for p in 22 80 443; do
@@ -77,16 +80,16 @@ jobs:
             R 'tail -n 40 /root/nfcstore-setup.out' > setup.out 2>&1 || true
             if [ "$rc" = 0 ]; then
               echo "::notice title=Setup::muvaffaqiyatli tugadi"
-              clean 6 < setup.out | while IFS= read -r l; do echo "::notice title=setup log::$l"; done
+              echo "::notice title=setup log::$(clean 8 < setup.out | joined)"
             else
               echo "::error title=Setup::${rc:+kod $rc bilan }tugamadi — oxirgi qatorlar pastda"
-              clean 25 < setup.out | while IFS= read -r l; do echo "::error title=setup log::$l"; done
+              echo "::error title=setup log::$(clean 30 < setup.out | joined)"
               exit 1
             fi
           fi
           if [ "$ACTION" = log ]; then
             R 'cat /root/nfcstore-setup.rc 2>/dev/null || echo "hali tugamagan"; tail -n 40 /root/nfcstore-setup.out 2>/dev/null' > setup.out 2>&1 || true
-            clean 30 < setup.out | while IFS= read -r l; do echo "::notice title=setup log::$l"; done
+            echo "::notice title=setup log::$(clean 40 < setup.out | joined)"
           fi
 
           R 'uptime -p; df -h / | tail -1 | awk "{print \"disk: \"\$3\" / \"\$2\" (\"\$5\")\"}"; free -m | awk "/Mem:/{print \"ram: \"\$3\"MB / \"\$2\"MB\"}"; docker ps --format "{{.Names}}: {{.Status}}" 2>/dev/null || echo "docker: yoq"' \
