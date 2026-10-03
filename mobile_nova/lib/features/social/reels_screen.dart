@@ -108,6 +108,16 @@ final reelsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
 /// Serverda "saqlash" API'si yo'q. Shuning uchun saqlash telefon
 /// xotirasida turadi va buni odamga aytamiz (snackbar) — soxta
 /// "hisobingizga saqlandi" yo'q.
+
+
+/// REELS VIDEOSINI OCHISH CHEGARASI (egasi, 2026-10: "bir video
+/// yuklanmasa keyingisiga o'tish va retry ishlasin").
+///
+/// `initialize()` javob bermay osilib qolsa, reel qora/aylanuvchi holda
+/// abadiy turardi va keyingi reelni oldindan yuklash ham kutib qolardi.
+/// Muddat o'tsa — "qayta urinish" holati (bosilsa yangi pleyer).
+const reelsInitTimeout = Duration(seconds: 20);
+
 class SavedReels extends SyncedSaves {
   SavedReels(SavesRepository repo, Prefs prefs)
       : super(repo, SaveKind.reel,
@@ -624,7 +634,9 @@ class _ReelPageState extends ConsumerState<_ReelPage>
       );
       _controller = c;
       try {
-        await c.initialize();
+        // Osilib qolgan ochilish reelni abadiy qora qoldirmasin va
+        // keyingisini yuklashni to'smasin: muddat o'tsa — "qayta urinish".
+        await c.initialize().timeout(reelsInitTimeout);
         if (gen != _gen || !mounted) return;
         await c.setLooping(true);
         _ready = true;
