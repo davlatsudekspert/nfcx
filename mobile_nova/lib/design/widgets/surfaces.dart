@@ -131,7 +131,7 @@ class Capsule extends StatelessWidget {
     // qoladi. Qorong'i mavzularda — avvalgidek.
     final ink = tone == null;
     final fg = ink
-        ? (selected ? t.surfaceSolid : t.text1)
+        ? (selected ? t.onControl : t.text1)
         : (selected ? accent : t.text2);
 
     return PressableScale(
@@ -145,9 +145,9 @@ class Capsule extends StatelessWidget {
         ),
         decoration: ink
             ? BoxDecoration(
-                color: selected ? t.text1 : t.surfaceSolid,
+                color: selected ? t.controlFill : t.surfaceSolid,
                 borderRadius: R.pill,
-                border: Border.all(color: selected ? t.text1 : t.border1),
+                border: Border.all(color: selected ? t.controlFill : t.border1),
                 boxShadow: selected ? null : t.shadowTiny,
               )
             : BoxDecoration(

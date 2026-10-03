@@ -1376,11 +1376,11 @@ class _BusinessTiles extends StatelessWidget {
                       height: 38,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: t.text1,
+                        color: t.controlFill,
                         border: Border.all(
                             color: t.brand.withValues(alpha: .55)),
                       ),
-                      child: Icon(e.$1, size: 19, color: t.surfaceSolid),
+                      child: Icon(e.$1, size: 19, color: t.onControl),
                     ),
                     const SizedBox(width: Gap.sm),
                     Expanded(

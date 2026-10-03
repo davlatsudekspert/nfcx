@@ -5,6 +5,7 @@ import 'package:nfcstore_nova/app/providers.dart';
 import 'package:nfcstore_nova/design/theme/app_theme.dart';
 import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
 import 'package:nfcstore_nova/design/widgets/bottom_nav.dart';
+import 'package:nfcstore_nova/design/widgets/surfaces.dart';
 import 'package:nfcstore_nova/features/home/widgets/mode_switch.dart';
 import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
 
@@ -72,6 +73,29 @@ void main() {
           Alignment.centerRight);
       expect(DefaultTextStyle.of(tester.element(find.text(l.modeBusiness))).style.color,
           t.onControl);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('${t.id}: filter and status capsules keep their colors', (tester) async {
+      await tester.pumpWidget(themed(
+        t,
+        Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Capsule(label: 'Selected', selected: true),
+          Capsule(label: 'Warning', selected: true, tone: t.warn),
+        ])),
+      ));
+      await tester.pumpAndSettle();
+      final selected = find.widgetWithText(Capsule, 'Selected');
+      final decoration = tester.widget<AnimatedContainer>(find.descendant(
+        of: selected, matching: find.byType(AnimatedContainer),
+      )).decoration as BoxDecoration;
+      expect(decoration.color, t.controlFill);
+      expect(tester.widget<Text>(find.text('Selected')).style?.color, t.onControl);
+      final warning = tester.widget<AnimatedContainer>(find.descendant(
+        of: find.widgetWithText(Capsule, 'Warning'),
+        matching: find.byType(AnimatedContainer),
+      )).decoration as BoxDecoration;
+      expect(warning.color, t.warn.withValues(alpha: t.isDark ? .13 : .18));
       expect(tester.takeException(), isNull);
     });
 
