@@ -1,0 +1,140 @@
+# iOS REELS VIDEO DIAGNOSTIKASI (mobile_nova, faqat o'qish)
+#
+# "TestFlight'da Reels video qora" (egasi, 2026-10). Taxminsiz sabab
+# topish uchun iPhone simulyatorida:
+#   1. mavjud `reels_video_probe_test.dart` — server, Range, MP4
+#      tuzilishi, initialize va birinchi kadr vaqti (AVFoundation);
+#   2. `ci/ios-probe/reels_render_probe_test.dart` — Reels bilan bir xil
+#      vidjet daraxtida video chiziladimi: ekran surati piksellari.
+# Ilova kodi `claude/vibrant-einstein-p5lo1i` dan O'ZGARISHSIZ olinadi.
+# Natija step summary va jurnalda (artifact xotirasi to'lgan).
+name: NFCSTORE iOS Reels video diagnostikasi
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/wizardly-einstein-8cx2p4]
+    paths:
+      - .github/workflows/nova-ios-video-probe.yml
+      - ci/ios-probe/**
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+    defaults:
+      run:
+        working-directory: nova/mobile_nova
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: self
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/vibrant-einstein-p5lo1i
+          path: nova
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.35.5
+          channel: stable
+          cache: true
+      - name: Paketlar
+        run: |
+          echo "Nova: $(git rev-parse --short HEAD)"
+          flutter pub get --enforce-lockfile
+
+      - name: iPhone simulyatori
+        id: sim
+        run: |
+          set -e
+          UDID=$(xcrun simctl list devices available -j | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)['devices']
+          pref=['iPhone 16 Pro','iPhone 16','iPhone 15 Pro','iPhone 16 Pro Max']
+          allv=[x for k,v in d.items() if 'iOS' in k for x in v]
+          for p in pref:
+            for x in allv:
+              if x['name']==p: print(x['udid']); raise SystemExit
+          print([x for x in allv if 'iPhone' in x['name']][0]['udid'])")
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl list devices | grep "$UDID"
+
+      - name: Probe fayllari
+        run: |
+          mkdir -p integration_test/probe
+          cp integration_probe/reels_video_probe_test.dart integration_test/probe/
+          cp "$GITHUB_WORKSPACE/self/ci/ios-probe/reels_render_probe_test.dart" integration_test/probe/
+
+      - name: 1) Server + AVFoundation o'lchovi
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          flutter test integration_test/probe/reels_video_probe_test.dart -d "${{ steps.sim.outputs.udid }}" 2>&1 | tee probe.log
+          {
+            echo "## 1) Video probe (iOS simulator, AVFoundation)"
+            echo '```'
+            grep -o '\[PROBE\].*' probe.log | cut -c1-400 | head -80
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 2) Render probe + ekran surati
+        run: |
+          set -e
+          UDID=${{ steps.sim.outputs.udid }}
+          xcrun simctl spawn "$UDID" log stream --style compact \
+            --predicate 'subsystem BEGINSWITH "com.apple.avfoundation" OR subsystem BEGINSWITH "com.apple.coremedia" OR eventMessage CONTAINS[c] "video_player" OR eventMessage CONTAINS[c] "AVPlayer"' \
+            > "$RUNNER_TEMP/av.log" 2>&1 &
+          LOGPID=$!
+          ( flutter test integration_test/probe/reels_render_probe_test.dart -d "$UDID" > render.log 2>&1; echo "EXIT $?" >> render.log ) &
+          for _ in $(seq 1 600); do
+            grep -q '"stage":"ready"' render.log 2>/dev/null && break
+            grep -q '^EXIT ' render.log 2>/dev/null && break
+            sleep 1
+          done
+          sleep 1
+          for n in 1 2 3; do xcrun simctl io "$UDID" screenshot "$RUNNER_TEMP/shot$n.png"; sleep 2; done
+          for _ in $(seq 1 120); do grep -q '^EXIT ' render.log && break; sleep 1; done
+          kill $LOGPID 2>/dev/null || true
+          for n in 1 2 3; do sips -s format bmp "$RUNNER_TEMP/shot$n.png" --out "$RUNNER_TEMP/shot$n.bmp" >/dev/null; done
+          python3 - "$RUNNER_TEMP" > "$RUNNER_TEMP/pix.txt" <<'PY'
+          import struct, sys
+          d = sys.argv[1]
+          for n in (1, 2, 3):
+              b = open(f'{d}/shot{n}.bmp', 'rb').read()
+              off = struct.unpack('<I', b[10:14])[0]
+              w, h = struct.unpack('<ii', b[18:26])
+              bpp = struct.unpack('<H', b[28:30])[0] // 8
+              row = (w * bpp + 3) & ~3
+              h = abs(h)
+              lit = tot = 0; lum = 0.0
+              for y in range(h // 4, 3 * h // 4, 8):
+                  for x in range(w // 4, 3 * w // 4, 8):
+                      i = off + y * row + x * bpp
+                      bl, g, r = b[i], b[i + 1], b[i + 2]
+                      l = .2126 * r + .7152 * g + .0722 * bl
+                      lum += l; tot += 1
+                      if l > 24: lit += 1
+              print(f'shot{n}: {w}x{h} markaz yorqinligi={lum/tot:.1f} yorug_piksel={100*lit/tot:.1f}%')
+          PY
+          {
+            echo "## 2) Render probe"
+            echo '```'
+            grep -o '\[RENDER\].*' render.log | cut -c1-500
+            grep '^EXIT' render.log
+            cat "$RUNNER_TEMP/pix.txt"
+            echo '```'
+            echo "### AVFoundation/CoreMedia xatolari (simulyator logi)"
+            echo '```'
+            grep -iE "error|fail|denied|ATS|-1100|-1200|-1022|-12" "$RUNNER_TEMP/av.log" | cut -c1-300 | head -40
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          cat "$RUNNER_TEMP/pix.txt"
+          tail -60 render.log
