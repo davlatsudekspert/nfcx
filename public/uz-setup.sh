@@ -42,7 +42,19 @@ for i in $(seq 1 60); do dpkg --configure -a && break; sleep 5; done
 APT="apt-get -o DPkg::Lock::Timeout=900 -y -qq"
 $APT update
 $APT install docker.io docker-compose-v2 ufw sqlite3 curl jq openssl ca-certificates psmisc >/dev/null
+# Uzilib qolgan yangilanish fayllarni NUL baytlar bilan qoldirishi mumkin
+# (shunday bo'ldi: /etc/apparmor.d/tunables/home.d/ubuntu) — AppArmor
+# profili yuklanmaydi va Docker konteynerni ishga tushirmaydi.
+BAD=$(grep -rlaP '\x00' /etc/apparmor.d 2>/dev/null || true)
+if [ -n "$BAD" ]; then
+  echo "AppArmor fayllarida NUL bayt — tuzatildi: $BAD"
+  for f in $BAD; do sed -i 's/\x0//g' "$f"; done
+  systemctl restart apparmor || true
+fi
+# Yarim yozilgan boshqa paket fayllari bormi — jurnal uchun (o'zgartirilmaydi).
+dpkg --verify 2>/dev/null | grep -v ' c /etc/' | head -n 15 || true
 systemctl enable --now docker >/dev/null
+systemctl restart docker
 
 step "2/7 Papkalar va maxfiy kalitlar"
 mkdir -p "$ROOT"/{sqld,garage/meta,garage/data,caddy/data,caddy/config,backups}
