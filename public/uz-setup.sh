@@ -138,7 +138,12 @@ ufw status | sed -n '1,8p'
 
 step "5/7 Xizmatlarni ishga tushirish"
 cd "$ROOT"
-docker compose --env-file "$ROOT/secrets.env" pull -q
+# Rasmlarni yuklash (3 urinish). Qatorma-qator progress yashiriladi, xato ko'rinadi.
+for i in 1 2 3; do
+  docker compose --env-file "$ROOT/secrets.env" pull 2>&1 \
+    | { grep -vE 'Pulling fs layer|Waiting|Downloading|Extracting|Verifying|Download complete|Pull complete' || true; } && break
+  sleep 10
+done
 docker compose --env-file "$ROOT/secrets.env" up -d
 sleep 8
 

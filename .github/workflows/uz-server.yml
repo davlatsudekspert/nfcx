@@ -39,7 +39,8 @@ jobs:
           sudo apt-get install -y -qq sshpass >/dev/null
           R() { sshpass -e ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=8 -o LogLevel=ERROR root@"$HOST" "$@"; }
           # Maxfiy so'zlar bor qatorlar annotatsiyaga tushmasin.
-          clean() { grep -viE 'secret|token|password|parol|key id|rpc_|admin_' | tail -n "${1:-15}"; }
+          # Uzun hex (tokenlar), Garage kalit ID'si va "Secret key" qatorlari yashiriladi.
+          clean() { grep -viE 'secret key|password|parol' | sed -E 's/[0-9a-fA-F]{32,}/<hex>/g; s/GK[0-9a-fA-F]{8,}/GK<id>/g' | tail -n "${1:-15}"; }
 
           # Diagnostika: port ochiqmi va SSH nima deydi (xabarlarda maxfiy narsa yo'q).
           for p in 22 80 443; do
