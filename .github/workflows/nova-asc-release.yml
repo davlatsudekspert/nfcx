@@ -1,0 +1,128 @@
+name: NFCSTORE App Store — holat (faqat o'qish)
+
+# App Store'ga chiqarishdan oldin App Store Connect'da nima to'ldirilgan,
+# nima yo'qligini ko'rsatadi: versiya, tavsif, skrinshotlar, yosh
+# reytingi, maxfiylik havolasi, review ma'lumotlari, narx/mavjudlik.
+# FAQAT O'QIYDI — hech narsani o'zgartirmaydi va review'ga yubormaydi.
+# Natija annotatsiyalarda (notice).
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/wizardly-einstein-8cx2p4]
+    paths: [.github/workflows/nova-asc-release.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  status:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      IOS_BUNDLE_ID: uz.nfcstore.nova
+    steps:
+      - name: App Store Connect holati
+        env:
+          API_KEY_ID: ${{ secrets.NOVA_APPSTORE_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.NOVA_APPSTORE_ISSUER_ID }}
+          API_PRIVATE_KEY: ${{ secrets.NOVA_APPSTORE_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          umask 077
+          KEYFILE="$RUNNER_TEMP/key.p8"
+          if printf '%s' "$API_PRIVATE_KEY" | grep -q 'BEGIN PRIVATE KEY'; then
+            printf '%s\n' "$API_PRIVATE_KEY" > "$KEYFILE"
+          else
+            BODY=$(printf '%s' "$API_PRIVATE_KEY" | tr -d ' \r\n')
+            if printf '%s' "$BODY" | base64 --decode | grep -aq 'BEGIN PRIVATE KEY'; then
+              printf '%s' "$BODY" | base64 --decode > "$KEYFILE"
+            else
+              { echo '-----BEGIN PRIVATE KEY-----'; printf '%s\n' "$BODY" | fold -w 64; echo '-----END PRIVATE KEY-----'; } > "$KEYFILE"
+            fi
+          fi
+          pip install --quiet pyjwt cryptography
+          ASC_KEY_FILE="$KEYFILE" python3 - <<'PY'
+          import json, os, sys, time, urllib.error, urllib.parse, urllib.request
+          import jwt
+          KEY = open(os.environ['ASC_KEY_FILE']).read()
+          def tok():
+              now = int(time.time())
+              return jwt.encode({'iss': os.environ['API_ISSUER_ID'], 'iat': now, 'exp': now + 1100,
+                                 'aud': 'appstoreconnect-v1'}, KEY, algorithm='ES256',
+                                headers={'kid': os.environ['API_KEY_ID'], 'typ': 'JWT'})
+          def get(path, params=None):
+              url = 'https://api.appstoreconnect.apple.com' + path
+              if params:
+                  url += '?' + urllib.parse.urlencode(params)
+              req = urllib.request.Request(url, headers={'Authorization': 'Bearer ' + tok()})
+              try:
+                  with urllib.request.urlopen(req, timeout=60) as r:
+                      return json.load(r)
+              except urllib.error.HTTPError as e:
+                  return {'_error': e.code, '_body': e.read().decode()[:200]}
+          out = {}
+          def sec(name, lines):
+              msg = '%0A'.join(str(l).replace('\n', ' ').replace('%', '%25') for l in lines)
+              print(f'::notice title={name}::{msg}')
+          B = os.environ['IOS_BUNDLE_ID']
+          apps = [a for a in get('/v1/apps', {'filter[bundleId]': B}).get('data', []) if a['attributes']['bundleId'] == B]
+          if not apps:
+              print('::error::ilova topilmadi'); sys.exit(1)
+          app = apps[0]; aid = app['id']; at = app['attributes']
+          sec('1 Ilova', [f"nomi: {at.get('name')}", f"asosiy til: {at.get('primaryLocale')}",
+                          f"contentRightsDeclaration: {at.get('contentRightsDeclaration')}",
+                          f"sku: {at.get('sku')}"])
+          infos = get(f'/v1/apps/{aid}/appInfos').get('data', [])
+          lines = []
+          for inf in infos:
+              ia = inf['attributes']
+              lines.append(f"appInfo {inf['id'][:8]} holat={ia.get('appStoreState') or ia.get('state')} yosh={ia.get('appStoreAgeRating')}")
+              cat = get(f"/v1/appInfos/{inf['id']}/primaryCategory")
+              lines.append(f"  kategoriya: {(cat.get('data') or {}).get('id') if isinstance(cat.get('data'), dict) else cat.get('_error')}")
+              ar = get(f"/v1/appInfos/{inf['id']}/ageRatingDeclaration")
+              ad = (ar.get('data') or {}).get('attributes') if isinstance(ar.get('data'), dict) else None
+              if ad:
+                  unset = [k for k, v in ad.items() if v is None]
+                  lines.append(f"  yosh reytingi so'rovnomasi: {'TO‘LIQ' if not unset else 'to‘ldirilmagan: ' + ', '.join(unset[:12])}")
+              else:
+                  lines.append(f"  yosh reytingi: {ar.get('_error')}")
+              for loc in get(f"/v1/appInfos/{inf['id']}/appInfoLocalizations").get('data', []):
+                  la = loc['attributes']
+                  lines.append(f"  [{la.get('locale')}] nom={la.get('name')!r} subtitle={la.get('subtitle')!r} privacyUrl={la.get('privacyPolicyUrl')!r}")
+          sec('2 App info', lines)
+          vers = get(f'/v1/apps/{aid}/appStoreVersions', {'filter[platform]': 'IOS', 'limit': 10}).get('data', [])
+          vl = [f"{v['attributes'].get('versionString')} — {v['attributes'].get('appStoreState')} (release={v['attributes'].get('releaseType')})" for v in vers]
+          sec('3 Versiyalar', vl or ["App Store versiyasi hali yaratilmagan"])
+          edit = [v for v in vers if v['attributes'].get('appStoreState') in
+                  ('PREPARE_FOR_SUBMISSION', 'DEVELOPER_REJECTED', 'REJECTED', 'METADATA_REJECTED', 'INVALID_BINARY')]
+          if edit:
+              v = edit[0]; vid = v['id']
+              lines = [f"tahrirlanadigan versiya: {v['attributes'].get('versionString')} ({v['attributes'].get('appStoreState')})",
+                       f"copyright: {v['attributes'].get('copyright')!r}"]
+              b = get(f'/v1/appStoreVersions/{vid}/build')
+              bd = b.get('data')
+              lines.append(f"biriktirilgan build: {bd['attributes'].get('version') if isinstance(bd, dict) else 'yo‘q'}")
+              for loc in get(f'/v1/appStoreVersions/{vid}/appStoreVersionLocalizations').get('data', []):
+                  la = loc['attributes']
+                  lines.append(f"[{la.get('locale')}] tavsif={len(la.get('description') or '')} belgi, kalit so'z={len(la.get('keywords') or '')}, "
+                               f"supportUrl={la.get('supportUrl')!r}, marketingUrl={la.get('marketingUrl')!r}, whatsNew={len(la.get('whatsNew') or '')}")
+                  for ss in get(f"/v1/appStoreVersionLocalizations/{loc['id']}/appScreenshotSets").get('data', []):
+                      n = len(get(f"/v1/appScreenshotSets/{ss['id']}/appScreenshots").get('data', []))
+                      lines.append(f"   skrinshot {ss['attributes'].get('screenshotDisplayType')}: {n}")
+              rd = get(f'/v1/appStoreVersions/{vid}/appStoreReviewDetail')
+              rda = (rd.get('data') or {}).get('attributes') if isinstance(rd.get('data'), dict) else None
+              if rda:
+                  lines.append(f"review: kontakt={bool(rda.get('contactEmail'))}/{bool(rda.get('contactPhone'))}, "
+                               f"demoAccountRequired={rda.get('demoAccountRequired')}, demo login bor={bool(rda.get('demoAccountName'))}, izoh={len(rda.get('notes') or '')} belgi")
+              else:
+                  lines.append(f"review ma'lumotlari: yo'q ({rd.get('_error')})")
+              sec('4 Versiya tafsilotlari', lines)
+          ps = get(f'/v1/apps/{aid}/appPriceSchedule')
+          av = get(f'/v1/apps/{aid}/appAvailabilityV2')
+          sec('5 Narx va mavjudlik', [f"narx jadvali: {'bor' if isinstance(ps.get('data'), dict) else ps.get('_error')}",
+                                      f"mavjudlik: {'bor' if isinstance(av.get('data'), dict) else av.get('_error')}"])
+          bl = get('/v1/builds', {'filter[app]': aid, 'sort': '-uploadedDate', 'limit': 4,
+                                  'fields[builds]': 'version,processingState,expired,usesNonExemptEncryption'}).get('data', [])
+          sec('6 Oxirgi buildlar', [f"{b['attributes'].get('version')} {b['attributes'].get('processingState')} encryption={b['attributes'].get('usesNonExemptEncryption')}" for b in bl])
+          PY
