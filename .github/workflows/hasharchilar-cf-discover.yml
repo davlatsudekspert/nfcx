@@ -72,3 +72,18 @@ jobs:
           file script.bin || true
           grep -aoE 'CREATE TABLE[^;]{0,600}' script.bin | head -20 || true
           grep -aoE "\.(get|post|put|patch|delete)\(['\"][^'\"]{1,80}['\"]" script.bin | sort -u | head -60 || true
+
+      - name: R2 ga yozish ruxsati (kichik sinov fayli, darrov o'chiriladi)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 31c4b3d8ece4b65de515debc4552334a
+        run: |
+          set -u
+          echo "probe $(date -u +%FT%TZ)" > probe.txt
+          if npx --yes wrangler@4.147.0 r2 object put hasharchilar-photos/ci/.write-probe --file probe.txt --remote; then
+            echo "R2_WRITE=ok"
+            npx --yes wrangler@4.147.0 r2 object get hasharchilar-photos/ci/.write-probe --file back.txt --remote && echo "R2_READ=ok: $(cat back.txt)"
+            npx --yes wrangler@4.147.0 r2 object delete hasharchilar-photos/ci/.write-probe --remote && echo "R2_DELETE=ok"
+          else
+            echo "R2_WRITE=denied"
+          fi
