@@ -1,0 +1,164 @@
+From 61880fb4c6e522e544518710b10147c8764f18f6 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 4 Oct 2026 00:23:30 +0000
+Subject: [PATCH 7/7] Tablar oldindan tayyor: Tanlov, Reels, Profil preload
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+iPhone TestFlight 303 (egasi, 2026-10): "tab bosilishi bilan sahifa
+darhol ochilmayapti", "avatar biroz kech". StatefulShellRoute tabni
+BIRINCHI bosilganda qurardi — ekran noldan yig'ilar va API so'rovlari,
+avatar/rasmlar yuklanishi o'sha paytda boshlanardi.
+
+- Tanlov, Reels, Profil: StatefulShellBranch(preload: true) — shell
+  ochilganda yashirin (Offstage + TickerMode o'chiq) quriladi, ma'lumot
+  va rasmlarni oldindan yuklaydi; bosilganda tayyor. Holat saqlanadi,
+  tab almashganda qayta yuklash yo'q (ekran o'sha nusxa).
+- NFC oldindan qurilmaydi (NFC sessiyasi/tizim oynasi). Yashirin Reels
+  pleyer ochmaydi (visible faqat Reels tabida).
+- tab_preload_test: konfiguratsiya + ilovada: Asosiyda turganda uch tab
+  tayyor, NFC yo'q, video pleyer 0, Profilga o'tishda element o'sha.
+  Preload'siz ikkala test yiqiladi.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01WqgHSnzY8F5vsV7piKkJh7
+---
+ mobile_nova/lib/routing/router.dart    | 21 ++++++-
+ mobile_nova/test/tab_preload_test.dart | 84 ++++++++++++++++++++++++++
+ 2 files changed, 102 insertions(+), 3 deletions(-)
+ create mode 100644 mobile_nova/test/tab_preload_test.dart
+
+diff --git a/mobile_nova/lib/routing/router.dart b/mobile_nova/lib/routing/router.dart
+index ba1a3185..31428d97 100644
+--- a/mobile_nova/lib/routing/router.dart
++++ b/mobile_nova/lib/routing/router.dart
+@@ -165,17 +165,32 @@ final routerProvider = Provider<GoRouter>((ref) {
+           StatefulShellBranch(routes: [
+             GoRoute(path: Routes.home, builder: (_, __) => const HomeScreen()),
+           ]),
+-          StatefulShellBranch(routes: [
++          // OLDINDAN TAYYOR TABLAR (egasi, 2026-10, iPhone TestFlight 303:
++          // "tab bosilishi bilan sahifa darhol ochilmayapti").
++          //
++          // `StatefulShellRoute` tabni BIRINCHI bosilganda qurardi: ekran
++          // noldan yig'ilar va o'sha paytda API so'rovlari boshlanardi —
++          // odam har tabga birinchi kirishda spinner/kechikish ko'rardi.
++          // `preload` bilan Tanlov, Reels va Profil shell ochilganda
++          // yashirin (`Offstage`, `TickerMode` o'chiq) quriladi va o'z
++          // ma'lumotini oldindan yuklaydi; bosilganda tayyor turadi.
++          // Holat saqlanadi, qayta yuklash yo'q (tablar yopilmaydi).
++          //
++          // NFC tabi OLDINDAN QURILMAYDI: u ochilishi bilan NFC
++          // sessiyasini boshlashi mumkin — iPhone'da tizim oynasi chiqadi.
++          // Reels yashirin holda pleyer ochmaydi (`visible` faqat Reels
++          // tabida) — faqat ro'yxat yuklanadi.
++          StatefulShellBranch(preload: true, routes: [
+             GoRoute(
+                 path: Routes.discover, builder: (_, __) => const DiscoverScreen()),
+           ]),
+           StatefulShellBranch(routes: [
+             GoRoute(path: Routes.nfc, builder: (_, __) => const NfcCenterScreen()),
+           ]),
+-          StatefulShellBranch(routes: [
++          StatefulShellBranch(preload: true, routes: [
+             GoRoute(path: Routes.reels, builder: (_, __) => const ReelsScreen()),
+           ]),
+-          StatefulShellBranch(routes: [
++          StatefulShellBranch(preload: true, routes: [
+             GoRoute(path: Routes.profile, builder: (_, __) => const ProfileScreen()),
+           ]),
+         ],
+diff --git a/mobile_nova/test/tab_preload_test.dart b/mobile_nova/test/tab_preload_test.dart
+new file mode 100644
+index 00000000..2f0bf7e0
+--- /dev/null
++++ b/mobile_nova/test/tab_preload_test.dart
+@@ -0,0 +1,84 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:go_router/go_router.dart';
++import 'package:nfcstore_nova/app/app.dart';
++import 'package:nfcstore_nova/features/discover/discover_screen.dart';
++import 'package:nfcstore_nova/features/nfc/nfc_center_screen.dart';
++import 'package:nfcstore_nova/features/profile/profile_screen.dart';
++import 'package:nfcstore_nova/features/social/reels_screen.dart';
++import 'package:nfcstore_nova/routing/router.dart';
++import 'package:nfcstore_nova/routing/routes.dart';
++import 'package:video_player_platform_interface/video_player_platform_interface.dart';
++
++import 'helpers.dart';
++import 'support/fake_video_platform.dart';
++
++/// TABLAR OLDINDAN TAYYOR (egasi, 2026-10, iPhone TestFlight 303).
++///
++/// Tanlov, Reels va Profil shell ochilganda yashirin quriladi —
++/// birinchi bosishda spinner/kechikish yo'q. Asosiy — boshlang'ich
++/// tab. NFC oldindan QURILMAYDI: u NFC sessiyasini boshlashi mumkin.
++void main() {
++  test('Tanlov, Reels, Profil — preload; NFC — yo‘q', () async {
++    final c = ProviderContainer(overrides: [...await testOverrides()]);
++    addTearDown(c.dispose);
++    final router = c.read(routerProvider);
++    final shell = router.configuration.routes
++        .whereType<StatefulShellRoute>()
++        .single;
++    final byPath = {
++      for (final b in shell.branches)
++        (b.routes.single as GoRoute).path: b.preload,
++    };
++    expect(byPath, {
++      Routes.home: false,
++      Routes.discover: true,
++      Routes.nfc: false,
++      Routes.reels: true,
++      Routes.profile: true,
++    });
++  });
++
++  testWidgets('ilovada: Asosiyda turganda Tanlov/Reels/Profil tayyor, '
++      'NFC qurilmagan, Reels pleyer ochmagan; tab almashganda qayta '
++      'qurilmaydi', (tester) async {
++    final video = FakeVideoPlatform();
++    VideoPlayerPlatform.instance = video;
++    tester.view.physicalSize = const Size(1170, 2532);
++    tester.view.devicePixelRatio = 3;
++    addTearDown(tester.view.reset);
++    final c = ProviderContainer(overrides: [...await testOverrides()]);
++    addTearDown(c.dispose);
++    await tester.pumpWidget(UncontrolledProviderScope(
++      container: c,
++      child: const NovaApp(),
++    ));
++    Future<void> frames([int n = 30]) async {
++      for (var i = 0; i < n; i++) {
++        await tester.pump(const Duration(milliseconds: 50));
++      }
++    }
++
++    await frames();
++    c.read(routerProvider).go(Routes.home);
++    await frames();
++
++    Finder hidden(Type t) => find.byType(t, skipOffstage: false);
++    expect(hidden(DiscoverScreen), findsOneWidget);
++    expect(hidden(ReelsScreen), findsOneWidget);
++    expect(hidden(ProfileScreen), findsOneWidget);
++    expect(hidden(NfcCenterScreen), findsNothing,
++        reason: 'NFC oldindan qurilmasligi kerak');
++    expect(video.created, isEmpty,
++        reason: 'yashirin Reels video pleyer ochmasligi kerak');
++
++    // Profil tabiga o'tish — o'sha tayyor ekran (yangi nusxa emas).
++    final before = tester.element(hidden(ProfileScreen));
++    c.read(routerProvider).go(Routes.profile);
++    await frames(6);
++    expect(find.byType(ProfileScreen), findsOneWidget);
++    expect(identical(tester.element(find.byType(ProfileScreen)), before), isTrue,
++        reason: 'Profil qayta qurildi — holat va ma’lumot saqlanmadi');
++  });
++}
+-- 
+2.43.0
+

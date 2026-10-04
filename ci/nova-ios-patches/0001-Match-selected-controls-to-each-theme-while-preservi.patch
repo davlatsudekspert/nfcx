@@ -1,7 +1,7 @@
 From f81240e7343426cd23648f10c0f8246600a30643 Mon Sep 17 00:00:00 2001
 From: davlatsudekspert <davlatsudekspert@gmail.com>
 Date: Sat, 3 Oct 2026 05:54:12 +0500
-Subject: [PATCH 1/6] Match selected controls to each theme while preserving
+Subject: [PATCH 1/7] Match selected controls to each theme while preserving
  light themes
 
 ---
