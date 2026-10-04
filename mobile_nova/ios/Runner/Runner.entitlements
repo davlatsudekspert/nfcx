@@ -13,6 +13,17 @@
 	     etilardi, telefonda esa sessiya ochilmay NFC umuman
 	     ishlamasdi. CI (`nova-ios.yml`) buni qaytib kelishdan
 	     qo'riqlaydi. -->
+	<!-- UNIVERSAL LINKS — ulashilgan nfcstore.uz/post/..., /u/, /c/,
+	     /story/, /nfc/ havolalari iPhone'da saytni emas, ilovani
+	     ochsin (Android'dagi App Links bilan bir xil). Sayt tomoni:
+	     /.well-known/apple-app-site-association (hosting/worker.js).
+	     App ID'da Associated Domains yoqilgan, imzo profili ham uni
+	     o'z ichiga oladi (nova-ios-testflight.yml tekshiradi). -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:nfcstore.uz</string>
+		<string>applinks:www.nfcstore.uz</string>
+	</array>
 	<key>com.apple.developer.nfc.readersession.formats</key>
 	<array>
 		<string>TAG</string>

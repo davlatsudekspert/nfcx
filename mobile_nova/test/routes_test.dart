@@ -201,6 +201,21 @@ void main() {
         isTrue);
   });
 
+  test('iOS Universal Links — nfcstore.uz havolasi ilovani ochadi', () {
+    // iPhone'da ulashilgan https://nfcstore.uz/post/... havolasi
+    // saytni emas, ilovani ochishi uchun entitlement'da shu domenlar
+    // bo'lishi shart; yo'l esa Android App Links bilan bir xil
+    // marshrutga tushadi.
+    final e = File('ios/Runner/Runner.entitlements').readAsStringSync();
+    expect(e, contains('com.apple.developer.associated-domains'));
+    expect(e, contains('<string>applinks:nfcstore.uz</string>'));
+    expect(e, contains('<string>applinks:www.nfcstore.uz</string>'));
+    expect(
+        routeExists(buildTestRouter(),
+            'https://nfcstore.uz/post/42?code=ABC123&company=1'),
+        isTrue);
+  });
+
   test('`Routes` dagi HAR BIR statik yo\'l ro\'yxatda bor', () {
     // BU SINOV SINOVNI TEKSHIRADI.
     //
