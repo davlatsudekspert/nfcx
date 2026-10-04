@@ -31,6 +31,7 @@ import * as apiAdminControl from './api/admin-control.js';
 import * as apiMusic from './api/music.js';
 import * as apiDemoBusinesses from './api/demo-businesses.js';
 import { ensureNewsSeed } from './api/news-seed.js';
+import { RESERVED_CODES, isReservedCode } from './api/reserved-codes.js';
 import { idQuarantined, notQuarantinedSql, purgeAfterMs, runScheduledPurge } from './api/account-purge.js';
 import { recordAppOpen } from './api/app-usage.js';
 import { archiveStmt, ensureArchiveTable, urlArchived } from './api/content-archive.js';
@@ -1073,10 +1074,14 @@ async function publicContentApi(request, env, url) {
 //      qisqarmasin).
 //   2) sinov davom etyapti — barcha imkoniyatlar ochiq.
 //   3) sinov tugagan:
-//        plan = 'free' (avtomatik ID)  -> katalogda 5 ta, istorya/post YO'Q;
+//        plan = 'free' (avtomatik ID)  -> katalogda 5 ta, istorya/post BOR;
 //        plan = 'free' + egasida faol PREMIUM (oylik, sayt orqali)
 //                                      -> katalogda 25 ta, istorya/post BOR;
 //        plan = 'paid' (sotib olingan nom) -> cheklovsiz.
+//
+// POST VA ISTORYA HAMMAGA BEPUL (egasining qarori, 2026-10-04; App
+// Store 3.1.1). `canPost` endi HAR DOIM `true` — ilova va sayt qulf
+// ko'rsatmasin. Tarif faqat katalog hajmini belgilaydi (5 / 25 / cheksiz).
 //
 // Premium tugasa biznes yana 5 taga qaytadi — mavjud yozuvlar
 // O'CHIRILMAYDI, faqat yangisini qo'shib bo'lmaydi (egasining qarori,
@@ -1099,7 +1104,7 @@ export function companyPlanStateD1(row, now = Date.now(), ownerPremium = false) 
   return {
     legacy: false, trialActive: false, free,
     itemLimit: free ? COMPANY_FREE_ITEM_LIMIT : null,
-    canPost: !free,
+    canPost: true,
     // Ilova "ko'proq kerakmi?" kartasida Premium qancha berishini
     // oldindan aytadi — raqam faqat shu yerda yashaydi.
     ...(free ? { premiumItemLimit: COMPANY_PREMIUM_ITEM_LIMIT } : {}),
@@ -1462,11 +1467,10 @@ async function companyApi(request, env, url) {
   if (action === 'posts' && !itemId && request.method === 'POST') {
     const body = await request.json().catch(() => ({}));
     if (!rulesAcceptedD1(body)) return json({ error: 'rules_not_accepted' }, 422);
-    // BEPUL TARIFDA ISTORYA VA POST YOPIQ (egasining qarori). Sinov
-    // davomida va sotib olingan nomda ochiq; eski kompaniyalarda
-    // (trial_expires_at bo'sh) hech narsa o'zgarmaydi.
-    const planPost = companyPlanStateD1(owned.row, Date.now(), !!owned.auth.user.isPremium);
-    if (!planPost.canPost) return json({ error: 'plan_locked', feature: 'post' }, 403);
+    // POST HAMMAGA BEPUL (2026-10-04) — tarif/Premium tekshirilmaydi
+    // (`companyPlanStateD1` izohiga qarang). Faqat ban va spam chegarasi.
+    const gatePost = await publishGateD1(env, owned.auth.user);
+    if (gatePost) return gatePost;
 
     const media = storyMediaD1(body);
     if (!media.ok) return json({ error: 'bad_image' }, 422);
@@ -1500,9 +1504,9 @@ async function companyApi(request, env, url) {
   if (action === 'stories' && !itemId && request.method === 'POST') {
     const body = await request.json().catch(() => ({}));
     if (!rulesAcceptedD1(body)) return json({ error: 'rules_not_accepted' }, 422);
-    // Post bilan bir xil qoida — bepul tarifda istorya ham yopiq.
-    const planStory = companyPlanStateD1(owned.row, Date.now(), !!owned.auth.user.isPremium);
-    if (!planStory.canPost) return json({ error: 'plan_locked', feature: 'story' }, 403);
+    // Post bilan bir xil qoida — istorya ham hammaga bepul.
+    const gateStory = await publishGateD1(env, owned.auth.user);
+    if (gateStory) return gateStory;
     const media = storyMediaD1(body);
     if (!media.ok) return json({ error: 'bad_image' }, 422);
     const res = await addStoryD1(env, {
@@ -3287,6 +3291,10 @@ async function getCurrentUser(request, env) {
     trialExpiresAt: row.trialExpiresAt || null,
     premiumExpiresAt: row.premiumExpiresAt || null,
     bannedUntil: isBanned ? row.bannedUntil : null, strikeCount: row.strikeCount || 0,
+    // Server AYTADI: nima yozish mumkin (2026-10-04, App Store 3.1.1).
+    // Post, video/Reels, istorya va izoh hammaga bepul — faqat ban
+    // yopadi. Ilova/sayt qulfni Premium/sinovdan emas, shundan oladi.
+    entitlements: { post: !isBanned, video: !isBanned, story: !isBanned, comment: !isBanned },
     promoCode: row.promoCode || null, pendingDiscountPct: row.pendingDiscountPct || 0,
     // Telegram akkauntga bog'langanmi. Kabinetdagi "Profilingizni
     // himoyalang" bo'limi shunga qarab ko'rinadi/yashiriladi — parolni
@@ -5629,10 +5637,8 @@ export {
 };
 
 // nfcstore.uz'dagi mavjud sahifa yo'llari bilan to'qnashmasligi uchun —
-// server/index.js'dagi RESERVED_CODES bilan bir xil.
-const RESERVED_CODES = new Set([
-  'LOGIN', 'REGISTER', 'ACCOUNT', 'PRIVACY', 'API', 'ADMIN', 'STATIC', 'UPLOADS', 'AUKSION', 'XABARLAR', 'TOLOVLAR',
-]);
+// `RESERVED_CODES` endi hosting/api/reserved-codes.js da (server/index.js
+// dagi nusxa bilan bir xil; scripts/test-support-routes.mjs solishtiradi).
 
 // ── PROFIL MUSIQASI LIMITI ─────────────────────────────────────────────
 // Oddiy foydalanuvchi 5 ta, Premium 10 ta qo'shiq. AYNAN shu qiymatlar
@@ -5766,10 +5772,24 @@ async function authApi(request, env, url) {
     if (password.length < 6) return json({ error: "Parol kamida 6 belgidan iborat bo'lishi kerak." }, 422);
     // Brute-force / scrypt CPU-DoS himoyasi: IP bo'yicha 10, hisob
     // bo'yicha 5 urinish / 15 daqiqa (D1).
-    if (await rateLimitD1(env, 'login:ip:' + reqIp(request), 10, 15 * 60_000)
-      // Kalitda xom email/telefon emas, xeshi (B13): `rate_limits` qatori
-      // hisob o'chirilgandan keyin ham bir muddat qoladi.
-      || await rateLimitD1(env, 'login:acct:' + await sha256Hex(asPhone || login), 5, 15 * 60_000)) {
+    //
+    // FAQAT XATO URINISHLAR SANALADI (App Store, 2026-10). Hisoblagich
+    // parol tekshiruvidan OLDIN oshadi (parallel so'rovlar ham chegarada
+    // to'xtaydi va scrypt'ga yetmaydi), parol TO'G'RI chiqsa esa shu
+    // urinishning o'zi qaytariladi (`refundRateLimitD1`). Ilgari
+    // muvaffaqiyatli kirishlar ham sanalardi: Apple tekshiruvchilari
+    // bitta demo hisobga 15 daqiqada 6-marta kirganda 429 olardi.
+    // Qaytarish faqat BITTA urinish: oldingi xato urinishlar (masalan,
+    // boshqa hisobga parol terish) o'chib ketmaydi.
+    const ipKey = 'login:ip:' + reqIp(request);
+    // Kalitda xom email/telefon emas, xeshi (B13): `rate_limits` qatori
+    // hisob o'chirilgandan keyin ham bir muddat qoladi.
+    const acctKey = 'login:acct:' + await sha256Hex(asPhone || login);
+    if (await rateLimitD1(env, ipKey, 10, 15 * 60_000)) return json({ error: 'too_many_requests' }, 429);
+    if (await rateLimitD1(env, acctKey, 5, 15 * 60_000)) {
+      // Hisob chegarasida to'xtagan so'rov parolni umuman tekshirmadi —
+      // u IP hisoblagichiga "xato urinish" bo'lib yozilmaydi.
+      await refundRateLimitD1(env, ipKey);
       return json({ error: 'too_many_requests' }, 429);
     }
     // Telefon bo'yicha qidirishda `deleted_at IS NULL` shart — bitta raqam
@@ -5784,6 +5804,9 @@ async function authApi(request, env, url) {
           WHERE phone = ? AND deleted_at IS NULL ORDER BY id ASC LIMIT 1`
       ).bind(asPhone).first();
     if (!row || !(await verifyPassword(password, row.password_hash))) return json({ error: 'bad_credentials' }, 401);
+    // Parol to'g'ri — bu urinish brute-force emas, chegaraga sanalmaydi.
+    await refundRateLimitD1(env, ipKey);
+    await refundRateLimitD1(env, acctKey);
     // Parol TO'G'RI bo'lgandan keyin: hisob borligi begonaga oshkor bo'lmaydi.
     // `purgeAfter` — hisob qachon butunlay o'chiriladi (ungacha egasi
     // qo'llab-quvvatlashga yozib, bekor qildirishi mumkin).
@@ -6279,11 +6302,12 @@ async function recordsApi(request, env, url) {
       if (!rec) return json({ error: 'not_found' }, 404);
       const owner = await getRecordOwner(env, code);
       if (String(owner) !== String(user.id)) return json({ error: 'not_owner' }, 403);
-      const access = effectiveAccessD1(rec);
-      if (!featureAllowedD1('post', access)) return json({ error: 'feature_locked', feature: 'post' }, 403);
-      if (okVid && !featureAllowedD1('video', access)) return json({ error: 'feature_locked', feature: 'video' }, 403);
-      // Grandfathering: limit faqat YANGI post qo'shishga ta'sir qiladi.
-      const limit = POST_LIMIT_D1[access] ?? 0;
+      // POST, VIDEO-POST VA REELS HAMMAGA BEPUL (egasining qarori,
+      // 2026-10-04; App Store 3.1.1). NFC ID darajasi, Premium yoki
+      // sinov muddati tekshirilmaydi — faqat ban va spam chegarasi.
+      const gatePost = await publishGateD1(env, user);
+      if (gatePost) return gatePost;
+      const limit = POST_LIMIT_D1[effectiveAccessD1(rec)] ?? POST_LIMIT_D1.free;
       const cnt = await env.DB.prepare(`SELECT COUNT(*) AS n FROM posts WHERE code = ?`).bind(code).first();
       if (Number(cnt?.n || 0) >= limit) return json({ error: 'limit_reached', limit }, 409);
       // Musiqa va rasmli reel (hosting/api/music.js) — post yozilishidan
@@ -6319,9 +6343,9 @@ async function recordsApi(request, env, url) {
       if (!rec) return json({ error: 'not_found' }, 404);
       const owner = await getRecordOwner(env, code);
       if (String(owner) !== String(user.id)) return json({ error: 'not_owner' }, 403);
-      const access = effectiveAccessD1(rec);
-      if (!featureAllowedD1('story', access)) return json({ error: 'feature_locked', feature: 'story' }, 403);
-      if (media.videoUrl && !featureAllowedD1('video', access)) return json({ error: 'feature_locked', feature: 'video' }, 403);
+      // Istorya (rasm yoki video) ham hammaga bepul — post bilan bir xil.
+      const gateStory = await publishGateD1(env, user);
+      if (gateStory) return gateStory;
       const res = await addStoryD1(env, {
         kind: 'card', ownerId: code, userId: user.id,
         imageUrl: media.imageUrl, videoUrl: media.videoUrl,
@@ -7671,7 +7695,7 @@ async function auctionsPublicApi(request, env, url) {
     const body = await request.json().catch(() => ({}));
     const code = String(body.code || '').toUpperCase().trim();
     const note = cleanStr(body.note, 300);
-    if (!/^[A-Z0-9]{3,16}$/.test(code) || isBlockedCode(code)) return json({ error: 'bad_code' }, 422);
+    if (!/^[A-Z0-9]{3,16}$/.test(code) || isBlockedCode(code) || isReservedCode(code)) return json({ error: 'bad_code' }, 422);
     if (await env.DB.prepare(`SELECT 1 FROM cards WHERE code = ?`).bind(code).first()) return json({ error: 'code_taken' }, 409);
     if (await idQuarantined(env, 'card', code)) return json({ error: 'code_taken' }, 409);
     const existing = await env.DB.prepare(`SELECT id FROM auction_requests WHERE user_id = ? AND code = ? AND status = 'pending'`).bind(user.id, code).first();
@@ -7826,6 +7850,16 @@ async function rateLimitD1(env, key, limit, windowMs) {
   } catch (e) {
     console.error('rateLimitD1', e); return false; // DB xatosida bloklamaymiz (login ishlashi ustun)
   }
+}
+// Bitta urinishni QAYTARADI (hisoblagich 1 ga kamayadi, 0 dan pastga
+// tushmaydi). Kirish muvaffaqiyatli bo'lsa ishlatiladi: chegara faqat
+// xato urinishlarni sanasin. Qatorni O'CHIRMAYDI — aks holda bitta to'g'ri
+// kirish shu IP dagi oldingi xato urinishlarni ham "kechirib" yuborardi.
+// Xatolik jim yutiladi (login ishlashi ustun).
+async function refundRateLimitD1(env, key) {
+  try {
+    await env.DB.prepare(`UPDATE rate_limits SET hits = hits - 1 WHERE key = ? AND hits > 0`).bind(key).run();
+  } catch { /* jim */ }
 }
 // Faqat o'qiydi (hisoblagichni oshirmaydi) — 429 javobida Retry-After
 // hisoblash uchun. Qator topilmasa yoki oyna allaqachon tugagan bo'lsa 0.
@@ -9536,7 +9570,7 @@ async function adminAuctionsApi(request, env, url, admin) {
     const buyNowPrice = body.buyNowPrice ? Math.round(Number(body.buyNowPrice)) : null;
     const hours = Math.min(ADMIN_AUCTION_MAX_HOURS, Math.max(1, Math.round(Number(body.hours) || 24)));
     const minStep = body.minStep ? Math.round(Number(body.minStep)) : 25000;
-    if (!/^[A-Z0-9]{3,16}$/.test(code) || isBlockedCode(code)) return json({ error: 'bad_code' }, 422);
+    if (!/^[A-Z0-9]{3,16}$/.test(code) || isBlockedCode(code) || isReservedCode(code)) return json({ error: 'bad_code' }, 422);
     if (!startPrice || startPrice < 10_000) return json({ error: 'bad_input' }, 422);
     if (buyNowPrice && buyNowPrice <= startPrice) return json({ error: 'buy_now_too_low' }, 422);
     if (minStep < 1_000) return json({ error: 'bad_input' }, 422);
@@ -9672,7 +9706,7 @@ async function adminAuctionsApi(request, env, url, admin) {
   if (path === '/api/admin/auction-demand' && request.method === 'POST') {
     const body = await request.json().catch(() => ({}));
     const code = String(body.code || '').toUpperCase().trim();
-    if (!/^[A-Z0-9]{3,16}$/.test(code) || isBlockedCode(code)) return json({ error: 'bad_code' }, 422);
+    if (!/^[A-Z0-9]{3,16}$/.test(code) || isBlockedCode(code) || isReservedCode(code)) return json({ error: 'bad_code' }, 422);
     if (await env.DB.prepare(`SELECT 1 FROM cards WHERE code = ?`).bind(code).first()) return json({ error: 'code_taken' }, 409);
     if (await idQuarantined(env, 'card', code)) return json({ error: 'code_taken' }, 409);
     const startPrice = Math.max(10000, Math.round(Number(body.startPrice) || 250000));
@@ -10149,11 +10183,31 @@ async function getFollowStatsRow(env, userId, viewerId) {
 // AYNAN bir xil qiymatlar (Worker bitta fayl — import qilinmaydi).
 const ACCESS_LEVELS_D1 = ['free', 'silver', 'gold', 'premium', 'exclusive'];
 const ACCESS_RANK_D1 = { free: 0, silver: 1, gold: 2, premium: 3, exclusive: 4 };
-const POST_LIMIT_D1 = { free: 0, silver: 5, gold: 30, premium: 60, exclusive: 999 };
-// `story: 'gold'` — egasining qarori: istoryani gold, premium va
-// ekskluziv ID egalari qo'yadi. Premium OBUNACHI ham qo'ya oladi, chunki
-// effectiveAccessD1() obunachiga kamida 'premium' darajasini beradi.
-const FEATURE_MIN_D1 = { post: 'silver', video: 'premium', story: 'gold' };
+// POST, VIDEO/REELS VA ISTORYA HAMMAGA BEPUL (egasining qarori,
+// 2026-10-04; App Store 3.1.1 — ilovadagi asosiy imkoniyat ilova
+// tashqarisidagi to'lovga bog'lanmasin). Ilgari: free 0, silver 5,
+// gold 30, premium 60 post; istorya gold+, video premium+. Endi har
+// bir daraja ilgarigi ENG YUQORI chegarani oladi (999 post / profil).
+const POST_LIMIT_D1 = { free: 999, silver: 999, gold: 999, premium: 999, exclusive: 999 };
+const FEATURE_MIN_D1 = { post: 'free', story: 'free' };
+// Spamdan himoya: bitta hisob soatiga shuncha post + istorya (birga).
+// Odam uchun saxiy, skript uchun to'siq. Yuklash (`upload:user`, 40/soat)
+// chegarasi ham baribir ishlaydi.
+const PUBLISH_PER_HOUR_D1 = 60;
+
+// Post/istorya yozishdan oldingi YAGONA tekshiruv (shaxsiy va kompaniya).
+// Daraja/Premium/sinov tekshirilMAYDI; faqat:
+//   • ban (`getCurrentUser` muddati o'tgan banni allaqachon `null` qiladi
+//     — izoh yo'li bilan bir xil, faqat rostlik tekshiriladi);
+//   • soatlik spam chegarasi.
+// `null` — ruxsat; aks holda tayyor javob.
+async function publishGateD1(env, user) {
+  if (user?.bannedUntil) return json({ error: 'banned', bannedUntil: user.bannedUntil }, 403);
+  if (await rateLimitD1(env, 'publish:u:' + user.id, PUBLISH_PER_HOUR_D1, 60 * 60_000)) {
+    return json({ error: 'too_many_requests' }, 429);
+  }
+  return null;
+}
 
 // NFC ID ning "xom" darajasi — src/lib/access.js idTier() + pricing.js
 // tierForCode() tartibi: admin tier_override → sovg'a → per-code override
