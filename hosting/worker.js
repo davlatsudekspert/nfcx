@@ -11485,6 +11485,34 @@ async function handleRequest(request, env, url, ctx) {
     }
 
 
+    // ── iOS UNIVERSAL LINKS ────────────────────────────────────────────
+    // iPhone'da `nfcstore.uz/post/...` (ulashilgan Reels), profil va
+    // vitrina havolalari brauzer o'rniga ILOVANI ochsin (egasi,
+    // 2026-10-04). Ilova entitlement'ida `applinks:nfcstore.uz` bor;
+    // bu fayl esa qaysi yo'llar ilovaniki ekanini aytadi — faqat
+    // Android App Links bilan bir xil yo'llar (sayt sahifalari tegmaydi).
+    // Apple faylni redirectsiz, `application/json` bilan kutadi.
+    if ((url.pathname === '/.well-known/apple-app-site-association'
+      || url.pathname === '/apple-app-site-association') && ['GET', 'HEAD'].includes(request.method)) {
+      const appId = `${String(env.IOS_TEAM_ID || '5Z9CT2W378')}.${String(env.IOS_NOVA_BUNDLE || 'uz.nfcstore.nova')}`;
+      const paths = ['/post/*', '/u/*', '/c/*', '/story/*', '/nfc/*'];
+      const body = JSON.stringify({
+        applinks: {
+          apps: [],
+          details: [{
+            appIDs: [appId],
+            appID: appId,
+            components: paths.map((p) => ({ '/': p })),
+            paths,
+          }],
+        },
+      });
+      return new Response(request.method === 'HEAD' ? null : body, {
+        status: 200,
+        headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=3600' },
+      });
+    }
+
     // ── ANDROID APP LINKS ──────────────────────────────────────────────
     // Jismoniy NFC kartani tegizganda Android brauzer o'rniga ilovani
     // ochishi uchun shu fayl SHU DOMENDA turishi shart.
