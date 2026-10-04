@@ -80,18 +80,33 @@ to'xtamaydi; `MODERATION_OFF=1` bilan o'chadi.
 (`/api/feed`) har kadrga `commentKind` va `commentCount` qo'shadi va
 sonlarni `countsFor()` orqali BITTA guruhlangan so'rov bilan oladi.
 
-Ko'rishlar (`content_views`, shu modulda): `POST /api/content-views/:kind/:id`
-(`post | company_post`) → `{counted, count}`. Bir tomoshabin (`u:<id>` yoki
-mehmon `a:<IP+UA hash>`) bir kontentni bir marta sanaydi, egasi sanalmaydi,
-mehmon IP bo'yicha 10 daqiqada 120 tagacha. Lenta, profil postlari va
-kompaniya postlari `viewCount` qaytaradi (`viewsFor()`). Kontent
-o'chirilganda ko'rishlar `retireTargetStmts` bilan ketadi.
+Ko'rishlar (shu modulda): `POST /api/content-views/:kind/:id`
+(`post | company_post`) → `{counted, count}`. QOIDA (egasi, 2026-10-04):
+odam postga/Reels'ga har KIRIB 2 soniya ko'rganida +1 — qaysi seansda
+bo'lishidan qat'i nazar; o'sha videoda turib qolsa va u aylanib o'ynasa —
+qayta sanalmaydi (ilova bitta kirishda bitta so'rov yuboradi). Tomoshabin —
+`u:<id>` yoki mehmon `a:<IP+UA hash>`. Egasi hech qachon sanalmaydi; o'sha
+tomoshabinning oldingi sanalgan ko'rishidan 2 soniya o'tmagan so'rov
+sanalmaydi (`counted:false`). Mehmon IP bo'yicha 10 daqiqada 120 tagacha
+(oshsa 429); kirgan foydalanuvchi 10 daqiqada 300 tagacha (oshsa XATO EMAS —
+200 `counted:false`). Jadvallar: `content_view_hits` — jami ko'rishlar
+(tomoshabin × kontent × UTC kun, `hits` sanog'i), `content_views` — qamrov
+(bir tomoshabin — bir qator). `count` va hamma `viewCount` (lenta, profil va
+kompaniya postlari, `/post/:id` sahifasi) — JAMI ko'rishlar `SUM(hits)`
+(`viewsFor()`). Eski `content_views` qatorlari bir marta (`maintenance_runs`:
+`content_view_hits_backfill_2026_10`) birinchi kunining bitta ko'rishi
+bo'lib ko'chirilgan. Kontent o'chirilganda ikkala jadval ham
+`retireTargetStmts`/`deleteLikesFor` bilan, hisob o'chirilganda tomoshabin
+qatorlari `account-purge.js` bilan ketadi.
 
 `my-analytics` — ilovadagi Sozlamalar → Analitika: `GET /api/my/analytics?days=30`
 (auth, 1–90) → `{days, profile:{views, uniqueVisitors, clicks, totalViews},
-followers, content:{posts, views, likes, comments}, byDay[{day, views}],
-top[{kind, id, code, imageUrl, videoUrl, caption, createdAt, views, likes, comments}]}`
-— faqat o'z kartalari va kompaniyalari bo'yicha.
+followers, content:{posts, views, reach, likes, comments}, byDay[{day, views}],
+top[{kind, id, code, imageUrl, videoUrl, caption, createdAt, views, reach, likes, comments}]}`
+— faqat o'z kartalari va kompaniyalari bo'yicha. Kontent `views` — tanlangan
+davrdagi (UTC kun aniqligida) JAMI ko'rishlar `SUM(hits)`: `content.views` =
+`byDay` yig'indisi = `top`/postlar `views` yig'indisi; `reach` — o'sha davrda
+takrorsiz tomoshabinlar soni.
 
 ## Lokal ishga tushirish
 
