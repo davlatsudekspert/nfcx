@@ -199,8 +199,9 @@ jobs:
             # faqat zaxira yoqiq paytda bajariladi).
             grep -q '"UZ_UPLOADS_FALLBACK"' sl.json || { echo "::error title=finalize-media::UZ_UPLOADS_FALLBACK yo'q — allaqachon yakunlangan"; return 1; }
             # Egasining sharti: ≥24 soat uzluksiz toza, ≥5 audit, yangi R2 fallback 0,
-            # faqat-R2 fayl 0, yangi jiddiy 5xx/403/Garage xatolari yo'q.
-            node scripts/uz-audit.mjs --gate > g.out 2>&1 || { echo "::error title=finalize-media::audit sharti bajarilmagan — $(grep -E 'sharti|bu audit' g.out | clean 4 | joined) ."; return 1; }
+            # faqat-R2 fayl 0, yangi jiddiy 5xx/403/Garage xatolari yo'q — saqlangan
+            # auditlar bo'yicha (oxirgisi ≤6 soat; --gate yangi audit qilmaydi).
+            node scripts/uz-audit.mjs --gate > g.out 2>&1 || { echo "::error title=finalize-media::audit sharti bajarilmagan — $(grep -E 'sharti|oraliq|oxirgi audit' g.out | clean 4 | joined) ."; return 1; }
             mig r2-copy --missing-only || return 1
             if $W secret delete UZ_UPLOADS_FALLBACK --name nfcstore-uz > /dev/null 2>&1; then
               node scripts/uz-audit.mjs --mark-finalized > /dev/null 2>&1 || true
@@ -291,7 +292,9 @@ jobs:
             fi
             # Garage'ning xato qatorlari (vaqt belgisi bilan) — audit ularni fix
             # vaqtiga nisbatan tasniflaydi; maxfiy qiymat yo'q (faqat javob kodi/matni).
-            R 'cd /srv/nfcstore && docker compose logs --since 30h --no-log-prefix --timestamps garage 2>&1 | grep -aiE "error|panic|fatal"' 2>/dev/null \
+            # O'tishdan beri (mutlaq vaqt): auditlar orasida tanaffus bo'lsa ham
+            # "55 ta" oynasi (2026-10-03 23:58 – 10-04 00:59 UTC) tushib qolmaydi.
+            R 'cd /srv/nfcstore && docker compose logs --since 2026-10-03T22:00:00Z --no-log-prefix --timestamps garage 2>&1 | grep -aiE "error|panic|fatal"' 2>/dev/null \
               | sed -E 's/\x1b\[[0-9;]*m//g' > garage.log || true
             export GARAGE_LOG="$PWD/garage.log"
             key_on || { key_off; exit 1; }

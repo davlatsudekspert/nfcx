@@ -6,8 +6,8 @@
 //
 //   UZ_DB_URL UZ_DB_TOKEN UZ_S3_* CF_API_TOKEN CF_ACCOUNT [UZ_EXPORT_KEY UZ_EXPORT_URL]
 //   node scripts/uz-audit.mjs           — to'liq audit, bo'limlar "## " bilan
-//   node scripts/uz-audit.mjs --gate    — finalize-media sharti: ≥24 soat, toza,
-//                                         R2 fallback o'qishi 0 va R2-only fayl 0
+//   node scripts/uz-audit.mjs --gate    — finalize-media sharti saqlangan auditlar
+//                                         bo'yicha (yangi audit qilmaydi; 0 = bajarildi)
 //   node scripts/uz-audit.mjs --should-run     — rejali audit kerakmi (10 = yo'q:
 //                                         finalize-media'dan 48 soatdan ko'p o'tgan)
 //   node scripts/uz-audit.mjs --mark-finalized — finalize-media vaqtini yozadi
@@ -49,6 +49,41 @@ if (process.argv.includes('--should-run')) {
   const f = await db.prepare(`SELECT v FROM "_uz_audit_state" WHERE k = 'finalized_at'`).first('v');
   if (f && Date.now() - Date.parse(f) > 48 * 3.6e6) { say(`rejali audit to'xtatilgan: finalize-media ${f} da bajarilgan, 48 soatdan oshdi`); process.exit(10); }
   process.exit(0);
+}
+
+// Egasining sharti (finalize-media): oxirgi muammoli YOKI to'liq bo'lmagan
+// (parallel yuk / Garage logi tekshirilmagan) auditdan keyingi toza auditlar;
+// birinchisidan oxirgisigacha ≥24 soat, ≥5 audit, oralarida 10 soatdan uzun
+// tanaffus yo'q (kuzatilmagan vaqt toza deb sanalmaydi), shu oraliqda R2
+// fallback o'qishi 0 va oxirgi auditda faqat-R2 fayl 0.
+const GAP_H = 10;
+const loadRuns = async () => (await db.prepare(`SELECT ts, v FROM "_uz_audit_state" WHERE k LIKE 'run:%' ORDER BY ts`).all()).results.map((r) => ({ ts: r.ts, ...JSON.parse(r.v) }));
+async function gateOf(runs) {
+  const lastBad = [...runs].reverse().find((r) => r.verdict !== 'TOZA' || !r.full);
+  let clean = lastBad ? runs.filter((r) => r.ts > lastBad.ts) : runs;
+  for (let i = clean.length - 1; i > 0; i--) {
+    if (Date.parse(clean[i].ts) - Date.parse(clean[i - 1].ts) > GAP_H * 3.6e6) { clean = clean.slice(i); break; }
+  }
+  const hours = clean.length ? (Date.parse(clean.at(-1).ts) - Date.parse(clean[0].ts)) / 3.6e6 : 0;
+  let fallback = 0;
+  if (clean.length && await hasTable('_uz_fallback_log')) {
+    fallback = await db.prepare(`SELECT COUNT(*) AS n FROM "_uz_fallback_log" WHERE op IN ('head', 'get', 'head-error', 'get-error') AND ts >= ?`).bind(clean[0].ts).first('n');
+  }
+  const ready = clean.length >= 5 && hours >= 24 && fallback === 0 && clean.at(-1).r2Only === 0;
+  const lines = [
+    `toza oraliq: ${hours.toFixed(1)} soat, ${clean.length} audit${clean.length ? ` (${clean[0].ts.slice(0, 16)} dan)` : ''}${lastBad ? ` · oxirgi muammoli/to'liq bo'lmagan audit: ${lastBad.ts.slice(0, 16)}` : ''}`,
+    `finalize-media sharti (≥24 soat uzluksiz toza, ≥5 to'liq audit, tanaffus ≤${GAP_H} soat, shu oraliqda R2 fallback 0 [hozir ${fallback}], faqat-R2 fayl 0): ${ready ? 'BAJARILDI' : 'hali yo\'q'}`,
+  ];
+  return { ready, lines };
+}
+if (GATE) {
+  const runs = await loadRuns();
+  const g = await gateOf(runs);
+  const last = runs.at(-1);
+  const fresh = !!last && Date.now() - Date.parse(last.ts) < 6 * 3.6e6;
+  for (const l of g.lines) say(l);
+  if (!fresh) say(`oxirgi audit: ${last?.ts || 'yo\'q'} — 6 soatdan eski, avval audit kerak`);
+  process.exit(g.ready && fresh ? 0 : 3);
 }
 const cut = await db.prepare(`SELECT at FROM "_uz_cutover" ORDER BY at LIMIT 1`).first('at');
 if (!cut) { say('XATO: _uz_cutover belgisi yo\'q — o\'tish bo\'lmagan'); process.exit(1); }
@@ -112,6 +147,7 @@ let fallbackReads = 0;
 // Zararsiz: imzosiz (anonim) so'rovlar — o'zimizning holat tekshiruvi va
 // skanerlar; 404 — yo'q faylni so'rash. Qolganlari jiddiy.
 const FIX_TS = '2026-10-04T00:14:38Z';
+let garageOk = false; // log o'qilmasa audit "to'liq emas" — gate oralig'iga kirmaydi
 {
   sec("Garage logi (vaqt va tur bo'yicha)");
   if (E.GARAGE_LOG && existsSync(E.GARAGE_LOG)) {
@@ -125,6 +161,10 @@ const FIX_TS = '2026-10-04T00:14:38Z';
       const m = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(\.\d+)?Z\s+(.*)$/.exec(l);
       return m ? { t: Date.parse(`${m[1]}Z`), iso: m[1], c: cls(m[3]), err: /error|panic|fatal/i.test(m[3]), l: m[3] } : null;
     }).filter(Boolean);
+    // O'tishdan beri jurnal hech qachon bo'sh emas (fix'dan oldingi xatolar,
+    // har run'ning anonim tekshiruvi) — bo'sh bo'lsa SSH/log o'qilmagan.
+    garageOk = rows.length > 0;
+    if (!garageOk) say("jurnal bo'sh — server logi o'qilmadi (audit to'liq emas)");
     const fixMs = Date.parse(FIX_TS);
     const tally = (a) => Object.entries(a.reduce((o, r) => ({ ...o, [r.c]: (o[r.c] || 0) + 1 }), {})).map(([k, v]) => `${k}: ${v}`).join(', ') || '0';
     say(`jurnal: ${rows.length} qator (${rows[0]?.iso || '-'} … ${rows.at(-1)?.iso || '-'} UTC)`);
@@ -140,7 +180,7 @@ const FIX_TS = '2026-10-04T00:14:38Z';
     say(`oldingi auditdan beri (fix'dan keyin) jiddiy: ${freshSerious.length}`);
     for (const r of freshSerious.slice(-5)) say(`  ${r.iso} ${r.c}: ${r.l.replace(/\s+/g, ' ').slice(0, 160)}`);
     if (freshSerious.length) problems.push(`Garage logida ${freshSerious.length} ta yangi jiddiy xato`);
-  } else say('Garage logi berilmagan — tekshirilmadi');
+  } else say("Garage logi berilmagan — tekshirilmadi (audit to'liq emas)");
 }
 
 // ── 3) Haqiqiy foydalanuvchi yozuvlari (organik write) ───────────────
@@ -167,11 +207,16 @@ let garage = [];
   sec("Media (Garage ↔ R2)");
   const all = [];
   let cursor;
-  do { const p = await bucket.list({ cursor }); all.push(...p.objects); cursor = p.truncated ? p.cursor : undefined; } while (cursor);
+  // Garage javob bermasa ham audit yozilsin (muammoli) — aks holda bu run
+  // tarixda ko'rinmay, toza oraliqni uzmasdi.
+  let listed = true;
+  try {
+    do { const p = await bucket.list({ cursor }); all.push(...p.objects); cursor = p.truncated ? p.cursor : undefined; } while (cursor);
+  } catch (e) { listed = false; say(`Garage ro'yxati olinmadi: ${String(e?.message || e).slice(0, 120)}`); problems.push('Garage ro\'yxati olinmadi'); }
   garage = all.filter((o) => o.key.startsWith('uploads/'));
   const fresh = garage.filter((o) => o.uploaded.getTime() > cutMs);
   say(`Garage: ${garage.length} fayl (uploads/) · o'tishdan keyin yuklangan: ${fresh.length} (${(fresh.reduce((a, o) => a + o.size, 0) / 1048576).toFixed(1)} MB)`);
-  try {
+  if (listed) try {
     const r2 = [];
     let c = '';
     for (let i = 0; i < 100; i++) {
@@ -303,22 +348,13 @@ if (E.UZ_EXPORT_KEY && E.UZ_EXPORT_URL) {
 
 // ── Xulosa ──────────────────────────────────────────────────────────
 const verdict = problems.length ? `MUAMMO: ${problems.join('; ')}` : 'TOZA';
-await db.prepare(`INSERT OR REPLACE INTO "_uz_audit_state" ("k", "v", "ts") VALUES (?, ?, ?)`).bind(`run:${now}`, JSON.stringify({ hours: +hours.toFixed(2), verdict, fallbackReads, r2Only }), now).run();
-const runs = (await db.prepare(`SELECT ts, v FROM "_uz_audit_state" WHERE k LIKE 'run:%' ORDER BY ts`).all()).results.map((r) => ({ ts: r.ts, ...JSON.parse(r.v) }));
+// "To'liq" audit: parallel yuk (5b, doim) va Garage logi tekshirilgan.
+// 2026-10-04 00:22/00:58 dagi auditlarda parallel yuk yo'q edi (1101 ko'rinmagan).
+const full = garageOk;
+await db.prepare(`INSERT OR REPLACE INTO "_uz_audit_state" ("k", "v", "ts") VALUES (?, ?, ?)`).bind(`run:${now}`, JSON.stringify({ hours: +hours.toFixed(2), verdict, fallbackReads, r2Only, full }), now).run();
+const runs = await loadRuns();
 sec('Xulosa');
-say(`bu audit: ${verdict}`);
-say(`auditlar tarixi: ${runs.map((r) => `${r.ts.slice(5, 16)} ${r.verdict === 'TOZA' ? 'toza' : 'muammoli'}`).join(' · ')}`);
-// 24 soatlik "toza" oraliq OXIRGI muammoli auditdan keyin boshlanadi va
-// shu oraliqda kamida 5 ta audit bo'lishi kerak (muntazam kuzatuv).
-const lastBad = [...runs].reverse().find((r) => r.verdict !== 'TOZA');
-const cleanRuns = lastBad ? runs.filter((r) => r.ts > lastBad.ts) : runs;
-const cleanHours = cleanRuns.length ? (Date.now() - Date.parse(cleanRuns[0].ts)) / 3.6e6 : 0;
-let windowFallback = 0;
-if (cleanRuns.length && await hasTable('_uz_fallback_log')) {
-  windowFallback = await db.prepare(`SELECT COUNT(*) AS n FROM "_uz_fallback_log" WHERE op IN ('head', 'get', 'head-error', 'get-error') AND ts >= ?`).bind(cleanRuns[0].ts).first('n');
-}
-const ready = !problems.length && cleanHours >= 24 && cleanRuns.length >= 5 && windowFallback === 0 && r2Only === 0;
-say(`toza oraliq: ${cleanHours.toFixed(1)} soat, ${cleanRuns.length} audit${lastBad ? ` (oxirgi muammoli audit: ${lastBad.ts.slice(0, 16)})` : ''}`);
-say(`finalize-media sharti (≥24 soat uzluksiz toza, ≥5 audit, shu oraliqda R2 fallback 0 [hozir ${windowFallback}], faqat-R2 fayl 0): ${ready ? 'BAJARILDI' : 'hali yo\'q'}`);
-if (GATE && !ready) process.exit(3);
+say(`bu audit: ${verdict}${full ? '' : " (to'liq emas — gate oralig'iga kirmaydi)"}`);
+say(`auditlar tarixi: ${runs.map((r) => `${r.ts.slice(5, 16)} ${r.verdict !== 'TOZA' ? 'muammoli' : r.full ? 'toza' : "toza, to'liq emas"}`).join(' · ')}`);
+for (const l of (await gateOf(runs)).lines) say(l);
 if (problems.length) process.exit(1);
