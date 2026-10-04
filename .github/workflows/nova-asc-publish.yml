@@ -1,0 +1,59 @@
+name: NFCSTORE App Store — to'ldirish va yuborish
+
+# Egasining ruxsati (2026-10-04): App Store Connect metadata, skrinshot,
+# build biriktirish. `submit` — FAQAT egasi "chiqar" deganidan keyin.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "fill | shots | attach | submit"
+        required: true
+        type: choice
+        options: [fill, shots, attach, submit]
+      build:
+        description: "attach uchun build raqami (masalan 313)"
+        required: false
+        default: ''
+  push:
+    branches: [claude/wizardly-einstein-8cx2p4]
+    paths: [.github/workflows/nova-asc-publish.yml]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nova-asc-publish
+  cancel-in-progress: false
+
+jobs:
+  asc:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      IOS_BUNDLE_ID: uz.nfcstore.nova
+    steps:
+      - uses: actions/checkout@v4
+      - name: App Store Connect — ${{ inputs.mode }}
+        env:
+          API_KEY_ID: ${{ secrets.NOVA_APPSTORE_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.NOVA_APPSTORE_ISSUER_ID }}
+          API_PRIVATE_KEY: ${{ secrets.NOVA_APPSTORE_PRIVATE_KEY }}
+          BUILD: ${{ inputs.build }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          set -euo pipefail
+          umask 077
+          KEYFILE="$RUNNER_TEMP/key.p8"
+          if printf '%s' "$API_PRIVATE_KEY" | grep -q 'BEGIN PRIVATE KEY'; then
+            printf '%s\n' "$API_PRIVATE_KEY" > "$KEYFILE"
+          else
+            BODY=$(printf '%s' "$API_PRIVATE_KEY" | tr -d ' \r\n')
+            if printf '%s' "$BODY" | base64 --decode | grep -aq 'BEGIN PRIVATE KEY'; then
+              printf '%s' "$BODY" | base64 --decode > "$KEYFILE"
+            else
+              { echo '-----BEGIN PRIVATE KEY-----'; printf '%s\n' "$BODY" | fold -w 64; echo '-----END PRIVATE KEY-----'; } > "$KEYFILE"
+            fi
+          fi
+          pip install --quiet pyjwt cryptography
+          ASC_KEY_FILE="$KEYFILE" python3 ci/asc/asc_release.py "$MODE"

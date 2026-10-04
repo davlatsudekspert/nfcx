@@ -1,0 +1,326 @@
+"""NFCSTORE Nova — App Store Connect: metadata, skrinshotlar, build, yuborish.
+
+Egasining ruxsati (2026-10-04): App Store Connect'ni API orqali to'ldirish;
+review'ga yuborish FAQAT egasi "chiqar" deganidan keyin (mode=submit).
+
+Rejimlar (argv[1]):
+  fill    — matnlar, URL'lar, kategoriya, yosh reytingi, content rights,
+            copyright, review ma'lumotlari (demo akkaunt), mavjudlik
+  shots   — ci/asc/screenshots/*.png ni en-US 6.7" to'plamiga yuklaydi
+            (eski skrinshotlar almashtiriladi)
+  attach  — BUILD raqamli build'ni versiyaga biriktiradi
+  submit  — versiyani App Review'ga yuboradi
+
+Natija ::notice:: annotatsiyalarida. Parol hech qachon chiqarilmaydi.
+"""
+import base64, hashlib, json, os, sys, time, urllib.error, urllib.parse, urllib.request
+import jwt
+
+KEY = open(os.environ['ASC_KEY_FILE']).read()
+BUNDLE = os.environ.get('IOS_BUNDLE_ID', 'uz.nfcstore.nova')
+API = 'https://api.appstoreconnect.apple.com'
+LOG = []
+
+
+def tok():
+    now = int(time.time())
+    return jwt.encode({'iss': os.environ['API_ISSUER_ID'], 'iat': now, 'exp': now + 1100,
+                       'aud': 'appstoreconnect-v1'}, KEY, algorithm='ES256',
+                      headers={'kid': os.environ['API_KEY_ID'], 'typ': 'JWT'})
+
+
+def call(method, path, body=None, params=None, raw_url=None, data=None, headers=None):
+    url = raw_url or (API + path + ('?' + urllib.parse.urlencode(params) if params else ''))
+    h = headers or {'Authorization': 'Bearer ' + tok(), 'Content-Type': 'application/json'}
+    payload = data if data is not None else (json.dumps(body).encode() if body is not None else None)
+    req = urllib.request.Request(url, data=payload, method=method, headers=h)
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            txt = r.read()
+            return r.status, (json.loads(txt) if txt and r.headers.get('Content-Type', '').startswith('application/json') else {})
+    except urllib.error.HTTPError as e:
+        txt = e.read().decode()[:600]
+        try:
+            j = json.loads(txt)
+            msg = '; '.join(f"{x.get('title')}: {x.get('detail')}" for x in j.get('errors', []))
+        except Exception:
+            msg = txt
+        return e.code, {'_error': msg}
+
+
+def note(line):
+    LOG.append(str(line))
+    print(line)
+
+
+def flush(title):
+    # Annotatsiya: bitta notice, qatorlar %0A bilan.
+    for i in range(0, len(LOG), 40):
+        chunk = LOG[i:i + 40]
+        msg = '%0A'.join(l.replace('%', '%25').replace('\n', ' ') for l in chunk)
+        print(f'::notice title={title} {i // 40 + 1}::{msg}')
+
+
+def ok(code):
+    return 200 <= code < 300
+
+
+# ── matnlar ────────────────────────────────────────────────────────────
+DESCRIPTION = """NFCSTORE turns a tap into a connection. Create your digital business card, link it to an NFC card or sticker, and share your contacts, links and work with one touch.
+
+• Digital profile — name, photo, bio, phone, messengers, social links and a QR code in one place.
+• NFC writing — write your profile link to an NFC card or sticker straight from your iPhone, and activate NFCSTORE stickers with their code.
+• Business pages — present your company with a cover, logo, contacts and a product or service catalog.
+• Feed, Reels and Stories — share photos, short videos and stories; like, comment and save.
+• Analytics — see how many people viewed your profile, posts and Reels.
+• Safety — report and block, content rules, automatic screening of uploads, PIN / Face ID app lock and in-app account deletion.
+
+The person you share with doesn't need the app: your profile opens in any phone's browser.
+
+NFCSTORE is made in Uzbekistan and available in Uzbek, Russian and English."""
+
+KEYWORDS_LIST = ['nfc', 'business card', 'digital card', 'vizitka', 'contact', 'profile', 'qr',
+                 'networking', 'sticker', 'catalog', 'reels', 'uzbekistan', 'tap']
+PROMO = "Tap. Share. Connect — your digital business card on an NFC card or sticker."
+SUBTITLE = "NFC Digital Business Card"
+
+REVIEW_NOTES = """Sign-in is required. Please use the demo account above (it already has a personal profile, posts and a business page).
+
+How to review:
+1) Log in with the demo account.
+2) Home shows the user's NFC ID card; Profile shows the digital business card; Feed and Reels show posts.
+3) NFC is optional: NFC Center → "Write to NFC card" writes the profile link to any blank NFC tag (NTAG213/215/216). Every feature can be reviewed without a tag — profiles are also shared by link and QR code.
+4) Account deletion: Settings → Account → Security → Delete account. Please test it on a newly registered account, not on the demo account.
+5) Report / block: on any post, Reel, comment or profile tap "•••" → Report or Block.
+6) The app has no in-app purchases and no paid features; posting, Reels, stories and comments are free for everyone. Physical NFC cards and stickers are sold offline.
+7) Uploaded photos and videos are screened automatically for safety by an AI service (Google Gemini). Users are told this and give consent on the content rules screen before posting.
+Registration needs an email address (a 6-digit code is sent by email) and a phone number for the contact card."""
+
+
+def keywords():
+    out = ''
+    for k in KEYWORDS_LIST:
+        nxt = (out + ',' + k) if out else k
+        if len(nxt) > 100:
+            break
+        out = nxt
+    return out
+
+
+def app_id():
+    c, j = call('GET', '/v1/apps', params={'filter[bundleId]': BUNDLE})
+    apps = [a for a in j.get('data', []) if a['attributes']['bundleId'] == BUNDLE]
+    if not apps:
+        print('::error::ilova topilmadi'); sys.exit(1)
+    return apps[0]['id']
+
+
+def edit_version(aid):
+    c, j = call('GET', f'/v1/apps/{aid}/appStoreVersions', params={'filter[platform]': 'IOS', 'limit': 10})
+    for v in j.get('data', []):
+        if v['attributes'].get('appStoreState') in ('PREPARE_FOR_SUBMISSION', 'DEVELOPER_REJECTED', 'REJECTED',
+                                                   'METADATA_REJECTED', 'INVALID_BINARY'):
+            return v
+    print('::error::tahrirlanadigan versiya yo‘q'); sys.exit(1)
+
+
+def en_loc(vid):
+    c, j = call('GET', f'/v1/appStoreVersions/{vid}/appStoreVersionLocalizations')
+    for l in j.get('data', []):
+        if l['attributes']['locale'] == 'en-US':
+            return l
+    return (j.get('data') or [None])[0]
+
+
+# ── fill ───────────────────────────────────────────────────────────────
+def fill():
+    aid = app_id()
+    v = edit_version(aid); vid = v['id']
+    # versiya: copyright + qo'lda chiqarish (birinchi reliz egasi tanlagan paytda)
+    c, j = call('PATCH', f'/v1/appStoreVersions/{vid}', {'data': {'type': 'appStoreVersions', 'id': vid,
+                'attributes': {'copyright': '2026 NFCSTORE', 'releaseType': 'MANUAL'}}})
+    note(f'versiya copyright/releaseType=MANUAL -> {c} {j.get("_error", "")}')
+    loc = en_loc(vid)
+    attrs = {'description': DESCRIPTION, 'keywords': keywords(), 'promotionalText': PROMO,
+             'supportUrl': 'https://nfcstore.uz/aloqa', 'marketingUrl': 'https://nfcstore.uz'}
+    if loc:
+        c, j = call('PATCH', f"/v1/appStoreVersionLocalizations/{loc['id']}", {'data': {
+            'type': 'appStoreVersionLocalizations', 'id': loc['id'], 'attributes': attrs}})
+        note(f"en-US matnlar ({len(DESCRIPTION)} belgi, kalit so'z {len(attrs['keywords'])}) -> {c} {j.get('_error', '')}")
+    # app info: subtitle, privacy URL, kategoriya, yosh reytingi
+    c, j = call('GET', f'/v1/apps/{aid}/appInfos')
+    infos = [i for i in j.get('data', []) if i['attributes'].get('appStoreState') not in ('READY_FOR_SALE', 'REPLACED_WITH_NEW_INFO')] or j.get('data', [])
+    info = infos[0]; iid = info['id']
+    c, j = call('GET', f'/v1/appInfos/{iid}/appInfoLocalizations')
+    for l in j.get('data', []):
+        if l['attributes']['locale'] == 'en-US':
+            c2, j2 = call('PATCH', f"/v1/appInfoLocalizations/{l['id']}", {'data': {'type': 'appInfoLocalizations', 'id': l['id'],
+                          'attributes': {'subtitle': SUBTITLE, 'privacyPolicyUrl': 'https://nfcstore.uz/privacy'}}})
+            note(f'subtitle + privacy URL -> {c2} {j2.get("_error", "")}')
+    c, j = call('PATCH', f'/v1/appInfos/{iid}', {'data': {'type': 'appInfos', 'id': iid, 'relationships': {
+        'primaryCategory': {'data': {'type': 'appCategories', 'id': 'SOCIAL_NETWORKING'}},
+        'secondaryCategory': {'data': {'type': 'appCategories', 'id': 'BUSINESS'}}}}})
+    note(f'kategoriya Social Networking + Business -> {c} {j.get("_error", "")}')
+    age_rating(iid)
+    c, j = call('PATCH', f'/v1/apps/{aid}', {'data': {'type': 'apps', 'id': aid,
+                'attributes': {'contentRightsDeclaration': 'USES_THIRD_PARTY_CONTENT'}}})
+    note(f'content rights (third-party content, huquq bor) -> {c} {j.get("_error", "")}')
+    review_detail(vid)
+    availability(aid)
+    flush('ASC fill')
+
+
+AGE_TRUE = {'userGeneratedContent', 'advertising'}
+AGE_BOOL_FALSE = {'gambling', 'lootBox', 'messagingAndChat', 'parentalControls', 'ageAssurance',
+                  'healthOrWellnessTopics', 'unrestrictedWebAccess', 'seventeenPlus'}
+
+
+def age_rating(iid):
+    c, j = call('GET', f'/v1/appInfos/{iid}/ageRatingDeclaration')
+    d = j.get('data') if isinstance(j.get('data'), dict) else None
+    if not d:
+        note(f'yosh reytingi o‘qilmadi -> {c} {j.get("_error", "")}'); return
+    did = d['id']; cur = d['attributes']
+    done, failed = [], []
+    for k in sorted(cur):
+        if k in ('kidsAgeBand', 'ageRatingOverride', 'ageRatingOverrideV2', 'koreaAgeRatingOverride', 'developerAgeRatingInfoUrl'):
+            continue
+        if k in AGE_TRUE:
+            cands = [True]
+        elif k in AGE_BOOL_FALSE:
+            cands = [False]
+        else:
+            cands = ['NONE', False]
+        for val in cands:
+            c, jj = call('PATCH', f'/v1/ageRatingDeclarations/{did}', {'data': {'type': 'ageRatingDeclarations', 'id': did,
+                         'attributes': {k: val}}})
+            if ok(c):
+                done.append(f'{k}={val}'); break
+        else:
+            failed.append(f"{k}: {jj.get('_error', '')[:120]}")
+    # Ilova ichida 18+ tasdiqlanadi (ro'yxat) — reyting ham 18+.
+    for k, val in (('ageRatingOverrideV2', 'EIGHTEEN_PLUS'), ('ageRatingOverride', 'SEVENTEEN_PLUS')):
+        c, jj = call('PATCH', f'/v1/ageRatingDeclarations/{did}', {'data': {'type': 'ageRatingDeclarations', 'id': did,
+                     'attributes': {k: val}}})
+        note(f'{k}={val} -> {c} {jj.get("_error", "")[:150]}')
+        if ok(c):
+            break
+    note('yosh reytingi: ' + ', '.join(done))
+    if failed:
+        note('yosh reytingi XATO: ' + ' | '.join(failed))
+
+
+def review_detail(vid):
+    # Demo akkaunt login/paroli bu yerdan YOZILMAYDI (maxfiy qiymat CI
+    # kiritmalarida ko'rinib qolmasin) — egasi App Store Connect'da o'zi
+    # kiritadi. Bu yerda faqat kontakt va izoh.
+    attrs = {'contactFirstName': 'NFCSTORE', 'contactLastName': 'Support',
+             'contactPhone': '+998500908277', 'contactEmail': 'davlatsudekspert@gmail.com',
+             'demoAccountRequired': True, 'notes': REVIEW_NOTES}
+    c, j = call('GET', f'/v1/appStoreVersions/{vid}/appStoreReviewDetail')
+    rd = j.get('data') if isinstance(j.get('data'), dict) else None
+    if rd:
+        c, j = call('PATCH', f"/v1/appStoreReviewDetails/{rd['id']}", {'data': {'type': 'appStoreReviewDetails', 'id': rd['id'], 'attributes': attrs}})
+    else:
+        c, j = call('POST', '/v1/appStoreReviewDetails', {'data': {'type': 'appStoreReviewDetails', 'attributes': attrs,
+                    'relationships': {'appStoreVersion': {'data': {'type': 'appStoreVersions', 'id': vid}}}}})
+    note(f"review ma'lumotlari (kontakt, demo akkaunt, izoh {len(REVIEW_NOTES)} belgi) -> {c} {j.get('_error', '')}")
+
+
+def availability(aid):
+    c, j = call('GET', f'/v1/apps/{aid}/appAvailabilityV2')
+    if ok(c) and isinstance(j.get('data'), dict):
+        note('mavjudlik allaqachon bor'); return
+    c, j = call('GET', '/v1/territories', params={'limit': 200})
+    terr = [t['id'] for t in j.get('data', [])]
+    inc, rel = [], []
+    for i, t in enumerate(terr):
+        lid = f'${{t{i}}}'
+        rel.append({'type': 'territoryAvailabilities', 'id': lid})
+        inc.append({'type': 'territoryAvailabilities', 'id': lid, 'attributes': {'available': True},
+                    'relationships': {'territory': {'data': {'type': 'territories', 'id': t}}}})
+    c, j = call('POST', '/v2/appAvailabilities', {'data': {'type': 'appAvailabilities', 'attributes': {'availableInNewTerritories': True},
+                'relationships': {'app': {'data': {'type': 'apps', 'id': aid}}, 'territoryAvailabilities': {'data': rel}}}, 'included': inc})
+    note(f'mavjudlik: {len(terr)} hudud -> {c} {j.get("_error", "")[:200]}')
+
+
+# ── shots ──────────────────────────────────────────────────────────────
+def shots():
+    aid = app_id(); v = edit_version(aid); loc = en_loc(v['id'])
+    files = sorted(f for f in os.listdir('ci/asc/screenshots') if f.endswith('.png'))
+    if not files:
+        print('::error::skrinshot yo‘q'); sys.exit(1)
+    dtype = os.environ.get('SHOT_TYPE', 'APP_IPHONE_67')
+    c, j = call('GET', f"/v1/appStoreVersionLocalizations/{loc['id']}/appScreenshotSets")
+    sset = next((s for s in j.get('data', []) if s['attributes']['screenshotDisplayType'] == dtype), None)
+    if sset:
+        c, j = call('GET', f"/v1/appScreenshotSets/{sset['id']}/appScreenshots")
+        for s in j.get('data', []):
+            call('DELETE', f"/v1/appScreenshots/{s['id']}")
+    else:
+        c, j = call('POST', '/v1/appScreenshotSets', {'data': {'type': 'appScreenshotSets', 'attributes': {'screenshotDisplayType': dtype},
+                    'relationships': {'appStoreVersionLocalization': {'data': {'type': 'appStoreVersionLocalizations', 'id': loc['id']}}}}})
+        if not ok(c):
+            print(f"::error::screenshot set {c} {j.get('_error')}"); sys.exit(1)
+        sset = j['data']
+    for f in files:
+        blob = open(os.path.join('ci/asc/screenshots', f), 'rb').read()
+        c, j = call('POST', '/v1/appScreenshots', {'data': {'type': 'appScreenshots', 'attributes': {'fileName': f, 'fileSize': len(blob)},
+                    'relationships': {'appScreenshotSet': {'data': {'type': 'appScreenshotSets', 'id': sset['id']}}}}})
+        if not ok(c):
+            note(f'{f}: reserve {c} {j.get("_error")}'); continue
+        sid = j['data']['id']
+        for op in j['data']['attributes'].get('uploadOperations') or []:
+            part = blob[op['offset']:op['offset'] + op['length']]
+            hdr = {h['name']: h['value'] for h in op.get('requestHeaders', [])}
+            c2, _ = call(op['method'], None, raw_url=op['url'], data=part, headers=hdr)
+            if not ok(c2):
+                note(f'{f}: upload part {c2}')
+        c, j = call('PATCH', f'/v1/appScreenshots/{sid}', {'data': {'type': 'appScreenshots', 'id': sid,
+                    'attributes': {'uploaded': True, 'sourceFileChecksum': hashlib.md5(blob).hexdigest()}}})
+        note(f'{f} ({len(blob) // 1024} KB) -> {c} {j.get("_error", "")}')
+    flush('ASC shots')
+
+
+# ── attach / submit ────────────────────────────────────────────────────
+def attach():
+    aid = app_id(); v = edit_version(aid); num = os.environ['BUILD']
+    for _ in range(60):
+        c, j = call('GET', '/v1/builds', params={'filter[app]': aid, 'filter[version]': num, 'limit': 5})
+        b = (j.get('data') or [None])[0]
+        if b and b['attributes'].get('processingState') == 'VALID':
+            break
+        note(f'build {num}: {b and b["attributes"].get("processingState")} — kutilmoqda'); time.sleep(30)
+    else:
+        print(f'::error::build {num} VALID bo‘lmadi'); sys.exit(1)
+    c, j = call('PATCH', f"/v1/appStoreVersions/{v['id']}/relationships/build", {'data': {'type': 'builds', 'id': b['id']}})
+    note(f'build {num} versiyaga biriktirildi -> {c} {j.get("_error", "")}')
+    flush('ASC attach')
+
+
+def submit():
+    aid = app_id(); v = edit_version(aid)
+    c, j = call('POST', '/v1/reviewSubmissions', {'data': {'type': 'reviewSubmissions', 'attributes': {'platform': 'IOS'},
+                'relationships': {'app': {'data': {'type': 'apps', 'id': aid}}}}})
+    if not ok(c):
+        note(f'reviewSubmission yaratish -> {c} {j.get("_error")}')
+        c2, j2 = call('GET', '/v1/reviewSubmissions', params={'filter[app]': aid, 'filter[state]': 'READY_FOR_REVIEW'})
+        sub = (j2.get('data') or [None])[0]
+        if not sub:
+            flush('ASC submit'); sys.exit(1)
+    else:
+        sub = j['data']
+    c, j = call('POST', '/v1/reviewSubmissionItems', {'data': {'type': 'reviewSubmissionItems', 'relationships': {
+        'reviewSubmission': {'data': {'type': 'reviewSubmissions', 'id': sub['id']}},
+        'appStoreVersion': {'data': {'type': 'appStoreVersions', 'id': v['id']}}}}})
+    note(f'versiya qo‘shildi -> {c} {j.get("_error", "")}')
+    c, j = call('PATCH', f"/v1/reviewSubmissions/{sub['id']}", {'data': {'type': 'reviewSubmissions', 'id': sub['id'],
+                'attributes': {'submitted': True}}})
+    note(f'App Review\'ga yuborildi -> {c} {j.get("_error", "")}')
+    flush('ASC submit')
+    if not ok(c):
+        sys.exit(1)
+
+
+if __name__ == '__main__':
+    {'fill': fill, 'shots': shots, 'attach': attach, 'submit': submit}[sys.argv[1]]()
