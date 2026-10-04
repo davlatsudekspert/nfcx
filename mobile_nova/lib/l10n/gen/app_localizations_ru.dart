@@ -460,6 +460,10 @@ class LRu extends L {
   String get homeNoIdHint => 'Закажите карту в магазине или создайте ID';
 
   @override
+  String get homeNoIdHintIos =>
+      'Найдите свободный ID в поиске и сделайте его своим';
+
+  @override
   String get homeBizAddress => 'АДРЕС БИЗНЕСА';
 
   @override

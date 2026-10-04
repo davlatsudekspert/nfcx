@@ -463,6 +463,9 @@ class LEn extends L {
   String get homeNoIdHint => 'Order a card from the shop or create an ID';
 
   @override
+  String get homeNoIdHintIos => 'Find a free ID in search and make it yours';
+
+  @override
   String get homeBizAddress => 'BUSINESS ADDRESS';
 
   @override

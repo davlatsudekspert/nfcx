@@ -195,6 +195,7 @@ void main() {
         'tierHintExclusiveIos',
         'idStateAvailableIos',
         'idStateTakenIos',
+        'homeNoIdHintIos',
       ];
       const banned = [
         'sayt', 'сайт', 'website', 'site', //

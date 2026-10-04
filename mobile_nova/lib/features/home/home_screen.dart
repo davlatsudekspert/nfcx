@@ -21,6 +21,7 @@ import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
+import '../shop/store_policy.dart' show idMarketTitle, isAppStoreBuild;
 import '../auth/session.dart';
 import '../profile/music_player.dart';
 import '../social/feed_card.dart';
@@ -264,7 +265,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           onTap: () => context.push(Routes.business),
                         ))
                   : id == null
-                      ? _NoIdCard(onShop: () => context.push(Routes.shop))
+                      // iPhone'da do'kon yo'q (Apple 3.1.1, `store_policy.dart`):
+                      // tugma bepul ID qidiruviga olib boradi.
+                      ? _NoIdCard(
+                          onShop: () => context.push(
+                              isAppStoreBuild ? Routes.nfcMarket : Routes.shop))
                       // NFC ID — EKRANNING QAHRAMONI.
                       //
                       // Kod katta serifda, pastida ochiq manzil (mono).
@@ -763,12 +768,15 @@ class _NoIdCard extends StatelessWidget {
           const SizedBox(height: Gap.md),
           Text(l.homeNoId, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 4),
-          Text(l.homeNoIdHint, style: Theme.of(context).textTheme.bodyMedium),
+          Text(isAppStoreBuild ? l.homeNoIdHintIos : l.homeNoIdHint,
+              style: Theme.of(context).textTheme.bodyMedium),
           const SizedBox(height: Gap.xl),
           NovaButton(
-            label: l.homeShop,
+            label: isAppStoreBuild ? idMarketTitle(l) : l.homeShop,
             onPressed: onShop,
-            icon: Icons.storefront_rounded,
+            icon: isAppStoreBuild
+                ? Icons.search_rounded
+                : Icons.storefront_rounded,
           ),
         ],
       ),

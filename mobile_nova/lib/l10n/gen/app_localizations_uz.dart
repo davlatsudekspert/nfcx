@@ -461,6 +461,10 @@ class LUz extends L {
   String get homeNoIdHint => 'Do‘kondan karta oling yoki ID yarating';
 
   @override
+  String get homeNoIdHintIos =>
+      'Qidiruvda bo‘sh ID tanlang va o‘zingizniki qiling';
+
+  @override
   String get homeBizAddress => 'BIZNES MANZILI';
 
   @override

@@ -975,6 +975,12 @@ abstract class L {
   /// **'Do‘kondan karta oling yoki ID yarating'**
   String get homeNoIdHint;
 
+  /// No description provided for @homeNoIdHintIos.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qidiruvda bo‘sh ID tanlang va o‘zingizniki qiling'**
+  String get homeNoIdHintIos;
+
   /// No description provided for @homeBizAddress.
   ///
   /// In uz, this message translates to:

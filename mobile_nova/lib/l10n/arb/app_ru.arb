@@ -170,6 +170,7 @@
   "homeActiveId": "Активный NFC ID",
   "homeNoId": "NFC ID ещё нет",
   "homeNoIdHint": "Закажите карту в магазине или создайте ID",
+  "homeNoIdHintIos": "Найдите свободный ID в поиске и сделайте его своим",
   "homeBizAddress": "АДРЕС БИЗНЕСА",
   "homeBizPitchTitle": "Добавьте сюда свой бизнес",
   "homeBizPitchHint": "Каталог, цены и заказы — клиент увидит одним касанием",

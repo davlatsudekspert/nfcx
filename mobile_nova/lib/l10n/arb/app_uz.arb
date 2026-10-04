@@ -170,6 +170,7 @@
   "homeActiveId": "Faol NFC ID",
   "homeNoId": "NFC ID hali yo‘q",
   "homeNoIdHint": "Do‘kondan karta oling yoki ID yarating",
+  "homeNoIdHintIos": "Qidiruvda bo‘sh ID tanlang va o‘zingizniki qiling",
   "homeBizAddress": "BIZNES MANZILI",
   "homeBizPitchTitle": "Biznesingizni shu yerga qo‘shing",
   "homeBizPitchHint": "Katalog, narxlar va buyurtma — mijoz bitta tegishda ko‘radi",
