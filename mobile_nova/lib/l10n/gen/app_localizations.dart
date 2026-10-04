@@ -1977,6 +1977,42 @@ abstract class L {
   /// **'Buyurtmalar yo‘q'**
   String get ordersEmpty;
 
+  /// No description provided for @ordersNoActive.
+  ///
+  /// In uz, this message translates to:
+  /// **'Faol buyurtmalar yo‘q'**
+  String get ordersNoActive;
+
+  /// Buyurtmalar: yashirilgan bekor qilingan buyurtmalarni ko'rsatish tugmasi
+  ///
+  /// In uz, this message translates to:
+  /// **'Bekor qilinganlar ({count})'**
+  String ordersInactiveShow(int count);
+
+  /// No description provided for @ordersInactiveHide.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bekor qilinganlarni yashirish'**
+  String get ordersInactiveHide;
+
+  /// No description provided for @orderStatusNew.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yangi'**
+  String get orderStatusNew;
+
+  /// No description provided for @orderStatusExpired.
+  ///
+  /// In uz, this message translates to:
+  /// **'Muddati o‘tgan'**
+  String get orderStatusExpired;
+
+  /// No description provided for @orderKindNfcId.
+  ///
+  /// In uz, this message translates to:
+  /// **'NFC ID {code}'**
+  String orderKindNfcId(String code);
+
   /// No description provided for @orderNumber.
   ///
   /// In uz, this message translates to:
@@ -3554,6 +3590,18 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Sotuvda emas'**
   String get idStateNotForSale;
+
+  /// iPhone: kod bo'sh ("Sotuvda" o'rniga — savdo so'zi yo'q)
+  ///
+  /// In uz, this message translates to:
+  /// **'Bo‘sh'**
+  String get idStateAvailableIos;
+
+  /// iPhone: kod egallangan ("Sotilgan" o'rniga)
+  ///
+  /// In uz, this message translates to:
+  /// **'Egallangan'**
+  String get idStateTakenIos;
 
   /// No description provided for @idBuy.
   ///

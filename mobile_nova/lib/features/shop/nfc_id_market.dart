@@ -65,10 +65,24 @@ String normalizeIdCode(String raw) =>
 String tierLabel(L l, String tier) => idTierLabel(l, tier);
 
 /// Kod holati bitta so'zda + rang.
+///
+/// iPhone'da savdo so'zi yo'q: "Sotuvda"/"Sotilgan" o'rniga
+/// "Bo'sh"/"Egallangan" — ilovada sotilmaydigan raqamli mahsulotga
+/// ishora bo'lmasin (`store_policy.dart`). Holatning o'zi qoladi.
 ({String text, Color color}) quoteState(L l, NfcTokens t, IdQuote q) {
-  if (q.taken) return (text: l.idStateTaken, color: t.text3);
+  if (q.taken) {
+    return (
+      text: isAppStoreBuild ? l.idStateTakenIos : l.idStateTaken,
+      color: t.text3
+    );
+  }
   if (q.reserved) return (text: l.idStateReserved, color: t.warn);
-  if (q.purchasable) return (text: l.idStateAvailable, color: t.accent2);
+  if (q.purchasable) {
+    return (
+      text: isAppStoreBuild ? l.idStateAvailableIos : l.idStateAvailable,
+      color: t.accent2
+    );
+  }
   return (text: l.idStateNotForSale, color: t.text3);
 }
 
@@ -111,15 +125,19 @@ class _NfcIdMarketScreenState extends ConsumerState<NfcIdMarketScreen> {
     final query = ref.watch(idQueryProvider);
 
     return NovaScaffold(
-      title: l.idMarketTitle,
+      title: idMarketTitle(l),
       showBack: true,
+      // iPhone'da "To'lovlar tarixi" yo'q (`showOrdersEntry`).
       actions: [
-        NovaIconButton(
-          icon: Icons.receipt_long_rounded,
-          tooltip: l.paymentHistory,
-          onPressed: () => context.push(Routes.orders),
-        ),
-        const SizedBox(width: Gap.sm),
+        if (showOrdersEntry) ...[
+          NovaIconButton(
+            key: const ValueKey('id-market-orders'),
+            icon: Icons.receipt_long_rounded,
+            tooltip: l.paymentHistory,
+            onPressed: () => context.push(Routes.orders),
+          ),
+          const SizedBox(width: Gap.sm),
+        ],
       ],
       body: NovaScroll(
         children: [

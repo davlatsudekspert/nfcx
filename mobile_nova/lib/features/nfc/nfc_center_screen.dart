@@ -21,6 +21,7 @@ import '../../routing/routes.dart';
 import '../auth/session.dart';
 import '../home/home_screen.dart';
 import '../home/widgets/my_ids_strip.dart';
+import '../shop/store_policy.dart' show idMarketTitle;
 import 'nfc_service.dart';
 import 'qr_sheet.dart';
 import '../../design/widgets/brand_icon.dart';
@@ -163,7 +164,7 @@ class NfcCenterScreen extends ConsumerWidget {
                 // yuqoridagi panelda — takrorlanmaydi.
                 if (!noNfc) _ActionRow(
                   icon: Icons.search_rounded,
-                  title: l.idMarketTitle,
+                  title: idMarketTitle(l),
                   subtitle: l.idMarketSearchHint,
                   onTap: () => context.push(Routes.nfcMarket),
                 ),
@@ -672,7 +673,7 @@ class NoNfcPanel extends ConsumerWidget {
                 () => context.push(Routes.nfcIds),
                 const ValueKey('no-nfc-ids')),
             const SizedBox(width: Gap.md),
-            tile(Icons.search_rounded, l.idMarketTitle, l.noNfcGetHint,
+            tile(Icons.search_rounded, idMarketTitle(l), l.noNfcGetHint,
                 () => context.push(Routes.nfcMarket),
                 const ValueKey('no-nfc-market')),
           ],

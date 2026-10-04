@@ -193,6 +193,8 @@ void main() {
         'bizPremiumHintIos',
         'idMarketTiersIos',
         'tierHintExclusiveIos',
+        'idStateAvailableIos',
+        'idStateTakenIos',
       ];
       const banned = [
         'sayt', 'сайт', 'website', 'site', //

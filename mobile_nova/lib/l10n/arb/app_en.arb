@@ -351,6 +351,26 @@
   "paymentNotConfigured": "Payment provider is not configured",
   "orders": "Orders",
   "ordersEmpty": "No orders yet",
+  "ordersNoActive": "No active orders",
+  "ordersInactiveShow": "Cancelled ({count})",
+  "@ordersInactiveShow": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ordersInactiveHide": "Hide cancelled",
+  "orderStatusNew": "New",
+  "orderStatusExpired": "Expired",
+  "orderKindNfcId": "NFC ID {code}",
+  "@orderKindNfcId": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
   "orderNumber": "Order #{id}",
   "@orderNumber": {
     "placeholders": {
@@ -707,6 +727,8 @@
   "idStateReserved": "Reserved",
   "idStateMine": "Yours",
   "idStateNotForSale": "Not for sale",
+  "idStateAvailableIos": "Available",
+  "idStateTakenIos": "Taken",
   "idBuy": "Buy",
   "idDetailTitle": "NFC ID",
   "idOrderTitle": "Order",

@@ -101,21 +101,30 @@ class BusinessIntroBody extends StatelessWidget {
             onPressed: () => context.push(Routes.businessOnboard),
           ),
         ),
-        const SizedBox(height: Gap.md),
-        _OptionCard(
-          key: const ValueKey('biz-option-premium'),
-          premium: true,
-          badge: l.bizPremiumBadge,
-          title: l.bizPremiumTitle,
-          // iPhone'da narx haqida gap yo'q (`store_policy.dart`).
-          hint: showDigitalPrices ? l.bizPremiumHint : l.bizPremiumHintIos,
-          cta: NovaButton(
-            label: l.bizPremiumCta,
-            tone: ButtonTone.outline,
-            icon: Icons.search_rounded,
-            onPressed: () => context.push(Routes.businessOnboardCustom),
+        // MAXSUS NOM / PREMIUM ID — iPHONE'DA YO'Q (egasi, 2026-10-04:
+        // "kerak bo'lmasa — olib tashla").
+        //
+        // iPhone'da bu yo'l boshi berk ko'cha edi: "Nomni tekshirish"
+        // nom bo'sh ekanini ko'rsatadi, keyin hech narsa — narx ham,
+        // sayt yozuvi ham u yerda yashirin (`store_policy.dart`).
+        // Ilovada olib bo'lmaydigan pullik raqamli mahsulot vitrinasi
+        // App Store tekshiruvida savol tug'diradi. Bepul yo'l qoladi.
+        if (!isAppStoreBuild) ...[
+          const SizedBox(height: Gap.md),
+          _OptionCard(
+            key: const ValueKey('biz-option-premium'),
+            premium: true,
+            badge: l.bizPremiumBadge,
+            title: l.bizPremiumTitle,
+            hint: showDigitalPrices ? l.bizPremiumHint : l.bizPremiumHintIos,
+            cta: NovaButton(
+              label: l.bizPremiumCta,
+              tone: ButtonTone.outline,
+              icon: Icons.search_rounded,
+              onPressed: () => context.push(Routes.businessOnboardCustom),
+            ),
           ),
-        ),
+        ],
 
         // NAMUNA PROFILLAR — tayyor bizneslar sahifasi qanday ko'rinadi.
         // Variantlardan keyin: tugmalar pastga surilmasin. Namuna yo'q

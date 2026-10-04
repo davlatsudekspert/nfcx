@@ -354,6 +354,27 @@
   "paymentNotConfigured": "To‘lov tizimi sozlanmagan",
   "orders": "Buyurtmalar",
   "ordersEmpty": "Buyurtmalar yo‘q",
+  "ordersNoActive": "Faol buyurtmalar yo‘q",
+  "ordersInactiveShow": "Bekor qilinganlar ({count})",
+  "@ordersInactiveShow": {
+    "description": "Buyurtmalar: yashirilgan bekor qilingan buyurtmalarni ko'rsatish tugmasi",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ordersInactiveHide": "Bekor qilinganlarni yashirish",
+  "orderStatusNew": "Yangi",
+  "orderStatusExpired": "Muddati o‘tgan",
+  "orderKindNfcId": "NFC ID {code}",
+  "@orderKindNfcId": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
   "orderNumber": "Buyurtma №{id}",
   "@orderNumber": {
     "placeholders": {
@@ -734,6 +755,14 @@
   "idStateReserved": "Band qilingan",
   "idStateMine": "Sizniki",
   "idStateNotForSale": "Sotuvda emas",
+  "idStateAvailableIos": "Bo‘sh",
+  "@idStateAvailableIos": {
+    "description": "iPhone: kod bo'sh (\"Sotuvda\" o'rniga — savdo so'zi yo'q)"
+  },
+  "idStateTakenIos": "Egallangan",
+  "@idStateTakenIos": {
+    "description": "iPhone: kod egallangan (\"Sotilgan\" o'rniga)"
+  },
   "idBuy": "Sotib olish",
   "idDetailTitle": "NFC ID",
   "idOrderTitle": "Buyurtma",

@@ -976,6 +976,28 @@ class LRu extends L {
   String get ordersEmpty => 'Заказов нет';
 
   @override
+  String get ordersNoActive => 'Активных заказов нет';
+
+  @override
+  String ordersInactiveShow(int count) {
+    return 'Отменённые ($count)';
+  }
+
+  @override
+  String get ordersInactiveHide => 'Скрыть отменённые';
+
+  @override
+  String get orderStatusNew => 'Новый';
+
+  @override
+  String get orderStatusExpired => 'Истёк';
+
+  @override
+  String orderKindNfcId(String code) {
+    return 'NFC ID $code';
+  }
+
+  @override
   String orderNumber(String id) {
     return 'Заказ №$id';
   }
@@ -1814,6 +1836,12 @@ class LRu extends L {
 
   @override
   String get idStateNotForSale => 'Не продаётся';
+
+  @override
+  String get idStateAvailableIos => 'Свободен';
+
+  @override
+  String get idStateTakenIos => 'Занят';
 
   @override
   String get idBuy => 'Купить';

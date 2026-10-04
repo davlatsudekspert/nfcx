@@ -351,6 +351,26 @@
   "paymentNotConfigured": "Платёжная система не настроена",
   "orders": "Заказы",
   "ordersEmpty": "Заказов нет",
+  "ordersNoActive": "Активных заказов нет",
+  "ordersInactiveShow": "Отменённые ({count})",
+  "@ordersInactiveShow": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ordersInactiveHide": "Скрыть отменённые",
+  "orderStatusNew": "Новый",
+  "orderStatusExpired": "Истёк",
+  "orderKindNfcId": "NFC ID {code}",
+  "@orderKindNfcId": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
   "orderNumber": "Заказ №{id}",
   "@orderNumber": {
     "placeholders": {
@@ -707,6 +727,8 @@
   "idStateReserved": "Забронирован",
   "idStateMine": "Ваш",
   "idStateNotForSale": "Не продаётся",
+  "idStateAvailableIos": "Свободен",
+  "idStateTakenIos": "Занят",
   "idBuy": "Купить",
   "idDetailTitle": "NFC ID",
   "idOrderTitle": "Заказ",

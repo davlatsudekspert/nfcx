@@ -16,6 +16,7 @@ import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
 import '../auth/session.dart';
 import '../home/widgets/avatar.dart';
+import '../shop/store_policy.dart';
 import '../social/content_rules.dart';
 import '../../design/widgets/brand_icon.dart';
 
@@ -34,6 +35,20 @@ class SettingsScreen extends ConsumerWidget {
     final t = context.tokens;
     final user = ref.watch(currentUserProvider);
     final personal = ref.watch(activePersonalProvider);
+    final shopItems = [
+      if (showOrdersEntry)
+        SettingsItem(
+          icon: Icons.receipt_long_outlined,
+          label: l.orders,
+          onTap: () => context.push(Routes.orders),
+        ),
+      if (!isAppStoreBuild)
+        SettingsItem(
+          icon: Icons.card_giftcard_outlined,
+          label: l.settingsReferral,
+          onTap: () => context.push(Routes.settingsReferral),
+        ),
+    ];
 
     return NovaScaffold(
       title: l.settings,
@@ -155,19 +170,19 @@ class SettingsScreen extends ConsumerWidget {
           // to'lov haqida hech narsa ko'rinmasin. Jismoniy NFC karta
           // buyurtmalari qoladi: jismoniy tovar Play Billing'dan ozod
           // (`shop/store_policy.dart`).
-          SectionHeader(color: t.text2, title: l.settingsShopSection),
-          SettingsGroup(items: [
-            SettingsItem(
-              icon: Icons.receipt_long_outlined,
-              label: l.orders,
-              onTap: () => context.push(Routes.orders),
-            ),
-            SettingsItem(
-              icon: Icons.card_giftcard_outlined,
-              label: l.settingsReferral,
-              onTap: () => context.push(Routes.settingsReferral),
-            ),
-          ]),
+          //
+          // iPHONE'DA BU BO'LIM UMUMAN YO'Q (egasi, 2026-10-04):
+          //   * "Buyurtmalar" — `showOrdersEntry` izohida;
+          //   * "Referal" — mukofoti keyingi NFC ID xaridiga 10%
+          //     chegirma (`settingsReferralHint`, server
+          //     `pending_discount_pct`). Raqamli mahsulotga chegirma
+          //     va'dasi Apple 3.1.1 ga tushadi, chegirmaning o'zi esa
+          //     ilovada ishlatilmaydi.
+          // Bandlar qolmasa, bo'sh sarlavha ham qolmaydi.
+          if (shopItems.isNotEmpty) ...[
+            SectionHeader(color: t.text2, title: l.settingsShopSection),
+            SettingsGroup(items: shopItems),
+          ],
           SectionHeader(color: t.text2, title: l.settingsSupport),
           SettingsGroup(items: [
             SettingsItem(
@@ -203,8 +218,15 @@ class SettingsScreen extends ConsumerWidget {
           // Ilovada NFC kartani SOTIB OLIB bo'lmaydi: jismoniy
           // buyurtma, to'liq katalog va yetkazib berish saytda.
           // Odam buni bilmasa, ilovada qidirib topolmay qoladi.
-          const _SiteCard(),
-          const SizedBox(height: Gap.xxl),
+          //
+          // iPhone'da YO'Q (egasi, 2026-10-04): "...saytda" degan
+          // karta Apple tekshiruvchisi uchun tashqi xaridga
+          // yo'naltirish (3.1.1 / 3.1.3). `kShowSiteNotice` o'chirilsa
+          // Android'da ham yo'qoladi — boshqa sayt yozuvlari kabi.
+          if (kShowSiteNotice && !isAppStoreBuild) ...[
+            const _SiteCard(),
+            const SizedBox(height: Gap.xxl),
+          ],
           NovaButton(
             label: l.logout,
             tone: ButtonTone.danger,

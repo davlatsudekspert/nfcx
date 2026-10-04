@@ -980,6 +980,28 @@ class LEn extends L {
   String get ordersEmpty => 'No orders yet';
 
   @override
+  String get ordersNoActive => 'No active orders';
+
+  @override
+  String ordersInactiveShow(int count) {
+    return 'Cancelled ($count)';
+  }
+
+  @override
+  String get ordersInactiveHide => 'Hide cancelled';
+
+  @override
+  String get orderStatusNew => 'New';
+
+  @override
+  String get orderStatusExpired => 'Expired';
+
+  @override
+  String orderKindNfcId(String code) {
+    return 'NFC ID $code';
+  }
+
+  @override
   String orderNumber(String id) {
     return 'Order #$id';
   }
@@ -1820,6 +1842,12 @@ class LEn extends L {
 
   @override
   String get idStateNotForSale => 'Not for sale';
+
+  @override
+  String get idStateAvailableIos => 'Available';
+
+  @override
+  String get idStateTakenIos => 'Taken';
 
   @override
   String get idBuy => 'Buy';

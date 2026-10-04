@@ -96,7 +96,35 @@ class OrderKind {
   static const premium = 'premium_upgrade';
   static const premiumFollow = 'premium_follow';
   static const auction = 'auction_payment';
+  static const featured = 'featured_slot';
 }
+
+/// Buyurtma JISMONIY tovar uchunmi.
+///
+/// Faqat jismoniy NFC karta. Qolganlari — NFC ID, Premium, obuna,
+/// auksion, FEATURED — raqamli. Ro'yxat ataylab "jismoniylar"
+/// shaklida: serverda yangi tur paydo bo'lsa, u avtomatik RAQAMLI
+/// hisoblanadi va iPhone'da narxi chiqib qolmaydi.
+bool isPhysicalOrder(String kind) => kind == OrderKind.physicalCard;
+
+/// Buyurtma summasi ko'rsatilsinmi: Android'da — har doim, iPhone'da
+/// — faqat jismoniy tovar uchun (Apple 3.1.5(a)).
+bool showOrderAmount(String kind) =>
+    showDigitalPrices || isPhysicalOrder(kind);
+
+/// "BUYURTMALAR" EKRANIGA KIRISH YO'LI BO'LSINMI.
+///
+/// Egasining qarori (2026-10-04, iPhone surati): "kerak bo'lmasa —
+/// olib tashla, App Store shu sababli rad etmasin". Ro'yxatning
+/// deyarli hammasi raqamli xaridlar (NFC ID, Premium) va bekor
+/// qilingan buyurtmalar edi; iPhone'da ilova ichida hech narsa
+/// sotilmaydi, demak bu ekran u yerda kerak emas.
+///
+/// iPhone'da Sozlamalar, Do'kon, NFC ID qidiruvi va to'lov natijasi
+/// ekranlaridagi "Buyurtmalar" tugmalari chizilmaydi. Ekran baribir
+/// ochilib qolsa (`/orders`), unda faqat jismoniy karta buyurtmalari
+/// ko'rinadi. ANDROID O'ZGARMAYDI.
+bool get showOrdersEntry => !isAppStoreBuild;
 
 /// Shu buyurtmani ILOVA ICHIDA to'lash mumkinmi.
 ///
@@ -211,6 +239,12 @@ String storeNoticeText(L l, String kind) => switch (kind) {
       OrderKind.premium || OrderKind.premiumFollow => l.storeBuyOnSitePremium,
       _ => l.storeBuyOnSiteId,
     };
+
+/// NFC ID qidiruv ekranining nomi (ekran sarlavhasi va NFC Markazdagi
+/// qator). iPhone'da "NFC ID olish" emas, "ID qidirish": ilovada ID
+/// olinmaydi — faqat qidiriladi va holati ko'riladi.
+String idMarketTitle(L l) =>
+    isAppStoreBuild ? l.idSearchShort : l.idMarketTitle;
 
 
 // ─────────────────────────────────────────── to'lov provayderi rangi

@@ -20,6 +20,7 @@ import '../../design/widgets/nova_scaffold.dart';
 import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
+import '../shop/shop_screens.dart' show orderStatusView;
 import '../shop/store_policy.dart';
 import '../../routing/routes.dart';
 import '../auth/session.dart';
@@ -501,7 +502,9 @@ class _NotificationsSettingsScreenState
     final rows = <(String, String, IconData)>[
       ('scan', l.nfcScans, Icons.nfc_rounded),
       ('social', l.homePosts, Icons.favorite_rounded),
-      ('orders', l.orders, Icons.receipt_long_rounded),
+      // iPhone'da "Buyurtmalar" ekrani yo'q (`showOrdersEntry`) —
+      // ular haqidagi bildirishnoma tanlovi ham yo'q.
+      if (showOrdersEntry) ('orders', l.orders, Icons.receipt_long_rounded),
       ('news', l.settingsNews, Icons.campaign_rounded),
     ];
 
@@ -789,12 +792,10 @@ class _PaymentRow extends StatelessWidget {
     return int.tryParse('$v') ?? 0;
   }
 
-  /// Jismoniy karta to'lovimi. Qolganlari (NFC ID, Premium, auksion)
+  /// Jismoniy karta to'lovidan boshqasi (NFC ID, Premium, auksion)
   /// raqamli: iPhone'da ularning summasi va "to'lash mumkin" izohi
-  /// ko'rsatilmaydi (`store_policy.dart`).
-  bool get _physical => '${row['kind'] ?? ''}' == 'physical_card_order';
-
-  bool get _showAmount => showDigitalPrices || _physical;
+  /// ko'rsatilmaydi (`showOrderAmount`, `store_policy.dart`).
+  bool get _showAmount => showOrderAmount('${row['kind'] ?? ''}');
 
   String _kind(L l) => switch ('${row['kind'] ?? ''}') {
         'card_purchase' => l.payKindCard,
@@ -805,15 +806,12 @@ class _PaymentRow extends StatelessWidget {
         _ => l.payKindOther,
       };
 
-  /// Holat matni va rangi.
-  (String, Color) _status(L l, NfcTokens t) =>
-      switch ('${row['status'] ?? ''}') {
-        'paid' => (l.payStatusPaid, t.success),
-        'pending' => (l.payStatusPending, t.warn),
-        'cancelled' => (l.payStatusCancelled, t.text3),
-        'failed_code_taken' => (l.payStatusFailed, t.error),
-        _ => ('${row['status'] ?? ''}', t.text3),
-      };
+  /// Holat matni va rangi — "Buyurtmalar" ekrani bilan bitta manba
+  /// (`orderStatusView`).
+  (String, Color) _status(L l, NfcTokens t) {
+    final s = orderStatusView(l, t, '${row['status'] ?? ''}');
+    return (s.text, s.tone);
+  }
 
   @override
   Widget build(BuildContext context) {

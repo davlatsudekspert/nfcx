@@ -20,6 +20,7 @@ import '../../routing/routes.dart';
 import '../../app/profile_context.dart';
 import '../auth/session.dart';
 import '../home/widgets/identity_card.dart';
+import '../shop/store_policy.dart' show isAppStoreBuild;
 import 'nfc_misc_screens.dart' show nfcDevicesProvider;
 import 'qr_sheet.dart';
 import '../../design/widgets/brand_icon.dart';
@@ -36,13 +37,19 @@ class NfcIdsScreen extends ConsumerWidget {
     return NovaScaffold(
       title: l.nfcMyIds,
       showBack: true,
+      // iPHONE: "Do'kon" tugmasi va "do'kondan oling" izohi YO'Q.
+      // Do'kon ekrani bo'sh ochiladi (server narxlarni `tiers` deb
+      // beradi, ekran esa `items` ni kutadi). iPhone'da bu boshi berk
+      // ko'cha bo'lardi, ID'siz yangi hisob esa aynan shu holatni
+      // ko'radi (`store_policy.dart`). Android o'zgarmaydi.
       body: ids.isEmpty
           ? StatePanel(
               icon: Icons.badge_outlined,
               title: l.homeNoId,
-              message: l.homeNoIdHint,
-              actionLabel: l.homeShop,
-              onAction: () => context.push(Routes.shop),
+              message: isAppStoreBuild ? null : l.homeNoIdHint,
+              actionLabel: isAppStoreBuild ? null : l.homeShop,
+              onAction:
+                  isAppStoreBuild ? null : () => context.push(Routes.shop),
             )
           : RefreshIndicator(
               color: context.tokens.accent2,

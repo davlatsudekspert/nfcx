@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../social/media_frame.dart';
 import '../../core/errors/app_error.dart';
@@ -56,13 +57,17 @@ class ShopScreen extends ConsumerWidget {
     return NovaScaffold(
       title: l.shopTitle,
       showBack: true,
+      // iPhone'da "Buyurtmalar" yo'q (`showOrdersEntry`, store_policy).
       actions: [
-        NovaIconButton(
-          icon: Icons.receipt_long_rounded,
-          tooltip: l.orders,
-          onPressed: () => context.push(Routes.orders),
-        ),
-        const SizedBox(width: Gap.sm),
+        if (showOrdersEntry) ...[
+          NovaIconButton(
+            key: const ValueKey('shop-orders'),
+            icon: Icons.receipt_long_rounded,
+            tooltip: l.orders,
+            onPressed: () => context.push(Routes.orders),
+          ),
+          const SizedBox(width: Gap.sm),
+        ],
       ],
       body: products.when(
         loading: () => const SkeletonList(count: 4, height: 96),
@@ -445,21 +450,109 @@ class PaymentResultScreen extends StatelessWidget {
         title: title,
         message: message.isEmpty ? null : message,
         tone: tone,
-        actionLabel: l.orders,
-        onAction: () => context.pushReplacement(Routes.orders),
+        // iPhone'da "Buyurtmalar" ekrani yo'q (`showOrdersEntry`) —
+        // orqaga tugmasi yetarli.
+        actionLabel: showOrdersEntry ? l.orders : null,
+        onAction: showOrdersEntry
+            ? () => context.pushReplacement(Routes.orders)
+            : null,
       ),
     );
   }
 }
 
+/// Buyurtma holati — tarjima va rang.
+///
+/// SERVER LUG'ATI (`hosting/worker.js`, `web_orders.status`):
+/// `pending` -> `paid` | `cancelled` | `failed_code_taken`. 24 soatda
+/// to'lanmagan `pending` ham `cancelled` ga aylanadi
+/// (`expireStaleWebOrdersD1`). `new` — server holat yubormaganda
+/// modelning standart qiymati; `expired` — ehtiyot uchun.
+///
+/// Ilgari ro'yxatda XOM inglizcha so'z ("cancelled", "paid") turardi,
+/// yana ikki marta: kapsulada va (izoh bo'sh bo'lganda) izoh
+/// qatorida. Matnlar saytdagi "To'lovlar" sahifasi
+/// (`src/pages/PaymentsPage.jsx`) va "To'lovlar tarixi" bilan bir xil.
+/// Noma'lum holat yo'qolib qolmasin — o'zicha ko'rsatiladi.
+({String text, Color tone}) orderStatusView(
+        L l, NfcTokens t, String status) =>
+    switch (status) {
+      'paid' => (text: l.payStatusPaid, tone: t.success),
+      'pending' => (text: l.payStatusPending, tone: t.warn),
+      'new' => (text: l.orderStatusNew, tone: t.warn),
+      'cancelled' => (text: l.payStatusCancelled, tone: t.text3),
+      'expired' => (text: l.orderStatusExpired, tone: t.text3),
+      // To'langan, lekin kod boshqaga o'tib ketgan — pul masalasi,
+      // ko'zga tashlanib turishi kerak.
+      'failed_code_taken' => (text: l.payStatusFailed, tone: t.error),
+      _ => (text: status, tone: t.text3),
+    };
+
+/// Yopilgan buyurtma — undan endi hech narsa kutilmaydi, ro'yxatda
+/// sukut bo'yicha yig'ilib turadi.
+///
+/// `failed_code_taken` BU YERDA YO'Q: odam pul to'lagan, buni
+/// ko'rishi shart.
+bool isInactiveOrder(String status) =>
+    status == 'cancelled' || status == 'expired';
+
+/// NIMA buyurtma qilingani — izoh qatori uchun. HOLAT EMAS: u
+/// kapsulada turibdi.
+///
+/// `GET /api/orders` mahsulot nomini yubormaydi, faqat `kind` va
+/// `code` — shuning uchun matn turdan yasaladi. Premium, obuna va
+/// FEATURED buyurtmalarida `code` texnik ("PREMIUM", "FOLLOW",
+/// egasining kodi) — ko'rsatilmaydi.
+String orderWhat(L l, Order o) {
+  final code = o.code.trim();
+  String withCode(String s) => code.isEmpty ? s : '$s · $code';
+  return switch (o.kind) {
+    OrderKind.nfcId => l.orderKindNfcId(code).trim(),
+    OrderKind.physicalCard => withCode(l.payKindPhysical),
+    OrderKind.auction => withCode(l.payKindAuction),
+    OrderKind.premium => l.payKindPremium,
+    OrderKind.premiumFollow => l.payKindFollow,
+    OrderKind.featured => l.featuredTitle,
+    _ => o.itemsText,
+  };
+}
+
 /// Buyurtmalar ro'yxati.
-class OrdersScreen extends ConsumerWidget {
+///
+/// ## BEKOR QILINGANLAR YIG'ILADI
+///
+/// Egasining iPhone suratida ro'yxatning ko'pi bekor qilingan
+/// buyurtmalar edi: har "Band qilish" 24 soatda to'lanmasa
+/// `cancelled` bo'ladi. Ular endi pastda bitta "Bekor qilinganlar (N)"
+/// tugmasi ortida — bosilsa ochiladi.
+///
+/// Hamma buyurtma bekor qilingan bo'lsa — ro'yxat o'rnida "Faol
+/// buyurtmalar yo'q" holati, tugmasi esa o'sha "Bekor qilinganlar
+/// (N)". Bo'sh ro'yxat tagida yolg'iz tugma turgandan ko'ra toza: odam
+/// darhol vaziyatni o'qiydi va xohlasa tarixni ochadi.
+///
+/// ## iPHONE
+///
+/// Ekranga kirish yo'li iPhone'da yo'q (`showOrdersEntry`). Baribir
+/// ochilsa — faqat JISMONIY karta buyurtmalari: raqamli xaridning na
+/// o'zi, na narxi ko'rinmaydi (`store_policy.dart`). Summa ham
+/// `showOrderAmount` orqali: Android'da hammasida, iPhone'da faqat
+/// jismoniy tovarda.
+class OrdersScreen extends ConsumerStatefulWidget {
   const OrdersScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<OrdersScreen> createState() => _OrdersScreenState();
+}
+
+class _OrdersScreenState extends ConsumerState<OrdersScreen> {
+  bool _showInactive = false;
+
+  void _toggle() => setState(() => _showInactive = !_showInactive);
+
+  @override
+  Widget build(BuildContext context) {
     final l = L.of(context);
-    final t = context.tokens;
     final orders = ref.watch(ordersProvider);
 
     return NovaScaffold(
@@ -469,56 +562,143 @@ class OrdersScreen extends ConsumerWidget {
         loading: () => const SkeletonList(count: 3),
         error: (e, __) => StatePanel.fromError(context, asAppError(e),
             onRetry: () => ref.invalidate(ordersProvider)),
-        data: (items) => items.isEmpty
-            ? StatePanel(
-                icon: Icons.receipt_long_outlined,
-                title: l.ordersEmpty,
-                message: l.stateEmptyHint,
-                actionLabel: l.shopTitle,
-                onAction: () => context.push(Routes.shop),
-              )
-            : ListView.separated(
-                padding: const EdgeInsets.fromLTRB(
-                    Gap.screenX, Gap.md, Gap.screenX, 120),
-                itemCount: items.length,
-                separatorBuilder: (_, __) => const SizedBox(height: Gap.md),
-                itemBuilder: (context, i) {
-                  final o = items[i];
-                  return FloatingSurface(
-                    solid: true,
-                    padding: const EdgeInsets.all(Gap.lg),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(l.orderNumber('${o.id}'),
-                                  style:
-                                      Theme.of(context).textTheme.titleSmall),
-                              Text(o.itemsText.isEmpty ? o.status : o.itemsText,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style:
-                                      Theme.of(context).textTheme.bodySmall),
-                            ],
-                          ),
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(formatMoney(o.total, o.currency),
-                                style: AppType.monoStyle(
-                                    color: t.text1, size: 13)),
-                            const SizedBox(height: 3),
-                            Capsule(label: o.status, dense: true),
-                          ],
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
+        data: (all) {
+          final items = isAppStoreBuild
+              ? all.where((o) => isPhysicalOrder(o.kind)).toList()
+              : all;
+          final active =
+              items.where((o) => !isInactiveOrder(o.status)).toList();
+          final inactive =
+              items.where((o) => isInactiveOrder(o.status)).toList();
+
+          if (items.isEmpty) {
+            return StatePanel(
+              icon: Icons.receipt_long_outlined,
+              title: l.ordersEmpty,
+              message: l.stateEmptyHint,
+              actionLabel: l.shopTitle,
+              onAction: () => context.push(Routes.shop),
+            );
+          }
+          if (active.isEmpty && !_showInactive) {
+            return StatePanel(
+              key: const ValueKey('orders-no-active'),
+              icon: Icons.receipt_long_outlined,
+              title: l.ordersNoActive,
+              actionLabel: l.ordersInactiveShow(inactive.length),
+              onAction: _toggle,
+            );
+          }
+
+          final shown = [...active, if (_showInactive) ...inactive];
+          return ListView.separated(
+            padding:
+                const EdgeInsets.fromLTRB(Gap.screenX, Gap.md, Gap.screenX, 120),
+            itemCount: shown.length + (inactive.isEmpty ? 0 : 1),
+            separatorBuilder: (_, __) => const SizedBox(height: Gap.md),
+            itemBuilder: (context, i) => i < shown.length
+                ? _OrderTile(order: shown[i])
+                : _InactiveToggle(
+                    open: _showInactive,
+                    count: inactive.length,
+                    onTap: _toggle,
+                  ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _OrderTile extends StatelessWidget {
+  const _OrderTile({required this.order});
+  final Order order;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context);
+    final t = context.tokens;
+    final o = order;
+    final status = orderStatusView(l, t, o.status);
+    final when = o.createdAt;
+    final sub = [
+      orderWhat(l, o),
+      if (when != null) DateFormat('dd.MM.yyyy').format(when.toLocal()),
+    ].where((s) => s.isNotEmpty).join(' · ');
+
+    return FloatingSurface(
+      key: ValueKey('order-${o.id}'),
+      solid: true,
+      padding: const EdgeInsets.all(Gap.lg),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l.orderNumber('${o.id}'),
+                    style: Theme.of(context).textTheme.titleSmall),
+                if (sub.isNotEmpty)
+                  Text(sub,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall),
+              ],
+            ),
+          ),
+          const SizedBox(width: Gap.md),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // Raqamli xarid summasi iPhone'da yo'q — faqat holat.
+              if (showOrderAmount(o.kind)) ...[
+                Text(formatMoney(o.total, o.currency),
+                    style: AppType.monoStyle(color: t.text1, size: 13)),
+                const SizedBox(height: 3),
+              ],
+              Capsule(label: status.text, dense: true, tone: status.tone),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Bekor qilinganlar (N)" / "Yashirish" — ro'yxat oxirida.
+class _InactiveToggle extends StatelessWidget {
+  const _InactiveToggle({
+    required this.open,
+    required this.count,
+    required this.onTap,
+  });
+
+  final bool open;
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context);
+    final t = context.tokens;
+    return Center(
+      child: TextButton.icon(
+        key: const ValueKey('orders-inactive-toggle'),
+        onPressed: onTap,
+        icon: Icon(
+          open ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+          size: 18,
+          color: t.text2,
+        ),
+        label: Text(
+          open ? l.ordersInactiveHide : l.ordersInactiveShow(count),
+          style: TextStyle(
+            fontFamily: AppType.sans,
+            fontSize: 12.5,
+            fontWeight: FontWeight.w700,
+            color: t.text2,
+          ),
+        ),
       ),
     );
   }

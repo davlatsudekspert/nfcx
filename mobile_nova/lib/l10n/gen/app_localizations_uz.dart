@@ -981,6 +981,28 @@ class LUz extends L {
   String get ordersEmpty => 'Buyurtmalar yo‘q';
 
   @override
+  String get ordersNoActive => 'Faol buyurtmalar yo‘q';
+
+  @override
+  String ordersInactiveShow(int count) {
+    return 'Bekor qilinganlar ($count)';
+  }
+
+  @override
+  String get ordersInactiveHide => 'Bekor qilinganlarni yashirish';
+
+  @override
+  String get orderStatusNew => 'Yangi';
+
+  @override
+  String get orderStatusExpired => 'Muddati o‘tgan';
+
+  @override
+  String orderKindNfcId(String code) {
+    return 'NFC ID $code';
+  }
+
+  @override
   String orderNumber(String id) {
     return 'Buyurtma №$id';
   }
@@ -1825,6 +1847,12 @@ class LUz extends L {
 
   @override
   String get idStateNotForSale => 'Sotuvda emas';
+
+  @override
+  String get idStateAvailableIos => 'Bo‘sh';
+
+  @override
+  String get idStateTakenIos => 'Egallangan';
 
   @override
   String get idBuy => 'Sotib olish';
