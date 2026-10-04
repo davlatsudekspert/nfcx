@@ -1,14 +1,19 @@
-// hasharchilar API testi — `wrangler dev` (lokal D1 + R2) ga qarshi.
+// hasharchilar API testi — `wrangler dev` (lokal D1 yoki Durable Object + R2) ga qarshi.
 // Ishga tushirish: npx wrangler dev --port 8787  &&  node --test tests/
+// DO rejimi: STORAGE=do (wrangler dev --config wrangler.deploy.json, generatsiya: --storage do).
 // Bo'sh bo'lmagan bazada ham qayta ishlaydi: har safar tasodifiy telefonlar va IP lar.
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { deflateSync } from 'node:zlib';
 
 const BASE = (process.env.BASE_URL || 'http://localhost:8787').replace(/\/+$/, '');
 const RUN = Math.random().toString(36).slice(2, 8); // shu yugurish uchun noyob belgi
+const IS_LOCAL_SERVER = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(BASE);
+const STORAGE = process.env.STORAGE === 'do' ? 'do' : 'd1'; // serverdagi baza turi
 
 // ---------- Yordamchilar ----------
 
@@ -531,8 +536,9 @@ test('qatnashish/chiqish limiti: 30 ta / soat, keyin 429', async () => {
 });
 
 // ---------- 300 lik limit: eski (yakunlanmagan) PENDING'lar kelgusi/bajarilganlarni siqib chiqarmasin ----------
-// Eski sanali qatorlarni API orqali yaratib bo'lmaydi — faqat lokal D1 ga `wrangler d1 execute` bilan yoziladi.
-const IS_LOCAL = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(BASE) && !process.env.SKIP_D1_EXEC;
+// Eski sanali qatorlarni API orqali yaratib bo'lmaydi — faqat lokal D1 ga `wrangler d1 execute` bilan yoziladi
+// (DO rejimida bazaga tashqaridan yozib bo'lmaydi — test o'tkazib yuboriladi).
+const CAN_D1_EXEC = IS_LOCAL_SERVER && STORAGE === 'd1' && !process.env.SKIP_D1_EXEC;
 
 function d1Exec(sql) {
   const persist = process.env.D1_PERSIST_TO ? ['--persist-to', process.env.D1_PERSIST_TO] : [];
@@ -543,7 +549,8 @@ function d1Exec(sql) {
   });
 }
 
-describe("ro'yxat: 300+ eski PENDING bo'lsa ham kelgusi va bajarilganlar ko'rinadi", { skip: !IS_LOCAL && 'faqat lokal wrangler dev' }, () => {
+const SKIP_300 = CAN_D1_EXEC ? false : STORAGE === 'do' ? "DO rejimi: wrangler d1 execute yo'q" : 'faqat lokal wrangler dev';
+describe("ro'yxat: 300+ eski PENDING bo'lsa ham kelgusi va bajarilganlar ko'rinadi", { skip: SKIP_300 }, () => {
   let owner;
   let upcoming;
 
@@ -597,12 +604,36 @@ test('GET /api/stats', async () => {
   assert.ok(r.data.volunteers >= 2);
 });
 
-test('GET /api/app (lokal: APK yo\'q)', async () => {
+// APK: CI uni statik assets ichiga qo'yadi (dist/app/hasharchilar.apk + version.json).
+// Lokal server shu loyihaning dist/ papkasini beradi: fayl bo'lsa — "mavjud", bo'lmasa — "yo'q" tekshiriladi.
+const APP_DIR = fileURLToPath(new URL('../dist/app/', import.meta.url));
+const LOCAL_APK = IS_LOCAL_SERVER && existsSync(`${APP_DIR}hasharchilar.apk`) ? readFileSync(`${APP_DIR}hasharchilar.apk`) : null;
+
+test("GET /api/app va /api/app/download (lokal: APK yo'q)", { skip: !IS_LOCAL_SERVER || LOCAL_APK ? "dist/app da APK bor yoki server lokal emas" : false }, async () => {
   const r = await api('/api/app');
   assert.equal(r.status, 200);
   assert.deepEqual(r.data, { available: false, version: null, size: null, url: '/api/app/download' });
   const d = await api('/api/app/download');
   assert.equal(d.status, 404);
+  assert.equal(typeof d.data.error, 'string', "404 — JSON xato (SPA index.html emas)");
+  assert.match(d.headers.get('content-type'), /application\/json/);
+});
+
+test('GET /api/app va /api/app/download (statik assets: dist/app/hasharchilar.apk)', { skip: LOCAL_APK ? false : "dist/app/hasharchilar.apk yo'q" }, async () => {
+  const info = JSON.parse(readFileSync(`${APP_DIR}version.json`, 'utf8'));
+  const r = await api('/api/app');
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.data, { available: true, version: info.version, size: LOCAL_APK.length, url: '/api/app/download' });
+  const d = await api('/api/app/download');
+  assert.equal(d.status, 200);
+  assert.equal(d.headers.get('content-type'), 'application/vnd.android.package-archive');
+  assert.equal(d.headers.get('content-disposition'), 'attachment; filename="hasharchilar.apk"');
+  assert.ok(d.buf.equals(LOCAL_APK), 'APK baytlari aynan');
+  assert.equal(createHash('sha256').update(d.buf).digest('hex'), info.sha256);
+  // version.json ham ochiq (CI imzo mosligini shu orqali tekshiradi)
+  const v = await api('/app/version.json');
+  assert.equal(v.status, 200);
+  assert.deepEqual(v.data, info);
 });
 
 describe('CORS', () => {

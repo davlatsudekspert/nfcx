@@ -14,13 +14,15 @@ Bitta React kod bazasi → (1) sayt (Cloudflare Worker + Static Assets), (2) And
 ```
 hasharchilar/
 ├── package.json            # bitta package: web + worker + capacitor
-├── wrangler.jsonc          # Worker "hasharchilar", D1 binding DB, R2 binding PHOTOS, assets ./dist
+├── wrangler.jsonc          # Worker "hasharchilar-api", D1 binding DB YOKI Durable Object HASHAR_DB (HasharDB),
+│                           #   R2 binding PHOTOS, assets ./dist (binding ASSETS)
 ├── capacitor.config.json   # appId uz.hasharchilar.app, appName "Hasharchilar", webDir dist
-├── migrations/0001_init.sql# D1 sxemasi (wrangler d1 migrations apply)
+├── migrations/0001_init.sql# baza sxemasi (D1: wrangler d1 migrations apply; DO: o'zi qo'llaydi)
 ├── schema.sql              # = migrations birlashtirilgani (lokal qulaylik uchun)
 ├── seed.sql                # FAQAT lokal dev namuna ma'lumot
 ├── worker/                 # Hono backend
-│   ├── index.js            #   app, CORS, marshrutlar ulanishi, onError
+│   ├── index.js            #   app, CORS, marshrutlar ulanishi, onError; env.DB yo'q bo'lsa DO adapteri
+│   ├── do-db.js, d1-adapter.js #   SQLite Durable Object HasharDB va uning D1 bilan bir xil API adapteri
 │   ├── auth.js             #   parol xesh (PBKDF2), sessiya, requireAuth middleware
 │   ├── hashars.js          #   hashar marshrutlari
 │   ├── media.js            #   R2 yuklash/berish, APK yuklab olish
@@ -100,7 +102,7 @@ Umumiy Hashar obyekti (`HasharDTO`):
 | POST | `/api/hashars/:id/complete` | ✓ egasi | multipart `photo` (AFTER, majburiy) → `HasharDTO` (status COMPLETED, completed_at) |
 | DELETE | `/api/hashars/:id` | ✓ egasi | faqat PENDING; R2 rasmlarini ham o'chiradi → `{ok:true}` |
 | GET | `/api/media/:folder/:file` | – | R2 dan rasm; `folder ∈ {before, after}`; immutable cache, nosniff |
-| GET | `/api/app` | – | `{available: bool, version: string|null, size: number|null, url: "/api/app/download"}` (R2 `app/hasharchilar.apk` + custom metadata `version`) |
+| GET | `/api/app` | – | `{available: bool, version: string|null, size: number|null, url: "/api/app/download"}` (statik `/app/hasharchilar.apk` + `/app/version.json`; zaxira — R2 `app/hasharchilar.apk`) |
 | GET | `/api/app/download` | – | APK fayl, `content-type: application/vnd.android.package-archive`, `content-disposition: attachment; filename="hasharchilar.apk"` |
 | GET | `/api/health` | – | `{ok:true}` |
 
@@ -160,11 +162,16 @@ Trigger: push (branch `claude/peaceful-meitner-zlvydj` va `main`, paths `hasharc
 Secretlar: `CLOUDFLARE_API_TOKEN` (mavjud), hisob `31c4b3d8ece4b65de515debc4552334a`,
 ixtiyoriy `ANDROID_KEYSTORE_BASE64`/`ANDROID_KEYSTORE_PASSWORD`/`ANDROID_KEY_ALIAS`.
 
-1. `test`: npm ci → build → `wrangler dev` (lokal D1) → `node --test tests/` (API testi).
-2. `deploy` (needs test): D1 `hasharchilar` mavjudmi tekshiradi, yo'q bo'lsa yaratadi; R2 `hasharchilar-photos` xuddi shunday;
-   generatsiya qilingan wrangler config'ga database_id yoziladi; `wrangler d1 migrations apply hasharchilar --remote`;
-   `wrangler deploy`; chiqqan URL `outputs.url` ga; `/api/health` tekshiriladi.
-3. `apk` (needs deploy): JDK 21 + Android SDK; `VITE_API_BASE=${{ needs.deploy.outputs.url }}`; APK quradi;
-   artefakt sifatida yuklaydi; R2 ga `app/hasharchilar.apk` (metadata version) qo'yadi; GitHub Release yaratadi.
+> Yangilangan (deploy haqiqiy hisobga moslandi): Worker — mavjud `hasharchilar-api`; baza — D1 ruxsati
+> bo'lmasa SQLite Durable Object (tanlov sticky); APK — statik fayllar ichida. Batafsil: README → Deploy.
+
+1. `test`: npm ci → build → `npm run test:storage` → `wrangler dev` lokal D1 VA Durable Object rejimida → `npm run test:api` ikkalasida.
+2. `apk` (needs test): URL = `https://<worker>.<subdomen>.workers.dev` (Cloudflare API, zaxira `davlatsudekspert`);
+   `VITE_API_BASE=<URL>`; APK quradi; saytdagi `/app/version.json` sertifikati bilan imzo mosligi; artefakt
+   (`hasharchilar.apk` + `version.json`).
+3. `deploy` (needs apk): oddiy build + artefakt `dist/app/` ga; baza turi aniqlanadi (Worker'da D1 `DB` → D1,
+   `HASHAR_DB` → DO, birinchi marta: D1 topiladi/yaratiladi, ruxsat bo'lmasa DO); `wrangler.deploy.json`;
+   R2 tekshiruvi; D1 rejimida `wrangler d1 migrations apply --remote`; `wrangler deploy`; `/api/health`, `/api/app`, `/api/app/download`.
+4. `release` (needs deploy): GitHub Release `hasharchilar-v1.0.N`.
 
 nfcstore resurslariga (Worker `nfcstore-uz`, D1 `DB`, R2 `nfcstore-uploads`) HECH QACHON tegilmaydi.

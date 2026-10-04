@@ -1,8 +1,10 @@
-// hasharchilar.uz — Hono API (Cloudflare Workers + D1 + R2).
+// hasharchilar.uz — Hono API (Cloudflare Workers + D1 yoki SQLite Durable Object + R2).
 // Statik React build (dist/) Workers Static Assets orqali beriladi; bu yerga faqat /api/* keladi.
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { authRoutes, optionalAuth } from './auth.js';
+import { DoDatabase } from './d1-adapter.js';
+import { HasharDB } from './do-db.js';
 import { getStats, hasharRoutes } from './hashars.js';
 import { mediaRoutes } from './media.js';
 import { HttpError } from './validate.js';
@@ -86,4 +88,24 @@ app.onError((err, c) => {
   return c.json({ error: 'Server xatosi' }, 500);
 });
 
-export default app;
+// ---------- Baza: D1 (binding DB) bo'lsa — o'zi, aks holda HasharDB Durable Object ----------
+
+// DO id izolyatsiya bo'yicha keshlanadi; stub esa har so'rovda yangi (stub — I/O obyekti,
+// boshqa so'rov kontekstida ishlatib bo'lmaydi; yaratish arzon, tarmoqqa murojaat qilmaydi).
+let doId = null;
+
+/** env.DB bor bo'lsa env o'zgarishsiz; yo'q bo'lsa DB = D1 bilan bir xil adapter (HASHAR_DB ustida). */
+function withDb(env) {
+  if (env.DB) return env;
+  if (!env.HASHAR_DB) throw new Error("Baza binding'i yo'q: na D1 (DB), na Durable Object (HASHAR_DB)");
+  doId ??= env.HASHAR_DB.idFromName('main');
+  // eeur — O'zbekistonga eng yaqin hudud (faqat birinchi yaratilishda ahamiyatli)
+  const stub = env.HASHAR_DB.get(doId, { locationHint: 'eeur' });
+  return { ...env, DB: new DoDatabase(stub) };
+}
+
+export { HasharDB };
+
+export default {
+  fetch: (req, env, ctx) => app.fetch(req, withDb(env), ctx),
+};

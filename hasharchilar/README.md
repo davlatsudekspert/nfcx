@@ -5,7 +5,9 @@ Mahalladagi hasharlarni (tozalash, ko'kalamzorlashtirish, obodonlashtirish) **xa
 
 Bitta React kod bazasidan ikkita mahsulot chiqadi:
 
-1. **Sayt** — Cloudflare Worker (Static Assets + Hono API), D1 baza, R2 rasm ombori.
+1. **Sayt** — Cloudflare Worker `hasharchilar-api` (Static Assets + Hono API), baza (D1 yoki SQLite
+   Durable Object — deploy paytida avtomatik tanlanadi), R2 rasm ombori.
+   Manzil: **https://hasharchilar-api.davlatsudekspert.workers.dev**.
 2. **Android ilova (APK)** — Capacitor 8, o'sha sayt kodi; API ga to'liq manzil (`VITE_API_BASE`) orqali murojaat qiladi.
 
 Batafsil texnik shartnoma: [`SPEC.md`](./SPEC.md).
@@ -14,28 +16,38 @@ Batafsil texnik shartnoma: [`SPEC.md`](./SPEC.md).
 
 ```
  Brauzer (sayt)                     Android APK (Capacitor, origin https://localhost)
-      │  /api/... (shu domen)              │  https://<domen>/api/...  (CORS + Bearer token)
-      ▼                                    ▼
- ┌──────────────────── Cloudflare Worker "hasharchilar" ────────────────────┐
- │  Static Assets: dist/ (React SPA)    run_worker_first: /api/*            │
- │  Hono API: worker/index.js → auth.js, hashars.js, media.js, ratelimit.js │
- └───────────────┬───────────────────────────────────┬──────────────────────┘
-                 ▼                                   ▼
-        D1 "hasharchilar" (binding DB)     R2 "hasharchilar-photos" (binding PHOTOS)
-        users, sessions, hashars,          before/<uuid>.jpg, after/<uuid>.jpg,
-        hashar_media, volunteers,          app/hasharchilar.apk, app/version.json
-        rate_limits
+      │  /api/... (shu domen)              │  https://hasharchilar-api.<subdomen>.workers.dev/api/...
+      ▼                                    ▼                         (CORS + Bearer token)
+ ┌────────────────── Cloudflare Worker "hasharchilar-api" ───────────────────┐
+ │  Static Assets: dist/ (React SPA + app/hasharchilar.apk, app/version.json)│
+ │  run_worker_first: /api/*                                                 │
+ │  Hono API: worker/index.js → auth.js, hashars.js, media.js, ratelimit.js  │
+ │  env.DB: D1 binding YOKI d1-adapter.js → Durable Object HasharDB          │
+ └───────────────┬────────────────────────────────────┬──────────────────────┘
+                 ▼                                    ▼
+   Baza (bittasi, sxema bir xil):            R2 "hasharchilar-photos" (binding PHOTOS)
+   • D1 "hasharchilar" (binding DB)          before/<uuid>.jpg, after/<uuid>.jpg
+   • yoki SQLite Durable Object HasharDB     (zaxira: app/hasharchilar.apk)
+     (binding HASHAR_DB, obyekt "main")
+   users, sessions, hashars, hashar_media, volunteers, rate_limits
 ```
 
 - **Stek:** React 18 · Vite 6 · Tailwind CSS v4 · Leaflet 1.9 (CARTO Voyager plitkalari) · Hono 4 ·
-  Cloudflare Workers + D1 + R2 · Capacitor 8 (Android).
+  Cloudflare Workers + D1 / SQLite Durable Object + R2 · Capacitor 8 (Android).
 - **Autentifikatsiya:** ism + telefon (+998…) + parol. Parol PBKDF2-SHA256 (100 000 iteratsiya) bilan saqlanadi.
   Sessiya tokeni `localStorage['hashar_token']` da turadi va `Authorization: Bearer <token>` sarlavhasida yuboriladi.
   Cookie ishlatilmaydi. Sessiya 90 kun amal qiladi.
 - **Rasmlar:** brauzer rasmni yuborishdan oldin ≤ 1600px JPEG ga siqadi. Server faqat JPEG/PNG/WebP qabul qiladi
   (≤ 5 MB, fayl boshidagi baytlar ham tekshiriladi) va R2 ga `<folder>/<uuid>.<ext>` kaliti bilan saqlaydi.
   DTO dagi `before_url` / `after_url` nisbiy yo'l bo'ladi. Mijoz ularni `API_BASE + url` ko'rinishida ishlatadi.
-- **Limitlar (D1 asosida):**
+- **Baza:** worker kodi faqat `env.DB` (D1 API) bilan ishlaydi. D1 binding bo'lmasa, `worker/index.js`
+  `env.DB` o'rniga `worker/d1-adapter.js` ni qo'yadi: u xuddi D1 dek `prepare → bind → first/all/run/raw`
+  va `batch` beradi, so'rovlar esa SQLite asosidagi Durable Object `HasharDB` da (`worker/do-db.js`, bitta
+  obyekt `main`, hudud `eeur`) bajariladi. Natija shakllari va xato matnlari D1 niki bilan bir xil
+  (`D1_ERROR: UNIQUE constraint failed: ...`), `batch` bitta tranzaksiya, tashqi kalitlar ham tekshiriladi.
+  DO o'z migratsiyalarini o'zi qo'llaydi: `migrations/*.sql` bundle'ga matn sifatida kiradi va har biri
+  bitta tranzaksiyada bajarilib, `_migrations` jadvaliga yoziladi.
+- **Limitlar (bazadagi hisoblagichlar):**
   - kirish: bitta telefon raqamiga 15 daqiqada 10 ta urinish (IP almashtirilsa ham);
   - kirish va ro'yxatdan o'tish: bitta IP dan 15 daqiqada 30 ta urinish. IPv6 manzillar /64 tarmoq bo'yicha
     hisoblanadi. SPEC'da IP limiti 10 edi: mobil operatorlarning CGNAT tarmog'ida ko'p foydalanuvchi bitta
@@ -53,13 +65,15 @@ Batafsil texnik shartnoma: [`SPEC.md`](./SPEC.md).
 hasharchilar/
 ├── SPEC.md                  # yagona texnik shartnoma
 ├── package.json             # web + worker + capacitor (bitta paket)
-├── wrangler.jsonc           # Worker, D1 (DB), R2 (PHOTOS), assets ./dist
+├── wrangler.jsonc           # Worker hasharchilar-api: assets ./dist (ASSETS), D1 (DB), DO (HASHAR_DB), R2 (PHOTOS)
 ├── capacitor.config.json    # uz.hasharchilar.app, webDir dist
-├── migrations/0001_init.sql # D1 sxemasi (wrangler d1 migrations apply)
+├── migrations/0001_init.sql # baza sxemasi (D1: wrangler d1 migrations apply; DO: o'zi qo'llaydi)
 ├── schema.sql               # migratsiyaning nusxasi (qulaylik uchun)
 ├── seed.sql                 # FAQAT lokal namuna ma'lumot (parol: demo1234)
-├── worker/                  # Hono backend
-├── tests/api.test.mjs       # API testi (node:test, wrangler dev ga qarshi)
+├── worker/                  # Hono backend (+ do-db.js, d1-adapter.js, migrations.js, sql-split.js)
+├── scripts/wrangler-config.mjs # wrangler.jsonc → wrangler.deploy.json (--storage d1|do)
+├── tests/api.test.mjs       # API testi (node:test, wrangler dev ga qarshi; D1 va DO rejimida)
+├── tests/storage.test.mjs   # baza qatlami: DO adapteri = D1, migratsiyalar, wrangler-config
 ├── src/                     # React (sayt va APK uchun bir xil)
 │   ├── lib/                 #   config, api, auth, image, map, native, backButton, utils
 │   └── components/          #   Header, Hero, Tabs, MapView, HasharCard, HasharDetail,
@@ -99,14 +113,38 @@ npm run build && npx wrangler dev --port 8787   # http://localhost:8787
 
 Lokal bazani nolga qaytarish: `rm -rf .wrangler/state && npm run db:local`.
 
+Lokal dev standart holatda **D1 rejimida** ishlaydi (`wrangler.jsonc` dagi D1 binding). Production'dagi
+**Durable Object rejimi**ni sinash:
+
+```bash
+npm run dev:api:do   # wrangler.deploy.json (--storage do) + wrangler dev, ma'lumot .wrangler/state-do da
+```
+
+DO rejimida `seed.sql` qo'llanmaydi (DO bazasiga `wrangler d1 execute` bilan yozib bo'lmaydi) — baza bo'sh
+boshlanadi, migratsiyalar birinchi so'rovda avtomatik qo'llanadi.
+
 ### Testlar
 
 ```bash
 npx wrangler dev --port 8787 &     # boshqa terminalda
 npm run test:api                   # node --test tests/  (BASE_URL bilan boshqa manzil berish mumkin)
+
+# Durable Object rejimi (alohida port va saqlash papkasi):
+node scripts/wrangler-config.mjs --storage do
+npx wrangler dev --config wrangler.deploy.json --port 8788 --persist-to .wrangler/state-do-test &
+STORAGE=do BASE_URL=http://localhost:8788 npm run test:api
+
+npm run test:storage               # server kerak emas: DO adapteri = D1, migratsiyalar, wrangler-config
 ```
 
-Test bo'sh bo'lmagan bazada ham qayta ishlaydi, chunki har safar tasodifiy telefon raqamlari va IP manzillar ishlatiladi.
+- Test bo'sh bo'lmagan bazada ham qayta ishlaydi, chunki har safar tasodifiy telefon raqamlari va IP manzillar ishlatiladi.
+- 300+ eski hasharli test eski sanali qatorlarni `wrangler d1 execute` bilan yozadi, shuning uchun DO
+  rejimida (`STORAGE=do`) o'tkazib yuboriladi.
+- `/api/app` testi `dist/app/` ga qaraydi: `dist/app/hasharchilar.apk` + `version.json` bo'lsa "mavjud"
+  holati (versiya, hajm, yuklab olingan baytlar, sha256), bo'lmasa "yo'q" holati (`available:false`, 404 JSON) tekshiriladi.
+- `test:storage` bir xil so'rovlar ketma-ketligini haqiqiy lokal D1 va `HasharDB` adapterida bajarib,
+  natijalar, `meta.changes`/`last_row_id` va xato matnlari aynan bir xilligini, `batch` atomarligini,
+  tashqi kalit / `ON DELETE CASCADE` ni va qayta ishga tushganda migratsiyalar takrorlanmasligini tekshiradi.
 
 ## Android ilova (APK) ni lokal qurish
 
@@ -114,7 +152,7 @@ Talablar: JDK 21, Android SDK (platform 36, build-tools 35+). SDK yo'li `ANDROID
 yoki `android/local.properties` dagi `sdk.dir=...` qatori orqali beriladi (bu fayl commit qilinmaydi).
 
 ```bash
-VITE_API_BASE=https://hasharchilar.davlatsudekspert.workers.dev npm run build
+VITE_API_BASE=https://hasharchilar-api.davlatsudekspert.workers.dev npm run build
 npx cap sync android
 cd android && ./gradlew assembleRelease -PversionCode=3 -PversionName=1.0.3
 # natija: android/app/build/outputs/apk/release/app-release.apk
@@ -154,31 +192,88 @@ cd android && ./gradlew assembleRelease -PversionCode=3 -PversionName=1.0.3
 Workflow fayli: `.github/workflows/hasharchilar.yml`. U quyidagi hollarda ishga tushadi:
 
 - `main` yoki `claude/peaceful-meitner-zlvydj` branchiga push qilinganda (faqat `hasharchilar/**` yoki workflow fayli o'zgarsa);
-- qo'lda, `workflow_dispatch` orqali.
+- qo'lda, `workflow_dispatch` orqali (`allow_key_change` — APK imzo kalitini ataylab almashtirish).
+
+Bir vaqtda faqat bitta yugurish ishlaydi (`concurrency: hasharchilar-deploy`, boshlangani to'xtatilmaydi).
+Hech qanday qo'lda qadam kerak emas: push qilinsa sayt va APK yangilanadi.
+
+**Worker:** hisobdagi mavjud `hasharchilar-api` (`workers_dev: true`).
+**Sayt:** https://hasharchilar-api.davlatsudekspert.workers.dev ·
+**APK:** https://hasharchilar-api.davlatsudekspert.workers.dev/api/app/download
 
 Ketma-ketlik:
 
-1. **test** — `npm ci` → `npm run build` → `npm run db:local` → `wrangler dev` (to'liq lokal) → `npm run test:api`.
-2. **deploy** (test o'tsa):
-   - xavfsizlik tekshiruvi: `wrangler.jsonc` faqat `hasharchilar` resurslarini ko'rsatishi kerak,
-     nfcstore resurslariga hech qachon tegilmaydi;
-   - D1 `hasharchilar` topiladi yoki yaratiladi va uning id si CI nusxasidagi `wrangler.jsonc` ga yoziladi;
-   - R2 `hasharchilar-photos` tekshiriladi yoki yaratiladi;
-   - eski (migratsiyasiz) jadvallar tekshiriladi, keyin `wrangler d1 migrations apply --remote` bajariladi;
-   - `wrangler deploy` ishga tushadi, so'ng `/api/health` tekshiriladi. Topilgan manzil `outputs.url` ga yoziladi.
-3. **apk** (deploy o'tsa):
-   - `VITE_API_BASE=<deploy URL>` bilan build va `cap sync`, keyin `assembleRelease`
-     (`versionCode = run_number`, `versionName = 1.0.<run_number>`);
-   - `apksigner` va `aapt2` bilan tekshiruv;
-   - APK artefakt sifatida saqlanadi va R2 ga `app/hasharchilar.apk` hamda `app/version.json` bo'lib yuklanadi.
-     Shundan keyin saytdagi "Android ilovasini yuklab olish" banneri paydo bo'ladi;
-   - GitHub Release `hasharchilar-v1.0.N` yaratiladi.
+1. **test** — `npm ci` → `npm run build` → `npm run test:storage` → `npm run db:local` →
+   ikkita `wrangler dev` (to'liq lokal, tokensiz): D1 rejimi (:8787) va Durable Object rejimi (:8788,
+   `wrangler.deploy.json --storage do`, alohida `--persist-to`) → `npm run test:api` ikkala rejimda.
+2. **apk** (test o'tsa):
+   - ilova API manzili: `https://<wrangler.jsonc name>.<subdomen>.workers.dev`; subdomen
+     `GET /accounts/{id}/workers/subdomain` dan olinadi (bo'lmasa ogohlantirish bilan `davlatsudekspert`);
+   - `VITE_API_BASE=<manzil>` bilan build va `cap sync`, keyin `assembleRelease`
+     (`versionCode = run_number`, `versionName = 1.0.<run_number>`), `apksigner` va `aapt2` bilan tekshiruv;
+   - `version.json` yaratiladi: `{version, versionCode, sha256, cert, size}`;
+   - **imzo mosligi:** hozir saytda turgan `https://<manzil>/app/version.json` (ochiq, token kerak emas) o'qiladi.
+     Uning `cert` i yangi APK nikidan farq qilsa, workflow to'xtaydi (`allow_key_change=true` bo'lmasa).
+     404 yoki HTML (fayl hali yo'q) — birinchi chiqarish, tekshiruv o'tadi;
+   - artefakt `hasharchilar-apk` (`hasharchilar.apk` + `version.json`).
+3. **deploy** (apk o'tsa):
+   - oddiy `npm run build` (`VITE_API_BASE` siz), artefakt `dist/app/` ga yuklanadi — APK saytning statik
+     fayllari ichida chiqadi (R2 ga yozish ruxsati shart emas);
+   - **baza turi aniqlanadi** (pastda) va `scripts/wrangler-config.mjs` `wrangler.deploy.json` ni yaratadi;
+   - xavfsizlik tekshiruvi: konfiguratsiya faqat `hasharchilar-api` / `hasharchilar` / `hasharchilar-photos` /
+     `HasharDB` ni ko'rsatishi kerak, nfcstore resurslariga hech qachon tegilmaydi;
+   - R2 `hasharchilar-photos` borligi tekshiriladi (yo'q bo'lsa yaratiladi; yaratishga ruxsat bo'lmasa-yu,
+     bucket mavjud bo'lsa — davom etadi);
+   - D1 rejimida: eski (migratsiyasiz) jadvallar tekshiriladi, keyin `wrangler d1 migrations apply --remote`;
+   - `wrangler deploy --config wrangler.deploy.json` (custom domen faqat xavfsiz bo'lsa — pastga qarang);
+   - `/api/health` kutiladi, so'ng `/api/app` yangi versiyani ko'rsatishi, `/api/app/download`
+     `application/vnd.android.package-archive` turi va aynan shu APK baytlarini (sha256) berishi tekshiriladi;
+   - job xulosasida sayt manzili, APK havolasi va tanlangan baza yoziladi.
+4. **release** (deploy'dan keyin, alohida job — xatosi saytga ta'sir qilmaydi): GitHub Release
+   `hasharchilar-v1.0.N` (APK bilan; `main` bo'lmasa — prerelease).
+
+### Baza: D1 yoki Durable Object (avtomatik, "sticky")
+
+Deploy job'i baza turini quyidagicha tanlaydi va bu tanlov **keyin o'zgarmaydi**:
+
+1. `hasharchilar-api` Worker'ining hozirgi sozlamalari o'qiladi (`GET .../workers/scripts/hasharchilar-api/settings`):
+   - D1 binding `DB` bor → **D1** (shu baza id si bilan);
+   - Durable Object binding `HASHAR_DB` bor → **DO**.
+2. Hech biri yo'q (birinchi deploy): D1 API ishlatib ko'riladi — `hasharchilar` D1 topiladi yoki
+   `eeur` hududida yaratiladi → **D1**. Tokenda D1 ruxsati bo'lmasa (`Authentication error`) → **DO**.
+3. Kutilmagan API xatosida (tarmoq, 5xx) taxmin qilinmaydi — workflow to'xtaydi, chunki noto'g'ri tanlov
+   saytni bo'sh bazaga ulab qo'yadi.
+
+Tanlangan tur log'da va job xulosasida aniq yoziladi. Hozirgi token D1 ga ruxsat bermaydi, shuning uchun
+sayt **SQLite Durable Object** rejimida ishlaydi (bepul tarifda ham mavjud). Ikkala rejimda ham sxema, API
+va xatti-harakat bir xil; D1 rejimida ham `HasharDB` klassi e'lon qilinadi (ishlatilmaydi), chunki uni
+olib tashlash alohida migratsiya talab qiladi.
+
+**Keyinchalik D1 ga o'tish** — bu ma'lumot ko'chirish, shunchaki tokenga ruxsat qo'shish yetmaydi
+(Worker'da DO binding bor ekan, workflow DO ni tanlayveradi):
+
+1. Tokenga **Account → D1: Edit** qo'shing va `npx wrangler d1 create hasharchilar --location eeur` bilan baza yarating.
+2. Ma'lumotni DO dan D1 ga ko'chiring. Hozircha DO uchun tayyor eksport vositasi yo'q: buning uchun
+   vaqtinchalik himoyalangan eksport endpoint yoki skript yozish kerak (jadvallar `migrations/0001_init.sql` dagi
+   kabi, `INSERT` lar bilan D1 ga `wrangler d1 execute --remote --file` orqali yuklanadi).
+3. Bir marta qo'lda D1 rejimida deploy qiling:
+   `node scripts/wrangler-config.mjs --storage d1 --d1-id <uuid> && npx wrangler d1 migrations apply hasharchilar --remote --config wrangler.deploy.json && npx wrangler deploy --config wrangler.deploy.json`.
+   Shundan keyin Worker'da D1 binding paydo bo'ladi va workflow har safar D1 ni tanlaydi.
+
+### APK qayerda turadi
+
+- APK va uning metama'lumoti saytning statik fayllari ichida: `/app/hasharchilar.apk`, `/app/version.json`.
+- `GET /api/app` → `{available, version, size, url: "/api/app/download"}`; `GET /api/app/download` APK ni
+  `content-type: application/vnd.android.package-archive` va `content-disposition: attachment; filename="hasharchilar.apk"`
+  bilan beradi. Avval statik fayllar (`env.ASSETS`), ular bo'lmasa R2 dagi `app/hasharchilar.apk` (eski usul) o'qiladi.
+  SPA rejimida yo'q fayl o'rniga `index.html` qaytadi — bu "APK yo'q" deb hisoblanadi.
+- Saytdagi "Android ilovasini yuklab olish" banneri `/api/app` `available: true` bo'lganda chiqadi.
 
 ### Kerakli secretlar
 
 | Secret | Majburiy | Izoh |
 |---|---|---|
-| `CLOUDFLARE_API_TOKEN` | ha | Hisob `31c4b3d8ece4b65de515debc4552334a`. Ruxsatlar: **Account → Workers Scripts: Edit, D1: Edit, Workers R2 Storage: Edit, Account Settings: Read**. Custom domen uchun qo'shimcha: **Zone → Workers Routes: Edit, DNS: Read**. Token faqat wrangler / Cloudflare API qadamlariga beriladi: `npm ci`, build va Gradle uni ko'rmaydi |
+| `CLOUDFLARE_API_TOKEN` | ha | Hisob `31c4b3d8ece4b65de515debc4552334a`. Kerakli ruxsatlar: **Account → Workers Scripts: Edit, Workers R2 Storage: Read** (bucket yo'q bo'lsa Edit), **Account Settings: Read**. Ixtiyoriy: **D1: Edit** (birinchi deploy'dan oldin bo'lsa D1 tanlanadi), custom domen uchun **Zone → Workers Routes: Edit, DNS: Read**. Token faqat wrangler / Cloudflare API qadamlariga beriladi: `npm ci`, build va Gradle uni ko'rmaydi |
 | `HASHARCHILAR_KEYSTORE_BASE64` | yo'q (tavsiya etiladi) | `base64 -w0 release.jks` natijasi |
 | `HASHARCHILAR_KEYSTORE_PASSWORD` | yo'q | keystore paroli (kalit paroli ham shu bo'lishi kerak) |
 | `HASHARCHILAR_KEY_ALIAS` | yo'q | kalit aliasi |
@@ -191,16 +286,12 @@ Ketma-ketlik:
 > Secretlarni joylashda parol va alias chetidagi bo'shliq / qator ko'chirish olib tashlanadi. Keystore
 > paroli va aliasi Gradle'dan oldin `keytool` bilan tekshiriladi, xato bo'lsa build boshlanmaydi.
 
-> **Muhim:** discovery workflow'idagi D1 so'rovi `Authentication error` bilan tugagan. Demak hozirgi tokenda
-> **D1: Edit** ruxsati yo'q. Bu ruxsat qo'shilmaguncha deploy D1 qadamida tushunarli xato bilan to'xtaydi.
-> Ruxsatni qo'shish: dash.cloudflare.com → My Profile → API Tokens → tokenni tahrirlash.
-
 Keystore secretlari bo'lmasa, APK keshlangan debug kaliti bilan imzolanadi. Bu kesh ishonchli emas: u har bir
 branch uchun alohida, 7 kun ishlatilmasa yoki repo kesh limiti to'lsa o'chadi, shunda yangi debug kaliti yaratiladi.
-Ikkala branch ham bitta production manziliga (R2 `app/hasharchilar.apk`) chiqaradi. Shuning uchun **"Imzo mosligi"**
-qadami yangi APK sertifikatini R2 dagi oldingi APK sertifikati bilan solishtiradi (`app/version.json` → `cert`).
-Ular farq qilsa, APK R2 ga ham, GitHub Release'ga ham chiqarilmaydi, chunki o'rnatilgan ilovalar yangilanmay qoladi
-("App not installed"). Debug kalit keshi faqat shu tekshiruvdan o'tgandan keyin saqlanadi.
+Ikkala branch ham bitta production saytiga chiqaradi. Shuning uchun **"Imzo mosligi"** qadami yangi APK
+sertifikatini saytdagi `app/version.json` → `cert` bilan solishtiradi. Ular farq qilsa, APK saytga ham,
+GitHub Release'ga ham chiqarilmaydi, chunki o'rnatilgan ilovalar yangilanmay qoladi ("App not installed").
+Debug kalit keshi faqat shu tekshiruvdan o'tgandan keyin saqlanadi.
 
 Barqaror yechim — bir marta kalit yaratib, uni `HASHARCHILAR_KEYSTORE_*` secretlariga joylash (yuqoridagi
 `keytool` buyrug'i). Kalitni ataylab almashtirish kerak bo'lsa, workflow'ni qo'lda (**Run workflow**)
@@ -208,9 +299,10 @@ Barqaror yechim — bir marta kalit yaratib, uni `HASHARCHILAR_KEYSTORE_*` secre
 
 ### Sayt manzili va `hasharchilar.uz` domenini ulash
 
-Domen ulanmagan bo'lsa, sayt `https://hasharchilar.davlatsudekspert.workers.dev` manzilida ishlaydi.
+Sayt `https://hasharchilar-api.davlatsudekspert.workers.dev` manzilida ishlaydi. Android ilova ham doim shu
+manzilga murojaat qiladi (`workers_dev: true` — domen ulangandan keyin ham ishlayveradi).
 
-`hasharchilar.uz` ni ulash:
+`hasharchilar.uz` zonasi hozir Cloudflare hisobida yo'q, shuning uchun workflow domen qadamini o'tkazib yuboradi. Ulash:
 
 1. Cloudflare Dashboard → **Add a site** → `hasharchilar.uz`. Domen registratorida nameserverlarni
    Cloudflare bergan qiymatlarga almashtiring va zona **Active** bo'lishini kuting.
@@ -219,19 +311,21 @@ Domen ulanmagan bo'lsa, sayt `https://hasharchilar.davlatsudekspert.workers.dev`
    - zona `active` va `hasharchilar.uz` uchun hech qanday DNS yozuvi yo'q.
 
    Mavjud DNS yozuvlarini workflow hech qachon o'zgartirmaydi. Yozuvlar bor bo'lsa, domenni qo'lda ulang:
-   Workers & Pages → `hasharchilar` → Settings → Domains & Routes → **Add → Custom domain**.
-3. Domen ulangach, keyingi APK'lar shu domen bilan quriladi. `workers_dev: true` yoqilgani uchun
-   eski APK'lar ham workers.dev manzilida ishlashda davom etadi.
+   Workers & Pages → `hasharchilar-api` → Settings → Domains & Routes → **Add → Custom domain**.
 
 ### Qo'lda deploy (CI siz)
 
 ```bash
 npx wrangler login
-npx wrangler d1 create hasharchilar --location eeur   # id ni wrangler.jsonc ga yozing (commit qilmang)
 npx wrangler r2 bucket create hasharchilar-photos     # agar yo'q bo'lsa
-npm run db:remote                                     # migratsiyalar (remote)
-npm run deploy                                        # vite build + wrangler deploy
+# Durable Object rejimi (hozirgi production):
+node scripts/wrangler-config.mjs --storage do
+# yoki D1 rejimi: node scripts/wrangler-config.mjs --storage d1 --d1-id <uuid> && npm run db:remote
+npm run deploy                                        # vite build + wrangler deploy --config wrangler.deploy.json
 ```
+
+Qaysi rejimda ekanini Worker sozlamalaridan tekshiring (Dashboard → `hasharchilar-api` → Bindings) va
+production'ni boshqa rejimga **tasodifan** o'tkazmang: ma'lumotlar eski bazada qoladi.
 
 ## API (qisqacha)
 
@@ -252,7 +346,7 @@ To'liq tavsif va `HasharDTO` maydonlari [`SPEC.md`](./SPEC.md) ning 5-bo'limida.
 | POST | `/api/hashars/:id/complete` | ✓ egasi | multipart `photo` ("Keyin" rasmi) → COMPLETED |
 | DELETE | `/api/hashars/:id` | ✓ egasi | faqat PENDING holatda; R2 dagi rasmlar ham o'chiriladi |
 | GET | `/api/media/:folder/:file` | – | R2 dagi rasm (immutable kesh) |
-| GET | `/api/app`, `/api/app/download` | – | APK mavjudligi va versiyasi; faylni yuklab olish |
+| GET | `/api/app`, `/api/app/download` | – | APK mavjudligi va versiyasi; faylni yuklab olish (statik `dist/app/`, zaxira — R2) |
 | GET | `/api/health` | – | `{ok:true}` |
 
 CORS quyidagi originlarga ruxsat beradi: `https://localhost` (APK), `capacitor://localhost`, `http://localhost`,
@@ -270,4 +364,8 @@ CORS quyidagi originlarga ruxsat beradi: `https://localhost` (APK), `capacitor:/
   (CORS, Bearer token, multipart) to'liq sinalgan.
 - **Mavjud D1:** Cloudflare hisobida eski, migratsiyasiz `hasharchilar` D1 bo'lsa, deploy ma'lumotni o'chirmaydi.
   U to'xtab, nima qilish kerakligini aytadi: bazani zaxiralash (`wrangler d1 export`), so'ng o'chirish yoki boshqa nomga o'tkazish.
+- **Durable Object rejimi:** butun baza bitta obyektda (`main`, hudud `eeur`) — so'rovlar ketma-ket bajariladi.
+  Bu jamoat sayti hajmi uchun yetarli. DO bazasini `wrangler d1 execute/export` bilan ko'rib yoki eksport qilib
+  bo'lmaydi (D1 ga o'tish — yuqoridagi "Keyinchalik D1 ga o'tish").
+- **APK hajmi:** statik fayl sifatida ≤ 25 MiB bo'lishi kerak (hozir ~3.6 MB); CI buni tekshiradi.
 - Push-bildirishnomalar, moderatsiya va admin panel hozircha yo'q.
