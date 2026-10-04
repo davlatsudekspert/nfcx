@@ -183,6 +183,24 @@ void main() {
     }
   });
 
+  test('nfcstore:// sxemasi — saytdagi "Ilovada ochish" ilovani ochadi', () {
+    // Sayt (`/post/:id` sahifasi) Android'da intent://, iPhone'da
+    // nfcstore:// bilan ilovaning O'ZINI ochadi. Sxema ikkala
+    // platformada ro'yxatda bo'lishi va yo'l marshrutga tushishi shart.
+    final manifest =
+        File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+    expect(
+        manifest.contains(
+            '<data android:scheme="nfcstore" android:host="nfcstore.uz"/>'),
+        isTrue);
+    final plist = File('ios/Runner/Info.plist').readAsStringSync();
+    expect(plist.contains('<string>nfcstore</string>'), isTrue);
+    expect(
+        routeExists(buildTestRouter(),
+            'nfcstore://nfcstore.uz/post/42?code=ABC123&company=1'),
+        isTrue);
+  });
+
   test('`Routes` dagi HAR BIR statik yo\'l ro\'yxatda bor', () {
     // BU SINOV SINOVNI TEKSHIRADI.
     //

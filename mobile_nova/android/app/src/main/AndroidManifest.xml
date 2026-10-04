@@ -72,6 +72,16 @@
                 <data android:scheme="https" android:host="nfcstore.uz" android:pathPrefix="/story/"/>
                 <data android:scheme="https" android:host="nfcstore.uz" android:pathPrefix="/nfc/"/>
             </intent-filter>
+            <!-- ILOVA SXEMASI — nfcstore://nfcstore.uz/post/<id>?code=...
+                 Saytdagi "Ilovada ochish" tugmasi (intent://) shu orqali
+                 ilovaning o'zini ochadi. Telegram/Instagram ichki brauzeri
+                 App Links'ni chetlab o'tadi — sxema esa ishlaydi. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="nfcstore" android:host="nfcstore.uz"/>
+            </intent-filter>
             <intent-filter>
                 <action android:name="android.nfc.action.NDEF_DISCOVERED"/>
                 <category android:name="android.intent.category.DEFAULT"/>

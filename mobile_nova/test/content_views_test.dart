@@ -85,6 +85,19 @@ void main() {
     expect(const Post(id: 1, views: 3).copyWithKind(kind: 'post').views, 3);
   });
 
+  test('Katalog tovari — server views (Tanlov va vitrina)', () {
+    final p = CatalogProduct.fromJson({
+      'id': 'item-1',
+      'name': 'Metall karta',
+      'views': 12,
+      'company': {'companyId': 'KARTAUZ'},
+    });
+    expect(p.views, 12);
+    final i = CatalogItem.fromJson({'id': 5, 'name': 'Stiker', 'views': 3});
+    expect(i.views, 3);
+    expect(CatalogProduct.fromItem(i, const Business(companyId: 'KARTAUZ')).views, 3);
+  });
+
   test('MyAnalytics.fromJson', () {
     final a = MyAnalytics.fromJson({
       'days': 30,

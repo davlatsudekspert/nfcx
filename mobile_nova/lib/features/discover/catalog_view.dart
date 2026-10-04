@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../home/widgets/identity_card.dart' show formatCount;
 import '../../app/providers.dart';
 import '../../core/errors/app_error.dart';
 import '../../data/models/models.dart';
@@ -567,7 +568,38 @@ class ProductCard extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 3),
-                      _PriceLine(product: p, size: 14, currency: false),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _PriceLine(
+                                product: p, size: 14, currency: false),
+                          ),
+                          // KO'RISHLAR — necha kishi ko'rgan (server).
+                          if (p.views > 0)
+                            Semantics(
+                              key: ValueKey('catalog-views-${p.id}'),
+                              label: l.viewsCount(formatCount(p.views)),
+                              excludeSemantics: true,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.visibility_outlined,
+                                      size: 13, color: t.text3),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    formatCount(p.views),
+                                    style: TextStyle(
+                                      fontFamily: AppType.sans,
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: t.text3,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
                       const Spacer(),
                       Divider(height: 1, thickness: 1, color: t.border2),
                       _SellerLine(product: p),
@@ -1189,6 +1221,12 @@ class _ProductDetailState extends ConsumerState<_ProductDetail> {
             spacing: Gap.sm,
             runSpacing: Gap.sm,
             children: [
+              if (p.views > 0)
+                _InfoPill(
+                  key: const ValueKey('listing-views'),
+                  icon: Icons.visibility_outlined,
+                  text: l.viewsCount(formatCount(p.views)),
+                ),
               _InfoPill(
                 key: const ValueKey('listing-kind'),
                 icon: kindIcon(p.kind),

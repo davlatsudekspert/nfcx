@@ -829,7 +829,12 @@ class CatalogProduct {
     this.companyTelegram = '',
     this.companyWhatsapp = '',
     this.companyWebsite = '',
+    this.views = 0,
   });
+
+  /// Necha KISHI ko'rgan (server `views`, butun vaqt). Bir kishi bir
+  /// marta sanaladi — Reels'dagi ko'rishlar bilan bir xil ma'no.
+  final int views;
 
   /// Server UUID'si.
   final String id;
@@ -933,6 +938,7 @@ class CatalogProduct {
       companyTelegram: _s(c['telegram']),
       companyWhatsapp: _s(c['whatsapp']),
       companyWebsite: _s(c['website']),
+      views: _i(j['views']),
     );
   }
 
@@ -961,6 +967,7 @@ class CatalogProduct {
         companyTelegram: b.telegram,
         companyWhatsapp: b.whatsapp,
         companyWebsite: b.website,
+        views: i.views,
       );
 }
 
@@ -1030,7 +1037,11 @@ class CatalogItem {
     this.sub,
     this.priceOnRequest = false,
     this.priceSoon = false,
+    this.views = 0,
   });
+
+  /// Necha kishi ko'rgan (server `views`).
+  final int views;
 
   final int id;
 
@@ -1118,6 +1129,7 @@ class CatalogItem {
       // Server qoidasi bilan bir xil: bayroq yoki narx 0.
       priceOnRequest: _b(j['priceOnRequest']) || price <= 0,
       priceSoon: _b(j['priceSoon']),
+      views: _i(j['views']),
     );
   }
 }
