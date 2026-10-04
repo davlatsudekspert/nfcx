@@ -421,6 +421,9 @@ export function purgeStmts(env, u, now, ref, cfg, counts = {}) {
   //    har biri aniq yoziladi.
   add(['content_likes'], `DELETE FROM content_likes WHERE user_id = ${id}`);
   add(['company_catalog_item_views'], `DELETE FROM company_catalog_item_views WHERE visitor_key = 'u:${id}'`);
+  // Post/Reels ko'rishlari (comments.js) — odamning O'ZI ko'rgan qatorlar;
+  // uning postlarining ko'rishlari `retireTargetStmts` bilan ketadi.
+  add(['content_views'], `DELETE FROM content_views WHERE viewer = 'u:${id}'`);
   add(['post_likes'], `DELETE FROM post_likes WHERE user_id = ${id}`);
   add(['card_likes'], `DELETE FROM card_likes WHERE user_id = ${id}`);
   add(['story_likes'], `DELETE FROM story_likes WHERE user_id = ${id}`);

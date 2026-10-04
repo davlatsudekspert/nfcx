@@ -15,6 +15,7 @@ import * as apiTelegram from './api/telegram.js';
 import * as apiAssistant from './api/assistant.js';
 import * as apiModeration from './api/moderation.js';
 import * as apiComments from './api/comments.js';
+import * as apiMyAnalytics from './api/my-analytics.js';
 import * as apiMarketplace from './api/marketplace.js';
 import * as apiNotifications from './api/notifications.js';
 import * as apiFeatured from './api/featured.js';
@@ -1401,7 +1402,7 @@ async function companyApi(request, env, url) {
          FROM company_posts WHERE company_id = ? ORDER BY created_at DESC LIMIT 60`
     ).bind(id).all();
     const posts = rows.results || [];
-    const [likes, counts] = await Promise.all([
+    const [likes, counts, views] = await Promise.all([
       apiComments.likesFor(
         env,
         posts.map((row) => ({ kind: 'company_post', id: Number(row.id) })),
@@ -1410,6 +1411,11 @@ async function companyApi(request, env, url) {
       // Izohlar soni — sayt post ostida "Izohlar · 4" ko'rsatadi.
       // Shaxsiy postlar bilan AYNAN bir manba (`countsFor`).
       apiComments.countsFor(
+        env,
+        posts.map((row) => ({ kind: 'company_post', id: Number(row.id) })),
+      ).catch(() => new Map()),
+      // Ko'rishlar soni (comments.js `viewsFor`) — Reels'dagi ko'z belgisi.
+      apiComments.viewsFor(
         env,
         posts.map((row) => ({ kind: 'company_post', id: Number(row.id) })),
       ).catch(() => new Map()),
@@ -1423,6 +1429,7 @@ async function companyApi(request, env, url) {
           caption: row.caption || '', createdAt: row.created_at,
           likeCount: like.count, liked: like.liked,
           commentCount: counts.get(`company_post:${Number(row.id)}`) || 0,
+          viewCount: views.get(`company_post:${Number(row.id)}`) || 0,
         };
       });
     await apiMusic.attachPostExtras(env, shaped.map((o) => ({ kind: 'company_post', id: o.id, obj: o })));
@@ -10388,14 +10395,16 @@ async function listPostsD1(env, code, viewerUserId) {
   // Lenta (`feedApi`) bilan AYNAN bir manba: `apiComments.countsFor`.
   // O'chirilgan izohlar u yerda sanalmaydi, shuning uchun bu yerda
   // ham sanalmaydi.
-  const counts = await apiComments.countsFor(
-    env,
-    list.map((r) => ({ kind: 'post', id: Number(r.id) })),
-  ).catch(() => new Map());
+  const targets = list.map((r) => ({ kind: 'post', id: Number(r.id) }));
+  const [counts, views] = await Promise.all([
+    apiComments.countsFor(env, targets).catch(() => new Map()),
+    apiComments.viewsFor(env, targets).catch(() => new Map()),
+  ]);
 
   const out = list.map((r) => ({
     ...postRowToJson(r, r.like_count, r.liked),
     commentCount: counts.get(`post:${Number(r.id)}`) || 0,
+    viewCount: views.get(`post:${Number(r.id)}`) || 0,
   }));
   await apiMusic.attachPostExtras(env, out.map((o) => ({ kind: 'post', id: o.id, obj: o })));
   return out;
@@ -10688,10 +10697,12 @@ const FEED_UNION_SQL = `SELECT * FROM (
 /// `feedApi` va FEATURED bir xil shaklni qaytarishi SHART: ilova
 /// ikkalasini ham bitta `Post.fromJson` bilan o'qiydi.
 async function shapeFeedRows(env, rows, viewerId) {
-  const commentCounts = await apiComments.countsFor(
-    env,
-    rows.map((r) => ({ kind: commentTargetKind(r), id: Number(r.id) })),
-  ).catch(() => new Map());
+  const feedTargets = rows.map((r) => ({ kind: commentTargetKind(r), id: Number(r.id) }));
+  const [commentCounts, viewCounts] = await Promise.all([
+    apiComments.countsFor(env, feedTargets).catch(() => new Map()),
+    // Faqat post/company_post sanaladi (`VIEW_KINDS`); istoryada 0.
+    apiComments.viewsFor(env, feedTargets).catch(() => new Map()),
+  ]);
 
   const companyPostLikes = await apiComments.likesFor(
     env,
@@ -10723,6 +10734,7 @@ async function shapeFeedRows(env, rows, viewerId) {
       likeable: true,
       commentKind: target,
       commentCount: commentCounts.get(`${target}:${Number(r.id)}`) || 0,
+      viewCount: viewCounts.get(`${target}:${Number(r.id)}`) || 0,
     };
   });
   // Musiqa va rasmli reel — faqat postlar (istoryada hozircha yo'q).
@@ -11163,7 +11175,7 @@ const H = {
 // bilan tugashini tekshiradi — oxiriga qo'shilsa o'sha qo'riqchi
 // yiqiladi. Tartibning boshqa ahamiyati yo'q: har bir modul o'ziga
 // tegishli bo'lmagan yo'lga `null` qaytaradi.
-const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiAppUsage, apiAppAdmin, apiAccountPurge, apiAdminControl, apiMusic, apiDemoBusinesses, apiMarketplace];
+const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiAppUsage, apiAppAdmin, apiAccountPurge, apiAdminControl, apiMusic, apiDemoBusinesses, apiMyAnalytics, apiMarketplace];
 
 // Xavfsizlik header'lari — barcha javoblarga (statik va API). CSP ataylab faqat
 // framing/base/form/object ni cheklaydi (script/style ga tegmaydi — YouTube/Yandex

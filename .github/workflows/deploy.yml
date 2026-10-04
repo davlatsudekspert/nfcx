@@ -163,6 +163,10 @@ jobs:
         run: node scripts/test-post-id-reuse.mjs
       - name: Bir martalik tuzatish — yopishgan eski izoh/layk, admin ro'yxatida E2E yo'q
         run: node scripts/test-recycled-post-repair.mjs
+      # Reels/post ko'rishlari (bir odam — bir marta, egasi sanalmaydi)
+      # va ilovadagi Sozlamalar → Analitika (/api/my/analytics).
+      - name: Ko'rishlar hisoblagichi va analitika
+        run: node scripts/test-content-views.mjs
       # Manifestdagi yaroqsiz XML ilova qurilishini yiqitadi, lekin
       # `flutter analyze` ham, `flutter test` ham uni o'qimaydi.
       # Eski ilovaning CI'si esa faqat QO'LDA ishga tushadi —
