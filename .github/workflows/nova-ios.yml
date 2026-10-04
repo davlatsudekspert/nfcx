@@ -65,8 +65,12 @@ jobs:
         run: |
           set -e
           P=ios/Runner/Info.plist
+          # NSAppleMusicUsageDescription — file_picker musiqa kutubxonasi
+          # kodini (PICKER_AUDIO) doim yig'adi; kalitsiz ITMS-90683.
           for k in NFCReaderUsageDescription NSCameraUsageDescription \
-                   NSPhotoLibraryUsageDescription NSMicrophoneUsageDescription; do
+                   NSPhotoLibraryUsageDescription NSMicrophoneUsageDescription \
+                   NSFaceIDUsageDescription NSPhotoLibraryAddUsageDescription \
+                   NSAppleMusicUsageDescription; do
             /usr/libexec/PlistBuddy -c "Print :$k" "$P" >/dev/null \
               || { echo "::error::$k Info.plist da yo'q"; exit 1; }
           done
