@@ -151,6 +151,48 @@ void main() {
       ));
       expect(find.text('kontent'), findsOneWidget);
     });
+
+    // Qulf ostidagi ekran o'zini ko'rinmayotgan deb bilishi kerak:
+    // ilgari fondan qaytganda reel PIN ekrani ostida o'ynab, ko'rish
+    // sanalardi (`ViewSession` `TickerMode` ga qaraydi).
+    testWidgets('qulflanganda ostidagi ilova TickerMode o‘chiq, ochilsa — '
+        'yoqiq, holat saqlanadi', (tester) async {
+      final c = await container();
+      await c.read(appLockProvider.notifier).enable('1234');
+      final ticking = <bool>[];
+      var inits = 0;
+      await tester.pumpWidget(UncontrolledProviderScope(
+        container: c,
+        child: MaterialApp(
+          theme: buildTheme(NfcTokens.ivory),
+          locale: const Locale('uz'),
+          localizationsDelegates: const [
+            L.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          home: AppLockGate(
+            child: StatefulBuilder(builder: (ctx, _) {
+              ticking.add(TickerMode.of(ctx));
+              return _Counter(onInit: () => inits++);
+            }),
+          ),
+        ),
+      ));
+      expect(ticking.last, isTrue);
+
+      c.read(appLockProvider.notifier).lockNow();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(ticking.last, isFalse, reason: 'PIN ekrani ostida');
+
+      expect(await c.read(appLockProvider.notifier).verify('1234'), isTrue);
+      await tester.pump();
+      expect(ticking.last, isTrue);
+      expect(inits, 1, reason: 'ostidagi ekran qayta qurilmaydi');
+      expect(tester.takeException(), isNull);
+    });
   });
 
   // Biometrika: barmoq izi / Face ID tugmasi FAQAT qurilmada ishlatsa
@@ -206,4 +248,26 @@ void main() {
       expect(find.byIcon(Icons.fingerprint_rounded), findsNothing);
     });
   });
+}
+
+/// `initState` necha marta chaqirilganini sanaydi — qulf ostidagi
+/// ekran holati (`State`) saqlanishini tekshirish uchun.
+class _Counter extends StatefulWidget {
+  const _Counter({required this.onInit});
+
+  final VoidCallback onInit;
+
+  @override
+  State<_Counter> createState() => _CounterState();
+}
+
+class _CounterState extends State<_Counter> {
+  @override
+  void initState() {
+    super.initState();
+    widget.onInit();
+  }
+
+  @override
+  Widget build(BuildContext context) => const Text('kontent');
 }

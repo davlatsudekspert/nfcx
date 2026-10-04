@@ -217,6 +217,7 @@ class AdaptiveMedia extends StatefulWidget {
     this.borderRadius,
     this.lazyVideo = false,
     this.activeVideo,
+    this.onVideoFullscreen,
   });
 
   final String url;
@@ -236,6 +237,10 @@ class AdaptiveMedia extends StatefulWidget {
 
   /// Ko'rinishga bog'liq ijro — `InlineVideo.active` ga uzatiladi.
   final bool? activeVideo;
+
+  /// Video to'liq ekranda ochildi/yopildi — `InlineVideo.onFullscreen`
+  /// ga uzatiladi (post tafsilotining ko'rish seansi uchun).
+  final ValueChanged<bool>? onVideoFullscreen;
 
   @override
   State<AdaptiveMedia> createState() => _AdaptiveMediaState();
@@ -326,6 +331,7 @@ class _AdaptiveMediaState extends State<AdaptiveMedia> {
             fullscreenOnTap: widget.fullscreenVideo,
             lazy: widget.lazyVideo,
             active: widget.activeVideo,
+            onFullscreen: widget.onVideoFullscreen,
             // Quti videoning o'z nisbatiga kelganda `cover` hech
             // narsa kesmaydi; chegaraga urilgan holatda esa
             // kesish eng kichik bo'ladi.

@@ -101,8 +101,32 @@ class _PostScreenState extends ConsumerState<PostScreen> {
   // demo (`id <= 0`) yuborilmaydi.
   late final _viewSession = ViewSession(_sendView);
 
-  /// Serverdan kelgan jami son — post nusxasidagidan yangiroq.
+  /// `recordView` javobidagi jami son. Ko'rsatishda postdagi son bilan
+  /// solishtiriladi ([_shownViews]) — keyin kelgan yangiroq post
+  /// javobini yashirmasin.
   int? _views;
+
+  /// Ko'rsatiladigan son — ikkalasidan kattasi (ko'rishlar faqat
+  /// o'sadi). Ilgari `_views ?? p.views` edi: bir marta javob kelgach,
+  /// post qayta yuklanib undan katta son kelsa ham eskisi turaverardi.
+  int _shownViews(Post p) {
+    final v = _views;
+    return v != null && v > p.views ? v : p.views;
+  }
+
+  /// Post videosi to'liq ekranda ochiq ([AdaptiveMedia.onVideoFullscreen]).
+  ///
+  /// Sahifa ildiz navigatorga ochiladi — ostidagi post ekranining
+  /// `TickerMode` i o'chadi, lekin odam aynan shu postni ko'rib turibdi:
+  /// seans davom etadi. Ilgari u uzilardi va qaytgach 2 soniyada o'sha
+  /// ko'rish YANA sanalardi. Ilova fonga ketsa seansni [ViewSession]
+  /// o'zi uzadi (to'liq ekranda ham).
+  bool _fullscreen = false;
+
+  void _onFullscreen(bool on) {
+    if (!mounted || _fullscreen == on) return;
+    setState(() => _fullscreen = on);
+  }
 
   /// Ko'rinish holatini yangilaydi. `build` dan chaqiriladi: kirishlar
   /// (`TickerMode`, post javobi) o'zgarsa ekran qayta quriladi, chaqiruv
@@ -110,10 +134,13 @@ class _PostScreenState extends ConsumerState<PostScreen> {
   void _syncView(AsyncValue<Post> fetched) {
     // Ustida boshqa ekran / yashirin — `TickerMode` o'chiq (Reels'dagi
     // `_onStage` bilan bir xil). Har doim o'qiladi: bog'liqlik yozilsin.
+    // Ustidagi ekran — shu postning o'z videosi ([_fullscreen]) bo'lsa,
+    // post hali ko'rilyapti.
     final onStage = TickerMode.of(context);
     final p = fetched.hasError ? null : fetched.valueOrNull;
     _viewSession.update(
-      onScreen: onStage && p != null && !p.isStory && p.id > 0,
+      onScreen:
+          (onStage || _fullscreen) && p != null && !p.isStory && p.id > 0,
     );
   }
 
@@ -291,6 +318,7 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                       tapToToggleVideo: true,
                       // Bosish — belgilarsiz to'liq ekran (Instagram).
                       fullscreenVideo: true,
+                      onVideoFullscreen: _onFullscreen,
                       borderRadius: R.gentle,
                     ),
                     // KO'RISHLAR — Reels'dagi ko'z belgisi + son, media
@@ -310,7 +338,7 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 4),
-                            child: ReelViewsLabel(count: _views ?? p.views),
+                            child: ReelViewsLabel(count: _shownViews(p)),
                           ),
                         ),
                       ),

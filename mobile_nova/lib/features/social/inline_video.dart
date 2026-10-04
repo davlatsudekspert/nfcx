@@ -71,6 +71,7 @@ class InlineVideo extends ConsumerStatefulWidget {
     this.lazy = false,
     this.active,
     this.fullscreenOnTap = false,
+    this.onFullscreen,
   });
 
   final String url;
@@ -126,6 +127,14 @@ class InlineVideo extends ConsumerStatefulWidget {
   /// (egasi, 2026-09-24). O'sha kontroller o'sha joyidan davom etadi.
   /// [tapToToggle] dan ustun.
   final bool fullscreenOnTap;
+
+  /// To'liq ekran sahifasi ochildi (`true`) va yopildi (`false`).
+  ///
+  /// Post tafsiloti ko'rishni sanashda ishlatadi: sahifa ochilganda
+  /// post ekrani "ko'rinmay" qoladi (`TickerMode` o'chadi), lekin odam
+  /// o'sha videoni ko'rib turibdi — ko'rish seansi uzilmasligi kerak.
+  /// Ilgari qaytib 2 soniya o'tgach o'sha ko'rish YANA sanalardi.
+  final ValueChanged<bool>? onFullscreen;
 
   @override
   ConsumerState<InlineVideo> createState() => _InlineVideoState();
@@ -370,7 +379,15 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
     if (c == null || !_ready || _gone || !mounted) return;
     final h = VideoHandoff(c);
     _handoff = h;
-    await openFullscreenVideo(context, h);
+    // Ochilgan va yopilgan xabari AYNI qabul qiluvchiga boradi; sahifa
+    // xato bilan tugasa yoki karta yo'qolsa ham `false` albatta keladi.
+    final notify = widget.onFullscreen;
+    notify?.call(true);
+    try {
+      await openFullscreenVideo(context, h);
+    } finally {
+      notify?.call(false);
+    }
     // Karta sahifa ochiq turganda yo'q bo'ldi — kontrollerni sahifa yopdi.
     if (h.orphaned) return;
     _handoff = null;

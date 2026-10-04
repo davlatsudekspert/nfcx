@@ -209,7 +209,15 @@ class AppLockGate extends ConsumerWidget {
     final locked = ref.watch(appLockProvider).locked;
     return Stack(
       children: [
-        child,
+        // QULF OSTIDAGI ILOVA "KO'RINMAYDI" — `TickerMode` o'chadi.
+        //
+        // Qulf — shunchaki ustiga chizilgan qatlam, marshrut emas.
+        // Ilgari ostidagi ekran o'zini ko'rinib turibdi deb bilardi:
+        // fondan qaytganda reel PIN ekrani ostida o'ynab, ko'rish
+        // SANALARDI. Endi Reels/lenta videolari va ko'rish seansi
+        // (`ViewSession`) xuddi ustiga ekran ochilgandek to'xtaydi.
+        // Vidjet doim joyida — holat (`State`) qayta qurilmaydi.
+        TickerMode(enabled: !locked, child: child),
         if (locked) const Positioned.fill(child: _LockScreen()),
       ],
     );

@@ -26,7 +26,8 @@ import 'support/fake_video_platform.dart';
 /// QAYTA KIRISH (egasi, 2026-10-04): har bir kirish alohida ko'rish —
 ///   chiqib (boshqa reel/tab, ustiga ekran, ilova fonga) qaytib yana
 ///   2 soniya ko'rsa yana yuboriladi; bir kirishda aylanib tursa — yo'q.
-///   Post tafsiloti (`/post/:id`) ham xuddi shunday.
+///   Post tafsiloti (`/post/:id`) ham xuddi shunday. `inactive` (parda,
+///   ulashish oynasi) va post videosining to'liq ekrani — chiqish EMAS.
 class _Profile extends ProfileRepository {
   _Profile() : super(ApiClient());
 
@@ -128,7 +129,7 @@ const _photo = 'assets/demo/z_post_cafe.jpg';
 class _PostSocial extends FakeSocialRepository {
   _PostSocial(this.post, {this.fail = false});
 
-  final Post post;
+  Post post;
   final bool fail;
 
   @override
@@ -351,6 +352,26 @@ void main() {
     expect(social.viewed, [r7, r7]);
   });
 
+  // Bildirishnoma pardasi, reelning o'z "Ulashish" tugmasidan ochilgan
+  // Android ulashish oynasi, iOS boshqaruv markazi, biometrika oynasi —
+  // ilova faqat `inactive` bo'ladi, reel ko'rinib o'ynayveradi.
+  testWidgets('Reels: inactive (parda, ulashish oynasi) — qayta sanalmaydi',
+      (tester) async {
+    addTearDown(() => tester.binding
+        .handleAppLifecycleStateChanged(AppLifecycleState.resumed));
+    final social = (await _pumpReels(tester)).social;
+    await tester.pump(kViewAfter);
+    await settle(tester, frames: 3);
+    expect(social.viewed, [r7]);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    await tester.pump(const Duration(milliseconds: 500));
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump(const Duration(seconds: 3));
+    await settle(tester, frames: 3);
+    expect(social.viewed, [r7], reason: 'o‘sha kirish — seans uzilmadi');
+  });
+
   testWidgets('Reels: 2 soniyaga yetmay fonga ketsa — hisob boshidan',
       (tester) async {
     addTearDown(() => tester.binding
@@ -437,6 +458,75 @@ void main() {
     await tester.pump(kViewAfter);
     await settle(tester, frames: 3);
     expect(social.viewed, [v, v, v]);
+  });
+
+  // Postdagi videoni ko'rish uchun uni BOSISH kerak — u ildiz
+  // navigatorda to'liq ekranda ochiladi va post ekranining `TickerMode`
+  // i o'chadi. Odam o'sha postni ko'ryapti: seans uzilmaydi.
+  testWidgets('Post: video to‘liq ekranda ko‘rilib qaytilsa — o‘sha bitta '
+      'ko‘rish', (tester) async {
+    addTearDown(() => tester.binding
+        .handleAppLifecycleStateChanged(AppLifecycleState.resumed));
+    // Kadr — rasm: video o'ynab turganda ham (pauza belgisi yo'q)
+    // bosish videoga tegadi; sukutdagi bo'sh `SizedBox` bosilmaydi.
+    VideoPlayerPlatform.instance = FakeVideoPlatform(frames: const [_photo]);
+    final social = _PostSocial(const Post(
+        id: 5,
+        code: 'TTS075',
+        mediaUrls: ['https://nfcstore.uz/uploads/a.mp4'],
+        isVideo: true));
+    await _pumpPost(tester, social);
+    await tester.pump(kViewAfter);
+    await settle(tester, frames: 3);
+    const v = (id: 5, company: false);
+    expect(social.viewed, [v]);
+
+    final full = find.byKey(const ValueKey('video-fullscreen'));
+    await tester.tap(find.byKey(const ValueKey('video-open-fullscreen')));
+    await settle(tester, frames: 6);
+    expect(full, findsOneWidget);
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(seconds: 1));
+    }
+    expect(social.viewed, [v], reason: 'to‘liq ekranda — o‘sha ko‘rish');
+
+    await tester.binding.handlePopRoute();
+    await settle(tester, frames: 8);
+    expect(full, findsNothing);
+    await tester.pump(const Duration(seconds: 3));
+    await settle(tester, frames: 3);
+    expect(social.viewed, [v], reason: 'qaytgach qayta sanalmaydi');
+
+    // To'liq ekranda ilova fonga ketib qaytsa — yangi kirish.
+    await tester.tap(find.byKey(const ValueKey('video-open-fullscreen')));
+    await settle(tester, frames: 6);
+    expect(full, findsOneWidget);
+    _background(tester);
+    await tester.pump(kViewAfter * 2);
+    expect(social.viewed, [v], reason: 'fonda sanalmaydi');
+    _foreground(tester);
+    await tester.pump(kViewAfter);
+    await settle(tester, frames: 3);
+    expect(social.viewed, [v, v]);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Post: yangiroq server soni yashirilmaydi', (tester) async {
+    final social = _PostSocial(const Post(
+        id: 5, code: 'TTS075', mediaUrls: [_photo], views: 41));
+    await _pumpPost(tester, social);
+    await tester.pump(kViewAfter);
+    await settle(tester, frames: 3);
+    expect(_postViews('42'), findsOneWidget);
+
+    // Post qayta yuklandi — server endi 90 deydi (boshqalar ham ko'rdi).
+    social.post = social.post.copyWith(views: 90);
+    final ctx = tester.element(find.byType(PostScreen));
+    ProviderScope.containerOf(ctx)
+        .invalidate(postProvider((code: 'TTS075', id: 5, company: false)));
+    await settle(tester, frames: 4);
+    expect(_postViews('90'), findsOneWidget,
+        reason: 'eski `recordView` javobi (42) ustun emas');
   });
 
   testWidgets('Post: yuklanmagan post va story sanalmaydi', (tester) async {

@@ -126,13 +126,14 @@ const kViewAfter = Duration(seconds: 2);
 /// bo'lib qayta kirib 2 sekund ko'rsa prosmotr bo'lishi kerak").
 ///
 /// Seans — kontent UZLUKSIZ ko'rinib turgan vaqt: [update] ga
-/// `onScreen: true` berilgan VA ilova oldinda (`resumed`). Seansda
-/// [kViewAfter] o'tsa [_send] BIR MARTA chaqiriladi; video o'sha
-/// joyda aylanib turaversa qayta chaqirilmaydi.
+/// `onScreen: true` berilgan VA ilova oldinda (`resumed` yoki
+/// `inactive`). Seansda [kViewAfter] o'tsa [_send] BIR MARTA
+/// chaqiriladi; video o'sha joyda aylanib turaversa qayta
+/// chaqirilmaydi.
 ///
 /// Seans tugaydi: `onScreen: false` (boshqa reelga o'tildi, boshqa
 /// tab, ustiga boshqa ekran ochildi) yoki ilova fonga ketdi
-/// (`inactive`/`hidden`/`paused`). Shunda taymer bekor qilinadi va
+/// (`hidden`/`paused`/`detached`). Shunda taymer bekor qilinadi va
 /// "yuborildi" belgisi o'chadi — qaytib yana 2 soniya ko'rsa, yana
 /// yuboriladi. Egasining o'z ko'rishini va 2 soniyadan tez qayta
 /// yuborishni server o'zi sanamaydi.
@@ -149,10 +150,23 @@ class ViewSession with WidgetsBindingObserver {
   bool _sent = false;
   Timer? _timer;
 
+  // FAQAT `hidden`/`paused`/`detached` — fon.
+  //
+  // `inactive` — ilova hali ko'rinib turibdi, video o'ynayveradi:
+  // bildirishnoma pardasi, reelning o'z "Ulashish" tugmasidan
+  // ochilgan Android ulashish oynasi, iOS boshqaruv markazi,
+  // biometrika/tizim oynasi. Ilgari u ham seansni uzardi va oyna
+  // yopilgach 2 soniyada o'sha ko'rish YANA sanalardi.
+  //
   // `null` — holat hali kelmagan (testlar, ilova endi ochilmoqda):
   // oldinda deb hisoblanadi.
-  static bool _isForeground(AppLifecycleState? s) =>
-      s == null || s == AppLifecycleState.resumed;
+  static bool _isForeground(AppLifecycleState? s) => switch (s) {
+        AppLifecycleState.hidden ||
+        AppLifecycleState.paused ||
+        AppLifecycleState.detached =>
+          false,
+        _ => true,
+      };
 
   bool get _watching => _onScreen && _foreground;
 
