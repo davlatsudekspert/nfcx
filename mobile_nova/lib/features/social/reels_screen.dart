@@ -1095,7 +1095,8 @@ class _ReelPageState extends ConsumerState<_ReelPage>
                   onTap: () => shareWithFeedback(
                     context,
                     contentShareText(
-                        caption: p.text, code: p.code, company: p.isCompany),
+                        caption: p.text, code: p.code, company: p.isCompany,
+                        postId: p.isStory ? 0 : p.id),
                     subject: p.authorName,
                     copiedMessage: l.shareCopied,
                   ),

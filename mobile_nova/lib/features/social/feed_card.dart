@@ -250,7 +250,8 @@ class FeedCard extends ConsumerWidget {
                   contentShareText(
                       caption: post.text,
                       code: post.code,
-                      company: post.isCompany),
+                      company: post.isCompany,
+                      postId: post.isStory ? 0 : post.id),
                   subject: name,
                   copiedMessage: l.shareCopied,
                 ),

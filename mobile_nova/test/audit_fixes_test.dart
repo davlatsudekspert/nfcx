@@ -137,9 +137,10 @@ class _PathApi extends ApiClient {
 /// Tasdiqlangan audit topilmalari (F-H3, F-H5, F-H6, F-H7, F-M4, F-M5,
 /// F-M11, F-M12).
 void main() {
-  group('Kompaniya postini ulashish /c/ havolasi (F-M5)', () {
+  group('Kompaniya postini ulashish — post havolasi turi bilan (F-M5)', () {
     for (final company in [true, false]) {
-      testWidgets(company ? 'kompaniya -> /c/<ID>' : 'shaxsiy -> /<KOD>',
+      testWidgets(
+          company ? 'kompaniya -> /post/<id>&company=1' : 'shaxsiy -> /post/<id>',
           (tester) async {
         String? shared;
         shareInvokerOverride = (t, _) async => shared = t;
@@ -164,7 +165,10 @@ void main() {
         await tester.tap(find.byTooltip(LUz().actionShare));
         await tester.pump();
         expect(shared, isNotNull);
-        expect(shared!.contains('/c/NFCSTOREUZ'), company);
+        // Profil emas, AYNAN shu post (egasi, 2026-10-04); kompaniya
+        // posti alohida jadvalda — turi havolada bo'lishi shart.
+        expect(shared!.contains('/post/5?code=NFCSTOREUZ'), isTrue);
+        expect(shared!.contains('company=1'), company);
         // Ulashish oynasi va Tooltip taymerlari tugasin.
         await tester.pump(const Duration(seconds: 10));
       });

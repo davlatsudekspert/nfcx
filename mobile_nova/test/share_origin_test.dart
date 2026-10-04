@@ -56,6 +56,17 @@ void main() {
         'Faqat matn');
   });
 
+  test('Reels/post havolasi — profil emas, AYNAN shu post', () {
+    expect(
+        contentShareText(
+            caption: 'Kech', code: 'VIP001', company: false, postId: 42),
+        'Kech\n\n$kApiBase/post/42?code=VIP001');
+    expect(
+        contentShareText(
+            caption: '', code: 'KARTAUZ', company: true, postId: 7),
+        '$kApiBase/post/7?code=KARTAUZ&company=1');
+  });
+
   testWidgets('ulashish ochilmasa ekranda "Havola nusxalandi" chiqadi',
       (tester) async {
     shareInvokerOverride = (_, __) async => throw PlatformException(

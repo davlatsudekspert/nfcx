@@ -131,22 +131,29 @@ Future<void> shareWithFeedback(
     ..showSnackBar(SnackBar(content: Text(copiedMessage)));
 }
 
-/// Post / Reels uchun ulashiladigan matn: izoh + muallif sahifasi.
+/// Post / Reels uchun ulashiladigan matn: izoh + AYNAN SHU POST havolasi.
 ///
-/// Saytda alohida post sahifasi yo'q, shuning uchun havola muallif
-/// (shaxs `/<ID>` yoki kompaniya `/c/<ID>`) sahifasiga olib boradi.
-/// Ilgari post ekrani FAQAT izohni ulashardi — izohsiz postda ulashish
-/// umuman hech narsa qilmasdi.
+/// Havola — `/post/<id>?code=<kod>` (kompaniya posti — `&company=1`).
+/// Egasi (2026-10-04): ilgari muallif profili ulashilardi va havolani
+/// ochgan odam Reels'ni emas, profilni ko'rardi. Sayt bu yo'lda postning
+/// o'z sahifasini beradi (video, muallif, Telegram kartochkasi), Android'da
+/// ilova o'rnatilgan bo'lsa havola ilovada shu postni ochadi (App Links
+/// `/post/`). [postId] bo'lmasa (masalan istorya) — muallif sahifasi.
 String contentShareText({
   required String caption,
   required String code,
   required bool company,
+  int postId = 0,
 }) {
   final c = code.trim();
-  final link = c.isEmpty
-      ? ''
-      : company
-          ? '$kApiBase/c/${Uri.encodeComponent(c)}'
-          : '$kApiBase/${Uri.encodeComponent(c)}';
+  final enc = Uri.encodeComponent(c);
+  final link = postId > 0
+      ? '$kApiBase/post/$postId${c.isEmpty ? '' : '?code=$enc'}'
+          '${company ? (c.isEmpty ? '?company=1' : '&company=1') : ''}'
+      : c.isEmpty
+          ? ''
+          : company
+              ? '$kApiBase/c/$enc'
+              : '$kApiBase/$enc';
   return [caption.trim(), link].where((s) => s.isNotEmpty).join('\n\n');
 }
