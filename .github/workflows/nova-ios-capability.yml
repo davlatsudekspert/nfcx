@@ -1,0 +1,140 @@
+name: NFCSTORE iOS — Associated Domains va App Store profili
+
+# iOS Universal Links (egasining ruxsati, 2026-10-04): ulashilgan Reels
+# havolasi (nfcstore.uz/post/...) iPhone'da ilovani to'g'ridan-to'g'ri
+# ochsin. Buning uchun:
+#   1) App ID (uz.nfcstore.nova) da ASSOCIATED_DOMAINS yoqiladi;
+#   2) shu App ID + mavjud Apple Distribution sertifikati bilan YANGI
+#      App Store profili yaratiladi (eskisi o'chirilmaydi);
+#   3) nova-ios-testflight.yml profilni NOMI bo'yicha App Store
+#      Connect'dan oladi (IOS_ASC_PROFILE_NAME).
+# Sertifikat, kalit va boshqa capability'larga tegilmaydi.
+on:
+  workflow_dispatch:
+    inputs:
+      profile_name:
+        description: "Yangi profil nomi"
+        required: true
+        default: 'NFCSTORE Nova AppStore UL'
+  # Ro'yxatdan o'tkazish uchun; push'da job ishlamaydi.
+  push:
+    branches: [claude/wizardly-einstein-8cx2p4]
+    paths: [.github/workflows/nova-ios-capability.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  capability:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      IOS_BUNDLE_ID: uz.nfcstore.nova
+      PROFILE_NAME: ${{ inputs.profile_name }}
+    steps:
+      - name: App Store Connect — capability va profil
+        env:
+          API_KEY_ID: ${{ secrets.NOVA_APPSTORE_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.NOVA_APPSTORE_ISSUER_ID }}
+          API_PRIVATE_KEY: ${{ secrets.NOVA_APPSTORE_PRIVATE_KEY }}
+          CERTIFICATE_BASE64: ${{ secrets.NOVA_IOS_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.NOVA_IOS_CERTIFICATE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          W="$RUNNER_TEMP/asc"
+          mkdir -p "$W"
+          KEYFILE="$W/key.p8"
+          if printf '%s' "$API_PRIVATE_KEY" | grep -q 'BEGIN PRIVATE KEY'; then
+            printf '%s\n' "$API_PRIVATE_KEY" > "$KEYFILE"
+          else
+            BODY=$(printf '%s' "$API_PRIVATE_KEY" | tr -d ' \r\n')
+            if printf '%s' "$BODY" | base64 --decode | grep -aq 'BEGIN PRIVATE KEY'; then
+              printf '%s' "$BODY" | base64 --decode > "$KEYFILE"
+            else
+              { echo '-----BEGIN PRIVATE KEY-----'; printf '%s\n' "$BODY" | fold -w 64; echo '-----END PRIVATE KEY-----'; } > "$KEYFILE"
+            fi
+          fi
+          # Imzo sertifikatining seriya raqami — profil AYNAN shu sertifikat
+          # bilan yaratilsin (CI'dagi kalit bilan mos).
+          printf '%s' "$CERTIFICATE_BASE64" | base64 --decode > "$W/dist.p12"
+          SERIAL=$( (openssl pkcs12 -in "$W/dist.p12" -nokeys -clcerts -passin env:CERTIFICATE_PASSWORD 2>/dev/null \
+                    || openssl pkcs12 -legacy -in "$W/dist.p12" -nokeys -clcerts -passin env:CERTIFICATE_PASSWORD) \
+                    | openssl x509 -noout -serial | cut -d= -f2)
+          rm -f "$W/dist.p12"
+          echo "CERT_SERIAL=$SERIAL" >> "$GITHUB_ENV"
+          python3 -m venv "$W/venv"
+          "$W/venv/bin/pip" install --quiet pyjwt cryptography
+          ASC_KEY_FILE="$KEYFILE" CERT_SERIAL="$SERIAL" "$W/venv/bin/python" - <<'PY'
+          import json, os, sys, time, urllib.error, urllib.parse, urllib.request
+          import jwt
+          PKEY = open(os.environ['ASC_KEY_FILE']).read()
+          def token():
+              now = int(time.time())
+              return jwt.encode({'iss': os.environ['API_ISSUER_ID'], 'iat': now, 'exp': now + 1100,
+                                 'aud': 'appstoreconnect-v1'}, PKEY, algorithm='ES256',
+                                headers={'kid': os.environ['API_KEY_ID'], 'typ': 'JWT'})
+          def call(method, path, params=None, body=None):
+              url = 'https://api.appstoreconnect.apple.com' + path
+              if params:
+                  url += '?' + urllib.parse.urlencode(params)
+              data = json.dumps(body).encode() if body is not None else None
+              req = urllib.request.Request(url, data=data, method=method, headers={
+                  'Authorization': 'Bearer ' + token(), 'Content-Type': 'application/json'})
+              try:
+                  with urllib.request.urlopen(req, timeout=60) as r:
+                      raw = r.read()
+                      return json.loads(raw) if raw else {}
+              except urllib.error.HTTPError as e:
+                  print(f'::error::App Store Connect {method} {path} -> {e.code}: {e.read().decode()[:500]}')
+                  sys.exit(1)
+          def summary(line):
+              open(os.environ['GITHUB_STEP_SUMMARY'], 'a').write(line + '\n')
+
+          bundle = os.environ['IOS_BUNDLE_ID']
+          ids = [b for b in call('GET', '/v1/bundleIds', {'filter[identifier]': bundle, 'limit': 50})['data']
+                 if b['attributes']['identifier'] == bundle]
+          if not ids:
+              print(f'::error::{bundle} App ID topilmadi'); sys.exit(1)
+          bid = ids[0]['id']
+          caps = call('GET', f'/v1/bundleIds/{bid}/bundleIdCapabilities')['data']
+          types = sorted(c['attributes']['capabilityType'] for c in caps)
+          print('Capabilities:', types)
+          if 'ASSOCIATED_DOMAINS' not in types:
+              call('POST', '/v1/bundleIdCapabilities', body={'data': {
+                  'type': 'bundleIdCapabilities',
+                  'attributes': {'capabilityType': 'ASSOCIATED_DOMAINS'},
+                  'relationships': {'bundleId': {'data': {'type': 'bundleIds', 'id': bid}}}}})
+              print('ASSOCIATED_DOMAINS yoqildi')
+              summary('- ASSOCIATED_DOMAINS: **yoqildi**')
+          else:
+              summary('- ASSOCIATED_DOMAINS: allaqachon yoqilgan')
+
+          serial = os.environ['CERT_SERIAL'].upper().lstrip('0')
+          certs = call('GET', '/v1/certificates', {'limit': 200})['data']
+          match = [c for c in certs if c['attributes'].get('serialNumber', '').upper().lstrip('0') == serial]
+          if not match:
+              print('::error::CI sertifikati App Store Connect ro\'yxatida topilmadi'); sys.exit(1)
+          cert = match[0]
+          print('Sertifikat:', cert['attributes'].get('certificateType'), cert['attributes'].get('name'))
+
+          name = os.environ['PROFILE_NAME']
+          old = call('GET', '/v1/profiles', {'filter[name]': name, 'limit': 20})['data']
+          if old:
+              # Shu nom bilan yaratilgan (bizniki) eski profil — ASSOCIATED_DOMAINS'siz
+              # bo'lishi mumkin, shuning uchun qayta yaratiladi.
+              for p in old:
+                  call('DELETE', f"/v1/profiles/{p['id']}")
+              print('Eski (shu nomli) profil almashtirildi')
+          prof = call('POST', '/v1/profiles', body={'data': {
+              'type': 'profiles',
+              'attributes': {'name': name, 'profileType': 'IOS_APP_STORE'},
+              'relationships': {
+                  'bundleId': {'data': {'type': 'bundleIds', 'id': bid}},
+                  'certificates': {'data': [{'type': 'certificates', 'id': cert['id']}]}}}})['data']
+          a = prof['attributes']
+          print('Profil yaratildi:', a['name'], a['uuid'], 'muddati', a['expirationDate'])
+          summary(f"- Profil: **{a['name']}** ({a['uuid']}), muddati {a['expirationDate']}")
+          PY
+          rm -rf "$W"

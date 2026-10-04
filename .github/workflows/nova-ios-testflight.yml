@@ -100,6 +100,10 @@ jobs:
       IOS_TEAM_ID: 5Z9CT2W378
       IOS_BUNDLE_ID: uz.nfcstore.nova
       UPLOAD: ${{ inputs.upload_testflight }}
+      # Universal Links (applinks:nfcstore.uz) uchun profil — App Store
+      # Connect'dan NOMI bo'yicha olinadi (nova-ios-capability.yml yaratadi).
+      # Topilmasa — avvalgidek NOVA_IOS_PROFILE_BASE64 secret.
+      IOS_ASC_PROFILE_NAME: NFCSTORE Nova AppStore UL
 
     steps:
       - uses: actions/checkout@v4
@@ -254,6 +258,17 @@ jobs:
               nxt = max(nums + [301]) + 1
               print(f"App: {app['attributes']['name']} ({app['id']}), oxirgi buildlar: {nums[-5:]}, yangi build: {nxt}")
               env_out(ASC_APP_ID=app['id'], IOS_BUILD_NUMBER=nxt)
+          elif cmd == 'profile':
+              import base64
+              name = os.environ['IOS_ASC_PROFILE_NAME']
+              data = [p for p in get('/v1/profiles', {'filter[name]': name, 'limit': 5})['data']
+                      if p['attributes'].get('profileState') == 'ACTIVE']
+              if not data:
+                  print(f"Profil '{name}' App Store Connect'da yo'q — secret profil ishlatiladi.")
+                  sys.exit(0)
+              out = sys.argv[2]
+              open(out, 'wb').write(base64.b64decode(data[0]['attributes']['profileContent']))
+              print(f"Profil App Store Connect'dan olindi: {name}")
           elif cmd == 'status':
               app, num, ver = os.environ['ASC_APP_ID'], os.environ['IOS_BUILD_NUMBER'], os.environ['IOS_VERSION']
               deadline = time.time() + 1800
@@ -304,6 +319,8 @@ jobs:
           CERTIFICATE_BASE64: ${{ secrets.NOVA_IOS_CERTIFICATE_BASE64 }}
           CERTIFICATE_PASSWORD: ${{ secrets.NOVA_IOS_CERTIFICATE_PASSWORD }}
           PROFILE_BASE64: ${{ secrets.NOVA_IOS_PROFILE_BASE64 }}
+          ASC_KEY_ID: ${{ secrets.NOVA_APPSTORE_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.NOVA_APPSTORE_ISSUER_ID }}
         run: |
           set -euo pipefail
           umask 077
@@ -311,6 +328,10 @@ jobs:
           mkdir -p "$SIGN_DIR"
           printf '%s' "$CERTIFICATE_BASE64" | base64 --decode > "$SIGN_DIR/distribution.p12"
           printf '%s' "$PROFILE_BASE64" | base64 --decode > "$SIGN_DIR/profile.mobileprovision"
+          # Universal Links profili (bo'lsa) — App Store Connect'dan.
+          if [ "$UPLOAD" = "true" ] && [ -n "${ASC_PY:-}" ] && [ -n "${IOS_ASC_PROFILE_NAME:-}" ]; then
+            API_KEY_ID="$ASC_KEY_ID" API_ISSUER_ID="$ASC_ISSUER_ID" "$ASC_PY" "$RUNNER_TEMP/asc.py" profile "$SIGN_DIR/profile.mobileprovision"
+          fi
           security cms -D -i "$SIGN_DIR/profile.mobileprovision" > "$SIGN_DIR/profile.plist"
           python3 - <<'PY'
           import os, plistlib, datetime
@@ -320,6 +341,10 @@ jobs:
           assert not p['Entitlements'].get('get-task-allow', True), 'not a distribution profile'
           assert p['ExpirationDate'] > datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None), 'profile expired'
           assert 'TAG' in p['Entitlements']['com.apple.developer.nfc.readersession.formats'], 'no NFC TAG'
+          want = plistlib.load(open('ios/Runner/Runner.entitlements', 'rb')).get('com.apple.developer.associated-domains')
+          if want:
+              assert p['Entitlements'].get('com.apple.developer.associated-domains'), \
+                  'profilda Associated Domains yoq — nova-ios-capability.yml ni ishga tushiring'
           print('Profile:', p['Name'], p['UUID'], 'expires', p['ExpirationDate'])
           with open(os.environ['GITHUB_ENV'], 'a') as f:
               f.write('IOS_PROFILE_UUID=' + p['UUID'] + '\n')
@@ -404,6 +429,9 @@ jobs:
           assert e['application-identifier'] == os.environ['IOS_TEAM_ID'] + '.' + os.environ['IOS_BUNDLE_ID']
           assert not e.get('get-task-allow', True)
           assert e['com.apple.developer.nfc.readersession.formats'] == ['TAG']
+          want = plistlib.load(open('ios/Runner/Runner.entitlements', 'rb')).get('com.apple.developer.associated-domains')
+          if want:
+              assert e.get('com.apple.developer.associated-domains') == want, 'associated-domains ' + str(e.get('com.apple.developer.associated-domains'))
           assert profile['UUID'] == os.environ['IOS_PROFILE_UUID']
           msg = f"IPA verified: {p['CFBundleIdentifier']} {p['CFBundleShortVersionString']} ({p['CFBundleVersion']}), SDK {p['DTSDKName']}, NFC TAG, App Store profile"
           print(msg)
