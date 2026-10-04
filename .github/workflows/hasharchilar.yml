@@ -1,0 +1,651 @@
+# hasharchilar.uz — TEST → DEPLOY (Cloudflare Worker + D1 + R2) → ANDROID APK
+#
+# SPEC 8 bo'yicha. Barcha qadamlar `hasharchilar/` papkasida ishlaydi.
+#
+# XAVFSIZLIK: nfcstore resurslariga (Worker `nfcstore-uz`, D1 `DB`, R2 `nfcstore-uploads`)
+# HECH QACHON tegilmaydi — faqat `hasharchilar` Worker, `hasharchilar` D1 va
+# `hasharchilar-photos` R2. Deploy oldidan wrangler.jsonc dagi nomlar tekshiriladi.
+#
+# KERAKLI SECRET: CLOUDFLARE_API_TOKEN (mavjud). Unga quyidagi ruxsatlar kerak:
+#   Account → Workers Scripts: Edit, D1: Edit, Workers R2 Storage: Edit,
+#   Account Settings: Read; (ixtiyoriy, custom domen uchun) Zone → Workers Routes: Edit, DNS: Read.
+#   Token faqat Cloudflare'ga murojaat qiladigan qadamlarga beriladi (npm ci / Gradle uni ko'rmaydi).
+# IXTIYORIY: HASHARCHILAR_KEYSTORE_BASE64 / HASHARCHILAR_KEYSTORE_PASSWORD / HASHARCHILAR_KEY_ALIAS
+#   (bo'lmasa APK debug kaliti bilan imzolanadi — o'rnatiladi, lekin Play Store'ga yaramaydi).
+#   SPEC 8 dagi ANDROID_KEYSTORE_* nomlari ATAYLAB ishlatilmaydi: bu repoda ular nfcstore ilovasining
+#   haqiqiy kaliti (android-apk.yml). hasharchilar boshqa paket — unga o'z kaliti kerak.
+name: hasharchilar
+
+on:
+  push:
+    branches: [claude/peaceful-meitner-zlvydj, main]
+    paths: ['hasharchilar/**', '.github/workflows/hasharchilar.yml']
+  workflow_dispatch:
+    inputs:
+      allow_key_change:
+        description: "APK imzo kaliti o'zgarishiga ruxsat (o'rnatilgan ilovalar yangilanmaydi — qayta o'rnatish kerak)"
+        type: boolean
+        default: false
+
+# Production'ga bir vaqtda ikkita deploy yugurmasin; boshlangani to'xtatilmaydi.
+concurrency:
+  group: hasharchilar-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_ACCOUNT_ID: 31c4b3d8ece4b65de515debc4552334a
+  WORKER_NAME: hasharchilar
+  D1_NAME: hasharchilar
+  R2_BUCKET: hasharchilar-photos
+  # Zona hisobda paydo bo'lib, "active" bo'lsagina ulanadi (aks holda faqat workers.dev).
+  CUSTOM_DOMAIN: hasharchilar.uz
+  WRANGLER_SEND_METRICS: 'false'
+  # nfcstore ilovasining imzo sertifikati (SHA-256). hasharchilar APK hech qachon shu kalit bilan imzolanmaydi.
+  NFCSTORE_CERT_SHA256: 60241d4f31d2ace45e26dd1021dc69959d1c490ca2535caa883e3063eedc8640
+
+jobs:
+  # ---------------------------------------------------------------- 1. TEST
+  test:
+    name: API testi (lokal D1)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: hasharchilar
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: hasharchilar/package-lock.json
+
+      - name: Bog'liqliklar
+        run: npm ci
+
+      - name: Build (sayt)
+        run: npm run build
+
+      - name: Lokal D1 — migratsiyalar + namuna ma'lumot
+        run: npm run db:local
+
+      # Token BERILMAYDI: wrangler dev to'liq lokal (miniflare) rejimda ishlaydi.
+      - name: wrangler dev (fon rejimida)
+        run: |
+          nohup npx wrangler dev --port 8787 --ip 127.0.0.1 > "$RUNNER_TEMP/wrangler-dev.log" 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS --max-time 3 http://127.0.0.1:8787/api/health 2>/dev/null | jq -e '.ok == true' > /dev/null 2>&1; then
+              echo "API tayyor (${i}-urinish)"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::wrangler dev 120 soniyada ishga tushmadi"
+          cat "$RUNNER_TEMP/wrangler-dev.log"
+          exit 1
+
+      - name: API testlari
+        env:
+          BASE_URL: http://127.0.0.1:8787
+        run: npm run test:api
+
+      - name: wrangler dev logi (xato bo'lsa)
+        if: failure()
+        run: cat "$RUNNER_TEMP/wrangler-dev.log" || true
+
+  # ---------------------------------------------------------------- 2. DEPLOY
+  deploy:
+    name: Cloudflare'ga deploy
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: hasharchilar
+    # CLOUDFLARE_API_TOKEN job darajasida EMAS: faqat wrangler / Cloudflare API qadamlariga beriladi,
+    # shunda npm ci (install skriptlari) va build uni ko'rmaydi.
+    outputs:
+      url: ${{ steps.url.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: hasharchilar/package-lock.json
+
+      # nfcstore'ga tasodifan deploy bo'lmasligi uchun: konfiguratsiya faqat hasharchilar nomlarini ishlatadi.
+      - name: Xavfsizlik — faqat hasharchilar resurslari
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN secret topilmadi"; exit 1
+          fi
+          grep -Eq "^\s*\"name\":\s*\"${WORKER_NAME}\"," wrangler.jsonc || { echo "::error::wrangler.jsonc name != ${WORKER_NAME}"; exit 1; }
+          grep -Eq "\"database_name\":\s*\"${D1_NAME}\"" wrangler.jsonc || { echo "::error::D1 nomi ${D1_NAME} emas"; exit 1; }
+          grep -Eq "\"bucket_name\":\s*\"${R2_BUCKET}\"" wrangler.jsonc || { echo "::error::R2 nomi ${R2_BUCKET} emas"; exit 1; }
+          if grep -qi 'nfcstore' wrangler.jsonc; then
+            echo "::error::wrangler.jsonc da nfcstore resursi bor — deploy to'xtatildi"; exit 1
+          fi
+          echo "OK: Worker=${WORKER_NAME}, D1=${D1_NAME}, R2=${R2_BUCKET}"
+
+      - name: Bog'liqliklar
+        run: npm ci
+
+      - name: Build (sayt)
+        run: npm run build
+
+      # D1: mavjud bo'lsa uuid olinadi, bo'lmasa yaratiladi (Sharqiy Yevropa — O'zbekistonga yaqin).
+      - name: D1 bazasi (tekshirish / yaratish)
+        id: d1
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          DB_ID=""
+          # wrangler d1 list --json → [{uuid, name, ...}]; natija DB_ID ga yoziladi
+          list_d1() {
+            if ! npx wrangler d1 list --json > "$RUNNER_TEMP/d1.json" 2> "$RUNNER_TEMP/d1.err" \
+               || ! jq -e 'type == "array"' "$RUNNER_TEMP/d1.json" > /dev/null; then
+              cat "$RUNNER_TEMP/d1.err" "$RUNNER_TEMP/d1.json" || true
+              echo "::error::D1 ro'yxatini o'qib bo'lmadi. CLOUDFLARE_API_TOKEN ga 'Account → D1 → Edit' ruxsatini qo'shing (dash.cloudflare.com → My Profile → API Tokens → tokenni tahrirlash)."
+              exit 1
+            fi
+            DB_ID=$(jq -r --arg n "$D1_NAME" '[.[] | select(.name == $n)][0].uuid // empty' "$RUNNER_TEMP/d1.json")
+          }
+          list_d1
+          if [ -z "$DB_ID" ]; then
+            echo "D1 '$D1_NAME' yo'q — yaratilmoqda"
+            npx wrangler d1 create "$D1_NAME" --location eeur
+            list_d1
+          else
+            echo "D1 '$D1_NAME' mavjud"
+          fi
+          if ! [[ "$DB_ID" =~ ^[0-9a-f-]{36}$ ]]; then
+            echo "::error::D1 uuid aniqlanmadi: '$DB_ID'"; exit 1
+          fi
+          echo "id=$DB_ID" >> "$GITHUB_OUTPUT"
+          echo "D1 uuid: $DB_ID"
+
+      # Generatsiya qilingan konfiguratsiya (faqat CI nusxasida, commit qilinmaydi).
+      - name: wrangler.jsonc ga database_id yozish
+        env:
+          DB_ID: ${{ steps.d1.outputs.id }}
+        run: |
+          set -euo pipefail
+          if grep -q 'REPLACE_WITH_D1_DATABASE_ID' wrangler.jsonc; then
+            sed -i "s/REPLACE_WITH_D1_DATABASE_ID/${DB_ID}/" wrangler.jsonc
+          fi
+          grep -q "\"database_id\": \"${DB_ID}\"" wrangler.jsonc || { echo "::error::database_id yozilmadi"; exit 1; }
+          echo "database_id = ${DB_ID}"
+
+      - name: R2 bucket (tekshirish / yaratish)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          CODE=$(curl -sS -o "$RUNNER_TEMP/r2.json" -w '%{http_code}' \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/r2/buckets/$R2_BUCKET")
+          if [ "$CODE" = "200" ] && jq -e '.success == true' "$RUNNER_TEMP/r2.json" > /dev/null; then
+            echo "R2 '$R2_BUCKET' mavjud"
+          elif [ "$CODE" = "404" ]; then
+            echo "R2 '$R2_BUCKET' yo'q — yaratilmoqda"
+            npx wrangler r2 bucket create "$R2_BUCKET"
+          else
+            cat "$RUNNER_TEMP/r2.json" || true
+            echo "::error::R2 bucketni tekshirib bo'lmadi (HTTP $CODE). Tokenga 'Workers R2 Storage: Edit' kerak."
+            exit 1
+          fi
+
+      # Mavjud D1 eski (v1, migratsiyasiz) sxema bilan to'ldirilgan bo'lsa, `CREATE TABLE` xato beradi.
+      # Ma'lumotni hech qachon o'chirmaymiz — tushunarli xabar bilan to'xtaymiz.
+      - name: D1 sxemasini tekshirish (eski jadvallar)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          # --json rejimida wrangler xatosini stdout ga (faylga) yozadi — xato bo'lsa faylni ko'rsatamiz
+          d1q() {
+            if ! npx wrangler d1 execute "$D1_NAME" --remote --json --command "$1" > "$2" 2> "$2.err"; then
+              cat "$2" "$2.err" || true
+              echo "::error::D1 so'rovi bajarilmadi (yuqoridagi xatoni ko'ring). CLOUDFLARE_API_TOKEN da 'Account → D1 → Edit' ruxsati borligini tekshiring."
+              exit 1
+            fi
+          }
+          Q="SELECT name FROM sqlite_master WHERE type='table' AND name IN ('users','hashars','d1_migrations')"
+          d1q "$Q" "$RUNNER_TEMP/tables.json"
+          TABLES=$(jq -r '[.[0].results[]?.name] | join(",")' "$RUNNER_TEMP/tables.json")
+          echo "Mavjud jadvallar: ${TABLES:-(hech biri)}"
+          if [[ ",$TABLES," == *",hashars,"* || ",$TABLES," == *",users,"* ]]; then
+            APPLIED=""
+            if [[ ",$TABLES," == *",d1_migrations,"* ]]; then
+              d1q "SELECT name FROM d1_migrations WHERE name = '0001_init.sql'" "$RUNNER_TEMP/mig.json"
+              APPLIED=$(jq -r '.[0].results[0].name // empty' "$RUNNER_TEMP/mig.json")
+            fi
+            if [ -z "$APPLIED" ]; then
+              echo "::error::D1 '$D1_NAME' da migratsiyasiz eski jadvallar bor (v1 sxema). Ma'lumot o'chirilmaydi. Yechim: eski bazani zaxiralab (wrangler d1 export $D1_NAME --remote), so'ng uni o'chiring yoki boshqa nomga o'tkazing va workflow'ni qayta ishga tushiring."
+              exit 1
+            fi
+          fi
+
+      - name: D1 migratsiyalari (remote)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx wrangler d1 migrations apply "$D1_NAME" --remote
+
+      # CUSTOM DOMEN — ehtiyotkorlik bilan.
+      # Diqqat: wrangler CI (TTY yo'q) rejimida `--domain` bilan mavjud DNS yozuvlarini va boshqa
+      # Worker'ga ulangan domenni JIMGINA almashtiradi. Shuning uchun domen faqat quyidagi holatda ulanadi:
+      #   zona hisobda bor va "active" + (domen allaqachon shu Worker'da YOKI hostname uchun DNS yozuvi yo'q).
+      # Biz DNS yozuvlarini o'zimiz hech qachon o'zgartirmaymiz.
+      - name: Custom domenni tekshirish
+        id: domain
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -uo pipefail
+          api() { curl -sS --max-time 20 -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4$1"; }
+          USE=""
+          ZONE_JSON=$(api "/zones?name=${CUSTOM_DOMAIN}&account.id=${CLOUDFLARE_ACCOUNT_ID}") || ZONE_JSON='{}'
+          ZONE_ID=$(echo "$ZONE_JSON" | jq -r '.result[0].id // empty' 2>/dev/null)
+          ZONE_STATUS=$(echo "$ZONE_JSON" | jq -r '.result[0].status // empty' 2>/dev/null)
+          if [ -z "$ZONE_ID" ]; then
+            echo "Zona ${CUSTOM_DOMAIN} hisobda yo'q (yoki tokenda ruxsat yo'q) — faqat workers.dev."
+          elif [ "$ZONE_STATUS" != "active" ]; then
+            echo "::warning::Zona ${CUSTOM_DOMAIN} holati '${ZONE_STATUS}' (active emas) — faqat workers.dev."
+          else
+            BOUND=$(api "/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/domains?hostname=${CUSTOM_DOMAIN}" \
+              | jq -r --arg h "$CUSTOM_DOMAIN" '[.result[]? | select(.hostname == $h) | .service][0] // empty' 2>/dev/null)
+            if [ "$BOUND" = "$WORKER_NAME" ]; then
+              USE="$CUSTOM_DOMAIN"
+              echo "${CUSTOM_DOMAIN} allaqachon ${WORKER_NAME} ga ulangan."
+            elif [ -n "$BOUND" ]; then
+              echo "::warning::${CUSTOM_DOMAIN} boshqa Worker'ga ('${BOUND}') ulangan — tegmaymiz, faqat workers.dev."
+            else
+              DNS_JSON=$(api "/zones/${ZONE_ID}/dns_records?name=${CUSTOM_DOMAIN}&per_page=50")
+              if ! echo "$DNS_JSON" | jq -e '.success == true' > /dev/null 2>&1; then
+                echo "::warning::DNS yozuvlarini o'qib bo'lmadi (tokenga Zone → DNS: Read kerak) — domen ulanmadi."
+              elif [ "$(echo "$DNS_JSON" | jq '.result | length')" != "0" ]; then
+                echo "::warning::${CUSTOM_DOMAIN} uchun DNS yozuvlari mavjud — ularni o'zgartirmaymiz. Domenni Dashboard → Workers → ${WORKER_NAME} → Domains orqali qo'lda ulang."
+                echo "$DNS_JSON" | jq -r '.result[] | "  \(.type) \(.name) -> \(.content)"'
+              else
+                USE="$CUSTOM_DOMAIN"
+                echo "${CUSTOM_DOMAIN}: zona active, DNS bo'sh — custom domen ulanadi."
+              fi
+            fi
+          fi
+          echo "domain=${USE}" >> "$GITHUB_OUTPUT"
+
+      - name: Worker deploy
+        id: deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          DOMAIN: ${{ steps.domain.outputs.domain }}
+        run: |
+          set -euo pipefail
+          ATTACHED=""
+          if [ -n "$DOMAIN" ]; then
+            # Custom domen bilan ham workers.dev yoqiq qolsin (eski APK'lar shu manzilda ishlayveradi).
+            if ! grep -q '"workers_dev"' wrangler.jsonc; then
+              sed -i -E "0,/^(\s*)\"name\":\s*\"${WORKER_NAME}\",/s//&\n\1\"workers_dev\": true,/" wrangler.jsonc
+            fi
+            if npx wrangler deploy --domain "$DOMAIN" 2>&1 | tee "$RUNNER_TEMP/deploy.log"; then
+              ATTACHED="$DOMAIN"
+            else
+              echo "::warning::Custom domen ($DOMAIN) bilan deploy bo'lmadi — workers.dev ga deploy qilinmoqda."
+              npx wrangler deploy 2>&1 | tee "$RUNNER_TEMP/deploy.log"
+            fi
+          else
+            npx wrangler deploy 2>&1 | tee "$RUNNER_TEMP/deploy.log"
+          fi
+          echo "domain=${ATTACHED}" >> "$GITHUB_OUTPUT"
+
+      # Manzil: custom domen (ulangan bo'lsa) yoki https://<worker>.<subdomain>.workers.dev.
+      # Ishlayotgan (/api/health = ok) birinchi manzil tanlanadi.
+      - name: URL va /api/health
+        id: url
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          DOMAIN: ${{ steps.deploy.outputs.domain }}
+        run: |
+          set -uo pipefail
+          CANDIDATES=()
+          if [ -n "$DOMAIN" ]; then CANDIDATES+=("https://${DOMAIN}"); fi
+          SUB=$(curl -sS --max-time 20 -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/subdomain" \
+            | jq -r '.result.subdomain // empty' 2>/dev/null)
+          if [ -n "$SUB" ]; then
+            CANDIDATES+=("https://${WORKER_NAME}.${SUB}.workers.dev")
+          else
+            # Zaxira: wrangler chiqishidan workers.dev manzili
+            FROM_LOG=$(grep -oE "https://${WORKER_NAME}\.[a-z0-9-]+\.workers\.dev" "$RUNNER_TEMP/deploy.log" | head -1)
+            if [ -n "$FROM_LOG" ]; then CANDIDATES+=("$FROM_LOG"); fi
+          fi
+          if [ "${#CANDIDATES[@]}" -eq 0 ]; then
+            echo "::error::Public URL aniqlanmadi"; exit 1
+          fi
+          echo "Nomzodlar: ${CANDIDATES[*]}"
+          # Yangi workers.dev / custom domen tarqalishi (SSL sertifikati) bir necha daqiqa olishi mumkin.
+          # Dastlabki 3 daqiqa faqat custom domen kutiladi, keyin workers.dev ham qabul qilinadi.
+          for attempt in $(seq 1 36); do
+            TRY=("${CANDIDATES[@]}")
+            if [ -n "$DOMAIN" ] && [ "$attempt" -le 18 ]; then TRY=("https://${DOMAIN}"); fi
+            for u in "${TRY[@]}"; do
+              if curl -fsS --max-time 10 "$u/api/health" | jq -e '.ok == true' > /dev/null 2>&1; then
+                echo "✓ $u/api/health ok (${attempt}-urinish)"
+                echo "url=$u" >> "$GITHUB_OUTPUT"
+                {
+                  echo "## hasharchilar deploy"
+                  echo ""
+                  echo "- Sayt: **$u**"
+                  echo "- Health: $u/api/health"
+                  echo "- Worker: \`${WORKER_NAME}\`, D1: \`${D1_NAME}\`, R2: \`${R2_BUCKET}\`"
+                  if [ -n "$DOMAIN" ]; then echo "- Custom domen: https://${DOMAIN}"; else echo "- Custom domen ulanmagan (${CUSTOM_DOMAIN})"; fi
+                } >> "$GITHUB_STEP_SUMMARY"
+                exit 0
+              fi
+            done
+            sleep 10
+          done
+          echo "::error::/api/health 6 daqiqada javob bermadi: ${CANDIDATES[*]}"
+          exit 1
+
+  # ---------------------------------------------------------------- 3. APK
+  apk:
+    name: Android APK
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write   # GitHub Release yaratish uchun
+    defaults:
+      run:
+        working-directory: hasharchilar
+    # CLOUDFLARE_API_TOKEN faqat R2 qadamlarida (npm ci, cap sync va Gradle plaginlari uni ko'rmaydi).
+    env:
+      API_URL: ${{ needs.deploy.outputs.url }}
+      VERSION_CODE: ${{ github.run_number }}
+      VERSION_NAME: 1.0.${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+          cache-dependency-path: |
+            hasharchilar/android/*.gradle*
+            hasharchilar/android/app/*.gradle*
+            hasharchilar/android/gradle/wrapper/gradle-wrapper.properties
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: hasharchilar/package-lock.json
+
+      # ubuntu-latest da Android SDK oldindan o'rnatilgan (ANDROID_HOME); yetishmagan
+      # platform/build-tools ni Gradle o'zi yuklab oladi (litsenziyalar qabul qilingan).
+      - name: Android SDK
+        run: |
+          set -euo pipefail
+          echo "ANDROID_HOME=${ANDROID_HOME:-topilmadi}"
+          test -d "${ANDROID_HOME:-/nonexistent}" || { echo "::error::ANDROID_HOME topilmadi"; exit 1; }
+          echo "platforms:   $(find "$ANDROID_HOME/platforms" -mindepth 1 -maxdepth 1 -printf '%f ' 2>/dev/null)"
+          echo "build-tools: $(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -printf '%f ' 2>/dev/null)"
+
+      - name: Bog'liqliklar
+        run: npm ci
+
+      - name: Build (APK uchun, API = deploy qilingan sayt)
+        env:
+          VITE_API_BASE: ${{ needs.deploy.outputs.url }}
+        run: |
+          set -euo pipefail
+          if [ -z "$VITE_API_BASE" ]; then echo "::error::deploy URL bo'sh"; exit 1; fi
+          echo "VITE_API_BASE=$VITE_API_BASE"
+          npm run build
+
+      - name: Capacitor sync
+        run: npx cap sync android
+
+      # Debug kaliti (secret yo'q bo'lsa) har runner'da yangidan yaratiladi va eski APK ustiga
+      # o'rnatilmay qoladi. Kesh kalitni run'lar orasida saqlaydi, lekin u branch'ga bog'liq va
+      # o'chib ketishi mumkin — shuning uchun pastda "Imzo mosligi" qadami R2 dagi APK bilan solishtiradi.
+      # Saqlash (cache/save) alohida: faqat imzo mosligi tasdiqlangandan keyin.
+      - name: Debug kalit keshi (tiklash)
+        id: dkcache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: hasharchilar-debug-keystore-v1
+
+      # TEKSHIRUV SKRIPT ICHIDA: `secrets` kontekstini qadam `if:` ida ishlatib bo'lmaydi.
+      # Faqat hasharchilar'ning O'Z secretlari (ANDROID_KEYSTORE_* — nfcstore kaliti, ishlatilmaydi).
+      - name: Imzo kaliti
+        id: key
+        env:
+          KEYSTORE: ${{ secrets.HASHARCHILAR_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.HASHARCHILAR_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.HASHARCHILAR_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          if [ -z "$KEYSTORE" ]; then
+            echo "release=0" >> "$GITHUB_OUTPUT"
+            echo "Imzo kaliti sozlanmagan — debug kaliti ishlatiladi."
+            exit 0
+          fi
+          # Qo'lda joylangan secretdagi ko'rinmas belgilar (CR/LF, chetdagi bo'shliq) olib tashlanadi
+          trim() { printf '%s' "$1" | tr -d '\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'; }
+          PW=$(trim "$KEYSTORE_PASSWORD")
+          ALIAS=$(trim "$KEY_ALIAS")
+          if [ -z "$PW" ] || [ -z "$ALIAS" ]; then
+            echo "::error::HASHARCHILAR_KEYSTORE_BASE64 bor, lekin HASHARCHILAR_KEYSTORE_PASSWORD yoki HASHARCHILAR_KEY_ALIAS yo'q."
+            exit 1
+          fi
+          echo "::add-mask::$PW"
+          if ! printf '%s' "$KEYSTORE" | tr -d '[:space:]' | base64 -d > android/app/release.jks; then
+            echo "::error::HASHARCHILAR_KEYSTORE_BASE64 yaroqli base64 emas"; exit 1
+          fi
+          # Gradle'dan OLDIN tekshiramiz: noto'g'ri parol/alias bir necha daqiqalik builddan keyin emas, shu yerda chiqadi
+          export HK_PW="$PW"
+          if ! keytool -list -v -keystore android/app/release.jks -storepass:env HK_PW -alias "$ALIAS" > "$RUNNER_TEMP/keytool.txt" 2>&1; then
+            grep -m3 -E 'keytool error|Exception' "$RUNNER_TEMP/keytool.txt" || true
+            echo "::error::Keystore ochilmadi: parol yoki alias noto'g'ri."
+            exit 1
+          fi
+          FP=$(grep -m1 -E '^[[:space:]]*SHA256:' "$RUNNER_TEMP/keytool.txt" | awk '{print $2}' | tr -d ':' | tr 'A-F' 'a-f')
+          if [ "$FP" = "$NFCSTORE_CERT_SHA256" ]; then
+            echo "::error::Bu nfcstore ilovasining kaliti. hasharchilar uchun alohida kalit yarating (README → Kerakli secretlar)."
+            exit 1
+          fi
+          # Java Properties: '\' ekranlash belgisi — ikkilantiriladi. storeFile android/app/ ga nisbatan.
+          PW_ESC=${PW//\\/\\\\}
+          ALIAS_ESC=${ALIAS//\\/\\\\}
+          {
+            echo "storeFile=release.jks"
+            echo "storePassword=$PW_ESC"
+            echo "keyAlias=$ALIAS_ESC"
+            echo "keyPassword=$PW_ESC"
+          } > android/key.properties
+          echo "release=1" >> "$GITHUB_OUTPUT"
+          echo "hasharchilar'ning o'z kaliti bilan imzolanadi (sertifikat SHA-256: $FP)."
+
+      - name: APK qurish (assembleRelease)
+        working-directory: hasharchilar/android
+        run: ./gradlew assembleRelease --no-daemon --stacktrace "-PversionCode=${VERSION_CODE}" "-PversionName=${VERSION_NAME}"
+
+      - name: Imzo va paketni tekshirish
+        id: apk
+        run: |
+          set -euo pipefail
+          SRC=android/app/build/outputs/apk/release/app-release.apk
+          test -f "$SRC" || { echo "::error::APK topilmadi: $SRC"; exit 1; }
+          mkdir -p out
+          cp "$SRC" "out/hasharchilar-${VERSION_NAME}.apk"
+          cp "$SRC" out/hasharchilar.apk
+          BT=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
+          "$BT/apksigner" verify --print-certs "$SRC" | tee "$RUNNER_TEMP/certs.txt"
+          "$BT/aapt2" dump badging "$SRC" | grep -E "^package:|sdkVersion|uses-permission" | tee "$RUNNER_TEMP/badging.txt"
+          grep -q "versionCode='${VERSION_CODE}'" "$RUNNER_TEMP/badging.txt" || { echo "::error::versionCode mos emas"; exit 1; }
+          FP=$(grep -i 'certificate SHA-256 digest' "$RUNNER_TEMP/certs.txt" | head -1 | awk '{print $NF}' | tr -d ':' | tr 'A-F' 'a-f')
+          if [ -z "$FP" ]; then echo "::error::Sertifikat SHA-256 aniqlanmadi"; exit 1; fi
+          if [ "$FP" = "$NFCSTORE_CERT_SHA256" ]; then
+            echo "::error::APK nfcstore kaliti bilan imzolangan — chiqarilmaydi."; exit 1
+          fi
+          SIZE=$(stat -c %s "$SRC")
+          SHA=$(sha256sum "$SRC" | awk '{print $1}')
+          {
+            echo "fingerprint=$FP"
+            echo "size=$SIZE"
+            echo "sha256=$SHA"
+          } >> "$GITHUB_OUTPUT"
+          echo "APK: $SIZE bayt, sha256=$SHA, sertifikat SHA-256=$FP"
+
+      # Kalit o'zgarsa (boshqa branch, kesh o'chgani, secret almashgani) o'rnatilgan ilovalar yangilanmaydi
+      # ("App not installed"). Shuning uchun R2 dagi oldingi APK sertifikati bilan solishtiramiz.
+      - name: Imzo mosligi (oldingi APK bilan)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          FP: ${{ steps.apk.outputs.fingerprint }}
+          ALLOW_KEY_CHANGE: ${{ inputs.allow_key_change }}
+        run: |
+          set -euo pipefail
+          if [ "$ALLOW_KEY_CHANGE" = "true" ]; then
+            echo "::warning::allow_key_change=true — imzo mosligi tekshirilmaydi."; exit 0
+          fi
+          if ! AVAILABLE=$(curl -fsS --max-time 15 "$API_URL/api/app" | jq -r '.available'); then
+            echo "::error::$API_URL/api/app javob bermadi — imzo mosligini tekshirib bo'lmadi"; exit 1
+          fi
+          if [ "$AVAILABLE" != "true" ]; then
+            echo "R2 da oldingi APK yo'q — birinchi chiqarish."; exit 0
+          fi
+          if ! npx wrangler r2 object get "${R2_BUCKET}/app/version.json" --remote --file "$RUNNER_TEMP/prev-version.json" > "$RUNNER_TEMP/r2get.log" 2>&1; then
+            cat "$RUNNER_TEMP/r2get.log" || true
+            echo "::error::R2 dagi app/version.json o'qilmadi — imzo mosligini tekshirib bo'lmadi"; exit 1
+          fi
+          OLD=$(jq -r '.cert // empty' "$RUNNER_TEMP/prev-version.json" | tr -d ':' | tr 'A-F' 'a-f')
+          if [ -z "$OLD" ]; then
+            echo "::warning::Oldingi version.json da sertifikat yo'q — tekshiruv o'tkazib yuborildi."; exit 0
+          fi
+          if [ "$OLD" != "$FP" ]; then
+            echo "::error::Yangi APK boshqa kalit bilan imzolangan (oldingi: $OLD, yangi: $FP). U chiqarilsa, o'rnatilgan ilovalar yangilanmaydi. Yechim: HASHARCHILAR_KEYSTORE_* secretlarini sozlang (README) yoki ataylab almashtirish uchun workflow'ni allow_key_change=true bilan qo'lda ishga tushiring."
+            exit 1
+          fi
+          echo "✓ Imzo oldingi APK bilan bir xil ($FP)"
+
+      # Debug kalit faqat imzo mosligi tasdiqlangach saqlanadi (keyingi qadamlar yiqilsa ham yo'qolmaydi).
+      - name: Debug kalit keshi (saqlash)
+        if: steps.key.outputs.release == '0' && steps.dkcache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: hasharchilar-debug-keystore-v1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hasharchilar-apk
+          path: hasharchilar/out/hasharchilar-*.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      # R2: app/hasharchilar.apk + app/version.json. `wrangler r2 object put` custom metadata
+      # bera olmaydi, shuning uchun backend versiyani app/version.json dan oladi (SPEC 5, /api/app).
+      - name: R2 ga yuklash (sayt orqali yuklab olish)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          APK_SHA: ${{ steps.apk.outputs.sha256 }}
+          FP: ${{ steps.apk.outputs.fingerprint }}
+        run: |
+          set -euo pipefail
+          npx wrangler r2 object put "${R2_BUCKET}/app/hasharchilar.apk" --remote \
+            --file out/hasharchilar.apk \
+            --content-type application/vnd.android.package-archive \
+            --content-disposition 'attachment; filename="hasharchilar.apk"'
+          # cert — keyingi run'larda "Imzo mosligi" tekshiruvi uchun
+          printf '{"version":"%s","versionCode":%s,"sha256":"%s","cert":"%s"}\n' \
+            "$VERSION_NAME" "$VERSION_CODE" "$APK_SHA" "$FP" > out/version.json
+          npx wrangler r2 object put "${R2_BUCKET}/app/version.json" --remote \
+            --file out/version.json --content-type application/json --cache-control no-cache
+          # Tekshiruv: /api/app yangi versiyani ko'rsatyaptimi
+          for _ in $(seq 1 6); do
+            if curl -fsS --max-time 10 "$API_URL/api/app" | tee "$RUNNER_TEMP/app.json" | jq -e --arg v "$VERSION_NAME" '.available == true and .version == $v' > /dev/null; then
+              echo "✓ /api/app: $(cat "$RUNNER_TEMP/app.json")"; exit 0
+            fi
+            sleep 5
+          done
+          echo "::warning::/api/app hali yangi versiyani ko'rsatmayapti: $(cat "$RUNNER_TEMP/app.json" 2>/dev/null)"
+
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: hasharchilar-v1.0.${{ github.run_number }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.ref_name }}
+          RELEASE_KEY: ${{ steps.key.outputs.release }}
+          FINGERPRINT: ${{ steps.apk.outputs.fingerprint }}
+          APK_SHA: ${{ steps.apk.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          APK="out/hasharchilar-${VERSION_NAME}.apk"
+          {
+            echo "Hasharchilar Android ilovasi — versiya **${VERSION_NAME}** (versionCode ${VERSION_CODE})."
+            echo ""
+            echo "- API: ${API_URL}"
+            echo "- Branch: \`${BRANCH}\`, commit: ${SHA}"
+            echo "- APK SHA-256: \`${APK_SHA}\`"
+            echo "- Sertifikat SHA-256: \`${FINGERPRINT}\`"
+            if [ "$RELEASE_KEY" = "1" ]; then
+              echo "- Imzo: hasharchilar kaliti (HASHARCHILAR_KEYSTORE_*)."
+            else
+              echo "- Imzo: DEBUG kaliti (o'rnatiladi, lekin Play Store'ga yaramaydi; kalit o'zgarsa eski versiyani o'chirib o'rnating)."
+            fi
+          } > "$RUNNER_TEMP/notes.md"
+          # "Latest" belgisi nfcstore relizlarida qoladi; main bo'lmagan branch — prerelease
+          FLAGS=(--latest=false)
+          if [ "$BRANCH" != "main" ]; then FLAGS+=(--prerelease); fi
+          if gh release view "$TAG" --repo "$REPO" > /dev/null 2>&1; then
+            gh release upload "$TAG" "$APK" --repo "$REPO" --clobber
+          else
+            gh release create "$TAG" "$APK" --repo "$REPO" --target "$SHA" \
+              --title "Hasharchilar ${VERSION_NAME}" --notes-file "$RUNNER_TEMP/notes.md" "${FLAGS[@]}"
+          fi
+
+      - name: Xulosa
+        env:
+          TAG: hasharchilar-v1.0.${{ github.run_number }}
+          REPO: ${{ github.repository }}
+          RELEASE_KEY: ${{ steps.key.outputs.release }}
+          SIZE: ${{ steps.apk.outputs.size }}
+          FINGERPRINT: ${{ steps.apk.outputs.fingerprint }}
+        run: |
+          {
+            echo "## Android APK ${VERSION_NAME}"
+            echo ""
+            echo "- Saytdan: ${API_URL}/api/app/download"
+            echo "- GitHub Release: https://github.com/${REPO}/releases/tag/${TAG}"
+            echo "- To'g'ridan-to'g'ri: https://github.com/${REPO}/releases/download/${TAG}/hasharchilar-${VERSION_NAME}.apk"
+            echo "- Hajmi: ${SIZE} bayt; API: ${API_URL}"
+            echo "- Sertifikat SHA-256: \`${FINGERPRINT}\`"
+            if [ "$RELEASE_KEY" = "1" ]; then
+              echo "- Imzo: hasharchilar kaliti (HASHARCHILAR_KEYSTORE_*)."
+            else
+              echo "- Imzo: **debug kaliti** — HASHARCHILAR_KEYSTORE_BASE64 / HASHARCHILAR_KEYSTORE_PASSWORD / HASHARCHILAR_KEY_ALIAS secretlari sozlanmagan."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
