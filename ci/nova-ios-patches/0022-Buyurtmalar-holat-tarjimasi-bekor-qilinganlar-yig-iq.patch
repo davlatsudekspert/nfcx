@@ -1,0 +1,1503 @@
+From e5c95f63145196d12c7ff395b67aab42fad1089d Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Sun, 4 Oct 2026 15:30:35 +0000
+Subject: [PATCH 22/26] Buyurtmalar: holat tarjimasi, bekor qilinganlar yig'iq,
+ iPhone'da raqamli narx yo'q
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .../lib/features/business/business_intro.dart |  37 +-
+ .../lib/features/nfc/nfc_center_screen.dart   |   5 +-
+ .../lib/features/nfc/nfc_ids_screen.dart      |  13 +-
+ .../features/settings/settings_screen.dart    |  52 ++-
+ .../settings/settings_subscreens.dart         |  28 +-
+ .../lib/features/shop/nfc_id_market.dart      |  36 +-
+ .../lib/features/shop/shop_screens.dart       | 302 ++++++++++---
+ .../lib/features/shop/store_policy.dart       |  34 ++
+ mobile_nova/lib/l10n/arb/app_en.arb           |  22 +
+ mobile_nova/lib/l10n/arb/app_ru.arb           |  22 +
+ mobile_nova/lib/l10n/arb/app_uz.arb           |  29 ++
+ .../lib/l10n/gen/app_localizations.dart       |  48 +++
+ .../lib/l10n/gen/app_localizations_en.dart    |  28 ++
+ .../lib/l10n/gen/app_localizations_ru.dart    |  28 ++
+ .../lib/l10n/gen/app_localizations_uz.dart    |  28 ++
+ mobile_nova/test/app_store_policy_test.dart   |   2 +
+ mobile_nova/test/orders_app_store_test.dart   | 405 ++++++++++++++++++
+ 17 files changed, 1000 insertions(+), 119 deletions(-)
+ create mode 100644 mobile_nova/test/orders_app_store_test.dart
+
+diff --git a/mobile_nova/lib/features/business/business_intro.dart b/mobile_nova/lib/features/business/business_intro.dart
+index 116be1d..251e4de 100644
+--- a/mobile_nova/lib/features/business/business_intro.dart
++++ b/mobile_nova/lib/features/business/business_intro.dart
+@@ -101,21 +101,30 @@ class BusinessIntroBody extends StatelessWidget {
+             onPressed: () => context.push(Routes.businessOnboard),
+           ),
+         ),
+-        const SizedBox(height: Gap.md),
+-        _OptionCard(
+-          key: const ValueKey('biz-option-premium'),
+-          premium: true,
+-          badge: l.bizPremiumBadge,
+-          title: l.bizPremiumTitle,
+-          // iPhone'da narx haqida gap yo'q (`store_policy.dart`).
+-          hint: showDigitalPrices ? l.bizPremiumHint : l.bizPremiumHintIos,
+-          cta: NovaButton(
+-            label: l.bizPremiumCta,
+-            tone: ButtonTone.outline,
+-            icon: Icons.search_rounded,
+-            onPressed: () => context.push(Routes.businessOnboardCustom),
++        // MAXSUS NOM / PREMIUM ID — iPHONE'DA YO'Q (egasi, 2026-10-04:
++        // "kerak bo'lmasa — olib tashla").
++        //
++        // iPhone'da bu yo'l boshi berk ko'cha edi: "Nomni tekshirish"
++        // nom bo'sh ekanini ko'rsatadi, keyin hech narsa — narx ham,
++        // sayt yozuvi ham u yerda yashirin (`store_policy.dart`).
++        // Ilovada olib bo'lmaydigan pullik raqamli mahsulot vitrinasi
++        // App Store tekshiruvida savol tug'diradi. Bepul yo'l qoladi.
++        if (!isAppStoreBuild) ...[
++          const SizedBox(height: Gap.md),
++          _OptionCard(
++            key: const ValueKey('biz-option-premium'),
++            premium: true,
++            badge: l.bizPremiumBadge,
++            title: l.bizPremiumTitle,
++            hint: showDigitalPrices ? l.bizPremiumHint : l.bizPremiumHintIos,
++            cta: NovaButton(
++              label: l.bizPremiumCta,
++              tone: ButtonTone.outline,
++              icon: Icons.search_rounded,
++              onPressed: () => context.push(Routes.businessOnboardCustom),
++            ),
+           ),
+-        ),
++        ],
+ 
+         // NAMUNA PROFILLAR — tayyor bizneslar sahifasi qanday ko'rinadi.
+         // Variantlardan keyin: tugmalar pastga surilmasin. Namuna yo'q
+diff --git a/mobile_nova/lib/features/nfc/nfc_center_screen.dart b/mobile_nova/lib/features/nfc/nfc_center_screen.dart
+index eaa6fb8..3f43f83 100644
+--- a/mobile_nova/lib/features/nfc/nfc_center_screen.dart
++++ b/mobile_nova/lib/features/nfc/nfc_center_screen.dart
+@@ -21,6 +21,7 @@ import '../../routing/routes.dart';
+ import '../auth/session.dart';
+ import '../home/home_screen.dart';
+ import '../home/widgets/my_ids_strip.dart';
++import '../shop/store_policy.dart' show idMarketTitle;
+ import 'nfc_service.dart';
+ import 'qr_sheet.dart';
+ import '../../design/widgets/brand_icon.dart';
+@@ -163,7 +164,7 @@ class NfcCenterScreen extends ConsumerWidget {
+                 // yuqoridagi panelda — takrorlanmaydi.
+                 if (!noNfc) _ActionRow(
+                   icon: Icons.search_rounded,
+-                  title: l.idMarketTitle,
++                  title: idMarketTitle(l),
+                   subtitle: l.idMarketSearchHint,
+                   onTap: () => context.push(Routes.nfcMarket),
+                 ),
+@@ -672,7 +673,7 @@ class NoNfcPanel extends ConsumerWidget {
+                 () => context.push(Routes.nfcIds),
+                 const ValueKey('no-nfc-ids')),
+             const SizedBox(width: Gap.md),
+-            tile(Icons.search_rounded, l.idMarketTitle, l.noNfcGetHint,
++            tile(Icons.search_rounded, idMarketTitle(l), l.noNfcGetHint,
+                 () => context.push(Routes.nfcMarket),
+                 const ValueKey('no-nfc-market')),
+           ],
+diff --git a/mobile_nova/lib/features/nfc/nfc_ids_screen.dart b/mobile_nova/lib/features/nfc/nfc_ids_screen.dart
+index 77bb8c3..5d5733b 100644
+--- a/mobile_nova/lib/features/nfc/nfc_ids_screen.dart
++++ b/mobile_nova/lib/features/nfc/nfc_ids_screen.dart
+@@ -20,6 +20,7 @@ import '../../routing/routes.dart';
+ import '../../app/profile_context.dart';
+ import '../auth/session.dart';
+ import '../home/widgets/identity_card.dart';
++import '../shop/store_policy.dart' show isAppStoreBuild;
+ import 'nfc_misc_screens.dart' show nfcDevicesProvider;
+ import 'qr_sheet.dart';
+ import '../../design/widgets/brand_icon.dart';
+@@ -36,13 +37,19 @@ class NfcIdsScreen extends ConsumerWidget {
+     return NovaScaffold(
+       title: l.nfcMyIds,
+       showBack: true,
++      // iPHONE: "Do'kon" tugmasi va "do'kondan oling" izohi YO'Q.
++      // Do'kon ekrani bo'sh ochiladi (server narxlarni `tiers` deb
++      // beradi, ekran esa `items` ni kutadi). iPhone'da bu boshi berk
++      // ko'cha bo'lardi, ID'siz yangi hisob esa aynan shu holatni
++      // ko'radi (`store_policy.dart`). Android o'zgarmaydi.
+       body: ids.isEmpty
+           ? StatePanel(
+               icon: Icons.badge_outlined,
+               title: l.homeNoId,
+-              message: l.homeNoIdHint,
+-              actionLabel: l.homeShop,
+-              onAction: () => context.push(Routes.shop),
++              message: isAppStoreBuild ? null : l.homeNoIdHint,
++              actionLabel: isAppStoreBuild ? null : l.homeShop,
++              onAction:
++                  isAppStoreBuild ? null : () => context.push(Routes.shop),
+             )
+           : RefreshIndicator(
+               color: context.tokens.accent2,
+diff --git a/mobile_nova/lib/features/settings/settings_screen.dart b/mobile_nova/lib/features/settings/settings_screen.dart
+index c732ede..3a5a4de 100644
+--- a/mobile_nova/lib/features/settings/settings_screen.dart
++++ b/mobile_nova/lib/features/settings/settings_screen.dart
+@@ -16,6 +16,7 @@ import '../../l10n/gen/app_localizations.dart';
+ import '../../routing/routes.dart';
+ import '../auth/session.dart';
+ import '../home/widgets/avatar.dart';
++import '../shop/store_policy.dart';
+ import '../social/content_rules.dart';
+ import '../../design/widgets/brand_icon.dart';
+ 
+@@ -34,6 +35,20 @@ class SettingsScreen extends ConsumerWidget {
+     final t = context.tokens;
+     final user = ref.watch(currentUserProvider);
+     final personal = ref.watch(activePersonalProvider);
++    final shopItems = [
++      if (showOrdersEntry)
++        SettingsItem(
++          icon: Icons.receipt_long_outlined,
++          label: l.orders,
++          onTap: () => context.push(Routes.orders),
++        ),
++      if (!isAppStoreBuild)
++        SettingsItem(
++          icon: Icons.card_giftcard_outlined,
++          label: l.settingsReferral,
++          onTap: () => context.push(Routes.settingsReferral),
++        ),
++    ];
+ 
+     return NovaScaffold(
+       title: l.settings,
+@@ -155,19 +170,19 @@ class SettingsScreen extends ConsumerWidget {
+           // to'lov haqida hech narsa ko'rinmasin. Jismoniy NFC karta
+           // buyurtmalari qoladi: jismoniy tovar Play Billing'dan ozod
+           // (`shop/store_policy.dart`).
+-          SectionHeader(color: t.text2, title: l.settingsShopSection),
+-          SettingsGroup(items: [
+-            SettingsItem(
+-              icon: Icons.receipt_long_outlined,
+-              label: l.orders,
+-              onTap: () => context.push(Routes.orders),
+-            ),
+-            SettingsItem(
+-              icon: Icons.card_giftcard_outlined,
+-              label: l.settingsReferral,
+-              onTap: () => context.push(Routes.settingsReferral),
+-            ),
+-          ]),
++          //
++          // iPHONE'DA BU BO'LIM UMUMAN YO'Q (egasi, 2026-10-04):
++          //   * "Buyurtmalar" — `showOrdersEntry` izohida;
++          //   * "Referal" — mukofoti keyingi NFC ID xaridiga 10%
++          //     chegirma (`settingsReferralHint`, server
++          //     `pending_discount_pct`). Raqamli mahsulotga chegirma
++          //     va'dasi Apple 3.1.1 ga tushadi, chegirmaning o'zi esa
++          //     ilovada ishlatilmaydi.
++          // Bandlar qolmasa, bo'sh sarlavha ham qolmaydi.
++          if (shopItems.isNotEmpty) ...[
++            SectionHeader(color: t.text2, title: l.settingsShopSection),
++            SettingsGroup(items: shopItems),
++          ],
+           SectionHeader(color: t.text2, title: l.settingsSupport),
+           SettingsGroup(items: [
+             SettingsItem(
+@@ -203,8 +218,15 @@ class SettingsScreen extends ConsumerWidget {
+           // Ilovada NFC kartani SOTIB OLIB bo'lmaydi: jismoniy
+           // buyurtma, to'liq katalog va yetkazib berish saytda.
+           // Odam buni bilmasa, ilovada qidirib topolmay qoladi.
+-          const _SiteCard(),
+-          const SizedBox(height: Gap.xxl),
++          //
++          // iPhone'da YO'Q (egasi, 2026-10-04): "...saytda" degan
++          // karta Apple tekshiruvchisi uchun tashqi xaridga
++          // yo'naltirish (3.1.1 / 3.1.3). `kShowSiteNotice` o'chirilsa
++          // Android'da ham yo'qoladi — boshqa sayt yozuvlari kabi.
++          if (kShowSiteNotice && !isAppStoreBuild) ...[
++            const _SiteCard(),
++            const SizedBox(height: Gap.xxl),
++          ],
+           NovaButton(
+             label: l.logout,
+             tone: ButtonTone.danger,
+diff --git a/mobile_nova/lib/features/settings/settings_subscreens.dart b/mobile_nova/lib/features/settings/settings_subscreens.dart
+index fa1d59a..d6d3c55 100644
+--- a/mobile_nova/lib/features/settings/settings_subscreens.dart
++++ b/mobile_nova/lib/features/settings/settings_subscreens.dart
+@@ -20,6 +20,7 @@ import '../../design/widgets/nova_scaffold.dart';
+ import '../../design/widgets/states.dart';
+ import '../../design/widgets/surfaces.dart';
+ import '../../l10n/gen/app_localizations.dart';
++import '../shop/shop_screens.dart' show orderStatusView;
+ import '../shop/store_policy.dart';
+ import '../../routing/routes.dart';
+ import '../auth/session.dart';
+@@ -501,7 +502,9 @@ class _NotificationsSettingsScreenState
+     final rows = <(String, String, IconData)>[
+       ('scan', l.nfcScans, Icons.nfc_rounded),
+       ('social', l.homePosts, Icons.favorite_rounded),
+-      ('orders', l.orders, Icons.receipt_long_rounded),
++      // iPhone'da "Buyurtmalar" ekrani yo'q (`showOrdersEntry`) —
++      // ular haqidagi bildirishnoma tanlovi ham yo'q.
++      if (showOrdersEntry) ('orders', l.orders, Icons.receipt_long_rounded),
+       ('news', l.settingsNews, Icons.campaign_rounded),
+     ];
+ 
+@@ -789,12 +792,10 @@ class _PaymentRow extends StatelessWidget {
+     return int.tryParse('$v') ?? 0;
+   }
+ 
+-  /// Jismoniy karta to'lovimi. Qolganlari (NFC ID, Premium, auksion)
++  /// Jismoniy karta to'lovidan boshqasi (NFC ID, Premium, auksion)
+   /// raqamli: iPhone'da ularning summasi va "to'lash mumkin" izohi
+-  /// ko'rsatilmaydi (`store_policy.dart`).
+-  bool get _physical => '${row['kind'] ?? ''}' == 'physical_card_order';
+-
+-  bool get _showAmount => showDigitalPrices || _physical;
++  /// ko'rsatilmaydi (`showOrderAmount`, `store_policy.dart`).
++  bool get _showAmount => showOrderAmount('${row['kind'] ?? ''}');
+ 
+   String _kind(L l) => switch ('${row['kind'] ?? ''}') {
+         'card_purchase' => l.payKindCard,
+@@ -805,15 +806,12 @@ class _PaymentRow extends StatelessWidget {
+         _ => l.payKindOther,
+       };
+ 
+-  /// Holat matni va rangi.
+-  (String, Color) _status(L l, NfcTokens t) =>
+-      switch ('${row['status'] ?? ''}') {
+-        'paid' => (l.payStatusPaid, t.success),
+-        'pending' => (l.payStatusPending, t.warn),
+-        'cancelled' => (l.payStatusCancelled, t.text3),
+-        'failed_code_taken' => (l.payStatusFailed, t.error),
+-        _ => ('${row['status'] ?? ''}', t.text3),
+-      };
++  /// Holat matni va rangi — "Buyurtmalar" ekrani bilan bitta manba
++  /// (`orderStatusView`).
++  (String, Color) _status(L l, NfcTokens t) {
++    final s = orderStatusView(l, t, '${row['status'] ?? ''}');
++    return (s.text, s.tone);
++  }
+ 
+   @override
+   Widget build(BuildContext context) {
+diff --git a/mobile_nova/lib/features/shop/nfc_id_market.dart b/mobile_nova/lib/features/shop/nfc_id_market.dart
+index 7d9a4a3..30d4e33 100644
+--- a/mobile_nova/lib/features/shop/nfc_id_market.dart
++++ b/mobile_nova/lib/features/shop/nfc_id_market.dart
+@@ -65,10 +65,24 @@ String normalizeIdCode(String raw) =>
+ String tierLabel(L l, String tier) => idTierLabel(l, tier);
+ 
+ /// Kod holati bitta so'zda + rang.
++///
++/// iPhone'da savdo so'zi yo'q: "Sotuvda"/"Sotilgan" o'rniga
++/// "Bo'sh"/"Egallangan" — ilovada sotilmaydigan raqamli mahsulotga
++/// ishora bo'lmasin (`store_policy.dart`). Holatning o'zi qoladi.
+ ({String text, Color color}) quoteState(L l, NfcTokens t, IdQuote q) {
+-  if (q.taken) return (text: l.idStateTaken, color: t.text3);
++  if (q.taken) {
++    return (
++      text: isAppStoreBuild ? l.idStateTakenIos : l.idStateTaken,
++      color: t.text3
++    );
++  }
+   if (q.reserved) return (text: l.idStateReserved, color: t.warn);
+-  if (q.purchasable) return (text: l.idStateAvailable, color: t.accent2);
++  if (q.purchasable) {
++    return (
++      text: isAppStoreBuild ? l.idStateAvailableIos : l.idStateAvailable,
++      color: t.accent2
++    );
++  }
+   return (text: l.idStateNotForSale, color: t.text3);
+ }
+ 
+@@ -111,15 +125,19 @@ class _NfcIdMarketScreenState extends ConsumerState<NfcIdMarketScreen> {
+     final query = ref.watch(idQueryProvider);
+ 
+     return NovaScaffold(
+-      title: l.idMarketTitle,
++      title: idMarketTitle(l),
+       showBack: true,
++      // iPhone'da "To'lovlar tarixi" yo'q (`showOrdersEntry`).
+       actions: [
+-        NovaIconButton(
+-          icon: Icons.receipt_long_rounded,
+-          tooltip: l.paymentHistory,
+-          onPressed: () => context.push(Routes.orders),
+-        ),
+-        const SizedBox(width: Gap.sm),
++        if (showOrdersEntry) ...[
++          NovaIconButton(
++            key: const ValueKey('id-market-orders'),
++            icon: Icons.receipt_long_rounded,
++            tooltip: l.paymentHistory,
++            onPressed: () => context.push(Routes.orders),
++          ),
++          const SizedBox(width: Gap.sm),
++        ],
+       ],
+       body: NovaScroll(
+         children: [
+diff --git a/mobile_nova/lib/features/shop/shop_screens.dart b/mobile_nova/lib/features/shop/shop_screens.dart
+index b1cd5cd..de2622b 100644
+--- a/mobile_nova/lib/features/shop/shop_screens.dart
++++ b/mobile_nova/lib/features/shop/shop_screens.dart
+@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
+ import 'package:flutter/material.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:go_router/go_router.dart';
++import 'package:intl/intl.dart';
+ 
+ import '../social/media_frame.dart';
+ import '../../core/errors/app_error.dart';
+@@ -56,13 +57,17 @@ class ShopScreen extends ConsumerWidget {
+     return NovaScaffold(
+       title: l.shopTitle,
+       showBack: true,
++      // iPhone'da "Buyurtmalar" yo'q (`showOrdersEntry`, store_policy).
+       actions: [
+-        NovaIconButton(
+-          icon: Icons.receipt_long_rounded,
+-          tooltip: l.orders,
+-          onPressed: () => context.push(Routes.orders),
+-        ),
+-        const SizedBox(width: Gap.sm),
++        if (showOrdersEntry) ...[
++          NovaIconButton(
++            key: const ValueKey('shop-orders'),
++            icon: Icons.receipt_long_rounded,
++            tooltip: l.orders,
++            onPressed: () => context.push(Routes.orders),
++          ),
++          const SizedBox(width: Gap.sm),
++        ],
+       ],
+       body: products.when(
+         loading: () => const SkeletonList(count: 4, height: 96),
+@@ -445,21 +450,109 @@ class PaymentResultScreen extends StatelessWidget {
+         title: title,
+         message: message.isEmpty ? null : message,
+         tone: tone,
+-        actionLabel: l.orders,
+-        onAction: () => context.pushReplacement(Routes.orders),
++        // iPhone'da "Buyurtmalar" ekrani yo'q (`showOrdersEntry`) —
++        // orqaga tugmasi yetarli.
++        actionLabel: showOrdersEntry ? l.orders : null,
++        onAction: showOrdersEntry
++            ? () => context.pushReplacement(Routes.orders)
++            : null,
+       ),
+     );
+   }
+ }
+ 
++/// Buyurtma holati — tarjima va rang.
++///
++/// SERVER LUG'ATI (`hosting/worker.js`, `web_orders.status`):
++/// `pending` -> `paid` | `cancelled` | `failed_code_taken`. 24 soatda
++/// to'lanmagan `pending` ham `cancelled` ga aylanadi
++/// (`expireStaleWebOrdersD1`). `new` — server holat yubormaganda
++/// modelning standart qiymati; `expired` — ehtiyot uchun.
++///
++/// Ilgari ro'yxatda XOM inglizcha so'z ("cancelled", "paid") turardi,
++/// yana ikki marta: kapsulada va (izoh bo'sh bo'lganda) izoh
++/// qatorida. Matnlar saytdagi "To'lovlar" sahifasi
++/// (`src/pages/PaymentsPage.jsx`) va "To'lovlar tarixi" bilan bir xil.
++/// Noma'lum holat yo'qolib qolmasin — o'zicha ko'rsatiladi.
++({String text, Color tone}) orderStatusView(
++        L l, NfcTokens t, String status) =>
++    switch (status) {
++      'paid' => (text: l.payStatusPaid, tone: t.success),
++      'pending' => (text: l.payStatusPending, tone: t.warn),
++      'new' => (text: l.orderStatusNew, tone: t.warn),
++      'cancelled' => (text: l.payStatusCancelled, tone: t.text3),
++      'expired' => (text: l.orderStatusExpired, tone: t.text3),
++      // To'langan, lekin kod boshqaga o'tib ketgan — pul masalasi,
++      // ko'zga tashlanib turishi kerak.
++      'failed_code_taken' => (text: l.payStatusFailed, tone: t.error),
++      _ => (text: status, tone: t.text3),
++    };
++
++/// Yopilgan buyurtma — undan endi hech narsa kutilmaydi, ro'yxatda
++/// sukut bo'yicha yig'ilib turadi.
++///
++/// `failed_code_taken` BU YERDA YO'Q: odam pul to'lagan, buni
++/// ko'rishi shart.
++bool isInactiveOrder(String status) =>
++    status == 'cancelled' || status == 'expired';
++
++/// NIMA buyurtma qilingani — izoh qatori uchun. HOLAT EMAS: u
++/// kapsulada turibdi.
++///
++/// `GET /api/orders` mahsulot nomini yubormaydi, faqat `kind` va
++/// `code` — shuning uchun matn turdan yasaladi. Premium, obuna va
++/// FEATURED buyurtmalarida `code` texnik ("PREMIUM", "FOLLOW",
++/// egasining kodi) — ko'rsatilmaydi.
++String orderWhat(L l, Order o) {
++  final code = o.code.trim();
++  String withCode(String s) => code.isEmpty ? s : '$s · $code';
++  return switch (o.kind) {
++    OrderKind.nfcId => l.orderKindNfcId(code).trim(),
++    OrderKind.physicalCard => withCode(l.payKindPhysical),
++    OrderKind.auction => withCode(l.payKindAuction),
++    OrderKind.premium => l.payKindPremium,
++    OrderKind.premiumFollow => l.payKindFollow,
++    OrderKind.featured => l.featuredTitle,
++    _ => o.itemsText,
++  };
++}
++
+ /// Buyurtmalar ro'yxati.
+-class OrdersScreen extends ConsumerWidget {
++///
++/// ## BEKOR QILINGANLAR YIG'ILADI
++///
++/// Egasining iPhone suratida ro'yxatning ko'pi bekor qilingan
++/// buyurtmalar edi: har "Band qilish" 24 soatda to'lanmasa
++/// `cancelled` bo'ladi. Ular endi pastda bitta "Bekor qilinganlar (N)"
++/// tugmasi ortida — bosilsa ochiladi.
++///
++/// Hamma buyurtma bekor qilingan bo'lsa — ro'yxat o'rnida "Faol
++/// buyurtmalar yo'q" holati, tugmasi esa o'sha "Bekor qilinganlar
++/// (N)". Bo'sh ro'yxat tagida yolg'iz tugma turgandan ko'ra toza: odam
++/// darhol vaziyatni o'qiydi va xohlasa tarixni ochadi.
++///
++/// ## iPHONE
++///
++/// Ekranga kirish yo'li iPhone'da yo'q (`showOrdersEntry`). Baribir
++/// ochilsa — faqat JISMONIY karta buyurtmalari: raqamli xaridning na
++/// o'zi, na narxi ko'rinmaydi (`store_policy.dart`). Summa ham
++/// `showOrderAmount` orqali: Android'da hammasida, iPhone'da faqat
++/// jismoniy tovarda.
++class OrdersScreen extends ConsumerStatefulWidget {
+   const OrdersScreen({super.key});
+ 
+   @override
+-  Widget build(BuildContext context, WidgetRef ref) {
++  ConsumerState<OrdersScreen> createState() => _OrdersScreenState();
++}
++
++class _OrdersScreenState extends ConsumerState<OrdersScreen> {
++  bool _showInactive = false;
++
++  void _toggle() => setState(() => _showInactive = !_showInactive);
++
++  @override
++  Widget build(BuildContext context) {
+     final l = L.of(context);
+-    final t = context.tokens;
+     final orders = ref.watch(ordersProvider);
+ 
+     return NovaScaffold(
+@@ -469,56 +562,143 @@ class OrdersScreen extends ConsumerWidget {
+         loading: () => const SkeletonList(count: 3),
+         error: (e, __) => StatePanel.fromError(context, asAppError(e),
+             onRetry: () => ref.invalidate(ordersProvider)),
+-        data: (items) => items.isEmpty
+-            ? StatePanel(
+-                icon: Icons.receipt_long_outlined,
+-                title: l.ordersEmpty,
+-                message: l.stateEmptyHint,
+-                actionLabel: l.shopTitle,
+-                onAction: () => context.push(Routes.shop),
+-              )
+-            : ListView.separated(
+-                padding: const EdgeInsets.fromLTRB(
+-                    Gap.screenX, Gap.md, Gap.screenX, 120),
+-                itemCount: items.length,
+-                separatorBuilder: (_, __) => const SizedBox(height: Gap.md),
+-                itemBuilder: (context, i) {
+-                  final o = items[i];
+-                  return FloatingSurface(
+-                    solid: true,
+-                    padding: const EdgeInsets.all(Gap.lg),
+-                    child: Row(
+-                      children: [
+-                        Expanded(
+-                          child: Column(
+-                            crossAxisAlignment: CrossAxisAlignment.start,
+-                            children: [
+-                              Text(l.orderNumber('${o.id}'),
+-                                  style:
+-                                      Theme.of(context).textTheme.titleSmall),
+-                              Text(o.itemsText.isEmpty ? o.status : o.itemsText,
+-                                  maxLines: 1,
+-                                  overflow: TextOverflow.ellipsis,
+-                                  style:
+-                                      Theme.of(context).textTheme.bodySmall),
+-                            ],
+-                          ),
+-                        ),
+-                        Column(
+-                          crossAxisAlignment: CrossAxisAlignment.end,
+-                          children: [
+-                            Text(formatMoney(o.total, o.currency),
+-                                style: AppType.monoStyle(
+-                                    color: t.text1, size: 13)),
+-                            const SizedBox(height: 3),
+-                            Capsule(label: o.status, dense: true),
+-                          ],
+-                        ),
+-                      ],
+-                    ),
+-                  );
+-                },
+-              ),
++        data: (all) {
++          final items = isAppStoreBuild
++              ? all.where((o) => isPhysicalOrder(o.kind)).toList()
++              : all;
++          final active =
++              items.where((o) => !isInactiveOrder(o.status)).toList();
++          final inactive =
++              items.where((o) => isInactiveOrder(o.status)).toList();
++
++          if (items.isEmpty) {
++            return StatePanel(
++              icon: Icons.receipt_long_outlined,
++              title: l.ordersEmpty,
++              message: l.stateEmptyHint,
++              actionLabel: l.shopTitle,
++              onAction: () => context.push(Routes.shop),
++            );
++          }
++          if (active.isEmpty && !_showInactive) {
++            return StatePanel(
++              key: const ValueKey('orders-no-active'),
++              icon: Icons.receipt_long_outlined,
++              title: l.ordersNoActive,
++              actionLabel: l.ordersInactiveShow(inactive.length),
++              onAction: _toggle,
++            );
++          }
++
++          final shown = [...active, if (_showInactive) ...inactive];
++          return ListView.separated(
++            padding:
++                const EdgeInsets.fromLTRB(Gap.screenX, Gap.md, Gap.screenX, 120),
++            itemCount: shown.length + (inactive.isEmpty ? 0 : 1),
++            separatorBuilder: (_, __) => const SizedBox(height: Gap.md),
++            itemBuilder: (context, i) => i < shown.length
++                ? _OrderTile(order: shown[i])
++                : _InactiveToggle(
++                    open: _showInactive,
++                    count: inactive.length,
++                    onTap: _toggle,
++                  ),
++          );
++        },
++      ),
++    );
++  }
++}
++
++class _OrderTile extends StatelessWidget {
++  const _OrderTile({required this.order});
++  final Order order;
++
++  @override
++  Widget build(BuildContext context) {
++    final l = L.of(context);
++    final t = context.tokens;
++    final o = order;
++    final status = orderStatusView(l, t, o.status);
++    final when = o.createdAt;
++    final sub = [
++      orderWhat(l, o),
++      if (when != null) DateFormat('dd.MM.yyyy').format(when.toLocal()),
++    ].where((s) => s.isNotEmpty).join(' · ');
++
++    return FloatingSurface(
++      key: ValueKey('order-${o.id}'),
++      solid: true,
++      padding: const EdgeInsets.all(Gap.lg),
++      child: Row(
++        children: [
++          Expanded(
++            child: Column(
++              crossAxisAlignment: CrossAxisAlignment.start,
++              children: [
++                Text(l.orderNumber('${o.id}'),
++                    style: Theme.of(context).textTheme.titleSmall),
++                if (sub.isNotEmpty)
++                  Text(sub,
++                      maxLines: 1,
++                      overflow: TextOverflow.ellipsis,
++                      style: Theme.of(context).textTheme.bodySmall),
++              ],
++            ),
++          ),
++          const SizedBox(width: Gap.md),
++          Column(
++            crossAxisAlignment: CrossAxisAlignment.end,
++            children: [
++              // Raqamli xarid summasi iPhone'da yo'q — faqat holat.
++              if (showOrderAmount(o.kind)) ...[
++                Text(formatMoney(o.total, o.currency),
++                    style: AppType.monoStyle(color: t.text1, size: 13)),
++                const SizedBox(height: 3),
++              ],
++              Capsule(label: status.text, dense: true, tone: status.tone),
++            ],
++          ),
++        ],
++      ),
++    );
++  }
++}
++
++/// "Bekor qilinganlar (N)" / "Yashirish" — ro'yxat oxirida.
++class _InactiveToggle extends StatelessWidget {
++  const _InactiveToggle({
++    required this.open,
++    required this.count,
++    required this.onTap,
++  });
++
++  final bool open;
++  final int count;
++  final VoidCallback onTap;
++
++  @override
++  Widget build(BuildContext context) {
++    final l = L.of(context);
++    final t = context.tokens;
++    return Center(
++      child: TextButton.icon(
++        key: const ValueKey('orders-inactive-toggle'),
++        onPressed: onTap,
++        icon: Icon(
++          open ? Icons.expand_less_rounded : Icons.expand_more_rounded,
++          size: 18,
++          color: t.text2,
++        ),
++        label: Text(
++          open ? l.ordersInactiveHide : l.ordersInactiveShow(count),
++          style: TextStyle(
++            fontFamily: AppType.sans,
++            fontSize: 12.5,
++            fontWeight: FontWeight.w700,
++            color: t.text2,
++          ),
++        ),
+       ),
+     );
+   }
+diff --git a/mobile_nova/lib/features/shop/store_policy.dart b/mobile_nova/lib/features/shop/store_policy.dart
+index a055e83..c2ccf24 100644
+--- a/mobile_nova/lib/features/shop/store_policy.dart
++++ b/mobile_nova/lib/features/shop/store_policy.dart
+@@ -96,8 +96,36 @@ class OrderKind {
+   static const premium = 'premium_upgrade';
+   static const premiumFollow = 'premium_follow';
+   static const auction = 'auction_payment';
++  static const featured = 'featured_slot';
+ }
+ 
++/// Buyurtma JISMONIY tovar uchunmi.
++///
++/// Faqat jismoniy NFC karta. Qolganlari — NFC ID, Premium, obuna,
++/// auksion, FEATURED — raqamli. Ro'yxat ataylab "jismoniylar"
++/// shaklida: serverda yangi tur paydo bo'lsa, u avtomatik RAQAMLI
++/// hisoblanadi va iPhone'da narxi chiqib qolmaydi.
++bool isPhysicalOrder(String kind) => kind == OrderKind.physicalCard;
++
++/// Buyurtma summasi ko'rsatilsinmi: Android'da — har doim, iPhone'da
++/// — faqat jismoniy tovar uchun (Apple 3.1.5(a)).
++bool showOrderAmount(String kind) =>
++    showDigitalPrices || isPhysicalOrder(kind);
++
++/// "BUYURTMALAR" EKRANIGA KIRISH YO'LI BO'LSINMI.
++///
++/// Egasining qarori (2026-10-04, iPhone surati): "kerak bo'lmasa —
++/// olib tashla, App Store shu sababli rad etmasin". Ro'yxatning
++/// deyarli hammasi raqamli xaridlar (NFC ID, Premium) va bekor
++/// qilingan buyurtmalar edi; iPhone'da ilova ichida hech narsa
++/// sotilmaydi, demak bu ekran u yerda kerak emas.
++///
++/// iPhone'da Sozlamalar, Do'kon, NFC ID qidiruvi va to'lov natijasi
++/// ekranlaridagi "Buyurtmalar" tugmalari chizilmaydi. Ekran baribir
++/// ochilib qolsa (`/orders`), unda faqat jismoniy karta buyurtmalari
++/// ko'rinadi. ANDROID O'ZGARMAYDI.
++bool get showOrdersEntry => !isAppStoreBuild;
++
+ /// Shu buyurtmani ILOVA ICHIDA to'lash mumkinmi.
+ ///
+ /// ## HOZIRCHA HECH BIRI
+@@ -212,6 +240,12 @@ String storeNoticeText(L l, String kind) => switch (kind) {
+       _ => l.storeBuyOnSiteId,
+     };
+ 
++/// NFC ID qidiruv ekranining nomi (ekran sarlavhasi va NFC Markazdagi
++/// qator). iPhone'da "NFC ID olish" emas, "ID qidirish": ilovada ID
++/// olinmaydi — faqat qidiriladi va holati ko'riladi.
++String idMarketTitle(L l) =>
++    isAppStoreBuild ? l.idSearchShort : l.idMarketTitle;
++
+ 
+ // ─────────────────────────────────────────── to'lov provayderi rangi
+ //
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index f7274b2..04924c1 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -351,6 +351,26 @@
+   "paymentNotConfigured": "Payment provider is not configured",
+   "orders": "Orders",
+   "ordersEmpty": "No orders yet",
++  "ordersNoActive": "No active orders",
++  "ordersInactiveShow": "Cancelled ({count})",
++  "@ordersInactiveShow": {
++    "placeholders": {
++      "count": {
++        "type": "int"
++      }
++    }
++  },
++  "ordersInactiveHide": "Hide cancelled",
++  "orderStatusNew": "New",
++  "orderStatusExpired": "Expired",
++  "orderKindNfcId": "NFC ID {code}",
++  "@orderKindNfcId": {
++    "placeholders": {
++      "code": {
++        "type": "String"
++      }
++    }
++  },
+   "orderNumber": "Order #{id}",
+   "@orderNumber": {
+     "placeholders": {
+@@ -707,6 +727,8 @@
+   "idStateReserved": "Reserved",
+   "idStateMine": "Yours",
+   "idStateNotForSale": "Not for sale",
++  "idStateAvailableIos": "Available",
++  "idStateTakenIos": "Taken",
+   "idBuy": "Buy",
+   "idDetailTitle": "NFC ID",
+   "idOrderTitle": "Order",
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index c81bc20..863ba7f 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -351,6 +351,26 @@
+   "paymentNotConfigured": "Платёжная система не настроена",
+   "orders": "Заказы",
+   "ordersEmpty": "Заказов нет",
++  "ordersNoActive": "Активных заказов нет",
++  "ordersInactiveShow": "Отменённые ({count})",
++  "@ordersInactiveShow": {
++    "placeholders": {
++      "count": {
++        "type": "int"
++      }
++    }
++  },
++  "ordersInactiveHide": "Скрыть отменённые",
++  "orderStatusNew": "Новый",
++  "orderStatusExpired": "Истёк",
++  "orderKindNfcId": "NFC ID {code}",
++  "@orderKindNfcId": {
++    "placeholders": {
++      "code": {
++        "type": "String"
++      }
++    }
++  },
+   "orderNumber": "Заказ №{id}",
+   "@orderNumber": {
+     "placeholders": {
+@@ -707,6 +727,8 @@
+   "idStateReserved": "Забронирован",
+   "idStateMine": "Ваш",
+   "idStateNotForSale": "Не продаётся",
++  "idStateAvailableIos": "Свободен",
++  "idStateTakenIos": "Занят",
+   "idBuy": "Купить",
+   "idDetailTitle": "NFC ID",
+   "idOrderTitle": "Заказ",
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index 916c135..8a09c65 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -354,6 +354,27 @@
+   "paymentNotConfigured": "To‘lov tizimi sozlanmagan",
+   "orders": "Buyurtmalar",
+   "ordersEmpty": "Buyurtmalar yo‘q",
++  "ordersNoActive": "Faol buyurtmalar yo‘q",
++  "ordersInactiveShow": "Bekor qilinganlar ({count})",
++  "@ordersInactiveShow": {
++    "description": "Buyurtmalar: yashirilgan bekor qilingan buyurtmalarni ko'rsatish tugmasi",
++    "placeholders": {
++      "count": {
++        "type": "int"
++      }
++    }
++  },
++  "ordersInactiveHide": "Bekor qilinganlarni yashirish",
++  "orderStatusNew": "Yangi",
++  "orderStatusExpired": "Muddati o‘tgan",
++  "orderKindNfcId": "NFC ID {code}",
++  "@orderKindNfcId": {
++    "placeholders": {
++      "code": {
++        "type": "String"
++      }
++    }
++  },
+   "orderNumber": "Buyurtma №{id}",
+   "@orderNumber": {
+     "placeholders": {
+@@ -734,6 +755,14 @@
+   "idStateReserved": "Band qilingan",
+   "idStateMine": "Sizniki",
+   "idStateNotForSale": "Sotuvda emas",
++  "idStateAvailableIos": "Bo‘sh",
++  "@idStateAvailableIos": {
++    "description": "iPhone: kod bo'sh (\"Sotuvda\" o'rniga — savdo so'zi yo'q)"
++  },
++  "idStateTakenIos": "Egallangan",
++  "@idStateTakenIos": {
++    "description": "iPhone: kod egallangan (\"Sotilgan\" o'rniga)"
++  },
+   "idBuy": "Sotib olish",
+   "idDetailTitle": "NFC ID",
+   "idOrderTitle": "Buyurtma",
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index 965581f..9408dc3 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -1977,6 +1977,42 @@ abstract class L {
+   /// **'Buyurtmalar yo‘q'**
+   String get ordersEmpty;
+ 
++  /// No description provided for @ordersNoActive.
++  ///
++  /// In uz, this message translates to:
++  /// **'Faol buyurtmalar yo‘q'**
++  String get ordersNoActive;
++
++  /// Buyurtmalar: yashirilgan bekor qilingan buyurtmalarni ko'rsatish tugmasi
++  ///
++  /// In uz, this message translates to:
++  /// **'Bekor qilinganlar ({count})'**
++  String ordersInactiveShow(int count);
++
++  /// No description provided for @ordersInactiveHide.
++  ///
++  /// In uz, this message translates to:
++  /// **'Bekor qilinganlarni yashirish'**
++  String get ordersInactiveHide;
++
++  /// No description provided for @orderStatusNew.
++  ///
++  /// In uz, this message translates to:
++  /// **'Yangi'**
++  String get orderStatusNew;
++
++  /// No description provided for @orderStatusExpired.
++  ///
++  /// In uz, this message translates to:
++  /// **'Muddati o‘tgan'**
++  String get orderStatusExpired;
++
++  /// No description provided for @orderKindNfcId.
++  ///
++  /// In uz, this message translates to:
++  /// **'NFC ID {code}'**
++  String orderKindNfcId(String code);
++
+   /// No description provided for @orderNumber.
+   ///
+   /// In uz, this message translates to:
+@@ -3555,6 +3591,18 @@ abstract class L {
+   /// **'Sotuvda emas'**
+   String get idStateNotForSale;
+ 
++  /// iPhone: kod bo'sh ("Sotuvda" o'rniga — savdo so'zi yo'q)
++  ///
++  /// In uz, this message translates to:
++  /// **'Bo‘sh'**
++  String get idStateAvailableIos;
++
++  /// iPhone: kod egallangan ("Sotilgan" o'rniga)
++  ///
++  /// In uz, this message translates to:
++  /// **'Egallangan'**
++  String get idStateTakenIos;
++
+   /// No description provided for @idBuy.
+   ///
+   /// In uz, this message translates to:
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index 4d09de0..7e7e081 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -979,6 +979,28 @@ class LEn extends L {
+   @override
+   String get ordersEmpty => 'No orders yet';
+ 
++  @override
++  String get ordersNoActive => 'No active orders';
++
++  @override
++  String ordersInactiveShow(int count) {
++    return 'Cancelled ($count)';
++  }
++
++  @override
++  String get ordersInactiveHide => 'Hide cancelled';
++
++  @override
++  String get orderStatusNew => 'New';
++
++  @override
++  String get orderStatusExpired => 'Expired';
++
++  @override
++  String orderKindNfcId(String code) {
++    return 'NFC ID $code';
++  }
++
+   @override
+   String orderNumber(String id) {
+     return 'Order #$id';
+@@ -1821,6 +1843,12 @@ class LEn extends L {
+   @override
+   String get idStateNotForSale => 'Not for sale';
+ 
++  @override
++  String get idStateAvailableIos => 'Available';
++
++  @override
++  String get idStateTakenIos => 'Taken';
++
+   @override
+   String get idBuy => 'Buy';
+ 
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index 4a8d026..a912fa0 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -975,6 +975,28 @@ class LRu extends L {
+   @override
+   String get ordersEmpty => 'Заказов нет';
+ 
++  @override
++  String get ordersNoActive => 'Активных заказов нет';
++
++  @override
++  String ordersInactiveShow(int count) {
++    return 'Отменённые ($count)';
++  }
++
++  @override
++  String get ordersInactiveHide => 'Скрыть отменённые';
++
++  @override
++  String get orderStatusNew => 'Новый';
++
++  @override
++  String get orderStatusExpired => 'Истёк';
++
++  @override
++  String orderKindNfcId(String code) {
++    return 'NFC ID $code';
++  }
++
+   @override
+   String orderNumber(String id) {
+     return 'Заказ №$id';
+@@ -1815,6 +1837,12 @@ class LRu extends L {
+   @override
+   String get idStateNotForSale => 'Не продаётся';
+ 
++  @override
++  String get idStateAvailableIos => 'Свободен';
++
++  @override
++  String get idStateTakenIos => 'Занят';
++
+   @override
+   String get idBuy => 'Купить';
+ 
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index 8be8f50..f5edd13 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -980,6 +980,28 @@ class LUz extends L {
+   @override
+   String get ordersEmpty => 'Buyurtmalar yo‘q';
+ 
++  @override
++  String get ordersNoActive => 'Faol buyurtmalar yo‘q';
++
++  @override
++  String ordersInactiveShow(int count) {
++    return 'Bekor qilinganlar ($count)';
++  }
++
++  @override
++  String get ordersInactiveHide => 'Bekor qilinganlarni yashirish';
++
++  @override
++  String get orderStatusNew => 'Yangi';
++
++  @override
++  String get orderStatusExpired => 'Muddati o‘tgan';
++
++  @override
++  String orderKindNfcId(String code) {
++    return 'NFC ID $code';
++  }
++
+   @override
+   String orderNumber(String id) {
+     return 'Buyurtma №$id';
+@@ -1826,6 +1848,12 @@ class LUz extends L {
+   @override
+   String get idStateNotForSale => 'Sotuvda emas';
+ 
++  @override
++  String get idStateAvailableIos => 'Bo‘sh';
++
++  @override
++  String get idStateTakenIos => 'Egallangan';
++
+   @override
+   String get idBuy => 'Sotib olish';
+ 
+diff --git a/mobile_nova/test/app_store_policy_test.dart b/mobile_nova/test/app_store_policy_test.dart
+index 4292224..96c33b4 100644
+--- a/mobile_nova/test/app_store_policy_test.dart
++++ b/mobile_nova/test/app_store_policy_test.dart
+@@ -193,6 +193,8 @@ void main() {
+         'bizPremiumHintIos',
+         'idMarketTiersIos',
+         'tierHintExclusiveIos',
++        'idStateAvailableIos',
++        'idStateTakenIos',
+       ];
+       const banned = [
+         'sayt', 'сайт', 'website', 'site', //
+diff --git a/mobile_nova/test/orders_app_store_test.dart b/mobile_nova/test/orders_app_store_test.dart
+new file mode 100644
+index 0000000..fb41af4
+--- /dev/null
++++ b/mobile_nova/test/orders_app_store_test.dart
+@@ -0,0 +1,405 @@
++import 'dart:io';
++
++import 'package:flutter/foundation.dart';
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
++import 'package:nfcstore_nova/features/auth/session.dart';
++import 'package:nfcstore_nova/features/business/business_intro.dart';
++import 'package:nfcstore_nova/features/business/business_providers.dart';
++import 'package:nfcstore_nova/features/business/business_screens.dart'
++    show formatMoney;
++import 'package:nfcstore_nova/features/business/sample_businesses.dart';
++import 'package:nfcstore_nova/features/nfc/nfc_ids_screen.dart';
++import 'package:nfcstore_nova/features/settings/settings_screen.dart';
++import 'package:nfcstore_nova/features/settings/settings_subscreens.dart';
++import 'package:nfcstore_nova/features/shop/nfc_id_market.dart';
++import 'package:nfcstore_nova/features/shop/shop_screens.dart';
++import 'package:nfcstore_nova/features/shop/store_policy.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations_uz.dart';
++
++import 'helpers.dart';
++
++/// BUYURTMALAR VA iPHONE (egasi, 2026-10-04, iPhone surati).
++///
++/// Surat: "Buyurtma №61 / cancelled / 149 000 so'm / [cancelled]" —
++/// xom inglizcha holat ikki marta, ro'yxatning ko'pi bekor qilingan,
++/// iPhone'da raqamli xarid narxi. Egasining qarori: "kerak bo'lmasa —
++/// olib tashla, App Store shu sababli rad etmasin".
++///
++/// Har tekshiruv ikki tomonlama (`app_store_policy_test.dart` kabi):
++/// Android'da BOR, iPhone'da YO'Q.
++final _orders = [
++  Order(
++    id: 61,
++    status: 'cancelled',
++    total: 149000,
++    kind: OrderKind.nfcId,
++    code: 'ALI1',
++    createdAt: DateTime(2026, 9, 20, 12),
++  ),
++  Order(
++    id: 62,
++    status: 'paid',
++    total: 500000,
++    kind: OrderKind.nfcId,
++    code: 'VIP001',
++    createdAt: DateTime(2026, 9, 28, 12),
++  ),
++  Order(
++    id: 63,
++    status: 'pending',
++    total: 120000,
++    kind: OrderKind.physicalCard,
++    code: 'VIP001',
++    createdAt: DateTime(2026, 10, 1, 12),
++  ),
++  const Order(
++    id: 64,
++    status: 'cancelled',
++    total: 99000,
++    kind: OrderKind.premium,
++    code: 'PREMIUM',
++  ),
++];
++
++Finder _order(int id) => find.byKey(ValueKey('order-$id'));
++
++Future<L> _pumpOrders(WidgetTester tester, List<Order> orders) async {
++  tester.view.physicalSize = const Size(393 * 3, 1400 * 3);
++  tester.view.devicePixelRatio = 3;
++  addTearDown(tester.view.reset);
++  await tester.pumpWidget(ProviderScope(
++    overrides: [
++      ...await testOverrides(),
++      ordersProvider.overrideWith((ref) async => orders),
++    ],
++    child: wrapScreen(const OrdersScreen()),
++  ));
++  await settle(tester);
++  return L.delegate.load(const Locale('uz'));
++}
++
++/// Ekranni uzun "telefon"da ochadi — ro'yxat dangasa quriladi, pastdagi
++/// bandlar ham chizilsin.
++Future<L> _pumpTall(WidgetTester tester, Widget child,
++    {List<Override> overrides = const []}) async {
++  tester.view.physicalSize = const Size(393 * 3, 4000 * 3);
++  tester.view.devicePixelRatio = 3;
++  addTearDown(tester.view.reset);
++  await tester.pumpWidget(ProviderScope(
++    overrides: [...await testOverrides(), ...overrides],
++    child: wrapScreen(child),
++  ));
++  await settle(tester, frames: 14);
++  return L.delegate.load(const Locale('uz'));
++}
++
++final _ios = TargetPlatformVariant.only(TargetPlatform.iOS);
++
++void main() {
++  group('summa qoidasi (`showOrderAmount`)', () {
++    test('Android: hamma turda summa bor', () {
++      for (final k in [
++        OrderKind.nfcId,
++        OrderKind.premium,
++        OrderKind.premiumFollow,
++        OrderKind.auction,
++        OrderKind.featured,
++        OrderKind.physicalCard,
++        'yangi_tur',
++      ]) {
++        expect(showOrderAmount(k), isTrue, reason: k);
++      }
++      expect(showOrdersEntry, isTrue);
++    });
++
++    group('iPhone', () {
++      setUp(() => debugDefaultTargetPlatformOverride = TargetPlatform.iOS);
++      tearDown(() => debugDefaultTargetPlatformOverride = null);
++
++      test('raqamli va noma’lum tur — summa yo‘q; jismoniy karta — bor', () {
++        for (final k in [
++          OrderKind.nfcId,
++          OrderKind.premium,
++          OrderKind.premiumFollow,
++          OrderKind.auction,
++          OrderKind.featured,
++          'yangi_tur',
++        ]) {
++          expect(showOrderAmount(k), isFalse, reason: k);
++        }
++        expect(showOrderAmount(OrderKind.physicalCard), isTrue);
++        expect(showOrdersEntry, isFalse);
++      });
++    });
++  });
++
++  group('holat tarjimasi', () {
++    final l = LUz();
++    final t = NfcTokens.ivory;
++
++    test('server lug‘ati: pending / paid / cancelled / failed_code_taken',
++        () {
++      expect(orderStatusView(l, t, 'paid'),
++          (text: l.payStatusPaid, tone: t.success));
++      expect(orderStatusView(l, t, 'pending'),
++          (text: l.payStatusPending, tone: t.warn));
++      expect(orderStatusView(l, t, 'cancelled'),
++          (text: l.payStatusCancelled, tone: t.text3));
++      expect(orderStatusView(l, t, 'failed_code_taken'),
++          (text: l.payStatusFailed, tone: t.error));
++      expect(orderStatusView(l, t, 'new').text, l.orderStatusNew);
++      expect(orderStatusView(l, t, 'expired').text, l.orderStatusExpired);
++    });
++
++    test('noma’lum holat — o‘zicha', () {
++      expect(orderStatusView(l, t, 'refund_review').text, 'refund_review');
++    });
++
++    test('yig‘iladiganlar: cancelled, expired; pul to‘langan xato — yo‘q', () {
++      expect(isInactiveOrder('cancelled'), isTrue);
++      expect(isInactiveOrder('expired'), isTrue);
++      expect(isInactiveOrder('failed_code_taken'), isFalse);
++      expect(isInactiveOrder('pending'), isFalse);
++      expect(isInactiveOrder('paid'), isFalse);
++    });
++  });
++
++  group('Buyurtmalar ekrani', () {
++    testWidgets('Android: summa va tarjima; bekor qilinganlar tugma ortida',
++        (tester) async {
++      final l = await _pumpOrders(tester, _orders);
++      expect(tester.takeException(), isNull);
++
++      // Faollar — summasi va tarjima qilingan holati bilan.
++      expect(_order(62), findsOneWidget);
++      expect(_order(63), findsOneWidget);
++      expect(find.text(formatMoney(500000, 'UZS')), findsOneWidget);
++      expect(find.text(formatMoney(120000, 'UZS')), findsOneWidget);
++      expect(find.text(l.payStatusPaid), findsOneWidget);
++      expect(find.text(l.payStatusPending), findsOneWidget);
++      for (final raw in ['paid', 'pending', 'cancelled']) {
++        expect(find.text(raw), findsNothing, reason: 'xom holat: $raw');
++      }
++
++      // Izoh — NIMA olingani va sana, holat emas.
++      expect(find.text('NFC ID VIP001 · 28.09.2026'), findsOneWidget);
++      expect(find.text('${l.payKindPhysical} · VIP001 · 01.10.2026'),
++          findsOneWidget);
++
++      // Bekor qilinganlar — yashirin, pastda tugma.
++      expect(_order(61), findsNothing);
++      expect(_order(64), findsNothing);
++      expect(find.text(formatMoney(149000, 'UZS')), findsNothing);
++      expect(find.text(l.ordersInactiveShow(2)), findsOneWidget);
++
++      await tester.tap(find.byKey(const ValueKey('orders-inactive-toggle')));
++      await settle(tester);
++      expect(_order(61), findsOneWidget);
++      expect(_order(64), findsOneWidget);
++      expect(find.text(l.payStatusCancelled), findsNWidgets(2));
++      expect(find.text(formatMoney(149000, 'UZS')), findsOneWidget);
++      expect(find.text(l.payKindPremium), findsOneWidget);
++      // Faollar tepada qoladi.
++      expect(tester.getTopLeft(_order(63)).dy,
++          lessThan(tester.getTopLeft(_order(61)).dy));
++
++      await tester.tap(find.text(l.ordersInactiveHide));
++      await settle(tester);
++      expect(_order(61), findsNothing);
++      expect(find.text(l.ordersInactiveShow(2)), findsOneWidget);
++    });
++
++    testWidgets('Android: hammasi bekor qilingan — "Faol buyurtmalar yo‘q"',
++        (tester) async {
++      final l = await _pumpOrders(tester, [_orders[0], _orders[3]]);
++      expect(find.byKey(const ValueKey('orders-no-active')), findsOneWidget);
++      expect(find.text(l.ordersNoActive), findsOneWidget);
++      expect(_order(61), findsNothing);
++
++      await tester.tap(find.text(l.ordersInactiveShow(2)));
++      await settle(tester);
++      expect(_order(61), findsOneWidget);
++      expect(_order(64), findsOneWidget);
++    });
++
++    testWidgets('Android: pul to‘langan xato yig‘ilmaydi, noma’lum holat o‘zicha',
++        (tester) async {
++      final l = await _pumpOrders(tester, const [
++        Order(
++            id: 70,
++            status: 'failed_code_taken',
++            total: 300000,
++            kind: OrderKind.nfcId,
++            code: 'GOLD7'),
++        Order(id: 71, status: 'refund_review', kind: OrderKind.physicalCard),
++      ]);
++      expect(_order(70), findsOneWidget);
++      expect(find.text(l.payStatusFailed), findsOneWidget);
++      expect(find.text('refund_review'), findsOneWidget);
++      expect(find.byKey(const ValueKey('orders-inactive-toggle')), findsNothing);
++    });
++
++    testWidgets('iPhone: faqat jismoniy karta, summasi bilan; raqamli yo‘q',
++        (tester) async {
++      final l = await _pumpOrders(tester, _orders);
++      expect(tester.takeException(), isNull);
++      expect(_order(63), findsOneWidget);
++      expect(find.text(formatMoney(120000, 'UZS')), findsOneWidget);
++      expect(find.text(l.payStatusPending), findsOneWidget);
++
++      // Raqamli xarid — na o'zi, na narxi.
++      expect(_order(62), findsNothing);
++      expect(find.text(formatMoney(500000, 'UZS')), findsNothing);
++      expect(find.textContaining('NFC ID VIP001'), findsNothing);
++      // Bekor qilinganlar ham raqamli edi — tugma ham yo'q.
++      expect(find.byKey(const ValueKey('orders-inactive-toggle')), findsNothing);
++      expect(find.text(formatMoney(149000, 'UZS')), findsNothing);
++    }, variant: _ios);
++  });
++
++  group('Sozlamalar', () {
++    testWidgets('Android: Buyurtmalar, Referal va sayt kartasi bor',
++        (tester) async {
++      final l = await _pumpTall(tester, const SettingsScreen());
++      expect(find.text(l.settingsShopSection.toUpperCase()), findsOneWidget);
++      expect(find.text(l.orders), findsOneWidget);
++      expect(find.text(l.settingsReferral), findsOneWidget);
++      expect(find.text(l.siteCardBody), findsOneWidget);
++    });
++
++    testWidgets('iPhone: Buyurtmalar, Referal, bo‘sh sarlavha, sayt kartasi yo‘q',
++        (tester) async {
++      final l = await _pumpTall(tester, const SettingsScreen());
++      expect(tester.takeException(), isNull);
++      expect(find.text(l.orders), findsNothing);
++      expect(find.text(l.settingsReferral), findsNothing);
++      expect(find.text(l.settingsShopSection.toUpperCase()), findsNothing,
++          reason: 'bandsiz sarlavha qolmasin');
++      expect(find.text(l.siteCardTitle), findsNothing);
++      expect(find.text(l.siteCardBody), findsNothing);
++      // Qolgan menyu joyida.
++      expect(find.text(l.settingsSupport.toUpperCase()), findsOneWidget);
++      expect(find.text(l.settingsAbout), findsOneWidget);
++      expect(find.text(l.logout), findsOneWidget);
++    }, variant: _ios);
++
++    testWidgets('Bildirishnomalar (iPhone): "Buyurtmalar" tanlovi yo‘q',
++        (tester) async {
++      final l = await _pumpTall(tester, const NotificationsSettingsScreen());
++      expect(find.text(l.orders), findsNothing);
++      expect(find.text(l.settingsNews), findsOneWidget);
++    }, variant: _ios);
++
++    testWidgets('Bildirishnomalar (Android): "Buyurtmalar" tanlovi bor',
++        (tester) async {
++      final l = await _pumpTall(tester, const NotificationsSettingsScreen());
++      expect(find.text(l.orders), findsOneWidget);
++    });
++
++    testWidgets('NFC ID’larim bo‘sh — iPhone’da bo‘sh Do‘konga tugma yo‘q',
++        (tester) async {
++      final l = await _pumpTall(tester, const NfcIdsScreen(),
++          overrides: [myIdsProvider.overrideWithValue(const [])]);
++      expect(find.text(l.homeNoId), findsOneWidget);
++      expect(find.text(l.homeShop), findsNothing);
++      expect(find.text(l.homeNoIdHint), findsNothing);
++    }, variant: _ios);
++
++    testWidgets('NFC ID’larim bo‘sh — Android’da Do‘kon tugmasi bor',
++        (tester) async {
++      final l = await _pumpTall(tester, const NfcIdsScreen(),
++          overrides: [myIdsProvider.overrideWithValue(const [])]);
++      expect(find.text(l.homeShop), findsOneWidget);
++    });
++
++    for (final ios in [false, true]) {
++      testWidgets(
++          'Biznes ochish: Premium ID varianti ${ios ? 'iPhone’da yo‘q' : 'Android’da bor'}',
++          (tester) async {
++        await _pumpTall(tester, const Scaffold(body: BusinessIntroBody()),
++            overrides: [
++              sampleBusinessesProvider.overrideWith((ref) async => const []),
++              myBusinessesProvider.overrideWith((ref) async => const []),
++            ]);
++        expect(find.byKey(const ValueKey('biz-option-free')), findsOneWidget);
++        expect(find.byKey(const ValueKey('biz-option-premium')),
++            ios ? findsNothing : findsOneWidget);
++      }, variant: ios ? _ios : TargetPlatformVariant.only(TargetPlatform.android));
++    }
++  });
++
++  group('Do‘kon va NFC ID qidiruvi: "Buyurtmalar" tugmasi', () {
++    for (final ios in [false, true]) {
++      testWidgets('Do‘kon — ${ios ? 'iPhone’da yo‘q' : 'Android’da bor'}',
++          (tester) async {
++        await _pumpTall(tester, const ShopScreen(), overrides: [
++          shopProductsProvider.overrideWith((ref) async => const []),
++        ]);
++        expect(find.byKey(const ValueKey('shop-orders')),
++            ios ? findsNothing : findsOneWidget);
++      }, variant: ios ? _ios : TargetPlatformVariant.only(TargetPlatform.android));
++
++      testWidgets(
++          'NFC ID qidiruvi — ${ios ? 'iPhone’da tugma yo‘q, nomi "ID qidirish"' : 'Android’da bor'}',
++          (tester) async {
++        final l = await _pumpTall(tester, const NfcIdMarketScreen(),
++            overrides: [
++              idPricingProvider.overrideWith((ref) async => const [
++                    IdTier(tier: 'gold', price: 500000),
++                  ]),
++            ]);
++        expect(find.byKey(const ValueKey('id-market-orders')),
++            ios ? findsNothing : findsOneWidget);
++        expect(find.text(ios ? l.idSearchShort : l.idMarketTitle),
++            findsOneWidget);
++        expect(find.text(ios ? l.idMarketTitle : l.idSearchShort),
++            findsNothing);
++      }, variant: ios ? _ios : TargetPlatformVariant.only(TargetPlatform.android));
++    }
++
++    test('ID holati: iPhone’da savdo so‘zi yo‘q', () {
++      final l = LUz();
++      final t = NfcTokens.ivory;
++      const free = IdQuote(code: 'VIP777', purchasable: true);
++      const taken = IdQuote(code: 'VIP001', taken: true);
++      expect(quoteState(l, t, free).text, l.idStateAvailable);
++      expect(quoteState(l, t, taken).text, l.idStateTaken);
++      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
++      try {
++        expect(quoteState(l, t, free).text, l.idStateAvailableIos);
++        expect(quoteState(l, t, taken).text, l.idStateTakenIos);
++      } finally {
++        debugDefaultTargetPlatformOverride = null;
++      }
++    });
++  });
++
++  /// Widget testi har yo'lni qamrab olmaydi — "Buyurtmalar"ga olib
++  /// boradigan HAR BIR tugma `showOrdersEntry` bilan o'ralgani manbadan
++  /// tekshiriladi. Yangi tugma kalitsiz qo'shilsa — iPhone'da ekran
++  /// qaytib chiqadi.
++  test('manba: Routes.orders ga har bir o‘tish `showOrdersEntry` ortida', () {
++    final files = Directory('lib')
++        .listSync(recursive: true)
++        .whereType<File>()
++        .where((f) => f.path.endsWith('.dart'));
++    final pushes = RegExp(r'(push|pushReplacement|go)\(Routes\.orders\)');
++    var seen = 0;
++    for (final f in files) {
++      final src = f.readAsStringSync();
++      for (final m in pushes.allMatches(src)) {
++        seen++;
++        // Tugma bloki — o'tishdan oldingi 400 belgi ichida kalit bor.
++        final before = src.substring((m.start - 400).clamp(0, m.start), m.start);
++        expect(before, contains('showOrdersEntry'),
++            reason: '${f.path}: Routes.orders kalitsiz');
++      }
++    }
++    expect(seen, greaterThanOrEqualTo(4));
++  });
++}
+-- 
+2.43.0
+

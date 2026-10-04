@@ -1,0 +1,176 @@
+From c54251554980e4e78fc60a76ba1bbf50a143fbb3 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Sun, 4 Oct 2026 15:35:09 +0000
+Subject: [PATCH 23/26] iPhone: ID yo'q kartasi do'kon o'rniga ID qidiruviga
+ olib boradi
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ mobile_nova/lib/features/home/home_screen.dart   | 16 ++++++++++++----
+ mobile_nova/lib/l10n/arb/app_en.arb              |  1 +
+ mobile_nova/lib/l10n/arb/app_ru.arb              |  1 +
+ mobile_nova/lib/l10n/arb/app_uz.arb              |  1 +
+ mobile_nova/lib/l10n/gen/app_localizations.dart  |  6 ++++++
+ .../lib/l10n/gen/app_localizations_en.dart       |  3 +++
+ .../lib/l10n/gen/app_localizations_ru.dart       |  4 ++++
+ .../lib/l10n/gen/app_localizations_uz.dart       |  4 ++++
+ mobile_nova/test/app_store_policy_test.dart      |  1 +
+ 9 files changed, 33 insertions(+), 4 deletions(-)
+
+diff --git a/mobile_nova/lib/features/home/home_screen.dart b/mobile_nova/lib/features/home/home_screen.dart
+index 52bf72a..fc6f221 100644
+--- a/mobile_nova/lib/features/home/home_screen.dart
++++ b/mobile_nova/lib/features/home/home_screen.dart
+@@ -21,6 +21,7 @@ import '../../design/widgets/states.dart';
+ import '../../design/widgets/surfaces.dart';
+ import '../../l10n/gen/app_localizations.dart';
+ import '../../routing/routes.dart';
++import '../shop/store_policy.dart' show idMarketTitle, isAppStoreBuild;
+ import '../auth/session.dart';
+ import '../profile/music_player.dart';
+ import '../social/feed_card.dart';
+@@ -264,7 +265,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
+                           onTap: () => context.push(Routes.business),
+                         ))
+                   : id == null
+-                      ? _NoIdCard(onShop: () => context.push(Routes.shop))
++                      // iPhone'da do'kon yo'q (Apple 3.1.1, `store_policy.dart`):
++                      // tugma bepul ID qidiruviga olib boradi.
++                      ? _NoIdCard(
++                          onShop: () => context.push(
++                              isAppStoreBuild ? Routes.nfcMarket : Routes.shop))
+                       // NFC ID — EKRANNING QAHRAMONI.
+                       //
+                       // Kod katta serifda, pastida ochiq manzil (mono).
+@@ -763,12 +768,15 @@ class _NoIdCard extends StatelessWidget {
+           const SizedBox(height: Gap.md),
+           Text(l.homeNoId, style: Theme.of(context).textTheme.titleMedium),
+           const SizedBox(height: 4),
+-          Text(l.homeNoIdHint, style: Theme.of(context).textTheme.bodyMedium),
++          Text(isAppStoreBuild ? l.homeNoIdHintIos : l.homeNoIdHint,
++              style: Theme.of(context).textTheme.bodyMedium),
+           const SizedBox(height: Gap.xl),
+           NovaButton(
+-            label: l.homeShop,
++            label: isAppStoreBuild ? idMarketTitle(l) : l.homeShop,
+             onPressed: onShop,
+-            icon: Icons.storefront_rounded,
++            icon: isAppStoreBuild
++                ? Icons.search_rounded
++                : Icons.storefront_rounded,
+           ),
+         ],
+       ),
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index 04924c1..2101d64 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -170,6 +170,7 @@
+   "homeActiveId": "Active NFC ID",
+   "homeNoId": "No NFC ID yet",
+   "homeNoIdHint": "Order a card from the shop or create an ID",
++  "homeNoIdHintIos": "Find a free ID in search and make it yours",
+   "homeBizAddress": "BUSINESS ADDRESS",
+   "homeBizPitchTitle": "Add your business here",
+   "homeBizPitchHint": "Catalogue, prices and orders — one tap for your customer",
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index 863ba7f..485b943 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -170,6 +170,7 @@
+   "homeActiveId": "Активный NFC ID",
+   "homeNoId": "NFC ID ещё нет",
+   "homeNoIdHint": "Закажите карту в магазине или создайте ID",
++  "homeNoIdHintIos": "Найдите свободный ID в поиске и сделайте его своим",
+   "homeBizAddress": "АДРЕС БИЗНЕСА",
+   "homeBizPitchTitle": "Добавьте сюда свой бизнес",
+   "homeBizPitchHint": "Каталог, цены и заказы — клиент увидит одним касанием",
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index 8a09c65..686ec61 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -170,6 +170,7 @@
+   "homeActiveId": "Faol NFC ID",
+   "homeNoId": "NFC ID hali yo‘q",
+   "homeNoIdHint": "Do‘kondan karta oling yoki ID yarating",
++  "homeNoIdHintIos": "Qidiruvda bo‘sh ID tanlang va o‘zingizniki qiling",
+   "homeBizAddress": "BIZNES MANZILI",
+   "homeBizPitchTitle": "Biznesingizni shu yerga qo‘shing",
+   "homeBizPitchHint": "Katalog, narxlar va buyurtma — mijoz bitta tegishda ko‘radi",
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index 9408dc3..182e8ae 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -975,6 +975,12 @@ abstract class L {
+   /// **'Do‘kondan karta oling yoki ID yarating'**
+   String get homeNoIdHint;
+ 
++  /// No description provided for @homeNoIdHintIos.
++  ///
++  /// In uz, this message translates to:
++  /// **'Qidiruvda bo‘sh ID tanlang va o‘zingizniki qiling'**
++  String get homeNoIdHintIos;
++
+   /// No description provided for @homeBizAddress.
+   ///
+   /// In uz, this message translates to:
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index 7e7e081..81db28a 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -462,6 +462,9 @@ class LEn extends L {
+   @override
+   String get homeNoIdHint => 'Order a card from the shop or create an ID';
+ 
++  @override
++  String get homeNoIdHintIos => 'Find a free ID in search and make it yours';
++
+   @override
+   String get homeBizAddress => 'BUSINESS ADDRESS';
+ 
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index a912fa0..554e4ee 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -459,6 +459,10 @@ class LRu extends L {
+   @override
+   String get homeNoIdHint => 'Закажите карту в магазине или создайте ID';
+ 
++  @override
++  String get homeNoIdHintIos =>
++      'Найдите свободный ID в поиске и сделайте его своим';
++
+   @override
+   String get homeBizAddress => 'АДРЕС БИЗНЕСА';
+ 
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index f5edd13..7acfdd9 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -460,6 +460,10 @@ class LUz extends L {
+   @override
+   String get homeNoIdHint => 'Do‘kondan karta oling yoki ID yarating';
+ 
++  @override
++  String get homeNoIdHintIos =>
++      'Qidiruvda bo‘sh ID tanlang va o‘zingizniki qiling';
++
+   @override
+   String get homeBizAddress => 'BIZNES MANZILI';
+ 
+diff --git a/mobile_nova/test/app_store_policy_test.dart b/mobile_nova/test/app_store_policy_test.dart
+index 96c33b4..4e8475f 100644
+--- a/mobile_nova/test/app_store_policy_test.dart
++++ b/mobile_nova/test/app_store_policy_test.dart
+@@ -195,6 +195,7 @@ void main() {
+         'tierHintExclusiveIos',
+         'idStateAvailableIos',
+         'idStateTakenIos',
++        'homeNoIdHintIos',
+       ];
+       const banned = [
+         'sayt', 'сайт', 'website', 'site', //
+-- 
+2.43.0
+

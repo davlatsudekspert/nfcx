@@ -1,0 +1,3519 @@
+From 45df7d9b1b23aa7da56e30d269ab88e608b77716 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Sun, 4 Oct 2026 16:24:11 +0000
+Subject: [PATCH 24/26] App Store: iPhone uchun tuzatishlar (ruxsat matnlari,
+ yangiliklar, bildirishnomalar, AI oshkorligi, demo do'kon)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .github/workflows/nova-ios.yml                |   6 +-
+ mobile_nova/assets/demo/m_card_holder.jpg     | Bin 0 -> 27674 bytes
+ mobile_nova/assets/demo/m_keychain.jpg        | Bin 0 -> 23812 bytes
+ mobile_nova/ios/Runner/Info.plist             |  29 +-
+ .../lib/core/storage/secure_store.dart        |   7 +-
+ mobile_nova/lib/core/utils/validators.dart    |  37 +
+ mobile_nova/lib/design/widgets/fields.dart    |  30 +-
+ .../lib/features/auth/login_screen.dart       |  16 +-
+ .../features/auth/profile_setup_screen.dart   |   5 +
+ .../lib/features/business/business_forms.dart |   9 +
+ mobile_nova/lib/features/demo/demo_data.dart  |  49 +-
+ .../lib/features/home/home_screen.dart        |  19 +-
+ .../features/profile/profile_edit_screen.dart |  43 +-
+ .../features/settings/settings_screen.dart    |  14 +-
+ .../settings/settings_subscreens.dart         |  50 +-
+ .../lib/features/shop/store_policy.dart       |  28 +
+ .../lib/features/social/content_rules.dart    | 151 +++-
+ mobile_nova/lib/l10n/arb/app_en.arb           |  16 +-
+ mobile_nova/lib/l10n/arb/app_ru.arb           |  16 +-
+ mobile_nova/lib/l10n/arb/app_uz.arb           |  16 +-
+ .../lib/l10n/gen/app_localizations.dart       |  66 +-
+ .../lib/l10n/gen/app_localizations_en.dart    |  41 +-
+ .../lib/l10n/gen/app_localizations_ru.dart    |  40 +-
+ .../lib/l10n/gen/app_localizations_uz.dart    |  41 +-
+ mobile_nova/lib/routing/router.dart           |  15 +-
+ .../test/app_store_ios_fixes_test.dart        | 812 ++++++++++++++++++
+ mobile_nova/test/app_store_policy_test.dart   |   1 +
+ mobile_nova/test/helpers.dart                 |   7 +
+ mobile_nova/test/hit_area_discover_test.dart  |   3 +
+ mobile_nova/test/listing_form_test.dart       |   3 +
+ mobile_nova/test/orders_app_store_test.dart   |   9 +-
+ mobile_nova/test/resume_focus_test.dart       |  14 +-
+ 32 files changed, 1442 insertions(+), 151 deletions(-)
+ create mode 100644 mobile_nova/assets/demo/m_card_holder.jpg
+ create mode 100644 mobile_nova/assets/demo/m_keychain.jpg
+ create mode 100644 mobile_nova/test/app_store_ios_fixes_test.dart
+
+diff --git a/.github/workflows/nova-ios.yml b/.github/workflows/nova-ios.yml
+index 448298e..6132310 100644
+--- a/.github/workflows/nova-ios.yml
++++ b/.github/workflows/nova-ios.yml
+@@ -65,8 +65,12 @@ jobs:
+         run: |
+           set -e
+           P=ios/Runner/Info.plist
++          # NSAppleMusicUsageDescription — file_picker musiqa kutubxonasi
++          # kodini (PICKER_AUDIO) doim yig'adi; kalitsiz ITMS-90683.
+           for k in NFCReaderUsageDescription NSCameraUsageDescription \
+-                   NSPhotoLibraryUsageDescription NSMicrophoneUsageDescription; do
++                   NSPhotoLibraryUsageDescription NSMicrophoneUsageDescription \
++                   NSFaceIDUsageDescription NSPhotoLibraryAddUsageDescription \
++                   NSAppleMusicUsageDescription; do
+             /usr/libexec/PlistBuddy -c "Print :$k" "$P" >/dev/null \
+               || { echo "::error::$k Info.plist da yo'q"; exit 1; }
+           done
+diff --git a/mobile_nova/assets/demo/m_card_holder.jpg b/mobile_nova/assets/demo/m_card_holder.jpg
+new file mode 100644
+index 0000000000000000000000000000000000000000..ab2ef95ca82f3c9428ce00465d234006c6aef8e8
+GIT binary patch
+literal 27674
+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
+
+literal 0
+HcmV?d00001
+
+diff --git a/mobile_nova/assets/demo/m_keychain.jpg b/mobile_nova/assets/demo/m_keychain.jpg
+new file mode 100644
+index 0000000000000000000000000000000000000000..7a246d60df67af6378dc1dc3ee260e5925513592
+GIT binary patch
+literal 23812
+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
+
+literal 0
+HcmV?d00001
+
+diff --git a/mobile_nova/ios/Runner/Info.plist b/mobile_nova/ios/Runner/Info.plist
+index e8413cd..d5cf4be 100644
+--- a/mobile_nova/ios/Runner/Info.plist
++++ b/mobile_nova/ios/Runner/Info.plist
+@@ -37,23 +37,40 @@
+ 	          provisioning profil — hisob ochilgach.
+ 	     Haqiqiy iPhone'da NFC hali SINALMAGAN —
+ 	     `IOS_RELEASE_CHECKLIST.md` ga qarang. -->
++	<!-- RUXSAT MATNLARI — IKKI TILDA, BITTA QATORDA (App Store 5.1.1(ii)).
++	     Ilova interfeysi uz/ru/en, tekshiruvchi esa odatda inglizcha
++	     o'qiydi: faqat o'zbekcha matn "maqsadi tushunarsiz" deb rad
++	     etilishi mumkin edi. Shuning uchun har matn "O'zbekcha … /
++	     English …" shaklida va NIMA UCHUN kerakligini aniq aytadi. -->
+ 	<key>NFCReaderUsageDescription</key>
+-	<string>NFC kartangizga profil manzilingizni yozish va kartalarni o‘qish uchun kerak.</string>
++	<string>NFC karta va stikerlarni o‘qish hamda profilingiz havolasini o‘z kartangizga yozish uchun kerak. / NFCSTORE uses NFC to read NFC cards and stickers and to write your profile link to your own card.</string>
+ 	<!-- Rasm / video tanlash va suratga olish (image_picker, file_picker).
+ 	     Bu kalitlar bo'lmasa iOS ilovani galereya yoki kamera
+ 	     ochilgan ZAHOTI yopib yuboradi va App Store buni rad etadi. -->
+ 	<!-- Face ID: bu matnsiz iOS Face ID oynasini ochmaydi (local_auth
+ 	     xato qaytaradi) — ilova qulfi faqat PIN bilan qolardi. -->
+ 	<key>NSFaceIDUsageDescription</key>
+-	<string>Ilova qulfini PIN o‘rniga Face ID bilan ochish uchun kerak.</string>
++	<string>Ilova qulfini PIN o‘rniga Face ID bilan ochish uchun kerak. / NFCSTORE uses Face ID to open the app lock instead of typing your PIN.</string>
+ 	<key>NSCameraUsageDescription</key>
+-	<string>Profil rasmi, post va istoriya uchun suratga olish uchun kerak.</string>
++	<string>Profil, post, istoriya va Reels uchun surat yoki video olish uchun kerak. / NFCSTORE uses the camera so you can take a photo or record a video for your profile, posts, stories and Reels.</string>
+ 	<key>NSPhotoLibraryUsageDescription</key>
+-	<string>Galereyadan rasm va video tanlab, profil, post va istoriyaga qo‘yish uchun kerak.</string>
++	<string>Galereyadan rasm yoki video tanlab, profil, post, istoriya, Reels va biznes katalogiga qo‘yish uchun kerak. / NFCSTORE uses your photo library so you can choose photos or videos for your profile, posts, stories, Reels and business catalog.</string>
+ 	<key>NSMicrophoneUsageDescription</key>
+-	<string>Video yozishda ovozni ham yozib olish uchun kerak.</string>
++	<string>Post, istoriya yoki Reels uchun video yozganda ovozni ham yozib olish uchun kerak. / NFCSTORE uses the microphone to record sound when you record a video for a post, story or Reel.</string>
+ 	<key>NSPhotoLibraryAddUsageDescription</key>
+-	<string>QR kod va rasmlarni galereyaga saqlash uchun kerak.</string>
++	<string>Rasm yoki videoni o‘zingiz Rasmlar (Photos) ilovasiga saqlashni tanlaganingizda kerak. / NFCSTORE needs this only when you choose to save an image or video to your Photos.</string>
++	<!-- MUSIQA KUTUBXONASI (iOS "Music" / MPMediaPickerController).
++	
++	     Profil tahririda "Musiqa qo'shish" iPhone'da ENDI Fayllar
++	     (UIDocumentPicker) oynasini ochadi — unga ruxsat kerak emas
++	     (`profile_edit_screen.dart`, `FileType.custom`). Lekin
++	     file_picker plagini musiqa kutubxonasi kodini (PICKER_AUDIO)
++	     baribir ilovaga qo'shib yig'adi: kalit bo'lmasa App Store
++	     Connect yuklashda ITMS-90683 ogohlantirishini beradi, kod
++	     qachondir `FileType.audio` ga qaytsa esa ilova o'sha zahoti
++	     YIQILADI. Shuning uchun kalit ikkala holatda ham turadi. -->
++	<key>NSAppleMusicUsageDescription</key>
++	<string>Profilingizga qo‘shish uchun qurilmangizdagi qo‘shiqni tanlaganingizda kerak. / NFCSTORE uses your media library only when you choose a song on your device to add to your profile.</string>
+ 	<!-- Ilova shifrlashni faqat standart HTTPS uchun ishlatadi:
+ 	     App Store Connect har yuklashda eksport so'rovini bermasin. -->
+ 	<key>ITSAppUsesNonExemptEncryption</key>
+diff --git a/mobile_nova/lib/core/storage/secure_store.dart b/mobile_nova/lib/core/storage/secure_store.dart
+index 876a76b..0ab7482 100644
+--- a/mobile_nova/lib/core/storage/secure_store.dart
++++ b/mobile_nova/lib/core/storage/secure_store.dart
+@@ -110,7 +110,12 @@ class Prefs {
+   static const _kSelPersonal = 'nova.selectedPersonal';
+   static const _kSelBusiness = 'nova.selectedBusiness';
+   static const _kSearches = 'nova.recentSearches';
+-  static const _kRules = 'nova.contentRulesAccepted';
++  /// `.v2` — rozilik endi Google Gemini (sun'iy intellekt) bilan
++  /// avtomatik tekshiruvni ham o'z ichiga oladi (App Store 5.1.2(i):
++  /// uchinchi tomon AI'ga ma'lumot berishga ANIQ rozilik). Eski kalit
++  /// (`nova.contentRulesAccepted`) bunga rozilik emas edi, shuning
++  /// uchun avval rozi bo'lganlar ham darvozani BIR MARTA qayta ko'radi.
++  static const _kRules = 'nova.contentRulesAccepted.v2';
+   static const _kLock = 'nova.appLock';
+   static const _kLockBio = 'nova.appLockBiometric';
+   static const _kNotif = 'nova.notif.';
+diff --git a/mobile_nova/lib/core/utils/validators.dart b/mobile_nova/lib/core/utils/validators.dart
+index 5c2b672..a2164b0 100644
+--- a/mobile_nova/lib/core/utils/validators.dart
++++ b/mobile_nova/lib/core/utils/validators.dart
+@@ -132,6 +132,7 @@ abstract final class Validate {
+     return prev[b.length];
+   }
+ 
++  /// YANGI parol (ro'yxatdan o'tish, tiklash) — kamida 8 belgi.
+   static String? password(String? v) {
+     final s = v ?? '';
+     if (s.isEmpty) return 'errRequired';
+@@ -139,6 +140,42 @@ abstract final class Validate {
+     return null;
+   }
+ 
++  /// KIRISHDAGI parol — server qabul qiladigan chegara: kamida 6.
++  ///
++  /// Ilgari kirishda ham [password] (8 belgi) ishlatilardi. Server
++  /// esa `/api/auth/login` da 6 belgini qabul qiladi
++  /// (`hosting/worker.js`, `password.length < 6`) va 8 belgi qoidasi
++  /// kiritilishidan oldin yaratilgan hisoblarda 6–7 belgili parol bor.
++  /// Bunday odam ilovaga UMUMAN kira olmasdi — so'rov serverga
++  /// yetmasdi. Yangi parol qoidasi ([password]) o'zgarmaydi.
++  static const loginPasswordMin = 6;
++
++  static String? loginPassword(String? v) {
++    final s = v ?? '';
++    if (s.isEmpty) return 'errRequired';
++    if (s.length < loginPasswordMin) return 'errPasswordShortLogin';
++    return null;
++  }
++
++  /// KIRISH MAYDONI — email YOKI telefon (server bilan bir xil).
++  ///
++  /// `/api/auth/login` bitta maydonni oladi: email ko'rinishida
++  /// bo'lsa email bo'yicha, aks holda `normalizePhoneD1` bilan
++  /// telefon bo'yicha qidiradi. Email'siz (faqat telefon bilan
++  /// ochilgan) hisoblar shu yo'l bilan kiradi. Bu yerda faqat SHAKL
++  /// tekshiriladi: `@` bo'lsa — email, bo'lmasa — 9–15 raqamli
++  /// telefon (`+`, bo'shliq, chiziqcha, qavs ruxsat). Raqamni
++  /// keltirishni server o'zi qiladi — ilova xom matnni yuboradi.
++  static String? login(String? v) {
++    final s = (v ?? '').trim();
++    if (s.isEmpty) return 'errRequired';
++    if (s.contains('@')) return _email.hasMatch(s) ? null : 'errBadEmail';
++    final compact = s.replaceAll(RegExp(r'[\s\-().]'), '');
++    final digits = compact.startsWith('+') ? compact.substring(1) : compact;
++    if (!RegExp(r'^\d{9,15}$').hasMatch(digits)) return 'errBadLogin';
++    return null;
++  }
++
+   static String? required(String? v) =>
+       (v ?? '').trim().isEmpty ? 'errRequired' : null;
+ 
+diff --git a/mobile_nova/lib/design/widgets/fields.dart b/mobile_nova/lib/design/widgets/fields.dart
+index 7cb5f84..c4aa2cd 100644
+--- a/mobile_nova/lib/design/widgets/fields.dart
++++ b/mobile_nova/lib/design/widgets/fields.dart
+@@ -1,5 +1,6 @@
+ import 'dart:async';
+ 
++import 'package:flutter/foundation.dart';
+ import 'package:flutter/material.dart';
+ 
+ import '../../core/utils/phone_countries.dart';
+@@ -120,6 +121,12 @@ class NovaField extends StatelessWidget {
+   }
+ }
+ 
++/// iPhone'mi — `store_policy.dart` dagi `isAppStoreBuild` bilan bir xil.
++/// Nusxa ataylab: dizayn qatlami `features/` ni import qilmaydi
++/// (`states.dart` dagi `_appStore` kabi). `Platform.isIOS` emas —
++/// testda `TargetPlatformVariant` bilan iPhone sinaladi.
++bool get _ios => defaultTargetPlatform == TargetPlatform.iOS;
++
+ /// 6 xonali kod uchun maydon.
+ ///
+ /// TEXNIK QAROR: oltita alohida `TextField` EMAS. Ular bilan
+@@ -243,6 +250,17 @@ class _CodeFieldState extends State<CodeField>
+   /// qilinmaydi: kod allaqachon to'liq bo'lsa, bufer umuman
+   /// o'qilmaydi.
+   Future<void> _checkClipboard() async {
++    // iPHONE'DA BUFER O'ZIDAN O'QILMAYDI.
++    //
++    // iOS 16+ ilova buferni o'zi o'qisa (`UIPasteboard.string`)
++    // "NFCSTORE <ilova>dan joylamoqchi" degan tizim so'rovini
++    // chiqaradi — kod ekrani ochilganda ham, pochtadan qaytganda
++    // ham. Tekshiruvchi uchun bu "ilova so'ramasdan buferni
++    // o'qiyapti" (App Store 5.1.1) degani. iPhone'da kod o'rniga
++    // tizimning o'z taklifi ishlaydi: `AutofillHints.oneTimeCode`
++    // (klaviatura ustida "Mail'dan" kod chiqadi), kerak bo'lsa
++    // odam kodni qo'lda yozadi. ANDROID O'ZGARMAYDI.
++    if (_ios) return;
+     if (!widget.enabled) return;
+     if (_c.text.length >= widget.length) return;
+     try {
+@@ -367,7 +385,17 @@ class _CodeFieldState extends State<CodeField>
+                 enabled: widget.enabled,
+                 autofocus: true,
+                 keyboardType: TextInputType.number,
+-                // AUTOFILL ISHORASI ATAYLAB YO'Q — QAYTARMANG.
++                // iPHONE'DA ISHORA BOR, ANDROID'DA YO'Q.
++                //
++                // iOS'da bufer o'zidan o'qilmaydi (`_checkClipboard`),
++                // shuning uchun kod tizim taklifi orqali keladi: iOS
++                // pochta yoki SMS'dagi kodni klaviatura ustida
++                // ko'rsatadi. Quyidagi Android nosozligi iOS'ga
++                // tegishli emas — u yerda autofill seansi kiritish
++                // bog'lanishini uzmaydi.
++                autofillHints:
++                    _ios ? const [AutofillHints.oneTimeCode] : null,
++                // ANDROID'DA AUTOFILL ISHORASI ATAYLAB YO'Q — QAYTARMANG.
+                 //
+                 // `autofillHints: [AutofillHints.oneTimeCode]` shu
+                 // maydonga qo'shilgan edi va aynan o'shandan keyin
+diff --git a/mobile_nova/lib/features/auth/login_screen.dart b/mobile_nova/lib/features/auth/login_screen.dart
+index c3a7835..339189d 100644
+--- a/mobile_nova/lib/features/auth/login_screen.dart
++++ b/mobile_nova/lib/features/auth/login_screen.dart
+@@ -58,16 +58,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
+       'errBadEmail' => l.errBadEmail,
+       'errBadPhone' => l.errBadPhone,
+       'errPasswordShort' => l.errPasswordShort,
++      'errPasswordShortLogin' => l.errPasswordShortLogin,
++      'errBadLogin' => l.errBadLogin,
+       _ => l.errUnknown,
+     };
+   }
+ 
+   Future<void> _submit() async {
+     final l = L.of(context);
++    // Server nimani qabul qilsa, forma ham shuni qabul qiladi:
++    // email YOKI telefon, parol kamida 6 belgi (`Validate.login`,
++    // `Validate.loginPassword`). Ro'yxatdan o'tish qoidalari
++    // (8 belgi, majburiy email) bunga tegmaydi.
+     setState(() {
+-      _emailErr = _tr(Validate.email(_email.text));
++      _emailErr = _tr(Validate.login(_email.text));
+       _phoneErr = null;
+-      _passwordErr = _tr(Validate.password(_password.text));
++      _passwordErr = _tr(Validate.loginPassword(_password.text));
+       _formError = null;
+     });
+     if (_emailErr != null || _phoneErr != null || _passwordErr != null) return;
+@@ -153,11 +159,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
+               crossAxisAlignment: CrossAxisAlignment.stretch,
+               children: [
+                 NovaField(
+-                  label: l.fieldEmail,
++                  key: const ValueKey('login-id'),
++                  label: l.fieldLogin,
+                   controller: _email,
+                   error: _emailErr,
++                  // Email klaviaturasida raqam va `+` ham bor.
+                   keyboardType: TextInputType.emailAddress,
+-                  hint: l.fieldEmailHint,
++                  hint: l.fieldLoginHint,
+                   enabled: !_busy,
+                 ),
+                 const SizedBox(height: Gap.lg),
+diff --git a/mobile_nova/lib/features/auth/profile_setup_screen.dart b/mobile_nova/lib/features/auth/profile_setup_screen.dart
+index bf0c3c5..5cf64e9 100644
+--- a/mobile_nova/lib/features/auth/profile_setup_screen.dart
++++ b/mobile_nova/lib/features/auth/profile_setup_screen.dart
+@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
+ import 'package:image_picker/image_picker.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ 
++import '../social/content_rules.dart';
+ import '../social/media_frame.dart';
+ import '../../design/theme/typography.dart';
+ import '../../design/tokens/nfc_tokens.dart';
+@@ -62,6 +63,10 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
+   /// hech narsa qilmasdi.
+   Future<void> _pickAvatar() async {
+     final l = L.of(context);
++    // Rasm Google Gemini bilan tekshiriladi — avval ochiq yozuv va
++    // ANIQ rozilik (`ensureContentRules`, App Store 5.1.2(i)). Rozilik
++    // bor bo'lsa darhol o'tadi.
++    if (!await ensureContentRules(context, ref) || !mounted) return;
+     final f = await _picker.pickImage(
+       source: ImageSource.gallery,
+       // Avatar hech qachon 800px dan katta ko'rsatilmaydi.
+diff --git a/mobile_nova/lib/features/business/business_forms.dart b/mobile_nova/lib/features/business/business_forms.dart
+index 9ed1868..ade0894 100644
+--- a/mobile_nova/lib/features/business/business_forms.dart
++++ b/mobile_nova/lib/features/business/business_forms.dart
+@@ -21,6 +21,7 @@ import '../../design/widgets/surfaces.dart';
+ import '../../l10n/gen/app_localizations.dart';
+ import '../../routing/routes.dart';
+ import '../discover/listing_labels.dart';
++import '../social/content_rules.dart';
+ import '../home/widgets/identity_card.dart' show formatCount;
+ import '../profile/profile_repository.dart' show profileRepositoryProvider;
+ import '../social/media_frame.dart' show mediaImage;
+@@ -417,6 +418,10 @@ class _BusinessEditScreenState extends ConsumerState<BusinessEditScreen> {
+ 
+   Future<void> _pick({required bool cover}) async {
+     final l = L.of(context);
++    // Rasm Google Gemini bilan tekshiriladi — avval ochiq yozuv va
++    // ANIQ rozilik (`ensureContentRules`, App Store 5.1.2(i)). Rozilik
++    // bor bo'lsa darhol o'tadi.
++    if (!await ensureContentRules(context, ref) || !mounted) return;
+     final path = await ref.read(listingImagePickerProvider)();
+     if (path == null || !mounted) return;
+     setState(() {
+@@ -1062,6 +1067,10 @@ class _BusinessProductFormScreenState
+ 
+   Future<void> _addImage(Business b) async {
+     final l = L.of(context);
++    // Rasm Google Gemini bilan tekshiriladi — avval ochiq yozuv va
++    // ANIQ rozilik (`ensureContentRules`, App Store 5.1.2(i)). Rozilik
++    // bor bo'lsa darhol o'tadi.
++    if (!await ensureContentRules(context, ref) || !mounted) return;
+     final path = await ref.read(listingImagePickerProvider)();
+     if (path == null || !mounted) return;
+     setState(() {
+diff --git a/mobile_nova/lib/features/demo/demo_data.dart b/mobile_nova/lib/features/demo/demo_data.dart
+index 765269f..e7c3eab 100644
+--- a/mobile_nova/lib/features/demo/demo_data.dart
++++ b/mobile_nova/lib/features/demo/demo_data.dart
+@@ -123,19 +123,33 @@ final demoPersonalStories = <StoryItem>[
+   ),
+ ];
+ 
++/// DEMO DO'KON — FAQAT UMUMIY NFC MAHSULOTLARI (App Store, 2026-10-04).
++///
++/// Ilgari katalogda "iPhone 18 Pro" va "Samsung Galaxy S26 Ultra"
++/// bor edi: begona brendlarning tovar belgilari ishlab chiquvchi
++/// yaratgan mazmunda (5.2.1), Samsung nomi ostida esa iPhone'ga
++/// o'xshash surat turardi (2.3.1). Aloqada `telegram: nfcmarket`
++/// turardi — u BEGONA odamning haqiqiy Telegram akkaunti ekan, demo
++/// esa mijozni o'shanga yuborardi; telefon raqami ham haqiqiy
++/// raqamga o'xshardi. Endi:
++///   * telefonlar o'rnida NFC brelok va charm vizitkadon — ikkalasining
++///     surati ham `m_gift_set.jpg` dan kesilgan (boshqa mahsulotlar
++///     kabi, har biri o'z surati bilan);
++///   * telefon va Telegram BO'SH — demo hech kimga qo'ng'iroq
++///     qildirmaydi va hech kimga yozdirmaydi; sayt — o'zimizniki;
++///   * manzil ko'cha emas, tuman darajasida (serverdagi "Namuna"
++///     bizneslari kabi).
+ const demoBusiness = Business(
+   companyId: kDemoBusinessId,
+   displayName: 'NFC Market',
+   category: 'shop',
+-  subcategory: 'Elektronika',
++  subcategory: 'NFC aksessuarlar',
+   city: 'Toshkent',
+-  address: 'Amir Temur ko\'chasi, 12',
+-  description: 'Texnologiya hayotni yaqinroq qiladi. Smartfonlar, '
+-      'NFC kartalar, stikerlar va stendlar — katalog, aloqa va '
++  address: 'Yunusobod tumani',
++  description: 'Bitta tegizish — butun profil. NFC kartalar, '
++      'stikerlar, breloklar va stendlar — katalog, aloqa va '
+       'buyurtmalar bitta NFC profil ichida. Mijoz kartani '
+       'tegizadi va do\'koningiz ochiladi.',
+-  phone: '+998 90 000 00 00',
+-  telegram: 'nfcmarket',
+   website: 'nfcstore.uz',
+   logoUrl: '$_a/m_card_metal.jpg',
+   coverUrl: kDemoStorefront,
+@@ -153,18 +167,20 @@ const demoBusiness = Business(
+ const demoCatalog = <CatalogItem>[
+   CatalogItem(
+     id: -301,
+-    name: 'iPhone 18 Pro',
+-    description: 'Titan korpus, 256 GB. NFC bilan to\'liq mos.',
+-    imageUrl: '$_a/m_iphone.jpg',
+-    price: 15900000,
+-    salePrice: 14700000,
++    name: 'NFC brelok — Charm',
++    description: 'Charm brelok ichida NFC chip: kalit bilan doim '
++        'yoningizda, telefonni tegizsangiz profil ochiladi.',
++    imageUrl: '$_a/m_keychain.jpg',
++    price: 129000,
++    salePrice: 99000,
+   ),
+   CatalogItem(
+     id: -302,
+-    name: 'Samsung Galaxy S26 Ultra',
+-    description: '512 GB, S Pen. Kartani tegizib ulashing.',
+-    imageUrl: '$_a/m_samsung.jpg',
+-    price: 13500000,
++    name: 'Charm vizitkadon + NFC',
++    description: 'Charm g\'ilof, ichida NFC chip — vizitkalar ham, '
++        'bitta tegizishda profil ham.',
++    imageUrl: '$_a/m_card_holder.jpg',
++    price: 249000,
+   ),
+   CatalogItem(
+     id: -303,
+@@ -224,7 +240,8 @@ final demoBusinessPosts = <Post>[
+   _market(-401, 'Yangi vitrina tayyor — mijoz tegizadi, katalog '
+       'ochiladi.', kDemoStorefront,
+       DateTime(2026, 9, 16), likes: 340, comments: 21),
+-  _market(-402, 'Yangi smartfonlar omborga keldi.',
++  _market(-402, 'Telefonni kartaga yaqinlashtiring — profil bir zumda '
++      'ochiladi.',
+       '$_a/m_product_duo.jpg', DateTime(2026, 9, 12), likes: 187, comments: 9),
+   _market(-403, 'NFC kartalar va stikerlar — jonli ko\'rish mumkin.',
+       '$_a/m_phones.jpg', DateTime(2026, 9, 8), likes: 221, comments: 14),
+diff --git a/mobile_nova/lib/features/home/home_screen.dart b/mobile_nova/lib/features/home/home_screen.dart
+index fc6f221..2079841 100644
+--- a/mobile_nova/lib/features/home/home_screen.dart
++++ b/mobile_nova/lib/features/home/home_screen.dart
+@@ -21,7 +21,7 @@ import '../../design/widgets/states.dart';
+ import '../../design/widgets/surfaces.dart';
+ import '../../l10n/gen/app_localizations.dart';
+ import '../../routing/routes.dart';
+-import '../shop/store_policy.dart' show idMarketTitle, isAppStoreBuild;
++import '../shop/store_policy.dart' show isAppStoreBuild;
+ import '../auth/session.dart';
+ import '../profile/music_player.dart';
+ import '../social/feed_card.dart';
+@@ -265,11 +265,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
+                           onTap: () => context.push(Routes.business),
+                         ))
+                   : id == null
+-                      // iPhone'da do'kon yo'q (Apple 3.1.1, `store_policy.dart`):
+-                      // tugma bepul ID qidiruviga olib boradi.
++                      // iPhone'da do'kon ham, ID qidiruvi ham EMAS (Apple
++                      // 3.1.1, `store_policy.dart`): qidiruvdagi ID'lar
++                      // pullik va ilovada olinmaydi — "bepul ID oling"
++                      // degan va'da bajarilmasdi. Tugma qo'ldagi karta
++                      // yoki stikerni konvertdagi kod bilan ulashga olib
++                      // boradi (jismoniy tovar, 3.1.3(e)).
+                       ? _NoIdCard(
+-                          onShop: () => context.push(
+-                              isAppStoreBuild ? Routes.nfcMarket : Routes.shop))
++                          onShop: () => context.push(isAppStoreBuild
++                              ? Routes.nfcActivate
++                              : Routes.shop))
+                       // NFC ID — EKRANNING QAHRAMONI.
+                       //
+                       // Kod katta serifda, pastida ochiq manzil (mono).
+@@ -772,10 +777,10 @@ class _NoIdCard extends StatelessWidget {
+               style: Theme.of(context).textTheme.bodyMedium),
+           const SizedBox(height: Gap.xl),
+           NovaButton(
+-            label: isAppStoreBuild ? idMarketTitle(l) : l.homeShop,
++            label: isAppStoreBuild ? l.stickerActivate : l.homeShop,
+             onPressed: onShop,
+             icon: isAppStoreBuild
+-                ? Icons.search_rounded
++                ? Icons.add_card_rounded
+                 : Icons.storefront_rounded,
+           ),
+         ],
+diff --git a/mobile_nova/lib/features/profile/profile_edit_screen.dart b/mobile_nova/lib/features/profile/profile_edit_screen.dart
+index 032f3cb..ebf5410 100644
+--- a/mobile_nova/lib/features/profile/profile_edit_screen.dart
++++ b/mobile_nova/lib/features/profile/profile_edit_screen.dart
+@@ -20,11 +20,43 @@ import '../../l10n/gen/app_localizations.dart';
+ import '../auth/session.dart';
+ import '../home/home_screen.dart';
+ import '../home/widgets/avatar.dart';
++import '../shop/store_policy.dart' show isAppStoreBuild;
+ import 'contact_editor.dart';
+ import 'profile_repository.dart';
++import '../social/content_rules.dart';
+ import '../social/media_frame.dart';
+ import '../../core/utils/media_url.dart';
+ 
++/// iPhone'da qurilmadagi qo'shiq FAYLLAR oynasidan tanlanadi.
++const kIosMusicExtensions = ['mp3', 'm4a', 'aac', 'wav'];
++
++/// "Musiqa qo'shish" qaysi oynani ochadi.
++///
++/// ## iPHONE'DA — FAYLLAR (UIDocumentPicker), MUSIQA KUTUBXONASI EMAS
++///
++/// `FileType.audio` iOS'da Apple Music kutubxonasini
++/// (`MPMediaPickerController`) ochadi. Unga Info.plist'da
++/// `NSAppleMusicUsageDescription` shart — kalit yo'q edi va ilova
++/// "Musiqa qo'shish" bosilgan ZAHOTI yiqilardi (App Store 2.1).
++/// Kalit qo'shilgan bo'lsa ham u yo'l deyarli foydasiz: Apple Music
++/// treklari DRM bilan himoyalangan yoki bulutda turadi, plagin
++/// ulardan fayl ololmaydi va odam hech narsa olmaydi.
++///
++/// `FileType.custom` esa iOS'da Fayllar oynasini ochadi — unga
++/// HECH QANDAY ruxsat kerak emas (tizim oynasi, ilova faqat tanlangan
++/// faylni oladi). Kengaytmalar serverning sehrli bayt tekshiruvi
++/// qabul qiladiganlar (`sniffAnyFileTypeD1`: mp3, m4a/mp4, wav; ADTS
++/// aac — mp3 sarlavhasi bilan) va iPhone pleyeri o'ynay oladiganlar.
++/// ogg/flac ataylab yo'q: AVPlayer ularni o'ynamaydi.
++///
++/// Kalit Info.plist'da baribir turadi — plagin kutubxona kodini
++/// yig'adi (ITMS-90683) va kimdir bu yerni qaytarsa ham ilova
++/// yiqilmasin. ANDROID O'ZGARMAYDI (`isAppStoreBuild`).
++({FileType type, List<String>? extensions}) musicPickerSpec() =>
++    isAppStoreBuild
++        ? (type: FileType.custom, extensions: kIosMusicExtensions)
++        : (type: FileType.audio, extensions: null);
++
+ /// Profilni tahrirlash.
+ ///
+ /// Backend'da profil = NFC ID (`record`), shuning uchun tahrirlash
+@@ -92,11 +124,14 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
+   ///
+   /// `image_picker` audio tanlay olmaydi — shuning uchun
+   /// `file_picker`. Fayl OQIM bilan yuboriladi
+-  /// (`/api/upload-file`), base64 emas.
++  /// (`/api/upload-file`), base64 emas. Oyna turi platformaga
++  /// qarab — [musicPickerSpec] izohiga qarang.
+   Future<void> _pickMusic() async {
+     final l = L.of(context);
++    final spec = musicPickerSpec();
+     final picked = await FilePicker.pickFiles(
+-      type: FileType.audio,
++      type: spec.type,
++      allowedExtensions: spec.extensions,
+       withData: false,
+     );
+     final path = picked?.files.singleOrNull?.path;
+@@ -142,6 +177,10 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
+   /// tuzatilib, ikkinchisi unutilishiga olib kelardi.
+   Future<void> _pickImage({required bool cover}) async {
+     final l = L.of(context);
++    // Rasm Google Gemini bilan tekshiriladi — avval ochiq yozuv va
++    // ANIQ rozilik (`ensureContentRules`, App Store 5.1.2(i)). Rozilik
++    // bor bo'lsa darhol o'tadi.
++    if (!await ensureContentRules(context, ref) || !mounted) return;
+     final f = await _picker.pickImage(
+       source: ImageSource.gallery,
+       // Avatar hech qachon 800px dan katta ko'rsatilmaydi; muqova
+diff --git a/mobile_nova/lib/features/settings/settings_screen.dart b/mobile_nova/lib/features/settings/settings_screen.dart
+index 3a5a4de..44af011 100644
+--- a/mobile_nova/lib/features/settings/settings_screen.dart
++++ b/mobile_nova/lib/features/settings/settings_screen.dart
+@@ -153,11 +153,15 @@ class SettingsScreen extends ConsumerWidget {
+               },
+               onTap: () => context.push(Routes.settingsLanguage),
+             ),
+-            SettingsItem(
+-              icon: Icons.notifications_none_rounded,
+-              label: l.settingsNotifications,
+-              onTap: () => context.push(Routes.settingsNotifications),
+-            ),
++            // iPhone'da YO'Q (`showNotificationSettings` izohida): ilovada
++            // push ham, mahalliy bildirishnoma ham yo'q, tugmalar hech
++            // narsaga ta'sir qilmasdi. ANDROID O'ZGARMAYDI.
++            if (showNotificationSettings)
++              SettingsItem(
++                icon: Icons.notifications_none_rounded,
++                label: l.settingsNotifications,
++                onTap: () => context.push(Routes.settingsNotifications),
++              ),
+             SettingsItem(
+               icon: Icons.lock_outline_rounded,
+               label: l.settingsPrivacy,
+diff --git a/mobile_nova/lib/features/settings/settings_subscreens.dart b/mobile_nova/lib/features/settings/settings_subscreens.dart
+index d6d3c55..4a36c54 100644
+--- a/mobile_nova/lib/features/settings/settings_subscreens.dart
++++ b/mobile_nova/lib/features/settings/settings_subscreens.dart
+@@ -410,7 +410,14 @@ class _SecuritySettingsScreenState
+               mainAxisSize: MainAxisSize.min,
+               crossAxisAlignment: CrossAxisAlignment.start,
+               children: [
+-                Text(l.deleteAccountWhat),
++                // iPhone'da pullik NFC/Business ID, pul qaytarilmasligi
++                // va sayt manzili TILGA OLINMAYDI (Apple 3.1.1 / 3.1.3:
++                // ilova tashqarisida sotiladigan raqamli mahsulotga
++                // ishora). Mazmun — chiqish, yashirish, 30 kun, 90 kun —
++                // o'sha. ANDROID O'ZGARMAYDI.
++                Text(isAppStoreBuild
++                    ? l.deleteAccountWhatIos
++                    : l.deleteAccountWhat),
+                 const SizedBox(height: Gap.md),
+                 CheckboxListTile(
+                   key: const ValueKey('delete-understood'),
+@@ -505,7 +512,9 @@ class _NotificationsSettingsScreenState
+       // iPhone'da "Buyurtmalar" ekrani yo'q (`showOrdersEntry`) —
+       // ular haqidagi bildirishnoma tanlovi ham yo'q.
+       if (showOrdersEntry) ('orders', l.orders, Icons.receipt_long_rounded),
+-      ('news', l.settingsNews, Icons.campaign_rounded),
++      // Yangiliklar bo'limi yo'q joyda (iPhone, `showNewsEntry`) ular
++      // haqidagi tanlov ham yo'q.
++      if (showNewsEntry) ('news', l.settingsNews, Icons.campaign_rounded),
+     ];
+ 
+     return NovaScaffold(
+@@ -1420,23 +1429,28 @@ class AboutScreen extends StatelessWidget {
+             label: l.legalTerms,
+             url: 'https://$kSiteHost/shartlar',
+           ),
+-          SectionHeader(title: l.settingsNews),
+-          FloatingSurface(
+-            solid: true,
+-            // O'z sahifasi — Tanlov tabi (shell branch) EMAS: uni shell
+-            // tashqarisidan push qilish qora sahifa berardi (news_screen.dart).
+-            onTap: () => context.push(Routes.settingsNews),
+-            child: Row(
+-              children: [
+-                Icon(Icons.campaign_rounded, size: 19, color: t.accent2),
+-                const SizedBox(width: Gap.md),
+-                Expanded(
+-                    child: Text(l.settingsNews,
+-                        style: Theme.of(context).textTheme.bodyLarge)),
+-                Icon(Icons.chevron_right_rounded, size: 18, color: t.text3),
+-              ],
++          // iPhone'da YANGILIKLAR YO'Q (`showNewsEntry` izohida):
++          // serverdagi yozuvlarda saytda NFC ID xaridi va Android
++          // ilova haqida e'lonlar bor edi. ANDROID O'ZGARMAYDI.
++          if (showNewsEntry) ...[
++            SectionHeader(title: l.settingsNews),
++            FloatingSurface(
++              solid: true,
++              // O'z sahifasi — Tanlov tabi (shell branch) EMAS: uni shell
++              // tashqarisidan push qilish qora sahifa berardi (news_screen.dart).
++              onTap: () => context.push(Routes.settingsNews),
++              child: Row(
++                children: [
++                  Icon(Icons.campaign_rounded, size: 19, color: t.accent2),
++                  const SizedBox(width: Gap.md),
++                  Expanded(
++                      child: Text(l.settingsNews,
++                          style: Theme.of(context).textTheme.bodyLarge)),
++                  Icon(Icons.chevron_right_rounded, size: 18, color: t.text3),
++                ],
++              ),
+             ),
+-          ),
++          ],
+         ],
+       ),
+     );
+diff --git a/mobile_nova/lib/features/shop/store_policy.dart b/mobile_nova/lib/features/shop/store_policy.dart
+index c2ccf24..46a1b38 100644
+--- a/mobile_nova/lib/features/shop/store_policy.dart
++++ b/mobile_nova/lib/features/shop/store_policy.dart
+@@ -126,6 +126,34 @@ bool showOrderAmount(String kind) =>
+ /// ko'rinadi. ANDROID O'ZGARMAYDI.
+ bool get showOrdersEntry => !isAppStoreBuild;
+ 
++/// "YANGILIKLAR" EKRANIGA KIRISH YO'LI BO'LSINMI.
++///
++/// Yangiliklar serverdan (`GET /api/news`) HECH QANDAY platforma
++/// filtrisiz keladi va ilova ularni o'zgartirmay chizadi. 2026-10-04
++/// dagi App Store auditida u yerda ikki yozuv bor edi: "NFC ID ni
++/// Payme bilan saytda oling" (Apple 3.1.1 — tashqi xaridga chaqiriq)
++/// va "Android ilovani yuklab oling, Google Play tez kunda" (2.3.10 —
++/// boshqa platforma). Admin keyin nima yozishini ilova oldindan
++/// bilolmaydi, shuning uchun iPhone'da bo'limning O'ZI yo'q:
++/// Sozlamalar → Ilova haqida'dagi qator chizilmaydi, `/settings/news`
++/// esa "Ilova haqida" ga buriladi (`router.dart`). ANDROID O'ZGARMAYDI.
++bool get showNewsEntry => !isAppStoreBuild;
++
++/// "BILDIRISHNOMALAR" SOZLAMASI BO'LSINMI.
++///
++/// Ilovada push ham, mahalliy bildirishnoma ham YO'Q: `pubspec.yaml`
++/// da paket yo'q, `Runner.entitlements` da `aps-environment` yo'q,
++/// iOS ruxsat ham so'ramaydi. Ekrandagi tugmalar faqat qurilmaga
++/// yoziladi va hech narsaga ta'sir qilmaydi (`Prefs.notif` boshqa
++/// joyda o'qilmaydi). Apple 2.1 / 2.3.1: "ishlamaydigan imkoniyat"
++/// rad etish sababi. Faqat haqiqiy ishlaydigan tugmalarni qoldirish
++/// mumkin emas edi — bittasi ham ishlamaydi.
++///
++/// iPhone'da Sozlamalardagi qator chizilmaydi, `/settings/notifications`
++/// esa Sozlamalarga buriladi. Push qo'shilganda (APNs) bu kalit
++/// qaytariladi. ANDROID O'ZGARMAYDI.
++bool get showNotificationSettings => !isAppStoreBuild;
++
+ /// Shu buyurtmani ILOVA ICHIDA to'lash mumkinmi.
+ ///
+ /// ## HOZIRCHA HECH BIRI
+diff --git a/mobile_nova/lib/features/social/content_rules.dart b/mobile_nova/lib/features/social/content_rules.dart
+index 67bfd73..346f819 100644
+--- a/mobile_nova/lib/features/social/content_rules.dart
++++ b/mobile_nova/lib/features/social/content_rules.dart
+@@ -33,6 +33,22 @@ import '../../l10n/gen/app_localizations.dart';
+ /// saqlanadi, lekin serverga HAR SAFAR yuboriladi.
+ ///
+ /// Qoidalarni istalgan vaqtda Sozlamalardan qayta ochish mumkin.
++///
++/// ## SUN'IY INTELLEKT VA NOL TOQAT (App Store 5.1.2(i), 1.2)
++///
++/// Server har bir yuklangan rasm va videoni (videoning ovozi bilan)
++/// Google Gemini'ga yuborib tekshiradi (`hosting/worker.js` →
++/// `scanStoredUploadD1`, `hosting/api/image-moderation.js`). Apple
++/// uchinchi tomon sun'iy intellektiga ma'lumot berishdan OLDIN buni
++/// ochiq aytishni va ANIQ rozilik olishni talab qiladi. Shuning uchun
++/// varaqda: yuqoridagi matn (o'zgarmaydi), nol toqat bandi, AI
++/// haqidagi yozuv va AI uchun ALOHIDA katakcha — ikkalasi belgilanmasa
++/// "Davom etish" ishlamaydi. Rozilik kaliti `.v2` (`Prefs`).
++///
++/// Darvoza nafaqat joylashdan oldin, balki rasm yuklash boshlanadigan
++/// HAMMA joyda chaqiriladi: avatar va muqova (profil tahriri, ro'yxatdan
++/// keyingi sozlash), biznes logosi, muqovasi va katalog rasmi. Musiqa
++/// (audio) Gemini'ga yuborilmaydi — u yerda darvoza yo'q.
+ 
+ class ContentRules extends StateNotifier<bool> {
+   ContentRules(this._prefs) : super(_prefs.contentRulesAccepted);
+@@ -99,6 +115,9 @@ class _RulesSheet extends StatefulWidget {
+ class _RulesSheetState extends State<_RulesSheet> {
+   bool _checked = false;
+ 
++  /// Google Gemini bilan tekshiruvga ALOHIDA rozilik (5.1.2(i)).
++  bool _aiChecked = false;
++
+   @override
+   Widget build(BuildContext context) {
+     final t = context.tokens;
+@@ -133,36 +152,34 @@ class _RulesSheetState extends State<_RulesSheet> {
+                 ],
+               ),
+               const SizedBox(height: Gap.lg),
++              // Egasi bergan matn — o'zgarmaydi (`content_rules_test`).
+               Text(l.rulesBody,
+                   style: Theme.of(context).textTheme.bodyMedium),
+-              const SizedBox(height: Gap.lg),
+-              // Katakcha qatorining HAMMASI bosiladi — kichik kvadratni
+-              // aniq nishonga olish shart emas.
+-              InkWell(
+-                onTap: () => setState(() => _checked = !_checked),
+-                borderRadius: R.tile,
+-                child: Padding(
+-                  padding: const EdgeInsets.symmetric(vertical: Gap.sm),
+-                  child: Row(
+-                    children: [
+-                      Checkbox(
+-                        value: _checked,
+-                        onChanged: (v) => setState(() => _checked = v ?? false),
+-                        activeColor: t.accent2,
+-                        checkColor: t.onAccent,
+-                      ),
+-                      Expanded(
+-                        child: Text(l.rulesAccept,
+-                            style: Theme.of(context).textTheme.bodyMedium),
+-                      ),
+-                    ],
+-                  ),
+-                ),
++              const SizedBox(height: Gap.md),
++              // Nol toqat: haqorat va ta'qib qiluvchilar ham (1.2).
++              Text(l.rulesZeroTolerance,
++                  key: const ValueKey('rules-zero-tolerance'),
++                  style: Theme.of(context).textTheme.bodyMedium),
++              const SizedBox(height: Gap.md),
++              const RulesAiNotice(),
++              const SizedBox(height: Gap.md),
++              _ConsentRow(
++                key: const ValueKey('rules-accept'),
++                value: _checked,
++                label: l.rulesAccept,
++                onChanged: (v) => setState(() => _checked = v),
++              ),
++              _ConsentRow(
++                key: const ValueKey('rules-ai-consent'),
++                value: _aiChecked,
++                label: l.rulesAiConsent,
++                onChanged: (v) => setState(() => _aiChecked = v),
+               ),
+               const SizedBox(height: Gap.lg),
+               NovaButton(
+                 label: l.rulesContinue,
+-                onPressed: _checked
++                // IKKALA rozilik ham shart: qoidalar va AI tekshiruvi.
++                onPressed: _checked && _aiChecked
+                     ? () => Navigator.of(context).pop(true)
+                     : null,
+               ),
+@@ -180,6 +197,85 @@ class _RulesSheetState extends State<_RulesSheet> {
+   }
+ }
+ 
++/// Rozilik qatori — katakcha va matn.
++///
++/// Qatorning HAMMASI bosiladi — kichik kvadratni aniq nishonga olish
++/// shart emas.
++class _ConsentRow extends StatelessWidget {
++  const _ConsentRow({
++    super.key,
++    required this.value,
++    required this.label,
++    required this.onChanged,
++  });
++
++  final bool value;
++  final String label;
++  final ValueChanged<bool> onChanged;
++
++  @override
++  Widget build(BuildContext context) {
++    final t = context.tokens;
++    return InkWell(
++      onTap: () => onChanged(!value),
++      borderRadius: R.tile,
++      child: Padding(
++        padding: const EdgeInsets.symmetric(vertical: Gap.sm),
++        child: Row(
++          children: [
++            Checkbox(
++              value: value,
++              onChanged: (v) => onChanged(v ?? false),
++              activeColor: t.accent2,
++              checkColor: t.onAccent,
++            ),
++            Expanded(
++              child:
++                  Text(label, style: Theme.of(context).textTheme.bodyMedium),
++            ),
++          ],
++        ),
++      ),
++    );
++  }
++}
++
++/// SUN'IY INTELLEKT HAQIDA OCHIQ YOZUV (App Store 5.1.2(i)).
++///
++/// Kim (Google), nima (Gemini sun'iy intellekti), nimani (rasm va
++/// video, videoning ovozi bilan) va nima uchun (xavfsizlik tekshiruvi)
++/// — bitta joyda. Darvoza varag'ida ham, joylash ekranidagi qoidalar
++/// kartasida ham AYNAN shu yozuv turadi.
++class RulesAiNotice extends StatelessWidget {
++  const RulesAiNotice({super.key});
++
++  @override
++  Widget build(BuildContext context) {
++    final t = context.tokens;
++    final l = L.of(context);
++    return Container(
++      key: const ValueKey('rules-ai-notice'),
++      padding: const EdgeInsets.all(Gap.md),
++      decoration: BoxDecoration(
++        color: t.surface2,
++        borderRadius: R.tile,
++        border: Border.all(color: t.border2),
++      ),
++      child: Row(
++        crossAxisAlignment: CrossAxisAlignment.start,
++        children: [
++          Icon(Icons.auto_awesome_rounded, size: 16, color: t.accent2),
++          const SizedBox(width: Gap.sm),
++          Expanded(
++            child: Text(l.rulesAiNotice,
++                style: Theme.of(context).textTheme.bodySmall),
++          ),
++        ],
++      ),
++    );
++  }
++}
++
+ /// Publish tugmasi ostidagi bir qatorli eslatma.
+ ///
+ /// Rozilik allaqachon berilgan bo'lsa ham qoidalar ko'rinib turadi,
+@@ -225,8 +321,9 @@ class ContentRulesNote extends ConsumerWidget {
+ ///   * qoidabuzarlikda kontent o'chiriladi, hisob bloklanishi mumkin
+ ///     (`bannedUntil` — server joylashni 403 `BANNED` bilan rad etadi).
+ ///
+-/// Yuklangan rasm serverda avtomatik tekshiriladi
+-/// (`hosting/api/image-moderation.js`); video — faqat shikoyat orqali.
++/// Yuklangan rasm va video serverda Google Gemini orqali avtomatik
++/// tekshiriladi (`hosting/api/image-moderation.js`) — kartada buni
++/// [RulesAiNotice] ochiq aytadi.
+ class ContentRulesCard extends StatelessWidget {
+   const ContentRulesCard({super.key});
+ 
+@@ -297,6 +394,8 @@ class ContentRulesCard extends StatelessWidget {
+           const SizedBox(height: Gap.md),
+           Text(l.rulesCardProcess,
+               style: Theme.of(context).textTheme.bodySmall),
++          const SizedBox(height: Gap.md),
++          const RulesAiNotice(),
+         ],
+       ),
+     );
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index 2101d64..65043f0 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -61,6 +61,8 @@
+   "errBadEmail": "Invalid email address",
+   "errBadPhone": "Invalid phone number",
+   "errPasswordShort": "Password must be at least 8 characters",
++  "errPasswordShortLogin": "Password must be at least 6 characters",
++  "errBadLogin": "Enter a valid email or phone number",
+   "errNameShort": "Name is too short",
+   "errBadCode": "The code has 6 digits",
+   "errPasswordMismatch": "Passwords do not match",
+@@ -94,8 +96,10 @@
+   "welcomeRegister": "Create account",
+   "loginTitle": "Welcome back",
+   "loginSubtitle": "Enter your email and phone number",
+-  "loginSubtitlePassword": "Enter your email and password",
++  "loginSubtitlePassword": "Enter your email or phone and password",
+   "fieldEmail": "Email",
++  "fieldLogin": "Email or phone",
++  "fieldLoginHint": "you@example.com / +998 90 123 45 67",
+   "fieldPhone": "Phone",
+   "fieldPassword": "Password",
+   "a11yShowPassword": "Show password",
+@@ -170,7 +174,7 @@
+   "homeActiveId": "Active NFC ID",
+   "homeNoId": "No NFC ID yet",
+   "homeNoIdHint": "Order a card from the shop or create an ID",
+-  "homeNoIdHintIos": "Find a free ID in search and make it yours",
++  "homeNoIdHintIos": "Your NFC ID will appear here. If you have an NFCSTORE card or sticker, activate it with the code from the envelope.",
+   "homeBizAddress": "BUSINESS ADDRESS",
+   "homeBizPitchTitle": "Add your business here",
+   "homeBizPitchHint": "Catalogue, prices and orders — one tap for your customer",
+@@ -438,6 +442,9 @@
+   "rulesBody": "Published content must not contain: religious propaganda or extremist material, pornographic or sexually explicit images, political propaganda, or any material contrary to the laws of the Republic of Uzbekistan. Content that breaks these rules is removed without warning.",
+   "rulesAccept": "I have read the rules and agree",
+   "rulesContinue": "Continue",
++  "rulesZeroTolerance": "NFCSTORE has zero tolerance for objectionable content and for users who insult, humiliate or harass others. Reports are reviewed promptly: violating content is removed and such users’ accounts are blocked.",
++  "rulesAiNotice": "Uploaded photos and videos (including the sound in videos) are automatically checked for safety by Google’s Gemini AI before they are published. They are sent to Google only for this check.",
++  "rulesAiConsent": "I agree that my uploaded photos and videos are automatically checked by Google’s Gemini AI",
+   "rulesReminder": "By publishing you agree to the content rules.",
+   "commentRulesNote": "Insults, swearing, threats, religious or political propaganda are not allowed in comments. Such comments can be reported and are removed.",
+   "rulesOpen": "Content rules",
+@@ -536,8 +543,6 @@
+   "demoSectionHint": "What can NFC do?",
+   "demoHeroTitle": "Meet NFC",
+   "demoHeroBody": "Personal profile, business page and NFC ID — all in one app.",
+-  "demoChipIphone": "Works with iPhone 18",
+-  "demoChipSamsung": "Works with Samsung S26",
+   "demoChipReady": "NFC ready",
+   "demoPersonalBtn": "Personal demo",
+   "demoBusinessBtn": "Business demo",
+@@ -848,7 +853,7 @@
+   "rulesBanIllegal": "Illegal",
+   "rulesBanSpam": "Spam & scams",
+   "rulesBanInsult": "Insults",
+-  "rulesCardProcess": "Every post, reel, story and comment has “Report”. Uploaded photos are checked automatically. A moderator reviews reports: violating content is removed, and repeat offenders are blocked.",
++  "rulesCardProcess": "Every post, reel, story and comment has “Report”. A moderator reviews reports: violating content is removed, and repeat offenders are blocked.",
+   "storyCaption": "Short text on your story",
+   "noNfcExplain": "This phone can’t read or write NFC cards. You can still share your profile — the QR code opens with any phone camera.",
+   "noNfcShareLink": "Share link",
+@@ -920,6 +925,7 @@
+   "blockHate": "hateful symbols detected",
+   "privacyPolicy": "Privacy policy",
+   "deleteAccountWhat": "After the request you are signed out on all devices; your NFC ID profiles, business pages, posts, stories and comments are hidden immediately. After 30 days the account and its data are permanently deleted (if there is a balance, an active order or an investigation — once these are resolved). Payments for NFC IDs and Business IDs are not refunded; these IDs are not given to anyone for 90 days. Payment records and the evidence archive are kept as required by law — details: nfcstore.uz/delete-account",
++  "deleteAccountWhatIos": "After the request you are signed out on all devices; your NFC ID profiles, business pages, posts, stories and comments are hidden immediately. After 30 days the account and its data are permanently deleted (if there is an open matter — once it is resolved). Released IDs are not given to anyone for 90 days. Records the law requires us to keep are kept for the required period.",
+   "deleteAccountUnderstood": "I understand, delete my account",
+   "deleteAccountDone": "Request received. Your account will be permanently deleted in 30 days.",
+   "errCommentPremium": "A Premium subscription is required to write comments. Everyone can read them.",
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index 485b943..3f587b5 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -61,6 +61,8 @@
+   "errBadEmail": "Неверный email",
+   "errBadPhone": "Неверный номер телефона",
+   "errPasswordShort": "Пароль должен быть не менее 8 символов",
++  "errPasswordShortLogin": "Пароль — не менее 6 символов",
++  "errBadLogin": "Введите корректный email или номер телефона",
+   "errNameShort": "Имя слишком короткое",
+   "errBadCode": "Код состоит из 6 цифр",
+   "errPasswordMismatch": "Пароли не совпадают",
+@@ -94,8 +96,10 @@
+   "welcomeRegister": "Регистрация",
+   "loginTitle": "С возвращением",
+   "loginSubtitle": "Введите email и номер телефона",
+-  "loginSubtitlePassword": "Введите email и пароль",
++  "loginSubtitlePassword": "Введите email или телефон и пароль",
+   "fieldEmail": "Email",
++  "fieldLogin": "Email или телефон",
++  "fieldLoginHint": "vy@example.com / +998 90 123 45 67",
+   "fieldPhone": "Телефон",
+   "fieldPassword": "Пароль",
+   "a11yShowPassword": "Показать пароль",
+@@ -170,7 +174,7 @@
+   "homeActiveId": "Активный NFC ID",
+   "homeNoId": "NFC ID ещё нет",
+   "homeNoIdHint": "Закажите карту в магазине или создайте ID",
+-  "homeNoIdHintIos": "Найдите свободный ID в поиске и сделайте его своим",
++  "homeNoIdHintIos": "Здесь появится ваш NFC ID. Если у вас есть карта или наклейка NFCSTORE, активируйте её кодом из конверта.",
+   "homeBizAddress": "АДРЕС БИЗНЕСА",
+   "homeBizPitchTitle": "Добавьте сюда свой бизнес",
+   "homeBizPitchHint": "Каталог, цены и заказы — клиент увидит одним касанием",
+@@ -438,6 +442,9 @@
+   "rulesBody": "Размещаемый контент не должен содержать: религиозную пропаганду или экстремистские материалы, порнографические изображения или материалы сексуального характера, политическую пропаганду, а также любые материалы, противоречащие законодательству Республики Узбекистан. При нарушении этих правил контент удаляется без предупреждения.",
+   "rulesAccept": "Я прочитал(а) правила и согласен(на)",
+   "rulesContinue": "Продолжить",
++  "rulesZeroTolerance": "В NFCSTORE действует нулевая терпимость к недопустимому контенту и к пользователям, которые оскорбляют, унижают или преследуют других. Жалобы рассматриваются оперативно: нарушающий контент удаляется, аккаунты таких пользователей блокируются.",
++  "rulesAiNotice": "Загружаемые фото и видео (включая звук в видео) перед публикацией автоматически проверяются на безопасность искусственным интеллектом Google Gemini. В Google они передаются только для этой проверки.",
++  "rulesAiConsent": "Я согласен(на), что мои фото и видео автоматически проверяются искусственным интеллектом Google Gemini",
+   "rulesReminder": "Публикуя, вы соглашаетесь с правилами контента.",
+   "commentRulesNote": "В комментариях запрещены оскорбления, мат, угрозы, религиозная и политическая агитация. На такие комментарии можно пожаловаться — они удаляются.",
+   "rulesOpen": "Правила контента",
+@@ -536,8 +543,6 @@
+   "demoSectionHint": "Что можно с NFC?",
+   "demoHeroTitle": "Знакомьтесь с NFC",
+   "demoHeroBody": "Личный профиль, бизнес-страница и NFC ID — всё в одном приложении.",
+-  "demoChipIphone": "Работает с iPhone 18",
+-  "demoChipSamsung": "Работает с Samsung S26",
+   "demoChipReady": "NFC ready",
+   "demoPersonalBtn": "Personal demo",
+   "demoBusinessBtn": "Business demo",
+@@ -848,7 +853,7 @@
+   "rulesBanIllegal": "Незаконное",
+   "rulesBanSpam": "Спам и обман",
+   "rulesBanInsult": "Оскорбления",
+-  "rulesCardProcess": "В каждом посте, reels, истории и комментарии есть «Пожаловаться». Загруженные фото проверяются автоматически. Жалобы проверяет модератор: нарушающий контент удаляется, при повторении аккаунт блокируется.",
++  "rulesCardProcess": "В каждом посте, reels, истории и комментарии есть «Пожаловаться». Жалобы проверяет модератор: нарушающий контент удаляется, при повторении аккаунт блокируется.",
+   "storyCaption": "Короткий текст на истории",
+   "noNfcExplain": "Этот телефон не может читать и записывать NFC-карты. Но делиться профилем всё равно можно — QR-код откроется камерой любого телефона.",
+   "noNfcShareLink": "Поделиться ссылкой",
+@@ -920,6 +925,7 @@
+   "blockHate": "обнаружена символика ненависти",
+   "privacyPolicy": "Политика конфиденциальности",
+   "deleteAccountWhat": "После запроса вы выйдете из аккаунта на всех устройствах; профили NFC ID, бизнес-страницы, посты, истории и комментарии сразу скрываются. Через 30 дней аккаунт и связанные данные удаляются полностью (если есть остаток средств, активный заказ или идёт проверка — после их завершения). Оплата за NFC ID и Business ID не возвращается, 90 дней эти ID никому не выдаются. Записи платежей и архив доказательств хранятся по закону — подробнее: nfcstore.uz/delete-account",
++  "deleteAccountWhatIos": "После запроса вы выйдете из аккаунта на всех устройствах; профили NFC ID, бизнес-страницы, посты, истории и комментарии сразу скрываются. Через 30 дней аккаунт и связанные данные удаляются полностью (если есть нерешённый вопрос — после его решения). Освободившиеся ID 90 дней никому не выдаются. Записи, которые требует хранить закон, хранятся установленный срок.",
+   "deleteAccountUnderstood": "Понимаю, удалить аккаунт",
+   "deleteAccountDone": "Запрос принят. Аккаунт будет полностью удалён через 30 дней.",
+   "errCommentPremium": "Чтобы писать комментарии, нужна подписка Premium. Читать их могут все.",
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index 686ec61..19efc64 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -61,6 +61,8 @@
+   "errBadEmail": "Email manzili noto‘g‘ri",
+   "errBadPhone": "Telefon raqami noto‘g‘ri",
+   "errPasswordShort": "Parol kamida 8 belgidan iborat bo‘lsin",
++  "errPasswordShortLogin": "Parol kamida 6 belgidan iborat",
++  "errBadLogin": "Email yoki telefon raqamini to‘g‘ri kiriting",
+   "errNameShort": "Ism juda qisqa",
+   "errBadCode": "Kod 6 ta raqamdan iborat",
+   "errPasswordMismatch": "Parollar mos kelmadi",
+@@ -94,8 +96,10 @@
+   "welcomeRegister": "Ro‘yxatdan o‘tish",
+   "loginTitle": "Xush kelibsiz",
+   "loginSubtitle": "Email va telefon raqamingizni kiriting",
+-  "loginSubtitlePassword": "Email va parolingizni kiriting",
++  "loginSubtitlePassword": "Email yoki telefon va parolingizni kiriting",
+   "fieldEmail": "Email",
++  "fieldLogin": "Email yoki telefon",
++  "fieldLoginHint": "siz@example.com / +998 90 123 45 67",
+   "fieldPhone": "Telefon",
+   "fieldPassword": "Parol",
+   "a11yShowPassword": "Parolni ko‘rsatish",
+@@ -170,7 +174,7 @@
+   "homeActiveId": "Faol NFC ID",
+   "homeNoId": "NFC ID hali yo‘q",
+   "homeNoIdHint": "Do‘kondan karta oling yoki ID yarating",
+-  "homeNoIdHintIos": "Qidiruvda bo‘sh ID tanlang va o‘zingizniki qiling",
++  "homeNoIdHintIos": "NFC ID’ingiz shu yerda ko‘rinadi. NFCSTORE karta yoki stikeringiz bo‘lsa, uni konvertdagi kod bilan faollashtiring.",
+   "homeBizAddress": "BIZNES MANZILI",
+   "homeBizPitchTitle": "Biznesingizni shu yerga qo‘shing",
+   "homeBizPitchHint": "Katalog, narxlar va buyurtma — mijoz bitta tegishda ko‘radi",
+@@ -445,6 +449,9 @@
+   "rulesBody": "Joylashtirilayotgan kontent quyidagilarni o‘z ichiga olmasligi shart: diniy targ‘ibot yoki ekstremistik mazmun, pornografik yoki jinsiy xarakterdagi tasvirlar, siyosiy targ‘ibot, shuningdek O‘zbekiston Respublikasi qonunchiligiga zid har qanday material. Ushbu qoidalar buzilgan taqdirda kontent ogohlantirishsiz o‘chiriladi.",
+   "rulesAccept": "Men qoidalarni o‘qidim va roziman",
+   "rulesContinue": "Davom etish",
++  "rulesZeroTolerance": "NFCSTORE’da nomaqbul kontentga hamda boshqalarni haqorat qiladigan, tahqirlaydigan yoki ta’qib qiladigan foydalanuvchilarga mutlaqo toqat qilinmaydi. Shikoyatlar tezda ko‘rib chiqiladi: qoidabuzar kontent o‘chiriladi, bunday foydalanuvchilarning hisobi bloklanadi.",
++  "rulesAiNotice": "Yuklangan rasm va videolar (videodagi ovoz ham) joylashdan oldin xavfsizlik uchun Google Gemini sun’iy intellekti orqali avtomatik tekshiriladi. Ular Google’ga faqat shu tekshiruv uchun yuboriladi.",
++  "rulesAiConsent": "Yuklagan rasm va videolarim Google Gemini sun’iy intellekti orqali avtomatik tekshirilishiga roziman",
+   "rulesReminder": "Joylash bilan kontent qoidalariga rozilik bildirasiz.",
+   "commentRulesNote": "Izohda haqorat, so‘kinish, tahdid, diniy yoki siyosiy targ‘ibot taqiqlanadi. Qoidabuzar izoh shikoyat qilinadi va o‘chiriladi.",
+   "@commentRulesNote": {
+@@ -554,8 +561,6 @@
+   "demoSectionHint": "NFC bilan nimalar mumkin?",
+   "demoHeroTitle": "NFC bilan tanishing",
+   "demoHeroBody": "Shaxsiy profil, biznes sahifa va NFC ID — barchasi bitta mobil ilovada.",
+-  "demoChipIphone": "iPhone 18 bilan ishlaydi",
+-  "demoChipSamsung": "Samsung S26 bilan ishlaydi",
+   "demoChipReady": "NFC ready",
+   "demoPersonalBtn": "Personal demo",
+   "demoBusinessBtn": "Business demo",
+@@ -895,7 +900,7 @@
+   "rulesBanIllegal": "Noqonuniy",
+   "rulesBanSpam": "Spam va aldov",
+   "rulesBanInsult": "Haqorat",
+-  "rulesCardProcess": "Har bir post, reel, istoriya va izohda “Shikoyat qilish” bor. Yuklangan rasmlar avtomatik tekshiriladi. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.",
++  "rulesCardProcess": "Har bir post, reel, istoriya va izohda “Shikoyat qilish” bor. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.",
+   "storyCaption": "Istoriyaga qisqa matn",
+   "noNfcExplain": "Bu telefon NFC kartani o‘qiy olmaydi va unga yoza olmaydi. Lekin profilingizni baribir ulashasiz — QR kod har qanday telefon kamerasida ochiladi.",
+   "noNfcShareLink": "Havolani ulashish",
+@@ -1005,6 +1010,7 @@
+   "blockHate": "nafrat yoki kamsitish belgisi aniqlandi",
+   "privacyPolicy": "Maxfiylik siyosati",
+   "deleteAccountWhat": "So‘rovdan keyin barcha qurilmalarda hisobdan chiqasiz; NFC ID profillaringiz, biznes sahifalaringiz, postlar, istoriyalar va izohlar darhol yashiriladi. 30 kundan keyin hisob va unga bog‘langan ma’lumotlar butunlay o‘chiriladi (balans, faol buyurtma yoki tekshiruv bo‘lsa — ular hal bo‘lgach). NFC ID va Business ID’lar uchun to‘langan pul qaytarilmaydi, ular 90 kun hech kimga berilmaydi. To‘lov yozuvlari va dalil arxivi qonun bo‘yicha saqlanadi — batafsil: nfcstore.uz/delete-account",
++  "deleteAccountWhatIos": "So‘rovdan keyin barcha qurilmalarda hisobdan chiqasiz; NFC ID profillaringiz, biznes sahifalaringiz, postlar, istoriyalar va izohlar darhol yashiriladi. 30 kundan keyin hisob va unga bog‘langan ma’lumotlar butunlay o‘chiriladi (hal qilinmagan masala bo‘lsa — u hal bo‘lgach). Bo‘shagan ID’lar 90 kun hech kimga berilmaydi. Qonun talab qiladigan yozuvlar belgilangan muddat saqlanadi.",
+   "deleteAccountUnderstood": "Tushundim, hisobimni o‘chirish",
+   "deleteAccountDone": "So‘rov qabul qilindi. Hisob 30 kundan keyin butunlay o‘chiriladi.",
+   "errCommentPremium": "Izoh yozish uchun Premium obuna kerak. Izohlarni esa hamma o‘qiy oladi.",
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index 182e8ae..03deb99 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -465,6 +465,18 @@ abstract class L {
+   /// **'Parol kamida 8 belgidan iborat bo‘lsin'**
+   String get errPasswordShort;
+ 
++  /// No description provided for @errPasswordShortLogin.
++  ///
++  /// In uz, this message translates to:
++  /// **'Parol kamida 6 belgidan iborat'**
++  String get errPasswordShortLogin;
++
++  /// No description provided for @errBadLogin.
++  ///
++  /// In uz, this message translates to:
++  /// **'Email yoki telefon raqamini to‘g‘ri kiriting'**
++  String get errBadLogin;
++
+   /// No description provided for @errNameShort.
+   ///
+   /// In uz, this message translates to:
+@@ -666,7 +678,7 @@ abstract class L {
+   /// No description provided for @loginSubtitlePassword.
+   ///
+   /// In uz, this message translates to:
+-  /// **'Email va parolingizni kiriting'**
++  /// **'Email yoki telefon va parolingizni kiriting'**
+   String get loginSubtitlePassword;
+ 
+   /// No description provided for @fieldEmail.
+@@ -675,6 +687,18 @@ abstract class L {
+   /// **'Email'**
+   String get fieldEmail;
+ 
++  /// No description provided for @fieldLogin.
++  ///
++  /// In uz, this message translates to:
++  /// **'Email yoki telefon'**
++  String get fieldLogin;
++
++  /// No description provided for @fieldLoginHint.
++  ///
++  /// In uz, this message translates to:
++  /// **'siz@example.com / +998 90 123 45 67'**
++  String get fieldLoginHint;
++
+   /// No description provided for @fieldPhone.
+   ///
+   /// In uz, this message translates to:
+@@ -978,7 +1002,7 @@ abstract class L {
+   /// No description provided for @homeNoIdHintIos.
+   ///
+   /// In uz, this message translates to:
+-  /// **'Qidiruvda bo‘sh ID tanlang va o‘zingizniki qiling'**
++  /// **'NFC ID’ingiz shu yerda ko‘rinadi. NFCSTORE karta yoki stikeringiz bo‘lsa, uni konvertdagi kod bilan faollashtiring.'**
+   String get homeNoIdHintIos;
+ 
+   /// No description provided for @homeBizAddress.
+@@ -2331,6 +2355,24 @@ abstract class L {
+   /// **'Davom etish'**
+   String get rulesContinue;
+ 
++  /// No description provided for @rulesZeroTolerance.
++  ///
++  /// In uz, this message translates to:
++  /// **'NFCSTORE’da nomaqbul kontentga hamda boshqalarni haqorat qiladigan, tahqirlaydigan yoki ta’qib qiladigan foydalanuvchilarga mutlaqo toqat qilinmaydi. Shikoyatlar tezda ko‘rib chiqiladi: qoidabuzar kontent o‘chiriladi, bunday foydalanuvchilarning hisobi bloklanadi.'**
++  String get rulesZeroTolerance;
++
++  /// No description provided for @rulesAiNotice.
++  ///
++  /// In uz, this message translates to:
++  /// **'Yuklangan rasm va videolar (videodagi ovoz ham) joylashdan oldin xavfsizlik uchun Google Gemini sun’iy intellekti orqali avtomatik tekshiriladi. Ular Google’ga faqat shu tekshiruv uchun yuboriladi.'**
++  String get rulesAiNotice;
++
++  /// No description provided for @rulesAiConsent.
++  ///
++  /// In uz, this message translates to:
++  /// **'Yuklagan rasm va videolarim Google Gemini sun’iy intellekti orqali avtomatik tekshirilishiga roziman'**
++  String get rulesAiConsent;
++
+   /// No description provided for @rulesReminder.
+   ///
+   /// In uz, this message translates to:
+@@ -2877,18 +2919,6 @@ abstract class L {
+   /// **'Shaxsiy profil, biznes sahifa va NFC ID — barchasi bitta mobil ilovada.'**
+   String get demoHeroBody;
+ 
+-  /// No description provided for @demoChipIphone.
+-  ///
+-  /// In uz, this message translates to:
+-  /// **'iPhone 18 bilan ishlaydi'**
+-  String get demoChipIphone;
+-
+-  /// No description provided for @demoChipSamsung.
+-  ///
+-  /// In uz, this message translates to:
+-  /// **'Samsung S26 bilan ishlaydi'**
+-  String get demoChipSamsung;
+-
+   /// No description provided for @demoChipReady.
+   ///
+   /// In uz, this message translates to:
+@@ -4314,7 +4344,7 @@ abstract class L {
+   /// No description provided for @rulesCardProcess.
+   ///
+   /// In uz, this message translates to:
+-  /// **'Har bir post, reel, istoriya va izohda “Shikoyat qilish” bor. Yuklangan rasmlar avtomatik tekshiriladi. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.'**
++  /// **'Har bir post, reel, istoriya va izohda “Shikoyat qilish” bor. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.'**
+   String get rulesCardProcess;
+ 
+   /// No description provided for @storyCaption.
+@@ -4743,6 +4773,12 @@ abstract class L {
+   /// **'So‘rovdan keyin barcha qurilmalarda hisobdan chiqasiz; NFC ID profillaringiz, biznes sahifalaringiz, postlar, istoriyalar va izohlar darhol yashiriladi. 30 kundan keyin hisob va unga bog‘langan ma’lumotlar butunlay o‘chiriladi (balans, faol buyurtma yoki tekshiruv bo‘lsa — ular hal bo‘lgach). NFC ID va Business ID’lar uchun to‘langan pul qaytarilmaydi, ular 90 kun hech kimga berilmaydi. To‘lov yozuvlari va dalil arxivi qonun bo‘yicha saqlanadi — batafsil: nfcstore.uz/delete-account'**
+   String get deleteAccountWhat;
+ 
++  /// No description provided for @deleteAccountWhatIos.
++  ///
++  /// In uz, this message translates to:
++  /// **'So‘rovdan keyin barcha qurilmalarda hisobdan chiqasiz; NFC ID profillaringiz, biznes sahifalaringiz, postlar, istoriyalar va izohlar darhol yashiriladi. 30 kundan keyin hisob va unga bog‘langan ma’lumotlar butunlay o‘chiriladi (hal qilinmagan masala bo‘lsa — u hal bo‘lgach). Bo‘shagan ID’lar 90 kun hech kimga berilmaydi. Qonun talab qiladigan yozuvlar belgilangan muddat saqlanadi.'**
++  String get deleteAccountWhatIos;
++
+   /// No description provided for @deleteAccountUnderstood.
+   ///
+   /// In uz, this message translates to:
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index 81db28a..6f2ca7e 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -193,6 +193,12 @@ class LEn extends L {
+   @override
+   String get errPasswordShort => 'Password must be at least 8 characters';
+ 
++  @override
++  String get errPasswordShortLogin => 'Password must be at least 6 characters';
++
++  @override
++  String get errBadLogin => 'Enter a valid email or phone number';
++
+   @override
+   String get errNameShort => 'Name is too short';
+ 
+@@ -299,11 +305,17 @@ class LEn extends L {
+   String get loginSubtitle => 'Enter your email and phone number';
+ 
+   @override
+-  String get loginSubtitlePassword => 'Enter your email and password';
++  String get loginSubtitlePassword => 'Enter your email or phone and password';
+ 
+   @override
+   String get fieldEmail => 'Email';
+ 
++  @override
++  String get fieldLogin => 'Email or phone';
++
++  @override
++  String get fieldLoginHint => 'you@example.com / +998 90 123 45 67';
++
+   @override
+   String get fieldPhone => 'Phone';
+ 
+@@ -463,7 +475,8 @@ class LEn extends L {
+   String get homeNoIdHint => 'Order a card from the shop or create an ID';
+ 
+   @override
+-  String get homeNoIdHintIos => 'Find a free ID in search and make it yours';
++  String get homeNoIdHintIos =>
++      'Your NFC ID will appear here. If you have an NFCSTORE card or sticker, activate it with the code from the envelope.';
+ 
+   @override
+   String get homeBizAddress => 'BUSINESS ADDRESS';
+@@ -1167,6 +1180,18 @@ class LEn extends L {
+   @override
+   String get rulesContinue => 'Continue';
+ 
++  @override
++  String get rulesZeroTolerance =>
++      'NFCSTORE has zero tolerance for objectionable content and for users who insult, humiliate or harass others. Reports are reviewed promptly: violating content is removed and such users’ accounts are blocked.';
++
++  @override
++  String get rulesAiNotice =>
++      'Uploaded photos and videos (including the sound in videos) are automatically checked for safety by Google’s Gemini AI before they are published. They are sent to Google only for this check.';
++
++  @override
++  String get rulesAiConsent =>
++      'I agree that my uploaded photos and videos are automatically checked by Google’s Gemini AI';
++
+   @override
+   String get rulesReminder => 'By publishing you agree to the content rules.';
+ 
+@@ -1451,12 +1476,6 @@ class LEn extends L {
+   String get demoHeroBody =>
+       'Personal profile, business page and NFC ID — all in one app.';
+ 
+-  @override
+-  String get demoChipIphone => 'Works with iPhone 18';
+-
+-  @override
+-  String get demoChipSamsung => 'Works with Samsung S26';
+-
+   @override
+   String get demoChipReady => 'NFC ready';
+ 
+@@ -2232,7 +2251,7 @@ class LEn extends L {
+ 
+   @override
+   String get rulesCardProcess =>
+-      'Every post, reel, story and comment has “Report”. Uploaded photos are checked automatically. A moderator reviews reports: violating content is removed, and repeat offenders are blocked.';
++      'Every post, reel, story and comment has “Report”. A moderator reviews reports: violating content is removed, and repeat offenders are blocked.';
+ 
+   @override
+   String get storyCaption => 'Short text on your story';
+@@ -2471,6 +2490,10 @@ class LEn extends L {
+   String get deleteAccountWhat =>
+       'After the request you are signed out on all devices; your NFC ID profiles, business pages, posts, stories and comments are hidden immediately. After 30 days the account and its data are permanently deleted (if there is a balance, an active order or an investigation — once these are resolved). Payments for NFC IDs and Business IDs are not refunded; these IDs are not given to anyone for 90 days. Payment records and the evidence archive are kept as required by law — details: nfcstore.uz/delete-account';
+ 
++  @override
++  String get deleteAccountWhatIos =>
++      'After the request you are signed out on all devices; your NFC ID profiles, business pages, posts, stories and comments are hidden immediately. After 30 days the account and its data are permanently deleted (if there is an open matter — once it is resolved). Released IDs are not given to anyone for 90 days. Records the law requires us to keep are kept for the required period.';
++
+   @override
+   String get deleteAccountUnderstood => 'I understand, delete my account';
+ 
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index 554e4ee..5a882ef 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -192,6 +192,12 @@ class LRu extends L {
+   @override
+   String get errPasswordShort => 'Пароль должен быть не менее 8 символов';
+ 
++  @override
++  String get errPasswordShortLogin => 'Пароль — не менее 6 символов';
++
++  @override
++  String get errBadLogin => 'Введите корректный email или номер телефона';
++
+   @override
+   String get errNameShort => 'Имя слишком короткое';
+ 
+@@ -297,11 +303,17 @@ class LRu extends L {
+   String get loginSubtitle => 'Введите email и номер телефона';
+ 
+   @override
+-  String get loginSubtitlePassword => 'Введите email и пароль';
++  String get loginSubtitlePassword => 'Введите email или телефон и пароль';
+ 
+   @override
+   String get fieldEmail => 'Email';
+ 
++  @override
++  String get fieldLogin => 'Email или телефон';
++
++  @override
++  String get fieldLoginHint => 'vy@example.com / +998 90 123 45 67';
++
+   @override
+   String get fieldPhone => 'Телефон';
+ 
+@@ -461,7 +473,7 @@ class LRu extends L {
+ 
+   @override
+   String get homeNoIdHintIos =>
+-      'Найдите свободный ID в поиске и сделайте его своим';
++      'Здесь появится ваш NFC ID. Если у вас есть карта или наклейка NFCSTORE, активируйте её кодом из конверта.';
+ 
+   @override
+   String get homeBizAddress => 'АДРЕС БИЗНЕСА';
+@@ -1164,6 +1176,18 @@ class LRu extends L {
+   @override
+   String get rulesContinue => 'Продолжить';
+ 
++  @override
++  String get rulesZeroTolerance =>
++      'В NFCSTORE действует нулевая терпимость к недопустимому контенту и к пользователям, которые оскорбляют, унижают или преследуют других. Жалобы рассматриваются оперативно: нарушающий контент удаляется, аккаунты таких пользователей блокируются.';
++
++  @override
++  String get rulesAiNotice =>
++      'Загружаемые фото и видео (включая звук в видео) перед публикацией автоматически проверяются на безопасность искусственным интеллектом Google Gemini. В Google они передаются только для этой проверки.';
++
++  @override
++  String get rulesAiConsent =>
++      'Я согласен(на), что мои фото и видео автоматически проверяются искусственным интеллектом Google Gemini';
++
+   @override
+   String get rulesReminder => 'Публикуя, вы соглашаетесь с правилами контента.';
+ 
+@@ -1447,12 +1471,6 @@ class LRu extends L {
+   String get demoHeroBody =>
+       'Личный профиль, бизнес-страница и NFC ID — всё в одном приложении.';
+ 
+-  @override
+-  String get demoChipIphone => 'Работает с iPhone 18';
+-
+-  @override
+-  String get demoChipSamsung => 'Работает с Samsung S26';
+-
+   @override
+   String get demoChipReady => 'NFC ready';
+ 
+@@ -2228,7 +2246,7 @@ class LRu extends L {
+ 
+   @override
+   String get rulesCardProcess =>
+-      'В каждом посте, reels, истории и комментарии есть «Пожаловаться». Загруженные фото проверяются автоматически. Жалобы проверяет модератор: нарушающий контент удаляется, при повторении аккаунт блокируется.';
++      'В каждом посте, reels, истории и комментарии есть «Пожаловаться». Жалобы проверяет модератор: нарушающий контент удаляется, при повторении аккаунт блокируется.';
+ 
+   @override
+   String get storyCaption => 'Короткий текст на истории';
+@@ -2468,6 +2486,10 @@ class LRu extends L {
+   String get deleteAccountWhat =>
+       'После запроса вы выйдете из аккаунта на всех устройствах; профили NFC ID, бизнес-страницы, посты, истории и комментарии сразу скрываются. Через 30 дней аккаунт и связанные данные удаляются полностью (если есть остаток средств, активный заказ или идёт проверка — после их завершения). Оплата за NFC ID и Business ID не возвращается, 90 дней эти ID никому не выдаются. Записи платежей и архив доказательств хранятся по закону — подробнее: nfcstore.uz/delete-account';
+ 
++  @override
++  String get deleteAccountWhatIos =>
++      'После запроса вы выйдете из аккаунта на всех устройствах; профили NFC ID, бизнес-страницы, посты, истории и комментарии сразу скрываются. Через 30 дней аккаунт и связанные данные удаляются полностью (если есть нерешённый вопрос — после его решения). Освободившиеся ID 90 дней никому не выдаются. Записи, которые требует хранить закон, хранятся установленный срок.';
++
+   @override
+   String get deleteAccountUnderstood => 'Понимаю, удалить аккаунт';
+ 
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index 7acfdd9..5cb81a8 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -193,6 +193,12 @@ class LUz extends L {
+   @override
+   String get errPasswordShort => 'Parol kamida 8 belgidan iborat bo‘lsin';
+ 
++  @override
++  String get errPasswordShortLogin => 'Parol kamida 6 belgidan iborat';
++
++  @override
++  String get errBadLogin => 'Email yoki telefon raqamini to‘g‘ri kiriting';
++
+   @override
+   String get errNameShort => 'Ism juda qisqa';
+ 
+@@ -298,11 +304,18 @@ class LUz extends L {
+   String get loginSubtitle => 'Email va telefon raqamingizni kiriting';
+ 
+   @override
+-  String get loginSubtitlePassword => 'Email va parolingizni kiriting';
++  String get loginSubtitlePassword =>
++      'Email yoki telefon va parolingizni kiriting';
+ 
+   @override
+   String get fieldEmail => 'Email';
+ 
++  @override
++  String get fieldLogin => 'Email yoki telefon';
++
++  @override
++  String get fieldLoginHint => 'siz@example.com / +998 90 123 45 67';
++
+   @override
+   String get fieldPhone => 'Telefon';
+ 
+@@ -462,7 +475,7 @@ class LUz extends L {
+ 
+   @override
+   String get homeNoIdHintIos =>
+-      'Qidiruvda bo‘sh ID tanlang va o‘zingizniki qiling';
++      'NFC ID’ingiz shu yerda ko‘rinadi. NFCSTORE karta yoki stikeringiz bo‘lsa, uni konvertdagi kod bilan faollashtiring.';
+ 
+   @override
+   String get homeBizAddress => 'BIZNES MANZILI';
+@@ -1170,6 +1183,18 @@ class LUz extends L {
+   @override
+   String get rulesContinue => 'Davom etish';
+ 
++  @override
++  String get rulesZeroTolerance =>
++      'NFCSTORE’da nomaqbul kontentga hamda boshqalarni haqorat qiladigan, tahqirlaydigan yoki ta’qib qiladigan foydalanuvchilarga mutlaqo toqat qilinmaydi. Shikoyatlar tezda ko‘rib chiqiladi: qoidabuzar kontent o‘chiriladi, bunday foydalanuvchilarning hisobi bloklanadi.';
++
++  @override
++  String get rulesAiNotice =>
++      'Yuklangan rasm va videolar (videodagi ovoz ham) joylashdan oldin xavfsizlik uchun Google Gemini sun’iy intellekti orqali avtomatik tekshiriladi. Ular Google’ga faqat shu tekshiruv uchun yuboriladi.';
++
++  @override
++  String get rulesAiConsent =>
++      'Yuklagan rasm va videolarim Google Gemini sun’iy intellekti orqali avtomatik tekshirilishiga roziman';
++
+   @override
+   String get rulesReminder =>
+       'Joylash bilan kontent qoidalariga rozilik bildirasiz.';
+@@ -1456,12 +1481,6 @@ class LUz extends L {
+   String get demoHeroBody =>
+       'Shaxsiy profil, biznes sahifa va NFC ID — barchasi bitta mobil ilovada.';
+ 
+-  @override
+-  String get demoChipIphone => 'iPhone 18 bilan ishlaydi';
+-
+-  @override
+-  String get demoChipSamsung => 'Samsung S26 bilan ishlaydi';
+-
+   @override
+   String get demoChipReady => 'NFC ready';
+ 
+@@ -2235,7 +2254,7 @@ class LUz extends L {
+ 
+   @override
+   String get rulesCardProcess =>
+-      'Har bir post, reel, istoriya va izohda “Shikoyat qilish” bor. Yuklangan rasmlar avtomatik tekshiriladi. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.';
++      'Har bir post, reel, istoriya va izohda “Shikoyat qilish” bor. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.';
+ 
+   @override
+   String get storyCaption => 'Istoriyaga qisqa matn';
+@@ -2474,6 +2493,10 @@ class LUz extends L {
+   String get deleteAccountWhat =>
+       'So‘rovdan keyin barcha qurilmalarda hisobdan chiqasiz; NFC ID profillaringiz, biznes sahifalaringiz, postlar, istoriyalar va izohlar darhol yashiriladi. 30 kundan keyin hisob va unga bog‘langan ma’lumotlar butunlay o‘chiriladi (balans, faol buyurtma yoki tekshiruv bo‘lsa — ular hal bo‘lgach). NFC ID va Business ID’lar uchun to‘langan pul qaytarilmaydi, ular 90 kun hech kimga berilmaydi. To‘lov yozuvlari va dalil arxivi qonun bo‘yicha saqlanadi — batafsil: nfcstore.uz/delete-account';
+ 
++  @override
++  String get deleteAccountWhatIos =>
++      'So‘rovdan keyin barcha qurilmalarda hisobdan chiqasiz; NFC ID profillaringiz, biznes sahifalaringiz, postlar, istoriyalar va izohlar darhol yashiriladi. 30 kundan keyin hisob va unga bog‘langan ma’lumotlar butunlay o‘chiriladi (hal qilinmagan masala bo‘lsa — u hal bo‘lgach). Bo‘shagan ID’lar 90 kun hech kimga berilmaydi. Qonun talab qiladigan yozuvlar belgilangan muddat saqlanadi.';
++
+   @override
+   String get deleteAccountUnderstood => 'Tushundim, hisobimni o‘chirish';
+ 
+diff --git a/mobile_nova/lib/routing/router.dart b/mobile_nova/lib/routing/router.dart
+index cf1717e..9cfb26b 100644
+--- a/mobile_nova/lib/routing/router.dart
++++ b/mobile_nova/lib/routing/router.dart
+@@ -39,6 +39,8 @@ import '../features/settings/analytics_screen.dart';
+ import '../features/settings/settings_subscreens.dart';
+ import '../features/shop/nfc_id_market.dart';
+ import '../features/shop/shop_screens.dart';
++import '../features/shop/store_policy.dart'
++    show showNewsEntry, showNotificationSettings;
+ import '../features/social/post_screens.dart';
+ import '../features/social/reels_screen.dart';
+ import '../features/social/story_viewer.dart';
+@@ -457,8 +459,13 @@ final routerProvider = Provider<GoRouter>((ref) {
+               path: 'language',
+               builder: (_, __) => const LanguageSettingsScreen()),
+           GoRoute(path: 'theme', builder: (_, __) => const ThemeSettingsScreen()),
++          // iPhone'da bildirishnoma sozlamasi YO'Q
++          // (`showNotificationSettings`): havola yoki eski holat bilan
++          // ochilsa ham Sozlamalarga buriladi.
+           GoRoute(
+               path: 'notifications',
++              redirect: (_, __) =>
++                  showNotificationSettings ? null : Routes.settings,
+               builder: (_, __) => const NotificationsSettingsScreen()),
+           GoRoute(
+               path: 'privacy',
+@@ -476,7 +483,13 @@ final routerProvider = Provider<GoRouter>((ref) {
+           GoRoute(path: 'premium', builder: (_, __) => const PremiumScreen()),
+           GoRoute(path: 'support', builder: (_, __) => const SupportScreen()),
+           GoRoute(path: 'about', builder: (_, __) => const AboutScreen()),
+-          GoRoute(path: 'news', builder: (_, __) => const NewsScreen()),
++          // iPhone'da yangiliklar YO'Q (`showNewsEntry`) — `nfcstore://`
++          // havolasi bilan ochilsa ham "Ilova haqida" ga buriladi.
++          GoRoute(
++            path: 'news',
++            redirect: (_, __) => showNewsEntry ? null : Routes.settingsAbout,
++            builder: (_, __) => const NewsScreen(),
++          ),
+         ],
+       ),
+     ],
+diff --git a/mobile_nova/test/app_store_ios_fixes_test.dart b/mobile_nova/test/app_store_ios_fixes_test.dart
+new file mode 100644
+index 0000000..30c4221
+--- /dev/null
++++ b/mobile_nova/test/app_store_ios_fixes_test.dart
+@@ -0,0 +1,812 @@
++import 'dart:convert';
++import 'dart:io';
++
++import 'package:file_picker/file_picker.dart';
++import 'package:flutter/material.dart';
++import 'package:flutter/services.dart';
++import 'package:flutter_localizations/flutter_localizations.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:go_router/go_router.dart';
++import 'package:nfcstore_nova/app/app.dart';
++import 'package:nfcstore_nova/app/providers.dart';
++import 'package:nfcstore_nova/core/storage/secure_store.dart';
++import 'package:nfcstore_nova/core/utils/result.dart';
++import 'package:nfcstore_nova/core/utils/validators.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/design/theme/app_theme.dart';
++import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
++import 'package:nfcstore_nova/design/widgets/buttons.dart';
++import 'package:nfcstore_nova/design/widgets/fields.dart';
++import 'package:nfcstore_nova/features/auth/login_screen.dart';
++import 'package:nfcstore_nova/features/auth/session.dart';
++import 'package:nfcstore_nova/features/demo/demo_data.dart';
++import 'package:nfcstore_nova/features/home/home_screen.dart';
++import 'package:nfcstore_nova/features/profile/profile_edit_screen.dart';
++import 'package:nfcstore_nova/features/settings/settings_screen.dart';
++import 'package:nfcstore_nova/features/settings/settings_subscreens.dart';
++import 'package:nfcstore_nova/features/shop/store_policy.dart';
++import 'package:nfcstore_nova/features/social/content_rules.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
++import 'package:nfcstore_nova/routing/router.dart';
++import 'package:nfcstore_nova/routing/routes.dart';
++import 'package:shared_preferences/shared_preferences.dart';
++
++import 'helpers.dart';
++
++/// APP STORE (iPhone) TAYYORGARLIGI — 2026-10-04 auditining topilmalari.
++///
++/// Har tekshiruv imkon qadar IKKI TOMONLAMA (`app_store_policy_test.dart`
++/// kabi): iPhone'da tuzatilgan, Android'da avvalgidek. Bittasi yolg'iz
++/// sinalsa "hamma joyda yashirildi" yoki "hech narsa o'zgarmadi" xatosi
++/// ko'rinmay qolardi.
++final _ios = TargetPlatformVariant.only(TargetPlatform.iOS);
++
++String _read(String p) => File(p).readAsStringSync();
++
++/// Izohsiz kod — tekshiruv KOD haqida, izohdagi so'zlar haqida emas.
++String _codeOnly(String s) => s
++    .split('\n')
++    .where((l) => !l.trimLeft().startsWith('//'))
++    .join('\n');
++
++Future<L> _uz() => L.delegate.load(const Locale('uz'));
++
++void _tall(WidgetTester tester) {
++  tester.view.physicalSize = const Size(393 * 3, 1600 * 3);
++  tester.view.devicePixelRatio = 3;
++  addTearDown(tester.view.reset);
++}
++
++/// Ekranni haqiqiy `GoRouter` ichida ochadi; [extra] yo'llarga o'tish
++/// [went] ga yoziladi.
++Widget _routed(
++  Widget screen,
++  List<Override> overrides, {
++  List<String> extra = const [],
++  List<String>? went,
++}) {
++  final router = GoRouter(routes: [
++    GoRoute(path: '/', builder: (_, __) => screen),
++    for (final p in extra)
++      GoRoute(
++        path: p,
++        builder: (_, __) {
++          went?.add(p);
++          return Scaffold(body: Text('ROUTE $p'));
++        },
++      ),
++  ]);
++  return ProviderScope(
++    overrides: overrides,
++    child: MaterialApp.router(
++      routerConfig: router,
++      theme: buildTheme(NfcTokens.ivory),
++      locale: const Locale('uz'),
++      supportedLocales: LocaleController.supported,
++      localizationsDelegates: const [
++        L.delegate,
++        GlobalMaterialLocalizations.delegate,
++        GlobalWidgetsLocalizations.delegate,
++        GlobalCupertinoLocalizations.delegate,
++      ],
++    ),
++  );
++}
++
++void main() {
++  // ───────────────────────────────── 1. ruxsat matnlari va musiqa
++  group('1. Info.plist ruxsat matnlari', () {
++    final plist = _read('ios/Runner/Info.plist');
++    Map<String, String> purposeStrings() {
++      final re = RegExp(
++          r'<key>((?:NS\w+|NFCReader)UsageDescription)</key>\s*<string>([^<]*)</string>');
++      return {
++        for (final m in re.allMatches(plist)) m.group(1)!: m.group(2)!,
++      };
++    }
++
++    test('musiqa kutubxonasi kaliti bor (aks holda iOS ilovani yopadi)', () {
++      expect(purposeStrings().keys, contains('NSAppleMusicUsageDescription'));
++    });
++
++    test('kerakli kalitlarning hammasi joyida', () {
++      expect(
++        purposeStrings().keys,
++        containsAll(const [
++          'NFCReaderUsageDescription',
++          'NSFaceIDUsageDescription',
++          'NSCameraUsageDescription',
++          'NSPhotoLibraryUsageDescription',
++          'NSMicrophoneUsageDescription',
++          'NSPhotoLibraryAddUsageDescription',
++          'NSAppleMusicUsageDescription',
++        ]),
++      );
++    });
++
++    test('HAR BIR matn ikki tilda: "O‘zbekcha … / English …"', () {
++      final all = purposeStrings();
++      expect(all, isNotEmpty);
++      for (final e in all.entries) {
++        final parts = e.value.split(' / ');
++        expect(parts.length, 2, reason: '${e.key}: " / " bilan ikki qism emas');
++        final uz = parts[0].trim();
++        final en = parts[1].trim();
++        expect(uz, contains('kerak'), reason: '${e.key}: o‘zbekcha qism');
++        expect(uz.length, greaterThan(25), reason: '${e.key}: juda qisqa');
++        expect(en, startsWith('NFCSTORE '),
++            reason: '${e.key}: inglizcha qism ilova nomi bilan boshlansin');
++        expect(en.length, greaterThan(40),
++            reason: '${e.key}: maqsad aniq aytilmagan');
++      }
++    });
++
++    test('kamera matni videoni ham aytadi (Reels ham kameradan)', () {
++      final camera = purposeStrings()['NSCameraUsageDescription']!;
++      expect(camera, contains('video'));
++      expect(camera, contains('Reels'));
++    });
++
++    test('CI qo‘riqchisi musiqa kalitini ham tekshiradi', () {
++      final ci = _read('../.github/workflows/nova-ios.yml');
++      expect(ci, contains('NSAppleMusicUsageDescription'));
++      expect(ci, contains('NSFaceIDUsageDescription'));
++    });
++  });
++
++  group('1. "Musiqa qo‘shish" oynasi', () {
++    testWidgets('Android: avvalgidek audio oynasi', (tester) async {
++      final spec = musicPickerSpec();
++      expect(spec.type, FileType.audio);
++      expect(spec.extensions, isNull);
++    });
++
++    testWidgets('iPhone: Fayllar oynasi — ruxsat kerak emas', (tester) async {
++      final spec = musicPickerSpec();
++      expect(spec.type, FileType.custom,
++          reason: 'FileType.audio iOS’da Music kutubxonasini ochadi');
++      expect(spec.extensions, containsAll(['mp3', 'm4a']));
++      // AVPlayer o'ynamaydigan va server sniffer'i qabul qilmaydigan
++      // turlar ro'yxatda yo'q.
++      expect(spec.extensions, isNot(contains('ogg')));
++      expect(spec.extensions, isNot(contains('flac')));
++    }, variant: _ios);
++
++    test('tanlash oynasi aynan shu sozlamadan o‘qiladi', () {
++      final src = _codeOnly(
++          _read('lib/features/profile/profile_edit_screen.dart'));
++      final pick = src.substring(src.indexOf('Future<void> _pickMusic()'));
++      final body = pick.substring(0, pick.indexOf('withData'));
++      expect(body, contains('type: spec.type'));
++      expect(body, contains('allowedExtensions: spec.extensions'));
++      expect(body, isNot(contains('FileType.audio')));
++    });
++  });
++
++  // ───────────────────────────────────────────── 2. Yangiliklar
++  group('2. Yangiliklar iPhone’da yo‘q', () {
++    Future<L> pumpAbout(WidgetTester tester) async {
++      _tall(tester);
++      await tester.pumpWidget(ProviderScope(
++        overrides: [...await testOverrides()],
++        child: wrapScreen(const AboutScreen(), tokens: NfcTokens.ivory),
++      ));
++      await settle(tester);
++      return _uz();
++    }
++
++    testWidgets('Android: "Ilova haqida"da Yangiliklar bor', (tester) async {
++      final l = await pumpAbout(tester);
++      expect(find.text(l.settingsNews), findsWidgets);
++      expect(showNewsEntry, isTrue);
++    });
++
++    testWidgets('iPhone: "Ilova haqida"da Yangiliklar YO‘Q', (tester) async {
++      final l = await pumpAbout(tester);
++      expect(tester.takeException(), isNull);
++      expect(find.text(l.settingsNews), findsNothing);
++      expect(showNewsEntry, isFalse);
++      // Qolgan huquqiy havolalar joyida.
++      expect(find.text(l.legalPrivacy), findsOneWidget);
++      expect(find.text(l.legalTerms), findsOneWidget);
++    }, variant: _ios);
++
++    test('lib/ ichida NewsScreen’ga boshqa kirish yo‘li yo‘q', () {
++      // Yangi tugma qo'shilsa va kalit unutilsa — iPhone'da yana
++      // saytdagi xarid e'lonlari chiqadi.
++      final hits = <String>[];
++      for (final f in Directory('lib').listSync(recursive: true)) {
++        if (f is! File || !f.path.endsWith('.dart')) continue;
++        if (f.path.contains('l10n/gen')) continue;
++        final code = _codeOnly(f.readAsStringSync());
++        if (code.contains('Routes.settingsNews')) hits.add(f.path);
++      }
++      expect(hits, ['lib/features/settings/settings_subscreens.dart'],
++          reason: 'yangi kirish yo‘li: $hits');
++      final about = _codeOnly(
++          _read('lib/features/settings/settings_subscreens.dart'));
++      final at = about.indexOf('Routes.settingsNews');
++      final guard = about.lastIndexOf('if (showNewsEntry)', at);
++      expect(guard, greaterThan(0), reason: 'kalit yo‘q');
++      expect(at - guard, lessThan(600),
++          reason: 'kalit aynan shu qatorni o‘rashi kerak');
++    });
++  });
++
++  // ─────────────────────────────── 2 va 4. iPhone'da yo'naltirish
++  group('2/4. Havola bilan ochilsa ham', () {
++    Future<GoRouter> boot(WidgetTester tester) async {
++      tester.view.physicalSize = const Size(1170, 2532);
++      tester.view.devicePixelRatio = 3;
++      addTearDown(tester.view.reset);
++      final c = ProviderContainer(overrides: [...await testOverrides()]);
++      addTearDown(c.dispose);
++      await tester.pumpWidget(UncontrolledProviderScope(
++        container: c,
++        child: const NovaApp(),
++      ));
++      for (var i = 0; i < 20; i++) {
++        await tester.pump(const Duration(milliseconds: 50));
++      }
++      return c.read(routerProvider);
++    }
++
++    Future<String> go(WidgetTester tester, GoRouter r, String to) async {
++      r.go(to);
++      for (var i = 0; i < 20; i++) {
++        await tester.pump(const Duration(milliseconds: 50));
++      }
++      return r.routerDelegate.currentConfiguration.uri.path;
++    }
++
++    testWidgets('iPhone: /settings/news → "Ilova haqida"', (tester) async {
++      final r = await boot(tester);
++      expect(await go(tester, r, Routes.settingsNews), Routes.settingsAbout);
++    }, variant: _ios);
++
++    testWidgets('iPhone: /settings/notifications → Sozlamalar',
++        (tester) async {
++      final r = await boot(tester);
++      expect(await go(tester, r, Routes.settingsNotifications),
++          Routes.settings);
++    }, variant: _ios);
++
++    testWidgets('Android: ikkalasi ham ochiladi', (tester) async {
++      final r = await boot(tester);
++      expect(await go(tester, r, Routes.settingsNews), Routes.settingsNews);
++      expect(await go(tester, r, Routes.settingsNotifications),
++          Routes.settingsNotifications);
++    });
++  });
++
++  // ───────────────────────────────────────── 3. ID yo'q kartasi
++  group('3. Bosh sahifa: NFC ID yo‘q kartasi', () {
++    Future<(L, List<String>)> pumpHome(WidgetTester tester) async {
++      _tall(tester);
++      final went = <String>[];
++      final base = await testOverrides();
++      await tester.pumpWidget(_routed(
++        const HomeScreen(),
++        [
++          // `base[1]` — standart auth; bitta provayder ikki marta
++          // almashtirilmaydi.
++          ...base.where((o) => !identical(o, base[1])),
++          authRepositoryProvider
++              .overrideWithValue(FakeAuthRepository(ids: const [])),
++        ],
++        extra: [Routes.nfcActivate, Routes.shop, Routes.nfcMarket],
++        went: went,
++      ));
++      await settle(tester, frames: 16);
++      return (await _uz(), went);
++    }
++
++    testWidgets('iPhone: bepul ID va qidiruv yo‘q — stiker faollashtirish',
++        (tester) async {
++      final (l, went) = await pumpHome(tester);
++      expect(tester.takeException(), isNull);
++      expect(find.text(l.homeNoId), findsOneWidget);
++      expect(find.text(l.homeNoIdHintIos), findsOneWidget);
++      expect(find.text(l.homeNoIdHint), findsNothing);
++      expect(find.text(l.homeShop), findsNothing);
++
++      await tester.tap(find.text(l.stickerActivate));
++      await settle(tester);
++      expect(went, [Routes.nfcActivate],
++          reason: 'ID qidiruvi (do‘kon) emas, faollashtirish ochilishi kerak');
++    }, variant: _ios);
++
++    testWidgets('Android: avvalgidek Do‘kon', (tester) async {
++      final (l, went) = await pumpHome(tester);
++      expect(find.text(l.homeNoIdHint), findsOneWidget);
++      await tester.tap(find.text(l.homeShop));
++      await settle(tester);
++      expect(went, [Routes.shop]);
++    });
++
++    test('iPhone matnida "bepul" va "qidiruv" va’dasi yo‘q', () {
++      final banned = {
++        'uz': ['bepul', 'qidiruv', 'bo‘sh id'],
++        'ru': ['бесплат', 'поиск', 'свободн'],
++        'en': ['free', 'search', 'make it yours'],
++      };
++      for (final e in banned.entries) {
++        final arb = jsonDecode(_read('lib/l10n/arb/app_${e.key}.arb'))
++            as Map<String, dynamic>;
++        final v = '${arb['homeNoIdHintIos']}'.toLowerCase();
++        for (final w in e.value) {
++          expect(v.contains(w), isFalse, reason: '${e.key}: "$w"');
++        }
++      }
++    });
++  });
++
++  // ───────────────────────────────────── 4. Bildirishnomalar
++  group('4. Bildirishnoma sozlamasi iPhone’da yo‘q', () {
++    Future<L> pumpSettings(WidgetTester tester) async {
++      _tall(tester);
++      await tester.pumpWidget(_routed(
++        const SettingsScreen(),
++        [...await testOverrides()],
++      ));
++      await settle(tester, frames: 10);
++      return _uz();
++    }
++
++    testWidgets('iPhone: Sozlamalarda "Bildirishnomalar" qatori yo‘q',
++        (tester) async {
++      final l = await pumpSettings(tester);
++      expect(tester.takeException(), isNull);
++      expect(find.text(l.settingsNotifications), findsNothing);
++      expect(showNotificationSettings, isFalse);
++      // Qo'shni qatorlar joyida.
++      expect(find.text(l.settingsPrivacy), findsOneWidget);
++      expect(find.text(l.settingsLanguage), findsOneWidget);
++    }, variant: _ios);
++
++    testWidgets('Android: qator bor', (tester) async {
++      final l = await pumpSettings(tester);
++      expect(find.text(l.settingsNotifications), findsOneWidget);
++      expect(showNotificationSettings, isTrue);
++    });
++  });
++
++  // ─────────────────────── 5. AI oshkorligi va nol toqat (5.1.2(i), 1.2)
++  group('5. Kontent qoidalari: Google Gemini va nol toqat', () {
++    test('AI yozuvi uchala tilda: Google, Gemini, rasm VA video', () {
++      final checks = {
++        'uz': ['google', 'gemini', 'rasm', 'video', 'sun’iy intellekt'],
++        'ru': ['google', 'gemini', 'фото', 'видео', 'искусственн'],
++        'en': ['google', 'gemini', 'photos', 'videos', 'ai'],
++      };
++      for (final e in checks.entries) {
++        final arb = jsonDecode(_read('lib/l10n/arb/app_${e.key}.arb'))
++            as Map<String, dynamic>;
++        for (final k in ['rulesAiNotice', 'rulesAiConsent']) {
++          final v = '${arb[k] ?? ''}'.toLowerCase();
++          expect(v, isNotEmpty, reason: '${e.key}.$k yo‘q');
++          expect(v, contains('gemini'), reason: '${e.key}.$k');
++        }
++        final notice = '${arb['rulesAiNotice']}'.toLowerCase();
++        for (final w in e.value) {
++          expect(notice, contains(w), reason: '${e.key}: "$w"');
++        }
++        final zero = '${arb['rulesZeroTolerance'] ?? ''}';
++        expect(zero, isNotEmpty, reason: '${e.key}.rulesZeroTolerance');
++      }
++    });
++
++    test('nol toqat: kontent VA haqorat qiluvchi foydalanuvchilar', () {
++      final en = jsonDecode(_read('lib/l10n/arb/app_en.arb'))
++          as Map<String, dynamic>;
++      final v = '${en['rulesZeroTolerance']}'.toLowerCase();
++      expect(v, contains('zero tolerance'));
++      expect(v, contains('objectionable content'));
++      expect(v, contains('harass'));
++      expect(v, contains('blocked'));
++    });
++
++    test('rulesCardProcess "faqat rasm" deb noto‘g‘ri aytmaydi', () {
++      // Ilgari: "Yuklangan rasmlar avtomatik tekshiriladi" — video ham
++      // tekshiriladi, kim tekshirishi esa aytilmasdi. Endi bu
++      // `rulesAiNotice` da.
++      final en = jsonDecode(_read('lib/l10n/arb/app_en.arb'))
++          as Map<String, dynamic>;
++      expect('${en['rulesCardProcess']}',
++          isNot(contains('Uploaded photos are checked automatically')));
++    });
++
++    /// Darvozani chaqiruvchi tugma.
++    Widget gateButton(List<bool> results) => Consumer(
++          builder: (context, ref, _) => Center(
++            child: TextButton(
++              onPressed: () async =>
++                  results.add(await ensureContentRules(context, ref)),
++              child: const Text('GATE'),
++            ),
++          ),
++        );
++
++    testWidgets('varaqda AI yozuvi va nol toqat; IKKI rozilik shart',
++        (tester) async {
++      _tall(tester);
++      final results = <bool>[];
++      final c = ProviderContainer(overrides: [...await testOverrides()]);
++      addTearDown(c.dispose);
++      await tester.pumpWidget(UncontrolledProviderScope(
++        container: c,
++        child: wrapScreen(Scaffold(body: gateButton(results)),
++            tokens: NfcTokens.ivory),
++      ));
++      await settle(tester);
++      final l = await _uz();
++
++      await tester.tap(find.text('GATE'));
++      await settle(tester);
++      expect(find.text(l.rulesAiNotice), findsOneWidget);
++      expect(find.text(l.rulesZeroTolerance), findsOneWidget);
++      expect(find.text(l.rulesAiConsent), findsOneWidget);
++
++      NovaButton cont() =>
++          tester.widget<NovaButton>(find.widgetWithText(NovaButton, l.rulesContinue));
++
++      // Faqat qoidalarga rozilik — AI'siz davom etib bo'lmaydi.
++      await tester.tap(find.byKey(const ValueKey('rules-accept')));
++      await settle(tester, frames: 4);
++      expect(cont().onPressed, isNull,
++          reason: 'AI tekshiruviga ALOHIDA rozilik shart');
++
++      await tester.tap(find.byKey(const ValueKey('rules-ai-consent')));
++      await settle(tester, frames: 4);
++      expect(cont().onPressed, isNotNull);
++
++      await tester.tap(find.widgetWithText(NovaButton, l.rulesContinue));
++      await settle(tester);
++      expect(results, [true]);
++      expect(c.read(contentRulesProvider), isTrue);
++      expect(c.read(prefsProvider).contentRulesAccepted, isTrue);
++    });
++
++    testWidgets('faqat AI roziligi bilan ham davom etib bo‘lmaydi',
++        (tester) async {
++      _tall(tester);
++      final results = <bool>[];
++      await tester.pumpWidget(ProviderScope(
++        overrides: [...await testOverrides()],
++        child: wrapScreen(Scaffold(body: gateButton(results)),
++            tokens: NfcTokens.ivory),
++      ));
++      await settle(tester);
++      final l = await _uz();
++      await tester.tap(find.text('GATE'));
++      await settle(tester);
++      await tester.tap(find.byKey(const ValueKey('rules-ai-consent')));
++      await settle(tester, frames: 4);
++      expect(
++        tester
++            .widget<NovaButton>(
++                find.widgetWithText(NovaButton, l.rulesContinue))
++            .onPressed,
++        isNull,
++      );
++      await tester.tap(find.widgetWithText(NovaButton, l.actionCancel));
++      await settle(tester);
++      expect(results, [false]);
++    });
++
++    test('ESKI rozilik (AI’siz) hisobga olinmaydi — darvoza qayta',
++        () async {
++      // Eski kalit: `nova.contentRulesAccepted` — Gemini haqida
++      // hech narsa aytilmagan paytdagi rozilik.
++      SharedPreferences.setMockInitialValues(
++          {'nova.contentRulesAccepted': true});
++      final prefs = await Prefs.open();
++      expect(prefs.contentRulesAccepted, isFalse);
++      await prefs.setContentRulesAccepted(true);
++      expect(prefs.contentRulesAccepted, isTrue);
++    });
++
++    testWidgets('joylash ekranidagi kartada ham AI yozuvi bor',
++        (tester) async {
++      _tall(tester);
++      await tester.pumpWidget(wrapScreen(
++        const Scaffold(body: SingleChildScrollView(child: ContentRulesCard())),
++        tokens: NfcTokens.ivory,
++      ));
++      await settle(tester, frames: 4);
++      final l = await _uz();
++      expect(find.byKey(const ValueKey('rules-ai-notice')), findsOneWidget);
++      expect(find.text(l.rulesAiNotice), findsOneWidget);
++    });
++
++    test('rasm yuklash boshlanadigan HAMMA joyda darvoza bor', () {
++      // Darvoza faqat postda bo'lsa, avatar yoki biznes rasmi
++      // Gemini'ga ogohlantirishsiz ketardi.
++      final sites = {
++        'lib/features/profile/profile_edit_screen.dart':
++            'Future<void> _pickImage(',
++        'lib/features/auth/profile_setup_screen.dart':
++            'Future<void> _pickAvatar(',
++        'lib/features/business/business_forms.dart#logo':
++            'Future<void> _pick({required bool cover})',
++        'lib/features/business/business_forms.dart#catalog':
++            'Future<void> _addImage(',
++      };
++      for (final e in sites.entries) {
++        final src = _codeOnly(_read(e.key.split('#').first));
++        final at = src.indexOf(e.value);
++        expect(at, greaterThan(0), reason: '${e.key}: ${e.value} topilmadi');
++        // Imzoning o'zi (`_pickImage(`) qidiruvga tushmasin.
++        final body = src.substring(at + e.value.length);
++        final gate = body.indexOf('ensureContentRules(context, ref)');
++        final picker = body
++            .indexOf(RegExp(r'pickImage\(|listingImagePickerProvider'));
++        expect(gate, greaterThan(0), reason: '${e.key}: darvoza yo‘q');
++        expect(gate, lessThan(picker),
++            reason: '${e.key}: darvoza rasm tanlashdan OLDIN bo‘lishi kerak');
++      }
++      // Post/istoriya/reel — avvalgidek joylashdan oldin.
++      final composer = _read('lib/features/social/post_screens.dart');
++      final publish = composer.substring(composer.indexOf('Future<void> _publish'));
++      expect(publish.indexOf('ensureContentRules'),
++          lessThan(publish.indexOf('uploadVideo')));
++    });
++  });
++
++  // ──────────────────────────────────────────────── 6. Demo do'kon
++  group('6. Demo do‘kon — begona brend va begona aloqa yo‘q', () {
++    test('katalogda telefon brendlari yo‘q', () {
++      const brands = [
++        'iphone', 'apple', 'samsung', 'galaxy', 'xiaomi', 'redmi', 'pixel',
++        'huawei', 'honor', 'oppo', 'vivo',
++      ];
++      for (final c in demoCatalog) {
++        final text = '${c.name} ${c.description}'.toLowerCase();
++        for (final b in brands) {
++          expect(text.contains(b), isFalse, reason: '${c.name}: "$b"');
++        }
++        expect(c.imageUrl, isNot(contains('m_iphone')));
++        expect(c.imageUrl, isNot(contains('m_samsung')));
++      }
++    });
++
++    test('katalog — faqat NFC mahsulotlari (tegizib ishlaydigan)', () {
++      for (final c in demoCatalog) {
++        final text = '${c.name} ${c.description}';
++        expect(text.contains('NFC') || text.contains('tegiz'), isTrue,
++            reason: '${c.name}: NFC mahsuloti emas');
++      }
++    });
++
++    test('demo biznes hech kimning Telegram yoki telefoniga yubormaydi', () {
++      // `t.me/nfcmarket` — begona odamning haqiqiy akkaunti edi.
++      expect(demoBusiness.telegram, isEmpty);
++      expect(demoBusiness.whatsapp, isEmpty);
++      expect(demoBusiness.phone, isEmpty);
++      expect(demoBusiness.address, isNot(contains('ko\'chasi')));
++      expect(demoBusiness.description.toLowerCase(),
++          isNot(contains('smartfon')));
++    });
++
++    test('ishlatilmaydigan iPhone/Samsung matnlari olib tashlangan', () {
++      for (final lang in ['uz', 'ru', 'en']) {
++        final arb = jsonDecode(_read('lib/l10n/arb/app_$lang.arb'))
++            as Map<String, dynamic>;
++        expect(arb.containsKey('demoChipIphone'), isFalse, reason: lang);
++        expect(arb.containsKey('demoChipSamsung'), isFalse, reason: lang);
++      }
++    });
++  });
++
++  // ─────────────────────────────────── 7. Hisobni o'chirish matni
++  group('7. Hisobni o‘chirish oynasi', () {
++    Future<L> openDialog(WidgetTester tester) async {
++      tester.view.physicalSize = const Size(390, 2400) * 3;
++      tester.view.devicePixelRatio = 3;
++      addTearDown(tester.view.reset);
++      await tester.pumpWidget(ProviderScope(
++        overrides: [...await testOverrides()],
++        child: wrapScreen(const SecuritySettingsScreen(),
++            tokens: NfcTokens.ivory),
++      ));
++      await settle(tester, frames: 10);
++      final l = await _uz();
++      await tester.scrollUntilVisible(
++          find.text(l.settingsDeleteAccount).last, 300,
++          scrollable: find.byType(Scrollable).first);
++      await tester.tap(find.text(l.settingsDeleteAccount).last);
++      await settle(tester, frames: 8);
++      return l;
++    }
++
++    testWidgets('iPhone: pullik ID, pul qaytarish va sayt yo‘q',
++        (tester) async {
++      final l = await openDialog(tester);
++      expect(find.text(l.deleteAccountWhatIos), findsOneWidget);
++      expect(find.text(l.deleteAccountWhat), findsNothing);
++    }, variant: _ios);
++
++    testWidgets('Android: avvalgi to‘liq matn', (tester) async {
++      final l = await openDialog(tester);
++      expect(find.text(l.deleteAccountWhat), findsOneWidget);
++      expect(find.text(l.deleteAccountWhatIos), findsNothing);
++    });
++
++    test('iPhone matni: 30 va 90 kun qoladi, xarid izi yo‘q', () async {
++      const banned = [
++        'nfcstore.uz', 'to‘lov', 'to‘langan', 'qaytarilmaydi', 'balans',
++        'payment', 'refund', 'balance', 'оплат', 'платеж', 'возвра',
++        'средств', 'Business ID',
++      ];
++      for (final code in ['uz', 'ru', 'en']) {
++        final l = await L.delegate.load(Locale(code));
++        final v = l.deleteAccountWhatIos;
++        expect(v, contains('30'), reason: code);
++        expect(v, contains('90'), reason: code);
++        for (final w in banned) {
++          expect(v.toLowerCase().contains(w.toLowerCase()), isFalse,
++              reason: '$code: "$w"');
++        }
++      }
++    });
++  });
++
++  // ───────────────────────────────────────── 8. Kod maydoni va bufer
++  group('8. Kod maydoni: iPhone’da bufer o‘zidan o‘qilmaydi', () {
++    Future<List<String>> pumpCode(WidgetTester tester) async {
++      final calls = <String>[];
++      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
++        SystemChannels.platform,
++        (call) async {
++          calls.add(call.method);
++          return call.method == 'Clipboard.getData'
++              ? <String, dynamic>{'text': '482913'}
++              : null;
++        },
++      );
++      addTearDown(() => tester.binding.defaultBinaryMessenger
++          .setMockMethodCallHandler(SystemChannels.platform, null));
++      await tester.pumpWidget(wrapScreen(
++        Material(child: Center(child: CodeField(onCompleted: (_) {}))),
++      ));
++      await tester.pumpAndSettle();
++      return calls;
++    }
++
++    Future<void> leaveAndReturn(WidgetTester tester) async {
++      for (final s in const [
++        AppLifecycleState.inactive,
++        AppLifecycleState.hidden,
++        AppLifecycleState.paused,
++        AppLifecycleState.hidden,
++        AppLifecycleState.inactive,
++        AppLifecycleState.resumed,
++      ]) {
++        tester.binding.handleAppLifecycleStateChanged(s);
++        await tester.pump();
++      }
++      await tester.pumpAndSettle();
++    }
++
++    testWidgets('iPhone: ochilganda ham, qaytganda ham getData YO‘Q',
++        (tester) async {
++      final calls = await pumpCode(tester);
++      expect(calls, isNot(contains('Clipboard.getData')));
++      await leaveAndReturn(tester);
++      expect(calls, isNot(contains('Clipboard.getData')),
++          reason: 'iOS 16+ "joylash" so‘rovini chiqaradi');
++      expect(find.byKey(const ValueKey('clipboard-hint')), findsNothing);
++      // Kod tizim taklifi orqali keladi.
++      final field = tester.widget<TextField>(find.byType(TextField));
++      expect(field.autofillHints, contains(AutofillHints.oneTimeCode));
++    }, variant: _ios);
++
++    testWidgets('Android: avvalgidek — taklif chiqadi, ishora yo‘q',
++        (tester) async {
++      final calls = await pumpCode(tester);
++      expect(calls, contains('Clipboard.getData'));
++      expect(find.byKey(const ValueKey('clipboard-hint')), findsOneWidget);
++      final field = tester.widget<TextField>(find.byType(TextField));
++      expect(field.autofillHints, isNull,
++          reason: 'Android autofill nosozligi (resume_focus_test)');
++    });
++  });
++
++  // ──────────────────────────────────────────────── 9. Kirish formasi
++  group('9. Kirish: server qabul qiladigan hamma narsa', () {
++    test('kirish paroli — 6 belgidan; yangi parol qoidasi o‘zgarmagan', () {
++      expect(Validate.loginPassword('123456'), isNull);
++      expect(Validate.loginPassword('abc1234'), isNull);
++      expect(Validate.loginPassword('12345'), 'errPasswordShortLogin');
++      expect(Validate.loginPassword(''), 'errRequired');
++      // Ro'yxatdan o'tish / tiklash — avvalgidek 8.
++      expect(Validate.password('1234567'), 'errPasswordShort');
++      expect(Validate.password('12345678'), isNull);
++    });
++
++    test('kirish maydoni — email YOKI telefon', () {
++      expect(Validate.login('aziza@example.com'), isNull);
++      expect(Validate.login('+998 90 123 45 67'), isNull);
++      expect(Validate.login('901234567'), isNull);
++      expect(Validate.login('(90) 123-45-67'), isNull);
++      expect(Validate.login('+44 7700 900123'), isNull);
++      expect(Validate.login(''), 'errRequired');
++      expect(Validate.login('aziza@'), 'errBadEmail');
++      expect(Validate.login('aziza'), 'errBadLogin');
++      expect(Validate.login('12345'), 'errBadLogin');
++    });
++
++    for (final (login, password) in [
++      ('aziza@example.com', 'qwe123'),
++      ('+998 90 123 45 67', 'parol1'),
++    ]) {
++      testWidgets('"$login" + 6 belgili parol serverga yuboriladi',
++          (tester) async {
++        _tall(tester);
++        final auth = _LoginAuth();
++        final base = await testOverrides(signedIn: false);
++        await tester.pumpWidget(_routed(
++          const LoginScreen(),
++          [
++            ...base.where((o) => !identical(o, base[1])),
++            authRepositoryProvider.overrideWithValue(auth),
++          ],
++          extra: [Routes.home],
++        ));
++        await settle(tester);
++        final l = await _uz();
++        expect(find.text(l.fieldLogin), findsOneWidget);
++
++        final fields = find.byType(TextField);
++        await tester.enterText(fields.at(0), login);
++        await tester.enterText(fields.at(1), password);
++        await tester.tap(find.widgetWithText(NovaButton, l.welcomeLogin));
++        await settle(tester);
++
++        expect(find.text(l.errPasswordShort), findsNothing);
++        expect(find.text(l.errBadEmail), findsNothing);
++        expect(auth.calls, [(login, password)],
++            reason: 'forma so‘rovni serverga yubormadi');
++      });
++    }
++
++    testWidgets('5 belgili parol — so‘rov ketmaydi, aniq sabab',
++        (tester) async {
++      _tall(tester);
++      final auth = _LoginAuth();
++      final base = await testOverrides(signedIn: false);
++      await tester.pumpWidget(_routed(
++        const LoginScreen(),
++        [
++          ...base.where((o) => !identical(o, base[1])),
++          authRepositoryProvider.overrideWithValue(auth),
++        ],
++      ));
++      await settle(tester);
++      final l = await _uz();
++      final fields = find.byType(TextField);
++      await tester.enterText(fields.at(0), 'aziza@example.com');
++      await tester.enterText(fields.at(1), '12345');
++      await tester.tap(find.widgetWithText(NovaButton, l.welcomeLogin));
++      await settle(tester);
++      expect(auth.calls, isEmpty);
++      expect(find.text(l.errPasswordShortLogin), findsOneWidget);
++    });
++  });
++}
++
++/// Kirish so'rovlarini yozib oladi.
++class _LoginAuth extends FakeAuthRepository {
++  _LoginAuth() : super(signedIn: false);
++  final calls = <(String, String)>[];
++
++  @override
++  Future<Result<User>> loginWithPassword({
++    required String email,
++    required String password,
++  }) async {
++    calls.add((email, password));
++    return const Ok(testUser);
++  }
++}
+diff --git a/mobile_nova/test/app_store_policy_test.dart b/mobile_nova/test/app_store_policy_test.dart
+index 4e8475f..2083c75 100644
+--- a/mobile_nova/test/app_store_policy_test.dart
++++ b/mobile_nova/test/app_store_policy_test.dart
+@@ -196,6 +196,7 @@ void main() {
+         'idStateAvailableIos',
+         'idStateTakenIos',
+         'homeNoIdHintIos',
++        'deleteAccountWhatIos',
+       ];
+       const banned = [
+         'sayt', 'сайт', 'website', 'site', //
+diff --git a/mobile_nova/test/helpers.dart b/mobile_nova/test/helpers.dart
+index 7539bc2..f08f870 100644
+--- a/mobile_nova/test/helpers.dart
++++ b/mobile_nova/test/helpers.dart
+@@ -170,6 +170,13 @@ Future<List<Override>> testOverrides({bool signedIn = true}) async {
+   ];
+ }
+ 
++/// Kontent qoidalari (Google Gemini roziligi bilan) OLDINDAN qabul
++/// qilingan — darvozaning o'zi sinalmaydigan testlar uchun (rasm
++/// yuklashdan oldin `ensureContentRules` varag'i chiqmaydi).
++/// [testOverrides] dan KEYIN chaqiriladi: u omborni tozalaydi.
++Future<void> acceptContentRules() async =>
++    (await Prefs.open()).setContentRulesAccepted(true);
++
+ /// Bitta ekranni mavzu va tarjimalar bilan o'raydi.
+ Widget wrapScreen(
+   Widget child, {
+diff --git a/mobile_nova/test/hit_area_discover_test.dart b/mobile_nova/test/hit_area_discover_test.dart
+index 4b1af2d..0b6ad8f 100644
+--- a/mobile_nova/test/hit_area_discover_test.dart
++++ b/mobile_nova/test/hit_area_discover_test.dart
+@@ -216,6 +216,9 @@ Future<void> _pumpListingWithPhoto(WidgetTester tester) async {
+   tester.view.devicePixelRatio = 3;
+   addTearDown(tester.view.reset);
+   final base = await testOverrides();
++  // Rasm qo'shish oldidan Gemini roziligi so'raladi — bu test
++  // darvozani emas, formani sinaydi.
++  await acceptContentRules();
+   final router = GoRouter(initialLocation: '/', routes: [
+     GoRoute(path: '/', builder: (_, __) => const Scaffold(body: Text('HOME'))),
+     GoRoute(
+diff --git a/mobile_nova/test/listing_form_test.dart b/mobile_nova/test/listing_form_test.dart
+index 2d976c7..13eec1a 100644
+--- a/mobile_nova/test/listing_form_test.dart
++++ b/mobile_nova/test/listing_form_test.dart
+@@ -62,6 +62,9 @@ Future<(_Repo, _Profile)> _pump(WidgetTester tester, Business b) async {
+   final repo = _Repo();
+   final profile = _Profile();
+   final base = await testOverrides();
++  // Rasm qo'shish oldidan Gemini roziligi so'raladi — bu test
++  // darvozani emas, formani sinaydi.
++  await acceptContentRules();
+   final router = GoRouter(initialLocation: '/', routes: [
+     GoRoute(path: '/', builder: (_, __) => const Scaffold(body: Text('HOME'))),
+     GoRoute(path: '/form', builder: (_, __) => const BusinessProductFormScreen()),
+diff --git a/mobile_nova/test/orders_app_store_test.dart b/mobile_nova/test/orders_app_store_test.dart
+index fb41af4..9b0593f 100644
+--- a/mobile_nova/test/orders_app_store_test.dart
++++ b/mobile_nova/test/orders_app_store_test.dart
+@@ -288,17 +288,22 @@ void main() {
+       expect(find.text(l.logout), findsOneWidget);
+     }, variant: _ios);
+ 
+-    testWidgets('Bildirishnomalar (iPhone): "Buyurtmalar" tanlovi yo‘q',
++    // iPhone'da bu ekranga yo'l yo'q (`showNotificationSettings`,
++    // `app_store_ios_fixes_test.dart`). Baribir ochilsa — iPhone'da
++    // yo'q bo'limlar (Buyurtmalar, Yangiliklar) uchun tanlov ham yo'q.
++    testWidgets('Bildirishnomalar (iPhone): "Buyurtmalar" va "Yangiliklar" yo‘q',
+         (tester) async {
+       final l = await _pumpTall(tester, const NotificationsSettingsScreen());
+       expect(find.text(l.orders), findsNothing);
+-      expect(find.text(l.settingsNews), findsOneWidget);
++      expect(find.text(l.settingsNews), findsNothing);
++      expect(find.text(l.nfcScans), findsOneWidget);
+     }, variant: _ios);
+ 
+     testWidgets('Bildirishnomalar (Android): "Buyurtmalar" tanlovi bor',
+         (tester) async {
+       final l = await _pumpTall(tester, const NotificationsSettingsScreen());
+       expect(find.text(l.orders), findsOneWidget);
++      expect(find.text(l.settingsNews), findsOneWidget);
+     });
+ 
+     testWidgets('NFC ID’larim bo‘sh — iPhone’da bo‘sh Do‘konga tugma yo‘q',
+diff --git a/mobile_nova/test/resume_focus_test.dart b/mobile_nova/test/resume_focus_test.dart
+index 5af11b3..95180c4 100644
+--- a/mobile_nova/test/resume_focus_test.dart
++++ b/mobile_nova/test/resume_focus_test.dart
+@@ -176,7 +176,7 @@ void main() {
+       );
+     });
+ 
+-    test('kod maydonida autofill ishorasi YO\'Q', () {
++    test('kod maydonida autofill ishorasi ANDROID\'DA YO\'Q', () {
+       // `AutofillHints.oneTimeCode` qo'shilgan commitdan keyin
+       // qurilmada pochtaga o'tib qaytganda klaviatura ochilmay
+       // qoldi. Ishora Android autofill xizmatiga maydonni
+@@ -194,12 +194,18 @@ void main() {
+           .split('\n')
+           .where((l) => !l.trimLeft().startsWith('//'))
+           .join('\n');
++      // iPhone'da ishora BOR (App Store: bufer o'zidan o'qilmaydi,
++      // kod tizim taklifi bilan keladi) — lekin FAQAT `_ios` sharti
++      // bilan. Shartsiz ishora Android'ga qaytgan bo'lardi.
++      final hints = RegExp(r'autofillHints:\s*([^,]+),').allMatches(code);
++      expect(hints.length, 1, reason: 'kod maydonida bitta ishora joyi');
+       expect(
+-        code,
+-        isNot(contains('autofillHints:')),
+-        reason: 'kod maydoniga autofill ishorasi qaytarilgan — '
++        hints.single.group(1)!.trim(),
++        startsWith('_ios ?'),
++        reason: 'kod maydoniga autofill ishorasi Android\'da qaytarilgan — '
+             'avval qurilmada sinab ko\'ring',
+       );
++      expect(hints.single.group(1), contains(': null'));
+       // Buferdagi kod taklifi esa o'z joyida qolishi shart: u
+       // ishoradan keyin qolgan yagona qulaylik.
+       expect(code, contains('_ClipboardHint'));
+-- 
+2.43.0
+

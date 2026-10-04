@@ -1,0 +1,1940 @@
+From fcc8fd4f708a4817a835c01b3df9e4761a99ccc2 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Sun, 4 Oct 2026 19:35:20 +0000
+Subject: [PATCH 25/26] Hammaga bepul post/istoriya/izoh; iPhone'da ID bozori
+ va yashirin to'lov yo'llari yo'q
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ mobile_nova/lib/design/widgets/states.dart    |  16 +-
+ .../lib/features/business/business_forms.dart |  35 +-
+ .../lib/features/home/home_screen.dart        |  10 +-
+ .../lib/features/nfc/nfc_center_screen.dart   |  21 +-
+ .../settings/settings_subscreens.dart         |  13 +-
+ .../lib/features/shop/store_policy.dart       |  13 +
+ mobile_nova/lib/features/social/comments.dart |  86 +---
+ .../lib/features/social/post_screens.dart     |  41 +-
+ mobile_nova/lib/l10n/arb/app_en.arb           |  20 +-
+ mobile_nova/lib/l10n/arb/app_ru.arb           |  20 +-
+ mobile_nova/lib/l10n/arb/app_uz.arb           |  34 +-
+ .../lib/l10n/gen/app_localizations.dart       |  94 +---
+ .../lib/l10n/gen/app_localizations_en.dart    |  52 +--
+ .../lib/l10n/gen/app_localizations_ru.dart    |  52 +--
+ .../lib/l10n/gen/app_localizations_uz.dart    |  52 +--
+ mobile_nova/lib/routing/router.dart           |  57 ++-
+ mobile_nova/test/app_store_market_test.dart   | 434 ++++++++++++++++++
+ mobile_nova/test/app_store_policy_test.dart   |   7 +-
+ mobile_nova/test/business_plan_test.dart      |  24 +-
+ ...emium_test.dart => comment_free_test.dart} |  74 ++-
+ mobile_nova/test/nfc_id_market_test.dart      |   6 +-
+ 21 files changed, 735 insertions(+), 426 deletions(-)
+ create mode 100644 mobile_nova/test/app_store_market_test.dart
+ rename mobile_nova/test/{comment_premium_test.dart => comment_free_test.dart} (60%)
+
+diff --git a/mobile_nova/lib/design/widgets/states.dart b/mobile_nova/lib/design/widgets/states.dart
+index b5309c6..b491743 100644
+--- a/mobile_nova/lib/design/widgets/states.dart
++++ b/mobile_nova/lib/design/widgets/states.dart
+@@ -55,17 +55,23 @@ String describeError(L l, AppError e) => switch (e.code) {
+       // o'chirish sanasini beradi — odamga sana va bekor qilish yo'li aytiladi.
+       'account_deleted' => _pendingDeletion(l, e.detail),
+       'account_pending_deletion' => l.errAccountDeleted,
+-      // Izoh yozish — faqat Premium (server qoidasi, `comments.js`).
+-      // Ilgari umumiy "Ruxsat yo'q" chiqardi va odam sababini bilmasdi
+-      // (egasi, 2026-09 surat). Xarid havolasi YO'Q — Play qoidasi.
+-      'premium_required' => l.errCommentPremium,
++      // POST, ISTORIYA, REELS VA IZOH — HAMMAGA BEPUL (egasining
++      // qarori, 2026-10-04). Ilova bu imkoniyatlarni hech kimdan
++      // yopmaydi. Server eski qoidasi bilan hali `premium_required`
++      // (izoh), `feature_locked` (post/video/istoriya) yoki
++      // `plan_locked` (biznes post) qaytarsa — NEYTRAL xato: Premium,
++      // daraja, tarif yoki "saytdan oling" degan so'z YO'Q. Aks holda
++      // iPhone'da IAP'siz pullik qulf ko'rinardi (Apple 3.1.1).
++      'premium_required' ||
++      'feature_locked' ||
++      'plan_locked' =>
++        l.errPublishUnavailable,
+       'rules_not_accepted' => l.rulesNotAccepted,
+       // iPhone'da "(sayt orqali)" degan xarid ishorasi yo'q —
+       // `shop/store_policy.dart` dagi `isAppStoreBuild` izohi.
+       'plan_limit_reached' => _appStore ? l.errPlanLimitIos : l.errPlanLimit,
+       // Server 413 yoki ilovaning oldindan tekshiruvi (100 MB).
+       'too_large' => l.errFileTooLarge,
+-      'plan_locked' => _appStore ? l.errPlanLockedIos : l.errPlanLocked,
+       // AVTOMATIK FILTR rasm yoki videoni rad etdi — SABAB aytiladi, aks holda
+       // odam "nega yuklanmayapti" deb o'ylaydi.
+       'content_blocked' => l.errContentBlocked(switch (e.detail) {
+diff --git a/mobile_nova/lib/features/business/business_forms.dart b/mobile_nova/lib/features/business/business_forms.dart
+index ade0894..0d39b6a 100644
+--- a/mobile_nova/lib/features/business/business_forms.dart
++++ b/mobile_nova/lib/features/business/business_forms.dart
+@@ -872,8 +872,14 @@ class _AddProductCard extends StatelessWidget {
+ 
+ /// Tarif kartasi: nechta tovar qo'yilgan, limit, keyingi qadam.
+ ///
++/// FAQAT KATALOG HAJMI. Post va istoriya hammaga bepul (egasining
++/// qarori, 2026-10-04) — karta ularni tarifga bog'lamaydi va "sinov
++/// davri" deb yozmaydi (sinov tugasa pul to'lanadi degan ishora edi).
++///
+ /// PLAY QOIDASI: Premium va nom RAQAMLI xizmat — ilovada xarid tugmasi
+ /// ham, saytga bosiladigan havola ham YO'Q ([StoreNotice] — faqat matn).
++/// iPhone'da tarif nomi ham, keyingi qadam ham yo'q — faqat limit va
++/// hisoblagich (Apple 3.1.1, `store_policy.dart`).
+ class BusinessPlanCard extends StatelessWidget {
+   const BusinessPlanCard({super.key, required this.plan, required this.count});
+ 
+@@ -885,20 +891,10 @@ class BusinessPlanCard extends StatelessWidget {
+     final l = L.of(context);
+     final t = context.tokens;
+ 
+-    if (plan.trialActive) {
+-      return Row(
+-        key: const ValueKey('plan-trial'),
+-        children: [
+-          Icon(Icons.auto_awesome_rounded, size: 16, color: t.labelInk),
+-          const SizedBox(width: Gap.sm),
+-          Expanded(
+-            child: Text(l.bizPlanTrial,
+-                style: Theme.of(context).textTheme.bodySmall),
+-          ),
+-        ],
+-      );
+-    }
+-    if (!plan.limited) return const SizedBox.shrink();
++    // Sinov davrida server cheklov qo'ymaydi — ko'rsatadigan limit
++    // yo'q. Ilgari "Sinov davri: hozircha cheklov yo'q" yozilardi:
++    // "keyin pul to'laysiz" degan ma'no beradi, joylash esa bepul.
++    if (plan.trialActive || !plan.limited) return const SizedBox.shrink();
+ 
+     final limit = plan.itemLimit!;
+     final full = plan.atLimit(count);
+@@ -912,9 +908,14 @@ class BusinessPlanCard extends StatelessWidget {
+             children: [
+               Expanded(
+                 child: Text(
+-                  plan.premium
+-                      ? l.bizPlanPremiumTitle(limit)
+-                      : l.bizPlanFreeTitle(limit),
++                  // iPhone'da "Bepul tarif" / "Premium" emas — faqat
++                  // katalog hajmi: tarif nomi ilovada sotilmaydigan
++                  // pullik tarifga ishora qiladi.
++                  !showDigitalPrices
++                      ? l.bizPlanLimitTitle(limit)
++                      : plan.premium
++                          ? l.bizPlanPremiumTitle(limit)
++                          : l.bizPlanFreeTitle(limit),
+                   style: Theme.of(context).textTheme.titleSmall,
+                 ),
+               ),
+diff --git a/mobile_nova/lib/features/home/home_screen.dart b/mobile_nova/lib/features/home/home_screen.dart
+index 2079841..5424c35 100644
+--- a/mobile_nova/lib/features/home/home_screen.dart
++++ b/mobile_nova/lib/features/home/home_screen.dart
+@@ -814,8 +814,14 @@ class _QuickActions extends StatelessWidget {
+         : [
+             (Icons.qr_code_scanner_rounded, l.nfcScanShort, Routes.nfcScan),
+             (Icons.credit_card_outlined, l.nfcWriteShort, Routes.nfcWrite),
+-            // ID QIDIRISH — NFC Markazdagi AYNAN O'SHA ekran.
+-            (Icons.search_rounded, l.idSearchShort, Routes.nfcMarket),
++            // ANDROID: ID QIDIRISH — NFC Markazdagi AYNAN O'SHA ekran.
++            //
++            // iPHONE'DA ID BOZORI YO'Q (egasining qarori, 2026-10-04):
++            // qidiruvdagi ID'lar pullik raqamli tovar, ilovada IAP yo'q
++            // (Apple 3.1.1). O'rnida foydali amal — "NFC ID'larim".
++            isAppStoreBuild
++                ? (Icons.badge_outlined, l.nfcMyIds, Routes.nfcIds)
++                : (Icons.search_rounded, l.idSearchShort, Routes.nfcMarket),
+             (Icons.add_rounded, l.postCreate, Routes.postCreate),
+           ];
+ 
+diff --git a/mobile_nova/lib/features/nfc/nfc_center_screen.dart b/mobile_nova/lib/features/nfc/nfc_center_screen.dart
+index 3f43f83..1d20916 100644
+--- a/mobile_nova/lib/features/nfc/nfc_center_screen.dart
++++ b/mobile_nova/lib/features/nfc/nfc_center_screen.dart
+@@ -21,7 +21,7 @@ import '../../routing/routes.dart';
+ import '../auth/session.dart';
+ import '../home/home_screen.dart';
+ import '../home/widgets/my_ids_strip.dart';
+-import '../shop/store_policy.dart' show idMarketTitle;
++import '../shop/store_policy.dart' show idMarketTitle, showIdMarket;
+ import 'nfc_service.dart';
+ import 'qr_sheet.dart';
+ import '../../design/widgets/brand_icon.dart';
+@@ -161,8 +161,9 @@ class NfcCenterScreen extends ConsumerWidget {
+                   ),
+                 // Bosh sahifadagi "ID qidirish" ham AYNAN shu ekranni
+                 // ochadi — ikkinchi katalog yo'q. NFC'siz qurilmada u
+-                // yuqoridagi panelda — takrorlanmaydi.
+-                if (!noNfc) _ActionRow(
++                // yuqoridagi panelda — takrorlanmaydi. iPhone'da ID
++                // bozori UMUMAN yo'q (`showIdMarket`).
++                if (!noNfc && showIdMarket) _ActionRow(
+                   icon: Icons.search_rounded,
+                   title: idMarketTitle(l),
+                   subtitle: l.idMarketSearchHint,
+@@ -673,9 +674,17 @@ class NoNfcPanel extends ConsumerWidget {
+                 () => context.push(Routes.nfcIds),
+                 const ValueKey('no-nfc-ids')),
+             const SizedBox(width: Gap.md),
+-            tile(Icons.search_rounded, idMarketTitle(l), l.noNfcGetHint,
+-                () => context.push(Routes.nfcMarket),
+-                const ValueKey('no-nfc-market')),
++            // iPhone'da ID bozori yo'q (`showIdMarket`) — o'rnida
++            // qo'ldagi stiker yoki kartani ulash (jismoniy tovar).
++            if (showIdMarket)
++              tile(Icons.search_rounded, idMarketTitle(l), l.noNfcGetHint,
++                  () => context.push(Routes.nfcMarket),
++                  const ValueKey('no-nfc-market'))
++            else
++              tile(Icons.add_card_rounded, l.stickerActivate,
++                  l.stickerActivateShort,
++                  () => context.push(Routes.nfcActivate),
++                  const ValueKey('no-nfc-activate')),
+           ],
+         ),
+         ),
+diff --git a/mobile_nova/lib/features/settings/settings_subscreens.dart b/mobile_nova/lib/features/settings/settings_subscreens.dart
+index 4a36c54..de821d4 100644
+--- a/mobile_nova/lib/features/settings/settings_subscreens.dart
++++ b/mobile_nova/lib/features/settings/settings_subscreens.dart
+@@ -1254,19 +1254,20 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen>
+   }
+ }
+ 
+-/// Premium nimani ochishi — SERVERDAGI qoidalar bilan bir xil.
++/// Premium nima berishi.
+ ///
+-/// `FEATURE_MIN_D1 = { post: 'silver', video: 'premium', story: 'gold' }`
+-/// va `POST_LIMIT_D1[premium] = 60`, `musicLimitD1(true) = 10`.
++/// Post, istoriya, video/Reels va izoh bu ro'yxatda YO'Q: ular hammaga
++/// bepul (egasining qarori, 2026-10-04). Premium faqat qo'shimcha
++/// hajm beradi — biznes katalogida ko'proq tovar va `musicLimitD1(true)
++/// = 10` profil qo'shig'i. iPhone'da bu ekran umuman ochilmaydi
++/// (`router.dart`, `isAppStoreBuild`).
+ class _Perks extends StatelessWidget {
+   @override
+   Widget build(BuildContext context) {
+     final l = L.of(context);
+     final t = context.tokens;
+     final items = <(IconData, String)>[
+-      (Icons.movie_creation_outlined, l.premiumPerkVideo),
+-      (Icons.auto_stories_outlined, l.premiumPerkStory),
+-      (Icons.grid_on_rounded, l.premiumPerkPosts),
++      (Icons.inventory_2_outlined, l.premiumPerkCatalog),
+       (Icons.music_note_rounded, l.premiumPerkMusic),
+     ];
+     return FloatingSurface(
+diff --git a/mobile_nova/lib/features/shop/store_policy.dart b/mobile_nova/lib/features/shop/store_policy.dart
+index 46a1b38..0eb781e 100644
+--- a/mobile_nova/lib/features/shop/store_policy.dart
++++ b/mobile_nova/lib/features/shop/store_policy.dart
+@@ -139,6 +139,19 @@ bool get showOrdersEntry => !isAppStoreBuild;
+ /// esa "Ilova haqida" ga buriladi (`router.dart`). ANDROID O'ZGARMAYDI.
+ bool get showNewsEntry => !isAppStoreBuild;
+ 
++/// "NFC ID BOZORI" BO'LSINMI — ID qidiruvi, toifalar katalogi, ID
++/// kartasi va buyurtma ekrani (`/nfc/market*`).
++///
++/// Egasining qarori (2026-10-04, App Store auditi): iPhone'da bozor
++/// UMUMAN YO'Q. Qidiruvdagi har bir ID pullik raqamli tovar, IAP esa
++/// yo'q (Apple 3.1.1). Narxsiz ham u "bo'sh — oling" degan, lekin
++/// olib bo'lmaydigan do'kon vitrinasi bo'lib qolardi. Bosh sahifadagi
++/// "ID qidirish" o'rnida "NFC ID'larim", NFC Markazdagi qator va
++/// NFC'siz qurilmadagi katak o'rnida stiker faollashtirish turadi;
++/// `/nfc/market*` havolalari esa "NFC ID'larim" ga buriladi
++/// (`router.dart`). ANDROID O'ZGARMAYDI.
++bool get showIdMarket => !isAppStoreBuild;
++
+ /// "BILDIRISHNOMALAR" SOZLAMASI BO'LSINMI.
+ ///
+ /// Ilovada push ham, mahalliy bildirishnoma ham YO'Q: `pubspec.yaml`
+diff --git a/mobile_nova/lib/features/social/comments.dart b/mobile_nova/lib/features/social/comments.dart
+index b668128..051df28 100644
+--- a/mobile_nova/lib/features/social/comments.dart
++++ b/mobile_nova/lib/features/social/comments.dart
+@@ -11,7 +11,6 @@ import '../../design/widgets/states.dart';
+ import '../../design/widgets/surfaces.dart';
+ import '../../l10n/gen/app_localizations.dart';
+ import '../../routing/routes.dart';
+-import '../auth/session.dart';
+ import '../home/widgets/avatar.dart';
+ import 'moderation.dart';
+ import '../../design/icons/nova_icons.dart';
+@@ -182,10 +181,14 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
+     final l = L.of(context);
+     final t = context.tokens;
+     final data = ref.watch(commentsProvider(_ref));
+-    // Server izohni Premium'ga va 30 kunlik sinovdagilarga yozdiradi. Qolganga
+-    // maydon UMUMAN OCHILMAYDI — o'rnida sababi yozilgan qulf kartasi
+-    // (egasi, 2026-09: "bosilmasin, izoh yozilgandan keyin chiqmasin").
+-    final canWrite = _serverPremium(ref.watch(currentUserProvider));
++    // IZOH YOZISH — HAMMAGA BEPUL (egasining qarori, 2026-10-04).
++    //
++    // Ilgari Premium'siz va sinov muddati tugagan odamga maydon
++    // ochilmasdi — o'rnida "Izoh yozish — Premium a'zolar uchun" qulf
++    // kartasi turardi. iPhone'da Premium'ni ilova ichida olib bo'lmaydi
++    // (IAP yo'q), demak bu qulf Apple 3.1.1 bo'yicha rad etish sababi
++    // edi. Endi maydon HAMMA PLATFORMADA hammaga ochiq. Server baribir
++    // `premium_required` qaytarsa — `describeError` neytral xato beradi.
+ 
+     return Column(
+       crossAxisAlignment: CrossAxisAlignment.start,
+@@ -234,10 +237,6 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
+                 ),
+               ],
+ 
+-              if (!canWrite)
+-                const _PremiumLockedComposer(
+-                    key: ValueKey('comment-premium-locked'))
+-              else ...[
+               // ── Qoidalar eslatmasi ──────────────────────────
+               // Izoh ham ommaviy kontent: haqorat, diniy va siyosiy
+               // targ'ibot taqiqi yozishdan OLDIN ko'rinib tursin.
+@@ -346,7 +345,6 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
+                         .bodySmall!
+                         .copyWith(color: t.error)),
+               ],
+-              ],
+               const SizedBox(height: Gap.lg),
+ 
+               // ── Ro'yxat ─────────────────────────────────────
+@@ -391,7 +389,7 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
+                             // Javobga javob yozib bo'lmaydi (server
+                             // ham rad etadi), shuning uchun tugma
+                             // faqat ota izohda.
+-                            onReply: c.isReply || !canWrite
++                            onReply: c.isReply
+                                 ? null
+                                 : () => setState(() {
+                                       _replyTo = c;
+@@ -411,72 +409,6 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
+   }
+ }
+ 
+-/// PREMIUM BO'LMAGANGA — yozish maydoni o'rnida.
+-///
+-/// Bosilmaydi, klaviatura ochilmaydi. Xarid tugmasi va sayt havolasi
+-/// ATAYLAB YO'Q: Google Play raqamli tovar uchun ilovadan tashqari
+-/// to'lovga yo'naltirishni taqiqlaydi.
+-class _PremiumLockedComposer extends StatelessWidget {
+-  const _PremiumLockedComposer({super.key});
+-
+-  @override
+-  Widget build(BuildContext context) {
+-    final t = context.tokens;
+-    final l = L.of(context);
+-    return Container(
+-      width: double.infinity,
+-      padding: const EdgeInsets.all(Gap.md),
+-      decoration: BoxDecoration(
+-        color: t.surface2,
+-        borderRadius: R.gentle,
+-        border: Border.all(color: t.border2),
+-      ),
+-      child: Row(
+-        crossAxisAlignment: CrossAxisAlignment.start,
+-        children: [
+-          Container(
+-            width: 36,
+-            height: 36,
+-            decoration: BoxDecoration(
+-              color: t.brandSoft,
+-              shape: BoxShape.circle,
+-            ),
+-            child: Icon(Icons.lock_rounded, size: 18, color: t.labelInk),
+-          ),
+-          const SizedBox(width: Gap.md),
+-          Expanded(
+-            child: Column(
+-              crossAxisAlignment: CrossAxisAlignment.start,
+-              children: [
+-                Text(
+-                  l.commentPremiumTitle,
+-                  style: Theme.of(context)
+-                      .textTheme
+-                      .titleSmall
+-                      ?.copyWith(fontWeight: FontWeight.w700),
+-                ),
+-                const SizedBox(height: 4),
+-                Text(
+-                  l.errCommentPremium,
+-                  style: Theme.of(context)
+-                      .textTheme
+-                      .bodySmall
+-                      ?.copyWith(color: t.text2, height: 1.35),
+-                ),
+-              ],
+-            ),
+-          ),
+-        ],
+-      ),
+-    );
+-  }
+-}
+-
+-/// Server qoidasi bilan BIR XIL: Premium YOKI 30 kunlik sinov muddati
+-/// (egasining qarori, 2026-09-23 — `comments.js` `trialActiveFor`).
+-/// Anonim holatda karta chiqmaydi — u yerda kirish so'raladi.
+-bool _serverPremium(User? u) => u == null || u.premiumActive;
+-
+ class _CommentTile extends ConsumerWidget {
+   const _CommentTile({
+     required this.comment,
+diff --git a/mobile_nova/lib/features/social/post_screens.dart b/mobile_nova/lib/features/social/post_screens.dart
+index ab22666..9f6ed97 100644
+--- a/mobile_nova/lib/features/social/post_screens.dart
++++ b/mobile_nova/lib/features/social/post_screens.dart
+@@ -540,14 +540,6 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
+   bool _busy = false;
+   String? _error;
+ 
+-  /// Server "darajangiz yetmaydi" dedimi.
+-  ///
+-  /// Oddiy xato matni bilan farqi bor: bu YO'L BOR degani — odam
+-  /// Premium olsa qo'ya oladi. Shuning uchun matn emas, TUGMA
+-  /// ko'rsatiladi. Aks holda odam nega joylay olmasligini bilmay,
+-  /// "ilova buzuq" deb o'ylaydi.
+-  bool _locked = false;
+-
+   /// Tanlangan fayl VIDEOmi. Reel endi rasm ham bo'la oladi (egasi:
+   /// "reelsga rasm ham qo'yilsin, default 10 sekund bo'lsin").
+   bool _fileIsVideo = false;
+@@ -644,7 +636,6 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
+     setState(() {
+       _busy = true;
+       _error = null;
+-      _locked = false;
+       _progress = 0;
+     });
+ 
+@@ -772,13 +763,12 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
+         }
+         context.pop();
+       },
+-      err: (e) => setState(() {
+-        // `feature_locked` — serverdagi `FEATURE_MIN_D1` darvozasi.
+-        // Qaysi imkoniyat ekanini ILOVA O'ZI biladi: shu ekranda
+-        // nima joylanayotgani ma'lum.
+-        _locked = e.code == 'feature_locked';
+-        _error = _locked ? _lockedText(l) : describeError(l, e);
+-      }),
++      // POST, ISTORIYA VA REELS — HAMMAGA BEPUL (egasining qarori,
++      // 2026-10-04). Ilgari server `feature_locked` qaytarsa "Video
++      // post va Reels uchun Premium kerak" / "darajangiz yetmaydi"
++      // yozilardi — iPhone'da IAP'siz pullik qulf (Apple 3.1.1). Endi
++      // bu kod ham oddiy xato: `describeError` neytral matn beradi.
++      err: (e) => setState(() => _error = describeError(l, e)),
+     );
+   }
+ 
+@@ -1043,14 +1033,12 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
+                 fontFamily: AppType.sans,
+                 fontSize: 12.5,
+                 fontWeight: FontWeight.w600,
+-                color: _locked ? t.text2 : t.error,
++                color: t.error,
+               ),
+             ),
+           ],
+-          // Darvoza yopiq bo'lsa sabab yuqoridagi matnda aytiladi.
+-          // "Premium sotib olish" tugmasi YO'Q: raqamli obunaga xarid
+-          // chaqirig'i Google Play to'lov qoidasiga zid
+-          // (`shop/store_policy.dart`).
++          // Bu yerda Premium, daraja yoki xarid haqida HECH NARSA yo'q:
++          // joylash hammaga bepul (egasining qarori, 2026-10-04).
+           const SizedBox(height: Gap.xl),
+           // QOIDALAR — tugmadan OLDIN, ko'rinib turadi.
+           const ContentRulesCard(),
+@@ -1064,17 +1052,6 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
+     );
+   }
+ 
+-  /// Qaysi darvoza yopilganini AYTADI.
+-  ///
+-  /// Server `{error:'feature_locked', feature:'video'|'story'|'post'}`
+-  /// qaytaradi, lekin ilova buni o'z holatidan ham biladi va
+-  /// javobning shakliga bog'lanib qolmaydi.
+-  String _lockedText(L l) => switch (widget.kind) {
+-        ComposerKind.reel => l.premiumLockedVideo,
+-        ComposerKind.story => l.premiumLockedStory,
+-        ComposerKind.post => l.premiumLockedPost,
+-      };
+-
+   void _showPicker() {
+     final l = L.of(context);
+     showModalBottomSheet(
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index 65043f0..16ea6dd 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -493,7 +493,7 @@
+   "businessNoneTitle": "You have no business profile",
+   "businessNoneHint": "Create a business profile or switch back to personal",
+   "premiumTitle": "Premium subscription",
+-  "premiumTagline": "Reels, stories and every feature",
++  "premiumTagline": "More catalogue items and profile tracks",
+   "premiumPerMonth": "per month",
+   "premiumActive": "Premium active",
+   "premiumUntil": "Valid until: {date}",
+@@ -509,9 +509,6 @@
+   "premiumExtend": "Extend",
+   "premiumBuy": "Get Premium",
+   "premiumPerksTitle": "What you unlock",
+-  "premiumPerkVideo": "Video posts and Reels",
+-  "premiumPerkStory": "Posting stories",
+-  "premiumPerkPosts": "More posts (up to 60)",
+   "premiumPerkMusic": "10 profile tracks",
+   "premiumPayWith": "Choose a payment method",
+   "premiumPayme": "Payme",
+@@ -523,10 +520,6 @@
+   "premiumNotYet": "The payment is not confirmed yet.",
+   "premiumNoProvider": "No payment provider is connected yet.",
+   "premiumBrowserFailed": "Could not open the payment page. The link was copied.",
+-  "premiumLocked": "This feature is in Premium",
+-  "premiumLockedVideo": "Video posts and Reels need Premium.",
+-  "premiumLockedStory": "Your tier is not high enough for stories.",
+-  "premiumLockedPost": "Your tier is not high enough for posts.",
+   "payKindCard": "Digital business card",
+   "payKindPhysical": "Physical NFC card",
+   "payKindAuction": "Auction payment",
+@@ -903,17 +896,18 @@
+   "bizAddService": "Add service",
+   "bizPlanUsage": "Catalogue: {count} / {limit}",
+   "bizPlanFreeTitle": "Free plan — {limit} items",
+-  "bizPlanFreeBody": "With Premium (monthly) — up to {premium} items, posts and stories. With your own name (Business ID) — unlimited.",
++  "bizPlanFreeBody": "With Premium (monthly) — up to {premium} items. With your own name (Business ID) — unlimited.",
+   "bizPlanPremiumTitle": "Premium — {limit} items",
+   "bizPlanPremiumBody": "For an unlimited catalogue, buy your own name (Business ID).",
+   "bizPlanLimitReached": "Limit reached: upgrade to add more. Existing items stay.",
+   "bizPlanLimitReachedIos": "Limit reached. Existing items stay.",
+   "bizPlanStoreNotice": "Premium and your own name are arranged on the website:",
+-  "bizPlanTrial": "Trial: no limits for now",
+   "errPlanLimit": "Plan limit reached. Premium or your own name (on the website) allows more.",
+-  "errPlanLocked": "Posts and stories are closed on the free plan. Premium (on the website) opens them.",
+   "errPlanLimitIos": "Plan limit reached.",
+-  "errPlanLockedIos": "Posts and stories are closed on the free plan.",
++  "errPublishUnavailable": "Couldn’t send this right now. Please try again a little later.",
++  "bizPlanLimitTitle": "Catalogue — up to {limit} items",
++  "premiumPerkCatalog": "More items in your business catalogue",
++  "stickerActivateShort": "With the code from the envelope",
+   "errContentBlocked": "Not uploaded: {reason}. Such content violates the law and NFCSTORE rules. If this is a mistake, pick another photo or video, or contact support.",
+   "videoChecking": "Checking the video… This may take a few seconds.",
+   "videoPreparing": "Preparing the video… A few seconds.",
+@@ -928,8 +922,6 @@
+   "deleteAccountWhatIos": "After the request you are signed out on all devices; your NFC ID profiles, business pages, posts, stories and comments are hidden immediately. After 30 days the account and its data are permanently deleted (if there is an open matter — once it is resolved). Released IDs are not given to anyone for 90 days. Records the law requires us to keep are kept for the required period.",
+   "deleteAccountUnderstood": "I understand, delete my account",
+   "deleteAccountDone": "Request received. Your account will be permanently deleted in 30 days.",
+-  "errCommentPremium": "A Premium subscription is required to write comments. Everyone can read them.",
+-  "commentPremiumTitle": "Comments are for Premium members",
+   "storeSeeAll": "See all",
+   "storeFeatured": "Featured",
+   "storeProducts": "Products",
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index 3f587b5..20f4eb0 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -493,7 +493,7 @@
+   "businessNoneTitle": "У вас нет бизнес-профиля",
+   "businessNoneHint": "Создайте бизнес-профиль или вернитесь в личный режим",
+   "premiumTitle": "Подписка Premium",
+-  "premiumTagline": "Reels, истории и все возможности",
++  "premiumTagline": "Больше товаров и треков в профиле",
+   "premiumPerMonth": "в месяц",
+   "premiumActive": "Premium активен",
+   "premiumUntil": "Действует до: {date}",
+@@ -509,9 +509,6 @@
+   "premiumExtend": "Продлить",
+   "premiumBuy": "Получить Premium",
+   "premiumPerksTitle": "Что открывается",
+-  "premiumPerkVideo": "Видео и Reels",
+-  "premiumPerkStory": "Публикация историй",
+-  "premiumPerkPosts": "Больше постов (до 60)",
+   "premiumPerkMusic": "10 треков в профиле",
+   "premiumPayWith": "Выберите способ оплаты",
+   "premiumPayme": "Payme",
+@@ -523,10 +520,6 @@
+   "premiumNotYet": "Оплата пока не подтверждена.",
+   "premiumNoProvider": "Платёжная система пока не подключена.",
+   "premiumBrowserFailed": "Не удалось открыть страницу оплаты. Ссылка скопирована.",
+-  "premiumLocked": "Эта возможность в Premium",
+-  "premiumLockedVideo": "Для видео и Reels нужен Premium.",
+-  "premiumLockedStory": "Вашего уровня недостаточно для историй.",
+-  "premiumLockedPost": "Вашего уровня недостаточно для постов.",
+   "payKindCard": "Цифровая визитка",
+   "payKindPhysical": "Физическая NFC-карта",
+   "payKindAuction": "Оплата аукциона",
+@@ -903,17 +896,18 @@
+   "bizAddService": "Добавить услугу",
+   "bizPlanUsage": "Каталог: {count} / {limit}",
+   "bizPlanFreeTitle": "Бесплатный тариф — {limit} товаров",
+-  "bizPlanFreeBody": "С Premium (ежемесячно) — до {premium} товаров, посты и истории. Со своим именем (Business ID) — без ограничений.",
++  "bizPlanFreeBody": "С Premium (ежемесячно) — до {premium} товаров. Со своим именем (Business ID) — без ограничений.",
+   "bizPlanPremiumTitle": "Premium — {limit} товаров",
+   "bizPlanPremiumBody": "Для неограниченного каталога купите своё имя (Business ID).",
+   "bizPlanLimitReached": "Лимит исчерпан: чтобы добавить товар, повысьте тариф. Добавленные не удаляются.",
+   "bizPlanLimitReachedIos": "Лимит исчерпан. Добавленные не удаляются.",
+   "bizPlanStoreNotice": "Premium и своё имя оформляются на сайте:",
+-  "bizPlanTrial": "Пробный период: пока без ограничений",
+   "errPlanLimit": "Лимит тарифа исчерпан. Для большего нужен Premium или своё имя (на сайте).",
+-  "errPlanLocked": "На бесплатном тарифе посты и истории закрыты. Откроются с Premium (на сайте).",
+   "errPlanLimitIos": "Лимит тарифа исчерпан.",
+-  "errPlanLockedIos": "На бесплатном тарифе посты и истории закрыты.",
++  "errPublishUnavailable": "Сейчас не получилось отправить. Попробуйте чуть позже.",
++  "bizPlanLimitTitle": "Каталог — до {limit} товаров",
++  "premiumPerkCatalog": "Больше товаров в бизнес-каталоге",
++  "stickerActivateShort": "По коду из конверта",
+   "errContentBlocked": "Не загружено: {reason}. Такой контент нарушает закон и правила NFCSTORE. Если это ошибка — выберите другое фото или видео или напишите в поддержку.",
+   "videoChecking": "Проверяем видео… Это может занять несколько секунд.",
+   "videoPreparing": "Готовим видео… Несколько секунд.",
+@@ -928,8 +922,6 @@
+   "deleteAccountWhatIos": "После запроса вы выйдете из аккаунта на всех устройствах; профили NFC ID, бизнес-страницы, посты, истории и комментарии сразу скрываются. Через 30 дней аккаунт и связанные данные удаляются полностью (если есть нерешённый вопрос — после его решения). Освободившиеся ID 90 дней никому не выдаются. Записи, которые требует хранить закон, хранятся установленный срок.",
+   "deleteAccountUnderstood": "Понимаю, удалить аккаунт",
+   "deleteAccountDone": "Запрос принят. Аккаунт будет полностью удалён через 30 дней.",
+-  "errCommentPremium": "Чтобы писать комментарии, нужна подписка Premium. Читать их могут все.",
+-  "commentPremiumTitle": "Комментарии — для участников Premium",
+   "storeSeeAll": "Смотреть все",
+   "storeFeatured": "Рекомендуем",
+   "storeProducts": "Товары",
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index 19efc64..b13fdd6 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -511,7 +511,7 @@
+   "businessNoneTitle": "Sizda biznes profil yo‘q",
+   "businessNoneHint": "Biznes profil yarating yoki shaxsiy rejimga qayting",
+   "premiumTitle": "Premium obuna",
+-  "premiumTagline": "Reels, istoriya va to‘liq imkoniyatlar",
++  "premiumTagline": "Ko‘proq tovar va profil qo‘shiqlari",
+   "premiumPerMonth": "oyiga",
+   "premiumActive": "Premium faol",
+   "premiumUntil": "Amal qiladi: {date}",
+@@ -527,9 +527,6 @@
+   "premiumExtend": "Muddatni uzaytirish",
+   "premiumBuy": "Premium olish",
+   "premiumPerksTitle": "Nimalar ochiladi",
+-  "premiumPerkVideo": "Video post va Reels",
+-  "premiumPerkStory": "Istoriya qo‘yish",
+-  "premiumPerkPosts": "Ko‘proq post (60 tagacha)",
+   "premiumPerkMusic": "10 ta profil qo‘shig‘i",
+   "premiumPayWith": "To‘lov usulini tanlang",
+   "premiumPayme": "Payme",
+@@ -541,10 +538,6 @@
+   "premiumNotYet": "To‘lov hali tasdiqlanmadi.",
+   "premiumNoProvider": "Hozircha to‘lov tizimi ulanmagan.",
+   "premiumBrowserFailed": "To‘lov sahifasini ocholmadik. Havola nusxalandi.",
+-  "premiumLocked": "Bu imkoniyat Premiumda",
+-  "premiumLockedVideo": "Video post va Reels uchun Premium kerak.",
+-  "premiumLockedStory": "Istoriya qo‘yish uchun darajangiz yetmaydi.",
+-  "premiumLockedPost": "Post qo‘yish uchun darajangiz yetmaydi.",
+   "payKindCard": "Raqamli tashrif qog‘ozi",
+   "payKindPhysical": "Jismoniy NFC karta",
+   "payKindAuction": "Auksion to‘lovi",
+@@ -967,7 +960,7 @@
+       }
+     }
+   },
+-  "bizPlanFreeBody": "Premium (oylik) bilan {premium} tagacha tovar, post va istoriya ochiladi. O‘z nomingizni (Business ID) sotib olsangiz — cheksiz.",
++  "bizPlanFreeBody": "Premium (oylik) bilan {premium} tagacha tovar. O‘z nomingizni (Business ID) sotib olsangiz — cheksiz.",
+   "@bizPlanFreeBody": {
+     "placeholders": {
+       "premium": {
+@@ -987,11 +980,23 @@
+   "bizPlanLimitReached": "Limit to‘ldi: yangi tovar qo‘shish uchun tarifni oshiring. Qo‘shilganlari o‘chmaydi.",
+   "bizPlanLimitReachedIos": "Limit to‘ldi. Qo‘shilganlari o‘chmaydi.",
+   "bizPlanStoreNotice": "Premium va o‘z nomi saytda rasmiylashtiriladi:",
+-  "bizPlanTrial": "Sinov davri: hozircha hech qanday cheklov yo‘q",
+   "errPlanLimit": "Tarif limiti to‘ldi. Ko‘proq tovar uchun Premium yoki o‘z nomingiz kerak (sayt orqali).",
+-  "errPlanLocked": "Bepul tarifda post va istoriya yopiq. Premium (sayt orqali) bilan ochiladi.",
+   "errPlanLimitIos": "Tarif limiti to‘ldi.",
+-  "errPlanLockedIos": "Bepul tarifda post va istoriya yopiq.",
++  "errPublishUnavailable": "Hozircha yuborib bo‘lmadi. Birozdan keyin qayta urinib ko‘ring.",
++  "@errPublishUnavailable": {
++    "description": "Server hali ham `premium_required` / `feature_locked` / `plan_locked` qaytarsa — NEYTRAL xato. Premium, daraja yoki xarid haqida so'z yo'q: post, istoriya, Reels va izoh hammaga bepul (egasining qarori, 2026-10-04)."
++  },
++  "bizPlanLimitTitle": "Katalog — {limit} tagacha tovar",
++  "@bizPlanLimitTitle": {
++    "description": "iPhone: tarif nomisiz katalog limiti (\"Bepul tarif\" pullik tarifga ishora qiladi).",
++    "placeholders": {
++      "limit": {
++        "type": "int"
++      }
++    }
++  },
++  "premiumPerkCatalog": "Biznes katalogida ko‘proq tovar",
++  "stickerActivateShort": "Konvertdagi kod bilan",
+   "errContentBlocked": "Yuklanmadi: {reason}. Bunday kontent qonun va NFCSTORE qoidalariga zid. Xato deb o‘ylasangiz, boshqa rasm yoki video tanlang yoki qo‘llab-quvvatlashga yozing.",
+   "@errContentBlocked": {
+     "placeholders": {
+@@ -1013,11 +1018,6 @@
+   "deleteAccountWhatIos": "So‘rovdan keyin barcha qurilmalarda hisobdan chiqasiz; NFC ID profillaringiz, biznes sahifalaringiz, postlar, istoriyalar va izohlar darhol yashiriladi. 30 kundan keyin hisob va unga bog‘langan ma’lumotlar butunlay o‘chiriladi (hal qilinmagan masala bo‘lsa — u hal bo‘lgach). Bo‘shagan ID’lar 90 kun hech kimga berilmaydi. Qonun talab qiladigan yozuvlar belgilangan muddat saqlanadi.",
+   "deleteAccountUnderstood": "Tushundim, hisobimni o‘chirish",
+   "deleteAccountDone": "So‘rov qabul qilindi. Hisob 30 kundan keyin butunlay o‘chiriladi.",
+-  "errCommentPremium": "Izoh yozish uchun Premium obuna kerak. Izohlarni esa hamma o‘qiy oladi.",
+-  "@errCommentPremium": {
+-    "description": "Server `premium_required` (403) — izoh yozish faqat Premium'ga. Sabab aytiladi, umumiy \"Ruxsat yo'q\" emas."
+-  },
+-  "commentPremiumTitle": "Izoh yozish — Premium a’zolar uchun",
+   "storeSeeAll": "Barchasini ko‘rish",
+   "storeFeatured": "Tavsiya etiladi",
+   "storeProducts": "Mahsulotlar",
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index 03deb99..64e9e89 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -2664,7 +2664,7 @@ abstract class L {
+   /// No description provided for @premiumTagline.
+   ///
+   /// In uz, this message translates to:
+-  /// **'Reels, istoriya va to‘liq imkoniyatlar'**
++  /// **'Ko‘proq tovar va profil qo‘shiqlari'**
+   String get premiumTagline;
+ 
+   /// No description provided for @premiumPerMonth.
+@@ -2715,24 +2715,6 @@ abstract class L {
+   /// **'Nimalar ochiladi'**
+   String get premiumPerksTitle;
+ 
+-  /// No description provided for @premiumPerkVideo.
+-  ///
+-  /// In uz, this message translates to:
+-  /// **'Video post va Reels'**
+-  String get premiumPerkVideo;
+-
+-  /// No description provided for @premiumPerkStory.
+-  ///
+-  /// In uz, this message translates to:
+-  /// **'Istoriya qo‘yish'**
+-  String get premiumPerkStory;
+-
+-  /// No description provided for @premiumPerkPosts.
+-  ///
+-  /// In uz, this message translates to:
+-  /// **'Ko‘proq post (60 tagacha)'**
+-  String get premiumPerkPosts;
+-
+   /// No description provided for @premiumPerkMusic.
+   ///
+   /// In uz, this message translates to:
+@@ -2799,30 +2781,6 @@ abstract class L {
+   /// **'To‘lov sahifasini ocholmadik. Havola nusxalandi.'**
+   String get premiumBrowserFailed;
+ 
+-  /// No description provided for @premiumLocked.
+-  ///
+-  /// In uz, this message translates to:
+-  /// **'Bu imkoniyat Premiumda'**
+-  String get premiumLocked;
+-
+-  /// No description provided for @premiumLockedVideo.
+-  ///
+-  /// In uz, this message translates to:
+-  /// **'Video post va Reels uchun Premium kerak.'**
+-  String get premiumLockedVideo;
+-
+-  /// No description provided for @premiumLockedStory.
+-  ///
+-  /// In uz, this message translates to:
+-  /// **'Istoriya qo‘yish uchun darajangiz yetmaydi.'**
+-  String get premiumLockedStory;
+-
+-  /// No description provided for @premiumLockedPost.
+-  ///
+-  /// In uz, this message translates to:
+-  /// **'Post qo‘yish uchun darajangiz yetmaydi.'**
+-  String get premiumLockedPost;
+-
+   /// No description provided for @payKindCard.
+   ///
+   /// In uz, this message translates to:
+@@ -4644,7 +4602,7 @@ abstract class L {
+   /// No description provided for @bizPlanFreeBody.
+   ///
+   /// In uz, this message translates to:
+-  /// **'Premium (oylik) bilan {premium} tagacha tovar, post va istoriya ochiladi. O‘z nomingizni (Business ID) sotib olsangiz — cheksiz.'**
++  /// **'Premium (oylik) bilan {premium} tagacha tovar. O‘z nomingizni (Business ID) sotib olsangiz — cheksiz.'**
+   String bizPlanFreeBody(int premium);
+ 
+   /// No description provided for @bizPlanPremiumTitle.
+@@ -4677,35 +4635,41 @@ abstract class L {
+   /// **'Premium va o‘z nomi saytda rasmiylashtiriladi:'**
+   String get bizPlanStoreNotice;
+ 
+-  /// No description provided for @bizPlanTrial.
+-  ///
+-  /// In uz, this message translates to:
+-  /// **'Sinov davri: hozircha hech qanday cheklov yo‘q'**
+-  String get bizPlanTrial;
+-
+   /// No description provided for @errPlanLimit.
+   ///
+   /// In uz, this message translates to:
+   /// **'Tarif limiti to‘ldi. Ko‘proq tovar uchun Premium yoki o‘z nomingiz kerak (sayt orqali).'**
+   String get errPlanLimit;
+ 
+-  /// No description provided for @errPlanLocked.
+-  ///
+-  /// In uz, this message translates to:
+-  /// **'Bepul tarifda post va istoriya yopiq. Premium (sayt orqali) bilan ochiladi.'**
+-  String get errPlanLocked;
+-
+   /// No description provided for @errPlanLimitIos.
+   ///
+   /// In uz, this message translates to:
+   /// **'Tarif limiti to‘ldi.'**
+   String get errPlanLimitIos;
+ 
+-  /// No description provided for @errPlanLockedIos.
++  /// Server hali ham `premium_required` / `feature_locked` / `plan_locked` qaytarsa — NEYTRAL xato. Premium, daraja yoki xarid haqida so'z yo'q: post, istoriya, Reels va izoh hammaga bepul (egasining qarori, 2026-10-04).
+   ///
+   /// In uz, this message translates to:
+-  /// **'Bepul tarifda post va istoriya yopiq.'**
+-  String get errPlanLockedIos;
++  /// **'Hozircha yuborib bo‘lmadi. Birozdan keyin qayta urinib ko‘ring.'**
++  String get errPublishUnavailable;
++
++  /// iPhone: tarif nomisiz katalog limiti ("Bepul tarif" pullik tarifga ishora qiladi).
++  ///
++  /// In uz, this message translates to:
++  /// **'Katalog — {limit} tagacha tovar'**
++  String bizPlanLimitTitle(int limit);
++
++  /// No description provided for @premiumPerkCatalog.
++  ///
++  /// In uz, this message translates to:
++  /// **'Biznes katalogida ko‘proq tovar'**
++  String get premiumPerkCatalog;
++
++  /// No description provided for @stickerActivateShort.
++  ///
++  /// In uz, this message translates to:
++  /// **'Konvertdagi kod bilan'**
++  String get stickerActivateShort;
+ 
+   /// No description provided for @errContentBlocked.
+   ///
+@@ -4791,18 +4755,6 @@ abstract class L {
+   /// **'So‘rov qabul qilindi. Hisob 30 kundan keyin butunlay o‘chiriladi.'**
+   String get deleteAccountDone;
+ 
+-  /// Server `premium_required` (403) — izoh yozish faqat Premium'ga. Sabab aytiladi, umumiy "Ruxsat yo'q" emas.
+-  ///
+-  /// In uz, this message translates to:
+-  /// **'Izoh yozish uchun Premium obuna kerak. Izohlarni esa hamma o‘qiy oladi.'**
+-  String get errCommentPremium;
+-
+-  /// No description provided for @commentPremiumTitle.
+-  ///
+-  /// In uz, this message translates to:
+-  /// **'Izoh yozish — Premium a’zolar uchun'**
+-  String get commentPremiumTitle;
+-
+   /// No description provided for @storeSeeAll.
+   ///
+   /// In uz, this message translates to:
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index 6f2ca7e..d97e5f3 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -1343,7 +1343,7 @@ class LEn extends L {
+   String get premiumTitle => 'Premium subscription';
+ 
+   @override
+-  String get premiumTagline => 'Reels, stories and every feature';
++  String get premiumTagline => 'More catalogue items and profile tracks';
+ 
+   @override
+   String get premiumPerMonth => 'per month';
+@@ -1371,15 +1371,6 @@ class LEn extends L {
+   @override
+   String get premiumPerksTitle => 'What you unlock';
+ 
+-  @override
+-  String get premiumPerkVideo => 'Video posts and Reels';
+-
+-  @override
+-  String get premiumPerkStory => 'Posting stories';
+-
+-  @override
+-  String get premiumPerkPosts => 'More posts (up to 60)';
+-
+   @override
+   String get premiumPerkMusic => '10 profile tracks';
+ 
+@@ -1415,18 +1406,6 @@ class LEn extends L {
+   String get premiumBrowserFailed =>
+       'Could not open the payment page. The link was copied.';
+ 
+-  @override
+-  String get premiumLocked => 'This feature is in Premium';
+-
+-  @override
+-  String get premiumLockedVideo => 'Video posts and Reels need Premium.';
+-
+-  @override
+-  String get premiumLockedStory => 'Your tier is not high enough for stories.';
+-
+-  @override
+-  String get premiumLockedPost => 'Your tier is not high enough for posts.';
+-
+   @override
+   String get payKindCard => 'Digital business card';
+ 
+@@ -2410,7 +2389,7 @@ class LEn extends L {
+ 
+   @override
+   String bizPlanFreeBody(int premium) {
+-    return 'With Premium (monthly) — up to $premium items, posts and stories. With your own name (Business ID) — unlimited.';
++    return 'With Premium (monthly) — up to $premium items. With your own name (Business ID) — unlimited.';
+   }
+ 
+   @override
+@@ -2433,23 +2412,27 @@ class LEn extends L {
+   String get bizPlanStoreNotice =>
+       'Premium and your own name are arranged on the website:';
+ 
+-  @override
+-  String get bizPlanTrial => 'Trial: no limits for now';
+-
+   @override
+   String get errPlanLimit =>
+       'Plan limit reached. Premium or your own name (on the website) allows more.';
+ 
+   @override
+-  String get errPlanLocked =>
+-      'Posts and stories are closed on the free plan. Premium (on the website) opens them.';
++  String get errPlanLimitIos => 'Plan limit reached.';
+ 
+   @override
+-  String get errPlanLimitIos => 'Plan limit reached.';
++  String get errPublishUnavailable =>
++      'Couldn’t send this right now. Please try again a little later.';
++
++  @override
++  String bizPlanLimitTitle(int limit) {
++    return 'Catalogue — up to $limit items';
++  }
+ 
+   @override
+-  String get errPlanLockedIos =>
+-      'Posts and stories are closed on the free plan.';
++  String get premiumPerkCatalog => 'More items in your business catalogue';
++
++  @override
++  String get stickerActivateShort => 'With the code from the envelope';
+ 
+   @override
+   String errContentBlocked(String reason) {
+@@ -2501,13 +2484,6 @@ class LEn extends L {
+   String get deleteAccountDone =>
+       'Request received. Your account will be permanently deleted in 30 days.';
+ 
+-  @override
+-  String get errCommentPremium =>
+-      'A Premium subscription is required to write comments. Everyone can read them.';
+-
+-  @override
+-  String get commentPremiumTitle => 'Comments are for Premium members';
+-
+   @override
+   String get storeSeeAll => 'See all';
+ 
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index 5a882ef..3f3b4c9 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -1339,7 +1339,7 @@ class LRu extends L {
+   String get premiumTitle => 'Подписка Premium';
+ 
+   @override
+-  String get premiumTagline => 'Reels, истории и все возможности';
++  String get premiumTagline => 'Больше товаров и треков в профиле';
+ 
+   @override
+   String get premiumPerMonth => 'в месяц';
+@@ -1367,15 +1367,6 @@ class LRu extends L {
+   @override
+   String get premiumPerksTitle => 'Что открывается';
+ 
+-  @override
+-  String get premiumPerkVideo => 'Видео и Reels';
+-
+-  @override
+-  String get premiumPerkStory => 'Публикация историй';
+-
+-  @override
+-  String get premiumPerkPosts => 'Больше постов (до 60)';
+-
+   @override
+   String get premiumPerkMusic => '10 треков в профиле';
+ 
+@@ -1410,18 +1401,6 @@ class LRu extends L {
+   String get premiumBrowserFailed =>
+       'Не удалось открыть страницу оплаты. Ссылка скопирована.';
+ 
+-  @override
+-  String get premiumLocked => 'Эта возможность в Premium';
+-
+-  @override
+-  String get premiumLockedVideo => 'Для видео и Reels нужен Premium.';
+-
+-  @override
+-  String get premiumLockedStory => 'Вашего уровня недостаточно для историй.';
+-
+-  @override
+-  String get premiumLockedPost => 'Вашего уровня недостаточно для постов.';
+-
+   @override
+   String get payKindCard => 'Цифровая визитка';
+ 
+@@ -2406,7 +2385,7 @@ class LRu extends L {
+ 
+   @override
+   String bizPlanFreeBody(int premium) {
+-    return 'С Premium (ежемесячно) — до $premium товаров, посты и истории. Со своим именем (Business ID) — без ограничений.';
++    return 'С Premium (ежемесячно) — до $premium товаров. Со своим именем (Business ID) — без ограничений.';
+   }
+ 
+   @override
+@@ -2429,23 +2408,27 @@ class LRu extends L {
+   @override
+   String get bizPlanStoreNotice => 'Premium и своё имя оформляются на сайте:';
+ 
+-  @override
+-  String get bizPlanTrial => 'Пробный период: пока без ограничений';
+-
+   @override
+   String get errPlanLimit =>
+       'Лимит тарифа исчерпан. Для большего нужен Premium или своё имя (на сайте).';
+ 
+   @override
+-  String get errPlanLocked =>
+-      'На бесплатном тарифе посты и истории закрыты. Откроются с Premium (на сайте).';
++  String get errPlanLimitIos => 'Лимит тарифа исчерпан.';
+ 
+   @override
+-  String get errPlanLimitIos => 'Лимит тарифа исчерпан.';
++  String get errPublishUnavailable =>
++      'Сейчас не получилось отправить. Попробуйте чуть позже.';
++
++  @override
++  String bizPlanLimitTitle(int limit) {
++    return 'Каталог — до $limit товаров';
++  }
+ 
+   @override
+-  String get errPlanLockedIos =>
+-      'На бесплатном тарифе посты и истории закрыты.';
++  String get premiumPerkCatalog => 'Больше товаров в бизнес-каталоге';
++
++  @override
++  String get stickerActivateShort => 'По коду из конверта';
+ 
+   @override
+   String errContentBlocked(String reason) {
+@@ -2497,13 +2480,6 @@ class LRu extends L {
+   String get deleteAccountDone =>
+       'Запрос принят. Аккаунт будет полностью удалён через 30 дней.';
+ 
+-  @override
+-  String get errCommentPremium =>
+-      'Чтобы писать комментарии, нужна подписка Premium. Читать их могут все.';
+-
+-  @override
+-  String get commentPremiumTitle => 'Комментарии — для участников Premium';
+-
+   @override
+   String get storeSeeAll => 'Смотреть все';
+ 
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index 5cb81a8..d82ee1d 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -1347,7 +1347,7 @@ class LUz extends L {
+   String get premiumTitle => 'Premium obuna';
+ 
+   @override
+-  String get premiumTagline => 'Reels, istoriya va to‘liq imkoniyatlar';
++  String get premiumTagline => 'Ko‘proq tovar va profil qo‘shiqlari';
+ 
+   @override
+   String get premiumPerMonth => 'oyiga';
+@@ -1375,15 +1375,6 @@ class LUz extends L {
+   @override
+   String get premiumPerksTitle => 'Nimalar ochiladi';
+ 
+-  @override
+-  String get premiumPerkVideo => 'Video post va Reels';
+-
+-  @override
+-  String get premiumPerkStory => 'Istoriya qo‘yish';
+-
+-  @override
+-  String get premiumPerkPosts => 'Ko‘proq post (60 tagacha)';
+-
+   @override
+   String get premiumPerkMusic => '10 ta profil qo‘shig‘i';
+ 
+@@ -1419,19 +1410,6 @@ class LUz extends L {
+   String get premiumBrowserFailed =>
+       'To‘lov sahifasini ocholmadik. Havola nusxalandi.';
+ 
+-  @override
+-  String get premiumLocked => 'Bu imkoniyat Premiumda';
+-
+-  @override
+-  String get premiumLockedVideo => 'Video post va Reels uchun Premium kerak.';
+-
+-  @override
+-  String get premiumLockedStory =>
+-      'Istoriya qo‘yish uchun darajangiz yetmaydi.';
+-
+-  @override
+-  String get premiumLockedPost => 'Post qo‘yish uchun darajangiz yetmaydi.';
+-
+   @override
+   String get payKindCard => 'Raqamli tashrif qog‘ozi';
+ 
+@@ -2413,7 +2391,7 @@ class LUz extends L {
+ 
+   @override
+   String bizPlanFreeBody(int premium) {
+-    return 'Premium (oylik) bilan $premium tagacha tovar, post va istoriya ochiladi. O‘z nomingizni (Business ID) sotib olsangiz — cheksiz.';
++    return 'Premium (oylik) bilan $premium tagacha tovar. O‘z nomingizni (Business ID) sotib olsangiz — cheksiz.';
+   }
+ 
+   @override
+@@ -2437,22 +2415,27 @@ class LUz extends L {
+   String get bizPlanStoreNotice =>
+       'Premium va o‘z nomi saytda rasmiylashtiriladi:';
+ 
+-  @override
+-  String get bizPlanTrial => 'Sinov davri: hozircha hech qanday cheklov yo‘q';
+-
+   @override
+   String get errPlanLimit =>
+       'Tarif limiti to‘ldi. Ko‘proq tovar uchun Premium yoki o‘z nomingiz kerak (sayt orqali).';
+ 
+   @override
+-  String get errPlanLocked =>
+-      'Bepul tarifda post va istoriya yopiq. Premium (sayt orqali) bilan ochiladi.';
++  String get errPlanLimitIos => 'Tarif limiti to‘ldi.';
+ 
+   @override
+-  String get errPlanLimitIos => 'Tarif limiti to‘ldi.';
++  String get errPublishUnavailable =>
++      'Hozircha yuborib bo‘lmadi. Birozdan keyin qayta urinib ko‘ring.';
++
++  @override
++  String bizPlanLimitTitle(int limit) {
++    return 'Katalog — $limit tagacha tovar';
++  }
+ 
+   @override
+-  String get errPlanLockedIos => 'Bepul tarifda post va istoriya yopiq.';
++  String get premiumPerkCatalog => 'Biznes katalogida ko‘proq tovar';
++
++  @override
++  String get stickerActivateShort => 'Konvertdagi kod bilan';
+ 
+   @override
+   String errContentBlocked(String reason) {
+@@ -2504,13 +2487,6 @@ class LUz extends L {
+   String get deleteAccountDone =>
+       'So‘rov qabul qilindi. Hisob 30 kundan keyin butunlay o‘chiriladi.';
+ 
+-  @override
+-  String get errCommentPremium =>
+-      'Izoh yozish uchun Premium obuna kerak. Izohlarni esa hamma o‘qiy oladi.';
+-
+-  @override
+-  String get commentPremiumTitle => 'Izoh yozish — Premium a’zolar uchun';
+-
+   @override
+   String get storeSeeAll => 'Barchasini ko‘rish';
+ 
+diff --git a/mobile_nova/lib/routing/router.dart b/mobile_nova/lib/routing/router.dart
+index 9cfb26b..cace0e6 100644
+--- a/mobile_nova/lib/routing/router.dart
++++ b/mobile_nova/lib/routing/router.dart
+@@ -40,7 +40,7 @@ import '../features/settings/settings_subscreens.dart';
+ import '../features/shop/nfc_id_market.dart';
+ import '../features/shop/shop_screens.dart';
+ import '../features/shop/store_policy.dart'
+-    show showNewsEntry, showNotificationSettings;
++    show isAppStoreBuild, showNewsEntry, showNotificationSettings;
+ import '../features/social/post_screens.dart';
+ import '../features/social/reels_screen.dart';
+ import '../features/social/story_viewer.dart';
+@@ -50,6 +50,21 @@ import '../features/nfc/gift_offers_screen.dart';
+ 
+ final _rootKey = GlobalKey<NavigatorState>();
+ 
++/// iPHONE'DA YOPIQ YO'L — [to] ga buriladi; Android'da `null`
++/// (ekran avvalgidek ochiladi).
++///
++/// App Store auditi (2026-10-04): xarid va pullik tarif ekranlari
++/// (ID bozori, Premium, to'lovlar tarixi, taklif chegirmasi, FEATURED,
++/// do'kon, buyurtmalar, pullik o'z nomi) iPhone menyusidan olib
++/// tashlangan edi, lekin marshrutlari qolgan va `nfcstore://` sxemasi
++/// (Info.plist, `FlutterDeepLinkingEnabled`) bilan ochilardi. Apple
++/// 3.1.1: IAP'siz raqamli xarid yo'li ilovada umuman bo'lmasligi kerak.
++///
++/// Yo'naltirish OTA marshrutda: GoRouter uni bola marshrutlarga ham
++/// qo'llaydi (`/shop/checkout`, `/settings/payment/history`).
++String? Function(BuildContext, GoRouterState) _closedOnIos(String to) =>
++    (_, __) => isAppStoreBuild ? to : null;
++
+ /// Ilova marshrutlari.
+ ///
+ /// `redirect` yagona qorovul: sessiya holati o'zgarganda (kirdi,
+@@ -264,21 +279,31 @@ final routerProvider = Provider<GoRouter>((ref) {
+       // NFC ID BOZORI. Buyurtma yo'li `/:code` dan OLDIN turishi
+       // shart — aks holda `order` so'zi kod deb o'qilardi va
+       // `/nfc/market/order/12` umuman ochilmasdi.
++      //
++      // iPhone'da bozor YO'Q (`showIdMarket`): uchala yo'l ham
++      // "NFC ID'larim" ga buriladi.
+       GoRoute(
+         path: '/nfc/market/order/:id',
++        redirect: _closedOnIos(Routes.nfcIds),
+         builder: (_, st) =>
+             NfcIdOrderScreen(orderId: int.tryParse(st.pathParameters['id'] ?? '') ?? 0),
+       ),
+       GoRoute(
+         path: '/nfc/market/:code',
++        redirect: _closedOnIos(Routes.nfcIds),
+         builder: (_, st) =>
+             NfcIdBuyScreen(code: st.pathParameters['code'] ?? ''),
+       ),
+-      GoRoute(path: Routes.nfcMarket, builder: (_, __) => const NfcIdMarketScreen()),
++      GoRoute(
++          path: Routes.nfcMarket,
++          redirect: _closedOnIos(Routes.nfcIds),
++          builder: (_, __) => const NfcIdMarketScreen()),
+       GoRoute(path: Routes.nfcScan, builder: (_, __) => const NfcScanScreen()),
+       GoRoute(path: Routes.nfcWrite, builder: (_, __) => const NfcWriteScreen()),
++      // FEATURED (lentada pullik ko'tarish) — iPhone'da yo'q.
+       GoRoute(
+         path: '/featured/:kind/:id',
++        redirect: _closedOnIos(Routes.home),
+         builder: (_, st) => FeaturedScreen(
+           targetKind: st.pathParameters['kind'] ?? 'post',
+           targetId: int.tryParse(st.pathParameters['id'] ?? '') ?? 0,
+@@ -352,8 +377,14 @@ final routerProvider = Provider<GoRouter>((ref) {
+       GoRoute(
+           path: Routes.businessIntro,
+           builder: (_, __) => const BusinessIntroScreen()),
++      // `?mode=custom` — pullik o'z nomi. iPhone'da faqat bepul
++      // Business ID (`business_intro.dart`), havola bilan ham.
+       GoRoute(
+           path: Routes.businessOnboard,
++          redirect: (_, s) => isAppStoreBuild &&
++                  s.uri.queryParameters['mode'] == 'custom'
++              ? Routes.businessOnboard
++              : null,
+           builder: (_, s) => BusinessOnboardScreen(
+                 custom: s.uri.queryParameters['mode'] == 'custom',
+               )),
+@@ -421,9 +452,11 @@ final routerProvider = Provider<GoRouter>((ref) {
+         builder: (_, __) => const DemoBusinessScreen(),
+       ),
+ 
+-      // Do'kon
++      // Do'kon. iPhone'da do'kon ham, buyurtmalar ham yo'q — NFC
++      // Markaziga (stiker faollashtirish shu yerda) va Sozlamalarga.
+       GoRoute(
+         path: Routes.shop,
++        redirect: _closedOnIos(Routes.nfc),
+         builder: (_, __) => const ShopScreen(),
+         routes: [
+           GoRoute(
+@@ -441,7 +474,10 @@ final routerProvider = Provider<GoRouter>((ref) {
+           ),
+         ],
+       ),
+-      GoRoute(path: Routes.orders, builder: (_, __) => const OrdersScreen()),
++      GoRoute(
++          path: Routes.orders,
++          redirect: _closedOnIos(Routes.settings),
++          builder: (_, __) => const OrdersScreen()),
+ 
+       // Bildirishnomalar va sozlamalar
+       GoRoute(path: Routes.activity, builder: (_, __) => const ActivityScreen()),
+@@ -470,8 +506,11 @@ final routerProvider = Provider<GoRouter>((ref) {
+           GoRoute(
+               path: 'privacy',
+               builder: (_, __) => const PrivacySettingsScreen()),
++          // To'lovlar tarixi, taklif chegirmasi va Premium — iPhone'da
++          // yo'q (raqamli xarid, IAP'siz): Sozlamalarga buriladi.
+           GoRoute(
+             path: 'payment',
++            redirect: _closedOnIos(Routes.settings),
+             builder: (_, __) => const PaymentHistoryScreen(),
+             routes: [
+               GoRoute(
+@@ -479,8 +518,14 @@ final routerProvider = Provider<GoRouter>((ref) {
+                   builder: (_, __) => const PaymentHistoryScreen()),
+             ],
+           ),
+-          GoRoute(path: 'referral', builder: (_, __) => const ReferralScreen()),
+-          GoRoute(path: 'premium', builder: (_, __) => const PremiumScreen()),
++          GoRoute(
++              path: 'referral',
++              redirect: _closedOnIos(Routes.settings),
++              builder: (_, __) => const ReferralScreen()),
++          GoRoute(
++              path: 'premium',
++              redirect: _closedOnIos(Routes.settings),
++              builder: (_, __) => const PremiumScreen()),
+           GoRoute(path: 'support', builder: (_, __) => const SupportScreen()),
+           GoRoute(path: 'about', builder: (_, __) => const AboutScreen()),
+           // iPhone'da yangiliklar YO'Q (`showNewsEntry`) — `nfcstore://`
+diff --git a/mobile_nova/test/app_store_market_test.dart b/mobile_nova/test/app_store_market_test.dart
+new file mode 100644
+index 0000000..eb1ae3b
+--- /dev/null
++++ b/mobile_nova/test/app_store_market_test.dart
+@@ -0,0 +1,434 @@
++import 'dart:convert';
++import 'dart:io';
++
++import 'package:flutter/foundation.dart';
++import 'package:flutter/material.dart';
++import 'package:flutter_localizations/flutter_localizations.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:go_router/go_router.dart';
++import 'package:nfcstore_nova/app/app.dart';
++import 'package:nfcstore_nova/app/providers.dart';
++import 'package:nfcstore_nova/core/errors/app_error.dart';
++import 'package:nfcstore_nova/design/theme/app_theme.dart';
++import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
++import 'package:nfcstore_nova/design/widgets/states.dart';
++import 'package:nfcstore_nova/features/auth/session.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/features/home/home_screen.dart';
++import 'package:nfcstore_nova/features/nfc/nfc_center_screen.dart';
++import 'package:nfcstore_nova/features/nfc/nfc_service.dart';
++import 'package:nfcstore_nova/features/shop/store_policy.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
++import 'package:nfcstore_nova/routing/router.dart';
++import 'package:nfcstore_nova/routing/routes.dart';
++
++import 'helpers.dart';
++
++/// APP STORE AUDITI (2026-10-04) — EGASINING IKKI QARORI.
++///
++/// (a) Post, Reels/video, istoriya va izoh — HAMMAGA BEPUL, HAMMA
++///     PLATFORMADA. Ilovada Premium/daraja qulfi ham, qulf matni ham
++///     yo'q; server eski kodni qaytarsa — neytral xato.
++/// (b) iPhone'da NFC ID BOZORI va yashirin xarid yo'llari (Premium,
++///     to'lovlar, taklif, FEATURED, do'kon, buyurtmalar, pullik o'z
++///     nomi) YO'Q — menyuda ham, `nfcstore://` havolasida ham.
++///     Android o'zgarmaydi.
++///
++/// Har tekshiruv imkon qadar IKKI TOMONLAMA: iPhone'da yo'q, Android'da
++/// bor. Bittasi yolg'iz sinalsa "hamma joyda o'chdi" xatosi ko'rinmasdi.
++final _ios = TargetPlatformVariant.only(TargetPlatform.iOS);
++
++String _read(String p) => File(p).readAsStringSync();
++
++/// Izohsiz kod — tekshiruv KOD haqida, izohdagi so'zlar haqida emas.
++String _codeOnly(String s) => s
++    .split('\n')
++    .where((l) => !l.trimLeft().startsWith('//'))
++    .join('\n');
++
++Future<L> _uz() => L.delegate.load(const Locale('uz'));
++
++class _ReadyNfc extends NfcService {
++  @override
++  Future<NfcAvailability> check() async => NfcAvailability.ready;
++}
++
++class _NoNfc extends NfcService {
++  @override
++  Future<NfcAvailability> check() async => NfcAvailability.unsupported;
++}
++
++const _vip = NfcId(code: 'VIP001', name: 'Ali', primary: true);
++
++/// Ekranni haqiqiy `GoRouter` ichida ochadi; [extra] yo'llarga o'tish
++/// [went] ga yoziladi.
++Widget _routed(
++  Widget screen,
++  List<Override> overrides, {
++  List<String> extra = const [],
++  List<String>? went,
++}) {
++  final router = GoRouter(routes: [
++    GoRoute(path: '/', builder: (_, __) => screen),
++    for (final p in extra)
++      GoRoute(
++        path: p,
++        builder: (_, __) {
++          went?.add(p);
++          return Scaffold(body: Text('ROUTE $p'));
++        },
++      ),
++  ]);
++  return ProviderScope(
++    overrides: overrides,
++    child: MaterialApp.router(
++      routerConfig: router,
++      theme: buildTheme(NfcTokens.ivory),
++      locale: const Locale('uz'),
++      supportedLocales: LocaleController.supported,
++      localizationsDelegates: const [
++        L.delegate,
++        GlobalMaterialLocalizations.delegate,
++        GlobalWidgetsLocalizations.delegate,
++        GlobalCupertinoLocalizations.delegate,
++      ],
++    ),
++  );
++}
++
++void _tall(WidgetTester tester) {
++  tester.view.physicalSize = const Size(393 * 3, 1600 * 3);
++  tester.view.devicePixelRatio = 3;
++  addTearDown(tester.view.reset);
++}
++
++void main() {
++  // ─────────────────────────────── (b) Bosh sahifa: tezkor amallar
++  group('Bosh sahifa: "ID qidirish" tezkor amali', () {
++    Future<(L, List<String>)> pumpHome(WidgetTester tester) async {
++      _tall(tester);
++      final went = <String>[];
++      final base = await testOverrides();
++      await tester.pumpWidget(_routed(
++        const HomeScreen(),
++        [
++          // `base[1]` — standart auth; bitta provayder ikki marta
++          // almashtirilmaydi.
++          ...base.where((o) => !identical(o, base[1])),
++          authRepositoryProvider
++              .overrideWithValue(FakeAuthRepository(ids: const [_vip])),
++        ],
++        extra: [Routes.nfcIds, Routes.nfcMarket],
++        went: went,
++      ));
++      await settle(tester, frames: 16);
++      return (await _uz(), went);
++    }
++
++    testWidgets('iPhone: ID qidirish YO‘Q — o‘rnida "NFC ID’larim"',
++        (tester) async {
++      final (l, went) = await pumpHome(tester);
++      expect(tester.takeException(), isNull);
++      expect(find.text(l.idSearchShort), findsNothing);
++      expect(find.text(l.idMarketTitle), findsNothing);
++      // Tezkor amal plitkasi: belgisi + "NFC ID'larim" yozuvi.
++      final mine = find.byIcon(Icons.badge_outlined);
++      expect(mine, findsOneWidget);
++      expect(find.text(l.nfcMyIds), findsWidgets);
++      await tester.tap(mine);
++      await settle(tester);
++      expect(went, [Routes.nfcIds]);
++    }, variant: _ios);
++
++    testWidgets('Android: avvalgidek ID qidirish → bozor', (tester) async {
++      final (l, went) = await pumpHome(tester);
++      expect(find.text(l.idSearchShort), findsOneWidget);
++      await tester.tap(find.text(l.idSearchShort));
++      await settle(tester);
++      expect(went, [Routes.nfcMarket]);
++    });
++  });
++
++  // ──────────────────────────────────────────── (b) NFC Markazi
++  group('NFC Markazi: bozor qatori va NFC’siz katak', () {
++    Future<L> pumpCenter(WidgetTester tester, NfcService nfc,
++        {List<String>? went}) async {
++      tester.view.physicalSize = const Size(390 * 3, 1600 * 3);
++      tester.view.devicePixelRatio = 3;
++      addTearDown(tester.view.reset);
++      await tester.pumpWidget(_routed(
++        const NfcCenterScreen(),
++        [
++          ...await testOverrides(),
++          nfcServiceProvider.overrideWithValue(nfc),
++        ],
++        extra: [Routes.nfcMarket, Routes.nfcActivate],
++        went: went,
++      ));
++      await settle(tester, frames: 16);
++      return _uz();
++    }
++
++    testWidgets('iPhone (NFC bor): bozor qatori yo‘q', (tester) async {
++      final l = await pumpCenter(tester, _ReadyNfc());
++      expect(tester.takeException(), isNull);
++      expect(find.text(l.idSearchShort), findsNothing);
++      expect(find.text(l.idMarketTitle), findsNothing);
++      expect(find.text(l.idMarketSearchHint), findsNothing);
++      // Foydali amallar joyida.
++      expect(find.text(l.stickerActivate), findsOneWidget);
++      expect(find.text(l.nfcWrite), findsOneWidget);
++    }, variant: _ios);
++
++    testWidgets('Android (NFC bor): bozor qatori bor', (tester) async {
++      final l = await pumpCenter(tester, _ReadyNfc());
++      expect(find.text(l.idMarketTitle), findsOneWidget);
++    });
++
++    testWidgets('iPhone (NFC yo‘q): bozor katagi o‘rnida faollashtirish',
++        (tester) async {
++      final went = <String>[];
++      final l = await pumpCenter(tester, _NoNfc(), went: went);
++      expect(tester.takeException(), isNull);
++      expect(find.byKey(const ValueKey('no-nfc-market')), findsNothing);
++      expect(find.text(l.noNfcGetHint), findsNothing);
++      final act = find.byKey(const ValueKey('no-nfc-activate'));
++      expect(act, findsOneWidget);
++      await tester.tap(act);
++      await settle(tester);
++      expect(went, [Routes.nfcActivate]);
++    }, variant: _ios);
++
++    testWidgets('Android (NFC yo‘q): bozor katagi avvalgidek',
++        (tester) async {
++      await pumpCenter(tester, _NoNfc());
++      expect(find.byKey(const ValueKey('no-nfc-market')), findsOneWidget);
++      expect(find.byKey(const ValueKey('no-nfc-activate')), findsNothing);
++    });
++
++    test('manba: bozorga olib boruvchi har bir chaqiruv kalit ortida', () {
++      // `Routes.nfcMarket` faqat Android shoxobchasida.
++      for (final p in [
++        'lib/features/nfc/nfc_center_screen.dart',
++        'lib/features/home/home_screen.dart',
++      ]) {
++        final code = _codeOnly(_read(p));
++        var at = code.indexOf('Routes.nfcMarket');
++        expect(at, greaterThan(0), reason: p);
++        while (at >= 0) {
++          final before = code.substring((at - 400).clamp(0, at), at);
++          expect(
++              before.contains('showIdMarket') ||
++                  before.contains('isAppStoreBuild'),
++              isTrue,
++              reason: '$p: Routes.nfcMarket kalitsiz chaqirilgan');
++          at = code.indexOf('Routes.nfcMarket', at + 1);
++        }
++      }
++    });
++  });
++
++  // ─────────────────────── (b) Havola bilan ochilsa ham — router
++  group('Router: iPhone’da yashirin xarid yo‘llari yopiq', () {
++    Future<GoRouter> boot(WidgetTester tester) async {
++      tester.view.physicalSize = const Size(1170, 2532);
++      tester.view.devicePixelRatio = 3;
++      addTearDown(tester.view.reset);
++      final c = ProviderContainer(overrides: [...await testOverrides()]);
++      addTearDown(c.dispose);
++      await tester.pumpWidget(UncontrolledProviderScope(
++        container: c,
++        child: const NovaApp(),
++      ));
++      for (var i = 0; i < 20; i++) {
++        await tester.pump(const Duration(milliseconds: 50));
++      }
++      return c.read(routerProvider);
++    }
++
++    Future<Uri> go(WidgetTester tester, GoRouter r, String to) async {
++      r.go(to);
++      for (var i = 0; i < 20; i++) {
++        await tester.pump(const Duration(milliseconds: 50));
++      }
++      return r.routerDelegate.currentConfiguration.uri;
++    }
++
++    /// Yopiq yo'l → iPhone'da qayerga tushadi.
++    const closed = <String, String>{
++      '/nfc/market': Routes.nfcIds,
++      '/nfc/market/VIP777': Routes.nfcIds,
++      '/nfc/market/order/12': Routes.nfcIds,
++      '/settings/premium': Routes.settings,
++      '/settings/payment': Routes.settings,
++      '/settings/payment/history': Routes.settings,
++      '/settings/referral': Routes.settings,
++      '/featured/post/5': Routes.home,
++      '/shop': Routes.nfc,
++      '/shop/checkout': Routes.nfc,
++      '/shop/payment/success': Routes.nfc,
++      '/shop/abc': Routes.nfc,
++      '/orders': Routes.settings,
++    };
++
++    testWidgets('iPhone: hammasi xavfsiz joyga buriladi', (tester) async {
++      final r = await boot(tester);
++      for (final e in closed.entries) {
++        final at = await go(tester, r, e.key);
++        expect(at.path, e.value, reason: e.key);
++      }
++      // Pullik o'z nomi → bepul Business ID formasi.
++      final biz = await go(tester, r, Routes.businessOnboardCustom);
++      expect(biz.path, Routes.businessOnboard);
++      expect(biz.queryParameters['mode'], isNull);
++      expect(tester.takeException(), isNull);
++    }, variant: _ios);
++
++    testWidgets('iPhone: oddiy yo‘llar ochiq qoladi', (tester) async {
++      final r = await boot(tester);
++      for (final p in [
++        Routes.nfcIds,
++        Routes.nfcActivate,
++        Routes.settings,
++        Routes.settingsAbout,
++        Routes.businessOnboard,
++      ]) {
++        expect((await go(tester, r, p)).path, p, reason: p);
++      }
++    }, variant: _ios);
++
++    testWidgets('Android: o‘zgarmagan — ekranlar ochiladi', (tester) async {
++      final r = await boot(tester);
++      for (final p in closed.keys) {
++        expect((await go(tester, r, p)).path, p, reason: p);
++      }
++      final biz = await go(tester, r, Routes.businessOnboardCustom);
++      expect(biz.queryParameters['mode'], 'custom');
++    });
++  });
++
++  // ───────────────── (a) Premium/daraja qulfi matni HECH QAYERDA yo'q
++  group('Premium qulfi matni yo‘q (hamma platforma)', () {
++    /// Olib tashlangan qulf kalitlari.
++    const removedKeys = [
++      'premiumLocked',
++      'premiumLockedVideo',
++      'premiumLockedStory',
++      'premiumLockedPost',
++      'errCommentPremium',
++      'commentPremiumTitle',
++      'bizPlanTrial',
++      'errPlanLocked',
++      'errPlanLockedIos',
++      'premiumPerkVideo',
++      'premiumPerkStory',
++      'premiumPerkPosts',
++    ];
++
++    /// "Joylash/izoh pullik" degan har qanday ibora.
++    const banned = {
++      'uz': [
++        'Reels uchun Premium kerak',
++        'Premium obuna kerak',
++        'Premium a’zolar',
++        'darajangiz yetmaydi',
++        'post va istoriya yopiq',
++        'post va istoriya ochiladi',
++        'Sinov davri:',
++        'Reels, istoriya',
++      ],
++      'ru': [
++        'Reels нужен Premium',
++        'нужна подписка Premium',
++        'участников Premium',
++        'уровня недостаточно',
++        'посты и истории закрыты',
++        'посты и истории.',
++        'Пробный период:',
++        'Reels, истории',
++      ],
++      'en': [
++        'Reels need Premium',
++        'Premium subscription is required',
++        'for Premium members',
++        'tier is not high enough',
++        'closed on the free plan',
++        'posts and stories.',
++        'Trial:',
++        'Reels, stories',
++      ],
++    };
++
++    test('ARB: qulf kalitlari va iboralari yo‘q', () {
++      for (final lang in ['uz', 'ru', 'en']) {
++        final arb = jsonDecode(_read('lib/l10n/arb/app_$lang.arb'))
++            as Map<String, dynamic>;
++        for (final k in removedKeys) {
++          expect(arb.containsKey(k), isFalse, reason: '$lang: $k qoldi');
++          expect(arb.containsKey('@$k'), isFalse, reason: '$lang: @$k qoldi');
++        }
++        for (final e in arb.entries) {
++          if (e.key.startsWith('@')) continue;
++          final v = '${e.value}';
++          for (final w in banned[lang]!) {
++            expect(v.contains(w), isFalse,
++                reason: '$lang: ${e.key} ichida qulf iborasi "$w"');
++          }
++        }
++      }
++    });
++
++    test('kod: qulf karta, daraja matni va feature_locked tarmog‘i yo‘q', () {
++      final comments = _codeOnly(_read('lib/features/social/comments.dart'));
++      expect(comments, isNot(contains('_PremiumLockedComposer')));
++      expect(comments, isNot(contains('comment-premium-locked')));
++      expect(comments, isNot(contains('premiumActive')));
++      final composer = _codeOnly(_read('lib/features/social/post_screens.dart'));
++      expect(composer, isNot(contains("'feature_locked'")));
++      expect(composer, isNot(contains('_lockedText')));
++      final plan = _codeOnly(_read('lib/features/business/business_forms.dart'));
++      expect(plan, isNot(contains('plan-trial')));
++      final perks =
++          _codeOnly(_read('lib/features/settings/settings_subscreens.dart'));
++      expect(perks, isNot(contains('premiumPerkVideo')));
++    });
++
++    for (final ios in [true, false]) {
++      test('server eski kodni qaytarsa — neytral xato '
++          '(${ios ? 'iPhone' : 'Android'})', () async {
++        debugDefaultTargetPlatformOverride =
++            ios ? TargetPlatform.iOS : TargetPlatform.android;
++        try {
++          for (final lang in ['uz', 'ru', 'en']) {
++            final l = await L.delegate.load(Locale(lang));
++            for (final code in [
++              'premium_required',
++              'feature_locked',
++              'plan_locked'
++            ]) {
++              final msg = describeError(
++                  l, AppError(AppErrorKind.forbidden, code: code));
++              expect(msg, l.errPublishUnavailable, reason: '$lang $code');
++              for (final w in [
++                'Premium',
++                'tarif',
++                'тариф',
++                'plan',
++                'daraja',
++                'уров',
++                'tier',
++                kSiteHost,
++              ]) {
++                expect(msg.toLowerCase().contains(w.toLowerCase()), isFalse,
++                    reason: '$lang $code: "$w"');
++              }
++            }
++          }
++        } finally {
++          debugDefaultTargetPlatformOverride = null;
++        }
++      });
++    }
++  });
++}
+diff --git a/mobile_nova/test/app_store_policy_test.dart b/mobile_nova/test/app_store_policy_test.dart
+index 2083c75..c732ba4 100644
+--- a/mobile_nova/test/app_store_policy_test.dart
++++ b/mobile_nova/test/app_store_policy_test.dart
+@@ -156,13 +156,15 @@ void main() {
+           '_price > 0 && showDigitalPrices',
+           'showDigitalPrices ? l.bizPremiumHint : l.bizPremiumHintIos',
+           'l.bizPlanLimitReachedIos',
++          '? l.bizPlanLimitTitle(limit)',
+         ],
+         'lib/features/business/business_intro.dart': [
+           'showDigitalPrices ? l.bizPremiumHint : l.bizPremiumHintIos',
+         ],
+         'lib/design/widgets/states.dart': [
+           '_appStore ? l.errPlanLimitIos : l.errPlanLimit',
+-          '_appStore ? l.errPlanLockedIos : l.errPlanLocked',
++          // `plan_locked` endi hamma platformada neytral (post bepul).
++          'l.errPublishUnavailable',
+         ],
+       };
+       for (final e in sites.entries) {
+@@ -188,7 +190,8 @@ void main() {
+     test('iPhone matnlarida xarid va sayt ishorasi yo‘q', () {
+       const keys = [
+         'errPlanLimitIos',
+-        'errPlanLockedIos',
++        'errPublishUnavailable',
++        'bizPlanLimitTitle',
+         'bizPlanLimitReachedIos',
+         'bizPremiumHintIos',
+         'idMarketTiersIos',
+diff --git a/mobile_nova/test/business_plan_test.dart b/mobile_nova/test/business_plan_test.dart
+index d34e959..ac0b27e 100644
+--- a/mobile_nova/test/business_plan_test.dart
++++ b/mobile_nova/test/business_plan_test.dart
+@@ -147,19 +147,35 @@ void main() {
+     expect(find.text(l.bizPlanPremiumBody), findsOneWidget);
+   });
+ 
+-  testWidgets('sinov davri va sotib olingan nom — cheklov kartasi yo‘q',
++  // Post va istoriya hammaga bepul (egasining qarori, 2026-10-04):
++  // sinov davrida "Sinov davri: hozircha cheklov yo'q" degan yozuv
++  // YO'Q — u "keyin pul to'laysiz" degan ma'no berardi.
++  testWidgets('sinov davri — cheklov kartasi ham, "sinov" yozuvi ham yo‘q',
+       (tester) async {
+     await _pump(tester, _biz({'trialActive': true, 'canPost': true}), 30);
+-    final l = await L.delegate.load(const Locale('uz'));
+-    expect(find.text(l.bizPlanTrial), findsOneWidget);
++    expect(tester.takeException(), isNull);
+     expect(find.byKey(const ValueKey('plan-card')), findsNothing);
++    expect(find.byKey(const ValueKey('plan-trial')), findsNothing);
++    expect(find.textContaining('Sinov'), findsNothing);
+   });
+ 
++  testWidgets('iPhone: sarlavhada tarif nomi yo‘q — faqat katalog hajmi',
++      (tester) async {
++    await _pump(tester, _biz({'free': true, 'itemLimit': 5, 'premiumItemLimit': 25, 'canPost': false}), 3);
++    final l = await L.delegate.load(const Locale('uz'));
++    expect(find.text(l.bizPlanLimitTitle(5)), findsOneWidget);
++    expect(find.text(l.bizPlanFreeTitle(5)), findsNothing);
++    expect(find.text(l.bizPlanUsage(3, 5)), findsOneWidget);
++    expect(find.textContaining('Premium'), findsNothing);
++    expect(find.textContaining('istoriya'), findsNothing);
++  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
++
+   test('server xatolari tushunarli matnga aylanadi', () async {
+     final l = await L.delegate.load(const Locale('uz'));
+     expect(describeError(l, const AppError(AppErrorKind.conflict, code: 'plan_limit_reached')),
+         l.errPlanLimit);
++    // `plan_locked` — eski server qoidasi; post bepul, xato NEYTRAL.
+     expect(describeError(l, const AppError(AppErrorKind.forbidden, code: 'plan_locked')),
+-        l.errPlanLocked);
++        l.errPublishUnavailable);
+   });
+ }
+diff --git a/mobile_nova/test/comment_premium_test.dart b/mobile_nova/test/comment_free_test.dart
+similarity index 60%
+rename from mobile_nova/test/comment_premium_test.dart
+rename to mobile_nova/test/comment_free_test.dart
+index 4ad01a6..46793b4 100644
+--- a/mobile_nova/test/comment_premium_test.dart
++++ b/mobile_nova/test/comment_free_test.dart
+@@ -10,11 +10,14 @@ import 'package:nfcstore_nova/features/social/comments.dart';
+ 
+ import 'helpers.dart';
+ 
+-/// IZOH — FAQAT PREMIUM (server qoidasi, `comments.js`).
++/// IZOH YOZISH — HAMMAGA BEPUL (egasining qarori, 2026-10-04).
+ ///
+-/// Egasi (2026-09 surat): Premium bo'lmagan odam yozib yuborgach
+-/// "Ruxsat yo'q" chiqardi, sababi aytilmasdi. Endi maydon umuman
+-/// ochilmaydi — o'rnida sababi yozilgan qulf kartasi.
++/// Ilgari Premium'siz (yoki sinov muddati tugagan) odamga yozish
++/// maydoni ochilmasdi — o'rnida "Izoh yozish — Premium a'zolar uchun"
++/// qulf kartasi turardi. iPhone'da Premium'ni ilova ichida olib
++/// bo'lmaydi (IAP yo'q) — Apple 3.1.1 bo'yicha rad etish sababi. Endi
++/// HAMMA PLATFORMADA har kim yoza oladi; har tekshiruv iPhone va
++/// Android'da ikki marta o'tadi.
+ class _Repo extends SocialRepository {
+   _Repo() : super(ApiClient());
+ 
+@@ -45,16 +48,38 @@ Future<void> _pump(WidgetTester tester, User user) async {
+   await tester.pump(const Duration(milliseconds: 50));
+ }
+ 
++/// Yozish maydoni bor, qulf va Premium haqida so'z yo'q.
++void _expectOpenComposer() {
++  expect(find.byKey(const ValueKey('comment-premium-locked')), findsNothing);
++  expect(find.byIcon(Icons.lock_rounded), findsNothing);
++  expect(find.byType(TextField), findsOneWidget);
++  expect(find.byKey(const ValueKey('comment-rules-note')), findsOneWidget);
++  expect(find.textContaining('Premium'), findsNothing);
++}
++
+ void main() {
+-  testWidgets('Premium bo‘lmaganga maydon YO‘Q, qulf kartasi bor',
++  final both = TargetPlatformVariant(
++      {TargetPlatform.iOS, TargetPlatform.android});
++
++  testWidgets('oddiy (Premium’siz) foydalanuvchi — yozish maydoni bor',
+       (tester) async {
+     await _pump(tester, testUser);
+-    expect(find.byKey(const ValueKey('comment-premium-locked')), findsOneWidget);
+-    expect(find.byType(TextField), findsNothing);
+-  });
++    _expectOpenComposer();
++  }, variant: both);
+ 
+-  testWidgets('Premium — yozish maydoni va qoidalar eslatmasi',
+-      (tester) async {
++  testWidgets('sinov muddati tugagan — baribir yoza oladi', (tester) async {
++    final expired = User(
++      id: 4,
++      email: 'e@nfcstore.uz',
++      name: 'Tugagan',
++      phone: '',
++      trialUntil: DateTime.now().subtract(const Duration(days: 1)),
++    );
++    await _pump(tester, expired);
++    _expectOpenComposer();
++  }, variant: both);
++
++  testWidgets('Premium — avvalgidek yozadi', (tester) async {
+     const premium = User(
+       id: 2,
+       email: 'p@nfcstore.uz',
+@@ -63,34 +88,7 @@ void main() {
+       premium: true,
+     );
+     await _pump(tester, premium);
+-    expect(find.byKey(const ValueKey('comment-premium-locked')), findsNothing);
+     expect(find.byType(TextField), findsOneWidget);
+     expect(find.byKey(const ValueKey('comment-rules-note')), findsOneWidget);
+-  });
+-
+-  testWidgets('sinov muddatida yoza oladi (egasining qarori)',
+-      (tester) async {
+-    final trial = User(
+-      id: 3,
+-      email: 't@nfcstore.uz',
+-      name: 'Sinov',
+-      phone: '',
+-      trialUntil: DateTime.now().add(const Duration(days: 10)),
+-    );
+-    await _pump(tester, trial);
+-    expect(find.byKey(const ValueKey('comment-premium-locked')), findsNothing);
+-    expect(find.byType(TextField), findsOneWidget);
+-  });
+-
+-  testWidgets('sinov tugagan — yana qulf', (tester) async {
+-    final expired = User(
+-      id: 4,
+-      email: 'e@nfcstore.uz',
+-      name: 'Tugagan',
+-      phone: '',
+-      trialUntil: DateTime.now().subtract(const Duration(days: 1)),
+-    );
+-    await _pump(tester, expired);
+-    expect(find.byKey(const ValueKey('comment-premium-locked')), findsOneWidget);
+-  });
++  }, variant: both);
+ }
+diff --git a/mobile_nova/test/nfc_id_market_test.dart b/mobile_nova/test/nfc_id_market_test.dart
+index 60e0656..a66d323 100644
+--- a/mobile_nova/test/nfc_id_market_test.dart
++++ b/mobile_nova/test/nfc_id_market_test.dart
+@@ -196,13 +196,17 @@ void main() {
+       expect(screens, contains('milliseconds: 350'));
+     });
+ 
+-    /// IKKINCHI KATALOG YO'Q.
++    /// IKKINCHI KATALOG YO'Q. Ikkala kirish joyi (Android'da) bitta
++    /// ekranga olib boradi va iPhone'da ikkalasi ham kalit ortida
++    /// (`showIdMarket` / `isAppStoreBuild`) — `app_store_market_test.dart`.
+     test('ikkala kirish joyi bitta ekranga olib boradi', () {
+       final center =
+           File('lib/features/nfc/nfc_center_screen.dart').readAsStringSync();
+       final home = File('lib/features/home/home_screen.dart').readAsStringSync();
+       expect(center, contains('Routes.nfcMarket'));
+       expect(home, contains('Routes.nfcMarket'));
++      expect(center, contains('showIdMarket'));
++      expect(home, contains('isAppStoreBuild'));
+     });
+   });
+ }
+-- 
+2.43.0
+

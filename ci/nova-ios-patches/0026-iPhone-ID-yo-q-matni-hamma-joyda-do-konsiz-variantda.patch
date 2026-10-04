@@ -1,0 +1,86 @@
+From 98a0acafdacd4b0a3e04bdf902090a3c441dcaf5 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Sun, 4 Oct 2026 20:00:06 +0000
+Subject: [PATCH 26/26] iPhone: 'ID yo'q' matni hamma joyda do'konsiz variantda
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ mobile_nova/lib/features/nfc/nfc_center_screen.dart       | 4 ++--
+ mobile_nova/lib/features/profile/profile_edit_screen.dart | 2 +-
+ mobile_nova/lib/features/profile/profile_screen.dart      | 3 ++-
+ mobile_nova/lib/features/social/post_screens.dart         | 2 +-
+ 4 files changed, 6 insertions(+), 5 deletions(-)
+
+diff --git a/mobile_nova/lib/features/nfc/nfc_center_screen.dart b/mobile_nova/lib/features/nfc/nfc_center_screen.dart
+index 1d20916..4ebe258 100644
+--- a/mobile_nova/lib/features/nfc/nfc_center_screen.dart
++++ b/mobile_nova/lib/features/nfc/nfc_center_screen.dart
+@@ -21,7 +21,7 @@ import '../../routing/routes.dart';
+ import '../auth/session.dart';
+ import '../home/home_screen.dart';
+ import '../home/widgets/my_ids_strip.dart';
+-import '../shop/store_policy.dart' show idMarketTitle, showIdMarket;
++import '../shop/store_policy.dart' show idMarketTitle, isAppStoreBuild, showIdMarket;
+ import 'nfc_service.dart';
+ import 'qr_sheet.dart';
+ import '../../design/widgets/brand_icon.dart';
+@@ -217,7 +217,7 @@ class NfcCenterScreen extends ConsumerWidget {
+               padding: x,
+               child: FloatingSurface(
+                 solid: true,
+-                child: Text(l.homeNoIdHint,
++                child: Text((isAppStoreBuild ? l.homeNoIdHintIos : l.homeNoIdHint),
+                     style: Theme.of(context).textTheme.bodyMedium),
+               ),
+             )
+diff --git a/mobile_nova/lib/features/profile/profile_edit_screen.dart b/mobile_nova/lib/features/profile/profile_edit_screen.dart
+index ebf5410..83c705e 100644
+--- a/mobile_nova/lib/features/profile/profile_edit_screen.dart
++++ b/mobile_nova/lib/features/profile/profile_edit_screen.dart
+@@ -283,7 +283,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
+         body: StatePanel(
+           icon: Icons.badge_outlined,
+           title: l.homeNoId,
+-          message: l.homeNoIdHint,
++          message: (isAppStoreBuild ? l.homeNoIdHintIos : l.homeNoIdHint),
+         ),
+       );
+     }
+diff --git a/mobile_nova/lib/features/profile/profile_screen.dart b/mobile_nova/lib/features/profile/profile_screen.dart
+index 92dbdc1..7df9e97 100644
+--- a/mobile_nova/lib/features/profile/profile_screen.dart
++++ b/mobile_nova/lib/features/profile/profile_screen.dart
+@@ -39,6 +39,7 @@ import '../social/story_viewer.dart';
+ import '../social/video_poster.dart';
+ import '../social/media_frame.dart';
+ import '../social/moderation.dart';
++import '../shop/store_policy.dart' show isAppStoreBuild;
+ import 'music_player.dart';
+ import 'profile_repository.dart';
+ 
+@@ -492,7 +493,7 @@ class ProfileScreen extends ConsumerWidget {
+                 child: FloatingSurface(
+                   solid: true,
+                   child: Text(
+-                    noBusiness ? l.businessNoneHint : l.homeNoIdHint,
++                    noBusiness ? l.businessNoneHint : (isAppStoreBuild ? l.homeNoIdHintIos : l.homeNoIdHint),
+                     style: Theme.of(context).textTheme.bodyMedium,
+                   ),
+                 ),
+diff --git a/mobile_nova/lib/features/social/post_screens.dart b/mobile_nova/lib/features/social/post_screens.dart
+index 9f6ed97..857aa35 100644
+--- a/mobile_nova/lib/features/social/post_screens.dart
++++ b/mobile_nova/lib/features/social/post_screens.dart
+@@ -809,7 +809,7 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
+         body: StatePanel(
+           icon: Icons.badge_outlined,
+           title: l.homeNoId,
+-          message: l.homeNoIdHint,
++          message: (isAppStoreBuild ? l.homeNoIdHintIos : l.homeNoIdHint),
+         ),
+       );
+     }
+-- 
+2.43.0
+
