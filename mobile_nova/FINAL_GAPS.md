@@ -116,7 +116,7 @@ Bular ilovada UI sifatida bor edi, lekin **umuman ishlamasdi**.
 | Feature | Status | Izoh |
 |---|---|---|
 | Lokal ilova qulfi (PIN) | DONE | PIN Keystore ichida, `SharedPreferences` da emas — test qo'riqlaydi |
-| **Biometrika** | **FAILED (qaytarildi)** | `local_auth` qo'shilganda Android buildi R8 bosqichida QOTIB QOLDI. Uch urinishda ham (ikkitasi qayta ishga tushirish, bittasi Gradle xotirasi tuzatilgandan keyin) build aynan "Universal APK" bosqichida 40–60 daqiqa osilib turdi va xatolik ham bermadi; paketsiz esa ~7 daqiqada o'tadi. Paket olib tashlandi, qulf FAQAT PIN bilan ishlaydi — bu to'liq ishlaydigan himoya. Qaytarish uchun R8/`androidx.biometric` o'zaro ta'sirini aniqlash kerak |
+| Biometrika (Face ID / Touch ID / barmoq izi) | DONE (2026-10-04 qaytarildi) | Sentyabrdagi "R8 da qotish" hozirgi toolchain'da (Flutter 3.35.5, AGP 8.9.1, `local_auth` 3.0.1) takrorlanmadi: release APK `local_auth` bilan 153 s, usiz 190 s, Java xotirasi eng ko'pi 3.4 GB. Biometrika faqat qurilmada YOZILGAN biometrika bo'lsa va Android 9+ / iOS da taklif qilinadi; aks holda tugma yo'q (o'chiq, sababi yozilgan). iOS'da `NSFaceIDUsageDescription` qo'shildi. PIN har doim ishlaydi |
 | Parolni almashtirish | DONE | |
 | Mavzu, til | DONE | 5 mavzu, 3 til |
 | Bildirishnoma sozlamalari | PARTIAL | tanlov lokal saqlanadi; serverga yuborilmaydi (endpoint yo'q) |
@@ -196,11 +196,8 @@ bo'lmasligi.
 3. Qurilmada NFC va media oqimlarini tekshirish (DEVICE REQUIRED).
 4. Email kodi bilan kirishni yopish yoki backend'da email
    infratuzilmasini qo'shish.
-5. **Biometrik qulfni qaytarish** — `local_auth` bilan R8 nima uchun
-   qotib qolishini aniqlash (`-keep`/`-dontwarn androidx.biometric.**`
-   yoki `android.enableR8.fullMode=false` bilan sinab ko'rish).
-   Hozir qulf PIN bilan to'liq ishlaydi, biometrika esa YO'Q va
-   bordek ko'rsatilmaydi.
+5. **Biometrik qulf** — qaytarildi (2026-10-04). Qurilmada tekshirish
+   kerak: Face ID (iPhone) va barmoq izi (Android 9+) bilan ochish.
 
 ---
 

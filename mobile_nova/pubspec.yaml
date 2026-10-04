@@ -44,6 +44,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   flutter_svg: ^2.3.0
   in_app_update: 4.2.5
+  # Ilova qulfi: Face ID / Touch ID / barmoq izi (PIN o'rniga emas, qulaylik).
+  local_auth: ^3.0.1
 
 dev_dependencies:
   flutter_test:

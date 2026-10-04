@@ -42,6 +42,10 @@
 	<!-- Rasm / video tanlash va suratga olish (image_picker, file_picker).
 	     Bu kalitlar bo'lmasa iOS ilovani galereya yoki kamera
 	     ochilgan ZAHOTI yopib yuboradi va App Store buni rad etadi. -->
+	<!-- Face ID: bu matnsiz iOS Face ID oynasini ochmaydi (local_auth
+	     xato qaytaradi) — ilova qulfi faqat PIN bilan qolardi. -->
+	<key>NSFaceIDUsageDescription</key>
+	<string>Ilova qulfini PIN o‘rniga Face ID bilan ochish uchun kerak.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Profil rasmi, post va istoriya uchun suratga olish uchun kerak.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

@@ -319,6 +319,7 @@ class _SecuritySettingsScreenState
           SectionHeader(title: l.lockTitle),
           Consumer(builder: (context, ref, _) {
             final lock = ref.watch(appLockProvider);
+            final bio = ref.watch(biometricAvailableProvider);
             return FloatingSurface(
               solid: true,
               child: Column(
@@ -332,13 +333,37 @@ class _SecuritySettingsScreenState
                       label: l.lockSetPin,
                       onPressed: () => showPinSetup(context, ref),
                     )
-                  else
+                  else ...[
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      // Biometrika yo'q qurilmada o'chiq ko'rinadi (sozlama
+                      // standart holatda yoqiq bo'lsa ham) — yolg'on "yoqiq"
+                      // holat ko'rsatilmaydi.
+                      value: lock.biometric && bio.valueOrNull == true,
+                      // Qurilmada biometrika yo'q bo'lsa tugma
+                      // o'chirilgan va sababi yozilgan — bosilib,
+                      // hech narsa qilmaydigan tugma qolmaydi.
+                      onChanged: bio.valueOrNull == true
+                          ? (v) => ref
+                              .read(appLockProvider.notifier)
+                              .setBiometric(v)
+                          : null,
+                      title: Text(l.lockBiometric,
+                          style: Theme.of(context).textTheme.bodyLarge),
+                      subtitle: bio.valueOrNull == true
+                          ? null
+                          : Text(l.lockBiometricNone,
+                              style:
+                                  Theme.of(context).textTheme.bodySmall),
+                    ),
+                    const SizedBox(height: Gap.sm),
                     NovaButton(
                       label: l.lockOff,
                       tone: ButtonTone.quiet,
                       onPressed: () =>
                           ref.read(appLockProvider.notifier).disable(),
                     ),
+                  ],
                 ],
               ),
             );

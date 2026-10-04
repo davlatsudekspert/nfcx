@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nfcstore_nova/app/providers.dart';
 import 'package:nfcstore_nova/core/storage/secure_store.dart';
+import 'package:nfcstore_nova/design/theme/app_theme.dart';
+import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
 import 'package:nfcstore_nova/features/settings/app_lock.dart';
+import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Xotiradagi Keystore o'rinbosari.
@@ -146,6 +150,60 @@ void main() {
         ),
       ));
       expect(find.text('kontent'), findsOneWidget);
+    });
+  });
+
+  // Biometrika: barmoq izi / Face ID tugmasi FAQAT qurilmada ishlatsa
+  // bo'ladigan biometrika bor va sozlamada yoqilgan bo'lsa chiqadi —
+  // bosilib hech narsa qilmaydigan tugma qolmasligi kerak.
+  group('Biometrika (qulf ekrani)', () {
+    Future<void> pumpLocked(
+      WidgetTester tester, {
+      required bool available,
+      bool setting = true,
+    }) async {
+      SharedPreferences.setMockInitialValues({
+        'nova.appLock': true,
+        'nova.appLockBiometric': setting,
+      });
+      final prefs = await Prefs.open();
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          prefsProvider.overrideWithValue(prefs),
+          secureStoreProvider.overrideWithValue(_FakeSecure('1234')),
+          biometricAvailableProvider.overrideWith((ref) async => available),
+        ],
+        child: MaterialApp(
+          theme: buildTheme(NfcTokens.ivory),
+          locale: const Locale('uz'),
+          localizationsDelegates: const [
+            L.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          home: const AppLockGate(child: Text('kontent')),
+        ),
+      ));
+      // Sinovda `local_auth` plagini yo'q — avtomatik urinish
+      // MissingPluginException bilan jim tugaydi, PIN qoladi.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    testWidgets('bor va yoqilgan — barmoq izi tugmasi chiqadi', (tester) async {
+      await pumpLocked(tester, available: true);
+      expect(find.byIcon(Icons.fingerprint_rounded), findsOneWidget);
+    });
+
+    testWidgets('qurilmada yo‘q — tugma chiqmaydi', (tester) async {
+      await pumpLocked(tester, available: false);
+      expect(find.byIcon(Icons.fingerprint_rounded), findsNothing);
+    });
+
+    testWidgets('sozlamada o‘chirilgan — tugma chiqmaydi', (tester) async {
+      await pumpLocked(tester, available: true, setting: false);
+      expect(find.byIcon(Icons.fingerprint_rounded), findsNothing);
     });
   });
 }
