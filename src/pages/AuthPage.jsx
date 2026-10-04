@@ -48,6 +48,8 @@ function errText(err, t, botLink) {
   // kod YUBORILMAYDI, sabab aytiladi.
   if (key === 'email_typo') return t('Manzilda xato bor shekilli. {email} demoqchimisiz?', { email: err?.detail || '' });
   if (key === 'email_domain_invalid') return t('Bunday pochta manzili topilmadi — tekshirib qayta yozing.');
+  // Format to'g'ri, lekin pochta xizmati manzilni qabul qilmadi.
+  if (key === 'bad_email' && err?.reason === 'rejected') return t('Bu manzilga xat yuborib bo‘lmadi — emailni tekshirib qayta yozing.');
   if (key === 'bad_email') return t('Email formati noto’g’ri.');
   if (key === 'tg_send_failed') return t("Telegram orqali kod yuborib bo'lmadi. Birozdan so'ng qayta urining.");
   // ---- Emailga kod yuborish xatolari ----

@@ -289,6 +289,8 @@ String humanError(Object? e) {
     'email_required': tr('Email kiriting.'),
     'email_code_required': tr('Emailga kelgan kodni kiriting.'),
     'bad_email_code': tr('Kod xato. Tekshirib, qaytadan kiriting.'),
+    // `bad_email_code` dan KEYIN: qidiruv `contains` bilan, tartib muhim.
+    'bad_email': tr('Email manzilini tekshirib, qayta kiriting.'),
     'email_send_failed':
         tr('Emailga kod yuborib bo‘lmadi. Birozdan so‘ng qayta urining.'),
     'not_found': tr('Topilmadi.'),
