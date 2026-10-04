@@ -247,11 +247,9 @@ class ProfileScreen extends ConsumerWidget {
               : _PostsGrid(code: active.code, company: active.isBusiness),
           children: [
             if (biz != null)
-              // Vitrina muqovasi — yumaloq karta: tugmalar ostidan boshlanadi.
-              Padding(
-                padding: EdgeInsets.only(top: heroTop),
-                child: _StorefrontHeader(business: biz),
-              )
+              // Vitrina muqovasi — shaxsiy profil bilan BIR XIL: status
+              // bar ortidan boshlanadi va pastga fonga singib ketadi.
+              _StorefrontHeader(business: biz)
             else
               _Hero(
                   user: user,
@@ -1764,15 +1762,20 @@ String? _nameInitials(String name) {
 /// 2026-09-24: "business profil oddiy social profil emas, premium
 /// kompaniya vitrinasidek ko'rinsin").
 ///
-/// Shaxsiy profildan farqli: keng muqova (banner), uning ustiga
-/// tushgan logotip, Business ID + Premium belgisi, soha va shahar,
-/// tavsif, ish vaqti ("Hozir ochiq · Bugun 09:00–18:00") va manzil.
-/// Muqova bo'lmasa — siyoh fon va champagne nur (demo rasm qo'yilmaydi).
+/// Muqova shaxsiy profildagi `_Hero` bilan BIR XIL (egasi, 2026-10-04:
+/// "biznesnikini shaxsiynikiga o'xshatish kerak"): to'liq kenglik,
+/// status bar ortidan boshlanadi, pastga qarab fonga singib ketadi —
+/// yumaloq karta emas. Uning ustiga logotip, Business ID + Premium
+/// belgisi, soha va shahar, tavsif, ish vaqti va manzil.
+/// Muqova bo'lmasa — siyoh fon (demo rasm qo'yilmaydi).
 class _StorefrontHeader extends StatelessWidget {
   const _StorefrontHeader({required this.business});
   final Business business;
 
-  static const _coverH = 176.0;
+  // `_Hero` bilan bir xil o'lchamlar: muqova 150 + status bar,
+  // logotip muqova boshidan 86 pastda.
+  static const _coverH = 150.0;
+  static const _logoTop = 86.0;
   // Egasi (2026-09-25): avatar/logotip kattaroq — 104 dan 124 ga.
   static const _logo = 124.0;
 
@@ -1794,50 +1797,41 @@ class _StorefrontHeader extends StatelessWidget {
     final premium = b.plan.premium;
     final badge = l.storePremium;
 
+    final heroTop = NovaScaffold.heroTopInset(context);
+
     return Column(
       key: const ValueKey('store-header'),
       children: [
         SizedBox(
-          height: _coverH + _logo / 2,
+          height: heroTop + _logoTop + _logo,
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              // MUQOVA — to'liq kenglik, pastki burchaklari yumaloq.
+              // MUQOVA — `_Hero` dagidek: hoshiyasiz, to'liq kenglik,
+              // muqovaning O'ZI pastga qarab shaffoflashadi (scrim emas —
+              // aks holda fon ustida to'g'ri chiziq ko'rinadi).
               Positioned(
-                left: Gap.screenX,
-                right: Gap.screenX,
+                left: 0,
+                right: 0,
                 top: 0,
-                height: _coverH,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(28),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      if (b.coverUrl.isNotEmpty)
-                        mediaImage(context, b.coverUrl, fit: BoxFit.cover)
-                      else
-                        const StoreInkCover(),
-                      // Pastda yengil soya — logotip halqasi ajralsin.
-                      const DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Color(0x00000000), Color(0x59000000)],
-                            stops: [.45, 1],
-                          ),
-                        ),
-                      ),
-                      // Champagne ichki hoshiya — premium ramka.
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(28),
-                          border: Border.all(
-                              color: t.brand.withValues(alpha: .35)),
-                        ),
-                      ),
+                height: _coverH + heroTop,
+                child: ShaderMask(
+                  key: const ValueKey('store-cover'),
+                  shaderCallback: (rect) => const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.white,
+                      Colors.white,
+                      Color(0x40FFFFFF),
+                      Colors.transparent,
                     ],
-                  ),
+                    stops: [0, .30, .70, 1],
+                  ).createShader(rect),
+                  blendMode: BlendMode.dstIn,
+                  child: b.coverUrl.isNotEmpty
+                      ? mediaImage(context, b.coverUrl, fit: BoxFit.cover)
+                      : const StoreInkCover(),
                 ),
               ),
               // LOGOTIP — muqova ustiga tushadi; istoriya bo'lsa
@@ -1845,7 +1839,7 @@ class _StorefrontHeader extends StatelessWidget {
               Positioned(
                 left: 0,
                 right: 0,
-                top: _coverH - _logo / 2,
+                top: heroTop + _logoTop,
                 child: Center(
                   child: _AvatarWithStory(
                     code: b.companyId,
