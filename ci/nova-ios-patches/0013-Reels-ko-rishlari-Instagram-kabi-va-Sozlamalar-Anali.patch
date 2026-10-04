@@ -1,4 +1,4 @@
-From 798c83ec35c10494214c5af11c02e8ae7059dd49 Mon Sep 17 00:00:00 2001
+From c1c01390ca6ff0fd9effb1803a2e47edccda0027 Mon Sep 17 00:00:00 2001
 From: NFCSTORE CI <ci@nfcstore.uz>
 Date: Sun, 4 Oct 2026 09:13:28 +0000
 Subject: [PATCH 13/13] =?UTF-8?q?Reels=20ko'rishlari=20(Instagram=20kabi)?=
@@ -17,7 +17,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
 ---
  mobile_nova/lib/data/models/models.dart       | 115 ++++++-
- .../data/repositories/social_repository.dart  |  19 ++
+ .../data/repositories/social_repository.dart  |  21 ++
  .../features/settings/analytics_screen.dart   | 287 ++++++++++++++++++
  .../features/settings/settings_screen.dart    |   5 +
  .../lib/features/social/reels_screen.dart     |  82 +++++
@@ -33,7 +33,7 @@ Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
  mobile_nova/test/content_views_test.dart      | 193 ++++++++++++
  mobile_nova/test/helpers.dart                 |  13 +
  mobile_nova/test/routes_test.dart             |   1 +
- 17 files changed, 974 insertions(+), 1 deletion(-)
+ 17 files changed, 976 insertions(+), 1 deletion(-)
  create mode 100644 mobile_nova/lib/features/settings/analytics_screen.dart
  create mode 100644 mobile_nova/test/content_views_test.dart
 
@@ -195,10 +195,10 @@ index e4cdf01..cebec19 100644
 +      );
 +}
 diff --git a/mobile_nova/lib/data/repositories/social_repository.dart b/mobile_nova/lib/data/repositories/social_repository.dart
-index b6e0b87..42f5bc6 100644
+index b6e0b87..0e921ae 100644
 --- a/mobile_nova/lib/data/repositories/social_repository.dart
 +++ b/mobile_nova/lib/data/repositories/social_repository.dart
-@@ -84,6 +84,25 @@ class SocialRepository {
+@@ -84,6 +84,27 @@ class SocialRepository {
  
    Future<Result<void>> deletePost(int id) => _api.delete<void>('/api/posts/$id');
  
@@ -209,15 +209,17 @@ index b6e0b87..42f5bc6 100644
 +  /// ko'paytirmaydi. Javob — yangi jami son.
 +  Future<Result<int>> recordView(int id, {bool company = false}) async {
 +    final res = await _api.post<Map<String, dynamic>>(
-+        '/api/content-views/${company ? 'company_post' : 'post'}/$id',
++        company
++            ? '/api/content-views/company_post/$id'
++            : '/api/content-views/post/$id',
 +        const {});
 +    return res.map((j) => (j['count'] as num?)?.toInt() ?? 0);
 +  }
 +
-+  /// Sozlamalar → Analitika (`GET /api/my/analytics`).
-+  Future<Result<MyAnalytics>> myAnalytics({int days = 30}) async {
-+    final res =
-+        await _api.get<Map<String, dynamic>>('/api/my/analytics?days=$days');
++  /// Sozlamalar → Analitika (`GET /api/my/analytics`, server oxirgi
++  /// 30 kunni beradi).
++  Future<Result<MyAnalytics>> myAnalytics() async {
++    final res = await _api.get<Map<String, dynamic>>('/api/my/analytics');
 +    return res.map(MyAnalytics.fromJson);
 +  }
 +
@@ -1245,7 +1247,7 @@ index 0000000..41215fc
 +  });
 +}
 diff --git a/mobile_nova/test/helpers.dart b/mobile_nova/test/helpers.dart
-index 3e18ce7..bbef7ba 100644
+index 3e18ce7..7539bc2 100644
 --- a/mobile_nova/test/helpers.dart
 +++ b/mobile_nova/test/helpers.dart
 @@ -85,6 +85,19 @@ class FakeSocialRepository extends SocialRepository {
@@ -1263,7 +1265,7 @@ index 3e18ce7..bbef7ba 100644
 +  }
 +
 +  @override
-+  Future<Result<MyAnalytics>> myAnalytics({int days = 30}) async =>
++  Future<Result<MyAnalytics>> myAnalytics() async =>
 +      const Ok(MyAnalytics());
  }
  
