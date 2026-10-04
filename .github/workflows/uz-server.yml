@@ -17,6 +17,11 @@ on:
         description: "cutover uchun aynan: KOCHIR"
         required: false
         default: ''
+      auto:
+        description: "Avtomatik audit (soatlik routine): rejali audit bilan bir xil — 3.5 soat qoidasi va gate bajarilsa finalize-media"
+        required: false
+        default: false
+        type: boolean
   # O'TISHDAN KEYINGI AUDIT — avtomatik, ~4 soatda (qo'lda ishga tushirish
   # shart emas). Gate bajarilsa finalize-media ham shu yerda o'zi bajariladi;
   # finalize'dan 48 soat o'tgach rejali audit o'zini to'xtatadi.
@@ -51,6 +56,10 @@ jobs:
           HOST: ${{ secrets.UZ_VPS_HOST }}
           ACTION: ${{ inputs.action || 'audit' }}
           EVENT: ${{ github.event_name }}
+          # GitHub cron'i kafolatlanmaydi (2026-10-04: bir marta ham ishlamadi).
+          # Soatlik routine `action=audit auto=true` bilan chaqiradi — u ham
+          # REJALI audit sifatida ishlaydi (egasining ruxsati, 2026-10-04).
+          AUTO: ${{ inputs.auto }}
           CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CONFIRM: ${{ inputs.confirm }}
           CF_ACCOUNT: 31c4b3d8ece4b65de515debc4552334a
@@ -289,7 +298,7 @@ jobs:
           # Har "## " bo'lim — alohida annotatsiya; muammo bo'lsa error.
           if [ "$ACTION" = audit ]; then
             live || { echo "::error title=audit::UZ_STORE yoqilmagan"; exit 1; }
-            if [ "$EVENT" = schedule ]; then
+            if [ "$EVENT" = schedule ] || [ "$AUTO" = true ]; then
               node scripts/uz-audit.mjs --should-run > s.out 2>&1; src=$?
               if [ "$src" = 10 ]; then echo "::notice title=rejali audit::$(clean 2 < s.out | joined) ."; exit 0; fi
             fi
@@ -326,7 +335,7 @@ jobs:
             echo "::notice title=server (sqld/garage/caddy loglari, zaxira)::$(printf '%s\n' "$SRV" | clean 10 | joined) ."
             # Rejali audit: gate bajarilsa — finalize-media shu yerda (o'z ichida
             # gate'ni yana tekshiradi). Qo'lda bosish shart emas.
-            if [ "$EVENT" = schedule ] && [ "$arc" = 0 ] && grep -q "finalize-media sharti.*BAJARILDI" a.out; then
+            if { [ "$EVENT" = schedule ] || [ "$AUTO" = true ]; } && [ "$arc" = 0 ] && grep -q "finalize-media sharti.*BAJARILDI" a.out; then
               if live && grep -q '"UZ_UPLOADS_FALLBACK"' sl.json; then
                 echo "::notice title=finalize-media (avtomatik)::24 soatlik gate bajarildi — boshlanmoqda"
                 finalize_media || exit 1
