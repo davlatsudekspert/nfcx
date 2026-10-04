@@ -17,11 +17,14 @@ on:
         description: "cutover uchun aynan: KOCHIR"
         required: false
         default: ''
-  # O'TISHDAN KEYINGI AUDIT — avtomatik, har 4 soatda (qo'lda ishga tushirish
+  # O'TISHDAN KEYINGI AUDIT — avtomatik, ~4 soatda (qo'lda ishga tushirish
   # shart emas). Gate bajarilsa finalize-media ham shu yerda o'zi bajariladi;
   # finalize'dan 48 soat o'tgach rejali audit o'zini to'xtatadi.
+  # Cron HAR SOATDA: GitHub rejani kafolatlamaydi ('23 */4' 08:23 va 12:23
+  # da ishlamadi). Oxirgi auditdan 3.5 soat o'tmagan bo'lsa `--should-run`
+  # darhol tugatadi (uz-audit.mjs), ya'ni audit baribir ~4 soatda bir.
   schedule:
-    - cron: '23 */4 * * *'
+    - cron: '23 * * * *'
 
 permissions:
   contents: read
