@@ -36,7 +36,11 @@ const get = async (path, method = 'GET') => {
   checkTrue('1) muallif profiliga havola', r.html.includes('href="/VIP001"'));
   checkTrue('1) izoh xavfsiz (HTML qochirilgan)', r.html.includes('Toshkent &lt;kechasi&gt; &amp; &quot;yoritgich&quot;') && !r.html.includes('<kechasi>'));
   checkTrue('1) canonical shu post', r.html.includes('href="https://nfcstore.uz/post/100?code=VIP001"'));
-  checkTrue('1) ilovada ochish tugmasi', r.html.includes('href="/app"'));
+  checkTrue('1) ilovada ochish tugmasi', r.html.includes('id="open-app"'));
+  checkTrue('1) Android: intent:// ilovaning o‘zini ochadi (paket + yuklab olish zaxirasi)',
+    r.html.includes('intent://nfcstore.uz/post/100?code=VIP001#Intent;scheme=nfcstore;package=uz.nfcstore.nova;')
+    && r.html.includes('S.browser_fallback_url=https%3A%2F%2Fnfcstore.uz%2Fapp'));
+  checkTrue('1) iPhone: nfcstore:// sxemasi', r.html.includes('nfcstore://nfcstore.uz/post/100?code=VIP001'));
   const h = await get('/post/100?code=VIP001', 'HEAD');
   check('1) HEAD — 200, tanasiz', [h.status, h.html], [200, '']);
 }
