@@ -5293,6 +5293,32 @@ function emailEnabledD1(env) {
   return !!(cleanSecret(env.RESEND_API_KEY) && cleanSecret(env.RESEND_FROM));
 }
 
+// RESEND QABUL QILUVCHI MANZILNI RAD ETDIMI.
+//
+// Jonli muhitda ro'yxat kodi 503 `http_422` bilan qaytdi: Resend
+// odam yozgan `to` manzilni qabul qilmadi. Bu server nosozligi emas —
+// odamga "email noto'g'ri" deyish kerak edi, audit esa uni server
+// xatosi deb sanadi.
+//
+// EHTIYOTKOR: 400/422 boshqa sababdan ham keladi — noto'g'ri kalit
+// (Resend 400 "API key is invalid" beradi), `from` formati, yetishmagan
+// maydon. Ular BIZNING xatomiz: "email noto'g'ri" deb yashirilsa,
+// haqiqiy nosozlik ko'rinmay qoladi. Shuning uchun faqat xabar aynan
+// `to` maydoni / qabul qiluvchi haqida bo'lsa `true`.
+function resendRecipientRejectedD1(status, text) {
+  if (status !== 400 && status !== 422) return false;
+  let body;
+  try { body = JSON.parse(text); } catch { return false; }
+  const msg = String(body?.message || '');
+  const name = String(body?.name || '');
+  if (!msg || !/^(validation_error|invalid_parameter|invalid_to_address)$/.test(name)) return false;
+  if (/api[\s_-]*key|\bfrom\b|verif|missing|required|suppress|between|array/i.test(msg)) return false;
+  // Faqat Resend'ning aniq matni: "Invalid `to` field. The email address
+  // needs to follow ... format" — `to` maydoni shakli bizning xatomiz
+  // bo'lishi mumkin bo'lgan xabarlar (massiv, soni) bu yerga tushmaydi.
+  return /\binvalid\s+[`'"]?to[`'"]?\s+field\b/i.test(msg);
+}
+
 async function sendEmailD1(env, { to, subject, html, text }) {
   if (!emailEnabledD1(env)) return { ok: false, reason: 'disabled' };
   const address = String(to || '').trim();
@@ -5329,6 +5355,13 @@ async function sendEmailD1(env, { to, subject, html, text }) {
       // kalit qaytmaydi, faqat sabab (domen tasdiqlanmagan v.h.).
       const detail = await res.text().catch(() => '');
       console.error('resend', res.status, detail.slice(0, 300));
+      // `recipient` — manzil odamniki, chaqiruvchi 503 o'rniga 422 beradi.
+      if (resendRecipientRejectedD1(res.status, detail)) {
+        // 5xx auditiga tushmaydi — keskin ko'payib ketsa loglarda shu
+        // alohida belgidan ko'rinadi.
+        console.warn('resend_recipient_rejected', res.status);
+        return { ok: false, reason: `http_${res.status}`, recipient: true, detail: detail.slice(0, 300) };
+      }
       return { ok: false, reason: `http_${res.status}`, detail: detail.slice(0, 300) };
     }
     return { ok: true };
