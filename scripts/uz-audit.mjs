@@ -41,7 +41,11 @@ const hours = (Date.now() - cutMs) / 3.6e6;
 const now = new Date().toISOString();
 await db.prepare(`INSERT OR IGNORE INTO "_uz_audit_state" ("k", "v", "ts") VALUES ('first_audit', ?, ?)`).bind(now, now).run();
 const firstAudit = await db.prepare(`SELECT v FROM "_uz_audit_state" WHERE k = 'first_audit'`).first('v');
+// Oldingi audit vaqti: muammo = SHU oraliqdagi yangi hodisalar (tarix alohida ko'rsatiladi).
+const prevRun = await db.prepare(`SELECT ts FROM "_uz_audit_state" WHERE k LIKE 'run:%' ORDER BY ts DESC LIMIT 1`).first('ts');
+const since = prevRun || firstAudit;
 sec(`O'tish: ${cut} · ${hours.toFixed(1)} soat o'tdi`);
+say(`bu audit hodisalarni ${since} dan beri tekshiradi (oldingi audit)`);
 say(`birinchi audit: ${firstAudit} (R2 fallback va 5xx loglari audit deploy'idan beri yoziladi; undan oldingi oraliq uchun dalil — R2 da bor, Garage'da yo'q fayllar soni, 4-bo'lim)`);
 
 // ── 1) R2 fallback ──────────────────────────────────────────────────
@@ -51,12 +55,15 @@ let fallbackReads = 0;
   if (await hasTable('_uz_fallback_log')) {
     const g = (await db.prepare(`SELECT op, COUNT(*) AS n, MIN(ts) AS a, MAX(ts) AS b FROM "_uz_fallback_log" GROUP BY op`).all()).results;
     for (const r of g) say(`${r.op}: ${r.n} ta (${r.a} … ${r.b})`);
-    fallbackReads = g.filter((r) => ['head', 'get', 'head-error', 'get-error'].includes(r.op)).reduce((a, r) => a + r.n, 0);
+    const READ_OPS = `('head', 'get', 'head-error', 'get-error')`;
+    const total = g.filter((r) => ['head', 'get', 'head-error', 'get-error'].includes(r.op)).reduce((a, r) => a + r.n, 0);
+    fallbackReads = await db.prepare(`SELECT COUNT(*) AS n FROM "_uz_fallback_log" WHERE op IN ${READ_OPS} AND ts > ?`).bind(since).first('n');
+    say(`R2 dan o'qish: jami ${total} · oldingi auditdan beri ${fallbackReads}`);
     const last = (await db.prepare(`SELECT ts, op, key FROM "_uz_fallback_log" ORDER BY id DESC LIMIT 8`).all()).results;
     for (const r of last) say(`  ${r.ts} ${r.op} ${String(r.key).slice(0, 90)}`);
     if (!g.length) say('yozuv yo\'q — R2 dan bitta ham fayl o\'qilmagan');
   } else say('jadval hali yo\'q — R2 fallback bitta ham ishlamagan (birinchi hodisada yaratiladi)');
-  if (fallbackReads) problems.push(`R2 fallback ${fallbackReads} marta o'qildi`);
+  if (fallbackReads) problems.push(`R2 fallback ${fallbackReads} marta o'qildi (oldingi auditdan beri)`);
 }
 
 // ── 2) API xatolari (5xx) ───────────────────────────────────────────
@@ -65,9 +72,10 @@ let fallbackReads = 0;
   if (await hasTable('_uz_error_log')) {
     const g = (await db.prepare(`SELECT method, path, status, COUNT(*) AS n, MAX(ts) AS b, MAX(detail) AS d FROM "_uz_error_log" GROUP BY method, path, status ORDER BY n DESC LIMIT 12`).all()).results;
     const total = g.reduce((a, r) => a + r.n, 0);
-    say(`jami: ${total}`);
+    const fresh = await db.prepare(`SELECT COUNT(*) AS n FROM "_uz_error_log" WHERE ts > ?`).bind(since).first('n');
+    say(`jami: ${total} · oldingi auditdan beri: ${fresh}`);
     for (const r of g) say(`  ${r.n}× ${r.status} ${r.method} ${r.path} (oxirgi ${r.b}) ${String(r.d || '').slice(0, 100)}`);
-    if (total) problems.push(`${total} ta 5xx javob`);
+    if (fresh) problems.push(`${fresh} ta xato javob (oldingi auditdan beri)`);
   } else say('jadval hali yo\'q — 5xx javob bo\'lmagan');
 }
 
@@ -77,6 +85,8 @@ let fallbackReads = 0;
   if (await hasTable('_uz_s3_retry_log')) {
     const g = (await db.prepare(`SELECT method, message, COUNT(*) AS n, MIN(skew) AS lo, MAX(skew) AS hi, MAX(ts) AS b FROM "_uz_s3_retry_log" GROUP BY method, message ORDER BY n DESC LIMIT 6`).all()).results;
     for (const r of g) say(`${r.n}× ${r.method} "${r.message}" soat farqi ${r.lo}…${r.hi} s (oxirgi ${r.b})`);
+    const fresh = await db.prepare(`SELECT COUNT(*) AS n FROM "_uz_s3_retry_log" WHERE ts > ?`).bind(since).first('n');
+    say(`oldingi auditdan beri: ${fresh} (muvaffaqiyatli qayta urinish — foydalanuvchi xato ko'rmagan)`);
     if (!g.length) say('yo\'q');
   } else say('yo\'q — 403 qayta urinish bo\'lmagan');
 }
@@ -230,8 +240,12 @@ say(`auditlar tarixi: ${runs.map((r) => `${r.ts.slice(5, 16)} ${r.verdict === 'T
 const lastBad = [...runs].reverse().find((r) => r.verdict !== 'TOZA');
 const cleanRuns = lastBad ? runs.filter((r) => r.ts > lastBad.ts) : runs;
 const cleanHours = cleanRuns.length ? (Date.now() - Date.parse(cleanRuns[0].ts)) / 3.6e6 : 0;
-const ready = !problems.length && cleanHours >= 24 && cleanRuns.length >= 5 && fallbackReads === 0 && r2Only === 0;
+let windowFallback = 0;
+if (cleanRuns.length && await hasTable('_uz_fallback_log')) {
+  windowFallback = await db.prepare(`SELECT COUNT(*) AS n FROM "_uz_fallback_log" WHERE op IN ('head', 'get', 'head-error', 'get-error') AND ts >= ?`).bind(cleanRuns[0].ts).first('n');
+}
+const ready = !problems.length && cleanHours >= 24 && cleanRuns.length >= 5 && windowFallback === 0 && r2Only === 0;
 say(`toza oraliq: ${cleanHours.toFixed(1)} soat, ${cleanRuns.length} audit${lastBad ? ` (oxirgi muammoli audit: ${lastBad.ts.slice(0, 16)})` : ''}`);
-say(`finalize-media sharti (≥24 soat uzluksiz toza, ≥5 audit, R2 fallback 0, faqat-R2 fayl 0): ${ready ? 'BAJARILDI' : 'hali yo\'q'}`);
+say(`finalize-media sharti (≥24 soat uzluksiz toza, ≥5 audit, shu oraliqda R2 fallback 0 [hozir ${windowFallback}], faqat-R2 fayl 0): ${ready ? 'BAJARILDI' : 'hali yo\'q'}`);
 if (GATE && !ready) process.exit(3);
 if (problems.length) process.exit(1);

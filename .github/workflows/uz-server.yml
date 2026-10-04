@@ -296,7 +296,7 @@ jobs:
               msg = body.replace('%', '%25').replace('\r', '').replace('\n', '%0A')[:6000]
               print(f"::{'error' if bad else 'notice'} title=audit · {' + '.join(t[:40] for t in titles)}::{msg} .")
           PYA
-            SRV=$(R 'cd /srv/nfcstore && for c in sqld garage caddy; do printf "%s: %s xato/panic (24 soat) · " $c "$(docker compose logs --since 24h $c 2>&1 | grep -ciE "error|panic|fatal")"; done; echo; echo "zaxiralar: $(ls -1 backups 2>/dev/null | tail -3 | tr "\n" " ")"; echo "disk: $(df -h / | awk "NR==2{print \$3\" / \"\$2\" (\"\$5\")\"}")"; echo "konteynerlar: $(docker compose ps --format "{{.Service}}={{.Status}}" | tr "\n" " ")"' 2>&1)
+            SRV=$(R 'cd /srv/nfcstore && for c in sqld garage caddy; do printf "%s: %s xato (1 soat), %s (24 soat) · " $c "$(docker compose logs --since 1h $c 2>&1 | grep -ciE "error|panic|fatal")" "$(docker compose logs --since 24h $c 2>&1 | grep -ciE "error|panic|fatal")"; done; echo; echo "zaxiralar: $(ls -1 backups 2>/dev/null | tail -3 | tr "\n" " ")"; echo "disk: $(df -h / | awk "NR==2{print \$3\" / \"\$2\" (\"\$5\")\"}")"; echo "konteynerlar: $(docker compose ps --format "{{.Service}}={{.Status}}" | tr "\n" " ")"' 2>&1)
             echo "::notice title=server (sqld/garage/caddy loglari, zaxira)::$(printf '%s\n' "$SRV" | clean 10 | joined) ."
             rm -f a.out
             [ "$arc" = 0 ] || exit 1
