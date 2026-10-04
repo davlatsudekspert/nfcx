@@ -388,11 +388,11 @@ try {
 // ── 403 da bir marta qayta urinish; UZ xatosida R2 fallback ──
 {
   const sf = s3Fetch({ bucket: 'rt' });
-  let fail = 1; let calls = 0;
-  const flaky = async (url, init) => { calls++; if (fail > 0 && (init?.method === 'HEAD')) { fail--; return new Response('<Error><Code>AccessDenied</Code><Message>Forbidden: Invalid signature</Message></Error>', { status: 403, headers: { date: new Date().toUTCString() } }); } return sf(url, init); };
+  let fail = 0; let calls = 0;
+  const flaky = async (url, init) => { calls++; if (fail > 0) { fail--; return new Response('<Error><Code>AccessDenied</Code><Message>Forbidden: Invalid signature</Message></Error>', { status: 403, headers: { date: new Date().toUTCString() } }); } return sf(url, init); };
   const rb = uzBucket({ endpoint: 'https://s3.uz.test', bucket: 'rt', keyId: 'k', secret: 's', fetch: flaky });
   await rb.put('uploads/r.png', new Uint8Array([7]));
-  calls = 0;
+  calls = 0; fail = 1;
   const h = await rb.head('uploads/r.png');
   check('403 → yangi imzo bilan qayta: muvaffaqiyat', [h?.size, calls], [1, 2]);
   fail = 5;
@@ -409,6 +409,22 @@ try {
   let thrown = false;
   try { await fb2.head('uploads/none.png'); } catch { thrown = true; }
   check('UZ xato, R2 da ham yo‘q — xato yashirilmaydi', thrown, true);
+}
+
+// ── head() — 1 baytli GET orqali (HEAD emas) ──
+{
+  const seen = [];
+  const sf = s3Fetch({ bucket: 'hd' });
+  const hb = uzBucket({ endpoint: 'https://s3.uz.test', bucket: 'hd', keyId: 'k', secret: 's', fetch: (u, i) => { seen.push(`${i?.method} ${new Headers(i?.headers).get('range') || ''}`); return sf(u, i); } });
+  await hb.put('uploads/big.bin', new Uint8Array(5000), { httpMetadata: { contentType: 'application/x-test' } });
+  await hb.put('uploads/empty.bin', new Uint8Array(0));
+  seen.length = 0;
+  const big = await hb.head('uploads/big.bin');
+  check('head: HEAD yuborilmaydi — GET bytes=0-0', seen, ['GET bytes=0-0']);
+  check('head: hajm Content-Range dan, metadata saqlanadi', [big.size, big.httpMetadata.contentType, big.range], [5000, 'application/x-test', undefined]);
+  const empty = await hb.head('uploads/empty.bin');
+  check('head: bo‘sh obyekt — hajm 0', empty?.size, 0);
+  check('head: yo‘q obyekt — null', await hb.head('uploads/none.bin'), null);
 }
 
 done();

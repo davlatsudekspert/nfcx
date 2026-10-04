@@ -414,11 +414,26 @@ export function uzBucket({ endpoint, bucket, keyId, secret, region = 'garage', f
   }
 
   const bucketApi = {
+    // HEAD o'rniga 1 baytli GET (Range: bytes=0-0): jonli Worker'dan yuborilgan
+    // HEAD so'rovlarining bir qismini Garage "Invalid signature" bilan rad etardi
+    // (audit, 2026-10-04: soat farqi 0-1 s, faqat HEAD). Hajm Content-Range dan.
     async head(key) {
-      const res = await request('HEAD', key);
-      if (res.status === 404) return null;
+      const res = await request('GET', key, { headers: { range: 'bytes=0-0' } });
+      if (res.status === 404) { await res.body?.cancel?.(); return null; }
+      if (res.status === 416) {
+        // Bo'sh (0 bayt) obyekt: oraliq qoniqtirilmaydi — oddiy GET (tanasi bo'sh).
+        await res.body?.cancel?.();
+        const full = await request('GET', key);
+        if (full.status === 404) { await full.body?.cancel?.(); return null; }
+        if (!full.ok) throw await s3Error(full, 'head');
+        await full.body?.cancel?.();
+        return objectFromResponse(key, full);
+      }
       if (!res.ok) throw await s3Error(res, 'head');
-      return objectFromResponse(key, res);
+      await res.body?.cancel?.();
+      const obj = objectFromResponse(key, res);
+      if (res.status === 200) obj.size = Number(res.headers.get('content-length') || obj.size);
+      return obj;
     },
 
     async get(key, options = {}) {
