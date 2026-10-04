@@ -7,6 +7,7 @@
   },
   "android": {
     "backgroundColor": "#f8fafc",
+    "appendUserAgent": "Hasharchilar/1.0 (+https://hasharchilar-api.davlatsudekspert.workers.dev)",
     "allowMixedContent": false,
     "captureInput": false,
     "webContentsDebuggingEnabled": false

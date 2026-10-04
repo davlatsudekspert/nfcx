@@ -128,8 +128,8 @@ xatolar ichki tafsilotni oshkor qilmaydi (500 → "Server xatosi", log `console.
 - Tablar: "Xaritada ko'rish" | "Yaqindagi hasharlar" (geolokatsiya, masofa bo'yicha) | "Bajarilganlar (Oldin/Keyin)".
 - Xarita + kartalar (desktop: yonma-yon, chap ro'yxat scroll, o'ng xarita sticky 600px; mobil: xarita tepada 340px).
   Pinlar: PENDING amber, COMPLETED emerald; popup: nom, sana, ko'ngillilar soni, "Qatnashish".
-  Xarita plitkalari: CARTO Voyager `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png`,
-  attribution "© OpenStreetMap © CARTO".
+  Xarita plitkalari: OpenStreetMap `https://tile.openstreetmap.org/{z}/{x}/{y}.png` (kalitsiz; CARTO endi kalit so'raydi),
+  attribution "© OpenStreetMap hissadorlari"; APK User-Agent'iga "Hasharchilar/1.0" qo'shiladi (OSM qoidasi).
 - Karta: status badge ("Kutilmoqda" amber / "Bajarildi" emerald), nom, manzil, sana, kerakli narsalar, ko'ngillilar soni,
   "Qatnashish" (amber) / "✓ Qatnashasiz" / "Yakunlangan". Bosilsa → Hashar tafsiloti oynasi.
 - Hashar tafsiloti (modal/sheet): oldin rasmi (yoki Oldin/Keyin slayder), tavsif, manzil, sana, narsalar,

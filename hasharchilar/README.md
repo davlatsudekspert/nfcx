@@ -32,7 +32,7 @@ Batafsil texnik shartnoma: [`SPEC.md`](./SPEC.md).
    users, sessions, hashars, hashar_media, volunteers, rate_limits
 ```
 
-- **Stek:** React 18 · Vite 6 · Tailwind CSS v4 · Leaflet 1.9 (CARTO Voyager plitkalari) · Hono 4 ·
+- **Stek:** React 18 · Vite 6 · Tailwind CSS v4 · Leaflet 1.9 (OpenStreetMap plitkalari) · Hono 4 ·
   Cloudflare Workers + D1 / SQLite Durable Object + R2 · Capacitor 8 (Android).
 - **Autentifikatsiya:** ism + telefon (+998…) + parol. Parol PBKDF2-SHA256 (100 000 iteratsiya) bilan saqlanadi.
   Sessiya tokeni `localStorage['hashar_token']` da turadi va `Authorization: Bearer <token>` sarlavhasida yuboriladi.
@@ -374,7 +374,7 @@ CORS quyidagi originlarga ruxsat beradi: `https://localhost` (APK), `capacitor:/
 ## Ma'lum cheklovlar
 
 - **Telefon tasdiqlanmaydi.** SMS (OTP) yo'q, parolni tiklash funksiyasi ham yo'q.
-- **Xarita plitkalari** CARTO ning bepul tarifidan keladi. Trafik katta bo'lsa, MapTiler yoki Stadia kabi kalitli xizmatga o'tish kerak.
+- **Xarita plitkalari** to'g'ridan-to'g'ri `tile.openstreetmap.org` dan keladi (kalitsiz, OSM foydalanish qoidalari bo'yicha kichik trafik uchun). Trafik katta bo'lsa, MapTiler yoki Stadia kabi kalitli xizmatga o'tish kerak (`src/lib/map.js` → `TILE_URL`).
 - **Qidiruv** oddiy `LIKE` bilan ishlaydi. D1 da shablon uzunligi 50 bayt bilan cheklangani uchun
   juda uzun so'rov qisqartiriladi.
 - **Eski WebView:** Tailwind v4 taxminan Chrome 111+ ni talab qiladi. Eski Android WebView'larida dizayn buzilishi mumkin.

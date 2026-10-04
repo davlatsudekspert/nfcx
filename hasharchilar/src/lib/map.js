@@ -2,9 +2,12 @@
 // (standart marker PNG'lari bundle qilingan build'da buziladi).
 import L from 'leaflet';
 
-export const TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+// OpenStreetMap standart plitkalari — kalit talab qilmaydi (CARTO endi API kalit so'raydi).
+// OSM qoidasi: atributsiya ko'rinib tursin va so'rovda Referer bo'lsin (APK'da User-Agent'ga
+// ilova nomi qo'shiladi — capacitor.config.json → android.appendUserAgent).
+export const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 export const TILE_ATTRIBUTION =
-  '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>';
+  '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> hissadorlari';
 
 export const COLORS = { PENDING: '#f59e0b', COMPLETED: '#059669', PICK: '#059669' };
 
@@ -12,8 +15,9 @@ export const COLORS = { PENDING: '#f59e0b', COMPLETED: '#059669', PICK: '#059669
 export function addTiles(map) {
   return L.tileLayer(TILE_URL, {
     attribution: TILE_ATTRIBUTION,
-    subdomains: 'abcd',
     maxZoom: 19,
+    // Brauzer standarti allaqachon origin'ni yuboradi; aniq yozib qo'yamiz (OSM Referer talab qiladi)
+    referrerPolicy: 'strict-origin-when-cross-origin',
   }).addTo(map);
 }
 
