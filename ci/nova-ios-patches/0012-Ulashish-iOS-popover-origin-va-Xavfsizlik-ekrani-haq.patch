@@ -1,0 +1,716 @@
+From 93a9c75aabe1bf227f4c22c201f9919c36403990 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Sun, 4 Oct 2026 08:57:14 +0000
+Subject: [PATCH 12/13] Ulashish (iOS popover origin) va Xavfsizlik ekrani:
+ haqiqiy karta holati
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- sharing.dart: sharePositionOrigin, iOS'da timeout yo'q, xatoda nusxa + SnackBar
+- Reels/feed/post ulashish: caption + profil havolasi
+- NfcSecurityScreen: /api/my/nfc-devices bo'yicha ID→karta holati
+- l10n: nfcCardOnId, nfcNoCard; testlar
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ mobile_nova/lib/core/utils/sharing.dart       |  87 ++++++++++++--
+ .../lib/features/nfc/nfc_ids_screen.dart      |  23 +++-
+ .../lib/features/nfc/nfc_misc_screens.dart    | 108 +++++++++++++-----
+ .../lib/features/social/feed_card.dart        |  14 ++-
+ .../lib/features/social/post_screens.dart     |   7 +-
+ .../lib/features/social/reels_screen.dart     |  15 ++-
+ mobile_nova/lib/l10n/arb/app_en.arb           |   2 +
+ mobile_nova/lib/l10n/arb/app_ru.arb           |   2 +
+ mobile_nova/lib/l10n/arb/app_uz.arb           |   2 +
+ .../lib/l10n/gen/app_localizations.dart       |  12 ++
+ .../lib/l10n/gen/app_localizations_en.dart    |   6 +
+ .../lib/l10n/gen/app_localizations_ru.dart    |   6 +
+ .../lib/l10n/gen/app_localizations_uz.dart    |   6 +
+ .../test/nfc_security_screen_test.dart        |  60 ++++++++++
+ mobile_nova/test/no_op_audit_test.dart        |  11 +-
+ mobile_nova/test/share_origin_test.dart       |  79 +++++++++++++
+ 16 files changed, 384 insertions(+), 56 deletions(-)
+ create mode 100644 mobile_nova/test/nfc_security_screen_test.dart
+ create mode 100644 mobile_nova/test/share_origin_test.dart
+
+diff --git a/mobile_nova/lib/core/utils/sharing.dart b/mobile_nova/lib/core/utils/sharing.dart
+index 88b90ad..f010257 100644
+--- a/mobile_nova/lib/core/utils/sharing.dart
++++ b/mobile_nova/lib/core/utils/sharing.dart
+@@ -1,8 +1,10 @@
+ import 'dart:async';
+ 
+ import 'package:flutter/foundation.dart';
++import 'package:flutter/material.dart';
+ import 'package:share_plus/share_plus.dart';
+ 
++import '../network/api_client.dart';
+ import 'external_link.dart';
+ 
+ /// Tizim "ulashish" oynasini ochadigan yagona joy.
+@@ -51,17 +53,52 @@ Future<void> Function(String text, String? subject)? shareInvokerOverride;
+ @visibleForTesting
+ Duration shareTimeout = const Duration(seconds: 5);
+ 
+-Future<void> _invoke(String text, String? subject) {
++Future<void> _invoke(String text, String? subject, Rect origin) {
+   final o = shareInvokerOverride;
+   if (o != null) return o(text, subject);
+-  return Share.share(text, subject: subject);
++  return Share.share(text, subject: subject, sharePositionOrigin: origin);
+ }
+ 
+-Future<bool> _share(String raw, {String? subject}) async {
++/// Ulashish oynasi "chiqadigan" nuqta — iOS UCHUN SHART.
++///
++/// `share_plus` iOS'da oyna popover bo'lib ochilsa (iPad, iOS 26 da
++/// iPhone ham) va nuqta bo'sh bo'lsa, oynani UMUMAN OCHMAYDI —
++/// darhol `sharePositionOrigin: argument must be set` xatosi qaytadi.
++/// Ilova hech qayerda nuqta bermagani uchun iPhone'da "Ulashish"
++/// bosilardi-yu, hech narsa bo'lmasdi (egasi, 2026-10-04).
++///
++/// Tugma `context` i berilsa — oyna aynan undan chiqadi; aks holda
++/// ekran markazidagi kichik to'rtburchak (doim ko'rinish ichida).
++Rect shareOrigin([BuildContext? context]) {
++  final box = context?.findRenderObject();
++  if (box is RenderBox && box.hasSize && !box.size.isEmpty) {
++    return box.localToGlobal(Offset.zero) & box.size;
++  }
++  final views = WidgetsBinding.instance.platformDispatcher.views;
++  if (views.isNotEmpty) {
++    final v = views.first;
++    final size = v.physicalSize / v.devicePixelRatio;
++    if (!size.isEmpty) {
++      return Rect.fromCenter(
++          center: size.center(Offset.zero), width: 2, height: 2);
++    }
++  }
++  return const Rect.fromLTWH(1, 1, 2, 2);
++}
++
++Future<bool> _share(String raw, {String? subject, BuildContext? context}) async {
+   final s = raw.trim();
+   if (s.isEmpty) return false;
+   try {
+-    await _invoke(s, subject).timeout(shareTimeout);
++    final call = _invoke(s, subject, shareOrigin(context));
++    // iOS'da natija oyna YOPILGANDA keladi (odam ilovani tanlab
++    // turgan bo'lishi mumkin) — u yerda taymaut "ochilmadi" deb
++    // noto'g'ri xulosa qilardi. Xato esa iOS'da darhol qaytadi.
++    if (defaultTargetPlatform == TargetPlatform.iOS) {
++      await call;
++    } else {
++      await call.timeout(shareTimeout);
++    }
+     return true;
+   } catch (_) {
+     // Osilib qolgan ham, xato bergan ham bir xil yakun topadi:
+@@ -72,8 +109,44 @@ Future<bool> _share(String raw, {String? subject}) async {
+ }
+ 
+ /// Havolani ulashadi (profil, karta, post manzili).
+-Future<bool> shareLink(String url, {String? title}) =>
+-    _share(url, subject: title);
++Future<bool> shareLink(String url, {String? title, BuildContext? context}) =>
++    _share(url, subject: title, context: context);
+ 
+ /// Matnni ulashadi (post matni).
+-Future<bool> shareText(String text) => _share(text);
++Future<bool> shareText(String text, {BuildContext? context}) =>
++    _share(text, context: context);
++
++/// Tugmadan ulashadi va oyna ochilmasa (havola buferga ko'chgan)
++/// buni ekranda aytadi — jim qolib "ishlamayapti" taassuroti bermaydi.
++Future<void> shareWithFeedback(
++  BuildContext context,
++  String text, {
++  String? subject,
++  required String copiedMessage,
++}) async {
++  final ok = await _share(text, subject: subject, context: context);
++  if (ok || !context.mounted) return;
++  ScaffoldMessenger.maybeOf(context)
++    ?..hideCurrentSnackBar()
++    ..showSnackBar(SnackBar(content: Text(copiedMessage)));
++}
++
++/// Post / Reels uchun ulashiladigan matn: izoh + muallif sahifasi.
++///
++/// Saytda alohida post sahifasi yo'q, shuning uchun havola muallif
++/// (shaxs `/<ID>` yoki kompaniya `/c/<ID>`) sahifasiga olib boradi.
++/// Ilgari post ekrani FAQAT izohni ulashardi — izohsiz postda ulashish
++/// umuman hech narsa qilmasdi.
++String contentShareText({
++  required String caption,
++  required String code,
++  required bool company,
++}) {
++  final c = code.trim();
++  final link = c.isEmpty
++      ? ''
++      : company
++          ? '$kApiBase/c/${Uri.encodeComponent(c)}'
++          : '$kApiBase/${Uri.encodeComponent(c)}';
++  return [caption.trim(), link].where((s) => s.isNotEmpty).join('\n\n');
++}
+diff --git a/mobile_nova/lib/features/nfc/nfc_ids_screen.dart b/mobile_nova/lib/features/nfc/nfc_ids_screen.dart
+index 450157e..77bb8c3 100644
+--- a/mobile_nova/lib/features/nfc/nfc_ids_screen.dart
++++ b/mobile_nova/lib/features/nfc/nfc_ids_screen.dart
+@@ -20,6 +20,7 @@ import '../../routing/routes.dart';
+ import '../../app/profile_context.dart';
+ import '../auth/session.dart';
+ import '../home/widgets/identity_card.dart';
++import 'nfc_misc_screens.dart' show nfcDevicesProvider;
+ import 'qr_sheet.dart';
+ import '../../design/widgets/brand_icon.dart';
+ 
+@@ -310,10 +311,24 @@ class NfcIdDetailScreen extends ConsumerWidget {
+                 _DetailRow(
+                     label: l.profileFollowers, value: formatCount(id.followers)),
+                 const SizedBox(height: Gap.md),
+-                _DetailRow(
+-                  label: l.nfcLinkCard,
+-                  value: id.cardLinked ? l.yes : l.no,
+-                ),
++                // Karta holati — `/api/my/nfc-devices` dan (Xavfsizlik va
++                // Kartalar ekrani bilan bir xil manba). ID yozuvida server
++                // bunday maydon bermaydi: ilgari bu yerda doim "Yo'q" edi.
++                Consumer(builder: (context, ref, _) {
++                  final cards = ref.watch(nfcDevicesProvider);
++                  final own = (cards.valueOrNull ?? const <NfcDevice>[])
++                      .where((d) => d.code.toUpperCase() == id.code.toUpperCase());
++                  return _DetailRow(
++                    label: l.nfcLinkCard,
++                    value: !cards.hasValue
++                        ? '…'
++                        : own.isEmpty
++                            ? l.no
++                            : own.every((d) => d.blockedByOwner)
++                                ? l.cardBlocked
++                                : l.yes,
++                  );
++                }),
+               ],
+             ),
+           ),
+diff --git a/mobile_nova/lib/features/nfc/nfc_misc_screens.dart b/mobile_nova/lib/features/nfc/nfc_misc_screens.dart
+index 73498e7..52198ed 100644
+--- a/mobile_nova/lib/features/nfc/nfc_misc_screens.dart
++++ b/mobile_nova/lib/features/nfc/nfc_misc_screens.dart
+@@ -504,7 +504,16 @@ class _NfcGiftScreenState extends ConsumerState<NfcGiftScreen> {
+ 
+ // ------------------------------------------------------------- xavfsizlik
+ 
+-/// NFC xavfsizligi — parolni almashtirish va kartalar boshqaruvi.
++/// NFC xavfsizligi — har bir ID qaysi kartaga ulangani va bloklash.
++///
++/// ## MANBA — `/api/my/nfc-devices` ("Kartalar" ekrani bilan BIR XIL)
++///
++/// Ilgari holat `NfcId.cardLinked` dan o'qilardi. Server ID yozuvida
++/// bunday maydonni (`cardLinked` / `hasCard` / `chipToken`) UMUMAN
++/// bermaydi — natijada kartaga ulangan ID ham doim "Hozircha bo'sh",
++/// tepada esa doim "0 / N" turardi (egasi, 2026-10-04: "VIP001 ni
++/// kartaga ulasam ham bo'sh ko'rsatyapti"). Endi haqiqiy kartalar
++/// ro'yxatidan hisoblanadi; bosilganda bloklash bor "Kartalar" ochiladi.
+ class NfcSecurityScreen extends ConsumerWidget {
+   const NfcSecurityScreen({super.key});
+ 
+@@ -513,7 +522,13 @@ class NfcSecurityScreen extends ConsumerWidget {
+     final l = L.of(context);
+     final t = context.tokens;
+     final ids = ref.watch(myIdsProvider);
+-    final linked = ids.where((e) => e.cardLinked).length;
++    final devices = ref.watch(nfcDevicesProvider);
++    final cards = devices.valueOrNull ?? const <NfcDevice>[];
++    List<NfcDevice> cardsOf(NfcId e) => [
++          for (final d in cards)
++            if (d.code.toUpperCase() == e.code.toUpperCase()) d,
++        ];
++    final linked = ids.where((e) => cardsOf(e).isNotEmpty).length;
+ 
+     return NovaScaffold(
+       title: l.nfcSecurity,
+@@ -532,7 +547,10 @@ class NfcSecurityScreen extends ConsumerWidget {
+                     children: [
+                       Text(l.nfcSecurity,
+                           style: Theme.of(context).textTheme.titleMedium),
+-                      Text('$linked / ${ids.length} · ${l.nfcLinkCard}',
++                      Text(
++                          devices.hasValue
++                              ? '$linked / ${ids.length} · ${l.nfcCardOnId}'
++                              : '… / ${ids.length} · ${l.nfcCardOnId}',
+                           style: Theme.of(context).textTheme.bodySmall),
+                     ],
+                   ),
+@@ -542,31 +560,69 @@ class NfcSecurityScreen extends ConsumerWidget {
+           ),
+           SectionHeader(title: l.nfcMyIds),
+           for (final e in ids)
+-            Padding(
+-              padding: const EdgeInsets.only(bottom: Gap.sm),
+-              child: FloatingSurface(
+-                solid: true,
+-                padding: const EdgeInsets.all(Gap.lg),
+-                child: Row(
+-                  children: [
+-                    Icon(
+-                      e.cardLinked ? Icons.lock_rounded : Icons.lock_open_rounded,
+-                      size: 17,
+-                      color: e.cardLinked ? t.success : t.text3,
+-                    ),
+-                    const SizedBox(width: Gap.md),
+-                    Expanded(
+-                      child: Text(e.code,
+-                          style: AppType.monoStyle(color: t.text1, size: 13)),
+-                    ),
+-                    Text(
+-                      e.cardLinked ? l.nfcLinkCard : l.stateEmpty,
+-                      style: Theme.of(context).textTheme.labelMedium,
++            Builder(builder: (context) {
++              final own = cardsOf(e);
++              final hasCard = own.isNotEmpty;
++              // Bitta ID ga bir nechta karta ulangan bo'lishi mumkin —
++              // HAMMASI bloklangan bo'lsagina "Bloklangan" deyiladi.
++              final blocked = hasCard && own.every((d) => d.blockedByOwner);
++              final status = !devices.hasValue
++                  ? '…'
++                  : blocked
++                      ? l.cardBlocked
++                      : hasCard
++                          ? l.nfcCardOnId
++                          : l.nfcNoCard;
++              return Padding(
++                padding: const EdgeInsets.only(bottom: Gap.sm),
++                child: PressableScale(
++                  key: ValueKey('sec-id-${e.code}'),
++                  // Ulangan karta bo'lsa — bloklash shu yerda.
++                  onTap: hasCard ? () => context.push(Routes.nfcCards) : null,
++                  child: FloatingSurface(
++                    solid: true,
++                    padding: const EdgeInsets.all(Gap.lg),
++                    child: Row(
++                      children: [
++                        Icon(
++                          blocked
++                              ? Icons.block_rounded
++                              : hasCard
++                                  ? Icons.lock_rounded
++                                  : Icons.lock_open_rounded,
++                          size: 17,
++                          color: blocked
++                              ? t.error
++                              : hasCard
++                                  ? t.success
++                                  : t.text3,
++                        ),
++                        const SizedBox(width: Gap.md),
++                        Expanded(
++                          child: Text(e.code,
++                              style: AppType.monoStyle(color: t.text1, size: 13)),
++                        ),
++                        Text(
++                          status,
++                          style: Theme.of(context).textTheme.labelMedium!.copyWith(
++                                color: blocked
++                                    ? t.error
++                                    : hasCard
++                                        ? t.success
++                                        : null,
++                              ),
++                        ),
++                        if (hasCard) ...[
++                          const SizedBox(width: Gap.xs),
++                          Icon(Icons.chevron_right_rounded,
++                              size: 18, color: t.text3),
++                        ],
++                      ],
+                     ),
+-                  ],
++                  ),
+                 ),
+-              ),
+-            ),
++              );
++            }),
+           SectionHeader(title: l.settingsSecurity),
+           FloatingSurface(
+             solid: true,
+diff --git a/mobile_nova/lib/features/social/feed_card.dart b/mobile_nova/lib/features/social/feed_card.dart
+index f79dc94..821c762 100644
+--- a/mobile_nova/lib/features/social/feed_card.dart
++++ b/mobile_nova/lib/features/social/feed_card.dart
+@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:go_router/go_router.dart';
+ 
+ import '../../core/errors/app_error.dart';
+-import '../../core/network/api_client.dart';
+ import '../../core/utils/sharing.dart';
+ import '../../data/models/models.dart';
+ import '../../design/theme/typography.dart';
+@@ -246,11 +245,14 @@ class FeedCard extends ConsumerWidget {
+                 padLeft: 24,
+                 // Kompaniya sahifasi `/c/<ID>` da; `/<ID>` shaxsiy karta
+                 // deb qidiriladi va "topilmadi" (yoki BEGONA odam) chiqardi.
+-                onTap: () => shareLink(
+-                  post.isCompany
+-                      ? '$kApiBase/c/${Uri.encodeComponent(post.code)}'
+-                      : '$kApiBase/${Uri.encodeComponent(post.code)}',
+-                  title: name,
++                onTap: () => shareWithFeedback(
++                  context,
++                  contentShareText(
++                      caption: post.text,
++                      code: post.code,
++                      company: post.isCompany),
++                  subject: name,
++                  copiedMessage: l.shareCopied,
+                 ),
+               ),
+             ],
+diff --git a/mobile_nova/lib/features/social/post_screens.dart b/mobile_nova/lib/features/social/post_screens.dart
+index 876a700..48ce629 100644
+--- a/mobile_nova/lib/features/social/post_screens.dart
++++ b/mobile_nova/lib/features/social/post_screens.dart
+@@ -304,7 +304,12 @@ class _PostScreenState extends ConsumerState<PostScreen> {
+                     label: l.actionShare,
+                     tint: ink,
+                     hit: const EdgeInsets.only(top: Gap.xl),
+-                    onTap: () => shareText(p.text),
++                    onTap: () => shareWithFeedback(
++                      context,
++                      contentShareText(
++                          caption: p.text, code: p.code, company: p.isCompany),
++                      copiedMessage: l.shareCopied,
++                    ),
+                   ),
+                 ],
+               ),
+diff --git a/mobile_nova/lib/features/social/reels_screen.dart b/mobile_nova/lib/features/social/reels_screen.dart
+index 8f993e4..7263ab4 100644
+--- a/mobile_nova/lib/features/social/reels_screen.dart
++++ b/mobile_nova/lib/features/social/reels_screen.dart
+@@ -16,7 +16,6 @@ import 'moderation.dart';
+ import 'media_frame.dart' show mediaImage;
+ import 'music_picker.dart';
+ 
+-import '../../core/network/api_client.dart';
+ import '../../core/utils/result.dart';
+ import '../../core/utils/sharing.dart';
+ import '../../data/models/models.dart';
+@@ -1055,13 +1054,13 @@ class _ReelPageState extends ConsumerState<_ReelPage>
+                   icon: NovaIcons.share,
+                   label: l.actionShare,
+                   semantic: l.actionShare,
+-                  onTap: () => p.code.isEmpty
+-                      ? shareText(p.text)
+-                      : shareLink(
+-                          p.isCompany
+-                              ? '$kApiBase/c/${Uri.encodeComponent(p.code)}'
+-                              : '$kApiBase/${Uri.encodeComponent(p.code)}',
+-                          title: p.authorName),
++                  onTap: () => shareWithFeedback(
++                    context,
++                    contentShareText(
++                        caption: p.text, code: p.code, company: p.isCompany),
++                    subject: p.authorName,
++                    copiedMessage: l.shareCopied,
++                  ),
+                 ),
+                 _Action(
+                   icon: muted
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index 38ab75c..65daf81 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -217,6 +217,8 @@
+   "nfcBlockCard": "Block card",
+   "nfcBlockConfirm": "Block this card? Tapping it will stop opening your profile. You can unblock it later.",
+   "nfcUnblockCard": "Unblock card",
++  "nfcCardOnId": "Linked to a card",
++  "nfcNoCard": "No card linked",
+   "nfcDeleteConfirm": "Delete this NFC ID? This cannot be undone.",
+   "nfcScans": "Scans",
+   "nfcViews": "Views",
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index ab94edc..c51a676 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -217,6 +217,8 @@
+   "nfcBlockCard": "Заблокировать карту",
+   "nfcBlockConfirm": "Заблокировать карту? По касанию она перестанет открывать профиль. Позже можно разблокировать.",
+   "nfcUnblockCard": "Разблокировать карту",
++  "nfcCardOnId": "Привязана к карте",
++  "nfcNoCard": "Карта не привязана",
+   "nfcDeleteConfirm": "Удалить этот NFC ID? Действие необратимо.",
+   "nfcScans": "Сканирования",
+   "nfcViews": "Просмотры",
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index 00edff2..4949e6e 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -217,6 +217,8 @@
+   "nfcBlockCard": "Kartani bloklash",
+   "nfcBlockConfirm": "Karta bloklansinmi? Tegizilganda u profilni ochmay qo‘yadi. Keyin blokdan chiqarish mumkin.",
+   "nfcUnblockCard": "Blokdan chiqarish",
++  "nfcCardOnId": "Kartaga ulangan",
++  "nfcNoCard": "Karta ulanmagan",
+   "nfcDeleteConfirm": "Bu NFC ID o‘chirilsinmi? Bu amalni qaytarib bo‘lmaydi.",
+   "nfcScans": "Skanerlashlar",
+   "nfcViews": "Ko‘rishlar",
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index fb393e0..9bed6ff 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -1215,6 +1215,18 @@ abstract class L {
+   /// **'Blokdan chiqarish'**
+   String get nfcUnblockCard;
+ 
++  /// No description provided for @nfcCardOnId.
++  ///
++  /// In uz, this message translates to:
++  /// **'Kartaga ulangan'**
++  String get nfcCardOnId;
++
++  /// No description provided for @nfcNoCard.
++  ///
++  /// In uz, this message translates to:
++  /// **'Karta ulanmagan'**
++  String get nfcNoCard;
++
+   /// No description provided for @nfcDeleteConfirm.
+   ///
+   /// In uz, this message translates to:
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index 1d66491..31c4268 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -587,6 +587,12 @@ class LEn extends L {
+   @override
+   String get nfcUnblockCard => 'Unblock card';
+ 
++  @override
++  String get nfcCardOnId => 'Linked to a card';
++
++  @override
++  String get nfcNoCard => 'No card linked';
++
+   @override
+   String get nfcDeleteConfirm => 'Delete this NFC ID? This cannot be undone.';
+ 
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index b29a9b6..debf045 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -583,6 +583,12 @@ class LRu extends L {
+   @override
+   String get nfcUnblockCard => 'Разблокировать карту';
+ 
++  @override
++  String get nfcCardOnId => 'Привязана к карте';
++
++  @override
++  String get nfcNoCard => 'Карта не привязана';
++
+   @override
+   String get nfcDeleteConfirm => 'Удалить этот NFC ID? Действие необратимо.';
+ 
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index f633978..4bd3598 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -586,6 +586,12 @@ class LUz extends L {
+   @override
+   String get nfcUnblockCard => 'Blokdan chiqarish';
+ 
++  @override
++  String get nfcCardOnId => 'Kartaga ulangan';
++
++  @override
++  String get nfcNoCard => 'Karta ulanmagan';
++
+   @override
+   String get nfcDeleteConfirm =>
+       'Bu NFC ID o‘chirilsinmi? Bu amalni qaytarib bo‘lmaydi.';
+diff --git a/mobile_nova/test/nfc_security_screen_test.dart b/mobile_nova/test/nfc_security_screen_test.dart
+new file mode 100644
+index 0000000..8e975c4
+--- /dev/null
++++ b/mobile_nova/test/nfc_security_screen_test.dart
+@@ -0,0 +1,60 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/features/auth/session.dart';
++import 'package:nfcstore_nova/features/nfc/nfc_misc_screens.dart';
++
++import 'helpers.dart';
++
++/// Xavfsizlik ekrani karta holatini `/api/my/nfc-devices` dan oladi.
++///
++/// Ilgari `NfcId.cardLinked` dan o'qilardi — server bu maydonni bermaydi,
++/// shuning uchun kartaga ulangan VIP001 ham "Hozircha bo'sh" va tepada
++/// doim "0 / N" turardi (egasi, 2026-10-04).
++void main() {
++  Future<void> pump(WidgetTester tester, List<NfcDevice> cards) async {
++    await tester.pumpWidget(ProviderScope(
++      overrides: [
++        ...await testOverrides(),
++        myIdsProvider.overrideWithValue(const [
++          NfcId(code: 'VIP001', primary: true),
++          NfcId(code: 'UZD772'),
++          NfcId(code: 'ALI777'),
++        ]),
++        nfcDevicesProvider.overrideWith((ref) async => cards),
++      ],
++      child: wrapScreen(const NfcSecurityScreen()),
++    ));
++    await settle(tester);
++  }
++
++  String statusOf(WidgetTester tester, String code) {
++    final row = find.byKey(ValueKey('sec-id-$code'));
++    final texts = tester.widgetList<Text>(
++        find.descendant(of: row, matching: find.byType(Text)));
++    return texts.map((t) => t.data).whereType<String>().last;
++  }
++
++  testWidgets('kartaga ulangan, bloklangan va bo‘sh ID to‘g‘ri ko‘rinadi',
++      (tester) async {
++    await pump(tester, const [
++      NfcDevice(id: 1, code: 'VIP001'),
++      NfcDevice(id: 2, code: 'ALI777', blockedByOwner: true),
++    ]);
++    expect(statusOf(tester, 'VIP001'), 'Kartaga ulangan');
++    expect(statusOf(tester, 'ALI777'), 'Bloklangan');
++    expect(statusOf(tester, 'UZD772'), 'Karta ulanmagan');
++    // Tepadagi son haqiqiy: 3 tadan 2 tasi kartaga ulangan.
++    expect(find.text('2 / 3 · Kartaga ulangan'), findsOneWidget);
++  });
++
++  testWidgets('kartasi yo‘q bo‘lsa hammasi "Karta ulanmagan", 0 / N',
++      (tester) async {
++    await pump(tester, const []);
++    for (final c in ['VIP001', 'UZD772', 'ALI777']) {
++      expect(statusOf(tester, c), 'Karta ulanmagan');
++    }
++    expect(find.text('0 / 3 · Kartaga ulangan'), findsOneWidget);
++  });
++}
+diff --git a/mobile_nova/test/no_op_audit_test.dart b/mobile_nova/test/no_op_audit_test.dart
+index f2ae9a2..ad8a3dd 100644
+--- a/mobile_nova/test/no_op_audit_test.dart
++++ b/mobile_nova/test/no_op_audit_test.dart
+@@ -140,14 +140,17 @@ void main() {
+   });
+ 
+   test('"Ulashish" yorlig\'i HAQIQIY ulashishni bildiradi', () {
+-    // Yorliq `actionShare` bo'lsa, o'sha blokda `shareLink` yoki
+-    // `shareText` chaqirilishi kerak. Aks holda tugma "Ulashish"
+-    // deb turib, boshqa ekranni ochadi.
++    // Yorliq `actionShare` bo'lsa, o'sha blokda `shareLink`,
++    // `shareText` yoki `shareWithFeedback` (ochilmasa xabar beradigan
++    // o'ram) chaqirilishi kerak. Aks holda tugma "Ulashish" deb
++    // turib, boshqa ekranni ochadi.
+     final bad = <String>[];
+     for (final f in files) {
+       final src = codeOnly(f.readAsStringSync());
+       if (!src.contains('l.actionShare')) continue;
+-      if (!src.contains('shareLink(') && !src.contains('shareText(')) {
++      if (!src.contains('shareLink(') &&
++          !src.contains('shareText(') &&
++          !src.contains('shareWithFeedback(')) {
+         bad.add(f.path);
+       }
+     }
+diff --git a/mobile_nova/test/share_origin_test.dart b/mobile_nova/test/share_origin_test.dart
+new file mode 100644
+index 0000000..6556e2a
+--- /dev/null
++++ b/mobile_nova/test/share_origin_test.dart
+@@ -0,0 +1,79 @@
++import 'dart:async';
++
++import 'package:flutter/foundation.dart';
++import 'package:flutter/material.dart';
++import 'package:flutter/services.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/core/network/api_client.dart';
++import 'package:nfcstore_nova/core/utils/sharing.dart';
++
++/// iPhone'da "Ulashish" ishlamasdi (egasi, 2026-10-04):
++/// `share_plus` iOS'da popover oyna uchun bo'sh `sharePositionOrigin`
++/// bilan oynani ochmaydi; iOS'da natija esa oyna YOPILGANDA keladi —
++/// 5 s taymaut ochiq oynani "ochilmadi" deb hisoblardi.
++void main() {
++  TestWidgetsFlutterBinding.ensureInitialized();
++
++  setUp(() {
++    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
++        .setMockMethodCallHandler(SystemChannels.platform, (call) async => null);
++  });
++
++  tearDown(() {
++    shareInvokerOverride = null;
++    shareTimeout = const Duration(seconds: 5);
++    debugDefaultTargetPlatformOverride = null;
++  });
++
++  test('chiqish nuqtasi hech qachon bo‘sh emas', () {
++    final r = shareOrigin();
++    expect(r.isEmpty, isFalse);
++    expect(r.width > 0 && r.height > 0, isTrue);
++  });
++
++  test('iOS: oyna uzoq ochiq tursa ham taymaut "ochilmadi" demaydi', () async {
++    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
++    shareTimeout = const Duration(milliseconds: 50);
++    shareInvokerOverride =
++        (_, __) => Future<void>.delayed(const Duration(milliseconds: 200));
++    expect(await shareLink('https://nfcstore.uz/VIP001'), isTrue);
++  });
++
++  test('Android: osilib qolgan kanal taymaut bilan to‘xtaydi (avvalgidek)',
++      () async {
++    debugDefaultTargetPlatformOverride = TargetPlatform.android;
++    shareTimeout = const Duration(milliseconds: 50);
++    shareInvokerOverride = (_, __) => Completer<void>().future;
++    expect(await shareLink('https://nfcstore.uz/VIP001'), isFalse);
++  });
++
++  test('izohsiz post ham ulashiladi — muallif havolasi bilan', () {
++    expect(contentShareText(caption: '', code: 'VIP001', company: false),
++        '$kApiBase/VIP001');
++    expect(contentShareText(caption: '  Salom ', code: 'NFC', company: true),
++        'Salom\n\n$kApiBase/c/NFC');
++    expect(contentShareText(caption: 'Faqat matn', code: '', company: false),
++        'Faqat matn');
++  });
++
++  testWidgets('ulashish ochilmasa ekranda "Havola nusxalandi" chiqadi',
++      (tester) async {
++    shareInvokerOverride = (_, __) async => throw PlatformException(
++        code: 'error', message: 'sharePositionOrigin: argument must be set');
++    await tester.pumpWidget(MaterialApp(
++      home: Scaffold(
++        body: Builder(
++          builder: (context) => TextButton(
++            onPressed: () => shareWithFeedback(context, '$kApiBase/VIP001',
++                copiedMessage: 'Havola nusxalandi'),
++            child: const Text('ulash'),
++          ),
++        ),
++      ),
++    ));
++    await tester.tap(find.text('ulash'));
++    await tester.pump();
++    await tester.pump(const Duration(milliseconds: 100));
++    expect(find.text('Havola nusxalandi'), findsOneWidget);
++  });
++}
+-- 
+2.43.0
+

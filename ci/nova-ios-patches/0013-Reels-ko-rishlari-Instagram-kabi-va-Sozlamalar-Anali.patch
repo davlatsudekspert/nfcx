@@ -1,0 +1,1285 @@
+From 798c83ec35c10494214c5af11c02e8ae7059dd49 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Sun, 4 Oct 2026 09:13:28 +0000
+Subject: [PATCH 13/13] =?UTF-8?q?Reels=20ko'rishlari=20(Instagram=20kabi)?=
+ =?UTF-8?q?=20va=20Sozlamalar=20=E2=86=92=20Analitika?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- Post.views (server viewCount); Reels'da ko'z belgisi + son
+- Reel 2 s ko'rinsa POST /api/content-views bir marta yuboriladi
+- Sozlamalar → Analitika: /api/my/analytics (profil, obunachilar,
+  kontent ko'rishlari, kunlik grafik, eng ko'p ko'rilganlar)
+- l10n uz/ru/en; testlar
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ mobile_nova/lib/data/models/models.dart       | 115 ++++++-
+ .../data/repositories/social_repository.dart  |  19 ++
+ .../features/settings/analytics_screen.dart   | 287 ++++++++++++++++++
+ .../features/settings/settings_screen.dart    |   5 +
+ .../lib/features/social/reels_screen.dart     |  82 +++++
+ mobile_nova/lib/l10n/arb/app_en.arb           |  13 +
+ mobile_nova/lib/l10n/arb/app_ru.arb           |  13 +
+ mobile_nova/lib/l10n/arb/app_uz.arb           |  16 +
+ .../lib/l10n/gen/app_localizations.dart       |  78 +++++
+ .../lib/l10n/gen/app_localizations_en.dart    |  45 +++
+ .../lib/l10n/gen/app_localizations_ru.dart    |  45 +++
+ .../lib/l10n/gen/app_localizations_uz.dart    |  45 +++
+ mobile_nova/lib/routing/router.dart           |   4 +
+ mobile_nova/lib/routing/routes.dart           |   1 +
+ mobile_nova/test/content_views_test.dart      | 193 ++++++++++++
+ mobile_nova/test/helpers.dart                 |  13 +
+ mobile_nova/test/routes_test.dart             |   1 +
+ 17 files changed, 974 insertions(+), 1 deletion(-)
+ create mode 100644 mobile_nova/lib/features/settings/analytics_screen.dart
+ create mode 100644 mobile_nova/test/content_views_test.dart
+
+diff --git a/mobile_nova/lib/data/models/models.dart b/mobile_nova/lib/data/models/models.dart
+index e4cdf01..cebec19 100644
+--- a/mobile_nova/lib/data/models/models.dart
++++ b/mobile_nova/lib/data/models/models.dart
+@@ -1258,10 +1258,15 @@ class Post {
+     this.music,
+     this.reel = false,
+     this.imageSeconds = 10,
++    this.views = 0,
+   });
+ 
+   final int id;
+ 
++  /// Necha KISHI ko'rgan (server `viewCount`, Instagram'dagi
++  /// "ko'rishlar"). Bir odam bir marta sanaladi, egasi sanalmaydi.
++  final int views;
++
+   /// Postga qo'yilgan musiqa (NFCSTORE kutubxonasidan) — bo'lmasa `null`.
+   final MusicTrack? music;
+ 
+@@ -1334,9 +1339,10 @@ class Post {
+         music: music,
+         reel: reel,
+         imageSeconds: imageSeconds,
++        views: views,
+       );
+ 
+-  Post copyWith({int? likes, bool? liked, bool? saved, int? comments}) => Post(
++  Post copyWith({int? likes, bool? liked, bool? saved, int? comments, int? views}) => Post(
+         id: id,
+         code: code,
+         authorName: authorName,
+@@ -1358,6 +1364,7 @@ class Post {
+         music: music,
+         reel: reel,
+         imageSeconds: imageSeconds,
++        views: views ?? this.views,
+       );
+ 
+   factory Post.fromJson(Map<String, dynamic> j) {
+@@ -1417,6 +1424,7 @@ class Post {
+           : null,
+       reel: _b(j['reel']),
+       imageSeconds: _i(j['imageSeconds'], 10).clamp(3, 60),
++      views: _i(j['viewCount'] ?? j['views']),
+     );
+   }
+ }
+@@ -1915,3 +1923,108 @@ class IdOrderDraft {
+         clickLink: _s((j['payLinks'] as Map?)?['click']),
+       );
+ }
++
++/// Sozlamalar → Analitika (`GET /api/my/analytics`).
++///
++/// Hammasi foydalanuvchining O'Z kartalari va kompaniyalari bo'yicha.
++/// Profil raqamlari oxirgi [days] kun uchun, [profileTotalViews] esa
++/// kartalardagi umumiy (butun vaqt) ko'rishlar.
++class MyAnalytics {
++  const MyAnalytics({
++    this.days = 30,
++    this.profileViews = 0,
++    this.uniqueVisitors = 0,
++    this.clicks = 0,
++    this.profileTotalViews = 0,
++    this.followers = 0,
++    this.posts = 0,
++    this.contentViews = 0,
++    this.likes = 0,
++    this.comments = 0,
++    this.byDay = const [],
++    this.top = const [],
++  });
++
++  final int days;
++  final int profileViews;
++  final int uniqueVisitors;
++  final int clicks;
++  final int profileTotalViews;
++  final int followers;
++  final int posts;
++  final int contentViews;
++  final int likes;
++  final int comments;
++
++  /// Kontent ko'rishlari kunlar bo'yicha (`YYYY-MM-DD`, son).
++  final List<({String day, int views})> byDay;
++  final List<TopContent> top;
++
++  factory MyAnalytics.fromJson(Map<String, dynamic> j) {
++    Map<String, dynamic> m(dynamic v) =>
++        v is Map ? v.cast<String, dynamic>() : const {};
++    final profile = m(j['profile']);
++    final content = m(j['content']);
++    final days = j['byDay'] is List ? j['byDay'] as List : const [];
++    final top = j['top'] is List ? j['top'] as List : const [];
++    return MyAnalytics(
++      days: _i(j['days'], 30),
++      profileViews: _i(profile['views']),
++      uniqueVisitors: _i(profile['uniqueVisitors']),
++      clicks: _i(profile['clicks']),
++      profileTotalViews: _i(profile['totalViews']),
++      followers: _i(j['followers']),
++      posts: _i(content['posts']),
++      contentViews: _i(content['views']),
++      likes: _i(content['likes']),
++      comments: _i(content['comments']),
++      byDay: [
++        for (final d in days)
++          if (d is Map) (day: _s(d['day']), views: _i(d['views'])),
++      ],
++      top: [
++        for (final t in top)
++          if (t is Map) TopContent.fromJson(t.cast<String, dynamic>()),
++      ],
++    );
++  }
++}
++
++/// Analitikadagi bitta post/Reels qatori.
++class TopContent {
++  const TopContent({
++    required this.id,
++    this.kind = 'post',
++    this.code = '',
++    this.imageUrl = '',
++    this.videoUrl = '',
++    this.caption = '',
++    this.views = 0,
++    this.likes = 0,
++    this.comments = 0,
++  });
++
++  final int id;
++  final String kind;
++  final String code;
++  final String imageUrl;
++  final String videoUrl;
++  final String caption;
++  final int views;
++  final int likes;
++  final int comments;
++
++  bool get isVideo => videoUrl.isNotEmpty;
++
++  factory TopContent.fromJson(Map<String, dynamic> j) => TopContent(
++        id: _i(j['id']),
++        kind: _s(j['kind'], 'post'),
++        code: _s(j['code']),
++        imageUrl: _u(j['imageUrl']),
++        videoUrl: _u(j['videoUrl']),
++        caption: _s(j['caption']),
++        views: _i(j['views']),
++        likes: _i(j['likes']),
++        comments: _i(j['comments']),
++      );
++}
+diff --git a/mobile_nova/lib/data/repositories/social_repository.dart b/mobile_nova/lib/data/repositories/social_repository.dart
+index b6e0b87..42f5bc6 100644
+--- a/mobile_nova/lib/data/repositories/social_repository.dart
++++ b/mobile_nova/lib/data/repositories/social_repository.dart
+@@ -84,6 +84,25 @@ class SocialRepository {
+ 
+   Future<Result<void>> deletePost(int id) => _api.delete<void>('/api/posts/$id');
+ 
++  /// KO'RISH — post/Reels ekranda ko'ringanda BIR MARTA yuboriladi.
++  ///
++  /// Server bir odamni bir kontentga bir marta sanaydi va egasining
++  /// o'z ko'rishini sanamaydi, ya'ni qayta yuborish raqamni
++  /// ko'paytirmaydi. Javob — yangi jami son.
++  Future<Result<int>> recordView(int id, {bool company = false}) async {
++    final res = await _api.post<Map<String, dynamic>>(
++        '/api/content-views/${company ? 'company_post' : 'post'}/$id',
++        const {});
++    return res.map((j) => (j['count'] as num?)?.toInt() ?? 0);
++  }
++
++  /// Sozlamalar → Analitika (`GET /api/my/analytics`).
++  Future<Result<MyAnalytics>> myAnalytics({int days = 30}) async {
++    final res =
++        await _api.get<Map<String, dynamic>>('/api/my/analytics?days=$days');
++    return res.map(MyAnalytics.fromJson);
++  }
++
+   /// Post yaratish.
+   ///
+   /// ## SERVER KUTADIGAN SHAKL — TAXMIN EMAS, O'QILGAN
+diff --git a/mobile_nova/lib/features/settings/analytics_screen.dart b/mobile_nova/lib/features/settings/analytics_screen.dart
+new file mode 100644
+index 0000000..3a08ad5
+--- /dev/null
++++ b/mobile_nova/lib/features/settings/analytics_screen.dart
+@@ -0,0 +1,287 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++
++import '../../data/models/models.dart';
++import '../../data/repositories/social_repository.dart';
++import '../../design/tokens/nfc_tokens.dart';
++import '../../design/tokens/shapes.dart';
++import '../../design/widgets/nova_scaffold.dart';
++import '../../design/widgets/states.dart';
++import '../../design/widgets/surfaces.dart';
++import '../../l10n/gen/app_localizations.dart';
++import '../home/widgets/identity_card.dart' show formatCount;
++import '../social/media_frame.dart' show mediaImage;
++
++/// Sozlamalar → Analitika (`GET /api/my/analytics`, oxirgi 30 kun).
++///
++/// Hammasi foydalanuvchining O'Z kartalari va kompaniyalari bo'yicha:
++/// profil ko'rishlari, tugma bosishlar, obunachilar, post va Reels
++/// ko'rishlari hamda eng ko'p ko'rilgan postlar. Raqamlar sayt bilan
++/// bitta manbadan — ilova o'zi hech narsa sanamaydi.
++final myAnalyticsProvider =
++    FutureProvider.autoDispose<MyAnalytics>((ref) async {
++  final res = await ref.watch(socialRepositoryProvider).myAnalytics();
++  return res.when(ok: (v) => v, err: (e) => throw e);
++});
++
++class AnalyticsScreen extends ConsumerWidget {
++  const AnalyticsScreen({super.key});
++
++  @override
++  Widget build(BuildContext context, WidgetRef ref) {
++    final l = L.of(context);
++    final data = ref.watch(myAnalyticsProvider);
++    return NovaScaffold(
++      title: l.settingsAnalytics,
++      showBack: true,
++      body: data.when(
++        loading: () => const Padding(
++          padding: EdgeInsets.all(Gap.screenX),
++          child: SkeletonList(count: 4),
++        ),
++        error: (e, _) => StatePanel.fromError(
++          context,
++          asAppError(e),
++          onRetry: () => ref.invalidate(myAnalyticsProvider),
++        ),
++        data: (a) => RefreshIndicator(
++          onRefresh: () => ref.refresh(myAnalyticsProvider.future),
++          child: _Body(a: a),
++        ),
++      ),
++    );
++  }
++}
++
++class _Body extends StatelessWidget {
++  const _Body({required this.a});
++
++  final MyAnalytics a;
++
++  @override
++  Widget build(BuildContext context) {
++    final l = L.of(context);
++    final t = context.tokens;
++    Widget pair(Widget x, Widget y) => Padding(
++          padding: const EdgeInsets.only(bottom: Gap.md),
++          child: Row(
++            children: [
++              Expanded(child: x),
++              const SizedBox(width: Gap.md),
++              Expanded(child: y),
++            ],
++          ),
++        );
++    return NovaScroll(
++      children: [
++        Text(l.analyticsPeriod(a.days),
++            style: Theme.of(context).textTheme.labelMedium),
++        const SizedBox(height: Gap.md),
++        pair(
++          _Stat(
++              key: const ValueKey('an-content-views'),
++              label: l.analyticsContentViews,
++              value: a.contentViews,
++              icon: Icons.visibility_outlined,
++              tone: t.accentB),
++          _Stat(
++              key: const ValueKey('an-profile-views'),
++              label: l.analyticsProfileViews,
++              value: a.profileViews,
++              icon: Icons.person_search_outlined,
++              tone: t.accentC),
++        ),
++        pair(
++          _Stat(
++              label: l.profileFollowers,
++              value: a.followers,
++              icon: Icons.people_alt_outlined,
++              tone: t.accent1),
++          _Stat(
++              label: l.analyticsClicks,
++              value: a.clicks,
++              icon: Icons.touch_app_outlined,
++              tone: t.accentD),
++        ),
++        pair(
++          _Stat(
++              label: l.analyticsLikes,
++              value: a.likes,
++              icon: Icons.favorite_border_rounded,
++              tone: t.error),
++          _Stat(
++              label: l.postComments,
++              value: a.comments,
++              icon: Icons.chat_bubble_outline_rounded,
++              tone: t.accentB),
++        ),
++        Text(
++          l.analyticsAllTime(formatCount(a.profileTotalViews),
++              formatCount(a.uniqueVisitors)),
++          style: Theme.of(context).textTheme.bodySmall,
++        ),
++        if (a.byDay.isNotEmpty) ...[
++          SectionHeader(title: l.analyticsByDay),
++          _DayBars(days: a.byDay),
++        ],
++        SectionHeader(title: l.analyticsTop),
++        if (a.top.isEmpty)
++          StatePanel(
++              icon: Icons.insights_outlined, title: l.analyticsNoPosts)
++        else
++          for (final p in a.top) _TopRow(p: p),
++      ],
++    );
++  }
++}
++
++class _Stat extends StatelessWidget {
++  const _Stat({
++    super.key,
++    required this.label,
++    required this.value,
++    required this.icon,
++    required this.tone,
++  });
++
++  final String label;
++  final int value;
++  final IconData icon;
++  final Color tone;
++
++  @override
++  Widget build(BuildContext context) {
++    final t = context.tokens;
++    return Container(
++      padding: const EdgeInsets.all(Gap.lg),
++      decoration: BoxDecoration(
++        color: t.surface,
++        borderRadius: R.gentle,
++        border: Border.all(color: tone.withValues(alpha: .3)),
++        boxShadow: t.shadowTiny,
++      ),
++      child: Column(
++        crossAxisAlignment: CrossAxisAlignment.start,
++        children: [
++          Icon(icon, size: 18, color: tone),
++          const SizedBox(height: Gap.xs),
++          Text(formatCount(value),
++              style: Theme.of(context)
++                  .textTheme
++                  .displayMedium
++                  ?.copyWith(fontSize: 26)),
++          Text(label,
++              maxLines: 2,
++              overflow: TextOverflow.ellipsis,
++              style: Theme.of(context).textTheme.labelMedium),
++        ],
++      ),
++    );
++  }
++}
++
++/// Kunlik ko'rishlar — oddiy ustunlar (kutubxonasiz). Eng baland
++/// kun to'liq balandlikda, qolganlari unga nisbatan.
++class _DayBars extends StatelessWidget {
++  const _DayBars({required this.days});
++
++  final List<({String day, int views})> days;
++
++  @override
++  Widget build(BuildContext context) {
++    final t = context.tokens;
++    final max = days.fold<int>(1, (m, d) => d.views > m ? d.views : m);
++    return Semantics(
++      container: true,
++      child: SizedBox(
++        height: 96,
++        child: Row(
++          crossAxisAlignment: CrossAxisAlignment.end,
++          children: [
++            for (final d in days)
++              Expanded(
++                child: Tooltip(
++                  message: '${d.day}: ${d.views}',
++                  child: Padding(
++                    padding: const EdgeInsets.symmetric(horizontal: 1.5),
++                    child: FractionallySizedBox(
++                      heightFactor: (d.views / max).clamp(.04, 1.0),
++                      child: DecoratedBox(
++                        decoration: BoxDecoration(
++                          color: t.accentB.withValues(alpha: .75),
++                          borderRadius: const BorderRadius.vertical(
++                              top: Radius.circular(3)),
++                        ),
++                      ),
++                    ),
++                  ),
++                ),
++              ),
++          ],
++        ),
++      ),
++    );
++  }
++}
++
++class _TopRow extends StatelessWidget {
++  const _TopRow({required this.p});
++
++  final TopContent p;
++
++  @override
++  Widget build(BuildContext context) {
++    final l = L.of(context);
++    final t = context.tokens;
++    final text = Theme.of(context).textTheme;
++    return Padding(
++      key: ValueKey('an-top-${p.kind}-${p.id}'),
++      padding: const EdgeInsets.only(bottom: Gap.md),
++      child: Row(
++        children: [
++          ClipRRect(
++            borderRadius: R.tile,
++            child: SizedBox(
++              width: 52,
++              height: 52,
++              child: p.imageUrl.isNotEmpty
++                  ? mediaImage(context, p.imageUrl, fit: BoxFit.cover)
++                  : ColoredBox(
++                      color: t.surface2,
++                      child: Icon(
++                          p.isVideo
++                              ? Icons.play_circle_outline_rounded
++                              : Icons.image_outlined,
++                          color: t.text2),
++                    ),
++            ),
++          ),
++          const SizedBox(width: Gap.md),
++          Expanded(
++            child: Column(
++              crossAxisAlignment: CrossAxisAlignment.start,
++              children: [
++                Text(
++                  p.caption.isEmpty
++                      ? (p.isVideo ? l.analyticsReel : l.analyticsPost)
++                      : p.caption,
++                  maxLines: 1,
++                  overflow: TextOverflow.ellipsis,
++                  style: text.titleSmall,
++                ),
++                const SizedBox(height: 2),
++                Text(
++                  '${l.viewsCount(formatCount(p.views))} · '
++                  '${formatCount(p.likes)} ♥ · ${formatCount(p.comments)} 💬',
++                  maxLines: 1,
++                  overflow: TextOverflow.ellipsis,
++                  style: text.bodySmall,
++                ),
++              ],
++            ),
++          ),
++        ],
++      ),
++    );
++  }
++}
+diff --git a/mobile_nova/lib/features/settings/settings_screen.dart b/mobile_nova/lib/features/settings/settings_screen.dart
+index 12497d6..c732ede 100644
+--- a/mobile_nova/lib/features/settings/settings_screen.dart
++++ b/mobile_nova/lib/features/settings/settings_screen.dart
+@@ -109,6 +109,11 @@ class SettingsScreen extends ConsumerWidget {
+               label: l.nfcMyIds,
+               onTap: () => context.push(Routes.nfcIds),
+             ),
++            SettingsItem(
++              icon: Icons.insights_rounded,
++              label: l.settingsAnalytics,
++              onTap: () => context.push(Routes.settingsAnalytics),
++            ),
+             SettingsItem(
+               icon: Icons.shield_outlined,
+               label: l.settingsSecurity,
+diff --git a/mobile_nova/lib/features/social/reels_screen.dart b/mobile_nova/lib/features/social/reels_screen.dart
+index 7263ab4..a9fda6e 100644
+--- a/mobile_nova/lib/features/social/reels_screen.dart
++++ b/mobile_nova/lib/features/social/reels_screen.dart
+@@ -117,6 +117,10 @@ final reelsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
+ /// Muddat o'tsa — "qayta urinish" holati (bosilsa yangi pleyer).
+ const reelsInitTimeout = Duration(seconds: 20);
+ 
++/// Reel ekranda shuncha turgandan keyin "ko'rildi" deb yuboriladi —
++/// tez aylantirib o'tilgani sanalmaydi.
++const kViewAfter = Duration(seconds: 2);
++
+ class SavedReels extends SyncedSaves {
+   SavedReels(SavesRepository repo, Prefs prefs)
+       : super(repo, SaveKind.reel,
+@@ -540,6 +544,36 @@ class _ReelPageState extends ConsumerState<_ReelPage>
+   /// Izohlar soni — varaqda yangi izoh yozilsa yangilanadi.
+   int? _comments;
+ 
++  // ── KO'RISHLAR (Instagram kabi) ────────────────────────────────────
++  //
++  // Reel ekranda [kViewAfter] davomida turib qolsa, serverga BIR MARTA
++  // yuboriladi; javobdagi jami son ko'z belgisi yonida chiqadi. Tez
++  // aylantirib o'tilgan reel sanalmaydi. Server bir odamni bir marta
++  // sanaydi, ya'ni qayta ochish raqamni ko'paytirmaydi.
++  int? _views;
++  bool _viewSent = false;
++  Timer? _viewTimer;
++
++  void _armView() {
++    final p = widget.post;
++    if (_viewSent || p.isStory || p.id <= 0) return;
++    if (!(widget.visible && _onStage)) {
++      _viewTimer?.cancel();
++      _viewTimer = null;
++      return;
++    }
++    _viewTimer ??= Timer(kViewAfter, () async {
++      _viewTimer = null;
++      if (!mounted || !widget.visible || !_onStage || _viewSent) return;
++      _viewSent = true;
++      final res = await ref
++          .read(socialRepositoryProvider)
++          .recordView(p.id, company: p.isCompany);
++      if (!mounted) return;
++      if (res case Ok(:final value)) setState(() => _views = value);
++    });
++  }
++
+   /// Yurak "portlashi" — ikki marta bosilganda.
+   bool _burst = false;
+ 
+@@ -574,6 +608,7 @@ class _ReelPageState extends ConsumerState<_ReelPage>
+     super.initState();
+     _owner = ref.read(audioOwnerProvider);
+     _sync();
++    _armView();
+   }
+ 
+   @override
+@@ -586,6 +621,7 @@ class _ReelPageState extends ConsumerState<_ReelPage>
+     // paytida `setState` chaqirishi mumkin.
+     WidgetsBinding.instance.addPostFrameCallback((_) {
+       if (!mounted || _onStage != on) return;
++      _armView();
+       if (!on) {
+         _controller?.pause();
+         _music?.pause();
+@@ -606,6 +642,7 @@ class _ReelPageState extends ConsumerState<_ReelPage>
+         old.preloadNow != widget.preloadNow) {
+       _sync();
+     }
++    if (old.visible != widget.visible) _armView();
+   }
+ 
+   void _sync() {
+@@ -727,6 +764,7 @@ class _ReelPageState extends ConsumerState<_ReelPage>
+   @override
+   void dispose() {
+     _gen++;
++    _viewTimer?.cancel();
+     _controller?.dispose();
+     _music?.dispose();
+     _clock?.dispose();
+@@ -1149,6 +1187,9 @@ class _ReelPageState extends ConsumerState<_ReelPage>
+                 ),
+                 if (p.code.isNotEmpty) ...[
+                   const SizedBox(height: Gap.sm),
++                  Row(
++                    mainAxisSize: MainAxisSize.min,
++                    children: [
+                   // NFC ID — REELS'NING NFCSTORE IDENTITETI (egasi, 2026-09:
+                   // "Instagram nusxasi bo'lmasin"). Muallif shunchaki ism
+                   // emas, NFC ID egasi: qora shisha kapsula, champagne
+@@ -1188,6 +1229,10 @@ class _ReelPageState extends ConsumerState<_ReelPage>
+                         ],
+                       ),
+                     ),
++                  ),
++                      const SizedBox(width: Gap.sm),
++                      ReelViewsLabel(count: _views ?? p.views),
++                    ],
+                   ),
+                 ],
+                 if (p.music != null) ...[
+@@ -1525,3 +1570,40 @@ class _LateSpinnerState extends State<_LateSpinner> {
+         )
+       : const SizedBox.shrink();
+ }
++
++/// Ko'rishlar soni — ko'z belgisi + son (Instagram'dagi kabi).
++///
++/// Belgi va son bitta `Semantics` yozuvida o'qiladi ("1,2 ming
++/// ko'rish"), ekran o'quvchi alohida ikkita narsa demaydi.
++class ReelViewsLabel extends StatelessWidget {
++  const ReelViewsLabel({super.key, required this.count});
++
++  final int count;
++
++  @override
++  Widget build(BuildContext context) {
++    final l = L.of(context);
++    return Semantics(
++      key: const ValueKey('reel-views'),
++      label: l.viewsCount(formatCount(count)),
++      excludeSemantics: true,
++      child: Row(
++        mainAxisSize: MainAxisSize.min,
++        children: [
++          const Icon(Icons.visibility_outlined, size: 15, color: Colors.white),
++          const SizedBox(width: 4),
++          Text(
++            formatCount(count),
++            style: const TextStyle(
++              fontFamily: AppType.sans,
++              fontSize: 12.5,
++              fontWeight: FontWeight.w600,
++              color: Colors.white,
++              shadows: [Shadow(blurRadius: 4, color: Colors.black54)],
++            ),
++          ),
++        ],
++      ),
++    );
++  }
++}
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index 65daf81..f7274b2 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -219,6 +219,19 @@
+   "nfcUnblockCard": "Unblock card",
+   "nfcCardOnId": "Linked to a card",
+   "nfcNoCard": "No card linked",
++  "settingsAnalytics": "Analytics",
++  "analyticsPeriod": "Last {days} days",
++  "analyticsContentViews": "Post and Reels views",
++  "analyticsProfileViews": "Profile views",
++  "analyticsClicks": "Button taps",
++  "analyticsLikes": "Likes",
++  "analyticsAllTime": "Profile all time: {total} views · {unique} unique visitors in 30 days",
++  "analyticsByDay": "Views by day",
++  "analyticsTop": "Most viewed",
++  "analyticsNoPosts": "No posts or Reels yet",
++  "analyticsReel": "Reels",
++  "analyticsPost": "Post",
++  "viewsCount": "{count} views",
+   "nfcDeleteConfirm": "Delete this NFC ID? This cannot be undone.",
+   "nfcScans": "Scans",
+   "nfcViews": "Views",
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index c51a676..c81bc20 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -219,6 +219,19 @@
+   "nfcUnblockCard": "Разблокировать карту",
+   "nfcCardOnId": "Привязана к карте",
+   "nfcNoCard": "Карта не привязана",
++  "settingsAnalytics": "Аналитика",
++  "analyticsPeriod": "Последние {days} дн.",
++  "analyticsContentViews": "Просмотры постов и Reels",
++  "analyticsProfileViews": "Просмотры профиля",
++  "analyticsClicks": "Нажатия кнопок",
++  "analyticsLikes": "Лайки",
++  "analyticsAllTime": "Профиль за всё время: {total} просмотров · {unique} уникальных за 30 дней",
++  "analyticsByDay": "Просмотры по дням",
++  "analyticsTop": "Самые просматриваемые",
++  "analyticsNoPosts": "Пока нет постов и Reels",
++  "analyticsReel": "Reels",
++  "analyticsPost": "Пост",
++  "viewsCount": "Просмотры: {count}",
+   "nfcDeleteConfirm": "Удалить этот NFC ID? Действие необратимо.",
+   "nfcScans": "Сканирования",
+   "nfcViews": "Просмотры",
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index 4949e6e..916c135 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -219,6 +219,22 @@
+   "nfcUnblockCard": "Blokdan chiqarish",
+   "nfcCardOnId": "Kartaga ulangan",
+   "nfcNoCard": "Karta ulanmagan",
++  "settingsAnalytics": "Analitika",
++  "analyticsPeriod": "Oxirgi {days} kun",
++  "analyticsContentViews": "Post va Reels ko‘rishlari",
++  "analyticsProfileViews": "Profil ko‘rishlari",
++  "analyticsClicks": "Tugma bosishlar",
++  "analyticsLikes": "Layklar",
++  "analyticsAllTime": "Profil butun vaqtda: {total} ko‘rish · 30 kunda {unique} noyob tashrifchi",
++  "analyticsByDay": "Kunlik ko‘rishlar",
++  "analyticsTop": "Eng ko‘p ko‘rilganlar",
++  "analyticsNoPosts": "Hali post yoki Reels yo‘q",
++  "analyticsReel": "Reels",
++  "analyticsPost": "Post",
++  "viewsCount": "{count} ko‘rish",
++  "@analyticsPeriod": {"placeholders": {"days": {"type": "int"}}},
++  "@analyticsAllTime": {"placeholders": {"total": {"type": "String"}, "unique": {"type": "String"}}},
++  "@viewsCount": {"placeholders": {"count": {"type": "String"}}},
+   "nfcDeleteConfirm": "Bu NFC ID o‘chirilsinmi? Bu amalni qaytarib bo‘lmaydi.",
+   "nfcScans": "Skanerlashlar",
+   "nfcViews": "Ko‘rishlar",
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index 9bed6ff..965581f 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -1227,6 +1227,84 @@ abstract class L {
+   /// **'Karta ulanmagan'**
+   String get nfcNoCard;
+ 
++  /// No description provided for @settingsAnalytics.
++  ///
++  /// In uz, this message translates to:
++  /// **'Analitika'**
++  String get settingsAnalytics;
++
++  /// No description provided for @analyticsPeriod.
++  ///
++  /// In uz, this message translates to:
++  /// **'Oxirgi {days} kun'**
++  String analyticsPeriod(int days);
++
++  /// No description provided for @analyticsContentViews.
++  ///
++  /// In uz, this message translates to:
++  /// **'Post va Reels ko‘rishlari'**
++  String get analyticsContentViews;
++
++  /// No description provided for @analyticsProfileViews.
++  ///
++  /// In uz, this message translates to:
++  /// **'Profil ko‘rishlari'**
++  String get analyticsProfileViews;
++
++  /// No description provided for @analyticsClicks.
++  ///
++  /// In uz, this message translates to:
++  /// **'Tugma bosishlar'**
++  String get analyticsClicks;
++
++  /// No description provided for @analyticsLikes.
++  ///
++  /// In uz, this message translates to:
++  /// **'Layklar'**
++  String get analyticsLikes;
++
++  /// No description provided for @analyticsAllTime.
++  ///
++  /// In uz, this message translates to:
++  /// **'Profil butun vaqtda: {total} ko‘rish · 30 kunda {unique} noyob tashrifchi'**
++  String analyticsAllTime(String total, String unique);
++
++  /// No description provided for @analyticsByDay.
++  ///
++  /// In uz, this message translates to:
++  /// **'Kunlik ko‘rishlar'**
++  String get analyticsByDay;
++
++  /// No description provided for @analyticsTop.
++  ///
++  /// In uz, this message translates to:
++  /// **'Eng ko‘p ko‘rilganlar'**
++  String get analyticsTop;
++
++  /// No description provided for @analyticsNoPosts.
++  ///
++  /// In uz, this message translates to:
++  /// **'Hali post yoki Reels yo‘q'**
++  String get analyticsNoPosts;
++
++  /// No description provided for @analyticsReel.
++  ///
++  /// In uz, this message translates to:
++  /// **'Reels'**
++  String get analyticsReel;
++
++  /// No description provided for @analyticsPost.
++  ///
++  /// In uz, this message translates to:
++  /// **'Post'**
++  String get analyticsPost;
++
++  /// No description provided for @viewsCount.
++  ///
++  /// In uz, this message translates to:
++  /// **'{count} ko‘rish'**
++  String viewsCount(String count);
++
+   /// No description provided for @nfcDeleteConfirm.
+   ///
+   /// In uz, this message translates to:
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index 31c4268..4d09de0 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -593,6 +593,51 @@ class LEn extends L {
+   @override
+   String get nfcNoCard => 'No card linked';
+ 
++  @override
++  String get settingsAnalytics => 'Analytics';
++
++  @override
++  String analyticsPeriod(int days) {
++    return 'Last $days days';
++  }
++
++  @override
++  String get analyticsContentViews => 'Post and Reels views';
++
++  @override
++  String get analyticsProfileViews => 'Profile views';
++
++  @override
++  String get analyticsClicks => 'Button taps';
++
++  @override
++  String get analyticsLikes => 'Likes';
++
++  @override
++  String analyticsAllTime(String total, String unique) {
++    return 'Profile all time: $total views · $unique unique visitors in 30 days';
++  }
++
++  @override
++  String get analyticsByDay => 'Views by day';
++
++  @override
++  String get analyticsTop => 'Most viewed';
++
++  @override
++  String get analyticsNoPosts => 'No posts or Reels yet';
++
++  @override
++  String get analyticsReel => 'Reels';
++
++  @override
++  String get analyticsPost => 'Post';
++
++  @override
++  String viewsCount(String count) {
++    return '$count views';
++  }
++
+   @override
+   String get nfcDeleteConfirm => 'Delete this NFC ID? This cannot be undone.';
+ 
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index debf045..4a8d026 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -589,6 +589,51 @@ class LRu extends L {
+   @override
+   String get nfcNoCard => 'Карта не привязана';
+ 
++  @override
++  String get settingsAnalytics => 'Аналитика';
++
++  @override
++  String analyticsPeriod(int days) {
++    return 'Последние $days дн.';
++  }
++
++  @override
++  String get analyticsContentViews => 'Просмотры постов и Reels';
++
++  @override
++  String get analyticsProfileViews => 'Просмотры профиля';
++
++  @override
++  String get analyticsClicks => 'Нажатия кнопок';
++
++  @override
++  String get analyticsLikes => 'Лайки';
++
++  @override
++  String analyticsAllTime(String total, String unique) {
++    return 'Профиль за всё время: $total просмотров · $unique уникальных за 30 дней';
++  }
++
++  @override
++  String get analyticsByDay => 'Просмотры по дням';
++
++  @override
++  String get analyticsTop => 'Самые просматриваемые';
++
++  @override
++  String get analyticsNoPosts => 'Пока нет постов и Reels';
++
++  @override
++  String get analyticsReel => 'Reels';
++
++  @override
++  String get analyticsPost => 'Пост';
++
++  @override
++  String viewsCount(String count) {
++    return 'Просмотры: $count';
++  }
++
+   @override
+   String get nfcDeleteConfirm => 'Удалить этот NFC ID? Действие необратимо.';
+ 
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index 4bd3598..8be8f50 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -592,6 +592,51 @@ class LUz extends L {
+   @override
+   String get nfcNoCard => 'Karta ulanmagan';
+ 
++  @override
++  String get settingsAnalytics => 'Analitika';
++
++  @override
++  String analyticsPeriod(int days) {
++    return 'Oxirgi $days kun';
++  }
++
++  @override
++  String get analyticsContentViews => 'Post va Reels ko‘rishlari';
++
++  @override
++  String get analyticsProfileViews => 'Profil ko‘rishlari';
++
++  @override
++  String get analyticsClicks => 'Tugma bosishlar';
++
++  @override
++  String get analyticsLikes => 'Layklar';
++
++  @override
++  String analyticsAllTime(String total, String unique) {
++    return 'Profil butun vaqtda: $total ko‘rish · 30 kunda $unique noyob tashrifchi';
++  }
++
++  @override
++  String get analyticsByDay => 'Kunlik ko‘rishlar';
++
++  @override
++  String get analyticsTop => 'Eng ko‘p ko‘rilganlar';
++
++  @override
++  String get analyticsNoPosts => 'Hali post yoki Reels yo‘q';
++
++  @override
++  String get analyticsReel => 'Reels';
++
++  @override
++  String get analyticsPost => 'Post';
++
++  @override
++  String viewsCount(String count) {
++    return '$count ko‘rish';
++  }
++
+   @override
+   String get nfcDeleteConfirm =>
+       'Bu NFC ID o‘chirilsinmi? Bu amalni qaytarib bo‘lmaydi.';
+diff --git a/mobile_nova/lib/routing/router.dart b/mobile_nova/lib/routing/router.dart
+index 4ea40b1..cf1717e 100644
+--- a/mobile_nova/lib/routing/router.dart
++++ b/mobile_nova/lib/routing/router.dart
+@@ -35,6 +35,7 @@ import '../features/profile/profile_edit_screen.dart';
+ import '../features/settings/settings_screen.dart';
+ import '../features/settings/news_screen.dart';
+ import '../l10n/gen/app_localizations.dart';
++import '../features/settings/analytics_screen.dart';
+ import '../features/settings/settings_subscreens.dart';
+ import '../features/shop/nfc_id_market.dart';
+ import '../features/shop/shop_screens.dart';
+@@ -449,6 +450,9 @@ final routerProvider = Provider<GoRouter>((ref) {
+           GoRoute(
+               path: 'security',
+               builder: (_, __) => const SecuritySettingsScreen()),
++          GoRoute(
++              path: 'analytics',
++              builder: (_, __) => const AnalyticsScreen()),
+           GoRoute(
+               path: 'language',
+               builder: (_, __) => const LanguageSettingsScreen()),
+diff --git a/mobile_nova/lib/routing/routes.dart b/mobile_nova/lib/routing/routes.dart
+index 0a4969f..e60fd48 100644
+--- a/mobile_nova/lib/routing/routes.dart
++++ b/mobile_nova/lib/routing/routes.dart
+@@ -165,6 +165,7 @@ abstract final class Routes {
+   static const activity = '/activity';
+   static const settings = '/settings';
+   static const settingsSecurity = '/settings/security';
++  static const settingsAnalytics = '/settings/analytics';
+   static const settingsLanguage = '/settings/language';
+   static const settingsTheme = '/settings/theme';
+   static const settingsNotifications = '/settings/notifications';
+diff --git a/mobile_nova/test/content_views_test.dart b/mobile_nova/test/content_views_test.dart
+new file mode 100644
+index 0000000..41215fc
+--- /dev/null
++++ b/mobile_nova/test/content_views_test.dart
+@@ -0,0 +1,193 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/core/network/api_client.dart';
++import 'package:nfcstore_nova/core/utils/result.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/data/repositories/business_repository.dart';
++import 'package:nfcstore_nova/data/repositories/social_repository.dart';
++import 'package:nfcstore_nova/features/profile/profile_repository.dart';
++import 'package:nfcstore_nova/features/settings/analytics_screen.dart';
++import 'package:nfcstore_nova/features/social/reels_screen.dart';
++import 'package:nfcstore_nova/routing/shell.dart';
++import 'package:video_player_platform_interface/video_player_platform_interface.dart';
++
++import 'helpers.dart';
++import 'support/fake_video_platform.dart';
++
++/// KO'RISHLAR (Instagram kabi) va Sozlamalar → Analitika.
++///
++///   server `viewCount` o'qiladi · Reels'da ko'z belgisi + son ·
++///   reel 2 soniya ko'rinsa BIR MARTA yuboriladi (tez o'tilgani yo'q) ·
++///   kompaniya posti o'z turi bilan · analitika ekrani raqamlari.
++class _Profile extends ProfileRepository {
++  _Profile() : super(ApiClient());
++
++  @override
++  Future<Result<FollowStats>> followStats(String code) async =>
++      const Ok((followers: 0, following: 0, isFollowing: false));
++}
++
++class _Biz extends BusinessRepository {
++  _Biz() : super(ApiClient());
++  @override
++  Future<Result<List<Business>>> mine() async => const Ok([]);
++}
++
++final _reels = [
++  const Post(
++    id: 7,
++    code: 'PPP777',
++    authorName: 'Mashrabboy',
++    mediaUrls: ['https://nfcstore.uz/uploads/a.mp4'],
++    isVideo: true,
++    views: 1234,
++  ),
++  const Post(
++    id: 8,
++    code: 'KARTAUZ',
++    authorName: 'Karta Uz',
++    authorKind: 'company',
++    mediaUrls: ['https://nfcstore.uz/uploads/b.mp4'],
++    isVideo: true,
++  ),
++];
++
++Future<FakeSocialRepository> _pumpReels(WidgetTester tester) async {
++  VideoPlayerPlatform.instance = FakeVideoPlatform();
++  tester.view.physicalSize = const Size(390 * 3, 844 * 3);
++  tester.view.devicePixelRatio = 3;
++  addTearDown(tester.view.reset);
++  final social = FakeSocialRepository();
++  final base = await testOverrides();
++  final c = ProviderContainer(overrides: [
++    ...base.where((o) => !identical(o, base[2])),
++    socialRepositoryProvider.overrideWithValue(social),
++    profileRepositoryProvider.overrideWithValue(_Profile()),
++    businessRepositoryProvider.overrideWithValue(_Biz()),
++    reelsProvider.overrideWith((ref) async => _reels),
++    activeTabProvider.overrideWith((ref) => 3),
++  ]);
++  addTearDown(c.dispose);
++  await tester.pumpWidget(UncontrolledProviderScope(
++    container: c,
++    child: wrapScreen(const ReelsScreen()),
++  ));
++  await settle(tester, frames: 10);
++  return social;
++}
++
++void main() {
++  test('Post.fromJson — server viewCount', () {
++    expect(Post.fromJson({'id': 1, 'viewCount': 57}).views, 57);
++    expect(Post.fromJson({'id': 1}).views, 0);
++    expect(const Post(id: 1, views: 3).copyWith(liked: true).views, 3);
++    expect(const Post(id: 1, views: 3).copyWithKind(kind: 'post').views, 3);
++  });
++
++  test('MyAnalytics.fromJson', () {
++    final a = MyAnalytics.fromJson({
++      'days': 30,
++      'profile': {'views': 40, 'uniqueVisitors': 12, 'clicks': 5, 'totalViews': 900},
++      'followers': 7,
++      'content': {'posts': 2, 'views': 300, 'likes': 9, 'comments': 4},
++      'byDay': [
++        {'day': '2026-10-03', 'views': 100},
++        {'day': '2026-10-04', 'views': 200},
++      ],
++      'top': [
++        {'kind': 'post', 'id': 5, 'videoUrl': '/uploads/r.mp4', 'views': 250, 'likes': 6, 'comments': 3},
++      ],
++    });
++    expect([a.profileViews, a.uniqueVisitors, a.clicks, a.profileTotalViews], [40, 12, 5, 900]);
++    expect([a.followers, a.posts, a.contentViews, a.likes, a.comments], [7, 2, 300, 9, 4]);
++    expect(a.byDay.map((d) => d.views), [100, 200]);
++    expect(a.top.single.isVideo, isTrue);
++    expect(a.top.single.views, 250);
++    // Bo'sh yoki buzuq javob — yiqilmaydi.
++    expect(MyAnalytics.fromJson(const {}).top, isEmpty);
++  });
++
++  testWidgets('Reels: ko‘z belgisi va son ko‘rinadi', (tester) async {
++    await _pumpReels(tester);
++    final label = find.byKey(const ValueKey('reel-views'));
++    expect(label, findsWidgets);
++    expect(
++        find.descendant(of: label.first, matching: find.text('1.2K')),
++        findsOneWidget);
++  });
++
++  testWidgets('Reels: 2 soniya ko‘rinsa BIR MARTA yuboriladi, javob ko‘rinadi',
++      (tester) async {
++    final social = await _pumpReels(tester);
++    expect(social.viewed, isEmpty, reason: 'darhol emas — tez o‘tilsa sanalmaydi');
++
++    await tester.pump(kViewAfter);
++    await settle(tester, frames: 3);
++    expect(social.viewed, [(id: 7, company: false)]);
++    // Javobdagi jami son (soxta repo: 1) ko'rsatiladi.
++    expect(
++        find.descendant(
++            of: find.byKey(const ValueKey('reel-views')).first,
++            matching: find.text('1')),
++        findsOneWidget);
++
++    // Yana kutish — qayta yuborilmaydi.
++    await tester.pump(kViewAfter * 2);
++    await settle(tester, frames: 3);
++    expect(social.viewed.length, 1);
++  });
++
++  testWidgets('Reels: tez o‘tilgan reel sanalmaydi, kompaniya posti o‘z turi bilan',
++      (tester) async {
++    final social = await _pumpReels(tester);
++    // Birinchisi 2 soniyaga yetmasdan keyingisiga o'tiladi.
++    await tester.pump(const Duration(milliseconds: 800));
++    await tester.fling(find.byKey(const ValueKey('reels-pager')),
++        const Offset(0, -600), 2000);
++    await settle(tester, frames: 12);
++    await tester.pump(kViewAfter);
++    await settle(tester, frames: 3);
++    expect(social.viewed, [(id: 8, company: true)]);
++  });
++
++  testWidgets('Analitika ekrani — raqamlar va eng ko‘p ko‘rilganlar',
++      (tester) async {
++    tester.view.physicalSize = const Size(390 * 3, 1400 * 3);
++    tester.view.devicePixelRatio = 3;
++    addTearDown(tester.view.reset);
++    final base = await testOverrides();
++    await tester.pumpWidget(ProviderScope(
++      overrides: [
++        ...base,
++        myAnalyticsProvider.overrideWith((ref) async => const MyAnalytics(
++              profileViews: 40,
++              followers: 7,
++              contentViews: 1500,
++              likes: 9,
++              comments: 4,
++              byDay: [(day: '2026-10-04', views: 1500)],
++              top: [
++                TopContent(id: 5, caption: 'Yangi kolleksiya', views: 1500),
++              ],
++            )),
++      ],
++      child: wrapScreen(const AnalyticsScreen()),
++    ));
++    await settle(tester, frames: 6);
++    expect(find.text('Analitika'), findsWidgets);
++    expect(
++        find.descendant(
++            of: find.byKey(const ValueKey('an-content-views')),
++            matching: find.text('1.5K')),
++        findsOneWidget);
++    expect(
++        find.descendant(
++            of: find.byKey(const ValueKey('an-profile-views')),
++            matching: find.text('40')),
++        findsOneWidget);
++    expect(find.byKey(const ValueKey('an-top-post-5')), findsOneWidget);
++    expect(find.text('Yangi kolleksiya'), findsOneWidget);
++    expect(tester.takeException(), isNull);
++  });
++}
+diff --git a/mobile_nova/test/helpers.dart b/mobile_nova/test/helpers.dart
+index 3e18ce7..bbef7ba 100644
+--- a/mobile_nova/test/helpers.dart
++++ b/mobile_nova/test/helpers.dart
+@@ -85,6 +85,19 @@ class FakeSocialRepository extends SocialRepository {
+ 
+   @override
+   Future<Result<List<StoryItem>>> storiesOf(String code) async => const Ok([]);
++
++  /// Reels ko'rishi — testlarda tarmoqqa chiqmaydi; chaqiruvlar yoziladi.
++  final viewed = <({int id, bool company})>[];
++
++  @override
++  Future<Result<int>> recordView(int id, {bool company = false}) async {
++    viewed.add((id: id, company: company));
++    return Ok(viewed.length);
++  }
++
++  @override
++  Future<Result<MyAnalytics>> myAnalytics({int days = 30}) async =>
++      const Ok(MyAnalytics());
+ }
+ 
+ class FakeDiscoverRepository extends DiscoverRepository {
+diff --git a/mobile_nova/test/routes_test.dart b/mobile_nova/test/routes_test.dart
+index 5bd76a5..d68cef6 100644
+--- a/mobile_nova/test/routes_test.dart
++++ b/mobile_nova/test/routes_test.dart
+@@ -60,6 +60,7 @@ void main() {
+     Routes.activity,
+     Routes.settings,
+     Routes.settingsSecurity,
++    Routes.settingsAnalytics,
+     Routes.settingsLanguage,
+     Routes.settingsTheme,
+     Routes.settingsNotifications,
+-- 
+2.43.0
+
