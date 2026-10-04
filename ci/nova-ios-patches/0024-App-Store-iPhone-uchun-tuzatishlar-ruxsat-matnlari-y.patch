@@ -1,13 +1,12 @@
 From 45df7d9b1b23aa7da56e30d269ab88e608b77716 Mon Sep 17 00:00:00 2001
 From: NFCSTORE CI <ci@nfcstore.uz>
 Date: Sun, 4 Oct 2026 16:24:11 +0000
-Subject: [PATCH 24/26] App Store: iPhone uchun tuzatishlar (ruxsat matnlari,
+Subject: [PATCH] App Store: iPhone uchun tuzatishlar (ruxsat matnlari,
  yangiliklar, bildirishnomalar, AI oshkorligi, demo do'kon)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
 ---
- .github/workflows/nova-ios.yml                |   6 +-
  mobile_nova/assets/demo/m_card_holder.jpg     | Bin 0 -> 27674 bytes
  mobile_nova/assets/demo/m_keychain.jpg        | Bin 0 -> 23812 bytes
  mobile_nova/ios/Runner/Info.plist             |  29 +-
@@ -39,29 +38,11 @@ Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
  mobile_nova/test/listing_form_test.dart       |   3 +
  mobile_nova/test/orders_app_store_test.dart   |   9 +-
  mobile_nova/test/resume_focus_test.dart       |  14 +-
- 32 files changed, 1442 insertions(+), 151 deletions(-)
+ 31 files changed, 1437 insertions(+), 150 deletions(-)
  create mode 100644 mobile_nova/assets/demo/m_card_holder.jpg
  create mode 100644 mobile_nova/assets/demo/m_keychain.jpg
  create mode 100644 mobile_nova/test/app_store_ios_fixes_test.dart
 
-diff --git a/.github/workflows/nova-ios.yml b/.github/workflows/nova-ios.yml
-index 448298e..6132310 100644
---- a/.github/workflows/nova-ios.yml
-+++ b/.github/workflows/nova-ios.yml
-@@ -65,8 +65,12 @@ jobs:
-         run: |
-           set -e
-           P=ios/Runner/Info.plist
-+          # NSAppleMusicUsageDescription — file_picker musiqa kutubxonasi
-+          # kodini (PICKER_AUDIO) doim yig'adi; kalitsiz ITMS-90683.
-           for k in NFCReaderUsageDescription NSCameraUsageDescription \
--                   NSPhotoLibraryUsageDescription NSMicrophoneUsageDescription; do
-+                   NSPhotoLibraryUsageDescription NSMicrophoneUsageDescription \
-+                   NSFaceIDUsageDescription NSPhotoLibraryAddUsageDescription \
-+                   NSAppleMusicUsageDescription; do
-             /usr/libexec/PlistBuddy -c "Print :$k" "$P" >/dev/null \
-               || { echo "::error::$k Info.plist da yo'q"; exit 1; }
-           done
 diff --git a/mobile_nova/assets/demo/m_card_holder.jpg b/mobile_nova/assets/demo/m_card_holder.jpg
 new file mode 100644
 index 0000000000000000000000000000000000000000..ab2ef95ca82f3c9428ce00465d234006c6aef8e8
