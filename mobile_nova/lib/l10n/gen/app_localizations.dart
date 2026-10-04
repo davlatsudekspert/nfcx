@@ -5378,6 +5378,42 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'QR kodda faqat karta raqami yozilgan — bu to‘lov havolasi emas.'**
   String get cardQrNote;
+
+  /// No description provided for @newsEmpty.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hozircha yangiliklar yo‘q'**
+  String get newsEmpty;
+
+  /// No description provided for @newsEmptyHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yangi e’lonlar shu yerda paydo bo‘ladi.'**
+  String get newsEmptyHint;
+
+  /// No description provided for @langChooseTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tilni tanlang'**
+  String get langChooseTitle;
+
+  /// No description provided for @langChooseBody.
+  ///
+  /// In uz, this message translates to:
+  /// **'Keyinroq Sozlamalar → Til orqali o‘zgartirishingiz mumkin.'**
+  String get langChooseBody;
+
+  /// No description provided for @fieldEmailHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'siz@example.com'**
+  String get fieldEmailHint;
+
+  /// No description provided for @notFoundHome.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bosh sahifa'**
+  String get notFoundHome;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

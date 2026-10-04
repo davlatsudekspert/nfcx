@@ -174,5 +174,6 @@ abstract final class Routes {
   static const settingsPremium = '/settings/premium';
   static const settingsSupport = '/settings/support';
   static const settingsAbout = '/settings/about';
+  static const settingsNews = '/settings/news';
   static const paymentHistory = '/settings/payment/history';
 }

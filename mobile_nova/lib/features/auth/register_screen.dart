@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../settings/language_picker.dart';
 import '../../core/network/api_client.dart';
 import '../../core/utils/external_link.dart';
 import '../../core/utils/validators.dart';
@@ -305,6 +306,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     return NovaScaffold(
       showBack: true,
+      // Kirmagan foydalanuvchi ham tilni shu yerda almashtiradi.
+      actions: const [LanguagePill(), SizedBox(width: Gap.sm)],
       onBack: _back,
       body: Column(
         children: [
@@ -408,7 +411,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     controller: _email,
                     error: _fieldErrors[2],
                     keyboardType: TextInputType.emailAddress,
-                    hint: 'siz@example.com',
+                    hint: l.fieldEmailHint,
                     enabled: !_busy,
                   ),
                       // «gmail.com demoqchimisiz?» — bosilsa manzil to'g'rilanadi.

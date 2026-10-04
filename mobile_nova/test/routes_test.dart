@@ -69,6 +69,7 @@ void main() {
     Routes.settingsPremium,
     Routes.settingsSupport,
     Routes.settingsAbout,
+    Routes.settingsNews,
     Routes.paymentHistory,
     // `giftOffers` bu yerda YO'Q edi — yangi meta-sinov topdi.
     Routes.giftOffers,

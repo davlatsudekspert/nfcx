@@ -1013,5 +1013,11 @@
   "cardSheetTitle": "Card number",
   "cardCopy": "Copy number",
   "cardCopied": "Card number copied",
-  "cardQrNote": "The QR code contains only the card number — it is not a payment link."
+  "cardQrNote": "The QR code contains only the card number — it is not a payment link.",
+  "newsEmpty": "No news yet",
+  "newsEmptyHint": "New announcements will appear here.",
+  "langChooseTitle": "Choose your language",
+  "langChooseBody": "You can change it later in Settings → Language.",
+  "fieldEmailHint": "you@example.com",
+  "notFoundHome": "Home"
 }

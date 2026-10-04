@@ -33,6 +33,8 @@ import '../features/social/featured_screen.dart';
 import '../features/profile/follow_list_screen.dart';
 import '../features/profile/profile_edit_screen.dart';
 import '../features/settings/settings_screen.dart';
+import '../features/settings/news_screen.dart';
+import '../l10n/gen/app_localizations.dart';
 import '../features/settings/settings_subscreens.dart';
 import '../features/shop/nfc_id_market.dart';
 import '../features/shop/shop_screens.dart';
@@ -470,6 +472,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: 'premium', builder: (_, __) => const PremiumScreen()),
           GoRoute(path: 'support', builder: (_, __) => const SupportScreen()),
           GoRoute(path: 'about', builder: (_, __) => const AboutScreen()),
+          GoRoute(path: 'news', builder: (_, __) => const NewsScreen()),
         ],
       ),
     ],
@@ -502,7 +505,7 @@ class _RouteError extends StatelessWidget {
                 const SizedBox(height: 20),
                 FilledButton(
                   onPressed: () => GoRouter.of(context).go(Routes.home),
-                  child: const Text('Home'),
+                  child: Text(L.of(context).notFoundHome),
                 ),
               ],
             ),

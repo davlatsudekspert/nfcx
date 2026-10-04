@@ -2822,4 +2822,23 @@ class LUz extends L {
   @override
   String get cardQrNote =>
       'QR kodda faqat karta raqami yozilgan — bu to‘lov havolasi emas.';
+
+  @override
+  String get newsEmpty => 'Hozircha yangiliklar yo‘q';
+
+  @override
+  String get newsEmptyHint => 'Yangi e’lonlar shu yerda paydo bo‘ladi.';
+
+  @override
+  String get langChooseTitle => 'Tilni tanlang';
+
+  @override
+  String get langChooseBody =>
+      'Keyinroq Sozlamalar → Til orqali o‘zgartirishingiz mumkin.';
+
+  @override
+  String get fieldEmailHint => 'siz@example.com';
+
+  @override
+  String get notFoundHome => 'Bosh sahifa';
 }

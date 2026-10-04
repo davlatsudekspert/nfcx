@@ -1,7 +1,11 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../app/providers.dart';
+import '../settings/language_picker.dart';
 
 import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
@@ -53,14 +57,14 @@ import 'nfc_card_3d.dart';
 /// oltin nur nafas oladi, to'lqinlar tarqaladi. Keskin zoom yoki
 /// silkinish yo'q. Tizimda "animatsiyani kamaytirish" yoqilgan
 /// bo'lsa harakat UMUMAN bo'lmaydi — karta qiya holda turadi.
-class WelcomeScreen extends StatefulWidget {
+class WelcomeScreen extends ConsumerStatefulWidget {
   const WelcomeScreen({super.key});
 
   @override
-  State<WelcomeScreen> createState() => _WelcomeScreenState();
+  ConsumerState<WelcomeScreen> createState() => _WelcomeScreenState();
 }
 
-class _WelcomeScreenState extends State<WelcomeScreen>
+class _WelcomeScreenState extends ConsumerState<WelcomeScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _c;
 
@@ -69,6 +73,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     super.initState();
     _c = AnimationController(vsync: this, duration: const Duration(seconds: 10))
       ..repeat();
+    // BIRINCHI OCHILISH: til hali tanlanmagan bo'lsa — avval til
+    // (telefon tiliga mos variant belgilangan). Boshqa ekran yo'q.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!ref.read(localeProvider.notifier).chosen) {
+        showLanguageSheet(context, ref, firstLaunch: true);
+      }
+    });
   }
 
   @override
@@ -112,9 +124,21 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               // siyrak NFCSTORE yozuvi, ikki yonida champagne chiziq.
               // Rasm EMAS — `welcome_screen_test` birinchi `Image` ni
               // qahramon surat deb o'lchaydi.
-              const Padding(
-                padding: EdgeInsets.only(top: Gap.lg, bottom: Gap.xs),
-                child: _Wordmark(),
+              // Brend yozuvi markazda, o'ng tepada ixcham til (UZ/RU/EN).
+              const Stack(
+                alignment: Alignment.center,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.only(top: Gap.lg, bottom: Gap.xs),
+                    child: _Wordmark(),
+                  ),
+                  Positioned(
+                    right: Gap.md,
+                    top: 0,
+                    bottom: 0,
+                    child: LanguagePill(),
+                  ),
+                ],
               ),
               // ── TEPA: VIZUAL ──────────────────────────────────
               //

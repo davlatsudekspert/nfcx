@@ -2818,4 +2818,23 @@ class LEn extends L {
   @override
   String get cardQrNote =>
       'The QR code contains only the card number — it is not a payment link.';
+
+  @override
+  String get newsEmpty => 'No news yet';
+
+  @override
+  String get newsEmptyHint => 'New announcements will appear here.';
+
+  @override
+  String get langChooseTitle => 'Choose your language';
+
+  @override
+  String get langChooseBody =>
+      'You can change it later in Settings → Language.';
+
+  @override
+  String get fieldEmailHint => 'you@example.com';
+
+  @override
+  String get notFoundHome => 'Home';
 }

@@ -2815,4 +2815,22 @@ class LRu extends L {
   @override
   String get cardQrNote =>
       'В QR-коде только номер карты — это не ссылка на оплату.';
+
+  @override
+  String get newsEmpty => 'Пока новостей нет';
+
+  @override
+  String get newsEmptyHint => 'Новые объявления появятся здесь.';
+
+  @override
+  String get langChooseTitle => 'Выберите язык';
+
+  @override
+  String get langChooseBody => 'Позже его можно изменить в Настройки → Язык.';
+
+  @override
+  String get fieldEmailHint => 'vy@example.com';
+
+  @override
+  String get notFoundHome => 'На главную';
 }

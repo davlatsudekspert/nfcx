@@ -244,9 +244,14 @@ class _PressableScaleState extends State<PressableScale> {
 
 /// Bo'lim sarlavhasi: kichik katta-harfli yorliq + ixtiyoriy "Hammasi".
 class SectionHeader extends StatelessWidget {
-  const SectionHeader({super.key, required this.title, this.action, this.onAction});
+  const SectionHeader(
+      {super.key, required this.title, this.action, this.onAction, this.color});
 
   final String title;
+
+  /// Yorliq rangi (sukut: `text3`). Sozlamalar `text2` beradi —
+  /// 10.5 px katta harfli yorliq Ivory'da xira o'qilardi.
+  final Color? color;
   final String? action;
   final VoidCallback? onAction;
 
@@ -275,7 +280,7 @@ class SectionHeader extends StatelessWidget {
                 title.toUpperCase(),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(color: t.text3),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(color: color ?? t.text3),
               ),
             ),
             if (action != null)

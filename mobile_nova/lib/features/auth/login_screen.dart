@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../settings/language_picker.dart';
 import '../../core/utils/validators.dart';
 import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
@@ -100,6 +101,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     return NovaScaffold(
       showBack: true,
+      // Kirmagan foydalanuvchi ham tilni shu yerda almashtiradi.
+      actions: const [LanguagePill(), SizedBox(width: Gap.sm)],
       body: NovaScroll(
         padding: const EdgeInsets.fromLTRB(Gap.xxl, Gap.sm, Gap.xxl, Gap.section),
         children: [
@@ -154,7 +157,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   controller: _email,
                   error: _emailErr,
                   keyboardType: TextInputType.emailAddress,
-                  hint: 'siz@example.com',
+                  hint: l.fieldEmailHint,
                   enabled: !_busy,
                 ),
                 const SizedBox(height: Gap.lg),

@@ -48,11 +48,16 @@ class LocaleController extends StateNotifier<Locale> {
   static const fallback = Locale('uz');
   static const supported = [Locale('uz'), Locale('ru'), Locale('en')];
 
+  /// Tanlov HAR DOIM saqlanadi — joriy til bilan bir xil bo'lsa ham:
+  /// birinchi ochilishda "O‘zbekcha" (sukutdagi) tanlansa ham u
+  /// eslab qolinishi kerak, aks holda tanlagich qayta-qayta chiqardi.
   Future<void> select(Locale l) async {
-    if (l.languageCode == state.languageCode) return;
-    state = l;
+    if (l.languageCode != state.languageCode) state = l;
     await _prefs.setLocaleCode(l.languageCode);
   }
+
+  /// Foydalanuvchi tilni o'zi tanlaganmi (birinchi ochilish tanlagichi).
+  bool get chosen => _prefs.localeCode != null;
 }
 
 final localeProvider = StateNotifierProvider<LocaleController, Locale>(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/profile_context.dart';
 import '../../app/providers.dart';
 import '../../design/tokens/nfc_tokens.dart';
 import '../../design/tokens/shapes.dart';
@@ -32,40 +33,66 @@ class SettingsScreen extends ConsumerWidget {
     final l = L.of(context);
     final t = context.tokens;
     final user = ref.watch(currentUserProvider);
+    final personal = ref.watch(activePersonalProvider);
 
     return NovaScaffold(
       title: l.settings,
       showBack: true,
       body: NovaScroll(
         children: [
+          // AKKAUNT XULOSASI — BOSILMAYDI (egasi, 2026-10, iPhone surati).
+          //
+          // Ilgari bu yerda `user.displayName` turardi: hisobda ism yo'q
+          // bo'lsa u email'ning `@` gacha qismi (`ali77099`) — XOM login,
+          // avatar o'rnida esa `AL`. Karta bosilsa "Profilni tahrirlash"
+          // ochilardi — pastdagi qator bilan bir xil ish (ikki kirish).
+          //
+          // Endi: ommaviy profil (NFC ID) ismi va avatari, hisobning
+          // haqiqiy email'i; ism bo'lmasa — faqat email. Tahrirlash —
+          // FAQAT pastdagi "Profilni tahrirlash" qatori.
           if (user != null)
-            FloatingSurface(
-              solid: true,
-              onTap: () => context.push(Routes.profileEdit),
-              child: Row(
-                children: [
-                  Avatar(url: user.avatarUrl, initials: user.initials, size: 52),
-                  const SizedBox(width: Gap.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(user.displayName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleMedium),
-                        Text(user.email,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall),
-                      ],
+            Builder(builder: (context) {
+              final name = [personal?.name ?? '', user.name]
+                  .map((e) => e.trim())
+                  .firstWhere((e) => e.isNotEmpty, orElse: () => '');
+              final avatar = (personal?.avatarUrl ?? '').isNotEmpty
+                  ? personal!.avatarUrl
+                  : user.avatarUrl;
+              final text = Theme.of(context).textTheme;
+              return FloatingSurface(
+                key: const ValueKey('settings-account'),
+                solid: true,
+                child: Row(
+                  children: [
+                    Avatar(
+                        url: avatar,
+                        initials: _initials(name.isNotEmpty ? name : user.email),
+                        size: 52),
+                    const SizedBox(width: Gap.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (name.isNotEmpty)
+                            Text(name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: text.titleMedium),
+                          if (user.email.isNotEmpty)
+                            Text(user.email,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: name.isNotEmpty
+                                    ? text.bodySmall?.copyWith(color: t.text2)
+                                    : text.titleMedium),
+                        ],
+                      ),
                     ),
-                  ),
-                  Icon(Icons.chevron_right_rounded, size: 20, color: t.text3),
-                ],
-              ),
-            ),
-          SectionHeader(title: l.settingsAccount),
+                  ],
+                ),
+              );
+            }),
+          SectionHeader(color: t.text2, title: l.settingsAccount),
           SettingsGroup(items: [
             SettingsItem(
               icon: Icons.person_outline_rounded,
@@ -88,7 +115,7 @@ class SettingsScreen extends ConsumerWidget {
               onTap: () => context.push(Routes.settingsSecurity),
             ),
           ]),
-          SectionHeader(title: l.settingsAppearance),
+          SectionHeader(color: t.text2, title: l.settingsAppearance),
           SettingsGroup(items: [
             SettingsItem(
               icon: Icons.palette_outlined,
@@ -123,7 +150,7 @@ class SettingsScreen extends ConsumerWidget {
           // to'lov haqida hech narsa ko'rinmasin. Jismoniy NFC karta
           // buyurtmalari qoladi: jismoniy tovar Play Billing'dan ozod
           // (`shop/store_policy.dart`).
-          SectionHeader(title: l.settingsShopSection),
+          SectionHeader(color: t.text2, title: l.settingsShopSection),
           SettingsGroup(items: [
             SettingsItem(
               icon: Icons.receipt_long_outlined,
@@ -136,7 +163,7 @@ class SettingsScreen extends ConsumerWidget {
               onTap: () => context.push(Routes.settingsReferral),
             ),
           ]),
-          SectionHeader(title: l.settingsSupport),
+          SectionHeader(color: t.text2, title: l.settingsSupport),
           SettingsGroup(items: [
             SettingsItem(
               icon: Icons.support_agent_rounded,
@@ -193,6 +220,15 @@ class SettingsScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  static String _initials(String s) {
+    final parts = s.split('@').first.trim().split(RegExp(r'\s+'));
+    if (parts.length >= 2 && parts[0].isNotEmpty && parts[1].isNotEmpty) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    final d = parts.first;
+    return (d.length >= 2 ? d.substring(0, 2) : d).toUpperCase();
   }
 
   String _themeName(L l, String id) => switch (id) {
@@ -270,7 +306,8 @@ class SettingsGroup extends StatelessWidget {
             if (i > 0)
               Padding(
                 padding: const EdgeInsets.only(left: 52),
-                child: Divider(height: 1, color: t.border2),
+                // Ajratuvchi Ivory'da deyarli ko'rinmasdi (border2 7.5%).
+                child: Divider(height: 1, color: t.border1),
               ),
             _Row(item: items[i]),
           ],
@@ -313,7 +350,11 @@ class _Row extends StatelessWidget {
                   item.value!,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelMedium,
+                  // Qiymat (Ivory, O‘zbekcha) — ikkilamchi, lekin o'qiladi.
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelMedium
+                      ?.copyWith(color: t.text2, fontWeight: FontWeight.w600),
                 ),
               ),
             if (item.trailing != null)
@@ -321,7 +362,7 @@ class _Row extends StatelessWidget {
             else if (item.onTap != null)
               Padding(
                 padding: const EdgeInsets.only(left: 4),
-                child: Icon(Icons.chevron_right_rounded, size: 18, color: t.text3),
+                child: Icon(Icons.chevron_right_rounded, size: 18, color: t.text2),
               ),
           ],
         ),

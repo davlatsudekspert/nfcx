@@ -1125,5 +1125,11 @@
   "cardQrNote": "QR kodda faqat karta raqami yozilgan — bu to‘lov havolasi emas.",
   "@contactCard": {
     "description": "Aloqa qatoridagi plastik (bank) karta tugmasi — bosilsa raqam, QR va nusxalash oynasi."
-  }
+  },
+  "newsEmpty": "Hozircha yangiliklar yo‘q",
+  "newsEmptyHint": "Yangi e’lonlar shu yerda paydo bo‘ladi.",
+  "langChooseTitle": "Tilni tanlang",
+  "langChooseBody": "Keyinroq Sozlamalar → Til orqali o‘zgartirishingiz mumkin.",
+  "fieldEmailHint": "siz@example.com",
+  "notFoundHome": "Bosh sahifa"
 }

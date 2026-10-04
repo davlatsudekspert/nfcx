@@ -1400,7 +1400,9 @@ class AboutScreen extends StatelessWidget {
           SectionHeader(title: l.settingsNews),
           FloatingSurface(
             solid: true,
-            onTap: () => context.push(Routes.discover),
+            // O'z sahifasi — Tanlov tabi (shell branch) EMAS: uni shell
+            // tashqarisidan push qilish qora sahifa berardi (news_screen.dart).
+            onTap: () => context.push(Routes.settingsNews),
             child: Row(
               children: [
                 Icon(Icons.campaign_rounded, size: 19, color: t.accent2),

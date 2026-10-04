@@ -1013,5 +1013,11 @@
   "cardSheetTitle": "Номер карты",
   "cardCopy": "Скопировать номер",
   "cardCopied": "Номер карты скопирован",
-  "cardQrNote": "В QR-коде только номер карты — это не ссылка на оплату."
+  "cardQrNote": "В QR-коде только номер карты — это не ссылка на оплату.",
+  "newsEmpty": "Пока новостей нет",
+  "newsEmptyHint": "Новые объявления появятся здесь.",
+  "langChooseTitle": "Выберите язык",
+  "langChooseBody": "Позже его можно изменить в Настройки → Язык.",
+  "fieldEmailHint": "vy@example.com",
+  "notFoundHome": "На главную"
 }
