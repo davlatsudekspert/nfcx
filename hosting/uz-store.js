@@ -135,9 +135,25 @@ export function uzDb({ url, token, fetch: doFetch = (...a) => fetch(...a), forei
   // pipeline bilan yuboriladi. Har biri pipeline'da MUSTAQIL so'rov —
   // natijasi va xatosi alohida; tranzaksiya (batch) bitta so'rov ichida
   // yaxlit qoladi, boshqalar unga aralashmaydi.
+  //
+  // NAVBAT FAQAT MIKROTASKLAR ICHIDA (taymer yo'q, 2026-10-04). Workers'da
+  // har bir so'rovning kodi o'z voqeasida ishlaydi va mikrotask navbati
+  // keyingi voqeagacha to'liq bo'shaydi — demak navbatda faqat SHU so'rovning
+  // statement'lari bo'ladi va ular shu so'rov kontekstida yuboriladi.
+  // Avval `setTimeout` bilan navbat so'rovlararo bo'lishilardi: taymerni
+  // qo'ygan so'rov tugagach boshqa so'rovning statement'i osilib qolardi —
+  // "Worker's code had hung" (Cloudflare 1101, parallel so'rovlarda ~12%).
   const MAX_PER_HTTP = 60;
+  // Parallel zanjirlar keyingi statement'ini bir necha mikrotask "qadam"dan
+  // keyin qo'shadi — shuncha qadam kutiladi (vaqt emas, CPU sarfi yo'q).
+  const COLLECT_HOPS = 16;
   let queue = [];
   let scheduled = false;
+
+  async function drain() {
+    for (let i = 0; i < COLLECT_HOPS; i++) await null;
+    flush();
+  }
 
   async function send(requests) {
     let res;
@@ -182,7 +198,7 @@ export function uzDb({ url, token, fetch: doFetch = (...a) => fetch(...a), forei
   function pipeline(requests) {
     return new Promise((resolve, reject) => {
       queue.push({ requests, resolve, reject });
-      if (!scheduled) { scheduled = true; setTimeout(flush, 0); }
+      if (!scheduled) { scheduled = true; drain(); }
     });
   }
 
