@@ -110,7 +110,12 @@ class Prefs {
   static const _kSelPersonal = 'nova.selectedPersonal';
   static const _kSelBusiness = 'nova.selectedBusiness';
   static const _kSearches = 'nova.recentSearches';
-  static const _kRules = 'nova.contentRulesAccepted';
+  /// `.v2` — rozilik endi Google Gemini (sun'iy intellekt) bilan
+  /// avtomatik tekshiruvni ham o'z ichiga oladi (App Store 5.1.2(i):
+  /// uchinchi tomon AI'ga ma'lumot berishga ANIQ rozilik). Eski kalit
+  /// (`nova.contentRulesAccepted`) bunga rozilik emas edi, shuning
+  /// uchun avval rozi bo'lganlar ham darvozani BIR MARTA qayta ko'radi.
+  static const _kRules = 'nova.contentRulesAccepted.v2';
   static const _kLock = 'nova.appLock';
   static const _kLockBio = 'nova.appLockBiometric';
   static const _kNotif = 'nova.notif.';

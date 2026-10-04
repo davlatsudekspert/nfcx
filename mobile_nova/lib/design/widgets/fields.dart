@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/utils/phone_countries.dart';
@@ -119,6 +120,12 @@ class NovaField extends StatelessWidget {
     );
   }
 }
+
+/// iPhone'mi — `store_policy.dart` dagi `isAppStoreBuild` bilan bir xil.
+/// Nusxa ataylab: dizayn qatlami `features/` ni import qilmaydi
+/// (`states.dart` dagi `_appStore` kabi). `Platform.isIOS` emas —
+/// testda `TargetPlatformVariant` bilan iPhone sinaladi.
+bool get _ios => defaultTargetPlatform == TargetPlatform.iOS;
 
 /// 6 xonali kod uchun maydon.
 ///
@@ -243,6 +250,17 @@ class _CodeFieldState extends State<CodeField>
   /// qilinmaydi: kod allaqachon to'liq bo'lsa, bufer umuman
   /// o'qilmaydi.
   Future<void> _checkClipboard() async {
+    // iPHONE'DA BUFER O'ZIDAN O'QILMAYDI.
+    //
+    // iOS 16+ ilova buferni o'zi o'qisa (`UIPasteboard.string`)
+    // "NFCSTORE <ilova>dan joylamoqchi" degan tizim so'rovini
+    // chiqaradi — kod ekrani ochilganda ham, pochtadan qaytganda
+    // ham. Tekshiruvchi uchun bu "ilova so'ramasdan buferni
+    // o'qiyapti" (App Store 5.1.1) degani. iPhone'da kod o'rniga
+    // tizimning o'z taklifi ishlaydi: `AutofillHints.oneTimeCode`
+    // (klaviatura ustida "Mail'dan" kod chiqadi), kerak bo'lsa
+    // odam kodni qo'lda yozadi. ANDROID O'ZGARMAYDI.
+    if (_ios) return;
     if (!widget.enabled) return;
     if (_c.text.length >= widget.length) return;
     try {
@@ -367,7 +385,17 @@ class _CodeFieldState extends State<CodeField>
                 enabled: widget.enabled,
                 autofocus: true,
                 keyboardType: TextInputType.number,
-                // AUTOFILL ISHORASI ATAYLAB YO'Q — QAYTARMANG.
+                // iPHONE'DA ISHORA BOR, ANDROID'DA YO'Q.
+                //
+                // iOS'da bufer o'zidan o'qilmaydi (`_checkClipboard`),
+                // shuning uchun kod tizim taklifi orqali keladi: iOS
+                // pochta yoki SMS'dagi kodni klaviatura ustida
+                // ko'rsatadi. Quyidagi Android nosozligi iOS'ga
+                // tegishli emas — u yerda autofill seansi kiritish
+                // bog'lanishini uzmaydi.
+                autofillHints:
+                    _ios ? const [AutofillHints.oneTimeCode] : null,
+                // ANDROID'DA AUTOFILL ISHORASI ATAYLAB YO'Q — QAYTARMANG.
                 //
                 // `autofillHints: [AutofillHints.oneTimeCode]` shu
                 // maydonga qo'shilgan edi va aynan o'shandan keyin

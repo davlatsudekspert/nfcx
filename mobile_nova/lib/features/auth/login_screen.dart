@@ -58,16 +58,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       'errBadEmail' => l.errBadEmail,
       'errBadPhone' => l.errBadPhone,
       'errPasswordShort' => l.errPasswordShort,
+      'errPasswordShortLogin' => l.errPasswordShortLogin,
+      'errBadLogin' => l.errBadLogin,
       _ => l.errUnknown,
     };
   }
 
   Future<void> _submit() async {
     final l = L.of(context);
+    // Server nimani qabul qilsa, forma ham shuni qabul qiladi:
+    // email YOKI telefon, parol kamida 6 belgi (`Validate.login`,
+    // `Validate.loginPassword`). Ro'yxatdan o'tish qoidalari
+    // (8 belgi, majburiy email) bunga tegmaydi.
     setState(() {
-      _emailErr = _tr(Validate.email(_email.text));
+      _emailErr = _tr(Validate.login(_email.text));
       _phoneErr = null;
-      _passwordErr = _tr(Validate.password(_password.text));
+      _passwordErr = _tr(Validate.loginPassword(_password.text));
       _formError = null;
     });
     if (_emailErr != null || _phoneErr != null || _passwordErr != null) return;
@@ -153,11 +159,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 NovaField(
-                  label: l.fieldEmail,
+                  key: const ValueKey('login-id'),
+                  label: l.fieldLogin,
                   controller: _email,
                   error: _emailErr,
+                  // Email klaviaturasida raqam va `+` ham bor.
                   keyboardType: TextInputType.emailAddress,
-                  hint: l.fieldEmailHint,
+                  hint: l.fieldLoginHint,
                   enabled: !_busy,
                 ),
                 const SizedBox(height: Gap.lg),

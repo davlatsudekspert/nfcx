@@ -196,6 +196,7 @@ void main() {
         'idStateAvailableIos',
         'idStateTakenIos',
         'homeNoIdHintIos',
+        'deleteAccountWhatIos',
       ];
       const banned = [
         'sayt', 'сайт', 'website', 'site', //

@@ -176,7 +176,7 @@ void main() {
       );
     });
 
-    test('kod maydonida autofill ishorasi YO\'Q', () {
+    test('kod maydonida autofill ishorasi ANDROID\'DA YO\'Q', () {
       // `AutofillHints.oneTimeCode` qo'shilgan commitdan keyin
       // qurilmada pochtaga o'tib qaytganda klaviatura ochilmay
       // qoldi. Ishora Android autofill xizmatiga maydonni
@@ -194,12 +194,18 @@ void main() {
           .split('\n')
           .where((l) => !l.trimLeft().startsWith('//'))
           .join('\n');
+      // iPhone'da ishora BOR (App Store: bufer o'zidan o'qilmaydi,
+      // kod tizim taklifi bilan keladi) — lekin FAQAT `_ios` sharti
+      // bilan. Shartsiz ishora Android'ga qaytgan bo'lardi.
+      final hints = RegExp(r'autofillHints:\s*([^,]+),').allMatches(code);
+      expect(hints.length, 1, reason: 'kod maydonida bitta ishora joyi');
       expect(
-        code,
-        isNot(contains('autofillHints:')),
-        reason: 'kod maydoniga autofill ishorasi qaytarilgan — '
+        hints.single.group(1)!.trim(),
+        startsWith('_ios ?'),
+        reason: 'kod maydoniga autofill ishorasi Android\'da qaytarilgan — '
             'avval qurilmada sinab ko\'ring',
       );
+      expect(hints.single.group(1), contains(': null'));
       // Buferdagi kod taklifi esa o'z joyida qolishi shart: u
       // ishoradan keyin qolgan yagona qulaylik.
       expect(code, contains('_ClipboardHint'));

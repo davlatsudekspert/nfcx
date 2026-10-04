@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../social/content_rules.dart';
 import '../social/media_frame.dart';
 import '../../design/theme/typography.dart';
 import '../../design/tokens/nfc_tokens.dart';
@@ -62,6 +63,10 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   /// hech narsa qilmasdi.
   Future<void> _pickAvatar() async {
     final l = L.of(context);
+    // Rasm Google Gemini bilan tekshiriladi — avval ochiq yozuv va
+    // ANIQ rozilik (`ensureContentRules`, App Store 5.1.2(i)). Rozilik
+    // bor bo'lsa darhol o'tadi.
+    if (!await ensureContentRules(context, ref) || !mounted) return;
     final f = await _picker.pickImage(
       source: ImageSource.gallery,
       // Avatar hech qachon 800px dan katta ko'rsatilmaydi.

@@ -170,6 +170,13 @@ Future<List<Override>> testOverrides({bool signedIn = true}) async {
   ];
 }
 
+/// Kontent qoidalari (Google Gemini roziligi bilan) OLDINDAN qabul
+/// qilingan — darvozaning o'zi sinalmaydigan testlar uchun (rasm
+/// yuklashdan oldin `ensureContentRules` varag'i chiqmaydi).
+/// [testOverrides] dan KEYIN chaqiriladi: u omborni tozalaydi.
+Future<void> acceptContentRules() async =>
+    (await Prefs.open()).setContentRulesAccepted(true);
+
 /// Bitta ekranni mavzu va tarjimalar bilan o'raydi.
 Widget wrapScreen(
   Widget child, {

@@ -123,19 +123,33 @@ final demoPersonalStories = <StoryItem>[
   ),
 ];
 
+/// DEMO DO'KON — FAQAT UMUMIY NFC MAHSULOTLARI (App Store, 2026-10-04).
+///
+/// Ilgari katalogda "iPhone 18 Pro" va "Samsung Galaxy S26 Ultra"
+/// bor edi: begona brendlarning tovar belgilari ishlab chiquvchi
+/// yaratgan mazmunda (5.2.1), Samsung nomi ostida esa iPhone'ga
+/// o'xshash surat turardi (2.3.1). Aloqada `telegram: nfcmarket`
+/// turardi — u BEGONA odamning haqiqiy Telegram akkaunti ekan, demo
+/// esa mijozni o'shanga yuborardi; telefon raqami ham haqiqiy
+/// raqamga o'xshardi. Endi:
+///   * telefonlar o'rnida NFC brelok va charm vizitkadon — ikkalasining
+///     surati ham `m_gift_set.jpg` dan kesilgan (boshqa mahsulotlar
+///     kabi, har biri o'z surati bilan);
+///   * telefon va Telegram BO'SH — demo hech kimga qo'ng'iroq
+///     qildirmaydi va hech kimga yozdirmaydi; sayt — o'zimizniki;
+///   * manzil ko'cha emas, tuman darajasida (serverdagi "Namuna"
+///     bizneslari kabi).
 const demoBusiness = Business(
   companyId: kDemoBusinessId,
   displayName: 'NFC Market',
   category: 'shop',
-  subcategory: 'Elektronika',
+  subcategory: 'NFC aksessuarlar',
   city: 'Toshkent',
-  address: 'Amir Temur ko\'chasi, 12',
-  description: 'Texnologiya hayotni yaqinroq qiladi. Smartfonlar, '
-      'NFC kartalar, stikerlar va stendlar — katalog, aloqa va '
+  address: 'Yunusobod tumani',
+  description: 'Bitta tegizish — butun profil. NFC kartalar, '
+      'stikerlar, breloklar va stendlar — katalog, aloqa va '
       'buyurtmalar bitta NFC profil ichida. Mijoz kartani '
       'tegizadi va do\'koningiz ochiladi.',
-  phone: '+998 90 000 00 00',
-  telegram: 'nfcmarket',
   website: 'nfcstore.uz',
   logoUrl: '$_a/m_card_metal.jpg',
   coverUrl: kDemoStorefront,
@@ -153,18 +167,20 @@ const demoBusiness = Business(
 const demoCatalog = <CatalogItem>[
   CatalogItem(
     id: -301,
-    name: 'iPhone 18 Pro',
-    description: 'Titan korpus, 256 GB. NFC bilan to\'liq mos.',
-    imageUrl: '$_a/m_iphone.jpg',
-    price: 15900000,
-    salePrice: 14700000,
+    name: 'NFC brelok — Charm',
+    description: 'Charm brelok ichida NFC chip: kalit bilan doim '
+        'yoningizda, telefonni tegizsangiz profil ochiladi.',
+    imageUrl: '$_a/m_keychain.jpg',
+    price: 129000,
+    salePrice: 99000,
   ),
   CatalogItem(
     id: -302,
-    name: 'Samsung Galaxy S26 Ultra',
-    description: '512 GB, S Pen. Kartani tegizib ulashing.',
-    imageUrl: '$_a/m_samsung.jpg',
-    price: 13500000,
+    name: 'Charm vizitkadon + NFC',
+    description: 'Charm g\'ilof, ichida NFC chip — vizitkalar ham, '
+        'bitta tegizishda profil ham.',
+    imageUrl: '$_a/m_card_holder.jpg',
+    price: 249000,
   ),
   CatalogItem(
     id: -303,
@@ -224,7 +240,8 @@ final demoBusinessPosts = <Post>[
   _market(-401, 'Yangi vitrina tayyor — mijoz tegizadi, katalog '
       'ochiladi.', kDemoStorefront,
       DateTime(2026, 9, 16), likes: 340, comments: 21),
-  _market(-402, 'Yangi smartfonlar omborga keldi.',
+  _market(-402, 'Telefonni kartaga yaqinlashtiring — profil bir zumda '
+      'ochiladi.',
       '$_a/m_product_duo.jpg', DateTime(2026, 9, 12), likes: 187, comments: 9),
   _market(-403, 'NFC kartalar va stikerlar — jonli ko\'rish mumkin.',
       '$_a/m_phones.jpg', DateTime(2026, 9, 8), likes: 221, comments: 14),

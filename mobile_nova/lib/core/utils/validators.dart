@@ -132,10 +132,47 @@ abstract final class Validate {
     return prev[b.length];
   }
 
+  /// YANGI parol (ro'yxatdan o'tish, tiklash) — kamida 8 belgi.
   static String? password(String? v) {
     final s = v ?? '';
     if (s.isEmpty) return 'errRequired';
     if (s.length < 8) return 'errPasswordShort';
+    return null;
+  }
+
+  /// KIRISHDAGI parol — server qabul qiladigan chegara: kamida 6.
+  ///
+  /// Ilgari kirishda ham [password] (8 belgi) ishlatilardi. Server
+  /// esa `/api/auth/login` da 6 belgini qabul qiladi
+  /// (`hosting/worker.js`, `password.length < 6`) va 8 belgi qoidasi
+  /// kiritilishidan oldin yaratilgan hisoblarda 6–7 belgili parol bor.
+  /// Bunday odam ilovaga UMUMAN kira olmasdi — so'rov serverga
+  /// yetmasdi. Yangi parol qoidasi ([password]) o'zgarmaydi.
+  static const loginPasswordMin = 6;
+
+  static String? loginPassword(String? v) {
+    final s = v ?? '';
+    if (s.isEmpty) return 'errRequired';
+    if (s.length < loginPasswordMin) return 'errPasswordShortLogin';
+    return null;
+  }
+
+  /// KIRISH MAYDONI — email YOKI telefon (server bilan bir xil).
+  ///
+  /// `/api/auth/login` bitta maydonni oladi: email ko'rinishida
+  /// bo'lsa email bo'yicha, aks holda `normalizePhoneD1` bilan
+  /// telefon bo'yicha qidiradi. Email'siz (faqat telefon bilan
+  /// ochilgan) hisoblar shu yo'l bilan kiradi. Bu yerda faqat SHAKL
+  /// tekshiriladi: `@` bo'lsa — email, bo'lmasa — 9–15 raqamli
+  /// telefon (`+`, bo'shliq, chiziqcha, qavs ruxsat). Raqamni
+  /// keltirishni server o'zi qiladi — ilova xom matnni yuboradi.
+  static String? login(String? v) {
+    final s = (v ?? '').trim();
+    if (s.isEmpty) return 'errRequired';
+    if (s.contains('@')) return _email.hasMatch(s) ? null : 'errBadEmail';
+    final compact = s.replaceAll(RegExp(r'[\s\-().]'), '');
+    final digits = compact.startsWith('+') ? compact.substring(1) : compact;
+    if (!RegExp(r'^\d{9,15}$').hasMatch(digits)) return 'errBadLogin';
     return null;
   }
 

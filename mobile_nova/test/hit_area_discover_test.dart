@@ -216,6 +216,9 @@ Future<void> _pumpListingWithPhoto(WidgetTester tester) async {
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
   final base = await testOverrides();
+  // Rasm qo'shish oldidan Gemini roziligi so'raladi — bu test
+  // darvozani emas, formani sinaydi.
+  await acceptContentRules();
   final router = GoRouter(initialLocation: '/', routes: [
     GoRoute(path: '/', builder: (_, __) => const Scaffold(body: Text('HOME'))),
     GoRoute(

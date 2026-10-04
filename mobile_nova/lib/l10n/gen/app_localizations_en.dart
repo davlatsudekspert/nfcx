@@ -194,6 +194,12 @@ class LEn extends L {
   String get errPasswordShort => 'Password must be at least 8 characters';
 
   @override
+  String get errPasswordShortLogin => 'Password must be at least 6 characters';
+
+  @override
+  String get errBadLogin => 'Enter a valid email or phone number';
+
+  @override
   String get errNameShort => 'Name is too short';
 
   @override
@@ -299,10 +305,16 @@ class LEn extends L {
   String get loginSubtitle => 'Enter your email and phone number';
 
   @override
-  String get loginSubtitlePassword => 'Enter your email and password';
+  String get loginSubtitlePassword => 'Enter your email or phone and password';
 
   @override
   String get fieldEmail => 'Email';
+
+  @override
+  String get fieldLogin => 'Email or phone';
+
+  @override
+  String get fieldLoginHint => 'you@example.com / +998 90 123 45 67';
 
   @override
   String get fieldPhone => 'Phone';
@@ -463,7 +475,8 @@ class LEn extends L {
   String get homeNoIdHint => 'Order a card from the shop or create an ID';
 
   @override
-  String get homeNoIdHintIos => 'Find a free ID in search and make it yours';
+  String get homeNoIdHintIos =>
+      'Your NFC ID will appear here. If you have an NFCSTORE card or sticker, activate it with the code from the envelope.';
 
   @override
   String get homeBizAddress => 'BUSINESS ADDRESS';
@@ -1168,6 +1181,18 @@ class LEn extends L {
   String get rulesContinue => 'Continue';
 
   @override
+  String get rulesZeroTolerance =>
+      'NFCSTORE has zero tolerance for objectionable content and for users who insult, humiliate or harass others. Reports are reviewed promptly: violating content is removed and such users’ accounts are blocked.';
+
+  @override
+  String get rulesAiNotice =>
+      'Uploaded photos and videos (including the sound in videos) are automatically checked for safety by Google’s Gemini AI before they are published. They are sent to Google only for this check.';
+
+  @override
+  String get rulesAiConsent =>
+      'I agree that my uploaded photos and videos are automatically checked by Google’s Gemini AI';
+
+  @override
   String get rulesReminder => 'By publishing you agree to the content rules.';
 
   @override
@@ -1450,12 +1475,6 @@ class LEn extends L {
   @override
   String get demoHeroBody =>
       'Personal profile, business page and NFC ID — all in one app.';
-
-  @override
-  String get demoChipIphone => 'Works with iPhone 18';
-
-  @override
-  String get demoChipSamsung => 'Works with Samsung S26';
 
   @override
   String get demoChipReady => 'NFC ready';
@@ -2232,7 +2251,7 @@ class LEn extends L {
 
   @override
   String get rulesCardProcess =>
-      'Every post, reel, story and comment has “Report”. Uploaded photos are checked automatically. A moderator reviews reports: violating content is removed, and repeat offenders are blocked.';
+      'Every post, reel, story and comment has “Report”. A moderator reviews reports: violating content is removed, and repeat offenders are blocked.';
 
   @override
   String get storyCaption => 'Short text on your story';
@@ -2470,6 +2489,10 @@ class LEn extends L {
   @override
   String get deleteAccountWhat =>
       'After the request you are signed out on all devices; your NFC ID profiles, business pages, posts, stories and comments are hidden immediately. After 30 days the account and its data are permanently deleted (if there is a balance, an active order or an investigation — once these are resolved). Payments for NFC IDs and Business IDs are not refunded; these IDs are not given to anyone for 90 days. Payment records and the evidence archive are kept as required by law — details: nfcstore.uz/delete-account';
+
+  @override
+  String get deleteAccountWhatIos =>
+      'After the request you are signed out on all devices; your NFC ID profiles, business pages, posts, stories and comments are hidden immediately. After 30 days the account and its data are permanently deleted (if there is an open matter — once it is resolved). Released IDs are not given to anyone for 90 days. Records the law requires us to keep are kept for the required period.';
 
   @override
   String get deleteAccountUnderstood => 'I understand, delete my account';

@@ -153,11 +153,15 @@ class SettingsScreen extends ConsumerWidget {
               },
               onTap: () => context.push(Routes.settingsLanguage),
             ),
-            SettingsItem(
-              icon: Icons.notifications_none_rounded,
-              label: l.settingsNotifications,
-              onTap: () => context.push(Routes.settingsNotifications),
-            ),
+            // iPhone'da YO'Q (`showNotificationSettings` izohida): ilovada
+            // push ham, mahalliy bildirishnoma ham yo'q, tugmalar hech
+            // narsaga ta'sir qilmasdi. ANDROID O'ZGARMAYDI.
+            if (showNotificationSettings)
+              SettingsItem(
+                icon: Icons.notifications_none_rounded,
+                label: l.settingsNotifications,
+                onTap: () => context.push(Routes.settingsNotifications),
+              ),
             SettingsItem(
               icon: Icons.lock_outline_rounded,
               label: l.settingsPrivacy,

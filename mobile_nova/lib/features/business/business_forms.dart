@@ -21,6 +21,7 @@ import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
 import '../discover/listing_labels.dart';
+import '../social/content_rules.dart';
 import '../home/widgets/identity_card.dart' show formatCount;
 import '../profile/profile_repository.dart' show profileRepositoryProvider;
 import '../social/media_frame.dart' show mediaImage;
@@ -417,6 +418,10 @@ class _BusinessEditScreenState extends ConsumerState<BusinessEditScreen> {
 
   Future<void> _pick({required bool cover}) async {
     final l = L.of(context);
+    // Rasm Google Gemini bilan tekshiriladi — avval ochiq yozuv va
+    // ANIQ rozilik (`ensureContentRules`, App Store 5.1.2(i)). Rozilik
+    // bor bo'lsa darhol o'tadi.
+    if (!await ensureContentRules(context, ref) || !mounted) return;
     final path = await ref.read(listingImagePickerProvider)();
     if (path == null || !mounted) return;
     setState(() {
@@ -1062,6 +1067,10 @@ class _BusinessProductFormScreenState
 
   Future<void> _addImage(Business b) async {
     final l = L.of(context);
+    // Rasm Google Gemini bilan tekshiriladi — avval ochiq yozuv va
+    // ANIQ rozilik (`ensureContentRules`, App Store 5.1.2(i)). Rozilik
+    // bor bo'lsa darhol o'tadi.
+    if (!await ensureContentRules(context, ref) || !mounted) return;
     final path = await ref.read(listingImagePickerProvider)();
     if (path == null || !mounted) return;
     setState(() {

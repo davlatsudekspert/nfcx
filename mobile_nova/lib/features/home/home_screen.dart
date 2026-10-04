@@ -21,7 +21,7 @@ import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
-import '../shop/store_policy.dart' show idMarketTitle, isAppStoreBuild;
+import '../shop/store_policy.dart' show isAppStoreBuild;
 import '../auth/session.dart';
 import '../profile/music_player.dart';
 import '../social/feed_card.dart';
@@ -265,11 +265,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           onTap: () => context.push(Routes.business),
                         ))
                   : id == null
-                      // iPhone'da do'kon yo'q (Apple 3.1.1, `store_policy.dart`):
-                      // tugma bepul ID qidiruviga olib boradi.
+                      // iPhone'da do'kon ham, ID qidiruvi ham EMAS (Apple
+                      // 3.1.1, `store_policy.dart`): qidiruvdagi ID'lar
+                      // pullik va ilovada olinmaydi — "bepul ID oling"
+                      // degan va'da bajarilmasdi. Tugma qo'ldagi karta
+                      // yoki stikerni konvertdagi kod bilan ulashga olib
+                      // boradi (jismoniy tovar, 3.1.3(e)).
                       ? _NoIdCard(
-                          onShop: () => context.push(
-                              isAppStoreBuild ? Routes.nfcMarket : Routes.shop))
+                          onShop: () => context.push(isAppStoreBuild
+                              ? Routes.nfcActivate
+                              : Routes.shop))
                       // NFC ID — EKRANNING QAHRAMONI.
                       //
                       // Kod katta serifda, pastida ochiq manzil (mono).
@@ -772,10 +777,10 @@ class _NoIdCard extends StatelessWidget {
               style: Theme.of(context).textTheme.bodyMedium),
           const SizedBox(height: Gap.xl),
           NovaButton(
-            label: isAppStoreBuild ? idMarketTitle(l) : l.homeShop,
+            label: isAppStoreBuild ? l.stickerActivate : l.homeShop,
             onPressed: onShop,
             icon: isAppStoreBuild
-                ? Icons.search_rounded
+                ? Icons.add_card_rounded
                 : Icons.storefront_rounded,
           ),
         ],

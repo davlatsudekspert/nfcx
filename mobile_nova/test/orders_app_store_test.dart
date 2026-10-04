@@ -288,17 +288,22 @@ void main() {
       expect(find.text(l.logout), findsOneWidget);
     }, variant: _ios);
 
-    testWidgets('Bildirishnomalar (iPhone): "Buyurtmalar" tanlovi yo‘q',
+    // iPhone'da bu ekranga yo'l yo'q (`showNotificationSettings`,
+    // `app_store_ios_fixes_test.dart`). Baribir ochilsa — iPhone'da
+    // yo'q bo'limlar (Buyurtmalar, Yangiliklar) uchun tanlov ham yo'q.
+    testWidgets('Bildirishnomalar (iPhone): "Buyurtmalar" va "Yangiliklar" yo‘q',
         (tester) async {
       final l = await _pumpTall(tester, const NotificationsSettingsScreen());
       expect(find.text(l.orders), findsNothing);
-      expect(find.text(l.settingsNews), findsOneWidget);
+      expect(find.text(l.settingsNews), findsNothing);
+      expect(find.text(l.nfcScans), findsOneWidget);
     }, variant: _ios);
 
     testWidgets('Bildirishnomalar (Android): "Buyurtmalar" tanlovi bor',
         (tester) async {
       final l = await _pumpTall(tester, const NotificationsSettingsScreen());
       expect(find.text(l.orders), findsOneWidget);
+      expect(find.text(l.settingsNews), findsOneWidget);
     });
 
     testWidgets('NFC ID’larim bo‘sh — iPhone’da bo‘sh Do‘konga tugma yo‘q',

@@ -126,6 +126,34 @@ bool showOrderAmount(String kind) =>
 /// ko'rinadi. ANDROID O'ZGARMAYDI.
 bool get showOrdersEntry => !isAppStoreBuild;
 
+/// "YANGILIKLAR" EKRANIGA KIRISH YO'LI BO'LSINMI.
+///
+/// Yangiliklar serverdan (`GET /api/news`) HECH QANDAY platforma
+/// filtrisiz keladi va ilova ularni o'zgartirmay chizadi. 2026-10-04
+/// dagi App Store auditida u yerda ikki yozuv bor edi: "NFC ID ni
+/// Payme bilan saytda oling" (Apple 3.1.1 — tashqi xaridga chaqiriq)
+/// va "Android ilovani yuklab oling, Google Play tez kunda" (2.3.10 —
+/// boshqa platforma). Admin keyin nima yozishini ilova oldindan
+/// bilolmaydi, shuning uchun iPhone'da bo'limning O'ZI yo'q:
+/// Sozlamalar → Ilova haqida'dagi qator chizilmaydi, `/settings/news`
+/// esa "Ilova haqida" ga buriladi (`router.dart`). ANDROID O'ZGARMAYDI.
+bool get showNewsEntry => !isAppStoreBuild;
+
+/// "BILDIRISHNOMALAR" SOZLAMASI BO'LSINMI.
+///
+/// Ilovada push ham, mahalliy bildirishnoma ham YO'Q: `pubspec.yaml`
+/// da paket yo'q, `Runner.entitlements` da `aps-environment` yo'q,
+/// iOS ruxsat ham so'ramaydi. Ekrandagi tugmalar faqat qurilmaga
+/// yoziladi va hech narsaga ta'sir qilmaydi (`Prefs.notif` boshqa
+/// joyda o'qilmaydi). Apple 2.1 / 2.3.1: "ishlamaydigan imkoniyat"
+/// rad etish sababi. Faqat haqiqiy ishlaydigan tugmalarni qoldirish
+/// mumkin emas edi — bittasi ham ishlamaydi.
+///
+/// iPhone'da Sozlamalardagi qator chizilmaydi, `/settings/notifications`
+/// esa Sozlamalarga buriladi. Push qo'shilganda (APNs) bu kalit
+/// qaytariladi. ANDROID O'ZGARMAYDI.
+bool get showNotificationSettings => !isAppStoreBuild;
+
 /// Shu buyurtmani ILOVA ICHIDA to'lash mumkinmi.
 ///
 /// ## HOZIRCHA HECH BIRI

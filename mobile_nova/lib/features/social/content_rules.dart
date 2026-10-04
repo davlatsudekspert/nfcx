@@ -33,6 +33,22 @@ import '../../l10n/gen/app_localizations.dart';
 /// saqlanadi, lekin serverga HAR SAFAR yuboriladi.
 ///
 /// Qoidalarni istalgan vaqtda Sozlamalardan qayta ochish mumkin.
+///
+/// ## SUN'IY INTELLEKT VA NOL TOQAT (App Store 5.1.2(i), 1.2)
+///
+/// Server har bir yuklangan rasm va videoni (videoning ovozi bilan)
+/// Google Gemini'ga yuborib tekshiradi (`hosting/worker.js` →
+/// `scanStoredUploadD1`, `hosting/api/image-moderation.js`). Apple
+/// uchinchi tomon sun'iy intellektiga ma'lumot berishdan OLDIN buni
+/// ochiq aytishni va ANIQ rozilik olishni talab qiladi. Shuning uchun
+/// varaqda: yuqoridagi matn (o'zgarmaydi), nol toqat bandi, AI
+/// haqidagi yozuv va AI uchun ALOHIDA katakcha — ikkalasi belgilanmasa
+/// "Davom etish" ishlamaydi. Rozilik kaliti `.v2` (`Prefs`).
+///
+/// Darvoza nafaqat joylashdan oldin, balki rasm yuklash boshlanadigan
+/// HAMMA joyda chaqiriladi: avatar va muqova (profil tahriri, ro'yxatdan
+/// keyingi sozlash), biznes logosi, muqovasi va katalog rasmi. Musiqa
+/// (audio) Gemini'ga yuborilmaydi — u yerda darvoza yo'q.
 
 class ContentRules extends StateNotifier<bool> {
   ContentRules(this._prefs) : super(_prefs.contentRulesAccepted);
@@ -99,6 +115,9 @@ class _RulesSheet extends StatefulWidget {
 class _RulesSheetState extends State<_RulesSheet> {
   bool _checked = false;
 
+  /// Google Gemini bilan tekshiruvga ALOHIDA rozilik (5.1.2(i)).
+  bool _aiChecked = false;
+
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
@@ -133,36 +152,34 @@ class _RulesSheetState extends State<_RulesSheet> {
                 ],
               ),
               const SizedBox(height: Gap.lg),
+              // Egasi bergan matn — o'zgarmaydi (`content_rules_test`).
               Text(l.rulesBody,
                   style: Theme.of(context).textTheme.bodyMedium),
-              const SizedBox(height: Gap.lg),
-              // Katakcha qatorining HAMMASI bosiladi — kichik kvadratni
-              // aniq nishonga olish shart emas.
-              InkWell(
-                onTap: () => setState(() => _checked = !_checked),
-                borderRadius: R.tile,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: Gap.sm),
-                  child: Row(
-                    children: [
-                      Checkbox(
-                        value: _checked,
-                        onChanged: (v) => setState(() => _checked = v ?? false),
-                        activeColor: t.accent2,
-                        checkColor: t.onAccent,
-                      ),
-                      Expanded(
-                        child: Text(l.rulesAccept,
-                            style: Theme.of(context).textTheme.bodyMedium),
-                      ),
-                    ],
-                  ),
-                ),
+              const SizedBox(height: Gap.md),
+              // Nol toqat: haqorat va ta'qib qiluvchilar ham (1.2).
+              Text(l.rulesZeroTolerance,
+                  key: const ValueKey('rules-zero-tolerance'),
+                  style: Theme.of(context).textTheme.bodyMedium),
+              const SizedBox(height: Gap.md),
+              const RulesAiNotice(),
+              const SizedBox(height: Gap.md),
+              _ConsentRow(
+                key: const ValueKey('rules-accept'),
+                value: _checked,
+                label: l.rulesAccept,
+                onChanged: (v) => setState(() => _checked = v),
+              ),
+              _ConsentRow(
+                key: const ValueKey('rules-ai-consent'),
+                value: _aiChecked,
+                label: l.rulesAiConsent,
+                onChanged: (v) => setState(() => _aiChecked = v),
               ),
               const SizedBox(height: Gap.lg),
               NovaButton(
                 label: l.rulesContinue,
-                onPressed: _checked
+                // IKKALA rozilik ham shart: qoidalar va AI tekshiruvi.
+                onPressed: _checked && _aiChecked
                     ? () => Navigator.of(context).pop(true)
                     : null,
               ),
@@ -175,6 +192,85 @@ class _RulesSheetState extends State<_RulesSheet> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Rozilik qatori — katakcha va matn.
+///
+/// Qatorning HAMMASI bosiladi — kichik kvadratni aniq nishonga olish
+/// shart emas.
+class _ConsentRow extends StatelessWidget {
+  const _ConsentRow({
+    super.key,
+    required this.value,
+    required this.label,
+    required this.onChanged,
+  });
+
+  final bool value;
+  final String label;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return InkWell(
+      onTap: () => onChanged(!value),
+      borderRadius: R.tile,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: Gap.sm),
+        child: Row(
+          children: [
+            Checkbox(
+              value: value,
+              onChanged: (v) => onChanged(v ?? false),
+              activeColor: t.accent2,
+              checkColor: t.onAccent,
+            ),
+            Expanded(
+              child:
+                  Text(label, style: Theme.of(context).textTheme.bodyMedium),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// SUN'IY INTELLEKT HAQIDA OCHIQ YOZUV (App Store 5.1.2(i)).
+///
+/// Kim (Google), nima (Gemini sun'iy intellekti), nimani (rasm va
+/// video, videoning ovozi bilan) va nima uchun (xavfsizlik tekshiruvi)
+/// — bitta joyda. Darvoza varag'ida ham, joylash ekranidagi qoidalar
+/// kartasida ham AYNAN shu yozuv turadi.
+class RulesAiNotice extends StatelessWidget {
+  const RulesAiNotice({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final l = L.of(context);
+    return Container(
+      key: const ValueKey('rules-ai-notice'),
+      padding: const EdgeInsets.all(Gap.md),
+      decoration: BoxDecoration(
+        color: t.surface2,
+        borderRadius: R.tile,
+        border: Border.all(color: t.border2),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.auto_awesome_rounded, size: 16, color: t.accent2),
+          const SizedBox(width: Gap.sm),
+          Expanded(
+            child: Text(l.rulesAiNotice,
+                style: Theme.of(context).textTheme.bodySmall),
+          ),
+        ],
       ),
     );
   }
@@ -225,8 +321,9 @@ class ContentRulesNote extends ConsumerWidget {
 ///   * qoidabuzarlikda kontent o'chiriladi, hisob bloklanishi mumkin
 ///     (`bannedUntil` — server joylashni 403 `BANNED` bilan rad etadi).
 ///
-/// Yuklangan rasm serverda avtomatik tekshiriladi
-/// (`hosting/api/image-moderation.js`); video — faqat shikoyat orqali.
+/// Yuklangan rasm va video serverda Google Gemini orqali avtomatik
+/// tekshiriladi (`hosting/api/image-moderation.js`) — kartada buni
+/// [RulesAiNotice] ochiq aytadi.
 class ContentRulesCard extends StatelessWidget {
   const ContentRulesCard({super.key});
 
@@ -297,6 +394,8 @@ class ContentRulesCard extends StatelessWidget {
           const SizedBox(height: Gap.md),
           Text(l.rulesCardProcess,
               style: Theme.of(context).textTheme.bodySmall),
+          const SizedBox(height: Gap.md),
+          const RulesAiNotice(),
         ],
       ),
     );

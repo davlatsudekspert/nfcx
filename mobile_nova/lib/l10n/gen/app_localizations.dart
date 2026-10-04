@@ -465,6 +465,18 @@ abstract class L {
   /// **'Parol kamida 8 belgidan iborat bo‘lsin'**
   String get errPasswordShort;
 
+  /// No description provided for @errPasswordShortLogin.
+  ///
+  /// In uz, this message translates to:
+  /// **'Parol kamida 6 belgidan iborat'**
+  String get errPasswordShortLogin;
+
+  /// No description provided for @errBadLogin.
+  ///
+  /// In uz, this message translates to:
+  /// **'Email yoki telefon raqamini to‘g‘ri kiriting'**
+  String get errBadLogin;
+
   /// No description provided for @errNameShort.
   ///
   /// In uz, this message translates to:
@@ -666,7 +678,7 @@ abstract class L {
   /// No description provided for @loginSubtitlePassword.
   ///
   /// In uz, this message translates to:
-  /// **'Email va parolingizni kiriting'**
+  /// **'Email yoki telefon va parolingizni kiriting'**
   String get loginSubtitlePassword;
 
   /// No description provided for @fieldEmail.
@@ -674,6 +686,18 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Email'**
   String get fieldEmail;
+
+  /// No description provided for @fieldLogin.
+  ///
+  /// In uz, this message translates to:
+  /// **'Email yoki telefon'**
+  String get fieldLogin;
+
+  /// No description provided for @fieldLoginHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'siz@example.com / +998 90 123 45 67'**
+  String get fieldLoginHint;
 
   /// No description provided for @fieldPhone.
   ///
@@ -978,7 +1002,7 @@ abstract class L {
   /// No description provided for @homeNoIdHintIos.
   ///
   /// In uz, this message translates to:
-  /// **'Qidiruvda bo‘sh ID tanlang va o‘zingizniki qiling'**
+  /// **'NFC ID’ingiz shu yerda ko‘rinadi. NFCSTORE karta yoki stikeringiz bo‘lsa, uni konvertdagi kod bilan faollashtiring.'**
   String get homeNoIdHintIos;
 
   /// No description provided for @homeBizAddress.
@@ -2331,6 +2355,24 @@ abstract class L {
   /// **'Davom etish'**
   String get rulesContinue;
 
+  /// No description provided for @rulesZeroTolerance.
+  ///
+  /// In uz, this message translates to:
+  /// **'NFCSTORE’da nomaqbul kontentga hamda boshqalarni haqorat qiladigan, tahqirlaydigan yoki ta’qib qiladigan foydalanuvchilarga mutlaqo toqat qilinmaydi. Shikoyatlar tezda ko‘rib chiqiladi: qoidabuzar kontent o‘chiriladi, bunday foydalanuvchilarning hisobi bloklanadi.'**
+  String get rulesZeroTolerance;
+
+  /// No description provided for @rulesAiNotice.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yuklangan rasm va videolar (videodagi ovoz ham) joylashdan oldin xavfsizlik uchun Google Gemini sun’iy intellekti orqali avtomatik tekshiriladi. Ular Google’ga faqat shu tekshiruv uchun yuboriladi.'**
+  String get rulesAiNotice;
+
+  /// No description provided for @rulesAiConsent.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yuklagan rasm va videolarim Google Gemini sun’iy intellekti orqali avtomatik tekshirilishiga roziman'**
+  String get rulesAiConsent;
+
   /// No description provided for @rulesReminder.
   ///
   /// In uz, this message translates to:
@@ -2876,18 +2918,6 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Shaxsiy profil, biznes sahifa va NFC ID — barchasi bitta mobil ilovada.'**
   String get demoHeroBody;
-
-  /// No description provided for @demoChipIphone.
-  ///
-  /// In uz, this message translates to:
-  /// **'iPhone 18 bilan ishlaydi'**
-  String get demoChipIphone;
-
-  /// No description provided for @demoChipSamsung.
-  ///
-  /// In uz, this message translates to:
-  /// **'Samsung S26 bilan ishlaydi'**
-  String get demoChipSamsung;
 
   /// No description provided for @demoChipReady.
   ///
@@ -4314,7 +4344,7 @@ abstract class L {
   /// No description provided for @rulesCardProcess.
   ///
   /// In uz, this message translates to:
-  /// **'Har bir post, reel, istoriya va izohda “Shikoyat qilish” bor. Yuklangan rasmlar avtomatik tekshiriladi. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.'**
+  /// **'Har bir post, reel, istoriya va izohda “Shikoyat qilish” bor. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.'**
   String get rulesCardProcess;
 
   /// No description provided for @storyCaption.
@@ -4742,6 +4772,12 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'So‘rovdan keyin barcha qurilmalarda hisobdan chiqasiz; NFC ID profillaringiz, biznes sahifalaringiz, postlar, istoriyalar va izohlar darhol yashiriladi. 30 kundan keyin hisob va unga bog‘langan ma’lumotlar butunlay o‘chiriladi (balans, faol buyurtma yoki tekshiruv bo‘lsa — ular hal bo‘lgach). NFC ID va Business ID’lar uchun to‘langan pul qaytarilmaydi, ular 90 kun hech kimga berilmaydi. To‘lov yozuvlari va dalil arxivi qonun bo‘yicha saqlanadi — batafsil: nfcstore.uz/delete-account'**
   String get deleteAccountWhat;
+
+  /// No description provided for @deleteAccountWhatIos.
+  ///
+  /// In uz, this message translates to:
+  /// **'So‘rovdan keyin barcha qurilmalarda hisobdan chiqasiz; NFC ID profillaringiz, biznes sahifalaringiz, postlar, istoriyalar va izohlar darhol yashiriladi. 30 kundan keyin hisob va unga bog‘langan ma’lumotlar butunlay o‘chiriladi (hal qilinmagan masala bo‘lsa — u hal bo‘lgach). Bo‘shagan ID’lar 90 kun hech kimga berilmaydi. Qonun talab qiladigan yozuvlar belgilangan muddat saqlanadi.'**
+  String get deleteAccountWhatIos;
 
   /// No description provided for @deleteAccountUnderstood.
   ///

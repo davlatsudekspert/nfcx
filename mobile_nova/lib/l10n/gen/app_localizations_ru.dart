@@ -193,6 +193,12 @@ class LRu extends L {
   String get errPasswordShort => 'Пароль должен быть не менее 8 символов';
 
   @override
+  String get errPasswordShortLogin => 'Пароль — не менее 6 символов';
+
+  @override
+  String get errBadLogin => 'Введите корректный email или номер телефона';
+
+  @override
   String get errNameShort => 'Имя слишком короткое';
 
   @override
@@ -297,10 +303,16 @@ class LRu extends L {
   String get loginSubtitle => 'Введите email и номер телефона';
 
   @override
-  String get loginSubtitlePassword => 'Введите email и пароль';
+  String get loginSubtitlePassword => 'Введите email или телефон и пароль';
 
   @override
   String get fieldEmail => 'Email';
+
+  @override
+  String get fieldLogin => 'Email или телефон';
+
+  @override
+  String get fieldLoginHint => 'vy@example.com / +998 90 123 45 67';
 
   @override
   String get fieldPhone => 'Телефон';
@@ -461,7 +473,7 @@ class LRu extends L {
 
   @override
   String get homeNoIdHintIos =>
-      'Найдите свободный ID в поиске и сделайте его своим';
+      'Здесь появится ваш NFC ID. Если у вас есть карта или наклейка NFCSTORE, активируйте её кодом из конверта.';
 
   @override
   String get homeBizAddress => 'АДРЕС БИЗНЕСА';
@@ -1165,6 +1177,18 @@ class LRu extends L {
   String get rulesContinue => 'Продолжить';
 
   @override
+  String get rulesZeroTolerance =>
+      'В NFCSTORE действует нулевая терпимость к недопустимому контенту и к пользователям, которые оскорбляют, унижают или преследуют других. Жалобы рассматриваются оперативно: нарушающий контент удаляется, аккаунты таких пользователей блокируются.';
+
+  @override
+  String get rulesAiNotice =>
+      'Загружаемые фото и видео (включая звук в видео) перед публикацией автоматически проверяются на безопасность искусственным интеллектом Google Gemini. В Google они передаются только для этой проверки.';
+
+  @override
+  String get rulesAiConsent =>
+      'Я согласен(на), что мои фото и видео автоматически проверяются искусственным интеллектом Google Gemini';
+
+  @override
   String get rulesReminder => 'Публикуя, вы соглашаетесь с правилами контента.';
 
   @override
@@ -1446,12 +1470,6 @@ class LRu extends L {
   @override
   String get demoHeroBody =>
       'Личный профиль, бизнес-страница и NFC ID — всё в одном приложении.';
-
-  @override
-  String get demoChipIphone => 'Работает с iPhone 18';
-
-  @override
-  String get demoChipSamsung => 'Работает с Samsung S26';
 
   @override
   String get demoChipReady => 'NFC ready';
@@ -2228,7 +2246,7 @@ class LRu extends L {
 
   @override
   String get rulesCardProcess =>
-      'В каждом посте, reels, истории и комментарии есть «Пожаловаться». Загруженные фото проверяются автоматически. Жалобы проверяет модератор: нарушающий контент удаляется, при повторении аккаунт блокируется.';
+      'В каждом посте, reels, истории и комментарии есть «Пожаловаться». Жалобы проверяет модератор: нарушающий контент удаляется, при повторении аккаунт блокируется.';
 
   @override
   String get storyCaption => 'Короткий текст на истории';
@@ -2467,6 +2485,10 @@ class LRu extends L {
   @override
   String get deleteAccountWhat =>
       'После запроса вы выйдете из аккаунта на всех устройствах; профили NFC ID, бизнес-страницы, посты, истории и комментарии сразу скрываются. Через 30 дней аккаунт и связанные данные удаляются полностью (если есть остаток средств, активный заказ или идёт проверка — после их завершения). Оплата за NFC ID и Business ID не возвращается, 90 дней эти ID никому не выдаются. Записи платежей и архив доказательств хранятся по закону — подробнее: nfcstore.uz/delete-account';
+
+  @override
+  String get deleteAccountWhatIos =>
+      'После запроса вы выйдете из аккаунта на всех устройствах; профили NFC ID, бизнес-страницы, посты, истории и комментарии сразу скрываются. Через 30 дней аккаунт и связанные данные удаляются полностью (если есть нерешённый вопрос — после его решения). Освободившиеся ID 90 дней никому не выдаются. Записи, которые требует хранить закон, хранятся установленный срок.';
 
   @override
   String get deleteAccountUnderstood => 'Понимаю, удалить аккаунт';

@@ -20,10 +20,42 @@ import '../../l10n/gen/app_localizations.dart';
 import '../auth/session.dart';
 import '../home/home_screen.dart';
 import '../home/widgets/avatar.dart';
+import '../shop/store_policy.dart' show isAppStoreBuild;
 import 'contact_editor.dart';
 import 'profile_repository.dart';
+import '../social/content_rules.dart';
 import '../social/media_frame.dart';
 import '../../core/utils/media_url.dart';
+
+/// iPhone'da qurilmadagi qo'shiq FAYLLAR oynasidan tanlanadi.
+const kIosMusicExtensions = ['mp3', 'm4a', 'aac', 'wav'];
+
+/// "Musiqa qo'shish" qaysi oynani ochadi.
+///
+/// ## iPHONE'DA — FAYLLAR (UIDocumentPicker), MUSIQA KUTUBXONASI EMAS
+///
+/// `FileType.audio` iOS'da Apple Music kutubxonasini
+/// (`MPMediaPickerController`) ochadi. Unga Info.plist'da
+/// `NSAppleMusicUsageDescription` shart — kalit yo'q edi va ilova
+/// "Musiqa qo'shish" bosilgan ZAHOTI yiqilardi (App Store 2.1).
+/// Kalit qo'shilgan bo'lsa ham u yo'l deyarli foydasiz: Apple Music
+/// treklari DRM bilan himoyalangan yoki bulutda turadi, plagin
+/// ulardan fayl ololmaydi va odam hech narsa olmaydi.
+///
+/// `FileType.custom` esa iOS'da Fayllar oynasini ochadi — unga
+/// HECH QANDAY ruxsat kerak emas (tizim oynasi, ilova faqat tanlangan
+/// faylni oladi). Kengaytmalar serverning sehrli bayt tekshiruvi
+/// qabul qiladiganlar (`sniffAnyFileTypeD1`: mp3, m4a/mp4, wav; ADTS
+/// aac — mp3 sarlavhasi bilan) va iPhone pleyeri o'ynay oladiganlar.
+/// ogg/flac ataylab yo'q: AVPlayer ularni o'ynamaydi.
+///
+/// Kalit Info.plist'da baribir turadi — plagin kutubxona kodini
+/// yig'adi (ITMS-90683) va kimdir bu yerni qaytarsa ham ilova
+/// yiqilmasin. ANDROID O'ZGARMAYDI (`isAppStoreBuild`).
+({FileType type, List<String>? extensions}) musicPickerSpec() =>
+    isAppStoreBuild
+        ? (type: FileType.custom, extensions: kIosMusicExtensions)
+        : (type: FileType.audio, extensions: null);
 
 /// Profilni tahrirlash.
 ///
@@ -92,11 +124,14 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   ///
   /// `image_picker` audio tanlay olmaydi — shuning uchun
   /// `file_picker`. Fayl OQIM bilan yuboriladi
-  /// (`/api/upload-file`), base64 emas.
+  /// (`/api/upload-file`), base64 emas. Oyna turi platformaga
+  /// qarab — [musicPickerSpec] izohiga qarang.
   Future<void> _pickMusic() async {
     final l = L.of(context);
+    final spec = musicPickerSpec();
     final picked = await FilePicker.pickFiles(
-      type: FileType.audio,
+      type: spec.type,
+      allowedExtensions: spec.extensions,
       withData: false,
     );
     final path = picked?.files.singleOrNull?.path;
@@ -142,6 +177,10 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   /// tuzatilib, ikkinchisi unutilishiga olib kelardi.
   Future<void> _pickImage({required bool cover}) async {
     final l = L.of(context);
+    // Rasm Google Gemini bilan tekshiriladi — avval ochiq yozuv va
+    // ANIQ rozilik (`ensureContentRules`, App Store 5.1.2(i)). Rozilik
+    // bor bo'lsa darhol o'tadi.
+    if (!await ensureContentRules(context, ref) || !mounted) return;
     final f = await _picker.pickImage(
       source: ImageSource.gallery,
       // Avatar hech qachon 800px dan katta ko'rsatilmaydi; muqova

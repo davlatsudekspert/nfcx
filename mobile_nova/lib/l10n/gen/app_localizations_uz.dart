@@ -194,6 +194,12 @@ class LUz extends L {
   String get errPasswordShort => 'Parol kamida 8 belgidan iborat bo‘lsin';
 
   @override
+  String get errPasswordShortLogin => 'Parol kamida 6 belgidan iborat';
+
+  @override
+  String get errBadLogin => 'Email yoki telefon raqamini to‘g‘ri kiriting';
+
+  @override
   String get errNameShort => 'Ism juda qisqa';
 
   @override
@@ -298,10 +304,17 @@ class LUz extends L {
   String get loginSubtitle => 'Email va telefon raqamingizni kiriting';
 
   @override
-  String get loginSubtitlePassword => 'Email va parolingizni kiriting';
+  String get loginSubtitlePassword =>
+      'Email yoki telefon va parolingizni kiriting';
 
   @override
   String get fieldEmail => 'Email';
+
+  @override
+  String get fieldLogin => 'Email yoki telefon';
+
+  @override
+  String get fieldLoginHint => 'siz@example.com / +998 90 123 45 67';
 
   @override
   String get fieldPhone => 'Telefon';
@@ -462,7 +475,7 @@ class LUz extends L {
 
   @override
   String get homeNoIdHintIos =>
-      'Qidiruvda bo‘sh ID tanlang va o‘zingizniki qiling';
+      'NFC ID’ingiz shu yerda ko‘rinadi. NFCSTORE karta yoki stikeringiz bo‘lsa, uni konvertdagi kod bilan faollashtiring.';
 
   @override
   String get homeBizAddress => 'BIZNES MANZILI';
@@ -1171,6 +1184,18 @@ class LUz extends L {
   String get rulesContinue => 'Davom etish';
 
   @override
+  String get rulesZeroTolerance =>
+      'NFCSTORE’da nomaqbul kontentga hamda boshqalarni haqorat qiladigan, tahqirlaydigan yoki ta’qib qiladigan foydalanuvchilarga mutlaqo toqat qilinmaydi. Shikoyatlar tezda ko‘rib chiqiladi: qoidabuzar kontent o‘chiriladi, bunday foydalanuvchilarning hisobi bloklanadi.';
+
+  @override
+  String get rulesAiNotice =>
+      'Yuklangan rasm va videolar (videodagi ovoz ham) joylashdan oldin xavfsizlik uchun Google Gemini sun’iy intellekti orqali avtomatik tekshiriladi. Ular Google’ga faqat shu tekshiruv uchun yuboriladi.';
+
+  @override
+  String get rulesAiConsent =>
+      'Yuklagan rasm va videolarim Google Gemini sun’iy intellekti orqali avtomatik tekshirilishiga roziman';
+
+  @override
   String get rulesReminder =>
       'Joylash bilan kontent qoidalariga rozilik bildirasiz.';
 
@@ -1455,12 +1480,6 @@ class LUz extends L {
   @override
   String get demoHeroBody =>
       'Shaxsiy profil, biznes sahifa va NFC ID — barchasi bitta mobil ilovada.';
-
-  @override
-  String get demoChipIphone => 'iPhone 18 bilan ishlaydi';
-
-  @override
-  String get demoChipSamsung => 'Samsung S26 bilan ishlaydi';
 
   @override
   String get demoChipReady => 'NFC ready';
@@ -2235,7 +2254,7 @@ class LUz extends L {
 
   @override
   String get rulesCardProcess =>
-      'Har bir post, reel, istoriya va izohda “Shikoyat qilish” bor. Yuklangan rasmlar avtomatik tekshiriladi. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.';
+      'Har bir post, reel, istoriya va izohda “Shikoyat qilish” bor. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.';
 
   @override
   String get storyCaption => 'Istoriyaga qisqa matn';
@@ -2473,6 +2492,10 @@ class LUz extends L {
   @override
   String get deleteAccountWhat =>
       'So‘rovdan keyin barcha qurilmalarda hisobdan chiqasiz; NFC ID profillaringiz, biznes sahifalaringiz, postlar, istoriyalar va izohlar darhol yashiriladi. 30 kundan keyin hisob va unga bog‘langan ma’lumotlar butunlay o‘chiriladi (balans, faol buyurtma yoki tekshiruv bo‘lsa — ular hal bo‘lgach). NFC ID va Business ID’lar uchun to‘langan pul qaytarilmaydi, ular 90 kun hech kimga berilmaydi. To‘lov yozuvlari va dalil arxivi qonun bo‘yicha saqlanadi — batafsil: nfcstore.uz/delete-account';
+
+  @override
+  String get deleteAccountWhatIos =>
+      'So‘rovdan keyin barcha qurilmalarda hisobdan chiqasiz; NFC ID profillaringiz, biznes sahifalaringiz, postlar, istoriyalar va izohlar darhol yashiriladi. 30 kundan keyin hisob va unga bog‘langan ma’lumotlar butunlay o‘chiriladi (hal qilinmagan masala bo‘lsa — u hal bo‘lgach). Bo‘shagan ID’lar 90 kun hech kimga berilmaydi. Qonun talab qiladigan yozuvlar belgilangan muddat saqlanadi.';
 
   @override
   String get deleteAccountUnderstood => 'Tushundim, hisobimni o‘chirish';

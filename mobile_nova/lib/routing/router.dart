@@ -39,6 +39,8 @@ import '../features/settings/analytics_screen.dart';
 import '../features/settings/settings_subscreens.dart';
 import '../features/shop/nfc_id_market.dart';
 import '../features/shop/shop_screens.dart';
+import '../features/shop/store_policy.dart'
+    show showNewsEntry, showNotificationSettings;
 import '../features/social/post_screens.dart';
 import '../features/social/reels_screen.dart';
 import '../features/social/story_viewer.dart';
@@ -457,8 +459,13 @@ final routerProvider = Provider<GoRouter>((ref) {
               path: 'language',
               builder: (_, __) => const LanguageSettingsScreen()),
           GoRoute(path: 'theme', builder: (_, __) => const ThemeSettingsScreen()),
+          // iPhone'da bildirishnoma sozlamasi YO'Q
+          // (`showNotificationSettings`): havola yoki eski holat bilan
+          // ochilsa ham Sozlamalarga buriladi.
           GoRoute(
               path: 'notifications',
+              redirect: (_, __) =>
+                  showNotificationSettings ? null : Routes.settings,
               builder: (_, __) => const NotificationsSettingsScreen()),
           GoRoute(
               path: 'privacy',
@@ -476,7 +483,13 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: 'premium', builder: (_, __) => const PremiumScreen()),
           GoRoute(path: 'support', builder: (_, __) => const SupportScreen()),
           GoRoute(path: 'about', builder: (_, __) => const AboutScreen()),
-          GoRoute(path: 'news', builder: (_, __) => const NewsScreen()),
+          // iPhone'da yangiliklar YO'Q (`showNewsEntry`) — `nfcstore://`
+          // havolasi bilan ochilsa ham "Ilova haqida" ga buriladi.
+          GoRoute(
+            path: 'news',
+            redirect: (_, __) => showNewsEntry ? null : Routes.settingsAbout,
+            builder: (_, __) => const NewsScreen(),
+          ),
         ],
       ),
     ],

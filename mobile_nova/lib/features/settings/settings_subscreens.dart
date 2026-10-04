@@ -410,7 +410,14 @@ class _SecuritySettingsScreenState
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(l.deleteAccountWhat),
+                // iPhone'da pullik NFC/Business ID, pul qaytarilmasligi
+                // va sayt manzili TILGA OLINMAYDI (Apple 3.1.1 / 3.1.3:
+                // ilova tashqarisida sotiladigan raqamli mahsulotga
+                // ishora). Mazmun — chiqish, yashirish, 30 kun, 90 kun —
+                // o'sha. ANDROID O'ZGARMAYDI.
+                Text(isAppStoreBuild
+                    ? l.deleteAccountWhatIos
+                    : l.deleteAccountWhat),
                 const SizedBox(height: Gap.md),
                 CheckboxListTile(
                   key: const ValueKey('delete-understood'),
@@ -505,7 +512,9 @@ class _NotificationsSettingsScreenState
       // iPhone'da "Buyurtmalar" ekrani yo'q (`showOrdersEntry`) —
       // ular haqidagi bildirishnoma tanlovi ham yo'q.
       if (showOrdersEntry) ('orders', l.orders, Icons.receipt_long_rounded),
-      ('news', l.settingsNews, Icons.campaign_rounded),
+      // Yangiliklar bo'limi yo'q joyda (iPhone, `showNewsEntry`) ular
+      // haqidagi tanlov ham yo'q.
+      if (showNewsEntry) ('news', l.settingsNews, Icons.campaign_rounded),
     ];
 
     return NovaScaffold(
@@ -1420,23 +1429,28 @@ class AboutScreen extends StatelessWidget {
             label: l.legalTerms,
             url: 'https://$kSiteHost/shartlar',
           ),
-          SectionHeader(title: l.settingsNews),
-          FloatingSurface(
-            solid: true,
-            // O'z sahifasi — Tanlov tabi (shell branch) EMAS: uni shell
-            // tashqarisidan push qilish qora sahifa berardi (news_screen.dart).
-            onTap: () => context.push(Routes.settingsNews),
-            child: Row(
-              children: [
-                Icon(Icons.campaign_rounded, size: 19, color: t.accent2),
-                const SizedBox(width: Gap.md),
-                Expanded(
-                    child: Text(l.settingsNews,
-                        style: Theme.of(context).textTheme.bodyLarge)),
-                Icon(Icons.chevron_right_rounded, size: 18, color: t.text3),
-              ],
+          // iPhone'da YANGILIKLAR YO'Q (`showNewsEntry` izohida):
+          // serverdagi yozuvlarda saytda NFC ID xaridi va Android
+          // ilova haqida e'lonlar bor edi. ANDROID O'ZGARMAYDI.
+          if (showNewsEntry) ...[
+            SectionHeader(title: l.settingsNews),
+            FloatingSurface(
+              solid: true,
+              // O'z sahifasi — Tanlov tabi (shell branch) EMAS: uni shell
+              // tashqarisidan push qilish qora sahifa berardi (news_screen.dart).
+              onTap: () => context.push(Routes.settingsNews),
+              child: Row(
+                children: [
+                  Icon(Icons.campaign_rounded, size: 19, color: t.accent2),
+                  const SizedBox(width: Gap.md),
+                  Expanded(
+                      child: Text(l.settingsNews,
+                          style: Theme.of(context).textTheme.bodyLarge)),
+                  Icon(Icons.chevron_right_rounded, size: 18, color: t.text3),
+                ],
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );

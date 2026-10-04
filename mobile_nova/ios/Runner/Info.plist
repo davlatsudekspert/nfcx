@@ -37,23 +37,40 @@
 	          provisioning profil — hisob ochilgach.
 	     Haqiqiy iPhone'da NFC hali SINALMAGAN —
 	     `IOS_RELEASE_CHECKLIST.md` ga qarang. -->
+	<!-- RUXSAT MATNLARI — IKKI TILDA, BITTA QATORDA (App Store 5.1.1(ii)).
+	     Ilova interfeysi uz/ru/en, tekshiruvchi esa odatda inglizcha
+	     o'qiydi: faqat o'zbekcha matn "maqsadi tushunarsiz" deb rad
+	     etilishi mumkin edi. Shuning uchun har matn "O'zbekcha … /
+	     English …" shaklida va NIMA UCHUN kerakligini aniq aytadi. -->
 	<key>NFCReaderUsageDescription</key>
-	<string>NFC kartangizga profil manzilingizni yozish va kartalarni o‘qish uchun kerak.</string>
+	<string>NFC karta va stikerlarni o‘qish hamda profilingiz havolasini o‘z kartangizga yozish uchun kerak. / NFCSTORE uses NFC to read NFC cards and stickers and to write your profile link to your own card.</string>
 	<!-- Rasm / video tanlash va suratga olish (image_picker, file_picker).
 	     Bu kalitlar bo'lmasa iOS ilovani galereya yoki kamera
 	     ochilgan ZAHOTI yopib yuboradi va App Store buni rad etadi. -->
 	<!-- Face ID: bu matnsiz iOS Face ID oynasini ochmaydi (local_auth
 	     xato qaytaradi) — ilova qulfi faqat PIN bilan qolardi. -->
 	<key>NSFaceIDUsageDescription</key>
-	<string>Ilova qulfini PIN o‘rniga Face ID bilan ochish uchun kerak.</string>
+	<string>Ilova qulfini PIN o‘rniga Face ID bilan ochish uchun kerak. / NFCSTORE uses Face ID to open the app lock instead of typing your PIN.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Profil rasmi, post va istoriya uchun suratga olish uchun kerak.</string>
+	<string>Profil, post, istoriya va Reels uchun surat yoki video olish uchun kerak. / NFCSTORE uses the camera so you can take a photo or record a video for your profile, posts, stories and Reels.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Galereyadan rasm va video tanlab, profil, post va istoriyaga qo‘yish uchun kerak.</string>
+	<string>Galereyadan rasm yoki video tanlab, profil, post, istoriya, Reels va biznes katalogiga qo‘yish uchun kerak. / NFCSTORE uses your photo library so you can choose photos or videos for your profile, posts, stories, Reels and business catalog.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Video yozishda ovozni ham yozib olish uchun kerak.</string>
+	<string>Post, istoriya yoki Reels uchun video yozganda ovozni ham yozib olish uchun kerak. / NFCSTORE uses the microphone to record sound when you record a video for a post, story or Reel.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>QR kod va rasmlarni galereyaga saqlash uchun kerak.</string>
+	<string>Rasm yoki videoni o‘zingiz Rasmlar (Photos) ilovasiga saqlashni tanlaganingizda kerak. / NFCSTORE needs this only when you choose to save an image or video to your Photos.</string>
+	<!-- MUSIQA KUTUBXONASI (iOS "Music" / MPMediaPickerController).
+	
+	     Profil tahririda "Musiqa qo'shish" iPhone'da ENDI Fayllar
+	     (UIDocumentPicker) oynasini ochadi — unga ruxsat kerak emas
+	     (`profile_edit_screen.dart`, `FileType.custom`). Lekin
+	     file_picker plagini musiqa kutubxonasi kodini (PICKER_AUDIO)
+	     baribir ilovaga qo'shib yig'adi: kalit bo'lmasa App Store
+	     Connect yuklashda ITMS-90683 ogohlantirishini beradi, kod
+	     qachondir `FileType.audio` ga qaytsa esa ilova o'sha zahoti
+	     YIQILADI. Shuning uchun kalit ikkala holatda ham turadi. -->
+	<key>NSAppleMusicUsageDescription</key>
+	<string>Profilingizga qo‘shish uchun qurilmangizdagi qo‘shiqni tanlaganingizda kerak. / NFCSTORE uses your media library only when you choose a song on your device to add to your profile.</string>
 	<!-- Ilova shifrlashni faqat standart HTTPS uchun ishlatadi:
 	     App Store Connect har yuklashda eksport so'rovini bermasin. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
