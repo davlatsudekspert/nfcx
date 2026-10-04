@@ -1,0 +1,507 @@
+From a015d5c738f87143e27f454a124a838f47773df8 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 4 Oct 2026 07:43:10 +0000
+Subject: [PATCH] Biometrika qaytarildi: Face ID / Touch ID / barmoq izi bilan
+ ilova qulfi
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Sentyabrda `local_auth` Android release buildini R8 bosqichida qotirgani
+uchun olib tashlangan edi. Hozirgi toolchain'da (Flutter 3.35.5, AGP
+8.9.1, local_auth 3.0.1 / local_auth_android 2.0.8) bu takrorlanmadi:
+release APK local_auth bilan 153 s, usiz 190 s.
+
+- pubspec: local_auth ^3.0.1
+- Android: MainActivity -> FlutterFragmentActivity (BiometricPrompt
+  talabi), USE_BIOMETRIC ruxsati, API darajasi kanali
+  (uz.nfcstore.nova/device)
+- iOS: NSFaceIDUsageDescription (usiz Face ID oynasi ochilmaydi)
+- biometricAvailableProvider: faqat YOZILGAN biometrika bo'lsa va
+  Android 9+ / iOS da true; Android < 9 da local_auth hujjatiga ko'ra
+  AppCompat bo'lmagan tema bilan qulashi mumkin — u yerda PIN qoladi
+- qulf ekrani: biometrika avtomatik taklif qilinadi va barmoq izi
+  tugmasi faqat mavjud bo'lsa chiqadi; PIN har doim ishlaydi
+- Sozlamalar: biometrika kaliti, mavjud bo'lmasa o'chiq va sababi
+  yozilgan (kalit rangi mavzudan — patch 0010 qo'riqchisi)
+- testlar: barmoq izi tugmasi bor/yo'q/sozlamada o'chiq (3 ta)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ mobile_nova/FINAL_GAPS.md                     |   9 +-
+ .../android/app/src/main/AndroidManifest.xml  |   2 +
+ .../kotlin/uz/nfcstore/nova/MainActivity.kt   |  17 ++-
+ mobile_nova/ios/Runner/Info.plist             |   4 +
+ .../lib/features/settings/app_lock.dart       | 112 ++++++++++++++----
+ .../settings/settings_subscreens.dart         |  27 ++++-
+ mobile_nova/pubspec.lock                      |  40 +++++++
+ mobile_nova/pubspec.yaml                      |   2 +
+ mobile_nova/test/app_lock_test.dart           |  58 +++++++++
+ 9 files changed, 239 insertions(+), 32 deletions(-)
+
+diff --git a/mobile_nova/FINAL_GAPS.md b/mobile_nova/FINAL_GAPS.md
+index 9691b82..fff1d65 100644
+--- a/mobile_nova/FINAL_GAPS.md
++++ b/mobile_nova/FINAL_GAPS.md
+@@ -116,7 +116,7 @@ Bular ilovada UI sifatida bor edi, lekin **umuman ishlamasdi**.
+ | Feature | Status | Izoh |
+ |---|---|---|
+ | Lokal ilova qulfi (PIN) | DONE | PIN Keystore ichida, `SharedPreferences` da emas — test qo'riqlaydi |
+-| **Biometrika** | **FAILED (qaytarildi)** | `local_auth` qo'shilganda Android buildi R8 bosqichida QOTIB QOLDI. Uch urinishda ham (ikkitasi qayta ishga tushirish, bittasi Gradle xotirasi tuzatilgandan keyin) build aynan "Universal APK" bosqichida 40–60 daqiqa osilib turdi va xatolik ham bermadi; paketsiz esa ~7 daqiqada o'tadi. Paket olib tashlandi, qulf FAQAT PIN bilan ishlaydi — bu to'liq ishlaydigan himoya. Qaytarish uchun R8/`androidx.biometric` o'zaro ta'sirini aniqlash kerak |
++| Biometrika (Face ID / Touch ID / barmoq izi) | DONE (2026-10-04 qaytarildi) | Sentyabrdagi "R8 da qotish" hozirgi toolchain'da (Flutter 3.35.5, AGP 8.9.1, `local_auth` 3.0.1) takrorlanmadi: release APK `local_auth` bilan 153 s, usiz 190 s, Java xotirasi eng ko'pi 3.4 GB. Biometrika faqat qurilmada YOZILGAN biometrika bo'lsa va Android 9+ / iOS da taklif qilinadi; aks holda tugma yo'q (o'chiq, sababi yozilgan). iOS'da `NSFaceIDUsageDescription` qo'shildi. PIN har doim ishlaydi |
+ | Parolni almashtirish | DONE | |
+ | Mavzu, til | DONE | 5 mavzu, 3 til |
+ | Bildirishnoma sozlamalari | PARTIAL | tanlov lokal saqlanadi; serverga yuborilmaydi (endpoint yo'q) |
+@@ -196,11 +196,8 @@ bo'lmasligi.
+ 3. Qurilmada NFC va media oqimlarini tekshirish (DEVICE REQUIRED).
+ 4. Email kodi bilan kirishni yopish yoki backend'da email
+    infratuzilmasini qo'shish.
+-5. **Biometrik qulfni qaytarish** — `local_auth` bilan R8 nima uchun
+-   qotib qolishini aniqlash (`-keep`/`-dontwarn androidx.biometric.**`
+-   yoki `android.enableR8.fullMode=false` bilan sinab ko'rish).
+-   Hozir qulf PIN bilan to'liq ishlaydi, biometrika esa YO'Q va
+-   bordek ko'rsatilmaydi.
++5. **Biometrik qulf** — qaytarildi (2026-10-04). Qurilmada tekshirish
++   kerak: Face ID (iPhone) va barmoq izi (Android 9+) bilan ochish.
+ 
+ ---
+ 
+diff --git a/mobile_nova/android/app/src/main/AndroidManifest.xml b/mobile_nova/android/app/src/main/AndroidManifest.xml
+index 2f84f12..5e4edbc 100644
+--- a/mobile_nova/android/app/src/main/AndroidManifest.xml
++++ b/mobile_nova/android/app/src/main/AndroidManifest.xml
+@@ -1,6 +1,8 @@
+ <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+     <uses-permission android:name="android.permission.INTERNET"/>
+     <uses-permission android:name="android.permission.NFC"/>
++    <!-- Ilova qulfi: barmoq izi / yuz bilan ochish (local_auth, BiometricPrompt). -->
++    <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
+     <uses-feature android:name="android.hardware.nfc" android:required="false"/>
+ 
+     <!-- TELEFONDA KO'RINADIGAN NOM — "NFCSTORE".
+diff --git a/mobile_nova/android/app/src/main/kotlin/uz/nfcstore/nova/MainActivity.kt b/mobile_nova/android/app/src/main/kotlin/uz/nfcstore/nova/MainActivity.kt
+index 787a790..5c6b7d2 100644
+--- a/mobile_nova/android/app/src/main/kotlin/uz/nfcstore/nova/MainActivity.kt
++++ b/mobile_nova/android/app/src/main/kotlin/uz/nfcstore/nova/MainActivity.kt
+@@ -1,12 +1,25 @@
+ package uz.nfcstore.nova
+ 
+-import io.flutter.embedding.android.FlutterActivity
++import android.os.Build
++import io.flutter.embedding.android.FlutterFragmentActivity
+ import io.flutter.embedding.engine.FlutterEngine
+ import io.flutter.plugin.common.MethodChannel
+ 
+-class MainActivity : FlutterActivity() {
++/// `FlutterActivity` EMAS, `FlutterFragmentActivity`.
++///
++/// `local_auth` biometrik oynani `BiometricPrompt` orqali ochadi va u
++/// `FragmentActivity` talab qiladi. Oddiy `FlutterActivity` bilan
++/// biometrika `no_fragment_activity` xatosi bilan yiqiladi — ilova
++/// qulfi faqat PIN bilan ishlagan bo'lardi.
++class MainActivity : FlutterFragmentActivity() {
+     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+         super.configureFlutterEngine(flutterEngine)
++        // Android API darajasi — ilova qulfi biometrikani faqat Android 9+
++        // da taklif qiladi (app_lock.dart, `biometricAvailableProvider`).
++        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "uz.nfcstore.nova/device")
++            .setMethodCallHandler { call, result ->
++                if (call.method == "sdkInt") result.success(Build.VERSION.SDK_INT) else result.notImplemented()
++            }
+         // Video va rasm tayyorlash — iPhone bilan bir xil kanal
+         // (video_prep.dart, image_prep.dart).
+         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "uz.nfcstore.nova/video")
+diff --git a/mobile_nova/ios/Runner/Info.plist b/mobile_nova/ios/Runner/Info.plist
+index 01da9f1..a59a604 100644
+--- a/mobile_nova/ios/Runner/Info.plist
++++ b/mobile_nova/ios/Runner/Info.plist
+@@ -42,6 +42,10 @@
+ 	<!-- Rasm / video tanlash va suratga olish (image_picker, file_picker).
+ 	     Bu kalitlar bo'lmasa iOS ilovani galereya yoki kamera
+ 	     ochilgan ZAHOTI yopib yuboradi va App Store buni rad etadi. -->
++	<!-- Face ID: bu matnsiz iOS Face ID oynasini ochmaydi (local_auth
++	     xato qaytaradi) — ilova qulfi faqat PIN bilan qolardi. -->
++	<key>NSFaceIDUsageDescription</key>
++	<string>Ilova qulfini PIN o‘rniga Face ID bilan ochish uchun kerak.</string>
+ 	<key>NSCameraUsageDescription</key>
+ 	<string>Profil rasmi, post va istoriya uchun suratga olish uchun kerak.</string>
+ 	<key>NSPhotoLibraryUsageDescription</key>
+diff --git a/mobile_nova/lib/features/settings/app_lock.dart b/mobile_nova/lib/features/settings/app_lock.dart
+index 6d4dd73..a37c096 100644
+--- a/mobile_nova/lib/features/settings/app_lock.dart
++++ b/mobile_nova/lib/features/settings/app_lock.dart
+@@ -1,5 +1,9 @@
++import 'dart:io' show Platform;
++
+ import 'package:flutter/material.dart';
++import 'package:flutter/services.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:local_auth/local_auth.dart';
+ 
+ import '../auth/session.dart';
+ import '../../app/providers.dart';
+@@ -28,8 +32,8 @@ import '../../l10n/gen/app_localizations.dart';
+ /// * PIN `flutter_secure_storage` da (Keystore/Keychain), oddiy
+ ///   `SharedPreferences` da EMAS: u oddiy fayl va root olingan
+ ///   qurilmada o'qiladi.
+-/// * Biometrika HOZIRCHA YO'Q — sababi pastda, `biometric`
+-///   maydonining izohida.
++/// * Biometrika — QULAYLIK, ishonch emas. Qurilmada yo'q bo'lsa
++///   yoki muvaffaqiyatsiz bo'lsa, PIN har doim ishlaydi.
+ /// * Ilova fonga ketganda darhol emas, [_graceDelay] dan keyin
+ ///   qulflanadi: kamera yoki fayl tanlash oynasi ham ilovani fonga
+ ///   chiqaradi va har safar PIN so'ralsa, ishlatib bo'lmasdi.
+@@ -51,17 +55,6 @@ class AppLockState {
+   final bool enabled;
+ 
+   /// Biometrika bilan ochishga ruxsat berilganmi.
+-  ///
+-  /// HOZIRCHA ISHLATILMAYDI. `local_auth` paketi qo'shilganda
+-  /// Android buildi R8 bosqichida QOTIB QOLDI: uchala urinishda ham
+-  /// (ikkitasi qayta ishga tushirish, bittasi Gradle xotirasi
+-  /// tuzatilgandan keyin) build aynan "Universal APK" bosqichida
+-  /// 40-60 daqiqa osilib turdi va xatolik ham bermadi. Paketsiz
+-  /// esa build ~7 daqiqada o'tadi.
+-  ///
+-  /// Shuning uchun paket olib tashlandi va qulf FAQAT PIN bilan
+-  /// ishlaydi — bu to'liq ishlaydigan himoya. Maydon o'z joyida
+-  /// qoldirildi: biometrika qaytarilganda sozlama saqlanib qoladi.
+   final bool biometric;
+ 
+   /// Ayni damda ekran qulflanganmi.
+@@ -171,13 +164,36 @@ final appLockProvider = StateNotifierProvider<AppLock, AppLockState>(
+   (ref) => AppLock(ref.watch(prefsProvider), ref.watch(secureStoreProvider)),
+ );
+ 
+-/// Qurilmada biometrika bormi.
++/// Qurilmada ISHLATSA BO'LADIGAN biometrika bormi.
+ ///
+-/// HOZIRCHA HAR DOIM `false`: biometrika paketi olib tashlangan
+-/// (yuqoridagi izohga qarang). Soxta "bor" qaytarilmaydi —
+-/// sozlamada bosilib, hech narsa qilmaydigan tugma qolmasligi
+-/// kerak.
+-final biometricAvailableProvider = FutureProvider<bool>((ref) async => false);
++/// `isDeviceSupported()` yetarli emas: u faqat ekran kodi bo'lsa ham
++/// `true` qaytaradi, `biometricOnly: true` bilan esa yozilgan barmoq
++/// izi / yuz bo'lmasa oyna ochilmaydi — tugma bosilib hech narsa
++/// qilmasdi. Shuning uchun kamida bitta biometrika YOZILGAN bo'lishi
++/// shart (Face ID, Touch ID, barmoq izi).
++///
++/// Android 8 va undan eskisida (API < 28) taklif qilinmaydi: u yerda
++/// `BiometricPrompt` eski barmoq izi oynasini ishlatadi va `local_auth`
++/// hujjatiga ko'ra AppCompat bo'lmagan tema bilan qulashi mumkin. Temani
++/// almashtirish ishga tushish ekrani va status barga ta'sir qilardi —
++/// shuning uchun bu qurilmalarda qulf PIN bilan ishlayveradi.
++final biometricAvailableProvider = FutureProvider<bool>((ref) async {
++  try {
++    if (Platform.isAndroid) {
++      final sdk = await const MethodChannel('uz.nfcstore.nova/device')
++          .invokeMethod<int>('sdkInt');
++      if (sdk == null || sdk < 28) return false;
++    }
++    final auth = LocalAuthentication();
++    if (!await auth.canCheckBiometrics) return false;
++    return (await auth.getAvailableBiometrics()).isNotEmpty;
++  } on PlatformException {
++    return false;
++  } on MissingPluginException {
++    // Sinov muhitida plagin yo'q — biometrika "yo'q" deb qaraladi.
++    return false;
++  }
++});
+ 
+ /// Qulf ekrani.
+ ///
+@@ -210,6 +226,36 @@ class _LockScreen extends ConsumerStatefulWidget {
+ class _LockScreenState extends ConsumerState<_LockScreen> {
+   String _pin = '';
+   bool _wrong = false;
++  bool _triedBiometric = false;
++
++  @override
++  void initState() {
++    super.initState();
++    WidgetsBinding.instance.addPostFrameCallback((_) => _tryBiometric());
++  }
++
++  Future<void> _tryBiometric() async {
++    if (_triedBiometric) return;
++    _triedBiometric = true;
++    if (!ref.read(appLockProvider).biometric) return;
++    final l = L.of(context);
++    // Sozlama standart holatda yoqiq — qurilmada ishlatsa bo'ladigan
++    // biometrika bo'lmasa (yoki Android < 9) oyna umuman chaqirilmaydi.
++    if (!await ref.read(biometricAvailableProvider.future)) return;
++    if (!mounted) return;
++    try {
++      final ok = await LocalAuthentication().authenticate(
++        localizedReason: l.lockBiometricReason,
++        // Tizim PIN/parolini so'ramaymiz — bizda o'z PIN'imiz bor.
++        biometricOnly: true,
++      );
++      if (ok && mounted) ref.read(appLockProvider.notifier).unlock();
++    } on PlatformException {
++      // Biometrika yo'q, o'chirilgan yoki bloklangan — PIN qoladi.
++    } on MissingPluginException {
++      // Sinov muhiti.
++    }
++  }
+ 
+   /// "PIN kodni unutdingizmi?" tasdig'i ochiqmi va bajarilyaptimi.
+   bool _resetAsk = false;
+@@ -254,6 +300,8 @@ class _LockScreenState extends ConsumerState<_LockScreen> {
+   Widget build(BuildContext context) {
+     final t = context.tokens;
+     final l = L.of(context);
++    final bio = ref.watch(appLockProvider).biometric &&
++        (ref.watch(biometricAvailableProvider).valueOrNull ?? false);
+     // `Material` — qulf `MaterialApp.builder` da, har qanday `Material`
+     // dan TASHQARIDA chiziladi: usiz raqamlar Flutter'ning sariq qo'sh
+     // tagchiziqli "debug" matn uslubini olardi.
+@@ -305,7 +353,16 @@ class _LockScreenState extends ConsumerState<_LockScreen> {
+                     ],
+                   ),
+                   const SizedBox(height: Gap.section),
+-                  _Keypad(onDigit: _push, onBack: _back),
++                  _Keypad(
++                    onDigit: _push,
++                    onBack: _back,
++                    onBiometric: bio
++                        ? () {
++                            _triedBiometric = false;
++                            _tryBiometric();
++                          }
++                        : null,
++                  ),
+                   const SizedBox(height: Gap.md),
+                   if (!_resetAsk)
+                     NovaButton(
+@@ -352,10 +409,15 @@ class _LockScreenState extends ConsumerState<_LockScreen> {
+ }
+ 
+ class _Keypad extends StatelessWidget {
+-  const _Keypad({required this.onDigit, required this.onBack});
++  const _Keypad({
++    required this.onDigit,
++    required this.onBack,
++    this.onBiometric,
++  });
+ 
+   final ValueChanged<String> onDigit;
+   final VoidCallback onBack;
++  final VoidCallback? onBiometric;
+ 
+   @override
+   Widget build(BuildContext context) {
+@@ -396,8 +458,12 @@ class _Keypad extends StatelessWidget {
+         Row(
+           mainAxisAlignment: MainAxisAlignment.center,
+           children: [
+-            // Chap katak bo'sh: klaviatura simmetriyasi saqlanadi.
+-            key(const SizedBox.shrink(), null),
++            onBiometric == null
++                ? key(const SizedBox.shrink(), null)
++                : key(
++                    Icon(Icons.fingerprint_rounded, size: 27, color: t.accent2),
++                    onBiometric,
++                  ),
+             digit('0'),
+             key(
+               Icon(Icons.backspace_outlined, size: 21, color: t.text2),
+diff --git a/mobile_nova/lib/features/settings/settings_subscreens.dart b/mobile_nova/lib/features/settings/settings_subscreens.dart
+index 530f1d7..fa1d59a 100644
+--- a/mobile_nova/lib/features/settings/settings_subscreens.dart
++++ b/mobile_nova/lib/features/settings/settings_subscreens.dart
+@@ -319,6 +319,7 @@ class _SecuritySettingsScreenState
+           SectionHeader(title: l.lockTitle),
+           Consumer(builder: (context, ref, _) {
+             final lock = ref.watch(appLockProvider);
++            final bio = ref.watch(biometricAvailableProvider);
+             return FloatingSurface(
+               solid: true,
+               child: Column(
+@@ -332,13 +333,37 @@ class _SecuritySettingsScreenState
+                       label: l.lockSetPin,
+                       onPressed: () => showPinSetup(context, ref),
+                     )
+-                  else
++                  else ...[
++                    SwitchListTile(
++                      contentPadding: EdgeInsets.zero,
++                      // Biometrika yo'q qurilmada o'chiq ko'rinadi (sozlama
++                      // standart holatda yoqiq bo'lsa ham) — yolg'on "yoqiq"
++                      // holat ko'rsatilmaydi.
++                      value: lock.biometric && bio.valueOrNull == true,
++                      // Qurilmada biometrika yo'q bo'lsa tugma
++                      // o'chirilgan va sababi yozilgan — bosilib,
++                      // hech narsa qilmaydigan tugma qolmaydi.
++                      onChanged: bio.valueOrNull == true
++                          ? (v) => ref
++                              .read(appLockProvider.notifier)
++                              .setBiometric(v)
++                          : null,
++                      title: Text(l.lockBiometric,
++                          style: Theme.of(context).textTheme.bodyLarge),
++                      subtitle: bio.valueOrNull == true
++                          ? null
++                          : Text(l.lockBiometricNone,
++                              style:
++                                  Theme.of(context).textTheme.bodySmall),
++                    ),
++                    const SizedBox(height: Gap.sm),
+                     NovaButton(
+                       label: l.lockOff,
+                       tone: ButtonTone.quiet,
+                       onPressed: () =>
+                           ref.read(appLockProvider.notifier).disable(),
+                     ),
++                  ],
+                 ],
+               ),
+             );
+diff --git a/mobile_nova/pubspec.lock b/mobile_nova/pubspec.lock
+index ab5da65..4731f83 100644
+--- a/mobile_nova/pubspec.lock
++++ b/mobile_nova/pubspec.lock
+@@ -516,6 +516,46 @@ packages:
+       url: "https://pub.dev"
+     source: hosted
+     version: "5.1.1"
++  local_auth:
++    dependency: "direct main"
++    description:
++      name: local_auth
++      sha256: ae6f382f638108c6becd134318d7c3f0a93875383a54010f61d7c97ac05d5137
++      url: "https://pub.dev"
++    source: hosted
++    version: "3.0.1"
++  local_auth_android:
++    dependency: transitive
++    description:
++      name: local_auth_android
++      sha256: b201c006fa769c23386f89aa6837ec0eb8179fcfb212eadcf87b422b3f9a6a78
++      url: "https://pub.dev"
++    source: hosted
++    version: "2.0.8"
++  local_auth_darwin:
++    dependency: transitive
++    description:
++      name: local_auth_darwin
++      sha256: "668ea65edaab17380956e9713f57e34f78ede505ca0cfd8d39db34e2f260bfee"
++      url: "https://pub.dev"
++    source: hosted
++    version: "2.0.1"
++  local_auth_platform_interface:
++    dependency: transitive
++    description:
++      name: local_auth_platform_interface
++      sha256: f98b8e388588583d3f781f6806e4f4c9f9e189d898d27f0c249b93a1973dd122
++      url: "https://pub.dev"
++    source: hosted
++    version: "1.1.0"
++  local_auth_windows:
++    dependency: transitive
++    description:
++      name: local_auth_windows
++      sha256: be12c5b8ba5e64896983123655c5f67d2484ecfcc95e367952ad6e3bff94cb16
++      url: "https://pub.dev"
++    source: hosted
++    version: "2.0.1"
+   logging:
+     dependency: transitive
+     description:
+diff --git a/mobile_nova/pubspec.yaml b/mobile_nova/pubspec.yaml
+index eefd9f8..5d90e05 100644
+--- a/mobile_nova/pubspec.yaml
++++ b/mobile_nova/pubspec.yaml
+@@ -44,6 +44,8 @@ dependencies:
+   cupertino_icons: ^1.0.8
+   flutter_svg: ^2.3.0
+   in_app_update: 4.2.5
++  # Ilova qulfi: Face ID / Touch ID / barmoq izi (PIN o'rniga emas, qulaylik).
++  local_auth: ^3.0.1
+ 
+ dev_dependencies:
+   flutter_test:
+diff --git a/mobile_nova/test/app_lock_test.dart b/mobile_nova/test/app_lock_test.dart
+index 814de93..7e06a02 100644
+--- a/mobile_nova/test/app_lock_test.dart
++++ b/mobile_nova/test/app_lock_test.dart
+@@ -1,10 +1,14 @@
+ import 'package:flutter/material.dart';
++import 'package:flutter_localizations/flutter_localizations.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+ import 'package:flutter_test/flutter_test.dart';
+ import 'package:nfcstore_nova/app/providers.dart';
+ import 'package:nfcstore_nova/core/storage/secure_store.dart';
++import 'package:nfcstore_nova/design/theme/app_theme.dart';
++import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
+ import 'package:nfcstore_nova/features/settings/app_lock.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
+ import 'package:shared_preferences/shared_preferences.dart';
+ 
+ /// Xotiradagi Keystore o'rinbosari.
+@@ -148,4 +152,58 @@ void main() {
+       expect(find.text('kontent'), findsOneWidget);
+     });
+   });
++
++  // Biometrika: barmoq izi / Face ID tugmasi FAQAT qurilmada ishlatsa
++  // bo'ladigan biometrika bor va sozlamada yoqilgan bo'lsa chiqadi —
++  // bosilib hech narsa qilmaydigan tugma qolmasligi kerak.
++  group('Biometrika (qulf ekrani)', () {
++    Future<void> pumpLocked(
++      WidgetTester tester, {
++      required bool available,
++      bool setting = true,
++    }) async {
++      SharedPreferences.setMockInitialValues({
++        'nova.appLock': true,
++        'nova.appLockBiometric': setting,
++      });
++      final prefs = await Prefs.open();
++      await tester.pumpWidget(ProviderScope(
++        overrides: [
++          prefsProvider.overrideWithValue(prefs),
++          secureStoreProvider.overrideWithValue(_FakeSecure('1234')),
++          biometricAvailableProvider.overrideWith((ref) async => available),
++        ],
++        child: MaterialApp(
++          theme: buildTheme(NfcTokens.ivory),
++          locale: const Locale('uz'),
++          localizationsDelegates: const [
++            L.delegate,
++            GlobalMaterialLocalizations.delegate,
++            GlobalWidgetsLocalizations.delegate,
++            GlobalCupertinoLocalizations.delegate,
++          ],
++          home: const AppLockGate(child: Text('kontent')),
++        ),
++      ));
++      // Sinovda `local_auth` plagini yo'q — avtomatik urinish
++      // MissingPluginException bilan jim tugaydi, PIN qoladi.
++      await tester.pump();
++      await tester.pump(const Duration(milliseconds: 50));
++    }
++
++    testWidgets('bor va yoqilgan — barmoq izi tugmasi chiqadi', (tester) async {
++      await pumpLocked(tester, available: true);
++      expect(find.byIcon(Icons.fingerprint_rounded), findsOneWidget);
++    });
++
++    testWidgets('qurilmada yo‘q — tugma chiqmaydi', (tester) async {
++      await pumpLocked(tester, available: false);
++      expect(find.byIcon(Icons.fingerprint_rounded), findsNothing);
++    });
++
++    testWidgets('sozlamada o‘chirilgan — tugma chiqmaydi', (tester) async {
++      await pumpLocked(tester, available: true, setting: false);
++      expect(find.byIcon(Icons.fingerprint_rounded), findsNothing);
++    });
++  });
+ }
+-- 
+2.43.0
+
