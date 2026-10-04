@@ -63,8 +63,26 @@ class SessionController extends StateNotifier<SessionState> {
   /// o'zi qayta urinadi (2, 4, 8, 16, 30 s ...).
   Future<void> restore() async {
     _retry?.cancel();
+    // TEZ START (o'lchov, build 304): Splash `/api/auth/me` ni kutardi
+    // (server 1.1–1.7 s + ulanish). Shu token bilan oxirgi tasdiqlangan
+    // sessiya bo'lsa, Asosiy DARHOL o'sha bilan ochiladi va `me()` fonda
+    // tekshiradi: yangi ma'lumot kelsa almashtiriladi, sessiya tugagan
+    // bo'lsa (401 yoki `user: null`) — chiqariladi. Tarmoq xatosida
+    // oxirgi tasdiqlangan holat qoladi.
+    if (state is SessionRestoring) {
+      final cached = await _repo.cachedSession();
+      if (!mounted) return;
+      if (cached != null && state is SessionRestoring) {
+        state = SessionActive(cached.user, cached.ids);
+        unawaited(refresh());
+        return;
+      }
+    }
     final res = await _repo.restore();
     if (!mounted) return;
+    // Kutish paytida holat boshqa yo'l bilan o'zgargan bo'lsa (chiqish,
+    // kirish) — eski tiklash natijasi uni bosib ketmaydi.
+    if (state is! SessionRestoring) return;
     res.when(
       ok: (v) {
         _attempt = 0;

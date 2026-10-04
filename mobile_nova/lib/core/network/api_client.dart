@@ -106,12 +106,70 @@ class ApiClient {
     }
   }
 
+  /// Shu token uchun saqlangan oxirgi `/api/auth/me` javobi.
+  /// Boshqa token (yoki token yo'q) — `null`.
+  Future<Map<String, dynamic>?> readSessionSnapshot() async {
+    final t = _token;
+    if (t == null) return null;
+    final raw = await _store.readSnapshot();
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      final j = jsonDecode(raw);
+      if (j is Map && j['t'] == _fingerprint(t) && j['me'] is Map) {
+        return (j['me'] as Map).cast<String, dynamic>();
+      }
+    } catch (_) {/* buzilgan — e'tiborsiz */}
+    return null;
+  }
+
+  /// `me` javobini saqlaydi — faqat so'rov qaysi token bilan ketgan
+  /// bo'lsa, o'sha token hali ham joriy bo'lsa.
+  Future<void> writeSessionSnapshot(
+      Map<String, dynamic> me, String? forToken) async {
+    final t = _token;
+    if (t == null || t != forToken) return;
+    await _store.writeSnapshot(jsonEncode({'t': _fingerprint(t), 'me': me}));
+  }
+
+  /// Tokenning qisqa izi (FNV-1a) — tokenning o'zi ikkinchi marta
+  /// yozilmaydi.
+  static String _fingerprint(String s) {
+    var h = 0xcbf29ce484222325;
+    for (final c in s.codeUnits) {
+      h ^= c;
+      h = (h * 0x100000001b3) & 0xFFFFFFFFFFFFFFFF;
+    }
+    return h.toRadixString(16);
+  }
+
   Map<String, dynamic> get _auth =>
       _token == null ? const {} : {'authorization': 'Bearer $_token'};
 
-  Future<Result<T>> get<T>(String path, {Map<String, dynamic>? query}) =>
-      _run<T>(() => _dio.get(path,
-          queryParameters: _clean(query), options: Options(headers: _auth)));
+  /// BIR XIL GET SO'ROVLARI BIRLASHTIRILADI (tezlik, 2026-10).
+  ///
+  /// O'lchov (build 304, startup): `/api/feed` (Asosiy + Reels),
+  /// `/api/records/:code/posts` (Profil + Reels) va
+  /// `/api/records/:code/stories` (Asosiy + Profil) BIR VAQTDA ikki
+  /// martadan ketardi. Server parallel yukda sekinlashadi (feed 1.1 s
+  /// -> 2.2–4.9 s) va ba'zan 500 qaytaradi.
+  ///
+  /// Faqat AYNI PAYTDA KETAYOTGAN so'rov ulashiladi — tugagan javob
+  /// saqlanmaydi (kesh EMAS, eskirgan ma'lumot bo'lmaydi). Kalitda
+  /// token ham bor: boshqa sessiya javobi aralashmaydi.
+  final Map<String, Future<Result<Object?>>> _inflight = {};
+
+  Future<Result<T>> get<T>(String path, {Map<String, dynamic>? query}) {
+    final q = _clean(query);
+    final key = '$T|${_token ?? ''}|$path?'
+        '${q == null ? '' : (q.keys.toList()..sort()).map((k) => '$k=${q[k]}').join('&')}';
+    final pending = _inflight[key];
+    if (pending != null) return pending.then((r) => r as Result<T>);
+    final f = _run<T>(() => _dio.get(path,
+        queryParameters: q, options: Options(headers: _auth)));
+    _inflight[key] = f;
+    f.whenComplete(() => _inflight.remove(key));
+    return f;
+  }
 
   Future<Result<T>> post<T>(String path, [Object? body]) => _run<T>(
       () => _dio.post(path, data: body ?? const {}, options: Options(headers: _auth)));
@@ -276,7 +334,21 @@ class ApiClient {
     return out.isEmpty ? null : out;
   }
 
+  /// Hozir ketayotgan so'rovlar soni — startup ustuvorligi uchun
+  /// (`FadingBranchContainer`: yashirin tablar Asosiy ma'lumoti
+  /// kelgandan keyin quriladi).
+  final ValueNotifier<int> inFlight = ValueNotifier<int>(0);
+
   Future<Result<T>> _run<T>(Future<Response<dynamic>> Function() send) async {
+    inFlight.value++;
+    try {
+      return await _send<T>(send);
+    } finally {
+      inFlight.value--;
+    }
+  }
+
+  Future<Result<T>> _send<T>(Future<Response<dynamic>> Function() send) async {
     try {
       final res = await send();
       online.value = true;

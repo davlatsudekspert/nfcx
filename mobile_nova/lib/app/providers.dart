@@ -19,6 +19,7 @@ final apiProvider = Provider<ApiClient>((ref) {
   ref.onDispose(() {
     api.online.dispose();
     api.sessionExpired.dispose();
+    api.inFlight.dispose();
   });
   return api;
 });

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../core/errors/app_error.dart';
 import '../../core/network/api_client.dart';
 import '../../core/utils/result.dart';
@@ -165,7 +167,30 @@ class AuthRepository {
     return me();
   }
 
+  /// TEZ START: shu token bilan oxirgi tasdiqlangan sessiya (tarmoqsiz).
+  ///
+  /// O'lchov (build 304): Splash `/api/auth/me` javobini kutardi —
+  /// server 1.1–1.7 s. Endi oxirgi javob Keychain'da saqlanadi va
+  /// Asosiy darhol shu bilan ochiladi; `me()` fonda tekshiradi
+  /// (`SessionController.restore`). Token boshqa bo'lsa — `null`.
+  Future<({User user, List<NfcId> ids})?> cachedSession() async {
+    await _api.loadToken();
+    final j = await _api.readSessionSnapshot();
+    if (j == null || j['user'] is! Map) return null;
+    try {
+      return _parse(j);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  ({User user, List<NfcId> ids}) _parse(Map<String, dynamic> value) => (
+        user: User.fromJson((value['user'] as Map).cast<String, dynamic>()),
+        ids: parseList(value['cards'], NfcId.fromJson),
+      );
+
   Future<Result<({User user, List<NfcId> ids})>> me() async {
+    final token = _api.token;
     final res = await _api.get<Map<String, dynamic>>('/api/auth/me');
     switch (res) {
       case Err(:final error):
@@ -191,10 +216,9 @@ class AuthRepository {
           _api.notifySessionExpired();
           return const Err(AppError(AppErrorKind.unauthorized));
         }
-        return Ok((
-          user: User.fromJson((value['user'] as Map).cast<String, dynamic>()),
-          ids: parseList(value['cards'], NfcId.fromJson),
-        ));
+        final parsed = _parse(value);
+        unawaited(_api.writeSessionSnapshot(value, token));
+        return Ok(parsed);
     }
   }
 

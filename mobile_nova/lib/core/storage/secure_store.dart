@@ -45,7 +45,27 @@ class SecureStore {
   Future<void> clear() async {
     try {
       await _s.delete(key: _kToken);
+      await _s.delete(key: _kSnapshot);
     } catch (_) {/* ignore */}
+  }
+
+  /// OXIRGI TASDIQLANGAN SESSIYA (`/api/auth/me` javobi) — tez start
+  /// uchun. Token bilan bir joyda (Keychain/Keystore): unda email va
+  /// telefon bor. Token o'chirilganda ([clear]) u ham o'chadi.
+  static const _kSnapshot = 'nova.session.me';
+
+  Future<String?> readSnapshot() async {
+    try {
+      return await _s.read(key: _kSnapshot);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> writeSnapshot(String json) async {
+    try {
+      await _s.write(key: _kSnapshot, value: json);
+    } catch (_) {/* saqlanmasa — keyingi start oddiy yo'l bilan */}
   }
 
   /// Lokal ilova qulfining PIN kodi.

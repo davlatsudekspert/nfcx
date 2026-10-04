@@ -64,6 +64,11 @@ class FakeAuthRepository extends AuthRepository {
   @override
   Future<Result<({User user, List<NfcId> ids})>> me() async => restore();
 
+  /// Saqlangan sessiya yo'q — sinov `restore()` yo'lidan boradi
+  /// (haqiqiy Keychain plagini testda javob bermaydi).
+  @override
+  Future<({User user, List<NfcId> ids})?> cachedSession() async => null;
+
   @override
   Future<void> logout() async {}
 }

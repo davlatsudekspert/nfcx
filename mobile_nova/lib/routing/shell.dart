@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../design/widgets/bottom_nav.dart';
 import '../features/profile/music_player.dart';
 import '../l10n/gen/app_localizations.dart';
+import '../app/providers.dart';
 import 'routes.dart';
 import '../core/update/app_update.dart';
 
@@ -199,7 +202,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 ///   * uning animatsiyalari to'xtaydi (`TickerMode`) — fon, orb,
 ///     video kabi takrorlanuvchi harakatlar yashirin tabda yurmaydi;
 ///   * u ekran o'quvchisiga ko'rinmaydi.
-class FadingBranchContainer extends StatelessWidget {
+class FadingBranchContainer extends ConsumerStatefulWidget {
   const FadingBranchContainer({
     super.key,
     required this.currentIndex,
@@ -209,13 +212,80 @@ class FadingBranchContainer extends StatelessWidget {
   final int currentIndex;
   final List<Widget> children;
 
+  /// Asosiy ma'lumoti kelmasa ham yashirin tablar shuncha vaqtdan keyin
+  /// quriladi.
+  static const warmupTimeout = Duration(seconds: 3);
+
+  @override
+  ConsumerState<FadingBranchContainer> createState() =>
+      _FadingBranchContainerState();
+}
+
+/// YASHIRIN TABLAR — ASOSIY EKRANDAN KEYIN (o'lchov, build 304).
+///
+/// `preload` Tanlov, Reels va Profilni shell ochilgan KADRNING o'zida
+/// qurardi: Asosiy bilan birga to'rtta ekran bitta kadrda yig'ilar
+/// (emulyatorda 380–540 ms) va 12–15 ta API so'rovi bir vaqtda
+/// ketardi. Server parallel yukda sekinlashib (lenta 1.1 s -> 2.2–4.9 s)
+/// ba'zan 500 qaytarardi — ko'rinib turgan Asosiy lentasi yashirin
+/// tablar bilan navbat talashardi.
+///
+/// Endi: faol tab darhol quriladi; qolgan oldindan tayyorlanadigan
+/// tablar Asosiyning so'rovlari tugagach (tarmoq bo'shagach) yoki
+/// [FadingBranchContainer.warmupTimeout] dan keyin quriladi. Tab undan
+/// oldin bosilsa — o'sha zahoti quriladi (oldingi xulq).
+class _FadingBranchContainerState extends ConsumerState<FadingBranchContainer> {
+  final _built = <int>{};
+  bool _warm = false;
+  Timer? _timer;
+  ValueNotifier<int>? _net;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer(FadingBranchContainer.warmupTimeout, _warmUp);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _warm) return;
+      _net = ref.read(apiProvider).inFlight..addListener(_onNet);
+      _onNet();
+    });
+  }
+
+  /// Tarmoq bo'shadi: Asosiyning so'rovlari tugadi (yoki birinchi
+  /// kadrdan keyin umuman so'rov yo'q).
+  void _onNet() {
+    if ((_net?.value ?? 0) == 0) _warmUp();
+  }
+
+  void _warmUp() {
+    if (_warm || !mounted) return;
+    _timer?.cancel();
+    _net?.removeListener(_onNet);
+    _net = null;
+    setState(() => _warm = true);
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _net?.removeListener(_onNet);
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    _built.add(widget.currentIndex);
+    final children = widget.children;
     return Stack(
       fit: StackFit.expand,
       children: [
         for (var i = 0; i < children.length; i++)
-          _Branch(active: i == currentIndex, child: children[i]),
+          _Branch(
+            active: i == widget.currentIndex,
+            child: _warm || _built.contains(i)
+                ? children[i]
+                : const SizedBox.shrink(),
+          ),
       ],
     );
   }
