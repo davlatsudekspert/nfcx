@@ -378,28 +378,66 @@ function rangeHeader(range) {
 }
 
 async function s3Error(res, what) {
-  const text = await res.text().catch(() => '');
+  const text = res.uzErrorText ?? await res.text().catch(() => '');
   const code = /<Code>([^<]+)<\/Code>/.exec(text)?.[1] || '';
-  return new Error(`uz-s3 ${what}: HTTP ${res.status}${code ? ` ${code}` : ''}`);
+  const msg = /<Message>([^<]+)<\/Message>/.exec(text)?.[1] || '';
+  // 403 da soat farqi (bizning x-amz-date ↔ server Date) — imzo xatosi tashxisi uchun.
+  const skew = res.status === 403 && res.uzSignedAt && res.headers.get('date')
+    ? ` skew=${Math.round((Date.parse(res.headers.get('date')) - res.uzSignedAt) / 1000)}s` : '';
+  return new Error(`uz-s3 ${what}: HTTP ${res.status}${code ? ` ${code}` : ''}${msg ? ` (${msg.slice(0, 200)})` : ''}${skew}`);
 }
 
-export function uzBucket({ endpoint, bucket, keyId, secret, region = 'garage', fetch: doFetch = (...a) => fetch(...a) }) {
+export function uzBucket({ endpoint, bucket, keyId, secret, region = 'garage', fetch: doFetch = (...a) => fetch(...a), onRetry = null }) {
   const base = `${String(endpoint).replace(/\/+$/, '')}/${s3Encode(bucket)}`;
   const EMPTY_SHA = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
 
   async function request(method, key, { query = '', headers = {}, body = null } = {}) {
     const url = `${base}/${encodeKeyPath(key)}${query ? `?${query}` : ''}`;
     const payloadHash = body ? await sha256Hex(body) : EMPTY_SHA;
-    const signed = await signV4({ method, url, headers, payloadHash, keyId, secret, region });
-    return doFetch(url, { method, headers: signed, body: body || undefined });
+    let res;
+    // 403 (masalan "Invalid signature") — bir marta yangi imzo bilan qayta.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const now = new Date();
+      const signed = await signV4({ method, url, headers, payloadHash, keyId, secret, region, now });
+      // `cache: 'no-store'` — Cloudflare subrequest keshini chetlab o'tadi. Aks holda
+      // .jpg/.mp4/... manzillarga GET/HEAD kesh qatlamidan o'tib, HEAD → GET ga
+      // aylanardi (403 Invalid signature) va Range olib tashlanardi (400 signed
+      // header not present) — audit, 2026-10-04.
+      res = await doFetch(url, { method, headers: signed, body: body || undefined, cache: 'no-store' });
+      res.uzSignedAt = now.getTime();
+      if (res.status !== 403) return res;
+      res.uzErrorText = await res.text().catch(() => '');
+      if (attempt === 0) {
+        const serverDate = Date.parse(res.headers.get('date') || '');
+        const skew = Number.isFinite(serverDate) ? Math.round((serverDate - now.getTime()) / 1000) : null;
+        console.warn('uz_s3_403_retry', method, String(key).slice(0, 80), res.uzErrorText.slice(0, 160), skew);
+        if (onRetry) await onRetry({ method, key: String(key).slice(0, 200), skew, message: (/<Message>([^<]+)</.exec(res.uzErrorText)?.[1] || '').slice(0, 120) }).catch(() => {});
+      }
+    }
+    return res;
   }
 
   const bucketApi = {
+    // HEAD o'rniga 1 baytli GET (Range: bytes=0-0): jonli Worker'dan yuborilgan
+    // HEAD so'rovlarining bir qismini Garage "Invalid signature" bilan rad etardi
+    // (audit, 2026-10-04: soat farqi 0-1 s, faqat HEAD). Hajm Content-Range dan.
     async head(key) {
-      const res = await request('HEAD', key);
-      if (res.status === 404) return null;
+      const res = await request('GET', key, { headers: { range: 'bytes=0-0' } });
+      if (res.status === 404) { await res.body?.cancel?.(); return null; }
+      if (res.status === 416) {
+        // Bo'sh (0 bayt) obyekt: oraliq qoniqtirilmaydi — oddiy GET (tanasi bo'sh).
+        await res.body?.cancel?.();
+        const full = await request('GET', key);
+        if (full.status === 404) { await full.body?.cancel?.(); return null; }
+        if (!full.ok) throw await s3Error(full, 'head');
+        await full.body?.cancel?.();
+        return objectFromResponse(key, full);
+      }
       if (!res.ok) throw await s3Error(res, 'head');
-      return objectFromResponse(key, res);
+      await res.body?.cancel?.();
+      const obj = objectFromResponse(key, res);
+      if (res.status === 200) obj.size = Number(res.headers.get('content-length') || obj.size);
+      return obj;
     },
 
     async get(key, options = {}) {
@@ -525,18 +563,24 @@ const tagStore = (o, src) => {
 export function withR2Fallback(uz, r2, onEvent = async () => {}) {
   return {
     ...uz,
+    // UZ da yo'q (null) YOKI UZ xato bersa — R2 dan; ikkalasi ham qayd etiladi
+    // ('head'/'get' yoki 'head-error'/'get-error' + xato matni).
     async head(key) {
-      const a = await uz.head(key);
+      let a; let err = null;
+      try { a = await uz.head(key); } catch (e) { err = e; }
       if (a) return tagStore(a, 'uz');
       const b = await r2.head(key);
-      if (b) await onEvent('head', key);
+      if (b || err) await onEvent(err ? 'head-error' : 'head', err ? `${key} ${String(err.message).slice(0, 200)}` : key);
+      if (!b && err) throw err;
       return tagStore(b, 'r2');
     },
     async get(key, options) {
-      const a = await uz.get(key, options);
+      let a; let err = null;
+      try { a = await uz.get(key, options); } catch (e) { err = e; }
       if (a) return tagStore(a, 'uz');
       const b = await r2.get(key, options);
-      if (b) await onEvent('get', key);
+      if (b || err) await onEvent(err ? 'get-error' : 'get', err ? `${key} ${String(err.message).slice(0, 200)}` : key);
+      if (!b && err) throw err;
       return tagStore(b, 'r2');
     },
     async delete(keys) {
@@ -559,6 +603,17 @@ async function logFallback(db, op, key) {
     await db.batch([db.prepare(FALLBACK_LOG_SQL),
       db.prepare(`INSERT INTO "_uz_fallback_log" ("ts", "op", "key") VALUES (?, ?, ?)`).bind(new Date().toISOString(), op, String(key).slice(0, 500))]);
   } catch { /* log yozilmasa ham so'rov davom etadi */ }
+}
+
+// Garage 403 dan keyin muvaffaqiyatli qayta urinishlar (foydalanuvchi xato
+// ko'rmagan, lekin sababni o'lchash uchun): usul, kalit, soat farqi, xabar.
+async function logS3Retry(db, { method, key, skew, message }) {
+  try {
+    await db.batch([db.prepare(`CREATE TABLE IF NOT EXISTS "_uz_s3_retry_log" (
+      "id" INTEGER PRIMARY KEY, "ts" TEXT NOT NULL, "method" TEXT, "key" TEXT, "skew" INTEGER, "message" TEXT)`),
+    db.prepare(`INSERT INTO "_uz_s3_retry_log" ("ts", "method", "key", "skew", "message") VALUES (?, ?, ?, ?, ?)`)
+      .bind(new Date().toISOString(), method, key, skew, message)]);
+  } catch { /* */ }
 }
 
 // 5xx javoblar — yo'l (query'siz: unda token bo'lishi mumkin), status, xato matni.
@@ -631,12 +686,13 @@ export function withUzStores(env) {
     console.error('uz_store_misconfigured', missing.join(','));
     return env;
   }
+  const fallback = String(env.UZ_UPLOADS_FALLBACK || '').trim().toLowerCase() === 'r2' && env.UPLOADS;
+  const db = uzDb({ url: env.UZ_DB_URL, token: env.UZ_DB_TOKEN });
   const bucket = uzBucket({
     endpoint: env.UZ_S3_ENDPOINT, bucket: env.UZ_S3_BUCKET,
     keyId: env.UZ_S3_KEY_ID, secret: env.UZ_S3_SECRET, region: env.UZ_S3_REGION || 'garage',
+    onRetry: (info) => logS3Retry(db, info),
   });
-  const fallback = String(env.UZ_UPLOADS_FALLBACK || '').trim().toLowerCase() === 'r2' && env.UPLOADS;
-  const db = uzDb({ url: env.UZ_DB_URL, token: env.UZ_DB_TOKEN });
   const out = {
     ...env,
     DB: db,
