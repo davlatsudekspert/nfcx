@@ -194,15 +194,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                   child: Row(
                     children: [
-                      // BREND IMZOSI — sarlavha emas.
-                      //
-                      // "Xayrli tong" va hisob login nomi (`ali77099`) bu
-                      // yerga QAYTMAYDI: ism pastdagi portret qatorida
-                      // bir marta, to'g'ri ko'rinishda turadi.
-                      Expanded(
-                        child: _Wordmark(
-                            onImage: (active?.coverUrl ?? '').isNotEmpty),
-                      ),
+                      // CHAP TOMON BO'SH — "NFCSTORE" yozuvi olib tashlandi
+                      // (egasi, 2026-10-04). Sarlavha ham, login nomi ham
+                      // qaytmaydi: ism pastdagi portret qatorida bir marta.
+                      const Spacer(),
                       NovaIconButton(
                         icon: Icons.notifications_none_rounded,
                         tooltip: l.activityTitle,
@@ -356,37 +351,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             const _HomeFeed(),
             const SizedBox(height: Gap.xxl),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Brend yozuvi — keng harf oralig'i, sarlavha emas, imzo.
-class _Wordmark extends StatelessWidget {
-  const _Wordmark({this.onImage = false});
-
-  /// Profil foni ustida — oq yozuv va yumshoq soya: qorong'i
-  /// suratda ham, yorug'ida ham o'qiladi.
-  final bool onImage;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Text(
-        'NFCSTORE',
-        maxLines: 1,
-        style: TextStyle(
-          fontFamily: AppType.sans,
-          fontSize: 13,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 13 * .32,
-          color: onImage ? Colors.white : t.text1,
-          shadows: onImage
-              ? const [Shadow(color: Color(0x99000000), blurRadius: 8)]
-              : null,
         ),
       ),
     );
