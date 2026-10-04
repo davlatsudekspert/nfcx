@@ -21,7 +21,7 @@ on:
         required: true
         default: 'create'
         type: choice
-        options: [create, inspect]
+        options: [create, inspect, wait]
   # Ro'yxatdan o'tkazish uchun; push'da job ishlamaydi.
   push:
     branches: [claude/wizardly-einstein-8cx2p4]
@@ -34,7 +34,7 @@ jobs:
   capability:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 75
     env:
       IOS_BUNDLE_ID: uz.nfcstore.nova
       PROFILE_NAME: ${{ inputs.profile_name }}
@@ -111,6 +111,27 @@ jobs:
           print('Capabilities:', types)
           summary('- Capabilities: ' + ', '.join(types))
           AD = b'com.apple.developer.associated-domains'
+          if os.environ.get('MODE') == 'wait':
+              # Portalda profil qayta saqlanishini kutish (60 daqiqagacha):
+              # ACTIVE App Store profili, CI sertifikati va associated-domains.
+              import base64
+              serial = os.environ['CERT_SERIAL'].upper().lstrip('0')
+              deadline = time.time() + 3600
+              while True:
+                  for p in call('GET', f'/v1/bundleIds/{bid}/profiles', {'limit': 50})['data']:
+                      a = p['attributes']
+                      if a.get('profileState') != 'ACTIVE' or a.get('profileType') != 'IOS_APP_STORE':
+                          continue
+                      if AD not in base64.b64decode(a.get('profileContent') or ''):
+                          continue
+                      pc = call('GET', f"/v1/profiles/{p['id']}/certificates", {'limit': 50})['data']
+                      if any(c['attributes'].get('serialNumber', '').upper().lstrip('0') == serial for c in pc):
+                          print(f"::notice::Tayyor profil: {a['name']} {a['uuid']} muddati {a['expirationDate'][:10]}")
+                          summary(f"- Tayyor profil: **{a['name']}** ({a['uuid']})")
+                          sys.exit(0)
+                  if time.time() > deadline:
+                      print('::error::60 daqiqada associated-domains bilan ACTIVE profil paydo bo\'lmadi'); sys.exit(1)
+                  time.sleep(30)
           if os.environ.get('MODE') == 'inspect':
               import base64
               serial = os.environ['CERT_SERIAL'].upper().lstrip('0')
