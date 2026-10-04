@@ -17,6 +17,11 @@ on:
         description: "cutover uchun aynan: KOCHIR"
         required: false
         default: ''
+  # O'TISHDAN KEYINGI AUDIT — avtomatik, har 4 soatda (qo'lda ishga tushirish
+  # shart emas). Gate bajarilsa finalize-media ham shu yerda o'zi bajariladi;
+  # finalize'dan 48 soat o'tgach rejali audit o'zini to'xtatadi.
+  schedule:
+    - cron: '23 */4 * * *'
 
 permissions:
   contents: read
@@ -41,7 +46,8 @@ jobs:
         env:
           SSHPASS: ${{ secrets.UZ_VPS_PASSWORD }}
           HOST: ${{ secrets.UZ_VPS_HOST }}
-          ACTION: ${{ inputs.action }}
+          ACTION: ${{ inputs.action || 'audit' }}
+          EVENT: ${{ github.event_name }}
           CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CONFIRM: ${{ inputs.confirm }}
           CF_ACCOUNT: 31c4b3d8ece4b65de515debc4552334a
@@ -184,21 +190,26 @@ jobs:
           # O'tishdan keyin: R2 ga kech yozilgan (eski versiya so'rovlari) fayllar UZ ga
           # qo'shiladi — faqat UZ da YO'Q kalitlar, hech narsa ustidan yozilmaydi; keyin
           # UZ_UPLOADS_FALLBACK o'chiriladi (shundan so'ng R2 umuman o'qilmaydi).
-          if [ "$ACTION" = finalize-media ]; then
-            live || { echo "::error title=finalize-media::UZ_STORE yoqilmagan"; exit 1; }
+          # Hech narsa O'CHIRILMAYDI: R2 va D1 dagi nusxalar joyida qoladi — faqat
+          # Worker R2 dan o'qishni to'xtatadi (UZ_UPLOADS_FALLBACK secret'i olinadi).
+          finalize_media() {
+            live || { echo "::error title=finalize-media::UZ_STORE yoqilmagan"; return 1; }
             # Faqat R2 zaxira o'qishi YOQIQ bo'lsa: u o'chirilgandan keyin UZ da
             # o'chirilgan fayllar R2 dan qaytib kelmasin (o'chirish ikkalasidan
             # faqat zaxira yoqiq paytda bajariladi).
-            grep -q '"UZ_UPLOADS_FALLBACK"' sl.json || { echo "::error title=finalize-media::UZ_UPLOADS_FALLBACK yo'q — allaqachon yakunlangan"; exit 1; }
-            # Egasining sharti: ≥24 soat, barcha auditlar toza, R2 fallback o'qilmagan, faqat-R2 fayl yo'q.
-            node scripts/uz-audit.mjs --gate > g.out 2>&1 || { echo "::error title=finalize-media::audit sharti bajarilmagan — $(grep -E 'sharti|bu audit' g.out | clean 4 | joined) ."; exit 1; }
-            mig r2-copy --missing-only || exit 1
+            grep -q '"UZ_UPLOADS_FALLBACK"' sl.json || { echo "::error title=finalize-media::UZ_UPLOADS_FALLBACK yo'q — allaqachon yakunlangan"; return 1; }
+            # Egasining sharti: ≥24 soat uzluksiz toza, ≥5 audit, yangi R2 fallback 0,
+            # faqat-R2 fayl 0, yangi jiddiy 5xx/403/Garage xatolari yo'q.
+            node scripts/uz-audit.mjs --gate > g.out 2>&1 || { echo "::error title=finalize-media::audit sharti bajarilmagan — $(grep -E 'sharti|bu audit' g.out | clean 4 | joined) ."; return 1; }
+            mig r2-copy --missing-only || return 1
             if $W secret delete UZ_UPLOADS_FALLBACK --name nfcstore-uz > /dev/null 2>&1; then
-              echo "::notice title=finalize-media::R2 zaxira o'qishi o'chirildi — fayllar faqat O'zbekistonda"
+              node scripts/uz-audit.mjs --mark-finalized > /dev/null 2>&1 || true
+              echo "::notice title=finalize-media::R2 zaxira o'qishi o'chirildi — fayllar faqat O'zbekistonda (R2/D1 nusxalari o'chirilmadi)"
             else
-              echo "::error title=finalize-media::UZ_UPLOADS_FALLBACK o'chirilmadi"; exit 1
+              echo "::error title=finalize-media::UZ_UPLOADS_FALLBACK o'chirilmadi"; return 1
             fi
-          fi
+          }
+          if [ "$ACTION" = finalize-media ]; then finalize_media || exit 1; fi
           if [ "$ACTION" = copy-db ]; then
             if live; then echo "::error title=copy-db::UZ_STORE yoqilgan — jonli bazani D1 nusxasi bilan almashtirish taqiqlangan"; exit 1; fi
             R '/usr/local/bin/nfcstore-backup' > /dev/null 2>&1 || { echo "::error title=zaxira::server zaxirasi olinmadi"; exit 1; }
@@ -274,6 +285,15 @@ jobs:
           # Har "## " bo'lim — alohida annotatsiya; muammo bo'lsa error.
           if [ "$ACTION" = audit ]; then
             live || { echo "::error title=audit::UZ_STORE yoqilmagan"; exit 1; }
+            if [ "$EVENT" = schedule ]; then
+              node scripts/uz-audit.mjs --should-run > s.out 2>&1; src=$?
+              if [ "$src" = 10 ]; then echo "::notice title=rejali audit::$(clean 2 < s.out | joined) ."; exit 0; fi
+            fi
+            # Garage'ning xato qatorlari (vaqt belgisi bilan) — audit ularni fix
+            # vaqtiga nisbatan tasniflaydi; maxfiy qiymat yo'q (faqat javob kodi/matni).
+            R 'cd /srv/nfcstore && docker compose logs --since 30h --no-log-prefix --timestamps garage 2>&1 | grep -aiE "error|panic|fatal"' 2>/dev/null \
+              | sed -E 's/\x1b\[[0-9;]*m//g' > garage.log || true
+            export GARAGE_LOG="$PWD/garage.log"
             key_on || { key_off; exit 1; }
             trap key_off EXIT
             node scripts/uz-audit.mjs > a.out 2>&1; arc=$?
@@ -286,9 +306,9 @@ jobs:
           parts = re.split(r'^## ', txt, flags=re.M)
           head, secs = parts[0].strip(), parts[1:]
           if head: secs.insert(0, 'skript\n' + head)
-          # Xulosa birinchi; qolganlari juftlab (GitHub: qadamga 10 ta notice).
+          # Xulosa birinchi; qolganlari 4 tadan (GitHub: qadamga 10 ta notice).
           secs.sort(key=lambda x: 0 if x.startswith('Xulosa') else 1)
-          groups = [secs[:2]] + [secs[i:i + 3] for i in range(2, len(secs), 3)]
+          groups = [secs[:2]] + [secs[i:i + 4] for i in range(2, len(secs), 4)]
           for g in groups[:6]:
               titles = [x.partition('\n')[0].strip() for x in g]
               body = '\n'.join(f"▸ {x.partition(chr(10))[0].strip()}\n{x.partition(chr(10))[2].strip()}" for x in g)
@@ -298,7 +318,15 @@ jobs:
           PYA
             SRV=$(R 'cd /srv/nfcstore && for c in sqld garage caddy; do printf "%s: %s xato (1 soat), %s (24 soat) · " $c "$(docker compose logs --since 1h $c 2>&1 | grep -ciE "error|panic|fatal")" "$(docker compose logs --since 24h $c 2>&1 | grep -ciE "error|panic|fatal")"; done; echo; echo "zaxiralar: $(ls -1 backups 2>/dev/null | tail -3 | tr "\n" " ")"; echo "disk: $(df -h / | awk "NR==2{print \$3\" / \"\$2\" (\"\$5\")\"}")"; echo "konteynerlar: $(docker compose ps --format "{{.Service}}={{.Status}}" | tr "\n" " ")"' 2>&1)
             echo "::notice title=server (sqld/garage/caddy loglari, zaxira)::$(printf '%s\n' "$SRV" | clean 10 | joined) ."
-            rm -f a.out
+            # Rejali audit: gate bajarilsa — finalize-media shu yerda (o'z ichida
+            # gate'ni yana tekshiradi). Qo'lda bosish shart emas.
+            if [ "$EVENT" = schedule ] && [ "$arc" = 0 ] && grep -q "finalize-media sharti.*BAJARILDI" a.out; then
+              if live && grep -q '"UZ_UPLOADS_FALLBACK"' sl.json; then
+                echo "::notice title=finalize-media (avtomatik)::24 soatlik gate bajarildi — boshlanmoqda"
+                finalize_media || exit 1
+              fi
+            fi
+            rm -f a.out garage.log
             [ "$arc" = 0 ] || exit 1
           fi
 
