@@ -39,10 +39,10 @@ def call(method, path, body=None, params=None, raw_url=None, data=None, headers=
             txt = r.read()
             return r.status, (json.loads(txt) if txt and r.headers.get('Content-Type', '').startswith('application/json') else {})
     except urllib.error.HTTPError as e:
-        txt = e.read().decode()[:600]
+        txt = e.read().decode()
         try:
             j = json.loads(txt)
-            msg = '; '.join(f"{x.get('title')}: {x.get('detail')}" for x in j.get('errors', []))
+            msg = '; '.join(f"{x.get('code')}: {x.get('detail')} {((x.get('source') or {}).get('pointer') or '')}" for x in j.get('errors', []))[:400]
         except Exception:
             msg = txt
         return e.code, {'_error': msg}
@@ -176,38 +176,35 @@ AGE_BOOL_FALSE = {'gambling', 'lootBox', 'messagingAndChat', 'parentalControls',
 
 
 def age_rating(iid):
+    # Apple hamma maydonni BITTA so'rovda talab qiladi (alohida — 409).
     c, j = call('GET', f'/v1/appInfos/{iid}/ageRatingDeclaration')
     d = j.get('data') if isinstance(j.get('data'), dict) else None
     if not d:
         note(f'yosh reytingi o‘qilmadi -> {c} {j.get("_error", "")}'); return
     did = d['id']; cur = d['attributes']
-    done, failed = [], []
-    for k in sorted(cur):
-        if k in ('kidsAgeBand', 'ageRatingOverride', 'ageRatingOverrideV2', 'koreaAgeRatingOverride', 'developerAgeRatingInfoUrl'):
+    note('yosh reytingi maydonlari: ' + ', '.join(f'{k}={v}' for k, v in sorted(cur.items())))
+    bools_true = {'userGeneratedContent', 'advertising', 'socialMedia'}
+    skip = {'kidsAgeBand', 'ageRatingOverride', 'ageRatingOverrideV2', 'koreaAgeRatingOverride',
+            'developerAgeRatingInfoUrl', 'gracRatingClassificationNumber'}
+    enum_keys = {'alcoholTobaccoOrDrugUseOrReferences', 'contests', 'gamblingSimulated', 'gunsOrOtherWeapons',
+                 'horrorOrFearThemes', 'matureOrSuggestiveThemes', 'medicalOrTreatmentInformation',
+                 'profanityOrCrudeHumor', 'sexualContentGraphicAndNudity', 'sexualContentOrNudity',
+                 'violenceCartoonOrFantasy', 'violenceRealistic', 'violenceRealisticProlongedGraphicOrSadistic'}
+    attrs = {}
+    for k in cur:
+        if k in skip:
             continue
-        if k in AGE_TRUE:
-            cands = [True]
-        elif k in AGE_BOOL_FALSE:
-            cands = [False]
-        else:
-            cands = ['NONE', False]
-        for val in cands:
-            c, jj = call('PATCH', f'/v1/ageRatingDeclarations/{did}', {'data': {'type': 'ageRatingDeclarations', 'id': did,
-                         'attributes': {k: val}}})
-            if ok(c):
-                done.append(f'{k}={val}'); break
-        else:
-            failed.append(f"{k}: {jj.get('_error', '')[:120]}")
-    # Ilova ichida 18+ tasdiqlanadi (ro'yxat) — reyting ham 18+.
+        attrs[k] = 'NONE' if k in enum_keys else (k in bools_true)
+    c, jj = call('PATCH', f'/v1/ageRatingDeclarations/{did}', {'data': {'type': 'ageRatingDeclarations', 'id': did, 'attributes': attrs}})
+    note(f'yosh reytingi (UGC, reklama, ijtimoiy tarmoq = ha; qolgani yo‘q) -> {c} {jj.get("_error", "")}')
     for k, val in (('ageRatingOverrideV2', 'EIGHTEEN_PLUS'), ('ageRatingOverride', 'SEVENTEEN_PLUS')):
+        if k not in cur:
+            continue
         c, jj = call('PATCH', f'/v1/ageRatingDeclarations/{did}', {'data': {'type': 'ageRatingDeclarations', 'id': did,
-                     'attributes': {k: val}}})
-        note(f'{k}={val} -> {c} {jj.get("_error", "")[:150]}')
+                     'attributes': {**attrs, k: val}}})
+        note(f'{k}={val} -> {c} {jj.get("_error", "")}')
         if ok(c):
             break
-    note('yosh reytingi: ' + ', '.join(done))
-    if failed:
-        note('yosh reytingi XATO: ' + ' | '.join(failed))
 
 
 def review_detail(vid):
