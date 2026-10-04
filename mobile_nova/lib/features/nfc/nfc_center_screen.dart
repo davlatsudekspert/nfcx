@@ -21,7 +21,7 @@ import '../../routing/routes.dart';
 import '../auth/session.dart';
 import '../home/home_screen.dart';
 import '../home/widgets/my_ids_strip.dart';
-import '../shop/store_policy.dart' show idMarketTitle, showIdMarket;
+import '../shop/store_policy.dart' show idMarketTitle, isAppStoreBuild, showIdMarket;
 import 'nfc_service.dart';
 import 'qr_sheet.dart';
 import '../../design/widgets/brand_icon.dart';
@@ -217,7 +217,7 @@ class NfcCenterScreen extends ConsumerWidget {
               padding: x,
               child: FloatingSurface(
                 solid: true,
-                child: Text(l.homeNoIdHint,
+                child: Text((isAppStoreBuild ? l.homeNoIdHintIos : l.homeNoIdHint),
                     style: Theme.of(context).textTheme.bodyMedium),
               ),
             )

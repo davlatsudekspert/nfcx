@@ -39,6 +39,7 @@ import '../social/story_viewer.dart';
 import '../social/video_poster.dart';
 import '../social/media_frame.dart';
 import '../social/moderation.dart';
+import '../shop/store_policy.dart' show isAppStoreBuild;
 import 'music_player.dart';
 import 'profile_repository.dart';
 
@@ -492,7 +493,7 @@ class ProfileScreen extends ConsumerWidget {
                 child: FloatingSurface(
                   solid: true,
                   child: Text(
-                    noBusiness ? l.businessNoneHint : l.homeNoIdHint,
+                    noBusiness ? l.businessNoneHint : (isAppStoreBuild ? l.homeNoIdHintIos : l.homeNoIdHint),
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ),

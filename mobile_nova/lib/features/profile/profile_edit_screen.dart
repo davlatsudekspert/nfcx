@@ -283,7 +283,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
         body: StatePanel(
           icon: Icons.badge_outlined,
           title: l.homeNoId,
-          message: l.homeNoIdHint,
+          message: (isAppStoreBuild ? l.homeNoIdHintIos : l.homeNoIdHint),
         ),
       );
     }
