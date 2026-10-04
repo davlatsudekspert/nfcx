@@ -1,8 +1,10 @@
 // hasharchilar API testi — `wrangler dev` (lokal D1 + R2) ga qarshi.
 // Ishga tushirish: npx wrangler dev --port 8787  &&  node --test tests/
 // Bo'sh bo'lmagan bazada ham qayta ishlaydi: har safar tasodifiy telefonlar va IP lar.
-import { test, describe, before } from 'node:test';
+import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { deflateSync } from 'node:zlib';
 
 const BASE = (process.env.BASE_URL || 'http://localhost:8787').replace(/\/+$/, '');
@@ -188,20 +190,41 @@ describe('Autentifikatsiya', () => {
   });
 });
 
-test('kirish rate limit: 10 urinishdan keyin 429', async () => {
-  const ip = randomIp();
+test("kirish: noto'g'ri formatdagi telefon ham 401 (SPEC 5)", async () => {
+  const r = await api('/api/auth/login', { method: 'POST', json: { phone: '123', password: 'x' } });
+  assert.equal(r.status, 401);
+  assert.equal(r.data.error, "Telefon yoki parol noto'g'ri");
+});
+
+test('kirish limiti telefon bo\'yicha: IP almashtirilsa ham 10 urinishdan keyin 429', async () => {
   const phone = randomPhone();
   for (let i = 0; i < 10; i++) {
-    const r = await api('/api/auth/login', { method: 'POST', ip, json: { phone, password: 'xato-parol' } });
+    const r = await api('/api/auth/login', { method: 'POST', json: { phone, password: 'xato-parol' } }); // har safar yangi IP
     assert.equal(r.status, 401, `urinish ${i + 1}`);
   }
-  const r = await api('/api/auth/login', { method: 'POST', ip, json: { phone, password: 'xato-parol' } });
+  const r = await api('/api/auth/login', { method: 'POST', json: { phone, password: 'xato-parol' } });
   assert.equal(r.status, 429);
   assert.ok(r.data.error);
   assert.ok(Number(r.headers.get('retry-after')) > 0);
-  // Boshqa IP ga ta'sir qilmaydi
-  const other = await api('/api/auth/login', { method: 'POST', json: { phone, password: 'xato-parol' } });
+  // Boshqa raqamga ta'sir qilmaydi
+  const other = await api('/api/auth/login', { method: 'POST', json: { phone: randomPhone(), password: 'xato-parol' } });
   assert.equal(other.status, 401);
+});
+
+test('kirish limiti IP bo\'yicha: IPv6 /64 bitta hisob, 30 urinishdan keyin 429', async () => {
+  const net = `2001:db8:${rnd(0xffff).toString(16)}:${rnd(0xffff).toString(16)}`;
+  for (let i = 0; i < 30; i++) {
+    // /64 ichidagi har xil manzillar, har xil raqamlar
+    const r = await api('/api/auth/login', { method: 'POST', ip: `${net}::${(i + 1).toString(16)}`, json: { phone: randomPhone(), password: 'xato-parol' } });
+    assert.equal(r.status, 401, `urinish ${i + 1}`);
+  }
+  const r = await api('/api/auth/login', { method: 'POST', ip: `${net}:ffff::1`, json: { phone: randomPhone(), password: 'xato-parol' } });
+  assert.equal(r.status, 429);
+  // Boshqa /64 tarmoq va IPv4 ga ta'sir qilmaydi
+  const otherNet = await api('/api/auth/login', { method: 'POST', ip: `2001:db8:ffff:${rnd(0xffff).toString(16)}::1`, json: { phone: randomPhone(), password: 'x' } });
+  assert.equal(otherNet.status, 401);
+  const v4 = await api('/api/auth/login', { method: 'POST', json: { phone: randomPhone(), password: 'x' } });
+  assert.equal(v4.status, 401);
 });
 
 describe('Hasharlar', () => {
@@ -247,6 +270,9 @@ describe('Hasharlar', () => {
       hasharForm({ lat: '123' }),
       hasharForm({ lng: 'abc' }),
       hasharForm({ title: 'ab' }),
+      // Emoji: JS .length 3–4, lekin 2 belgi (SQLite CHECK bilan bir xil hisob) → 500 emas, 400
+      hasharForm({ title: 'a🌳' }),
+      hasharForm({ title: '🌳🌳' }),
       hasharForm({ items: 'not-json' }),
       hasharForm({}, { bytes: Buffer.from('salom dunyo'), type: 'text/plain', name: 'a.txt' }),
       hasharForm({}, { bytes: Buffer.from('<html>soxta</html>'), type: 'image/png', name: 'soxta.png' }),
@@ -428,6 +454,44 @@ describe('Hasharlar', () => {
     assert.equal((await api(h.before_url)).status, 404, "R2 dagi rasm o'chirildi");
   });
 
+  test('chunked (Content-Length siz) katta tana → 413, butun tana o\'qilmaydi', async () => {
+    const CHUNK = new Uint8Array(256 * 1024).fill(0x61);
+    let sent = 0;
+    const body = new ReadableStream({
+      pull(ctrl) {
+        if (sent >= 7 * 1024 * 1024) return ctrl.close();
+        sent += CHUNK.byteLength;
+        ctrl.enqueue(CHUNK);
+      },
+    });
+    let status;
+    try {
+      const res = await fetch(`${BASE}/api/hashars`, {
+        method: 'POST',
+        duplex: 'half', // Node: oqimli tana → Transfer-Encoding: chunked
+        headers: {
+          authorization: `Bearer ${owner.token}`,
+          'content-type': 'multipart/form-data; boundary=----test',
+          'cf-connecting-ip': randomIp(),
+        },
+        body,
+      });
+      status = res.status;
+      await res.arrayBuffer().catch(() => {});
+    } catch (err) {
+      // Server javobdan keyin ulanishni yopsa, ba'zan fetch xato bilan tugaydi
+      status = `fetch xatosi: ${err.cause?.code || err.message}`;
+    }
+    assert.equal(status, 413);
+  });
+
+  test("emoji sarlavha: 'ab🌳' (3 belgi) → 201", async () => {
+    const r = await api('/api/hashars', { method: 'POST', token: stranger.token, form: hasharForm({ title: 'ab🌳' }, null) });
+    assert.equal(r.status, 201, JSON.stringify(r.data));
+    assert.equal(r.data.title, 'ab🌳');
+    assert.equal((await api(`/api/hashars/${r.data.id}`, { method: 'DELETE', token: stranger.token })).status, 200);
+  });
+
   test('rasmsiz yaratish ham mumkin', async () => {
     const r = await api('/api/hashars', { method: 'POST', token: stranger.token, form: hasharForm({ title: `Rasmsiz ${RUN}` }, null) });
     assert.equal(r.status, 201, JSON.stringify(r.data));
@@ -444,6 +508,83 @@ describe('Hasharlar', () => {
     if (firstCompleted >= 0) assert.ok(list.slice(firstCompleted).every((x) => x.status === 'COMPLETED'));
     const pend = list.filter((x) => x.status === 'PENDING').map((x) => x.date_time);
     assert.deepEqual(pend, [...pend].sort());
+  });
+});
+
+test('qatnashish/chiqish limiti: 30 ta / soat, keyin 429', async () => {
+  const owner = await register('Limit Egasi');
+  const joiner = await register('Limit Qatnashchi');
+  const created = await api('/api/hashars', { method: 'POST', token: owner.token, form: hasharForm({ title: `Limit ${RUN}` }, null) });
+  assert.equal(created.status, 201, JSON.stringify(created.data));
+  const id = created.data.id;
+  for (let i = 0; i < 30; i++) {
+    const r = await api(`/api/hashars/${id}/join`, { method: i % 2 ? 'DELETE' : 'POST', token: joiner.token });
+    assert.equal(r.status, 200, `so'rov ${i + 1}: ${JSON.stringify(r.data)}`);
+  }
+  const r = await api(`/api/hashars/${id}/join`, { method: 'POST', token: joiner.token });
+  assert.equal(r.status, 429);
+  assert.ok(Number(r.headers.get('retry-after')) > 0);
+  // Boshqa foydalanuvchiga ta'sir qilmaydi
+  const other = await register('Limit Boshqa');
+  assert.equal((await api(`/api/hashars/${id}/join`, { method: 'POST', token: other.token })).status, 200);
+  assert.equal((await api(`/api/hashars/${id}`, { method: 'DELETE', token: owner.token })).status, 200);
+});
+
+// ---------- 300 lik limit: eski (yakunlanmagan) PENDING'lar kelgusi/bajarilganlarni siqib chiqarmasin ----------
+// Eski sanali qatorlarni API orqali yaratib bo'lmaydi — faqat lokal D1 ga `wrangler d1 execute` bilan yoziladi.
+const IS_LOCAL = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(BASE) && !process.env.SKIP_D1_EXEC;
+
+function d1Exec(sql) {
+  const persist = process.env.D1_PERSIST_TO ? ['--persist-to', process.env.D1_PERSIST_TO] : [];
+  execFileSync('npx', ['wrangler', 'd1', 'execute', 'hasharchilar', '--local', ...persist, '--command', sql], {
+    cwd: fileURLToPath(new URL('..', import.meta.url)),
+    stdio: 'pipe',
+    env: { ...process.env, WRANGLER_SEND_METRICS: 'false' },
+  });
+}
+
+describe("ro'yxat: 300+ eski PENDING bo'lsa ham kelgusi va bajarilganlar ko'rinadi", { skip: !IS_LOCAL && 'faqat lokal wrangler dev' }, () => {
+  let owner;
+  let upcoming;
+
+  before(async () => {
+    owner = await register('Eski Hasharlar');
+    const r = await api('/api/hashars', { method: 'POST', token: owner.token, form: hasharForm({ title: `Kelgusi ${RUN}` }, null) });
+    assert.equal(r.status, 201, JSON.stringify(r.data));
+    upcoming = r.data;
+    // 320 ta o'tmishdagi (2020), hech qachon yakunlanmagan hashar
+    d1Exec(
+      `WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 320)
+       INSERT INTO hashars (creator_id, title, lat, lng, date_time)
+       SELECT ${Number(owner.user.id)}, 'Eski ${RUN} ' || i, 41.3, 69.2, printf('2020-01-%02dT09:00', 1 + i % 28) FROM n`,
+    );
+  });
+
+  after(() => {
+    if (owner) d1Exec(`DELETE FROM hashars WHERE creator_id = ${Number(owner.user.id)}`);
+  });
+
+  test('GET /api/hashars', async () => {
+    const r = await api('/api/hashars');
+    assert.equal(r.status, 200);
+    const list = r.data;
+    assert.ok(list.length <= 300, `uzunlik ${list.length}`);
+    assert.ok(list.some((x) => x.id === upcoming.id), "kelgusi hashar ro'yxatda");
+    const stats = (await api('/api/stats')).data;
+    const completed = list.filter((x) => x.status === 'COMPLETED').length;
+    assert.ok(completed >= Math.min(stats.completed, 60), `bajarilganlar: ${completed} / ${stats.completed}`);
+    assert.ok(completed >= 1);
+    // SPEC tartibi saqlanadi
+    const firstCompleted = list.findIndex((x) => x.status === 'COMPLETED');
+    assert.ok(list.slice(firstCompleted).every((x) => x.status === 'COMPLETED'));
+    const pend = list.filter((x) => x.status === 'PENDING').map((x) => x.date_time);
+    assert.deepEqual(pend, [...pend].sort());
+  });
+
+  test('?status=PENDING ham kelgusini qaytaradi', async () => {
+    const r = await api('/api/hashars?status=PENDING');
+    assert.ok(r.data.length <= 300);
+    assert.ok(r.data.some((x) => x.id === upcoming.id));
   });
 });
 

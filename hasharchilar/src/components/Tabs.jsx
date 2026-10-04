@@ -8,10 +8,16 @@ export const TABS = [
 ];
 
 export default function Tabs({ active, onChange, counts = {} }) {
+  // WAI-ARIA tabs: qadam fokusdagi tabdan hisoblanadi, fokus yangi tabga ko'chadi
   const onKey = (e) => {
-    const i = TABS.findIndex((t) => t.id === active);
-    if (e.key === 'ArrowRight') onChange(TABS[(i + 1) % TABS.length].id);
-    if (e.key === 'ArrowLeft') onChange(TABS[(i + TABS.length - 1) % TABS.length].id);
+    const focused = TABS.findIndex((t) => `tab-${t.id}` === e.target.id);
+    const i = focused >= 0 ? focused : TABS.findIndex((t) => t.id === active);
+    const n = TABS.length;
+    const next = { ArrowRight: (i + 1) % n, ArrowLeft: (i + n - 1) % n, Home: 0, End: n - 1 }[e.key];
+    if (next === undefined) return;
+    e.preventDefault();
+    onChange(TABS[next].id);
+    document.getElementById(`tab-${TABS[next].id}`)?.focus();
   };
   return (
     <div className="no-scrollbar -mx-4 overflow-x-auto px-4">

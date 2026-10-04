@@ -1,7 +1,7 @@
 // Hashar marshrutlari: ro'yxat, tafsilot, yaratish, qatnashish, yakunlash, o'chirish.
 import { Hono } from 'hono';
 import { requireAuth } from './auth.js';
-import { limitCreate } from './ratelimit.js';
+import { limitCreate, limitJoin } from './ratelimit.js';
 import { deletePhotos, mediaUrl, readPhoto, storePhoto } from './media.js';
 import {
   AuthError,
@@ -18,7 +18,12 @@ import {
 } from './validate.js';
 
 const LIST_LIMIT = 300;
+const COMPLETED_MIN = 60; // umumiy ro'yxatda bajarilganlar uchun kafolatlangan joy
+const STALE_AFTER_MS = 24 * 60 * 60 * 1000; // sanasidan 1 kun o'tgan PENDING — eskirgan
 const NOT_FOUND = 'Hashar topilmadi';
+
+/** Toshkent vaqti (UTC+5) 'YYYY-MM-DDTHH:MM', `offsetMs` siljish bilan. */
+const tashkentNow = (offsetMs = 0) => new Date(Date.now() + 5 * 3600e3 + offsetMs).toISOString().slice(0, 16);
 
 /**
  * HasharDTO uchun umumiy SELECT. Birinchi parametr (?) — joriy foydalanuvchi ID si
@@ -93,12 +98,8 @@ hasharRoutes.get('/', async (c) => {
   const where = [];
   const params = [uid];
 
-  const status = c.req.query('status');
-  if (status) {
-    if (status !== 'PENDING' && status !== 'COMPLETED') throw new ValidationError("Holat qiymati noto'g'ri");
-    where.push('h.status = ?');
-    params.push(status);
-  }
+  const status = c.req.query('status') || null; // holat filtri pastda (har holat alohida so'rov)
+  if (status && status !== 'PENDING' && status !== 'COMPLETED') throw new ValidationError("Holat qiymati noto'g'ri");
 
   const mine = c.req.query('mine');
   if (mine) {
@@ -122,19 +123,51 @@ hasharRoutes.get('/', async (c) => {
     params.push(like, like, like);
   }
 
-  // Tartib: avval kutilayotganlar (yaqin sana birinchi), keyin bajarilganlar (eng yangisi birinchi)
-  const { results } = await c.env.DB.prepare(
-    `${HASHAR_SELECT}
-     ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-     ORDER BY CASE h.status WHEN 'PENDING' THEN 0 ELSE 1 END,
-              CASE WHEN h.status = 'PENDING' THEN h.date_time END ASC,
-              COALESCE(h.completed_at, h.created_at) DESC,
-              h.id DESC
-     LIMIT ${LIST_LIMIT}`,
-  )
-    .bind(...params)
-    .all();
-  return c.json(results.map((r) => toDto(r, uid)));
+  // Har bir holat alohida tanlanadi: aks holda yakunlanmay qolgan eski PENDING'lar 300 lik
+  // limitni to'ldirib, kelgusi va bajarilgan hasharlarni ro'yxatdan siqib chiqaradi.
+  const db = c.env.DB;
+  const cond = (s) => `WHERE ${[`h.status = '${s}'`, ...where].join(' AND ')}`;
+  const cutoff = tashkentNow(-STALE_AFTER_MS); // shundan oldingi PENDING — "eskirgan"
+  const stmts = [];
+  if (status !== 'COMPLETED') {
+    // Tanlov: avval kelgusilar (yaqini birinchi), keyin eskirganlar (eng yangisi birinchi)
+    stmts.push(
+      db
+        .prepare(
+          `${HASHAR_SELECT} ${cond('PENDING')}
+           ORDER BY (h.date_time < ?) ASC,
+                    CASE WHEN h.date_time >= ? THEN h.date_time END ASC,
+                    h.date_time DESC, h.id DESC
+           LIMIT ${LIST_LIMIT}`,
+        )
+        .bind(...params, cutoff, cutoff),
+    );
+  }
+  if (status !== 'PENDING') {
+    stmts.push(
+      db
+        .prepare(
+          `${HASHAR_SELECT} ${cond('COMPLETED')}
+           ORDER BY COALESCE(h.completed_at, h.created_at) DESC, h.id DESC
+           LIMIT ${LIST_LIMIT}`,
+        )
+        .bind(...params),
+    );
+  }
+  const res = await db.batch(stmts);
+  let pending = status === 'COMPLETED' ? [] : res[0].results;
+  let completed = status === 'PENDING' ? [] : res[res.length - 1].results;
+
+  // Ikkalasi ham kerak bo'lsa: bajarilganlarga kamida COMPLETED_MIN joy (galereya bo'sh qolmasin)
+  if (!status) {
+    const cTake = Math.min(completed.length, Math.max(COMPLETED_MIN, LIST_LIMIT - pending.length));
+    completed = completed.slice(0, cTake);
+    pending = pending.slice(0, LIST_LIMIT - cTake);
+  }
+
+  // Chiqish tartibi (SPEC): PENDING sana bo'yicha o'sish, keyin COMPLETED eng yangisi
+  pending.sort((a, b) => (a.date_time < b.date_time ? -1 : a.date_time > b.date_time ? 1 : b.id - a.id));
+  return c.json([...pending, ...completed].map((r) => toDto(r, uid)));
 });
 
 // GET /api/hashars/:id — DTO + volunteers + (ruxsat bo'lsa) creator.phone
@@ -197,6 +230,8 @@ hasharRoutes.post('/', requireAuth, async (c) => {
     id = ins.results[0].id;
   } catch (err) {
     if (key) await deletePhotos(c.env.PHOTOS, [key]);
+    // Sxema CHECK'i (validatsiyadan o'tib ketgan chekka holat) — 500 emas, 400
+    if (/CHECK constraint failed/i.test(String(err?.message))) throw new ValidationError("Ma'lumotlar noto'g'ri. Tekshirib, qayta urinib ko'ring");
     throw err;
   }
   return c.json(await loadDto(db, id, user.id), 201);
@@ -207,6 +242,7 @@ hasharRoutes.post('/:id/join', requireAuth, async (c) => {
   const id = parseId(c.req.param('id'));
   const uid = c.get('user').id;
   const db = c.env.DB;
+  await limitJoin(c, uid);
   const h = await getMeta(db, id);
   if (h.status === 'COMPLETED') throw new ConflictError('Bu hashar allaqachon yakunlangan');
 
@@ -228,6 +264,7 @@ hasharRoutes.delete('/:id/join', requireAuth, async (c) => {
   const id = parseId(c.req.param('id'));
   const uid = c.get('user').id;
   const db = c.env.DB;
+  await limitJoin(c, uid);
   const h = await getMeta(db, id);
   if (h.creator_id === uid) throw new ConflictError("Tashkilotchi o'z hasharidan chiqa olmaydi");
   if (h.status === 'COMPLETED') throw new ConflictError("Yakunlangan hashardan chiqib bo'lmaydi");

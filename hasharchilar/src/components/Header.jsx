@@ -2,16 +2,17 @@
 import { initials } from '../lib/utils.js';
 import { LeafIcon, PlusIcon, SearchIcon, UserIcon, XIcon } from './icons.jsx';
 
-export function Logo({ className = '' }) {
+/** Logo. `compact` — sarlavhada: tor ekranda (< 380px) ".uz" yashiriladi va matn kerak bo'lsa qisqaradi. */
+export function Logo({ className = '', compact = false }) {
   return (
-    <span className={`flex items-center gap-2 ${className}`}>
+    <span className={`flex min-w-0 items-center gap-2 ${compact ? 'max-[380px]:gap-1.5' : ''} ${className}`}>
       <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-emerald-600 text-white shadow-sm shadow-emerald-700/30">
         <LeafIcon className="h-5 w-5" strokeWidth={2.4} />
       </span>
-      <span className="text-[17px] font-extrabold tracking-tight min-[400px]:text-[19px] sm:text-xl">
+      <span className={`min-w-0 truncate text-[17px] font-extrabold tracking-tight min-[400px]:text-[19px] sm:text-xl ${compact ? 'max-[380px]:text-base' : ''}`}>
         <span className="text-emerald-600">hashar</span>
         <span className="text-amber-500">chilar</span>
-        <span className="text-slate-400">.uz</span>
+        <span className={`text-slate-400 ${compact ? 'max-[380px]:hidden' : ''}`}>.uz</span>
       </span>
     </span>
   );
@@ -49,13 +50,14 @@ export default function Header({ query, onQuery, onCreate, user, authReady, onPr
   return (
     <header className="app-header sticky top-0 z-[1100] border-b border-slate-200/80 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/85">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 sm:gap-4">
-        <a href="./" aria-label="hasharchilar.uz — bosh sahifa" className="shrink-0 rounded-xl">
-          <Logo />
+        {/* min-w-0: 320–365px ekranlarda logo qisqaradi, tugmalar ekrandan chiqib ketmaydi */}
+        <a href="./" aria-label="hasharchilar.uz — bosh sahifa" className="min-w-0 rounded-xl">
+          <Logo compact />
         </a>
 
         <SearchBox query={query} onQuery={onQuery} className="ml-2 hidden max-w-md flex-1 md:flex" />
 
-        <div className="ml-auto flex items-center gap-1.5 sm:gap-3">
+        <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-3">
           <button
             type="button"
             onClick={onCreate}
@@ -85,10 +87,11 @@ export default function Header({ query, onQuery, onCreate, user, authReady, onPr
               onClick={onLogin}
               disabled={!authReady}
               aria-label="Kirish"
-              className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 text-sm font-bold text-slate-800 transition hover:bg-slate-50 disabled:opacity-60 sm:px-4"
+              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 text-sm font-bold text-slate-800 transition hover:bg-slate-50 disabled:opacity-60 max-[374px]:w-10 max-[374px]:px-0 sm:px-4"
             >
-              <UserIcon className="hidden h-[18px] w-[18px] sm:block" />
-              Kirish
+              {/* < 375px: faqat ikonka (aria-label "Kirish" qoladi) */}
+              <UserIcon className="hidden h-[18px] w-[18px] max-[374px]:block sm:block" />
+              <span className="max-[374px]:sr-only">Kirish</span>
             </button>
           )}
         </div>

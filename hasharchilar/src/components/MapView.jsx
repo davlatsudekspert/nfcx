@@ -135,9 +135,10 @@ export default function MapView({ hashars, selectedId, userPos, onSelect, onJoin
       mk.setZIndexOffset(selected ? 1000 : h.status === 'PENDING' ? 100 : 0);
     });
 
-    // Ko'rinadigan hasharlar to'plami o'zgarsa — hammasini sig'diramiz
-    const key = [...ids].sort().join(',');
-    if (key && key !== fittedKey.current) {
+    // Ko'rinadigan hasharlar to'plami o'zgarsa — hammasini sig'diramiz.
+    // Joylashuv keyinroq kelsa ham bir marta qayta sig'diriladi (foydalanuvchi nuqtasi ko'rinsin).
+    const key = [...ids].sort().join(',') + (userPos ? '|u' : '');
+    if (ids.size && key !== fittedKey.current) {
       fittedKey.current = key;
       const bounds = L.latLngBounds(hashars.map((h) => [h.lat, h.lng]));
       // Foydalanuvchi yaqin bo'lsa (≤ 30 km) — u ham ko'rinsin

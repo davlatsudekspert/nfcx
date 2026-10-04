@@ -1,6 +1,6 @@
 // Autentifikatsiya: parol xeshi (PBKDF2), sessiyalar, middleware va /api/auth/* marshrutlari.
 import { Hono } from 'hono';
-import { limitAuth } from './ratelimit.js';
+import { limitAuth, limitLoginPhone } from './ratelimit.js';
 import {
   AuthError,
   ConflictError,
@@ -182,15 +182,23 @@ authRoutes.post('/auth/register', async (c) => {
 authRoutes.post('/auth/login', async (c) => {
   await limitAuth(c);
   const body = await readJson(c);
-  const phone = parsePhone(body.phone);
   const password = typeof body.password === 'string' ? body.password : '';
   if (!password) throw new ValidationError('Parolni kiriting');
   const db = c.env.DB;
 
-  const row = await db
-    .prepare('SELECT id, name, phone, created_at, password_hash FROM users WHERE phone = ?1')
-    .bind(phone)
-    .first();
+  // Noto'g'ri formatdagi telefon ham "noto'g'ri ma'lumot" (SPEC 5: 401), mavjud bo'lmagan raqam kabi
+  let phone = null;
+  try {
+    phone = parsePhone(body.phone);
+  } catch {
+    phone = null;
+  }
+  // Bitta raqamga parol tanlash: IP almashtirilsa ham telefon bo'yicha limit ishlaydi
+  if (phone) await limitLoginPhone(c, phone);
+
+  const row = phone
+    ? await db.prepare('SELECT id, name, phone, created_at, password_hash FROM users WHERE phone = ?1').bind(phone).first()
+    : null;
   // Foydalanuvchi bo'lmasa ham PBKDF2 bajariladi (vaqt orqali raqam borligini bilib bo'lmasin)
   const ok = await verifyPassword(password.slice(0, PASSWORD_MAX + 1), row ? row.password_hash : DUMMY_HASH);
   if (!row || !ok || password.length > PASSWORD_MAX) throw new AuthError("Telefon yoki parol noto'g'ri");

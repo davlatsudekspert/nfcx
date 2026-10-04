@@ -32,7 +32,7 @@ export default function Hero({ stats, loading }) {
         Birgalikda <span className="text-emerald-600">obod</span> qilamiz
       </h1>
       {/* Desktopda: subtitr chapda, raqamlar o'ngda — hero ixcham qoladi */}
-      <div className="mt-2 grid gap-4 sm:mt-3 sm:gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,600px)] lg:items-center lg:gap-10">
+      <div className="mt-2 grid grid-cols-1 gap-4 sm:mt-3 sm:gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,600px)] lg:items-center lg:gap-10">
         <p className="max-w-xl text-[15px] leading-snug text-slate-600 sm:text-lg sm:leading-relaxed">
           Mahallangizdagi hasharlarni xaritada toping, bir bosishda qo'shiling yoki o'zingiz e'lon qiling.
           <span className="hidden sm:inline"> Tozalash, ko'kalamzorlashtirish, obodonlashtirish — hammasi bir joyda.</span>

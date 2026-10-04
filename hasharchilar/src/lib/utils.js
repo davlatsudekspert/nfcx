@@ -13,7 +13,14 @@ export function tashkentNow(offsetMinutes = 0) {
 export const tashkentTomorrow = () => tashkentNow(24 * 60).slice(0, 10);
 
 function parts(iso) {
-  const [date = '', time = ''] = String(iso || '').replace(' ', 'T').split('T');
+  let s = String(iso || '');
+  // "...Z" — haqiqiy UTC lahza (created_at, completed_at): Toshkent vaqtiga (UTC+5) o'tkaziladi.
+  // date_time ("YYYY-MM-DDTHH:MM", allaqachon Toshkent vaqti) o'zgarmaydi.
+  if (/Z$/i.test(s)) {
+    const t = Date.parse(s);
+    if (!Number.isNaN(t)) s = new Date(t + 5 * 3600e3).toISOString();
+  }
+  const [date = '', time = ''] = s.replace(' ', 'T').split('T');
   const [y, m, d] = date.split('-').map(Number);
   return { y, m, d, time: time.slice(0, 5), date };
 }
@@ -49,6 +56,16 @@ export function formatMonth(iso) {
   const { y, m } = parts(iso);
   if (!y || !m) return '';
   return `${MONTHS[m - 1]} ${y}`;
+}
+
+/**
+ * Geolokatsiya xatosi turi: 'denied' (ruxsat yo'q, kod 1), 'unavailable' (GPS/joylashuv xizmati
+ * o'chiq, kod 2), 'timeout' (aniqlab bo'lmadi, kod 3).
+ */
+export function geoErrorKind(err) {
+  if (err && err.code === 2) return 'unavailable';
+  if (err && err.code === 3) return 'timeout';
+  return 'denied';
 }
 
 /** Ikki nuqta orasidagi masofa (km), haversine formulasi. */

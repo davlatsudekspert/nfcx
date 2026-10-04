@@ -48,17 +48,50 @@ export async function readJson(c) {
 }
 
 const MAX_FORM_BYTES = 6 * 1024 * 1024; // 5 MB rasm + matn maydonlari
+const TOO_LARGE = 'Rasm hajmi 5 MB dan oshmasligi kerak';
 
-/** multipart/form-data (yoki urlencoded) formani o'qiydi. */
+/**
+ * So'rov tanasini oqim sifatida o'qiydi; `max` baytdan oshsa 413.
+ * Content-Length bo'lmasa (chunked) ham xotirada ko'pi bilan `max` bayt yig'iladi.
+ */
+async function readBodyLimited(req, max) {
+  if (!req.body) return new Uint8Array(0);
+  const reader = req.body.getReader();
+  const chunks = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > max) {
+      chunks.length = 0; // yig'ilgani darhol bo'shatiladi
+      // Qolgan qismi saqlanmasdan o'qib tashlanadi: yarim o'qilgan tana bilan javob qaytarish
+      // lokal wrangler dev (miniflare) da keyingi so'rovni "Network connection lost" bilan buzadi.
+      while (!(await reader.read()).done);
+      throw new HttpError(413, TOO_LARGE);
+    }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(total);
+  let off = 0;
+  for (const ch of chunks) {
+    out.set(ch, off);
+    off += ch.byteLength;
+  }
+  return out;
+}
+
+/** multipart/form-data (yoki urlencoded) formani o'qiydi (≤ 6 MB). */
 export async function readForm(c) {
   const len = Number(c.req.header('content-length') || 0);
-  if (len > MAX_FORM_BYTES) throw new HttpError(413, "Rasm hajmi 5 MB dan oshmasligi kerak");
+  if (len > MAX_FORM_BYTES) throw new HttpError(413, TOO_LARGE);
   const type = c.req.header('content-type') || '';
   if (!/^(multipart\/form-data|application\/x-www-form-urlencoded)/i.test(type)) {
     throw new ValidationError(BAD_REQUEST);
   }
+  const bytes = await readBodyLimited(c.req.raw, MAX_FORM_BYTES);
   try {
-    return await c.req.formData();
+    return await new Response(bytes, { headers: { 'content-type': type } }).formData();
   } catch {
     throw new ValidationError(BAD_REQUEST);
   }
@@ -73,6 +106,9 @@ const CONTROL_RE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
 export function cleanLine(raw) {
   return String(raw ?? '').replace(CONTROL_RE, '').replace(/\s+/g, ' ').trim();
 }
+
+/** Belgilar soni (Unicode code point) — SQLite length() kabi; emoji = 1, JS .length da 2. */
+export const charLength = (s) => [...s].length;
 
 /** Ko'p qatorli matn (tavsif): qator ko'chirishlar saqlanadi. */
 export function cleanText(raw) {
@@ -204,14 +240,16 @@ export function parseHasharFields(form, { now = Date.now() } = {}) {
     return typeof v === 'string' ? v : '';
   };
 
+  // Uzunlik belgilar (code point) bo'yicha — D1 dagi CHECK (length(...)) bilan bir xil hisob
   const title = cleanLine(str('title'));
-  if (title.length < 3 || title.length > 120) throw new ValidationError("Sarlavha 3–120 belgidan iborat bo'lsin");
+  const titleLen = charLength(title);
+  if (titleLen < 3 || titleLen > 120) throw new ValidationError("Sarlavha 3–120 belgidan iborat bo'lsin");
 
   const description = cleanText(str('description'));
-  if (description.length > 1000) throw new ValidationError('Tavsif 1000 belgidan oshmasin');
+  if (charLength(description) > 1000) throw new ValidationError('Tavsif 1000 belgidan oshmasin');
 
   const address = cleanLine(str('address'));
-  if (address.length > 200) throw new ValidationError('Manzil 200 belgidan oshmasin');
+  if (charLength(address) > 200) throw new ValidationError('Manzil 200 belgidan oshmasin');
 
   return {
     title,

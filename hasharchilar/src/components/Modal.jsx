@@ -23,7 +23,11 @@ export default function Modal({ title, subtitle, onClose, children, footer, size
     const prev = document.activeElement;
     const el = dialogRef.current;
     const field = el && el.querySelector('input:not([type=hidden]):not([disabled]), textarea, select');
-    const t = setTimeout(() => (field || el)?.focus({ preventScroll: true }), 30);
+    const t = setTimeout(() => {
+      // Foydalanuvchi allaqachon biror maydonni tanlagan bo'lsa, fokusni tortib olmaymiz
+      if (el && el.contains(document.activeElement) && document.activeElement !== el) return;
+      (field || el)?.focus({ preventScroll: true });
+    }, 30);
     return () => {
       clearTimeout(t);
       if (prev && typeof prev.focus === 'function' && document.contains(prev)) prev.focus({ preventScroll: true });

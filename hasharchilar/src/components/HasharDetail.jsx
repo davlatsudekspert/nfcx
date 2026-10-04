@@ -42,9 +42,11 @@ export default function HasharDetail({ hashar, distance, onClose, onJoin, onLeav
   const [loadError, setLoadError] = useState('');
   const [mode, setMode] = useState(null); // null | 'complete' | 'delete'
   const [afterPhoto, setAfterPhoto] = useState(null);
+  const [photoBusy, setPhotoBusy] = useState(false); // "Keyin" rasmi hali siqilmoqda
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState('');
   const completeRef = useRef(null);
+  const topRef = useRef(null);
 
   // "Yakunlash" bosilganda rasm bo'limiga aylantiramiz
   useEffect(() => {
@@ -79,7 +81,8 @@ export default function HasharDetail({ hashar, distance, onClose, onJoin, onLeav
   const done = h.status === 'COMPLETED';
   const before = mediaUrl(h.before_url);
   const after = mediaUrl(h.after_url);
-  const phone = h.creator && h.creator.phone;
+  // Telefon faqat qatnashuvchi/egasiga (chiqqandan keyin eski javobdagi raqam ko'rinmasin)
+  const phone = (h.joined || h.is_owner) && h.creator ? h.creator.phone : null;
 
   const run = async (fn) => {
     setBusy(true);
@@ -105,11 +108,17 @@ export default function HasharDetail({ hashar, distance, onClose, onJoin, onLeav
         </button>
         <button
           type="button"
-          disabled={busy || !afterPhoto}
-          onClick={() => run(() => onComplete(h.id, afterPhoto))}
+          disabled={busy || photoBusy || !afterPhoto}
+          onClick={() =>
+            run(async () => {
+              await onComplete(h.id, afterPhoto);
+              // Yakunlangach yangi Oldin/Keyin slayder ko'rinsin — tana tepasiga qaytamiz
+              topRef.current?.closest('.overflow-y-auto')?.scrollTo({ top: 0, behavior: 'smooth' });
+            })
+          }
           className={cx(btn.primary, 'h-12 flex-1')}
         >
-          {busy ? <Spinner /> : <CheckIcon className="h-5 w-5" strokeWidth={2.6} />} Yakunlashni tasdiqlash
+          {busy || photoBusy ? <Spinner /> : <CheckIcon className="h-5 w-5" strokeWidth={2.6} />} Yakunlashni tasdiqlash
         </button>
       </div>
     );
@@ -170,6 +179,7 @@ export default function HasharDetail({ hashar, distance, onClose, onJoin, onLeav
       }
       size="lg"
     >
+      <div ref={topRef} />
       {/* Rasm */}
       {done && before && after ? (
         <BeforeAfterSlider before={before} after={after} alt={h.title} />
@@ -193,7 +203,7 @@ export default function HasharDetail({ hashar, distance, onClose, onJoin, onLeav
         {distance != null && <span className="rounded-full bg-sky-50 px-2.5 py-1 text-xs font-bold text-sky-800">{formatKm(distance)} uzoqlikda</span>}
       </div>
 
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <InfoRow icon={CalendarIcon} label={done ? "Bo'lib o'tdi" : 'Qachon'}>
           {formatDateLong(h.date_time)}
           {done && h.completed_at && <p className="text-sm font-medium text-emerald-700">Yakunlandi: {formatDay(h.completed_at)}</p>}
@@ -277,7 +287,13 @@ export default function HasharDetail({ hashar, distance, onClose, onJoin, onLeav
           <p className="mb-3 text-sm text-slate-600">
             Hashardan keyingi holatni suratga oling. Rasm "Oldin/Keyin" galereyasida ko'rsatiladi.
           </p>
-          <PhotoInput value={afterPhoto} onChange={setAfterPhoto} title={'"Keyin" rasmini yuklang'} hint="Majburiy · JPG, PNG yoki WebP" />
+          <PhotoInput
+            value={afterPhoto}
+            onChange={setAfterPhoto}
+            onBusyChange={setPhotoBusy}
+            title={'"Keyin" rasmini yuklang'}
+            hint="Majburiy · JPG, PNG yoki WebP"
+          />
         </Section>
         </div>
       )}

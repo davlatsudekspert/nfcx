@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from './lib/api.js';
 import { useAuth } from './lib/auth.jsx';
 import { hideSplash } from './lib/native.js';
-import { distanceKm, matchesQuery, sortHashars } from './lib/utils.js';
+import { distanceKm, geoErrorKind, matchesQuery, sortHashars } from './lib/utils.js';
 import AppBanner, { appDownloadUrl, useAppInfo } from './components/AppBanner.jsx';
 import AuthModal from './components/AuthModal.jsx';
 import CompletedGallery from './components/CompletedGallery.jsx';
@@ -44,7 +44,7 @@ export default function App() {
   const pending = useRef(null); // kirishdan keyin bajariladigan amal
   const [joinBusyId, setJoinBusyId] = useState(null);
   const [userPos, setUserPos] = useState(null);
-  const [geo, setGeo] = useState('idle'); // idle | loading | ok | denied | unsupported
+  const [geo, setGeo] = useState('idle'); // idle | loading | ok | denied | unavailable | timeout | unsupported
   const cardRefs = useRef(new Map());
   const loadSeq = useRef(0);
   const loadedOnce = useRef(false);
@@ -209,7 +209,7 @@ export default function App() {
         setUserPos({ lat: p.coords.latitude, lng: p.coords.longitude });
         setGeo('ok');
       },
-      () => setGeo('denied'),
+      (err) => setGeo(geoErrorKind(err)),
       { enableHighAccuracy: false, timeout: 12000, maximumAge: 5 * 60000 },
     );
   }, []);
@@ -307,19 +307,21 @@ export default function App() {
   };
 
   // "Yaqindagi" tab uchun joylashuv holati
+  const GEO_ERRORS = {
+    denied: 'Joylashuvga ruxsat berilmadi.',
+    unavailable: "Joylashuv xizmati o'chiq — telefon sozlamalarida GPS (Joylashuv) ni yoqing.",
+    timeout: "Joylashuvni aniqlab bo'lmadi.",
+    unsupported: 'Qurilmangiz joylashuvni aniqlay olmaydi.',
+  };
   const geoNotice =
     tab !== 'nearby' ? null : geo === 'loading' ? (
       <p className="flex items-center gap-2 rounded-xl bg-sky-50 px-4 py-3 text-sm font-medium text-sky-900">
         <Spinner /> Joylashuvingiz aniqlanmoqda…
       </p>
-    ) : geo === 'denied' || geo === 'unsupported' ? (
+    ) : GEO_ERRORS[geo] ? (
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-200">
-        <span className="font-medium">
-          {geo === 'unsupported'
-            ? "Qurilmangiz joylashuvni aniqlay olmaydi. Hasharlar sana bo'yicha ko'rsatilmoqda."
-            : "Joylashuvga ruxsat berilmadi. Hasharlar sana bo'yicha ko'rsatilmoqda."}
-        </span>
-        {geo === 'denied' && (
+        <span className="font-medium">{GEO_ERRORS[geo]} Hasharlar sana bo'yicha ko'rsatilmoqda.</span>
+        {geo !== 'unsupported' && (
           <button type="button" onClick={requestLocation} className="inline-flex items-center gap-1.5 font-bold text-amber-900 underline-offset-2 hover:underline">
             <LocateIcon className="h-4 w-4" /> Qayta urinish
           </button>
@@ -357,7 +359,7 @@ export default function App() {
         <div id="tab-panel" role="tabpanel" aria-labelledby={`tab-${tab}`} className="mt-5 outline-none" tabIndex={-1}>
           {tab === 'done' ? (
             loading ? (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-hidden="true">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-hidden="true">
                 {[0, 1, 2].map((i) => (
                   <div key={i} className="skeleton aspect-[4/3] rounded-2xl" />
                 ))}
@@ -368,7 +370,8 @@ export default function App() {
               <CompletedGallery hashars={completedList} onOpen={(id) => openDetail(id)} query={query.trim()} />
             )
           ) : (
-            <div className="grid gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start lg:gap-6">
+            // grid-cols-1 = minmax(0,1fr): uzun (truncate) matnlar mobil ustunni ekrandan kengaytirmasin
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start lg:gap-6">
               {/* Xarita: mobilda tepada 340px, desktopda o'ngda sticky 600px */}
               <div className="lg:sticky lg:top-[84px] lg:order-2">
                 <MapView

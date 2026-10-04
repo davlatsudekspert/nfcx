@@ -31,6 +31,7 @@ function FieldError({ children }) {
 export default function CreateHasharModal({ onSubmit, onClose, center }) {
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false); // rasm hali siqilmoqda — yuborish kutadi
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState('');
   const [f, setF] = useState({
@@ -69,9 +70,10 @@ export default function CreateHasharModal({ onSubmit, onClose, center }) {
   const validate = (i) => {
     const e = {};
     if (i === 0) {
-      const t = f.title.trim();
-      if (t.length < 3) e.title = "Nom kamida 3 ta belgidan iborat bo'lsin";
-      else if (t.length > LIMITS.title) e.title = `Nom ${LIMITS.title} belgidan oshmasin`;
+      // Belgilar (code point) bo'yicha — server va DB bilan bir xil (emoji = 1 belgi)
+      const t = [...f.title.trim()].length;
+      if (t < 3) e.title = "Nom kamida 3 ta belgidan iborat bo'lsin";
+      else if (t > LIMITS.title) e.title = `Nom ${LIMITS.title} belgidan oshmasin`;
       if (f.description.length > LIMITS.description) e.description = `Tavsif ${LIMITS.description} belgidan oshmasin`;
     }
     if (i === 1) {
@@ -101,6 +103,7 @@ export default function CreateHasharModal({ onSubmit, onClose, center }) {
   };
 
   const submit = async () => {
+    if (photoBusy) return; // tanlangan rasm siqilib bo'lmaguncha yubormaymiz
     // Barcha bosqichlarni qayta tekshiramiz
     for (let i = 0; i < 3; i++) {
       const e = validate(i);
@@ -141,10 +144,10 @@ export default function CreateHasharModal({ onSubmit, onClose, center }) {
           Keyingi
         </button>
       ) : (
-        <button type="button" onClick={submit} disabled={busy} className={cx(btn.cta, 'h-12 flex-1 text-base')}>
-          {busy ? (
+        <button type="button" onClick={submit} disabled={busy || photoBusy} className={cx(btn.cta, 'h-12 flex-1 text-base')}>
+          {busy || photoBusy ? (
             <>
-              <Spinner /> Yuborilmoqda…
+              <Spinner /> {busy ? 'Yuborilmoqda…' : 'Rasm tayyorlanmoqda…'}
             </>
           ) : (
             "E'lon qilish"
@@ -254,7 +257,7 @@ export default function CreateHasharModal({ onSubmit, onClose, center }) {
 
         {step === 2 && (
           <div className="space-y-5">
-            <div className="grid grid-cols-[1.4fr_1fr] gap-3">
+            <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-3">
               <div>
                 <label htmlFor="h-date" className={labelCls}>
                   Sana
@@ -344,6 +347,7 @@ export default function CreateHasharModal({ onSubmit, onClose, center }) {
             <PhotoInput
               value={f.photo}
               onChange={(photo) => setF((s) => ({ ...s, photo }))}
+              onBusyChange={setPhotoBusy}
               title={'"Oldin" rasmini yuklang'}
               hint="Hozirgi holatni suratga oling — hashardan keyin natijani solishtiramiz. Ixtiyoriy."
             />
