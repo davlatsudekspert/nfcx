@@ -1,0 +1,242 @@
+From 3ece6a5cca60ccd573f521d976bf7062614567c4 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Sun, 4 Oct 2026 11:47:51 +0000
+Subject: [PATCH] Ilova nfcstore:// sxemasi va katalog tovarlarida ko'rishlar
+ soni
+
+- Android intent-filter + iOS CFBundleURLTypes: saytdagi "Ilovada ochish"
+  ilovaning o'zini ochadi (nfcstore://nfcstore.uz/post/<id>)
+- CatalogProduct/CatalogItem.views; katalog kartasi va tovar sahifasida
+  ko'z belgisi + son
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .../android/app/src/main/AndroidManifest.xml  | 10 +++++
+ mobile_nova/ios/Runner/Info.plist             | 13 ++++++
+ mobile_nova/lib/data/models/models.dart       | 12 ++++++
+ .../lib/features/discover/catalog_view.dart   | 40 ++++++++++++++++++-
+ mobile_nova/test/content_views_test.dart      | 13 ++++++
+ mobile_nova/test/routes_test.dart             | 18 +++++++++
+ 6 files changed, 105 insertions(+), 1 deletion(-)
+
+diff --git a/mobile_nova/android/app/src/main/AndroidManifest.xml b/mobile_nova/android/app/src/main/AndroidManifest.xml
+index 5e4edbc..5fcbb86 100644
+--- a/mobile_nova/android/app/src/main/AndroidManifest.xml
++++ b/mobile_nova/android/app/src/main/AndroidManifest.xml
+@@ -72,6 +72,16 @@
+                 <data android:scheme="https" android:host="nfcstore.uz" android:pathPrefix="/story/"/>
+                 <data android:scheme="https" android:host="nfcstore.uz" android:pathPrefix="/nfc/"/>
+             </intent-filter>
++            <!-- ILOVA SXEMASI — nfcstore://nfcstore.uz/post/<id>?code=...
++                 Saytdagi "Ilovada ochish" tugmasi (intent://) shu orqali
++                 ilovaning o'zini ochadi. Telegram/Instagram ichki brauzeri
++                 App Links'ni chetlab o'tadi — sxema esa ishlaydi. -->
++            <intent-filter>
++                <action android:name="android.intent.action.VIEW"/>
++                <category android:name="android.intent.category.DEFAULT"/>
++                <category android:name="android.intent.category.BROWSABLE"/>
++                <data android:scheme="nfcstore" android:host="nfcstore.uz"/>
++            </intent-filter>
+             <intent-filter>
+                 <action android:name="android.nfc.action.NDEF_DISCOVERED"/>
+                 <category android:name="android.intent.category.DEFAULT"/>
+diff --git a/mobile_nova/ios/Runner/Info.plist b/mobile_nova/ios/Runner/Info.plist
+index a59a604..e8413cd 100644
+--- a/mobile_nova/ios/Runner/Info.plist
++++ b/mobile_nova/ios/Runner/Info.plist
+@@ -79,5 +79,18 @@
+ 	<true/>
+ 	<key>UIApplicationSupportsIndirectInputEvents</key>
+ 	<true/>
++	<key>CFBundleURLTypes</key>
++	<array>
++		<dict>
++			<key>CFBundleURLName</key>
++			<string>uz.nfcstore.nova</string>
++			<key>CFBundleURLSchemes</key>
++			<array>
++				<string>nfcstore</string>
++			</array>
++		</dict>
++	</array>
++	<key>FlutterDeepLinkingEnabled</key>
++	<true/>
+ </dict>
+ </plist>
+diff --git a/mobile_nova/lib/data/models/models.dart b/mobile_nova/lib/data/models/models.dart
+index cebec19..0ced116 100644
+--- a/mobile_nova/lib/data/models/models.dart
++++ b/mobile_nova/lib/data/models/models.dart
+@@ -829,8 +829,13 @@ class CatalogProduct {
+     this.companyTelegram = '',
+     this.companyWhatsapp = '',
+     this.companyWebsite = '',
++    this.views = 0,
+   });
+ 
++  /// Necha KISHI ko'rgan (server `views`, butun vaqt). Bir kishi bir
++  /// marta sanaladi — Reels'dagi ko'rishlar bilan bir xil ma'no.
++  final int views;
++
+   /// Server UUID'si.
+   final String id;
+   final String companyId;
+@@ -933,6 +938,7 @@ class CatalogProduct {
+       companyTelegram: _s(c['telegram']),
+       companyWhatsapp: _s(c['whatsapp']),
+       companyWebsite: _s(c['website']),
++      views: _i(j['views']),
+     );
+   }
+ 
+@@ -961,6 +967,7 @@ class CatalogProduct {
+         companyTelegram: b.telegram,
+         companyWhatsapp: b.whatsapp,
+         companyWebsite: b.website,
++        views: i.views,
+       );
+ }
+ 
+@@ -1030,8 +1037,12 @@ class CatalogItem {
+     this.sub,
+     this.priceOnRequest = false,
+     this.priceSoon = false,
++    this.views = 0,
+   });
+ 
++  /// Necha kishi ko'rgan (server `views`).
++  final int views;
++
+   final int id;
+ 
+   /// Serverdagi ASL identifikator — satr ko'rinishida.
+@@ -1118,6 +1129,7 @@ class CatalogItem {
+       // Server qoidasi bilan bir xil: bayroq yoki narx 0.
+       priceOnRequest: _b(j['priceOnRequest']) || price <= 0,
+       priceSoon: _b(j['priceSoon']),
++      views: _i(j['views']),
+     );
+   }
+ }
+diff --git a/mobile_nova/lib/features/discover/catalog_view.dart b/mobile_nova/lib/features/discover/catalog_view.dart
+index 29622b2..281d9d8 100644
+--- a/mobile_nova/lib/features/discover/catalog_view.dart
++++ b/mobile_nova/lib/features/discover/catalog_view.dart
+@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:go_router/go_router.dart';
+ 
++import '../home/widgets/identity_card.dart' show formatCount;
+ import '../../app/providers.dart';
+ import '../../core/errors/app_error.dart';
+ import '../../data/models/models.dart';
+@@ -567,7 +568,38 @@ class ProductCard extends ConsumerWidget {
+                         ),
+                       ),
+                       const SizedBox(height: 3),
+-                      _PriceLine(product: p, size: 14, currency: false),
++                      Row(
++                        children: [
++                          Expanded(
++                            child: _PriceLine(
++                                product: p, size: 14, currency: false),
++                          ),
++                          // KO'RISHLAR — necha kishi ko'rgan (server).
++                          if (p.views > 0)
++                            Semantics(
++                              key: ValueKey('catalog-views-${p.id}'),
++                              label: l.viewsCount(formatCount(p.views)),
++                              excludeSemantics: true,
++                              child: Row(
++                                mainAxisSize: MainAxisSize.min,
++                                children: [
++                                  Icon(Icons.visibility_outlined,
++                                      size: 13, color: t.text3),
++                                  const SizedBox(width: 3),
++                                  Text(
++                                    formatCount(p.views),
++                                    style: TextStyle(
++                                      fontFamily: AppType.sans,
++                                      fontSize: 11.5,
++                                      fontWeight: FontWeight.w600,
++                                      color: t.text3,
++                                    ),
++                                  ),
++                                ],
++                              ),
++                            ),
++                        ],
++                      ),
+                       const Spacer(),
+                       Divider(height: 1, thickness: 1, color: t.border2),
+                       _SellerLine(product: p),
+@@ -1189,6 +1221,12 @@ class _ProductDetailState extends ConsumerState<_ProductDetail> {
+             spacing: Gap.sm,
+             runSpacing: Gap.sm,
+             children: [
++              if (p.views > 0)
++                _InfoPill(
++                  key: const ValueKey('listing-views'),
++                  icon: Icons.visibility_outlined,
++                  text: l.viewsCount(formatCount(p.views)),
++                ),
+               _InfoPill(
+                 key: const ValueKey('listing-kind'),
+                 icon: kindIcon(p.kind),
+diff --git a/mobile_nova/test/content_views_test.dart b/mobile_nova/test/content_views_test.dart
+index 41215fc..33e58c1 100644
+--- a/mobile_nova/test/content_views_test.dart
++++ b/mobile_nova/test/content_views_test.dart
+@@ -85,6 +85,19 @@ void main() {
+     expect(const Post(id: 1, views: 3).copyWithKind(kind: 'post').views, 3);
+   });
+ 
++  test('Katalog tovari — server views (Tanlov va vitrina)', () {
++    final p = CatalogProduct.fromJson({
++      'id': 'item-1',
++      'name': 'Metall karta',
++      'views': 12,
++      'company': {'companyId': 'KARTAUZ'},
++    });
++    expect(p.views, 12);
++    final i = CatalogItem.fromJson({'id': 5, 'name': 'Stiker', 'views': 3});
++    expect(i.views, 3);
++    expect(CatalogProduct.fromItem(i, const Business(companyId: 'KARTAUZ')).views, 3);
++  });
++
+   test('MyAnalytics.fromJson', () {
+     final a = MyAnalytics.fromJson({
+       'days': 30,
+diff --git a/mobile_nova/test/routes_test.dart b/mobile_nova/test/routes_test.dart
+index d68cef6..b16bddd 100644
+--- a/mobile_nova/test/routes_test.dart
++++ b/mobile_nova/test/routes_test.dart
+@@ -183,6 +183,24 @@ void main() {
+     }
+   });
+ 
++  test('nfcstore:// sxemasi — saytdagi "Ilovada ochish" ilovani ochadi', () {
++    // Sayt (`/post/:id` sahifasi) Android'da intent://, iPhone'da
++    // nfcstore:// bilan ilovaning O'ZINI ochadi. Sxema ikkala
++    // platformada ro'yxatda bo'lishi va yo'l marshrutga tushishi shart.
++    final manifest =
++        File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
++    expect(
++        manifest.contains(
++            '<data android:scheme="nfcstore" android:host="nfcstore.uz"/>'),
++        isTrue);
++    final plist = File('ios/Runner/Info.plist').readAsStringSync();
++    expect(plist.contains('<string>nfcstore</string>'), isTrue);
++    expect(
++        routeExists(buildTestRouter(),
++            'nfcstore://nfcstore.uz/post/42?code=ABC123&company=1'),
++        isTrue);
++  });
++
+   test('`Routes` dagi HAR BIR statik yo\'l ro\'yxatda bor', () {
+     // BU SINOV SINOVNI TEKSHIRADI.
+     //
+-- 
+2.43.0
+
