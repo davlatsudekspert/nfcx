@@ -1,0 +1,77 @@
+From aeaa3fb69a42ac5cb76453c1258e7b4ff333e80f Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Sun, 4 Oct 2026 09:59:04 +0000
+Subject: [PATCH 15/15] Asosiy ekran: chap tepadagi NFCSTORE yozuvi olib
+ tashlandi
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .../lib/features/home/home_screen.dart        | 44 ++-----------------
+ 1 file changed, 4 insertions(+), 40 deletions(-)
+
+diff --git a/mobile_nova/lib/features/home/home_screen.dart b/mobile_nova/lib/features/home/home_screen.dart
+index d0e8e5f..52bf72a 100644
+--- a/mobile_nova/lib/features/home/home_screen.dart
++++ b/mobile_nova/lib/features/home/home_screen.dart
+@@ -194,15 +194,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
+                   ),
+                   child: Row(
+                     children: [
+-                      // BREND IMZOSI — sarlavha emas.
+-                      //
+-                      // "Xayrli tong" va hisob login nomi (`ali77099`) bu
+-                      // yerga QAYTMAYDI: ism pastdagi portret qatorida
+-                      // bir marta, to'g'ri ko'rinishda turadi.
+-                      Expanded(
+-                        child: _Wordmark(
+-                            onImage: (active?.coverUrl ?? '').isNotEmpty),
+-                      ),
++                      // CHAP TOMON BO'SH — "NFCSTORE" yozuvi olib tashlandi
++                      // (egasi, 2026-10-04). Sarlavha ham, login nomi ham
++                      // qaytmaydi: ism pastdagi portret qatorida bir marta.
++                      const Spacer(),
+                       NovaIconButton(
+                         icon: Icons.notifications_none_rounded,
+                         tooltip: l.activityTitle,
+@@ -362,37 +357,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
+   }
+ }
+ 
+-/// Brend yozuvi — keng harf oralig'i, sarlavha emas, imzo.
+-class _Wordmark extends StatelessWidget {
+-  const _Wordmark({this.onImage = false});
+-
+-  /// Profil foni ustida — oq yozuv va yumshoq soya: qorong'i
+-  /// suratda ham, yorug'ida ham o'qiladi.
+-  final bool onImage;
+-
+-  @override
+-  Widget build(BuildContext context) {
+-    final t = context.tokens;
+-    return Align(
+-      alignment: Alignment.centerLeft,
+-      child: Text(
+-        'NFCSTORE',
+-        maxLines: 1,
+-        style: TextStyle(
+-          fontFamily: AppType.sans,
+-          fontSize: 13,
+-          fontWeight: FontWeight.w700,
+-          letterSpacing: 13 * .32,
+-          color: onImage ? Colors.white : t.text1,
+-          shadows: onImage
+-              ? const [Shadow(color: Color(0x99000000), blurRadius: 8)]
+-              : null,
+-        ),
+-      ),
+-    );
+-  }
+-}
+-
+ /// Asosiy sahifa tepasidagi profil foni — `profile_screen.dart` dagi
+ /// `_Hero` atmosferasi bilan bir xil qoida: surat O'ZI shaffoflashadi
+ /// (ustiga fon rangidagi to'rtburchak qo'yilmaydi, aks holda pastda
+-- 
+2.43.0
+
