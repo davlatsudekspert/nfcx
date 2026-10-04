@@ -511,7 +511,7 @@
   "businessNoneTitle": "Sizda biznes profil yo‘q",
   "businessNoneHint": "Biznes profil yarating yoki shaxsiy rejimga qayting",
   "premiumTitle": "Premium obuna",
-  "premiumTagline": "Reels, istoriya va to‘liq imkoniyatlar",
+  "premiumTagline": "Ko‘proq tovar va profil qo‘shiqlari",
   "premiumPerMonth": "oyiga",
   "premiumActive": "Premium faol",
   "premiumUntil": "Amal qiladi: {date}",
@@ -527,9 +527,6 @@
   "premiumExtend": "Muddatni uzaytirish",
   "premiumBuy": "Premium olish",
   "premiumPerksTitle": "Nimalar ochiladi",
-  "premiumPerkVideo": "Video post va Reels",
-  "premiumPerkStory": "Istoriya qo‘yish",
-  "premiumPerkPosts": "Ko‘proq post (60 tagacha)",
   "premiumPerkMusic": "10 ta profil qo‘shig‘i",
   "premiumPayWith": "To‘lov usulini tanlang",
   "premiumPayme": "Payme",
@@ -541,10 +538,6 @@
   "premiumNotYet": "To‘lov hali tasdiqlanmadi.",
   "premiumNoProvider": "Hozircha to‘lov tizimi ulanmagan.",
   "premiumBrowserFailed": "To‘lov sahifasini ocholmadik. Havola nusxalandi.",
-  "premiumLocked": "Bu imkoniyat Premiumda",
-  "premiumLockedVideo": "Video post va Reels uchun Premium kerak.",
-  "premiumLockedStory": "Istoriya qo‘yish uchun darajangiz yetmaydi.",
-  "premiumLockedPost": "Post qo‘yish uchun darajangiz yetmaydi.",
   "payKindCard": "Raqamli tashrif qog‘ozi",
   "payKindPhysical": "Jismoniy NFC karta",
   "payKindAuction": "Auksion to‘lovi",
@@ -967,7 +960,7 @@
       }
     }
   },
-  "bizPlanFreeBody": "Premium (oylik) bilan {premium} tagacha tovar, post va istoriya ochiladi. O‘z nomingizni (Business ID) sotib olsangiz — cheksiz.",
+  "bizPlanFreeBody": "Premium (oylik) bilan {premium} tagacha tovar. O‘z nomingizni (Business ID) sotib olsangiz — cheksiz.",
   "@bizPlanFreeBody": {
     "placeholders": {
       "premium": {
@@ -987,11 +980,23 @@
   "bizPlanLimitReached": "Limit to‘ldi: yangi tovar qo‘shish uchun tarifni oshiring. Qo‘shilganlari o‘chmaydi.",
   "bizPlanLimitReachedIos": "Limit to‘ldi. Qo‘shilganlari o‘chmaydi.",
   "bizPlanStoreNotice": "Premium va o‘z nomi saytda rasmiylashtiriladi:",
-  "bizPlanTrial": "Sinov davri: hozircha hech qanday cheklov yo‘q",
   "errPlanLimit": "Tarif limiti to‘ldi. Ko‘proq tovar uchun Premium yoki o‘z nomingiz kerak (sayt orqali).",
-  "errPlanLocked": "Bepul tarifda post va istoriya yopiq. Premium (sayt orqali) bilan ochiladi.",
   "errPlanLimitIos": "Tarif limiti to‘ldi.",
-  "errPlanLockedIos": "Bepul tarifda post va istoriya yopiq.",
+  "errPublishUnavailable": "Hozircha yuborib bo‘lmadi. Birozdan keyin qayta urinib ko‘ring.",
+  "@errPublishUnavailable": {
+    "description": "Server hali ham `premium_required` / `feature_locked` / `plan_locked` qaytarsa — NEYTRAL xato. Premium, daraja yoki xarid haqida so'z yo'q: post, istoriya, Reels va izoh hammaga bepul (egasining qarori, 2026-10-04)."
+  },
+  "bizPlanLimitTitle": "Katalog — {limit} tagacha tovar",
+  "@bizPlanLimitTitle": {
+    "description": "iPhone: tarif nomisiz katalog limiti (\"Bepul tarif\" pullik tarifga ishora qiladi).",
+    "placeholders": {
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
+  "premiumPerkCatalog": "Biznes katalogida ko‘proq tovar",
+  "stickerActivateShort": "Konvertdagi kod bilan",
   "errContentBlocked": "Yuklanmadi: {reason}. Bunday kontent qonun va NFCSTORE qoidalariga zid. Xato deb o‘ylasangiz, boshqa rasm yoki video tanlang yoki qo‘llab-quvvatlashga yozing.",
   "@errContentBlocked": {
     "placeholders": {
@@ -1013,11 +1018,6 @@
   "deleteAccountWhatIos": "So‘rovdan keyin barcha qurilmalarda hisobdan chiqasiz; NFC ID profillaringiz, biznes sahifalaringiz, postlar, istoriyalar va izohlar darhol yashiriladi. 30 kundan keyin hisob va unga bog‘langan ma’lumotlar butunlay o‘chiriladi (hal qilinmagan masala bo‘lsa — u hal bo‘lgach). Bo‘shagan ID’lar 90 kun hech kimga berilmaydi. Qonun talab qiladigan yozuvlar belgilangan muddat saqlanadi.",
   "deleteAccountUnderstood": "Tushundim, hisobimni o‘chirish",
   "deleteAccountDone": "So‘rov qabul qilindi. Hisob 30 kundan keyin butunlay o‘chiriladi.",
-  "errCommentPremium": "Izoh yozish uchun Premium obuna kerak. Izohlarni esa hamma o‘qiy oladi.",
-  "@errCommentPremium": {
-    "description": "Server `premium_required` (403) — izoh yozish faqat Premium'ga. Sabab aytiladi, umumiy \"Ruxsat yo'q\" emas."
-  },
-  "commentPremiumTitle": "Izoh yozish — Premium a’zolar uchun",
   "storeSeeAll": "Barchasini ko‘rish",
   "storeFeatured": "Tavsiya etiladi",
   "storeProducts": "Mahsulotlar",

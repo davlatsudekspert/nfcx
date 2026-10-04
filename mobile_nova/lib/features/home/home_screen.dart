@@ -814,8 +814,14 @@ class _QuickActions extends StatelessWidget {
         : [
             (Icons.qr_code_scanner_rounded, l.nfcScanShort, Routes.nfcScan),
             (Icons.credit_card_outlined, l.nfcWriteShort, Routes.nfcWrite),
-            // ID QIDIRISH — NFC Markazdagi AYNAN O'SHA ekran.
-            (Icons.search_rounded, l.idSearchShort, Routes.nfcMarket),
+            // ANDROID: ID QIDIRISH — NFC Markazdagi AYNAN O'SHA ekran.
+            //
+            // iPHONE'DA ID BOZORI YO'Q (egasining qarori, 2026-10-04):
+            // qidiruvdagi ID'lar pullik raqamli tovar, ilovada IAP yo'q
+            // (Apple 3.1.1). O'rnida foydali amal — "NFC ID'larim".
+            isAppStoreBuild
+                ? (Icons.badge_outlined, l.nfcMyIds, Routes.nfcIds)
+                : (Icons.search_rounded, l.idSearchShort, Routes.nfcMarket),
             (Icons.add_rounded, l.postCreate, Routes.postCreate),
           ];
 

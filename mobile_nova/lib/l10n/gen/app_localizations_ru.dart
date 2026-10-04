@@ -1339,7 +1339,7 @@ class LRu extends L {
   String get premiumTitle => 'Подписка Premium';
 
   @override
-  String get premiumTagline => 'Reels, истории и все возможности';
+  String get premiumTagline => 'Больше товаров и треков в профиле';
 
   @override
   String get premiumPerMonth => 'в месяц';
@@ -1366,15 +1366,6 @@ class LRu extends L {
 
   @override
   String get premiumPerksTitle => 'Что открывается';
-
-  @override
-  String get premiumPerkVideo => 'Видео и Reels';
-
-  @override
-  String get premiumPerkStory => 'Публикация историй';
-
-  @override
-  String get premiumPerkPosts => 'Больше постов (до 60)';
 
   @override
   String get premiumPerkMusic => '10 треков в профиле';
@@ -1409,18 +1400,6 @@ class LRu extends L {
   @override
   String get premiumBrowserFailed =>
       'Не удалось открыть страницу оплаты. Ссылка скопирована.';
-
-  @override
-  String get premiumLocked => 'Эта возможность в Premium';
-
-  @override
-  String get premiumLockedVideo => 'Для видео и Reels нужен Premium.';
-
-  @override
-  String get premiumLockedStory => 'Вашего уровня недостаточно для историй.';
-
-  @override
-  String get premiumLockedPost => 'Вашего уровня недостаточно для постов.';
 
   @override
   String get payKindCard => 'Цифровая визитка';
@@ -2406,7 +2385,7 @@ class LRu extends L {
 
   @override
   String bizPlanFreeBody(int premium) {
-    return 'С Premium (ежемесячно) — до $premium товаров, посты и истории. Со своим именем (Business ID) — без ограничений.';
+    return 'С Premium (ежемесячно) — до $premium товаров. Со своим именем (Business ID) — без ограничений.';
   }
 
   @override
@@ -2430,22 +2409,26 @@ class LRu extends L {
   String get bizPlanStoreNotice => 'Premium и своё имя оформляются на сайте:';
 
   @override
-  String get bizPlanTrial => 'Пробный период: пока без ограничений';
-
-  @override
   String get errPlanLimit =>
       'Лимит тарифа исчерпан. Для большего нужен Premium или своё имя (на сайте).';
-
-  @override
-  String get errPlanLocked =>
-      'На бесплатном тарифе посты и истории закрыты. Откроются с Premium (на сайте).';
 
   @override
   String get errPlanLimitIos => 'Лимит тарифа исчерпан.';
 
   @override
-  String get errPlanLockedIos =>
-      'На бесплатном тарифе посты и истории закрыты.';
+  String get errPublishUnavailable =>
+      'Сейчас не получилось отправить. Попробуйте чуть позже.';
+
+  @override
+  String bizPlanLimitTitle(int limit) {
+    return 'Каталог — до $limit товаров';
+  }
+
+  @override
+  String get premiumPerkCatalog => 'Больше товаров в бизнес-каталоге';
+
+  @override
+  String get stickerActivateShort => 'По коду из конверта';
 
   @override
   String errContentBlocked(String reason) {
@@ -2496,13 +2479,6 @@ class LRu extends L {
   @override
   String get deleteAccountDone =>
       'Запрос принят. Аккаунт будет полностью удалён через 30 дней.';
-
-  @override
-  String get errCommentPremium =>
-      'Чтобы писать комментарии, нужна подписка Premium. Читать их могут все.';
-
-  @override
-  String get commentPremiumTitle => 'Комментарии — для участников Premium';
 
   @override
   String get storeSeeAll => 'Смотреть все';

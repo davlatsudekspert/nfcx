@@ -1254,19 +1254,20 @@ class _PremiumScreenState extends ConsumerState<PremiumScreen>
   }
 }
 
-/// Premium nimani ochishi — SERVERDAGI qoidalar bilan bir xil.
+/// Premium nima berishi.
 ///
-/// `FEATURE_MIN_D1 = { post: 'silver', video: 'premium', story: 'gold' }`
-/// va `POST_LIMIT_D1[premium] = 60`, `musicLimitD1(true) = 10`.
+/// Post, istoriya, video/Reels va izoh bu ro'yxatda YO'Q: ular hammaga
+/// bepul (egasining qarori, 2026-10-04). Premium faqat qo'shimcha
+/// hajm beradi — biznes katalogida ko'proq tovar va `musicLimitD1(true)
+/// = 10` profil qo'shig'i. iPhone'da bu ekran umuman ochilmaydi
+/// (`router.dart`, `isAppStoreBuild`).
 class _Perks extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = L.of(context);
     final t = context.tokens;
     final items = <(IconData, String)>[
-      (Icons.movie_creation_outlined, l.premiumPerkVideo),
-      (Icons.auto_stories_outlined, l.premiumPerkStory),
-      (Icons.grid_on_rounded, l.premiumPerkPosts),
+      (Icons.inventory_2_outlined, l.premiumPerkCatalog),
       (Icons.music_note_rounded, l.premiumPerkMusic),
     ];
     return FloatingSurface(

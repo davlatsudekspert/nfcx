@@ -40,7 +40,7 @@ import '../features/settings/settings_subscreens.dart';
 import '../features/shop/nfc_id_market.dart';
 import '../features/shop/shop_screens.dart';
 import '../features/shop/store_policy.dart'
-    show showNewsEntry, showNotificationSettings;
+    show isAppStoreBuild, showNewsEntry, showNotificationSettings;
 import '../features/social/post_screens.dart';
 import '../features/social/reels_screen.dart';
 import '../features/social/story_viewer.dart';
@@ -49,6 +49,21 @@ import 'shell.dart';
 import '../features/nfc/gift_offers_screen.dart';
 
 final _rootKey = GlobalKey<NavigatorState>();
+
+/// iPHONE'DA YOPIQ YO'L — [to] ga buriladi; Android'da `null`
+/// (ekran avvalgidek ochiladi).
+///
+/// App Store auditi (2026-10-04): xarid va pullik tarif ekranlari
+/// (ID bozori, Premium, to'lovlar tarixi, taklif chegirmasi, FEATURED,
+/// do'kon, buyurtmalar, pullik o'z nomi) iPhone menyusidan olib
+/// tashlangan edi, lekin marshrutlari qolgan va `nfcstore://` sxemasi
+/// (Info.plist, `FlutterDeepLinkingEnabled`) bilan ochilardi. Apple
+/// 3.1.1: IAP'siz raqamli xarid yo'li ilovada umuman bo'lmasligi kerak.
+///
+/// Yo'naltirish OTA marshrutda: GoRouter uni bola marshrutlarga ham
+/// qo'llaydi (`/shop/checkout`, `/settings/payment/history`).
+String? Function(BuildContext, GoRouterState) _closedOnIos(String to) =>
+    (_, __) => isAppStoreBuild ? to : null;
 
 /// Ilova marshrutlari.
 ///
@@ -264,21 +279,31 @@ final routerProvider = Provider<GoRouter>((ref) {
       // NFC ID BOZORI. Buyurtma yo'li `/:code` dan OLDIN turishi
       // shart — aks holda `order` so'zi kod deb o'qilardi va
       // `/nfc/market/order/12` umuman ochilmasdi.
+      //
+      // iPhone'da bozor YO'Q (`showIdMarket`): uchala yo'l ham
+      // "NFC ID'larim" ga buriladi.
       GoRoute(
         path: '/nfc/market/order/:id',
+        redirect: _closedOnIos(Routes.nfcIds),
         builder: (_, st) =>
             NfcIdOrderScreen(orderId: int.tryParse(st.pathParameters['id'] ?? '') ?? 0),
       ),
       GoRoute(
         path: '/nfc/market/:code',
+        redirect: _closedOnIos(Routes.nfcIds),
         builder: (_, st) =>
             NfcIdBuyScreen(code: st.pathParameters['code'] ?? ''),
       ),
-      GoRoute(path: Routes.nfcMarket, builder: (_, __) => const NfcIdMarketScreen()),
+      GoRoute(
+          path: Routes.nfcMarket,
+          redirect: _closedOnIos(Routes.nfcIds),
+          builder: (_, __) => const NfcIdMarketScreen()),
       GoRoute(path: Routes.nfcScan, builder: (_, __) => const NfcScanScreen()),
       GoRoute(path: Routes.nfcWrite, builder: (_, __) => const NfcWriteScreen()),
+      // FEATURED (lentada pullik ko'tarish) — iPhone'da yo'q.
       GoRoute(
         path: '/featured/:kind/:id',
+        redirect: _closedOnIos(Routes.home),
         builder: (_, st) => FeaturedScreen(
           targetKind: st.pathParameters['kind'] ?? 'post',
           targetId: int.tryParse(st.pathParameters['id'] ?? '') ?? 0,
@@ -352,8 +377,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: Routes.businessIntro,
           builder: (_, __) => const BusinessIntroScreen()),
+      // `?mode=custom` — pullik o'z nomi. iPhone'da faqat bepul
+      // Business ID (`business_intro.dart`), havola bilan ham.
       GoRoute(
           path: Routes.businessOnboard,
+          redirect: (_, s) => isAppStoreBuild &&
+                  s.uri.queryParameters['mode'] == 'custom'
+              ? Routes.businessOnboard
+              : null,
           builder: (_, s) => BusinessOnboardScreen(
                 custom: s.uri.queryParameters['mode'] == 'custom',
               )),
@@ -421,9 +452,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const DemoBusinessScreen(),
       ),
 
-      // Do'kon
+      // Do'kon. iPhone'da do'kon ham, buyurtmalar ham yo'q — NFC
+      // Markaziga (stiker faollashtirish shu yerda) va Sozlamalarga.
       GoRoute(
         path: Routes.shop,
+        redirect: _closedOnIos(Routes.nfc),
         builder: (_, __) => const ShopScreen(),
         routes: [
           GoRoute(
@@ -441,7 +474,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
-      GoRoute(path: Routes.orders, builder: (_, __) => const OrdersScreen()),
+      GoRoute(
+          path: Routes.orders,
+          redirect: _closedOnIos(Routes.settings),
+          builder: (_, __) => const OrdersScreen()),
 
       // Bildirishnomalar va sozlamalar
       GoRoute(path: Routes.activity, builder: (_, __) => const ActivityScreen()),
@@ -470,8 +506,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
               path: 'privacy',
               builder: (_, __) => const PrivacySettingsScreen()),
+          // To'lovlar tarixi, taklif chegirmasi va Premium — iPhone'da
+          // yo'q (raqamli xarid, IAP'siz): Sozlamalarga buriladi.
           GoRoute(
             path: 'payment',
+            redirect: _closedOnIos(Routes.settings),
             builder: (_, __) => const PaymentHistoryScreen(),
             routes: [
               GoRoute(
@@ -479,8 +518,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                   builder: (_, __) => const PaymentHistoryScreen()),
             ],
           ),
-          GoRoute(path: 'referral', builder: (_, __) => const ReferralScreen()),
-          GoRoute(path: 'premium', builder: (_, __) => const PremiumScreen()),
+          GoRoute(
+              path: 'referral',
+              redirect: _closedOnIos(Routes.settings),
+              builder: (_, __) => const ReferralScreen()),
+          GoRoute(
+              path: 'premium',
+              redirect: _closedOnIos(Routes.settings),
+              builder: (_, __) => const PremiumScreen()),
           GoRoute(path: 'support', builder: (_, __) => const SupportScreen()),
           GoRoute(path: 'about', builder: (_, __) => const AboutScreen()),
           // iPhone'da yangiliklar YO'Q (`showNewsEntry`) — `nfcstore://`

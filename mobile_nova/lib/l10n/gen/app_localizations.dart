@@ -2664,7 +2664,7 @@ abstract class L {
   /// No description provided for @premiumTagline.
   ///
   /// In uz, this message translates to:
-  /// **'Reels, istoriya va to‘liq imkoniyatlar'**
+  /// **'Ko‘proq tovar va profil qo‘shiqlari'**
   String get premiumTagline;
 
   /// No description provided for @premiumPerMonth.
@@ -2714,24 +2714,6 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Nimalar ochiladi'**
   String get premiumPerksTitle;
-
-  /// No description provided for @premiumPerkVideo.
-  ///
-  /// In uz, this message translates to:
-  /// **'Video post va Reels'**
-  String get premiumPerkVideo;
-
-  /// No description provided for @premiumPerkStory.
-  ///
-  /// In uz, this message translates to:
-  /// **'Istoriya qo‘yish'**
-  String get premiumPerkStory;
-
-  /// No description provided for @premiumPerkPosts.
-  ///
-  /// In uz, this message translates to:
-  /// **'Ko‘proq post (60 tagacha)'**
-  String get premiumPerkPosts;
 
   /// No description provided for @premiumPerkMusic.
   ///
@@ -2798,30 +2780,6 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'To‘lov sahifasini ocholmadik. Havola nusxalandi.'**
   String get premiumBrowserFailed;
-
-  /// No description provided for @premiumLocked.
-  ///
-  /// In uz, this message translates to:
-  /// **'Bu imkoniyat Premiumda'**
-  String get premiumLocked;
-
-  /// No description provided for @premiumLockedVideo.
-  ///
-  /// In uz, this message translates to:
-  /// **'Video post va Reels uchun Premium kerak.'**
-  String get premiumLockedVideo;
-
-  /// No description provided for @premiumLockedStory.
-  ///
-  /// In uz, this message translates to:
-  /// **'Istoriya qo‘yish uchun darajangiz yetmaydi.'**
-  String get premiumLockedStory;
-
-  /// No description provided for @premiumLockedPost.
-  ///
-  /// In uz, this message translates to:
-  /// **'Post qo‘yish uchun darajangiz yetmaydi.'**
-  String get premiumLockedPost;
 
   /// No description provided for @payKindCard.
   ///
@@ -4644,7 +4602,7 @@ abstract class L {
   /// No description provided for @bizPlanFreeBody.
   ///
   /// In uz, this message translates to:
-  /// **'Premium (oylik) bilan {premium} tagacha tovar, post va istoriya ochiladi. O‘z nomingizni (Business ID) sotib olsangiz — cheksiz.'**
+  /// **'Premium (oylik) bilan {premium} tagacha tovar. O‘z nomingizni (Business ID) sotib olsangiz — cheksiz.'**
   String bizPlanFreeBody(int premium);
 
   /// No description provided for @bizPlanPremiumTitle.
@@ -4677,23 +4635,11 @@ abstract class L {
   /// **'Premium va o‘z nomi saytda rasmiylashtiriladi:'**
   String get bizPlanStoreNotice;
 
-  /// No description provided for @bizPlanTrial.
-  ///
-  /// In uz, this message translates to:
-  /// **'Sinov davri: hozircha hech qanday cheklov yo‘q'**
-  String get bizPlanTrial;
-
   /// No description provided for @errPlanLimit.
   ///
   /// In uz, this message translates to:
   /// **'Tarif limiti to‘ldi. Ko‘proq tovar uchun Premium yoki o‘z nomingiz kerak (sayt orqali).'**
   String get errPlanLimit;
-
-  /// No description provided for @errPlanLocked.
-  ///
-  /// In uz, this message translates to:
-  /// **'Bepul tarifda post va istoriya yopiq. Premium (sayt orqali) bilan ochiladi.'**
-  String get errPlanLocked;
 
   /// No description provided for @errPlanLimitIos.
   ///
@@ -4701,11 +4647,29 @@ abstract class L {
   /// **'Tarif limiti to‘ldi.'**
   String get errPlanLimitIos;
 
-  /// No description provided for @errPlanLockedIos.
+  /// Server hali ham `premium_required` / `feature_locked` / `plan_locked` qaytarsa — NEYTRAL xato. Premium, daraja yoki xarid haqida so'z yo'q: post, istoriya, Reels va izoh hammaga bepul (egasining qarori, 2026-10-04).
   ///
   /// In uz, this message translates to:
-  /// **'Bepul tarifda post va istoriya yopiq.'**
-  String get errPlanLockedIos;
+  /// **'Hozircha yuborib bo‘lmadi. Birozdan keyin qayta urinib ko‘ring.'**
+  String get errPublishUnavailable;
+
+  /// iPhone: tarif nomisiz katalog limiti ("Bepul tarif" pullik tarifga ishora qiladi).
+  ///
+  /// In uz, this message translates to:
+  /// **'Katalog — {limit} tagacha tovar'**
+  String bizPlanLimitTitle(int limit);
+
+  /// No description provided for @premiumPerkCatalog.
+  ///
+  /// In uz, this message translates to:
+  /// **'Biznes katalogida ko‘proq tovar'**
+  String get premiumPerkCatalog;
+
+  /// No description provided for @stickerActivateShort.
+  ///
+  /// In uz, this message translates to:
+  /// **'Konvertdagi kod bilan'**
+  String get stickerActivateShort;
 
   /// No description provided for @errContentBlocked.
   ///
@@ -4790,18 +4754,6 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'So‘rov qabul qilindi. Hisob 30 kundan keyin butunlay o‘chiriladi.'**
   String get deleteAccountDone;
-
-  /// Server `premium_required` (403) — izoh yozish faqat Premium'ga. Sabab aytiladi, umumiy "Ruxsat yo'q" emas.
-  ///
-  /// In uz, this message translates to:
-  /// **'Izoh yozish uchun Premium obuna kerak. Izohlarni esa hamma o‘qiy oladi.'**
-  String get errCommentPremium;
-
-  /// No description provided for @commentPremiumTitle.
-  ///
-  /// In uz, this message translates to:
-  /// **'Izoh yozish — Premium a’zolar uchun'**
-  String get commentPremiumTitle;
 
   /// No description provided for @storeSeeAll.
   ///

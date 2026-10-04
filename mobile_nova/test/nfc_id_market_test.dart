@@ -196,13 +196,17 @@ void main() {
       expect(screens, contains('milliseconds: 350'));
     });
 
-    /// IKKINCHI KATALOG YO'Q.
+    /// IKKINCHI KATALOG YO'Q. Ikkala kirish joyi (Android'da) bitta
+    /// ekranga olib boradi va iPhone'da ikkalasi ham kalit ortida
+    /// (`showIdMarket` / `isAppStoreBuild`) — `app_store_market_test.dart`.
     test('ikkala kirish joyi bitta ekranga olib boradi', () {
       final center =
           File('lib/features/nfc/nfc_center_screen.dart').readAsStringSync();
       final home = File('lib/features/home/home_screen.dart').readAsStringSync();
       expect(center, contains('Routes.nfcMarket'));
       expect(home, contains('Routes.nfcMarket'));
+      expect(center, contains('showIdMarket'));
+      expect(home, contains('isAppStoreBuild'));
     });
   });
 }

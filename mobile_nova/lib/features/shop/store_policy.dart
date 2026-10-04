@@ -139,6 +139,19 @@ bool get showOrdersEntry => !isAppStoreBuild;
 /// esa "Ilova haqida" ga buriladi (`router.dart`). ANDROID O'ZGARMAYDI.
 bool get showNewsEntry => !isAppStoreBuild;
 
+/// "NFC ID BOZORI" BO'LSINMI — ID qidiruvi, toifalar katalogi, ID
+/// kartasi va buyurtma ekrani (`/nfc/market*`).
+///
+/// Egasining qarori (2026-10-04, App Store auditi): iPhone'da bozor
+/// UMUMAN YO'Q. Qidiruvdagi har bir ID pullik raqamli tovar, IAP esa
+/// yo'q (Apple 3.1.1). Narxsiz ham u "bo'sh — oling" degan, lekin
+/// olib bo'lmaydigan do'kon vitrinasi bo'lib qolardi. Bosh sahifadagi
+/// "ID qidirish" o'rnida "NFC ID'larim", NFC Markazdagi qator va
+/// NFC'siz qurilmadagi katak o'rnida stiker faollashtirish turadi;
+/// `/nfc/market*` havolalari esa "NFC ID'larim" ga buriladi
+/// (`router.dart`). ANDROID O'ZGARMAYDI.
+bool get showIdMarket => !isAppStoreBuild;
+
 /// "BILDIRISHNOMALAR" SOZLAMASI BO'LSINMI.
 ///
 /// Ilovada push ham, mahalliy bildirishnoma ham YO'Q: `pubspec.yaml`

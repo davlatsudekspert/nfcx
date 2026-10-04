@@ -872,8 +872,14 @@ class _AddProductCard extends StatelessWidget {
 
 /// Tarif kartasi: nechta tovar qo'yilgan, limit, keyingi qadam.
 ///
+/// FAQAT KATALOG HAJMI. Post va istoriya hammaga bepul (egasining
+/// qarori, 2026-10-04) — karta ularni tarifga bog'lamaydi va "sinov
+/// davri" deb yozmaydi (sinov tugasa pul to'lanadi degan ishora edi).
+///
 /// PLAY QOIDASI: Premium va nom RAQAMLI xizmat — ilovada xarid tugmasi
 /// ham, saytga bosiladigan havola ham YO'Q ([StoreNotice] — faqat matn).
+/// iPhone'da tarif nomi ham, keyingi qadam ham yo'q — faqat limit va
+/// hisoblagich (Apple 3.1.1, `store_policy.dart`).
 class BusinessPlanCard extends StatelessWidget {
   const BusinessPlanCard({super.key, required this.plan, required this.count});
 
@@ -885,20 +891,10 @@ class BusinessPlanCard extends StatelessWidget {
     final l = L.of(context);
     final t = context.tokens;
 
-    if (plan.trialActive) {
-      return Row(
-        key: const ValueKey('plan-trial'),
-        children: [
-          Icon(Icons.auto_awesome_rounded, size: 16, color: t.labelInk),
-          const SizedBox(width: Gap.sm),
-          Expanded(
-            child: Text(l.bizPlanTrial,
-                style: Theme.of(context).textTheme.bodySmall),
-          ),
-        ],
-      );
-    }
-    if (!plan.limited) return const SizedBox.shrink();
+    // Sinov davrida server cheklov qo'ymaydi — ko'rsatadigan limit
+    // yo'q. Ilgari "Sinov davri: hozircha cheklov yo'q" yozilardi:
+    // "keyin pul to'laysiz" degan ma'no beradi, joylash esa bepul.
+    if (plan.trialActive || !plan.limited) return const SizedBox.shrink();
 
     final limit = plan.itemLimit!;
     final full = plan.atLimit(count);
@@ -912,9 +908,14 @@ class BusinessPlanCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  plan.premium
-                      ? l.bizPlanPremiumTitle(limit)
-                      : l.bizPlanFreeTitle(limit),
+                  // iPhone'da "Bepul tarif" / "Premium" emas — faqat
+                  // katalog hajmi: tarif nomi ilovada sotilmaydigan
+                  // pullik tarifga ishora qiladi.
+                  !showDigitalPrices
+                      ? l.bizPlanLimitTitle(limit)
+                      : plan.premium
+                          ? l.bizPlanPremiumTitle(limit)
+                          : l.bizPlanFreeTitle(limit),
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
               ),

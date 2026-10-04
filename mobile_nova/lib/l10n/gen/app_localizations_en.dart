@@ -1343,7 +1343,7 @@ class LEn extends L {
   String get premiumTitle => 'Premium subscription';
 
   @override
-  String get premiumTagline => 'Reels, stories and every feature';
+  String get premiumTagline => 'More catalogue items and profile tracks';
 
   @override
   String get premiumPerMonth => 'per month';
@@ -1370,15 +1370,6 @@ class LEn extends L {
 
   @override
   String get premiumPerksTitle => 'What you unlock';
-
-  @override
-  String get premiumPerkVideo => 'Video posts and Reels';
-
-  @override
-  String get premiumPerkStory => 'Posting stories';
-
-  @override
-  String get premiumPerkPosts => 'More posts (up to 60)';
 
   @override
   String get premiumPerkMusic => '10 profile tracks';
@@ -1414,18 +1405,6 @@ class LEn extends L {
   @override
   String get premiumBrowserFailed =>
       'Could not open the payment page. The link was copied.';
-
-  @override
-  String get premiumLocked => 'This feature is in Premium';
-
-  @override
-  String get premiumLockedVideo => 'Video posts and Reels need Premium.';
-
-  @override
-  String get premiumLockedStory => 'Your tier is not high enough for stories.';
-
-  @override
-  String get premiumLockedPost => 'Your tier is not high enough for posts.';
 
   @override
   String get payKindCard => 'Digital business card';
@@ -2410,7 +2389,7 @@ class LEn extends L {
 
   @override
   String bizPlanFreeBody(int premium) {
-    return 'With Premium (monthly) — up to $premium items, posts and stories. With your own name (Business ID) — unlimited.';
+    return 'With Premium (monthly) — up to $premium items. With your own name (Business ID) — unlimited.';
   }
 
   @override
@@ -2434,22 +2413,26 @@ class LEn extends L {
       'Premium and your own name are arranged on the website:';
 
   @override
-  String get bizPlanTrial => 'Trial: no limits for now';
-
-  @override
   String get errPlanLimit =>
       'Plan limit reached. Premium or your own name (on the website) allows more.';
-
-  @override
-  String get errPlanLocked =>
-      'Posts and stories are closed on the free plan. Premium (on the website) opens them.';
 
   @override
   String get errPlanLimitIos => 'Plan limit reached.';
 
   @override
-  String get errPlanLockedIos =>
-      'Posts and stories are closed on the free plan.';
+  String get errPublishUnavailable =>
+      'Couldn’t send this right now. Please try again a little later.';
+
+  @override
+  String bizPlanLimitTitle(int limit) {
+    return 'Catalogue — up to $limit items';
+  }
+
+  @override
+  String get premiumPerkCatalog => 'More items in your business catalogue';
+
+  @override
+  String get stickerActivateShort => 'With the code from the envelope';
 
   @override
   String errContentBlocked(String reason) {
@@ -2500,13 +2483,6 @@ class LEn extends L {
   @override
   String get deleteAccountDone =>
       'Request received. Your account will be permanently deleted in 30 days.';
-
-  @override
-  String get errCommentPremium =>
-      'A Premium subscription is required to write comments. Everyone can read them.';
-
-  @override
-  String get commentPremiumTitle => 'Comments are for Premium members';
 
   @override
   String get storeSeeAll => 'See all';

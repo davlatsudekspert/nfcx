@@ -55,17 +55,23 @@ String describeError(L l, AppError e) => switch (e.code) {
       // o'chirish sanasini beradi — odamga sana va bekor qilish yo'li aytiladi.
       'account_deleted' => _pendingDeletion(l, e.detail),
       'account_pending_deletion' => l.errAccountDeleted,
-      // Izoh yozish — faqat Premium (server qoidasi, `comments.js`).
-      // Ilgari umumiy "Ruxsat yo'q" chiqardi va odam sababini bilmasdi
-      // (egasi, 2026-09 surat). Xarid havolasi YO'Q — Play qoidasi.
-      'premium_required' => l.errCommentPremium,
+      // POST, ISTORIYA, REELS VA IZOH — HAMMAGA BEPUL (egasining
+      // qarori, 2026-10-04). Ilova bu imkoniyatlarni hech kimdan
+      // yopmaydi. Server eski qoidasi bilan hali `premium_required`
+      // (izoh), `feature_locked` (post/video/istoriya) yoki
+      // `plan_locked` (biznes post) qaytarsa — NEYTRAL xato: Premium,
+      // daraja, tarif yoki "saytdan oling" degan so'z YO'Q. Aks holda
+      // iPhone'da IAP'siz pullik qulf ko'rinardi (Apple 3.1.1).
+      'premium_required' ||
+      'feature_locked' ||
+      'plan_locked' =>
+        l.errPublishUnavailable,
       'rules_not_accepted' => l.rulesNotAccepted,
       // iPhone'da "(sayt orqali)" degan xarid ishorasi yo'q —
       // `shop/store_policy.dart` dagi `isAppStoreBuild` izohi.
       'plan_limit_reached' => _appStore ? l.errPlanLimitIos : l.errPlanLimit,
       // Server 413 yoki ilovaning oldindan tekshiruvi (100 MB).
       'too_large' => l.errFileTooLarge,
-      'plan_locked' => _appStore ? l.errPlanLockedIos : l.errPlanLocked,
       // AVTOMATIK FILTR rasm yoki videoni rad etdi — SABAB aytiladi, aks holda
       // odam "nega yuklanmayapti" deb o'ylaydi.
       'content_blocked' => l.errContentBlocked(switch (e.detail) {

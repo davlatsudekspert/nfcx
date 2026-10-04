@@ -540,14 +540,6 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
   bool _busy = false;
   String? _error;
 
-  /// Server "darajangiz yetmaydi" dedimi.
-  ///
-  /// Oddiy xato matni bilan farqi bor: bu YO'L BOR degani — odam
-  /// Premium olsa qo'ya oladi. Shuning uchun matn emas, TUGMA
-  /// ko'rsatiladi. Aks holda odam nega joylay olmasligini bilmay,
-  /// "ilova buzuq" deb o'ylaydi.
-  bool _locked = false;
-
   /// Tanlangan fayl VIDEOmi. Reel endi rasm ham bo'la oladi (egasi:
   /// "reelsga rasm ham qo'yilsin, default 10 sekund bo'lsin").
   bool _fileIsVideo = false;
@@ -644,7 +636,6 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
     setState(() {
       _busy = true;
       _error = null;
-      _locked = false;
       _progress = 0;
     });
 
@@ -772,13 +763,12 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
         }
         context.pop();
       },
-      err: (e) => setState(() {
-        // `feature_locked` — serverdagi `FEATURE_MIN_D1` darvozasi.
-        // Qaysi imkoniyat ekanini ILOVA O'ZI biladi: shu ekranda
-        // nima joylanayotgani ma'lum.
-        _locked = e.code == 'feature_locked';
-        _error = _locked ? _lockedText(l) : describeError(l, e);
-      }),
+      // POST, ISTORIYA VA REELS — HAMMAGA BEPUL (egasining qarori,
+      // 2026-10-04). Ilgari server `feature_locked` qaytarsa "Video
+      // post va Reels uchun Premium kerak" / "darajangiz yetmaydi"
+      // yozilardi — iPhone'da IAP'siz pullik qulf (Apple 3.1.1). Endi
+      // bu kod ham oddiy xato: `describeError` neytral matn beradi.
+      err: (e) => setState(() => _error = describeError(l, e)),
     );
   }
 
@@ -1043,14 +1033,12 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
                 fontFamily: AppType.sans,
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
-                color: _locked ? t.text2 : t.error,
+                color: t.error,
               ),
             ),
           ],
-          // Darvoza yopiq bo'lsa sabab yuqoridagi matnda aytiladi.
-          // "Premium sotib olish" tugmasi YO'Q: raqamli obunaga xarid
-          // chaqirig'i Google Play to'lov qoidasiga zid
-          // (`shop/store_policy.dart`).
+          // Bu yerda Premium, daraja yoki xarid haqida HECH NARSA yo'q:
+          // joylash hammaga bepul (egasining qarori, 2026-10-04).
           const SizedBox(height: Gap.xl),
           // QOIDALAR — tugmadan OLDIN, ko'rinib turadi.
           const ContentRulesCard(),
@@ -1063,17 +1051,6 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
       ),
     );
   }
-
-  /// Qaysi darvoza yopilganini AYTADI.
-  ///
-  /// Server `{error:'feature_locked', feature:'video'|'story'|'post'}`
-  /// qaytaradi, lekin ilova buni o'z holatidan ham biladi va
-  /// javobning shakliga bog'lanib qolmaydi.
-  String _lockedText(L l) => switch (widget.kind) {
-        ComposerKind.reel => l.premiumLockedVideo,
-        ComposerKind.story => l.premiumLockedStory,
-        ComposerKind.post => l.premiumLockedPost,
-      };
 
   void _showPicker() {
     final l = L.of(context);

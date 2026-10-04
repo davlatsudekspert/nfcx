@@ -147,19 +147,35 @@ void main() {
     expect(find.text(l.bizPlanPremiumBody), findsOneWidget);
   });
 
-  testWidgets('sinov davri va sotib olingan nom — cheklov kartasi yo‘q',
+  // Post va istoriya hammaga bepul (egasining qarori, 2026-10-04):
+  // sinov davrida "Sinov davri: hozircha cheklov yo'q" degan yozuv
+  // YO'Q — u "keyin pul to'laysiz" degan ma'no berardi.
+  testWidgets('sinov davri — cheklov kartasi ham, "sinov" yozuvi ham yo‘q',
       (tester) async {
     await _pump(tester, _biz({'trialActive': true, 'canPost': true}), 30);
-    final l = await L.delegate.load(const Locale('uz'));
-    expect(find.text(l.bizPlanTrial), findsOneWidget);
+    expect(tester.takeException(), isNull);
     expect(find.byKey(const ValueKey('plan-card')), findsNothing);
+    expect(find.byKey(const ValueKey('plan-trial')), findsNothing);
+    expect(find.textContaining('Sinov'), findsNothing);
   });
+
+  testWidgets('iPhone: sarlavhada tarif nomi yo‘q — faqat katalog hajmi',
+      (tester) async {
+    await _pump(tester, _biz({'free': true, 'itemLimit': 5, 'premiumItemLimit': 25, 'canPost': false}), 3);
+    final l = await L.delegate.load(const Locale('uz'));
+    expect(find.text(l.bizPlanLimitTitle(5)), findsOneWidget);
+    expect(find.text(l.bizPlanFreeTitle(5)), findsNothing);
+    expect(find.text(l.bizPlanUsage(3, 5)), findsOneWidget);
+    expect(find.textContaining('Premium'), findsNothing);
+    expect(find.textContaining('istoriya'), findsNothing);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
   test('server xatolari tushunarli matnga aylanadi', () async {
     final l = await L.delegate.load(const Locale('uz'));
     expect(describeError(l, const AppError(AppErrorKind.conflict, code: 'plan_limit_reached')),
         l.errPlanLimit);
+    // `plan_locked` — eski server qoidasi; post bepul, xato NEYTRAL.
     expect(describeError(l, const AppError(AppErrorKind.forbidden, code: 'plan_locked')),
-        l.errPlanLocked);
+        l.errPublishUnavailable);
   });
 }

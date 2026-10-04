@@ -156,13 +156,15 @@ void main() {
           '_price > 0 && showDigitalPrices',
           'showDigitalPrices ? l.bizPremiumHint : l.bizPremiumHintIos',
           'l.bizPlanLimitReachedIos',
+          '? l.bizPlanLimitTitle(limit)',
         ],
         'lib/features/business/business_intro.dart': [
           'showDigitalPrices ? l.bizPremiumHint : l.bizPremiumHintIos',
         ],
         'lib/design/widgets/states.dart': [
           '_appStore ? l.errPlanLimitIos : l.errPlanLimit',
-          '_appStore ? l.errPlanLockedIos : l.errPlanLocked',
+          // `plan_locked` endi hamma platformada neytral (post bepul).
+          'l.errPublishUnavailable',
         ],
       };
       for (final e in sites.entries) {
@@ -188,7 +190,8 @@ void main() {
     test('iPhone matnlarida xarid va sayt ishorasi yo‘q', () {
       const keys = [
         'errPlanLimitIos',
-        'errPlanLockedIos',
+        'errPublishUnavailable',
+        'bizPlanLimitTitle',
         'bizPlanLimitReachedIos',
         'bizPremiumHintIos',
         'idMarketTiersIos',

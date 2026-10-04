@@ -10,11 +10,14 @@ import 'package:nfcstore_nova/features/social/comments.dart';
 
 import 'helpers.dart';
 
-/// IZOH — FAQAT PREMIUM (server qoidasi, `comments.js`).
+/// IZOH YOZISH — HAMMAGA BEPUL (egasining qarori, 2026-10-04).
 ///
-/// Egasi (2026-09 surat): Premium bo'lmagan odam yozib yuborgach
-/// "Ruxsat yo'q" chiqardi, sababi aytilmasdi. Endi maydon umuman
-/// ochilmaydi — o'rnida sababi yozilgan qulf kartasi.
+/// Ilgari Premium'siz (yoki sinov muddati tugagan) odamga yozish
+/// maydoni ochilmasdi — o'rnida "Izoh yozish — Premium a'zolar uchun"
+/// qulf kartasi turardi. iPhone'da Premium'ni ilova ichida olib
+/// bo'lmaydi (IAP yo'q) — Apple 3.1.1 bo'yicha rad etish sababi. Endi
+/// HAMMA PLATFORMADA har kim yoza oladi; har tekshiruv iPhone va
+/// Android'da ikki marta o'tadi.
 class _Repo extends SocialRepository {
   _Repo() : super(ApiClient());
 
@@ -45,44 +48,26 @@ Future<void> _pump(WidgetTester tester, User user) async {
   await tester.pump(const Duration(milliseconds: 50));
 }
 
+/// Yozish maydoni bor, qulf va Premium haqida so'z yo'q.
+void _expectOpenComposer() {
+  expect(find.byKey(const ValueKey('comment-premium-locked')), findsNothing);
+  expect(find.byIcon(Icons.lock_rounded), findsNothing);
+  expect(find.byType(TextField), findsOneWidget);
+  expect(find.byKey(const ValueKey('comment-rules-note')), findsOneWidget);
+  expect(find.textContaining('Premium'), findsNothing);
+}
+
 void main() {
-  testWidgets('Premium bo‘lmaganga maydon YO‘Q, qulf kartasi bor',
+  final both = TargetPlatformVariant(
+      {TargetPlatform.iOS, TargetPlatform.android});
+
+  testWidgets('oddiy (Premium’siz) foydalanuvchi — yozish maydoni bor',
       (tester) async {
     await _pump(tester, testUser);
-    expect(find.byKey(const ValueKey('comment-premium-locked')), findsOneWidget);
-    expect(find.byType(TextField), findsNothing);
-  });
+    _expectOpenComposer();
+  }, variant: both);
 
-  testWidgets('Premium — yozish maydoni va qoidalar eslatmasi',
-      (tester) async {
-    const premium = User(
-      id: 2,
-      email: 'p@nfcstore.uz',
-      name: 'Premium',
-      phone: '',
-      premium: true,
-    );
-    await _pump(tester, premium);
-    expect(find.byKey(const ValueKey('comment-premium-locked')), findsNothing);
-    expect(find.byType(TextField), findsOneWidget);
-    expect(find.byKey(const ValueKey('comment-rules-note')), findsOneWidget);
-  });
-
-  testWidgets('sinov muddatida yoza oladi (egasining qarori)',
-      (tester) async {
-    final trial = User(
-      id: 3,
-      email: 't@nfcstore.uz',
-      name: 'Sinov',
-      phone: '',
-      trialUntil: DateTime.now().add(const Duration(days: 10)),
-    );
-    await _pump(tester, trial);
-    expect(find.byKey(const ValueKey('comment-premium-locked')), findsNothing);
-    expect(find.byType(TextField), findsOneWidget);
-  });
-
-  testWidgets('sinov tugagan — yana qulf', (tester) async {
+  testWidgets('sinov muddati tugagan — baribir yoza oladi', (tester) async {
     final expired = User(
       id: 4,
       email: 'e@nfcstore.uz',
@@ -91,6 +76,19 @@ void main() {
       trialUntil: DateTime.now().subtract(const Duration(days: 1)),
     );
     await _pump(tester, expired);
-    expect(find.byKey(const ValueKey('comment-premium-locked')), findsOneWidget);
-  });
+    _expectOpenComposer();
+  }, variant: both);
+
+  testWidgets('Premium — avvalgidek yozadi', (tester) async {
+    const premium = User(
+      id: 2,
+      email: 'p@nfcstore.uz',
+      name: 'Premium',
+      phone: '',
+      premium: true,
+    );
+    await _pump(tester, premium);
+    expect(find.byType(TextField), findsOneWidget);
+    expect(find.byKey(const ValueKey('comment-rules-note')), findsOneWidget);
+  }, variant: both);
 }

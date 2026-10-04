@@ -1347,7 +1347,7 @@ class LUz extends L {
   String get premiumTitle => 'Premium obuna';
 
   @override
-  String get premiumTagline => 'Reels, istoriya va to‘liq imkoniyatlar';
+  String get premiumTagline => 'Ko‘proq tovar va profil qo‘shiqlari';
 
   @override
   String get premiumPerMonth => 'oyiga';
@@ -1374,15 +1374,6 @@ class LUz extends L {
 
   @override
   String get premiumPerksTitle => 'Nimalar ochiladi';
-
-  @override
-  String get premiumPerkVideo => 'Video post va Reels';
-
-  @override
-  String get premiumPerkStory => 'Istoriya qo‘yish';
-
-  @override
-  String get premiumPerkPosts => 'Ko‘proq post (60 tagacha)';
 
   @override
   String get premiumPerkMusic => '10 ta profil qo‘shig‘i';
@@ -1418,19 +1409,6 @@ class LUz extends L {
   @override
   String get premiumBrowserFailed =>
       'To‘lov sahifasini ocholmadik. Havola nusxalandi.';
-
-  @override
-  String get premiumLocked => 'Bu imkoniyat Premiumda';
-
-  @override
-  String get premiumLockedVideo => 'Video post va Reels uchun Premium kerak.';
-
-  @override
-  String get premiumLockedStory =>
-      'Istoriya qo‘yish uchun darajangiz yetmaydi.';
-
-  @override
-  String get premiumLockedPost => 'Post qo‘yish uchun darajangiz yetmaydi.';
 
   @override
   String get payKindCard => 'Raqamli tashrif qog‘ozi';
@@ -2413,7 +2391,7 @@ class LUz extends L {
 
   @override
   String bizPlanFreeBody(int premium) {
-    return 'Premium (oylik) bilan $premium tagacha tovar, post va istoriya ochiladi. O‘z nomingizni (Business ID) sotib olsangiz — cheksiz.';
+    return 'Premium (oylik) bilan $premium tagacha tovar. O‘z nomingizni (Business ID) sotib olsangiz — cheksiz.';
   }
 
   @override
@@ -2438,21 +2416,26 @@ class LUz extends L {
       'Premium va o‘z nomi saytda rasmiylashtiriladi:';
 
   @override
-  String get bizPlanTrial => 'Sinov davri: hozircha hech qanday cheklov yo‘q';
-
-  @override
   String get errPlanLimit =>
       'Tarif limiti to‘ldi. Ko‘proq tovar uchun Premium yoki o‘z nomingiz kerak (sayt orqali).';
-
-  @override
-  String get errPlanLocked =>
-      'Bepul tarifda post va istoriya yopiq. Premium (sayt orqali) bilan ochiladi.';
 
   @override
   String get errPlanLimitIos => 'Tarif limiti to‘ldi.';
 
   @override
-  String get errPlanLockedIos => 'Bepul tarifda post va istoriya yopiq.';
+  String get errPublishUnavailable =>
+      'Hozircha yuborib bo‘lmadi. Birozdan keyin qayta urinib ko‘ring.';
+
+  @override
+  String bizPlanLimitTitle(int limit) {
+    return 'Katalog — $limit tagacha tovar';
+  }
+
+  @override
+  String get premiumPerkCatalog => 'Biznes katalogida ko‘proq tovar';
+
+  @override
+  String get stickerActivateShort => 'Konvertdagi kod bilan';
 
   @override
   String errContentBlocked(String reason) {
@@ -2503,13 +2486,6 @@ class LUz extends L {
   @override
   String get deleteAccountDone =>
       'So‘rov qabul qilindi. Hisob 30 kundan keyin butunlay o‘chiriladi.';
-
-  @override
-  String get errCommentPremium =>
-      'Izoh yozish uchun Premium obuna kerak. Izohlarni esa hamma o‘qiy oladi.';
-
-  @override
-  String get commentPremiumTitle => 'Izoh yozish — Premium a’zolar uchun';
 
   @override
   String get storeSeeAll => 'Barchasini ko‘rish';

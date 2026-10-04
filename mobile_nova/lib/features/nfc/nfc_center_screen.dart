@@ -21,7 +21,7 @@ import '../../routing/routes.dart';
 import '../auth/session.dart';
 import '../home/home_screen.dart';
 import '../home/widgets/my_ids_strip.dart';
-import '../shop/store_policy.dart' show idMarketTitle;
+import '../shop/store_policy.dart' show idMarketTitle, showIdMarket;
 import 'nfc_service.dart';
 import 'qr_sheet.dart';
 import '../../design/widgets/brand_icon.dart';
@@ -161,8 +161,9 @@ class NfcCenterScreen extends ConsumerWidget {
                   ),
                 // Bosh sahifadagi "ID qidirish" ham AYNAN shu ekranni
                 // ochadi — ikkinchi katalog yo'q. NFC'siz qurilmada u
-                // yuqoridagi panelda — takrorlanmaydi.
-                if (!noNfc) _ActionRow(
+                // yuqoridagi panelda — takrorlanmaydi. iPhone'da ID
+                // bozori UMUMAN yo'q (`showIdMarket`).
+                if (!noNfc && showIdMarket) _ActionRow(
                   icon: Icons.search_rounded,
                   title: idMarketTitle(l),
                   subtitle: l.idMarketSearchHint,
@@ -673,9 +674,17 @@ class NoNfcPanel extends ConsumerWidget {
                 () => context.push(Routes.nfcIds),
                 const ValueKey('no-nfc-ids')),
             const SizedBox(width: Gap.md),
-            tile(Icons.search_rounded, idMarketTitle(l), l.noNfcGetHint,
-                () => context.push(Routes.nfcMarket),
-                const ValueKey('no-nfc-market')),
+            // iPhone'da ID bozori yo'q (`showIdMarket`) — o'rnida
+            // qo'ldagi stiker yoki kartani ulash (jismoniy tovar).
+            if (showIdMarket)
+              tile(Icons.search_rounded, idMarketTitle(l), l.noNfcGetHint,
+                  () => context.push(Routes.nfcMarket),
+                  const ValueKey('no-nfc-market'))
+            else
+              tile(Icons.add_card_rounded, l.stickerActivate,
+                  l.stickerActivateShort,
+                  () => context.push(Routes.nfcActivate),
+                  const ValueKey('no-nfc-activate')),
           ],
         ),
         ),
