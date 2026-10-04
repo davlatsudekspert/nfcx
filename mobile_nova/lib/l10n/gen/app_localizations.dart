@@ -1215,6 +1215,18 @@ abstract class L {
   /// **'Blokdan chiqarish'**
   String get nfcUnblockCard;
 
+  /// No description provided for @nfcCardOnId.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kartaga ulangan'**
+  String get nfcCardOnId;
+
+  /// No description provided for @nfcNoCard.
+  ///
+  /// In uz, this message translates to:
+  /// **'Karta ulanmagan'**
+  String get nfcNoCard;
+
   /// No description provided for @nfcDeleteConfirm.
   ///
   /// In uz, this message translates to:

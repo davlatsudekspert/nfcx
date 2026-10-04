@@ -584,6 +584,12 @@ class LRu extends L {
   String get nfcUnblockCard => 'Разблокировать карту';
 
   @override
+  String get nfcCardOnId => 'Привязана к карте';
+
+  @override
+  String get nfcNoCard => 'Карта не привязана';
+
+  @override
   String get nfcDeleteConfirm => 'Удалить этот NFC ID? Действие необратимо.';
 
   @override

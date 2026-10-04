@@ -304,7 +304,12 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                     label: l.actionShare,
                     tint: ink,
                     hit: const EdgeInsets.only(top: Gap.xl),
-                    onTap: () => shareText(p.text),
+                    onTap: () => shareWithFeedback(
+                      context,
+                      contentShareText(
+                          caption: p.text, code: p.code, company: p.isCompany),
+                      copiedMessage: l.shareCopied,
+                    ),
                   ),
                 ],
               ),

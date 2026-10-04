@@ -217,6 +217,8 @@
   "nfcBlockCard": "Block card",
   "nfcBlockConfirm": "Block this card? Tapping it will stop opening your profile. You can unblock it later.",
   "nfcUnblockCard": "Unblock card",
+  "nfcCardOnId": "Linked to a card",
+  "nfcNoCard": "No card linked",
   "nfcDeleteConfirm": "Delete this NFC ID? This cannot be undone.",
   "nfcScans": "Scans",
   "nfcViews": "Views",

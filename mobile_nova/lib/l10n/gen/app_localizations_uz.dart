@@ -587,6 +587,12 @@ class LUz extends L {
   String get nfcUnblockCard => 'Blokdan chiqarish';
 
   @override
+  String get nfcCardOnId => 'Kartaga ulangan';
+
+  @override
+  String get nfcNoCard => 'Karta ulanmagan';
+
+  @override
   String get nfcDeleteConfirm =>
       'Bu NFC ID o‘chirilsinmi? Bu amalni qaytarib bo‘lmaydi.';
 

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/errors/app_error.dart';
-import '../../core/network/api_client.dart';
 import '../../core/utils/sharing.dart';
 import '../../data/models/models.dart';
 import '../../design/theme/typography.dart';
@@ -246,11 +245,14 @@ class FeedCard extends ConsumerWidget {
                 padLeft: 24,
                 // Kompaniya sahifasi `/c/<ID>` da; `/<ID>` shaxsiy karta
                 // deb qidiriladi va "topilmadi" (yoki BEGONA odam) chiqardi.
-                onTap: () => shareLink(
-                  post.isCompany
-                      ? '$kApiBase/c/${Uri.encodeComponent(post.code)}'
-                      : '$kApiBase/${Uri.encodeComponent(post.code)}',
-                  title: name,
+                onTap: () => shareWithFeedback(
+                  context,
+                  contentShareText(
+                      caption: post.text,
+                      code: post.code,
+                      company: post.isCompany),
+                  subject: name,
+                  copiedMessage: l.shareCopied,
                 ),
               ),
             ],

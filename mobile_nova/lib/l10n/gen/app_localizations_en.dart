@@ -588,6 +588,12 @@ class LEn extends L {
   String get nfcUnblockCard => 'Unblock card';
 
   @override
+  String get nfcCardOnId => 'Linked to a card';
+
+  @override
+  String get nfcNoCard => 'No card linked';
+
+  @override
   String get nfcDeleteConfirm => 'Delete this NFC ID? This cannot be undone.';
 
   @override

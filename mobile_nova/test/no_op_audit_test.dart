@@ -140,14 +140,17 @@ void main() {
   });
 
   test('"Ulashish" yorlig\'i HAQIQIY ulashishni bildiradi', () {
-    // Yorliq `actionShare` bo'lsa, o'sha blokda `shareLink` yoki
-    // `shareText` chaqirilishi kerak. Aks holda tugma "Ulashish"
-    // deb turib, boshqa ekranni ochadi.
+    // Yorliq `actionShare` bo'lsa, o'sha blokda `shareLink`,
+    // `shareText` yoki `shareWithFeedback` (ochilmasa xabar beradigan
+    // o'ram) chaqirilishi kerak. Aks holda tugma "Ulashish" deb
+    // turib, boshqa ekranni ochadi.
     final bad = <String>[];
     for (final f in files) {
       final src = codeOnly(f.readAsStringSync());
       if (!src.contains('l.actionShare')) continue;
-      if (!src.contains('shareLink(') && !src.contains('shareText(')) {
+      if (!src.contains('shareLink(') &&
+          !src.contains('shareText(') &&
+          !src.contains('shareWithFeedback(')) {
         bad.add(f.path);
       }
     }

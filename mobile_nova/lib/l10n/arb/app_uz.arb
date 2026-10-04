@@ -217,6 +217,8 @@
   "nfcBlockCard": "Kartani bloklash",
   "nfcBlockConfirm": "Karta bloklansinmi? Tegizilganda u profilni ochmay qo‘yadi. Keyin blokdan chiqarish mumkin.",
   "nfcUnblockCard": "Blokdan chiqarish",
+  "nfcCardOnId": "Kartaga ulangan",
+  "nfcNoCard": "Karta ulanmagan",
   "nfcDeleteConfirm": "Bu NFC ID o‘chirilsinmi? Bu amalni qaytarib bo‘lmaydi.",
   "nfcScans": "Skanerlashlar",
   "nfcViews": "Ko‘rishlar",

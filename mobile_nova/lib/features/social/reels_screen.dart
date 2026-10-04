@@ -16,7 +16,6 @@ import 'moderation.dart';
 import 'media_frame.dart' show mediaImage;
 import 'music_picker.dart';
 
-import '../../core/network/api_client.dart';
 import '../../core/utils/result.dart';
 import '../../core/utils/sharing.dart';
 import '../../data/models/models.dart';
@@ -1055,13 +1054,13 @@ class _ReelPageState extends ConsumerState<_ReelPage>
                   icon: NovaIcons.share,
                   label: l.actionShare,
                   semantic: l.actionShare,
-                  onTap: () => p.code.isEmpty
-                      ? shareText(p.text)
-                      : shareLink(
-                          p.isCompany
-                              ? '$kApiBase/c/${Uri.encodeComponent(p.code)}'
-                              : '$kApiBase/${Uri.encodeComponent(p.code)}',
-                          title: p.authorName),
+                  onTap: () => shareWithFeedback(
+                    context,
+                    contentShareText(
+                        caption: p.text, code: p.code, company: p.isCompany),
+                    subject: p.authorName,
+                    copiedMessage: l.shareCopied,
+                  ),
                 ),
                 _Action(
                   icon: muted

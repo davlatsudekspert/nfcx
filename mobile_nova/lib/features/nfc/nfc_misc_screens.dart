@@ -504,7 +504,16 @@ class _NfcGiftScreenState extends ConsumerState<NfcGiftScreen> {
 
 // ------------------------------------------------------------- xavfsizlik
 
-/// NFC xavfsizligi — parolni almashtirish va kartalar boshqaruvi.
+/// NFC xavfsizligi — har bir ID qaysi kartaga ulangani va bloklash.
+///
+/// ## MANBA — `/api/my/nfc-devices` ("Kartalar" ekrani bilan BIR XIL)
+///
+/// Ilgari holat `NfcId.cardLinked` dan o'qilardi. Server ID yozuvida
+/// bunday maydonni (`cardLinked` / `hasCard` / `chipToken`) UMUMAN
+/// bermaydi — natijada kartaga ulangan ID ham doim "Hozircha bo'sh",
+/// tepada esa doim "0 / N" turardi (egasi, 2026-10-04: "VIP001 ni
+/// kartaga ulasam ham bo'sh ko'rsatyapti"). Endi haqiqiy kartalar
+/// ro'yxatidan hisoblanadi; bosilganda bloklash bor "Kartalar" ochiladi.
 class NfcSecurityScreen extends ConsumerWidget {
   const NfcSecurityScreen({super.key});
 
@@ -513,7 +522,13 @@ class NfcSecurityScreen extends ConsumerWidget {
     final l = L.of(context);
     final t = context.tokens;
     final ids = ref.watch(myIdsProvider);
-    final linked = ids.where((e) => e.cardLinked).length;
+    final devices = ref.watch(nfcDevicesProvider);
+    final cards = devices.valueOrNull ?? const <NfcDevice>[];
+    List<NfcDevice> cardsOf(NfcId e) => [
+          for (final d in cards)
+            if (d.code.toUpperCase() == e.code.toUpperCase()) d,
+        ];
+    final linked = ids.where((e) => cardsOf(e).isNotEmpty).length;
 
     return NovaScaffold(
       title: l.nfcSecurity,
@@ -532,7 +547,10 @@ class NfcSecurityScreen extends ConsumerWidget {
                     children: [
                       Text(l.nfcSecurity,
                           style: Theme.of(context).textTheme.titleMedium),
-                      Text('$linked / ${ids.length} · ${l.nfcLinkCard}',
+                      Text(
+                          devices.hasValue
+                              ? '$linked / ${ids.length} · ${l.nfcCardOnId}'
+                              : '… / ${ids.length} · ${l.nfcCardOnId}',
                           style: Theme.of(context).textTheme.bodySmall),
                     ],
                   ),
@@ -542,31 +560,69 @@ class NfcSecurityScreen extends ConsumerWidget {
           ),
           SectionHeader(title: l.nfcMyIds),
           for (final e in ids)
-            Padding(
-              padding: const EdgeInsets.only(bottom: Gap.sm),
-              child: FloatingSurface(
-                solid: true,
-                padding: const EdgeInsets.all(Gap.lg),
-                child: Row(
-                  children: [
-                    Icon(
-                      e.cardLinked ? Icons.lock_rounded : Icons.lock_open_rounded,
-                      size: 17,
-                      color: e.cardLinked ? t.success : t.text3,
+            Builder(builder: (context) {
+              final own = cardsOf(e);
+              final hasCard = own.isNotEmpty;
+              // Bitta ID ga bir nechta karta ulangan bo'lishi mumkin —
+              // HAMMASI bloklangan bo'lsagina "Bloklangan" deyiladi.
+              final blocked = hasCard && own.every((d) => d.blockedByOwner);
+              final status = !devices.hasValue
+                  ? '…'
+                  : blocked
+                      ? l.cardBlocked
+                      : hasCard
+                          ? l.nfcCardOnId
+                          : l.nfcNoCard;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: Gap.sm),
+                child: PressableScale(
+                  key: ValueKey('sec-id-${e.code}'),
+                  // Ulangan karta bo'lsa — bloklash shu yerda.
+                  onTap: hasCard ? () => context.push(Routes.nfcCards) : null,
+                  child: FloatingSurface(
+                    solid: true,
+                    padding: const EdgeInsets.all(Gap.lg),
+                    child: Row(
+                      children: [
+                        Icon(
+                          blocked
+                              ? Icons.block_rounded
+                              : hasCard
+                                  ? Icons.lock_rounded
+                                  : Icons.lock_open_rounded,
+                          size: 17,
+                          color: blocked
+                              ? t.error
+                              : hasCard
+                                  ? t.success
+                                  : t.text3,
+                        ),
+                        const SizedBox(width: Gap.md),
+                        Expanded(
+                          child: Text(e.code,
+                              style: AppType.monoStyle(color: t.text1, size: 13)),
+                        ),
+                        Text(
+                          status,
+                          style: Theme.of(context).textTheme.labelMedium!.copyWith(
+                                color: blocked
+                                    ? t.error
+                                    : hasCard
+                                        ? t.success
+                                        : null,
+                              ),
+                        ),
+                        if (hasCard) ...[
+                          const SizedBox(width: Gap.xs),
+                          Icon(Icons.chevron_right_rounded,
+                              size: 18, color: t.text3),
+                        ],
+                      ],
                     ),
-                    const SizedBox(width: Gap.md),
-                    Expanded(
-                      child: Text(e.code,
-                          style: AppType.monoStyle(color: t.text1, size: 13)),
-                    ),
-                    Text(
-                      e.cardLinked ? l.nfcLinkCard : l.stateEmpty,
-                      style: Theme.of(context).textTheme.labelMedium,
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
+              );
+            }),
           SectionHeader(title: l.settingsSecurity),
           FloatingSurface(
             solid: true,

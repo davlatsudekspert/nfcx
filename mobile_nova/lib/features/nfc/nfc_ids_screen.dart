@@ -20,6 +20,7 @@ import '../../routing/routes.dart';
 import '../../app/profile_context.dart';
 import '../auth/session.dart';
 import '../home/widgets/identity_card.dart';
+import 'nfc_misc_screens.dart' show nfcDevicesProvider;
 import 'qr_sheet.dart';
 import '../../design/widgets/brand_icon.dart';
 
@@ -310,10 +311,24 @@ class NfcIdDetailScreen extends ConsumerWidget {
                 _DetailRow(
                     label: l.profileFollowers, value: formatCount(id.followers)),
                 const SizedBox(height: Gap.md),
-                _DetailRow(
-                  label: l.nfcLinkCard,
-                  value: id.cardLinked ? l.yes : l.no,
-                ),
+                // Karta holati — `/api/my/nfc-devices` dan (Xavfsizlik va
+                // Kartalar ekrani bilan bir xil manba). ID yozuvida server
+                // bunday maydon bermaydi: ilgari bu yerda doim "Yo'q" edi.
+                Consumer(builder: (context, ref, _) {
+                  final cards = ref.watch(nfcDevicesProvider);
+                  final own = (cards.valueOrNull ?? const <NfcDevice>[])
+                      .where((d) => d.code.toUpperCase() == id.code.toUpperCase());
+                  return _DetailRow(
+                    label: l.nfcLinkCard,
+                    value: !cards.hasValue
+                        ? '…'
+                        : own.isEmpty
+                            ? l.no
+                            : own.every((d) => d.blockedByOwner)
+                                ? l.cardBlocked
+                                : l.yes,
+                  );
+                }),
               ],
             ),
           ),
