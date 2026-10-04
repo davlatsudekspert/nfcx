@@ -47,3 +47,28 @@ jobs:
           echo "=== Worker custom domenlar"; api "$A/workers/domains" | jq -r '.result[]? | "\(.hostname) -> \(.service)"'
           echo "=== Pages loyihalar"; api "$A/pages/projects" | jq -r '.result[]? | "\(.name)\t\(.subdomain)\t\(.domains|join(","))", (.errors|tostring)'
           echo "=== Zonalar"; api "/zones?per_page=50" | jq -r '.result[]? | "\(.name)\t\(.status)\t\(.id)", (.errors|tostring)'
+
+      - name: Mavjud hasharchilar-api Worker (faqat o'qish)
+        run: |
+          set -u
+          api() { curl -sS -H "Authorization: Bearer $CF_API_TOKEN" "https://api.cloudflare.com/client/v4$1"; }
+          S="/accounts/$CF_ACCOUNT/workers/scripts/hasharchilar-api"
+          echo "=== Sozlamalar va binding'lar"
+          api "$S/settings" > settings.json
+          jq -c '.result | {compatibility_date, compatibility_flags, bindings: [.bindings[]? | {type, name, id, database_id, bucket_name, text: (if .type=="plain_text" then .text else null end)}]}' settings.json
+          jq -c '.errors' settings.json
+          echo "=== workers.dev yoqilganmi"; api "$S/subdomain" | jq -c '.result, .errors'
+          echo "=== Cron"; api "$S/schedules" | jq -c '.result, .errors'
+          echo "=== Bog'langan D1 bazaga ruxsat bormi"
+          for id in $(jq -r '.result.bindings[]? | select(.type=="d1") | .id // .database_id' settings.json); do
+            api "/accounts/$CF_ACCOUNT/d1/database/$id" | jq -c '{name: .result.name, uuid: .result.uuid, tables: .result.num_tables, errors}'
+            curl -sS -X POST -H "Authorization: Bearer $CF_API_TOKEN" -H 'content-type: application/json' \
+              "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT/d1/database/$id/query" \
+              -d '{"sql":"SELECT name, sql FROM sqlite_master WHERE type=\"table\" ORDER BY name"}' \
+              | jq -r '.errors, (.result[0].results[]? | "\(.name): \(.sql)")'
+          done
+          echo "=== Skript kodi: jadvallar va marshrutlar"
+          curl -sS -H "Authorization: Bearer $CF_API_TOKEN" "https://api.cloudflare.com/client/v4$S/content/v2" -o script.bin -w 'http=%{http_code} bytes=%{size_download}\n'
+          file script.bin || true
+          grep -aoE 'CREATE TABLE[^;]{0,600}' script.bin | head -20 || true
+          grep -aoE "\.(get|post|put|patch|delete)\(['\"][^'\"]{1,80}['\"]" script.bin | sort -u | head -60 || true
