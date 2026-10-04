@@ -43,6 +43,15 @@ jobs:
       run:
         working-directory: mobile_nova
     steps:
+      # Runner diski emulyator tasviri uchun yetmadi ("No space left").
+      - name: Disk bo'shatish
+        working-directory: /
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost \
+            /opt/hostedtoolcache/CodeQL /usr/local/share/powershell /usr/share/swift \
+            /usr/local/julia* /opt/az /usr/local/share/chromium /opt/microsoft || true
+          sudo docker image prune --all --force >/dev/null 2>&1 || true
+          df -h /
       - uses: actions/checkout@v4
         with:
           ref: claude/vibrant-einstein-p5lo1i
