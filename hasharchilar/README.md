@@ -47,6 +47,10 @@ Batafsil texnik shartnoma: [`SPEC.md`](./SPEC.md).
   (`D1_ERROR: UNIQUE constraint failed: ...`), `batch` bitta tranzaksiya, tashqi kalitlar ham tekshiriladi.
   DO o'z migratsiyalarini o'zi qo'llaydi: `migrations/*.sql` bundle'ga matn sifatida kiradi va har biri
   bitta tranzaksiyada bajarilib, `_migrations` jadvaliga yoziladi.
+  **Diqqat:** DO rejimida yangi migratsiya deploy'dan *keyin*, birinchi so'rovda production ma'lumotlari ustida
+  qo'llanadi. U to'la jadvallarda ham ishlashi shart (masalan, `NOT NULL` ustunga `DEFAULT` kerak), aks holda
+  barcha baza so'rovlari 500 qaytaradi. Yangi migratsiya `worker/migrations.js` ga ham qo'shiladi;
+  `npm run test:storage` uni namuna ma'lumotli bazada sinaydi.
 - **Limitlar (bazadagi hisoblagichlar):**
   - kirish: bitta telefon raqamiga 15 daqiqada 10 ta urinish (IP almashtirilsa ham);
   - kirish va ro'yxatdan o'tish: bitta IP dan 15 daqiqada 30 ta urinish. IPv6 manzillar /64 tarmoq bo'yicha
@@ -72,6 +76,7 @@ hasharchilar/
 ├── seed.sql                 # FAQAT lokal namuna ma'lumot (parol: demo1234)
 ├── worker/                  # Hono backend (+ do-db.js, d1-adapter.js, migrations.js, sql-split.js)
 ├── scripts/wrangler-config.mjs # wrangler.jsonc → wrangler.deploy.json (--storage d1|do)
+├── scripts/site-url.sh      # CI: https://<worker>.<subdomen>.workers.dev manzili
 ├── tests/api.test.mjs       # API testi (node:test, wrangler dev ga qarshi; D1 va DO rejimida)
 ├── tests/storage.test.mjs   # baza qatlami: DO adapteri = D1, migratsiyalar, wrangler-config
 ├── src/                     # React (sayt va APK uchun bir xil)
@@ -145,6 +150,8 @@ npm run test:storage               # server kerak emas: DO adapteri = D1, migrat
 - `test:storage` bir xil so'rovlar ketma-ketligini haqiqiy lokal D1 va `HasharDB` adapterida bajarib,
   natijalar, `meta.changes`/`last_row_id` va xato matnlari aynan bir xilligini, `batch` atomarligini,
   tashqi kalit / `ON DELETE CASCADE` ni va qayta ishga tushganda migratsiyalar takrorlanmasligini tekshiradi.
+  Yangilanish testi: `0001` dan keyin `seed.sql` (+ sessiya va limit qatorlari) yoziladi, so'ng qolgan
+  migratsiyalar birma-bir qo'llanadi — har biri ma'lumotli bazada o'tishi shart.
 
 ## Android ilova (APK) ni lokal qurish
 
@@ -213,12 +220,16 @@ Ketma-ketlik:
      (`versionCode = run_number`, `versionName = 1.0.<run_number>`), `apksigner` va `aapt2` bilan tekshiruv;
    - `version.json` yaratiladi: `{version, versionCode, sha256, cert, size}`;
    - **imzo mosligi:** hozir saytda turgan `https://<manzil>/app/version.json` (ochiq, token kerak emas) o'qiladi.
-     Uning `cert` i yangi APK nikidan farq qilsa, workflow to'xtaydi (`allow_key_change=true` bo'lmasa).
-     404 yoki HTML (fayl hali yo'q) — birinchi chiqarish, tekshiruv o'tadi;
+     404 yoki HTML (fayl hali yo'q) — birinchi chiqarish. `cert` farq qilsa (`allow_key_change=true` bo'lmasa):
+     debug kalitida — job yiqilmaydi, `publish=false` (pastga qarang); `HASHARCHILAR_KEYSTORE_*` kalitida — xato;
    - artefakt `hasharchilar-apk` (`hasharchilar.apk` + `version.json`).
+   - Job output'lari faqat `publish` va `release_key` bayroqlari: URL, sha256 va sertifikat uzatilmaydi, chunki
+     GitHub secret qiymati (masalan, alias `hasharchilar`) ichida bo'lgan output'ni tashlab yuboradi.
 3. **deploy** (apk o'tsa):
+   - URL qayta hisoblanadi (`scripts/site-url.sh`, apk job'idagi bilan bir xil); bo'sh bo'lsa deploy qilinmaydi;
    - oddiy `npm run build` (`VITE_API_BASE` siz), artefakt `dist/app/` ga yuklanadi — APK saytning statik
-     fayllari ichida chiqadi (R2 ga yozish ruxsati shart emas);
+     fayllari ichida chiqadi (R2 ga yozish ruxsati shart emas). `publish=false` bo'lsa artefakt o'rniga
+     saytdagi hozirgi `/app/hasharchilar.apk` + `version.json` yuklab olinib (sha256 tekshiriladi) qayta joylanadi;
    - **baza turi aniqlanadi** (pastda) va `scripts/wrangler-config.mjs` `wrangler.deploy.json` ni yaratadi;
    - xavfsizlik tekshiruvi: konfiguratsiya faqat `hasharchilar-api` / `hasharchilar` / `hasharchilar-photos` /
      `HasharDB` ni ko'rsatishi kerak, nfcstore resurslariga hech qachon tegilmaydi;
@@ -226,11 +237,15 @@ Ketma-ketlik:
      bucket mavjud bo'lsa — davom etadi);
    - D1 rejimida: eski (migratsiyasiz) jadvallar tekshiriladi, keyin `wrangler d1 migrations apply --remote`;
    - `wrangler deploy --config wrangler.deploy.json` (custom domen faqat xavfsiz bo'lsa — pastga qarang);
-   - `/api/health` kutiladi, so'ng `/api/app` yangi versiyani ko'rsatishi, `/api/app/download`
+   - `/api/health` kutiladi;
+   - **baza tekshiruvi:** `/api/stats` va `/api/hashars?status=COMPLETED` to'g'ri JSON qaytarishi kerak
+     (`/api/health` bazaga tegmaydi). DO rejimida obyekt va migratsiyalar shu so'rovda ishga tushadi —
+     migratsiya yiqilsa job qizil bo'ladi (oldingi versiyaga qaytish: `npx wrangler rollback --name hasharchilar-api`);
+   - `/api/app` kutilgan versiyani ko'rsatishi, `/api/app/download`
      `application/vnd.android.package-archive` turi va aynan shu APK baytlarini (sha256) berishi tekshiriladi;
-   - job xulosasida sayt manzili, APK havolasi va tanlangan baza yoziladi.
-4. **release** (deploy'dan keyin, alohida job — xatosi saytga ta'sir qilmaydi): GitHub Release
-   `hasharchilar-v1.0.N` (APK bilan; `main` bo'lmasa — prerelease).
+   - job xulosasida sayt manzili, APK havolasi (yangilanmagan bo'lsa — ogohlantirish) va tanlangan baza yoziladi.
+4. **release** (deploy'dan keyin, alohida job — xatosi saytga ta'sir qilmaydi; `publish=false` bo'lsa o'tkazib
+   yuboriladi): GitHub Release `hasharchilar-v1.0.N` (APK bilan; `main` bo'lmasa — prerelease).
 
 ### Baza: D1 yoki Durable Object (avtomatik, "sticky")
 
@@ -287,15 +302,19 @@ olib tashlash alohida migratsiya talab qiladi.
 > paroli va aliasi Gradle'dan oldin `keytool` bilan tekshiriladi, xato bo'lsa build boshlanmaydi.
 
 Keystore secretlari bo'lmasa, APK keshlangan debug kaliti bilan imzolanadi. Bu kesh ishonchli emas: u har bir
-branch uchun alohida, 7 kun ishlatilmasa yoki repo kesh limiti to'lsa o'chadi, shunda yangi debug kaliti yaratiladi.
-Ikkala branch ham bitta production saytiga chiqaradi. Shuning uchun **"Imzo mosligi"** qadami yangi APK
-sertifikatini saytdagi `app/version.json` → `cert` bilan solishtiradi. Ular farq qilsa, APK saytga ham,
-GitHub Release'ga ham chiqarilmaydi, chunki o'rnatilgan ilovalar yangilanmay qoladi ("App not installed").
-Debug kalit keshi faqat shu tekshiruvdan o'tgandan keyin saqlanadi.
+branch uchun alohida (`main` dagi run feature branch keshini ko'rmaydi), 7 kun ishlatilmasa yoki repo kesh limiti
+to'lsa o'chadi, shunda yangi debug kaliti yaratiladi. Ikkala branch ham bitta production saytiga chiqaradi.
+Shuning uchun **"Imzo mosligi"** qadami yangi APK sertifikatini saytdagi `app/version.json` → `cert` bilan
+solishtiradi. Ular farq qilsa, yangi APK saytga ham, GitHub Release'ga ham chiqarilmaydi, chunki o'rnatilgan
+ilovalar uni qabul qilmaydi ("App not installed"). Lekin **sayt deploy'i to'xtamaydi**: kod va API yangilanadi,
+saytda esa hozirgi (yangilanadigan) APK qoladi, run'da "APK yangilanmadi" ogohlantirishi chiqadi. Debug kalit
+keshi faqat yangi APK chiqarilganda saqlanadi (saytdagidan farq qiladigan kalit keshlanmaydi).
 
 Barqaror yechim — bir marta kalit yaratib, uni `HASHARCHILAR_KEYSTORE_*` secretlariga joylash (yuqoridagi
-`keytool` buyrug'i). Kalitni ataylab almashtirish kerak bo'lsa, workflow'ni qo'lda (**Run workflow**)
-`allow_key_change = true` bilan ishga tushiring. Bunda foydalanuvchilar ilovani o'chirib, qayta o'rnatishi kerak bo'ladi.
+`keytool` buyrug'i). Kalitni ataylab almashtirish kerak bo'lsa (shu jumladan saytda debug APK turganda o'z
+kalitiga birinchi marta o'tish), workflow'ni qo'lda (**Run workflow**) `allow_key_change = true` bilan ishga
+tushiring — aks holda o'z kaliti farq qilgani uchun apk job xato beradi. Bunda foydalanuvchilar ilovani o'chirib,
+qayta o'rnatishi kerak bo'ladi.
 
 ### Sayt manzili va `hasharchilar.uz` domenini ulash
 

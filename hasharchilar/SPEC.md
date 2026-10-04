@@ -167,11 +167,13 @@ ixtiyoriy `ANDROID_KEYSTORE_BASE64`/`ANDROID_KEYSTORE_PASSWORD`/`ANDROID_KEY_ALI
 
 1. `test`: npm ci → build → `npm run test:storage` → `wrangler dev` lokal D1 VA Durable Object rejimida → `npm run test:api` ikkalasida.
 2. `apk` (needs test): URL = `https://<worker>.<subdomen>.workers.dev` (Cloudflare API, zaxira `davlatsudekspert`);
-   `VITE_API_BASE=<URL>`; APK quradi; saytdagi `/app/version.json` sertifikati bilan imzo mosligi; artefakt
-   (`hasharchilar.apk` + `version.json`).
-3. `deploy` (needs apk): oddiy build + artefakt `dist/app/` ga; baza turi aniqlanadi (Worker'da D1 `DB` → D1,
+   `VITE_API_BASE=<URL>`; APK quradi; saytdagi `/app/version.json` sertifikati bilan imzo mosligi
+   (debug kaliti farq qilsa `publish=false`, job yiqilmaydi); artefakt (`hasharchilar.apk` + `version.json`).
+3. `deploy` (needs apk): URL qayta hisoblanadi; oddiy build + artefakt `dist/app/` ga (`publish=false` bo'lsa —
+   saytdagi hozirgi APK); baza turi aniqlanadi (Worker'da D1 `DB` → D1,
    `HASHAR_DB` → DO, birinchi marta: D1 topiladi/yaratiladi, ruxsat bo'lmasa DO); `wrangler.deploy.json`;
-   R2 tekshiruvi; D1 rejimida `wrangler d1 migrations apply --remote`; `wrangler deploy`; `/api/health`, `/api/app`, `/api/app/download`.
-4. `release` (needs deploy): GitHub Release `hasharchilar-v1.0.N`.
+   R2 tekshiruvi; D1 rejimida `wrangler d1 migrations apply --remote`; `wrangler deploy`; `/api/health`,
+   baza (`/api/stats`, `/api/hashars`), `/api/app`, `/api/app/download`.
+4. `release` (needs deploy, faqat `publish=true`): GitHub Release `hasharchilar-v1.0.N`.
 
 nfcstore resurslariga (Worker `nfcstore-uz`, D1 `DB`, R2 `nfcstore-uploads`) HECH QACHON tegilmaydi.

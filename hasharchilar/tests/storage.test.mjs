@@ -1,6 +1,7 @@
 // Baza qatlami testlari: SQL ajratuvchi, migratsiyalar ro'yxati, wrangler-config va
 // lokal `wrangler dev` (fixture Worker) ichida — HasharDB Durable Object adapteri haqiqiy lokal D1 bilan
-// AYNAN bir xil natija / xato matni qaytarishi, batch atomarligi, migratsiyalar bir marta qo'llanishi.
+// AYNAN bir xil natija / xato matni qaytarishi, batch atomarligi, migratsiyalar bir marta qo'llanishi
+// va keyingi migratsiyalar ma'lumotli bazada ham qo'llanishi.
 // Server oldindan ishga tushirilmaydi — test o'zi vaqtinchalik papkada wrangler dev ochadi.
 // Ishga tushirish: npm run test:storage
 import { test, describe, before, after } from 'node:test';
@@ -16,6 +17,7 @@ import { buildDeployConfig, readConfig, stripJsonc } from '../scripts/wrangler-c
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const CONFIG = readConfig(join(ROOT, 'wrangler.jsonc'));
+const MIGRATION_FILES = readdirSync(join(ROOT, 'migrations')).filter((f) => f.endsWith('.sql')).sort();
 
 // ---------- SQL ajratuvchi ----------
 
@@ -66,7 +68,7 @@ describe('splitSql', () => {
 // ---------- Migratsiyalar ro'yxati ----------
 
 test("worker/migrations.js barcha migrations/*.sql ni tartib bilan o'z ichiga oladi", () => {
-  const files = readdirSync(join(ROOT, 'migrations')).filter((f) => f.endsWith('.sql')).sort();
+  const files = MIGRATION_FILES;
   const src = readFileSync(join(ROOT, 'worker/migrations.js'), 'utf8');
   const imported = [...src.matchAll(/from '\.\.\/migrations\/([^']+\.sql)'/g)].map((m) => m[1]);
   const named = [...src.matchAll(/name: '([^']+\.sql)'/g)].map((m) => m[1]);
@@ -158,8 +160,9 @@ async function startFixture(dir) {
       compatibility_date: CONFIG.compatibility_date,
       rules: CONFIG.rules,
       d1_databases: [{ binding: 'D1', database_name: 'storage-test', database_id: 'storage-test' }],
-      durable_objects: CONFIG.durable_objects,
-      migrations: CONFIG.migrations,
+      // + UpgradeDB: migratsiyalarni bosqichma-bosqich qo'llash (yangilanish testi)
+      durable_objects: { bindings: [...CONFIG.durable_objects.bindings, { name: 'UPGRADE_DB', class_name: 'UpgradeDB' }] },
+      migrations: [{ tag: 'v1', new_sqlite_classes: ['HasharDB', 'UpgradeDB'] }],
     }),
   );
   const [port, inspector] = [await freePort(), await freePort()];
@@ -351,9 +354,9 @@ describe('HasharDB (Durable Object) adapteri = D1', () => {
     assert.equal(dobj[fk + 2].value, 0, "hashar o'chganda volunteers ham o'chdi");
   });
 
-  test("migratsiyalar jadvali: 0001_init.sql bir marta", async () => {
-    const [r] = await call(server, 'do', [{ kind: 'all', sql: 'SELECT name FROM _migrations' }]);
-    assert.deepEqual(r.value.results, [{ name: '0001_init.sql' }]);
+  test("migratsiyalar jadvali: har biri bir marta, tartib bilan", async () => {
+    const [r] = await call(server, 'do', [{ kind: 'all', sql: 'SELECT name FROM _migrations ORDER BY name' }]);
+    assert.deepEqual(r.value.results, MIGRATION_FILES.map((name) => ({ name })));
   });
 });
 
@@ -380,7 +383,7 @@ describe("HasharDB: qayta ishga tushganda migratsiya takrorlanmaydi, ma'lumot sa
       await s1.stop();
     }
     assert.equal(first[0].ok, true, JSON.stringify(first[0]));
-    assert.equal(first[1].value.results.length, 1);
+    assert.equal(first[1].value.results.length, MIGRATION_FILES.length);
 
     const s2 = await startFixture(dir);
     let second;
@@ -394,5 +397,69 @@ describe("HasharDB: qayta ishga tushganda migratsiya takrorlanmaydi, ma'lumot sa
     }
     assert.deepEqual(second[0].value.results, first[1].value.results, "_migrations o'zgarmadi (qayta qo'llanmadi)");
     assert.equal(second[1].value, 'Saqlanadi', "ma'lumot saqlandi");
+  });
+});
+
+// ---------- DO migratsiyalari to'la bazada ----------
+// DO rejimida migratsiya deploy'dan KEYIN, birinchi so'rovda production ma'lumotlari ustida qo'llanadi
+// (D1 dagi kabi deploy'dan oldin emas). Bo'sh bazada o'tib, to'la bazada yiqiladigan migratsiya
+// (masalan, DEFAULT siz NOT NULL ustun) barcha baza so'rovlarini 500 ga aylantiradi — shu yerda ushlanadi.
+
+// seed.sql da yo'q jadvallar uchun qo'shimcha qatorlar
+const EXTRA_ROWS = `
+INSERT INTO sessions (token_hash, user_id, expires_at) VALUES ('test-token-hash', 1, datetime('now', '+90 days'));
+INSERT INTO rate_limits (key, window_start, count) VALUES ('auth:127.0.0.1', 1000, 3);
+`;
+
+async function upgrade(server, body) {
+  const res = await fetch(server.url, { method: 'POST', body: JSON.stringify({ target: 'upgrade', ...body }) });
+  assert.equal(res.status, 200, await res.clone().text());
+  return res.json();
+}
+
+describe("DO migratsiyalari: har bir keyingi migratsiya ma'lumotli bazada ham qo'llanadi", () => {
+  let dir;
+  let server;
+  const seed = readFileSync(join(ROOT, 'seed.sql'), 'utf8') + EXTRA_ROWS;
+  const files = MIGRATION_FILES;
+
+  before(async () => {
+    dir = mkdtempSync(join(tmpdir(), 'hc-upgrade-'));
+    server = await startFixture(dir);
+  });
+
+  after(async () => {
+    await server?.stop();
+    if (dir) rmSync(dir, { recursive: true, force: true });
+  });
+
+  test("0001 dan keyin namuna ma'lumot → qolgan migratsiyalar birma-bir", async () => {
+    // seed.sql eng yangi sxemaga yozilgan bo'lishi mumkin: u qo'llanadigan eng erta bosqichdan boshlanadi
+    let checked = 0;
+    for (let k = 1; k <= files.length; k++) {
+      const r = await upgrade(server, { name: `real-${k}`, before: k, seed });
+      if (r.seedError) continue;
+      for (const [table, n] of Object.entries(r.rowsBefore)) assert.ok(n > 0, `${table} bo'sh (k=${k})`);
+      assert.deepEqual(r.steps.map((s) => s.name), files.slice(k), `k=${k}: qolgan migratsiyalar`);
+      for (const s of r.steps) assert.ok(s.ok, `${s.name} ma'lumotli bazada yiqildi: ${s.error}`);
+      for (const [table, n] of Object.entries(r.rowsBefore)) {
+        assert.ok(r.rowsAfter[table] >= n, `${table}: qatorlar yo'qoldi (${n} → ${r.rowsAfter[table]})`);
+      }
+      checked++;
+    }
+    assert.ok(checked > 0, "seed.sql hech bir bosqichda qo'llanmadi");
+  });
+
+  test("tekshiruvning o'zi: to'la bazada yiqiladigan migratsiya ushlanadi, ma'lumot buzilmaydi", async () => {
+    const bad = { name: '9999_bad.sql', sql: 'ALTER TABLE hashars ADD COLUMN category TEXT NOT NULL;' };
+    // Bo'sh bazada o'tadi (CI dagi toza wrangler dev buni ko'rmasdi) ...
+    const empty = await upgrade(server, { name: 'bad-empty', before: files.length, seed: '', extra: [bad] });
+    assert.deepEqual(empty.steps, [{ name: bad.name, ok: true }]);
+    // ... ma'lumotli bazada esa yiqiladi; tranzaksiya bekor qilinadi
+    const full = await upgrade(server, { name: 'bad-full', before: files.length, seed, extra: [bad] });
+    assert.equal(full.steps.length, 1);
+    assert.equal(full.steps[0].ok, false);
+    assert.match(full.steps[0].error, /NOT NULL/);
+    assert.deepEqual(full.rowsAfter, full.rowsBefore);
   });
 });

@@ -12,6 +12,11 @@
 #
 # APK: Worker'ning statik fayllari ichida (dist/app/hasharchilar.apk + version.json) — R2 ga yozish shart emas.
 #   Sayt: <url>/api/app/download. Ilova API manzili: https://<worker>.<subdomain>.workers.dev.
+#   Debug imzo kaliti o'zgarsa (kesh boshqa branch'da / muddati o'tgan) sayt baribir deploy qilinadi,
+#   lekin saytdagi hozirgi APK saqlab qolinadi (o'rnatilgan ilovalar yangilana olishi uchun) — ogohlantirish bilan.
+#
+# Deploy'dan keyin: /api/health, BAZA (/api/stats, /api/hashars — DO rejimida migratsiyalar shu yerda
+#   qo'llanadi) va APK tekshiriladi; biri o'tmasa job qizil bo'ladi.
 #
 # KERAKLI SECRET: CLOUDFLARE_API_TOKEN. Minimal ruxsatlar: Account → Workers Scripts: Edit,
 #   Workers R2 Storage: Read (bucket yo'q bo'lsa Edit), Account Settings: Read.
@@ -140,11 +145,11 @@ jobs:
     defaults:
       run:
         working-directory: hasharchilar
+    # Faqat oddiy bayroqlar: URL / sha256 / sertifikat bu yerdan UZATILMAYDI — bu job keystore secretlarini
+    # ishlatadi va GitHub secret qiymati (masalan, alias "hasharchilar") ichida bo'lgan output'ni tashlab yuboradi.
+    # Keyingi job'lar URL ni o'zi hisoblaydi, APK ma'lumotini artefaktdagi version.json dan oladi.
     outputs:
-      url: ${{ steps.url.outputs.url }}
-      fingerprint: ${{ steps.apk.outputs.fingerprint }}
-      sha256: ${{ steps.apk.outputs.sha256 }}
-      size: ${{ steps.apk.outputs.size }}
+      publish: ${{ steps.sig.outputs.publish }}
       release_key: ${{ steps.key.outputs.release }}
     steps:
       - uses: actions/checkout@v4
@@ -175,24 +180,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           set -euo pipefail
-          NAME=$(node scripts/wrangler-config.mjs --print name)
-          if [ "$NAME" != "$WORKER_NAME" ]; then
-            echo "::error::wrangler.jsonc name '${NAME}' != '${WORKER_NAME}'"; exit 1
-          fi
-          SUB=""
-          if [ -n "${CLOUDFLARE_API_TOKEN:-}" ]; then
-            SUB=$(curl -sS --max-time 20 -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-              "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/subdomain" \
-              | jq -r 'select(.success == true) | .result.subdomain // empty' 2>/dev/null) || SUB=""
-          fi
-          if [ -z "$SUB" ]; then
-            SUB="$WORKERS_SUBDOMAIN_FALLBACK"
-            echo "::warning::workers.dev subdomeni API orqali aniqlanmadi — zaxira qiymat ishlatiladi: ${SUB}"
-          fi
-          if ! [[ "$SUB" =~ ^[a-z0-9-]+$ ]]; then
-            echo "::error::workers.dev subdomeni yaroqsiz: '${SUB}'"; exit 1
-          fi
-          URL="https://${NAME}.${SUB}.workers.dev"
+          URL=$(bash scripts/site-url.sh)
           echo "url=${URL}" >> "$GITHUB_OUTPUT"
           echo "Public URL: ${URL}"
 
@@ -222,9 +210,9 @@ jobs:
         run: npx cap sync android
 
       # Debug kaliti (secret yo'q bo'lsa) har runner'da yangidan yaratiladi va eski APK ustiga
-      # o'rnatilmay qoladi. Kesh kalitni run'lar orasida saqlaydi, lekin u branch'ga bog'liq va
-      # o'chib ketishi mumkin — shuning uchun pastda "Imzo mosligi" qadami saytdagi APK bilan solishtiradi.
-      # Saqlash (cache/save) alohida: faqat imzo mosligi tasdiqlangandan keyin.
+      # o'rnatilmay qoladi. Kesh kalitni run'lar orasida saqlaydi, lekin u branch'ga bog'liq va 7 kun
+      # ishlatilmasa o'chadi — shuning uchun pastda "Imzo mosligi" qadami saytdagi APK bilan solishtiradi.
+      # Saqlash (cache/save) alohida: faqat yangi APK chiqarilishi tasdiqlangandan keyin.
       - name: Debug kalit keshi (tiklash)
         id: dkcache
         uses: actions/cache/restore@v4
@@ -325,15 +313,21 @@ jobs:
       # Kalit o'zgarsa (boshqa branch, kesh o'chgani, secret almashgani) o'rnatilgan ilovalar yangilanmaydi
       # ("App not installed"). Shuning uchun HOZIR saytda turgan APK sertifikati bilan solishtiramiz
       # (ochiq fayl, token kerak emas). 404 yoki HTML (SPA: fayl yo'q) — birinchi chiqarish.
+      # Natija publish=true|false. Debug kaliti farq qilsa job YIQILMAYDI (sayt deploy'i to'xtamasligi uchun):
+      # publish=false — deploy saytdagi hozirgi APK ni saqlab qoladi, release o'tkazib yuboriladi.
+      # O'z kaliti (HASHARCHILAR_KEYSTORE_*) farq qilsa — xato: bu sozlashdagi xato yoki ataylab almashtirish.
       - name: Imzo mosligi (saytdagi APK bilan)
+        id: sig
         env:
           API_URL: ${{ steps.url.outputs.url }}
           FP: ${{ steps.apk.outputs.fingerprint }}
+          RELEASE_KEY: ${{ steps.key.outputs.release }}
           ALLOW_KEY_CHANGE: ${{ inputs.allow_key_change }}
         run: |
           set -uo pipefail
+          publish() { echo "publish=$1" >> "$GITHUB_OUTPUT"; }
           if [ "$ALLOW_KEY_CHANGE" = "true" ]; then
-            echo "::warning::allow_key_change=true — imzo mosligi tekshirilmaydi."; exit 0
+            echo "::warning::allow_key_change=true — imzo mosligi tekshirilmaydi."; publish true; exit 0
           fi
           PREV="$RUNNER_TEMP/prev-version.json"
           CODE="000"
@@ -344,27 +338,33 @@ jobs:
             sleep 10
           done
           if [ "$CODE" = "404" ]; then
-            echo "Saytda oldingi APK yo'q (HTTP 404) — birinchi chiqarish."; exit 0
+            echo "Saytda oldingi APK yo'q (HTTP 404) — birinchi chiqarish."; publish true; exit 0
           fi
           if [ "$CODE" != "200" ]; then
             echo "::error::${API_URL}/app/version.json tekshirib bo'lmadi (HTTP ${CODE}) — imzo mosligi noma'lum."; exit 1
           fi
           if ! jq -e 'type == "object"' "$PREV" > /dev/null 2>&1; then
-            echo "Saytda version.json yo'q (javob JSON emas, SPA index.html) — birinchi chiqarish."; exit 0
+            echo "Saytda version.json yo'q (javob JSON emas, SPA index.html) — birinchi chiqarish."; publish true; exit 0
           fi
           OLD=$(jq -r '.cert // empty' "$PREV" | tr -d ':' | tr 'A-F' 'a-f')
           if [ -z "$OLD" ]; then
-            echo "::warning::Oldingi version.json da sertifikat yo'q — tekshiruv o'tkazib yuborildi."; exit 0
+            echo "::warning::Oldingi version.json da sertifikat yo'q — tekshiruv o'tkazib yuborildi."; publish true; exit 0
           fi
           if [ "$OLD" != "$FP" ]; then
-            echo "::error::Yangi APK boshqa kalit bilan imzolangan (saytdagi: $OLD, yangi: $FP). U chiqarilsa, o'rnatilgan ilovalar yangilanmaydi. Yechim: HASHARCHILAR_KEYSTORE_* secretlarini sozlang (README) yoki ataylab almashtirish uchun workflow'ni allow_key_change=true bilan qo'lda ishga tushiring."
-            exit 1
+            if [ "$RELEASE_KEY" = "1" ]; then
+              echo "::error::Yangi APK boshqa kalit (HASHARCHILAR_KEYSTORE_*) bilan imzolangan (saytdagi: $OLD, yangi: $FP). U chiqarilsa, o'rnatilgan ilovalar yangilanmaydi. Secretdagi keystore to'g'riligini tekshiring yoki ataylab almashtirish uchun workflow'ni allow_key_change=true bilan qo'lda ishga tushiring."
+              exit 1
+            fi
+            echo "::warning title=APK yangilanmadi::Debug imzo kaliti o'zgardi (kesh boshqa branch'da yoki 7 kunda o'chgan): saytdagi $OLD, yangi $FP. Sayt baribir deploy qilinadi, lekin saytda hozirgi APK ($(jq -r '.version // "?"' "$PREV")) qoladi — o'rnatilgan ilovalar yangilana olishi uchun. Yangi APK chiqarish uchun HASHARCHILAR_KEYSTORE_* secretlarini sozlang (README) yoki workflow'ni allow_key_change=true bilan qo'lda ishga tushiring."
+            publish false; exit 0
           fi
           echo "✓ Imzo saytdagi APK bilan bir xil ($FP, $(jq -r '.version' "$PREV"))"
+          publish true
 
-      # Debug kalit faqat imzo mosligi tasdiqlangach saqlanadi (keyingi qadamlar yiqilsa ham yo'qolmaydi).
+      # Debug kalit faqat yangi APK chiqarilishi tasdiqlangach saqlanadi (keyingi qadamlar yiqilsa ham
+      # yo'qolmaydi). Saytdagidan farq qiladigan kalit keshlanmaydi.
       - name: Debug kalit keshi (saqlash)
-        if: steps.key.outputs.release == '0' && steps.dkcache.outputs.cache-hit != 'true'
+        if: steps.key.outputs.release == '0' && steps.sig.outputs.publish == 'true' && steps.dkcache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: ~/.android/debug.keystore
@@ -391,9 +391,9 @@ jobs:
     # CLOUDFLARE_API_TOKEN job darajasida EMAS: faqat wrangler / Cloudflare API qadamlariga beriladi,
     # shunda npm ci (install skriptlari) va build uni ko'rmaydi.
     env:
-      SITE_URL: ${{ needs.apk.outputs.url }}
+      PUBLISH: ${{ needs.apk.outputs.publish }}
     outputs:
-      url: ${{ needs.apk.outputs.url }}
+      url: ${{ steps.url.outputs.url }}
       storage: ${{ steps.storage.outputs.mode }}
     steps:
       - uses: actions/checkout@v4
@@ -406,6 +406,20 @@ jobs:
           cache: npm
           cache-dependency-path: hasharchilar/package-lock.json
 
+      # URL shu job'da qayta hisoblanadi (apk job'idan output sifatida olinmaydi — u yerda secret niqobi
+      # uni bo'sh qoldirishi mumkin). Bo'sh bo'lsa deploy'dan OLDIN to'xtaymiz.
+      - name: Public URL (workers.dev)
+        id: url
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          URL=$(bash scripts/site-url.sh)
+          if [ -z "$URL" ]; then echo "::error::Public URL bo'sh"; exit 1; fi
+          echo "url=${URL}" >> "$GITHUB_OUTPUT"
+          echo "SITE_URL=${URL}" >> "$GITHUB_ENV"
+          echo "Public URL: ${URL}"
+
       - name: Bog'liqliklar
         run: npm ci
 
@@ -414,19 +428,59 @@ jobs:
         run: npm run build
 
       # APK saytning statik fayllari ichiga: dist/app/hasharchilar.apk + dist/app/version.json
-      - uses: actions/download-artifact@v4
+      - name: Yangi APK (artefakt)
+        if: needs.apk.outputs.publish == 'true'
+        uses: actions/download-artifact@v4
         with:
           name: hasharchilar-apk
           path: hasharchilar/dist/app
 
+      # Imzo kaliti mos kelmadi (publish=false): saytdagi hozirgi APK o'zgarishsiz qayta joylanadi —
+      # aks holda deploy statik fayllarni almashtirib, APK ni saytdan olib tashlagan bo'lardi.
+      - name: Saytdagi hozirgi APK ni saqlab qolish
+        if: needs.apk.outputs.publish != 'true'
+        run: |
+          set -uo pipefail
+          mkdir -p dist/app
+          get() {
+            for attempt in 1 2 3 4 5; do
+              if curl -fsS --max-time 120 -o "$2" "${SITE_URL}$1"; then return 0; fi
+              echo "Urinish ${attempt}: ${SITE_URL}$1 yuklanmadi — 10 soniyadan keyin qayta"
+              sleep 10
+            done
+            return 1
+          }
+          if ! get /app/version.json dist/app/version.json \
+             || ! jq -e '.sha256 | type == "string"' dist/app/version.json > /dev/null 2>&1; then
+            echo "::error::${SITE_URL}/app/version.json olinmadi — saytdagi APK ni saqlab qolib bo'lmaydi."; exit 1
+          fi
+          if ! get /app/hasharchilar.apk dist/app/hasharchilar.apk; then
+            echo "::error::${SITE_URL}/app/hasharchilar.apk olinmadi — saytdagi APK ni saqlab qolib bo'lmaydi."; exit 1
+          fi
+          SHA=$(sha256sum dist/app/hasharchilar.apk | awk '{print $1}')
+          if [ "$SHA" != "$(jq -r '.sha256' dist/app/version.json)" ]; then
+            echo "::error::Saytdan olingan APK sha256 (${SHA}) version.json ga mos emas."; exit 1
+          fi
+          echo "::warning title=APK yangilanmadi::Saytdagi APK $(jq -r '.version' dist/app/version.json) saqlab qolindi (imzo kaliti mos emas — apk job ogohlantirishiga qarang). Sayt kodi va API baribir yangilanadi."
+
       - name: APK fayllarini tekshirish
+        id: apkfiles
         run: |
           set -euo pipefail
           test -s dist/app/hasharchilar.apk || { echo "::error::dist/app/hasharchilar.apk yo'q"; exit 1; }
           SHA=$(sha256sum dist/app/hasharchilar.apk | awk '{print $1}')
-          if ! jq -e --arg s "$SHA" --arg v "$VERSION_NAME" '.sha256 == $s and .version == $v and (.cert | length) == 64' dist/app/version.json > /dev/null; then
+          if ! jq -e --arg s "$SHA" '.sha256 == $s and (.version | type == "string") and ((.cert // "") | test("^[0-9a-f]{64}$"))' dist/app/version.json > /dev/null; then
             echo "::error::dist/app/version.json APK ga mos emas"; cat dist/app/version.json; exit 1
           fi
+          if [ "$PUBLISH" = "true" ] && ! jq -e --arg v "$VERSION_NAME" '.version == $v' dist/app/version.json > /dev/null; then
+            echo "::error::Artefaktdagi version.json versiyasi ${VERSION_NAME} emas"; cat dist/app/version.json; exit 1
+          fi
+          {
+            echo "version=$(jq -r '.version' dist/app/version.json)"
+            echo "sha256=${SHA}"
+            echo "cert=$(jq -r '.cert' dist/app/version.json)"
+            echo "size=$(stat -c %s dist/app/hasharchilar.apk)"
+          } >> "$GITHUB_OUTPUT"
           echo "✓ $(jq -c . dist/app/version.json)"
 
       # Baza turi bir marta tanlanadi va keyin o'zgarmaydi: aks holda ma'lumotlar "yo'qolib" qoladi
@@ -678,6 +732,7 @@ jobs:
           DOMAIN: ${{ steps.domain.outputs.domain }}
         run: |
           set -euo pipefail
+          if [ -z "${SITE_URL:-}" ]; then echo "::error::SITE_URL bo'sh — deploy qilinmaydi"; exit 1; fi
           ATTACHED=""
           if [ -n "$DOMAIN" ]; then
             # workers_dev: true konfiguratsiyada — custom domen bilan ham workers.dev ishlayveradi (APK shu manzilda).
@@ -715,24 +770,52 @@ jobs:
           echo "::error::${SITE_URL}/api/health 6 daqiqada javob bermadi"
           exit 1
 
-      # Sayt yangi APK ni beryaptimi: /api/app versiyasi, /api/app/download turi va baytlari, version.json.
+      # /api/health bazaga tegmaydi. Bu so'rovlar env.DB ni ishlatadi: DO rejimida obyektni yaratadi va
+      # migratsiyalarni qo'llaydi (deploy'dan keyin, birinchi so'rovda). Baza ishlamasa — job qizil.
+      - name: Baza tekshiruvi (/api/stats, /api/hashars)
+        env:
+          MODE: ${{ steps.storage.outputs.mode }}
+        run: |
+          set -uo pipefail
+          OUT="$RUNNER_TEMP/db-check.json"
+          check() { # $1 = yo'l, $2 = jq sharti
+            curl -sS --max-time 20 -o "$OUT" -w '%{http_code}' "${SITE_URL}$1" > "$OUT.code" 2>/dev/null || echo 000 > "$OUT.code"
+            [ "$(cat "$OUT.code")" = "200" ] && jq -e "$2" "$OUT" > /dev/null 2>&1
+          }
+          for attempt in $(seq 1 12); do
+            if check /api/stats '(.hashars | type == "number") and (.completed | type == "number") and (.volunteers | type == "number")' \
+               && STATS=$(jq -c . "$OUT") \
+               && check '/api/hashars?status=COMPLETED' 'type == "array"'; then
+              echo "✓ /api/stats: ${STATS}"
+              echo "✓ /api/hashars?status=COMPLETED: $(jq 'length' "$OUT") ta"
+              exit 0
+            fi
+            echo "Urinish ${attempt}: HTTP $(cat "$OUT.code") $(head -c 300 "$OUT" 2>/dev/null)"
+            sleep 5
+          done
+          echo "::error::Baza ishlamayapti (${MODE}): /api/stats yoki /api/hashars 1 daqiqada to'g'ri javob bermadi, /api/health esa ishlaydi. DO rejimida bu odatda yangi migratsiya mavjud ma'lumotlarda yiqilganini bildiradi (Dashboard → hasharchilar-api → Logs). Oldingi versiyaga qaytish: npx wrangler rollback --name ${WORKER_NAME}."
+          exit 1
+
+      # Sayt kutilgan APK ni beryaptimi: /api/app versiyasi, /api/app/download turi va baytlari, version.json.
+      # Kutilgan qiymatlar — dist/app/version.json dan (yangi APK yoki saqlab qolingan hozirgisi).
       - name: APK ni sayt orqali tekshirish
         env:
-          APK_SHA: ${{ needs.apk.outputs.sha256 }}
-          FP: ${{ needs.apk.outputs.fingerprint }}
+          APK_VERSION: ${{ steps.apkfiles.outputs.version }}
+          APK_SHA: ${{ steps.apkfiles.outputs.sha256 }}
+          FP: ${{ steps.apkfiles.outputs.cert }}
         run: |
           set -uo pipefail
           ok=""
           for attempt in $(seq 1 12); do
             if curl -fsS --max-time 15 "${SITE_URL}/api/app" -o "$RUNNER_TEMP/app.json" \
-               && jq -e --arg v "$VERSION_NAME" '.available == true and .version == $v' "$RUNNER_TEMP/app.json" > /dev/null; then
+               && jq -e --arg v "$APK_VERSION" '.available == true and .version == $v' "$RUNNER_TEMP/app.json" > /dev/null; then
               ok=1; break
             fi
             echo "Urinish ${attempt}: $(cat "$RUNNER_TEMP/app.json" 2>/dev/null)"
             sleep 5
           done
           if [ -z "$ok" ]; then
-            echo "::error::/api/app yangi versiyani (${VERSION_NAME}) ko'rsatmayapti"; exit 1
+            echo "::error::/api/app kutilgan versiyani (${APK_VERSION}) ko'rsatmayapti"; exit 1
           fi
           echo "✓ /api/app: $(cat "$RUNNER_TEMP/app.json")"
           CT=$(curl -fsS --max-time 120 -D "$RUNNER_TEMP/dl.h" -o "$RUNNER_TEMP/dl.apk" -w '%{content_type}' "${SITE_URL}/api/app/download") || CT=""
@@ -758,16 +841,20 @@ jobs:
           LABEL: ${{ steps.storage.outputs.label }}
           REASON: ${{ steps.storage.outputs.reason }}
           DOMAIN: ${{ steps.deploy.outputs.domain }}
-          SIZE: ${{ needs.apk.outputs.size }}
-          FP: ${{ needs.apk.outputs.fingerprint }}
+          APK_VERSION: ${{ steps.apkfiles.outputs.version }}
+          SIZE: ${{ steps.apkfiles.outputs.size }}
+          FP: ${{ steps.apkfiles.outputs.cert }}
           OUTCOME: ${{ job.status }}
         run: |
           {
             echo "## hasharchilar deploy (${OUTCOME})"
             echo ""
-            echo "- Sayt: **${SITE_URL}**"
-            echo "- Android APK (${VERSION_NAME}, ${SIZE} bayt): **${SITE_URL}/api/app/download**"
-            echo "- Health: ${SITE_URL}/api/health"
+            echo "- Sayt: **${SITE_URL:-aniqlanmadi}**"
+            echo "- Android APK (${APK_VERSION}, ${SIZE} bayt): **${SITE_URL:-}/api/app/download**"
+            if [ "$PUBLISH" != "true" ]; then
+              echo "- ⚠️ APK **yangilanmadi**: imzo kaliti saytdagidan farq qiladi, hozirgi APK saqlab qolindi (README → Kerakli secretlar)."
+            fi
+            echo "- Health: ${SITE_URL:-}/api/health"
             echo "- Baza: **${LABEL:-aniqlanmadi}** — ${REASON:-}"
             echo "- Worker: \`${WORKER_NAME}\`, R2: \`${R2_BUCKET}\`"
             echo "- APK sertifikati SHA-256: \`${FP}\`"
@@ -776,9 +863,11 @@ jobs:
 
   # ---------------------------------------------------------------- 4. RELEASE
   # Deploy'dan KEYIN, alohida job: bu yerdagi xato saytga ta'sir qilmaydi.
+  # Imzo kaliti mos kelmagan APK (publish=false) chiqarilmaydi — o'rnatilgan ilovalar uni qabul qilmaydi.
   release:
     name: GitHub Release
     needs: [apk, deploy]
+    if: needs.apk.outputs.publish == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -799,10 +888,15 @@ jobs:
           SITE_URL: ${{ needs.deploy.outputs.url }}
           STORAGE: ${{ needs.deploy.outputs.storage }}
           RELEASE_KEY: ${{ needs.apk.outputs.release_key }}
-          FINGERPRINT: ${{ needs.apk.outputs.fingerprint }}
-          APK_SHA: ${{ needs.apk.outputs.sha256 }}
         run: |
           set -euo pipefail
+          # APK ma'lumoti artefaktdagi version.json dan (job output'lari secret niqobi tufayli bo'sh qolishi mumkin)
+          APK_SHA=$(sha256sum apk/hasharchilar.apk | awk '{print $1}')
+          if ! jq -e --arg s "$APK_SHA" --arg v "$VERSION_NAME" '.sha256 == $s and .version == $v' apk/version.json > /dev/null; then
+            echo "::error::apk/version.json APK ga mos emas"; cat apk/version.json; exit 1
+          fi
+          FINGERPRINT=$(jq -r '.cert' apk/version.json)
+          SITE_URL="${SITE_URL:-https://${WORKER_NAME}.${WORKERS_SUBDOMAIN_FALLBACK}.workers.dev}"
           APK="apk/hasharchilar-${VERSION_NAME}.apk"
           cp apk/hasharchilar.apk "$APK"
           {
