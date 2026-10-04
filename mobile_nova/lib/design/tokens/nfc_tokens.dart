@@ -142,13 +142,30 @@ class NfcTokens extends ThemeExtension<NfcTokens> {
     return darkScore >= lightScore ? dark : Colors.white;
   }
 
-  /// Faol boshqaruv sirti: yorug' mavzuda siyoh, qorong'ida o'z aksenti.
-  /// Matn rangi fon uchun ishlatilmaydi: Ocean, Aurora va oltin mavzular
-  /// bir xil oq kapsulaga aylanib qolmasin.
-  Color get controlFill => isDark ? accent2 : text1;
+  /// FAOL BOSHQARUV SIRTI — HAR MAVZUNING O'Z AKSENTI (egasi, 2026-10,
+  /// iPhone: "Pudra'da Shaxsiy jigarrang, NFC tugmasi atirgul").
+  ///
+  /// Ilgari yorug' mavzularda bu `text1` (matn siyohi) edi. Ivory'da
+  /// siyoh = aksent, farq ko'rinmasdi. Pudra va Sakura'da esa matn
+  /// siyohi to'q jigarrang/olxo'ri, aksent esa atirgul/pushti: rejim
+  /// almashtirgich, amal doiralari, faol tab va chiplar bir rangda,
+  /// markaziy NFC tugmasi va asosiy tugmalar (`accent2`) boshqa rangda
+  /// chiqib, ikki palitra aralashib ko'rinardi.
+  ///
+  /// Endi barcha faol elementlar BITTA tokendan — `accent2`. Faqat aksent
+  /// sirt ustida to'la kapsula bo'lib ko'rinmaydigan darajada och bo'lsa
+  /// (Pearl champagne: kontrast < 3) matn siyohi qoladi. Ivory, oq-qora
+  /// va barcha qorong'i mavzularda natija avvalgidek.
+  Color get controlFill {
+    if (isDark) return accent2;
+    final a = accent2.computeLuminance(), s = surfaceSolid.computeLuminance();
+    final contrast = (max(a, s) + .05) / (min(a, s) + .05);
+    return contrast >= 3 ? accent2 : text1;
+  }
 
   /// [controlFill] ustidagi o'qiladigan yozuv va ikonka.
-  Color get onControl => isDark ? onAccent : surfaceSolid;
+  Color get onControl =>
+      controlFill == accent2 ? onAccent : surfaceSolid;
 
   /// Logotip orqasidagi plastina rangi.
   ///

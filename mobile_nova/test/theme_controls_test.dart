@@ -35,8 +35,12 @@ void main() {
         expect(t.controlFill, t.accent2);
         expect(t.controlFill, isNot(t.text1));
       } else {
-        expect(t.controlFill, t.text1);
-        expect(t.onControl, t.surfaceSolid);
+        // Yorug' mavzuda ham faol boshqaruv — mavzuning O'Z aksenti
+        // (NFC muhri va tugmalar bilan bir rang; Pudra/Sakura'da matn
+        // siyohi bilan aralashmaydi). Ivory'da aksent = siyoh.
+        expect(t.controlFill, t.accent2);
+        expect(t.onControl, t.onAccent);
+        if (t.id == 'ivory') expect(t.controlFill, t.text1);
       }
     });
 
