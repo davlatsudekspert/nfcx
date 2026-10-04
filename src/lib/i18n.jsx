@@ -62,6 +62,13 @@ function loadDict() {
 
 export function LanguageProvider({ children }) {
   const [lang, setLangState] = useState(() => {
+    // `?lang=en|ru|uz` — havolaning o'zi tilni tanlaydi (App Store'dagi
+    // Privacy/Support URL inglizcha ochilsin, 2026-10). Saqlanmaydi:
+    // odamning o'z tanlovi (localStorage) o'zgarmaydi.
+    try {
+      const q = new URLSearchParams(window.location.search).get('lang');
+      if (q && LANGUAGES.some((l) => l.code === q)) return q;
+    } catch { /* SSR / test */ }
     try { return localStorage.getItem('nfc_lang') || 'uz'; } catch { return 'uz'; }
   });
   const [dict, setDict] = useState(dictCache);

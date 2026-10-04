@@ -146,18 +146,28 @@ const list = (code) => call(`/api/records/${code}/stories`);
   check('7) sabab not_owner', foreign.body?.error, 'not_owner');
 }
 
-// ── 8) TARIF ─────────────────────────────────────────────────────────
-// Story — Gold/Premium/Ekskluziv uchun. Bepul tarifda yopiq bo'lishi
-// va buni AYTIB berishi kerak (odam nega ishlamayotganini bilsin).
+// ── 8) TARIF YO'Q — STORY HAMMAGA BEPUL (2026-10-04) ────────────────
+// Ilgari bepul tarifda 403 feature_locked edi. Endi avtomatik 8 xonali
+// (bepul) ID, sinovi tugagan, Premium'siz hisob ham qo'yadi; faqat
+// bloklangan hisob qo'ya olmaydi va buni AYTIB beradi.
 {
   // 8 xonali raqamli kod — bepul daraja (`c.length !== 6` -> 'free').
   await env.DB.prepare(
     `INSERT INTO cards (code, name, price, ts, user_id, profile_type) VALUES ('12345678', 'Bepul', 0, 1000, 1, 'personal')`,
   ).run();
+  await env.DB.prepare(`UPDATE users SET is_premium = 0, trial_expires_at = ? WHERE id = 1`)
+    .bind(new Date(Date.now() - 86400000).toISOString()).run().catch(() => {});
   const r = await post('12345678', img(1));
-  check('8) bepul tarifda yopiq -> 403', r.status, 403);
-  check('8) sabab feature_locked', r.body?.error, 'feature_locked');
-  check('8) qaysi imkoniyat ekani aytiladi', r.body?.feature, 'story');
+  check('8) bepul tarif, sinov tugagan -> 201', r.status, 201);
+  const v = await post('12345678', { videoUrl: '/uploads/story_v1.mp4', agreed: true });
+  check('8) bepul tarifda video story ham -> 201', v.status, 201);
+
+  await env.DB.prepare(`UPDATE users SET banned_until = ? WHERE id = 1`)
+    .bind(new Date(Date.now() + 86400000).toISOString()).run();
+  const b = await post('12345678', img(2));
+  check('8) bloklangan -> 403', b.status, 403);
+  check('8) sabab banned', b.body?.error, 'banned');
+  await env.DB.prepare(`UPDATE users SET banned_until = NULL WHERE id = 1`).run();
 }
 
 // ── 9) BOSHQA PROFIL ARALASHMAYDI ────────────────────────────────────
@@ -187,7 +197,7 @@ const list = (code) => call(`/api/records/${code}/stories`);
   // yozilgan bo'lsa ham topiladi — tekshiruv YOZUV USLUBIGA emas,
   // moslikning O'ZIGA qaraydi.
   const CODES = ['feature_locked', 'limit_reached', 'bad_image', 'rules_not_accepted',
-    'too_large', 'bad_file', 'not_owner', 'unauthorized', 'not_found'];
+    'too_large', 'bad_file', 'not_owner', 'unauthorized', 'not_found', 'banned', 'too_many_requests'];
   const texts = new Set();
   for (const code of CODES) {
     const m = new RegExp(`(?:^|[^\\w'"])'?${code}'?\\s*:\\s*'([^']+)'`, 'm').exec(up);

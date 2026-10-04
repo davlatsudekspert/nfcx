@@ -1,15 +1,14 @@
-// IZOH: PREMIUM YOKI 30 KUNLIK SINOV.
+// IZOH: HAMMAGA BEPUL (2026-10-04).
 //
-// Egasining qarori (2026-09-23): yangi ro'yxatdan o'tgan odam birinchi
-// oy izoh yoza oladi, keyin — faqat Premium. Server yangi hisoblarga
-// `users.trial_expires_at` ni allaqachon beradi; izoh uni hisobga
-// olmasdi.
+// Tarix: 2026-09 da izoh faqat Premium va 30 kunlik sinovdagilarga edi
+// (`premium_required`). Egasining qarori (2026-10-04, App Store 3.1.1):
+// post, Reels, istorya va izoh — tizimga kirgan, bloklanmagan HAR KIMGA.
 //
 // Qo'riqlanadigan chegaralar:
-//   * sinovsiz va Premium'siz — 403 premium_required (qoida o'z joyida);
-//   * sinov muddati ketyapti — yoza oladi;
-//   * sinov tugagan — yana 403;
-//   * Premium — har doim yoza oladi;
+//   * sinovsiz va Premium'siz — yoza oladi (premium_required YO'Q);
+//   * sinov muddati ketyapti / tugagan — yoza oladi;
+//   * Premium — yoza oladi;
+//   * bloklangan — 403 banned (yagona qulf);
 //   * O'QISH hammaga ochiq.
 //
 //   node scripts/test-comment-trial.mjs
@@ -36,8 +35,7 @@ const write = (body) =>
 
 // Birinchi so'rov sxemani (shu jumladan `trial_expires_at`) yaratadi.
 let r = await write('sinovsiz');
-check('1) sinovsiz, Premium\'siz -> 403 premium_required',
-  [r.status, r.body?.error], [403, 'premium_required']);
+check('1) sinovsiz, Premium\'siz -> 201 (hammaga bepul)', r.status, 201);
 
 const iso = (ms) => new Date(Date.now() + ms).toISOString();
 await env.DB.prepare(`UPDATE users SET trial_expires_at = ? WHERE id = 1`)
@@ -48,8 +46,7 @@ check('2) sinov muddati ketyapti -> 201', r.status, 201);
 await env.DB.prepare(`UPDATE users SET trial_expires_at = ? WHERE id = 1`)
   .bind(iso(-86400000)).run();
 r = await write('sinov tugagan');
-check('3) sinov tugagan -> 403 premium_required',
-  [r.status, r.body?.error], [403, 'premium_required']);
+check('3) sinov tugagan -> 201 (hammaga bepul)', r.status, 201);
 
 // D1 formatidagi sana ham to'g'ri o'qiladi ('YYYY-MM-DD HH:MM:SS').
 const d1 = new Date(Date.now() + 5 * 86400000).toISOString()
@@ -65,5 +62,12 @@ check('5) Premium -> 201', r.status, 201);
 
 r = await call('/api/comments/post/10');
 check('6) o\'qish hammaga ochiq -> 200', r.status, 200);
+
+// Bloklangan — yozolmaydi (Premium bo'lsa ham).
+await env.DB.prepare(`UPDATE users SET banned_until = ? WHERE id = 1`)
+  .bind(iso(86400000)).run();
+r = await write('bloklangan');
+check('7) bloklangan -> 403 banned', [r.status, r.body?.error], [403, 'banned']);
+await env.DB.prepare(`UPDATE users SET banned_until = NULL WHERE id = 1`).run();
 
 done();

@@ -1624,8 +1624,9 @@ function WonAuctionsPanel({ onCount }) {
 }
 
 // Premium ochadigan imkoniyatlar — src/lib/access.js FEATURE_MIN'dan (bitta manba).
+// `post`/`story` bu ro'yxatda YO'Q: ular hammaga bepul (2026-10-04).
 const PREMIUM_UNLOCK_LABEL = {
-  post: 'Postlar / Media', music: 'Profil musiqasi', innerBackground: 'Maxsus profil foni',
+  music: 'Profil musiqasi', innerBackground: 'Maxsus profil foni',
   advancedColors: 'Maxsus ranglar', animatedBackground: 'Animatsiyali fon', premiumThemes: 'Premium temalar',
   glassContent: 'Shisha (glass) kontent', linkStyle: 'Havola tugmalari uslubi', video: 'Video',
   physicalCardDesigner: 'Jismoniy NFC karta dizayni', profileCardCustom: 'Karta dizayni',

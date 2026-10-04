@@ -67,11 +67,11 @@ export function hasAccess(current, required) {
 // Keyinchalik admin config'dan (admin_settings) keladi; hozircha default.
 // Kalitlar frontend va backend'da bir xil ishlatiladi.
 export const FEATURE_MIN = {
-  post:                 'silver',
-  // Istorya (2026-09, egasining qarori): gold, premium va ekskluziv ID
-  // egalari. Premium OBUNACHI ham qo'ya oladi — obuna joriy darajani
-  // kamida 'premium' ga ko'taradi (accessFor()).
-  story:                'gold',
+  // POST (rasm, video, Reels) va ISTORYA — HAMMAGA BEPUL (egasining
+  // qarori, 2026-10-04; App Store 3.1.1). Ilgari post silver, istorya
+  // gold edi. hosting/worker.js FEATURE_MIN_D1 bilan bir xil.
+  post:                 'free',
+  story:                'free',
   music:                'premium',
   innerBackground:      'gold',      // profil ICHKI foni (rasm/rang)
   advancedColors:       'gold',
@@ -79,6 +79,8 @@ export const FEATURE_MIN = {
   premiumThemes:        'premium',
   glassContent:         'premium',
   linkStyle:            'gold',       // transparent / glass havola tugmalari
+  // Faqat profil VIDEO BO'LIMI (hosting/api/media.js) — post/istorya
+  // videosi EMAS: ular yuqoridagi `post`/`story` bilan hammaga ochiq.
   video:                'premium',
   physicalCardDesigner: 'silver',
   profileCardCustom:    'gold',      // profil kartasi rang/fon/pozitsiya
@@ -91,10 +93,10 @@ export const FEATURE_MIN = {
   location:             'gold',      // manzil/koordinatalar — "Lokatsiyani ochish" (Faz 19)
 };
 
-// ── Tarif bo'yicha post limiti ─────────────────────────────────────────
-// Keyinchalik admin config. Mavjud postlar HECH QACHON o'chirilmaydi —
-// limit faqat YANGI post qo‘shishga ta'sir qiladi (grandfathering).
-export const POST_LIMIT = { free: 0, silver: 5, gold: 30, premium: 60, exclusive: 999 };
+// ── Post limiti ────────────────────────────────────────────────────────
+// 2026-10-04: post hammaga bepul — har bir daraja ilgarigi ENG YUQORI
+// chegarani oladi (999). hosting/worker.js POST_LIMIT_D1 bilan bir xil.
+export const POST_LIMIT = { free: 999, silver: 999, gold: 999, premium: 999, exclusive: 999 };
 
 // ── Restoran menyusi limiti (Band 3.3) ─────────────────────────────────
 // { cat: kategoriyalar soni, item: taomlar soni, images: rasm ruxsati }.

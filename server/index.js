@@ -111,8 +111,12 @@ const PORT = process.env.PORT || 3001;
 const STD_CODE_RE = /^[A-Z]{3}[0-9]{3}$/;      // standart: AAA000
 const LETTER_CODE_RE = /^[A-Z]{3,12}$/;         // premium: faqat harflar — ALI, UZBEKISTAN
 const FREE_ID_RE = /^[0-9]{8}$/;                // ro'yxatdan o'tishda avtomatik beriladigan bepul ID
+// hosting/api/reserved-codes.js bilan BIR XIL (sayt sahifalari nomlari).
 const RESERVED_CODES = new Set([
   'LOGIN', 'REGISTER', 'ACCOUNT', 'PRIVACY', 'API', 'ADMIN', 'STATIC', 'UPLOADS', 'AUKSION', 'XABARLAR', 'TOLOVLAR',
+  'SUPPORT', 'CONTACT', 'HELP', 'YORDAM', 'TERMS', 'EULA', 'ALOQA', 'SHARTLAR', 'MAXFIYLIK',
+  'NARXLAR', 'YANGILIKLAR', 'KATALOG', 'SAVOLLAR', 'GIFTS', 'QOLLANMA', 'STIKERLAR', 'ACTIVATE',
+  'REYTING', 'KOMPANIYALAR', 'BILDIRISHNOMALAR', 'SOZLAMALAR', 'BUSINESS', 'COMPANY', 'WORKSPACE',
 ]);
 
 function validCode(code) {
@@ -666,9 +670,8 @@ app.post('/api/records/:code/posts', async (req, res) => {
     if (!featureAllowed('post', access)) {
       return res.status(403).json({ error: 'feature_locked', feature: 'post' });
     }
-    if (okVid && !featureAllowed('video', access)) {
-      return res.status(403).json({ error: 'feature_locked', feature: 'video' });
-    }
+    // Video-post / Reels hammaga bepul (2026-10-04) — `video` kaliti
+    // endi faqat profil video bo'limi uchun (hosting/worker.js bilan bir xil).
     const result = await createPost(code, user.id, {
       imageUrl: okImg ? imageUrl : '',
       videoUrl: okVid ? videoUrl : '',

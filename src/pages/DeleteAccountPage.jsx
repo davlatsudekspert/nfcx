@@ -14,6 +14,8 @@ import { navigate } from '../lib/router.js';
 // so'rovdan keyin darhol yashirish, 30 kundan keyin butunlay o'chirish
 // (hosting/api/account-purge.js). Egasining qarori (2026-09-25): 30 kun;
 // pullik ID'lar uchun pul qaytarilmaydi, ular 90 kundan keyin qayta beriladi.
+// Yuklangan fayllar hozircha ombordan o'chirilmaydi (wrangler.jsonc
+// ACCOUNT_PURGE_R2 = off) — matn shuni rost aytadi (2026-10, App Store).
 
 // Play Console'dagi aloqa manzili bilan BIR XIL (Google shu manzilga
 // yozilgan so'rovni tekshiradi).
@@ -24,15 +26,15 @@ const APP = 'NFCSTORE: Raqamli vizitka';
 const T = {
   uz: {
     title: 'Hisobni o‘chirish',
-    lead: `${APP} ilovasi (Google Play) va nfcstore.uz saytidagi NFCSTORE hisobingizni va unga bog‘langan ma’lumotlarni o‘chirishingiz mumkin.`,
+    lead: `${APP} ilovasi (App Store va Google Play) va nfcstore.uz saytidagi NFCSTORE hisobingizni va unga bog‘langan ma’lumotlarni o‘chirishingiz mumkin.`,
     whatH: 'Nima bo‘ladi',
     what: [
       'So‘rovdan so‘ng darhol: barcha qurilmalardagi sessiyalar yopiladi va hisobga kira olmaysiz. NFC ID profillaringiz, biznes sahifalaringiz, postlar, istoriyalar, izohlar va obunalar saytdan ham, ilovadan ham yashiriladi.',
-      '30 kundan keyin hisob butunlay o‘chiriladi: email, telefon, parol, profil va biznes ma’lumotlari, postlar, istoriyalar, izohlar, layklar, obunalar, saqlanganlar, siz yozgan xabarlar, bildirishnomalar va yuklangan fayllar (rasm, video, musiqa). Bu bosqichni qaytarib bo‘lmaydi.',
+      '30 kundan keyin hisob butunlay o‘chiriladi: email, telefon, parol, profil va biznes ma’lumotlari, postlar, istoriyalar, izohlar, layklar, obunalar, saqlanganlar, siz yozgan xabarlar va bildirishnomalar. Bu bosqichni qaytarib bo‘lmaydi.',
       `30 kun ichida fikringizdan qaytsangiz, ${CONTACT} manziliga yozing — hisobingiz tiklanadi.`,
       'Hisobingizda pul qoldig‘i, to‘lov kutilayotgan yoki yetkazilmagan buyurtma, faol auksion bo‘lsa yoki firibgarlik bo‘yicha tekshiruv ketayotgan bo‘lsa, butunlay o‘chirish shular hal bo‘lguncha kechiktiriladi.',
       'NFC ID va Business ID’laringiz ham hisob bilan birga ketadi, ular uchun to‘langan pul qaytarilmaydi. Bu ID’lar 90 kun hech kimga berilmaydi (eski NFC karta va havolalaringiz begona profilni ochmasligi uchun), keyin qayta sotuvga chiqadi.',
-      'O‘chirilgan rasm va videolar tarmoq keshlarida va ularni avval ochgan qurilmalarda keshdan chiqib ketguncha ochilishi mumkin.',
+      'Yuklangan fayllar (rasm, video, musiqa) hisobdan ajratiladi va xizmatda boshqa ko‘rsatilmaydi, lekin hozircha fayl omboridan avtomatik o‘chirilmaydi: faylning to‘g‘ridan-to‘g‘ri havolasini oldindan saqlab qo‘ygan kishi uni ochishi mumkin (havolalar tasodifiy, ularni taxmin qilib topib bo‘lmaydi). Ular tarmoq keshlarida va avval ochgan qurilmalarda ham keshdan chiqib ketguncha ochilishi mumkin.',
     ],
     keepH: 'Nima saqlanadi va qancha muddat',
     keep: 'Qonun talablari va xavfsizlik uchun faqat quyidagilar saqlanadi. Ular ommaga ko‘rinmaydi va boshqa maqsadda ishlatilmaydi: buyurtma va to‘lov yozuvlari (Payme/Click: summa, sana, holat, mahsulot turi, tranzaksiya raqami) — buxgalteriya va soliq qonunchiligida belgilangan muddat davomida, ism, telefon va manzilsiz; o‘chirilgan kontent nusxasi va muallifning email hamda telefoni — yopiq dalil arxivida, faqat shikoyatlarni tekshirish, firibgarlikka qarshi kurash va vakolatli davlat organlarining qonuniy so‘rovlari uchun; xavfsizlik jurnallari (ularda email, telefon va IP manzil bo‘lishi mumkin) — 5 yilgacha. Qo‘llab-quvvatlashga yozgan xabarlaringiz, biznes sahifangiz mijozlarining buyurtmalari va suhbatdoshlaringiz sizga yozgan xabarlar ham hozircha saqlanadi. Zaxira nusxalardan ma’lumotlar 30 kun ichida o‘chib ketadi.',
@@ -53,15 +55,15 @@ const T = {
   },
   ru: {
     title: 'Удаление аккаунта',
-    lead: `Вы можете удалить аккаунт NFCSTORE в приложении ${APP} (Google Play) и на сайте nfcstore.uz, а также связанные с ним данные.`,
+    lead: `Вы можете удалить аккаунт NFCSTORE в приложении ${APP} (App Store и Google Play) и на сайте nfcstore.uz, а также связанные с ним данные.`,
     whatH: 'Что происходит',
     what: [
       'Сразу после запроса: сессии на всех устройствах закрываются, войти в аккаунт нельзя. Ваши профили NFC ID, бизнес-страницы, посты, истории, комментарии и подписки скрываются с сайта и из приложения.',
-      'Через 30 дней аккаунт удаляется полностью: email, телефон, пароль, данные профиля и бизнеса, посты, истории, комментарии, лайки, подписки, сохранённое, ваши сообщения, уведомления и загруженные файлы (фото, видео, музыка). Этот шаг необратим.',
+      'Через 30 дней аккаунт удаляется полностью: email, телефон, пароль, данные профиля и бизнеса, посты, истории, комментарии, лайки, подписки, сохранённое, ваши сообщения и уведомления. Этот шаг необратим.',
       `Если в течение 30 дней передумаете, напишите на ${CONTACT} — аккаунт восстановим.`,
       'Если на аккаунте есть остаток средств, неоплаченный или недоставленный заказ, активный аукцион или идёт проверка по мошенничеству, полное удаление откладывается до их завершения.',
       'Ваши NFC ID и Business ID удаляются вместе с аккаунтом, оплата за них не возвращается. 90 дней эти ID никому не выдаются (чтобы старые NFC-карты и ссылки не открывали чужой профиль), затем снова поступают в продажу.',
-      'Удалённые фото и видео могут открываться из кэша сети и устройств, где их открывали раньше, пока кэш не обновится.',
+      'Загруженные файлы (фото, видео, музыка) отвязываются от аккаунта и больше не показываются в сервисе, но пока не удаляются из файлового хранилища автоматически: человек, заранее сохранивший прямую ссылку на файл, может его открыть (ссылки случайные, угадать их нельзя). Они также могут открываться из кэша сети и устройств, где их открывали раньше, пока кэш не обновится.',
     ],
     keepH: 'Что сохраняется и как долго',
     keep: 'По требованиям закона и безопасности сохраняется только следующее. Эти данные не публикуются и не используются в других целях: записи заказов и платежей (Payme/Click: сумма, дата, статус, тип товара, номер транзакции) — в течение срока, установленного законодательством о бухгалтерии и налогах, без имени, телефона и адреса; копия удалённого контента и email и телефон автора — в закрытом архиве доказательств, только для проверки жалоб, борьбы с мошенничеством и законных запросов уполномоченных государственных органов; журналы безопасности (в них могут быть email, телефон и IP-адрес) — до 5 лет. Ваши обращения в поддержку, заказы клиентов вашей бизнес-страницы и сообщения, которые вам писали собеседники, пока тоже сохраняются. Из резервных копий данные исчезают в течение 30 дней.',
@@ -82,15 +84,15 @@ const T = {
   },
   en: {
     title: 'Delete account',
-    lead: `You can delete your NFCSTORE account used in the ${APP} app (Google Play) and on nfcstore.uz, and the data linked to it.`,
+    lead: `You can delete your NFCSTORE account used in the ${APP} app (App Store and Google Play) and on nfcstore.uz, and the data linked to it.`,
     whatH: 'What happens',
     what: [
       'Immediately after the request: sessions on all devices are closed and you can no longer sign in. Your NFC ID profiles, business pages, posts, stories, comments and follows are hidden from the website and the app.',
-      'After 30 days the account is permanently deleted: email, phone, password, profile and business details, posts, stories, comments, likes, follows, saved items, messages you wrote, notifications and uploaded files (photos, videos, music). This step cannot be undone.',
+      'After 30 days the account is permanently deleted: email, phone, password, profile and business details, posts, stories, comments, likes, follows, saved items, messages you wrote and notifications. This step cannot be undone.',
       `If you change your mind within 30 days, write to ${CONTACT} and we will restore the account.`,
       'If the account has a remaining balance, an unpaid or undelivered order, an active auction, or a fraud investigation is in progress, permanent deletion is postponed until these are resolved.',
       'Your NFC IDs and Business IDs go with the account and payments for them are not refunded. These IDs are not given to anyone for 90 days (so your old NFC cards and links do not open someone else’s profile), then they go back on sale.',
-      'Deleted photos and videos may still open from network caches and from devices that opened them before, until those caches expire.',
+      'Uploaded files (photos, videos, music) are detached from the account and no longer shown in the service, but they are not yet deleted from file storage automatically: someone who saved a direct link to a file in advance may still open it (links are random and cannot be guessed). They may also still open from network caches and from devices that opened them before, until those caches expire.',
     ],
     keepH: 'What is kept and for how long',
     keep: 'Only the following is kept, for legal and security reasons. It is not public and is not used for any other purpose: order and payment records (Payme/Click: amount, date, status, product type, transaction ID) — for the period required by accounting and tax law, without name, phone or address; a copy of deleted content and the author’s email and phone — in a closed evidence archive, only to review reports, fight fraud and answer lawful requests from authorised state bodies; security logs (which may include email, phone and IP address) — for up to 5 years. Your support messages, orders from customers of your business page and messages other people sent you are also kept for now. Data disappears from backups within 30 days.',

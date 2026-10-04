@@ -44,6 +44,8 @@ export default function StoryUploader({ label, onSubmit, disabled = false, hint 
     not_owner: 'Bu profil sizga tegishli emas.',
     unauthorized: 'Avval tizimga kiring.',
     not_found: 'Profil topilmadi.',
+    banned: 'Hisobingiz vaqtincha bloklangan — hozir story qo‘yib bo‘lmaydi.',
+    too_many_requests: 'Juda ko‘p yuklash — birozdan keyin qayta urinib ko‘ring.',
   };
   const explain = (error) => {
     const code = error?.error || error?.message;

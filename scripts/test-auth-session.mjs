@@ -14,7 +14,7 @@
 // so'rov yuboradi.
 //
 //   node scripts/test-auth-session.mjs
-import worker from '../hosting/worker.js';
+import worker, { hashPassword } from '../hosting/worker.js';
 import { makeEnv, seedBasic, cookie, req, makeChecker } from './lib/d1-harness.mjs';
 
 const { check, checkTrue, done } = makeChecker();
@@ -113,6 +113,52 @@ const call = async (path, init) => {
   const r = await call('/api/records/YOQ999');
   checkTrue('7) yo‘q profil -> 404 yoki 400', [400, 404].includes(r.status), `status ${r.status}`);
   checkTrue('7) bu sessiya xatosi emas', r.body?.error !== 'unauthorized');
+}
+
+// ── 8) KIRISH CHEKLOVI FAQAT XATO URINISHLARNI SANAYDI ───────────────
+// App Store (2026-10): Apple tekshiruvchilari BITTA demo hisobga bir
+// necha qurilmadan kiradi. Ilgari muvaffaqiyatli kirish ham sanalardi va
+// 15 daqiqada 6-kirish 429 berardi ("kira olmadim" — 2.1 rad etish).
+// Brute-force himoyasi esa o'zgarmasligi shart.
+{
+  await env.DB.prepare(`INSERT INTO users (id, email, password_hash, phone) VALUES (70, 'demo@test.local', ?, '+998907000070')`)
+    .bind(await hashPassword('demo-pass-1')).run();
+  await env.DB.prepare(`INSERT INTO users (id, email, password_hash, phone) VALUES (71, 'victim@test.local', ?, '+998907000071')`)
+    .bind(await hashPassword('victim-pass-1')).run();
+  const login = (email, password, ip) => call('/api/auth/login', { method: 'POST', json: { email, password }, ip });
+  const hits = async (key) => Number((await env.DB.prepare(`SELECT hits FROM rate_limits WHERE key = ?`).bind(key).first())?.hits ?? 0);
+
+  // a) Bitta IP dan bitta hisobga 12 marta TO'G'RI kirish — hammasi 200
+  //    (hisob chegarasi 5, IP chegarasi 10 — ikkalasidan ham oshadi).
+  const okStatuses = [];
+  for (let i = 0; i < 12; i++) okStatuses.push((await login('demo@test.local', 'demo-pass-1', '198.51.100.7')).status);
+  check('8a) 12 ta to‘g‘ri kirish ketma-ket — hammasi 200', okStatuses, Array(12).fill(200));
+  check('8a) to‘g‘ri kirish IP hisoblagichiga yozilmaydi', await hits('login:ip:198.51.100.7'), 0);
+
+  // b) Brute-force himoyasi saqlangan: hisobga 5 xato parol — 401,
+  //    6-urinish (hatto to'g'ri parol bilan ham) — 429.
+  const bad = [];
+  for (let i = 0; i < 5; i++) bad.push((await login('victim@test.local', `wrong-${i}-x`, '198.51.100.8')).status);
+  check('8b) 5 ta xato parol — 401', bad, Array(5).fill(401));
+  const sixth = await login('victim@test.local', 'victim-pass-1', '198.51.100.8');
+  check('8b) 6-urinish — 429 too_many_requests', [sixth.status, sixth.body?.error], [429, 'too_many_requests']);
+  const otherIp = await login('victim@test.local', 'wrong-x', '198.51.100.9');
+  check('8b) hisob chegarasi boshqa IP dan ham ishlaydi', otherIp.status, 429);
+
+  // c) IP chegarasi: bitta IP dan har xil (mavjud bo'lmagan) hisoblarga
+  //    9 xato + o'z hisobiga 1 to'g'ri kirish + 1 xato = 10 xato -> 401;
+  //    11-xato -> 429. To'g'ri kirish oldingi xatolarni "kechirmaydi".
+  const ip = '198.51.100.10';
+  for (let i = 0; i < 9; i++) await login(`nobody${i}@test.local`, 'whatever-1', ip);
+  const mine = await login('demo@test.local', 'demo-pass-1', ip);
+  check('8c) 9 xatodan keyin o‘z hisobiga to‘g‘ri kirish — 200', mine.status, 200);
+  check('8c) IP hisoblagichi 9 (to‘g‘ri kirish sanalmadi, xatolar o‘chmadi)', await hits('login:ip:' + ip), 9);
+  const tenth = await login('nobody9@test.local', 'whatever-1', ip);
+  check('8c) 10-xato — 401', tenth.status, 401);
+  const eleventh = await login('nobody10@test.local', 'whatever-1', ip);
+  check('8c) 11-xato — 429', [eleventh.status, eleventh.body?.error], [429, 'too_many_requests']);
+  const blockedOk = await login('demo@test.local', 'demo-pass-1', ip);
+  check('8c) IP chegarasida to‘g‘ri parol ham 429 (scrypt ishlamaydi)', blockedOk.status, 429);
 }
 
 done('Auth / sessiya');

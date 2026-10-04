@@ -155,6 +155,12 @@ export const SEO_ROUTES = {
     ru: { title: 'Контакты', description: 'Связаться с NFCSTORE — поддержка и сотрудничество.' },
     en: { title: 'Contact', description: 'Contact NFCSTORE — support and partnership.' },
   },
+  support: {
+    path: '/support',
+    uz: { title: "Qo'llab-quvvatlash", description: "NFCSTORE ilovasi va sayti bo'yicha yordam: Telegram, telefon va ilova ichidagi murojaat." },
+    ru: { title: 'Поддержка', description: 'Помощь по приложению и сайту NFCSTORE: Telegram, телефон и обращение в приложении.' },
+    en: { title: 'Support', description: 'Help with the NFCSTORE app and website: Telegram, phone and the in-app support form.' },
+  },
   'ilova-yuklash': {
     path: '/ilova-yuklash',
     uz: { title: 'NFCSTORE ilovasi — Android, App Store tez kunda', description: "NFCSTORE ilovasi: raqamli vizitka, istalgan NFC karta va stikerni bog'lash, shaxsiy va biznes profil, katalog, Reels, Ivory/Noir mavzulari. Android uchun yuklab oling." },
@@ -198,6 +204,11 @@ const ROUTE_ALIASES = {
   tolovlar: 'hisob',
   bildirishnomalar: 'hisob',
   xabarlar: 'hisob',
+  contact: 'support',
+  help: 'support',
+  yordam: 'support',
+  terms: 'shartlar',
+  eula: 'shartlar',
 };
 
 // Marshrut uchun SEO ma'lumotini qaytaradi; noma'lum marshrut → home tavsifi,

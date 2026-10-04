@@ -4,11 +4,17 @@ import { OPERATOR } from './PrivacyPage.jsx';
 // Uzun huquqiy matn — tilga qarab tanlanadi. Dizayn / tuzilma o'zgarmaydi,
 // faqat matn tarjimasi. Yuridik matn ishlab chiqarishdan oldin ona tili
 // ko'rigi tavsiya etiladi.
+//
+// 6-BO'LIM — FOYDALANUVCHI KONTENTI VA XULQ-ATVOR (2026-10, App Store 1.2):
+// ro'yxatdagi rozilik shu sahifaga olib keladi, ya'ni foydalanuvchi
+// nomaqbul kontent va haqoratga "nol toqat" qoidasini shu yerda qabul
+// qiladi. Shikoyat/bloklash/moderatsiya haqidagi gaplar ilova va sayt
+// haqiqatda qiladigan ish bilan bir xil bo'lsin (PrivacyPage.jsx ham).
 const CONTENT = {
   uz: {
-    title: 'Ommaviy oferta',
-    updated: 'Oxirgi yangilanish: 2026-yil 25-sentabr',
-    intro: "Ushbu Ommaviy oferta (keyingi o'rinlarda — Oferta) NFCSTORE (nfcstore.uz) ma'muriyati va platformadan foydalanuvchi (keyingi o'rinlarda — Mijoz) o'rtasida raqamli tashrif qog'ozlarini xarid qilish, auksionlarda qatnashish va raqamli profil xizmatlaridan foydalanishda to'lovlarni amalga oshirish shartlarini belgilaydi.",
+    title: 'Foydalanish shartlari va ommaviy oferta',
+    updated: 'Oxirgi yangilanish: 2026-yil 4-oktabr',
+    intro: "Ushbu Ommaviy oferta (keyingi o'rinlarda — Oferta) NFCSTORE (nfcstore.uz) ma'muriyati va platformadan foydalanuvchi (keyingi o'rinlarda — Mijoz) o'rtasida raqamli tashrif qog'ozlarini xarid qilish, auksionlarda qatnashish va raqamli profil xizmatlaridan foydalanishda to'lovlarni amalga oshirish shartlarini belgilaydi. 6-bo'limda NFCSTORE ilovasi (App Store va Google Play) va saytidan foydalanish, foydalanuvchi kontenti va xulq-atvor qoidalari belgilangan; ular har bir foydalanuvchiga, shu jumladan pul to'lamaydiganlarga ham tatbiq etiladi.",
     sections: [
       {
         h: '1. Umumiy qoidalar va Shartnoma predmeti',
@@ -61,9 +67,9 @@ const CONTENT = {
     ],
   },
   ru: {
-    title: 'Публичная оферта',
-    updated: 'Последнее обновление: 25 сентября 2026',
-    intro: 'Настоящая Публичная оферта (далее — Оферта) определяет условия осуществления платежей между администрацией NFCSTORE (nfcstore.uz) и пользователем платформы (далее — Клиент) при покупке цифровых визиток, участии в аукционах и использовании сервисов цифрового профиля.',
+    title: 'Условия использования и публичная оферта',
+    updated: 'Последнее обновление: 4 октября 2026',
+    intro: 'Настоящая Публичная оферта (далее — Оферта) определяет условия осуществления платежей между администрацией NFCSTORE (nfcstore.uz) и пользователем платформы (далее — Клиент) при покупке цифровых визиток, участии в аукционах и использовании сервисов цифрового профиля. В разделе 6 установлены правила использования приложения NFCSTORE (App Store и Google Play) и сайта, пользовательского контента и поведения; они распространяются на всех пользователей, в том числе на тех, кто ничего не оплачивает.',
     sections: [
       {
         h: '1. Общие положения и предмет договора',
@@ -116,9 +122,9 @@ const CONTENT = {
     ],
   },
   en: {
-    title: 'Public Offer',
-    updated: 'Last updated: 25 September 2026',
-    intro: 'This Public Offer (hereinafter — the Offer) defines the terms of payment between the administration of NFCSTORE (nfcstore.uz) and the platform user (hereinafter — the Customer) when purchasing digital cards, taking part in auctions and using digital profile services.',
+    title: 'Terms of Use and Public Offer',
+    updated: 'Last updated: 4 October 2026',
+    intro: 'This Public Offer (hereinafter — the Offer) defines the terms of payment between the administration of NFCSTORE (nfcstore.uz) and the platform user (hereinafter — the Customer) when purchasing digital cards, taking part in auctions and using digital profile services. Section 6 sets out the rules for using the NFCSTORE app (App Store and Google Play) and website, including rules on user content and conduct; they apply to every user, including those who never pay for anything.',
     sections: [
       {
         h: '1. General provisions and subject of the agreement',
@@ -172,33 +178,115 @@ const CONTENT = {
   },
 };
 
+// 6-BO'LIM — foydalanuvchi kontenti va xulq-atvor (yuqoridagi izohga qarang).
+const CONDUCT = {
+  uz: {
+    h: "6. Foydalanuvchi kontenti va xulq-atvor qoidalari",
+    pre: [
+      "6.1. Ushbu bo'lim NFCSTORE ilovasi (App Store va Google Play) va nfcstore.uz saytidan foydalanuvchi har bir shaxsga tatbiq etiladi. Ro'yxatdan o'tish orqali foydalanuvchi ushbu qoidalarni qabul qiladi. Xizmatdan faqat 18 yoshga to'lgan shaxslar foydalanishi mumkin.",
+      "6.2. NFCSTORE nomaqbul kontentga hamda boshqa foydalanuvchilarni haqorat qiluvchi yoki ta'qib qiluvchi foydalanuvchilarga nisbatan murosasiz (nol toqat) yondashadi. Profil, post, Reels, istoriya, izoh, xabar, profil musiqasi va biznes katalogida quyidagilarni joylash taqiqlanadi:",
+    ],
+    ul: [
+      "pornografiya, yalang'ochlik va jinsiy xarakterdagi kontent;",
+      "zo'ravonlik, shafqatsizlik, o'ziga zarar yetkazishni targ'ib qilish;",
+      "ekstremizm, terrorizm, diniy yoki siyosiy targ'ibot, tartibsizlikka chaqiriqlar;",
+      "millati, dini, jinsi yoki boshqa belgisi bo'yicha nafrat va kamsitish;",
+      "haqorat, tahdid, ta'qib (bulling), boshqalarni bezovta qilish va boshqa shaxs nomidan ish ko'rish;",
+      "giyohvand moddalar, qurol va boshqa noqonuniy tovar yoki xizmatlar;",
+      "spam, firibgarlik va aldov;",
+      "boshqalarning mualliflik huquqi bilan himoyalangan materiallari (musiqa, video, rasm) — ruxsatsiz; boshqalarning shaxsiy ma'lumotlari — ularning roziligisiz;",
+      "O'zbekiston Respublikasi qonunchiligiga zid har qanday boshqa material.",
+    ],
+    p2: "6.3. Shikoyat, bloklash va moderatsiya:",
+    ul2: [
+      "Har bir profil, post, Reels, istoriya, izoh va biznes sahifasida «Shikoyat qilish» tugmasi bor; istalgan foydalanuvchi yoki biznesni «Bloklash» mumkin.",
+      "Yuklangan rasm va videolar joylanishidan oldin avtomatik tekshiriladi (Maxfiylik siyosatiga qarang); shikoyatlarni moderator ko'rib chiqadi.",
+      "Qoidalarni buzgan kontent ogohlantirishsiz o'chiriladi. Qoidabuzar foydalanuvchining hisobi vaqtincha yoki butunlay bloklanishi (to'xtatilishi) mumkin; og'ir yoki takroriy qoidabuzarlikda hisob butunlay yopiladi.",
+      "Har bir foydalanuvchi o'zi joylagan kontent uchun shaxsan javobgar.",
+      "Shikoyat va murojaatlar uchun: ilovada Sozlamalar → Yordam, saytda nfcstore.uz/support sahifasi yoki Telegram @nfcstore_admin.",
+    ],
+  },
+  ru: {
+    h: '6. Пользовательский контент и правила поведения',
+    pre: [
+      '6.1. Этот раздел распространяется на каждого, кто пользуется приложением NFCSTORE (App Store и Google Play) и сайтом nfcstore.uz. Регистрируясь, пользователь принимает эти правила. Пользоваться сервисом могут только лица, достигшие 18 лет.',
+      '6.2. NFCSTORE придерживается нулевой терпимости к недопустимому контенту и к пользователям, которые оскорбляют или преследуют других. В профилях, постах, Reels, историях, комментариях, сообщениях, музыке профиля и каталоге бизнеса запрещено размещать:',
+    ],
+    ul: [
+      'порнографию, наготу и материалы сексуального характера;',
+      'насилие, жестокость, пропаганду причинения вреда себе;',
+      'экстремизм, терроризм, религиозную или политическую пропаганду, призывы к беспорядкам;',
+      'ненависть и дискриминацию по национальности, религии, полу или иному признаку;',
+      'оскорбления, угрозы, травлю (буллинг), преследование других и выдачу себя за другое лицо;',
+      'наркотики, оружие и иные незаконные товары или услуги;',
+      'спам, мошенничество и обман;',
+      'чужие материалы, защищённые авторским правом (музыка, видео, фото), — без разрешения; чужие персональные данные — без согласия их владельца;',
+      'любые иные материалы, противоречащие законодательству Республики Узбекистан.',
+    ],
+    p2: '6.3. Жалобы, блокировка и модерация:',
+    ul2: [
+      'На каждом профиле, посте, Reels, истории, комментарии и странице бизнеса есть кнопка «Пожаловаться»; любого пользователя или бизнес можно «Заблокировать».',
+      'Загружаемые фото и видео автоматически проверяются перед публикацией (см. Политику конфиденциальности); жалобы рассматривает модератор.',
+      'Контент, нарушающий правила, удаляется без предупреждения. Аккаунт нарушителя может быть временно или навсегда заблокирован (приостановлен); при грубых или повторных нарушениях аккаунт закрывается навсегда.',
+      'Каждый пользователь лично отвечает за размещённый им контент.',
+      'Для жалоб и обращений: в приложении Настройки → Поддержка, на сайте страница nfcstore.uz/support или Telegram @nfcstore_admin.',
+    ],
+  },
+  en: {
+    h: '6. User content and rules of conduct',
+    pre: [
+      '6.1. This section applies to everyone who uses the NFCSTORE app (App Store and Google Play) and the nfcstore.uz website. By registering, the user accepts these rules. Only persons aged 18 or over may use the service.',
+      '6.2. NFCSTORE has zero tolerance for objectionable content and for users who abuse or harass others. It is prohibited to post the following in profiles, posts, Reels, stories, comments, messages, profile music and business catalogues:',
+    ],
+    ul: [
+      'pornography, nudity and sexually explicit content;',
+      'violence, cruelty, or promotion of self-harm;',
+      'extremism, terrorism, religious or political propaganda, calls to unrest;',
+      'hate and discrimination based on ethnicity, religion, gender or any other characteristic;',
+      'insults, threats, bullying, harassment of others and impersonation of another person;',
+      'drugs, weapons and other illegal goods or services;',
+      'spam, fraud and deception;',
+      'material protected by someone else’s copyright (music, video, photos) without permission, and other people’s personal data without their consent;',
+      'any other material contrary to the laws of the Republic of Uzbekistan.',
+    ],
+    p2: '6.3. Reporting, blocking and moderation:',
+    ul2: [
+      'Every profile, post, Reel, story, comment and business page has a “Report” button, and any user or business can be blocked with “Block”.',
+      'Uploaded photos and videos are checked automatically before they are published (see the Privacy Policy); reports are reviewed by a moderator.',
+      'Content that breaks these rules is removed without warning. The offending user’s account may be suspended temporarily or permanently; for serious or repeated violations the account is closed permanently.',
+      'Each user is personally responsible for the content they post.',
+      'To report something or contact us: in the app Settings → Support, on the website nfcstore.uz/support, or Telegram @nfcstore_admin.',
+    ],
+  },
+};
+
 // IJROCHI REKVIZITLARI — ofertadagi «NFCSTORE ma'muriyati» kim ekani.
 // To'lovlar shu YATT hisobiga tushadi; ma'lumot PrivacyPage.jsx `OPERATOR`
 // dan olinadi (bitta manba — ikki sahifada ikki xil yozilib qolmasin).
 const REQUISITES = {
   uz: {
-    h: '6. Ijrochi rekvizitlari',
+    h: '7. Ijrochi rekvizitlari',
     p: [
-      `6.1. Ushbu Ofertada «NFCSTORE ma'muriyati» deganda ijrochi — yakka tartibdagi tadbirkor ${OPERATOR.name} tushuniladi.`,
+      `7.1. Ushbu Ofertada «NFCSTORE ma'muriyati» deganda ijrochi — yakka tartibdagi tadbirkor ${OPERATOR.name} tushuniladi.`,
       `Manzil: ${OPERATOR.region.uz}. YATT davlat ro'yxatidan o'tkazilganligi to'g'risidagi guvohnoma: № ${OPERATOR.regNo}, ${OPERATOR.regDate}. Sayt: nfcstore.uz. Murojaat uchun: davlatsudekspert@gmail.com.`,
     ],
   },
   ru: {
-    h: '6. Реквизиты исполнителя',
+    h: '7. Реквизиты исполнителя',
     p: [
-      `6.1. В настоящей Оферте под «администрацией NFCSTORE» понимается исполнитель — индивидуальный предприниматель ${OPERATOR.name}.`,
+      `7.1. В настоящей Оферте под «администрацией NFCSTORE» понимается исполнитель — индивидуальный предприниматель ${OPERATOR.name}.`,
       `Адрес: ${OPERATOR.region.ru}. Свидетельство о государственной регистрации ИП: № ${OPERATOR.regNo} от ${OPERATOR.regDate}. Сайт: nfcstore.uz. Для обращений: davlatsudekspert@gmail.com.`,
     ],
   },
   en: {
-    h: '6. Details of the provider',
+    h: '7. Details of the provider',
     p: [
-      `6.1. In this Offer, “the administration of NFCSTORE” means the provider — individual entrepreneur ${OPERATOR.name}.`,
+      `7.1. In this Offer, “the administration of NFCSTORE” means the provider — individual entrepreneur ${OPERATOR.name}.`,
       `Address: ${OPERATOR.region.en}, Uzbekistan. State registration certificate: No. ${OPERATOR.regNo} of ${OPERATOR.regDate}. Website: nfcstore.uz. Contact: davlatsudekspert@gmail.com.`,
     ],
   },
 };
-for (const lang of Object.keys(CONTENT)) CONTENT[lang].sections.push(REQUISITES[lang]);
+for (const lang of Object.keys(CONTENT)) CONTENT[lang].sections.push(CONDUCT[lang], REQUISITES[lang]);
 
 export default function TermsPage() {
   const { lang } = useLanguage();
@@ -215,6 +303,8 @@ export default function TermsPage() {
           {c.sections.map((s, i) => (
             <div key={i}>
               <h2 className="font-display text-lg font-bold text-base-content">{s.h}</h2>
+              {/* `pre` — oddiy paragraflar (6-bo'lim); `p` ning birinchisi esa ro'yxatli bo'limda sarlavha kabi qalin. */}
+              {(s.pre || []).map((p, j) => <p key={`pre-${j}`} className="mt-1.5">{p}</p>)}
               {(s.p || []).map((p, j) => (
                 <p key={j} className={j === 0 && s.ul ? 'mt-1.5 font-semibold text-base-content/80' : 'mt-1.5'}>{p}</p>
               ))}

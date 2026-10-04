@@ -77,6 +77,8 @@ const NotificationsPage = lazyPage(() => import('./pages/NotificationsPage.jsx')
 const GiftsPage = lazyPage(() => import('./pages/GiftsPage.jsx'));
 const FaqPage = lazyPage(() => import('./pages/FaqPage.jsx'));
 const ContactPage = lazyPage(() => import('./pages/ContactPage.jsx'));
+// App Store "Support URL" (2026-10): /support, /contact, /help, /yordam.
+const SupportPage = lazyPage(() => import('./pages/SupportPage.jsx'));
 const TermsPage = lazyPage(() => import('./pages/TermsPage.jsx'));
 const PrivacyPage = lazyPage(() => import('./pages/PrivacyPage.jsx'));
 // Google Play talabi (2026-09): maxfiylik siyosati va hisobni o'chirish
@@ -115,6 +117,16 @@ const STATIC_ROUTES = {
   maxfiylik: PrivacyPage,
   privacy: PrivacyPage,
   'delete-account': DeleteAccountPage,
+  // INGLIZCHA YORDAM VA HUQUQIY MANZILLAR (App Store, 2026-10). Ilgari
+  // /support, /contact, /terms NFC ID deb o'qilib "Bu ID bo'sh — band
+  // qiling" sahifasini ochardi. Endi haqiqiy sahifa; so'zlar serverda ham
+  // NFC ID sifatida band (hosting/api/reserved-codes.js).
+  support: SupportPage,
+  contact: SupportPage,
+  help: SupportPage,
+  yordam: SupportPage,
+  terms: TermsRedirect,
+  eula: TermsRedirect,
   // AUKSION BEKOR QILINDI (2026-09). Sahifa fayllari o'chirilmadi (backend
   // hali ularga bog'liq), lekin interfeysdan butunlay olib tashlandi:
   // eski havolalar narxlar sahifasiga yo'naltiriladi — shunda tashqarida
@@ -198,9 +210,18 @@ function GuideRedirect() {
   return null;
 }
 
+// /terms, /eula — mavjud "Foydalanish shartlari" sahifasiga (/shartlar).
+function TermsRedirect() {
+  useEffect(() => { navigate('/shartlar', { replace: true }); }, []);
+  return null;
+}
+
 export default function App() {
   const route = usePathRoute();
   const cleanRoute = route.replace(/^\/+|\/+$/g, '');
+  // Sahifa nomlari katta-kichik harfga qaramaydi: /Support ham, /SUPPORT
+  // ham yordam sahifasi (NFC ID kabi talqin qilinib "band qiling" emas).
+  const lowerRoute = cleanRoute.toLowerCase();
   const [catalog, setCatalog] = useState([]);
 
   const refreshCatalog = useCallback(async () => {
@@ -322,7 +343,7 @@ export default function App() {
     page = <BusinessWorkspacePage key={cleanRoute} code={businessWorkspaceMatch[1]} />;
     bare = true;
   }
-  if (!page && !RESERVED.has(cleanRoute) && !isAuctionDetail && !isMessagesDetail && cleanRoute && !cleanRoute.includes('/')) {
+  if (!page && !RESERVED.has(lowerRoute) && !isAuctionDetail && !isMessagesDetail && cleanRoute && !cleanRoute.includes('/')) {
     const parsedRoute = parseAnyCode(cleanRoute);
     const code = parsedRoute ? parsedRoute.code : (ROUTE_PROFILE_RE.test(cleanRoute) ? cleanRoute.toUpperCase() : null);
     if (code) {
@@ -354,6 +375,8 @@ export default function App() {
     else if (cleanRoute === 'bildirishnomalar') page = <NotificationsPage />;
     else if (cleanRoute === 'savollar') page = <FaqPage catalog={catalog} />;
     else if (cleanRoute === 'aloqa') page = <ContactPage />;
+    else if (['support', 'contact', 'help', 'yordam'].includes(lowerRoute)) page = <SupportPage />;
+    else if (lowerRoute === 'terms' || lowerRoute === 'eula') page = <TermsRedirect />;
     else if (cleanRoute === 'shartlar') page = <TermsPage />;
     else if (cleanRoute === 'maxfiylik' || cleanRoute === 'privacy') page = <PrivacyPage />;
     else if (cleanRoute === 'delete-account') page = <DeleteAccountPage />;
