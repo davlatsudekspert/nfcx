@@ -1,0 +1,157 @@
+From 5506f20918f573dfdb947e2c13dc160467ab4f55 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Sun, 4 Oct 2026 10:59:15 +0000
+Subject: [PATCH] Ulashish: Reels/post havolasi profil emas, aynan shu post
+ (/post/:id)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ mobile_nova/lib/core/utils/sharing.dart       | 27 ++++++++++++-------
+ .../lib/features/social/feed_card.dart        |  3 ++-
+ .../lib/features/social/post_screens.dart     |  3 ++-
+ .../lib/features/social/reels_screen.dart     |  3 ++-
+ mobile_nova/test/audit_fixes_test.dart        | 10 ++++---
+ mobile_nova/test/share_origin_test.dart       | 11 ++++++++
+ 6 files changed, 41 insertions(+), 16 deletions(-)
+
+diff --git a/mobile_nova/lib/core/utils/sharing.dart b/mobile_nova/lib/core/utils/sharing.dart
+index f010257..3a0aa2c 100644
+--- a/mobile_nova/lib/core/utils/sharing.dart
++++ b/mobile_nova/lib/core/utils/sharing.dart
+@@ -131,22 +131,29 @@ Future<void> shareWithFeedback(
+     ..showSnackBar(SnackBar(content: Text(copiedMessage)));
+ }
+ 
+-/// Post / Reels uchun ulashiladigan matn: izoh + muallif sahifasi.
++/// Post / Reels uchun ulashiladigan matn: izoh + AYNAN SHU POST havolasi.
+ ///
+-/// Saytda alohida post sahifasi yo'q, shuning uchun havola muallif
+-/// (shaxs `/<ID>` yoki kompaniya `/c/<ID>`) sahifasiga olib boradi.
+-/// Ilgari post ekrani FAQAT izohni ulashardi — izohsiz postda ulashish
+-/// umuman hech narsa qilmasdi.
++/// Havola — `/post/<id>?code=<kod>` (kompaniya posti — `&company=1`).
++/// Egasi (2026-10-04): ilgari muallif profili ulashilardi va havolani
++/// ochgan odam Reels'ni emas, profilni ko'rardi. Sayt bu yo'lda postning
++/// o'z sahifasini beradi (video, muallif, Telegram kartochkasi), Android'da
++/// ilova o'rnatilgan bo'lsa havola ilovada shu postni ochadi (App Links
++/// `/post/`). [postId] bo'lmasa (masalan istorya) — muallif sahifasi.
+ String contentShareText({
+   required String caption,
+   required String code,
+   required bool company,
++  int postId = 0,
+ }) {
+   final c = code.trim();
+-  final link = c.isEmpty
+-      ? ''
+-      : company
+-          ? '$kApiBase/c/${Uri.encodeComponent(c)}'
+-          : '$kApiBase/${Uri.encodeComponent(c)}';
++  final enc = Uri.encodeComponent(c);
++  final link = postId > 0
++      ? '$kApiBase/post/$postId${c.isEmpty ? '' : '?code=$enc'}'
++          '${company ? (c.isEmpty ? '?company=1' : '&company=1') : ''}'
++      : c.isEmpty
++          ? ''
++          : company
++              ? '$kApiBase/c/$enc'
++              : '$kApiBase/$enc';
+   return [caption.trim(), link].where((s) => s.isNotEmpty).join('\n\n');
+ }
+diff --git a/mobile_nova/lib/features/social/feed_card.dart b/mobile_nova/lib/features/social/feed_card.dart
+index 821c762..a998017 100644
+--- a/mobile_nova/lib/features/social/feed_card.dart
++++ b/mobile_nova/lib/features/social/feed_card.dart
+@@ -250,7 +250,8 @@ class FeedCard extends ConsumerWidget {
+                   contentShareText(
+                       caption: post.text,
+                       code: post.code,
+-                      company: post.isCompany),
++                      company: post.isCompany,
++                      postId: post.isStory ? 0 : post.id),
+                   subject: name,
+                   copiedMessage: l.shareCopied,
+                 ),
+diff --git a/mobile_nova/lib/features/social/post_screens.dart b/mobile_nova/lib/features/social/post_screens.dart
+index 48ce629..1f6bc19 100644
+--- a/mobile_nova/lib/features/social/post_screens.dart
++++ b/mobile_nova/lib/features/social/post_screens.dart
+@@ -307,7 +307,8 @@ class _PostScreenState extends ConsumerState<PostScreen> {
+                     onTap: () => shareWithFeedback(
+                       context,
+                       contentShareText(
+-                          caption: p.text, code: p.code, company: p.isCompany),
++                          caption: p.text, code: p.code, company: p.isCompany,
++                        postId: p.isStory ? 0 : p.id),
+                       copiedMessage: l.shareCopied,
+                     ),
+                   ),
+diff --git a/mobile_nova/lib/features/social/reels_screen.dart b/mobile_nova/lib/features/social/reels_screen.dart
+index a9fda6e..5ce6701 100644
+--- a/mobile_nova/lib/features/social/reels_screen.dart
++++ b/mobile_nova/lib/features/social/reels_screen.dart
+@@ -1095,7 +1095,8 @@ class _ReelPageState extends ConsumerState<_ReelPage>
+                   onTap: () => shareWithFeedback(
+                     context,
+                     contentShareText(
+-                        caption: p.text, code: p.code, company: p.isCompany),
++                        caption: p.text, code: p.code, company: p.isCompany,
++                        postId: p.isStory ? 0 : p.id),
+                     subject: p.authorName,
+                     copiedMessage: l.shareCopied,
+                   ),
+diff --git a/mobile_nova/test/audit_fixes_test.dart b/mobile_nova/test/audit_fixes_test.dart
+index b05a7cb..0853cd8 100644
+--- a/mobile_nova/test/audit_fixes_test.dart
++++ b/mobile_nova/test/audit_fixes_test.dart
+@@ -137,9 +137,10 @@ class _PathApi extends ApiClient {
+ /// Tasdiqlangan audit topilmalari (F-H3, F-H5, F-H6, F-H7, F-M4, F-M5,
+ /// F-M11, F-M12).
+ void main() {
+-  group('Kompaniya postini ulashish /c/ havolasi (F-M5)', () {
++  group('Kompaniya postini ulashish — post havolasi turi bilan (F-M5)', () {
+     for (final company in [true, false]) {
+-      testWidgets(company ? 'kompaniya -> /c/<ID>' : 'shaxsiy -> /<KOD>',
++      testWidgets(
++          company ? 'kompaniya -> /post/<id>&company=1' : 'shaxsiy -> /post/<id>',
+           (tester) async {
+         String? shared;
+         shareInvokerOverride = (t, _) async => shared = t;
+@@ -164,7 +165,10 @@ void main() {
+         await tester.tap(find.byTooltip(LUz().actionShare));
+         await tester.pump();
+         expect(shared, isNotNull);
+-        expect(shared!.contains('/c/NFCSTOREUZ'), company);
++        // Profil emas, AYNAN shu post (egasi, 2026-10-04); kompaniya
++        // posti alohida jadvalda — turi havolada bo'lishi shart.
++        expect(shared!.contains('/post/5?code=NFCSTOREUZ'), isTrue);
++        expect(shared!.contains('company=1'), company);
+         // Ulashish oynasi va Tooltip taymerlari tugasin.
+         await tester.pump(const Duration(seconds: 10));
+       });
+diff --git a/mobile_nova/test/share_origin_test.dart b/mobile_nova/test/share_origin_test.dart
+index 6556e2a..da532ba 100644
+--- a/mobile_nova/test/share_origin_test.dart
++++ b/mobile_nova/test/share_origin_test.dart
+@@ -56,6 +56,17 @@ void main() {
+         'Faqat matn');
+   });
+ 
++  test('Reels/post havolasi — profil emas, AYNAN shu post', () {
++    expect(
++        contentShareText(
++            caption: 'Kech', code: 'VIP001', company: false, postId: 42),
++        'Kech\n\n$kApiBase/post/42?code=VIP001');
++    expect(
++        contentShareText(
++            caption: '', code: 'KARTAUZ', company: true, postId: 7),
++        '$kApiBase/post/7?code=KARTAUZ&company=1');
++  });
++
+   testWidgets('ulashish ochilmasa ekranda "Havola nusxalandi" chiqadi',
+       (tester) async {
+     shareInvokerOverride = (_, __) async => throw PlatformException(
+-- 
+2.43.0
+
