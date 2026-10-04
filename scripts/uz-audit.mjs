@@ -9,7 +9,8 @@
 //   node scripts/uz-audit.mjs --gate    — finalize-media sharti saqlangan auditlar
 //                                         bo'yicha (yangi audit qilmaydi; 0 = bajarildi)
 //   node scripts/uz-audit.mjs --should-run     — rejali audit kerakmi (10 = yo'q:
-//                                         finalize-media'dan 48 soatdan ko'p o'tgan)
+//                                         finalize-media'dan 48 soatdan ko'p o'tgan
+//                                         yoki oxirgi auditdan 3.5 soat o'tmagan)
 //   node scripts/uz-audit.mjs --mark-finalized — finalize-media vaqtini yozadi
 //   GARAGE_LOG=fayl — Garage'ning xato/ogohlantirish qatorlari (docker --timestamps)
 import { readFileSync, existsSync } from 'node:fs';
@@ -48,6 +49,15 @@ if (process.argv.includes('--mark-finalized')) {
 if (process.argv.includes('--should-run')) {
   const f = await db.prepare(`SELECT v FROM "_uz_audit_state" WHERE k = 'finalized_at'`).first('v');
   if (f && Date.now() - Date.parse(f) > 48 * 3.6e6) { say(`rejali audit to'xtatilgan: finalize-media ${f} da bajarilgan, 48 soatdan oshdi`); process.exit(10); }
+  // CRON HAR SOATDA, AUDIT ~4 SOATDA. GitHub rejali ishga tushirishni
+  // kafolatlamaydi (2026-10-04: '23 */4' 08:23 va 12:23 da umuman
+  // ishlamadi), shuning uchun cron har soat uriladi va bu yerda
+  // oxirgi auditdan 3.5 soat o'tmagan bo'lsa o'tkazib yuboriladi —
+  // bitta yo'qolgan ishga tushirish 10 soatlik tanaffus chegarasini
+  // buzmaydi.
+  const last = await db.prepare(`SELECT ts FROM "_uz_audit_state" WHERE k LIKE 'run:%' ORDER BY ts DESC LIMIT 1`).first('ts').catch(() => null);
+  const ago = last ? (Date.now() - Date.parse(last)) / 3.6e6 : Infinity;
+  if (ago < 3.5) { say(`oxirgi audit ${last} (${ago.toFixed(1)} soat oldin) — keyingisi 3.5 soatdan keyin`); process.exit(10); }
   process.exit(0);
 }
 

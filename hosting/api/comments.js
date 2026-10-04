@@ -61,6 +61,10 @@ export const KINDS = ['post', 'company_post', 'story', 'company_story'];
 /// ochib qo'yardi.
 export const LIKE_KINDS = [...KINDS, 'comment'];
 
+/// KO'RISH SANALADIGAN TURLAR — post va Reels (ikkalasi ham post
+/// jadvallarida). Istoryaning o'z ko'rish ro'yxati bor.
+export const VIEW_KINDS = ['post', 'company_post'];
+
 // Izoh uzunligi. Instagram'da 2200 — bu yerda 1000 yetarli va
 // bitta izoh ekranni butunlay egallab ketmaydi.
 const MAX_LEN = 1000;
@@ -127,6 +131,20 @@ export async function ensureSchema(env) {
       )`),
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_content_likes_target
         ON content_likes(target_kind, target_id)`),
+
+      // KO'RISHLAR (Instagram'dagi "ko'rishlar" kabi). Bir tomoshabin
+      // bir kontentni BIR MARTA sanaydi: `viewer` — `u:<user id>`
+      // yoki mehmon uchun `a:<IP+UA hash>`. Ya'ni raqam "necha kishi
+      // ko'rdi", "necha marta aylantirildi" emas.
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS "content_views" (
+        target_kind TEXT NOT NULL,
+        target_id INTEGER NOT NULL,
+        viewer TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        PRIMARY KEY (target_kind, target_id, viewer)
+      )`),
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_content_views_time
+        ON content_views(created_at)`),
 
       // DALIL ARXIVI. O'chirilgan izohning to'liq nusxasi.
       //
@@ -440,6 +458,22 @@ export async function likesFor(env, targets, viewerId = 0) {
   return out;
 }
 
+/// Kontent ko'rishlari — lenta/profil uchun guruhlab (`countsFor` kabi
+/// bitta so'rov). Faqat `VIEW_KINDS`; boshqalari 0.
+export async function viewsFor(env, targets) {
+  const out = new Map();
+  const list = targets.filter((t) => VIEW_KINDS.includes(t.kind));
+  if (!list.length) return out;
+  await ensureSchema(env);
+  const where = list.map(() => '(target_kind = ? AND target_id = ?)').join(' OR ');
+  const rows = await env.DB.prepare(
+    `SELECT target_kind, target_id, COUNT(*) AS n FROM content_views
+      WHERE ${where} GROUP BY target_kind, target_id`
+  ).bind(...list.flatMap((t) => [t.kind, t.id])).all().catch(() => null);
+  for (const r of rows?.results || []) out.set(`${r.target_kind}:${Number(r.target_id)}`, Number(r.n) || 0);
+  return out;
+}
+
 // ── KONTENT O'CHIRILGANDA — UNING IZOH VA LAYKLARI HAM ────────────
 //
 // `posts.id` — `INTEGER PRIMARY KEY` (AUTOINCREMENT EMAS): eng oxirgi
@@ -472,6 +506,11 @@ export function retireTargetStmts(env, kind, idsSql, binds, { reason = 'target_d
     ).bind(now, Number(byUserId) || 0, reason, kind, ...binds),
     env.DB.prepare(
       `DELETE FROM content_likes WHERE target_kind = ? AND target_id IN (${idsSql})`
+    ).bind(kind, ...binds),
+    // Ko'rishlar ham — aks holda yangi post eski postning
+    // ko'rishlari bilan tug'ilardi.
+    env.DB.prepare(
+      `DELETE FROM content_views WHERE target_kind = ? AND target_id IN (${idsSql})`
     ).bind(kind, ...binds),
   ];
 }
@@ -546,9 +585,10 @@ export async function repairRecycledPostIdsOnce(env) {
 
 export async function deleteLikesFor(env, kind, id) {
   await ensureSchema(env);
-  await env.DB.prepare(
-    `DELETE FROM content_likes WHERE target_kind = ? AND target_id = ?`
-  ).bind(kind, id).run();
+  await env.DB.batch([
+    env.DB.prepare(`DELETE FROM content_likes WHERE target_kind = ? AND target_id = ?`).bind(kind, id),
+    env.DB.prepare(`DELETE FROM content_views WHERE target_kind = ? AND target_id = ?`).bind(kind, id),
+  ]);
 }
 
 export async function handle(request, env, url, H) {
@@ -612,6 +652,47 @@ export async function handle(request, env, url, H) {
        VALUES (?, ?, ?, ?)`
     ).bind(kind, id, user.id, H.nowTs()).run();
     return H.json({ liked: true, count: await count() });
+  }
+
+  // ── KO'RISH ─────────────────────────────────────────────────────
+  // POST /api/content-views/:kind/:id → { counted, count }
+  //
+  // Ilova post/Reels ekranda ko'ringanda BIR MARTA yuboradi. Server
+  // bir tomoshabinni bir kontentga bir marta yozadi (PRIMARY KEY),
+  // egasining o'z ko'rishi sanalmaydi. Mehmonlar (kirmagan) IP+UA
+  // hash bilan sanaladi va IP bo'yicha cheklanadi — UA almashtirib
+  // raqam ko'paytirib bo'lmasin. Kirgan foydalanuvchida cheklov
+  // kerak emas: u har kontentga baribir bitta qator yoza oladi.
+  const viewMatch = path.match(/^\/api\/content-views\/([a-z_]+)\/(\d+)$/);
+  if (viewMatch && method === 'POST') {
+    const kind = viewMatch[1];
+    const id = Number(viewMatch[2]);
+    if (!VIEW_KINDS.includes(kind)) return H.json({ error: 'bad_kind' }, 422);
+    await ensureSchema(env);
+    const target = await targetOwner(env, kind, id);
+    if (!target.ok) return H.json({ error: 'not_found' }, 404);
+
+    const user = await H.getCurrentUser(request, env).catch(() => null);
+    let counted = false;
+    if (!user || user.id !== target.ownerUserId) {
+      let viewer;
+      if (user) {
+        viewer = `u:${user.id}`;
+      } else {
+        if (await H.rateLimitD1(env, `cview:${H.reqIp(request)}`, 120, 10 * 60_000)) {
+          return H.json({ error: 'too_many_requests' }, 429);
+        }
+        viewer = `a:${await H.newsVisitorHash(request)}`;
+      }
+      const res = await env.DB.prepare(
+        `INSERT OR IGNORE INTO content_views (target_kind, target_id, viewer, created_at) VALUES (?, ?, ?, ?)`
+      ).bind(kind, id, viewer, H.nowTs()).run();
+      counted = Number(res?.meta?.changes || 0) > 0;
+    }
+    const row = await env.DB.prepare(
+      `SELECT COUNT(*) AS n FROM content_views WHERE target_kind = ? AND target_id = ?`
+    ).bind(kind, id).first();
+    return H.json({ counted, count: Number(row?.n) || 0 });
   }
 
   // ── RO'YXAT ─────────────────────────────────────────────────────

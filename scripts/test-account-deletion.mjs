@@ -144,6 +144,7 @@ const archiveBefore = JSON.stringify(sqlite.prepare(`SELECT * FROM content_archi
 // Layklar, obunalar, bildirishnomalar, saqlanganlar
 run(`INSERT INTO post_likes (post_id, user_id) VALUES (502, ?)`, U);
 run(`INSERT INTO content_likes (target_kind, target_id, user_id, created_at) VALUES ('post', 502, ?, 'x')`, U);
+run(`INSERT INTO content_views (target_kind, target_id, viewer, created_at) VALUES ('post', 502, ?, 'x')`, `u:${U}`);
 run(`INSERT INTO card_likes (code, user_id) VALUES ('OTH222', ?)`, U);
 run(`INSERT INTO follows (follower_id, followee_id) VALUES (?, ?)`, U, B);
 run(`INSERT INTO follows (follower_id, followee_id) VALUES (?, ?)`, B, U);
@@ -298,6 +299,7 @@ const purgeNow = deletedAtMs + 31 * DAY;
     catalog: n(`SELECT COUNT(*) AS n FROM company_catalog_items WHERE company_id = 'ELITEBIZ'`),
     likes: n(`SELECT (SELECT COUNT(*) FROM post_likes WHERE user_id = 1) + (SELECT COUNT(*) FROM content_likes WHERE user_id = 1) + (SELECT COUNT(*) FROM card_likes WHERE user_id = 1) AS n`),
     follows: n(`SELECT COUNT(*) AS n FROM follows WHERE follower_id = 1 OR followee_id = 1`),
+    views: n(`SELECT COUNT(*) AS n FROM content_views WHERE viewer = 'u:1'`),
     notifications: n(`SELECT COUNT(*) AS n FROM notifications WHERE recipient_user_id = 1 OR actor_user_id = 1`),
     saves: n(`SELECT COUNT(*) AS n FROM user_saves WHERE user_id = 1`),
     blocks: n(`SELECT COUNT(*) AS n FROM user_blocks WHERE user_id = 1 OR target_id = 'VIP001'`),
@@ -591,7 +593,7 @@ const PURGE_POLICY = {
   phone_otp_codes: 'A', tg_link_tokens: 'A', bot_verifications: 'A', bot_messages: 'A', app_users: 'A', upload_quota: 'A',
   cards: 'A', posts: 'A', stories: 'A', story_likes: 'A', story_views: 'A', menu_items: 'A', menu_categories: 'A',
   products: 'A', product_categories: 'A', services: 'A', service_categories: 'A', card_gallery: 'A', card_files: 'A',
-  card_videos: 'A', card_team: 'A', card_leads: 'A', card_events: 'A', card_likes: 'A', post_likes: 'A', content_likes: 'A',
+  card_videos: 'A', card_team: 'A', card_leads: 'A', card_events: 'A', card_likes: 'A', post_likes: 'A', content_likes: 'A', content_views: 'A',
   content_comments: 'A', follows: 'A', company_follows: 'A', user_saves: 'A', notifications: 'A', user_blocks: 'A',
   blocked_users: 'A', messages: 'A', conversations: 'A(flag)', auction_demand_votes: 'A', auction_requests: 'A',
   support_messages: 'A(flag)', companies: 'A', company_posts: 'A', company_stats: 'A', company_catalog_items: 'A', company_catalog_item_views: 'A',

@@ -23,7 +23,7 @@ Har modul uchun test: `scripts/test-<modul>.mjs` (`scripts/lib/d1-harness.mjs` o
 `auth`, `account`, `engagement`, `catalog`, `media`, `admin-extra`,
 `admin-finance`, `telegram`, `assistant`, `moderation`, `comments`,
 `notifications`, `featured`, `catalog-feed`, `saves`, `content-archive`,
-`app-usage`, `app-admin`, `marketplace`
+`app-usage`, `app-admin`, `my-analytics`, `marketplace`
 (shu tartibda chaqiriladi — `worker.js: API_MODULES`).
 
 `catalog-feed` — ilova "Tanlov" katalogi, BARCHA bizneslarning
@@ -79,6 +79,19 @@ to'xtamaydi; `MODERATION_OFF=1` bilan o'chadi.
 `:kind` — `post | company_post | story | company_story`. Lenta
 (`/api/feed`) har kadrga `commentKind` va `commentCount` qo'shadi va
 sonlarni `countsFor()` orqali BITTA guruhlangan so'rov bilan oladi.
+
+Ko'rishlar (`content_views`, shu modulda): `POST /api/content-views/:kind/:id`
+(`post | company_post`) → `{counted, count}`. Bir tomoshabin (`u:<id>` yoki
+mehmon `a:<IP+UA hash>`) bir kontentni bir marta sanaydi, egasi sanalmaydi,
+mehmon IP bo'yicha 10 daqiqada 120 tagacha. Lenta, profil postlari va
+kompaniya postlari `viewCount` qaytaradi (`viewsFor()`). Kontent
+o'chirilganda ko'rishlar `retireTargetStmts` bilan ketadi.
+
+`my-analytics` — ilovadagi Sozlamalar → Analitika: `GET /api/my/analytics?days=30`
+(auth, 1–90) → `{days, profile:{views, uniqueVisitors, clicks, totalViews},
+followers, content:{posts, views, likes, comments}, byDay[{day, views}],
+top[{kind, id, code, imageUrl, videoUrl, caption, createdAt, views, likes, comments}]}`
+— faqat o'z kartalari va kompaniyalari bo'yicha.
 
 ## Lokal ishga tushirish
 
