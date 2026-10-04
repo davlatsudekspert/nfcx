@@ -259,16 +259,36 @@ jobs:
               print(f"App: {app['attributes']['name']} ({app['id']}), oxirgi buildlar: {nums[-5:]}, yangi build: {nxt}")
               env_out(ASC_APP_ID=app['id'], IOS_BUILD_NUMBER=nxt)
           elif cmd == 'profile':
+              # Associated Domains yoqilgach Apple eski profilni INVALID qiladi;
+              # portalda Edit → Save qilingach yangisi ACTIVE bo'ladi (nomi
+              # o'zgarmaydi, UUID yangi). Shuning uchun nom bo'yicha emas, shu
+              # bundle'ning ACTIVE App Store profillari ichidan tanlanadi:
+              # CI sertifikati bor, associated-domains bori, keyin nomi mosi.
               import base64
+              AD = b'com.apple.developer.associated-domains'
               name = os.environ['IOS_ASC_PROFILE_NAME']
-              data = [p for p in get('/v1/profiles', {'filter[name]': name, 'limit': 5})['data']
-                      if p['attributes'].get('profileState') == 'ACTIVE']
-              if not data:
-                  print(f"Profil '{name}' App Store Connect'da yo'q — secret profil ishlatiladi.")
+              serial = os.environ.get('CERT_SERIAL', '').upper().lstrip('0')
+              bids = [b for b in get('/v1/bundleIds', {'filter[identifier]': BUNDLE, 'limit': 50})['data']
+                      if b['attributes']['identifier'] == BUNDLE]
+              cands = []
+              for p in (get(f"/v1/bundleIds/{bids[0]['id']}/profiles", {'limit': 50})['data'] if bids else []):
+                  a = p['attributes']
+                  if a.get('profileState') != 'ACTIVE' or a.get('profileType') != 'IOS_APP_STORE':
+                      continue
+                  if serial:
+                      certs = get(f"/v1/profiles/{p['id']}/certificates", {'limit': 50})['data']
+                      if not any(c['attributes'].get('serialNumber', '').upper().lstrip('0') == serial for c in certs):
+                          continue
+                  raw = base64.b64decode(a.get('profileContent') or '')
+                  cands.append((AD in raw, a['name'] == name, a.get('expirationDate', ''), a['name'], raw))
+              if not cands:
+                  print("App Store Connect'da mos ACTIVE profil yo'q — secret profil ishlatiladi.")
                   sys.exit(0)
-              out = sys.argv[2]
-              open(out, 'wb').write(base64.b64decode(data[0]['attributes']['profileContent']))
-              print(f"Profil App Store Connect'dan olindi: {name}")
+              cands.sort(key=lambda c: c[:3], reverse=True)
+              ad, _, exp, pname, raw = cands[0]
+              open(sys.argv[2], 'wb').write(raw)
+              print(f"Profil App Store Connect'dan olindi: {pname} (associated-domains: {ad}, muddati {exp[:10]})")
+              summary(f"- Imzo profili: **{pname}** (App Store Connect, associated-domains: {ad})")
           elif cmd == 'status':
               app, num, ver = os.environ['ASC_APP_ID'], os.environ['IOS_BUILD_NUMBER'], os.environ['IOS_VERSION']
               deadline = time.time() + 1800
@@ -330,6 +350,9 @@ jobs:
           printf '%s' "$PROFILE_BASE64" | base64 --decode > "$SIGN_DIR/profile.mobileprovision"
           # Universal Links profili (bo'lsa) — App Store Connect'dan.
           if [ "$UPLOAD" = "true" ] && [ -n "${ASC_PY:-}" ] && [ -n "${IOS_ASC_PROFILE_NAME:-}" ]; then
+            CERT_SERIAL=$(openssl pkcs12 -in "$SIGN_DIR/distribution.p12" -nokeys -clcerts -passin env:CERTIFICATE_PASSWORD 2>/dev/null \
+                          | openssl x509 -noout -serial 2>/dev/null | cut -d= -f2 || true)
+            export CERT_SERIAL
             API_KEY_ID="$ASC_KEY_ID" API_ISSUER_ID="$ASC_ISSUER_ID" "$ASC_PY" "$RUNNER_TEMP/asc.py" profile "$SIGN_DIR/profile.mobileprovision"
           fi
           security cms -D -i "$SIGN_DIR/profile.mobileprovision" > "$SIGN_DIR/profile.plist"

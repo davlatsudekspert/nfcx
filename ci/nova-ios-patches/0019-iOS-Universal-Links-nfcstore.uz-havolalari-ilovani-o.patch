@@ -1,0 +1,64 @@
+From 8601eb9a93279ec7ba653eee66a87b20a4fb34fb Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Sun, 4 Oct 2026 12:34:42 +0000
+Subject: [PATCH] iOS Universal Links: nfcstore.uz havolalari ilovani ochadi
+ (associated-domains)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ mobile_nova/ios/Runner/Runner.entitlements | 11 +++++++++++
+ mobile_nova/test/routes_test.dart          | 15 +++++++++++++++
+ 2 files changed, 26 insertions(+)
+
+diff --git a/mobile_nova/ios/Runner/Runner.entitlements b/mobile_nova/ios/Runner/Runner.entitlements
+index 1747969..90083ad 100644
+--- a/mobile_nova/ios/Runner/Runner.entitlements
++++ b/mobile_nova/ios/Runner/Runner.entitlements
+@@ -13,6 +13,17 @@
+ 	     etilardi, telefonda esa sessiya ochilmay NFC umuman
+ 	     ishlamasdi. CI (`nova-ios.yml`) buni qaytib kelishdan
+ 	     qo'riqlaydi. -->
++	<!-- UNIVERSAL LINKS — ulashilgan nfcstore.uz/post/..., /u/, /c/,
++	     /story/, /nfc/ havolalari iPhone'da saytni emas, ilovani
++	     ochsin (Android'dagi App Links bilan bir xil). Sayt tomoni:
++	     /.well-known/apple-app-site-association (hosting/worker.js).
++	     App ID'da Associated Domains yoqilgan, imzo profili ham uni
++	     o'z ichiga oladi (nova-ios-testflight.yml tekshiradi). -->
++	<key>com.apple.developer.associated-domains</key>
++	<array>
++		<string>applinks:nfcstore.uz</string>
++		<string>applinks:www.nfcstore.uz</string>
++	</array>
+ 	<key>com.apple.developer.nfc.readersession.formats</key>
+ 	<array>
+ 		<string>TAG</string>
+diff --git a/mobile_nova/test/routes_test.dart b/mobile_nova/test/routes_test.dart
+index b16bddd..5f9694b 100644
+--- a/mobile_nova/test/routes_test.dart
++++ b/mobile_nova/test/routes_test.dart
+@@ -201,6 +201,21 @@ void main() {
+         isTrue);
+   });
+ 
++  test('iOS Universal Links — nfcstore.uz havolasi ilovani ochadi', () {
++    // iPhone'da ulashilgan https://nfcstore.uz/post/... havolasi
++    // saytni emas, ilovani ochishi uchun entitlement'da shu domenlar
++    // bo'lishi shart; yo'l esa Android App Links bilan bir xil
++    // marshrutga tushadi.
++    final e = File('ios/Runner/Runner.entitlements').readAsStringSync();
++    expect(e, contains('com.apple.developer.associated-domains'));
++    expect(e, contains('<string>applinks:nfcstore.uz</string>'));
++    expect(e, contains('<string>applinks:www.nfcstore.uz</string>'));
++    expect(
++        routeExists(buildTestRouter(),
++            'https://nfcstore.uz/post/42?code=ABC123&company=1'),
++        isTrue);
++  });
++
+   test('`Routes` dagi HAR BIR statik yo\'l ro\'yxatda bor', () {
+     // BU SINOV SINOVNI TEKSHIRADI.
+     //
+-- 
+2.43.0
+
