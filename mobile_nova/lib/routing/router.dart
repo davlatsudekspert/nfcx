@@ -165,17 +165,32 @@ final routerProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(routes: [
             GoRoute(path: Routes.home, builder: (_, __) => const HomeScreen()),
           ]),
-          StatefulShellBranch(routes: [
+          // OLDINDAN TAYYOR TABLAR (egasi, 2026-10, iPhone TestFlight 303:
+          // "tab bosilishi bilan sahifa darhol ochilmayapti").
+          //
+          // `StatefulShellRoute` tabni BIRINCHI bosilganda qurardi: ekran
+          // noldan yig'ilar va o'sha paytda API so'rovlari boshlanardi —
+          // odam har tabga birinchi kirishda spinner/kechikish ko'rardi.
+          // `preload` bilan Tanlov, Reels va Profil shell ochilganda
+          // yashirin (`Offstage`, `TickerMode` o'chiq) quriladi va o'z
+          // ma'lumotini oldindan yuklaydi; bosilganda tayyor turadi.
+          // Holat saqlanadi, qayta yuklash yo'q (tablar yopilmaydi).
+          //
+          // NFC tabi OLDINDAN QURILMAYDI: u ochilishi bilan NFC
+          // sessiyasini boshlashi mumkin — iPhone'da tizim oynasi chiqadi.
+          // Reels yashirin holda pleyer ochmaydi (`visible` faqat Reels
+          // tabida) — faqat ro'yxat yuklanadi.
+          StatefulShellBranch(preload: true, routes: [
             GoRoute(
                 path: Routes.discover, builder: (_, __) => const DiscoverScreen()),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(path: Routes.nfc, builder: (_, __) => const NfcCenterScreen()),
           ]),
-          StatefulShellBranch(routes: [
+          StatefulShellBranch(preload: true, routes: [
             GoRoute(path: Routes.reels, builder: (_, __) => const ReelsScreen()),
           ]),
-          StatefulShellBranch(routes: [
+          StatefulShellBranch(preload: true, routes: [
             GoRoute(path: Routes.profile, builder: (_, __) => const ProfileScreen()),
           ]),
         ],
