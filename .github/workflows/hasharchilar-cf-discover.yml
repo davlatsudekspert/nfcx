@@ -1,0 +1,49 @@
+name: hasharchilar — Cloudflare hisobini ko'rish (faqat o'qish)
+
+# Hech narsani o'zgartirmaydi: faqat hisobdagi D1, R2, Worker, Pages va
+# zonalar NOMLARINI chiqaradi — hasharchilar.uz ni mavjud resurslarga
+# ulashdan oldin nima borligini bilish uchun.
+on:
+  push:
+    branches: [claude/peaceful-meitner-zlvydj]
+    paths: ['.github/workflows/hasharchilar-cf-discover.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    env:
+      CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: 31c4b3d8ece4b65de515debc4552334a
+    steps:
+      - name: Hisob resurslari
+        run: |
+          set -u
+          api() { curl -sS -H "Authorization: Bearer $CF_API_TOKEN" "https://api.cloudflare.com/client/v4$1"; }
+          A="/accounts/$CF_ACCOUNT"
+
+          echo "=== Token"; api /user/tokens/verify | jq -c '{success, status: .result.status, errors}'
+
+          echo "=== D1 bazalar"
+          api "$A/d1/database?per_page=100" > d1.json
+          jq -r '.result[]? | "\(.name)\t\(.uuid)\tcreated=\(.created_at)\tsize=\(.file_size)"' d1.json
+          jq -c '.errors' d1.json
+
+          echo "=== 'hashar' nomli bazalardagi jadvallar (faqat sxema)"
+          for id in $(jq -r '.result[]? | select(.name|test("hashar";"i")) | .uuid' d1.json); do
+            echo "--- $id"
+            curl -sS -X POST -H "Authorization: Bearer $CF_API_TOKEN" -H 'content-type: application/json' \
+              "https://api.cloudflare.com/client/v4$A/d1/database/$id/query" \
+              -d '{"sql":"SELECT name, sql FROM sqlite_master WHERE type IN (\"table\",\"index\") ORDER BY name"}' \
+              | jq -r '.result[0].results[]? | "\(.name): \(.sql)"'
+          done
+
+          echo "=== R2 bucketlar"; api "$A/r2/buckets" | jq -r '.result.buckets[]?.name, (.errors|tostring)'
+          echo "=== Worker skriptlar"; api "$A/workers/scripts" | jq -r '.result[]?.id, (.errors|tostring)'
+          echo "=== workers.dev subdomeni"; api "$A/workers/subdomain" | jq -c '.result, .errors'
+          echo "=== Worker custom domenlar"; api "$A/workers/domains" | jq -r '.result[]? | "\(.hostname) -> \(.service)"'
+          echo "=== Pages loyihalar"; api "$A/pages/projects" | jq -r '.result[]? | "\(.name)\t\(.subdomain)\t\(.domains|join(","))", (.errors|tostring)'
+          echo "=== Zonalar"; api "/zones?per_page=50" | jq -r '.result[]? | "\(.name)\t\(.status)\t\(.id)", (.errors|tostring)'
