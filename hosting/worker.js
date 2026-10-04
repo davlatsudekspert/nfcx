@@ -8171,6 +8171,138 @@ export function injectNewsOg(html, meta) {
 // /yangiliklar/:id — SPA qobig'ini shu yangilikning meta teglari bilan
 // qaytaradi. Yangilik topilmasa yoki baza javob bermasa `null` qaytadi va
 // odatdagi statik yo'l ishlaydi (sahifa baribir ochiladi).
+// ── ULASHILGAN POST / REELS: /post/:id ──────────────────────────────
+//
+// Egasi (2026-10-04): "Reelsni share qilib linkini olsa profil linki
+// ochilib qolmoqda". Ilova endi `https://nfcstore.uz/post/<id>?code=<kod>`
+// (kompaniya posti — `&company=1`) ulashadi. Android'da ilova o'rnatilgan
+// bo'lsa havola ILOVADA ochiladi (App Links `/post/`); aks holda va
+// iPhone'da shu sahifa: videoning o'zi, muallif, izoh va Telegram/
+// WhatsApp uchun og:video/og:image kartochkasi. SPA emas — robot ham,
+// brauzer ham bitta tayyor HTML oladi.
+//
+// Faqat o'qiydi. Egasi o'chirilgan yoki kompaniyasi faol bo'lmagan
+// post — 404 ("topilmadi"), boshqa hech narsa oshkor qilinmaydi.
+export async function postPageResponse(env, url, id) {
+  const company = url.searchParams.get('company') === '1';
+  const pid = Number(id);
+  let row = null;
+  try {
+    row = company
+      ? await env.DB.prepare(
+        `SELECT cp.id, cp.company_id AS code, cp.image_url, cp.video_url, cp.caption, cp.created_at,
+                co.display_name AS name, co.logo_url AS avatar_url
+           FROM company_posts cp JOIN companies co ON co.company_id = cp.company_id
+          WHERE cp.id = ? AND co.status = 'active' AND ${companyOwnerAliveSql('co')}`,
+      ).bind(pid).first()
+      : await env.DB.prepare(
+        `SELECT p.id, p.code, p.image_url, p.video_url, p.caption, p.created_at,
+                c.name AS name, c.avatar_url AS avatar_url
+           FROM posts p JOIN cards c ON c.code = p.code
+          WHERE p.id = ? AND ${ownerAliveSql('c')}`,
+      ).bind(pid).first();
+  } catch (error) {
+    console.error('post page', id, error?.message);
+  }
+  let views = 0;
+  if (row) {
+    const v = await apiComments.viewsFor(env, [{ kind: company ? 'company_post' : 'post', id: pid }]).catch(() => null);
+    views = v?.get(`${company ? 'company_post' : 'post'}:${pid}`) || 0;
+  }
+  return new Response(postPageHtml(url.origin, row, { company, views }), {
+    status: row ? 200 : 404,
+    headers: {
+      'content-type': 'text/html; charset=utf-8',
+      'cache-control': row ? 'public, max-age=60' : 'no-store',
+    },
+  });
+}
+
+function postPageHtml(origin, row, { company, views }) {
+  const e = ogAttrEscape;
+  const shell = (title, head, body) => `<!doctype html>
+<html lang="uz"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>${e(title)}</title>
+<meta name="theme-color" content="#0b0b0c">
+<link rel="icon" href="/favicon.ico">
+${head}
+<style>
+  :root{color-scheme:dark}
+  *{box-sizing:border-box}
+  body{margin:0;background:#0b0b0c;color:#f4f1ea;font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;min-height:100vh;display:flex;justify-content:center}
+  main{width:100%;max-width:480px;padding:16px 16px calc(24px + env(safe-area-inset-bottom))}
+  a{color:inherit}
+  .top{display:flex;align-items:center;gap:12px;padding:8px 0 14px;text-decoration:none}
+  .av{width:44px;height:44px;border-radius:50%;object-fit:cover;background:#222;border:1.5px solid #c9a961;flex:none}
+  .nm{font-weight:700;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cd{font:600 12px/1.2 ui-monospace,Menlo,monospace;letter-spacing:.14em;color:#c9a961}
+  .media{width:100%;border-radius:20px;overflow:hidden;background:#000;aspect-ratio:9/16;max-height:78vh}
+  .media video,.media img{width:100%;height:100%;object-fit:contain;display:block;background:#000}
+  .media.img{aspect-ratio:auto}
+  .media.img img{height:auto}
+  .meta{display:flex;gap:14px;color:#a9a39a;font-size:13px;margin:12px 2px 6px}
+  .cap{white-space:pre-wrap;word-wrap:break-word;margin:6px 2px 18px}
+  .btns{display:flex;gap:10px}
+  .btn{flex:1;display:block;text-align:center;padding:14px 10px;border-radius:999px;font-weight:700;text-decoration:none}
+  .pri{background:#c9a961;color:#111}
+  .sec{border:1px solid #3a3630}
+  .brand{margin-top:22px;text-align:center;font:700 12px/1 sans-serif;letter-spacing:.32em;color:#6f6a62}
+  .nf{padding:30vh 8px 0;text-align:center}
+</style></head><body><main>${body}<div class="brand">NFCSTORE</div></main></body></html>`;
+
+  if (!row) {
+    return shell('Post topilmadi — NFCSTORE', '<meta name="robots" content="noindex">',
+      `<div class="nf"><h1 style="font-size:22px">Post topilmadi</h1>
+<p style="color:#a9a39a">Bu post o‘chirilgan yoki mavjud emas.</p>
+<div class="btns" style="margin-top:20px"><a class="btn pri" href="/">Bosh sahifa</a></div></div>`);
+  }
+
+  const code = String(row.code || '').toUpperCase();
+  const name = String(row.name || '').trim() || code;
+  const profile = company ? `/c/${encodeURIComponent(code)}` : `/${encodeURIComponent(code)}`;
+  const video = ogAbsolute(row.video_url, origin);
+  const image = ogAbsolute(row.image_url, origin);
+  const avatar = ogAbsolute(row.avatar_url, origin);
+  const caption = String(row.caption || '').trim();
+  const pageUrl = `${origin}/post/${Number(row.id)}?code=${encodeURIComponent(code)}${company ? '&company=1' : ''}`;
+  const desc = ogExcerpt(caption) || (video ? `${name} — Reels` : `${name} — post`);
+  const ogImage = image || avatar || origin + OG_FALLBACK_IMAGE;
+  const title = `${name} — NFCSTORE`;
+
+  const head = [
+    `<meta name="description" content="${e(desc)}">`,
+    `<link rel="canonical" href="${e(pageUrl)}">`,
+    `<meta property="og:site_name" content="NFCSTORE">`,
+    `<meta property="og:type" content="${video ? 'video.other' : 'article'}">`,
+    `<meta property="og:title" content="${e(title)}">`,
+    `<meta property="og:description" content="${e(desc)}">`,
+    `<meta property="og:url" content="${e(pageUrl)}">`,
+    `<meta property="og:image" content="${e(ogImage)}">`,
+    ...(video ? [
+      `<meta property="og:video" content="${e(video)}">`,
+      `<meta property="og:video:secure_url" content="${e(video)}">`,
+      `<meta property="og:video:type" content="video/mp4">`,
+    ] : []),
+    `<meta name="twitter:card" content="${video || image ? 'summary_large_image' : 'summary'}">`,
+  ].join('\n');
+
+  const media = video
+    ? `<div class="media"><video src="${e(video)}"${image ? ` poster="${e(image)}"` : ''} autoplay muted loop playsinline controls preload="metadata"></video></div>`
+    : image
+      ? `<div class="media img"><img src="${e(image)}" alt="${e(desc)}"></div>`
+      : '';
+
+  const body = `<a class="top" href="${e(profile)}">
+${avatar ? `<img class="av" src="${e(avatar)}" alt="">` : '<div class="av"></div>'}
+<div style="min-width:0"><div class="nm">${e(name)}</div><div class="cd">${e(code)}</div></div></a>
+${media}
+<div class="meta"><span>👁 ${Number(views) || 0}</span></div>
+${caption ? `<div class="cap">${e(caption)}</div>` : ''}
+<div class="btns"><a class="btn pri" href="/app">Ilovada ochish</a><a class="btn sec" href="${e(profile)}">Profil</a></div>`;
+  return shell(title, head, body);
+}
+
 async function newsShellResponse(env, url, id) {
   let row = null;
   try {
@@ -11101,6 +11233,18 @@ async function handleRequest(request, env, url) {
     // Ulashilgan yangilik havolasi (/yangiliklar/12) — Telegram/WhatsApp/
     // Facebook botlari uchun meta teglar shu maqolaniki bo'lsin. Brauzer
     // uchun farq yo'q: aynan o'sha SPA qobig'i qaytadi.
+    // Ulashilgan post / Reels — o'z sahifasi (postPageResponse).
+    const postPageMatch = url.pathname.match(/^\/post\/(\d{1,12})\/?$/);
+    if (postPageMatch && ['GET', 'HEAD'].includes(request.method)) {
+      try {
+        await ensureCoreSchema(env);
+        const page = await postPageResponse(env, url, postPageMatch[1]);
+        return request.method === 'HEAD' ? new Response(null, page) : page;
+      } catch (error) {
+        console.error('post page', url.pathname, error);
+      }
+    }
+
     const newsShellMatch = url.pathname.match(/^\/yangiliklar\/(\d{1,12})\/?$/);
     if (newsShellMatch && request.method === 'GET') {
       try {
