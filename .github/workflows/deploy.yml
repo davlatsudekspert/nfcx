@@ -171,6 +171,9 @@ jobs:
       # shu videoni ochadi; og:video kartochkasi, o'chirilgani — 404.
       - name: Ulashilgan post sahifasi
         run: node scripts/test-post-page.mjs
+      # Katalog tovarlarida ko'rishlar soni (necha kishi) — Tanlov va vitrina.
+      - name: Katalog tovarlari ko'rishlari
+        run: node scripts/test-catalog-views.mjs
       # Manifestdagi yaroqsiz XML ilova qurilishini yiqitadi, lekin
       # `flutter analyze` ham, `flutter test` ham uni o'qimaydi.
       # Eski ilovaning CI'si esa faqat QO'LDA ishga tushadi —

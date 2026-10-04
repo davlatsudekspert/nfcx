@@ -754,7 +754,7 @@ export function normalizeDomainD1(value) {
 }
 
 async function companyWithItems(env, id, viewerUserId = null) {
-  const [row, items, views, followers, mine] = await Promise.all([
+  const [row, items, views, followers, mine, itemViews] = await Promise.all([
     env.DB.prepare('SELECT * FROM companies WHERE company_id = ?').bind(id).first(),
     env.DB.prepare('SELECT * FROM company_catalog_items WHERE company_id = ? ORDER BY sort_order, created_at').bind(id).all(),
     // Ko'rishlar — kunlik jamlanmadan. Statistika bo'limidagi raqam
@@ -764,11 +764,15 @@ async function companyWithItems(env, id, viewerUserId = null) {
     viewerUserId
       ? env.DB.prepare(`SELECT 1 AS x FROM company_follows WHERE company_id = ? AND user_id = ?`).bind(id, viewerUserId).first().catch(() => null)
       : Promise.resolve(null),
+    // Har tovarning ko'rishlari (necha kishi) — catalog-feed.js bilan bir manba.
+    apiCatalogFeed.itemViewCounts(env, { companyId: id }).catch(() => new Map()),
   ]);
   if (!row) return null;
   const ownerPremium = await companyOwnerPremiumD1(env, row.owner_user_id);
+  const company = rowCompany(row, items.results || [], ownerPremium);
+  for (const it of company.catalog) it.views = itemViews.get(String(it.id)) || 0;
   return {
-    ...rowCompany(row, items.results || [], ownerPremium),
+    ...company,
     views: Number(views?.n || 0),
     followers: Number(followers?.n || 0),
     following: !!mine,
@@ -8466,6 +8470,28 @@ export async function postPageResponse(env, url, id) {
   });
 }
 
+// "ILOVADA OCHISH" — ilovaning O'ZINI ochadi (egasi, 2026-10-04: havola
+// saytga kirib "APK yuklang" chiqarardi).
+//   Android: `intent://` — ilova bor bo'lsa shu postni ochadi, yo'q
+//            bo'lsa Chrome o'zi `/app` (yuklab olish) ga o'tadi.
+//   iPhone:  `nfcstore://` sxemasi; 1.6 s ichida sahifa yashirinmasa
+//            (ilova yo'q) — `/app`.
+// Telegram/Instagram ichki brauzeri App Links'ni chetlab o'tadi, shuning
+// uchun havolaning o'zi saytda ochiladi — tugma esa ilovaga olib boradi.
+export const NOVA_ANDROID_PACKAGE = 'uz.nfcstore.nova';
+function openAppScript(origin, appPath) {
+  const host = new URL(origin).host;
+  const intent = `intent://${host}${appPath}#Intent;scheme=nfcstore;package=${NOVA_ANDROID_PACKAGE};`
+    + `S.browser_fallback_url=${encodeURIComponent(origin + '/app')};end`;
+  const scheme = `nfcstore://${host}${appPath}`;
+  const js = (v) => JSON.stringify(v).replace(/</g, '\\u003c');
+  return `(function(){var a=document.getElementById('open-app');if(!a)return;var ua=navigator.userAgent||'';`
+    + `if(/Android/i.test(ua)){a.href=${js(intent)};}`
+    + `else if(/iPhone|iPad|iPod/i.test(ua)){a.addEventListener('click',function(ev){ev.preventDefault();`
+    + `var t=Date.now();location.href=${js(scheme)};setTimeout(function(){`
+    + `if(!document.hidden&&Date.now()-t<3000){location.href='/app';}},1600);});}})();`;
+}
+
 function postPageHtml(origin, row, { company, views }) {
   const e = ogAttrEscape;
   const shell = (title, head, body) => `<!doctype html>
@@ -8513,7 +8539,8 @@ ${head}
   const image = ogAbsolute(row.image_url, origin);
   const avatar = ogAbsolute(row.avatar_url, origin);
   const caption = String(row.caption || '').trim();
-  const pageUrl = `${origin}/post/${Number(row.id)}?code=${encodeURIComponent(code)}${company ? '&company=1' : ''}`;
+  const appPath = `/post/${Number(row.id)}?code=${encodeURIComponent(code)}${company ? '&company=1' : ''}`;
+  const pageUrl = `${origin}${appPath}`;
   const desc = ogExcerpt(caption) || (video ? `${name} — Reels` : `${name} — post`);
   const ogImage = image || avatar || origin + OG_FALLBACK_IMAGE;
   const title = `${name} — NFCSTORE`;
@@ -8547,7 +8574,8 @@ ${avatar ? `<img class="av" src="${e(avatar)}" alt="">` : '<div class="av"></div
 ${media}
 <div class="meta"><span>👁 ${Number(views) || 0}</span></div>
 ${caption ? `<div class="cap">${e(caption)}</div>` : ''}
-<div class="btns"><a class="btn pri" href="/app">Ilovada ochish</a><a class="btn sec" href="${e(profile)}">Profil</a></div>`;
+<div class="btns"><a id="open-app" class="btn pri" href="/app">Ilovada ochish</a><a class="btn sec" href="${e(profile)}">Profil</a></div>
+<script>${openAppScript(origin, appPath)}</script>`;
   return shell(title, head, body);
 }
 
