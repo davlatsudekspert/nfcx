@@ -348,6 +348,26 @@ try {
   calls = 0;
   await cdb.prepare('SELECT 1').first(); await cdb.prepare('SELECT 2').first();
   check('ketma-ket await — har biri alohida HTTP', calls, 2);
+  // Navbat TAYMERGA bog'liq emas (Workers: taymer so'rov kontekstiga bog'liq —
+  // taymerni qo'ygan so'rov tugasa, navbat abadiy osilib qolardi, 2026-10-04).
+  // Statement shu tick'ning mikrotasklarida yuboriladi — oldin qo'yilgan
+  // setTimeout(0) dan ham oldin.
+  {
+    let timerRan = false; let sentBeforeTimer = null;
+    const tdb = E.UZ_TEST_DB_URL
+      ? uzDb({ url: E.UZ_TEST_DB_URL, token: E.UZ_TEST_DB_TOKEN, fetch: (...a) => { if (sentBeforeTimer === null) sentBeforeTimer = !timerRan; return hf(...a); } })
+      : uzDb({ url: 'https://db.uz.test', token: 'test-token', fetch: (...a) => { if (sentBeforeTimer === null) sentBeforeTimer = !timerRan; return hf(...a); } });
+    setTimeout(() => { timerRan = true; }, 0);
+    const v = await tdb.prepare('SELECT 7 AS x').first('x');
+    check('navbat taymersiz: statement setTimeout(0) dan OLDIN yuboriladi', [sentBeforeTimer, v], [true, 7]);
+    // Javob kelmasdan "so'rov" tugasa ham (await qilinmagan statement) — u
+    // baribir shu tick'da yuborilgan bo'ladi, navbat bo'sh qoladi.
+    let sent = 0;
+    const ndb = uzDb({ url: 'https://db.uz.test', token: 'test-token', fetch: (...a) => { sent++; return hf(...a); } });
+    ndb.prepare('SELECT 1').run().catch(() => {});
+    for (let i = 0; i < 40; i++) await null;   // faqat mikrotasklar, taymer yo'q
+    check('await qilinmagan statement ham shu tick ichida yuboriladi', sent, 1);
+  }
   await cdb.exec('DROP TABLE IF EXISTS co');
 }
 
