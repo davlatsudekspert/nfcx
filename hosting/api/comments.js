@@ -65,6 +65,20 @@ export const LIKE_KINDS = [...KINDS, 'comment'];
 /// jadvallarida). Istoryaning o'z ko'rish ro'yxati bor.
 export const VIEW_KINDS = ['post', 'company_post'];
 
+// Bir tomoshabinning shu kontentdagi ikki sanalgan ko'rishi orasidagi
+// eng kam oraliq. Ilova ko'rishni odam postga KIRIB 2 soniya ko'rganda
+// yuboradi, ya'ni haqiqiy qayta kirish bundan tez kela olmaydi; tezroq
+// kelgan so'rov — tarmoq qayta yuborgan nusxa, u sanalmaydi.
+const VIEW_REPEAT_MS = 2000;
+// Bitta tomoshabin × kontent × kun uchun eng ko'p sanaladigan ko'rish.
+const VIEW_DAILY_CAP = 50;
+
+// Kirgan foydalanuvchi uchun suiiste'mol chegarasi: 10 daqiqada 300 ta
+// ko'rish. Oshsa XATO QAYTMAYDI — ko'rish shunchaki sanalmaydi (ilova
+// Reels'ni aylantirishda davom etadi, raqam esa sun'iy o'smaydi).
+const VIEW_USER_LIMIT = 300;
+const VIEW_WINDOW_MS = 10 * 60_000;
+
 // Izoh uzunligi. Instagram'da 2200 — bu yerda 1000 yetarli va
 // bitta izoh ekranni butunlay egallab ketmaydi.
 const MAX_LEN = 1000;
@@ -132,10 +146,21 @@ export async function ensureSchema(env) {
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_content_likes_target
         ON content_likes(target_kind, target_id)`),
 
-      // KO'RISHLAR (Instagram'dagi "ko'rishlar" kabi). Bir tomoshabin
-      // bir kontentni BIR MARTA sanaydi: `viewer` — `u:<user id>`
-      // yoki mehmon uchun `a:<IP+UA hash>`. Ya'ni raqam "necha kishi
-      // ko'rdi", "necha marta aylantirildi" emas.
+      // KO'RISHLAR (Instagram'dagi "ko'rishlar" kabi) — IKKI JADVAL.
+      //
+      // QOIDA (egasi, 2026-10-04): odam postga/Reels'ga HAR KIRIB
+      // 2 soniya ko'rganida +1 ko'rish, qaysi seansda bo'lishidan
+      // qat'i nazar. Ko'rdi, chiqdi, qaytib kirib yana 2 soniya
+      // ko'rdi — yana +1. O'sha videoda turib qolsa va u qayta-qayta
+      // aylanib o'ynasa — QAYTA SANALMAYDI (bitta kirish — bitta
+      // so'rov, buni ilova ta'minlaydi). Egasining o'z ko'rishi hech
+      // qachon sanalmaydi. `viewer` — `u:<user id>` yoki mehmon
+      // uchun `a:<IP+UA hash>`.
+      //
+      // `content_views` — NECHA KISHI ko'rdi (qamrov): bir tomoshabin
+      // bir kontentga BITTA qator, `created_at` — birinchi ko'rishi.
+      // 2026-10-04 gacha ko'rishlar soni shu jadvaldan olinardi (bir
+      // odam — bir marta); endi u faqat qamrov uchun.
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS "content_views" (
         target_kind TEXT NOT NULL,
         target_id INTEGER NOT NULL,
@@ -145,6 +170,31 @@ export async function ensureSchema(env) {
       )`),
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_content_views_time
         ON content_views(created_at)`),
+      // `content_view_hits` — NECHA MARTA ko'rildi. Har ko'rishga
+      // alohida qator EMAS: tomoshabin × kontent × KUN (UTC,
+      // 'YYYY-MM-DD') uchun bitta qator va uning `hits` sanog'i.
+      // Odam kuniga necha marta qaytib kirmasin, jadval bitta qator
+      // bilan o'sadi; kunlik grafik (`my-analytics.js`) esa to'g'ridan-
+      // to'g'ri `day` dan yig'iladi. Ko'rsatiladigan son — `SUM(hits)`.
+      // `last_at` — oxirgi SANALGAN ko'rish (`VIEW_REPEAT_MS` uchun).
+      //
+      // (target_kind, target_id, hits) indeksi — `SUM(hits)` lenta va
+      // profil so'rovlarida jadvalga tegmay faqat indeksdan o'qilsin
+      // (PRIMARY KEY uni qoplamaydi). `viewer` indeksi — hisob
+      // o'chirilganda (`account-purge.js`).
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS "content_view_hits" (
+        target_kind TEXT NOT NULL,
+        target_id INTEGER NOT NULL,
+        viewer TEXT NOT NULL,
+        day TEXT NOT NULL,
+        hits INTEGER NOT NULL DEFAULT 0,
+        last_at TEXT NOT NULL,
+        PRIMARY KEY (target_kind, target_id, viewer, day)
+      )`),
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_content_view_hits_viewer
+        ON content_view_hits(viewer)`),
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_content_view_hits_target
+        ON content_view_hits(target_kind, target_id, hits)`),
 
       // DALIL ARXIVI. O'chirilgan izohning to'liq nusxasi.
       //
@@ -196,9 +246,45 @@ export async function ensureSchema(env) {
       .then(() => env.DB.prepare(
         `CREATE INDEX IF NOT EXISTS idx_comments_deleted
            ON content_comments(deleted_at)`
-      ).run().catch(() => {}));
+      ).run().catch(() => {}))
+      // Eski ko'rishlar yangi sanoqqa — jadvallar yaratilgandan KEYIN.
+      .then(() => backfillViewHitsOnce(env));
   }
   await schemaReady;
+}
+
+// ── BIR MARTALIK KO'CHIRISH: eski ko'rishlar yangi sanoqqa ───────
+//
+// `content_view_hits` paydo bo'lgunga qadar har ko'rish faqat
+// `content_views` da edi (bir odam — bir qator). Ular yangi jadvalga
+// birinchi ko'rilgan kunining BITTA ko'rishi bo'lib ko'chiriladi —
+// aks holda deploydan keyin hamma postning soni 0 ga tushib qolardi.
+// `content_views` ning o'zi o'chirilmaydi va o'zgartirilmaydi.
+//
+// BIR MARTA: `maintenance_runs` belgisi bilan — keyingi izolyatlar
+// butun jadvalni qayta o'qimaydi, faqat bitta PRIMARY KEY qidiruvi
+// qiladi; izolyat ichida esa `ensureSchema` keshi tufayli umuman
+// chaqirilmaydi. Qayta ishlab ketsa ham zarari yo'q (`INSERT OR
+// IGNORE`): mavjud qator ham, sanoq ham o'zgarmaydi.
+const VIEW_HITS_BACKFILL = 'content_view_hits_backfill_2026_10';
+
+async function backfillViewHitsOnce(env) {
+  try {
+    await env.DB.prepare(`CREATE TABLE IF NOT EXISTS "maintenance_runs" (
+      name TEXT PRIMARY KEY NOT NULL, ran_at TEXT NOT NULL, details TEXT)`).run();
+    const done = await env.DB.prepare(`SELECT 1 AS x FROM maintenance_runs WHERE name = ?`)
+      .bind(VIEW_HITS_BACKFILL).first();
+    if (done) return;
+    const res = await env.DB.prepare(
+      `INSERT OR IGNORE INTO content_view_hits (target_kind, target_id, viewer, day, hits, last_at)
+       SELECT target_kind, target_id, viewer, substr(created_at, 1, 10), 1, created_at FROM content_views`
+    ).run();
+    await env.DB.prepare(`INSERT OR IGNORE INTO maintenance_runs (name, ran_at, details) VALUES (?, ?, ?)`)
+      .bind(VIEW_HITS_BACKFILL, tsNow(), JSON.stringify({ rows: Number(res?.meta?.changes || 0) })).run();
+  } catch (e) {
+    // Belgi qo'yilmaydi — keyingi izolyat yana urinadi.
+    console.error('backfillViewHitsOnce', e?.message);
+  }
 }
 
 /// TIRIK IZOH sharti.
@@ -460,6 +546,10 @@ export async function likesFor(env, targets, viewerId = 0) {
 
 /// Kontent ko'rishlari — lenta/profil uchun guruhlab (`countsFor` kabi
 /// bitta so'rov). Faqat `VIEW_KINDS`; boshqalari 0.
+///
+/// JAMI ko'rishlar (`SUM(hits)`) — necha kishi emas, necha marta
+/// ko'rilgani. Lenta, profil, kompaniya postlari va /post/:id sahifasi
+/// hammasi shu yerdan oladi — bitta qoida, bitta raqam.
 export async function viewsFor(env, targets) {
   const out = new Map();
   const list = targets.filter((t) => VIEW_KINDS.includes(t.kind));
@@ -467,7 +557,7 @@ export async function viewsFor(env, targets) {
   await ensureSchema(env);
   const where = list.map(() => '(target_kind = ? AND target_id = ?)').join(' OR ');
   const rows = await env.DB.prepare(
-    `SELECT target_kind, target_id, COUNT(*) AS n FROM content_views
+    `SELECT target_kind, target_id, SUM(hits) AS n FROM content_view_hits
       WHERE ${where} GROUP BY target_kind, target_id`
   ).bind(...list.flatMap((t) => [t.kind, t.id])).all().catch(() => null);
   for (const r of rows?.results || []) out.set(`${r.target_kind}:${Number(r.target_id)}`, Number(r.n) || 0);
@@ -487,7 +577,11 @@ export async function viewsFor(env, targets) {
 // `idsSql` — o'chirilayotgan kontent raqamlarini beradigan SELECT
 // (yoki `?`), `binds` — unga. Chaqiruvchi avval `ensureSchema(env)`
 // ni kutadi: jadval yo'q bo'lsa butun batch yiqiladi.
-const tsNow = () => new Date().toISOString().replace('T', ' ').replace('Z', '+00');
+// `worker.js` dagi `nowTs()` bilan AYNAN bir format
+// ("YYYY-MM-DD HH:MM:SS.mmm+00") — satrlar leksikografik solishtiriladi
+// (`content_view_hits.last_at`), ya'ni ikki tomon bir xil bo'lishi shart.
+const tsAt = (ms) => new Date(ms).toISOString().replace('T', ' ').replace('Z', '+00');
+const tsNow = () => tsAt(Date.now());
 
 export function retireTargetStmts(env, kind, idsSql, binds, { reason = 'target_deleted', byUserId = 0, byAdmin = '' } = {}) {
   const now = tsNow();
@@ -507,10 +601,13 @@ export function retireTargetStmts(env, kind, idsSql, binds, { reason = 'target_d
     env.DB.prepare(
       `DELETE FROM content_likes WHERE target_kind = ? AND target_id IN (${idsSql})`
     ).bind(kind, ...binds),
-    // Ko'rishlar ham — aks holda yangi post eski postning
-    // ko'rishlari bilan tug'ilardi.
+    // Ko'rishlar ham (qamrov ham, jami sanoq ham) — aks holda yangi
+    // post eski postning ko'rishlari bilan tug'ilardi.
     env.DB.prepare(
       `DELETE FROM content_views WHERE target_kind = ? AND target_id IN (${idsSql})`
+    ).bind(kind, ...binds),
+    env.DB.prepare(
+      `DELETE FROM content_view_hits WHERE target_kind = ? AND target_id IN (${idsSql})`
     ).bind(kind, ...binds),
   ];
 }
@@ -588,6 +685,7 @@ export async function deleteLikesFor(env, kind, id) {
   await env.DB.batch([
     env.DB.prepare(`DELETE FROM content_likes WHERE target_kind = ? AND target_id = ?`).bind(kind, id),
     env.DB.prepare(`DELETE FROM content_views WHERE target_kind = ? AND target_id = ?`).bind(kind, id),
+    env.DB.prepare(`DELETE FROM content_view_hits WHERE target_kind = ? AND target_id = ?`).bind(kind, id),
   ]);
 }
 
@@ -657,12 +755,25 @@ export async function handle(request, env, url, H) {
   // ── KO'RISH ─────────────────────────────────────────────────────
   // POST /api/content-views/:kind/:id → { counted, count }
   //
-  // Ilova post/Reels ekranda ko'ringanda BIR MARTA yuboradi. Server
-  // bir tomoshabinni bir kontentga bir marta yozadi (PRIMARY KEY),
-  // egasining o'z ko'rishi sanalmaydi. Mehmonlar (kirmagan) IP+UA
-  // hash bilan sanaladi va IP bo'yicha cheklanadi — UA almashtirib
-  // raqam ko'paytirib bo'lmasin. Kirgan foydalanuvchida cheklov
-  // kerak emas: u har kontentga baribir bitta qator yoza oladi.
+  // Ilova odam post/Reels'ga KIRIB uni 2 soniya ko'rganda BIR MARTA
+  // yuboradi; chiqib, qaytib kirib yana 2 soniya ko'rsa — yana bir
+  // marta. Video o'sha joyda aylanib o'ynayotganda qayta yuborilmaydi.
+  // Server har so'rovni +1 qiladi (`content_view_hits`), faqat:
+  //   • egasining o'z ko'rishi sanalmaydi;
+  //   • o'sha tomoshabinning oldingi sanalgan ko'rishidan
+  //     `VIEW_REPEAT_MS` o'tmagan bo'lsa — sanalmaydi (qayta yuborilgan
+  //     nusxa);
+  //   • mehmon (kirmagan) IP+UA hash bilan sanaladi va IP bo'yicha
+  //     cheklanadi (10 daqiqada 120, oshsa 429) — UA almashtirib raqam
+  //     ko'paytirib bo'lmasin;
+  //   • kirgan foydalanuvchi 10 daqiqada `VIEW_USER_LIMIT` dan oshsa —
+  //     xato emas, shunchaki sanalmaydi;
+  //   • bitta tomoshabin bitta kontentga kuniga `VIEW_DAILY_CAP` dan
+  //     ko'p qo'sha olmaydi (skript bilan raqam ko'paytirishga qarshi;
+  //     oddiy odam bunga yetmaydi).
+  // `content_views` (qamrov — necha kishi) ga har so'rovda
+  // `INSERT OR IGNORE` — birinchisi yoziladi, qolgani no-op.
+  // `count` — JAMI ko'rishlar (`SUM(hits)`), `viewsFor()` bilan bir xil.
   const viewMatch = path.match(/^\/api\/content-views\/([a-z_]+)\/(\d+)$/);
   if (viewMatch && method === 'POST') {
     const kind = viewMatch[1];
@@ -675,22 +786,43 @@ export async function handle(request, env, url, H) {
     const user = await H.getCurrentUser(request, env).catch(() => null);
     let counted = false;
     if (!user || user.id !== target.ownerUserId) {
-      let viewer;
+      let viewer = '';
       if (user) {
-        viewer = `u:${user.id}`;
+        if (!(await H.rateLimitD1(env, `cview:u:${user.id}`, VIEW_USER_LIMIT, VIEW_WINDOW_MS))) {
+          viewer = `u:${user.id}`;
+        }
       } else {
-        if (await H.rateLimitD1(env, `cview:${H.reqIp(request)}`, 120, 10 * 60_000)) {
+        if (await H.rateLimitD1(env, `cview:${H.reqIp(request)}`, 120, VIEW_WINDOW_MS)) {
           return H.json({ error: 'too_many_requests' }, 429);
         }
         viewer = `a:${await H.newsVisitorHash(request)}`;
       }
-      const res = await env.DB.prepare(
-        `INSERT OR IGNORE INTO content_views (target_kind, target_id, viewer, created_at) VALUES (?, ?, ?, ?)`
-      ).bind(kind, id, viewer, H.nowTs()).run();
-      counted = Number(res?.meta?.changes || 0) > 0;
+      if (viewer) {
+        // Uchala vaqt BITTA `Date.now()` dan va `nowTs()` formatida:
+        // `last_at <= cutoff` satr solishtiruvi shunda to'g'ri ishlaydi.
+        const nowMs = Date.now();
+        const now = tsAt(nowMs);
+        const cutoff = tsAt(nowMs - VIEW_REPEAT_MS);
+        const day = now.slice(0, 10);
+        // `DO UPDATE ... WHERE` sharti bajarilmasa qator o'zgarmaydi va
+        // `changes` 0 bo'ladi — ya'ni "sanalmadi".
+        const [hit] = await env.DB.batch([
+          env.DB.prepare(
+            `INSERT INTO content_view_hits (target_kind, target_id, viewer, day, hits, last_at)
+             VALUES (?, ?, ?, ?, 1, ?)
+             ON CONFLICT(target_kind, target_id, viewer, day) DO UPDATE
+               SET hits = content_view_hits.hits + 1, last_at = excluded.last_at
+             WHERE content_view_hits.last_at <= ? AND content_view_hits.hits < ${VIEW_DAILY_CAP}`
+          ).bind(kind, id, viewer, day, now, cutoff),
+          env.DB.prepare(
+            `INSERT OR IGNORE INTO content_views (target_kind, target_id, viewer, created_at) VALUES (?, ?, ?, ?)`
+          ).bind(kind, id, viewer, now),
+        ]);
+        counted = Number(hit?.meta?.changes || 0) > 0;
+      }
     }
     const row = await env.DB.prepare(
-      `SELECT COUNT(*) AS n FROM content_views WHERE target_kind = ? AND target_id = ?`
+      `SELECT COALESCE(SUM(hits), 0) AS n FROM content_view_hits WHERE target_kind = ? AND target_id = ?`
     ).bind(kind, id).first();
     return H.json({ counted, count: Number(row?.n) || 0 });
   }
