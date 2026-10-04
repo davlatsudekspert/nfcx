@@ -86,7 +86,10 @@ export async function handle(request, env, url, H) {
     if (request.method !== 'GET') return H.json({ error: 'method_not_allowed' }, 405);
     let rows = [];
     try {
-      const where = ['enabled = 1'];
+      // BOSHQA MUALLIFNING QO'SHIG'I ("... | AI Cover") ochiq ro'yxatga
+      // chiqmaydi: litsenziyasiz cover — mualliflik huquqi xavfi (App
+      // Store 5.2.1). Trek bazada qoladi, admin ro'yxatida ko'rinadi.
+      const where = ['enabled = 1', "LOWER(title) NOT LIKE '%cover%'"];
       const args = [];
       const g = url.searchParams.get('genre');
       if (g && GENRES.includes(g)) { where.push('genre = ?'); args.push(g); }
