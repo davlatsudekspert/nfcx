@@ -227,6 +227,30 @@ async function recentViews(env, now) {
     throw error;
   }
 }
+// MAHSULOT KO'RISHLARI — necha KISHI ko'rgan (butun vaqt). Bir kishi
+// (`u:<id>` yoki mehmon xeshi) har kuni bir qator yozadi; bu yerda
+// kishilar sanaladi (DISTINCT), kunlar emas — Reels'dagi "ko'rishlar"
+// bilan bir xil ma'no. `ids` berilsa — shu tovarlar (sahifa, ≤50),
+// `companyId` berilsa — kompaniyaning hamma tovari bitta so'rovda.
+export async function itemViewCounts(env, { ids = null, companyId = null } = {}) {
+  const out = new Map();
+  if (ids && !ids.length) return out;
+  try {
+    const where = ids
+      ? `item_id IN (${ids.map(() => '?').join(',')})`
+      : `item_id IN (SELECT CAST(id AS TEXT) FROM company_catalog_items WHERE company_id = ?)`;
+    const binds = ids ? ids.map(String) : [companyId];
+    const r = await env.DB.prepare(
+      `SELECT item_id, COUNT(DISTINCT visitor_key) AS n FROM company_catalog_item_views
+        WHERE ${where} GROUP BY item_id`
+    ).bind(...binds).all();
+    for (const x of r.results || []) out.set(String(x.item_id), Number(x.n || 0));
+  } catch (error) {
+    if (!/no such table/i.test(String(error?.message || error))) throw error;
+  }
+  return out;
+}
+
 const SCAN_CAP = 2000;
 const MAX_LIMIT = 50;
 
@@ -403,6 +427,8 @@ export async function handle(request, env, url, H) {
   const total = list.length;
   const start = (page - 1) * limit;
   const items = list.slice(start, start + limit).map(itemJson);
+  const itemViews = await itemViewCounts(env, { ids: items.map((i) => i.id) });
+  for (const i of items) i.views = itemViews.get(String(i.id)) || 0;
 
   return H.json({
     items,
