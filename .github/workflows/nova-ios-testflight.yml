@@ -364,10 +364,19 @@ jobs:
           assert not p['Entitlements'].get('get-task-allow', True), 'not a distribution profile'
           assert p['ExpirationDate'] > datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None), 'profile expired'
           assert 'TAG' in p['Entitlements']['com.apple.developer.nfc.readersession.formats'], 'no NFC TAG'
-          want = plistlib.load(open('ios/Runner/Runner.entitlements', 'rb')).get('com.apple.developer.associated-domains')
-          if want:
-              assert p['Entitlements'].get('com.apple.developer.associated-domains'), \
-                  'profilda Associated Domains yoq — nova-ios-capability.yml ni ishga tushiring'
+          ent_path = 'ios/Runner/Runner.entitlements'
+          ent = plistlib.load(open(ent_path, 'rb'))
+          if ent.get('com.apple.developer.associated-domains') and \
+                  not p['Entitlements'].get('com.apple.developer.associated-domains'):
+              # Profil hali yangilanmagan (portalda Edit → Save qilinmagan):
+              # build to'xtamaydi — Universal Links shu build'da o'chiq,
+              # profil yangilangach keyingi build'da o'zi yoqiladi.
+              del ent['com.apple.developer.associated-domains']
+              plistlib.dump(ent, open(ent_path, 'wb'))
+              print("::warning::Imzo profilida Associated Domains yo'q — bu build Universal Links'siz. "
+                    "developer.apple.com → Profiles → profilni Edit → Save qiling.")
+              with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+                  f.write("- Universal Links: **o'chiq** (profil yangilanmagan)\n")
           print('Profile:', p['Name'], p['UUID'], 'expires', p['ExpirationDate'])
           with open(os.environ['GITHUB_ENV'], 'a') as f:
               f.write('IOS_PROFILE_UUID=' + p['UUID'] + '\n')
