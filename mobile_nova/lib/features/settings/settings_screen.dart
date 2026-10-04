@@ -110,6 +110,11 @@ class SettingsScreen extends ConsumerWidget {
               onTap: () => context.push(Routes.nfcIds),
             ),
             SettingsItem(
+              icon: Icons.insights_rounded,
+              label: l.settingsAnalytics,
+              onTap: () => context.push(Routes.settingsAnalytics),
+            ),
+            SettingsItem(
               icon: Icons.shield_outlined,
               label: l.settingsSecurity,
               onTap: () => context.push(Routes.settingsSecurity),

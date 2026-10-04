@@ -1227,6 +1227,84 @@ abstract class L {
   /// **'Karta ulanmagan'**
   String get nfcNoCard;
 
+  /// No description provided for @settingsAnalytics.
+  ///
+  /// In uz, this message translates to:
+  /// **'Analitika'**
+  String get settingsAnalytics;
+
+  /// No description provided for @analyticsPeriod.
+  ///
+  /// In uz, this message translates to:
+  /// **'Oxirgi {days} kun'**
+  String analyticsPeriod(int days);
+
+  /// No description provided for @analyticsContentViews.
+  ///
+  /// In uz, this message translates to:
+  /// **'Post va Reels ko‘rishlari'**
+  String get analyticsContentViews;
+
+  /// No description provided for @analyticsProfileViews.
+  ///
+  /// In uz, this message translates to:
+  /// **'Profil ko‘rishlari'**
+  String get analyticsProfileViews;
+
+  /// No description provided for @analyticsClicks.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tugma bosishlar'**
+  String get analyticsClicks;
+
+  /// No description provided for @analyticsLikes.
+  ///
+  /// In uz, this message translates to:
+  /// **'Layklar'**
+  String get analyticsLikes;
+
+  /// No description provided for @analyticsAllTime.
+  ///
+  /// In uz, this message translates to:
+  /// **'Profil butun vaqtda: {total} ko‘rish · 30 kunda {unique} noyob tashrifchi'**
+  String analyticsAllTime(String total, String unique);
+
+  /// No description provided for @analyticsByDay.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kunlik ko‘rishlar'**
+  String get analyticsByDay;
+
+  /// No description provided for @analyticsTop.
+  ///
+  /// In uz, this message translates to:
+  /// **'Eng ko‘p ko‘rilganlar'**
+  String get analyticsTop;
+
+  /// No description provided for @analyticsNoPosts.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hali post yoki Reels yo‘q'**
+  String get analyticsNoPosts;
+
+  /// No description provided for @analyticsReel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Reels'**
+  String get analyticsReel;
+
+  /// No description provided for @analyticsPost.
+  ///
+  /// In uz, this message translates to:
+  /// **'Post'**
+  String get analyticsPost;
+
+  /// No description provided for @viewsCount.
+  ///
+  /// In uz, this message translates to:
+  /// **'{count} ko‘rish'**
+  String viewsCount(String count);
+
   /// No description provided for @nfcDeleteConfirm.
   ///
   /// In uz, this message translates to:

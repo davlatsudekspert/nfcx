@@ -117,6 +117,10 @@ final reelsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
 /// Muddat o'tsa — "qayta urinish" holati (bosilsa yangi pleyer).
 const reelsInitTimeout = Duration(seconds: 20);
 
+/// Reel ekranda shuncha turgandan keyin "ko'rildi" deb yuboriladi —
+/// tez aylantirib o'tilgani sanalmaydi.
+const kViewAfter = Duration(seconds: 2);
+
 class SavedReels extends SyncedSaves {
   SavedReels(SavesRepository repo, Prefs prefs)
       : super(repo, SaveKind.reel,
@@ -540,6 +544,36 @@ class _ReelPageState extends ConsumerState<_ReelPage>
   /// Izohlar soni — varaqda yangi izoh yozilsa yangilanadi.
   int? _comments;
 
+  // ── KO'RISHLAR (Instagram kabi) ────────────────────────────────────
+  //
+  // Reel ekranda [kViewAfter] davomida turib qolsa, serverga BIR MARTA
+  // yuboriladi; javobdagi jami son ko'z belgisi yonida chiqadi. Tez
+  // aylantirib o'tilgan reel sanalmaydi. Server bir odamni bir marta
+  // sanaydi, ya'ni qayta ochish raqamni ko'paytirmaydi.
+  int? _views;
+  bool _viewSent = false;
+  Timer? _viewTimer;
+
+  void _armView() {
+    final p = widget.post;
+    if (_viewSent || p.isStory || p.id <= 0) return;
+    if (!(widget.visible && _onStage)) {
+      _viewTimer?.cancel();
+      _viewTimer = null;
+      return;
+    }
+    _viewTimer ??= Timer(kViewAfter, () async {
+      _viewTimer = null;
+      if (!mounted || !widget.visible || !_onStage || _viewSent) return;
+      _viewSent = true;
+      final res = await ref
+          .read(socialRepositoryProvider)
+          .recordView(p.id, company: p.isCompany);
+      if (!mounted) return;
+      if (res case Ok(:final value)) setState(() => _views = value);
+    });
+  }
+
   /// Yurak "portlashi" — ikki marta bosilganda.
   bool _burst = false;
 
@@ -574,6 +608,7 @@ class _ReelPageState extends ConsumerState<_ReelPage>
     super.initState();
     _owner = ref.read(audioOwnerProvider);
     _sync();
+    _armView();
   }
 
   @override
@@ -586,6 +621,7 @@ class _ReelPageState extends ConsumerState<_ReelPage>
     // paytida `setState` chaqirishi mumkin.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _onStage != on) return;
+      _armView();
       if (!on) {
         _controller?.pause();
         _music?.pause();
@@ -606,6 +642,7 @@ class _ReelPageState extends ConsumerState<_ReelPage>
         old.preloadNow != widget.preloadNow) {
       _sync();
     }
+    if (old.visible != widget.visible) _armView();
   }
 
   void _sync() {
@@ -727,6 +764,7 @@ class _ReelPageState extends ConsumerState<_ReelPage>
   @override
   void dispose() {
     _gen++;
+    _viewTimer?.cancel();
     _controller?.dispose();
     _music?.dispose();
     _clock?.dispose();
@@ -1149,6 +1187,9 @@ class _ReelPageState extends ConsumerState<_ReelPage>
                 ),
                 if (p.code.isNotEmpty) ...[
                   const SizedBox(height: Gap.sm),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                   // NFC ID — REELS'NING NFCSTORE IDENTITETI (egasi, 2026-09:
                   // "Instagram nusxasi bo'lmasin"). Muallif shunchaki ism
                   // emas, NFC ID egasi: qora shisha kapsula, champagne
@@ -1188,6 +1229,10 @@ class _ReelPageState extends ConsumerState<_ReelPage>
                         ],
                       ),
                     ),
+                  ),
+                      const SizedBox(width: Gap.sm),
+                      ReelViewsLabel(count: _views ?? p.views),
+                    ],
                   ),
                 ],
                 if (p.music != null) ...[
@@ -1524,4 +1569,41 @@ class _LateSpinnerState extends State<_LateSpinner> {
               color: Colors.white70, strokeWidth: 2),
         )
       : const SizedBox.shrink();
+}
+
+/// Ko'rishlar soni — ko'z belgisi + son (Instagram'dagi kabi).
+///
+/// Belgi va son bitta `Semantics` yozuvida o'qiladi ("1,2 ming
+/// ko'rish"), ekran o'quvchi alohida ikkita narsa demaydi.
+class ReelViewsLabel extends StatelessWidget {
+  const ReelViewsLabel({super.key, required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context);
+    return Semantics(
+      key: const ValueKey('reel-views'),
+      label: l.viewsCount(formatCount(count)),
+      excludeSemantics: true,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.visibility_outlined, size: 15, color: Colors.white),
+          const SizedBox(width: 4),
+          Text(
+            formatCount(count),
+            style: const TextStyle(
+              fontFamily: AppType.sans,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+              shadows: [Shadow(blurRadius: 4, color: Colors.black54)],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

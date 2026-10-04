@@ -60,6 +60,7 @@ void main() {
     Routes.activity,
     Routes.settings,
     Routes.settingsSecurity,
+    Routes.settingsAnalytics,
     Routes.settingsLanguage,
     Routes.settingsTheme,
     Routes.settingsNotifications,

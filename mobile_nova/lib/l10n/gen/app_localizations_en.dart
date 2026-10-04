@@ -594,6 +594,51 @@ class LEn extends L {
   String get nfcNoCard => 'No card linked';
 
   @override
+  String get settingsAnalytics => 'Analytics';
+
+  @override
+  String analyticsPeriod(int days) {
+    return 'Last $days days';
+  }
+
+  @override
+  String get analyticsContentViews => 'Post and Reels views';
+
+  @override
+  String get analyticsProfileViews => 'Profile views';
+
+  @override
+  String get analyticsClicks => 'Button taps';
+
+  @override
+  String get analyticsLikes => 'Likes';
+
+  @override
+  String analyticsAllTime(String total, String unique) {
+    return 'Profile all time: $total views · $unique unique visitors in 30 days';
+  }
+
+  @override
+  String get analyticsByDay => 'Views by day';
+
+  @override
+  String get analyticsTop => 'Most viewed';
+
+  @override
+  String get analyticsNoPosts => 'No posts or Reels yet';
+
+  @override
+  String get analyticsReel => 'Reels';
+
+  @override
+  String get analyticsPost => 'Post';
+
+  @override
+  String viewsCount(String count) {
+    return '$count views';
+  }
+
+  @override
   String get nfcDeleteConfirm => 'Delete this NFC ID? This cannot be undone.';
 
   @override

@@ -165,6 +165,7 @@ abstract final class Routes {
   static const activity = '/activity';
   static const settings = '/settings';
   static const settingsSecurity = '/settings/security';
+  static const settingsAnalytics = '/settings/analytics';
   static const settingsLanguage = '/settings/language';
   static const settingsTheme = '/settings/theme';
   static const settingsNotifications = '/settings/notifications';

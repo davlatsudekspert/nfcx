@@ -1258,9 +1258,14 @@ class Post {
     this.music,
     this.reel = false,
     this.imageSeconds = 10,
+    this.views = 0,
   });
 
   final int id;
+
+  /// Necha KISHI ko'rgan (server `viewCount`, Instagram'dagi
+  /// "ko'rishlar"). Bir odam bir marta sanaladi, egasi sanalmaydi.
+  final int views;
 
   /// Postga qo'yilgan musiqa (NFCSTORE kutubxonasidan) — bo'lmasa `null`.
   final MusicTrack? music;
@@ -1334,9 +1339,10 @@ class Post {
         music: music,
         reel: reel,
         imageSeconds: imageSeconds,
+        views: views,
       );
 
-  Post copyWith({int? likes, bool? liked, bool? saved, int? comments}) => Post(
+  Post copyWith({int? likes, bool? liked, bool? saved, int? comments, int? views}) => Post(
         id: id,
         code: code,
         authorName: authorName,
@@ -1358,6 +1364,7 @@ class Post {
         music: music,
         reel: reel,
         imageSeconds: imageSeconds,
+        views: views ?? this.views,
       );
 
   factory Post.fromJson(Map<String, dynamic> j) {
@@ -1417,6 +1424,7 @@ class Post {
           : null,
       reel: _b(j['reel']),
       imageSeconds: _i(j['imageSeconds'], 10).clamp(3, 60),
+      views: _i(j['viewCount'] ?? j['views']),
     );
   }
 }
@@ -1913,5 +1921,110 @@ class IdOrderDraft {
         price: _i(j['price']),
         paymeLink: _s((j['payLinks'] as Map?)?['payme'] ?? j['payLink']),
         clickLink: _s((j['payLinks'] as Map?)?['click']),
+      );
+}
+
+/// Sozlamalar → Analitika (`GET /api/my/analytics`).
+///
+/// Hammasi foydalanuvchining O'Z kartalari va kompaniyalari bo'yicha.
+/// Profil raqamlari oxirgi [days] kun uchun, [profileTotalViews] esa
+/// kartalardagi umumiy (butun vaqt) ko'rishlar.
+class MyAnalytics {
+  const MyAnalytics({
+    this.days = 30,
+    this.profileViews = 0,
+    this.uniqueVisitors = 0,
+    this.clicks = 0,
+    this.profileTotalViews = 0,
+    this.followers = 0,
+    this.posts = 0,
+    this.contentViews = 0,
+    this.likes = 0,
+    this.comments = 0,
+    this.byDay = const [],
+    this.top = const [],
+  });
+
+  final int days;
+  final int profileViews;
+  final int uniqueVisitors;
+  final int clicks;
+  final int profileTotalViews;
+  final int followers;
+  final int posts;
+  final int contentViews;
+  final int likes;
+  final int comments;
+
+  /// Kontent ko'rishlari kunlar bo'yicha (`YYYY-MM-DD`, son).
+  final List<({String day, int views})> byDay;
+  final List<TopContent> top;
+
+  factory MyAnalytics.fromJson(Map<String, dynamic> j) {
+    Map<String, dynamic> m(dynamic v) =>
+        v is Map ? v.cast<String, dynamic>() : const {};
+    final profile = m(j['profile']);
+    final content = m(j['content']);
+    final days = j['byDay'] is List ? j['byDay'] as List : const [];
+    final top = j['top'] is List ? j['top'] as List : const [];
+    return MyAnalytics(
+      days: _i(j['days'], 30),
+      profileViews: _i(profile['views']),
+      uniqueVisitors: _i(profile['uniqueVisitors']),
+      clicks: _i(profile['clicks']),
+      profileTotalViews: _i(profile['totalViews']),
+      followers: _i(j['followers']),
+      posts: _i(content['posts']),
+      contentViews: _i(content['views']),
+      likes: _i(content['likes']),
+      comments: _i(content['comments']),
+      byDay: [
+        for (final d in days)
+          if (d is Map) (day: _s(d['day']), views: _i(d['views'])),
+      ],
+      top: [
+        for (final t in top)
+          if (t is Map) TopContent.fromJson(t.cast<String, dynamic>()),
+      ],
+    );
+  }
+}
+
+/// Analitikadagi bitta post/Reels qatori.
+class TopContent {
+  const TopContent({
+    required this.id,
+    this.kind = 'post',
+    this.code = '',
+    this.imageUrl = '',
+    this.videoUrl = '',
+    this.caption = '',
+    this.views = 0,
+    this.likes = 0,
+    this.comments = 0,
+  });
+
+  final int id;
+  final String kind;
+  final String code;
+  final String imageUrl;
+  final String videoUrl;
+  final String caption;
+  final int views;
+  final int likes;
+  final int comments;
+
+  bool get isVideo => videoUrl.isNotEmpty;
+
+  factory TopContent.fromJson(Map<String, dynamic> j) => TopContent(
+        id: _i(j['id']),
+        kind: _s(j['kind'], 'post'),
+        code: _s(j['code']),
+        imageUrl: _u(j['imageUrl']),
+        videoUrl: _u(j['videoUrl']),
+        caption: _s(j['caption']),
+        views: _i(j['views']),
+        likes: _i(j['likes']),
+        comments: _i(j['comments']),
       );
 }

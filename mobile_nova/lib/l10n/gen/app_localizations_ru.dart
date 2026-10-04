@@ -590,6 +590,51 @@ class LRu extends L {
   String get nfcNoCard => 'Карта не привязана';
 
   @override
+  String get settingsAnalytics => 'Аналитика';
+
+  @override
+  String analyticsPeriod(int days) {
+    return 'Последние $days дн.';
+  }
+
+  @override
+  String get analyticsContentViews => 'Просмотры постов и Reels';
+
+  @override
+  String get analyticsProfileViews => 'Просмотры профиля';
+
+  @override
+  String get analyticsClicks => 'Нажатия кнопок';
+
+  @override
+  String get analyticsLikes => 'Лайки';
+
+  @override
+  String analyticsAllTime(String total, String unique) {
+    return 'Профиль за всё время: $total просмотров · $unique уникальных за 30 дней';
+  }
+
+  @override
+  String get analyticsByDay => 'Просмотры по дням';
+
+  @override
+  String get analyticsTop => 'Самые просматриваемые';
+
+  @override
+  String get analyticsNoPosts => 'Пока нет постов и Reels';
+
+  @override
+  String get analyticsReel => 'Reels';
+
+  @override
+  String get analyticsPost => 'Пост';
+
+  @override
+  String viewsCount(String count) {
+    return 'Просмотры: $count';
+  }
+
+  @override
   String get nfcDeleteConfirm => 'Удалить этот NFC ID? Действие необратимо.';
 
   @override

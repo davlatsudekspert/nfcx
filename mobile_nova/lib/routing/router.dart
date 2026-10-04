@@ -35,6 +35,7 @@ import '../features/profile/profile_edit_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/settings/news_screen.dart';
 import '../l10n/gen/app_localizations.dart';
+import '../features/settings/analytics_screen.dart';
 import '../features/settings/settings_subscreens.dart';
 import '../features/shop/nfc_id_market.dart';
 import '../features/shop/shop_screens.dart';
@@ -449,6 +450,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
               path: 'security',
               builder: (_, __) => const SecuritySettingsScreen()),
+          GoRoute(
+              path: 'analytics',
+              builder: (_, __) => const AnalyticsScreen()),
           GoRoute(
               path: 'language',
               builder: (_, __) => const LanguageSettingsScreen()),

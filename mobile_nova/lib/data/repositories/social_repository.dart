@@ -84,6 +84,25 @@ class SocialRepository {
 
   Future<Result<void>> deletePost(int id) => _api.delete<void>('/api/posts/$id');
 
+  /// KO'RISH — post/Reels ekranda ko'ringanda BIR MARTA yuboriladi.
+  ///
+  /// Server bir odamni bir kontentga bir marta sanaydi va egasining
+  /// o'z ko'rishini sanamaydi, ya'ni qayta yuborish raqamni
+  /// ko'paytirmaydi. Javob — yangi jami son.
+  Future<Result<int>> recordView(int id, {bool company = false}) async {
+    final res = await _api.post<Map<String, dynamic>>(
+        '/api/content-views/${company ? 'company_post' : 'post'}/$id',
+        const {});
+    return res.map((j) => (j['count'] as num?)?.toInt() ?? 0);
+  }
+
+  /// Sozlamalar → Analitika (`GET /api/my/analytics`).
+  Future<Result<MyAnalytics>> myAnalytics({int days = 30}) async {
+    final res =
+        await _api.get<Map<String, dynamic>>('/api/my/analytics?days=$days');
+    return res.map(MyAnalytics.fromJson);
+  }
+
   /// Post yaratish.
   ///
   /// ## SERVER KUTADIGAN SHAKL — TAXMIN EMAS, O'QILGAN

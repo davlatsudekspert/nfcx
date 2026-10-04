@@ -85,6 +85,19 @@ class FakeSocialRepository extends SocialRepository {
 
   @override
   Future<Result<List<StoryItem>>> storiesOf(String code) async => const Ok([]);
+
+  /// Reels ko'rishi — testlarda tarmoqqa chiqmaydi; chaqiruvlar yoziladi.
+  final viewed = <({int id, bool company})>[];
+
+  @override
+  Future<Result<int>> recordView(int id, {bool company = false}) async {
+    viewed.add((id: id, company: company));
+    return Ok(viewed.length);
+  }
+
+  @override
+  Future<Result<MyAnalytics>> myAnalytics({int days = 30}) async =>
+      const Ok(MyAnalytics());
 }
 
 class FakeDiscoverRepository extends DiscoverRepository {

@@ -593,6 +593,51 @@ class LUz extends L {
   String get nfcNoCard => 'Karta ulanmagan';
 
   @override
+  String get settingsAnalytics => 'Analitika';
+
+  @override
+  String analyticsPeriod(int days) {
+    return 'Oxirgi $days kun';
+  }
+
+  @override
+  String get analyticsContentViews => 'Post va Reels ko‘rishlari';
+
+  @override
+  String get analyticsProfileViews => 'Profil ko‘rishlari';
+
+  @override
+  String get analyticsClicks => 'Tugma bosishlar';
+
+  @override
+  String get analyticsLikes => 'Layklar';
+
+  @override
+  String analyticsAllTime(String total, String unique) {
+    return 'Profil butun vaqtda: $total ko‘rish · 30 kunda $unique noyob tashrifchi';
+  }
+
+  @override
+  String get analyticsByDay => 'Kunlik ko‘rishlar';
+
+  @override
+  String get analyticsTop => 'Eng ko‘p ko‘rilganlar';
+
+  @override
+  String get analyticsNoPosts => 'Hali post yoki Reels yo‘q';
+
+  @override
+  String get analyticsReel => 'Reels';
+
+  @override
+  String get analyticsPost => 'Post';
+
+  @override
+  String viewsCount(String count) {
+    return '$count ko‘rish';
+  }
+
+  @override
   String get nfcDeleteConfirm =>
       'Bu NFC ID o‘chirilsinmi? Bu amalni qaytarib bo‘lmaydi.';
 
