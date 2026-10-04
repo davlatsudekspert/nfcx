@@ -35,7 +35,7 @@ jobs:
   tests:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: mobile_nova
@@ -71,6 +71,19 @@ jobs:
           fi
           tail -3 "$RUNNER_TEMP/test.log"
           echo "- testlar: $(tail -1 "$RUNNER_TEMP/test.log" | grep -o '+[0-9]*' | head -1) o'tdi (Linux)" >> "$GITHUB_STEP_SUMMARY"
+      # Android regressiyasi: o'sha patch'li kod bilan release APK
+      # yig'iladi (umumiy Flutter kodi Android'da ham build bo'ladi).
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android APK regressiya build
+        run: |
+          set -euo pipefail
+          flutter build apk --release --dart-define=NOVA_VERSION=1.1.0
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          ls -la "$APK"
+          echo "- Android APK (release): $(du -h "$APK" | cut -f1) — build OK" >> "$GITHUB_STEP_SUMMARY"
 
   signed:
     needs: tests

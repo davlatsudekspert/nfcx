@@ -1,0 +1,1449 @@
+From 02e4a665c98455b37ece9e9ab79de655a6bd5236 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 4 Oct 2026 00:55:51 +0000
+Subject: [PATCH 8/8] Sozlamalar, Yangiliklar va til tanlash (iOS va Android,
+ umumiy kod)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Egasi (2026-10, iPhone suratlari):
+- Sozlamalar kartasida `ali77099` va `AL`: `user.displayName` ism bo'lmasa
+  email'ning @ gacha qismini qaytaradi — xom login. Endi karta
+  BOSILMAYDIGAN akkaunt xulosasi: ommaviy profil (NFC ID) ismi va
+  avatari, hisobning haqiqiy email'i; ism yo'q bo'lsa faqat email.
+  Tahrirlash — faqat "Profilni tahrirlash" qatori (bitta kirish).
+- Xira matn: Sozlamalarda bo'lim yorlig'i, qiymatlar (Ivory, O‘zbekcha)
+  va chevronlar text3 -> text2 (Ivory 7.4:1, Noir 8:1), qiymat w600,
+  ajratuvchi border2 -> border1. SectionHeader.color ixtiyoriy (sukut
+  o'zgarmagan). Font, o'lcham, oraliq o'zgarmagan.
+- Yangiliklar qora ekran: About'dagi qator `context.push(Routes.discover)`
+  qilardi — Tanlov tabi (StatefulShellRoute branch) shell tashqarisidan
+  push qilinib qora sahifa berardi (Android va iOS). Endi o'z sahifasi
+  /settings/news: saytdagi /api/news (uch tilda), yuklanish, bo'sh
+  ("Hozircha yangiliklar yo‘q"), xato + qayta urinish, batafsil sahifa.
+- Til: birinchi ochilishda (til tanlanmagan) Welcome'da yopib
+  bo'lmaydigan tanlagich, telefon tiliga mos tavsiya; Welcome, kirish,
+  ro'yxatdan o'tish, parol tiklashda ixcham "🌐 UZ" almashtirgich.
+  LocaleController.select bir xil tilni ham saqlaydi (sukutdagi
+  o'zbekcha tanlansa ham eslab qolinadi). Logout tilni o'chirmaydi.
+  Email maslahati va "sahifa topilmadi" tugmasi tarjimaga o'tdi.
+- settings_news_language_test (17), routes_test: settingsNews.
+
+To'liq to'plam 1098 o'tdi, analyze toza.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01WqgHSnzY8F5vsV7piKkJh7
+---
+ mobile_nova/lib/app/providers.dart            |   9 +-
+ mobile_nova/lib/design/widgets/surfaces.dart  |   9 +-
+ .../features/auth/forgot_password_screen.dart |   5 +-
+ .../lib/features/auth/login_screen.dart       |   5 +-
+ .../lib/features/auth/register_screen.dart    |   5 +-
+ .../lib/features/entry/welcome_screen.dart    |  36 ++-
+ .../features/settings/language_picker.dart    | 230 +++++++++++++++
+ .../lib/features/settings/news_screen.dart    | 221 +++++++++++++++
+ .../features/settings/settings_screen.dart    | 105 ++++---
+ .../settings/settings_subscreens.dart         |   4 +-
+ mobile_nova/lib/l10n/arb/app_en.arb           |   8 +-
+ mobile_nova/lib/l10n/arb/app_ru.arb           |   8 +-
+ mobile_nova/lib/l10n/arb/app_uz.arb           |   8 +-
+ .../lib/l10n/gen/app_localizations.dart       |  36 +++
+ .../lib/l10n/gen/app_localizations_en.dart    |  19 ++
+ .../lib/l10n/gen/app_localizations_ru.dart    |  18 ++
+ .../lib/l10n/gen/app_localizations_uz.dart    |  19 ++
+ mobile_nova/lib/routing/router.dart           |   5 +-
+ mobile_nova/lib/routing/routes.dart           |   1 +
+ mobile_nova/test/routes_test.dart             |   1 +
+ .../test/settings_news_language_test.dart     | 268 ++++++++++++++++++
+ 21 files changed, 970 insertions(+), 50 deletions(-)
+ create mode 100644 mobile_nova/lib/features/settings/language_picker.dart
+ create mode 100644 mobile_nova/lib/features/settings/news_screen.dart
+ create mode 100644 mobile_nova/test/settings_news_language_test.dart
+
+diff --git a/mobile_nova/lib/app/providers.dart b/mobile_nova/lib/app/providers.dart
+index 9a8a43eb..be6c8edf 100644
+--- a/mobile_nova/lib/app/providers.dart
++++ b/mobile_nova/lib/app/providers.dart
+@@ -48,11 +48,16 @@ class LocaleController extends StateNotifier<Locale> {
+   static const fallback = Locale('uz');
+   static const supported = [Locale('uz'), Locale('ru'), Locale('en')];
+ 
++  /// Tanlov HAR DOIM saqlanadi — joriy til bilan bir xil bo'lsa ham:
++  /// birinchi ochilishda "O‘zbekcha" (sukutdagi) tanlansa ham u
++  /// eslab qolinishi kerak, aks holda tanlagich qayta-qayta chiqardi.
+   Future<void> select(Locale l) async {
+-    if (l.languageCode == state.languageCode) return;
+-    state = l;
++    if (l.languageCode != state.languageCode) state = l;
+     await _prefs.setLocaleCode(l.languageCode);
+   }
++
++  /// Foydalanuvchi tilni o'zi tanlaganmi (birinchi ochilish tanlagichi).
++  bool get chosen => _prefs.localeCode != null;
+ }
+ 
+ final localeProvider = StateNotifierProvider<LocaleController, Locale>(
+diff --git a/mobile_nova/lib/design/widgets/surfaces.dart b/mobile_nova/lib/design/widgets/surfaces.dart
+index dc156041..16514bf6 100644
+--- a/mobile_nova/lib/design/widgets/surfaces.dart
++++ b/mobile_nova/lib/design/widgets/surfaces.dart
+@@ -244,9 +244,14 @@ class _PressableScaleState extends State<PressableScale> {
+ 
+ /// Bo'lim sarlavhasi: kichik katta-harfli yorliq + ixtiyoriy "Hammasi".
+ class SectionHeader extends StatelessWidget {
+-  const SectionHeader({super.key, required this.title, this.action, this.onAction});
++  const SectionHeader(
++      {super.key, required this.title, this.action, this.onAction, this.color});
+ 
+   final String title;
++
++  /// Yorliq rangi (sukut: `text3`). Sozlamalar `text2` beradi —
++  /// 10.5 px katta harfli yorliq Ivory'da xira o'qilardi.
++  final Color? color;
+   final String? action;
+   final VoidCallback? onAction;
+ 
+@@ -275,7 +280,7 @@ class SectionHeader extends StatelessWidget {
+                 title.toUpperCase(),
+                 maxLines: 2,
+                 overflow: TextOverflow.ellipsis,
+-                style: Theme.of(context).textTheme.labelSmall?.copyWith(color: t.text3),
++                style: Theme.of(context).textTheme.labelSmall?.copyWith(color: color ?? t.text3),
+               ),
+             ),
+             if (action != null)
+diff --git a/mobile_nova/lib/features/auth/forgot_password_screen.dart b/mobile_nova/lib/features/auth/forgot_password_screen.dart
+index 9df7d6f6..8e184848 100644
+--- a/mobile_nova/lib/features/auth/forgot_password_screen.dart
++++ b/mobile_nova/lib/features/auth/forgot_password_screen.dart
+@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:go_router/go_router.dart';
+ 
++import '../settings/language_picker.dart';
+ import '../../core/utils/external_link.dart';
+ import '../../core/utils/validators.dart';
+ import '../../design/tokens/nfc_tokens.dart';
+@@ -97,6 +98,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
+ 
+     return NovaScaffold(
+       showBack: true,
++      // Kirmagan foydalanuvchi ham tilni shu yerda almashtiradi.
++      actions: const [LanguagePill(), SizedBox(width: Gap.sm)],
+       body: NovaScroll(
+         padding:
+             const EdgeInsets.fromLTRB(Gap.xxl, Gap.sm, Gap.xxl, Gap.section),
+@@ -153,7 +156,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
+                     controller: _email,
+                     error: _emailErr,
+                     keyboardType: TextInputType.emailAddress,
+-                    hint: 'siz@example.com',
++                    hint: l.fieldEmailHint,
+                     enabled: !_busy,
+                     onSubmitted: (_) => _send(),
+                   ),
+diff --git a/mobile_nova/lib/features/auth/login_screen.dart b/mobile_nova/lib/features/auth/login_screen.dart
+index 04b354ef..c3a78354 100644
+--- a/mobile_nova/lib/features/auth/login_screen.dart
++++ b/mobile_nova/lib/features/auth/login_screen.dart
+@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:go_router/go_router.dart';
+ 
++import '../settings/language_picker.dart';
+ import '../../core/utils/validators.dart';
+ import '../../design/tokens/nfc_tokens.dart';
+ import '../../design/tokens/shapes.dart';
+@@ -100,6 +101,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
+ 
+     return NovaScaffold(
+       showBack: true,
++      // Kirmagan foydalanuvchi ham tilni shu yerda almashtiradi.
++      actions: const [LanguagePill(), SizedBox(width: Gap.sm)],
+       body: NovaScroll(
+         padding: const EdgeInsets.fromLTRB(Gap.xxl, Gap.sm, Gap.xxl, Gap.section),
+         children: [
+@@ -154,7 +157,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
+                   controller: _email,
+                   error: _emailErr,
+                   keyboardType: TextInputType.emailAddress,
+-                  hint: 'siz@example.com',
++                  hint: l.fieldEmailHint,
+                   enabled: !_busy,
+                 ),
+                 const SizedBox(height: Gap.lg),
+diff --git a/mobile_nova/lib/features/auth/register_screen.dart b/mobile_nova/lib/features/auth/register_screen.dart
+index 0cc87523..abae33c8 100644
+--- a/mobile_nova/lib/features/auth/register_screen.dart
++++ b/mobile_nova/lib/features/auth/register_screen.dart
+@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:go_router/go_router.dart';
+ 
++import '../settings/language_picker.dart';
+ import '../../core/network/api_client.dart';
+ import '../../core/utils/external_link.dart';
+ import '../../core/utils/validators.dart';
+@@ -305,6 +306,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
+ 
+     return NovaScaffold(
+       showBack: true,
++      // Kirmagan foydalanuvchi ham tilni shu yerda almashtiradi.
++      actions: const [LanguagePill(), SizedBox(width: Gap.sm)],
+       onBack: _back,
+       body: Column(
+         children: [
+@@ -408,7 +411,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
+                     controller: _email,
+                     error: _fieldErrors[2],
+                     keyboardType: TextInputType.emailAddress,
+-                    hint: 'siz@example.com',
++                    hint: l.fieldEmailHint,
+                     enabled: !_busy,
+                   ),
+                       // «gmail.com demoqchimisiz?» — bosilsa manzil to'g'rilanadi.
+diff --git a/mobile_nova/lib/features/entry/welcome_screen.dart b/mobile_nova/lib/features/entry/welcome_screen.dart
+index ec6905aa..a3b2dd08 100644
+--- a/mobile_nova/lib/features/entry/welcome_screen.dart
++++ b/mobile_nova/lib/features/entry/welcome_screen.dart
+@@ -1,8 +1,12 @@
+ import 'dart:math' as math;
+ 
+ import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:go_router/go_router.dart';
+ 
++import '../../app/providers.dart';
++import '../settings/language_picker.dart';
++
+ import '../../design/tokens/nfc_tokens.dart';
+ import '../../design/tokens/shapes.dart';
+ import '../../design/widgets/buttons.dart';
+@@ -53,14 +57,14 @@ import 'nfc_card_3d.dart';
+ /// oltin nur nafas oladi, to'lqinlar tarqaladi. Keskin zoom yoki
+ /// silkinish yo'q. Tizimda "animatsiyani kamaytirish" yoqilgan
+ /// bo'lsa harakat UMUMAN bo'lmaydi — karta qiya holda turadi.
+-class WelcomeScreen extends StatefulWidget {
++class WelcomeScreen extends ConsumerStatefulWidget {
+   const WelcomeScreen({super.key});
+ 
+   @override
+-  State<WelcomeScreen> createState() => _WelcomeScreenState();
++  ConsumerState<WelcomeScreen> createState() => _WelcomeScreenState();
+ }
+ 
+-class _WelcomeScreenState extends State<WelcomeScreen>
++class _WelcomeScreenState extends ConsumerState<WelcomeScreen>
+     with SingleTickerProviderStateMixin {
+   late final AnimationController _c;
+ 
+@@ -69,6 +73,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
+     super.initState();
+     _c = AnimationController(vsync: this, duration: const Duration(seconds: 10))
+       ..repeat();
++    // BIRINCHI OCHILISH: til hali tanlanmagan bo'lsa — avval til
++    // (telefon tiliga mos variant belgilangan). Boshqa ekran yo'q.
++    WidgetsBinding.instance.addPostFrameCallback((_) {
++      if (!mounted) return;
++      if (!ref.read(localeProvider.notifier).chosen) {
++        showLanguageSheet(context, ref, firstLaunch: true);
++      }
++    });
+   }
+ 
+   @override
+@@ -112,9 +124,21 @@ class _WelcomeScreenState extends State<WelcomeScreen>
+               // siyrak NFCSTORE yozuvi, ikki yonida champagne chiziq.
+               // Rasm EMAS — `welcome_screen_test` birinchi `Image` ni
+               // qahramon surat deb o'lchaydi.
+-              const Padding(
+-                padding: EdgeInsets.only(top: Gap.lg, bottom: Gap.xs),
+-                child: _Wordmark(),
++              // Brend yozuvi markazda, o'ng tepada ixcham til (UZ/RU/EN).
++              const Stack(
++                alignment: Alignment.center,
++                children: [
++                  Padding(
++                    padding: EdgeInsets.only(top: Gap.lg, bottom: Gap.xs),
++                    child: _Wordmark(),
++                  ),
++                  Positioned(
++                    right: Gap.md,
++                    top: 0,
++                    bottom: 0,
++                    child: LanguagePill(),
++                  ),
++                ],
+               ),
+               // ── TEPA: VIZUAL ──────────────────────────────────
+               //
+diff --git a/mobile_nova/lib/features/settings/language_picker.dart b/mobile_nova/lib/features/settings/language_picker.dart
+new file mode 100644
+index 00000000..caade56e
+--- /dev/null
++++ b/mobile_nova/lib/features/settings/language_picker.dart
+@@ -0,0 +1,230 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++
++import '../../app/providers.dart';
++import '../../design/theme/typography.dart';
++import '../../design/tokens/nfc_tokens.dart';
++import '../../design/tokens/shapes.dart';
++import '../../design/widgets/buttons.dart';
++import '../../design/widgets/surfaces.dart';
++import '../../l10n/gen/app_localizations.dart';
++
++/// TIL TANLASH — birinchi ochilish va ixcham almashtirgich (egasi,
++/// 2026-10: "chet elliklar ham yuklab oladi").
++///
++/// Til nomlari har doim O'Z TILIDA yoziladi (O‘zbekcha / Русский /
++/// English) — tilni bilmagan odam ham o'zinikini topadi.
++const kLanguages = <(String code, String native, String short)>[
++  ('uz', 'O‘zbekcha', 'UZ'),
++  ('ru', 'Русский', 'RU'),
++  ('en', 'English', 'EN'),
++];
++
++String languageShort(String code) =>
++    kLanguages.firstWhere((e) => e.$1 == code, orElse: () => kLanguages.first).$3;
++
++/// Telefon tiliga qarab TAVSIYA (tanlovni foydalanuvchi qiladi).
++/// O'zbekcha va ruscha to'g'ridan-to'g'ri; MDH tillarida rus tili
++/// tushunarliroq; qolgan hammasiga — inglizcha.
++String suggestedLanguage(Locale device) => switch (device.languageCode) {
++      'uz' => 'uz',
++      'ru' || 'kk' || 'ky' || 'tg' || 'be' || 'uk' => 'ru',
++      _ => 'en',
++    };
++
++/// Uch tilli tanlov varag'i. [firstLaunch] — yopib bo'lmaydi, tanlov
++/// tugmasi bilan saqlanadi (keyingi ochilishlarda qayta so'ralmaydi).
++Future<void> showLanguageSheet(BuildContext context, WidgetRef ref,
++    {bool firstLaunch = false}) {
++  final current = firstLaunch
++      ? suggestedLanguage(
++          WidgetsBinding.instance.platformDispatcher.locale)
++      : ref.read(localeProvider).languageCode;
++  return showModalBottomSheet<void>(
++    context: context,
++    useRootNavigator: true,
++    isDismissible: !firstLaunch,
++    enableDrag: !firstLaunch,
++    isScrollControlled: true,
++    backgroundColor: Colors.transparent,
++    builder: (_) => _LanguageSheet(initial: current, firstLaunch: firstLaunch),
++  );
++}
++
++class _LanguageSheet extends ConsumerStatefulWidget {
++  const _LanguageSheet({required this.initial, required this.firstLaunch});
++  final String initial;
++  final bool firstLaunch;
++
++  @override
++  ConsumerState<_LanguageSheet> createState() => _LanguageSheetState();
++}
++
++class _LanguageSheetState extends ConsumerState<_LanguageSheet> {
++  late String _code = widget.initial;
++
++  Future<void> _choose(String code) async {
++    setState(() => _code = code);
++    // UI DARHOL shu tilga o'tadi (varaq ham).
++    await ref.read(localeProvider.notifier).select(Locale(code));
++    if (!widget.firstLaunch && mounted) Navigator.of(context).pop();
++  }
++
++  @override
++  Widget build(BuildContext context) {
++    final l = L.of(context);
++    final t = context.tokens;
++    final text = Theme.of(context).textTheme;
++    return PopScope(
++      canPop: !widget.firstLaunch,
++      child: SafeArea(
++        top: false,
++        child: Padding(
++          padding: const EdgeInsets.all(Gap.md),
++          // Kichik ekran va katta shriftda ham sig'adi (scroll).
++          child: ConstrainedBox(
++            constraints: BoxConstraints(
++                maxHeight: MediaQuery.sizeOf(context).height * .9),
++            child: SingleChildScrollView(
++            child: FloatingSurface(
++            key: const ValueKey('language-sheet'),
++            solid: true,
++            padding: const EdgeInsets.fromLTRB(Gap.lg, Gap.xl, Gap.lg, Gap.lg),
++            borderRadius: BorderRadius.circular(28),
++            child: Column(
++              mainAxisSize: MainAxisSize.min,
++              crossAxisAlignment: CrossAxisAlignment.stretch,
++              children: [
++                Icon(Icons.language_rounded, size: 28, color: t.accent2),
++                const SizedBox(height: Gap.sm),
++                Text(l.langChooseTitle,
++                    textAlign: TextAlign.center,
++                    style: AppType.displayStyle(color: t.text1, size: 24)),
++                const SizedBox(height: Gap.xs),
++                Text(l.langChooseBody,
++                    textAlign: TextAlign.center,
++                    style: text.bodySmall?.copyWith(color: t.text2)),
++                const SizedBox(height: Gap.lg),
++                for (final (code, native, short) in kLanguages) ...[
++                  _LanguageRow(
++                    key: ValueKey('lang-$code'),
++                    native: native,
++                    short: short,
++                    selected: _code == code,
++                    onTap: () => _choose(code),
++                  ),
++                  const SizedBox(height: Gap.sm),
++                ],
++                if (widget.firstLaunch) ...[
++                  const SizedBox(height: Gap.sm),
++                  NovaButton(
++                    key: const ValueKey('lang-continue'),
++                    label: l.actionContinue,
++                    onPressed: () async {
++                      await ref
++                          .read(localeProvider.notifier)
++                          .select(Locale(_code));
++                      if (context.mounted) Navigator.of(context).pop();
++                    },
++                  ),
++                ],
++              ],
++            ),
++          ),
++          ),
++          ),
++        ),
++      ),
++    );
++  }
++}
++
++class _LanguageRow extends StatelessWidget {
++  const _LanguageRow({
++    super.key,
++    required this.native,
++    required this.short,
++    required this.selected,
++    required this.onTap,
++  });
++
++  final String native;
++  final String short;
++  final bool selected;
++  final VoidCallback onTap;
++
++  @override
++  Widget build(BuildContext context) {
++    final t = context.tokens;
++    return PressableScale(
++      onTap: onTap,
++      child: AnimatedContainer(
++        duration: const Duration(milliseconds: 160),
++        padding: const EdgeInsets.symmetric(horizontal: Gap.lg, vertical: 14),
++        decoration: BoxDecoration(
++          color: selected ? t.wash(t.accent2, .10) : t.surface2,
++          borderRadius: BorderRadius.circular(18),
++          border: Border.all(color: selected ? t.accent2 : t.border1),
++        ),
++        child: Row(
++          children: [
++            Text(short, style: AppType.monoStyle(color: t.text2, size: 12)),
++            const SizedBox(width: Gap.md),
++            Expanded(
++              child: Text(native,
++                  style: Theme.of(context)
++                      .textTheme
++                      .bodyLarge
++                      ?.copyWith(color: t.text1)),
++            ),
++            if (selected)
++              Icon(Icons.check_rounded, size: 20, color: t.accent2),
++          ],
++        ),
++      ),
++    );
++  }
++}
++
++/// IXCHAM TIL ALMASHTIRGICH — `🌐 UZ`. Kirmagan foydalanuvchi uchun
++/// birinchi ekranlarda (Welcome, kirish, ro'yxatdan o'tish, parol).
++class LanguagePill extends ConsumerWidget {
++  const LanguagePill({super.key});
++
++  @override
++  Widget build(BuildContext context, WidgetRef ref) {
++    final t = context.tokens;
++    final code = ref.watch(localeProvider).languageCode;
++    return Semantics(
++      button: true,
++      label: L.of(context).settingsLanguage,
++      child: PressableScale(
++        key: const ValueKey('lang-pill'),
++        onTap: () => showLanguageSheet(context, ref),
++        child: SizedBox(
++          height: 48,
++          child: Center(
++            child: Container(
++              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
++              decoration: BoxDecoration(
++                color: t.surfaceSolid,
++                borderRadius: BorderRadius.circular(999),
++                border: Border.all(color: t.border1),
++                boxShadow: t.shadowTiny,
++              ),
++              child: Row(
++                mainAxisSize: MainAxisSize.min,
++                children: [
++                  Icon(Icons.language_rounded, size: 16, color: t.text1),
++                  const SizedBox(width: 6),
++                  Text(languageShort(code),
++                      style: AppType.monoStyle(color: t.text1, size: 12)),
++                ],
++              ),
++            ),
++          ),
++        ),
++      ),
++    );
++  }
++}
+diff --git a/mobile_nova/lib/features/settings/news_screen.dart b/mobile_nova/lib/features/settings/news_screen.dart
+new file mode 100644
+index 00000000..84f187f7
+--- /dev/null
++++ b/mobile_nova/lib/features/settings/news_screen.dart
+@@ -0,0 +1,221 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++
++import '../../app/providers.dart';
++import '../../core/utils/media_url.dart';
++import '../../design/theme/typography.dart';
++import '../../design/tokens/nfc_tokens.dart';
++import '../../design/tokens/shapes.dart';
++import '../../design/widgets/nova_scaffold.dart';
++import '../../design/widgets/states.dart';
++import '../../design/widgets/surfaces.dart';
++import '../../l10n/gen/app_localizations.dart';
++import '../social/media_frame.dart' show mediaImage;
++
++/// SOZLAMALAR -> ILOVA HAQIDA -> YANGILIKLAR (egasi, 2026-10).
++///
++/// ## NIMA UCHUN QORA EKRAN EDI
++///
++/// "Yangiliklar" qatori `context.push(Routes.discover)` qilardi.
++/// `/discover` — pastki navigatsiyadagi Tanlov tabi, ya'ni
++/// `StatefulShellRoute` ichidagi branch. Uni shell'dan TASHQARIDAGI
++/// sahifa (Sozlamalar) ustiga `push` qilish shell'ning ikkinchi
++/// nusxasini qurishga urinadi va qora sahifa qoladi — Android'da ham,
++/// iPhone'da ham (umumiy Flutter kodi). Bundan tashqari u yangilik
++/// emas, katalog edi.
++///
++/// Endi bu — o'z sahifasi: saytdagi `/api/news` (o'sha yangiliklar,
++/// uch tilda). Yuklanish, bo'sh, xato (qayta urinish) holatlari bor —
++/// hech qachon bo'sh qora ekran emas.
++class NewsItem {
++  const NewsItem({
++    required this.id,
++    required this.title,
++    required this.body,
++    required this.imageUrl,
++    required this.date,
++  });
++
++  final int id;
++  final String title;
++  final String body;
++  final String imageUrl;
++  final DateTime? date;
++
++  /// Server elementi -> joriy til. Tarjima bo'sh bo'lsa o'zbekchasi.
++  factory NewsItem.fromJson(Map<String, dynamic> j, String lang) {
++    String pick(String base) {
++      final suffix = switch (lang) { 'ru' => 'Ru', 'en' => 'En', _ => '' };
++      final v = suffix.isEmpty ? '' : '${j['$base$suffix'] ?? ''}'.trim();
++      return v.isNotEmpty ? v : '${j[base] ?? ''}'.trim();
++    }
++
++    return NewsItem(
++      id: (j['id'] as num?)?.toInt() ?? 0,
++      title: pick('title'),
++      body: pick('body'),
++      imageUrl: mediaUrl('${j['imageUrl'] ?? ''}'),
++      date: DateTime.tryParse('${j['createdAt'] ?? ''}'.replaceFirst(' ', 'T')),
++    );
++  }
++}
++
++/// Faqat e'lon qilingan yangiliklar (server ham shuni beradi).
++final newsProvider =
++    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
++  final res = await ref.watch(apiProvider).get<Map<String, dynamic>>('/api/news');
++  final data = res.when(ok: (v) => v, err: (e) => throw e);
++  final list = data['news'];
++  return [
++    if (list is List)
++      for (final e in list)
++        if (e is Map && e['published'] != false) Map<String, dynamic>.from(e),
++  ];
++});
++
++String _date(DateTime? d) {
++  if (d == null) return '';
++  String two(int v) => v.toString().padLeft(2, '0');
++  return '${two(d.day)}.${two(d.month)}.${d.year}';
++}
++
++class NewsScreen extends ConsumerWidget {
++  const NewsScreen({super.key});
++
++  @override
++  Widget build(BuildContext context, WidgetRef ref) {
++    final l = L.of(context);
++    final lang = Localizations.localeOf(context).languageCode;
++    final news = ref.watch(newsProvider);
++
++    return NovaScaffold(
++      title: l.settingsNews,
++      showBack: true,
++      body: news.when(
++        loading: () => const SkeletonList(count: 3, height: 120),
++        error: (e, __) => StatePanel.fromError(context, asAppError(e),
++            onRetry: () => ref.invalidate(newsProvider)),
++        data: (raw) {
++          final items = [for (final j in raw) NewsItem.fromJson(j, lang)];
++          if (items.isEmpty) {
++            return StatePanel(
++              key: const ValueKey('news-empty'),
++              icon: Icons.campaign_outlined,
++              title: l.newsEmpty,
++              message: l.newsEmptyHint,
++            );
++          }
++          return RefreshIndicator(
++            onRefresh: () async => ref.invalidate(newsProvider),
++            child: ListView.separated(
++              key: const ValueKey('news-list'),
++              padding: const EdgeInsets.fromLTRB(
++                  Gap.screenX, Gap.md, Gap.screenX, Gap.section),
++              itemCount: items.length,
++              separatorBuilder: (_, __) => const SizedBox(height: Gap.md),
++              itemBuilder: (context, i) => _NewsCard(item: items[i]),
++            ),
++          );
++        },
++      ),
++    );
++  }
++}
++
++class _NewsCard extends StatelessWidget {
++  const _NewsCard({required this.item});
++  final NewsItem item;
++
++  @override
++  Widget build(BuildContext context) {
++    final t = context.tokens;
++    final text = Theme.of(context).textTheme;
++    return FloatingSurface(
++      key: ValueKey('news-${item.id}'),
++      solid: true,
++      padding: EdgeInsets.zero,
++      borderRadius: BorderRadius.circular(24),
++      onTap: () => _open(context, item),
++      child: ClipRRect(
++        borderRadius: BorderRadius.circular(24),
++        child: Column(
++          crossAxisAlignment: CrossAxisAlignment.start,
++          children: [
++            if (item.imageUrl.isNotEmpty)
++              AspectRatio(
++                aspectRatio: 16 / 9,
++                child: ColoredBox(
++                  color: t.surface2,
++                  child: mediaImage(context, item.imageUrl, fit: BoxFit.cover),
++                ),
++              ),
++            Padding(
++              padding: const EdgeInsets.all(Gap.lg),
++              child: Column(
++                crossAxisAlignment: CrossAxisAlignment.start,
++                children: [
++                  if (item.date != null)
++                    Text(_date(item.date),
++                        style: AppType.monoStyle(color: t.text2, size: 11)),
++                  const SizedBox(height: Gap.xs),
++                  Text(item.title, style: text.titleMedium),
++                  if (item.body.isNotEmpty) ...[
++                    const SizedBox(height: Gap.xs),
++                    Text(item.body,
++                        maxLines: 3,
++                        overflow: TextOverflow.ellipsis,
++                        style: text.bodyMedium),
++                  ],
++                ],
++              ),
++            ),
++          ],
++        ),
++      ),
++    );
++  }
++
++  static void _open(BuildContext context, NewsItem item) {
++    Navigator.of(context).push(MaterialPageRoute<void>(
++      builder: (_) => _NewsDetail(item: item),
++    ));
++  }
++}
++
++class _NewsDetail extends StatelessWidget {
++  const _NewsDetail({required this.item});
++  final NewsItem item;
++
++  @override
++  Widget build(BuildContext context) {
++    final t = context.tokens;
++    final text = Theme.of(context).textTheme;
++    return NovaScaffold(
++      showBack: true,
++      body: NovaScroll(
++        children: [
++          if (item.imageUrl.isNotEmpty)
++            ClipRRect(
++              borderRadius: BorderRadius.circular(24),
++              child: AspectRatio(
++                aspectRatio: 16 / 9,
++                child: ColoredBox(
++                  color: t.surface2,
++                  child: mediaImage(context, item.imageUrl, fit: BoxFit.cover),
++                ),
++              ),
++            ),
++          const SizedBox(height: Gap.lg),
++          if (item.date != null)
++            Text(_date(item.date),
++                style: AppType.monoStyle(color: t.text2, size: 11)),
++          const SizedBox(height: Gap.xs),
++          Text(item.title, style: text.titleLarge),
++          const SizedBox(height: Gap.md),
++          SelectableText(item.body, style: text.bodyLarge),
++          const SizedBox(height: Gap.section),
++        ],
++      ),
++    );
++  }
++}
+diff --git a/mobile_nova/lib/features/settings/settings_screen.dart b/mobile_nova/lib/features/settings/settings_screen.dart
+index ca773bb5..12497d63 100644
+--- a/mobile_nova/lib/features/settings/settings_screen.dart
++++ b/mobile_nova/lib/features/settings/settings_screen.dart
+@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:go_router/go_router.dart';
+ 
++import '../../app/profile_context.dart';
+ import '../../app/providers.dart';
+ import '../../design/tokens/nfc_tokens.dart';
+ import '../../design/tokens/shapes.dart';
+@@ -32,40 +33,66 @@ class SettingsScreen extends ConsumerWidget {
+     final l = L.of(context);
+     final t = context.tokens;
+     final user = ref.watch(currentUserProvider);
++    final personal = ref.watch(activePersonalProvider);
+ 
+     return NovaScaffold(
+       title: l.settings,
+       showBack: true,
+       body: NovaScroll(
+         children: [
++          // AKKAUNT XULOSASI — BOSILMAYDI (egasi, 2026-10, iPhone surati).
++          //
++          // Ilgari bu yerda `user.displayName` turardi: hisobda ism yo'q
++          // bo'lsa u email'ning `@` gacha qismi (`ali77099`) — XOM login,
++          // avatar o'rnida esa `AL`. Karta bosilsa "Profilni tahrirlash"
++          // ochilardi — pastdagi qator bilan bir xil ish (ikki kirish).
++          //
++          // Endi: ommaviy profil (NFC ID) ismi va avatari, hisobning
++          // haqiqiy email'i; ism bo'lmasa — faqat email. Tahrirlash —
++          // FAQAT pastdagi "Profilni tahrirlash" qatori.
+           if (user != null)
+-            FloatingSurface(
+-              solid: true,
+-              onTap: () => context.push(Routes.profileEdit),
+-              child: Row(
+-                children: [
+-                  Avatar(url: user.avatarUrl, initials: user.initials, size: 52),
+-                  const SizedBox(width: Gap.md),
+-                  Expanded(
+-                    child: Column(
+-                      crossAxisAlignment: CrossAxisAlignment.start,
+-                      children: [
+-                        Text(user.displayName,
+-                            maxLines: 1,
+-                            overflow: TextOverflow.ellipsis,
+-                            style: Theme.of(context).textTheme.titleMedium),
+-                        Text(user.email,
+-                            maxLines: 1,
+-                            overflow: TextOverflow.ellipsis,
+-                            style: Theme.of(context).textTheme.bodySmall),
+-                      ],
++            Builder(builder: (context) {
++              final name = [personal?.name ?? '', user.name]
++                  .map((e) => e.trim())
++                  .firstWhere((e) => e.isNotEmpty, orElse: () => '');
++              final avatar = (personal?.avatarUrl ?? '').isNotEmpty
++                  ? personal!.avatarUrl
++                  : user.avatarUrl;
++              final text = Theme.of(context).textTheme;
++              return FloatingSurface(
++                key: const ValueKey('settings-account'),
++                solid: true,
++                child: Row(
++                  children: [
++                    Avatar(
++                        url: avatar,
++                        initials: _initials(name.isNotEmpty ? name : user.email),
++                        size: 52),
++                    const SizedBox(width: Gap.md),
++                    Expanded(
++                      child: Column(
++                        crossAxisAlignment: CrossAxisAlignment.start,
++                        children: [
++                          if (name.isNotEmpty)
++                            Text(name,
++                                maxLines: 1,
++                                overflow: TextOverflow.ellipsis,
++                                style: text.titleMedium),
++                          if (user.email.isNotEmpty)
++                            Text(user.email,
++                                maxLines: 1,
++                                overflow: TextOverflow.ellipsis,
++                                style: name.isNotEmpty
++                                    ? text.bodySmall?.copyWith(color: t.text2)
++                                    : text.titleMedium),
++                        ],
++                      ),
+                     ),
+-                  ),
+-                  Icon(Icons.chevron_right_rounded, size: 20, color: t.text3),
+-                ],
+-              ),
+-            ),
+-          SectionHeader(title: l.settingsAccount),
++                  ],
++                ),
++              );
++            }),
++          SectionHeader(color: t.text2, title: l.settingsAccount),
+           SettingsGroup(items: [
+             SettingsItem(
+               icon: Icons.person_outline_rounded,
+@@ -88,7 +115,7 @@ class SettingsScreen extends ConsumerWidget {
+               onTap: () => context.push(Routes.settingsSecurity),
+             ),
+           ]),
+-          SectionHeader(title: l.settingsAppearance),
++          SectionHeader(color: t.text2, title: l.settingsAppearance),
+           SettingsGroup(items: [
+             SettingsItem(
+               icon: Icons.palette_outlined,
+@@ -123,7 +150,7 @@ class SettingsScreen extends ConsumerWidget {
+           // to'lov haqida hech narsa ko'rinmasin. Jismoniy NFC karta
+           // buyurtmalari qoladi: jismoniy tovar Play Billing'dan ozod
+           // (`shop/store_policy.dart`).
+-          SectionHeader(title: l.settingsShopSection),
++          SectionHeader(color: t.text2, title: l.settingsShopSection),
+           SettingsGroup(items: [
+             SettingsItem(
+               icon: Icons.receipt_long_outlined,
+@@ -136,7 +163,7 @@ class SettingsScreen extends ConsumerWidget {
+               onTap: () => context.push(Routes.settingsReferral),
+             ),
+           ]),
+-          SectionHeader(title: l.settingsSupport),
++          SectionHeader(color: t.text2, title: l.settingsSupport),
+           SettingsGroup(items: [
+             SettingsItem(
+               icon: Icons.support_agent_rounded,
+@@ -195,6 +222,15 @@ class SettingsScreen extends ConsumerWidget {
+     );
+   }
+ 
++  static String _initials(String s) {
++    final parts = s.split('@').first.trim().split(RegExp(r'\s+'));
++    if (parts.length >= 2 && parts[0].isNotEmpty && parts[1].isNotEmpty) {
++      return (parts[0][0] + parts[1][0]).toUpperCase();
++    }
++    final d = parts.first;
++    return (d.length >= 2 ? d.substring(0, 2) : d).toUpperCase();
++  }
++
+   String _themeName(L l, String id) => switch (id) {
+         'graphite' => l.themeGraphite,
+         'ocean' => l.themeOcean,
+@@ -270,7 +306,8 @@ class SettingsGroup extends StatelessWidget {
+             if (i > 0)
+               Padding(
+                 padding: const EdgeInsets.only(left: 52),
+-                child: Divider(height: 1, color: t.border2),
++                // Ajratuvchi Ivory'da deyarli ko'rinmasdi (border2 7.5%).
++                child: Divider(height: 1, color: t.border1),
+               ),
+             _Row(item: items[i]),
+           ],
+@@ -313,7 +350,11 @@ class _Row extends StatelessWidget {
+                   item.value!,
+                   maxLines: 1,
+                   overflow: TextOverflow.ellipsis,
+-                  style: Theme.of(context).textTheme.labelMedium,
++                  // Qiymat (Ivory, O‘zbekcha) — ikkilamchi, lekin o'qiladi.
++                  style: Theme.of(context)
++                      .textTheme
++                      .labelMedium
++                      ?.copyWith(color: t.text2, fontWeight: FontWeight.w600),
+                 ),
+               ),
+             if (item.trailing != null)
+@@ -321,7 +362,7 @@ class _Row extends StatelessWidget {
+             else if (item.onTap != null)
+               Padding(
+                 padding: const EdgeInsets.only(left: 4),
+-                child: Icon(Icons.chevron_right_rounded, size: 18, color: t.text3),
++                child: Icon(Icons.chevron_right_rounded, size: 18, color: t.text2),
+               ),
+           ],
+         ),
+diff --git a/mobile_nova/lib/features/settings/settings_subscreens.dart b/mobile_nova/lib/features/settings/settings_subscreens.dart
+index b0cc34fb..530f1d7c 100644
+--- a/mobile_nova/lib/features/settings/settings_subscreens.dart
++++ b/mobile_nova/lib/features/settings/settings_subscreens.dart
+@@ -1400,7 +1400,9 @@ class AboutScreen extends StatelessWidget {
+           SectionHeader(title: l.settingsNews),
+           FloatingSurface(
+             solid: true,
+-            onTap: () => context.push(Routes.discover),
++            // O'z sahifasi — Tanlov tabi (shell branch) EMAS: uni shell
++            // tashqarisidan push qilish qora sahifa berardi (news_screen.dart).
++            onTap: () => context.push(Routes.settingsNews),
+             child: Row(
+               children: [
+                 Icon(Icons.campaign_rounded, size: 19, color: t.accent2),
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index 00103cff..38ab75c7 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -1013,5 +1013,11 @@
+   "cardSheetTitle": "Card number",
+   "cardCopy": "Copy number",
+   "cardCopied": "Card number copied",
+-  "cardQrNote": "The QR code contains only the card number — it is not a payment link."
++  "cardQrNote": "The QR code contains only the card number — it is not a payment link.",
++  "newsEmpty": "No news yet",
++  "newsEmptyHint": "New announcements will appear here.",
++  "langChooseTitle": "Choose your language",
++  "langChooseBody": "You can change it later in Settings → Language.",
++  "fieldEmailHint": "you@example.com",
++  "notFoundHome": "Home"
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index 9e5828ae..ab94edc4 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -1013,5 +1013,11 @@
+   "cardSheetTitle": "Номер карты",
+   "cardCopy": "Скопировать номер",
+   "cardCopied": "Номер карты скопирован",
+-  "cardQrNote": "В QR-коде только номер карты — это не ссылка на оплату."
++  "cardQrNote": "В QR-коде только номер карты — это не ссылка на оплату.",
++  "newsEmpty": "Пока новостей нет",
++  "newsEmptyHint": "Новые объявления появятся здесь.",
++  "langChooseTitle": "Выберите язык",
++  "langChooseBody": "Позже его можно изменить в Настройки → Язык.",
++  "fieldEmailHint": "vy@example.com",
++  "notFoundHome": "На главную"
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index 991973a2..00edff2b 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -1125,5 +1125,11 @@
+   "cardQrNote": "QR kodda faqat karta raqami yozilgan — bu to‘lov havolasi emas.",
+   "@contactCard": {
+     "description": "Aloqa qatoridagi plastik (bank) karta tugmasi — bosilsa raqam, QR va nusxalash oynasi."
+-  }
++  },
++  "newsEmpty": "Hozircha yangiliklar yo‘q",
++  "newsEmptyHint": "Yangi e’lonlar shu yerda paydo bo‘ladi.",
++  "langChooseTitle": "Tilni tanlang",
++  "langChooseBody": "Keyinroq Sozlamalar → Til orqali o‘zgartirishingiz mumkin.",
++  "fieldEmailHint": "siz@example.com",
++  "notFoundHome": "Bosh sahifa"
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index 6a49357c..fb393e0f 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -5378,6 +5378,42 @@ abstract class L {
+   /// In uz, this message translates to:
+   /// **'QR kodda faqat karta raqami yozilgan — bu to‘lov havolasi emas.'**
+   String get cardQrNote;
++
++  /// No description provided for @newsEmpty.
++  ///
++  /// In uz, this message translates to:
++  /// **'Hozircha yangiliklar yo‘q'**
++  String get newsEmpty;
++
++  /// No description provided for @newsEmptyHint.
++  ///
++  /// In uz, this message translates to:
++  /// **'Yangi e’lonlar shu yerda paydo bo‘ladi.'**
++  String get newsEmptyHint;
++
++  /// No description provided for @langChooseTitle.
++  ///
++  /// In uz, this message translates to:
++  /// **'Tilni tanlang'**
++  String get langChooseTitle;
++
++  /// No description provided for @langChooseBody.
++  ///
++  /// In uz, this message translates to:
++  /// **'Keyinroq Sozlamalar → Til orqali o‘zgartirishingiz mumkin.'**
++  String get langChooseBody;
++
++  /// No description provided for @fieldEmailHint.
++  ///
++  /// In uz, this message translates to:
++  /// **'siz@example.com'**
++  String get fieldEmailHint;
++
++  /// No description provided for @notFoundHome.
++  ///
++  /// In uz, this message translates to:
++  /// **'Bosh sahifa'**
++  String get notFoundHome;
+ }
+ 
+ class _LDelegate extends LocalizationsDelegate<L> {
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index 05a561b1..1d664915 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -2818,4 +2818,23 @@ class LEn extends L {
+   @override
+   String get cardQrNote =>
+       'The QR code contains only the card number — it is not a payment link.';
++
++  @override
++  String get newsEmpty => 'No news yet';
++
++  @override
++  String get newsEmptyHint => 'New announcements will appear here.';
++
++  @override
++  String get langChooseTitle => 'Choose your language';
++
++  @override
++  String get langChooseBody =>
++      'You can change it later in Settings → Language.';
++
++  @override
++  String get fieldEmailHint => 'you@example.com';
++
++  @override
++  String get notFoundHome => 'Home';
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index 2757a69a..b29a9b67 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -2815,4 +2815,22 @@ class LRu extends L {
+   @override
+   String get cardQrNote =>
+       'В QR-коде только номер карты — это не ссылка на оплату.';
++
++  @override
++  String get newsEmpty => 'Пока новостей нет';
++
++  @override
++  String get newsEmptyHint => 'Новые объявления появятся здесь.';
++
++  @override
++  String get langChooseTitle => 'Выберите язык';
++
++  @override
++  String get langChooseBody => 'Позже его можно изменить в Настройки → Язык.';
++
++  @override
++  String get fieldEmailHint => 'vy@example.com';
++
++  @override
++  String get notFoundHome => 'На главную';
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index 4a98e476..f6339783 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -2822,4 +2822,23 @@ class LUz extends L {
+   @override
+   String get cardQrNote =>
+       'QR kodda faqat karta raqami yozilgan — bu to‘lov havolasi emas.';
++
++  @override
++  String get newsEmpty => 'Hozircha yangiliklar yo‘q';
++
++  @override
++  String get newsEmptyHint => 'Yangi e’lonlar shu yerda paydo bo‘ladi.';
++
++  @override
++  String get langChooseTitle => 'Tilni tanlang';
++
++  @override
++  String get langChooseBody =>
++      'Keyinroq Sozlamalar → Til orqali o‘zgartirishingiz mumkin.';
++
++  @override
++  String get fieldEmailHint => 'siz@example.com';
++
++  @override
++  String get notFoundHome => 'Bosh sahifa';
+ }
+diff --git a/mobile_nova/lib/routing/router.dart b/mobile_nova/lib/routing/router.dart
+index 31428d97..4ea40b13 100644
+--- a/mobile_nova/lib/routing/router.dart
++++ b/mobile_nova/lib/routing/router.dart
+@@ -33,6 +33,8 @@ import '../features/social/featured_screen.dart';
+ import '../features/profile/follow_list_screen.dart';
+ import '../features/profile/profile_edit_screen.dart';
+ import '../features/settings/settings_screen.dart';
++import '../features/settings/news_screen.dart';
++import '../l10n/gen/app_localizations.dart';
+ import '../features/settings/settings_subscreens.dart';
+ import '../features/shop/nfc_id_market.dart';
+ import '../features/shop/shop_screens.dart';
+@@ -470,6 +472,7 @@ final routerProvider = Provider<GoRouter>((ref) {
+           GoRoute(path: 'premium', builder: (_, __) => const PremiumScreen()),
+           GoRoute(path: 'support', builder: (_, __) => const SupportScreen()),
+           GoRoute(path: 'about', builder: (_, __) => const AboutScreen()),
++          GoRoute(path: 'news', builder: (_, __) => const NewsScreen()),
+         ],
+       ),
+     ],
+@@ -502,7 +505,7 @@ class _RouteError extends StatelessWidget {
+                 const SizedBox(height: 20),
+                 FilledButton(
+                   onPressed: () => GoRouter.of(context).go(Routes.home),
+-                  child: const Text('Home'),
++                  child: Text(L.of(context).notFoundHome),
+                 ),
+               ],
+             ),
+diff --git a/mobile_nova/lib/routing/routes.dart b/mobile_nova/lib/routing/routes.dart
+index 1469536c..0a4969f7 100644
+--- a/mobile_nova/lib/routing/routes.dart
++++ b/mobile_nova/lib/routing/routes.dart
+@@ -174,5 +174,6 @@ abstract final class Routes {
+   static const settingsPremium = '/settings/premium';
+   static const settingsSupport = '/settings/support';
+   static const settingsAbout = '/settings/about';
++  static const settingsNews = '/settings/news';
+   static const paymentHistory = '/settings/payment/history';
+ }
+diff --git a/mobile_nova/test/routes_test.dart b/mobile_nova/test/routes_test.dart
+index e3cb9761..5bd76a5c 100644
+--- a/mobile_nova/test/routes_test.dart
++++ b/mobile_nova/test/routes_test.dart
+@@ -69,6 +69,7 @@ void main() {
+     Routes.settingsPremium,
+     Routes.settingsSupport,
+     Routes.settingsAbout,
++    Routes.settingsNews,
+     Routes.paymentHistory,
+     // `giftOffers` bu yerda YO'Q edi — yangi meta-sinov topdi.
+     Routes.giftOffers,
+diff --git a/mobile_nova/test/settings_news_language_test.dart b/mobile_nova/test/settings_news_language_test.dart
+new file mode 100644
+index 00000000..625b9293
+--- /dev/null
++++ b/mobile_nova/test/settings_news_language_test.dart
+@@ -0,0 +1,268 @@
++import 'dart:io';
++import 'dart:math' as math;
++
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/app/profile_context.dart';
++import 'package:nfcstore_nova/app/providers.dart';
++import 'package:nfcstore_nova/core/errors/app_error.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
++import 'package:nfcstore_nova/design/widgets/states.dart';
++import 'package:nfcstore_nova/design/widgets/surfaces.dart';
++import 'package:nfcstore_nova/features/auth/session.dart';
++import 'package:nfcstore_nova/features/entry/welcome_screen.dart';
++import 'package:nfcstore_nova/features/settings/language_picker.dart';
++import 'package:nfcstore_nova/features/settings/news_screen.dart';
++import 'package:nfcstore_nova/features/settings/settings_screen.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
++import 'package:nfcstore_nova/routing/routes.dart';
++
++import 'helpers.dart';
++
++/// SOZLAMALAR, YANGILIKLAR VA TIL (egasi, 2026-10, iPhone suratlari).
++const _user = User(id: 7, email: 'ali77099@gmail.com');
++const _id = NfcId(code: 'VIP001', name: 'Muhammad', avatarUrl: '');
++
++double _lum(Color c) {
++  double ch(double v) =>
++      v <= .03928 ? v / 12.92 : math.pow((v + .055) / 1.055, 2.4).toDouble();
++  return .2126 * ch(c.r) + .7152 * ch(c.g) + .0722 * ch(c.b);
++}
++
++double contrast(Color a, Color b) {
++  final x = _lum(a), y = _lum(b);
++  return (math.max(x, y) + .05) / (math.min(x, y) + .05);
++}
++
++Future<void> _settings(WidgetTester tester, NfcTokens tokens,
++    {NfcId? personal = _id}) async {
++  tester.view.physicalSize = const Size(393 * 3, 1700 * 3);
++  tester.view.devicePixelRatio = 3;
++  addTearDown(tester.view.reset);
++  final base = await testOverrides();
++  await tester.pumpWidget(ProviderScope(
++    overrides: [
++      ...base,
++      currentUserProvider.overrideWithValue(_user),
++      activePersonalProvider.overrideWithValue(personal),
++    ],
++    child: wrapScreen(const SettingsScreen(), tokens: tokens),
++  ));
++  await settle(tester, frames: 8);
++}
++
++Widget _news(Override o, {NfcTokens? tokens}) =>
++    FutureBuilder(
++      future: testOverrides(),
++      builder: (_, s) => !s.hasData
++          ? const SizedBox()
++          : ProviderScope(
++              overrides: [...s.data!, o],
++              child: wrapScreen(const NewsScreen(), tokens: tokens),
++            ),
++    );
++
++void main() {
++  group('Sozlamalar — akkaunt kartasi', () {
++    testWidgets('xom login (ali77099) yo‘q, real ism va email bor',
++        (tester) async {
++      await _settings(tester, NfcTokens.ivory);
++      final card = find.byKey(const ValueKey('settings-account'));
++      expect(card, findsOneWidget);
++      expect(find.descendant(of: card, matching: find.text('Muhammad')),
++          findsOneWidget);
++      expect(find.descendant(of: card, matching: find.text('ali77099@gmail.com')),
++          findsOneWidget);
++      expect(find.text('ali77099'), findsNothing,
++          reason: 'email’dan olingan xom login ko‘rinmasligi kerak');
++    });
++
++    testWidgets('ism yo‘q bo‘lsa — faqat email, login emas', (tester) async {
++      await _settings(tester, NfcTokens.ivory, personal: null);
++      expect(find.text('ali77099'), findsNothing);
++      expect(find.text('ali77099@gmail.com'), findsOneWidget);
++    });
++
++    testWidgets('profilni tahrirlash — bitta kirish (karta bosilmaydi)',
++        (tester) async {
++      await _settings(tester, NfcTokens.ivory);
++      final card = tester.widget<FloatingSurface>(
++          find.byKey(const ValueKey('settings-account')));
++      expect(card.onTap, isNull, reason: 'karta tahrirlashni takrorlaydi');
++      expect(find.text(L.of(tester.element(find.byType(SettingsScreen))).profileEdit),
++          findsOneWidget);
++      final src = File('lib/features/settings/settings_screen.dart')
++          .readAsStringSync();
++      expect(RegExp(r'Routes\.profileEdit').allMatches(src).length, 1,
++          reason: 'profileEdit ga faqat bitta qator olib borishi kerak');
++    });
++
++    for (final theme in [('Ivory', NfcTokens.ivory), ('Noir', NfcTokens.noir)]) {
++      testWidgets('${theme.$1}: bo‘lim, qiymat, chevron — o‘qiladi (≥4.5:1)',
++          (tester) async {
++        await _settings(tester, theme.$2);
++        final t = theme.$2;
++        final header = tester.widget<SectionHeader>(find.byType(SectionHeader).first);
++        expect(header.color, t.text2);
++        for (final bg in [t.surfaceSolid, t.bg1]) {
++          expect(contrast(t.text2, bg), greaterThanOrEqualTo(4.5));
++        }
++        final chevrons = tester
++            .widgetList<Icon>(find.byIcon(Icons.chevron_right_rounded))
++            .map((i) => i.color)
++            .toSet();
++        expect(chevrons, {t.text2});
++        final value = tester.widget<Text>(find.text(
++            L.of(tester.element(find.byType(SettingsScreen))).langUz));
++        expect(value.style?.color, t.text2);
++      });
++    }
++  });
++
++  group('Yangiliklar — hech qachon qora ekran emas', () {
++    test('Ilova haqida -> Yangiliklar o‘z sahifasiga (Tanlov tabiga emas)', () {
++      final src = File('lib/features/settings/settings_subscreens.dart')
++          .readAsStringSync();
++      final about = src.substring(src.indexOf('class AboutScreen'));
++      expect(about, contains('Routes.settingsNews'));
++      expect(about, isNot(contains('Routes.discover')),
++          reason: 'shell branch’ni push qilish qora sahifa beradi');
++      expect(Routes.settingsNews, '/settings/news');
++    });
++
++    for (final theme in [NfcTokens.ivory, NfcTokens.noir]) {
++      testWidgets('yangiliklar ro‘yxati (${theme.id})', (tester) async {
++        await tester.pumpWidget(_news(newsProvider.overrideWith((_) async => [
++              {
++                'id': 1,
++                'title': 'Sarlavha',
++                'titleEn': 'Headline',
++                'body': 'Matn',
++                'imageUrl': '',
++                'createdAt': '2026-09-26 07:51:22.176+00',
++                'published': true,
++              }
++            ]), tokens: theme));
++        await settle(tester, frames: 8);
++        expect(find.byKey(const ValueKey('news-list')), findsOneWidget);
++        expect(find.text('Sarlavha'), findsOneWidget);
++        expect(find.text('26.09.2026'), findsOneWidget);
++      });
++    }
++
++    testWidgets('bo‘sh — "Hozircha yangiliklar yo‘q"', (tester) async {
++      await tester
++          .pumpWidget(_news(newsProvider.overrideWith((_) async => [])));
++      await settle(tester, frames: 8);
++      expect(find.byKey(const ValueKey('news-empty')), findsOneWidget);
++      expect(find.text('Hozircha yangiliklar yo‘q'), findsOneWidget);
++    });
++
++    testWidgets('xato — qayta urinish tugmasi', (tester) async {
++      await tester.pumpWidget(_news(newsProvider.overrideWith(
++          (_) async => throw const AppError(AppErrorKind.offline))));
++      await settle(tester, frames: 8);
++      expect(find.byType(StatePanel), findsOneWidget);
++      expect(find.text('Qayta urinish'), findsOneWidget);
++    });
++
++    test('tarjima: til bo‘yicha sarlavha, bo‘sh bo‘lsa o‘zbekcha', () {
++      final j = {'id': 1, 'title': 'Uz', 'titleRu': '', 'titleEn': 'En'};
++      expect(NewsItem.fromJson(j, 'en').title, 'En');
++      expect(NewsItem.fromJson(j, 'ru').title, 'Uz');
++      expect(NewsItem.fromJson(j, 'uz').title, 'Uz');
++    });
++  });
++
++  group('Til — birinchi ochilish', () {
++    Future<ProviderContainer> app(WidgetTester tester) async {
++      tester.view.physicalSize = const Size(390 * 3, 844 * 3);
++      tester.view.devicePixelRatio = 3;
++      addTearDown(tester.view.reset);
++      final c = ProviderContainer(
++          overrides: [...await testOverrides(signedIn: false)]);
++      addTearDown(c.dispose);
++      await tester.pumpWidget(UncontrolledProviderScope(
++        container: c,
++        child: Consumer(
++          builder: (_, ref, __) => wrapScreen(const WelcomeScreen(),
++              locale: ref.watch(localeProvider)),
++        ),
++      ));
++      await settle(tester, frames: 10);
++      return c;
++    }
++
++    testWidgets('yangi o‘rnatish -> tanlagich; English darhol va saqlanadi',
++        (tester) async {
++      final c = await app(tester);
++      expect(find.byKey(const ValueKey('language-sheet')), findsOneWidget);
++      await tester.tap(find.byKey(const ValueKey('lang-en')));
++      await settle(tester, frames: 6);
++      expect(find.text('Choose your language'), findsOneWidget,
++          reason: 'UI darhol English bo‘lishi kerak');
++      await tester.tap(find.byKey(const ValueKey('lang-continue')));
++      await settle(tester, frames: 10);
++      expect(find.byKey(const ValueKey('language-sheet')), findsNothing);
++      expect(c.read(prefsProvider).localeCode, 'en');
++      expect(c.read(localeProvider).languageCode, 'en');
++
++      // Qayta ochilish: tanlov saqlangan — tanlagich chiqmaydi.
++      final again = LocaleController(c.read(prefsProvider));
++      expect(again.chosen, isTrue);
++      expect(again.state.languageCode, 'en');
++    });
++
++    testWidgets('sukutdagi o‘zbekcha tanlansa ham eslab qolinadi',
++        (tester) async {
++      final c = await app(tester);
++      await tester.tap(find.byKey(const ValueKey('lang-uz')));
++      await settle(tester, frames: 4);
++      await tester.tap(find.byKey(const ValueKey('lang-continue')));
++      await settle(tester, frames: 8);
++      expect(c.read(prefsProvider).localeCode, 'uz');
++    });
++
++    testWidgets('ixcham tugma (UZ) -> 3 til; Русский tanlanadi',
++        (tester) async {
++      final c = await app(tester);
++      await tester.tap(find.byKey(const ValueKey('lang-continue')));
++      await settle(tester, frames: 8);
++      await tester.tap(find.byKey(const ValueKey('lang-pill')));
++      await settle(tester, frames: 8);
++      for (final code in ['uz', 'ru', 'en']) {
++        expect(find.byKey(ValueKey('lang-$code')), findsOneWidget);
++      }
++      await tester.tap(find.byKey(const ValueKey('lang-ru')));
++      await settle(tester, frames: 8);
++      expect(c.read(localeProvider).languageCode, 'ru');
++      expect(find.text('RU'), findsOneWidget);
++    });
++
++    test('telefon tiliga tavsiya', () {
++      expect(suggestedLanguage(const Locale('uz')), 'uz');
++      expect(suggestedLanguage(const Locale('kk')), 'ru');
++      expect(suggestedLanguage(const Locale('de')), 'en');
++    });
++
++    test('chiqish (logout) tanlangan tilni o‘chirmaydi', () {
++      final src = File('lib/features/auth/session.dart').readAsStringSync();
++      expect(src, isNot(contains('setLocaleCode')));
++      expect(src, isNot(contains('nova.locale')));
++    });
++
++    test('kirish ekranlarida til almashtirgich bor', () {
++      for (final f in [
++        'lib/features/entry/welcome_screen.dart',
++        'lib/features/auth/login_screen.dart',
++        'lib/features/auth/register_screen.dart',
++        'lib/features/auth/forgot_password_screen.dart',
++      ]) {
++        expect(File(f).readAsStringSync(), contains('LanguagePill()'),
++            reason: f);
++      }
++    });
++  });
++}
+-- 
+2.43.0
+
