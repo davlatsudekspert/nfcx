@@ -384,7 +384,7 @@ async function s3Error(res, what) {
   // 403 da soat farqi (bizning x-amz-date ↔ server Date) — imzo xatosi tashxisi uchun.
   const skew = res.status === 403 && res.uzSignedAt && res.headers.get('date')
     ? ` skew=${Math.round((Date.parse(res.headers.get('date')) - res.uzSignedAt) / 1000)}s` : '';
-  return new Error(`uz-s3 ${what}: HTTP ${res.status}${code ? ` ${code}` : ''}${msg ? ` (${msg.slice(0, 80)})` : ''}${skew}`);
+  return new Error(`uz-s3 ${what}: HTTP ${res.status}${code ? ` ${code}` : ''}${msg ? ` (${msg.slice(0, 200)})` : ''}${skew}`);
 }
 
 export function uzBucket({ endpoint, bucket, keyId, secret, region = 'garage', fetch: doFetch = (...a) => fetch(...a), onRetry = null }) {
@@ -399,7 +399,11 @@ export function uzBucket({ endpoint, bucket, keyId, secret, region = 'garage', f
     for (let attempt = 0; attempt < 2; attempt++) {
       const now = new Date();
       const signed = await signV4({ method, url, headers, payloadHash, keyId, secret, region, now });
-      res = await doFetch(url, { method, headers: signed, body: body || undefined });
+      // `cache: 'no-store'` — Cloudflare subrequest keshini chetlab o'tadi. Aks holda
+      // .jpg/.mp4/... manzillarga GET/HEAD kesh qatlamidan o'tib, HEAD → GET ga
+      // aylanardi (403 Invalid signature) va Range olib tashlanardi (400 signed
+      // header not present) — audit, 2026-10-04.
+      res = await doFetch(url, { method, headers: signed, body: body || undefined, cache: 'no-store' });
       res.uzSignedAt = now.getTime();
       if (res.status !== 403) return res;
       res.uzErrorText = await res.text().catch(() => '');

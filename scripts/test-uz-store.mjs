@@ -413,9 +413,9 @@ try {
 
 // ── head() — 1 baytli GET orqali (HEAD emas) ──
 {
-  const seen = [];
+  const seen = []; const caches = [];
   const sf = s3Fetch({ bucket: 'hd' });
-  const hb = uzBucket({ endpoint: 'https://s3.uz.test', bucket: 'hd', keyId: 'k', secret: 's', fetch: (u, i) => { seen.push(`${i?.method} ${new Headers(i?.headers).get('range') || ''}`); return sf(u, i); } });
+  const hb = uzBucket({ endpoint: 'https://s3.uz.test', bucket: 'hd', keyId: 'k', secret: 's', fetch: (u, i) => { seen.push(`${i?.method} ${new Headers(i?.headers).get('range') || ''}`); caches.push(i?.cache); return sf(u, i); } });
   await hb.put('uploads/big.bin', new Uint8Array(5000), { httpMetadata: { contentType: 'application/x-test' } });
   await hb.put('uploads/empty.bin', new Uint8Array(0));
   seen.length = 0;
@@ -425,6 +425,7 @@ try {
   const empty = await hb.head('uploads/empty.bin');
   check('head: bo‘sh obyekt — hajm 0', empty?.size, 0);
   check('head: yo‘q obyekt — null', await hb.head('uploads/none.bin'), null);
+  check('S3 so‘rovlari Cloudflare keshini chetlab o‘tadi (cache: no-store)', caches.length > 0 && caches.every((c) => c === 'no-store'), true);
 }
 
 done();
