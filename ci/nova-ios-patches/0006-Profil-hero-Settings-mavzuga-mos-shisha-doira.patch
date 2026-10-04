@@ -1,0 +1,179 @@
+From f1c219457e218827a6654ced35eea7843659402d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 4 Oct 2026 00:13:34 +0000
+Subject: [PATCH 6/6] =?UTF-8?q?Profil=20hero:=20Settings=20=E2=80=94=20mav?=
+ =?UTF-8?q?zuga=20mos=20shisha=20doira?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Muqova ustida oq doira Ivory'da muqovadan "uzilib" qolgandek, Noir'da
+yorqin dog' bo'lib ko'rinardi (egasi, 2026-10 surat).
+
+- NovaIconButton.glass (sukut: false — boshqa tugmalar o'zgarmaydi):
+  mavzu sirt rangi 62% + 14 px blur, mavzu hoshiyasi va soyasi.
+  Ivory'da iliq ivory (sof oq emas), Noir'da to'q.
+- Profil sarlavhasidagi tugmalar (Settings, "yana", orqaga) shisha.
+  VIP001, statistika, tahrirlash, QR/share va pastki panelga
+  tegilmagan.
+- profile_hero_top_test: Ivory va Noir — Settings shisha (blur,
+  shaffoflik .4–.9, mavzu sirt rangi).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01WqgHSnzY8F5vsV7piKkJh7
+---
+ mobile_nova/lib/design/widgets/buttons.dart   | 53 +++++++++++++++++++
+ .../lib/design/widgets/nova_scaffold.dart     |  1 +
+ .../lib/features/profile/profile_screen.dart  |  3 ++
+ mobile_nova/test/profile_hero_top_test.dart   | 11 ++++
+ 4 files changed, 68 insertions(+)
+
+diff --git a/mobile_nova/lib/design/widgets/buttons.dart b/mobile_nova/lib/design/widgets/buttons.dart
+index 766f05a0..327502a5 100644
+--- a/mobile_nova/lib/design/widgets/buttons.dart
++++ b/mobile_nova/lib/design/widgets/buttons.dart
+@@ -1,3 +1,5 @@
++import 'dart:ui' as ui;
++
+ import 'package:flutter/material.dart';
+ 
+ import '../motion/motion.dart';
+@@ -120,6 +122,7 @@ class NovaIconButton extends StatelessWidget {
+     this.tooltip,
+     this.size = 44,
+     this.filled = false,
++    this.glass = false,
+   });
+ 
+   /// ANDROID'NING ENG KICHIK BOSISH MAYDONI.
+@@ -142,10 +145,43 @@ class NovaIconButton extends StatelessWidget {
+ 
+   final bool filled;
+ 
++  /// MUQOVA (HERO) USTIDAGI SHISHA DOIRA — profil sarlavhasi.
++  ///
++  /// Tugma rasm ustida turadi: oq doira Ivory'da muqovadan "uzilib"
++  /// qolgandek, Noir'da esa yorqin dog' bo'lib ko'rinardi. Shisha —
++  /// mavzuning o'z sirt rangi ~62% (Ivory'da iliq ivory, Noir'da
++  /// to'q) va orqasi xiralashadi: har qanday muqova ustida o'qiladi,
++  /// mavzu kontrastiga mos. Hoshiya va soya — mavzu tokenlari.
++  final bool glass;
++
+   @override
+   Widget build(BuildContext context) {
+     final t = context.tokens;
+     final tap = size < minTapTarget ? minTapTarget : size;
++    if (glass) {
++      return _frame(
++        tap,
++        DecoratedBox(
++          decoration:
++              BoxDecoration(shape: BoxShape.circle, boxShadow: t.shadowTiny),
++          child: ClipOval(
++            child: BackdropFilter(
++              filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
++              child: Container(
++                width: size,
++                height: size,
++                decoration: BoxDecoration(
++                  color: t.surfaceSolid.withValues(alpha: .62),
++                  shape: BoxShape.circle,
++                  border: Border.all(color: t.border2),
++                ),
++                child: Icon(icon, size: size * .5, color: t.text1),
++              ),
++            ),
++          ),
++        ),
++      );
++    }
+     return Tooltip(
+       message: tooltip ?? '',
+       child: Semantics(
+@@ -194,4 +230,21 @@ class NovaIconButton extends StatelessWidget {
+       ),
+     );
+   }
++
++  /// Tooltip + semantika + kattalashtirilgan bosish maydoni (shisha uchun).
++  Widget _frame(double tap, Widget child) => Tooltip(
++        message: tooltip ?? '',
++        child: Semantics(
++          button: true,
++          label: tooltip,
++          child: PressableScale(
++            onTap: onPressed,
++            child: SizedBox(
++              width: tap,
++              height: tap,
++              child: Center(child: child),
++            ),
++          ),
++        ),
++      );
+ }
+diff --git a/mobile_nova/lib/design/widgets/nova_scaffold.dart b/mobile_nova/lib/design/widgets/nova_scaffold.dart
+index d92e0317..78420917 100644
+--- a/mobile_nova/lib/design/widgets/nova_scaffold.dart
++++ b/mobile_nova/lib/design/widgets/nova_scaffold.dart
+@@ -174,6 +174,7 @@ class _Bar extends StatelessWidget {
+         children: [
+           if (showBack)
+             NovaIconButton(
++              glass: overHero,
+               icon: Icons.arrow_back_rounded,
+               tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+               onPressed: onBack ?? () => Navigator.of(context).maybePop(),
+diff --git a/mobile_nova/lib/features/profile/profile_screen.dart b/mobile_nova/lib/features/profile/profile_screen.dart
+index 50c40a8a..a01b141c 100644
+--- a/mobile_nova/lib/features/profile/profile_screen.dart
++++ b/mobile_nova/lib/features/profile/profile_screen.dart
+@@ -177,6 +177,7 @@ class ProfileScreen extends ConsumerWidget {
+               else if (company && !ownCompany) ...[
+                 // Biznesga shikoyat va uni bloklash (Play UGC talabi).
+                 NovaIconButton(
++                  glass: true,
+                   key: const ValueKey('storefront-actions'),
+                   icon: Icons.more_horiz_rounded,
+                   tooltip: l.reportTitle,
+@@ -195,6 +196,7 @@ class ProfileScreen extends ConsumerWidget {
+               ] else if (!company) ...[
+                 // O'ZGANING profili — shikoyat va bloklash.
+                 NovaIconButton(
++                  glass: true,
+                   icon: Icons.more_horiz_rounded,
+                   tooltip: l.reportTitle,
+                   onPressed: () => _showProfileActions(context, ref, code!),
+@@ -204,6 +206,7 @@ class ProfileScreen extends ConsumerWidget {
+             ]
+           : [
+               NovaIconButton(
++                glass: true,
+                 icon: Icons.settings_outlined,
+                 tooltip: l.settings,
+                 onPressed: () => context.push(Routes.settings),
+diff --git a/mobile_nova/test/profile_hero_top_test.dart b/mobile_nova/test/profile_hero_top_test.dart
+index 336bcbde..0d89752f 100644
+--- a/mobile_nova/test/profile_hero_top_test.dart
++++ b/mobile_nova/test/profile_hero_top_test.dart
+@@ -63,6 +63,17 @@ void main() {
+       expect(s.bottom, lessThan(heroRect.bottom),
+           reason: 'Settings hero ustida turishi kerak');
+ 
++      // Settings — muqova ustidagi shisha doira (yarim shaffof, blur),
++      // mavzu sirt rangida: Ivory'da iliq ivory, Noir'da to'q.
++      expect(tester.widget<NovaIconButton>(settings).glass, isTrue);
++      expect(find.descendant(of: settings, matching: find.byType(BackdropFilter)),
++          findsOneWidget);
++      final disc = tester.widget<Container>(find.descendant(
++          of: settings, matching: find.byType(Container)).first);
++      final fill = (disc.decoration! as BoxDecoration).color!;
++      expect(fill.a, inExclusiveRange(.4, .9), reason: 'shisha emas');
++      expect(fill.withValues(alpha: 1), theme.$2.surfaceSolid.withValues(alpha: 1));
++
+       // 3) Kontent (ism va avatar) status bar ostiga tushmaydi.
+       final firstText = find.descendant(
+           of: find.byType(ProfileScreen), matching: find.byType(Text));
+-- 
+2.43.0
+

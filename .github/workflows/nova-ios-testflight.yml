@@ -384,6 +384,7 @@ jobs:
           profile = plistlib.load(open(base + 'profile.plist', 'rb'))
           assert p['CFBundleIdentifier'] == os.environ['IOS_BUNDLE_ID']
           assert p['CFBundleDisplayName'] == 'NFCSTORE'
+          assert p['MinimumOSVersion'] == '15.0', 'MinimumOSVersion ' + p['MinimumOSVersion']
           assert p['CFBundleShortVersionString'] == os.environ['IOS_VERSION']
           assert p['CFBundleVersion'] == os.environ['IOS_BUILD_NUMBER']
           assert int(p['DTSDKName'].removeprefix('iphoneos').split('.')[0]) >= 26

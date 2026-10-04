@@ -1,0 +1,63 @@
+From 95ba39ea390694324e8c338ec59010fdbce2c241 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 4 Oct 2026 00:13:33 +0000
+Subject: [PATCH 5/6] iOS: minimal target 13.0 -> 15.0
+
+App Store Connect (build 303 yuklashida) ogohlantirdi: ITMS-90068
+"Deployment target too low ... Starting in April 2027, iOS apps must
+target 15.0 or later". Runner (Debug/Release/Profile) va
+AppFrameworkInfo.plist MinimumOSVersion 15.0.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01WqgHSnzY8F5vsV7piKkJh7
+---
+ mobile_nova/ios/Flutter/AppFrameworkInfo.plist   | 2 +-
+ mobile_nova/ios/Runner.xcodeproj/project.pbxproj | 6 +++---
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/mobile_nova/ios/Flutter/AppFrameworkInfo.plist b/mobile_nova/ios/Flutter/AppFrameworkInfo.plist
+index 1dc6cf76..0d140800 100644
+--- a/mobile_nova/ios/Flutter/AppFrameworkInfo.plist
++++ b/mobile_nova/ios/Flutter/AppFrameworkInfo.plist
+@@ -21,6 +21,6 @@
+   <key>CFBundleVersion</key>
+   <string>1.0</string>
+   <key>MinimumOSVersion</key>
+-  <string>13.0</string>
++  <string>15.0</string>
+ </dict>
+ </plist>
+diff --git a/mobile_nova/ios/Runner.xcodeproj/project.pbxproj b/mobile_nova/ios/Runner.xcodeproj/project.pbxproj
+index c839de6b..7a28e73e 100644
+--- a/mobile_nova/ios/Runner.xcodeproj/project.pbxproj
++++ b/mobile_nova/ios/Runner.xcodeproj/project.pbxproj
+@@ -346,7 +346,7 @@
+ 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+ 				GCC_WARN_UNUSED_FUNCTION = YES;
+ 				GCC_WARN_UNUSED_VARIABLE = YES;
+-				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
++				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+ 				MTL_ENABLE_DEBUG_INFO = NO;
+ 				SDKROOT = iphoneos;
+ 				SUPPORTED_PLATFORMS = iphoneos;
+@@ -473,7 +473,7 @@
+ 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+ 				GCC_WARN_UNUSED_FUNCTION = YES;
+ 				GCC_WARN_UNUSED_VARIABLE = YES;
+-				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
++				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+ 				MTL_ENABLE_DEBUG_INFO = YES;
+ 				ONLY_ACTIVE_ARCH = YES;
+ 				SDKROOT = iphoneos;
+@@ -524,7 +524,7 @@
+ 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+ 				GCC_WARN_UNUSED_FUNCTION = YES;
+ 				GCC_WARN_UNUSED_VARIABLE = YES;
+-				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
++				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+ 				MTL_ENABLE_DEBUG_INFO = NO;
+ 				SDKROOT = iphoneos;
+ 				SUPPORTED_PLATFORMS = iphoneos;
+-- 
+2.43.0
+
