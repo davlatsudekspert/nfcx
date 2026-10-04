@@ -16,6 +16,12 @@ on:
         description: "Yangi profil nomi"
         required: true
         default: 'NFCSTORE Nova AppStore UL'
+      mode:
+        description: "create — capability + yangi profil; inspect — faqat ko'rish (profillar, entitlement)"
+        required: true
+        default: 'create'
+        type: choice
+        options: [create, inspect]
   # Ro'yxatdan o'tkazish uchun; push'da job ishlamaydi.
   push:
     branches: [claude/wizardly-einstein-8cx2p4]
@@ -32,6 +38,7 @@ jobs:
     env:
       IOS_BUNDLE_ID: uz.nfcstore.nova
       PROFILE_NAME: ${{ inputs.profile_name }}
+      MODE: ${{ inputs.mode }}
     steps:
       - name: App Store Connect — capability va profil
         env:
@@ -40,6 +47,7 @@ jobs:
           API_PRIVATE_KEY: ${{ secrets.NOVA_APPSTORE_PRIVATE_KEY }}
           CERTIFICATE_BASE64: ${{ secrets.NOVA_IOS_CERTIFICATE_BASE64 }}
           CERTIFICATE_PASSWORD: ${{ secrets.NOVA_IOS_CERTIFICATE_PASSWORD }}
+          SECRET_PROFILE_BASE64: ${{ secrets.NOVA_IOS_PROFILE_BASE64 }}
         run: |
           set -euo pipefail
           umask 077
@@ -101,6 +109,31 @@ jobs:
           caps = call('GET', f'/v1/bundleIds/{bid}/bundleIdCapabilities')['data']
           types = sorted(c['attributes']['capabilityType'] for c in caps)
           print('Capabilities:', types)
+          summary('- Capabilities: ' + ', '.join(types))
+          AD = b'com.apple.developer.associated-domains'
+          if os.environ.get('MODE') == 'inspect':
+              import base64
+              serial = os.environ['CERT_SERIAL'].upper().lstrip('0')
+              certs = call('GET', '/v1/certificates', {'limit': 200})['data']
+              mine = [c['id'] for c in certs if c['attributes'].get('serialNumber', '').upper().lstrip('0') == serial]
+              print('CI sertifikati ASC da:', bool(mine))
+              summary(f'- CI sertifikati ASC ro\'yxatida: {bool(mine)}')
+              profs = call('GET', f'/v1/bundleIds/{bid}/profiles', {'limit': 50})['data']
+              for p in profs:
+                  a = p['attributes']
+                  raw = base64.b64decode(a.get('profileContent') or '')
+                  pc = [c['id'] for c in call('GET', f"/v1/profiles/{p['id']}/certificates", {'limit': 50})['data']]
+                  line = (f"- profil **{a['name']}** {a['profileType']} {a['profileState']} muddati {a['expirationDate'][:10]} "
+                          f"uuid {a['uuid']} · associated-domains: {AD in raw} · CI sertifikati: {bool(set(pc) & set(mine))}")
+                  print(line); summary(line)
+              sec = base64.b64decode(os.environ.get('SECRET_PROFILE_BASE64') or '')
+              import re
+              m = re.search(rb'<key>Name</key>\s*<string>([^<]*)</string>', sec)
+              u = re.search(rb'<key>UUID</key>\s*<string>([^<]*)</string>', sec)
+              line = (f"- secret profil: {m.group(1).decode() if m else '?'} uuid {u.group(1).decode() if u else '?'} "
+                      f"· associated-domains: {AD in sec}")
+              print(line); summary(line)
+              sys.exit(0)
           if 'ASSOCIATED_DOMAINS' not in types:
               call('POST', '/v1/bundleIdCapabilities', body={'data': {
                   'type': 'bundleIdCapabilities',
