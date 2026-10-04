@@ -91,15 +91,17 @@ class SocialRepository {
   /// ko'paytirmaydi. Javob — yangi jami son.
   Future<Result<int>> recordView(int id, {bool company = false}) async {
     final res = await _api.post<Map<String, dynamic>>(
-        '/api/content-views/${company ? 'company_post' : 'post'}/$id',
+        company
+            ? '/api/content-views/company_post/$id'
+            : '/api/content-views/post/$id',
         const {});
     return res.map((j) => (j['count'] as num?)?.toInt() ?? 0);
   }
 
-  /// Sozlamalar → Analitika (`GET /api/my/analytics`).
-  Future<Result<MyAnalytics>> myAnalytics({int days = 30}) async {
-    final res =
-        await _api.get<Map<String, dynamic>>('/api/my/analytics?days=$days');
+  /// Sozlamalar → Analitika (`GET /api/my/analytics`, server oxirgi
+  /// 30 kunni beradi).
+  Future<Result<MyAnalytics>> myAnalytics() async {
+    final res = await _api.get<Map<String, dynamic>>('/api/my/analytics');
     return res.map(MyAnalytics.fromJson);
   }
 

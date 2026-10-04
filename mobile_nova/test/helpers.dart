@@ -96,7 +96,7 @@ class FakeSocialRepository extends SocialRepository {
   }
 
   @override
-  Future<Result<MyAnalytics>> myAnalytics({int days = 30}) async =>
+  Future<Result<MyAnalytics>> myAnalytics() async =>
       const Ok(MyAnalytics());
 }
 
