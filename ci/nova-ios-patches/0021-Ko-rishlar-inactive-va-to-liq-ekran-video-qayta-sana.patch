@@ -1,0 +1,441 @@
+From 2e96f6eb4afa9923f27732ba599722eeeaaa581a Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Sun, 4 Oct 2026 14:24:59 +0000
+Subject: [PATCH 21/21] Ko'rishlar: inactive va to'liq ekran video qayta
+ sanalmaydi
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .../lib/features/settings/app_lock.dart       | 10 +-
+ .../lib/features/social/inline_video.dart     | 19 +++-
+ .../lib/features/social/media_frame.dart      |  6 ++
+ .../lib/features/social/post_screens.dart     | 34 ++++++-
+ .../lib/features/social/reels_screen.dart     | 26 +++--
+ mobile_nova/test/app_lock_test.dart           | 64 +++++++++++++
+ mobile_nova/test/content_views_test.dart      | 94 ++++++++++++++++++-
+ 7 files changed, 240 insertions(+), 13 deletions(-)
+
+diff --git a/mobile_nova/lib/features/settings/app_lock.dart b/mobile_nova/lib/features/settings/app_lock.dart
+index a37c096..705a1c3 100644
+--- a/mobile_nova/lib/features/settings/app_lock.dart
++++ b/mobile_nova/lib/features/settings/app_lock.dart
+@@ -209,7 +209,15 @@ class AppLockGate extends ConsumerWidget {
+     final locked = ref.watch(appLockProvider).locked;
+     return Stack(
+       children: [
+-        child,
++        // QULF OSTIDAGI ILOVA "KO'RINMAYDI" — `TickerMode` o'chadi.
++        //
++        // Qulf — shunchaki ustiga chizilgan qatlam, marshrut emas.
++        // Ilgari ostidagi ekran o'zini ko'rinib turibdi deb bilardi:
++        // fondan qaytganda reel PIN ekrani ostida o'ynab, ko'rish
++        // SANALARDI. Endi Reels/lenta videolari va ko'rish seansi
++        // (`ViewSession`) xuddi ustiga ekran ochilgandek to'xtaydi.
++        // Vidjet doim joyida — holat (`State`) qayta qurilmaydi.
++        TickerMode(enabled: !locked, child: child),
+         if (locked) const Positioned.fill(child: _LockScreen()),
+       ],
+     );
+diff --git a/mobile_nova/lib/features/social/inline_video.dart b/mobile_nova/lib/features/social/inline_video.dart
+index f2ab9d6..dc4a0ba 100644
+--- a/mobile_nova/lib/features/social/inline_video.dart
++++ b/mobile_nova/lib/features/social/inline_video.dart
+@@ -71,6 +71,7 @@ class InlineVideo extends ConsumerStatefulWidget {
+     this.lazy = false,
+     this.active,
+     this.fullscreenOnTap = false,
++    this.onFullscreen,
+   });
+ 
+   final String url;
+@@ -127,6 +128,14 @@ class InlineVideo extends ConsumerStatefulWidget {
+   /// [tapToToggle] dan ustun.
+   final bool fullscreenOnTap;
+ 
++  /// To'liq ekran sahifasi ochildi (`true`) va yopildi (`false`).
++  ///
++  /// Post tafsiloti ko'rishni sanashda ishlatadi: sahifa ochilganda
++  /// post ekrani "ko'rinmay" qoladi (`TickerMode` o'chadi), lekin odam
++  /// o'sha videoni ko'rib turibdi — ko'rish seansi uzilmasligi kerak.
++  /// Ilgari qaytib 2 soniya o'tgach o'sha ko'rish YANA sanalardi.
++  final ValueChanged<bool>? onFullscreen;
++
+   @override
+   ConsumerState<InlineVideo> createState() => _InlineVideoState();
+ }
+@@ -370,7 +379,15 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
+     if (c == null || !_ready || _gone || !mounted) return;
+     final h = VideoHandoff(c);
+     _handoff = h;
+-    await openFullscreenVideo(context, h);
++    // Ochilgan va yopilgan xabari AYNI qabul qiluvchiga boradi; sahifa
++    // xato bilan tugasa yoki karta yo'qolsa ham `false` albatta keladi.
++    final notify = widget.onFullscreen;
++    notify?.call(true);
++    try {
++      await openFullscreenVideo(context, h);
++    } finally {
++      notify?.call(false);
++    }
+     // Karta sahifa ochiq turganda yo'q bo'ldi — kontrollerni sahifa yopdi.
+     if (h.orphaned) return;
+     _handoff = null;
+diff --git a/mobile_nova/lib/features/social/media_frame.dart b/mobile_nova/lib/features/social/media_frame.dart
+index 826626a..fb78f73 100644
+--- a/mobile_nova/lib/features/social/media_frame.dart
++++ b/mobile_nova/lib/features/social/media_frame.dart
+@@ -217,6 +217,7 @@ class AdaptiveMedia extends StatefulWidget {
+     this.borderRadius,
+     this.lazyVideo = false,
+     this.activeVideo,
++    this.onVideoFullscreen,
+   });
+ 
+   final String url;
+@@ -237,6 +238,10 @@ class AdaptiveMedia extends StatefulWidget {
+   /// Ko'rinishga bog'liq ijro — `InlineVideo.active` ga uzatiladi.
+   final bool? activeVideo;
+ 
++  /// Video to'liq ekranda ochildi/yopildi — `InlineVideo.onFullscreen`
++  /// ga uzatiladi (post tafsilotining ko'rish seansi uchun).
++  final ValueChanged<bool>? onVideoFullscreen;
++
+   @override
+   State<AdaptiveMedia> createState() => _AdaptiveMediaState();
+ }
+@@ -326,6 +331,7 @@ class _AdaptiveMediaState extends State<AdaptiveMedia> {
+             fullscreenOnTap: widget.fullscreenVideo,
+             lazy: widget.lazyVideo,
+             active: widget.activeVideo,
++            onFullscreen: widget.onVideoFullscreen,
+             // Quti videoning o'z nisbatiga kelganda `cover` hech
+             // narsa kesmaydi; chegaraga urilgan holatda esa
+             // kesish eng kichik bo'ladi.
+diff --git a/mobile_nova/lib/features/social/post_screens.dart b/mobile_nova/lib/features/social/post_screens.dart
+index 9ba6717..ab22666 100644
+--- a/mobile_nova/lib/features/social/post_screens.dart
++++ b/mobile_nova/lib/features/social/post_screens.dart
+@@ -101,19 +101,46 @@ class _PostScreenState extends ConsumerState<PostScreen> {
+   // demo (`id <= 0`) yuborilmaydi.
+   late final _viewSession = ViewSession(_sendView);
+ 
+-  /// Serverdan kelgan jami son — post nusxasidagidan yangiroq.
++  /// `recordView` javobidagi jami son. Ko'rsatishda postdagi son bilan
++  /// solishtiriladi ([_shownViews]) — keyin kelgan yangiroq post
++  /// javobini yashirmasin.
+   int? _views;
+ 
++  /// Ko'rsatiladigan son — ikkalasidan kattasi (ko'rishlar faqat
++  /// o'sadi). Ilgari `_views ?? p.views` edi: bir marta javob kelgach,
++  /// post qayta yuklanib undan katta son kelsa ham eskisi turaverardi.
++  int _shownViews(Post p) {
++    final v = _views;
++    return v != null && v > p.views ? v : p.views;
++  }
++
++  /// Post videosi to'liq ekranda ochiq ([AdaptiveMedia.onVideoFullscreen]).
++  ///
++  /// Sahifa ildiz navigatorga ochiladi — ostidagi post ekranining
++  /// `TickerMode` i o'chadi, lekin odam aynan shu postni ko'rib turibdi:
++  /// seans davom etadi. Ilgari u uzilardi va qaytgach 2 soniyada o'sha
++  /// ko'rish YANA sanalardi. Ilova fonga ketsa seansni [ViewSession]
++  /// o'zi uzadi (to'liq ekranda ham).
++  bool _fullscreen = false;
++
++  void _onFullscreen(bool on) {
++    if (!mounted || _fullscreen == on) return;
++    setState(() => _fullscreen = on);
++  }
++
+   /// Ko'rinish holatini yangilaydi. `build` dan chaqiriladi: kirishlar
+   /// (`TickerMode`, post javobi) o'zgarsa ekran qayta quriladi, chaqiruv
+   /// esa takrorlansa ham zararsiz (faqat taymer qo'yadi/bekor qiladi).
+   void _syncView(AsyncValue<Post> fetched) {
+     // Ustida boshqa ekran / yashirin — `TickerMode` o'chiq (Reels'dagi
+     // `_onStage` bilan bir xil). Har doim o'qiladi: bog'liqlik yozilsin.
++    // Ustidagi ekran — shu postning o'z videosi ([_fullscreen]) bo'lsa,
++    // post hali ko'rilyapti.
+     final onStage = TickerMode.of(context);
+     final p = fetched.hasError ? null : fetched.valueOrNull;
+     _viewSession.update(
+-      onScreen: onStage && p != null && !p.isStory && p.id > 0,
++      onScreen:
++          (onStage || _fullscreen) && p != null && !p.isStory && p.id > 0,
+     );
+   }
+ 
+@@ -291,6 +318,7 @@ class _PostScreenState extends ConsumerState<PostScreen> {
+                       tapToToggleVideo: true,
+                       // Bosish — belgilarsiz to'liq ekran (Instagram).
+                       fullscreenVideo: true,
++                      onVideoFullscreen: _onFullscreen,
+                       borderRadius: R.gentle,
+                     ),
+                     // KO'RISHLAR — Reels'dagi ko'z belgisi + son, media
+@@ -310,7 +338,7 @@ class _PostScreenState extends ConsumerState<PostScreen> {
+                           child: Padding(
+                             padding: const EdgeInsets.symmetric(
+                                 horizontal: 8, vertical: 4),
+-                            child: ReelViewsLabel(count: _views ?? p.views),
++                            child: ReelViewsLabel(count: _shownViews(p)),
+                           ),
+                         ),
+                       ),
+diff --git a/mobile_nova/lib/features/social/reels_screen.dart b/mobile_nova/lib/features/social/reels_screen.dart
+index 878bd3a..2e6daf4 100644
+--- a/mobile_nova/lib/features/social/reels_screen.dart
++++ b/mobile_nova/lib/features/social/reels_screen.dart
+@@ -126,13 +126,14 @@ const kViewAfter = Duration(seconds: 2);
+ /// bo'lib qayta kirib 2 sekund ko'rsa prosmotr bo'lishi kerak").
+ ///
+ /// Seans — kontent UZLUKSIZ ko'rinib turgan vaqt: [update] ga
+-/// `onScreen: true` berilgan VA ilova oldinda (`resumed`). Seansda
+-/// [kViewAfter] o'tsa [_send] BIR MARTA chaqiriladi; video o'sha
+-/// joyda aylanib turaversa qayta chaqirilmaydi.
++/// `onScreen: true` berilgan VA ilova oldinda (`resumed` yoki
++/// `inactive`). Seansda [kViewAfter] o'tsa [_send] BIR MARTA
++/// chaqiriladi; video o'sha joyda aylanib turaversa qayta
++/// chaqirilmaydi.
+ ///
+ /// Seans tugaydi: `onScreen: false` (boshqa reelga o'tildi, boshqa
+ /// tab, ustiga boshqa ekran ochildi) yoki ilova fonga ketdi
+-/// (`inactive`/`hidden`/`paused`). Shunda taymer bekor qilinadi va
++/// (`hidden`/`paused`/`detached`). Shunda taymer bekor qilinadi va
+ /// "yuborildi" belgisi o'chadi — qaytib yana 2 soniya ko'rsa, yana
+ /// yuboriladi. Egasining o'z ko'rishini va 2 soniyadan tez qayta
+ /// yuborishni server o'zi sanamaydi.
+@@ -149,10 +150,23 @@ class ViewSession with WidgetsBindingObserver {
+   bool _sent = false;
+   Timer? _timer;
+ 
++  // FAQAT `hidden`/`paused`/`detached` — fon.
++  //
++  // `inactive` — ilova hali ko'rinib turibdi, video o'ynayveradi:
++  // bildirishnoma pardasi, reelning o'z "Ulashish" tugmasidan
++  // ochilgan Android ulashish oynasi, iOS boshqaruv markazi,
++  // biometrika/tizim oynasi. Ilgari u ham seansni uzardi va oyna
++  // yopilgach 2 soniyada o'sha ko'rish YANA sanalardi.
++  //
+   // `null` — holat hali kelmagan (testlar, ilova endi ochilmoqda):
+   // oldinda deb hisoblanadi.
+-  static bool _isForeground(AppLifecycleState? s) =>
+-      s == null || s == AppLifecycleState.resumed;
++  static bool _isForeground(AppLifecycleState? s) => switch (s) {
++        AppLifecycleState.hidden ||
++        AppLifecycleState.paused ||
++        AppLifecycleState.detached =>
++          false,
++        _ => true,
++      };
+ 
+   bool get _watching => _onScreen && _foreground;
+ 
+diff --git a/mobile_nova/test/app_lock_test.dart b/mobile_nova/test/app_lock_test.dart
+index 7e06a02..7a27709 100644
+--- a/mobile_nova/test/app_lock_test.dart
++++ b/mobile_nova/test/app_lock_test.dart
+@@ -151,6 +151,48 @@ void main() {
+       ));
+       expect(find.text('kontent'), findsOneWidget);
+     });
++
++    // Qulf ostidagi ekran o'zini ko'rinmayotgan deb bilishi kerak:
++    // ilgari fondan qaytganda reel PIN ekrani ostida o'ynab, ko'rish
++    // sanalardi (`ViewSession` `TickerMode` ga qaraydi).
++    testWidgets('qulflanganda ostidagi ilova TickerMode o‘chiq, ochilsa — '
++        'yoqiq, holat saqlanadi', (tester) async {
++      final c = await container();
++      await c.read(appLockProvider.notifier).enable('1234');
++      final ticking = <bool>[];
++      var inits = 0;
++      await tester.pumpWidget(UncontrolledProviderScope(
++        container: c,
++        child: MaterialApp(
++          theme: buildTheme(NfcTokens.ivory),
++          locale: const Locale('uz'),
++          localizationsDelegates: const [
++            L.delegate,
++            GlobalMaterialLocalizations.delegate,
++            GlobalWidgetsLocalizations.delegate,
++            GlobalCupertinoLocalizations.delegate,
++          ],
++          home: AppLockGate(
++            child: StatefulBuilder(builder: (ctx, _) {
++              ticking.add(TickerMode.of(ctx));
++              return _Counter(onInit: () => inits++);
++            }),
++          ),
++        ),
++      ));
++      expect(ticking.last, isTrue);
++
++      c.read(appLockProvider.notifier).lockNow();
++      await tester.pump();
++      await tester.pump(const Duration(milliseconds: 50));
++      expect(ticking.last, isFalse, reason: 'PIN ekrani ostida');
++
++      expect(await c.read(appLockProvider.notifier).verify('1234'), isTrue);
++      await tester.pump();
++      expect(ticking.last, isTrue);
++      expect(inits, 1, reason: 'ostidagi ekran qayta qurilmaydi');
++      expect(tester.takeException(), isNull);
++    });
+   });
+ 
+   // Biometrika: barmoq izi / Face ID tugmasi FAQAT qurilmada ishlatsa
+@@ -207,3 +249,25 @@ void main() {
+     });
+   });
+ }
++
++/// `initState` necha marta chaqirilganini sanaydi — qulf ostidagi
++/// ekran holati (`State`) saqlanishini tekshirish uchun.
++class _Counter extends StatefulWidget {
++  const _Counter({required this.onInit});
++
++  final VoidCallback onInit;
++
++  @override
++  State<_Counter> createState() => _CounterState();
++}
++
++class _CounterState extends State<_Counter> {
++  @override
++  void initState() {
++    super.initState();
++    widget.onInit();
++  }
++
++  @override
++  Widget build(BuildContext context) => const Text('kontent');
++}
+diff --git a/mobile_nova/test/content_views_test.dart b/mobile_nova/test/content_views_test.dart
+index 11effea..15e7487 100644
+--- a/mobile_nova/test/content_views_test.dart
++++ b/mobile_nova/test/content_views_test.dart
+@@ -26,7 +26,8 @@ import 'support/fake_video_platform.dart';
+ /// QAYTA KIRISH (egasi, 2026-10-04): har bir kirish alohida ko'rish —
+ ///   chiqib (boshqa reel/tab, ustiga ekran, ilova fonga) qaytib yana
+ ///   2 soniya ko'rsa yana yuboriladi; bir kirishda aylanib tursa — yo'q.
+-///   Post tafsiloti (`/post/:id`) ham xuddi shunday.
++///   Post tafsiloti (`/post/:id`) ham xuddi shunday. `inactive` (parda,
++///   ulashish oynasi) va post videosining to'liq ekrani — chiqish EMAS.
+ class _Profile extends ProfileRepository {
+   _Profile() : super(ApiClient());
+ 
+@@ -128,7 +129,7 @@ const _photo = 'assets/demo/z_post_cafe.jpg';
+ class _PostSocial extends FakeSocialRepository {
+   _PostSocial(this.post, {this.fail = false});
+ 
+-  final Post post;
++  Post post;
+   final bool fail;
+ 
+   @override
+@@ -351,6 +352,26 @@ void main() {
+     expect(social.viewed, [r7, r7]);
+   });
+ 
++  // Bildirishnoma pardasi, reelning o'z "Ulashish" tugmasidan ochilgan
++  // Android ulashish oynasi, iOS boshqaruv markazi, biometrika oynasi —
++  // ilova faqat `inactive` bo'ladi, reel ko'rinib o'ynayveradi.
++  testWidgets('Reels: inactive (parda, ulashish oynasi) — qayta sanalmaydi',
++      (tester) async {
++    addTearDown(() => tester.binding
++        .handleAppLifecycleStateChanged(AppLifecycleState.resumed));
++    final social = (await _pumpReels(tester)).social;
++    await tester.pump(kViewAfter);
++    await settle(tester, frames: 3);
++    expect(social.viewed, [r7]);
++
++    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
++    await tester.pump(const Duration(milliseconds: 500));
++    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
++    await tester.pump(const Duration(seconds: 3));
++    await settle(tester, frames: 3);
++    expect(social.viewed, [r7], reason: 'o‘sha kirish — seans uzilmadi');
++  });
++
+   testWidgets('Reels: 2 soniyaga yetmay fonga ketsa — hisob boshidan',
+       (tester) async {
+     addTearDown(() => tester.binding
+@@ -439,6 +460,75 @@ void main() {
+     expect(social.viewed, [v, v, v]);
+   });
+ 
++  // Postdagi videoni ko'rish uchun uni BOSISH kerak — u ildiz
++  // navigatorda to'liq ekranda ochiladi va post ekranining `TickerMode`
++  // i o'chadi. Odam o'sha postni ko'ryapti: seans uzilmaydi.
++  testWidgets('Post: video to‘liq ekranda ko‘rilib qaytilsa — o‘sha bitta '
++      'ko‘rish', (tester) async {
++    addTearDown(() => tester.binding
++        .handleAppLifecycleStateChanged(AppLifecycleState.resumed));
++    // Kadr — rasm: video o'ynab turganda ham (pauza belgisi yo'q)
++    // bosish videoga tegadi; sukutdagi bo'sh `SizedBox` bosilmaydi.
++    VideoPlayerPlatform.instance = FakeVideoPlatform(frames: const [_photo]);
++    final social = _PostSocial(const Post(
++        id: 5,
++        code: 'TTS075',
++        mediaUrls: ['https://nfcstore.uz/uploads/a.mp4'],
++        isVideo: true));
++    await _pumpPost(tester, social);
++    await tester.pump(kViewAfter);
++    await settle(tester, frames: 3);
++    const v = (id: 5, company: false);
++    expect(social.viewed, [v]);
++
++    final full = find.byKey(const ValueKey('video-fullscreen'));
++    await tester.tap(find.byKey(const ValueKey('video-open-fullscreen')));
++    await settle(tester, frames: 6);
++    expect(full, findsOneWidget);
++    for (var i = 0; i < 5; i++) {
++      await tester.pump(const Duration(seconds: 1));
++    }
++    expect(social.viewed, [v], reason: 'to‘liq ekranda — o‘sha ko‘rish');
++
++    await tester.binding.handlePopRoute();
++    await settle(tester, frames: 8);
++    expect(full, findsNothing);
++    await tester.pump(const Duration(seconds: 3));
++    await settle(tester, frames: 3);
++    expect(social.viewed, [v], reason: 'qaytgach qayta sanalmaydi');
++
++    // To'liq ekranda ilova fonga ketib qaytsa — yangi kirish.
++    await tester.tap(find.byKey(const ValueKey('video-open-fullscreen')));
++    await settle(tester, frames: 6);
++    expect(full, findsOneWidget);
++    _background(tester);
++    await tester.pump(kViewAfter * 2);
++    expect(social.viewed, [v], reason: 'fonda sanalmaydi');
++    _foreground(tester);
++    await tester.pump(kViewAfter);
++    await settle(tester, frames: 3);
++    expect(social.viewed, [v, v]);
++    expect(tester.takeException(), isNull);
++  });
++
++  testWidgets('Post: yangiroq server soni yashirilmaydi', (tester) async {
++    final social = _PostSocial(const Post(
++        id: 5, code: 'TTS075', mediaUrls: [_photo], views: 41));
++    await _pumpPost(tester, social);
++    await tester.pump(kViewAfter);
++    await settle(tester, frames: 3);
++    expect(_postViews('42'), findsOneWidget);
++
++    // Post qayta yuklandi — server endi 90 deydi (boshqalar ham ko'rdi).
++    social.post = social.post.copyWith(views: 90);
++    final ctx = tester.element(find.byType(PostScreen));
++    ProviderScope.containerOf(ctx)
++        .invalidate(postProvider((code: 'TTS075', id: 5, company: false)));
++    await settle(tester, frames: 4);
++    expect(_postViews('90'), findsOneWidget,
++        reason: 'eski `recordView` javobi (42) ustun emas');
++  });
++
+   testWidgets('Post: yuklanmagan post va story sanalmaydi', (tester) async {
+     final failed = _PostSocial(
+         const Post(id: 5, code: 'TTS075', mediaUrls: [_photo]),
+-- 
+2.43.0
+
