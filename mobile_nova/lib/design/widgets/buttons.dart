@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
 import '../motion/motion.dart';
@@ -120,6 +122,7 @@ class NovaIconButton extends StatelessWidget {
     this.tooltip,
     this.size = 44,
     this.filled = false,
+    this.glass = false,
   });
 
   /// ANDROID'NING ENG KICHIK BOSISH MAYDONI.
@@ -142,10 +145,43 @@ class NovaIconButton extends StatelessWidget {
 
   final bool filled;
 
+  /// MUQOVA (HERO) USTIDAGI SHISHA DOIRA — profil sarlavhasi.
+  ///
+  /// Tugma rasm ustida turadi: oq doira Ivory'da muqovadan "uzilib"
+  /// qolgandek, Noir'da esa yorqin dog' bo'lib ko'rinardi. Shisha —
+  /// mavzuning o'z sirt rangi ~62% (Ivory'da iliq ivory, Noir'da
+  /// to'q) va orqasi xiralashadi: har qanday muqova ustida o'qiladi,
+  /// mavzu kontrastiga mos. Hoshiya va soya — mavzu tokenlari.
+  final bool glass;
+
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
     final tap = size < minTapTarget ? minTapTarget : size;
+    if (glass) {
+      return _frame(
+        tap,
+        DecoratedBox(
+          decoration:
+              BoxDecoration(shape: BoxShape.circle, boxShadow: t.shadowTiny),
+          child: ClipOval(
+            child: BackdropFilter(
+              filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+              child: Container(
+                width: size,
+                height: size,
+                decoration: BoxDecoration(
+                  color: t.surfaceSolid.withValues(alpha: .62),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: t.border2),
+                ),
+                child: Icon(icon, size: size * .5, color: t.text1),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     return Tooltip(
       message: tooltip ?? '',
       child: Semantics(
@@ -194,4 +230,21 @@ class NovaIconButton extends StatelessWidget {
       ),
     );
   }
+
+  /// Tooltip + semantika + kattalashtirilgan bosish maydoni (shisha uchun).
+  Widget _frame(double tap, Widget child) => Tooltip(
+        message: tooltip ?? '',
+        child: Semantics(
+          button: true,
+          label: tooltip,
+          child: PressableScale(
+            onTap: onPressed,
+            child: SizedBox(
+              width: tap,
+              height: tap,
+              child: Center(child: child),
+            ),
+          ),
+        ),
+      );
 }

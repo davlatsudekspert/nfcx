@@ -63,6 +63,17 @@ void main() {
       expect(s.bottom, lessThan(heroRect.bottom),
           reason: 'Settings hero ustida turishi kerak');
 
+      // Settings — muqova ustidagi shisha doira (yarim shaffof, blur),
+      // mavzu sirt rangida: Ivory'da iliq ivory, Noir'da to'q.
+      expect(tester.widget<NovaIconButton>(settings).glass, isTrue);
+      expect(find.descendant(of: settings, matching: find.byType(BackdropFilter)),
+          findsOneWidget);
+      final disc = tester.widget<Container>(find.descendant(
+          of: settings, matching: find.byType(Container)).first);
+      final fill = (disc.decoration! as BoxDecoration).color!;
+      expect(fill.a, inExclusiveRange(.4, .9), reason: 'shisha emas');
+      expect(fill.withValues(alpha: 1), theme.$2.surfaceSolid.withValues(alpha: 1));
+
       // 3) Kontent (ism va avatar) status bar ostiga tushmaydi.
       final firstText = find.descendant(
           of: find.byType(ProfileScreen), matching: find.byType(Text));

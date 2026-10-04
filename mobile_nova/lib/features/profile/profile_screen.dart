@@ -177,6 +177,7 @@ class ProfileScreen extends ConsumerWidget {
               else if (company && !ownCompany) ...[
                 // Biznesga shikoyat va uni bloklash (Play UGC talabi).
                 NovaIconButton(
+                  glass: true,
                   key: const ValueKey('storefront-actions'),
                   icon: Icons.more_horiz_rounded,
                   tooltip: l.reportTitle,
@@ -195,6 +196,7 @@ class ProfileScreen extends ConsumerWidget {
               ] else if (!company) ...[
                 // O'ZGANING profili — shikoyat va bloklash.
                 NovaIconButton(
+                  glass: true,
                   icon: Icons.more_horiz_rounded,
                   tooltip: l.reportTitle,
                   onPressed: () => _showProfileActions(context, ref, code!),
@@ -204,6 +206,7 @@ class ProfileScreen extends ConsumerWidget {
             ]
           : [
               NovaIconButton(
+                glass: true,
                 icon: Icons.settings_outlined,
                 tooltip: l.settings,
                 onPressed: () => context.push(Routes.settings),

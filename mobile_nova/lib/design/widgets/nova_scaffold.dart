@@ -174,6 +174,7 @@ class _Bar extends StatelessWidget {
         children: [
           if (showBack)
             NovaIconButton(
+              glass: overHero,
               icon: Icons.arrow_back_rounded,
               tooltip: MaterialLocalizations.of(context).backButtonTooltip,
               onPressed: onBack ?? () => Navigator.of(context).maybePop(),
