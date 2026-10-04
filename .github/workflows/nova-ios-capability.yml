@@ -116,7 +116,7 @@ jobs:
               serial = os.environ['CERT_SERIAL'].upper().lstrip('0')
               certs = call('GET', '/v1/certificates', {'limit': 200})['data']
               mine = [c['id'] for c in certs if c['attributes'].get('serialNumber', '').upper().lstrip('0') == serial]
-              print('CI sertifikati ASC da:', bool(mine))
+              print('::notice::CI sertifikati ASC da:', bool(mine), '· capabilities:', ' '.join(types))
               summary(f'- CI sertifikati ASC ro\'yxatida: {bool(mine)}')
               profs = call('GET', f'/v1/bundleIds/{bid}/profiles', {'limit': 50})['data']
               for p in profs:
@@ -125,14 +125,14 @@ jobs:
                   pc = [c['id'] for c in call('GET', f"/v1/profiles/{p['id']}/certificates", {'limit': 50})['data']]
                   line = (f"- profil **{a['name']}** {a['profileType']} {a['profileState']} muddati {a['expirationDate'][:10]} "
                           f"uuid {a['uuid']} · associated-domains: {AD in raw} · CI sertifikati: {bool(set(pc) & set(mine))}")
-                  print(line); summary(line)
+                  print('::notice::' + line.lstrip('- ')); summary(line)
               sec = base64.b64decode(os.environ.get('SECRET_PROFILE_BASE64') or '')
               import re
               m = re.search(rb'<key>Name</key>\s*<string>([^<]*)</string>', sec)
               u = re.search(rb'<key>UUID</key>\s*<string>([^<]*)</string>', sec)
               line = (f"- secret profil: {m.group(1).decode() if m else '?'} uuid {u.group(1).decode() if u else '?'} "
                       f"· associated-domains: {AD in sec}")
-              print(line); summary(line)
+              print('::notice::' + line.lstrip('- ')); summary(line)
               sys.exit(0)
           if 'ASSOCIATED_DOMAINS' not in types:
               call('POST', '/v1/bundleIdCapabilities', body={'data': {
