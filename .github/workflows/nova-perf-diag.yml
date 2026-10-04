@@ -1,0 +1,141 @@
+# NFCSTORE (mobile_nova) — STARTUP VA TAB TEZLIGI DIAGNOSTIKASI.
+#
+# PROFILE rejimi, Android emulyator (KVM), haqiqiy server va sinov
+# hisobi. Faqat o'qiydi. iOS build/TestFlight YO'Q.
+#
+#   before — build 304 holati (patch 0001–0008);
+#   after  — barcha patch'lar (tezlik tuzatishlari bilan).
+#
+# Variantlar KETMA-KET ishlaydi (server yuki bir-biriga ta'sir qilmasin).
+# Emulyator swiftshader (dasturiy GPU): CHIZISH (raster) telefondan
+# sekinroq; QURISH (UI) va tarmoq/server vaqtlari esa haqiqiyga yaqin.
+name: NFCSTORE tezlik diagnostikasi (startup + tablar)
+
+on:
+  workflow_dispatch:
+    inputs:
+      variants:
+        description: 'JSON ro''yxat: ["before"], ["after"] yoki ["before","after"]'
+        required: false
+        default: '["before"]'
+  push:
+    branches: [claude/wizardly-einstein-8cx2p4]
+    paths: [.github/workflows/nova-perf-diag.yml]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nova-e2e
+  cancel-in-progress: false
+
+jobs:
+  diag:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        variant: ${{ fromJSON(inputs.variants) }}
+    defaults:
+      run:
+        working-directory: mobile_nova
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/vibrant-einstein-p5lo1i
+      - uses: actions/checkout@v4
+        with:
+          path: self
+      - name: Patch'lar (${{ matrix.variant }})
+        working-directory: .
+        run: |
+          set -euo pipefail
+          git config user.name "NFCSTORE CI"
+          git config user.email "ci@nfcstore.uz"
+          if [ "${{ matrix.variant }}" = before ]; then
+            git am --3way self/ci/nova-ios-patches/000[1-8]-*.patch
+          else
+            git am --3way self/ci/nova-ios-patches/*.patch
+          fi
+          git log --oneline -12
+          mkdir -p mobile_nova/integration_perf/diag
+          cp self/ci/perf/diag_test.dart mobile_nova/integration_perf/diag/
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.35.5
+          channel: stable
+          cache: true
+      - name: Paketlar va profile APK
+        run: |
+          flutter pub get --enforce-lockfile
+          flutter build apk --profile --target-platform android-x64
+
+      - name: KVM
+        working-directory: .
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: AVD keshi
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-34-x86_64
+
+      - name: AVD (kesh bo'sh bo'lsa)
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "AVD tayyor"
+
+      - name: O'lchash
+        id: run
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          NOVA_TEST_LOGIN: ${{ secrets.NFC_LOGIN_EMAIL || secrets.NOVA_TEST_LOGIN }}
+          NOVA_TEST_PASSWORD: ${{ secrets.NFC_LOGIN_PASSWORD || secrets.NOVA_TEST_PASSWORD }}
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          force-avd-creation: false
+          ram-size: 4096M
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          working-directory: mobile_nova
+          script: bash ../self/ci/perf/run.sh ${{ matrix.variant }}
+
+      - name: Natija
+        if: always()
+        run: |
+          {
+            echo "## ${{ matrix.variant }}"
+            echo '```'
+            grep -h "\[NATIVE\]" diag.log | sed 's/^.*\[NATIVE\]/[NATIVE]/' || true
+            grep -h "\[DIAG\]" diag.log | sed 's/^.*\[DIAG\]/[DIAG]/' | grep -v " img \| api start" || echo "natija yo'q"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          grep -h "\[NATIVE\]\|\[DIAG\]" diag.log | sed 's/^.*\(\[NATIVE\]\|\[DIAG\]\)/\1/' || true
+          if [ "${{ steps.run.outcome }}" != success ]; then tail -60 diag.log; exit 1; fi
