@@ -83,9 +83,23 @@ jobs:
           channel: stable
           cache: true
       - name: Paketlar va profile APK
+        env:
+          NOVA_TEST_LOGIN: ${{ secrets.NFC_LOGIN_EMAIL || secrets.NOVA_TEST_LOGIN }}
+          NOVA_TEST_PASSWORD: ${{ secrets.NFC_LOGIN_PASSWORD || secrets.NOVA_TEST_PASSWORD }}
         run: |
           flutter pub get --enforce-lockfile
+          # Ikkala APK emulyatordan OLDIN quriladi: emulyator + Gradle
+          # birga runner xotirasini tugatdi (shutdown signal).
           flutter build apk --profile --target-platform android-x64
+          mkdir -p ../perf-apk
+          cp build/app/outputs/flutter-apk/app-profile.apk ../perf-apk/app.apk
+          flutter build apk --profile --target-platform android-x64 \
+            -t integration_perf/diag/diag_test.dart \
+            "--dart-define=PERF_VARIANT=${{ matrix.variant }}" \
+            "--dart-define=NOVA_TEST_LOGIN=$NOVA_TEST_LOGIN" \
+            "--dart-define=NOVA_TEST_PASSWORD=$NOVA_TEST_PASSWORD"
+          cp build/app/outputs/flutter-apk/app-profile.apk ../perf-apk/diag.apk
+          ls -la ../perf-apk
 
       - name: KVM
         working-directory: .
@@ -131,6 +145,7 @@ jobs:
           profile: pixel_6
           force-avd-creation: false
           ram-size: 4096M
+          cores: 3
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
           working-directory: mobile_nova
