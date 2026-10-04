@@ -1,0 +1,748 @@
+From 5022d644e121178a3423aacb41db70082768bea2 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 4 Oct 2026 03:22:56 +0000
+Subject: [PATCH 9/9] Tez start va tablar: saqlangan sessiya, bir xil GET
+ birlashtiriladi, yashirin tablar Asosiydan keyin
+
+O'lchov (build 304, profile, haqiqiy server): Splash /api/auth/me ni
+kutardi (1.1-1.7 s); sessiya faollashgach Asosiy + 3 yashirin tab bitta
+kadrda qurilar va 12-15 so'rov bir vaqtda ketardi (3 tasi takror);
+server parallel yukda sekinlashib (lenta 1.1 -> 2.2-4.9 s) 500 qaytarardi.
+
+- Shu token bilan oxirgi tasdiqlangan /me javobi Keychain'da; Asosiy
+  darhol ochiladi, /me fonda tekshiradi (401/user:null -> chiqish).
+- Bir vaqtda ketayotgan bir xil GET bitta so'rov (kesh emas).
+- Preload tablar Asosiy so'rovlari tugagach (yoki 3 s) quriladi; oldin
+  bosilsa darhol.
+- Tiklash natijasi chiqish/kirishni bosib ketmaydi.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01WqgHSnzY8F5vsV7piKkJh7
+---
+ mobile_nova/lib/app/providers.dart            |   1 +
+ mobile_nova/lib/core/network/api_client.dart  |  78 +++-
+ .../lib/core/storage/secure_store.dart        |  20 ++
+ .../data/repositories/auth_repository.dart    |  32 +-
+ mobile_nova/lib/features/auth/session.dart    |  18 +
+ mobile_nova/lib/routing/shell.dart            |  74 +++-
+ mobile_nova/test/helpers.dart                 |   5 +
+ mobile_nova/test/shots/play_store_shot.dart   |   5 +
+ mobile_nova/test/startup_perf_test.dart       | 333 ++++++++++++++++++
+ 9 files changed, 557 insertions(+), 9 deletions(-)
+ create mode 100644 mobile_nova/test/startup_perf_test.dart
+
+diff --git a/mobile_nova/lib/app/providers.dart b/mobile_nova/lib/app/providers.dart
+index be6c8edf..45b947d1 100644
+--- a/mobile_nova/lib/app/providers.dart
++++ b/mobile_nova/lib/app/providers.dart
+@@ -19,6 +19,7 @@ final apiProvider = Provider<ApiClient>((ref) {
+   ref.onDispose(() {
+     api.online.dispose();
+     api.sessionExpired.dispose();
++    api.inFlight.dispose();
+   });
+   return api;
+ });
+diff --git a/mobile_nova/lib/core/network/api_client.dart b/mobile_nova/lib/core/network/api_client.dart
+index 6bb958c8..e26dee96 100644
+--- a/mobile_nova/lib/core/network/api_client.dart
++++ b/mobile_nova/lib/core/network/api_client.dart
+@@ -106,12 +106,70 @@ class ApiClient {
+     }
+   }
+ 
++  /// Shu token uchun saqlangan oxirgi `/api/auth/me` javobi.
++  /// Boshqa token (yoki token yo'q) — `null`.
++  Future<Map<String, dynamic>?> readSessionSnapshot() async {
++    final t = _token;
++    if (t == null) return null;
++    final raw = await _store.readSnapshot();
++    if (raw == null || raw.isEmpty) return null;
++    try {
++      final j = jsonDecode(raw);
++      if (j is Map && j['t'] == _fingerprint(t) && j['me'] is Map) {
++        return (j['me'] as Map).cast<String, dynamic>();
++      }
++    } catch (_) {/* buzilgan — e'tiborsiz */}
++    return null;
++  }
++
++  /// `me` javobini saqlaydi — faqat so'rov qaysi token bilan ketgan
++  /// bo'lsa, o'sha token hali ham joriy bo'lsa.
++  Future<void> writeSessionSnapshot(
++      Map<String, dynamic> me, String? forToken) async {
++    final t = _token;
++    if (t == null || t != forToken) return;
++    await _store.writeSnapshot(jsonEncode({'t': _fingerprint(t), 'me': me}));
++  }
++
++  /// Tokenning qisqa izi (FNV-1a) — tokenning o'zi ikkinchi marta
++  /// yozilmaydi.
++  static String _fingerprint(String s) {
++    var h = 0xcbf29ce484222325;
++    for (final c in s.codeUnits) {
++      h ^= c;
++      h = (h * 0x100000001b3) & 0xFFFFFFFFFFFFFFFF;
++    }
++    return h.toRadixString(16);
++  }
++
+   Map<String, dynamic> get _auth =>
+       _token == null ? const {} : {'authorization': 'Bearer $_token'};
+ 
+-  Future<Result<T>> get<T>(String path, {Map<String, dynamic>? query}) =>
+-      _run<T>(() => _dio.get(path,
+-          queryParameters: _clean(query), options: Options(headers: _auth)));
++  /// BIR XIL GET SO'ROVLARI BIRLASHTIRILADI (tezlik, 2026-10).
++  ///
++  /// O'lchov (build 304, startup): `/api/feed` (Asosiy + Reels),
++  /// `/api/records/:code/posts` (Profil + Reels) va
++  /// `/api/records/:code/stories` (Asosiy + Profil) BIR VAQTDA ikki
++  /// martadan ketardi. Server parallel yukda sekinlashadi (feed 1.1 s
++  /// -> 2.2–4.9 s) va ba'zan 500 qaytaradi.
++  ///
++  /// Faqat AYNI PAYTDA KETAYOTGAN so'rov ulashiladi — tugagan javob
++  /// saqlanmaydi (kesh EMAS, eskirgan ma'lumot bo'lmaydi). Kalitda
++  /// token ham bor: boshqa sessiya javobi aralashmaydi.
++  final Map<String, Future<Result<Object?>>> _inflight = {};
++
++  Future<Result<T>> get<T>(String path, {Map<String, dynamic>? query}) {
++    final q = _clean(query);
++    final key = '$T|${_token ?? ''}|$path?'
++        '${q == null ? '' : (q.keys.toList()..sort()).map((k) => '$k=${q[k]}').join('&')}';
++    final pending = _inflight[key];
++    if (pending != null) return pending.then((r) => r as Result<T>);
++    final f = _run<T>(() => _dio.get(path,
++        queryParameters: q, options: Options(headers: _auth)));
++    _inflight[key] = f;
++    f.whenComplete(() => _inflight.remove(key));
++    return f;
++  }
+ 
+   Future<Result<T>> post<T>(String path, [Object? body]) => _run<T>(
+       () => _dio.post(path, data: body ?? const {}, options: Options(headers: _auth)));
+@@ -276,7 +334,21 @@ class ApiClient {
+     return out.isEmpty ? null : out;
+   }
+ 
++  /// Hozir ketayotgan so'rovlar soni — startup ustuvorligi uchun
++  /// (`FadingBranchContainer`: yashirin tablar Asosiy ma'lumoti
++  /// kelgandan keyin quriladi).
++  final ValueNotifier<int> inFlight = ValueNotifier<int>(0);
++
+   Future<Result<T>> _run<T>(Future<Response<dynamic>> Function() send) async {
++    inFlight.value++;
++    try {
++      return await _send<T>(send);
++    } finally {
++      inFlight.value--;
++    }
++  }
++
++  Future<Result<T>> _send<T>(Future<Response<dynamic>> Function() send) async {
+     try {
+       final res = await send();
+       online.value = true;
+diff --git a/mobile_nova/lib/core/storage/secure_store.dart b/mobile_nova/lib/core/storage/secure_store.dart
+index c58b5672..876a76b6 100644
+--- a/mobile_nova/lib/core/storage/secure_store.dart
++++ b/mobile_nova/lib/core/storage/secure_store.dart
+@@ -45,9 +45,29 @@ class SecureStore {
+   Future<void> clear() async {
+     try {
+       await _s.delete(key: _kToken);
++      await _s.delete(key: _kSnapshot);
+     } catch (_) {/* ignore */}
+   }
+ 
++  /// OXIRGI TASDIQLANGAN SESSIYA (`/api/auth/me` javobi) — tez start
++  /// uchun. Token bilan bir joyda (Keychain/Keystore): unda email va
++  /// telefon bor. Token o'chirilganda ([clear]) u ham o'chadi.
++  static const _kSnapshot = 'nova.session.me';
++
++  Future<String?> readSnapshot() async {
++    try {
++      return await _s.read(key: _kSnapshot);
++    } catch (_) {
++      return null;
++    }
++  }
++
++  Future<void> writeSnapshot(String json) async {
++    try {
++      await _s.write(key: _kSnapshot, value: json);
++    } catch (_) {/* saqlanmasa — keyingi start oddiy yo'l bilan */}
++  }
++
+   /// Lokal ilova qulfining PIN kodi.
+   ///
+   /// Token bilan bir joyda: u ham shu qurilmadagi sir va
+diff --git a/mobile_nova/lib/data/repositories/auth_repository.dart b/mobile_nova/lib/data/repositories/auth_repository.dart
+index a225a352..f28d5f03 100644
+--- a/mobile_nova/lib/data/repositories/auth_repository.dart
++++ b/mobile_nova/lib/data/repositories/auth_repository.dart
+@@ -1,3 +1,5 @@
++import 'dart:async';
++
+ import '../../core/errors/app_error.dart';
+ import '../../core/network/api_client.dart';
+ import '../../core/utils/result.dart';
+@@ -165,7 +167,30 @@ class AuthRepository {
+     return me();
+   }
+ 
++  /// TEZ START: shu token bilan oxirgi tasdiqlangan sessiya (tarmoqsiz).
++  ///
++  /// O'lchov (build 304): Splash `/api/auth/me` javobini kutardi —
++  /// server 1.1–1.7 s. Endi oxirgi javob Keychain'da saqlanadi va
++  /// Asosiy darhol shu bilan ochiladi; `me()` fonda tekshiradi
++  /// (`SessionController.restore`). Token boshqa bo'lsa — `null`.
++  Future<({User user, List<NfcId> ids})?> cachedSession() async {
++    await _api.loadToken();
++    final j = await _api.readSessionSnapshot();
++    if (j == null || j['user'] is! Map) return null;
++    try {
++      return _parse(j);
++    } catch (_) {
++      return null;
++    }
++  }
++
++  ({User user, List<NfcId> ids}) _parse(Map<String, dynamic> value) => (
++        user: User.fromJson((value['user'] as Map).cast<String, dynamic>()),
++        ids: parseList(value['cards'], NfcId.fromJson),
++      );
++
+   Future<Result<({User user, List<NfcId> ids})>> me() async {
++    final token = _api.token;
+     final res = await _api.get<Map<String, dynamic>>('/api/auth/me');
+     switch (res) {
+       case Err(:final error):
+@@ -191,10 +216,9 @@ class AuthRepository {
+           _api.notifySessionExpired();
+           return const Err(AppError(AppErrorKind.unauthorized));
+         }
+-        return Ok((
+-          user: User.fromJson((value['user'] as Map).cast<String, dynamic>()),
+-          ids: parseList(value['cards'], NfcId.fromJson),
+-        ));
++        final parsed = _parse(value);
++        unawaited(_api.writeSessionSnapshot(value, token));
++        return Ok(parsed);
+     }
+   }
+ 
+diff --git a/mobile_nova/lib/features/auth/session.dart b/mobile_nova/lib/features/auth/session.dart
+index daf43965..e1b8bd68 100644
+--- a/mobile_nova/lib/features/auth/session.dart
++++ b/mobile_nova/lib/features/auth/session.dart
+@@ -63,8 +63,26 @@ class SessionController extends StateNotifier<SessionState> {
+   /// o'zi qayta urinadi (2, 4, 8, 16, 30 s ...).
+   Future<void> restore() async {
+     _retry?.cancel();
++    // TEZ START (o'lchov, build 304): Splash `/api/auth/me` ni kutardi
++    // (server 1.1–1.7 s + ulanish). Shu token bilan oxirgi tasdiqlangan
++    // sessiya bo'lsa, Asosiy DARHOL o'sha bilan ochiladi va `me()` fonda
++    // tekshiradi: yangi ma'lumot kelsa almashtiriladi, sessiya tugagan
++    // bo'lsa (401 yoki `user: null`) — chiqariladi. Tarmoq xatosida
++    // oxirgi tasdiqlangan holat qoladi.
++    if (state is SessionRestoring) {
++      final cached = await _repo.cachedSession();
++      if (!mounted) return;
++      if (cached != null && state is SessionRestoring) {
++        state = SessionActive(cached.user, cached.ids);
++        unawaited(refresh());
++        return;
++      }
++    }
+     final res = await _repo.restore();
+     if (!mounted) return;
++    // Kutish paytida holat boshqa yo'l bilan o'zgargan bo'lsa (chiqish,
++    // kirish) — eski tiklash natijasi uni bosib ketmaydi.
++    if (state is! SessionRestoring) return;
+     res.when(
+       ok: (v) {
+         _attempt = 0;
+diff --git a/mobile_nova/lib/routing/shell.dart b/mobile_nova/lib/routing/shell.dart
+index 8a0561e8..5545995d 100644
+--- a/mobile_nova/lib/routing/shell.dart
++++ b/mobile_nova/lib/routing/shell.dart
+@@ -1,3 +1,5 @@
++import 'dart:async';
++
+ import 'package:flutter/material.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:go_router/go_router.dart';
+@@ -5,6 +7,7 @@ import 'package:go_router/go_router.dart';
+ import '../design/widgets/bottom_nav.dart';
+ import '../features/profile/music_player.dart';
+ import '../l10n/gen/app_localizations.dart';
++import '../app/providers.dart';
+ import 'routes.dart';
+ import '../core/update/app_update.dart';
+ 
+@@ -199,7 +202,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
+ ///   * uning animatsiyalari to'xtaydi (`TickerMode`) — fon, orb,
+ ///     video kabi takrorlanuvchi harakatlar yashirin tabda yurmaydi;
+ ///   * u ekran o'quvchisiga ko'rinmaydi.
+-class FadingBranchContainer extends StatelessWidget {
++class FadingBranchContainer extends ConsumerStatefulWidget {
+   const FadingBranchContainer({
+     super.key,
+     required this.currentIndex,
+@@ -209,13 +212,80 @@ class FadingBranchContainer extends StatelessWidget {
+   final int currentIndex;
+   final List<Widget> children;
+ 
++  /// Asosiy ma'lumoti kelmasa ham yashirin tablar shuncha vaqtdan keyin
++  /// quriladi.
++  static const warmupTimeout = Duration(seconds: 3);
++
++  @override
++  ConsumerState<FadingBranchContainer> createState() =>
++      _FadingBranchContainerState();
++}
++
++/// YASHIRIN TABLAR — ASOSIY EKRANDAN KEYIN (o'lchov, build 304).
++///
++/// `preload` Tanlov, Reels va Profilni shell ochilgan KADRNING o'zida
++/// qurardi: Asosiy bilan birga to'rtta ekran bitta kadrda yig'ilar
++/// (emulyatorda 380–540 ms) va 12–15 ta API so'rovi bir vaqtda
++/// ketardi. Server parallel yukda sekinlashib (lenta 1.1 s -> 2.2–4.9 s)
++/// ba'zan 500 qaytarardi — ko'rinib turgan Asosiy lentasi yashirin
++/// tablar bilan navbat talashardi.
++///
++/// Endi: faol tab darhol quriladi; qolgan oldindan tayyorlanadigan
++/// tablar Asosiyning so'rovlari tugagach (tarmoq bo'shagach) yoki
++/// [FadingBranchContainer.warmupTimeout] dan keyin quriladi. Tab undan
++/// oldin bosilsa — o'sha zahoti quriladi (oldingi xulq).
++class _FadingBranchContainerState extends ConsumerState<FadingBranchContainer> {
++  final _built = <int>{};
++  bool _warm = false;
++  Timer? _timer;
++  ValueNotifier<int>? _net;
++
++  @override
++  void initState() {
++    super.initState();
++    _timer = Timer(FadingBranchContainer.warmupTimeout, _warmUp);
++    WidgetsBinding.instance.addPostFrameCallback((_) {
++      if (!mounted || _warm) return;
++      _net = ref.read(apiProvider).inFlight..addListener(_onNet);
++      _onNet();
++    });
++  }
++
++  /// Tarmoq bo'shadi: Asosiyning so'rovlari tugadi (yoki birinchi
++  /// kadrdan keyin umuman so'rov yo'q).
++  void _onNet() {
++    if ((_net?.value ?? 0) == 0) _warmUp();
++  }
++
++  void _warmUp() {
++    if (_warm || !mounted) return;
++    _timer?.cancel();
++    _net?.removeListener(_onNet);
++    _net = null;
++    setState(() => _warm = true);
++  }
++
++  @override
++  void dispose() {
++    _timer?.cancel();
++    _net?.removeListener(_onNet);
++    super.dispose();
++  }
++
+   @override
+   Widget build(BuildContext context) {
++    _built.add(widget.currentIndex);
++    final children = widget.children;
+     return Stack(
+       fit: StackFit.expand,
+       children: [
+         for (var i = 0; i < children.length; i++)
+-          _Branch(active: i == currentIndex, child: children[i]),
++          _Branch(
++            active: i == widget.currentIndex,
++            child: _warm || _built.contains(i)
++                ? children[i]
++                : const SizedBox.shrink(),
++          ),
+       ],
+     );
+   }
+diff --git a/mobile_nova/test/helpers.dart b/mobile_nova/test/helpers.dart
+index 98ad98d2..3e18ce77 100644
+--- a/mobile_nova/test/helpers.dart
++++ b/mobile_nova/test/helpers.dart
+@@ -64,6 +64,11 @@ class FakeAuthRepository extends AuthRepository {
+   @override
+   Future<Result<({User user, List<NfcId> ids})>> me() async => restore();
+ 
++  /// Saqlangan sessiya yo'q — sinov `restore()` yo'lidan boradi
++  /// (haqiqiy Keychain plagini testda javob bermaydi).
++  @override
++  Future<({User user, List<NfcId> ids})?> cachedSession() async => null;
++
+   @override
+   Future<void> logout() async {}
+ }
+diff --git a/mobile_nova/test/shots/play_store_shot.dart b/mobile_nova/test/shots/play_store_shot.dart
+index a25a96d3..ab085152 100644
+--- a/mobile_nova/test/shots/play_store_shot.dart
++++ b/mobile_nova/test/shots/play_store_shot.dart
+@@ -329,6 +329,11 @@ class _DemoAuthRepository extends AuthRepository {
+   @override
+   Future<Result<({User user, List<NfcId> ids})>> me() async => restore();
+ 
++  /// Saqlangan sessiya yo'q — sinov `restore()` yo'lidan boradi
++  /// (haqiqiy Keychain plagini testda javob bermaydi).
++  @override
++  Future<({User user, List<NfcId> ids})?> cachedSession() async => null;
++
+   @override
+   Future<void> logout() async {}
+ }
+diff --git a/mobile_nova/test/startup_perf_test.dart b/mobile_nova/test/startup_perf_test.dart
+new file mode 100644
+index 00000000..2aa6d51c
+--- /dev/null
++++ b/mobile_nova/test/startup_perf_test.dart
+@@ -0,0 +1,333 @@
++import 'dart:async';
++import 'dart:convert';
++import 'dart:typed_data';
++
++import 'package:dio/dio.dart';
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_secure_storage/flutter_secure_storage.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/app/providers.dart';
++import 'package:nfcstore_nova/core/errors/app_error.dart';
++import 'package:nfcstore_nova/core/network/api_client.dart';
++import 'package:nfcstore_nova/core/storage/secure_store.dart';
++import 'package:nfcstore_nova/core/utils/result.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/data/repositories/auth_repository.dart';
++import 'package:nfcstore_nova/features/auth/session.dart';
++import 'package:nfcstore_nova/routing/shell.dart';
++
++import 'helpers.dart';
++
++/// STARTUP VA TAB TEZLIGI (o'lchov, build 304 — 2026-10).
++///
++///   1. Bir xil GET so'rovlari bir vaqtda ikki marta ketmaydi.
++///   2. Tez start: shu token bilan oxirgi tasdiqlangan sessiya darhol
++///      ishlatiladi, `/api/auth/me` fonda tekshiradi.
++///   3. Yashirin (preload) tablar Asosiy so'rovlari tugagach quriladi.
++
++/// Xotiradagi Keychain.
++class _MemStore extends SecureStore {
++  _MemStore() : super(const FlutterSecureStorage());
++  final data = <String, String>{};
++
++  @override
++  Future<String?> readToken() async => data['token'];
++  @override
++  Future<void> writeToken(String token) async => data['token'] = token;
++  @override
++  Future<void> clear() async {
++    data.remove('token');
++    data.remove('snap');
++  }
++
++  @override
++  Future<String?> readSnapshot() async => data['snap'];
++  @override
++  Future<void> writeSnapshot(String json) async => data['snap'] = json;
++}
++
++/// So'rovlarni sanaydi; javob [gate] ochilguncha ushlanadi.
++class _Server implements HttpClientAdapter {
++  final calls = <String>[];
++  Completer<void> gate = Completer<void>()..complete();
++  Object? me = {
++    'user': {'id': 7, 'email': 'a@b.uz', 'name': 'Yangi ism'},
++    'cards': [
++      {'code': 'AB1234', 'primary': true},
++    ],
++  };
++  bool fail = false;
++
++  @override
++  Future<ResponseBody> fetch(RequestOptions o, Stream<Uint8List>? body,
++      Future<void>? cancel) async {
++    calls.add('${o.path}?${o.queryParameters}');
++    await gate.future;
++    if (fail) {
++      throw DioException.connectionError(
++          requestOptions: o, reason: 'offline');
++    }
++    final data = o.path == '/api/auth/me' ? me : {'feed': []};
++    return ResponseBody.fromString(jsonEncode(data), 200, headers: {
++      'content-type': ['application/json'],
++    });
++  }
++
++  @override
++  void close({bool force = false}) {}
++}
++
++ApiClient _api(_Server server, _MemStore store) =>
++    ApiClient(dio: Dio()..httpClientAdapter = server, store: store);
++
++void main() {
++  group('GET birlashtirish', () {
++    test('bir vaqtda ikkita bir xil GET — serverga bitta so\'rov, '
++        'ikkalasi ham javob oladi', () async {
++      final server = _Server()..gate = Completer<void>();
++      final api = _api(server, _MemStore());
++      final a = api.get<Map<String, dynamic>>('/api/feed',
++          query: {'page': 1, 'limit': 15});
++      final b = api.get<Map<String, dynamic>>('/api/feed',
++          query: {'limit': 15, 'page': 1});
++      expect(api.inFlight.value, 1);
++      server.gate.complete();
++      final ra = await a, rb = await b;
++      expect(server.calls, hasLength(1));
++      expect(ra, isA<Ok<Map<String, dynamic>>>());
++      expect(rb, isA<Ok<Map<String, dynamic>>>());
++      expect(api.inFlight.value, 0);
++    });
++
++    test('tugagan so\'rov saqlanmaydi (kesh emas) — keyingisi yangi', () async {
++      final server = _Server();
++      final api = _api(server, _MemStore());
++      await api.get<Map<String, dynamic>>('/api/feed');
++      await api.get<Map<String, dynamic>>('/api/feed');
++      expect(server.calls, hasLength(2));
++    });
++
++    test('boshqa so\'rov parametri yoki boshqa token — alohida', () async {
++      final server = _Server()..gate = Completer<void>();
++      final api = _api(server, _MemStore());
++      final a = api.get<Map<String, dynamic>>('/api/feed', query: {'page': 1});
++      final b = api.get<Map<String, dynamic>>('/api/feed', query: {'page': 2});
++      api.debugSetTokenForTest('t2');
++      final c = api.get<Map<String, dynamic>>('/api/feed', query: {'page': 1});
++      server.gate.complete();
++      await Future.wait([a, b, c]);
++      expect(server.calls, hasLength(3));
++    });
++  });
++
++  group('tez start (saqlangan sessiya)', () {
++    test('me() javobi shu token bilan saqlanadi; boshqa tokenga '
++        'berilmaydi; chiqishda o\'chadi', () async {
++      final store = _MemStore();
++      final server = _Server();
++      final api = _api(server, store);
++      await api.setToken('tok-A');
++      final repo = AuthRepository(api);
++      expect(await repo.cachedSession(), isNull);
++
++      expect(await repo.me(), isA<Ok>());
++      await Future<void>.delayed(Duration.zero);
++      expect(store.data['snap'], isNotNull);
++      expect(store.data['snap'], isNot(contains('tok-A')),
++          reason: 'token ikkinchi marta yozilmaydi');
++      final cached = await AuthRepository(_api(server, store)).cachedSession();
++      expect(cached!.user.name, 'Yangi ism');
++      expect(cached.ids.single.code, 'AB1234');
++
++      // Boshqa token — eski profil ko'rsatilmaydi.
++      store.data['token'] = 'tok-B';
++      expect(await AuthRepository(_api(server, store)).cachedSession(), isNull);
++
++      // Chiqish — o'chadi.
++      await api.setToken(null);
++      expect(store.data['snap'], isNull);
++    });
++
++    test('user: null (sessiya tugagan) — saqlanmaydi', () async {
++      final store = _MemStore();
++      final server = _Server()..me = {'user': null, 'cards': []};
++      final api = _api(server, store);
++      await api.setToken('tok-A');
++      expect(await AuthRepository(api).me(), isA<Err>());
++      await Future<void>.delayed(Duration.zero);
++      expect(store.data['snap'], isNull);
++    });
++  });
++
++  group('SessionController — saqlangan sessiya bilan', () {
++    Future<(_MemStore, _Server)> seeded() async {
++      final store = _MemStore();
++      final server = _Server()
++        ..me = {
++          'user': {'id': 7, 'email': 'a@b.uz', 'name': 'Eski ism'},
++          'cards': [],
++        };
++      final api = _api(server, store);
++      await api.setToken('tok-A');
++      await AuthRepository(api).me();
++      await Future<void>.delayed(Duration.zero);
++      return (store, server);
++    }
++
++    test('Asosiy /me javobini KUTMAYDI; yangi javob kelgach yangilanadi',
++        () async {
++      final (store, server) = await seeded();
++      server
++        ..calls.clear()
++        ..gate = Completer<void>()
++        ..me = {
++          'user': {'id': 7, 'email': 'a@b.uz', 'name': 'Yangi ism'},
++          'cards': [],
++        };
++      final c = SessionController(AuthRepository(_api(server, store)));
++      addTearDown(c.dispose);
++      await pumpEventQueue();
++      expect(c.state, isA<SessionActive>(),
++          reason: 'server javobini kutmasdan faol');
++      expect((c.state as SessionActive).user.name, 'Eski ism');
++      expect(server.calls, ['/api/auth/me?{}'],
++          reason: 'fonda tekshiruv ketgan');
++      server.gate.complete();
++      await pumpEventQueue();
++      expect((c.state as SessionActive).user.name, 'Yangi ism');
++    });
++
++    test('server sessiyani rad etsa (user: null) — chiqariladi', () async {
++      final (store, server) = await seeded();
++      server.me = {'user': null, 'cards': []};
++      final c = SessionController(AuthRepository(_api(server, store)));
++      addTearDown(c.dispose);
++      await pumpEventQueue();
++      expect(c.state, isA<SessionAnonymous>());
++      expect(store.data['token'], isNull);
++      expect(store.data['snap'], isNull);
++    });
++
++    test('internet yo\'q — oxirgi tasdiqlangan sessiya qoladi', () async {
++      final (store, server) = await seeded();
++      server.fail = true;
++      final c = SessionController(AuthRepository(_api(server, store)));
++      addTearDown(c.dispose);
++      await pumpEventQueue();
++      expect(c.state, isA<SessionActive>());
++      expect((c.state as SessionActive).user.name, 'Eski ism');
++    });
++
++    test('saqlangan sessiya yo\'q — oldingi yo\'l (Splash /me ni kutadi)',
++        () async {
++      final store = _MemStore()..data['token'] = 'tok-A';
++      final server = _Server()..gate = Completer<void>();
++      final c = SessionController(AuthRepository(_api(server, store)));
++      addTearDown(c.dispose);
++      await pumpEventQueue();
++      expect(c.state, isA<SessionRestoring>());
++      server.gate.complete();
++      await pumpEventQueue();
++      expect(c.state, isA<SessionActive>());
++    });
++  });
++
++  group('yashirin tablar Asosiydan keyin', () {
++    Future<(ProviderContainer, ApiClient)> host(
++        WidgetTester t, int current, {bool busy = false}) async {
++      final api = ApiClient(dio: Dio()..httpClientAdapter = _Server());
++      final c = ProviderContainer(overrides: [
++        ...await testOverrides(),
++        apiProvider.overrideWithValue(api),
++      ]);
++      addTearDown(c.dispose);
++      if (busy) api.inFlight.value = 2;
++      await t.pumpWidget(UncontrolledProviderScope(
++        container: c,
++        child: Directionality(
++          textDirection: TextDirection.ltr,
++          child: FadingBranchContainer(
++            currentIndex: current,
++            children: [
++              for (var i = 0; i < 4; i++) Text('tab$i', key: ValueKey('tab$i')),
++            ],
++          ),
++        ),
++      ));
++      return (c, api);
++    }
++
++    Finder tab(int i) => find.byKey(ValueKey('tab$i'), skipOffstage: false);
++
++    testWidgets('Asosiy so\'rovlari ketayotganda faqat faol tab quriladi; '
++        'tarmoq bo\'shagach qolganlari', (t) async {
++      final (_, api) = await host(t, 0, busy: true);
++      await t.pump();
++      expect(tab(0), findsOneWidget);
++      expect(tab(1), findsNothing);
++      expect(tab(3), findsNothing);
++      api.inFlight.value = 1;
++      await t.pump();
++      expect(tab(1), findsNothing);
++      api.inFlight.value = 0;
++      await t.pump();
++      for (var i = 0; i < 4; i++) {
++        expect(tab(i), findsOneWidget);
++      }
++    });
++
++    testWidgets('tarmoq bo\'shamasa ham ${FadingBranchContainer.warmupTimeout.inSeconds} s '
++        'dan keyin quriladi', (t) async {
++      await host(t, 0, busy: true);
++      await t.pump(const Duration(seconds: 2));
++      expect(tab(2), findsNothing);
++      await t.pump(const Duration(seconds: 2));
++      expect(tab(2), findsOneWidget);
++    });
++
++    testWidgets('so\'rov yo\'q (kesh/tarmoqsiz) — birinchi kadrdan keyin',
++        (t) async {
++      await host(t, 0);
++      await t.pump();
++      expect(tab(3), findsOneWidget);
++    });
++
++    testWidgets('isitishdan oldin bosilgan tab DARHOL quriladi', (t) async {
++      final api = ApiClient(dio: Dio()..httpClientAdapter = _Server());
++      final c = ProviderContainer(overrides: [
++        ...await testOverrides(),
++        apiProvider.overrideWithValue(api),
++      ]);
++      addTearDown(c.dispose);
++      api.inFlight.value = 3;
++      Widget app(int current) => UncontrolledProviderScope(
++            container: c,
++            child: Directionality(
++              textDirection: TextDirection.ltr,
++              child: FadingBranchContainer(
++                currentIndex: current,
++                children: [
++                  for (var i = 0; i < 4; i++)
++                    Text('tab$i', key: ValueKey('tab$i')),
++                ],
++              ),
++            ),
++          );
++      await t.pumpWidget(app(0));
++      await t.pump();
++      expect(tab(3), findsNothing);
++      await t.pumpWidget(app(3));
++      expect(find.byKey(const ValueKey('tab3')), findsOneWidget);
++      // Asosiy saqlanadi (holati yo'qolmaydi).
++      expect(tab(0), findsOneWidget);
++      await t.pump(const Duration(seconds: 4));
++    });
++  });
++
++  test('AppError turi o\'zgarmagan (sanity)', () {
++    expect(const AppError(AppErrorKind.offline).kind, AppErrorKind.offline);
++    expect(const Ok(1), isA<Result<int>>());
++    expect(NfcId.fromJson(const {'code': 'X'}).code, 'X');
++  });
++}
+-- 
+2.43.0
+
