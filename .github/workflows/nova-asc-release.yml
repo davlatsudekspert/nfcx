@@ -7,6 +7,13 @@ name: NFCSTORE App Store — holat (faqat o'qish)
 # Natija annotatsiyalarda (notice).
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "status — faqat o'qish; probe — kalit metadata yoza oladimi (faqat copyright maydoni)"
+        required: true
+        default: status
+        type: choice
+        options: [status, probe]
   push:
     branches: [claude/wizardly-einstein-8cx2p4]
     paths: [.github/workflows/nova-asc-release.yml]
@@ -21,6 +28,7 @@ jobs:
     timeout-minutes: 15
     env:
       IOS_BUNDLE_ID: uz.nfcstore.nova
+      MODE: ${{ inputs.mode }}
     steps:
       - name: App Store Connect holati
         env:
@@ -65,6 +73,14 @@ jobs:
           def sec(name, lines):
               msg = '%0A'.join(str(l).replace('\n', ' ').replace('%', '%25') for l in lines)
               print(f'::notice title={name}::{msg}')
+          def patch(path, body):
+              req = urllib.request.Request('https://api.appstoreconnect.apple.com' + path, data=json.dumps(body).encode(),
+                                           method='PATCH', headers={'Authorization': 'Bearer ' + tok(), 'Content-Type': 'application/json'})
+              try:
+                  with urllib.request.urlopen(req, timeout=60) as r:
+                      return r.status, ''
+              except urllib.error.HTTPError as e:
+                  return e.code, e.read().decode()[:300]
           B = os.environ['IOS_BUNDLE_ID']
           apps = [a for a in get('/v1/apps', {'filter[bundleId]': B}).get('data', []) if a['attributes']['bundleId'] == B]
           if not apps:
@@ -118,6 +134,12 @@ jobs:
               else:
                   lines.append(f"review ma'lumotlari: yo'q ({rd.get('_error')})")
               sec('4 Versiya tafsilotlari', lines)
+          if os.environ.get('MODE') == 'probe' and edit:
+              # Kalitning yozish huquqi: faqat versiyaning copyright maydoni
+              # (baribir to'ldirilishi kerak bo'lgan qiymat; egasi ruxsat bergan).
+              code, body = patch(f"/v1/appStoreVersions/{edit[0]['id']}", {'data': {
+                  'type': 'appStoreVersions', 'id': edit[0]['id'], 'attributes': {'copyright': '2026 NFCSTORE'}}})
+              sec('7 Yozish huquqi', [f"PATCH appStoreVersion.copyright -> {code} {body}"])
           ps = get(f'/v1/apps/{aid}/appPriceSchedule')
           av = get(f'/v1/apps/{aid}/appAvailabilityV2')
           sec('5 Narx va mavjudlik', [f"narx jadvali: {'bor' if isinstance(ps.get('data'), dict) else ps.get('_error')}",
