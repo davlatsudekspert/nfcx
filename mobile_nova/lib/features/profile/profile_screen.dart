@@ -133,6 +133,17 @@ class ProfileScreen extends ConsumerWidget {
     /// `companyId`. `null` — o'z profilim (tab).
     final target = cid ?? code;
 
+    /// BEGONA PROFIL HALI KELMAGAN (yuklanmoqda yoki xato).
+    ///
+    /// Egasi (2026-10-04, video): katalogdan birovning profiliga
+    /// kirilganda bir lahza HISOB EGASINING o'z login nomi va bosh
+    /// harflari ("ali77099", "AL"), bo'sh sonlar va "Kuzatish" tugmasi
+    /// chiqib, keyin haqiqiy profilga almashardi. Sababi: `_Hero`
+    /// profil yo'q paytda `user.displayName` ga qaytardi. Endi bu holatda
+    /// begona odamning o'rnida FAQAT skelet turadi — hech qanday o'z
+    /// ma'lumotimiz ko'rinmaydi.
+    final pending = target != null && active == null;
+
     /// BIZNES PROFILI — premium vitrina (shaxsiy profildan ALOHIDA
     /// tuzilma): muqova, logotip, Business ID, ish vaqti, katalog.
     final biz = (active != null && active.isBusiness) ? active.business : null;
@@ -246,7 +257,9 @@ class ProfileScreen extends ConsumerWidget {
               ? const SliverToBoxAdapter()
               : _PostsGrid(code: active.code, company: active.isBusiness),
           children: [
-            if (biz != null)
+            if (pending)
+              const _PendingHero()
+            else if (biz != null)
               // Vitrina muqovasi — shaxsiy profil bilan BIR XIL: status
               // bar ortidan boshlanadi va pastga fonga singib ketadi.
               _StorefrontHeader(business: biz)
@@ -270,106 +283,108 @@ class ProfileScreen extends ConsumerWidget {
                       : switchToPersonal(context, ref),
                 ),
               ),
-            const SizedBox(height: Gap.lg),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-              child: biz != null
-                  ? _StoreStats(business: biz)
-                  : _StatCapsules(profile: active),
-            ),
-            const SizedBox(height: Gap.lg),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: NovaButton(
-                      // Obuna holati KO'RINADI. Ilgari yozuv
-                      // "Kuzatish" deb qotib qolgan edi, shuning
-                      // uchun bosilganda hech narsa o'zgarmagandek
-                      // tuyulardi.
-                      label: isMe
-                          ? l.profileEdit
-                          : (following ? l.actionFollowing : l.actionFollow),
-                      icon: isMe
-                          ? Icons.edit_outlined
-                          : (following
-                              ? Icons.check_rounded
-                              : Icons.person_add_alt_rounded),
-                      tone: (!isMe && following)
-                          ? ButtonTone.outline
-                          : ButtonTone.accent,
-                      // BIZNES REJIMIDA — BIZNES TAHRIRI (egasi, 2026-09:
-                      // "biznes profilni tahrirlash yo'q"). Ilgari bu
-                      // tugma har doim shaxsiy NFC ID tahririni ochardi.
-                      onPressed: isMe
-                          ? () => context.push(company ||
-                                  (ref.read(activeProfileProvider)?.isBusiness ??
-                                      false)
-                              ? Routes.businessEdit
-                              : Routes.profileEdit)
+            if (!pending) ...[
+              const SizedBox(height: Gap.lg),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
+                child: biz != null
+                    ? _StoreStats(business: biz)
+                    : _StatCapsules(profile: active),
+              ),
+              const SizedBox(height: Gap.lg),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: NovaButton(
+                        // Obuna holati KO'RINADI. Ilgari yozuv
+                        // "Kuzatish" deb qotib qolgan edi, shuning
+                        // uchun bosilganda hech narsa o'zgarmagandek
+                        // tuyulardi.
+                        label: isMe
+                            ? l.profileEdit
+                            : (following ? l.actionFollowing : l.actionFollow),
+                        icon: isMe
+                            ? Icons.edit_outlined
+                            : (following
+                                ? Icons.check_rounded
+                                : Icons.person_add_alt_rounded),
+                        tone: (!isMe && following)
+                            ? ButtonTone.outline
+                            : ButtonTone.accent,
+                        // BIZNES REJIMIDA — BIZNES TAHRIRI (egasi, 2026-09:
+                        // "biznes profilni tahrirlash yo'q"). Ilgari bu
+                        // tugma har doim shaxsiy NFC ID tahririni ochardi.
+                        onPressed: isMe
+                            ? () => context.push(company ||
+                                    (ref.read(activeProfileProvider)?.isBusiness ??
+                                        false)
+                                ? Routes.businessEdit
+                                : Routes.profileEdit)
+                            : () async {
+                                final e = await ref
+                                    .read(followOverridesProvider.notifier)
+                                    .toggle(target!,
+                                        following: following, company: company);
+                                if (e == null || !context.mounted) return;
+                                ScaffoldMessenger.of(context)
+                                  ..hideCurrentSnackBar()
+                                  ..showSnackBar(SnackBar(
+                                      content: Text(describeError(l, e))));
+                              },
+                      ),
+                    ),
+                    const SizedBox(width: Gap.md),
+                    // QR — NFC yozuvida uning manzili, biznesda
+                    // `nfcstore.uz/c/<ID>` (vitrina manzili).
+                    NovaIconButton(
+                      key: const ValueKey('profile-qr'),
+                      icon: Icons.qr_code_rounded,
+                      tooltip: l.nfcShowQr,
+                      size: 52,
+                      onPressed: biz != null
+                          ? () => showQrSheet(
+                              context,
+                              NfcId(code: biz.companyId, name: biz.displayName),
+                              urlOverride: demo?.shareUrl ??
+                                  '$kApiBase/c/${Uri.encodeComponent(biz.companyId)}')
+                          : id == null
+                              ? null
+                              : () => showQrSheet(context, id,
+                                  urlOverride: demo?.shareUrl),
+                    ),
+                    const SizedBox(width: Gap.sm),
+                    NovaIconButton(
+                      icon: Icons.ios_share_rounded,
+                      tooltip: l.actionShare,
+                      size: 52,
+                      onPressed: id == null && biz == null
+                          ? null
                           : () async {
-                              final e = await ref
-                                  .read(followOverridesProvider.notifier)
-                                  .toggle(target!,
-                                      following: following, company: company);
-                              if (e == null || !context.mounted) return;
+                              // Tizim oynasi ochilmasa manzil buferga
+                              // ko'chiriladi — odam boshi berk
+                              // ko'chada qolmasin.
+                              final String url;
+                              if (biz != null) {
+                                url = demo?.shareUrl ??
+                                    '$kApiBase/c/${Uri.encodeComponent(biz.companyId)}';
+                              } else {
+                                if (id == null) return;
+                                url = demo?.shareUrl ?? id.publicUrl(kApiBase);
+                              }
+                              final ok = await shareLink(url);
+                              if (ok || !context.mounted) return;
                               ScaffoldMessenger.of(context)
                                 ..hideCurrentSnackBar()
-                                ..showSnackBar(SnackBar(
-                                    content: Text(describeError(l, e))));
+                                ..showSnackBar(
+                                    SnackBar(content: Text(l.shareCopied)));
                             },
                     ),
-                  ),
-                  const SizedBox(width: Gap.md),
-                  // QR — NFC yozuvida uning manzili, biznesda
-                  // `nfcstore.uz/c/<ID>` (vitrina manzili).
-                  NovaIconButton(
-                    key: const ValueKey('profile-qr'),
-                    icon: Icons.qr_code_rounded,
-                    tooltip: l.nfcShowQr,
-                    size: 52,
-                    onPressed: biz != null
-                        ? () => showQrSheet(
-                            context,
-                            NfcId(code: biz.companyId, name: biz.displayName),
-                            urlOverride: demo?.shareUrl ??
-                                '$kApiBase/c/${Uri.encodeComponent(biz.companyId)}')
-                        : id == null
-                            ? null
-                            : () => showQrSheet(context, id,
-                                urlOverride: demo?.shareUrl),
-                  ),
-                  const SizedBox(width: Gap.sm),
-                  NovaIconButton(
-                    icon: Icons.ios_share_rounded,
-                    tooltip: l.actionShare,
-                    size: 52,
-                    onPressed: id == null && biz == null
-                        ? null
-                        : () async {
-                            // Tizim oynasi ochilmasa manzil buferga
-                            // ko'chiriladi — odam boshi berk
-                            // ko'chada qolmasin.
-                            final String url;
-                            if (biz != null) {
-                              url = demo?.shareUrl ??
-                                  '$kApiBase/c/${Uri.encodeComponent(biz.companyId)}';
-                            } else {
-                              if (id == null) return;
-                              url = demo?.shareUrl ?? id.publicUrl(kApiBase);
-                            }
-                            final ok = await shareLink(url);
-                            if (ok || !context.mounted) return;
-                            ScaffoldMessenger.of(context)
-                              ..hideCurrentSnackBar()
-                              ..showSnackBar(
-                                  SnackBar(content: Text(l.shareCopied)));
-                          },
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
+            ],
             // ALOQA TUGMALARI — saytdagi biznes sahifasidek logoli
             // dumaloq tugmalar (egasi, 2026-09). Bo'sh bo'lsa chizilmaydi.
             if (active != null && active.contact.actions().isNotEmpty) ...[
@@ -583,6 +598,30 @@ void _showProfileActions(BuildContext context, WidgetRef ref, String code) {
 // (`followingOfProvider` + `followOverridesProvider`): u serverdan
 // urug'lanadi, darhol o'zgaradi, xato bo'lsa orqaga qaytadi va
 // sababni ko'rsatadi.
+
+/// Begona profil yuklanayotganda — skelet (avatar doirasi, ism va
+/// ikkilamchi qator). Hisob egasining HECH BIR ma'lumoti chizilmaydi.
+class _PendingHero extends StatelessWidget {
+  const _PendingHero();
+
+  @override
+  Widget build(BuildContext context) {
+    final heroTop = NovaScaffold.heroTopInset(context);
+    return Padding(
+      key: const ValueKey('profile-pending'),
+      padding: EdgeInsets.only(top: heroTop + 16),
+      child: const Column(
+        children: [
+          Skeleton(width: 132, height: 132, circle: true),
+          SizedBox(height: Gap.lg),
+          Skeleton(width: 170, height: 26, radius: R.pill),
+          SizedBox(height: Gap.sm),
+          Skeleton(width: 110, height: 16, radius: R.pill),
+        ],
+      ),
+    );
+  }
+}
 
 /// Profil boshi — Concept B'dagi markazlashgan "identity" ustuni.
 ///
