@@ -278,6 +278,8 @@ jobs:
       # Natija: out/hasharchilar.apk + out/version.json {version, versionCode, sha256, cert, size}
       - name: Imzo va paketni tekshirish, version.json
         id: apk
+        env:
+          RELEASE_KEY: ${{ steps.key.outputs.release }}
         run: |
           set -euo pipefail
           SRC=android/app/build/outputs/apk/release/app-release.apk
@@ -300,8 +302,9 @@ jobs:
             echo "::error::APK ${SIZE} bayt — statik fayl limiti (25 MiB) dan katta"; exit 1
           fi
           SHA=$(sha256sum out/hasharchilar.apk | awk '{print $1}')
-          jq -n --arg v "$VERSION_NAME" --argjson c "$VERSION_CODE" --arg s "$SHA" --arg f "$FP" --argjson z "$SIZE" \
-            '{version: $v, versionCode: $c, sha256: $s, cert: $f, size: $z}' > out/version.json
+          KIND=debug; if [ "$RELEASE_KEY" = "1" ]; then KIND=secret; fi
+          jq -n --arg v "$VERSION_NAME" --argjson c "$VERSION_CODE" --arg s "$SHA" --arg f "$FP" --argjson z "$SIZE" --arg k "$KIND" \
+            '{version: $v, versionCode: $c, sha256: $s, cert: $f, size: $z, key: $k}' > out/version.json
           cat out/version.json
           {
             echo "fingerprint=$FP"
@@ -349,6 +352,13 @@ jobs:
           OLD=$(jq -r '.cert // empty' "$PREV" | tr -d ':' | tr 'A-F' 'a-f')
           if [ -z "$OLD" ]; then
             echo "::warning::Oldingi version.json da sertifikat yo'q — tekshiruv o'tkazib yuborildi."; publish true; exit 0
+          fi
+          OLD_KIND=$(jq -r '.key // "debug"' "$PREV")
+          if [ "$OLD" != "$FP" ] && [ "$OLD_KIND" = "debug" ] && [ "$RELEASE_KEY" = "1" ]; then
+            # Saytdagi APK vaqtinchalik debug kaliti bilan edi ("key" yo'q yoki "debug"): HASHARCHILAR_KEYSTORE_*
+            # kalitiga bir marta o'tamiz, keyingi APK lar shu kalit bilan — yangilanishlar ishlaydi.
+            echo "::warning title=APK doimiy kalitga o'tdi::Saytdagi APK ($(jq -r '.version // "?"' "$PREV")) debug kaliti bilan edi; endi HASHARCHILAR_KEYSTORE_* kaliti. Eski APK ni o'rnatganlar bir marta qayta o'rnatadi."
+            publish true; exit 0
           fi
           if [ "$OLD" != "$FP" ]; then
             if [ "$RELEASE_KEY" = "1" ]; then
