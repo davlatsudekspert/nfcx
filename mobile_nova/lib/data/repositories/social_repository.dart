@@ -84,11 +84,12 @@ class SocialRepository {
 
   Future<Result<void>> deletePost(int id) => _api.delete<void>('/api/posts/$id');
 
-  /// KO'RISH — post/Reels ekranda ko'ringanda BIR MARTA yuboriladi.
+  /// KO'RISH — post/Reels har bir kirishda 2 soniya ko'rinsa BIR MARTA
+  /// yuboriladi (`ViewSession`, egasi 2026-10-04).
   ///
-  /// Server bir odamni bir kontentga bir marta sanaydi va egasining
-  /// o'z ko'rishini sanamaydi, ya'ni qayta yuborish raqamni
-  /// ko'paytirmaydi. Javob — yangi jami son.
+  /// Server har kirishni sanaydi (qaytib ko'rgan odam ham +1), lekin
+  /// egasining o'z ko'rishini va 2 soniyadan tez qayta yuborishni
+  /// sanamaydi. Javob — yangi jami son.
   Future<Result<int>> recordView(int id, {bool company = false}) async {
     final res = await _api.post<Map<String, dynamic>>(
         company

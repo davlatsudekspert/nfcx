@@ -121,6 +121,78 @@ const reelsInitTimeout = Duration(seconds: 20);
 /// tez aylantirib o'tilgani sanalmaydi.
 const kViewAfter = Duration(seconds: 2);
 
+/// KO'RISH SEANSI — Reels va post tafsiloti uchun bitta qoida
+/// (egasi, 2026-10-04: "har qanday seansda ham bir marta ko'rib
+/// bo'lib qayta kirib 2 sekund ko'rsa prosmotr bo'lishi kerak").
+///
+/// Seans — kontent UZLUKSIZ ko'rinib turgan vaqt: [update] ga
+/// `onScreen: true` berilgan VA ilova oldinda (`resumed`). Seansda
+/// [kViewAfter] o'tsa [_send] BIR MARTA chaqiriladi; video o'sha
+/// joyda aylanib turaversa qayta chaqirilmaydi.
+///
+/// Seans tugaydi: `onScreen: false` (boshqa reelga o'tildi, boshqa
+/// tab, ustiga boshqa ekran ochildi) yoki ilova fonga ketdi
+/// (`inactive`/`hidden`/`paused`). Shunda taymer bekor qilinadi va
+/// "yuborildi" belgisi o'chadi — qaytib yana 2 soniya ko'rsa, yana
+/// yuboriladi. Egasining o'z ko'rishini va 2 soniyadan tez qayta
+/// yuborishni server o'zi sanamaydi.
+class ViewSession with WidgetsBindingObserver {
+  ViewSession(this._send) {
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  final VoidCallback _send;
+
+  bool _onScreen = false;
+  bool _foreground =
+      _isForeground(WidgetsBinding.instance.lifecycleState);
+  bool _sent = false;
+  Timer? _timer;
+
+  // `null` — holat hali kelmagan (testlar, ilova endi ochilmoqda):
+  // oldinda deb hisoblanadi.
+  static bool _isForeground(AppLifecycleState? s) =>
+      s == null || s == AppLifecycleState.resumed;
+
+  bool get _watching => _onScreen && _foreground;
+
+  /// Kontent hozir ekranda ko'rinib turibdimi (ilova holatidan
+  /// tashqari — uni [ViewSession] o'zi kuzatadi).
+  void update({required bool onScreen}) {
+    _onScreen = onScreen;
+    _apply();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _foreground = _isForeground(state);
+    _apply();
+  }
+
+  void _apply() {
+    if (!_watching) {
+      // Seans tugadi — keyingi kirish yangi ko'rish.
+      _timer?.cancel();
+      _timer = null;
+      _sent = false;
+      return;
+    }
+    if (_sent || _timer != null) return;
+    _timer = Timer(kViewAfter, () {
+      _timer = null;
+      if (!_watching || _sent) return;
+      _sent = true;
+      _send();
+    });
+  }
+
+  void dispose() {
+    _timer?.cancel();
+    _timer = null;
+    WidgetsBinding.instance.removeObserver(this);
+  }
+}
+
 class SavedReels extends SyncedSaves {
   SavedReels(SavesRepository repo, Prefs prefs)
       : super(repo, SaveKind.reel,
@@ -546,32 +618,37 @@ class _ReelPageState extends ConsumerState<_ReelPage>
 
   // ── KO'RISHLAR (Instagram kabi) ────────────────────────────────────
   //
-  // Reel ekranda [kViewAfter] davomida turib qolsa, serverga BIR MARTA
-  // yuboriladi; javobdagi jami son ko'z belgisi yonida chiqadi. Tez
-  // aylantirib o'tilgan reel sanalmaydi. Server bir odamni bir marta
-  // sanaydi, ya'ni qayta ochish raqamni ko'paytirmaydi.
+  // QOIDA (egasi, 2026-10-04): reel ekranda [kViewAfter] (2 soniya)
+  // uzluksiz ko'rinsa — bitta ko'rish. Har bir KIRISH alohida sanaladi:
+  // ko'rib chiqib ketib, qaytib yana 2 soniya ko'rsa — yana +1 (har
+  // qanday seansda). Bir kirish ichida video aylanib turaversa qayta
+  // yuborilmaydi. Tez aylantirib o'tilgan reel sanalmaydi.
+  //
+  // "Chiqib ketish" — sahifa ko'rinmay qolishi: boshqa reelga o'tildi
+  // (`visible`), boshqa tab yoki ustiga boshqa ekran ochildi
+  // (`_onStage`), ilova fonga ketdi ([ViewSession] o'zi kuzatadi).
+  // Holat (`State`) bu paytda tirik qoladi, shuning uchun "yuborildi"
+  // belgisi aynan shu yerda o'chiriladi.
+  //
+  // Javobdagi jami son ko'z belgisi yonida chiqadi. Egasining o'z
+  // ko'rishini va 2 soniyadan tez qayta yuborishni server sanamaydi.
   int? _views;
-  bool _viewSent = false;
-  Timer? _viewTimer;
+  late final ViewSession _viewSession = ViewSession(_sendView);
 
   void _armView() {
     final p = widget.post;
-    if (_viewSent || p.isStory || p.id <= 0) return;
-    if (!(widget.visible && _onStage)) {
-      _viewTimer?.cancel();
-      _viewTimer = null;
-      return;
-    }
-    _viewTimer ??= Timer(kViewAfter, () async {
-      _viewTimer = null;
-      if (!mounted || !widget.visible || !_onStage || _viewSent) return;
-      _viewSent = true;
-      final res = await ref
-          .read(socialRepositoryProvider)
-          .recordView(p.id, company: p.isCompany);
-      if (!mounted) return;
-      if (res case Ok(:final value)) setState(() => _views = value);
-    });
+    _viewSession.update(
+      onScreen: widget.visible && _onStage && !p.isStory && p.id > 0,
+    );
+  }
+
+  Future<void> _sendView() async {
+    final p = widget.post;
+    final res = await ref
+        .read(socialRepositoryProvider)
+        .recordView(p.id, company: p.isCompany);
+    if (!mounted) return;
+    if (res case Ok(:final value)) setState(() => _views = value);
   }
 
   /// Yurak "portlashi" — ikki marta bosilganda.
@@ -764,7 +841,7 @@ class _ReelPageState extends ConsumerState<_ReelPage>
   @override
   void dispose() {
     _gen++;
-    _viewTimer?.cancel();
+    _viewSession.dispose();
     _controller?.dispose();
     _music?.dispose();
     _clock?.dispose();

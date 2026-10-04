@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../app/profile_context.dart';
 import '../../core/media/video_prep.dart';
+import '../../core/utils/result.dart';
 import '../../core/utils/sharing.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/business_repository.dart';
@@ -91,8 +92,44 @@ class _PostScreenState extends ConsumerState<PostScreen> {
   /// bosilganda mutlaqo hech narsa bo'lmasdi.
   final _commentFocus = FocusNode();
 
+  // ── KO'RISHLAR (Reels bilan bir xil qoida — [ViewSession]) ─────────
+  //
+  // Post ekranda [kViewAfter] (2 soniya) turib qolsa — bitta ko'rish.
+  // Chiqib ketib (ustiga boshqa ekran, ilova fonga) qaytib yana
+  // 2 soniya ko'rsa — yana +1. Hisob faqat server postni bergandan
+  // keyin boshlanadi: yuklanmagan (xato) post sanalmaydi. Story va
+  // demo (`id <= 0`) yuborilmaydi.
+  late final _viewSession = ViewSession(_sendView);
+
+  /// Serverdan kelgan jami son — post nusxasidagidan yangiroq.
+  int? _views;
+
+  /// Ko'rinish holatini yangilaydi. `build` dan chaqiriladi: kirishlar
+  /// (`TickerMode`, post javobi) o'zgarsa ekran qayta quriladi, chaqiruv
+  /// esa takrorlansa ham zararsiz (faqat taymer qo'yadi/bekor qiladi).
+  void _syncView(AsyncValue<Post> fetched) {
+    // Ustida boshqa ekran / yashirin — `TickerMode` o'chiq (Reels'dagi
+    // `_onStage` bilan bir xil). Har doim o'qiladi: bog'liqlik yozilsin.
+    final onStage = TickerMode.of(context);
+    final p = fetched.hasError ? null : fetched.valueOrNull;
+    _viewSession.update(
+      onScreen: onStage && p != null && !p.isStory && p.id > 0,
+    );
+  }
+
+  Future<void> _sendView() async {
+    final p = ref.read(postProvider(_ref)).valueOrNull;
+    if (p == null) return;
+    final res = await ref
+        .read(socialRepositoryProvider)
+        .recordView(p.id, company: p.isCompany);
+    if (!mounted) return;
+    if (res case Ok(:final value)) setState(() => _views = value);
+  }
+
   @override
   void dispose() {
+    _viewSession.dispose();
     _commentFocus.dispose();
     super.dispose();
   }
@@ -117,6 +154,7 @@ class _PostScreenState extends ConsumerState<PostScreen> {
     final l = L.of(context);
     final t = context.tokens;
     final fetched = ref.watch(postProvider(_ref));
+    _syncView(fetched);
     // Server javobi kelguncha — profil setkasidagi nusxa (skelet
     // o'rniga darhol post). Javob kelgach yangi sonlar bilan almashadi.
     final cached =
@@ -242,16 +280,42 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                 // `AspectRatio(4 / 3)`, bu yerda `AspectRatio(1)`
                 // turardi — BITTA post ikki ekranda ikki xil
                 // ko'rinardi va ikkalasida ham kesilardi.
-                AdaptiveMedia(
-                  url: p.mediaUrls.first,
-                  isVideo: p.isVideo,
-                  videoKey: ValueKey(p.id),
-                  autoPlayVideo: false,
-                  loopingVideo: true,
-                  tapToToggleVideo: true,
-                  // Bosish — belgilarsiz to'liq ekran (Instagram).
-                  fullscreenVideo: true,
-                  borderRadius: R.gentle,
+                Stack(
+                  children: [
+                    AdaptiveMedia(
+                      url: p.mediaUrls.first,
+                      isVideo: p.isVideo,
+                      videoKey: ValueKey(p.id),
+                      autoPlayVideo: false,
+                      loopingVideo: true,
+                      tapToToggleVideo: true,
+                      // Bosish — belgilarsiz to'liq ekran (Instagram).
+                      fullscreenVideo: true,
+                      borderRadius: R.gentle,
+                    ),
+                    // KO'RISHLAR — Reels'dagi ko'z belgisi + son, media
+                    // ustida (amallar qatoriga qo'shilsa 320 dp da
+                    // "Ulashish" surilardi). To'q shisha — har qanday
+                    // rasm ustida o'qiladi. Bosishni to'smaydi.
+                    Positioned(
+                      key: const ValueKey('post-views'),
+                      left: Gap.md,
+                      bottom: Gap.md,
+                      child: IgnorePointer(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: .45),
+                            borderRadius: R.pill,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            child: ReelViewsLabel(count: _views ?? p.views),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
               if (p.music != null) ...[
