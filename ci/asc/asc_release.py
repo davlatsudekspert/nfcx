@@ -42,7 +42,14 @@ def call(method, path, body=None, params=None, raw_url=None, data=None, headers=
         txt = e.read().decode()
         try:
             j = json.loads(txt)
-            msg = '; '.join(f"{x.get('code')}: {x.get('detail')} {((x.get('source') or {}).get('pointer') or '')}" for x in j.get('errors', []))[:400]
+            parts = []
+            for x in j.get('errors', []):
+                parts.append(f"{x.get('code')}: {x.get('detail')} {((x.get('source') or {}).get('pointer') or '')}")
+                # 409 "check associated errors" — haqiqiy sabablar meta.associatedErrors ichida.
+                for res, errs in ((x.get('meta') or {}).get('associatedErrors') or {}).items():
+                    for ae in errs or []:
+                        parts.append(f"  ↳ {res}: {ae.get('code')}: {ae.get('detail')}")
+            msg = '; '.join(parts)[:3000]
         except Exception:
             msg = txt
         return e.code, {'_error': msg}
