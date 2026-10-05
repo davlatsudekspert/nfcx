@@ -1,0 +1,594 @@
+From 9563200ecd9d4137ad2a03b6e05b4d8b341e1be0 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Mon, 5 Oct 2026 06:39:34 +0000
+Subject: [PATCH] 1.1.1: Reels izohi 'ko'proq', videoni surish, lentada ikki
+ marta bosib layk, Reels sarlavhasi tozalandi
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- Reels: 3 qatordan uzun izoh 'ko'proq' bilan ochiladi (Instagram kabi).
+- Reels: progress chizig'i bosilsa/surilsa o'sha joyga o'tadi (16 px
+  ko'rinmas maydon; surish paytida pauza, keyin davom).
+- Lenta: rasm postini ikki marta bosish — layk + yurak animatsiyasi
+  (faqat yoqadi, o'chirmaydi; video bosilishi o'zgarmadi).
+- Reels tepasidagi kichik 'NFCSTORE' yozuvi olib tashlandi, faqat 'Reels'.
+Testlar: 1261 o'tdi.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .../lib/features/social/feed_card.dart        | 122 +++++++++++----
+ .../lib/features/social/reels_screen.dart     | 142 +++++++++++++++---
+ mobile_nova/lib/l10n/arb/app_en.arb           |   1 +
+ mobile_nova/lib/l10n/arb/app_ru.arb           |   1 +
+ mobile_nova/lib/l10n/arb/app_uz.arb           |   1 +
+ .../lib/l10n/gen/app_localizations.dart       |   6 +
+ .../lib/l10n/gen/app_localizations_en.dart    |   3 +
+ .../lib/l10n/gen/app_localizations_ru.dart    |   3 +
+ .../lib/l10n/gen/app_localizations_uz.dart    |   3 +
+ mobile_nova/test/reels_final_test.dart        |  45 +++++-
+ mobile_nova/test/v111_polish_test.dart        |  49 ++++++
+ 11 files changed, 325 insertions(+), 51 deletions(-)
+
+diff --git a/mobile_nova/lib/features/social/feed_card.dart b/mobile_nova/lib/features/social/feed_card.dart
+index 94ccdee..b3547be 100644
+--- a/mobile_nova/lib/features/social/feed_card.dart
++++ b/mobile_nova/lib/features/social/feed_card.dart
+@@ -163,32 +163,43 @@ class FeedCard extends ConsumerWidget {
+             // `AspectRatio(4 / 3)` + `cover` turardi: tik rasm usti
+             // va osti bilan kesilardi, kvadrat logotip esa cho'zilib
+             // hoshiyasi chiqib ketardi.
+-            AdaptiveMedia(
+-              url: media,
+-              isVideo: post.isVideo,
+-              videoKey: ValueKey(post.id),
+-              borderRadius: R.gentle,
+-              // LENTADA VIDEO O'ZI BOSHLANMAYDI.
+-              //
+-              // Standart qiymat `true` edi, ya'ni ekranda beshta
+-              // video post bo'lsa BESHTASI ham ochilardi: beshta
+-              // dekoder, beshta tarmoq so'rovi va ketma-ket ovoz
+-              // egaligini tortib olish. Ko'ringan narsa esa —
+-              // eng oxirgisining ovozi.
+-              //
+-              // Endi odam bosadi. Trafik ham tejaladi: mobil
+-              // internet qimmat, ko'rilmagan video uchun pul
+-              // sarflash odamning roziligisiz bo'lardi.
+-              autoPlayVideo: false,
+-              tapToToggleVideo: true,
+-              // Bosish — belgilarsiz to'liq ekran (Instagram).
+-              fullscreenVideo: true,
+-              // Dominant karta bo'lsa dangasalik shart emas — u
+-              // baribir darhol ochiladi.
+-              lazyVideo: activeVideo == null,
+-              activeVideo: activeVideo,
+-              // Burchakda 🔇/🔊 (egasi, 2026-10-05) — Reels bilan umumiy.
+-              showMuteVideo: true,
++            // IKKI MARTA BOSIB LAYK — rasm postida (Instagram kabi,
++            // egasi 2026-10-05). Faqat yoqadi, o'chirmaydi. Video
++            // bosilganda to'liq ekran ochiladi — unga tegilmaydi.
++            _DoubleTapLike(
++              enabled: !post.isVideo,
++              onLike: () async {
++                if (like.liked) return;
++                reportIfFailed(
++                    await ref.read(postLikesProvider.notifier).toggle(post));
++              },
++              child: AdaptiveMedia(
++                url: media,
++                isVideo: post.isVideo,
++                videoKey: ValueKey(post.id),
++                borderRadius: R.gentle,
++                // LENTADA VIDEO O'ZI BOSHLANMAYDI.
++                //
++                // Standart qiymat `true` edi, ya'ni ekranda beshta
++                // video post bo'lsa BESHTASI ham ochilardi: beshta
++                // dekoder, beshta tarmoq so'rovi va ketma-ket ovoz
++                // egaligini tortib olish. Ko'ringan narsa esa —
++                // eng oxirgisining ovozi.
++                //
++                // Endi odam bosadi. Trafik ham tejaladi: mobil
++                // internet qimmat, ko'rilmagan video uchun pul
++                // sarflash odamning roziligisiz bo'lardi.
++                autoPlayVideo: false,
++                tapToToggleVideo: true,
++                // Bosish — belgilarsiz to'liq ekran (Instagram).
++                fullscreenVideo: true,
++                // Dominant karta bo'lsa dangasalik shart emas — u
++                // baribir darhol ochiladi.
++                lazyVideo: activeVideo == null,
++                activeVideo: activeVideo,
++                // Burchakda 🔇/🔊 (egasi, 2026-10-05) — Reels bilan umumiy.
++                showMuteVideo: true,
++              ),
+             ),
+           ],
+           // Postdagi musiqa — bosilsa tinglash va «Shu musiqani ishlatish».
+@@ -436,3 +447,62 @@ class _FeaturedBadge extends StatelessWidget {
+     );
+   }
+ }
++
++
++/// Rasm ustida ikki marta bosish → layk va qisqa yurak animatsiyasi.
++class _DoubleTapLike extends StatefulWidget {
++  const _DoubleTapLike({
++    required this.enabled,
++    required this.onLike,
++    required this.child,
++  });
++
++  final bool enabled;
++  final VoidCallback onLike;
++  final Widget child;
++
++  @override
++  State<_DoubleTapLike> createState() => _DoubleTapLikeState();
++}
++
++class _DoubleTapLikeState extends State<_DoubleTapLike> {
++  bool _burst = false;
++
++  void _go() {
++    widget.onLike();
++    setState(() => _burst = true);
++    Future<void>.delayed(const Duration(milliseconds: 650), () {
++      if (mounted) setState(() => _burst = false);
++    });
++  }
++
++  @override
++  Widget build(BuildContext context) {
++    if (!widget.enabled) return widget.child;
++    return GestureDetector(
++      key: const ValueKey('feed-double-like'),
++      onDoubleTap: _go,
++      child: Stack(
++        alignment: Alignment.center,
++        children: [
++          widget.child,
++          IgnorePointer(
++            child: AnimatedScale(
++              scale: _burst ? 1 : .4,
++              duration: const Duration(milliseconds: 220),
++              curve: Curves.easeOutBack,
++              child: AnimatedOpacity(
++                opacity: _burst ? 1 : 0,
++                duration: const Duration(milliseconds: 180),
++                child: const Icon(Icons.favorite_rounded,
++                    size: 86,
++                    color: Colors.white,
++                    shadows: [Shadow(blurRadius: 18, color: Colors.black38)]),
++              ),
++            ),
++          ),
++        ],
++      ),
++    );
++  }
++}
+diff --git a/mobile_nova/lib/features/social/reels_screen.dart b/mobile_nova/lib/features/social/reels_screen.dart
+index 79f58c8..960ab24 100644
+--- a/mobile_nova/lib/features/social/reels_screen.dart
++++ b/mobile_nova/lib/features/social/reels_screen.dart
+@@ -494,16 +494,9 @@ class _TopBar extends StatelessWidget {
+               mainAxisSize: MainAxisSize.min,
+               crossAxisAlignment: CrossAxisAlignment.start,
+               children: [
+-                // Brend imzosi — Reels NFCSTORE'niki ekani bir qarashda.
+-                Text(
+-                  'NFCSTORE',
+-                  style: AppType.eyebrow(
+-                          color: context.tokens.goldOnDark(IdPlate.goldLight),
+-                          size: 9)
+-                      .copyWith(shadows: const [
+-                    Shadow(color: Colors.black54, blurRadius: 8),
+-                  ]),
+-                ),
++                // Faqat "Reels" (egasi, 2026-10-05): ustidagi kichik
++                // "NFCSTORE" yozuvi har videoda ortiqcha edi — Asosiy
++                // ekrandagi kabi olib tashlandi.
+                 Text(
+                   l.navReels,
+                   style: AppType.displayStyle(
+@@ -584,6 +577,13 @@ class _ReelPageState extends ConsumerState<_ReelPage>
+   VideoPlayerController? _music;
+   bool _musicReady = false;
+ 
++  /// Uzun izoh ochiqmi ("…ko'proq" bosilgan) — Instagram kabi.
++  bool _captionOpen = false;
++
++  /// Progress chizig'i barmoq bilan surilmoqda.
++  bool _scrubbing = false;
++  bool _wasPlayingBeforeScrub = false;
++
+   AnimationController get _photoClock => _clock ??= AnimationController(
+         vsync: this,
+         duration: Duration(seconds: widget.post.imageSeconds),
+@@ -1383,17 +1383,11 @@ class _ReelPageState extends ConsumerState<_ReelPage>
+                 ],
+                 if (p.text.isNotEmpty) ...[
+                   const SizedBox(height: Gap.sm),
+-                  Text(
+-                    p.text,
+-                    maxLines: 3,
+-                    overflow: TextOverflow.ellipsis,
+-                    style: const TextStyle(
+-                      fontFamily: AppType.sans,
+-                      fontSize: 13,
+-                      fontWeight: FontWeight.w500,
+-                      height: 1.35,
+-                      color: Colors.white,
+-                    ),
++                  _ReelCaption(
++                    text: p.text,
++                    open: _captionOpen,
++                    onToggle: () =>
++                        setState(() => _captionOpen = !_captionOpen),
+                   ),
+                 ],
+               ],
+@@ -1441,7 +1435,7 @@ class _ReelPageState extends ConsumerState<_ReelPage>
+                   child: ClipRRect(
+                     borderRadius: BorderRadius.circular(2),
+                     child: SizedBox(
+-                      height: 2.5,
++                      height: _scrubbing ? 4 : 2.5,
+                       child: VideoProgressIndicator(
+                         c,
+                         allowScrubbing: false,
+@@ -1457,6 +1451,47 @@ class _ReelPageState extends ConsumerState<_ReelPage>
+                 ),
+               ),
+             ),
++          // SURISH ZONASI — chiziq ingichka (2.5 px), barmoq uchun esa
++          // 16 px balandlikdagi ko'rinmas maydon (Instagram kabi:
++          // bosilgan yoki surilgan joyga o'tadi).
++          if (_ready && c != null && widget.visible && !_photo && !hide)
++            Positioned(
++              key: const ValueKey('reel-scrub'),
++              left: Gap.lg,
++              right: Gap.lg,
++              bottom: navH,
++              height: 16,
++              child: LayoutBuilder(
++                builder: (_, box) {
++                  void seekTo(double dx) {
++                    final d = c.value.duration;
++                    if (d <= Duration.zero || box.maxWidth <= 0) return;
++                    final f = (dx / box.maxWidth).clamp(0.0, 1.0);
++                    c.seekTo(d * f);
++                  }
++
++                  return GestureDetector(
++                    behavior: HitTestBehavior.opaque,
++                    onTapUp: (d) => seekTo(d.localPosition.dx),
++                    onHorizontalDragStart: (d) {
++                      _wasPlayingBeforeScrub = c.value.isPlaying;
++                      c.pause();
++                      setState(() => _scrubbing = true);
++                      seekTo(d.localPosition.dx);
++                    },
++                    onHorizontalDragUpdate: (d) => seekTo(d.localPosition.dx),
++                    onHorizontalDragEnd: (_) {
++                      setState(() => _scrubbing = false);
++                      if (_wasPlayingBeforeScrub && widget.visible) c.play();
++                    },
++                    onHorizontalDragCancel: () {
++                      if (mounted) setState(() => _scrubbing = false);
++                      if (_wasPlayingBeforeScrub && widget.visible) c.play();
++                    },
++                  );
++                },
++              ),
++            ),
+         ],
+       ),
+     );
+@@ -1744,3 +1779,66 @@ class ReelViewsLabel extends StatelessWidget {
+     );
+   }
+ }
++
++
++/// Reels izohi: 3 qatordan uzun bo'lsa "…ko'proq", bosilsa to'liq
++/// (egasi, 2026-10-05: Instagram kabi). Juda uzun matn ekranning
++/// uchdan biridan oshmaydi — ichida aylantiriladi.
++class _ReelCaption extends StatelessWidget {
++  const _ReelCaption({
++    required this.text,
++    required this.open,
++    required this.onToggle,
++  });
++
++  final String text;
++  final bool open;
++  final VoidCallback onToggle;
++
++  static const _style = TextStyle(
++    fontFamily: AppType.sans,
++    fontSize: 13,
++    fontWeight: FontWeight.w500,
++    height: 1.35,
++    color: Colors.white,
++  );
++
++  @override
++  Widget build(BuildContext context) {
++    final l = L.of(context);
++    return LayoutBuilder(builder: (context, box) {
++      final tp = TextPainter(
++        text: TextSpan(text: text, style: _style),
++        maxLines: 3,
++        textDirection: Directionality.of(context),
++        textScaler: MediaQuery.textScalerOf(context),
++      )..layout(maxWidth: box.maxWidth);
++      final long = tp.didExceedMaxLines;
++      if (!long) return Text(text, style: _style);
++      return GestureDetector(
++        key: const ValueKey('reel-caption'),
++        behavior: HitTestBehavior.opaque,
++        onTap: onToggle,
++        child: open
++            ? ConstrainedBox(
++                constraints: BoxConstraints(
++                    maxHeight: MediaQuery.sizeOf(context).height * .33),
++                child: SingleChildScrollView(child: Text(text, style: _style)),
++              )
++            : Column(
++                crossAxisAlignment: CrossAxisAlignment.start,
++                mainAxisSize: MainAxisSize.min,
++                children: [
++                  Text(text,
++                      maxLines: 3,
++                      overflow: TextOverflow.ellipsis,
++                      style: _style),
++                  Text(l.reelCaptionMore,
++                      style: _style.copyWith(
++                          color: Colors.white70, fontWeight: FontWeight.w700)),
++                ],
++              ),
++      );
++    });
++  }
++}
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index 28bda9e..5ae5ff7 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -233,6 +233,7 @@
+   "analyticsAllTime": "Profile all time: {total} views · {unique} unique visitors in 30 days",
+   "analyticsByDay": "Views by day",
+   "analyticsTop": "Most viewed",
++  "reelCaptionMore": "more",
+   "analyticsSeeAll": "See all ({count})",
+   "analyticsNoPosts": "No posts or Reels yet",
+   "analyticsReel": "Reels",
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index bc01554..f55eb05 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -233,6 +233,7 @@
+   "analyticsAllTime": "Профиль за всё время: {total} просмотров · {unique} уникальных за 30 дней",
+   "analyticsByDay": "Просмотры по дням",
+   "analyticsTop": "Самые просматриваемые",
++  "reelCaptionMore": "ещё",
+   "analyticsSeeAll": "Смотреть все ({count})",
+   "analyticsNoPosts": "Пока нет постов и Reels",
+   "analyticsReel": "Reels",
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index 9463642..1553b87 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -233,6 +233,7 @@
+   "analyticsAllTime": "Profil butun vaqtda: {total} ko‘rish · 30 kunda {unique} noyob tashrifchi",
+   "analyticsByDay": "Kunlik ko‘rishlar",
+   "analyticsTop": "Eng ko‘p ko‘rilganlar",
++  "reelCaptionMore": "ko‘proq",
+   "analyticsSeeAll": "Hammasini ko‘rish ({count})",
+   "@analyticsSeeAll": {"placeholders": {"count": {"type": "int"}}},
+   "analyticsNoPosts": "Hali post yoki Reels yo‘q",
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index d7f0e1e..0a99ca1 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -1311,6 +1311,12 @@ abstract class L {
+   /// **'Eng ko‘p ko‘rilganlar'**
+   String get analyticsTop;
+ 
++  /// No description provided for @reelCaptionMore.
++  ///
++  /// In uz, this message translates to:
++  /// **'ko‘proq'**
++  String get reelCaptionMore;
++
+   /// No description provided for @analyticsSeeAll.
+   ///
+   /// In uz, this message translates to:
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index e1076a3..df32645 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -640,6 +640,9 @@ class LEn extends L {
+   @override
+   String get analyticsTop => 'Most viewed';
+ 
++  @override
++  String get reelCaptionMore => 'more';
++
+   @override
+   String analyticsSeeAll(int count) {
+     return 'See all ($count)';
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index ed67c0f..434de22 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -636,6 +636,9 @@ class LRu extends L {
+   @override
+   String get analyticsTop => 'Самые просматриваемые';
+ 
++  @override
++  String get reelCaptionMore => 'ещё';
++
+   @override
+   String analyticsSeeAll(int count) {
+     return 'Смотреть все ($count)';
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index 353097c..6fc39c7 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -640,6 +640,9 @@ class LUz extends L {
+   @override
+   String get analyticsTop => 'Eng ko‘p ko‘rilganlar';
+ 
++  @override
++  String get reelCaptionMore => 'ko‘proq';
++
+   @override
+   String analyticsSeeAll(int count) {
+     return 'Hammasini ko‘rish ($count)';
+diff --git a/mobile_nova/test/reels_final_test.dart b/mobile_nova/test/reels_final_test.dart
+index 853cc4c..f01e44b 100644
+--- a/mobile_nova/test/reels_final_test.dart
++++ b/mobile_nova/test/reels_final_test.dart
+@@ -103,7 +103,7 @@ final _reels = [
+ ];
+ 
+ Future<({ProviderContainer c, _Social social, _Profile profile})> _pump(
+-    WidgetTester tester, FakeVideoPlatform video) async {
++    WidgetTester tester, FakeVideoPlatform video, {List<Post>? reels}) async {
+   VideoPlayerPlatform.instance = video;
+   tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+   tester.view.devicePixelRatio = 3;
+@@ -116,7 +116,7 @@ Future<({ProviderContainer c, _Social social, _Profile profile})> _pump(
+     socialRepositoryProvider.overrideWithValue(social),
+     profileRepositoryProvider.overrideWithValue(profile),
+     businessRepositoryProvider.overrideWithValue(_Biz()),
+-    reelsProvider.overrideWith((ref) async => _reels),
++    reelsProvider.overrideWith((ref) async => reels ?? _reels),
+     activeTabProvider.overrideWith((ref) => 3),
+   ]);
+   addTearDown(c.dispose);
+@@ -422,5 +422,44 @@ void main() {
+     expect(tester.element(find.byType(ReelsScreen)).dirty, isTrue);
+     await settle(tester, frames: 4);
+   });
+-}
+ 
++  testWidgets('uzun izoh: "ko‘proq" bosilsa to‘liq ochiladi (1.1.1)',
++      (tester) async {
++    final long = List.filled(12, 'Bu juda uzun izoh matni').join(' ');
++    await _pump(tester, FakeVideoPlatform(), reels: [
++      Post(
++        id: 70,
++        code: 'PPP777',
++        authorName: 'Mashrabboy',
++        text: long,
++        mediaUrls: const ['https://nfcstore.uz/uploads/a.mp4'],
++        isVideo: true,
++      ),
++    ]);
++    expect(find.byKey(const ValueKey('reel-caption')), findsOneWidget);
++    expect(find.text('ko‘proq'), findsOneWidget);
++    await tester.tap(find.byKey(const ValueKey('reel-caption')));
++    await settle(tester, frames: 4);
++    expect(find.text('ko‘proq'), findsNothing,
++        reason: 'ochilgandan keyin to‘liq matn');
++    expect(tester.takeException(), isNull);
++  });
++
++  testWidgets('progress chizig‘ini bosish — o‘sha joyga o‘tadi (1.1.1)',
++      (tester) async {
++    final v = FakeVideoPlatform();
++    await _pump(tester, v);
++    final zone = find.byKey(const ValueKey('reel-scrub'));
++    expect(zone, findsOneWidget);
++    final r = tester.getRect(zone);
++    await tester.tapAt(Offset(r.left + r.width * .5, r.center.dy));
++    // Tashqi "ikki marta bosish" tanib olgichi bir bosishni ~300 ms
++    // kutadi (Reels'dagi ikki marta bosib layk).
++    await tester.pump(const Duration(milliseconds: 400));
++    await settle(tester, frames: 3);
++    final id = v.playing.isNotEmpty ? v.playing.first : v.alive.first;
++    expect(v.positions[id], isNotNull, reason: 'seekTo chaqirilmadi');
++    expect(v.positions[id]! > Duration.zero, isTrue);
++    expect(tester.takeException(), isNull);
++  });
++}
+diff --git a/mobile_nova/test/v111_polish_test.dart b/mobile_nova/test/v111_polish_test.dart
+index 6ae5537..c63cd12 100644
+--- a/mobile_nova/test/v111_polish_test.dart
++++ b/mobile_nova/test/v111_polish_test.dart
+@@ -1,7 +1,10 @@
+ import 'package:flutter/material.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/core/utils/result.dart';
+ import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/data/repositories/social_repository.dart';
++import 'package:nfcstore_nova/features/social/feed_card.dart';
+ import 'package:nfcstore_nova/features/settings/analytics_screen.dart';
+ import 'package:nfcstore_nova/features/social/media_sound.dart';
+ import 'package:nfcstore_nova/features/social/reels_screen.dart';
+@@ -10,6 +13,16 @@ import 'helpers.dart';
+ 
+ /// 1.1.1 (egasi, 2026-10-05): lentada ovoz tugmasi, analitikada top-5
+ /// va "Hammasini ko'rish", kunlik grafik butun davrga to'ldiriladi.
++class _LikeSpy extends FakeSocialRepository {
++  int likes = 0;
++  @override
++  Future<Result<({bool liked, int count})>> like(int id,
++      {bool company = false}) async {
++    likes++;
++    return const Ok((liked: true, count: 1));
++  }
++}
++
+ void main() {
+   group('kunlik grafik', () {
+     test('ko‘rishsiz kunlar 0 bilan to‘ldiriladi (ikki qalin ustun emas)', () {
+@@ -79,4 +92,40 @@ void main() {
+     expect(c.read(reelsMutedProvider), isTrue);
+     expect(find.byIcon(Icons.volume_off_rounded), findsOneWidget);
+   });
++
++  testWidgets('lenta: rasmni ikki marta bosish — layk, qayta bosish o‘chirmaydi',
++      (tester) async {
++    final spy = _LikeSpy();
++    await tester.pumpWidget(ProviderScope(
++      overrides: [
++        ...await testOverrides(),
++        socialRepositoryProvider.overrideWithValue(spy),
++      ],
++      child: wrapScreen(const Scaffold(body: SingleChildScrollView(
++        child: FeedCard(
++          post: Post(
++            id: 31,
++            code: 'PPP777',
++            authorName: 'Mashrabboy',
++            mediaUrls: ['https://nfcstore.uz/uploads/x.jpg'],
++          ),
++        ),
++      ))),
++    ));
++    await tester.pump();
++    final pic = find.byKey(const ValueKey('feed-double-like'));
++    expect(pic, findsOneWidget);
++    await tester.tap(pic);
++    await tester.pump(const Duration(milliseconds: 60));
++    await tester.tap(pic);
++    await tester.pump(const Duration(milliseconds: 700));
++    expect(spy.likes, 1);
++    // Allaqachon yoqilgan — ikki marta bosish uni O'CHIRMAYDI.
++    await tester.tap(pic);
++    await tester.pump(const Duration(milliseconds: 60));
++    await tester.tap(pic);
++    await tester.pump(const Duration(milliseconds: 700));
++    expect(spy.likes, 1);
++    expect(tester.takeException(), isNull);
++  });
+ }
+-- 
+2.43.0
+
