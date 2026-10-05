@@ -1,0 +1,615 @@
+From 439bdd69c2b62836aae6fd47595fa771e90113af Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Mon, 5 Oct 2026 06:28:03 +0000
+Subject: [PATCH] 1.1.1: lentada ovoz tugmasi, analitikada top-5 va 'Hammasini
+ ko'rish', video muqova, kunlik grafik
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- Lenta va post videosida burchakda 🔇/🔊 tugma; holat Reels bilan umumiy
+  (mediaMutedProvider) — bir joyda o'chirilsa hammasida o'chiq.
+- Analitika: 'Eng ko'p ko'rilganlar'da faqat 5 ta, qolgani
+  'Hammasini ko'rish (N)' sahifasida.
+- Video postda ▶ belgisi o'rniga birinchi kadr (VideoPoster).
+- Kunlik grafik butun davrga (30 kun) to'ldiriladi — ikki kunlik
+  ma'lumot ikkita qalin kulrang to'rtburchak bo'lib ko'rinmaydi.
+- Versiya 1.1.1.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .../features/settings/analytics_screen.dart   | 96 +++++++++++++++++--
+ .../lib/features/social/feed_card.dart        |  2 +
+ .../lib/features/social/inline_video.dart     | 32 ++++++-
+ .../lib/features/social/media_frame.dart      |  5 +
+ .../lib/features/social/media_sound.dart      | 49 ++++++++++
+ .../lib/features/social/post_screens.dart     |  1 +
+ .../lib/features/social/reels_screen.dart     |  5 +-
+ mobile_nova/lib/l10n/arb/app_en.arb           |  1 +
+ mobile_nova/lib/l10n/arb/app_ru.arb           |  1 +
+ mobile_nova/lib/l10n/arb/app_uz.arb           |  2 +
+ .../lib/l10n/gen/app_localizations.dart       |  6 ++
+ .../lib/l10n/gen/app_localizations_en.dart    |  5 +
+ .../lib/l10n/gen/app_localizations_ru.dart    |  5 +
+ .../lib/l10n/gen/app_localizations_uz.dart    |  5 +
+ mobile_nova/pubspec.yaml                      |  2 +-
+ mobile_nova/test/v111_polish_test.dart        | 82 ++++++++++++++++
+ 16 files changed, 288 insertions(+), 11 deletions(-)
+ create mode 100644 mobile_nova/lib/features/social/media_sound.dart
+ create mode 100644 mobile_nova/test/v111_polish_test.dart
+
+diff --git a/mobile_nova/lib/features/settings/analytics_screen.dart b/mobile_nova/lib/features/settings/analytics_screen.dart
+index 3a08ad5..6d60f6c 100644
+--- a/mobile_nova/lib/features/settings/analytics_screen.dart
++++ b/mobile_nova/lib/features/settings/analytics_screen.dart
+@@ -11,6 +11,7 @@ import '../../design/widgets/surfaces.dart';
+ import '../../l10n/gen/app_localizations.dart';
+ import '../home/widgets/identity_card.dart' show formatCount;
+ import '../social/media_frame.dart' show mediaImage;
++import '../social/video_poster.dart';
+ 
+ /// Sozlamalar → Analitika (`GET /api/my/analytics`, oxirgi 30 kun).
+ ///
+@@ -53,6 +54,26 @@ class AnalyticsScreen extends ConsumerWidget {
+   }
+ }
+ 
++/// Asosiy ekranda ko'rinadigan "eng ko'p ko'rilgan" soni.
++const kAnalyticsTopShown = 5;
++
++/// "Eng ko'p ko'rilganlar" — TO'LIQ ro'yxat.
++class AnalyticsTopScreen extends StatelessWidget {
++  const AnalyticsTopScreen({super.key, required this.top});
++
++  final List<TopContent> top;
++
++  @override
++  Widget build(BuildContext context) {
++    final l = L.of(context);
++    return NovaScaffold(
++      title: l.analyticsTop,
++      showBack: true,
++      body: NovaScroll(children: [for (final p in top) _TopRow(p: p)]),
++    );
++  }
++}
++
+ class _Body extends StatelessWidget {
+   const _Body({required this.a});
+ 
+@@ -122,14 +143,30 @@ class _Body extends StatelessWidget {
+         ),
+         if (a.byDay.isNotEmpty) ...[
+           SectionHeader(title: l.analyticsByDay),
+-          _DayBars(days: a.byDay),
++          _DayBars(days: a.byDay, period: a.days),
+         ],
+         SectionHeader(title: l.analyticsTop),
+         if (a.top.isEmpty)
+           StatePanel(
+               icon: Icons.insights_outlined, title: l.analyticsNoPosts)
+-        else
+-          for (final p in a.top) _TopRow(p: p),
++        else ...[
++          // Faqat TOP-5 (egasi, 2026-10-05: "ro'yxat ko'p bo'lsa pastga
++          // qarab ketadi"). Qolgani alohida sahifada.
++          for (final p in a.top.take(kAnalyticsTopShown)) _TopRow(p: p),
++          if (a.top.length > kAnalyticsTopShown)
++            Align(
++              alignment: Alignment.centerLeft,
++              child: TextButton(
++                key: const ValueKey('an-top-all'),
++                onPressed: () => Navigator.of(context).push(
++                  MaterialPageRoute<void>(
++                    builder: (_) => AnalyticsTopScreen(top: a.top),
++                  ),
++                ),
++                child: Text(l.analyticsSeeAll(a.top.length)),
++              ),
++            ),
++        ],
+       ],
+     );
+   }
+@@ -182,14 +219,48 @@ class _Stat extends StatelessWidget {
+ 
+ /// Kunlik ko'rishlar — oddiy ustunlar (kutubxonasiz). Eng baland
+ /// kun to'liq balandlikda, qolganlari unga nisbatan.
++/// Kunlik qatorni BUTUN davrga to'ldiradi (ko'rish bo'lmagan kun = 0).
++///
++/// Server faqat ko'rish bo'lgan kunlarni beradi. Ilgari 2 kunlik
++/// ma'lumot ekran kengligidagi ikkita qalin to'rtburchakka aylanardi
++/// va buzilgan grafikdek ko'rinardi (egasi, 2026-10-05).
++@visibleForTesting
++List<({String day, int views})> fillDays(
++    List<({String day, int views})> days, int period,
++    {DateTime? today}) {
++  if (days.isEmpty || period <= 0) return days;
++  final byDay = {for (final d in days) d.day: d.views};
++  var end = today ?? DateTime.now().toUtc();
++  end = DateTime.utc(end.year, end.month, end.day);
++  // Server kuni (UTC) bugundan keyin bo'lsa ham kesilmasin.
++  for (final d in days) {
++    final p = DateTime.tryParse(d.day);
++    if (p != null && p.isAfter(end)) end = DateTime.utc(p.year, p.month, p.day);
++  }
++  String key(DateTime x) =>
++      '${x.year.toString().padLeft(4, '0')}-${x.month.toString().padLeft(2, '0')}-${x.day.toString().padLeft(2, '0')}';
++  final n = period.clamp(1, 90);
++  return [
++    for (var i = n - 1; i >= 0; i--)
++      () {
++        final k = key(end.subtract(Duration(days: i)));
++        return (day: k, views: byDay[k] ?? 0);
++      }(),
++  ];
++}
++
+ class _DayBars extends StatelessWidget {
+-  const _DayBars({required this.days});
++  const _DayBars({required List<({String day, int views})> days, int period = 30})
++      : _raw = days,
++        _period = period;
+ 
+-  final List<({String day, int views})> days;
++  final List<({String day, int views})> _raw;
++  final int _period;
+ 
+   @override
+   Widget build(BuildContext context) {
+     final t = context.tokens;
++    final days = fillDays(_raw, _period);
+     final max = days.fold<int>(1, (m, d) => d.views > m ? d.views : m);
+     return Semantics(
+       container: true,
+@@ -208,7 +279,9 @@ class _DayBars extends StatelessWidget {
+                       heightFactor: (d.views / max).clamp(.04, 1.0),
+                       child: DecoratedBox(
+                         decoration: BoxDecoration(
+-                          color: t.accentB.withValues(alpha: .75),
++                          color: d.views == 0
++                              ? t.text3.withValues(alpha: .18)
++                              : t.accentB.withValues(alpha: .75),
+                           borderRadius: const BorderRadius.vertical(
+                               top: Radius.circular(3)),
+                         ),
+@@ -246,6 +319,17 @@ class _TopRow extends StatelessWidget {
+               height: 52,
+               child: p.imageUrl.isNotEmpty
+                   ? mediaImage(context, p.imageUrl, fit: BoxFit.cover)
++                  : p.isVideo
++                  // Video — birinchi kadr (profil to'ri bilan bir xil
++                  // muqova), ustida kichik ijro belgisi.
++                  ? Stack(fit: StackFit.expand, children: [
++                      VideoPoster(url: p.videoUrl),
++                      const Center(
++                        child: Icon(Icons.play_arrow_rounded,
++                            color: Colors.white, size: 22,
++                            shadows: [Shadow(blurRadius: 6, color: Colors.black54)]),
++                      ),
++                    ])
+                   : ColoredBox(
+                       color: t.surface2,
+                       child: Icon(
+diff --git a/mobile_nova/lib/features/social/feed_card.dart b/mobile_nova/lib/features/social/feed_card.dart
+index a998017..94ccdee 100644
+--- a/mobile_nova/lib/features/social/feed_card.dart
++++ b/mobile_nova/lib/features/social/feed_card.dart
+@@ -187,6 +187,8 @@ class FeedCard extends ConsumerWidget {
+               // baribir darhol ochiladi.
+               lazyVideo: activeVideo == null,
+               activeVideo: activeVideo,
++              // Burchakda 🔇/🔊 (egasi, 2026-10-05) — Reels bilan umumiy.
++              showMuteVideo: true,
+             ),
+           ],
+           // Postdagi musiqa — bosilsa tinglash va «Shu musiqani ishlatish».
+diff --git a/mobile_nova/lib/features/social/inline_video.dart b/mobile_nova/lib/features/social/inline_video.dart
+index dc4a0ba..5d8ee4d 100644
+--- a/mobile_nova/lib/features/social/inline_video.dart
++++ b/mobile_nova/lib/features/social/inline_video.dart
+@@ -5,6 +5,7 @@ import 'package:video_player/video_player.dart';
+ import '../../design/tokens/nfc_tokens.dart';
+ import '../profile/music_player.dart';
+ import 'fullscreen_video.dart';
++import 'media_sound.dart';
+ 
+ /// Ichki video chizuvchi — istorya va post uchun BITTA joyda.
+ ///
+@@ -72,8 +73,14 @@ class InlineVideo extends ConsumerStatefulWidget {
+     this.active,
+     this.fullscreenOnTap = false,
+     this.onFullscreen,
++    this.showMute = false,
+   });
+ 
++  /// Burchakda 🔇/🔊 tugma (lenta). Holat Reels bilan umumiy
++  /// (`mediaMutedProvider`); tugma ko'rinmasa ham ovoz shu holatga
++  /// bo'ysunadi.
++  final bool showMute;
++
+   final String url;
+   final bool autoPlay;
+   final bool looping;
+@@ -142,6 +149,8 @@ class InlineVideo extends ConsumerStatefulWidget {
+ 
+ class _InlineVideoState extends ConsumerState<InlineVideo>
+     with WidgetsBindingObserver {
++  double get _volume => ref.read(mediaMutedProvider) ? 0 : 1;
++
+   VideoPlayerController? _c;
+   bool _ready = false;
+   bool _failed = false;
+@@ -281,7 +290,7 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
+     if (widget.active == false) return;
+     // Ochilish paytida ustiga boshqa ekran chiqdi / tab yashirildi.
+     if (widget.active != null && _shown == false) return;
+-    await c.setVolume(1);
++    await c.setVolume(_volume);
+     await c.play();
+     if (mounted) setState(() {});
+   }
+@@ -401,7 +410,7 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
+       await _open();
+       final opened = _c;
+       if (opened != null && !_gone && mounted) {
+-        await opened.setVolume(1);
++        await opened.setVolume(_volume);
+         await opened.play();
+         if (mounted) setState(() {});
+       }
+@@ -413,7 +422,7 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
+       await c.pause();
+     } else {
+       _owner?.take(this, _pauseForOther);
+-      await c.setVolume(1);
++      await c.setVolume(_volume);
+       await c.play();
+     }
+     if (mounted) setState(() {});
+@@ -446,6 +455,23 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
+ 
+   @override
+   Widget build(BuildContext context) {
++    // Ovoz tugmasi bosilsa — o'ynayotgan video darhol bo'ysunadi.
++    ref.listen<bool>(mediaMutedProvider, (_, muted) {
++      final c = _c;
++      if (c != null && _ready) c.setVolume(muted ? 0 : 1);
++    });
++    final body = _buildBody(context);
++    if (!widget.showMute || _c == null || !_ready || _failed) return body;
++    return Stack(
++      fit: StackFit.expand,
++      children: [
++        body,
++        const Positioned(right: 4, bottom: 4, child: MuteButton()),
++      ],
++    );
++  }
++
++  Widget _buildBody(BuildContext context) {
+     final t = context.tokens;
+     final c = _c;
+     if (_failed) {
+diff --git a/mobile_nova/lib/features/social/media_frame.dart b/mobile_nova/lib/features/social/media_frame.dart
+index fb78f73..4218679 100644
+--- a/mobile_nova/lib/features/social/media_frame.dart
++++ b/mobile_nova/lib/features/social/media_frame.dart
+@@ -218,8 +218,12 @@ class AdaptiveMedia extends StatefulWidget {
+     this.lazyVideo = false,
+     this.activeVideo,
+     this.onVideoFullscreen,
++    this.showMuteVideo = false,
+   });
+ 
++  /// Videoda 🔇/🔊 tugma (lenta, post).
++  final bool showMuteVideo;
++
+   final String url;
+   final bool isVideo;
+   final Key? videoKey;
+@@ -332,6 +336,7 @@ class _AdaptiveMediaState extends State<AdaptiveMedia> {
+             lazy: widget.lazyVideo,
+             active: widget.activeVideo,
+             onFullscreen: widget.onVideoFullscreen,
++            showMute: widget.showMuteVideo,
+             // Quti videoning o'z nisbatiga kelganda `cover` hech
+             // narsa kesmaydi; chegaraga urilgan holatda esa
+             // kesish eng kichik bo'ladi.
+diff --git a/mobile_nova/lib/features/social/media_sound.dart b/mobile_nova/lib/features/social/media_sound.dart
+new file mode 100644
+index 0000000..66ade71
+--- /dev/null
++++ b/mobile_nova/lib/features/social/media_sound.dart
+@@ -0,0 +1,49 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++
++/// Ovoz o'chirilganmi — lenta va Reels uchun BITTA umumiy holat.
++///
++/// Egasi (2026-10-05): "Asosiy menyuda bez zvuk yo'q ekan". Lentadagi
++/// video ekranga kelganda o'zi ovoz bilan o'ynardi va uni o'chirish
++/// imkoni yo'q edi. Endi bir joyda o'chirilsa — lentada ham, Reels'da
++/// ham o'chiq qoladi (Instagram kabi). `autoDispose` ATAYLAB yo'q.
++final mediaMutedProvider = StateProvider<bool>((_) => false);
++
++/// Video burchagidagi kichik 🔇/🔊 tugma.
++class MuteButton extends ConsumerWidget {
++  const MuteButton({super.key});
++
++  @override
++  Widget build(BuildContext context, WidgetRef ref) {
++    final muted = ref.watch(mediaMutedProvider);
++    return Semantics(
++      button: true,
++      label: muted ? 'Ovozni yoqish' : "Ovozni o'chirish",
++      child: GestureDetector(
++        key: const ValueKey('video-mute'),
++        behavior: HitTestBehavior.opaque,
++        onTap: () => ref.read(mediaMutedProvider.notifier).state = !muted,
++        // Bosish maydoni 44 px, ko'rinadigan doira 30 px.
++        child: SizedBox(
++          width: 44,
++          height: 44,
++          child: Center(
++            child: Container(
++              width: 30,
++              height: 30,
++              decoration: const BoxDecoration(
++                color: Color(0x99000000),
++                shape: BoxShape.circle,
++              ),
++              child: Icon(
++                muted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
++                size: 17,
++                color: Colors.white,
++              ),
++            ),
++          ),
++        ),
++      ),
++    );
++  }
++}
+diff --git a/mobile_nova/lib/features/social/post_screens.dart b/mobile_nova/lib/features/social/post_screens.dart
+index 857aa35..19e6a76 100644
+--- a/mobile_nova/lib/features/social/post_screens.dart
++++ b/mobile_nova/lib/features/social/post_screens.dart
+@@ -316,6 +316,7 @@ class _PostScreenState extends ConsumerState<PostScreen> {
+                       autoPlayVideo: false,
+                       loopingVideo: true,
+                       tapToToggleVideo: true,
++                      showMuteVideo: true,
+                       // Bosish — belgilarsiz to'liq ekran (Instagram).
+                       fullscreenVideo: true,
+                       onVideoFullscreen: _onFullscreen,
+diff --git a/mobile_nova/lib/features/social/reels_screen.dart b/mobile_nova/lib/features/social/reels_screen.dart
+index 31b0cf0..79f58c8 100644
+--- a/mobile_nova/lib/features/social/reels_screen.dart
++++ b/mobile_nova/lib/features/social/reels_screen.dart
+@@ -14,6 +14,7 @@ import 'engagement.dart';
+ import 'fullscreen_video.dart' show immersiveVideoFit;
+ import 'moderation.dart';
+ import 'media_frame.dart' show mediaImage;
++import 'media_sound.dart';
+ import 'music_picker.dart';
+ 
+ import '../../core/utils/result.dart';
+@@ -42,7 +43,9 @@ import '../../design/icons/nova_icons.dart';
+ /// Sahifa bo'yicha saqlansa, har silashda ovoz qaytadan yonib
+ /// ketardi. Bu yerda `autoDispose` ATAYLAB yo'q: ekrandan chiqib
+ /// qaytganda ham tanlov saqlanadi.
+-final reelsMutedProvider = StateProvider<bool>((_) => false);
++// Lenta bilan UMUMIY holat (media_sound.dart) — bir joyda o'chirilsa,
++// ikkinchisida ham o'chiq.
++final reelsMutedProvider = mediaMutedProvider;
+ 
+ /// Reels manbai — LENTA va O'Z VIDEOLARIM.
+ ///
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index 249db7e..28bda9e 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -233,6 +233,7 @@
+   "analyticsAllTime": "Profile all time: {total} views · {unique} unique visitors in 30 days",
+   "analyticsByDay": "Views by day",
+   "analyticsTop": "Most viewed",
++  "analyticsSeeAll": "See all ({count})",
+   "analyticsNoPosts": "No posts or Reels yet",
+   "analyticsReel": "Reels",
+   "analyticsPost": "Post",
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index b1a27be..bc01554 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -233,6 +233,7 @@
+   "analyticsAllTime": "Профиль за всё время: {total} просмотров · {unique} уникальных за 30 дней",
+   "analyticsByDay": "Просмотры по дням",
+   "analyticsTop": "Самые просматриваемые",
++  "analyticsSeeAll": "Смотреть все ({count})",
+   "analyticsNoPosts": "Пока нет постов и Reels",
+   "analyticsReel": "Reels",
+   "analyticsPost": "Пост",
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index 022045b..9463642 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -233,6 +233,8 @@
+   "analyticsAllTime": "Profil butun vaqtda: {total} ko‘rish · 30 kunda {unique} noyob tashrifchi",
+   "analyticsByDay": "Kunlik ko‘rishlar",
+   "analyticsTop": "Eng ko‘p ko‘rilganlar",
++  "analyticsSeeAll": "Hammasini ko‘rish ({count})",
++  "@analyticsSeeAll": {"placeholders": {"count": {"type": "int"}}},
+   "analyticsNoPosts": "Hali post yoki Reels yo‘q",
+   "analyticsReel": "Reels",
+   "analyticsPost": "Post",
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index 4ef05c8..d7f0e1e 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -1311,6 +1311,12 @@ abstract class L {
+   /// **'Eng ko‘p ko‘rilganlar'**
+   String get analyticsTop;
+ 
++  /// No description provided for @analyticsSeeAll.
++  ///
++  /// In uz, this message translates to:
++  /// **'Hammasini ko‘rish ({count})'**
++  String analyticsSeeAll(int count);
++
+   /// No description provided for @analyticsNoPosts.
+   ///
+   /// In uz, this message translates to:
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index a5f6444..e1076a3 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -640,6 +640,11 @@ class LEn extends L {
+   @override
+   String get analyticsTop => 'Most viewed';
+ 
++  @override
++  String analyticsSeeAll(int count) {
++    return 'See all ($count)';
++  }
++
+   @override
+   String get analyticsNoPosts => 'No posts or Reels yet';
+ 
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index 470dda1..ed67c0f 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -636,6 +636,11 @@ class LRu extends L {
+   @override
+   String get analyticsTop => 'Самые просматриваемые';
+ 
++  @override
++  String analyticsSeeAll(int count) {
++    return 'Смотреть все ($count)';
++  }
++
+   @override
+   String get analyticsNoPosts => 'Пока нет постов и Reels';
+ 
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index 2c6c1bf..353097c 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -640,6 +640,11 @@ class LUz extends L {
+   @override
+   String get analyticsTop => 'Eng ko‘p ko‘rilganlar';
+ 
++  @override
++  String analyticsSeeAll(int count) {
++    return 'Hammasini ko‘rish ($count)';
++  }
++
+   @override
+   String get analyticsNoPosts => 'Hali post yoki Reels yo‘q';
+ 
+diff --git a/mobile_nova/pubspec.yaml b/mobile_nova/pubspec.yaml
+index c161a77..d4edab9 100644
+--- a/mobile_nova/pubspec.yaml
++++ b/mobile_nova/pubspec.yaml
+@@ -1,7 +1,7 @@
+ name: nfcstore_nova
+ description: "NFCSTORE Nova — raqamli identity, NFC va biznes platformasi."
+ publish_to: 'none'
+-version: 1.1.0+1
++version: 1.1.1+1
+ 
+ environment:
+   sdk: ^3.9.0
+diff --git a/mobile_nova/test/v111_polish_test.dart b/mobile_nova/test/v111_polish_test.dart
+new file mode 100644
+index 0000000..6ae5537
+--- /dev/null
++++ b/mobile_nova/test/v111_polish_test.dart
+@@ -0,0 +1,82 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/features/settings/analytics_screen.dart';
++import 'package:nfcstore_nova/features/social/media_sound.dart';
++import 'package:nfcstore_nova/features/social/reels_screen.dart';
++
++import 'helpers.dart';
++
++/// 1.1.1 (egasi, 2026-10-05): lentada ovoz tugmasi, analitikada top-5
++/// va "Hammasini ko'rish", kunlik grafik butun davrga to'ldiriladi.
++void main() {
++  group('kunlik grafik', () {
++    test('ko‘rishsiz kunlar 0 bilan to‘ldiriladi (ikki qalin ustun emas)', () {
++      final out = fillDays(
++        const [(day: '2026-10-04', views: 5), (day: '2026-10-05', views: 3)],
++        30,
++        today: DateTime.utc(2026, 10, 5),
++      );
++      expect(out.length, 30);
++      expect(out.last, (day: '2026-10-05', views: 3));
++      expect(out[out.length - 2], (day: '2026-10-04', views: 5));
++      expect(out.first.day, '2026-09-06');
++      expect(out.where((d) => d.views > 0).length, 2);
++    });
++
++    test('bo‘sh ma’lumot o‘zgarmaydi', () {
++      expect(fillDays(const [], 30), isEmpty);
++    });
++  });
++
++  testWidgets('analitika: faqat top-5, qolgani "Hammasini ko‘rish" ichida',
++      (tester) async {
++    tester.view.physicalSize = const Size(390 * 3, 2600 * 3);
++    tester.view.devicePixelRatio = 3;
++    addTearDown(tester.view.reset);
++    final top = [
++      for (var i = 1; i <= 8; i++)
++        TopContent(id: i, caption: 'Post $i', views: 100 - i),
++    ];
++    await tester.pumpWidget(ProviderScope(
++      overrides: [
++        ...await testOverrides(),
++        myAnalyticsProvider.overrideWith(
++            (ref) async => MyAnalytics(contentViews: 10, top: top)),
++      ],
++      child: wrapScreen(const AnalyticsScreen()),
++    ));
++    for (var i = 0; i < 6; i++) {
++      await tester.pump(const Duration(milliseconds: 50));
++    }
++    for (var i = 1; i <= 5; i++) {
++      expect(find.byKey(ValueKey('an-top-post-$i')), findsOneWidget);
++    }
++    expect(find.byKey(const ValueKey('an-top-post-6')), findsNothing);
++    expect(find.text('Hammasini ko‘rish (8)'), findsOneWidget);
++
++    await tester.tap(find.byKey(const ValueKey('an-top-all')));
++    for (var i = 0; i < 10; i++) {
++      await tester.pump(const Duration(milliseconds: 60));
++    }
++    expect(find.byType(AnalyticsTopScreen), findsOneWidget);
++    expect(find.byKey(const ValueKey('an-top-post-8')), findsOneWidget);
++    expect(tester.takeException(), isNull);
++  });
++
++  testWidgets('ovoz tugmasi lenta va Reels uchun bitta holat', (tester) async {
++    final c = ProviderContainer();
++    addTearDown(c.dispose);
++    expect(identical(reelsMutedProvider, mediaMutedProvider), isTrue);
++    await tester.pumpWidget(UncontrolledProviderScope(
++      container: c,
++      child: const MaterialApp(home: Scaffold(body: Center(child: MuteButton()))),
++    ));
++    expect(find.byIcon(Icons.volume_up_rounded), findsOneWidget);
++    await tester.tap(find.byKey(const ValueKey('video-mute')));
++    await tester.pump();
++    expect(c.read(reelsMutedProvider), isTrue);
++    expect(find.byIcon(Icons.volume_off_rounded), findsOneWidget);
++  });
++}
+-- 
+2.43.0
+
