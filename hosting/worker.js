@@ -11252,11 +11252,32 @@ async function feedApi(request, env, url) {
     }
   }
 
-  // Ko'tarilgan kontent lentada IKKI MARTA chiqmasin.
-  const featuredKeys = new Set(featured.map((f) => `${f.commentKind}:${f.id}`));
-  const rest = feed.filter((f) => !featuredKeys.has(`${f.commentKind}:${f.id}`));
+  // REKLAMA JOYLASHUVI (egasi, 2026-10-05) — Instagram kabi, lekin
+  // adolatli: hamma reklama tepada ketma-ket TURMAYDI (odam 8 ta
+  // reklamani ko'rib chiqib ketardi). Har ochilishda faollar
+  // aralashtiriladi va `FEED_AD_SLOTS` tasi 0, 4, 8, 12-o'rinlarga
+  // qo'yiladi: birinchisi eng tepada, qolganlari har 3 ta oddiy
+  // postdan keyin. Joylar soni `MAX_ACTIVE_TOTAL` bilan cheklangan,
+  // shuning uchun har reklama ochilishlarning kamida yarmida chiqadi.
+  const FEED_AD_SLOTS = 4;
+  for (let i = featured.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [featured[i], featured[j]] = [featured[j], featured[i]];
+  }
+  const ads = featured.slice(0, FEED_AD_SLOTS);
 
-  return json({ feed: [...featured, ...rest], hasMore: all.length > limit });
+  // Ko'tarilgan kontent lentada IKKI MARTA chiqmasin.
+  const featuredKeys = new Set(ads.map((f) => `${f.commentKind}:${f.id}`));
+  const rest = feed.filter((f) => !featuredKeys.has(`${f.commentKind}:${f.id}`));
+  const merged = [];
+  let ai = 0;
+  for (const item of rest) {
+    if (ai < ads.length && merged.length % 4 === 0) merged.push(ads[ai++]);
+    merged.push(item);
+  }
+  while (ai < ads.length) merged.push(ads[ai++]);
+
+  return json({ feed: merged, hasMore: all.length > limit });
 }
 
 async function followApi(request, env, url) {

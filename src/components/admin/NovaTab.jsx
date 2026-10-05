@@ -653,6 +653,160 @@ function ArchiveSection({ adminApi, apiErrText }) {
 }
 
 // ── KO'TARILGAN POSTLAR (FEATURED) ──────────────────────────────────
+// NARXLAR VA JOYLAR — ilova yangilanmasdan narxni o'zgartirish
+// (POST /api/admin/featured/pricing, faqat super_admin). Ochilgan
+// buyurtmalar eski narxida qoladi.
+function PricingEditor({ adminApi, apiErrText }) {
+  const { t } = useLanguage();
+  const [rows, setRows] = useState(null);
+  const [cap, setCap] = useState(null);
+  const [msg, setMsg] = useState('');
+
+  useEffect(() => {
+    fetch('/api/featured/packages', { credentials: 'same-origin' })
+      .then((r) => r.json())
+      .then((j) => { setRows((j.packages || []).map((p) => ({ ...p }))); setCap(j.capacity || null); })
+      .catch(() => setRows([]));
+  }, []);
+
+  const save = async () => {
+    setMsg('');
+    try {
+      const j = await adminApi('/featured/pricing', {
+        method: 'POST',
+        body: JSON.stringify({ packages: rows.map((r) => ({ days: Number(r.days), price: Number(r.price) })) }),
+      });
+      setRows(j.packages);
+      setMsg(t('Saqlandi.'));
+    } catch (e) {
+      setMsg(apiErrText ? apiErrText(e, t, t('Amal bajarilmadi.')) : t('Amal bajarilmadi.'));
+    }
+  };
+
+  if (!rows) return null;
+  const field = 'w-24 rounded-lg border border-[color:var(--vz-line)] bg-transparent px-2 py-1 text-[13px]';
+  return (
+    <div className="mb-4 rounded-xl border border-[color:var(--vz-line)] p-3 text-[13px]">
+      {cap && (
+        <p className="mb-2 font-semibold">
+          {t('Lentadagi joylar')}: {cap.active}/{cap.max}
+          {cap.nextFreeAt ? ` · ${t('bo‘shaydi')}: ${new Date(cap.nextFreeAt).toLocaleString('ru-RU')}` : ''}
+        </p>
+      )}
+      {rows.map((r, i) => (
+        <div key={i} className="mb-1.5 flex items-center gap-2">
+          <input type="number" min="1" max="30" value={r.days} onChange={(e) => setRows(rows.map((x, k) => (k === i ? { ...x, days: e.target.value } : x)))} className={field} />
+          <span>{t('kun')}</span>
+          <input type="number" min="1000" step="1000" value={r.price} onChange={(e) => setRows(rows.map((x, k) => (k === i ? { ...x, price: e.target.value } : x)))} className={field} />
+          <span>{t('so‘m')}</span>
+          <button type="button" onClick={() => setRows(rows.filter((_, k) => k !== i))} className="text-red-400">×</button>
+        </div>
+      ))}
+      <div className="mt-2 flex gap-2">
+        {rows.length < 6 && (
+          <button type="button" onClick={() => setRows([...rows, { days: 7, price: 150000 }])} className="btn btn-outline-gold px-3 text-[13px]">+ {t('Paket')}</button>
+        )}
+        <button type="button" onClick={save} className="btn btn-gold px-4 text-[13px]">{t('Narxlarni saqlash')}</button>
+      </div>
+      {msg && <p className="mt-2">{msg}</p>}
+    </div>
+  );
+}
+
+// QO'LDA KO'TARISH — biznes bilan to'g'ridan-to'g'ri kelishuv (naqd,
+// o'tkazma, hamkorlik). Profil kodi yoki biznes ID → postlari →
+// tanlash → kunlar + izoh. Server: POST /api/admin/featured (manager+).
+function GrantForm({ adminApi, apiErrText, onDone }) {
+  const { t } = useLanguage();
+  const [open, setOpen] = useState(false);
+  const [owner, setOwner] = useState('');
+  const [posts, setPosts] = useState(null);
+  const [picked, setPicked] = useState(null);
+  const [days, setDays] = useState(3);
+  const [note, setNote] = useState('');
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const findPosts = async () => {
+    const id = owner.trim();
+    if (!id) return;
+    setPosts(null); setPicked(null); setMsg('');
+    const get = async (url, kind) => {
+      const res = await fetch(url, { credentials: 'same-origin' }).catch(() => null);
+      const j = res && res.ok ? await res.json().catch(() => null) : null;
+      return (j?.posts || []).map((p) => ({ ...p, kind }));
+    };
+    const enc = encodeURIComponent(id);
+    const [a, b] = await Promise.all([
+      /^[A-Za-z0-9]+$/.test(id) ? get(`/api/records/${enc.toUpperCase()}/posts`, 'post') : [],
+      get(`/api/companies/${enc}/posts`, 'company_post'),
+    ]);
+    setPosts([...a, ...b].filter((p) => p.imageUrl || p.videoUrl));
+  };
+
+  const grant = async () => {
+    if (!picked || !note.trim()) return;
+    setBusy(true); setMsg('');
+    try {
+      await adminApi('/featured', {
+        method: 'POST',
+        body: JSON.stringify({ targetKind: picked.kind, targetId: picked.id, days: Number(days), note: note.trim() }),
+      });
+      setMsg(t('Ko‘tarildi.'));
+      setPicked(null); setNote('');
+      onDone();
+    } catch (e) {
+      setMsg(apiErrText ? apiErrText(e, t, t('Amal bajarilmadi.')) : t('Amal bajarilmadi.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} className="btn btn-outline-gold mb-4 px-4 text-[13px]">
+        {t('Qo‘lda ko‘tarish (kelishuv bo‘yicha)')}
+      </button>
+    );
+  }
+  const field = 'rounded-lg border border-[color:var(--vz-line)] bg-transparent px-2 py-1.5 text-[13px]';
+  return (
+    <div className="mb-4 rounded-xl border border-[color:var(--vz-line)] p-3">
+      <div className="flex flex-wrap gap-2">
+        <input value={owner} onChange={(e) => setOwner(e.target.value)} placeholder={t('Profil kodi yoki biznes ID')} className={`${field} min-w-[200px] flex-1`} />
+        <button type="button" onClick={findPosts} className="btn btn-gold px-4 text-[13px]">{t('Postlarni ko‘rsatish')}</button>
+      </div>
+      {posts && posts.length === 0 && <p className="mt-2 text-[13px]">{t('Post topilmadi')}</p>}
+      {posts && posts.length > 0 && (
+        <div className="mt-3 grid grid-cols-4 gap-1.5 sm:grid-cols-6">
+          {posts.map((p) => (
+            <button
+              key={`${p.kind}-${p.id}`}
+              type="button"
+              onClick={() => setPicked(p)}
+              className={`relative aspect-square overflow-hidden rounded-lg border-2 ${picked && picked.kind === p.kind && picked.id === p.id ? 'border-[color:var(--vz-gold)]' : 'border-transparent'}`}
+            >
+              {p.imageUrl
+                ? <img src={p.imageUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
+                : <span className="flex h-full w-full items-center justify-center bg-black/80 text-[11px] text-white">▶ Video</span>}
+            </button>
+          ))}
+        </div>
+      )}
+      {picked && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <select value={days} onChange={(e) => setDays(e.target.value)} className={field}>
+            {[1, 3, 6, 7, 14, 30].map((d) => <option key={d} value={d}>{d} {t('kun')}</option>)}
+          </select>
+          <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} placeholder={t('Izoh (majburiy): kim bilan, qanday kelishildi')} className={`${field} min-w-[240px] flex-1`} />
+          <button type="button" disabled={busy || !note.trim()} onClick={grant} className="btn btn-gold px-4 text-[13px]">{t('Ko‘tarish')}</button>
+        </div>
+      )}
+      {msg && <p className="mt-2 text-[13px]">{msg}</p>}
+    </div>
+  );
+}
+
 function FeaturedSection({ adminApi, apiErrText }) {
   const { t } = useLanguage();
   const [state, setState] = useState('all');
@@ -700,12 +854,14 @@ function FeaturedSection({ adminApi, apiErrText }) {
         </select>
       }
     >
-      {/* SLOT FAQAT HAQIQIY TO'LOVDAN KEYIN YONADI. Bu yerda
-          "faollashtirish" tugmasi ATAYLAB YO'Q: uni qo'shish
-          to'lovni chetlab o'tish yo'lini ochardi. */}
+      {/* Mijoz o'zi sotib olgan slot faqat Payme/Click tasdig'idan keyin
+          yonadi. Qo'lda ko'tarish — faqat to'g'ridan-to'g'ri kelishuv
+          uchun (manager+, izoh majburiy, narx 0 — moliyaga tushmaydi). */}
       <p className="mb-3 text-[13px] text-[color:var(--vz-ink-faint)]">
-        {t('Slot faqat Payme yoki Click to‘lovi tasdiqlangandan keyin yonadi. Bu yerdan qo‘lda yoqib bo‘lmaydi.')}
+        {t('Mijoz sotib olgan slot faqat Payme yoki Click to‘lovi tasdiqlangandan keyin yonadi. Qo‘lda ko‘tarish — faqat to‘g‘ridan-to‘g‘ri kelishuv uchun, izoh majburiy.')}
       </p>
+      <PricingEditor adminApi={adminApi} apiErrText={apiErrText} />
+      <GrantForm adminApi={adminApi} apiErrText={apiErrText} onDone={load} />
       {err && <LoadError err={err} onRetry={load} />}
       {!err && data === null && <AdminLoading rows={4} />}
       {!err && data && data.slots.length === 0 && (
@@ -747,6 +903,9 @@ function FeaturedSection({ adminApi, apiErrText }) {
                       >
                         {t('To‘xtatish')}
                       </button>
+                    )}
+                    {s.note && (
+                      <span className="block text-[12px] text-[color:var(--vz-ink-faint)]">{s.note}</span>
                     )}
                     {s.stoppedReason && (
                       <span className="text-[12px] text-[color:var(--vz-ink-faint)]">

@@ -101,6 +101,7 @@ const CompanyQuickProfilePage = lazyPage(() => import('./pages/CompanyQuickProfi
 const TapRedirectPage = lazyPage(() => import('./pages/TapRedirectPage.jsx'));
 const CompanyPublicPage = lazyPage(() => import('./pages/CompanyPublicPage.jsx'));
 const BusinessEntryPage = lazyPage(() => import('./pages/BusinessEntryPage.jsx'));
+const PromotePage = lazyPage(() => import('./pages/PromotePage.jsx'));
 
 const STATIC_ROUTES = {
   '': null, // HomePage — handled separately
@@ -151,6 +152,9 @@ const STATIC_ROUTES = {
   // tarixi, server logi va Referer sarlavhasiga tushmasin).
   activate: ActivatePage,
   'biznes-namuna': BusinessPublicDemoPage,
+  // POSTNI KO'TARISH (Tavsiya etilgan) — iPhone va sayt foydalanuvchilari
+  // uchun to'lov sahifasi. iOS ilovada tugma yo'q (App Store qoidasi).
+  kotarish: PromotePage,
 };
 // STATIC_ROUTES'dan tashqari, if-zanjirida ishlov beriladigan sahifalar ham
 // "band" hisoblanadi — aks holda /reyting kabi manzillar profil kodi deb
@@ -389,6 +393,7 @@ export default function App() {
     else if (cleanRoute === 'ilova-yuklash') page = <AppDownloadPage />;
     else if (cleanRoute === 'stikerlar') page = <StickersPage />;
     else if (cleanRoute === 'nfc-stiker') page = <NfcStickerHelpPage />;
+    else if (cleanRoute === 'kotarish') page = <PromotePage />;
     // MARKETPLACE MAHSULOTINI FAOLLASHTIRISH.
     //
     // `bare`: saytning sarlavhasi va menyusi KO'RSATILMAYDI. Bu

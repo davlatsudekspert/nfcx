@@ -19,7 +19,7 @@ export const RESERVED_CODES = new Set([
   // Yordam, aloqa va huquqiy sahifalar (App Store "Support URL").
   'SUPPORT', 'CONTACT', 'HELP', 'YORDAM', 'TERMS', 'EULA', 'ALOQA', 'SHARTLAR', 'MAXFIYLIK',
   // Saytning boshqa ochiq sahifalari.
-  'NARXLAR', 'YANGILIKLAR', 'KATALOG', 'SAVOLLAR', 'GIFTS', 'QOLLANMA', 'STIKERLAR', 'ACTIVATE',
+  'NARXLAR', 'YANGILIKLAR', 'KATALOG', 'SAVOLLAR', 'GIFTS', 'QOLLANMA', 'STIKERLAR', 'ACTIVATE', 'KOTARISH',
   'REYTING', 'KOMPANIYALAR', 'BILDIRISHNOMALAR', 'SOZLAMALAR', 'BUSINESS', 'COMPANY', 'WORKSPACE',
 ]);
 

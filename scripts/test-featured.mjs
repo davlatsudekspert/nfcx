@@ -363,4 +363,98 @@ await call('/api/blocks/record/VIP001', { method: 'DELETE', ...asB });
 checkTrue('23) blok olingach qaytdi',
   ((await call('/api/feed', asB)).body?.feed || []).some((f) => Number(f.id) === 30));
 
+// ── 24) ADMIN QO'LDA KO'TARISH (to'g'ridan-to'g'ri kelishuv) ──────
+check('24) oddiy foydalanuvchi qo‘lda ko‘tara olmaydi',
+  (await call('/api/admin/featured', { method: 'POST', ...asA, json: { targetKind: 'post', targetId: 20, days: 2, note: 'x' } })).status, 401);
+check('24) izohsiz rad etildi',
+  (await call('/api/admin/featured', { method: 'POST', ...asAdmin, json: { targetKind: 'post', targetId: 20, days: 2 } })).status, 422);
+check('24) 30 kundan ortiq rad etildi',
+  (await call('/api/admin/featured', { method: 'POST', ...asAdmin, json: { targetKind: 'post', targetId: 20, days: 31, note: 'naqd' } })).status, 422);
+check('24) yo‘q post — 404',
+  (await call('/api/admin/featured', { method: 'POST', ...asAdmin, json: { targetKind: 'post', targetId: 99999, days: 2, note: 'naqd' } })).status, 404);
+// Statistika uchun: ko'tarishdan OLDINGI ko'rish reach'ga kirmasligi kerak.
+await env.DB.prepare(`INSERT INTO content_views (target_kind, target_id, viewer, created_at) VALUES ('post', 20, 'u:old', '2026-01-02 00:00:00.000+00')`).run();
+const grant = await call('/api/admin/featured', { method: 'POST', ...asAdmin, json: { targetKind: 'post', targetId: 20, days: 2, note: 'Naqd kelishuv, 2 kun' } });
+check('24) qo‘lda ko‘tarildi', grant.status, 201);
+const grantRow = await slotRow(Number(grant.body?.slot?.id));
+check('24) darhol faol', String(grantRow?.status), 'active');
+check('24) egasi — post egasi (user#2)', Number(grantRow?.user_id), 2);
+check('24) narx 0 — moliyaga soxta tushum yo‘q', Number(grantRow?.price), 0);
+check('24) buyurtma ochilmadi', Number(grantRow?.order_id), 0);
+checkTrue('24) kim va nega berdi — yozildi', /^admin#\d+: Naqd kelishuv/.test(String(grantRow?.note || '')));
+checkTrue('24) lentada chiqdi',
+  ((await call('/api/featured')).body?.slots || []).some((x) => x.id === Number(grantRow?.id)));
+check('24) ikkinchi marta — takror emas',
+  (await call('/api/admin/featured', { method: 'POST', ...asAdmin, json: { targetKind: 'post', targetId: 20, days: 2, note: 'yana' } })).status, 409);
+checkTrue('24) admin ro‘yxatida izoh ko‘rinadi',
+  ((await call('/api/admin/featured', asAdmin)).body?.slots || []).some((x) => x.id === Number(grantRow?.id) && x.note.includes('Naqd')));
+
+// ── 25) REKLAMA NATIJASI — egasi o'z slotida ko'radi ───────────────
+const inside = new Date(Date.now() + 1000).toISOString().replace('T', ' ').replace('Z', '+00');
+await env.DB.prepare(`INSERT INTO content_views (target_kind, target_id, viewer, created_at) VALUES ('post', 20, 'u:new1', ?), ('post', 20, 'u:new2', ?)`).bind(inside, inside).run();
+await env.DB.prepare(`INSERT INTO content_view_hits (target_kind, target_id, viewer, day, hits, last_at) VALUES ('post', 20, 'u:new1', ?, 3, ?), ('post', 20, 'u:new2', ?, 2, ?), ('post', 20, 'u:old', '2026-01-02', 7, '2026-01-02 00:00:00.000+00')`)
+  .bind(inside.slice(0, 10), inside, inside.slice(0, 10), inside).run();
+// Statistika "hozir"gacha sanaladi — vaqt bir oz o'tsin.
+await new Promise((r) => setTimeout(r, 1100));
+const mineB = (await call('/api/featured/mine', asB)).body?.slots || [];
+const st = mineB.find((x) => x.id === Number(grantRow?.id))?.stats;
+check('25) yangi odamlar (reach) — faqat ko‘tarilgandan keyingilar', st?.reach, 2);
+check('25) ko‘rishlar — faqat shu kunlar', st?.views, 5);
+checkTrue('25) to‘lanmagan (pending) slotda statistika yo‘q',
+  ((await call('/api/featured/mine', asA)).body?.slots || []).filter((x) => x.status === 'pending').every((x) => x.stats === null));
+
+// ── 26) JOYLAR CHEKLANGAN — to'lab ko'rinmay qolish yo'q ──────────
+await env.DB.prepare(`UPDATE featured_slots SET status = 'expired'`).run();
+const fut = (h) => new Date(Date.now() + h * 3600e3).toISOString().replace('T', ' ').replace('Z', '+00');
+const nowIso = new Date().toISOString().replace('T', ' ').replace('Z', '+00');
+for (let i = 0; i < 8; i++) {
+  await env.DB.prepare(`INSERT INTO featured_slots (user_id, target_kind, target_id, days, price, status, starts_at, ends_at, created_at)
+    VALUES (2, 'post', ?, 1, 29000, 'active', ?, ?, ?)`).bind(900 + i, nowIso, fut(10 + i), nowIso).run();
+}
+const capPk = (await call('/api/featured/packages')).body?.capacity;
+check('26) paketlarda bo‘sh joy ko‘rinadi (8/8)', `${capPk?.active}/${capPk?.max}`, '8/8');
+checkTrue('26) qachon bo‘shashi aytiladi', Number(capPk?.nextFreeAt) > Date.now());
+await env.DB.prepare(`INSERT INTO posts (id, code, user_id, caption, created_at) VALUES (40, 'VIP001', 1, 'joy yo‘q', '2026-01-01 00:00:00')`).run();
+const sold = await call('/api/featured', { method: 'POST', ...asA, json: { targetKind: 'post', targetId: 40, days: 1 } });
+check('26) joy band — sotilmaydi', sold.status, 409);
+check('26) xato turi', sold.body?.error, 'sold_out');
+check('26) admin ham joydan oshirmaydi',
+  (await call('/api/admin/featured', { method: 'POST', ...asAdmin, json: { targetKind: 'post', targetId: 40, days: 1, note: 'naqd' } })).status, 409);
+
+// ── 27) LENTADA REKLAMA POSTLAR ORASIDA, KETMA-KET EMAS ───────────
+await env.DB.prepare(`UPDATE featured_slots SET status = 'expired'`).run();
+for (let i = 0; i < 9; i++) {
+  await env.DB.prepare(`INSERT INTO posts (id, code, user_id, caption, created_at) VALUES (?, 'VIP001', 1, 'oddiy', ?)`)
+    .bind(60 + i, `2026-02-0${i + 1} 00:00:00`).run();
+}
+for (const id of [70, 71, 72, 73, 74]) {
+  await env.DB.prepare(`INSERT INTO posts (id, code, user_id, caption, created_at) VALUES (?, 'OTH222', 2, 'reklama', '2019-01-01 00:00:00')`).bind(id).run();
+  await env.DB.prepare(`INSERT INTO featured_slots (user_id, target_kind, target_id, days, price, status, starts_at, ends_at, created_at)
+    VALUES (2, 'post', ?, 1, 29000, 'active', ?, ?, ?)`).bind(id, nowIso, fut(5), nowIso).run();
+}
+const mixed = (await call('/api/feed', asB)).body?.feed || [];
+const adIdx = mixed.map((f, i) => (f.featured ? i : -1)).filter((i) => i >= 0);
+check('27) bir ochilishda 4 ta reklama (5 tadan)', adIdx.length, 4);
+check('27) o‘rinlari 0, 4, 8, 12', adIdx.join(','), '0,4,8,12');
+checkTrue('27) ikki reklama yonma-yon emas', adIdx.every((v, i) => i === 0 || v - adIdx[i - 1] > 1));
+// Rotatsiya: bir necha ochilishda 5 tasining hammasi chiqadi.
+const seen = new Set();
+for (let k = 0; k < 30; k++) {
+  ((await call('/api/feed', asB)).body?.feed || []).filter((f) => f.featured).forEach((f) => seen.add(Number(f.id)));
+}
+check('27) almashib turadi — 5 tasi ham ko‘rindi', seen.size, 5);
+
+// ── 28) NARXNI ADMIN O'ZGARTIRADI (ilova yangilanmasdan) ──────────
+const asManager = { cookie: cookie.manager };
+check('28) manager narxni o‘zgartira olmaydi',
+  (await call('/api/admin/featured/pricing', { method: 'POST', ...asManager, json: { packages: [{ days: 1, price: 50000 }] } })).status, 403);
+check('28) buzuq narx rad etildi',
+  (await call('/api/admin/featured/pricing', { method: 'POST', ...asAdmin, json: { packages: [{ days: 1, price: 5 }] } })).status, 422);
+check('28) takror kun rad etildi',
+  (await call('/api/admin/featured/pricing', { method: 'POST', ...asAdmin, json: { packages: [{ days: 1, price: 50000 }, { days: 1, price: 60000 }] } })).status, 422);
+check('28) super_admin yangi narx qo‘ydi',
+  (await call('/api/admin/featured/pricing', { method: 'POST', ...asAdmin, json: { packages: [{ days: 7, price: 249000 }, { days: 1, price: 49000 }] } })).status, 200);
+const newPk = (await call('/api/featured/packages')).body?.packages || [];
+check('28) yangi narx darhol ishlaydi (tartiblangan)', newPk.map((p) => `${p.days}:${p.price}`).join(','), '1:49000,7:249000');
+
 done('NFCSTORE FEATURED');
