@@ -5,6 +5,7 @@ import 'package:video_player/video_player.dart';
 import '../../design/tokens/nfc_tokens.dart';
 import '../profile/music_player.dart';
 import 'fullscreen_video.dart';
+import 'media_sound.dart';
 
 /// Ichki video chizuvchi — istorya va post uchun BITTA joyda.
 ///
@@ -72,7 +73,13 @@ class InlineVideo extends ConsumerStatefulWidget {
     this.active,
     this.fullscreenOnTap = false,
     this.onFullscreen,
+    this.showMute = false,
   });
+
+  /// Burchakda 🔇/🔊 tugma (lenta). Holat Reels bilan umumiy
+  /// (`mediaMutedProvider`); tugma ko'rinmasa ham ovoz shu holatga
+  /// bo'ysunadi.
+  final bool showMute;
 
   final String url;
   final bool autoPlay;
@@ -142,6 +149,8 @@ class InlineVideo extends ConsumerStatefulWidget {
 
 class _InlineVideoState extends ConsumerState<InlineVideo>
     with WidgetsBindingObserver {
+  double get _volume => ref.read(mediaMutedProvider) ? 0 : 1;
+
   VideoPlayerController? _c;
   bool _ready = false;
   bool _failed = false;
@@ -281,7 +290,7 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
     if (widget.active == false) return;
     // Ochilish paytida ustiga boshqa ekran chiqdi / tab yashirildi.
     if (widget.active != null && _shown == false) return;
-    await c.setVolume(1);
+    await c.setVolume(_volume);
     await c.play();
     if (mounted) setState(() {});
   }
@@ -401,7 +410,7 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
       await _open();
       final opened = _c;
       if (opened != null && !_gone && mounted) {
-        await opened.setVolume(1);
+        await opened.setVolume(_volume);
         await opened.play();
         if (mounted) setState(() {});
       }
@@ -413,7 +422,7 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
       await c.pause();
     } else {
       _owner?.take(this, _pauseForOther);
-      await c.setVolume(1);
+      await c.setVolume(_volume);
       await c.play();
     }
     if (mounted) setState(() {});
@@ -446,6 +455,23 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
 
   @override
   Widget build(BuildContext context) {
+    // Ovoz tugmasi bosilsa — o'ynayotgan video darhol bo'ysunadi.
+    ref.listen<bool>(mediaMutedProvider, (_, muted) {
+      final c = _c;
+      if (c != null && _ready) c.setVolume(muted ? 0 : 1);
+    });
+    final body = _buildBody(context);
+    if (!widget.showMute || _c == null || !_ready || _failed) return body;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        body,
+        const Positioned(right: 4, bottom: 4, child: MuteButton()),
+      ],
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
     final t = context.tokens;
     final c = _c;
     if (_failed) {

@@ -641,6 +641,11 @@ class LEn extends L {
   String get analyticsTop => 'Most viewed';
 
   @override
+  String analyticsSeeAll(int count) {
+    return 'See all ($count)';
+  }
+
+  @override
   String get analyticsNoPosts => 'No posts or Reels yet';
 
   @override

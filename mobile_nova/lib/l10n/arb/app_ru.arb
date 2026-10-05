@@ -233,6 +233,7 @@
   "analyticsAllTime": "Профиль за всё время: {total} просмотров · {unique} уникальных за 30 дней",
   "analyticsByDay": "Просмотры по дням",
   "analyticsTop": "Самые просматриваемые",
+  "analyticsSeeAll": "Смотреть все ({count})",
   "analyticsNoPosts": "Пока нет постов и Reels",
   "analyticsReel": "Reels",
   "analyticsPost": "Пост",

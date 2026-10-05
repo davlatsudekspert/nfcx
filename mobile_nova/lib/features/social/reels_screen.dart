@@ -14,6 +14,7 @@ import 'engagement.dart';
 import 'fullscreen_video.dart' show immersiveVideoFit;
 import 'moderation.dart';
 import 'media_frame.dart' show mediaImage;
+import 'media_sound.dart';
 import 'music_picker.dart';
 
 import '../../core/utils/result.dart';
@@ -42,7 +43,9 @@ import '../../design/icons/nova_icons.dart';
 /// Sahifa bo'yicha saqlansa, har silashda ovoz qaytadan yonib
 /// ketardi. Bu yerda `autoDispose` ATAYLAB yo'q: ekrandan chiqib
 /// qaytganda ham tanlov saqlanadi.
-final reelsMutedProvider = StateProvider<bool>((_) => false);
+// Lenta bilan UMUMIY holat (media_sound.dart) — bir joyda o'chirilsa,
+// ikkinchisida ham o'chiq.
+final reelsMutedProvider = mediaMutedProvider;
 
 /// Reels manbai — LENTA va O'Z VIDEOLARIM.
 ///

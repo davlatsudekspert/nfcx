@@ -11,6 +11,7 @@ import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../home/widgets/identity_card.dart' show formatCount;
 import '../social/media_frame.dart' show mediaImage;
+import '../social/video_poster.dart';
 
 /// Sozlamalar → Analitika (`GET /api/my/analytics`, oxirgi 30 kun).
 ///
@@ -49,6 +50,26 @@ class AnalyticsScreen extends ConsumerWidget {
           child: _Body(a: a),
         ),
       ),
+    );
+  }
+}
+
+/// Asosiy ekranda ko'rinadigan "eng ko'p ko'rilgan" soni.
+const kAnalyticsTopShown = 5;
+
+/// "Eng ko'p ko'rilganlar" — TO'LIQ ro'yxat.
+class AnalyticsTopScreen extends StatelessWidget {
+  const AnalyticsTopScreen({super.key, required this.top});
+
+  final List<TopContent> top;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context);
+    return NovaScaffold(
+      title: l.analyticsTop,
+      showBack: true,
+      body: NovaScroll(children: [for (final p in top) _TopRow(p: p)]),
     );
   }
 }
@@ -122,14 +143,30 @@ class _Body extends StatelessWidget {
         ),
         if (a.byDay.isNotEmpty) ...[
           SectionHeader(title: l.analyticsByDay),
-          _DayBars(days: a.byDay),
+          _DayBars(days: a.byDay, period: a.days),
         ],
         SectionHeader(title: l.analyticsTop),
         if (a.top.isEmpty)
           StatePanel(
               icon: Icons.insights_outlined, title: l.analyticsNoPosts)
-        else
-          for (final p in a.top) _TopRow(p: p),
+        else ...[
+          // Faqat TOP-5 (egasi, 2026-10-05: "ro'yxat ko'p bo'lsa pastga
+          // qarab ketadi"). Qolgani alohida sahifada.
+          for (final p in a.top.take(kAnalyticsTopShown)) _TopRow(p: p),
+          if (a.top.length > kAnalyticsTopShown)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                key: const ValueKey('an-top-all'),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => AnalyticsTopScreen(top: a.top),
+                  ),
+                ),
+                child: Text(l.analyticsSeeAll(a.top.length)),
+              ),
+            ),
+        ],
       ],
     );
   }
@@ -182,14 +219,48 @@ class _Stat extends StatelessWidget {
 
 /// Kunlik ko'rishlar — oddiy ustunlar (kutubxonasiz). Eng baland
 /// kun to'liq balandlikda, qolganlari unga nisbatan.
-class _DayBars extends StatelessWidget {
-  const _DayBars({required this.days});
+/// Kunlik qatorni BUTUN davrga to'ldiradi (ko'rish bo'lmagan kun = 0).
+///
+/// Server faqat ko'rish bo'lgan kunlarni beradi. Ilgari 2 kunlik
+/// ma'lumot ekran kengligidagi ikkita qalin to'rtburchakka aylanardi
+/// va buzilgan grafikdek ko'rinardi (egasi, 2026-10-05).
+@visibleForTesting
+List<({String day, int views})> fillDays(
+    List<({String day, int views})> days, int period,
+    {DateTime? today}) {
+  if (days.isEmpty || period <= 0) return days;
+  final byDay = {for (final d in days) d.day: d.views};
+  var end = today ?? DateTime.now().toUtc();
+  end = DateTime.utc(end.year, end.month, end.day);
+  // Server kuni (UTC) bugundan keyin bo'lsa ham kesilmasin.
+  for (final d in days) {
+    final p = DateTime.tryParse(d.day);
+    if (p != null && p.isAfter(end)) end = DateTime.utc(p.year, p.month, p.day);
+  }
+  String key(DateTime x) =>
+      '${x.year.toString().padLeft(4, '0')}-${x.month.toString().padLeft(2, '0')}-${x.day.toString().padLeft(2, '0')}';
+  final n = period.clamp(1, 90);
+  return [
+    for (var i = n - 1; i >= 0; i--)
+      () {
+        final k = key(end.subtract(Duration(days: i)));
+        return (day: k, views: byDay[k] ?? 0);
+      }(),
+  ];
+}
 
-  final List<({String day, int views})> days;
+class _DayBars extends StatelessWidget {
+  const _DayBars({required List<({String day, int views})> days, int period = 30})
+      : _raw = days,
+        _period = period;
+
+  final List<({String day, int views})> _raw;
+  final int _period;
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
+    final days = fillDays(_raw, _period);
     final max = days.fold<int>(1, (m, d) => d.views > m ? d.views : m);
     return Semantics(
       container: true,
@@ -208,7 +279,9 @@ class _DayBars extends StatelessWidget {
                       heightFactor: (d.views / max).clamp(.04, 1.0),
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          color: t.accentB.withValues(alpha: .75),
+                          color: d.views == 0
+                              ? t.text3.withValues(alpha: .18)
+                              : t.accentB.withValues(alpha: .75),
                           borderRadius: const BorderRadius.vertical(
                               top: Radius.circular(3)),
                         ),
@@ -246,6 +319,17 @@ class _TopRow extends StatelessWidget {
               height: 52,
               child: p.imageUrl.isNotEmpty
                   ? mediaImage(context, p.imageUrl, fit: BoxFit.cover)
+                  : p.isVideo
+                  // Video — birinchi kadr (profil to'ri bilan bir xil
+                  // muqova), ustida kichik ijro belgisi.
+                  ? Stack(fit: StackFit.expand, children: [
+                      VideoPoster(url: p.videoUrl),
+                      const Center(
+                        child: Icon(Icons.play_arrow_rounded,
+                            color: Colors.white, size: 22,
+                            shadows: [Shadow(blurRadius: 6, color: Colors.black54)]),
+                      ),
+                    ])
                   : ColoredBox(
                       color: t.surface2,
                       child: Icon(

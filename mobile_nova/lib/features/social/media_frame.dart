@@ -218,7 +218,11 @@ class AdaptiveMedia extends StatefulWidget {
     this.lazyVideo = false,
     this.activeVideo,
     this.onVideoFullscreen,
+    this.showMuteVideo = false,
   });
+
+  /// Videoda 🔇/🔊 tugma (lenta, post).
+  final bool showMuteVideo;
 
   final String url;
   final bool isVideo;
@@ -332,6 +336,7 @@ class _AdaptiveMediaState extends State<AdaptiveMedia> {
             lazy: widget.lazyVideo,
             active: widget.activeVideo,
             onFullscreen: widget.onVideoFullscreen,
+            showMute: widget.showMuteVideo,
             // Quti videoning o'z nisbatiga kelganda `cover` hech
             // narsa kesmaydi; chegaraga urilgan holatda esa
             // kesish eng kichik bo'ladi.

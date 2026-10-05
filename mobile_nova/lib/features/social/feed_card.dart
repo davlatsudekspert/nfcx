@@ -187,6 +187,8 @@ class FeedCard extends ConsumerWidget {
               // baribir darhol ochiladi.
               lazyVideo: activeVideo == null,
               activeVideo: activeVideo,
+              // Burchakda 🔇/🔊 (egasi, 2026-10-05) — Reels bilan umumiy.
+              showMuteVideo: true,
             ),
           ],
           // Postdagi musiqa — bosilsa tinglash va «Shu musiqani ishlatish».

@@ -1311,6 +1311,12 @@ abstract class L {
   /// **'Eng ko‘p ko‘rilganlar'**
   String get analyticsTop;
 
+  /// No description provided for @analyticsSeeAll.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hammasini ko‘rish ({count})'**
+  String analyticsSeeAll(int count);
+
   /// No description provided for @analyticsNoPosts.
   ///
   /// In uz, this message translates to:

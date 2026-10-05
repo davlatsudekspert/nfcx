@@ -641,6 +641,11 @@ class LUz extends L {
   String get analyticsTop => 'Eng ko‘p ko‘rilganlar';
 
   @override
+  String analyticsSeeAll(int count) {
+    return 'Hammasini ko‘rish ($count)';
+  }
+
+  @override
   String get analyticsNoPosts => 'Hali post yoki Reels yo‘q';
 
   @override
