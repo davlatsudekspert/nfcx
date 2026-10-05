@@ -62,7 +62,9 @@ export function summarizeTiming(timing, now = Date.now()) {
   let curStart = -1;
   let curEnd = -1;
   for (const [s, e] of spans) {
-    if (curEnd < 0 || s > curEnd) {
+    // `>=`: Workers'da soat faqat I/O da siljiydi — ketma-ket so'rovning
+    // boshlanishi oldingisining tugashiga AYNAN teng bo'ladi.
+    if (curEnd < 0 || s >= curEnd) {
       if (curEnd >= 0) dbMs += curEnd - curStart;
       waves += 1;
       curStart = s;

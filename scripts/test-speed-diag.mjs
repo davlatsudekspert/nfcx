@@ -19,6 +19,8 @@ const call = (path, init = {}) => worker.fetch(req(path, init), env);
   check('baza vaqti — birlashma uzunligi', s.dbMs, 40 + 35);
   check('jami vaqt', s.totalMs, 100);
   check('bo\'sh — 0 to\'lqin', summarizeTiming({ t0: 5, stmts: 0, spans: [] }, 5).waves, 0);
+  // Workers soati: ketma-ket so'rov oldingisi tugagan ms da boshlanadi.
+  check('tegib turgan (ketma-ket) — alohida to\'lqin', summarizeTiming({ t0: 0, stmts: 2, spans: [[0, 250], [250, 500]] }, 500).waves, 2);
 }
 
 // 2. Sarlavhasiz so'rov o'zgarmaydi.
