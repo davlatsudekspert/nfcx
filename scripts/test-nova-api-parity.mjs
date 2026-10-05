@@ -93,7 +93,7 @@ if (raw.size < 50) {
 const SAMPLES = {
   code: 'VIP001', commentId: '1', companyId: 'nova', itemId: '1',
   id: '1', orderId: '1', kind: 'post', chipToken: 'abc123',
-  page: '1', slotId: '1',
+  page: '1', slotId: '1', postId: '1',
   // `$q` — TAYYOR so'rov qatori (`?cursor=5`), yo'lning qismi emas.
   // `activity_repository.dart` uni bo'sh satr qilib ham yuboradi,
   // shuning uchun bu yerda ham bo'sh.
