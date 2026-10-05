@@ -6,10 +6,10 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "fill | shots | attach | submit"
+        description: "fill | shots | attach | submit | release (Apple tasdiqlagan versiyani chiqarish)"
         required: true
         type: choice
-        options: [fill, shots, attach, submit]
+        options: [fill, shots, attach, submit, release]
       build:
         description: "attach uchun build raqami (masalan 313)"
         required: false

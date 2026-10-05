@@ -407,5 +407,25 @@ def submit():
         sys.exit(1)
 
 
+def release():
+    # Apple TASDIQLAGAN versiyani do'konga chiqarish (releaseType=MANUAL).
+    # Faqat PENDING_DEVELOPER_RELEASE holatidagi versiya — boshqa holatda
+    # hech narsa qilinmaydi (ko'rib chiqilayotgan versiyaga tegilmaydi).
+    aid = app_id()
+    c, j = call('GET', f'/v1/apps/{aid}/appStoreVersions', params={'filter[platform]': 'IOS', 'limit': 10})
+    ready = [v for v in j.get('data', []) if v['attributes'].get('appStoreState') == 'PENDING_DEVELOPER_RELEASE']
+    if not ready:
+        note('chiqarishga tayyor (PENDING_DEVELOPER_RELEASE) versiya yo‘q: '
+             + str([f"{v['attributes'].get('versionString')}={v['attributes'].get('appStoreState')}" for v in j.get('data', [])]))
+        flush('ASC release'); sys.exit(1)
+    v = ready[0]
+    c, j = call('POST', '/v1/appStoreVersionReleaseRequests', {'data': {'type': 'appStoreVersionReleaseRequests',
+                'relationships': {'appStoreVersion': {'data': {'type': 'appStoreVersions', 'id': v['id']}}}}})
+    note(f"{v['attributes'].get('versionString')} do‘konga chiqarildi -> {c} {j.get('_error', '')}")
+    flush('ASC release')
+    if not ok(c):
+        sys.exit(1)
+
+
 if __name__ == '__main__':
-    {'fill': fill, 'shots': shots, 'attach': attach, 'submit': submit}[sys.argv[1]]()
+    {'fill': fill, 'shots': shots, 'attach': attach, 'submit': submit, 'release': release}[sys.argv[1]]()
