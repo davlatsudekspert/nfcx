@@ -345,6 +345,10 @@ export async function handle(request, env, url, H) {
     if (Number(target.ownerUserId) !== Number(user.id)) {
       return H.json({ error: 'forbidden' }, 403);
     }
+    // REJADAGI POST (api/scheduled-posts.js) ko'tarilmaydi: lenta uni
+    // vaqti kelguncha baribir ko'rsatmaydi — pul olinib, kunlar bekorga
+    // o'tib ketardi.
+    if (target.scheduled) return H.json({ error: 'post_scheduled' }, 409);
 
     // Bitta kontent uchun ikkita kutilayotgan buyurtma bo'lmasin —
     // odam ikki marta bosib, ikki marta to'lab qo'ymasin.
@@ -503,6 +507,7 @@ export async function handle(request, env, url, H) {
 
       const target = await targetOwner(env, kind, targetId);
       if (!target.ok) return H.json({ error: 'not_found' }, 404);
+      if (target.scheduled) return H.json({ error: 'post_scheduled' }, 409);
       const dup = await env.DB.prepare(
         `SELECT id FROM featured_slots
           WHERE target_kind = ? AND target_id = ? AND status IN ('pending','active')`

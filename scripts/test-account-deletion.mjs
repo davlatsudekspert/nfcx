@@ -115,6 +115,9 @@ const F = {
   compGal: up(`${hex('4', 20)}.jpg`),                // gallery_json — o'chadi
   design: up(`cardprint_${hex('5')}.png`),           // bosma maket — o'chadi
   storyImg: up(`story_${hex('6')}.jpg`),             // arxivlanadi — QOLADI
+  carousel: up(`post_${hex('7')}.jpg`),              // karusel 2-rasm, arxivlanadi — QOLADI
+  hlImg: up(`story_${hex('8')}.jpg`),                // faqat U Aktualida — o'chadi
+  hlShared: up(`story_${hex('9')}.jpg`),             // B Aktualida ham — QOLADI
 };
 for (const u of Object.values(F)) await putR2(u);
 
@@ -180,6 +183,22 @@ run(`INSERT INTO company_follows (company_id, user_id, created_at) VALUES ('ELIT
 run(`INSERT INTO company_orders (company_id, item_name, qty, price, customer_name, customer_phone, status, created_at) VALUES ('ELITEBIZ', 'Osh', 1, 30000, 'Mijoz', '+998905550000', 'new', 'x')`);
 run(`INSERT INTO company_catalog_items (id, company_id, name, price, created_at, updated_at) VALUES ('ci1', 'ELITEBIZ', 'Tovar', 1000, 'x', 'x')`);
 run(`INSERT INTO company_payments (company_id, owner_user_id, amount, status, created_at, updated_at) VALUES ('ELITEBIZ', '1', 99000, 'paid', 'x', 'x')`);
+// 2026-10: karusel, Aktual, istoriya javoblari, saqlanganlar to'plami, mahsulot belgisi.
+run(`UPDATE posts SET media_json = ? WHERE id = 501`, JSON.stringify([{ url: F.postImg, type: 'image' }, { url: F.carousel, type: 'image' }]));
+run(`INSERT INTO story_highlights (id, owner_kind, owner_id, user_id, title, cover_url, created_at, updated_at) VALUES (1101, 'card', 'VIP001', ?, 'Menyu', ?, 'x', 'x')`, U, F.hlImg);
+run(`INSERT INTO story_highlight_items (highlight_id, story_id, image_url, created_at) VALUES (1101, 9001, ?, 'x')`, F.hlImg);
+run(`INSERT INTO story_highlight_items (highlight_id, story_id, image_url, created_at) VALUES (1101, 9002, ?, 'x')`, F.hlShared);
+run(`INSERT INTO story_highlights (id, owner_kind, owner_id, user_id, title, created_at, updated_at) VALUES (1102, 'company', 'ELITEBIZ', ?, 'Aksiya', 'x', 'x')`, U);
+run(`INSERT INTO story_highlight_items (highlight_id, story_id, image_url, created_at) VALUES (1102, 9003, ?, 'x')`, F.hlImg);
+run(`INSERT INTO story_highlights (id, owner_kind, owner_id, user_id, title, created_at, updated_at) VALUES (1103, 'card', 'OTH222', ?, 'B', 'x', 'x')`, B);
+run(`INSERT INTO story_highlight_items (highlight_id, story_id, image_url, created_at) VALUES (1103, 9004, ?, 'x')`, F.hlShared);
+run(`INSERT INTO story_replies (story_id, story_kind, owner_kind, owner_id, recipient_user_id, user_id, body, created_at) VALUES (601, 'story', 'card', 'VIP001', ?, ?, 'B javobi', 'x')`, U, B);
+run(`INSERT INTO story_replies (story_id, story_kind, owner_kind, owner_id, recipient_user_id, user_id, body, created_at) VALUES (602, 'story', 'card', 'OTH222', ?, ?, 'U javobi', 'x')`, B, U);
+run(`INSERT INTO story_replies (story_id, story_kind, owner_kind, owner_id, recipient_user_id, user_id, body, created_at) VALUES (603, 'story', 'card', 'OTH222', ?, 77, 'begona', 'x')`, B);
+run(`INSERT INTO save_collections (id, user_id, name, created_at) VALUES (1201, ?, 'U to‘plami', 'x')`, U);
+run(`INSERT INTO save_collections (id, user_id, name, created_at) VALUES (1202, ?, 'B to‘plami', 'x')`, B);
+run(`UPDATE user_saves SET collection_id = 1201 WHERE user_id = ?`, U);
+run(`INSERT INTO post_products (target_kind, target_id, item_id, created_at) VALUES ('company_post', 901, 'ci1', 'x')`);
 // Moliyaviy yozuvlar (B sinfi) — QOLADI, PII tozalanadi
 run(`INSERT INTO transactions (user_id, amount, kind, note) VALUES (?, 50000, 'topup', 'x')`, U);
 run(`INSERT INTO wallet_topups (user_id, amount, status) VALUES (?, 50000, 'paid')`, U);
@@ -317,8 +336,16 @@ const purgeNow = deletedAtMs + 31 * DAY;
     resetCodes: n(`SELECT COUNT(*) AS n FROM password_reset_codes WHERE user_id = 1`),
     resetTokens: n(`SELECT COUNT(*) AS n FROM email_reset_tokens WHERE user_id = 1`),
     sessions: n(`SELECT COUNT(*) AS n FROM sessions WHERE user_id = 1`),
+    highlights: n(`SELECT COUNT(*) AS n FROM story_highlights WHERE owner_id IN ('VIP001','BIZ777','ELITEBIZ')`),
+    highlightItems: n(`SELECT COUNT(*) AS n FROM story_highlight_items WHERE highlight_id IN (1101, 1102)`),
+    storyReplies: n(`SELECT COUNT(*) AS n FROM story_replies WHERE user_id = 1 OR recipient_user_id = 1`),
+    saveCollections: n(`SELECT COUNT(*) AS n FROM save_collections WHERE user_id = 1`),
+    postProducts: n(`SELECT COUNT(*) AS n FROM post_products WHERE target_id = 901`),
   };
   check('T4 U ga tegishli shaxsiy ma’lumot va kontent: hammasi 0', Object.values(zero).every((v) => v === 0) ? 'ok' : zero, 'ok');
+  check('T4 B ning Aktuali, javobi va to‘plami QOLDI (2026-10)',
+    [n(`SELECT COUNT(*) AS n FROM story_highlights WHERE id = 1103`), n(`SELECT COUNT(*) AS n FROM story_highlight_items WHERE highlight_id = 1103`),
+      n(`SELECT COUNT(*) AS n FROM story_replies WHERE user_id = 77`), n(`SELECT COUNT(*) AS n FROM save_collections WHERE id = 1202`)], [1, 1, 1, 1]);
   check('T4 B kartasidagi jamoa qatori qoldi, U kodi uzildi', one(`SELECT member_code FROM card_team WHERE code = 'OTH222'`), { member_code: null });
   const cm = one(`SELECT body, author_code, deleted_reason, deleted_at IS NOT NULL AS del FROM content_comments WHERE id = 701`);
   check('T4 U izohi: qator joyida, matni yo‘q, account_purge', cm, { body: '', author_code: '', deleted_reason: 'account_purge', del: 1 });
@@ -389,11 +416,16 @@ const purgeNow = deletedAtMs + 31 * DAY;
   const queued = sqlite.prepare(`SELECT url FROM purge_media_queue ORDER BY url`).all().map((r) => r.url);
   checkTrue('T7 navbatda U fayllari bor, tashqi URL yo‘q', queued.includes(F.avatar) && queued.includes(F.music1) && queued.includes(F.musicOld)
     && queued.includes(F.logo) && queued.includes(F.compGal) && queued.includes(F.design) && !queued.some((u) => u.startsWith('https://cdn.')));
+  checkTrue('T7 navbatda karusel va Aktual fayllari ham bor', queued.includes(F.carousel) && queued.includes(F.hlImg) && queued.includes(F.hlShared));
   const res = await drainPurgeMediaQueue(env, { limit: 50 });
   check('T7 o‘chdi: avatar, fon, musiqa (JSON va eski), logo, galereya, maket',
     [F.avatar, F.bg, F.music1, F.music2, F.musicOld, F.logo, F.compGal, F.design].map(r2Has), Array(8).fill(false));
   check('T7 qoldi: arxivdagi post/istoriya rasmi, B ham ishlatadigan rasm, admin fayli',
     [F.postImg, F.storyImg, F.shared, F.news].map(r2Has), [true, true, true, true]);
+  check('T7 karusel 2-rasmi arxivda — QOLDI; B Aktualidagi fayl QOLDI; faqat U Aktualidagisi o‘chdi',
+    [r2Has(F.carousel), r2Has(F.hlShared), r2Has(F.hlImg)], [true, true, false]);
+  checkTrue('T7 karusel rasmlari dalil arxivida (media_json)',
+    /post_7{24}\.jpg/.test(String(one(`SELECT media_json FROM content_archive WHERE kind = 'post' AND content_id = 501`)?.media_json || '')));
   checkTrue('T7 hisobot: keptArchived, keptReferenced, legacy', res.keptArchived >= 2 && res.keptReferenced >= 1 && res.legacy >= 1 && res.errors === 0);
   check('T7 navbat bo‘shadi', n(`SELECT COUNT(*) AS n FROM purge_media_queue`), 0);
   // ≤ 50 bitta ishga tushishda
@@ -598,6 +630,7 @@ const PURGE_POLICY = {
   products: 'A', product_categories: 'A', services: 'A', service_categories: 'A', card_gallery: 'A', card_files: 'A',
   card_videos: 'A', card_team: 'A', card_leads: 'A', card_events: 'A', card_likes: 'A', post_likes: 'A', content_likes: 'A', content_views: 'A', content_view_hits: 'A',
   content_comments: 'A', follows: 'A', company_follows: 'A', user_saves: 'A', notifications: 'A', user_blocks: 'A',
+  save_collections: 'A', story_replies: 'A', story_highlights: 'A', story_highlight_items: 'A', post_products: 'A',
   blocked_users: 'A', messages: 'A', conversations: 'A(flag)', auction_demand_votes: 'A', auction_requests: 'A',
   support_messages: 'A(flag)', companies: 'A', company_posts: 'A', company_stats: 'A', company_catalog_items: 'A', company_catalog_item_views: 'A',
   company_orders: 'A(flag)', catalog_item_reactions: 'A', catalog_item_views: 'A', catalog_promotions: 'A', gift_offers: 'B',

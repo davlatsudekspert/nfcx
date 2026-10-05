@@ -103,6 +103,19 @@ export async function ensureArchiveTable(env) {
   await ready;
 }
 
+// ── KARUSEL RASMLARI HAM DALIL (2026-10) ─────────────────────────────
+// Post 10 tagacha rasmli bo'lishi mumkin (api/carousel.js, `media_json`).
+// Arxivda faqat `image_url` (birinchi rasm) qolsa, qolgan rasmlar dalil
+// bo'lmay qolardi va fayl tozalovchilari ularni o'chirib yuborardi.
+// `content_archive.media_json` ustuni ADD COLUMN bilan qo'shiladi;
+// nusxa unga FAQAT ustunlar (arxivda ham, `posts`/`company_posts` da ham)
+// haqiqatan bor bo'lganda yoziladi — worker.js `ensureCoreSchema`
+// tekshirib, `enableArchiveCarousel()` ni chaqiradi. Aks holda
+// `archiveStmt` avvalgi shaklda qoladi (batch yiqilmaydi).
+let carouselOn = false;
+export function enableArchiveCarousel(on = true) { carouselOn = !!on; }
+export const archiveCarouselOn = () => carouselOn;
+
 /// O'chirishdan OLDIN o'sha batch'ga qo'yiladigan nusxa statement'i.
 ///
 /// `where` — DELETE dagi AYNAN o'sha shart (ustunlar taxallussiz,
@@ -111,13 +124,14 @@ export async function ensureArchiveTable(env) {
 export function archiveStmt(env, kind, where, binds, by = {}, now = nowTs()) {
   const s = SRC[kind];
   if (!s) throw new Error(`archive_kind:${kind}`);
+  const withMedia = carouselOn && (kind === 'post' || kind === 'company_post');
   return env.DB.prepare(
     `INSERT INTO content_archive
        (kind, content_id, owner_kind, owner_id, user_id, image_url, video_url, file_url,
-        body, created_at, deleted_at, deleted_by_user_id, deleted_by_admin, reason)
+        body, created_at, deleted_at, deleted_by_user_id, deleted_by_admin, reason${withMedia ? ', media_json' : ''})
      SELECT ?, src.id, COALESCE(${s.ownerKind}, ''), CAST(COALESCE(${s.ownerId}, '') AS TEXT),
             CAST(COALESCE(${s.userId}, '') AS TEXT), ${s.image}, ${s.video}, ${s.file},
-            COALESCE(${s.body}, ''), src.created_at, ?, ?, ?, ?
+            COALESCE(${s.body}, ''), src.created_at, ?, ?, ?, ?${withMedia ? ', src.media_json' : ''}
        FROM ${s.table} src
       WHERE ${where}`
   ).bind(
@@ -133,9 +147,14 @@ export function archiveStmt(env, kind, where, binds, by = {}, now = nowTs()) {
 export async function urlArchived(env, url) {
   if (!url) return false;
   try {
-    const row = await env.DB.prepare(
-      `SELECT 1 AS x FROM content_archive WHERE image_url = ? OR video_url = ? OR file_url = ? LIMIT 1`
-    ).bind(url, url, url).first();
+    const row = carouselOn
+      ? await env.DB.prepare(
+        `SELECT 1 AS x FROM content_archive WHERE image_url = ? OR video_url = ? OR file_url = ?
+            OR instr(COALESCE(media_json, ''), ?) > 0 LIMIT 1`
+      ).bind(url, url, url, url).first()
+      : await env.DB.prepare(
+        `SELECT 1 AS x FROM content_archive WHERE image_url = ? OR video_url = ? OR file_url = ? LIMIT 1`
+      ).bind(url, url, url).first();
     return !!row;
   } catch {
     // Jadval hali yo'q bo'lsa ham — ehtiyot: o'chirmaymiz.

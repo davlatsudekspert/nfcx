@@ -23,8 +23,12 @@ Har modul uchun test: `scripts/test-<modul>.mjs` (`scripts/lib/d1-harness.mjs` o
 `auth`, `account`, `engagement`, `catalog`, `media`, `admin-extra`,
 `admin-finance`, `telegram`, `assistant`, `moderation`, `comments`,
 `notifications`, `featured`, `catalog-feed`, `saves`, `content-archive`,
-`app-usage`, `app-admin`, `my-analytics`, `marketplace`
+`app-usage`, `app-admin`, `account-purge`, `admin-control`, `music`,
+`demo-businesses`, `highlights`, `story-replies`, `my-analytics`, `marketplace`
 (shu tartibda chaqiriladi — `worker.js: API_MODULES`).
+`nearby` — `companyApi` dan OLDIN alohida ulangan (`/api/companies/nearby`).
+Yordamchi (marshrutsiz) modullar: `carousel`, `product-tags`, `post-contact`,
+`scheduled-posts` — lenta va post yo'llari ularni chaqiradi.
 
 `catalog-feed` — ilova "Tanlov" katalogi, BARCHA bizneslarning
 mahsulot va xizmatlari: `GET /api/catalog/feed` (`page`, `limit`,
@@ -42,8 +46,40 @@ Yozish: `POST|PATCH /api/companies/:id/catalog[/:item]` qo'shimcha
 (faqat xizmat) qabul qiladi; ustunlar `ensureCatalogListingColumns`
 bilan ADD COLUMN orqali qo'shiladi, `company.catalogSchema` = 2.
 
-`saves` — saqlanganlar, hisobga bog'langan: `GET /api/saves?kind=reel|listing`,
-`POST /api/saves {kind, ref, saved}` (`user_saves`, 1000 tagacha).
+`saves` — saqlanganlar, hisobga bog'langan: `GET /api/saves?kind=reel|listing|post|company_post[&collectionId=N|none][&page=&limit=]`
+→ `{items:[{kind, ref, createdAt, collectionId, post?}], hasMore?}` (post turlarida
+`post` — lenta shaklidagi karta yoki ko'rinmasa `null`, sahifada 30 tagacha),
+`POST /api/saves {kind, ref, saved, collectionId?}` → `{kind, ref, saved, collectionId}`
+(`user_saves`, 1000 tagacha; post turlarida `ref` — post raqami).
+To'plamlar (`save_collections`, 100 tagacha, nom ≤ 40): `GET|POST /api/saves/collections`,
+`PATCH|DELETE /api/saves/collections/:id` (o'chirish saqlanganlarni O'CHIRMAYDI —
+`collection_id = NULL`), `POST /api/saves/move {kind, ref, collectionId|null}`.
+
+IJTIMOIY IMKONIYATLAR (2026-10) — to'liq kontrakt har modul boshida:
+- KARUSEL (`carousel.js`): `POST /api/records/:code/posts` va
+  `POST /api/companies/:id/posts` ixtiyoriy `media:[{url, type:'image'|'video'}]`
+  (1–10; 2+ bo'lsa faqat rasm; manzil — faqat `/uploads/<fayl>.<kengaytma>`).
+  Ustun `posts.media_json` / `company_posts.media_json`; `imageUrl` = birinchi
+  rasm. Postni qaytaradigan HAR javobda `media` (har doim massiv).
+- MAHSULOT BELGISI (`product-tags.js`): biznes posti `productIds` (≤ 5, faqat
+  o'sha kompaniya katalogidan) → `post_products`; javobda `products[]`
+  (shaxsiy postda doim `[]`).
+- BIZNES KONTAKTI (`post-contact.js`): lenta va kompaniya postlari ro'yxatidagi
+  biznes postida `contact:{phone, telegram, mapUrl}` (faqat ochiq maydonlar).
+- AKTUAL (`highlights.js`): `/api/highlights` — `story_highlights`,
+  `story_highlight_items` (istoriyaning NUSXASI; fayl tozalovchilari bu
+  fayllarni o'chirmaydi).
+- ISTORIYA JAVOBI (`story-replies.js`): `POST /api/stories/:kind/:id/reply`,
+  `GET /api/stories/:kind/:id/viewers` (faqat egasi, manba `story_views`),
+  `GET /api/my/story-replies`; egasiga istoriya ro'yxatida `replyCount`.
+- YAQINDAGI BIZNESLAR (`nearby.js`): `GET /api/companies/nearby?lat=&lng=&radiusKm=&limit=`.
+- REJALASHTIRILGAN POST (`scheduled-posts.js`): `publishAt` (ISO yoki ms;
+  kelajakda, ≤ 30 kun) → `publish_at`. Vaqti kelguncha egasidan boshqaga
+  HECH QAYERDA ko'rinmaydi (`postLiveSql`/`companyPostLiveSql`, `targetOwner().scheduled`);
+  egasiga `scheduledFor` (ms). Lenta tartibi — `COALESCE(publish_at, created_at)`.
+Hammasi faqat qo'shimcha (CREATE IF NOT EXISTS / himoyalangan ADD COLUMN);
+lenta va ro'yxatlarga yangi ketma-ket to'lqin qo'shilmagan
+(`scripts/test-scheduled-posts.mjs` 6-bo'lim o'lchaydi).
 
 `content-archive` — DALIL ARXIVI. Post, istoriya (egasi, admin, muddati
 o'tgan), kompaniya posti, profil videosi va fayli, karta tozalanishi —

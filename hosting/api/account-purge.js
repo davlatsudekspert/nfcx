@@ -43,6 +43,12 @@
 import { archiveStmt, ensureArchiveTable } from './content-archive.js';
 import { retireTargetStmts, ensureSchema as ensureCommentsSchema } from './comments.js';
 import { cardContentCleanupStmts, CARD_CONTENT_TABLES } from './card-cleanup.js';
+// Ijtimoiy jadvallar (2026-10): purge batch'i va karta tozalash ularga
+// yozadi — cron yangi isolate'da ishlasa ham jadvallar bo'lishi shart.
+import { ensureSchema as ensureHighlightsSchema } from './highlights.js';
+import { ensureSchema as ensureStoryRepliesSchema } from './story-replies.js';
+import { ensureSchema as ensureProductTagsSchema } from './product-tags.js';
+import { ensureTable as ensureSavesTable } from './saves.js';
 
 export const PURGE_GRACE_DAYS = 30;
 export const ID_QUARANTINE_DAYS = 90;
@@ -148,6 +154,8 @@ const OPTIONAL_COLS = [
   ['content_comments', 'deleted_at'], ['content_comments', 'deleted_reason'],
   ['companies', 'gallery_json'], ['companies', 'music_json'],
   ['company_catalog_items', 'images_json'],
+  // Karusel (api/carousel.js) — postlardagi qo'shimcha rasmlar.
+  ['posts', 'media_json'], ['company_posts', 'media_json'], ['content_archive', 'media_json'],
 ];
 
 // Purge'siz ishlay olmaydigan jadvallar. Biri yo'q bo'lsa foydalanuvchi
@@ -166,6 +174,9 @@ export async function loadPurgeConfig(env) {
   // Izoh va arxiv jadvallari (va izohdagi `deleted_at`) — purge'dan oldin.
   await ensureArchiveTable(env).catch(() => {});
   await ensureCommentsSchema(env).catch(() => {});
+  await Promise.all([
+    ensureHighlightsSchema(env), ensureStoryRepliesSchema(env), ensureProductTagsSchema(env), ensureSavesTable(env),
+  ].map((p) => Promise.resolve(p).catch(() => {})));
   const t = await env.DB.prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`).all();
   const tables = new Set((t?.results || []).map((r) => String(r.name)));
   const cols = new Set();
@@ -234,6 +245,11 @@ const jsonVals = (tb, colName, where) =>
   `SELECT j.value AS url FROM ${tb} x, json_each(CASE WHEN json_valid(x.${colName}) THEN x.${colName} ELSE json_array(x.${colName}) END) j
     WHERE j.type = 'text' AND ${where}`;
 
+// Karusel `media_json` — [{url, type}] massivi: har elementning `url` i.
+const carouselVals = (tb, where) =>
+  `SELECT json_extract(j.value, '$.url') AS url FROM ${tb} x, json_each(CASE WHEN json_valid(x.media_json) THEN x.media_json ELSE '[]' END) j
+    WHERE ${where}`;
+
 /// Foydalanuvchining barcha fayl manzillari (UNION). Faqat mavjud
 /// jadval va ustunlardan quriladi.
 function mediaUnionSql(id, cfg) {
@@ -256,6 +272,18 @@ function mediaUnionSql(id, cfg) {
     if (!has(tb)) continue;
     for (const c of cs) q.push(`SELECT ${c} FROM ${tb} WHERE code IN (${CODES})`);
   }
+  // Karusel rasmlari (`media_json`, api/carousel.js).
+  if (has('posts') && col('posts', 'media_json')) q.push(carouselVals('posts', `x.code IN (${CODES})`));
+  // AKTUAL nusxalari va muqovalari (api/highlights.js) — istoriya o'chsa ham
+  // fayl shu yerda yashaydi, shuning uchun hisob bilan birga navbatga tushadi.
+  if (has('story_highlights') && has('story_highlight_items')) {
+    const ownH = has('companies')
+      ? `(h.owner_kind = 'card' AND h.owner_id IN (${CODES})) OR (h.owner_kind = 'company' AND h.owner_id IN (${COS}))`
+      : `h.owner_kind = 'card' AND h.owner_id IN (${CODES})`;
+    q.push(`SELECT i.image_url FROM story_highlight_items i JOIN story_highlights h ON h.id = i.highlight_id WHERE ${ownH}`);
+    q.push(`SELECT i.video_url FROM story_highlight_items i JOIN story_highlights h ON h.id = i.highlight_id WHERE ${ownH}`);
+    q.push(`SELECT h.cover_url FROM story_highlights h WHERE ${ownH}`);
+  }
   if (has('stories')) {
     const own = has('companies')
       ? `(owner_kind = 'card' AND owner_id IN (${CODES})) OR (owner_kind = 'company' AND owner_id IN (${COS}))`
@@ -269,6 +297,7 @@ function mediaUnionSql(id, cfg) {
     if (col('companies', 'music_json')) q.push(jsonVals('companies', 'music_json', `CAST(x.owner_user_id AS TEXT) = '${id}'`));
     if (has('company_posts')) {
       q.push(`SELECT image_url FROM company_posts WHERE company_id IN (${COS})`, `SELECT video_url FROM company_posts WHERE company_id IN (${COS})`);
+      if (col('company_posts', 'media_json')) q.push(carouselVals('company_posts', `x.company_id IN (${COS})`));
     }
     if (has('company_catalog_items')) {
       q.push(`SELECT image_url FROM company_catalog_items WHERE company_id IN (${COS})`);
@@ -315,6 +344,7 @@ export async function purgeCounts(env, userId, cfg) {
   add('follows', 'follows', `SELECT COUNT(*) FROM follows WHERE follower_id = ${id} OR followee_id = ${id}`);
   add('notifications', 'notifications', `SELECT COUNT(*) FROM notifications WHERE recipient_user_id = ${id} OR actor_user_id = ${id}`);
   add('saves', 'user_saves', `SELECT COUNT(*) FROM user_saves WHERE user_id = ${id}`);
+  add('storyReplies', 'story_replies', `SELECT COUNT(*) FROM story_replies WHERE user_id = ${id} OR recipient_user_id = ${id}`);
   add('messages', 'messages', `SELECT COUNT(*) FROM messages WHERE sender_id = ${id}`);
   const contentParts = CARD_CONTENT_TABLES.filter((tb) => tb !== 'posts' && has(tb))
     .map((tb) => `(SELECT COUNT(*) FROM ${tb} WHERE code IN (${CODES}))`);
@@ -403,6 +433,14 @@ export function purgeStmts(env, u, now, ref, cfg, counts = {}) {
     add(['story_likes', 'stories'], `DELETE FROM story_likes WHERE story_id IN (SELECT id FROM stories WHERE owner_kind = 'company' AND owner_id IN (${COS}))`);
     add(['story_views', 'stories'], `DELETE FROM story_views WHERE story_id IN (SELECT id FROM stories WHERE owner_kind = 'company' AND owner_id IN (${COS}))`);
     add(['stories'], `DELETE FROM stories WHERE owner_kind = 'company' AND owner_id IN (${COS})`);
+    // Kompaniya Aktuallari va post mahsulot belgilari (2026-10).
+    add(['story_highlight_items', 'story_highlights'],
+      `DELETE FROM story_highlight_items WHERE highlight_id IN
+         (SELECT id FROM story_highlights WHERE owner_kind = 'company' AND owner_id IN (${COS}))`);
+    add(['story_highlights'], `DELETE FROM story_highlights WHERE owner_kind = 'company' AND owner_id IN (${COS})`);
+    add(['post_products', 'company_posts'],
+      `DELETE FROM post_products WHERE target_kind = 'company_post'
+         AND target_id IN (SELECT id FROM company_posts WHERE company_id IN (${COS}))`);
     // Tovar ko'rishlari (`catalog-feed.js`) — tovarlar bilan birga ketadi.
     add(['company_catalog_item_views', 'company_catalog_items'],
       `DELETE FROM company_catalog_item_views WHERE item_id IN (SELECT CAST(id AS TEXT) FROM company_catalog_items WHERE company_id IN (${COS}))`);
@@ -433,6 +471,11 @@ export function purgeStmts(env, u, now, ref, cfg, counts = {}) {
   add(['follows'], `DELETE FROM follows WHERE follower_id = ${id} OR followee_id = ${id}`);
   add(['company_follows'], `DELETE FROM company_follows WHERE user_id = ${id}`);
   add(['user_saves'], `DELETE FROM user_saves WHERE user_id = ${id}`);
+  // Saqlanganlar to'plamlari va istoriya javoblari (2026-10): u YOZGAN
+  // ham, unga KELGAN ham (ikkinchisida boshqa odamning matni — lekin u
+  // faqat shu hisob egasiga ko'rinardi, egasiz qoladi).
+  add(['save_collections'], `DELETE FROM save_collections WHERE user_id = ${id}`);
+  add(['story_replies'], `DELETE FROM story_replies WHERE user_id = ${id} OR recipient_user_id = ${id}`);
   add(['notifications'], `DELETE FROM notifications WHERE recipient_user_id = ${id} OR actor_user_id = ${id}`);
   // U ning bloklari va U ning kodi/kompaniyasiga qo'yilgan bloklar: kod
   // qayta sotilsa, blok yangi egaga o'tmasin.
@@ -697,6 +740,15 @@ function liveUseSql(cfg, marks) {
   if (col('companies', 'gallery_json')) q.push(js('companies', 'gallery_json'));
   if (col('companies', 'music_json')) q.push(js('companies', 'music_json'));
   if (col('company_catalog_items', 'images_json')) q.push(js('company_catalog_items', 'images_json'));
+  // Karusel va Aktual (2026-10) — boshqa post yoki Aktualda ishlatilayotgan
+  // fayl o'chirilmaydi.
+  for (const tb of ['posts', 'company_posts']) {
+    if (has(tb) && col(tb, 'media_json')) q.push(`SELECT url FROM (${carouselVals(tb, '1 = 1')}) WHERE url IN (${marks})`);
+  }
+  if (has('story_highlight_items')) {
+    for (const c of ['image_url', 'video_url']) q.push(`SELECT ${c} AS url FROM story_highlight_items WHERE ${c} IN (${marks})`);
+  }
+  if (has('story_highlights')) q.push(`SELECT cover_url AS url FROM story_highlights WHERE cover_url IN (${marks})`);
   return q;
 }
 
@@ -731,6 +783,14 @@ export async function drainPurgeMediaQueue(env, { limit = 50 } = {}) {
   ).bind(...cand, ...cand, ...cand).all().catch(() => null);
   if (!arch) { out.errors = cand.length; return out; }   // arxivni o'qib bo'lmadi — o'chirmaymiz
   for (const r of arch.results || []) for (const v of [r.image_url, r.video_url, r.file_url]) if (v) archived.add(String(v));
+  // Arxivdagi karusel rasmlari (content-archive.js `media_json`).
+  if (cfg.cols.has('content_archive.media_json')) {
+    const archM = await env.DB.prepare(
+      `SELECT url FROM (${carouselVals('content_archive', '1 = 1')}) WHERE url IN (${marks})`
+    ).bind(...cand).all().catch(() => null);
+    if (!archM) { out.errors = cand.length; return out; }
+    for (const r of archM.results || []) if (r.url) archived.add(String(r.url));
+  }
   const live = new Set();
   for (const sql of liveUseSql(cfg, marks)) {
     const r = await env.DB.prepare(sql).bind(...cand).all().catch(() => null);
@@ -813,10 +873,17 @@ export async function runEvidenceRetention(env, { now = Date.now(), mode = reten
   const nowTs = tsAt(now);
   if (has('content_archive')) {
     if (has('purge_media_queue')) {
-      const media = ['image_url', 'video_url', 'file_url']
-        .map((c) => `SELECT ${c} AS url FROM content_archive WHERE ${contentWhere} AND ${c} IS NOT NULL AND ${c} <> ''`).join(' UNION ');
-      out.mediaQueued = Number((await env.DB.prepare(`SELECT COUNT(*) AS n FROM (${media})`).bind(cutoff, cutoff, cutoff).first())?.n || 0);
-      stmts.push(env.DB.prepare(`INSERT OR IGNORE INTO purge_media_queue (url, queued_at, attempts) SELECT url, ?, 0 FROM (${media})`).bind(nowTs, cutoff, cutoff, cutoff));
+      const parts = ['image_url', 'video_url', 'file_url']
+        .map((c) => `SELECT ${c} AS url FROM content_archive WHERE ${contentWhere} AND ${c} IS NOT NULL AND ${c} <> ''`);
+      // Karusel rasmlari (2026-10) — ustun bo'lsa ular ham navbatga.
+      const archCols = await env.DB.prepare(`PRAGMA table_info(content_archive)`).all().catch(() => null);
+      if ((archCols?.results || []).some((c) => String(c.name) === 'media_json')) {
+        parts.push(`SELECT url FROM (${carouselVals('content_archive', `${day('x.deleted_at')} < ?${notFlagged('content', 'x.id')}${holdUser('x.user_id')}`)}) WHERE url IS NOT NULL AND url <> ''`);
+      }
+      const media = parts.join(' UNION ');
+      const cutoffs = parts.map(() => cutoff);
+      out.mediaQueued = Number((await env.DB.prepare(`SELECT COUNT(*) AS n FROM (${media})`).bind(...cutoffs).first())?.n || 0);
+      stmts.push(env.DB.prepare(`INSERT OR IGNORE INTO purge_media_queue (url, queued_at, attempts) SELECT url, ?, 0 FROM (${media})`).bind(nowTs, ...cutoffs));
     }
     if (has('evidence_flags')) stmts.push(env.DB.prepare(`DELETE FROM evidence_flags WHERE source = 'content' AND archive_id NOT IN (SELECT id FROM content_archive)`));
     stmts.push(env.DB.prepare(`DELETE FROM content_archive WHERE ${contentWhere}`).bind(cutoff));

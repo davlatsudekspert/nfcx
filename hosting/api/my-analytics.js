@@ -34,6 +34,9 @@
 // ko'rsatgandan ko'ra, "profil ko'rishlari" ichida qoldirgan to'g'ri.
 
 import { ensureSchema as ensureCommentsSchema } from './comments.js';
+// Rejadagi post (2026-10) hali chiqmagan — analitika "joylangan" kontentni
+// sanaydi (api/scheduled-posts.js).
+import { postLiveSql, companyPostLiveSql } from './scheduled-posts.js';
 
 const DAY_MS = 24 * 60 * 60_000;
 const TOP_N = 10;
@@ -81,12 +84,13 @@ export async function handle(request, env, url, H) {
     env.DB.prepare(
       `SELECT 'post' AS kind, p.id, p.code, p.image_url, p.video_url, p.caption, p.created_at,
               (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS likes
-         FROM posts p WHERE p.code IN (${myCodes})
+         FROM posts p WHERE p.code IN (${myCodes}) AND ${postLiveSql('p')}
        UNION ALL
        SELECT 'company_post', cp.id, cp.company_id, cp.image_url, cp.video_url, cp.caption, cp.created_at,
               (SELECT COUNT(*) FROM content_likes cl WHERE cl.target_kind = 'company_post' AND cl.target_id = cp.id)
          FROM company_posts cp
-        WHERE cp.company_id IN (SELECT company_id FROM companies WHERE owner_user_id = ?)`
+        WHERE cp.company_id IN (SELECT company_id FROM companies WHERE owner_user_id = ?)
+          AND ${companyPostLiveSql('cp')}`
     ).bind(uid, uid).all(),
     env.DB.prepare(
       `SELECT target_kind, target_id, SUM(hits) AS n, COUNT(DISTINCT viewer) AS r FROM content_view_hits

@@ -50,6 +50,7 @@
 // yo'qolardi.
 
 import { createNotification } from './notifications.js';
+import { postLiveSql, companyPostLiveSql } from './scheduled-posts.js';
 
 export const KINDS = ['post', 'company_post', 'story', 'company_story'];
 
@@ -359,12 +360,31 @@ function cleanBody(v) {
 /// olinsa, yangi kontent turi qo'shilganda biri yangilanmay
 /// qolardi va begona kontentni pullik slotga qo'yish mumkin
 /// bo'lardi.
+///
+/// `scheduled: true` (2026-10) — post hali REJADA (`publish_at` kelajakda,
+/// api/scheduled-posts.js). Chaqiruvchi egasidan boshqaga uni "yo'q" deb
+/// ko'rsatadi (`hiddenFrom`). Ustun hali qo'shilmagan eski bazada so'rov
+/// eski shaklda qayta bajariladi — reja bo'lishi mumkin emas.
+const firstWithFallback = async (env, sql, legacySql, id) => {
+  try {
+    return await env.DB.prepare(sql).bind(id).first();
+  } catch (e) {
+    if (!/no such column/i.test(String(e?.message || e))) throw e;
+    return env.DB.prepare(legacySql).bind(id).first();
+  }
+};
+
+/// Rejadagi kontent shu foydalanuvchidan yashirilsinmi (egasi ko'radi).
+export const hiddenFrom = (target, userId) =>
+  !!target?.scheduled && Number(target.ownerUserId) !== Number(userId || 0);
+
 export async function targetOwner(env, kind, id) {
   if (kind === 'post') {
-    const row = await env.DB.prepare(
-      `SELECT p.code AS code, c.user_id AS user_id FROM posts p JOIN cards c ON c.code = p.code WHERE p.id = ?`
-    ).bind(id).first();
-    return row ? { ok: true, ownerUserId: Number(row.user_id) || 0, ownerCode: String(row.code || '') } : { ok: false };
+    const row = await firstWithFallback(env,
+      `SELECT p.code AS code, c.user_id AS user_id, NOT ${postLiveSql('p')} AS scheduled
+         FROM posts p JOIN cards c ON c.code = p.code WHERE p.id = ?`,
+      `SELECT p.code AS code, c.user_id AS user_id FROM posts p JOIN cards c ON c.code = p.code WHERE p.id = ?`, id);
+    return row ? { ok: true, ownerUserId: Number(row.user_id) || 0, ownerCode: String(row.code || ''), scheduled: !!Number(row.scheduled) } : { ok: false };
   }
   if (kind === 'story') {
     const row = await env.DB.prepare(
@@ -374,11 +394,12 @@ export async function targetOwner(env, kind, id) {
     return row ? { ok: true, ownerUserId: Number(row.user_id) || 0, ownerCode: String(row.code || '') } : { ok: false };
   }
   if (kind === 'company_post') {
-    const row = await env.DB.prepare(
+    const row = await firstWithFallback(env,
+      `SELECT cp.company_id AS code, co.owner_user_id AS user_id, NOT ${companyPostLiveSql('cp')} AS scheduled
+         FROM company_posts cp JOIN companies co ON co.company_id = cp.company_id WHERE cp.id = ?`,
       `SELECT cp.company_id AS code, co.owner_user_id AS user_id
-         FROM company_posts cp JOIN companies co ON co.company_id = cp.company_id WHERE cp.id = ?`
-    ).bind(id).first();
-    return row ? { ok: true, ownerUserId: Number(row.user_id) || 0, ownerCode: String(row.code || '') } : { ok: false };
+         FROM company_posts cp JOIN companies co ON co.company_id = cp.company_id WHERE cp.id = ?`, id);
+    return row ? { ok: true, ownerUserId: Number(row.user_id) || 0, ownerCode: String(row.code || ''), scheduled: !!Number(row.scheduled) } : { ok: false };
   }
   if (kind === 'company_story') {
     const row = await env.DB.prepare(
@@ -730,6 +751,8 @@ export async function handle(request, env, url, H) {
     if (!target.ok) return H.json({ error: 'not_found' }, 404);
 
     const user = await H.getCurrentUser(request, env).catch(() => null);
+    // Rejadagi post — egasidan boshqaga "yo'q" (api/scheduled-posts.js).
+    if (hiddenFrom(target, user?.id)) return H.json({ error: 'not_found' }, 404);
     const count = async () => {
       const row = await env.DB.prepare(
         `SELECT COUNT(*) AS n FROM content_likes WHERE target_kind = ? AND target_id = ?`
@@ -803,6 +826,7 @@ export async function handle(request, env, url, H) {
     if (!target.ok) return H.json({ error: 'not_found' }, 404);
 
     const user = await H.getCurrentUser(request, env).catch(() => null);
+    if (hiddenFrom(target, user?.id)) return H.json({ error: 'not_found' }, 404);
     let counted = false;
     if (!user || user.id !== target.ownerUserId) {
       let viewer = '';
@@ -858,6 +882,7 @@ export async function handle(request, env, url, H) {
     if (!target.ok) return H.json({ error: 'not_found' }, 404);
 
     const user = await H.getCurrentUser(request, env).catch(() => null);
+    if (hiddenFrom(target, user?.id)) return H.json({ error: 'not_found' }, 404);
     const viewerId = user ? user.id : 0;
     const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
     const limit = Math.min(PAGE_MAX, Math.max(1, Number(url.searchParams.get('limit')) || 20));
@@ -959,7 +984,7 @@ export async function handle(request, env, url, H) {
     // `cmt:u:` daqiqalik chegarasi va moderatsiya.
 
     const target = await targetOwner(env, kind, id);
-    if (!target.ok) return H.json({ error: 'not_found' }, 404);
+    if (!target.ok || hiddenFrom(target, user.id)) return H.json({ error: 'not_found' }, 404);
 
     if (await H.rateLimitD1(env, `cmt:u:${user.id}`, MAX_PER_MIN, MIN_MS)) {
       return H.json({ error: 'too_many_requests' }, 429);

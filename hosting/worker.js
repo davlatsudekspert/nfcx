@@ -30,13 +30,25 @@ import * as apiAdminControl from './api/admin-control.js';
 // Musiqa kutubxonasi (admin yuklaydi, ilova faqat yoqilgan treklarni ko'radi).
 import * as apiMusic from './api/music.js';
 import * as apiDemoBusinesses from './api/demo-businesses.js';
+// Ijtimoiy imkoniyatlar (2026-10): Aktual (highlights), istoriyaga javob va
+// ko'rganlar, yaqin atrofdagi bizneslar; karusel, mahsulot belgisi, biznes
+// kontakti va rejalashtirilgan post — lenta/ro'yxat yordamchilari.
+import * as apiHighlights from './api/highlights.js';
+import * as apiStoryReplies from './api/story-replies.js';
+import * as apiNearby from './api/nearby.js';
+import * as apiProductTags from './api/product-tags.js';
+import { parseMediaInput, mediaOut } from './api/carousel.js';
+import { companyContact as companyContactOut } from './api/post-contact.js';
+import {
+  postLiveSql, companyPostLiveSql, effectiveTimeSql, parsePublishAt, scheduledForMs, postsTs, companyPostsTs,
+} from './api/scheduled-posts.js';
 import { withUzStores, uzMaintenance, uzMaintenanceBypass, maintenanceResponse, handleUzExport, uzDbNetErrors, uzLogError, uzWriteProbe } from './uz-store.js';
 import { ensureNewsSeed } from './api/news-seed.js';
 import { RESERVED_CODES, isReservedCode } from './api/reserved-codes.js';
 import { idQuarantined, notQuarantinedSql, purgeAfterMs, runScheduledPurge } from './api/account-purge.js';
 import { recordAppOpen } from './api/app-usage.js';
 import { timedDb, newTiming, summarizeTiming, withTimingHeaders, handleSpeedDiag, TEZLIK_HTML } from './speed-diag.js';
-import { archiveStmt, ensureArchiveTable, urlArchived } from './api/content-archive.js';
+import { archiveStmt, ensureArchiveTable, urlArchived, enableArchiveCarousel } from './api/content-archive.js';
 import { moderateImage, moderateVideo, moderationEnabled, logBlockedUpload } from './api/image-moderation.js';
 
 // API javoblari standart holda KESHLANMAYDI.
@@ -271,7 +283,9 @@ async function catalogMeta(request, env, url, match) {
 let companySchemaReady;
 const COMPANY_STATUSES = new Set(['draft', 'pending_review', 'approved', 'payment_pending', 'paid', 'active', 'rejected', 'suspended']);
 const COMPANY_CATEGORIES = new Set(['restaurant', 'cafe', 'market', 'shop', 'services', 'construction', 'clinic', 'pharmacy', 'education', 'other']);
-const BUILTIN_COMPANY_IDS = new Set(['NFCSTORE', 'ADMIN', 'SUPPORT', 'PAYME', 'COMPANY', 'KOMPANIYA', 'WORKSPACE']);
+// `NEARBY` — `/api/companies/nearby` yo'li (2026-10) bilan to'qnashmasin:
+// shunday ID'li kompaniya sahifasi API'da hech qachon ochilmasdi.
+const BUILTIN_COMPANY_IDS = new Set(['NFCSTORE', 'ADMIN', 'SUPPORT', 'PAYME', 'COMPANY', 'KOMPANIYA', 'WORKSPACE', 'NEARBY']);
 
 async function ensureCompanySchema(env) {
   if (!env.DB) throw new Error('d1_unavailable');
@@ -1146,7 +1160,9 @@ async function generateFreeCompanyIdD1(env) {
 
 async function companyApi(request, env, url) {
   await ensureCompanySchema(env);
-  await ensureCatalogListingColumns(env);
+  // Karusel/reja ustunlari ham shu yerda (bu yo'l `ensureCoreSchema` ni
+  // chaqirmaydi). Parallel va keshlanadi — keyingi so'rovlarga to'lqin qo'shmaydi.
+  await Promise.all([ensureCatalogListingColumns(env), ensurePostSocialColumnsD1(env)]);
   const path = url.pathname;
 
   if (path === '/api/companies/check' && request.method === 'GET') {
@@ -1405,27 +1421,45 @@ async function companyApi(request, env, url) {
       WHERE c.company_id = ? AND u.deleted_at IS NOT NULL`
   ).bind(id).first().then((r) => !!r).catch(() => false);
   if (action === 'posts' && !itemId && request.method === 'GET') {
+    // 2026-10: kompaniya qatori `SELECT *` — "Bog'lanish" tugmasi
+    // (telefon, Telegram, xarita) va holati shu so'rovdan; yangi so'rov
+    // yo'q. Postlar `publish_at` bilan olinadi va REJADAGILARI egasidan
+    // boshqaga JS da tashlanadi (bitta kompaniyada 30 tadan ko'p post
+    // bo'lmaydi — LIMIT 60 hammasini qamraydi).
     const [deletedOwner, viewer, meta, rows] = await Promise.all([
       companyOwnerDeletedP(),
       getCurrentUser(request, env).catch(() => null),
       env.DB.prepare(
-        `SELECT display_name, logo_url FROM companies WHERE company_id = ?`
+        `SELECT * FROM companies WHERE company_id = ?`
       ).bind(id).first(),
       env.DB.prepare(
-        `SELECT id, image_url, video_url, caption, created_at
-           FROM company_posts WHERE company_id = ? ORDER BY created_at DESC LIMIT 60`
+        `SELECT id, image_url, video_url, caption, created_at, publish_at, media_json
+           FROM company_posts cp WHERE company_id = ? ORDER BY ${effectiveTimeSql('cp')} DESC LIMIT 60`
       ).bind(id).all(),
     ]);
     if (deletedOwner) return json({ posts: [] });
-    const posts = rows.results || [];
+    const isOwner = !!(viewer && meta && String(meta.owner_user_id) === String(viewer.id));
+    // YASHIRIN KOMPANIYA (faol emas: qoralama, to'xtatilgan, rad etilgan)
+    // postlari va kontakti begonaga CHIQMAYDI — ochiq sahifasi ham 404
+    // (`not_active`) beradi, bu yo'l uni chetlab o'tmasin.
+    if (!meta || (String(meta.status) !== 'active' && !isOwner)) return json({ posts: [] });
+    const contact = String(meta.status) === 'active' ? companyContactOut(meta) : null;
+    const posts = (rows.results || []).filter((row) => isOwner || !scheduledForMs(row.publish_at));
     const targets = posts.map((row) => ({ kind: 'company_post', id: Number(row.id) }));
-    const shaped = posts.map((row) => ({
-      id: Number(row.id), code: id,
-      authorName: meta?.display_name || id, authorAvatar: meta?.logo_url || '',
-      imageUrl: row.image_url || '', videoUrl: row.video_url || '',
-      caption: row.caption || '', createdAt: row.created_at,
-    }));
-    const [likes, counts, views] = await Promise.all([
+    const shaped = posts.map((row) => {
+      const scheduledFor = scheduledForMs(row.publish_at);
+      return {
+        id: Number(row.id), code: id,
+        authorName: meta?.display_name || id, authorAvatar: meta?.logo_url || '',
+        imageUrl: row.image_url || '', videoUrl: row.video_url || '',
+        caption: row.caption || '', createdAt: row.publish_at || row.created_at,
+        media: mediaOut(row.media_json, row.image_url, row.video_url),
+        products: [],
+        ...(contact ? { contact } : null),
+        ...(scheduledFor ? { scheduledFor } : null),
+      };
+    });
+    const [likes, counts, views, , productTags] = await Promise.all([
       apiComments.likesFor(env, targets, viewer ? viewer.id : 0).catch(() => new Map()),
       // Izohlar soni — sayt post ostida "Izohlar · 4" ko'rsatadi.
       // Shaxsiy postlar bilan AYNAN bir manba (`countsFor`).
@@ -1433,8 +1467,11 @@ async function companyApi(request, env, url) {
       // Ko'rishlar soni (comments.js `viewsFor`) — Reels'dagi ko'z belgisi.
       apiComments.viewsFor(env, targets).catch(() => new Map()),
       apiMusic.attachPostExtras(env, shaped.map((o) => ({ kind: 'company_post', id: o.id, obj: o }))),
+      // Mahsulot belgilari — sanoqlar bilan BIR to'lqinda.
+      shaped.length ? apiProductTags.productsFor(env, shaped.map((o) => o.id)).catch(() => new Map()) : new Map(),
     ]);
     for (const o of shaped) {
+      o.products = productTags.get(Number(o.id)) || [];
       const like = likes.get(`company_post:${o.id}`) || { count: 0, liked: false };
       o.likeCount = like.count;
       o.liked = like.liked;
@@ -1489,19 +1526,45 @@ async function companyApi(request, env, url) {
     const gatePost = await publishGateD1(env, owned.auth.user);
     if (gatePost) return gatePost;
 
-    const media = storyMediaD1(body);
+    // KARUSEL (api/carousel.js) — `media` berilsa, birinchi rasm
+    // `imageUrl` bo'ladi; berilmasa avvalgi `imageUrl`/`videoUrl` yo'li.
+    const mediaIn = parseMediaInput(body);
+    if (!mediaIn.ok) return json({ error: mediaIn.error, ...(mediaIn.limit ? { limit: mediaIn.limit } : {}) }, 422);
+    const media = mediaIn.provided
+      ? { ok: true, imageUrl: mediaIn.imageUrl, videoUrl: mediaIn.videoUrl }
+      : storyMediaD1(body);
     if (!media.ok) return json({ error: 'bad_image' }, 422);
+    // REJA (api/scheduled-posts.js) — kelajakda, 30 kungacha.
+    const plan = parsePublishAt(body?.publishAt);
+    if (!plan.ok) return json({ error: plan.error, ...(plan.maxDays ? { maxDays: plan.maxDays } : {}) }, 422);
     const cnt = await env.DB.prepare(`SELECT COUNT(*) AS n FROM company_posts WHERE company_id = ?`).bind(id).first();
     if (Number(cnt?.n || 0) >= COMPANY_POST_MAX) return json({ error: 'limit_reached', limit: COMPANY_POST_MAX }, 409);
     const extrasIn = await apiMusic.readPostExtras(env, body, { hasImage: !!media.imageUrl && !media.videoUrl });
     if (!extrasIn.ok) return json({ error: extrasIn.error }, 422);
+    // MAHSULOT BELGILARI (api/product-tags.js) — faqat SHU kompaniya
+    // katalogidan, post yozilishidan OLDIN tekshiriladi.
+    const tagsIn = await apiProductTags.readProductIds(env, body, id);
+    if (!tagsIn.ok) return json({ error: tagsIn.error, ...(tagsIn.limit ? { limit: tagsIn.limit } : {}) }, 422);
+    const nowIso = new Date().toISOString();
     const row = await env.DB.prepare(
-      `INSERT INTO company_posts (company_id, image_url, video_url, caption, created_at) VALUES (?,?,?,?,?)
-       RETURNING id, image_url, video_url, caption, created_at`
-    ).bind(id, media.imageUrl, media.videoUrl, String(body?.caption || '').slice(0, 600), new Date().toISOString()).first();
+      `INSERT INTO company_posts (company_id, image_url, video_url, caption, created_at, media_json, publish_at) VALUES (?,?,?,?,?,?,?)
+       RETURNING id, image_url, video_url, caption, created_at, media_json, publish_at`
+    ).bind(id, media.imageUrl, media.videoUrl, String(body?.caption || '').slice(0, 600), nowIso,
+      mediaIn.provided ? mediaIn.mediaJson : null, plan.ms ? companyPostsTs(plan.ms) : null).first();
     const extras = await apiMusic.savePostExtras(env, 'company_post', Number(row.id), extrasIn.extras);
+    if (tagsIn.ids.length) await apiProductTags.saveProductTags(env, Number(row.id), tagsIn.ids, nowIso);
+    const products = tagsIn.ids.length
+      ? ((await apiProductTags.productsFor(env, [Number(row.id)])).get(Number(row.id)) || [])
+      : [];
+    const scheduledFor = scheduledForMs(row.publish_at);
     return json({
-      post: { id: Number(row.id), imageUrl: row.image_url || '', videoUrl: row.video_url || '', caption: row.caption || '', createdAt: row.created_at, ...extras },
+      post: {
+        id: Number(row.id), imageUrl: row.image_url || '', videoUrl: row.video_url || '', caption: row.caption || '',
+        createdAt: row.publish_at || row.created_at, ...extras,
+        media: mediaOut(row.media_json, row.image_url, row.video_url),
+        products,
+        ...(scheduledFor ? { scheduledFor } : null),
+      },
     }, 201);
   }
 
@@ -1514,6 +1577,8 @@ async function companyApi(request, env, url) {
     ]);
     if (!Number(res?.meta?.changes || 0)) return json({ error: 'not_found' }, 404);
     await apiComments.deleteLikesFor(env, 'company_post', postId).catch(() => {});
+    // Mahsulot belgilari ham ketadi (yetim qolmasin).
+    await apiProductTags.deleteTagsStmt(env, postId).run().catch(() => {});
     return json({ ok: true });
   }
 
@@ -2230,6 +2295,11 @@ let coreSchemaNetBaseline = null;
 const CORE_GATED_COLUMNS = [
   ['cards', 'company_id'], ['card_likes', 'as_company_id'],
   ['users', 'trial_expires_at'], ['users', 'premium_expires_at'], ['users', 'signup_source'],
+  // Karusel va rejalashtirilgan post (2026-10): lenta va ro'yxat so'rovlari
+  // bu ustunlarni TO'G'RIDAN-TO'G'RI o'qiydi — belgi topilganda ham ular
+  // haqiqatan borligi tekshiriladi, yo'q bo'lsa to'liq tekshiruv ishlaydi.
+  ['posts', 'publish_at'], ['posts', 'media_json'],
+  ['company_posts', 'publish_at'], ['company_posts', 'media_json'], ['content_archive', 'media_json'],
 ];
 let coreColumnsSeeded;
 function seedCoreColumnsD1(env) {
@@ -2266,7 +2336,13 @@ async function ensureCoreSchema(env) {
     coreSchemaAlreadyEnsured(env),
     coreSchemaMarkerOn(env) ? seedCoreColumnsD1(env) : false,
   ]);
-  if (marked && columnsOk) return;
+  if (marked && columnsOk) {
+    // Ustun keshi to'ldi — karusel dalil arxivini shu yerda ham yoqamiz
+    // (`ensurePostSocialColumnsD1` bu yo'lda chaqirilmaydi).
+    if (hasColumnD1('posts', 'media_json') && hasColumnD1('company_posts', 'media_json')
+      && hasColumnD1('content_archive', 'media_json')) enableArchiveCarousel(true);
+    return;
+  }
   if (coreSchemaNetBaseline === null) coreSchemaNetBaseline = uzDbNetErrors();
   // Admin auth's own tables/columns are ensured FIRST and independently of
   // the shared batch below — see ensureAdminAuthTables()'s comment. This
@@ -2292,6 +2368,18 @@ async function ensureCoreSchema(env) {
     // qolgan eski izoh/layklar — comments.js `repairRecycledPostIdsOnce`.
     // Xatosi ichida yutiladi: so'rovni hech qachon to'xtatmaydi.
     .then(() => apiComments.repairRecycledPostIdsOnce(env));
+  // Ijtimoiy jadvallar (2026-10) — Aktual, istoriya javoblari, post
+  // mahsulot belgilari, saqlanganlar to'plamlari. Karta/hisob o'chirish
+  // batch'lari ularga yozadi: jadval yo'q bo'lsa butun batch yiqilardi,
+  // shuning uchun har qanday API so'rovidan OLDIN mavjud bo'lishi shart
+  // (dalil arxivi bilan bir xil sabab). Hammasi `IF NOT EXISTS` / himoyalangan
+  // ADD COLUMN — mavjud ma'lumotga tegmaydi.
+  const socialSchema = Promise.all([
+    apiHighlights.ensureSchema(env),
+    apiStoryReplies.ensureSchema(env),
+    apiProductTags.ensureSchema(env),
+    apiSaves.ensureTable(env),
+  ]);
   if (!coreSchemaReady) {
     coreSchemaReady = env.DB.batch([
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS "users" (
@@ -2532,7 +2620,7 @@ async function ensureCoreSchema(env) {
   }
   // Natijalar birga kutiladi. `allSettled` emas, `all` — biror sxema
   // buyrug'i haqiqatan yiqilsa, chaqiruvchi buni bilishi kerak.
-  await Promise.all([adminTables, totpColumn, internalColumn, companyContact, companyExtras, contentArchive, commentsSchema, coreSchemaReady]);
+  await Promise.all([adminTables, totpColumn, internalColumn, companyContact, companyExtras, contentArchive, commentsSchema, socialSchema, coreSchemaReady]);
   // PROFILGA BIRIKTIRILGAN KOMPANIYA (2026-09).
   //
   // Bu ALTER `cards` jadvaliga tegadi, `cards` esa yuqoridagi umumiy
@@ -2557,6 +2645,8 @@ async function ensureCoreSchema(env) {
     ensureSignupSourceColumn(env),
     ensureWebOrderTimestampColumns(env),
     ensureCardSourceColumn(env),
+    // `posts` (yuqoridagi batch) va `company_posts` (companyExtras) dan KEYIN.
+    ensurePostSocialColumnsD1(env),
   ]);
   // Tarmoq xatosi bo'lgan bo'lsa (ALTER'lar .catch bilan yutiladi) belgi
   // YOZILMAYDI — keyingi isolate tekshiruvni qaytadan to'liq bajaradi.
@@ -2588,6 +2678,32 @@ async function ensureCardSourceColumn(env) {
     cardSourceColumnReady = env.DB.prepare(`ALTER TABLE cards ADD COLUMN source TEXT`).run().catch(() => {});
   }
   await cardSourceColumnReady;
+}
+
+// ── KARUSEL VA REJALASHTIRILGAN POST USTUNLARI (2026-10) ─────────────
+// `media_json` — karusel rasmlari (api/carousel.js), `publish_at` — post
+// qachon ommaga chiqadi (api/scheduled-posts.js). Faqat ADD COLUMN, NULL
+// bo'lishi mumkin: eski qatorlar "oddiy, darhol chiqqan post" bo'lib
+// qoladi, hech narsa qayta yozilmaydi. To'rttasi PARALLEL (har biri
+// boshqa ustun) — UZ serverida bitta borib-kelishga birlashadi.
+//
+// `companyApi` `ensureCoreSchema` ni chaqirmaydi, shuning uchun u ham shu
+// funksiyani o'zi chaqiradi (natija `verifiedColumnsD1` da keshlanadi —
+// ikkinchi chaqiruvdan boshlab so'rov ketmaydi).
+function ensurePostSocialColumnsD1(env) {
+  return Promise.all([
+    ensureColumnD1(env, 'posts', 'publish_at', 'TEXT'),
+    ensureColumnD1(env, 'posts', 'media_json', 'TEXT'),
+    ensureColumnD1(env, 'company_posts', 'publish_at', 'TEXT'),
+    ensureColumnD1(env, 'company_posts', 'media_json', 'TEXT'),
+    // Dalil arxivi karusel rasmlarini ham saqlaydi (content-archive.js).
+    ensureColumnD1(env, 'content_archive', 'media_json', 'TEXT'),
+  ]).then((ok) => {
+    // Uchala ustun haqiqatan bor bo'lsagina arxiv ularni yozadi.
+    if (hasColumnD1('posts', 'media_json') && hasColumnD1('company_posts', 'media_json')
+      && hasColumnD1('content_archive', 'media_json')) enableArchiveCarousel(true);
+    return ok;
+  });
 }
 
 // admin_sessions / admin_2fa_pending / admin_totp_setup_pending — pulled
@@ -3065,19 +3181,30 @@ function storyMediaD1(body) {
 const rulesAcceptedD1 = (body) => body?.agreed === true || body?.agreed === 'true';
 
 async function listStoriesD1(env, kind, ownerId, viewerUserId = null) {
-  const rows = await env.DB.prepare(
-    `SELECT s.id, s.image_url, s.video_url, s.caption, s.created_at, s.expires_at,
-            (SELECT COUNT(*) FROM story_likes sl WHERE sl.story_id = s.id) AS like_count,
-            (SELECT COUNT(*) FROM story_views sv WHERE sv.story_id = s.id) AS view_count,
-            EXISTS(SELECT 1 FROM story_likes sl WHERE sl.story_id = s.id AND sl.user_id = ?) AS liked
-       FROM stories s WHERE s.owner_kind = ? AND s.owner_id = ? AND s.expires_at > ?
-      ORDER BY s.created_at`
-  ).bind(viewerUserId || -1, kind, ownerId, new Date().toISOString()).all();
+  const nowIso = new Date().toISOString();
+  // JAVOBLAR SONI (2026-10, api/story-replies.js) — FAQAT EGASIGA. Ikkinchi
+  // so'rov shu to'lqinda, PARALLEL: u faqat tomoshabin egasi bo'lsa qator
+  // qaytaradi (egalik sharti SQL ichida), aks holda bo'sh — begonaga
+  // `replyCount` umuman chiqmaydi. Xato (jadval yo'q) — ro'yxat buzilmaydi.
+  const [rows, replies] = await Promise.all([
+    env.DB.prepare(
+      `SELECT s.id, s.image_url, s.video_url, s.caption, s.created_at, s.expires_at,
+              (SELECT COUNT(*) FROM story_likes sl WHERE sl.story_id = s.id) AS like_count,
+              (SELECT COUNT(*) FROM story_views sv WHERE sv.story_id = s.id) AS view_count,
+              EXISTS(SELECT 1 FROM story_likes sl WHERE sl.story_id = s.id AND sl.user_id = ?) AS liked
+         FROM stories s WHERE s.owner_kind = ? AND s.owner_id = ? AND s.expires_at > ?
+        ORDER BY s.created_at`
+    ).bind(viewerUserId || -1, kind, ownerId, nowIso).all(),
+    viewerUserId
+      ? apiStoryReplies.ownerReplyCounts(env, kind, ownerId, viewerUserId, nowIso).catch(() => null)
+      : Promise.resolve(null),
+  ]);
   return (rows.results || []).map((r) => ({
     id: Number(r.id), imageUrl: r.image_url || '', videoUrl: r.video_url || '',
     caption: r.caption || '', createdAt: r.created_at, expiresAt: r.expires_at,
     likeCount: Number(r.like_count || 0), liked: !!r.liked,
     viewCount: Number(r.view_count || 0),
+    ...(replies ? { replyCount: replies.get(Number(r.id)) || 0 } : null),
   }));
 }
 
@@ -3102,14 +3229,24 @@ async function purgeStoryMediaD1(env, urls) {
       // Faqat istorya uchun yuklangan fayllar. Avatar, muqova yoki
       // katalog rasmi bu yerga tushmasligi kerak.
       if (!/^\/uploads\/story_[0-9a-f]+\.[a-z0-9]+$/i.test(url)) continue;
+      // Karusel (2026-10): fayl postning `media_json` ichida ham bo'lishi
+      // mumkin; kompaniya postlari ham tekshiriladi. Xato — "o'chirma".
       const inPosts = await env.DB.prepare(
-        `SELECT 1 FROM posts WHERE image_url = ? OR video_url = ? LIMIT 1`,
-      ).bind(url, url).first();
+        `SELECT 1 FROM posts WHERE image_url = ? OR video_url = ? OR instr(COALESCE(media_json, ''), ?) > 0
+         UNION ALL
+         SELECT 1 FROM company_posts WHERE image_url = ? OR video_url = ? OR instr(COALESCE(media_json, ''), ?) > 0
+         LIMIT 1`,
+      ).bind(url, url, url, url, url, url).first().catch(() => ({ x: 1 }));
       if (inPosts) continue;
       const inStories = await env.DB.prepare(
         `SELECT 1 FROM stories WHERE image_url = ? OR video_url = ? LIMIT 1`,
       ).bind(url, url).first();
       if (inStories) continue;
+      // AKTUAL (highlights, 2026-10): istoriya 24 soatdan keyin yo'qoladi,
+      // lekin egasi uni "Aktual"ga saqlagan bo'lsa fayl O'SHA YERDA
+      // ishlatilmoqda — o'chirilsa Aktual bo'sh qoladi. Tekshiruv xatosi
+      // ham "o'chirma" degani (`highlightUsesUrl` ichida).
+      if (await apiHighlights.highlightUsesUrl(env, url)) continue;
       // Dalil arxivida turgan fayl O'CHIRILMAYDI.
       if (await urlArchived(env, url)) continue;
       await env.UPLOADS.delete(url.replace(/^\//, ''));
@@ -3665,8 +3802,8 @@ async function socialCountsD1(env, rows) {
          GROUP BY fw.follower_id`
     ).bind(...users).all().catch(() => null) : null,
     codes.length ? env.DB.prepare(
-      `SELECT code, COUNT(*) AS n FROM posts
-         WHERE code IN (${cm}) GROUP BY code`
+      `SELECT code, COUNT(*) AS n FROM posts p
+         WHERE code IN (${cm}) AND ${postLiveSql('p')} GROUP BY code`
     ).bind(...codes).all().catch(() => null) : null,
   ]);
   for (const r of (fr?.results || [])) followers.set(Number(r.id), Number(r.n) || 0);
@@ -6473,8 +6610,16 @@ async function recordsApi(request, env, url) {
       // ko'p ishlatiladigan joyda "u rozilik bergan" degan hech
       // qanday dalil saqlanmasdi.
       if (!rulesAcceptedD1(body)) return json({ error: 'rules_not_accepted' }, 422);
-      const imageUrl = String(body?.imageUrl || '');
-      const videoUrl = String(body?.videoUrl || '');
+      // KARUSEL (api/carousel.js): `media` berilsa, `imageUrl`/`videoUrl`
+      // undan olinadi (birinchi rasm — eski ilovalar uchun). Berilmasa —
+      // avvalgi yo'l, hech narsa o'zgarmaydi.
+      const mediaIn = parseMediaInput(body);
+      if (!mediaIn.ok) return json({ error: mediaIn.error, ...(mediaIn.limit ? { limit: mediaIn.limit } : {}) }, 422);
+      // REJA (api/scheduled-posts.js): kelajakda, 30 kungacha.
+      const plan = parsePublishAt(body?.publishAt);
+      if (!plan.ok) return json({ error: plan.error, ...(plan.maxDays ? { maxDays: plan.maxDays } : {}) }, 422);
+      const imageUrl = mediaIn.provided ? String(mediaIn.imageUrl || '') : String(body?.imageUrl || '');
+      const videoUrl = mediaIn.provided ? String(mediaIn.videoUrl || '') : String(body?.videoUrl || '');
       const caption = String(body?.caption || '').slice(0, 600);
       const okImg = imageUrl.startsWith('/uploads/') && !/[^\w\-./]/.test(imageUrl);
       const okVid = videoUrl.startsWith('/uploads/') && /\.(mp4|webm)$/i.test(videoUrl) && !/[^\w\-./]/.test(videoUrl);
@@ -6496,9 +6641,10 @@ async function recordsApi(request, env, url) {
       const extrasIn = await apiMusic.readPostExtras(env, body, { hasImage: okImg && !okVid });
       if (!extrasIn.ok) return json({ error: extrasIn.error }, 422);
       const row = await env.DB.prepare(
-        `INSERT INTO posts (code, user_id, image_url, video_url, caption) VALUES (?, ?, ?, ?, ?)
-         RETURNING id, code, image_url, video_url, caption, created_at`
-      ).bind(code, user.id, okImg ? imageUrl : null, okVid ? videoUrl : null, caption || null).first();
+        `INSERT INTO posts (code, user_id, image_url, video_url, caption, media_json, publish_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+         RETURNING id, code, image_url, video_url, caption, created_at, media_json, publish_at`
+      ).bind(code, user.id, okImg ? imageUrl : null, okVid ? videoUrl : null, caption || null,
+        mediaIn.provided ? mediaIn.mediaJson : null, plan.ms ? postsTs(plan.ms) : null).first();
       const extras = await apiMusic.savePostExtras(env, 'post', Number(row.id), extrasIn.extras);
       return json({ ...postRowToJson(row, 0, false), ...extras }, 201);
     }
@@ -8592,6 +8738,8 @@ async function newsShellResponse(env, url, id) {
 //
 // Faqat o'qiydi. Egasi o'chirilgan yoki kompaniyasi faol bo'lmagan
 // post — 404 ("topilmadi"), boshqa hech narsa oshkor qilinmaydi.
+// Rejadagi post (2026-10) ham 404 — HATTO egasiga: sahifa ommaviy va
+// chekkada 60 soniya keshlanadi, egasiga xos javob unga tushmasligi kerak.
 export async function postPageResponse(env, url, id) {
   const company = url.searchParams.get('company') === '1';
   const pid = Number(id);
@@ -8602,13 +8750,14 @@ export async function postPageResponse(env, url, id) {
         `SELECT cp.id, cp.company_id AS code, cp.image_url, cp.video_url, cp.caption, cp.created_at,
                 co.display_name AS name, co.logo_url AS avatar_url
            FROM company_posts cp JOIN companies co ON co.company_id = cp.company_id
-          WHERE cp.id = ? AND co.status = 'active' AND ${companyOwnerAliveSql('co')}`,
+          WHERE cp.id = ? AND co.status = 'active' AND ${companyOwnerAliveSql('co')}
+            AND ${companyPostLiveSql('cp')}`,
       ).bind(pid).first()
       : await env.DB.prepare(
         `SELECT p.id, p.code, p.image_url, p.video_url, p.caption, p.created_at,
                 c.name AS name, c.avatar_url AS avatar_url
            FROM posts p JOIN cards c ON c.code = p.code
-          WHERE p.id = ? AND ${ownerAliveSql('c')}`,
+          WHERE p.id = ? AND ${ownerAliveSql('c')} AND ${postLiveSql('p')}`,
       ).bind(pid).first();
   } catch (error) {
     console.error('post page', id, error?.message);
@@ -10704,23 +10853,35 @@ function featureAllowedD1(feature, access) {
 //
 // Lentada (`/api/feed`) kod allaqachon bor edi, shuning uchun xato
 // faqat profil sahifasidan ochilganda ko'rinardi.
+// 2026-10: `media` (karusel, har doim massiv), `products` (shaxsiy postda
+// doim bo'sh — mahsulot belgisi faqat biznes postida) va egasiga
+// `scheduledFor` (ms; post hali rejada bo'lsa). `createdAt` — samarali
+// vaqt: rejadagi postda `publish_at`.
 function postRowToJson(r, likeCount, liked) {
-  const d = parseDbDate(r.created_at);
+  const d = parseDbDate(r.publish_at || r.created_at);
+  const scheduledFor = scheduledForMs(r.publish_at);
   return {
     id: Number(r.id), code: String(r.code || '').toUpperCase(),
     imageUrl: r.image_url || '', videoUrl: r.video_url || '', caption: r.caption || '',
     createdAt: d && !Number.isNaN(d.getTime()) ? d.getTime() : Date.now(),
     likeCount: Number(likeCount || 0), liked: !!liked,
+    media: mediaOut(r.media_json, r.image_url, r.video_url),
+    products: [],
+    ...(scheduledFor ? { scheduledFor } : null),
   };
 }
 
 async function listPostsD1(env, code, viewerUserId) {
+  // REJADAGI POST faqat EGASIGA (profil kodi egasi) ko'rinadi — shart
+  // SQL ichida, shu so'rovning o'zida (yangi to'lqin yo'q).
   const rows = await env.DB.prepare(
-    `SELECT p.id, p.code, p.image_url, p.video_url, p.caption, p.created_at,
+    `SELECT p.id, p.code, p.image_url, p.video_url, p.caption, p.created_at, p.publish_at, p.media_json,
             (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS like_count,
             EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = ?) AS liked
-     FROM posts p WHERE p.code = ? ORDER BY p.created_at DESC, p.id DESC`
-  ).bind(viewerUserId == null ? 0 : viewerUserId, code).all();
+     FROM posts p WHERE p.code = ?
+       AND (${postLiveSql('p')} OR EXISTS (SELECT 1 FROM cards oc WHERE oc.code = p.code AND oc.user_id = ?))
+     ORDER BY ${effectiveTimeSql('p')} DESC, p.id DESC`
+  ).bind(viewerUserId == null ? 0 : viewerUserId, code, viewerUserId == null ? 0 : viewerUserId).all();
   const list = rows.results || [];
 
   // IZOHLAR SONI — BITTA guruhlangan so'rov bilan.
@@ -10788,7 +10949,11 @@ async function postsApi(request, env, url) {
     // `user_id` va `code` ham olinadi: bildirishnoma KIMGA
     // ketishini aniqlash uchun post egasi kerak. Ilgari faqat `id`
     // o'qilardi.
-    const post = await env.DB.prepare(`SELECT id, user_id, code FROM posts WHERE id = ?`).bind(postId).first();
+    // Rejadagi post — egasidan boshqaga "yo'q" (api/scheduled-posts.js).
+    const post = await env.DB.prepare(
+      `SELECT id, user_id, code FROM posts p WHERE id = ?
+          AND (${postLiveSql('p')} OR code IN (SELECT code FROM cards WHERE user_id = ?))`
+    ).bind(postId, user.id).first();
     if (!post) return json({ error: 'not_found' }, 404);
     const existing = await env.DB.prepare(`SELECT id FROM post_likes WHERE post_id = ? AND user_id = ?`).bind(postId, user.id).first();
     if (existing) {
@@ -10991,29 +11156,48 @@ const commentTargetKind = (r) => {
 ///
 /// `?` parametrlari, TARTIBI BILAN:
 ///   viewerId, viewerId, now, viewerId, now
+///
+/// 2026-10 QO'SHIMCHALARI (javob shakli faqat KENGAYADI):
+///   * REJALASHTIRILGAN POST (`publish_at` kelajakda) bu yerga UMUMAN
+///     tushmaydi — `postLiveSql`/`companyPostLiveSql`. Featured ham shu
+///     UNIONdan o'tadi, ya'ni pul to'langan bo'lsa ham vaqtidan oldin
+///     chiqmaydi. `created_at` — samarali vaqt (`publish_at` bo'lsa
+///     o'sha): post jonlanganda lentada YANGI bo'lib chiqadi.
+///   * `media_json` — karusel (api/carousel.js).
+///   * `co_*` — biznes postidagi "Bog'lanish" tugmasi uchun kompaniyaning
+///     OCHIQ maydonlari (api/post-contact.js). Shu JOIN'dan, yangi so'rov
+///     yo'q. Shaxsiy post va istoriyada NULL.
+/// `?` tartibi O'ZGARMAGAN ("hozir" rejasi SQL ichida olinadi).
 const FEED_UNION_SQL = `SELECT * FROM (
         SELECT 'post' AS kind, p.id AS id, p.code AS code, 'card' AS author_kind,
                c.name AS name, c.avatar_url AS avatar_url,
                p.image_url AS image_url, p.video_url AS video_url,
-               p.caption AS caption, p.created_at AS created_at,
+               p.caption AS caption, ${effectiveTimeSql('p')} AS created_at,
                (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS like_count,
-               EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = ?) AS liked
+               EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = ?) AS liked,
+               p.media_json AS media_json,
+               NULL AS co_phone, NULL AS co_telegram, NULL AS co_lat, NULL AS co_lng, NULL AS co_address
           FROM posts p JOIN cards c ON c.code = p.code
          WHERE COALESCE(c.hidden_from_directory, 0) = 0
            AND ${ownerAliveSql('c')}
+           AND ${postLiveSql('p')}
         UNION ALL
         SELECT 'post', cp.id, cp.company_id, 'company',
                co.display_name, co.logo_url,
-               cp.image_url, cp.video_url, cp.caption, cp.created_at,
-               0, 0
+               cp.image_url, cp.video_url, cp.caption, ${effectiveTimeSql('cp')},
+               0, 0,
+               cp.media_json,
+               co.phone, co.telegram, co.latitude, co.longitude, co.address
           FROM company_posts cp JOIN companies co ON co.company_id = cp.company_id
          WHERE co.status = 'active' AND ${companyOwnerAliveSql('co')} AND ${notDemoCompanySql('co')}
+           AND ${companyPostLiveSql('cp')}
         UNION ALL
         SELECT 'story', s.id, s.owner_id, 'card',
                c.name, c.avatar_url,
                s.image_url, s.video_url, s.caption, s.created_at,
                (SELECT COUNT(*) FROM story_likes sl WHERE sl.story_id = s.id),
-               EXISTS(SELECT 1 FROM story_likes sl WHERE sl.story_id = s.id AND sl.user_id = ?)
+               EXISTS(SELECT 1 FROM story_likes sl WHERE sl.story_id = s.id AND sl.user_id = ?),
+               NULL, NULL, NULL, NULL, NULL, NULL
           FROM stories s JOIN cards c ON c.code = s.owner_id
          WHERE s.owner_kind = 'card' AND s.expires_at > ?
            AND COALESCE(c.hidden_from_directory, 0) = 0
@@ -11023,7 +11207,8 @@ const FEED_UNION_SQL = `SELECT * FROM (
                co.display_name, co.logo_url,
                s.image_url, s.video_url, s.caption, s.created_at,
                (SELECT COUNT(*) FROM story_likes sl WHERE sl.story_id = s.id),
-               EXISTS(SELECT 1 FROM story_likes sl WHERE sl.story_id = s.id AND sl.user_id = ?)
+               EXISTS(SELECT 1 FROM story_likes sl WHERE sl.story_id = s.id AND sl.user_id = ?),
+               NULL, NULL, NULL, NULL, NULL, NULL
           FROM stories s JOIN companies co ON co.company_id = s.owner_id
          WHERE s.owner_kind = 'company' AND s.expires_at > ?
            AND co.status = 'active' AND ${companyOwnerAliveSql('co')} AND ${notDemoCompanySql('co')}
@@ -11047,7 +11232,12 @@ async function shapeFeedRows(env, rows, viewerId) {
       id: Number(r.id),
       obj: {},
     }));
-  const [commentCounts, viewCounts, companyPostLikes] = await Promise.all([
+  // Mahsulot belgilari (api/product-tags.js) — shu to'lqinda, faqat
+  // kompaniya postlari uchun. Yangi to'lqin qo'shilmaydi.
+  const companyPostIds = rows
+    .filter((r) => String(r.kind) === 'post' && String(r.author_kind) === 'company')
+    .map((r) => Number(r.id));
+  const [commentCounts, viewCounts, companyPostLikes, , productTags] = await Promise.all([
     apiComments.countsFor(env, feedTargets).catch(() => new Map()),
     // Faqat post/company_post sanaladi (`VIEW_KINDS`); istoryada 0.
     apiComments.viewsFor(env, feedTargets).catch(() => new Map()),
@@ -11059,6 +11249,7 @@ async function shapeFeedRows(env, rows, viewerId) {
       viewerId,
     ).catch(() => new Map()),
     apiMusic.attachPostExtras(env, extras),
+    companyPostIds.length ? apiProductTags.productsFor(env, companyPostIds).catch(() => new Map()) : new Map(),
   ]);
   const extraByKey = new Map(extras.map((e) => [`${e.kind}:${e.id}`, e.obj]));
 
@@ -11089,6 +11280,17 @@ async function shapeFeedRows(env, rows, viewerId) {
       ...(String(r.kind) === 'post'
         ? extraByKey.get(`${target === 'company_post' ? 'company_post' : 'post'}:${Number(r.id)}`)
         : null),
+      // 2026-10: karusel (`media` — har doim massiv), mahsulot belgilari
+      // va biznes kontakti. Faqat QO'SHILADI — eski maydonlar o'zgarmaydi.
+      ...(String(r.kind) === 'post' ? {
+        media: mediaOut(r.media_json, r.image_url, r.video_url),
+        products: target === 'company_post' ? (productTags.get(Number(r.id)) || []) : [],
+        ...(target === 'company_post' ? {
+          contact: companyContactOut({
+            phone: r.co_phone, telegram: r.co_telegram, latitude: r.co_lat, longitude: r.co_lng, address: r.co_address,
+          }),
+        } : null),
+      } : null),
     };
   });
   return shaped;
@@ -11278,6 +11480,38 @@ async function feedApi(request, env, url) {
   while (ai < ads.length) merged.push(ads[ai++]);
 
   return json({ feed: merged, hasMore: all.length > limit });
+}
+
+/// POSTLARNI KALIT BO'YICHA LENTA SHAKLIDA OLISH (2026-10).
+///
+/// Saqlangan postlar ro'yxati (api/saves.js) ilovaga TAYYOR post kartasi
+/// berishi kerak — ilovada bitta postni olish yo'li yo'q. Lentaning O'ZI
+/// (`FEED_UNION_SQL` + `shapeFeedRows`) ishlatiladi: maxfiylik, o'chirilgan
+/// egasi, faol bo'lmagan kompaniya va REJADAGI post shartlari ikkinchi
+/// nusxada unutilmasin. Ko'rinmaydigan post natijada shunchaki yo'q.
+///
+/// `keys`: [{ kind: 'post'|'company_post', id }] (≤ 30 — D1 bitta so'rovga
+/// 100 tagacha parametr). Natija: Map('post:12' | 'company_post:5' -> post).
+async function postsByKeysD1(env, keys, viewerId) {
+  const out = new Map();
+  const list = (keys || []).filter((k) => (k.kind === 'post' || k.kind === 'company_post') && Number(k.id) > 0).slice(0, 30);
+  if (!list.length) return out;
+  const vid = Number(viewerId) || 0;
+  const now = new Date().toISOString();
+  const where = list.map(() => `(kind = 'post' AND author_kind = ? AND id = ?)`).join(' OR ');
+  const [res, blockedList] = await Promise.all([
+    env.DB.prepare(`${FEED_UNION_SQL} WHERE ${where}`)
+      .bind(vid, vid, now, vid, now, ...list.flatMap((k) => [k.kind === 'company_post' ? 'company' : 'card', Number(k.id)]))
+      .all(),
+    vid ? apiModeration.blockedByUser(env, vid) : [],
+  ]);
+  const blocked = new Set((blockedList || [])
+    .map((b) => `${b.kind === 'company' ? 'company' : 'card'}:${String(b.id).toUpperCase()}`));
+  const rows = (res.results || [])
+    .filter((r) => !blocked.has(`${String(r.author_kind)}:${String(r.code || '').toUpperCase()}`));
+  const shaped = await shapeFeedRows(env, rows, vid);
+  for (const p of shaped) out.set(`${p.commentKind}:${p.id}`, p);
+  return out;
 }
 
 async function followApi(request, env, url) {
@@ -11609,6 +11843,13 @@ const H = {
   // hisobga kirmasin" qoidasiga bo'ysunadi. Shart NUSXA OLINMADI: agar
   // ikkinchi nusxa bo'lsa, `is_internal` qo'shilganda biri yangilanib,
   // biri qolib ketardi — aynan shunday xato bir marta bo'lgan.
+  // Saqlangan postlar (api/saves.js) — lenta bilan AYNAN bir shakl va
+  // maxfiylik qoidalari (`postsByKeysD1` izohi).
+  postsByKeys: postsByKeysD1,
+  // Ish vaqti → "hozir ochiqmi" (api/nearby.js) — kompaniya sahifasidagi
+  // `openNow` bilan AYNAN bir qoida (Toshkent vaqti).
+  companyOpenNow: (hoursJson) => companyOpenStateD1(normalizeHoursD1(parseJsonArray(hoursJson))),
+  // `TEST_USER_IDS_D1` OXIRIDA turadi (scripts/test-marketplace.mjs 28-band).
   TEST_USER_IDS_D1,
 };
 // `apiNotifications` `apiMarketplace` DAN OLDIN turadi.
@@ -11616,7 +11857,7 @@ const H = {
 // bilan tugashini tekshiradi — oxiriga qo'shilsa o'sha qo'riqchi
 // yiqiladi. Tartibning boshqa ahamiyati yo'q: har bir modul o'ziga
 // tegishli bo'lmagan yo'lga `null` qaytaradi.
-const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiAppUsage, apiAppAdmin, apiAccountPurge, apiAdminControl, apiMusic, apiDemoBusinesses, apiMyAnalytics, apiMarketplace];
+const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiAppUsage, apiAppAdmin, apiAccountPurge, apiAdminControl, apiMusic, apiDemoBusinesses, apiHighlights, apiStoryReplies, apiMyAnalytics, apiMarketplace];
 
 // Xavfsizlik header'lari — barcha javoblarga (statik va API). CSP ataylab faqat
 // framing/base/form/object ni cheklaydi (script/style ga tegmaydi — YouTube/Yandex
@@ -11910,6 +12151,22 @@ async function handleRequest(request, env, url, ctx) {
       } catch (error) {
         console.error('public content api', error);
         return json({ error: error?.message === 'd1_unavailable' ? 'd1_unavailable' : 'public_content_unavailable',
+          detail: schemaErrorDetailD1(error) || undefined }, 503);
+      }
+    }
+
+    // YAQIN ATROFDAGI BIZNESLAR (api/nearby.js) — `companyApi` DAN OLDIN:
+    // aks holda "nearby" 3–15 harfli Company ID deb o'qilib, 404 qaytardi
+    // (`/api/companies/search` bilan bir xil sabab).
+    if (url.pathname === '/api/companies/nearby') {
+      try {
+        await ensureCoreSchema(env);
+        // Kompaniya jadvali va koordinata/ish vaqti ustunlari (keshlanadi).
+        await ensureCompanyTablesD1(env);
+        return await apiNearby.handle(request, env, url, H);
+      } catch (error) {
+        console.error('nearby api', error);
+        return json({ error: error?.message === 'd1_unavailable' ? 'd1_unavailable' : 'nearby_unavailable',
           detail: schemaErrorDetailD1(error) || undefined }, 503);
       }
     }
