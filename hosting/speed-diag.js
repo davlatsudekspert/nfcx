@@ -165,12 +165,12 @@ function st(h){var r={total:0,db:0,waves:0,colo:''};if(!h)return r;h.split(',').
  if(m[1]==='total')r.total=+d||0;if(m[1]==='db'){r.db=+d||0;r.waves=+((desc.match(/waves=(\\d+)/)||[])[1]||0)}if(m[1]==='colo')r.colo=desc});return r}
 async function one(path){var t=performance.now();var res=await fetch(path,{cache:'no-store',credentials:'include',headers:{'x-nfc-timing':'1'}});
  var body=await res.text();var ms=performance.now()-t;var s=st(res.headers.get('server-timing'));
- return {ms:ms,status:res.status,s:s,body:body,cache:res.headers.get('cf-cache-status')||'',bytes:body.length}}
+ return {ms:ms,status:res.status,s:s,body:body,cache:res.headers.get('cf-cache-status')||'',place:res.headers.get('cf-placement')||'',bytes:body.length}}
 async function measure(label,path){var rows=[];for(var i=0;i<TRIES;i++){try{rows.push(await one(path))}catch(e){rows.push({ms:0,status:0,s:st(''),err:String(e)})}}
  var ok=rows.filter(function(r){return r.status>0});
  return {label:label,path:path,total:med(ok.map(function(r){return r.ms})),server:med(ok.map(function(r){return r.s.total})),
   db:med(ok.map(function(r){return r.s.db})),waves:med(ok.map(function(r){return r.s.waves})),colo:(ok[0]&&ok[0].s.colo)||'',
-  status:(ok[0]&&ok[0].status)||0,first:ok[0]&&ok[0].ms,body:ok[0]&&ok[0].body,cache:(ok[0]&&ok[0].cache)||''}}
+  status:(ok[0]&&ok[0].status)||0,first:ok[0]&&ok[0].ms,body:ok[0]&&ok[0].body,cache:(ok[0]&&ok[0].cache)||'',place:ok.map(function(r){return r.place}).filter(Boolean).join(',')}}
 function f(n){return Math.round(n)+' ms'}
 async function run(){var out=document.getElementById('out');out.innerHTML='<div class="card"><p>O\\'lchanmoqda… (taxminan 15–30 soniya)</p></div>';
  var res=[];
@@ -184,7 +184,7 @@ async function run(){var out=document.getElementById('out');out.innerHTML='<div 
   media={ms:performance.now()-t,kb:Math.round(b.byteLength/1024),cache:r.headers.get('cf-cache-status')||r.headers.get('x-nfc-edge')||''}}catch(e){}}
  var net=Math.max(0,diag.total-diag.server);
  var dbRtt=(dj.dbPingMs&&dj.dbPingMs.length)?med(dj.dbPingMs):0;
- var html='<div class="card"><p>Cloudflare nuqtasi: <b>'+(dj.colo||diag.colo||'?')+'</b> · mamlakat: <b>'+(dj.country||'?')+'</b></p>';
+ var html='<div class="card"><p>Cloudflare nuqtasi: <b>'+(dj.colo||diag.colo||'?')+'</b> · mamlakat: <b>'+(dj.country||'?')+'</b>'+(diag.place?' · server joyi: <b>'+diag.place+'</b>':'')+'</p>';
  html+='<p class="v">Internetingiz (telefon ↔ server): <span class="'+(net>400?'bad':net>150?'warn':'ok')+'">'+f(net)+'</span></p>';
  html+='<p class="v">Server ↔ baza, bitta borib-kelish: <span class="'+(dbRtt>150?'bad':dbRtt>60?'warn':'ok')+'">'+f(dbRtt)+'</span></p></div>';
  html+='<div class="card"><table><tr><th>So\\'rov</th><th>Jami</th><th>Internet</th><th>Server</th><th>Baza</th><th>Ketma-ket</th></tr>';
@@ -197,7 +197,7 @@ async function run(){var out=document.getElementById('out');out.innerHTML='<div 
  else if(netShare>0.6)verdict='<b class="warn">Ko\\'proq internet.</b> Postlar so\\'rovining '+Math.round(netShare*100)+'% vaqti internetda.';
  else verdict='<b class="bad">Asosiy sabab — server ↔ baza.</b> Postlar so\\'rovining '+Math.round((1-netShare)*100)+'% vaqti serverda ('+(prof.waves||'?')+' ta ketma-ket borib-kelish × ~'+f(dbRtt)+').';
  html+='<div class="card"><p class="v">'+verdict+'</p></div>';
- var txt='TEZLIK '+new Date().toISOString()+'\\ncolo='+(dj.colo||'')+' country='+(dj.country||'')+' net='+Math.round(net)+' dbRtt='+Math.round(dbRtt)+'\\n'+
+ var txt='TEZLIK '+new Date().toISOString()+'\\ncolo='+(dj.colo||'')+' country='+(dj.country||'')+' placement='+(diag.place||'')+' net='+Math.round(net)+' dbRtt='+Math.round(dbRtt)+'\\n'+
   res.map(function(r){return r.label+': total='+Math.round(r.total)+' server='+Math.round(r.server)+' db='+Math.round(r.db)+' waves='+r.waves+' status='+r.status}).join('\\n')+
   (media?'\\nrasm: '+Math.round(media.ms)+'ms '+media.kb+'KB '+media.cache:'')+'\\nUA: '+navigator.userAgent;
  html+='<div class="card"><pre id="raw"></pre></div>';out.innerHTML=html;document.getElementById('raw').textContent=txt;

@@ -56,7 +56,14 @@
   // Bu XAVFSIZ: Cloudflare o'zi o'lchaydi va foyda bo'lmasa avvalgidek
   // chekkada qoldiradi. Statik fayllar (rasm, JS, CSS) bunga umuman
   // bog'liq emas — ular avvalgidek eng yaqin serverdan beriladi.
-  "placement": { "mode": "smart" },
+  //
+  // 2026-10-05: O'CHIRILDI. Baza endi D1 emas — Toshkentdagi VPS
+  // (db.nfcstore.uz). O'lchov (x-nfc-timing, cf-placement): "smart" rejim
+  // Worker'ni Yoxannesburgda (remote-JNB) ishga tushirardi va u yerdan
+  // bazaga har borib-kelish ~262 ms edi; mahalliy (local) ishlaganda
+  // xuddi shu AQSh nuqtasidan ~170 ms. O'zbekistondagi foydalanuvchi
+  // uchun eng yaqin Cloudflare nuqtasi bazaga ham eng yaqin.
+  "placement": { "mode": "off" },
   // Worker loglari. Dashboard'dagi tugmachani yoqish YETARLI EMAS: bu
   // fayl deploy'da sozlamalarning yagona manbai bo'lgani uchun, bu yerda
   // yozilmasa har bir deploy loglarni QAYTA O'CHIRIB qo'yadi (Cloudflare
