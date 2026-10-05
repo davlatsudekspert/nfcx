@@ -1,0 +1,942 @@
+From 97bfaeca9a21bebf81b58ab6ffd6b1fc99fcb334 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Mon, 5 Oct 2026 02:51:52 +0000
+Subject: [PATCH] Profil musiqasi: YouTube/Yandex pleerning ichida (rasmiy
+ pleer), havoladan qo'shish
+
+- YouTube/Yandex trek varaqda xizmatning RASMIY pleerida o'ynaydi
+  (webview_flutter; video ko'rinadi, varaq yopilsa to'xtaydi).
+  Joylashtirish taqiqlangan videoda sabab + 'YouTube'da ochish'.
+- Oldingi/keyingi tashqi trekda ham ishlaydi; Reels ovozi to'xtaydi.
+- Profilni tahrirlash: 'Fayldan qo'shish' va 'Havoladan qo'shish'
+  (faqat YouTube / Yandex Music); ro'yxatda video ID emas, nom.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .../lib/features/profile/music_embed.dart     | 190 ++++++++++++++++++
+ .../lib/features/profile/music_player.dart    | 148 ++++++++++++--
+ .../features/profile/profile_edit_screen.dart |  61 +++++-
+ mobile_nova/lib/l10n/arb/app_en.arb           |   9 +-
+ mobile_nova/lib/l10n/arb/app_ru.arb           |   9 +-
+ mobile_nova/lib/l10n/arb/app_uz.arb           |  14 +-
+ .../lib/l10n/gen/app_localizations.dart       |  34 +++-
+ .../lib/l10n/gen/app_localizations_en.dart    |  22 +-
+ .../lib/l10n/gen/app_localizations_ru.dart    |  22 +-
+ .../lib/l10n/gen/app_localizations_uz.dart    |  22 +-
+ mobile_nova/pubspec.lock                      |  32 +++
+ mobile_nova/pubspec.yaml                      |   3 +
+ mobile_nova/test/device_findings_test.dart    |   6 +-
+ mobile_nova/test/music_source_test.dart       |  18 ++
+ 14 files changed, 550 insertions(+), 40 deletions(-)
+ create mode 100644 mobile_nova/lib/features/profile/music_embed.dart
+
+diff --git a/mobile_nova/lib/features/profile/music_embed.dart b/mobile_nova/lib/features/profile/music_embed.dart
+new file mode 100644
+index 0000000..da79484
+--- /dev/null
++++ b/mobile_nova/lib/features/profile/music_embed.dart
+@@ -0,0 +1,190 @@
++import 'dart:convert';
++
++import 'package:flutter/material.dart';
++import 'package:webview_flutter/webview_flutter.dart';
++import 'package:webview_flutter_android/webview_flutter_android.dart';
++import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
++
++import 'music_source.dart';
++
++/// YouTube / Yandex Music havolasi — pleerning ICHIDA, xizmatning
++/// RASMIY pleeri bilan (sayt ham xuddi shunday qiladi:
++/// `src/pages/ProfilePage.jsx`).
++///
++/// ## Nega audio fayl emas
++///
++/// YouTube'dan ovozni ajratib olish yoki yashirin (videosiz) ijro
++/// etish YouTube qoidalariga zid. Shuning uchun video KO'RINADI
++/// (kamida 200×200, ustiga hech narsa qo'yilmaydi) va ijro faqat
++/// varaq ochiq turganda davom etadi — varaq yopilsa to'xtaydi.
++///
++/// ## Holat
++///
++/// YouTube IFrame API holatni `NfcMusic` kanali orqali yuboradi:
++/// `playing`, `paused`, `ended`, `error:<kod>`. Video joylashtirishni
++/// taqiqlagan bo'lsa (101/150) chaqiruvchi "YouTube'da ochish"
++/// tugmasini ko'rsatadi.
++class MusicEmbedController {
++  WebViewController? _web;
++  MusicKind _kind = MusicKind.audio;
++
++  /// YouTube'da ijro/pauza. Yandex vidjetini tashqaridan boshqarib
++  /// bo'lmaydi — u o'z tugmalari bilan ishlaydi.
++  Future<void> play() async {
++    if (_kind == MusicKind.youtube) {
++      await _web?.runJavaScript('window.nfcPlay && window.nfcPlay()');
++    }
++  }
++
++  Future<void> pause() async {
++    if (_kind == MusicKind.youtube) {
++      await _web?.runJavaScript('window.nfcPause && window.nfcPause()');
++    }
++  }
++}
++
++class MusicEmbed extends StatefulWidget {
++  const MusicEmbed({
++    super.key,
++    required this.source,
++    required this.controller,
++    this.onState,
++  });
++
++  final MusicSource source;
++  final MusicEmbedController controller;
++
++  /// `playing` | `paused` | `ended` | `error:<kod>`
++  final ValueChanged<String>? onState;
++
++  /// Saytdagi bilan bir xil o'lcham: YouTube 200×200 dan kichik
++  /// bo'lmaydi; Yandex vidjeti pastroq va kengroq.
++  static Size sizeFor(MusicKind kind) => kind == MusicKind.yandex
++      ? const Size(280, 180)
++      : const Size(240, 220);
++
++  @visibleForTesting
++  static String youtubeHtml(String id) => '''
++<!doctype html><html><head>
++<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
++<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}#p{width:100%;height:100%}</style>
++</head><body><div id="p"></div>
++<script>
++var player;
++function post(m){try{NfcMusic.postMessage(m)}catch(e){}}
++window.nfcPlay=function(){try{player.playVideo()}catch(e){}};
++window.nfcPause=function(){try{player.pauseVideo()}catch(e){}};
++function onYouTubeIframeAPIReady(){
++  player=new YT.Player('p',{width:'100%',height:'100%',videoId:${jsonEncode(id)},
++    playerVars:{playsinline:1,autoplay:1,rel:0,modestbranding:1,controls:1,origin:'https://nfcstore.uz'},
++    events:{
++      onReady:function(e){e.target.playVideo()},
++      onStateChange:function(e){
++        if(e.data===1)post('playing');else if(e.data===2)post('paused');else if(e.data===0)post('ended');
++      },
++      onError:function(e){post('error:'+e.data)}
++    }});
++}
++</script>
++<script src="https://www.youtube.com/iframe_api"></script>
++</body></html>''';
++
++  @visibleForTesting
++  static Uri? yandexUri(String url) {
++    var m = RegExp(r'/album/(\d+)/track/(\d+)').firstMatch(url);
++    if (m != null) {
++      return Uri.parse(
++          'https://music.yandex.ru/iframe/#track/${m.group(2)}/${m.group(1)}');
++    }
++    m = RegExp(r'/track/(\d+)').firstMatch(url);
++    if (m != null) {
++      return Uri.parse('https://music.yandex.ru/iframe/#track/${m.group(1)}');
++    }
++    m = RegExp(r'/users/([^/?\s]+)/playlists/(\d+)').firstMatch(url);
++    if (m != null) {
++      return Uri.parse(
++          'https://music.yandex.ru/iframe/#playlist/${m.group(1)}/${m.group(2)}');
++    }
++    m = RegExp(r'/album/(\d+)').firstMatch(url);
++    if (m != null) {
++      return Uri.parse('https://music.yandex.ru/iframe/#album/${m.group(1)}');
++    }
++    return null;
++  }
++
++  @override
++  State<MusicEmbed> createState() => _MusicEmbedState();
++}
++
++class _MusicEmbedState extends State<MusicEmbed> {
++  late final WebViewController _web;
++
++  @override
++  void initState() {
++    super.initState();
++    // Avtomatik ijro: foydalanuvchi pleerda O'ZI bosgan (varaqdagi
++    // tugma yoki ro'yxat qatori), ya'ni bu uning harakati davomi.
++    final PlatformWebViewControllerCreationParams params =
++        WebViewPlatform.instance is WebKitWebViewPlatform
++            ? WebKitWebViewControllerCreationParams(
++                allowsInlineMediaPlayback: true,
++                mediaTypesRequiringUserAction: const <PlaybackMediaTypes>{},
++              )
++            : const PlatformWebViewControllerCreationParams();
++    _web = WebViewController.fromPlatformCreationParams(params)
++      ..setJavaScriptMode(JavaScriptMode.unrestricted)
++      ..setBackgroundColor(Colors.black)
++      ..addJavaScriptChannel('NfcMusic',
++          onMessageReceived: (m) => widget.onState?.call(m.message));
++    final platform = _web.platform;
++    if (platform is AndroidWebViewController) {
++      platform.setMediaPlaybackRequiresUserGesture(false);
++    }
++    widget.controller
++      .._web = _web
++      .._kind = widget.source.kind;
++    _load();
++  }
++
++  void _load() {
++    final src = widget.source;
++    if (src.kind == MusicKind.youtube) {
++      // Bazaviy manzil — sayt: YouTube pleeri "origin"siz ishlamaydi.
++      _web.loadHtmlString(MusicEmbed.youtubeHtml(src.id),
++          baseUrl: 'https://nfcstore.uz/');
++    } else {
++      final u = MusicEmbed.yandexUri(src.url);
++      if (u != null) {
++        _web.loadRequest(u);
++      } else {
++        widget.onState?.call('error:yandex');
++      }
++    }
++  }
++
++  @override
++  void dispose() {
++    if (identical(widget.controller._web, _web)) {
++      widget.controller._web = null;
++    }
++    super.dispose();
++  }
++
++  @override
++  Widget build(BuildContext context) {
++    final size = MusicEmbed.sizeFor(widget.source.kind);
++    return LayoutBuilder(
++      builder: (_, c) => ClipRRect(
++        borderRadius: BorderRadius.circular(20),
++        child: SizedBox(
++          // Tor ekranda varaqdan chiqib ketmasin.
++          width: c.maxWidth.isFinite && c.maxWidth < size.width
++              ? c.maxWidth
++              : size.width,
++          height: size.height,
++          child: WebViewWidget(controller: _web),
++        ),
++      ),
++    );
++  }
++}
+diff --git a/mobile_nova/lib/features/profile/music_player.dart b/mobile_nova/lib/features/profile/music_player.dart
+index cb9b2ae..58f69bb 100644
+--- a/mobile_nova/lib/features/profile/music_player.dart
++++ b/mobile_nova/lib/features/profile/music_player.dart
+@@ -13,6 +13,7 @@ import '../../l10n/gen/app_localizations.dart';
+ import '../../design/theme/typography.dart';
+ import '../social/media_frame.dart' show mediaImage;
+ import '../../core/utils/external_link.dart';
++import 'music_embed.dart';
+ import 'music_source.dart';
+ 
+ /// Profil musiqasi.
+@@ -392,12 +393,10 @@ class MusicPlayer extends StateNotifier<MusicState>
+   Future<void> play(String url) async {
+     await _dispose();
+     // YouTube / Yandex Music havolasi — audio fayl emas, sahifa.
+-    // `video_player` uni ocha olmaydi; o'sha xizmatning o'z
+-    // ilovasida (yoki brauzerda) ochiladi.
+-    final src = MusicSource.parse(url);
+-    if (src.isExternal) {
++    // `video_player` uni ocha olmaydi. Faqat TANLANADI: varaq uni
++    // xizmatning rasmiy pleerida o'ynatadi (`MusicEmbed`).
++    if (MusicSource.parse(url).isExternal) {
+       state = MusicState(url: url);
+-      await openLink(src.url);
+       return;
+     }
+     state = MusicState(url: url, loading: true);
+@@ -592,12 +591,79 @@ class _MusicSheet extends ConsumerStatefulWidget {
+ }
+ 
+ class _MusicSheetState extends ConsumerState<_MusicSheet> {
++  /// YouTube / Yandex rasmiy pleeri — muqova o'rnida.
++  final _embed = MusicEmbedController();
++  late final AudioOwner _owner;
++  bool _embedOpen = false;
++  bool _embedPlaying = false;
++  String? _embedError;
++
+   @override
+   void initState() {
+     super.initState();
++    _owner = ref.read(audioOwnerProvider);
+     ref.read(musicPlayerProvider.notifier).setQueue(widget.urls);
+   }
+ 
++  @override
++  void dispose() {
++    // Varaq yopildi — rasmiy pleer ham yopiladi (fonda ijro yo'q).
++    _owner.release(_embed);
++    super.dispose();
++  }
++
++  /// Tashqi trekni tanlab, rasmiy pleerini ochadi.
++  Future<void> _openExternal(String url) async {
++    await ref.read(musicPlayerProvider.notifier).play(url);
++    if (!mounted) return;
++    setState(() {
++      _embedOpen = true;
++      _embedPlaying = false;
++      _embedError = null;
++    });
++  }
++
++  void _onEmbedState(String s) {
++    if (!mounted) return;
++    if (s == 'playing') {
++      // Reels yoki boshqa audio shu zahoti jim bo'ladi.
++      _owner.take(_embed, () => _embed.pause());
++      setState(() => _embedPlaying = true);
++    } else if (s == 'paused') {
++      setState(() => _embedPlaying = false);
++    } else if (s == 'ended') {
++      setState(() => _embedPlaying = false);
++      _owner.release(_embed);
++      if (widget.urls.length > 1) _go(1);
++    } else if (s.startsWith('error')) {
++      setState(() {
++        _embedPlaying = false;
++        _embedError = s;
++      });
++    }
++  }
++
++  /// Oldingi/keyingi trek — tashqisi bo'lsa pleeri ochiq qoladi.
++  Future<void> _go(int step) async {
++    final player = ref.read(musicPlayerProvider.notifier);
++    final cur = ref.read(musicPlayerProvider).url;
++    final i = widget.urls.indexOf(cur);
++    if (step < 0 &&
++        !MusicSource.parse(cur).isExternal &&
++        ref.read(musicPlayerProvider).position > const Duration(seconds: 3)) {
++      await player.previous();
++      return;
++    }
++    final n = widget.urls.length;
++    final next = widget.urls[((i < 0 ? 0 : i) + step + n) % n];
++    if (MusicSource.parse(next).isExternal) {
++      await _openExternal(next);
++    } else {
++      setState(() => _embedOpen = false);
++      await player.play(next);
++    }
++  }
++
+   @override
+   Widget build(BuildContext context) {
+     final t = context.tokens;
+@@ -612,6 +678,7 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
+     final many = widget.urls.length > 1;
+     final currentSrc = MusicSource.parse(current);
+     final external = currentSrc.isExternal;
++    final embedShown = external && _embedOpen && active;
+ 
+     Widget round(IconData icon, String tip, VoidCallback? onTap,
+             {Key? key}) =>
+@@ -639,7 +706,16 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
+                   color: t.border1, borderRadius: R.pill),
+             ),
+             const SizedBox(height: Gap.lg),
+-            // MUQOVA
++            // MUQOVA — tashqi trek ochilganda o'rnida xizmatning
++            // rasmiy pleeri (video ko'rinadi, YouTube qoidasi).
++            if (embedShown)
++              MusicEmbed(
++                key: ValueKey('music-embed-$current'),
++                source: currentSrc,
++                controller: _embed,
++                onState: _onEmbedState,
++              )
++            else
+             Container(
+               width: 168,
+               height: 168,
+@@ -674,13 +750,23 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
+               style: AppType.displayStyle(color: t.text1, size: 26),
+             ),
+             if (external) ...[
+-              const SizedBox(height: Gap.sm),
+-              Text(l.musicOpensIn(currentSrc.serviceName),
+-                  key: const ValueKey('music-external-hint'),
+-                  style: Theme.of(context)
+-                      .textTheme
+-                      .bodySmall!
+-                      .copyWith(color: t.text2)),
++              if (_embedError != null && active) ...[
++                const SizedBox(height: Gap.sm),
++                Text(l.musicEmbedBlocked(currentSrc.serviceName),
++                    key: const ValueKey('music-embed-error'),
++                    textAlign: TextAlign.center,
++                    style: Theme.of(context)
++                        .textTheme
++                        .bodySmall!
++                        .copyWith(color: t.error)),
++              ],
++              // Zaxira yo'l: xizmatning o'z ilovasida ochish.
++              TextButton.icon(
++                key: const ValueKey('music-external-hint'),
++                onPressed: () => openLink(currentSrc.url),
++                icon: const Icon(Icons.open_in_new_rounded, size: 16),
++                label: Text(l.musicOpensIn(currentSrc.serviceName)),
++              ),
+             ],
+             if (st.failed && active) ...[
+               const SizedBox(height: Gap.sm),
+@@ -733,11 +819,24 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
+               mainAxisAlignment: MainAxisAlignment.center,
+               children: [
+                 round(Icons.skip_previous_rounded, l.musicPrevious,
+-                    active ? player.previous : null,
++                    active ? () => _go(-1) : null,
+                     key: const ValueKey('music-prev')),
+                 const SizedBox(width: Gap.lg),
+                 PressableScale(
+-                  onTap: () => player.toggle(current),
++                  onTap: () {
++                    if (!external) {
++                      setState(() => _embedOpen = false);
++                      player.toggle(current);
++                    } else if (!embedShown) {
++                      _openExternal(current);
++                    } else if (currentSrc.kind == MusicKind.youtube) {
++                      _embedPlaying ? _embed.pause() : _embed.play();
++                    } else {
++                      // Yandex vidjetini tashqaridan boshqarib bo'lmaydi —
++                      // tugma uni yopadi.
++                      setState(() => _embedOpen = false);
++                    }
++                  },
+                   child: Container(
+                     key: const ValueKey('music-play'),
+                     width: 68,
+@@ -755,11 +854,17 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
+                           )
+                         : Icon(
+                             external
+-                                ? Icons.open_in_new_rounded
++                                ? (!embedShown
++                                    ? Icons.play_arrow_rounded
++                                    : currentSrc.kind == MusicKind.youtube
++                                        ? (_embedPlaying
++                                            ? Icons.pause_rounded
++                                            : Icons.play_arrow_rounded)
++                                        : Icons.stop_rounded)
+                                 : playing
+                                     ? Icons.pause_rounded
+                                     : Icons.play_arrow_rounded,
+-                            size: external ? 28 : 34,
++                            size: 34,
+                             color: t.bg1,
+                             semanticLabel:
+                                 playing ? l.musicPause : l.musicPlay,
+@@ -768,7 +873,7 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
+                 ),
+                 const SizedBox(width: Gap.lg),
+                 round(Icons.skip_next_rounded, l.musicNext,
+-                    many ? player.next : null,
++                    many ? () => _go(1) : null,
+                     key: const ValueKey('music-next')),
+               ],
+             ),
+@@ -779,7 +884,12 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
+               for (final url in widget.urls)
+                 InkWell(
+                   borderRadius: R.tile,
+-                  onTap: () => player.play(url),
++                  onTap: () => MusicSource.parse(url).isExternal
++                      ? _openExternal(url)
++                      : (() {
++                          setState(() => _embedOpen = false);
++                          player.play(url);
++                        })(),
+                   child: Padding(
+                     padding: const EdgeInsets.symmetric(
+                         vertical: 10, horizontal: 6),
+diff --git a/mobile_nova/lib/features/profile/profile_edit_screen.dart b/mobile_nova/lib/features/profile/profile_edit_screen.dart
+index 83c705e..16db1a9 100644
+--- a/mobile_nova/lib/features/profile/profile_edit_screen.dart
++++ b/mobile_nova/lib/features/profile/profile_edit_screen.dart
+@@ -22,6 +22,8 @@ import '../home/home_screen.dart';
+ import '../home/widgets/avatar.dart';
+ import '../shop/store_policy.dart' show isAppStoreBuild;
+ import 'contact_editor.dart';
++import 'music_player.dart' show musicTitleOf;
++import 'music_source.dart';
+ import 'profile_repository.dart';
+ import '../social/content_rules.dart';
+ import '../social/media_frame.dart';
+@@ -166,6 +168,45 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
+     });
+   }
+ 
++  /// YouTube / Yandex Music havolasi — pleer uni ichida, rasmiy
++  /// pleer bilan o'ynatadi (`MusicEmbed`). Boshqa havola qabul
++  /// qilinmaydi: oddiy fayl uchun "Musiqa qo'shish" (fayldan).
++  Future<void> _addMusicLink() async {
++    final l = L.of(context);
++    final ctrl = TextEditingController();
++    final link = await showDialog<String>(
++      context: context,
++      builder: (ctx) => AlertDialog(
++        title: Text(l.profileMusicLinkTitle),
++        content: TextField(
++          key: const ValueKey('music-link-field'),
++          controller: ctrl,
++          autofocus: true,
++          keyboardType: TextInputType.url,
++          decoration: InputDecoration(hintText: l.profileMusicLinkHint),
++        ),
++        actions: [
++          TextButton(
++              onPressed: () => Navigator.pop(ctx),
++              child: Text(l.actionCancel)),
++          TextButton(
++              onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
++              child: Text(l.actionAdd)),
++        ],
++      ),
++    );
++    ctrl.dispose();
++    if (link == null || link.isEmpty || !mounted) return;
++    if (!MusicSource.parse(link).isExternal) {
++      setState(() => _error = l.profileMusicLinkBad);
++      return;
++    }
++    setState(() {
++      _error = null;
++      if (!_music.contains(link)) _music = [..._music, link];
++    });
++  }
++
+   Future<void> _pickAvatar() => _pickImage(cover: false);
+ 
+   Future<void> _pickCover() => _pickImage(cover: true);
+@@ -504,10 +545,9 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
+                       const SizedBox(width: Gap.md),
+                       Expanded(
+                         child: Text(
+-                          // Manzilning oxirgi bo'lagi — fayl nomi.
+-                          Uri.parse(_music[i]).pathSegments.isEmpty
+-                              ? _music[i]
+-                              : Uri.parse(_music[i]).pathSegments.last,
++                          // Fayl nomi; YouTube/Yandex havolasida — xizmat
++                          // nomi (video ID odamga hech narsa demaydi).
++                          musicTitleOf(_music[i]),
+                           maxLines: 1,
+                           overflow: TextOverflow.ellipsis,
+                           style: TextStyle(
+@@ -529,13 +569,24 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
+                     ],
+                   ),
+                 ),
+-              if (_music.length < _musicMax)
++              if (_music.length < _musicMax) ...[
++                // Fayldan: Android — fayl menejeri, iPhone — «Fayllar».
+                 NovaButton(
+                   label: l.profileMusicAdd,
+                   icon: Icons.add_rounded,
+                   tone: ButtonTone.quiet,
+                   onPressed: _busy ? null : _pickMusic,
+                 ),
++                const SizedBox(height: Gap.sm),
++                // Havoladan: YouTube / Yandex Music (pleer ichida o'ynaydi).
++                NovaButton(
++                  key: const ValueKey('music-add-link'),
++                  label: l.profileMusicAddLink,
++                  icon: Icons.link_rounded,
++                  tone: ButtonTone.quiet,
++                  onPressed: _busy ? null : _addMusicLink,
++                ),
++              ],
+             ],
+           ),
+           const SizedBox(height: Gap.xxl),
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index 201a762..249db7e 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -251,7 +251,11 @@
+   "profilePosts": "Posts",
+   "profileEdit": "Edit profile",
+   "profileMusic": "Profile music",
+-  "profileMusicAdd": "Add music",
++  "profileMusicAdd": "Add from file",
++  "profileMusicAddLink": "Add from link (YouTube / Yandex)",
++  "profileMusicLinkTitle": "Music link",
++  "profileMusicLinkHint": "https://youtu.be/… or music.yandex…",
++  "profileMusicLinkBad": "Only YouTube or Yandex Music links can be added. Pick an audio file with “Add from file”.",
+   "profileLinks": "Links",
+   "profileContact": "Contact",
+   "profileSaved": "Profile saved",
+@@ -438,7 +442,8 @@
+   "supportSent": "Your message was sent",
+   "musicTitle": "Music",
+   "musicFailed": "Could not open the track",
+-  "musicOpensIn": "Opens in {service}",
++  "musicEmbedBlocked": "The owner only allows this on {service}",
++  "musicOpensIn": "Open in {service}",
+   "rulesTitle": "Read before you publish",
+   "rulesBody": "Published content must not contain: religious propaganda or extremist material, pornographic or sexually explicit images, political propaganda, or any material contrary to the laws of the Republic of Uzbekistan. Content that breaks these rules is removed without warning.",
+   "rulesAccept": "I have read the rules and agree",
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index 5ec9bde..b1a27be 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -251,7 +251,11 @@
+   "profilePosts": "Посты",
+   "profileEdit": "Редактировать профиль",
+   "profileMusic": "Музыка профиля",
+-  "profileMusicAdd": "Добавить музыку",
++  "profileMusicAdd": "Добавить из файла",
++  "profileMusicAddLink": "Добавить по ссылке (YouTube / Яндекс)",
++  "profileMusicLinkTitle": "Ссылка на музыку",
++  "profileMusicLinkHint": "https://youtu.be/… или music.yandex…",
++  "profileMusicLinkBad": "Можно добавить только ссылку YouTube или Яндекс Музыки. Аудиофайл выберите через «Добавить из файла».",
+   "profileLinks": "Ссылки",
+   "profileContact": "Контакты",
+   "profileSaved": "Профиль сохранён",
+@@ -438,7 +442,8 @@
+   "supportSent": "Обращение отправлено",
+   "musicTitle": "Музыка",
+   "musicFailed": "Не удалось открыть трек",
+-  "musicOpensIn": "Откроется в {service}",
++  "musicEmbedBlocked": "Автор разрешил смотреть это только в {service}",
++  "musicOpensIn": "Открыть в {service}",
+   "rulesTitle": "Прочитайте перед публикацией",
+   "rulesBody": "Размещаемый контент не должен содержать: религиозную пропаганду или экстремистские материалы, порнографические изображения или материалы сексуального характера, политическую пропаганду, а также любые материалы, противоречащие законодательству Республики Узбекистан. При нарушении этих правил контент удаляется без предупреждения.",
+   "rulesAccept": "Я прочитал(а) правила и согласен(на)",
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index 31e0957..022045b 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -254,7 +254,11 @@
+   "profilePosts": "Postlar",
+   "profileEdit": "Profilni tahrirlash",
+   "profileMusic": "Profil musiqasi",
+-  "profileMusicAdd": "Musiqa qo‘shish",
++  "profileMusicAdd": "Fayldan qo‘shish",
++  "profileMusicAddLink": "Havoladan qo‘shish (YouTube / Yandex)",
++  "profileMusicLinkTitle": "Musiqa havolasi",
++  "profileMusicLinkHint": "https://youtu.be/… yoki music.yandex…",
++  "profileMusicLinkBad": "Faqat YouTube yoki Yandex Music havolasi qo‘shiladi. Audio faylni «Fayldan qo‘shish» orqali tanlang.",
+   "profileLinks": "Havolalar",
+   "profileContact": "Aloqa",
+   "profileSaved": "Profil saqlandi",
+@@ -445,7 +449,13 @@
+   "supportSent": "Murojaat yuborildi",
+   "musicTitle": "Musiqa",
+   "musicFailed": "Qo‘shiqni ochib bo‘lmadi",
+-  "musicOpensIn": "{service} ilovasida ochiladi",
++  "musicEmbedBlocked": "Muallif bu videoni faqat {service}’da ko‘rishga ruxsat bergan",
++  "@musicEmbedBlocked": {
++    "placeholders": {
++      "service": {"type": "String"}
++    }
++  },
++  "musicOpensIn": "{service}’da ochish",
+   "@musicOpensIn": {
+     "placeholders": {
+       "service": {"type": "String"}
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index 96c3e1d..4ef05c8 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -1422,9 +1422,33 @@ abstract class L {
+   /// No description provided for @profileMusicAdd.
+   ///
+   /// In uz, this message translates to:
+-  /// **'Musiqa qo‘shish'**
++  /// **'Fayldan qo‘shish'**
+   String get profileMusicAdd;
+ 
++  /// No description provided for @profileMusicAddLink.
++  ///
++  /// In uz, this message translates to:
++  /// **'Havoladan qo‘shish (YouTube / Yandex)'**
++  String get profileMusicAddLink;
++
++  /// No description provided for @profileMusicLinkTitle.
++  ///
++  /// In uz, this message translates to:
++  /// **'Musiqa havolasi'**
++  String get profileMusicLinkTitle;
++
++  /// No description provided for @profileMusicLinkHint.
++  ///
++  /// In uz, this message translates to:
++  /// **'https://youtu.be/… yoki music.yandex…'**
++  String get profileMusicLinkHint;
++
++  /// No description provided for @profileMusicLinkBad.
++  ///
++  /// In uz, this message translates to:
++  /// **'Faqat YouTube yoki Yandex Music havolasi qo‘shiladi. Audio faylni «Fayldan qo‘shish» orqali tanlang.'**
++  String get profileMusicLinkBad;
++
+   /// No description provided for @profileLinks.
+   ///
+   /// In uz, this message translates to:
+@@ -2331,10 +2355,16 @@ abstract class L {
+   /// **'Qo‘shiqni ochib bo‘lmadi'**
+   String get musicFailed;
+ 
++  /// No description provided for @musicEmbedBlocked.
++  ///
++  /// In uz, this message translates to:
++  /// **'Muallif bu videoni faqat {service}’da ko‘rishga ruxsat bergan'**
++  String musicEmbedBlocked(String service);
++
+   /// No description provided for @musicOpensIn.
+   ///
+   /// In uz, this message translates to:
+-  /// **'{service} ilovasida ochiladi'**
++  /// **'{service}’da ochish'**
+   String musicOpensIn(String service);
+ 
+   /// No description provided for @rulesTitle.
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index 770b4f4..a5f6444 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -697,7 +697,20 @@ class LEn extends L {
+   String get profileMusic => 'Profile music';
+ 
+   @override
+-  String get profileMusicAdd => 'Add music';
++  String get profileMusicAdd => 'Add from file';
++
++  @override
++  String get profileMusicAddLink => 'Add from link (YouTube / Yandex)';
++
++  @override
++  String get profileMusicLinkTitle => 'Music link';
++
++  @override
++  String get profileMusicLinkHint => 'https://youtu.be/… or music.yandex…';
++
++  @override
++  String get profileMusicLinkBad =>
++      'Only YouTube or Yandex Music links can be added. Pick an audio file with “Add from file”.';
+ 
+   @override
+   String get profileLinks => 'Links';
+@@ -1167,9 +1180,14 @@ class LEn extends L {
+   @override
+   String get musicFailed => 'Could not open the track';
+ 
++  @override
++  String musicEmbedBlocked(String service) {
++    return 'The owner only allows this on $service';
++  }
++
+   @override
+   String musicOpensIn(String service) {
+-    return 'Opens in $service';
++    return 'Open in $service';
+   }
+ 
+   @override
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index 85b68f0..470dda1 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -693,7 +693,20 @@ class LRu extends L {
+   String get profileMusic => 'Музыка профиля';
+ 
+   @override
+-  String get profileMusicAdd => 'Добавить музыку';
++  String get profileMusicAdd => 'Добавить из файла';
++
++  @override
++  String get profileMusicAddLink => 'Добавить по ссылке (YouTube / Яндекс)';
++
++  @override
++  String get profileMusicLinkTitle => 'Ссылка на музыку';
++
++  @override
++  String get profileMusicLinkHint => 'https://youtu.be/… или music.yandex…';
++
++  @override
++  String get profileMusicLinkBad =>
++      'Можно добавить только ссылку YouTube или Яндекс Музыки. Аудиофайл выберите через «Добавить из файла».';
+ 
+   @override
+   String get profileLinks => 'Ссылки';
+@@ -1163,9 +1176,14 @@ class LRu extends L {
+   @override
+   String get musicFailed => 'Не удалось открыть трек';
+ 
++  @override
++  String musicEmbedBlocked(String service) {
++    return 'Автор разрешил смотреть это только в $service';
++  }
++
+   @override
+   String musicOpensIn(String service) {
+-    return 'Откроется в $service';
++    return 'Открыть в $service';
+   }
+ 
+   @override
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index 928cb88..2c6c1bf 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -698,7 +698,20 @@ class LUz extends L {
+   String get profileMusic => 'Profil musiqasi';
+ 
+   @override
+-  String get profileMusicAdd => 'Musiqa qo‘shish';
++  String get profileMusicAdd => 'Fayldan qo‘shish';
++
++  @override
++  String get profileMusicAddLink => 'Havoladan qo‘shish (YouTube / Yandex)';
++
++  @override
++  String get profileMusicLinkTitle => 'Musiqa havolasi';
++
++  @override
++  String get profileMusicLinkHint => 'https://youtu.be/… yoki music.yandex…';
++
++  @override
++  String get profileMusicLinkBad =>
++      'Faqat YouTube yoki Yandex Music havolasi qo‘shiladi. Audio faylni «Fayldan qo‘shish» orqali tanlang.';
+ 
+   @override
+   String get profileLinks => 'Havolalar';
+@@ -1170,9 +1183,14 @@ class LUz extends L {
+   @override
+   String get musicFailed => 'Qo‘shiqni ochib bo‘lmadi';
+ 
++  @override
++  String musicEmbedBlocked(String service) {
++    return 'Muallif bu videoni faqat $service’da ko‘rishga ruxsat bergan';
++  }
++
+   @override
+   String musicOpensIn(String service) {
+-    return '$service ilovasida ochiladi';
++    return '$service’da ochish';
+   }
+ 
+   @override
+diff --git a/mobile_nova/pubspec.lock b/mobile_nova/pubspec.lock
+index 4731f83..8110a50 100644
+--- a/mobile_nova/pubspec.lock
++++ b/mobile_nova/pubspec.lock
+@@ -1105,6 +1105,38 @@ packages:
+       url: "https://pub.dev"
+     source: hosted
+     version: "3.2.0"
++  webview_flutter:
++    dependency: "direct main"
++    description:
++      name: webview_flutter
++      sha256: a3da219916aba44947d3a5478b1927876a09781174b5a2b67fa5be0555154bf9
++      url: "https://pub.dev"
++    source: hosted
++    version: "4.13.1"
++  webview_flutter_android:
++    dependency: "direct main"
++    description:
++      name: webview_flutter_android
++      sha256: ad5182eff9a550925330cb9f0cb038eddfdd5712aba8b77aa0f0400e50f6e688
++      url: "https://pub.dev"
++    source: hosted
++    version: "4.12.0"
++  webview_flutter_platform_interface:
++    dependency: transitive
++    description:
++      name: webview_flutter_platform_interface
++      sha256: "1221c1b12f5278791042f2ec2841743784cf25c5a644e23d6680e5d718824f04"
++      url: "https://pub.dev"
++    source: hosted
++    version: "2.15.1"
++  webview_flutter_wkwebview:
++    dependency: "direct main"
++    description:
++      name: webview_flutter_wkwebview
++      sha256: e50cd97ad28e888f6a4f862a05eab917a635417f9b134df64c3abb78250c6446
++      url: "https://pub.dev"
++    source: hosted
++    version: "3.25.0"
+   win32:
+     dependency: transitive
+     description:
+diff --git a/mobile_nova/pubspec.yaml b/mobile_nova/pubspec.yaml
+index 5d90e05..6fb7ccd 100644
+--- a/mobile_nova/pubspec.yaml
++++ b/mobile_nova/pubspec.yaml
+@@ -46,6 +46,9 @@ dependencies:
+   in_app_update: 4.2.5
+   # Ilova qulfi: Face ID / Touch ID / barmoq izi (PIN o'rniga emas, qulaylik).
+   local_auth: ^3.0.1
++  webview_flutter: ^4.13.1
++  webview_flutter_android: ^4.12.0
++  webview_flutter_wkwebview: ^3.25.0
+ 
+ dev_dependencies:
+   flutter_test:
+diff --git a/mobile_nova/test/device_findings_test.dart b/mobile_nova/test/device_findings_test.dart
+index 31d5ccc..2e302b7 100644
+--- a/mobile_nova/test/device_findings_test.dart
++++ b/mobile_nova/test/device_findings_test.dart
+@@ -329,9 +329,11 @@ void _motionAndMusicTests() {
+       expect(src, contains('Slider('));
+       expect(src, contains('_MusicSheet._fmt(pos)'));
+       expect(src, contains('st.duration'));
+-      // Oldingi / keyingi.
++      // Oldingi / keyingi — `_go` orqali (YouTube/Yandex trekida
++      // rasmiy pleer ochiq qoladi, faylda `player.play`).
++      expect(src, contains('_go(-1)'));
++      expect(src, contains('_go(1)'));
+       expect(src, contains('player.previous'));
+-      expect(src, contains('player.next'));
+     });
+   });
+ }
+diff --git a/mobile_nova/test/music_source_test.dart b/mobile_nova/test/music_source_test.dart
+index fae9041..ad1e025 100644
+--- a/mobile_nova/test/music_source_test.dart
++++ b/mobile_nova/test/music_source_test.dart
+@@ -1,4 +1,5 @@
+ import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/features/profile/music_embed.dart';
+ import 'package:nfcstore_nova/features/profile/music_player.dart';
+ import 'package:nfcstore_nova/features/profile/music_source.dart';
+ 
+@@ -46,4 +47,21 @@ void main() {
+     expect(musicTitleOf('https://nfcstore.uz/uploads/night_drive.mp3'),
+         'night drive');
+   });
++
++  test('rasmiy pleer manzillari — sayt bilan bir xil', () {
++    expect(
++        MusicEmbed.yandexUri(
++                'https://music.yandex.com/album/1581808/track/44093415?ref_id=x')
++            .toString(),
++        'https://music.yandex.ru/iframe/#track/44093415/1581808');
++    expect(MusicEmbed.yandexUri('https://music.yandex.ru/album/77').toString(),
++        'https://music.yandex.ru/iframe/#album/77');
++    final html = MusicEmbed.youtubeHtml('lKhxTeC2h9s');
++    expect(html, contains('videoId:"lKhxTeC2h9s"'));
++    expect(html, contains('playsinline:1'));
++    expect(html, contains("origin:'https://nfcstore.uz'"));
++    // YouTube qoidasi: video ko'rinadi, kamida 200x200.
++    final s = MusicEmbed.sizeFor(MusicKind.youtube);
++    expect(s.width >= 200 && s.height >= 200, isTrue);
++  });
+ }
+-- 
+2.43.0
+
