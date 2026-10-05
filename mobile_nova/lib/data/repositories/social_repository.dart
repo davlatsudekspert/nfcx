@@ -374,6 +374,20 @@ class SocialRepository {
         .toList());
   }
 
+  /// OBUNALAR LENTASI — Reels "Do'stlar" tabi (2026-10-05).
+  ///
+  /// Faqat obuna bo'lingan odamlar (hamma kartalari) va kompaniyalar
+  /// kontenti; reklama yo'q. Reels faqat video/rasmli reel'larni
+  /// ko'rsatgani uchun sahifa kattaroq (30): oddiy rasmli postlar
+  /// suzib tashlanganda ham ro'yxat bo'sh qolmasin.
+  Future<Result<List<Post>>> followingFeed({int page = 1}) async {
+    final res = await _api.get<Map<String, dynamic>>('/api/feed',
+        query: {'scope': 'following', 'page': page, 'limit': 30});
+    return res.map((j) => parseList(j['feed'] ?? j['items'], Post.fromJson)
+        .where((p) => !p.isStory)
+        .toList());
+  }
+
   /// Lentaning 1-sahifasi — Asosiy va Reels uchun UMUMIY.
   ///
   /// Asosiy ekran ilova ochilganda lentani allaqachon oladi; Reels

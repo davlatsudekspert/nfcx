@@ -3053,4 +3053,17 @@ class LRu extends L {
 
   @override
   String get reelNotInterestedDone => 'Reel скрыт';
+
+  @override
+  String get reelsTabAll => 'Reels';
+
+  @override
+  String get reelsTabFriends => 'Друзья';
+
+  @override
+  String get reelsFriendsEmpty => 'У друзей пока нет Reels';
+
+  @override
+  String get reelsFriendsEmptyHint =>
+      'Подпишитесь на людей и бизнесы — их новые Reels появятся здесь.';
 }

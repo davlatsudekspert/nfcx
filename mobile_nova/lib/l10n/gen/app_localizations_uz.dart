@@ -3026,4 +3026,17 @@ class LUz extends L {
 
   @override
   String get reelNotInterestedDone => 'Reel yashirildi';
+
+  @override
+  String get reelsTabAll => 'Reels';
+
+  @override
+  String get reelsTabFriends => 'Do‘stlar';
+
+  @override
+  String get reelsFriendsEmpty => 'Do‘stlaringizda hali reels yo‘q';
+
+  @override
+  String get reelsFriendsEmptyHint =>
+      'Odamlar va bizneslarga obuna bo‘ling — ularning yangi reels’lari shu yerda chiqadi.';
 }

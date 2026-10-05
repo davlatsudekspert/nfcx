@@ -5678,6 +5678,30 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Reel yashirildi'**
   String get reelNotInterestedDone;
+
+  /// No description provided for @reelsTabAll.
+  ///
+  /// In uz, this message translates to:
+  /// **'Reels'**
+  String get reelsTabAll;
+
+  /// Reels tepasidagi tab: faqat obuna bo‘lingan odam va bizneslarning reels’i (server scope=following).
+  ///
+  /// In uz, this message translates to:
+  /// **'Do‘stlar'**
+  String get reelsTabFriends;
+
+  /// No description provided for @reelsFriendsEmpty.
+  ///
+  /// In uz, this message translates to:
+  /// **'Do‘stlaringizda hali reels yo‘q'**
+  String get reelsFriendsEmpty;
+
+  /// No description provided for @reelsFriendsEmptyHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Odamlar va bizneslarga obuna bo‘ling — ularning yangi reels’lari shu yerda chiqadi.'**
+  String get reelsFriendsEmptyHint;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

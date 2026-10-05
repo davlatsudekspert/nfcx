@@ -1080,5 +1080,9 @@
   "timeAgoWeeks": "{n, plural, one{{n} неделю назад} few{{n} недели назад} other{{n} недель назад}}",
   "commentsLoadMore": "Показать ещё комментарии",
   "reelNotInterested": "Не интересно",
-  "reelNotInterestedDone": "Reel скрыт"
+  "reelNotInterestedDone": "Reel скрыт",
+  "reelsTabAll": "Reels",
+  "reelsTabFriends": "Друзья",
+  "reelsFriendsEmpty": "У друзей пока нет Reels",
+  "reelsFriendsEmptyHint": "Подпишитесь на людей и бизнесы — их новые Reels появятся здесь."
 }

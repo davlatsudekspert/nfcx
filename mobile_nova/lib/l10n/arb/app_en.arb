@@ -1080,5 +1080,9 @@
   "timeAgoWeeks": "{n, plural, =1{1 week ago} other{{n} weeks ago}}",
   "commentsLoadMore": "View more comments",
   "reelNotInterested": "Not interested",
-  "reelNotInterestedDone": "Reel hidden"
+  "reelNotInterestedDone": "Reel hidden",
+  "reelsTabAll": "Reels",
+  "reelsTabFriends": "Friends",
+  "reelsFriendsEmpty": "No reels from friends yet",
+  "reelsFriendsEmptyHint": "Follow people and businesses — their new reels will show up here."
 }

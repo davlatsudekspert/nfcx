@@ -84,6 +84,10 @@ class FakeSocialRepository extends SocialRepository {
       const Ok([]);
 
   @override
+  Future<Result<List<Post>>> followingFeed({int page = 1}) async =>
+      const Ok([]);
+
+  @override
   Future<Result<List<StoryItem>>> storiesOf(String code) async => const Ok([]);
 
   /// Reels ko'rishi — testlarda tarmoqqa chiqmaydi; chaqiruvlar yoziladi.

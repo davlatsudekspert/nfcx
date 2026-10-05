@@ -3047,4 +3047,17 @@ class LEn extends L {
 
   @override
   String get reelNotInterestedDone => 'Reel hidden';
+
+  @override
+  String get reelsTabAll => 'Reels';
+
+  @override
+  String get reelsTabFriends => 'Friends';
+
+  @override
+  String get reelsFriendsEmpty => 'No reels from friends yet';
+
+  @override
+  String get reelsFriendsEmptyHint =>
+      'Follow people and businesses — their new reels will show up here.';
 }
