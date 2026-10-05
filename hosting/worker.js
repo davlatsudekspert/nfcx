@@ -6443,11 +6443,16 @@ async function recordsApi(request, env, url) {
       // so'raladi (ilova tablarni alohida yuklaydi).
       // Egasi va joriy foydalanuvchi PARALLEL o'qiladi: UZ bazasigacha
       // har bir ketma-ket so'rov bitta to'liq borib-kelish (2026-10-05).
-      const [deletedOwner, user] = await Promise.all([
-        ownerDeletedByCodeD1(env, code), getCurrentUser(request, env),
+      // Ro'yxat foydalanuvchini kutadi (layk belgisi uchun) — anonim
+      // so'rovda esa u egasi tekshiruvi bilan BIR to'lqinda ketadi.
+      apiComments.ensureSchema(env).catch(() => {});
+      const userP = getCurrentUser(request, env);
+      const [deletedOwner, posts] = await Promise.all([
+        ownerDeletedByCodeD1(env, code),
+        userP.then((user) => listPostsD1(env, code, user ? user.id : null)),
       ]);
       if (deletedOwner) return json({ posts: [] });
-      return json({ posts: await listPostsD1(env, code, user ? user.id : null) });
+      return json({ posts });
     }
 
     if (action === 'posts' && request.method === 'POST') {
@@ -11055,14 +11060,17 @@ async function feedApi(request, env, url) {
   // bilish uchun (alohida COUNT so'rovi butun jadvalni sanardi).
   // Asosiy sahifa, bloklanganlar va FEATURED nishonlari bir-biriga
   // bog'liq emas — BITTA parallel to'lqinda o'qiladi (tezlik, 2026-10-05).
-  const [rows, blockedList, featuredTargets] = await Promise.all([
+  // FEATURED nishonlari va izoh sxemasi tekshiruvi ham shu to'lqinda
+  // boshlanadi, lekin sahifa shakli ularni KUTMAYDI (featured odatda bo'sh).
+  const featuredP = page === 1 ? apiFeatured.activeTargets(env, nowTs()).catch(() => []) : Promise.resolve([]);
+  apiComments.ensureSchema(env).catch(() => {});
+  const [rows, blockedList] = await Promise.all([
     env.DB.prepare(
       `${FEED_UNION_SQL}
        ORDER BY created_at DESC, id DESC
        LIMIT ? OFFSET ?`
     ).bind(viewerId, viewerId, now, viewerId, now, limit + 1, offset).all(),
     viewerId ? apiModeration.blockedByUser(env, viewerId) : [],
-    page === 1 ? apiFeatured.activeTargets(env, nowTs()).catch(() => []) : [],
   ]);
 
   // BLOKLANGAN PROFILLAR LENTADAN CHIQARILADI.
@@ -11109,7 +11117,7 @@ async function feedApi(request, env, url) {
   // to'langani yashiringan profilni ochib bermaydi.
   let featured = [];
   if (page === 1) {
-    const targets = featuredTargets || [];
+    const targets = (await featuredP) || [];
     if (targets.length) {
       const where = targets.map(() => '(kind = ? AND id = ?)').join(' OR ');
       const fRows = await env.DB.prepare(
