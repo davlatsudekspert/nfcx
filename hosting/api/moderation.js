@@ -317,6 +317,14 @@ export async function handle(request, env, url, H) {
       story: [
         `DELETE FROM story_likes WHERE story_id = ?`,
         `DELETE FROM story_views WHERE story_id = ?`,
+        // Muqova shu istoriya rasmi bo'lsa — tozalanadi (nusxa o'chishidan
+        // OLDIN, rasm manzili hali o'qiladi). Aks holda muqova ko'rinmasa
+        // ham fayl "ishlatilmoqda" deb hisoblanib, ombordan hech qachon
+        // o'chmasdi.
+        `UPDATE story_highlights SET cover_url = NULL
+          WHERE cover_url IS NOT NULL
+            AND cover_url IN (SELECT image_url FROM story_highlight_items
+                               WHERE story_id = ? AND image_url IS NOT NULL)`,
         `DELETE FROM story_highlight_items WHERE story_id = ?`,
         `DELETE FROM stories WHERE id = ?`,
       ],

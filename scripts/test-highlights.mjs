@@ -212,6 +212,8 @@ check('7) qayta: 404', r.status, 404);
   const hb = r.body.highlights.find((x) => x.id === hB);
   check('9) Aktualdan o‘sha istoriya nusxasi ketdi', hb.items.map((i) => i.storyId), [sB2]);
   check('9) muqova (o‘chirilgan rasm) ko‘rinmaydi', hb.coverUrl, IMG6);
+  check('9) bazadagi muqova ham tozalandi (fayl "ishlatilmoqda" bo‘lib qolmaydi)',
+    sqlite.prepare(`SELECT COUNT(*) AS n FROM story_highlights WHERE cover_url = ?`).get(IMG5).n, 0);
   const arch = sqlite.prepare(`SELECT owner_kind, owner_id, image_url, deleted_by_admin FROM content_archive WHERE kind = 'highlight_item' ORDER BY id DESC`).get();
   check('9) Aktual nusxasi dalil arxivida', [arch?.owner_kind, arch?.owner_id, arch?.image_url, String(arch?.deleted_by_admin || '').startsWith('admin#')], ['card', 'OTH222', IMG5, true]);
 
