@@ -97,10 +97,46 @@ export const NOT_E2E = (col) => `${col} NOT LIKE '${E2E_MARKER}%'`;
 
 let schemaReady = null;
 
+// FNV-1a — sxema kodining "barmoq izi" (belgi nomi uchun).
+function hashText(text) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i += 1) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(36);
+}
+
 // Jadval KERAK BO'LGANDA yaratiladi — moderation.js bilan bir xil
 // yondashuv (worker'da alohida migratsiya bosqichi yo'q).
-export async function ensureSchema(env) {
+//
+// TEZLIK (2026-10-05, o'lchov bilan): har yangi isolate'da to'liq
+// tekshiruv bazaga ~6 marta KETMA-KET borardi; bundan tashqari
+// `countsFor` va `viewsFor` parallel chaqirilganda va'da hali
+// yaratilmagani uchun ikkalasi ham uni NUSXALAB bajarardi. Endi:
+// 1) va'da SINXRON saqlanadi — bir isolate'da faqat bir marta;
+// 2) bazadagi belgi (`maintenance_runs`) bor bo'lsa — bitta SELECT bilan
+//    tayyor. Belgi nomi to'liq tekshiruv KODINING barmoq izi: kod
+//    o'zgarsa (yangi ustun) belgi ham o'zgaradi va tekshiruv bir marta
+//    qaytadan to'liq bajariladi.
+export function ensureSchema(env) {
   if (!schemaReady) {
+    schemaReady = (async () => {
+      const mark = `schema:comments:${hashText(ensureSchemaFull.toString() + backfillViewHitsOnce.toString())}`;
+      const done = await env.DB.prepare(`SELECT 1 AS x FROM maintenance_runs WHERE name = ?`)
+        .bind(mark).first().catch(() => null);
+      if (done) return;
+      await ensureSchemaFull(env);
+      await env.DB.prepare(`INSERT OR IGNORE INTO maintenance_runs (name, ran_at, details) VALUES (?, ?, 'schema')`)
+        .bind(mark, tsNow()).run().catch(() => {});
+    })();
+  }
+  return schemaReady;
+}
+
+async function ensureSchemaFull(env) {
+  let ready;
+  {
     // ESKI BAZADA JADVAL ALLAQACHON BOR.
     //
     // `CREATE TABLE IF NOT EXISTS` mavjud jadvalga yangi ustun
@@ -113,7 +149,7 @@ export async function ensureSchema(env) {
     await env.DB.prepare(
       `ALTER TABLE content_comments ADD COLUMN parent_id INTEGER`
     ).run().catch(() => {});
-    schemaReady = env.DB.batch([
+    ready = env.DB.batch([
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS "content_comments" (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         target_kind TEXT NOT NULL,
@@ -236,7 +272,7 @@ export async function ensureSchema(env) {
     // `CREATE TABLE IF NOT EXISTS` bu ustunlarni QO'SHA OLMAYDI:
     // jadval production'da allaqachon bor, ya'ni u buyruq oddiy
     // no-op bo'ladi.
-    schemaReady = schemaReady.then(() => Promise.all([
+    ready = ready.then(() => Promise.all([
       `ALTER TABLE content_comments ADD COLUMN deleted_at TEXT`,
       `ALTER TABLE content_comments ADD COLUMN deleted_by_user_id INTEGER`,
       `ALTER TABLE content_comments ADD COLUMN deleted_reason TEXT`,
@@ -250,7 +286,7 @@ export async function ensureSchema(env) {
       // Eski ko'rishlar yangi sanoqqa — jadvallar yaratilgandan KEYIN.
       .then(() => backfillViewHitsOnce(env));
   }
-  await schemaReady;
+  await ready;
 }
 
 // ── BIR MARTALIK KO'CHIRISH: eski ko'rishlar yangi sanoqqa ───────

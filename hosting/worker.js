@@ -2257,7 +2257,13 @@ async function ensureCoreSchema(env) {
   if (!env.DB) throw new Error('d1_unavailable');
   // Belgi bor VA kerakli ustunlar haqiqatan joyida — 2 so'rov bilan tayyor.
   // Biror ustun yo'q bo'lsa (kutilmagan holat) — to'liq tekshiruvga tushamiz.
-  if (await coreSchemaAlreadyEnsured(env) && await seedCoreColumnsD1(env)) return;
+  // Belgi va ustunlar tekshiruvi BIR VAQTDA (yangi isolate'da 2 o'rniga 1
+  // borib-kelish). Ustun ro'yxati faqat UZ rejimida (belgi yoqilganda) o'qiladi.
+  const [marked, columnsOk] = await Promise.all([
+    coreSchemaAlreadyEnsured(env),
+    coreSchemaMarkerOn(env) ? seedCoreColumnsD1(env) : false,
+  ]);
+  if (marked && columnsOk) return;
   if (coreSchemaNetBaseline === null) coreSchemaNetBaseline = uzDbNetErrors();
   // Admin auth's own tables/columns are ensured FIRST and independently of
   // the shared batch below — see ensureAdminAuthTables()'s comment. This
@@ -3632,33 +3638,34 @@ async function socialCountsD1(env, rows) {
   const followers = new Map();
   const following = new Map();
   const posts = new Map();
-  if (users.length) {
-    const marks = users.map(() => '?').join(',');
-    const fr = await env.DB.prepare(
+  // UCHALA SANOQ BIR VAQTDA (tezlik, 2026-10-05): ular bir-biriga bog'liq
+  // emas. Avval ketma-ket edi — Tanlov ro'yxati UZ bazasiga 4 marta
+  // navbat bilan borardi; endi 2 marta.
+  const um = users.map(() => '?').join(',');
+  const cm = codes.map(() => '?').join(',');
+  const [fr, fg, pr] = await Promise.all([
+    users.length ? env.DB.prepare(
       `SELECT fw.followee_id AS id, COUNT(*) AS n FROM follows fw
-         WHERE fw.followee_id IN (${marks}) AND ${visibleUserSql('fw.follower_id')}
+         WHERE fw.followee_id IN (${um}) AND ${visibleUserSql('fw.follower_id')}
          GROUP BY fw.followee_id`
-    ).bind(...users).all().catch(() => null);
-    for (const r of (fr?.results || [])) followers.set(Number(r.id), Number(r.n) || 0);
+    ).bind(...users).all().catch(() => null) : null,
     // OBUNALAR — profildagi bilan AYNAN bir xil shart
     // (`/api/follow-stats/:code`): ro'yxat kartasi va profil bir xil
     // uchta sonni ko'rsatadi (egasi 2026-09: "sonlar bir-biriga
     // tushmayapti").
-    const fg = await env.DB.prepare(
+    users.length ? env.DB.prepare(
       `SELECT fw.follower_id AS id, COUNT(*) AS n FROM follows fw
-         WHERE fw.follower_id IN (${marks}) AND ${visibleUserSql('fw.followee_id')}
+         WHERE fw.follower_id IN (${um}) AND ${visibleUserSql('fw.followee_id')}
          GROUP BY fw.follower_id`
-    ).bind(...users).all().catch(() => null);
-    for (const r of (fg?.results || [])) following.set(Number(r.id), Number(r.n) || 0);
-  }
-  if (codes.length) {
-    const marks = codes.map(() => '?').join(',');
-    const pr = await env.DB.prepare(
+    ).bind(...users).all().catch(() => null) : null,
+    codes.length ? env.DB.prepare(
       `SELECT code, COUNT(*) AS n FROM posts
-         WHERE code IN (${marks}) GROUP BY code`
-    ).bind(...codes).all().catch(() => null);
-    for (const r of (pr?.results || [])) posts.set(String(r.code), Number(r.n) || 0);
-  }
+         WHERE code IN (${cm}) GROUP BY code`
+    ).bind(...codes).all().catch(() => null) : null,
+  ]);
+  for (const r of (fr?.results || [])) followers.set(Number(r.id), Number(r.n) || 0);
+  for (const r of (fg?.results || [])) following.set(Number(r.id), Number(r.n) || 0);
+  for (const r of (pr?.results || [])) posts.set(String(r.code), Number(r.n) || 0);
   return {
     followers: (row) => followers.get(Number(row.user_id)) || 0,
     following: (row) => following.get(Number(row.user_id)) || 0,
@@ -3990,14 +3997,17 @@ function catalogCard(record, auctionFinal = null) {
 }
 
 async function getRecord(env, code) {
+  // Qator va auksion yakuniy narxlari BIR VAQTDA (tezlik, 2026-10-05):
+  // narxlar qatorga bog'liq emas — avval ular ikkinchi borib-kelish edi.
+  const finalsP = auctionFinalPricesD1(env);
   const row = await env.DB.prepare(
     `SELECT c.*,
             (u.is_premium = 1 OR (u.premium_expires_at IS NOT NULL AND u.premium_expires_at > ?)) AS owner_is_premium,
             u.trial_expires_at AS owner_trial_expires_at,
             EXISTS(SELECT 1 FROM nfc_gifts g WHERE g.code = c.code AND g.status = 'activated') AS is_gift
      FROM cards c LEFT JOIN users u ON u.id = c.user_id WHERE c.code = ?`
-  ).bind(nowTs(), code).first();
-  if (!row) return null;
+  ).bind(nowTs(), code).first().catch(async (e) => { await finalsP.catch(() => {}); throw e; });
+  if (!row) { await finalsP.catch(() => {}); return null; }
   // OMMAVIY profil uchun ham egasining holati muhim: sinov muddati
   // yoki oylik obuna faol bo'lsa, profil pullik imkoniyatlar bilan
   // ko'rinishi kerak (musiqa, animatsiya va h.k.).
@@ -4012,12 +4022,23 @@ async function getRecord(env, code) {
   // bilan qayta hisoblaymiz — aks holda profil belgisi katalogdan farq
   // qilardi: auksionda sotilgan ekslyuziv ID katalogda yutuq narxida,
   // profilda esa 0 ("Sovg'a") bo'lib ko'rinardi.
-  const finals = await auctionFinalPricesD1(env);
+  const finals = await finalsP;
   const finalPrice = finals.get(String(code || '').toUpperCase()) ?? null;
   rec.price = catalogPriceD1(rec, finalPrice);
   rec.notForSale = !isRealGiftD1(rec) && isOwnedExclusiveGiftD1(rec, finalPrice);
   rec.isGift = isRealGiftD1(rec);
   return rec;
+}
+
+// Egasi o'chirilganmi — KOD bo'yicha, egasini oldindan bilmasdan. Shu
+// tufayli u boshqa so'rovlar bilan BIR to'lqinda ketadi (ownerDeletedD1
+// bilan bir xil shart: CAST bilan solishtirish, deleted_at bor).
+async function ownerDeletedByCodeD1(env, code) {
+  const row = await env.DB.prepare(
+    `SELECT 1 AS x FROM cards c JOIN users u ON CAST(u.id AS TEXT) = CAST(c.user_id AS TEXT)
+      WHERE c.code = ? AND u.deleted_at IS NOT NULL`
+  ).bind(code).first();
+  return !!row;
 }
 
 async function getRecordOwner(env, code) {
@@ -6422,10 +6443,10 @@ async function recordsApi(request, env, url) {
       // so'raladi (ilova tablarni alohida yuklaydi).
       // Egasi va joriy foydalanuvchi PARALLEL o'qiladi: UZ bazasigacha
       // har bir ketma-ket so'rov bitta to'liq borib-kelish (2026-10-05).
-      const [postsOwner, user] = await Promise.all([
-        getRecordOwner(env, code), getCurrentUser(request, env),
+      const [deletedOwner, user] = await Promise.all([
+        ownerDeletedByCodeD1(env, code), getCurrentUser(request, env),
       ]);
-      if (await ownerDeletedD1(env, postsOwner)) return json({ posts: [] });
+      if (deletedOwner) return json({ posts: [] });
       return json({ posts: await listPostsD1(env, code, user ? user.id : null) });
     }
 
@@ -6517,8 +6538,16 @@ async function recordsApi(request, env, url) {
       // to'liq borib-kelish. Bir-biriga bog'liq bo'lmaganlari endi
       // parallel: yozuv, egasi va joriy foydalanuvchi bitta to'lqinda,
       // o'chirilganlik va kompaniya ikkinchisida.
-      const [rec, owner, user] = await Promise.all([
+      // Kompaniya ham KOD orqali shu to'lqinda o'qiladi (yozuvga bog'liq
+      // ikkinchi borib-kelish yo'q). Natijada profil = 1 to'lqin.
+      const [rec, owner, user, deletedEarly, coEarly] = await Promise.all([
         getRecord(env, code), getRecordOwner(env, code), getCurrentUser(request, env),
+        ownerDeletedByCodeD1(env, code),
+        env.DB.prepare(
+          `SELECT co.company_id, co.display_name, co.logo_url, co.category, co.subcategory, co.city
+             FROM cards c JOIN companies co ON co.company_id = c.company_id
+            WHERE c.code = ? AND co.status = 'active'`
+        ).bind(code).first().catch(() => null),
       ]);
       if (!rec) return json({ error: 'not_found' }, 404);
       // Egasi o'chirilgan bo'lsa — profil yo'q hisoblanadi (izohi
@@ -6529,14 +6558,8 @@ async function recordsApi(request, env, url) {
       // Biriktirilgan kompaniya — nomi va logotipi bilan. Kompaniya
       // keyin to'xtatilgan bo'lsa `company` bo'sh qoladi va profilda
       // blok umuman chizilmaydi (o'lik havola qolmasin).
-      const [deleted, co] = await Promise.all([
-        ownerDeletedD1(env, owner),
-        rec.companyId
-          ? env.DB.prepare(
-            `SELECT company_id, display_name, logo_url, category, subcategory, city FROM companies WHERE company_id = ? AND status = 'active'`
-          ).bind(rec.companyId).first().catch(() => null)
-          : null,
-      ]);
+      const deleted = deletedEarly;
+      const co = rec.companyId && coEarly && String(coEarly.company_id) === String(rec.companyId) ? coEarly : null;
       if (deleted) return json({ error: 'not_found' }, 404);
       if (rec.companyId) {
         rec.company = co ? {
@@ -10657,17 +10680,17 @@ async function listPostsD1(env, code, viewerUserId) {
   // O'chirilgan izohlar u yerda sanalmaydi, shuning uchun bu yerda
   // ham sanalmaydi.
   const targets = list.map((r) => ({ kind: 'post', id: Number(r.id) }));
+  // Izoh/ko'rish sanoqlari va musiqa — BIR to'lqinda (tezlik, 2026-10-05).
+  const out = list.map((r) => ({ ...postRowToJson(r, r.like_count, r.liked), commentCount: 0, viewCount: 0 }));
   const [counts, views] = await Promise.all([
     apiComments.countsFor(env, targets).catch(() => new Map()),
     apiComments.viewsFor(env, targets).catch(() => new Map()),
+    apiMusic.attachPostExtras(env, out.map((o) => ({ kind: 'post', id: o.id, obj: o }))),
   ]);
-
-  const out = list.map((r) => ({
-    ...postRowToJson(r, r.like_count, r.liked),
-    commentCount: counts.get(`post:${Number(r.id)}`) || 0,
-    viewCount: views.get(`post:${Number(r.id)}`) || 0,
-  }));
-  await apiMusic.attachPostExtras(env, out.map((o) => ({ kind: 'post', id: o.id, obj: o })));
+  for (const o of out) {
+    o.commentCount = counts.get(`post:${Number(o.id)}`) || 0;
+    o.viewCount = views.get(`post:${Number(o.id)}`) || 0;
+  }
   return out;
 }
 
