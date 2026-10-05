@@ -94,11 +94,37 @@ KEYWORDS_LIST = ['nfc', 'tools', 'tag', 'writer', 'reader', 'yozish', 'vizitka',
 PROMO = "Tap. Share. Connect — your social NFC profile, feed and Reels on an NFC card or sticker."
 SUBTITLE = "NFC Writer, Social ID, Reels"
 
+# "What's New" — YANGILANISH matni (birinchi versiyada Apple uni qabul
+# qilmaydi; yangilanishda MAJBURIY). Faqat ilovada HAQIQATAN bor narsa
+# yoziladi: va'da qilingan, lekin yo'q imkoniyat — rad etish sababi (2.3).
+WHATS_NEW = {
+    'en': """What's new in 1.1.1
+
+• Reels: new Friends tab — the latest reels from people and businesses you follow, in one place.
+• Stories: swipe between people, hold to pause (videos too), new stories are marked with a ring, and you can see how many people viewed your story.
+• Notifications: tapping a like or a comment now opens that exact post or reel.
+• Posts: tap a photo to zoom, double-tap a video to like, see when it was posted, and load more comments.
+• Comments: authors can remove comments under their posts; businesses can delete their own posts.
+• Reels: "Not interested" hides a reel you don't want to see.
+• Music: the profile music player now also plays and pauses Yandex Music.
+• Faster loading and stability improvements.""",
+    'ru': """Что нового в 1.1.1
+
+• Reels: новая вкладка «Друзья» — свежие Reels людей и бизнесов, на которых вы подписаны.
+• Истории: листайте между людьми, удерживайте для паузы (и видео тоже), новые истории отмечены кольцом, видно число просмотров вашей истории.
+• Уведомления: нажатие на лайк или комментарий открывает именно тот пост или Reels.
+• Посты: увеличение фото по нажатию, двойное касание видео — лайк, время публикации и загрузка новых комментариев.
+• Комментарии: автор может удалять комментарии под своими постами; бизнес может удалять свои посты.
+• Reels: «Не интересно» скрывает ненужный ролик.
+• Музыка: плеер профиля теперь включает и ставит на паузу Яндекс Музыку.
+• Быстрее загрузка и улучшения стабильности.""",
+}
+
 REVIEW_NOTES = """Sign-in is required. Please use the demo account above (it already has a personal profile, posts and a business page).
 
 How to review:
 1) Log in with the demo account.
-2) Home shows the user's NFC ID card; Profile shows the digital business card; Feed and Reels show posts.
+2) Home shows the user's NFC ID card; Profile shows the digital business card; Feed and Reels show posts. At the top of Reels, the "Friends" tab shows reels only from accounts the user follows (it shows an explanation if the account follows nobody yet).
 3) NFC is optional: NFC Center → "Write to NFC card" writes the profile link to any blank NFC tag (NTAG213/215/216). Every feature can be reviewed without a tag — profiles are also shared by link and QR code.
 4) Account deletion: Settings → Account → Security → Delete account. Please test it on a newly registered account, not on the demo account.
 5) Report / block: on any post, Reel, comment or profile tap "•••" → Report or Block.
@@ -127,10 +153,26 @@ def app_id():
 
 def edit_version(aid):
     c, j = call('GET', f'/v1/apps/{aid}/appStoreVersions', params={'filter[platform]': 'IOS', 'limit': 10})
-    for v in j.get('data', []):
+    existing = j.get('data', [])
+    for v in existing:
         if v['attributes'].get('appStoreState') in ('PREPARE_FOR_SUBMISSION', 'DEVELOPER_REJECTED', 'REJECTED',
                                                    'METADATA_REJECTED', 'INVALID_BINARY'):
             return v
+    # Yangilanish (masalan 1.1.1): oldingi versiya chiqib bo'lgan, yangisi
+    # hali yo'q — APP_VERSION berilgan bo'lsa yaratiladi. Ko'rib
+    # chiqilayotgan versiya bo'lsa Apple o'zi rad etadi (409) va u
+    # TEGILMAYDI: navbatdagi versiya bekor qilinmaydi.
+    ver = os.environ.get('APP_VERSION', '').strip()
+    if ver:
+        c, j = call('POST', '/v1/appStoreVersions', {'data': {'type': 'appStoreVersions',
+                    'attributes': {'platform': 'IOS', 'versionString': ver},
+                    'relationships': {'app': {'data': {'type': 'apps', 'id': aid}}}}})
+        note(f'yangi versiya {ver} -> {c} {j.get("_error", "")}')
+        if ok(c):
+            return j['data']
+        states = [f"{v['attributes'].get('versionString')}={v['attributes'].get('appStoreState')}" for v in existing]
+        note(f'versiyalar: {states}')
+    flush('ASC versiya')
     print('::error::tahrirlanadigan versiya yo‘q'); sys.exit(1)
 
 
@@ -157,6 +199,15 @@ def fill():
         c, j = call('PATCH', f"/v1/appStoreVersionLocalizations/{loc['id']}", {'data': {
             'type': 'appStoreVersionLocalizations', 'id': loc['id'], 'attributes': attrs}})
         note(f"en-US matnlar ({len(DESCRIPTION)} belgi, kalit so'z {len(attrs['keywords'])}) -> {c} {j.get('_error', '')}")
+    # What's New — har bir til uchun (ru-* -> ruscha, qolgani inglizcha).
+    # Birinchi versiyada Apple bu maydonni rad etadi — bu xato emas.
+    c, j = call('GET', f'/v1/appStoreVersions/{vid}/appStoreVersionLocalizations')
+    for l in j.get('data', []):
+        loc_code = l['attributes']['locale']
+        text = WHATS_NEW['ru' if loc_code.startswith('ru') else 'en']
+        c2, j2 = call('PATCH', f"/v1/appStoreVersionLocalizations/{l['id']}", {'data': {
+            'type': 'appStoreVersionLocalizations', 'id': l['id'], 'attributes': {'whatsNew': text}}})
+        note(f"[{loc_code}] What's New ({len(text)} belgi) -> {c2} {j2.get('_error', '')}")
     # app info: subtitle, privacy URL, kategoriya, yosh reytingi
     c, j = call('GET', f'/v1/apps/{aid}/appInfos')
     infos = [i for i in j.get('data', []) if i['attributes'].get('appStoreState') not in ('READY_FOR_SALE', 'REPLACED_WITH_NEW_INFO')] or j.get('data', [])

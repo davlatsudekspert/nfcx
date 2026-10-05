@@ -14,6 +14,10 @@ on:
         description: "attach uchun build raqami (masalan 313)"
         required: false
         default: ''
+      version:
+        description: "yangilanish versiyasi (masalan 1.1.1) — tahrirlanadigan versiya bo'lmasa yaratiladi"
+        required: false
+        default: ''
   push:
     branches: [claude/wizardly-einstein-8cx2p4]
     paths: [.github/workflows/nova-asc-publish.yml]
@@ -40,6 +44,7 @@ jobs:
           API_ISSUER_ID: ${{ secrets.NOVA_APPSTORE_ISSUER_ID }}
           API_PRIVATE_KEY: ${{ secrets.NOVA_APPSTORE_PRIVATE_KEY }}
           BUILD: ${{ inputs.build }}
+          APP_VERSION: ${{ inputs.version }}
           MODE: ${{ inputs.mode }}
         run: |
           set -euo pipefail
