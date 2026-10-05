@@ -834,7 +834,7 @@
   "catalogOpenSeller": "Seller page",
   "catalogFavorite": "Favorites",
   "catalogNoPaymentNote": "Orders and payment are arranged with the seller. Favorites are stored on this phone.",
-  "reelSavedLocal": "Saved — on this phone",
+  "reelSavedLocal": "Saved to your account",
   "reelUnsaved": "Removed from saved",
   "reelBlockAuthor": "Block author",
   "reelBlocked": "Blocked — you won’t see their content",
@@ -1064,5 +1064,13 @@
   "langChooseTitle": "Choose your language",
   "langChooseBody": "You can change it later in Settings → Language.",
   "fieldEmailHint": "you@example.com",
-  "notFoundHome": "Home"
+  "notFoundHome": "Home",
+  "timeAgoJustNow": "just now",
+  "timeAgoMinutes": "{n, plural, =1{1 minute ago} other{{n} minutes ago}}",
+  "timeAgoHours": "{n, plural, =1{1 hour ago} other{{n} hours ago}}",
+  "timeAgoDays": "{n, plural, =1{1 day ago} other{{n} days ago}}",
+  "timeAgoWeeks": "{n, plural, =1{1 week ago} other{{n} weeks ago}}",
+  "commentsLoadMore": "View more comments",
+  "reelNotInterested": "Not interested",
+  "reelNotInterestedDone": "Reel hidden"
 }

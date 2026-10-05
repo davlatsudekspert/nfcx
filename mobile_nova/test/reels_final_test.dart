@@ -102,13 +102,26 @@ final _reels = [
   ),
 ];
 
+/// Bitta izohi bor — "Javob berish" tugmasi chiqishi uchun.
+class _SocialWithComment extends _Social {
+  @override
+  Future<Result<({List<Comment> items, bool hasMore, int total})>> comments(
+          String kind, int id, {int page = 1}) async =>
+      const Ok((
+        items: [Comment(id: 501, code: 'ALI000', authorName: 'Ali', text: 'Zo‘r')],
+        hasMore: false,
+        total: 1,
+      ));
+}
+
 Future<({ProviderContainer c, _Social social, _Profile profile})> _pump(
-    WidgetTester tester, FakeVideoPlatform video, {List<Post>? reels}) async {
+    WidgetTester tester, FakeVideoPlatform video,
+    {List<Post>? reels, _Social? withSocial}) async {
   VideoPlayerPlatform.instance = video;
   tester.view.physicalSize = const Size(390 * 3, 844 * 3);
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
-  final social = _Social();
+  final social = withSocial ?? _Social();
   final profile = _Profile();
   final base = await testOverrides();
   final c = ProviderContainer(overrides: [
@@ -255,15 +268,21 @@ void main() {
     expect(r.profile.companyToggles, ['KARTAUZ']);
   });
 
-  testWidgets('saqlash (shu telefonda) va shikoyat menyusi', (tester) async {
+  testWidgets('saqlash (hisobga) va shikoyat menyusi', (tester) async {
     final r = await _pump(tester, FakeVideoPlatform());
     final l = await L.delegate.load(const Locale('uz'));
 
     await tester.tap(find.byKey(const ValueKey('reel-save')).first);
     await settle(tester, frames: 4);
     expect(r.c.read(savedReelsProvider), contains('p:7'));
-    expect(find.text(l.reelSavedLocal), findsOneWidget,
-        reason: 'odamga saqlash telefonda ekanini aytamiz');
+    // Saqlash endi HISOBGA sinxronlanadi (`SyncedSaves`) — "shu
+    // telefonda" degan eski matn odamni chalg'itardi.
+    expect(find.text('Saqlandi — hisobingizda'), findsOneWidget);
+    for (final loc in L.supportedLocales) {
+      final m = (await L.delegate.load(loc)).reelSavedLocal.toLowerCase();
+      expect(m, isNot(anyOf(contains('telefon'), contains('phone'))),
+          reason: '${loc.languageCode}: saqlash telefonda emas, hisobda');
+    }
 
     await tester.tap(find.byKey(const ValueKey('reel-more')).first);
     await settle(tester, frames: 10);
@@ -488,5 +507,86 @@ void main() {
     await _pump(tester, v);
     expect(find.byKey(const ValueKey('reel-sponsored')), findsNothing);
     expect(find.byKey(const ValueKey('reel-ad-cta')), findsNothing);
+  });
+
+  testWidgets('«Qiziq emas» — reel ro‘yxatdan darhol olinadi, serverga '
+      'hech narsa ketmaydi', (tester) async {
+    final v = FakeVideoPlatform();
+    final r = await _pump(tester, v);
+    final l = await L.delegate.load(const Locale('uz'));
+    expect(find.text('Mashrabboy'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('reel-more')).first);
+    await settle(tester, frames: 10);
+    final ni = find.byKey(const ValueKey('reel-not-interested'));
+    expect(ni, findsOneWidget);
+    expect(find.text(l.reelNotInterested), findsOneWidget);
+    await tester.tap(ni);
+    await settle(tester, frames: 10);
+    await _flush(tester);
+
+    expect(find.text(l.reelNotInterestedDone), findsOneWidget);
+    expect(find.text('Mashrabboy'), findsNothing);
+    expect(r.c.read(reelsHiddenProvider), {'p:7'});
+    // Kompaniyaning 7-posti (`c:7`) yashirilmaydi — u keyingi reel.
+    expect(find.text('Karta Uz'), findsOneWidget);
+    expect(v.urls[v.playing.single], contains('b.mp4'));
+    expect(r.social.likes, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('«Qiziq emas» o‘z reelimda yo‘q', (tester) async {
+    await _pump(tester, FakeVideoPlatform(), reels: [
+      Post(
+        id: 70,
+        code: '48210377',
+        authorName: 'Men',
+        mediaUrls: const ['https://nfcstore.uz/uploads/a.mp4'],
+        isVideo: true,
+      ),
+    ]);
+    await tester.tap(find.byKey(const ValueKey('reel-more')).first);
+    await settle(tester, frames: 10);
+    expect(find.byKey(const ValueKey('reel-report')), findsOneWidget);
+    expect(find.byKey(const ValueKey('reel-not-interested')), findsNothing);
+  });
+
+  testWidgets('bitta reel qolganda «Qiziq emas» — sahifa boshiga qaytadi',
+      (tester) async {
+    final v = FakeVideoPlatform();
+    final r = await _pump(tester, v, reels: _reels.take(2).toList());
+    // Ikkinchi reelga o'tiladi, keyin u yashiriladi.
+    await tester.fling(find.byKey(const ValueKey('reels-pager')),
+        const Offset(0, -600), 2000);
+    await settle(tester, frames: 12);
+    expect(find.text('Karta Uz'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('reel-more')).last);
+    await settle(tester, frames: 10);
+    await tester.tap(find.byKey(const ValueKey('reel-not-interested')));
+    await settle(tester, frames: 12);
+    await _flush(tester);
+    expect(r.c.read(reelsHiddenProvider), {'c:7'});
+    expect(find.text('Mashrabboy'), findsOneWidget);
+    expect(v.urls[v.playing.single], contains('a.mp4'));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('izohlar varag‘i: «Javob berish» yozish maydoniga fokus beradi',
+      (tester) async {
+    await _pump(tester, FakeVideoPlatform(), withSocial: _SocialWithComment());
+    final l = await L.delegate.load(const Locale('uz'));
+    await tester.tap(find.byKey(const ValueKey('reel-comments')).first);
+    await settle(tester, frames: 12);
+    final field = find.byType(TextField);
+    expect(field, findsOneWidget);
+    expect(tester.widget<TextField>(field).focusNode, isNotNull,
+        reason: 'varaq maydonga FocusNode beradi');
+    expect(tester.widget<TextField>(field).focusNode!.hasFocus, isFalse);
+
+    await tester.tap(find.text(l.commentReply));
+    await settle(tester, frames: 4);
+    expect(tester.widget<TextField>(field).focusNode!.hasFocus, isTrue);
+    expect(find.text(l.commentReplyingTo('Ali')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }

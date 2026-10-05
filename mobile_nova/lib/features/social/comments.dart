@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/utils/result.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/social_repository.dart';
 import '../../design/theme/typography.dart';
@@ -12,7 +13,9 @@ import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
 import '../home/widgets/avatar.dart';
+import 'engagement.dart' show isMineProvider;
 import 'moderation.dart';
+import 'time_ago.dart';
 import '../../design/icons/nova_icons.dart';
 
 /// Izohlar.
@@ -76,6 +79,60 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
   /// Like so'rovi yo'lda bo'lgan izohlar (qayta bosish himoyasi).
   final _liking = <int>{};
 
+  // ── "YANA IZOHLAR" (sahifalash) ─────────────────────────────────
+  //
+  // Server izohlarni 20 tadan beradi (`hasMore`), ilova esa faqat
+  // birinchi sahifani ko'rsatardi: 21-izoh va undan keyingilari
+  // HECH QAYERDA ko'rinmasdi. 1-sahifa — `commentsProvider` da (Reels
+  // tugmasidagi son ham undan); keyingilari shu yerda qo'shiladi.
+
+  /// 2-sahifadan boshlab yuklangan izohlar.
+  final _more = <Comment>[];
+
+  /// Oxirgi yuklangan sahifa.
+  int _page = 1;
+
+  /// Oxirgi yuklangan sahifadan keyin yana bormi. `null` — 2-sahifa
+  /// hali so'ralmagan, 1-sahifaning `hasMore` i amal qiladi.
+  bool? _moreHasMore;
+  bool _loadingMore = false;
+
+  void _resetMore() {
+    _more.clear();
+    _page = 1;
+    _moreHasMore = null;
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore) return;
+    final l = L.of(context);
+    setState(() => _loadingMore = true);
+    final res = await ref
+        .read(socialRepositoryProvider)
+        .comments(widget.kind, widget.id, page: _page + 1);
+    if (!mounted) return;
+    setState(() {
+      _loadingMore = false;
+      if (res case Ok(:final value)) {
+        _page++;
+        _more.addAll(value.items);
+        _moreHasMore = value.hasMore;
+      }
+    });
+    if (res case Err(:final error)) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(describeError(l, error))));
+    }
+  }
+
+  @override
+  void didUpdateWidget(CommentsSection old) {
+    super.didUpdateWidget(old);
+    // Boshqa kontentga o'tildi (masalan, keyingi istorya) — oldingisining
+    // qo'shimcha sahifalari bu yerda qolib ketmasin.
+    if (old.kind != widget.kind || old.id != widget.id) _resetMore();
+  }
+
   @override
   void dispose() {
     _text.dispose();
@@ -102,6 +159,9 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
       ok: (_) {
         _text.clear();
         _replyTo = null;
+        // Yangi izoh tepada chiqadi; qo'shimcha sahifalar siljigan
+        // bo'ladi — ro'yxat 1-sahifadan qayta boshlanadi.
+        _resetMore();
         // Ro'yxat serverdan qayta o'qiladi: `total` va tartib ham
         // shu yerda yangilanadi.
         ref.invalidate(commentsProvider(_ref));
@@ -130,7 +190,15 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
           await ref.read(socialRepositoryProvider).toggleCommentLike(c.id);
       if (!mounted) return;
       res.when(
-        ok: (_) {},
+        // 2-sahifadan keyingi izoh provayderda yo'q — qayta o'qish
+        // uni yangilamaydi, shuning uchun server javobi shu yerda.
+        ok: (v) {
+          final i = _more.indexWhere((e) => e.id == c.id);
+          if (i >= 0) {
+            setState(() =>
+                _more[i] = _more[i].copyWith(liked: v.liked, likes: v.count));
+          }
+        },
         err: (e) => ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(describeError(l, e)))),
       );
@@ -170,7 +238,10 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
     final res = await ref.read(socialRepositoryProvider).deleteComment(c.id);
     if (!mounted) return;
     res.when(
-      ok: (_) => ref.invalidate(commentsProvider(_ref)),
+      ok: (_) {
+        setState(() => _more.removeWhere((e) => e.id == c.id));
+        ref.invalidate(commentsProvider(_ref));
+      },
       err: (e) => ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(describeError(l, e)))),
     );
@@ -181,6 +252,12 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
     final l = L.of(context);
     final t = context.tokens;
     final data = ref.watch(commentsProvider(_ref));
+    // POST EGASI o'z postidagi HAR QANDAY izohni o'chira oladi (server
+    // ham ruxsat beradi: `comments.js` — muallif YOKI kontent egasi).
+    // Ilgari tugma faqat o'z izohimda edi — egasi o'z postidagi
+    // haqoratli izohni faqat shikoyat qilib, kutib o'tirardi.
+    final owner = widget.ownerCode.isNotEmpty &&
+        ref.watch(isMineProvider(widget.ownerCode));
     // IZOH YOZISH — HAMMAGA BEPUL (egasining qarori, 2026-10-04).
     //
     // Ilgari Premium'siz va sinov muddati tugagan odamga maydon
@@ -370,6 +447,15 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
                       ),
                     );
                   }
+                  // 1-sahifa qayta o'qilganda (yangi izoh boshqa
+                  // odamdan) qo'shimcha sahifadagi izoh unga o'tib
+                  // qolishi mumkin — ikki marta chizilmaydi.
+                  final first = {for (final c in d.items) c.id};
+                  final items = [
+                    ...d.items,
+                    ..._more.where((c) => !first.contains(c.id)),
+                  ];
+                  final hasMore = _moreHasMore ?? d.hasMore;
                   return Column(
                     children: [
                       // JAVOBLAR ICHKARIGA SURILADI.
@@ -378,13 +464,16 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
                       // izoh, keyin uning javoblari. Shuning uchun
                       // bu yerda qayta saralash shart emas —
                       // ro'yxat qanday kelsa, shunday chiziladi.
-                      for (final c in d.items)
+                      for (final c in items)
                         Padding(
                           padding: EdgeInsets.only(left: c.isReply ? 34 : 0),
                           child: _CommentTile(
                             comment: c,
                             ownerCode: widget.ownerCode,
                             onDelete: c.mine ? () => _delete(c) : null,
+                            onOwnerDelete: !c.mine && owner
+                                ? () => _delete(c)
+                                : null,
                             onLike: () => _like(c),
                             // Javobga javob yozib bo'lmaydi (server
                             // ham rad etadi), shuning uchun tugma
@@ -395,6 +484,22 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
                                       _replyTo = c;
                                       widget.focusNode?.requestFocus();
                                     }),
+                          ),
+                        ),
+                      if (hasMore)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton(
+                            key: const ValueKey('comments-load-more'),
+                            onPressed: _loadingMore ? null : _loadMore,
+                            child: _loadingMore
+                                ? SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2, color: t.text3),
+                                  )
+                                : Text(l.commentsLoadMore),
                           ),
                         ),
                     ],
@@ -414,6 +519,7 @@ class _CommentTile extends ConsumerWidget {
     required this.comment,
     required this.ownerCode,
     this.onDelete,
+    this.onOwnerDelete,
     this.onLike,
     this.onReply,
   });
@@ -421,6 +527,10 @@ class _CommentTile extends ConsumerWidget {
   final Comment comment;
   final String ownerCode;
   final VoidCallback? onDelete;
+
+  /// Post egasi BEGONA izohni o'chiradi — amallar menyusida, shikoyat
+  /// va bloklash yonida (`showContentActions`).
+  final VoidCallback? onOwnerDelete;
   final VoidCallback? onLike;
 
   /// `null` — javobga javob yozib bo'lmaydi.
@@ -462,15 +572,39 @@ class _CommentTile extends ConsumerWidget {
                 // yo'q. Odam esa ko'pincha ISMNI bosadi: u kattaroq
                 // va o'qilib turibdi. Bosilmagach "ishlamayapti" deb
                 // o'ylardi.
-                if (comment.code.isEmpty)
-                  Text(name, style: Theme.of(context).textTheme.titleSmall)
-                else
-                  GestureDetector(
-                    onTap: () => context.push(Routes.user(comment.code)),
-                    behavior: HitTestBehavior.opaque,
-                    child: Text(name,
-                        style: Theme.of(context).textTheme.titleSmall),
-                  ),
+                //
+                // Ism yonida — qachon yozilgan ("2 soat oldin"),
+                // post bilan bitta qoida (`timeAgo`).
+                Row(
+                  children: [
+                    Flexible(
+                      child: comment.code.isEmpty
+                          ? Text(name,
+                              style: Theme.of(context).textTheme.titleSmall)
+                          : GestureDetector(
+                              onTap: () =>
+                                  context.push(Routes.user(comment.code)),
+                              behavior: HitTestBehavior.opaque,
+                              child: Text(name,
+                                  style:
+                                      Theme.of(context).textTheme.titleSmall),
+                            ),
+                    ),
+                    if (comment.createdAt != null) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        timeAgo(comment.createdAt!, l),
+                        key: ValueKey('comment-time-${comment.id}'),
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontFamily: AppType.sans,
+                          fontSize: 11,
+                          color: t.text3,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
                 const SizedBox(height: 2),
                 Text(comment.text,
                     style: Theme.of(context).textTheme.bodyMedium),
@@ -536,6 +670,7 @@ class _CommentTile extends ConsumerWidget {
                 blockKind: BlockKind.record,
                 blockId: comment.code,
                 keyPrefix: 'comment',
+                onDelete: onOwnerDelete,
               ),
             ),
         ],

@@ -834,7 +834,7 @@
   "catalogOpenSeller": "Страница продавца",
   "catalogFavorite": "Избранное",
   "catalogNoPaymentNote": "Заказ и оплата — по договорённости с продавцом. Избранное хранится на этом телефоне.",
-  "reelSavedLocal": "Сохранено — на этом телефоне",
+  "reelSavedLocal": "Сохранено — в вашем аккаунте",
   "reelUnsaved": "Удалено из сохранённых",
   "reelBlockAuthor": "Заблокировать автора",
   "reelBlocked": "Заблокировано — контент автора больше не показывается",
@@ -1064,5 +1064,13 @@
   "langChooseTitle": "Выберите язык",
   "langChooseBody": "Позже его можно изменить в Настройки → Язык.",
   "fieldEmailHint": "vy@example.com",
-  "notFoundHome": "На главную"
+  "notFoundHome": "На главную",
+  "timeAgoJustNow": "только что",
+  "timeAgoMinutes": "{n, plural, one{{n} минуту назад} few{{n} минуты назад} other{{n} минут назад}}",
+  "timeAgoHours": "{n, plural, one{{n} час назад} few{{n} часа назад} other{{n} часов назад}}",
+  "timeAgoDays": "{n, plural, one{{n} день назад} few{{n} дня назад} other{{n} дней назад}}",
+  "timeAgoWeeks": "{n, plural, one{{n} неделю назад} few{{n} недели назад} other{{n} недель назад}}",
+  "commentsLoadMore": "Показать ещё комментарии",
+  "reelNotInterested": "Не интересно",
+  "reelNotInterestedDone": "Reel скрыт"
 }

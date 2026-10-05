@@ -892,7 +892,7 @@
       }
     }
   },
-  "reelSavedLocal": "Saqlandi — shu telefonda",
+  "reelSavedLocal": "Saqlandi — hisobingizda",
   "reelUnsaved": "Saqlanganlardan olindi",
   "reelBlockAuthor": "Muallifni bloklash",
   "reelBlocked": "Bloklandi — uning kontenti endi ko‘rinmaydi",
@@ -1205,5 +1205,19 @@
   "langChooseTitle": "Tilni tanlang",
   "langChooseBody": "Keyinroq Sozlamalar → Til orqali o‘zgartirishingiz mumkin.",
   "fieldEmailHint": "siz@example.com",
-  "notFoundHome": "Bosh sahifa"
+  "notFoundHome": "Bosh sahifa",
+  "timeAgoJustNow": "hozirgina",
+  "@timeAgoJustNow": {"description": "Post/izoh vaqti: bir daqiqadan yangi."},
+  "timeAgoMinutes": "{n} daqiqa oldin",
+  "@timeAgoMinutes": {"description": "Post/izoh vaqti: nisbiy («2 soat oldin»).", "placeholders": {"n": {"type": "int"}}},
+  "timeAgoHours": "{n} soat oldin",
+  "@timeAgoHours": {"description": "Post/izoh vaqti: nisbiy («2 soat oldin»).", "placeholders": {"n": {"type": "int"}}},
+  "timeAgoDays": "{n} kun oldin",
+  "@timeAgoDays": {"description": "Post/izoh vaqti: nisbiy («2 soat oldin»).", "placeholders": {"n": {"type": "int"}}},
+  "timeAgoWeeks": "{n} hafta oldin",
+  "@timeAgoWeeks": {"description": "Post/izoh vaqti: nisbiy («2 soat oldin»).", "placeholders": {"n": {"type": "int"}}},
+  "commentsLoadMore": "Yana izohlarni ko‘rish",
+  "reelNotInterested": "Qiziq emas",
+  "reelNotInterestedDone": "Reel yashirildi",
+  "@reelNotInterestedDone": {"description": "Reels → «Qiziq emas»: reel joriy ro‘yxatdan olindi (faqat shu seansda, serverga yuborilmaydi)."}
 }

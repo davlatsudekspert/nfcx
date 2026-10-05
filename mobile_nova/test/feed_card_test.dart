@@ -19,7 +19,10 @@ import 'package:nfcstore_nova/l10n/gen/app_localizations_en.dart';
 import 'package:nfcstore_nova/l10n/gen/app_localizations_ru.dart';
 import 'package:nfcstore_nova/l10n/gen/app_localizations_uz.dart';
 
+import 'package:video_player_platform_interface/video_player_platform_interface.dart';
+
 import 'helpers.dart';
+import 'support/fake_video_platform.dart';
 import 'package:nfcstore_nova/design/icons/nova_icons.dart';
 
 /// LENTA KARTASIDAGI AMALLAR.
@@ -496,6 +499,131 @@ void main() {
         );
         expect(l.actionFollowing.trim(), isNotEmpty);
       }
+    });
+  });
+
+  // ── INSTAGRAM KABI (vaqt, rasmni kattalashtirish, videoda ikki marta
+  // bosib layk, izohda "ko'proq") ───────────────────────────────────
+  group('INSTAGRAM', () {
+    const photo = 'https://nfcstore.uz/uploads/x.jpg';
+
+    testWidgets('sarlavhada vaqt: "2 soat oldin"', (tester) async {
+      await pump(
+        tester,
+        social: _FeedRepo(),
+        profile: _FollowRepo(),
+        item: Post(
+          id: 77,
+          code: 'TTS075',
+          authorName: 'Tohir',
+          createdAt: DateTime.now()
+              .subtract(const Duration(hours: 2, minutes: 5)),
+        ),
+      );
+      expect(find.byKey(const ValueKey('feed-time')), findsOneWidget);
+      expect(find.text(' · 2 soat oldin'), findsOneWidget);
+    });
+
+    testWidgets('vaqt kelmagan post — vaqt yozuvi yo‘q', (tester) async {
+      await pump(tester, social: _FeedRepo(), profile: _FollowRepo());
+      expect(find.byKey(const ValueKey('feed-time')), findsNothing);
+    });
+
+    testWidgets('rasm bosilsa — to‘liq ekranda kattalashtirib ko‘rish; '
+        'ikki marta bosish esa faqat layk', (tester) async {
+      final social = _FeedRepo();
+      await pump(
+        tester,
+        social: social,
+        profile: _FollowRepo(),
+        item: const Post(
+            id: 77, code: 'TTS075', authorName: 'Tohir', mediaUrls: [photo]),
+      );
+      final pic = find.byKey(const ValueKey('feed-double-like'));
+
+      // Ikki marta — layk, ko'ruvchi OCHILMAYDI.
+      await tester.tap(pic);
+      await tester.pump(const Duration(milliseconds: 60));
+      await tester.tap(pic);
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(social.likeCalls, 1);
+      expect(find.byKey(const ValueKey('image-viewer')), findsNothing);
+
+      // Bir marta — ko'ruvchi (ikkinchi bosish kutilgandan keyin).
+      await tester.tap(pic);
+      await tester.pump(const Duration(milliseconds: 400));
+      await settle(tester, frames: 6);
+      expect(find.byKey(const ValueKey('image-viewer')), findsOneWidget);
+      expect(find.textContaining('POST'), findsNothing,
+          reason: 'rasm bosilganda post ekraniga o‘tilmaydi');
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('videoda ham ikki marta bosish — layk, to‘liq ekran '
+        'ochilmaydi; bir bosish — avvalgidek to‘liq ekran', (tester) async {
+      VideoPlayerPlatform.instance = FakeVideoPlatform();
+      final social = _FeedRepo();
+      await pump(
+        tester,
+        social: social,
+        profile: _FollowRepo(),
+        item: const Post(
+          id: 77,
+          code: 'TTS075',
+          authorName: 'Tohir',
+          mediaUrls: ['https://nfcstore.uz/uploads/a.mp4'],
+          isVideo: true,
+        ),
+      );
+      final pic = find.byKey(const ValueKey('feed-double-like'));
+      expect(pic, findsOneWidget);
+      await tester.tap(pic);
+      await tester.pump(const Duration(milliseconds: 60));
+      await tester.tap(pic);
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(social.likeCalls, 1);
+      expect(find.byKey(const ValueKey('video-fullscreen')), findsNothing,
+          reason: 'ikki marta bosish videoni ochib yubormasin');
+      expect(find.byKey(const ValueKey('image-viewer')), findsNothing);
+
+      // Dangasa rejim: hali ochilmagan video — bir bosish ochadi.
+      await tester.tap(pic);
+      await tester.pump(const Duration(milliseconds: 400));
+      await settle(tester, frames: 6);
+      expect(find.byKey(const ValueKey('video-fullscreen')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('uzun izoh: "ko‘proq" kartaning o‘zida ochadi, matnni '
+        'bosish — postni', (tester) async {
+      final long = List.filled(14, 'Bu juda uzun lenta izohi').join(' ');
+      await pump(
+        tester,
+        social: _FeedRepo(),
+        profile: _FollowRepo(),
+        item: Post(id: 77, code: 'TTS075', authorName: 'Tohir', text: long),
+      );
+      final more = find.byKey(const ValueKey('feed-caption-more'));
+      expect(more, findsOneWidget);
+      expect(find.text('ko‘proq'), findsOneWidget);
+      Text body() => tester.widget<Text>(find.text(long));
+      expect(body().maxLines, 2);
+
+      await tester.tap(more);
+      await tester.pump();
+      expect(more, findsNothing);
+      expect(body().maxLines, isNull, reason: 'to‘liq matn shu kartada');
+      expect(find.textContaining('POST'), findsNothing,
+          reason: '"ko‘proq" postni ochmaydi');
+
+      await tester.tap(find.text(long));
+      await settle(tester, frames: 6);
+      expect(find.textContaining('POST /post/77'), findsOneWidget);
+    });
+
+    testWidgets('qisqa izohda "ko‘proq" yo‘q', (tester) async {
+      await pump(tester, social: _FeedRepo(), profile: _FollowRepo());
+      expect(find.byKey(const ValueKey('feed-caption-more')), findsNothing);
     });
   });
 }

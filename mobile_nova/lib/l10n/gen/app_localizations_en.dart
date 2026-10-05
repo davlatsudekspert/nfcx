@@ -2198,7 +2198,7 @@ class LEn extends L {
       'Orders and payment are arranged with the seller. Favorites are stored on this phone.';
 
   @override
-  String get reelSavedLocal => 'Saved — on this phone';
+  String get reelSavedLocal => 'Saved to your account';
 
   @override
   String get reelUnsaved => 'Removed from saved';
@@ -2952,4 +2952,60 @@ class LEn extends L {
 
   @override
   String get notFoundHome => 'Home';
+
+  @override
+  String get timeAgoJustNow => 'just now';
+
+  @override
+  String timeAgoMinutes(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n minutes ago',
+      one: '1 minute ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String timeAgoHours(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n hours ago',
+      one: '1 hour ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String timeAgoDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n days ago',
+      one: '1 day ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String timeAgoWeeks(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n weeks ago',
+      one: '1 week ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get commentsLoadMore => 'View more comments';
+
+  @override
+  String get reelNotInterested => 'Not interested';
+
+  @override
+  String get reelNotInterestedDone => 'Reel hidden';
 }

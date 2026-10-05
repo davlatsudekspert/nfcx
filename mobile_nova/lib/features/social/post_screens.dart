@@ -23,6 +23,7 @@ import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
 import '../auth/session.dart';
+import '../business/business_providers.dart' show myBusinessesProvider;
 import '../home/home_screen.dart';
 import '../home/widgets/avatar.dart';
 import '../home/widgets/identity_card.dart';
@@ -30,6 +31,7 @@ import '../profile/profile_repository.dart';
 import '../profile/profile_screen.dart';
 import 'comments.dart';
 import 'engagement.dart';
+import 'image_viewer.dart';
 import 'reels_screen.dart';
 import 'story_viewer.dart';
 import 'media_frame.dart';
@@ -37,6 +39,7 @@ import 'content_rules.dart';
 import 'moderation.dart';
 import '../shop/store_policy.dart';
 import 'music_picker.dart';
+import 'time_ago.dart';
 import '../../design/icons/nova_icons.dart';
 
 /// Post tafsiloti uchun so'rov: yozuv kodi + post id.
@@ -210,8 +213,16 @@ class _PostScreenState extends ConsumerState<PostScreen> {
           // PREMIUM: amallar kulrang emas — to'q siyoh ton.
           final ink = Color.lerp(t.text1, t.text2, .35)!;
           // O'chirish shaxsiy `/api/posts/:id` ga boradi — kompaniya
-          // postida u BEGONA shaxsiy postni o'chirardi.
-          final mine = !p.isCompany && myIds.any((e) => e.code == p.code);
+          // postida u BEGONA shaxsiy postni o'chirardi. Shuning uchun
+          // kompaniya posti alohida: egasi — o'sha kompaniya MENIKI
+          // bo'lsa (`myBusinessesProvider`), o'chirish esa
+          // `/api/companies/:id/posts/:postId` ga (`_confirmDelete`).
+          // Ilgari kompaniya egasi o'z postini umuman o'chira olmasdi.
+          final mine = p.isCompany
+              ? (ref.watch(myBusinessesProvider).valueOrNull?.any(
+                      (c) => c.companyId == p.code) ??
+                  false)
+              : myIds.any((e) => e.code == p.code);
           return NovaScroll(
             children: [
               Row(
@@ -240,6 +251,18 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                           Text(
                             p.code,
                             style: AppType.monoStyle(color: t.text3, size: 11),
+                          ),
+                        // Qachon joylangan — lenta kartasidagi bilan bitta
+                        // qoida (`timeAgo`).
+                        if (p.createdAt != null)
+                          Text(
+                            timeAgo(p.createdAt!, l),
+                            key: const ValueKey('post-time'),
+                            style: TextStyle(
+                              fontFamily: AppType.sans,
+                              fontSize: 11,
+                              color: t.text3,
+                            ),
                           ),
                       ],
                     ),
@@ -309,18 +332,28 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                 // ko'rinardi va ikkalasida ham kesilardi.
                 Stack(
                   children: [
-                    AdaptiveMedia(
-                      url: p.mediaUrls.first,
-                      isVideo: p.isVideo,
-                      videoKey: ValueKey(p.id),
-                      autoPlayVideo: false,
-                      loopingVideo: true,
-                      tapToToggleVideo: true,
-                      showMuteVideo: true,
-                      // Bosish — belgilarsiz to'liq ekran (Instagram).
-                      fullscreenVideo: true,
-                      onVideoFullscreen: _onFullscreen,
-                      borderRadius: R.gentle,
+                    // RASM BOSILSA — butun ekranda, ikki barmoq bilan
+                    // kattalashtirib ko'rish (katalogdagi `openImageViewer`
+                    // bilan bitta). Ilgari post rasmini yaqinroq ko'rib
+                    // bo'lmasdi. Videoda bosish avvalgidek — to'liq ekran.
+                    GestureDetector(
+                      key: const ValueKey('post-image'),
+                      onTap: p.isVideo
+                          ? null
+                          : () => openImageViewer(context, p.mediaUrls),
+                      child: AdaptiveMedia(
+                        url: p.mediaUrls.first,
+                        isVideo: p.isVideo,
+                        videoKey: ValueKey(p.id),
+                        autoPlayVideo: false,
+                        loopingVideo: true,
+                        tapToToggleVideo: true,
+                        showMuteVideo: true,
+                        // Bosish — belgilarsiz to'liq ekran (Instagram).
+                        fullscreenVideo: true,
+                        onVideoFullscreen: _onFullscreen,
+                        borderRadius: R.gentle,
+                      ),
                     ),
                     // KO'RISHLAR — Reels'dagi ko'z belgisi + son, media
                     // ustida (amallar qatoriga qo'shilsa 320 dp da
@@ -445,7 +478,11 @@ class _PostScreenState extends ConsumerState<PostScreen> {
       ),
     );
     if (ok != true || !mounted) return;
-    final res = await ref.read(socialRepositoryProvider).deletePost(p.id);
+    // Kompaniya posti — kompaniyaning o'z yo'li; server egalikni
+    // (`owner_user_id`) o'zi tekshiradi.
+    final res = p.isCompany
+        ? await ref.read(businessRepositoryProvider).deletePost(p.code, p.id)
+        : await ref.read(socialRepositoryProvider).deletePost(p.id);
     if (!mounted) return;
     res.when(
       ok: (_) {

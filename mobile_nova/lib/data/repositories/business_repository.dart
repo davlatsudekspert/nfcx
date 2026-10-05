@@ -269,6 +269,14 @@ class BusinessRepository {
     });
   }
 
+  /// Kompaniya postini o'chirish — `DELETE /api/companies/:id/posts/:postId`.
+  ///
+  /// Shaxsiy `/api/posts/:id` EMAS: u yo'l kompaniya postini
+  /// tanimaydi (o'sha raqamli BEGONA shaxsiy postga tegardi). Egalikni
+  /// server tekshiradi va o'chirishdan oldin dalil arxiviga nusxa oladi.
+  Future<Result<void>> deletePost(String companyId, int postId) =>
+      _api.delete<void>('/api/companies/$companyId/posts/$postId');
+
   /// Kompaniya istoryasi yaratish.
   Future<Result<void>> createStory({
     required String companyId,

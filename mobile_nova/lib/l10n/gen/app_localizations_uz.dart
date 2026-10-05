@@ -2200,7 +2200,7 @@ class LUz extends L {
       'Buyurtma va to‘lov sotuvchi bilan kelishiladi. Sevimlilar shu telefonda saqlanadi.';
 
   @override
-  String get reelSavedLocal => 'Saqlandi — shu telefonda';
+  String get reelSavedLocal => 'Saqlandi — hisobingizda';
 
   @override
   String get reelUnsaved => 'Saqlanganlardan olindi';
@@ -2957,4 +2957,36 @@ class LUz extends L {
 
   @override
   String get notFoundHome => 'Bosh sahifa';
+
+  @override
+  String get timeAgoJustNow => 'hozirgina';
+
+  @override
+  String timeAgoMinutes(int n) {
+    return '$n daqiqa oldin';
+  }
+
+  @override
+  String timeAgoHours(int n) {
+    return '$n soat oldin';
+  }
+
+  @override
+  String timeAgoDays(int n) {
+    return '$n kun oldin';
+  }
+
+  @override
+  String timeAgoWeeks(int n) {
+    return '$n hafta oldin';
+  }
+
+  @override
+  String get commentsLoadMore => 'Yana izohlarni ko‘rish';
+
+  @override
+  String get reelNotInterested => 'Qiziq emas';
+
+  @override
+  String get reelNotInterestedDone => 'Reel yashirildi';
 }

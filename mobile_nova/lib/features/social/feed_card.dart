@@ -15,8 +15,10 @@ import '../../routing/routes.dart';
 import '../home/widgets/avatar.dart';
 import '../home/widgets/identity_card.dart';
 import 'engagement.dart';
+import 'image_viewer.dart';
 import 'media_frame.dart';
 import 'music_picker.dart' show MusicChip;
+import 'time_ago.dart';
 import '../../design/icons/nova_icons.dart';
 
 /// LENTA KARTASI — LAYK, IZOH, ULASHISH VA OBUNA.
@@ -139,6 +141,21 @@ class FeedCard extends ConsumerWidget {
                               const SizedBox(width: Gap.sm),
                             const _FeaturedBadge(),
                           ],
+                          // VAQT — "2 soat oldin" (Instagram kabi).
+                          // Usiz bugungi post bilan bir yillik post
+                          // lentada farq qilmasdi.
+                          if (post.createdAt != null)
+                            Text(
+                              '${post.code.isEmpty && !post.featured ? '' : ' · '}'
+                              '${timeAgo(post.createdAt!, l)}',
+                              key: const ValueKey('feed-time'),
+                              maxLines: 1,
+                              style: TextStyle(
+                                fontFamily: AppType.sans,
+                                fontSize: 11,
+                                color: t.text3,
+                              ),
+                            ),
                         ],
                       ),
                     ],
@@ -163,11 +180,19 @@ class FeedCard extends ConsumerWidget {
             // `AspectRatio(4 / 3)` + `cover` turardi: tik rasm usti
             // va osti bilan kesilardi, kvadrat logotip esa cho'zilib
             // hoshiyasi chiqib ketardi.
-            // IKKI MARTA BOSIB LAYK — rasm postida (Instagram kabi,
-            // egasi 2026-10-05). Faqat yoqadi, o'chirmaydi. Video
-            // bosilganda to'liq ekran ochiladi — unga tegilmaydi.
+            // IKKI MARTA BOSIB LAYK — rasmda HAM, videoda HAM
+            // (Instagram kabi, egasi 2026-10-05). Faqat yoqadi,
+            // o'chirmaydi. Videoni BIR bosish avvalgidek to'liq
+            // ekranni ochadi — faqat ikkinchi bosish kutilgani uchun
+            // ~300 ms keyin (Reels'dagi bilan bir xil).
+            //
+            // Rasmni BIR bosish — butun ekranda kattalashtirib ko'rish
+            // (`openImageViewer`, katalogdagi bilan bitta). Ilgari rasm
+            // bosilganda hech narsa bo'lmasdi.
             _DoubleTapLike(
-              enabled: !post.isVideo,
+              onTap: post.isVideo
+                  ? null
+                  : () => openImageViewer(context, post.mediaUrls),
               onLike: () async {
                 if (like.liked) return;
                 reportIfFailed(
@@ -212,16 +237,7 @@ class FeedCard extends ConsumerWidget {
           ],
           if (post.text.isNotEmpty) ...[
             const SizedBox(height: Gap.md),
-            GestureDetector(
-              onTap: openPost,
-              behavior: HitTestBehavior.opaque,
-              child: Text(
-                post.text,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ),
+            _FeedCaption(text: post.text, onOpen: openPost),
           ],
           const SizedBox(height: Gap.sm),
           Divider(height: 1, color: t.border1),
@@ -449,15 +465,97 @@ class _FeaturedBadge extends StatelessWidget {
 }
 
 
+/// Lenta izohi — 2 qatordan uzun bo'lsa ostida "ko'proq".
+///
+/// Ilgari uzun matn 2 qatorda kesilib qolardi va oxirini o'qish uchun
+/// postni OCHISH kerak edi. Endi "ko'proq" bosilsa matn shu kartaning
+/// o'zida to'liq ochiladi (Instagram kabi). Matnning qolgan joyini
+/// bosish avvalgidek postni ochadi. Yozuv Reels'dagi bilan bitta
+/// (`reelCaptionMore`).
+class _FeedCaption extends StatefulWidget {
+  const _FeedCaption({required this.text, required this.onOpen});
+
+  final String text;
+  final VoidCallback onOpen;
+
+  @override
+  State<_FeedCaption> createState() => _FeedCaptionState();
+}
+
+class _FeedCaptionState extends State<_FeedCaption> {
+  bool _open = false;
+
+  @override
+  void didUpdateWidget(_FeedCaption old) {
+    super.didUpdateWidget(old);
+    // Karta boshqa postga qayta ishlatilsa — yana yig'iq holda.
+    if (old.text != widget.text) _open = false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final style = Theme.of(context).textTheme.bodySmall;
+    final body = GestureDetector(
+      onTap: widget.onOpen,
+      behavior: HitTestBehavior.opaque,
+      child: Text(
+        widget.text,
+        maxLines: _open ? null : 2,
+        overflow: _open ? null : TextOverflow.ellipsis,
+        style: style,
+      ),
+    );
+    if (_open) return body;
+    return LayoutBuilder(builder: (context, box) {
+      // Matn 2 qatorga sig'adimi — o'lchab ko'riladi. `TextPainter`
+      // darhol yo'q qilinadi: u o'z ichida mahalliy (C++) paragraf
+      // ushlab turadi va har qurishda yangisi yaratilib tashlab
+      // qo'yilsa xotira sizib chiqardi.
+      final tp = TextPainter(
+        text: TextSpan(text: widget.text, style: style),
+        maxLines: 2,
+        textDirection: Directionality.of(context),
+        textScaler: MediaQuery.textScalerOf(context),
+      )..layout(maxWidth: box.maxWidth);
+      final long = tp.didExceedMaxLines;
+      tp.dispose();
+      if (!long) return body;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          body,
+          GestureDetector(
+            key: const ValueKey('feed-caption-more'),
+            behavior: HitTestBehavior.opaque,
+            onTap: () => setState(() => _open = true),
+            // Barmoq uchun maydon — yozuvning o'zi juda kichik.
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(0, 4, Gap.lg, 4),
+              child: Text(
+                L.of(context).reelCaptionMore,
+                style: style?.copyWith(
+                    color: context.tokens.text3, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+        ],
+      );
+    });
+  }
+}
+
 /// Rasm ustida ikki marta bosish → layk va qisqa yurak animatsiyasi.
 class _DoubleTapLike extends StatefulWidget {
   const _DoubleTapLike({
-    required this.enabled,
+    this.onTap,
     required this.onLike,
     required this.child,
   });
 
-  final bool enabled;
+  /// Bir bosish (rasm — kattalashtirib ko'rish). `null` bo'lsa bir
+  /// bosish ichkaridagi vidjetga qoladi (video — to'liq ekran).
+  final VoidCallback? onTap;
   final VoidCallback onLike;
   final Widget child;
 
@@ -478,9 +576,9 @@ class _DoubleTapLikeState extends State<_DoubleTapLike> {
 
   @override
   Widget build(BuildContext context) {
-    if (!widget.enabled) return widget.child;
     return GestureDetector(
       key: const ValueKey('feed-double-like'),
+      onTap: widget.onTap,
       onDoubleTap: _go,
       child: Stack(
         alignment: Alignment.center,

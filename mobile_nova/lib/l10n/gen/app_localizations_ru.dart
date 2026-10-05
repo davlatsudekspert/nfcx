@@ -2192,7 +2192,7 @@ class LRu extends L {
       'Заказ и оплата — по договорённости с продавцом. Избранное хранится на этом телефоне.';
 
   @override
-  String get reelSavedLocal => 'Сохранено — на этом телефоне';
+  String get reelSavedLocal => 'Сохранено — в вашем аккаунте';
 
   @override
   String get reelUnsaved => 'Удалено из сохранённых';
@@ -2948,4 +2948,64 @@ class LRu extends L {
 
   @override
   String get notFoundHome => 'На главную';
+
+  @override
+  String get timeAgoJustNow => 'только что';
+
+  @override
+  String timeAgoMinutes(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n минут назад',
+      few: '$n минуты назад',
+      one: '$n минуту назад',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String timeAgoHours(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n часов назад',
+      few: '$n часа назад',
+      one: '$n час назад',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String timeAgoDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n дней назад',
+      few: '$n дня назад',
+      one: '$n день назад',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String timeAgoWeeks(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n недель назад',
+      few: '$n недели назад',
+      one: '$n неделю назад',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get commentsLoadMore => 'Показать ещё комментарии';
+
+  @override
+  String get reelNotInterested => 'Не интересно';
+
+  @override
+  String get reelNotInterestedDone => 'Reel скрыт';
 }

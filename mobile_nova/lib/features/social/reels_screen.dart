@@ -147,11 +147,13 @@ final reelsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
   );
 });
 
-/// Saqlangan reel'lar — SHU QURILMADA.
+/// "QIZIQ EMAS" deb yashirilgan reel'lar (`likeKey`) — faqat shu
+/// ilova seansida, serverga hech narsa yuborilmaydi (bunday API yo'q).
 ///
-/// Serverda "saqlash" API'si yo'q. Shuning uchun saqlash telefon
-/// xotirasida turadi va buni odamga aytamiz (snackbar) — soxta
-/// "hisobingizga saqlandi" yo'q.
+/// Ro'yxatning o'zi (`reelsProvider`) o'zgartirilmaydi: u keshlanadi
+/// va qayta yuklanganda yashirilgan reel yana chiqib qolardi. Shuning
+/// uchun ekran ro'yxatni shu to'plam bilan suzib ko'rsatadi.
+final reelsHiddenProvider = StateProvider<Set<String>>((ref) => const {});
 
 
 /// REELS VIDEOSINI OCHISH CHEGARASI (egasi, 2026-10: "bir video
@@ -327,6 +329,11 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
     if (!onReelsTab) _started = -1;
     final l = L.of(context);
     final reels = ref.watch(reelsProvider);
+    final hidden = ref.watch(reelsHiddenProvider);
+    // Ko'rinayotgan reel yashirildi — o'rniga keyingisi keladi va u hali
+    // O'YNAY BOSHLAMAGAN: undan keyingisi oldindan yuklanib tarmoqni
+    // bo'lmasin (`_started` izohiga qarang).
+    ref.listen(reelsHiddenProvider, (_, __) => _started = -1);
     final clean = ref.watch(reelsCleanProvider);
     // Boshqa tabga o'tildi — toza rejim o'z-o'zidan tugaydi, aks holda
     // boshqa bo'limda pastki panel yashirin qolardi.
@@ -365,7 +372,20 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
           onRetry: () => ref.invalidate(reelsProvider),
           onDark: true,
         ),
-        data: (items) {
+        data: (all) {
+          final items = hidden.isEmpty
+              ? all
+              : all.where((p) => !hidden.contains(likeKey(p))).toList();
+          // Bitta reel qoldi — sahifalar endi cheksiz emas
+          // (`itemCount: 1`), varaq esa 0-sahifadan nariroqda turgan
+          // bo'lishi mumkin: boshiga qaytariladi.
+          if (items.length == 1 && _index != 0) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              if (_page.hasClients) _page.jumpToPage(0);
+              setState(() => _index = 0);
+            });
+          }
           if (items.isEmpty) {
             return Stack(
               children: [
@@ -1047,6 +1067,8 @@ class _ReelPageState extends ConsumerState<_ReelPage>
   Future<void> _save() async {
     final l = L.of(context);
     final on = await ref.read(savedReelsProvider.notifier).toggleReel(widget.post);
+    // Saqlash HISOBGA bog'langan (`SyncedSaves`, `/api/saves`) — matn
+    // ham shuni aytadi; ilgari "shu telefonda" deyilardi.
     if (mounted) _snack(on ? l.reelSavedLocal : l.reelUnsaved);
   }
 
@@ -1577,6 +1599,23 @@ class _ReelPageState extends ConsumerState<_ReelPage>
                 );
               },
             ),
+            // QIZIQ EMAS — reel shu ro'yxatdan darhol olinadi (Instagram
+            // kabi). Serverga yuborilmaydi: tavsiya API'si yo'q, shuning
+            // uchun "kamroq ko'rsatamiz" deb va'da ham berilmaydi.
+            if (!ref.read(isMineProvider(p.code)))
+              ListTile(
+                key: const ValueKey('reel-not-interested'),
+                leading: const Icon(Icons.visibility_off_outlined),
+                title: Text(l.reelNotInterested),
+                onTap: () {
+                  Navigator.of(sheet).pop();
+                  // Avval xabar: yashirilgach bu sahifa yo'q qilinadi.
+                  _snack(l.reelNotInterestedDone);
+                  ref
+                      .read(reelsHiddenProvider.notifier)
+                      .update((s) => {...s, likeKey(p)});
+                },
+              ),
             if (!ref.read(isMineProvider(p.code)) && p.code.isNotEmpty)
               ListTile(
                 key: const ValueKey('reel-block'),
@@ -1665,13 +1704,32 @@ Future<void> showReelComments(
   );
 }
 
-class _CommentsSheet extends ConsumerWidget {
+class _CommentsSheet extends ConsumerStatefulWidget {
   const _CommentsSheet({required this.post, this.onTotal});
   final Post post;
   final ValueChanged<int>? onTotal;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_CommentsSheet> createState() => _CommentsSheetState();
+}
+
+class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
+  /// Yozish maydonining fokusi — "Javob berish" bosilganda klaviatura
+  /// ochilsin. Ilgari varaq `CommentsSection` ga fokus bermasdi: javob
+  /// yo'lakchasi chiqardi-yu, odam maydonni yana alohida bosishi kerak
+  /// edi (post ekranida esa ishlardi).
+  final _focus = FocusNode();
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final post = widget.post;
+    final onTotal = widget.onTotal;
     final kind = post.isCompany ? 'company_post' : 'post';
     ref.listen(commentsProvider((kind: kind, id: post.id)), (_, next) {
       final total = next.valueOrNull?.total;
@@ -1693,6 +1751,7 @@ class _CommentsSheet extends ConsumerWidget {
             kind: kind,
             id: post.id,
             ownerCode: post.code,
+            focusNode: _focus,
           ),
         ),
       ),
@@ -1868,6 +1927,10 @@ class _ReelCaption extends StatelessWidget {
         textScaler: MediaQuery.textScalerOf(context),
       )..layout(maxWidth: box.maxWidth);
       final long = tp.didExceedMaxLines;
+      // O'lchov tugadi — mahalliy (C++) paragraf darhol bo'shatiladi.
+      // Ilgari har qurishda (har kadr surishda ham) yangi `TextPainter`
+      // yaratilib, hech qachon `dispose` qilinmasdi — xotira sizardi.
+      tp.dispose();
       if (!long) return Text(text, style: _style);
       return GestureDetector(
         key: const ValueKey('reel-caption'),

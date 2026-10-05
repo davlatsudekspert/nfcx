@@ -12,6 +12,7 @@ import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../design/widgets/nova_scaffold.dart';
 import '../../l10n/gen/app_localizations.dart';
+import '../../design/icons/nova_icons.dart';
 
 /// Shikoyat va bloklash.
 ///
@@ -160,6 +161,7 @@ Future<void> showContentActions(
   bool mine = false,
   String keyPrefix = 'content',
   VoidCallback? onBlocked,
+  VoidCallback? onDelete,
 }) {
   final l = L.of(context);
   return showModalBottomSheet<void>(
@@ -172,6 +174,20 @@ Future<void> showContentActions(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // O'CHIRISH — kontent egasi uchun (masalan, o'z postidagi
+          // BEGONA izoh). Shikoyat va bloklash yonida qoladi: egasi
+          // izohni o'chirib, muallifni bloklashi ham mumkin.
+          if (onDelete != null)
+            ListTile(
+              key: ValueKey('$keyPrefix-delete'),
+              leading: Icon(NovaIcons.delete, color: context.tokens.error),
+              title: Text(l.actionDelete,
+                  style: TextStyle(color: context.tokens.error)),
+              onTap: () {
+                Navigator.of(sheet).pop();
+                onDelete();
+              },
+            ),
           ListTile(
             key: ValueKey('$keyPrefix-report'),
             leading: const Icon(Icons.flag_outlined),

@@ -4230,7 +4230,7 @@ abstract class L {
   /// No description provided for @reelSavedLocal.
   ///
   /// In uz, this message translates to:
-  /// **'Saqlandi — shu telefonda'**
+  /// **'Saqlandi — hisobingizda'**
   String get reelSavedLocal;
 
   /// No description provided for @reelUnsaved.
@@ -5600,6 +5600,54 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Bosh sahifa'**
   String get notFoundHome;
+
+  /// Post/izoh vaqti: bir daqiqadan yangi.
+  ///
+  /// In uz, this message translates to:
+  /// **'hozirgina'**
+  String get timeAgoJustNow;
+
+  /// Post/izoh vaqti: nisbiy («2 soat oldin»).
+  ///
+  /// In uz, this message translates to:
+  /// **'{n} daqiqa oldin'**
+  String timeAgoMinutes(int n);
+
+  /// Post/izoh vaqti: nisbiy («2 soat oldin»).
+  ///
+  /// In uz, this message translates to:
+  /// **'{n} soat oldin'**
+  String timeAgoHours(int n);
+
+  /// Post/izoh vaqti: nisbiy («2 soat oldin»).
+  ///
+  /// In uz, this message translates to:
+  /// **'{n} kun oldin'**
+  String timeAgoDays(int n);
+
+  /// Post/izoh vaqti: nisbiy («2 soat oldin»).
+  ///
+  /// In uz, this message translates to:
+  /// **'{n} hafta oldin'**
+  String timeAgoWeeks(int n);
+
+  /// No description provided for @commentsLoadMore.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yana izohlarni ko‘rish'**
+  String get commentsLoadMore;
+
+  /// No description provided for @reelNotInterested.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qiziq emas'**
+  String get reelNotInterested;
+
+  /// Reels → «Qiziq emas»: reel joriy ro‘yxatdan olindi (faqat shu seansda, serverga yuborilmaydi).
+  ///
+  /// In uz, this message translates to:
+  /// **'Reel yashirildi'**
+  String get reelNotInterestedDone;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {
