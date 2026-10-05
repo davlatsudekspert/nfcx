@@ -644,6 +644,9 @@ class LEn extends L {
   String get reelCaptionMore => 'more';
 
   @override
+  String get reelAdCta => 'View profile';
+
+  @override
   String analyticsSeeAll(int count) {
     return 'See all ($count)';
   }

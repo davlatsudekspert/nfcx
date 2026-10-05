@@ -462,4 +462,31 @@ void main() {
     expect(v.positions[id]! > Duration.zero, isTrue);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('reklama reeli: «Reklama» belgisi va profil tugmasi (1.1.1)',
+      (tester) async {
+    final v = FakeVideoPlatform();
+    await _pump(tester, v, reels: [
+      Post(
+        id: 31,
+        code: 'SHOP01',
+        authorName: 'Do‘kon',
+        authorKind: 'company',
+        mediaUrls: const ['https://nfcstore.uz/uploads/ad.mp4'],
+        isVideo: true,
+        featured: true,
+      ),
+    ]);
+    expect(find.byKey(const ValueKey('reel-sponsored')), findsOneWidget);
+    expect(find.text('Reklama'), findsOneWidget);
+    expect(find.byKey(const ValueKey('reel-ad-cta')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('oddiy reelda reklama belgisi yo‘q', (tester) async {
+    final v = FakeVideoPlatform();
+    await _pump(tester, v);
+    expect(find.byKey(const ValueKey('reel-sponsored')), findsNothing);
+    expect(find.byKey(const ValueKey('reel-ad-cta')), findsNothing);
+  });
 }

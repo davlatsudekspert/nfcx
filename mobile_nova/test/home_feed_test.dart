@@ -128,16 +128,16 @@ void main() {
     });
   });
 
-  group('"Homiylik" belgisi', () {
+  group('"Reklama" belgisi', () {
     testWidgets('ko‘tarilgan postda belgi BOR', (tester) async {
       await pumpHome(tester, posts: [_post(1, featured: true)]);
-      expect(find.text('Homiylik'), findsOneWidget,
+      expect(find.text('Reklama'), findsOneWidget,
           reason: 'to‘langan joylashuv belgisiz qoldi — yashirin reklama');
     });
 
     testWidgets('oddiy postda belgi YO‘Q', (tester) async {
       await pumpHome(tester, posts: [_post(1)]);
-      expect(find.text('Homiylik'), findsNothing);
+      expect(find.text('Reklama'), findsNothing);
     });
 
     testWidgets('faqat ko‘tarilganida belgilanadi', (tester) async {
@@ -146,7 +146,7 @@ void main() {
         _post(2),
         _post(3),
       ]);
-      expect(find.text('Homiylik'), findsOneWidget);
+      expect(find.text('Reklama'), findsOneWidget);
     });
 
     testWidgets('tartib SERVERNIKI — ilova qayta saralamaydi',
@@ -167,7 +167,7 @@ void main() {
   group('`featured` belgisi YO‘QOLMAYDI', () {
     test('copyWith like sonini yangilaganda ham saqlanadi', () {
       // Like bosilganda `copyWith` chaqiriladi. Belgi tushib qolsa,
-      // odam like bosgan zahoti "Homiylik" yozuvi o‘chib ketardi.
+      // odam like bosgan zahoti "Reklama" yozuvi o‘chib ketardi.
       final p = _post(1, featured: true);
       expect(p.copyWith(likes: 5, liked: true).featured, isTrue);
       expect(p.copyWith(comments: 3).featured, isTrue);

@@ -644,6 +644,9 @@ class LUz extends L {
   String get reelCaptionMore => 'ko‘proq';
 
   @override
+  String get reelAdCta => 'Profilni ochish';
+
+  @override
   String analyticsSeeAll(int count) {
     return 'Hammasini ko‘rish ($count)';
   }
@@ -1751,7 +1754,7 @@ class LUz extends L {
       'Kartaga faqat ochiq profil manzili yoziladi. Hech qanday maxfiy kalit yozilmaydi.';
 
   @override
-  String get feedSponsored => 'Homiylik';
+  String get feedSponsored => 'Reklama';
 
   @override
   String get homeFeed => 'Lenta';

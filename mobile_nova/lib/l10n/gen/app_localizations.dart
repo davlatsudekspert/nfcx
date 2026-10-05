@@ -1317,6 +1317,12 @@ abstract class L {
   /// **'ko‘proq'**
   String get reelCaptionMore;
 
+  /// No description provided for @reelAdCta.
+  ///
+  /// In uz, this message translates to:
+  /// **'Profilni ochish'**
+  String get reelAdCta;
+
   /// No description provided for @analyticsSeeAll.
   ///
   /// In uz, this message translates to:
@@ -3396,7 +3402,7 @@ abstract class L {
   /// No description provided for @feedSponsored.
   ///
   /// In uz, this message translates to:
-  /// **'Homiylik'**
+  /// **'Reklama'**
   String get feedSponsored;
 
   /// No description provided for @homeFeed.

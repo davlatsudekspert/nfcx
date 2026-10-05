@@ -640,6 +640,9 @@ class LRu extends L {
   String get reelCaptionMore => 'ещё';
 
   @override
+  String get reelAdCta => 'Открыть профиль';
+
+  @override
   String analyticsSeeAll(int count) {
     return 'Смотреть все ($count)';
   }

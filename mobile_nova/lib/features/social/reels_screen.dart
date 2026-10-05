@@ -1372,6 +1372,60 @@ class _ReelPageState extends ConsumerState<_ReelPage>
                     ],
                   ),
                 ],
+                // REKLAMA (egasi, 2026-10-05). Qonun bo'yicha reklama aniq
+                // belgilanadi; Instagram'dagi "Sponsored" kabi, lekin
+                // pastida bir bosishda profilga olib boruvchi tugma bor.
+                if (p.featured) ...[
+                  const SizedBox(height: Gap.sm),
+                  // Wrap — tor ekranda tugma keyingi qatorga tushadi.
+                  Wrap(
+                    spacing: Gap.sm,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Container(
+                        key: const ValueKey('reel-sponsored'),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: .18),
+                          borderRadius: R.pill,
+                        ),
+                        child: Text(
+                          l.feedSponsored,
+                          style: const TextStyle(
+                            fontFamily: AppType.sans,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      if (p.code.isNotEmpty)
+                        PressableScale(
+                          key: const ValueKey('reel-ad-cta'),
+                          onTap: _openAuthor,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: IdPlate.gold,
+                              borderRadius: R.pill,
+                            ),
+                            child: Text(
+                              '${l.reelAdCta} ›',
+                              style: const TextStyle(
+                                fontFamily: AppType.sans,
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
                 if (p.music != null) ...[
                   const SizedBox(height: Gap.sm),
                   MusicChip(
