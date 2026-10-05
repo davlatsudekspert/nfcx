@@ -1,0 +1,492 @@
+From f1e7e1fe08e79a40094f5b8fc0f901ccc5f2c8f3 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Mon, 5 Oct 2026 01:49:32 +0000
+Subject: [PATCH] Profil musiqasi: YouTube va Yandex Music havolalari o'z
+ ilovasida ochiladi
+
+Profilga mp3 o'rniga YouTube/Yandex havolasi qo'yilsa pleyer uni
+video_player ga berar va "Qo'shiqni ochib bo'lmadi" derdi (iPhone
+va Android). Endi bunday trek xizmatning o'z ilovasida ochiladi,
+nomi video ID emas: YouTube rasmiy sarlavhasi yoki xizmat nomi.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .../lib/features/profile/music_player.dart    | 104 +++++++++++++++---
+ .../lib/features/profile/music_source.dart    |  98 +++++++++++++++++
+ mobile_nova/lib/l10n/arb/app_en.arb           |   1 +
+ mobile_nova/lib/l10n/arb/app_ru.arb           |   1 +
+ mobile_nova/lib/l10n/arb/app_uz.arb           |   6 +
+ .../lib/l10n/gen/app_localizations.dart       |   6 +
+ .../lib/l10n/gen/app_localizations_en.dart    |   5 +
+ .../lib/l10n/gen/app_localizations_ru.dart    |   5 +
+ .../lib/l10n/gen/app_localizations_uz.dart    |   5 +
+ mobile_nova/test/music_source_test.dart       |  49 +++++++++
+ 10 files changed, 264 insertions(+), 16 deletions(-)
+ create mode 100644 mobile_nova/lib/features/profile/music_source.dart
+ create mode 100644 mobile_nova/test/music_source_test.dart
+
+diff --git a/mobile_nova/lib/features/profile/music_player.dart b/mobile_nova/lib/features/profile/music_player.dart
+index d519a9a..cb9b2ae 100644
+--- a/mobile_nova/lib/features/profile/music_player.dart
++++ b/mobile_nova/lib/features/profile/music_player.dart
+@@ -12,6 +12,8 @@ import '../../design/widgets/surfaces.dart';
+ import '../../l10n/gen/app_localizations.dart';
+ import '../../design/theme/typography.dart';
+ import '../social/media_frame.dart' show mediaImage;
++import '../../core/utils/external_link.dart';
++import 'music_source.dart';
+ 
+ /// Profil musiqasi.
+ ///
+@@ -373,6 +375,7 @@ class MusicPlayer extends StateNotifier<MusicState>
+   }
+ 
+   Future<void> toggle(String url) async {
++    if (MusicSource.parse(url).isExternal) return play(url);
+     if (state.url == url && _c != null && !state.failed) {
+       if (state.playing) {
+         await pause();
+@@ -388,6 +391,15 @@ class MusicPlayer extends StateNotifier<MusicState>
+ 
+   Future<void> play(String url) async {
+     await _dispose();
++    // YouTube / Yandex Music havolasi — audio fayl emas, sahifa.
++    // `video_player` uni ocha olmaydi; o'sha xizmatning o'z
++    // ilovasida (yoki brauzerda) ochiladi.
++    final src = MusicSource.parse(url);
++    if (src.isExternal) {
++      state = MusicState(url: url);
++      await openLink(src.url);
++      return;
++    }
+     state = MusicState(url: url, loading: true);
+ 
+     final c = VideoPlayerController.networkUrl(Uri.parse(url));
+@@ -438,7 +450,13 @@ class MusicPlayer extends StateNotifier<MusicState>
+     // (foydalanuvchi o'zi boshlagan ijroning davomi), bo'lmasa
+     // egalik bo'shatiladi.
+     if (v.duration > Duration.zero && v.position >= v.duration) {
+-      if (_queue.length > 1 && !_advancing) {
++      // Tashqi havolaga (YouTube/Yandex) o'z-o'zidan o'tilmaydi —
++      // boshqa ilovani faqat foydalanuvchi bosib ochadi.
++      final nextUrl =
++          _queue.isEmpty ? '' : _queue[(_index + 1) % _queue.length];
++      if (_queue.length > 1 &&
++          !_advancing &&
++          !MusicSource.parse(nextUrl).isExternal) {
+         _advancing = true;
+         next().whenComplete(() => _advancing = false);
+       } else {
+@@ -536,6 +554,10 @@ Future<void> showMusicSheet(
+ /// va ijrochi umuman ko'rsatilmaydi: mavjud bo'lmagan ma'lumot
+ /// to'qib chiqarilmaydi.
+ String musicTitleOf(String url) {
++  // YouTube/Yandex havolasining "fayl nomi" — video ID (lKhxTeC2h9s),
++  // odamga hech narsa demaydi. Xizmat nomi ko'rsatiladi.
++  final src = MusicSource.parse(url);
++  if (src.isExternal) return src.serviceName;
+   var name = Uri.tryParse(url)?.pathSegments.lastOrNull ?? '';
+   if (name.isEmpty) name = url;
+   final dot = name.lastIndexOf('.');
+@@ -588,6 +610,8 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
+     final total = active ? st.duration.inMilliseconds : 0;
+     final pos = active ? st.position : Duration.zero;
+     final many = widget.urls.length > 1;
++    final currentSrc = MusicSource.parse(current);
++    final external = currentSrc.isExternal;
+ 
+     Widget round(IconData icon, String tip, VoidCallback? onTap,
+             {Key? key}) =>
+@@ -642,14 +666,22 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
+               style: AppType.eyebrow(color: t.labelInk),
+             ),
+             const SizedBox(height: 4),
+-            Text(
+-              musicTitleOf(current),
++            _TrackTitle(
++              url: current,
++              fallback: musicTitleOf(current),
+               key: const ValueKey('music-title'),
+-              maxLines: 1,
+-              overflow: TextOverflow.ellipsis,
+               textAlign: TextAlign.center,
+               style: AppType.displayStyle(color: t.text1, size: 26),
+             ),
++            if (external) ...[
++              const SizedBox(height: Gap.sm),
++              Text(l.musicOpensIn(currentSrc.serviceName),
++                  key: const ValueKey('music-external-hint'),
++                  style: Theme.of(context)
++                      .textTheme
++                      .bodySmall!
++                      .copyWith(color: t.text2)),
++            ],
+             if (st.failed && active) ...[
+               const SizedBox(height: Gap.sm),
+               Text(l.musicFailed,
+@@ -659,7 +691,8 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
+                       .copyWith(color: t.error)),
+             ],
+             const SizedBox(height: Gap.md),
+-            // PROGRESS + VAQT
++            // PROGRESS + VAQT — faqat ilova ichida o'ynaydigan faylda.
++            if (!external)
+             SliderTheme(
+               data: SliderThemeData(
+                 trackHeight: 3,
+@@ -680,6 +713,7 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
+                     : null,
+               ),
+             ),
++            if (!external)
+             Padding(
+               padding: const EdgeInsets.symmetric(horizontal: 6),
+               child: Row(
+@@ -720,10 +754,12 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
+                                 strokeWidth: 2, color: t.bg1),
+                           )
+                         : Icon(
+-                            playing
+-                                ? Icons.pause_rounded
+-                                : Icons.play_arrow_rounded,
+-                            size: 34,
++                            external
++                                ? Icons.open_in_new_rounded
++                                : playing
++                                    ? Icons.pause_rounded
++                                    : Icons.play_arrow_rounded,
++                            size: external ? 28 : 34,
+                             color: t.bg1,
+                             semanticLabel:
+                                 playing ? l.musicPause : l.musicPlay,
+@@ -753,15 +789,18 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
+                           width: 22,
+                           child: url == st.url && st.playing
+                               ? _Equalizer(size: 14, color: t.labelInk)
+-                              : Icon(Icons.music_note_rounded,
+-                                  size: 16, color: t.text3),
++                              : Icon(
++                                  MusicSource.parse(url).isExternal
++                                      ? Icons.open_in_new_rounded
++                                      : Icons.music_note_rounded,
++                                  size: 16,
++                                  color: t.text3),
+                         ),
+                         const SizedBox(width: Gap.md),
+                         Expanded(
+-                          child: Text(
+-                            musicTitleOf(url),
+-                            maxLines: 1,
+-                            overflow: TextOverflow.ellipsis,
++                          child: _TrackTitle(
++                            url: url,
++                            fallback: musicTitleOf(url),
+                             style: TextStyle(
+                               fontFamily: AppType.sans,
+                               fontSize: 14,
+@@ -783,3 +822,36 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
+     );
+   }
+ }
++
++
++/// Qo'shiq nomi. YouTube havolasida rasmiy sarlavha so'raladi;
++/// kelguncha (yoki kelmasa) [fallback] — xizmat nomi yoki fayl nomi.
++class _TrackTitle extends StatelessWidget {
++  const _TrackTitle({
++    super.key,
++    required this.url,
++    required this.fallback,
++    required this.style,
++    this.textAlign,
++  });
++
++  final String url;
++  final String fallback;
++  final TextStyle style;
++  final TextAlign? textAlign;
++
++  @override
++  Widget build(BuildContext context) {
++    Text text(String v) => Text(v,
++        maxLines: 1,
++        overflow: TextOverflow.ellipsis,
++        textAlign: textAlign,
++        style: style);
++    final src = MusicSource.parse(url);
++    if (src.kind != MusicKind.youtube) return text(fallback);
++    return FutureBuilder<String?>(
++      future: youtubeTitle(src.id),
++      builder: (_, snap) => text(snap.data ?? fallback),
++    );
++  }
++}
+diff --git a/mobile_nova/lib/features/profile/music_source.dart b/mobile_nova/lib/features/profile/music_source.dart
+new file mode 100644
+index 0000000..0d49597
+--- /dev/null
++++ b/mobile_nova/lib/features/profile/music_source.dart
+@@ -0,0 +1,98 @@
++import 'package:dio/dio.dart';
++import 'package:flutter/foundation.dart';
++
++/// Profil musiqasi havolasining TURI.
++///
++/// Saytdagi `src/lib/music.js` (`parseMusicSource`) bilan bir xil
++/// qoidalar: profil egasi musiqaga mp3 fayl emas, YouTube yoki
++/// Yandex Music havolasini ham qo'yishi mumkin. Bunday havolani
++/// `video_player` ijro eta olmaydi — u sahifa, audio oqim emas —
++/// va pleyer "Qo'shiqni ochib bo'lmadi" der edi (2026-10-05,
++/// PPP777 profili: ikki YouTube + bitta Yandex havola).
++///
++/// Ilovada YouTube/Yandex ichki vidjeti yo'q, shuning uchun bunday
++/// trek o'sha xizmatning o'z ilovasida (yoki brauzerda) ochiladi.
++enum MusicKind { audio, youtube, yandex }
++
++@immutable
++class MusicSource {
++  const MusicSource._(this.kind, this.url, [this.id = '']);
++
++  final MusicKind kind;
++
++  /// Asl havola — tashqi ilovada aynan shu ochiladi.
++  final String url;
++
++  /// YouTube video ID si (faqat `youtube` uchun).
++  final String id;
++
++  bool get isExternal => kind != MusicKind.audio;
++
++  /// Xizmat nomi — sarlavha topilmaguncha shu ko'rsatiladi.
++  String get serviceName => switch (kind) {
++    MusicKind.youtube => 'YouTube',
++    MusicKind.yandex => 'Yandex Music',
++    MusicKind.audio => '',
++  };
++
++  static final _yt = RegExp(
++    r'(?:youtube\.com/(?:watch\?(?:[^ ]*&)?v=|embed/|shorts/|live/|v/)|youtu\.be/)([A-Za-z0-9_-]{11})',
++    caseSensitive: false,
++  );
++  static final _ytMusic = RegExp(r'[?&]v=([A-Za-z0-9_-]{11})');
++  static final _yandex = RegExp(
++    r'music\.yandex\.[a-z.]+',
++    caseSensitive: false,
++  );
++
++  static MusicSource parse(String raw) {
++    final s = raw.trim();
++    final m = _yt.firstMatch(s);
++    if (m != null) return MusicSource._(MusicKind.youtube, s, m.group(1)!);
++    if (s.toLowerCase().contains('music.youtube.com')) {
++      final v = _ytMusic.firstMatch(s);
++      if (v != null) return MusicSource._(MusicKind.youtube, s, v.group(1)!);
++    }
++    if (_yandex.hasMatch(s)) return MusicSource._(MusicKind.yandex, s);
++    return MusicSource._(MusicKind.audio, s);
++  }
++}
++
++/// YouTube sarlavhasi — RASMIY oEmbed metama'lumoti.
++///
++/// Sayt ham xuddi shunday qiladi (`fetchYoutubeTitle`). Faqat nom
++/// so'raladi; audio oqimi olinmaydi. Tarmoq yo'q yoki xato bo'lsa
++/// `null` — chaqiruvchi xizmat nomini ko'rsatib qoladi.
++final Map<String, Future<String?>> _ytTitles = {};
++
++@visibleForTesting
++Future<String?> Function(String id)? youtubeTitleOverride;
++
++Future<String?> youtubeTitle(String id) {
++  if (id.isEmpty) return Future.value(null);
++  final o = youtubeTitleOverride;
++  if (o != null) return o(id);
++  return _ytTitles.putIfAbsent(id, () async {
++    try {
++      final r =
++          await Dio(
++            BaseOptions(
++              connectTimeout: const Duration(seconds: 6),
++              receiveTimeout: const Duration(seconds: 6),
++            ),
++          ).get<Map<String, dynamic>>(
++            'https://www.youtube.com/oembed',
++            queryParameters: {
++              'url': 'https://www.youtube.com/watch?v=$id',
++              'format': 'json',
++            },
++          );
++      final t = r.data?['title'];
++      return t is String && t.trim().isNotEmpty ? t.trim() : null;
++    } catch (_) {
++      // Keyingi ochilishda qayta urinib ko'rilsin.
++      _ytTitles.remove(id);
++      return null;
++    }
++  });
++}
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index 16ea6dd..201a762 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -438,6 +438,7 @@
+   "supportSent": "Your message was sent",
+   "musicTitle": "Music",
+   "musicFailed": "Could not open the track",
++  "musicOpensIn": "Opens in {service}",
+   "rulesTitle": "Read before you publish",
+   "rulesBody": "Published content must not contain: religious propaganda or extremist material, pornographic or sexually explicit images, political propaganda, or any material contrary to the laws of the Republic of Uzbekistan. Content that breaks these rules is removed without warning.",
+   "rulesAccept": "I have read the rules and agree",
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index 20f4eb0..5ec9bde 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -438,6 +438,7 @@
+   "supportSent": "Обращение отправлено",
+   "musicTitle": "Музыка",
+   "musicFailed": "Не удалось открыть трек",
++  "musicOpensIn": "Откроется в {service}",
+   "rulesTitle": "Прочитайте перед публикацией",
+   "rulesBody": "Размещаемый контент не должен содержать: религиозную пропаганду или экстремистские материалы, порнографические изображения или материалы сексуального характера, политическую пропаганду, а также любые материалы, противоречащие законодательству Республики Узбекистан. При нарушении этих правил контент удаляется без предупреждения.",
+   "rulesAccept": "Я прочитал(а) правила и согласен(на)",
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index b13fdd6..31e0957 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -445,6 +445,12 @@
+   "supportSent": "Murojaat yuborildi",
+   "musicTitle": "Musiqa",
+   "musicFailed": "Qo‘shiqni ochib bo‘lmadi",
++  "musicOpensIn": "{service} ilovasida ochiladi",
++  "@musicOpensIn": {
++    "placeholders": {
++      "service": {"type": "String"}
++    }
++  },
+   "rulesTitle": "Joylashdan oldin o‘qing",
+   "rulesBody": "Joylashtirilayotgan kontent quyidagilarni o‘z ichiga olmasligi shart: diniy targ‘ibot yoki ekstremistik mazmun, pornografik yoki jinsiy xarakterdagi tasvirlar, siyosiy targ‘ibot, shuningdek O‘zbekiston Respublikasi qonunchiligiga zid har qanday material. Ushbu qoidalar buzilgan taqdirda kontent ogohlantirishsiz o‘chiriladi.",
+   "rulesAccept": "Men qoidalarni o‘qidim va roziman",
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index 64e9e89..96c3e1d 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -2331,6 +2331,12 @@ abstract class L {
+   /// **'Qo‘shiqni ochib bo‘lmadi'**
+   String get musicFailed;
+ 
++  /// No description provided for @musicOpensIn.
++  ///
++  /// In uz, this message translates to:
++  /// **'{service} ilovasida ochiladi'**
++  String musicOpensIn(String service);
++
+   /// No description provided for @rulesTitle.
+   ///
+   /// In uz, this message translates to:
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index d97e5f3..770b4f4 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -1167,6 +1167,11 @@ class LEn extends L {
+   @override
+   String get musicFailed => 'Could not open the track';
+ 
++  @override
++  String musicOpensIn(String service) {
++    return 'Opens in $service';
++  }
++
+   @override
+   String get rulesTitle => 'Read before you publish';
+ 
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index 3f3b4c9..85b68f0 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -1163,6 +1163,11 @@ class LRu extends L {
+   @override
+   String get musicFailed => 'Не удалось открыть трек';
+ 
++  @override
++  String musicOpensIn(String service) {
++    return 'Откроется в $service';
++  }
++
+   @override
+   String get rulesTitle => 'Прочитайте перед публикацией';
+ 
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index d82ee1d..928cb88 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -1170,6 +1170,11 @@ class LUz extends L {
+   @override
+   String get musicFailed => 'Qo‘shiqni ochib bo‘lmadi';
+ 
++  @override
++  String musicOpensIn(String service) {
++    return '$service ilovasida ochiladi';
++  }
++
+   @override
+   String get rulesTitle => 'Joylashdan oldin o‘qing';
+ 
+diff --git a/mobile_nova/test/music_source_test.dart b/mobile_nova/test/music_source_test.dart
+new file mode 100644
+index 0000000..fae9041
+--- /dev/null
++++ b/mobile_nova/test/music_source_test.dart
+@@ -0,0 +1,49 @@
++import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/features/profile/music_player.dart';
++import 'package:nfcstore_nova/features/profile/music_source.dart';
++
++/// Profil musiqasida YouTube / Yandex Music havolalari.
++///
++/// 2026-10-05: PPP777 profilida ikki YouTube va bitta Yandex havola
++/// bor edi. Pleyer ularni audio fayl deb `video_player` ga berardi,
++/// u esa sahifani ocha olmay "Qo'shiqni ochib bo'lmadi" derdi
++/// (iPhone ham, Android ham). Nomi o'rniga video ID ko'rinardi.
++void main() {
++  test('turi to‘g‘ri aniqlanadi — sayt bilan bir xil qoidalar', () {
++    final yt =
++        MusicSource.parse('https://youtu.be/lKhxTeC2h9s?si=KK_7ZidJqcB7T39Z');
++    expect(yt.kind, MusicKind.youtube);
++    expect(yt.id, 'lKhxTeC2h9s');
++    expect(yt.isExternal, isTrue);
++    expect(
++        MusicSource.parse('https://www.youtube.com/watch?v=48Heq9b3UNU&t=3').id,
++        '48Heq9b3UNU');
++    expect(MusicSource.parse('https://youtube.com/shorts/48Heq9b3UNU').id,
++        '48Heq9b3UNU');
++    expect(
++        MusicSource.parse('https://music.youtube.com/watch?v=48Heq9b3UNU').kind,
++        MusicKind.youtube);
++    expect(
++        MusicSource.parse('https://music.yandex.com/album/1581808/track/'
++                '44093415?utm_medium=copy_link')
++            .kind,
++        MusicKind.yandex);
++    expect(MusicSource.parse('https://music.yandex.ru/album/1581808').kind,
++        MusicKind.yandex);
++
++    final mp3 = MusicSource.parse('https://nfcstore.uz/uploads/a.mp3');
++    expect(mp3.kind, MusicKind.audio);
++    expect(mp3.isExternal, isFalse);
++    expect(MusicSource.parse('/uploads/My%20Track.m4a').kind, MusicKind.audio);
++  });
++
++  test('nomi video ID emas — xizmat nomi', () {
++    expect(musicTitleOf('https://youtu.be/lKhxTeC2h9s?si=x'), 'YouTube');
++    expect(
++        musicTitleOf('https://music.yandex.com/album/1581808/track/44093415'),
++        'Yandex Music');
++    // Oddiy fayl — avvalgidek fayl nomi.
++    expect(musicTitleOf('https://nfcstore.uz/uploads/night_drive.mp3'),
++        'night drive');
++  });
++}
+-- 
+2.43.0
+
