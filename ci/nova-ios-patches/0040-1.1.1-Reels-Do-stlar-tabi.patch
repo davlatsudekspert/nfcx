@@ -1,0 +1,775 @@
+From 7c9caaf04bca8a9ef11c740c2c53440e98fbc8f5 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Mon, 5 Oct 2026 20:01:11 +0000
+Subject: [PATCH] =?UTF-8?q?1.1.1:=20Reels=20tepasida=20"Reels=20|=20Do'stl?=
+ =?UTF-8?q?ar"=20=E2=80=94=20obunalar=20reels'i,=20yuzlar,=20bo'sh=20holat?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .../data/repositories/social_repository.dart  |  14 +
+ .../lib/features/social/reels_screen.dart     | 282 +++++++++++++++---
+ mobile_nova/lib/l10n/arb/app_en.arb           |   6 +-
+ mobile_nova/lib/l10n/arb/app_ru.arb           |   6 +-
+ mobile_nova/lib/l10n/arb/app_uz.arb           |   7 +-
+ .../lib/l10n/gen/app_localizations.dart       |  24 ++
+ .../lib/l10n/gen/app_localizations_en.dart    |  13 +
+ .../lib/l10n/gen/app_localizations_ru.dart    |  13 +
+ .../lib/l10n/gen/app_localizations_uz.dart    |  13 +
+ mobile_nova/test/helpers.dart                 |   4 +
+ mobile_nova/test/reels_friends_tab_test.dart  | 157 ++++++++++
+ 11 files changed, 495 insertions(+), 44 deletions(-)
+ create mode 100644 mobile_nova/test/reels_friends_tab_test.dart
+
+diff --git a/mobile_nova/lib/data/repositories/social_repository.dart b/mobile_nova/lib/data/repositories/social_repository.dart
+index eb504f8..69e5204 100644
+--- a/mobile_nova/lib/data/repositories/social_repository.dart
++++ b/mobile_nova/lib/data/repositories/social_repository.dart
+@@ -374,6 +374,20 @@ class SocialRepository {
+         .toList());
+   }
+ 
++  /// OBUNALAR LENTASI — Reels "Do'stlar" tabi (2026-10-05).
++  ///
++  /// Faqat obuna bo'lingan odamlar (hamma kartalari) va kompaniyalar
++  /// kontenti; reklama yo'q. Reels faqat video/rasmli reel'larni
++  /// ko'rsatgani uchun sahifa kattaroq (30): oddiy rasmli postlar
++  /// suzib tashlanganda ham ro'yxat bo'sh qolmasin.
++  Future<Result<List<Post>>> followingFeed({int page = 1}) async {
++    final res = await _api.get<Map<String, dynamic>>('/api/feed',
++        query: {'scope': 'following', 'page': page, 'limit': 30});
++    return res.map((j) => parseList(j['feed'] ?? j['items'], Post.fromJson)
++        .where((p) => !p.isStory)
++        .toList());
++  }
++
+   /// Lentaning 1-sahifasi — Asosiy va Reels uchun UMUMIY.
+   ///
+   /// Asosiy ekran ilova ochilganda lentani allaqachon oladi; Reels
+diff --git a/mobile_nova/lib/features/social/reels_screen.dart b/mobile_nova/lib/features/social/reels_screen.dart
+index 6523d36..95b60fb 100644
+--- a/mobile_nova/lib/features/social/reels_screen.dart
++++ b/mobile_nova/lib/features/social/reels_screen.dart
+@@ -78,9 +78,11 @@ final reelsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
+   // Video YOKI rasmli reel (rasm 10 soniya turadi — egasi, 2026-09-25).
+   bool playable(Post p) => p.inReels && p.mediaUrls.isNotEmpty;
+ 
+-  // `id` bo'yicha yig'iladi: bir video ikkala manbada ham
+-  // bo'lishi mumkin (o'z kompaniyangga obuna bo'lsang).
+-  final byId = <int, Post>{};
++  // `likeKey` bo'yicha yig'iladi: bir video ikkala manbada ham
++  // bo'lishi mumkin (o'z kompaniyangga obuna bo'lsang). Faqat `id`
++  // EMAS: shaxsiy 7-post va kompaniyaning 7-posti — ikki xil reel,
++  // ilgari ulardan biri jim yo'qolardi.
++  final byId = <String, Post>{};
+ 
+   // FAQAT KOD KUZATILADI. Profil obyekti har sessiya yangilanishida
+   // (`refresh()`) yangi bo'ladi — butun obyekt kuzatilsa, Reels har
+@@ -107,7 +109,7 @@ final reelsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
+     r?.when(
+       ok: (items) {
+         for (final p in items.where(playable)) {
+-          byId[p.id] = p;
++          byId[likeKey(p)] = p;
+         }
+       },
+       err: (_) {},
+@@ -125,9 +127,9 @@ final reelsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
+       if (disposed) return;
+       final cur = ref.state.valueOrNull;
+       if (cur == null) return;
+-      final have = {for (final p in cur) p.id};
++      final have = {for (final p in cur) likeKey(p)};
+       final add = (r.valueOrNull ?? const <Post>[])
+-          .where((p) => playable(p) && !have.contains(p.id))
++          .where((p) => playable(p) && !have.contains(likeKey(p)))
+           .toList();
+       if (add.isNotEmpty) ref.state = AsyncData([...cur, ...add]);
+     });
+@@ -136,7 +138,7 @@ final reelsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
+   return res.when(
+     ok: (items) {
+       for (final p in items.where(playable)) {
+-        byId[p.id] = p;
++        byId[likeKey(p)] = p;
+       }
+       return byId.values.toList();
+     },
+@@ -155,6 +157,37 @@ final reelsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
+ /// uchun ekran ro'yxatni shu to'plam bilan suzib ko'rsatadi.
+ final reelsHiddenProvider = StateProvider<Set<String>>((ref) => const {});
+ 
++/// Reels tepasidagi tab: "Reels" (hamma) yoki "Do'stlar" (obunalar).
++///
++/// `autoDispose` YO'Q: boshqa bo'limga o'tib qaytganda tanlov saqlanadi.
++enum ReelsTab { all, following }
++
++final reelsTabProvider = StateProvider<ReelsTab>((ref) => ReelsTab.all);
++
++/// "DO'STLAR" — faqat obuna bo'lingan odam va kompaniyalarning reels'i
++/// (egasi, 2026-10-05: "Reels | Do'stlar" — Instagram kabi).
++///
++/// Server: `/api/feed?scope=following` (reklamasiz). Kesh qoidasi
++/// `reelsProvider` bilan bir xil: 10 daqiqa, keyin qaytganda yangilanadi.
++final followingReelsProvider =
++    FutureProvider.autoDispose<List<Post>>((ref) async {
++  ref.keepAlive();
++  final loadedAt = DateTime.now();
++  ref.onResume(() {
++    if (DateTime.now().difference(loadedAt) > const Duration(minutes: 10)) {
++      ref.invalidateSelf();
++    }
++  });
++  // Profil almashsa (boshqa hisob) ro'yxat ham boshqa.
++  ref.watch(activeProfileProvider.select((p) => p?.code));
++  final res = await ref.watch(socialRepositoryProvider).followingFeed();
++  final byKey = <String, Post>{};
++  for (final p in res.valueOrNull ?? const <Post>[]) {
++    if (p.inReels && p.mediaUrls.isNotEmpty) byKey[likeKey(p)] = p;
++  }
++  return res.when(ok: (_) => byKey.values.toList(), err: (e) => throw e);
++});
++
+ 
+ /// REELS VIDEOSINI OCHISH CHEGARASI (egasi, 2026-10: "bir video
+ /// yuklanmasa keyingisiga o'tish va retry ishlasin").
+@@ -287,7 +320,7 @@ class ReelsScreen extends ConsumerStatefulWidget {
+ }
+ 
+ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
+-  final _page = PageController();
++  var _page = PageController();
+   int _index = 0;
+ 
+   /// Qaysi sahifa O'YNAY BOSHLADI (initialize + play). Keyingi reel
+@@ -317,6 +350,31 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
+     super.dispose();
+   }
+ 
++  /// Tab almashdi — yangi ro'yxat BOSHIDAN ochiladi. Varaq uchun yangi
++  /// kontroller: eski `PageView` shu kadrda hali yo'q qilinmagan, bitta
++  /// kontroller ikki ro'yxatga ulanib qolmasin. Eskisi kadrdan keyin
++  /// yo'q qilinadi.
++  void _switchTab(ReelsTab tab) {
++    final cur = ref.read(reelsTabProvider);
++    if (cur == tab) {
++      // Tanlangan tab yana bosildi — tepaga (Instagram kabi).
++      if (_page.hasClients && _index != 0) {
++        _page.animateToPage(0,
++            duration: const Duration(milliseconds: 320),
++            curve: Curves.easeOutCubic);
++      }
++      return;
++    }
++    final old = _page;
++    setState(() {
++      _page = PageController();
++      _index = 0;
++      _started = -1;
++    });
++    ref.read(reelsTabProvider.notifier).state = tab;
++    WidgetsBinding.instance.addPostFrameCallback((_) => old.dispose());
++  }
++
+   @override
+   Widget build(BuildContext context) {
+     // Reels — pastki navigatsiyaning 4-tabi (`HomeShell.tabRoutes`).
+@@ -328,7 +386,14 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
+     // ko'rinayotgani yana birinchi bo'lib ochiladi.
+     if (!onReelsTab) _started = -1;
+     final l = L.of(context);
+-    final reels = ref.watch(reelsProvider);
++    final tab = ref.watch(reelsTabProvider);
++    final following = tab == ReelsTab.following;
++    final source = following ? followingReelsProvider : reelsProvider;
++    final reels = ref.watch(source);
++    // "Do'stlar" yonidagi yuzlar — faqat Reels ochiq bo'lganda so'raladi.
++    final friends = onReelsTab
++        ? (ref.watch(followingReelsProvider).valueOrNull ?? const <Post>[])
++        : const <Post>[];
+     final hidden = ref.watch(reelsHiddenProvider);
+     // Ko'rinayotgan reel yashirildi — o'rniga keyingisi keladi va u hali
+     // O'YNAY BOSHLAMAGAN: undan keyingisi oldindan yuklanib tarmoqni
+@@ -369,7 +434,7 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
+         error: (e, __) => StatePanel.fromError(
+           context,
+           asAppError(e),
+-          onRetry: () => ref.invalidate(reelsProvider),
++          onRetry: () => ref.invalidate(source),
+           onDark: true,
+         ),
+         data: (all) {
+@@ -389,22 +454,38 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
+           if (items.isEmpty) {
+             return Stack(
+               children: [
+-                StatePanel(
+-                  icon: Icons.videocam_off_rounded,
+-                  title: l.reelsEmpty,
+-                  message: l.stateEmptyHint,
+-                  actionLabel: l.reelCreate,
+-                  onAction: () => context.push(Routes.reelCreate),
+-                  onDark: true,
++                if (following)
++                  StatePanel(
++                    key: const ValueKey('reels-following-empty'),
++                    icon: Icons.people_alt_rounded,
++                    title: l.reelsFriendsEmpty,
++                    message: l.reelsFriendsEmptyHint,
++                    actionLabel: l.reelsTabAll,
++                    onAction: () => _switchTab(ReelsTab.all),
++                    onDark: true,
++                  )
++                else
++                  StatePanel(
++                    icon: Icons.videocam_off_rounded,
++                    title: l.reelsEmpty,
++                    message: l.stateEmptyHint,
++                    actionLabel: l.reelCreate,
++                    onAction: () => context.push(Routes.reelCreate),
++                    onDark: true,
++                  ),
++                _TopBar(
++                  tab: tab,
++                  friends: friends,
++                  onTab: _switchTab,
++                  onCreate: () => context.push(Routes.reelCreate),
+                 ),
+-                _TopBar(onCreate: () => context.push(Routes.reelCreate)),
+               ],
+             );
+           }
+           return Stack(
+             children: [
+               PageView.builder(
+-                key: const ValueKey('reels-pager'),
++                key: ValueKey(following ? 'reels-pager-friends' : 'reels-pager'),
+                 controller: _page,
+                 scrollDirection: Axis.vertical,
+                 // KEYINGI SAHIFA OLDINDAN QURILADI. Usiz `PageView`
+@@ -448,8 +529,12 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
+               ),
+               _Chrome(
+                 hidden: clean,
+-                child:
+-                    _TopBar(onCreate: () => context.push(Routes.reelCreate)),
++                child: _TopBar(
++                  tab: tab,
++                  friends: friends,
++                  onTab: _switchTab,
++                  onCreate: () => context.push(Routes.reelCreate),
++                ),
+               ),
+             ],
+           );
+@@ -499,37 +584,59 @@ class _Chrome extends StatelessWidget {
+ }
+ 
+ class _TopBar extends StatelessWidget {
+-  const _TopBar({required this.onCreate});
++  const _TopBar({
++    required this.onCreate,
++    required this.tab,
++    required this.onTab,
++    this.friends = const <Post>[],
++  });
+   final VoidCallback onCreate;
++  final ReelsTab tab;
++  final ValueChanged<ReelsTab> onTab;
++
++  /// "Do'stlar" reels'i — yonida ularning 3 tagacha yuzi turadi.
++  final List<Post> friends;
+ 
+   @override
+   Widget build(BuildContext context) {
+     final l = L.of(context);
++    // Bir odamning bir nechta reel'i bo'lsa ham yuzi bir marta.
++    final faces = <Post>[];
++    final seen = <String>{};
++    for (final p in friends) {
++      if (seen.add('${p.authorKind}:${p.code}')) faces.add(p);
++      if (faces.length == 3) break;
++    }
+     return SafeArea(
+       child: Padding(
+         padding: const EdgeInsets.symmetric(horizontal: Gap.lg, vertical: Gap.sm),
+         child: Row(
+           children: [
+-            Column(
+-              mainAxisSize: MainAxisSize.min,
+-              crossAxisAlignment: CrossAxisAlignment.start,
+-              children: [
+-                // Faqat "Reels" (egasi, 2026-10-05): ustidagi kichik
+-                // "NFCSTORE" yozuvi har videoda ortiqcha edi — Asosiy
+-                // ekrandagi kabi olib tashlandi.
+-                Text(
+-                  l.navReels,
+-                  style: AppType.displayStyle(
+-                    color: Colors.white,
+-                    size: 25,
+-                    shadows: const [
+-                      Shadow(color: Colors.black54, blurRadius: 12)
+-                    ],
+-                  ),
+-                ),
+-              ],
++            // "Reels | Do'stlar" (egasi, 2026-10-05) — Instagram kabi:
++            // tanlangani oq va qalin, ikkinchisi xira. Ustidagi kichik
++            // "NFCSTORE" yozuvi avvalgidek yo'q.
++            _TabLabel(
++              key: const ValueKey('reels-tab-all'),
++              text: l.navReels,
++              active: tab == ReelsTab.all,
++              onTap: () => onTab(ReelsTab.all),
++            ),
++            const SizedBox(width: Gap.md),
++            Flexible(
++              child: _TabLabel(
++                key: const ValueKey('reels-tab-friends'),
++                text: l.reelsTabFriends,
++                active: tab == ReelsTab.following,
++                onTap: () => onTab(ReelsTab.following),
++                leading: faces.isEmpty
++                    ? null
++                    : _FaceStack(
++                        key: const ValueKey('reels-friends-faces'),
++                        posts: faces,
++                      ),
++              ),
+             ),
+-            const Spacer(),
++            const SizedBox(width: Gap.sm),
+             NovaIconButton(
+               icon: Icons.add_rounded,
+               tooltip: l.reelCreate,
+@@ -543,6 +650,99 @@ class _TopBar extends StatelessWidget {
+   }
+ }
+ 
++class _TabLabel extends StatelessWidget {
++  const _TabLabel({
++    super.key,
++    required this.text,
++    required this.active,
++    required this.onTap,
++    this.leading,
++  });
++  final String text;
++  final bool active;
++  final VoidCallback onTap;
++  final Widget? leading;
++
++  @override
++  Widget build(BuildContext context) {
++    return Semantics(
++      button: true,
++      selected: active,
++      child: GestureDetector(
++        behavior: HitTestBehavior.opaque,
++        onTap: onTap,
++        child: ConstrainedBox(
++          // Barmoq uchun kamida 44 pt balandlik.
++          constraints: const BoxConstraints(minHeight: 44),
++          child: Row(
++            mainAxisSize: MainAxisSize.min,
++            children: [
++              if (leading != null) ...[leading!, const SizedBox(width: 6)],
++              Flexible(
++                child: AnimatedDefaultTextStyle(
++                  duration: const Duration(milliseconds: 160),
++                  style: AppType.displayStyle(
++                    color: active ? Colors.white : Colors.white60,
++                    size: active ? 24 : 21,
++                    shadows: const [
++                      Shadow(color: Colors.black54, blurRadius: 12)
++                    ],
++                  ),
++                  child: Text(
++                    text,
++                    maxLines: 1,
++                    overflow: TextOverflow.ellipsis,
++                  ),
++                ),
++              ),
++            ],
++          ),
++        ),
++      ),
++    );
++  }
++}
++
++/// Bir-birining ustiga tushgan kichik yuzlar (3 tagacha).
++class _FaceStack extends StatelessWidget {
++  const _FaceStack({super.key, required this.posts});
++  final List<Post> posts;
++
++  static const double _size = 22;
++  static const double _step = 14;
++
++  @override
++  Widget build(BuildContext context) {
++    return SizedBox(
++      width: _size + _step * (posts.length - 1),
++      height: _size,
++      child: Stack(
++        children: [
++          for (var i = 0; i < posts.length; i++)
++            Positioned(
++              left: _step * i,
++              child: Container(
++                decoration: const BoxDecoration(
++                  shape: BoxShape.circle,
++                  color: Colors.black,
++                ),
++                padding: const EdgeInsets.all(1.5),
++                child: Avatar(
++                  url: posts[i].authorAvatar,
++                  initials: posts[i].authorName.isEmpty
++                      ? 'N'
++                      : posts[i].authorName.substring(0, 1).toUpperCase(),
++                  size: _size - 3,
++                  ring: false,
++                ),
++              ),
++            ),
++        ],
++      ),
++    );
++  }
++}
++
+ class _ReelPage extends ConsumerStatefulWidget {
+   const _ReelPage({
+     super.key,
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index 9e4bfab..6a82805 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -1080,5 +1080,9 @@
+   "timeAgoWeeks": "{n, plural, =1{1 week ago} other{{n} weeks ago}}",
+   "commentsLoadMore": "View more comments",
+   "reelNotInterested": "Not interested",
+-  "reelNotInterestedDone": "Reel hidden"
++  "reelNotInterestedDone": "Reel hidden",
++  "reelsTabAll": "Reels",
++  "reelsTabFriends": "Friends",
++  "reelsFriendsEmpty": "No reels from friends yet",
++  "reelsFriendsEmptyHint": "Follow people and businesses — their new reels will show up here."
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index 5f73083..df2e4a7 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -1080,5 +1080,9 @@
+   "timeAgoWeeks": "{n, plural, one{{n} неделю назад} few{{n} недели назад} other{{n} недель назад}}",
+   "commentsLoadMore": "Показать ещё комментарии",
+   "reelNotInterested": "Не интересно",
+-  "reelNotInterestedDone": "Reel скрыт"
++  "reelNotInterestedDone": "Reel скрыт",
++  "reelsTabAll": "Reels",
++  "reelsTabFriends": "Друзья",
++  "reelsFriendsEmpty": "У друзей пока нет Reels",
++  "reelsFriendsEmptyHint": "Подпишитесь на людей и бизнесы — их новые Reels появятся здесь."
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index 3eb5270..1add25a 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -1227,5 +1227,10 @@
+   "commentsLoadMore": "Yana izohlarni ko‘rish",
+   "reelNotInterested": "Qiziq emas",
+   "reelNotInterestedDone": "Reel yashirildi",
+-  "@reelNotInterestedDone": {"description": "Reels → «Qiziq emas»: reel joriy ro‘yxatdan olindi (faqat shu seansda, serverga yuborilmaydi)."}
++  "@reelNotInterestedDone": {"description": "Reels → «Qiziq emas»: reel joriy ro‘yxatdan olindi (faqat shu seansda, serverga yuborilmaydi)."},
++  "reelsTabAll": "Reels",
++  "reelsTabFriends": "Do‘stlar",
++  "reelsFriendsEmpty": "Do‘stlaringizda hali reels yo‘q",
++  "reelsFriendsEmptyHint": "Odamlar va bizneslarga obuna bo‘ling — ularning yangi reels’lari shu yerda chiqadi.",
++  "@reelsTabFriends": {"description": "Reels tepasidagi tab: faqat obuna bo‘lingan odam va bizneslarning reels’i (server scope=following)."}
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index 57a2100..a7df1c1 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -5678,6 +5678,30 @@ abstract class L {
+   /// In uz, this message translates to:
+   /// **'Reel yashirildi'**
+   String get reelNotInterestedDone;
++
++  /// No description provided for @reelsTabAll.
++  ///
++  /// In uz, this message translates to:
++  /// **'Reels'**
++  String get reelsTabAll;
++
++  /// Reels tepasidagi tab: faqat obuna bo‘lingan odam va bizneslarning reels’i (server scope=following).
++  ///
++  /// In uz, this message translates to:
++  /// **'Do‘stlar'**
++  String get reelsTabFriends;
++
++  /// No description provided for @reelsFriendsEmpty.
++  ///
++  /// In uz, this message translates to:
++  /// **'Do‘stlaringizda hali reels yo‘q'**
++  String get reelsFriendsEmpty;
++
++  /// No description provided for @reelsFriendsEmptyHint.
++  ///
++  /// In uz, this message translates to:
++  /// **'Odamlar va bizneslarga obuna bo‘ling — ularning yangi reels’lari shu yerda chiqadi.'**
++  String get reelsFriendsEmptyHint;
+ }
+ 
+ class _LDelegate extends LocalizationsDelegate<L> {
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index 242c2dc..f780c16 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -3047,4 +3047,17 @@ class LEn extends L {
+ 
+   @override
+   String get reelNotInterestedDone => 'Reel hidden';
++
++  @override
++  String get reelsTabAll => 'Reels';
++
++  @override
++  String get reelsTabFriends => 'Friends';
++
++  @override
++  String get reelsFriendsEmpty => 'No reels from friends yet';
++
++  @override
++  String get reelsFriendsEmptyHint =>
++      'Follow people and businesses — their new reels will show up here.';
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index ef4cd13..4d867d5 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -3053,4 +3053,17 @@ class LRu extends L {
+ 
+   @override
+   String get reelNotInterestedDone => 'Reel скрыт';
++
++  @override
++  String get reelsTabAll => 'Reels';
++
++  @override
++  String get reelsTabFriends => 'Друзья';
++
++  @override
++  String get reelsFriendsEmpty => 'У друзей пока нет Reels';
++
++  @override
++  String get reelsFriendsEmptyHint =>
++      'Подпишитесь на людей и бизнесы — их новые Reels появятся здесь.';
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index c7a97e2..55a899d 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -3026,4 +3026,17 @@ class LUz extends L {
+ 
+   @override
+   String get reelNotInterestedDone => 'Reel yashirildi';
++
++  @override
++  String get reelsTabAll => 'Reels';
++
++  @override
++  String get reelsTabFriends => 'Do‘stlar';
++
++  @override
++  String get reelsFriendsEmpty => 'Do‘stlaringizda hali reels yo‘q';
++
++  @override
++  String get reelsFriendsEmptyHint =>
++      'Odamlar va bizneslarga obuna bo‘ling — ularning yangi reels’lari shu yerda chiqadi.';
+ }
+diff --git a/mobile_nova/test/helpers.dart b/mobile_nova/test/helpers.dart
+index f08f870..8da6a76 100644
+--- a/mobile_nova/test/helpers.dart
++++ b/mobile_nova/test/helpers.dart
+@@ -83,6 +83,10 @@ class FakeSocialRepository extends SocialRepository {
+   Future<Result<List<Post>>> postsOf(String code, {int page = 1}) async =>
+       const Ok([]);
+ 
++  @override
++  Future<Result<List<Post>>> followingFeed({int page = 1}) async =>
++      const Ok([]);
++
+   @override
+   Future<Result<List<StoryItem>>> storiesOf(String code) async => const Ok([]);
+ 
+diff --git a/mobile_nova/test/reels_friends_tab_test.dart b/mobile_nova/test/reels_friends_tab_test.dart
+new file mode 100644
+index 0000000..89b9467
+--- /dev/null
++++ b/mobile_nova/test/reels_friends_tab_test.dart
+@@ -0,0 +1,157 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/core/network/api_client.dart';
++import 'package:nfcstore_nova/core/utils/result.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/data/repositories/business_repository.dart';
++import 'package:nfcstore_nova/data/repositories/social_repository.dart';
++import 'package:nfcstore_nova/features/social/reels_screen.dart';
++import 'package:nfcstore_nova/routing/shell.dart';
++import 'package:video_player_platform_interface/video_player_platform_interface.dart';
++
++import 'helpers.dart';
++import 'support/fake_video_platform.dart';
++
++/// REELS "Reels | Do'stlar" (egasi, 2026-10-05).
++///
++/// "Do'stlar" — faqat obuna bo'linganlar (`/api/feed?scope=following`):
++/// tab bosilganda shu ro'yxat ochiladi, yonida ularning yuzlari turadi,
++/// bo'sh bo'lsa tushunarli holat va "Reels"ga qaytish tugmasi.
++class _Social extends FakeSocialRepository {
++  _Social(this.friends);
++  final List<Post> friends;
++  int followingCalls = 0;
++
++  @override
++  Future<Result<List<Post>>> followingFeed({int page = 1}) async {
++    followingCalls++;
++    return Ok(friends);
++  }
++}
++
++class _Biz extends BusinessRepository {
++  _Biz() : super(ApiClient());
++  @override
++  Future<Result<List<Business>>> mine() async => const Ok([]);
++}
++
++Post _reel(int id, String code, String name, {String kind = 'card'}) => Post(
++      id: id,
++      code: code,
++      authorName: name,
++      authorKind: kind,
++      mediaUrls: ['https://nfcstore.uz/uploads/$code$id.mp4'],
++      isVideo: true,
++    );
++
++final _all = [_reel(1, 'ALL001', 'Hamma')];
++
++Future<({ProviderContainer c, _Social social})> _pump(
++    WidgetTester tester, List<Post> friends) async {
++  VideoPlayerPlatform.instance = FakeVideoPlatform();
++  tester.view.physicalSize = const Size(360 * 3, 780 * 3);
++  tester.view.devicePixelRatio = 3;
++  addTearDown(tester.view.reset);
++  final social = _Social(friends);
++  final base = await testOverrides();
++  final c = ProviderContainer(overrides: [
++    ...base.where((o) => !identical(o, base[2])),
++    socialRepositoryProvider.overrideWithValue(social),
++    businessRepositoryProvider.overrideWithValue(_Biz()),
++    reelsProvider.overrideWith((ref) async => _all),
++    activeTabProvider.overrideWith((ref) => 3),
++  ]);
++  addTearDown(c.dispose);
++  await tester.pumpWidget(UncontrolledProviderScope(
++    container: c,
++    child: wrapScreen(const ReelsScreen()),
++  ));
++  await settle(tester, frames: 10);
++  return (c: c, social: social);
++}
++
++void main() {
++  testWidgets('tepada "Reels" va "Do‘stlar", standart — Reels', (tester) async {
++    final r = await _pump(tester, const []);
++    expect(find.byKey(const ValueKey('reels-tab-all')), findsOneWidget);
++    expect(find.byKey(const ValueKey('reels-tab-friends')), findsOneWidget);
++    expect(find.text('Do‘stlar'), findsOneWidget);
++    expect(r.c.read(reelsTabProvider), ReelsTab.all);
++    expect(find.byKey(const ValueKey('reels-pager')), findsOneWidget);
++    expect(tester.takeException(), isNull);
++  });
++
++  testWidgets('"Do‘stlar" bosilsa — faqat obunalar reels’i, qaytsa — hammasi',
++      (tester) async {
++    final friends = [
++      _reel(5, 'FRN001', 'Do‘st Bir'),
++      // Shaxsiy 5-post va kompaniyaning 5-posti — ikki xil reel.
++      _reel(5, 'SHOP01', 'Do‘kon', kind: 'company'),
++    ];
++    final r = await _pump(tester, friends);
++
++    await tester.tap(find.byKey(const ValueKey('reels-tab-friends')));
++    await settle(tester, frames: 10);
++    expect(r.c.read(reelsTabProvider), ReelsTab.following);
++    expect(find.byKey(const ValueKey('reels-pager-friends')), findsOneWidget);
++    expect(find.byKey(const ValueKey('reels-pager')), findsNothing);
++    expect(find.text('Do‘st Bir'), findsWidgets);
++    final list = await r.c.read(followingReelsProvider.future);
++    expect(list.length, 2, reason: 'bir xil id, turli muallif — ikkalasi ham');
++
++    await tester.tap(find.byKey(const ValueKey('reels-tab-all')));
++    await settle(tester, frames: 10);
++    expect(r.c.read(reelsTabProvider), ReelsTab.all);
++    expect(find.byKey(const ValueKey('reels-pager')), findsOneWidget);
++    expect(find.text('Hamma'), findsWidgets);
++    expect(tester.takeException(), isNull);
++  });
++
++  testWidgets('"Do‘stlar" yonida yuzlar — bir odam bir marta, 3 tagacha',
++      (tester) async {
++    await _pump(tester, [
++      _reel(1, 'AAA001', 'Ali'),
++      _reel(2, 'AAA001', 'Ali'),
++      _reel(3, 'BBB002', 'Vali'),
++      _reel(4, 'CCC003', 'Gani'),
++      _reel(5, 'DDD004', 'Soli'),
++    ]);
++    final faces = find.byKey(const ValueKey('reels-friends-faces'));
++    expect(faces, findsOneWidget);
++    expect(
++        find.descendant(of: faces, matching: find.byType(Positioned)),
++        findsNWidgets(3));
++  });
++
++  testWidgets('obunalarda reels yo‘q — tushunarli holat, Reels’ga qaytish',
++      (tester) async {
++    final r = await _pump(tester, const []);
++    expect(find.byKey(const ValueKey('reels-friends-faces')), findsNothing);
++    await tester.tap(find.byKey(const ValueKey('reels-tab-friends')));
++    await settle(tester, frames: 10);
++    expect(find.byKey(const ValueKey('reels-following-empty')), findsOneWidget);
++    expect(find.text('Do‘stlaringizda hali reels yo‘q'), findsOneWidget);
++    // "Do'stlar"da ham tab paneli turadi — chiqib ketish mumkin.
++    expect(find.byKey(const ValueKey('reels-tab-all')), findsOneWidget);
++
++    await tester.tap(find.text('Reels').last);
++    await settle(tester, frames: 10);
++    expect(r.c.read(reelsTabProvider), ReelsTab.all);
++    expect(find.byKey(const ValueKey('reels-pager')), findsOneWidget);
++  });
++
++  testWidgets('tab tanlovi boshqa bo‘limga o‘tib qaytganda saqlanadi',
++      (tester) async {
++    final r = await _pump(tester, [_reel(9, 'FRN009', 'Do‘st')]);
++    await tester.tap(find.byKey(const ValueKey('reels-tab-friends')));
++    await settle(tester, frames: 6);
++    r.c.read(activeTabProvider.notifier).state = 0;
++    await settle(tester, frames: 4);
++    r.c.read(activeTabProvider.notifier).state = 3;
++    await settle(tester, frames: 6);
++    expect(r.c.read(reelsTabProvider), ReelsTab.following);
++    expect(find.byKey(const ValueKey('reels-pager-friends')), findsOneWidget);
++    expect(tester.takeException(), isNull);
++  });
++}
+-- 
+2.43.0
+
