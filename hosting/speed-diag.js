@@ -21,25 +21,33 @@ const STMT_RUNNERS = new Set(['all', 'first', 'run', 'raw']);
 
 /** Bazani o'rab, har bir so'rovning boshlanish/tugash vaqtini yozadi. */
 export function timedDb(db, timing) {
-  const track = (promise) => {
+  const track = (promise, label = '') => {
     const start = Date.now();
     timing.stmts += 1;
-    return Promise.resolve(promise).finally(() => timing.spans.push([start, Date.now()]));
+    return Promise.resolve(promise).finally(() => timing.spans.push([start, Date.now(), label]));
   };
-  const wrapStmt = (stmt) => new Proxy(stmt, {
+  // Vaqtinchalik diagnostika (x-nfc-timing: 2): so'rov turi va jadval nomi —
+  // QIYMATLAR YO'Q (bind argumentlari hech qachon yozilmaydi).
+  const labelOf = (sql) => {
+    const t = String(sql || '').replace(/\s+/g, ' ').trim();
+    const verb = (t.match(/^\w+/) || [''])[0].toUpperCase();
+    const table = (t.match(/(?:table_info\(|\bFROM\s|\bINTO\s|\bUPDATE\s|\bTABLE(?: IF NOT EXISTS)?\s)\s*"?(\w+)/i) || [])[1] || '';
+    return `${verb} ${table}`.trim();
+  };
+  const wrapStmt = (stmt, label) => new Proxy(stmt, {
     get(target, prop) {
       if (prop === '__nfcInner') return target;
-      if (prop === 'bind') return (...args) => wrapStmt(target.bind(...args));
+      if (prop === 'bind') return (...args) => wrapStmt(target.bind(...args), label);
       const v = target[prop];
-      if (STMT_RUNNERS.has(prop) && typeof v === 'function') return (...args) => track(v.apply(target, args));
+      if (STMT_RUNNERS.has(prop) && typeof v === 'function') return (...args) => track(v.apply(target, args), label);
       return typeof v === 'function' ? v.bind(target) : v;
     },
   });
   const unwrap = (s) => (s && s.__nfcInner) || s;
   return new Proxy(db, {
     get(target, prop) {
-      if (prop === 'prepare') return (sql) => wrapStmt(target.prepare(sql));
-      if (prop === 'batch') return (stmts) => track(target.batch((stmts || []).map(unwrap)));
+      if (prop === 'prepare') return (sql) => wrapStmt(target.prepare(sql), labelOf(sql));
+      if (prop === 'batch') return (stmts) => track(target.batch((stmts || []).map(unwrap)), `BATCH(${(stmts || []).length})`);
       if (prop === 'exec') return (...args) => track(target.exec(...args));
       const v = target[prop];
       return typeof v === 'function' ? v.bind(target) : v;
@@ -57,11 +65,12 @@ export function newTiming() {
  */
 export function summarizeTiming(timing, now = Date.now()) {
   const spans = [...timing.spans].sort((a, b) => a[0] - b[0]);
+  const trace = [];
   let waves = 0;
   let dbMs = 0;
   let curStart = -1;
   let curEnd = -1;
-  for (const [s, e] of spans) {
+  for (const [s, e, label] of spans) {
     // `>=`: Workers'da soat faqat I/O da siljiydi — ketma-ket so'rovning
     // boshlanishi oldingisining tugashiga AYNAN teng bo'ladi.
     if (curEnd < 0 || s >= curEnd) {
@@ -72,9 +81,10 @@ export function summarizeTiming(timing, now = Date.now()) {
     } else if (e > curEnd) {
       curEnd = e;
     }
+    trace.push(`${waves}:${label || '?'}`);
   }
   if (curEnd >= 0) dbMs += curEnd - curStart;
-  return { totalMs: Math.max(0, now - timing.t0), dbMs, waves, stmts: timing.stmts };
+  return { totalMs: Math.max(0, now - timing.t0), dbMs, waves, stmts: timing.stmts, trace };
 }
 
 export function serverTimingValue(summary, colo) {
@@ -86,8 +96,9 @@ export function serverTimingValue(summary, colo) {
   return parts.join(', ');
 }
 
-export function withTimingHeaders(res, summary, colo) {
+export function withTimingHeaders(res, summary, colo, detail = false) {
   const out = new Response(res.body, res);
+  if (detail) out.headers.set('x-nfc-sql', summary.trace.join(' | ').slice(0, 3000));
   out.headers.set('server-timing', serverTimingValue(summary, colo));
   out.headers.set('x-nfc-waves', String(summary.waves));
   if (colo) out.headers.set('x-nfc-colo', String(colo).replace(/[^A-Za-z0-9]/g, '').slice(0, 8));

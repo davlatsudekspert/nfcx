@@ -11497,9 +11497,10 @@ export default {
     // TEZLIK DIAGNOSTIKASI (hosting/speed-diag.js) — faqat `x-nfc-timing: 1`
     // sarlavhasi bilan: javobga server/baza vaqti va Cloudflare nuqtasi
     // qo'shiladi. Oddiy so'rovlar bu yerdan o'zgarishsiz o'tadi.
-    const timing = request.headers.get('x-nfc-timing') === '1' && env.DB ? newTiming() : null;
+    const timingMode = request.headers.get('x-nfc-timing');
+    const timing = (timingMode === '1' || timingMode === '2') && env.DB ? newTiming() : null;
     if (timing) env = { ...env, DB: timedDb(env.DB, timing) };
-    const timed = (res) => (timing ? withTimingHeaders(res, summarizeTiming(timing), request.cf?.colo) : res);
+    const timed = (res) => (timing ? withTimingHeaders(res, summarizeTiming(timing), request.cf?.colo, timingMode === '2') : res);
     if (url.pathname === '/tezlik' && ['GET', 'HEAD'].includes(request.method)) {
       return withSecurityHeaders(new Response(TEZLIK_HTML, {
         headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
