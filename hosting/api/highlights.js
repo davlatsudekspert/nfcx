@@ -39,6 +39,14 @@
 //          → 201 { item, highlight }
 //   DELETE /api/highlights/:id/items/:itemId  (egasi) → { ok: true, highlight }
 //
+//   ADMIN (manager+, sabab MAJBURIY) — moderatsiya Aktualni chetlab o'tmasin:
+//   DELETE /api/admin/highlights/:id                 { reason } → { ok } | { ok, alreadyGone }
+//   DELETE /api/admin/highlights/:id/items/:itemId   { reason } → { ok } | { ok, alreadyGone }
+//   Ikkalasi ham avval dalil arxiviga nusxa yozadi (`highlight`,
+//   `highlight_item`), `highlight` shikoyatlarini yopadi va jurnalga yozadi.
+//   Admin istoriyani o'chirganda (moderation.js) undan olingan Aktual
+//   nusxalari ham o'chadi.
+//
 //   Highlight = { id, ownerKind: 'card'|'company', ownerId, title, coverUrl,
 //                 itemCount, items: [Item], createdAt, updatedAt }
 //   Item      = { id, storyId, imageUrl, videoUrl, caption, createdAt, addedAt }
@@ -48,6 +56,7 @@
 
 import { blockedByUser } from './moderation.js';
 import { IMAGE_PATH_RE } from './carousel.js';
+import { archiveStmt } from './content-archive.js';
 
 export const TITLE_MAX = 24;
 export const MAX_HIGHLIGHTS = 50;
@@ -165,13 +174,17 @@ function highlightOut(h, items, H) {
     return d && !Number.isNaN(d.getTime()) ? d.getTime() : null;
   };
   const first = items.find((i) => i.imageUrl);
+  // MUQOVA FAQAT SHU AKTUALDAGI RASM (S2): yozishda tekshiriladi, o'qishda
+  // ham — element olib tashlangan (yoki admin o'chirgan) bo'lsa eski
+  // muqova ko'rinmaydi, birinchi rasmga qaytadi.
+  const coverOk = h.cover_url && items.some((i) => i.imageUrl === h.cover_url);
   return {
     id: Number(h.id),
     ownerKind: String(h.owner_kind),
     ownerId: String(h.owner_id),
     title: h.title,
     // Muqova tanlanmagan bo'lsa — birinchi rasm (ilova bo'sh doira chizmasin).
-    coverUrl: h.cover_url || (first ? first.imageUrl : ''),
+    coverUrl: coverOk ? h.cover_url : (first ? first.imageUrl : ''),
     itemCount: items.length,
     items,
     createdAt: ms(h.created_at),
@@ -207,6 +220,17 @@ async function ownedHighlight(env, user, id) {
   return { h };
 }
 
+/// Muqova endi hech bir elementning rasmi bo'lmasa — tozalanadi.
+function dropStaleCoverStmt(env, hid, nowTs) {
+  return env.DB.prepare(
+    `UPDATE story_highlights SET updated_at = ?,
+            cover_url = CASE WHEN cover_url IN (SELECT image_url FROM story_highlight_items
+                                                 WHERE highlight_id = ? AND image_url IS NOT NULL)
+                             THEN cover_url ELSE NULL END
+      WHERE id = ?`
+  ).bind(nowTs, hid, hid);
+}
+
 /// Istoriya nusxasini Aktualga qo'shish statement'i (tekshiruvlardan keyin).
 function insertItemStmt(env, highlightId, story, nowTs) {
   return env.DB.prepare(
@@ -217,8 +241,54 @@ function insertItemStmt(env, highlightId, story, nowTs) {
     story.caption || null, story.created_at || null, nowTs);
 }
 
+async function adminDelete(request, env, H, hid, itemId) {
+  if (request.method !== 'DELETE') return H.json({ error: 'method_not_allowed' }, 405);
+  const admin = await H.requireAdmin(request, env);
+  if (!admin) return H.json({ error: 'unauthorized' }, 401);
+  if (!H.roleAtLeast(admin, 'manager')) return H.json({ error: 'forbidden' }, 403);
+  const body = await request.json().catch(() => null) || {};
+  // SABAB MAJBURIY — odamning kontenti olib tashlanyapti (featured
+  // to'xtatish bilan bir xil qoida).
+  const reason = String(body.reason ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 200);
+  if (!reason) return H.json({ error: 'reason_required' }, 422);
+  await ensureSchema(env);
+  const adminLabel = `admin#${Number(admin.adminId) || 0}:${String(admin.role || '')}`.slice(0, 64);
+  const by = { admin: adminLabel, reason: reason.slice(0, 40) };
+  const now = H.nowTs();
+  let changed;
+  if (itemId) {
+    const res = await env.DB.batch([
+      archiveStmt(env, 'highlight_item', 'id = ? AND highlight_id = ?', [itemId, hid], by),
+      env.DB.prepare(`DELETE FROM story_highlight_items WHERE id = ? AND highlight_id = ?`).bind(itemId, hid),
+      dropStaleCoverStmt(env, hid, now),
+    ]);
+    changed = Number(res?.[1]?.meta?.changes || 0);
+  } else {
+    // Avval to'plam va uning elementlari arxivga, keyin elementlar, OXIRIDA to'plam.
+    const res = await env.DB.batch([
+      archiveStmt(env, 'highlight', 'id = ?', [hid], by),
+      archiveStmt(env, 'highlight_item', 'highlight_id = ?', [hid], by),
+      env.DB.prepare(`DELETE FROM story_highlight_items WHERE highlight_id = ?`).bind(hid),
+      env.DB.prepare(`DELETE FROM story_highlights WHERE id = ?`).bind(hid),
+    ]);
+    changed = Number(res?.[res.length - 1]?.meta?.changes || 0);
+    await env.DB.prepare(
+      `UPDATE content_reports SET status = 'resolved', resolved_at = ?, resolved_by = ?
+        WHERE target_kind = 'highlight' AND target_id = ? AND status <> 'resolved'`
+    ).bind(now, adminLabel, String(hid)).run().catch(() => {});
+  }
+  await H.logAdminActivity?.(env, {
+    action: itemId ? 'highlight_item_delete' : 'highlight_delete',
+    details: `highlight#${hid}${itemId ? ` item#${itemId}` : ''} ${adminLabel}: ${reason}${changed ? '' : ' (allaqachon yo‘q)'}`,
+    ip: H.reqIp?.(request),
+  })?.catch?.(() => {});
+  return H.json(changed ? { ok: true } : { ok: true, alreadyGone: true });
+}
+
 export async function handle(request, env, url, H) {
   const path = url.pathname;
+  const adm = path.match(/^\/api\/admin\/highlights\/(\d{1,12})(?:\/items\/(\d{1,12}))?$/);
+  if (adm) return adminDelete(request, env, H, Number(adm[1]), adm[2] ? Number(adm[2]) : 0);
   if (path !== '/api/highlights' && !path.startsWith('/api/highlights/')) return null;
   const method = request.method;
   await ensureSchema(env);
@@ -306,6 +376,10 @@ export async function handle(request, env, url, H) {
       if (stories.length !== storyIds.length) return H.json({ error: 'story_not_found' }, 404);
       stories.sort((a, b) => storyIds.indexOf(Number(a.id)) - storyIds.indexOf(Number(b.id)));
     }
+    // Muqova — faqat shu Aktualga qo'shilayotgan istoriyalardan birining
+    // rasmi (istalgan `/uploads/` fayli emas: begona yoki o'chirilgan
+    // kontentni muqova qilib chiqarib bo'lmasin).
+    if (cover && !stories.some((st) => st.image_url === cover)) return H.json({ error: 'bad_cover' }, 422);
     const now = H.nowTs();
     const row = await env.DB.prepare(
       `INSERT INTO story_highlights (owner_kind, owner_id, user_id, title, cover_url, sort, created_at, updated_at)
@@ -337,6 +411,12 @@ export async function handle(request, env, url, H) {
     if ('coverUrl' in body) {
       const cover = body.coverUrl ? String(body.coverUrl).trim() : '';
       if (cover && !IMAGE_PATH_RE.test(cover)) return H.json({ error: 'bad_cover' }, 422);
+      if (cover) {
+        const own = await env.DB.prepare(
+          `SELECT 1 AS x FROM story_highlight_items WHERE highlight_id = ? AND image_url = ? LIMIT 1`
+        ).bind(hid, cover).first();
+        if (!own) return H.json({ error: 'bad_cover' }, 422);
+      }
       set.push('cover_url = ?'); args.push(cover || null);
     }
     if (!set.length) return H.json({ error: 'nothing_to_update' }, 422);
@@ -390,7 +470,7 @@ export async function handle(request, env, url, H) {
     const res = await env.DB.prepare(`DELETE FROM story_highlight_items WHERE id = ? AND highlight_id = ?`)
       .bind(Number(oneItem[2]), hid).run();
     if (!Number(res?.meta?.changes || 0)) return H.json({ error: 'not_found' }, 404);
-    await env.DB.prepare(`UPDATE story_highlights SET updated_at = ? WHERE id = ?`).bind(H.nowTs(), hid).run();
+    await dropStaleCoverStmt(env, hid, H.nowTs()).run();
     return H.json({ ok: true, highlight: await loadOne(env, H, hid) });
   }
 

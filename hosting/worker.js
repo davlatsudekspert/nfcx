@@ -1453,7 +1453,7 @@ async function companyApi(request, env, url) {
         authorName: meta?.display_name || id, authorAvatar: meta?.logo_url || '',
         imageUrl: row.image_url || '', videoUrl: row.video_url || '',
         caption: row.caption || '', createdAt: row.publish_at || row.created_at,
-        media: mediaOut(row.media_json, row.image_url, row.video_url),
+        mediaItems: mediaOut(row.media_json, row.image_url, row.video_url),
         products: [],
         ...(contact ? { contact } : null),
         ...(scheduledFor ? { scheduledFor } : null),
@@ -1561,7 +1561,7 @@ async function companyApi(request, env, url) {
       post: {
         id: Number(row.id), imageUrl: row.image_url || '', videoUrl: row.video_url || '', caption: row.caption || '',
         createdAt: row.publish_at || row.created_at, ...extras,
-        media: mediaOut(row.media_json, row.image_url, row.video_url),
+        mediaItems: mediaOut(row.media_json, row.image_url, row.video_url),
         products,
         ...(scheduledFor ? { scheduledFor } : null),
       },
@@ -10853,7 +10853,7 @@ function featureAllowedD1(feature, access) {
 //
 // Lentada (`/api/feed`) kod allaqachon bor edi, shuning uchun xato
 // faqat profil sahifasidan ochilganda ko'rinardi.
-// 2026-10: `media` (karusel, har doim massiv), `products` (shaxsiy postda
+// 2026-10: `mediaItems` (karusel, har doim massiv), `products` (shaxsiy postda
 // doim bo'sh — mahsulot belgisi faqat biznes postida) va egasiga
 // `scheduledFor` (ms; post hali rejada bo'lsa). `createdAt` — samarali
 // vaqt: rejadagi postda `publish_at`.
@@ -10865,7 +10865,7 @@ function postRowToJson(r, likeCount, liked) {
     imageUrl: r.image_url || '', videoUrl: r.video_url || '', caption: r.caption || '',
     createdAt: d && !Number.isNaN(d.getTime()) ? d.getTime() : Date.now(),
     likeCount: Number(likeCount || 0), liked: !!liked,
-    media: mediaOut(r.media_json, r.image_url, r.video_url),
+    mediaItems: mediaOut(r.media_json, r.image_url, r.video_url),
     products: [],
     ...(scheduledFor ? { scheduledFor } : null),
   };
@@ -11280,10 +11280,11 @@ async function shapeFeedRows(env, rows, viewerId) {
       ...(String(r.kind) === 'post'
         ? extraByKey.get(`${target === 'company_post' ? 'company_post' : 'post'}:${Number(r.id)}`)
         : null),
-      // 2026-10: karusel (`media` — har doim massiv), mahsulot belgilari
+      // 2026-10: karusel (`mediaItems` — har doim massiv; `media` EMAS — pastga
+      // qarang), mahsulot belgilari
       // va biznes kontakti. Faqat QO'SHILADI — eski maydonlar o'zgarmaydi.
       ...(String(r.kind) === 'post' ? {
-        media: mediaOut(r.media_json, r.image_url, r.video_url),
+        mediaItems: mediaOut(r.media_json, r.image_url, r.video_url),
         products: target === 'company_post' ? (productTags.get(Number(r.id)) || []) : [],
         ...(target === 'company_post' ? {
           contact: companyContactOut({

@@ -50,6 +50,8 @@ bilan ADD COLUMN orqali qo'shiladi, `company.catalogSchema` = 2.
 → `{items:[{kind, ref, createdAt, collectionId, post?}], hasMore?}` (post turlarida
 `post` — lenta shaklidagi karta yoki ko'rinmasa `null`, sahifada 30 tagacha),
 `POST /api/saves {kind, ref, saved, collectionId?}` → `{kind, ref, saved, collectionId}`
+(`user_saves.collection_id` qo'shilmagan bo'lsa saqlash eski shaklda ishlaydi,
+to'plam amallari 503 `collections_unavailable`)
 (`user_saves`, 1000 tagacha; post turlarida `ref` — post raqami).
 To'plamlar (`save_collections`, 100 tagacha, nom ≤ 40): `GET|POST /api/saves/collections`,
 `PATCH|DELETE /api/saves/collections/:id` (o'chirish saqlanganlarni O'CHIRMAYDI —
@@ -60,7 +62,10 @@ IJTIMOIY IMKONIYATLAR (2026-10) — to'liq kontrakt har modul boshida:
   `POST /api/companies/:id/posts` ixtiyoriy `media:[{url, type:'image'|'video'}]`
   (1–10; 2+ bo'lsa faqat rasm; manzil — faqat `/uploads/<fayl>.<kengaytma>`).
   Ustun `posts.media_json` / `company_posts.media_json`; `imageUrl` = birinchi
-  rasm. Postni qaytaradigan HAR javobda `media` (har doim massiv).
+  rasm. Postni qaytaradigan HAR javobda `mediaItems` (har doim massiv).
+  JAVOBDA `media` KALITI YO'Q (ataylab): eski ilova `Post.fromJson` `media`
+  dagi har `url` ni rasm deb oladi — video postda MP4 rasm bo'lib yuklanardi.
+  So'rov maydoni (`media`) o'zgarmagan.
 - MAHSULOT BELGISI (`product-tags.js`): biznes posti `productIds` (≤ 5, faqat
   o'sha kompaniya katalogidan) → `post_products`; javobda `products[]`
   (shaxsiy postda doim `[]`).
@@ -68,7 +73,11 @@ IJTIMOIY IMKONIYATLAR (2026-10) — to'liq kontrakt har modul boshida:
   biznes postida `contact:{phone, telegram, mapUrl}` (faqat ochiq maydonlar).
 - AKTUAL (`highlights.js`): `/api/highlights` — `story_highlights`,
   `story_highlight_items` (istoriyaning NUSXASI; fayl tozalovchilari bu
-  fayllarni o'chirmaydi).
+  fayllarni o'chirmaydi). Muqova faqat shu Aktualdagi element rasmi.
+  Moderatsiya: `DELETE /api/admin/highlights/:id[/items/:itemId] {reason}`
+  (manager+, dalil arxiviga `highlight`/`highlight_item`); admin istoriyani
+  o'chirsa (`DELETE /api/admin/content/story|company_story/:id`) undan
+  olingan Aktual nusxalari ham o'chadi; shikoyat turi `highlight`.
 - ISTORIYA JAVOBI (`story-replies.js`): `POST /api/stories/:kind/:id/reply`,
   `GET /api/stories/:kind/:id/viewers` (faqat egasi, manba `story_views`),
   `GET /api/my/story-replies`; egasiga istoriya ro'yxatida `replyCount`.

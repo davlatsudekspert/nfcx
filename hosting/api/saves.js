@@ -49,38 +49,60 @@ const POSTS_PAGE_MAX = 30;
 const REF_RE = /^[A-Za-z0-9'_:/.-]{1,120}$/;
 const POST_REF_RE = /^[1-9][0-9]{0,11}$/;
 
-// Xotiradagi belgi bazaga bog'lanadi: sinovda har `makeEnv` yangi baza.
-const readyByDb = new WeakMap();
+// Jadvallar bir marta (isolate) yaratiladi — boshqa modullar bilan bir xil
+// naqsh. `collection_id` ustuni esa ALOHIDA va faqat PRAGMA bilan
+// TASDIQLANGANDA "tayyor" deb eslab qolinadi (worker.js `ensureColumnD1`
+// kabi): ALTER jim yiqilsa (tarmoq, qulf), keyingi so'rov yana urinadi.
+// Ustun yo'q paytda reel/listing/post saqlash ESKI shaklda ishlayveradi
+// (`collectionId: null`), faqat to'plam amallari 503 `collections_unavailable`.
+let tablesReady = null;
+let columnReady = false;
+let columnJob = null;
 export async function ensureTable(env) {
-  if (!readyByDb.has(env.DB)) {
-    const job = (async () => {
-      await env.DB.batch([
-        env.DB.prepare(`CREATE TABLE IF NOT EXISTS user_saves (
-          user_id INTEGER NOT NULL,
-          kind TEXT NOT NULL,
-          ref TEXT NOT NULL,
-          created_at TEXT NOT NULL,
-          PRIMARY KEY (user_id, kind, ref)
-        )`),
-        env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_user_saves_recent ON user_saves(user_id, kind, created_at DESC)`),
-        env.DB.prepare(`CREATE TABLE IF NOT EXISTS save_collections (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id INTEGER NOT NULL,
-          name TEXT NOT NULL,
-          created_at TEXT NOT NULL,
-          updated_at TEXT
-        )`),
-        env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_save_collections_user ON save_collections(user_id, id)`),
-      ]);
+  if (!tablesReady) {
+    tablesReady = env.DB.batch([
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS user_saves (
+        user_id INTEGER NOT NULL,
+        kind TEXT NOT NULL,
+        ref TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        PRIMARY KEY (user_id, kind, ref)
+      )`),
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_user_saves_recent ON user_saves(user_id, kind, created_at DESC)`),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS save_collections (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT
+      )`),
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_save_collections_user ON save_collections(user_id, id)`),
+    ]).catch((e) => { tablesReady = null; throw e; });
+  }
+  await tablesReady;
+  return ensureCollectionColumn(env);
+}
+
+/// `user_saves.collection_id` bormi (kerak bo'lsa qo'shib). `true` faqat
+/// PRAGMA tasdiqlaganda va shundagina keshlanadi.
+export async function ensureCollectionColumn(env) {
+  if (columnReady) return true;
+  if (!columnJob) {
+    columnJob = (async () => {
       // Ustun bor bo'lsa ALTER xato beradi — jim o'tkaziladi. Batch'dan
       // TASHQARIDA: batch atomik, bitta xato jadvallarni ham yiqitardi.
       await env.DB.prepare(`ALTER TABLE user_saves ADD COLUMN collection_id INTEGER`).run().catch(() => {});
-    })();
-    readyByDb.set(env.DB, job);
-    job.catch(() => readyByDb.delete(env.DB));
+      const info = await env.DB.prepare(`PRAGMA table_info(user_saves)`).all().catch(() => null);
+      const has = (info?.results || []).some((c) => String(c?.name || '') === 'collection_id');
+      if (has) columnReady = true;
+      return has;
+    })().finally(() => { columnJob = null; });
   }
-  await readyByDb.get(env.DB);
+  return columnJob;
 }
+
+/// Faqat sinov uchun: modul keshini tozalash.
+export function resetSavesSchemaForTest() { tablesReady = null; columnReady = false; columnJob = null; }
 
 function cleanName(v) {
   const t = String(v ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -128,8 +150,11 @@ export async function handle(request, env, url, H) {
   if (path !== '/api/saves' && !path.startsWith('/api/saves/')) return null;
   const user = await H.getCurrentUser(request, env);
   if (!user) return H.json({ error: 'unauthorized' }, 401);
-  await ensureTable(env);
+  // `cols` — to'plam ustuni bor-yo'qligi (yuqoridagi izoh): yo'q bo'lsa
+  // saqlash eski shaklda davom etadi, to'plam amallari esa 503.
+  const cols = await ensureTable(env);
   const method = request.method;
+  const noCollections = () => H.json({ error: 'collections_unavailable' }, 503);
   const readJson = async () => {
     const b = await request.json().catch(() => null);
     return b && typeof b === 'object' && !Array.isArray(b) ? b : {};
@@ -137,6 +162,7 @@ export async function handle(request, env, url, H) {
 
   // ── TO'PLAMLAR ──────────────────────────────────────────────────
   if (path === '/api/saves/collections') {
+    if (!cols) return noCollections();
     if (method === 'GET') {
       const [rows, un] = await Promise.all([
         env.DB.prepare(
@@ -167,6 +193,7 @@ export async function handle(request, env, url, H) {
 
   const colMatch = path.match(/^\/api\/saves\/collections\/(\d{1,12})$/);
   if (colMatch) {
+    if (!cols) return noCollections();
     const id = Number(colMatch[1]);
     const own = await env.DB.prepare(`SELECT id FROM save_collections WHERE id = ? AND user_id = ?`).bind(id, user.id).first();
     // Begona to'plam "yo'q" — borligini ham oshkor qilmaymiz.
@@ -193,6 +220,7 @@ export async function handle(request, env, url, H) {
   // ── TO'PLAMGA KO'CHIRISH ────────────────────────────────────────
   if (path === '/api/saves/move') {
     if (method !== 'POST') return H.json({ error: 'method_not_allowed' }, 405);
+    if (!cols) return noCollections();
     const body = await readJson();
     const kind = String(body.kind || '');
     const ref = String(body.ref || '').trim();
@@ -218,6 +246,7 @@ export async function handle(request, env, url, H) {
     const where = ['user_id = ?', 'kind = ?'];
     const args = [user.id, kind];
     const colParam = url.searchParams.get('collectionId');
+    if (colParam && !cols) return noCollections();
     if (colParam === 'none') where.push('collection_id IS NULL');
     else if (colParam) {
       const cid = Number(colParam);
@@ -234,7 +263,7 @@ export async function handle(request, env, url, H) {
       ? Math.min(POSTS_PAGE_MAX, Math.max(1, Math.floor(Number(url.searchParams.get('limit')) || POSTS_PAGE_MAX)))
       : MAX_PER_KIND;
     const rows = await env.DB.prepare(
-      `SELECT kind, ref, created_at, collection_id FROM user_saves WHERE ${where.join(' AND ')}
+      `SELECT kind, ref, created_at${cols ? ', collection_id' : ''} FROM user_saves WHERE ${where.join(' AND ')}
         ORDER BY created_at DESC LIMIT ? OFFSET ?`
     ).bind(...args, isPost ? limit + 1 : limit, isPost ? (page - 1) * limit : 0).all();
     const all = rows.results || [];
@@ -265,7 +294,9 @@ export async function handle(request, env, url, H) {
       .bind(user.id, kind, ref).run();
     return H.json({ kind, ref, saved: false });
   }
-  const col = await resolveCollection(env, user.id, body.collectionId);
+  // Ustun yo'q: to'plamsiz (eski) saqlash; to'plam so'ralgan bo'lsa — 503.
+  if (!cols && body.collectionId !== undefined && body.collectionId !== null) return noCollections();
+  const col = cols ? await resolveCollection(env, user.id, body.collectionId) : { ok: true, id: undefined };
   if (!col.ok) return H.json({ error: col.error }, col.status);
   const cnt = await env.DB.prepare(`SELECT COUNT(*) AS n FROM user_saves WHERE user_id = ? AND kind = ?`)
     .bind(user.id, kind).first();
@@ -273,6 +304,11 @@ export async function handle(request, env, url, H) {
     const exists = await env.DB.prepare(`SELECT 1 AS x FROM user_saves WHERE user_id = ? AND kind = ? AND ref = ?`)
       .bind(user.id, kind, ref).first();
     if (!exists) return H.json({ error: 'limit_reached', limit: MAX_PER_KIND }, 409);
+  }
+  if (!cols) {
+    await env.DB.prepare(`INSERT OR IGNORE INTO user_saves (user_id, kind, ref, created_at) VALUES (?,?,?,?)`)
+      .bind(user.id, kind, ref, new Date().toISOString()).run();
+    return H.json({ kind, ref, saved: true, collectionId: null });
   }
   await env.DB.prepare(`INSERT OR IGNORE INTO user_saves (user_id, kind, ref, created_at, collection_id) VALUES (?,?,?,?,?)`)
     .bind(user.id, kind, ref, new Date().toISOString(), col.id ?? null).run();

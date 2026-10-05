@@ -8,10 +8,68 @@
 // tekshiruvlar; hisob o'chirilganda to'plamlar ham ketadi.
 //
 //   node scripts/test-saves-collections.mjs
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { setupSocial, cookie, makeChecker } from './lib/social-fixture.mjs';
 import { purgeStmts } from '../hosting/api/account-purge.js';
 
+// ── M1: `collection_id` ustuni QO'SHILMASA (ALTER yiqilsa) ─────────
+// Alohida jarayonda (modul keshlari toza): ALTER har safar yiqiladi.
+// Reel/listing/post saqlash ESKI shaklda ishlashi, faqat to'plam amallari
+// 503 berishi, muvaffaqiyat keshlanmasligi (ALTER keyin o'tsa — ishlaydi).
+if (process.argv[2] === 'degraded') {
+  const { makeEnv, seedBasic, req } = await import('./lib/d1-harness.mjs');
+  const worker = (await import('../hosting/worker.js')).default;
+  const { env } = makeEnv();
+  let blockAlter = true;
+  const prep = env.DB.prepare;
+  env.DB.prepare = (sql) => {
+    const st = prep(sql);
+    if (blockAlter && /ADD COLUMN collection_id/.test(sql)) {
+      st.run = async () => { throw new Error('D1_ERROR: database is locked'); };
+    }
+    return st;
+  };
+  await seedBasic(env);
+  const call = async (pathname, init = {}) => {
+    const res = await worker.fetch(req(pathname, init), env);
+    return { status: res.status, body: await res.json().catch(() => null) };
+  };
+  const out = {};
+  out.reelSave = await call('/api/saves', { method: 'POST', cookie: cookie.user, json: { kind: 'reel', ref: 'p:5' } });
+  out.listingSave = await call('/api/saves', { method: 'POST', cookie: cookie.user, json: { kind: 'listing', ref: 'ACME/i1' } });
+  out.postSave = await call('/api/saves', { method: 'POST', cookie: cookie.user, json: { kind: 'post', ref: '77' } });
+  out.reelList = await call('/api/saves?kind=reel', { cookie: cookie.user });
+  out.postList = await call('/api/saves?kind=post', { cookie: cookie.user });
+  out.unsave = await call('/api/saves', { method: 'POST', cookie: cookie.user, json: { kind: 'reel', ref: 'p:5', saved: false } });
+  out.collections = await call('/api/saves/collections', { cookie: cookie.user });
+  out.createCol = await call('/api/saves/collections', { method: 'POST', cookie: cookie.user, json: { name: 'A' } });
+  out.move = await call('/api/saves/move', { method: 'POST', cookie: cookie.user, json: { kind: 'post', ref: '77', collectionId: null } });
+  out.saveInto = await call('/api/saves', { method: 'POST', cookie: cookie.user, json: { kind: 'post', ref: '78', collectionId: 1 } });
+  out.feed = await call('/api/feed');
+  blockAlter = false;   // ALTER endi o'tadi — muvaffaqiyatsizlik keshlanmagan bo'lishi kerak
+  out.collectionsAfter = await call('/api/saves/collections', { cookie: cookie.user });
+  process.stdout.write(`\n@@${JSON.stringify(out)}`);
+  process.exit(0);
+}
+
 const { check, checkTrue, done } = makeChecker();
+
+{
+  const self = fileURLToPath(import.meta.url);
+  const raw = execFileSync(process.execPath, [self, 'degraded'], { stdio: ['ignore', 'pipe', 'ignore'] }).toString();
+  const d = JSON.parse(raw.slice(raw.lastIndexOf('@@') + 2));
+  check('M1) ustunsiz: reel saqlash ishlaydi', [d.reelSave.status, d.reelSave.body], [200, { kind: 'reel', ref: 'p:5', saved: true, collectionId: null }]);
+  check('M1) ustunsiz: listing va post saqlash', [d.listingSave.status, d.postSave.status], [200, 200]);
+  check('M1) ustunsiz: ro‘yxat (collectionId null)', [d.reelList.status, d.reelList.body.items.map((i) => [i.ref, i.collectionId])], [200, [['p:5', null]]]);
+  check('M1) ustunsiz: post ro‘yxati', [d.postList.status, d.postList.body.items.map((i) => i.ref)], [200, ['77']]);
+  check('M1) ustunsiz: olib tashlash', [d.unsave.status, d.unsave.body.saved], [200, false]);
+  check('M1) ustunsiz: to‘plam amallari 503 collections_unavailable',
+    [d.collections.status, d.createCol.status, d.move.status, d.saveInto.status, d.collections.body.error],
+    [503, 503, 503, 503, 'collections_unavailable']);
+  check('M1) ustunsiz: lenta ishlaydi', d.feed.status, 200);
+  check('M1) ALTER keyin o‘tsa — to‘plamlar ishlaydi (muvaffaqiyatsizlik keshlanmagan)', d.collectionsAfter.status, 200);
+}
 const { sqlite, call } = await setupSocial();
 
 const save = (json, ck = cookie.user) => call('/api/saves', { method: 'POST', cookie: ck, json });
@@ -44,7 +102,7 @@ for (const [label, json, err] of [
 }
 r = await call('/api/saves?kind=post', { cookie: cookie.user });
 const sp = r.body.items[0];
-check('2) GET post: ref va post kartasi', [sp.ref, sp.post?.id, sp.post?.authorKind, sp.post?.media?.length], [String(p1), p1, 'card', 2]);
+check('2) GET post: ref va post kartasi', [sp.ref, sp.post?.id, sp.post?.authorKind, sp.post?.mediaItems?.length], [String(p1), p1, 'card', 2]);
 checkTrue('2) post kartasi lenta shaklida', ['kind', 'commentKind', 'likeCount', 'liked', 'commentCount', 'viewCount', 'imageUrl', 'name'].every((k) => k in sp.post));
 check('2) hasMore', r.body.hasMore, false);
 r = await call('/api/saves?kind=company_post', { cookie: cookie.user });

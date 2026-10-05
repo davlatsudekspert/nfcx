@@ -12,9 +12,14 @@
 //     qatorlarda NULL.
 //   * `image_url` ga HAR DOIM karuselning BIRINCHI rasmi yoziladi: eski
 //     ilova postni bitta rasmli post sifatida ko'rsataveradi.
-//   * Javoblarga faqat yangi `media` maydoni QO'SHILADI. U har doim bor:
-//     karusel bo'lmasa ham `image_url`/`video_url` dan yasaladi — yangi
-//     ilova faqat `media` ni o'qisa yetadi.
+//   * Javoblarga faqat yangi `mediaItems` maydoni QO'SHILADI. U har doim
+//     bor: karusel bo'lmasa ham `image_url`/`video_url` dan yasaladi —
+//     yangi ilova faqat `mediaItems` ni o'qisa yetadi.
+//   * JAVOBDA `media` KALITI ATAYLAB YO'Q. O'rnatilgan eski ilova
+//     (`Post.fromJson`, mobile/lib/data/models.dart) `media` dagi HAR
+//     elementning `url` ini RASM deb oladi: video postda u butun MP4 ni
+//     rasm sifatida yuklab, panjara va lentani buzardi. So'rovdagi `media`
+//     (yaratishda) qoladi — eski ilova uni yubormaydi.
 //
 // ═══ QOIDALAR ═══
 //
@@ -68,7 +73,7 @@ export function parseMediaInput(body) {
   return { ok: true, provided: true, imageUrl: items[0].url, videoUrl: null, mediaJson: JSON.stringify(items) };
 }
 
-/// Javobdagi `media` — har doim massiv. Karusel bo'lsa `media_json`
+/// Javobdagi `mediaItems` — har doim massiv. Karusel bo'lsa `media_json`
 /// dan, aks holda `image_url`/`video_url` dan (video bo'lsa rasm uning
 /// muqovasi — `thumbUrl`).
 export function mediaOut(mediaJson, imageUrl, videoUrl) {

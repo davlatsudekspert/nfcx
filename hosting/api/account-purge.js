@@ -245,6 +245,12 @@ const jsonVals = (tb, colName, where) =>
   `SELECT j.value AS url FROM ${tb} x, json_each(CASE WHEN json_valid(x.${colName}) THEN x.${colName} ELSE json_array(x.${colName}) END) j
     WHERE j.type = 'text' AND ${where}`;
 
+/// Dalil arxivi karuselni saqlay oladimi — uchala ustun ham bor. Purge
+/// batch'idagi `archiveStmt` va `mediaUnionSql` AYNAN shu qarorga tayanadi
+/// (modul bayrog'iga emas: cron isolate'ida u hali yoqilmagan bo'lishi mumkin).
+const archiveMedia = (cfg) => ['posts', 'company_posts', 'content_archive']
+  .every((tb) => cfg.cols.has(`${tb}.media_json`));
+
 // Karusel `media_json` — [{url, type}] massivi: har elementning `url` i.
 const carouselVals = (tb, where) =>
   `SELECT json_extract(j.value, '$.url') AS url FROM ${tb} x, json_each(CASE WHEN json_valid(x.media_json) THEN x.media_json ELSE '[]' END) j
@@ -273,7 +279,9 @@ function mediaUnionSql(id, cfg) {
     for (const c of cs) q.push(`SELECT ${c} FROM ${tb} WHERE code IN (${CODES})`);
   }
   // Karusel rasmlari (`media_json`, api/carousel.js).
-  if (has('posts') && col('posts', 'media_json')) q.push(carouselVals('posts', `x.code IN (${CODES})`));
+  // FAQAT dalil arxivi ularni saqlay olsa (`archiveMedia`): aks holda arxivga
+  // tushmagan karusel rasmlari navbatdan o'chirilib, dalil yo'qolardi.
+  if (has('posts') && archiveMedia(cfg)) q.push(carouselVals('posts', `x.code IN (${CODES})`));
   // AKTUAL nusxalari va muqovalari (api/highlights.js) — istoriya o'chsa ham
   // fayl shu yerda yashaydi, shuning uchun hisob bilan birga navbatga tushadi.
   if (has('story_highlights') && has('story_highlight_items')) {
@@ -297,7 +305,7 @@ function mediaUnionSql(id, cfg) {
     if (col('companies', 'music_json')) q.push(jsonVals('companies', 'music_json', `CAST(x.owner_user_id AS TEXT) = '${id}'`));
     if (has('company_posts')) {
       q.push(`SELECT image_url FROM company_posts WHERE company_id IN (${COS})`, `SELECT video_url FROM company_posts WHERE company_id IN (${COS})`);
-      if (col('company_posts', 'media_json')) q.push(carouselVals('company_posts', `x.company_id IN (${COS})`));
+      if (archiveMedia(cfg)) q.push(carouselVals('company_posts', `x.company_id IN (${COS})`));
     }
     if (has('company_catalog_items')) {
       q.push(`SELECT image_url FROM company_catalog_items WHERE company_id IN (${COS})`);
@@ -375,7 +383,7 @@ export function purgeStmts(env, u, now, ref, cfg, counts = {}) {
   const out = [];
   const add = (tbs, sql, ...binds) => { if (has(...tbs)) out.push(env.DB.prepare(sql).bind(...binds)); };
   const addAll = (tbs, stmts) => { if (has(...tbs)) out.push(...stmts); };
-  const by = { userId: 0, admin: 'system', reason: 'account_purge' };
+  const by = { userId: 0, admin: 'system', reason: 'account_purge', withMedia: archiveMedia(cfg) };
   const retire = { reason: 'account_purge', byAdmin: 'system' };
 
   // 0) IDEMPOTENTLIK QULFI. Ikkinchi urinishda UNIQUE xatosi — butun batch rollback.

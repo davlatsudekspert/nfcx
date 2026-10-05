@@ -9,6 +9,7 @@
 //
 //   node scripts/test-highlights.mjs
 import { setupSocial, cookie, makeChecker } from './lib/social-fixture.mjs';
+import { sha256Hex } from './lib/d1-harness.mjs';
 
 const { check, checkTrue, done } = makeChecker();
 const { env, sqlite, call, resetLimits } = await setupSocial();
@@ -54,15 +55,20 @@ for (const [label, json, status, err] of [
 check('1) 24 belgi (emoji bitta belgi) — mumkin', (await call('/api/highlights', { method: 'POST', cookie: cookie.user, json: { code: 'VIP001', title: '🍕'.repeat(24) } })).status, 201);
 r = await call('/api/highlights', { method: 'POST', json: { code: 'VIP001', title: 'A' } });
 check('1) kirmagan: 401', r.status, 401);
+// MUQOVA (S2): faqat shu Aktualdagi istoriya rasmi — istalgan /uploads/ fayli emas.
 r = await call('/api/highlights', { method: 'POST', cookie: cookie.user, json: { companyId: 'acmeuz', title: 'Aksiya', coverUrl: IMG3 } });
-check('1) kompaniya Aktuali: 201', [r.status, r.body.highlight.ownerKind, r.body.highlight.ownerId, r.body.highlight.coverUrl], [201, 'company', 'ACMEUZ', IMG3]);
+check('1) muqova Aktual elementi emas (bo‘sh Aktual): 422 bad_cover', [r.status, r.body.error], [422, 'bad_cover']);
+r = await call('/api/highlights', { method: 'POST', cookie: cookie.user, json: { code: 'VIP001', title: 'A', coverUrl: IMG3, storyIds: [s1] } });
+check('1) muqova — boshqa egasining (kompaniya) rasmi: 422', [r.status, r.body.error], [422, 'bad_cover']);
+r = await call('/api/highlights', { method: 'POST', cookie: cookie.user, json: { code: 'VIP001', title: 'A', coverUrl: '/uploads/ixtiyoriy123.jpg', storyIds: [s1] } });
+check('1) muqova — ixtiyoriy /uploads fayli: 422', [r.status, r.body.error], [422, 'bad_cover']);
+r = await call('/api/highlights', { method: 'POST', cookie: cookie.user, json: { companyId: 'acmeuz', title: 'Aksiya', coverUrl: IMG3, storyIds: [sCo] } });
+check('1) kompaniya Aktuali, muqova o‘z elementidan: 201', [r.status, r.body.highlight.ownerKind, r.body.highlight.ownerId, r.body.highlight.coverUrl, r.body.highlight.itemCount], [201, 'company', 'ACMEUZ', IMG3, 1]);
 const hc = r.body.highlight.id;
 r = await call('/api/highlights', { method: 'POST', cookie: cookie.other, json: { companyId: 'ACMEUZ', title: 'X' } });
 check('1) begona kompaniya: 403', r.status, 403);
 
 // ── 2) Istoriya qo'shish / olib tashlash ───────────────────────────
-r = await call(`/api/highlights/${hc}/items`, { method: 'POST', cookie: cookie.user, json: { storyKind: 'company_story', storyId: sCo } });
-check('2) kompaniya istoriyasi qo‘shildi', [r.status, r.body.item.storyId, r.body.highlight.itemCount], [201, sCo, 1]);
 r = await call(`/api/highlights/${hc}/items`, { method: 'POST', cookie: cookie.user, json: { storyKind: 'company_story', storyId: sCo } });
 check('2) takror: 409 already_added', [r.status, r.body.error], [409, 'already_added']);
 r = await call(`/api/highlights/${hc}/items`, { method: 'POST', cookie: cookie.user, json: { storyKind: 'story', storyId: s1 } });
@@ -88,6 +94,24 @@ r = await call(`/api/highlights/${h.id}`, { method: 'PATCH', cookie: cookie.user
 check('3) PATCH', [r.status, r.body.highlight.title, r.body.highlight.coverUrl], [200, 'Yangi', IMG1]);
 r = await call(`/api/highlights/${h.id}`, { method: 'PATCH', cookie: cookie.user, json: { coverUrl: null } });
 check('3) muqova olib tashlandi — birinchi rasm', r.body.highlight.coverUrl, IMG1);
+r = await call(`/api/highlights/${h.id}`, { method: 'PATCH', cookie: cookie.user, json: { coverUrl: IMG3 } });
+check('3) muqova — boshqa Aktualdagi rasm: 422', [r.status, r.body.error], [422, 'bad_cover']);
+r = await call(`/api/highlights/${h.id}`, { method: 'PATCH', cookie: cookie.user, json: { coverUrl: '/uploads/ixtiyoriy123.jpg' } });
+check('3) muqova — ixtiyoriy /uploads: 422', [r.status, r.body.error], [422, 'bad_cover']);
+r = await call(`/api/highlights/${h.id}`, { method: 'PATCH', cookie: cookie.user, json: { coverUrl: IMG2 } });
+check('3) muqova — o‘z elementi: 200', [r.status, r.body.highlight.coverUrl], [200, IMG2]);
+{
+  const it2 = r.body.highlight.items.find((i) => i.imageUrl === IMG2);
+  r = await call(`/api/highlights/${h.id}/items/${it2.id}`, { method: 'DELETE', cookie: cookie.user });
+  check('3) muqova elementi olib tashlandi — muqova birinchi rasmga qaytadi', r.body.highlight.coverUrl, IMG1);
+  check('3) bazada muqova tozalandi', sqlite.prepare(`SELECT cover_url FROM story_highlights WHERE id = ?`).get(h.id).cover_url, null);
+  r = await call(`/api/highlights/${h.id}/items`, { method: 'POST', cookie: cookie.user, json: { storyKind: 'story', storyId: s2 } });
+  check('3) element qaytarildi', r.status, 201);
+  sqlite.prepare(`UPDATE story_highlights SET cover_url = '/uploads/buzilgan999.jpg' WHERE id = ?`).run(h.id);
+  r = await call('/api/highlights?code=VIP001');
+  check('3) bazadagi begona muqova javobga chiqmaydi', r.body.highlights.find((x) => x.id === h.id).coverUrl, IMG1);
+  sqlite.prepare(`UPDATE story_highlights SET cover_url = NULL WHERE id = ?`).run(h.id);
+}
 r = await call(`/api/highlights/${h.id}`, { method: 'PATCH', cookie: cookie.user, json: {} });
 check('3) bo‘sh: 422', r.status, 422);
 r = await call(`/api/highlights/${h.id}`, { method: 'PATCH', cookie: cookie.user, json: { title: 'x'.repeat(30) } });
@@ -158,6 +182,76 @@ check('7) egasi o‘chirdi', r.status, 200);
 check('7) elementlar ham ketdi', sqlite.prepare(`SELECT COUNT(*) AS n FROM story_highlight_items WHERE highlight_id = ?`).get(hc).n, 0);
 r = await call(`/api/highlights/${hc}`, { method: 'DELETE', cookie: cookie.user });
 check('7) qayta: 404', r.status, 404);
+
+// ── 9) ADMIN MODERATSIYASI Aktualni chetlab o'tmaydi (B2) ──────────
+{
+  // content_manager sessiyasi — manager+ talab qilinadi.
+  sqlite.prepare(`INSERT INTO admin_sessions (token, admin_id, role, abs_exp, last_activity) VALUES (?, 3, 'content_manager', '2999-01-01T00:00:00.000Z', ?)`)
+    .run(sha256Hex('cm-token'), new Date().toISOString());
+  const cm = 'nfc_admin_session=cm-token';
+  resetLimits();
+  const IMG5 = '/uploads/story_555555555555555555555555.jpg';
+  const IMG6 = '/uploads/story_666666666666666666666666.jpg';
+  const sB = await story('/api/records/OTH222/stories', IMG5, cookie.other);
+  const sB2 = await story('/api/records/OTH222/stories', IMG6, cookie.other);
+  let r = await call('/api/highlights', { method: 'POST', cookie: cookie.other, json: { code: 'OTH222', title: 'B to‘plami', storyIds: [sB, sB2], coverUrl: IMG5 } });
+  check('9) B Aktuali yaratildi', [r.status, r.body.highlight.itemCount], [201, 2]);
+  const hB = r.body.highlight.id;
+
+  // Shikoyat — `highlight` turi.
+  r = await call('/api/reports', { method: 'POST', cookie: cookie.user, json: { targetKind: 'highlight', targetId: String(hB), reason: 'spam' } });
+  check('9) Aktualga shikoyat: 201', r.status, 201);
+  r = await call('/api/admin/reports', { cookie: cookie.admin });
+  const rep = (r.body.reports || []).find((x) => x.targetKind === 'highlight' && String(x.targetId) === String(hB));
+  check('9) admin ko‘rinishida Aktual sarlavhasi va muallifi', [rep?.preview?.text, rep?.preview?.missing, rep?.author?.code], ['B to‘plami', false, 'OTH222']);
+
+  // Admin ISTORIYANI o'chirsa — Aktualdagi nusxasi ham ketadi, arxivga tushadi.
+  r = await call(`/api/admin/content/story/${sB}`, { method: 'DELETE', cookie: cookie.admin, json: { reason: 'spam' } });
+  check('9) admin istoriyani o‘chirdi', r.status, 200);
+  r = await call('/api/highlights?code=OTH222');
+  const hb = r.body.highlights.find((x) => x.id === hB);
+  check('9) Aktualdan o‘sha istoriya nusxasi ketdi', hb.items.map((i) => i.storyId), [sB2]);
+  check('9) muqova (o‘chirilgan rasm) ko‘rinmaydi', hb.coverUrl, IMG6);
+  const arch = sqlite.prepare(`SELECT owner_kind, owner_id, image_url, deleted_by_admin FROM content_archive WHERE kind = 'highlight_item' ORDER BY id DESC`).get();
+  check('9) Aktual nusxasi dalil arxivida', [arch?.owner_kind, arch?.owner_id, arch?.image_url, String(arch?.deleted_by_admin || '').startsWith('admin#')], ['card', 'OTH222', IMG5, true]);
+
+  // company_story yo'li ham ishlaydi.
+  const sCo2 = await story('/api/companies/ACMEUZ/stories', '/uploads/story_777777777777777777777777.jpg');
+  r = await call('/api/highlights', { method: 'POST', cookie: cookie.user, json: { companyId: 'ACMEUZ', title: 'Biz', storyIds: [sCo2] } });
+  const hCo = r.body.highlight.id;
+  r = await call(`/api/admin/content/company_story/${sCo2}`, { method: 'DELETE', cookie: cookie.admin, json: { reason: 'spam' } });
+  check('9) /api/admin/content/company_story/:id ishlaydi', r.status, 200);
+  check('9) kompaniya Aktualidan ham ketdi', sqlite.prepare(`SELECT COUNT(*) AS n FROM story_highlight_items WHERE highlight_id = ?`).get(hCo).n, 0);
+
+  // Bitta elementni olib tashlash.
+  const itemB2 = sqlite.prepare(`SELECT id FROM story_highlight_items WHERE highlight_id = ? AND story_id = ?`).get(hB, sB2).id;
+  const delItem = (ck, json) => call(`/api/admin/highlights/${hB}/items/${itemB2}`, { method: 'DELETE', cookie: ck, json });
+  check('9) element: kirmagan foydalanuvchi — 401', (await delItem(cookie.user, { reason: 'x' })).status, 401);
+  check('9) element: content_manager — 403', (await delItem(cm, { reason: 'x' })).status, 403);
+  check('9) element: sababsiz — 422', (await delItem(cookie.manager, {})).body?.error, 'reason_required');
+  r = await delItem(cookie.manager, { reason: 'qoidabuzarlik' });
+  check('9) element: manager sabab bilan — ok', r.body, { ok: true });
+  check('9) element bazadan ketdi', sqlite.prepare(`SELECT COUNT(*) AS n FROM story_highlight_items WHERE id = ?`).get(itemB2).n, 0);
+  check('9) element arxivda', sqlite.prepare(`SELECT COUNT(*) AS n FROM content_archive WHERE kind = 'highlight_item' AND content_id = ?`).get(itemB2).n, 1);
+  check('9) qayta: alreadyGone', (await delItem(cookie.manager, { reason: 'x' })).body, { ok: true, alreadyGone: true });
+  check('9) GET: 405', (await call(`/api/admin/highlights/${hB}`, { cookie: cookie.admin })).status, 405);
+
+  // Butun Aktualni olib tashlash.
+  r = await call(`/api/highlights/${hB}/items`, { method: 'POST', cookie: cookie.other, json: { storyKind: 'story', storyId: await story('/api/records/OTH222/stories', IMG6, cookie.other) } });
+  check('9) yana element qo‘shildi', r.status, 201);
+  r = await call(`/api/admin/highlights/${hB}`, { method: 'DELETE', cookie: cookie.manager, json: {} });
+  check('9) butun Aktual: sababsiz 422', r.status, 422);
+  r = await call(`/api/admin/highlights/${hB}`, { method: 'DELETE', cookie: cookie.manager, json: { reason: 'qoidabuzarlik' } });
+  check('9) butun Aktual: ok', r.body, { ok: true });
+  check('9) Aktual va elementlari ketdi', [
+    sqlite.prepare(`SELECT COUNT(*) AS n FROM story_highlights WHERE id = ?`).get(hB).n,
+    sqlite.prepare(`SELECT COUNT(*) AS n FROM story_highlight_items WHERE highlight_id = ?`).get(hB).n,
+  ], [0, 0]);
+  check('9) arxivda Aktualning o‘zi (sarlavha)', sqlite.prepare(`SELECT body FROM content_archive WHERE kind = 'highlight' AND content_id = ?`).get(hB)?.body, 'B to‘plami');
+  check('9) shikoyat yopildi', sqlite.prepare(`SELECT status FROM content_reports WHERE target_kind = 'highlight' AND target_id = ?`).get(String(hB))?.status, 'resolved');
+  r = await call('/api/highlights?code=OTH222');
+  checkTrue('9) ommaga ko‘rinmaydi', !r.body.highlights.some((x) => x.id === hB));
+}
 
 // ── 8) Karta o'chirilganda Aktual ham ketadi ───────────────────────
 r = await call('/api/account/records/VIP001', { method: 'DELETE', cookie: cookie.user });
