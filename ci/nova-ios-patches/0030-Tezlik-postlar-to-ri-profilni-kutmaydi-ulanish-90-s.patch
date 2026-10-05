@@ -1,0 +1,555 @@
+From ad4ee8831e94f2fd088cbabb4c0f160ca447b71f Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Mon, 5 Oct 2026 04:31:59 +0000
+Subject: [PATCH] Tezlik: postlar to'ri profilni kutmaydi, ulanish 90 s tirik,
+ Reels lentani darhol ko'rsatadi
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- Begona profil: /posts so'rovi /api/records javobini kutmaydi —
+  ikkalasi bir vaqtda ketadi (ilgari ketma-ket ikki tarmoq aylanishi).
+  Profil topilmasa to'r avvalgidek ko'rinmaydi.
+- Postlar ro'yxati profildan chiqilgach xotirada qoladi (oxirgi 12 ta
+  profil); qaytib kirilganda darhol chiziladi, 2 daqiqadan eski bo'lsa
+  fonda yangilanadi. Taymer yo'q.
+- API va rasm HTTP mijozlari bo'sh ulanishni 15 s emas 90 s ushlaydi:
+  har yangi ekran yangi TCP+TLS qo'l berishishdan boshlanmaydi.
+- Reels: lenta o'z postlarim javobini kutmaydi; ular keyin kelsa
+  ro'yxat oxiriga qo'shiladi (ko'rilayotgan reel siljimaydi).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ mobile_nova/lib/core/media/image_cache.dart   |  11 +
+ mobile_nova/lib/core/network/api_client.dart  |  13 +
+ .../lib/features/profile/profile_screen.dart  |  96 +++++++-
+ .../lib/features/social/reels_screen.dart     |  46 +++-
+ mobile_nova/pubspec.lock                      |   2 +-
+ mobile_nova/pubspec.yaml                      |   3 +
+ mobile_nova/test/speed_paths_test.dart        | 224 ++++++++++++++++++
+ 7 files changed, 376 insertions(+), 19 deletions(-)
+ create mode 100644 mobile_nova/test/speed_paths_test.dart
+
+diff --git a/mobile_nova/lib/core/media/image_cache.dart b/mobile_nova/lib/core/media/image_cache.dart
+index cdb1a9b..73c87ba 100644
+--- a/mobile_nova/lib/core/media/image_cache.dart
++++ b/mobile_nova/lib/core/media/image_cache.dart
+@@ -1,4 +1,7 @@
++import 'dart:io';
++
+ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
++import 'package:http/io_client.dart';
+ 
+ /// RASMLAR TELEFONDA — BITTA KESH, TEZ PAYDO BO'LISH (egasi, 2026-09:
+ /// "ilovadagi rasmlar sekin ochilmoqda").
+@@ -24,6 +27,14 @@ class NovaImageCache {
+       'nova_images_v1',
+       stalePeriod: const Duration(days: 60),
+       maxNrOfCacheObjects: 1500,
++      // Rasm ulanishi ham 90 soniya tirik turadi (API mijozi bilan bir
++      // xil sabab): sukutdagi 15 soniyadan keyin har yangi to'r yangi
++      // TLS qo'l berishishdan boshlanardi.
++      fileService: HttpFileService(
++        httpClient: IOClient(
++          HttpClient()..idleTimeout = const Duration(seconds: 90),
++        ),
++      ),
+     ),
+   );
+ 
+diff --git a/mobile_nova/lib/core/network/api_client.dart b/mobile_nova/lib/core/network/api_client.dart
+index e26dee9..9b82d6c 100644
+--- a/mobile_nova/lib/core/network/api_client.dart
++++ b/mobile_nova/lib/core/network/api_client.dart
+@@ -3,6 +3,7 @@ import 'dart:convert';
+ import 'dart:io';
+ 
+ import 'package:dio/dio.dart';
++import 'package:dio/io.dart';
+ import 'package:flutter/foundation.dart';
+ 
+ import '../errors/app_error.dart';
+@@ -55,6 +56,18 @@ class ApiClient {
+   ApiClient({Dio? dio, SecureStore? store, this.baseUrl = kApiBase})
+       : _store = store ?? SecureStore(),
+         _dio = dio ?? Dio() {
++    // ULANISH QAYTA ISHLATILADI (2026-10-05, tezlik tahlili). Dart
++    // `HttpClient` bo'sh ulanishni sukut bo'yicha 15 soniyada yopadi:
++    // odam postni 15 soniyadan ko'proq ko'rib, keyin profil ochsa,
++    // har safar yangi TCP + TLS qo'l berishish (2-3 tarmoq aylanishi)
++    // qaytadan bo'lardi. 90 soniya — server (Cloudflare) ulanishni
++    // undan oldin o'zi yopmaydi. Test o'z `Dio` sini bersa tegilmaydi.
++    if (dio == null) {
++      _dio.httpClientAdapter = IOHttpClientAdapter(
++        createHttpClient: () =>
++            HttpClient()..idleTimeout = const Duration(seconds: 90),
++      );
++    }
+     _dio.options = _dio.options.copyWith(
+       baseUrl: baseUrl,
+       // Mobil internet sekin bo'lishi mumkin, lekin 20 soniyadan ortiq
+diff --git a/mobile_nova/lib/features/profile/profile_screen.dart b/mobile_nova/lib/features/profile/profile_screen.dart
+index b87cdbe..ec03b89 100644
+--- a/mobile_nova/lib/features/profile/profile_screen.dart
++++ b/mobile_nova/lib/features/profile/profile_screen.dart
+@@ -55,10 +55,69 @@ import 'profile_repository.dart';
+ // Ishlab chiqarish xulqi O'ZGARMAYDI.
+ final profilePostsProvider = FutureProvider.autoDispose
+     .family<List<Post>, String>(dependencies: [socialRepositoryProvider], (ref, code) async {
++      final keep = keepPostsBriefly(ref, ('posts', code));
+       final res = await ref.watch(socialRepositoryProvider).postsOf(code);
+-      return res.when(ok: (v) => v, err: (e) => throw e);
++      return res.when(ok: (v) => v, err: (e) {
++        keep.close();
++        throw e;
++      });
+     });
+ 
++/// Saqlangan ro'yxat shundan eski bo'lsa, qaytib kirilganda fonda
++/// yangilanadi (eski ro'yxat ko'rinib turadi, skelet chiqmaydi).
++const kPostsFresh = Duration(minutes: 2);
++
++/// Xotirada shuncha profilning postlari saqlanadi (eng eskisi chiqadi).
++const kPostsKeepMax = 12;
++
++/// Testlar uchun soat.
++@visibleForTesting
++DateTime Function() postsClock = DateTime.now;
++
++/// Profil postlari ekrandan chiqilgach ham XOTIRADA qoladi
++/// (egasi, 2026-10-05: "boshqalarni profilini ko'rishda sekin").
++///
++/// Lenta → profil → orqaga → yana o'sha profil: ikkinchi ochilishda
++/// to'r darhol chiziladi, skelet yo'q. Ro'yxat [kPostsFresh] dan eski
++/// bo'lsa — ko'rinib turgan holda fonda yangilanadi. Yangilash
++/// (`invalidate`) avvalgidek darhol yangisini oladi. Xato saqlanmaydi.
++///
++/// Taymer YO'Q (testlarda osilib qolardi): xotira [kPostsKeepMax] ta
++/// ro'yxat bilan cheklangan — yangisi kelsa eng eskisi bo'shatiladi.
++KeepAliveLink keepPostsBriefly(Ref<Object?> ref, Object key) {
++  final link = ref.keepAlive();
++  final kept = _keptPosts[ref.container] ??= _KeptPosts();
++  kept.add(key, link);
++  ref.onDispose(() => kept.drop(key, link));
++  final loadedAt = postsClock();
++  ref.onResume(() {
++    if (postsClock().difference(loadedAt) > kPostsFresh) ref.invalidateSelf();
++  });
++  return link;
++}
++
++final _keptPosts = Expando<_KeptPosts>('keptPosts');
++
++class _KeptPosts {
++  /// Qo'shilish tartibida (eng eskisi birinchi).
++  final _links = <Object, KeepAliveLink>{};
++
++  void add(Object key, KeepAliveLink link) {
++    // Shu kalitning avvalgi yuklanishi (yangilash) — yangisi o'rnini oladi.
++    final old = _links.remove(key);
++    if (old != null && !identical(old, link)) old.close();
++    _links[key] = link;
++    while (_links.length > kPostsKeepMax) {
++      final first = _links.keys.first;
++      _links.remove(first)!.close();
++    }
++  }
++
++  void drop(Object key, KeepAliveLink link) {
++    if (identical(_links[key], link)) _links.remove(key);
++  }
++}
++
+ /// Kompaniya postlari — SHAXSIY postlardan boshqa manba.
+ ///
+ /// `/api/records/:code/posts` kompaniya uchun ishlamaydi: u NFC
+@@ -67,8 +126,12 @@ final profilePostsProvider = FutureProvider.autoDispose
+ /// natijada biznes profilida shaxsiy postlar ko'rinardi.
+ final companyPostsProvider = FutureProvider.autoDispose
+     .family<List<Post>, String>(dependencies: [businessRepositoryProvider], (ref, id) async {
++      final keep = keepPostsBriefly(ref, ('company', id));
+       final res = await ref.watch(businessRepositoryProvider).posts(id);
+-      return res.when(ok: (v) => v, err: (e) => throw e);
++      return res.when(ok: (v) => v, err: (e) {
++        keep.close();
++        throw e;
++      });
+     });
+ 
+ /// Digital Identity Canvas.
+@@ -151,6 +214,22 @@ class ProfileScreen extends ConsumerWidget {
+     /// ma'lumotimiz ko'rinmaydi.
+     final pending = target != null && active == null;
+ 
++    /// POSTLAR TO'RI PROFIL YOZUVINI KUTMAYDI (egasi, 2026-10-05:
++    /// "boshqalarni profilini ko'rishda ... keyin ochilyabdi").
++    ///
++    /// Ilgari to'r faqat `active` kelgandan keyin quriladi, ya'ni
++    /// `/posts` so'rovi `/api/records/:code` javobidan KEYIN
++    /// boshlanardi — ikki tarmoq aylanishi ketma-ket. Kod esa
++    /// manzilda allaqachon bor: endi ikkala so'rov BIR VAQTDA
++    /// ketadi. Profil xato bilan tugasa (topilmadi, o'chirilgan) to'r
++    /// avvalgidek ko'rinmaydi.
++    final gridCode = target ?? active?.code;
++    final gridCompany = active?.isBusiness ?? company;
++    final gridShown = active != null ||
++        (target != null &&
++            ((remote?.isLoading ?? false) ||
++                (companyRemote?.isLoading ?? false)));
++
+     /// BIZNES PROFILI — premium vitrina (shaxsiy profildan ALOHIDA
+     /// tuzilma): muqova, logotip, Business ID, ish vaqti, katalog.
+     final biz = (active != null && active.isBusiness) ? active.business : null;
+@@ -247,10 +326,11 @@ class ProfileScreen extends ConsumerWidget {
+           if (!context.mounted) return;
+           // Biznes profilda KOMPANIYA postlari yangilanadi (UIQ-1:
+           // ilgari faqat shaxsiy ro'yxat yangilanardi).
+-          if (active != null && active.isBusiness) {
+-            ref.invalidate(companyPostsProvider(active.code));
+-          } else if (id != null) {
+-            ref.invalidate(profilePostsProvider(id.code));
++          // To'r qaysi kalit bilan qurilgan bo'lsa, o'shani yangilaydi.
++          if (gridCode != null) {
++            ref.invalidate(gridCompany
++                ? companyPostsProvider(gridCode)
++                : profilePostsProvider(gridCode));
+           }
+         },
+         child: NovaScroll(
+@@ -260,9 +340,9 @@ class ProfileScreen extends ConsumerWidget {
+           // bilan HAMMA postning rasmi yuklanib, har video uchun muqova
+           // navbatga qo'yilardi. To'r bo'lmaganda ham bo'sh sliver:
+           // profil kelganda scroll turi (va ichidagi holat) almashmasin.
+-          tail: active == null
++          tail: !gridShown || gridCode == null
+               ? const SliverToBoxAdapter()
+-              : _PostsGrid(code: active.code, company: active.isBusiness),
++              : _PostsGrid(code: gridCode, company: gridCompany),
+           children: [
+             if (pending)
+               const _PendingHero()
+diff --git a/mobile_nova/lib/features/social/reels_screen.dart b/mobile_nova/lib/features/social/reels_screen.dart
+index be9d432..31b0cf0 100644
+--- a/mobile_nova/lib/features/social/reels_screen.dart
++++ b/mobile_nova/lib/features/social/reels_screen.dart
+@@ -85,15 +85,23 @@ final reelsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
+   // boshlanardi. Kod faqat profil almashganda o'zgaradi.
+   final code = ref.watch(activeProfileProvider.select((p) => p?.code));
+ 
+-  // Ikki so'rov BIR VAQTDA — biri ikkinchisini kutmaydi (birinchi
+-  // Reels ochilishi ikki tarmoq aylanishi o'rniga bittasi).
+-  final results = await Future.wait<Result<List<Post>>>([
+-    if (code != null) repo.postsOf(code),
+-    // Asosiy ekran olgan lenta qayta ishlatiladi (3 daqiqa).
+-    repo.recentFeed(),
+-  ]);
+-  if (code != null) {
+-    results.first.when(
++  // Ikki so'rov BIR VAQTDA. LENTA O'Z VIDEOLARIMNI KUTMAYDI
++  // (2026-10-05, egasi: "Reels ochilishi sekin"): lenta odatda
++  // Asosiy ekrandan tayyor turadi (`recentFeed`), o'z postlarim esa
++  // tarmoqdan keladi. Ilgari ikkalasi ham kutilardi, ya'ni tayyor
++  // lenta ham `/posts` javobigacha bo'sh ekran ortida turardi.
++  //
++  // O'z videolarim lentadan OLDIN kelsa — avvalgidek boshida turadi.
++  // Keyin kelsa — ro'yxat OXIRIGA qo'shiladi: ko'rilayotgan reel
++  // o'rnidan siljimaydi.
++  Result<List<Post>>? own;
++  final ownF = code == null ? null : repo.postsOf(code);
++  ownF?.then((r) => own = r);
++  var disposed = false;
++  ref.onDispose(() => disposed = true);
++
++  void addOwn(Result<List<Post>>? r) {
++    r?.when(
+       ok: (items) {
+         for (final p in items.where(playable)) {
+           byId[p.id] = p;
+@@ -103,7 +111,25 @@ final reelsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
+     );
+   }
+ 
+-  final res = results.last;
++  // Asosiy ekran olgan lenta qayta ishlatiladi (3 daqiqa).
++  final res = await repo.recentFeed();
++  // Lenta kelmadi — o'z videolarim bo'lsa ular ko'rsatiladi, shuning
++  // uchun bu holatda ular KUTILADI.
++  if (ownF != null && own == null && !res.isOk) own = await ownF;
++  addOwn(own);
++  if (ownF != null && own == null) {
++    ownF.then((r) {
++      if (disposed) return;
++      final cur = ref.state.valueOrNull;
++      if (cur == null) return;
++      final have = {for (final p in cur) p.id};
++      final add = (r.valueOrNull ?? const <Post>[])
++          .where((p) => playable(p) && !have.contains(p.id))
++          .toList();
++      if (add.isNotEmpty) ref.state = AsyncData([...cur, ...add]);
++    });
++  }
++
+   return res.when(
+     ok: (items) {
+       for (final p in items.where(playable)) {
+diff --git a/mobile_nova/pubspec.lock b/mobile_nova/pubspec.lock
+index 8110a50..8ca085a 100644
+--- a/mobile_nova/pubspec.lock
++++ b/mobile_nova/pubspec.lock
+@@ -376,7 +376,7 @@ packages:
+     source: hosted
+     version: "0.15.7"
+   http:
+-    dependency: transitive
++    dependency: "direct main"
+     description:
+       name: http
+       sha256: "87721a4a50b19c7f1d49001e51409bddc46303966ce89a65af4f4e6004896412"
+diff --git a/mobile_nova/pubspec.yaml b/mobile_nova/pubspec.yaml
+index 6fb7ccd..c161a77 100644
+--- a/mobile_nova/pubspec.yaml
++++ b/mobile_nova/pubspec.yaml
+@@ -33,6 +33,9 @@ dependencies:
+   # Rasm keshining hajmi (NovaImageCache). Allaqachon cached_network_image
+   # orqali o'rnatilgan — yangi paket yuklanmaydi.
+   flutter_cache_manager: ^3.4.1
++  # Rasm keshining HTTP mijozi (ulanish 90 s tirik). Allaqachon
++  # flutter_cache_manager orqali o'rnatilgan — yangi paket yuklanmaydi.
++  http: ^1.6.0
+   qr_flutter: ^4.1.0
+   share_plus: ^10.1.3
+   url_launcher: ^6.3.1
+diff --git a/mobile_nova/test/speed_paths_test.dart b/mobile_nova/test/speed_paths_test.dart
+new file mode 100644
+index 0000000..ecb4670
+--- /dev/null
++++ b/mobile_nova/test/speed_paths_test.dart
+@@ -0,0 +1,224 @@
++import 'dart:async';
++
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/core/errors/app_error.dart';
++import 'package:nfcstore_nova/core/network/api_client.dart';
++import 'package:nfcstore_nova/core/utils/result.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/data/repositories/social_repository.dart';
++import 'package:nfcstore_nova/features/auth/session.dart';
++import 'package:nfcstore_nova/features/profile/profile_repository.dart';
++import 'package:nfcstore_nova/features/profile/profile_screen.dart';
++import 'package:nfcstore_nova/features/social/reels_screen.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations_uz.dart';
++
++import 'helpers.dart';
++
++/// TEZLIK YO'LLARI (egasi, 2026-10-05: "boshqalarni profilini
++/// ko'rishda sekin", "Reels ochilishi sekin").
++///
++/// Har biri tarmoq aylanishini KETMA-KET kutishni olib tashlaydi;
++/// testlar shu kutish qaytib kelmasligini qo'riqlaydi.
++
++/// Profil yozuvi testdan [release] bo'lguncha KELMAYDI.
++class _SlowProfileRepo extends ProfileRepository {
++  _SlowProfileRepo() : super(ApiClient());
++
++  final release = Completer<void>();
++  bool fails = false;
++
++  @override
++  Future<Result<NfcId>> byCode(String code) async {
++    await release.future;
++    if (fails) return const Err(AppError(AppErrorKind.notFound, status: 404));
++    return Ok(NfcId(code: code, name: 'Begona $code'));
++  }
++}
++
++class _SpySocial extends FakeSocialRepository {
++  final postsCalls = <String>[];
++  Completer<Result<List<Post>>>? ownGate;
++  List<Post> mine = const [];
++  List<Post> feedItems = const [];
++
++  @override
++  Future<Result<List<Post>>> postsOf(String code, {int page = 1}) async {
++    postsCalls.add(code);
++    final g = ownGate;
++    if (g != null) return g.future;
++    return Ok(mine);
++  }
++
++  @override
++  Future<Result<List<Post>>> feed({int page = 1}) async => Ok(feedItems);
++}
++
++Post _reel(int id, String code) => Post(
++      id: id,
++      code: code,
++      authorName: code,
++      text: 'reel',
++      mediaUrls: const ['https://nfcstore.uz/uploads/a.mp4'],
++      isVideo: true,
++    );
++
++void main() {
++  testWidgets('begona profil: postlar so‘rovi profil yozuvini KUTMAYDI',
++      (tester) async {
++    final profiles = _SlowProfileRepo();
++    final social = _SpySocial();
++    await tester.pumpWidget(ProviderScope(
++      overrides: [
++        ...await testOverrides(),
++        profileRepositoryProvider.overrideWithValue(profiles),
++        socialRepositoryProvider.overrideWithValue(social),
++      ],
++      child: wrapScreen(const ProfileScreen(code: 'BEGONA1')),
++    ));
++    await tester.pump(const Duration(milliseconds: 50));
++
++    // Yozuv hali kelmagan — lekin postlar allaqachon so'ralgan.
++    expect(profiles.release.isCompleted, isFalse);
++    expect(social.postsCalls, ['BEGONA1'],
++        reason: 'to‘r profil javobini kutib turibdi (ketma-ket so‘rov)');
++
++    profiles.release.complete();
++    await tester.pump(const Duration(milliseconds: 50));
++    // Profil kelgach to'r QAYTA so'ramaydi — kalit o'zgarmaydi.
++    expect(social.postsCalls, ['BEGONA1']);
++    expect(find.text('Begona BEGONA1'), findsWidgets);
++    expect(find.textContaining('${LUz().profilePosts} ·'), findsOneWidget);
++  });
++
++  testWidgets('profil topilmasa postlar to‘ri ko‘rinmaydi', (tester) async {
++    final profiles = _SlowProfileRepo()..fails = true;
++    final social = _SpySocial()..mine = [_reel(7, 'BEGONA1')];
++    await tester.pumpWidget(ProviderScope(
++      overrides: [
++        ...await testOverrides(),
++        profileRepositoryProvider.overrideWithValue(profiles),
++        socialRepositoryProvider.overrideWithValue(social),
++      ],
++      child: wrapScreen(const ProfileScreen(code: 'BEGONA1')),
++    ));
++    await tester.pump(const Duration(milliseconds: 50));
++    profiles.release.complete();
++    await tester.pump(const Duration(milliseconds: 50));
++
++    expect(find.textContaining('${LUz().profilePosts} ·'), findsNothing,
++        reason: 'topilmagan profilda postlar to‘ri chiqdi');
++    expect(tester.takeException(), isNull);
++  });
++
++  test('postlar ro‘yxati chiqilgach saqlanadi; eskirsa fonda yangilanadi',
++      () async {
++    var now = DateTime(2026, 10, 5, 12);
++    postsClock = () => now;
++    addTearDown(() => postsClock = DateTime.now);
++    final social = _SpySocial();
++    final c = ProviderContainer(overrides: [
++      ...await testOverrides(),
++      socialRepositoryProvider.overrideWithValue(social),
++    ]);
++    addTearDown(c.dispose);
++    final posts = profilePostsProvider('ABC123');
++
++    var sub = c.listen(posts, (_, __) {});
++    await c.read(posts.future);
++    sub.close();
++    await Future<void>.delayed(Duration.zero);
++
++    // Qaytib kirildi (1 daqiqa) — so'rov yo'q, ro'yxat tayyor.
++    now = now.add(const Duration(minutes: 1));
++    sub = c.listen(posts, (_, __) {});
++    expect(c.read(posts).hasValue, isTrue);
++    await Future<void>.delayed(Duration.zero);
++    expect(social.postsCalls, ['ABC123']);
++    sub.close();
++
++    // Uzoq vaqtdan keyin — eski ro'yxat KO'RINADI va fonda yangilanadi.
++    now = now.add(kPostsFresh);
++    sub = c.listen(posts, (_, __) {});
++    expect(c.read(posts).hasValue, isTrue, reason: 'skelet chiqdi');
++    await c.read(posts.future);
++    expect(social.postsCalls, ['ABC123', 'ABC123']);
++
++    // Yangilash (invalidate) har doim yangisini oladi.
++    c.invalidate(posts);
++    await c.read(posts.future);
++    expect(social.postsCalls.length, 3);
++    sub.close();
++  });
++
++  test('xotirada eng ko‘pi bilan $kPostsKeepMax ta profil saqlanadi',
++      () async {
++    final social = _SpySocial();
++    final c = ProviderContainer(overrides: [
++      ...await testOverrides(),
++      socialRepositoryProvider.overrideWithValue(social),
++    ]);
++    addTearDown(c.dispose);
++    for (var i = 0; i <= kPostsKeepMax; i++) {
++      final sub = c.listen(profilePostsProvider('P$i'), (_, __) {});
++      await c.read(profilePostsProvider('P$i').future);
++      sub.close();
++    }
++    await Future<void>.delayed(Duration.zero);
++    expect(c.exists(profilePostsProvider('P0')), isFalse,
++        reason: 'eng eski ro‘yxat bo‘shatilmadi');
++    expect(c.exists(profilePostsProvider('P$kPostsKeepMax')), isTrue);
++    expect(c.exists(profilePostsProvider('P1')), isTrue);
++  });
++
++  test('Reels: lenta o‘z postlarimni KUTMAYDI, ular keyin oxiriga qo‘shiladi',
++      () async {
++    final social = _SpySocial()
++      ..ownGate = Completer()
++      ..feedItems = [_reel(1, 'BOSHQA1'), _reel(2, 'BOSHQA1')];
++    final c = ProviderContainer(overrides: [
++      ...await testOverrides(),
++      myIdsProvider.overrideWithValue(
++          const [NfcId(code: 'TTS075', name: 'Men', primary: true)]),
++      socialRepositoryProvider.overrideWithValue(social),
++    ]);
++    addTearDown(c.dispose);
++    final sub = c.listen(reelsProvider, (_, __) {});
++    addTearDown(sub.close);
++
++    final first = await c.read(reelsProvider.future);
++    expect(first.map((p) => p.id), [1, 2],
++        reason: 'lenta o‘z postlarim javobini kutdi');
++
++    social.ownGate!.complete(Ok([_reel(9, 'TTS075'), _reel(2, 'TTS075')]));
++    await Future<void>.delayed(Duration.zero);
++    expect(c.read(reelsProvider).valueOrNull?.map((p) => p.id), [1, 2, 9],
++        reason: 'o‘z reelim kelgach ro‘yxat oxiriga qo‘shilmadi');
++  });
++
++  test('Reels: lenta xato bersa o‘z postlarim kutiladi va ko‘rsatiladi',
++      () async {
++    final social = _FailingFeed()..ownGate = Completer();
++    final c = ProviderContainer(overrides: [
++      ...await testOverrides(),
++      myIdsProvider.overrideWithValue(
++          const [NfcId(code: 'TTS075', name: 'Men', primary: true)]),
++      socialRepositoryProvider.overrideWithValue(social),
++    ]);
++    addTearDown(c.dispose);
++    final sub = c.listen(reelsProvider, (_, __) {});
++    addTearDown(sub.close);
++
++    final f = c.read(reelsProvider.future);
++    await Future<void>.delayed(Duration.zero);
++    social.ownGate!.complete(Ok([_reel(9, 'TTS075')]));
++    expect((await f).map((p) => p.id), [9]);
++  });
++}
++
++class _FailingFeed extends _SpySocial {
++  @override
++  Future<Result<List<Post>>> feed({int page = 1}) async =>
++      const Err(AppError(AppErrorKind.offline));
++}
+-- 
+2.43.0
+
