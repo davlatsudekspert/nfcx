@@ -25,11 +25,11 @@ Faqat kirgan (login qilgan) foydalanuvchi uchun.
 - Tayyor patch: `server-feed-2-waves.patch`, worker.js uchun.
 - Agent tekshiruvi: main'ga toza qo'llanadi, feed gate'lari D1 va sqld rejimida o'tadi.
 - Batafsil: `scout-feed-waves.md`.
-- **Hali deploy qilinmagan.** Limit tugayotgan paytda kuzatuvsiz jonli serverga qo'yilmadi.
-- Keyingi qadamlar:
-  1. Patchni qo'llash.
-  2. `run-gates` (83 gate) ni ishlatish.
-  3. Push qilish, deploy'dan keyin `x-nfc-timing: 1` bilan o'lchash.
+- **DEPLOY QILINDI: main 0d7d9f5.** 83/83 gate o'tdi.
+  - Jonli javoblar deploydan oldingi bilan bir xil.
+  - Kirgan holatda lenta 2 to'lqin.
+- Shu commit bilan biznes postlari ham tezlashdi: 7 → 2 to'lqin (1.19 s → 0.34 s, IAD).
+- Biznes istoriyalari 1 to'lqin.
 
 ### 2. Postlar to'ri uchun kichik rasmlar (thumbnail)
 
@@ -50,7 +50,7 @@ Tahlil: `scout-thumbnails.md`.
 
 ## Boshqa
 
-- `/api/companies/:id/posts` sovuq holatda 9 to'lqin oladi (ALTER/PRAGMA ketma-ket). Alohida tuzatish kerak.
-- Soatlik UZ audit routine'i (trig_019HvaGhLUJrptKbZkSVAqHn) ishlayapti.
+- `/api/companies/:id/posts` iliq holatda 2 to'lqin (0d7d9f5). Sovuq izolyatsiyada hali ALTER/PRAGMA qo'shimcha to'lqinlari bor.
+- Soatlik UZ audit routine'i (trig_019HvaGhLUJrptKbZkSVAqHn) egasining roziligi bilan O'CHIRILDI (enabled=false). Uni qayta yoqish mumkin. GitHub schedule auditi baribir ishlaydi.
   - Oxirgi audit TOZA, toza oraliq 12+ soat.
   - finalize-media sharti hali bajarilmagan (24 soat kerak).
