@@ -1,0 +1,1858 @@
+From 30919a711dcca5f7352bda200697784cd07f7993 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Mon, 5 Oct 2026 09:40:55 +0000
+Subject: [PATCH 36/38] =?UTF-8?q?1.1.1:=20lenta,=20izohlar=20va=20Reels=20?=
+ =?UTF-8?q?=E2=80=94=20Instagram=20kabi?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- Post, post tafsiloti va har izohda nisbiy vaqt ("2 soat oldin"),
+  umumiy `timeAgo` yordamchisi (time_ago.dart, timeAgo* kalitlari).
+- Lenta va post tafsilotida rasm bosilsa — to'liq ekranda
+  kattalashtirib ko'rish (`openImageViewer`); ikki marta bosib layk
+  endi videoda ham ishlaydi.
+- Lenta izohi: uzun matnda "ko'proq" kartaning o'zida ochadi.
+- Kompaniya egasi o'z postini o'chira oladi
+  (`DELETE /api/companies/:id/posts/:postId`).
+- Izohlar: "Yana izohlarni ko'rish" (sahifalash), post egasi begona
+  izohni menyudan o'chiradi; Reels varag'ida "Javob berish" maydonga
+  fokus beradi.
+- Reels: `_ReelCaption` dagi TextPainter yo'q qilinadi (xotira
+  sizishi), saqlash xabari "hisobingizda", menyuda "Qiziq emas".
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .../repositories/business_repository.dart     |   8 +
+ mobile_nova/lib/features/social/comments.dart | 159 +++++++-
+ .../lib/features/social/feed_card.dart        | 132 ++++++-
+ .../lib/features/social/moderation.dart       |  16 +
+ .../lib/features/social/post_screens.dart     |  67 +++-
+ .../lib/features/social/reels_screen.dart     |  77 +++-
+ mobile_nova/lib/features/social/time_ago.dart |  24 ++
+ mobile_nova/lib/l10n/arb/app_en.arb           |  12 +-
+ mobile_nova/lib/l10n/arb/app_ru.arb           |  12 +-
+ mobile_nova/lib/l10n/arb/app_uz.arb           |  18 +-
+ .../lib/l10n/gen/app_localizations.dart       |  50 ++-
+ .../lib/l10n/gen/app_localizations_en.dart    |  58 ++-
+ .../lib/l10n/gen/app_localizations_ru.dart    |  62 +++-
+ .../lib/l10n/gen/app_localizations_uz.dart    |  34 +-
+ mobile_nova/test/feed_card_test.dart          | 128 +++++++
+ mobile_nova/test/instagram_social_test.dart   | 342 ++++++++++++++++++
+ mobile_nova/test/reels_final_test.dart        | 110 +++++-
+ 17 files changed, 1243 insertions(+), 66 deletions(-)
+ create mode 100644 mobile_nova/lib/features/social/time_ago.dart
+ create mode 100644 mobile_nova/test/instagram_social_test.dart
+
+diff --git a/mobile_nova/lib/data/repositories/business_repository.dart b/mobile_nova/lib/data/repositories/business_repository.dart
+index bc0b0e8..490af33 100644
+--- a/mobile_nova/lib/data/repositories/business_repository.dart
++++ b/mobile_nova/lib/data/repositories/business_repository.dart
+@@ -269,6 +269,14 @@ class BusinessRepository {
+     });
+   }
+ 
++  /// Kompaniya postini o'chirish — `DELETE /api/companies/:id/posts/:postId`.
++  ///
++  /// Shaxsiy `/api/posts/:id` EMAS: u yo'l kompaniya postini
++  /// tanimaydi (o'sha raqamli BEGONA shaxsiy postga tegardi). Egalikni
++  /// server tekshiradi va o'chirishdan oldin dalil arxiviga nusxa oladi.
++  Future<Result<void>> deletePost(String companyId, int postId) =>
++      _api.delete<void>('/api/companies/$companyId/posts/$postId');
++
+   /// Kompaniya istoryasi yaratish.
+   Future<Result<void>> createStory({
+     required String companyId,
+diff --git a/mobile_nova/lib/features/social/comments.dart b/mobile_nova/lib/features/social/comments.dart
+index 051df28..79db3b3 100644
+--- a/mobile_nova/lib/features/social/comments.dart
++++ b/mobile_nova/lib/features/social/comments.dart
+@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:go_router/go_router.dart';
+ 
++import '../../core/utils/result.dart';
+ import '../../data/models/models.dart';
+ import '../../data/repositories/social_repository.dart';
+ import '../../design/theme/typography.dart';
+@@ -12,7 +13,9 @@ import '../../design/widgets/surfaces.dart';
+ import '../../l10n/gen/app_localizations.dart';
+ import '../../routing/routes.dart';
+ import '../home/widgets/avatar.dart';
++import 'engagement.dart' show isMineProvider;
+ import 'moderation.dart';
++import 'time_ago.dart';
+ import '../../design/icons/nova_icons.dart';
+ 
+ /// Izohlar.
+@@ -76,6 +79,60 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
+   /// Like so'rovi yo'lda bo'lgan izohlar (qayta bosish himoyasi).
+   final _liking = <int>{};
+ 
++  // ── "YANA IZOHLAR" (sahifalash) ─────────────────────────────────
++  //
++  // Server izohlarni 20 tadan beradi (`hasMore`), ilova esa faqat
++  // birinchi sahifani ko'rsatardi: 21-izoh va undan keyingilari
++  // HECH QAYERDA ko'rinmasdi. 1-sahifa — `commentsProvider` da (Reels
++  // tugmasidagi son ham undan); keyingilari shu yerda qo'shiladi.
++
++  /// 2-sahifadan boshlab yuklangan izohlar.
++  final _more = <Comment>[];
++
++  /// Oxirgi yuklangan sahifa.
++  int _page = 1;
++
++  /// Oxirgi yuklangan sahifadan keyin yana bormi. `null` — 2-sahifa
++  /// hali so'ralmagan, 1-sahifaning `hasMore` i amal qiladi.
++  bool? _moreHasMore;
++  bool _loadingMore = false;
++
++  void _resetMore() {
++    _more.clear();
++    _page = 1;
++    _moreHasMore = null;
++  }
++
++  Future<void> _loadMore() async {
++    if (_loadingMore) return;
++    final l = L.of(context);
++    setState(() => _loadingMore = true);
++    final res = await ref
++        .read(socialRepositoryProvider)
++        .comments(widget.kind, widget.id, page: _page + 1);
++    if (!mounted) return;
++    setState(() {
++      _loadingMore = false;
++      if (res case Ok(:final value)) {
++        _page++;
++        _more.addAll(value.items);
++        _moreHasMore = value.hasMore;
++      }
++    });
++    if (res case Err(:final error)) {
++      ScaffoldMessenger.of(context)
++          .showSnackBar(SnackBar(content: Text(describeError(l, error))));
++    }
++  }
++
++  @override
++  void didUpdateWidget(CommentsSection old) {
++    super.didUpdateWidget(old);
++    // Boshqa kontentga o'tildi (masalan, keyingi istorya) — oldingisining
++    // qo'shimcha sahifalari bu yerda qolib ketmasin.
++    if (old.kind != widget.kind || old.id != widget.id) _resetMore();
++  }
++
+   @override
+   void dispose() {
+     _text.dispose();
+@@ -102,6 +159,9 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
+       ok: (_) {
+         _text.clear();
+         _replyTo = null;
++        // Yangi izoh tepada chiqadi; qo'shimcha sahifalar siljigan
++        // bo'ladi — ro'yxat 1-sahifadan qayta boshlanadi.
++        _resetMore();
+         // Ro'yxat serverdan qayta o'qiladi: `total` va tartib ham
+         // shu yerda yangilanadi.
+         ref.invalidate(commentsProvider(_ref));
+@@ -130,7 +190,15 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
+           await ref.read(socialRepositoryProvider).toggleCommentLike(c.id);
+       if (!mounted) return;
+       res.when(
+-        ok: (_) {},
++        // 2-sahifadan keyingi izoh provayderda yo'q — qayta o'qish
++        // uni yangilamaydi, shuning uchun server javobi shu yerda.
++        ok: (v) {
++          final i = _more.indexWhere((e) => e.id == c.id);
++          if (i >= 0) {
++            setState(() =>
++                _more[i] = _more[i].copyWith(liked: v.liked, likes: v.count));
++          }
++        },
+         err: (e) => ScaffoldMessenger.of(context)
+             .showSnackBar(SnackBar(content: Text(describeError(l, e)))),
+       );
+@@ -170,7 +238,10 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
+     final res = await ref.read(socialRepositoryProvider).deleteComment(c.id);
+     if (!mounted) return;
+     res.when(
+-      ok: (_) => ref.invalidate(commentsProvider(_ref)),
++      ok: (_) {
++        setState(() => _more.removeWhere((e) => e.id == c.id));
++        ref.invalidate(commentsProvider(_ref));
++      },
+       err: (e) => ScaffoldMessenger.of(context)
+           .showSnackBar(SnackBar(content: Text(describeError(l, e)))),
+     );
+@@ -181,6 +252,12 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
+     final l = L.of(context);
+     final t = context.tokens;
+     final data = ref.watch(commentsProvider(_ref));
++    // POST EGASI o'z postidagi HAR QANDAY izohni o'chira oladi (server
++    // ham ruxsat beradi: `comments.js` — muallif YOKI kontent egasi).
++    // Ilgari tugma faqat o'z izohimda edi — egasi o'z postidagi
++    // haqoratli izohni faqat shikoyat qilib, kutib o'tirardi.
++    final owner = widget.ownerCode.isNotEmpty &&
++        ref.watch(isMineProvider(widget.ownerCode));
+     // IZOH YOZISH — HAMMAGA BEPUL (egasining qarori, 2026-10-04).
+     //
+     // Ilgari Premium'siz va sinov muddati tugagan odamga maydon
+@@ -370,6 +447,15 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
+                       ),
+                     );
+                   }
++                  // 1-sahifa qayta o'qilganda (yangi izoh boshqa
++                  // odamdan) qo'shimcha sahifadagi izoh unga o'tib
++                  // qolishi mumkin — ikki marta chizilmaydi.
++                  final first = {for (final c in d.items) c.id};
++                  final items = [
++                    ...d.items,
++                    ..._more.where((c) => !first.contains(c.id)),
++                  ];
++                  final hasMore = _moreHasMore ?? d.hasMore;
+                   return Column(
+                     children: [
+                       // JAVOBLAR ICHKARIGA SURILADI.
+@@ -378,13 +464,16 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
+                       // izoh, keyin uning javoblari. Shuning uchun
+                       // bu yerda qayta saralash shart emas —
+                       // ro'yxat qanday kelsa, shunday chiziladi.
+-                      for (final c in d.items)
++                      for (final c in items)
+                         Padding(
+                           padding: EdgeInsets.only(left: c.isReply ? 34 : 0),
+                           child: _CommentTile(
+                             comment: c,
+                             ownerCode: widget.ownerCode,
+                             onDelete: c.mine ? () => _delete(c) : null,
++                            onOwnerDelete: !c.mine && owner
++                                ? () => _delete(c)
++                                : null,
+                             onLike: () => _like(c),
+                             // Javobga javob yozib bo'lmaydi (server
+                             // ham rad etadi), shuning uchun tugma
+@@ -397,6 +486,22 @@ class _CommentsSectionState extends ConsumerState<CommentsSection> {
+                                     }),
+                           ),
+                         ),
++                      if (hasMore)
++                        Align(
++                          alignment: Alignment.centerLeft,
++                          child: TextButton(
++                            key: const ValueKey('comments-load-more'),
++                            onPressed: _loadingMore ? null : _loadMore,
++                            child: _loadingMore
++                                ? SizedBox(
++                                    width: 16,
++                                    height: 16,
++                                    child: CircularProgressIndicator(
++                                        strokeWidth: 2, color: t.text3),
++                                  )
++                                : Text(l.commentsLoadMore),
++                          ),
++                        ),
+                     ],
+                   );
+                 },
+@@ -414,6 +519,7 @@ class _CommentTile extends ConsumerWidget {
+     required this.comment,
+     required this.ownerCode,
+     this.onDelete,
++    this.onOwnerDelete,
+     this.onLike,
+     this.onReply,
+   });
+@@ -421,6 +527,10 @@ class _CommentTile extends ConsumerWidget {
+   final Comment comment;
+   final String ownerCode;
+   final VoidCallback? onDelete;
++
++  /// Post egasi BEGONA izohni o'chiradi — amallar menyusida, shikoyat
++  /// va bloklash yonida (`showContentActions`).
++  final VoidCallback? onOwnerDelete;
+   final VoidCallback? onLike;
+ 
+   /// `null` — javobga javob yozib bo'lmaydi.
+@@ -462,15 +572,39 @@ class _CommentTile extends ConsumerWidget {
+                 // yo'q. Odam esa ko'pincha ISMNI bosadi: u kattaroq
+                 // va o'qilib turibdi. Bosilmagach "ishlamayapti" deb
+                 // o'ylardi.
+-                if (comment.code.isEmpty)
+-                  Text(name, style: Theme.of(context).textTheme.titleSmall)
+-                else
+-                  GestureDetector(
+-                    onTap: () => context.push(Routes.user(comment.code)),
+-                    behavior: HitTestBehavior.opaque,
+-                    child: Text(name,
+-                        style: Theme.of(context).textTheme.titleSmall),
+-                  ),
++                //
++                // Ism yonida — qachon yozilgan ("2 soat oldin"),
++                // post bilan bitta qoida (`timeAgo`).
++                Row(
++                  children: [
++                    Flexible(
++                      child: comment.code.isEmpty
++                          ? Text(name,
++                              style: Theme.of(context).textTheme.titleSmall)
++                          : GestureDetector(
++                              onTap: () =>
++                                  context.push(Routes.user(comment.code)),
++                              behavior: HitTestBehavior.opaque,
++                              child: Text(name,
++                                  style:
++                                      Theme.of(context).textTheme.titleSmall),
++                            ),
++                    ),
++                    if (comment.createdAt != null) ...[
++                      const SizedBox(width: 6),
++                      Text(
++                        timeAgo(comment.createdAt!, l),
++                        key: ValueKey('comment-time-${comment.id}'),
++                        maxLines: 1,
++                        style: TextStyle(
++                          fontFamily: AppType.sans,
++                          fontSize: 11,
++                          color: t.text3,
++                        ),
++                      ),
++                    ],
++                  ],
++                ),
+                 const SizedBox(height: 2),
+                 Text(comment.text,
+                     style: Theme.of(context).textTheme.bodyMedium),
+@@ -536,6 +670,7 @@ class _CommentTile extends ConsumerWidget {
+                 blockKind: BlockKind.record,
+                 blockId: comment.code,
+                 keyPrefix: 'comment',
++                onDelete: onOwnerDelete,
+               ),
+             ),
+         ],
+diff --git a/mobile_nova/lib/features/social/feed_card.dart b/mobile_nova/lib/features/social/feed_card.dart
+index b3547be..1613235 100644
+--- a/mobile_nova/lib/features/social/feed_card.dart
++++ b/mobile_nova/lib/features/social/feed_card.dart
+@@ -15,8 +15,10 @@ import '../../routing/routes.dart';
+ import '../home/widgets/avatar.dart';
+ import '../home/widgets/identity_card.dart';
+ import 'engagement.dart';
++import 'image_viewer.dart';
+ import 'media_frame.dart';
+ import 'music_picker.dart' show MusicChip;
++import 'time_ago.dart';
+ import '../../design/icons/nova_icons.dart';
+ 
+ /// LENTA KARTASI — LAYK, IZOH, ULASHISH VA OBUNA.
+@@ -139,6 +141,21 @@ class FeedCard extends ConsumerWidget {
+                               const SizedBox(width: Gap.sm),
+                             const _FeaturedBadge(),
+                           ],
++                          // VAQT — "2 soat oldin" (Instagram kabi).
++                          // Usiz bugungi post bilan bir yillik post
++                          // lentada farq qilmasdi.
++                          if (post.createdAt != null)
++                            Text(
++                              '${post.code.isEmpty && !post.featured ? '' : ' · '}'
++                              '${timeAgo(post.createdAt!, l)}',
++                              key: const ValueKey('feed-time'),
++                              maxLines: 1,
++                              style: TextStyle(
++                                fontFamily: AppType.sans,
++                                fontSize: 11,
++                                color: t.text3,
++                              ),
++                            ),
+                         ],
+                       ),
+                     ],
+@@ -163,11 +180,19 @@ class FeedCard extends ConsumerWidget {
+             // `AspectRatio(4 / 3)` + `cover` turardi: tik rasm usti
+             // va osti bilan kesilardi, kvadrat logotip esa cho'zilib
+             // hoshiyasi chiqib ketardi.
+-            // IKKI MARTA BOSIB LAYK — rasm postida (Instagram kabi,
+-            // egasi 2026-10-05). Faqat yoqadi, o'chirmaydi. Video
+-            // bosilganda to'liq ekran ochiladi — unga tegilmaydi.
++            // IKKI MARTA BOSIB LAYK — rasmda HAM, videoda HAM
++            // (Instagram kabi, egasi 2026-10-05). Faqat yoqadi,
++            // o'chirmaydi. Videoni BIR bosish avvalgidek to'liq
++            // ekranni ochadi — faqat ikkinchi bosish kutilgani uchun
++            // ~300 ms keyin (Reels'dagi bilan bir xil).
++            //
++            // Rasmni BIR bosish — butun ekranda kattalashtirib ko'rish
++            // (`openImageViewer`, katalogdagi bilan bitta). Ilgari rasm
++            // bosilganda hech narsa bo'lmasdi.
+             _DoubleTapLike(
+-              enabled: !post.isVideo,
++              onTap: post.isVideo
++                  ? null
++                  : () => openImageViewer(context, post.mediaUrls),
+               onLike: () async {
+                 if (like.liked) return;
+                 reportIfFailed(
+@@ -212,16 +237,7 @@ class FeedCard extends ConsumerWidget {
+           ],
+           if (post.text.isNotEmpty) ...[
+             const SizedBox(height: Gap.md),
+-            GestureDetector(
+-              onTap: openPost,
+-              behavior: HitTestBehavior.opaque,
+-              child: Text(
+-                post.text,
+-                maxLines: 2,
+-                overflow: TextOverflow.ellipsis,
+-                style: Theme.of(context).textTheme.bodySmall,
+-              ),
+-            ),
++            _FeedCaption(text: post.text, onOpen: openPost),
+           ],
+           const SizedBox(height: Gap.sm),
+           Divider(height: 1, color: t.border1),
+@@ -449,15 +465,97 @@ class _FeaturedBadge extends StatelessWidget {
+ }
+ 
+ 
++/// Lenta izohi — 2 qatordan uzun bo'lsa ostida "ko'proq".
++///
++/// Ilgari uzun matn 2 qatorda kesilib qolardi va oxirini o'qish uchun
++/// postni OCHISH kerak edi. Endi "ko'proq" bosilsa matn shu kartaning
++/// o'zida to'liq ochiladi (Instagram kabi). Matnning qolgan joyini
++/// bosish avvalgidek postni ochadi. Yozuv Reels'dagi bilan bitta
++/// (`reelCaptionMore`).
++class _FeedCaption extends StatefulWidget {
++  const _FeedCaption({required this.text, required this.onOpen});
++
++  final String text;
++  final VoidCallback onOpen;
++
++  @override
++  State<_FeedCaption> createState() => _FeedCaptionState();
++}
++
++class _FeedCaptionState extends State<_FeedCaption> {
++  bool _open = false;
++
++  @override
++  void didUpdateWidget(_FeedCaption old) {
++    super.didUpdateWidget(old);
++    // Karta boshqa postga qayta ishlatilsa — yana yig'iq holda.
++    if (old.text != widget.text) _open = false;
++  }
++
++  @override
++  Widget build(BuildContext context) {
++    final style = Theme.of(context).textTheme.bodySmall;
++    final body = GestureDetector(
++      onTap: widget.onOpen,
++      behavior: HitTestBehavior.opaque,
++      child: Text(
++        widget.text,
++        maxLines: _open ? null : 2,
++        overflow: _open ? null : TextOverflow.ellipsis,
++        style: style,
++      ),
++    );
++    if (_open) return body;
++    return LayoutBuilder(builder: (context, box) {
++      // Matn 2 qatorga sig'adimi — o'lchab ko'riladi. `TextPainter`
++      // darhol yo'q qilinadi: u o'z ichida mahalliy (C++) paragraf
++      // ushlab turadi va har qurishda yangisi yaratilib tashlab
++      // qo'yilsa xotira sizib chiqardi.
++      final tp = TextPainter(
++        text: TextSpan(text: widget.text, style: style),
++        maxLines: 2,
++        textDirection: Directionality.of(context),
++        textScaler: MediaQuery.textScalerOf(context),
++      )..layout(maxWidth: box.maxWidth);
++      final long = tp.didExceedMaxLines;
++      tp.dispose();
++      if (!long) return body;
++      return Column(
++        crossAxisAlignment: CrossAxisAlignment.start,
++        mainAxisSize: MainAxisSize.min,
++        children: [
++          body,
++          GestureDetector(
++            key: const ValueKey('feed-caption-more'),
++            behavior: HitTestBehavior.opaque,
++            onTap: () => setState(() => _open = true),
++            // Barmoq uchun maydon — yozuvning o'zi juda kichik.
++            child: Padding(
++              padding: const EdgeInsets.fromLTRB(0, 4, Gap.lg, 4),
++              child: Text(
++                L.of(context).reelCaptionMore,
++                style: style?.copyWith(
++                    color: context.tokens.text3, fontWeight: FontWeight.w600),
++              ),
++            ),
++          ),
++        ],
++      );
++    });
++  }
++}
++
+ /// Rasm ustida ikki marta bosish → layk va qisqa yurak animatsiyasi.
+ class _DoubleTapLike extends StatefulWidget {
+   const _DoubleTapLike({
+-    required this.enabled,
++    this.onTap,
+     required this.onLike,
+     required this.child,
+   });
+ 
+-  final bool enabled;
++  /// Bir bosish (rasm — kattalashtirib ko'rish). `null` bo'lsa bir
++  /// bosish ichkaridagi vidjetga qoladi (video — to'liq ekran).
++  final VoidCallback? onTap;
+   final VoidCallback onLike;
+   final Widget child;
+ 
+@@ -478,9 +576,9 @@ class _DoubleTapLikeState extends State<_DoubleTapLike> {
+ 
+   @override
+   Widget build(BuildContext context) {
+-    if (!widget.enabled) return widget.child;
+     return GestureDetector(
+       key: const ValueKey('feed-double-like'),
++      onTap: widget.onTap,
+       onDoubleTap: _go,
+       child: Stack(
+         alignment: Alignment.center,
+diff --git a/mobile_nova/lib/features/social/moderation.dart b/mobile_nova/lib/features/social/moderation.dart
+index f9e5ab0..71641df 100644
+--- a/mobile_nova/lib/features/social/moderation.dart
++++ b/mobile_nova/lib/features/social/moderation.dart
+@@ -12,6 +12,7 @@ import '../../design/widgets/states.dart';
+ import '../../design/widgets/surfaces.dart';
+ import '../../design/widgets/nova_scaffold.dart';
+ import '../../l10n/gen/app_localizations.dart';
++import '../../design/icons/nova_icons.dart';
+ 
+ /// Shikoyat va bloklash.
+ ///
+@@ -160,6 +161,7 @@ Future<void> showContentActions(
+   bool mine = false,
+   String keyPrefix = 'content',
+   VoidCallback? onBlocked,
++  VoidCallback? onDelete,
+ }) {
+   final l = L.of(context);
+   return showModalBottomSheet<void>(
+@@ -172,6 +174,20 @@ Future<void> showContentActions(
+       child: Column(
+         mainAxisSize: MainAxisSize.min,
+         children: [
++          // O'CHIRISH — kontent egasi uchun (masalan, o'z postidagi
++          // BEGONA izoh). Shikoyat va bloklash yonida qoladi: egasi
++          // izohni o'chirib, muallifni bloklashi ham mumkin.
++          if (onDelete != null)
++            ListTile(
++              key: ValueKey('$keyPrefix-delete'),
++              leading: Icon(NovaIcons.delete, color: context.tokens.error),
++              title: Text(l.actionDelete,
++                  style: TextStyle(color: context.tokens.error)),
++              onTap: () {
++                Navigator.of(sheet).pop();
++                onDelete();
++              },
++            ),
+           ListTile(
+             key: ValueKey('$keyPrefix-report'),
+             leading: const Icon(Icons.flag_outlined),
+diff --git a/mobile_nova/lib/features/social/post_screens.dart b/mobile_nova/lib/features/social/post_screens.dart
+index 19e6a76..4c948a5 100644
+--- a/mobile_nova/lib/features/social/post_screens.dart
++++ b/mobile_nova/lib/features/social/post_screens.dart
+@@ -23,6 +23,7 @@ import '../../design/widgets/surfaces.dart';
+ import '../../l10n/gen/app_localizations.dart';
+ import '../../routing/routes.dart';
+ import '../auth/session.dart';
++import '../business/business_providers.dart' show myBusinessesProvider;
+ import '../home/home_screen.dart';
+ import '../home/widgets/avatar.dart';
+ import '../home/widgets/identity_card.dart';
+@@ -30,6 +31,7 @@ import '../profile/profile_repository.dart';
+ import '../profile/profile_screen.dart';
+ import 'comments.dart';
+ import 'engagement.dart';
++import 'image_viewer.dart';
+ import 'reels_screen.dart';
+ import 'story_viewer.dart';
+ import 'media_frame.dart';
+@@ -37,6 +39,7 @@ import 'content_rules.dart';
+ import 'moderation.dart';
+ import '../shop/store_policy.dart';
+ import 'music_picker.dart';
++import 'time_ago.dart';
+ import '../../design/icons/nova_icons.dart';
+ 
+ /// Post tafsiloti uchun so'rov: yozuv kodi + post id.
+@@ -210,8 +213,16 @@ class _PostScreenState extends ConsumerState<PostScreen> {
+           // PREMIUM: amallar kulrang emas — to'q siyoh ton.
+           final ink = Color.lerp(t.text1, t.text2, .35)!;
+           // O'chirish shaxsiy `/api/posts/:id` ga boradi — kompaniya
+-          // postida u BEGONA shaxsiy postni o'chirardi.
+-          final mine = !p.isCompany && myIds.any((e) => e.code == p.code);
++          // postida u BEGONA shaxsiy postni o'chirardi. Shuning uchun
++          // kompaniya posti alohida: egasi — o'sha kompaniya MENIKI
++          // bo'lsa (`myBusinessesProvider`), o'chirish esa
++          // `/api/companies/:id/posts/:postId` ga (`_confirmDelete`).
++          // Ilgari kompaniya egasi o'z postini umuman o'chira olmasdi.
++          final mine = p.isCompany
++              ? (ref.watch(myBusinessesProvider).valueOrNull?.any(
++                      (c) => c.companyId == p.code) ??
++                  false)
++              : myIds.any((e) => e.code == p.code);
+           return NovaScroll(
+             children: [
+               Row(
+@@ -241,6 +252,18 @@ class _PostScreenState extends ConsumerState<PostScreen> {
+                             p.code,
+                             style: AppType.monoStyle(color: t.text3, size: 11),
+                           ),
++                        // Qachon joylangan — lenta kartasidagi bilan bitta
++                        // qoida (`timeAgo`).
++                        if (p.createdAt != null)
++                          Text(
++                            timeAgo(p.createdAt!, l),
++                            key: const ValueKey('post-time'),
++                            style: TextStyle(
++                              fontFamily: AppType.sans,
++                              fontSize: 11,
++                              color: t.text3,
++                            ),
++                          ),
+                       ],
+                     ),
+                   ),
+@@ -309,18 +332,28 @@ class _PostScreenState extends ConsumerState<PostScreen> {
+                 // ko'rinardi va ikkalasida ham kesilardi.
+                 Stack(
+                   children: [
+-                    AdaptiveMedia(
+-                      url: p.mediaUrls.first,
+-                      isVideo: p.isVideo,
+-                      videoKey: ValueKey(p.id),
+-                      autoPlayVideo: false,
+-                      loopingVideo: true,
+-                      tapToToggleVideo: true,
+-                      showMuteVideo: true,
+-                      // Bosish — belgilarsiz to'liq ekran (Instagram).
+-                      fullscreenVideo: true,
+-                      onVideoFullscreen: _onFullscreen,
+-                      borderRadius: R.gentle,
++                    // RASM BOSILSA — butun ekranda, ikki barmoq bilan
++                    // kattalashtirib ko'rish (katalogdagi `openImageViewer`
++                    // bilan bitta). Ilgari post rasmini yaqinroq ko'rib
++                    // bo'lmasdi. Videoda bosish avvalgidek — to'liq ekran.
++                    GestureDetector(
++                      key: const ValueKey('post-image'),
++                      onTap: p.isVideo
++                          ? null
++                          : () => openImageViewer(context, p.mediaUrls),
++                      child: AdaptiveMedia(
++                        url: p.mediaUrls.first,
++                        isVideo: p.isVideo,
++                        videoKey: ValueKey(p.id),
++                        autoPlayVideo: false,
++                        loopingVideo: true,
++                        tapToToggleVideo: true,
++                        showMuteVideo: true,
++                        // Bosish — belgilarsiz to'liq ekran (Instagram).
++                        fullscreenVideo: true,
++                        onVideoFullscreen: _onFullscreen,
++                        borderRadius: R.gentle,
++                      ),
+                     ),
+                     // KO'RISHLAR — Reels'dagi ko'z belgisi + son, media
+                     // ustida (amallar qatoriga qo'shilsa 320 dp da
+@@ -445,7 +478,11 @@ class _PostScreenState extends ConsumerState<PostScreen> {
+       ),
+     );
+     if (ok != true || !mounted) return;
+-    final res = await ref.read(socialRepositoryProvider).deletePost(p.id);
++    // Kompaniya posti — kompaniyaning o'z yo'li; server egalikni
++    // (`owner_user_id`) o'zi tekshiradi.
++    final res = p.isCompany
++        ? await ref.read(businessRepositoryProvider).deletePost(p.code, p.id)
++        : await ref.read(socialRepositoryProvider).deletePost(p.id);
+     if (!mounted) return;
+     res.when(
+       ok: (_) {
+diff --git a/mobile_nova/lib/features/social/reels_screen.dart b/mobile_nova/lib/features/social/reels_screen.dart
+index 141e2d3..6523d36 100644
+--- a/mobile_nova/lib/features/social/reels_screen.dart
++++ b/mobile_nova/lib/features/social/reels_screen.dart
+@@ -147,11 +147,13 @@ final reelsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
+   );
+ });
+ 
+-/// Saqlangan reel'lar — SHU QURILMADA.
++/// "QIZIQ EMAS" deb yashirilgan reel'lar (`likeKey`) — faqat shu
++/// ilova seansida, serverga hech narsa yuborilmaydi (bunday API yo'q).
+ ///
+-/// Serverda "saqlash" API'si yo'q. Shuning uchun saqlash telefon
+-/// xotirasida turadi va buni odamga aytamiz (snackbar) — soxta
+-/// "hisobingizga saqlandi" yo'q.
++/// Ro'yxatning o'zi (`reelsProvider`) o'zgartirilmaydi: u keshlanadi
++/// va qayta yuklanganda yashirilgan reel yana chiqib qolardi. Shuning
++/// uchun ekran ro'yxatni shu to'plam bilan suzib ko'rsatadi.
++final reelsHiddenProvider = StateProvider<Set<String>>((ref) => const {});
+ 
+ 
+ /// REELS VIDEOSINI OCHISH CHEGARASI (egasi, 2026-10: "bir video
+@@ -327,6 +329,11 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
+     if (!onReelsTab) _started = -1;
+     final l = L.of(context);
+     final reels = ref.watch(reelsProvider);
++    final hidden = ref.watch(reelsHiddenProvider);
++    // Ko'rinayotgan reel yashirildi — o'rniga keyingisi keladi va u hali
++    // O'YNAY BOSHLAMAGAN: undan keyingisi oldindan yuklanib tarmoqni
++    // bo'lmasin (`_started` izohiga qarang).
++    ref.listen(reelsHiddenProvider, (_, __) => _started = -1);
+     final clean = ref.watch(reelsCleanProvider);
+     // Boshqa tabga o'tildi — toza rejim o'z-o'zidan tugaydi, aks holda
+     // boshqa bo'limda pastki panel yashirin qolardi.
+@@ -365,7 +372,20 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
+           onRetry: () => ref.invalidate(reelsProvider),
+           onDark: true,
+         ),
+-        data: (items) {
++        data: (all) {
++          final items = hidden.isEmpty
++              ? all
++              : all.where((p) => !hidden.contains(likeKey(p))).toList();
++          // Bitta reel qoldi — sahifalar endi cheksiz emas
++          // (`itemCount: 1`), varaq esa 0-sahifadan nariroqda turgan
++          // bo'lishi mumkin: boshiga qaytariladi.
++          if (items.length == 1 && _index != 0) {
++            WidgetsBinding.instance.addPostFrameCallback((_) {
++              if (!mounted) return;
++              if (_page.hasClients) _page.jumpToPage(0);
++              setState(() => _index = 0);
++            });
++          }
+           if (items.isEmpty) {
+             return Stack(
+               children: [
+@@ -1047,6 +1067,8 @@ class _ReelPageState extends ConsumerState<_ReelPage>
+   Future<void> _save() async {
+     final l = L.of(context);
+     final on = await ref.read(savedReelsProvider.notifier).toggleReel(widget.post);
++    // Saqlash HISOBGA bog'langan (`SyncedSaves`, `/api/saves`) — matn
++    // ham shuni aytadi; ilgari "shu telefonda" deyilardi.
+     if (mounted) _snack(on ? l.reelSavedLocal : l.reelUnsaved);
+   }
+ 
+@@ -1577,6 +1599,23 @@ class _ReelPageState extends ConsumerState<_ReelPage>
+                 );
+               },
+             ),
++            // QIZIQ EMAS — reel shu ro'yxatdan darhol olinadi (Instagram
++            // kabi). Serverga yuborilmaydi: tavsiya API'si yo'q, shuning
++            // uchun "kamroq ko'rsatamiz" deb va'da ham berilmaydi.
++            if (!ref.read(isMineProvider(p.code)))
++              ListTile(
++                key: const ValueKey('reel-not-interested'),
++                leading: const Icon(Icons.visibility_off_outlined),
++                title: Text(l.reelNotInterested),
++                onTap: () {
++                  Navigator.of(sheet).pop();
++                  // Avval xabar: yashirilgach bu sahifa yo'q qilinadi.
++                  _snack(l.reelNotInterestedDone);
++                  ref
++                      .read(reelsHiddenProvider.notifier)
++                      .update((s) => {...s, likeKey(p)});
++                },
++              ),
+             if (!ref.read(isMineProvider(p.code)) && p.code.isNotEmpty)
+               ListTile(
+                 key: const ValueKey('reel-block'),
+@@ -1665,13 +1704,32 @@ Future<void> showReelComments(
+   );
+ }
+ 
+-class _CommentsSheet extends ConsumerWidget {
++class _CommentsSheet extends ConsumerStatefulWidget {
+   const _CommentsSheet({required this.post, this.onTotal});
+   final Post post;
+   final ValueChanged<int>? onTotal;
+ 
+   @override
+-  Widget build(BuildContext context, WidgetRef ref) {
++  ConsumerState<_CommentsSheet> createState() => _CommentsSheetState();
++}
++
++class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
++  /// Yozish maydonining fokusi — "Javob berish" bosilganda klaviatura
++  /// ochilsin. Ilgari varaq `CommentsSection` ga fokus bermasdi: javob
++  /// yo'lakchasi chiqardi-yu, odam maydonni yana alohida bosishi kerak
++  /// edi (post ekranida esa ishlardi).
++  final _focus = FocusNode();
++
++  @override
++  void dispose() {
++    _focus.dispose();
++    super.dispose();
++  }
++
++  @override
++  Widget build(BuildContext context) {
++    final post = widget.post;
++    final onTotal = widget.onTotal;
+     final kind = post.isCompany ? 'company_post' : 'post';
+     ref.listen(commentsProvider((kind: kind, id: post.id)), (_, next) {
+       final total = next.valueOrNull?.total;
+@@ -1693,6 +1751,7 @@ class _CommentsSheet extends ConsumerWidget {
+             kind: kind,
+             id: post.id,
+             ownerCode: post.code,
++            focusNode: _focus,
+           ),
+         ),
+       ),
+@@ -1868,6 +1927,10 @@ class _ReelCaption extends StatelessWidget {
+         textScaler: MediaQuery.textScalerOf(context),
+       )..layout(maxWidth: box.maxWidth);
+       final long = tp.didExceedMaxLines;
++      // O'lchov tugadi — mahalliy (C++) paragraf darhol bo'shatiladi.
++      // Ilgari har qurishda (har kadr surishda ham) yangi `TextPainter`
++      // yaratilib, hech qachon `dispose` qilinmasdi — xotira sizardi.
++      tp.dispose();
+       if (!long) return Text(text, style: _style);
+       return GestureDetector(
+         key: const ValueKey('reel-caption'),
+diff --git a/mobile_nova/lib/features/social/time_ago.dart b/mobile_nova/lib/features/social/time_ago.dart
+new file mode 100644
+index 0000000..afb0f8f
+--- /dev/null
++++ b/mobile_nova/lib/features/social/time_ago.dart
+@@ -0,0 +1,24 @@
++import '../../l10n/gen/app_localizations.dart';
++
++/// "2 soat oldin" — lenta kartasi, post tafsiloti va izohlar uchun
++/// BITTA qoida (Instagram kabi).
++///
++/// Ilgari postda ham, izohda ham vaqt umuman ko'rinmasdi: odam
++/// e'lon bugun yozilganmi yoki bir yil oldinmi — bilmasdi. Uch joyda
++/// alohida hisoblansa, biri "3 kun", boshqasi sana ko'rsatib qolardi —
++/// shuning uchun bitta yordamchi.
++///
++/// Telefon vaqtida (`toLocal`): server UTC beradi. Kelajakdagi sana
++/// (telefon soati orqada) "hozirgina" bo'ladi — "-2 daqiqa" emas.
++/// Bir oydan eskisi — aniq sana: "34 hafta oldin" o'qishga noqulay.
++String timeAgo(DateTime at, L l, {DateTime? now}) {
++  final local = at.toLocal();
++  final d = (now ?? DateTime.now()).difference(local);
++  if (d.inMinutes < 1) return l.timeAgoJustNow;
++  if (d.inHours < 1) return l.timeAgoMinutes(d.inMinutes);
++  if (d.inDays < 1) return l.timeAgoHours(d.inHours);
++  if (d.inDays < 7) return l.timeAgoDays(d.inDays);
++  if (d.inDays < 28) return l.timeAgoWeeks(d.inDays ~/ 7);
++  String two(int v) => v.toString().padLeft(2, '0');
++  return '${two(local.day)}.${two(local.month)}.${local.year}';
++}
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index 9614fc0..293260a 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -834,7 +834,7 @@
+   "catalogOpenSeller": "Seller page",
+   "catalogFavorite": "Favorites",
+   "catalogNoPaymentNote": "Orders and payment are arranged with the seller. Favorites are stored on this phone.",
+-  "reelSavedLocal": "Saved — on this phone",
++  "reelSavedLocal": "Saved to your account",
+   "reelUnsaved": "Removed from saved",
+   "reelBlockAuthor": "Block author",
+   "reelBlocked": "Blocked — you won’t see their content",
+@@ -1064,5 +1064,13 @@
+   "langChooseTitle": "Choose your language",
+   "langChooseBody": "You can change it later in Settings → Language.",
+   "fieldEmailHint": "you@example.com",
+-  "notFoundHome": "Home"
++  "notFoundHome": "Home",
++  "timeAgoJustNow": "just now",
++  "timeAgoMinutes": "{n, plural, =1{1 minute ago} other{{n} minutes ago}}",
++  "timeAgoHours": "{n, plural, =1{1 hour ago} other{{n} hours ago}}",
++  "timeAgoDays": "{n, plural, =1{1 day ago} other{{n} days ago}}",
++  "timeAgoWeeks": "{n, plural, =1{1 week ago} other{{n} weeks ago}}",
++  "commentsLoadMore": "View more comments",
++  "reelNotInterested": "Not interested",
++  "reelNotInterestedDone": "Reel hidden"
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index 8a8ee25..5b05941 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -834,7 +834,7 @@
+   "catalogOpenSeller": "Страница продавца",
+   "catalogFavorite": "Избранное",
+   "catalogNoPaymentNote": "Заказ и оплата — по договорённости с продавцом. Избранное хранится на этом телефоне.",
+-  "reelSavedLocal": "Сохранено — на этом телефоне",
++  "reelSavedLocal": "Сохранено — в вашем аккаунте",
+   "reelUnsaved": "Удалено из сохранённых",
+   "reelBlockAuthor": "Заблокировать автора",
+   "reelBlocked": "Заблокировано — контент автора больше не показывается",
+@@ -1064,5 +1064,13 @@
+   "langChooseTitle": "Выберите язык",
+   "langChooseBody": "Позже его можно изменить в Настройки → Язык.",
+   "fieldEmailHint": "vy@example.com",
+-  "notFoundHome": "На главную"
++  "notFoundHome": "На главную",
++  "timeAgoJustNow": "только что",
++  "timeAgoMinutes": "{n, plural, one{{n} минуту назад} few{{n} минуты назад} other{{n} минут назад}}",
++  "timeAgoHours": "{n, plural, one{{n} час назад} few{{n} часа назад} other{{n} часов назад}}",
++  "timeAgoDays": "{n, plural, one{{n} день назад} few{{n} дня назад} other{{n} дней назад}}",
++  "timeAgoWeeks": "{n, plural, one{{n} неделю назад} few{{n} недели назад} other{{n} недель назад}}",
++  "commentsLoadMore": "Показать ещё комментарии",
++  "reelNotInterested": "Не интересно",
++  "reelNotInterestedDone": "Reel скрыт"
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index 0a1ca49..c8ec7b5 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -892,7 +892,7 @@
+       }
+     }
+   },
+-  "reelSavedLocal": "Saqlandi — shu telefonda",
++  "reelSavedLocal": "Saqlandi — hisobingizda",
+   "reelUnsaved": "Saqlanganlardan olindi",
+   "reelBlockAuthor": "Muallifni bloklash",
+   "reelBlocked": "Bloklandi — uning kontenti endi ko‘rinmaydi",
+@@ -1205,5 +1205,19 @@
+   "langChooseTitle": "Tilni tanlang",
+   "langChooseBody": "Keyinroq Sozlamalar → Til orqali o‘zgartirishingiz mumkin.",
+   "fieldEmailHint": "siz@example.com",
+-  "notFoundHome": "Bosh sahifa"
++  "notFoundHome": "Bosh sahifa",
++  "timeAgoJustNow": "hozirgina",
++  "@timeAgoJustNow": {"description": "Post/izoh vaqti: bir daqiqadan yangi."},
++  "timeAgoMinutes": "{n} daqiqa oldin",
++  "@timeAgoMinutes": {"description": "Post/izoh vaqti: nisbiy («2 soat oldin»).", "placeholders": {"n": {"type": "int"}}},
++  "timeAgoHours": "{n} soat oldin",
++  "@timeAgoHours": {"description": "Post/izoh vaqti: nisbiy («2 soat oldin»).", "placeholders": {"n": {"type": "int"}}},
++  "timeAgoDays": "{n} kun oldin",
++  "@timeAgoDays": {"description": "Post/izoh vaqti: nisbiy («2 soat oldin»).", "placeholders": {"n": {"type": "int"}}},
++  "timeAgoWeeks": "{n} hafta oldin",
++  "@timeAgoWeeks": {"description": "Post/izoh vaqti: nisbiy («2 soat oldin»).", "placeholders": {"n": {"type": "int"}}},
++  "commentsLoadMore": "Yana izohlarni ko‘rish",
++  "reelNotInterested": "Qiziq emas",
++  "reelNotInterestedDone": "Reel yashirildi",
++  "@reelNotInterestedDone": {"description": "Reels → «Qiziq emas»: reel joriy ro‘yxatdan olindi (faqat shu seansda, serverga yuborilmaydi)."}
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index 42c9cb2..bcc64f1 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -4230,7 +4230,7 @@ abstract class L {
+   /// No description provided for @reelSavedLocal.
+   ///
+   /// In uz, this message translates to:
+-  /// **'Saqlandi — shu telefonda'**
++  /// **'Saqlandi — hisobingizda'**
+   String get reelSavedLocal;
+ 
+   /// No description provided for @reelUnsaved.
+@@ -5600,6 +5600,54 @@ abstract class L {
+   /// In uz, this message translates to:
+   /// **'Bosh sahifa'**
+   String get notFoundHome;
++
++  /// Post/izoh vaqti: bir daqiqadan yangi.
++  ///
++  /// In uz, this message translates to:
++  /// **'hozirgina'**
++  String get timeAgoJustNow;
++
++  /// Post/izoh vaqti: nisbiy («2 soat oldin»).
++  ///
++  /// In uz, this message translates to:
++  /// **'{n} daqiqa oldin'**
++  String timeAgoMinutes(int n);
++
++  /// Post/izoh vaqti: nisbiy («2 soat oldin»).
++  ///
++  /// In uz, this message translates to:
++  /// **'{n} soat oldin'**
++  String timeAgoHours(int n);
++
++  /// Post/izoh vaqti: nisbiy («2 soat oldin»).
++  ///
++  /// In uz, this message translates to:
++  /// **'{n} kun oldin'**
++  String timeAgoDays(int n);
++
++  /// Post/izoh vaqti: nisbiy («2 soat oldin»).
++  ///
++  /// In uz, this message translates to:
++  /// **'{n} hafta oldin'**
++  String timeAgoWeeks(int n);
++
++  /// No description provided for @commentsLoadMore.
++  ///
++  /// In uz, this message translates to:
++  /// **'Yana izohlarni ko‘rish'**
++  String get commentsLoadMore;
++
++  /// No description provided for @reelNotInterested.
++  ///
++  /// In uz, this message translates to:
++  /// **'Qiziq emas'**
++  String get reelNotInterested;
++
++  /// Reels → «Qiziq emas»: reel joriy ro‘yxatdan olindi (faqat shu seansda, serverga yuborilmaydi).
++  ///
++  /// In uz, this message translates to:
++  /// **'Reel yashirildi'**
++  String get reelNotInterestedDone;
+ }
+ 
+ class _LDelegate extends LocalizationsDelegate<L> {
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index fe9c87d..55449be 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -2198,7 +2198,7 @@ class LEn extends L {
+       'Orders and payment are arranged with the seller. Favorites are stored on this phone.';
+ 
+   @override
+-  String get reelSavedLocal => 'Saved — on this phone';
++  String get reelSavedLocal => 'Saved to your account';
+ 
+   @override
+   String get reelUnsaved => 'Removed from saved';
+@@ -2952,4 +2952,60 @@ class LEn extends L {
+ 
+   @override
+   String get notFoundHome => 'Home';
++
++  @override
++  String get timeAgoJustNow => 'just now';
++
++  @override
++  String timeAgoMinutes(int n) {
++    String _temp0 = intl.Intl.pluralLogic(
++      n,
++      locale: localeName,
++      other: '$n minutes ago',
++      one: '1 minute ago',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String timeAgoHours(int n) {
++    String _temp0 = intl.Intl.pluralLogic(
++      n,
++      locale: localeName,
++      other: '$n hours ago',
++      one: '1 hour ago',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String timeAgoDays(int n) {
++    String _temp0 = intl.Intl.pluralLogic(
++      n,
++      locale: localeName,
++      other: '$n days ago',
++      one: '1 day ago',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String timeAgoWeeks(int n) {
++    String _temp0 = intl.Intl.pluralLogic(
++      n,
++      locale: localeName,
++      other: '$n weeks ago',
++      one: '1 week ago',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String get commentsLoadMore => 'View more comments';
++
++  @override
++  String get reelNotInterested => 'Not interested';
++
++  @override
++  String get reelNotInterestedDone => 'Reel hidden';
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index 2a803fb..de9e440 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -2192,7 +2192,7 @@ class LRu extends L {
+       'Заказ и оплата — по договорённости с продавцом. Избранное хранится на этом телефоне.';
+ 
+   @override
+-  String get reelSavedLocal => 'Сохранено — на этом телефоне';
++  String get reelSavedLocal => 'Сохранено — в вашем аккаунте';
+ 
+   @override
+   String get reelUnsaved => 'Удалено из сохранённых';
+@@ -2948,4 +2948,64 @@ class LRu extends L {
+ 
+   @override
+   String get notFoundHome => 'На главную';
++
++  @override
++  String get timeAgoJustNow => 'только что';
++
++  @override
++  String timeAgoMinutes(int n) {
++    String _temp0 = intl.Intl.pluralLogic(
++      n,
++      locale: localeName,
++      other: '$n минут назад',
++      few: '$n минуты назад',
++      one: '$n минуту назад',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String timeAgoHours(int n) {
++    String _temp0 = intl.Intl.pluralLogic(
++      n,
++      locale: localeName,
++      other: '$n часов назад',
++      few: '$n часа назад',
++      one: '$n час назад',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String timeAgoDays(int n) {
++    String _temp0 = intl.Intl.pluralLogic(
++      n,
++      locale: localeName,
++      other: '$n дней назад',
++      few: '$n дня назад',
++      one: '$n день назад',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String timeAgoWeeks(int n) {
++    String _temp0 = intl.Intl.pluralLogic(
++      n,
++      locale: localeName,
++      other: '$n недель назад',
++      few: '$n недели назад',
++      one: '$n неделю назад',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String get commentsLoadMore => 'Показать ещё комментарии';
++
++  @override
++  String get reelNotInterested => 'Не интересно';
++
++  @override
++  String get reelNotInterestedDone => 'Reel скрыт';
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index b5edc5c..dde6792 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -2200,7 +2200,7 @@ class LUz extends L {
+       'Buyurtma va to‘lov sotuvchi bilan kelishiladi. Sevimlilar shu telefonda saqlanadi.';
+ 
+   @override
+-  String get reelSavedLocal => 'Saqlandi — shu telefonda';
++  String get reelSavedLocal => 'Saqlandi — hisobingizda';
+ 
+   @override
+   String get reelUnsaved => 'Saqlanganlardan olindi';
+@@ -2957,4 +2957,36 @@ class LUz extends L {
+ 
+   @override
+   String get notFoundHome => 'Bosh sahifa';
++
++  @override
++  String get timeAgoJustNow => 'hozirgina';
++
++  @override
++  String timeAgoMinutes(int n) {
++    return '$n daqiqa oldin';
++  }
++
++  @override
++  String timeAgoHours(int n) {
++    return '$n soat oldin';
++  }
++
++  @override
++  String timeAgoDays(int n) {
++    return '$n kun oldin';
++  }
++
++  @override
++  String timeAgoWeeks(int n) {
++    return '$n hafta oldin';
++  }
++
++  @override
++  String get commentsLoadMore => 'Yana izohlarni ko‘rish';
++
++  @override
++  String get reelNotInterested => 'Qiziq emas';
++
++  @override
++  String get reelNotInterestedDone => 'Reel yashirildi';
+ }
+diff --git a/mobile_nova/test/feed_card_test.dart b/mobile_nova/test/feed_card_test.dart
+index aa5fd64..797ccfe 100644
+--- a/mobile_nova/test/feed_card_test.dart
++++ b/mobile_nova/test/feed_card_test.dart
+@@ -19,7 +19,10 @@ import 'package:nfcstore_nova/l10n/gen/app_localizations_en.dart';
+ import 'package:nfcstore_nova/l10n/gen/app_localizations_ru.dart';
+ import 'package:nfcstore_nova/l10n/gen/app_localizations_uz.dart';
+ 
++import 'package:video_player_platform_interface/video_player_platform_interface.dart';
++
+ import 'helpers.dart';
++import 'support/fake_video_platform.dart';
+ import 'package:nfcstore_nova/design/icons/nova_icons.dart';
+ 
+ /// LENTA KARTASIDAGI AMALLAR.
+@@ -498,4 +501,129 @@ void main() {
+       }
+     });
+   });
++
++  // ── INSTAGRAM KABI (vaqt, rasmni kattalashtirish, videoda ikki marta
++  // bosib layk, izohda "ko'proq") ───────────────────────────────────
++  group('INSTAGRAM', () {
++    const photo = 'https://nfcstore.uz/uploads/x.jpg';
++
++    testWidgets('sarlavhada vaqt: "2 soat oldin"', (tester) async {
++      await pump(
++        tester,
++        social: _FeedRepo(),
++        profile: _FollowRepo(),
++        item: Post(
++          id: 77,
++          code: 'TTS075',
++          authorName: 'Tohir',
++          createdAt: DateTime.now()
++              .subtract(const Duration(hours: 2, minutes: 5)),
++        ),
++      );
++      expect(find.byKey(const ValueKey('feed-time')), findsOneWidget);
++      expect(find.text(' · 2 soat oldin'), findsOneWidget);
++    });
++
++    testWidgets('vaqt kelmagan post — vaqt yozuvi yo‘q', (tester) async {
++      await pump(tester, social: _FeedRepo(), profile: _FollowRepo());
++      expect(find.byKey(const ValueKey('feed-time')), findsNothing);
++    });
++
++    testWidgets('rasm bosilsa — to‘liq ekranda kattalashtirib ko‘rish; '
++        'ikki marta bosish esa faqat layk', (tester) async {
++      final social = _FeedRepo();
++      await pump(
++        tester,
++        social: social,
++        profile: _FollowRepo(),
++        item: const Post(
++            id: 77, code: 'TTS075', authorName: 'Tohir', mediaUrls: [photo]),
++      );
++      final pic = find.byKey(const ValueKey('feed-double-like'));
++
++      // Ikki marta — layk, ko'ruvchi OCHILMAYDI.
++      await tester.tap(pic);
++      await tester.pump(const Duration(milliseconds: 60));
++      await tester.tap(pic);
++      await tester.pump(const Duration(milliseconds: 700));
++      expect(social.likeCalls, 1);
++      expect(find.byKey(const ValueKey('image-viewer')), findsNothing);
++
++      // Bir marta — ko'ruvchi (ikkinchi bosish kutilgandan keyin).
++      await tester.tap(pic);
++      await tester.pump(const Duration(milliseconds: 400));
++      await settle(tester, frames: 6);
++      expect(find.byKey(const ValueKey('image-viewer')), findsOneWidget);
++      expect(find.textContaining('POST'), findsNothing,
++          reason: 'rasm bosilganda post ekraniga o‘tilmaydi');
++      expect(tester.takeException(), isNull);
++    });
++
++    testWidgets('videoda ham ikki marta bosish — layk, to‘liq ekran '
++        'ochilmaydi; bir bosish — avvalgidek to‘liq ekran', (tester) async {
++      VideoPlayerPlatform.instance = FakeVideoPlatform();
++      final social = _FeedRepo();
++      await pump(
++        tester,
++        social: social,
++        profile: _FollowRepo(),
++        item: const Post(
++          id: 77,
++          code: 'TTS075',
++          authorName: 'Tohir',
++          mediaUrls: ['https://nfcstore.uz/uploads/a.mp4'],
++          isVideo: true,
++        ),
++      );
++      final pic = find.byKey(const ValueKey('feed-double-like'));
++      expect(pic, findsOneWidget);
++      await tester.tap(pic);
++      await tester.pump(const Duration(milliseconds: 60));
++      await tester.tap(pic);
++      await tester.pump(const Duration(milliseconds: 700));
++      expect(social.likeCalls, 1);
++      expect(find.byKey(const ValueKey('video-fullscreen')), findsNothing,
++          reason: 'ikki marta bosish videoni ochib yubormasin');
++      expect(find.byKey(const ValueKey('image-viewer')), findsNothing);
++
++      // Dangasa rejim: hali ochilmagan video — bir bosish ochadi.
++      await tester.tap(pic);
++      await tester.pump(const Duration(milliseconds: 400));
++      await settle(tester, frames: 6);
++      expect(find.byKey(const ValueKey('video-fullscreen')), findsOneWidget);
++      expect(tester.takeException(), isNull);
++    });
++
++    testWidgets('uzun izoh: "ko‘proq" kartaning o‘zida ochadi, matnni '
++        'bosish — postni', (tester) async {
++      final long = List.filled(14, 'Bu juda uzun lenta izohi').join(' ');
++      await pump(
++        tester,
++        social: _FeedRepo(),
++        profile: _FollowRepo(),
++        item: Post(id: 77, code: 'TTS075', authorName: 'Tohir', text: long),
++      );
++      final more = find.byKey(const ValueKey('feed-caption-more'));
++      expect(more, findsOneWidget);
++      expect(find.text('ko‘proq'), findsOneWidget);
++      Text body() => tester.widget<Text>(find.text(long));
++      expect(body().maxLines, 2);
++
++      await tester.tap(more);
++      await tester.pump();
++      expect(more, findsNothing);
++      expect(body().maxLines, isNull, reason: 'to‘liq matn shu kartada');
++      expect(find.textContaining('POST'), findsNothing,
++          reason: '"ko‘proq" postni ochmaydi');
++
++      await tester.tap(find.text(long));
++      await settle(tester, frames: 6);
++      expect(find.textContaining('POST /post/77'), findsOneWidget);
++    });
++
++    testWidgets('qisqa izohda "ko‘proq" yo‘q', (tester) async {
++      await pump(tester, social: _FeedRepo(), profile: _FollowRepo());
++      expect(find.byKey(const ValueKey('feed-caption-more')), findsNothing);
++    });
++  });
+ }
+diff --git a/mobile_nova/test/instagram_social_test.dart b/mobile_nova/test/instagram_social_test.dart
+new file mode 100644
+index 0000000..87f21c6
+--- /dev/null
++++ b/mobile_nova/test/instagram_social_test.dart
+@@ -0,0 +1,342 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_localizations/flutter_localizations.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:go_router/go_router.dart';
++import 'package:nfcstore_nova/app/providers.dart';
++import 'package:nfcstore_nova/core/network/api_client.dart';
++import 'package:nfcstore_nova/core/utils/result.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/data/repositories/business_repository.dart';
++import 'package:nfcstore_nova/data/repositories/social_repository.dart';
++import 'package:nfcstore_nova/design/theme/app_theme.dart';
++import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
++import 'package:nfcstore_nova/features/profile/profile_repository.dart';
++import 'package:nfcstore_nova/features/social/comments.dart';
++import 'package:nfcstore_nova/features/social/post_screens.dart';
++import 'package:nfcstore_nova/features/social/time_ago.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations_en.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations_ru.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations_uz.dart';
++
++import 'helpers.dart';
++
++/// POST VA IZOHLAR — INSTAGRAM KABI (1.1.1).
++///
++///   nisbiy vaqt ("2 soat oldin") · post rasmini kattalashtirish ·
++///   kompaniya egasi o'z postini o'chiradi · "Yana izohlar" ·
++///   post egasi begona izohni o'chiradi.
++
++/// `testIds` dagi shaxsiy kod — testdagi "men".
++const _me = '48210377';
++const _photo = 'assets/demo/z_post_cafe.jpg';
++
++class _Social extends FakeSocialRepository {
++  _Social({this.post = const Post(id: 5), this.pages = const {}});
++
++  final Post post;
++
++  /// Sahifa raqami → izohlar va `hasMore`.
++  final Map<int, ({List<Comment> items, bool hasMore})> pages;
++
++  final asked = <int>[];
++  final deletedComments = <int>[];
++  final deletedPosts = <int>[];
++
++  @override
++  Future<Result<Post>> postIn(String code, int id,
++          {bool company = false}) async =>
++      Ok(post);
++
++  @override
++  Future<Result<({List<Comment> items, bool hasMore, int total})>> comments(
++    String kind,
++    int id, {
++    int page = 1,
++  }) async {
++    asked.add(page);
++    final p = pages[page];
++    return Ok((
++      items: p?.items ?? const <Comment>[],
++      hasMore: p?.hasMore ?? false,
++      total: pages.values.fold(0, (n, e) => n + e.items.length),
++    ));
++  }
++
++  @override
++  Future<Result<void>> deleteComment(int commentId) async {
++    deletedComments.add(commentId);
++    return const Ok(null);
++  }
++
++  @override
++  Future<Result<void>> deletePost(int id) async {
++    deletedPosts.add(id);
++    return const Ok(null);
++  }
++}
++
++class _Biz extends BusinessRepository {
++  _Biz([this.ids = const []]) : super(ApiClient());
++  final List<String> ids;
++  final deleted = <(String, int)>[];
++
++  @override
++  Future<Result<List<Business>>> mine() async =>
++      Ok(ids.map((e) => Business(companyId: e)).toList());
++
++  @override
++  Future<Result<void>> deletePost(String companyId, int postId) async {
++    deleted.add((companyId, postId));
++    return const Ok(null);
++  }
++}
++
++class _Profile extends ProfileRepository {
++  _Profile() : super(ApiClient());
++
++  @override
++  Future<Result<FollowStats>> followStats(String code) async =>
++      const Ok((followers: 0, following: 0, isFollowing: false));
++
++  @override
++  Future<Result<List<NfcId>>> followList(String code,
++          {String dir = 'followers'}) async =>
++      const Ok([]);
++}
++
++Comment _c(int id, {String code = 'ALI000', bool mine = false, DateTime? at}) =>
++    Comment(
++        id: id,
++        code: code,
++        authorName: 'Odam $id',
++        text: 'Izoh $id',
++        mine: mine,
++        createdAt: at);
++
++Future<void> _pumpComments(WidgetTester tester, _Social social,
++    {String ownerCode = ''}) async {
++  tester.view.physicalSize = const Size(390 * 3, 1600 * 3);
++  tester.view.devicePixelRatio = 3;
++  addTearDown(tester.view.reset);
++  final base = await testOverrides();
++  await tester.pumpWidget(ProviderScope(
++    overrides: [
++      ...base.where((o) => !identical(o, base[2])),
++      socialRepositoryProvider.overrideWithValue(social),
++      businessRepositoryProvider.overrideWithValue(_Biz()),
++    ],
++    child: wrapScreen(Scaffold(
++      body: SingleChildScrollView(
++        child: CommentsSection(kind: 'post', id: 5, ownerCode: ownerCode),
++      ),
++    )),
++  ));
++  await settle(tester, frames: 4);
++}
++
++/// Post ekrani — haqiqiy `GoRouter` ostida (o'chirilgach `context.pop`).
++Future<GoRouter> _pumpPost(WidgetTester tester, _Social social,
++    {_Biz? biz, bool company = false}) async {
++  tester.view.physicalSize = const Size(390 * 3, 1400 * 3);
++  tester.view.devicePixelRatio = 3;
++  addTearDown(tester.view.reset);
++  final base = await testOverrides();
++  final router = GoRouter(routes: [
++    GoRoute(
++        path: '/', builder: (_, __) => const Scaffold(body: Text('BOSH'))),
++    GoRoute(
++      path: '/p',
++      builder: (_, __) =>
++          PostScreen(id: social.post.id, code: social.post.code, company: company),
++    ),
++  ]);
++  await tester.pumpWidget(ProviderScope(
++    overrides: [
++      ...base.where((o) => !identical(o, base[2])),
++      socialRepositoryProvider.overrideWithValue(social),
++      businessRepositoryProvider.overrideWithValue(biz ?? _Biz()),
++      profileRepositoryProvider.overrideWithValue(_Profile()),
++    ],
++    child: MaterialApp.router(
++      routerConfig: router,
++      theme: buildTheme(NfcTokens.pearl),
++      locale: const Locale('uz'),
++      supportedLocales: LocaleController.supported,
++      localizationsDelegates: const [
++        L.delegate,
++        GlobalMaterialLocalizations.delegate,
++        GlobalWidgetsLocalizations.delegate,
++        GlobalCupertinoLocalizations.delegate,
++      ],
++    ),
++  ));
++  router.push('/p');
++  await settle(tester, frames: 6);
++  return router;
++}
++
++Future<void> _confirmDelete(WidgetTester tester) async {
++  final l = await L.delegate.load(const Locale('uz'));
++  // Sarlavha ham "O'chirish" — tasdiq tugmasining o'zi bosiladi.
++  await tester.tap(find.descendant(
++      of: find.byType(TextButton), matching: find.text(l.actionDelete)));
++  await settle(tester, frames: 6);
++}
++
++void main() {
++  group('timeAgo', () {
++    final now = DateTime(2026, 10, 5, 12);
++    String ago(L l, Duration d) => timeAgo(now.subtract(d), l, now: now);
++
++    test('o‘zbekcha', () {
++      final l = LUz();
++      expect(ago(l, const Duration(seconds: 20)), 'hozirgina');
++      expect(ago(l, const Duration(minutes: 7)), '7 daqiqa oldin');
++      expect(ago(l, const Duration(hours: 2)), '2 soat oldin');
++      expect(ago(l, const Duration(days: 3)), '3 kun oldin');
++      expect(ago(l, const Duration(days: 15)), '2 hafta oldin');
++    });
++
++    test('ruscha va inglizcha — ko‘plik shakllari', () {
++      final ru = LRu();
++      expect(ago(ru, const Duration(minutes: 1)), '1 минуту назад');
++      expect(ago(ru, const Duration(hours: 3)), '3 часа назад');
++      expect(ago(ru, const Duration(days: 5)), '5 дней назад');
++      final en = LEn();
++      expect(ago(en, const Duration(hours: 1)), '1 hour ago');
++      expect(ago(en, const Duration(days: 2)), '2 days ago');
++      expect(ago(en, const Duration(seconds: 5)), 'just now');
++    });
++
++    test('bir oydan eskisi — sana; kelajakdagisi — hozirgina', () {
++      final l = LUz();
++      expect(timeAgo(DateTime(2026, 8, 1, 9), l, now: now), '01.08.2026');
++      expect(timeAgo(now.add(const Duration(minutes: 3)), l, now: now),
++          'hozirgina', reason: 'telefon soati orqada qolgan');
++    });
++  });
++
++  group('IZOHLAR', () {
++    testWidgets('har izohda vaqt ko‘rinadi', (tester) async {
++      final social = _Social(pages: {
++        1: (
++          items: [
++            _c(1, at: DateTime.now().subtract(const Duration(days: 3, hours: 1))),
++          ],
++          hasMore: false,
++        ),
++      });
++      await _pumpComments(tester, social);
++      expect(find.byKey(const ValueKey('comment-time-1')), findsOneWidget);
++      expect(find.text('3 kun oldin'), findsOneWidget);
++    });
++
++    testWidgets('"Yana izohlarni ko‘rish" — keyingi sahifa qo‘shiladi',
++        (tester) async {
++      final social = _Social(pages: {
++        1: (items: [_c(1), _c(2)], hasMore: true),
++        // Server tartibi siljigan bo'lsa ham (2-izoh qaytib kelsa)
++        // ikki marta chizilmaydi.
++        2: (items: [_c(2), _c(3)], hasMore: false),
++      });
++      await _pumpComments(tester, social);
++      expect(find.text('Izoh 3'), findsNothing);
++      final more = find.byKey(const ValueKey('comments-load-more'));
++      expect(more, findsOneWidget);
++      expect(find.text('Yana izohlarni ko‘rish'), findsOneWidget);
++
++      await tester.tap(more);
++      await settle(tester, frames: 3);
++      expect(social.asked, [1, 2]);
++      expect(find.text('Izoh 3'), findsOneWidget);
++      expect(find.text('Izoh 2'), findsOneWidget);
++      expect(more, findsNothing, reason: 'boshqa sahifa yo‘q');
++      expect(tester.takeException(), isNull);
++    });
++
++    testWidgets('post EGASI begona izohni o‘chira oladi (menyuda)',
++        (tester) async {
++      final social = _Social(pages: {
++        1: (items: [_c(41)], hasMore: false),
++      });
++      await _pumpComments(tester, social, ownerCode: _me);
++      await tester.tap(find.byKey(const ValueKey('comment-actions-41')));
++      await settle(tester, frames: 6);
++      // Shikoyat va bloklash ham joyida.
++      expect(find.byKey(const ValueKey('comment-report')), findsOneWidget);
++      await tester.tap(find.byKey(const ValueKey('comment-delete')));
++      await settle(tester, frames: 6);
++      await _confirmDelete(tester);
++      expect(social.deletedComments, [41]);
++    });
++
++    testWidgets('begona postda — begona izohni o‘chirish YO‘Q',
++        (tester) async {
++      final social = _Social(pages: {
++        1: (items: [_c(41)], hasMore: false),
++      });
++      await _pumpComments(tester, social, ownerCode: 'TTS075');
++      await tester.tap(find.byKey(const ValueKey('comment-actions-41')));
++      await settle(tester, frames: 6);
++      expect(find.byKey(const ValueKey('comment-report')), findsOneWidget);
++      expect(find.byKey(const ValueKey('comment-delete')), findsNothing);
++    });
++  });
++
++  group('POST TAFSILOTI', () {
++    testWidgets('vaqt va rasm bosilsa — kattalashtirib ko‘rish',
++        (tester) async {
++      final social = _Social(
++        post: Post(
++          id: 5,
++          code: 'TTS075',
++          authorName: 'Tohir',
++          mediaUrls: const [_photo],
++          createdAt: DateTime.now().subtract(const Duration(minutes: 12)),
++        ),
++      );
++      await _pumpPost(tester, social);
++      expect(find.byKey(const ValueKey('post-time')), findsOneWidget);
++      expect(find.text('12 daqiqa oldin'), findsOneWidget);
++
++      await tester.tap(find.byKey(const ValueKey('post-image')));
++      await settle(tester, frames: 6);
++      expect(find.byKey(const ValueKey('image-viewer')), findsOneWidget);
++      expect(tester.takeException(), isNull);
++    });
++
++    testWidgets('kompaniya EGASI o‘z postini o‘chiradi — kompaniya yo‘li',
++        (tester) async {
++      final social = _Social(
++        post: const Post(id: 5, code: 'KARTAUZ', authorKind: 'company'),
++      );
++      final biz = _Biz(const ['KARTAUZ']);
++      await _pumpPost(tester, social, biz: biz, company: true);
++      final l = await L.delegate.load(const Locale('uz'));
++      final del = find.byTooltip(l.actionDelete);
++      expect(del, findsOneWidget);
++
++      await tester.tap(del);
++      await settle(tester, frames: 6);
++      await _confirmDelete(tester);
++      expect(biz.deleted, [('KARTAUZ', 5)]);
++      expect(social.deletedPosts, isEmpty,
++          reason: 'shaxsiy /api/posts/:id ga BORMAYDI');
++      expect(find.text('BOSH'), findsOneWidget, reason: 'ekran yopiladi');
++    });
++
++    testWidgets('begona kompaniya posti — o‘chirish yo‘q, shikoyat bor',
++        (tester) async {
++      final social = _Social(
++        post: const Post(id: 5, code: 'KARTAUZ', authorKind: 'company'),
++      );
++      await _pumpPost(tester, social,
++          biz: _Biz(const ['BOSHQA']), company: true);
++      final l = await L.delegate.load(const Locale('uz'));
++      expect(find.byTooltip(l.actionDelete), findsNothing);
++      expect(find.byKey(const ValueKey('post-actions')), findsOneWidget);
++    });
++  });
++}
+diff --git a/mobile_nova/test/reels_final_test.dart b/mobile_nova/test/reels_final_test.dart
+index 977ab9b..2de54ae 100644
+--- a/mobile_nova/test/reels_final_test.dart
++++ b/mobile_nova/test/reels_final_test.dart
+@@ -102,13 +102,26 @@ final _reels = [
+   ),
+ ];
+ 
++/// Bitta izohi bor — "Javob berish" tugmasi chiqishi uchun.
++class _SocialWithComment extends _Social {
++  @override
++  Future<Result<({List<Comment> items, bool hasMore, int total})>> comments(
++          String kind, int id, {int page = 1}) async =>
++      const Ok((
++        items: [Comment(id: 501, code: 'ALI000', authorName: 'Ali', text: 'Zo‘r')],
++        hasMore: false,
++        total: 1,
++      ));
++}
++
+ Future<({ProviderContainer c, _Social social, _Profile profile})> _pump(
+-    WidgetTester tester, FakeVideoPlatform video, {List<Post>? reels}) async {
++    WidgetTester tester, FakeVideoPlatform video,
++    {List<Post>? reels, _Social? withSocial}) async {
+   VideoPlayerPlatform.instance = video;
+   tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+   tester.view.devicePixelRatio = 3;
+   addTearDown(tester.view.reset);
+-  final social = _Social();
++  final social = withSocial ?? _Social();
+   final profile = _Profile();
+   final base = await testOverrides();
+   final c = ProviderContainer(overrides: [
+@@ -255,15 +268,21 @@ void main() {
+     expect(r.profile.companyToggles, ['KARTAUZ']);
+   });
+ 
+-  testWidgets('saqlash (shu telefonda) va shikoyat menyusi', (tester) async {
++  testWidgets('saqlash (hisobga) va shikoyat menyusi', (tester) async {
+     final r = await _pump(tester, FakeVideoPlatform());
+     final l = await L.delegate.load(const Locale('uz'));
+ 
+     await tester.tap(find.byKey(const ValueKey('reel-save')).first);
+     await settle(tester, frames: 4);
+     expect(r.c.read(savedReelsProvider), contains('p:7'));
+-    expect(find.text(l.reelSavedLocal), findsOneWidget,
+-        reason: 'odamga saqlash telefonda ekanini aytamiz');
++    // Saqlash endi HISOBGA sinxronlanadi (`SyncedSaves`) — "shu
++    // telefonda" degan eski matn odamni chalg'itardi.
++    expect(find.text('Saqlandi — hisobingizda'), findsOneWidget);
++    for (final loc in L.supportedLocales) {
++      final m = (await L.delegate.load(loc)).reelSavedLocal.toLowerCase();
++      expect(m, isNot(anyOf(contains('telefon'), contains('phone'))),
++          reason: '${loc.languageCode}: saqlash telefonda emas, hisobda');
++    }
+ 
+     await tester.tap(find.byKey(const ValueKey('reel-more')).first);
+     await settle(tester, frames: 10);
+@@ -489,4 +508,85 @@ void main() {
+     expect(find.byKey(const ValueKey('reel-sponsored')), findsNothing);
+     expect(find.byKey(const ValueKey('reel-ad-cta')), findsNothing);
+   });
++
++  testWidgets('«Qiziq emas» — reel ro‘yxatdan darhol olinadi, serverga '
++      'hech narsa ketmaydi', (tester) async {
++    final v = FakeVideoPlatform();
++    final r = await _pump(tester, v);
++    final l = await L.delegate.load(const Locale('uz'));
++    expect(find.text('Mashrabboy'), findsOneWidget);
++
++    await tester.tap(find.byKey(const ValueKey('reel-more')).first);
++    await settle(tester, frames: 10);
++    final ni = find.byKey(const ValueKey('reel-not-interested'));
++    expect(ni, findsOneWidget);
++    expect(find.text(l.reelNotInterested), findsOneWidget);
++    await tester.tap(ni);
++    await settle(tester, frames: 10);
++    await _flush(tester);
++
++    expect(find.text(l.reelNotInterestedDone), findsOneWidget);
++    expect(find.text('Mashrabboy'), findsNothing);
++    expect(r.c.read(reelsHiddenProvider), {'p:7'});
++    // Kompaniyaning 7-posti (`c:7`) yashirilmaydi — u keyingi reel.
++    expect(find.text('Karta Uz'), findsOneWidget);
++    expect(v.urls[v.playing.single], contains('b.mp4'));
++    expect(r.social.likes, isEmpty);
++    expect(tester.takeException(), isNull);
++  });
++
++  testWidgets('«Qiziq emas» o‘z reelimda yo‘q', (tester) async {
++    await _pump(tester, FakeVideoPlatform(), reels: [
++      Post(
++        id: 70,
++        code: '48210377',
++        authorName: 'Men',
++        mediaUrls: const ['https://nfcstore.uz/uploads/a.mp4'],
++        isVideo: true,
++      ),
++    ]);
++    await tester.tap(find.byKey(const ValueKey('reel-more')).first);
++    await settle(tester, frames: 10);
++    expect(find.byKey(const ValueKey('reel-report')), findsOneWidget);
++    expect(find.byKey(const ValueKey('reel-not-interested')), findsNothing);
++  });
++
++  testWidgets('bitta reel qolganda «Qiziq emas» — sahifa boshiga qaytadi',
++      (tester) async {
++    final v = FakeVideoPlatform();
++    final r = await _pump(tester, v, reels: _reels.take(2).toList());
++    // Ikkinchi reelga o'tiladi, keyin u yashiriladi.
++    await tester.fling(find.byKey(const ValueKey('reels-pager')),
++        const Offset(0, -600), 2000);
++    await settle(tester, frames: 12);
++    expect(find.text('Karta Uz'), findsOneWidget);
++    await tester.tap(find.byKey(const ValueKey('reel-more')).last);
++    await settle(tester, frames: 10);
++    await tester.tap(find.byKey(const ValueKey('reel-not-interested')));
++    await settle(tester, frames: 12);
++    await _flush(tester);
++    expect(r.c.read(reelsHiddenProvider), {'c:7'});
++    expect(find.text('Mashrabboy'), findsOneWidget);
++    expect(v.urls[v.playing.single], contains('a.mp4'));
++    expect(tester.takeException(), isNull);
++  });
++
++  testWidgets('izohlar varag‘i: «Javob berish» yozish maydoniga fokus beradi',
++      (tester) async {
++    await _pump(tester, FakeVideoPlatform(), withSocial: _SocialWithComment());
++    final l = await L.delegate.load(const Locale('uz'));
++    await tester.tap(find.byKey(const ValueKey('reel-comments')).first);
++    await settle(tester, frames: 12);
++    final field = find.byType(TextField);
++    expect(field, findsOneWidget);
++    expect(tester.widget<TextField>(field).focusNode, isNotNull,
++        reason: 'varaq maydonga FocusNode beradi');
++    expect(tester.widget<TextField>(field).focusNode!.hasFocus, isFalse);
++
++    await tester.tap(find.text(l.commentReply));
++    await settle(tester, frames: 4);
++    expect(tester.widget<TextField>(field).focusNode!.hasFocus, isTrue);
++    expect(find.text(l.commentReplyingTo('Ali')), findsOneWidget);
++    expect(tester.takeException(), isNull);
++  });
+ }
+-- 
+2.43.0
+

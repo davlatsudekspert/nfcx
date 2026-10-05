@@ -1,0 +1,112 @@
+From af811d0338bf900fd0c86126b88ddb074c4fc240 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Mon, 5 Oct 2026 09:22:52 +0000
+Subject: [PATCH 35/38] 1.1.1: reklama tavsifi aniqlashtirildi (postlar
+ orasida, Reklama belgisi)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ mobile_nova/lib/l10n/arb/app_en.arb                | 2 +-
+ mobile_nova/lib/l10n/arb/app_ru.arb                | 2 +-
+ mobile_nova/lib/l10n/arb/app_uz.arb                | 2 +-
+ mobile_nova/lib/l10n/gen/app_localizations.dart    | 2 +-
+ mobile_nova/lib/l10n/gen/app_localizations_en.dart | 2 +-
+ mobile_nova/lib/l10n/gen/app_localizations_ru.dart | 2 +-
+ mobile_nova/lib/l10n/gen/app_localizations_uz.dart | 2 +-
+ 7 files changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index dfd7f2b..9614fc0 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -686,7 +686,7 @@
+   "homeFeedEmpty": "No posts yet. Posts from people you follow will appear here.",
+   "homeFeedMore": "See all",
+   "featuredTitle": "Boost in feed",
+-  "featuredIntro": "Your post sits at the very top of the feed for the chosen period.",
++  "featuredIntro": "For the chosen period your post is shown between posts in the main feed (videos also in Reels) with a “Sponsored” label.",
+   "featuredPick": "Choose a period",
+   "featuredDays": "{days} days",
+   "@featuredDays": {
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index 67a2e51..8a8ee25 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -686,7 +686,7 @@
+   "homeFeedEmpty": "Пока нет постов. Здесь появятся публикации тех, на кого вы подписаны.",
+   "homeFeedMore": "Смотреть все",
+   "featuredTitle": "Поднять в ленте",
+-  "featuredIntro": "Ваш пост будет в самом верху ленты в течение выбранного срока.",
++  "featuredIntro": "В течение выбранного срока ваш пост показывается между постами главной ленты (видео — ещё и в Reels) с пометкой «Реклама».",
+   "featuredPick": "Выберите срок",
+   "featuredDays": "{days} дн.",
+   "@featuredDays": {
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index 0539546..0a1ca49 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -725,7 +725,7 @@
+   "homeFeedEmpty": "Hozircha post yo‘q. Obuna bo‘lgan odamlaringiz post qo‘yganda shu yerda ko‘rinadi.",
+   "homeFeedMore": "Hammasini ko‘rish",
+   "featuredTitle": "Lentada ko‘tarish",
+-  "featuredIntro": "Postingiz belgilangan muddat davomida lentaning eng boshida turadi.",
++  "featuredIntro": "Postingiz tanlangan muddat davomida asosiy lentada (video bo‘lsa Reels’da ham) «Reklama» belgisi bilan postlar orasida ko‘rsatiladi.",
+   "featuredPick": "Muddatni tanlang",
+   "featuredDays": "{days} kun",
+   "@featuredDays": {
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index 7dccf94..42c9cb2 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -3432,7 +3432,7 @@ abstract class L {
+   /// No description provided for @featuredIntro.
+   ///
+   /// In uz, this message translates to:
+-  /// **'Postingiz belgilangan muddat davomida lentaning eng boshida turadi.'**
++  /// **'Postingiz tanlangan muddat davomida asosiy lentada (video bo‘lsa Reels’da ham) «Reklama» belgisi bilan postlar orasida ko‘rsatiladi.'**
+   String get featuredIntro;
+ 
+   /// No description provided for @featuredPick.
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index 086fad7..fe9c87d 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -1767,7 +1767,7 @@ class LEn extends L {
+ 
+   @override
+   String get featuredIntro =>
+-      'Your post sits at the very top of the feed for the chosen period.';
++      'For the chosen period your post is shown between posts in the main feed (videos also in Reels) with a “Sponsored” label.';
+ 
+   @override
+   String get featuredPick => 'Choose a period';
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index 816c327..2a803fb 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -1761,7 +1761,7 @@ class LRu extends L {
+ 
+   @override
+   String get featuredIntro =>
+-      'Ваш пост будет в самом верху ленты в течение выбранного срока.';
++      'В течение выбранного срока ваш пост показывается между постами главной ленты (видео — ещё и в Reels) с пометкой «Реклама».';
+ 
+   @override
+   String get featuredPick => 'Выберите срок';
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index 359fbe7..b5edc5c 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -1771,7 +1771,7 @@ class LUz extends L {
+ 
+   @override
+   String get featuredIntro =>
+-      'Postingiz belgilangan muddat davomida lentaning eng boshida turadi.';
++      'Postingiz tanlangan muddat davomida asosiy lentada (video bo‘lsa Reels’da ham) «Reklama» belgisi bilan postlar orasida ko‘rsatiladi.';
+ 
+   @override
+   String get featuredPick => 'Muddatni tanlang';
+-- 
+2.43.0
+

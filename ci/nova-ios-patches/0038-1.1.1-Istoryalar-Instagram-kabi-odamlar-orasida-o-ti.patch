@@ -1,0 +1,1976 @@
+From 755f1dd5cd88eda1175ab889f13b3e67146ab3f4 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Mon, 5 Oct 2026 09:47:01 +0000
+Subject: [PATCH 38/38] =?UTF-8?q?1.1.1:=20Istoryalar=20Instagram=20kabi=20?=
+ =?UTF-8?q?=E2=80=94=20odamlar=20orasida=20o'tish,=20pauzada=20video,=20ko?=
+ =?UTF-8?q?'rilgan=20halqa?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- Bir odamning oxirgi istoryasi tugasa (yoki o'ngga tegilsa) bosh sahifa
+  qatori tartibida KEYINGI odamga o'tiladi; birinchi istoryada chapga
+  tegish oldingi odamga qaytaradi; yon tomonga surish (PageView) ham odam
+  almashtiradi. Ko'ruvchi faqat eng oxirgi odamdan keyin yopiladi.
+  Navbat bosh sahifadan bir martalik `storyQueueProvider` orqali beriladi;
+  profil halqasi va App Link avvalgidek bitta odamni ochadi.
+- Bosib turilganda video ham to'xtaydi va ustki belgilar yashirinadi;
+  izoh/shikoyat varag'i ochiq turganda ham video pauzada (InlineVideo
+  `paused`, eski API o'zgarmadi).
+- Ko'rilgan istoryalar mahalliy eslab qolinadi: bosh sahifa halqasi
+  qayta yuklashsiz kulrangga o'tadi, faqat odamning HAMMA istoryasi
+  ko'rilganda. Odam birinchi ko'rilmagan istoryasidan ochiladi.
+- Sarlavhada nisbiy vaqt ("3 soat oldin", uch tilda, ko'plik shakli).
+- Egasiga ko'z belgisi va ko'rishlar soni (`viewCount` endi o'qiladi).
+- Video istoryada umumiy ovoz tugmasi (MuteButton); o'chiq ovoz video
+  boshidanoq qo'llanadi.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ mobile_nova/lib/data/models/models.dart       |  14 +-
+ .../lib/features/home/home_screen.dart        |  54 ++-
+ .../lib/features/social/inline_video.dart     |  39 +-
+ .../lib/features/social/story_viewer.dart     | 415 ++++++++++++++++--
+ mobile_nova/lib/l10n/arb/app_en.arb           |   7 +
+ mobile_nova/lib/l10n/arb/app_ru.arb           |   7 +
+ mobile_nova/lib/l10n/arb/app_uz.arb           |   7 +
+ .../lib/l10n/gen/app_localizations.dart       |  24 +
+ .../lib/l10n/gen/app_localizations_en.dart    |  36 ++
+ .../lib/l10n/gen/app_localizations_ru.dart    |  42 ++
+ .../lib/l10n/gen/app_localizations_uz.dart    |  33 ++
+ mobile_nova/test/story_meta_test.dart         | 167 +++++++
+ mobile_nova/test/story_people_test.dart       | 250 +++++++++++
+ mobile_nova/test/story_seen_ring_test.dart    | 147 +++++++
+ mobile_nova/test/story_video_pause_test.dart  | 192 ++++++++
+ 15 files changed, 1394 insertions(+), 40 deletions(-)
+ create mode 100644 mobile_nova/test/story_meta_test.dart
+ create mode 100644 mobile_nova/test/story_people_test.dart
+ create mode 100644 mobile_nova/test/story_seen_ring_test.dart
+ create mode 100644 mobile_nova/test/story_video_pause_test.dart
+
+diff --git a/mobile_nova/lib/data/models/models.dart b/mobile_nova/lib/data/models/models.dart
+index 0ced116..dcc1bd4 100644
+--- a/mobile_nova/lib/data/models/models.dart
++++ b/mobile_nova/lib/data/models/models.dart
+@@ -1506,6 +1506,7 @@ class StoryItem {
+     this.createdAt,
+     this.likes = 0,
+     this.liked = false,
++    this.viewCount = 0,
+   });
+ 
+   final int id;
+@@ -1531,6 +1532,13 @@ class StoryItem {
+   final int likes;
+   final bool liked;
+ 
++  /// NECHA MARTA KO'RILGAN. Server `listStoriesD1` da `viewCount` ni
++  /// HAR DOIM qaytaradi, model esa tashlab yuborardi — egasi o'z
++  /// istoryasini kim ko'rganini bilolmasdi (Instagram'dagi ko'z
++  /// belgisi). Faqat EGASIGA ko'rsatiladi; "men ko'rdimmi" (`seen`)
++  /// bilan aralashtirilmaydi — pastdagi izohga qarang.
++  final int viewCount;
++
+   StoryItem copyWith({int? likes, bool? liked, bool? seen}) => StoryItem(
+         id: id,
+         code: code,
+@@ -1543,6 +1551,7 @@ class StoryItem {
+         createdAt: createdAt,
+         likes: likes ?? this.likes,
+         liked: liked ?? this.liked,
++        viewCount: viewCount,
+       );
+ 
+   /// `listStoriesD1` quyidagini qaytaradi:
+@@ -1576,9 +1585,12 @@ class StoryItem {
+           _s(j['type']) == 'video',
+       caption: _s(j['caption']),
+       seen: _b(j['seen'] ?? j['viewed']),
+-      createdAt: _dt(j['createdAt']),
++      // `Post` dagidek ikkala yozuv ham o'qiladi: sarlavhadagi "3 soat
++      // oldin" shu sanadan hisoblanadi va u bo'lmasa vaqt chizilmaydi.
++      createdAt: _dt(j['createdAt'] ?? j['created_at']),
+       likes: _i(j['likeCount'] ?? j['likes']),
+       liked: _b(j['liked'] ?? j['isLiked']),
++      viewCount: _i(j['viewCount'] ?? j['views']),
+     );
+   }
+ }
+diff --git a/mobile_nova/lib/features/home/home_screen.dart b/mobile_nova/lib/features/home/home_screen.dart
+index d573b47..2090a78 100644
+--- a/mobile_nova/lib/features/home/home_screen.dart
++++ b/mobile_nova/lib/features/home/home_screen.dart
+@@ -42,7 +42,14 @@ import '../discover/discover_screen.dart'
+     show DiscoverTab, discoverInitialTabProvider, discoverTabProvider;
+ import '../profile/profile_switcher.dart';
+ import '../social/visible_fraction.dart';
+-import '../social/story_viewer.dart' show prefetchStoryRow;
++import '../social/story_viewer.dart'
++    show
++        StoryOwner,
++        StoryQueue,
++        prefetchStoryRow,
++        seenStoryIdsProvider,
++        storyQueueProvider,
++        storySeen;
+ import '../../routing/shell.dart';
+ import '../../core/media/image_cache.dart';
+ 
+@@ -501,9 +508,14 @@ class _IdentityHero extends ConsumerWidget {
+               .toList(),
+           orElse: () => const <StoryItem>[],
+         );
++    // Shu seansda ko'rilganlar ham hisobga olinadi — halqa qaytib
++    // kelganda qayta yuklashsiz "ko'rilgan"ga o'tadi.
++    final local = ref.watch(seenStoryIdsProvider);
+     final ring = mine.isEmpty
+         ? null
+-        : _StoryRingState(count: mine.length, unseen: mine.any((s) => !s.seen));
++        : _StoryRingState(
++            count: mine.length,
++            unseen: mine.any((s) => !storySeen(s, local)));
+ 
+     // 360 da 28, 430 da 32 — uzun ism ikki qatorga bo'linadi,
+     // kesilmaydi.
+@@ -1027,6 +1039,9 @@ class _StoriesRow extends ConsumerWidget {
+     // kompaniya istoryasi: `business` belgisisiz ko'ruvchi shaxsiy
+     // yo'ldan qidirib bo'sh ekran ko'rsatardi.
+     final active = ref.watch(activeProfileProvider);
++    // Ko'ruvchida ko'rilgan istoryalar — qator qayta yuklanmasdan
++    // doiracha kulrangga o'tadi.
++    final local = ref.watch(seenStoryIdsProvider);
+ 
+     return Column(
+       crossAxisAlignment: CrossAxisAlignment.start,
+@@ -1057,6 +1072,21 @@ class _StoriesRow extends ConsumerWidget {
+               for (final s in all) {
+                 if (seenCodes.add(s.code)) items.add(s);
+               }
++              // KO'RILGAN — odamning HAMMA istoryasi ko'rilganda. Ilgari
++              // faqat birinchisiga qaralardi: yangi (ikkinchi) istorya
++              // qo'ygan odamning doirachasi "ko'rilgan" bo'lib qolardi.
++              bool allSeen(String code) => all
++                  .where((x) => x.code == code)
++                  .every((x) => storySeen(x, local));
++              // Ko'ruvchi uchun ODAMLAR NAVBATI — qator tartibida.
++              // Kodsiz (o'zimniki) — faol profil, biznesligi bilan.
++              final owners = [
++                for (final s in items)
++                  s.code.isEmpty
++                      ? StoryOwner(active?.code ?? id?.code ?? '',
++                          isBusiness: active?.isBusiness ?? false)
++                      : StoryOwner(s.code),
++              ];
+               // Birinchi doirachalar rasmi fonda diskka tushadi —
+               // bosilganda istorya qora ekransiz, darhol ochiladi.
+               WidgetsBinding.instance
+@@ -1083,13 +1113,19 @@ class _StoriesRow extends ConsumerWidget {
+                     label: face.label,
+                     avatarUrl: face.avatarUrl,
+                     initials: face.initials,
+-                    seen: s.seen,
+-                    onTap: () => context.push(
+-                      s.code.isEmpty
+-                          ? Routes.story(active?.code ?? id?.code ?? '',
+-                              business: active?.isBusiness ?? false)
+-                          : Routes.story(s.code),
+-                    ),
++                    seen: allSeen(s.code),
++                    onTap: () {
++                      // Oxirgi istorya tugagach ko'ruvchi KEYINGI
++                      // doirachaga o'tadi (Instagram kabi).
++                      ref.read(storyQueueProvider.notifier).state =
++                          StoryQueue(owners, i - 1);
++                      context.push(
++                        s.code.isEmpty
++                            ? Routes.story(active?.code ?? id?.code ?? '',
++                                business: active?.isBusiness ?? false)
++                            : Routes.story(s.code),
++                      );
++                    },
+                   );
+                 },
+               );
+diff --git a/mobile_nova/lib/features/social/inline_video.dart b/mobile_nova/lib/features/social/inline_video.dart
+index 5d8ee4d..5d1ec2d 100644
+--- a/mobile_nova/lib/features/social/inline_video.dart
++++ b/mobile_nova/lib/features/social/inline_video.dart
+@@ -74,8 +74,19 @@ class InlineVideo extends ConsumerStatefulWidget {
+     this.fullscreenOnTap = false,
+     this.onFullscreen,
+     this.showMute = false,
++    this.paused = false,
+   });
+ 
++  /// TASHQARIDAN PAUZA (istorya: barmoq bosib turilganda yoki izoh/
++  /// shikoyat varag'i ochiq turganda).
++  ///
++  /// Ilgari istoryada faqat progress taymeri to'xtardi, video esa
++  /// ovozi bilan o'ynab turaverardi — barmoq qo'yib yuborilganda
++  /// taymer bilan video bir-biridan ajrab qolardi. `true` bo'lsa
++  /// kontroller pauzada turadi, `false` ga qaytganda O'SHA JOYIDAN
++  /// davom etadi. Standarti `false` — mavjud joylar o'zgarmaydi.
++  final bool paused;
++
+   /// Burchakda 🔇/🔊 tugma (lenta). Holat Reels bilan umumiy
+   /// (`mediaMutedProvider`); tugma ko'rinmasa ham ovoz shu holatga
+   /// bo'ysunadi.
+@@ -246,6 +257,7 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
+   @override
+   void didUpdateWidget(covariant InlineVideo old) {
+     super.didUpdateWidget(old);
++    if (widget.paused != old.paused) _applyPaused();
+     if (widget.active == old.active) return;
+     if (_handoff != null) return;
+     if (widget.active == true) {
+@@ -337,8 +349,14 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
+         await c.dispose();
+         return;
+       }
+-      if (widget.autoPlay) {
++      // Ochilish boshidagi pauza holati — tugaguncha o'zgarishi mumkin.
++      final held = widget.paused;
++      if (widget.autoPlay && !held) {
+         _owner?.take(this, _pauseForOther);
++        // Umumiy 🔇 holati BIRINCHI kadrdanoq: ilgari bu yo'lda ovoz
++        // har doim yoqiq boshlanardi va faqat tugma bosilgandagina
++        // o'chardi.
++        await c.setVolume(_volume);
+         await c.play();
+         // Ijro buyrug'i ketgandan keyin ham tekshiriladi: aynan shu
+         // oraliqda yopilsa ovoz ortda qolib ketardi.
+@@ -352,6 +370,8 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
+         return;
+       }
+       setState(() => _ready = true);
++      // Ochilish davomida barmoq bosildi yoki qo'yib yuborildi.
++      if (widget.autoPlay && held != widget.paused) _applyPaused();
+       widget.onDuration?.call(c.value.duration);
+       // Shakl SHU YERDA ma'lum bo'ladi — oldin emas. Ota-vidjet
+       // qutini shunga moslaydi.
+@@ -379,6 +399,23 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
+     if (mounted) setState(() {});
+   }
+ 
++  /// [InlineVideo.paused] ni kontrollerga qo'llaydi.
++  ///
++  /// Davom etishda ovoz egaligi QAYTA olinadi: pauza paytida boshqa
++  /// manba (masalan profil musiqasi) egallagan bo'lishi mumkin.
++  void _applyPaused() {
++    final c = _c;
++    if (c == null || !_ready || _gone || _handoff != null) return;
++    if (widget.paused) {
++      c.pause();
++    } else {
++      _owner?.take(this, _pauseForOther);
++      c.setVolume(_volume);
++      c.play();
++    }
++    if (mounted) setState(() {});
++  }
++
+   /// To'liq ekranga o'tish — hali ochilmagan bo'lsa avval ochiladi.
+   Future<void> _openFullscreen() async {
+     if (_handoff != null || _failed) return;
+diff --git a/mobile_nova/lib/features/social/story_viewer.dart b/mobile_nova/lib/features/social/story_viewer.dart
+index 8277ba9..3995e43 100644
+--- a/mobile_nova/lib/features/social/story_viewer.dart
++++ b/mobile_nova/lib/features/social/story_viewer.dart
+@@ -23,6 +23,7 @@ import 'moderation.dart';
+ import '../profile/music_player.dart';
+ import 'inline_video.dart';
+ import 'media_frame.dart';
++import 'media_sound.dart';
+ import '../home/widgets/avatar.dart';
+ import '../business/business_providers.dart';
+ import '../profile/profile_repository.dart';
+@@ -116,6 +117,40 @@ void prefetchStoryImage(StoryItem? s) {
+   }
+ }
+ 
++/// SHU SEANSDA KO'RILGAN ISTORYALAR (`id`).
++///
++/// Server "ko'rildi" signalini oladi, lekin bosh sahifa ro'yxati
++/// QAYTA YUKLANMAGUNCHA halqa "ko'rilmagan" (oltin) bo'lib turardi —
++/// odam istoryani ko'rib qaytsa ham doiracha o'zgarmasdi. Ro'yxatni
++/// har safar serverdan qayta so'rash qatorni qayta chizib, rasmlarni
++/// yangidan yuklatardi; shuning uchun ko'rilganlar shu yerda
++/// eslab qolinadi va qator ularni `seen` bilan birga hisoblaydi.
++/// `autoDispose` ATAYLAB yo'q: ko'ruvchi yopilgach ham eslab qolinadi.
++final seenStoryIdsProvider = StateProvider<Set<int>>((_) => const {});
++
++/// Istorya ko'rilganmi — server bergan belgi YOKI shu seansda ko'rilgan.
++bool storySeen(StoryItem s, Set<int> local) => s.seen || local.contains(s.id);
++
++/// BOSH SAHIFA QATORIDAGI ODAMLAR NAVBATI.
++///
++/// Instagram'da bir odamning istoryalari tugasa KEYINGI odamniki
++/// o'zi boshlanadi. Buning uchun ko'ruvchi qatordagi tartibni
++/// bilishi kerak, marshrut (`/story/:code`) esa faqat BITTA kodni
++/// tashiydi — App Link va jismoniy karta ham shu manzilga keladi.
++/// Shuning uchun bosh sahifa navbatni shu yerga qo'yib, keyin
++/// marshrutni ochadi; ko'ruvchi uni BIR MARTA oladi va tozalaydi.
++/// Profil halqasi kabi boshqa kirishlar navbat qo'ymaydi — ular
++/// avvalgidek bitta odamni ko'rsatadi.
++@immutable
++class StoryQueue {
++  const StoryQueue(this.owners, this.start);
++
++  final List<StoryOwner> owners;
++  final int start;
++}
++
++final storyQueueProvider = StateProvider<StoryQueue?>((_) => null);
++
+ /// Bosh sahifa: har odamning BIRINCHI istoryasi (ko'pi bilan [max]).
+ void prefetchStoryRow(List<StoryItem> all, {int max = 4}) {
+   final seen = <String>{};
+@@ -131,11 +166,19 @@ void prefetchStoryRow(List<StoryItem> all, {int max = 4}) {
+ /// turish esa taymerni to'xtatadi — bu shakl foydalanuvchiga tanish
+ /// bo'lgani uchun tanlangan, lekin ramka NFCSTORE vizual tilida:
+ /// kapsula shaklidagi progress va yumshoq gradient.
++///
++/// ODAMLAR ORASIDA — Instagram kabi: bir odamning oxirgi istoryasi
++/// tugasa (yoki o'ngga tegilsa) keyingi odamniki boshlanadi, birinchi
++/// istoryada chapga tegish oldingi odamga qaytaradi, yon tomonga
++/// surish ham odam almashtiradi. Ko'ruvchi faqat ENG OXIRGI odamdan
++/// keyin yopiladi.
+ class StoryViewerScreen extends ConsumerStatefulWidget {
+   const StoryViewerScreen({
+     super.key,
+     required this.code,
+     this.isBusiness = false,
++    this.owners,
++    this.initialIndex = 0,
+   });
+ 
+   final String code;
+@@ -143,13 +186,134 @@ class StoryViewerScreen extends ConsumerStatefulWidget {
+   /// Kod kompaniyanikimi. Marshrut `?business=1` orqali uzatadi.
+   final bool isBusiness;
+ 
++  /// Odamlar navbati (bosh sahifa qatori tartibida). `null` bo'lsa
++  /// [storyQueueProvider] dan olinadi, u ham bo'lmasa — faqat [owner].
++  final List<StoryOwner>? owners;
++
++  /// [owners] ichida qaysi odamdan boshlanadi.
++  final int initialIndex;
++
+   StoryOwner get owner => StoryOwner(code, isBusiness: isBusiness);
+ 
+   @override
+   ConsumerState<StoryViewerScreen> createState() => _StoryViewerScreenState();
+ }
+ 
+-class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
++class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen> {
++  late final List<StoryOwner> _owners;
++  late final PageController _pager;
++  int _page = 0;
++
++  @override
++  void initState() {
++    super.initState();
++    final given = widget.owners;
++    final queued = ref.read(storyQueueProvider);
++    if (given != null &&
++        widget.initialIndex >= 0 &&
++        widget.initialIndex < given.length) {
++      _owners = given;
++      _page = widget.initialIndex;
++    } else if (queued != null &&
++        queued.start >= 0 &&
++        queued.start < queued.owners.length &&
++        // Navbat AYNAN shu marshrut uchun qo'yilgan bo'lsagina.
++        queued.owners[queued.start] == widget.owner) {
++      _owners = queued.owners;
++      _page = queued.start;
++    } else {
++      _owners = [widget.owner];
++    }
++    _pager = PageController(initialPage: _page);
++    // Navbat BIR MARTALIK: keyin profil halqasidan ochilgan istorya
++    // eskirgan navbat bo'yicha boshqa odamlarga o'tib ketmasin.
++    // Kadrdan keyin — provayderni `initState` ichida o'zgartirib
++    // bo'lmaydi.
++    if (queued != null) {
++      WidgetsBinding.instance.addPostFrameCallback((_) {
++        if (!mounted) return;
++        final q = ref.read(storyQueueProvider.notifier);
++        if (identical(q.state, queued)) q.state = null;
++      });
++    }
++  }
++
++  @override
++  void dispose() {
++    _pager.dispose();
++    super.dispose();
++  }
++
++  /// Boshqa odamga o'tish — yumshoq varaqlash bilan.
++  void _toOwner(int i) {
++    if (i < 0 || i >= _owners.length || !_pager.hasClients) return;
++    _pager.animateToPage(
++      i,
++      duration: const Duration(milliseconds: 320),
++      curve: Curves.easeOutCubic,
++    );
++  }
++
++  @override
++  Widget build(BuildContext context) {
++    // Varaqlar orasida oq fon chaqnamasin.
++    return ColoredBox(
++      color: Colors.black,
++      child: PageView.builder(
++        key: const ValueKey('story-pager'),
++        controller: _pager,
++        itemCount: _owners.length,
++        onPageChanged: (i) => setState(() => _page = i),
++        itemBuilder: (_, i) {
++          final o = _owners[i];
++          return _OwnerStories(
++            key: ValueKey(o),
++            code: o.code,
++            isBusiness: o.isBusiness,
++            active: i == _page,
++            onNextOwner: i + 1 < _owners.length ? () => _toOwner(i + 1) : null,
++            onPrevOwner: i > 0 ? () => _toOwner(i - 1) : null,
++          );
++        },
++      ),
++    );
++  }
++}
++
++/// BITTA ODAMNING ISTORYALARI — varaqlovchining bitta sahifasi.
++///
++/// Avval bu butun ekran edi; mantiq o'zgarmadi, faqat [active]
++/// (taymer va video FAQAT ko'rinib turgan sahifada yuradi) va
++/// qo'shni odamga o'tish chaqiruvlari qo'shildi.
++class _OwnerStories extends ConsumerStatefulWidget {
++  const _OwnerStories({
++    super.key,
++    required this.code,
++    required this.isBusiness,
++    required this.active,
++    this.onNextOwner,
++    this.onPrevOwner,
++  });
++
++  final String code;
++  final bool isBusiness;
++
++  /// Sahifa hozir ekrandami. Surish paytida qo'shni sahifa ham
++  /// chiziladi — uning taymeri yurmasligi, videosi ochilmasligi va
++  /// "ko'rildi" yuborilmasligi kerak.
++  final bool active;
++
++  /// Keyingi/oldingi odam — `null` bo'lsa u tomonda hech kim yo'q.
++  final VoidCallback? onNextOwner;
++  final VoidCallback? onPrevOwner;
++
++  StoryOwner get owner => StoryOwner(code, isBusiness: isBusiness);
++
++  @override
++  ConsumerState<_OwnerStories> createState() => _OwnerStoriesState();
++}
++
++class _OwnerStoriesState extends ConsumerState<_OwnerStories>
+     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+   static const _perStory = Duration(seconds: 5);
+ 
+@@ -199,6 +363,27 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
+     _seed = _seedFromHome();
+   }
+ 
++  /// Sahifa ekranga keldi yoki ketdi (odamlar orasida surish).
++  @override
++  void didUpdateWidget(covariant _OwnerStories old) {
++    super.didUpdateWidget(old);
++    if (widget.active == old.active) return;
++    if (!widget.active) {
++      // Ketayotgan odamning taymeri to'xtaydi — aks holda u ortda
++      // tugab, `_next` orqali YANA bir odamga sakratib yuborardi.
++      _watchdog?.cancel();
++      _progress.stop();
++      _holding = false;
++      return;
++    }
++    // Keldi: joriy istorya media tayyorligini qaytadan kutadi (video
++    // faqat faol sahifada ochiladi).
++    final id = _currentId;
++    if (id != null) {
++      WidgetsBinding.instance.addPostFrameCallback((_) => _prepare(id));
++    }
++  }
++
+   List<StoryItem>? _seedFromHome() {
+     if (!ref.exists(homeStoriesProvider)) return null;
+     final all = ref.read(homeStoriesProvider).valueOrNull;
+@@ -226,14 +411,18 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
+       ..stop()
+       ..duration = _perStory
+       ..reset();
+-    _watchdog = Timer(const Duration(seconds: 10), () => _onReady(id));
++    if (widget.active) {
++      _watchdog = Timer(const Duration(seconds: 10), () => _onReady(id));
++    }
+     if (mounted) setState(() {});
+   }
+ 
+   /// Media ekranda — taymer boshlanadi. Video bo'lsa uning uzunligi
+   /// bilan (60 soniyadan oshmaydi).
+   void _onReady(int id, [Duration? d]) {
+-    if (!mounted || id != _currentId) return;
++    // Qo'shni (ko'rinmayotgan) sahifaning rasmi ham yuklanadi — lekin
++    // uning taymeri faqat sahifa ekranga kelganda boshlanadi.
++    if (!mounted || id != _currentId || !widget.active) return;
+     final video = d != null && d > Duration.zero;
+     // Bir istorya uchun bir marta; kechikib kelgan video uzunligi esa
+     // (qo'riqchi taymerdan keyin) progressni to'g'rilaydi.
+@@ -246,7 +435,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
+     _progress
+       ..duration = dur
+       ..reset();
+-    if (!_paused) _progress.forward();
++    if (!_paused && !_holding) _progress.forward();
+     setState(() {});
+     final at = _items.indexWhere((e) => e.id == id);
+     if (at >= 0 && at + 1 < _items.length) prefetchStoryImage(_items[at + 1]);
+@@ -254,7 +443,9 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
+ 
+   /// Pauzadan qaytish — faqat media tayyor bo'lsa.
+   void _resume() {
+-    if (_mediaReady && !_paused && mounted) _progress.forward();
++    if (_mediaReady && !_paused && !_holding && widget.active && mounted) {
++      _progress.forward();
++    }
+   }
+ 
+   /// MEDIANI TO'XTATADI — ekran yopilishidan OLDIN.
+@@ -307,6 +498,11 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
+   /// Varaq yoki dialog ochiqmi — shunda taymer TO'XTAB turadi.
+   bool _paused = false;
+ 
++  /// Barmoq ekranni bosib turibdi — taymer ham, video ham to'xtaydi
++  /// va ustki belgilar yashiriladi (Instagram kabi: odam kadrni toza
++  /// ko'rmoqchi).
++  bool _holding = false;
++
+   /// Serverga "ko'rildi" deb yuborilgan story'lar.
+   ///
+   /// Bir story ekranda bir necha marta qayta chizilishi mumkin
+@@ -383,19 +579,29 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
+   /// Varaq/dialog ochilganda taymer to'xtaydi, yopilganda davom
+   /// etadi. Aks holda izoh yozib turganda istorya keyingisiga
+   /// o'tib ketardi.
++  ///
++  /// VIDEO HAM TO'XTAYDI. Ilgari faqat taymer to'xtardi: izoh yozib
++  /// turganda video orqada ovozi bilan o'ynab turaverardi. `setState`
++  /// — `_StoryFrame` pauzani videoga uzatadi.
+   Future<T?> _whilePaused<T>(Future<T?> Function() run) async {
+-    _paused = true;
++    setState(() => _paused = true);
+     _progress.stop();
+     try {
+       return await run();
+     } finally {
+       if (mounted) {
+-        _paused = false;
++        setState(() => _paused = false);
+         _resume();
+       }
+     }
+   }
+ 
++  void _hold(bool on) {
++    if (_holding == on || !mounted) return;
++    setState(() => _holding = on);
++    on ? _progress.stop() : _resume();
++  }
++
+   /// LAYK — optimistik, xatoda ORQAGA QAYTADI.
+   Future<void> _like(StoryItem s) async {
+     final now = _likes[s.id] ?? (liked: s.liked, count: s.likes);
+@@ -446,15 +652,27 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
+   /// Natijasi KUTILMAYDI va xatosi yutiladi: bu yordamchi signal,
+   /// uning tufayli story ko'rish to'xtab qolmasligi kerak.
+   void _markSeen(StoryItem s) {
++    if (!mounted || !widget.active) return;
+     if (s.id == 0 || !_seen.add(s.id)) return;
+     ref.read(socialRepositoryProvider).markStorySeen(s.id);
++    // Bosh sahifa halqasi ham DARHOL "ko'rilgan"ga o'tsin.
++    final local = ref.read(seenStoryIdsProvider.notifier);
++    if (!local.state.contains(s.id)) local.state = {...local.state, s.id};
+   }
+ 
+   // Indeks o'zgargach `build` yangi istoryani ko'radi va `_prepare`
+   // uni media tayyorligini kutishga qo'yadi.
+   void _next() {
+     if (_index + 1 >= _total) {
+-      _close();
++      // Oxirgi istorya — KEYINGI ODAM bo'lsa unga o'tiladi, yo'qsa
++      // (eng oxirgi odam) ko'ruvchi yopiladi.
++      final next = widget.onNextOwner;
++      if (next == null) {
++        _close();
++        return;
++      }
++      _progress.stop();
++      next();
+       return;
+     }
+     setState(() => _index++);
+@@ -462,6 +680,13 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
+ 
+   void _prev() {
+     if (_index == 0) {
++      // Birinchi istorya — oldingi odam bo'lsa unga qaytiladi.
++      final prev = widget.onPrevOwner;
++      if (prev != null) {
++        _progress.stop();
++        prev();
++        return;
++      }
+       // Birinchi istorya — boshidan (media allaqachon ekranda).
+       if (_mediaReady) {
+         _progress.reset();
+@@ -487,7 +712,9 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
+     return PopScope(
+       canPop: false,
+       onPopInvokedWithResult: (didPop, _) {
+-        if (didPop) return;
++        // Surish paytida ikki sahifa chiziladi — yopishni faqat
++        // ekrandagisi boshqaradi, aks holda marshrut IKKI marta yopilardi.
++        if (didPop || !widget.active) return;
+         _close();
+       },
+       child: Scaffold(
+@@ -544,6 +771,13 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
+           }
+           {
+             if (items.isEmpty) {
++              // Navbatda bu odamning istoryasi qolmagan (muddati o'tgan
++              // yoki o'chirilgan) — bo'sh ekranda to'xtamasdan keyingisiga.
++              if (widget.active && widget.onNextOwner != null) {
++                WidgetsBinding.instance.addPostFrameCallback((_) {
++                  if (mounted && widget.active) widget.onNextOwner?.call();
++                });
++              }
+               return StatePanel(
+                 icon: Icons.auto_stories_outlined,
+                 title: l.stateEmpty,
+@@ -560,6 +794,15 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
+               final at = items.indexWhere((e) => e.id == _currentId);
+               if (at >= 0) _index = at;
+             }
++            // INSTAGRAM KABI: odam ochilganda birinchi KO'RILMAGAN
++            // istoryasidan boshlanadi (hammasi ko'rilgan bo'lsa —
++            // boshidan). Faqat BIRINCHI ro'yxatda — keyin indeksni
++            // odam o'zi boshqaradi.
++            if (_currentId == null && _items.isEmpty) {
++              final local = ref.read(seenStoryIdsProvider);
++              final at = items.indexWhere((e) => !storySeen(e, local));
++              if (at > 0) _index = at;
++            }
+             _index = _index.clamp(0, items.length - 1);
+             _items = items;
+             _total = items.length;
+@@ -615,14 +858,15 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
+             final lk = _likes[s.id];
+             final liked = lk?.liked ?? s.liked;
+             final likeCount = lk?.count ?? s.likes;
++            final ago = storyAgo(l, s.createdAt);
+ 
+             return GestureDetector(
+               onTapUp: (d) {
+                 final half = MediaQuery.sizeOf(context).width / 2;
+                 d.localPosition.dx < half ? _prev() : _next();
+               },
+-              onLongPressStart: (_) => _progress.stop(),
+-              onLongPressEnd: (_) => _resume(),
++              onLongPressStart: (_) => _hold(true),
++              onLongPressEnd: (_) => _hold(false),
+               onVerticalDragEnd: (d) {
+                 if ((d.primaryVelocity ?? 0) > 260) _close();
+               },
+@@ -657,6 +901,8 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
+                     child: _StoryFrame(
+                       key: ValueKey(s.id),
+                       story: s,
++                      active: widget.active,
++                      paused: _holding || _paused,
+                       onReady: (d) => _onReady(s.id, d),
+                     ),
+                   ),
+@@ -678,7 +924,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
+                     ),
+                   ),
+                   Positioned.fill(
+-                    child: IgnorePointer(
++                    child: _chrome(IgnorePointer(
+                       child: DecoratedBox(
+                         decoration: BoxDecoration(
+                           gradient: LinearGradient(
+@@ -691,7 +937,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
+                           ),
+                         ),
+                       ),
+-                    ),
++                    )),
+                   ),
+                   // Pastki amallar (izoh, layk, ulashish) och rasm ustida
+                   // ham o'qilsin — ilgari rasmdagi yozuv bilan qo'shilib
+@@ -701,7 +947,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
+                     right: 0,
+                     bottom: 0,
+                     height: 180,
+-                    child: IgnorePointer(
++                    child: _chrome(IgnorePointer(
+                       child: DecoratedBox(
+                         decoration: BoxDecoration(
+                           gradient: LinearGradient(
+@@ -714,9 +960,9 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
+                           ),
+                         ),
+                       ),
+-                    ),
++                    )),
+                   ),
+-                  SafeArea(
++                  _chrome(SafeArea(
+                     child: Column(
+                       children: [
+                         Padding(
+@@ -773,18 +1019,46 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
+                               ),
+                               const SizedBox(width: Gap.sm),
+                               Expanded(
+-                                child: Text(
+-                                  authorName.isEmpty ? code : authorName,
+-                                  maxLines: 1,
+-                                  overflow: TextOverflow.ellipsis,
+-                                  style: const TextStyle(
+-                                    fontFamily: AppType.sans,
+-                                    fontSize: 14,
+-                                    fontWeight: FontWeight.w600,
+-                                    color: Colors.white,
+-                                  ),
++                                child: Row(
++                                  children: [
++                                    Flexible(
++                                      child: Text(
++                                        authorName.isEmpty ? code : authorName,
++                                        maxLines: 1,
++                                        overflow: TextOverflow.ellipsis,
++                                        style: const TextStyle(
++                                          fontFamily: AppType.sans,
++                                          fontSize: 14,
++                                          fontWeight: FontWeight.w600,
++                                          color: Colors.white,
++                                        ),
++                                      ),
++                                    ),
++                                    // QACHON QO'YILGANI ("3 soat oldin").
++                                    // Istorya 24 soat yashaydi — eskimi
++                                    // yoki yangimi, ko'ruvchi bilishi
++                                    // kerak. Sana kelmasa chizilmaydi.
++                                    if (ago != null) ...[
++                                      const SizedBox(width: Gap.sm),
++                                      Text(
++                                        ago,
++                                        key: const ValueKey('story-time'),
++                                        maxLines: 1,
++                                        style: TextStyle(
++                                          fontFamily: AppType.sans,
++                                          fontSize: 12.5,
++                                          color: Colors.white
++                                              .withValues(alpha: .75),
++                                        ),
++                                      ),
++                                    ],
++                                  ],
+                                 ),
+                               ),
++                              // OVOZ — faqat video istoryada. Holat
++                              // lenta va Reels bilan UMUMIY: bir joyda
++                              // o'chirilsa, hamma joyda o'chiq qoladi.
++                              if (s.isVideo) const MuteButton(),
+                               // O'chirish FAQAT o'z story'ingda
+                               // ko'rinadi. Begonanikida tugma umuman
+                               // chizilmaydi — bosilib "ruxsat yo'q"
+@@ -862,7 +1136,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
+                           ),
+                       ],
+                     ),
+-                  ),
++                  )),
+ 
+                   // ── PASTKI AMALLAR: layk, izoh, ulashish ────────
+                   //
+@@ -874,7 +1148,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
+                     left: 0,
+                     right: 0,
+                     bottom: 0,
+-                    child: SafeArea(
++                    child: _chrome(SafeArea(
+                       top: false,
+                       child: Padding(
+                         padding: const EdgeInsets.fromLTRB(
+@@ -885,6 +1159,13 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
+                         ),
+                         child: Row(
+                           children: [
++                            // KIM KO'RDI — faqat EGASIGA (Instagram'dagi
++                            // ko'z). Begonaga boshqa odamning
++                            // statistikasi ko'rsatilmaydi.
++                            if (mine) ...[
++                              _StoryViews(count: s.viewCount),
++                              const SizedBox(width: Gap.sm),
++                            ],
+                             Expanded(
+                               child: _StoryAction(
+                                 icon: NovaIcons.comment,
+@@ -921,7 +1202,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
+                           ],
+                         ),
+                       ),
+-                    ),
++                    )),
+                   ),
+                 ],
+               ),
+@@ -932,6 +1213,14 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
+     );
+   }
+ 
++  /// Ustki belgilar (progress, sarlavha, amallar, soyalar) — barmoq
++  /// bosib turilganda yashiriladi, qo'yib yuborilganda qaytadi.
++  Widget _chrome(Widget child) => AnimatedOpacity(
++        opacity: _holding ? 0 : 1,
++        duration: const Duration(milliseconds: 180),
++        child: child,
++      );
++
+   String _initials(String name, String fallback) {
+     final s = name.trim().isEmpty ? fallback : name.trim();
+     return (s.length >= 2 ? s.substring(0, 2) : s).toUpperCase();
+@@ -966,6 +1255,62 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
+   }
+ }
+ 
++/// "3 soat oldin" — istorya sarlavhasidagi nisbiy vaqt.
++///
++/// Sana bo'lmasa `null` (vaqt chizilmaydi — to'qib chiqarilmaydi).
++/// Telefon soati serverdan biroz orqada bo'lsa farq manfiy chiqadi —
++/// u ham "hozirgina".
++String? storyAgo(L l, DateTime? at, {DateTime? now}) {
++  if (at == null) return null;
++  final d = (now ?? DateTime.now()).difference(at.toLocal());
++  if (d.inMinutes < 1) return l.storyTimeJustNow;
++  if (d.inHours < 1) return l.storyTimeMinutes(d.inMinutes);
++  if (d.inDays < 1) return l.storyTimeHours(d.inHours);
++  return l.storyTimeDays(d.inDays);
++}
++
++/// Ko'rishlar soni — ko'z belgisi bilan, faqat egasining istoryasida.
++class _StoryViews extends StatelessWidget {
++  const _StoryViews({required this.count});
++
++  final int count;
++
++  @override
++  Widget build(BuildContext context) {
++    return Semantics(
++      label: L.of(context).viewsCount('$count'),
++      excludeSemantics: true,
++      child: Container(
++        key: const ValueKey('story-views'),
++        height: 42,
++        padding: const EdgeInsets.symmetric(horizontal: Gap.md),
++        decoration: BoxDecoration(
++          borderRadius: R.pill,
++          color: Colors.white.withValues(alpha: .14),
++          border: Border.all(color: Colors.white.withValues(alpha: .35)),
++        ),
++        child: Row(
++          mainAxisSize: MainAxisSize.min,
++          children: [
++            const Icon(Icons.visibility_outlined,
++                size: 18, color: Colors.white),
++            const SizedBox(width: 6),
++            Text(
++              '$count',
++              style: const TextStyle(
++                fontFamily: AppType.sans,
++                fontSize: 13,
++                fontWeight: FontWeight.w600,
++                color: Colors.white,
++              ),
++            ),
++          ],
++        ),
++      ),
++    );
++  }
++}
++
+ /// ISTORYA YUKLANMOQDA — qora bo'sh ekran EMAS.
+ ///
+ /// Egasining surati markazda, atrofida ingichka oltin aylanuvchi
+@@ -1220,10 +1565,20 @@ class _StoryFrame extends StatelessWidget {
+     super.key,
+     required this.story,
+     required this.onReady,
++    this.active = true,
++    this.paused = false,
+   });
+ 
+   final StoryItem story;
+ 
++  /// Sahifa ekrandami. Qo'shni (surish paytida chetdan ko'rinadigan)
++  /// odamning videosi OCHILMAYDI — aks holda ikki video bir vaqtda
++  /// tarmoq va ovoz talashardi.
++  final bool active;
++
++  /// Bosib turish yoki varaq ochiq — video to'xtab turadi.
++  final bool paused;
++
+   /// Media EKRANDA — taymer shundan keyin yuradi. Videoda uzunligi
+   /// bilan, rasmda `null`.
+   final ValueChanged<Duration?> onReady;
+@@ -1243,6 +1598,7 @@ class _StoryFrame extends StatelessWidget {
+     }
+ 
+     if (story.isVideo) {
++      if (!active) return const ColoredBox(color: Colors.black);
+       // `contain`: yotiq video ekranga sig'sin, usti va osti
+       // kesilib ketmasin. Tik video uchun farqi yo'q — u baribir
+       // ekranni to'ldiradi.
+@@ -1253,6 +1609,7 @@ class _StoryFrame extends StatelessWidget {
+           onDuration: onReady,
+           onFailed: () => onReady(null),
+           fit: BoxFit.contain,
++          paused: paused,
+         ),
+       );
+     }
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index 55a9e1a..9e4bfab 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -234,6 +234,13 @@
+   "analyticsByDay": "Views by day",
+   "analyticsTop": "Most viewed",
+   "reelCaptionMore": "more",
++  "storyTimeJustNow": "just now",
++  "storyTimeMinutes": "{n, plural, one{{n} minute ago} other{{n} minutes ago}}",
++  "@storyTimeMinutes": {"placeholders": {"n": {"type": "int"}}},
++  "storyTimeHours": "{n, plural, one{{n} hour ago} other{{n} hours ago}}",
++  "@storyTimeHours": {"placeholders": {"n": {"type": "int"}}},
++  "storyTimeDays": "{n, plural, one{{n} day ago} other{{n} days ago}}",
++  "@storyTimeDays": {"placeholders": {"n": {"type": "int"}}},
+   "reelAdCta": "View profile",
+   "analyticsSeeAll": "See all ({count})",
+   "analyticsNoPosts": "No posts or Reels yet",
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index b54ebc3..5f73083 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -234,6 +234,13 @@
+   "analyticsByDay": "Просмотры по дням",
+   "analyticsTop": "Самые просматриваемые",
+   "reelCaptionMore": "ещё",
++  "storyTimeJustNow": "только что",
++  "storyTimeMinutes": "{n, plural, one{{n} минуту назад} few{{n} минуты назад} many{{n} минут назад} other{{n} минуты назад}}",
++  "@storyTimeMinutes": {"placeholders": {"n": {"type": "int"}}},
++  "storyTimeHours": "{n, plural, one{{n} час назад} few{{n} часа назад} many{{n} часов назад} other{{n} часа назад}}",
++  "@storyTimeHours": {"placeholders": {"n": {"type": "int"}}},
++  "storyTimeDays": "{n, plural, one{{n} день назад} few{{n} дня назад} many{{n} дней назад} other{{n} дня назад}}",
++  "@storyTimeDays": {"placeholders": {"n": {"type": "int"}}},
+   "reelAdCta": "Открыть профиль",
+   "analyticsSeeAll": "Смотреть все ({count})",
+   "analyticsNoPosts": "Пока нет постов и Reels",
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index 1345b2e..3eb5270 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -234,6 +234,13 @@
+   "analyticsByDay": "Kunlik ko‘rishlar",
+   "analyticsTop": "Eng ko‘p ko‘rilganlar",
+   "reelCaptionMore": "ko‘proq",
++  "storyTimeJustNow": "hozirgina",
++  "storyTimeMinutes": "{n, plural, other{{n} daqiqa oldin}}",
++  "@storyTimeMinutes": {"placeholders": {"n": {"type": "int"}}},
++  "storyTimeHours": "{n, plural, other{{n} soat oldin}}",
++  "@storyTimeHours": {"placeholders": {"n": {"type": "int"}}},
++  "storyTimeDays": "{n, plural, other{{n} kun oldin}}",
++  "@storyTimeDays": {"placeholders": {"n": {"type": "int"}}},
+   "reelAdCta": "Profilni ochish",
+   "analyticsSeeAll": "Hammasini ko‘rish ({count})",
+   "@analyticsSeeAll": {"placeholders": {"count": {"type": "int"}}},
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index 1822003..57a2100 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -1317,6 +1317,30 @@ abstract class L {
+   /// **'ko‘proq'**
+   String get reelCaptionMore;
+ 
++  /// No description provided for @storyTimeJustNow.
++  ///
++  /// In uz, this message translates to:
++  /// **'hozirgina'**
++  String get storyTimeJustNow;
++
++  /// No description provided for @storyTimeMinutes.
++  ///
++  /// In uz, this message translates to:
++  /// **'{n, plural, other{{n} daqiqa oldin}}'**
++  String storyTimeMinutes(int n);
++
++  /// No description provided for @storyTimeHours.
++  ///
++  /// In uz, this message translates to:
++  /// **'{n, plural, other{{n} soat oldin}}'**
++  String storyTimeHours(int n);
++
++  /// No description provided for @storyTimeDays.
++  ///
++  /// In uz, this message translates to:
++  /// **'{n, plural, other{{n} kun oldin}}'**
++  String storyTimeDays(int n);
++
+   /// No description provided for @reelAdCta.
+   ///
+   /// In uz, this message translates to:
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index b644731..242c2dc 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -643,6 +643,42 @@ class LEn extends L {
+   @override
+   String get reelCaptionMore => 'more';
+ 
++  @override
++  String get storyTimeJustNow => 'just now';
++
++  @override
++  String storyTimeMinutes(int n) {
++    String _temp0 = intl.Intl.pluralLogic(
++      n,
++      locale: localeName,
++      other: '$n minutes ago',
++      one: '$n minute ago',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String storyTimeHours(int n) {
++    String _temp0 = intl.Intl.pluralLogic(
++      n,
++      locale: localeName,
++      other: '$n hours ago',
++      one: '$n hour ago',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String storyTimeDays(int n) {
++    String _temp0 = intl.Intl.pluralLogic(
++      n,
++      locale: localeName,
++      other: '$n days ago',
++      one: '$n day ago',
++    );
++    return '$_temp0';
++  }
++
+   @override
+   String get reelAdCta => 'View profile';
+ 
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index 4b27389..ef4cd13 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -639,6 +639,48 @@ class LRu extends L {
+   @override
+   String get reelCaptionMore => 'ещё';
+ 
++  @override
++  String get storyTimeJustNow => 'только что';
++
++  @override
++  String storyTimeMinutes(int n) {
++    String _temp0 = intl.Intl.pluralLogic(
++      n,
++      locale: localeName,
++      other: '$n минуты назад',
++      many: '$n минут назад',
++      few: '$n минуты назад',
++      one: '$n минуту назад',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String storyTimeHours(int n) {
++    String _temp0 = intl.Intl.pluralLogic(
++      n,
++      locale: localeName,
++      other: '$n часа назад',
++      many: '$n часов назад',
++      few: '$n часа назад',
++      one: '$n час назад',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String storyTimeDays(int n) {
++    String _temp0 = intl.Intl.pluralLogic(
++      n,
++      locale: localeName,
++      other: '$n дня назад',
++      many: '$n дней назад',
++      few: '$n дня назад',
++      one: '$n день назад',
++    );
++    return '$_temp0';
++  }
++
+   @override
+   String get reelAdCta => 'Открыть профиль';
+ 
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index 2124e2c..c7a97e2 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -643,6 +643,39 @@ class LUz extends L {
+   @override
+   String get reelCaptionMore => 'ko‘proq';
+ 
++  @override
++  String get storyTimeJustNow => 'hozirgina';
++
++  @override
++  String storyTimeMinutes(int n) {
++    String _temp0 = intl.Intl.pluralLogic(
++      n,
++      locale: localeName,
++      other: '$n daqiqa oldin',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String storyTimeHours(int n) {
++    String _temp0 = intl.Intl.pluralLogic(
++      n,
++      locale: localeName,
++      other: '$n soat oldin',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String storyTimeDays(int n) {
++    String _temp0 = intl.Intl.pluralLogic(
++      n,
++      locale: localeName,
++      other: '$n kun oldin',
++    );
++    return '$_temp0';
++  }
++
+   @override
+   String get reelAdCta => 'Profilni ochish';
+ 
+diff --git a/mobile_nova/test/story_meta_test.dart b/mobile_nova/test/story_meta_test.dart
+new file mode 100644
+index 0000000..3f6cda1
+--- /dev/null
++++ b/mobile_nova/test/story_meta_test.dart
+@@ -0,0 +1,167 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/core/network/api_client.dart';
++import 'package:nfcstore_nova/core/utils/result.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/data/repositories/social_repository.dart';
++import 'package:nfcstore_nova/features/auth/session.dart';
++import 'package:nfcstore_nova/features/social/story_viewer.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations_en.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations_ru.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations_uz.dart';
++
++import 'helpers.dart';
++
++/// ISTORYA SARLAVHASIDAGI VAQT VA EGASIGA KO'RISHLAR SONI.
++///
++/// Server `createdAt` va `viewCount` ni HAR DOIM yuborardi; model
++/// `viewCount` ni tashlab yuborardi, sarlavhada esa vaqt umuman
++/// yo'q edi — istorya 3 daqiqalikmi yoki 23 soatlikmi, bilinmasdi.
++class _Repo extends SocialRepository {
++  _Repo(this.items) : super(ApiClient());
++  final List<StoryItem> items;
++
++  @override
++  Future<Result<List<StoryItem>>> storiesOf(String code) async => Ok(items);
++
++  @override
++  Future<Result<void>> markStorySeen(int id) async => const Ok(null);
++}
++
++void main() {
++  group('StoryItem.fromJson', () {
++    test('viewCount va createdAt o‘qiladi', () {
++      final s = StoryItem.fromJson({
++        'id': 7,
++        'imageUrl': 'https://x/s.jpg',
++        'createdAt': '2026-10-05T09:00:00Z',
++        'likeCount': 2,
++        'viewCount': 41,
++      });
++      expect(s.viewCount, 41);
++      expect(s.createdAt, DateTime.utc(2026, 10, 5, 9));
++    });
++
++    test('created_at (snake_case) va epoch millisekund ham', () {
++      final a = StoryItem.fromJson({'id': 1, 'created_at': '2026-10-05T09:00:00Z'});
++      expect(a.createdAt, DateTime.utc(2026, 10, 5, 9));
++      final ms = DateTime.utc(2026, 10, 5, 9).millisecondsSinceEpoch;
++      final b = StoryItem.fromJson({'id': 2, 'createdAt': ms});
++      expect(b.createdAt!.toUtc(), DateTime.utc(2026, 10, 5, 9));
++    });
++
++    test('viewCount yo‘q bo‘lsa 0, copyWith uni saqlaydi', () {
++      expect(StoryItem.fromJson({'id': 1}).viewCount, 0);
++      const s = StoryItem(id: 1, viewCount: 5);
++      expect(s.copyWith(seen: true).viewCount, 5);
++    });
++  });
++
++  group('storyAgo — uch tilda, ko‘plik shakli bilan', () {
++    final now = DateTime(2026, 10, 5, 12);
++    String uz(Duration d) => storyAgo(LUz(), now.subtract(d), now: now)!;
++
++    test('sana bo‘lmasa — vaqt chizilmaydi', () {
++      expect(storyAgo(LUz(), null), isNull);
++    });
++
++    test('uzbekcha', () {
++      expect(uz(const Duration(seconds: 20)), LUz().storyTimeJustNow);
++      expect(uz(const Duration(minutes: 5)), '5 daqiqa oldin');
++      expect(uz(const Duration(hours: 3)), '3 soat oldin');
++      expect(uz(const Duration(days: 2)), '2 kun oldin');
++      // Telefon soati serverdan orqada — manfiy farq ham "hozirgina".
++      expect(storyAgo(LUz(), now.add(const Duration(minutes: 2)), now: now),
++          LUz().storyTimeJustNow);
++    });
++
++    test('ruscha — bir/bir nechta/ko‘p', () {
++      String ru(Duration d) => storyAgo(LRu(), now.subtract(d), now: now)!;
++      expect(ru(const Duration(hours: 1)), '1 час назад');
++      expect(ru(const Duration(hours: 3)), '3 часа назад');
++      expect(ru(const Duration(hours: 5)), '5 часов назад');
++      expect(ru(const Duration(minutes: 21)), '21 минуту назад');
++    });
++
++    test('inglizcha — birlik/ko‘plik', () {
++      String en(Duration d) => storyAgo(LEn(), now.subtract(d), now: now)!;
++      expect(en(const Duration(hours: 1)), '1 hour ago');
++      expect(en(const Duration(hours: 3)), '3 hours ago');
++      expect(en(const Duration(days: 1)), '1 day ago');
++    });
++  });
++
++  Future<void> pump(WidgetTester tester, StoryItem s, {bool own = false}) async {
++    await tester.pumpWidget(ProviderScope(
++      overrides: [
++        ...await testOverrides(),
++        socialRepositoryProvider.overrideWithValue(_Repo([s])),
++        if (own) myIdsProvider.overrideWithValue(testIds),
++      ],
++      child: wrapScreen(StoryViewerScreen(code: s.code)),
++    ));
++    await tester.pump();
++    await tester.pump(const Duration(milliseconds: 100));
++  }
++
++  Future<void> tearDownTree(WidgetTester tester) async {
++    await tester.pumpWidget(const SizedBox());
++    await tester.pump(const Duration(seconds: 11));
++  }
++
++  testWidgets('sarlavhada "3 soat oldin"', (tester) async {
++    await pump(
++      tester,
++      StoryItem(
++        id: 1,
++        code: 'VIP001',
++        authorName: 'M',
++        authorAvatar: 'https://x/m.jpg',
++        createdAt: DateTime.now().subtract(const Duration(hours: 3, minutes: 4)),
++      ),
++    );
++    expect(find.text('3 soat oldin'), findsOneWidget);
++    await tearDownTree(tester);
++  });
++
++  testWidgets('sanasiz istoryada vaqt chizilmaydi', (tester) async {
++    await pump(
++      tester,
++      const StoryItem(
++          id: 1, code: 'VIP001', authorName: 'M', authorAvatar: 'https://x/m.jpg'),
++    );
++    expect(find.byKey(const ValueKey('story-time')), findsNothing);
++    await tearDownTree(tester);
++  });
++
++  testWidgets('O‘Z istoryasida ko‘z belgisi va ko‘rishlar soni', (tester) async {
++    final own = testIds.first;
++    await pump(tester, StoryItem(id: 1, code: own.code, viewCount: 41),
++        own: true);
++    final views = find.byKey(const ValueKey('story-views'));
++    expect(views, findsOneWidget, reason: 'egasiga ko‘rishlar soni chiqmadi');
++    expect(
++        find.descendant(
++            of: views, matching: find.byIcon(Icons.visibility_outlined)),
++        findsOneWidget);
++    expect(find.descendant(of: views, matching: find.text('41')),
++        findsOneWidget);
++    await tearDownTree(tester);
++  });
++
++  testWidgets('BEGONA istoryada ko‘rishlar soni ko‘rinmaydi', (tester) async {
++    await pump(
++      tester,
++      const StoryItem(
++          id: 1,
++          code: 'VIP001',
++          authorName: 'M',
++          authorAvatar: 'https://x/m.jpg',
++          viewCount: 41),
++    );
++    expect(find.byKey(const ValueKey('story-views')), findsNothing);
++    expect(find.text('41'), findsNothing);
++    await tearDownTree(tester);
++  });
++}
+diff --git a/mobile_nova/test/story_people_test.dart b/mobile_nova/test/story_people_test.dart
+new file mode 100644
+index 0000000..7889d2d
+--- /dev/null
++++ b/mobile_nova/test/story_people_test.dart
+@@ -0,0 +1,250 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:go_router/go_router.dart';
++import 'package:nfcstore_nova/core/network/api_client.dart';
++import 'package:nfcstore_nova/core/utils/result.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/data/repositories/social_repository.dart';
++import 'package:nfcstore_nova/features/social/story_viewer.dart';
++
++import 'helpers.dart';
++
++/// ODAMLAR ORASIDA O'TISH (Instagram kabi).
++///
++/// Ilgari bir odamning oxirgi istoryasi tugasa ko'ruvchi YOPILARDI —
++/// keyingi odamni ko'rish uchun bosh sahifaga qaytib, yana bosish
++/// kerak edi. Endi bosh sahifa qatori tartibida keyingi odamga
++/// o'tiladi, ko'ruvchi faqat ENG OXIRGI odamdan keyin yopiladi.
++class _Repo extends SocialRepository {
++  _Repo(this.byCode) : super(ApiClient());
++
++  final Map<String, List<StoryItem>> byCode;
++  final seen = <int>[];
++
++  @override
++  Future<Result<List<StoryItem>>> storiesOf(String code) async =>
++      Ok(byCode[code] ?? const []);
++
++  @override
++  Future<Result<void>> markStorySeen(int id) async {
++    seen.add(id);
++    return const Ok(null);
++  }
++}
++
++StoryItem _s(int id, String code, String name) => StoryItem(
++      id: id,
++      code: code,
++      authorName: name,
++      authorAvatar: 'https://x/$code.jpg',
++    );
++
++final _byCode = {
++  'AAA001': [_s(1, 'AAA001', 'Ali'), _s(2, 'AAA001', 'Ali')],
++  'BBB002': [_s(3, 'BBB002', 'Bobur')],
++  'CCC003': [_s(4, 'CCC003', 'Vali')],
++};
++
++const _a = StoryOwner('AAA001');
++const _b = StoryOwner('BBB002');
++const _c = StoryOwner('CCC003');
++
++void main() {
++  late _Repo repo;
++
++  /// Ko'ruvchini routerda ochadi. [queue] — bosh sahifa qo'yadigan
++  /// navbat (u bo'lmasa — profil halqasidagi kabi bitta odam).
++  Future<GoRouter> pump(
++    WidgetTester tester,
++    String code, {
++    StoryQueue? queue,
++  }) async {
++    repo = _Repo(_byCode);
++    final router = GoRouter(
++      initialLocation: '/',
++      routes: [
++        GoRoute(
++          path: '/',
++          builder: (_, __) => const Scaffold(body: Text('HOME')),
++          routes: [
++            GoRoute(
++              path: 'story/:code',
++              builder: (_, s) =>
++                  StoryViewerScreen(code: s.pathParameters['code']!),
++            ),
++          ],
++        ),
++      ],
++    );
++    final c = ProviderContainer(overrides: [
++      ...await testOverrides(),
++      socialRepositoryProvider.overrideWithValue(repo),
++    ]);
++    addTearDown(c.dispose);
++    await tester.pumpWidget(UncontrolledProviderScope(
++      container: c,
++      child: wrapRouter(router),
++    ));
++    await tester.pump();
++    if (queue != null) c.read(storyQueueProvider.notifier).state = queue;
++    router.go('/story/$code');
++    // `pumpAndSettle` EMAS — u taymerni oxirigacha aylantirib yuboradi.
++    // 400 ms — sahifa o'tish animatsiyasi tugaydi (aks holda tegish
++    // nuqtasi siljigan kadrga tushadi).
++    await tester.pump();
++    await tester.pump(const Duration(milliseconds: 400));
++    return router;
++  }
++
++  String where(GoRouter r) =>
++      r.routerDelegate.currentConfiguration.uri.toString();
++
++  /// Hozir kimning istoryasi ekranda — sarlavhadagi ism bo'yicha.
++  void showing(String name) {
++    expect(find.text(name), findsOneWidget, reason: '$name ko‘rinmayapti');
++  }
++
++  /// Bitta istorya (5 soniya) va odamlar orasidagi varaqlash.
++  ///
++  /// Mayda qadamlar bilan: taymer media tayyor bo'lgach KEYINGI kadrda
++  /// boshlanadi — bitta katta `pump` uni o'tkazib yuborardi.
++  Future<void> playOne(WidgetTester tester) async {
++    for (var i = 0; i < 60; i++) {
++      await tester.pump(const Duration(milliseconds: 100));
++    }
++  }
++
++  Future<void> tapSide(WidgetTester tester, {required bool right}) async {
++    final size = tester.view.physicalSize / tester.view.devicePixelRatio;
++    await tester.tapAt(
++        Offset(size.width * (right ? 0.8 : 0.2), size.height * 0.5));
++    await tester.pump();
++    await tester.pump(const Duration(milliseconds: 400));
++    await tester.pump();
++  }
++
++  testWidgets('oxirgi istorya tugagach KEYINGI ODAMGA o‘tadi, '
++      'eng oxirgi odamdan keyin yopiladi', (tester) async {
++    final router = await pump(tester, 'AAA001',
++        queue: const StoryQueue([_a, _b, _c], 0));
++    showing('Ali');
++
++    await playOne(tester); // Ali 1 -> Ali 2
++    showing('Ali');
++    await playOne(tester); // Ali 2 -> Bobur
++    showing('Bobur');
++    expect(find.text('Ali'), findsNothing);
++    expect(where(router), '/story/AAA001',
++        reason: 'birinchi odam tugashi bilan ko‘ruvchi yopildi');
++
++    await playOne(tester); // Bobur -> Vali
++    showing('Vali');
++    expect(where(router), '/story/AAA001');
++
++    await playOne(tester); // Vali — eng oxirgi odam
++    await tester.pumpAndSettle();
++    expect(where(router), '/',
++        reason: 'eng oxirgi odamdan keyin ko‘ruvchi yopilmadi');
++    // Har bir istorya serverga bir marta, ko'ringan tartibda.
++    expect(repo.seen, [1, 2, 3, 4]);
++  });
++
++  testWidgets('o‘ngga tegish oxirgi istoryadan keyingi odamga, '
++      'chapga tegish birinchisidan OLDINGI odamga o‘tkazadi', (tester) async {
++    final router = await pump(tester, 'BBB002',
++        queue: const StoryQueue([_a, _b, _c], 1));
++    showing('Bobur');
++
++    // Bobur'ning bitta istoryasi bor — o'ngga tegish Vali'ga o'tkazadi.
++    await tapSide(tester, right: true);
++    showing('Vali');
++
++    // Vali'ning birinchi istoryasida chapga — Bobur'ga qaytadi.
++    await tapSide(tester, right: false);
++    showing('Bobur');
++
++    // Yana chapga — Ali (navbatdagi birinchi odam).
++    await tapSide(tester, right: false);
++    showing('Ali');
++    expect(where(router), '/story/BBB002');
++
++    // Birinchi odamning birinchi istoryasida chapga — hech qayerga
++    // ketmaydi va yopilmaydi.
++    await tapSide(tester, right: false);
++    showing('Ali');
++    expect(where(router), '/story/BBB002');
++  });
++
++  testWidgets('yon tomonga surish odam almashtiradi', (tester) async {
++    await pump(tester, 'AAA001', queue: const StoryQueue([_a, _b, _c], 0));
++    showing('Ali');
++
++    await tester.fling(find.byKey(const ValueKey('story-pager')),
++        const Offset(-300, 0), 1500);
++    await tester.pump();
++    await tester.pump(const Duration(milliseconds: 600));
++    await tester.pump();
++    showing('Bobur');
++
++    await tester.fling(find.byKey(const ValueKey('story-pager')),
++        const Offset(300, 0), 1500);
++    await tester.pump();
++    await tester.pump(const Duration(milliseconds: 600));
++    await tester.pump();
++    showing('Ali');
++  });
++
++  testWidgets('qo‘shni odamning istoryasi u ekranga kelmaguncha '
++      '"ko‘rildi" deb yuborilmaydi', (tester) async {
++    await pump(tester, 'AAA001', queue: const StoryQueue([_a, _b], 0));
++    await tester.pump(const Duration(seconds: 1));
++    expect(repo.seen, [1]);
++  });
++
++  testWidgets('navbatsiz (profil halqasi) — avvalgidek BITTA odam',
++      (tester) async {
++    final router = await pump(tester, 'BBB002');
++    showing('Bobur');
++    await playOne(tester);
++    await tester.pumpAndSettle();
++    expect(where(router), '/',
++        reason: 'navbat bo‘lmasa ham boshqa odamga o‘tib ketdi');
++  });
++
++  testWidgets('BOSHQA odam uchun qo‘yilgan eskirgan navbat e’tiborsiz '
++      'qoladi', (tester) async {
++    // Navbat Ali uchun qo'yilgan, ochilgani esa Vali — profil
++    // halqasidan kirilgan deb hisoblanadi.
++    final router = await pump(tester, 'CCC003',
++        queue: const StoryQueue([_a, _b, _c], 0));
++    showing('Vali');
++    await playOne(tester);
++    await tester.pumpAndSettle();
++    expect(where(router), '/');
++  });
++
++  testWidgets('navbat konstruktor orqali ham beriladi', (tester) async {
++    final c = ProviderContainer(overrides: [
++      ...await testOverrides(),
++      socialRepositoryProvider.overrideWithValue(_Repo(_byCode)),
++    ]);
++    addTearDown(c.dispose);
++    await tester.pumpWidget(UncontrolledProviderScope(
++      container: c,
++      child: wrapScreen(const StoryViewerScreen(
++        code: 'BBB002',
++        owners: [_a, _b, _c],
++        initialIndex: 2,
++      )),
++    ));
++    await tester.pump();
++    await tester.pump(const Duration(milliseconds: 100));
++    showing('Vali');
++    await tapSide(tester, right: false);
++    showing('Bobur');
++    // Taymerlar (qo'riqchi, rasm keshi) ochiq qolmasin.
++    await tester.pumpWidget(const SizedBox());
++    await tester.pump(const Duration(seconds: 11));
++  });
++}
+diff --git a/mobile_nova/test/story_seen_ring_test.dart b/mobile_nova/test/story_seen_ring_test.dart
+new file mode 100644
+index 0000000..2279e80
+--- /dev/null
++++ b/mobile_nova/test/story_seen_ring_test.dart
+@@ -0,0 +1,147 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:go_router/go_router.dart';
++import 'package:nfcstore_nova/core/utils/result.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/data/repositories/social_repository.dart';
++import 'package:nfcstore_nova/features/home/home_screen.dart';
++import 'package:nfcstore_nova/features/home/widgets/avatar.dart';
++import 'package:nfcstore_nova/features/social/story_viewer.dart';
++
++import 'helpers.dart';
++
++/// BOSH SAHIFA HALQASI KO'RILGANDAN KEYIN DARHOL KULRANG.
++///
++/// Ilgari istorya ko'rilib qaytilsa ham doiracha oltin ("ko'rilmagan")
++/// bo'lib turardi — ro'yxat serverdan qayta yuklanmaguncha. Bundan
++/// tashqari halqa faqat odamning BIRINCHI istoryasiga qarardi.
++class _Repo extends FakeSocialRepository {
++  final seen = <int>[];
++
++  @override
++  Future<Result<List<StoryItem>>> storiesOf(String code) async =>
++      Ok(_home.where((s) => s.code == code).toList());
++
++  @override
++  Future<Result<void>> markStorySeen(int id) async {
++    seen.add(id);
++    return const Ok(null);
++  }
++}
++
++const _home = [
++  StoryItem(id: 2, code: 'UZD772', authorName: 'Oybek Karimov'),
++  StoryItem(id: 3, code: 'UZD772', authorName: 'Oybek Karimov'),
++  StoryItem(id: 4, code: 'TTS075', authorName: 'Tohir Aliyev'),
++];
++
++void main() {
++  late _Repo repo;
++
++  Future<void> pumpHome(WidgetTester tester) async {
++    // Baland oyna — bosh sahifa dangasa ro'yxat, qator ko'rinsin.
++    tester.view.physicalSize = const Size(1080, 6000);
++    tester.view.devicePixelRatio = 3;
++    addTearDown(tester.view.reset);
++    repo = _Repo();
++    final router = GoRouter(
++      initialLocation: '/',
++      routes: [
++        GoRoute(
++          path: '/',
++          builder: (_, __) => const HomeScreen(),
++          routes: [
++            GoRoute(
++              path: 'story/:code',
++              builder: (_, s) =>
++                  StoryViewerScreen(code: s.pathParameters['code']!),
++            ),
++          ],
++        ),
++      ],
++    );
++    await tester.pumpWidget(ProviderScope(
++      overrides: [
++        ...await testOverrides(),
++        socialRepositoryProvider.overrideWithValue(repo),
++        homeStoriesProvider.overrideWith((ref) async => _home),
++      ],
++      child: wrapRouter(router),
++    ));
++    await settle(tester, frames: 20);
++  }
++
++  /// Ko'ruvchi ochiqmi. `context.push` bilan ochilgani uchun marshrut
++  /// manzili emas, ekranning o'zi tekshiriladi.
++  bool viewerOpen() => find.byType(StoryViewerScreen).evaluate().isNotEmpty;
++
++  /// Qatordagi doiracha "ko'rilmagan" (oltin halqa) mi.
++  bool unseen(WidgetTester tester, String initials) {
++    final a = tester
++        .widgetList<Avatar>(find.byType(Avatar, skipOffstage: false))
++        .firstWhere((a) => a.initials == initials && a.size == 68);
++    return a.ringGradient != null;
++  }
++
++  Future<void> wait(WidgetTester tester, Duration d) async {
++    for (var t = Duration.zero; t < d; t += const Duration(milliseconds: 100)) {
++      await tester.pump(const Duration(milliseconds: 100));
++    }
++  }
++
++  Future<void> closeViewer(WidgetTester tester) async {
++    await tester.tap(find.byIcon(Icons.close_rounded).first);
++    await settle(tester, frames: 10);
++    expect(viewerOpen(), isFalse);
++  }
++
++  testWidgets('halqa faqat odamning HAMMA istoryasi ko‘rilganda kulrang '
++      'bo‘ladi — qayta yuklashsiz', (tester) async {
++    await pumpHome(tester);
++    expect(unseen(tester, 'OK'), isTrue);
++    expect(unseen(tester, 'TA'), isTrue);
++
++    // Oybek'ning BIRINCHI istoryasini ko'rib yopamiz.
++    await tester.tap(find.text('Oybek Karimov'));
++    await wait(tester, const Duration(milliseconds: 600));
++    expect(viewerOpen(), isTrue);
++    await closeViewer(tester);
++    expect(repo.seen, [2]);
++    expect(unseen(tester, 'OK'), isTrue,
++        reason: 'ikkinchi istorya ko‘rilmagan — halqa hali oltin bo‘lishi '
++            'kerak');
++
++    // Qayta ochilganda KO'RILMAGAN (ikkinchi) istoryadan boshlanadi.
++    await tester.tap(find.text('Oybek Karimov'));
++    await wait(tester, const Duration(milliseconds: 600));
++    expect(repo.seen, [2, 3],
++        reason: 'ko‘rilmagan istoryadan boshlanmadi');
++    await closeViewer(tester);
++    expect(unseen(tester, 'OK'), isFalse,
++        reason: 'hamma istorya ko‘rildi — halqa qayta yuklashsiz '
++            'kulrangga o‘tmadi');
++    // Boshqa odam tegmagan.
++    expect(unseen(tester, 'TA'), isTrue);
++  });
++
++  testWidgets('bosh sahifadan ochilgan ko‘ruvchi qator tartibida KEYINGI '
++      'odamga o‘tadi va oxirida yopiladi', (tester) async {
++    await pumpHome(tester);
++
++    await tester.tap(find.text('Oybek Karimov'));
++    await wait(tester, const Duration(milliseconds: 600));
++    // Oybek: 2 ta istorya, keyin Tohir: 1 ta — jami ~15 soniya.
++    await wait(tester, const Duration(seconds: 11));
++    expect(viewerOpen(), isTrue,
++        reason: 'birinchi odamdan keyin yopilib qoldi');
++    expect(find.text('Tohir Aliyev'), findsWidgets);
++    await wait(tester, const Duration(seconds: 6));
++    await settle(tester, frames: 10);
++
++    expect(viewerOpen(), isFalse, reason: 'oxirgi odamdan keyin yopilmadi');
++    expect(repo.seen, [2, 3, 4]);
++    expect(unseen(tester, 'OK'), isFalse);
++    expect(unseen(tester, 'TA'), isFalse);
++  });
++}
+diff --git a/mobile_nova/test/story_video_pause_test.dart b/mobile_nova/test/story_video_pause_test.dart
+new file mode 100644
+index 0000000..81394ea
+--- /dev/null
++++ b/mobile_nova/test/story_video_pause_test.dart
+@@ -0,0 +1,192 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/core/network/api_client.dart';
++import 'package:nfcstore_nova/core/utils/result.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/data/repositories/social_repository.dart';
++import 'package:nfcstore_nova/features/social/media_sound.dart';
++import 'package:nfcstore_nova/features/social/story_viewer.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations_uz.dart';
++import 'package:video_player_platform_interface/video_player_platform_interface.dart';
++
++import 'helpers.dart';
++import 'support/fake_video_platform.dart';
++
++/// VIDEO ISTORYA: BOSIB TURISH, VARAQ VA OVOZ.
++///
++/// Ilgari barmoq bosib turilganda faqat progress taymeri to'xtardi —
++/// video esa ovozi bilan o'ynab turaverardi. Izoh varag'i ochilganda
++/// ham shunday edi. Ovoz tugmasi esa istoryada umuman yo'q edi.
++class _Video extends FakeVideoPlatform {
++  /// Har bir player uchun OXIRGI o'rnatilgan ovoz balandligi.
++  final volumes = <int, double>{};
++
++  @override
++  Future<void> setVolume(int playerId, double volume) async =>
++      volumes[playerId] = volume;
++}
++
++class _Repo extends SocialRepository {
++  _Repo(this.items) : super(ApiClient());
++  final List<StoryItem> items;
++
++  @override
++  Future<Result<List<StoryItem>>> storiesOf(String code) async => Ok(items);
++
++  @override
++  Future<Result<void>> markStorySeen(int id) async => const Ok(null);
++
++  @override
++  Future<Result<({List<Comment> items, bool hasMore, int total})>> comments(
++    String kind,
++    int id, {
++    int page = 1,
++  }) async =>
++      const Ok((items: <Comment>[], hasMore: false, total: 0));
++}
++
++const _video = StoryItem(
++  id: 1,
++  code: 'VIP001',
++  authorName: 'M',
++  authorAvatar: 'https://x/m.jpg',
++  mediaUrl: 'https://nfcstore.uz/uploads/s.mp4',
++  isVideo: true,
++);
++
++const _image = StoryItem(
++  id: 2,
++  code: 'VIP001',
++  authorName: 'M',
++  authorAvatar: 'https://x/m.jpg',
++);
++
++void main() {
++  late _Video v;
++  late ProviderContainer c;
++
++  Future<void> pump(WidgetTester tester, List<StoryItem> items,
++      {bool muted = false}) async {
++    v = _Video();
++    VideoPlayerPlatform.instance = v;
++    c = ProviderContainer(overrides: [
++      ...await testOverrides(),
++      socialRepositoryProvider.overrideWithValue(_Repo(items)),
++    ]);
++    addTearDown(c.dispose);
++    if (muted) c.read(mediaMutedProvider.notifier).state = true;
++    await tester.pumpWidget(UncontrolledProviderScope(
++      container: c,
++      child: wrapScreen(const StoryViewerScreen(code: 'VIP001')),
++    ));
++    // `pumpAndSettle` EMAS — taymer istoryani oxirigacha surib yuboradi.
++    await settle(tester, frames: 6);
++  }
++
++  /// Taymerlar (qo'riqchi, rasm keshi) ochiq qolmasin.
++  Future<void> tearDownTree(WidgetTester tester) async {
++    await tester.pumpWidget(const SizedBox());
++    await tester.pump(const Duration(seconds: 11));
++  }
++
++  double progress(WidgetTester tester) => tester
++      .widget<LinearProgressIndicator>(find.byType(LinearProgressIndicator))
++      .value!;
++
++  /// Sarlavha (X tugmasi) ustidagi shaffoflik.
++  double chromeOpacity(WidgetTester tester) => tester
++      .widget<AnimatedOpacity>(find
++          .ancestor(
++              of: find.byIcon(Icons.close_rounded),
++              matching: find.byType(AnimatedOpacity))
++          .first)
++      .opacity;
++
++  testWidgets('bosib turilganda VIDEO ham to‘xtaydi, belgilar yashirinadi, '
++      'qo‘yib yuborilganda davom etadi', (tester) async {
++    await pump(tester, const [_video]);
++    expect(v.playing, hasLength(1), reason: 'video o‘ynamadi');
++    expect(chromeOpacity(tester), 1);
++
++    final center = tester.getCenter(find.byType(StoryViewerScreen));
++    final g = await tester.startGesture(center);
++    // Uzoq bosish 500 ms dan keyin taniladi.
++    await tester.pump(const Duration(milliseconds: 600));
++    await tester.pump();
++    expect(v.playing, isEmpty,
++        reason: 'bosib turilganda video o‘ynab turaverdi');
++    expect(chromeOpacity(tester), 0,
++        reason: 'bosib turilganda ustki belgilar yashirilmadi');
++
++    // Bosib turilgan paytda progress ham joyida turadi.
++    final before = progress(tester);
++    await tester.pump(const Duration(seconds: 2));
++    expect(progress(tester), before);
++
++    await g.up();
++    await tester.pump();
++    await tester.pump(const Duration(milliseconds: 50));
++    expect(v.playing, hasLength(1),
++        reason: 'qo‘yib yuborilganda video davom etmadi');
++    expect(chromeOpacity(tester), 1);
++    await tester.pump(const Duration(seconds: 1));
++    expect(progress(tester), greaterThan(before));
++    await tearDownTree(tester);
++  });
++
++  testWidgets('izoh varag‘i ochiq turganda video to‘xtaydi, yopilganda '
++      'davom etadi', (tester) async {
++    await pump(tester, const [_video]);
++    expect(v.playing, hasLength(1));
++
++    await tester.tap(find.text(LUz().storyCommentHint));
++    await tester.pump();
++    await tester.pump(const Duration(milliseconds: 400));
++    expect(v.playing, isEmpty,
++        reason: 'varaq ochiq — video orqada ovozi bilan o‘ynab turibdi');
++
++    // Varaqdan tashqariga (tepaga) tegib yopamiz.
++    await tester.tapAt(const Offset(20, 20));
++    await tester.pump();
++    await tester.pump(const Duration(milliseconds: 400));
++    expect(v.playing, hasLength(1),
++        reason: 'varaq yopilgach video davom etmadi');
++    await tearDownTree(tester);
++  });
++
++  testWidgets('video istoryada OVOZ tugmasi bor va u umumiy holatni '
++      'o‘zgartiradi', (tester) async {
++    await pump(tester, const [_video]);
++    final mute = find.byKey(const ValueKey('video-mute'));
++    expect(mute, findsOneWidget);
++    expect(find.byIcon(Icons.volume_up_rounded), findsOneWidget);
++    final id = v.playing.single;
++
++    await tester.tap(mute);
++    await tester.pump();
++    expect(c.read(mediaMutedProvider), isTrue);
++    expect(find.byIcon(Icons.volume_off_rounded), findsOneWidget);
++    expect(v.volumes[id], 0, reason: 'video ovozi o‘chmadi');
++
++    await tester.tap(mute);
++    await tester.pump();
++    expect(c.read(mediaMutedProvider), isFalse);
++    expect(v.volumes[id], 1);
++    await tearDownTree(tester);
++  });
++
++  testWidgets('ovoz oldindan o‘chiq bo‘lsa video JIM boshlanadi',
++      (tester) async {
++    await pump(tester, const [_video], muted: true);
++    expect(v.volumes[v.playing.single], 0,
++        reason: 'lentada o‘chirilgan ovoz istoryada yoqilib ketdi');
++    await tearDownTree(tester);
++  });
++
++  testWidgets('rasm istoryada ovoz tugmasi YO‘Q', (tester) async {
++    await pump(tester, const [_image]);
++    expect(find.byKey(const ValueKey('video-mute')), findsNothing);
++    await tearDownTree(tester);
++  });
++}
+-- 
+2.43.0
+

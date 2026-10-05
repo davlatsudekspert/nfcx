@@ -1,0 +1,140 @@
+From e63db365c81963c76f179c01618717ac742c9610 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Mon, 5 Oct 2026 09:42:15 +0000
+Subject: [PATCH 37/38] 1.1.1: reklama ekranida to'g'ri yozuv (NFC ID emas,
+ postni ko'tarish)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ mobile_nova/lib/features/social/featured_screen.dart | 4 ++--
+ mobile_nova/lib/l10n/arb/app_en.arb                  | 1 +
+ mobile_nova/lib/l10n/arb/app_ru.arb                  | 1 +
+ mobile_nova/lib/l10n/arb/app_uz.arb                  | 1 +
+ mobile_nova/lib/l10n/gen/app_localizations.dart      | 6 ++++++
+ mobile_nova/lib/l10n/gen/app_localizations_en.dart   | 3 +++
+ mobile_nova/lib/l10n/gen/app_localizations_ru.dart   | 3 +++
+ mobile_nova/lib/l10n/gen/app_localizations_uz.dart   | 4 ++++
+ 8 files changed, 21 insertions(+), 2 deletions(-)
+
+diff --git a/mobile_nova/lib/features/social/featured_screen.dart b/mobile_nova/lib/features/social/featured_screen.dart
+index b201a85..a7e20f1 100644
+--- a/mobile_nova/lib/features/social/featured_screen.dart
++++ b/mobile_nova/lib/features/social/featured_screen.dart
+@@ -88,7 +88,7 @@ class _FeaturedScreenState extends ConsumerState<FeaturedScreen> {
+                   body: l.featuredPendingHint,
+                 ),
+                 const SizedBox(height: Gap.md),
+-                StoreNotice(text: l.storeBuyOnSiteId),
++                StoreNotice(text: l.storeBuyOnSiteAd),
+               ] else ...[
+                 // PAKETLAR VA NARXLAR KO'RINADI — xarid esa saytda.
+                 //
+@@ -103,7 +103,7 @@ class _FeaturedScreenState extends ConsumerState<FeaturedScreen> {
+                     child: _PackageTile(pack: p),
+                   ),
+                 const SizedBox(height: Gap.md),
+-                StoreNotice(text: l.storeBuyOnSiteId),
++                StoreNotice(text: l.storeBuyOnSiteAd),
+               ],
+ 
+               if (_error.isNotEmpty) ...[
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index 293260a..55a9e1a 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -754,6 +754,7 @@
+   "commentReply": "Reply",
+   "commentReplyingTo": "Replying to {name}",
+   "storeBuyOnSiteId": "NFC ID purchases are completed on the website:",
++  "storeBuyOnSiteAd": "Post promotion is purchased on the website:",
+   "storeBuyOnSitePremium": "Premium is purchased on the website:",
+   "storeBuyOnSitePhysical": "Orders are placed on the website:",
+   "themeMono": "Mono",
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index 5b05941..b54ebc3 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -754,6 +754,7 @@
+   "commentReply": "Ответить",
+   "commentReplyingTo": "Ответ {name}",
+   "storeBuyOnSiteId": "Покупка NFC ID оформляется на сайте:",
++  "storeBuyOnSiteAd": "Продвижение поста оформляется на сайте:",
+   "storeBuyOnSitePremium": "Premium оформляется на сайте:",
+   "storeBuyOnSitePhysical": "Заказ оформляется на сайте:",
+   "themeMono": "Чёрно-белая",
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index c8ec7b5..1345b2e 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -805,6 +805,7 @@
+     }
+   },
+   "storeBuyOnSiteId": "NFC ID xaridi saytda rasmiylashtiriladi:",
++  "storeBuyOnSiteAd": "Reklama (postni ko‘tarish) saytda rasmiylashtiriladi:",
+   "storeBuyOnSitePremium": "Premium obunani saytdan olasiz:",
+   "storeBuyOnSitePhysical": "Buyurtma saytda rasmiylashtiriladi:",
+   "themeMono": "Oq-qora",
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index bcc64f1..1822003 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -3747,6 +3747,12 @@ abstract class L {
+   /// **'NFC ID xaridi saytda rasmiylashtiriladi:'**
+   String get storeBuyOnSiteId;
+ 
++  /// No description provided for @storeBuyOnSiteAd.
++  ///
++  /// In uz, this message translates to:
++  /// **'Reklama (postni ko‘tarish) saytda rasmiylashtiriladi:'**
++  String get storeBuyOnSiteAd;
++
+   /// No description provided for @storeBuyOnSitePremium.
+   ///
+   /// In uz, this message translates to:
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index 55449be..b644731 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -1936,6 +1936,9 @@ class LEn extends L {
+   String get storeBuyOnSiteId =>
+       'NFC ID purchases are completed on the website:';
+ 
++  @override
++  String get storeBuyOnSiteAd => 'Post promotion is purchased on the website:';
++
+   @override
+   String get storeBuyOnSitePremium => 'Premium is purchased on the website:';
+ 
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index de9e440..4b27389 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -1928,6 +1928,9 @@ class LRu extends L {
+   @override
+   String get storeBuyOnSiteId => 'Покупка NFC ID оформляется на сайте:';
+ 
++  @override
++  String get storeBuyOnSiteAd => 'Продвижение поста оформляется на сайте:';
++
+   @override
+   String get storeBuyOnSitePremium => 'Premium оформляется на сайте:';
+ 
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index dde6792..2124e2c 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -1940,6 +1940,10 @@ class LUz extends L {
+   @override
+   String get storeBuyOnSiteId => 'NFC ID xaridi saytda rasmiylashtiriladi:';
+ 
++  @override
++  String get storeBuyOnSiteAd =>
++      'Reklama (postni ko‘tarish) saytda rasmiylashtiriladi:';
++
+   @override
+   String get storeBuyOnSitePremium => 'Premium obunani saytdan olasiz:';
+ 
+-- 
+2.43.0
+
