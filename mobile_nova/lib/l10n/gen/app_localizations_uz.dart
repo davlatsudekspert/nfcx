@@ -1771,7 +1771,7 @@ class LUz extends L {
 
   @override
   String get featuredIntro =>
-      'Postingiz belgilangan muddat davomida lentaning eng boshida turadi.';
+      'Postingiz tanlangan muddat davomida asosiy lentada (video bo‘lsa Reels’da ham) «Reklama» belgisi bilan postlar orasida ko‘rsatiladi.';
 
   @override
   String get featuredPick => 'Muddatni tanlang';

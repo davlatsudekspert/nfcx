@@ -3432,7 +3432,7 @@ abstract class L {
   /// No description provided for @featuredIntro.
   ///
   /// In uz, this message translates to:
-  /// **'Postingiz belgilangan muddat davomida lentaning eng boshida turadi.'**
+  /// **'Postingiz tanlangan muddat davomida asosiy lentada (video bo‘lsa Reels’da ham) «Reklama» belgisi bilan postlar orasida ko‘rsatiladi.'**
   String get featuredIntro;
 
   /// No description provided for @featuredPick.

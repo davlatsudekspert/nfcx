@@ -1767,7 +1767,7 @@ class LEn extends L {
 
   @override
   String get featuredIntro =>
-      'Your post sits at the very top of the feed for the chosen period.';
+      'For the chosen period your post is shown between posts in the main feed (videos also in Reels) with a “Sponsored” label.';
 
   @override
   String get featuredPick => 'Choose a period';

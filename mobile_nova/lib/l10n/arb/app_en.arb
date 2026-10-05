@@ -686,7 +686,7 @@
   "homeFeedEmpty": "No posts yet. Posts from people you follow will appear here.",
   "homeFeedMore": "See all",
   "featuredTitle": "Boost in feed",
-  "featuredIntro": "Your post sits at the very top of the feed for the chosen period.",
+  "featuredIntro": "For the chosen period your post is shown between posts in the main feed (videos also in Reels) with a “Sponsored” label.",
   "featuredPick": "Choose a period",
   "featuredDays": "{days} days",
   "@featuredDays": {

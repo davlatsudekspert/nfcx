@@ -725,7 +725,7 @@
   "homeFeedEmpty": "Hozircha post yo‘q. Obuna bo‘lgan odamlaringiz post qo‘yganda shu yerda ko‘rinadi.",
   "homeFeedMore": "Hammasini ko‘rish",
   "featuredTitle": "Lentada ko‘tarish",
-  "featuredIntro": "Postingiz belgilangan muddat davomida lentaning eng boshida turadi.",
+  "featuredIntro": "Postingiz tanlangan muddat davomida asosiy lentada (video bo‘lsa Reels’da ham) «Reklama» belgisi bilan postlar orasida ko‘rsatiladi.",
   "featuredPick": "Muddatni tanlang",
   "featuredDays": "{days} kun",
   "@featuredDays": {
