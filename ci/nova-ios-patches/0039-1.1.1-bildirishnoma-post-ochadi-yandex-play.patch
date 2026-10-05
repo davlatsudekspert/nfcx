@@ -1,0 +1,366 @@
+From ada813d1a3eff5390d818a863eafce061bc1ecc5 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Mon, 5 Oct 2026 14:09:00 +0000
+Subject: [PATCH] =?UTF-8?q?1.1.1:=20bildirishnoma=20o'sha=20post/Reels'ni?=
+ =?UTF-8?q?=20ochadi;=20Yandex=20=E2=80=94=20bitta=20play?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- Layk va izoh bildirishnomasi bosilsa profil emas, aynan o'sha post
+  (biznes posti ham) ochiladi; kontenti noma'lum izoh "topilmadi"ga
+  olib bormaydi.
+- Musiqa pleerida Yandex: pleerdagi play vidjetning o'z tugmasini
+  bosadi va ochilganda ijro o'zi boshlanadi.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ mobile_nova/lib/data/models/models.dart       | 12 ++++
+ .../features/activity/activity_screen.dart    | 32 +++++++++-
+ .../lib/features/profile/music_embed.dart     | 50 +++++++++++++++-
+ .../lib/features/profile/music_player.dart    | 25 ++++----
+ .../test/activity_notifications_test.dart     | 59 ++++++++++++++++++-
+ .../test/music_yandex_bridge_test.dart        | 18 ++++++
+ 6 files changed, 178 insertions(+), 18 deletions(-)
+ create mode 100644 mobile_nova/test/music_yandex_bridge_test.dart
+
+diff --git a/mobile_nova/lib/data/models/models.dart b/mobile_nova/lib/data/models/models.dart
+index dcc1bd4..617cfcf 100644
+--- a/mobile_nova/lib/data/models/models.dart
++++ b/mobile_nova/lib/data/models/models.dart
+@@ -1709,6 +1709,8 @@ class ActivityEvent {
+     this.actorCode = '',
+     this.targetType = '',
+     this.targetId = '',
++    this.contentKind = '',
++    this.contentId = '',
+   });
+ 
+   final int id;
+@@ -1729,6 +1731,14 @@ class ActivityEvent {
+   final String targetType;
+   final String targetId;
+ 
++  /// Layk yoki izoh QAYSI kontentga tegishli: `post`, `company_post`,
++  /// `story`, `company_story` va uning ID'si. Bildirishnoma bosilganda
++  /// aynan o'sha post/Reels ochiladi (egasi, 2026-10-05: "izohni
++  /// bossam 'topilmadi', laykni bossam o'z profilimga o'tyapti").
++  /// Eski server bermasa bo'sh.
++  final String contentKind;
++  final String contentId;
++
+   factory ActivityEvent.fromJson(Map<String, dynamic> j) => ActivityEvent(
+         id: _i(j['id']),
+         kind: switch (_s(j['type'] ?? j['kind'])) {
+@@ -1751,6 +1761,8 @@ class ActivityEvent {
+         actorCode: _s(j['actorCode']),
+         targetType: _s(j['targetType']),
+         targetId: _s(j['targetId']),
++        contentKind: _s(j['contentKind']),
++        contentId: _s(j['contentId']),
+       );
+ }
+ 
+diff --git a/mobile_nova/lib/features/activity/activity_screen.dart b/mobile_nova/lib/features/activity/activity_screen.dart
+index 2950608..1c97d02 100644
+--- a/mobile_nova/lib/features/activity/activity_screen.dart
++++ b/mobile_nova/lib/features/activity/activity_screen.dart
+@@ -153,9 +153,35 @@ class _EventTile extends ConsumerWidget {
+       };
+ 
+   String? get _target {
+-    final code = event.kind == ActivityKind.follow
+-        ? (event.actorCode.isNotEmpty ? event.actorCode : event.targetCode)
+-        : event.targetCode;
++    if (event.kind == ActivityKind.follow) {
++      final code =
++          event.actorCode.isNotEmpty ? event.actorCode : event.targetCode;
++      return code.isEmpty ? null : Routes.user(code);
++    }
++    // LAYK VA IZOH — o'sha POST yoki REELS ochiladi, profil emas.
++    // Kontent turi server `contentKind` da; eski server faqat layk
++    // uchun `targetType: post` beradi.
++    final kind = event.contentKind.isNotEmpty
++        ? event.contentKind
++        : (event.targetType == 'post' ? 'post' : '');
++    final idText =
++        event.contentId.isNotEmpty ? event.contentId : event.targetId;
++    final id = int.tryParse(idText) ?? 0;
++    switch (kind) {
++      case 'post' when id > 0:
++        return Routes.post(id, code: event.targetCode);
++      case 'company_post' when id > 0:
++        return Routes.post(id, code: event.targetCode, company: true);
++      case 'story' when event.targetCode.isNotEmpty:
++        return Routes.story(event.targetCode);
++      case 'company_story' when event.targetCode.isNotEmpty:
++        return Routes.story(event.targetCode, business: true);
++    }
++    // Izohning kontenti noma'lum (eski server): kod biznes ID'si
++    // bo'lishi mumkin — uni shaxsiy profil deb ochish "topilmadi"
++    // berardi. Shuning uchun faqat laykda profilga o'tiladi.
++    if (event.kind == ActivityKind.comment) return null;
++    final code = event.targetCode;
+     return code.isEmpty ? null : Routes.user(code);
+   }
+ 
+diff --git a/mobile_nova/lib/features/profile/music_embed.dart b/mobile_nova/lib/features/profile/music_embed.dart
+index da79484..0d884b8 100644
+--- a/mobile_nova/lib/features/profile/music_embed.dart
++++ b/mobile_nova/lib/features/profile/music_embed.dart
+@@ -28,17 +28,23 @@ class MusicEmbedController {
+   WebViewController? _web;
+   MusicKind _kind = MusicKind.audio;
+ 
+-  /// YouTube'da ijro/pauza. Yandex vidjetini tashqaridan boshqarib
+-  /// bo'lmaydi — u o'z tugmalari bilan ishlaydi.
++  /// Ijro/pauza. YouTube — IFrame API orqali. Yandex — vidjetning O'Z
++  /// tugmasi sahifa ichidan bosiladi (`MusicEmbed.yandexBridgeJs`):
++  /// egasi, 2026-10-05: "pleerda play bosilsa Yandex'da ham play
++  /// bo'lishi kerak", ilgari ikki joyda bosish kerak edi.
+   Future<void> play() async {
+     if (_kind == MusicKind.youtube) {
+       await _web?.runJavaScript('window.nfcPlay && window.nfcPlay()');
++    } else if (_kind == MusicKind.yandex) {
++      await _web?.runJavaScript('window.nfcToggle && window.nfcToggle()');
+     }
+   }
+ 
+   Future<void> pause() async {
+     if (_kind == MusicKind.youtube) {
+       await _web?.runJavaScript('window.nfcPause && window.nfcPause()');
++    } else if (_kind == MusicKind.yandex) {
++      await _web?.runJavaScript('window.nfcToggle && window.nfcToggle()');
+     }
+   }
+ }
+@@ -89,6 +95,40 @@ function onYouTubeIframeAPIReady(){
+ <script src="https://www.youtube.com/iframe_api"></script>
+ </body></html>''';
+ 
++  /// YANDEX VIDJETI BILAN KO'PRIK — sahifa yuklangach ichiga qo'yiladi.
++  ///
++  /// Yandex vidjeti tashqi API bermaydi, lekin sahifa WebView'da
++  /// to'g'ridan-to'g'ri ochiladi, ya'ni skript uning ichida ishlaydi:
++  /// `nfcToggle` vidjetning o'z play/pauza tugmasini bosadi. Ochilgach
++  /// bir marta o'zi ham bosadi (pleerdagi play — foydalanuvchining
++  /// harakati). Tugma topilmasa (Yandex sahifani o'zgartirsa) hech narsa
++  /// buzilmaydi — vidjetning o'z tugmasi baribir ishlaydi.
++  /// Holat (`playing`/`paused`) media hodisalaridan `NfcMusic` ga ketadi.
++  @visibleForTesting
++  static const yandexBridgeJs = r'''
++(function(){
++  if (window.nfcToggle) return;
++  function post(m){try{NfcMusic.postMessage(m)}catch(e){}}
++  document.addEventListener('play',function(){post('playing')},true);
++  document.addEventListener('pause',function(){post('paused')},true);
++  function visible(el){var r=el.getBoundingClientRect();return r.width>0&&r.height>0;}
++  window.nfcToggle=function(){
++    var sel=['[aria-label*="Воспроизв" i]','[aria-label*="Слушать" i]','[aria-label*="Пауза" i]',
++      '[aria-label*="Play" i]','[aria-label*="Pause" i]','[title*="Воспроизв" i]','[title*="Пауза" i]',
++      'button[class*="play" i]','[class*="play-button" i]','[class*="PlayButton"]'];
++    for(var i=0;i<sel.length;i++){
++      var list=document.querySelectorAll(sel[i]);
++      for(var j=0;j<list.length;j++){ if(visible(list[j])){ list[j].click(); return true; } }
++    }
++    var a=document.querySelector('audio,video');
++    if(a){ if(a.paused){a.play()}else{a.pause()} return true; }
++    return false;
++  };
++  var n=0;
++  var t=setInterval(function(){ if(window.nfcToggle()||++n>16){clearInterval(t)} },500);
++})();
++''';
++
+   @visibleForTesting
+   static Uri? yandexUri(String url) {
+     var m = RegExp(r'/album/(\d+)/track/(\d+)').firstMatch(url);
+@@ -140,6 +180,12 @@ class _MusicEmbedState extends State<MusicEmbed> {
+     if (platform is AndroidWebViewController) {
+       platform.setMediaPlaybackRequiresUserGesture(false);
+     }
++    if (widget.source.kind == MusicKind.yandex) {
++      _web.setNavigationDelegate(NavigationDelegate(
++        onPageFinished: (_) =>
++            _web.runJavaScript(MusicEmbed.yandexBridgeJs).catchError((_) {}),
++      ));
++    }
+     widget.controller
+       .._web = _web
+       .._kind = widget.source.kind;
+diff --git a/mobile_nova/lib/features/profile/music_player.dart b/mobile_nova/lib/features/profile/music_player.dart
+index 58f69bb..1a5418a 100644
+--- a/mobile_nova/lib/features/profile/music_player.dart
++++ b/mobile_nova/lib/features/profile/music_player.dart
+@@ -618,7 +618,9 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
+     if (!mounted) return;
+     setState(() {
+       _embedOpen = true;
+-      _embedPlaying = false;
++      // Yandex vidjeti ochilgach o'zi ijroni boshlaydi (ko'prik skript),
++      // lekin holatni har doim ham yubormaydi — belgi pauza bo'lib turadi.
++      _embedPlaying = MusicSource.parse(url).kind == MusicKind.yandex;
+       _embedError = null;
+     });
+   }
+@@ -829,12 +831,15 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
+                       player.toggle(current);
+                     } else if (!embedShown) {
+                       _openExternal(current);
+-                    } else if (currentSrc.kind == MusicKind.youtube) {
+-                      _embedPlaying ? _embed.pause() : _embed.play();
+                     } else {
+-                      // Yandex vidjetini tashqaridan boshqarib bo'lmaydi —
+-                      // tugma uni yopadi.
+-                      setState(() => _embedOpen = false);
++                      // YouTube ham, Yandex ham — bitta tugma: pleerdagi
++                      // play vidjetning o'zini boshqaradi. Yandex holatni
++                      // har doim ham yubormaydi, shuning uchun belgi
++                      // darhol almashtiriladi.
++                      _embedPlaying ? _embed.pause() : _embed.play();
++                      if (currentSrc.kind == MusicKind.yandex) {
++                        setState(() => _embedPlaying = !_embedPlaying);
++                      }
+                     }
+                   },
+                   child: Container(
+@@ -856,11 +861,9 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
+                             external
+                                 ? (!embedShown
+                                     ? Icons.play_arrow_rounded
+-                                    : currentSrc.kind == MusicKind.youtube
+-                                        ? (_embedPlaying
+-                                            ? Icons.pause_rounded
+-                                            : Icons.play_arrow_rounded)
+-                                        : Icons.stop_rounded)
++                                    : (_embedPlaying
++                                    ? Icons.pause_rounded
++                                    : Icons.play_arrow_rounded))
+                                 : playing
+                                     ? Icons.pause_rounded
+                                     : Icons.play_arrow_rounded,
+diff --git a/mobile_nova/test/activity_notifications_test.dart b/mobile_nova/test/activity_notifications_test.dart
+index cdbcdc6..a64caa0 100644
+--- a/mobile_nova/test/activity_notifications_test.dart
++++ b/mobile_nova/test/activity_notifications_test.dart
+@@ -56,6 +56,17 @@ class _FakeActivityRepo extends ActivityRepository {
+           targetCode: 'TTS075',
+           read: true,
+         ),
++        const ActivityEvent(
++          id: 4,
++          kind: ActivityKind.comment,
++          title: 'Bekzod',
++          targetCode: 'SHOP1',
++          targetType: 'comment',
++          targetId: '900',
++          contentKind: 'company_post',
++          contentId: '55',
++          read: true,
++        ),
+       ],
+     ));
+   }
+@@ -75,7 +86,13 @@ class _FakeActivityRepo extends ActivityRepository {
+   }
+ }
+ 
++/// Oxirgi ochilgan manzil — bildirishnoma QAYERGA olib borganini
++/// tekshirish uchun.
++String? _opened;
++
+ void main() {
++  setUp(() => _opened = null);
++
+   Future<_FakeActivityRepo> pump(WidgetTester tester, {bool fail = false}) async {
+     final repo = _FakeActivityRepo(fail: fail);
+     await tester.pumpWidget(ProviderScope(
+@@ -100,7 +117,16 @@ void main() {
+                     builder: (_, __) => const ActivityScreen()),
+                 GoRoute(
+                     path: 'u/:code',
+-                    builder: (_, __) => const SizedBox.shrink()),
++                    builder: (_, s) {
++                      _opened = s.uri.toString();
++                      return const SizedBox.shrink();
++                    }),
++                GoRoute(
++                    path: 'post/:id',
++                    builder: (_, s) {
++                      _opened = s.uri.toString();
++                      return const SizedBox.shrink();
++                    }),
+               ],
+             ),
+           ],
+@@ -132,7 +158,7 @@ void main() {
+     final l = await L.delegate.load(const Locale('uz'));
+     expect(find.text(l.activityFollowed), findsOneWidget);
+     expect(find.text(l.activityLiked), findsOneWidget);
+-    expect(find.text(l.activityCommented), findsOneWidget);
++    expect(find.text(l.activityCommented), findsNWidgets(2));
+   });
+ 
+   testWidgets('bosilganda SERVERGA o‘qildi deb yuboriladi', (tester) async {
+@@ -179,4 +205,33 @@ void main() {
+     final container = ProviderScope.containerOf(ctx);
+     expect(container.read(unreadCountProvider), 2);
+   });
++
++  testWidgets('layk bosilsa O‘SHA POST ochiladi, profil emas', (tester) async {
++    await pump(tester);
++    await tester.tap(find.text('Ali'));
++    await settle(tester, frames: 20);
++    expect(_opened, '/post/10?code=TTS075');
++  });
++
++  testWidgets('biznes postidagi izoh — kompaniya posti ochiladi', (tester) async {
++    await pump(tester);
++    await tester.tap(find.text('Bekzod'));
++    await settle(tester, frames: 20);
++    expect(_opened, '/post/55?code=SHOP1&company=1');
++  });
++
++  testWidgets('kontenti noma’lum izoh — «topilmadi» profilga o‘tmaydi',
++      (tester) async {
++    await pump(tester);
++    await tester.tap(find.text('Dilnoza'));
++    await settle(tester, frames: 20);
++    expect(_opened, isNull);
++  });
++
++  testWidgets('obuna — obuna bo‘lgan odamning profili', (tester) async {
++    await pump(tester);
++    await tester.tap(find.text('Zafar'));
++    await settle(tester, frames: 20);
++    expect(_opened, '/u/ZZZ777');
++  });
+ }
+diff --git a/mobile_nova/test/music_yandex_bridge_test.dart b/mobile_nova/test/music_yandex_bridge_test.dart
+new file mode 100644
+index 0000000..1ae71f0
+--- /dev/null
++++ b/mobile_nova/test/music_yandex_bridge_test.dart
+@@ -0,0 +1,18 @@
++import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/features/profile/music_embed.dart';
++
++/// YANDEX — pleerdagi play vidjetning o'zini boshqaradi (egasi,
++/// 2026-10-05: ilgari ikki joyda play bosish kerak edi).
++void main() {
++  test('ko‘prik skript vidjet tugmasini bosuvchi nfcToggle beradi', () {
++    const js = MusicEmbed.yandexBridgeJs;
++    expect(js, contains('window.nfcToggle='));
++    // Ikki marta qo'yilsa ham bitta ishlovchi qoladi.
++    expect(js, contains('if (window.nfcToggle) return;'));
++    // Ochilgach o'zi boshlaydi, lekin cheksiz urinmaydi.
++    expect(js, contains('++n>16'));
++    // Holat pleerga ketadi.
++    expect(js, contains("post('playing')"));
++    expect(js, contains("post('paused')"));
++  });
++}
+-- 
+2.43.0
+
