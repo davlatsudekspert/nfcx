@@ -248,6 +248,32 @@ def availability(aid):
     note(f'mavjudlik: {len(terr)} hudud -> {c} {j.get("_error", "")[:200]}')
 
 
+def free_price(aid):
+    # Ilova bepul: asosiy hudud USA, narx nuqtasi 0.00. Qo'lda narx bo'lsa tegmaydi.
+    c, j = call('GET', f'/v1/appPriceSchedules/{aid}/manualPrices', params={'limit': 5})
+    if ok(c) and j.get('data'):
+        note(f"narx allaqachon bor ({len(j['data'])} yozuv)"); return
+    pp, url = None, None
+    params = {'filter[territory]': 'USA', 'limit': 200}
+    while not pp:
+        c, j = call('GET', f'/v1/apps/{aid}/appPricePoints', params=params, raw_url=url)
+        if not ok(c):
+            note(f'narx nuqtalari -> {c} {j.get("_error", "")}'); return
+        pp = next((x['id'] for x in j.get('data', []) if float(x['attributes'].get('customerPrice') or 1) == 0.0), None)
+        url = (j.get('links') or {}).get('next')
+        if not url:
+            break
+    if not pp:
+        note('0.00 narx nuqtasi topilmadi'); return
+    c, j = call('POST', '/v1/appPriceSchedules', {'data': {'type': 'appPriceSchedules', 'relationships': {
+        'app': {'data': {'type': 'apps', 'id': aid}},
+        'baseTerritory': {'data': {'type': 'territories', 'id': 'USA'}},
+        'manualPrices': {'data': [{'type': 'appPrices', 'id': '${p0}'}]}}},
+        'included': [{'type': 'appPrices', 'id': '${p0}', 'attributes': {'startDate': None},
+                      'relationships': {'appPricePoint': {'data': {'type': 'appPricePoints', 'id': pp}}}}]})
+    note(f'narx: bepul (USA asos, 0.00) -> {c} {j.get("_error", "")}')
+
+
 # ── shots ──────────────────────────────────────────────────────────────
 def shots():
     aid = app_id(); v = edit_version(aid); loc = en_loc(v['id'])
@@ -304,6 +330,7 @@ def attach():
 
 def submit():
     aid = app_id(); v = edit_version(aid)
+    free_price(aid)
     c, j = call('POST', '/v1/reviewSubmissions', {'data': {'type': 'reviewSubmissions', 'attributes': {'platform': 'IOS'},
                 'relationships': {'app': {'data': {'type': 'apps', 'id': aid}}}}})
     if not ok(c):
