@@ -1,0 +1,152 @@
+--- bio2/mobile_nova/lib/data/models/models.dart	2026-10-04 11:42:49.094050557 +0000
++++ thumbcheck/mobile_nova/lib/data/models/models.dart	2026-10-05 05:32:15.616712785 +0000
+@@ -1271,8 +1271,13 @@
+     this.reel = false,
+     this.imageSeconds = 10,
+     this.views = 0,
++    this.thumbUrl = '',
+   });
+ 
++  /// To'r katakchasi uchun kichik nusxa (server `thumbUrl`). Bo'sh —
++  /// server bermadi, katakcha `mediaUrls.first` ni ochadi.
++  final String thumbUrl;
++
+   final int id;
+ 
+   /// Necha KISHI ko'rgan (server `viewCount`, Instagram'dagi
+@@ -1352,6 +1357,7 @@
+         reel: reel,
+         imageSeconds: imageSeconds,
+         views: views,
++        thumbUrl: thumbUrl,
+       );
+ 
+   Post copyWith({int? likes, bool? liked, bool? saved, int? comments, int? views}) => Post(
+@@ -1377,6 +1383,7 @@
+         reel: reel,
+         imageSeconds: imageSeconds,
+         views: views ?? this.views,
++        thumbUrl: thumbUrl,
+       );
+ 
+   factory Post.fromJson(Map<String, dynamic> j) {
+@@ -1437,6 +1444,7 @@
+       reel: _b(j['reel']),
+       imageSeconds: _i(j['imageSeconds'], 10).clamp(3, 60),
+       views: _i(j['viewCount'] ?? j['views']),
++      thumbUrl: _u(j['thumbUrl']),
+     );
+   }
+ }
+--- bio2/mobile_nova/lib/features/social/media_frame.dart	2026-10-04 14:13:16.456719790 +0000
++++ thumbcheck/mobile_nova/lib/features/social/media_frame.dart	2026-10-05 05:32:10.135662728 +0000
+@@ -101,14 +101,35 @@
+ /// ENG KICHIK o'lcham saqlanadi: katta sahifa qayta qurilganda ham
+ /// (sotuvchi ma'lumoti kelishi, galereya varag'i) o'rinbosar o'sha
+ /// kichik nusxa bo'lib qoladi — kulrangga qaytib "miltillamaydi".
+-void _rememberDecode(String url, int width) {
++void _rememberDecode(String url, int width, {String? via}) {
+   final prev = _decodedWidths.remove(url);
+-  _decodedWidths[url] = prev == null || width < prev ? width : prev;
++  final take = prev == null || width <= prev;
++  _decodedWidths[url] = take ? width : prev;
++  if (take) {
++    if (via == null) {
++      _decodedVia.remove(url);
++    } else {
++      _decodedVia[url] = via;
++    }
++  }
+   if (_decodedWidths.length > _decodedWidthsMax) {
+-    _decodedWidths.remove(_decodedWidths.keys.first);
++    final old = _decodedWidths.keys.first;
++    _decodedWidths.remove(old);
++    _decodedVia.remove(old);
+   }
+ }
+ 
++/// Asl URL -> eng kichik nusxa QAYSI manzildan ochilgan (katakcha
++/// eskizi). Post sahifasining o'rinbosari xotiradagi AYNAN o'sha
++/// bitmapni oladi, asl faylni qayta yuklamaydi.
++final _decodedVia = <String, String>{};
++
++/// Shu seansda ochilmagan eskizlar (404 / tarmoq / dekod). Server
++/// 404'ni `no-store` bilan beradi: eslab qolinmasa, katakcha har
++/// qayta qurilganda Toshkentga yana so'rov ketardi.
++final _thumbMisses = <String>{};
++const _thumbMissesMax = 400;
++
+ /// Testlar uchun: shu URL eng kichik qaysi o'lchamda ochilgan.
+ @visibleForTesting
+ int? smallestDecodeWidth(String url) => _decodedWidths[url];
+@@ -116,11 +137,13 @@
+ /// Katta rasm tayyor bo'lguncha — xotiradagi kichik nusxa (bo'lsa).
+ /// Kalit `CachedNetworkImage(memCacheWidth:)` niki bilan AYNAN bir xil:
+ /// `ResizeImage(CachedNetworkImageProvider(url), width)`.
+-Widget _placeholder(BuildContext context, String url, int target,
++Widget _placeholder(BuildContext context, String original, int target,
+     {required BoxFit fit, required Alignment alignment}) {
+   final t = context.tokens;
+-  final prev = _decodedWidths[url];
++  final prev = _decodedWidths[original];
+   if (prev == null || prev >= target) return ColoredBox(color: t.surface2);
++  // Katakcha eskizni ochgan bo'lsa — xotirada O'SHA turibdi.
++  final url = _decodedVia[original] ?? original;
+   return Image(
+     image: ResizeImage(
+       CachedNetworkImageProvider(url, cacheManager: NovaImageCache.manager),
+@@ -144,6 +167,10 @@
+   // chizish ham AYNAN o'sha nusxadan bo'lishi kerak, aks holda bitta
+   // rasm ikki xil o'lchamda ikki marta ochiladi.
+   bool screenWidth = false,
++  // FAQAT to'r katakchasi: serverning kichik nusxasi (eskiz). Xato
++  // bo'lsa (404, tarmoq, dekod) katakcha jimgina [url] ni ochadi —
++  // singan rasm belgisi chiqmaydi. Bo'sh — eskiz yo'q.
++  String thumb = '',
+ }) {
+   final t = context.tokens;
+   Widget broken() => ColoredBox(
+@@ -178,19 +205,28 @@
+   // katakchasi yoki kichik logotip uchun 1080 px ochish — 4–9 barobar
+   // ortiqcha xotira va aylantirishda qotish edi. `cover` da rasm
+   // qutining kattaroq tomonini to'ldiradi, shuning uchun o'sha olinadi.
+-  Widget net(int width) {
++  Widget net(int width, {bool original = false}) {
++    final small =
++        !original && thumb.isNotEmpty && !_thumbMisses.contains(thumb);
+     final ph = _placeholder(context, url, width, fit: fit, alignment: alignment);
+-    _rememberDecode(url, width);
++    _rememberDecode(url, width, via: small ? thumb : null);
+     return CachedNetworkImage(
+       cacheManager: NovaImageCache.manager,
+       fadeOutDuration: NovaImageCache.fadeOut,
+       fadeInDuration: NovaImageCache.fadeIn,
+-      imageUrl: url,
++      imageUrl: small ? thumb : url,
+       fit: fit,
+       alignment: alignment,
+       memCacheWidth: width,
+       placeholder: (_, __) => ph,
+-      errorWidget: (_, __, ___) => broken(),
++      errorWidget: (_, __, ___) {
++        if (!small) return broken();
++        _thumbMisses.add(thumb);
++        if (_thumbMisses.length > _thumbMissesMax) {
++          _thumbMisses.remove(_thumbMisses.first);
++        }
++        return net(width, original: true);
++      },
+     );
+   }
+ 
+--- bio2/mobile_nova/lib/features/profile/profile_screen.dart	2026-10-05 04:27:31.461905361 +0000
++++ thumbcheck/mobile_nova/lib/features/profile/profile_screen.dart	2026-10-05 05:32:10.136289013 +0000
+@@ -1775,7 +1775,7 @@
+                               fit: StackFit.expand,
+                               children: [
+                                 mediaImage(context, p.mediaUrls.first,
+-                                    fit: BoxFit.cover),
++                                    fit: BoxFit.cover, thumb: p.thumbUrl),
+                                 if (p.isVideo)
+                                   const Positioned(
+                                     right: 5,

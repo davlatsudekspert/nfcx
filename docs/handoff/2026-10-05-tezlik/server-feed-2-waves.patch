@@ -1,0 +1,197 @@
+--- mainwt2/hosting/worker.js	2026-10-05 04:26:07.506195392 +0000
++++ feedexp/hosting/worker.js	2026-10-05 05:22:16.060985859 +0000
+@@ -11091,11 +11091,46 @@
+   return shaped;
+ }
+ 
++/// Lenta qatorining `liked` kaliti — `FEED_UNION_SQL` dagi EXISTS bilan
++/// AYNAN bir manba: shaxsiy post -> `post_likes`, istorya (shaxsiy va
++/// kompaniya) -> `story_likes`. Kompaniya posti — `null`: u yerda `liked`
++/// `content_likes` dan keladi (`shapeFeedRows` -> `likesFor`).
++const feedLikedKey = (r) => {
++  const t = commentTargetKind(r);
++  if (t === 'company_post') return null;
++  return `${t === 'post' ? 'post' : 'story'}:${Number(r.id)}`;
++};
++
++/// Kirgan tomoshabin shu qatorlardan qaysilarini yoqtirgan — BITTA so'rov.
++/// Xato YUTILMAYDI: noto'g'ri `liked: false` ilovada yurakni bosganda
++/// layk o'rniga UNLIKE qilib yuborardi; avvalgidek 503 yaxshiroq.
++async function feedViewerLikedKeys(env, rows, viewerId) {
++  const postIds = [];
++  const storyIds = [];
++  for (const r of rows) {
++    const k = feedLikedKey(r);
++    if (k) (k.startsWith('post:') ? postIds : storyIds).push(Number(r.id));
++  }
++  const parts = [];
++  const args = [];
++  if (postIds.length) {
++    parts.push(`SELECT 'post' AS kind, post_id AS id FROM post_likes
++                 WHERE user_id = ? AND post_id IN (${postIds.map(() => '?').join(',')})`);
++    args.push(viewerId, ...postIds);
++  }
++  if (storyIds.length) {
++    parts.push(`SELECT 'story' AS kind, story_id AS id FROM story_likes
++                 WHERE user_id = ? AND story_id IN (${storyIds.map(() => '?').join(',')})`);
++    args.push(viewerId, ...storyIds);
++  }
++  if (!parts.length) return new Set();
++  const res = await env.DB.prepare(parts.join(' UNION ALL ')).bind(...args).all();
++  return new Set((res.results || []).map((x) => `${x.kind}:${Number(x.id)}`));
++}
++
+ async function feedApi(request, env, url) {
+   if (url.pathname !== '/api/feed' || request.method !== 'GET') return null;
+ 
+-  const user = await getCurrentUser(request, env);
+-  const viewerId = user ? user.id : 0;
+   const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
+   const limit = Math.min(30, Math.max(1, Number(url.searchParams.get('limit')) || 15));
+   const offset = (page - 1) * limit;
+@@ -11107,15 +11142,49 @@
+   // bog'liq emas — BITTA parallel to'lqinda o'qiladi (tezlik, 2026-10-05).
+   // FEATURED nishonlari va izoh sxemasi tekshiruvi ham shu to'lqinda
+   // boshlanadi, lekin sahifa shakli ularni KUTMAYDI (featured odatda bo'sh).
++  //
++  // TEZLIK (kirgan odam: 3 -> 2 to'lqin). Sahifa so'rovi tomoshabinga
++  // faqat `liked` orqali bog'liq edi, shuning uchun sessiya kutilardi.
++  // Endi 1-to'lqinda sessiya, sahifa (`liked` uchun 0 — anonim lenta
++  // bilan AYNAN bir so'rov) va FEATURED birga; kirgan odamning bloklari
++  // va `liked` belgilari 2-to'lqinda, shakl so'rovlari bilan birga.
+   const featuredP = page === 1 ? apiFeatured.activeTargets(env, nowTs()).catch(() => []) : Promise.resolve([]);
+   apiComments.ensureSchema(env).catch(() => {});
+-  const [rows, blockedList] = await Promise.all([
++  const [user, rows] = await Promise.all([
++    getCurrentUser(request, env),
+     env.DB.prepare(
+       `${FEED_UNION_SQL}
+        ORDER BY created_at DESC, id DESC
+        LIMIT ? OFFSET ?`
+-    ).bind(viewerId, viewerId, now, viewerId, now, limit + 1, offset).all(),
++    ).bind(0, 0, now, 0, now, limit + 1, offset).all(),
++  ]);
++  const viewerId = user ? user.id : 0;
++  const raw = rows.results || [];
++
++  // FEATURED qatorlari ham 2-to'lqinda (nishonlar 1-to'lqinda keldi).
++  const featuredRowsP = (async () => {
++    const targets = (await featuredP) || [];
++    if (!targets.length) return { targets, rows: [] };
++    const where = targets.map(() => '(kind = ? AND id = ?)').join(' OR ');
++    const fRows = await env.DB.prepare(
++      `${FEED_UNION_SQL} WHERE ${where} ORDER BY created_at DESC, id DESC LIMIT 10`
++    ).bind(
++      viewerId, viewerId, now, viewerId, now,
++      // FEATURED `target_kind` izoh turlarini ishlatadi
++      // (`company_post`), UNION esa `kind` + `author_kind`
++      // juftligini — shuning uchun moslashtiriladi.
++      ...targets.flatMap((t) => [t.kind.endsWith('story') ? 'story' : 'post', t.id]),
++    ).all().catch(() => null);
++    return { targets, rows: fRows?.results || [] };
++  })();
++
++  // Shakl `limit + 1` qatorning hammasiga — blok filtri undan KEYIN,
++  // natija avvalgidek: filter -> slice(0, limit) (har qator mustaqil
++  // shakllanadi, sanoqlar qator kaliti bo'yicha).
++  const [blockedList, likedKeys, shapedAll] = await Promise.all([
+     viewerId ? apiModeration.blockedByUser(env, viewerId) : [],
++    viewerId ? feedViewerLikedKeys(env, raw, viewerId) : null,
++    shapeFeedRows(env, raw, viewerId),
+   ]);
+ 
+   // BLOKLANGAN PROFILLAR LENTADAN CHIQARILADI.
+@@ -11130,9 +11199,12 @@
+   const blocked = new Set((blockedList || [])
+     .map((b) => `${b.kind === 'company' ? 'company' : 'card'}:${b.id.toUpperCase()}`));
+ 
+-  const all = (rows.results || []).filter(
+-    (r) => !blocked.has(`${String(r.author_kind)}:${String(r.code || '').toUpperCase()}`),
+-  );
++  const all = [];
++  raw.forEach((r, i) => {
++    if (blocked.has(`${String(r.author_kind)}:${String(r.code || '').toUpperCase()}`)) return;
++    const k = likedKeys && feedLikedKey(r);
++    all.push(k ? { ...shapedAll[i], liked: likedKeys.has(k) } : shapedAll[i]);
++  });
+ 
+   // IZOHLAR SONI VA SHAKL — `shapeFeedRows` da, bitta joyda.
+   //
+@@ -11140,9 +11212,7 @@
+   // so'rov yuborilsa, bitta sahifa uchun 15 ta qo'shimcha so'rov
+   // bo'lardi; shuning uchun sahifa yig'ilgach bitta guruhlangan
+   // so'rov qilinadi.
+-  const page1 = all.slice(0, limit);
+-  // Sahifa va FEATURED parallel shakllanadi (pastdagi izohga qarang).
+-  const feedPromise = shapeFeedRows(env, page1, viewerId);
++  const feed = all.slice(0, limit);
+ 
+   // ── NFCSTORE FEATURED — PULLIK KO'TARILGAN KONTENT ───────────────
+   //
+@@ -11162,20 +11232,9 @@
+   // to'langani yashiringan profilni ochib bermaydi.
+   let featured = [];
+   if (page === 1) {
+-    const targets = (await featuredP) || [];
++    const { targets, rows: fRowList } = await featuredRowsP;
+     if (targets.length) {
+-      const where = targets.map(() => '(kind = ? AND id = ?)').join(' OR ');
+-      const fRows = await env.DB.prepare(
+-        `${FEED_UNION_SQL} WHERE ${where} ORDER BY created_at DESC, id DESC LIMIT 10`
+-      ).bind(
+-        viewerId, viewerId, now, viewerId, now,
+-        // FEATURED `target_kind` izoh turlarini ishlatadi
+-        // (`company_post`), UNION esa `kind` + `author_kind`
+-        // juftligini — shuning uchun moslashtiriladi.
+-        ...targets.flatMap((t) => [t.kind.endsWith('story') ? 'story' : 'post', t.id]),
+-      ).all().catch(() => null);
+-
+-      const fFiltered = (fRows?.results || []).filter((r) => {
++      const fFiltered = fRowList.filter((r) => {
+         if (blocked.has(`${String(r.author_kind)}:${String(r.code || '').toUpperCase()}`)) return false;
+         // `kind` ni moslashtirish keng edi (`company_post` -> `post`),
+         // shuning uchun muallif turi ham tekshiriladi: aks holda
+@@ -11190,7 +11249,6 @@
+     }
+   }
+ 
+-  const feed = await feedPromise;
+   // Ko'tarilgan kontent lentada IKKI MARTA chiqmasin.
+   const featuredKeys = new Set(featured.map((f) => `${f.commentKind}:${f.id}`));
+   const rest = feed.filter((f) => !featuredKeys.has(`${f.commentKind}:${f.id}`));
+--- mainwt2/hosting/api/moderation.js	2026-10-03 16:22:07.009695681 +0000
++++ feedexp/hosting/api/moderation.js	2026-10-05 05:25:09.492345323 +0000
+@@ -113,10 +113,14 @@
+ /// aslida hech narsa qilmasdi.
+ export async function blockedByUser(env, userId) {
+   if (!userId) return [];
+-  await ensureSchema(env);
++  // Sxema va SELECT BITTA to'lqinda: sqld pipeline'ni tartib bilan
++  // bajaradi (CREATE avval). Jadval hali yo'q bo'lsa (D1) SELECT xatosi
++  // `[]` beradi — jadval yo'q = blok yo'q, natija avvalgidek.
++  const ready = ensureSchema(env);
+   const rows = await env.DB.prepare(
+     `SELECT target_kind, target_id FROM user_blocks WHERE user_id = ?`
+   ).bind(userId).all().catch(() => null);
++  await ready;
+   return (rows?.results || []).map((r) => ({ kind: r.target_kind, id: String(r.target_id) }));
+ }
+ 
+--- mainwt2/hosting/api/featured.js	2026-10-03 16:22:06.689695688 +0000
++++ feedexp/hosting/api/featured.js	2026-10-05 05:25:09.492796682 +0000
+@@ -157,12 +157,14 @@
+ /// `ends_at > now` sharti — muddati o'tganni belgilash kechiksa
+ /// ham eskirgan slot chiqmasligi uchun.
+ export async function activeTargets(env, nowTs) {
+-  await ensureSchema(env);
++  // Sxema va SELECT bitta to'lqinda (moderation.js `blockedByUser` izohi).
++  const ready = ensureSchema(env);
+   const rows = await env.DB.prepare(
+     `SELECT target_kind, target_id FROM featured_slots
+       WHERE status = 'active' AND ends_at > ?
+       ORDER BY starts_at DESC, id DESC LIMIT 10`
+   ).bind(nowTs).all().catch(() => null);
++  await ready;
+   return (rows?.results || []).map((r) => ({
+     kind: String(r.target_kind),
+     id: Number(r.target_id),
