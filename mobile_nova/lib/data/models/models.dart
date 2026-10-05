@@ -1709,6 +1709,8 @@ class ActivityEvent {
     this.actorCode = '',
     this.targetType = '',
     this.targetId = '',
+    this.contentKind = '',
+    this.contentId = '',
   });
 
   final int id;
@@ -1728,6 +1730,14 @@ class ActivityEvent {
   /// bo'sh qoladi va ekran hech qayerga o'tmaydi.
   final String targetType;
   final String targetId;
+
+  /// Layk yoki izoh QAYSI kontentga tegishli: `post`, `company_post`,
+  /// `story`, `company_story` va uning ID'si. Bildirishnoma bosilganda
+  /// aynan o'sha post/Reels ochiladi (egasi, 2026-10-05: "izohni
+  /// bossam 'topilmadi', laykni bossam o'z profilimga o'tyapti").
+  /// Eski server bermasa bo'sh.
+  final String contentKind;
+  final String contentId;
 
   factory ActivityEvent.fromJson(Map<String, dynamic> j) => ActivityEvent(
         id: _i(j['id']),
@@ -1751,6 +1761,8 @@ class ActivityEvent {
         actorCode: _s(j['actorCode']),
         targetType: _s(j['targetType']),
         targetId: _s(j['targetId']),
+        contentKind: _s(j['contentKind']),
+        contentId: _s(j['contentId']),
       );
 }
 

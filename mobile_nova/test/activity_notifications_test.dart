@@ -56,6 +56,17 @@ class _FakeActivityRepo extends ActivityRepository {
           targetCode: 'TTS075',
           read: true,
         ),
+        const ActivityEvent(
+          id: 4,
+          kind: ActivityKind.comment,
+          title: 'Bekzod',
+          targetCode: 'SHOP1',
+          targetType: 'comment',
+          targetId: '900',
+          contentKind: 'company_post',
+          contentId: '55',
+          read: true,
+        ),
       ],
     ));
   }
@@ -75,7 +86,13 @@ class _FakeActivityRepo extends ActivityRepository {
   }
 }
 
+/// Oxirgi ochilgan manzil — bildirishnoma QAYERGA olib borganini
+/// tekshirish uchun.
+String? _opened;
+
 void main() {
+  setUp(() => _opened = null);
+
   Future<_FakeActivityRepo> pump(WidgetTester tester, {bool fail = false}) async {
     final repo = _FakeActivityRepo(fail: fail);
     await tester.pumpWidget(ProviderScope(
@@ -100,7 +117,16 @@ void main() {
                     builder: (_, __) => const ActivityScreen()),
                 GoRoute(
                     path: 'u/:code',
-                    builder: (_, __) => const SizedBox.shrink()),
+                    builder: (_, s) {
+                      _opened = s.uri.toString();
+                      return const SizedBox.shrink();
+                    }),
+                GoRoute(
+                    path: 'post/:id',
+                    builder: (_, s) {
+                      _opened = s.uri.toString();
+                      return const SizedBox.shrink();
+                    }),
               ],
             ),
           ],
@@ -132,7 +158,7 @@ void main() {
     final l = await L.delegate.load(const Locale('uz'));
     expect(find.text(l.activityFollowed), findsOneWidget);
     expect(find.text(l.activityLiked), findsOneWidget);
-    expect(find.text(l.activityCommented), findsOneWidget);
+    expect(find.text(l.activityCommented), findsNWidgets(2));
   });
 
   testWidgets('bosilganda SERVERGA o‘qildi deb yuboriladi', (tester) async {
@@ -178,5 +204,34 @@ void main() {
     final ctx = tester.element(find.byType(ActivityScreen));
     final container = ProviderScope.containerOf(ctx);
     expect(container.read(unreadCountProvider), 2);
+  });
+
+  testWidgets('layk bosilsa O‘SHA POST ochiladi, profil emas', (tester) async {
+    await pump(tester);
+    await tester.tap(find.text('Ali'));
+    await settle(tester, frames: 20);
+    expect(_opened, '/post/10?code=TTS075');
+  });
+
+  testWidgets('biznes postidagi izoh — kompaniya posti ochiladi', (tester) async {
+    await pump(tester);
+    await tester.tap(find.text('Bekzod'));
+    await settle(tester, frames: 20);
+    expect(_opened, '/post/55?code=SHOP1&company=1');
+  });
+
+  testWidgets('kontenti noma’lum izoh — «topilmadi» profilga o‘tmaydi',
+      (tester) async {
+    await pump(tester);
+    await tester.tap(find.text('Dilnoza'));
+    await settle(tester, frames: 20);
+    expect(_opened, isNull);
+  });
+
+  testWidgets('obuna — obuna bo‘lgan odamning profili', (tester) async {
+    await pump(tester);
+    await tester.tap(find.text('Zafar'));
+    await settle(tester, frames: 20);
+    expect(_opened, '/u/ZZZ777');
   });
 }

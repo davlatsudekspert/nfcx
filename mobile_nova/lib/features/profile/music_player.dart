@@ -618,7 +618,9 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
     if (!mounted) return;
     setState(() {
       _embedOpen = true;
-      _embedPlaying = false;
+      // Yandex vidjeti ochilgach o'zi ijroni boshlaydi (ko'prik skript),
+      // lekin holatni har doim ham yubormaydi — belgi pauza bo'lib turadi.
+      _embedPlaying = MusicSource.parse(url).kind == MusicKind.yandex;
       _embedError = null;
     });
   }
@@ -829,12 +831,15 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
                       player.toggle(current);
                     } else if (!embedShown) {
                       _openExternal(current);
-                    } else if (currentSrc.kind == MusicKind.youtube) {
-                      _embedPlaying ? _embed.pause() : _embed.play();
                     } else {
-                      // Yandex vidjetini tashqaridan boshqarib bo'lmaydi —
-                      // tugma uni yopadi.
-                      setState(() => _embedOpen = false);
+                      // YouTube ham, Yandex ham — bitta tugma: pleerdagi
+                      // play vidjetning o'zini boshqaradi. Yandex holatni
+                      // har doim ham yubormaydi, shuning uchun belgi
+                      // darhol almashtiriladi.
+                      _embedPlaying ? _embed.pause() : _embed.play();
+                      if (currentSrc.kind == MusicKind.yandex) {
+                        setState(() => _embedPlaying = !_embedPlaying);
+                      }
                     }
                   },
                   child: Container(
@@ -856,11 +861,9 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
                             external
                                 ? (!embedShown
                                     ? Icons.play_arrow_rounded
-                                    : currentSrc.kind == MusicKind.youtube
-                                        ? (_embedPlaying
-                                            ? Icons.pause_rounded
-                                            : Icons.play_arrow_rounded)
-                                        : Icons.stop_rounded)
+                                    : (_embedPlaying
+                                    ? Icons.pause_rounded
+                                    : Icons.play_arrow_rounded))
                                 : playing
                                     ? Icons.pause_rounded
                                     : Icons.play_arrow_rounded,

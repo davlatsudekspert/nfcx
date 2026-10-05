@@ -153,9 +153,35 @@ class _EventTile extends ConsumerWidget {
       };
 
   String? get _target {
-    final code = event.kind == ActivityKind.follow
-        ? (event.actorCode.isNotEmpty ? event.actorCode : event.targetCode)
-        : event.targetCode;
+    if (event.kind == ActivityKind.follow) {
+      final code =
+          event.actorCode.isNotEmpty ? event.actorCode : event.targetCode;
+      return code.isEmpty ? null : Routes.user(code);
+    }
+    // LAYK VA IZOH — o'sha POST yoki REELS ochiladi, profil emas.
+    // Kontent turi server `contentKind` da; eski server faqat layk
+    // uchun `targetType: post` beradi.
+    final kind = event.contentKind.isNotEmpty
+        ? event.contentKind
+        : (event.targetType == 'post' ? 'post' : '');
+    final idText =
+        event.contentId.isNotEmpty ? event.contentId : event.targetId;
+    final id = int.tryParse(idText) ?? 0;
+    switch (kind) {
+      case 'post' when id > 0:
+        return Routes.post(id, code: event.targetCode);
+      case 'company_post' when id > 0:
+        return Routes.post(id, code: event.targetCode, company: true);
+      case 'story' when event.targetCode.isNotEmpty:
+        return Routes.story(event.targetCode);
+      case 'company_story' when event.targetCode.isNotEmpty:
+        return Routes.story(event.targetCode, business: true);
+    }
+    // Izohning kontenti noma'lum (eski server): kod biznes ID'si
+    // bo'lishi mumkin — uni shaxsiy profil deb ochish "topilmadi"
+    // berardi. Shuning uchun faqat laykda profilga o'tiladi.
+    if (event.kind == ActivityKind.comment) return null;
+    final code = event.targetCode;
     return code.isEmpty ? null : Routes.user(code);
   }
 

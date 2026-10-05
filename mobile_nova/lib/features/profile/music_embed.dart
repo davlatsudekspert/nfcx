@@ -28,17 +28,23 @@ class MusicEmbedController {
   WebViewController? _web;
   MusicKind _kind = MusicKind.audio;
 
-  /// YouTube'da ijro/pauza. Yandex vidjetini tashqaridan boshqarib
-  /// bo'lmaydi — u o'z tugmalari bilan ishlaydi.
+  /// Ijro/pauza. YouTube — IFrame API orqali. Yandex — vidjetning O'Z
+  /// tugmasi sahifa ichidan bosiladi (`MusicEmbed.yandexBridgeJs`):
+  /// egasi, 2026-10-05: "pleerda play bosilsa Yandex'da ham play
+  /// bo'lishi kerak", ilgari ikki joyda bosish kerak edi.
   Future<void> play() async {
     if (_kind == MusicKind.youtube) {
       await _web?.runJavaScript('window.nfcPlay && window.nfcPlay()');
+    } else if (_kind == MusicKind.yandex) {
+      await _web?.runJavaScript('window.nfcToggle && window.nfcToggle()');
     }
   }
 
   Future<void> pause() async {
     if (_kind == MusicKind.youtube) {
       await _web?.runJavaScript('window.nfcPause && window.nfcPause()');
+    } else if (_kind == MusicKind.yandex) {
+      await _web?.runJavaScript('window.nfcToggle && window.nfcToggle()');
     }
   }
 }
@@ -88,6 +94,40 @@ function onYouTubeIframeAPIReady(){
 </script>
 <script src="https://www.youtube.com/iframe_api"></script>
 </body></html>''';
+
+  /// YANDEX VIDJETI BILAN KO'PRIK — sahifa yuklangach ichiga qo'yiladi.
+  ///
+  /// Yandex vidjeti tashqi API bermaydi, lekin sahifa WebView'da
+  /// to'g'ridan-to'g'ri ochiladi, ya'ni skript uning ichida ishlaydi:
+  /// `nfcToggle` vidjetning o'z play/pauza tugmasini bosadi. Ochilgach
+  /// bir marta o'zi ham bosadi (pleerdagi play — foydalanuvchining
+  /// harakati). Tugma topilmasa (Yandex sahifani o'zgartirsa) hech narsa
+  /// buzilmaydi — vidjetning o'z tugmasi baribir ishlaydi.
+  /// Holat (`playing`/`paused`) media hodisalaridan `NfcMusic` ga ketadi.
+  @visibleForTesting
+  static const yandexBridgeJs = r'''
+(function(){
+  if (window.nfcToggle) return;
+  function post(m){try{NfcMusic.postMessage(m)}catch(e){}}
+  document.addEventListener('play',function(){post('playing')},true);
+  document.addEventListener('pause',function(){post('paused')},true);
+  function visible(el){var r=el.getBoundingClientRect();return r.width>0&&r.height>0;}
+  window.nfcToggle=function(){
+    var sel=['[aria-label*="Воспроизв" i]','[aria-label*="Слушать" i]','[aria-label*="Пауза" i]',
+      '[aria-label*="Play" i]','[aria-label*="Pause" i]','[title*="Воспроизв" i]','[title*="Пауза" i]',
+      'button[class*="play" i]','[class*="play-button" i]','[class*="PlayButton"]'];
+    for(var i=0;i<sel.length;i++){
+      var list=document.querySelectorAll(sel[i]);
+      for(var j=0;j<list.length;j++){ if(visible(list[j])){ list[j].click(); return true; } }
+    }
+    var a=document.querySelector('audio,video');
+    if(a){ if(a.paused){a.play()}else{a.pause()} return true; }
+    return false;
+  };
+  var n=0;
+  var t=setInterval(function(){ if(window.nfcToggle()||++n>16){clearInterval(t)} },500);
+})();
+''';
 
   @visibleForTesting
   static Uri? yandexUri(String url) {
@@ -139,6 +179,12 @@ class _MusicEmbedState extends State<MusicEmbed> {
     final platform = _web.platform;
     if (platform is AndroidWebViewController) {
       platform.setMediaPlaybackRequiresUserGesture(false);
+    }
+    if (widget.source.kind == MusicKind.yandex) {
+      _web.setNavigationDelegate(NavigationDelegate(
+        onPageFinished: (_) =>
+            _web.runJavaScript(MusicEmbed.yandexBridgeJs).catchError((_) {}),
+      ));
     }
     widget.controller
       .._web = _web
