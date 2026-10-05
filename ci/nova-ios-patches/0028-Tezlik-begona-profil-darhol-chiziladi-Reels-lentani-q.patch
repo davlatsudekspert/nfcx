@@ -1,0 +1,181 @@
+From f9ebe5dbf52779151daf7b3bfe20f1141f78da5f Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Mon, 5 Oct 2026 02:18:48 +0000
+Subject: [PATCH] Tezlik: begona profil darhol chiziladi, Reels lentani qayta
+ so'ramaydi
+
+- Tanlov'dan ochilgan profil ro'yxatdagi ism/rasm/ID bilan darhol
+  chiziladi, server javobi kelgach almashtiriladi (skelet o'rniga).
+- Reels Asosiy ekran olgan lentani qayta ishlatadi (3 daqiqa) va
+  bo'limdan chiqilganda ro'yxat saqlanib qoladi (10 daqiqa).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .../data/repositories/social_repository.dart  | 30 +++++++++++++++++++
+ .../lib/features/discover/discover_cards.dart |  6 +++-
+ .../lib/features/home/home_screen.dart        |  4 ++-
+ .../features/profile/profile_repository.dart  | 10 +++++++
+ .../lib/features/profile/profile_screen.dart  |  8 ++++-
+ .../lib/features/social/reels_screen.dart     | 18 ++++++++++-
+ 6 files changed, 72 insertions(+), 4 deletions(-)
+
+diff --git a/mobile_nova/lib/data/repositories/social_repository.dart b/mobile_nova/lib/data/repositories/social_repository.dart
+index d30c109..eb504f8 100644
+--- a/mobile_nova/lib/data/repositories/social_repository.dart
++++ b/mobile_nova/lib/data/repositories/social_repository.dart
+@@ -374,6 +374,36 @@ class SocialRepository {
+         .toList());
+   }
+ 
++  /// Lentaning 1-sahifasi — Asosiy va Reels uchun UMUMIY.
++  ///
++  /// Asosiy ekran ilova ochilganda lentani allaqachon oladi; Reels
++  /// esa xuddi shu `/api/feed` ni qaytadan so'rab ~1-3 s bo'sh
++  /// turardi (egasi, 2026-10-05: "Reels ochilishi sekin"). Endi
++  /// 3 daqiqa ichidagi javob (yoki hali kelayotgan so'rov) qayta
++  /// ishlatiladi. [refresh] — Asosiy ekran va "tortib yangilash"
++  /// uchun: har doim yangisini oladi va uni keyingilarga qoldiradi.
++  /// Xato javob saqlanmaydi.
++  Future<Result<List<Post>>> recentFeed({bool refresh = false}) {
++    final at = _recentAt;
++    final cached = _recent;
++    if (!refresh &&
++        cached != null &&
++        at != null &&
++        DateTime.now().difference(at) < const Duration(minutes: 3)) {
++      return cached;
++    }
++    final f = feed();
++    _recent = f;
++    _recentAt = DateTime.now();
++    f.then((r) {
++      if (r is! Ok<List<Post>> && identical(_recent, f)) _recent = null;
++    });
++    return f;
++  }
++
++  Future<Result<List<Post>>>? _recent;
++  DateTime? _recentAt;
++
+   Future<Result<void>> likeNews(int id) => _api.post<void>('/api/news/$id/like');
+ }
+ 
+diff --git a/mobile_nova/lib/features/discover/discover_cards.dart b/mobile_nova/lib/features/discover/discover_cards.dart
+index 65c82d0..b1a7572 100644
+--- a/mobile_nova/lib/features/discover/discover_cards.dart
++++ b/mobile_nova/lib/features/discover/discover_cards.dart
+@@ -18,6 +18,7 @@ import '../business/business_forms.dart' show businessCategoryLabel;
+ import '../business/business_providers.dart';
+ import '../business/store_catalog.dart';
+ import '../home/widgets/identity_card.dart' show formatCount;
++import '../profile/profile_repository.dart' show profileSeedProvider;
+ import '../shop/nfc_id_market.dart' show tierLabel;
+ import '../social/engagement.dart';
+ import '../social/media_frame.dart';
+@@ -333,7 +334,10 @@ class DiscoverPersonCard extends ConsumerWidget {
+     final name = e.name.isEmpty ? e.code : e.name;
+     // O'z yozuvim — faqat shaxsiy ID'lardan (biznes ro'yxatini so'ramaydi).
+     final mine = ref.watch(myIdsProvider).any((i) => i.code == e.code);
+-    void open() => context.push(Routes.user(e.code));
++    void open() {
++      ref.read(profileSeedProvider)[e.code.toUpperCase()] = e;
++      context.push(Routes.user(e.code));
++    }
+ 
+     return PressableScale(
+       scale: .985,
+diff --git a/mobile_nova/lib/features/home/home_screen.dart b/mobile_nova/lib/features/home/home_screen.dart
+index 5424c35..d573b47 100644
+--- a/mobile_nova/lib/features/home/home_screen.dart
++++ b/mobile_nova/lib/features/home/home_screen.dart
+@@ -93,7 +93,9 @@ final homeCatalogProvider =
+ 
+ /// Lentaning boshidagi postlar.
+ final homeFeedProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
+-  final res = await ref.watch(socialRepositoryProvider).feed();
++  // Har doim yangisi; javob Reels uchun ham saqlanadi (`recentFeed`).
++  final res =
++      await ref.watch(socialRepositoryProvider).recentFeed(refresh: true);
+   return res.when(ok: (v) => v, err: (e) => throw e);
+ });
+ 
+diff --git a/mobile_nova/lib/features/profile/profile_repository.dart b/mobile_nova/lib/features/profile/profile_repository.dart
+index 682f547..c4bc158 100644
+--- a/mobile_nova/lib/features/profile/profile_repository.dart
++++ b/mobile_nova/lib/features/profile/profile_repository.dart
+@@ -428,6 +428,16 @@ final profileRepositoryProvider = Provider<ProfileRepository>(
+ // its dependencies were overridden" xatosi chiqadi.
+ //
+ // Ishlab chiqarish xulqi O'ZGARMAYDI.
++/// Ro'yxatda (Tanlov, qidiruv) allaqachon bor profil ma'lumoti.
++///
++/// Begona profil ochilganda server javobi ~1-2 s keladi va shu
++/// orada sahifa skelet bo'lib turardi (egasi, 2026-10-05). Ro'yxat
++/// kartasida ism, rasm va ID allaqachon bor — profil shu bilan
++/// DARHOL chiziladi, to'liq ma'lumot kelgach almashtiriladi.
++/// Faqat shu kodning O'Z yozuvi saqlanadi; hisob egasining
++/// ma'lumoti bu yerga hech qachon tushmaydi.
++final profileSeedProvider = Provider<Map<String, NfcId>>((_) => {});
++
+ final publicProfileProvider =
+     FutureProvider.family<NfcId, String>(dependencies: [profileRepositoryProvider], (ref, code) async {
+   final res = await ref.watch(profileRepositoryProvider).byCode(code);
+diff --git a/mobile_nova/lib/features/profile/profile_screen.dart b/mobile_nova/lib/features/profile/profile_screen.dart
+index 7df9e97..b87cdbe 100644
+--- a/mobile_nova/lib/features/profile/profile_screen.dart
++++ b/mobile_nova/lib/features/profile/profile_screen.dart
+@@ -121,7 +121,13 @@ class ProfileScreen extends ConsumerWidget {
+         : ref.watch(publicProfileProvider(code!));
+     final other = (company || code == null)
+         ? null
+-        : (ids.where((e) => e.code == code).firstOrNull ?? remote?.valueOrNull);
++        : (ids.where((e) => e.code == code).firstOrNull ??
++            remote?.valueOrNull ??
++            // Server javobi kelguncha ro'yxatdagi ma'lumot (faqat
++            // yuklanayotganda; xato bo'lsa sabab ko'rsatiladi).
++            (remote != null && remote.isLoading
++                ? ref.read(profileSeedProvider)[code!.toUpperCase()]
++                : null));
+     final active = company
+         ? (companyRemote!.valueOrNull == null
+             ? null
+diff --git a/mobile_nova/lib/features/social/reels_screen.dart b/mobile_nova/lib/features/social/reels_screen.dart
+index 2e6daf4..be9d432 100644
+--- a/mobile_nova/lib/features/social/reels_screen.dart
++++ b/mobile_nova/lib/features/social/reels_screen.dart
+@@ -56,6 +56,21 @@ final reelsMutedProvider = StateProvider<bool>((_) => false);
+ /// videolarini o'qishdagi xato YUTILADI: lenta kelgan bo'lsa
+ /// bo'lim baribir ishlashi kerak.
+ final reelsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
++  // KESH (2026-10-05): Reels bo'limidan chiqilganda ro'yxat 10 daqiqa
++  // saqlanadi. Ilgari har kirishda lenta qaytadan so'ralar va ~1-3 s
++  // bo'sh ekran turardi ("ochilishi sekin"). Asosiy ekran
++  // olgan lenta esa qayta so'ralmaydi (`recentFeed`).
++  //
++  // Taymer YO'Q (testlarda osilib qolardi): bo'limga qaytilganda
++  // ro'yxat 10 daqiqadan eski bo'lsa o'zi qayta yuklanadi.
++  ref.keepAlive();
++  final loadedAt = DateTime.now();
++  ref.onResume(() {
++    if (DateTime.now().difference(loadedAt) > const Duration(minutes: 10)) {
++      ref.invalidateSelf();
++    }
++  });
++
+   final repo = ref.watch(socialRepositoryProvider);
+   // Video YOKI rasmli reel (rasm 10 soniya turadi — egasi, 2026-09-25).
+   bool playable(Post p) => p.inReels && p.mediaUrls.isNotEmpty;
+@@ -74,7 +89,8 @@ final reelsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
+   // Reels ochilishi ikki tarmoq aylanishi o'rniga bittasi).
+   final results = await Future.wait<Result<List<Post>>>([
+     if (code != null) repo.postsOf(code),
+-    repo.feed(),
++    // Asosiy ekran olgan lenta qayta ishlatiladi (3 daqiqa).
++    repo.recentFeed(),
+   ]);
+   if (code != null) {
+     results.first.when(
+-- 
+2.43.0
+
