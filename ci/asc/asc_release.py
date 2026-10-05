@@ -86,10 +86,13 @@ The person you share with doesn't need the app: your profile opens in any phone'
 
 NFCSTORE is made in Uzbekistan and available in Uzbek, Russian and English."""
 
-KEYWORDS_LIST = ['nfc', 'business card', 'digital card', 'vizitka', 'contact', 'profile', 'qr',
-                 'networking', 'sticker', 'catalog', 'reels', 'uzbekistan', 'tap']
-PROMO = "Tap. Share. Connect — your digital business card on an NFC card or sticker."
-SUBTITLE = "NFC Digital Business Card"
+# Qidiruv uchun (egasi, 2026-10-05): "NFC tools" deb qidirganlar topsin,
+# lekin "NFC Tools" brend iborasi va "Instagram" so'zi ISHLATILMAYDI.
+APP_NAME = "NFCSTORE: Social NFC"
+KEYWORDS_LIST = ['nfc', 'tools', 'tag', 'writer', 'reader', 'yozish', 'vizitka', 'social', 'reels',
+                 'biznes', 'qr', 'card', 'profil', 'karta']
+PROMO = "Tap. Share. Connect — your social NFC profile, feed and Reels on an NFC card or sticker."
+SUBTITLE = "NFC Writer, Social ID, Reels"
 
 REVIEW_NOTES = """Sign-in is required. Please use the demo account above (it already has a personal profile, posts and a business page).
 
@@ -162,8 +165,8 @@ def fill():
     for l in j.get('data', []):
         if l['attributes']['locale'] == 'en-US':
             c2, j2 = call('PATCH', f"/v1/appInfoLocalizations/{l['id']}", {'data': {'type': 'appInfoLocalizations', 'id': l['id'],
-                          'attributes': {'subtitle': SUBTITLE, 'privacyPolicyUrl': 'https://nfcstore.uz/privacy'}}})
-            note(f'subtitle + privacy URL -> {c2} {j2.get("_error", "")}')
+                          'attributes': {'name': APP_NAME, 'subtitle': SUBTITLE, 'privacyPolicyUrl': 'https://nfcstore.uz/privacy'}}})
+            note(f'nom + subtitle + privacy URL -> {c2} {j2.get("_error", "")}')
     c, j = call('PATCH', f'/v1/appInfos/{iid}', {'data': {'type': 'appInfos', 'id': iid, 'relationships': {
         'primaryCategory': {'data': {'type': 'appCategories', 'id': 'SOCIAL_NETWORKING'}},
         'secondaryCategory': {'data': {'type': 'appCategories', 'id': 'BUSINESS'}}}}})
