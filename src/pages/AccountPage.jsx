@@ -7,7 +7,7 @@ import { dbUploadImage, dbUploadCardVideo, dbUploadProfileBgMedia, PROFILE_BG_MA
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
-import { isEmbedMusic, isYoutubeMusic } from '../lib/music.js';
+import { isEmbedMusic, isYoutubeMusic, parseMusicSource, audioFileTitle } from '../lib/music.js';
 import { MESSAGING_ENABLED } from '../lib/features.js';
 import { usePaymentsEnabled } from '../lib/paymentsEnabled.jsx';
 import PaymentUnavailableNotice from '../components/PaymentUnavailableNotice.jsx';
@@ -2511,16 +2511,26 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
 
   // Oddiy foydalanuvchi limitga yetganda (6-qo'shiq) — Premium taklif
   // oynasi ochiladi. Premium foydalanuvchi 10 tagacha qo'sha oladi.
+  // YANGI QO'SHIQ FAQAT FAYLDAN (egasi, 2026-10-05). Havola yozish
+  // maydoni olib tashlandi: YouTube havolasi ilovada boshqa ilovaga
+  // chiqib ketardi. Tugma to'g'ridan-to'g'ri telefonning fayl
+  // tanlagichini ochadi (Android — fayl menejeri, iPhone — «Fayllar»).
+  // Avval qo'yilgan havolalar o'chirilmaydi va ishlashda davom etadi.
   const addMusic = () => {
     if (form.musicUrls.length >= musicMax) {
       if (!isPremiumUser) setLocked(t('5 tadan ortiq qo‘shiq'));
       return;
     }
-    setForm((f) => ({ ...f, musicUrls: [...f.musicUrls, ''] }));
+    contentRules.ask(() => {
+      setMusicUploadIndex(form.musicUrls.length);
+      if (musicFileRef.current) musicFileRef.current.click();
+    });
   };
-  const updateMusic = (i) => (e) => {
-    setMusicMsg((m) => (m && m.idx === i ? null : m));
-    setForm((f) => ({ ...f, musicUrls: f.musicUrls.map((u, idx) => (idx === i ? e.target.value : u)) }));
+  const musicLabel = (u) => {
+    const src = parseMusicSource(u);
+    if (src && src.kind === 'youtube') return 'YouTube';
+    if (src && src.kind === 'yandex') return 'Yandex Music';
+    return audioFileTitle(u) || u;
   };
   // Qator o'chirilsa keyingilarning indeksi siljiydi — xabar boshqa
   // qatorga yopishib qolmasligi uchun tozalanadi.
@@ -2608,7 +2618,12 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
     try {
       // Fayl XOM BINAR sifatida — base64 100 MB ni ko'tarmasdi.
       const url = await dbUploadAudio(file);
-      setForm((f) => ({ ...f, musicUrls: f.musicUrls.map((u, i) => (i === idx ? url : u)) }));
+      setForm((f) => ({
+        ...f,
+        musicUrls: idx >= f.musicUrls.length
+          ? [...f.musicUrls, url]
+          : f.musicUrls.map((u, i) => (i === idx ? url : u)),
+      }));
       setMusicMsg({ idx, type: 'ok', text: t('Musiqa yuklandi. Saqlash tugmasini bosing.') });
     } catch (err) {
       setMusicMsg({ idx, type: 'err', text: err.message });
@@ -3171,19 +3186,14 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
             <div key={i} className="rounded-xl border border-white/10 bg-black/20 p-3">
               <div className="flex items-center gap-2">
                 <span className="shrink-0 text-xs font-semibold text-base-content/45">#{i + 1}</span>
-                <input
-                  className={`${inp} !mt-0 min-w-0 flex-1 font-mono text-xs`}
-                  value={url}
-                  onChange={updateMusic(i)}
-                  placeholder={t("YouTube / Yandex Music havolasi yoki https://.../musiqa.mp3")}
-                />
+                <span className="min-w-0 flex-1 truncate text-sm font-medium" title={url}>{musicLabel(url)}</span>
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm min-h-11 shrink-0"
                   onClick={() => contentRules.ask(() => { setMusicUploadIndex(i); musicFileRef.current && musicFileRef.current.click(); })}
                   disabled={uploadingMusic}
                 >
-                  {uploadingMusic && musicUploadIndex === i ? <span className="loading loading-spinner loading-xs"></span> : t('Fayl')}
+                  {uploadingMusic && musicUploadIndex === i ? <span className="loading loading-spinner loading-xs"></span> : t('Almashtirish')}
                 </button>
                 <button type="button" className="btn btn-ghost btn-square btn-sm min-h-11 min-w-11 shrink-0" aria-label={t("O'chirish")} onClick={() => removeMusic(i)}>&times;</button>
               </div>
@@ -3240,12 +3250,14 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
         {/* Limitga yetganda tugma yo'qolmaydi — oddiy foydalanuvchida u
             Premium taklif oynasini ochadi (addMusic ichida). */}
         {(form.musicUrls.length < musicMax || !isPremiumUser) && (
-          <button type="button" className="btn btn-ghost btn-sm mt-3 min-h-11" onClick={addMusic}>
-            {form.musicUrls.length >= musicMax ? t("Premium bilan 10 tagacha qo‘shiq") : t("+ Qo'shiq qo‘shish")}
+          <button type="button" className="btn btn-ghost btn-sm mt-3 min-h-11" onClick={addMusic} disabled={uploadingMusic}>
+            {uploadingMusic && musicUploadIndex === form.musicUrls.length
+              ? <span className="loading loading-spinner loading-xs"></span>
+              : form.musicUrls.length >= musicMax ? t("Premium bilan 10 tagacha qo‘shiq") : t("+ Qo'shiq qo‘shish (fayldan)")}
           </button>
         )}
-        <p className="mt-2 text-xs text-base-content/45">{t("Oddiy profilda 5 ta, Premium'da 10 tagacha qo'shiq. YouTube yoki Yandex Music havolasini qo'ysangiz — fayl yuklamasdan, iPhone'da ham ishlaydi. Yoki to'g'ridan-to'g'ri .mp3 havolasi / fayl. Profilingizga kirgan odam pastdagi tugma orqali yoqib-o'chiradi va qo'shiqlar orasida almashtiradi.")}</p>
-        <p className="mt-1.5 text-xs text-base-content/40">{t("iPhone'da MP3 qayerdan olinadi: Telegramda qo'shiqni oching → Ulashish → «Fayllarga saqlash», keyin shu yerdagi «Fayl» tugmasi orqali tanlang. Android'da fayl menejeridan to'g'ridan-to'g'ri tanlanadi. Maksimal hajm ~{n} MB.", { n: MUSIC_MAX_MB })}</p>
+        <p className="mt-2 text-xs text-base-content/45">{t("Oddiy profilda 5 ta, Premium'da 10 tagacha qo'shiq. Qo'shiq telefoningizdagi fayldan qo'yiladi (MP3, M4A, AAC, WAV, OGG). Profilingizga kirgan odam pastdagi tugma orqali yoqib-o'chiradi va qo'shiqlar orasida almashtiradi.")}</p>
+        <p className="mt-1.5 text-xs text-base-content/40">{t("iPhone'da MP3 qayerdan olinadi: Telegramda qo'shiqni oching → Ulashish → «Fayllarga saqlash», keyin «+ Qo'shiq qo'shish» tugmasi orqali «Fayllar»dan tanlang. Android'da fayl menejeridan to'g'ridan-to'g'ri tanlanadi. Maksimal hajm ~{n} MB.", { n: MUSIC_MAX_MB })}</p>
       </label>
       </Gate>
     </Section>
