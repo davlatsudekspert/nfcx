@@ -693,7 +693,20 @@ class LRu extends L {
   String get profileMusic => 'Музыка профиля';
 
   @override
-  String get profileMusicAdd => 'Добавить музыку';
+  String get profileMusicAdd => 'Добавить из файла';
+
+  @override
+  String get profileMusicAddLink => 'Добавить по ссылке (YouTube / Яндекс)';
+
+  @override
+  String get profileMusicLinkTitle => 'Ссылка на музыку';
+
+  @override
+  String get profileMusicLinkHint => 'https://youtu.be/… или music.yandex…';
+
+  @override
+  String get profileMusicLinkBad =>
+      'Можно добавить только ссылку YouTube или Яндекс Музыки. Аудиофайл выберите через «Добавить из файла».';
 
   @override
   String get profileLinks => 'Ссылки';
@@ -1164,8 +1177,13 @@ class LRu extends L {
   String get musicFailed => 'Не удалось открыть трек';
 
   @override
+  String musicEmbedBlocked(String service) {
+    return 'Автор разрешил смотреть это только в $service';
+  }
+
+  @override
   String musicOpensIn(String service) {
-    return 'Откроется в $service';
+    return 'Открыть в $service';
   }
 
   @override

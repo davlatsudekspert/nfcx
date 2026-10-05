@@ -22,6 +22,8 @@ import '../home/home_screen.dart';
 import '../home/widgets/avatar.dart';
 import '../shop/store_policy.dart' show isAppStoreBuild;
 import 'contact_editor.dart';
+import 'music_player.dart' show musicTitleOf;
+import 'music_source.dart';
 import 'profile_repository.dart';
 import '../social/content_rules.dart';
 import '../social/media_frame.dart';
@@ -163,6 +165,45 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
         },
         err: (e) => _error = describeError(l, e),
       );
+    });
+  }
+
+  /// YouTube / Yandex Music havolasi — pleer uni ichida, rasmiy
+  /// pleer bilan o'ynatadi (`MusicEmbed`). Boshqa havola qabul
+  /// qilinmaydi: oddiy fayl uchun "Musiqa qo'shish" (fayldan).
+  Future<void> _addMusicLink() async {
+    final l = L.of(context);
+    final ctrl = TextEditingController();
+    final link = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.profileMusicLinkTitle),
+        content: TextField(
+          key: const ValueKey('music-link-field'),
+          controller: ctrl,
+          autofocus: true,
+          keyboardType: TextInputType.url,
+          decoration: InputDecoration(hintText: l.profileMusicLinkHint),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l.actionCancel)),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+              child: Text(l.actionAdd)),
+        ],
+      ),
+    );
+    ctrl.dispose();
+    if (link == null || link.isEmpty || !mounted) return;
+    if (!MusicSource.parse(link).isExternal) {
+      setState(() => _error = l.profileMusicLinkBad);
+      return;
+    }
+    setState(() {
+      _error = null;
+      if (!_music.contains(link)) _music = [..._music, link];
     });
   }
 
@@ -504,10 +545,9 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                       const SizedBox(width: Gap.md),
                       Expanded(
                         child: Text(
-                          // Manzilning oxirgi bo'lagi — fayl nomi.
-                          Uri.parse(_music[i]).pathSegments.isEmpty
-                              ? _music[i]
-                              : Uri.parse(_music[i]).pathSegments.last,
+                          // Fayl nomi; YouTube/Yandex havolasida — xizmat
+                          // nomi (video ID odamga hech narsa demaydi).
+                          musicTitleOf(_music[i]),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -529,13 +569,24 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                     ],
                   ),
                 ),
-              if (_music.length < _musicMax)
+              if (_music.length < _musicMax) ...[
+                // Fayldan: Android — fayl menejeri, iPhone — «Fayllar».
                 NovaButton(
                   label: l.profileMusicAdd,
                   icon: Icons.add_rounded,
                   tone: ButtonTone.quiet,
                   onPressed: _busy ? null : _pickMusic,
                 ),
+                const SizedBox(height: Gap.sm),
+                // Havoladan: YouTube / Yandex Music (pleer ichida o'ynaydi).
+                NovaButton(
+                  key: const ValueKey('music-add-link'),
+                  label: l.profileMusicAddLink,
+                  icon: Icons.link_rounded,
+                  tone: ButtonTone.quiet,
+                  onPressed: _busy ? null : _addMusicLink,
+                ),
+              ],
             ],
           ),
           const SizedBox(height: Gap.xxl),

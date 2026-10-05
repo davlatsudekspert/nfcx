@@ -46,6 +46,9 @@ dependencies:
   in_app_update: 4.2.5
   # Ilova qulfi: Face ID / Touch ID / barmoq izi (PIN o'rniga emas, qulaylik).
   local_auth: ^3.0.1
+  webview_flutter: ^4.13.1
+  webview_flutter_android: ^4.12.0
+  webview_flutter_wkwebview: ^3.25.0
 
 dev_dependencies:
   flutter_test:

@@ -13,6 +13,7 @@ import '../../l10n/gen/app_localizations.dart';
 import '../../design/theme/typography.dart';
 import '../social/media_frame.dart' show mediaImage;
 import '../../core/utils/external_link.dart';
+import 'music_embed.dart';
 import 'music_source.dart';
 
 /// Profil musiqasi.
@@ -392,12 +393,10 @@ class MusicPlayer extends StateNotifier<MusicState>
   Future<void> play(String url) async {
     await _dispose();
     // YouTube / Yandex Music havolasi — audio fayl emas, sahifa.
-    // `video_player` uni ocha olmaydi; o'sha xizmatning o'z
-    // ilovasida (yoki brauzerda) ochiladi.
-    final src = MusicSource.parse(url);
-    if (src.isExternal) {
+    // `video_player` uni ocha olmaydi. Faqat TANLANADI: varaq uni
+    // xizmatning rasmiy pleerida o'ynatadi (`MusicEmbed`).
+    if (MusicSource.parse(url).isExternal) {
       state = MusicState(url: url);
-      await openLink(src.url);
       return;
     }
     state = MusicState(url: url, loading: true);
@@ -592,10 +591,77 @@ class _MusicSheet extends ConsumerStatefulWidget {
 }
 
 class _MusicSheetState extends ConsumerState<_MusicSheet> {
+  /// YouTube / Yandex rasmiy pleeri — muqova o'rnida.
+  final _embed = MusicEmbedController();
+  late final AudioOwner _owner;
+  bool _embedOpen = false;
+  bool _embedPlaying = false;
+  String? _embedError;
+
   @override
   void initState() {
     super.initState();
+    _owner = ref.read(audioOwnerProvider);
     ref.read(musicPlayerProvider.notifier).setQueue(widget.urls);
+  }
+
+  @override
+  void dispose() {
+    // Varaq yopildi — rasmiy pleer ham yopiladi (fonda ijro yo'q).
+    _owner.release(_embed);
+    super.dispose();
+  }
+
+  /// Tashqi trekni tanlab, rasmiy pleerini ochadi.
+  Future<void> _openExternal(String url) async {
+    await ref.read(musicPlayerProvider.notifier).play(url);
+    if (!mounted) return;
+    setState(() {
+      _embedOpen = true;
+      _embedPlaying = false;
+      _embedError = null;
+    });
+  }
+
+  void _onEmbedState(String s) {
+    if (!mounted) return;
+    if (s == 'playing') {
+      // Reels yoki boshqa audio shu zahoti jim bo'ladi.
+      _owner.take(_embed, () => _embed.pause());
+      setState(() => _embedPlaying = true);
+    } else if (s == 'paused') {
+      setState(() => _embedPlaying = false);
+    } else if (s == 'ended') {
+      setState(() => _embedPlaying = false);
+      _owner.release(_embed);
+      if (widget.urls.length > 1) _go(1);
+    } else if (s.startsWith('error')) {
+      setState(() {
+        _embedPlaying = false;
+        _embedError = s;
+      });
+    }
+  }
+
+  /// Oldingi/keyingi trek — tashqisi bo'lsa pleeri ochiq qoladi.
+  Future<void> _go(int step) async {
+    final player = ref.read(musicPlayerProvider.notifier);
+    final cur = ref.read(musicPlayerProvider).url;
+    final i = widget.urls.indexOf(cur);
+    if (step < 0 &&
+        !MusicSource.parse(cur).isExternal &&
+        ref.read(musicPlayerProvider).position > const Duration(seconds: 3)) {
+      await player.previous();
+      return;
+    }
+    final n = widget.urls.length;
+    final next = widget.urls[((i < 0 ? 0 : i) + step + n) % n];
+    if (MusicSource.parse(next).isExternal) {
+      await _openExternal(next);
+    } else {
+      setState(() => _embedOpen = false);
+      await player.play(next);
+    }
   }
 
   @override
@@ -612,6 +678,7 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
     final many = widget.urls.length > 1;
     final currentSrc = MusicSource.parse(current);
     final external = currentSrc.isExternal;
+    final embedShown = external && _embedOpen && active;
 
     Widget round(IconData icon, String tip, VoidCallback? onTap,
             {Key? key}) =>
@@ -639,7 +706,16 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
                   color: t.border1, borderRadius: R.pill),
             ),
             const SizedBox(height: Gap.lg),
-            // MUQOVA
+            // MUQOVA — tashqi trek ochilganda o'rnida xizmatning
+            // rasmiy pleeri (video ko'rinadi, YouTube qoidasi).
+            if (embedShown)
+              MusicEmbed(
+                key: ValueKey('music-embed-$current'),
+                source: currentSrc,
+                controller: _embed,
+                onState: _onEmbedState,
+              )
+            else
             Container(
               width: 168,
               height: 168,
@@ -674,13 +750,23 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
               style: AppType.displayStyle(color: t.text1, size: 26),
             ),
             if (external) ...[
-              const SizedBox(height: Gap.sm),
-              Text(l.musicOpensIn(currentSrc.serviceName),
-                  key: const ValueKey('music-external-hint'),
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall!
-                      .copyWith(color: t.text2)),
+              if (_embedError != null && active) ...[
+                const SizedBox(height: Gap.sm),
+                Text(l.musicEmbedBlocked(currentSrc.serviceName),
+                    key: const ValueKey('music-embed-error'),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall!
+                        .copyWith(color: t.error)),
+              ],
+              // Zaxira yo'l: xizmatning o'z ilovasida ochish.
+              TextButton.icon(
+                key: const ValueKey('music-external-hint'),
+                onPressed: () => openLink(currentSrc.url),
+                icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                label: Text(l.musicOpensIn(currentSrc.serviceName)),
+              ),
             ],
             if (st.failed && active) ...[
               const SizedBox(height: Gap.sm),
@@ -733,11 +819,24 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 round(Icons.skip_previous_rounded, l.musicPrevious,
-                    active ? player.previous : null,
+                    active ? () => _go(-1) : null,
                     key: const ValueKey('music-prev')),
                 const SizedBox(width: Gap.lg),
                 PressableScale(
-                  onTap: () => player.toggle(current),
+                  onTap: () {
+                    if (!external) {
+                      setState(() => _embedOpen = false);
+                      player.toggle(current);
+                    } else if (!embedShown) {
+                      _openExternal(current);
+                    } else if (currentSrc.kind == MusicKind.youtube) {
+                      _embedPlaying ? _embed.pause() : _embed.play();
+                    } else {
+                      // Yandex vidjetini tashqaridan boshqarib bo'lmaydi —
+                      // tugma uni yopadi.
+                      setState(() => _embedOpen = false);
+                    }
+                  },
                   child: Container(
                     key: const ValueKey('music-play'),
                     width: 68,
@@ -755,11 +854,17 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
                           )
                         : Icon(
                             external
-                                ? Icons.open_in_new_rounded
+                                ? (!embedShown
+                                    ? Icons.play_arrow_rounded
+                                    : currentSrc.kind == MusicKind.youtube
+                                        ? (_embedPlaying
+                                            ? Icons.pause_rounded
+                                            : Icons.play_arrow_rounded)
+                                        : Icons.stop_rounded)
                                 : playing
                                     ? Icons.pause_rounded
                                     : Icons.play_arrow_rounded,
-                            size: external ? 28 : 34,
+                            size: 34,
                             color: t.bg1,
                             semanticLabel:
                                 playing ? l.musicPause : l.musicPlay,
@@ -768,7 +873,7 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
                 ),
                 const SizedBox(width: Gap.lg),
                 round(Icons.skip_next_rounded, l.musicNext,
-                    many ? player.next : null,
+                    many ? () => _go(1) : null,
                     key: const ValueKey('music-next')),
               ],
             ),
@@ -779,7 +884,12 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
               for (final url in widget.urls)
                 InkWell(
                   borderRadius: R.tile,
-                  onTap: () => player.play(url),
+                  onTap: () => MusicSource.parse(url).isExternal
+                      ? _openExternal(url)
+                      : (() {
+                          setState(() => _embedOpen = false);
+                          player.play(url);
+                        })(),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
                         vertical: 10, horizontal: 6),

@@ -698,7 +698,20 @@ class LUz extends L {
   String get profileMusic => 'Profil musiqasi';
 
   @override
-  String get profileMusicAdd => 'Musiqa qo‘shish';
+  String get profileMusicAdd => 'Fayldan qo‘shish';
+
+  @override
+  String get profileMusicAddLink => 'Havoladan qo‘shish (YouTube / Yandex)';
+
+  @override
+  String get profileMusicLinkTitle => 'Musiqa havolasi';
+
+  @override
+  String get profileMusicLinkHint => 'https://youtu.be/… yoki music.yandex…';
+
+  @override
+  String get profileMusicLinkBad =>
+      'Faqat YouTube yoki Yandex Music havolasi qo‘shiladi. Audio faylni «Fayldan qo‘shish» orqali tanlang.';
 
   @override
   String get profileLinks => 'Havolalar';
@@ -1171,8 +1184,13 @@ class LUz extends L {
   String get musicFailed => 'Qo‘shiqni ochib bo‘lmadi';
 
   @override
+  String musicEmbedBlocked(String service) {
+    return 'Muallif bu videoni faqat $service’da ko‘rishga ruxsat bergan';
+  }
+
+  @override
   String musicOpensIn(String service) {
-    return '$service ilovasida ochiladi';
+    return '$service’da ochish';
   }
 
   @override

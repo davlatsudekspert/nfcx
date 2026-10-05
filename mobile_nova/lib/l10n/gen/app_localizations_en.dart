@@ -697,7 +697,20 @@ class LEn extends L {
   String get profileMusic => 'Profile music';
 
   @override
-  String get profileMusicAdd => 'Add music';
+  String get profileMusicAdd => 'Add from file';
+
+  @override
+  String get profileMusicAddLink => 'Add from link (YouTube / Yandex)';
+
+  @override
+  String get profileMusicLinkTitle => 'Music link';
+
+  @override
+  String get profileMusicLinkHint => 'https://youtu.be/… or music.yandex…';
+
+  @override
+  String get profileMusicLinkBad =>
+      'Only YouTube or Yandex Music links can be added. Pick an audio file with “Add from file”.';
 
   @override
   String get profileLinks => 'Links';
@@ -1168,8 +1181,13 @@ class LEn extends L {
   String get musicFailed => 'Could not open the track';
 
   @override
+  String musicEmbedBlocked(String service) {
+    return 'The owner only allows this on $service';
+  }
+
+  @override
   String musicOpensIn(String service) {
-    return 'Opens in $service';
+    return 'Open in $service';
   }
 
   @override

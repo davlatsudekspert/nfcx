@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nfcstore_nova/features/profile/music_embed.dart';
 import 'package:nfcstore_nova/features/profile/music_player.dart';
 import 'package:nfcstore_nova/features/profile/music_source.dart';
 
@@ -45,5 +46,22 @@ void main() {
     // Oddiy fayl — avvalgidek fayl nomi.
     expect(musicTitleOf('https://nfcstore.uz/uploads/night_drive.mp3'),
         'night drive');
+  });
+
+  test('rasmiy pleer manzillari — sayt bilan bir xil', () {
+    expect(
+        MusicEmbed.yandexUri(
+                'https://music.yandex.com/album/1581808/track/44093415?ref_id=x')
+            .toString(),
+        'https://music.yandex.ru/iframe/#track/44093415/1581808');
+    expect(MusicEmbed.yandexUri('https://music.yandex.ru/album/77').toString(),
+        'https://music.yandex.ru/iframe/#album/77');
+    final html = MusicEmbed.youtubeHtml('lKhxTeC2h9s');
+    expect(html, contains('videoId:"lKhxTeC2h9s"'));
+    expect(html, contains('playsinline:1'));
+    expect(html, contains("origin:'https://nfcstore.uz'"));
+    // YouTube qoidasi: video ko'rinadi, kamida 200x200.
+    final s = MusicEmbed.sizeFor(MusicKind.youtube);
+    expect(s.width >= 200 && s.height >= 200, isTrue);
   });
 }

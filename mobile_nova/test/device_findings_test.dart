@@ -329,9 +329,11 @@ void _motionAndMusicTests() {
       expect(src, contains('Slider('));
       expect(src, contains('_MusicSheet._fmt(pos)'));
       expect(src, contains('st.duration'));
-      // Oldingi / keyingi.
+      // Oldingi / keyingi — `_go` orqali (YouTube/Yandex trekida
+      // rasmiy pleer ochiq qoladi, faylda `player.play`).
+      expect(src, contains('_go(-1)'));
+      expect(src, contains('_go(1)'));
       expect(src, contains('player.previous'));
-      expect(src, contains('player.next'));
     });
   });
 }

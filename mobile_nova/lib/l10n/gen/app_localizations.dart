@@ -1422,8 +1422,32 @@ abstract class L {
   /// No description provided for @profileMusicAdd.
   ///
   /// In uz, this message translates to:
-  /// **'Musiqa qo‘shish'**
+  /// **'Fayldan qo‘shish'**
   String get profileMusicAdd;
+
+  /// No description provided for @profileMusicAddLink.
+  ///
+  /// In uz, this message translates to:
+  /// **'Havoladan qo‘shish (YouTube / Yandex)'**
+  String get profileMusicAddLink;
+
+  /// No description provided for @profileMusicLinkTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Musiqa havolasi'**
+  String get profileMusicLinkTitle;
+
+  /// No description provided for @profileMusicLinkHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'https://youtu.be/… yoki music.yandex…'**
+  String get profileMusicLinkHint;
+
+  /// No description provided for @profileMusicLinkBad.
+  ///
+  /// In uz, this message translates to:
+  /// **'Faqat YouTube yoki Yandex Music havolasi qo‘shiladi. Audio faylni «Fayldan qo‘shish» orqali tanlang.'**
+  String get profileMusicLinkBad;
 
   /// No description provided for @profileLinks.
   ///
@@ -2331,10 +2355,16 @@ abstract class L {
   /// **'Qo‘shiqni ochib bo‘lmadi'**
   String get musicFailed;
 
+  /// No description provided for @musicEmbedBlocked.
+  ///
+  /// In uz, this message translates to:
+  /// **'Muallif bu videoni faqat {service}’da ko‘rishga ruxsat bergan'**
+  String musicEmbedBlocked(String service);
+
   /// No description provided for @musicOpensIn.
   ///
   /// In uz, this message translates to:
-  /// **'{service} ilovasida ochiladi'**
+  /// **'{service}’da ochish'**
   String musicOpensIn(String service);
 
   /// No description provided for @rulesTitle.

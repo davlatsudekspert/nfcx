@@ -254,7 +254,11 @@
   "profilePosts": "Postlar",
   "profileEdit": "Profilni tahrirlash",
   "profileMusic": "Profil musiqasi",
-  "profileMusicAdd": "Musiqa qo‘shish",
+  "profileMusicAdd": "Fayldan qo‘shish",
+  "profileMusicAddLink": "Havoladan qo‘shish (YouTube / Yandex)",
+  "profileMusicLinkTitle": "Musiqa havolasi",
+  "profileMusicLinkHint": "https://youtu.be/… yoki music.yandex…",
+  "profileMusicLinkBad": "Faqat YouTube yoki Yandex Music havolasi qo‘shiladi. Audio faylni «Fayldan qo‘shish» orqali tanlang.",
   "profileLinks": "Havolalar",
   "profileContact": "Aloqa",
   "profileSaved": "Profil saqlandi",
@@ -445,7 +449,13 @@
   "supportSent": "Murojaat yuborildi",
   "musicTitle": "Musiqa",
   "musicFailed": "Qo‘shiqni ochib bo‘lmadi",
-  "musicOpensIn": "{service} ilovasida ochiladi",
+  "musicEmbedBlocked": "Muallif bu videoni faqat {service}’da ko‘rishga ruxsat bergan",
+  "@musicEmbedBlocked": {
+    "placeholders": {
+      "service": {"type": "String"}
+    }
+  },
+  "musicOpensIn": "{service}’da ochish",
   "@musicOpensIn": {
     "placeholders": {
       "service": {"type": "String"}
