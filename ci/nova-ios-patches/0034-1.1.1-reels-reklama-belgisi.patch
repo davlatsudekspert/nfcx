@@ -1,0 +1,289 @@
+From 4498b35214f264014f07984af25c8759ef9be3b7 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Mon, 5 Oct 2026 09:11:08 +0000
+Subject: [PATCH] 1.1.1: Reels'da reklama belgisi va "Profilni ochish" tugmasi;
+ belgi "Reklama"
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .../lib/features/social/reels_screen.dart     | 54 +++++++++++++++++++
+ mobile_nova/lib/l10n/arb/app_en.arb           |  1 +
+ mobile_nova/lib/l10n/arb/app_ru.arb           |  1 +
+ mobile_nova/lib/l10n/arb/app_uz.arb           |  3 +-
+ .../lib/l10n/gen/app_localizations.dart       |  8 ++-
+ .../lib/l10n/gen/app_localizations_en.dart    |  3 ++
+ .../lib/l10n/gen/app_localizations_ru.dart    |  3 ++
+ .../lib/l10n/gen/app_localizations_uz.dart    |  5 +-
+ mobile_nova/test/home_feed_test.dart          | 10 ++--
+ mobile_nova/test/reels_final_test.dart        | 27 ++++++++++
+ 10 files changed, 107 insertions(+), 8 deletions(-)
+
+diff --git a/mobile_nova/lib/features/social/reels_screen.dart b/mobile_nova/lib/features/social/reels_screen.dart
+index 960ab24..141e2d3 100644
+--- a/mobile_nova/lib/features/social/reels_screen.dart
++++ b/mobile_nova/lib/features/social/reels_screen.dart
+@@ -1372,6 +1372,60 @@ class _ReelPageState extends ConsumerState<_ReelPage>
+                     ],
+                   ),
+                 ],
++                // REKLAMA (egasi, 2026-10-05). Qonun bo'yicha reklama aniq
++                // belgilanadi; Instagram'dagi "Sponsored" kabi, lekin
++                // pastida bir bosishda profilga olib boruvchi tugma bor.
++                if (p.featured) ...[
++                  const SizedBox(height: Gap.sm),
++                  // Wrap — tor ekranda tugma keyingi qatorga tushadi.
++                  Wrap(
++                    spacing: Gap.sm,
++                    runSpacing: 6,
++                    crossAxisAlignment: WrapCrossAlignment.center,
++                    children: [
++                      Container(
++                        key: const ValueKey('reel-sponsored'),
++                        padding: const EdgeInsets.symmetric(
++                            horizontal: 7, vertical: 2),
++                        decoration: BoxDecoration(
++                          color: Colors.white.withValues(alpha: .18),
++                          borderRadius: R.pill,
++                        ),
++                        child: Text(
++                          l.feedSponsored,
++                          style: const TextStyle(
++                            fontFamily: AppType.sans,
++                            fontSize: 11,
++                            fontWeight: FontWeight.w700,
++                            color: Colors.white,
++                          ),
++                        ),
++                      ),
++                      if (p.code.isNotEmpty)
++                        PressableScale(
++                          key: const ValueKey('reel-ad-cta'),
++                          onTap: _openAuthor,
++                          child: Container(
++                            padding: const EdgeInsets.symmetric(
++                                horizontal: 12, vertical: 6),
++                            decoration: BoxDecoration(
++                              color: IdPlate.gold,
++                              borderRadius: R.pill,
++                            ),
++                            child: Text(
++                              '${l.reelAdCta} ›',
++                              style: const TextStyle(
++                                fontFamily: AppType.sans,
++                                fontSize: 12.5,
++                                fontWeight: FontWeight.w700,
++                                color: Colors.black,
++                              ),
++                            ),
++                          ),
++                        ),
++                    ],
++                  ),
++                ],
+                 if (p.music != null) ...[
+                   const SizedBox(height: Gap.sm),
+                   MusicChip(
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index 5ae5ff7..dfd7f2b 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -234,6 +234,7 @@
+   "analyticsByDay": "Views by day",
+   "analyticsTop": "Most viewed",
+   "reelCaptionMore": "more",
++  "reelAdCta": "View profile",
+   "analyticsSeeAll": "See all ({count})",
+   "analyticsNoPosts": "No posts or Reels yet",
+   "analyticsReel": "Reels",
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index f55eb05..67a2e51 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -234,6 +234,7 @@
+   "analyticsByDay": "Просмотры по дням",
+   "analyticsTop": "Самые просматриваемые",
+   "reelCaptionMore": "ещё",
++  "reelAdCta": "Открыть профиль",
+   "analyticsSeeAll": "Смотреть все ({count})",
+   "analyticsNoPosts": "Пока нет постов и Reels",
+   "analyticsReel": "Reels",
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index 1553b87..0539546 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -234,6 +234,7 @@
+   "analyticsByDay": "Kunlik ko‘rishlar",
+   "analyticsTop": "Eng ko‘p ko‘rilganlar",
+   "reelCaptionMore": "ko‘proq",
++  "reelAdCta": "Profilni ochish",
+   "analyticsSeeAll": "Hammasini ko‘rish ({count})",
+   "@analyticsSeeAll": {"placeholders": {"count": {"type": "int"}}},
+   "analyticsNoPosts": "Hali post yoki Reels yo‘q",
+@@ -719,7 +720,7 @@
+   "nfcWriteErrIo": "Karta bilan aloqa uzildi. Kartani qimirlatmasdan qayta urinib ko‘ring.",
+   "nfcWriteIosHint": "iPhone’da yozish uchun kartani tegizib turing — tizim oynasi ochiladi.",
+   "nfcWriteSafety": "Kartaga faqat ochiq profil manzili yoziladi. Hech qanday maxfiy kalit yozilmaydi.",
+-  "feedSponsored": "Homiylik",
++  "feedSponsored": "Reklama",
+   "homeFeed": "Lenta",
+   "homeFeedEmpty": "Hozircha post yo‘q. Obuna bo‘lgan odamlaringiz post qo‘yganda shu yerda ko‘rinadi.",
+   "homeFeedMore": "Hammasini ko‘rish",
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index 0a99ca1..7dccf94 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -1317,6 +1317,12 @@ abstract class L {
+   /// **'ko‘proq'**
+   String get reelCaptionMore;
+ 
++  /// No description provided for @reelAdCta.
++  ///
++  /// In uz, this message translates to:
++  /// **'Profilni ochish'**
++  String get reelAdCta;
++
+   /// No description provided for @analyticsSeeAll.
+   ///
+   /// In uz, this message translates to:
+@@ -3396,7 +3402,7 @@ abstract class L {
+   /// No description provided for @feedSponsored.
+   ///
+   /// In uz, this message translates to:
+-  /// **'Homiylik'**
++  /// **'Reklama'**
+   String get feedSponsored;
+ 
+   /// No description provided for @homeFeed.
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index df32645..086fad7 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -643,6 +643,9 @@ class LEn extends L {
+   @override
+   String get reelCaptionMore => 'more';
+ 
++  @override
++  String get reelAdCta => 'View profile';
++
+   @override
+   String analyticsSeeAll(int count) {
+     return 'See all ($count)';
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index 434de22..816c327 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -639,6 +639,9 @@ class LRu extends L {
+   @override
+   String get reelCaptionMore => 'ещё';
+ 
++  @override
++  String get reelAdCta => 'Открыть профиль';
++
+   @override
+   String analyticsSeeAll(int count) {
+     return 'Смотреть все ($count)';
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index 6fc39c7..359fbe7 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -643,6 +643,9 @@ class LUz extends L {
+   @override
+   String get reelCaptionMore => 'ko‘proq';
+ 
++  @override
++  String get reelAdCta => 'Profilni ochish';
++
+   @override
+   String analyticsSeeAll(int count) {
+     return 'Hammasini ko‘rish ($count)';
+@@ -1751,7 +1754,7 @@ class LUz extends L {
+       'Kartaga faqat ochiq profil manzili yoziladi. Hech qanday maxfiy kalit yozilmaydi.';
+ 
+   @override
+-  String get feedSponsored => 'Homiylik';
++  String get feedSponsored => 'Reklama';
+ 
+   @override
+   String get homeFeed => 'Lenta';
+diff --git a/mobile_nova/test/home_feed_test.dart b/mobile_nova/test/home_feed_test.dart
+index 54e2729..021b271 100644
+--- a/mobile_nova/test/home_feed_test.dart
++++ b/mobile_nova/test/home_feed_test.dart
+@@ -128,16 +128,16 @@ void main() {
+     });
+   });
+ 
+-  group('"Homiylik" belgisi', () {
++  group('"Reklama" belgisi', () {
+     testWidgets('ko‘tarilgan postda belgi BOR', (tester) async {
+       await pumpHome(tester, posts: [_post(1, featured: true)]);
+-      expect(find.text('Homiylik'), findsOneWidget,
++      expect(find.text('Reklama'), findsOneWidget,
+           reason: 'to‘langan joylashuv belgisiz qoldi — yashirin reklama');
+     });
+ 
+     testWidgets('oddiy postda belgi YO‘Q', (tester) async {
+       await pumpHome(tester, posts: [_post(1)]);
+-      expect(find.text('Homiylik'), findsNothing);
++      expect(find.text('Reklama'), findsNothing);
+     });
+ 
+     testWidgets('faqat ko‘tarilganida belgilanadi', (tester) async {
+@@ -146,7 +146,7 @@ void main() {
+         _post(2),
+         _post(3),
+       ]);
+-      expect(find.text('Homiylik'), findsOneWidget);
++      expect(find.text('Reklama'), findsOneWidget);
+     });
+ 
+     testWidgets('tartib SERVERNIKI — ilova qayta saralamaydi',
+@@ -167,7 +167,7 @@ void main() {
+   group('`featured` belgisi YO‘QOLMAYDI', () {
+     test('copyWith like sonini yangilaganda ham saqlanadi', () {
+       // Like bosilganda `copyWith` chaqiriladi. Belgi tushib qolsa,
+-      // odam like bosgan zahoti "Homiylik" yozuvi o‘chib ketardi.
++      // odam like bosgan zahoti "Reklama" yozuvi o‘chib ketardi.
+       final p = _post(1, featured: true);
+       expect(p.copyWith(likes: 5, liked: true).featured, isTrue);
+       expect(p.copyWith(comments: 3).featured, isTrue);
+diff --git a/mobile_nova/test/reels_final_test.dart b/mobile_nova/test/reels_final_test.dart
+index f01e44b..977ab9b 100644
+--- a/mobile_nova/test/reels_final_test.dart
++++ b/mobile_nova/test/reels_final_test.dart
+@@ -462,4 +462,31 @@ void main() {
+     expect(v.positions[id]! > Duration.zero, isTrue);
+     expect(tester.takeException(), isNull);
+   });
++
++  testWidgets('reklama reeli: «Reklama» belgisi va profil tugmasi (1.1.1)',
++      (tester) async {
++    final v = FakeVideoPlatform();
++    await _pump(tester, v, reels: [
++      Post(
++        id: 31,
++        code: 'SHOP01',
++        authorName: 'Do‘kon',
++        authorKind: 'company',
++        mediaUrls: const ['https://nfcstore.uz/uploads/ad.mp4'],
++        isVideo: true,
++        featured: true,
++      ),
++    ]);
++    expect(find.byKey(const ValueKey('reel-sponsored')), findsOneWidget);
++    expect(find.text('Reklama'), findsOneWidget);
++    expect(find.byKey(const ValueKey('reel-ad-cta')), findsOneWidget);
++    expect(tester.takeException(), isNull);
++  });
++
++  testWidgets('oddiy reelda reklama belgisi yo‘q', (tester) async {
++    final v = FakeVideoPlatform();
++    await _pump(tester, v);
++    expect(find.byKey(const ValueKey('reel-sponsored')), findsNothing);
++    expect(find.byKey(const ValueKey('reel-ad-cta')), findsNothing);
++  });
+ }
+-- 
+2.43.0
+
