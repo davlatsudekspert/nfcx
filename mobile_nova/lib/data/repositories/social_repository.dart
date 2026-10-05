@@ -374,6 +374,36 @@ class SocialRepository {
         .toList());
   }
 
+  /// Lentaning 1-sahifasi — Asosiy va Reels uchun UMUMIY.
+  ///
+  /// Asosiy ekran ilova ochilganda lentani allaqachon oladi; Reels
+  /// esa xuddi shu `/api/feed` ni qaytadan so'rab ~1-3 s bo'sh
+  /// turardi (egasi, 2026-10-05: "Reels ochilishi sekin"). Endi
+  /// 3 daqiqa ichidagi javob (yoki hali kelayotgan so'rov) qayta
+  /// ishlatiladi. [refresh] — Asosiy ekran va "tortib yangilash"
+  /// uchun: har doim yangisini oladi va uni keyingilarga qoldiradi.
+  /// Xato javob saqlanmaydi.
+  Future<Result<List<Post>>> recentFeed({bool refresh = false}) {
+    final at = _recentAt;
+    final cached = _recent;
+    if (!refresh &&
+        cached != null &&
+        at != null &&
+        DateTime.now().difference(at) < const Duration(minutes: 3)) {
+      return cached;
+    }
+    final f = feed();
+    _recent = f;
+    _recentAt = DateTime.now();
+    f.then((r) {
+      if (r is! Ok<List<Post>> && identical(_recent, f)) _recent = null;
+    });
+    return f;
+  }
+
+  Future<Result<List<Post>>>? _recent;
+  DateTime? _recentAt;
+
   Future<Result<void>> likeNews(int id) => _api.post<void>('/api/news/$id/like');
 }
 

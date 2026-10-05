@@ -93,7 +93,9 @@ final homeCatalogProvider =
 
 /// Lentaning boshidagi postlar.
 final homeFeedProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
-  final res = await ref.watch(socialRepositoryProvider).feed();
+  // Har doim yangisi; javob Reels uchun ham saqlanadi (`recentFeed`).
+  final res =
+      await ref.watch(socialRepositoryProvider).recentFeed(refresh: true);
   return res.when(ok: (v) => v, err: (e) => throw e);
 });
 

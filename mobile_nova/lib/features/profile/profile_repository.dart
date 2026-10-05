@@ -428,6 +428,16 @@ final profileRepositoryProvider = Provider<ProfileRepository>(
 // its dependencies were overridden" xatosi chiqadi.
 //
 // Ishlab chiqarish xulqi O'ZGARMAYDI.
+/// Ro'yxatda (Tanlov, qidiruv) allaqachon bor profil ma'lumoti.
+///
+/// Begona profil ochilganda server javobi ~1-2 s keladi va shu
+/// orada sahifa skelet bo'lib turardi (egasi, 2026-10-05). Ro'yxat
+/// kartasida ism, rasm va ID allaqachon bor — profil shu bilan
+/// DARHOL chiziladi, to'liq ma'lumot kelgach almashtiriladi.
+/// Faqat shu kodning O'Z yozuvi saqlanadi; hisob egasining
+/// ma'lumoti bu yerga hech qachon tushmaydi.
+final profileSeedProvider = Provider<Map<String, NfcId>>((_) => {});
+
 final publicProfileProvider =
     FutureProvider.family<NfcId, String>(dependencies: [profileRepositoryProvider], (ref, code) async {
   final res = await ref.watch(profileRepositoryProvider).byCode(code);

@@ -121,7 +121,13 @@ class ProfileScreen extends ConsumerWidget {
         : ref.watch(publicProfileProvider(code!));
     final other = (company || code == null)
         ? null
-        : (ids.where((e) => e.code == code).firstOrNull ?? remote?.valueOrNull);
+        : (ids.where((e) => e.code == code).firstOrNull ??
+            remote?.valueOrNull ??
+            // Server javobi kelguncha ro'yxatdagi ma'lumot (faqat
+            // yuklanayotganda; xato bo'lsa sabab ko'rsatiladi).
+            (remote != null && remote.isLoading
+                ? ref.read(profileSeedProvider)[code!.toUpperCase()]
+                : null));
     final active = company
         ? (companyRemote!.valueOrNull == null
             ? null

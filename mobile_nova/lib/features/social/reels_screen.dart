@@ -56,6 +56,21 @@ final reelsMutedProvider = StateProvider<bool>((_) => false);
 /// videolarini o'qishdagi xato YUTILADI: lenta kelgan bo'lsa
 /// bo'lim baribir ishlashi kerak.
 final reelsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
+  // KESH (2026-10-05): Reels bo'limidan chiqilganda ro'yxat 10 daqiqa
+  // saqlanadi. Ilgari har kirishda lenta qaytadan so'ralar va ~1-3 s
+  // bo'sh ekran turardi ("ochilishi sekin"). Asosiy ekran
+  // olgan lenta esa qayta so'ralmaydi (`recentFeed`).
+  //
+  // Taymer YO'Q (testlarda osilib qolardi): bo'limga qaytilganda
+  // ro'yxat 10 daqiqadan eski bo'lsa o'zi qayta yuklanadi.
+  ref.keepAlive();
+  final loadedAt = DateTime.now();
+  ref.onResume(() {
+    if (DateTime.now().difference(loadedAt) > const Duration(minutes: 10)) {
+      ref.invalidateSelf();
+    }
+  });
+
   final repo = ref.watch(socialRepositoryProvider);
   // Video YOKI rasmli reel (rasm 10 soniya turadi — egasi, 2026-09-25).
   bool playable(Post p) => p.inReels && p.mediaUrls.isNotEmpty;
@@ -74,7 +89,8 @@ final reelsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
   // Reels ochilishi ikki tarmoq aylanishi o'rniga bittasi).
   final results = await Future.wait<Result<List<Post>>>([
     if (code != null) repo.postsOf(code),
-    repo.feed(),
+    // Asosiy ekran olgan lenta qayta ishlatiladi (3 daqiqa).
+    repo.recentFeed(),
   ]);
   if (code != null) {
     results.first.when(

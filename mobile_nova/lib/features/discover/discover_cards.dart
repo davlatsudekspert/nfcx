@@ -18,6 +18,7 @@ import '../business/business_forms.dart' show businessCategoryLabel;
 import '../business/business_providers.dart';
 import '../business/store_catalog.dart';
 import '../home/widgets/identity_card.dart' show formatCount;
+import '../profile/profile_repository.dart' show profileSeedProvider;
 import '../shop/nfc_id_market.dart' show tierLabel;
 import '../social/engagement.dart';
 import '../social/media_frame.dart';
@@ -333,7 +334,10 @@ class DiscoverPersonCard extends ConsumerWidget {
     final name = e.name.isEmpty ? e.code : e.name;
     // O'z yozuvim — faqat shaxsiy ID'lardan (biznes ro'yxatini so'ramaydi).
     final mine = ref.watch(myIdsProvider).any((i) => i.code == e.code);
-    void open() => context.push(Routes.user(e.code));
+    void open() {
+      ref.read(profileSeedProvider)[e.code.toUpperCase()] = e;
+      context.push(Routes.user(e.code));
+    }
 
     return PressableScale(
       scale: .985,
