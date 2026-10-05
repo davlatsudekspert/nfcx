@@ -637,6 +637,9 @@ class LRu extends L {
   String get analyticsTop => 'Самые просматриваемые';
 
   @override
+  String get reelCaptionMore => 'ещё';
+
+  @override
   String analyticsSeeAll(int count) {
     return 'Смотреть все ($count)';
   }

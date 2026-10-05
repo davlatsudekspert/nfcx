@@ -233,6 +233,7 @@
   "analyticsAllTime": "Profil butun vaqtda: {total} ko‘rish · 30 kunda {unique} noyob tashrifchi",
   "analyticsByDay": "Kunlik ko‘rishlar",
   "analyticsTop": "Eng ko‘p ko‘rilganlar",
+  "reelCaptionMore": "ko‘proq",
   "analyticsSeeAll": "Hammasini ko‘rish ({count})",
   "@analyticsSeeAll": {"placeholders": {"count": {"type": "int"}}},
   "analyticsNoPosts": "Hali post yoki Reels yo‘q",

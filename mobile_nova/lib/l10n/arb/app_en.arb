@@ -233,6 +233,7 @@
   "analyticsAllTime": "Profile all time: {total} views · {unique} unique visitors in 30 days",
   "analyticsByDay": "Views by day",
   "analyticsTop": "Most viewed",
+  "reelCaptionMore": "more",
   "analyticsSeeAll": "See all ({count})",
   "analyticsNoPosts": "No posts or Reels yet",
   "analyticsReel": "Reels",

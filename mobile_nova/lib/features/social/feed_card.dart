@@ -163,32 +163,43 @@ class FeedCard extends ConsumerWidget {
             // `AspectRatio(4 / 3)` + `cover` turardi: tik rasm usti
             // va osti bilan kesilardi, kvadrat logotip esa cho'zilib
             // hoshiyasi chiqib ketardi.
-            AdaptiveMedia(
-              url: media,
-              isVideo: post.isVideo,
-              videoKey: ValueKey(post.id),
-              borderRadius: R.gentle,
-              // LENTADA VIDEO O'ZI BOSHLANMAYDI.
-              //
-              // Standart qiymat `true` edi, ya'ni ekranda beshta
-              // video post bo'lsa BESHTASI ham ochilardi: beshta
-              // dekoder, beshta tarmoq so'rovi va ketma-ket ovoz
-              // egaligini tortib olish. Ko'ringan narsa esa —
-              // eng oxirgisining ovozi.
-              //
-              // Endi odam bosadi. Trafik ham tejaladi: mobil
-              // internet qimmat, ko'rilmagan video uchun pul
-              // sarflash odamning roziligisiz bo'lardi.
-              autoPlayVideo: false,
-              tapToToggleVideo: true,
-              // Bosish — belgilarsiz to'liq ekran (Instagram).
-              fullscreenVideo: true,
-              // Dominant karta bo'lsa dangasalik shart emas — u
-              // baribir darhol ochiladi.
-              lazyVideo: activeVideo == null,
-              activeVideo: activeVideo,
-              // Burchakda 🔇/🔊 (egasi, 2026-10-05) — Reels bilan umumiy.
-              showMuteVideo: true,
+            // IKKI MARTA BOSIB LAYK — rasm postida (Instagram kabi,
+            // egasi 2026-10-05). Faqat yoqadi, o'chirmaydi. Video
+            // bosilganda to'liq ekran ochiladi — unga tegilmaydi.
+            _DoubleTapLike(
+              enabled: !post.isVideo,
+              onLike: () async {
+                if (like.liked) return;
+                reportIfFailed(
+                    await ref.read(postLikesProvider.notifier).toggle(post));
+              },
+              child: AdaptiveMedia(
+                url: media,
+                isVideo: post.isVideo,
+                videoKey: ValueKey(post.id),
+                borderRadius: R.gentle,
+                // LENTADA VIDEO O'ZI BOSHLANMAYDI.
+                //
+                // Standart qiymat `true` edi, ya'ni ekranda beshta
+                // video post bo'lsa BESHTASI ham ochilardi: beshta
+                // dekoder, beshta tarmoq so'rovi va ketma-ket ovoz
+                // egaligini tortib olish. Ko'ringan narsa esa —
+                // eng oxirgisining ovozi.
+                //
+                // Endi odam bosadi. Trafik ham tejaladi: mobil
+                // internet qimmat, ko'rilmagan video uchun pul
+                // sarflash odamning roziligisiz bo'lardi.
+                autoPlayVideo: false,
+                tapToToggleVideo: true,
+                // Bosish — belgilarsiz to'liq ekran (Instagram).
+                fullscreenVideo: true,
+                // Dominant karta bo'lsa dangasalik shart emas — u
+                // baribir darhol ochiladi.
+                lazyVideo: activeVideo == null,
+                activeVideo: activeVideo,
+                // Burchakda 🔇/🔊 (egasi, 2026-10-05) — Reels bilan umumiy.
+                showMuteVideo: true,
+              ),
             ),
           ],
           // Postdagi musiqa — bosilsa tinglash va «Shu musiqani ishlatish».
@@ -432,6 +443,65 @@ class _FeaturedBadge extends StatelessWidget {
           letterSpacing: .3,
           color: t.accent2,
         ),
+      ),
+    );
+  }
+}
+
+
+/// Rasm ustida ikki marta bosish → layk va qisqa yurak animatsiyasi.
+class _DoubleTapLike extends StatefulWidget {
+  const _DoubleTapLike({
+    required this.enabled,
+    required this.onLike,
+    required this.child,
+  });
+
+  final bool enabled;
+  final VoidCallback onLike;
+  final Widget child;
+
+  @override
+  State<_DoubleTapLike> createState() => _DoubleTapLikeState();
+}
+
+class _DoubleTapLikeState extends State<_DoubleTapLike> {
+  bool _burst = false;
+
+  void _go() {
+    widget.onLike();
+    setState(() => _burst = true);
+    Future<void>.delayed(const Duration(milliseconds: 650), () {
+      if (mounted) setState(() => _burst = false);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.enabled) return widget.child;
+    return GestureDetector(
+      key: const ValueKey('feed-double-like'),
+      onDoubleTap: _go,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          widget.child,
+          IgnorePointer(
+            child: AnimatedScale(
+              scale: _burst ? 1 : .4,
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutBack,
+              child: AnimatedOpacity(
+                opacity: _burst ? 1 : 0,
+                duration: const Duration(milliseconds: 180),
+                child: const Icon(Icons.favorite_rounded,
+                    size: 86,
+                    color: Colors.white,
+                    shadows: [Shadow(blurRadius: 18, color: Colors.black38)]),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

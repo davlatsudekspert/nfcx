@@ -103,7 +103,7 @@ final _reels = [
 ];
 
 Future<({ProviderContainer c, _Social social, _Profile profile})> _pump(
-    WidgetTester tester, FakeVideoPlatform video) async {
+    WidgetTester tester, FakeVideoPlatform video, {List<Post>? reels}) async {
   VideoPlayerPlatform.instance = video;
   tester.view.physicalSize = const Size(390 * 3, 844 * 3);
   tester.view.devicePixelRatio = 3;
@@ -116,7 +116,7 @@ Future<({ProviderContainer c, _Social social, _Profile profile})> _pump(
     socialRepositoryProvider.overrideWithValue(social),
     profileRepositoryProvider.overrideWithValue(profile),
     businessRepositoryProvider.overrideWithValue(_Biz()),
-    reelsProvider.overrideWith((ref) async => _reels),
+    reelsProvider.overrideWith((ref) async => reels ?? _reels),
     activeTabProvider.overrideWith((ref) => 3),
   ]);
   addTearDown(c.dispose);
@@ -422,5 +422,44 @@ void main() {
     expect(tester.element(find.byType(ReelsScreen)).dirty, isTrue);
     await settle(tester, frames: 4);
   });
-}
 
+  testWidgets('uzun izoh: "ko‘proq" bosilsa to‘liq ochiladi (1.1.1)',
+      (tester) async {
+    final long = List.filled(12, 'Bu juda uzun izoh matni').join(' ');
+    await _pump(tester, FakeVideoPlatform(), reels: [
+      Post(
+        id: 70,
+        code: 'PPP777',
+        authorName: 'Mashrabboy',
+        text: long,
+        mediaUrls: const ['https://nfcstore.uz/uploads/a.mp4'],
+        isVideo: true,
+      ),
+    ]);
+    expect(find.byKey(const ValueKey('reel-caption')), findsOneWidget);
+    expect(find.text('ko‘proq'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('reel-caption')));
+    await settle(tester, frames: 4);
+    expect(find.text('ko‘proq'), findsNothing,
+        reason: 'ochilgandan keyin to‘liq matn');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('progress chizig‘ini bosish — o‘sha joyga o‘tadi (1.1.1)',
+      (tester) async {
+    final v = FakeVideoPlatform();
+    await _pump(tester, v);
+    final zone = find.byKey(const ValueKey('reel-scrub'));
+    expect(zone, findsOneWidget);
+    final r = tester.getRect(zone);
+    await tester.tapAt(Offset(r.left + r.width * .5, r.center.dy));
+    // Tashqi "ikki marta bosish" tanib olgichi bir bosishni ~300 ms
+    // kutadi (Reels'dagi ikki marta bosib layk).
+    await tester.pump(const Duration(milliseconds: 400));
+    await settle(tester, frames: 3);
+    final id = v.playing.isNotEmpty ? v.playing.first : v.alive.first;
+    expect(v.positions[id], isNotNull, reason: 'seekTo chaqirilmadi');
+    expect(v.positions[id]! > Duration.zero, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+}

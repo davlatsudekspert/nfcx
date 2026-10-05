@@ -641,6 +641,9 @@ class LUz extends L {
   String get analyticsTop => 'Eng ko‘p ko‘rilganlar';
 
   @override
+  String get reelCaptionMore => 'ko‘proq';
+
+  @override
   String analyticsSeeAll(int count) {
     return 'Hammasini ko‘rish ($count)';
   }

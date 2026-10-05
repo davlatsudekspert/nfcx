@@ -494,16 +494,9 @@ class _TopBar extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Brend imzosi — Reels NFCSTORE'niki ekani bir qarashda.
-                Text(
-                  'NFCSTORE',
-                  style: AppType.eyebrow(
-                          color: context.tokens.goldOnDark(IdPlate.goldLight),
-                          size: 9)
-                      .copyWith(shadows: const [
-                    Shadow(color: Colors.black54, blurRadius: 8),
-                  ]),
-                ),
+                // Faqat "Reels" (egasi, 2026-10-05): ustidagi kichik
+                // "NFCSTORE" yozuvi har videoda ortiqcha edi — Asosiy
+                // ekrandagi kabi olib tashlandi.
                 Text(
                   l.navReels,
                   style: AppType.displayStyle(
@@ -583,6 +576,13 @@ class _ReelPageState extends ConsumerState<_ReelPage>
   AnimationController? _clock;
   VideoPlayerController? _music;
   bool _musicReady = false;
+
+  /// Uzun izoh ochiqmi ("…ko'proq" bosilgan) — Instagram kabi.
+  bool _captionOpen = false;
+
+  /// Progress chizig'i barmoq bilan surilmoqda.
+  bool _scrubbing = false;
+  bool _wasPlayingBeforeScrub = false;
 
   AnimationController get _photoClock => _clock ??= AnimationController(
         vsync: this,
@@ -1383,17 +1383,11 @@ class _ReelPageState extends ConsumerState<_ReelPage>
                 ],
                 if (p.text.isNotEmpty) ...[
                   const SizedBox(height: Gap.sm),
-                  Text(
-                    p.text,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontFamily: AppType.sans,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      height: 1.35,
-                      color: Colors.white,
-                    ),
+                  _ReelCaption(
+                    text: p.text,
+                    open: _captionOpen,
+                    onToggle: () =>
+                        setState(() => _captionOpen = !_captionOpen),
                   ),
                 ],
               ],
@@ -1441,7 +1435,7 @@ class _ReelPageState extends ConsumerState<_ReelPage>
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(2),
                     child: SizedBox(
-                      height: 2.5,
+                      height: _scrubbing ? 4 : 2.5,
                       child: VideoProgressIndicator(
                         c,
                         allowScrubbing: false,
@@ -1455,6 +1449,47 @@ class _ReelPageState extends ConsumerState<_ReelPage>
                     ),
                   ),
                 ),
+              ),
+            ),
+          // SURISH ZONASI — chiziq ingichka (2.5 px), barmoq uchun esa
+          // 16 px balandlikdagi ko'rinmas maydon (Instagram kabi:
+          // bosilgan yoki surilgan joyga o'tadi).
+          if (_ready && c != null && widget.visible && !_photo && !hide)
+            Positioned(
+              key: const ValueKey('reel-scrub'),
+              left: Gap.lg,
+              right: Gap.lg,
+              bottom: navH,
+              height: 16,
+              child: LayoutBuilder(
+                builder: (_, box) {
+                  void seekTo(double dx) {
+                    final d = c.value.duration;
+                    if (d <= Duration.zero || box.maxWidth <= 0) return;
+                    final f = (dx / box.maxWidth).clamp(0.0, 1.0);
+                    c.seekTo(d * f);
+                  }
+
+                  return GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTapUp: (d) => seekTo(d.localPosition.dx),
+                    onHorizontalDragStart: (d) {
+                      _wasPlayingBeforeScrub = c.value.isPlaying;
+                      c.pause();
+                      setState(() => _scrubbing = true);
+                      seekTo(d.localPosition.dx);
+                    },
+                    onHorizontalDragUpdate: (d) => seekTo(d.localPosition.dx),
+                    onHorizontalDragEnd: (_) {
+                      setState(() => _scrubbing = false);
+                      if (_wasPlayingBeforeScrub && widget.visible) c.play();
+                    },
+                    onHorizontalDragCancel: () {
+                      if (mounted) setState(() => _scrubbing = false);
+                      if (_wasPlayingBeforeScrub && widget.visible) c.play();
+                    },
+                  );
+                },
               ),
             ),
         ],
@@ -1742,5 +1777,68 @@ class ReelViewsLabel extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+
+/// Reels izohi: 3 qatordan uzun bo'lsa "…ko'proq", bosilsa to'liq
+/// (egasi, 2026-10-05: Instagram kabi). Juda uzun matn ekranning
+/// uchdan biridan oshmaydi — ichida aylantiriladi.
+class _ReelCaption extends StatelessWidget {
+  const _ReelCaption({
+    required this.text,
+    required this.open,
+    required this.onToggle,
+  });
+
+  final String text;
+  final bool open;
+  final VoidCallback onToggle;
+
+  static const _style = TextStyle(
+    fontFamily: AppType.sans,
+    fontSize: 13,
+    fontWeight: FontWeight.w500,
+    height: 1.35,
+    color: Colors.white,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context);
+    return LayoutBuilder(builder: (context, box) {
+      final tp = TextPainter(
+        text: TextSpan(text: text, style: _style),
+        maxLines: 3,
+        textDirection: Directionality.of(context),
+        textScaler: MediaQuery.textScalerOf(context),
+      )..layout(maxWidth: box.maxWidth);
+      final long = tp.didExceedMaxLines;
+      if (!long) return Text(text, style: _style);
+      return GestureDetector(
+        key: const ValueKey('reel-caption'),
+        behavior: HitTestBehavior.opaque,
+        onTap: onToggle,
+        child: open
+            ? ConstrainedBox(
+                constraints: BoxConstraints(
+                    maxHeight: MediaQuery.sizeOf(context).height * .33),
+                child: SingleChildScrollView(child: Text(text, style: _style)),
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(text,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: _style),
+                  Text(l.reelCaptionMore,
+                      style: _style.copyWith(
+                          color: Colors.white70, fontWeight: FontWeight.w700)),
+                ],
+              ),
+      );
+    });
   }
 }

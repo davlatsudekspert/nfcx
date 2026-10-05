@@ -1311,6 +1311,12 @@ abstract class L {
   /// **'Eng ko‘p ko‘rilganlar'**
   String get analyticsTop;
 
+  /// No description provided for @reelCaptionMore.
+  ///
+  /// In uz, this message translates to:
+  /// **'ko‘proq'**
+  String get reelCaptionMore;
+
   /// No description provided for @analyticsSeeAll.
   ///
   /// In uz, this message translates to:

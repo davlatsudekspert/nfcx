@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nfcstore_nova/core/utils/result.dart';
 import 'package:nfcstore_nova/data/models/models.dart';
+import 'package:nfcstore_nova/data/repositories/social_repository.dart';
+import 'package:nfcstore_nova/features/social/feed_card.dart';
 import 'package:nfcstore_nova/features/settings/analytics_screen.dart';
 import 'package:nfcstore_nova/features/social/media_sound.dart';
 import 'package:nfcstore_nova/features/social/reels_screen.dart';
@@ -10,6 +13,16 @@ import 'helpers.dart';
 
 /// 1.1.1 (egasi, 2026-10-05): lentada ovoz tugmasi, analitikada top-5
 /// va "Hammasini ko'rish", kunlik grafik butun davrga to'ldiriladi.
+class _LikeSpy extends FakeSocialRepository {
+  int likes = 0;
+  @override
+  Future<Result<({bool liked, int count})>> like(int id,
+      {bool company = false}) async {
+    likes++;
+    return const Ok((liked: true, count: 1));
+  }
+}
+
 void main() {
   group('kunlik grafik', () {
     test('ko‘rishsiz kunlar 0 bilan to‘ldiriladi (ikki qalin ustun emas)', () {
@@ -78,5 +91,41 @@ void main() {
     await tester.pump();
     expect(c.read(reelsMutedProvider), isTrue);
     expect(find.byIcon(Icons.volume_off_rounded), findsOneWidget);
+  });
+
+  testWidgets('lenta: rasmni ikki marta bosish — layk, qayta bosish o‘chirmaydi',
+      (tester) async {
+    final spy = _LikeSpy();
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        ...await testOverrides(),
+        socialRepositoryProvider.overrideWithValue(spy),
+      ],
+      child: wrapScreen(const Scaffold(body: SingleChildScrollView(
+        child: FeedCard(
+          post: Post(
+            id: 31,
+            code: 'PPP777',
+            authorName: 'Mashrabboy',
+            mediaUrls: ['https://nfcstore.uz/uploads/x.jpg'],
+          ),
+        ),
+      ))),
+    ));
+    await tester.pump();
+    final pic = find.byKey(const ValueKey('feed-double-like'));
+    expect(pic, findsOneWidget);
+    await tester.tap(pic);
+    await tester.pump(const Duration(milliseconds: 60));
+    await tester.tap(pic);
+    await tester.pump(const Duration(milliseconds: 700));
+    expect(spy.likes, 1);
+    // Allaqachon yoqilgan — ikki marta bosish uni O'CHIRMAYDI.
+    await tester.tap(pic);
+    await tester.pump(const Duration(milliseconds: 60));
+    await tester.tap(pic);
+    await tester.pump(const Duration(milliseconds: 700));
+    expect(spy.likes, 1);
+    expect(tester.takeException(), isNull);
   });
 }
