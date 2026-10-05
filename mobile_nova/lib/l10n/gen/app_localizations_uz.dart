@@ -1171,6 +1171,11 @@ class LUz extends L {
   String get musicFailed => 'Qo‘shiqni ochib bo‘lmadi';
 
   @override
+  String musicOpensIn(String service) {
+    return '$service ilovasida ochiladi';
+  }
+
+  @override
   String get rulesTitle => 'Joylashdan oldin o‘qing';
 
   @override

@@ -1168,6 +1168,11 @@ class LEn extends L {
   String get musicFailed => 'Could not open the track';
 
   @override
+  String musicOpensIn(String service) {
+    return 'Opens in $service';
+  }
+
+  @override
   String get rulesTitle => 'Read before you publish';
 
   @override

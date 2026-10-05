@@ -1164,6 +1164,11 @@ class LRu extends L {
   String get musicFailed => 'Не удалось открыть трек';
 
   @override
+  String musicOpensIn(String service) {
+    return 'Откроется в $service';
+  }
+
+  @override
   String get rulesTitle => 'Прочитайте перед публикацией';
 
   @override

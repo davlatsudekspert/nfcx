@@ -2331,6 +2331,12 @@ abstract class L {
   /// **'Qo‘shiqni ochib bo‘lmadi'**
   String get musicFailed;
 
+  /// No description provided for @musicOpensIn.
+  ///
+  /// In uz, this message translates to:
+  /// **'{service} ilovasida ochiladi'**
+  String musicOpensIn(String service);
+
   /// No description provided for @rulesTitle.
   ///
   /// In uz, this message translates to:

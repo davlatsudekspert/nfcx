@@ -12,6 +12,8 @@ import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../design/theme/typography.dart';
 import '../social/media_frame.dart' show mediaImage;
+import '../../core/utils/external_link.dart';
+import 'music_source.dart';
 
 /// Profil musiqasi.
 ///
@@ -373,6 +375,7 @@ class MusicPlayer extends StateNotifier<MusicState>
   }
 
   Future<void> toggle(String url) async {
+    if (MusicSource.parse(url).isExternal) return play(url);
     if (state.url == url && _c != null && !state.failed) {
       if (state.playing) {
         await pause();
@@ -388,6 +391,15 @@ class MusicPlayer extends StateNotifier<MusicState>
 
   Future<void> play(String url) async {
     await _dispose();
+    // YouTube / Yandex Music havolasi — audio fayl emas, sahifa.
+    // `video_player` uni ocha olmaydi; o'sha xizmatning o'z
+    // ilovasida (yoki brauzerda) ochiladi.
+    final src = MusicSource.parse(url);
+    if (src.isExternal) {
+      state = MusicState(url: url);
+      await openLink(src.url);
+      return;
+    }
     state = MusicState(url: url, loading: true);
 
     final c = VideoPlayerController.networkUrl(Uri.parse(url));
@@ -438,7 +450,13 @@ class MusicPlayer extends StateNotifier<MusicState>
     // (foydalanuvchi o'zi boshlagan ijroning davomi), bo'lmasa
     // egalik bo'shatiladi.
     if (v.duration > Duration.zero && v.position >= v.duration) {
-      if (_queue.length > 1 && !_advancing) {
+      // Tashqi havolaga (YouTube/Yandex) o'z-o'zidan o'tilmaydi —
+      // boshqa ilovani faqat foydalanuvchi bosib ochadi.
+      final nextUrl =
+          _queue.isEmpty ? '' : _queue[(_index + 1) % _queue.length];
+      if (_queue.length > 1 &&
+          !_advancing &&
+          !MusicSource.parse(nextUrl).isExternal) {
         _advancing = true;
         next().whenComplete(() => _advancing = false);
       } else {
@@ -536,6 +554,10 @@ Future<void> showMusicSheet(
 /// va ijrochi umuman ko'rsatilmaydi: mavjud bo'lmagan ma'lumot
 /// to'qib chiqarilmaydi.
 String musicTitleOf(String url) {
+  // YouTube/Yandex havolasining "fayl nomi" — video ID (lKhxTeC2h9s),
+  // odamga hech narsa demaydi. Xizmat nomi ko'rsatiladi.
+  final src = MusicSource.parse(url);
+  if (src.isExternal) return src.serviceName;
   var name = Uri.tryParse(url)?.pathSegments.lastOrNull ?? '';
   if (name.isEmpty) name = url;
   final dot = name.lastIndexOf('.');
@@ -588,6 +610,8 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
     final total = active ? st.duration.inMilliseconds : 0;
     final pos = active ? st.position : Duration.zero;
     final many = widget.urls.length > 1;
+    final currentSrc = MusicSource.parse(current);
+    final external = currentSrc.isExternal;
 
     Widget round(IconData icon, String tip, VoidCallback? onTap,
             {Key? key}) =>
@@ -642,14 +666,22 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
               style: AppType.eyebrow(color: t.labelInk),
             ),
             const SizedBox(height: 4),
-            Text(
-              musicTitleOf(current),
+            _TrackTitle(
+              url: current,
+              fallback: musicTitleOf(current),
               key: const ValueKey('music-title'),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
               style: AppType.displayStyle(color: t.text1, size: 26),
             ),
+            if (external) ...[
+              const SizedBox(height: Gap.sm),
+              Text(l.musicOpensIn(currentSrc.serviceName),
+                  key: const ValueKey('music-external-hint'),
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall!
+                      .copyWith(color: t.text2)),
+            ],
             if (st.failed && active) ...[
               const SizedBox(height: Gap.sm),
               Text(l.musicFailed,
@@ -659,7 +691,8 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
                       .copyWith(color: t.error)),
             ],
             const SizedBox(height: Gap.md),
-            // PROGRESS + VAQT
+            // PROGRESS + VAQT — faqat ilova ichida o'ynaydigan faylda.
+            if (!external)
             SliderTheme(
               data: SliderThemeData(
                 trackHeight: 3,
@@ -680,6 +713,7 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
                     : null,
               ),
             ),
+            if (!external)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 6),
               child: Row(
@@ -720,10 +754,12 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
                                 strokeWidth: 2, color: t.bg1),
                           )
                         : Icon(
-                            playing
-                                ? Icons.pause_rounded
-                                : Icons.play_arrow_rounded,
-                            size: 34,
+                            external
+                                ? Icons.open_in_new_rounded
+                                : playing
+                                    ? Icons.pause_rounded
+                                    : Icons.play_arrow_rounded,
+                            size: external ? 28 : 34,
                             color: t.bg1,
                             semanticLabel:
                                 playing ? l.musicPause : l.musicPlay,
@@ -753,15 +789,18 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
                           width: 22,
                           child: url == st.url && st.playing
                               ? _Equalizer(size: 14, color: t.labelInk)
-                              : Icon(Icons.music_note_rounded,
-                                  size: 16, color: t.text3),
+                              : Icon(
+                                  MusicSource.parse(url).isExternal
+                                      ? Icons.open_in_new_rounded
+                                      : Icons.music_note_rounded,
+                                  size: 16,
+                                  color: t.text3),
                         ),
                         const SizedBox(width: Gap.md),
                         Expanded(
-                          child: Text(
-                            musicTitleOf(url),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          child: _TrackTitle(
+                            url: url,
+                            fallback: musicTitleOf(url),
                             style: TextStyle(
                               fontFamily: AppType.sans,
                               fontSize: 14,
@@ -780,6 +819,39 @@ class _MusicSheetState extends ConsumerState<_MusicSheet> {
           ],
         ),
       ),
+    );
+  }
+}
+
+
+/// Qo'shiq nomi. YouTube havolasida rasmiy sarlavha so'raladi;
+/// kelguncha (yoki kelmasa) [fallback] — xizmat nomi yoki fayl nomi.
+class _TrackTitle extends StatelessWidget {
+  const _TrackTitle({
+    super.key,
+    required this.url,
+    required this.fallback,
+    required this.style,
+    this.textAlign,
+  });
+
+  final String url;
+  final String fallback;
+  final TextStyle style;
+  final TextAlign? textAlign;
+
+  @override
+  Widget build(BuildContext context) {
+    Text text(String v) => Text(v,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: textAlign,
+        style: style);
+    final src = MusicSource.parse(url);
+    if (src.kind != MusicKind.youtube) return text(fallback);
+    return FutureBuilder<String?>(
+      future: youtubeTitle(src.id),
+      builder: (_, snap) => text(snap.data ?? fallback),
     );
   }
 }
