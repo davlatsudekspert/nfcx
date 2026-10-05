@@ -88,7 +88,7 @@ class _FeaturedScreenState extends ConsumerState<FeaturedScreen> {
                   body: l.featuredPendingHint,
                 ),
                 const SizedBox(height: Gap.md),
-                StoreNotice(text: l.storeBuyOnSiteId),
+                StoreNotice(text: l.storeBuyOnSiteAd),
               ] else ...[
                 // PAKETLAR VA NARXLAR KO'RINADI — xarid esa saytda.
                 //
@@ -103,7 +103,7 @@ class _FeaturedScreenState extends ConsumerState<FeaturedScreen> {
                     child: _PackageTile(pack: p),
                   ),
                 const SizedBox(height: Gap.md),
-                StoreNotice(text: l.storeBuyOnSiteId),
+                StoreNotice(text: l.storeBuyOnSiteAd),
               ],
 
               if (_error.isNotEmpty) ...[

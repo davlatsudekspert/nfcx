@@ -754,6 +754,7 @@
   "commentReply": "Reply",
   "commentReplyingTo": "Replying to {name}",
   "storeBuyOnSiteId": "NFC ID purchases are completed on the website:",
+  "storeBuyOnSiteAd": "Post promotion is purchased on the website:",
   "storeBuyOnSitePremium": "Premium is purchased on the website:",
   "storeBuyOnSitePhysical": "Orders are placed on the website:",
   "themeMono": "Mono",

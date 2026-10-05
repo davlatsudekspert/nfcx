@@ -3747,6 +3747,12 @@ abstract class L {
   /// **'NFC ID xaridi saytda rasmiylashtiriladi:'**
   String get storeBuyOnSiteId;
 
+  /// No description provided for @storeBuyOnSiteAd.
+  ///
+  /// In uz, this message translates to:
+  /// **'Reklama (postni ko‘tarish) saytda rasmiylashtiriladi:'**
+  String get storeBuyOnSiteAd;
+
   /// No description provided for @storeBuyOnSitePremium.
   ///
   /// In uz, this message translates to:

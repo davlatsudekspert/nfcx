@@ -805,6 +805,7 @@
     }
   },
   "storeBuyOnSiteId": "NFC ID xaridi saytda rasmiylashtiriladi:",
+  "storeBuyOnSiteAd": "Reklama (postni ko‘tarish) saytda rasmiylashtiriladi:",
   "storeBuyOnSitePremium": "Premium obunani saytdan olasiz:",
   "storeBuyOnSitePhysical": "Buyurtma saytda rasmiylashtiriladi:",
   "themeMono": "Oq-qora",

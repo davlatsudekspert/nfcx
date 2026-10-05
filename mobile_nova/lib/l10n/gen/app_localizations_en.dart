@@ -1937,6 +1937,9 @@ class LEn extends L {
       'NFC ID purchases are completed on the website:';
 
   @override
+  String get storeBuyOnSiteAd => 'Post promotion is purchased on the website:';
+
+  @override
   String get storeBuyOnSitePremium => 'Premium is purchased on the website:';
 
   @override

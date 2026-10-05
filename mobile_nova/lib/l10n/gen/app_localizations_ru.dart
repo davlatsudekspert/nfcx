@@ -1929,6 +1929,9 @@ class LRu extends L {
   String get storeBuyOnSiteId => 'Покупка NFC ID оформляется на сайте:';
 
   @override
+  String get storeBuyOnSiteAd => 'Продвижение поста оформляется на сайте:';
+
+  @override
   String get storeBuyOnSitePremium => 'Premium оформляется на сайте:';
 
   @override

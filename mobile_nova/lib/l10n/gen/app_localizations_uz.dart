@@ -1941,6 +1941,10 @@ class LUz extends L {
   String get storeBuyOnSiteId => 'NFC ID xaridi saytda rasmiylashtiriladi:';
 
   @override
+  String get storeBuyOnSiteAd =>
+      'Reklama (postni ko‘tarish) saytda rasmiylashtiriladi:';
+
+  @override
   String get storeBuyOnSitePremium => 'Premium obunani saytdan olasiz:';
 
   @override
