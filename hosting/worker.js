@@ -3373,7 +3373,10 @@ async function getCurrentUser(request, env) {
   const token = cookieToken || (bearer ? bearer[1].trim() : null);
   if (!token) return null;
   // Tozalash har so'rovda emas — ~1/50 so'rovda (sessions(expires_at) indeksi yo'q edi).
-  if (Math.random() < 0.02) await env.DB.prepare(`DELETE FROM sessions WHERE expires_at < ?`).bind(nowTs()).run().catch(() => {});
+  // KUTILMAYDI (2026-10-05, tezlik): tozalash javobga ta'sir qilmaydi,
+  // lekin `await` bilan u har 50-so'rovga bitta qo'shimcha borib-kelish
+  // qo'shardi. Endi u quyidagi sessiya SELECT'i bilan bir paketda ketadi.
+  if (Math.random() < 0.02) env.DB.prepare(`DELETE FROM sessions WHERE expires_at < ?`).bind(nowTs()).run().catch(() => {});
   // Token SHA-256 bilan saqlanadi (admin_sessions kabi). O'tish davri: eski xom
   // tokenli sessiyalar ham qabul qilinadi va darhol hash'ga ko'chiriladi.
   const tokenHash = await sha256Hex(token);
@@ -6499,9 +6502,17 @@ async function recordsApi(request, env, url) {
 
     // ── ISTORYA (shaxsiy profil) ──────────────────────────────────────
     if (action === 'stories' && request.method === 'GET') {
-      if (await ownerDeletedD1(env, await getRecordOwner(env, code))) return json({ stories: [] });
-      const viewer = await getCurrentUser(request, env).catch(() => null);
-      return json({ stories: await listStoriesD1(env, 'card', code, viewer ? viewer.id : null) });
+      // Egasi tekshiruvi va ro'yxat PARALLEL (2026-10-05, tezlik):
+      // ilgari egasi → o'chirilganmi → sessiya → ro'yxat ketma-ket edi,
+      // ya'ni UZ bazasigacha 4 ta to'liq borib-kelish. Natija o'zgarmaydi:
+      // egasi o'chirilgan bo'lsa ro'yxat tashlab yuboriladi.
+      const viewerP = getCurrentUser(request, env).catch(() => null);
+      const [deletedOwner, stories] = await Promise.all([
+        ownerDeletedByCodeD1(env, code).catch(() => false),
+        viewerP.then((viewer) => listStoriesD1(env, 'card', code, viewer ? viewer.id : null)),
+      ]);
+      if (deletedOwner) return json({ stories: [] });
+      return json({ stories });
     }
 
     if (action === 'stories' && request.method === 'POST') {
@@ -7587,6 +7598,40 @@ async function serveUpload(request, env, url, ctx) {
         return out;
       }
     } catch { /* kesh o'qilmasa — oddiy yo'l */ }
+  }
+  // RASM KESHDA YO'Q — BITTA O'QISH (2026-10-05, tezlik tahlili).
+  //
+  // Ilgari: avval `head` (Toshkentdagi omborga bitta borib-kelish), keyin
+  // `get` (yana bitta), keyin butun fayl xotiraga yig'ilib keshga
+  // yozilguncha odam BIRINCHI baytni ham olmasdi. Begona profil to'ridagi
+  // rasmlar ko'pincha shu yo'ldan keladi. Endi bitta `get`: oqim ikkiga
+  // bo'linadi — biri odamga darhol, ikkinchisi fonda (`waitUntil`) keshga.
+  // Shartli (If-None-Match) so'rov avvalgidek `head` yo'lidan — 304.
+  if (edgeKey && ctx?.waitUntil && !request.headers.get('if-none-match')) {
+    const obj = await env.UPLOADS.get(key);
+    if (!obj) return null;
+    const headers = buildUploadResponseHeaders(obj, key);
+    headers.set('x-nfc-edge', 'miss');
+    headers.set('x-nfc-store', obj.nfcStore || (env.UZ_STORE_ACTIVE ? 'uz' : 'r2'));
+    const isImage = String(headers.get('content-type') || '').startsWith('image/');
+    if (typeof obj.body?.tee === 'function' && Number(obj.size) > 0) {
+      headers.set('content-length', String(obj.size));
+      if (!isImage || obj.size > UPLOAD_EDGE_MAX_BYTES) return new Response(obj.body, { status: 200, headers });
+      const [mine, edge] = obj.body.tee();
+      ctx.waitUntil(caches.default.put(edgeKey, new Response(edge, { status: 200, headers: new Headers(headers) }))
+        .catch(() => { /* kesh yozilmasa ham rasm beriladi */ }));
+      return new Response(mine, { status: 200, headers });
+    }
+    // Oqimsiz tana (sinov muhiti) — hajm baytlardan.
+    const buf = typeof obj.arrayBuffer === 'function'
+      ? await obj.arrayBuffer() : await new Response(obj.body).arrayBuffer();
+    headers.set('content-length', String(buf.byteLength));
+    if (isImage && buf.byteLength <= UPLOAD_EDGE_MAX_BYTES) {
+      try {
+        await caches.default.put(edgeKey, new Response(buf, { status: 200, headers }));
+      } catch { /* kesh yozilmasa ham rasm beriladi */ }
+    }
+    return new Response(buf, { status: 200, headers });
   }
   const head = await env.UPLOADS.head(key);
   if (!head) return null;
@@ -11236,9 +11281,17 @@ async function followApi(request, env, url) {
   const statsMatch = path.match(/^\/api\/follow-stats\/([A-Za-z0-9]{1,32})$/);
   if (statsMatch && request.method === 'GET') {
     const code = decodeURIComponent(statsMatch[1]).toUpperCase();
-    const user = await getCurrentUser(request, env);
-
-    const ownerId = await getRecordOwner(env, code);
+    // Sessiya, karta egasi va kompaniya BIR to'lqinda (2026-10-05,
+    // tezlik): ilgari uchalasi ketma-ket — UZ bazasigacha har biri
+    // bitta to'liq borib-kelish edi. Kompaniya so'rovi arzon va
+    // shaxsiy profilda ham shu so'rov ichida ketadi.
+    const [user, ownerId, coRow] = await Promise.all([
+      getCurrentUser(request, env),
+      getRecordOwner(env, code),
+      env.DB.prepare(
+        `SELECT company_id FROM companies WHERE company_id = ? AND status = 'active'`
+      ).bind(code).first().catch(() => null),
+    ]);
     if (ownerId) return json(await getFollowStatsRow(env, ownerId, user?.id));
 
     // KOMPANIYA OBUNACHILARI — ALOHIDA JADVAL.
@@ -11258,10 +11311,7 @@ async function followApi(request, env, url) {
     //
     // Kompaniya kimgadir obuna bo'lolmaydi (faqat odam obuna
     // bo'ladi), shuning uchun `following` har doim 0.
-    const co = await env.DB.prepare(
-      `SELECT company_id FROM companies WHERE company_id = ? AND status = 'active'`
-    ).bind(code).first().catch(() => null);
-    if (!co) return json({ followers: 0, following: 0, isFollowing: false });
+    if (!coRow) return json({ followers: 0, following: 0, isFollowing: false });
 
     const [cnt, mine] = await Promise.all([
       env.DB.prepare(`SELECT COUNT(*) AS n FROM company_follows cf WHERE cf.company_id = ? AND ${visibleUserSql('cf.user_id')}`)

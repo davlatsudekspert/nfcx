@@ -123,4 +123,38 @@ check('5) keshda yo‘q', cache.has('https://nfcstore.uz/uploads/yoq.png'), fals
 r = await get('/uploads/..%2Fsecret.png');
 check('6) bad_path', r.status, 400);
 
+// 7) Haqiqiy ombor kabi OQIM (R2 / Garage): keshda yo'q rasm BITTA
+// o'qish bilan beriladi — `head` chaqirilmaydi (2026-10-05, tezlik) —
+// va odam javobni keshga yozilishini kutmasdan oladi; kesh fonda.
+cache.clear();
+pending.length = 0;
+let heads = 0;
+const realHead = env.UPLOADS.head.bind(env.UPLOADS);
+env.UPLOADS.head = async (...a) => { heads++; return realHead(...a); };
+const realGet = env.UPLOADS.get;
+env.UPLOADS.get = async (key, opts) => {
+  const o = await realGet(key, opts);
+  // UZ adapteri (UZ_ADAPTER_TEST) allaqachon oqim va hajm beradi.
+  if (!o || typeof o.body?.tee === 'function') return o;
+  const bytes = o.body;
+  return { ...o, size: bytes.length, body: new Response(bytes).body };
+};
+gets = 0;
+r = await get('/uploads/abc123.png');
+check('7) 200', r.status, 200);
+check('7) baytlar to‘g‘ri', Array.from(r.bytes), Array.from(png));
+check('7) head chaqirilmadi', heads, 0);
+check('7) content-length', r.headers.get('content-length'), String(png.length));
+check('7) miss belgisi', r.headers.get('x-nfc-edge'), 'miss');
+check('7) kesh FONDA yoziladi (waitUntil)', pending.length, 1);
+await settle();
+check('7) keshdagi baytlar asl', Array.from(cache.get('https://nfcstore.uz/uploads/abc123.png')?.bytes || []), Array.from(png));
+check('7) keshda content-type', cache.get('https://nfcstore.uz/uploads/abc123.png')?.headers.get('content-type'), 'image/png');
+r = await get('/uploads/yoq2.png');
+check('7) yo‘q rasm 404', r.status, 404);
+await settle();
+check('7) yo‘q rasm keshda yo‘q', cache.has('https://nfcstore.uz/uploads/yoq2.png'), false);
+env.UPLOADS.get = realGet;
+env.UPLOADS.head = realHead;
+
 done();
