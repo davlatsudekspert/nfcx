@@ -13,8 +13,7 @@ const j = async (pathname, init) => {
   let body = null; try { body = await r.json(); } catch { body = null; }
   return { status: r.status, body };
 };
-// Yangi qo'shiq faqat o'zimizga yuklangan fayl (2026-10-05).
-const tracks = (n) => Array.from({ length: n }, (_, i) => `/uploads/song${i + 1}.mp3`);
+const tracks = (n) => Array.from({ length: n }, (_, i) => `https://cdn.example.com/song${i + 1}.mp3`);
 
 // ═══ 1. Frontend konstantalari ═══
 {
@@ -56,18 +55,11 @@ const tracks = (n) => Array.from({ length: n }, (_, i) => `/uploads/song${i + 1}
   await env.DB.prepare(`UPDATE users SET is_premium = 0 WHERE id = 1`).run();
 }
 
-// ═══ 5. Yangi qo'shiq FAQAT FAYLDAN; eski havola saqlanib qoladi ═══
+// ═══ 5. Aralash pleylist (audio + YouTube) saqlanadi ═══
 {
-  const yt = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
-  // Yangi YouTube / begona mp3 havolasi qabul qilinmaydi, fayllar tartibda qoladi.
-  const r = await j('/api/records/VIP001', { method: 'PUT', cookie: cookie.user,
-    json: { name: 'M', musicUrls: ['/uploads/a.mp3', yt, 'https://cdn.example.com/b.ogg', 'https://nfcstore.uz/uploads/c.m4a'] } });
-  check('new external links are dropped, uploads kept in order', r.body?.musicUrls, ['/uploads/a.mp3', 'https://nfcstore.uz/uploads/c.m4a']);
-  // Profilda AVVALDAN turgan havola keyingi saqlashda yo'qolmaydi.
-  await env.DB.prepare(`UPDATE cards SET music_url = ? WHERE code = 'VIP001'`).bind(JSON.stringify([yt, '/uploads/a.mp3'])).run();
-  const k = await j('/api/records/VIP001', { method: 'PUT', cookie: cookie.user,
-    json: { name: 'M', musicUrls: [yt, '/uploads/a.mp3', '/uploads/new.mp3'] } });
-  check('an existing YouTube link survives a save', k.body?.musicUrls, [yt, '/uploads/a.mp3', '/uploads/new.mp3']);
+  const mixed = ['https://cdn.example.com/a.mp3', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'https://cdn.example.com/b.ogg'];
+  const r = await j('/api/records/VIP001', { method: 'PUT', cookie: cookie.user, json: { name: 'M', musicUrls: mixed } });
+  check('a mixed audio + YouTube playlist is stored in order', r.body?.musicUrls, mixed);
 }
 
 // ═══ 6. Boshqa foydalanuvchi tegishli emas ═══

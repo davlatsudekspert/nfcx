@@ -4118,12 +4118,6 @@ function recSafeUrl(v) {
   if (!s) return '';
   try { const u = new URL(s); return u.protocol === 'http:' || u.protocol === 'https:' ? s : ''; } catch { return ''; }
 }
-// O'zimizga yuklangan fayl: nisbiy `/uploads/...` yoki sayt domenidagi
-// to'liq manzil (ilova `mediaUrl()` bilan to'liq manzil yuboradi).
-function isOwnUploadUrl(u) {
-  return typeof u === 'string'
-    && (u.startsWith('/uploads/') || /^https:\/\/(www\.)?nfcstore\.uz\/uploads\//i.test(u));
-}
 function uploadOrSafeUrl(v) {
   const external = recSafeUrl(v);
   if (external) return external;
@@ -5823,15 +5817,8 @@ function validateRecordBody(body, opts = {}) {
   // Limit foydalanuvchining premium holatiga qarab (oddiy 5 / premium 10).
   // Chaqiruvchi bermasa — eng qat'iy (oddiy) limit qo'llanadi.
   const musicMax = Number.isFinite(opts.musicMax) ? opts.musicMax : MUSIC_LIMIT_FREE_D1;
-  // YANGI QO'SHIQ FAQAT FAYLDAN (egasi, 2026-10-05): o'zimizga
-  // yuklangan fayl (/uploads/...) qabul qilinadi. YouTube/Yandex yoki
-  // boshqa tashqi havola faqat YOZUVDA AVVALDAN BOR bo'lsa qoladi
-  // (`opts.prevMusic`) — eski profillar buzilmaydi, yangisi qo'shilmaydi.
-  const prevMusic = new Set(Array.isArray(opts.prevMusic) ? opts.prevMusic : []);
   const musicUrls = (Array.isArray(body.musicUrls) ? body.musicUrls : (body.musicUrl ? [body.musicUrl] : []))
-    .map((u) => uploadOrSafeUrl(u)).filter(Boolean)
-    .filter((u) => isOwnUploadUrl(u) || prevMusic.has(u))
-    .slice(0, musicMax);
+    .map((u) => uploadOrSafeUrl(u)).filter(Boolean).slice(0, musicMax);
   const record = {
     name, role: cleanStr(body.role, 100), avatarUrl: uploadOrSafeUrl(body.avatarUrl), bgUrl: uploadOrSafeUrl(body.bgUrl),
     bgPattern: body.bgPattern !== false, accentColor: /^#[0-9a-fA-F]{6}$/.test(String(body.accentColor || '').trim()) ? body.accentColor.trim() : '',
@@ -6579,11 +6566,7 @@ async function recordsApi(request, env, url) {
       const body = await request.json().catch(() => ({}));
       // Musiqa limiti FOYDALANUVCHINING premium holatiga bog'liq:
       // oddiy 5 ta, Premium 10 ta (NFC ID darajasiga bog'liq emas).
-      const prevRow = await env.DB.prepare(`SELECT music_url FROM cards WHERE code = ?`).bind(code).first().catch(() => null);
-      const { record, error } = validateRecordBody(body, {
-        musicMax: musicLimitD1(!!user.isPremium),
-        prevMusic: parseMusicUrls(prevRow?.music_url),
-      });
+      const { record, error } = validateRecordBody(body, { musicMax: musicLimitD1(!!user.isPremium) });
       if (error) return json({ error }, 422);
       // KOMPANIYA EGALIGI — SERVERDA. Aks holda istalgan odam profiliga
       // begona brendni "o'zimniki" qilib biriktirib olardi. Faqat

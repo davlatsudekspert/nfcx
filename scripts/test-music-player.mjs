@@ -18,8 +18,7 @@ const j = async (pathname, init) => {
   let body = null; try { body = await r.json(); } catch { body = null; }
   return { status: r.status, body };
 };
-// Yangi qo'shiq faqat o'zimizga yuklangan fayl (2026-10-05).
-const tracks = (n) => Array.from({ length: n }, (_, i) => `/uploads/song${i + 1}.mp3`);
+const tracks = (n) => Array.from({ length: n }, (_, i) => `https://cdn.example.com/uploads/song${i + 1}.mp3`);
 
 // ═══ 1. MANBA TAHLILI — YouTube / audio / Yandex ═══
 {
@@ -55,10 +54,8 @@ const tracks = (n) => Array.from({ length: n }, (_, i) => `/uploads/song${i + 1}
   check('Premium foydalanuvchi 10 tagacha', p.body?.musicUrls?.length, musicLimit(true));
 
   // Aralash pleylist (YouTube + audio) tartibda saqlanadi — pleer shu
-  // ro'yxat bo'ylab avtomatik o'tadi. Havolalar profilda AVVALDAN bor
-  // (yangi havola qo'shib bo'lmaydi, eskisi esa saqlanadi).
-  const mixed = ['https://www.youtube.com/watch?v=dQw4w9WgXcQ', '/uploads/b.mp3', 'https://music.yandex.ru/album/1/track/2'];
-  await env.DB.prepare(`UPDATE cards SET music_url = ? WHERE code = 'VIP001'`).bind(JSON.stringify(mixed)).run();
+  // ro'yxat bo'ylab avtomatik o'tadi.
+  const mixed = ['https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'https://cdn.example.com/uploads/b.mp3', 'https://music.yandex.ru/album/1/track/2'];
   const m = await j('/api/records/VIP001', { method: 'PUT', cookie: cookie.user, json: { name: 'M', musicUrls: mixed } });
   check('aralash pleylist tartibda saqlanadi', m.body?.musicUrls, mixed);
   check('...va har biri to‘g‘ri manba sifatida tahlil qilinadi',
