@@ -35,6 +35,7 @@ import { ensureNewsSeed } from './api/news-seed.js';
 import { RESERVED_CODES, isReservedCode } from './api/reserved-codes.js';
 import { idQuarantined, notQuarantinedSql, purgeAfterMs, runScheduledPurge } from './api/account-purge.js';
 import { recordAppOpen } from './api/app-usage.js';
+import { timedDb, newTiming, summarizeTiming, withTimingHeaders, handleSpeedDiag, TEZLIK_HTML } from './speed-diag.js';
 import { archiveStmt, ensureArchiveTable, urlArchived } from './api/content-archive.js';
 import { moderateImage, moderateVideo, moderationEnabled, logBlockedUpload } from './api/image-moderation.js';
 
@@ -11493,6 +11494,21 @@ export default {
     // avvalgidek D1/R2 da qoladi (o'tishdan oldin jonli muhitda tekshirish).
     const uzForce = request.headers.get('x-uz-force') === '1' && await uzMaintenanceBypass(request, env);
     env = withUzStores(uzForce ? { ...env, UZ_STORE: 'on' } : env);
+    // TEZLIK DIAGNOSTIKASI (hosting/speed-diag.js) — faqat `x-nfc-timing: 1`
+    // sarlavhasi bilan: javobga server/baza vaqti va Cloudflare nuqtasi
+    // qo'shiladi. Oddiy so'rovlar bu yerdan o'zgarishsiz o'tadi.
+    const timing = request.headers.get('x-nfc-timing') === '1' && env.DB ? newTiming() : null;
+    if (timing) env = { ...env, DB: timedDb(env.DB, timing) };
+    const timed = (res) => (timing ? withTimingHeaders(res, summarizeTiming(timing), request.cf?.colo) : res);
+    if (url.pathname === '/tezlik' && ['GET', 'HEAD'].includes(request.method)) {
+      return withSecurityHeaders(new Response(TEZLIK_HTML, {
+        headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
+      }), url);
+    }
+    if (url.pathname === '/api/diag/speed' && request.method === 'GET') {
+      const diag = await handleSpeedDiag(request, env).catch((e) => json({ error: String(e?.message || e).slice(0, 120) }, 500));
+      return timed(withSecurityHeaders(diag, url, env.UZ_STORE_ACTIVE ? 'uz' : ''));
+    }
     // Ko'chirish tekshiruvi: qaysi ombor faol va qaysi versiya (faqat kalit bilan).
     if (url.pathname === '/__uz/ping' && await uzMaintenanceBypass(request, env)) {
       const out = { store: env.UZ_STORE_ACTIVE ? 'uz' : 'd1', version: env.CF_VERSION_METADATA?.id || '' };
@@ -11516,7 +11532,7 @@ export default {
         const detail = /json/.test(res.headers.get('content-type') || '') ? await res.clone().text().catch(() => '') : '';
         await uzLogError(env, { method: request.method, path: url.pathname, status: res.status, detail });
       }
-      return withSecurityHeaders(res, url, env.UZ_STORE_ACTIVE ? 'uz' : '');
+      return timed(withSecurityHeaders(res, url, env.UZ_STORE_ACTIVE ? 'uz' : ''));
     } catch (error) {
       // ── NIMA UCHUN BU YERDA TUTQICH BOR ───────────────────────────
       //

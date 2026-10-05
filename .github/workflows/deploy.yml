@@ -288,6 +288,8 @@ jobs:
         run: node scripts/test-admin-reports-preview.mjs
       - name: Musiqa kutubxonasi (ruxsat, manzil, o'chirish)
         run: node scripts/test-music-library.mjs
+      - name: Tezlik diagnostikasi (server-timing, /tezlik)
+        run: node scripts/test-speed-diag.mjs
       - name: Postga musiqa va rasmli reel
         run: node scripts/test-post-music.mjs
       - name: Ro'yxat — email imlosi, domen va telefon uzunligi
