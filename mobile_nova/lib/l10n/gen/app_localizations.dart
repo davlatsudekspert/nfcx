@@ -1317,6 +1317,30 @@ abstract class L {
   /// **'ko‘proq'**
   String get reelCaptionMore;
 
+  /// No description provided for @storyTimeJustNow.
+  ///
+  /// In uz, this message translates to:
+  /// **'hozirgina'**
+  String get storyTimeJustNow;
+
+  /// No description provided for @storyTimeMinutes.
+  ///
+  /// In uz, this message translates to:
+  /// **'{n, plural, other{{n} daqiqa oldin}}'**
+  String storyTimeMinutes(int n);
+
+  /// No description provided for @storyTimeHours.
+  ///
+  /// In uz, this message translates to:
+  /// **'{n, plural, other{{n} soat oldin}}'**
+  String storyTimeHours(int n);
+
+  /// No description provided for @storyTimeDays.
+  ///
+  /// In uz, this message translates to:
+  /// **'{n, plural, other{{n} kun oldin}}'**
+  String storyTimeDays(int n);
+
   /// No description provided for @reelAdCta.
   ///
   /// In uz, this message translates to:

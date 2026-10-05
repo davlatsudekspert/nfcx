@@ -1506,6 +1506,7 @@ class StoryItem {
     this.createdAt,
     this.likes = 0,
     this.liked = false,
+    this.viewCount = 0,
   });
 
   final int id;
@@ -1531,6 +1532,13 @@ class StoryItem {
   final int likes;
   final bool liked;
 
+  /// NECHA MARTA KO'RILGAN. Server `listStoriesD1` da `viewCount` ni
+  /// HAR DOIM qaytaradi, model esa tashlab yuborardi — egasi o'z
+  /// istoryasini kim ko'rganini bilolmasdi (Instagram'dagi ko'z
+  /// belgisi). Faqat EGASIGA ko'rsatiladi; "men ko'rdimmi" (`seen`)
+  /// bilan aralashtirilmaydi — pastdagi izohga qarang.
+  final int viewCount;
+
   StoryItem copyWith({int? likes, bool? liked, bool? seen}) => StoryItem(
         id: id,
         code: code,
@@ -1543,6 +1551,7 @@ class StoryItem {
         createdAt: createdAt,
         likes: likes ?? this.likes,
         liked: liked ?? this.liked,
+        viewCount: viewCount,
       );
 
   /// `listStoriesD1` quyidagini qaytaradi:
@@ -1576,9 +1585,12 @@ class StoryItem {
           _s(j['type']) == 'video',
       caption: _s(j['caption']),
       seen: _b(j['seen'] ?? j['viewed']),
-      createdAt: _dt(j['createdAt']),
+      // `Post` dagidek ikkala yozuv ham o'qiladi: sarlavhadagi "3 soat
+      // oldin" shu sanadan hisoblanadi va u bo'lmasa vaqt chizilmaydi.
+      createdAt: _dt(j['createdAt'] ?? j['created_at']),
       likes: _i(j['likeCount'] ?? j['likes']),
       liked: _b(j['liked'] ?? j['isLiked']),
+      viewCount: _i(j['viewCount'] ?? j['views']),
     );
   }
 }

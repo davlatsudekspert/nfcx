@@ -74,7 +74,18 @@ class InlineVideo extends ConsumerStatefulWidget {
     this.fullscreenOnTap = false,
     this.onFullscreen,
     this.showMute = false,
+    this.paused = false,
   });
+
+  /// TASHQARIDAN PAUZA (istorya: barmoq bosib turilganda yoki izoh/
+  /// shikoyat varag'i ochiq turganda).
+  ///
+  /// Ilgari istoryada faqat progress taymeri to'xtardi, video esa
+  /// ovozi bilan o'ynab turaverardi — barmoq qo'yib yuborilganda
+  /// taymer bilan video bir-biridan ajrab qolardi. `true` bo'lsa
+  /// kontroller pauzada turadi, `false` ga qaytganda O'SHA JOYIDAN
+  /// davom etadi. Standarti `false` — mavjud joylar o'zgarmaydi.
+  final bool paused;
 
   /// Burchakda 🔇/🔊 tugma (lenta). Holat Reels bilan umumiy
   /// (`mediaMutedProvider`); tugma ko'rinmasa ham ovoz shu holatga
@@ -246,6 +257,7 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
   @override
   void didUpdateWidget(covariant InlineVideo old) {
     super.didUpdateWidget(old);
+    if (widget.paused != old.paused) _applyPaused();
     if (widget.active == old.active) return;
     if (_handoff != null) return;
     if (widget.active == true) {
@@ -337,8 +349,14 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
         await c.dispose();
         return;
       }
-      if (widget.autoPlay) {
+      // Ochilish boshidagi pauza holati — tugaguncha o'zgarishi mumkin.
+      final held = widget.paused;
+      if (widget.autoPlay && !held) {
         _owner?.take(this, _pauseForOther);
+        // Umumiy 🔇 holati BIRINCHI kadrdanoq: ilgari bu yo'lda ovoz
+        // har doim yoqiq boshlanardi va faqat tugma bosilgandagina
+        // o'chardi.
+        await c.setVolume(_volume);
         await c.play();
         // Ijro buyrug'i ketgandan keyin ham tekshiriladi: aynan shu
         // oraliqda yopilsa ovoz ortda qolib ketardi.
@@ -352,6 +370,8 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
         return;
       }
       setState(() => _ready = true);
+      // Ochilish davomida barmoq bosildi yoki qo'yib yuborildi.
+      if (widget.autoPlay && held != widget.paused) _applyPaused();
       widget.onDuration?.call(c.value.duration);
       // Shakl SHU YERDA ma'lum bo'ladi — oldin emas. Ota-vidjet
       // qutini shunga moslaydi.
@@ -376,6 +396,23 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
   void _pauseForOther() {
     _c?.setVolume(0);
     _c?.pause();
+    if (mounted) setState(() {});
+  }
+
+  /// [InlineVideo.paused] ni kontrollerga qo'llaydi.
+  ///
+  /// Davom etishda ovoz egaligi QAYTA olinadi: pauza paytida boshqa
+  /// manba (masalan profil musiqasi) egallagan bo'lishi mumkin.
+  void _applyPaused() {
+    final c = _c;
+    if (c == null || !_ready || _gone || _handoff != null) return;
+    if (widget.paused) {
+      c.pause();
+    } else {
+      _owner?.take(this, _pauseForOther);
+      c.setVolume(_volume);
+      c.play();
+    }
     if (mounted) setState(() {});
   }
 

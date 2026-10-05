@@ -42,7 +42,14 @@ import '../discover/discover_screen.dart'
     show DiscoverTab, discoverInitialTabProvider, discoverTabProvider;
 import '../profile/profile_switcher.dart';
 import '../social/visible_fraction.dart';
-import '../social/story_viewer.dart' show prefetchStoryRow;
+import '../social/story_viewer.dart'
+    show
+        StoryOwner,
+        StoryQueue,
+        prefetchStoryRow,
+        seenStoryIdsProvider,
+        storyQueueProvider,
+        storySeen;
 import '../../routing/shell.dart';
 import '../../core/media/image_cache.dart';
 
@@ -501,9 +508,14 @@ class _IdentityHero extends ConsumerWidget {
               .toList(),
           orElse: () => const <StoryItem>[],
         );
+    // Shu seansda ko'rilganlar ham hisobga olinadi — halqa qaytib
+    // kelganda qayta yuklashsiz "ko'rilgan"ga o'tadi.
+    final local = ref.watch(seenStoryIdsProvider);
     final ring = mine.isEmpty
         ? null
-        : _StoryRingState(count: mine.length, unseen: mine.any((s) => !s.seen));
+        : _StoryRingState(
+            count: mine.length,
+            unseen: mine.any((s) => !storySeen(s, local)));
 
     // 360 da 28, 430 da 32 — uzun ism ikki qatorga bo'linadi,
     // kesilmaydi.
@@ -1027,6 +1039,9 @@ class _StoriesRow extends ConsumerWidget {
     // kompaniya istoryasi: `business` belgisisiz ko'ruvchi shaxsiy
     // yo'ldan qidirib bo'sh ekran ko'rsatardi.
     final active = ref.watch(activeProfileProvider);
+    // Ko'ruvchida ko'rilgan istoryalar — qator qayta yuklanmasdan
+    // doiracha kulrangga o'tadi.
+    final local = ref.watch(seenStoryIdsProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1057,6 +1072,21 @@ class _StoriesRow extends ConsumerWidget {
               for (final s in all) {
                 if (seenCodes.add(s.code)) items.add(s);
               }
+              // KO'RILGAN — odamning HAMMA istoryasi ko'rilganda. Ilgari
+              // faqat birinchisiga qaralardi: yangi (ikkinchi) istorya
+              // qo'ygan odamning doirachasi "ko'rilgan" bo'lib qolardi.
+              bool allSeen(String code) => all
+                  .where((x) => x.code == code)
+                  .every((x) => storySeen(x, local));
+              // Ko'ruvchi uchun ODAMLAR NAVBATI — qator tartibida.
+              // Kodsiz (o'zimniki) — faol profil, biznesligi bilan.
+              final owners = [
+                for (final s in items)
+                  s.code.isEmpty
+                      ? StoryOwner(active?.code ?? id?.code ?? '',
+                          isBusiness: active?.isBusiness ?? false)
+                      : StoryOwner(s.code),
+              ];
               // Birinchi doirachalar rasmi fonda diskka tushadi —
               // bosilganda istorya qora ekransiz, darhol ochiladi.
               WidgetsBinding.instance
@@ -1083,13 +1113,19 @@ class _StoriesRow extends ConsumerWidget {
                     label: face.label,
                     avatarUrl: face.avatarUrl,
                     initials: face.initials,
-                    seen: s.seen,
-                    onTap: () => context.push(
-                      s.code.isEmpty
-                          ? Routes.story(active?.code ?? id?.code ?? '',
-                              business: active?.isBusiness ?? false)
-                          : Routes.story(s.code),
-                    ),
+                    seen: allSeen(s.code),
+                    onTap: () {
+                      // Oxirgi istorya tugagach ko'ruvchi KEYINGI
+                      // doirachaga o'tadi (Instagram kabi).
+                      ref.read(storyQueueProvider.notifier).state =
+                          StoryQueue(owners, i - 1);
+                      context.push(
+                        s.code.isEmpty
+                            ? Routes.story(active?.code ?? id?.code ?? '',
+                                business: active?.isBusiness ?? false)
+                            : Routes.story(s.code),
+                      );
+                    },
                   );
                 },
               );

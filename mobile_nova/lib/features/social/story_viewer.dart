@@ -23,6 +23,7 @@ import 'moderation.dart';
 import '../profile/music_player.dart';
 import 'inline_video.dart';
 import 'media_frame.dart';
+import 'media_sound.dart';
 import '../home/widgets/avatar.dart';
 import '../business/business_providers.dart';
 import '../profile/profile_repository.dart';
@@ -116,6 +117,40 @@ void prefetchStoryImage(StoryItem? s) {
   }
 }
 
+/// SHU SEANSDA KO'RILGAN ISTORYALAR (`id`).
+///
+/// Server "ko'rildi" signalini oladi, lekin bosh sahifa ro'yxati
+/// QAYTA YUKLANMAGUNCHA halqa "ko'rilmagan" (oltin) bo'lib turardi —
+/// odam istoryani ko'rib qaytsa ham doiracha o'zgarmasdi. Ro'yxatni
+/// har safar serverdan qayta so'rash qatorni qayta chizib, rasmlarni
+/// yangidan yuklatardi; shuning uchun ko'rilganlar shu yerda
+/// eslab qolinadi va qator ularni `seen` bilan birga hisoblaydi.
+/// `autoDispose` ATAYLAB yo'q: ko'ruvchi yopilgach ham eslab qolinadi.
+final seenStoryIdsProvider = StateProvider<Set<int>>((_) => const {});
+
+/// Istorya ko'rilganmi — server bergan belgi YOKI shu seansda ko'rilgan.
+bool storySeen(StoryItem s, Set<int> local) => s.seen || local.contains(s.id);
+
+/// BOSH SAHIFA QATORIDAGI ODAMLAR NAVBATI.
+///
+/// Instagram'da bir odamning istoryalari tugasa KEYINGI odamniki
+/// o'zi boshlanadi. Buning uchun ko'ruvchi qatordagi tartibni
+/// bilishi kerak, marshrut (`/story/:code`) esa faqat BITTA kodni
+/// tashiydi — App Link va jismoniy karta ham shu manzilga keladi.
+/// Shuning uchun bosh sahifa navbatni shu yerga qo'yib, keyin
+/// marshrutni ochadi; ko'ruvchi uni BIR MARTA oladi va tozalaydi.
+/// Profil halqasi kabi boshqa kirishlar navbat qo'ymaydi — ular
+/// avvalgidek bitta odamni ko'rsatadi.
+@immutable
+class StoryQueue {
+  const StoryQueue(this.owners, this.start);
+
+  final List<StoryOwner> owners;
+  final int start;
+}
+
+final storyQueueProvider = StateProvider<StoryQueue?>((_) => null);
+
 /// Bosh sahifa: har odamning BIRINCHI istoryasi (ko'pi bilan [max]).
 void prefetchStoryRow(List<StoryItem> all, {int max = 4}) {
   final seen = <String>{};
@@ -131,11 +166,19 @@ void prefetchStoryRow(List<StoryItem> all, {int max = 4}) {
 /// turish esa taymerni to'xtatadi — bu shakl foydalanuvchiga tanish
 /// bo'lgani uchun tanlangan, lekin ramka NFCSTORE vizual tilida:
 /// kapsula shaklidagi progress va yumshoq gradient.
+///
+/// ODAMLAR ORASIDA — Instagram kabi: bir odamning oxirgi istoryasi
+/// tugasa (yoki o'ngga tegilsa) keyingi odamniki boshlanadi, birinchi
+/// istoryada chapga tegish oldingi odamga qaytaradi, yon tomonga
+/// surish ham odam almashtiradi. Ko'ruvchi faqat ENG OXIRGI odamdan
+/// keyin yopiladi.
 class StoryViewerScreen extends ConsumerStatefulWidget {
   const StoryViewerScreen({
     super.key,
     required this.code,
     this.isBusiness = false,
+    this.owners,
+    this.initialIndex = 0,
   });
 
   final String code;
@@ -143,13 +186,134 @@ class StoryViewerScreen extends ConsumerStatefulWidget {
   /// Kod kompaniyanikimi. Marshrut `?business=1` orqali uzatadi.
   final bool isBusiness;
 
+  /// Odamlar navbati (bosh sahifa qatori tartibida). `null` bo'lsa
+  /// [storyQueueProvider] dan olinadi, u ham bo'lmasa — faqat [owner].
+  final List<StoryOwner>? owners;
+
+  /// [owners] ichida qaysi odamdan boshlanadi.
+  final int initialIndex;
+
   StoryOwner get owner => StoryOwner(code, isBusiness: isBusiness);
 
   @override
   ConsumerState<StoryViewerScreen> createState() => _StoryViewerScreenState();
 }
 
-class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
+class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen> {
+  late final List<StoryOwner> _owners;
+  late final PageController _pager;
+  int _page = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    final given = widget.owners;
+    final queued = ref.read(storyQueueProvider);
+    if (given != null &&
+        widget.initialIndex >= 0 &&
+        widget.initialIndex < given.length) {
+      _owners = given;
+      _page = widget.initialIndex;
+    } else if (queued != null &&
+        queued.start >= 0 &&
+        queued.start < queued.owners.length &&
+        // Navbat AYNAN shu marshrut uchun qo'yilgan bo'lsagina.
+        queued.owners[queued.start] == widget.owner) {
+      _owners = queued.owners;
+      _page = queued.start;
+    } else {
+      _owners = [widget.owner];
+    }
+    _pager = PageController(initialPage: _page);
+    // Navbat BIR MARTALIK: keyin profil halqasidan ochilgan istorya
+    // eskirgan navbat bo'yicha boshqa odamlarga o'tib ketmasin.
+    // Kadrdan keyin — provayderni `initState` ichida o'zgartirib
+    // bo'lmaydi.
+    if (queued != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final q = ref.read(storyQueueProvider.notifier);
+        if (identical(q.state, queued)) q.state = null;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _pager.dispose();
+    super.dispose();
+  }
+
+  /// Boshqa odamga o'tish — yumshoq varaqlash bilan.
+  void _toOwner(int i) {
+    if (i < 0 || i >= _owners.length || !_pager.hasClients) return;
+    _pager.animateToPage(
+      i,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Varaqlar orasida oq fon chaqnamasin.
+    return ColoredBox(
+      color: Colors.black,
+      child: PageView.builder(
+        key: const ValueKey('story-pager'),
+        controller: _pager,
+        itemCount: _owners.length,
+        onPageChanged: (i) => setState(() => _page = i),
+        itemBuilder: (_, i) {
+          final o = _owners[i];
+          return _OwnerStories(
+            key: ValueKey(o),
+            code: o.code,
+            isBusiness: o.isBusiness,
+            active: i == _page,
+            onNextOwner: i + 1 < _owners.length ? () => _toOwner(i + 1) : null,
+            onPrevOwner: i > 0 ? () => _toOwner(i - 1) : null,
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// BITTA ODAMNING ISTORYALARI — varaqlovchining bitta sahifasi.
+///
+/// Avval bu butun ekran edi; mantiq o'zgarmadi, faqat [active]
+/// (taymer va video FAQAT ko'rinib turgan sahifada yuradi) va
+/// qo'shni odamga o'tish chaqiruvlari qo'shildi.
+class _OwnerStories extends ConsumerStatefulWidget {
+  const _OwnerStories({
+    super.key,
+    required this.code,
+    required this.isBusiness,
+    required this.active,
+    this.onNextOwner,
+    this.onPrevOwner,
+  });
+
+  final String code;
+  final bool isBusiness;
+
+  /// Sahifa hozir ekrandami. Surish paytida qo'shni sahifa ham
+  /// chiziladi — uning taymeri yurmasligi, videosi ochilmasligi va
+  /// "ko'rildi" yuborilmasligi kerak.
+  final bool active;
+
+  /// Keyingi/oldingi odam — `null` bo'lsa u tomonda hech kim yo'q.
+  final VoidCallback? onNextOwner;
+  final VoidCallback? onPrevOwner;
+
+  StoryOwner get owner => StoryOwner(code, isBusiness: isBusiness);
+
+  @override
+  ConsumerState<_OwnerStories> createState() => _OwnerStoriesState();
+}
+
+class _OwnerStoriesState extends ConsumerState<_OwnerStories>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   static const _perStory = Duration(seconds: 5);
 
@@ -199,6 +363,27 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
     _seed = _seedFromHome();
   }
 
+  /// Sahifa ekranga keldi yoki ketdi (odamlar orasida surish).
+  @override
+  void didUpdateWidget(covariant _OwnerStories old) {
+    super.didUpdateWidget(old);
+    if (widget.active == old.active) return;
+    if (!widget.active) {
+      // Ketayotgan odamning taymeri to'xtaydi — aks holda u ortda
+      // tugab, `_next` orqali YANA bir odamga sakratib yuborardi.
+      _watchdog?.cancel();
+      _progress.stop();
+      _holding = false;
+      return;
+    }
+    // Keldi: joriy istorya media tayyorligini qaytadan kutadi (video
+    // faqat faol sahifada ochiladi).
+    final id = _currentId;
+    if (id != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _prepare(id));
+    }
+  }
+
   List<StoryItem>? _seedFromHome() {
     if (!ref.exists(homeStoriesProvider)) return null;
     final all = ref.read(homeStoriesProvider).valueOrNull;
@@ -226,14 +411,18 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
       ..stop()
       ..duration = _perStory
       ..reset();
-    _watchdog = Timer(const Duration(seconds: 10), () => _onReady(id));
+    if (widget.active) {
+      _watchdog = Timer(const Duration(seconds: 10), () => _onReady(id));
+    }
     if (mounted) setState(() {});
   }
 
   /// Media ekranda — taymer boshlanadi. Video bo'lsa uning uzunligi
   /// bilan (60 soniyadan oshmaydi).
   void _onReady(int id, [Duration? d]) {
-    if (!mounted || id != _currentId) return;
+    // Qo'shni (ko'rinmayotgan) sahifaning rasmi ham yuklanadi — lekin
+    // uning taymeri faqat sahifa ekranga kelganda boshlanadi.
+    if (!mounted || id != _currentId || !widget.active) return;
     final video = d != null && d > Duration.zero;
     // Bir istorya uchun bir marta; kechikib kelgan video uzunligi esa
     // (qo'riqchi taymerdan keyin) progressni to'g'rilaydi.
@@ -246,7 +435,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
     _progress
       ..duration = dur
       ..reset();
-    if (!_paused) _progress.forward();
+    if (!_paused && !_holding) _progress.forward();
     setState(() {});
     final at = _items.indexWhere((e) => e.id == id);
     if (at >= 0 && at + 1 < _items.length) prefetchStoryImage(_items[at + 1]);
@@ -254,7 +443,9 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
 
   /// Pauzadan qaytish — faqat media tayyor bo'lsa.
   void _resume() {
-    if (_mediaReady && !_paused && mounted) _progress.forward();
+    if (_mediaReady && !_paused && !_holding && widget.active && mounted) {
+      _progress.forward();
+    }
   }
 
   /// MEDIANI TO'XTATADI — ekran yopilishidan OLDIN.
@@ -306,6 +497,11 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
 
   /// Varaq yoki dialog ochiqmi — shunda taymer TO'XTAB turadi.
   bool _paused = false;
+
+  /// Barmoq ekranni bosib turibdi — taymer ham, video ham to'xtaydi
+  /// va ustki belgilar yashiriladi (Instagram kabi: odam kadrni toza
+  /// ko'rmoqchi).
+  bool _holding = false;
 
   /// Serverga "ko'rildi" deb yuborilgan story'lar.
   ///
@@ -383,17 +579,27 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
   /// Varaq/dialog ochilganda taymer to'xtaydi, yopilganda davom
   /// etadi. Aks holda izoh yozib turganda istorya keyingisiga
   /// o'tib ketardi.
+  ///
+  /// VIDEO HAM TO'XTAYDI. Ilgari faqat taymer to'xtardi: izoh yozib
+  /// turganda video orqada ovozi bilan o'ynab turaverardi. `setState`
+  /// — `_StoryFrame` pauzani videoga uzatadi.
   Future<T?> _whilePaused<T>(Future<T?> Function() run) async {
-    _paused = true;
+    setState(() => _paused = true);
     _progress.stop();
     try {
       return await run();
     } finally {
       if (mounted) {
-        _paused = false;
+        setState(() => _paused = false);
         _resume();
       }
     }
+  }
+
+  void _hold(bool on) {
+    if (_holding == on || !mounted) return;
+    setState(() => _holding = on);
+    on ? _progress.stop() : _resume();
   }
 
   /// LAYK — optimistik, xatoda ORQAGA QAYTADI.
@@ -446,15 +652,27 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
   /// Natijasi KUTILMAYDI va xatosi yutiladi: bu yordamchi signal,
   /// uning tufayli story ko'rish to'xtab qolmasligi kerak.
   void _markSeen(StoryItem s) {
+    if (!mounted || !widget.active) return;
     if (s.id == 0 || !_seen.add(s.id)) return;
     ref.read(socialRepositoryProvider).markStorySeen(s.id);
+    // Bosh sahifa halqasi ham DARHOL "ko'rilgan"ga o'tsin.
+    final local = ref.read(seenStoryIdsProvider.notifier);
+    if (!local.state.contains(s.id)) local.state = {...local.state, s.id};
   }
 
   // Indeks o'zgargach `build` yangi istoryani ko'radi va `_prepare`
   // uni media tayyorligini kutishga qo'yadi.
   void _next() {
     if (_index + 1 >= _total) {
-      _close();
+      // Oxirgi istorya — KEYINGI ODAM bo'lsa unga o'tiladi, yo'qsa
+      // (eng oxirgi odam) ko'ruvchi yopiladi.
+      final next = widget.onNextOwner;
+      if (next == null) {
+        _close();
+        return;
+      }
+      _progress.stop();
+      next();
       return;
     }
     setState(() => _index++);
@@ -462,6 +680,13 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
 
   void _prev() {
     if (_index == 0) {
+      // Birinchi istorya — oldingi odam bo'lsa unga qaytiladi.
+      final prev = widget.onPrevOwner;
+      if (prev != null) {
+        _progress.stop();
+        prev();
+        return;
+      }
       // Birinchi istorya — boshidan (media allaqachon ekranda).
       if (_mediaReady) {
         _progress.reset();
@@ -487,7 +712,9 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (didPop) return;
+        // Surish paytida ikki sahifa chiziladi — yopishni faqat
+        // ekrandagisi boshqaradi, aks holda marshrut IKKI marta yopilardi.
+        if (didPop || !widget.active) return;
         _close();
       },
       child: Scaffold(
@@ -544,6 +771,13 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
           }
           {
             if (items.isEmpty) {
+              // Navbatda bu odamning istoryasi qolmagan (muddati o'tgan
+              // yoki o'chirilgan) — bo'sh ekranda to'xtamasdan keyingisiga.
+              if (widget.active && widget.onNextOwner != null) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted && widget.active) widget.onNextOwner?.call();
+                });
+              }
               return StatePanel(
                 icon: Icons.auto_stories_outlined,
                 title: l.stateEmpty,
@@ -559,6 +793,15 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
             if (!identical(items, _items) && _currentId != null) {
               final at = items.indexWhere((e) => e.id == _currentId);
               if (at >= 0) _index = at;
+            }
+            // INSTAGRAM KABI: odam ochilganda birinchi KO'RILMAGAN
+            // istoryasidan boshlanadi (hammasi ko'rilgan bo'lsa —
+            // boshidan). Faqat BIRINCHI ro'yxatda — keyin indeksni
+            // odam o'zi boshqaradi.
+            if (_currentId == null && _items.isEmpty) {
+              final local = ref.read(seenStoryIdsProvider);
+              final at = items.indexWhere((e) => !storySeen(e, local));
+              if (at > 0) _index = at;
             }
             _index = _index.clamp(0, items.length - 1);
             _items = items;
@@ -615,14 +858,15 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
             final lk = _likes[s.id];
             final liked = lk?.liked ?? s.liked;
             final likeCount = lk?.count ?? s.likes;
+            final ago = storyAgo(l, s.createdAt);
 
             return GestureDetector(
               onTapUp: (d) {
                 final half = MediaQuery.sizeOf(context).width / 2;
                 d.localPosition.dx < half ? _prev() : _next();
               },
-              onLongPressStart: (_) => _progress.stop(),
-              onLongPressEnd: (_) => _resume(),
+              onLongPressStart: (_) => _hold(true),
+              onLongPressEnd: (_) => _hold(false),
               onVerticalDragEnd: (d) {
                 if ((d.primaryVelocity ?? 0) > 260) _close();
               },
@@ -657,6 +901,8 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                     child: _StoryFrame(
                       key: ValueKey(s.id),
                       story: s,
+                      active: widget.active,
+                      paused: _holding || _paused,
                       onReady: (d) => _onReady(s.id, d),
                     ),
                   ),
@@ -678,7 +924,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                     ),
                   ),
                   Positioned.fill(
-                    child: IgnorePointer(
+                    child: _chrome(IgnorePointer(
                       child: DecoratedBox(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
@@ -691,7 +937,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                           ),
                         ),
                       ),
-                    ),
+                    )),
                   ),
                   // Pastki amallar (izoh, layk, ulashish) och rasm ustida
                   // ham o'qilsin — ilgari rasmdagi yozuv bilan qo'shilib
@@ -701,7 +947,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                     right: 0,
                     bottom: 0,
                     height: 180,
-                    child: IgnorePointer(
+                    child: _chrome(IgnorePointer(
                       child: DecoratedBox(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
@@ -714,9 +960,9 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                           ),
                         ),
                       ),
-                    ),
+                    )),
                   ),
-                  SafeArea(
+                  _chrome(SafeArea(
                     child: Column(
                       children: [
                         Padding(
@@ -773,18 +1019,46 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                               ),
                               const SizedBox(width: Gap.sm),
                               Expanded(
-                                child: Text(
-                                  authorName.isEmpty ? code : authorName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontFamily: AppType.sans,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                  ),
+                                child: Row(
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        authorName.isEmpty ? code : authorName,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontFamily: AppType.sans,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                    // QACHON QO'YILGANI ("3 soat oldin").
+                                    // Istorya 24 soat yashaydi — eskimi
+                                    // yoki yangimi, ko'ruvchi bilishi
+                                    // kerak. Sana kelmasa chizilmaydi.
+                                    if (ago != null) ...[
+                                      const SizedBox(width: Gap.sm),
+                                      Text(
+                                        ago,
+                                        key: const ValueKey('story-time'),
+                                        maxLines: 1,
+                                        style: TextStyle(
+                                          fontFamily: AppType.sans,
+                                          fontSize: 12.5,
+                                          color: Colors.white
+                                              .withValues(alpha: .75),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ),
+                              // OVOZ — faqat video istoryada. Holat
+                              // lenta va Reels bilan UMUMIY: bir joyda
+                              // o'chirilsa, hamma joyda o'chiq qoladi.
+                              if (s.isVideo) const MuteButton(),
                               // O'chirish FAQAT o'z story'ingda
                               // ko'rinadi. Begonanikida tugma umuman
                               // chizilmaydi — bosilib "ruxsat yo'q"
@@ -862,7 +1136,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                           ),
                       ],
                     ),
-                  ),
+                  )),
 
                   // ── PASTKI AMALLAR: layk, izoh, ulashish ────────
                   //
@@ -874,7 +1148,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    child: SafeArea(
+                    child: _chrome(SafeArea(
                       top: false,
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(
@@ -885,6 +1159,13 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                         ),
                         child: Row(
                           children: [
+                            // KIM KO'RDI — faqat EGASIGA (Instagram'dagi
+                            // ko'z). Begonaga boshqa odamning
+                            // statistikasi ko'rsatilmaydi.
+                            if (mine) ...[
+                              _StoryViews(count: s.viewCount),
+                              const SizedBox(width: Gap.sm),
+                            ],
                             Expanded(
                               child: _StoryAction(
                                 icon: NovaIcons.comment,
@@ -921,7 +1202,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                           ],
                         ),
                       ),
-                    ),
+                    )),
                   ),
                 ],
               ),
@@ -931,6 +1212,14 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
       ),
     );
   }
+
+  /// Ustki belgilar (progress, sarlavha, amallar, soyalar) — barmoq
+  /// bosib turilganda yashiriladi, qo'yib yuborilganda qaytadi.
+  Widget _chrome(Widget child) => AnimatedOpacity(
+        opacity: _holding ? 0 : 1,
+        duration: const Duration(milliseconds: 180),
+        child: child,
+      );
 
   String _initials(String name, String fallback) {
     final s = name.trim().isEmpty ? fallback : name.trim();
@@ -962,6 +1251,62 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
     return (
       avatar: pub?.avatarUrl ?? '',
       initials: _initials(pub?.name ?? '', code),
+    );
+  }
+}
+
+/// "3 soat oldin" — istorya sarlavhasidagi nisbiy vaqt.
+///
+/// Sana bo'lmasa `null` (vaqt chizilmaydi — to'qib chiqarilmaydi).
+/// Telefon soati serverdan biroz orqada bo'lsa farq manfiy chiqadi —
+/// u ham "hozirgina".
+String? storyAgo(L l, DateTime? at, {DateTime? now}) {
+  if (at == null) return null;
+  final d = (now ?? DateTime.now()).difference(at.toLocal());
+  if (d.inMinutes < 1) return l.storyTimeJustNow;
+  if (d.inHours < 1) return l.storyTimeMinutes(d.inMinutes);
+  if (d.inDays < 1) return l.storyTimeHours(d.inHours);
+  return l.storyTimeDays(d.inDays);
+}
+
+/// Ko'rishlar soni — ko'z belgisi bilan, faqat egasining istoryasida.
+class _StoryViews extends StatelessWidget {
+  const _StoryViews({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: L.of(context).viewsCount('$count'),
+      excludeSemantics: true,
+      child: Container(
+        key: const ValueKey('story-views'),
+        height: 42,
+        padding: const EdgeInsets.symmetric(horizontal: Gap.md),
+        decoration: BoxDecoration(
+          borderRadius: R.pill,
+          color: Colors.white.withValues(alpha: .14),
+          border: Border.all(color: Colors.white.withValues(alpha: .35)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.visibility_outlined,
+                size: 18, color: Colors.white),
+            const SizedBox(width: 6),
+            Text(
+              '$count',
+              style: const TextStyle(
+                fontFamily: AppType.sans,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1220,9 +1565,19 @@ class _StoryFrame extends StatelessWidget {
     super.key,
     required this.story,
     required this.onReady,
+    this.active = true,
+    this.paused = false,
   });
 
   final StoryItem story;
+
+  /// Sahifa ekrandami. Qo'shni (surish paytida chetdan ko'rinadigan)
+  /// odamning videosi OCHILMAYDI — aks holda ikki video bir vaqtda
+  /// tarmoq va ovoz talashardi.
+  final bool active;
+
+  /// Bosib turish yoki varaq ochiq — video to'xtab turadi.
+  final bool paused;
 
   /// Media EKRANDA — taymer shundan keyin yuradi. Videoda uzunligi
   /// bilan, rasmda `null`.
@@ -1243,6 +1598,7 @@ class _StoryFrame extends StatelessWidget {
     }
 
     if (story.isVideo) {
+      if (!active) return const ColoredBox(color: Colors.black);
       // `contain`: yotiq video ekranga sig'sin, usti va osti
       // kesilib ketmasin. Tik video uchun farqi yo'q — u baribir
       // ekranni to'ldiradi.
@@ -1253,6 +1609,7 @@ class _StoryFrame extends StatelessWidget {
           onDuration: onReady,
           onFailed: () => onReady(null),
           fit: BoxFit.contain,
+          paused: paused,
         ),
       );
     }

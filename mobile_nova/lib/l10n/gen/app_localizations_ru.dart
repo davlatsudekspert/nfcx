@@ -640,6 +640,48 @@ class LRu extends L {
   String get reelCaptionMore => 'ещё';
 
   @override
+  String get storyTimeJustNow => 'только что';
+
+  @override
+  String storyTimeMinutes(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n минуты назад',
+      many: '$n минут назад',
+      few: '$n минуты назад',
+      one: '$n минуту назад',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String storyTimeHours(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n часа назад',
+      many: '$n часов назад',
+      few: '$n часа назад',
+      one: '$n час назад',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String storyTimeDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n дня назад',
+      many: '$n дней назад',
+      few: '$n дня назад',
+      one: '$n день назад',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get reelAdCta => 'Открыть профиль';
 
   @override

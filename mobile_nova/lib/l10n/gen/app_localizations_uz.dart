@@ -644,6 +644,39 @@ class LUz extends L {
   String get reelCaptionMore => 'ko‘proq';
 
   @override
+  String get storyTimeJustNow => 'hozirgina';
+
+  @override
+  String storyTimeMinutes(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n daqiqa oldin',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String storyTimeHours(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n soat oldin',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String storyTimeDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n kun oldin',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get reelAdCta => 'Profilni ochish';
 
   @override

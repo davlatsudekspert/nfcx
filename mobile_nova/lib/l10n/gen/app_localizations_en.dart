@@ -644,6 +644,42 @@ class LEn extends L {
   String get reelCaptionMore => 'more';
 
   @override
+  String get storyTimeJustNow => 'just now';
+
+  @override
+  String storyTimeMinutes(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n minutes ago',
+      one: '$n minute ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String storyTimeHours(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n hours ago',
+      one: '$n hour ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String storyTimeDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n days ago',
+      one: '$n day ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get reelAdCta => 'View profile';
 
   @override
