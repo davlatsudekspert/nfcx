@@ -60,6 +60,15 @@ const T = {
     stopped: 'To‘xtatilgan',
     cancelled: 'Bekor qilingan',
     noResults: 'Hali reklama yo‘q.',
+    whatTitle: 'Nimaga pul to‘laysiz',
+    what: [
+      ['Qayerda', 'NFCSTORE ilovasining asosiy lentasida. Video post bo‘lsa — Reels bo‘limida ham.'],
+      ['Qanday', 'Lentada jami 8 ta reklama joyi. Har ochilishda 4 ta reklama postlar orasida chiqadi (1, 5, 9, 13-o‘rinlar) va har safar almashadi — postingiz o‘rtacha lenta ochilishlarining kamida yarmida ko‘rinadi.'],
+      ['Belgi', 'Post ustida «Reklama» yozuvi, Reels’da «Profilni ochish» tugmasi.'],
+      ['Muddat', 'To‘lov tasdiqlangan zahoti boshlanadi va tanlangan kunlar tugagach o‘zi to‘xtaydi.'],
+      ['Natija', 'Shu sahifada: nechta yangi odam ko‘rdi va jami ko‘rishlar.'],
+      ['Kafolat', 'Ko‘rsatish joyi kafolatlanadi, aniq ko‘rishlar soni emas — u auditoriyaga bog‘liq. Qoidaga zid kontent reklamasi to‘xtatilishi mumkin.'],
+    ],
     company: 'Biznes',
     video: 'Video',
   },
@@ -107,6 +116,15 @@ const T = {
     stopped: 'Остановлено',
     cancelled: 'Отменено',
     noResults: 'Продвижений пока нет.',
+    whatTitle: 'За что вы платите',
+    what: [
+      ['Где', 'В главной ленте приложения NFCSTORE. Если пост с видео — ещё и в разделе Reels.'],
+      ['Как', 'В ленте всего 8 рекламных мест. При каждом открытии 4 рекламы показываются между постами (1, 5, 9, 13-е места) и меняются — в среднем ваш пост виден как минимум в половине открытий ленты.'],
+      ['Пометка', 'Над постом надпись «Реклама», в Reels — кнопка «Открыть профиль».'],
+      ['Срок', 'Начинается сразу после подтверждения оплаты и сам заканчивается по истечении выбранных дней.'],
+      ['Результат', 'Прямо на этой странице: сколько новых людей увидели и сколько всего просмотров.'],
+      ['Гарантия', 'Гарантируется место показа, а не точное число просмотров — оно зависит от аудитории. Реклама с нарушающим правила контентом может быть остановлена.'],
+    ],
     company: 'Бизнес',
     video: 'Видео',
   },
@@ -154,6 +172,15 @@ const T = {
     stopped: 'Stopped',
     cancelled: 'Cancelled',
     noResults: 'No promotions yet.',
+    whatTitle: 'What you pay for',
+    what: [
+      ['Where', 'In the main feed of the NFCSTORE app. Video posts also appear in Reels.'],
+      ['How', 'The feed has 8 ad slots in total. Each time the feed opens, 4 ads appear between posts (positions 1, 5, 9, 13) and rotate — on average your post shows in at least half of feed openings.'],
+      ['Label', 'A “Sponsored” label on the post and a “View profile” button in Reels.'],
+      ['Period', 'Starts as soon as payment is confirmed and stops on its own when the chosen days end.'],
+      ['Results', 'Right on this page: how many new people saw it and total views.'],
+      ['Guarantee', 'The placement is guaranteed, not an exact number of views — that depends on the audience. Ads with rule-breaking content may be stopped.'],
+    ],
     company: 'Business',
     video: 'Video',
   },
@@ -260,6 +287,18 @@ export default function PromotePage() {
           <li key={w} className="flex gap-2"><span className="text-[color:var(--vz-gold)]">✦</span><span>{w}</span></li>
         ))}
       </ul>
+
+      <section className="mt-6 rounded-2xl border border-[color:var(--vz-line)] p-4" data-testid="promote-what">
+        <h2 className="text-lg font-semibold">{s.whatTitle}</h2>
+        <dl className="mt-3 space-y-2.5 text-[14px]">
+          {s.what.map(([k, v]) => (
+            <div key={k}>
+              <dt className="font-semibold">{k}</dt>
+              <dd className="opacity-80">{v}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
 
       {!user && (
         <div className="mt-6">

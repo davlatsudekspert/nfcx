@@ -457,4 +457,10 @@ check('28) super_admin yangi narx qo‘ydi',
 const newPk = (await call('/api/featured/packages')).body?.packages || [];
 check('28) yangi narx darhol ishlaydi (tartiblangan)', newPk.map((p) => `${p.days}:${p.price}`).join(','), '1:49000,7:249000');
 
+// ── 29) ISTORIYA SOTILMAYDI (lentada chiqmaydi) ───────────────────
+check('29) istoriyani ko‘tarib bo‘lmaydi',
+  (await call('/api/featured', { method: 'POST', ...asA, json: { targetKind: 'story', targetId: 1, days: 1 } })).status, 422);
+check('29) admin ham istoriyani ko‘tarmaydi',
+  (await call('/api/admin/featured', { method: 'POST', ...asAdmin, json: { targetKind: 'company_story', targetId: 1, days: 1, note: 'x' } })).status, 422);
+
 done('NFCSTORE FEATURED');

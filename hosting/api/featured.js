@@ -39,7 +39,7 @@
 //   POST /api/admin/featured/pricing     (super_admin) { packages:[{days,price}] }
 //   POST /api/admin/featured/:id/stop    (admin) { reason } → { ok }
 
-import { KINDS, targetOwner } from './comments.js';
+import { targetOwner } from './comments.js';
 
 /// STANDART NARXLAR — so'mda.
 ///
@@ -69,6 +69,10 @@ const MAX_ACTIVE_PER_USER = 3;
 /// kamida yarmida chiqadi. Band bo'lsa, xaridor qachon bo'shashini
 /// ko'radi (`sold_out` + `nextFreeAt`).
 export const MAX_ACTIVE_TOTAL = 8;
+
+/// Faqat POSTLAR ko'tariladi (oddiy va biznes). Istoriyalar lentada
+/// chiqmaydi — ularni sotish "pul olib, ko'rsatmaslik" bo'lardi.
+const PROMO_KINDS = ['post', 'company_post'];
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -325,7 +329,7 @@ export async function handle(request, env, url, H) {
     const body = await readJson();
     const kind = String(body.targetKind || '');
     const targetId = Number(body.targetId);
-    if (!KINDS.includes(kind)) return H.json({ error: 'bad_kind' }, 422);
+    if (!PROMO_KINDS.includes(kind)) return H.json({ error: 'bad_kind' }, 422);
     if (!Number.isInteger(targetId) || targetId <= 0) return H.json({ error: 'bad_target' }, 422);
 
     // NARX SERVERDA. Mijoz faqat kunlar sonini tanlaydi; yuborgan
@@ -492,7 +496,7 @@ export async function handle(request, env, url, H) {
       const targetId = Number(body.targetId);
       const days = Math.round(Number(body.days));
       const note = H.shortText(body.note || '', 200).trim();
-      if (!KINDS.includes(kind)) return H.json({ error: 'bad_kind' }, 422);
+      if (!PROMO_KINDS.includes(kind)) return H.json({ error: 'bad_kind' }, 422);
       if (!Number.isInteger(targetId) || targetId <= 0) return H.json({ error: 'bad_target' }, 422);
       if (!Number.isInteger(days) || days < 1 || days > 30) return H.json({ error: 'bad_days' }, 422);
       if (!note) return H.json({ error: 'note_required' }, 422);
