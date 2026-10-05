@@ -193,7 +193,10 @@ async function run(){var out=document.getElementById('out');out.innerHTML='<div 
  html+='</table><p>«Jami» — telefoningiz kutgan vaqt. «Internet» — Jami − Server. «Ketma-ket» — server bazaga necha marta navbat bilan borib keldi.</p></div>';
  var prof=res[2];var verdict;
  var netShare=prof.total?Math.max(0,prof.total-prof.server)/prof.total:0;
- if(net>400)verdict='<b class="bad">Asosiy sabab — internet.</b> Telefon bilan server orasidagi bitta so\\'rov '+f(net)+' olyapti.';
+ // Jami tez bo'lsa — ulush muhim emas: qizil "sabab" chiqmasin (2026-10-05:
+ // 227 ms li postlar so'rovida ham "Asosiy sabab — server" deyilardi).
+ if(prof.total&&prof.total<400&&net<=150)verdict='<b class="ok">Tez — muammo yo\\'q.</b> Postlar so\\'rovi '+f(prof.total)+': internet '+f(Math.max(0,prof.total-prof.server))+', server '+f(prof.server)+'. Ilovada sekinlik bo\\'lsa, sababi bu so\\'rovlar emas (rasm yuklanishi yoki ilovaning o\\'zi).';
+ else if(net>400)verdict='<b class="bad">Asosiy sabab — internet.</b> Telefon bilan server orasidagi bitta so\\'rov '+f(net)+' olyapti.';
  else if(netShare>0.6)verdict='<b class="warn">Ko\\'proq internet.</b> Postlar so\\'rovining '+Math.round(netShare*100)+'% vaqti internetda.';
  else verdict='<b class="bad">Asosiy sabab — server ↔ baza.</b> Postlar so\\'rovining '+Math.round((1-netShare)*100)+'% vaqti serverda ('+(prof.waves||'?')+' ta ketma-ket borib-kelish × ~'+f(dbRtt)+').';
  html+='<div class="card"><p class="v">'+verdict+'</p></div>';

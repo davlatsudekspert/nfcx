@@ -67,6 +67,12 @@ const call = (path, init = {}) => worker.fetch(req(path, init), env);
   try { new Function(script); } catch (e) { ok = false; console.error(e); }
   checkTrue('tezlik: sahifa skripti sintaksisi to\'g\'ri', ok && script.length > 500);
   checkTrue('tezlik: shablonda ${...} qoldig\'i yo\'q', !TEZLIK_HTML.includes('${'));
+  // Sahifa skripti brauzerda sintaksis xatosiz (qo'shtirnoq qochirish).
+  const pageJs = TEZLIK_HTML.slice(TEZLIK_HTML.indexOf('<script>') + 8, TEZLIK_HTML.lastIndexOf('</script>'));
+  let parses = true; try { new Function(pageJs); } catch { parses = false; }
+  checkTrue('tezlik: sahifa skripti to\'g\'ri', parses);
+  // Tez javobda qizil "Asosiy sabab" emas, "Tez — muammo yo'q" (2026-10-05).
+  checkTrue('tezlik: tez holat uchun xulosa bor', pageJs.includes('Tez — muammo yo'));
 }
 
 done();
