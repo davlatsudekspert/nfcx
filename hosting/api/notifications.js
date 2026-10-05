@@ -164,6 +164,36 @@ export async function handle(request, env, url, H) {
 
     const all = rows.results || [];
     const items = all.slice(0, limit).map(rowToItem);
+
+    // IZOH QAYSI KONTENTGA YOZILGAN (egasi, 2026-10-05: "izohni bossam
+    // 'topilmadi' chiqyapti"). Bildirishnomada faqat izoh ID'si
+    // saqlanadi; ilova esa post yoki Reels'ni ochishi kerak. Shuning
+    // uchun izohning kontenti (`contentKind`, `contentId`) qo'shib
+    // beriladi. Faqat ro'yxatda izoh bo'lsa so'raladi; jadval yo'q
+    // yoki xato bo'lsa maydonlar shunchaki chiqmaydi.
+    const commentIds = items.filter((i) => i.targetType === 'comment' && Number(i.targetId) > 0)
+      .map((i) => Number(i.targetId));
+    if (commentIds.length) {
+      const cm = await env.DB.prepare(
+        `SELECT id, target_kind, target_id FROM content_comments
+          WHERE id IN (${commentIds.map(() => '?').join(',')})`
+      ).bind(...commentIds).all().catch(() => null);
+      const byId = new Map((cm?.results || []).map((r) => [Number(r.id), r]));
+      for (const it of items) {
+        const c = it.targetType === 'comment' ? byId.get(Number(it.targetId)) : null;
+        if (c) {
+          it.contentKind = String(c.target_kind || '');
+          it.contentId = String(c.target_id || '');
+        }
+      }
+    }
+    // Layk (shaxsiy post) — kontent o'zi nishon.
+    for (const it of items) {
+      if (it.targetType === 'post' && !it.contentKind) {
+        it.contentKind = 'post';
+        it.contentId = it.targetId;
+      }
+    }
     const unread = await env.DB.prepare(
       `SELECT COUNT(*) AS n FROM notifications WHERE recipient_user_id = ? AND read_at IS NULL`
     ).bind(user.id).first();

@@ -74,6 +74,15 @@ check('6) B o’z ro’yxatini oldi', listB.status, 200);
 check('6) uchta yozuv', listB.body.items.length, 3);
 check('6) hammasi o’qilmagan', listB.body.unreadCount, 3);
 
+// Bosilganda post ochilishi uchun: izoh va layk qaysi postga tegishli.
+const cItem = listB.body.items.find((i) => i.type === 'comment');
+check('6) izoh — kontent turi', cItem?.contentKind, 'post');
+check('6) izoh — kontent ID', cItem?.contentId, '10');
+const lItem = listB.body.items.find((i) => i.type === 'like');
+check('6) layk — kontent turi', lItem?.contentKind, 'post');
+check('6) layk — kontent ID', lItem?.contentId, '10');
+checkTrue('6) obunada kontent yo‘q', listB.body.items.filter((i) => i.type === 'follow').every((i) => !i.contentKind));
+
 const listA = await call('/api/notifications', asA);
 check('6) A da bildirishnoma yo’q', listA.body.items.length, 0);
 
