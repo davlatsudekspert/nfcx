@@ -55,9 +55,68 @@ import 'profile_repository.dart';
 // Ishlab chiqarish xulqi O'ZGARMAYDI.
 final profilePostsProvider = FutureProvider.autoDispose
     .family<List<Post>, String>(dependencies: [socialRepositoryProvider], (ref, code) async {
+      final keep = keepPostsBriefly(ref, ('posts', code));
       final res = await ref.watch(socialRepositoryProvider).postsOf(code);
-      return res.when(ok: (v) => v, err: (e) => throw e);
+      return res.when(ok: (v) => v, err: (e) {
+        keep.close();
+        throw e;
+      });
     });
+
+/// Saqlangan ro'yxat shundan eski bo'lsa, qaytib kirilganda fonda
+/// yangilanadi (eski ro'yxat ko'rinib turadi, skelet chiqmaydi).
+const kPostsFresh = Duration(minutes: 2);
+
+/// Xotirada shuncha profilning postlari saqlanadi (eng eskisi chiqadi).
+const kPostsKeepMax = 12;
+
+/// Testlar uchun soat.
+@visibleForTesting
+DateTime Function() postsClock = DateTime.now;
+
+/// Profil postlari ekrandan chiqilgach ham XOTIRADA qoladi
+/// (egasi, 2026-10-05: "boshqalarni profilini ko'rishda sekin").
+///
+/// Lenta → profil → orqaga → yana o'sha profil: ikkinchi ochilishda
+/// to'r darhol chiziladi, skelet yo'q. Ro'yxat [kPostsFresh] dan eski
+/// bo'lsa — ko'rinib turgan holda fonda yangilanadi. Yangilash
+/// (`invalidate`) avvalgidek darhol yangisini oladi. Xato saqlanmaydi.
+///
+/// Taymer YO'Q (testlarda osilib qolardi): xotira [kPostsKeepMax] ta
+/// ro'yxat bilan cheklangan — yangisi kelsa eng eskisi bo'shatiladi.
+KeepAliveLink keepPostsBriefly(Ref<Object?> ref, Object key) {
+  final link = ref.keepAlive();
+  final kept = _keptPosts[ref.container] ??= _KeptPosts();
+  kept.add(key, link);
+  ref.onDispose(() => kept.drop(key, link));
+  final loadedAt = postsClock();
+  ref.onResume(() {
+    if (postsClock().difference(loadedAt) > kPostsFresh) ref.invalidateSelf();
+  });
+  return link;
+}
+
+final _keptPosts = Expando<_KeptPosts>('keptPosts');
+
+class _KeptPosts {
+  /// Qo'shilish tartibida (eng eskisi birinchi).
+  final _links = <Object, KeepAliveLink>{};
+
+  void add(Object key, KeepAliveLink link) {
+    // Shu kalitning avvalgi yuklanishi (yangilash) — yangisi o'rnini oladi.
+    final old = _links.remove(key);
+    if (old != null && !identical(old, link)) old.close();
+    _links[key] = link;
+    while (_links.length > kPostsKeepMax) {
+      final first = _links.keys.first;
+      _links.remove(first)!.close();
+    }
+  }
+
+  void drop(Object key, KeepAliveLink link) {
+    if (identical(_links[key], link)) _links.remove(key);
+  }
+}
 
 /// Kompaniya postlari — SHAXSIY postlardan boshqa manba.
 ///
@@ -67,8 +126,12 @@ final profilePostsProvider = FutureProvider.autoDispose
 /// natijada biznes profilida shaxsiy postlar ko'rinardi.
 final companyPostsProvider = FutureProvider.autoDispose
     .family<List<Post>, String>(dependencies: [businessRepositoryProvider], (ref, id) async {
+      final keep = keepPostsBriefly(ref, ('company', id));
       final res = await ref.watch(businessRepositoryProvider).posts(id);
-      return res.when(ok: (v) => v, err: (e) => throw e);
+      return res.when(ok: (v) => v, err: (e) {
+        keep.close();
+        throw e;
+      });
     });
 
 /// Digital Identity Canvas.
@@ -150,6 +213,22 @@ class ProfileScreen extends ConsumerWidget {
     /// begona odamning o'rnida FAQAT skelet turadi — hech qanday o'z
     /// ma'lumotimiz ko'rinmaydi.
     final pending = target != null && active == null;
+
+    /// POSTLAR TO'RI PROFIL YOZUVINI KUTMAYDI (egasi, 2026-10-05:
+    /// "boshqalarni profilini ko'rishda ... keyin ochilyabdi").
+    ///
+    /// Ilgari to'r faqat `active` kelgandan keyin quriladi, ya'ni
+    /// `/posts` so'rovi `/api/records/:code` javobidan KEYIN
+    /// boshlanardi — ikki tarmoq aylanishi ketma-ket. Kod esa
+    /// manzilda allaqachon bor: endi ikkala so'rov BIR VAQTDA
+    /// ketadi. Profil xato bilan tugasa (topilmadi, o'chirilgan) to'r
+    /// avvalgidek ko'rinmaydi.
+    final gridCode = target ?? active?.code;
+    final gridCompany = active?.isBusiness ?? company;
+    final gridShown = active != null ||
+        (target != null &&
+            ((remote?.isLoading ?? false) ||
+                (companyRemote?.isLoading ?? false)));
 
     /// BIZNES PROFILI — premium vitrina (shaxsiy profildan ALOHIDA
     /// tuzilma): muqova, logotip, Business ID, ish vaqti, katalog.
@@ -247,10 +326,11 @@ class ProfileScreen extends ConsumerWidget {
           if (!context.mounted) return;
           // Biznes profilda KOMPANIYA postlari yangilanadi (UIQ-1:
           // ilgari faqat shaxsiy ro'yxat yangilanardi).
-          if (active != null && active.isBusiness) {
-            ref.invalidate(companyPostsProvider(active.code));
-          } else if (id != null) {
-            ref.invalidate(profilePostsProvider(id.code));
+          // To'r qaysi kalit bilan qurilgan bo'lsa, o'shani yangilaydi.
+          if (gridCode != null) {
+            ref.invalidate(gridCompany
+                ? companyPostsProvider(gridCode)
+                : profilePostsProvider(gridCode));
           }
         },
         child: NovaScroll(
@@ -260,9 +340,9 @@ class ProfileScreen extends ConsumerWidget {
           // bilan HAMMA postning rasmi yuklanib, har video uchun muqova
           // navbatga qo'yilardi. To'r bo'lmaganda ham bo'sh sliver:
           // profil kelganda scroll turi (va ichidagi holat) almashmasin.
-          tail: active == null
+          tail: !gridShown || gridCode == null
               ? const SliverToBoxAdapter()
-              : _PostsGrid(code: active.code, company: active.isBusiness),
+              : _PostsGrid(code: gridCode, company: gridCompany),
           children: [
             if (pending)
               const _PendingHero()

@@ -33,6 +33,9 @@ dependencies:
   # Rasm keshining hajmi (NovaImageCache). Allaqachon cached_network_image
   # orqali o'rnatilgan — yangi paket yuklanmaydi.
   flutter_cache_manager: ^3.4.1
+  # Rasm keshining HTTP mijozi (ulanish 90 s tirik). Allaqachon
+  # flutter_cache_manager orqali o'rnatilgan — yangi paket yuklanmaydi.
+  http: ^1.6.0
   qr_flutter: ^4.1.0
   share_plus: ^10.1.3
   url_launcher: ^6.3.1

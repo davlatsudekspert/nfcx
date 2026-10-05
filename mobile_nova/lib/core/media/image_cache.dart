@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:http/io_client.dart';
 
 /// RASMLAR TELEFONDA — BITTA KESH, TEZ PAYDO BO'LISH (egasi, 2026-09:
 /// "ilovadagi rasmlar sekin ochilmoqda").
@@ -24,6 +27,14 @@ class NovaImageCache {
       'nova_images_v1',
       stalePeriod: const Duration(days: 60),
       maxNrOfCacheObjects: 1500,
+      // Rasm ulanishi ham 90 soniya tirik turadi (API mijozi bilan bir
+      // xil sabab): sukutdagi 15 soniyadan keyin har yangi to'r yangi
+      // TLS qo'l berishishdan boshlanardi.
+      fileService: HttpFileService(
+        httpClient: IOClient(
+          HttpClient()..idleTimeout = const Duration(seconds: 90),
+        ),
+      ),
     ),
   );
 

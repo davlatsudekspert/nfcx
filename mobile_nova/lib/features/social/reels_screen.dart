@@ -85,15 +85,23 @@ final reelsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
   // boshlanardi. Kod faqat profil almashganda o'zgaradi.
   final code = ref.watch(activeProfileProvider.select((p) => p?.code));
 
-  // Ikki so'rov BIR VAQTDA — biri ikkinchisini kutmaydi (birinchi
-  // Reels ochilishi ikki tarmoq aylanishi o'rniga bittasi).
-  final results = await Future.wait<Result<List<Post>>>([
-    if (code != null) repo.postsOf(code),
-    // Asosiy ekran olgan lenta qayta ishlatiladi (3 daqiqa).
-    repo.recentFeed(),
-  ]);
-  if (code != null) {
-    results.first.when(
+  // Ikki so'rov BIR VAQTDA. LENTA O'Z VIDEOLARIMNI KUTMAYDI
+  // (2026-10-05, egasi: "Reels ochilishi sekin"): lenta odatda
+  // Asosiy ekrandan tayyor turadi (`recentFeed`), o'z postlarim esa
+  // tarmoqdan keladi. Ilgari ikkalasi ham kutilardi, ya'ni tayyor
+  // lenta ham `/posts` javobigacha bo'sh ekran ortida turardi.
+  //
+  // O'z videolarim lentadan OLDIN kelsa — avvalgidek boshida turadi.
+  // Keyin kelsa — ro'yxat OXIRIGA qo'shiladi: ko'rilayotgan reel
+  // o'rnidan siljimaydi.
+  Result<List<Post>>? own;
+  final ownF = code == null ? null : repo.postsOf(code);
+  ownF?.then((r) => own = r);
+  var disposed = false;
+  ref.onDispose(() => disposed = true);
+
+  void addOwn(Result<List<Post>>? r) {
+    r?.when(
       ok: (items) {
         for (final p in items.where(playable)) {
           byId[p.id] = p;
@@ -103,7 +111,25 @@ final reelsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
     );
   }
 
-  final res = results.last;
+  // Asosiy ekran olgan lenta qayta ishlatiladi (3 daqiqa).
+  final res = await repo.recentFeed();
+  // Lenta kelmadi — o'z videolarim bo'lsa ular ko'rsatiladi, shuning
+  // uchun bu holatda ular KUTILADI.
+  if (ownF != null && own == null && !res.isOk) own = await ownF;
+  addOwn(own);
+  if (ownF != null && own == null) {
+    ownF.then((r) {
+      if (disposed) return;
+      final cur = ref.state.valueOrNull;
+      if (cur == null) return;
+      final have = {for (final p in cur) p.id};
+      final add = (r.valueOrNull ?? const <Post>[])
+          .where((p) => playable(p) && !have.contains(p.id))
+          .toList();
+      if (add.isNotEmpty) ref.state = AsyncData([...cur, ...add]);
+    });
+  }
+
   return res.when(
     ok: (items) {
       for (final p in items.where(playable)) {

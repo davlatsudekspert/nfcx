@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
 
 import '../errors/app_error.dart';
@@ -55,6 +56,18 @@ class ApiClient {
   ApiClient({Dio? dio, SecureStore? store, this.baseUrl = kApiBase})
       : _store = store ?? SecureStore(),
         _dio = dio ?? Dio() {
+    // ULANISH QAYTA ISHLATILADI (2026-10-05, tezlik tahlili). Dart
+    // `HttpClient` bo'sh ulanishni sukut bo'yicha 15 soniyada yopadi:
+    // odam postni 15 soniyadan ko'proq ko'rib, keyin profil ochsa,
+    // har safar yangi TCP + TLS qo'l berishish (2-3 tarmoq aylanishi)
+    // qaytadan bo'lardi. 90 soniya — server (Cloudflare) ulanishni
+    // undan oldin o'zi yopmaydi. Test o'z `Dio` sini bersa tegilmaydi.
+    if (dio == null) {
+      _dio.httpClientAdapter = IOHttpClientAdapter(
+        createHttpClient: () =>
+            HttpClient()..idleTimeout = const Duration(seconds: 90),
+      );
+    }
     _dio.options = _dio.options.copyWith(
       baseUrl: baseUrl,
       // Mobil internet sekin bo'lishi mumkin, lekin 20 soniyadan ortiq
