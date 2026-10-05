@@ -1,0 +1,26 @@
+From 90de82ea3cbd0b32e4dbff367f0d8ec65e0313cb Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Mon, 5 Oct 2026 04:37:20 +0000
+Subject: [PATCH] Test: speed_paths_test'dagi ishlatilmagan import olib
+ tashlandi (CI analyze)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ mobile_nova/test/speed_paths_test.dart | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/mobile_nova/test/speed_paths_test.dart b/mobile_nova/test/speed_paths_test.dart
+index ecb4670..184ee92 100644
+--- a/mobile_nova/test/speed_paths_test.dart
++++ b/mobile_nova/test/speed_paths_test.dart
+@@ -1,6 +1,5 @@
+ import 'dart:async';
+ 
+-import 'package:flutter/material.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:flutter_test/flutter_test.dart';
+ import 'package:nfcstore_nova/core/errors/app_error.dart';
+-- 
+2.43.0
+
