@@ -6419,8 +6419,12 @@ async function recordsApi(request, env, url) {
       // Egasi o'chirilgan profilning kontenti chiqmaydi — profil
       // sahifasi 404 bo'lgani bilan bu yo'l TO'G'RIDAN-TO'G'RI ham
       // so'raladi (ilova tablarni alohida yuklaydi).
-      if (await ownerDeletedD1(env, await getRecordOwner(env, code))) return json({ posts: [] });
-      const user = await getCurrentUser(request, env);
+      // Egasi va joriy foydalanuvchi PARALLEL o'qiladi: UZ bazasigacha
+      // har bir ketma-ket so'rov bitta to'liq borib-kelish (2026-10-05).
+      const [postsOwner, user] = await Promise.all([
+        getRecordOwner(env, code), getCurrentUser(request, env),
+      ]);
+      if (await ownerDeletedD1(env, postsOwner)) return json({ posts: [] });
       return json({ posts: await listPostsD1(env, code, user ? user.id : null) });
     }
 
@@ -6507,29 +6511,38 @@ async function recordsApi(request, env, url) {
     if (!validCode(code)) return json({ error: 'bad_code' }, 400);
 
     if (request.method === 'GET') {
-      const rec = await getRecord(env, code);
+      // TEZLIK (2026-10-05): begona profil ilovada ~2 s skelet bo'lib
+      // turardi. Sabab — 7 ta KETMA-KET so'rov, har biri UZ bazasigacha
+      // to'liq borib-kelish. Bir-biriga bog'liq bo'lmaganlari endi
+      // parallel: yozuv, egasi va joriy foydalanuvchi bitta to'lqinda,
+      // o'chirilganlik va kompaniya ikkinchisida.
+      const [rec, owner, user] = await Promise.all([
+        getRecord(env, code), getRecordOwner(env, code), getCurrentUser(request, env),
+      ]);
       if (!rec) return json({ error: 'not_found' }, 404);
       // Egasi o'chirilgan bo'lsa — profil yo'q hisoblanadi (izohi
       // `ownerAliveSql` tepasida). `getRecord` ning O'ZI o'zgartirilmaydi:
       // u buyurtma va to'lov oqimlarida ham ishlatiladi va u yerda
       // kartani "yo'q" deb ko'rsatish to'lovni buzardi.
-      if (await ownerDeletedD1(env, await getRecordOwner(env, code))) {
-        return json({ error: 'not_found' }, 404);
-      }
+      //
       // Biriktirilgan kompaniya — nomi va logotipi bilan. Kompaniya
       // keyin to'xtatilgan bo'lsa `company` bo'sh qoladi va profilda
       // blok umuman chizilmaydi (o'lik havola qolmasin).
+      const [deleted, co] = await Promise.all([
+        ownerDeletedD1(env, owner),
+        rec.companyId
+          ? env.DB.prepare(
+            `SELECT company_id, display_name, logo_url, category, subcategory, city FROM companies WHERE company_id = ? AND status = 'active'`
+          ).bind(rec.companyId).first().catch(() => null)
+          : null,
+      ]);
+      if (deleted) return json({ error: 'not_found' }, 404);
       if (rec.companyId) {
-        const co = await env.DB.prepare(
-          `SELECT company_id, display_name, logo_url, category, subcategory, city FROM companies WHERE company_id = ? AND status = 'active'`
-        ).bind(rec.companyId).first().catch(() => null);
         rec.company = co ? {
           companyId: co.company_id, displayName: co.display_name, logoUrl: co.logo_url || '',
           subtitle: co.subcategory || co.category || '', city: co.city || '',
         } : null;
       }
-      const user = await getCurrentUser(request, env);
-      const owner = await getRecordOwner(env, code);
       const isOwner = !!user && String(owner) === String(user.id);
       if (rec.hidePhone && !isOwner) rec.phone = '';
       // KARTA RAQAMI ENDI PROFILDA KO'RINADI (2026-09, egasining qarori).
@@ -10945,19 +10958,32 @@ const FEED_UNION_SQL = `SELECT * FROM (
 /// ikkalasini ham bitta `Post.fromJson` bilan o'qiydi.
 async function shapeFeedRows(env, rows, viewerId) {
   const feedTargets = rows.map((r) => ({ kind: commentTargetKind(r), id: Number(r.id) }));
-  const [commentCounts, viewCounts] = await Promise.all([
+  // TEZLIK (2026-10-05): izohlar, ko'rishlar, kompaniya layklari va
+  // musiqa — bir-biriga bog'liq emas, shuning uchun BITTA to'lqinda.
+  // Avval ular uch-to'rt ketma-ket borib-kelish edi va Reels/lenta
+  // UZ bazasi bilan ~3 s ochilardi. Musiqa obyektga keyin yoziladi
+  // (`extras` — post kaliti bo'yicha vaqtinchalik obyektlar).
+  const extras = rows
+    .filter((r) => String(r.kind) === 'post')
+    .map((r) => ({
+      kind: commentTargetKind(r) === 'company_post' ? 'company_post' : 'post',
+      id: Number(r.id),
+      obj: {},
+    }));
+  const [commentCounts, viewCounts, companyPostLikes] = await Promise.all([
     apiComments.countsFor(env, feedTargets).catch(() => new Map()),
     // Faqat post/company_post sanaladi (`VIEW_KINDS`); istoryada 0.
     apiComments.viewsFor(env, feedTargets).catch(() => new Map()),
+    apiComments.likesFor(
+      env,
+      rows
+        .filter((r) => String(r.kind) === 'post' && String(r.author_kind) === 'company')
+        .map((r) => ({ kind: 'company_post', id: Number(r.id) })),
+      viewerId,
+    ).catch(() => new Map()),
+    apiMusic.attachPostExtras(env, extras),
   ]);
-
-  const companyPostLikes = await apiComments.likesFor(
-    env,
-    rows
-      .filter((r) => String(r.kind) === 'post' && String(r.author_kind) === 'company')
-      .map((r) => ({ kind: 'company_post', id: Number(r.id) })),
-    viewerId,
-  ).catch(() => new Map());
+  const extraByKey = new Map(extras.map((e) => [`${e.kind}:${e.id}`, e.obj]));
 
   const shaped = rows.map((r) => {
     const d = parseDbDate(r.created_at);
@@ -10982,12 +11008,12 @@ async function shapeFeedRows(env, rows, viewerId) {
       commentKind: target,
       commentCount: commentCounts.get(`${target}:${Number(r.id)}`) || 0,
       viewCount: viewCounts.get(`${target}:${Number(r.id)}`) || 0,
+      // Musiqa va rasmli reel — faqat postlar (istoryada hozircha yo'q).
+      ...(String(r.kind) === 'post'
+        ? extraByKey.get(`${target === 'company_post' ? 'company_post' : 'post'}:${Number(r.id)}`)
+        : null),
     };
   });
-  // Musiqa va rasmli reel — faqat postlar (istoryada hozircha yo'q).
-  await apiMusic.attachPostExtras(env, shaped
-    .filter((o) => o.kind === 'post')
-    .map((o) => ({ kind: o.commentKind === 'company_post' ? 'company_post' : 'post', id: o.id, obj: o })));
   return shaped;
 }
 
@@ -11003,13 +11029,17 @@ async function feedApi(request, env, url) {
 
   // `limit + 1` — keyingi sahifa bor-yo'qligini BITTA so'rov bilan
   // bilish uchun (alohida COUNT so'rovi butun jadvalni sanardi).
-  const rows = await env.DB.prepare(
-    // `limit + 1` — keyingi sahifa bor-yo'qligini BITTA so'rov bilan
-    // bilish uchun (alohida COUNT so'rovi butun jadvalni sanardi).
-    `${FEED_UNION_SQL}
-     ORDER BY created_at DESC, id DESC
-     LIMIT ? OFFSET ?`
-  ).bind(viewerId, viewerId, now, viewerId, now, limit + 1, offset).all();
+  // Asosiy sahifa, bloklanganlar va FEATURED nishonlari bir-biriga
+  // bog'liq emas — BITTA parallel to'lqinda o'qiladi (tezlik, 2026-10-05).
+  const [rows, blockedList, featuredTargets] = await Promise.all([
+    env.DB.prepare(
+      `${FEED_UNION_SQL}
+       ORDER BY created_at DESC, id DESC
+       LIMIT ? OFFSET ?`
+    ).bind(viewerId, viewerId, now, viewerId, now, limit + 1, offset).all(),
+    viewerId ? apiModeration.blockedByUser(env, viewerId) : [],
+    page === 1 ? apiFeatured.activeTargets(env, nowTs()).catch(() => []) : [],
+  ]);
 
   // BLOKLANGAN PROFILLAR LENTADAN CHIQARILADI.
   //
@@ -11020,10 +11050,8 @@ async function feedApi(request, env, url) {
   // Filtr SQL da emas, shu yerda: bloklanganlar soni odatda bir
   // nechta va ularni har bir UNION shoxiga qo'shish so'rovni
   // sezilarli murakkablashtirardi.
-  const blocked = viewerId
-    ? new Set((await apiModeration.blockedByUser(env, viewerId))
-      .map((b) => `${b.kind === 'company' ? 'company' : 'card'}:${b.id.toUpperCase()}`))
-    : new Set();
+  const blocked = new Set((blockedList || [])
+    .map((b) => `${b.kind === 'company' ? 'company' : 'card'}:${b.id.toUpperCase()}`));
 
   const all = (rows.results || []).filter(
     (r) => !blocked.has(`${String(r.author_kind)}:${String(r.code || '').toUpperCase()}`),
@@ -11036,7 +11064,8 @@ async function feedApi(request, env, url) {
   // bo'lardi; shuning uchun sahifa yig'ilgach bitta guruhlangan
   // so'rov qilinadi.
   const page1 = all.slice(0, limit);
-  const feed = await shapeFeedRows(env, page1, viewerId);
+  // Sahifa va FEATURED parallel shakllanadi (pastdagi izohga qarang).
+  const feedPromise = shapeFeedRows(env, page1, viewerId);
 
   // ── NFCSTORE FEATURED — PULLIK KO'TARILGAN KONTENT ───────────────
   //
@@ -11056,7 +11085,7 @@ async function feedApi(request, env, url) {
   // to'langani yashiringan profilni ochib bermaydi.
   let featured = [];
   if (page === 1) {
-    const targets = await apiFeatured.activeTargets(env, nowTs()).catch(() => []);
+    const targets = featuredTargets || [];
     if (targets.length) {
       const where = targets.map(() => '(kind = ? AND id = ?)').join(' OR ');
       const fRows = await env.DB.prepare(
@@ -11084,6 +11113,7 @@ async function feedApi(request, env, url) {
     }
   }
 
+  const feed = await feedPromise;
   // Ko'tarilgan kontent lentada IKKI MARTA chiqmasin.
   const featuredKeys = new Set(featured.map((f) => `${f.commentKind}:${f.id}`));
   const rest = feed.filter((f) => !featuredKeys.has(`${f.commentKind}:${f.id}`));
