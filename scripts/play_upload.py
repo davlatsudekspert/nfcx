@@ -19,6 +19,7 @@ Rejimlar:
            qo'yiladi va tekshiruvga yuboriladi.
 """
 import json
+import re
 import os
 import sys
 
@@ -104,8 +105,24 @@ def main():
             data=f,
             timeout=900,
         )
-    vc = str(check(up, ".aab yuklash")["versionCode"])
-    print(f"Yuklandi: versionCode {vc}")
+    # ALLAQACHON YUKLANGAN BUNDLE. `nova-apk.yml` har qurilishni
+    # o'zi `internal` trekiga yuklaydi; keyin xuddi shu faylni yopiq
+    # trekka (NFCSTORE) qo'yishda Google "Version code N has already
+    # been used" deydi. Bu xato emas: fayl Play'da bor, uni trekka
+    # biriktirish kifoya — qayta yuklash shart emas.
+    m = None
+    if up.status_code == 403:
+        try:
+            m = re.search(r"Version code (\d+) has already been used",
+                          up.json().get("error", {}).get("message", ""))
+        except ValueError:
+            m = None
+    if m:
+        vc = m.group(1)
+        print(f"versionCode {vc} Play'da allaqachon bor — faqat trekka qo'yiladi.")
+    else:
+        vc = str(check(up, ".aab yuklash")["versionCode"])
+        print(f"Yuklandi: versionCode {vc}")
 
     status = (os.environ.get("STATUS") or "completed").strip()
     body = {"track": want, "releases": [{"name": vc, "versionCodes": [vc], "status": status}]}
