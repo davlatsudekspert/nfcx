@@ -125,6 +125,13 @@ to'xtamaydi; `MODERATION_OFF=1` bilan o'chadi.
 (`/api/feed`) har kadrga `commentKind` va `commentCount` qo'shadi va
 sonlarni `countsFor()` orqali BITTA guruhlangan so'rov bilan oladi.
 
+Obunalar lentasi (Reels "Obunalar" tabi, 2026-10): `GET
+/api/feed?scope=following` — kirgan tomoshabin obuna bo'lgan odamlar
+(`follows`, odamning HAMMA kartalari) va kompaniyalar (`company_follows`)
+kontenti, xuddi shu shaklda `{feed, hasMore}`. Anonim — 401. Reklama
+qo'shilmaydi; bloklash, maxfiylik va rejadagi post shartlari oddiy lenta
+bilan bir xil. Noma'lum `scope` — oddiy lenta.
+
 Ko'rishlar (shu modulda): `POST /api/content-views/:kind/:id`
 (`post | company_post`) → `{counted, count}`. QOIDA (egasi, 2026-10-04):
 odam postga/Reels'ga har KIRIB 2 soniya ko'rganida +1 — qaysi seansda

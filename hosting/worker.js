@@ -11354,6 +11354,46 @@ async function feedApi(request, env, url) {
   // Endi 1-to'lqinda sessiya, sahifa (`liked` uchun 0 — anonim lenta
   // bilan AYNAN bir so'rov) va FEATURED birga; kirgan odamning bloklari
   // va `liked` belgilari 2-to'lqinda, shakl so'rovlari bilan birga.
+  // OBUNALAR LENTASI (Reels "Obunalar" tabi, egasi 2026-10-05:
+  // "Reels | Do'stlar"). `scope=following` — faqat tomoshabin obuna
+  // bo'lgan odamlar (`follows`: karta EGASI bo'yicha, ya'ni odamning
+  // hamma kartalari) va kompaniyalar (`company_follows`) kontenti.
+  // Shu UNION — maxfiylik, o'chirilgan egasi, rejadagi post shartlari
+  // o'zgarmaydi. Reklama QO'SHILMAYDI: bu tab — faqat tanishlar.
+  // Bu yo'lda sahifa so'rovi tomoshabinni KUTADI (filtr unga bog'liq),
+  // oddiy lenta esa avvalgidek bitta to'lqinda qoladi.
+  const following = url.searchParams.get('scope') === 'following';
+  if (following) {
+    const me = await getCurrentUser(request, env);
+    if (!me) return json({ error: 'unauthorized' }, 401);
+    apiComments.ensureSchema(env).catch(() => {});
+    const fRes = await env.DB.prepare(
+      `${FEED_UNION_SQL}
+       WHERE (author_kind = 'card' AND code IN (
+                SELECT fc.code FROM cards fc JOIN follows ff ON ff.followee_id = fc.user_id
+                 WHERE ff.follower_id = ?))
+          OR (author_kind = 'company' AND code IN (
+                SELECT cf.company_id FROM company_follows cf WHERE cf.user_id = ?))
+       ORDER BY created_at DESC, id DESC
+       LIMIT ? OFFSET ?`
+    ).bind(0, 0, now, 0, now, me.id, me.id, limit + 1, offset).all();
+    const fRaw = fRes.results || [];
+    const [fBlocked, fLiked, fShaped] = await Promise.all([
+      apiModeration.blockedByUser(env, me.id),
+      feedViewerLikedKeys(env, fRaw, me.id),
+      shapeFeedRows(env, fRaw, me.id),
+    ]);
+    const fBlockedSet = new Set((fBlocked || [])
+      .map((b) => `${b.kind === 'company' ? 'company' : 'card'}:${b.id.toUpperCase()}`));
+    const fAll = [];
+    fRaw.forEach((r, i) => {
+      if (fBlockedSet.has(`${String(r.author_kind)}:${String(r.code || '').toUpperCase()}`)) return;
+      const k = feedLikedKey(r);
+      fAll.push(k ? { ...fShaped[i], liked: fLiked.has(k) } : fShaped[i]);
+    });
+    return json({ feed: fAll.slice(0, limit), hasMore: fAll.length > limit });
+  }
+
   const featuredP = page === 1 ? apiFeatured.activeTargets(env, nowTs()).catch(() => []) : Promise.resolve([]);
   apiComments.ensureSchema(env).catch(() => {});
   const [user, rows] = await Promise.all([
