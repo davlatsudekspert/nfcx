@@ -113,10 +113,14 @@ const str = (v, max) => String(v ?? '').trim().slice(0, max);
 /// aslida hech narsa qilmasdi.
 export async function blockedByUser(env, userId) {
   if (!userId) return [];
-  await ensureSchema(env);
+  // Sxema va SELECT BITTA to'lqinda: sqld pipeline'ni tartib bilan
+  // bajaradi (CREATE avval). Jadval hali yo'q bo'lsa (D1) SELECT xatosi
+  // `[]` beradi — jadval yo'q = blok yo'q, natija avvalgidek.
+  const ready = ensureSchema(env);
   const rows = await env.DB.prepare(
     `SELECT target_kind, target_id FROM user_blocks WHERE user_id = ?`
   ).bind(userId).all().catch(() => null);
+  await ready;
   return (rows?.results || []).map((r) => ({ kind: r.target_kind, id: String(r.target_id) }));
 }
 

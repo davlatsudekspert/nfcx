@@ -157,12 +157,14 @@ async function sweepExpired(env, H) {
 /// `ends_at > now` sharti — muddati o'tganni belgilash kechiksa
 /// ham eskirgan slot chiqmasligi uchun.
 export async function activeTargets(env, nowTs) {
-  await ensureSchema(env);
+  // Sxema va SELECT bitta to'lqinda (moderation.js `blockedByUser` izohi).
+  const ready = ensureSchema(env);
   const rows = await env.DB.prepare(
     `SELECT target_kind, target_id FROM featured_slots
       WHERE status = 'active' AND ends_at > ?
       ORDER BY starts_at DESC, id DESC LIMIT 10`
   ).bind(nowTs).all().catch(() => null);
+  await ready;
   return (rows?.results || []).map((r) => ({
     kind: String(r.target_kind),
     id: Number(r.target_id),
