@@ -47,6 +47,10 @@ function whenDb(v) {
 }
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+// Faqat http(s) yoki sayt ichidagi '/...' havola — `javascript:` va
+// boshqa sxemalar admin brauzerida bajarilmasin.
+const safeHref = (u) => typeof u === 'string' && (/^https?:\/\//i.test(u) || (u.startsWith('/') && !u.startsWith('//')));
+
 // Elementning barcha media manzillari (rasm, video, fayl, karusel).
 function mediaOf(it) {
   return [it.imageUrl, it.videoUrl, it.fileUrl, ...(it.mediaUrls || [])].filter(Boolean);
@@ -315,19 +319,19 @@ export default function LegalRequestSection({ adminApi, apiErrText, isSuper }) {
                   {it.text && <p className="mt-1 whitespace-pre-wrap break-words text-[14px] text-[color:var(--vz-ink-dim)]">{it.text}</p>}
                   {mediaOf(it).length > 0 && (
                     <div className="mt-2 flex flex-wrap items-start gap-2">
-                      {[it.videoUrl ? '' : it.imageUrl, ...(it.mediaUrls || [])].filter(Boolean).map((u) => (
+                      {[it.videoUrl ? '' : it.imageUrl, ...(it.mediaUrls || [])].filter(safeHref).map((u) => (
                         <a key={u} href={u} target="_blank" rel="noreferrer">
                           <img src={u} alt="" loading="lazy" className="h-24 w-24 rounded-lg object-cover" />
                         </a>
                       ))}
-                      {it.videoUrl && (
+                      {safeHref(it.videoUrl) && (
                         <a href={it.videoUrl} target="_blank" rel="noreferrer" className="relative block">
                           <video src={it.videoUrl} poster={it.imageUrl || undefined} preload="metadata" muted
                             className="h-24 w-24 rounded-lg bg-black object-cover" />
                           <span className="absolute bottom-1 left-1 rounded bg-black/70 px-1 text-[11px] text-white">{t('Video')}</span>
                         </a>
                       )}
-                      {it.fileUrl && <a href={it.fileUrl} target="_blank" rel="noreferrer" className="text-[13px] underline">{t('Faylni ochish')}</a>}
+                      {safeHref(it.fileUrl) && <a href={it.fileUrl} target="_blank" rel="noreferrer" className="text-[13px] underline">{t('Faylni ochish')}</a>}
                     </div>
                   )}
                 </div>
