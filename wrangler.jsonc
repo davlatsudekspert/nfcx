@@ -241,6 +241,10 @@
     "EVIDENCE_RETENTION_MODE": "on",
     "PAYMENTS_ENABLED": "true",
     "PAYME_SANDBOX": "false",
+    // TAKLIF MUKOFOTI (egasi, 2026-10-06: "1 oy yaxshi"): har bir faol
+    // do'st uchun +30 kun Premium, 7 kun + faollik shartidan keyin
+    // (api/referrals.js). "0" qilinsa mukofot to'xtaydi, pending qoladi.
+    "REFERRAL_REWARD_ENABLED": "1",
     "PAYME_CHECKOUT_DOMAIN": "checkout.paycom.uz",
     "CLICK_RETURN_URL": "https://nfcstore.uz/tolovlar",
     // ANDROID APP LINKS — "NFCSTORE: Raqamli vizitka" (uz.nfcstore.nova).
