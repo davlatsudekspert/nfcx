@@ -99,6 +99,11 @@ def listing_set(s, edit):
         fail(f"ci/play/listings.json o'qilmadi: {e}")
     if not isinstance(data, dict) or not data:
         fail("ci/play/listings.json bo'sh yoki noto'g'ri")
+    only = [x.strip() for x in (os.environ.get("LANGS") or "").split(",") if x.strip()]
+    if only:
+        data = {k: v for k, v in data.items() if k in only}
+        if not data:
+            fail(f"LANGS={','.join(only)} — listings.json da bunday til yo'q")
     # API'ga murojaatdan OLDIN uzunliklarni tekshirish.
     bad = []
     for lang, fields in data.items():

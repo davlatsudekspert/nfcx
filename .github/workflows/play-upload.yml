@@ -29,6 +29,10 @@ on:
         description: "Trek nomi. Bo'sh — yopiq sinov treki avtomatik tanlanadi."
         required: false
         default: ''
+      langs:
+        description: "listing-set: faqat shu tillar (vergul bilan, masalan en-US). Bo'sh — hammasi."
+        required: false
+        default: ''
       status:
         description: "completed = tekshiruvga yuborish, draft = qoralama"
         required: true
@@ -85,5 +89,6 @@ jobs:
           MODE: ${{ inputs.mode }}
           TRACK: ${{ inputs.track }}
           STATUS: ${{ inputs.status }}
+          LANGS: ${{ inputs.langs }}
           AAB: aab/NFCSTORE-Mobile.aab
         run: python scripts/play_upload.py
