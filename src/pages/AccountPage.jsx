@@ -1717,7 +1717,7 @@ function PremiumPanel({ user, card, onBecamePremium }) {
             <span className="flex items-center gap-1.5 font-display text-2xl font-semibold text-[color:var(--accent-text)]"><IconCrown width={22} height={22} /> {tierLabel}</span>
             {user?.isPremium && <span className="vz-badge vz-badge--gold"><IconCheck width={12} height={12} /> {t("Premium a'zo")}</span>}
             {!user?.isPremium && trialLeft != null && (
-              <span className="vz-badge vz-badge--gold">{t('Sinov: {n} kun qoldi', { n: trialLeft })}</span>
+              <span className="vz-badge vz-badge--gold">{t('Barcha imkoniyatlar ochiq')}</span>
             )}
             {card?.code && <span className="vz-badge vz-badge--muted font-mono">{card.code}</span>}
           </div>
@@ -1727,7 +1727,7 @@ function PremiumPanel({ user, card, onBecamePremium }) {
               : premiumUntil
                 ? t('Premium faol. Muddati: {d} ({n} kun qoldi).', { d: premiumUntil.toLocaleDateString('uz-UZ'), n: Math.max(0, daysLeft) })
                 : trialLeft != null
-                  ? t('Sinov muddati: yana {n} kun barcha imkoniyatlar ochiq. Keyin tarifga qaytadi.', { n: trialLeft })
+                  ? t('Hozir barcha premium imkoniyatlar sizga ochiq — hech narsa to‘lash shart emas.')
                   : t("Daraja = NFC ID tarifi yoki Premium obuna (qaysi biri yuqori bo'lsa). Premium — oyiga {n} so'm.", { n: fmt(PREMIUM_FEE) })}
           </p>
           {renewSoon && (
@@ -4123,7 +4123,7 @@ function ReferralPanel({ user }) {
           {t("Do'stingiz shu havola orqali ro'yxatdan o'tsa, siz keyingi bandlashda avtomatik ")}<b className="text-accent">{t('10% chegirma')}</b>{t(' olasiz.')}
         </p>
         <p className="mt-1 text-sm text-base-content/70">
-          {t('Har bir do‘stingiz uchun yana')} <b className="text-accent">{t('+1 oy Premium')}</b> {t('beriladi — do‘stingiz kamida 7 kun faol bo‘lgach (bepul sinov davom etsa — sinovdan keyin).')}
+          {t('Har bir do‘stingiz uchun yana')} <b className="text-accent">{t('+1 oy Premium')}</b> {t('beriladi — do‘stingiz kamida 7 kun faol bo‘lgach.')}
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <code className="min-w-0 max-w-full break-all rounded-lg bg-black/30 px-3 py-2 font-mono text-sm" data-testid="invite-link">{link}</code>

@@ -25,7 +25,8 @@ export default function PremiumPreviewCard({ user }) {
     : premiumUntil
       ? t('{d} gacha faol', { d: premiumUntil.toLocaleDateString('uz-UZ') })
       : trialLeft != null
-        ? t('Sinov: {n} kun qoldi', { n: trialLeft })
+        // Bepul sinov: sanoq yo'q — odam ilovani "pullik" deb o'ylamasin (egasi, 2026-10-06).
+        ? t('Barcha imkoniyatlar ochiq')
         : t('Oyiga {n} so‘m', { n: fmt(PROFILE_PREMIUM_FEE) });
 
   return (
