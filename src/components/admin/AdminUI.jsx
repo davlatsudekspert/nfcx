@@ -225,16 +225,24 @@ export function AdminCard({ title, right, children, className = '', pad = true }
   );
 }
 
-export function KpiCard({ icon = 'chart', label, value, sub, tone = 'accent' }) {
+export function KpiCard({ icon = 'chart', label, value, sub, tone = 'accent', onClick, active = false, testId }) {
+  // `onClick` berilsa karta tugma bo'ladi (masalan, ro'yxatni filtrlaydi);
+  // `active` — hozir tanlangan filtr (oltin hoshiya).
+  const Tag = onClick ? 'button' : 'div';
   return (
-    <div className="vz-card min-w-0 p-4 sm:p-5">
+    <Tag
+      {...(onClick ? { type: 'button', onClick, 'aria-pressed': active } : {})}
+      data-testid={testId}
+      className={`vz-card min-w-0 p-4 text-left sm:p-5${onClick ? ' cursor-pointer transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--accent)]' : ''}`}
+      style={active ? { borderColor: 'var(--accent)', boxShadow: '0 0 0 2px var(--accent-soft)' } : undefined}
+    >
       <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${ICON_TONE[tone] || ICON_TONE.accent}`}>
         <AdminIcon name={icon} className="h-[20px] w-[20px]" />
       </span>
       <div className="mt-3.5 text-[14px]" style={{ color: 'var(--vz-ink-2)' }}>{label}</div>
       <div className="mt-1 break-words font-display text-[26px] font-semibold leading-none tracking-tight" style={{ color: 'var(--vz-ink)' }}>{value}</div>
       {sub && <div className="mt-2 text-[13px]" style={{ color: 'var(--vz-ink-3)' }}>{sub}</div>}
-    </div>
+    </Tag>
   );
 }
 

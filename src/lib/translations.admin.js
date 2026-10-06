@@ -769,5 +769,5 @@ export const DICT_ADMIN = {
 
   // ── Ilova foydalanuvchilari: platforma (2026-10) ──
   'Barcha platformalar': { ru: 'Все платформы', en: 'All platforms' },
-  'iOS 1.1.1 (323) dan oldingi versiyalar Android deb yozilgan; yangilagach to‘g‘ri ko‘rinadi.': { ru: 'Версии iOS до 1.1.1 (323) записаны как Android; после обновления будут показаны правильно.', en: 'iOS versions before 1.1.1 (323) were recorded as Android; they will show correctly after updating.' },
+  'iOS 1.1.1 (324) dan oldingi versiyalar Android deb yozilgan; yangilagach to‘g‘ri ko‘rinadi.': { ru: 'Версии iOS до 1.1.1 (324) записаны как Android; после обновления будут показаны правильно.', en: 'iOS versions before 1.1.1 (324) were recorded as Android; they will show correctly after updating.' },
 };

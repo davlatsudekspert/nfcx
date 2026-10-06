@@ -379,16 +379,22 @@ function UsersSection({ adminApi }) {
   return (
     <div className="flex flex-col gap-4" data-testid="app-users">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <KpiCard icon="users" label={t('Jami ilova foydalanuvchisi')} value={stats ? stats.total : '—'} />
+        {/* Kartalar bosiladi (egasi, 2026-10-06): iOS / Android — ro'yxat
+            faqat shu platformaga filtrlanadi, qayta bosilsa yoki "Jami"
+            bosilsa — hammasi. */}
+        <KpiCard icon="users" label={t('Jami ilova foydalanuvchisi')} value={stats ? stats.total : '—'}
+          onClick={() => setPlatform('')} active={platform === ''} testId="app-users-all" />
         <KpiCard icon="chart" label={t('Bugun ochgan')} value={stats ? stats.today : '—'} />
         <KpiCard icon="chart" label={t('7 kunda ochgan')} value={stats ? stats.week : '—'} />
         <KpiCard icon="chart" label={t('30 kunda ochgan')} value={stats ? stats.month : '—'} />
         {/* iOS va Android alohida — eski server javobida maydon bo'lmasa chiziqcha. */}
-        <KpiCard icon="users" label="iOS" value={stats?.ios ?? '—'} />
-        <KpiCard icon="users" label="Android" value={stats?.android ?? '—'} />
+        <KpiCard icon="users" label="iOS" value={stats?.ios ?? '—'}
+          onClick={() => setPlatform((p) => (p === 'ios' ? '' : 'ios'))} active={platform === 'ios'} testId="app-users-ios" />
+        <KpiCard icon="users" label="Android" value={stats?.android ?? '—'}
+          onClick={() => setPlatform((p) => (p === 'android' ? '' : 'android'))} active={platform === 'android'} testId="app-users-android" />
       </div>
       <p className="-mt-2 text-[12px] text-[color:var(--vz-ink-faint)]" data-testid="app-users-platform-note">
-        {t('iOS 1.1.1 (323) dan oldingi versiyalar Android deb yozilgan; yangilagach to‘g‘ri ko‘rinadi.')}
+        {t('iOS 1.1.1 (324) dan oldingi versiyalar Android deb yozilgan; yangilagach to‘g‘ri ko‘rinadi.')}
       </p>
       <AdminCard
         title={t('Ilova foydalanuvchilari')}
