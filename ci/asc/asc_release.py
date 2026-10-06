@@ -10,7 +10,8 @@ Rejimlar (argv[1]):
             (eski skrinshotlar almashtiriladi)
   attach  — BUILD raqamli build'ni versiyaga biriktiradi
   submit  — versiyani App Review'ga yuboradi
-  iap     — Premium obuna guruhi, 2 ta obuna, narxlar, mavjudlik, server bildirishnoma URL (idempotent)
+  iap     — Premium obuna guruhi, 2 ta obuna, 3 ta consumable (boost), narxlar, mavjudlik,
+            server bildirishnoma URL (idempotent)
 
 Natija ::notice:: annotatsiyalarida. Parol hech qachon chiqarilmaydi.
 """
@@ -566,7 +567,7 @@ def iap_group(aid):
                     'relationships': {'app': {'data': {'type': 'apps', 'id': aid}}}}})
         if not ok(c):
             iap_fail('POST /v1/subscriptionGroups', c, j.get('_error')); iap_stop()
-        g = j['data']; note(f'guruh yaratildi: {g["id"]}')
+        g = j['data']; IAP_NEW[0] += 1; note(f'guruh yaratildi: {g["id"]}')
     gid = g['id']
     locs, _, c, err = get_all(f'/v1/subscriptionGroups/{gid}/subscriptionGroupLocalizations', {'limit': 50})
     if not ok(c):
@@ -579,7 +580,7 @@ def iap_group(aid):
                     'attributes': {'locale': loc, 'name': name},
                     'relationships': {'subscriptionGroup': {'data': {'type': 'subscriptionGroups', 'id': gid}}}}})
         if ok(c):
-            note(f'guruh lokalizatsiyasi {loc} -> {c}')
+            IAP_NEW[0] += 1; note(f'guruh lokalizatsiyasi {loc} -> {c}')
         else:
             iap_fail(f'POST /v1/subscriptionGroupLocalizations {loc}', c, j.get('_error'))
     return gid
@@ -599,7 +600,7 @@ def iap_subscription(gid, spec):
         'relationships': {'group': {'data': {'type': 'subscriptionGroups', 'id': gid}}}}})
     if not ok(c):
         iap_fail(f"POST /v1/subscriptions {spec['productId']}", c, j.get('_error')); iap_stop()
-    s = j['data']
+    s = j['data']; IAP_NEW[0] += 1
     note(f"{spec['productId']}: yaratildi {s['id']} ({s['attributes'].get('state')}, "
          f"level {s['attributes'].get('groupLevel')})")
     return s
@@ -617,7 +618,7 @@ def iap_sub_locs(sid, spec):
                     'attributes': {'locale': loc, 'name': name, 'description': desc},
                     'relationships': {'subscription': {'data': {'type': 'subscriptions', 'id': sid}}}}})
         if ok(c):
-            note(f'  lokalizatsiya {loc} -> {c}')
+            IAP_NEW[0] += 1; note(f'  lokalizatsiya {loc} -> {c}')
         else:
             iap_fail(f"POST /v1/subscriptionLocalizations {spec['productId']} {loc}", c, j.get('_error'))
 
@@ -635,7 +636,6 @@ def iap_prices(sid, spec):
     usa = next((p for p in pts if abs(float(p['attributes'].get('customerPrice') or -1) - spec['usd']) < 0.001), None)
     if not usa:
         iap_fail(f'USA {spec["usd"]} narx nuqtasi ({tag})', 404, f'{len(pts)} nuqta ichida topilmadi'); return len(priced)
-    note(f"  {tag}: USA nuqta {usa['id']} attrs={usa['attributes']}")
     eq, einc, c, err = get_all(f"/v1/subscriptionPricePoints/{usa['id']}/equalizations",
                                {'include': 'territory', 'limit': 200})
     if not ok(c):
@@ -651,7 +651,7 @@ def iap_prices(sid, spec):
                                       'subscriptionPricePoint': {'data': {'type': 'subscriptionPricePoints', 'id': pp}},
                                       'territory': {'data': {'type': 'territories', 'id': terr}}}}})
         if ok(c):
-            created += 1; consecutive = 0; priced.add(terr)
+            created += 1; IAP_NEW[0] += 1; consecutive = 0; priced.add(terr)
         else:
             failed += 1; consecutive += 1
             if failed <= 3:
@@ -673,9 +673,122 @@ def iap_availability(sid, spec, terr):
                 'relationships': {'subscription': {'data': {'type': 'subscriptions', 'id': sid}},
                                   'availableTerritories': {'data': [{'type': 'territories', 'id': t} for t in terr]}}}})
     if ok(c):
-        note(f'  {tag}: mavjudlik {len(terr)} hudud -> {c}')
+        IAP_NEW[0] += 1; note(f'  {tag}: mavjudlik {len(terr)} hudud -> {c}')
     else:
         iap_fail(f'POST /v1/subscriptionAvailabilities {tag}', c, j.get('_error'))
+
+
+# ── iap: CONSUMABLE xaridlar (post boost) ──────────────────────────────
+IAP_NEW = [0]  # shu ishga tushirishda yaratilgan obyektlar soni (idempotentlik tekshiruvi)
+CONS_REVIEW_NOTE = ("Promotes the user's own post in the feed as 'Recommended' for the given number of days. "
+                    "Verified server-side via StoreKit 2 signed transactions.")
+CONS_DESC = {'en-US': 'Show your post as Recommended in the feed', 'ru': 'Ваш пост в ленте как «Рекомендуемое»'}
+IAP_CONSUMABLES = [
+    {'productId': 'uz.nfcstore.nova.boost.1d', 'name': 'Boost 1 day', 'usd': 2.99,
+     'locs': {'en-US': 'Post boost — 1 day', 'ru': 'Продвижение поста — 1 день'}},
+    {'productId': 'uz.nfcstore.nova.boost.3d', 'name': 'Boost 3 days', 'usd': 5.99,
+     'locs': {'en-US': 'Post boost — 3 days', 'ru': 'Продвижение поста — 3 дня'}},
+    {'productId': 'uz.nfcstore.nova.boost.6d', 'name': 'Boost 6 days', 'usd': 9.99,
+     'locs': {'en-US': 'Post boost — 6 days', 'ru': 'Продвижение поста — 6 дней'}},
+]
+
+
+def cons_product(aid, spec):
+    data, _, c, err = get_all(f'/v1/apps/{aid}/inAppPurchasesV2', {'filter[productId]': spec['productId'], 'limit': 200})
+    if not ok(c):
+        iap_fail(f"GET /v1/apps/{{id}}/inAppPurchasesV2 {spec['productId']}", c, err); return None
+    p = next((x for x in data if x['attributes'].get('productId') == spec['productId']), None)
+    if p:
+        note(f"{spec['productId']}: bor {p['id']} ({p['attributes'].get('state')})"); return p
+    c, j = call('POST', '/v2/inAppPurchases', {'data': {'type': 'inAppPurchases', 'attributes': {
+        'name': spec['name'], 'productId': spec['productId'], 'inAppPurchaseType': 'CONSUMABLE',
+        'familySharable': False, 'reviewNote': CONS_REVIEW_NOTE},
+        'relationships': {'app': {'data': {'type': 'apps', 'id': aid}}}}})
+    if not ok(c):
+        iap_fail(f"POST /v2/inAppPurchases {spec['productId']}", c, j.get('_error')); return None
+    IAP_NEW[0] += 1
+    p = j['data']; note(f"{spec['productId']}: yaratildi {p['id']} ({p['attributes'].get('state')})")
+    return p
+
+
+def cons_locs(iid, spec):
+    locs, _, c, err = get_all(f'/v2/inAppPurchases/{iid}/inAppPurchaseLocalizations', {'limit': 50})
+    if not ok(c):
+        iap_fail('GET inAppPurchaseLocalizations', c, err); return
+    have = {x['attributes'].get('locale') for x in locs}
+    for loc, name in spec['locs'].items():
+        if loc in have:
+            continue
+        c, j = call('POST', '/v1/inAppPurchaseLocalizations', {'data': {'type': 'inAppPurchaseLocalizations',
+                    'attributes': {'locale': loc, 'name': name, 'description': CONS_DESC[loc]},
+                    'relationships': {'inAppPurchaseV2': {'data': {'type': 'inAppPurchases', 'id': iid}}}}})
+        if ok(c):
+            IAP_NEW[0] += 1; note(f'  lokalizatsiya {loc} -> {c}')
+        else:
+            iap_fail(f"POST /v1/inAppPurchaseLocalizations {spec['productId']} {loc}", c, j.get('_error'))
+
+
+def cons_availability(iid, spec, terr):
+    tag = spec['productId'].rsplit('.', 1)[-1]
+    c, j = call('GET', f'/v2/inAppPurchases/{iid}/inAppPurchaseAvailability')
+    if ok(c) and isinstance(j.get('data'), dict):
+        note(f'  {tag}: mavjudlik allaqachon bor'); return
+    c, j = call('POST', '/v1/inAppPurchaseAvailabilities', {'data': {'type': 'inAppPurchaseAvailabilities',
+                'attributes': {'availableInNewTerritories': True},
+                'relationships': {'inAppPurchase': {'data': {'type': 'inAppPurchases', 'id': iid}},
+                                  'availableTerritories': {'data': [{'type': 'territories', 'id': t} for t in terr]}}}})
+    if ok(c):
+        IAP_NEW[0] += 1; note(f'  {tag}: mavjudlik {len(terr)} hudud -> {c}')
+    else:
+        iap_fail(f'POST /v1/inAppPurchaseAvailabilities {tag}', c, j.get('_error'))
+
+
+def cons_price(iid, spec):
+    """USA asosiy narx; boshqa hududlarni Apple avtomatik tenglashtiradi. Narx bo'lsa tegilmaydi."""
+    tag = spec['productId'].rsplit('.', 1)[-1]
+    c, j = call('GET', f'/v1/inAppPurchasePriceSchedules/{iid}/manualPrices',
+                params={'include': 'inAppPurchasePricePoint,territory', 'limit': 50})
+    if ok(c) and j.get('data'):
+        pts = {x['id']: x['attributes'].get('customerPrice') for x in j.get('included') or []
+               if x['type'] == 'inAppPurchasePricePoints'}
+        cur = [f"{rel_id(m, 'territory')}={pts.get(rel_id(m, 'inAppPurchasePricePoint'))}" for m in j['data']]
+        note(f'  {tag}: narx allaqachon bor: {cur}'); return 'existing ' + ','.join(cur)
+    pts, _, c, err = get_all(f'/v2/inAppPurchases/{iid}/pricePoints', {'filter[territory]': 'USA', 'limit': 200})
+    if not ok(c):
+        iap_fail(f'GET /v2/inAppPurchases/{{id}}/pricePoints USA ({tag})', c, err); return 'FAILED'
+    usa = next((p for p in pts if abs(float(p['attributes'].get('customerPrice') or -1) - spec['usd']) < 0.001), None)
+    if not usa:
+        iap_fail(f'USA {spec["usd"]} narx nuqtasi ({tag})', 404, f'{len(pts)} nuqta ichida topilmadi'); return 'FAILED'
+    c, j = call('POST', '/v1/inAppPurchasePriceSchedules', {'data': {'type': 'inAppPurchasePriceSchedules',
+        'relationships': {'inAppPurchase': {'data': {'type': 'inAppPurchases', 'id': iid}},
+                          'baseTerritory': {'data': {'type': 'territories', 'id': 'USA'}},
+                          'manualPrices': {'data': [{'type': 'inAppPurchasePrices', 'id': '${p0}'}]}}},
+        'included': [{'type': 'inAppPurchasePrices', 'id': '${p0}', 'attributes': {'startDate': None},
+                      'relationships': {'inAppPurchaseV2': {'data': {'type': 'inAppPurchases', 'id': iid}},
+                                        'inAppPurchasePricePoint': {'data': {'type': 'inAppPurchasePricePoints',
+                                                                             'id': usa['id']}}}}]})
+    if not ok(c):
+        iap_fail(f'POST /v1/inAppPurchasePriceSchedules {tag}', c, j.get('_error')); return 'FAILED'
+    IAP_NEW[0] += 1
+    note(f"  {tag}: narx USA {usa['attributes'].get('customerPrice')} USD (proceeds "
+         f"{usa['attributes'].get('proceeds')}), boshqa hududlar avtomatik -> {c}")
+    return f"USA {usa['attributes'].get('customerPrice')}"
+
+
+def consumables(aid, terr):
+    out = []
+    for spec in IAP_CONSUMABLES:
+        p = cons_product(aid, spec)
+        if not p:
+            out.append(f"{spec['productId']}=FAILED"); continue
+        cons_locs(p['id'], spec)
+        if terr:
+            cons_availability(p['id'], spec, terr)  # mavjudlik narxdan OLDIN
+        price = cons_price(p['id'], spec)
+        c, j = call('GET', f"/v2/inAppPurchases/{p['id']}")
+        st = ((j.get('data') or {}).get('attributes') or {}).get('state') if ok(c) else p['attributes'].get('state')
+        out.append(f"{spec['productId']}={p['id']} state={st} price={price}")
+    return out
 
 
 def iap():
@@ -699,7 +812,9 @@ def iap():
         c, j = call('GET', f"/v1/subscriptions/{s['id']}")
         st = ((j.get('data') or {}).get('attributes') or {}).get('state') if ok(c) else s['attributes'].get('state')
         summary.append(f"{spec['productId']}={s['id']} state={st} priced_territories={n}")
-    note(f'YAKUN: group={gid}; ' + '; '.join(summary) + f'; notificationURL: {notify}; xatolar: {len(IAP_FAILS)}')
+    summary += consumables(aid, terr)
+    note(f'YAKUN: group={gid}; ' + '; '.join(summary) + f'; notificationURL: {notify}; '
+         f'yangi obyektlar: {IAP_NEW[0]}; xatolar: {len(IAP_FAILS)}')
     flush('ASC iap')
     if IAP_FAILS:
         sys.exit(1)
