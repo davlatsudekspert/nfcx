@@ -126,7 +126,20 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     final onReels = shell.currentIndex == kReelsTab;
     final clean = onReels && ref.watch(reelsCleanProvider);
 
-    return Scaffold(
+    // ANDROID "ORQAGA" (audit 2026-10-06): Asosiy bo'lmagan tab ildizida
+    // orqaga bosilsa ilova YOPILMAYDI — avval Asosiy tabga qaytadi;
+    // ilovadan chiqish faqat Asosiy tabdan. Tab ichidagi ekranlar
+    // (branch navigatori) avvalgidek o'z tarixi bo'yicha qaytadi —
+    // PopScope faqat shell sahifasining o'zi yopilmoqchi bo'lganda
+    // ishlaydi.
+    return PopScope(
+      canPop: shell.currentIndex == 0,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop || shell.currentIndex == 0) return;
+        ref.read(audioOwnerProvider).stopAll();
+        shell.goBranch(0);
+      },
+      child: Scaffold(
       backgroundColor: Colors.transparent,
       extendBody: true,
       // Reels'da videolar vertikal aylanadi — u yerda panel doim to'liq.
@@ -177,6 +190,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

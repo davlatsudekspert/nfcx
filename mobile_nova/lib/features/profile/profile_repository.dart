@@ -148,7 +148,16 @@ class ProfileRepository {
     _api.post<void>('/api/records/$code/view');
   }
 
-  Future<Result<void>> follow(String code) => _api.post<void>('/api/follow/$code');
+  /// Obuna bo'lish. 409 `ALREADY_FOLLOWING` — maqsadga allaqachon
+  /// erishilgan (boshqa qurilmada obuna bo'lingan): MUVAFFAQIYAT.
+  /// `CANNOT_FOLLOW_SELF` esa xato bo'lib qoladi (o'z matni bor).
+  Future<Result<void>> follow(String code) async {
+    final res = await _api.post<void>('/api/follow/$code');
+    if (res case Err(:final error) when error.code == 'ALREADY_FOLLOWING') {
+      return const Ok(null);
+    }
+    return res;
+  }
 
   Future<Result<void>> unfollow(String code) =>
       _api.post<void>('/api/unfollow/$code');
@@ -224,7 +233,8 @@ class ProfileRepository {
     // bo'ladi — iPhone'da ham, Android'da ham (image_prep.dart). Muqova
     // biroz kattaroq qoladi.
     final prepared = await prepareImageForUpload(filePath,
-        maxSide: kind == 'cover' ? 2048 : kImagePrepMaxSide);
+        maxSide: kind == 'cover' ? 2048 : kImagePrepMaxSide,
+        limitBytes: kind == 'cover' ? 20 * 1024 * 1024 : kServerImageLimit);
     final List<int> bytes;
     try {
       bytes = await File(prepared).readAsBytes();

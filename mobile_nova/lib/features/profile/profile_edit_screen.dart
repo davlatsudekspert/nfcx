@@ -533,8 +533,23 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
             icon: Icons.music_note_outlined,
             gap: Gap.sm,
             trailing: Text('${_music.length}/$_musicMax',
-                style: AppType.monoStyle(color: t.text2, size: 12)),
+                style: AppType.monoStyle(
+                    color: _music.length > _musicMax ? t.error : t.text2,
+                    size: 12)),
             children: [
+              // CHEGARADAN ORTIQ (masalan, Premium / sinov tugagan):
+              // server saqlashda ortiqchasini JIM kesib tashlaydi —
+              // odam buni oldindan bilsin (audit 2026-10-06).
+              if (_music.length > _musicMax)
+                Text(
+                  l.profileMusicOverLimit(_musicMax),
+                  key: const ValueKey('music-over-limit'),
+                  style: TextStyle(
+                      fontFamily: AppType.sans,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: t.error),
+                ),
               for (var i = 0; i < _music.length; i++)
                 Container(
                   padding: const EdgeInsets.fromLTRB(

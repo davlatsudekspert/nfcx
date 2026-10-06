@@ -1138,6 +1138,12 @@ class _BusinessProductFormScreenState
       setState(() => _error = l.bizPriceRequired);
       return;
     }
+    // Chegirma narxi asosiy narxdan PAST bo'lishi shart — server buni
+    // `bad_promotion_price` (422) bilan rad etadi; oldindan aytamiz.
+    if (!onRequest && sale > 0 && sale >= price) {
+      setState(() => _error = l.errPromotionPrice);
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;

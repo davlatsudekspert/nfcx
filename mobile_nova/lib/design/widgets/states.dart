@@ -24,6 +24,15 @@ bool get _appStore => defaultTargetPlatform == TargetPlatform.iOS;
 /// kalit qo'shsa ham ilovada "bo'sh xato" chiqmaydi.
 String describeError(L l, AppError e) => switch (e.code) {
       'bad_credentials' => l.errBadCredentials,
+      'CANNOT_FOLLOW_SELF' => l.errFollowSelf,
+      // Katalog / post / ko'tarish limiti — server `limit` beradi.
+      'limit_reached' => switch (e.data?['limit']) {
+          final num n => l.errLimitReachedN(n.toInt()),
+          _ => l.errLimitReached,
+        },
+      'bad_promotion_price' => l.errPromotionPrice,
+      'demo_business' => l.errDemoBusiness,
+      'required_fields' => l.errRequiredFields,
       // Parolni almashtirish: JORIY parol xato (401, sessiya joyida).
       'bad_current_password' => l.errBadCurrentPassword,
       'email_taken' => l.errEmailTaken,

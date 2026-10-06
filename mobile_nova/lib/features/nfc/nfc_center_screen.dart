@@ -76,7 +76,13 @@ class NfcCenterScreen extends ConsumerWidget {
           onPressed: () => context.push(Routes.nfcHistory),
         ),
       ],
-      body: NovaScroll(
+      // Pastga tortib yangilash — NFC ID'lar sessiya bilan keladi
+      // (saytda olingan yangi ID darhol ko'rinadi).
+      body: RefreshIndicator(
+        key: const ValueKey('nfc-center-refresh'),
+        color: context.tokens.accent2,
+        onRefresh: () => ref.read(sessionProvider.notifier).refresh(),
+        child: NovaScroll(
         // Gorizontal chegara har bo'limda alohida: ID lentasi ekran
         // chetigacha suriladi.
         padding: EdgeInsets.only(
@@ -225,6 +231,7 @@ class NfcCenterScreen extends ConsumerWidget {
             // Profildagi bilan AYNAN bitta widget — ikki nusxa yo'q.
             const MyIdsStrip(),
         ],
+      ),
       ),
     );
   }

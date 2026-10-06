@@ -272,11 +272,12 @@ void main() {
           Routes.settings);
     }, variant: _ios);
 
-    testWidgets('Android: ikkalasi ham ochiladi', (tester) async {
+    testWidgets('Android: yangiliklar ochiladi; bildirishnoma sozlamasi '
+        'push yo‘qligi uchun yo‘q (audit 2026-10-06)', (tester) async {
       final r = await boot(tester);
       expect(await go(tester, r, Routes.settingsNews), Routes.settingsNews);
       expect(await go(tester, r, Routes.settingsNotifications),
-          Routes.settingsNotifications);
+          Routes.settings);
     });
   });
 
@@ -365,10 +366,12 @@ void main() {
       expect(find.text(l.settingsLanguage), findsOneWidget);
     }, variant: _ios);
 
-    testWidgets('Android: qator bor', (tester) async {
+    testWidgets('Android: push yo‘q — qator ham yo‘q (audit 2026-10-06)',
+        (tester) async {
       final l = await pumpSettings(tester);
-      expect(find.text(l.settingsNotifications), findsOneWidget);
-      expect(showNotificationSettings, isTrue);
+      expect(find.text(l.settingsNotifications), findsNothing);
+      expect(showNotificationSettings, isFalse);
+      expect(find.text(l.settingsPrivacy), findsOneWidget);
     });
   });
 

@@ -1342,5 +1342,15 @@
   "@nfcEventType": {"placeholders": {"type": {"type": "String"}}},
   "nfcCancelled": "Bekor qilindi",
   "nfcNotNfcstore": "Bu NFCSTORE yorlig‘i emas",
-  "nfcOpenInBrowser": "Brauzerda ochish"
+  "nfcOpenInBrowser": "Brauzerda ochish",
+  "deleteAccountAppleSub": "Apple orqali olingan Premium obunasi hisob o‘chirilganda o‘zi bekor bo‘lmaydi — bekor qilinmaguncha to‘lov davom etadi. Uni App Store obunalarida bekor qiling.",
+  "errFollowSelf": "O‘zingizga obuna bo‘lib bo‘lmaydi",
+  "errLimitReached": "Chegaraga yetildi",
+  "errLimitReachedN": "Chegaraga yetildi: ko‘pi bilan {limit} ta",
+  "@errLimitReachedN": {"placeholders": {"limit": {"type": "int"}}},
+  "errPromotionPrice": "Chegirma narxi asosiy narxdan past bo‘lishi kerak",
+  "errDemoBusiness": "Namuna biznesni o‘zgartirib bo‘lmaydi",
+  "errRequiredFields": "Majburiy maydonlarni to‘ldiring",
+  "profileMusicOverLimit": "Profilda ko‘pi bilan {max} ta qo‘shiq bo‘ladi — saqlanganda ortiqchasi olib tashlanadi.",
+  "@profileMusicOverLimit": {"placeholders": {"max": {"type": "int"}}}
 }

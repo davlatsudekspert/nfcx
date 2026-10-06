@@ -6218,6 +6218,54 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Brauzerda ochish'**
   String get nfcOpenInBrowser;
+
+  /// No description provided for @deleteAccountAppleSub.
+  ///
+  /// In uz, this message translates to:
+  /// **'Apple orqali olingan Premium obunasi hisob o‘chirilganda o‘zi bekor bo‘lmaydi — bekor qilinmaguncha to‘lov davom etadi. Uni App Store obunalarida bekor qiling.'**
+  String get deleteAccountAppleSub;
+
+  /// No description provided for @errFollowSelf.
+  ///
+  /// In uz, this message translates to:
+  /// **'O‘zingizga obuna bo‘lib bo‘lmaydi'**
+  String get errFollowSelf;
+
+  /// No description provided for @errLimitReached.
+  ///
+  /// In uz, this message translates to:
+  /// **'Chegaraga yetildi'**
+  String get errLimitReached;
+
+  /// No description provided for @errLimitReachedN.
+  ///
+  /// In uz, this message translates to:
+  /// **'Chegaraga yetildi: ko‘pi bilan {limit} ta'**
+  String errLimitReachedN(int limit);
+
+  /// No description provided for @errPromotionPrice.
+  ///
+  /// In uz, this message translates to:
+  /// **'Chegirma narxi asosiy narxdan past bo‘lishi kerak'**
+  String get errPromotionPrice;
+
+  /// No description provided for @errDemoBusiness.
+  ///
+  /// In uz, this message translates to:
+  /// **'Namuna biznesni o‘zgartirib bo‘lmaydi'**
+  String get errDemoBusiness;
+
+  /// No description provided for @errRequiredFields.
+  ///
+  /// In uz, this message translates to:
+  /// **'Majburiy maydonlarni to‘ldiring'**
+  String get errRequiredFields;
+
+  /// No description provided for @profileMusicOverLimit.
+  ///
+  /// In uz, this message translates to:
+  /// **'Profilda ko‘pi bilan {max} ta qo‘shiq bo‘ladi — saqlanganda ortiqchasi olib tashlanadi.'**
+  String profileMusicOverLimit(int max);
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

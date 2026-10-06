@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
@@ -185,6 +186,40 @@ final sessionExpiryWatcherProvider = Provider<void>((ref) {
     api.sessionExpired.removeListener(onExpired);
   });
 });
+
+/// ILOVA QAYTA OCHILGANDA SESSIYA YANGILANADI (audit 2026-10-06).
+///
+/// Saytda olingan NFC ID, Premium yoki sinov holati ilovaga faqat
+/// `/api/auth/me` orqali keladi. Ilgari u faqat ishga tushishda
+/// so'ralardi — fondan qaytgan odam eski holatni ko'rardi. Endi
+/// `resumed` da yangilanadi, lekin [kSessionResumeGap] dan tez-tez
+/// emas (ilova almashtirib turish serverni bezovta qilmasin).
+const kSessionResumeGap = Duration(seconds: 60);
+
+@visibleForTesting
+DateTime Function() sessionResumeClock = DateTime.now;
+
+final sessionResumeRefreshProvider = Provider<void>((ref) {
+  final obs = _ResumeRefresher(ref);
+  WidgetsBinding.instance.addObserver(obs);
+  ref.onDispose(() => WidgetsBinding.instance.removeObserver(obs));
+});
+
+class _ResumeRefresher with WidgetsBindingObserver {
+  _ResumeRefresher(this._ref) : _last = sessionResumeClock();
+  final Ref _ref;
+  DateTime _last;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    if (_ref.read(sessionProvider) is! SessionActive) return;
+    final now = sessionResumeClock();
+    if (now.difference(_last) < kSessionResumeGap) return;
+    _last = now;
+    _ref.read(sessionProvider.notifier).refresh();
+  }
+}
 
 /// Qulaylik: joriy foydalanuvchi yoki `null`.
 final currentUserProvider = Provider<User?>((ref) {

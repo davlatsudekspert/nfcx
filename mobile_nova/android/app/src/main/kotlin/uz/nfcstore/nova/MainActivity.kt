@@ -48,6 +48,19 @@ class MainActivity : FlutterFragmentActivity() {
                             )
                         }
                     }
+                    "toPng" -> {
+                        val path = call.argument<String>("path")
+                        val out = call.argument<String>("out")
+                        if (path == null || out == null) {
+                            result.success(null)
+                        } else {
+                            ImageShrinker.toPng(
+                                path, out,
+                                call.argument<Int>("maxSide") ?: 1600,
+                                result,
+                            )
+                        }
+                    }
                     else -> result.notImplemented()
                 }
             }

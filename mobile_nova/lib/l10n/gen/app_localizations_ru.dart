@@ -3465,4 +3465,34 @@ class LRu extends L {
 
   @override
   String get nfcOpenInBrowser => 'Открыть в браузере';
+
+  @override
+  String get deleteAccountAppleSub =>
+      'Подписка Premium, оформленная через Apple, не отменяется при удалении аккаунта — оплата продолжится, пока вы её не отмените. Отмените её в подписках App Store.';
+
+  @override
+  String get errFollowSelf => 'Нельзя подписаться на себя';
+
+  @override
+  String get errLimitReached => 'Достигнут лимит';
+
+  @override
+  String errLimitReachedN(int limit) {
+    return 'Достигнут лимит: не более $limit';
+  }
+
+  @override
+  String get errPromotionPrice =>
+      'Цена со скидкой должна быть ниже основной цены';
+
+  @override
+  String get errDemoBusiness => 'Демо-бизнес нельзя изменять';
+
+  @override
+  String get errRequiredFields => 'Заполните обязательные поля';
+
+  @override
+  String profileMusicOverLimit(int max) {
+    return 'В профиле может быть не более $max треков — лишние будут удалены при сохранении.';
+  }
 }

@@ -1191,5 +1191,15 @@
   "@nfcEventType": {"placeholders": {"type": {"type": "String"}}},
   "nfcCancelled": "Отменено",
   "nfcNotNfcstore": "Это не метка NFCSTORE",
-  "nfcOpenInBrowser": "Открыть в браузере"
+  "nfcOpenInBrowser": "Открыть в браузере",
+  "deleteAccountAppleSub": "Подписка Premium, оформленная через Apple, не отменяется при удалении аккаунта — оплата продолжится, пока вы её не отмените. Отмените её в подписках App Store.",
+  "errFollowSelf": "Нельзя подписаться на себя",
+  "errLimitReached": "Достигнут лимит",
+  "errLimitReachedN": "Достигнут лимит: не более {limit}",
+  "@errLimitReachedN": {"placeholders": {"limit": {"type": "int"}}},
+  "errPromotionPrice": "Цена со скидкой должна быть ниже основной цены",
+  "errDemoBusiness": "Демо-бизнес нельзя изменять",
+  "errRequiredFields": "Заполните обязательные поля",
+  "profileMusicOverLimit": "В профиле может быть не более {max} треков — лишние будут удалены при сохранении.",
+  "@profileMusicOverLimit": {"placeholders": {"max": {"type": "int"}}}
 }

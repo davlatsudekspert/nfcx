@@ -99,7 +99,11 @@ void main() {
           // chaqiruv joyida ko'rinmaydi. Bu TEShIK emas: quyida
           // o'sha maydonga nima berilishi alohida tekshiriladi.
           final wrapper = arg.trim() == 'url';
-          final legal = arg.contains('/maxfiylik') || arg.contains('/shartlar');
+          // Apple'ning o'z obunalarni boshqarish sahifasi (hisob
+          // o'chirishda, iPhone) — to'lov emas, bekor qilish yo'li.
+          final legal = arg.contains('/maxfiylik') ||
+              arg.contains('/shartlar') ||
+              arg.trim() == 'kAppleManageSubscriptionsUrl';
           expect(wrapper || legal, isTrue,
               reason: '${entry.key}: huquqiy hujjat emas — `$arg`');
         }

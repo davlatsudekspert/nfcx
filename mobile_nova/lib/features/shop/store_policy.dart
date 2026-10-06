@@ -163,9 +163,12 @@ bool get showIdMarket => !isAppStoreBuild;
 /// mumkin emas edi — bittasi ham ishlamaydi.
 ///
 /// iPhone'da Sozlamalardagi qator chizilmaydi, `/settings/notifications`
-/// esa Sozlamalarga buriladi. Push qo'shilganda (APNs) bu kalit
-/// qaytariladi. ANDROID O'ZGARMAYDI.
-bool get showNotificationSettings => !isAppStoreBuild;
+/// esa Sozlamalarga buriladi.
+///
+/// ANDROID'DA HAM YO'Q (audit 2026-10-06): sabab bir xil — push yo'q,
+/// tugmalar hech narsaga ta'sir qilmaydi (Play'da ham "ishlamaydigan
+/// imkoniyat"). Push (FCM / APNs) qo'shilganda bu kalit qaytariladi.
+bool get showNotificationSettings => false;
 
 /// Shu buyurtmani ILOVA ICHIDA to'lash mumkinmi.
 ///

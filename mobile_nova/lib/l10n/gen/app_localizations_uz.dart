@@ -3421,4 +3421,34 @@ class LUz extends L {
 
   @override
   String get nfcOpenInBrowser => 'Brauzerda ochish';
+
+  @override
+  String get deleteAccountAppleSub =>
+      'Apple orqali olingan Premium obunasi hisob o‘chirilganda o‘zi bekor bo‘lmaydi — bekor qilinmaguncha to‘lov davom etadi. Uni App Store obunalarida bekor qiling.';
+
+  @override
+  String get errFollowSelf => 'O‘zingizga obuna bo‘lib bo‘lmaydi';
+
+  @override
+  String get errLimitReached => 'Chegaraga yetildi';
+
+  @override
+  String errLimitReachedN(int limit) {
+    return 'Chegaraga yetildi: ko‘pi bilan $limit ta';
+  }
+
+  @override
+  String get errPromotionPrice =>
+      'Chegirma narxi asosiy narxdan past bo‘lishi kerak';
+
+  @override
+  String get errDemoBusiness => 'Namuna biznesni o‘zgartirib bo‘lmaydi';
+
+  @override
+  String get errRequiredFields => 'Majburiy maydonlarni to‘ldiring';
+
+  @override
+  String profileMusicOverLimit(int max) {
+    return 'Profilda ko‘pi bilan $max ta qo‘shiq bo‘ladi — saqlanganda ortiqchasi olib tashlanadi.';
+  }
 }

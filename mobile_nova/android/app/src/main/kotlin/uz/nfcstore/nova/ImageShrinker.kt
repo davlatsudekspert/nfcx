@@ -35,6 +35,56 @@ object ImageShrinker {
         }.start()
     }
 
+    /**
+     * SHAFFOF rasm (logotip, PNG): uzun tomoni `maxSide` gacha, PNG —
+     * shaffoflik saqlanadi. JPEG'ga o'tkazib bo'lmaydi (fon qorayadi),
+     * lekin 700 KB dan katta PNG server tomonidan rad etiladi
+     * (audit 2026-10-06). Natija kichraymasa yoki xato — `null`.
+     */
+    fun toPng(path: String, out: String, maxSide: Int, result: MethodChannel.Result) {
+        Thread {
+            val res = try {
+                shrinkPng(path, out, maxSide)
+            } catch (_: Throwable) {
+                File(out).delete()
+                null
+            }
+            main.post { result.success(res) }
+        }.start()
+    }
+
+    private fun shrinkPng(path: String, out: String, maxSide: Int): String? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(path, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+        var sample = 1
+        while (max(bounds.outWidth, bounds.outHeight) / (sample * 2) >= maxSide) sample *= 2
+        val decoded = BitmapFactory.decodeFile(path, BitmapFactory.Options().apply { inSampleSize = sample })
+            ?: return null
+        var bmp = decoded
+        try {
+            val scale = min(1.0, maxSide.toDouble() / max(bmp.width, bmp.height))
+            if (scale < 1.0) {
+                bmp = Bitmap.createScaledBitmap(
+                    decoded,
+                    max(1, (decoded.width * scale).toInt()),
+                    max(1, (decoded.height * scale).toInt()),
+                    true,
+                )
+            }
+            FileOutputStream(out).use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
+            val outFile = File(out)
+            if (outFile.length() <= 0 || outFile.length() >= File(path).length()) {
+                outFile.delete()
+                return null
+            }
+            return out
+        } finally {
+            if (bmp !== decoded) bmp.recycle()
+            decoded.recycle()
+        }
+    }
+
     private fun shrink(path: String, out: String, maxSide: Int, quality: Int): String? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(path, bounds)

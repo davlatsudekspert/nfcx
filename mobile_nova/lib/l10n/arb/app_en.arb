@@ -1191,5 +1191,15 @@
   "@nfcEventType": {"placeholders": {"type": {"type": "String"}}},
   "nfcCancelled": "Cancelled",
   "nfcNotNfcstore": "This is not an NFCSTORE tag",
-  "nfcOpenInBrowser": "Open in browser"
+  "nfcOpenInBrowser": "Open in browser",
+  "deleteAccountAppleSub": "A Premium subscription bought through Apple is not cancelled when you delete your account — billing continues until you cancel it. Cancel it in your App Store subscriptions.",
+  "errFollowSelf": "You can’t follow yourself",
+  "errLimitReached": "Limit reached",
+  "errLimitReachedN": "Limit reached: at most {limit}",
+  "@errLimitReachedN": {"placeholders": {"limit": {"type": "int"}}},
+  "errPromotionPrice": "The sale price must be lower than the regular price",
+  "errDemoBusiness": "The sample business can’t be changed",
+  "errRequiredFields": "Please fill in the required fields",
+  "profileMusicOverLimit": "A profile can have at most {max} tracks — extra ones will be removed when you save.",
+  "@profileMusicOverLimit": {"placeholders": {"max": {"type": "int"}}}
 }

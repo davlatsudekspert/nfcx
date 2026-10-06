@@ -25,6 +25,8 @@ class NovaApp extends ConsumerWidget {
     ref.watch(sessionExpiryWatcherProvider);
     // Chiqish / sessiya tugashi — ilova qulfi va PIN o'chadi.
     ref.watch(appLockSessionGuardProvider);
+    // Fondan qaytganda sessiya (NFC ID, Premium) yangilanadi, ≥60 s.
+    ref.watch(sessionResumeRefreshProvider);
     // iPhone + kirgan + IAP kaliti yoqilgan: StoreKit'ning ochiq
     // tranzaksiyalari ilova ochilishidanoq tinglanadi
     // (`features/premium/iap_controller.dart`). Android'da hech narsa.

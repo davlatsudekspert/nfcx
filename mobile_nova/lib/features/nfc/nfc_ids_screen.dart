@@ -42,14 +42,30 @@ class NfcIdsScreen extends ConsumerWidget {
       // beradi, ekran esa `items` ni kutadi). iPhone'da bu boshi berk
       // ko'cha bo'lardi, ID'siz yangi hisob esa aynan shu holatni
       // ko'radi (`store_policy.dart`). Android o'zgarmaydi.
+      // BO'SH HOLATDA HAM pastga tortib yangilash: saytda ID olgan odam
+      // ilovani qayta ochmasdan uni ko'ra oladi.
       body: ids.isEmpty
-          ? StatePanel(
-              icon: Icons.badge_outlined,
-              title: l.homeNoId,
-              message: isAppStoreBuild ? null : l.homeNoIdHint,
-              actionLabel: isAppStoreBuild ? null : l.homeShop,
-              onAction:
-                  isAppStoreBuild ? null : () => context.push(Routes.shop),
+          ? RefreshIndicator(
+              key: const ValueKey('nfc-ids-refresh'),
+              color: context.tokens.accent2,
+              onRefresh: () => ref.read(sessionProvider.notifier).refresh(),
+              child: LayoutBuilder(
+                builder: (context, box) => SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: box.maxHeight),
+                    child: StatePanel(
+                      icon: Icons.badge_outlined,
+                      title: l.homeNoId,
+                      message: isAppStoreBuild ? null : l.homeNoIdHint,
+                      actionLabel: isAppStoreBuild ? null : l.homeShop,
+                      onAction: isAppStoreBuild
+                          ? null
+                          : () => context.push(Routes.shop),
+                    ),
+                  ),
+                ),
+              ),
             )
           : RefreshIndicator(
               color: context.tokens.accent2,

@@ -46,9 +46,46 @@ enum NovaVideoExport {
           let res = toJpeg(path: path, out: out, maxSide: maxSide, quality: quality)
           DispatchQueue.main.async { result(res) }
         }
+      case "toPng":
+        guard let out = args["out"] as? String else {
+          result(nil)
+          return
+        }
+        let maxSide = args["maxSide"] as? Int ?? 1600
+        DispatchQueue.global(qos: .userInitiated).async {
+          let res = toPng(path: path, out: out, maxSide: maxSide)
+          DispatchQueue.main.async { result(res) }
+        }
       default:
         result(FlutterMethodNotImplemented)
       }
+    }
+  }
+
+  /// SHAFFOF rasm: uzun tomoni `maxSide` gacha, PNG — shaffoflik
+  /// saqlanadi (audit 2026-10-06: 700 KB dan katta logotip PNG server
+  /// tomonidan rad etilardi). Natija kichraymasa yoki xato — `nil`.
+  static func toPng(path: String, out: String, maxSide: Int) -> String? {
+    guard let image = UIImage(contentsOfFile: path) else { return nil }
+    let w = image.size.width
+    let h = image.size.height
+    guard w > 0, h > 0 else { return nil }
+    let scale = min(1.0, CGFloat(maxSide) / max(w, h))
+    let size = CGSize(width: (w * scale).rounded(), height: (h * scale).rounded())
+    let format = UIGraphicsImageRendererFormat.default()
+    format.scale = 1
+    format.opaque = false
+    let drawn = UIGraphicsImageRenderer(size: size, format: format).image { _ in
+      image.draw(in: CGRect(origin: .zero, size: size))
+    }
+    guard let data = drawn.pngData() else { return nil }
+    let original = (try? FileManager.default.attributesOfItem(atPath: path)[.size] as? Int) ?? 0
+    if original > 0 && data.count >= original { return nil }
+    do {
+      try data.write(to: URL(fileURLWithPath: out))
+      return out
+    } catch {
+      return nil
     }
   }
 

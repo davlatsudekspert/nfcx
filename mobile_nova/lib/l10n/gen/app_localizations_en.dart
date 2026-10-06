@@ -3441,4 +3441,34 @@ class LEn extends L {
 
   @override
   String get nfcOpenInBrowser => 'Open in browser';
+
+  @override
+  String get deleteAccountAppleSub =>
+      'A Premium subscription bought through Apple is not cancelled when you delete your account — billing continues until you cancel it. Cancel it in your App Store subscriptions.';
+
+  @override
+  String get errFollowSelf => 'You can’t follow yourself';
+
+  @override
+  String get errLimitReached => 'Limit reached';
+
+  @override
+  String errLimitReachedN(int limit) {
+    return 'Limit reached: at most $limit';
+  }
+
+  @override
+  String get errPromotionPrice =>
+      'The sale price must be lower than the regular price';
+
+  @override
+  String get errDemoBusiness => 'The sample business can’t be changed';
+
+  @override
+  String get errRequiredFields => 'Please fill in the required fields';
+
+  @override
+  String profileMusicOverLimit(int max) {
+    return 'A profile can have at most $max tracks — extra ones will be removed when you save.';
+  }
 }

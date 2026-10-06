@@ -23,6 +23,8 @@ import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../shop/shop_screens.dart' show orderStatusView;
 import '../shop/store_policy.dart';
+import '../premium/premium_access.dart' show iapPaidPremium;
+import '../premium/premium_iap_screen.dart' show kAppleManageSubscriptionsUrl;
 import '../../routing/routes.dart';
 import '../auth/session.dart';
 import '../business/business_screens.dart' show formatMoney;
@@ -401,6 +403,12 @@ class _SecuritySettingsScreenState
   /// kirish ekraniga qaytadi.
   Future<void> _confirmDelete(BuildContext context) async {
     final l = L.of(context);
+    final user = ref.read(currentUserProvider);
+    // Muddatli (obuna) to'langan Premium — eski muddatsiz emas.
+    final appleSub = isAppStoreBuild &&
+        user != null &&
+        iapPaidPremium(user) &&
+        user.premiumUntil != null;
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -420,6 +428,24 @@ class _SecuritySettingsScreenState
                 Text(isAppStoreBuild
                     ? l.deleteAccountWhatIos
                     : l.deleteAccountWhat),
+                // iPHONE + FAOL TO'LANGAN OBUNA: Apple obunasi hisob
+                // o'chirilganda O'ZI BEKOR BO'LMAYDI — Apple 5.1.1(v)
+                // talabi: odamga aytiladi va boshqarish yo'li beriladi.
+                if (appleSub) ...[
+                  const SizedBox(height: Gap.md),
+                  Text(l.deleteAccountAppleSub,
+                      key: const ValueKey('delete-apple-sub'),
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      key: const ValueKey('delete-manage-sub'),
+                      onPressed: () => openLink(kAppleManageSubscriptionsUrl),
+                      icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                      label: Text(l.iapManage),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: Gap.md),
                 CheckboxListTile(
                   key: const ValueKey('delete-understood'),
