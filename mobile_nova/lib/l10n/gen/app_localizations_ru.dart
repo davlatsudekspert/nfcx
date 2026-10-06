@@ -3209,7 +3209,7 @@ class LRu extends L {
 
   @override
   String get iapErrAlreadyLinked =>
-      'Эта подписка Apple уже привязана к другому аккаунту NFCSTORE.';
+      'Подписка этого Apple ID уже привязана к другому аккаунту NFCSTORE.';
 
   @override
   String get iapErrDisabled => 'Покупки временно недоступны.';
@@ -3227,4 +3227,19 @@ class LRu extends L {
   @override
   String get iapDisclosure =>
       'Оплата списывается с учётной записи Apple ID при подтверждении покупки. Подписка продлевается автоматически, если её не отменить как минимум за 24 часа до окончания текущего периода; плата за продление списывается в течение 24 часов до окончания периода. Управлять подпиской и отменить её можно в настройках учётной записи App Store.';
+
+  @override
+  String get iapErrSandbox => 'Тестовая покупка недоступна для этого аккаунта.';
+
+  @override
+  String get iapErrFamilyShared =>
+      'Покупки через Семейный доступ (Family Sharing) не поддерживаются. Оформите подписку со своим Apple ID.';
+
+  @override
+  String get iapErrRejected =>
+      'Не удалось подтвердить покупку. Обратитесь в поддержку.';
+
+  @override
+  String get iapErrRateLimited =>
+      'Слишком много запросов. Попробуйте чуть позже.';
 }

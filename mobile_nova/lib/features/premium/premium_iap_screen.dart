@@ -251,6 +251,10 @@ class _PremiumIapScreenState extends ConsumerState<PremiumIapScreen> {
         IapFailure.server => l.iapErrServer,
         IapFailure.store => l.iapErrStore,
         IapFailure.unavailable => l.iapUnavailable,
+        IapFailure.rateLimited => l.iapErrRateLimited,
+        IapFailure.sandboxNotAllowed => l.iapErrSandbox,
+        IapFailure.familyShared => l.iapErrFamilyShared,
+        IapFailure.rejected => l.iapErrRejected,
       };
 }
 

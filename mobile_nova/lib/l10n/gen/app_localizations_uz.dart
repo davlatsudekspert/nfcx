@@ -3174,7 +3174,7 @@ class LUz extends L {
 
   @override
   String get iapErrAlreadyLinked =>
-      'Bu Apple obunasi allaqachon boshqa NFCSTORE hisobiga ulangan.';
+      'Bu Apple ID’dagi obuna boshqa NFCSTORE hisobiga ulangan.';
 
   @override
   String get iapErrDisabled => 'Xaridlar vaqtincha mavjud emas.';
@@ -3192,4 +3192,19 @@ class LUz extends L {
   @override
   String get iapDisclosure =>
       'To‘lov xarid tasdiqlanganda Apple ID hisobingizdan yechiladi. Obuna joriy davr tugashidan kamida 24 soat oldin bekor qilinmasa, avtomatik yangilanadi; yangilash to‘lovi davr tugashidan oldingi 24 soat ichida yechiladi. Obunani App Store hisob sozlamalarida boshqarish va bekor qilish mumkin.';
+
+  @override
+  String get iapErrSandbox => 'Bu hisob uchun test xaridi mavjud emas.';
+
+  @override
+  String get iapErrFamilyShared =>
+      'Oilaviy kirish (Family Sharing) orqali olingan xaridlar qo‘llab-quvvatlanmaydi. O‘z Apple ID’ingiz bilan obuna bo‘ling.';
+
+  @override
+  String get iapErrRejected =>
+      'Xaridni tasdiqlab bo‘lmadi. Yordam xizmatiga murojaat qiling.';
+
+  @override
+  String get iapErrRateLimited =>
+      'So‘rovlar juda ko‘p. Birozdan keyin qayta urinib ko‘ring.';
 }

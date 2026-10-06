@@ -5880,7 +5880,7 @@ abstract class L {
   /// No description provided for @iapErrAlreadyLinked.
   ///
   /// In uz, this message translates to:
-  /// **'Bu Apple obunasi allaqachon boshqa NFCSTORE hisobiga ulangan.'**
+  /// **'Bu Apple ID’dagi obuna boshqa NFCSTORE hisobiga ulangan.'**
   String get iapErrAlreadyLinked;
 
   /// No description provided for @iapErrDisabled.
@@ -5912,6 +5912,30 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'To‘lov xarid tasdiqlanganda Apple ID hisobingizdan yechiladi. Obuna joriy davr tugashidan kamida 24 soat oldin bekor qilinmasa, avtomatik yangilanadi; yangilash to‘lovi davr tugashidan oldingi 24 soat ichida yechiladi. Obunani App Store hisob sozlamalarida boshqarish va bekor qilish mumkin.'**
   String get iapDisclosure;
+
+  /// No description provided for @iapErrSandbox.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu hisob uchun test xaridi mavjud emas.'**
+  String get iapErrSandbox;
+
+  /// No description provided for @iapErrFamilyShared.
+  ///
+  /// In uz, this message translates to:
+  /// **'Oilaviy kirish (Family Sharing) orqali olingan xaridlar qo‘llab-quvvatlanmaydi. O‘z Apple ID’ingiz bilan obuna bo‘ling.'**
+  String get iapErrFamilyShared;
+
+  /// No description provided for @iapErrRejected.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xaridni tasdiqlab bo‘lmadi. Yordam xizmatiga murojaat qiling.'**
+  String get iapErrRejected;
+
+  /// No description provided for @iapErrRateLimited.
+  ///
+  /// In uz, this message translates to:
+  /// **'So‘rovlar juda ko‘p. Birozdan keyin qayta urinib ko‘ring.'**
+  String get iapErrRateLimited;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

@@ -1122,10 +1122,14 @@
   "iapUnavailable": "Subscriptions are not available right now. Please try again later.",
   "iapErrNetwork": "No internet connection. If the purchase went through, the app will check it again the next time it opens.",
   "iapErrAccountMismatch": "This purchase belongs to a different NFCSTORE account.",
-  "iapErrAlreadyLinked": "This Apple subscription is already linked to another NFCSTORE account.",
+  "iapErrAlreadyLinked": "The subscription on this Apple ID is linked to another NFCSTORE account.",
   "iapErrDisabled": "Purchases are temporarily unavailable.",
   "iapErrServer": "Could not reach the server. Please try again later.",
   "iapErrStore": "The App Store could not complete the purchase.",
   "iapTermsOfUse": "Terms of Use (EULA)",
-  "iapDisclosure": "Payment is charged to your Apple ID account at confirmation of purchase. The subscription renews automatically unless it is cancelled at least 24 hours before the end of the current period. Your account is charged for renewal within 24 hours before the end of the current period. You can manage and cancel your subscription in your App Store account settings."
+  "iapDisclosure": "Payment is charged to your Apple ID account at confirmation of purchase. The subscription renews automatically unless it is cancelled at least 24 hours before the end of the current period. Your account is charged for renewal within 24 hours before the end of the current period. You can manage and cancel your subscription in your App Store account settings.",
+  "iapErrSandbox": "Test purchases are not available for this account.",
+  "iapErrFamilyShared": "Family Sharing purchases are not supported. Please subscribe with your own Apple ID.",
+  "iapErrRejected": "The purchase could not be verified. Please contact support.",
+  "iapErrRateLimited": "Too many requests. Please try again later."
 }

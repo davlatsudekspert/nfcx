@@ -392,28 +392,87 @@ void main() {
       expect(find.text(l.iapErrNetwork), findsOneWidget);
     }, variant: _ios);
 
-    for (final (code, kind, text) in [
-      ('account_mismatch', AppErrorKind.forbidden, 'mismatch'),
-      ('already_linked', AppErrorKind.conflict, 'linked'),
-      ('iap_disabled', AppErrorKind.server, 'disabled'),
-    ]) {
-      testWidgets('server $code: yopilmaydi, sabab ko‘rsatiladi',
+    // Server javoblari — ApiClient qanday quradi, shunday (`status` bilan).
+    // `terminal` — server qarori yakuniy: tranzaksiya BIR MARTA yopiladi.
+    // Qolganlari — ochiq qoladi, StoreKit keyingi ochilishda qayta beradi.
+    final cases = <(String, AppError, bool, String Function(L))>[
+      // ── YAKUNIY (422 / 400) ──
+      ('422 sandbox_not_allowed',
+          const AppError(AppErrorKind.validation,
+              code: 'sandbox_not_allowed', status: 422),
+          true, (l) => l.iapErrSandbox),
+      ('422 family_shared_not_supported',
+          const AppError(AppErrorKind.validation,
+              code: 'family_shared_not_supported', status: 422),
+          true, (l) => l.iapErrFamilyShared),
+      for (final code in const [
+        'wrong_bundle',
+        'unknown_product',
+        'wrong_type',
+        'bad_transaction',
+      ])
+        ('422 $code',
+            AppError(AppErrorKind.validation, code: code, status: 422),
+            true, (l) => l.iapErrRejected),
+      for (final code in const ['invalid_signature', 'bad_request'])
+        ('400 $code',
+            AppError(AppErrorKind.unknown, code: code, status: 400),
+            true, (l) => l.iapErrRejected),
+      // ── VAQTINCHA (ochiq qoladi) ──
+      ('429 too_many_requests',
+          const AppError(AppErrorKind.rateLimited,
+              code: 'too_many_requests', status: 429),
+          false, (l) => l.iapErrRateLimited),
+      ('403 account_mismatch',
+          const AppError(AppErrorKind.forbidden,
+              code: 'account_mismatch', status: 403),
+          false, (l) => l.iapErrAccountMismatch),
+      ('409 already_linked',
+          const AppError(AppErrorKind.conflict,
+              code: 'already_linked', status: 409),
+          false, (l) => l.iapErrAlreadyLinked),
+      ('503 iap_disabled',
+          const AppError(AppErrorKind.server,
+              code: 'iap_disabled', status: 503),
+          false, (l) => l.iapErrDisabled),
+      ('timeout',
+          const AppError(AppErrorKind.timeout),
+          false, (l) => l.iapErrNetwork),
+    ];
+
+    for (final (name, error, terminal, msg) in cases) {
+      testWidgets(
+          'server $name: ${terminal ? 'YAKUNIY — bir marta yopiladi' : 'ochiq qoladi'}',
           (tester) async {
         final e = await _pumpPremium(tester);
         final l = await _uz();
-        e.store.onBuy = (id) => _purchased(id, 'JWS-$code');
-        e.iap.verifyResult = Err(AppError(kind, code: code));
+        e.store.onBuy = (id) => _purchased(id, 'JWS-$name');
+        e.iap.verifyResult = Err(error);
         await tester.tap(find.byKey(const ValueKey('iap-subscribe')));
         await settle(tester, frames: 10);
-        expect(_log.where((s) => s.startsWith('complete')), isEmpty);
-        final msg = switch (text) {
-          'mismatch' => l.iapErrAccountMismatch,
-          'linked' => l.iapErrAlreadyLinked,
-          _ => l.iapErrDisabled,
-        };
-        expect(find.text(msg), findsOneWidget);
+        expect(_log, contains('verify:JWS-$name'));
+        final completes = _log.where((s) => s.startsWith('complete'));
+        expect(completes.length, terminal ? 1 : 0,
+            reason: terminal
+                ? 'yakuniy rad etish — StoreKit abadiy qayta bermasin'
+                : 'vaqtincha xato — tranzaksiya ochiq qolishi kerak');
+        if (terminal) {
+          // Yopilganidan keyin "Premium faol" deb sessiya yangilanmaydi.
+          expect(_log, isNot(contains('me')));
+        }
+        expect(find.text(msg(l)), findsOneWidget);
+        expect(e.c.read(iapControllerProvider).busy, isFalse);
       }, variant: _ios);
     }
+
+    testWidgets('409 matni: Apple ID boshqa hisobga ulangan (uch tilda)',
+        (tester) async {
+      for (final code in ['uz', 'ru', 'en']) {
+        final l = await L.delegate.load(Locale(code));
+        expect(l.iapErrAlreadyLinked, contains('Apple ID'), reason: code);
+        expect(l.iapErrAlreadyLinked, contains('NFCSTORE'), reason: code);
+      }
+    });
 
     testWidgets('kutilayotgan xarid (Ask to Buy) — holat ko‘rsatiladi',
         (tester) async {

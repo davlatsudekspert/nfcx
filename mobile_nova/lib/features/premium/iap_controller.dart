@@ -17,9 +17,11 @@ import 'iap_store.dart';
 //      ilovada xarid haqida hech narsa ko'rinmaydi.
 //   2. Xarid: `account-token` (UUID) -> StoreKit 2 `appAccountToken`.
 //   3. `purchaseStream` dan kelgan JWS -> `POST /api/iap/apple/verify`.
-//   4. Server 200 qaytargandagina `completePurchase`. Tarmoq xatosida
-//      tranzaksiya OCHIQ qoladi va StoreKit uni keyingi ishga
-//      tushirishda qayta beradi (`Transaction.updates`).
+//   4. `completePurchase` — server QAROR berganda: 200 (faol yoki faol
+//      emas) yoki yakuniy rad etish (400 / 422: test xaridi ruxsat
+//      etilmagan, Family Sharing, noto'g'ri tranzaksiya...). Tarmoq,
+//      403, 409, 429, 503 da tranzaksiya OCHIQ qoladi va StoreKit uni
+//      keyingi ishga tushirishda qayta beradi (`Transaction.updates`).
 //   5. Sessiya yangilanadi — Premium holati butun ilovada o'zgaradi.
 //
 // ANDROID: `iapConfigProvider` tarmoqqa chiqmay o'chiq qaytaradi,
@@ -66,6 +68,19 @@ enum IapFailure {
   disabled,
   server,
   store,
+
+  /// 429 — vaqtincha; tranzaksiya ochiq qoladi.
+  rateLimited,
+
+  /// 422 `sandbox_not_allowed` — YAKUNIY (tranzaksiya yopiladi).
+  sandboxNotAllowed,
+
+  /// 422 `family_shared_not_supported` — YAKUNIY.
+  familyShared,
+
+  /// Boshqa 400 / 422 (`wrong_bundle`, `unknown_product`, `wrong_type`,
+  /// `bad_transaction`, `invalid_signature`, `bad_request`) — YAKUNIY.
+  rejected,
 
   /// App Store narxlarni bermadi yoki qurilmada xarid taqiqlangan.
   unavailable,
@@ -304,10 +319,24 @@ class IapController extends StateNotifier<IapState> {
           notice: () => activated ? IapNotice.activated : IapNotice.inactive,
           failure: () => null,
         );
+      case Err(:final error) when _isTerminal(error):
+        // YAKUNIY RAD ETISH (400 / 422): server bu tranzaksiyani hech
+        // qachon qabul qilmaydi. Ochiq qoldirilsa StoreKit uni har
+        // ochilishda abadiy qayta berardi — shuning uchun yopiladi.
+        if (p.needsCompletion) {
+          try {
+            await _store.complete(p);
+          } catch (_) {/* keyingi ishga tushirishda qayta keladi */}
+        }
+        if (!mounted) return;
+        state = state.copyWith(
+          verifying: _inFlight.length > 1,
+          failure: () => _failureOf(error),
+        );
       case Err(:final error):
-        // TRANZAKSIYA OCHIQ QOLADI — `completePurchase` YO'Q. Pul
-        // olingan, lekin server hali yozmagan: StoreKit uni keyingi
-        // ochilishda qayta beradi va tekshiruv takrorlanadi.
+        // TRANZAKSIYA OCHIQ QOLADI — `completePurchase` YO'Q (tarmoq,
+        // 403, 409, 429, 503). Server hali yozmagan: StoreKit uni
+        // keyingi ochilishda qayta beradi va tekshiruv takrorlanadi.
         state = state.copyWith(
           verifying: _inFlight.length > 1,
           failure: () => _failureOf(error),
@@ -315,12 +344,19 @@ class IapController extends StateNotifier<IapState> {
     }
   }
 
+  /// Server tranzaksiyani BUTUNLAY rad etdimi (400 / 422).
+  static bool _isTerminal(AppError e) => e.status == 400 || e.status == 422;
+
   static IapFailure _failureOf(AppError e) => switch (e.code) {
         'account_mismatch' => IapFailure.accountMismatch,
         'already_linked' => IapFailure.alreadyLinked,
         'iap_disabled' => IapFailure.disabled,
+        'sandbox_not_allowed' => IapFailure.sandboxNotAllowed,
+        'family_shared_not_supported' => IapFailure.familyShared,
+        _ when _isTerminal(e) => IapFailure.rejected,
         _ => switch (e.kind) {
             AppErrorKind.offline || AppErrorKind.timeout => IapFailure.network,
+            AppErrorKind.rateLimited => IapFailure.rateLimited,
             _ => IapFailure.server,
           },
       };

@@ -3195,7 +3195,7 @@ class LEn extends L {
 
   @override
   String get iapErrAlreadyLinked =>
-      'This Apple subscription is already linked to another NFCSTORE account.';
+      'The subscription on this Apple ID is linked to another NFCSTORE account.';
 
   @override
   String get iapErrDisabled => 'Purchases are temporarily unavailable.';
@@ -3213,4 +3213,19 @@ class LEn extends L {
   @override
   String get iapDisclosure =>
       'Payment is charged to your Apple ID account at confirmation of purchase. The subscription renews automatically unless it is cancelled at least 24 hours before the end of the current period. Your account is charged for renewal within 24 hours before the end of the current period. You can manage and cancel your subscription in your App Store account settings.';
+
+  @override
+  String get iapErrSandbox =>
+      'Test purchases are not available for this account.';
+
+  @override
+  String get iapErrFamilyShared =>
+      'Family Sharing purchases are not supported. Please subscribe with your own Apple ID.';
+
+  @override
+  String get iapErrRejected =>
+      'The purchase could not be verified. Please contact support.';
+
+  @override
+  String get iapErrRateLimited => 'Too many requests. Please try again later.';
 }

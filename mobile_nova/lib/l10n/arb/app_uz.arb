@@ -1272,11 +1272,15 @@
   "iapUnavailable": "Obunalar hozircha mavjud emas. Keyinroq urinib ko‘ring.",
   "iapErrNetwork": "Internet aloqasi yo‘q. Xarid amalga oshgan bo‘lsa, ilova uni keyingi ochilishda qayta tekshiradi.",
   "iapErrAccountMismatch": "Bu xarid boshqa NFCSTORE hisobiga tegishli.",
-  "iapErrAlreadyLinked": "Bu Apple obunasi allaqachon boshqa NFCSTORE hisobiga ulangan.",
+  "iapErrAlreadyLinked": "Bu Apple ID’dagi obuna boshqa NFCSTORE hisobiga ulangan.",
   "iapErrDisabled": "Xaridlar vaqtincha mavjud emas.",
   "iapErrServer": "Server bilan bog‘lanib bo‘lmadi. Keyinroq urinib ko‘ring.",
   "iapErrStore": "App Store xaridni yakunlay olmadi.",
   "iapTermsOfUse": "Foydalanish shartlari (EULA)",
   "iapDisclosure": "To‘lov xarid tasdiqlanganda Apple ID hisobingizdan yechiladi. Obuna joriy davr tugashidan kamida 24 soat oldin bekor qilinmasa, avtomatik yangilanadi; yangilash to‘lovi davr tugashidan oldingi 24 soat ichida yechiladi. Obunani App Store hisob sozlamalarida boshqarish va bekor qilish mumkin.",
-  "@iapDisclosure": {"description": "Apple 3.1.2: avtomatik yangilanadigan obuna haqida majburiy matn (Premium xarid ekrani, faqat iPhone)."}
+  "@iapDisclosure": {"description": "Apple 3.1.2: avtomatik yangilanadigan obuna haqida majburiy matn (Premium xarid ekrani, faqat iPhone)."},
+  "iapErrSandbox": "Bu hisob uchun test xaridi mavjud emas.",
+  "iapErrFamilyShared": "Oilaviy kirish (Family Sharing) orqali olingan xaridlar qo‘llab-quvvatlanmaydi. O‘z Apple ID’ingiz bilan obuna bo‘ling.",
+  "iapErrRejected": "Xaridni tasdiqlab bo‘lmadi. Yordam xizmatiga murojaat qiling.",
+  "iapErrRateLimited": "So‘rovlar juda ko‘p. Birozdan keyin qayta urinib ko‘ring."
 }

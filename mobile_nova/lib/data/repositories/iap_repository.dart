@@ -37,9 +37,14 @@ class IapRepository {
   /// `POST /api/iap/apple/verify` `{signedTransaction}`.
   ///
   /// 200 — `premium: true` (muddati bilan) yoki `premium: false`
-  /// (`reason: expired | revoked`). Boshqasi — `Err`: 403
-  /// `account_mismatch`, 409 `already_linked`, 503 `iap_disabled`,
-  /// tarmoq xatosi.
+  /// (`reason: expired | revoked`). Boshqasi — `Err`:
+  ///   * YAKUNIY (tranzaksiya yopiladi): 422 `sandbox_not_allowed`,
+  ///     `family_shared_not_supported`, `wrong_bundle`,
+  ///     `unknown_product`, `wrong_type`, `bad_transaction`; 400
+  ///     `invalid_signature` / `bad_request`;
+  ///   * VAQTINCHA (ochiq qoladi): 403 `account_mismatch`, 409
+  ///     `already_linked`, 429 `too_many_requests`, 503 `iap_disabled`,
+  ///     tarmoq xatosi.
   Future<Result<IapVerifyResult>> verify(String signedTransaction) async {
     final res = await _api.post<Map<String, dynamic>>(
       '/api/iap/apple/verify',
