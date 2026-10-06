@@ -1131,5 +1131,11 @@
   "iapErrSandbox": "Test purchases are not available for this account.",
   "iapErrFamilyShared": "Family Sharing purchases are not supported. Please subscribe with your own Apple ID.",
   "iapErrRejected": "The purchase could not be verified. Please contact support.",
-  "iapErrRateLimited": "Too many requests. Please try again later."
+  "iapErrRateLimited": "Too many requests. Please try again later.",
+  "iapTrialTitle": "{days, plural, =1{Free trial active — 1 day left} other{Free trial active — {days} days left}}",
+  "@iapTrialTitle": {"placeholders": {"days": {"type": "int"}}},
+  "iapTrialBody": "You have every Premium feature right now — there is nothing to pay.",
+  "iapTrialSubscribeLater": "Subscribe after the trial",
+  "iapTrialSettings": "{days, plural, =1{Free trial: 1 day left} other{Free trial: {days} days left}}",
+  "@iapTrialSettings": {"placeholders": {"days": {"type": "int"}}}
 }

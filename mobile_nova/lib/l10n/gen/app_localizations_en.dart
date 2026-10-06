@@ -3228,4 +3228,33 @@ class LEn extends L {
 
   @override
   String get iapErrRateLimited => 'Too many requests. Please try again later.';
+
+  @override
+  String iapTrialTitle(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Free trial active — $days days left',
+      one: 'Free trial active — 1 day left',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get iapTrialBody =>
+      'You have every Premium feature right now — there is nothing to pay.';
+
+  @override
+  String get iapTrialSubscribeLater => 'Subscribe after the trial';
+
+  @override
+  String iapTrialSettings(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Free trial: $days days left',
+      one: 'Free trial: 1 day left',
+    );
+    return '$_temp0';
+  }
 }

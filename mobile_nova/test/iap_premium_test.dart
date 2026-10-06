@@ -144,6 +144,15 @@ const _premiumUser = User(
   premium: true,
 );
 
+/// Bepul sinovdagi (to'lanmagan) foydalanuvchi — [days] kun qoldi.
+User _trialUser(int days) => User(
+      id: 1,
+      email: 'test@nfcstore.uz',
+      name: 'Test Foydalanuvchi',
+      trialUntil:
+          DateTime.now().add(Duration(days: days, minutes: -5)),
+    );
+
 Future<L> _uz() => L.delegate.load(const Locale('uz'));
 
 void _tall(WidgetTester tester) {
@@ -587,9 +596,12 @@ void main() {
   group('biznes katalogi kartasi', () {
     const plan = CompanyPlan(free: true, itemLimit: 5, premiumItemLimit: 25);
 
-    Future<void> pumpCard(WidgetTester tester, IapConfig cfg) async {
+    Future<void> pumpCard(WidgetTester tester, IapConfig cfg,
+        {User user = testUser}) async {
       _tall(tester);
-      final e = await _env(cfg: cfg);
+      final e = await _env(cfg: cfg, user: user);
+      // Sessiya (foydalanuvchi) tiklansin.
+      await tester.pump(const Duration(milliseconds: 20));
       await e.c.read(iapConfigProvider.future);
       await tester.pumpWidget(UncontrolledProviderScope(
         container: e.c,
@@ -619,6 +631,136 @@ void main() {
     testWidgets('Android: tugma yo‘q', (tester) async {
       await pumpCard(tester, _enabled);
       expect(find.byKey(const ValueKey('plan-premium')), findsNothing);
+    });
+
+    testWidgets('iPhone + kalit, lekin BEPUL SINOV: upsell yo‘q',
+        (tester) async {
+      await pumpCard(tester, _enabled, user: _trialUser(30));
+      final l = await _uz();
+      expect(find.byKey(const ValueKey('plan-premium')), findsNothing);
+      expect(find.text(l.iapPlanUpsell(25)), findsNothing);
+      // Limit va hisoblagich joyida.
+      expect(find.byKey(const ValueKey('plan-usage')), findsOneWidget);
+    }, variant: _ios);
+  });
+
+  group('bepul sinov (launch promo)', () {
+    test('qolgan kunlar — yuqoriga yaxlitlanadi, sayt bilan bir xil', () {
+      final now = DateTime(2026, 10, 6, 12);
+      User u(DateTime? trial, {bool premium = false, DateTime? until}) =>
+          User(
+              id: 1,
+              email: 'a@b.uz',
+              trialUntil: trial,
+              premium: premium,
+              premiumUntil: until);
+      expect(iapTrialDaysLeft(u(now.add(const Duration(days: 90))), now: now),
+          90);
+      expect(
+          iapTrialDaysLeft(u(now.add(const Duration(days: 2, hours: 1))),
+              now: now),
+          3);
+      expect(iapTrialDaysLeft(u(now.add(const Duration(minutes: 5))), now: now),
+          1);
+      expect(iapTrialDaysLeft(u(now.subtract(const Duration(days: 1))), now: now),
+          isNull, reason: 'tugagan');
+      expect(iapTrialDaysLeft(u(null), now: now), isNull);
+      expect(
+          iapTrialDaysLeft(
+              u(now.add(const Duration(days: 30)),
+                  until: now.add(const Duration(days: 10))),
+              now: now),
+          isNull,
+          reason: 'to‘langan Premium ustun');
+      expect(iapTrialDaysLeft(null, now: now), isNull);
+    });
+
+    testWidgets('sinov faol: tinch karta, rejalar yig‘ilgan, CTA yo‘q',
+        (tester) async {
+      await _pumpPremium(tester, user: _trialUser(30));
+      final l = await _uz();
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const ValueKey('iap-trial')), findsOneWidget);
+      expect(find.text(l.iapTrialTitle(30)), findsOneWidget);
+      expect(find.text(l.iapTrialBody), findsOneWidget);
+      // Sotuv qatori va asosiy xarid tugmasi YO'Q.
+      expect(find.text(l.premiumTagline), findsNothing);
+      expect(find.byKey(const ValueKey('iap-subscribe')), findsNothing);
+      expect(find.byKey(const ValueKey('iap-plan-$_monthly')), findsNothing);
+      // Karta imkoniyatlar ro'yxatidan YUQORIDA.
+      expect(
+          tester.getTopLeft(find.byKey(const ValueKey('iap-trial'))).dy,
+          lessThan(tester.getTopLeft(find.text(l.premiumPerksTitle)).dy));
+
+      // Ikkinchi darajali tugma — ochilganda rejalar paydo bo'ladi.
+      await tester.tap(find.byKey(const ValueKey('iap-trial-expand')));
+      await settle(tester, frames: 6);
+      expect(find.byKey(const ValueKey('iap-trial-expand')), findsNothing);
+      expect(find.byKey(const ValueKey('iap-plan-$_monthly')), findsOneWidget);
+      expect(find.byKey(const ValueKey('iap-plan-$_yearly')), findsOneWidget);
+      expect(find.byKey(const ValueKey('iap-subscribe')), findsOneWidget);
+      expect(find.byKey(const ValueKey('iap-disclosure')), findsOneWidget);
+    }, variant: _ios);
+
+    testWidgets('sinov tugagan: oddiy ekran, rejalar darhol', (tester) async {
+      await _pumpPremium(tester,
+          user: User(
+              id: 1,
+              email: 'a@b.uz',
+              trialUntil: DateTime.now().subtract(const Duration(days: 2))));
+      final l = await _uz();
+      expect(find.byKey(const ValueKey('iap-trial')), findsNothing);
+      expect(find.byKey(const ValueKey('iap-trial-expand')), findsNothing);
+      expect(find.text(l.premiumTagline), findsOneWidget);
+      expect(find.byKey(const ValueKey('iap-plan-$_monthly')), findsOneWidget);
+      expect(find.byKey(const ValueKey('iap-subscribe')), findsOneWidget);
+    }, variant: _ios);
+
+    testWidgets('to‘langan Premium (sinov ham bor): avvalgidek', (tester) async {
+      await _pumpPremium(tester,
+          user: User(
+              id: 1,
+              email: 'a@b.uz',
+              premiumUntil: DateTime(2030, 1, 2, 12),
+              trialUntil: DateTime.now().add(const Duration(days: 30))));
+      final l = await _uz();
+      expect(find.byKey(const ValueKey('iap-trial')), findsNothing);
+      expect(find.text(l.premiumActive), findsOneWidget);
+      expect(find.text(l.premiumUntil('02.01.2030')), findsOneWidget);
+      expect(find.byKey(const ValueKey('iap-manage')), findsOneWidget);
+      expect(find.byKey(const ValueKey('iap-subscribe')), findsNothing);
+    }, variant: _ios);
+
+    Future<void> pumpSettings(WidgetTester tester, User user) async {
+      _tall(tester);
+      final e = await _env(user: user);
+      await e.c.read(iapConfigProvider.future);
+      await tester.pumpWidget(_app(e.c, _router(e.c)));
+      await settle(tester, frames: 8);
+    }
+
+    testWidgets('Sozlamalar: sinovda "Bepul sinov: N kun qoldi"',
+        (tester) async {
+      await pumpSettings(tester, _trialUser(30));
+      final l = await _uz();
+      expect(find.text(l.settingsPremium), findsOneWidget);
+      expect(find.text(l.iapTrialSettings(30)), findsOneWidget);
+    }, variant: _ios);
+
+    testWidgets('Sozlamalar: sinovsiz — qo‘shimcha yozuv yo‘q', (tester) async {
+      await pumpSettings(tester, testUser);
+      final l = await _uz();
+      expect(find.text(l.settingsPremium), findsOneWidget);
+      expect(find.textContaining('kun qoldi'), findsNothing);
+    }, variant: _ios);
+
+    test('uch tilda kun soni va "to‘lash shart emas" ma’nosi', () async {
+      for (final code in ['uz', 'ru', 'en']) {
+        final l = await L.delegate.load(Locale(code));
+        expect(l.iapTrialTitle(5), contains('5'), reason: code);
+        expect(l.iapTrialSettings(21), contains('21'), reason: code);
+        expect(l.iapTrialBody, isNotEmpty);
+      }
     });
   });
 }

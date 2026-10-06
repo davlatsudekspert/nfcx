@@ -3242,4 +3242,38 @@ class LRu extends L {
   @override
   String get iapErrRateLimited =>
       'Слишком много запросов. Попробуйте чуть позже.';
+
+  @override
+  String iapTrialTitle(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Бесплатный период активен — осталось $days дня',
+      many: 'Бесплатный период активен — осталось $days дней',
+      few: 'Бесплатный период активен — осталось $days дня',
+      one: 'Бесплатный период активен — остался $days день',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get iapTrialBody =>
+      'Сейчас вам доступны все возможности Premium — ничего платить не нужно.';
+
+  @override
+  String get iapTrialSubscribeLater =>
+      'Оформить подписку после пробного периода';
+
+  @override
+  String iapTrialSettings(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Пробный период — осталось $days дня',
+      many: 'Пробный период — осталось $days дней',
+      few: 'Пробный период — осталось $days дня',
+      one: 'Пробный период — остался $days день',
+    );
+    return '$_temp0';
+  }
 }

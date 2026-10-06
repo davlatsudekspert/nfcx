@@ -31,6 +31,7 @@ import 'business_providers.dart';
 import 'business_screens.dart';
 import 'store_catalog.dart';
 import '../shop/store_policy.dart';
+import '../auth/session.dart' show currentUserProvider;
 import '../premium/iap_controller.dart' show iapEnabledProvider;
 
 /// Backend qabul qiladigan yo'nalishlar (`COMPANY_V2_CATEGORIES`).
@@ -892,7 +893,10 @@ class BusinessPlanCard extends ConsumerWidget {
     final l = L.of(context);
     final t = context.tokens;
     // iPhone + Apple IAP kaliti yoqilgan (Android'da doim `false`).
-    final iap = ref.watch(iapEnabledProvider);
+    // Hisobning BEPUL SINOVI davomida upsell yo'q — hamma narsa ochiq,
+    // "pullik" taassurot bermaslik kerak (launch promo).
+    final iap = ref.watch(iapEnabledProvider) &&
+        !(ref.watch(currentUserProvider)?.trialActive ?? false);
 
     // Sinov davrida server cheklov qo'ymaydi — ko'rsatadigan limit
     // yo'q. Ilgari "Sinov davri: hozircha cheklov yo'q" yozilardi:

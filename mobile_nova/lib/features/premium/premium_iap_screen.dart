@@ -36,6 +36,15 @@ const kAppleManageSubscriptionsUrl =
 /// qo'shiqlari, `musicLimitD1(user.isPremium)`). Post, istoriya,
 /// video va izoh ro'yxatda YO'Q — ular hammaga bepul (egasining
 /// qarori, 2026-10-04). Yangi imkoniyat o'ylab topilmaydi.
+///
+/// SAYTDAGI BOSHQA PREMIUM IMKONIYATLAR (`src/lib/access.js`
+/// FEATURE_MIN: premium/animatsion mavzular, shisha kontent, havola
+/// uslublari, profil kartasi sozlamasi, kengaytirilgan analitika, lid
+/// formasi, lokatsiya, menyu/fayl katalogi) bu ro'yxatga KIRMAYDI:
+/// ularning hech biri Nova ilovasida yo'q (2026-10 tekshiruvi —
+/// `lib/` da na tahrirlash joyi, na ko'rinishi bor; Analitika ekrani
+/// esa darajaga bog'lanmagan `/api/my/analytics` ni o'qiydi). Ilovada
+/// paydo bo'lganda shu yerga qo'shiladi.
 const kCatalogFreeLimit = 5;
 const kCatalogPremiumLimit = 25;
 const kMusicFreeLimit = 5;
@@ -57,6 +66,9 @@ class PremiumIapScreen extends ConsumerStatefulWidget {
 class _PremiumIapScreenState extends ConsumerState<PremiumIapScreen> {
   String? _selected;
 
+  /// Sinov paytida rejalar yig'ilgan — odam o'zi ochadi.
+  bool _showPlans = false;
+
   @override
   void initState() {
     super.initState();
@@ -73,7 +85,12 @@ class _PremiumIapScreenState extends ConsumerState<PremiumIapScreen> {
     final enabled = ref.watch(iapEnabledProvider);
     final s = ref.watch(iapControllerProvider);
     final user = ref.watch(currentUserProvider);
-    final paid = user != null && _paidPremium(user);
+    final paid = user != null && iapPaidPremium(user);
+    // BEPUL SINOV (launch promo, 90 kun): hamma Premium imkoniyatlar
+    // allaqachon ochiq. Ekran "pullik" taassurot bermasin — tepada
+    // tinch karta, rejalar esa ikkinchi darajali tugma ortida.
+    final trialDays = iapTrialDaysLeft(user);
+    final trial = trialDays != null;
     final c = ref.read(iapControllerProvider.notifier);
 
     final products = s.products;
@@ -110,17 +127,31 @@ class _PremiumIapScreenState extends ConsumerState<PremiumIapScreen> {
                 const SizedBox(height: Gap.xl),
                 Text(paid ? l.premiumActive : l.premiumTitle,
                     textAlign: TextAlign.center, style: text.displayMedium),
-                const SizedBox(height: Gap.sm),
-                Text(
-                  paid ? _validity(l, user) : l.premiumTagline,
-                  key: const ValueKey('iap-status'),
-                  textAlign: TextAlign.center,
-                  style: text.bodyMedium,
-                ),
+                if (!trial) ...[
+                  const SizedBox(height: Gap.sm),
+                  Text(
+                    paid ? _validity(l, user) : l.premiumTagline,
+                    key: const ValueKey('iap-status'),
+                    textAlign: TextAlign.center,
+                    style: text.bodyMedium,
+                  ),
+                ],
+                if (trial) ...[
+                  const SizedBox(height: Gap.xl),
+                  _TrialCard(days: trialDays),
+                ],
                 const SizedBox(height: Gap.section),
                 const _Perks(),
                 const SizedBox(height: Gap.section),
-                if (paid) ...[
+                if (trial && !_showPlans) ...[
+                  NovaButton(
+                    key: const ValueKey('iap-trial-expand'),
+                    label: l.iapTrialSubscribeLater,
+                    tone: ButtonTone.quiet,
+                    icon: Icons.expand_more_rounded,
+                    onPressed: () => setState(() => _showPlans = true),
+                  ),
+                ] else if (paid) ...[
                   NovaButton(
                     key: const ValueKey('iap-manage'),
                     label: l.iapManage,
@@ -160,6 +191,8 @@ class _PremiumIapScreenState extends ConsumerState<PremiumIapScreen> {
                   NovaButton(
                     key: const ValueKey('iap-subscribe'),
                     label: l.iapSubscribe,
+                    // Sinov paytida — asosiy (oltin) tugma emas.
+                    tone: trial ? ButtonTone.outline : ButtonTone.accent,
                     busy: s.buyingId != null || s.verifying,
                     onPressed: s.busy || selected == null
                         ? null
@@ -223,11 +256,6 @@ class _PremiumIapScreenState extends ConsumerState<PremiumIapScreen> {
     );
   }
 
-  /// To'langan Premium (sinov muddati emas). Sinovdagi odam obuna
-  /// bo'la oladi — unga rejalar ko'rsatiladi.
-  static bool _paidPremium(User u) =>
-      u.premium || (u.premiumUntil?.isAfter(DateTime.now()) ?? false);
-
   static String _validity(L l, User u) {
     final until = u.premiumUntil;
     if (until == null) return l.premiumForever;
@@ -273,6 +301,41 @@ String iapPlanName(L l, IapProduct p) => switch ((p.periodUnit, p.periodValue)) 
       (IapPeriodUnit.year, 1) => l.iapPlanYearly,
       _ => p.title.isNotEmpty ? p.title : l.premiumTitle,
     };
+
+/// "Bepul sinov faol — N kun qoldi". Tinch karta: sotuv emas, xabar.
+class _TrialCard extends StatelessWidget {
+  const _TrialCard({required this.days});
+
+  final int days;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context);
+    final t = context.tokens;
+    final text = Theme.of(context).textTheme;
+    return FloatingSurface(
+      key: const ValueKey('iap-trial'),
+      solid: true,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.check_circle_outline_rounded, size: 22, color: t.accent2),
+          const SizedBox(width: Gap.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l.iapTrialTitle(days), style: text.titleMedium),
+                const SizedBox(height: Gap.xs),
+                Text(l.iapTrialBody, style: text.bodyMedium),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _PlanCard extends StatelessWidget {
   const _PlanCard({

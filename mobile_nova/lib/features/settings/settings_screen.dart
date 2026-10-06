@@ -16,7 +16,8 @@ import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
 import '../auth/session.dart';
 import '../home/widgets/avatar.dart';
-import '../premium/iap_controller.dart' show iapEnabledProvider;
+import '../premium/iap_controller.dart'
+    show iapEnabledProvider, iapTrialDaysLeft;
 import '../shop/store_policy.dart';
 import '../social/content_rules.dart';
 import '../../design/widgets/brand_icon.dart';
@@ -145,6 +146,11 @@ class SettingsScreen extends ConsumerWidget {
               SettingsItem(
                 icon: Icons.workspace_premium_rounded,
                 label: l.settingsPremium,
+                // Bepul sinov paytida — sotuv emas, qolgan kunlar.
+                subtitle: switch (iapTrialDaysLeft(user)) {
+                  final int d => l.iapTrialSettings(d),
+                  null => null,
+                },
                 onTap: () => context.push(Routes.premium),
               ),
           ]),
@@ -317,6 +323,7 @@ class SettingsItem {
     required this.icon,
     required this.label,
     this.value,
+    this.subtitle,
     this.onTap,
     this.danger = false,
     this.trailing,
@@ -327,6 +334,9 @@ class SettingsItem {
 
   /// O'ng tomondagi joriy qiymat (masalan tanlangan mavzu nomi).
   final String? value;
+
+  /// Nom ostidagi kichik izoh (masalan "Bepul sinov: 30 kun qoldi").
+  final String? subtitle;
   final VoidCallback? onTap;
   final bool danger;
   final Widget? trailing;
@@ -369,6 +379,12 @@ class _Row extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final color = item.danger ? t.error : t.text1;
+    final label = Text(
+      item.label,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: color),
+    );
 
     return PressableScale(
       onTap: item.onTap,
@@ -379,13 +395,23 @@ class _Row extends StatelessWidget {
             BrandAwareIcon(item.icon, size: 19, color: color),
             const SizedBox(width: Gap.lg),
             Expanded(
-              child: Text(
-                item.label,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style:
-                    Theme.of(context).textTheme.bodyLarge?.copyWith(color: color),
-              ),
+              child: item.subtitle == null
+                  ? label
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        label,
+                        Text(
+                          item.subtitle!,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(color: t.text2),
+                        ),
+                      ],
+                    ),
             ),
             if (item.value != null)
               Padding(

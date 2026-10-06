@@ -5936,6 +5936,30 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'So‘rovlar juda ko‘p. Birozdan keyin qayta urinib ko‘ring.'**
   String get iapErrRateLimited;
+
+  /// No description provided for @iapTrialTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'{days, plural, =1{Bepul sinov faol — 1 kun qoldi} other{Bepul sinov faol — {days} kun qoldi}}'**
+  String iapTrialTitle(int days);
+
+  /// No description provided for @iapTrialBody.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hozir hamma Premium imkoniyatlar sizda, hech narsa to‘lash shart emas.'**
+  String get iapTrialBody;
+
+  /// No description provided for @iapTrialSubscribeLater.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sinov tugagach obuna bo‘lish'**
+  String get iapTrialSubscribeLater;
+
+  /// No description provided for @iapTrialSettings.
+  ///
+  /// In uz, this message translates to:
+  /// **'{days, plural, =1{Bepul sinov: 1 kun qoldi} other{Bepul sinov: {days} kun qoldi}}'**
+  String iapTrialSettings(int days);
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

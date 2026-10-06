@@ -3207,4 +3207,33 @@ class LUz extends L {
   @override
   String get iapErrRateLimited =>
       'So‘rovlar juda ko‘p. Birozdan keyin qayta urinib ko‘ring.';
+
+  @override
+  String iapTrialTitle(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Bepul sinov faol — $days kun qoldi',
+      one: 'Bepul sinov faol — 1 kun qoldi',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get iapTrialBody =>
+      'Hozir hamma Premium imkoniyatlar sizda, hech narsa to‘lash shart emas.';
+
+  @override
+  String get iapTrialSubscribeLater => 'Sinov tugagach obuna bo‘lish';
+
+  @override
+  String iapTrialSettings(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Bepul sinov: $days kun qoldi',
+      one: 'Bepul sinov: 1 kun qoldi',
+    );
+    return '$_temp0';
+  }
 }

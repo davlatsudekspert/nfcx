@@ -1131,5 +1131,11 @@
   "iapErrSandbox": "Тестовая покупка недоступна для этого аккаунта.",
   "iapErrFamilyShared": "Покупки через Семейный доступ (Family Sharing) не поддерживаются. Оформите подписку со своим Apple ID.",
   "iapErrRejected": "Не удалось подтвердить покупку. Обратитесь в поддержку.",
-  "iapErrRateLimited": "Слишком много запросов. Попробуйте чуть позже."
+  "iapErrRateLimited": "Слишком много запросов. Попробуйте чуть позже.",
+  "iapTrialTitle": "{days, plural, one{Бесплатный период активен — остался {days} день} few{Бесплатный период активен — осталось {days} дня} many{Бесплатный период активен — осталось {days} дней} other{Бесплатный период активен — осталось {days} дня}}",
+  "@iapTrialTitle": {"placeholders": {"days": {"type": "int"}}},
+  "iapTrialBody": "Сейчас вам доступны все возможности Premium — ничего платить не нужно.",
+  "iapTrialSubscribeLater": "Оформить подписку после пробного периода",
+  "iapTrialSettings": "{days, plural, one{Пробный период — остался {days} день} few{Пробный период — осталось {days} дня} many{Пробный период — осталось {days} дней} other{Пробный период — осталось {days} дня}}",
+  "@iapTrialSettings": {"placeholders": {"days": {"type": "int"}}}
 }
