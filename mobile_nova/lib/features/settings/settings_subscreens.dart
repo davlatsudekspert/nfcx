@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/profile_context.dart';
 import '../../app/providers.dart';
+import '../../core/errors/app_error.dart';
 import '../../core/utils/external_link.dart';
 import '../../core/utils/result.dart';
 import '../../core/utils/validators.dart';
@@ -31,6 +32,7 @@ import 'settings_screen.dart';
 import '../social/moderation.dart';
 import 'app_lock.dart';
 import '../../design/widgets/brand_icon.dart';
+import '../social/time_ago.dart';
 
 // ------------------------------------------------------------------ mavzu
 
@@ -1298,8 +1300,38 @@ class _Perks extends StatelessWidget {
   }
 }
 
+/// Odamning o'z murojaatlari — eng yangisi tepada.
+final supportMessagesProvider =
+    FutureProvider.autoDispose<List<SupportMessage>>((ref) async {
+  final res = await ref.watch(profileRepositoryProvider).supportMessages();
+  return res.when(ok: (v) => v, err: (e) => throw e);
+});
+
+/// Murojaat holati — yorliq va rang. Ranglar mavzu tokenlaridan,
+/// hammasi tus (kapsula), qizil yo'q: murojaat xato emas.
+({String text, Color tone}) supportStatusView(
+        L l, NfcTokens t, SupportStatus s) =>
+    switch (s) {
+      SupportStatus.pending => (text: l.supportStatusPending, tone: t.warn),
+      SupportStatus.replied => (text: l.supportStatusReplied, tone: t.accentB),
+      SupportStatus.resolved =>
+        (text: l.supportStatusResolved, tone: t.success),
+      SupportStatus.planned => (text: l.supportStatusPlanned, tone: t.accentC),
+    };
+
+/// YORDAM — murojaat yozish va unga kelgan JAVOBLAR.
+///
+/// Ilgari ekran faqat yuborar va yopilardi: admin javob yozsa ham
+/// odam uni ilovada hech qachon ko'rmasdi. Endi forma ostida
+/// "Mening murojaatlarim" turadi; yuborilgandan keyin ekran
+/// YOPILMAYDI — yangi murojaat ro'yxat tepasida paydo bo'ladi.
+///
+/// [highlightId] — `support_reply` bildirishnomasidan kelganda o'sha
+/// murojaatga suriladi va u ajratib ko'rsatiladi.
 class SupportScreen extends ConsumerStatefulWidget {
-  const SupportScreen({super.key});
+  const SupportScreen({super.key, this.highlightId});
+
+  final int? highlightId;
 
   @override
   ConsumerState<SupportScreen> createState() => _SupportScreenState();
@@ -1307,7 +1339,9 @@ class SupportScreen extends ConsumerStatefulWidget {
 
 class _SupportScreenState extends ConsumerState<SupportScreen> {
   final _message = TextEditingController();
+  final _highlightKey = GlobalKey();
   bool _busy = false;
+  bool _scrolled = false;
   String? _error;
 
   @override
@@ -1334,41 +1368,223 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
       ok: (_) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(l.supportSent)));
-        context.pop();
+        _message.clear();
+        FocusScope.of(context).unfocus();
+        // Ro'yxat qayta o'qiladi — yangi murojaat tepada chiqadi.
+        ref.invalidate(supportMessagesProvider);
       },
       err: (e) => setState(() => _error = describeError(l, e)),
     );
   }
 
+  Future<void> _refresh() async {
+    ref.invalidate(supportMessagesProvider);
+    try {
+      await ref.read(supportMessagesProvider.future);
+    } catch (_) {
+      // Xato ro'yxat o'rnida panel bo'lib chiqadi.
+    }
+  }
+
+  /// Bildirishnomadan kelgan murojaatga BIR MARTA suriladi.
+  void _scrollToHighlight() {
+    if (_scrolled || widget.highlightId == null) return;
+    _scrolled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _highlightKey.currentContext;
+      if (ctx == null || !ctx.mounted) return;
+      Scrollable.ensureVisible(ctx,
+          duration: Motion.theme, curve: Motion.smooth, alignment: .1);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = L.of(context);
+    final t = context.tokens;
     return NovaScaffold(
       title: l.settingsSupport,
       showBack: true,
-      body: NovaScroll(
-        children: [
-          NovaField(
-            label: l.supportWriteUs,
-            controller: _message,
-            maxLines: 6,
-            maxLength: 1000,
-            enabled: !_busy,
-          ),
-          if (_error != null) ...[
-            const SizedBox(height: Gap.lg),
-            Text(_error!,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontFamily: AppType.sans,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: context.tokens.error)),
+      body: RefreshIndicator(
+        color: t.accent2,
+        onRefresh: _refresh,
+        child: NovaScroll(
+          children: [
+            NovaField(
+              label: l.supportWriteUs,
+              controller: _message,
+              maxLines: 6,
+              maxLength: 1000,
+              enabled: !_busy,
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: Gap.lg),
+              Text(_error!,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      fontFamily: AppType.sans,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: context.tokens.error)),
+            ],
+            const SizedBox(height: Gap.xxl),
+            NovaButton(label: l.actionConfirm, busy: _busy, onPressed: _send),
+            ..._history(context),
           ],
-          const SizedBox(height: Gap.xxl),
-          NovaButton(label: l.actionConfirm, busy: _busy, onPressed: _send),
+        ),
+      ),
+    );
+  }
+
+  /// "Mening murojaatlarim" bo'limi.
+  List<Widget> _history(BuildContext context) {
+    final l = L.of(context);
+    final tt = Theme.of(context).textTheme;
+    final messages = ref.watch(supportMessagesProvider);
+
+    // ESKI SERVER (`GET /api/support` hali yo'q) — bo'lim umuman
+    // chizilmaydi: forma ishlaydi, "qurilmoqda" paneli esa odamni
+    // chalg'itardi.
+    final err = messages.hasError && !messages.hasValue
+        ? asAppError(messages.error!)
+        : null;
+    if (err?.kind == AppErrorKind.endpointMissing) return const [];
+
+    final header = [
+      const SizedBox(height: Gap.section),
+      Text(l.supportMyMessages, style: tt.titleMedium),
+      const SizedBox(height: Gap.md),
+    ];
+    return [
+      ...header,
+      ...messages.when(
+        loading: () => [
+          for (var i = 0; i < 2; i++)
+            const Padding(
+              padding: EdgeInsets.only(bottom: Gap.md),
+              child: Skeleton(height: 72, radius: R.soft),
+            ),
+        ],
+        error: (e, _) => [
+          StatePanel.fromError(context, asAppError(e),
+              onRetry: () => ref.invalidate(supportMessagesProvider)),
+        ],
+        data: (items) {
+          if (items.isEmpty) {
+            return [Text(l.supportNoMessages, style: tt.bodySmall)];
+          }
+          if (items.any((m) => m.id == widget.highlightId)) {
+            _scrollToHighlight();
+          }
+          return [
+            for (final m in items)
+              Padding(
+                padding: const EdgeInsets.only(bottom: Gap.md),
+                child: _SupportMessageCard(
+                  key: m.id == widget.highlightId
+                      ? _highlightKey
+                      : ValueKey('support-${m.id}'),
+                  message: m,
+                  highlighted: m.id == widget.highlightId,
+                ),
+              ),
+          ];
+        },
+      ),
+    ];
+  }
+}
+
+/// Bitta murojaat: matn, vaqt, holat va (bo'lsa) NFCSTORE javobi.
+class _SupportMessageCard extends StatelessWidget {
+  const _SupportMessageCard({
+    super.key,
+    required this.message,
+    this.highlighted = false,
+  });
+
+  final SupportMessage message;
+  final bool highlighted;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context);
+    final t = context.tokens;
+    final tt = Theme.of(context).textTheme;
+    final status = supportStatusView(l, t, message.status);
+    final at = message.createdAt;
+    final reply = message.reply;
+
+    final card = FloatingSurface(
+      solid: true,
+      padding: const EdgeInsets.all(Gap.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(at == null ? '' : timeAgo(at, l),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: tt.bodySmall),
+              ),
+              const SizedBox(width: Gap.sm),
+              Capsule(
+                  label: status.text,
+                  dense: true,
+                  selected: true,
+                  tone: status.tone),
+            ],
+          ),
+          const SizedBox(height: Gap.sm),
+          Text(message.message, style: tt.bodyMedium),
+          if (reply != null) ...[
+            const SizedBox(height: Gap.md),
+            // JAVOB PUFAGI — brend tusida, odamning matnidan ajralib
+            // tursin.
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(Gap.md),
+              decoration: BoxDecoration(
+                color: t.brand.withValues(alpha: t.isDark ? .10 : .08),
+                borderRadius: R.tile,
+                border: Border.all(color: t.brand.withValues(alpha: .35)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const BrandSeal(size: 22, elevated: false),
+                      const SizedBox(width: Gap.sm),
+                      Expanded(
+                        child: Text(l.supportReplyLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: tt.titleSmall),
+                      ),
+                      if (message.repliedAt != null)
+                        Text(timeAgo(message.repliedAt!, l),
+                            style: tt.bodySmall),
+                    ],
+                  ),
+                  const SizedBox(height: Gap.sm),
+                  Text(reply, style: tt.bodyMedium),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
+    );
+    if (!highlighted) return card;
+    return Container(
+      foregroundDecoration: BoxDecoration(
+        borderRadius: R.soft,
+        border: Border.all(color: t.accent2, width: 1.5),
+      ),
+      child: card,
     );
   }
 }

@@ -5702,6 +5702,54 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Odamlar va bizneslarga obuna bo‘ling — ularning yangi reels’lari shu yerda chiqadi.'**
   String get reelsFriendsEmptyHint;
+
+  /// No description provided for @supportMyMessages.
+  ///
+  /// In uz, this message translates to:
+  /// **'Mening murojaatlarim'**
+  String get supportMyMessages;
+
+  /// No description provided for @supportNoMessages.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hali murojaat yo‘q'**
+  String get supportNoMessages;
+
+  /// No description provided for @supportStatusPending.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kutilmoqda'**
+  String get supportStatusPending;
+
+  /// No description provided for @supportStatusReplied.
+  ///
+  /// In uz, this message translates to:
+  /// **'Javob berildi'**
+  String get supportStatusReplied;
+
+  /// No description provided for @supportStatusResolved.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hal qilindi'**
+  String get supportStatusResolved;
+
+  /// No description provided for @supportStatusPlanned.
+  ///
+  /// In uz, this message translates to:
+  /// **'Rejada'**
+  String get supportStatusPlanned;
+
+  /// No description provided for @supportReplyLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'NFCSTORE javobi'**
+  String get supportReplyLabel;
+
+  /// Bildirishnoma (type support_reply): qo‘llab-quvvatlash xizmati odamning murojaatiga javob yozdi. Bosilganda Yordam ekrani ochiladi.
+  ///
+  /// In uz, this message translates to:
+  /// **'NFCSTORE Yordam murojaatingizga javob berdi'**
+  String get activitySupportReply;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

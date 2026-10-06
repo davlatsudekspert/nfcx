@@ -526,7 +526,12 @@ final routerProvider = Provider<GoRouter>((ref) {
               path: 'premium',
               redirect: _closedOnIos(Routes.settings),
               builder: (_, __) => const PremiumScreen()),
-          GoRoute(path: 'support', builder: (_, __) => const SupportScreen()),
+          // `?id=` — bildirishnomadan kelgan javob ajratib ko'rsatiladi.
+          GoRoute(
+              path: 'support',
+              builder: (_, s) => SupportScreen(
+                  highlightId:
+                      int.tryParse(s.uri.queryParameters['id'] ?? ''))),
           GoRoute(path: 'about', builder: (_, __) => const AboutScreen()),
           // iPhone'da yangiliklar YO'Q (`showNewsEntry`) — `nfcstore://`
           // havolasi bilan ochilsa ham "Ilova haqida" ga buriladi.

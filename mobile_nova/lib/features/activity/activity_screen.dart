@@ -12,6 +12,7 @@ import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
 import '../../design/widgets/brand_icon.dart';
+import '../../design/widgets/brand_logo.dart';
 
 /// BILDIRISHNOMALAR — SAYT BILAN BITTA MANBADAN.
 ///
@@ -153,6 +154,12 @@ class _EventTile extends ConsumerWidget {
       };
 
   String? get _target {
+    // QO'LLAB-QUVVATLASH JAVOBI — Yordam ekrani, o'sha murojaat
+    // ajratilgan holda. ID kelmasa ham ekranning o'zi ochiladi.
+    if (event.kind == ActivityKind.support) {
+      final id = int.tryParse(event.targetId) ?? 0;
+      return id > 0 ? Routes.supportMessage(id) : Routes.settingsSupport;
+    }
     if (event.kind == ActivityKind.follow) {
       final code =
           event.actorCode.isNotEmpty ? event.actorCode : event.targetCode;
@@ -216,7 +223,14 @@ class _EventTile extends ConsumerWidget {
       ActivityKind.security => (Icons.shield_rounded, t.warn),
       ActivityKind.business => (Icons.storefront_rounded, t.accentB),
       ActivityKind.system => (Icons.info_rounded, t.text3),
+      ActivityKind.support => (Icons.support_agent_rounded, t.accent2),
     };
+    // Tizim xabari: ism ham avatar ham yo'q — sarlavha shu yerda,
+    // tilga qarab yoziladi (server tayyor matn yubormaydi).
+    final support = event.kind == ActivityKind.support;
+    final title = support
+        ? l.activitySupportReply
+        : (event.title.isEmpty ? l.activityTitle : event.title);
 
     return FloatingSurface(
       solid: true,
@@ -226,20 +240,26 @@ class _EventTile extends ConsumerWidget {
       onTap: (_target == null && event.read) ? null : () => _open(context, ref),
       child: Row(
         children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-                color: tone.withValues(alpha: .16), shape: BoxShape.circle),
-            child: BrandAwareIcon(icon, size: 16, color: t.isDark ? tone : t.text1),
-          ),
+          // Yordam javobida avatar o'rnida BREND MUHRI — xabar
+          // NFCSTORE'ning o'zidan.
+          if (support)
+            const BrandSeal(size: 36, elevated: false)
+          else
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                  color: tone.withValues(alpha: .16), shape: BoxShape.circle),
+              child: BrandAwareIcon(icon,
+                  size: 16, color: t.isDark ? tone : t.text1),
+            ),
           const SizedBox(width: Gap.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  event.title.isEmpty ? l.activityTitle : event.title,
+                  title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodyLarge,

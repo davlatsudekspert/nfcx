@@ -3066,4 +3066,29 @@ class LRu extends L {
   @override
   String get reelsFriendsEmptyHint =>
       'Подпишитесь на людей и бизнесы — их новые Reels появятся здесь.';
+
+  @override
+  String get supportMyMessages => 'Мои обращения';
+
+  @override
+  String get supportNoMessages => 'Обращений пока нет';
+
+  @override
+  String get supportStatusPending => 'Ожидает ответа';
+
+  @override
+  String get supportStatusReplied => 'Есть ответ';
+
+  @override
+  String get supportStatusResolved => 'Решено';
+
+  @override
+  String get supportStatusPlanned => 'В планах';
+
+  @override
+  String get supportReplyLabel => 'Ответ NFCSTORE';
+
+  @override
+  String get activitySupportReply =>
+      'Поддержка NFCSTORE ответила на ваше обращение';
 }

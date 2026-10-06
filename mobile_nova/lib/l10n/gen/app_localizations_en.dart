@@ -3060,4 +3060,28 @@ class LEn extends L {
   @override
   String get reelsFriendsEmptyHint =>
       'Follow people and businesses — their new reels will show up here.';
+
+  @override
+  String get supportMyMessages => 'My requests';
+
+  @override
+  String get supportNoMessages => 'No requests yet';
+
+  @override
+  String get supportStatusPending => 'Pending';
+
+  @override
+  String get supportStatusReplied => 'Replied';
+
+  @override
+  String get supportStatusResolved => 'Resolved';
+
+  @override
+  String get supportStatusPlanned => 'Planned';
+
+  @override
+  String get supportReplyLabel => 'NFCSTORE reply';
+
+  @override
+  String get activitySupportReply => 'NFCSTORE Support replied to your request';
 }

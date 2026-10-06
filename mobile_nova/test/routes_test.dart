@@ -97,6 +97,8 @@ void main() {
     // NFC ID xaridi: kod bo'yicha ekran va buyurtma holati.
     Routes.nfcIdBuy('VIP001'),
     Routes.nfcIdOrder(42),
+    // Yordam — `support_reply` bildirishnomasidan, murojaat ID bilan.
+    Routes.supportMessage(7),
   ];
 
   test('har bir statik marshrut routerda mavjud', () {

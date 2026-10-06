@@ -174,6 +174,10 @@ abstract final class Routes {
   static const settingsReferral = '/settings/referral';
   static const settingsPremium = '/settings/premium';
   static const settingsSupport = '/settings/support';
+
+  /// Yordam ekrani, [id] li murojaat ajratib ko'rsatiladi —
+  /// `support_reply` bildirishnomasidan.
+  static String supportMessage(int id) => '$settingsSupport?id=$id';
   static const settingsAbout = '/settings/about';
   static const settingsNews = '/settings/news';
   static const paymentHistory = '/settings/payment/history';

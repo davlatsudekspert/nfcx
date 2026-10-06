@@ -1084,5 +1084,13 @@
   "reelsTabAll": "Reels",
   "reelsTabFriends": "Friends",
   "reelsFriendsEmpty": "No reels from friends yet",
-  "reelsFriendsEmptyHint": "Follow people and businesses — their new reels will show up here."
+  "reelsFriendsEmptyHint": "Follow people and businesses — their new reels will show up here.",
+  "supportMyMessages": "My requests",
+  "supportNoMessages": "No requests yet",
+  "supportStatusPending": "Pending",
+  "supportStatusReplied": "Replied",
+  "supportStatusResolved": "Resolved",
+  "supportStatusPlanned": "Planned",
+  "supportReplyLabel": "NFCSTORE reply",
+  "activitySupportReply": "NFCSTORE Support replied to your request"
 }

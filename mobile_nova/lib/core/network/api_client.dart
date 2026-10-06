@@ -22,6 +22,15 @@ const kApiBase = String.fromEnvironment(
   defaultValue: 'https://nfcstore.uz',
 );
 
+/// `X-Client` qiymati — server tanigan to'plamdan (`android`, `ios`).
+///
+/// `defaultTargetPlatform` orqali: testda
+/// `debugDefaultTargetPlatformOverride` bilan almashtiriladi
+/// (`dart:io` `Platform` esa testda doim mezbon tizim). Boshqa
+/// platformalar (desktop/veb nusxa yo'q) — eski qiymat `android`.
+String clientPlatform() =>
+    defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android';
+
 /// Backend bilan yagona aloqa nuqtasi.
 ///
 /// QARORLAR:
@@ -30,8 +39,8 @@ const kApiBase = String.fromEnvironment(
 ///    `currentUser()` ichida cookie bo'lmasa Bearer'ni o'qiydi. Mobil
 ///    cookie jar ilova fondan qaytganda yo'qolishi mumkin, Keystore esa yo'q.
 ///
-/// 2) `X-Client: android` — BU QIYMAT ANIQ TANLANGAN, xohlagancha
-///    o'zgartirilmaydi. Backend uni TO'LIQ moslik bilan tekshiradi:
+/// 2) `X-Client: android` (iPhone'da `ios`) — BU QIYMAT ANIQ TANLANGAN,
+///    xohlagancha o'zgartirilmaydi. Backend uni TO'LIQ moslik bilan tekshiradi:
 ///
 ///        const MOBILE_CLIENTS_D1 = new Set(['mobile', 'android', 'ios']);
 ///        MOBILE_CLIENTS_D1.has(headers.get('x-client').toLowerCase())
@@ -49,6 +58,12 @@ const kApiBase = String.fromEnvironment(
 ///
 ///    Eski ilova ham aynan `android` yuboradi, demak ikkalasi ham
 ///    `signupSourceD1` da `android` bo'lib qoladi.
+///
+///    iPHONE'DA `ios` (2026-10-06). Ilgari har platformada `android`
+///    ketardi va admin panelda iPhone foydalanuvchilari ham Android
+///    bo'lib ko'rinardi (ro'yxatdan o'tish manbai, ilova statistikasi).
+///    `ios` ham o'sha to'plamda, ya'ni token yo'li buzilmaydi. Qiymat
+///    [clientPlatform] dan keladi.
 ///
 /// 3) Metodlar ISTISNO OTMAYDI: `Result` qaytaradi. Shu sabab har bir
 ///    chaqiruvda xato holati hisobga olinishi shart bo'ladi.
@@ -77,7 +92,7 @@ class ApiClient {
       sendTimeout: const Duration(seconds: 20),
       headers: {
         'accept': 'application/json',
-        'x-client': 'android',
+        'x-client': clientPlatform(),
         'x-app': 'nova',
         // Qurilish raqami (CI beradi) — admin panelda "kim qaysi
         // versiyada" ko'rinadi. Mahalliy qurilishda yuborilmaydi.

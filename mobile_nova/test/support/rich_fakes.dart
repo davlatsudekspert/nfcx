@@ -208,6 +208,11 @@ class RichProfile extends ProfileRepository {
   @override
   Future<Result<FollowStats>> followStats(String code) async => const Ok(
       (followers: 9, following: 11, isFollowing: false));
+
+  /// Yordam tarixi — tarmoqqa chiqmaydi.
+  @override
+  Future<Result<List<SupportMessage>>> supportMessages() async =>
+      const Ok([]);
 }
 
 /// UMUMIY KATALOG namunasi: NFC — bitta sotuvchi/kategoriya, xolos;

@@ -3039,4 +3039,29 @@ class LUz extends L {
   @override
   String get reelsFriendsEmptyHint =>
       'Odamlar va bizneslarga obuna bo‘ling — ularning yangi reels’lari shu yerda chiqadi.';
+
+  @override
+  String get supportMyMessages => 'Mening murojaatlarim';
+
+  @override
+  String get supportNoMessages => 'Hali murojaat yo‘q';
+
+  @override
+  String get supportStatusPending => 'Kutilmoqda';
+
+  @override
+  String get supportStatusReplied => 'Javob berildi';
+
+  @override
+  String get supportStatusResolved => 'Hal qilindi';
+
+  @override
+  String get supportStatusPlanned => 'Rejada';
+
+  @override
+  String get supportReplyLabel => 'NFCSTORE javobi';
+
+  @override
+  String get activitySupportReply =>
+      'NFCSTORE Yordam murojaatingizga javob berdi';
 }

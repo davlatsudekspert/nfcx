@@ -326,6 +326,23 @@ class ProfileRepository {
   Future<Result<void>> support(String message) =>
       _api.post<void>('/api/support', {'message': message});
 
+  /// O'Z MUROJAATLARI VA JAVOBLAR — `GET /api/support`.
+  ///
+  /// Server eng yangisini birinchi beradi (≤30 ta). Tartib baribir
+  /// shu yerda tekshiriladi: ro'yxat tepasida doim oxirgi murojaat
+  /// turishi kerak (yuborilgandan keyin u o'sha yerda chiqadi).
+  Future<Result<List<SupportMessage>>> supportMessages() async {
+    final res = await _api.get<Map<String, dynamic>>('/api/support');
+    return res.map((j) {
+      final items = parseList(j['messages'] ?? j['items'],
+              SupportMessage.fromJson)
+          .where((m) => m.id > 0)
+          .toList();
+      items.sort((a, b) => b.id.compareTo(a.id));
+      return items;
+    });
+  }
+
   Future<Result<List<Map<String, dynamic>>>> referrals() async {
     final res = await _api.get<Map<String, dynamic>>('/api/referrals');
     return res.map((j) {

@@ -1694,7 +1694,9 @@ class Comment {
       );
 }
 
-enum ActivityKind { like, follow, comment, scan, order, payment, system, security, business }
+/// `support` — qo'llab-quvvatlash javobi (`support_reply`): yuboruvchi
+/// tizim, ya'ni ismi ham avatari ham bo'sh keladi.
+enum ActivityKind { like, follow, comment, scan, order, payment, system, security, business, support }
 
 class ActivityEvent {
   const ActivityEvent({
@@ -1750,6 +1752,7 @@ class ActivityEvent {
           'payment' => ActivityKind.payment,
           'security' => ActivityKind.security,
           'business' || 'company' => ActivityKind.business,
+          'support_reply' => ActivityKind.support,
           _ => ActivityKind.system,
         },
         title: _s(j['title'] ?? j['text']),
@@ -1789,6 +1792,72 @@ class NotificationPage {
         unreadCount: _i(j['unreadCount']),
         nextCursor: (j['nextCursor'] as num?)?.toInt(),
       );
+}
+
+/// Murojaat holati — `GET /api/support` dagi `status`.
+enum SupportStatus { pending, replied, resolved, planned }
+
+/// QO'LLAB-QUVVATLASHGA MUROJAAT VA UNGA JAVOB.
+///
+/// Ilgari ilova faqat yuborardi: javob saytdagi admin panelda
+/// yozilar, odam esa uni hech qayerda ko'rmasdi. Endi Yordam
+/// ekranida o'z murojaatlari va javoblar turadi.
+///
+/// Noma'lum holat — `pending`: server yangi holat qo'shsa ham ekran
+/// yiqilmaydi, faqat "Kutilmoqda" ko'rinadi.
+class SupportMessage {
+  const SupportMessage({
+    required this.id,
+    this.message = '',
+    this.reply,
+    this.status = SupportStatus.pending,
+    this.createdAt,
+    this.repliedAt,
+  });
+
+  final int id;
+  final String message;
+
+  /// Javob yo'q bo'lsa `null` (bo'sh satr ham `null` ga aylanadi).
+  final String? reply;
+  final SupportStatus status;
+  final DateTime? createdAt;
+  final DateTime? repliedAt;
+
+  bool get hasReply => reply != null;
+
+  factory SupportMessage.fromJson(Map<String, dynamic> j) {
+    final reply = _s(j['reply']).trim();
+    return SupportMessage(
+      id: _i(j['id']),
+      message: _s(j['message']),
+      reply: reply.isEmpty ? null : reply,
+      status: switch (_s(j['status']).toLowerCase()) {
+        'replied' => SupportStatus.replied,
+        'resolved' => SupportStatus.resolved,
+        'planned' => SupportStatus.planned,
+        _ => SupportStatus.pending,
+      },
+      createdAt: _utcDt(j['createdAt'] ?? j['created_at']),
+      repliedAt: _utcDt(j['repliedAt'] ?? j['replied_at']),
+    );
+  }
+}
+
+/// SQLite vaqti (`2026-10-06 05:11:00`) — zonasiz, lekin UTC.
+///
+/// `DateTime.tryParse` zonasiz satrni TELEFON vaqti deb oladi va
+/// Toshkentda murojaat "5 soat oldin" yozilgandek ko'rinardi. Shuning
+/// uchun zona belgisi bo'lmasa `Z` qo'shiladi. ISO va raqam — [_dt].
+DateTime? _utcDt(dynamic v) {
+  if (v is String) {
+    final t = v.trim();
+    final zoned = RegExp(r'(Z|[+-]\d{2}:?\d{2})$').hasMatch(t);
+    if (!zoned && RegExp(r'^\d{4}-\d{2}-\d{2}[ T]\d').hasMatch(t)) {
+      return DateTime.tryParse('${t.replaceFirst(' ', 'T')}Z');
+    }
+  }
+  return _dt(v);
 }
 
 /// `fromJson` uchun ro'yxat yordamchisi — repository'larda takrorlanmasin.
