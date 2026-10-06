@@ -285,3 +285,27 @@ export async function logBlockedUpload(env, actor, category, source) {
       .bind(String(actor || ''), String(category || ''), String(source || ''), new Date().toISOString()).run();
   } catch { /* log yozilmasa ham rad javobi baribir qaytadi */ }
 }
+
+/// TEKSHIRILMAY O'TGAN YUKLASH -> ADMIN NAVBATI (egasi, 2026-10-06).
+///
+/// Filtr YOQIQ bo'lsa-yu, aynan shu fayl tekshirilmagan bo'lsa (Gemini
+/// javob bermadi, vaqt tugadi, GIF yoki juda katta fayl) — yuklash
+/// to'xtatilmaydi (odam bizning nosozligimiz uchun jazolanmaydi), lekin
+/// fayl admin "Shikoyatlar" navbatiga `reason = 'unchecked'` bilan
+/// tushadi: admin ko'rib, kerak bo'lsa o'chiradi. Filtr umuman O'CHIQ
+/// bo'lsa (kalit yo'q) navbat to'lib ketmasin — yozilmaydi.
+/// Bir fayl ikki marta yozilmaydi. Xatosi yutiladi.
+export async function queueUncheckedUpload(env, { actor, url, source }) {
+  if (!moderationEnabled(env)) return;
+  const u = String(url || '').trim();
+  if (!u) return;
+  try {
+    await env.DB.prepare(
+      `INSERT INTO content_reports
+         (target_kind, target_id, owner_code, reporter_id, reporter_ip, reason, note, status, created_at)
+       SELECT 'media', ?, '', NULL, 'system', 'unchecked', ?, 'new', ?
+        WHERE NOT EXISTS (SELECT 1 FROM content_reports WHERE target_kind = 'media' AND target_id = ?)`
+    ).bind(u, `${String(source || 'upload')} · ${String(actor || '')}`.slice(0, 600),
+      new Date().toISOString().replace('T', ' ').replace('Z', '+00'), u).run();
+  } catch { /* jadval hali yo'q / xato — yuklash baribir o'tadi */ }
+}

@@ -1,6 +1,7 @@
 // DICT_ADMIN — kalit = o'zbekcha manba matn; { ru, en }.
 // Admin panel (AdminPage / AdminUI / ConfirmDialog) va Yangiliklar sahifasi.
 export const DICT_ADMIN = {
+  'Avtomatik tekshirilmagan': { ru: 'Не проверено автоматически', en: 'Not auto-checked' },
   // ── Umumiy holatlar ──
   "Ruxsat yo'q": { ru: 'Нет доступа', en: 'Access denied' },
   "Ma'lumotlarni yuklab bo'lmadi.": { ru: 'Не удалось загрузить данные.', en: 'Could not load data.' },

@@ -60,7 +60,7 @@ import { idQuarantined, notQuarantinedSql, purgeAfterMs, runScheduledPurge } fro
 import { recordAppOpen } from './api/app-usage.js';
 import { timedDb, newTiming, summarizeTiming, withTimingHeaders, handleSpeedDiag, TEZLIK_HTML } from './speed-diag.js';
 import { archiveStmt, ensureArchiveTable, urlArchived, enableArchiveCarousel } from './api/content-archive.js';
-import { moderateImage, moderateVideo, moderationEnabled, logBlockedUpload } from './api/image-moderation.js';
+import { moderateImage, moderateVideo, moderationEnabled, logBlockedUpload, queueUncheckedUpload } from './api/image-moderation.js';
 
 // API javoblari standart holda KESHLANMAYDI.
 //
@@ -7513,6 +7513,8 @@ async function scanStoredUploadD1(env, up, actor, source, opts = {}) {
   const verdict = isVideo
     ? await moderateVideo(env, obj, type, up.size, opts)
     : await moderateImage(env, new Uint8Array(obj.arrayBuffer ? await obj.arrayBuffer() : obj.body), type);
+  // Tekshirilmay o'tdi — admin navbatiga (image-moderation.js).
+  if (verdict.allowed && !verdict.checked) await queueUncheckedUpload(env, { actor, url: up.url, source });
   if (verdict.allowed) return null;
   await env.UPLOADS.delete(key).catch(() => {});
   await logBlockedUpload(env, actor, verdict.category, source);
@@ -7682,8 +7684,10 @@ async function uploadApi(request, env, pathname) {
     : (['jpeg', 'jpg'].includes(match[2]) ? 'jpg' : match[2]);
   // Foydalanuvchi rasmi (avatar, post, istorya, katalog) SAQLASHDAN
   // OLDIN tekshiriladi — bloklangan rasm R2 ga umuman tushmaydi.
+  let b64Verdict = null;
   if (!isAudio && !isAdmin) {
     const verdict = await moderateImage(env, bytes, match[1]);
+    b64Verdict = verdict;
     if (!verdict.allowed) {
       await logBlockedUpload(env, actor, verdict.category, 'upload');
       return contentBlockedJsonD1(verdict.category);
@@ -7691,6 +7695,7 @@ async function uploadApi(request, env, pathname) {
   }
   const filename = `${isAdmin ? 'news_' : ''}${uploadRandomHex(10)}.${ext}`;
   const b64Url = await putUploadR2(env, filename, bytes, match[1], actor);
+  if (b64Verdict && !b64Verdict.checked) await queueUncheckedUpload(env, { actor, url: b64Url, source: 'upload' });
   await uploadQuotaAddD1(env, actor, bytes.length);
   return json({ url: b64Url });
 }

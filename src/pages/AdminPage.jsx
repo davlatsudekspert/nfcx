@@ -497,6 +497,7 @@ const REPORT_REASON_LABEL = {
   illegal: 'Qonunga zid',
   copyright: 'Mualliflik huquqi',
   other: 'Boshqa',
+  unchecked: 'Avtomatik tekshirilmagan',
 };
 
 // Shikoyat qilingan kontentning qisqa ko'rinishi: rasm/video, matn, muallif.
@@ -548,7 +549,8 @@ function ReportPeople({ r, t }) {
 // Shikoyatdan o'chirish mumkin bo'lgan kontent turlari (server yo'llari:
 // DELETE /api/admin/content/:kind/:id — post|story|company_post|company_story;
 // izoh — /comments/:id; Aktual — DELETE /api/admin/highlights/:id {reason}).
-const REPORT_DELETABLE = ['post', 'story', 'company_post', 'company_story', 'comment', 'highlight'];
+// `media` — avtomatik tekshirilmagan fayl (hech qaysi postga bog'lanmagan).
+const REPORT_DELETABLE = ['post', 'story', 'company_post', 'company_story', 'comment', 'highlight', 'media'];
 
 function ReportDetail({ r, t, busy, onClose, onDelete, onStatus }) {
   useEffect(() => {
@@ -727,10 +729,13 @@ function ReportsTab() {
           body: JSON.stringify({ reason: `Shikoyat #${r.id}: ${r.reason}` }),
         });
         await adminApi(`/reports/${r.id}`, { method: 'PATCH', body: JSON.stringify({ status: 'resolved' }) });
+      } else if (kind === 'media') {
+        await adminApi('/content/media', { method: 'DELETE', body: JSON.stringify({ url: r.targetId }) });
       } else {
         // Kontent allaqachon yo'q bo'lsa ham server shikoyatni yopadi
         // (`alreadyGone`) — navbatda qayta paydo bo'lmaydi.
         await adminApi(`/content/${kind}/${encodeURIComponent(r.targetId)}`, { method: 'DELETE' });
+        if (r.mediaUrl) await adminApi(`/reports/${r.id}`, { method: 'PATCH', body: JSON.stringify({ status: 'resolved' }) }).catch(() => {});
       }
       setRows((list) => (list || []).filter((x) => x.id !== r.id));
       setOpenId(0);

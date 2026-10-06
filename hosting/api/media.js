@@ -29,7 +29,7 @@
 // jadvallarni ham qo'lda yangilang.
 
 import { archiveStmt } from './content-archive.js';
-import { moderateVideo, logBlockedUpload } from './image-moderation.js';
+import { moderateVideo, logBlockedUpload, queueUncheckedUpload } from './image-moderation.js';
 
 const RANK = { free: 0, silver: 1, gold: 2, premium: 3, exclusive: 4 };
 const hasAccess = (access, min) => (RANK[access] ?? 0) >= (RANK[min] ?? 99);
@@ -403,7 +403,8 @@ async function handleVideos(request, env, H, url, code, kind, sub) {
     const stored = await env.UPLOADS.get(key).catch(() => null);
     const verdict = stored
       ? await moderateVideo(env, stored, 'video/mp4', bytes.length, { timeoutMs: 25_000 })
-      : { allowed: true };
+      : { allowed: true, checked: false };
+    if (verdict.allowed && !verdict.checked) await queueUncheckedUpload(env, { actor: `user:${ctx.user.id}`, url: videoUrl, source: 'card-video' });
     if (!verdict.allowed) {
       await env.UPLOADS.delete(key).catch(() => {});
       await logBlockedUpload(env, `user:${ctx.user.id}`, verdict.category, 'card-video');

@@ -292,6 +292,23 @@ export async function handle(request, env, url, H) {
   // `company_story` — `story` bilan bir xil (bitta jadval, `stories.id`
   // yagona): shikoyat turi shunday keladi, admin paneli to'g'ridan-to'g'ri
   // shu yo'lni chaqira olsin.
+  // TEKSHIRILMAGAN FAYL hech qaysi postga bog'lanmagan bo'lsa (avatar,
+  // katalog rasmi...) — admin FAYLNING O'ZINI ombordan o'chiradi.
+  // Faqat bizning yuklash yo'li (/uploads/<nom>) — boshqa narsa emas.
+  if (path === '/api/admin/content/media' && request.method === 'DELETE') {
+    const admin = await H.requireAdmin(request, env);
+    if (!admin) return H.json({ error: 'unauthorized' }, 401);
+    const body = await request.json().catch(() => ({}));
+    const url = str(body?.url, 300);
+    if (!/^\/uploads\/[A-Za-z0-9._-]{1,200}$/.test(url) || url.includes('..')) return H.json({ error: 'bad_url' }, 422);
+    await env.UPLOADS?.delete(url.slice(1)).catch(() => {});
+    await env.DB.prepare(`UPDATE content_reports SET status = 'resolved', resolved_at = ?, resolved_by = ?
+        WHERE target_kind = 'media' AND target_id = ? AND status <> 'resolved'`)
+      .bind(H.nowTs(), String(admin.username || admin.id || ''), url).run().catch(() => {});
+    H.logAdminActivity?.(env, { action: 'content_delete', details: `media ${url}`, ip: H.reqIp?.(request) })?.catch?.(() => {});
+    return H.json({ ok: true });
+  }
+
   const del = path.match(/^\/api\/admin\/content\/(post|story|company_post|company_story)\/(\d+)$/);
   if (del && request.method === 'DELETE') {
     const admin = await H.requireAdmin(request, env);
@@ -345,6 +362,11 @@ export async function handle(request, env, url, H) {
       ? retireTargetStmts(env, 'post', '?', [id], { byAdmin: adminLabel, reason: 'target_deleted' })
       : [];
     const by = { admin: adminLabel, reason: str(body?.reason, 40) || 'admin' };
+    // Kontentning fayllari — "tekshirilmagan yuklash" shikoyatlarini ham yopish uchun.
+    const table = { post: 'posts', story: 'stories', company_post: 'company_posts' }[kind];
+    let mediaRow = null;
+    try { mediaRow = await env.DB.prepare(`SELECT image_url, video_url FROM ${table} WHERE id = ?`).bind(id).first(); } catch { mediaRow = null; }
+    const mediaUrls = [mediaRow?.image_url, mediaRow?.video_url].filter(Boolean);
     if (kind === 'story') await ensureHighlightsSchema(env).catch(() => {});
     const res = await env.DB.batch([
       archiveStmt(env, kind, 'id = ?', [id], by),
@@ -370,6 +392,11 @@ export async function handle(request, env, url, H) {
         WHERE target_kind IN (?, ?) AND target_id = ? AND status <> 'resolved'`
     ).bind(H.nowTs(), String(admin.username || admin.id || ''), kind, reportKind === 'story' ? 'company_story' : reportKind, String(id))
       .run().catch(() => {});
+    for (const u of mediaUrls) {
+      await env.DB.prepare(`UPDATE content_reports SET status = 'resolved', resolved_at = ?, resolved_by = ?
+          WHERE target_kind = 'media' AND target_id = ? AND status <> 'resolved'`)
+        .bind(H.nowTs(), String(admin.username || admin.id || ''), u).run().catch(() => {});
+    }
 
     H.logAdminActivity?.(env, { action: 'content_delete', details: `${kind}#${id} ${adminLabel}${changed ? '' : ' (allaqachon yo‘q)'}`, ip: H.reqIp?.(request) })?.catch?.(() => {});
     return H.json(changed ? { ok: true } : { ok: true, alreadyGone: true });
@@ -384,7 +411,37 @@ export async function handle(request, env, url, H) {
 // yoki video va muallif. Har tur bittadan so'rov (N+1 emas). Kontent
 // allaqachon o'chirilgan bo'lsa `preview.missing = true`. Jadval hali
 // yo'q bo'lsa ro'yxat yiqilmaydi — ko'rinish shunchaki bo'lmaydi.
+// TEKSHIRILMAGAN YUKLASH (`target_kind = 'media'`, image-moderation.js
+// `queueUncheckedUpload`). Fayl qaysi post/istoriyada ishlatilganini
+// topib, shikoyatni O'SHA kontentga bog'laymiz — admin odatdagidek
+// ko'radi va "Kontentni o'chirish" bilan o'chiradi. Topilmasa (avatar,
+// katalog rasmi va h.k.) — faylning o'zi ko'rsatiladi (`media`).
+async function linkMediaReports(env, reports) {
+  const media = reports.filter((r) => r.targetKind === 'media');
+  if (!media.length) return;
+  const urls = [...new Set(media.map((r) => r.targetId))].slice(0, 100);
+  const ph = urls.map(() => '?').join(',');
+  const owner = new Map();
+  const look = async (kind, sql) => {
+    try {
+      const rows = await env.DB.prepare(sql.replaceAll('(?)', `(${ph})`)).bind(...urls, ...urls).all();
+      for (const row of rows.results || []) {
+        for (const u of [row.image_url, row.video_url]) if (u && !owner.has(u)) owner.set(u, { kind, id: String(row.id) });
+      }
+    } catch { /* jadval/ustun yo'q — bog'lanmaydi */ }
+  };
+  await look('post', `SELECT id, image_url, video_url FROM posts WHERE image_url IN (?) OR video_url IN (?)`);
+  await look('story', `SELECT id, image_url, video_url FROM stories WHERE image_url IN (?) OR video_url IN (?)`);
+  await look('company_post', `SELECT id, image_url, video_url FROM company_posts WHERE image_url IN (?) OR video_url IN (?)`);
+  for (const r of media) {
+    r.mediaUrl = r.targetId;
+    const o = owner.get(r.targetId);
+    if (o) { r.targetKind = o.kind; r.targetId = o.id; }
+  }
+}
+
 async function attachPreviews(env, reports) {
+  await linkMediaReports(env, reports);
   const byKind = {};
   for (const r of reports) (byKind[r.targetKind] ||= new Set()).add(String(r.targetId));
   const found = new Map(); // `${kind}:${id}` -> preview
@@ -428,6 +485,11 @@ async function attachPreviews(env, reports) {
     (r) => ({ text: r.name || '', author: r.k, imageUrl: r.avatar_url || '', videoUrl: '' }));
   await q('company', `SELECT company_id AS k, display_name, logo_url FROM companies WHERE company_id IN (?)`,
     byKind.company, (r) => ({ text: r.display_name || '', author: r.k, imageUrl: r.logo_url || '', videoUrl: '' }));
+  for (const r of reports.filter((x) => x.targetKind === 'media')) {
+    const isVideo = /\.(mp4|mov|m4v|webm)$/i.test(r.targetId);
+    found.set(`media:${r.targetId}`, { text: 'Avtomatik tekshirilmagan yuklash', author: '',
+      imageUrl: isVideo ? '' : r.targetId, videoUrl: isVideo ? r.targetId : '' });
+  }
   for (const r of reports) {
     const key = r.targetKind === 'record' ? `record:${r.targetId.toUpperCase()}` : `${r.targetKind}:${r.targetId}`;
     const p = found.get(key);
