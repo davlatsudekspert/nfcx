@@ -149,7 +149,7 @@ There are no in-app purchases and nothing can be bought in the iOS app: no price
 The app works the same in all regions. Content is user-generated; the interface is in Uzbek, Russian and English. NFC writing needs an iPhone with NFC; all other features work on any supported iPhone.
 
 6) REGULATED / THIRD-PARTY MATERIAL
-Not a regulated industry. The in-app music library for Reels contains only tracks owned by NFCSTORE or released under free licenses (CC0 / public domain); each track's source is recorded. Profile music from YouTube / Yandex Music is played only through their official embedded players."""
+Not a regulated industry. The in-app music library for Reels contains only original tracks from NFCSTORE's own music channel (NEOMSONGS), created with Suno under a paid Pro plan that grants commercial use rights, or tracks released under free licenses (CC0 / public domain); each track's source is recorded. Profile music from YouTube / Yandex Music is played only through their official embedded players."""
 
 
 def keywords():
