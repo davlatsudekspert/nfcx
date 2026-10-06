@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AdminCard, AdminLoading, EmptyState, KpiCard, LoadError, StatusBadge } from './AdminUI.jsx';
 import { useLanguage } from '../../lib/i18n.jsx';
+import LegalRequestSection from './LegalRequestSection.jsx';
 
 // ═══════════════════════════════════════════════════════════════════════
 // NFCSTORE ILOVASI
@@ -17,6 +18,9 @@ import { useLanguage } from '../../lib/i18n.jsx';
 //                        rasmlar jurnali, image-moderation.js)
 //   • Dalil arxivi     — `/api/admin/evidence` (o'chirilgan post,
 //                        istoriya, video, fayl VA izohlar; shubhali belgisi)
+//   • Huquqiy so'rov   — `/api/admin/legal/*` (bitta odam: profil, hozir
+//                        turgan + o'chirilgan kontent, hold, ZIP; faqat
+//                        super_admin va manager — LegalRequestSection.jsx)
 //   • FEATURED         — `/api/admin/featured`
 //   • Buyurtmalar      — `/api/admin/company-orders` (biznes katalogidan)
 //   • O'chirish navbati — `/api/admin/account-deletions` (hisobini o'chirishni
@@ -41,6 +45,7 @@ const SUBTABS = [
   ['comments', 'Izohlar'],
   ['blocks', 'Avto-filtr'],
   ['archive', 'Dalil arxivi'],
+  ['legal', 'Huquqiy so‘rov'],
   ['featured', 'Ko‘tarilgan postlar'],
   ['orders', 'Buyurtmalar'],
   ['deletions', 'O‘chirish navbati'],
@@ -79,14 +84,16 @@ function dbMs(v) {
   return Number.isNaN(ms) ? null : ms;
 }
 
-export default function NovaTab({ adminApi, apiErrText }) {
+export default function NovaTab({ adminApi, apiErrText, isManager = false, isSuper = false }) {
   const { t } = useLanguage();
   const [sub, setSub] = useState('users');
+  // "Huquqiy so'rov" — content_manager uchun yopiq (server ham 403 beradi).
+  const tabs = SUBTABS.filter(([key]) => key !== 'legal' || isManager || isSuper);
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-2">
-        {SUBTABS.map(([key, label]) => (
+        {tabs.map(([key, label]) => (
           <button
             key={key}
             type="button"
@@ -108,6 +115,7 @@ export default function NovaTab({ adminApi, apiErrText }) {
       {sub === 'comments' && <CommentsSection adminApi={adminApi} apiErrText={apiErrText} />}
       {sub === 'blocks' && <BlocksSection adminApi={adminApi} />}
       {sub === 'archive' && <ArchiveSection adminApi={adminApi} apiErrText={apiErrText} />}
+      {sub === 'legal' && <LegalRequestSection adminApi={adminApi} apiErrText={apiErrText} isSuper={isSuper} />}
       {sub === 'featured' && <FeaturedSection adminApi={adminApi} apiErrText={apiErrText} />}
       {sub === 'orders' && <OrdersSection adminApi={adminApi} />}
       {sub === 'deletions' && <DeletionsSection adminApi={adminApi} apiErrText={apiErrText} />}
