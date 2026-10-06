@@ -502,6 +502,8 @@ export function purgeStmts(env, u, now, ref, cfg, counts = {}) {
   add(['auction_demand_votes'], `DELETE FROM auction_demand_votes WHERE user_id = ${id}`);
   add(['auction_requests'], `DELETE FROM auction_requests WHERE user_id = ${id}`);
   add(['app_users'], `DELETE FROM app_users WHERE user_id = ${id}`);
+  // Javoblar tarixi (admin audit) — murojaat bilan birga.
+  if (flag('PURGE_SUPPORT_MESSAGES')) add(['support_replies', 'support_messages'], `DELETE FROM support_replies WHERE message_id IN (SELECT id FROM support_messages WHERE user_id = ${id})`);
   if (flag('PURGE_SUPPORT_MESSAGES')) add(['support_messages'], `DELETE FROM support_messages WHERE user_id = ${id}`);
   add(['content_reports'], `UPDATE content_reports SET reporter_ip = '' WHERE reporter_id = ${id}`);
   add(['sessions'], `DELETE FROM sessions WHERE user_id = ${id}`);
@@ -577,6 +579,8 @@ export function purgeStmts(env, u, now, ref, cfg, counts = {}) {
   add(['featured_slots'],
     `UPDATE featured_slots SET status = 'stopped', stopped_reason = 'account_deleted' WHERE user_id = ${id} AND status = 'active'`);
   add(['featured_slots'], `UPDATE featured_slots SET status = 'cancelled' WHERE user_id = ${id} AND status = 'pending'`);
+  // Ko'tarish sotuvi navbati (api/featured.js) — shaxsiy yozuv, o'chadi.
+  add(['featured_waitlist'], `DELETE FROM featured_waitlist WHERE user_id = ${id}`);
   add(['nfc_gifts'], `UPDATE nfc_gifts SET recipient_name = NULL WHERE activated_by_user_id = ${id}`);
 
   // 7) KARTALAR — kontenti allaqachon tozalangan.

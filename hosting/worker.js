@@ -24,6 +24,13 @@ import * as apiCatalogFeed from './api/catalog-feed.js';
 import * as apiSaves from './api/saves.js';
 import * as apiContentArchive from './api/content-archive.js';
 import * as apiLegalRequests from './api/legal-requests.js';
+// Apple In-App Purchase (iOS Premium obunasi, StoreKit 2) — `IAP_APPLE_ENABLED=1` bilan yoqiladi.
+// Payme/Click to'lovlariga tegmaydi; faqat `users.premium_expires_at` ni max() bilan uzaytiradi.
+import * as apiIapApple from './api/iap-apple.js';
+// Promokod mukofoti (+30 kun Premium), taklif havolasi /i/:code, reyting.
+import * as apiReferrals from './api/referrals.js';
+// Admin "Apple / iOS" bo'limi — Apple IAP holati, obunalar, tranzaksiyalar (faqat o'qish).
+import * as apiAdminApple from './api/admin-apple.js';
 import * as apiAppUsage from './api/app-usage.js';
 import * as apiAppAdmin from './api/app-admin.js';
 import * as apiAccountPurge from './api/account-purge.js';
@@ -48,6 +55,7 @@ import {
 import { withUzStores, uzMaintenance, uzMaintenanceBypass, maintenanceResponse, handleUzExport, uzDbNetErrors, uzLogError, uzWriteProbe } from './uz-store.js';
 import { ensureNewsSeed } from './api/news-seed.js';
 import { RESERVED_CODES, isReservedCode } from './api/reserved-codes.js';
+import { classifySpaPath, seoForRoute, fullPageTitle } from './api/seo-routes.js';
 import { idQuarantined, notQuarantinedSql, purgeAfterMs, runScheduledPurge } from './api/account-purge.js';
 import { recordAppOpen } from './api/app-usage.js';
 import { timedDb, newTiming, summarizeTiming, withTimingHeaders, handleSpeedDiag, TEZLIK_HTML } from './speed-diag.js';
@@ -1253,6 +1261,7 @@ async function companyApi(request, env, url) {
     const phone = shortText(body.phone, 40);
     const description = shortText(body.description, 1200);
     if (!displayName || !city || !phone || description.length < 20) return json({ error: 'required_fields' }, 422);
+    if (uzPhoneLengthBadD1(phone)) return json({ error: 'bad_phone', reason: 'uz_length' }, 422);
     // Taqiqlangan so'z (companyNameBlockedD1) — frontend tekshiruvi
     // chetlab o'tilgan (paste/autofill/to'g'ridan-to'g'ri API) holatda ham
     // nom bazaga TUSHMAYDI.
@@ -1400,7 +1409,7 @@ async function companyApi(request, env, url) {
           `\n\n\uD83D\uDC64 ${escapeHtmlD1(name)}`,
           `\n\uD83D\uDCDE ${escapeHtmlD1(phone)}`,
           body.note ? `\n\uD83D\uDCAC ${escapeHtmlD1(shortText(body.note, 300))}` : '',
-          `\n\nKabinet: nfcstore.uz/kompaniyalar/${id.toLowerCase()}`,
+          `\n\nKabinet: nfcstore.uz/workspace/${id.toLowerCase()}`,
         ].join(''));
       }
     } catch (error) { console.error('company order tg', error?.message); }
@@ -1687,6 +1696,10 @@ async function companyApi(request, env, url) {
     const value = (key, max) => body[key] == null ? current[key] : shortText(body[key], max);
     // Tahrirlashda ham bir xil tekshiruv (yaratishdagi bilan aynan bir xil).
     if (companyNameBlockedD1(value('displayName', 120))) return json({ error: 'name_not_allowed' }, 422);
+    // Faqat O'ZGARGAN raqam tekshiriladi: qoida kiritilishidan oldin
+    // saqlangan (eski, uzunligi boshqacha) raqam bilan kompaniya boshqa
+    // maydonlarini tahrirlay olmay qolmasin.
+    if (body.phone != null && value('phone', 40) !== String(current.phone ?? '') && uzPhoneLengthBadD1(value('phone', 40))) return json({ error: 'bad_phone', reason: 'uz_length' }, 422);
     // Koordinata: bo'sh qiymat 0 EMAS. `Number(null)` — bu 0 va profil
     // Gvineya ko'rfazidagi 0,0 nuqtaga "joylashib" qolardi (shaxsiy
     // profilda aynan shu xato bo'lgan).
@@ -4293,6 +4306,24 @@ function normalizePhoneD1(v) {
   // keyin akkauntni yo'qotib qo'yishdan saqlaydi.
   return /^[1-9]\d{8,14}$/.test(digits) ? '+' + digits : '';
 }
+// O'ZBEKISTON RAQAMI UZUNLIGI — profil/kompaniya telefoni (sayt auditi,
+// 2026-10). "+9985009088277" (998 + 10 xona) kabi raqam saqlanib,
+// sahifadagi "Qo'ng'iroq" tugmasi hech qayerga ulanmasdi. Faqat ANIQ xato
+// rad etiladi: 998 bilan boshlangan va 12 xonadan farqli raqam; bo'sh
+// maydon, 9 xonali mahalliy raqam va boshqa davlat raqami o'tadi.
+// Brauzerdagi nusxa: src/lib/phone.js uzPhoneLengthBad()
+// (scripts/test-phone-parity.mjs bir xilligini tekshiradi).
+function uzPhoneLengthBadD1(v) {
+  const raw = String(v || '').trim();
+  if (!raw) return false;
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return false;
+  const plus = raw.startsWith('+') || raw.startsWith('00');
+  if (!plus && digits.length === 9) return false;
+  const d = raw.startsWith('00') ? digits.slice(2) : digits;
+  if (!d.startsWith('998')) return false;
+  return d.length !== 12;
+}
 function recSafeUrl(v) {
   const s = cleanStr(v, 500);
   if (!s) return '';
@@ -5984,6 +6015,11 @@ function musicLimitD1(isPremium) { return isPremium ? MUSIC_LIMIT_PREMIUM_D1 : M
 function validateRecordBody(body, opts = {}) {
   const name = cleanStr(body.name, 80);
   if (!name) return { error: "Ism bo'sh bo'lishi mumkin emas." };
+  // `opts.prevPhone` (PUT): saqlangan raqam o'zgarmagan bo'lsa qayta
+  // tekshirilmaydi — eski profil boshqa maydonlarini saqlay olsin.
+  const phoneIn = cleanStr(body.phone, 24);
+  const phoneUnchanged = opts.prevPhone != null && phoneIn === String(opts.prevPhone).trim();
+  if (!phoneUnchanged && uzPhoneLengthBadD1(phoneIn)) return { error: "Telefon raqami noto'g'ri: O'zbekiston raqami +998 va 9 ta raqamdan iborat." };
   const hashtags = Array.isArray(body.hashtags)
     ? body.hashtags.map((h) => cleanStr(h, 30).replace(/^#/, '')).filter(Boolean).slice(0, 20) : [];
   const extraLinks = Array.isArray(body.extraLinks)
@@ -6193,6 +6229,11 @@ async function authApi(request, env, url) {
     if (!user) return json({ user: null, cards: [] });
     // Ilova (`x-app: nova`) ochilishi — admin "Ilova foydalanuvchilari".
     await recordAppOpen(env, request, user.id);
+    // Taklif mukofoti (api/referrals.js): agar shu odam kimningdir taklifi
+    // bilan kelgan va yozuvi kutilayotgan bo'lsa — shartlar tekshiriladi.
+    // O'chirgich o'chiq bo'lsa so'rovsiz qaytadi; aks holda shu isolate
+    // ichida bir odam uchun soatiga bir marta. Xato bo'lsa jim.
+    await apiReferrals.checkReferralOnOpen(env, H, user.id).catch(() => null);
     const rows = await env.DB.prepare(`SELECT ${recordColumnsD1()} FROM cards WHERE user_id = ? ORDER BY is_primary DESC, ts DESC`)
       .bind(user.id).all();
     // OBUNACHILAR SONI — KARTA MA'LUMOTIDA HAM.
@@ -6768,9 +6809,12 @@ async function recordsApi(request, env, url) {
       if (!owner) return json({ error: 'not_found' }, 404);
       if (String(owner) !== String(user.id)) return json({ error: 'forbidden' }, 403);
       const body = await request.json().catch(() => ({}));
+      const prevPhoneRow = await env.DB.prepare(`SELECT phone FROM cards WHERE code = ?`).bind(code).first().catch(() => null);
       // Musiqa limiti FOYDALANUVCHINING premium holatiga bog'liq:
       // oddiy 5 ta, Premium 10 ta (NFC ID darajasiga bog'liq emas).
-      const { record, error } = validateRecordBody(body, { musicMax: musicLimitD1(!!user.isPremium) });
+      // Faol BEPUL SINOV ham to'liq Premium limitini oladi (egasi,
+      // 2026-10-06) — `trialActiveD1` (getCurrentUser `trialExpiresAt` beradi).
+      const { record, error } = validateRecordBody(body, { musicMax: musicLimitD1(!!user.isPremium || trialActiveD1(user)), prevPhone: prevPhoneRow ? (prevPhoneRow.phone ?? '') : null });
       if (error) return json({ error }, 422);
       // KOMPANIYA EGALIGI — SERVERDA. Aks holda istalgan odam profiliga
       // begona brendni "o'zimniki" qilib biriktirib olardi. Faqat
@@ -6802,7 +6846,8 @@ async function recordsApi(request, env, url) {
       if (RESERVED_CODES.has(code)) return json({ error: 'reserved' }, 400);
 
       const body = await request.json().catch(() => ({}));
-      const { record, error } = validateRecordBody(body, { musicMax: musicLimitD1(!!user.isPremium) });
+      // Sinov muddati ham Premium limiti (yuqoridagi PUT bilan bir xil).
+      const { record, error } = validateRecordBody(body, { musicMax: musicLimitD1(!!user.isPremium || trialActiveD1(user)) });
       if (error) return json({ error }, 422);
 
       // Jismoniy karta qo'shimchasi hali D1'da portlanmagan
@@ -8341,6 +8386,42 @@ async function resetRateLimitD1(env, key) {
 // Murojaat holatlari (support_messages.status). Javob bilan qo'yiladiganlari
 // — 'pending' dan tashqari hammasi.
 const SUPPORT_STATUSES = ['pending', 'replied', 'resolved', 'planned'];
+// ADMIN RO'YXATLARI — SERVERDA SAHIFALASH (admin audit, 2026-10): `limit`
+// (standart 50, ko'pi 500) + `hasMore`. "Ko'proq yuklash" `limit` ni oshiradi.
+const adminListLimitD1 = (url, def = 50, max = 500) => Math.min(max, Math.max(1, Number(url.searchParams.get('limit')) || def));
+// content_manager uchun email/telefon niqoblanadi (admin audit).
+const maskEmailD1 = (e) => {
+  const s = String(e || '');
+  const at = s.indexOf('@');
+  return at > 0 ? `${s[0]}***${s.slice(at)}` : (s ? '***' : s);
+};
+const maskPhoneD1 = (p) => (p ? `***${String(p).slice(-4)}` : p);
+// Ism / manzil kabi erkin matn: faqat birinchi belgi.
+const maskTextD1 = (t) => {
+  const s = String(t ?? '').trim();
+  return s ? `${s[0]}***` : (t ?? '');
+};
+// SHAXSIY MA'LUMOT (PII) KIMGA NIQOBLANADI — BITTA QOIDA (ko'rik F4):
+// manager'dan past rol (content_manager, noma'lum rol). Modullar ham
+// shuni `H.piiMaskedD1` orqali ishlatadi — nusxa yo'q.
+const piiMaskedD1 = (admin) => !roleAtLeast(admin, 'manager');
+// Murojaatga javoblar TARIXI (admin audit): har javob alohida qator;
+// eng oxirgisi moslik uchun `support_messages.reply` da ham turadi.
+let supportRepliesReadyD1 = null;
+function ensureSupportRepliesD1(env) {
+  supportRepliesReadyD1 ||= env.DB.batch([
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS support_replies (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      message_id INTEGER NOT NULL,
+      admin_id INTEGER,
+      reply TEXT NOT NULL,
+      status TEXT,
+      created_at TEXT NOT NULL
+    )`),
+    env.DB.prepare(`CREATE INDEX IF NOT EXISTS support_replies_msg_idx ON support_replies(message_id, id)`),
+  ]).catch((e) => { supportRepliesReadyD1 = null; throw e; });
+  return supportRepliesReadyD1;
+}
 const SUPPORT_REPLY_STATUSES = ['replied', 'resolved', 'planned'];
 const ADMIN_ROLE_RANK = { content_manager: 1, manager: 2, super_admin: 3 };
 // `/api/admin/users?plan=` — ruxsat etilgan qiymatlar (boshqasi e'tiborsiz).
@@ -8923,7 +9004,8 @@ ${caption ? `<div class="cap">${e(caption)}</div>` : ''}
 //     ma'lumot YO'Q, va HAR DOIM `noindex` — qidiruvga ataylab berilmaydi.
 export function injectProfileOg(html, meta) {
   let out = String(html || '');
-  const pageTitle = `${meta.title} — NFCSTORE`;
+  // Nomda NFCSTORE bo'lsa qo'shimcha takrorlanmaydi ("NFCSTORE — NFCSTORE").
+  const pageTitle = fullPageTitle(meta.title, 'NFCSTORE');
   out = out.replace(/<title>[\s\S]*?<\/title>/i, `<title>${ogTextEscape(pageTitle)}</title>`);
   out = ogReplaceMeta(out, 'name', 'description', meta.description);
   out = ogReplaceMeta(out, 'property', 'og:title', pageTitle);
@@ -8947,6 +9029,75 @@ export function injectProfileOg(html, meta) {
     out = ogRemoveMeta(out, 'property', 'og:image:height');
   }
   return out;
+}
+
+// ── ODDIY SAYT SAHIFALARI: TO'G'RI META VA HAQIQIY 404 (2026-10) ──────
+//
+// MUAMMO (sayt auditi): robotlar JavaScript ishlatmaydi va /stikerlar,
+// /narxlar, /privacy, /delete-account ... uchun bosh sahifaning sarlavhasi,
+// tavsifi va `canonical: https://nfcstore.uz/` ni ko'rardi — ya'ni Google
+// uchun hammasi bosh sahifaning nusxasi edi. Mavjud bo'lmagan manzil ham
+// 200 bilan bosh sahifani berardi ("soft 404").
+//
+// YECHIM: SPA qobig'iga shu sahifaning meta teglari yoziladi (matn —
+// hosting/api/seo-routes.js, brauzerdagi src/lib/seo.js bilan BIR manba).
+// Saytda yo'q yo'l — 404 + noindex (sahifa baribir ochiladi va React
+// "Sahifa topilmadi" ko'rsatadi). Profil kodi shaklidagi bo'sh ID —
+// 200, lekin noindex. Kompaniya, yangilik, /post, /i, /qr-N va h.k. —
+// o'z ishlovchisi bor, bu yerda tegilmaydi.
+export function injectRouteSeo(html, meta) {
+  let out = String(html || '');
+  if (meta.title) {
+    const pageTitle = fullPageTitle(meta.title);
+    out = out.replace(/<title>[\s\S]*?<\/title>/i, `<title>${ogTextEscape(pageTitle)}</title>`);
+    out = ogReplaceMeta(out, 'property', 'og:title', pageTitle);
+    out = ogReplaceMeta(out, 'name', 'twitter:title', pageTitle);
+  }
+  if (meta.description) {
+    out = ogReplaceMeta(out, 'name', 'description', meta.description);
+    out = ogReplaceMeta(out, 'property', 'og:description', meta.description);
+    out = ogReplaceMeta(out, 'name', 'twitter:description', meta.description);
+  }
+  if (meta.robots) out = ogReplaceMeta(out, 'name', 'robots', meta.robots);
+  out = out.replace(/[ \t]*<link[^>]*\srel="canonical"[^>]*>\s*\n?/ig, '');
+  if (meta.url) {
+    out = out.replace(/<\/head>/i, `  <link rel="canonical" href="${ogAttrEscape(meta.url)}" />\n</head>`);
+    out = ogReplaceMeta(out, 'property', 'og:url', meta.url);
+  }
+  return out;
+}
+
+export async function spaShellWithSeo(response, url) {
+  const type = response.headers.get('content-type') || '';
+  if (response.status !== 200 || !/text\/html/i.test(type)) return response;
+  const info = classifySpaPath(url.pathname);
+  if (info.kind === 'dynamic') return response;
+  const html = await response.clone().text();
+  // Faqat SPA qobig'i (public/ dagi boshqa HTML fayllarga tegilmaydi).
+  if (!html.includes('<div id="root"></div>') || !/<\/head>/i.test(html)) return response;
+  let out = html;
+  let status = 200;
+  if (info.kind === 'page') {
+    const seo = seoForRoute(info.route, 'uz');
+    out = injectRouteSeo(html, {
+      title: seo.title,
+      description: seo.description,
+      url: url.origin + (seo.path === '/' ? '/' : seo.path),
+      robots: seo.noindex ? 'noindex,nofollow' : 'index,follow',
+    });
+  } else if (info.kind === 'profile') {
+    // Egasi yo'q yoki ismsiz ID ("Bu ID bo'sh" sahifasi) — indekslanmaydi.
+    out = injectRouteSeo(html, { url: `${url.origin}/${encodeURIComponent(info.code)}`, robots: 'noindex, follow' });
+  } else {
+    const seo = seoForRoute('notfound', 'uz');
+    out = injectRouteSeo(html, { title: seo.title, description: seo.description, robots: 'noindex, follow' });
+    status = 404;
+  }
+  const headers = new Headers(response.headers);
+  headers.set('content-type', 'text/html; charset=utf-8');
+  headers.delete('content-length');
+  headers.delete('etag');
+  return new Response(out, { status, headers });
 }
 
 // Biznes sahifasining kanonik manzili — ilova va karta ulashadigan
@@ -9535,9 +9686,10 @@ async function adminCoreApi(request, env, url, admin) {
           designFrontUrl: typeof p.designFrontUrl === 'string' ? p.designFrontUrl : '',
           designBackUrl: typeof p.designBackUrl === 'string' ? p.designBackUrl : '',
           printSpec: typeof p.printSpec === 'string' ? p.printSpec : '',
-          shippingName: typeof p.shippingName === 'string' ? p.shippingName : '',
-          shippingPhone: typeof p.shippingPhone === 'string' ? p.shippingPhone : '',
-          shippingAddress: typeof p.shippingAddress === 'string' ? p.shippingAddress : '',
+          // content_manager — yetkazish ma'lumoti niqoblangan (ko'rik F4).
+          shippingName: typeof p.shippingName === 'string' ? (piiMaskedD1(admin) ? maskTextD1(p.shippingName) : p.shippingName) : '',
+          shippingPhone: typeof p.shippingPhone === 'string' ? (piiMaskedD1(admin) ? maskPhoneD1(p.shippingPhone) : p.shippingPhone) : '',
+          shippingAddress: typeof p.shippingAddress === 'string' ? (piiMaskedD1(admin) ? maskTextD1(p.shippingAddress) : p.shippingAddress) : '',
           shippingCarrier: typeof p.shippingCarrier === 'string' ? p.shippingCarrier : '',
           quantity: Number(p.quantity) > 0 ? Math.round(Number(p.quantity)) : 1,
         };
@@ -9550,7 +9702,10 @@ async function adminCoreApi(request, env, url, admin) {
       (SELECT name FROM cards WHERE user_id = ru.id ORDER BY is_primary DESC, ts ASC LIMIT 1) AS referrer_name,
       rd.email AS referred_email, (SELECT name FROM cards WHERE user_id = rd.id ORDER BY is_primary DESC, ts ASC LIMIT 1) AS referred_name
       FROM referral_uses r JOIN users ru ON ru.id = r.referrer_id JOIN users rd ON rd.id = r.referred_id ORDER BY r.created_at DESC LIMIT 2000`).all();
-    return json({ referrals: (rows.results || []).map((r) => ({ id: r.id, createdAt: r.created_at, referrerEmail: r.referrer_email, referrerPromo: r.referrer_promo, referrerName: r.referrer_name, referredEmail: r.referred_email, referredName: r.referred_name })) });
+    // content_manager — emaillar niqoblangan (ko'rik F4).
+    const masked = piiMaskedD1(admin);
+    const em = (e) => (masked ? maskEmailD1(e) : e);
+    return json({ referrals: (rows.results || []).map((r) => ({ id: r.id, createdAt: r.created_at, referrerEmail: em(r.referrer_email), referrerPromo: r.referrer_promo, referrerName: r.referrer_name, referredEmail: em(r.referred_email), referredName: r.referred_name })) });
   }
 
   // MUROJAATLAR (2026-10): javob foydalanuvchiga YETIB BORADI.
@@ -9568,10 +9723,32 @@ async function adminCoreApi(request, env, url, admin) {
     // `?status=` — ixtiyoriy filtr; noma'lum qiymat — hammasi.
     const want = String(url.searchParams.get('status') || '');
     const filter = SUPPORT_STATUSES.includes(want) ? want : '';
+    const limit = adminListLimitD1(url, 50, 500);
+    // Ilova platformasi va build (app_users) — qaysi versiyadan yozilgani.
+    const appCols = await env.DB.prepare(`PRAGMA table_info(app_users)`).all().catch(() => null);
+    const appNames = new Set((appCols?.results || []).map((c) => c.name));
+    const appSel = appNames.size
+      ? `, (SELECT platform FROM app_users au WHERE au.user_id = sm.user_id) AS app_platform,
+         ${appNames.has('app_build') ? '(SELECT app_build FROM app_users au WHERE au.user_id = sm.user_id)' : 'NULL'} AS app_build`
+      : ', NULL AS app_platform, NULL AS app_build';
     const rows = await env.DB.prepare(`SELECT sm.*, u.email AS user_email,
-      (SELECT code FROM cards WHERE user_id = sm.user_id ORDER BY is_primary DESC, ts ASC LIMIT 1) AS user_code
+      (SELECT code FROM cards WHERE user_id = sm.user_id ORDER BY is_primary DESC, ts ASC LIMIT 1) AS user_code${appSel}
       FROM support_messages sm JOIN users u ON u.id = sm.user_id${filter ? ' WHERE sm.status = ?' : ''}
-      ORDER BY sm.created_at DESC LIMIT 200`).bind(...(filter ? [filter] : [])).all();
+      ORDER BY sm.created_at DESC LIMIT ?`).bind(...(filter ? [filter] : []), limit + 1).all();
+    const list = (rows.results || []).slice(0, limit);
+    await ensureSupportRepliesD1(env).catch(() => {});
+    const ids = list.map((r) => Number(r.id));
+    const replies = ids.length
+      ? await env.DB.prepare(`SELECT message_id, admin_id, reply, status, created_at FROM support_replies
+          WHERE message_id IN (${ids.map(() => '?').join(',')}) ORDER BY id ASC`).bind(...ids).all().catch(() => null)
+      : null;
+    const byMsg = new Map();
+    for (const r of replies?.results || []) {
+      const k = Number(r.message_id);
+      if (!byMsg.has(k)) byMsg.set(k, []);
+      byMsg.get(k).push({ reply: r.reply, status: r.status, adminId: r.admin_id, createdAt: r.created_at });
+    }
+    const masked = piiMaskedD1(admin);
     // Tablar uchun sanoq — ro'yxat bilan bir xil (JOIN users) asosda.
     const grouped = await env.DB.prepare(`SELECT sm.status AS status, COUNT(*) AS n
       FROM support_messages sm JOIN users u ON u.id = sm.user_id GROUP BY sm.status`).all();
@@ -9582,15 +9759,20 @@ async function adminCoreApi(request, env, url, admin) {
       if (SUPPORT_STATUSES.includes(g.status)) counts[g.status] += n;
     }
     return json({
-      messages: (rows.results || []).map((r) => ({ id: r.id, userId: r.user_id, userEmail: r.user_email, userCode: r.user_code, message: r.message, reply: r.reply, status: r.status, createdAt: r.created_at, repliedAt: r.replied_at })),
+      messages: list.map((r) => ({ id: r.id, userId: r.user_id, userEmail: masked ? maskEmailD1(r.user_email) : r.user_email, userCode: r.user_code, message: r.message, reply: r.reply, status: r.status, createdAt: r.created_at, repliedAt: r.replied_at,
+        // Javoblar tarixi (eskisidan yangisiga); eski javoblar (jadval bo'lmagan payt) — `reply` da.
+        replies: byMsg.get(Number(r.id)) || (r.reply ? [{ reply: r.reply, status: r.status, adminId: null, createdAt: r.replied_at }] : []),
+        platform: r.app_platform || null, appBuild: r.app_build === null || r.app_build === undefined ? null : Number(r.app_build) })),
       counts,
+      limit,
+      hasMore: (rows.results || []).length > limit,
     });
   }
 
   const supportReplyMatch = path.match(/^\/api\/admin\/support-messages\/(\d+)\/reply$/);
   if (supportReplyMatch && request.method === 'POST') {
     const body = await request.json().catch(() => ({}));
-    const reply = shortText(body.reply, 1000);
+    const reply = shortText(body.reply, 4000);
     if (!reply) return json({ error: 'reply_required' }, 422);
     // `status` ixtiyoriy: eski admin (faqat {reply}) — 'replied'.
     const status = body.status == null || body.status === '' ? 'replied' : String(body.status);
@@ -9598,6 +9780,10 @@ async function adminCoreApi(request, env, url, admin) {
     const row = await env.DB.prepare(`UPDATE support_messages SET reply = ?, status = ?, replied_at = ? WHERE id = ? RETURNING id, user_id`)
       .bind(reply, status, nowTs(), Number(supportReplyMatch[1])).first();
     if (!row) return json({ error: 'not_found' }, 404);
+    // Tarix: har javob alohida (eskisi o'chmaydi).
+    await ensureSupportRepliesD1(env).catch(() => {});
+    await env.DB.prepare(`INSERT INTO support_replies (message_id, admin_id, reply, status, created_at) VALUES (?, ?, ?, ?, ?)`)
+      .bind(Number(row.id), Number(admin.adminId) || null, reply, status, nowTs()).run().catch(() => {});
     // Egasiga ilova ichidagi bildirishnoma. Aktyor yo'q (tizim nomidan);
     // matnni ilova o'zi yig'adi. Xato javobni HECH QACHON buzmaydi —
     // createNotification xatoni o'zi yutadi, bu yerdagi catch — ehtiyot.
@@ -9663,8 +9849,13 @@ async function adminCoreApi(request, env, url, admin) {
   }
 
   if (path === '/api/admin/physical-cards' && request.method === 'GET') {
-    const rows = await env.DB.prepare(`SELECT pc.*, u.email AS owner_email FROM physical_cards pc LEFT JOIN users u ON u.id = pc.owner_user_id ORDER BY pc.created_at DESC LIMIT 100`).all();
-    return json({ cards: (rows.results || []).map((r) => ({ id: r.id, chipToken: r.chip_token, linkedCode: r.linked_code, ownerUserId: r.owner_user_id, ownerEmail: r.owner_email, active: !!r.active, status: r.status, shippingName: r.shipping_name, shippingPhone: r.shipping_phone, shippingAddress: r.shipping_address, trackingNumber: r.tracking_number || '', carrier: r.carrier || '', createdAt: r.created_at })) });
+    const limit = adminListLimitD1(url, 100, 500);
+    const rows = await env.DB.prepare(`SELECT pc.*, u.email AS owner_email FROM physical_cards pc LEFT JOIN users u ON u.id = pc.owner_user_id ORDER BY pc.created_at DESC LIMIT ?`).bind(limit + 1).all();
+    const list = (rows.results || []).slice(0, limit);
+    const masked = piiMaskedD1(admin);
+    // `chip_token` TO'LIQ QAYTARILMAYDI (admin audit) — u kartaning maxfiy
+    // manzili; faqat oxirgi 4 belgi.
+    return json({ limit, hasMore: (rows.results || []).length > limit, cards: list.map((r) => ({ id: r.id, tokenTail: String(r.chip_token || '').slice(-4).toUpperCase(), linkedCode: r.linked_code, ownerUserId: r.owner_user_id, ownerEmail: masked ? maskEmailD1(r.owner_email) : r.owner_email, active: !!r.active, status: r.status, shippingName: masked ? maskTextD1(r.shipping_name) : r.shipping_name, shippingPhone: masked ? maskPhoneD1(r.shipping_phone) : r.shipping_phone, shippingAddress: masked ? maskTextD1(r.shipping_address) : r.shipping_address, trackingNumber: r.tracking_number || '', carrier: r.carrier || '', createdAt: r.created_at })) });
   }
 
   // Kuzatuv raqami uchun ustunlar. `physical_cards` jadvali D1'da
@@ -10026,11 +10217,19 @@ async function adminCoreApi(request, env, url, admin) {
     // `q` — email, telefon yoki NFC ID bo'lagi.
     const q = cleanStr(url.searchParams.get('q'), 60).toLowerCase();
     const limit = Math.min(500, Math.max(20, Number(url.searchParams.get('limit')) || 200));
+    // HOLAT FILTRI — SERVERDA (admin audit): premium | flagged | blocked | deleted.
+    const status = ['premium', 'flagged', 'blocked', 'deleted'].includes(url.searchParams.get('status')) ? url.searchParams.get('status') : '';
     const trial = usersHaveTrialColumnsD1();
     const nowIso = new Date().toISOString();
     const conds = [];
     const binds = [];
-    if (q) {
+    if (q && piiMaskedD1(admin)) {
+      // content_manager email/telefon bo'yicha QIDIRA OLMAYDI (ko'rik F4):
+      // aks holda niqoblangan ro'yxat "bu email ro'yxatdan o'tganmi?"
+      // degan savolga javob berardi. Faqat NFC ID va karta nomi.
+      conds.push(`EXISTS (SELECT 1 FROM cards cq WHERE cq.user_id = users.id AND (LOWER(cq.code) LIKE ? OR LOWER(COALESCE(cq.name, '')) LIKE ?))`);
+      binds.push(`%${q}%`, `%${q}%`);
+    } else if (q) {
       conds.push(`(LOWER(email) LIKE ? OR phone LIKE ? OR EXISTS (SELECT 1 FROM cards cq WHERE cq.user_id = users.id AND LOWER(cq.code) LIKE ?))`);
       binds.push(`%${q}%`, `%${q}%`, `%${q}%`);
     }
@@ -10052,6 +10251,10 @@ async function adminCoreApi(request, env, url, admin) {
       if (trial) { conds.push(`trial_expires_at IS NOT NULL AND trial_expires_at <> '' AND trial_expires_at <= ?`); binds.push(nowIso); } else conds.push('0');
     }
     if (plan === 'free' && trial) { conds.push(`NOT (COALESCE(trial_expires_at, '') > ?)`); binds.push(nowIso); }
+    if (status === 'premium') { conds.push(premiumSql); binds.push(...premiumBinds); }
+    if (status === 'flagged') conds.push(`(is_test = 1 OR is_internal = 1)`);
+    if (status === 'blocked') { conds.push(`deleted_at IS NULL AND suspended_until IS NOT NULL AND suspended_until > ?`); binds.push(nowIso); }
+    if (status === 'deleted') conds.push(`deleted_at IS NOT NULL`);
     const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
     const rows = await env.DB.prepare(
       `SELECT id, email, phone, bot_ack, balance, held_balance, created_at, is_test, is_internal, is_premium,
@@ -10059,10 +10262,11 @@ async function adminCoreApi(request, env, url, admin) {
               ${trial ? 'premium_expires_at, trial_expires_at' : 'NULL AS premium_expires_at, NULL AS trial_expires_at'},
               (SELECT COUNT(*) FROM cards WHERE user_id = users.id) AS card_count,
               (SELECT GROUP_CONCAT(code) FROM cards WHERE user_id = users.id) AS codes
-       FROM users ${where} ORDER BY created_at DESC LIMIT ?`
-    ).bind(...binds, limit).all();
-    const users = (rows.results || []).map((r) => ({
-      id: r.id, email: r.email, phone: r.phone, botAck: !!r.bot_ack, balance: Number(r.balance),
+       FROM users ${where} ORDER BY created_at DESC, id DESC LIMIT ?`
+    ).bind(...binds, limit + 1).all();
+    const masked = piiMaskedD1(admin);
+    const users = (rows.results || []).slice(0, limit).map((r) => ({
+      id: r.id, email: masked ? maskEmailD1(r.email) : r.email, phone: masked ? maskPhoneD1(r.phone) : r.phone, botAck: !!r.bot_ack, balance: Number(r.balance),
       heldBalance: Number(r.held_balance), createdAt: r.created_at, isTest: !!r.is_test, isInternal: !!r.is_internal,
       suspendedUntil: r.suspended_until, suspendReason: r.suspend_reason, deletedAt: r.deleted_at,
       cardCount: Number(r.card_count), codes: r.codes ? r.codes.split(',') : [],
@@ -10073,7 +10277,7 @@ async function adminCoreApi(request, env, url, admin) {
       // Sinov tugash sanasi (bo'lmasa null) — admin "N kun qoldi" / "Sinov tugagan" yozadi.
       trialUntil: r.trial_expires_at || null,
     }));
-    return json({ users, q, limit, plan });
+    return json({ users, q, limit, plan, status, hasMore: (rows.results || []).length > limit });
   }
 
   // Ichki akkaunt belgisi — pul hisobiga kirmasin.
@@ -10119,6 +10323,18 @@ async function adminCoreApi(request, env, url, admin) {
     if (!u) return json({ error: 'not_found' }, 404);
     if (u.deleted_at) return json({ error: 'user_deleted' }, 409);
     if (Number(u.is_premium) === 1) return json({ error: 'lifetime_premium' }, 409);
+    // FAOL APPLE OBUNASI (admin audit, 2026-10): uni faqat Apple qaytaradi
+    // va keyingi yangilanishda muddat yana uzayadi. Olib qo'yish faqat
+    // aniq `force: true` bilan (UI qattiq ogohlantiradi).
+    if (revoke && body?.force !== true) {
+      const apple = await apiAdminApple.activeAppleSubscription(env, id).catch(() => null);
+      if (apple) {
+        return json({ error: 'apple_subscription_active', apple: {
+          productId: apple.product_id, environment: apple.environment, expiresAt: apple.expires_at,
+          autoRenew: apple.auto_renew === null ? null : !!Number(apple.auto_renew),
+        } }, 409);
+      }
+    }
     const nowMs = Date.now();
     const cur = u.premium_expires_at ? Date.parse(String(u.premium_expires_at).replace(' ', 'T').replace(/\+00$/, 'Z')) : NaN;
     const until = revoke
@@ -10127,7 +10343,7 @@ async function adminCoreApi(request, env, url, admin) {
     await env.DB.prepare(`UPDATE users SET premium_expires_at = ? WHERE id = ? AND COALESCE(is_premium, 0) = 0`).bind(until, id).run();
     await logAdminActivity(env, {
       action: revoke ? 'user_premium_revoke' : 'user_premium_grant',
-      details: `Foydalanuvchi #${id}${revoke ? '' : ` — ${months} oy`} · admin#${Number(admin.adminId) || 0}`,
+      details: `Foydalanuvchi #${id}${revoke ? (body?.force === true ? ' · force (Apple obunasi bor)' : '') : ` — ${months} oy`} · admin#${Number(admin.adminId) || 0}`,
       oldValue: u.premium_expires_at || '', newValue: `${until} (${note})`, ip,
     });
     return json({ ok: true, premiumUntil: until, revoked: revoke });
@@ -10174,8 +10390,14 @@ async function adminCoreApi(request, env, url, admin) {
 
   if (path === '/api/admin/activity-log' && request.method === 'GET') {
     if (admin.role !== 'super_admin') return json({ error: 'forbidden' }, 403);
-    const rows = await env.DB.prepare(`SELECT id, action, details, old_value, new_value, ip, created_at FROM admin_activity_log ORDER BY created_at DESC LIMIT 200`).all();
-    return json({ log: (rows.results || []).map((r) => ({ id: r.id, action: r.action, details: r.details, oldValue: r.old_value, newValue: r.new_value, ip: r.ip, createdAt: r.created_at })) });
+    const limit = adminListLimitD1(url, 100, 1000);
+    // `q` — amal nomi yoki tafsilot bo'lagi (serverda).
+    const q = cleanStr(url.searchParams.get('q'), 60).toLowerCase();
+    const rows = await env.DB.prepare(`SELECT id, action, details, old_value, new_value, ip, created_at FROM admin_activity_log
+      ${q ? 'WHERE LOWER(action) LIKE ? OR LOWER(COALESCE(details, \'\')) LIKE ?' : ''} ORDER BY created_at DESC, id DESC LIMIT ?`)
+      .bind(...(q ? [`%${q}%`, `%${q}%`] : []), limit + 1).all();
+    const list = (rows.results || []).slice(0, limit);
+    return json({ limit, hasMore: (rows.results || []).length > limit, log: list.map((r) => ({ id: r.id, action: r.action, details: r.details, oldValue: r.old_value, newValue: r.new_value, ip: r.ip, createdAt: r.created_at })) });
   }
 
   if (path === '/api/admin/login-history' && request.method === 'GET') {
@@ -12005,7 +12227,7 @@ const H = {
   createPendingWebOrderD1, getWebOrderD1, createWebOrderD1, setWebOrderStatusD1, ensureCoreSchema,
   finalizePaidWebOrderD1, attachCardToUserD1, createRecordD1, activeWebOrderByCodeD1, getWebOrderByPaymeIdD1,
   sessionCookieHeader, jsonWithCookie, isSecure, SESSION_TTL_S, newsVisitorHash, createUserSession, parseCookies,
-  rateLimitD1, roleAtLeast,
+  rateLimitD1, roleAtLeast, maskEmailD1, maskPhoneD1, maskTextD1, piiMaskedD1,
   emailEnabledD1, sendEmailD1, emailShellD1,
   personalPriceForCode, personalTierFromCode, personalCodeTierOverride, isPersonalCodePurchasable,
   usersHaveTrialColumnsD1, trialEndsAtD1, premiumExtendD1,
@@ -12039,7 +12261,7 @@ const H = {
 // bilan tugashini tekshiradi — oxiriga qo'shilsa o'sha qo'riqchi
 // yiqiladi. Tartibning boshqa ahamiyati yo'q: har bir modul o'ziga
 // tegishli bo'lmagan yo'lga `null` qaytaradi.
-const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiLegalRequests, apiAppUsage, apiAppAdmin, apiAccountPurge, apiAdminControl, apiMusic, apiDemoBusinesses, apiHighlights, apiStoryReplies, apiMyAnalytics, apiReels, apiMarketplace];
+const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiLegalRequests, apiAppUsage, apiAppAdmin, apiAccountPurge, apiAdminControl, apiMusic, apiDemoBusinesses, apiHighlights, apiStoryReplies, apiMyAnalytics, apiReels, apiIapApple, apiReferrals, apiAdminApple, apiMarketplace];
 
 // Xavfsizlik header'lari — barcha javoblarga (statik va API). CSP ataylab faqat
 // framing/base/form/object ni cheklaydi (script/style ga tegmaydi — YouTube/Yandex
@@ -12182,6 +12404,17 @@ export default {
       // eslatma (api/notifications.js). Xatoni o'zi yutadi; logga faqat son.
       const tr = await apiNotifications.runTrialEndingReminders(env).catch(() => null);
       if (tr?.created) console.log('trial_ending_notified', tr.created);
+      // Ko'tarish sotuvi 1000 foydalanuvchida ochiladi (api/featured.js):
+      // ochilishni aniqlash va navbatdagilarga bir martalik xabar.
+      const fs = await apiFeatured.featuredSalesTick(env, H).catch(() => null);
+      if (fs?.notified) console.log('featured_open_notified', fs.notified);
+      // Taklif mukofotlari (api/referrals.js): 7 kun + faollik shartiga
+      // yetganlarga +30 kun, 60 kunda yetmaganlar — 'expired'.
+      // `REFERRAL_REWARD_ENABLED` = '1' bo'lmasa hech narsa qilmaydi.
+      const rr = await apiReferrals.processReferralRewards(env, H).catch(() => null);
+      if (rr && !rr.disabled && (rr.granted || rr.expired || rr.rejected)) {
+        console.log('referral_rewards', JSON.stringify({ granted: rr.granted, expired: rr.expired, rejected: rr.rejected }));
+      }
     })());
   },
 };
@@ -12211,6 +12444,11 @@ export function appDownloadTarget(env) {
 
 async function handleRequest(request, env, url, ctx) {
     // Same 302 + no-store mechanism as /qr-N; one configurable APK/Play target.
+    // TAKLIF HAVOLASI (promokod): nfcstore.uz/i/<kod> → `nfc_ref` cookie va
+    // /register?ref=<kod>; noma'lum kod — bosh sahifa (api/referrals.js).
+    if (/^\/i\/[^/]+\/?$/.test(url.pathname) && ['GET', 'HEAD'].includes(request.method)) {
+      return apiReferrals.inviteRedirect(request, env, url);
+    }
     if (/^\/app\/?$/.test(url.pathname) && ['GET', 'HEAD'].includes(request.method)) {
       const target = appDownloadTarget(env);
       if (!target) return json({ error: 'app_download_not_configured' }, 503);
@@ -12228,6 +12466,11 @@ async function handleRequest(request, env, url, ctx) {
     if ((url.pathname === '/.well-known/apple-app-site-association'
       || url.pathname === '/apple-app-site-association') && ['GET', 'HEAD'].includes(request.method)) {
       const appId = `${String(env.IOS_TEAM_ID || '5Z9CT2W378')}.${String(env.IOS_NOVA_BUNDLE || 'uz.nfcstore.nova')}`;
+      // `/i/*` (taklif havolasi) ATAYLAB YO'Q (ko'rik F3): chiqarilgan ilova
+      // /i/:code yo'lini bilmaydi — iPhone'da havola ilovaning xato ekranini
+      // ochib, taklif yo'qolardi. Ilova /i/:code ni o'qiy oladigan versiya
+      // App Store'da chiqqandan keyin '/i/*' shu ro'yxatga QAYTA qo'shilsin.
+      // Hozircha /i/:code har doim saytda ochiladi (worker `inviteRedirect`).
       const paths = ['/post/*', '/u/*', '/c/*', '/story/*', '/nfc/*'];
       const body = JSON.stringify({
         applinks: {
@@ -12568,6 +12811,12 @@ async function handleRequest(request, env, url, ctx) {
     //   qr-1 — avto stiker (80 mm, oyna ichidan) -> #avto bo'limi
     //   qr-2 — tashqi stiker (100 mm, eshik/vitrina)
     //   qr-3 — NFC karta (Uzum, orqa tomon) -> #ulash bo'limi
+    // AUKSION BEKOR QILINDI (2026-09): eski /auksion havolalari narxlar
+    // sahifasiga DOIMIY (301) yo'naltiriladi — qidiruv tizimi ham eski
+    // manzilni unutsin (SPA ichida ham PricingRedirect bor).
+    if (/^\/auksion(?:-qoidalari)?(?:\/.*)?$/i.test(url.pathname) && ['GET', 'HEAD'].includes(request.method)) {
+      return new Response(null, { status: 301, headers: { location: '/narxlar', 'cache-control': 'public, max-age=3600' } });
+    }
     const qrSticker = url.pathname.match(/^\/qr-(\d{1,4})\/?$/);
     if (qrSticker && request.method === 'GET') {
       const section = qrSticker[1] === '1' ? '#avto' : qrSticker[1] === '3' ? '#ulash' : '';
@@ -12651,6 +12900,16 @@ async function handleRequest(request, env, url, ctx) {
       // the returned HTML is served for the original browser URL.
       const shellUrl = new URL('/', url);
       response = await env.ASSETS.fetch(new Request(shellUrl, request));
+    }
+    // Sahifa meta'si (sarlavha, tavsif, canonical) va noma'lum yo'lga 404.
+    // `accept` tekshirilmaydi: ba'zi robotlar (Telegram) uni yubormaydi —
+    // javob SPA qobig'i ekani spaShellWithSeo ichida aniqlanadi.
+    if (request.method === 'GET') {
+      try {
+        response = await spaShellWithSeo(response, url);
+      } catch (error) {
+        console.error('spa shell seo', url.pathname, error?.message);
+      }
     }
     return response;
 }

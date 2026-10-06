@@ -38,8 +38,159 @@
 //                                        → 201 { slot }  (qo'lda, to'lovsiz)
 //   POST /api/admin/featured/pricing     (super_admin) { packages:[{days,price}] }
 //   POST /api/admin/featured/:id/stop    (admin) { reason } → { ok }
+//
+// iOS (2026-10): xuddi shu slotlar Apple In-App Purchase (consumable)
+// bilan ham sotiladi — `api/iap-apple-boost.js`. U bu yerdagi
+// tekshiruvlarni (`checkPromoTarget`), sig'imni (`capacityOf`) va
+// to'xtatishni (`stopSlot`) QAYTA ISHLATADI — ikkinchi nusxa yo'q.
+// Apple "ushlab turish"i: `status = 'pending'`, `source = 'apple'`,
+// `ends_at` = ushlab turish tugashi (20 daqiqa). Sayt (Payme/Click)
+// kutilayotgan slotida `ends_at` BO'SH. Ushlab turish faqat boshqa
+// APPLE intentlariga joy egallaydi; sayt uchun sig'im, chegara va takror
+// tekshiruvi avvalgidek (`checkPromoTarget(..., { apple })`, ko'rik F2).
 
 import { targetOwner } from './comments.js';
+import { ensureSchema as ensureNotifications } from './notifications.js';
+
+// ═══ SOTUV 1000 FOYDALANUVCHIDA OCHILADI (egasi, 2026-10-06) ═══
+//
+// Platformada 1000 ta foydalanuvchi bo'lguncha ko'tarishni hech kim
+// SOTIB OLA OLMAYDI (sayt Payme/Click ham, iOS Apple ham): auditoriya
+// kichik paytda pul olish — "ko'rsatmay pul olish" bo'lardi. O'rniga
+// biznes BEPUL NAVBATGA yoziladi (`featured_waitlist`) va ochilganda
+// birinchi bo'lib oladi.
+//
+//   * Rejim — `admin_settings.featured_sales_open`: 'auto' (standart) |
+//     'open' | 'closed' (super_admin, POST /api/admin/featured/sales).
+//   * 'auto': o'chirilmagan foydalanuvchilar soni ≥ FEATURED_OPEN_AT_USERS
+//     bo'lsa ochiladi. Birinchi ochilish payti `featured_sales_opened_at`
+//     ga yoziladi va keyin soni kamaysa ham QAYTA YOPILMAYDI.
+//   * Ochilgandan keyin 48 soat — USTUVOR OYNA: faqat navbatdagilar
+//     sotib oladi, boshqalar 409 `priority_window` (+ `endsAt`).
+//   * Ochilganda navbatdagilarga bitta ilova ichidagi bildirishnoma
+//     (`featured_open`, aktyorsiz) — `notified_at` bilan bir marta;
+//     birinchi so'rovda yoki kunlik cron'da (`featuredSalesTick`).
+//   * Admin qo'lda ko'tarishi (POST /api/admin/featured) — doim ishlaydi.
+//   * Foydalanuvchilar soni isolate'da 5 daqiqa keshlanadi.
+// Tekshiruv xatolari (egalik, takror, sig'im) sotuv yopiq bo'lsa ham
+// avvalgidek qaytadi — shart faqat slot YARATILISHIDAN oldin.
+export const FEATURED_OPEN_AT_USERS = 1000;
+export const PRIORITY_WINDOW_MS = 48 * 60 * 60 * 1000;
+const USERS_COUNT_TTL_MS = 5 * 60 * 1000;
+const SALES_MODES = ['auto', 'open', 'closed'];
+const usersCountCache = {};
+export function __resetFeaturedSalesCache() { for (const k of Object.keys(usersCountCache)) delete usersCountCache[k]; }
+
+async function usersCountOf(env, now) {
+  const key = env.UZ_STORE_ACTIVE ? 'uz' : 'd1';
+  const c = usersCountCache[key];
+  if (c && now - c.at < USERS_COUNT_TTL_MS) return c.n;
+  const row = await env.DB.prepare(`SELECT COUNT(*) AS n FROM users WHERE deleted_at IS NULL`).first().catch(() => null);
+  const n = Number(row?.n) || 0;
+  usersCountCache[key] = { at: now, n };
+  return n;
+}
+
+async function ensureWaitlistSchema(env) {
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS featured_waitlist (
+    user_id INTEGER PRIMARY KEY NOT NULL,
+    target_kind TEXT,
+    target_id INTEGER,
+    created_at TEXT NOT NULL,
+    notified_at TEXT
+  )`).run();
+}
+
+/// NAVBATDAGILARGA "SOTUV OCHILDI" — bir marta (`notified_at`).
+/// Aktyor NULL: takror `NOT EXISTS` bilan to'siladi (notifications.js
+/// `runTrialEndingReminders` izohi). Ochilgandan KEYIN yozilganlar
+/// (`created_at > openedAt`) xabar olmaydi — ular buni allaqachon biladi.
+export async function notifyWaitlist(env, H, openedAtIso) {
+  await ensureWaitlistSchema(env);
+  await ensureNotifications(env);
+  const now = H.nowTs();
+  const res = await env.DB.prepare(
+    `INSERT INTO notifications (recipient_user_id, actor_user_id, kind, target_type, target_id, target_code, created_at)
+     SELECT w.user_id, NULL, 'featured_open', 'featured', '', '', ?
+       FROM featured_waitlist w JOIN users u ON u.id = w.user_id
+      WHERE w.notified_at IS NULL AND u.deleted_at IS NULL AND w.created_at <= ?
+        AND NOT EXISTS (SELECT 1 FROM notifications n WHERE n.recipient_user_id = w.user_id AND n.kind = 'featured_open')`
+  ).bind(now, openedAtIso).run();
+  await env.DB.prepare(
+    `UPDATE featured_waitlist SET notified_at = ?
+      WHERE notified_at IS NULL AND (created_at > ? OR EXISTS (SELECT 1 FROM notifications n
+        WHERE n.recipient_user_id = featured_waitlist.user_id AND n.kind = 'featured_open'))`
+  ).bind(new Date().toISOString(), openedAtIso).run();
+  return Number(res?.meta?.changes || 0);
+}
+
+/// SOTUV HOLATI: { open, mode, usersCount, openAt, openedAt, priorityUntil }.
+/// Birinchi ochilishni (auto yoki admin 'open') shu yerda qayd qiladi va
+/// navbatdagilarga xabar yuboradi.
+export async function salesState(env, H, { now = Date.now() } = {}) {
+  const rows = await env.DB.prepare(
+    `SELECT key, value FROM admin_settings WHERE key IN ('featured_sales_open', 'featured_sales_opened_at')`
+  ).all().catch(() => null);
+  const map = new Map((rows?.results || []).map((r) => [String(r.key), r.value]));
+  const rawMode = String(map.get('featured_sales_open') || 'auto');
+  const mode = SALES_MODES.includes(rawMode) ? rawMode : 'auto';
+  let openedAt = map.get('featured_sales_opened_at') || null;
+  const usersCount = await usersCountOf(env, now);
+  let open = false;
+  if (mode === 'open') open = true;
+  else if (mode === 'auto') open = !!openedAt || usersCount >= FEATURED_OPEN_AT_USERS;
+  if (open && !openedAt) {
+    const iso = new Date(now).toISOString();
+    const ins = await env.DB.prepare(
+      `INSERT OR IGNORE INTO admin_settings (key, value) VALUES ('featured_sales_opened_at', ?)`
+    ).bind(iso).run();
+    if (Number(ins?.meta?.changes || 0) > 0) {
+      openedAt = iso;
+      await notifyWaitlist(env, H, iso).catch((e) => console.error('featured_open notify', e?.message));
+    } else {
+      const r = await env.DB.prepare(`SELECT value FROM admin_settings WHERE key = 'featured_sales_opened_at'`).first().catch(() => null);
+      openedAt = r?.value || iso;
+    }
+  }
+  const openedMs = openedAt ? Date.parse(openedAt) : NaN;
+  const priorityUntil = open && Number.isFinite(openedMs) && now < openedMs + PRIORITY_WINDOW_MS ? openedMs + PRIORITY_WINDOW_MS : null;
+  return { open, mode, usersCount, openAt: FEATURED_OPEN_AT_USERS, openedAt, priorityUntil };
+}
+
+// `beforeIso` berilsa — faqat shu paytgacha (ochilishgacha) yozilganlar.
+// Ochilish paytida yoki keyin yozilgan odam ustuvorlik OLMAYDI (ko'rik F3).
+async function onWaitlist(env, userId, beforeIso = null) {
+  if (!userId) return false;
+  const row = await env.DB.prepare(
+    `SELECT 1 AS x FROM featured_waitlist WHERE user_id = ?${beforeIso ? ' AND created_at <= ?' : ''}`
+  ).bind(...(beforeIso ? [userId, beforeIso] : [userId])).first().catch(() => null);
+  return !!row;
+}
+
+/// SOTIB OLISH MUMKINMI — sayt va Apple yo'li uchun bitta shart.
+/// `null` — mumkin; aks holda `[body, status]`.
+export async function salesGate(env, H, userId) {
+  const st = await salesState(env, H);
+  if (!st.open) return [{ error: 'sales_not_open', usersCount: st.usersCount, openAt: st.openAt }, 409];
+  if (st.priorityUntil) {
+    await ensureWaitlistSchema(env);
+    if (!(await onWaitlist(env, userId, st.openedAt))) return [{ error: 'priority_window', endsAt: st.priorityUntil }, 409];
+  }
+  return null;
+}
+
+/// KUNLIK CRON (worker.js `scheduled`): ochilishni aniqlaydi va xabar
+/// olmagan navbatdagilarga yuboradi. Xatoni o'zi yutadi.
+export async function featuredSalesTick(env, H) {
+  try {
+    const st = await salesState(env, H);
+    if (!st.open || !st.openedAt) return { open: st.open, notified: 0 };
+    return { open: true, notified: await notifyWaitlist(env, H, st.openedAt) };
+  } catch (e) {
+    console.error('featured_sales_tick', String(e?.message || e).slice(0, 160));
+    return { error: true };
+  }
+}
 
 /// STANDART NARXLAR — so'mda.
 ///
@@ -56,7 +207,7 @@ const DEFAULT_PACKAGES = [
 ///
 /// Cheklovsiz bo'lsa, bitta odam butun bosh sahifani sotib olib,
 /// lenta boshqa hech kimga ko'rinmay qolardi.
-const MAX_ACTIVE_PER_USER = 3;
+export const MAX_ACTIVE_PER_USER = 3;
 
 /// LENTADAGI JAMI JOYLAR (egasi, 2026-10-05: "u yerga nechta sig'adi").
 ///
@@ -72,9 +223,19 @@ export const MAX_ACTIVE_TOTAL = 8;
 
 /// Faqat POSTLAR ko'tariladi (oddiy va biznes). Istoriyalar lentada
 /// chiqmaydi — ularni sotish "pul olib, ko'rsatmaslik" bo'lardi.
-const PROMO_KINDS = ['post', 'company_post'];
+export const PROMO_KINDS = ['post', 'company_post'];
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+export const DAY_MS = 24 * 60 * 60 * 1000;
+
+/// APPLE USHLAB TURISHI FAQAT BOSHQA APPLE INTENTLARIGA TA'SIR QILADI
+/// (ko'rik F2): sayt (Payme/Click) uchun sig'im, foydalanuvchi chegarasi
+/// va takror tekshiruvi AYNAN avvalgidek — faqat faol slotlar va sayt
+/// kutilayotgan slotlari (`ends_at` bo'sh). Apple intenti esa amal
+/// qilayotgan ushlab turishlarni (`pending` + `ends_at > hozir`) ham sanaydi.
+/// To'langan Apple xaridi uchun joy qolmagan bo'lsa — KREDIT.
+const HOLDS_SEAT_SQL = `(status = 'active' OR (status = 'pending' AND ends_at > ?))`;
+const BLOCKS_TARGET_SQL = `(status = 'active' OR (status = 'pending' AND (ends_at IS NULL OR ends_at > ?)))`;
+const WEB_BLOCKS_TARGET_SQL = `(status = 'active' OR (status = 'pending' AND ends_at IS NULL))`;
 
 let schemaReady = null;
 
@@ -114,7 +275,7 @@ export async function ensureSchema(env) {
 /// Buzuq sozlama standartni YIQITMAYDI: noto'g'ri JSON yoki
 /// mantiqsiz qiymat kelsa, standart qaytadi. Aks holda bitta
 /// xato tahrir butun sotuvni to'xtatardi.
-async function packagesOf(env) {
+export async function packagesOf(env) {
   const row = await env.DB.prepare(
     `SELECT value FROM admin_settings WHERE key = 'featured_pricing'`
   ).first().catch(() => null);
@@ -132,7 +293,7 @@ async function packagesOf(env) {
   }
 }
 
-const slotOut = (r, H) => {
+export const slotOut = (r, H) => {
   const ms = (v) => {
     const d = H.parseDbDate(v);
     return d && !Number.isNaN(d.getTime()) ? d.getTime() : null;
@@ -153,10 +314,12 @@ const slotOut = (r, H) => {
 
 /// BO'SH JOYLAR: { max, active, nextFreeAt } — nextFreeAt eng yaqin
 /// tugaydigan faol reklama vaqti (ms), joy bo'sh bo'lsa null.
-async function capacityOf(env, H) {
+/// `includeHolds` — faqat Apple intenti uchun: amal qilayotgan ushlab
+/// turishlar ham sanaladi. Sayt uchun (standart) — avvalgidek, faqat faol.
+export async function capacityOf(env, H, { includeHolds = false } = {}) {
   const row = await env.DB.prepare(
     `SELECT COUNT(*) AS n, MIN(ends_at) AS next FROM featured_slots
-      WHERE status = 'active' AND ends_at > ?`
+      WHERE ${includeHolds ? `status IN ('active', 'pending')` : `status = 'active'`} AND ends_at > ?`
   ).bind(H.nowTs()).first().catch(() => null);
   const active = Number(row?.n) || 0;
   const d = row?.next ? H.parseDbDate(row.next) : null;
@@ -212,11 +375,63 @@ async function slotStats(env, H, rows) {
 /// so'rovining O'ZI ham `ends_at > now` bo'yicha filtrlaydi —
 /// ya'ni bu yozuv kechikkan taqdirda ham mijozga eskirgan slot
 /// KO'RINMAYDI. Belgilash faqat hisobot va admin ro'yxati uchun.
-async function sweepExpired(env, H) {
+///
+/// Muddati o'tgan Apple ushlab turishi (`pending` + `ends_at`) shu
+/// so'rovning o'zida `cancelled` bo'ladi (sayt kutilayotgan slotida
+/// `ends_at` bo'sh — unga tegmaydi).
+export async function sweepExpired(env, H) {
   await env.DB.prepare(
-    `UPDATE featured_slots SET status = 'expired'
-      WHERE status = 'active' AND ends_at IS NOT NULL AND ends_at <= ?`
+    `UPDATE featured_slots SET status = CASE WHEN status = 'active' THEN 'expired' ELSE 'cancelled' END
+      WHERE status IN ('active', 'pending') AND ends_at IS NOT NULL AND ends_at <= ?`
   ).bind(H.nowTs()).run().catch(() => {});
+}
+
+/// KO'TARISH MUMKINMI — sayt (POST /api/featured) va Apple
+/// (api/iap-apple-boost.js) uchun BITTA tekshiruv, aynan shu tartibda:
+/// not_found → forbidden → post_scheduled → already_featured →
+/// too_many_active → sold_out. Qaytaradi: `{ target }` yoki
+/// `{ error: [body, status] }`.
+export async function checkPromoTarget(env, H, userId, kind, targetId, { apple = false } = {}) {
+  // EGALIK — SERVERDA. Aks holda istalgan odam begona postni
+  // ko'tarib, uni bosh sahifaga chiqarardi.
+  const target = await targetOwner(env, kind, targetId);
+  if (!target.ok) return { error: [{ error: 'not_found' }, 404] };
+  if (Number(target.ownerUserId) !== Number(userId)) {
+    return { error: [{ error: 'forbidden' }, 403] };
+  }
+  // REJADAGI POST (api/scheduled-posts.js) ko'tarilmaydi: lenta uni
+  // vaqti kelguncha baribir ko'rsatmaydi — pul olinib, kunlar bekorga
+  // o'tib ketardi.
+  if (target.scheduled) return { error: [{ error: 'post_scheduled' }, 409] };
+
+  // Bitta kontent uchun ikkita kutilayotgan buyurtma bo'lmasin —
+  // odam ikki marta bosib, ikki marta to'lab qo'ymasin.
+  const now = H.nowTs();
+  const dup = await env.DB.prepare(
+    `SELECT id FROM featured_slots
+      WHERE target_kind = ? AND target_id = ? AND ${apple ? BLOCKS_TARGET_SQL : WEB_BLOCKS_TARGET_SQL}`
+  ).bind(...(apple ? [kind, targetId, now] : [kind, targetId])).first().catch(() => null);
+  if (dup) return { error: [{ error: 'already_featured', slotId: Number(dup.id) }, 409] };
+
+  const activeRow = await env.DB.prepare(
+    `SELECT COUNT(*) AS n FROM featured_slots WHERE user_id = ? AND ${apple ? HOLDS_SEAT_SQL : `status = 'active'`}`
+  ).bind(...(apple ? [userId, now] : [userId])).first().catch(() => null);
+  if ((Number(activeRow?.n) || 0) >= MAX_ACTIVE_PER_USER) {
+    return { error: [{ error: 'too_many_active', max: MAX_ACTIVE_PER_USER }, 409] };
+  }
+  const cap = await capacityOf(env, H, { includeHolds: apple });
+  if (cap.active >= cap.max) return { error: [{ error: 'sold_out', ...cap }, 409] };
+  return { target };
+}
+
+/// SLOTNI TO'XTATISH — admin "stop" va Apple REFUND/REVOKE uchun bitta yo'l.
+/// Faqat kutilayotgan yoki faol slot; qaytaradi: to'xtatildimi.
+export async function stopSlot(env, slotId, reason) {
+  const res = await env.DB.prepare(
+    `UPDATE featured_slots SET status = 'stopped', stopped_reason = ?
+      WHERE id = ? AND status IN ('pending', 'active')`
+  ).bind(String(reason), Number(slotId)).run();
+  return Number(res?.meta?.changes || 0) > 0;
 }
 
 /// HOZIR KO'TARILGAN KONTENT — lenta uchun.
@@ -281,14 +496,56 @@ export async function handle(request, env, url, H) {
 
   // ── NARXLAR ──────────────────────────────────────────────────────
   if (path === '/api/featured/packages' && method === 'GET') {
-    const [packages, capacity] = await Promise.all([packagesOf(env), capacityOf(env, H)]);
+    const user = await H.getCurrentUser(request, env).catch(() => null);
+    const [packages, capacity, sales] = await Promise.all([packagesOf(env), capacityOf(env, H), salesState(env, H)]);
+    let waitlisted = false;
+    let priority = false;
+    if (user) {
+      await ensureWaitlistSchema(env);
+      waitlisted = await onWaitlist(env, user.id);
+      // Ustuvor oynada sotib olishi mumkinmi (ochilishgacha yozilgan).
+      priority = !!sales.priorityUntil && await onWaitlist(env, user.id, sales.openedAt);
+    }
     return H.json({
       packages,
       capacity,
       // To'lovlar butunlay o'chirilgan bo'lsa, ilova tugmani
       // ko'rsatmaydi — bosilgach 503 chiqishidan ko'ra yaxshiroq.
       enabled: H.paymentsEnabledD1(env),
+      // Sotuv 1000 foydalanuvchida ochiladi (yuqoridagi izoh).
+      salesOpen: sales.open,
+      usersCount: sales.usersCount,
+      openAt: sales.openAt,
+      priorityUntil: sales.priorityUntil,
+      waitlisted,
+      priority,
     });
+  }
+
+  // ── BEPUL NAVBAT ─────────────────────────────────────────────────
+  if (path === '/api/featured/waitlist' && (method === 'POST' || method === 'DELETE')) {
+    const user = await H.getCurrentUser(request, env).catch(() => null);
+    if (!user) return H.json({ error: 'unauthorized' }, 401);
+    await ensureWaitlistSchema(env);
+    if (method === 'DELETE') {
+      await env.DB.prepare(`DELETE FROM featured_waitlist WHERE user_id = ?`).bind(user.id).run();
+      return H.json({ waitlisted: false });
+    }
+    const body = await readJson();
+    const kind = PROMO_KINDS.includes(String(body.targetKind || '')) ? String(body.targetKind) : null;
+    const tid = Number(body.targetId);
+    const targetId = kind && Number.isInteger(tid) && tid > 0 ? tid : null;
+    const sales = await salesState(env, H);
+    const nowIso = new Date().toISOString();
+    // Ochilgandan keyin yozilgan — xabar kerak emas (u buni allaqachon biladi).
+    await env.DB.prepare(
+      `INSERT OR IGNORE INTO featured_waitlist (user_id, target_kind, target_id, created_at, notified_at) VALUES (?, ?, ?, ?, ?)`
+    ).bind(user.id, kind, targetId, nowIso, sales.open ? nowIso : null).run();
+    if (kind && targetId) {
+      await env.DB.prepare(`UPDATE featured_waitlist SET target_kind = ?, target_id = ? WHERE user_id = ?`)
+        .bind(kind, targetId, user.id).run();
+    }
+    return H.json({ waitlisted: true, salesOpen: sales.open });
   }
 
   // ── OMMAVIY: HOZIR KO'TARILGAN SLOTLAR ───────────────────────────
@@ -338,34 +595,14 @@ export async function handle(request, env, url, H) {
     const pack = packages.find((p) => p.days === Math.round(Number(body.days)));
     if (!pack) return H.json({ error: 'bad_package' }, 422);
 
-    // EGALIK — SERVERDA. Aks holda istalgan odam begona postni
-    // ko'tarib, uni bosh sahifaga chiqarardi.
-    const target = await targetOwner(env, kind, targetId);
-    if (!target.ok) return H.json({ error: 'not_found' }, 404);
-    if (Number(target.ownerUserId) !== Number(user.id)) {
-      return H.json({ error: 'forbidden' }, 403);
-    }
-    // REJADAGI POST (api/scheduled-posts.js) ko'tarilmaydi: lenta uni
-    // vaqti kelguncha baribir ko'rsatmaydi — pul olinib, kunlar bekorga
-    // o'tib ketardi.
-    if (target.scheduled) return H.json({ error: 'post_scheduled' }, 409);
-
-    // Bitta kontent uchun ikkita kutilayotgan buyurtma bo'lmasin —
-    // odam ikki marta bosib, ikki marta to'lab qo'ymasin.
-    const dup = await env.DB.prepare(
-      `SELECT id FROM featured_slots
-        WHERE target_kind = ? AND target_id = ? AND status IN ('pending','active')`
-    ).bind(kind, targetId).first().catch(() => null);
-    if (dup) return H.json({ error: 'already_featured', slotId: Number(dup.id) }, 409);
-
-    const activeRow = await env.DB.prepare(
-      `SELECT COUNT(*) AS n FROM featured_slots WHERE user_id = ? AND status = 'active'`
-    ).bind(user.id).first().catch(() => null);
-    if ((Number(activeRow?.n) || 0) >= MAX_ACTIVE_PER_USER) {
-      return H.json({ error: 'too_many_active', max: MAX_ACTIVE_PER_USER }, 409);
-    }
-    const cap = await capacityOf(env, H);
-    if (cap.active >= cap.max) return H.json({ error: 'sold_out', ...cap }, 409);
+    // Egalik, rejadagi post, takror, foydalanuvchi va umumiy sig'im —
+    // `checkPromoTarget` (Apple yo'li ham aynan shuni ishlatadi).
+    const checked = await checkPromoTarget(env, H, user.id, kind, targetId);
+    if (checked.error) return H.json(...checked.error);
+    const { target } = checked;
+    // SOTUV OCHIQMI (1000 foydalanuvchi / ustuvor oyna) — slot yaratishdan oldin.
+    const gate = await salesGate(env, H, user.id);
+    if (gate) return H.json(...gate);
 
     const now = H.nowTs();
     const slot = await env.DB.prepare(
@@ -445,16 +682,26 @@ export async function handle(request, env, url, H) {
       const where = ['pending', 'active', 'expired', 'cancelled', 'stopped'].includes(state)
         ? `WHERE status = ?` : '';
       const args = where ? [state] : [];
+      // Sahifalash (admin audit): `limit` (50, ko'pi 500) + `hasMore`.
+      const limit = Math.min(500, Math.max(1, Number(url.searchParams.get('limit')) || 50));
       const rows = await env.DB.prepare(
-        `SELECT * FROM featured_slots ${where} ORDER BY created_at DESC, id DESC LIMIT 200`
-      ).bind(...args).all().catch(() => null);
+        `SELECT * FROM featured_slots ${where} ORDER BY created_at DESC, id DESC LIMIT ?`
+      ).bind(...args, limit + 1).all().catch(() => null);
+      const all = rows?.results || [];
       return H.json({
-        slots: (rows?.results || []).map((r) => ({
+        limit,
+        hasMore: all.length > limit,
+        slots: all.slice(0, limit).map((r) => ({
           ...slotOut(r, H),
           userId: Number(r.user_id),
           orderId: Number(r.order_id) || 0,
           stoppedReason: String(r.stopped_reason || ''),
           note: String(r.note || ''),
+          // Qayerdan: 'apple' (iOS In-App Purchase), 'web' (Payme/Click
+          // buyurtmasi), 'admin' (qo'lda, buyurtmasiz). `source` ustuni
+          // faqat Apple slotlarida to'ldiriladi (api/iap-apple-boost.js).
+          source: r.source === 'apple' ? 'apple' : (Number(r.order_id) ? 'web' : 'admin'),
+          appleTransactionId: r.apple_transaction_id ? String(r.apple_transaction_id) : null,
         })),
       });
     }
@@ -510,7 +757,7 @@ export async function handle(request, env, url, H) {
       if (target.scheduled) return H.json({ error: 'post_scheduled' }, 409);
       const dup = await env.DB.prepare(
         `SELECT id FROM featured_slots
-          WHERE target_kind = ? AND target_id = ? AND status IN ('pending','active')`
+          WHERE target_kind = ? AND target_id = ? AND ${WEB_BLOCKS_TARGET_SQL}`
       ).bind(kind, targetId).first().catch(() => null);
       if (dup) return H.json({ error: 'already_featured', slotId: Number(dup.id) }, 409);
       // Qo'lda berilgan ham joy egallaydi — pul to'lagan biznesning
@@ -533,6 +780,51 @@ export async function handle(request, env, url, H) {
       return H.json({ slot: slotOut(row, H) }, 201);
     }
 
+    // NAVBAT VA SOTUV REJIMI.
+    if (path === '/api/admin/featured/waitlist' && method === 'GET') {
+      // Faqat manager+ (kontent rollari emas) — ko'rik F7.
+      if (!H.roleAtLeast(admin, 'manager')) return H.json({ error: 'forbidden' }, 403);
+      await ensureWaitlistSchema(env);
+      const [sales, list, counts] = await Promise.all([
+        salesState(env, H),
+        env.DB.prepare(
+          `SELECT w.user_id, w.target_kind, w.target_id, w.created_at, w.notified_at,
+                  (SELECT code FROM cards c WHERE c.user_id = w.user_id ORDER BY is_primary DESC, ts ASC LIMIT 1) AS code,
+                  (SELECT name FROM cards c WHERE c.user_id = w.user_id ORDER BY is_primary DESC, ts ASC LIMIT 1) AS name
+             FROM featured_waitlist w ORDER BY w.created_at ASC LIMIT 500`
+        ).all(),
+        env.DB.prepare(`SELECT COUNT(*) AS total, COUNT(notified_at) AS notified FROM featured_waitlist`).first(),
+      ]);
+      return H.json({
+        sales: { mode: sales.mode, open: sales.open, usersCount: sales.usersCount, openAt: sales.openAt,
+          openedAt: sales.openedAt, priorityUntil: sales.priorityUntil },
+        counts: { total: Number(counts?.total) || 0, notified: Number(counts?.notified) || 0 },
+        items: (list?.results || []).map((r) => ({
+          userId: Number(r.user_id), code: String(r.code || ''), name: String(r.name || ''),
+          targetKind: r.target_kind || null, targetId: r.target_id != null ? Number(r.target_id) : null,
+          createdAt: String(r.created_at || ''), notifiedAt: r.notified_at || null,
+        })),
+      });
+    }
+    if (path === '/api/admin/featured/sales' && method === 'POST') {
+      if (!H.roleAtLeast(admin, 'super_admin')) return H.json({ error: 'forbidden' }, 403);
+      const body = await readJson();
+      const mode = String(body.mode || '');
+      if (!SALES_MODES.includes(mode)) return H.json({ error: 'bad_mode' }, 422);
+      const prev = await env.DB.prepare(`SELECT value FROM admin_settings WHERE key = 'featured_sales_open'`).first().catch(() => null);
+      await env.DB.prepare(
+        `INSERT INTO admin_settings (key, value) VALUES ('featured_sales_open', ?)
+           ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+      ).bind(mode).run();
+      await H.logAdminActivity(env, {
+        action: 'featured_sales_mode', details: `mode=${mode}`,
+        oldValue: String(prev?.value || 'auto'), newValue: mode, ip: H.reqIp(request),
+      }).catch(() => {});
+      const sales = await salesState(env, H);
+      return H.json({ sales: { mode: sales.mode, open: sales.open, usersCount: sales.usersCount, openAt: sales.openAt,
+        openedAt: sales.openedAt, priorityUntil: sales.priorityUntil } });
+    }
+
     const stopMatch = path.match(/^\/api\/admin\/featured\/(\d+)\/stop$/);
     if (stopMatch && method === 'POST') {
       // Pullik e'lonni to'xtatish — manager+.
@@ -549,9 +841,40 @@ export async function handle(request, env, url, H) {
         return H.json({ error: 'not_stoppable' }, 409);
       }
 
-      await env.DB.prepare(
-        `UPDATE featured_slots SET status = 'stopped', stopped_reason = ? WHERE id = ?`
-      ).bind(`admin#${Number(admin.adminId) || 0}: ${reason}`, Number(row.id)).run();
+      const stopped = await stopSlot(env, Number(row.id), `admin#${Number(admin.adminId) || 0}: ${reason}`);
+      // Shu orada slotni boshqa jarayon (masalan Apple REFUND) to'xtatgan
+      // bo'lsa — admin hech narsa qilmadi, kredit ham YO'Q (ko'rik F5).
+      if (!stopped) return H.json({ error: 'not_stoppable' }, 409);
+      // APPLE SLOTI (admin audit): manager+ xohlasa, xaridorga yangi
+      // KO'TARISH KREDITI beriladi (to'liq kunlar) — pul Apple'da qoldi,
+      // xizmat esa to'xtatildi. Kreditning tranzaksiya kaliti sintetik:
+      // `admin:<slot>:<apple tx>`. Asl tranzaksiya REFUND bo'lsa
+      // (iap-apple-boost.js `undoByTx`) bu kredit ham, undan yoqilgan slot ham bekor.
+      if (body.reissueCredit === true && row.source === 'apple' && row.apple_transaction_id && String(row.status) === 'active') {
+        const key = `admin:${Number(row.id)}:${String(row.apple_transaction_id)}`;
+        // Asl Apple tranzaksiyasi (admin kreditlari zanjirida ham oxirgi qism).
+        const baseTx = String(row.apple_transaction_id).split(':').pop();
+        const revokedSql = `SELECT 1 AS ok FROM iap_apple_boost_transactions WHERE transaction_id = ? AND revoked_at IS NOT NULL`;
+        const isRevoked = async () => !!(await env.DB.prepare(revokedSql).bind(baseTx).first().catch(() => null));
+        if (await isRevoked()) return H.json({ ok: true, creditId: null, reason: 'refunded' });
+        await env.DB.prepare(`INSERT OR IGNORE INTO iap_apple_boost_credits
+            (user_id, days, product_id, environment, transaction_id, created_at) VALUES (?, ?, NULL, 'admin', ?, ?)`)
+          .bind(Number(row.user_id), Number(row.days) || 1, key, new Date().toISOString()).run();
+        // Refund kredit yozilishidan oldin, lekin undoByTx kreditni ko'rmasdan
+        // o'tib ketgan bo'lsa — qayta tekshiruv: kredit darhol bekor.
+        if (await isRevoked()) {
+          await env.DB.prepare(`UPDATE iap_apple_boost_credits SET revoked_at = ? WHERE transaction_id = ? AND revoked_at IS NULL AND used_at IS NULL`)
+            .bind(new Date().toISOString(), key).run().catch(() => {});
+          return H.json({ ok: true, creditId: null, reason: 'refunded' });
+        }
+        const c = await env.DB.prepare(`SELECT id FROM iap_apple_boost_credits WHERE transaction_id = ?`).bind(key).first();
+        await H.logAdminActivity(env, {
+          action: 'featured_apple_credit_reissue',
+          details: `slot#${Number(row.id)} → kredit#${Number(c?.id) || 0} (${Number(row.days) || 1} kun) · user#${Number(row.user_id)}`,
+          ip: H.reqIp(request),
+        }).catch(() => {});
+        return H.json({ ok: true, creditId: Number(c?.id) || null });
+      }
       return H.json({ ok: true });
     }
 

@@ -29,7 +29,15 @@
 // (aktyor NULL), nishon `trial`/<tugash sanasi YYYY-MM-DD>. Kunlik cron
 // yaratadi (`runTrialEndingReminders`); matnni mijoz yig'adi — xarid
 // havolasi YO'Q (App Store qoidasi: neytral eslatma).
-const KINDS = ['follow', 'like', 'comment', 'support_reply', 'trial_ending'];
+//
+// `featured_open` (2026-10) — ko'tarish sotuvi ochildi; faqat bepul navbatga
+// yozilganlarga, bir marta (api/featured.js `notifyWaitlist`). Aktyorsiz,
+// nishon `featured`/''. Matnni mijoz yig'adi.
+//
+// `referral_reward` (2026-10) — taklif qilingan do'st ro'yxatdan o'tdi va
+// taklif qiluvchiga +30 kun Premium berildi (api/referrals.js). Aktyor —
+// do'st (faqat ochiq profil nomi), nishon `referral`/<kunlar>.
+const KINDS = ['follow', 'like', 'comment', 'support_reply', 'trial_ending', 'featured_open', 'referral_reward'];
 const PAGE = 30;
 const PAGE_MAX = 50;
 
@@ -179,17 +187,35 @@ export async function runTrialEndingReminders(env, { now = Date.now(), limit = 5
 // Birinchi yozganimda `ac.id` bo'yicha bog'lagandim va so'rov
 // "no such column: ac.id" bilan yiqildi; buni shu fayl uchun
 // yozilgan testning o'zi tutdi.
+// Ilovada ko'rinmaydigan turlar (faqat sayt).
+const APP_HIDDEN_SQL = `('featured_open', 'referral_reward')`;
+
 const ACTOR_SQL = `
   LEFT JOIN cards ac ON ac.code = (
     SELECT code FROM cards WHERE user_id = n.actor_user_id
      ORDER BY is_primary DESC, ts ASC LIMIT 1
   )`;
 
+// TAKLIF MUKOFOTI SARLAVHASI (ko'rik F7): do'stning OCHIQ ismi, lekin
+// u o'zi ism qo'ymagan bo'lsa (karta nomi standart — emailning "@"
+// oldidagi qismi yoki 'Yangi foydalanuvchi') — bo'sh; sayt o'rniga
+// "Do'stingiz" yozadi. Aks holda do'stning email foydalanuvchi nomi
+// taklif qiluvchiga oshkor bo'lardi.
+const DEFAULT_CARD_NAMES = new Set(['yangi foydalanuvchi']);
+function actorTitle(r) {
+  const name = String(r.actor_name || '').trim();
+  if (String(r.kind || '') !== 'referral_reward' || !name) return name;
+  const low = name.toLowerCase();
+  const local = String(r.actor_email || '').split('@')[0].trim().toLowerCase();
+  if (DEFAULT_CARD_NAMES.has(low) || (local && low === local)) return '';
+  return name;
+}
+
 const rowToItem = (r) => ({
   id: Number(r.id),
   type: String(r.kind || ''),
   // Sarlavha — aktyorning ismi. Jumlani mijoz o'z tilida yig'adi.
-  title: String(r.actor_name || '').trim(),
+  title: actorTitle(r),
   subtitle: '',
   actorCode: String(r.actor_code || ''),
   avatarUrl: String(r.actor_avatar || ''),
@@ -207,6 +233,15 @@ export async function handle(request, env, url, H) {
   const user = await H.getCurrentUser(request, env).catch(() => null);
   if (!user) return H.json({ error: 'unauthorized' }, 401);
   await ensureSchema(env);
+  // MOBIL ILOVADA REKLAMA YO'Q (egasi, 2026-10-06): `featured_open`
+  // (ko'tarish sotuvi ochildi) faqat SAYTDA ko'rinadi — ilova
+  // (`x-app: nova` yoki `X-Client: android|ios|mobile`) ro'yxatida ham,
+  // o'qilmaganlar sonida ham yo'q.
+  //
+  // `referral_reward` ham (ko'rik F7): chiqarilgan ilova bu turni
+  // bilmaydi va matnsiz, bosilmaydigan qator ko'rsatardi.
+  const fromApp = String(request.headers.get('x-app') || '').toLowerCase() === 'nova' || H.isMobileClientD1(request);
+  const hideSql = fromApp ? ` AND kind NOT IN ${APP_HIDDEN_SQL}` : '';
 
   // ── RO'YXAT ───────────────────────────────────────────────────
   if (path === '/api/notifications' && request.method === 'GET') {
@@ -221,10 +256,13 @@ export async function handle(request, env, url, H) {
     const args = [user.id];
     if (cursor > 0) { where.push(`n.id < ?`); args.push(cursor); }
     if (unreadOnly) where.push(`n.read_at IS NULL`);
+    if (fromApp) where.push(`n.kind NOT IN ${APP_HIDDEN_SQL}`);
 
     const rows = await env.DB.prepare(
       `SELECT n.id, n.kind, n.target_type, n.target_id, n.target_code, n.read_at, n.created_at,
-              ac.name AS actor_name, ac.code AS actor_code, ac.avatar_url AS actor_avatar
+              ac.name AS actor_name, ac.code AS actor_code, ac.avatar_url AS actor_avatar,
+              CASE WHEN n.kind = 'referral_reward'
+                   THEN (SELECT email FROM users WHERE id = n.actor_user_id) END AS actor_email
          FROM notifications n ${ACTOR_SQL}
         WHERE ${where.join(' AND ')}
         ORDER BY n.id DESC LIMIT ?`
@@ -263,7 +301,7 @@ export async function handle(request, env, url, H) {
       }
     }
     const unread = await env.DB.prepare(
-      `SELECT COUNT(*) AS n FROM notifications WHERE recipient_user_id = ? AND read_at IS NULL`
+      `SELECT COUNT(*) AS n FROM notifications WHERE recipient_user_id = ? AND read_at IS NULL${hideSql}`
     ).bind(user.id).first();
 
     return H.json({
@@ -296,7 +334,7 @@ export async function handle(request, env, url, H) {
       if (!own) return H.json({ error: 'not_found' }, 404);
     }
     const unread = await env.DB.prepare(
-      `SELECT COUNT(*) AS n FROM notifications WHERE recipient_user_id = ? AND read_at IS NULL`
+      `SELECT COUNT(*) AS n FROM notifications WHERE recipient_user_id = ? AND read_at IS NULL${hideSql}`
     ).bind(user.id).first();
     return H.json({ ok: true, unreadCount: Number(unread?.n) || 0 });
   }

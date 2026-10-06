@@ -23,6 +23,8 @@
 // Jadval yo'q bo'lsa (yangi baza) — o'sha qism 0 qaytaradi, xato emas.
 
 import { ensurePurgeSchema, PURGE_GRACE_DAYS } from './account-purge.js';
+// Apple IAP (admin "Apple / iOS"): kartochkadagi Apple bo'limi va menyu belgisi.
+import { appleForUser, appleAttention } from './admin-apple.js';
 
 const DAY_MS = 86_400_000;
 const SEC = (c) => `replace(substr(${c}, 1, 19), 'T', ' ')`;
@@ -63,7 +65,19 @@ function premiumState(u, nowIso) {
   return { state: 'none', until: null, legacy: false };
 }
 
+// SHAXSIY MA'LUMOT NIQOBI (ko'rik F4): qoida worker.js `piiMaskedD1` da —
+// manager'dan past rol emailni `x***@domen`, telefonni `***1234` ko'radi.
+function piiOf(H, admin) {
+  const masked = H.piiMaskedD1(admin);
+  return {
+    masked,
+    email: (e) => (masked ? H.maskEmailD1(e) : e),
+    phone: (p) => (masked ? H.maskPhoneD1(p) : p),
+  };
+}
+
 async function overview(env, H, admin, now) {
+  const pii = piiOf(H, admin);
   await H.ensureWebOrderTimestampColumns(env);
   const t = await tableSet(env);
   const userCols = await columnSet(env, 'users');
@@ -117,6 +131,8 @@ async function overview(env, H, admin, now) {
       FROM users WHERE is_test = 0 AND is_internal = 0 AND deleted_at IS NULL ORDER BY ${SEC('created_at')} DESC, id DESC LIMIT 6`),
     one(env, `SELECT COALESCE(SUM(w.price),0) AS total, COUNT(*) AS n FROM web_orders w WHERE ${H.revenueBucketSqlD1('refunded', 'w')} AND ${SEC('w.cancel_time')} >= ?`, d30),
   ]);
+  // Apple: osilib qolgan bildirishnoma/da'vo va noma'lum foydalanuvchi — faqat manager+.
+  const appleAttn = H.roleAtLeast(admin, 'manager') ? await appleAttention(env).catch(() => 0) : 0;
 
   // O'chirish navbati — faqat super_admin ko'radi va boshqaradi.
   let deletions = null;
@@ -169,16 +185,19 @@ async function overview(env, H, admin, now) {
       reports: queue.reports,
       supportUnanswered: queue.supportUnanswered,
       accountDeletions: queue.deletionsNeedAction,
+      appleAttention: appleAttn,
     },
     recent: {
-      payments: recentPays.map((r) => ({ id: r.id, code: r.code, kind: r.kind, amount: num(r.price), channel: r.channel, email: r.email || null, createdAt: r.created_at })),
-      signups: recentUsers.map((r) => ({ id: r.id, email: r.email, code: r.code || null, source: r.signup_source || 'web', createdAt: r.created_at })),
+      // content_manager — emaillar niqoblangan (ko'rik F4, `H.piiMaskedD1`).
+      payments: recentPays.map((r) => ({ id: r.id, code: r.code, kind: r.kind, amount: num(r.price), channel: r.channel, email: r.email ? pii.email(r.email) : null, createdAt: r.created_at })),
+      signups: recentUsers.map((r) => ({ id: r.id, email: pii.email(r.email), code: r.code || null, source: r.signup_source || 'web', createdAt: r.created_at })),
     },
   };
 }
 
 const PREMIUM_FILTERS = ['active', 'expiring', 'expired', 'trial', 'all'];
-async function premiumUsers(env, H, url, now) {
+async function premiumUsers(env, H, url, now, admin) {
+  const pii = piiOf(H, admin);
   const cols = await columnSet(env, 'users');
   const hasPrem = cols.has('premium_expires_at');
   const hasTrial = cols.has('trial_expires_at');
@@ -196,29 +215,48 @@ async function premiumUsers(env, H, url, now) {
   if (filter === 'trial') { // COALESCE: premium_expires_at NULL bo'lsa `NOT (NULL > ?)` NULL beradi va qator tushib qolardi.
     where.push(`${trial} > ? AND u.is_premium = 0 AND NOT (COALESCE(${prem}, '') > ?)`); binds.push(nowIso, nowIso); }
   if (filter === 'all') where.push(`(u.is_premium = 1 OR ${prem} IS NOT NULL OR ${trial} IS NOT NULL)`);
-  if (q) {
+  if (q && pii.masked) {
+    // content_manager: email/telefon bo'yicha qidiruv YO'Q — faqat NFC ID / karta nomi.
+    where.push(`EXISTS (SELECT 1 FROM cards c WHERE c.user_id = u.id AND (LOWER(c.code) LIKE ? OR LOWER(COALESCE(c.name, '')) LIKE ?))`);
+    binds.push(`%${q}%`, `%${q}%`);
+  } else if (q) {
     where.push(`(LOWER(u.email) LIKE ? OR u.phone LIKE ? OR EXISTS (SELECT 1 FROM cards c WHERE c.user_id = u.id AND LOWER(c.code) LIKE ?))`);
     binds.push(`%${q}%`, `%${q}%`, `%${q}%`);
   }
+  // Sahifalash (admin audit): `limit` (standart 100, ko'pi 500) + `hasMore`.
+  const limit = Math.min(500, Math.max(1, Number(url.searchParams.get('limit')) || 100));
+  // Apple obunasi (iOS) — faol bo'lsa belgi va mahsulot.
+  const hasApple = (await tableSet(env)).has('iap_apple_subscriptions');
+  const appleSel = hasApple
+    ? `(SELECT s.product_id || '|' || s.environment FROM iap_apple_subscriptions s WHERE s.user_id = u.id AND s.expires_at > ? ORDER BY s.expires_at DESC LIMIT 1) AS apple_sub,`
+    : 'NULL AS apple_sub,';
   const rows = await all(env, `SELECT u.id, u.email, u.phone, u.is_premium, u.is_test, u.is_internal, u.created_at,
+      ${appleSel}
       ${prem} AS premium_expires_at, ${trial} AS trial_expires_at,
       (SELECT GROUP_CONCAT(code) FROM cards WHERE user_id = u.id) AS codes,
       (SELECT MAX(w.created_at) FROM web_orders w WHERE w.user_id = u.id AND w.kind = 'premium_upgrade' AND w.status = 'paid') AS last_paid_at,
       (SELECT COUNT(*) FROM web_orders w WHERE w.user_id = u.id AND w.kind = 'premium_upgrade' AND w.status = 'paid') AS paid_count
     FROM users u WHERE ${where.join(' AND ')}
-    ORDER BY COALESCE(${prem}, ${trial}, '') ASC, u.id DESC LIMIT 300`, ...binds);
-  const users = rows.map((r) => {
+    ORDER BY COALESCE(${prem}, ${trial}, '') ASC, u.id DESC LIMIT ?`, ...(hasApple ? [nowIso] : []), ...binds, limit + 1);
+  const hasMore = rows.length > limit;
+  const users = rows.slice(0, limit).map((r) => {
     const p = premiumState(r, nowIso);
     return {
-      id: r.id, email: r.email, phone: r.phone || null, codes: r.codes ? String(r.codes).split(',') : [],
+      id: r.id, email: pii.email(r.email), phone: pii.phone(r.phone) || null, codes: r.codes ? String(r.codes).split(',') : [],
       state: p.state, until: p.until, legacy: p.legacy, isTest: !!r.is_test, isInternal: !!r.is_internal,
       lastPaidAt: r.last_paid_at || null, paidCount: num(r.paid_count), createdAt: r.created_at,
+      apple: r.apple_sub ? { productId: String(r.apple_sub).split('|')[0], environment: String(r.apple_sub).split('|')[1] || null } : null,
     };
   });
-  return { filter, users };
+  // Apple sonlari (Premium bo'limi tepasida).
+  const appleCount = hasApple ? await one(env, `SELECT COUNT(*) AS n,
+      SUM(CASE WHEN environment = 'Sandbox' THEN 1 ELSE 0 END) AS sandbox
+    FROM iap_apple_subscriptions WHERE expires_at > ?`, nowIso) : null;
+  return { filter, users, limit, hasMore, apple: { active: num(appleCount?.n), sandbox: num(appleCount?.sandbox) } };
 }
 
-async function userDetail(env, H, id, now) {
+async function userDetail(env, H, id, now, admin) {
+  const pii = piiOf(H, admin);
   const t = await tableSet(env);
   const cols = await columnSet(env, 'users');
   const pick = (c) => (cols.has(c) ? c : `NULL AS ${c}`);
@@ -249,7 +287,7 @@ async function userDetail(env, H, id, now) {
   const paid = orders.filter((o) => o.status === 'paid');
   return {
     user: {
-      id: u.id, email: u.email, phone: u.phone || null, createdAt: u.created_at, signupSource: u.signup_source || 'web',
+      id: u.id, email: pii.email(u.email), phone: pii.phone(u.phone) || null, createdAt: u.created_at, signupSource: u.signup_source || 'web',
       isTest: !!u.is_test, isInternal: !!u.is_internal, deletedAt: u.deleted_at || null, purgedAt: u.purged_at || null,
       deletionSource: u.deletion_source || null, suspendedUntil: u.suspended_until || null, suspendReason: u.suspend_reason || null,
       strikes: num(u.strike_count), telegram: !!u.bot_ack,
@@ -268,6 +306,9 @@ async function userDetail(env, H, id, now) {
     app: app ? { platform: app.platform, firstSeen: app.first_seen, lastSeen: app.last_seen, opens: num(app.opens) } : null,
     openReports: num(reports?.n),
     legalHold: hold ? { note: String(hold.note || ''), by: String(hold.set_by || ''), at: hold.set_at || null } : null,
+    // Apple IAP (obuna, tranzaksiyalar, kreditlar) — jadval yo'q bo'lsa null.
+    // Faqat manager+ (admin-apple.js sarlavhasidagi qoida; ko'rik F4).
+    apple: H.roleAtLeast(admin, 'manager') ? await appleForUser(env, admin, u.id).catch(() => null) : null,
   };
 }
 
@@ -280,7 +321,7 @@ export async function handle(request, env, url, H) {
   if (!admin) return H.json({ error: 'unauthorized' }, 401);
   const now = Date.now();
   if (path === '/api/admin/overview') return H.json(await overview(env, H, admin, now));
-  if (path === '/api/admin/premium-users') return H.json(await premiumUsers(env, H, url, now));
-  const d = await userDetail(env, H, Number(detailMatch[1]), now);
+  if (path === '/api/admin/premium-users') return H.json(await premiumUsers(env, H, url, now, admin));
+  const d = await userDetail(env, H, Number(detailMatch[1]), now, admin);
   return d ? H.json(d) : H.json({ error: 'not_found' }, 404);
 }

@@ -25,11 +25,11 @@ Har modul uchun test: `scripts/test-<modul>.mjs` (`scripts/lib/d1-harness.mjs` o
 `admin-finance`, `telegram`, `assistant`, `moderation`, `comments`,
 `notifications`, `featured`, `catalog-feed`, `saves`, `content-archive`,
 `legal-requests`, `app-usage`, `app-admin`, `account-purge`, `admin-control`, `music`,
-`demo-businesses`, `highlights`, `story-replies`, `my-analytics`, `reels`, `marketplace`
+`demo-businesses`, `highlights`, `story-replies`, `my-analytics`, `reels`, `iap-apple`, `referrals`, `admin-apple`, `marketplace`
 (shu tartibda chaqiriladi — `worker.js: API_MODULES`).
 `nearby` — `companyApi` dan OLDIN alohida ulangan (`/api/companies/nearby`).
 Yordamchi (marshrutsiz) modullar: `carousel`, `product-tags`, `post-contact`,
-`scheduled-posts` — lenta va post yo'llari ularni chaqiradi.
+`scheduled-posts`, `apple-jws` (Apple JWS imzosi — `iap-apple` chaqiradi) — lenta va post yo'llari ularni chaqiradi.
 
 `catalog-feed` — ilova "Tanlov" katalogi, BARCHA bizneslarning
 mahsulot va xizmatlari: `GET /api/catalog/feed` (`page`, `limit`,
@@ -197,3 +197,134 @@ tegmaydi). Mobil ilovaning uchma-uch testi shunga ulanadi:
 `POST /api/admin/legal/hold {userId, hold, note}` (hold=true — `note` majburiy; olib tashlash faqat super_admin; `account_legal_holds`);
 `GET /api/admin/legal/export?userId=&format=json` → `{format, generatedAt, generatedBy, subject, items (≤5000), total, truncated}`.
 Har chaqiruv admin jurnalida (`legal_subject_view`, `legal_hold`, `legal_unhold`, `legal_export`).
+
+`iap-apple` — iOS Premium obunasi, Apple In-App Purchase (StoreKit 2). Bayroq
+`IAP_APPLE_ENABLED=1` (boshqa qiymat — o'chiq; standart o'chiq). Bundle
+`uz.nfcstore.nova`, mahsulotlar `uz.nfcstore.nova.premium.monthly|yearly`.
+`GET /api/iap/apple/config` → `{enabled, products}`;
+`GET /api/iap/apple/account-token` (auth, 401) → `{token}` (barqaror UUID v4 → `appAccountToken`);
+`POST /api/iap/apple/verify {signedTransaction}` (auth) → `{premium:true, premiumExpiresAt, productId, environment}`
+yoki `{premium:false, reason:'expired'|'revoked', premiumExpiresAt}`; xatolar: 401 `unauthorized`,
+503 `iap_disabled`, 429 `too_many_requests`, 413 `payload_too_large` (>128 KB),
+400 `bad_request`|`invalid_signature`, 422 `wrong_bundle`|`unknown_product`|`wrong_type`|`bad_transaction`
+|`family_shared_not_supported`|`sandbox_not_allowed`, 403 `account_mismatch`, 409 `already_linked`;
+`POST /api/iap/apple/notifications {signedPayload}` (kirishsiz, App Store Server Notifications V2,
+bayroq o'chiq bo'lsa ham) → 200 `{ok, result, duplicate?}` | 400 | 413. `result`: `test`, `granted`,
+`expired`, `revoked`, `rolled_back`, `rollback_skipped`, `not_granted`, `unknown_user`,
+`sandbox_ignored`, `ignored` (Family Sharing ham), `other_bundle`, `unknown_product`, `no_transaction`.
+JWS — `apple-jws.js` (Apple Root CA - G3 pin, zanjir, OID, muddat, ES256).
+
+Qoidalar (xavfsizlik ko'rigi, 2026-10-06):
+- Berish: `users.premium_expires_at = max(joriy, expiresDate)`; har `transactionId` daftar qatori
+  (`iap_apple_transactions`) — DA'VO: uni qo'shgan so'rovgina `users` ni yozadi (bir vaqtdagi
+  verify poygasi qaytarishni buzmaydi); da'vogar `users` dan oldin yiqilsa — da'vo o'chiriladi.
+- Qaytarish (REFUND/REVOKE): faqat Apple QO'SHGAN vaqt: joriy = berilgan (±2 s) bo'lsa — oldingi
+  qiymat; aks holda `yangi = min(joriy, max(prev, joriy − max(0, granted − max(prev, berilgan payt, hozir))))`.
+  Payme/Click vaqti olinmaydi; Apple vaqtining ishlatib bo'lingan qismi keyingi to'lovdan
+  ayrilmaydi. Foydalanuvchi noma'lum bo'lsa ham daftarga `revoked_at` (user_id 0) — eski JWS qayta berilmaydi.
+- Sandbox (Production'dan boshqa har muhit) faqat `IAP_APPLE_ALLOW_SANDBOX=1` yoki user ID
+  `IAP_APPLE_SANDBOX_USER_IDS` (vergul bilan) da bo'lsa — bayroqdan qat'i nazar. App Review demo
+  hisobining ID'si shu ro'yxatga qo'yiladi (wrangler'ga emas, panelda).
+- Obuna egasi (yoki token egasi) o'chirilgan hisob bo'lsa — yangi hisobga ko'chiriladi.
+- `notificationUUID` avval `processing` bo'lib da'vo qilinadi; xatoda da'vo o'chiriladi.
+- Family Sharing (`inAppOwnershipType = FAMILY_SHARED`) — berilmaydi.
+- MA'LUM CHEKLOVLAR (ataylab qoldirilgan): (#6) sayt orqali olingan Premium bor odam Apple
+  obunasini olsa, muddatlar QO'SHILMAYDI — `max()` (uzunrog'i qoladi); ilova buni xaridan oldin
+  ko'rsatishi kerak. (#10) Billing Grace Period hisobga olinmaydi: DID_FAIL_TO_RENEW/GRACE_PERIOD
+  faqat tranzaksiyaning `expiresDate` gacha beradi (App Store Connect'da grace period yoqilsa — qayta ko'rish).
+Jadvallar: `iap_apple_account_tokens`, `iap_apple_subscriptions`, `iap_apple_transactions`,
+`iap_apple_notifications`. Test: `scripts/test-iap-apple.mjs`, `scripts/test-apple-jws.mjs`.
+
+`iap-apple-boost` — "Ko'tarish" (FEATURED slotlari) iOS'da, Apple IAP consumable'lari
+`uz.nfcstore.nova.boost.1d|3d|6d` (1/3/6 kun). Tekshiruvlar `featured.js` dan
+(`checkPromoTarget`, `capacityOf`, `stopSlot`); Payme/Click yo'li o'zgarmagan.
+`GET /api/iap/apple/config` qo'shimcha `boostEnabled` (bayroq VA to'lovlar yoqiq), `boostProducts:[{productId, days}]`.
+`POST /api/iap/apple/boost-intent {targetKind, targetId, days}` (auth; bayroq o'chiq 503 `iap_disabled`)
+→ 201 `{intentId, productId, days, holdUntil}` (ms); xatolar POST /api/featured bilan bir xil
+(`banned`, `payments_disabled`, `bad_kind`, `bad_target`, `bad_package`, `not_found`, `forbidden`,
+`post_scheduled`, `already_featured`+`slotId`, `too_many_active`+`max`, `sold_out`+sig'im), 429, 413.
+Ushlab turish: slot `pending`, `source='apple'`, `ends_at` = created_at + 20 daqiqa (uzaytirilmaydi). Bir odamda
+bitta amal qilayotgan ushlab turish: o'sha post + o'sha kun — o'sha intent; boshqasi — eskisi bekor, yangi intent
+(`days` o'zgartirilmaydi). Yangi ushlab turish soatiga ≤ 6 (429). Ushlab turish faqat boshqa APPLE intentlari
+uchun joy egallaydi — sayt (Payme/Click) sig'imi, chegarasi va takror tekshiruvi avvalgidek.
+`POST /api/iap/apple/verify {signedTransaction, intentId?}` (consumable) → `{boost:'active', slot:{id, startsAt, endsAt, status}}`
+(`status` — slotning HOZIRGI holati: active|expired|stopped) | `{boost:'credited', creditId, days}` | `{boost:'revoked'}`.
+To'langan consumable DOIM slot yoki kredit bo'ladi: begona/yaroqsiz intent e'tiborsiz (o'rniga odamning o'z amal
+qilayotgan ushlab turishi yoki kredit); kunlar mos kelmasa — to'langan kunlar bilan; joy yo'q — kredit.
+Xatolar: 409 `already_linked` | `in_progress`, qolganlari premium verify bilan bir xil. `featured_slots.apple_transaction_id`
+— UNIQUE (NULL bo'lmasa). REFUND_REVERSED: to'xtatilgan slot qolgan muddati bilan qayta yonadi (`slot_restored`),
+bekor qilingan kredit qaytadi (`credit_restored`). Config'da `boostSalesOpen`, `usersCount`, `openAt`.
+`POST /api/iap/apple/boost-redeem {creditId, targetKind, targetId}` → `{boost:'active', slot}`;
+404 `credit_not_found`, 409 `credit_used` | `credit_revoked` + intent xatolari.
+`GET /api/iap/apple/boost-credits` → `{credits:[{creditId, days, productId, createdAt}]}`.
+Bildirishnomalar: REFUND/REVOKE → slot `stopped` (`apple_refund`) yoki kredit bekor (`slot_stopped`|`credit_revoked`|`not_granted`);
+CONSUMPTION_REQUEST → `consumption_ack`. Admin `GET /api/admin/featured` qatorlarida `source` ('apple'|'web'|'admin')
+va `appleTransactionId`. Jadvallar: `iap_apple_boost_transactions`, `iap_apple_boost_credits`;
+`featured_slots` + `source`, `apple_transaction_id` (ADD COLUMN). Test: `scripts/test-iap-apple-boost.mjs`.
+
+KO'TARISH SOTUVI 1000 FOYDALANUVCHIDA (`featured.js`, 2026-10-06): rejim `admin_settings.featured_sales_open`
+= `auto` (standart; o'chirilmagan foydalanuvchilar ≥ `FEATURED_OPEN_AT_USERS` = 1000, son 5 daqiqa keshlanadi)
+| `open` | `closed`. Birinchi ochilish `featured_sales_opened_at` ga yoziladi — `auto` da qayta yopilmaydi.
+Ochilgandan 48 soat — faqat ochilishgacha navbatga yozilganlar (`packages.priority`). `GET /api/featured/packages` qo'shimcha
+`{salesOpen, usersCount, openAt, priorityUntil, waitlisted}`. Yopiq paytda `POST /api/featured` va
+`POST /api/iap/apple/boost-intent` → 409 `{error:'sales_not_open', usersCount, openAt}`; ustuvor oynada
+navbatda bo'lmagan → 409 `{error:'priority_window', endsAt}` (tekshiruv xatolari — avvalgidek, shartdan oldin;
+Apple verify/redeem — to'langan, shartga bog'liq emas; admin qo'lda ko'tarish — doim).
+`POST /api/featured/waitlist {targetKind?, targetId?}` (auth) → `{waitlisted:true, salesOpen}`, `DELETE` → `{waitlisted:false}`
+(`featured_waitlist`, hisob o'chirilganda o'chadi). Ochilganda navbatdagilarga bitta `featured_open` bildirishnomasi
+(aktyorsiz; kunlik cron ham — `featuredSalesTick`); ilova so'rovlarida (`x-app: nova` / `X-Client`) bu tur ko'rsatilmaydi.
+Admin: `GET /api/admin/featured/waitlist` (manager+) → `{sales, counts:{total, notified}, items}`;
+`POST /api/admin/featured/sales {mode}` (super_admin, `featured_sales_mode` jurnalda). Test: `scripts/test-featured-sales.mjs`.
+
+`referrals` — PROMOKOD MUKOFOTI (2026-10-06, ko'rik F1/F2 bilan KECHIKTIRILGAN): mavjud 10% chegirmadan
+(auth.js `applyReferral`, ro'yxatda darhol) TASHQARI taklif qiluvchiga har FAOL do'st uchun +30 kun Premium.
+Ro'yxatda (faqat tasdiqlangan — email kodi yoki Telegram telefon) faqat `referral_rewards` qatori
+`status='pending'` (+ `friend_email_norm`, `friend_phone_verified`). Kunlik cron va do'stning `/api/auth/me`
+(isolate'da bir odamga soatiga bir marta) beradi, agar HAMMASI: do'st ≥7 kunlik, o'chirilmagan, ban/muzlatilmagan;
+faollik — `app_users` da 2 xil kun YOKI post/istorya YOKI avatar; normallangan email (kichik harf; gmail/googlemail —
+nuqtasiz va +tegsiz; boshqalar — +tegsiz) taklif qiluvchinikidan va uning ERTAROQ (pending/granting/granted)
+do'stlarinikidan farq qiladi; telefon taklif qiluvchiniki emas. Holatlar: `pending → granting → granted`;
+`pending → expired` (60 kun) | `rejected` (`reason`: self, same_phone, duplicate_email, referrer_deleted,
+referred_deleted, lifetime). Da'vo — bitta shartli UPDATE (365 kunda `granting`+`granted` < 24); muddat va
+`granted` bitta batch'da CAS bilan; yozilmasa `granting` qoladi, cron qayta uradi (da'vo o'chirilmaydi).
+O'chirgich `REFERRAL_REWARD_ENABLED='1'` — aks holda hech narsa berilmaydi/eskirmaydi, faqat `pending` to'planadi.
+`premium_expires_at = max(hozir, joriy, faol sinov tugashi) + 30 kun`. Bildirishnoma `referral_reward`
+(aktyor — do'st; ILOVADA yashirin, `featured_open` kabi; saytda sarlavha — do'stning ochiq ismi, standart
+(email "@" oldi / 'Yangi foydalanuvchi') nom bo'lsa bo'sh → sayt "Do'stingiz"). `GET /api/referrals/summary`
+(auth) → `{code, link:'https://nfcstore.uz/i/<code>', invited, rewardedDays, pendingRewards, nextRewardDays:30}`
+(faqat `granted` kunlar); `GET /api/admin/referrals/leaderboard` → `{last30, allTime}`
+(`[{rank, userId, name, code, count, rewardedDays}]`). `GET /i/:code` (worker.js) → kod bor: `Set-Cookie
+nfc_ref=<code>` (30 kun, Lax, HttpOnly, Secure) + 302 `/register?ref=<code>`; yo'q → 302 `/`. Ro'yxat formada
+promokod bo'lmasa `nfc_ref` cookie'dan oladi, LEKIN `promoCleared:true` (odam to'ldirilgan kodni o'chirgan)
+bo'lsa — yo'q; 201 javobida `nfc_ref` o'chiriladi (`Max-Age=0`). AASA'da `/i/*` YO'Q (ko'rik F3) — ilova
+/i/:code ni o'qiy oladigan versiya chiqqach qayta qo'shiladi. Test: `scripts/test-referral-rewards.mjs`.
+
+`admin-apple` — admin "Apple / iOS" (2026-10, faqat o'qish, manager+; foydalanuvchi — `userId` + asosiy NFC kodi,
+email/telefon/JWS/appAccountToken yo'q; tranzaksiya raqami manager uchun `…oxirgi6`, super_admin uchun to'liq):
+`GET /api/admin/apple/summary` → `{flags:{iapEnabled, boostEnabled, allowSandboxAll, sandboxUserCount, sandboxUserIds?(super),
+featuredSales}, bundleId, products, counts:{subscriptions, boostTx30d, credits} (production|sandbox|other),
+notifications:{last24h, last7d, lastNotificationAt}, problems:{unknownUser7d, staleProcessing, staleBoostClaims,
+signatureFailures, lastSignatureFailureAt}, attention, app:{totals, builds}}`;
+`GET /api/admin/apple/subscriptions|transactions?kind=premium|boost|notifications|credits` — filtrlar, 50 tadan,
+`{items, hasMore, nextCursor}`. Kartochka `GET /api/admin/users/:id/detail` → `apple:{hasToken, subscriptions,
+premiumTx, boostTx, credits}`; overview `badges.appleAttention`. Notification imzo xatolari soni
+`admin_settings.iap_apple_sig_fail_count/last` (tana saqlanmaydi; isolate'da yig'iladi, bazaga minutiga ≤1
+yozuv; bitta IP'dan 10 daqiqada >10 buzuq imzo — 429); daftarlarda `price`, `currency` (JWS'dan).
+Premium olib qo'yish (`POST /api/admin/users/:id/premium {action:'revoke'}`) faol Apple obunasida 409
+`apple_subscription_active` (+`apple`), faqat `force:true` bilan. `POST /api/admin/featured/:id/stop {reason,
+reissueCredit:true}` — faol Apple slotida xaridorga kredit (`admin:<slot>:<tx>`), faqat slotni shu so'rov
+haqiqatan to'xtatgan bo'lsa (aks holda 409 `not_stoppable`) va asl tranzaksiya qaytarilmagan bo'lsa (aks holda
+`{ok, creditId:null, reason:'refunded'}`). Asl REFUND kreditni ham, undan yoqilgan slotni ham bekor qiladi.
+Test: `scripts/test-admin-apple.mjs`.
+
+ADMIN AUDIT (2026-10): ro'yxatlar serverda sahifalanadi — `limit` + `hasMore`: `/api/admin/users`
+(+ `status=premium|flagged|blocked|deleted` serverda), `/premium-users` (+ `apple` belgisi va sanog'i),
+`/support-messages` (+ `replies[]` tarixi — `support_replies`, javob ≤ 4000 belgi, `platform`, `appBuild`),
+`/physical-cards` (`chipToken` o'rniga faqat `tokenTail`), `/featured`, `/activity-log` (+ `q`).
+SHAXSIY MA'LUMOT (ko'rik F4): manager'dan past rol (content_manager) uchun bitta qoida `H.piiMaskedD1` —
+email `x***@domen`, telefon `***1234`, ism/manzil `X***`: `/users`, `/users/:id/detail` (+ `apple: null`),
+`/premium-users`, overview `recent.payments/signups`, `/referrals`, `/app-users`, `/physical-cards`
+(ism/telefon/manzil), `/orders` (yetkazish maydonlari), `/support-messages`. `q` qidiruvi content_manager uchun
+email/telefon bo'yicha ishlamaydi (faqat NFC ID / nom / raqam). `/api/admin/app-users` sanog'ida test/ichki/o'chirilgan yo'q,
+Premium belgisi filtr bilan bir xil ifoda. `/api/admin/review-account` → `userId` ham.
+Test: `scripts/test-admin-audit.mjs`.
