@@ -25,7 +25,7 @@ Har modul uchun test: `scripts/test-<modul>.mjs` (`scripts/lib/d1-harness.mjs` o
 `admin-finance`, `telegram`, `assistant`, `moderation`, `comments`,
 `notifications`, `featured`, `catalog-feed`, `saves`, `content-archive`,
 `legal-requests`, `app-usage`, `app-admin`, `account-purge`, `admin-control`, `music`,
-`demo-businesses`, `highlights`, `story-replies`, `my-analytics`, `reels`, `iap-apple`, `marketplace`
+`demo-businesses`, `highlights`, `story-replies`, `my-analytics`, `reels`, `iap-apple`, `referrals`, `marketplace`
 (shu tartibda chaqiriladi — `worker.js: API_MODULES`).
 `nearby` — `companyApi` dan OLDIN alohida ulangan (`/api/companies/nearby`).
 Yordamchi (marshrutsiz) modullar: `carousel`, `product-tags`, `post-contact`,
@@ -269,3 +269,14 @@ Apple verify/redeem — to'langan, shartga bog'liq emas; admin qo'lda ko'tarish 
 (aktyorsiz; kunlik cron ham — `featuredSalesTick`); ilova so'rovlarida (`x-app: nova` / `X-Client`) bu tur ko'rsatilmaydi.
 Admin: `GET /api/admin/featured/waitlist` → `{sales, counts:{total, notified}, items}`;
 `POST /api/admin/featured/sales {mode}` (super_admin, `featured_sales_mode` jurnalda). Test: `scripts/test-featured-sales.mjs`.
+
+`referrals` — PROMOKOD MUKOFOTI (2026-10-06): mavjud 10% chegirmadan (auth.js `applyReferral`) TASHQARI
+taklif qiluvchiga har tasdiqlangan (email kodi yoki Telegram telefon) do'st uchun +30 kun Premium:
+`premium_expires_at = max(hozir, joriy, faol sinov tugashi) + 30 kun`; muddatsiz Premium / o'chirilgan —
+yo'q; bir do'st — bir marta (`referral_rewards.referred_id` UNIQUE); o'zi/o'sha telefon — yo'q; 365 kunda
+≤ 24 ta. Bildirishnoma `referral_reward` (aktyor — do'st). `GET /api/referrals/summary` (auth) →
+`{code, link:'https://nfcstore.uz/i/<code>', invited, rewardedDays, nextRewardDays:30}`;
+`GET /api/admin/referrals/leaderboard` → `{last30, allTime}` (`[{rank, userId, name, code, count, rewardedDays}]`).
+`GET /i/:code` (worker.js) → kod bor: `Set-Cookie nfc_ref=<code>` (30 kun, Lax, HttpOnly, Secure) + 302
+`/register?ref=<code>`; yo'q → 302 `/`. Ro'yxat formada promokod bo'lmasa `nfc_ref` cookie'dan oladi.
+AASA yo'llarida `/i/*`. Test: `scripts/test-referral-rewards.mjs`.

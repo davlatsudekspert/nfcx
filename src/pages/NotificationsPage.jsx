@@ -85,6 +85,8 @@ export default function NotificationsPage() {
     if (n.type === 'trial_ending') return t('Bepul sinov muddatingiz {date} da tugaydi', { date: trialDate(n.targetId) });
     // Ko'tarish sotuvi ochildi — faqat bepul navbatga yozilganlarga, bir marta.
     if (n.type === 'featured_open') return t('Postni ko‘tarish ochildi — navbatdagilar uchun dastlabki 48 soat', {});
+    // Promokod mukofoti: aktyor — taklif qilingan do'st (faqat ism).
+    if (n.type === 'referral_reward') return t('taklifingiz bilan qo‘shildi — sizga +30 kun Premium', {});
     return '';
   };
 
@@ -95,6 +97,7 @@ export default function NotificationsPage() {
   const socialTarget = (n) => {
     if (n.type === 'support_reply' || n.type === 'trial_ending') return '';
     if (n.type === 'featured_open') return '/kotarish';
+    if (n.type === 'referral_reward') return '/account';
     const code = n.type === 'follow' ? n.actorCode : n.code;
     return code ? '/' + code : '';
   };

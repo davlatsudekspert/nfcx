@@ -27,6 +27,8 @@ import * as apiLegalRequests from './api/legal-requests.js';
 // Apple In-App Purchase (iOS Premium obunasi, StoreKit 2) — `IAP_APPLE_ENABLED=1` bilan yoqiladi.
 // Payme/Click to'lovlariga tegmaydi; faqat `users.premium_expires_at` ni max() bilan uzaytiradi.
 import * as apiIapApple from './api/iap-apple.js';
+// Promokod mukofoti (+30 kun Premium), taklif havolasi /i/:code, reyting.
+import * as apiReferrals from './api/referrals.js';
 import * as apiAppUsage from './api/app-usage.js';
 import * as apiAppAdmin from './api/app-admin.js';
 import * as apiAccountPurge from './api/account-purge.js';
@@ -12045,7 +12047,7 @@ const H = {
 // bilan tugashini tekshiradi — oxiriga qo'shilsa o'sha qo'riqchi
 // yiqiladi. Tartibning boshqa ahamiyati yo'q: har bir modul o'ziga
 // tegishli bo'lmagan yo'lga `null` qaytaradi.
-const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiLegalRequests, apiAppUsage, apiAppAdmin, apiAccountPurge, apiAdminControl, apiMusic, apiDemoBusinesses, apiHighlights, apiStoryReplies, apiMyAnalytics, apiReels, apiIapApple, apiMarketplace];
+const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiLegalRequests, apiAppUsage, apiAppAdmin, apiAccountPurge, apiAdminControl, apiMusic, apiDemoBusinesses, apiHighlights, apiStoryReplies, apiMyAnalytics, apiReels, apiIapApple, apiReferrals, apiMarketplace];
 
 // Xavfsizlik header'lari — barcha javoblarga (statik va API). CSP ataylab faqat
 // framing/base/form/object ni cheklaydi (script/style ga tegmaydi — YouTube/Yandex
@@ -12221,6 +12223,11 @@ export function appDownloadTarget(env) {
 
 async function handleRequest(request, env, url, ctx) {
     // Same 302 + no-store mechanism as /qr-N; one configurable APK/Play target.
+    // TAKLIF HAVOLASI (promokod): nfcstore.uz/i/<kod> → `nfc_ref` cookie va
+    // /register?ref=<kod>; noma'lum kod — bosh sahifa (api/referrals.js).
+    if (/^\/i\/[^/]+\/?$/.test(url.pathname) && ['GET', 'HEAD'].includes(request.method)) {
+      return apiReferrals.inviteRedirect(request, env, url);
+    }
     if (/^\/app\/?$/.test(url.pathname) && ['GET', 'HEAD'].includes(request.method)) {
       const target = appDownloadTarget(env);
       if (!target) return json({ error: 'app_download_not_configured' }, 503);
@@ -12238,7 +12245,9 @@ async function handleRequest(request, env, url, ctx) {
     if ((url.pathname === '/.well-known/apple-app-site-association'
       || url.pathname === '/apple-app-site-association') && ['GET', 'HEAD'].includes(request.method)) {
       const appId = `${String(env.IOS_TEAM_ID || '5Z9CT2W378')}.${String(env.IOS_NOVA_BUNDLE || 'uz.nfcstore.nova')}`;
-      const paths = ['/post/*', '/u/*', '/c/*', '/story/*', '/nfc/*'];
+      // `/i/*` — taklif havolasi (promokod): ilova o'rnatilgan bo'lsa kodni
+      // yo'ldan o'qiydi, aks holda sayt ro'yxat sahifasiga yo'naltiradi.
+      const paths = ['/post/*', '/u/*', '/c/*', '/story/*', '/nfc/*', '/i/*'];
       const body = JSON.stringify({
         applinks: {
           apps: [],

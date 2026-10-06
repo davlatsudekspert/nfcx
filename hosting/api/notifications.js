@@ -33,7 +33,11 @@
 // `featured_open` (2026-10) — ko'tarish sotuvi ochildi; faqat bepul navbatga
 // yozilganlarga, bir marta (api/featured.js `notifyWaitlist`). Aktyorsiz,
 // nishon `featured`/''. Matnni mijoz yig'adi.
-const KINDS = ['follow', 'like', 'comment', 'support_reply', 'trial_ending', 'featured_open'];
+//
+// `referral_reward` (2026-10) — taklif qilingan do'st ro'yxatdan o'tdi va
+// taklif qiluvchiga +30 kun Premium berildi (api/referrals.js). Aktyor —
+// do'st (faqat ochiq profil nomi), nishon `referral`/<kunlar>.
+const KINDS = ['follow', 'like', 'comment', 'support_reply', 'trial_ending', 'featured_open', 'referral_reward'];
 const PAGE = 30;
 const PAGE_MAX = 50;
 

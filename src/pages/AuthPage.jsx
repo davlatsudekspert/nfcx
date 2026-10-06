@@ -131,7 +131,11 @@ export default function AuthPage({ mode }) {
   // yo'li ochiq taklif qilinadi: u yerda ham kod yozilmaydi, botda
   // bitta tugma bosiladi.
   const [failCount, setFailCount] = useState(0);
-  const [promoCode, setPromoCode] = useState(() => new URLSearchParams(window.location.search).get('promo') || '');
+  // `?promo=` (eski) yoki `?ref=` (taklif havolasi /i/<kod> shu yerga olib keladi).
+  const [promoCode, setPromoCode] = useState(() => {
+    const q = new URLSearchParams(window.location.search);
+    return (q.get('promo') || q.get('ref') || '').toUpperCase();
+  });
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
   // Shaxsiy profil / Kompaniya profili — ro'yxatdan o'tishda aniq tanlov.

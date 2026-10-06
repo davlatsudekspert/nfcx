@@ -3,7 +3,7 @@ import { googleDirectionsUrl } from '../lib/mapLink.js';
 import { backdropProps } from '../lib/backdrop.js';
 import CloseButton from '../components/CloseButton.jsx';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
-import { dbUploadImage, dbUploadCardVideo, dbUploadProfileBgMedia, PROFILE_BG_MAX_BYTES, UPLOAD_MAX_BYTES, dbUploadAudio, dbSetPrimary, dbDeleteOwnCard, dbOrderPhysicalCard, dbUploadCardPrint, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbListMyOrders, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbListStories, dbCreateStory, dbDeleteStory, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetProductsManage, dbAddProductCategory, dbUpdateProductCategory, dbDeleteProductCategory, dbAddProduct, dbUpdateProduct, dbDeleteProduct, dbGetCatalogMeta, dbSaveCatalogPromotion, dbDeleteCatalogPromotion, dbGetServicesManage, dbAddServiceCategory, dbUpdateServiceCategory, dbDeleteServiceCategory, dbAddService, dbUpdateService, dbDeleteService, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember, dbGetGalleryManage, dbAddGalleryImage, dbUpdateGalleryImage, dbDeleteGalleryImage } from '../lib/db.js';
+import { dbUploadImage, dbUploadCardVideo, dbUploadProfileBgMedia, PROFILE_BG_MAX_BYTES, UPLOAD_MAX_BYTES, dbUploadAudio, dbSetPrimary, dbDeleteOwnCard, dbOrderPhysicalCard, dbUploadCardPrint, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbListMyOrders, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbReferralSummary, dbListPosts, dbCreatePost, dbDeletePost, dbListStories, dbCreateStory, dbDeleteStory, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetProductsManage, dbAddProductCategory, dbUpdateProductCategory, dbDeleteProductCategory, dbAddProduct, dbUpdateProduct, dbDeleteProduct, dbGetCatalogMeta, dbSaveCatalogPromotion, dbDeleteCatalogPromotion, dbGetServicesManage, dbAddServiceCategory, dbUpdateServiceCategory, dbDeleteServiceCategory, dbAddService, dbUpdateService, dbDeleteService, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember, dbGetGalleryManage, dbAddGalleryImage, dbUpdateGalleryImage, dbDeleteGalleryImage } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
@@ -4087,20 +4087,28 @@ function SupportModal({ onClose }) {
 
 // Do'st taklif qilish — o'z promokodini ko'rsatadi, ulashadi, taklif
 // qilingan do'stlar ro'yxatini va kutilayotgan chegirmani ko'rsatadi.
+// PROMOKOD MUKOFOTI (2026-10): har tasdiqlangan do'st uchun +1 oy Premium
+// (10% chegirmadan tashqari) — havola endi qisqa: nfcstore.uz/i/<kod>.
 function ReferralPanel({ user }) {
   const { t } = useLanguage();
   const [referrals, setReferrals] = useState(null);
   const [refErr, setRefErr] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [summary, setSummary] = useState(null);
   const load = () => { setRefErr(false); dbListReferrals().then((rows) => setReferrals(Array.isArray(rows) ? rows : [])).catch(() => { setReferrals([]); setRefErr(true); }); };
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); dbReferralSummary().then(setSummary).catch(() => {}); }, []);
 
   if (!user.promoCode) return null;
-  const link = `${window.location.origin}/register?promo=${user.promoCode}`;
+  const link = summary?.link || `${window.location.origin}/i/${user.promoCode}`;
+  const months = Math.round((Number(summary?.rewardedDays) || 0) / 30);
 
   const copy = async () => {
     try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2000); }
     catch { /* jim tur */ }
+  };
+  const share = async () => {
+    try { await navigator.share({ title: 'NFCSTORE', text: t('NFCSTORE ga mening havolam orqali qo‘shiling'), url: link }); }
+    catch { /* bekor qilindi */ }
   };
 
   return (
@@ -4110,10 +4118,21 @@ function ReferralPanel({ user }) {
         <p className="text-sm text-base-content/70">
           {t("Do'stingiz shu havola orqali ro'yxatdan o'tsa, siz keyingi bandlashda avtomatik ")}<b className="text-accent">{t('10% chegirma')}</b>{t(' olasiz.')}
         </p>
+        <p className="mt-1 text-sm text-base-content/70">
+          {t('Har bir do‘stingiz uchun yana')} <b className="text-accent">{t('+1 oy Premium')}</b> {t('beriladi (bepul sinov davom etsa — sinovdan keyin).')}
+        </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <code className="min-w-0 max-w-full break-all rounded-lg bg-black/30 px-3 py-2 font-mono text-sm">{link}</code>
+          <code className="min-w-0 max-w-full break-all rounded-lg bg-black/30 px-3 py-2 font-mono text-sm" data-testid="invite-link">{link}</code>
           <button className="btn btn-outline-gold btn-sm min-h-11" onClick={copy}><IconCopy width={14} height={14} /> {copied ? t('Nusxalandi!') : t('Nusxalash')}</button>
+          {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
+            <button className="btn btn-gold btn-sm min-h-11" onClick={share}>{t('Ulashish')}</button>
+          )}
         </div>
+        {summary && (
+          <div className="mt-3 text-sm font-semibold" data-testid="invite-summary">
+            {t('{n} do‘st taklif qildingiz, +{m} oy Premium oldingiz', { n: summary.invited, m: months })}
+          </div>
+        )}
         {user.pendingDiscountPct > 0 && (
           <div className="mt-3 flex items-center gap-1.5 text-sm font-semibold text-success">
             <IconCheck width={14} height={14} /> {t('Sizda {p}% chegirma kutilmoqda — keyingi bandlashda avtomatik qo\'llanadi!', { p: user.pendingDiscountPct })}

@@ -1,5 +1,7 @@
 import { phoneProblem, emailTypoSuggestion, emailDomainAccepts } from './contact-check.js';
 import { idQuarantined } from './account-purge.js';
+// Promokod mukofoti: har do'st uchun +30 kun Premium (api/referrals.js).
+import { grantReferralReward } from './referrals.js';
 // hosting/api/auth.js — ro'yxatdan o'tish (Telegram OTP) va parolni tiklash.
 // CONTRACT.md ga qarang. Route topilmasa null qaytaradi.
 //
@@ -708,13 +710,17 @@ async function register(request, env, H) {
     if (!burned?.meta?.changes) return H.json({ error: 'link_not_confirmed' }, 422);
   }
 
-  return finishRegistration(request, env, H, { email, password, extra, existing, body });
+  // TASDIQLANGANMI: email kodi (xizmat yoqiq bo'lsa majburiy) yoki
+  // Telegram orqali tasdiqlangan telefon. Promokod Premium mukofoti
+  // faqat shunda beriladi (soxta akkauntlar bilan yig'ib bo'lmasin).
+  const verified = emailOn || !!extra.linkToken;
+  return finishRegistration(request, env, H, { email, password, extra, existing, body, verified });
 }
 
 // Ro'yxatdan o'tishning OXIRGI qismi — tasdiqlash usuli (token yoki kod)
 // tekshirilgandan KEYIN bajariladi. Ikki yo'l uchun bitta joyda turadi:
 // nusxa bo'lsa, vaqt o'tib biri o'zgarib, ikkinchisi eskirib qolardi.
-async function finishRegistration(request, env, H, { email, password, extra, existing, body }) {
+async function finishRegistration(request, env, H, { email, password, extra, existing, body, verified = false }) {
   // O'CHIRISH NAVBATIDAGI HISOB EMAILI (yoki faqat telefonli hisobning
   // ichki manzili) — HECH NARSA O'CHIRILMAYDI.
   //
@@ -746,10 +752,16 @@ async function finishRegistration(request, env, H, { email, password, extra, exi
   await createFreeAutoId(env, user.id, H.isPlaceholderEmailD1(email) ? '' : email.split('@')[0]);
   await assignPromoCode(env, user.id);
 
-  const promoInput = H.cleanStr(body?.promoCode, 12).toUpperCase();
+  // Promokod: formadan; bo'sh bo'lsa — taklif havolasi (/i/:code)
+  // qoldirgan `nfc_ref` cookie'dan.
+  const cookieRef = String(H.parseCookies(request)?.nfc_ref || '');
+  const promoInput = (H.cleanStr(body?.promoCode, 12) || H.cleanStr(cookieRef, 12)).toUpperCase();
   if (promoInput) {
     const referrerId = await getUserIdByPromoCode(env, promoInput);
-    if (referrerId) await applyReferral(env, referrerId, user.id);
+    if (referrerId && await applyReferral(env, referrerId, user.id)) {
+      // 10% chegirma (avvalgidek) + taklif qiluvchiga +30 kun Premium.
+      await grantReferralReward(env, H, referrerId, user.id, { verified });
+    }
   }
 
   const s = await H.createUserSession(env, user.id, request);

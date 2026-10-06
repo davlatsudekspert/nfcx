@@ -3253,6 +3253,45 @@ function GiftNfcIdTab() {
   );
 }
 
+// PROMOKOD REYTINGI (2026-10) — GET /api/admin/referrals/leaderboard:
+// eng ko'p taklif qilganlar (oxirgi 30 kun / butun davr), +30 kunlik
+// Premium mukofotlari bilan. Faqat ism va promokod — email/telefon yo'q.
+function ReferralLeaderboard() {
+  const { t } = useLanguage();
+  const [data, setData] = useState(null);
+  const [range, setRange] = useState('last30');
+  useEffect(() => { adminApi('/referrals/leaderboard').then(setData).catch(() => setData(false)); }, []);
+  if (!data) return null;
+  const rows = data[range] || [];
+  return (
+    <div>
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <span className="text-sm font-bold">{t('Promokod reytingi')}</span>
+        {[['last30', t('Oxirgi 30 kun')], ['allTime', t('Butun davr')]].map(([k, label]) => (
+          <button key={k} type="button" onClick={() => setRange(k)}
+            className={`btn btn-xs ${range === k ? 'btn-gold' : 'btn-outline-gold'}`}>{label}</button>
+        ))}
+      </div>
+      <div className="vz-card overflow-x-auto" data-testid="referral-leaderboard">
+        <table className="table table-sm">
+          <thead><tr><th>#</th><th>{t('Kimning promosi')}</th><th>{t('Promokod')}</th><th>{t('Qo‘shilganlar soni')}</th><th>{t('Mukofot (kun)')}</th></tr></thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.userId}>
+                <td className="font-bold">{r.rank}</td>
+                <td>{r.name || `#${r.userId}`}</td>
+                <td className="font-mono text-xs">{r.code || '—'}</td>
+                <td className="font-bold">{r.count}</td>
+                <td>{r.rewardedDays}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 // Promokodlar — har bir promokod bilan qo‘shilgan odamlar ro'yxati va hisobi.
 function PromoCodesTab() {
   const { t } = useLanguage();
@@ -3278,6 +3317,7 @@ function PromoCodesTab() {
 
   return (
     <div className="space-y-6">
+      <ReferralLeaderboard />
       <div>
         <div className="mb-2 text-sm font-bold">{t('Promokod egalari bo‘yicha')}</div>
         <div className="vz-card overflow-x-auto">

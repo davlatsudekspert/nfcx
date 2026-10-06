@@ -497,6 +497,13 @@ export async function dbListMySupportMessages() {
   return (data && data.messages) || [];
 }
 
+// Promokod xulosasi: {code, link, invited, rewardedDays, nextRewardDays}.
+export async function dbReferralSummary() {
+  const res = await fetch('/api/referrals/summary', { credentials: 'same-origin' });
+  if (!res.ok) return null;
+  return res.json().catch(() => null);
+}
+
 export async function dbListReferrals() {
   const res = await fetch('/api/referrals', { credentials: 'same-origin' });
   const data = await res.json().catch(() => null);
