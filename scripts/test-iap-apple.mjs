@@ -9,12 +9,17 @@
 //   * config: bayroq o'chiq/yoqiq; account-token: barqaror UUID v4, mehmon 401;
 //   * verify: bayroq o'chiq 503, imzo/bundle/mahsulot/tur xatolari,
 //     max() bilan berish, idempotent, account_mismatch 403, already_linked 409,
-//     tugagan/qaytarilgan berilmaydi, Sandbox ham (muhit daftarda);
+//     tugagan/qaytarilgan berilmaydi, Sandbox faqat ruxsat bilan (muhit daftarda);
 //   * notifications (bayroq O'CHIQ holatda ham): TEST, DID_RENEW uzaytiradi,
 //     notificationUUID bo'yicha takror e'tiborsiz, REFUND faqat Apple bergan
 //     vaqtni qaytaradi va sayt (Payme/Click) vaqtini HECH QACHON olmaydi,
 //     qaytarilgan tranzaksiya eski JWS bilan qayta berilmaydi, appAccountToken
 //     orqali bog'lash, noma'lum foydalanuvchi 200, yomon imzo 400.
+//   * XAVFSIZLIK KO'RIGI (2026-10-06) regressiyalari (11–17 bo'limlar):
+//     bir vaqtdagi verify poygasi + REFUND, noma'lum foydalanuvchi REFUND'i
+//     va eski JWS, Payme ustiga qo'yib REFUND'dan qochish (aniq hisob),
+//     o'chirilgan hisobdagi obuna, bir vaqtdagi takror bildirishnoma va
+//     xatoda da'voni bo'shatish, 413, Family Sharing, sandbox bayroqsiz.
 // Production'ga HECH QACHON tegmaydi.
 import { setupSocial, cookie, makeChecker } from './lib/social-fixture.mjs';
 import { makeChain, signJws } from './lib/apple-fake-chain.mjs';
@@ -62,13 +67,38 @@ const premiumOf = (id) => sqlite.prepare(`SELECT premium_expires_at AS p FROM us
 const setPremium = (id, v) => sqlite.prepare(`UPDATE users SET premium_expires_at = ? WHERE id = ?`).run(v, id);
 const ledger = (txid) => sqlite.prepare(`SELECT * FROM iap_apple_transactions WHERE transaction_id = ?`).get(String(txid));
 
-// Qo'shimcha foydalanuvchilar: #3, #4 (sayt orqali to'lagan Premium bilan).
-for (const id of [3, 4]) {
+// Qo'shimcha foydalanuvchilar: #3..#9 (sayt orqali to'lagan Premium bilan va poyga/o'chirish sinovlari).
+for (const id of [3, 4, 5, 6, 7, 8, 9]) {
   sqlite.prepare(`INSERT INTO users (id, email, password_hash, phone) VALUES (?, ?, 'x', ?)`).run(id, `u${id}@test.local`, `+99890333000${id}`);
   sqlite.prepare(`INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, '2999-01-01T00:00:00.000Z')`).run(`u${id}-token`, id);
 }
 const c3 = 'nfc_session=u3-token';
 const c4 = 'nfc_session=u4-token';
+const cu = (id) => `nfc_session=u${id}-token`;
+const near = (actual, expectedMs, tol = 5000) => Number.isFinite(Date.parse(actual)) && Math.abs(Date.parse(actual) - expectedMs) <= tol;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// Baza kechikishi (D1 tarmoq aylanmasi) — har statement'ni kechiktiradi;
+// `slow(sql, n)` → shu statement'ning n-chi bajarilishi uchun maxsus kechikish yoki xato.
+function withLatency(hook) {
+  const realDB = env.DB;
+  env.DB = new Proxy(realDB, { get(t, k) {
+    if (k === 'prepare') return (sql) => {
+      const wrap = (st) => new Proxy(st, { get(o, m) {
+        if (m === 'bind') return (...a) => wrap(o.bind(...a));
+        if (m === 'first' || m === 'run' || m === 'all') return async (...a) => {
+          const d = hook(sql);
+          if (d instanceof Error) throw d;
+          await sleep(d ?? 3);
+          return o[m](...a);
+        };
+        const v = o[m]; return typeof v === 'function' ? v.bind(o) : v;
+      } });
+      return wrap(t.prepare(sql));
+    };
+    const v = t[k]; return typeof v === 'function' ? v.bind(t) : v;
+  } });
+  return () => { env.DB = realDB; };
+}
 
 // ═══ 1. Config ═══
 {
@@ -182,9 +212,23 @@ const A1 = { transactionId: 'A1', originalTransactionId: 'OTA', appAccountToken:
   // O'sha tranzaksiyaning eski (revocationDate'siz) JWS'i — baribir berilmaydi.
   const stale = await verify({ transactionId: 'B2', originalTransactionId: 'OTB', appAccountToken: token2 }, cookie.other);
   check('6) qaytarilganning eski JWS — berilmaydi', [stale.body.premium, stale.body.reason, premiumOf(2)], [false, 'revoked', null]);
-  const sb = await verify({ transactionId: 'B3', originalTransactionId: 'OTB', appAccountToken: token2, environment: 'Sandbox', expiresDate: NOW + 3 * DAY }, cookie.other);
-  check('6) Sandbox ham beriladi (App Review)', [sb.body.premium, sb.body.environment, premiumOf(2)], [true, 'Sandbox', iso(NOW + 3 * DAY)]);
+  // Sandbox — ruxsatsiz berilmaydi (bepul xarid bilan haqiqiy Premium bo'lmasin).
+  const B3 = { transactionId: 'B3', originalTransactionId: 'OTS', appAccountToken: token2, environment: 'Sandbox', expiresDate: NOW + 3 * DAY };
+  const sb0 = await verify(B3, cookie.other);
+  check('6) Sandbox ruxsatsiz — 422 sandbox_not_allowed', [sb0.status, sb0.body], [422, { error: 'sandbox_not_allowed' }]);
+  check('6) Sandbox ruxsatsiz — muddat yo‘q, bog‘lanmadi', [premiumOf(2), sqlite.prepare(`SELECT COUNT(*) AS n FROM iap_apple_subscriptions WHERE original_transaction_id = 'OTS'`).get().n], [null, 0]);
+  check('6) Xcode muhiti ham — 422', (await verify({ ...B3, transactionId: 'B3x', environment: 'Xcode' }, cookie.other)).body, { error: 'sandbox_not_allowed' });
+  env.IAP_APPLE_SANDBOX_USER_IDS = ' 7, 1 ';
+  check('6) boshqa ID ro‘yxatda — baribir 422', (await verify(B3, cookie.other)).status, 422);
+  env.IAP_APPLE_SANDBOX_USER_IDS = '7, 2';
+  const sb = await verify(B3, cookie.other);
+  check('6) ID ro‘yxatda (App Review demo) — beriladi', [sb.body.premium, sb.body.environment, premiumOf(2)], [true, 'Sandbox', iso(NOW + 3 * DAY)]);
   check('6) daftarda muhit — Sandbox', ledger('B3').environment, 'Sandbox');
+  delete env.IAP_APPLE_SANDBOX_USER_IDS;
+  env.IAP_APPLE_ALLOW_SANDBOX = '1';
+  check('6) IAP_APPLE_ALLOW_SANDBOX=1 — hammaga', (await verify({ transactionId: 'B4', originalTransactionId: 'OTS2', environment: 'Sandbox', expiresDate: NOW + 2 * DAY }, c3)).body.premium, true);
+  delete env.IAP_APPLE_ALLOW_SANDBOX;
+  setPremium(3, null);
 }
 
 // ═══ 7. Bildirishnomalar (bayroq O'CHIQ — baribir ishlaydi) ═══
@@ -236,17 +280,36 @@ env.IAP_APPLE_ENABLED = '0';
 
 // ═══ 8. REFUND sayt vaqtini HECH QACHON olmaydi ═══
 {
-  // user#3: Apple bergan, keyin sayt orqali (Payme/Click) +30 kun — premiumExtendD1 kabi.
+  // user#3: Apple YILLIK, keyin sayt orqali (Payme/Click) +30 kun, keyin REFUND.
+  // Aniq hisob (prev yo'q, berilgan payt T ≈ hozir):
+  //   granted = T+365k, Payme → joriy = T+395k,
+  //   delta = granted − max(prev, T, hozir) ≈ 365k,
+  //   yangi = joriy − delta ≈ hozir + 30k — odamda faqat to'lagan 30 kuni qoladi.
   const tok3 = (await call('/api/iap/apple/account-token', { cookie: c3 })).body.token;
   env.IAP_APPLE_ENABLED = '1';
-  const C1 = { transactionId: 'C1', originalTransactionId: 'OTC', appAccountToken: tok3, expiresDate: NOW + 30 * DAY };
-  check('8) user#3 Apple bilan', (await verify(C1, c3)).body.premiumExpiresAt, iso(C1.expiresDate));
+  const C1 = { transactionId: 'C1', originalTransactionId: 'OTC', appAccountToken: tok3, productId: YEARLY, expiresDate: NOW + 365 * DAY };
+  check('8) user#3 Apple yillik', (await verify(C1, c3)).body.premiumExpiresAt, iso(C1.expiresDate));
   env.IAP_APPLE_ENABLED = '0';
-  const paidWeb = iso(C1.expiresDate + 30 * DAY);
+  const paidWeb = iso(C1.expiresDate + 30 * DAY); // premiumExtendD1: joriy + 30 kun
   setPremium(3, paidWeb);
   const r = await notify('REFUND', txPayload({ ...C1, revocationDate: NOW }));
-  check('8) Apple vaqti ustiga sayt to‘lovi — REFUND o‘tkazib yuborildi', [r.status, r.body.result], [200, 'rollback_skipped']);
-  check('8) sayt orqali to‘langan vaqt joyida', premiumOf(3), paidWeb);
+  check('8) Apple yillik + Payme 30 kun → REFUND: faqat Apple ulushi ayrildi', [r.status, r.body.result], [200, 'rolled_back']);
+  const left3 = premiumOf(3);
+  checkTrue(`8) qoldi ≈ hozir + 30 kun (${left3})`, near(left3, Date.now() + 30 * DAY));
+  checkTrue('8) sayt vaqti olinmadi: qolgan ≥ 30 kun', Date.parse(left3) - Date.now() >= 30 * DAY - 5000);
+  check('8) qayta REFUND — o‘zgarmaydi', [(await notify('REFUND', txPayload({ ...C1, revocationDate: NOW }))).body.result, premiumOf(3)], ['rolled_back', left3]);
+
+  // user#5: oldin sayt vaqti (hozir+10 kun), keyin Apple yillik, keyin Payme +30.
+  //   prev = N+10k, granted = N+365k, delta = 365 − 10 = 355k,
+  //   joriy = N+395k → yangi = N+40k (aniq: 10 kun eski + 30 kun yangi sayt vaqti).
+  setPremium(5, iso(NOW + 10 * DAY));
+  env.IAP_APPLE_ENABLED = '1';
+  const C5 = { transactionId: 'C5', originalTransactionId: 'OTC5', productId: YEARLY, expiresDate: NOW + 365 * DAY };
+  check('8) user#5 Apple yillik (oldin sayt vaqti bor)', (await verify(C5, cu(5))).body.premiumExpiresAt, iso(NOW + 365 * DAY));
+  env.IAP_APPLE_ENABLED = '0';
+  setPremium(5, iso(NOW + 395 * DAY));
+  check('8) REFUND → aniq N+40 kun', [(await notify('REFUND', txPayload({ ...C5, revocationDate: NOW }))).body.result, premiumOf(5)], ['rolled_back', iso(NOW + 40 * DAY)]);
+  setPremium(5, null);
 
   // user#4: sayt vaqti Apple'dan uzun — Apple hech narsa qo'shmagan; REFUND uni olmaydi.
   const web4 = iso(NOW + 200 * DAY);
@@ -257,7 +320,7 @@ env.IAP_APPLE_ENABLED = '0';
   check('8) user#4: sayt vaqti uzunroq — o‘zgarmaydi', (await verify(D1, c4)).body.premiumExpiresAt, web4);
   env.IAP_APPLE_ENABLED = '0';
   const r4 = await notify('REVOKE', txPayload({ ...D1, revocationDate: NOW }));
-  check('8) REVOKE — sayt vaqti joyida', [r4.status, premiumOf(4)], [200, web4]);
+  check('8) REVOKE — sayt vaqti joyida', [r4.status, r4.body.result, premiumOf(4)], [200, 'rollback_skipped', web4]);
   // ±2 soniya: Apple bergan qiymatdan 1.5 s farq — baribir qaytariladi.
   const D2 = { transactionId: 'D2', originalTransactionId: 'OTD', appAccountToken: tok4, expiresDate: NOW + 300 * DAY };
   env.IAP_APPLE_ENABLED = '1';
@@ -312,6 +375,131 @@ env.IAP_APPLE_ENABLED = '0';
   const cols = ['iap_apple_account_tokens', 'iap_apple_subscriptions', 'iap_apple_transactions', 'iap_apple_notifications']
     .flatMap((t) => sqlite.prepare(`PRAGMA table_info(${t})`).all().map((c) => c.name));
   checkTrue('10) jadvallarda email/telefon yo‘q', !cols.some((c) => /email|phone/.test(c)));
+}
+
+// ═══ 11. Poyga: bir vaqtdagi verify + REFUND (ko'rik #1, race.mjs/attack.mjs) ═══
+{
+  env.IAP_APPLE_ENABLED = '1';
+  resetLimits();
+  // a) Kechikish bilan: birinchi so'rovning daftar INSERT'i 80 ms sekin.
+  let ledgerInserts = 0;
+  const restore = withLatency((sql) => (/INSERT OR IGNORE INTO iap_apple_transactions/.test(sql) && ledgerInserts++ === 0 ? 80 : 5));
+  const R1 = { transactionId: 'R1', originalTransactionId: 'OTR1', productId: YEARLY, expiresDate: NOW + 365 * DAY };
+  const rs = await Promise.all([verify(R1, cu(5)), verify(R1, cu(5))]);
+  restore();
+  check('11) ikkala verify — 200 premium', rs.map((r) => [r.status, r.body.premium]), [[200, true], [200, true]]);
+  const L = ledger('R1');
+  check('11) daftar: oldingi = asl qiymat (null), holat berildi', [L.prev_premium_expires_at, L.granted_premium_expires_at, L.granted], [null, iso(R1.expiresDate), 1]);
+  check('11) daftarda bitta qator', sqlite.prepare(`SELECT COUNT(*) AS n FROM iap_apple_transactions WHERE transaction_id = 'R1'`).get().n, 1);
+  env.IAP_APPLE_ENABLED = '0';
+  check('11) REFUND → asl qiymatga (null)', [(await notify('REFUND', txPayload({ ...R1, revocationDate: NOW }))).body.result, premiumOf(5)], ['rolled_back', null]);
+  // b) 4 ta bir vaqtdagi verify (kechikishsiz).
+  env.IAP_APPLE_ENABLED = '1';
+  const R2 = { transactionId: 'R2', originalTransactionId: 'OTR2', productId: YEARLY, expiresDate: NOW + 365 * DAY };
+  const r4 = await Promise.all([1, 2, 3, 4].map(() => verify(R2, cu(6))));
+  check('11) 4 ta verify — hammasi 200', r4.map((r) => r.status), [200, 200, 200, 200]);
+  env.IAP_APPLE_ENABLED = '0';
+  check('11) 4 talik poygadan keyin REFUND → null', [(await notify('REFUND', txPayload({ ...R2, revocationDate: NOW }))).body.result, premiumOf(6)], ['rolled_back', null]);
+  // c) Da'vogar `users` ni yozishdan oldin yiqilsa — da'vo bo'shaydi, qayta urinish ishlaydi.
+  env.IAP_APPLE_ENABLED = '1';
+  let boom = true;
+  const restore2 = withLatency((sql) => (boom && /UPDATE users SET premium_expires_at/.test(sql) ? ((boom = false), new Error('d1 tarmoq xatosi')) : 0));
+  const R3 = { transactionId: 'R3', originalTransactionId: 'OTR3', expiresDate: NOW + 30 * DAY };
+  const fail1 = await verify(R3, cu(7));
+  restore2();
+  check('11) xato — 503, daftarda da’vo qolmadi', [fail1.status, ledger('R3') ?? null, premiumOf(7)], [503, null, null]);
+  check('11) qayta urinish — beriladi', [(await verify(R3, cu(7))).body.premium, premiumOf(7)], [true, iso(R3.expiresDate)]);
+  setPremium(7, null);
+  sqlite.prepare(`DELETE FROM iap_apple_subscriptions WHERE original_transaction_id = 'OTR3'`).run();
+}
+
+// ═══ 12. Noma'lum foydalanuvchi REFUND'i esda qoladi (ko'rik #3) ═══
+{
+  env.IAP_APPLE_ENABLED = '0';
+  const T9 = txPayload({ transactionId: 'T9', originalTransactionId: 'OT9', productId: YEARLY, expiresDate: NOW + 365 * DAY });
+  check('12) SUBSCRIBED bog‘lanmagan — unknown_user', (await notify('SUBSCRIBED', T9)).body.result, 'unknown_user');
+  check('12) REFUND bog‘lanmagan — unknown_user', (await notify('REFUND', { ...T9, revocationDate: NOW })).body.result, 'unknown_user');
+  const L = ledger('T9');
+  check('12) daftarda revoked (user_id 0)', [!!L?.revoked_at, L?.user_id, L?.granted], [true, 0, 0]);
+  env.IAP_APPLE_ENABLED = '1';
+  const v = await verify({ transactionId: 'T9', originalTransactionId: 'OT9', productId: YEARLY, expiresDate: NOW + 365 * DAY }, cookie.other);
+  const before = premiumOf(2);
+  check('12) eski (qaytarishdan oldingi) JWS — berilmaydi', [v.status, v.body.premium, v.body.reason], [200, false, 'revoked']);
+  check('12) user#2 muddati o‘zgarmadi', premiumOf(2), before);
+}
+
+// ═══ 13. O'chirilgan hisobdagi obuna (ko'rik #5) ═══
+{
+  env.IAP_APPLE_ENABLED = '1';
+  const tok8 = (await call('/api/iap/apple/account-token', { cookie: cu(8) })).body.token;
+  const F1 = { transactionId: 'F1', originalTransactionId: 'OTF', appAccountToken: tok8, expiresDate: NOW + 30 * DAY };
+  check('13) user#8 obuna oldi', (await verify(F1, cu(8))).body.premium, true);
+  check('13) user#9 — 409 (egasi tirik)', (await verify({ transactionId: 'F1b', originalTransactionId: 'OTF' }, cu(9))).status, 409);
+  sqlite.prepare(`UPDATE users SET deleted_at = ? WHERE id = 8`).run(iso(NOW));
+  // O'sha Apple ID egasi yangi hisob ochdi: StoreKit hali eski tokenni beradi.
+  const F2 = { transactionId: 'F2', originalTransactionId: 'OTF', appAccountToken: tok8, expiresDate: NOW + 60 * DAY };
+  const r = await verify(F2, cu(9));
+  check('13) egasi o‘chirilgan — yangi hisobga ko‘chdi', [r.status, r.body.premium, premiumOf(9)], [200, true, iso(F2.expiresDate)]);
+  check('13) bog‘lanish OTF → user#9', sqlite.prepare(`SELECT user_id FROM iap_apple_subscriptions WHERE original_transaction_id = 'OTF'`).get().user_id, 9);
+  check('13) noma’lum token — 403', (await verify({ transactionId: 'F3', originalTransactionId: 'OTF', appAccountToken: '00000000-0000-4000-8000-000000000000' }, cu(9))).status, 403);
+  check('13) tirik begona token — 403', (await verify({ transactionId: 'F4', originalTransactionId: 'OTF', appAccountToken: token1 }, cu(9))).status, 403);
+}
+
+// ═══ 14. Bir vaqtdagi takror bildirishnoma (ko'rik #7) ═══
+{
+  env.IAP_APPLE_ENABLED = '0';
+  setPremium(9, iso(NOW + 60 * DAY));
+  const G = txPayload({ transactionId: 'G1', originalTransactionId: 'OTF', expiresDate: NOW + 120 * DAY });
+  const restore = withLatency(() => 5);
+  const [a, b] = await Promise.all([notify('DID_RENEW', G, { uuid: 'n-conc' }), notify('DID_RENEW', G, { uuid: 'n-conc' })]);
+  restore();
+  check('14) faqat bittasi qayta ishladi', [a.body.duplicate === true, b.body.duplicate === true].sort(), [false, true]);
+  check('14) natija granted, muddat bir marta', [(a.body.duplicate ? b : a).body.result, premiumOf(9)], ['granted', iso(NOW + 120 * DAY)]);
+  // Qayta ishlashda xato — da'vo o'chadi, Apple'ning qayta yuborishi ishlaydi.
+  let boom = true;
+  const restore2 = withLatency((sql) => (boom && /UPDATE users SET premium_expires_at/.test(sql) ? ((boom = false), new Error('d1 tarmoq xatosi')) : 0));
+  const G2 = txPayload({ transactionId: 'G2', originalTransactionId: 'OTF', expiresDate: NOW + 150 * DAY });
+  const f = await notify('DID_RENEW', G2, { uuid: 'n-fail' });
+  restore2();
+  check('14) xato — 5xx, da’vo o‘chirildi', [f.status >= 500, sqlite.prepare(`SELECT COUNT(*) AS n FROM iap_apple_notifications WHERE notification_uuid = 'n-fail'`).get().n], [true, 0]);
+  const again = await notify('DID_RENEW', G2, { uuid: 'n-fail' });
+  check('14) qayta yuborish — granted', [again.body.result, again.body.duplicate ?? false, premiumOf(9)], ['granted', false, iso(NOW + 150 * DAY)]);
+  check('14) jurnal: yakuniy natija', sqlite.prepare(`SELECT result FROM iap_apple_notifications WHERE notification_uuid = 'n-fail'`).get().result, 'granted');
+}
+
+// ═══ 15. Katta tana — 413 (ko'rik #8) ═══
+{
+  const big = JSON.stringify({ signedPayload: 'x'.repeat(130 * 1024) });
+  const r1 = await call('/api/iap/apple/notifications', { method: 'POST', body: big, headers: { 'content-type': 'application/json' } });
+  check('15) 128 KB dan katta tana — 413', [r1.status, r1.body], [413, { error: 'payload_too_large' }]);
+  const r2 = await call('/api/iap/apple/notifications', { method: 'POST', body: '{}', headers: { 'content-type': 'application/json', 'content-length': '200000' } });
+  // Tana kichik ('{}'), lekin sarlavha 200 KB deydi — o'qimasdan 413 (aks holda 400 bad_request bo'lardi).
+  check('15) content-length katta — o‘qimasdan 413', [r2.status, r2.body], [413, { error: 'payload_too_large' }]);
+  env.IAP_APPLE_ENABLED = '1';
+  check('15) verify ham — 413', (await call('/api/iap/apple/verify', { method: 'POST', cookie: cookie.user, body: big, headers: { 'content-type': 'application/json' } })).status, 413);
+}
+
+// ═══ 16. Family Sharing (ko'rik #11) ═══
+{
+  env.IAP_APPLE_ENABLED = '1';
+  const fs = await verify({ transactionId: 'H1', originalTransactionId: 'OTH', inAppOwnershipType: 'FAMILY_SHARED' }, cu(6));
+  check('16) FAMILY_SHARED verify — 422', [fs.status, fs.body], [422, { error: 'family_shared_not_supported' }]);
+  env.IAP_APPLE_ENABLED = '0';
+  check('16) FAMILY_SHARED bildirishnoma — ignored', (await notify('SUBSCRIBED', txPayload({ transactionId: 'H2', originalTransactionId: 'OTA', inAppOwnershipType: 'FAMILY_SHARED' }))).body.result, 'ignored');
+  checkTrue('16) daftarga yozilmadi', !ledger('H1') && !ledger('H2'));
+}
+
+// ═══ 17. Sandbox bildirishnomasi — bayroq o'chiq bo'lsa ham shart (ko'rik #2, #9) ═══
+{
+  env.IAP_APPLE_ENABLED = '0';
+  const before = premiumOf(1);
+  const S1 = txPayload({ transactionId: 'S1', originalTransactionId: 'OTA', environment: 'Sandbox', expiresDate: NOW + 900 * DAY });
+  check('17) Sandbox DID_RENEW ruxsatsiz — sandbox_ignored', [(await notify('DID_RENEW', S1)).body.result, premiumOf(1)], ['sandbox_ignored', before]);
+  checkTrue('17) daftarga yozilmadi', !ledger('S1'));
+  env.IAP_APPLE_SANDBOX_USER_IDS = '1';
+  check('17) ro‘yxatda — granted', [(await notify('DID_RENEW', S1)).body.result, premiumOf(1)], ['granted', iso(NOW + 900 * DAY)]);
+  delete env.IAP_APPLE_SANDBOX_USER_IDS;
+  setPremium(1, before);
 }
 
 __setTrustedRootForTests(null);

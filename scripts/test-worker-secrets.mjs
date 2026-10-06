@@ -65,6 +65,9 @@ const OPTIONAL = new Set([
   'ADMIN_IP_WHITELIST_BYPASS', 'ANDROID_APP_PACKAGE',
   // Apple In-App Purchase (api/iap-apple.js): '1' bo'lmasa — o'chiq (standart).
   'IAP_APPLE_ENABLED',
+  // Sandbox xaridi faqat shu ruxsat bilan Premium beradi (standart — hech kimga):
+  // '1' — hammaga (staging); ID ro'yxati — masalan App Review demo hisobi.
+  'IAP_APPLE_ALLOW_SANDBOX', 'IAP_APPLE_SANDBOX_USER_IDS',
 ]);
 
 // wrangler.jsonc o'zi qo'yadigan bog'lanishlar — secret emas.

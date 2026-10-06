@@ -204,12 +204,33 @@ Har chaqiruv admin jurnalida (`legal_subject_view`, `legal_hold`, `legal_unhold`
 `GET /api/iap/apple/config` → `{enabled, products}`;
 `GET /api/iap/apple/account-token` (auth, 401) → `{token}` (barqaror UUID v4 → `appAccountToken`);
 `POST /api/iap/apple/verify {signedTransaction}` (auth) → `{premium:true, premiumExpiresAt, productId, environment}`
-yoki `{premium:false, reason:'expired'|'revoked', premiumExpiresAt}`; xatolar: 503 `iap_disabled`,
-400 `bad_request`|`invalid_signature`, 422 `wrong_bundle`|`unknown_product`|`wrong_type`|`bad_transaction`,
-403 `account_mismatch`, 409 `already_linked`, 429 `too_many_requests`;
+yoki `{premium:false, reason:'expired'|'revoked', premiumExpiresAt}`; xatolar: 401 `unauthorized`,
+503 `iap_disabled`, 429 `too_many_requests`, 413 `payload_too_large` (>128 KB),
+400 `bad_request`|`invalid_signature`, 422 `wrong_bundle`|`unknown_product`|`wrong_type`|`bad_transaction`
+|`family_shared_not_supported`|`sandbox_not_allowed`, 403 `account_mismatch`, 409 `already_linked`;
 `POST /api/iap/apple/notifications {signedPayload}` (kirishsiz, App Store Server Notifications V2,
-bayroq o'chiq bo'lsa ham) → 200 `{ok, result}` | 400. JWS — `apple-jws.js` (Apple Root CA - G3 pin,
-zanjir, OID, muddat, ES256). Muddat `users.premium_expires_at = max(joriy, expiresDate)`;
-REFUND/REVOKE faqat Apple bergan qiymatni (±2 s) daftardagi oldingisiga qaytaradi — sayt
-(Payme/Click) vaqti olinmaydi. Jadvallar: `iap_apple_account_tokens`, `iap_apple_subscriptions`,
-`iap_apple_transactions`, `iap_apple_notifications`. Test: `scripts/test-iap-apple.mjs`, `scripts/test-apple-jws.mjs`.
+bayroq o'chiq bo'lsa ham) → 200 `{ok, result, duplicate?}` | 400 | 413. `result`: `test`, `granted`,
+`expired`, `revoked`, `rolled_back`, `rollback_skipped`, `not_granted`, `unknown_user`,
+`sandbox_ignored`, `ignored` (Family Sharing ham), `other_bundle`, `unknown_product`, `no_transaction`.
+JWS — `apple-jws.js` (Apple Root CA - G3 pin, zanjir, OID, muddat, ES256).
+
+Qoidalar (xavfsizlik ko'rigi, 2026-10-06):
+- Berish: `users.premium_expires_at = max(joriy, expiresDate)`; har `transactionId` daftar qatori
+  (`iap_apple_transactions`) — DA'VO: uni qo'shgan so'rovgina `users` ni yozadi (bir vaqtdagi
+  verify poygasi qaytarishni buzmaydi); da'vogar `users` dan oldin yiqilsa — da'vo o'chiriladi.
+- Qaytarish (REFUND/REVOKE): faqat Apple QO'SHGAN vaqt: joriy = berilgan (±2 s) bo'lsa — oldingi
+  qiymat; aks holda `yangi = min(joriy, max(prev, joriy − max(0, granted − max(prev, berilgan payt, hozir))))`.
+  Payme/Click vaqti olinmaydi; Apple vaqtining ishlatib bo'lingan qismi keyingi to'lovdan
+  ayrilmaydi. Foydalanuvchi noma'lum bo'lsa ham daftarga `revoked_at` (user_id 0) — eski JWS qayta berilmaydi.
+- Sandbox (Production'dan boshqa har muhit) faqat `IAP_APPLE_ALLOW_SANDBOX=1` yoki user ID
+  `IAP_APPLE_SANDBOX_USER_IDS` (vergul bilan) da bo'lsa — bayroqdan qat'i nazar. App Review demo
+  hisobining ID'si shu ro'yxatga qo'yiladi (wrangler'ga emas, panelda).
+- Obuna egasi (yoki token egasi) o'chirilgan hisob bo'lsa — yangi hisobga ko'chiriladi.
+- `notificationUUID` avval `processing` bo'lib da'vo qilinadi; xatoda da'vo o'chiriladi.
+- Family Sharing (`inAppOwnershipType = FAMILY_SHARED`) — berilmaydi.
+- MA'LUM CHEKLOVLAR (ataylab qoldirilgan): (#6) sayt orqali olingan Premium bor odam Apple
+  obunasini olsa, muddatlar QO'SHILMAYDI — `max()` (uzunrog'i qoladi); ilova buni xaridan oldin
+  ko'rsatishi kerak. (#10) Billing Grace Period hisobga olinmaydi: DID_FAIL_TO_RENEW/GRACE_PERIOD
+  faqat tranzaksiyaning `expiresDate` gacha beradi (App Store Connect'da grace period yoqilsa — qayta ko'rish).
+Jadvallar: `iap_apple_account_tokens`, `iap_apple_subscriptions`, `iap_apple_transactions`,
+`iap_apple_notifications`. Test: `scripts/test-iap-apple.mjs`, `scripts/test-apple-jws.mjs`.
