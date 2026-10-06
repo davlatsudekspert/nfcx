@@ -1,0 +1,525 @@
+From e58dbd4a8dfdd7f100ae5a94480335c43328fce7 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Tue, 6 Oct 2026 10:41:02 +0000
+Subject: [PATCH 54/57] =?UTF-8?q?Nova:=20bepul=20sinov=20matnlari=20?=
+ =?UTF-8?q?=E2=80=94=20kunlar=20sanog'i=20va=20"pullik"=20taassurot=20yo'q?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- Premium ekrani kartasi: "Barcha Premium imkoniyatlar ochiq" (ilgari
+  "Bepul sinov faol — N kun qoldi"); tushuntirish matni o'zgarmadi.
+- Rejalar tugmasi: "Premium rejalari" (ilgari "Sinov tugagach obuna
+  bo'lish"), xatti-harakati avvalgidek.
+- Sozlamalar → Premium qatori: "Hammasi ochiq"; Premium holati:
+  "Barcha imkoniyatlar ochiq" (ilgari "Sinov muddati").
+- Taklif ekrani izohi: "Bonus oy Premium muddatingizga qo'shiladi."
+- iapTrialTitle / iapTrialSettings dan {days} olib tashlandi — chaqiruv
+  joylari parametrsiz. uz/ru/en, l10n qayta yaratildi.
+- Sinovlar: kunlar soni ekranda yo'q; uch tilda raqam, "tugaydi",
+  "obuna" so'zlari yo'q.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .../features/premium/premium_iap_screen.dart  | 16 ++++-----
+ .../features/settings/settings_screen.dart    |  9 +++--
+ mobile_nova/lib/l10n/arb/app_en.arb           | 12 +++----
+ mobile_nova/lib/l10n/arb/app_ru.arb           | 12 +++----
+ mobile_nova/lib/l10n/arb/app_uz.arb           | 13 ++++----
+ .../lib/l10n/gen/app_localizations.dart       | 16 ++++-----
+ .../lib/l10n/gen/app_localizations_en.dart    | 26 +++------------
+ .../lib/l10n/gen/app_localizations_ru.dart    | 31 +++--------------
+ .../lib/l10n/gen/app_localizations_uz.dart    | 27 +++------------
+ mobile_nova/test/iap_premium_test.dart        | 33 +++++++++++++++----
+ 10 files changed, 78 insertions(+), 117 deletions(-)
+
+diff --git a/mobile_nova/lib/features/premium/premium_iap_screen.dart b/mobile_nova/lib/features/premium/premium_iap_screen.dart
+index c7cc0a7..0122de1 100644
+--- a/mobile_nova/lib/features/premium/premium_iap_screen.dart
++++ b/mobile_nova/lib/features/premium/premium_iap_screen.dart
+@@ -67,8 +67,9 @@ class _PremiumIapScreenState extends ConsumerState<PremiumIapScreen> {
+     // BEPUL SINOV (launch promo, 90 kun): hamma Premium imkoniyatlar
+     // allaqachon ochiq. Ekran "pullik" taassurot bermasin — tepada
+     // tinch karta, rejalar esa ikkinchi darajali tugma ortida.
+-    final trialDays = iapTrialDaysLeft(user);
+-    final trial = trialDays != null;
++    // Kunlar sanog'i ATAYIN ko'rsatilmaydi (egasining qarori): teskari
++    // sanoq "bu pullik, tez orada to'laysiz" degan taassurot beradi.
++    final trial = iapTrialDaysLeft(user) != null;
+     final c = ref.read(iapControllerProvider.notifier);
+ 
+     final products = s.products;
+@@ -116,7 +117,7 @@ class _PremiumIapScreenState extends ConsumerState<PremiumIapScreen> {
+                 ],
+                 if (trial) ...[
+                   const SizedBox(height: Gap.xl),
+-                  _TrialCard(days: trialDays),
++                  const _TrialCard(),
+                 ],
+                 const SizedBox(height: Gap.section),
+                 const _Perks(),
+@@ -280,11 +281,10 @@ String iapPlanName(L l, IapProduct p) => switch ((p.periodUnit, p.periodValue))
+       _ => p.title.isNotEmpty ? p.title : l.premiumTitle,
+     };
+ 
+-/// "Bepul sinov faol — N kun qoldi". Tinch karta: sotuv emas, xabar.
++/// "Barcha Premium imkoniyatlar ochiq". Tinch karta: sotuv emas, xabar.
++/// Kunlar sanog'i va "sinov tugaydi" so'zlari YO'Q.
+ class _TrialCard extends StatelessWidget {
+-  const _TrialCard({required this.days});
+-
+-  final int days;
++  const _TrialCard();
+ 
+   @override
+   Widget build(BuildContext context) {
+@@ -303,7 +303,7 @@ class _TrialCard extends StatelessWidget {
+             child: Column(
+               crossAxisAlignment: CrossAxisAlignment.start,
+               children: [
+-                Text(l.iapTrialTitle(days), style: text.titleMedium),
++                Text(l.iapTrialTitle, style: text.titleMedium),
+                 const SizedBox(height: Gap.xs),
+                 Text(l.iapTrialBody, style: text.bodyMedium),
+               ],
+diff --git a/mobile_nova/lib/features/settings/settings_screen.dart b/mobile_nova/lib/features/settings/settings_screen.dart
+index 0e16c16..b883fc7 100644
+--- a/mobile_nova/lib/features/settings/settings_screen.dart
++++ b/mobile_nova/lib/features/settings/settings_screen.dart
+@@ -154,11 +154,10 @@ class SettingsScreen extends ConsumerWidget {
+               SettingsItem(
+                 icon: Icons.workspace_premium_rounded,
+                 label: l.settingsPremium,
+-                // Bepul sinov paytida — sotuv emas, qolgan kunlar.
+-                subtitle: switch (iapTrialDaysLeft(user)) {
+-                  final int d => l.iapTrialSettings(d),
+-                  null => null,
+-                },
++                // Bepul sinov paytida — sotuv ham, kunlar sanog'i ham
++                // emas: "Hammasi ochiq".
++                subtitle:
++                    iapTrialDaysLeft(user) != null ? l.iapTrialSettings : null,
+                 onTap: () => context.push(Routes.premium),
+               ),
+             // KO'TARISH KREDITLARI — iPhone + kalit va kredit BOR bo'lsa.
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index 1495c95..00fa4be 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -521,7 +521,7 @@
+     }
+   },
+   "premiumForever": "No expiry",
+-  "premiumTrial": "Trial period",
++  "premiumTrial": "All features unlocked",
+   "premiumExtend": "Extend",
+   "premiumBuy": "Get Premium",
+   "premiumPerksTitle": "What you unlock",
+@@ -1132,12 +1132,10 @@
+   "iapErrFamilyShared": "Family Sharing purchases are not supported. Please subscribe with your own Apple ID.",
+   "iapErrRejected": "The purchase could not be verified. Please contact support.",
+   "iapErrRateLimited": "Too many requests. Please try again later.",
+-  "iapTrialTitle": "{days, plural, =1{Free trial active — 1 day left} other{Free trial active — {days} days left}}",
+-  "@iapTrialTitle": {"placeholders": {"days": {"type": "int"}}},
++  "iapTrialTitle": "All Premium features are unlocked",
+   "iapTrialBody": "You have every Premium feature right now — there is nothing to pay.",
+-  "iapTrialSubscribeLater": "Subscribe after the trial",
+-  "iapTrialSettings": "{days, plural, =1{Free trial: 1 day left} other{Free trial: {days} days left}}",
+-  "@iapTrialSettings": {"placeholders": {"days": {"type": "int"}}},
++  "iapTrialSubscribeLater": "Premium plans",
++  "iapTrialSettings": "Everything unlocked",
+   "boostAction": "Boost",
+   "boostTitle": "Boost post",
+   "boostExplain": "Your post is shown to more people in the feed as «Recommended».",
+@@ -1215,6 +1213,6 @@
+   "inviteStep2": "Your friend signs up with this link",
+   "inviteStep3": "You get +1 month of Premium",
+   "inviteSiteDiscount": "(and a discount on website purchases)",
+-  "inviteTrialNote": "During your free trial, the bonus is added after the trial ends.",
++  "inviteTrialNote": "The bonus month is added to your Premium time.",
+   "activityReferralReward": "joined with your invite — +1 month of Premium"
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index a91a0d5..c2be54e 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -521,7 +521,7 @@
+     }
+   },
+   "premiumForever": "Бессрочно",
+-  "premiumTrial": "Пробный период",
++  "premiumTrial": "Все возможности открыты",
+   "premiumExtend": "Продлить",
+   "premiumBuy": "Получить Premium",
+   "premiumPerksTitle": "Что открывается",
+@@ -1132,12 +1132,10 @@
+   "iapErrFamilyShared": "Покупки через Семейный доступ (Family Sharing) не поддерживаются. Оформите подписку со своим Apple ID.",
+   "iapErrRejected": "Не удалось подтвердить покупку. Обратитесь в поддержку.",
+   "iapErrRateLimited": "Слишком много запросов. Попробуйте чуть позже.",
+-  "iapTrialTitle": "{days, plural, one{Бесплатный период активен — остался {days} день} few{Бесплатный период активен — осталось {days} дня} many{Бесплатный период активен — осталось {days} дней} other{Бесплатный период активен — осталось {days} дня}}",
+-  "@iapTrialTitle": {"placeholders": {"days": {"type": "int"}}},
++  "iapTrialTitle": "Все возможности Premium открыты",
+   "iapTrialBody": "Сейчас вам доступны все возможности Premium — ничего платить не нужно.",
+-  "iapTrialSubscribeLater": "Оформить подписку после пробного периода",
+-  "iapTrialSettings": "{days, plural, one{Пробный период — остался {days} день} few{Пробный период — осталось {days} дня} many{Пробный период — осталось {days} дней} other{Пробный период — осталось {days} дня}}",
+-  "@iapTrialSettings": {"placeholders": {"days": {"type": "int"}}},
++  "iapTrialSubscribeLater": "Планы Premium",
++  "iapTrialSettings": "Всё открыто",
+   "boostAction": "Продвинуть",
+   "boostTitle": "Продвижение поста",
+   "boostExplain": "Ваш пост увидит больше людей в ленте в разделе «Рекомендуемое».",
+@@ -1215,6 +1213,6 @@
+   "inviteStep2": "Друг регистрируется по этой ссылке",
+   "inviteStep3": "Вы получаете +1 месяц Premium",
+   "inviteSiteDiscount": "(и скидку на покупки на сайте)",
+-  "inviteTrialNote": "Во время бесплатного пробного периода бонус добавится после его окончания.",
++  "inviteTrialNote": "Бонусный месяц добавится к вашему сроку Premium.",
+   "activityReferralReward": "присоединился(ась) по вашему приглашению — +1 месяц Premium"
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index 398159b..0e48c25 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -550,7 +550,7 @@
+     }
+   },
+   "premiumForever": "Muddatsiz",
+-  "premiumTrial": "Sinov muddati",
++  "premiumTrial": "Barcha imkoniyatlar ochiq",
+   "premiumExtend": "Muddatni uzaytirish",
+   "premiumBuy": "Premium olish",
+   "premiumPerksTitle": "Nimalar ochiladi",
+@@ -1283,12 +1283,11 @@
+   "iapErrFamilyShared": "Oilaviy kirish (Family Sharing) orqali olingan xaridlar qo‘llab-quvvatlanmaydi. O‘z Apple ID’ingiz bilan obuna bo‘ling.",
+   "iapErrRejected": "Xaridni tasdiqlab bo‘lmadi. Yordam xizmatiga murojaat qiling.",
+   "iapErrRateLimited": "So‘rovlar juda ko‘p. Birozdan keyin qayta urinib ko‘ring.",
+-  "iapTrialTitle": "{days, plural, =1{Bepul sinov faol — 1 kun qoldi} other{Bepul sinov faol — {days} kun qoldi}}",
+-  "@iapTrialTitle": {"placeholders": {"days": {"type": "int"}}},
++  "iapTrialTitle": "Barcha Premium imkoniyatlar ochiq",
++  "@iapTrialTitle": {"description": "Bepul sinov (launch promo) paytidagi tinch karta sarlavhasi. Kunlar sanog'i, \"sinov tugaydi\" yoki \"obuna\" so'zlari YO'Q — ilova pullik degan taassurot bermasin (egasining qarori)."},
+   "iapTrialBody": "Hozir hamma Premium imkoniyatlar sizda, hech narsa to‘lash shart emas.",
+-  "iapTrialSubscribeLater": "Sinov tugagach obuna bo‘lish",
+-  "iapTrialSettings": "{days, plural, =1{Bepul sinov: 1 kun qoldi} other{Bepul sinov: {days} kun qoldi}}",
+-  "@iapTrialSettings": {"placeholders": {"days": {"type": "int"}}},
++  "iapTrialSubscribeLater": "Premium rejalari",
++  "iapTrialSettings": "Hammasi ochiq",
+   "boostAction": "Ko‘tarish",
+   "boostTitle": "Postni ko‘tarish",
+   "boostExplain": "Postingiz lentada «Tavsiya etilgan» sifatida ko‘proq odamga ko‘rinadi.",
+@@ -1366,6 +1365,6 @@
+   "inviteStep2": "Do‘stingiz shu havola orqali ro‘yxatdan o‘tadi",
+   "inviteStep3": "Siz +1 oy Premium olasiz",
+   "inviteSiteDiscount": "(va saytdagi xaridlarga chegirma)",
+-  "inviteTrialNote": "Bepul sinov davrida bonus sinov tugagach qo‘shiladi.",
++  "inviteTrialNote": "Bonus oy Premium muddatingizga qo‘shiladi.",
+   "activityReferralReward": "sizning taklifingiz bilan qo‘shildi — +1 oy Premium"
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index a676daf..98aacbd 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -2772,7 +2772,7 @@ abstract class L {
+   /// No description provided for @premiumTrial.
+   ///
+   /// In uz, this message translates to:
+-  /// **'Sinov muddati'**
++  /// **'Barcha imkoniyatlar ochiq'**
+   String get premiumTrial;
+ 
+   /// No description provided for @premiumExtend.
+@@ -5937,11 +5937,11 @@ abstract class L {
+   /// **'So‘rovlar juda ko‘p. Birozdan keyin qayta urinib ko‘ring.'**
+   String get iapErrRateLimited;
+ 
+-  /// No description provided for @iapTrialTitle.
++  /// Bepul sinov (launch promo) paytidagi tinch karta sarlavhasi. Kunlar sanog'i, "sinov tugaydi" yoki "obuna" so'zlari YO'Q — ilova pullik degan taassurot bermasin (egasining qarori).
+   ///
+   /// In uz, this message translates to:
+-  /// **'{days, plural, =1{Bepul sinov faol — 1 kun qoldi} other{Bepul sinov faol — {days} kun qoldi}}'**
+-  String iapTrialTitle(int days);
++  /// **'Barcha Premium imkoniyatlar ochiq'**
++  String get iapTrialTitle;
+ 
+   /// No description provided for @iapTrialBody.
+   ///
+@@ -5952,14 +5952,14 @@ abstract class L {
+   /// No description provided for @iapTrialSubscribeLater.
+   ///
+   /// In uz, this message translates to:
+-  /// **'Sinov tugagach obuna bo‘lish'**
++  /// **'Premium rejalari'**
+   String get iapTrialSubscribeLater;
+ 
+   /// No description provided for @iapTrialSettings.
+   ///
+   /// In uz, this message translates to:
+-  /// **'{days, plural, =1{Bepul sinov: 1 kun qoldi} other{Bepul sinov: {days} kun qoldi}}'**
+-  String iapTrialSettings(int days);
++  /// **'Hammasi ochiq'**
++  String get iapTrialSettings;
+ 
+   /// No description provided for @boostAction.
+   ///
+@@ -6336,7 +6336,7 @@ abstract class L {
+   /// No description provided for @inviteTrialNote.
+   ///
+   /// In uz, this message translates to:
+-  /// **'Bepul sinov davrida bonus sinov tugagach qo‘shiladi.'**
++  /// **'Bonus oy Premium muddatingizga qo‘shiladi.'**
+   String get inviteTrialNote;
+ 
+   /// No description provided for @activityReferralReward.
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index 4bcfaee..2ae881f 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -1430,7 +1430,7 @@ class LEn extends L {
+   String get premiumForever => 'No expiry';
+ 
+   @override
+-  String get premiumTrial => 'Trial period';
++  String get premiumTrial => 'All features unlocked';
+ 
+   @override
+   String get premiumExtend => 'Extend';
+@@ -3230,33 +3230,17 @@ class LEn extends L {
+   String get iapErrRateLimited => 'Too many requests. Please try again later.';
+ 
+   @override
+-  String iapTrialTitle(int days) {
+-    String _temp0 = intl.Intl.pluralLogic(
+-      days,
+-      locale: localeName,
+-      other: 'Free trial active — $days days left',
+-      one: 'Free trial active — 1 day left',
+-    );
+-    return '$_temp0';
+-  }
++  String get iapTrialTitle => 'All Premium features are unlocked';
+ 
+   @override
+   String get iapTrialBody =>
+       'You have every Premium feature right now — there is nothing to pay.';
+ 
+   @override
+-  String get iapTrialSubscribeLater => 'Subscribe after the trial';
++  String get iapTrialSubscribeLater => 'Premium plans';
+ 
+   @override
+-  String iapTrialSettings(int days) {
+-    String _temp0 = intl.Intl.pluralLogic(
+-      days,
+-      locale: localeName,
+-      other: 'Free trial: $days days left',
+-      one: 'Free trial: 1 day left',
+-    );
+-    return '$_temp0';
+-  }
++  String get iapTrialSettings => 'Everything unlocked';
+ 
+   @override
+   String get boostAction => 'Boost';
+@@ -3519,7 +3503,7 @@ class LEn extends L {
+ 
+   @override
+   String get inviteTrialNote =>
+-      'During your free trial, the bonus is added after the trial ends.';
++      'The bonus month is added to your Premium time.';
+ 
+   @override
+   String get activityReferralReward =>
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index 8acc2ac..68e92c5 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -1432,7 +1432,7 @@ class LRu extends L {
+   String get premiumForever => 'Бессрочно';
+ 
+   @override
+-  String get premiumTrial => 'Пробный период';
++  String get premiumTrial => 'Все возможности открыты';
+ 
+   @override
+   String get premiumExtend => 'Продлить';
+@@ -3244,38 +3244,17 @@ class LRu extends L {
+       'Слишком много запросов. Попробуйте чуть позже.';
+ 
+   @override
+-  String iapTrialTitle(int days) {
+-    String _temp0 = intl.Intl.pluralLogic(
+-      days,
+-      locale: localeName,
+-      other: 'Бесплатный период активен — осталось $days дня',
+-      many: 'Бесплатный период активен — осталось $days дней',
+-      few: 'Бесплатный период активен — осталось $days дня',
+-      one: 'Бесплатный период активен — остался $days день',
+-    );
+-    return '$_temp0';
+-  }
++  String get iapTrialTitle => 'Все возможности Premium открыты';
+ 
+   @override
+   String get iapTrialBody =>
+       'Сейчас вам доступны все возможности Premium — ничего платить не нужно.';
+ 
+   @override
+-  String get iapTrialSubscribeLater =>
+-      'Оформить подписку после пробного периода';
++  String get iapTrialSubscribeLater => 'Планы Premium';
+ 
+   @override
+-  String iapTrialSettings(int days) {
+-    String _temp0 = intl.Intl.pluralLogic(
+-      days,
+-      locale: localeName,
+-      other: 'Пробный период — осталось $days дня',
+-      many: 'Пробный период — осталось $days дней',
+-      few: 'Пробный период — осталось $days дня',
+-      one: 'Пробный период — остался $days день',
+-    );
+-    return '$_temp0';
+-  }
++  String get iapTrialSettings => 'Всё открыто';
+ 
+   @override
+   String get boostAction => 'Продвинуть';
+@@ -3545,7 +3524,7 @@ class LRu extends L {
+ 
+   @override
+   String get inviteTrialNote =>
+-      'Во время бесплатного пробного периода бонус добавится после его окончания.';
++      'Бонусный месяц добавится к вашему сроку Premium.';
+ 
+   @override
+   String get activityReferralReward =>
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index 637f8a0..47b6aed 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -1431,7 +1431,7 @@ class LUz extends L {
+   String get premiumForever => 'Muddatsiz';
+ 
+   @override
+-  String get premiumTrial => 'Sinov muddati';
++  String get premiumTrial => 'Barcha imkoniyatlar ochiq';
+ 
+   @override
+   String get premiumExtend => 'Muddatni uzaytirish';
+@@ -3209,33 +3209,17 @@ class LUz extends L {
+       'So‘rovlar juda ko‘p. Birozdan keyin qayta urinib ko‘ring.';
+ 
+   @override
+-  String iapTrialTitle(int days) {
+-    String _temp0 = intl.Intl.pluralLogic(
+-      days,
+-      locale: localeName,
+-      other: 'Bepul sinov faol — $days kun qoldi',
+-      one: 'Bepul sinov faol — 1 kun qoldi',
+-    );
+-    return '$_temp0';
+-  }
++  String get iapTrialTitle => 'Barcha Premium imkoniyatlar ochiq';
+ 
+   @override
+   String get iapTrialBody =>
+       'Hozir hamma Premium imkoniyatlar sizda, hech narsa to‘lash shart emas.';
+ 
+   @override
+-  String get iapTrialSubscribeLater => 'Sinov tugagach obuna bo‘lish';
++  String get iapTrialSubscribeLater => 'Premium rejalari';
+ 
+   @override
+-  String iapTrialSettings(int days) {
+-    String _temp0 = intl.Intl.pluralLogic(
+-      days,
+-      locale: localeName,
+-      other: 'Bepul sinov: $days kun qoldi',
+-      one: 'Bepul sinov: 1 kun qoldi',
+-    );
+-    return '$_temp0';
+-  }
++  String get iapTrialSettings => 'Hammasi ochiq';
+ 
+   @override
+   String get boostAction => 'Ko‘tarish';
+@@ -3497,8 +3481,7 @@ class LUz extends L {
+   String get inviteSiteDiscount => '(va saytdagi xaridlarga chegirma)';
+ 
+   @override
+-  String get inviteTrialNote =>
+-      'Bepul sinov davrida bonus sinov tugagach qo‘shiladi.';
++  String get inviteTrialNote => 'Bonus oy Premium muddatingizga qo‘shiladi.';
+ 
+   @override
+   String get activityReferralReward =>
+diff --git a/mobile_nova/test/iap_premium_test.dart b/mobile_nova/test/iap_premium_test.dart
+index 595ba1f..c95cb61 100644
+--- a/mobile_nova/test/iap_premium_test.dart
++++ b/mobile_nova/test/iap_premium_test.dart
+@@ -689,8 +689,12 @@ void main() {
+       final l = await _uz();
+       expect(tester.takeException(), isNull);
+       expect(find.byKey(const ValueKey('iap-trial')), findsOneWidget);
+-      expect(find.text(l.iapTrialTitle(30)), findsOneWidget);
++      expect(find.text(l.iapTrialTitle), findsOneWidget);
+       expect(find.text(l.iapTrialBody), findsOneWidget);
++      // Teskari sanoq YO'Q: kunlar soni hech qayerda ko'rinmaydi.
++      expect(find.textContaining('30'), findsNothing);
++      expect(find.textContaining('kun qoldi'), findsNothing);
++      expect(find.text(l.iapTrialSubscribeLater), findsOneWidget);
+       // Sotuv qatori va asosiy xarid tugmasi YO'Q.
+       expect(find.text(l.premiumTagline), findsNothing);
+       expect(find.byKey(const ValueKey('iap-subscribe')), findsNothing);
+@@ -747,12 +751,13 @@ void main() {
+       await settle(tester, frames: 8);
+     }
+ 
+-    testWidgets('Sozlamalar: sinovda "Bepul sinov: N kun qoldi"',
++    testWidgets('Sozlamalar: sinovda "Hammasi ochiq", kunlar soni yo‘q',
+         (tester) async {
+       await pumpSettings(tester, _trialUser(30));
+       final l = await _uz();
+       expect(find.text(l.settingsPremium), findsOneWidget);
+-      expect(find.text(l.iapTrialSettings(30)), findsOneWidget);
++      expect(find.text(l.iapTrialSettings), findsOneWidget);
++      expect(find.textContaining('kun qoldi'), findsNothing);
+     }, variant: _ios);
+ 
+     testWidgets('Sozlamalar: sinovsiz — qo‘shimcha yozuv yo‘q', (tester) async {
+@@ -760,13 +765,29 @@ void main() {
+       final l = await _uz();
+       expect(find.text(l.settingsPremium), findsOneWidget);
+       expect(find.textContaining('kun qoldi'), findsNothing);
++      expect(find.text(l.iapTrialSettings), findsNothing);
+     }, variant: _ios);
+ 
+-    test('uch tilda kun soni va "to‘lash shart emas" ma’nosi', () async {
++    test('uch tilda: kunlar sanog‘i, "sinov tugaydi" va "obuna" yo‘q',
++        () async {
++      // Bepul sinov matnlari ilovani "pullik" ko'rsatmasin: raqam yo'q,
++      // tugash / obuna haqida gap yo'q.
++      final banned = RegExp(
++          r'\d|qoldi|tugag|obuna|left|ends?\b|after the trial|subscribe|'
++          r'остал|оконч|после|подписк',
++          caseSensitive: false);
+       for (final code in ['uz', 'ru', 'en']) {
+         final l = await L.delegate.load(Locale(code));
+-        expect(l.iapTrialTitle(5), contains('5'), reason: code);
+-        expect(l.iapTrialSettings(21), contains('21'), reason: code);
++        for (final s in [
++          l.iapTrialTitle,
++          l.iapTrialSettings,
++          l.iapTrialSubscribeLater,
++          l.premiumTrial,
++          l.inviteTrialNote,
++        ]) {
++          expect(s, isNotEmpty, reason: code);
++          expect(banned.hasMatch(s), isFalse, reason: '$code: $s');
++        }
+         expect(l.iapTrialBody, isNotEmpty);
+       }
+     });
+-- 
+2.43.0
+

@@ -1,0 +1,914 @@
+From 6e93bdf769d06dedcbd872845382a3dd3766e5cd Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Tue, 6 Oct 2026 11:00:19 +0000
+Subject: [PATCH 57/57] =?UTF-8?q?Nova:=20biznes=20posti=20ostida=20"Qo'ng'?=
+ =?UTF-8?q?iroq=20/=20Telegram=20/=20Xarita"=20=E2=80=94=20lenta=20va=20Re?=
+ =?UTF-8?q?els?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Server faol kompaniya postiga `contact: {phone, telegram, mapUrl}`
+qo'shadi (hosting/api/post-contact.js): /api/feed (oddiy, obunalar,
+FEATURED — shapeFeedRows), /api/reels, saqlanganlar (postsByKeys) va
+/api/companies/:id/posts. Bitta post uchun GET yo'li yo'q.
+
+- Model: PostContact (null-xavfsiz; hammasi bo'sh — null), Post.contact;
+  copyWith / copyWithKind saqlaydi. Havolalar profildagi aloqa
+  tugmalari qoidasida (ContactInfo.actions): tel: (raqam va +),
+  Telegram — @name / t.me / to'liq havola, raqamga o'xshagan qiymat —
+  t.me/+raqam; xarita — server havolasi. Faqat tel/http/https.
+- Lenta kartasi: izohdan keyin, amallar qatoridan oldin — kichik
+  kapsulalar (Capsule dense uslubi, Ivory/Noir tokenlari). Reels:
+  muallif ostida, musiqa / NFC ID kapsulalari bilan bir xil qora
+  shisha (o'ng ustun to'la, tor ekranda sig'masdi).
+- Tor ekran: kapsula eni yozuvga mos nisbatda; hammasi sig'masa — faqat
+  belgi (nomi Tooltip va ekran o'quvchida), yozuv kesilmaydi, qator
+  toshmaydi. Shaxsiy post, istoriya, kontaktsiz post — qator yo'q;
+  ma'lumot post bilan keladi, yuklanishda sakrash yo'q.
+- Belgilar profil tugmalaridagi o'sha SVG (contactGlyph). Matn:
+  postContactLabel (uz/ru/en), qolgani mavjud contactCall/contactMap.
+- Sinovlar: test/post_contact_test.dart — model, ko'rinish/yashirish,
+  360/390/430 px ruscha Ivory/Noir, katta shrift, Reels 360 px.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ mobile_nova/lib/data/models/contact_info.dart |  67 ++++
+ mobile_nova/lib/data/models/models.dart       |   8 +
+ .../lib/design/widgets/contact_buttons.dart   |  15 +
+ .../lib/features/social/feed_card.dart        |   7 +
+ .../lib/features/social/post_contact_bar.dart | 197 ++++++++++
+ .../lib/features/social/reels_screen.dart     |  10 +
+ mobile_nova/lib/l10n/arb/app_en.arb           |   1 +
+ mobile_nova/lib/l10n/arb/app_ru.arb           |   1 +
+ mobile_nova/lib/l10n/arb/app_uz.arb           |   2 +
+ .../lib/l10n/gen/app_localizations.dart       |   6 +
+ .../lib/l10n/gen/app_localizations_en.dart    |   3 +
+ .../lib/l10n/gen/app_localizations_ru.dart    |   3 +
+ .../lib/l10n/gen/app_localizations_uz.dart    |   3 +
+ mobile_nova/test/post_contact_test.dart       | 351 ++++++++++++++++++
+ 14 files changed, 674 insertions(+)
+ create mode 100644 mobile_nova/lib/features/social/post_contact_bar.dart
+ create mode 100644 mobile_nova/test/post_contact_test.dart
+
+diff --git a/mobile_nova/lib/data/models/contact_info.dart b/mobile_nova/lib/data/models/contact_info.dart
+index 00bcbf8..cca69f7 100644
+--- a/mobile_nova/lib/data/models/contact_info.dart
++++ b/mobile_nova/lib/data/models/contact_info.dart
+@@ -290,6 +290,73 @@ class ContactAction {
+   final String label;
+ }
+ 
++/// BIZNES POSTIDAGI "BOG'LANISH" (server, 2026-10).
++///
++/// Lenta (`/api/feed`, obunalar va FEATURED ham), Reels "Siz uchun"
++/// (`/api/reels`), saqlanganlar va kompaniya postlari
++/// (`/api/companies/:id/posts`) FAOL kompaniyaning postiga
++/// `contact: {phone, telegram, mapUrl}` qo'shadi — faqat kompaniya o'z
++/// ochiq sahifasida allaqachon ko'rsatadigan maydonlar (server
++/// `api/post-contact.js`). Yo'q qiymat — `null`. Shaxsiy post va
++/// istoriyada maydon umuman yo'q.
++///
++/// Havolalar profildagi aloqa tugmalari bilan AYNAN bir qoidada
++/// yasaladi ([ContactInfo.actions]): telefon — `tel:` (faqat raqam va
++/// `+`), Telegram — `@name`, `t.me/...` yoki to'liq havola bir xil
++/// toza `https://t.me/...` ga. Xarita — server bergan Google Maps
++/// havolasi.
++class PostContact {
++  const PostContact({this.phone = '', this.telegram = '', this.mapUrl = ''});
++
++  final String phone;
++  final String telegram;
++  final String mapUrl;
++
++  static String _s(Object? v) => v is String ? v.trim() : '';
++
++  /// `null` — maydon yo'q, shakli noto'g'ri yoki HAMMA qiymat bo'sh.
++  static PostContact? fromJson(Object? raw) {
++    if (raw is! Map) return null;
++    final c = PostContact(
++      phone: _s(raw['phone']),
++      telegram: _s(raw['telegram']),
++      mapUrl: _s(raw['mapUrl']),
++    );
++    return c.phone.isEmpty && c.telegram.isEmpty && c.mapUrl.isEmpty ? null : c;
++  }
++
++  /// Telefon raqamiga o'xshagan Telegram qiymati (`+998 90 123-45-67`)
++  /// — `t.me/+998901234567` (Telegram raqam bo'yicha havolasi).
++  /// Bo'shliq va chiziqchalar havolani buzardi; `+` siz raqam esa
++  /// username deb o'qilardi.
++  static String _tg(String v) {
++    if (!RegExp(r'^\+?[\d\s\-()]{9,}$').hasMatch(v)) return v;
++    final digits = v.replaceAll(RegExp(r'\D'), '');
++    return digits.length < 9 ? v : '+$digits';
++  }
++
++  /// Ko'rsatiladigan tugmalar: Qo'ng'iroq, Telegram, Xarita (shu
++  /// tartibda, ko'pi bilan 3 ta). Faqat `tel:`, `http`, `https` —
++  /// boshqa sxema yoki buzuq havola tugmaga aylanmaydi.
++  List<ContactAction> actions() => [
++        ...ContactInfo(phone: phone, telegram: _tg(telegram)).actions(),
++        if (mapUrl.isNotEmpty) ContactAction(kind: ContactKind.map, url: mapUrl),
++      ].where((a) => isSafeContactUrl(a.url)).toList();
++}
++
++/// Tashqariga ochiladigan havola xavfsizmi: faqat `tel:` (kamida 3
++/// raqam), `http` yoki `https` (xost bilan), bo'shliqsiz.
++bool isSafeContactUrl(String url) {
++  if (url.isEmpty || RegExp(r'\s').hasMatch(url)) return false;
++  final u = Uri.tryParse(url);
++  if (u == null) return false;
++  final scheme = u.scheme.toLowerCase();
++  if (scheme == 'tel') {
++    return RegExp(r'^\+?\d{3,}$').hasMatch(u.path);
++  }
++  return (scheme == 'http' || scheme == 'https') && u.host.isNotEmpty;
++}
++
+ // ── saytdagi `socialLinks.js` ning aynan nusxasi ─────────────────────
+ 
+ const _hosts = {
+diff --git a/mobile_nova/lib/data/models/models.dart b/mobile_nova/lib/data/models/models.dart
+index 728031d..b6c0cf0 100644
+--- a/mobile_nova/lib/data/models/models.dart
++++ b/mobile_nova/lib/data/models/models.dart
+@@ -1388,10 +1388,15 @@ class Post {
+     this.reel = false,
+     this.imageSeconds = 10,
+     this.views = 0,
++    this.contact,
+   });
+ 
+   final int id;
+ 
++  /// Biznes postidagi "Bog'lanish" (telefon, Telegram, xarita) — faqat
++  /// FAOL kompaniya postida keladi ([PostContact]); bo'lmasa `null`.
++  final PostContact? contact;
++
+   /// Necha KISHI ko'rgan (server `viewCount`, Instagram'dagi
+   /// "ko'rishlar"). Bir odam bir marta sanaladi, egasi sanalmaydi.
+   final int views;
+@@ -1469,6 +1474,7 @@ class Post {
+         reel: reel,
+         imageSeconds: imageSeconds,
+         views: views,
++        contact: contact,
+       );
+ 
+   Post copyWith({int? likes, bool? liked, bool? saved, int? comments, int? views}) => Post(
+@@ -1494,6 +1500,7 @@ class Post {
+         reel: reel,
+         imageSeconds: imageSeconds,
+         views: views ?? this.views,
++        contact: contact,
+       );
+ 
+   factory Post.fromJson(Map<String, dynamic> j) {
+@@ -1554,6 +1561,7 @@ class Post {
+       reel: _b(j['reel']),
+       imageSeconds: _i(j['imageSeconds'], 10).clamp(3, 60),
+       views: _i(j['viewCount'] ?? j['views']),
++      contact: PostContact.fromJson(j['contact']),
+     );
+   }
+ }
+diff --git a/mobile_nova/lib/design/widgets/contact_buttons.dart b/mobile_nova/lib/design/widgets/contact_buttons.dart
+index 67f7489..922a33d 100644
+--- a/mobile_nova/lib/design/widgets/contact_buttons.dart
++++ b/mobile_nova/lib/design/widgets/contact_buttons.dart
+@@ -169,6 +169,21 @@ class _ContactButton extends StatelessWidget {
+   }
+ }
+ 
++/// Aloqa turining BIR RANGLI belgisi — [ContactButtons] dagi AYNAN o'sha
++/// SVG chizma (biznes postidagi "Bog'lanish" kapsulalari uchun). Sayt
++/// va profil tugmalari bilan bir xil logotip, mavzu rangida.
++Widget contactGlyph(ContactKind kind,
++        {required double size, required Color color}) =>
++    SvgPicture.string(
++      _specs[kind]!.svg,
++      width: size,
++      height: size,
++      colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
++    );
++
++/// Aloqa turining qisqa nomi ("Qo'ng'iroq", "Telegram", "Xarita"...).
++String contactKindLabel(L l, ContactKind kind) => _specs[kind]!.label(l);
++
+ class _Spec {
+   const _Spec(this.gradient, this.svg, this.label);
+ 
+diff --git a/mobile_nova/lib/features/social/feed_card.dart b/mobile_nova/lib/features/social/feed_card.dart
+index 1613235..dfe5e7d 100644
+--- a/mobile_nova/lib/features/social/feed_card.dart
++++ b/mobile_nova/lib/features/social/feed_card.dart
+@@ -18,6 +18,7 @@ import 'engagement.dart';
+ import 'image_viewer.dart';
+ import 'media_frame.dart';
+ import 'music_picker.dart' show MusicChip;
++import 'post_contact_bar.dart';
+ import 'time_ago.dart';
+ import '../../design/icons/nova_icons.dart';
+ 
+@@ -239,6 +240,12 @@ class FeedCard extends ConsumerWidget {
+             const SizedBox(height: Gap.md),
+             _FeedCaption(text: post.text, onOpen: openPost),
+           ],
++          // BIZNES POSTI: "Qo'ng'iroq / Telegram / Xarita" — izohdan
++          // keyin, amallar qatoridan oldin; maydon bo'lmasa joy ham yo'q.
++          if (postContactActions(post).isNotEmpty) ...[
++            const SizedBox(height: Gap.md),
++            PostContactBar(post: post),
++          ],
+           const SizedBox(height: Gap.sm),
+           Divider(height: 1, color: t.border1),
+           Row(
+diff --git a/mobile_nova/lib/features/social/post_contact_bar.dart b/mobile_nova/lib/features/social/post_contact_bar.dart
+new file mode 100644
+index 0000000..7d9e982
+--- /dev/null
++++ b/mobile_nova/lib/features/social/post_contact_bar.dart
+@@ -0,0 +1,197 @@
++import 'package:flutter/material.dart';
++
++import '../../core/utils/external_link.dart';
++import '../../data/models/models.dart';
++import '../../design/theme/typography.dart';
++import '../../design/tokens/nfc_tokens.dart';
++import '../../design/tokens/shapes.dart';
++import '../../design/widgets/contact_buttons.dart';
++import '../../design/widgets/surfaces.dart';
++import '../../l10n/gen/app_localizations.dart';
++
++/// BIZNES POSTI OSTIDAGI "BOG'LANISH" — Qo'ng'iroq, Telegram, Xarita.
++///
++/// Faqat KOMPANIYA POSTIDA (istoriya va shaxsiy post — hech qachon) va
++/// server `contact` bergan bo'lsa ([PostContact]). Hech bir maydon
++/// bo'lmasa qator UMUMAN chizilmaydi — bo'sh joy ham qolmaydi.
++///
++/// Ma'lumot postning o'zi bilan keladi (alohida so'rov yo'q), shuning
++/// uchun yuklanish paytida qator "sakrab" paydo bo'lmaydi.
++List<ContactAction> postContactActions(Post p) {
++  final c = p.contact;
++  if (!p.isCompany || p.isStory || c == null) return const [];
++  return c.actions();
++}
++
++/// Kichik kapsulalar qatori.
++///
++/// [onDark] — Reels: video ustidagi qora shisha (musiqa va NFC ID
++/// kapsulalari bilan bir xil). Aks holda — lentadagi oddiy chip
++/// (`Capsule(dense)` uslubi: sirt, nozik hoshiya, yengil soya) —
++/// Ivory va Noir mavzularida tokenlardan.
++///
++/// TOR EKRAN: yozuvlar "Позво…" bo'lib kesilmaydi. Kapsulalar o'z
++/// enida turadi; hammasi qatorga SIG'MASA (360 px, ruscha, katta
++/// shrift, Reels'ning tor chap ustuni) — uchalasi ham faqat belgi
++/// bo'lib qoladi (nomi ekran o'quvchida va bosib turganda). Qator hech
++/// qachon ekrandan chiqmaydi.
++class PostContactBar extends StatelessWidget {
++  const PostContactBar({super.key, required this.post, this.onDark = false});
++
++  final Post post;
++  final bool onDark;
++
++  @override
++  Widget build(BuildContext context) {
++    final actions = postContactActions(post);
++    if (actions.isEmpty) return const SizedBox.shrink();
++    final l = L.of(context);
++    final style = _ContactPill.textStyle(onDark: onDark, color: Colors.white);
++    final scaler = MediaQuery.textScalerOf(context);
++    return Semantics(
++      container: true,
++      label: l.postContactLabel,
++      child: LayoutBuilder(
++        key: const ValueKey('post-contact'),
++        builder: (context, box) {
++          // Yozuvli kapsulalarning tabiiy eni. Har kapsula qatorda shu
++          // NISBATDA joy oladi (`flex`) — "Карта" bo'shatgan joy uzun
++          // "Позвонить" ga o'tadi, teng ulushda esa u kesilardi.
++          final widths = <double>[];
++          for (final a in actions) {
++            final tp = TextPainter(
++              text: TextSpan(text: contactKindLabel(l, a.kind), style: style),
++              maxLines: 1,
++              textDirection: Directionality.of(context),
++              textScaler: scaler,
++            )..layout();
++            widths.add(_ContactPill.chrome(onDark: onDark) + tp.width);
++            tp.dispose();
++          }
++          final need =
++              widths.fold<double>(0, (a, b) => a + b) + (actions.length - 1) * _gap;
++          // Zaxira: shrift/hoshiya yaxlitlashi — "deyarli sig'adi" holati
++          // ham kesilgan yozuv emas, belgi bo'lib chiqadi.
++          final compact = need * 1.04 + 4 > box.maxWidth;
++          return Row(
++            children: [
++              for (var i = 0; i < actions.length; i++) ...[
++                if (i > 0) const SizedBox(width: _gap),
++                Flexible(
++                  flex: compact ? 1 : widths[i].ceil(),
++                  child: _ContactPill(
++                      action: actions[i], onDark: onDark, compact: compact),
++                ),
++              ],
++            ],
++          );
++        },
++      ),
++    );
++  }
++
++  static const _gap = 6.0;
++}
++
++class _ContactPill extends StatelessWidget {
++  const _ContactPill({
++    required this.action,
++    required this.onDark,
++    required this.compact,
++  });
++
++  final ContactAction action;
++  final bool onDark;
++
++  /// Faqat belgi (yozuv sig'madi).
++  final bool compact;
++
++  static EdgeInsets padding({required bool onDark}) => onDark
++      ? const EdgeInsets.fromLTRB(9, 5, 11, 5)
++      : const EdgeInsets.symmetric(horizontal: 10, vertical: 7);
++
++  static double iconSize({required bool onDark}) => onDark ? 14 : 13;
++
++  /// Kapsulaning yozuvdan tashqari eni: hoshiya, belgi, oraliq, chegara.
++  static double chrome({required bool onDark}) =>
++      padding(onDark: onDark).horizontal + iconSize(onDark: onDark) + 5 + 2;
++
++  static TextStyle textStyle({required bool onDark, required Color color}) =>
++      TextStyle(
++        fontFamily: AppType.sans,
++        fontSize: onDark ? 12 : 11.5,
++        fontWeight: FontWeight.w600,
++        color: color,
++      );
++
++  @override
++  Widget build(BuildContext context) {
++    final t = context.tokens;
++    final l = L.of(context);
++    final label = contactKindLabel(l, action.kind);
++    final fg = onDark ? Colors.white : t.text1;
++    final pad = padding(onDark: onDark);
++
++    return Semantics(
++      button: true,
++      label: label,
++      excludeSemantics: true,
++      child: Tooltip(
++        message: compact ? label : '',
++        child: PressableScale(
++          key: ValueKey('post-contact-${action.kind.name}'),
++          // `openLink` qotmaydi (5 s) va ochilmasa havolani buferga
++          // ko'chiradi — profildagi aloqa tugmalari bilan bir xil.
++          onTap: () async {
++            final ok = await openLink(action.url);
++            if (ok || !context.mounted) return;
++            ScaffoldMessenger.maybeOf(context)
++              ?..hideCurrentSnackBar()
++              ..showSnackBar(SnackBar(content: Text(l.shareCopied)));
++          },
++          child: Container(
++            // Faqat belgi — hoshiya teng, kapsula yozuvlisi bilan bir
++            // balandlikda.
++            padding: compact
++                ? EdgeInsets.symmetric(
++                    horizontal: pad.top + 7, vertical: pad.top)
++                : pad,
++            decoration: onDark
++                ? BoxDecoration(
++                    color: Colors.black.withValues(alpha: .38),
++                    borderRadius: R.pill,
++                    border: Border.all(
++                        color: Colors.white.withValues(alpha: .28), width: .8),
++                  )
++                : BoxDecoration(
++                    color: t.surfaceSolid,
++                    borderRadius: R.pill,
++                    border: Border.all(color: t.border1),
++                    boxShadow: t.shadowTiny,
++                  ),
++            child: Row(
++              mainAxisSize: MainAxisSize.min,
++              children: [
++                contactGlyph(action.kind,
++                    size: iconSize(onDark: onDark), color: fg),
++                if (!compact) ...[
++                  const SizedBox(width: 5),
++                  Flexible(
++                    child: Text(
++                      label,
++                      maxLines: 1,
++                      overflow: TextOverflow.ellipsis,
++                      style: textStyle(onDark: onDark, color: fg),
++                    ),
++                  ),
++                ] else
++                  // Yozuvli kapsula bilan bir xil balandlik (matn qatori).
++                  Text('', style: textStyle(onDark: onDark, color: fg)),
++              ],
++            ),
++          ),
++        ),
++      ),
++    );
++  }
++}
+diff --git a/mobile_nova/lib/features/social/reels_screen.dart b/mobile_nova/lib/features/social/reels_screen.dart
+index a0c4213..4d249e0 100644
+--- a/mobile_nova/lib/features/social/reels_screen.dart
++++ b/mobile_nova/lib/features/social/reels_screen.dart
+@@ -16,6 +16,7 @@ import 'moderation.dart';
+ import 'media_frame.dart' show mediaImage;
+ import 'media_sound.dart';
+ import 'music_picker.dart';
++import 'post_contact_bar.dart';
+ 
+ import '../../core/utils/result.dart';
+ import '../../core/utils/sharing.dart';
+@@ -1733,6 +1734,15 @@ class _ReelPageState extends ConsumerState<_ReelPage>
+                     ],
+                   ),
+                 ],
++                // BIZNES REELS: "Qo'ng'iroq / Telegram / Xarita" — o'ng
++                // ustunda emas (u allaqachon to'la, tor ekranda pastga
++                // sig'masdi), muallif ostida, musiqa kapsulasi bilan bir
++                // xil qora shisha uslubda.
++                if (postContactActions(p).isNotEmpty) ...[
++                  const SizedBox(height: Gap.sm),
++                  PostContactBar(
++                      key: const ValueKey('reel-contact'), post: p, onDark: true),
++                ],
+                 // REKLAMA (egasi, 2026-10-05). Qonun bo'yicha reklama aniq
+                 // belgilanadi; Instagram'dagi "Sponsored" kabi, lekin
+                 // pastida bir bosishda profilga olib boruvchi tugma bor.
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index 969db77..94ea4de 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -1,6 +1,7 @@
+ {
+   "contactCall": "Call",
+   "contactMap": "Map",
++  "postContactLabel": "Contact",
+   "contactWebsite": "Website",
+   "contactLink": "Link",
+   "editContactSection": "Contacts & links",
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index 73e1b5b..1c794cb 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -1,6 +1,7 @@
+ {
+   "contactCall": "Позвонить",
+   "contactMap": "Карта",
++  "postContactLabel": "Связаться",
+   "contactWebsite": "Сайт",
+   "contactLink": "Ссылка",
+   "editContactSection": "Контакты и ссылки",
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index 9de97ac..a5421e6 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -1,6 +1,8 @@
+ {
+   "contactCall": "Qo‘ng‘iroq",
+   "contactMap": "Xarita",
++  "postContactLabel": "Bog‘lanish",
++  "@postContactLabel": {"description": "Biznes postidagi Qo‘ng‘iroq / Telegram / Xarita qatori — ekran o‘quvchi uchun guruh nomi."},
+   "contactWebsite": "Sayt",
+   "contactLink": "Havola",
+   "editContactSection": "Aloqa va havolalar",
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index 0064fa8..82c90cf 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -111,6 +111,12 @@ abstract class L {
+   /// **'Xarita'**
+   String get contactMap;
+ 
++  /// Biznes postidagi Qo‘ng‘iroq / Telegram / Xarita qatori — ekran o‘quvchi uchun guruh nomi.
++  ///
++  /// In uz, this message translates to:
++  /// **'Bog‘lanish'**
++  String get postContactLabel;
++
+   /// No description provided for @contactWebsite.
+   ///
+   /// In uz, this message translates to:
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index 4bfe02a..4dc21de 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -14,6 +14,9 @@ class LEn extends L {
+   @override
+   String get contactMap => 'Map';
+ 
++  @override
++  String get postContactLabel => 'Contact';
++
+   @override
+   String get contactWebsite => 'Website';
+ 
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index c8ad98c..c68d554 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -14,6 +14,9 @@ class LRu extends L {
+   @override
+   String get contactMap => 'Карта';
+ 
++  @override
++  String get postContactLabel => 'Связаться';
++
+   @override
+   String get contactWebsite => 'Сайт';
+ 
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index f30e220..2d3ba05 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -14,6 +14,9 @@ class LUz extends L {
+   @override
+   String get contactMap => 'Xarita';
+ 
++  @override
++  String get postContactLabel => 'Bog‘lanish';
++
+   @override
+   String get contactWebsite => 'Sayt';
+ 
+diff --git a/mobile_nova/test/post_contact_test.dart b/mobile_nova/test/post_contact_test.dart
+new file mode 100644
+index 0000000..44594ae
+--- /dev/null
++++ b/mobile_nova/test/post_contact_test.dart
+@@ -0,0 +1,351 @@
++import 'package:flutter/material.dart';
++import 'package:flutter/rendering.dart' show RenderParagraph;
++import 'package:flutter_localizations/flutter_localizations.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/core/network/api_client.dart';
++import 'package:nfcstore_nova/core/utils/external_link.dart';
++import 'package:nfcstore_nova/core/utils/result.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/data/repositories/business_repository.dart';
++import 'package:nfcstore_nova/data/repositories/social_repository.dart';
++import 'package:nfcstore_nova/design/theme/app_theme.dart';
++import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
++import 'package:nfcstore_nova/features/auth/session.dart';
++import 'package:nfcstore_nova/features/profile/profile_repository.dart';
++import 'package:nfcstore_nova/features/social/feed_card.dart';
++import 'package:nfcstore_nova/features/social/post_contact_bar.dart';
++import 'package:nfcstore_nova/features/social/reels_screen.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
++import 'package:nfcstore_nova/routing/shell.dart';
++import 'package:video_player_platform_interface/video_player_platform_interface.dart';
++
++import 'helpers.dart';
++import 'support/fake_video_platform.dart';
++
++/// BIZNES POSTIDAGI "BOG'LANISH" — Qo'ng'iroq / Telegram / Xarita
++/// (server `contact`, 2026-10).
++///
++///   * model: null-xavfsiz, hammasi bo'sh — `null`; havolalar profildagi
++///     aloqa tugmalari qoidasida; faqat tel/http/https;
++///   * lenta va Reels: faqat kompaniya postida, maydon bo'lmasa — yo'q;
++///   * 360 / 390 / 430 kenglik, ruscha yozuv, Ivory va Noir — toshmaydi.
++
++class _Profile extends ProfileRepository {
++  _Profile() : super(ApiClient());
++
++  @override
++  Future<Result<List<NfcId>>> followList(String code, {String dir = 'followers'}) async =>
++      const Ok([]);
++
++  @override
++  Future<Result<FollowStats>> followStats(String code) async =>
++      const Ok((followers: 0, following: 0, isFollowing: false));
++}
++
++class _Biz extends BusinessRepository {
++  _Biz() : super(ApiClient());
++  @override
++  Future<Result<List<Business>>> mine() async => const Ok([]);
++}
++
++const _full = PostContact(
++  phone: '+998 (90) 123-45-67',
++  telegram: '@kartauz',
++  mapUrl: 'https://www.google.com/maps/dir/?api=1&destination=41.3%2C69.2',
++);
++
++Post _company({PostContact? contact = _full, String text = 'Yangi metall kartalar'}) =>
++    Post(
++      id: 5,
++      code: 'KARTAUZ',
++      authorName: 'Karta Uz',
++      authorKind: 'company',
++      text: text,
++      contact: contact,
++    );
++
++Future<void> _pumpCard(
++  WidgetTester tester,
++  Post post, {
++  double width = 390,
++  Locale locale = const Locale('uz'),
++  NfcTokens? tokens,
++}) async {
++  tester.view.physicalSize = Size(width * 3, 844 * 3);
++  tester.view.devicePixelRatio = 3;
++  addTearDown(tester.view.reset);
++  await tester.pumpWidget(ProviderScope(
++    overrides: [
++      ...await testOverrides(),
++      profileRepositoryProvider.overrideWithValue(_Profile()),
++      businessRepositoryProvider.overrideWithValue(_Biz()),
++      myIdsProvider.overrideWithValue(const [NfcId(code: '48210377', primary: true)]),
++    ],
++    child: MaterialApp(
++      theme: buildTheme(tokens ?? NfcTokens.ivory),
++      locale: locale,
++      supportedLocales: L.supportedLocales,
++      localizationsDelegates: const [
++        L.delegate,
++        GlobalMaterialLocalizations.delegate,
++        GlobalWidgetsLocalizations.delegate,
++        GlobalCupertinoLocalizations.delegate,
++      ],
++      home: Scaffold(
++        body: SingleChildScrollView(
++          padding: const EdgeInsets.symmetric(horizontal: 20),
++          child: FeedCard(post: post),
++        ),
++      ),
++    ),
++  ));
++  await tester.pump();
++  await tester.pump(const Duration(milliseconds: 100));
++}
++
++void main() {
++  group('model', () {
++    test('fromJson: null, Map emas, hammasi bo‘sh — null', () {
++      expect(PostContact.fromJson(null), isNull);
++      expect(PostContact.fromJson('x'), isNull);
++      expect(PostContact.fromJson(const {}), isNull);
++      expect(
++          PostContact.fromJson(const {'phone': null, 'telegram': ' ', 'mapUrl': null}),
++          isNull);
++      final c = PostContact.fromJson(const {'phone': '+998901234567', 'telegram': null})!;
++      expect([c.phone, c.telegram, c.mapUrl], ['+998901234567', '', '']);
++      // Raqam kelsa ham yiqilmaydi (faqat satr olinadi).
++      expect(PostContact.fromJson(const {'phone': 998, 'mapUrl': ''}), isNull);
++    });
++
++    test('Post.fromJson — server shakli; copyWith / copyWithKind saqlaydi', () {
++      final p = Post.fromJson(const {
++        'kind': 'post',
++        'id': 5,
++        'code': 'KARTAUZ',
++        'authorKind': 'company',
++        'caption': 'Salom',
++        'contact': {
++          'phone': '+998 90 123 45 67',
++          'telegram': 'https://t.me/kartauz',
++          'mapUrl': 'https://www.google.com/maps/dir/?api=1&destination=Toshkent',
++        },
++      });
++      expect(p.contact, isNotNull);
++      expect(p.contact!.telegram, 'https://t.me/kartauz');
++      expect(p.copyWith(likes: 3).contact, same(p.contact));
++      expect(p.copyWithKind(authorKind: 'company').contact, same(p.contact));
++      // Kontaktsiz va shaxsiy post.
++      expect(Post.fromJson(const {'id': 1}).contact, isNull);
++    });
++
++    test('havolalar: tartib, tel, Telegram (@, havola, raqam), xarita', () {
++      final a = _full.actions();
++      expect(a.map((e) => e.kind),
++          [ContactKind.phone, ContactKind.telegram, ContactKind.map]);
++      expect(a[0].url, 'tel:+998901234567');
++      expect(a[1].url, 'https://t.me/kartauz');
++      expect(a[2].url, _full.mapUrl);
++
++      String tg(String v) => PostContact(telegram: v).actions().single.url;
++      expect(tg('kartauz'), 'https://t.me/kartauz');
++      expect(tg('t.me/kartauz'), 'https://t.me/kartauz');
++      expect(tg('https://t.me/kartauz?start=1'), 'https://t.me/kartauz');
++      expect(tg('https://t.me/joinchat/AbC'), 'https://t.me/joinchat/AbC');
++      expect(tg('+998 90 123-45-67'), 'https://t.me/+998901234567');
++      expect(tg('998901234567'), 'https://t.me/+998901234567');
++    });
++
++    test('faqat tel / http / https — boshqasi tugmaga aylanmaydi', () {
++      expect(const PostContact(mapUrl: 'javascript:alert(1)').actions(), isEmpty);
++      expect(const PostContact(mapUrl: 'intent://maps#Intent;end').actions(), isEmpty);
++      expect(const PostContact(mapUrl: 'https://').actions(), isEmpty);
++      expect(const PostContact(phone: '—').actions(), isEmpty);
++      expect(isSafeContactUrl('tel:+998901234567'), isTrue);
++      expect(isSafeContactUrl('https://t.me/a b'), isFalse);
++      expect(isSafeContactUrl('http://maps.google.com/?q=1'), isTrue);
++    });
++
++    test('faqat kompaniya posti (istoriya va shaxsiy — yo‘q)', () {
++      expect(postContactActions(_company()), hasLength(3));
++      expect(postContactActions(_company(contact: null)), isEmpty);
++      const personal = Post(id: 1, code: 'ALI000', contact: _full);
++      expect(postContactActions(personal), isEmpty);
++      const story = Post(id: 2, code: 'KARTAUZ', kind: 'story', authorKind: 'company', contact: _full);
++      expect(postContactActions(story), isEmpty);
++    });
++  });
++
++  group('lenta kartasi', () {
++    testWidgets('biznes posti: uch tugma izohdan keyin, amallar qatoridan oldin',
++        (tester) async {
++      await _pumpCard(tester, _company(), width: 600);
++      final l = await L.delegate.load(const Locale('uz'));
++      expect(find.byKey(const ValueKey('post-contact')), findsOneWidget);
++      expect(find.text(l.contactCall), findsOneWidget);
++      expect(find.text('Telegram'), findsOneWidget);
++      expect(find.text(l.contactMap), findsOneWidget);
++      final bar = tester.getRect(find.byKey(const ValueKey('post-contact')));
++      expect(bar.top, greaterThan(tester.getRect(find.text('Yangi metall kartalar')).bottom));
++      expect(bar.bottom, lessThan(tester.getRect(find.byType(Divider)).top));
++    });
++
++    testWidgets('bosilsa — tashqi havola (Telegram)', (tester) async {
++      final opened = <Uri>[];
++      openLinkOverride = (u) async {
++        opened.add(u);
++        return true;
++      };
++      addTearDown(() => openLinkOverride = null);
++      await _pumpCard(tester, _company());
++      await tester.tap(find.byKey(const ValueKey('post-contact-telegram')));
++      await tester.pump();
++      expect(opened.single.toString(), 'https://t.me/kartauz');
++      await tester.tap(find.byKey(const ValueKey('post-contact-phone')));
++      await tester.pump();
++      expect(opened.last.toString(), 'tel:+998901234567');
++    });
++
++    testWidgets('faqat bitta maydon — bitta tugma', (tester) async {
++      await _pumpCard(tester, _company(contact: const PostContact(telegram: 'kartauz')));
++      expect(find.byKey(const ValueKey('post-contact-telegram')), findsOneWidget);
++      expect(find.byKey(const ValueKey('post-contact-phone')), findsNothing);
++      expect(find.byKey(const ValueKey('post-contact-map')), findsNothing);
++    });
++
++    testWidgets('kontaktsiz biznes posti va shaxsiy post — qator yo‘q',
++        (tester) async {
++      await _pumpCard(tester, _company(contact: null));
++      expect(find.byKey(const ValueKey('post-contact')), findsNothing);
++      await _pumpCard(
++          tester, const Post(id: 9, code: 'ALI000', authorName: 'Ali', text: 'x', contact: _full));
++      expect(find.byKey(const ValueKey('post-contact')), findsNothing);
++    });
++
++    for (final width in [360.0, 390.0, 430.0]) {
++      for (final (name, tokens) in [('Ivory', NfcTokens.ivory), ('Noir', NfcTokens.noir)]) {
++        testWidgets('${width.toInt()} px, ruscha, $name — toshmaydi', (tester) async {
++          await _pumpCard(tester, _company(),
++              width: width, locale: const Locale('ru'), tokens: tokens);
++          expect(tester.takeException(), isNull);
++          final bar = tester.getRect(find.byKey(const ValueKey('post-contact')));
++          expect(bar.right, lessThanOrEqualTo(width));
++          for (final k in ['phone', 'telegram', 'map']) {
++            final r = tester.getRect(find.byKey(ValueKey('post-contact-$k')));
++            expect(r.right, lessThanOrEqualTo(bar.right + .01), reason: k);
++            expect(r.height, lessThan(40), reason: 'ixcham kapsula');
++          }
++          // Yozuv YO ko'rinadi va kesilmagan, YO uchalasi ham faqat belgi
++          // (sinov shrifti keng — qaysi biri bo'lishi shriftga bog'liq).
++          final labels = find.descendant(
++              of: find.byKey(const ValueKey('post-contact')),
++              matching: find.byType(RichText));
++          for (final e in labels.evaluate()) {
++            final rp = e.renderObject! as RenderParagraph;
++            final txt = rp.text.toPlainText();
++            if (txt.isEmpty) continue;
++            expect(rp.didExceedMaxLines, isFalse, reason: 'kesilgan: $txt');
++          }
++        });
++      }
++    }
++
++    testWidgets('keng joy — yozuvli; tor joy — faqat belgi, kesilmaydi',
++        (tester) async {
++      Future<void> bar(double w) async {
++        await tester.pumpWidget(MaterialApp(
++          theme: buildTheme(NfcTokens.ivory),
++          locale: const Locale('ru'),
++          supportedLocales: L.supportedLocales,
++          localizationsDelegates: const [
++            L.delegate,
++            GlobalMaterialLocalizations.delegate,
++            GlobalWidgetsLocalizations.delegate,
++            GlobalCupertinoLocalizations.delegate,
++          ],
++          home: Scaffold(
++            body: Align(
++              alignment: Alignment.topLeft,
++              child: SizedBox(width: w, child: PostContactBar(post: _company())),
++            ),
++          ),
++        ));
++        await tester.pump();
++      }
++
++      await bar(900);
++      expect(find.text('Позвонить'), findsOneWidget);
++      expect(find.text('Telegram'), findsOneWidget);
++      expect(find.text('Карта'), findsOneWidget);
++      await bar(150);
++      expect(tester.takeException(), isNull);
++      expect(find.text('Позвонить'), findsNothing);
++      expect(find.text('Telegram'), findsNothing);
++      expect(find.byKey(const ValueKey('post-contact-phone')), findsOneWidget);
++      expect(find.byTooltip('Позвонить'), findsOneWidget,
++          reason: 'nomi bosib turganda ko‘rinadi');
++    });
++
++    testWidgets('360 px, juda katta shrift — baribir toshmaydi', (tester) async {
++      tester.platformDispatcher.textScaleFactorTestValue = 1.3;
++      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
++      await _pumpCard(tester, _company(), width: 360, locale: const Locale('ru'));
++      expect(tester.takeException(), isNull);
++    });
++  });
++
++  group('Reels', () {
++    Future<void> pumpReels(WidgetTester tester, List<Post> reels, {double width = 360}) async {
++      VideoPlayerPlatform.instance = FakeVideoPlatform();
++      tester.view.physicalSize = Size(width * 3, 780 * 3);
++      tester.view.devicePixelRatio = 3;
++      addTearDown(tester.view.reset);
++      final base = await testOverrides();
++      final c = ProviderContainer(overrides: [
++        ...base.where((o) => !identical(o, base[2])),
++        socialRepositoryProvider.overrideWithValue(FakeSocialRepository()),
++        profileRepositoryProvider.overrideWithValue(_Profile()),
++        businessRepositoryProvider.overrideWithValue(_Biz()),
++        reelsProvider.overrideWith((ref) async => reels),
++        activeTabProvider.overrideWith((ref) => 3),
++      ]);
++      addTearDown(c.dispose);
++      await tester.pumpWidget(UncontrolledProviderScope(
++        container: c,
++        child: wrapScreen(const ReelsScreen(), locale: const Locale('ru')),
++      ));
++      await settle(tester, frames: 10);
++    }
++
++    Post reel({String kind = 'company', PostContact? contact = _full}) => Post(
++          id: 31,
++          code: 'KARTAUZ',
++          authorName: 'Очень длинное название компании Карта Уз',
++          authorKind: kind,
++          text: 'Новые металлические карты',
++          mediaUrls: const ['https://nfcstore.uz/uploads/b.mp4'],
++          isVideo: true,
++          contact: contact,
++        );
++
++    testWidgets('biznes reeli (360 px, ruscha): qora shisha kapsulalar, toshmaydi',
++        (tester) async {
++      await pumpReels(tester, [reel()]);
++      expect(tester.takeException(), isNull);
++      expect(find.byKey(const ValueKey('reel-contact')), findsOneWidget);
++      for (final k in ['phone', 'telegram', 'map']) {
++        final r = tester.getRect(find.byKey(ValueKey('post-contact-$k')));
++        // O'ng ustun (layk, izoh...) bilan ustma-ust tushmaydi.
++        expect(r.right, lessThanOrEqualTo(360 - 72 + .01), reason: k);
++      }
++    });
++
++    testWidgets('shaxsiy reel va kontaktsiz biznes reeli — tugma yo‘q',
++        (tester) async {
++      await pumpReels(tester, [reel(kind: 'card'), reel(contact: null)]);
++      expect(find.byKey(const ValueKey('reel-contact')), findsNothing);
++      expect(tester.takeException(), isNull);
++    });
++  });
++}
+-- 
+2.43.0
+

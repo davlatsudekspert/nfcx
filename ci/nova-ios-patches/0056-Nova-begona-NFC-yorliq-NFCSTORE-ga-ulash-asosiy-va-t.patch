@@ -1,0 +1,1754 @@
+From f6bea8dc9cbebfb2afb0408af44aa731860b7e86 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Tue, 6 Oct 2026 10:51:01 +0000
+Subject: [PATCH 56/57] =?UTF-8?q?Nova:=20begona=20NFC=20yorliq=20=E2=80=94?=
+ =?UTF-8?q?=20NFCSTORE'ga=20ulash=20(asosiy)=20va=20tozalash=20(ikkinchi)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Maqsad (egasi): boshqa kompaniyalarning yorliqlarini NFCSTORE'ga
+ulash. Skaner endi `inspect` orqali o'qiydi (hech narsa yozmaydi) —
+matn bilan birga tegning holati: qulflanganmi, identifikatori.
+NFCSTORE yorliqlari avvalgidek.
+
+- Begona, qulflanmagan: izoh ("qulflanmagan — profilingizni yozib
+  vizitkaga aylantiring"), ASOSIY tugma "Profilimni yozish" → mavjud
+  yozish ekrani (u o'zi so'raydi va tegni solishtiradi); NFC ID yo'q —
+  "Avval NFC ID oling" → NFC ID'larim, ID bilan qaytsa — yozish;
+  kirmagan — yozish manzili `go`: router kirishga buradi va keyin
+  qaytaradi. Ikkinchi — "Yorliqni tozalash"; uchinchi — kichik
+  havolalar (brauzerda ochish, qayta urinish).
+- Tozalash: oyna (nima o'chishi ko'rsatiladi) → "Ha, tozalash" → yana
+  tegizish. NfcService.eraseTag: bitta bo'sh yozuv (TNF empty),
+  FAQAT skanerlangan teg (expectIdentity), qulflangan / boshqa teg /
+  vaqt / bekor qilish, qayta o'qib tasdiqlash → "Yorliq tozalandi".
+  Yozish sessiyasi umumiy yordamchiga ko'chdi (writeProfileUrl ham).
+- Qulflangan: faqat "Bu yorliq qulflangan — uni o'zgartirib
+  bo'lmaydi.", tozalash/yozish yo'q.
+- Bo'sh yoki formatlanmagan (formatlanadigan) teg — xato emas: "Bu
+  yorliq bo'sh" + profil yozish taklifi, tozalash yo'q.
+- tagIdentity: iPhone `mifare` kaliti (NTAG stikerlar) — "boshqa teg"
+  himoyasi iPhone'da ham ishlaydi.
+- Amallarni tanlash sof funksiya (foreignTagActions). Sinovlar:
+  test/nfc_foreign_tag_test.dart; eski skaner soxtalari inspect'ga.
+- Matnlar uz/ru/en.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .../lib/features/nfc/ndef_payload.dart        |  15 +-
+ .../lib/features/nfc/nfc_scan_screen.dart     | 373 ++++++++++++-
+ mobile_nova/lib/features/nfc/nfc_service.dart | 105 +++-
+ mobile_nova/lib/features/nfc/scan_target.dart |  72 +++
+ mobile_nova/lib/l10n/arb/app_en.arb           |  14 +
+ mobile_nova/lib/l10n/arb/app_ru.arb           |  14 +
+ mobile_nova/lib/l10n/arb/app_uz.arb           |  16 +
+ .../lib/l10n/gen/app_localizations.dart       |  84 +++
+ .../lib/l10n/gen/app_localizations_en.dart    |  46 ++
+ .../lib/l10n/gen/app_localizations_ru.dart    |  47 ++
+ .../lib/l10n/gen/app_localizations_uz.dart    |  47 ++
+ mobile_nova/test/audit_1006_c_test.dart       |  21 +-
+ mobile_nova/test/nfc_foreign_tag_test.dart    | 522 ++++++++++++++++++
+ mobile_nova/test/nfc_no_freeze_test.dart      |  11 +-
+ 14 files changed, 1356 insertions(+), 31 deletions(-)
+ create mode 100644 mobile_nova/test/nfc_foreign_tag_test.dart
+
+diff --git a/mobile_nova/lib/features/nfc/ndef_payload.dart b/mobile_nova/lib/features/nfc/ndef_payload.dart
+index 3346ff7..a689956 100644
+--- a/mobile_nova/lib/features/nfc/ndef_payload.dart
++++ b/mobile_nova/lib/features/nfc/ndef_payload.dart
+@@ -259,12 +259,17 @@ String profileTagUrl(String base, String code) {
+ /// ketma-ket qaraladi. Hech biri bo'lmasa (iOS'dagi ba'zi teglar)
+ /// bo'sh satr qaytadi va CHAQIRUVCHI buni "solishtirib bo'lmaydi" deb
+ /// qabul qiladi — yo'qlik "boshqa teg" degani EMAS.
++///
++/// `mifare` — iPhone kaliti (`NFCMiFareTag`: NTAG213/215/216 va
++/// Ultralight stikerlar shu yerda). Ilgari u ro'yxatda yo'q edi va
++/// iPhone'da eng ko'p uchraydigan stikerlarning identifikatori bo'sh
++/// chiqardi — ya'ni "boshqa teg" himoyasi u yerda ishlamasdi.
+ String tagIdentity(Map<String, dynamic> data) {
+   // Tartib muhim emas — bitta tegda odatda bittasi bo'ladi.
+   const keys = [
+     'nfca', 'nfcb', 'nfcf', 'nfcv',
+     'mifareclassic', 'mifareultralight', 'ndefformatable',
+-    'iso7816', 'iso15693',
++    'iso7816', 'iso15693', 'mifare',
+   ];
+   for (final k in keys) {
+     final raw = data[k];
+@@ -355,3 +360,11 @@ bool sameWrittenUrl(String expected, String actual) {
+ 
+   return host(a) == host(b) && path(a) == path(b) && a.query == b.query;
+ }
++
++/// TOZALANGANNI QAYTA O'QIB TASDIQLASH.
++///
++/// Tozalashdan keyin tegda o'qiladigan HECH NARSA qolmasligi kerak:
++/// bitta bo'sh yozuv (TNF empty) yoki umuman yozuvsiz xabar. Qiymati
++/// bo'sh bo'lmagan bitta yozuv qolsa ham — tozalanmagan.
++bool looksErased(Iterable<NdefRecordData> records) =>
++    records.every((r) => r.value.trim().isEmpty);
+diff --git a/mobile_nova/lib/features/nfc/nfc_scan_screen.dart b/mobile_nova/lib/features/nfc/nfc_scan_screen.dart
+index 3c3b239..267ddf2 100644
+--- a/mobile_nova/lib/features/nfc/nfc_scan_screen.dart
++++ b/mobile_nova/lib/features/nfc/nfc_scan_screen.dart
+@@ -12,8 +12,10 @@ import '../../design/widgets/buttons.dart';
+ import '../../design/widgets/nfc_orb.dart';
+ import '../../design/widgets/nova_scaffold.dart';
+ import '../../design/widgets/states.dart';
++import '../../design/widgets/surfaces.dart';
+ import '../../l10n/gen/app_localizations.dart';
+ import '../../routing/routes.dart';
++import '../auth/session.dart';
+ import 'nfc_center_screen.dart' show NoNfcPanel;
+ import 'nfc_service.dart';
+ import 'scan_target.dart';
+@@ -39,6 +41,17 @@ class _NfcScanScreenState extends ConsumerState<NfcScanScreen> {
+   /// NFCSTORE yorlig'i bo'lmagan teg mazmuni.
+   ScanForeign? _foreign;
+ 
++  /// Oxirgi o'qilgan teg holati (qulflanganmi, identifikatori) —
++  /// begona / bo'sh yorliq amallari uchun.
++  TagInspection? _tag;
++
++  /// Teg bo'sh, lekin yoziladi (yoki hozirgina tozalandi).
++  bool _blank = false;
++
++  /// Tozalash ketmoqda (ikkinchi tegizish kutilmoqda).
++  bool _erasing = false;
++  String _eraseError = '';
++
+   /// Xizmat oldindan ushlab olinadi.
+   ///
+   /// `dispose()` ichida `ref.read` Riverpod tomonidan TAQIQLANGAN va
+@@ -67,19 +80,25 @@ class _NfcScanScreenState extends ConsumerState<NfcScanScreen> {
+       _message = l.nfcScanning;
+       _resolvedCode = null;
+       _foreign = null;
++      _tag = null;
++      _blank = false;
++      _eraseError = '';
+     });
+ 
++    // `inspect` — faqat O'QIYDI (hech narsa yozmaydi), lekin matn bilan
++    // birga tegning holatini ham beradi: qulflanganmi va identifikatori.
++    // Begona yorliqda "Profilimni yozish" / "Tozalash" shu bo'yicha.
+     // Xato bo'lsa ham ekran "Qidirilmoqda…" da QOLMAYDI.
+-    String? payload;
++    TagInspection tag;
+     try {
+-      payload = await _nfc.readOnce();
++      tag = await _nfc.inspect();
+     } catch (_) {
+-      payload = null;
++      tag = const TagInspection(found: false, error: TagError.io);
+     }
+     if (!mounted) return;
+ 
+     // iPhone: odam tizim oynasida "Bekor qilish" ni bosdi — xato emas.
+-    if ((payload == null || payload.isEmpty) && _nfc.lastCancelled) {
++    if (tag.error == TagError.cancelled || (!tag.found && _nfc.lastCancelled)) {
+       setState(() {
+         _state = OrbState.idle;
+         _message = l.nfcCancelled;
+@@ -87,7 +106,19 @@ class _NfcScanScreenState extends ConsumerState<NfcScanScreen> {
+       return;
+     }
+ 
+-    if (payload == null || payload.isEmpty) {
++    final payload = tag.found ? tag.text : null;
++    if (payload == null || payload.trim().isEmpty) {
++      // BO'SH, lekin yoziladigan teg (yangi stiker, formatlanmagan
++      // teg ham) — xato emas: unga profil yozish taklif qilinadi.
++      if (tag.found && tag.canWrite && !tag.hasContent) {
++        setState(() {
++          _state = OrbState.idle;
++          _message = l.nfcTagBlank;
++          _tag = tag;
++          _blank = true;
++        });
++        return;
++      }
+       setState(() {
+         _state = OrbState.error;
+         _message = l.nfcScanFailed;
+@@ -104,6 +135,7 @@ class _NfcScanScreenState extends ConsumerState<NfcScanScreen> {
+           _state = OrbState.error;
+           _message = l.nfcNotNfcstore;
+           _foreign = target;
++          _tag = tag;
+         });
+         return;
+       case ScanRoute(:final location):
+@@ -114,7 +146,8 @@ class _NfcScanScreenState extends ConsumerState<NfcScanScreen> {
+           setState(() {
+             _state = OrbState.error;
+             _message = l.nfcNotNfcstore;
+-            _foreign = ScanForeign(payload!.trim());
++            _foreign = ScanForeign(payload.trim());
++            _tag = tag;
+           });
+           return;
+         }
+@@ -173,11 +206,150 @@ class _NfcScanScreenState extends ConsumerState<NfcScanScreen> {
+     });
+   }
+ 
++  /// ASOSIY AMAL — begona / bo'sh yorliqni NFCSTORE'ga ulash.
++  ///
++  /// Yangi auth yoki yozish oqimi QURILMAYDI — mavjud marshrutlar:
++  ///   * NFC ID bor — yozish ekrani (u o'zi tegni tekshiradi, ustiga
++  ///     yozishdan oldin so'raydi va o'sha tegning o'zi ekanini
++  ///     solishtiradi);
++  ///   * NFC ID yo'q — "NFC ID'larim"; ID paydo bo'lib qaytsa, darhol
++  ///     yozish ekrani;
++  ///   * kirmagan — yozish manzili `go` bilan ochiladi: router uni
++  ///     "kutilayotgan manzil" sifatida saqlab, kirish / ro'yxatdan
++  ///     o'tish ekraniga buradi va hisob ochilgach AYNAN yozishga
++  ///     qaytaradi.
++  Future<void> _connect(ForeignPrimary p) async {
++    switch (p) {
++      case ForeignPrimary.writeProfile:
++        context.push(Routes.nfcWrite);
++      case ForeignPrimary.getId:
++        await context.push(Routes.nfcIds);
++        if (!mounted) return;
++        if (ref.read(myIdsProvider).isNotEmpty) context.push(Routes.nfcWrite);
++      case ForeignPrimary.signUp:
++        context.go(Routes.nfcWrite);
++    }
++  }
++
++  /// IKKINCHI DARAJALI AMAL — begona, qulflanmagan yorliqni tozalash.
++  ///
++  /// Avval aniq rozilik (nima o'chishi ko'rsatiladi), keyin yana
++  /// tegizish. Xizmat faqat SKANERLANGAN tegning o'zini tozalaydi
++  /// (`expectIdentity`) va natijani qayta o'qib tasdiqlaydi.
++  Future<void> _erase() async {
++    final tag = _tag;
++    final foreign = _foreign;
++    if (tag == null || foreign == null || _erasing) return;
++    final l = L.of(context);
++
++    final ok = await showDialog<bool>(
++      context: context,
++      builder: (ctx) => AlertDialog(
++        key: const ValueKey('nfc-erase-dialog'),
++        title: Text(l.nfcEraseTitle, style: Theme.of(ctx).textTheme.titleLarge),
++        content: Column(
++          mainAxisSize: MainAxisSize.min,
++          crossAxisAlignment: CrossAxisAlignment.start,
++          children: [
++            Text(l.nfcEraseBody, style: Theme.of(ctx).textTheme.bodyMedium),
++            const SizedBox(height: Gap.md),
++            Text(
++              erasePreview(foreign.raw),
++              style: AppType.monoStyle(color: ctx.tokens.text2, size: 12),
++            ),
++          ],
++        ),
++        actions: [
++          TextButton(
++            onPressed: () => Navigator.pop(ctx, false),
++            child: Text(l.actionCancel),
++          ),
++          TextButton(
++            key: const ValueKey('nfc-erase-confirm'),
++            onPressed: () => Navigator.pop(ctx, true),
++            child: Text(l.nfcEraseConfirm,
++                style: TextStyle(color: ctx.tokens.error)),
++          ),
++        ],
++      ),
++    );
++    if (ok != true || !mounted) return;
++
++    setState(() {
++      _erasing = true;
++      _eraseError = '';
++      _state = OrbState.scanning;
++      _message = l.nfcEraseTapAgain;
++    });
++
++    NfcWriteResult res;
++    try {
++      res = await _nfc.eraseTag(expectIdentity: tag.identity);
++    } catch (_) {
++      res = const NfcWriteResult(ok: false, error: TagError.io);
++    }
++    if (!mounted) return;
++
++    if (res.ok) {
++      setState(() {
++        _erasing = false;
++        _state = OrbState.success;
++        _message = l.nfcEraseDone;
++        _foreign = null;
++        _blank = true;
++        // Endi bu — bo'sh, yoziladigan teg.
++        _tag = TagInspection(
++          found: true,
++          isNdef: tag.isNdef,
++          writable: tag.isNdef || tag.writable,
++          formattable: tag.formattable,
++          maxSize: tag.maxSize,
++          identity: tag.identity,
++        );
++      });
++      return;
++    }
++
++    setState(() {
++      _erasing = false;
++      _state = OrbState.error;
++      _message = l.nfcNotNfcstore;
++      // iPhone "Bekor qilish" — xato emas, jim qaytamiz.
++      _eraseError = res.error == TagError.cancelled
++          ? ''
++          : switch (res.error) {
++              TagError.timeout => l.nfcWriteErrTimeout,
++              TagError.notNdef => l.nfcWriteErrNotNdef,
++              TagError.readOnly => l.nfcWriteErrReadOnly,
++              TagError.differentTag => l.nfcWriteErrDifferentTag,
++              TagError.verifyFailed => l.nfcEraseErrVerify,
++              _ => l.nfcWriteErrIo,
++            };
++    });
++    if (res.error == TagError.cancelled) {
++      ScaffoldMessenger.maybeOf(context)
++        ?..hideCurrentSnackBar()
++        ..showSnackBar(SnackBar(content: Text(l.nfcCancelled)));
++    }
++  }
++
+   @override
+   Widget build(BuildContext context) {
+     final l = L.of(context);
+     final t = context.tokens;
+     final availability = ref.watch(nfcAvailabilityProvider);
++    final tag = _tag;
++    final actions = tag == null || (_foreign == null && !_blank)
++        ? null
++        : foreignTagActions(
++            isNdef: tag.isNdef,
++            writable: tag.writable,
++            formattable: tag.formattable,
++            hasContent: tag.hasContent,
++            loggedIn: ref.watch(sessionProvider) is SessionActive,
++            hasId: ref.watch(myIdsProvider).isNotEmpty,
++            webUrl: _foreign?.webUrl,
++          );
+     final orb = (MediaQuery.sizeOf(context).width * .58).clamp(190.0, 280.0);
+ 
+     return NovaScaffold(
+@@ -209,7 +381,12 @@ class _NfcScanScreenState extends ConsumerState<NfcScanScreen> {
+               message: _message,
+               resolvedCode: _resolvedCode,
+               foreign: _foreign,
++              actions: actions,
++              erasing: _erasing,
++              eraseError: _eraseError,
+               onScan: _scan,
++              onConnect: _connect,
++              onErase: _erase,
+             ),
+         },
+       ),
+@@ -224,7 +401,12 @@ class _ScanBody extends StatelessWidget {
+     required this.message,
+     required this.resolvedCode,
+     required this.onScan,
++    required this.onConnect,
++    required this.onErase,
+     this.foreign,
++    this.actions,
++    this.erasing = false,
++    this.eraseError = '',
+   });
+ 
+   final double orb;
+@@ -232,7 +414,14 @@ class _ScanBody extends StatelessWidget {
+   final String? message;
+   final String? resolvedCode;
+   final ScanForeign? foreign;
++
++  /// Begona / bo'sh yorliq amallari (`foreignTagActions`).
++  final ForeignTagActions? actions;
++  final bool erasing;
++  final String eraseError;
+   final VoidCallback onScan;
++  final ValueChanged<ForeignPrimary> onConnect;
++  final VoidCallback onErase;
+ 
+   @override
+   Widget build(BuildContext context) {
+@@ -287,22 +476,10 @@ class _ScanBody extends StatelessWidget {
+               style: AppType.monoStyle(color: t.text1, size: 13),
+             ),
+           ),
+-          if (foreign!.webUrl != null) ...[
+-            const SizedBox(height: Gap.xl),
+-            NovaButton(
+-              key: const ValueKey('nfc-foreign-open'),
+-              label: l.nfcOpenInBrowser,
+-              icon: Icons.open_in_new_rounded,
+-              tone: ButtonTone.outline,
+-              onPressed: () => openLink(foreign!.webUrl.toString()),
+-            ),
+-          ],
+-          const SizedBox(height: Gap.md),
+-          NovaButton(
+-            label: l.actionRetry,
+-            tone: ButtonTone.quiet,
+-            onPressed: onScan,
+-          ),
++          ..._tagActions(context, l.nfcForeignWritableHint),
++        ] else if (actions != null) ...[
++          // BO'SH (yoki hozirgina tozalangan) yorliq.
++          ..._tagActions(context, l.nfcBlankHint),
+         ] else if (resolvedCode != null) ...[
+           const SizedBox(height: Gap.md),
+           Center(
+@@ -344,4 +521,156 @@ class _ScanBody extends StatelessWidget {
+       ],
+     );
+   }
++
++  /// Begona / bo'sh yorliq ostidagi amallar.
++  ///
++  /// Tartib ATAYIN: asosiy — NFCSTORE'ga ulash (to'ldirilgan tugma),
++  /// ikkinchi — tozalash (tinch tugma), uchinchi — kichik havolalar
++  /// (brauzerda ochish, qayta skanerlash). Qulflangan yorliq — faqat
++  /// ma'lumot qatori.
++  List<Widget> _tagActions(BuildContext context, String writableHint) {
++    final l = L.of(context);
++    final t = context.tokens;
++    final text = Theme.of(context).textTheme;
++    final a = actions;
++    final busy = erasing;
++    return [
++      if (a != null && a.locked) ...[
++        const SizedBox(height: Gap.md),
++        Row(
++          key: const ValueKey('nfc-foreign-locked'),
++          mainAxisAlignment: MainAxisAlignment.center,
++          children: [
++            Icon(Icons.lock_rounded, size: 16, color: t.text3),
++            const SizedBox(width: Gap.sm),
++            Flexible(
++              child: Text(l.nfcForeignLocked,
++                  textAlign: TextAlign.center,
++                  style: text.bodySmall?.copyWith(color: t.text2)),
++            ),
++          ],
++        ),
++      ],
++      if (a?.primary case final p?) ...[
++        const SizedBox(height: Gap.md),
++        Text(writableHint,
++            key: const ValueKey('nfc-foreign-hint'),
++            textAlign: TextAlign.center,
++            style: text.bodySmall?.copyWith(color: t.text2)),
++        const SizedBox(height: Gap.xl),
++        NovaButton(
++          key: const ValueKey('nfc-foreign-write'),
++          label: switch (p) {
++            ForeignPrimary.writeProfile => l.nfcForeignWrite,
++            ForeignPrimary.getId => l.nfcForeignGetId,
++            ForeignPrimary.signUp => l.nfcForeignSignUp,
++          },
++          icon: Icons.edit_rounded,
++          onPressed: busy ? null : () => onConnect(p),
++        ),
++      ],
++      if (a != null && a.canErase) ...[
++        const SizedBox(height: Gap.md),
++        NovaButton(
++          key: const ValueKey('nfc-foreign-erase'),
++          label: l.nfcEraseAction,
++          icon: Icons.delete_outline_rounded,
++          tone: ButtonTone.quiet,
++          busy: busy,
++          onPressed: busy ? null : onErase,
++        ),
++      ],
++      if (eraseError.isNotEmpty) ...[
++        const SizedBox(height: Gap.md),
++        Row(
++          key: const ValueKey('nfc-erase-error'),
++          crossAxisAlignment: CrossAxisAlignment.start,
++          children: [
++            Icon(Icons.error_outline_rounded, size: 18, color: t.error),
++            const SizedBox(width: Gap.sm),
++            Expanded(
++              child: Text(eraseError,
++                  style: text.bodySmall?.copyWith(color: t.error)),
++            ),
++          ],
++        ),
++      ],
++      const SizedBox(height: Gap.lg),
++      Wrap(
++        alignment: WrapAlignment.center,
++        spacing: Gap.xl,
++        runSpacing: Gap.sm,
++        children: [
++          if (foreign?.webUrl case final url?)
++            _LinkAction(
++              key: const ValueKey('nfc-foreign-open'),
++              icon: Icons.open_in_new_rounded,
++              label: l.nfcOpenInBrowser,
++              onTap: () => openLink(url.toString()),
++            ),
++          _LinkAction(
++            key: const ValueKey('nfc-foreign-retry'),
++            icon: Icons.replay_rounded,
++            label: l.actionRetry,
++            onTap: busy ? null : onScan,
++          ),
++        ],
++      ),
++    ];
++  }
++}
++
++/// Kichik matnli havola — uchinchi darajali amal (tugma emas).
++class _LinkAction extends StatelessWidget {
++  const _LinkAction({
++    super.key,
++    required this.icon,
++    required this.label,
++    required this.onTap,
++  });
++
++  final IconData icon;
++  final String label;
++  final VoidCallback? onTap;
++
++  @override
++  Widget build(BuildContext context) {
++    final t = context.tokens;
++    final color = onTap == null ? t.text3 : t.accent2;
++    return Semantics(
++      button: true,
++      label: label,
++      child: PressableScale(
++        onTap: onTap,
++        child: Padding(
++          // Bosish maydoni matndan kattaroq (kamida ~44 dp balandlik).
++          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
++          child: Row(
++            mainAxisSize: MainAxisSize.min,
++            children: [
++              Icon(icon, size: 15, color: color),
++              const SizedBox(width: 6),
++              Flexible(
++                child: Text(
++                  label,
++                  maxLines: 1,
++                  overflow: TextOverflow.ellipsis,
++                  style: Theme.of(context)
++                      .textTheme
++                      .labelLarge
++                      ?.copyWith(color: color),
++                ),
++              ),
++            ],
++          ),
++        ),
++      ),
++    );
++  }
++}
++
++/// Tozalash oynasidagi qisqa ko'rinish — tegdagi narsa (90 belgigacha).
++String erasePreview(String raw) {
++  final v = raw.trim().replaceAll(RegExp(r'\s+'), ' ');
++  return v.length > 90 ? '${v.substring(0, 90)}…' : v;
+ }
+diff --git a/mobile_nova/lib/features/nfc/nfc_service.dart b/mobile_nova/lib/features/nfc/nfc_service.dart
+index fb50b39..97e7e2b 100644
+--- a/mobile_nova/lib/features/nfc/nfc_service.dart
++++ b/mobile_nova/lib/features/nfc/nfc_service.dart
+@@ -64,8 +64,42 @@ class TagInspection {
+ 
+   /// Tegda allaqachon biror narsa bormi — ogohlantirish shu bo'yicha.
+   bool get hasContent => records.any((r) => r.value.trim().isNotEmpty);
++
++  /// Ustiga yozish MUMKINMI: qulflanmagan NDEF yoki formatlanadigan
++  /// (bo'sh) teg.
++  bool get canWrite => isNdef ? writable : formattable;
++
++  /// Skaner uchun tegning MATNI — `readOnce` bilan bir xil qoida:
++  /// birinchi URI yoki matn yozuvi. Ular bo'lmasa (vCard, MIME) —
++  /// birinchi bo'sh bo'lmagan yozuv; hech narsa bo'lmasa `null`.
++  String? get text {
++    for (final r in records) {
++      if ((r.kind == NdefKind.uri || r.kind == NdefKind.text) &&
++          r.value.trim().isNotEmpty) {
++        return r.value;
++      }
++    }
++    for (final r in records) {
++      if (r.value.trim().isNotEmpty) return r.value;
++    }
++    return null;
++  }
+ }
+ 
++/// TOZALASH UCHUN XABAR — bitta bo'sh yozuv (TNF empty).
++///
++/// NFC Forum bo'yicha "bo'sh teg" shunday ko'rinadi. Umuman yozuvsiz
++/// xabarni Android ham, iPhone ham yozmaydi, shuning uchun bitta bo'sh
++/// yozuv — tegni tozalashning standart usuli.
++NdefMessage emptyNdefMessage() => NdefMessage([
++      NdefRecord(
++        typeNameFormat: NdefTypeNameFormat.empty,
++        type: Uint8List(0),
++        identifier: Uint8List(0),
++        payload: Uint8List(0),
++      ),
++    ]);
++
+ /// NFC amaliyoti nega bajarilmadi.
+ enum TagError {
+   none,
+@@ -340,6 +374,36 @@ class NfcService {
+     }
+ 
+     final message = NdefMessage([NdefRecord.createUri(Uri.parse(url))]);
++    return _tagWrite(
++      (tag) => _writeTag(tag, message, url, expectIdentity),
++      timeout: timeout,
++    );
++  }
++
++  /// YORLIQNI TOZALASH — begona, qulflanmagan teg (skaner ekrani).
++  ///
++  /// `writeProfileUrl` bilan BIR XIL himoya: [expectIdentity] —
++  /// skanerda ko'rsatilgan va odam "Ha, tozalash" degan teg. Boshqa
++  /// teg tutilsa tegilmaydi (`differentTag`). Bitta bo'sh yozuv
++  /// yoziladi va QAYTA O'QIB tekshiriladi: tegda o'qiladigan hech
++  /// narsa qolmaganidan keyingina `ok`.
++  ///
++  /// Formatlanmagan (NDEF bo'lmagan, formatlanadigan) teg allaqachon
++  /// bo'sh — hech narsa yozilmaydi, `ok`.
++  Future<NfcWriteResult> eraseTag({
++    required String expectIdentity,
++    Duration timeout = const Duration(seconds: 30),
++  }) =>
++      _tagWrite((tag) => _eraseTag(tag, expectIdentity), timeout: timeout);
++
++  /// Yozish sessiyasi — tegizishni kutadi va [body] ni bajaradi.
++  ///
++  /// Bekor qilish (iPhone), vaqt tugashi va platforma xatosi bu yerda
++  /// BIR JOYDA `NfcWriteResult` ga aylanadi.
++  Future<NfcWriteResult> _tagWrite(
++    Future<NfcWriteResult> Function(NfcTag tag) body, {
++    required Duration timeout,
++  }) async {
+     final completer = Completer<NfcWriteResult>();
+ 
+     // Oldingi sessiya ochiq qolgan bo'lsa — avval yopiladi.
+@@ -353,7 +417,7 @@ class NfcService {
+           if (completer.isCompleted) return;
+           NfcWriteResult r;
+           try {
+-            r = await _writeTag(tag, message, url, expectIdentity);
++            r = await body(tag);
+           } catch (_) {
+             r = const NfcWriteResult(ok: false, error: TagError.io);
+           }
+@@ -379,6 +443,45 @@ class NfcService {
+     });
+   }
+ 
++  Future<NfcWriteResult> _eraseTag(NfcTag tag, String expectIdentity) async {
++    // Rozilik berilgan tegmi.
++    final identity = tagIdentity(tag.data);
++    if (expectIdentity.isNotEmpty && identity.isNotEmpty && identity != expectIdentity) {
++      return const NfcWriteResult(ok: false, error: TagError.differentTag);
++    }
++
++    try {
++      final ndef = Ndef.from(tag);
++      if (ndef == null) {
++        // Formatlanmagan teg — unda o'chiriladigan narsa yo'q.
++        return NdefFormatable.from(tag) != null
++            ? const NfcWriteResult(ok: true)
++            : const NfcWriteResult(ok: false, error: TagError.notNdef);
++      }
++      if (!ndef.isWritable) {
++        return const NfcWriteResult(ok: false, error: TagError.readOnly);
++      }
++
++      await ndef.write(emptyNdefMessage());
++
++      // QAYTA O'QIB TASDIQLASH — "tozalandi" yozuvining YAGONA asosi.
++      final back = await ndef.read();
++      final records = [
++        for (final r in back.records)
++          classifyRecord(
++            typeNameFormat: r.typeNameFormat.index,
++            type: r.type,
++            payload: r.payload,
++          ),
++      ];
++      return looksErased(records)
++          ? const NfcWriteResult(ok: true)
++          : const NfcWriteResult(ok: false, error: TagError.verifyFailed);
++    } catch (_) {
++      return const NfcWriteResult(ok: false, error: TagError.io);
++    }
++  }
++
+   Future<NfcWriteResult> _writeTag(
+     NfcTag tag,
+     NdefMessage message,
+diff --git a/mobile_nova/lib/features/nfc/scan_target.dart b/mobile_nova/lib/features/nfc/scan_target.dart
+index 4802a2e..3e88c10 100644
+--- a/mobile_nova/lib/features/nfc/scan_target.dart
++++ b/mobile_nova/lib/features/nfc/scan_target.dart
+@@ -80,3 +80,75 @@ ScanTarget classifyScan(String payload) {
+   return ScanRoute(
+       '/${seg.join('/')}${uri.hasQuery ? '?${uri.query}' : ''}');
+ }
++
++// ═══════════════════════════════════════════════════════════════════
++// BEGONA YORLIQ — QAYSI AMALLAR KO'RINADI
++//
++// Maqsad (egasi, 2026-10-06): boshqa kompaniyalarning NFC yorliqlarini
++// NFCSTORE'ga ulash. Qulflanmagan begona yorliqda ASOSIY amal —
++// "Profilimni yozish" (mavjud yozish oqimi: u o'zi ustiga yozishdan
++// oldin so'raydi va tegning o'zi ekanini tekshiradi). "Tozalash" —
++// ikkinchi darajali. Qulflangan yorliq — faqat ma'lumot.
++//
++// Mantiq telefonsiz sinalishi uchun shu yerda, ekran faqat chizadi.
++// ═══════════════════════════════════════════════════════════════════
++
++/// Asosiy (to'ldirilgan) tugma nima qiladi.
++enum ForeignPrimary {
++  /// NFC ID bor — yozish ekrani.
++  writeProfile,
++
++  /// Kirgan, lekin NFC ID hali yo'q — avval ID, keyin yozish.
++  getId,
++
++  /// Kirmagan — avval ro'yxatdan o'tish / kirish, keyin yozish.
++  signUp,
++}
++
++/// Begona (yoki bo'sh) yorliq uchun ko'rinadigan amallar.
++class ForeignTagActions {
++  const ForeignTagActions({
++    this.primary,
++    this.canErase = false,
++    this.locked = false,
++    this.openUrl,
++  });
++
++  /// `null` — asosiy tugma yo'q (qulflangan / yozib bo'lmaydigan teg).
++  final ForeignPrimary? primary;
++
++  /// "Yorliqni tozalash" — faqat qulflanmagan, ICHIDA NIMADIR BOR
++  /// NDEF tegda. Bo'sh yoki formatlanmagan tegni tozalashga hojat yo'q.
++  final bool canErase;
++
++  /// "Bu yorliq qulflangan — uni o'zgartirib bo'lmaydi."
++  final bool locked;
++
++  /// Veb manzil bo'lsa — kichik "Brauzerda ochish" havolasi.
++  final Uri? openUrl;
++}
++
++ForeignTagActions foreignTagActions({
++  required bool isNdef,
++  required bool writable,
++  required bool formattable,
++  required bool hasContent,
++  required bool loggedIn,
++  required bool hasId,
++  Uri? webUrl,
++}) {
++  final locked = isNdef && !writable;
++  final canWrite = isNdef ? writable : formattable;
++  return ForeignTagActions(
++    primary: !canWrite
++        ? null
++        : !loggedIn
++            ? ForeignPrimary.signUp
++            : hasId
++                ? ForeignPrimary.writeProfile
++                : ForeignPrimary.getId,
++    canErase: canWrite && isNdef && hasContent,
++    locked: locked,
++    openUrl: webUrl,
++  );
++}
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index 00fa4be..969db77 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -1190,6 +1190,20 @@
+   "nfcCancelled": "Cancelled",
+   "nfcNotNfcstore": "This is not an NFCSTORE tag",
+   "nfcOpenInBrowser": "Open in browser",
++  "nfcForeignWritableHint": "This tag isn’t locked — write your NFCSTORE profile to it and turn it into a business card that opens on any phone.",
++  "nfcForeignLocked": "This tag is locked — it can’t be changed.",
++  "nfcTagBlank": "This tag is empty",
++  "nfcBlankHint": "Write your NFCSTORE profile to it and turn it into a business card that opens on any phone.",
++  "nfcForeignWrite": "Write my profile",
++  "nfcForeignGetId": "Get an NFC ID first",
++  "nfcForeignSignUp": "Sign up to write",
++  "nfcEraseAction": "Erase tag",
++  "nfcEraseTitle": "Erase this tag?",
++  "nfcEraseBody": "Everything on this tag will be permanently deleted. This can’t be undone.",
++  "nfcEraseConfirm": "Yes, erase",
++  "nfcEraseTapAgain": "Tap the tag again to erase it",
++  "nfcEraseDone": "Tag erased",
++  "nfcEraseErrVerify": "Written, but the tag wasn’t empty when read back. Try again.",
+   "deleteAccountAppleSub": "A Premium subscription bought through Apple is not cancelled when you delete your account — billing continues until you cancel it. Cancel it in your App Store subscriptions.",
+   "errFollowSelf": "You can’t follow yourself",
+   "errLimitReached": "Limit reached",
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index c2be54e..73e1b5b 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -1190,6 +1190,20 @@
+   "nfcCancelled": "Отменено",
+   "nfcNotNfcstore": "Это не метка NFCSTORE",
+   "nfcOpenInBrowser": "Открыть в браузере",
++  "nfcForeignWritableHint": "Эта метка не заблокирована — запишите на неё свой профиль NFCSTORE, и она станет визиткой, которая открывается на любом телефоне.",
++  "nfcForeignLocked": "Эта метка заблокирована — её нельзя изменить.",
++  "nfcTagBlank": "Эта метка пустая",
++  "nfcBlankHint": "Запишите на неё свой профиль NFCSTORE — она станет визиткой, которая открывается на любом телефоне.",
++  "nfcForeignWrite": "Записать мой профиль",
++  "nfcForeignGetId": "Сначала получите NFC ID",
++  "nfcForeignSignUp": "Зарегистрироваться и записать",
++  "nfcEraseAction": "Очистить метку",
++  "nfcEraseTitle": "Очистить метку?",
++  "nfcEraseBody": "Данные на этой метке будут удалены безвозвратно. Это действие нельзя отменить.",
++  "nfcEraseConfirm": "Да, очистить",
++  "nfcEraseTapAgain": "Приложите метку ещё раз, чтобы очистить",
++  "nfcEraseDone": "Метка очищена",
++  "nfcEraseErrVerify": "Запись прошла, но при проверке метка не оказалась пустой. Попробуйте ещё раз.",
+   "deleteAccountAppleSub": "Подписка Premium, оформленная через Apple, не отменяется при удалении аккаунта — оплата продолжится, пока вы её не отмените. Отмените её в подписках App Store.",
+   "errFollowSelf": "Нельзя подписаться на себя",
+   "errLimitReached": "Достигнут лимит",
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index 0e48c25..9de97ac 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -1342,6 +1342,22 @@
+   "nfcCancelled": "Bekor qilindi",
+   "nfcNotNfcstore": "Bu NFCSTORE yorlig‘i emas",
+   "nfcOpenInBrowser": "Brauzerda ochish",
++  "nfcForeignWritableHint": "Bu yorliq qulflanmagan — unga o‘z NFCSTORE profilingizni yozib, istalgan telefonda ochiladigan vizitkaga aylantirishingiz mumkin.",
++  "@nfcForeignWritableHint": {"description": "Skaner: begona, qulflanmagan yorliq ostidagi izoh. Maqsad — yorliqni NFCSTORE profiliga ulash (asosiy tugma), tozalash — ikkinchi darajali."},
++  "nfcForeignLocked": "Bu yorliq qulflangan — uni o‘zgartirib bo‘lmaydi.",
++  "nfcTagBlank": "Bu yorliq bo‘sh",
++  "nfcBlankHint": "Unga o‘z NFCSTORE profilingizni yozib, istalgan telefonda ochiladigan vizitkaga aylantirishingiz mumkin.",
++  "nfcForeignWrite": "Profilimni yozish",
++  "nfcForeignGetId": "Avval NFC ID oling",
++  "nfcForeignSignUp": "Ro‘yxatdan o‘tib yozish",
++  "nfcEraseAction": "Yorliqni tozalash",
++  "nfcEraseTitle": "Yorliq tozalansinmi?",
++  "nfcEraseBody": "Bu yorliqdagi ma’lumot butunlay o‘chiriladi. Buni qaytarib bo‘lmaydi.",
++  "@nfcEraseBody": {"description": "Tozalash oynasi: tasdiqlashdan oldin yorliqdagi mazmun pastda ko‘rsatiladi."},
++  "nfcEraseConfirm": "Ha, tozalash",
++  "nfcEraseTapAgain": "Tozalash uchun yorliqni yana tegizing",
++  "nfcEraseDone": "Yorliq tozalandi",
++  "nfcEraseErrVerify": "Yozildi, lekin qayta o‘qiganda yorliq bo‘sh chiqmadi. Yana urinib ko‘ring.",
+   "deleteAccountAppleSub": "Apple orqali olingan Premium obunasi hisob o‘chirilganda o‘zi bekor bo‘lmaydi — bekor qilinmaguncha to‘lov davom etadi. Uni App Store obunalarida bekor qiling.",
+   "errFollowSelf": "O‘zingizga obuna bo‘lib bo‘lmaydi",
+   "errLimitReached": "Chegaraga yetildi",
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index 98aacbd..0064fa8 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -6219,6 +6219,90 @@ abstract class L {
+   /// **'Brauzerda ochish'**
+   String get nfcOpenInBrowser;
+ 
++  /// Skaner: begona, qulflanmagan yorliq ostidagi izoh. Maqsad — yorliqni NFCSTORE profiliga ulash (asosiy tugma), tozalash — ikkinchi darajali.
++  ///
++  /// In uz, this message translates to:
++  /// **'Bu yorliq qulflanmagan — unga o‘z NFCSTORE profilingizni yozib, istalgan telefonda ochiladigan vizitkaga aylantirishingiz mumkin.'**
++  String get nfcForeignWritableHint;
++
++  /// No description provided for @nfcForeignLocked.
++  ///
++  /// In uz, this message translates to:
++  /// **'Bu yorliq qulflangan — uni o‘zgartirib bo‘lmaydi.'**
++  String get nfcForeignLocked;
++
++  /// No description provided for @nfcTagBlank.
++  ///
++  /// In uz, this message translates to:
++  /// **'Bu yorliq bo‘sh'**
++  String get nfcTagBlank;
++
++  /// No description provided for @nfcBlankHint.
++  ///
++  /// In uz, this message translates to:
++  /// **'Unga o‘z NFCSTORE profilingizni yozib, istalgan telefonda ochiladigan vizitkaga aylantirishingiz mumkin.'**
++  String get nfcBlankHint;
++
++  /// No description provided for @nfcForeignWrite.
++  ///
++  /// In uz, this message translates to:
++  /// **'Profilimni yozish'**
++  String get nfcForeignWrite;
++
++  /// No description provided for @nfcForeignGetId.
++  ///
++  /// In uz, this message translates to:
++  /// **'Avval NFC ID oling'**
++  String get nfcForeignGetId;
++
++  /// No description provided for @nfcForeignSignUp.
++  ///
++  /// In uz, this message translates to:
++  /// **'Ro‘yxatdan o‘tib yozish'**
++  String get nfcForeignSignUp;
++
++  /// No description provided for @nfcEraseAction.
++  ///
++  /// In uz, this message translates to:
++  /// **'Yorliqni tozalash'**
++  String get nfcEraseAction;
++
++  /// No description provided for @nfcEraseTitle.
++  ///
++  /// In uz, this message translates to:
++  /// **'Yorliq tozalansinmi?'**
++  String get nfcEraseTitle;
++
++  /// Tozalash oynasi: tasdiqlashdan oldin yorliqdagi mazmun pastda ko‘rsatiladi.
++  ///
++  /// In uz, this message translates to:
++  /// **'Bu yorliqdagi ma’lumot butunlay o‘chiriladi. Buni qaytarib bo‘lmaydi.'**
++  String get nfcEraseBody;
++
++  /// No description provided for @nfcEraseConfirm.
++  ///
++  /// In uz, this message translates to:
++  /// **'Ha, tozalash'**
++  String get nfcEraseConfirm;
++
++  /// No description provided for @nfcEraseTapAgain.
++  ///
++  /// In uz, this message translates to:
++  /// **'Tozalash uchun yorliqni yana tegizing'**
++  String get nfcEraseTapAgain;
++
++  /// No description provided for @nfcEraseDone.
++  ///
++  /// In uz, this message translates to:
++  /// **'Yorliq tozalandi'**
++  String get nfcEraseDone;
++
++  /// No description provided for @nfcEraseErrVerify.
++  ///
++  /// In uz, this message translates to:
++  /// **'Yozildi, lekin qayta o‘qiganda yorliq bo‘sh chiqmadi. Yana urinib ko‘ring.'**
++  String get nfcEraseErrVerify;
++
+   /// No description provided for @deleteAccountAppleSub.
+   ///
+   /// In uz, this message translates to:
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index 2ae881f..4bfe02a 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -3426,6 +3426,52 @@ class LEn extends L {
+   @override
+   String get nfcOpenInBrowser => 'Open in browser';
+ 
++  @override
++  String get nfcForeignWritableHint =>
++      'This tag isn’t locked — write your NFCSTORE profile to it and turn it into a business card that opens on any phone.';
++
++  @override
++  String get nfcForeignLocked => 'This tag is locked — it can’t be changed.';
++
++  @override
++  String get nfcTagBlank => 'This tag is empty';
++
++  @override
++  String get nfcBlankHint =>
++      'Write your NFCSTORE profile to it and turn it into a business card that opens on any phone.';
++
++  @override
++  String get nfcForeignWrite => 'Write my profile';
++
++  @override
++  String get nfcForeignGetId => 'Get an NFC ID first';
++
++  @override
++  String get nfcForeignSignUp => 'Sign up to write';
++
++  @override
++  String get nfcEraseAction => 'Erase tag';
++
++  @override
++  String get nfcEraseTitle => 'Erase this tag?';
++
++  @override
++  String get nfcEraseBody =>
++      'Everything on this tag will be permanently deleted. This can’t be undone.';
++
++  @override
++  String get nfcEraseConfirm => 'Yes, erase';
++
++  @override
++  String get nfcEraseTapAgain => 'Tap the tag again to erase it';
++
++  @override
++  String get nfcEraseDone => 'Tag erased';
++
++  @override
++  String get nfcEraseErrVerify =>
++      'Written, but the tag wasn’t empty when read back. Try again.';
++
+   @override
+   String get deleteAccountAppleSub =>
+       'A Premium subscription bought through Apple is not cancelled when you delete your account — billing continues until you cancel it. Cancel it in your App Store subscriptions.';
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index 68e92c5..c8ad98c 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -3445,6 +3445,53 @@ class LRu extends L {
+   @override
+   String get nfcOpenInBrowser => 'Открыть в браузере';
+ 
++  @override
++  String get nfcForeignWritableHint =>
++      'Эта метка не заблокирована — запишите на неё свой профиль NFCSTORE, и она станет визиткой, которая открывается на любом телефоне.';
++
++  @override
++  String get nfcForeignLocked =>
++      'Эта метка заблокирована — её нельзя изменить.';
++
++  @override
++  String get nfcTagBlank => 'Эта метка пустая';
++
++  @override
++  String get nfcBlankHint =>
++      'Запишите на неё свой профиль NFCSTORE — она станет визиткой, которая открывается на любом телефоне.';
++
++  @override
++  String get nfcForeignWrite => 'Записать мой профиль';
++
++  @override
++  String get nfcForeignGetId => 'Сначала получите NFC ID';
++
++  @override
++  String get nfcForeignSignUp => 'Зарегистрироваться и записать';
++
++  @override
++  String get nfcEraseAction => 'Очистить метку';
++
++  @override
++  String get nfcEraseTitle => 'Очистить метку?';
++
++  @override
++  String get nfcEraseBody =>
++      'Данные на этой метке будут удалены безвозвратно. Это действие нельзя отменить.';
++
++  @override
++  String get nfcEraseConfirm => 'Да, очистить';
++
++  @override
++  String get nfcEraseTapAgain => 'Приложите метку ещё раз, чтобы очистить';
++
++  @override
++  String get nfcEraseDone => 'Метка очищена';
++
++  @override
++  String get nfcEraseErrVerify =>
++      'Запись прошла, но при проверке метка не оказалась пустой. Попробуйте ещё раз.';
++
+   @override
+   String get deleteAccountAppleSub =>
+       'Подписка Premium, оформленная через Apple, не отменяется при удалении аккаунта — оплата продолжится, пока вы её не отмените. Отмените её в подписках App Store.';
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index 47b6aed..f30e220 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -3406,6 +3406,53 @@ class LUz extends L {
+   @override
+   String get nfcOpenInBrowser => 'Brauzerda ochish';
+ 
++  @override
++  String get nfcForeignWritableHint =>
++      'Bu yorliq qulflanmagan — unga o‘z NFCSTORE profilingizni yozib, istalgan telefonda ochiladigan vizitkaga aylantirishingiz mumkin.';
++
++  @override
++  String get nfcForeignLocked =>
++      'Bu yorliq qulflangan — uni o‘zgartirib bo‘lmaydi.';
++
++  @override
++  String get nfcTagBlank => 'Bu yorliq bo‘sh';
++
++  @override
++  String get nfcBlankHint =>
++      'Unga o‘z NFCSTORE profilingizni yozib, istalgan telefonda ochiladigan vizitkaga aylantirishingiz mumkin.';
++
++  @override
++  String get nfcForeignWrite => 'Profilimni yozish';
++
++  @override
++  String get nfcForeignGetId => 'Avval NFC ID oling';
++
++  @override
++  String get nfcForeignSignUp => 'Ro‘yxatdan o‘tib yozish';
++
++  @override
++  String get nfcEraseAction => 'Yorliqni tozalash';
++
++  @override
++  String get nfcEraseTitle => 'Yorliq tozalansinmi?';
++
++  @override
++  String get nfcEraseBody =>
++      'Bu yorliqdagi ma’lumot butunlay o‘chiriladi. Buni qaytarib bo‘lmaydi.';
++
++  @override
++  String get nfcEraseConfirm => 'Ha, tozalash';
++
++  @override
++  String get nfcEraseTapAgain => 'Tozalash uchun yorliqni yana tegizing';
++
++  @override
++  String get nfcEraseDone => 'Yorliq tozalandi';
++
++  @override
++  String get nfcEraseErrVerify =>
++      'Yozildi, lekin qayta o‘qiganda yorliq bo‘sh chiqmadi. Yana urinib ko‘ring.';
++
+   @override
+   String get deleteAccountAppleSub =>
+       'Apple orqali olingan Premium obunasi hisob o‘chirilganda o‘zi bekor bo‘lmaydi — bekor qilinmaguncha to‘lov davom etadi. Uni App Store obunalarida bekor qiling.';
+diff --git a/mobile_nova/test/audit_1006_c_test.dart b/mobile_nova/test/audit_1006_c_test.dart
+index d6f4d5a..830b602 100644
+--- a/mobile_nova/test/audit_1006_c_test.dart
++++ b/mobile_nova/test/audit_1006_c_test.dart
+@@ -8,6 +8,7 @@ import 'package:nfcstore_nova/app/providers.dart';
+ import 'package:nfcstore_nova/core/utils/external_link.dart';
+ import 'package:nfcstore_nova/design/theme/app_theme.dart';
+ import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
++import 'package:nfcstore_nova/features/nfc/ndef_payload.dart';
+ import 'package:nfcstore_nova/features/nfc/nfc_scan_screen.dart';
+ import 'package:nfcstore_nova/features/nfc/nfc_service.dart';
+ import 'package:nfcstore_nova/features/nfc/scan_target.dart';
+@@ -41,10 +42,26 @@ class _Nfc extends NfcService {
+   @override
+   Future<NfcAvailability> check() async => NfcAvailability.ready;
+ 
++  // Skaner `inspect` orqali o'qiydi: matn + teg holati.
+   @override
+-  Future<String?> readOnce({Duration timeout = const Duration(seconds: 30)}) async {
++  Future<TagInspection> inspect({Duration timeout = const Duration(seconds: 30)}) async {
+     lastCancelled = cancelled;
+-    return payload;
++    final p = payload;
++    if (p == null) {
++      return TagInspection(
++          found: false,
++          error: cancelled ? TagError.cancelled : TagError.timeout);
++    }
++    return TagInspection(
++      found: true,
++      isNdef: true,
++      writable: true,
++      identity: '04aa',
++      records: [
++        NdefRecordData(
++            kind: p.contains(':') ? NdefKind.uri : NdefKind.text, value: p),
++      ],
++    );
+   }
+ }
+ 
+diff --git a/mobile_nova/test/nfc_foreign_tag_test.dart b/mobile_nova/test/nfc_foreign_tag_test.dart
+new file mode 100644
+index 0000000..21e6136
+--- /dev/null
++++ b/mobile_nova/test/nfc_foreign_tag_test.dart
+@@ -0,0 +1,522 @@
++import 'package:flutter/material.dart';
++import 'package:flutter/services.dart';
++import 'package:flutter_localizations/flutter_localizations.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:go_router/go_router.dart';
++import 'package:nfc_manager/nfc_manager.dart';
++import 'package:nfcstore_nova/app/providers.dart';
++import 'package:nfcstore_nova/features/auth/session.dart';
++import 'package:nfcstore_nova/design/theme/app_theme.dart';
++import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
++import 'package:nfcstore_nova/features/nfc/ndef_payload.dart';
++import 'package:nfcstore_nova/features/nfc/nfc_scan_screen.dart';
++import 'package:nfcstore_nova/features/nfc/nfc_service.dart';
++import 'package:nfcstore_nova/features/nfc/scan_target.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
++import 'package:nfcstore_nova/routing/routes.dart';
++
++import 'helpers.dart';
++
++/// BEGONA NFC YORLIG'I — NFCSTORE'GA ULASH VA TOZALASH (egasi,
++/// 2026-10-06).
++///
++///   * qulflanmagan begona yorliq: asosiy amal — "Profilimni yozish"
++///     (kirmagan — ro'yxatdan o'tish, ID yo'q — avval ID), ikkinchi —
++///     "Yorliqni tozalash";
++///   * qulflangan: faqat "qulflangan" qatori;
++///   * tozalash — aniq roziligdan keyin, FAQAT skanerlangan tegning
++///     o'zi, qayta o'qib tasdiqlanadi.
++
++// ── Soxta xizmat ──────────────────────────────────────────────────
++
++class _Nfc extends NfcService {
++  _Nfc(this.tag, {this.erase = const NfcWriteResult(ok: true)});
++
++  final TagInspection tag;
++  final NfcWriteResult erase;
++  final erased = <String>[];
++
++  @override
++  Future<NfcAvailability> check() async => NfcAvailability.ready;
++
++  @override
++  Future<TagInspection> inspect({Duration timeout = const Duration(seconds: 30)}) async =>
++      tag;
++
++  @override
++  Future<NfcWriteResult> eraseTag({
++    required String expectIdentity,
++    Duration timeout = const Duration(seconds: 30),
++  }) async {
++    erased.add(expectIdentity);
++    return erase;
++  }
++
++  @override
++  Future<void> stop() async {}
++}
++
++TagInspection _foreign({bool writable = true, String text = 'https://example.com/menu'}) =>
++    TagInspection(
++      found: true,
++      isNdef: true,
++      writable: writable,
++      maxSize: 144,
++      identity: '04a20bff',
++      records: [NdefRecordData(kind: NdefKind.uri, value: text)],
++    );
++
++Future<void> _pump(
++  WidgetTester tester,
++  NfcService nfc, {
++  bool signedIn = true,
++  bool hasId = true,
++}) async {
++  tester.view.physicalSize = const Size(1170, 2532);
++  tester.view.devicePixelRatio = 3;
++  addTearDown(tester.view.reset);
++  final router = GoRouter(routes: [
++    GoRoute(path: '/', builder: (_, __) => const NfcScanScreen()),
++    GoRoute(
++        path: Routes.nfcWrite,
++        builder: (_, __) => const Scaffold(body: Text('WRITE SCREEN'))),
++    GoRoute(
++        path: Routes.nfcIds,
++        builder: (_, __) => const Scaffold(body: Text('IDS SCREEN'))),
++  ]);
++  final overrides = [
++    ...await testOverrides(signedIn: signedIn),
++    nfcServiceProvider.overrideWithValue(nfc),
++  ];
++  // ID'siz hisob: `testOverrides` dagi auth (1-o'rin) almashtiriladi.
++  if (!hasId) {
++    overrides[1] =
++        authRepositoryProvider.overrideWithValue(FakeAuthRepository(ids: const []));
++  }
++  await tester.pumpWidget(ProviderScope(
++    overrides: overrides,
++    child: MaterialApp.router(
++      routerConfig: router,
++      theme: buildTheme(NfcTokens.ivory),
++      locale: const Locale('uz'),
++      supportedLocales: LocaleController.supported,
++      localizationsDelegates: const [
++        L.delegate,
++        GlobalMaterialLocalizations.delegate,
++        GlobalWidgetsLocalizations.delegate,
++        GlobalCupertinoLocalizations.delegate,
++      ],
++    ),
++  ));
++  await settle(tester);
++}
++
++Future<void> _scan(WidgetTester tester, L l) async {
++  await tester.tap(find.text(l.nfcTapToScan).last);
++  await settle(tester);
++}
++
++Future<void> _tapKey(WidgetTester tester, String key) async {
++  final f = find.byKey(ValueKey(key));
++  await tester.ensureVisible(f);
++  await tester.pump();
++  await tester.tap(f);
++  await settle(tester);
++}
++
++Future<L> _uz() => L.delegate.load(const Locale('uz'));
++
++void main() {
++  group('amallarni tanlash (sof mantiq)', () {
++    ForeignTagActions plan({
++      bool isNdef = true,
++      bool writable = true,
++      bool formattable = false,
++      bool hasContent = true,
++      bool loggedIn = true,
++      bool hasId = true,
++      Uri? webUrl,
++    }) =>
++        foreignTagActions(
++          isNdef: isNdef,
++          writable: writable,
++          formattable: formattable,
++          hasContent: hasContent,
++          loggedIn: loggedIn,
++          hasId: hasId,
++          webUrl: webUrl,
++        );
++
++    test('qulflanmagan begona: asosiy — profil yozish, tozalash bor', () {
++      final a = plan(webUrl: Uri.parse('https://example.com'));
++      expect(a.primary, ForeignPrimary.writeProfile);
++      expect(a.canErase, isTrue);
++      expect(a.locked, isFalse);
++      expect(a.openUrl.toString(), 'https://example.com');
++    });
++
++    test('qulflangan begona: faqat ma’lumot', () {
++      final a = plan(writable: false, webUrl: Uri.parse('https://example.com'));
++      expect(a.primary, isNull);
++      expect(a.canErase, isFalse);
++      expect(a.locked, isTrue);
++      expect(a.openUrl, isNotNull, reason: 'brauzer havolasi qoladi');
++    });
++
++    test('kirmagan: asosiy — ro‘yxatdan o‘tish; tozalash baribir bor', () {
++      final a = plan(loggedIn: false, hasId: false);
++      expect(a.primary, ForeignPrimary.signUp);
++      expect(a.canErase, isTrue);
++    });
++
++    test('kirgan, NFC ID yo‘q: avval ID', () {
++      expect(plan(hasId: false).primary, ForeignPrimary.getId);
++    });
++
++    test('qulflangan + kirmagan: ro‘yxatdan o‘tish taklif qilinmaydi', () {
++      final a = plan(writable: false, loggedIn: false, hasId: false);
++      expect(a.primary, isNull);
++      expect(a.locked, isTrue);
++    });
++
++    test('formatlanmagan (formatlanadigan) teg: bo‘sh — tozalash yo‘q', () {
++      final a = plan(isNdef: false, writable: false, formattable: true, hasContent: false);
++      expect(a.primary, ForeignPrimary.writeProfile);
++      expect(a.canErase, isFalse);
++      expect(a.locked, isFalse);
++    });
++
++    test('NDEF ham emas, formatlanmaydi: hech qanday amal yo‘q', () {
++      final a = plan(isNdef: false, writable: false, hasContent: false);
++      expect(a.primary, isNull);
++      expect(a.canErase, isFalse);
++      expect(a.locked, isFalse);
++    });
++
++    test('bo‘sh, yoziladigan NDEF: tozalashga hojat yo‘q', () {
++      final a = plan(hasContent: false);
++      expect(a.primary, ForeignPrimary.writeProfile);
++      expect(a.canErase, isFalse);
++    });
++  });
++
++  group('tozalash xabari va tekshiruv', () {
++    test('bitta bo‘sh yozuv (TNF empty)', () {
++      final m = emptyNdefMessage();
++      expect(m.records, hasLength(1));
++      final r = m.records.single;
++      expect(r.typeNameFormat, NdefTypeNameFormat.empty);
++      expect(r.type, isEmpty);
++      expect(r.identifier, isEmpty);
++      expect(r.payload, isEmpty);
++      // Qayta o'qilganda — "bo'sh".
++      expect(
++          looksErased([
++            classifyRecord(
++                typeNameFormat: r.typeNameFormat.index,
++                type: r.type,
++                payload: r.payload),
++          ]),
++          isTrue);
++    });
++
++    test('looksErased: matn qolsa — tozalanmagan', () {
++      expect(looksErased(const []), isTrue);
++      expect(
++          looksErased(const [
++            NdefRecordData(kind: NdefKind.unknown, value: ''),
++            NdefRecordData(kind: NdefKind.text, value: 'Wi-Fi'),
++          ]),
++          isFalse);
++    });
++
++    test('TagInspection.text: URI/matn birinchi, keyin boshqasi', () {
++      expect(_foreign().text, 'https://example.com/menu');
++      const vcard = TagInspection(found: true, isNdef: true, records: [
++        NdefRecordData(kind: NdefKind.unknown, value: ''),
++        NdefRecordData(kind: NdefKind.vcard, value: 'BEGIN:VCARD'),
++        NdefRecordData(kind: NdefKind.text, value: 'Salom'),
++      ]);
++      expect(vcard.text, 'Salom');
++      const onlyVcard = TagInspection(found: true, isNdef: true, records: [
++        NdefRecordData(kind: NdefKind.vcard, value: 'BEGIN:VCARD'),
++      ]);
++      expect(onlyVcard.text, 'BEGIN:VCARD');
++      expect(const TagInspection(found: true).text, isNull);
++    });
++
++    test('iPhone MiFare (NTAG) identifikatori ham o‘qiladi', () {
++      expect(tagIdentity({'mifare': {'identifier': [0x04, 0xA2]}}), '04a2');
++    });
++
++    test('erasePreview: qisqartiriladi, bo‘shliqlar yig‘iladi', () {
++      expect(erasePreview('  a \n b  '), 'a b');
++      expect(erasePreview('x' * 120), '${'x' * 90}…');
++    });
++  });
++
++  group('eraseTag — xizmat (soxta sessiya, soxta kanal)', () {
++    const channel = MethodChannel('plugins.flutter.io/nfc_manager');
++    late List<MethodCall> calls;
++    Object? readBack;
++
++    setUp(() {
++      calls = [];
++      readBack = null;
++      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
++          .setMockMethodCallHandler(channel, (call) async {
++        calls.add(call);
++        if (call.method == 'Ndef#write') {
++          readBack ??= (call.arguments as Map)['message'];
++          return null;
++        }
++        if (call.method == 'Ndef#read') return readBack;
++        return null;
++      });
++    });
++    tearDown(() => TestDefaultBinaryMessengerBinding
++        .instance.defaultBinaryMessenger
++        .setMockMethodCallHandler(channel, null));
++
++    NfcService serviceWith(NfcTag tag) => NfcService(
++          startSession: ({
++            required NfcTagCallback onDiscovered,
++            Set<NfcPollingOption>? pollingOptions,
++            NfcErrorCallback? onError,
++          }) async {
++            await onDiscovered(tag);
++          },
++          stopSession: () async {},
++        );
++
++    NfcTag ndefTag({String key = 'nfca', List<int> id = const [4, 162, 11, 255], bool writable = true}) =>
++        NfcTag(handle: 'h1', data: {
++          key: {'identifier': Uint8List.fromList(id)},
++          'ndef': {'isWritable': writable, 'maxSize': 144, 'cachedMessage': null},
++        });
++
++    test('o‘sha teg: bo‘sh yozuv yoziladi va qayta o‘qib tasdiqlanadi', () async {
++      final r = await serviceWith(ndefTag()).eraseTag(expectIdentity: '04a20bff');
++      expect(r.ok, isTrue);
++      expect(calls.map((c) => c.method), ['Ndef#write', 'Ndef#read']);
++      final records = ((calls.first.arguments as Map)['message'] as Map)['records'] as List;
++      expect(records, hasLength(1));
++      expect((records.single as Map)['typeNameFormat'], 0x00);
++      expect((records.single as Map)['payload'], isEmpty);
++    });
++
++    test('iPhone (mifare): boshqa teg — tegilmaydi', () async {
++      final r = await serviceWith(ndefTag(key: 'mifare', id: const [1, 2, 3]))
++          .eraseTag(expectIdentity: '04a20bff');
++      expect([r.ok, r.error], [false, TagError.differentTag]);
++      expect(calls, isEmpty, reason: 'hech narsa yozilmadi');
++    });
++
++    test('qulflangan teg — readOnly, yozilmaydi', () async {
++      final r = await serviceWith(ndefTag(writable: false))
++          .eraseTag(expectIdentity: '04a20bff');
++      expect([r.ok, r.error], [false, TagError.readOnly]);
++      expect(calls, isEmpty);
++    });
++
++    test('qayta o‘qishda matn qoldi — verifyFailed', () async {
++      readBack = {
++        'records': [
++          {
++            'typeNameFormat': 0x01,
++            'type': Uint8List.fromList([0x54]),
++            'identifier': Uint8List(0),
++            'payload': encodeTextPayload('eski'),
++          }
++        ]
++      };
++      final r = await serviceWith(ndefTag()).eraseTag(expectIdentity: '04a20bff');
++      expect([r.ok, r.error], [false, TagError.verifyFailed]);
++    });
++
++    test('formatlanmagan teg — allaqachon bo‘sh, hech narsa yozilmaydi', () async {
++      final tag = NfcTag(handle: 'h2', data: {
++        'nfca': {'identifier': Uint8List.fromList(const [4, 162, 11, 255])},
++        'ndefformatable': {'identifier': Uint8List.fromList(const [4, 162, 11, 255])},
++      });
++      final r = await serviceWith(tag).eraseTag(expectIdentity: '04a20bff');
++      expect(r.ok, isTrue);
++      expect(calls, isEmpty);
++    });
++
++    test('iPhone "Bekor qilish" — cancelled', () async {
++      final nfc = NfcService(
++        startSession: ({
++          required NfcTagCallback onDiscovered,
++          Set<NfcPollingOption>? pollingOptions,
++          NfcErrorCallback? onError,
++        }) async {
++          await onError?.call(
++              const NfcError(type: NfcErrorType.userCanceled, message: ''));
++        },
++        stopSession: () async {},
++      );
++      final r = await nfc.eraseTag(expectIdentity: 'x');
++      expect([r.ok, r.error], [false, TagError.cancelled]);
++      expect(nfc.lastCancelled, isTrue);
++    });
++  });
++
++  group('skaner ekrani', () {
++    testWidgets('qulflanmagan begona: yozish asosiy, tozalash ikkinchi, havola',
++        (tester) async {
++      await _pump(tester, _Nfc(_foreign()));
++      final l = await _uz();
++      await _scan(tester, l);
++      expect(find.text(l.nfcNotNfcstore), findsOneWidget);
++      expect(find.text(l.nfcForeignWritableHint), findsOneWidget);
++      expect(find.text(l.nfcForeignWrite), findsOneWidget);
++      expect(find.text(l.nfcEraseAction), findsOneWidget);
++      expect(find.byKey(const ValueKey('nfc-foreign-open')), findsOneWidget);
++      // Tartib: yozish → tozalash → brauzer havolasi.
++      double y(String k) => tester.getTopLeft(find.byKey(ValueKey(k))).dy;
++      expect(y('nfc-foreign-write'), lessThan(y('nfc-foreign-erase')));
++      expect(y('nfc-foreign-erase'), lessThan(y('nfc-foreign-open')));
++
++      await _tapKey(tester, 'nfc-foreign-write');
++      expect(find.text('WRITE SCREEN'), findsOneWidget);
++    });
++
++    testWidgets('qulflangan begona: faqat ma’lumot, tozalash yo‘q',
++        (tester) async {
++      await _pump(tester, _Nfc(_foreign(writable: false)));
++      final l = await _uz();
++      await _scan(tester, l);
++      expect(find.text(l.nfcForeignLocked), findsOneWidget);
++      expect(find.byKey(const ValueKey('nfc-foreign-erase')), findsNothing);
++      expect(find.byKey(const ValueKey('nfc-foreign-write')), findsNothing);
++      expect(find.text(l.nfcForeignWritableHint), findsNothing);
++    });
++
++    testWidgets('NFC ID yo‘q: "Avval NFC ID oling" → ID\'lar ekrani',
++        (tester) async {
++      await _pump(tester, _Nfc(_foreign()), hasId: false);
++      final l = await _uz();
++      await _scan(tester, l);
++      expect(find.text(l.nfcForeignGetId), findsOneWidget);
++      await _tapKey(tester, 'nfc-foreign-write');
++      expect(find.text('IDS SCREEN'), findsOneWidget);
++    });
++
++    testWidgets('kirmagan: "Ro‘yxatdan o‘tib yozish" → yozish manzili (router '
++        'kirishga buradi va keyin qaytaradi)', (tester) async {
++      await _pump(tester, _Nfc(_foreign()), signedIn: false);
++      final l = await _uz();
++      await _scan(tester, l);
++      expect(find.text(l.nfcForeignSignUp), findsOneWidget);
++      expect(find.text(l.nfcEraseAction), findsOneWidget);
++      await _tapKey(tester, 'nfc-foreign-write');
++      expect(find.text('WRITE SCREEN'), findsOneWidget);
++    });
++
++    testWidgets('bo‘sh yoziladigan teg: xato emas, profil yozish taklifi',
++        (tester) async {
++      await _pump(
++          tester,
++          _Nfc(const TagInspection(
++              found: true, isNdef: false, formattable: true, identity: '04aa')));
++      final l = await _uz();
++      await _scan(tester, l);
++      expect(find.text(l.nfcTagBlank), findsOneWidget);
++      expect(find.text(l.nfcScanFailed), findsNothing);
++      expect(find.text(l.nfcForeignWrite), findsOneWidget);
++      expect(find.byKey(const ValueKey('nfc-foreign-erase')), findsNothing);
++    });
++
++    testWidgets('tozalash: oyna → "Bekor qilish" — hech narsa bo‘lmaydi',
++        (tester) async {
++      final nfc = _Nfc(_foreign());
++      await _pump(tester, nfc);
++      final l = await _uz();
++      await _scan(tester, l);
++      await _tapKey(tester, 'nfc-foreign-erase');
++      expect(find.byKey(const ValueKey('nfc-erase-dialog')), findsOneWidget);
++      expect(find.text(l.nfcEraseTitle), findsOneWidget);
++      expect(find.text(l.nfcEraseBody), findsOneWidget);
++      // Nima o'chishi ko'rsatiladi.
++      expect(
++          find.descendant(
++              of: find.byKey(const ValueKey('nfc-erase-dialog')),
++              matching: find.text('https://example.com/menu')),
++          findsOneWidget);
++      await tester.tap(find.text(l.actionCancel));
++      await settle(tester);
++      expect(nfc.erased, isEmpty);
++      expect(find.text(l.nfcNotNfcstore), findsOneWidget);
++    });
++
++    testWidgets('tozalash: "Ha, tozalash" → o‘sha teg tozalanadi, natija',
++        (tester) async {
++      final nfc = _Nfc(_foreign());
++      await _pump(tester, nfc);
++      final l = await _uz();
++      await _scan(tester, l);
++      await _tapKey(tester, 'nfc-foreign-erase');
++      await tester.tap(find.byKey(const ValueKey('nfc-erase-confirm')));
++      await settle(tester);
++      expect(nfc.erased, ['04a20bff'], reason: 'skanerlangan tegning o‘zi');
++      expect(find.text(l.nfcEraseDone), findsOneWidget);
++      expect(find.byKey(const ValueKey('nfc-foreign')), findsNothing);
++      // Endi bo'sh — profil yozish taklifi, tozalash yo'q.
++      expect(find.text(l.nfcForeignWrite), findsOneWidget);
++      expect(find.byKey(const ValueKey('nfc-foreign-erase')), findsNothing);
++    });
++
++    testWidgets('tozalash: boshqa teg — xato, mazmun joyida', (tester) async {
++      final nfc = _Nfc(_foreign(),
++          erase: const NfcWriteResult(ok: false, error: TagError.differentTag));
++      await _pump(tester, nfc);
++      final l = await _uz();
++      await _scan(tester, l);
++      await _tapKey(tester, 'nfc-foreign-erase');
++      await tester.tap(find.byKey(const ValueKey('nfc-erase-confirm')));
++      await settle(tester);
++      expect(find.text(l.nfcWriteErrDifferentTag), findsOneWidget);
++      expect(find.byKey(const ValueKey('nfc-foreign')), findsOneWidget);
++      expect(find.text(l.nfcEraseDone), findsNothing);
++    });
++
++    testWidgets('tozalash: iPhone "Bekor qilish" — jim', (tester) async {
++      final nfc = _Nfc(_foreign(),
++          erase: const NfcWriteResult(ok: false, error: TagError.cancelled));
++      await _pump(tester, nfc);
++      final l = await _uz();
++      await _scan(tester, l);
++      await _tapKey(tester, 'nfc-foreign-erase');
++      await tester.tap(find.byKey(const ValueKey('nfc-erase-confirm')));
++      await settle(tester);
++      expect(find.byKey(const ValueKey('nfc-erase-error')), findsNothing);
++      expect(find.byKey(const ValueKey('nfc-foreign-erase')), findsOneWidget);
++    });
++  });
++
++  test('uch tilda yangi matnlar bor', () async {
++    for (final c in ['uz', 'ru', 'en']) {
++      final l = await L.delegate.load(Locale(c));
++      for (final s in [
++        l.nfcForeignWritableHint,
++        l.nfcForeignLocked,
++        l.nfcTagBlank,
++        l.nfcBlankHint,
++        l.nfcForeignWrite,
++        l.nfcForeignGetId,
++        l.nfcForeignSignUp,
++        l.nfcEraseAction,
++        l.nfcEraseTitle,
++        l.nfcEraseBody,
++        l.nfcEraseConfirm,
++        l.nfcEraseTapAgain,
++        l.nfcEraseDone,
++        l.nfcEraseErrVerify,
++      ]) {
++        expect(s.trim(), isNotEmpty, reason: c);
++      }
++    }
++  });
++}
+diff --git a/mobile_nova/test/nfc_no_freeze_test.dart b/mobile_nova/test/nfc_no_freeze_test.dart
+index 5ade63e..1cc84b7 100644
+--- a/mobile_nova/test/nfc_no_freeze_test.dart
++++ b/mobile_nova/test/nfc_no_freeze_test.dart
+@@ -11,7 +11,7 @@ import 'helpers.dart';
+ 
+ /// Egasining talabi: "scan/write flow qotib qolmasin".
+ ///
+-/// Ilgari `readOnce` ichidagi `startSession` xato bersa (masalan,
++/// Ilgari `readOnce` (endi `inspect`) ichidagi `startSession` xato bersa (masalan,
+ /// yozish ekranidan qolgan sessiya yopilmagan bo'lsa), istisno skaner
+ /// ekranigacha uchib borar va ekran "Qidirilmoqda…" holatida ABADIY
+ /// qolardi: tugma o'chiq, orb bosilmaydi, chiqishdan boshqa yo'l yo'q.
+@@ -21,8 +21,9 @@ class _ThrowingNfc extends NfcService {
+   @override
+   Future<NfcAvailability> check() async => NfcAvailability.ready;
+ 
++  // Skaner `inspect` orqali o'qiydi (begona yorliq holati uchun).
+   @override
+-  Future<String?> readOnce({Duration timeout = const Duration(seconds: 30)}) {
++  Future<TagInspection> inspect({Duration timeout = const Duration(seconds: 30)}) {
+     reads++;
+     return Future.error(StateError('session already started'));
+   }
+@@ -30,13 +31,13 @@ class _ThrowingNfc extends NfcService {
+ 
+ class _SlowNfc extends NfcService {
+   int reads = 0;
+-  final gate = Completer<String?>();
++  final gate = Completer<TagInspection>();
+ 
+   @override
+   Future<NfcAvailability> check() async => NfcAvailability.ready;
+ 
+   @override
+-  Future<String?> readOnce({Duration timeout = const Duration(seconds: 30)}) {
++  Future<TagInspection> inspect({Duration timeout = const Duration(seconds: 30)}) {
+     reads++;
+     return gate.future;
+   }
+@@ -89,7 +90,7 @@ void main() {
+     await settle(tester, frames: 3);
+     expect(nfc.reads, 1);
+ 
+-    nfc.gate.complete(null);
++    nfc.gate.complete(const TagInspection(found: false, error: TagError.timeout));
+     await settle(tester);
+     expect(find.text(l.nfcScanFailed), findsOneWidget);
+   });
+-- 
+2.43.0
+
