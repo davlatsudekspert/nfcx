@@ -102,6 +102,7 @@ const TapRedirectPage = lazyPage(() => import('./pages/TapRedirectPage.jsx'));
 const CompanyPublicPage = lazyPage(() => import('./pages/CompanyPublicPage.jsx'));
 const BusinessEntryPage = lazyPage(() => import('./pages/BusinessEntryPage.jsx'));
 const PromotePage = lazyPage(() => import('./pages/PromotePage.jsx'));
+const NotFoundPage = lazyPage(() => import('./pages/NotFoundPage.jsx'));
 
 const STATIC_ROUTES = {
   '': null, // HomePage — handled separately
@@ -174,7 +175,7 @@ const ROUTE_PROFILE_RE = /^(?:[A-Za-z]{3}[0-9]{3}|[0-9]{8}|[A-Za-z]{3,12})$/;
 // SEO — marshrut yoki til o'zgarganda <title>/meta/canonical yangilanadi.
 // LanguageProvider ichida turishi kerak (joriy tilni olish uchun), shuning
 // uchun alohida kichik komponent. Profil sahifasida sarlavha = karta nomi.
-function SeoSync({ route, profileCode, catalog }) {
+function SeoSync({ route, profileCode, catalog, notFound }) {
   const { lang } = useLanguage();
   useEffect(() => {
     if (profileCode) {
@@ -182,8 +183,19 @@ function SeoSync({ route, profileCode, catalog }) {
       applySeo(seoForProfile(rec || { code: profileCode }, lang));
       return;
     }
+    // O'Z META'SINI O'ZI QO'YADIGAN SAHIFALAR — bu yerda tegilmaydi:
+    //   /c/:id, /company/:id, kompaniyaning o'z domeni — kompaniya
+    //     yuklangach seoForCompany (ilgari bu yerda bosh sahifa sarlavhasi
+    //     yozilib, Worker bergan to'g'ri sarlavha ustidan bosilardi);
+    //   /yangiliklar/:id — NewsPage maqola sarlavhasi va rasmini qo'yadi.
+    if (/^(c|company)\/[^/]+$/.test(route) || /^yangiliklar\/[^/]+$/.test(route)) return;
+    if (route === '' && domainCompanyId()) return;
+    if (notFound) {
+      applySeo({ ...seoForRoute('notfound', lang), path: '/' + route, noindex: true });
+      return;
+    }
     applySeo(seoForRoute(route, lang));
-  }, [route, lang, profileCode, catalog]);
+  }, [route, lang, profileCode, catalog, notFound]);
   return null;
 }
 
@@ -285,6 +297,7 @@ export default function App() {
   let page;
   let bare = false;
   let profileCode = null;
+  let notFound = false;
   const isAuctionDetail = cleanRoute.startsWith('auksion/');
   const isNewsDetail = cleanRoute.startsWith('yangiliklar/');
   const isMessagesDetail = cleanRoute.startsWith('xabarlar/');
@@ -411,7 +424,11 @@ export default function App() {
     else if (isNewsDetail) page = NEWS_ENABLED ? <NewsPage key={cleanRoute} newsId={cleanRoute.slice('yangiliklar/'.length)} /> : <GuideRedirect />;
     else if (cleanRoute === 'xabarlar' && MESSAGING_ENABLED) page = <MessagesPage />;
     else if (isMessagesDetail && MESSAGING_ENABLED) page = <MessagesPage key={cleanRoute} id={cleanRoute.slice('xabarlar/'.length)} />;
-    else page = <HomePage catalog={catalog} refreshCatalog={refreshCatalog} />;
+    // Bosh sahifa — faqat ildizda va saytning band so'zlarida (/c, /company,
+    // xabarlar o'chiq paytda /xabarlar ...). Qolgan noma'lum manzil — 404
+    // (ilgari jimgina bosh sahifa ochilardi: "soft 404").
+    else if (cleanRoute === '' || RESERVED.has(lowerRoute)) page = <HomePage catalog={catalog} refreshCatalog={refreshCatalog} />;
+    else { page = <NotFoundPage />; notFound = true; }
   }
 
   // Ochiq kompaniya sahifalari: /c/:id, /company/:id va o'z domenining
@@ -419,7 +436,13 @@ export default function App() {
   const showAssistantOnBare = !!(companyQuickMatch || companyPublicMatch || (ownDomainCompany && cleanRoute === ''));
 
   const renderedPage = (
-    <Suspense fallback={<main className="mx-auto min-h-[55vh] w-full max-w-[1800px] px-6 py-16 text-sm text-base-content/50">Yuklanmoqda...</main>}>
+    <Suspense fallback={(
+      // Til bo'yicha matn yo'q (LanguageProvider bu yerdan tashqarida ham
+      // bo'lishi mumkin) — shuning uchun so'zsiz aylanuvchi belgi.
+      <main className="mx-auto flex min-h-[55vh] w-full max-w-[1800px] items-center justify-center px-6 py-16" aria-busy="true">
+        <span className="loading loading-spinner loading-md text-base-content/40" role="status" aria-label="Loading" />
+      </main>
+    )}>
       {page}
     </Suspense>
   );
@@ -427,7 +450,7 @@ export default function App() {
   return (
     <ThemeProvider>
     <LanguageProvider>
-      <SeoSync route={cleanRoute} profileCode={profileCode} catalog={catalog} />
+      <SeoSync route={cleanRoute} profileCode={profileCode} catalog={catalog} notFound={notFound} />
       <PaymentsEnabledProvider>
         <AuthProvider>
           {/* AI yordamchi "bare" sahifalarda ham kerak — aynan kompaniya

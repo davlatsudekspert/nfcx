@@ -6,6 +6,7 @@ import { navigate } from '../lib/router.js';
 import { IconArrowLeft } from '../components/Icons.jsx';
 import ShareButton from '../components/ShareButton.jsx';
 import Linkify from '../components/Linkify.jsx';
+import { applySeo } from '../lib/seo.js';
 
 // Tanlangan tildagi matnni oladi — tarjima bo'sh bo'lsa o'zbekchaga qaytadi.
 function pick(item, base, lang) {
@@ -113,8 +114,22 @@ export default function NewsPage({ newsId = null }) {
   // sahifada (masalan Kompaniyalar) qolib ketishiga sabab bo'lardi. Endi
   // ketishda hech narsa qo'lda tiklanmaydi — keyingi sahifaning o'zi SeoSync
   // orqali to'g'ri sarlavha qo'yadi.
+  // 2026-10: SeoSync /yangiliklar/:id ga umuman tegmaydi (Worker bergan
+  // maqola meta'si ustidan umumiy "Yangiliklar" tavsifini yozardi) — to'liq
+  // meta (sarlavha, tavsif, rasm, canonical) shu yerda qo'yiladi.
   useEffect(() => {
-    if (newsId && detail) document.title = `${pick(detail, 'title', lang)} — NFCSTORE`;
+    if (!newsId || !detail) return;
+    const image = detail.imageUrl
+      ? (/^https?:\/\//i.test(detail.imageUrl) ? detail.imageUrl : `https://nfcstore.uz${detail.imageUrl.startsWith('/') ? '' : '/'}${detail.imageUrl}`)
+      : undefined;
+    applySeo({
+      title: pick(detail, 'title', lang),
+      description: shareExcerpt(pick(detail, 'body', lang), 200) || undefined,
+      path: `/yangiliklar/${detail.id}`,
+      lang,
+      image,
+      type: 'article',
+    });
   }, [newsId, detail, lang]);
 
   const toggleLike = async (item) => {

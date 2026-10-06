@@ -55,6 +55,7 @@ import {
 import { withUzStores, uzMaintenance, uzMaintenanceBypass, maintenanceResponse, handleUzExport, uzDbNetErrors, uzLogError, uzWriteProbe } from './uz-store.js';
 import { ensureNewsSeed } from './api/news-seed.js';
 import { RESERVED_CODES, isReservedCode } from './api/reserved-codes.js';
+import { classifySpaPath, seoForRoute, fullPageTitle } from './api/seo-routes.js';
 import { idQuarantined, notQuarantinedSql, purgeAfterMs, runScheduledPurge } from './api/account-purge.js';
 import { recordAppOpen } from './api/app-usage.js';
 import { timedDb, newTiming, summarizeTiming, withTimingHeaders, handleSpeedDiag, TEZLIK_HTML } from './speed-diag.js';
@@ -8960,7 +8961,8 @@ ${caption ? `<div class="cap">${e(caption)}</div>` : ''}
 //     ma'lumot YO'Q, va HAR DOIM `noindex` — qidiruvga ataylab berilmaydi.
 export function injectProfileOg(html, meta) {
   let out = String(html || '');
-  const pageTitle = `${meta.title} — NFCSTORE`;
+  // Nomda NFCSTORE bo'lsa qo'shimcha takrorlanmaydi ("NFCSTORE — NFCSTORE").
+  const pageTitle = fullPageTitle(meta.title, 'NFCSTORE');
   out = out.replace(/<title>[\s\S]*?<\/title>/i, `<title>${ogTextEscape(pageTitle)}</title>`);
   out = ogReplaceMeta(out, 'name', 'description', meta.description);
   out = ogReplaceMeta(out, 'property', 'og:title', pageTitle);
@@ -8984,6 +8986,75 @@ export function injectProfileOg(html, meta) {
     out = ogRemoveMeta(out, 'property', 'og:image:height');
   }
   return out;
+}
+
+// ── ODDIY SAYT SAHIFALARI: TO'G'RI META VA HAQIQIY 404 (2026-10) ──────
+//
+// MUAMMO (sayt auditi): robotlar JavaScript ishlatmaydi va /stikerlar,
+// /narxlar, /privacy, /delete-account ... uchun bosh sahifaning sarlavhasi,
+// tavsifi va `canonical: https://nfcstore.uz/` ni ko'rardi — ya'ni Google
+// uchun hammasi bosh sahifaning nusxasi edi. Mavjud bo'lmagan manzil ham
+// 200 bilan bosh sahifani berardi ("soft 404").
+//
+// YECHIM: SPA qobig'iga shu sahifaning meta teglari yoziladi (matn —
+// hosting/api/seo-routes.js, brauzerdagi src/lib/seo.js bilan BIR manba).
+// Saytda yo'q yo'l — 404 + noindex (sahifa baribir ochiladi va React
+// "Sahifa topilmadi" ko'rsatadi). Profil kodi shaklidagi bo'sh ID —
+// 200, lekin noindex. Kompaniya, yangilik, /post, /i, /qr-N va h.k. —
+// o'z ishlovchisi bor, bu yerda tegilmaydi.
+export function injectRouteSeo(html, meta) {
+  let out = String(html || '');
+  if (meta.title) {
+    const pageTitle = fullPageTitle(meta.title);
+    out = out.replace(/<title>[\s\S]*?<\/title>/i, `<title>${ogTextEscape(pageTitle)}</title>`);
+    out = ogReplaceMeta(out, 'property', 'og:title', pageTitle);
+    out = ogReplaceMeta(out, 'name', 'twitter:title', pageTitle);
+  }
+  if (meta.description) {
+    out = ogReplaceMeta(out, 'name', 'description', meta.description);
+    out = ogReplaceMeta(out, 'property', 'og:description', meta.description);
+    out = ogReplaceMeta(out, 'name', 'twitter:description', meta.description);
+  }
+  if (meta.robots) out = ogReplaceMeta(out, 'name', 'robots', meta.robots);
+  out = out.replace(/[ \t]*<link[^>]*\srel="canonical"[^>]*>\s*\n?/ig, '');
+  if (meta.url) {
+    out = out.replace(/<\/head>/i, `  <link rel="canonical" href="${ogAttrEscape(meta.url)}" />\n</head>`);
+    out = ogReplaceMeta(out, 'property', 'og:url', meta.url);
+  }
+  return out;
+}
+
+export async function spaShellWithSeo(response, url) {
+  const type = response.headers.get('content-type') || '';
+  if (response.status !== 200 || !/text\/html/i.test(type)) return response;
+  const info = classifySpaPath(url.pathname);
+  if (info.kind === 'dynamic') return response;
+  const html = await response.clone().text();
+  // Faqat SPA qobig'i (public/ dagi boshqa HTML fayllarga tegilmaydi).
+  if (!html.includes('<div id="root"></div>') || !/<\/head>/i.test(html)) return response;
+  let out = html;
+  let status = 200;
+  if (info.kind === 'page') {
+    const seo = seoForRoute(info.route, 'uz');
+    out = injectRouteSeo(html, {
+      title: seo.title,
+      description: seo.description,
+      url: url.origin + (seo.path === '/' ? '/' : seo.path),
+      robots: seo.noindex ? 'noindex,nofollow' : 'index,follow',
+    });
+  } else if (info.kind === 'profile') {
+    // Egasi yo'q yoki ismsiz ID ("Bu ID bo'sh" sahifasi) — indekslanmaydi.
+    out = injectRouteSeo(html, { url: `${url.origin}/${encodeURIComponent(info.code)}`, robots: 'noindex, follow' });
+  } else {
+    const seo = seoForRoute('notfound', 'uz');
+    out = injectRouteSeo(html, { title: seo.title, description: seo.description, robots: 'noindex, follow' });
+    status = 404;
+  }
+  const headers = new Headers(response.headers);
+  headers.set('content-type', 'text/html; charset=utf-8');
+  headers.delete('content-length');
+  headers.delete('etag');
+  return new Response(out, { status, headers });
 }
 
 // Biznes sahifasining kanonik manzili — ilova va karta ulashadigan
@@ -12677,6 +12748,12 @@ async function handleRequest(request, env, url, ctx) {
     //   qr-1 — avto stiker (80 mm, oyna ichidan) -> #avto bo'limi
     //   qr-2 — tashqi stiker (100 mm, eshik/vitrina)
     //   qr-3 — NFC karta (Uzum, orqa tomon) -> #ulash bo'limi
+    // AUKSION BEKOR QILINDI (2026-09): eski /auksion havolalari narxlar
+    // sahifasiga DOIMIY (301) yo'naltiriladi — qidiruv tizimi ham eski
+    // manzilni unutsin (SPA ichida ham PricingRedirect bor).
+    if (/^\/auksion(?:-qoidalari)?(?:\/.*)?$/i.test(url.pathname) && ['GET', 'HEAD'].includes(request.method)) {
+      return new Response(null, { status: 301, headers: { location: '/narxlar', 'cache-control': 'public, max-age=3600' } });
+    }
     const qrSticker = url.pathname.match(/^\/qr-(\d{1,4})\/?$/);
     if (qrSticker && request.method === 'GET') {
       const section = qrSticker[1] === '1' ? '#avto' : qrSticker[1] === '3' ? '#ulash' : '';
@@ -12760,6 +12837,16 @@ async function handleRequest(request, env, url, ctx) {
       // the returned HTML is served for the original browser URL.
       const shellUrl = new URL('/', url);
       response = await env.ASSETS.fetch(new Request(shellUrl, request));
+    }
+    // Sahifa meta'si (sarlavha, tavsif, canonical) va noma'lum yo'lga 404.
+    // `accept` tekshirilmaydi: ba'zi robotlar (Telegram) uni yubormaydi —
+    // javob SPA qobig'i ekani spaShellWithSeo ichida aniqlanadi.
+    if (request.method === 'GET') {
+      try {
+        response = await spaShellWithSeo(response, url);
+      } catch (error) {
+        console.error('spa shell seo', url.pathname, error?.message);
+      }
     }
     return response;
 }

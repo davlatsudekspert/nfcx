@@ -6,7 +6,8 @@ import StoryRing from '../components/StoryRing.jsx';
 import { directionsUrl, yandexDirectionsUrl } from '../lib/mapLink.js';
 import { socialUrl } from '../lib/socialLinks.js';
 import { companyCta, companyEvent, getCompany, listCompanyPosts, listCompanyStories } from '../lib/company.js';
-import { navigate } from '../lib/router.js';
+import { navigate, domainCompanyId } from '../lib/router.js';
+import { applySeo, seoForCompany } from '../lib/seo.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import ThemeSwitcher from '../components/ThemeSwitcher.jsx';
 import logo from '../assets/logo-128.png';
@@ -16,7 +17,7 @@ import Comments from '../components/Comments.jsx';
 const fallbackCover = '/business-assets/construction-hero.jpg';
 
 export default function CompanyPublicPage({ companyId }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [company, setCompany] = useState(undefined);
   const [tab, setTab] = useState('main');
   // Karta raqami nusxalangani haqidagi qisqa bildirish.
@@ -46,6 +47,11 @@ export default function CompanyPublicPage({ companyId }) {
     getCompany(companyId).then((data) => live && setCompany(data.company)).catch(() => live && setCompany(null));
     return () => { live = false; };
   }, [companyId]);
+  // SEO — shu kompaniyaniki. O'z domenida (menu.kompaniya.uz) canonical
+  // nfcstore.uz ga qaratilmaydi: u kompaniyaning o'z sayti.
+  useEffect(() => {
+    if (company) applySeo({ ...seoForCompany(company, lang), canonical: !domainCompanyId() });
+  }, [company, lang]);
   const categories = useMemo(() => [...new Set((company?.catalog || []).map((item) => item.category).filter(Boolean))], [company]);
   const [filter, setFilter] = useState('all');
   if (company === undefined) return <main className="cp-state">{t('Yuklanmoqda…')}</main>;
