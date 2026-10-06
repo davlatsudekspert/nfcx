@@ -841,16 +841,32 @@ export async function handle(request, env, url, H) {
         return H.json({ error: 'not_stoppable' }, 409);
       }
 
-      await stopSlot(env, Number(row.id), `admin#${Number(admin.adminId) || 0}: ${reason}`);
+      const stopped = await stopSlot(env, Number(row.id), `admin#${Number(admin.adminId) || 0}: ${reason}`);
+      // Shu orada slotni boshqa jarayon (masalan Apple REFUND) to'xtatgan
+      // bo'lsa — admin hech narsa qilmadi, kredit ham YO'Q (ko'rik F5).
+      if (!stopped) return H.json({ error: 'not_stoppable' }, 409);
       // APPLE SLOTI (admin audit): manager+ xohlasa, xaridorga yangi
       // KO'TARISH KREDITI beriladi (to'liq kunlar) — pul Apple'da qoldi,
       // xizmat esa to'xtatildi. Kreditning tranzaksiya kaliti sintetik:
-      // `admin:<slot>:<apple tx>` (asl tranzaksiya REFUND'i unga tegmaydi).
+      // `admin:<slot>:<apple tx>`. Asl tranzaksiya REFUND bo'lsa
+      // (iap-apple-boost.js `undoByTx`) bu kredit ham, undan yoqilgan slot ham bekor.
       if (body.reissueCredit === true && row.source === 'apple' && row.apple_transaction_id && String(row.status) === 'active') {
         const key = `admin:${Number(row.id)}:${String(row.apple_transaction_id)}`;
+        // Asl Apple tranzaksiyasi (admin kreditlari zanjirida ham oxirgi qism).
+        const baseTx = String(row.apple_transaction_id).split(':').pop();
+        const revokedSql = `SELECT 1 AS ok FROM iap_apple_boost_transactions WHERE transaction_id = ? AND revoked_at IS NOT NULL`;
+        const isRevoked = async () => !!(await env.DB.prepare(revokedSql).bind(baseTx).first().catch(() => null));
+        if (await isRevoked()) return H.json({ ok: true, creditId: null, reason: 'refunded' });
         await env.DB.prepare(`INSERT OR IGNORE INTO iap_apple_boost_credits
             (user_id, days, product_id, environment, transaction_id, created_at) VALUES (?, ?, NULL, 'admin', ?, ?)`)
           .bind(Number(row.user_id), Number(row.days) || 1, key, new Date().toISOString()).run();
+        // Refund kredit yozilishidan oldin, lekin undoByTx kreditni ko'rmasdan
+        // o'tib ketgan bo'lsa — qayta tekshiruv: kredit darhol bekor.
+        if (await isRevoked()) {
+          await env.DB.prepare(`UPDATE iap_apple_boost_credits SET revoked_at = ? WHERE transaction_id = ? AND revoked_at IS NULL AND used_at IS NULL`)
+            .bind(new Date().toISOString(), key).run().catch(() => {});
+          return H.json({ ok: true, creditId: null, reason: 'refunded' });
+        }
         const c = await env.DB.prepare(`SELECT id FROM iap_apple_boost_credits WHERE transaction_id = ?`).bind(key).first();
         await H.logAdminActivity(env, {
           action: 'featured_apple_credit_reissue',

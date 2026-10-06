@@ -227,8 +227,19 @@ export async function handle(request, env, url, H) {
   // profil ISMI, kompaniya nomi va identifikatori. Katta-kichik harf
   // farqi yo'q. `%`/`_` foydalanuvchi matnidan olib tashlanadi.
   const clean = q.toLowerCase().replace(/[%_]/g, '');
+  // content_manager (ko'rik F4): email/telefon niqoblanadi va ular bo'yicha
+  // qidirib bo'lmaydi — faqat raqam, NFC ID, profil/kompaniya nomi.
+  const masked = H.piiMaskedD1(admin);
   if (q && !clean) conds.push('0');
-  else if (q) {
+  else if (q && masked) {
+    const like = `%${clean}%`;
+    conds.push(`(CAST(a.user_id AS TEXT) = ?
+      OR a.user_id IN (SELECT c.user_id FROM cards c
+                        WHERE LOWER(c.code) LIKE ? OR LOWER(COALESCE(c.name,'')) LIKE ?)
+      OR CAST(a.user_id AS TEXT) IN (SELECT co.owner_user_id FROM companies co
+                        WHERE LOWER(COALESCE(co.display_name,'')) LIKE ? OR LOWER(co.company_id) LIKE ?))`);
+    binds.push(q, like, like, like, like);
+  } else if (q) {
     const like = `%${clean}%`;
     conds.push(`(CAST(a.user_id AS TEXT) = ? OR LOWER(COALESCE(u.email,'')) LIKE ?
       OR COALESCE(u.phone,'') LIKE ?
@@ -298,8 +309,8 @@ export async function handle(request, env, url, H) {
     },
     items: pageRows.map((r) => ({
       userId: Number(r.user_id),
-      email: r.email || '',
-      phone: r.phone || '',
+      email: (masked ? H.maskEmailD1(r.email) : r.email) || '',
+      phone: (masked ? H.maskPhoneD1(r.phone) : r.phone) || '',
       premium: !!Number(r.premium_now),
       deleted: !!r.deleted_at,
       platform: r.platform || '',

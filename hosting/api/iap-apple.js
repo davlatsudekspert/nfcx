@@ -173,18 +173,53 @@ const currencyOf = (p) => (typeof p?.currency === 'string' && /^[A-Z]{3}$/.test(
 
 // IMZO XATOLARI SANOG'I (admin "Apple / iOS" holati): faqat son va oxirgi
 // vaqt — tana saqlanmaydi.
-async function countSignatureFailure(env) {
+//
+// YOZUV CHEKLOVI (ko'rik F6): endpoint kirishsiz ochiq, ya'ni har soxta
+// POST bazaga yozuv bo'lardi. Endi sanoq isolate xotirasida yig'iladi va
+// bazaga ko'pi bilan MINUTIGA BIR MARTA (yig'ilgan son bilan) yoziladi.
+// Yozilmay qolgan qism keyingi xatoda qo'shiladi.
+const SIG_FAIL_WRITE_MS = 60_000;
+const sigFail = { pending: 0, lastWrite: 0 };
+async function countSignatureFailure(env, now = Date.now()) {
+  sigFail.pending += 1;
+  if (now - sigFail.lastWrite < SIG_FAIL_WRITE_MS) return false;
+  const add = sigFail.pending;
+  sigFail.lastWrite = now;
+  sigFail.pending = 0;
   try {
     await env.DB.batch([
-      env.DB.prepare(`INSERT INTO admin_settings (key, value) VALUES ('iap_apple_sig_fail_count', '1')
-        ON CONFLICT(key) DO UPDATE SET value = CAST(COALESCE(CAST(admin_settings.value AS INTEGER), 0) + 1 AS TEXT)`),
+      env.DB.prepare(`INSERT INTO admin_settings (key, value) VALUES ('iap_apple_sig_fail_count', ?)
+        ON CONFLICT(key) DO UPDATE SET value = CAST(COALESCE(CAST(admin_settings.value AS INTEGER), 0) + ? AS TEXT)`)
+        .bind(String(add), add),
       env.DB.prepare(`INSERT INTO admin_settings (key, value) VALUES ('iap_apple_sig_fail_last', ?)
-        ON CONFLICT(key) DO UPDATE SET value = excluded.value`).bind(new Date().toISOString()),
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value`).bind(new Date(now).toISOString()),
     ]);
+    return true;
   } catch (e) {
+    sigFail.pending += add;
     console.error('iap apple sig counter', e?.message);
+    return false;
   }
 }
+
+// IP BO'YICHA CHEKLOV (ko'rik F6): bitta IP'dan 10 daqiqada 10 tadan ortiq
+// imzosi buzuq so'rov — 429 (imzo ham tekshirilmaydi, bazaga ham tegilmaydi).
+// Apple'ning haqiqiy xabarlari imzoli, ularga bu ta'sir qilmaydi.
+const BAD_SIG_WINDOW_MS = 10 * 60_000;
+const BAD_SIG_MAX = 10;
+const badSigByIp = new Map();
+function badSigBlocked(ip, now) {
+  const e = badSigByIp.get(ip);
+  if (!e || now - e.start >= BAD_SIG_WINDOW_MS) return false;
+  return e.n >= BAD_SIG_MAX;
+}
+function noteBadSig(ip, now) {
+  if (badSigByIp.size > 5000) badSigByIp.clear();
+  const e = badSigByIp.get(ip);
+  if (!e || now - e.start >= BAD_SIG_WINDOW_MS) badSigByIp.set(ip, { start: now, n: 1 });
+  else e.n += 1;
+}
+export function __resetSigFailForTests() { sigFail.pending = 0; sigFail.lastWrite = 0; badSigByIp.clear(); }
 
 // ═══ YORDAMCHILAR ═══
 
@@ -694,6 +729,8 @@ async function processNotification(env, p) {
 }
 
 async function handleNotification(request, env, H) {
+  const ip = String(H.reqIp(request) || 'unknown');
+  if (badSigBlocked(ip, Date.now())) return H.json({ error: 'too_many_requests' }, 429);
   const body = await readJsonLimited(request);
   if (body.tooLarge) return H.json({ error: 'payload_too_large' }, 413);
   const signedPayload = body.value?.signedPayload;
@@ -702,6 +739,7 @@ async function handleNotification(request, env, H) {
   try { ({ payload } = await verifyJws(signedPayload)); }
   catch (e) {
     console.warn('iap apple notification: imzo rad etildi', e?.code || e?.message);
+    noteBadSig(ip, Date.now());
     await countSignatureFailure(env);
     return H.json({ error: 'invalid_signature' }, 400);
   }
@@ -732,6 +770,7 @@ async function handleNotification(request, env, H) {
     await release();
     if (e instanceof BadInnerSignature) {
       console.warn('iap apple notification: ichki imzo rad etildi', e.message);
+      noteBadSig(ip, Date.now());
       await countSignatureFailure(env);
       return H.json({ error: 'invalid_signature' }, 400);
     }

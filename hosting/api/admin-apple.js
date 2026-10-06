@@ -385,6 +385,8 @@ async function credits(env, admin, url) {
 
 // ═══ FOYDALANUVCHI KARTOCHKASI ═══ (admin-control.js `userDetail`)
 export async function appleForUser(env, admin, userId) {
+  // Faqat manager+ (ko'rik F4) — chaqiruvchi tekshirmasa ham.
+  if (!['manager', 'super_admin'].includes(String(admin?.role || ''))) return null;
   const t = await tableSet(env);
   if (!TABLES.some((x) => t.has(x))) return null;
   const isSuper = admin.role === 'super_admin';

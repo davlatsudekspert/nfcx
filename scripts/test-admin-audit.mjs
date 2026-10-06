@@ -122,6 +122,46 @@ const users = (qs, who = cookie.admin) => call(`/api/admin/users?${qs}`, { cooki
   check('7) manager — 403', (await call('/api/admin/review-account', { method: 'POST', cookie: cookie.manager })).status, 403);
 }
 
+// ═══ 9. content_manager — shaxsiy ma'lumot hamma joyda niqoblangan (ko'rik F4) ═══
+{
+  const fullEmail = /u\d+@test\.local|user@test\.local|other@test\.local/;
+  const fullPhone = /\+998\d{9}/;
+  const leaks = (body) => fullEmail.test(JSON.stringify(body)) || fullPhone.test(JSON.stringify(body));
+  // Qidiruv: email/telefon bo'yicha — yo'q; NFC ID bo'yicha — bor.
+  check('9) users q=email — content_manager topolmaydi', (await users('limit=500&q=u5@test', content)).body.users.length, 0);
+  check('9) users q=telefon — content_manager topolmaydi', (await users('limit=500&q=900000005', content)).body.users.length, 0);
+  checkTrue('9) users q=email — manager topadi', (await users('limit=500&q=u5@test', cookie.manager)).body.users.some((u) => u.id === 5));
+  checkTrue('9) users q=NFC ID — content_manager topadi', (await users('limit=500&q=vip001', content)).body.users.some((u) => u.id === 1));
+  // Foydalanuvchi kartochkasi.
+  const d = (await call('/api/admin/users/5/detail', { cookie: content })).body;
+  check('9) detail — niqoblangan, apple yo‘q', [d.user.email, d.user.phone, d.apple], ['u***@test.local', '***0005', null]);
+  check('9) detail — manager ochiq', (await call('/api/admin/users/5/detail', { cookie: cookie.manager })).body.user.email, 'u5@test.local');
+  // Premium obunachilar.
+  const pu = (await call('/api/admin/premium-users?filter=all&limit=500', { cookie: content })).body;
+  checkTrue(`9) premium-users — sizib chiqmaydi (${pu.users.length})`, pu.users.length > 0 && !leaks(pu));
+  check('9) premium-users q=email — content_manager topolmaydi', (await call('/api/admin/premium-users?filter=all&q=u20@', { cookie: content })).body.users.length, 0);
+  checkTrue('9) premium-users — manager ochiq', (await call('/api/admin/premium-users?filter=all&limit=500', { cookie: cookie.manager })).body.users.some((u) => u.email === 'u20@test.local'));
+  // Bosh sahifa (yangi ro'yxatdan o'tganlar / to'lovlar).
+  const ov = (await call('/api/admin/overview', { cookie: content })).body;
+  checkTrue(`9) overview — signups bor, email niqoblangan`, (ov.recent?.signups || []).length > 0 && !leaks(ov.recent));
+  // Takliflar.
+  sqlite.prepare(`INSERT INTO referral_uses (referrer_id, referred_id, created_at) VALUES (1, 5, ?)`).run(iso(NOW));
+  const rf = (await call('/api/admin/referrals', { cookie: content })).body.referrals;
+  check('9) /api/admin/referrals — niqoblangan', rf.map((r) => [r.referrerEmail, r.referredEmail])[0], ['u***@test.local', 'u***@test.local']);
+  check('9) /api/admin/referrals — manager ochiq', (await call('/api/admin/referrals', { cookie: cookie.manager })).body.referrals[0].referredEmail, 'u5@test.local');
+  // Ilova foydalanuvchilari.
+  const au = (await call('/api/admin/app-users', { cookie: content })).body;
+  checkTrue(`9) app-users — niqoblangan (${au.items.length})`, au.items.length > 0 && !leaks(au.items));
+  check('9) app-users q=email — content_manager topolmaydi', (await call('/api/admin/app-users?q=user@test', { cookie: content })).body.items.length, 0);
+  checkTrue('9) app-users q=email — manager topadi', (await call('/api/admin/app-users?q=user@test', { cookie: cookie.manager })).body.items.length > 0);
+  // Jismoniy kartalar: ism va manzil ham.
+  sqlite.prepare(`UPDATE physical_cards SET shipping_address = 'Toshkent, Chilonzor 5'`).run();
+  const pc = (await call('/api/admin/physical-cards', { cookie: content })).body.cards[0];
+  check('9) physical-cards — ism/manzil niqoblangan', [pc.shippingName, pc.shippingAddress], ['I***', 'T***']);
+  const pm = (await call('/api/admin/physical-cards', { cookie: cookie.manager })).body.cards[0];
+  check('9) physical-cards — manager ochiq', [pm.shippingName, pm.shippingAddress], ['Ism', 'Toshkent, Chilonzor 5']);
+}
+
 // ═══ 8. UI (manba matni) ═══
 {
   const admin = readFileSync(new URL('../src/pages/AdminPage.jsx', import.meta.url), 'utf8');

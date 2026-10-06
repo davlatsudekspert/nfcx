@@ -4121,7 +4121,7 @@ function ReferralPanel({ user }) {
           {t("Do'stingiz shu havola orqali ro'yxatdan o'tsa, siz keyingi bandlashda avtomatik ")}<b className="text-accent">{t('10% chegirma')}</b>{t(' olasiz.')}
         </p>
         <p className="mt-1 text-sm text-base-content/70">
-          {t('Har bir do‘stingiz uchun yana')} <b className="text-accent">{t('+1 oy Premium')}</b> {t('beriladi (bepul sinov davom etsa — sinovdan keyin).')}
+          {t('Har bir do‘stingiz uchun yana')} <b className="text-accent">{t('+1 oy Premium')}</b> {t('beriladi — do‘stingiz kamida 7 kun faol bo‘lgach (bepul sinov davom etsa — sinovdan keyin).')}
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <code className="min-w-0 max-w-full break-all rounded-lg bg-black/30 px-3 py-2 font-mono text-sm" data-testid="invite-link">{link}</code>
@@ -4133,6 +4133,11 @@ function ReferralPanel({ user }) {
         {summary && (
           <div className="mt-3 text-sm font-semibold" data-testid="invite-summary">
             {t('{n} do‘st taklif qildingiz, +{m} oy Premium oldingiz', { n: summary.invited, m: months })}
+            {Number(summary.pendingRewards) > 0 && (
+              <div className="mt-0.5 text-xs font-normal text-base-content/55" data-testid="invite-pending">
+                {t('{n} ta mukofot do‘stingiz faol bo‘lishini kutmoqda', { n: summary.pendingRewards })}
+              </div>
+            )}
           </div>
         )}
         {user.pendingDiscountPct > 0 && (

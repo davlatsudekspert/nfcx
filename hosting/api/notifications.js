@@ -187,17 +187,35 @@ export async function runTrialEndingReminders(env, { now = Date.now(), limit = 5
 // Birinchi yozganimda `ac.id` bo'yicha bog'lagandim va so'rov
 // "no such column: ac.id" bilan yiqildi; buni shu fayl uchun
 // yozilgan testning o'zi tutdi.
+// Ilovada ko'rinmaydigan turlar (faqat sayt).
+const APP_HIDDEN_SQL = `('featured_open', 'referral_reward')`;
+
 const ACTOR_SQL = `
   LEFT JOIN cards ac ON ac.code = (
     SELECT code FROM cards WHERE user_id = n.actor_user_id
      ORDER BY is_primary DESC, ts ASC LIMIT 1
   )`;
 
+// TAKLIF MUKOFOTI SARLAVHASI (ko'rik F7): do'stning OCHIQ ismi, lekin
+// u o'zi ism qo'ymagan bo'lsa (karta nomi standart — emailning "@"
+// oldidagi qismi yoki 'Yangi foydalanuvchi') — bo'sh; sayt o'rniga
+// "Do'stingiz" yozadi. Aks holda do'stning email foydalanuvchi nomi
+// taklif qiluvchiga oshkor bo'lardi.
+const DEFAULT_CARD_NAMES = new Set(['yangi foydalanuvchi']);
+function actorTitle(r) {
+  const name = String(r.actor_name || '').trim();
+  if (String(r.kind || '') !== 'referral_reward' || !name) return name;
+  const low = name.toLowerCase();
+  const local = String(r.actor_email || '').split('@')[0].trim().toLowerCase();
+  if (DEFAULT_CARD_NAMES.has(low) || (local && low === local)) return '';
+  return name;
+}
+
 const rowToItem = (r) => ({
   id: Number(r.id),
   type: String(r.kind || ''),
   // Sarlavha — aktyorning ismi. Jumlani mijoz o'z tilida yig'adi.
-  title: String(r.actor_name || '').trim(),
+  title: actorTitle(r),
   subtitle: '',
   actorCode: String(r.actor_code || ''),
   avatarUrl: String(r.actor_avatar || ''),
@@ -219,8 +237,11 @@ export async function handle(request, env, url, H) {
   // (ko'tarish sotuvi ochildi) faqat SAYTDA ko'rinadi — ilova
   // (`x-app: nova` yoki `X-Client: android|ios|mobile`) ro'yxatida ham,
   // o'qilmaganlar sonida ham yo'q.
+  //
+  // `referral_reward` ham (ko'rik F7): chiqarilgan ilova bu turni
+  // bilmaydi va matnsiz, bosilmaydigan qator ko'rsatardi.
   const fromApp = String(request.headers.get('x-app') || '').toLowerCase() === 'nova' || H.isMobileClientD1(request);
-  const hideSql = fromApp ? ` AND kind <> 'featured_open'` : '';
+  const hideSql = fromApp ? ` AND kind NOT IN ${APP_HIDDEN_SQL}` : '';
 
   // ── RO'YXAT ───────────────────────────────────────────────────
   if (path === '/api/notifications' && request.method === 'GET') {
@@ -235,11 +256,13 @@ export async function handle(request, env, url, H) {
     const args = [user.id];
     if (cursor > 0) { where.push(`n.id < ?`); args.push(cursor); }
     if (unreadOnly) where.push(`n.read_at IS NULL`);
-    if (fromApp) where.push(`n.kind <> 'featured_open'`);
+    if (fromApp) where.push(`n.kind NOT IN ${APP_HIDDEN_SQL}`);
 
     const rows = await env.DB.prepare(
       `SELECT n.id, n.kind, n.target_type, n.target_id, n.target_code, n.read_at, n.created_at,
-              ac.name AS actor_name, ac.code AS actor_code, ac.avatar_url AS actor_avatar
+              ac.name AS actor_name, ac.code AS actor_code, ac.avatar_url AS actor_avatar,
+              CASE WHEN n.kind = 'referral_reward'
+                   THEN (SELECT email FROM users WHERE id = n.actor_user_id) END AS actor_email
          FROM notifications n ${ACTOR_SQL}
         WHERE ${where.join(' AND ')}
         ORDER BY n.id DESC LIMIT ?`

@@ -136,6 +136,9 @@ export default function AuthPage({ mode }) {
     const q = new URLSearchParams(window.location.search);
     return (q.get('promo') || q.get('ref') || '').toUpperCase();
   });
+  // Oldindan to'ldirilgan kod. Odam uni ATAYLAB o'chirsa, server taklif
+  // cookie'sini (`nfc_ref`) ham qo'llamasligi uchun `promoCleared: true` ketadi.
+  const [promoPrefilled] = useState(() => promoCode !== '');
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
   // Shaxsiy profil / Kompaniya profili — ro'yxatdan o'tishda aniq tanlov.
@@ -229,6 +232,7 @@ export default function AuthPage({ mode }) {
         }
         await authRegister(email.trim(), password, {
           phone: phone.trim(), tosAccepted, promoCode: promoCode.trim(), emailCode: emailCode.trim(),
+          ...(promoPrefilled && !promoCode.trim() ? { promoCleared: true } : {}),
         });
       } else await authLogin(email.trim(), password);
       setFailCount(0);

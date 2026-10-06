@@ -1,7 +1,7 @@
 import { phoneProblem, emailTypoSuggestion, emailDomainAccepts } from './contact-check.js';
 import { idQuarantined } from './account-purge.js';
 // Promokod mukofoti: har do'st uchun +30 kun Premium (api/referrals.js).
-import { grantReferralReward } from './referrals.js';
+import { recordPendingReward } from './referrals.js';
 // hosting/api/auth.js — ro'yxatdan o'tish (Telegram OTP) va parolni tiklash.
 // CONTRACT.md ga qarang. Route topilmasa null qaytaradi.
 //
@@ -753,14 +753,21 @@ async function finishRegistration(request, env, H, { email, password, extra, exi
   await assignPromoCode(env, user.id);
 
   // Promokod: formadan; bo'sh bo'lsa — taklif havolasi (/i/:code)
-  // qoldirgan `nfc_ref` cookie'dan.
-  const cookieRef = String(H.parseCookies(request)?.nfc_ref || '');
+  // qoldirgan `nfc_ref` cookie'dan. Odam oldindan to'ldirilgan kodni
+  // ATAYLAB o'chirgan bo'lsa (forma `promoCleared: true` yuboradi) —
+  // cookie ham qo'llanmaydi (ko'rik F8).
+  const cookies = H.parseCookies(request) || {};
+  const cookieRef = body?.promoCleared === true ? '' : String(cookies.nfc_ref || '');
   const promoInput = (H.cleanStr(body?.promoCode, 12) || H.cleanStr(cookieRef, 12)).toUpperCase();
   if (promoInput) {
     const referrerId = await getUserIdByPromoCode(env, promoInput);
     if (referrerId && await applyReferral(env, referrerId, user.id)) {
-      // 10% chegirma (avvalgidek) + taklif qiluvchiga +30 kun Premium.
-      await grantReferralReward(env, H, referrerId, user.id, { verified });
+      // 10% chegirma (avvalgidek, darhol). +30 kun Premium esa KECHIKTIRILGAN:
+      // bu yerda faqat kutilayotgan yozuv; do'st 7 kun va faollik
+      // shartlariga yetganda cron yoki /api/auth/me beradi (referrals.js).
+      await recordPendingReward(env, H, referrerId, user.id, {
+        verified, email: H.isPlaceholderEmailD1(email) ? '' : email, phoneVerified: !!extra.linkToken,
+      });
     }
   }
 
@@ -780,10 +787,16 @@ async function finishRegistration(request, env, H, { email, password, extra, exi
   // Veb uchun HECH NARSA o'zgarmaydi: brauzer bu sarlavhani umuman
   // yubormaydi, demak javobi bitma-bit avvalgidek.
   const wantsToken = H.isMobileClientD1(request);
-  return H.jsonWithCookie({
+  const res = H.jsonWithCookie({
     user: { id: user.id, email: H.publicEmailD1(user.email) },
     ...(wantsToken ? { token: s.token } : {}),
   }, 201, s.cookie);
+  // Taklif cookie'si bir martalik: ro'yxatdan o'tgach o'chiriladi (F8).
+  if (cookies.nfc_ref !== undefined) {
+    const secure = new URL(request.url).protocol === 'https:' ? '; Secure' : '';
+    res.headers.append('Set-Cookie', `nfc_ref=; Path=/; Max-Age=0; SameSite=Lax; HttpOnly${secure}`);
+  }
+  return res;
 }
 
 // Parol tiklash so'rovi — foydalanuvchi bor-yo'qligi oshkor qilinmaydi:

@@ -158,9 +158,27 @@ await call('/api/auth/me', { cookie: cookie.other, headers: { 'x-app': 'nova', '
   const c = sqlite.prepare(`SELECT user_id, days, transaction_id, environment FROM iap_apple_boost_credits WHERE id = ?`).get(r.body.creditId);
   check('6) kredit: egasi, kunlar, sintetik kalit', [c.user_id, c.days, c.transaction_id, c.environment], [1, 3, `admin:${apple.id}:BOOST00001`, 'admin']);
   check('6) foydalanuvchi kreditlari ro‘yxatida', (await call('/api/iap/apple/boost-credits', { cookie: cookie.user })).body.credits.some((x) => x.creditId === r.body.creditId), true);
-  // Asl tranzaksiya REFUND bo'lsa — qayta berilgan kredit ham bekor.
+  // Allaqachon to'xtagan slot — 409, ikkinchi kredit yo'q.
+  const again = await call(`/api/admin/featured/${apple.id}/stop`, { method: 'POST', cookie: cookie.manager, json: { reason: 'yana', reissueCredit: true } });
+  check('6) qayta to‘xtatish — 409, kredit yo‘q', [again.status, sqlite.prepare(`SELECT COUNT(*) AS n FROM iap_apple_boost_credits WHERE transaction_id LIKE 'admin:%'`).get().n], [409, 1]);
+  // Qayta berilgan kredit SLOTGA yoqildi (ko'rik F5) — keyin asl tranzaksiya REFUND.
+  sqlite.prepare(`INSERT INTO posts (id, code, user_id, caption, created_at) VALUES (502, 'VIP001', 1, 'p2', '2026-01-01 00:00:00')`).run();
+  resetLimits();
+  const red = await call('/api/iap/apple/boost-redeem', { method: 'POST', cookie: cookie.user, json: { creditId: r.body.creditId, targetKind: 'post', targetId: 502 } });
+  check('6) admin krediti yoqildi — slot faol, kalit admin:…', [red.status, red.body.boost,
+    sqlite.prepare(`SELECT apple_transaction_id FROM featured_slots WHERE id = ?`).get(red.body.slot?.id)?.apple_transaction_id], [200, 'active', `admin:${apple.id}:BOOST00001`]);
   await notify('REFUND', { ...B1, revocationDate: NOW }, 'u-b1-ref');
+  check('6) asl REFUND — admin kreditidan yoqilgan slot ham to‘xtadi', sqlite.prepare(`SELECT status, stopped_reason FROM featured_slots WHERE id = ?`).get(red.body.slot.id),
+    { status: 'stopped', stopped_reason: 'apple_refund' });
   checkTrue('6) asl REFUND — qayta berilgan kredit bekor', !!sqlite.prepare(`SELECT revoked_at FROM iap_apple_boost_credits WHERE id = ?`).get(r.body.creditId).revoked_at);
+  // Tranzaksiyasi allaqachon qaytarilgan faol slot — to'xtaydi, lekin kredit YO'Q.
+  sqlite.prepare(`INSERT INTO iap_apple_boost_transactions (transaction_id, user_id, product_id, days, environment, state, revoked_at, created_at)
+    VALUES ('BOOSTREV01', 1, 'uz.nfcstore.nova.boost.1d', 1, 'Production', 'revoked', ?, ?)`).run(new Date(NOW).toISOString(), new Date(NOW).toISOString());
+  const rs = sqlite.prepare(`INSERT INTO featured_slots (user_id, target_kind, target_id, code, days, price, status, created_at, source, apple_transaction_id)
+    VALUES (1, 'post', 501, 'VIP001', 1, 0, 'active', ?, 'apple', 'BOOSTREV01')`).run(new Date(NOW).toISOString());
+  const rv = await call(`/api/admin/featured/${Number(rs.lastInsertRowid)}/stop`, { method: 'POST', cookie: cookie.manager, json: { reason: 'x', reissueCredit: true } });
+  check('6) qaytarilgan tranzaksiya — to‘xtadi, kredit yo‘q', [rv.status, rv.body.creditId, rv.body.reason,
+    sqlite.prepare(`SELECT COUNT(*) AS n FROM iap_apple_boost_credits WHERE transaction_id LIKE '%BOOSTREV01'`).get().n], [200, null, 'refunded', 0]);
 }
 
 __setTrustedRootForTests(null);

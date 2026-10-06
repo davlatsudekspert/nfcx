@@ -6200,6 +6200,11 @@ async function authApi(request, env, url) {
     if (!user) return json({ user: null, cards: [] });
     // Ilova (`x-app: nova`) ochilishi — admin "Ilova foydalanuvchilari".
     await recordAppOpen(env, request, user.id);
+    // Taklif mukofoti (api/referrals.js): agar shu odam kimningdir taklifi
+    // bilan kelgan va yozuvi kutilayotgan bo'lsa — shartlar tekshiriladi.
+    // O'chirgich o'chiq bo'lsa so'rovsiz qaytadi; aks holda shu isolate
+    // ichida bir odam uchun soatiga bir marta. Xato bo'lsa jim.
+    await apiReferrals.checkReferralOnOpen(env, H, user.id).catch(() => null);
     const rows = await env.DB.prepare(`SELECT ${recordColumnsD1()} FROM cards WHERE user_id = ? ORDER BY is_primary DESC, ts DESC`)
       .bind(user.id).all();
     // OBUNACHILAR SONI — KARTA MA'LUMOTIDA HAM.
@@ -8361,6 +8366,15 @@ const maskEmailD1 = (e) => {
   return at > 0 ? `${s[0]}***${s.slice(at)}` : (s ? '***' : s);
 };
 const maskPhoneD1 = (p) => (p ? `***${String(p).slice(-4)}` : p);
+// Ism / manzil kabi erkin matn: faqat birinchi belgi.
+const maskTextD1 = (t) => {
+  const s = String(t ?? '').trim();
+  return s ? `${s[0]}***` : (t ?? '');
+};
+// SHAXSIY MA'LUMOT (PII) KIMGA NIQOBLANADI — BITTA QOIDA (ko'rik F4):
+// manager'dan past rol (content_manager, noma'lum rol). Modullar ham
+// shuni `H.piiMaskedD1` orqali ishlatadi — nusxa yo'q.
+const piiMaskedD1 = (admin) => !roleAtLeast(admin, 'manager');
 // Murojaatga javoblar TARIXI (admin audit): har javob alohida qator;
 // eng oxirgisi moslik uchun `support_messages.reply` da ham turadi.
 let supportRepliesReadyD1 = null;
@@ -9572,9 +9586,10 @@ async function adminCoreApi(request, env, url, admin) {
           designFrontUrl: typeof p.designFrontUrl === 'string' ? p.designFrontUrl : '',
           designBackUrl: typeof p.designBackUrl === 'string' ? p.designBackUrl : '',
           printSpec: typeof p.printSpec === 'string' ? p.printSpec : '',
-          shippingName: typeof p.shippingName === 'string' ? p.shippingName : '',
-          shippingPhone: typeof p.shippingPhone === 'string' ? p.shippingPhone : '',
-          shippingAddress: typeof p.shippingAddress === 'string' ? p.shippingAddress : '',
+          // content_manager — yetkazish ma'lumoti niqoblangan (ko'rik F4).
+          shippingName: typeof p.shippingName === 'string' ? (piiMaskedD1(admin) ? maskTextD1(p.shippingName) : p.shippingName) : '',
+          shippingPhone: typeof p.shippingPhone === 'string' ? (piiMaskedD1(admin) ? maskPhoneD1(p.shippingPhone) : p.shippingPhone) : '',
+          shippingAddress: typeof p.shippingAddress === 'string' ? (piiMaskedD1(admin) ? maskTextD1(p.shippingAddress) : p.shippingAddress) : '',
           shippingCarrier: typeof p.shippingCarrier === 'string' ? p.shippingCarrier : '',
           quantity: Number(p.quantity) > 0 ? Math.round(Number(p.quantity)) : 1,
         };
@@ -9587,7 +9602,10 @@ async function adminCoreApi(request, env, url, admin) {
       (SELECT name FROM cards WHERE user_id = ru.id ORDER BY is_primary DESC, ts ASC LIMIT 1) AS referrer_name,
       rd.email AS referred_email, (SELECT name FROM cards WHERE user_id = rd.id ORDER BY is_primary DESC, ts ASC LIMIT 1) AS referred_name
       FROM referral_uses r JOIN users ru ON ru.id = r.referrer_id JOIN users rd ON rd.id = r.referred_id ORDER BY r.created_at DESC LIMIT 2000`).all();
-    return json({ referrals: (rows.results || []).map((r) => ({ id: r.id, createdAt: r.created_at, referrerEmail: r.referrer_email, referrerPromo: r.referrer_promo, referrerName: r.referrer_name, referredEmail: r.referred_email, referredName: r.referred_name })) });
+    // content_manager — emaillar niqoblangan (ko'rik F4).
+    const masked = piiMaskedD1(admin);
+    const em = (e) => (masked ? maskEmailD1(e) : e);
+    return json({ referrals: (rows.results || []).map((r) => ({ id: r.id, createdAt: r.created_at, referrerEmail: em(r.referrer_email), referrerPromo: r.referrer_promo, referrerName: r.referrer_name, referredEmail: em(r.referred_email), referredName: r.referred_name })) });
   }
 
   // MUROJAATLAR (2026-10): javob foydalanuvchiga YETIB BORADI.
@@ -9630,7 +9648,7 @@ async function adminCoreApi(request, env, url, admin) {
       if (!byMsg.has(k)) byMsg.set(k, []);
       byMsg.get(k).push({ reply: r.reply, status: r.status, adminId: r.admin_id, createdAt: r.created_at });
     }
-    const masked = admin.role === 'content_manager';
+    const masked = piiMaskedD1(admin);
     // Tablar uchun sanoq — ro'yxat bilan bir xil (JOIN users) asosda.
     const grouped = await env.DB.prepare(`SELECT sm.status AS status, COUNT(*) AS n
       FROM support_messages sm JOIN users u ON u.id = sm.user_id GROUP BY sm.status`).all();
@@ -9734,10 +9752,10 @@ async function adminCoreApi(request, env, url, admin) {
     const limit = adminListLimitD1(url, 100, 500);
     const rows = await env.DB.prepare(`SELECT pc.*, u.email AS owner_email FROM physical_cards pc LEFT JOIN users u ON u.id = pc.owner_user_id ORDER BY pc.created_at DESC LIMIT ?`).bind(limit + 1).all();
     const list = (rows.results || []).slice(0, limit);
-    const masked = admin.role === 'content_manager';
+    const masked = piiMaskedD1(admin);
     // `chip_token` TO'LIQ QAYTARILMAYDI (admin audit) — u kartaning maxfiy
     // manzili; faqat oxirgi 4 belgi.
-    return json({ limit, hasMore: (rows.results || []).length > limit, cards: list.map((r) => ({ id: r.id, tokenTail: String(r.chip_token || '').slice(-4).toUpperCase(), linkedCode: r.linked_code, ownerUserId: r.owner_user_id, ownerEmail: masked ? maskEmailD1(r.owner_email) : r.owner_email, active: !!r.active, status: r.status, shippingName: r.shipping_name, shippingPhone: masked ? maskPhoneD1(r.shipping_phone) : r.shipping_phone, shippingAddress: r.shipping_address, trackingNumber: r.tracking_number || '', carrier: r.carrier || '', createdAt: r.created_at })) });
+    return json({ limit, hasMore: (rows.results || []).length > limit, cards: list.map((r) => ({ id: r.id, tokenTail: String(r.chip_token || '').slice(-4).toUpperCase(), linkedCode: r.linked_code, ownerUserId: r.owner_user_id, ownerEmail: masked ? maskEmailD1(r.owner_email) : r.owner_email, active: !!r.active, status: r.status, shippingName: masked ? maskTextD1(r.shipping_name) : r.shipping_name, shippingPhone: masked ? maskPhoneD1(r.shipping_phone) : r.shipping_phone, shippingAddress: masked ? maskTextD1(r.shipping_address) : r.shipping_address, trackingNumber: r.tracking_number || '', carrier: r.carrier || '', createdAt: r.created_at })) });
   }
 
   // Kuzatuv raqami uchun ustunlar. `physical_cards` jadvali D1'da
@@ -10105,7 +10123,13 @@ async function adminCoreApi(request, env, url, admin) {
     const nowIso = new Date().toISOString();
     const conds = [];
     const binds = [];
-    if (q) {
+    if (q && piiMaskedD1(admin)) {
+      // content_manager email/telefon bo'yicha QIDIRA OLMAYDI (ko'rik F4):
+      // aks holda niqoblangan ro'yxat "bu email ro'yxatdan o'tganmi?"
+      // degan savolga javob berardi. Faqat NFC ID va karta nomi.
+      conds.push(`EXISTS (SELECT 1 FROM cards cq WHERE cq.user_id = users.id AND (LOWER(cq.code) LIKE ? OR LOWER(COALESCE(cq.name, '')) LIKE ?))`);
+      binds.push(`%${q}%`, `%${q}%`);
+    } else if (q) {
       conds.push(`(LOWER(email) LIKE ? OR phone LIKE ? OR EXISTS (SELECT 1 FROM cards cq WHERE cq.user_id = users.id AND LOWER(cq.code) LIKE ?))`);
       binds.push(`%${q}%`, `%${q}%`, `%${q}%`);
     }
@@ -10140,7 +10164,7 @@ async function adminCoreApi(request, env, url, admin) {
               (SELECT GROUP_CONCAT(code) FROM cards WHERE user_id = users.id) AS codes
        FROM users ${where} ORDER BY created_at DESC, id DESC LIMIT ?`
     ).bind(...binds, limit + 1).all();
-    const masked = admin.role === 'content_manager';
+    const masked = piiMaskedD1(admin);
     const users = (rows.results || []).slice(0, limit).map((r) => ({
       id: r.id, email: masked ? maskEmailD1(r.email) : r.email, phone: masked ? maskPhoneD1(r.phone) : r.phone, botAck: !!r.bot_ack, balance: Number(r.balance),
       heldBalance: Number(r.held_balance), createdAt: r.created_at, isTest: !!r.is_test, isInternal: !!r.is_internal,
@@ -12103,7 +12127,7 @@ const H = {
   createPendingWebOrderD1, getWebOrderD1, createWebOrderD1, setWebOrderStatusD1, ensureCoreSchema,
   finalizePaidWebOrderD1, attachCardToUserD1, createRecordD1, activeWebOrderByCodeD1, getWebOrderByPaymeIdD1,
   sessionCookieHeader, jsonWithCookie, isSecure, SESSION_TTL_S, newsVisitorHash, createUserSession, parseCookies,
-  rateLimitD1, roleAtLeast,
+  rateLimitD1, roleAtLeast, maskEmailD1, maskPhoneD1, maskTextD1, piiMaskedD1,
   emailEnabledD1, sendEmailD1, emailShellD1,
   personalPriceForCode, personalTierFromCode, personalCodeTierOverride, isPersonalCodePurchasable,
   usersHaveTrialColumnsD1, trialEndsAtD1, premiumExtendD1,
@@ -12284,6 +12308,13 @@ export default {
       // ochilishni aniqlash va navbatdagilarga bir martalik xabar.
       const fs = await apiFeatured.featuredSalesTick(env, H).catch(() => null);
       if (fs?.notified) console.log('featured_open_notified', fs.notified);
+      // Taklif mukofotlari (api/referrals.js): 7 kun + faollik shartiga
+      // yetganlarga +30 kun, 60 kunda yetmaganlar — 'expired'.
+      // `REFERRAL_REWARD_ENABLED` = '1' bo'lmasa hech narsa qilmaydi.
+      const rr = await apiReferrals.processReferralRewards(env, H).catch(() => null);
+      if (rr && !rr.disabled && (rr.granted || rr.expired || rr.rejected)) {
+        console.log('referral_rewards', JSON.stringify({ granted: rr.granted, expired: rr.expired, rejected: rr.rejected }));
+      }
     })());
   },
 };
@@ -12335,9 +12366,12 @@ async function handleRequest(request, env, url, ctx) {
     if ((url.pathname === '/.well-known/apple-app-site-association'
       || url.pathname === '/apple-app-site-association') && ['GET', 'HEAD'].includes(request.method)) {
       const appId = `${String(env.IOS_TEAM_ID || '5Z9CT2W378')}.${String(env.IOS_NOVA_BUNDLE || 'uz.nfcstore.nova')}`;
-      // `/i/*` — taklif havolasi (promokod): ilova o'rnatilgan bo'lsa kodni
-      // yo'ldan o'qiydi, aks holda sayt ro'yxat sahifasiga yo'naltiradi.
-      const paths = ['/post/*', '/u/*', '/c/*', '/story/*', '/nfc/*', '/i/*'];
+      // `/i/*` (taklif havolasi) ATAYLAB YO'Q (ko'rik F3): chiqarilgan ilova
+      // /i/:code yo'lini bilmaydi — iPhone'da havola ilovaning xato ekranini
+      // ochib, taklif yo'qolardi. Ilova /i/:code ni o'qiy oladigan versiya
+      // App Store'da chiqqandan keyin '/i/*' shu ro'yxatga QAYTA qo'shilsin.
+      // Hozircha /i/:code har doim saytda ochiladi (worker `inviteRedirect`).
+      const paths = ['/post/*', '/u/*', '/c/*', '/story/*', '/nfc/*'];
       const body = JSON.stringify({
         applinks: {
           apps: [],

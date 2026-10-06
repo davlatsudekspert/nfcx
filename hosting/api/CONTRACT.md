@@ -276,16 +276,28 @@ Apple verify/redeem — to'langan, shartga bog'liq emas; admin qo'lda ko'tarish 
 Admin: `GET /api/admin/featured/waitlist` (manager+) → `{sales, counts:{total, notified}, items}`;
 `POST /api/admin/featured/sales {mode}` (super_admin, `featured_sales_mode` jurnalda). Test: `scripts/test-featured-sales.mjs`.
 
-`referrals` — PROMOKOD MUKOFOTI (2026-10-06): mavjud 10% chegirmadan (auth.js `applyReferral`) TASHQARI
-taklif qiluvchiga har tasdiqlangan (email kodi yoki Telegram telefon) do'st uchun +30 kun Premium:
-`premium_expires_at = max(hozir, joriy, faol sinov tugashi) + 30 kun`; muddatsiz Premium / o'chirilgan —
-yo'q; bir do'st — bir marta (`referral_rewards.referred_id` UNIQUE); o'zi/o'sha telefon — yo'q; 365 kunda
-≤ 24 ta. Bildirishnoma `referral_reward` (aktyor — do'st). `GET /api/referrals/summary` (auth) →
-`{code, link:'https://nfcstore.uz/i/<code>', invited, rewardedDays, nextRewardDays:30}`;
-`GET /api/admin/referrals/leaderboard` → `{last30, allTime}` (`[{rank, userId, name, code, count, rewardedDays}]`).
-`GET /i/:code` (worker.js) → kod bor: `Set-Cookie nfc_ref=<code>` (30 kun, Lax, HttpOnly, Secure) + 302
-`/register?ref=<code>`; yo'q → 302 `/`. Ro'yxat formada promokod bo'lmasa `nfc_ref` cookie'dan oladi.
-AASA yo'llarida `/i/*`. Test: `scripts/test-referral-rewards.mjs`.
+`referrals` — PROMOKOD MUKOFOTI (2026-10-06, ko'rik F1/F2 bilan KECHIKTIRILGAN): mavjud 10% chegirmadan
+(auth.js `applyReferral`, ro'yxatda darhol) TASHQARI taklif qiluvchiga har FAOL do'st uchun +30 kun Premium.
+Ro'yxatda (faqat tasdiqlangan — email kodi yoki Telegram telefon) faqat `referral_rewards` qatori
+`status='pending'` (+ `friend_email_norm`, `friend_phone_verified`). Kunlik cron va do'stning `/api/auth/me`
+(isolate'da bir odamga soatiga bir marta) beradi, agar HAMMASI: do'st ≥7 kunlik, o'chirilmagan, ban/muzlatilmagan;
+faollik — `app_users` da 2 xil kun YOKI post/istorya YOKI avatar; normallangan email (kichik harf; gmail/googlemail —
+nuqtasiz va +tegsiz; boshqalar — +tegsiz) taklif qiluvchinikidan va uning ERTAROQ (pending/granting/granted)
+do'stlarinikidan farq qiladi; telefon taklif qiluvchiniki emas. Holatlar: `pending → granting → granted`;
+`pending → expired` (60 kun) | `rejected` (`reason`: self, same_phone, duplicate_email, referrer_deleted,
+referred_deleted, lifetime). Da'vo — bitta shartli UPDATE (365 kunda `granting`+`granted` < 24); muddat va
+`granted` bitta batch'da CAS bilan; yozilmasa `granting` qoladi, cron qayta uradi (da'vo o'chirilmaydi).
+O'chirgich `REFERRAL_REWARD_ENABLED='1'` — aks holda hech narsa berilmaydi/eskirmaydi, faqat `pending` to'planadi.
+`premium_expires_at = max(hozir, joriy, faol sinov tugashi) + 30 kun`. Bildirishnoma `referral_reward`
+(aktyor — do'st; ILOVADA yashirin, `featured_open` kabi; saytda sarlavha — do'stning ochiq ismi, standart
+(email "@" oldi / 'Yangi foydalanuvchi') nom bo'lsa bo'sh → sayt "Do'stingiz"). `GET /api/referrals/summary`
+(auth) → `{code, link:'https://nfcstore.uz/i/<code>', invited, rewardedDays, pendingRewards, nextRewardDays:30}`
+(faqat `granted` kunlar); `GET /api/admin/referrals/leaderboard` → `{last30, allTime}`
+(`[{rank, userId, name, code, count, rewardedDays}]`). `GET /i/:code` (worker.js) → kod bor: `Set-Cookie
+nfc_ref=<code>` (30 kun, Lax, HttpOnly, Secure) + 302 `/register?ref=<code>`; yo'q → 302 `/`. Ro'yxat formada
+promokod bo'lmasa `nfc_ref` cookie'dan oladi, LEKIN `promoCleared:true` (odam to'ldirilgan kodni o'chirgan)
+bo'lsa — yo'q; 201 javobida `nfc_ref` o'chiriladi (`Max-Age=0`). AASA'da `/i/*` YO'Q (ko'rik F3) — ilova
+/i/:code ni o'qiy oladigan versiya chiqqach qayta qo'shiladi. Test: `scripts/test-referral-rewards.mjs`.
 
 `admin-apple` — admin "Apple / iOS" (2026-10, faqat o'qish, manager+; foydalanuvchi — `userId` + asosiy NFC kodi,
 email/telefon/JWS/appAccountToken yo'q; tranzaksiya raqami manager uchun `…oxirgi6`, super_admin uchun to'liq):
@@ -296,16 +308,23 @@ signatureFailures, lastSignatureFailureAt}, attention, app:{totals, builds}}`;
 `GET /api/admin/apple/subscriptions|transactions?kind=premium|boost|notifications|credits` — filtrlar, 50 tadan,
 `{items, hasMore, nextCursor}`. Kartochka `GET /api/admin/users/:id/detail` → `apple:{hasToken, subscriptions,
 premiumTx, boostTx, credits}`; overview `badges.appleAttention`. Notification imzo xatolari soni
-`admin_settings.iap_apple_sig_fail_count/last` (tana saqlanmaydi); daftarlarda `price`, `currency` (JWS'dan).
+`admin_settings.iap_apple_sig_fail_count/last` (tana saqlanmaydi; isolate'da yig'iladi, bazaga minutiga ≤1
+yozuv; bitta IP'dan 10 daqiqada >10 buzuq imzo — 429); daftarlarda `price`, `currency` (JWS'dan).
 Premium olib qo'yish (`POST /api/admin/users/:id/premium {action:'revoke'}`) faol Apple obunasida 409
 `apple_subscription_active` (+`apple`), faqat `force:true` bilan. `POST /api/admin/featured/:id/stop {reason,
-reissueCredit:true}` — faol Apple slotida xaridorga kredit (`admin:<slot>:<tx>`, asl REFUND uni ham bekor qiladi).
+reissueCredit:true}` — faol Apple slotida xaridorga kredit (`admin:<slot>:<tx>`), faqat slotni shu so'rov
+haqiqatan to'xtatgan bo'lsa (aks holda 409 `not_stoppable`) va asl tranzaksiya qaytarilmagan bo'lsa (aks holda
+`{ok, creditId:null, reason:'refunded'}`). Asl REFUND kreditni ham, undan yoqilgan slotni ham bekor qiladi.
 Test: `scripts/test-admin-apple.mjs`.
 
 ADMIN AUDIT (2026-10): ro'yxatlar serverda sahifalanadi — `limit` + `hasMore`: `/api/admin/users`
 (+ `status=premium|flagged|blocked|deleted` serverda), `/premium-users` (+ `apple` belgisi va sanog'i),
 `/support-messages` (+ `replies[]` tarixi — `support_replies`, javob ≤ 4000 belgi, `platform`, `appBuild`),
 `/physical-cards` (`chipToken` o'rniga faqat `tokenTail`), `/featured`, `/activity-log` (+ `q`).
-content_manager uchun email/telefon niqoblanadi. `/api/admin/app-users` sanog'ida test/ichki/o'chirilgan yo'q,
+SHAXSIY MA'LUMOT (ko'rik F4): manager'dan past rol (content_manager) uchun bitta qoida `H.piiMaskedD1` —
+email `x***@domen`, telefon `***1234`, ism/manzil `X***`: `/users`, `/users/:id/detail` (+ `apple: null`),
+`/premium-users`, overview `recent.payments/signups`, `/referrals`, `/app-users`, `/physical-cards`
+(ism/telefon/manzil), `/orders` (yetkazish maydonlari), `/support-messages`. `q` qidiruvi content_manager uchun
+email/telefon bo'yicha ishlamaydi (faqat NFC ID / nom / raqam). `/api/admin/app-users` sanog'ida test/ichki/o'chirilgan yo'q,
 Premium belgisi filtr bilan bir xil ifoda. `/api/admin/review-account` → `userId` ham.
 Test: `scripts/test-admin-audit.mjs`.

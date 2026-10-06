@@ -23,7 +23,7 @@
 // Production'ga HECH QACHON tegmaydi.
 import { setupSocial, cookie, makeChecker } from './lib/social-fixture.mjs';
 import { makeChain, signJws } from './lib/apple-fake-chain.mjs';
-import { __setTrustedRootForTests, PRODUCTS } from '../hosting/api/iap-apple.js';
+import { __setTrustedRootForTests, __resetSigFailForTests, PRODUCTS } from '../hosting/api/iap-apple.js';
 
 const { check, checkTrue, done } = makeChecker();
 const { env, sqlite, call, resetLimits } = await setupSocial();
@@ -501,6 +501,23 @@ env.IAP_APPLE_ENABLED = '0';
   check('17) ro‘yxatda — granted', [(await notify('DID_RENEW', S1)).body.result, premiumOf(1)], ['granted', iso(NOW + 900 * DAY)]);
   delete env.IAP_APPLE_SANDBOX_USER_IDS;
   setPremium(1, before);
+}
+
+// ═══ IMZO XATOLARI: bazaga minutiga ≤1 yozuv, IP bo'yicha 429 (ko'rik F6) ═══
+{
+  __resetSigFailForTests();
+  const cnt = () => Number(sqlite.prepare(`SELECT value FROM admin_settings WHERE key = 'iap_apple_sig_fail_count'`).get()?.value || 0);
+  const c0 = cnt();
+  const bad = (ip) => call('/api/iap/apple/notifications', { method: 'POST', ip,
+    json: { signedPayload: signJws({ notificationType: 'TEST', notificationUUID: 'forged' }, makeChain()) } });
+  const st = [];
+  for (let i = 0; i < 10; i++) st.push((await bad('192.0.2.77')).status);
+  check('F6) 10 ta buzuq imzo — hammasi 400', st.every((x) => x === 400), true);
+  check('F6) bazaga bitta yozuv (minutiga ≤1)', cnt() - c0, 1);
+  check('F6) 11-chisi — 429', (await bad('192.0.2.77')).status, 429);
+  check('F6) boshqa IP — cheklanmagan (400)', (await bad('192.0.2.78')).status, 400);
+  check('F6) 429 bazaga yozmaydi', cnt() - c0, 1);
+  __resetSigFailForTests();
 }
 
 __setTrustedRootForTests(null);

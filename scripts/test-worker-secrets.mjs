@@ -68,6 +68,9 @@ const OPTIONAL = new Set([
   // Sandbox xaridi faqat shu ruxsat bilan Premium beradi (standart — hech kimga):
   // '1' — hammaga (staging); ID ro'yxati — masalan App Review demo hisobi.
   'IAP_APPLE_ALLOW_SANDBOX', 'IAP_APPLE_SANDBOX_USER_IDS',
+  // Taklif mukofoti (+30 kun Premium) faqat '1' bo'lsa beriladi; yo'q bo'lsa
+  // kutilayotgan yozuvlar to'planadi, lekin hech kimga Premium yozilmaydi.
+  'REFERRAL_REWARD_ENABLED',
 ]);
 
 // wrangler.jsonc o'zi qo'yadigan bog'lanishlar — secret emas.

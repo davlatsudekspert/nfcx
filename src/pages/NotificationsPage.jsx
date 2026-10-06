@@ -169,7 +169,7 @@ export default function NotificationsPage() {
           >
             {!n.read && <span className="h-2 w-2 shrink-0 rounded-full bg-accent" aria-hidden="true" />}
             <span className="min-w-0 flex-1 break-words">
-              <b>{n.type === 'support_reply' || n.type === 'trial_ending' || n.type === 'featured_open' ? 'NFCSTORE' : (n.title || t('Foydalanuvchi'))}</b> {socialText(n)}
+              <b>{n.type === 'support_reply' || n.type === 'trial_ending' || n.type === 'featured_open' ? 'NFCSTORE' : (n.title || (n.type === 'referral_reward' ? t("Do'stingiz") : t('Foydalanuvchi')))}</b> {socialText(n)}
             </span>
             <span className="shrink-0 text-xs text-base-content/45">
               {n.createdAt ? timeAgo(new Date(String(n.createdAt).replace(' ', 'T')).getTime()) : ''}

@@ -313,6 +313,16 @@ async function undoByTx(env, txid) {
   const re = await env.DB.prepare(`UPDATE iap_apple_boost_credits SET revoked_at = ?
       WHERE transaction_id LIKE ? AND revoked_at IS NULL AND used_at IS NULL`).bind(new Date().toISOString(), `admin:%:${txid}`).run();
   if (changed(re) && outcome === 'not_granted') outcome = 'credit_revoked';
+  // Admin kreditidan ALLAQACHON yoqilgan slot (ko'rik F5): uning
+  // `apple_transaction_id` si — kredit kaliti `admin:<slot>:<tx>`. Asl
+  // tranzaksiya qaytarilsa u slot ham to'xtaydi, kredit ham belgilanadi.
+  const adminSlots = await env.DB.prepare(`SELECT id FROM featured_slots WHERE apple_transaction_id LIKE ?`)
+    .bind(`admin:%:${txid}`).all();
+  for (const s of adminSlots?.results || []) {
+    if (await stopSlot(env, Number(s.id), 'apple_refund')) outcome = 'slot_stopped';
+  }
+  await env.DB.prepare(`UPDATE iap_apple_boost_credits SET revoked_at = ? WHERE transaction_id LIKE ? AND revoked_at IS NULL`)
+    .bind(new Date().toISOString(), `admin:%:${txid}`).run();
   return outcome;
 }
 
