@@ -16,11 +16,11 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "upload = yuklash, list = faqat treklarni ko'rish"
+        description: "upload = yuklash, list = treklarni ko'rish, listing-get/listing-set = do'kon matnlari"
         required: true
         default: upload
         type: choice
-        options: [upload, list]
+        options: [upload, list, listing-get, listing-set]
       run_id:
         description: "Qaysi APK qurilishidan (run ID). Bo'sh — shu branchdagi oxirgi muvaffaqiyatli."
         required: false

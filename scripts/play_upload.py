@@ -17,6 +17,11 @@ Rejimlar:
            o'zgarmaydi.
   upload — .aab yuklanadi, tanlangan sinov trekiga yangi reliz
            qo'yiladi va tekshiruvga yuboriladi.
+  listing-get — do'kon sahifasi matnlarini (har til) ko'rsatadi;
+           edit o'chiriladi, hech narsa o'zgarmaydi.
+  listing-set — `ci/play/listings.json` dagi matnlarni (title,
+           shortDescription, fullDescription) qo'yadi va saqlaydi.
+           Faqat matnlar — video, rasmlar, treklar tegilmaydi.
 """
 import json
 import re
@@ -31,6 +36,8 @@ PKG = "uz.nfcstore.nova"
 API = f"https://androidpublisher.googleapis.com/androidpublisher/v3/applications/{PKG}"
 UPLOAD = f"https://androidpublisher.googleapis.com/upload/androidpublisher/v3/applications/{PKG}"
 STANDARD = {"production", "beta", "alpha", "internal"}
+LISTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "ci", "play", "listings.json")
+LIMITS = {"title": 30, "shortDescription": 80, "fullDescription": 4000}
 
 
 def fail(msg):
@@ -47,6 +54,86 @@ def check(r, what):
             msg = f"HTTP {r.status_code}"
         fail(f"{what}: {msg}")
     return r.json() if r.content else {}
+
+
+def notice(msg):
+    """GitHub annotation (loglarni API orqali o'qib bo'lmaydi)."""
+    esc = msg.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+    print(f"::notice::{esc}")
+
+
+def api_error(r):
+    try:
+        err = r.json().get("error", {})
+        return f"{err.get('code')} {err.get('status')}: {err.get('message')}"
+    except Exception:  # noqa: BLE001
+        return f"HTTP {r.status_code}"
+
+
+def listing_get(s, edit):
+    listings = check(s.get(f"{API}/edits/{edit}/listings"), "listinglar").get("listings", [])
+    notice(f"Listinglar soni: {len(listings)}; tillar: {', '.join(l.get('language', '?') for l in listings)}")
+    for l in listings:
+        full = l.get("fullDescription", "") or ""
+        short = l.get("shortDescription", "") or ""
+        contacts = sorted(set(re.findall(r"[\w.+-]+@[\w-]+\.[\w.]+|https?://\S+|\b[\w-]+\.uz\b", full)))
+        notice(
+            f"[{l.get('language')}] title ({len(l.get('title', '') or '')}): {l.get('title')}\n"
+            f"short ({len(short)}): {short}\n"
+            f"full ({len(full)}): {full[:300]}\n"
+            f"full kontaktlar: {', '.join(contacts) or '-'}\n"
+            f"video: {'bor' if l.get('video') else 'yoq'}")
+    r = s.get(f"{API}/edits/{edit}/details")
+    if r.status_code < 300:
+        d = r.json()
+        notice(f"details: defaultLanguage={d.get('defaultLanguage')} contactEmail={d.get('contactEmail')} "
+               f"contactWebsite={d.get('contactWebsite')}")
+    return listings
+
+
+def listing_set(s, edit):
+    try:
+        with open(LISTINGS_FILE, encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (OSError, ValueError) as e:
+        fail(f"ci/play/listings.json o'qilmadi: {e}")
+    if not isinstance(data, dict) or not data:
+        fail("ci/play/listings.json bo'sh yoki noto'g'ri")
+    # API'ga murojaatdan OLDIN uzunliklarni tekshirish.
+    bad = []
+    for lang, fields in data.items():
+        for k in LIMITS:
+            v = fields.get(k)
+            if not isinstance(v, str) or not v.strip():
+                bad.append(f"{lang}.{k}: bo'sh")
+            elif len(v) > LIMITS[k]:
+                bad.append(f"{lang}.{k}: {len(v)} > {LIMITS[k]}")
+    if bad:
+        s.delete(f"{API}/edits/{edit}")
+        fail("Uzunlik xatosi: " + "; ".join(bad))
+    existing = {l.get("language") for l in
+                check(s.get(f"{API}/edits/{edit}/listings"), "listinglar").get("listings", [])}
+    for lang, fields in data.items():
+        body = {k: fields[k] for k in LIMITS}
+        # PATCH — faqat berilgan maydonlar o'zgaradi (video tegilmaydi).
+        out = check(s.patch(f"{API}/edits/{edit}/listings/{lang}", json=body), f"listing {lang}")
+        notice(f"[{lang}] {'yangilandi' if lang in existing else 'YANGI til qo`shildi'}: "
+               f"title={len(out.get('title', ''))} short={len(out.get('shortDescription', ''))} "
+               f"full={len(out.get('fullDescription', ''))}")
+    r = s.post(f"{API}/edits/{edit}:commit")
+    if r.status_code < 300:
+        notice("COMMIT OK — o'zgarishlar tekshiruvga yuborildi.")
+        return
+    msg = api_error(r)
+    # Managed publishing: API o'zi changesNotSentForReview=true ni so'rasa.
+    if "changesNotSentForReview" in msg:
+        notice(f"Commit rad etildi ({msg}); changesNotSentForReview=true bilan qayta.")
+        check(s.post(f"{API}/edits/{edit}:commit", params={"changesNotSentForReview": "true"}),
+              "saqlash (changesNotSentForReview)")
+        notice("COMMIT OK (changesNotSentForReview=true) — Play Console'da 'Publishing overview' "
+               "orqali tekshiruvga qo'lda yuborish kerak.")
+        return
+    fail(f"saqlash (commit): {msg}")
 
 
 def main():
@@ -69,6 +156,13 @@ def main():
     s.headers["Authorization"] = f"Bearer {creds.token}"
 
     edit = check(s.post(f"{API}/edits"), "edit ochish")["id"]
+    if mode == "listing-get":
+        listing_get(s, edit)
+        s.delete(f"{API}/edits/{edit}")
+        return
+    if mode == "listing-set":
+        listing_set(s, edit)
+        return
     tracks = check(s.get(f"{API}/edits/{edit}/tracks"), "treklar").get("tracks", [])
     print("--- Treklar ---")
     for t in tracks:
