@@ -336,10 +336,10 @@ async function listReels(request, env, url, H) {
      UNION ALL
      SELECT 'o', 'card', code FROM cards WHERE user_id = ?
      UNION ALL
-     SELECT 'o', 'company', company_id FROM companies WHERE CAST(owner_user_id AS TEXT) = ?`
-  ).bind(viewerId, snap, viewerId, snap, viewerId, String(viewerId)).all()) : Promise.resolve([]);
+     SELECT 'o', 'company', company_id FROM companies WHERE owner_user_id = ? OR owner_user_id = ?`
+  ).bind(viewerId, snap, viewerId, snap, viewerId, String(viewerId), Number(viewerId)).all()) : Promise.resolve([]);
   const hidesQ = viewerId ? rowsOf(env.DB.prepare(
-    `SELECT target_kind, target_id, created_at FROM reel_hidden WHERE user_id = ?`
+    `SELECT target_kind, target_id, created_at FROM reel_hidden WHERE user_id = ? ORDER BY created_at DESC LIMIT 2000`
   ).bind(viewerId).all()) : Promise.resolve([]);
   const blocksQ = viewerId ? blockedByUser(env, viewerId).catch(() => []) : Promise.resolve([]);
   const adsQ = adCand.length ? rowsOf(env.DB.prepare(

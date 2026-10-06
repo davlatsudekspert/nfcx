@@ -69,6 +69,9 @@ export async function ensureTable(env) {
         PRIMARY KEY (user_id, kind, ref)
       )`),
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_user_saves_recent ON user_saves(user_id, kind, created_at DESC)`),
+      // Kontent bo'yicha sanoq (Reels tartibi, api/reels.js): `kind, ref`
+      // bo'yicha — usiz har so'rovda butun jadval o'qilardi.
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_user_saves_ref ON user_saves(kind, ref)`),
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS save_collections (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
