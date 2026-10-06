@@ -168,7 +168,7 @@ export default function HomeWhatsNew() {
                       onClick={go(`/yangiliklar/${n.id}`)}
                       className="group flex items-center gap-4 py-3 no-underline"
                     >
-                      {n.imageUrl && <img src={n.imageUrl} alt="" loading="lazy" className="h-12 w-[72px] shrink-0 rounded-lg object-cover" />}
+                      {n.imageUrl && <img src={n.imageUrl} alt="" width="72" height="48" loading="lazy" decoding="async" className="h-12 w-[72px] shrink-0 rounded-lg object-cover" />}
                       <span className="min-w-0 flex-1">
                         <span className="line-clamp-2 text-[15px] font-semibold leading-snug text-[color:var(--vz-ink)] group-hover:text-[color:var(--accent-text)]">{pick(n, 'title', lang)}</span>
                         <span className="mt-0.5 block text-[12px] text-[color:var(--vz-ink-2)]">{fmtDate(n.createdAt, lang)}</span>

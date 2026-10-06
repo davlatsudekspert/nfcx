@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { navigate, usePathRoute } from '../lib/router.js';
+import { linkClick, navigate, usePathRoute } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import { dbListNotifications, dbUnreadCount, dbList } from '../lib/db.js';
 import { MESSAGING_ENABLED, NEWS_ENABLED } from '../lib/features.js';
@@ -190,13 +190,13 @@ export default function Header() {
           animatsiyasi HomePage'da ishlatilgani uchun saqlanadi. */}
       <div className="navbar mx-auto w-full max-w-[1800px] px-6 sm:px-10 xl:px-4 2xl:px-10">
         <div className="flex items-center gap-3 sm:gap-4">
-          <button onClick={() => go('/')} className="flex min-h-11 shrink-0 cursor-pointer items-center gap-2 font-display text-[17px] font-semibold tracking-[0.08em] text-[color:var(--accent-text)] xl:gap-2 xl:text-[15px] 2xl:gap-2.5 2xl:text-[17px]">
+          <a href="/" onClick={linkClick('/', () => setOpen(false))} className="flex min-h-11 shrink-0 cursor-pointer items-center gap-2 no-underline font-display text-[17px] font-semibold tracking-[0.08em] text-[color:var(--accent-text)] xl:gap-2 xl:text-[15px] 2xl:gap-2.5 2xl:text-[17px]">
             {/* Logotip FAYLI o'zgarmaydi — shakl, nisbat va yozuv o'sha-o'sha.
                 `--brand-mark-filter` faqat belgining METALL RANGINI mavzuga
                 hamohang qiladi (standart mavzuda `none` — ya'ni asl oltin). */}
             <img src={logo} alt="NFCSTORE" className="h-9 w-9 object-contain drop-shadow-[0_2px_6px_var(--accent-glow)] xl:h-8 xl:w-8 2xl:h-9 2xl:w-9" style={{ filter: 'var(--brand-mark-filter)' }} />
             NFCSTORE
-          </button>
+          </a>
           <div className="hidden w-36 shrink-0 md:block lg:w-40 xl:w-28 2xl:w-40">
             <HeaderSearch />
           </div>
@@ -210,14 +210,15 @@ export default function Header() {
             bitta qatorga sig'adi, UZ/RU/EN uzun matnlarida ham. */}
         <nav className="vz-nav hidden min-w-0 flex-1 xl:flex" aria-label={t('Asosiy menyu')}>
           {DESKTOP_NAV.map(([label, href]) => (
-            <button
+            <a
               key={href}
-              onClick={() => go(href)}
-              className="vz-nav__link"
+              href={href}
+              onClick={linkClick(href, () => setOpen(false))}
+              className="vz-nav__link no-underline"
               aria-current={isActive(href) ? 'page' : undefined}
             >
               {t(label)}
-            </button>
+            </a>
           ))}
           <a href={APP_APK_URL} className="vz-nav__link inline-flex items-center gap-1.5" aria-label={t('Ilovani yuklab olish')}>
             <IconInstall />
@@ -265,7 +266,7 @@ export default function Header() {
               {t('Mening profilim')}
             </button>
           ) : (
-            <button className="btn btn-ghost btn-sm" onClick={() => go('/login')}>{t('Kirish')}</button>
+            <a href="/login" className="btn btn-ghost btn-sm no-underline" onClick={linkClick('/login', () => setOpen(false))}>{t('Kirish')}</a>
           )}
           {/* Kirgan foydalanuvchi uchun asosiy CTA "Mening profilim" — ro'yxatdan
               o'tish tugmasi faqat mehmonlarga (xl kengligida navbar sig'ishi uchun ham). */}
@@ -274,10 +275,10 @@ export default function Header() {
                uchun CTA qisqa variantda ("Ro'yxatdan o'tish"), 2xl dan
                boshlab to'liq matn qaytadi. Tugma, manzil va harakat
                O'ZGARMAYDI — faqat yorlig'i qisqaradi. */
-            <button className="btn btn-gold h-10 min-h-10 px-4 text-[13.5px] 2xl:px-5" onClick={() => go('/register')}>
+            <a href="/register" className="btn btn-gold h-10 min-h-10 px-4 text-[13.5px] no-underline 2xl:px-5" onClick={linkClick('/register', () => setOpen(false))}>
               <span className="2xl:hidden">{t("Ro'yxatdan o'tish")}</span>
               <span className="hidden 2xl:inline">{t('Bepul profil ochish')}</span>
-            </button>
+            </a>
           )}
           {/* Rang mavzusi — til tugmasi yonidagi ixcham ikona.
               Header tuzilmasi o'zgarmadi: bu ham xuddi til tugmasidek
@@ -315,13 +316,14 @@ export default function Header() {
             {NAV.map(([label, href]) => (
               <li key={href}>
                 {/* .vz-nav-m__link — 16px matn, kamida 48px teginish maydoni. */}
-                <button
-                  onClick={() => go(href)}
-                  className="vz-nav-m__link"
+                <a
+                  href={href}
+                  onClick={linkClick(href, () => setOpen(false))}
+                  className="vz-nav-m__link no-underline"
                   aria-current={isActive(href) ? 'page' : undefined}
                 >
                   {t(label)}
-                </button>
+                </a>
               </li>
             ))}
             <li>
@@ -376,14 +378,14 @@ export default function Header() {
                   {t('Mening profilim')}
                 </button>
               ) : (
-                <button onClick={() => go('/login')} className="min-h-11 cursor-pointer">{t('Kirish')}</button>
+                <a href="/login" onClick={linkClick('/login', () => setOpen(false))} className="min-h-11 cursor-pointer no-underline">{t('Kirish')}</a>
               )}
             </li>
           </ul>
           {installable && (
             <button className="btn btn-ghost-vz btn-block mt-2 gap-2" onClick={install}><IconInstall /> {t('Ilovani o‘rnatish')}</button>
           )}
-          <button className="btn btn-gold btn-block mt-2" onClick={() => go('/register')}>{t('Bepul profil ochish')}</button>
+          <a href="/register" className="btn btn-gold btn-block mt-2 no-underline" onClick={linkClick('/register', () => setOpen(false))}>{t('Bepul profil ochish')}</a>
         </div>
       )}
 

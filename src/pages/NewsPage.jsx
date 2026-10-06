@@ -219,7 +219,7 @@ export default function NewsPage({ newsId = null }) {
           {detail && (
             <article className="vz-card overflow-hidden">
               {detail.imageUrl && (
-                <img src={detail.imageUrl} alt="" className="max-h-[420px] w-full object-cover" />
+                <img src={detail.imageUrl} alt="" width="1200" height="630" decoding="async" fetchpriority="high" className="max-h-[420px] w-full object-cover" />
               )}
               <div className="p-5 sm:p-8">
                 <span className="vz-kicker">{t('Yangiliklar')}</span>
@@ -333,7 +333,7 @@ export default function NewsPage({ newsId = null }) {
                 >
                   <a href={href} onClick={(e) => go(e, href)} className="block aspect-[16/9] w-full overflow-hidden" aria-label={pick(item, 'title', lang)}>
                     {item.imageUrl ? (
-                      <img src={item.imageUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
+                      <img src={item.imageUrl} alt="" width="600" height="315" className="h-full w-full object-cover" loading="lazy" decoding="async" />
                     ) : (
                       // Rasm yo'q bo'lsa ham kartalar bir xil balandlikda qolsin
                       <span

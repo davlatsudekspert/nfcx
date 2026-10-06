@@ -34,6 +34,21 @@ export function usePathRoute() {
   return path;
 }
 
+// ICHKI HAVOLA UCHUN onClick (2026-10, sayt auditi). Menyu va pastki
+// qismdagi havolalar <button onClick={navigate}> edi: qidiruv robotlari
+// ularni havola deb ko'rmasdi, sichqonchaning o'rta tugmasi / Ctrl+bosish
+// yangi tabda ochmasdi. Endi ular <a href> — oddiy bosishda SPA ichida
+// o'tiladi (sahifa qayta yuklanmaydi), Ctrl/Cmd/Shift/o'rta tugma esa
+// brauzerning o'z ishini qiladi.
+export function linkClick(href, before) {
+  return (e) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    if (before) before();
+    navigate(href);
+  };
+}
+
 // Haqiqiy URL navigatsiyasi: nfcstore.uz/AAA00, /login, /account ...
 export function navigate(path, { replace = false } = {}) {
   const url = String(path || '/').startsWith('/') ? path : '/' + path;

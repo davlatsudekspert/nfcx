@@ -284,7 +284,9 @@ export default function AuthPage({ mode }) {
           <div className="vz-kicker">NFCSTORE</div>
           {forgot ? (
             <>
-              <h2 className="vz-h2 mt-2 !text-2xl">{t('Parolni tiklash')}</h2>
+              {/* h1 — sahifaning yagona asosiy sarlavhasi (sayt auditi, 2026-10:
+                  /login va /register da h1 umuman yo'q edi). Ko'rinishi o'zgarmadi. */}
+              <h1 className="vz-h2 mt-2 !text-2xl">{t('Parolni tiklash')}</h1>
               <p className="mt-2 text-[15px] leading-relaxed text-base-content/55">
                 {resetToken
                   ? t('Havola tasdiqlandi. Endi yangi parol qo‘ying.')
@@ -387,11 +389,11 @@ export default function AuthPage({ mode }) {
               tushdimmi" deb o'ylamasin. Maydonlar bir xil: akkaunt
               bitta, faqat kirgandan keyin biznes kabinetga qaytadi. */}
           {isBusiness && <span className="vz-badge vz-badge--gold mt-2">{t('NFCSTORE BUSINESS')}</span>}
-          <h2 className="vz-h2 mt-2 !text-2xl">
+          <h1 className="vz-h2 mt-2 !text-2xl">
             {isBusiness
               ? (isRegister ? t('Kompaniya uchun ro’yxatdan o’tish') : t('Biznes kabinetga kirish'))
               : (isRegister ? t('Ro\u2019yxatdan o\u2019tish') : t('Kirish'))}
-          </h2>
+          </h1>
           <p className="mt-2 text-[15px] leading-relaxed text-base-content/55">
             {isBusiness
               ? (isRegister
