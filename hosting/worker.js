@@ -12188,6 +12188,10 @@ export default {
       // eslatma (api/notifications.js). Xatoni o'zi yutadi; logga faqat son.
       const tr = await apiNotifications.runTrialEndingReminders(env).catch(() => null);
       if (tr?.created) console.log('trial_ending_notified', tr.created);
+      // Ko'tarish sotuvi 1000 foydalanuvchida ochiladi (api/featured.js):
+      // ochilishni aniqlash va navbatdagilarga bir martalik xabar.
+      const fs = await apiFeatured.featuredSalesTick(env, H).catch(() => null);
+      if (fs?.notified) console.log('featured_open_notified', fs.notified);
     })());
   },
 };

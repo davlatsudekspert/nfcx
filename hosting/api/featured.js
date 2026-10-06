@@ -50,6 +50,143 @@
 // turishi esa amal qilguncha joy egallaydi.
 
 import { targetOwner } from './comments.js';
+import { ensureSchema as ensureNotifications } from './notifications.js';
+
+// ═══ SOTUV 1000 FOYDALANUVCHIDA OCHILADI (egasi, 2026-10-06) ═══
+//
+// Platformada 1000 ta foydalanuvchi bo'lguncha ko'tarishni hech kim
+// SOTIB OLA OLMAYDI (sayt Payme/Click ham, iOS Apple ham): auditoriya
+// kichik paytda pul olish — "ko'rsatmay pul olish" bo'lardi. O'rniga
+// biznes BEPUL NAVBATGA yoziladi (`featured_waitlist`) va ochilganda
+// birinchi bo'lib oladi.
+//
+//   * Rejim — `admin_settings.featured_sales_open`: 'auto' (standart) |
+//     'open' | 'closed' (super_admin, POST /api/admin/featured/sales).
+//   * 'auto': o'chirilmagan foydalanuvchilar soni ≥ FEATURED_OPEN_AT_USERS
+//     bo'lsa ochiladi. Birinchi ochilish payti `featured_sales_opened_at`
+//     ga yoziladi va keyin soni kamaysa ham QAYTA YOPILMAYDI.
+//   * Ochilgandan keyin 48 soat — USTUVOR OYNA: faqat navbatdagilar
+//     sotib oladi, boshqalar 409 `priority_window` (+ `endsAt`).
+//   * Ochilganda navbatdagilarga bitta ilova ichidagi bildirishnoma
+//     (`featured_open`, aktyorsiz) — `notified_at` bilan bir marta;
+//     birinchi so'rovda yoki kunlik cron'da (`featuredSalesTick`).
+//   * Admin qo'lda ko'tarishi (POST /api/admin/featured) — doim ishlaydi.
+//   * Foydalanuvchilar soni isolate'da 5 daqiqa keshlanadi.
+// Tekshiruv xatolari (egalik, takror, sig'im) sotuv yopiq bo'lsa ham
+// avvalgidek qaytadi — shart faqat slot YARATILISHIDAN oldin.
+export const FEATURED_OPEN_AT_USERS = 1000;
+export const PRIORITY_WINDOW_MS = 48 * 60 * 60 * 1000;
+const USERS_COUNT_TTL_MS = 5 * 60 * 1000;
+const SALES_MODES = ['auto', 'open', 'closed'];
+const usersCountCache = {};
+export function __resetFeaturedSalesCache() { for (const k of Object.keys(usersCountCache)) delete usersCountCache[k]; }
+
+async function usersCountOf(env, now) {
+  const key = env.UZ_STORE_ACTIVE ? 'uz' : 'd1';
+  const c = usersCountCache[key];
+  if (c && now - c.at < USERS_COUNT_TTL_MS) return c.n;
+  const row = await env.DB.prepare(`SELECT COUNT(*) AS n FROM users WHERE deleted_at IS NULL`).first().catch(() => null);
+  const n = Number(row?.n) || 0;
+  usersCountCache[key] = { at: now, n };
+  return n;
+}
+
+async function ensureWaitlistSchema(env) {
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS featured_waitlist (
+    user_id INTEGER PRIMARY KEY NOT NULL,
+    target_kind TEXT,
+    target_id INTEGER,
+    created_at TEXT NOT NULL,
+    notified_at TEXT
+  )`).run();
+}
+
+/// NAVBATDAGILARGA "SOTUV OCHILDI" — bir marta (`notified_at`).
+/// Aktyor NULL: takror `NOT EXISTS` bilan to'siladi (notifications.js
+/// `runTrialEndingReminders` izohi). Ochilgandan KEYIN yozilganlar
+/// (`created_at > openedAt`) xabar olmaydi — ular buni allaqachon biladi.
+export async function notifyWaitlist(env, H, openedAtIso) {
+  await ensureWaitlistSchema(env);
+  await ensureNotifications(env);
+  const now = H.nowTs();
+  const res = await env.DB.prepare(
+    `INSERT INTO notifications (recipient_user_id, actor_user_id, kind, target_type, target_id, target_code, created_at)
+     SELECT w.user_id, NULL, 'featured_open', 'featured', '', '', ?
+       FROM featured_waitlist w JOIN users u ON u.id = w.user_id
+      WHERE w.notified_at IS NULL AND u.deleted_at IS NULL AND w.created_at <= ?
+        AND NOT EXISTS (SELECT 1 FROM notifications n WHERE n.recipient_user_id = w.user_id AND n.kind = 'featured_open')`
+  ).bind(now, openedAtIso).run();
+  await env.DB.prepare(
+    `UPDATE featured_waitlist SET notified_at = ?
+      WHERE notified_at IS NULL AND (created_at > ? OR EXISTS (SELECT 1 FROM notifications n
+        WHERE n.recipient_user_id = featured_waitlist.user_id AND n.kind = 'featured_open'))`
+  ).bind(new Date().toISOString(), openedAtIso).run();
+  return Number(res?.meta?.changes || 0);
+}
+
+/// SOTUV HOLATI: { open, mode, usersCount, openAt, openedAt, priorityUntil }.
+/// Birinchi ochilishni (auto yoki admin 'open') shu yerda qayd qiladi va
+/// navbatdagilarga xabar yuboradi.
+export async function salesState(env, H, { now = Date.now() } = {}) {
+  const rows = await env.DB.prepare(
+    `SELECT key, value FROM admin_settings WHERE key IN ('featured_sales_open', 'featured_sales_opened_at')`
+  ).all().catch(() => null);
+  const map = new Map((rows?.results || []).map((r) => [String(r.key), r.value]));
+  const rawMode = String(map.get('featured_sales_open') || 'auto');
+  const mode = SALES_MODES.includes(rawMode) ? rawMode : 'auto';
+  let openedAt = map.get('featured_sales_opened_at') || null;
+  const usersCount = await usersCountOf(env, now);
+  let open = false;
+  if (mode === 'open') open = true;
+  else if (mode === 'auto') open = !!openedAt || usersCount >= FEATURED_OPEN_AT_USERS;
+  if (open && !openedAt) {
+    const iso = new Date(now).toISOString();
+    const ins = await env.DB.prepare(
+      `INSERT OR IGNORE INTO admin_settings (key, value) VALUES ('featured_sales_opened_at', ?)`
+    ).bind(iso).run();
+    if (Number(ins?.meta?.changes || 0) > 0) {
+      openedAt = iso;
+      await notifyWaitlist(env, H, iso).catch((e) => console.error('featured_open notify', e?.message));
+    } else {
+      const r = await env.DB.prepare(`SELECT value FROM admin_settings WHERE key = 'featured_sales_opened_at'`).first().catch(() => null);
+      openedAt = r?.value || iso;
+    }
+  }
+  const openedMs = openedAt ? Date.parse(openedAt) : NaN;
+  const priorityUntil = open && Number.isFinite(openedMs) && now < openedMs + PRIORITY_WINDOW_MS ? openedMs + PRIORITY_WINDOW_MS : null;
+  return { open, mode, usersCount, openAt: FEATURED_OPEN_AT_USERS, openedAt, priorityUntil };
+}
+
+async function onWaitlist(env, userId) {
+  if (!userId) return false;
+  const row = await env.DB.prepare(`SELECT 1 AS x FROM featured_waitlist WHERE user_id = ?`).bind(userId).first().catch(() => null);
+  return !!row;
+}
+
+/// SOTIB OLISH MUMKINMI — sayt va Apple yo'li uchun bitta shart.
+/// `null` — mumkin; aks holda `[body, status]`.
+export async function salesGate(env, H, userId) {
+  const st = await salesState(env, H);
+  if (!st.open) return [{ error: 'sales_not_open', usersCount: st.usersCount, openAt: st.openAt }, 409];
+  if (st.priorityUntil) {
+    await ensureWaitlistSchema(env);
+    if (!(await onWaitlist(env, userId))) return [{ error: 'priority_window', endsAt: st.priorityUntil }, 409];
+  }
+  return null;
+}
+
+/// KUNLIK CRON (worker.js `scheduled`): ochilishni aniqlaydi va xabar
+/// olmagan navbatdagilarga yuboradi. Xatoni o'zi yutadi.
+export async function featuredSalesTick(env, H) {
+  try {
+    const st = await salesState(env, H);
+    if (!st.open || !st.openedAt) return { open: st.open, notified: 0 };
+    return { open: true, notified: await notifyWaitlist(env, H, st.openedAt) };
+  } catch (e) {
+    console.error('featured_sales_tick', String(e?.message || e).slice(0, 160));
+    return { error: true };
+  }
+}
 
 /// STANDART NARXLAR — so'mda.
 ///
@@ -354,14 +491,49 @@ export async function handle(request, env, url, H) {
 
   // ── NARXLAR ──────────────────────────────────────────────────────
   if (path === '/api/featured/packages' && method === 'GET') {
-    const [packages, capacity] = await Promise.all([packagesOf(env), capacityOf(env, H)]);
+    const user = await H.getCurrentUser(request, env).catch(() => null);
+    const [packages, capacity, sales] = await Promise.all([packagesOf(env), capacityOf(env, H), salesState(env, H)]);
+    let waitlisted = false;
+    if (user) { await ensureWaitlistSchema(env); waitlisted = await onWaitlist(env, user.id); }
     return H.json({
       packages,
       capacity,
       // To'lovlar butunlay o'chirilgan bo'lsa, ilova tugmani
       // ko'rsatmaydi — bosilgach 503 chiqishidan ko'ra yaxshiroq.
       enabled: H.paymentsEnabledD1(env),
+      // Sotuv 1000 foydalanuvchida ochiladi (yuqoridagi izoh).
+      salesOpen: sales.open,
+      usersCount: sales.usersCount,
+      openAt: sales.openAt,
+      priorityUntil: sales.priorityUntil,
+      waitlisted,
     });
+  }
+
+  // ── BEPUL NAVBAT ─────────────────────────────────────────────────
+  if (path === '/api/featured/waitlist' && (method === 'POST' || method === 'DELETE')) {
+    const user = await H.getCurrentUser(request, env).catch(() => null);
+    if (!user) return H.json({ error: 'unauthorized' }, 401);
+    await ensureWaitlistSchema(env);
+    if (method === 'DELETE') {
+      await env.DB.prepare(`DELETE FROM featured_waitlist WHERE user_id = ?`).bind(user.id).run();
+      return H.json({ waitlisted: false });
+    }
+    const body = await readJson();
+    const kind = PROMO_KINDS.includes(String(body.targetKind || '')) ? String(body.targetKind) : null;
+    const tid = Number(body.targetId);
+    const targetId = kind && Number.isInteger(tid) && tid > 0 ? tid : null;
+    const sales = await salesState(env, H);
+    const nowIso = new Date().toISOString();
+    // Ochilgandan keyin yozilgan — xabar kerak emas (u buni allaqachon biladi).
+    await env.DB.prepare(
+      `INSERT OR IGNORE INTO featured_waitlist (user_id, target_kind, target_id, created_at, notified_at) VALUES (?, ?, ?, ?, ?)`
+    ).bind(user.id, kind, targetId, nowIso, sales.open ? nowIso : null).run();
+    if (kind && targetId) {
+      await env.DB.prepare(`UPDATE featured_waitlist SET target_kind = ?, target_id = ? WHERE user_id = ?`)
+        .bind(kind, targetId, user.id).run();
+    }
+    return H.json({ waitlisted: true, salesOpen: sales.open });
   }
 
   // ── OMMAVIY: HOZIR KO'TARILGAN SLOTLAR ───────────────────────────
@@ -416,6 +588,9 @@ export async function handle(request, env, url, H) {
     const checked = await checkPromoTarget(env, H, user.id, kind, targetId);
     if (checked.error) return H.json(...checked.error);
     const { target } = checked;
+    // SOTUV OCHIQMI (1000 foydalanuvchi / ustuvor oyna) — slot yaratishdan oldin.
+    const gate = await salesGate(env, H, user.id);
+    if (gate) return H.json(...gate);
 
     const now = H.nowTs();
     const slot = await env.DB.prepare(
@@ -586,6 +761,49 @@ export async function handle(request, env, url, H) {
       ).bind(Number(target.ownerUserId) || 0, kind, targetId, target.ownerCode || '', days,
         iso(startMs), iso(startMs + days * DAY_MS), `admin#${Number(admin.adminId) || 0}: ${note}`, H.nowTs()).first();
       return H.json({ slot: slotOut(row, H) }, 201);
+    }
+
+    // NAVBAT VA SOTUV REJIMI.
+    if (path === '/api/admin/featured/waitlist' && method === 'GET') {
+      await ensureWaitlistSchema(env);
+      const [sales, list, counts] = await Promise.all([
+        salesState(env, H),
+        env.DB.prepare(
+          `SELECT w.user_id, w.target_kind, w.target_id, w.created_at, w.notified_at,
+                  (SELECT code FROM cards c WHERE c.user_id = w.user_id ORDER BY is_primary DESC, ts ASC LIMIT 1) AS code,
+                  (SELECT name FROM cards c WHERE c.user_id = w.user_id ORDER BY is_primary DESC, ts ASC LIMIT 1) AS name
+             FROM featured_waitlist w ORDER BY w.created_at ASC LIMIT 500`
+        ).all(),
+        env.DB.prepare(`SELECT COUNT(*) AS total, COUNT(notified_at) AS notified FROM featured_waitlist`).first(),
+      ]);
+      return H.json({
+        sales: { mode: sales.mode, open: sales.open, usersCount: sales.usersCount, openAt: sales.openAt,
+          openedAt: sales.openedAt, priorityUntil: sales.priorityUntil },
+        counts: { total: Number(counts?.total) || 0, notified: Number(counts?.notified) || 0 },
+        items: (list?.results || []).map((r) => ({
+          userId: Number(r.user_id), code: String(r.code || ''), name: String(r.name || ''),
+          targetKind: r.target_kind || null, targetId: r.target_id != null ? Number(r.target_id) : null,
+          createdAt: String(r.created_at || ''), notifiedAt: r.notified_at || null,
+        })),
+      });
+    }
+    if (path === '/api/admin/featured/sales' && method === 'POST') {
+      if (!H.roleAtLeast(admin, 'super_admin')) return H.json({ error: 'forbidden' }, 403);
+      const body = await readJson();
+      const mode = String(body.mode || '');
+      if (!SALES_MODES.includes(mode)) return H.json({ error: 'bad_mode' }, 422);
+      const prev = await env.DB.prepare(`SELECT value FROM admin_settings WHERE key = 'featured_sales_open'`).first().catch(() => null);
+      await env.DB.prepare(
+        `INSERT INTO admin_settings (key, value) VALUES ('featured_sales_open', ?)
+           ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+      ).bind(mode).run();
+      await H.logAdminActivity(env, {
+        action: 'featured_sales_mode', details: `mode=${mode}`,
+        oldValue: String(prev?.value || 'auto'), newValue: mode, ip: H.reqIp(request),
+      }).catch(() => {});
+      const sales = await salesState(env, H);
+      return H.json({ sales: { mode: sales.mode, open: sales.open, usersCount: sales.usersCount, openAt: sales.openAt,
+        openedAt: sales.openedAt, priorityUntil: sales.priorityUntil } });
     }
 
     const stopMatch = path.match(/^\/api\/admin\/featured\/(\d+)\/stop$/);

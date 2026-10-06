@@ -577,6 +577,8 @@ export function purgeStmts(env, u, now, ref, cfg, counts = {}) {
   add(['featured_slots'],
     `UPDATE featured_slots SET status = 'stopped', stopped_reason = 'account_deleted' WHERE user_id = ${id} AND status = 'active'`);
   add(['featured_slots'], `UPDATE featured_slots SET status = 'cancelled' WHERE user_id = ${id} AND status = 'pending'`);
+  // Ko'tarish sotuvi navbati (api/featured.js) — shaxsiy yozuv, o'chadi.
+  add(['featured_waitlist'], `DELETE FROM featured_waitlist WHERE user_id = ${id}`);
   add(['nfc_gifts'], `UPDATE nfc_gifts SET recipient_name = NULL WHERE activated_by_user_id = ${id}`);
 
   // 7) KARTALAR — kontenti allaqachon tozalangan.

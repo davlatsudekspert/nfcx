@@ -255,3 +255,17 @@ Bildirishnomalar: REFUND/REVOKE → slot `stopped` (`apple_refund`) yoki kredit 
 CONSUMPTION_REQUEST → `consumption_ack`. Admin `GET /api/admin/featured` qatorlarida `source` ('apple'|'web'|'admin')
 va `appleTransactionId`. Jadvallar: `iap_apple_boost_transactions`, `iap_apple_boost_credits`;
 `featured_slots` + `source`, `apple_transaction_id` (ADD COLUMN). Test: `scripts/test-iap-apple-boost.mjs`.
+
+KO'TARISH SOTUVI 1000 FOYDALANUVCHIDA (`featured.js`, 2026-10-06): rejim `admin_settings.featured_sales_open`
+= `auto` (standart; o'chirilmagan foydalanuvchilar ≥ `FEATURED_OPEN_AT_USERS` = 1000, son 5 daqiqa keshlanadi)
+| `open` | `closed`. Birinchi ochilish `featured_sales_opened_at` ga yoziladi — `auto` da qayta yopilmaydi.
+Ochilgandan 48 soat — faqat navbatdagilar. `GET /api/featured/packages` qo'shimcha
+`{salesOpen, usersCount, openAt, priorityUntil, waitlisted}`. Yopiq paytda `POST /api/featured` va
+`POST /api/iap/apple/boost-intent` → 409 `{error:'sales_not_open', usersCount, openAt}`; ustuvor oynada
+navbatda bo'lmagan → 409 `{error:'priority_window', endsAt}` (tekshiruv xatolari — avvalgidek, shartdan oldin;
+Apple verify/redeem — to'langan, shartga bog'liq emas; admin qo'lda ko'tarish — doim).
+`POST /api/featured/waitlist {targetKind?, targetId?}` (auth) → `{waitlisted:true, salesOpen}`, `DELETE` → `{waitlisted:false}`
+(`featured_waitlist`, hisob o'chirilganda o'chadi). Ochilganda navbatdagilarga bitta `featured_open` bildirishnomasi
+(aktyorsiz; kunlik cron ham — `featuredSalesTick`); ilova so'rovlarida (`x-app: nova` / `X-Client`) bu tur ko'rsatilmaydi.
+Admin: `GET /api/admin/featured/waitlist` → `{sales, counts:{total, notified}, items}`;
+`POST /api/admin/featured/sales {mode}` (super_admin, `featured_sales_mode` jurnalda). Test: `scripts/test-featured-sales.mjs`.

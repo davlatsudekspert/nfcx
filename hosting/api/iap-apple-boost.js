@@ -48,7 +48,7 @@
 //   featured_slots + `source`, `apple_transaction_id` (ADD COLUMN)
 
 import {
-  ensureSchema as ensureFeaturedSchema, checkPromoTarget, stopSlot,
+  ensureSchema as ensureFeaturedSchema, checkPromoTarget, stopSlot, salesGate,
   PROMO_KINDS, DAY_MS, slotOut,
 } from './featured.js';
 
@@ -150,6 +150,9 @@ export async function handleIntent(env, H, user, body) {
   const productId = PRODUCT_BY_DAYS.get(days);
   if (!productId) return [{ error: 'bad_package' }, 422];
   await ensureBoostSchema(env);
+  // Sotuv ochiqmi (1000 foydalanuvchi / 48 soatlik ustuvor oyna) — sayt bilan bir xil shart.
+  const gate = await salesGate(env, H, user.id);
+  if (gate) return gate;
 
   const now = Date.now();
   const holdUntil = now + HOLD_MS;

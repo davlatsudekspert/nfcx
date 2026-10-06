@@ -950,6 +950,7 @@ const DICT_BASE = {
   'Post': { ru: 'Посты', en: 'Posts' },
   'Hozircha lenta bo‘sh — 24 soatlik story shu yerda chiqadi.': { ru: 'Лента пока пуста — здесь появятся истории на 24 часа.', en: 'The feed is empty — 24-hour stories appear here.' },
   'Bepul sinov muddatingiz {date} da tugaydi': { ru: 'Ваш бесплатный пробный период заканчивается {date}', en: 'Your free trial ends on {date}' },
+  'Postni ko‘tarish ochildi — navbatdagilar uchun dastlabki 48 soat': { ru: 'Продвижение постов открыто — первые 48 часов только для очереди', en: 'Post promotion is open — the first 48 hours are for the waitlist' },
   'Sinov: {n} kun qoldi': { ru: 'Пробный период: осталось {n} дн.', en: 'Trial: {n} days left' },
   'Sinov muddati: yana {n} kun barcha imkoniyatlar ochiq. Keyin tarifga qaytadi.': { ru: 'Пробный период: ещё {n} дн. все возможности открыты. Затем — по тарифу.', en: 'Trial: all features stay open for {n} more days, then tier limits apply.' },
   'Premium faol. Muddati: {d} ({n} kun qoldi).': { ru: 'Premium активен. До {d} ({n} дн.).', en: 'Premium active until {d} ({n} days left).' },

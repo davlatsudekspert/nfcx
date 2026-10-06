@@ -24,6 +24,10 @@ const { env } = makeEnv({
 });
 await seedBasic(env);
 const { check, checkTrue, done } = makeChecker();
+// SOTUV OCHIQ (1000 foydalanuvchi sharti va 48 soatlik ustuvor oyna o'tgan) —
+// bu test sotib olish yo'lining o'zini tekshiradi; shart test-featured-sales.mjs da.
+await env.DB.prepare(`INSERT INTO admin_settings (key, value) VALUES ('featured_sales_open', 'open'), ('featured_sales_opened_at', ?)`)
+  .bind(new Date(Date.now() - 3 * 86400000).toISOString()).run();
 
 // user#1 — VIP001 egasi, user#2 — OTH222 egasi.
 await env.DB.prepare(

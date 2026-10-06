@@ -83,6 +83,8 @@ export default function NotificationsPage() {
     // Bepul sinov tugayapti (kunlik cron). Sana `targetId` da (YYYY-MM-DD).
     // ATAYLAB neytral: xarid havolasi yoki tugma YO'Q (App Store qoidalari).
     if (n.type === 'trial_ending') return t('Bepul sinov muddatingiz {date} da tugaydi', { date: trialDate(n.targetId) });
+    // Ko'tarish sotuvi ochildi — faqat bepul navbatga yozilganlarga, bir marta.
+    if (n.type === 'featured_open') return t('Postni ko‘tarish ochildi — navbatdagilar uchun dastlabki 48 soat', {});
     return '';
   };
 
@@ -92,6 +94,7 @@ export default function NotificationsPage() {
   // hech qayerga o'tilmaydi — sahifa yiqilmasligi kerak.
   const socialTarget = (n) => {
     if (n.type === 'support_reply' || n.type === 'trial_ending') return '';
+    if (n.type === 'featured_open') return '/kotarish';
     const code = n.type === 'follow' ? n.actorCode : n.code;
     return code ? '/' + code : '';
   };
@@ -163,7 +166,7 @@ export default function NotificationsPage() {
           >
             {!n.read && <span className="h-2 w-2 shrink-0 rounded-full bg-accent" aria-hidden="true" />}
             <span className="min-w-0 flex-1 break-words">
-              <b>{n.type === 'support_reply' || n.type === 'trial_ending' ? 'NFCSTORE' : (n.title || t('Foydalanuvchi'))}</b> {socialText(n)}
+              <b>{n.type === 'support_reply' || n.type === 'trial_ending' || n.type === 'featured_open' ? 'NFCSTORE' : (n.title || t('Foydalanuvchi'))}</b> {socialText(n)}
             </span>
             <span className="shrink-0 text-xs text-base-content/45">
               {n.createdAt ? timeAgo(new Date(String(n.createdAt).replace(' ', 'T')).getTime()) : ''}

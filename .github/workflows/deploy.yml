@@ -95,7 +95,7 @@ jobs:
           node scripts/test-uz-store.mjs
           node scripts/test-uz-sql-keywords.mjs
           node scripts/test-uz-cold-start.mjs
-          for t in test-auth test-account-deletion test-media test-stories test-seo-profiles test-order-expire-sweep test-follow-count-consistency test-company-follow-stats test-upload-edge-cache test-audio-upload test-content-views test-carousel test-product-tags test-highlights test-story-replies test-saves-collections test-nearby test-scheduled-posts test-post-contact test-feed-following test-support-replies test-reels-ranking test-legal-requests test-trial-reminders test-admin-premium-grant test-trial-promo test-apple-jws test-iap-apple test-iap-apple-boost; do
+          for t in test-auth test-account-deletion test-media test-stories test-seo-profiles test-order-expire-sweep test-follow-count-consistency test-company-follow-stats test-upload-edge-cache test-audio-upload test-content-views test-carousel test-product-tags test-highlights test-story-replies test-saves-collections test-nearby test-scheduled-posts test-post-contact test-feed-following test-support-replies test-reels-ranking test-legal-requests test-trial-reminders test-admin-premium-grant test-trial-promo test-apple-jws test-iap-apple test-iap-apple-boost test-featured-sales; do
             echo "== UZ adapter: $t"; UZ_ADAPTER_TEST=1 node scripts/$t.mjs | tail -n 1
             [ "${PIPESTATUS[0]}" = 0 ] || exit 1
           done
@@ -146,6 +146,10 @@ jobs:
         run: node scripts/test-content-filter.mjs
       - name: NFCSTORE FEATURED — slot faqat haqiqiy to'lovdan keyin yonadi
         run: node scripts/test-featured.mjs
+      # Ko'tarish sotuvi 1000 foydalanuvchida ochiladi: yopiq paytda 409,
+      # bepul navbat, ochilish saqlanadi, 48 soatlik ustuvor oyna, bitta xabar.
+      - name: Ko'tarish sotuvi — 1000 foydalanuvchi va navbat
+        run: node scripts/test-featured-sales.mjs
       # IJTIMOIY IMKONIYATLAR (2026-10). Har biri o'z testida: egalik,
       # tekshiruv, eski ilovalar bilan moslik va maxfiylik (sizib chiqish).
       # Karusel: postda 10 tagacha rasm, birinchisi eski `imageUrl`.

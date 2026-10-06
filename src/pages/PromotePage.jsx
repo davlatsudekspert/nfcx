@@ -11,6 +11,11 @@ import { navigate } from '../lib/router.js';
 // ATAYLAB yo'q (App Store 3.1.1) — iPhone foydalanuvchilari shu sahifadan
 // sotib oladi.
 //
+// SOTUV 1000 FOYDALANUVCHIDA OCHILADI (egasi, 2026-10-06): yopiq paytda
+// sahifa jonli hisoblagich ("Hozir: N / 1000") va BEPUL NAVBAT tugmasini
+// ko'rsatadi; ochilgandan keyingi 48 soat faqat navbatdagilar uchun
+// (server: `salesOpen`, `priorityUntil`, `waitlisted` — /api/featured/packages).
+//
 // Narx, egalik va takrorlanish SERVERDA tekshiriladi
 // (hosting/api/featured.js). Bu sahifa faqat tanlaydi va Payme/Click
 // sahifasini ochadi: slot to'lov tasdiqlangandan keyin serverda yonadi.
@@ -41,6 +46,8 @@ const T = {
       payments_disabled: 'To‘lovlar vaqtincha o‘chirilgan.',
       banned: 'Hisobingiz cheklangan.',
       forbidden: 'Bu post sizniki emas.',
+      sales_not_open: 'Sotuv hali ochilmagan — 1000 foydalanuvchiga yetganda ochiladi.',
+      priority_window: 'Dastlabki 48 soat faqat navbatdagilar uchun.',
       default: 'Amal bajarilmadi. Qayta urinib ko‘ring.',
     },
     why: [
@@ -71,6 +78,15 @@ const T = {
     ],
     company: 'Biznes',
     video: 'Video',
+    soonTitle: 'Tez orada — 1000 foydalanuvchiga yetganda ochiladi',
+    soonLead: 'Auditoriya yetarli bo‘lganda ko‘tarish sotuvga chiqadi. Navbatga hozir bepul yoziling — ochilganda birinchi 48 soat faqat navbatdagilar uchun bo‘ladi va sizga xabar keladi.',
+    now: (n, m) => `Hozir: ${n.toLocaleString('uz-UZ')} / ${m.toLocaleString('uz-UZ')}`,
+    join: 'Navbatga yozilish',
+    joined: 'Navbatdasiz ✓',
+    leave: 'Navbatdan chiqish',
+    priority: (d) => `Dastlabki 48 soat — faqat navbatdagilar uchun (${d} gacha).`,
+    priorityYou: 'Siz navbatdasiz — hozir sotib olishingiz mumkin.',
+    priorityOther: 'Bu muddat tugagach hamma uchun ochiladi.',
   },
   ru: {
     title: 'Продвижение поста',
@@ -97,6 +113,8 @@ const T = {
       payments_disabled: 'Платежи временно отключены.',
       banned: 'Ваш аккаунт ограничен.',
       forbidden: 'Этот пост не ваш.',
+      sales_not_open: 'Продажи ещё не открыты — откроются, когда нас станет 1000.',
+      priority_window: 'Первые 48 часов — только для очереди.',
       default: 'Не удалось выполнить. Попробуйте ещё раз.',
     },
     why: [
@@ -127,6 +145,15 @@ const T = {
     ],
     company: 'Бизнес',
     video: 'Видео',
+    soonTitle: 'Скоро — откроется, когда нас станет 1000',
+    soonLead: 'Продвижение откроется, когда аудитория станет достаточной. Встаньте в очередь бесплатно уже сейчас — первые 48 часов после открытия только для очереди, и вам придёт уведомление.',
+    now: (n, m) => `Сейчас: ${n.toLocaleString('ru-RU')} / ${m.toLocaleString('ru-RU')}`,
+    join: 'Встать в очередь',
+    joined: 'Вы в очереди ✓',
+    leave: 'Выйти из очереди',
+    priority: (d) => `Первые 48 часов — только для очереди (до ${d}).`,
+    priorityYou: 'Вы в очереди — можете купить уже сейчас.',
+    priorityOther: 'После этого срока откроется для всех.',
   },
   en: {
     title: 'Promote a post',
@@ -153,6 +180,8 @@ const T = {
       payments_disabled: 'Payments are temporarily disabled.',
       banned: 'Your account is restricted.',
       forbidden: 'This post is not yours.',
+      sales_not_open: 'Sales are not open yet — they open at 1,000 users.',
+      priority_window: 'The first 48 hours are for the waitlist only.',
       default: 'Something went wrong. Please try again.',
     },
     why: [
@@ -183,6 +212,15 @@ const T = {
     ],
     company: 'Business',
     video: 'Video',
+    soonTitle: 'Coming soon — opens when we reach 1,000 users',
+    soonLead: 'Promotion opens once the audience is large enough. Join the free waitlist now — the first 48 hours after opening are for the waitlist only, and you will get a notification.',
+    now: (n, m) => `Now: ${n.toLocaleString('en-US')} / ${m.toLocaleString('en-US')}`,
+    join: 'Join the waitlist',
+    joined: 'You are on the waitlist ✓',
+    leave: 'Leave the waitlist',
+    priority: (d) => `First 48 hours — waitlist only (until ${d}).`,
+    priorityYou: 'You are on the waitlist — you can buy now.',
+    priorityOther: 'After that it opens to everyone.',
   },
 };
 
@@ -207,6 +245,41 @@ export default function PromotePage() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [links, setLinks] = useState(null);
+  // Sotuv holati — mehmonga ham ko'rinadi (hisoblagich va navbat).
+  const [sales, setSales] = useState(null);
+  const [waitBusy, setWaitBusy] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    getJson('/api/featured/packages').then((pk) => {
+      if (!alive || !pk) return;
+      setSales({
+        open: pk.salesOpen !== false,
+        usersCount: Number(pk.usersCount) || 0,
+        openAt: Number(pk.openAt) || 1000,
+        priorityUntil: pk.priorityUntil || null,
+        waitlisted: !!pk.waitlisted,
+      });
+    });
+    return () => { alive = false; };
+  }, [user]);
+
+  const toggleWaitlist = async (join) => {
+    if (!user) { navigate('/login?next=/kotarish'); return; }
+    setWaitBusy(true);
+    try {
+      const res = await fetch('/api/featured/waitlist', {
+        method: join ? 'POST' : 'DELETE',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: join ? '{}' : undefined,
+      });
+      const j = await res.json().catch(() => ({}));
+      if (res.ok) setSales((prev) => (prev ? { ...prev, waitlisted: !!j.waitlisted } : prev));
+    } finally {
+      setWaitBusy(false);
+    }
+  };
 
   const cardCodes = useMemo(
     () => (Array.isArray(myCards) ? myCards : []).map((c) => c && c.code).filter(Boolean),
@@ -300,6 +373,36 @@ export default function PromotePage() {
         </dl>
       </section>
 
+      {sales && !sales.open && (
+        <section className="mt-6 rounded-2xl border border-[color:var(--vz-gold)] p-4" data-testid="promote-soon">
+          <h2 className="text-lg font-semibold">{s.soonTitle}</h2>
+          <p className="mt-1.5 text-[14px] opacity-80">{s.soonLead}</p>
+          <p className="mt-4 text-[15px] font-semibold" data-testid="promote-counter">{s.now(sales.usersCount, sales.openAt)}</p>
+          <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-[color:var(--vz-line)]" role="progressbar"
+            aria-valuemin={0} aria-valuemax={sales.openAt} aria-valuenow={Math.min(sales.usersCount, sales.openAt)}>
+            <div className="h-full rounded-full bg-[color:var(--vz-gold)] transition-all"
+              style={{ width: `${Math.min(100, Math.round((sales.usersCount / Math.max(1, sales.openAt)) * 100))}%` }} />
+          </div>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            {sales.waitlisted ? (
+              <>
+                <span className="btn btn-outline-gold px-5 pointer-events-none">{s.joined}</span>
+                <button type="button" className="text-[13px] underline opacity-70" disabled={waitBusy} onClick={() => toggleWaitlist(false)}>{s.leave}</button>
+              </>
+            ) : (
+              <button type="button" className="btn btn-gold px-6" disabled={waitBusy} onClick={() => toggleWaitlist(true)}>{s.join}</button>
+            )}
+          </div>
+        </section>
+      )}
+
+      {sales && sales.open && sales.priorityUntil && (
+        <p className="mt-6 rounded-xl border border-[color:var(--vz-gold)] p-3 text-[14px]" data-testid="promote-priority">
+          {s.priority(new Date(sales.priorityUntil).toLocaleString(lang === 'en' ? 'en-GB' : 'ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }))}
+          {' '}{sales.waitlisted ? s.priorityYou : s.priorityOther}
+        </p>
+      )}
+
       {!user && (
         <div className="mt-6">
           <p>{s.login}</p>
@@ -313,9 +416,9 @@ export default function PromotePage() {
 
       {user && posts === null && <p className="mt-6">{s.loading}</p>}
 
-      {user && posts && posts.length === 0 && <p className="mt-6">{s.noPosts}</p>}
+      {user && posts && posts.length === 0 && (!sales || sales.open) && <p className="mt-6">{s.noPosts}</p>}
 
-      {user && posts && posts.length > 0 && (
+      {user && posts && posts.length > 0 && (!sales || sales.open) && (
         <>
           <h2 className="mt-8 text-lg font-semibold">{s.choose}</h2>
           <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">

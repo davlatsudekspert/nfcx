@@ -24,6 +24,9 @@ const { env, sqlite, call, resetLimits } = await setupSocial({
 });
 const chain = makeChain();
 __setTrustedRootForTests(chain.rootB64);
+// Sotuv ochiq (1000 foydalanuvchi sharti test-featured-sales.mjs da).
+sqlite.prepare(`INSERT INTO admin_settings (key, value) VALUES ('featured_sales_open', 'open'), ('featured_sales_opened_at', ?)`)
+  .run(new Date(Date.now() - 3 * 86400000).toISOString());
 const DAY = 86_400_000;
 const NOW = Date.now();
 const dbTs = (ms) => new Date(ms).toISOString().replace('T', ' ').replace('Z', '+00');

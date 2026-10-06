@@ -29,7 +29,11 @@
 // (aktyor NULL), nishon `trial`/<tugash sanasi YYYY-MM-DD>. Kunlik cron
 // yaratadi (`runTrialEndingReminders`); matnni mijoz yig'adi — xarid
 // havolasi YO'Q (App Store qoidasi: neytral eslatma).
-const KINDS = ['follow', 'like', 'comment', 'support_reply', 'trial_ending'];
+//
+// `featured_open` (2026-10) — ko'tarish sotuvi ochildi; faqat bepul navbatga
+// yozilganlarga, bir marta (api/featured.js `notifyWaitlist`). Aktyorsiz,
+// nishon `featured`/''. Matnni mijoz yig'adi.
+const KINDS = ['follow', 'like', 'comment', 'support_reply', 'trial_ending', 'featured_open'];
 const PAGE = 30;
 const PAGE_MAX = 50;
 
@@ -207,6 +211,12 @@ export async function handle(request, env, url, H) {
   const user = await H.getCurrentUser(request, env).catch(() => null);
   if (!user) return H.json({ error: 'unauthorized' }, 401);
   await ensureSchema(env);
+  // MOBIL ILOVADA REKLAMA YO'Q (egasi, 2026-10-06): `featured_open`
+  // (ko'tarish sotuvi ochildi) faqat SAYTDA ko'rinadi — ilova
+  // (`x-app: nova` yoki `X-Client: android|ios|mobile`) ro'yxatida ham,
+  // o'qilmaganlar sonida ham yo'q.
+  const fromApp = String(request.headers.get('x-app') || '').toLowerCase() === 'nova' || H.isMobileClientD1(request);
+  const hideSql = fromApp ? ` AND kind <> 'featured_open'` : '';
 
   // ── RO'YXAT ───────────────────────────────────────────────────
   if (path === '/api/notifications' && request.method === 'GET') {
@@ -221,6 +231,7 @@ export async function handle(request, env, url, H) {
     const args = [user.id];
     if (cursor > 0) { where.push(`n.id < ?`); args.push(cursor); }
     if (unreadOnly) where.push(`n.read_at IS NULL`);
+    if (fromApp) where.push(`n.kind <> 'featured_open'`);
 
     const rows = await env.DB.prepare(
       `SELECT n.id, n.kind, n.target_type, n.target_id, n.target_code, n.read_at, n.created_at,
@@ -263,7 +274,7 @@ export async function handle(request, env, url, H) {
       }
     }
     const unread = await env.DB.prepare(
-      `SELECT COUNT(*) AS n FROM notifications WHERE recipient_user_id = ? AND read_at IS NULL`
+      `SELECT COUNT(*) AS n FROM notifications WHERE recipient_user_id = ? AND read_at IS NULL${hideSql}`
     ).bind(user.id).first();
 
     return H.json({
@@ -296,7 +307,7 @@ export async function handle(request, env, url, H) {
       if (!own) return H.json({ error: 'not_found' }, 404);
     }
     const unread = await env.DB.prepare(
-      `SELECT COUNT(*) AS n FROM notifications WHERE recipient_user_id = ? AND read_at IS NULL`
+      `SELECT COUNT(*) AS n FROM notifications WHERE recipient_user_id = ? AND read_at IS NULL${hideSql}`
     ).bind(user.id).first();
     return H.json({ ok: true, unreadCount: Number(unread?.n) || 0 });
   }

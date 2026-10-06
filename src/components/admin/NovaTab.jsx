@@ -696,6 +696,59 @@ function ArchiveSection({ adminApi, apiErrText }) {
 }
 
 // ── KO'TARILGAN POSTLAR (FEATURED) ──────────────────────────────────
+// SOTUV REJIMI VA NAVBAT (egasi, 2026-10-06): sotuv 1000 foydalanuvchida
+// o'zi ochiladi ('auto'); super_admin qo'lda ochishi/yopishi mumkin
+// (POST /api/admin/featured/sales). Navbat soni — GET /api/admin/featured/waitlist.
+function SalesControl({ adminApi, apiErrText }) {
+  const { t } = useLanguage();
+  const [data, setData] = useState(null);
+  const [msg, setMsg] = useState('');
+
+  const load = useCallback(async () => {
+    try { setData(await adminApi('/featured/waitlist')); } catch { setData(false); }
+  }, [adminApi]);
+  useEffect(() => { load(); }, [load]);
+
+  const setMode = async (mode) => {
+    setMsg('');
+    try {
+      await adminApi('/featured/sales', { method: 'POST', body: JSON.stringify({ mode }) });
+      setMsg(t('Saqlandi.'));
+      load();
+    } catch (e) {
+      setMsg(apiErrText ? apiErrText(e, t, t('Amal bajarilmadi.')) : t('Amal bajarilmadi.'));
+    }
+  };
+
+  if (!data) return null;
+  const { sales, counts } = data;
+  return (
+    <div className="mb-4 rounded-xl border border-[color:var(--vz-line)] p-3 text-[13px]" data-testid="featured-sales">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-semibold">{t('Sotuv')}:</span>
+        <StatusBadge tone={sales.open ? 'success' : 'muted'}>{sales.open ? t('Ochiq') : t('Yopiq')}</StatusBadge>
+        <select
+          value={sales.mode}
+          onChange={(e) => setMode(e.target.value)}
+          className="rounded-lg border border-[color:var(--vz-line)] bg-transparent px-2 py-1 text-[13px]"
+        >
+          <option value="auto">{t('Avtomatik (1000 foydalanuvchida)')}</option>
+          <option value="open">{t('Ochiq (qo‘lda)')}</option>
+          <option value="closed">{t('Yopiq (qo‘lda)')}</option>
+        </select>
+      </div>
+      <p className="mt-2">
+        {t('Foydalanuvchilar')}: {Number(sales.usersCount).toLocaleString('uz-UZ')} / {Number(sales.openAt).toLocaleString('uz-UZ')}
+        {' · '}{t('Navbatda')}: {counts.total} ({t('xabar olgan')}: {counts.notified})
+      </p>
+      {sales.priorityUntil && (
+        <p className="mt-1">{t('Navbatdagilar uchun ustuvor muddat')}: {new Date(sales.priorityUntil).toLocaleString('ru-RU')}</p>
+      )}
+      {msg && <p className="mt-2">{msg}</p>}
+    </div>
+  );
+}
+
 // NARXLAR VA JOYLAR — ilova yangilanmasdan narxni o'zgartirish
 // (POST /api/admin/featured/pricing, faqat super_admin). Ochilgan
 // buyurtmalar eski narxida qoladi.
@@ -903,6 +956,7 @@ function FeaturedSection({ adminApi, apiErrText }) {
       <p className="mb-3 text-[13px] text-[color:var(--vz-ink-faint)]">
         {t('Mijoz sotib olgan slot faqat Payme yoki Click to‘lovi tasdiqlangandan keyin yonadi. Qo‘lda ko‘tarish — faqat to‘g‘ridan-to‘g‘ri kelishuv uchun, izoh majburiy.')}
       </p>
+      <SalesControl adminApi={adminApi} apiErrText={apiErrText} />
       <PricingEditor adminApi={adminApi} apiErrText={apiErrText} />
       <GrantForm adminApi={adminApi} apiErrText={apiErrText} onDone={load} />
       {err && <LoadError err={err} onRetry={load} />}
