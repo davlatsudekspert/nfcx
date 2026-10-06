@@ -45,6 +45,10 @@ await addUser(13, iso(t0 - 5 * DAY), null);
 await addUser(14, iso(t0 - 5 * DAY), iso(t0 + 25 * DAY), { deleted: iso(t0 - DAY) });
 // 15: sinovi allaqachon created+90 dan UZOQ (qo'lda) -> qisqarmaydi
 await addUser(15, iso(t0 - 5 * DAY), iso(t0 + 200 * DAY));
+// 18: H.nowTs() shakli ('...mmm+00') — haqiqiy foydalanuvchilar shunday
+await addUser(18, new Date(t0 - 6 * DAY).toISOString().replace('T', ' ').replace('Z', '+00'), iso(t0 + 24 * DAY));
+// 19: Postgres'dan ko'chgan ('.ffffff+00')
+await addUser(19, sqlTs(t0 - 8 * DAY) + '.123456+00', iso(t0 + 22 * DAY));
 // 16: Premium bor — sinov uzayadi, Premium o'zgarmaydi
 await addUser(16, iso(t0 - 3 * DAY), iso(t0 + 27 * DAY), { premium: iso(t0 + 60 * DAY) });
 
@@ -61,7 +65,7 @@ const prem16 = (await one(`SELECT premium_expires_at AS p FROM users WHERE id = 
 
 const r1 = await applyLaunchTrialExtension(env, { now: NOW });
 check('1) bajarildi', r1.applied, true);
-check('1) hisoblar soni (10, 11, 16)', r1.users, 3);
+check('1) hisoblar soni (10, 11, 16, 18, 19)', r1.users, 5);
 check('1) kompaniyalar soni (CO1)', r1.companies, 1);
 
 const near = (a, b) => Math.abs(Date.parse(a) - b) < 2000;
@@ -73,6 +77,8 @@ check('2) o‘chirilgan — tegilmadi', await trialOf(14), before[14]);
 check('2) uzunroq sinov — qisqarmadi', await trialOf(15), before[15]);
 checkTrue('2) Premium hisob: sinov uzaydi', near(await trialOf(16), t0 - 3 * DAY + 90 * DAY));
 check('2) Premium muddati o‘zgarmadi', (await one(`SELECT premium_expires_at AS p FROM users WHERE id = 16`)).p, prem16);
+checkTrue("2) '+00' shakli (H.nowTs) tushunildi", near(await trialOf(18), t0 - 6 * DAY + 90 * DAY));
+checkTrue("2) '.ffffff+00' shakli tushunildi", near(await trialOf(19), t0 - 8 * DAY + 90 * DAY));
 checkTrue('2) yangi qiymat ISO shaklida', /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(await trialOf(10)));
 
 const co = async (id) => (await one(`SELECT trial_expires_at AS t FROM companies WHERE company_id = ?`, id))?.t ?? null;
@@ -86,6 +92,6 @@ const r2 = await applyLaunchTrialExtension(env, { now: NOW });
 check('4) ikkinchi marta — bajarilmaydi', r2.applied, false);
 checkTrue('4) keyingi hisob tegilmadi', near(await trialOf(17), t0 + 28 * DAY));
 const flag = await one(`SELECT name, detail FROM app_migrations WHERE name = ?`, LAUNCH_TRIAL_MIGRATION);
-check('4) belgi va sonlar yozildi', [flag?.name, JSON.parse(flag?.detail || '{}')], [LAUNCH_TRIAL_MIGRATION, { users: 3, companies: 1 }]);
+check('4) belgi va sonlar yozildi', [flag?.name, JSON.parse(flag?.detail || '{}')], [LAUNCH_TRIAL_MIGRATION, { users: 5, companies: 1 }]);
 
 done();

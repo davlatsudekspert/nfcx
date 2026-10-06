@@ -3017,7 +3017,7 @@ export function usersHaveTrialColumnsD1() {
 // Muddati NULL (eski) hisoblarga bu umuman tegmaydi.
 export const TRIAL_DAYS_DEFAULT = 30;
 export const TRIAL_DAYS_LAUNCH = 90;
-export const LAUNCH_PROMO_UNTIL = '2026-12-31T18:59:59Z';
+export const LAUNCH_PROMO_UNTIL = '2026-12-31T18:59:59.999Z';
 export const trialDaysForD1 = (from = new Date()) =>
   (from.getTime() <= Date.parse(LAUNCH_PROMO_UNTIL) ? TRIAL_DAYS_LAUNCH : TRIAL_DAYS_DEFAULT);
 export const trialEndsAtD1 = (from = new Date()) => new Date(from.getTime() + trialDaysForD1(from) * 86400_000).toISOString();

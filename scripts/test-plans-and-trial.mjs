@@ -30,7 +30,7 @@ check('1) maydonsiz hisob — sinov yo‘q', trialActiveD1({}), false);
 // Aksiya (2026-10): 2026-12-31 18:59:59Z gacha yaratilganlarga 90 kun,
 // keyin 30 — test sanaga bog'liq bo'lmasin (scripts/test-trial-reminders.mjs).
 checkTrue('1) trialEndsAtD1 ~30 kun (aksiyada ~90)', (() => {
-  const want = Date.now() <= Date.parse('2026-12-31T18:59:59Z') ? 90 : 30;
+  const want = Date.now() <= Date.parse('2026-12-31T18:59:59.999Z') ? 90 : 30;
   const d = (Date.parse(trialEndsAtD1()) - Date.now()) / DAY;
   return d > want - 0.1 && d < want + 0.1;
 })());

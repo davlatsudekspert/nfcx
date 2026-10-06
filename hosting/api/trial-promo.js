@@ -31,15 +31,19 @@
 export const LAUNCH_TRIAL_MIGRATION = 'launch_trial_90_v1';
 const DAYS = 90;
 
-// `created_at` ikki shaklda uchraydi: 'YYYY-MM-DD HH:MM:SS' va ISO
-// ('...T...Z'). SQLite `julianday()` ikkalasini ham tushunadi.
-const NEW_END = (col) => `strftime('%Y-%m-%dT%H:%M:%fZ', julianday(${col}) + ${DAYS})`;
+// Sana uch shaklda uchraydi: 'YYYY-MM-DD HH:MM:SS', ISO ('...T...Z') va
+// `H.nowTs()` / Postgres'dan ko'chganlar: 'YYYY-MM-DD HH:MM:SS.mmm+00'.
+// SQLite `julianday()` '+00' ni TUSHUNMAYDI (NULL qaytaradi) — shuning
+// uchun birinchi 19 belgigacha kesib, 'T' ni bo'sh joyga almashtiramiz
+// (hammasi UTC). notifications.js ham shunday qiladi.
+const JD = (col) => `julianday(substr(replace(${col}, 'T', ' '), 1, 19))`;
+const NEW_END = (col) => `strftime('%Y-%m-%dT%H:%M:%fZ', ${JD(col)} + ${DAYS})`;
 // Taxallussiz (`UPDATE t AS x` hamma SQLite versiyasida yo'q).
 const WHERE = (extra = '') => `
   trial_expires_at IS NOT NULL AND created_at IS NOT NULL
-  AND julianday(created_at) IS NOT NULL
-  AND julianday(created_at) + ${DAYS} > julianday(?)
-  AND julianday(created_at) + ${DAYS} > COALESCE(julianday(trial_expires_at), 0)
+  AND ${JD('created_at')} IS NOT NULL
+  AND ${JD('created_at')} + ${DAYS} > julianday(?)
+  AND ${JD('created_at')} + ${DAYS} > COALESCE(${JD('trial_expires_at')}, 0)
   ${extra}`;
 
 async function hasColumn(env, table, column) {

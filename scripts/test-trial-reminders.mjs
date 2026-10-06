@@ -32,6 +32,12 @@ const call = async (path, init = {}) => {
 // Toshkent sanasi (UTC+5) — server ham shunday yozadi.
 const tashkentDate = (ms) => new Date(ms + 5 * 3600_000).toISOString().slice(0, 10);
 
+// Bir martalik 90 kunlik uzaytirish (api/trial-promo.js) — o'z testida.
+// Bu yerda u allaqachon bajarilgan (production'dagi kabi), aks holda cron
+// eslatmadan oldin sinovni uzaytirib yuboradi.
+sqlite.exec(`CREATE TABLE IF NOT EXISTS app_migrations (name TEXT PRIMARY KEY NOT NULL, applied_at TEXT NOT NULL, detail TEXT)`);
+sqlite.prepare(`INSERT OR IGNORE INTO app_migrations (name, applied_at) VALUES ('launch_trial_90_v1', ?)`).run(new Date().toISOString());
+
 const add = sqlite.prepare(`INSERT INTO users (id, email, password_hash, phone, is_premium, premium_expires_at, trial_expires_at, deleted_at)
   VALUES (?, ?, 'x', NULL, ?, ?, ?, ?)`);
 add.run(3, 'ending@x.uz', 0, null, iso(now + 2 * DAY), null);           // eslatma OLADI
@@ -102,7 +108,7 @@ sqlite.prepare(`INSERT INTO sessions (token, user_id, expires_at) VALUES ('t3', 
 // ═══ 4. Aksiya muddati ═══
 {
   const cut = Date.parse(LAUNCH_PROMO_UNTIL);
-  check('4) chegara Toshkent 23:59:59', LAUNCH_PROMO_UNTIL, '2026-12-31T18:59:59Z');
+  check('4) chegara Toshkent 23:59:59', LAUNCH_PROMO_UNTIL, '2026-12-31T18:59:59.999Z');
   check('4) chegaragacha 90, keyin 30', [trialDaysForD1(new Date(cut)), trialDaysForD1(new Date(cut + 1000)), trialDaysForD1(new Date('2026-10-06T00:00:00Z'))],
     [TRIAL_DAYS_LAUNCH, TRIAL_DAYS_DEFAULT, 90]);
   check('4) qiymatlar', [TRIAL_DAYS_LAUNCH, TRIAL_DAYS_DEFAULT], [90, 30]);

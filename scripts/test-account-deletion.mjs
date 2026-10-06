@@ -37,6 +37,7 @@ import {
   PURGE_GRACE_DAYS, ID_QUARANTINE_DAYS,
 } from '../hosting/api/account-purge.js';
 import { createFreeAutoId } from '../hosting/api/auth.js';
+import { applyLaunchTrialExtension } from '../hosting/api/trial-promo.js';
 import { ensureSchema as ensureNotifications } from '../hosting/api/notifications.js';
 import { ensureTable as ensureSaves } from '../hosting/api/saves.js';
 import { ensureSchema as ensureModeration } from '../hosting/api/moderation.js';
@@ -600,6 +601,9 @@ seedGone(38, 'self', (id) => run(`INSERT INTO web_orders (user_id, code, price, 
 // =====================================================================
 {
   seedGone(42, 'self');
+  // Bir martalik sinov uzaytirish (api/trial-promo.js) cron'da ham bor —
+  // u bu yerda tekshirilmaydi; oldindan bajarib qo'yamiz.
+  await applyLaunchTrialExtension(env);
   env.ACCOUNT_PURGE_MODE = 'dry-run';
   const h0 = dbHash();
   const jobs = [];
