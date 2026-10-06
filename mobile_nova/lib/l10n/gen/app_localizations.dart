@@ -111,6 +111,12 @@ abstract class L {
   /// **'Xarita'**
   String get contactMap;
 
+  /// Biznes postidagi Qo‘ng‘iroq / Telegram / Xarita qatori — ekran o‘quvchi uchun guruh nomi.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bog‘lanish'**
+  String get postContactLabel;
+
   /// No description provided for @contactWebsite.
   ///
   /// In uz, this message translates to:

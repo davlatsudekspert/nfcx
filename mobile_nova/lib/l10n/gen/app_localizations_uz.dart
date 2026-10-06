@@ -15,6 +15,9 @@ class LUz extends L {
   String get contactMap => 'Xarita';
 
   @override
+  String get postContactLabel => 'Bog‘lanish';
+
+  @override
   String get contactWebsite => 'Sayt';
 
   @override

@@ -1388,9 +1388,14 @@ class Post {
     this.reel = false,
     this.imageSeconds = 10,
     this.views = 0,
+    this.contact,
   });
 
   final int id;
+
+  /// Biznes postidagi "Bog'lanish" (telefon, Telegram, xarita) — faqat
+  /// FAOL kompaniya postida keladi ([PostContact]); bo'lmasa `null`.
+  final PostContact? contact;
 
   /// Necha KISHI ko'rgan (server `viewCount`, Instagram'dagi
   /// "ko'rishlar"). Bir odam bir marta sanaladi, egasi sanalmaydi.
@@ -1469,6 +1474,7 @@ class Post {
         reel: reel,
         imageSeconds: imageSeconds,
         views: views,
+        contact: contact,
       );
 
   Post copyWith({int? likes, bool? liked, bool? saved, int? comments, int? views}) => Post(
@@ -1494,6 +1500,7 @@ class Post {
         reel: reel,
         imageSeconds: imageSeconds,
         views: views ?? this.views,
+        contact: contact,
       );
 
   factory Post.fromJson(Map<String, dynamic> j) {
@@ -1554,6 +1561,7 @@ class Post {
       reel: _b(j['reel']),
       imageSeconds: _i(j['imageSeconds'], 10).clamp(3, 60),
       views: _i(j['viewCount'] ?? j['views']),
+      contact: PostContact.fromJson(j['contact']),
     );
   }
 }

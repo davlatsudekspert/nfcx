@@ -15,6 +15,9 @@ class LRu extends L {
   String get contactMap => 'Карта';
 
   @override
+  String get postContactLabel => 'Связаться';
+
+  @override
   String get contactWebsite => 'Сайт';
 
   @override

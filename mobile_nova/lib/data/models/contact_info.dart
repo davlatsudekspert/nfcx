@@ -290,6 +290,73 @@ class ContactAction {
   final String label;
 }
 
+/// BIZNES POSTIDAGI "BOG'LANISH" (server, 2026-10).
+///
+/// Lenta (`/api/feed`, obunalar va FEATURED ham), Reels "Siz uchun"
+/// (`/api/reels`), saqlanganlar va kompaniya postlari
+/// (`/api/companies/:id/posts`) FAOL kompaniyaning postiga
+/// `contact: {phone, telegram, mapUrl}` qo'shadi — faqat kompaniya o'z
+/// ochiq sahifasida allaqachon ko'rsatadigan maydonlar (server
+/// `api/post-contact.js`). Yo'q qiymat — `null`. Shaxsiy post va
+/// istoriyada maydon umuman yo'q.
+///
+/// Havolalar profildagi aloqa tugmalari bilan AYNAN bir qoidada
+/// yasaladi ([ContactInfo.actions]): telefon — `tel:` (faqat raqam va
+/// `+`), Telegram — `@name`, `t.me/...` yoki to'liq havola bir xil
+/// toza `https://t.me/...` ga. Xarita — server bergan Google Maps
+/// havolasi.
+class PostContact {
+  const PostContact({this.phone = '', this.telegram = '', this.mapUrl = ''});
+
+  final String phone;
+  final String telegram;
+  final String mapUrl;
+
+  static String _s(Object? v) => v is String ? v.trim() : '';
+
+  /// `null` — maydon yo'q, shakli noto'g'ri yoki HAMMA qiymat bo'sh.
+  static PostContact? fromJson(Object? raw) {
+    if (raw is! Map) return null;
+    final c = PostContact(
+      phone: _s(raw['phone']),
+      telegram: _s(raw['telegram']),
+      mapUrl: _s(raw['mapUrl']),
+    );
+    return c.phone.isEmpty && c.telegram.isEmpty && c.mapUrl.isEmpty ? null : c;
+  }
+
+  /// Telefon raqamiga o'xshagan Telegram qiymati (`+998 90 123-45-67`)
+  /// — `t.me/+998901234567` (Telegram raqam bo'yicha havolasi).
+  /// Bo'shliq va chiziqchalar havolani buzardi; `+` siz raqam esa
+  /// username deb o'qilardi.
+  static String _tg(String v) {
+    if (!RegExp(r'^\+?[\d\s\-()]{9,}$').hasMatch(v)) return v;
+    final digits = v.replaceAll(RegExp(r'\D'), '');
+    return digits.length < 9 ? v : '+$digits';
+  }
+
+  /// Ko'rsatiladigan tugmalar: Qo'ng'iroq, Telegram, Xarita (shu
+  /// tartibda, ko'pi bilan 3 ta). Faqat `tel:`, `http`, `https` —
+  /// boshqa sxema yoki buzuq havola tugmaga aylanmaydi.
+  List<ContactAction> actions() => [
+        ...ContactInfo(phone: phone, telegram: _tg(telegram)).actions(),
+        if (mapUrl.isNotEmpty) ContactAction(kind: ContactKind.map, url: mapUrl),
+      ].where((a) => isSafeContactUrl(a.url)).toList();
+}
+
+/// Tashqariga ochiladigan havola xavfsizmi: faqat `tel:` (kamida 3
+/// raqam), `http` yoki `https` (xost bilan), bo'shliqsiz.
+bool isSafeContactUrl(String url) {
+  if (url.isEmpty || RegExp(r'\s').hasMatch(url)) return false;
+  final u = Uri.tryParse(url);
+  if (u == null) return false;
+  final scheme = u.scheme.toLowerCase();
+  if (scheme == 'tel') {
+    return RegExp(r'^\+?\d{3,}$').hasMatch(u.path);
+  }
+  return (scheme == 'http' || scheme == 'https') && u.host.isNotEmpty;
+}
+
 // ── saytdagi `socialLinks.js` ning aynan nusxasi ─────────────────────
 
 const _hosts = {

@@ -169,6 +169,21 @@ class _ContactButton extends StatelessWidget {
   }
 }
 
+/// Aloqa turining BIR RANGLI belgisi — [ContactButtons] dagi AYNAN o'sha
+/// SVG chizma (biznes postidagi "Bog'lanish" kapsulalari uchun). Sayt
+/// va profil tugmalari bilan bir xil logotip, mavzu rangida.
+Widget contactGlyph(ContactKind kind,
+        {required double size, required Color color}) =>
+    SvgPicture.string(
+      _specs[kind]!.svg,
+      width: size,
+      height: size,
+      colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+    );
+
+/// Aloqa turining qisqa nomi ("Qo'ng'iroq", "Telegram", "Xarita"...).
+String contactKindLabel(L l, ContactKind kind) => _specs[kind]!.label(l);
+
 class _Spec {
   const _Spec(this.gradient, this.svg, this.label);
 

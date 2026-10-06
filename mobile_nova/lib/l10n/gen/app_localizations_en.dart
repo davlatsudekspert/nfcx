@@ -15,6 +15,9 @@ class LEn extends L {
   String get contactMap => 'Map';
 
   @override
+  String get postContactLabel => 'Contact';
+
+  @override
   String get contactWebsite => 'Website';
 
   @override

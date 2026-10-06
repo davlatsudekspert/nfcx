@@ -1,6 +1,7 @@
 {
   "contactCall": "Call",
   "contactMap": "Map",
+  "postContactLabel": "Contact",
   "contactWebsite": "Website",
   "contactLink": "Link",
   "editContactSection": "Contacts & links",

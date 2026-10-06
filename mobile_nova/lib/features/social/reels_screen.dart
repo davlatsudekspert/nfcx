@@ -16,6 +16,7 @@ import 'moderation.dart';
 import 'media_frame.dart' show mediaImage;
 import 'media_sound.dart';
 import 'music_picker.dart';
+import 'post_contact_bar.dart';
 
 import '../../core/utils/result.dart';
 import '../../core/utils/sharing.dart';
@@ -1732,6 +1733,15 @@ class _ReelPageState extends ConsumerState<_ReelPage>
                       ReelViewsLabel(count: _views ?? p.views),
                     ],
                   ),
+                ],
+                // BIZNES REELS: "Qo'ng'iroq / Telegram / Xarita" — o'ng
+                // ustunda emas (u allaqachon to'la, tor ekranda pastga
+                // sig'masdi), muallif ostida, musiqa kapsulasi bilan bir
+                // xil qora shisha uslubda.
+                if (postContactActions(p).isNotEmpty) ...[
+                  const SizedBox(height: Gap.sm),
+                  PostContactBar(
+                      key: const ValueKey('reel-contact'), post: p, onDark: true),
                 ],
                 // REKLAMA (egasi, 2026-10-05). Qonun bo'yicha reklama aniq
                 // belgilanadi; Instagram'dagi "Sponsored" kabi, lekin

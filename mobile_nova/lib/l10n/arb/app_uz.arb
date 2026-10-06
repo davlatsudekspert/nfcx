@@ -1,6 +1,8 @@
 {
   "contactCall": "Qo‘ng‘iroq",
   "contactMap": "Xarita",
+  "postContactLabel": "Bog‘lanish",
+  "@postContactLabel": {"description": "Biznes postidagi Qo‘ng‘iroq / Telegram / Xarita qatori — ekran o‘quvchi uchun guruh nomi."},
   "contactWebsite": "Sayt",
   "contactLink": "Havola",
   "editContactSection": "Aloqa va havolalar",

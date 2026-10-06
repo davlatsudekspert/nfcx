@@ -18,6 +18,7 @@ import 'engagement.dart';
 import 'image_viewer.dart';
 import 'media_frame.dart';
 import 'music_picker.dart' show MusicChip;
+import 'post_contact_bar.dart';
 import 'time_ago.dart';
 import '../../design/icons/nova_icons.dart';
 
@@ -238,6 +239,12 @@ class FeedCard extends ConsumerWidget {
           if (post.text.isNotEmpty) ...[
             const SizedBox(height: Gap.md),
             _FeedCaption(text: post.text, onOpen: openPost),
+          ],
+          // BIZNES POSTI: "Qo'ng'iroq / Telegram / Xarita" — izohdan
+          // keyin, amallar qatoridan oldin; maydon bo'lmasa joy ham yo'q.
+          if (postContactActions(post).isNotEmpty) ...[
+            const SizedBox(height: Gap.md),
+            PostContactBar(post: post),
           ],
           const SizedBox(height: Gap.sm),
           Divider(height: 1, color: t.border1),
