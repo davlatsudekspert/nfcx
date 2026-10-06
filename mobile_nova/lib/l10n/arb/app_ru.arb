@@ -1188,5 +1188,8 @@
   "nfcHistoryActions": "Действия",
   "nfcHistorySources": "Источники",
   "nfcEventType": "{type, select, profile_view{Просмотр профиля} phone_click{Нажатие на телефон} telegram_click{Переход в Telegram} whatsapp_click{Переход в WhatsApp} instagram_click{Переход в Instagram} website_click{Переход на сайт} email_click{Нажатие на email} link_click{Переход по ссылке} contact_save{Контакт сохранён} lead{Оставлена заявка} menu_view{Просмотр меню} products_view{Просмотр товаров} services_view{Просмотр услуг} other{Другое действие}}",
-  "@nfcEventType": {"placeholders": {"type": {"type": "String"}}}
+  "@nfcEventType": {"placeholders": {"type": {"type": "String"}}},
+  "nfcCancelled": "Отменено",
+  "nfcNotNfcstore": "Это не метка NFCSTORE",
+  "nfcOpenInBrowser": "Открыть в браузере"
 }

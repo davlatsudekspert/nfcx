@@ -3412,4 +3412,13 @@ class LUz extends L {
     });
     return '$_temp0';
   }
+
+  @override
+  String get nfcCancelled => 'Bekor qilindi';
+
+  @override
+  String get nfcNotNfcstore => 'Bu NFCSTORE yorlig‘i emas';
+
+  @override
+  String get nfcOpenInBrowser => 'Brauzerda ochish';
 }

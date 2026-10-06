@@ -3456,4 +3456,13 @@ class LRu extends L {
     });
     return '$_temp0';
   }
+
+  @override
+  String get nfcCancelled => 'Отменено';
+
+  @override
+  String get nfcNotNfcstore => 'Это не метка NFCSTORE';
+
+  @override
+  String get nfcOpenInBrowser => 'Открыть в браузере';
 }

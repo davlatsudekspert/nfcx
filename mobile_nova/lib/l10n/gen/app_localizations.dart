@@ -6200,6 +6200,24 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'{type, select, profile_view{Profil ko‘rildi} phone_click{Telefon raqami bosildi} telegram_click{Telegram bosildi} whatsapp_click{WhatsApp bosildi} instagram_click{Instagram bosildi} website_click{Sayt havolasi bosildi} email_click{Email bosildi} link_click{Havola bosildi} contact_save{Kontakt saqlandi} lead{Ariza qoldirildi} menu_view{Menyu ko‘rildi} products_view{Mahsulotlar ko‘rildi} services_view{Xizmatlar ko‘rildi} other{Boshqa harakat}}'**
   String nfcEventType(String type);
+
+  /// No description provided for @nfcCancelled.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bekor qilindi'**
+  String get nfcCancelled;
+
+  /// No description provided for @nfcNotNfcstore.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu NFCSTORE yorlig‘i emas'**
+  String get nfcNotNfcstore;
+
+  /// No description provided for @nfcOpenInBrowser.
+  ///
+  /// In uz, this message translates to:
+  /// **'Brauzerda ochish'**
+  String get nfcOpenInBrowser;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

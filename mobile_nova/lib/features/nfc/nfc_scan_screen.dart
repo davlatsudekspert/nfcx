@@ -16,6 +16,8 @@ import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
 import 'nfc_center_screen.dart' show NoNfcPanel;
 import 'nfc_service.dart';
+import 'scan_target.dart';
+import '../../core/utils/external_link.dart';
 
 /// Kartani o'qish.
 ///
@@ -33,6 +35,9 @@ class _NfcScanScreenState extends ConsumerState<NfcScanScreen> {
   OrbState _state = OrbState.idle;
   String? _message;
   String? _resolvedCode;
+
+  /// NFCSTORE yorlig'i bo'lmagan teg mazmuni.
+  ScanForeign? _foreign;
 
   /// Xizmat oldindan ushlab olinadi.
   ///
@@ -61,6 +66,7 @@ class _NfcScanScreenState extends ConsumerState<NfcScanScreen> {
       _state = OrbState.scanning;
       _message = l.nfcScanning;
       _resolvedCode = null;
+      _foreign = null;
     });
 
     // Xato bo'lsa ham ekran "Qidirilmoqda…" da QOLMAYDI.
@@ -72,6 +78,15 @@ class _NfcScanScreenState extends ConsumerState<NfcScanScreen> {
     }
     if (!mounted) return;
 
+    // iPhone: odam tizim oynasida "Bekor qilish" ni bosdi — xato emas.
+    if ((payload == null || payload.isEmpty) && _nfc.lastCancelled) {
+      setState(() {
+        _state = OrbState.idle;
+        _message = l.nfcCancelled;
+      });
+      return;
+    }
+
     if (payload == null || payload.isEmpty) {
       setState(() {
         _state = OrbState.error;
@@ -80,59 +95,75 @@ class _NfcScanScreenState extends ConsumerState<NfcScanScreen> {
       return;
     }
 
-    // Kartadagi havoladan NFC ID kodini ajratamiz. Chip tokeni bo'lsa
-    // uni faqat SERVER kodga aylantira oladi.
-    final uri = Uri.tryParse(payload);
-    final segments = uri?.pathSegments.where((s) => s.isNotEmpty).toList() ?? const [];
-
+    // FAQAT NFCSTORE manzillari ichkariga olib kiradi (`scan_target`).
+    final target = classifyScan(payload);
     String? code;
-    // Server `/t/<token>` yozadi (stikerlar); eski `/tap/` ham qabul.
-    if (segments.length >= 2 &&
-        (segments.first == 't' || segments.first == 'tap')) {
-      final res = await ref.read(nfcRepositoryProvider).resolveChip(segments[1]);
-      if (!mounted) return;
-      final chip = res.valueOrNull;
-      // Sotilgan, lekin ULANMAGAN stiker — faollashtirishga, token bilan
-      // (shu stiker faollashtirishda bog'lanadi).
-      if (chip != null && chip.unlinked) {
+    switch (target) {
+      case ScanForeign():
+        setState(() {
+          _state = OrbState.error;
+          _message = l.nfcNotNfcstore;
+          _foreign = target;
+        });
+        return;
+      case ScanRoute(:final location):
+        // Ilovada bunday sahifa bo'lmasa — begona yorliq kabi.
+        final match =
+            GoRouter.of(context).configuration.findMatch(Uri.parse(location));
+        if (match.routes.isEmpty || match.error != null) {
+          setState(() {
+            _state = OrbState.error;
+            _message = l.nfcNotNfcstore;
+            _foreign = ScanForeign(payload!.trim());
+          });
+          return;
+        }
         setState(() => _state = OrbState.idle);
-        context.push(Routes.nfcActivateSticker(segments[1]));
+        context.push(location);
         return;
-      }
-      // Egasi o'chirib qo'ygan — profil ochilmaydi (sayt kabi).
-      if (chip != null && chip.found && !chip.active) {
-        setState(() {
-          _state = OrbState.error;
-          _message = '${l.stickerOffTitle}. ${l.stickerOffBody}';
-        });
-        return;
-      }
-      if (chip != null && !chip.found) {
-        setState(() {
-          _state = OrbState.error;
-          _message = l.stickerUnknownBody;
-        });
-        return;
-      }
-      if (chip != null && chip.company && chip.code.isNotEmpty) {
-        context.push(Routes.storefront(chip.code));
-        return;
-      }
-      code = chip?.code;
-      if (code == null || code.isEmpty) {
-        setState(() {
-          _state = OrbState.error;
-          // Token bor, lekin hali hech narsaga bog'lanmagan (Ok, bo'sh
-          // kod) — ilgari bu yerda `errorOrNull!` null ustida qulardi.
-          _message = describeError(
-              l, res.errorOrNull ?? const AppError(AppErrorKind.notFound));
-        });
-        return;
-      }
-    } else if (segments.isNotEmpty) {
-      code = segments.last;
-    } else {
-      code = payload.trim();
+      case ScanProfile(code: final c):
+        code = c;
+      case ScanChip(:final token):
+        final res = await ref.read(nfcRepositoryProvider).resolveChip(token);
+        if (!mounted) return;
+        final chip = res.valueOrNull;
+        // Sotilgan, lekin ULANMAGAN stiker — faollashtirishga, token bilan
+        // (shu stiker faollashtirishda bog'lanadi).
+        if (chip != null && chip.unlinked) {
+          setState(() => _state = OrbState.idle);
+          context.push(Routes.nfcActivateSticker(token));
+          return;
+        }
+        // Egasi o'chirib qo'ygan — profil ochilmaydi (sayt kabi).
+        if (chip != null && chip.found && !chip.active) {
+          setState(() {
+            _state = OrbState.error;
+            _message = '${l.stickerOffTitle}. ${l.stickerOffBody}';
+          });
+          return;
+        }
+        if (chip != null && !chip.found) {
+          setState(() {
+            _state = OrbState.error;
+            _message = l.stickerUnknownBody;
+          });
+          return;
+        }
+        if (chip != null && chip.company && chip.code.isNotEmpty) {
+          context.push(Routes.storefront(chip.code));
+          return;
+        }
+        code = chip?.code;
+        if (code == null || code.isEmpty) {
+          setState(() {
+            _state = OrbState.error;
+            // Token bor, lekin hali hech narsaga bog'lanmagan (Ok, bo'sh
+            // kod) — ilgari bu yerda `errorOrNull!` null ustida qulardi.
+            _message = describeError(
+                l, res.errorOrNull ?? const AppError(AppErrorKind.notFound));
+          });
+          return;
+        }
     }
 
     setState(() {
@@ -177,6 +208,7 @@ class _NfcScanScreenState extends ConsumerState<NfcScanScreen> {
               state: _state,
               message: _message,
               resolvedCode: _resolvedCode,
+              foreign: _foreign,
               onScan: _scan,
             ),
         },
@@ -192,12 +224,14 @@ class _ScanBody extends StatelessWidget {
     required this.message,
     required this.resolvedCode,
     required this.onScan,
+    this.foreign,
   });
 
   final double orb;
   final OrbState state;
   final String? message;
   final String? resolvedCode;
+  final ScanForeign? foreign;
   final VoidCallback onScan;
 
   @override
@@ -236,7 +270,40 @@ class _ScanBody extends StatelessWidget {
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.titleMedium,
         ),
-        if (resolvedCode != null) ...[
+        if (foreign != null) ...[
+          // BEGONA YORLIQ — mazmuni ko'rinadi, ilova ichida ochilmaydi.
+          const SizedBox(height: Gap.md),
+          Container(
+            key: const ValueKey('nfc-foreign'),
+            padding: const EdgeInsets.all(Gap.lg),
+            decoration: BoxDecoration(
+              color: t.surface2,
+              borderRadius: R.gentle,
+              border: Border.all(color: t.border2),
+            ),
+            child: SelectableText(
+              foreign!.raw,
+              textAlign: TextAlign.center,
+              style: AppType.monoStyle(color: t.text1, size: 13),
+            ),
+          ),
+          if (foreign!.webUrl != null) ...[
+            const SizedBox(height: Gap.xl),
+            NovaButton(
+              key: const ValueKey('nfc-foreign-open'),
+              label: l.nfcOpenInBrowser,
+              icon: Icons.open_in_new_rounded,
+              tone: ButtonTone.outline,
+              onPressed: () => openLink(foreign!.webUrl.toString()),
+            ),
+          ],
+          const SizedBox(height: Gap.md),
+          NovaButton(
+            label: l.actionRetry,
+            tone: ButtonTone.quiet,
+            onPressed: onScan,
+          ),
+        ] else if (resolvedCode != null) ...[
           const SizedBox(height: Gap.md),
           Center(
             child: Container(

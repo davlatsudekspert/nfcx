@@ -1188,5 +1188,8 @@
   "nfcHistoryActions": "Actions",
   "nfcHistorySources": "Sources",
   "nfcEventType": "{type, select, profile_view{Profile viewed} phone_click{Phone tapped} telegram_click{Telegram opened} whatsapp_click{WhatsApp opened} instagram_click{Instagram opened} website_click{Website opened} email_click{Email tapped} link_click{Link opened} contact_save{Contact saved} lead{Request submitted} menu_view{Menu viewed} products_view{Products viewed} services_view{Services viewed} other{Other action}}",
-  "@nfcEventType": {"placeholders": {"type": {"type": "String"}}}
+  "@nfcEventType": {"placeholders": {"type": {"type": "String"}}},
+  "nfcCancelled": "Cancelled",
+  "nfcNotNfcstore": "This is not an NFCSTORE tag",
+  "nfcOpenInBrowser": "Open in browser"
 }

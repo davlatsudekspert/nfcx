@@ -3432,4 +3432,13 @@ class LEn extends L {
     });
     return '$_temp0';
   }
+
+  @override
+  String get nfcCancelled => 'Cancelled';
+
+  @override
+  String get nfcNotNfcstore => 'This is not an NFCSTORE tag';
+
+  @override
+  String get nfcOpenInBrowser => 'Open in browser';
 }

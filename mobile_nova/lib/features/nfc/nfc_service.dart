@@ -91,6 +91,10 @@ enum TagError {
 
   /// Platforma xatosi (sessiya uzildi, teg maydondan chiqdi...).
   io,
+
+  /// Foydalanuvchi tizim oynasida "Bekor qilish" ni bosdi (iPhone).
+  /// Xato emas — ekran jim qaytadi.
+  cancelled,
 }
 
 /// Yozish natijasi.
@@ -111,9 +115,57 @@ class NfcWriteResult {
 /// holatni ko'rsatadi. "Skanerlandi" degan yozuv faqat kartadan HAQIQIY
 /// ma'lumot o'qilgandagina chiqadi. Xuddi shunday, "yozildi" yozuvi
 /// faqat tegdan QAYTA O'QIB tasdiqlangandan keyin chiqadi.
+/// `NfcManager.startSession` imzosi — sinovda almashtiriladi.
+typedef NfcSessionStart = Future<void> Function({
+  required NfcTagCallback onDiscovered,
+  Set<NfcPollingOption>? pollingOptions,
+  NfcErrorCallback? onError,
+});
+
 class NfcService {
+  NfcService({NfcSessionStart? startSession, Future<void> Function()? stopSession})
+      : _start = startSession ?? _nativeStart,
+        _stopNative = stopSession ?? _nativeStop;
+
+  static Future<void> _nativeStart({
+    required NfcTagCallback onDiscovered,
+    Set<NfcPollingOption>? pollingOptions,
+    NfcErrorCallback? onError,
+  }) =>
+      NfcManager.instance.startSession(
+          onDiscovered: onDiscovered,
+          pollingOptions: pollingOptions,
+          onError: onError);
+
+  static Future<void> _nativeStop() => NfcManager.instance.stopSession();
+
+  final NfcSessionStart _start;
+  final Future<void> Function() _stopNative;
+
   StreamSubscription<void>? _sub;
   bool _sessionOpen = false;
+
+  /// Oxirgi sessiyani foydalanuvchi BEKOR QILDIMI (iPhone tizim oynasi).
+  ///
+  /// iOS'da "Bekor qilish" bosilsa `onDiscovered` hech qachon
+  /// chaqirilmaydi — sessiya `onError(userCanceled)` bilan yopiladi.
+  /// Ilgari `onError` berilmasdi: ekran 30 soniya "Qidirilmoqda…"
+  /// holatida qolardi. Endi kutish darhol tugaydi va ekran buni xato
+  /// emas, jim "Bekor qilindi" deb ko'rsatadi.
+  bool lastCancelled = false;
+
+  /// iOS sessiyasi o'zi yopildi (bekor, vaqt tugadi, tizim band):
+  /// `stopSession` qayta chaqirilmaydi.
+  void _closedBySystem(NfcError e) {
+    _sessionOpen = false;
+    lastCancelled = e.type == NfcErrorType.userCanceled;
+  }
+
+  static TagError _errorOf(NfcError e) => switch (e.type) {
+        NfcErrorType.userCanceled => TagError.cancelled,
+        NfcErrorType.sessionTimeout => TagError.timeout,
+        _ => TagError.io,
+      };
 
   Future<NfcAvailability> check() async {
     try {
@@ -147,8 +199,10 @@ class NfcService {
     //    ilgari u skaner ekranigacha uchib borar va ekran "Qidirilmoqda…"
     //    holatida abadiy qolardi.
     await stop();
+    lastCancelled = false;
+    _sessionOpen = true;
     try {
-      await NfcManager.instance.startSession(
+      await _start(
         pollingOptions: {
           NfcPollingOption.iso14443,
           NfcPollingOption.iso15693,
@@ -164,12 +218,16 @@ class NfcService {
           completer.complete(payload);
           await stop();
         },
+        onError: (e) async {
+          _closedBySystem(e);
+          if (!completer.isCompleted) completer.complete(null);
+        },
       );
-      _sessionOpen = true;
     } catch (_) {
-      await stop();
+      _sessionOpen = false;
       return null;
     }
+    if (completer.isCompleted) return completer.future;
 
     // Cheksiz kutish qurilmaning NFC antennasini band qilib turadi.
     return completer.future.timeout(timeout, onTimeout: () async {
@@ -189,8 +247,10 @@ class NfcService {
 
     // Oldingi sessiya ochiq qolgan bo'lsa — avval yopiladi.
     await stop();
+    lastCancelled = false;
+    _sessionOpen = true;
     try {
-      await NfcManager.instance.startSession(
+      await _start(
         pollingOptions: {NfcPollingOption.iso14443, NfcPollingOption.iso15693},
         onDiscovered: (tag) async {
           if (completer.isCompleted) return;
@@ -203,12 +263,18 @@ class NfcService {
           completer.complete(r);
           await stop();
         },
+        onError: (e) async {
+          _closedBySystem(e);
+          if (!completer.isCompleted) {
+            completer.complete(TagInspection(found: false, error: _errorOf(e)));
+          }
+        },
       );
-      _sessionOpen = true;
     } catch (_) {
-      await stop();
+      _sessionOpen = false;
       return const TagInspection(found: false, error: TagError.io);
     }
+    if (completer.isCompleted) return completer.future;
 
     return completer.future.timeout(timeout, onTimeout: () async {
       await stop();
@@ -278,8 +344,10 @@ class NfcService {
 
     // Oldingi sessiya ochiq qolgan bo'lsa — avval yopiladi.
     await stop();
+    lastCancelled = false;
+    _sessionOpen = true;
     try {
-      await NfcManager.instance.startSession(
+      await _start(
         pollingOptions: {NfcPollingOption.iso14443, NfcPollingOption.iso15693},
         onDiscovered: (tag) async {
           if (completer.isCompleted) return;
@@ -292,12 +360,18 @@ class NfcService {
           if (!completer.isCompleted) completer.complete(r);
           await stop();
         },
+        onError: (e) async {
+          _closedBySystem(e);
+          if (!completer.isCompleted) {
+            completer.complete(NfcWriteResult(ok: false, error: _errorOf(e)));
+          }
+        },
       );
-      _sessionOpen = true;
     } catch (_) {
-      await stop();
+      _sessionOpen = false;
       return const NfcWriteResult(ok: false, error: TagError.io);
     }
+    if (completer.isCompleted) return completer.future;
 
     return completer.future.timeout(timeout, onTimeout: () async {
       await stop();
@@ -399,7 +473,7 @@ class NfcService {
     if (!_sessionOpen) return;
     _sessionOpen = false;
     try {
-      await NfcManager.instance.stopSession();
+      await _stopNative();
     } catch (_) {/* sessiya allaqachon yopilgan */}
     await _sub?.cancel();
     _sub = null;

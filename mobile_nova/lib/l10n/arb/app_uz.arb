@@ -1339,5 +1339,8 @@
   "nfcHistoryActions": "Harakatlar",
   "nfcHistorySources": "Manbalar",
   "nfcEventType": "{type, select, profile_view{Profil ko‘rildi} phone_click{Telefon raqami bosildi} telegram_click{Telegram bosildi} whatsapp_click{WhatsApp bosildi} instagram_click{Instagram bosildi} website_click{Sayt havolasi bosildi} email_click{Email bosildi} link_click{Havola bosildi} contact_save{Kontakt saqlandi} lead{Ariza qoldirildi} menu_view{Menyu ko‘rildi} products_view{Mahsulotlar ko‘rildi} services_view{Xizmatlar ko‘rildi} other{Boshqa harakat}}",
-  "@nfcEventType": {"placeholders": {"type": {"type": "String"}}}
+  "@nfcEventType": {"placeholders": {"type": {"type": "String"}}},
+  "nfcCancelled": "Bekor qilindi",
+  "nfcNotNfcstore": "Bu NFCSTORE yorlig‘i emas",
+  "nfcOpenInBrowser": "Brauzerda ochish"
 }

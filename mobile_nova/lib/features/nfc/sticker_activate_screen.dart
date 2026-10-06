@@ -207,6 +207,17 @@ class _StickerActivateScreenState extends ConsumerState<StickerActivateScreen> {
       }
       if (!mounted) return;
     }
+    // iPhone "Bekor qilish" — xato emas.
+    if (widget.deviceToken.isEmpty && payload == null && (_nfc?.lastCancelled ?? false)) {
+      setState(() {
+        _busy = false;
+        _error = null;
+      });
+      ScaffoldMessenger.maybeOf(context)
+        ?..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(l.nfcCancelled)));
+      return;
+    }
     final token = widget.deviceToken.isNotEmpty
         ? widget.deviceToken
         : stickerTokenFromPayload(payload);

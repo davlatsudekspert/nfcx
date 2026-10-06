@@ -108,6 +108,13 @@ class _NfcWriteScreenState extends ConsumerState<NfcWriteScreen> {
     final res = await ref.read(nfcServiceProvider).inspect();
     if (!mounted) return;
 
+    // iPhone "Bekor qilish" — xato emas, jim qaytamiz.
+    if (res.error == TagError.cancelled) {
+      setState(() => _phase = _Phase.idle);
+      _quietCancelled();
+      return;
+    }
+
     if (!res.found || res.error != TagError.none) {
       setState(() {
         _phase = _Phase.idle;
@@ -181,6 +188,12 @@ class _NfcWriteScreenState extends ConsumerState<NfcWriteScreen> {
         );
     if (!mounted) return;
 
+    if (res.error == TagError.cancelled) {
+      setState(() => _phase = _Phase.checked);
+      _quietCancelled();
+      return;
+    }
+
     setState(() {
       _phase = res.ok ? _Phase.done : _Phase.checked;
       _error = res.ok ? '' : _describe(res.error, payloadSize: _sizeOf(url));
@@ -218,7 +231,14 @@ class _NfcWriteScreenState extends ConsumerState<NfcWriteScreen> {
       TagError.differentTag => l.nfcWriteErrDifferentTag,
       TagError.verifyFailed => l.nfcWriteErrVerify,
       TagError.io => l.nfcWriteErrIo,
+      TagError.cancelled => l.nfcCancelled,
     };
+  }
+
+  void _quietCancelled() {
+    ScaffoldMessenger.maybeOf(context)
+      ?..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(L.of(context).nfcCancelled)));
   }
 
   @override
