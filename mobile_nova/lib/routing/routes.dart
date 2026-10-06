@@ -182,6 +182,12 @@ abstract final class Routes {
   /// "Ko'tarish kreditlari" — Apple consumable bilan to'langan, lekin
   /// hali ishlatilmagan ko'tarishlar. Faqat iPhone + `boostEnabled`.
   static const boostCredits = '/boost/credits';
+
+  /// "Do'stlarni taklif qilish" — shaxsiy havola va natija.
+  static const invite = '/invite';
+
+  /// Taklif havolasi (`https://nfcstore.uz/i/<kod>`).
+  static String inviteLink(String code) => '/i/$code';
   static const settingsSupport = '/settings/support';
 
   /// Yordam ekrani, [id] li murojaat ajratib ko'rsatiladi —

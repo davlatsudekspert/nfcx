@@ -71,6 +71,9 @@
                 <data android:scheme="https" android:host="nfcstore.uz" android:pathPrefix="/post/"/>
                 <data android:scheme="https" android:host="nfcstore.uz" android:pathPrefix="/story/"/>
                 <data android:scheme="https" android:host="nfcstore.uz" android:pathPrefix="/nfc/"/>
+                <!-- TAKLIF HAVOLASI `/i/<kod>`: kirmagan odam — ro'yxatdan
+                     o'tish (kod oldindan yozilgan), kirgan — taklif ekrani. -->
+                <data android:scheme="https" android:host="nfcstore.uz" android:pathPrefix="/i/"/>
             </intent-filter>
             <!-- ILOVA SXEMASI — nfcstore://nfcstore.uz/post/<id>?code=...
                  Saytdagi "Ilovada ochish" tugmasi (intent://) shu orqali

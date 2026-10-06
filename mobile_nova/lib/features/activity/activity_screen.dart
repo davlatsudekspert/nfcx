@@ -150,6 +150,7 @@ class _EventTile extends ConsumerWidget {
         ActivityKind.follow => l.activityFollowed,
         ActivityKind.like => l.activityLiked,
         ActivityKind.comment => l.activityCommented,
+        ActivityKind.referral => l.activityReferralReward,
         ActivityKind.trial => _trialDate == null
             ? l.activityGeneric
             : l.activityTrialEnding(_trialDate!),
@@ -195,6 +196,8 @@ class _EventTile extends ConsumerWidget {
     // yo'naltirish taqiqlangan; xabar faqat sanani aytadi. Bosilsa
     // faqat o'qildi deb belgilanadi.
     if (event.kind == ActivityKind.trial || _generic) return null;
+    // Taklif bonusi — "Do'stlarni taklif qilish" ekrani.
+    if (event.kind == ActivityKind.referral) return Routes.invite;
     // QO'LLAB-QUVVATLASH JAVOBI — Yordam ekrani, o'sha murojaat
     // ajratilgan holda. ID kelmasa ham ekranning o'zi ochiladi.
     if (event.kind == ActivityKind.support) {
@@ -266,6 +269,7 @@ class _EventTile extends ConsumerWidget {
       ActivityKind.system => (Icons.info_rounded, t.text3),
       ActivityKind.support => (Icons.support_agent_rounded, t.accent2),
       ActivityKind.trial => (Icons.event_rounded, t.accent2),
+      ActivityKind.referral => (Icons.card_giftcard_rounded, t.accent2),
     };
     // Tizim xabari: ism ham avatar ham yo'q — sarlavha shu yerda,
     // tilga qarab yoziladi (server tayyor matn yubormaydi).

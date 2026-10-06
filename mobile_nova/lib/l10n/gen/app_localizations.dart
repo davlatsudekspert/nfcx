@@ -6266,6 +6266,84 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Profilda ko‘pi bilan {max} ta qo‘shiq bo‘ladi — saqlanganda ortiqchasi olib tashlanadi.'**
   String profileMusicOverLimit(int max);
+
+  /// No description provided for @inviteTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Do‘stlarni taklif qilish'**
+  String get inviteTitle;
+
+  /// No description provided for @inviteHeadline.
+  ///
+  /// In uz, this message translates to:
+  /// **'Do‘stingizni taklif qiling — har biri uchun +1 oy Premium'**
+  String get inviteHeadline;
+
+  /// No description provided for @inviteCopy.
+  ///
+  /// In uz, this message translates to:
+  /// **'Nusxa olish'**
+  String get inviteCopy;
+
+  /// No description provided for @inviteCopied.
+  ///
+  /// In uz, this message translates to:
+  /// **'Havola nusxalandi'**
+  String get inviteCopied;
+
+  /// No description provided for @inviteShareText.
+  ///
+  /// In uz, this message translates to:
+  /// **'NFCSTORE’ga qo‘shiling — raqamli vizitka, NFC va Reels: {link}'**
+  String inviteShareText(String link);
+
+  /// No description provided for @inviteStats.
+  ///
+  /// In uz, this message translates to:
+  /// **'{invited, plural, =0{Hali do‘st taklif qilmadingiz} other{{invited} do‘st taklif qildingiz}} · +{months} oy Premium'**
+  String inviteStats(int invited, int months);
+
+  /// No description provided for @inviteHowTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qanday ishlaydi'**
+  String get inviteHowTitle;
+
+  /// No description provided for @inviteStep1.
+  ///
+  /// In uz, this message translates to:
+  /// **'Havolani do‘stingizga yuboring'**
+  String get inviteStep1;
+
+  /// No description provided for @inviteStep2.
+  ///
+  /// In uz, this message translates to:
+  /// **'Do‘stingiz shu havola orqali ro‘yxatdan o‘tadi'**
+  String get inviteStep2;
+
+  /// No description provided for @inviteStep3.
+  ///
+  /// In uz, this message translates to:
+  /// **'Siz +1 oy Premium olasiz'**
+  String get inviteStep3;
+
+  /// No description provided for @inviteSiteDiscount.
+  ///
+  /// In uz, this message translates to:
+  /// **'(va saytdagi xaridlarga chegirma)'**
+  String get inviteSiteDiscount;
+
+  /// No description provided for @inviteTrialNote.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bepul sinov davrida bonus sinov tugagach qo‘shiladi.'**
+  String get inviteTrialNote;
+
+  /// No description provided for @activityReferralReward.
+  ///
+  /// In uz, this message translates to:
+  /// **'sizning taklifingiz bilan qo‘shildi — +1 oy Premium'**
+  String get activityReferralReward;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

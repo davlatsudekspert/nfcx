@@ -1201,5 +1201,20 @@
   "errDemoBusiness": "Демо-бизнес нельзя изменять",
   "errRequiredFields": "Заполните обязательные поля",
   "profileMusicOverLimit": "В профиле может быть не более {max} треков — лишние будут удалены при сохранении.",
-  "@profileMusicOverLimit": {"placeholders": {"max": {"type": "int"}}}
+  "@profileMusicOverLimit": {"placeholders": {"max": {"type": "int"}}},
+  "inviteTitle": "Пригласить друзей",
+  "inviteHeadline": "Приглашайте друзей — +1 месяц Premium за каждого",
+  "inviteCopy": "Копировать",
+  "inviteCopied": "Ссылка скопирована",
+  "inviteShareText": "Присоединяйтесь к NFCSTORE — цифровая визитка, NFC и Reels: {link}",
+  "@inviteShareText": {"placeholders": {"link": {"type": "String"}}},
+  "inviteStats": "{invited, plural, =0{Вы ещё никого не пригласили} one{Вы пригласили {invited} друга} few{Вы пригласили {invited} друзей} many{Вы пригласили {invited} друзей} other{Вы пригласили {invited} друзей}} · +{months} мес. Premium",
+  "@inviteStats": {"placeholders": {"invited": {"type": "int"}, "months": {"type": "int"}}},
+  "inviteHowTitle": "Как это работает",
+  "inviteStep1": "Отправьте ссылку другу",
+  "inviteStep2": "Друг регистрируется по этой ссылке",
+  "inviteStep3": "Вы получаете +1 месяц Premium",
+  "inviteSiteDiscount": "(и скидку на покупки на сайте)",
+  "inviteTrialNote": "Во время бесплатного пробного периода бонус добавится после его окончания.",
+  "activityReferralReward": "присоединился(ась) по вашему приглашению — +1 месяц Premium"
 }

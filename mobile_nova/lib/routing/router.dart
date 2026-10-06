@@ -37,6 +37,7 @@ import '../features/settings/news_screen.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../features/settings/analytics_screen.dart';
 import '../features/settings/settings_subscreens.dart';
+import '../features/settings/invite_screen.dart' show InviteScreen;
 import '../features/premium/iap_controller.dart' show iapEnabledProvider;
 import '../features/premium/premium_iap_screen.dart';
 import '../features/premium/boost_controller.dart' show iapBoostEnabledProvider;
@@ -125,6 +126,23 @@ final routerProvider = Provider<GoRouter>((ref) {
           loc.startsWith('/login') ||
           (loc.startsWith('/register') && loc != Routes.profileSetup);
       final card = _cardLinkTarget(state);
+      // TAKLIF HAVOLASI `/i/<kod>`: kirgan odam — taklif ekrani;
+      // kirmagan — ro'yxatdan o'tish, kod oldindan yozilgan.
+      final invite = _inviteCode(state.uri);
+      if (invite != null && session is SessionActive) return Routes.invite;
+      if (invite != null && session is SessionAnonymous) {
+        return '${Routes.register}?ref=$invite';
+      }
+      // Sessiya tekshirilayotganda kelgan taklif havolasi — tekshiruv
+      // anonim bilan tugasa ro'yxatdan o'tishga olib boradi.
+      if (session is SessionAnonymous && loc == Routes.splash) {
+        final p = pending;
+        final code = p == null ? null : _inviteCode(Uri.parse(p));
+        if (code != null) {
+          pending = null;
+          return '${Routes.register}?ref=$code';
+        }
+      }
 
       // Chiqishdan (yoki sessiya tugashidan) keyin turgan ekran
       // "kutilayotgan manzil" bo'lmaydi — keyingi kirish Home'dan.
@@ -159,7 +177,20 @@ final routerProvider = Provider<GoRouter>((ref) {
               const VerifyArgs(email: ''),
         ),
       ),
-      GoRoute(path: Routes.register, builder: (_, __) => const RegisterScreen()),
+      GoRoute(
+          path: Routes.register,
+          builder: (_, s) =>
+              RegisterScreen(initialPromo: s.uri.queryParameters['ref'])),
+      // Taklif havolasi — yo'naltirish yuqoridagi `redirect` da; bu
+      // marshrut faqat havola "tanilishi" uchun (App Links).
+      GoRoute(
+          path: '/i/:code',
+          redirect: (_, s) => normalizeInviteCode(s.pathParameters['code']) ==
+                  null
+              ? Routes.home
+              : Routes.invite,
+          builder: (_, __) => const InviteScreen()),
+      GoRoute(path: Routes.invite, builder: (_, __) => const InviteScreen()),
       GoRoute(
         path: Routes.registerVerify,
         builder: (_, s) => VerifyScreen(
@@ -625,6 +656,13 @@ CustomTransitionPage<T> fadeScalePage<T>({
 
 /// Manzilning yo'li va so'rovi (sxema/xost'siz) — `https://nfcstore.uz/u/X`
 /// -> `/u/X`.
+/// `/i/<kod>` dan taklif kodi (yaroqsiz — `null`).
+String? _inviteCode(Uri u) {
+  final seg = u.pathSegments.where((e) => e.isNotEmpty).toList();
+  if (seg.length != 2 || seg.first != 'i') return null;
+  return normalizeInviteCode(seg[1]);
+}
+
 String _pathAndQuery(Uri u) =>
     Uri(path: u.path.isEmpty ? '/' : u.path, query: u.hasQuery ? u.query : null)
         .toString();

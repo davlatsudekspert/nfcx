@@ -1201,5 +1201,20 @@
   "errDemoBusiness": "The sample business can’t be changed",
   "errRequiredFields": "Please fill in the required fields",
   "profileMusicOverLimit": "A profile can have at most {max} tracks — extra ones will be removed when you save.",
-  "@profileMusicOverLimit": {"placeholders": {"max": {"type": "int"}}}
+  "@profileMusicOverLimit": {"placeholders": {"max": {"type": "int"}}},
+  "inviteTitle": "Invite friends",
+  "inviteHeadline": "Invite friends — get +1 month of Premium for each",
+  "inviteCopy": "Copy",
+  "inviteCopied": "Link copied",
+  "inviteShareText": "Join NFCSTORE — digital business card, NFC and Reels: {link}",
+  "@inviteShareText": {"placeholders": {"link": {"type": "String"}}},
+  "inviteStats": "{invited, plural, =0{You haven’t invited anyone yet} =1{You invited 1 friend} other{You invited {invited} friends}} · +{months} months of Premium",
+  "@inviteStats": {"placeholders": {"invited": {"type": "int"}, "months": {"type": "int"}}},
+  "inviteHowTitle": "How it works",
+  "inviteStep1": "Send the link to a friend",
+  "inviteStep2": "Your friend signs up with this link",
+  "inviteStep3": "You get +1 month of Premium",
+  "inviteSiteDiscount": "(and a discount on website purchases)",
+  "inviteTrialNote": "During your free trial, the bonus is added after the trial ends.",
+  "activityReferralReward": "joined with your invite — +1 month of Premium"
 }

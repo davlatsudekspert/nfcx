@@ -70,6 +70,7 @@ void main() {
     Routes.settingsPremium,
     Routes.premium,
     Routes.boostCredits,
+    Routes.invite,
     Routes.settingsSupport,
     Routes.settingsAbout,
     Routes.settingsNews,
@@ -176,6 +177,8 @@ void main() {
       '/post/': '/post/42?code=ABC123',
       '/story/': '/story/ABC123',
       '/nfc/': '/nfc/id/ABC123',
+      // Taklif havolasi (`/i/<kod>`).
+      '/i/': '/i/ALI77',
     };
     final router = buildTestRouter();
     for (final p in prefixes) {

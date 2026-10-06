@@ -353,6 +353,15 @@ class ProfileRepository {
     });
   }
 
+  /// "Do'stlarni taklif qilish" — shaxsiy havola va natija.
+  /// `GET /api/referrals/summary` → `{code, link, invited,
+  /// rewardedDays, nextRewardDays}`.
+  Future<Result<ReferralSummary>> referralSummary() async {
+    final res =
+        await _api.get<Map<String, dynamic>>('/api/referrals/summary');
+    return res.map(ReferralSummary.fromJson);
+  }
+
   Future<Result<List<Map<String, dynamic>>>> referrals() async {
     final res = await _api.get<Map<String, dynamic>>('/api/referrals');
     return res.map((j) {

@@ -3495,4 +3495,59 @@ class LRu extends L {
   String profileMusicOverLimit(int max) {
     return 'В профиле может быть не более $max треков — лишние будут удалены при сохранении.';
   }
+
+  @override
+  String get inviteTitle => 'Пригласить друзей';
+
+  @override
+  String get inviteHeadline =>
+      'Приглашайте друзей — +1 месяц Premium за каждого';
+
+  @override
+  String get inviteCopy => 'Копировать';
+
+  @override
+  String get inviteCopied => 'Ссылка скопирована';
+
+  @override
+  String inviteShareText(String link) {
+    return 'Присоединяйтесь к NFCSTORE — цифровая визитка, NFC и Reels: $link';
+  }
+
+  @override
+  String inviteStats(int invited, int months) {
+    String _temp0 = intl.Intl.pluralLogic(
+      invited,
+      locale: localeName,
+      other: 'Вы пригласили $invited друзей',
+      many: 'Вы пригласили $invited друзей',
+      few: 'Вы пригласили $invited друзей',
+      one: 'Вы пригласили $invited друга',
+      zero: 'Вы ещё никого не пригласили',
+    );
+    return '$_temp0 · +$months мес. Premium';
+  }
+
+  @override
+  String get inviteHowTitle => 'Как это работает';
+
+  @override
+  String get inviteStep1 => 'Отправьте ссылку другу';
+
+  @override
+  String get inviteStep2 => 'Друг регистрируется по этой ссылке';
+
+  @override
+  String get inviteStep3 => 'Вы получаете +1 месяц Premium';
+
+  @override
+  String get inviteSiteDiscount => '(и скидку на покупки на сайте)';
+
+  @override
+  String get inviteTrialNote =>
+      'Во время бесплатного пробного периода бонус добавится после его окончания.';
+
+  @override
+  String get activityReferralReward =>
+      'присоединился(ась) по вашему приглашению — +1 месяц Premium';
 }

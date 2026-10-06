@@ -3471,4 +3471,57 @@ class LEn extends L {
   String profileMusicOverLimit(int max) {
     return 'A profile can have at most $max tracks — extra ones will be removed when you save.';
   }
+
+  @override
+  String get inviteTitle => 'Invite friends';
+
+  @override
+  String get inviteHeadline =>
+      'Invite friends — get +1 month of Premium for each';
+
+  @override
+  String get inviteCopy => 'Copy';
+
+  @override
+  String get inviteCopied => 'Link copied';
+
+  @override
+  String inviteShareText(String link) {
+    return 'Join NFCSTORE — digital business card, NFC and Reels: $link';
+  }
+
+  @override
+  String inviteStats(int invited, int months) {
+    String _temp0 = intl.Intl.pluralLogic(
+      invited,
+      locale: localeName,
+      other: 'You invited $invited friends',
+      one: 'You invited 1 friend',
+      zero: 'You haven’t invited anyone yet',
+    );
+    return '$_temp0 · +$months months of Premium';
+  }
+
+  @override
+  String get inviteHowTitle => 'How it works';
+
+  @override
+  String get inviteStep1 => 'Send the link to a friend';
+
+  @override
+  String get inviteStep2 => 'Your friend signs up with this link';
+
+  @override
+  String get inviteStep3 => 'You get +1 month of Premium';
+
+  @override
+  String get inviteSiteDiscount => '(and a discount on website purchases)';
+
+  @override
+  String get inviteTrialNote =>
+      'During your free trial, the bonus is added after the trial ends.';
+
+  @override
+  String get activityReferralReward =>
+      'joined with your invite — +1 month of Premium';
 }

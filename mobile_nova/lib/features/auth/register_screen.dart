@@ -28,7 +28,11 @@ import 'verify_screen.dart';
 /// savol bo'lgani uchun klaviatura ochilganda ham maydon ko'rinib
 /// turadi va xato aynan qaysi maydonga tegishli ekani aniq.
 class RegisterScreen extends ConsumerStatefulWidget {
-  const RegisterScreen({super.key});
+  const RegisterScreen({super.key, this.initialPromo});
+
+  /// Taklif havolasidan (`/i/<kod>` → `/register?ref=<kod>`) kelgan
+  /// kod — promokod maydoniga oldindan yoziladi, o'zgartirsa bo'ladi.
+  final String? initialPromo;
 
   @override
   ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
@@ -49,7 +53,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   /// yo'q edi (egasi, 2026-09), server esa `promoCode` ni kutardi:
   /// ilova orqali kelganlar taklif qilgan odamning ro'yxatiga
   /// tushmasdi va unga 10% chegirma yozilmasdi.
-  final _promo = TextEditingController();
+  late final _promo = TextEditingController(
+      text: normalizeInviteCode(widget.initialPromo) ?? '');
 
   int _step = 0;
 
@@ -882,4 +887,11 @@ class _TypeCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Taklif kodi: faqat harf va raqam, ko'pi bilan 12 ta, katta harfda
+/// (promokod maydoni bilan bir xil qoida). Yaroqsiz — `null`.
+String? normalizeInviteCode(String? raw) {
+  final c = (raw ?? '').trim().toUpperCase();
+  return RegExp(r'^[A-Z0-9]{1,12}$').hasMatch(c) ? c : null;
 }

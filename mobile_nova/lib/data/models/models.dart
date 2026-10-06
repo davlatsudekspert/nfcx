@@ -1165,6 +1165,40 @@ class PriceTier {
       );
 }
 
+/// Taklif qilish natijasi (`GET /api/referrals/summary`).
+class ReferralSummary {
+  const ReferralSummary({
+    this.code = '',
+    this.link = '',
+    this.invited = 0,
+    this.rewardedDays = 0,
+    this.nextRewardDays = 30,
+  });
+
+  final String code;
+
+  /// `https://nfcstore.uz/i/<code>` — server beradi.
+  final String link;
+  final int invited;
+
+  /// Taklif uchun olingan Premium kunlari (jami).
+  final int rewardedDays;
+
+  /// Keyingi do'st uchun beriladigan kunlar (hozir 30).
+  final int nextRewardDays;
+
+  /// Olingan bonus — oylarda (30 kun = 1 oy), yaxlitlangan.
+  int get rewardedMonths => (rewardedDays / 30).round();
+
+  factory ReferralSummary.fromJson(Map<String, dynamic> j) => ReferralSummary(
+        code: _s(j['code']),
+        link: _s(j['link']),
+        invited: _i(j['invited']),
+        rewardedDays: _i(j['rewardedDays']),
+        nextRewardDays: _i(j['nextRewardDays']) > 0 ? _i(j['nextRewardDays']) : 30,
+      );
+}
+
 /// NFC ID yig'ma tarixi (`/api/records/:code/analytics`).
 class CardAnalytics {
   const CardAnalytics({
@@ -1794,6 +1828,10 @@ enum ActivityKind {
   /// Bepul sinov muddati tugashi haqida eslatma (`trial_ending`).
   /// `targetId` — tugash sanasi, `YYYY-MM-DD`.
   trial,
+
+  /// Do'st taklif bilan qo'shildi — +1 oy Premium (`referral_reward`).
+  /// Aktyor — do'st (`title` — uning ismi).
+  referral,
 }
 
 class ActivityEvent {
@@ -1852,6 +1890,7 @@ class ActivityEvent {
           'business' || 'company' => ActivityKind.business,
           'support_reply' => ActivityKind.support,
           'trial_ending' => ActivityKind.trial,
+          'referral_reward' => ActivityKind.referral,
           _ => ActivityKind.system,
         },
         title: _s(j['title'] ?? j['text']),

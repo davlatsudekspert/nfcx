@@ -137,6 +137,13 @@ class SettingsScreen extends ConsumerWidget {
               label: l.settingsSecurity,
               onTap: () => context.push(Routes.settingsSecurity),
             ),
+            // DO'STLARNI TAKLIF QILISH — iPhone ham, Android ham. Bonus
+            // — Premium kunlari (chegirma yoki narx emas).
+            SettingsItem(
+              icon: Icons.card_giftcard_rounded,
+              label: l.inviteTitle,
+              onTap: () => context.push(Routes.invite),
+            ),
             // PREMIUM — FAQAT iPHONE'DA VA IAP KALITI YOQILGANDA.
             //
             // Xarid Apple In-App Purchase orqali (`features/premium/`).

@@ -1352,5 +1352,20 @@
   "errDemoBusiness": "Namuna biznesni o‘zgartirib bo‘lmaydi",
   "errRequiredFields": "Majburiy maydonlarni to‘ldiring",
   "profileMusicOverLimit": "Profilda ko‘pi bilan {max} ta qo‘shiq bo‘ladi — saqlanganda ortiqchasi olib tashlanadi.",
-  "@profileMusicOverLimit": {"placeholders": {"max": {"type": "int"}}}
+  "@profileMusicOverLimit": {"placeholders": {"max": {"type": "int"}}},
+  "inviteTitle": "Do‘stlarni taklif qilish",
+  "inviteHeadline": "Do‘stingizni taklif qiling — har biri uchun +1 oy Premium",
+  "inviteCopy": "Nusxa olish",
+  "inviteCopied": "Havola nusxalandi",
+  "inviteShareText": "NFCSTORE’ga qo‘shiling — raqamli vizitka, NFC va Reels: {link}",
+  "@inviteShareText": {"placeholders": {"link": {"type": "String"}}},
+  "inviteStats": "{invited, plural, =0{Hali do‘st taklif qilmadingiz} other{{invited} do‘st taklif qildingiz}} · +{months} oy Premium",
+  "@inviteStats": {"placeholders": {"invited": {"type": "int"}, "months": {"type": "int"}}},
+  "inviteHowTitle": "Qanday ishlaydi",
+  "inviteStep1": "Havolani do‘stingizga yuboring",
+  "inviteStep2": "Do‘stingiz shu havola orqali ro‘yxatdan o‘tadi",
+  "inviteStep3": "Siz +1 oy Premium olasiz",
+  "inviteSiteDiscount": "(va saytdagi xaridlarga chegirma)",
+  "inviteTrialNote": "Bepul sinov davrida bonus sinov tugagach qo‘shiladi.",
+  "activityReferralReward": "sizning taklifingiz bilan qo‘shildi — +1 oy Premium"
 }

@@ -3451,4 +3451,56 @@ class LUz extends L {
   String profileMusicOverLimit(int max) {
     return 'Profilda ko‘pi bilan $max ta qo‘shiq bo‘ladi — saqlanganda ortiqchasi olib tashlanadi.';
   }
+
+  @override
+  String get inviteTitle => 'Do‘stlarni taklif qilish';
+
+  @override
+  String get inviteHeadline =>
+      'Do‘stingizni taklif qiling — har biri uchun +1 oy Premium';
+
+  @override
+  String get inviteCopy => 'Nusxa olish';
+
+  @override
+  String get inviteCopied => 'Havola nusxalandi';
+
+  @override
+  String inviteShareText(String link) {
+    return 'NFCSTORE’ga qo‘shiling — raqamli vizitka, NFC va Reels: $link';
+  }
+
+  @override
+  String inviteStats(int invited, int months) {
+    String _temp0 = intl.Intl.pluralLogic(
+      invited,
+      locale: localeName,
+      other: '$invited do‘st taklif qildingiz',
+      zero: 'Hali do‘st taklif qilmadingiz',
+    );
+    return '$_temp0 · +$months oy Premium';
+  }
+
+  @override
+  String get inviteHowTitle => 'Qanday ishlaydi';
+
+  @override
+  String get inviteStep1 => 'Havolani do‘stingizga yuboring';
+
+  @override
+  String get inviteStep2 => 'Do‘stingiz shu havola orqali ro‘yxatdan o‘tadi';
+
+  @override
+  String get inviteStep3 => 'Siz +1 oy Premium olasiz';
+
+  @override
+  String get inviteSiteDiscount => '(va saytdagi xaridlarga chegirma)';
+
+  @override
+  String get inviteTrialNote =>
+      'Bepul sinov davrida bonus sinov tugagach qo‘shiladi.';
+
+  @override
+  String get activityReferralReward =>
+      'sizning taklifingiz bilan qo‘shildi — +1 oy Premium';
 }
