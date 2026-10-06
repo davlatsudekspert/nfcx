@@ -140,29 +140,62 @@ void main() {
 
   // Egasi (2026-09-28): "rasm qo'yilganda razmerni ham telefonga moslab
   // oladimi — iOS'da ham". Swift `toJpeg` HAQIQATDA ishlaydi.
-  testWidgets('rasm: katta PNG → 1600 px JPEG; shaffof PNG tegilmaydi',
-      (t) async {
+  //
+  // 9de7e54 dan beri `prepareImageForUpload` natija server chegarasidan
+  // ([kServerImageLimit], 700 KB) katta bo'lsa 1600 → 1280 → 1024 px ga
+  // tushadi. Shovqinli PNG siqilmaydi, shuning uchun birinchi o'tish
+  // (1600 px) ALOHIDA — chegarasiz — tekshiriladi, keyin odatiy chegara.
+  testWidgets('rasm: katta PNG → 1600 px JPEG, chegarada kichrayadi; '
+      'shaffof PNG JPEG bo‘lmaydi', (t) async {
     final dir = await Directory.systemTemp.createTemp('nova_img');
     final big = await _png(dir, 'Screenshot.png', 2400, 1800);
     final before = await big.length();
     expect(before, greaterThan(kImagePrepMinBytes));
 
-    final out = await t.runAsync(() => prepareImageForUpload(big.path));
-    expect(out, isNot(big.path), reason: 'JPEG ga o‘tmadi — asl fayl qaytdi');
-    final jpg = File(out!);
-    final head = await jpg.openRead(0, 3).first;
-    expect(head.sublist(0, 3), [0xFF, 0xD8, 0xFF], reason: 'JPEG emas');
+    Future<File> jpegOf(String? out) async {
+      expect(out, isNot(big.path), reason: 'JPEG ga o‘tmadi — asl fayl qaytdi');
+      final jpg = File(out!);
+      final head = await jpg.openRead(0, 3).first;
+      expect(head.sublist(0, 3), [0xFF, 0xD8, 0xFF], reason: 'JPEG emas');
+      return jpg;
+    }
+
+    // a) Birinchi o'tish: chegara amalda yo'q — 1600 px, 4:3.
+    final first = await jpegOf(await t.runAsync(
+        () => prepareImageForUpload(big.path, limitBytes: 1 << 30)));
+    final firstLen = await first.length();
+    expect(firstLen, lessThan(before));
+    final (w1, h1) = (await t.runAsync(() => _size(first)))!;
+    expect(w1, 1600, reason: 'uzun tomoni 1600 px');
+    expect(h1, 1200, reason: 'nisbat saqlanadi (4:3)');
+
+    // b) Odatiy chegara: 700 KB ga sig'adi YOKI eng kichik bosqichgacha
+    //    (1600 / 1280 / 1024) tushgan; nisbat har doim 4:3.
+    final jpg = await jpegOf(
+        await t.runAsync(() => prepareImageForUpload(big.path)));
     final after = await jpg.length();
     expect(after, lessThan(before));
     final (w, h) = (await t.runAsync(() => _size(jpg)))!;
-    expect(w, 1600, reason: 'uzun tomoni 1600 px');
-    expect(h, 1200, reason: 'nisbat saqlanadi (4:3)');
+    expect(after <= kServerImageLimit || const {1600, 1280, 1024}.contains(w),
+        isTrue,
+        reason: 'chegaradan katta ($after bayt) va bosqich o‘lchami emas ($w)');
+    expect((h - w * 3 / 4).abs(), lessThanOrEqualTo(1),
+        reason: 'nisbat saqlanadi (4:3): ${w}x$h');
 
+    // Shaffof PNG (logotip) JPEG'ga o'tmaydi. Chegaradan kichik bo'lsa —
+    // umuman tegilmaydi.
     final logo = await _png(dir, 'logo.png', 1400, 1400, holeAlpha: 0);
     expect(await logo.length(), greaterThan(kImagePrepMinBytes));
-    final same = await t.runAsync(() => prepareImageForUpload(logo.path));
+    final same = await t.runAsync(
+        () => prepareImageForUpload(logo.path, limitBytes: 1 << 30));
     expect(same, logo.path, reason: 'shaffof rasm JPEG bo‘lib qoldi');
+    // Chegaradan katta bo'lsa — PNG holida kichrayadi, JPEG emas.
+    final small = await t.runAsync(() => prepareImageForUpload(logo.path));
+    final head = await File(small!).openRead(0, 4).first;
+    expect(head.sublist(0, 4), [0x89, 0x50, 0x4E, 0x47],
+        reason: 'shaffof rasm PNG bo‘lib qolishi kerak');
     // ignore: avoid_print
-    print('MEDIA|rasm|png=$before bayt -> jpg=$after bayt|${w}x$h');
+    print('MEDIA|rasm|png=$before bayt -> jpg1600=$firstLen bayt -> '
+        'jpg=$after bayt|${w}x$h|logo=${await File(small).length()} bayt');
   });
 }
