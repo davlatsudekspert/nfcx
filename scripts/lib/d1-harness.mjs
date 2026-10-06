@@ -7,6 +7,9 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { createHash } from 'node:crypto';
 import { ensureCoreSchema } from '../../hosting/worker.js';
+import { uzDb, uzBucket } from '../../hosting/uz-store.js';
+import { hranaFetch } from './hrana-fake.mjs';
+import { s3Fetch } from './s3-fake.mjs';
 
 export const sha256Hex = (text) => createHash('sha256').update(text).digest('hex');
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -97,6 +100,17 @@ export function makeEnv(extraEnv = {}, opts = {}) {
     ASSETS: { fetch: async () => new Response('not found', { status: 404 }) },
     ...extraEnv,
   };
+  // UZ_ADAPTER_TEST=1 — xuddi shu testlar O'zbekiston serveri adapterlari
+  // (hosting/uz-store.js) orqali: D1 → soxta sqld (Hrana), R2 → soxta S3.
+  // Baza o'sha `sqlite` — testlarning to'g'ridan-to'g'ri tekshiruvlari ishlaydi.
+  if (process.env.UZ_ADAPTER_TEST === '1') {
+    env.DB = uzDb({ url: 'https://db.uz.test', token: 'test-token', fetch: hranaFetch(sqlite) });
+    const s3 = s3Fetch({ bucket: 'test-bucket' });
+    env.UPLOADS = Object.assign(
+      uzBucket({ endpoint: 'https://s3.uz.test', bucket: 'test-bucket', keyId: 'GKtest', secret: 'test-secret', fetch: s3 }),
+      { _store: s3._store },
+    );
+  }
   sqlite.exec(readFileSync(path.join(__dirname, '../../db/d1-migration/0001-schema.sql'), 'utf8'));
   return { env, sqlite };
 }

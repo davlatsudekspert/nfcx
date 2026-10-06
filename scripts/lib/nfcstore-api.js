@@ -92,34 +92,6 @@ export class NfcstoreApi {
   getCompany(id) { return this.req('GET', `/api/companies/${encodeURIComponent(id)}`); }
   patchCompany(id, patch) { return this.req('PATCH', `/api/companies/${encodeURIComponent(id)}`, patch); }
   addCatalogItem(id, item) { return this.req('POST', `/api/companies/${encodeURIComponent(id)}/catalog`, item); }
-  // Mavjud mahsulotni tahrirlash (faqat yuborilgan maydonlar o'zgaradi).
-  patchCatalogItem(id, itemId, patch) {
-    return this.req('PATCH', `/api/companies/${encodeURIComponent(id)}/catalog/${encodeURIComponent(itemId)}`, patch);
-  }
-
-  // ── Rasm yuklash ──────────────────────────────────────────────────
-  // Mahsulot rasmi — XOM BINAR, oqimli yo'l (`/api/upload-file`). Server
-  // turni sehrli baytlardan aniqlaydi va avtomatik tekshiradi. Tana
-  // JSON emas, shuning uchun `req()` dan alohida; xato matniga fayl
-  // tushmaydi.
-  async uploadFile(bytes, type) {
-    const headers = { accept: 'application/json', 'content-type': type };
-    if (this.cookie) headers.cookie = this.cookie;
-    const res = await this.fetch(this.base + '/api/upload-file', {
-      method: 'POST', headers, body: bytes, redirect: 'manual',
-    });
-    let data = null;
-    const text = await res.text().catch(() => '');
-    if (text) { try { data = JSON.parse(text); } catch { data = null; } }
-    this.calls.push({ method: 'POST', path: '/api/upload-file', status: res.status });
-    if (!res.ok) {
-      const err = new Error(`POST /api/upload-file -> ${res.status}${data?.error ? ' ' + data.error : ''}`);
-      err.status = res.status;
-      err.code = data?.error || '';
-      throw err;
-    }
-    return data;
-  }
   deleteCatalogItem(id, itemId) {
     return this.req('DELETE', `/api/companies/${encodeURIComponent(id)}/catalog/${encodeURIComponent(itemId)}`);
   }
