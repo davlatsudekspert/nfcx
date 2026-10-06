@@ -150,10 +150,51 @@ class _EventTile extends ConsumerWidget {
         ActivityKind.follow => l.activityFollowed,
         ActivityKind.like => l.activityLiked,
         ActivityKind.comment => l.activityCommented,
+        ActivityKind.trial => _trialDate == null
+            ? l.activityGeneric
+            : l.activityTrialEnding(_trialDate!),
+        _ when _generic => l.activityGeneric,
         _ => null,
       };
 
+  /// SINOV TUGASH SANASI — `targetId` dagi `YYYY-MM-DD` dan.
+  ///
+  /// Bu kalendar sanasi, vaqt emas: soat mintaqasiga o'girilmaydi,
+  /// aks holda g'arbda bir kun oldingi sana chiqardi. Ilovadagi
+  /// boshqa sanalar kabi `dd.MM.yyyy`. Sana buzuq kelsa — umumiy
+  /// matn, "null" yoki bo'sh joy ko'rsatilmaydi.
+  String? get _trialDate {
+    final m =
+        RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(event.targetId.trim());
+    if (m == null) return null;
+    final d = DateTime.tryParse('${m[1]}-${m[2]}-${m[3]}');
+    if (d == null || d.month != int.parse(m[2]!)) return null;
+    String two(int v) => v.toString().padLeft(2, '0');
+    return '${two(d.day)}.${two(d.month)}.${d.year}';
+  }
+
+  /// NOMA'LUM TUR — ilova hali tanimaydigan yangi bildirishnoma.
+  ///
+  /// Server yangi `type` qo'shsa, eski ilova uni `system` deb o'qiydi.
+  /// Sarlavhasi ham bo'lmasa qator bo'sh qolardi; shuning uchun
+  /// NFCSTORE nomidan umumiy matn bilan chiziladi va hech qayerga
+  /// o'tilmaydi — ma'nosi noma'lum manzilni ochish xato bo'lardi.
+  bool get _generic =>
+      event.kind == ActivityKind.system && event.title.trim().isEmpty;
+
+  /// Tizim xabari — avatar o'rnida brend muhri, sarlavha "NFCSTORE".
+  bool get _fromBrand =>
+      event.kind == ActivityKind.support ||
+      event.kind == ActivityKind.trial ||
+      _generic;
+
   String? get _target {
+    // SINOV ESLATMASI — HECH QAYERGA O'TILMAYDI.
+    //
+    // iOS'da (App Store 3.1.1) ilova ichida tashqi xarid yoki narxga
+    // yo'naltirish taqiqlangan; xabar faqat sanani aytadi. Bosilsa
+    // faqat o'qildi deb belgilanadi.
+    if (event.kind == ActivityKind.trial || _generic) return null;
     // QO'LLAB-QUVVATLASH JAVOBI — Yordam ekrani, o'sha murojaat
     // ajratilgan holda. ID kelmasa ham ekranning o'zi ochiladi.
     if (event.kind == ActivityKind.support) {
@@ -224,13 +265,16 @@ class _EventTile extends ConsumerWidget {
       ActivityKind.business => (Icons.storefront_rounded, t.accentB),
       ActivityKind.system => (Icons.info_rounded, t.text3),
       ActivityKind.support => (Icons.support_agent_rounded, t.accent2),
+      ActivityKind.trial => (Icons.event_rounded, t.accent2),
     };
     // Tizim xabari: ism ham avatar ham yo'q — sarlavha shu yerda,
     // tilga qarab yoziladi (server tayyor matn yubormaydi).
-    final support = event.kind == ActivityKind.support;
-    final title = support
-        ? l.activitySupportReply
-        : (event.title.isEmpty ? l.activityTitle : event.title);
+    final brand = _fromBrand;
+    final title = switch (event.kind) {
+      ActivityKind.support => l.activitySupportReply,
+      _ when brand => l.appName,
+      _ => event.title.isEmpty ? l.activityTitle : event.title,
+    };
 
     return FloatingSurface(
       solid: true,
@@ -240,9 +284,9 @@ class _EventTile extends ConsumerWidget {
       onTap: (_target == null && event.read) ? null : () => _open(context, ref),
       child: Row(
         children: [
-          // Yordam javobida avatar o'rnida BREND MUHRI — xabar
-          // NFCSTORE'ning o'zidan.
-          if (support)
+          // Yordam javobida, sinov eslatmasida va noma'lum turda
+          // avatar o'rnida BREND MUHRI — xabar NFCSTORE'ning o'zidan.
+          if (brand)
             const BrandSeal(size: 36, elevated: false)
           else
             Container(

@@ -3091,4 +3091,12 @@ class LRu extends L {
   @override
   String get activitySupportReply =>
       'Поддержка NFCSTORE ответила на ваше обращение';
+
+  @override
+  String activityTrialEnding(String date) {
+    return 'Бесплатный пробный период закончится $date';
+  }
+
+  @override
+  String get activityGeneric => 'Новое уведомление';
 }

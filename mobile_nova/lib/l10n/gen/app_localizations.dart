@@ -5750,6 +5750,18 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'NFCSTORE Yordam murojaatingizga javob berdi'**
   String get activitySupportReply;
+
+  /// Bildirishnoma (type trial_ending): bepul sinov muddati tugash sanasi. Sotib olish yoki narx haqida HECH NARSA demaydi (App Store 3.1.1). Bosilganda hech narsa ochilmaydi.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bepul sinov muddatingiz {date} da tugaydi'**
+  String activityTrialEnding(String date);
+
+  /// Bildirishnoma: ilova hali tanimaydigan yangi tur — NFCSTORE nomidan umumiy matn.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yangi bildirishnoma'**
+  String get activityGeneric;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

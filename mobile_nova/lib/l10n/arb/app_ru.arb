@@ -1092,5 +1092,8 @@
   "supportStatusResolved": "Решено",
   "supportStatusPlanned": "В планах",
   "supportReplyLabel": "Ответ NFCSTORE",
-  "activitySupportReply": "Поддержка NFCSTORE ответила на ваше обращение"
+  "activitySupportReply": "Поддержка NFCSTORE ответила на ваше обращение",
+  "activityTrialEnding": "Бесплатный пробный период закончится {date}",
+  "@activityTrialEnding": {"placeholders": {"date": {"type": "String"}}},
+  "activityGeneric": "Новое уведомление"
 }

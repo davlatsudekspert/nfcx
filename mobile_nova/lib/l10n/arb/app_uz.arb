@@ -1241,5 +1241,9 @@
   "supportStatusPlanned": "Rejada",
   "supportReplyLabel": "NFCSTORE javobi",
   "activitySupportReply": "NFCSTORE Yordam murojaatingizga javob berdi",
-  "@activitySupportReply": {"description": "Bildirishnoma (type support_reply): qo‘llab-quvvatlash xizmati odamning murojaatiga javob yozdi. Bosilganda Yordam ekrani ochiladi."}
+  "@activitySupportReply": {"description": "Bildirishnoma (type support_reply): qo‘llab-quvvatlash xizmati odamning murojaatiga javob yozdi. Bosilganda Yordam ekrani ochiladi."},
+  "activityTrialEnding": "Bepul sinov muddatingiz {date} da tugaydi",
+  "@activityTrialEnding": {"description": "Bildirishnoma (type trial_ending): bepul sinov muddati tugash sanasi. Sotib olish yoki narx haqida HECH NARSA demaydi (App Store 3.1.1). Bosilganda hech narsa ochilmaydi.", "placeholders": {"date": {"type": "String"}}},
+  "activityGeneric": "Yangi bildirishnoma",
+  "@activityGeneric": {"description": "Bildirishnoma: ilova hali tanimaydigan yangi tur — NFCSTORE nomidan umumiy matn."}
 }

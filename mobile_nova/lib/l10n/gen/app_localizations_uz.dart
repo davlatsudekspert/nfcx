@@ -3064,4 +3064,12 @@ class LUz extends L {
   @override
   String get activitySupportReply =>
       'NFCSTORE Yordam murojaatingizga javob berdi';
+
+  @override
+  String activityTrialEnding(String date) {
+    return 'Bepul sinov muddatingiz $date da tugaydi';
+  }
+
+  @override
+  String get activityGeneric => 'Yangi bildirishnoma';
 }

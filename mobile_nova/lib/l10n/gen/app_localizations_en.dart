@@ -3084,4 +3084,12 @@ class LEn extends L {
 
   @override
   String get activitySupportReply => 'NFCSTORE Support replied to your request';
+
+  @override
+  String activityTrialEnding(String date) {
+    return 'Your free trial ends on $date';
+  }
+
+  @override
+  String get activityGeneric => 'New notification';
 }

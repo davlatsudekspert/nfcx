@@ -1696,7 +1696,22 @@ class Comment {
 
 /// `support` — qo'llab-quvvatlash javobi (`support_reply`): yuboruvchi
 /// tizim, ya'ni ismi ham avatari ham bo'sh keladi.
-enum ActivityKind { like, follow, comment, scan, order, payment, system, security, business, support }
+enum ActivityKind {
+  like,
+  follow,
+  comment,
+  scan,
+  order,
+  payment,
+  system,
+  security,
+  business,
+  support,
+
+  /// Bepul sinov muddati tugashi haqida eslatma (`trial_ending`).
+  /// `targetId` — tugash sanasi, `YYYY-MM-DD`.
+  trial,
+}
 
 class ActivityEvent {
   const ActivityEvent({
@@ -1753,6 +1768,7 @@ class ActivityEvent {
           'security' => ActivityKind.security,
           'business' || 'company' => ActivityKind.business,
           'support_reply' => ActivityKind.support,
+          'trial_ending' => ActivityKind.trial,
           _ => ActivityKind.system,
         },
         title: _s(j['title'] ?? j['text']),
