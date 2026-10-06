@@ -2703,7 +2703,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
 
   const submit = async () => {
     if (!form.name.trim()) { setMsg({ type: 'err', text: t("Ism bo'sh bo'lmasligi kerak.") }); return; }
-    if (uzPhoneLengthBad(form.phone)) { setMsg({ type: 'err', text: t('Telefon raqami noto‘g‘ri: O‘zbekiston raqami +998 va 9 ta raqamdan iborat (masalan +998 90 123 45 67).') }); return; }
+    if (String(form.phone ?? '').trim() !== String(card.phone ?? '').trim() && uzPhoneLengthBad(form.phone)) { setMsg({ type: 'err', text: t('Telefon raqami noto‘g‘ri: O‘zbekiston raqami +998 va 9 ta raqamdan iborat (masalan +998 90 123 45 67).') }); return; }
     setBusy(true);
     setMsg(null);
     try {

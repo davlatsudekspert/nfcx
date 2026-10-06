@@ -58,7 +58,9 @@ export default function CompanyWorkspacePage({ companyId }) {
   const nameBlocked = companyNameBlocked(form.displayName);
   const save = async () => {
     if (companyNameBlocked(form.displayName)) { setTab('profile'); setNotice(t('Kompaniya nomida ushbu so‘zdan foydalanish mumkin emas.')); return; }
-    if (uzPhoneLengthBad(form.phone) || uzPhoneLengthBad(form.whatsapp)) { setTab('contact'); setNotice(t('Telefon raqami noto‘g‘ri: O‘zbekiston raqami +998 va 9 ta raqamdan iborat (masalan +998 90 123 45 67).')); return; }
+    // Faqat o'zgargan raqam tekshiriladi (server bilan bir xil).
+    const phoneChanged = (k) => String(form[k] ?? '').trim() !== String(company[k] ?? '').trim();
+    if ((phoneChanged('phone') && uzPhoneLengthBad(form.phone)) || (phoneChanged('whatsapp') && uzPhoneLengthBad(form.whatsapp))) { setTab('contact'); setNotice(t('Telefon raqami noto‘g‘ri: O‘zbekiston raqami +998 va 9 ta raqamdan iborat (masalan +998 90 123 45 67).')); return; }
     setBusy(true); setNotice('');
     try { const data = await updateCompany(company.companyId, form); setCompany(data.company); setForm(data.company); setNotice(t('O‘zgarishlar saqlandi')); }
     catch (err) { const code = err.error || err.message; setNotice(code === 'name_not_allowed' ? t('Kompaniya nomida ushbu so‘zdan foydalanish mumkin emas.') : code === 'bad_phone' ? t('Telefon raqami noto‘g‘ri: O‘zbekiston raqami +998 va 9 ta raqamdan iborat (masalan +998 90 123 45 67).') : t('Saqlab bo‘lmadi')); } finally { setBusy(false); }

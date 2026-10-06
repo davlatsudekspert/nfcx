@@ -164,7 +164,7 @@ function CompanyIdPriceCard({ t }) {
         type="button"
         className="co-price-cta"
         disabled={!ready}
-        onClick={() => navigate(`/kompaniyalar/yaratish?id=${encodeURIComponent(check.companyId)}`)}
+        onClick={() => navigate(`/company/create?id=${encodeURIComponent(check.companyId)}`)}
       >
         {ready ? t('Band qilish') : t('Avval nom yozing')} <span>→</span>
       </button>

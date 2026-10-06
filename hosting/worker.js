@@ -1409,7 +1409,7 @@ async function companyApi(request, env, url) {
           `\n\n\uD83D\uDC64 ${escapeHtmlD1(name)}`,
           `\n\uD83D\uDCDE ${escapeHtmlD1(phone)}`,
           body.note ? `\n\uD83D\uDCAC ${escapeHtmlD1(shortText(body.note, 300))}` : '',
-          `\n\nKabinet: nfcstore.uz/kompaniyalar/${id.toLowerCase()}`,
+          `\n\nKabinet: nfcstore.uz/workspace/${id.toLowerCase()}`,
         ].join(''));
       }
     } catch (error) { console.error('company order tg', error?.message); }
@@ -1696,7 +1696,10 @@ async function companyApi(request, env, url) {
     const value = (key, max) => body[key] == null ? current[key] : shortText(body[key], max);
     // Tahrirlashda ham bir xil tekshiruv (yaratishdagi bilan aynan bir xil).
     if (companyNameBlockedD1(value('displayName', 120))) return json({ error: 'name_not_allowed' }, 422);
-    if (body.phone != null && uzPhoneLengthBadD1(value('phone', 40))) return json({ error: 'bad_phone', reason: 'uz_length' }, 422);
+    // Faqat O'ZGARGAN raqam tekshiriladi: qoida kiritilishidan oldin
+    // saqlangan (eski, uzunligi boshqacha) raqam bilan kompaniya boshqa
+    // maydonlarini tahrirlay olmay qolmasin.
+    if (body.phone != null && value('phone', 40) !== String(current.phone ?? '') && uzPhoneLengthBadD1(value('phone', 40))) return json({ error: 'bad_phone', reason: 'uz_length' }, 422);
     // Koordinata: bo'sh qiymat 0 EMAS. `Number(null)` — bu 0 va profil
     // Gvineya ko'rfazidagi 0,0 nuqtaga "joylashib" qolardi (shaxsiy
     // profilda aynan shu xato bo'lgan).
@@ -6012,7 +6015,11 @@ function musicLimitD1(isPremium) { return isPremium ? MUSIC_LIMIT_PREMIUM_D1 : M
 function validateRecordBody(body, opts = {}) {
   const name = cleanStr(body.name, 80);
   if (!name) return { error: "Ism bo'sh bo'lishi mumkin emas." };
-  if (uzPhoneLengthBadD1(cleanStr(body.phone, 24))) return { error: "Telefon raqami noto'g'ri: O'zbekiston raqami +998 va 9 ta raqamdan iborat." };
+  // `opts.prevPhone` (PUT): saqlangan raqam o'zgarmagan bo'lsa qayta
+  // tekshirilmaydi — eski profil boshqa maydonlarini saqlay olsin.
+  const phoneIn = cleanStr(body.phone, 24);
+  const phoneUnchanged = opts.prevPhone != null && phoneIn === String(opts.prevPhone).trim();
+  if (!phoneUnchanged && uzPhoneLengthBadD1(phoneIn)) return { error: "Telefon raqami noto'g'ri: O'zbekiston raqami +998 va 9 ta raqamdan iborat." };
   const hashtags = Array.isArray(body.hashtags)
     ? body.hashtags.map((h) => cleanStr(h, 30).replace(/^#/, '')).filter(Boolean).slice(0, 20) : [];
   const extraLinks = Array.isArray(body.extraLinks)
@@ -6802,11 +6809,12 @@ async function recordsApi(request, env, url) {
       if (!owner) return json({ error: 'not_found' }, 404);
       if (String(owner) !== String(user.id)) return json({ error: 'forbidden' }, 403);
       const body = await request.json().catch(() => ({}));
+      const prevPhoneRow = await env.DB.prepare(`SELECT phone FROM cards WHERE code = ?`).bind(code).first().catch(() => null);
       // Musiqa limiti FOYDALANUVCHINING premium holatiga bog'liq:
       // oddiy 5 ta, Premium 10 ta (NFC ID darajasiga bog'liq emas).
       // Faol BEPUL SINOV ham to'liq Premium limitini oladi (egasi,
       // 2026-10-06) — `trialActiveD1` (getCurrentUser `trialExpiresAt` beradi).
-      const { record, error } = validateRecordBody(body, { musicMax: musicLimitD1(!!user.isPremium || trialActiveD1(user)) });
+      const { record, error } = validateRecordBody(body, { musicMax: musicLimitD1(!!user.isPremium || trialActiveD1(user)), prevPhone: prevPhoneRow ? (prevPhoneRow.phone ?? '') : null });
       if (error) return json({ error }, 422);
       // KOMPANIYA EGALIGI — SERVERDA. Aks holda istalgan odam profiliga
       // begona brendni "o'zimniki" qilib biriktirib olardi. Faqat
