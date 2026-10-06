@@ -145,6 +145,11 @@ class _Disc extends DiscoverRepository {
 class _Social extends SocialRepository {
   _Social() : super(ApiClient());
 
+  // Shaxsiy Reels bo'sh — eski manba (lenta) ko'rsatiladi, tarmoqsiz.
+  @override
+  Future<Result<ReelsPage>> reelsPage({String? cursor, int limit = 10}) async =>
+      const Ok(ReelsPage());
+
   static final _stories = [
     StoryItem(
       id: 1,

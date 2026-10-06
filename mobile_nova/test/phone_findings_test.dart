@@ -51,6 +51,10 @@ class _SocialRepo extends SocialRepository {
 
   @override
   Future<Result<List<Post>>> feed({int page = 1}) async => Ok(feedItems);
+
+  @override
+  Future<Result<ReelsPage>> reelsPage({String? cursor, int limit = 10}) async =>
+      const Ok(ReelsPage());
 }
 
 Post video(int id, {String code = 'TTS075'}) => Post(

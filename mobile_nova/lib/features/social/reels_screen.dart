@@ -47,7 +47,67 @@ import '../../design/icons/nova_icons.dart';
 // ikkinchisida ham o'chiq.
 final reelsMutedProvider = mediaMutedProvider;
 
-/// Reels manbai — LENTA va O'Z VIDEOLARIM.
+/// REELS SAHIFALARI — "Reels" tabining DAVOMI (2026-10-06, `/api/reels`).
+///
+/// Ro'yxatning o'zi `reelsProvider` da (testlar uni tayyor ro'yxat
+/// bilan almashtiradi), bu esa uning davomini so'raydi: ekran
+/// ko'rinayotgan reel oxirga 3 tagacha yaqinlashganda [nearEnd] ni
+/// chaqiradi, `reelsProvider` keyingi sahifani olib ro'yxat OXIRIGA
+/// qo'shadi. Oldingi reel'lar o'rnidan siljimaydi va o'chirilmaydi —
+/// o'ynayotgan video sakrab ketmaydi.
+///
+/// Eski manbada (yoki `reelsProvider` almashtirilgan bo'lsa) ulanmagan
+/// turadi: [hasMore] `false`, chaqiruvlar hech narsa qilmaydi.
+class ReelsPager {
+  Future<void> Function()? _more;
+  bool _hasMore = false;
+  bool _loading = false;
+
+  /// Serverda davomi bor va u hali olinmagan.
+  bool get hasMore => _more != null && _hasMore;
+
+  /// Ko'rinayotgan reel [index] ([length] talik ro'yxatda) oxirga
+  /// 3 tagacha yaqin bo'lsa — keyingi sahifa so'raladi.
+  void nearEnd(int index, int length) {
+    if (index >= length - 3) unawaited(loadMore());
+  }
+
+  /// Keyingi sahifa. Bir vaqtda bittadan ortiq so'rov ketmaydi.
+  Future<void> loadMore() async {
+    final more = _more;
+    if (more == null || !_hasMore || _loading) return;
+    _loading = true;
+    try {
+      await more();
+    } finally {
+      // Ro'yxat shu orada qayta yuklangan bo'lsa — yangisiga tegilmaydi.
+      if (identical(_more, more)) _loading = false;
+    }
+  }
+
+  void _attach(Future<void> Function() more, {required bool hasMore}) {
+    _more = more;
+    _hasMore = hasMore;
+    _loading = false;
+  }
+
+  void _detach() {
+    _more = null;
+    _hasMore = false;
+    _loading = false;
+  }
+}
+
+final reelsPagerProvider =
+    Provider.autoDispose<ReelsPager>((ref) => ReelsPager());
+
+/// Reels manbai — SHAXSIY LENTA (`/api/reels`), u bo'lmasa LENTA va
+/// O'Z VIDEOLARIM.
+///
+/// 2026-10-06: server har kimga o'z tartibidagi, sahifalangan Reels
+/// beradi (davomi — [ReelsPager]). ESKI SERVERDA bu manzil yo'q
+/// (404) yoki birinchi sahifa xato/bo'sh kelsa — quyidagi eski manba
+/// ishlatiladi: Reels hech qachon eski server sababli bo'sh qolmaydi.
 ///
 /// Ilgari bu yerda faqat `feed()` turardi. `/api/feed` esa OBUNA
 /// bo'linganlarning kontentini beradi, shuning uchun o'z reelingni
@@ -89,7 +149,56 @@ final reelsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
   // safar qayta yuklanib, o'ynayotgan video to'xtab boshidan
   // boshlanardi. Kod faqat profil almashganda o'zgaradi.
   final code = ref.watch(activeProfileProvider.select((p) => p?.code));
+  var disposed = false;
+  ref.onDispose(() => disposed = true);
 
+  // ── SHAXSIY LENTA ─────────────────────────────────────────────
+  // Davomi faqat SHU ro'yxatniki: qayta yuklanganda boshidan.
+  final pager = ref.watch(reelsPagerProvider).._detach();
+  final page = (await repo.reelsPage()).valueOrNull;
+  final fresh = <String, Post>{};
+  for (final p in page?.items ?? const <Post>[]) {
+    if (playable(p)) fresh.putIfAbsent(likeKey(p), () => p);
+  }
+  if (page != null && fresh.isNotEmpty) {
+    var cursor = page.nextCursor;
+    Future<void> more() async {
+      // Sahifada yangi reel bo'lmasa (hammasi takror yoki rasmli post)
+      // ketma-ket 3 tagacha so'raladi, keyin davomi to'xtatiladi.
+      for (var tries = 0; tries < 3 && pager._hasMore; tries++) {
+        final r = await repo.reelsPage(cursor: cursor);
+        if (disposed) return;
+        final cur = ref.state.valueOrNull;
+        if (cur == null) return;
+        final next = r.valueOrNull;
+        // Xato — davomi SHU ro'yxat uchun to'xtaydi va oxirida yana
+        // boshiga aylanadi (o'lik nuqta yo'q). Tortib yangilash yoki
+        // 10 daqiqadan keyingi qayta yuklash davomini qaytaradi.
+        pager._hasMore = next?.hasMore ?? false;
+        cursor = next?.nextCursor;
+        final have = {for (final p in cur) likeKey(p)};
+        final add = [
+          for (final p in next?.items ?? const <Post>[])
+            if (playable(p) && have.add(likeKey(p))) p,
+        ];
+        // Yangi ro'yxat obyekti HAR DOIM — `hasMore` o'zgargani ham
+        // ekranga yetib borsin (cheksiz aylanish shunga qarab yoqiladi).
+        ref.state = AsyncData([...cur, ...add]);
+        if (add.isNotEmpty) return;
+      }
+      final cur = ref.state.valueOrNull;
+      if (disposed || cur == null || !pager._hasMore) return;
+      pager._hasMore = false;
+      ref.state = AsyncData([...cur]);
+    }
+
+    // Shu orada qayta yuklangan bo'lsa — yangi ro'yxatning davomiga
+    // eski sahifa belgisi ulanmasin.
+    if (!disposed) pager._attach(more, hasMore: page.hasMore);
+    return fresh.values.toList();
+  }
+
+  // ── ESKI MANBA: LENTA + O'Z VIDEOLARIM ────────────────────────
   // Ikki so'rov BIR VAQTDA. LENTA O'Z VIDEOLARIMNI KUTMAYDI
   // (2026-10-05, egasi: "Reels ochilishi sekin"): lenta odatda
   // Asosiy ekrandan tayyor turadi (`recentFeed`), o'z postlarim esa
@@ -102,8 +211,6 @@ final reelsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
   Result<List<Post>>? own;
   final ownF = code == null ? null : repo.postsOf(code);
   ownF?.then((r) => own = r);
-  var disposed = false;
-  ref.onDispose(() => disposed = true);
 
   void addOwn(Result<List<Post>>? r) {
     r?.when(
@@ -149,8 +256,9 @@ final reelsProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
   );
 });
 
-/// "QIZIQ EMAS" deb yashirilgan reel'lar (`likeKey`) — faqat shu
-/// ilova seansida, serverga hech narsa yuborilmaydi (bunday API yo'q).
+/// "QIZIQ EMAS" deb yashirilgan reel'lar (`likeKey`) — shu ilova
+/// seansida darhol. Serverga ham aytiladi (`hideReel`), u keyingi
+/// sahifalarda bu reelni bermaydi; javobi kutilmaydi.
 ///
 /// Ro'yxatning o'zi (`reelsProvider`) o'zgartirilmaydi: u keshlanadi
 /// va qayta yuklanganda yashirilgan reel yana chiqib qolardi. Shuning
@@ -390,6 +498,8 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
     final following = tab == ReelsTab.following;
     final source = following ? followingReelsProvider : reelsProvider;
     final reels = ref.watch(source);
+    // "Reels" tabining davomi (`/api/reels` keyingi sahifalari).
+    final pager = ref.watch(reelsPagerProvider);
     // "Do'stlar" yonidagi yuzlar — faqat Reels ochiq bo'lganda so'raladi.
     final friends = onReelsTab
         ? (ref.watch(followingReelsProvider).valueOrNull ?? const <Post>[])
@@ -451,6 +561,27 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
               setState(() => _index = 0);
             });
           }
+          // DAVOMI BOR — ro'yxat hozircha CHEKLI: oxiriga yetganda boshiga
+          // aylanib ketib, keyingi sahifa kelganda reel sakramasin
+          // (`i % items.length` uzunlik o'zgarsa boshqa reelni beradi).
+          // Oxiriga 3 ta qolganda keyingi sahifa so'raladi. Davomi tugasa
+          // (yoki xato bo'lsa) yana cheksiz aylanadi — o'lik nuqta yo'q.
+          final paging = !following && pager.hasMore && items.length > 1;
+          final bounded = paging && _index < items.length;
+          if (paging) {
+            final at = _index;
+            final len = items.length;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              if (at < len) return pager.nearEnd(at, len);
+              // Varaq ro'yxatdan nariroqda (qayta yuklandi yoki reel
+              // yashirildi) — AYNAN o'sha reel turgan haqiqiy o'ringa
+              // o'tkaziladi, aks holda davomi so'ralmasdi.
+              final to = at % len;
+              if (_page.hasClients) _page.jumpToPage(to);
+              setState(() => _index = to);
+            });
+          }
           if (items.isEmpty) {
             return Stack(
               children: [
@@ -501,7 +632,11 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
                 // KALIT VIRTUAL RAQAM BILAN: bitta reel bo'lsa, qo'shni
                 // sahifalar AYNAN bir post bo'ladi va faqat post
                 // kaliti ikki marta takrorlanib xato berardi.
-                itemCount: items.length == 1 ? 1 : null,
+                itemCount: items.length == 1
+                    ? 1
+                    : bounded
+                        ? items.length
+                        : null,
                 onPageChanged: (i) => setState(() => _index = i),
                 itemBuilder: (context, i) => _ReelPage(
                   key: ValueKey('$i:${likeKey(items[i % items.length])}'),
@@ -1800,8 +1935,9 @@ class _ReelPageState extends ConsumerState<_ReelPage>
               },
             ),
             // QIZIQ EMAS — reel shu ro'yxatdan darhol olinadi (Instagram
-            // kabi). Serverga yuborilmaydi: tavsiya API'si yo'q, shuning
-            // uchun "kamroq ko'rsatamiz" deb va'da ham berilmaydi.
+            // kabi) va serverga aytiladi (`/api/reels/hide`). Javob
+            // kutilmaydi, xatosi ko'rsatilmaydi: eski serverda bu manzil
+            // yo'q, mahalliy yashirish baribir ishlaydi.
             if (!ref.read(isMineProvider(p.code)))
               ListTile(
                 key: const ValueKey('reel-not-interested'),
@@ -1811,6 +1947,7 @@ class _ReelPageState extends ConsumerState<_ReelPage>
                   Navigator.of(sheet).pop();
                   // Avval xabar: yashirilgach bu sahifa yo'q qilinadi.
                   _snack(l.reelNotInterestedDone);
+                  ref.read(socialRepositoryProvider).hideReel(p).ignore();
                   ref
                       .read(reelsHiddenProvider.notifier)
                       .update((s) => {...s, likeKey(p)});

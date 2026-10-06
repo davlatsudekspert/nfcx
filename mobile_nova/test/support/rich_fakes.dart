@@ -94,6 +94,11 @@ const richImages = [
 class RichSocial extends SocialRepository {
   RichSocial() : super(ApiClient());
 
+  // Shaxsiy Reels bo'sh — eski manba (lenta) ko'rsatiladi, tarmoqsiz.
+  @override
+  Future<Result<ReelsPage>> reelsPage({String? cursor, int limit = 10}) async =>
+      const Ok(ReelsPage());
+
   static final _posts = [
     for (var i = 0; i < richImages.length; i++)
       Post(

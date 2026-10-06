@@ -102,6 +102,21 @@ class FakeSocialRepository extends SocialRepository {
   @override
   Future<Result<MyAnalytics>> myAnalytics() async =>
       const Ok(MyAnalytics());
+
+  /// Shaxsiy Reels — sukut bo'yicha bo'sh sahifa: ekran eski manbaga
+  /// (lenta + o'z videolarim) qaytadi, tarmoqqa chiqilmaydi.
+  @override
+  Future<Result<ReelsPage>> reelsPage({String? cursor, int limit = 10}) async =>
+      const Ok(ReelsPage());
+
+  /// "Qiziq emas" — tarmoqqa chiqmaydi, faqat yoziladi.
+  final hiddenReels = <Post>[];
+
+  @override
+  Future<Result<void>> hideReel(Post p) async {
+    hiddenReels.add(p);
+    return const Ok(null);
+  }
 }
 
 class FakeDiscoverRepository extends DiscoverRepository {

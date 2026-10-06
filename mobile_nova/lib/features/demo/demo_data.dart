@@ -298,6 +298,14 @@ class DemoSocialRepository extends SocialRepository {
   @override
   Future<Result<List<Post>>> feed({int page = 1}) async =>
       Ok(demoPersonalPosts);
+
+  // Demo Reels — shaxsiy lenta bo'sh, ekran demo lentasini ko'rsatadi.
+  @override
+  Future<Result<ReelsPage>> reelsPage({String? cursor, int limit = 10}) async =>
+      const Ok(ReelsPage());
+
+  @override
+  Future<Result<void>> hideReel(Post p) async => const Ok(null);
 }
 
 class DemoBusinessRepository extends BusinessRepository {

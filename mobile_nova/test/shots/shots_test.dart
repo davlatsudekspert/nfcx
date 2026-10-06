@@ -45,6 +45,11 @@ import 'proposed_widgets.dart';
 class _ShotsRepo extends SocialRepository {
   _ShotsRepo() : super(ApiClient());
 
+  // Shaxsiy Reels bo'sh — eski manba (lenta) ko'rsatiladi, tarmoqsiz.
+  @override
+  Future<Result<ReelsPage>> reelsPage({String? cursor, int limit = 10}) async =>
+      const Ok(ReelsPage());
+
   static final _stories = [
     StoryItem(
       id: 1,

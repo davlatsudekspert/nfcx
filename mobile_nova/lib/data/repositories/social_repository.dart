@@ -418,7 +418,62 @@ class SocialRepository {
   Future<Result<List<Post>>>? _recent;
   DateTime? _recentAt;
 
+  /// SHAXSIY REELS LENTASI — Reels bo'limining "Reels" tabi
+  /// (2026-10-06).
+  ///
+  ///     GET /api/reels?limit=10&cursor=<...>
+  ///       -> { items: [...], nextCursor: string|null, hasMore: bool }
+  ///
+  /// Elementlar `/api/feed` qatorlari bilan BIR XIL shaklda (reklama —
+  /// `featured: true`). `cursor` — serverning o'z belgisi, ilova uni
+  /// o'qimaydi, faqat keyingi so'rovga qaytaradi. Kirish shart emas.
+  ///
+  /// Eski serverda bu manzil yo'q (404) — Reels ekrani o'shanda eski
+  /// manbaga (`recentFeed` + o'z videolarim) qaytadi.
+  Future<Result<ReelsPage>> reelsPage({String? cursor, int limit = 10}) async {
+    final res = await _api.get<Map<String, dynamic>>('/api/reels', query: {
+      'limit': limit,
+      if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+    });
+    return res.map(ReelsPage.fromJson);
+  }
+
+  /// "QIZIQ EMAS" — server shu reelni bu hisobga boshqa ko'rsatmaydi.
+  ///
+  /// Kompaniya postining `id` si alohida sanaladi (`like` izohiga
+  /// qarang), shuning uchun turi ham yuboriladi.
+  Future<Result<void>> hideReel(Post p) => _api.post<void>('/api/reels/hide', {
+        'kind': p.isCompany ? 'company_post' : 'post',
+        'id': p.id,
+      });
+
   Future<Result<void>> likeNews(int id) => _api.post<void>('/api/news/$id/like');
+}
+
+/// `/api/reels` ning bitta sahifasi.
+class ReelsPage {
+  const ReelsPage({
+    this.items = const [],
+    this.nextCursor,
+    this.hasMore = false,
+  });
+
+  final List<Post> items;
+
+  /// Keyingi sahifa belgisi — `null` bo'lsa davomi yo'q.
+  final String? nextCursor;
+  final bool hasMore;
+
+  factory ReelsPage.fromJson(Map<String, dynamic> j) {
+    final raw = j['nextCursor'];
+    final cursor = raw == null ? null : '$raw';
+    return ReelsPage(
+      items: parseList(j['items'], Post.fromJson),
+      nextCursor: cursor == null || cursor.isEmpty ? null : cursor,
+      // Belgisiz "davomi bor" — so'rab bo'lmaydi, ya'ni davomi yo'q.
+      hasMore: j['hasMore'] == true && cursor != null && cursor.isNotEmpty,
+    );
+  }
 }
 
 final socialRepositoryProvider = Provider<SocialRepository>(
