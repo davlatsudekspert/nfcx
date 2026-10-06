@@ -124,17 +124,32 @@ WHATS_NEW = {
 • Быстрее загрузка и улучшения стабильности.""",
 }
 
-REVIEW_NOTES = """Sign-in is required. Please use the demo account above (it already has a personal profile, posts and a business page).
+REVIEW_NOTES = """1) PURPOSE AND AUDIENCE
+NFCSTORE is a social NFC business-card app made in Uzbekistan. People and small businesses create a digital profile ("NFC ID"), write its link to any NFC card or sticker with the iPhone (Core NFC) and share it by tap, link or QR code. Businesses get a page with contacts and a product/service catalog. A social layer (feed, Reels, stories, comments, follows) lets people and local businesses show their work. It replaces paper business cards and scattered links with one always up-to-date profile. Audience: individuals, freelancers and small businesses, mainly in Uzbekistan (Uzbek, Russian, English).
 
-How to review:
-1) Log in with the demo account.
-2) Home shows the user's NFC ID card; Profile shows the digital business card; Feed and Reels show posts. At the top of Reels, the "Friends" tab shows reels only from accounts the user follows (it shows an explanation if the account follows nobody yet).
-3) NFC is optional: NFC Center → "Write to NFC card" writes the profile link to any blank NFC tag (NTAG213/215/216). Every feature can be reviewed without a tag — profiles are also shared by link and QR code.
-4) Account deletion: Settings → Account → Security → Delete account. Please test it on a newly registered account, not on the demo account.
-5) Report / block: on any post, Reel, comment or profile tap "•••" → Report or Block.
-6) The app has no in-app purchases and no paid features; posting, Reels, stories and comments are free for everyone. Physical NFC cards and stickers are sold offline.
-7) Uploaded photos and videos are screened automatically for safety by an AI service (Google Gemini). Users are told this and give consent on the content rules screen before posting.
-Registration needs an email address (a 6-digit code is sent by email) and a phone number for the contact card."""
+2) HOW TO REVIEW (demo account above already has a profile, posts and a business page)
+- Log in with the demo account. Home shows the NFC ID card; Profile shows the digital business card; Feed and Reels show posts (Reels top tabs: "Reels" and "Friends" = accounts you follow).
+- NFC is optional: NFC Center > "Write to NFC card" writes the profile link to any blank NFC tag (NTAG213/215/216). Everything can be reviewed without a tag (link and QR sharing).
+- Registration: email (6-digit code sent by email) + phone number for the contact card.
+- Account deletion: Settings > Account > Security > Delete account (please test on a newly registered account, not the demo account).
+- Report / block: on any post, Reel, comment or profile tap "..." > Report or Block. Content rules must be accepted before posting.
+
+3) PAID CONTENT
+There are no in-app purchases and nothing can be bought in the iOS app: no prices, purchase buttons or links to buy. Posting, Reels, stories, comments and the business page are free for everyone; new accounts also get a free trial of extended limits. Physical NFC cards and stickers are sold offline / on our website as physical goods.
+
+4) EXTERNAL SERVICES
+- Cloudflare (hosting, API, database, file storage, CDN).
+- Resend (sends the email verification codes).
+- Google Gemini API (automatic safety screening of uploaded photos/videos; users are told and consent on the content rules screen).
+- Telegram Bot API (optional phone verification via our bot and internal moderation alerts).
+- YouTube and Yandex Music official embedded players (optional profile music link chosen by the user).
+- Apple Core NFC (writing/reading NFC tags). No third-party ads or analytics SDKs.
+
+5) REGIONS
+The app works the same in all regions. Content is user-generated; the interface is in Uzbek, Russian and English. NFC writing needs an iPhone with NFC; all other features work on any supported iPhone.
+
+6) REGULATED / THIRD-PARTY MATERIAL
+Not a regulated industry. The in-app music library for Reels contains only tracks owned by NFCSTORE or released under free licenses (CC0 / public domain); each track's source is recorded. Profile music from YouTube / Yandex Music is played only through their official embedded players."""
 
 
 def keywords():
@@ -192,6 +207,13 @@ def en_loc(vid):
 def fill():
     aid = app_id()
     v = edit_version(aid); vid = v['id']
+    # Qaytarilgan / tayyorlanayotgan versiya raqamini yangilash (egasi:
+    # 1.1.0 rad etilgach birinchi chiqish 1.1.1 + 325 bo'lsin).
+    want = os.environ.get('APP_VERSION', '').strip()
+    if want and v['attributes'].get('versionString') != want:
+        c, j = call('PATCH', f'/v1/appStoreVersions/{vid}', {'data': {'type': 'appStoreVersions', 'id': vid,
+                    'attributes': {'versionString': want}}})
+        note(f"versiya raqami {v['attributes'].get('versionString')} -> {want}: {c} {j.get('_error', '')}")
     # versiya: copyright + qo'lda chiqarish (birinchi reliz egasi tanlagan paytda)
     c, j = call('PATCH', f'/v1/appStoreVersions/{vid}', {'data': {'type': 'appStoreVersions', 'id': vid,
                 'attributes': {'copyright': '2026 NFCSTORE', 'releaseType': 'MANUAL'}}})
