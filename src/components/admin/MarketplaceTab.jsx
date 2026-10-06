@@ -363,7 +363,7 @@ function Guide({ t, onGo }) {
         <p>{t('Yangi mahsulot ochayotganda esa formadagi «Sinov mahsuloti» katagini belgilang — shunda kodlari statistikaga bir marta ham kirmaydi.')}</p>
         <p>{t('«Aktivatsiya kodlari» ro‘yxati esa standart holda HAMMASINI ko‘rsatadi — sinov kodini topa olmaslik ishni to‘xtatib qo‘yardi. Kerak bo‘lsa «Sinov» filtridan «Faqat haqiqiy» yoki «Faqat sinov» ni tanlang.')}</p>
         <p className="mk-gd-warn">
-          {t('Shaxsiy sinov akkauntingizni «Foydalanuvchilar» bo‘limida «Sinov» deb belgilang: u holda o‘sha akkaunt faollashtirgan kodlar ham hisobga kirmaydi.')}
+          {t('Shaxsiy sinov akkauntingizni «Foydalanuvchilar» bo‘limida «Test hisob» deb belgilang: u holda o‘sha akkaunt faollashtirgan kodlar ham hisobga kirmaydi.')}
         </p>
       </AdminCard>
 

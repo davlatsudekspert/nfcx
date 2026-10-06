@@ -14,6 +14,12 @@ import {
 import BackToCabinet from '../components/BackToCabinet.jsx';
 import { IconBell, IconStar, IconSupport, IconTag } from '../components/Icons.jsx';
 
+// "2026-10-08" -> "08.10.2026". Boshqa shakl kelsa — o'zgarishsiz.
+function trialDate(v) {
+  const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : String(v || '');
+}
+
 // Foydalanuvchi uchun umumiy Bildirishnomalar — sovg'a takliflari, admin
 // javoblari va yutgan (to'lanmagan) auksionlar bitta joyda jamlanadi.
 export default function NotificationsPage() {
@@ -74,6 +80,9 @@ export default function NotificationsPage() {
     if (n.type === 'like') return t('postingizni yoqtirdi');
     if (n.type === 'comment') return t('postingizga izoh yozdi');
     if (n.type === 'support_reply') return t('murojaatingizga javob berdi');
+    // Bepul sinov tugayapti (kunlik cron). Sana `targetId` da (YYYY-MM-DD).
+    // ATAYLAB neytral: xarid havolasi yoki tugma YO'Q (App Store qoidalari).
+    if (n.type === 'trial_ending') return t('Bepul sinov muddatingiz {date} da tugaydi', { date: trialDate(n.targetId) });
     return '';
   };
 
@@ -82,7 +91,7 @@ export default function NotificationsPage() {
   // postlar profil ichida. Kod bo'sh bo'lsa (yozuv o'chirilgan)
   // hech qayerga o'tilmaydi — sahifa yiqilmasligi kerak.
   const socialTarget = (n) => {
-    if (n.type === 'support_reply') return '';
+    if (n.type === 'support_reply' || n.type === 'trial_ending') return '';
     const code = n.type === 'follow' ? n.actorCode : n.code;
     return code ? '/' + code : '';
   };
@@ -154,7 +163,7 @@ export default function NotificationsPage() {
           >
             {!n.read && <span className="h-2 w-2 shrink-0 rounded-full bg-accent" aria-hidden="true" />}
             <span className="min-w-0 flex-1 break-words">
-              <b>{n.type === 'support_reply' ? 'NFCSTORE' : (n.title || t('Foydalanuvchi'))}</b> {socialText(n)}
+              <b>{n.type === 'support_reply' || n.type === 'trial_ending' ? 'NFCSTORE' : (n.title || t('Foydalanuvchi'))}</b> {socialText(n)}
             </span>
             <span className="shrink-0 text-xs text-base-content/45">
               {n.createdAt ? timeAgo(new Date(String(n.createdAt).replace(' ', 'T')).getTime()) : ''}

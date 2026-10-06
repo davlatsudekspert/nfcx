@@ -95,7 +95,7 @@ jobs:
           node scripts/test-uz-store.mjs
           node scripts/test-uz-sql-keywords.mjs
           node scripts/test-uz-cold-start.mjs
-          for t in test-auth test-account-deletion test-media test-stories test-seo-profiles test-order-expire-sweep test-follow-count-consistency test-company-follow-stats test-upload-edge-cache test-audio-upload test-content-views test-carousel test-product-tags test-highlights test-story-replies test-saves-collections test-nearby test-scheduled-posts test-post-contact test-feed-following test-support-replies test-reels-ranking; do
+          for t in test-auth test-account-deletion test-media test-stories test-seo-profiles test-order-expire-sweep test-follow-count-consistency test-company-follow-stats test-upload-edge-cache test-audio-upload test-content-views test-carousel test-product-tags test-highlights test-story-replies test-saves-collections test-nearby test-scheduled-posts test-post-contact test-feed-following test-support-replies test-reels-ranking test-legal-requests test-trial-reminders test-admin-premium-grant; do
             echo "== UZ adapter: $t"; UZ_ADAPTER_TEST=1 node scripts/$t.mjs | tail -n 1
             [ "${PIPESTATUS[0]}" = 0 ] || exit 1
           done
@@ -158,6 +158,17 @@ jobs:
       # "qiziq emas", xilma-xillik, kursor bilan barqaror sahifalash, reklama.
       - name: Reels saralash (/api/reels)
         run: node scripts/test-reels-ranking.mjs
+      # Admin "Huquqiy so'rov": bitta odamning hozir turgan va o'chirilgan
+      # kontenti, hold (purge to'siladi), eksport, rollar va jurnal.
+      - name: Huquqiy so'rov — dosye, hold va eksport
+        run: node scripts/test-legal-requests.mjs
+      # Bepul sinov: admin tarif filtri, "sinov tugayapti" eslatmasi (cron,
+      # bir marta, Premium'ga emas) va aksiya muddati (2026 oxirigacha 90 kun).
+      - name: Bepul sinov — filtr, eslatma va aksiya muddati
+        run: node scripts/test-trial-reminders.mjs
+      # Admin Premium beradi/oladi: 1/3/6/12 oy, muddatsizga tegilmaydi, izoh shart.
+      - name: Admin Premium berish
+        run: node scripts/test-admin-premium-grant.mjs
       # Murojaatga admin javobi egasiga bildirishnoma bo'lib boradi;
       # holatlar (javob berilgan / hal qilindi / rejada), filtr va sanoq.
       - name: Murojaat javoblari va bildirishnoma

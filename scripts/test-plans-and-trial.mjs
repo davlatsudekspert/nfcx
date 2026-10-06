@@ -27,9 +27,12 @@ check('1) sinov faol', trialActiveD1({ trialExpiresAt: inDays(5) }), true);
 check('1) sinov tugagan', trialActiveD1({ trialExpiresAt: inDays(-1) }), false);
 // Maydon BO'SH — eski hisob. Sinov UMUMAN qo'llanmaydi.
 check('1) maydonsiz hisob — sinov yo‘q', trialActiveD1({}), false);
-checkTrue('1) trialEndsAtD1 ~30 kun', (() => {
+// Aksiya (2026-10): 2026-12-31 18:59:59Z gacha yaratilganlarga 90 kun,
+// keyin 30 — test sanaga bog'liq bo'lmasin (scripts/test-trial-reminders.mjs).
+checkTrue('1) trialEndsAtD1 ~30 kun (aksiyada ~90)', (() => {
+  const want = Date.now() <= Date.parse('2026-12-31T18:59:59Z') ? 90 : 30;
   const d = (Date.parse(trialEndsAtD1()) - Date.now()) / DAY;
-  return d > 29.9 && d < 30.1;
+  return d > want - 0.1 && d < want + 0.1;
 })());
 
 // ── 2) PREMIUM MUDDATI — uzaytirish ustiga qo'shiladi ────────────────

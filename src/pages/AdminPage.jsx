@@ -371,7 +371,7 @@ function ControlCenter() {
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <KpiCard icon="users" tone="info" label={t('Foydalanuvchilar')} value={fmt(d.users.total)} sub={t('Bugun +{a} · 7 kunda +{b}', { a: d.users.today, b: d.users.d7 })} />
         <KpiCard icon="phone" tone="success" label={t('Ilovada faol')} value={fmt(d.app.day)} sub={t('24 soatda · 7 kunda {n}', { n: fmt(d.app.week) })} />
-        <KpiCard icon="crown" tone="accent" label={t('Premium obunachilar')} value={fmt(d.premium.active)} sub={d.premium.expiring7d ? t('{n} tasi 7 kunda tugaydi', { n: d.premium.expiring7d }) : t('Sinov muddatida: {n}', { n: d.premium.trial })} />
+        <KpiCard icon="crown" tone="accent" label={t('Premium obunachilar')} value={fmt(d.premium.active)} sub={d.premium.expiring7d ? t('{n} tasi 7 kunda tugaydi', { n: d.premium.expiring7d }) : t('Bepul sinovda: {n}', { n: d.premium.trial })} />
         <KpiCard icon="idcard" tone="muted" label={t('NFC ID lar')} value={fmt(d.cards.total)} sub={t('Band qilingan profillar')} />
       </div>
 
@@ -919,8 +919,8 @@ function TrafficTab() {
         <label className="flex cursor-pointer items-center gap-2 text-xs" style={{ color: 'var(--vz-ink-2)' }}>
           <input type="checkbox" checked={includeTest} onChange={(e) => setIncludeTest(e.target.checked)} />
           <span>{includeTest
-            ? t('Sinov va ichki akkauntlar ham ko‘rsatilyapti')
-            : t('Sinov va ichki akkauntlar hisobga kirmaydi.')}</span>
+            ? t('Test va ichki hisoblar ham ko‘rsatilyapti')
+            : t('Test va ichki hisoblar hisobga kirmaydi.')}</span>
         </label>
       </div>
 
@@ -1155,16 +1155,32 @@ function AnalyticsTab() {
 // Server vaqti ikki shaklda keladi ("…T…Z" va "… …+00") — ikkalasini ham o'qiymiz.
 const tsMs = (v) => (v ? new Date(String(v).replace(' ', 'T').replace(/\+00$/, 'Z')).getTime() : 0);
 const SUSPEND_REASONS = ['Diniy-ekstremistik kontent', 'Litsenziyasiz diniy material tarqatish', 'Uyatsiz/odobsiz kontent', 'Ruxsatsiz shaxsiy rasm tarqatish', 'Spam', 'Boshqa foydalanuvchiga tahdid', 'Boshqa qoidabuzarlik'];
-const USER_FILTERS = [['all', 'Hammasi'], ['premium', 'Premium'], ['flagged', 'Sinov va ichki'], ['blocked', 'Bloklangan'], ['deleted', 'O‘chirilgan']];
+const USER_FILTERS = [['all', 'Hammasi'], ['premium', 'Premium'], ['flagged', 'Test va ichki hisoblar'], ['blocked', 'Bloklangan'], ['deleted', 'O‘chirilgan']];
+// TARIF FILTRI — serverda (`/api/admin/users?plan=`), 300 talik chegaradan
+// tashqaridagilar ham topiladi.
+const USER_PLANS = [['', 'Barcha tariflar'], ['premium', 'Premium'], ['trial', 'Bepul sinovda'], ['trial_expired', 'Sinov tugagan'], ['free', 'Oddiy']];
+
+// "SINOV" IKKI MA'NODA ISHLATILARDI: bepul sinov muddati (trial) va test
+// hisobi (`is_test`). Endi trial — «Bepul sinov · N kun qoldi» / «Sinov
+// tugagan», `is_test` esa — «Test hisob».
+function trialDaysLeft(until) {
+  const ms = until ? tsMs(until) : 0;
+  if (!ms) return null;
+  const left = ms - Date.now();
+  return left > 0 ? Math.max(1, Math.ceil(left / 86_400_000)) : 0;
+}
 
 function UserStatusBadges({ u }) {
   const { t } = useLanguage();
   const blocked = !u.deletedAt && u.suspendedUntil && new Date(u.suspendedUntil) > new Date();
+  const trialLeft = trialDaysLeft(u.trialUntil);
   return (
     <span className="inline-flex flex-wrap gap-1">
       {u.premium && <span className="vz-badge vz-badge--gold">{t('Premium')}</span>}
-      {!u.premium && u.trial && <span className="vz-badge vz-badge--info">{t('Sinov muddati')}</span>}
-      {u.isTest && <span className="vz-badge vz-badge--muted">{t('SINOV')}</span>}
+      {!u.premium && (u.trial || trialLeft > 0) && <span className="vz-badge vz-badge--info">{t('Bepul sinov · {n} kun qoldi', { n: trialLeft || 1 })}</span>}
+      {!u.premium && !u.trial && trialLeft === 0 && <span className="vz-badge vz-badge--muted">{t('Sinov tugagan')}</span>}
+      {u.legalHold && <span className="vz-badge vz-badge--danger" title={u.legalHold.note}>{t('Huquqiy so‘rov (hold)')}</span>}
+      {u.isTest && <span className="vz-badge vz-badge--muted">{t('TEST HISOB')}</span>}
       {u.isInternal && <span className="vz-badge vz-badge--warn">{t('ICHKI')}</span>}
       {blocked && <span className="vz-badge vz-badge--danger">{t('Bloklangan')}</span>}
       {u.deletedAt && <span className="vz-badge vz-badge--danger">{t("O'CHIRILGAN")}</span>}
@@ -1183,6 +1199,7 @@ function UsersTab({ initialQuery = '', openUserId = null }) {
   const [q, setQ] = useState(initialQuery);
   const [debounced, setDebounced] = useState(initialQuery);
   const [filter, setFilter] = useState('all');
+  const [plan, setPlan] = useState('');
   const [openId, setOpenId] = useState(openUserId);
 
   useEffect(() => { const id = setTimeout(() => setDebounced(q.trim()), 350); return () => clearTimeout(id); }, [q]);
@@ -1190,9 +1207,10 @@ function UsersTab({ initialQuery = '', openUserId = null }) {
     setLoadErr(null);
     const qs = new URLSearchParams({ limit: '300' });
     if (debounced) qs.set('q', debounced);
+    if (plan) qs.set('plan', plan);
     return adminApi(`/users?${qs}`).then((d) => setUsers(Array.isArray(d?.users) ? d.users : [])).catch((e) => setLoadErr(e));
   };
-  useEffect(() => { setUsers(null); setShown(50); load(); }, [debounced]);
+  useEffect(() => { setUsers(null); setShown(50); load(); }, [debounced, plan]);
   useEffect(() => { setShown(50); }, [filter]);
 
   if (loadErr) return <LoadError err={loadErr} onRetry={() => load()} title={t("Foydalanuvchilarni yuklab bo'lmadi.")} />;
@@ -1213,6 +1231,10 @@ function UsersTab({ initialQuery = '', openUserId = null }) {
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Email, telefon yoki NFC ID')}
             aria-label={t('Foydalanuvchini qidirish')} className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
         </label>
+        <select value={plan} onChange={(e) => setPlan(e.target.value)} aria-label={t('Tarif bo‘yicha')}
+          className="vz-input h-11 w-auto min-w-0">
+          {USER_PLANS.map(([v, l]) => <option key={v} value={v}>{t(l)}</option>)}
+        </select>
         <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('Holat bo‘yicha')}>
           {USER_FILTERS.map(([v, l]) => (
             <button key={v} type="button" aria-pressed={filter === v} onClick={() => setFilter(v)}
@@ -1285,7 +1307,7 @@ function UsersTab({ initialQuery = '', openUserId = null }) {
 
 // PREMIUM OBUNACHILAR — kim to'lagan, qachon tugaydi. Tugashiga 7 kun
 // qolganlar alohida: ularga eslatma yuborish yoki bog'lanish mumkin.
-const PREMIUM_FILTERS = [['active', 'Faol'], ['expiring', '7 kunda tugaydi'], ['trial', 'Sinov muddati'], ['expired', 'Tugagan'], ['all', 'Hammasi']];
+const PREMIUM_FILTERS = [['active', 'Faol'], ['expiring', '7 kunda tugaydi'], ['trial', 'Bepul sinov'], ['expired', 'Tugagan'], ['all', 'Hammasi']];
 function PremiumUsersTab() {
   const { t } = useLanguage();
   const [filter, setFilter] = useState('active');
@@ -1354,7 +1376,7 @@ function PremiumUsersTab() {
                     <tr key={u.id} className="cursor-pointer hover:bg-white/[0.03]" onClick={() => setOpenId(u.id)}>
                       <td className="min-w-[200px]">
                         <div className="font-medium">{u.email}</div>
-                        <div className="text-xs" style={{ color: 'var(--vz-ink-3)' }}>{u.phone || `#${u.id}`}{u.isTest ? ` · ${t('SINOV')}` : ''}{u.isInternal ? ` · ${t('ICHKI')}` : ''}</div>
+                        <div className="text-xs" style={{ color: 'var(--vz-ink-3)' }}>{u.phone || `#${u.id}`}{u.isTest ? ` · ${t('TEST HISOB')}` : ''}{u.isInternal ? ` · ${t('ICHKI')}` : ''}</div>
                       </td>
                       <td className="font-mono text-xs">{u.codes.slice(0, 3).join(', ') || '—'}</td>
                       <td className="whitespace-nowrap">
@@ -1363,7 +1385,7 @@ function PremiumUsersTab() {
                             <span className="text-sm">{dateTime(tsMs(u.until))}</span>
                             <span className="text-xs" style={{ color: left != null && left <= 7 && left >= 0 ? 'var(--warning)' : left < 0 ? 'var(--danger)' : 'var(--vz-ink-3)' }}>
                               {left < 0 ? t('{n} kun oldin tugagan', { n: -left }) : t('{n} kun qoldi', { n: left })}
-                              {u.state === 'trial' ? ` · ${t('sinov')}` : ''}
+                              {u.state === 'trial' ? ` · ${t('bepul sinov')}` : ''}
                             </span>
                           </span>
                         ) : '—'}
@@ -1397,6 +1419,9 @@ function UserDrawer({ userId, onClose, onChanged }) {
   const [suspendOpen, setSuspendOpen] = useState(false);
   const [days, setDays] = useState('7');
   const [reason, setReason] = useState('Spam');
+  // PREMIUM BERISH (super_admin, manager): oy soni va majburiy sabab.
+  const [premMonths, setPremMonths] = useState('1');
+  const [premNote, setPremNote] = useState('');
   const load = () => { setErr(null); return adminApi(`/users/${userId}/detail`).then(setD).catch((e) => setErr(e)); };
   useEffect(() => { load(); }, [userId]);
   useEffect(() => {
@@ -1419,8 +1444,23 @@ function UserDrawer({ userId, onClose, onChanged }) {
     });
     if (ok) act(() => adminApi(`/users/${u.id}/delete`, { method: 'POST' }));
   };
+  const grantPremium = () => act(async () => {
+    await adminApi(`/users/${u.id}/premium`, { method: 'POST', body: JSON.stringify({ months: Number(premMonths), note: premNote.trim() }) });
+    setPremNote('');
+  });
+  const revokePremium = async () => {
+    const ok = await confirm({
+      title: t('Premiumni olib tashlash'),
+      message: t('{email} Premium muddati hozir tugaydi. Davom etasizmi?', { email: u.email }),
+      confirmLabel: t('Olib tashlash'), danger: true,
+    });
+    if (ok) act(async () => {
+      await adminApi(`/users/${u.id}/premium`, { method: 'POST', body: JSON.stringify({ action: 'revoke', note: premNote.trim() }) });
+      setPremNote('');
+    });
+  };
   const premiumText = !u ? '' : u.premium.state === 'active' ? (u.premium.legacy ? t('Premium (muddatsiz)') : t('Premium — {d} gacha', { d: dateTime(tsMs(u.premium.until)) }))
-    : u.premium.state === 'trial' ? t('Sinov muddati — {d} gacha', { d: dateTime(tsMs(u.premium.until)) })
+    : u.premium.state === 'trial' ? t('Bepul sinov — {d} gacha', { d: dateTime(tsMs(u.premium.until)) })
       : u.premium.state === 'expired' ? t('Premium tugagan ({d})', { d: dateTime(tsMs(u.premium.until)) }) : t('Bepul');
 
   return (
@@ -1440,7 +1480,7 @@ function UserDrawer({ userId, onClose, onChanged }) {
             <>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-mono text-xs" style={{ color: 'var(--vz-ink-3)' }}>#{u.id}</span>
-                <UserStatusBadges u={{ ...u, premium: u.premium.state === 'active', trial: u.premium.state === 'trial' }} />
+                <UserStatusBadges u={{ ...u, premium: u.premium.state === 'active', trial: u.premium.state === 'trial', trialUntil: u.premium.trialUntil, legalHold: d.legalHold }} />
               </div>
               {actErr && <div role="alert" className="vz-err">{actErr}</div>}
 
@@ -1460,6 +1500,9 @@ function UserDrawer({ userId, onClose, onChanged }) {
                 ))}
               </div>
               {blocked && <div className="vz-err">{t('Bloklangan:')} {t(u.suspendReason || '')} — {dateTime(tsMs(u.suspendedUntil))} {t('gacha')}</div>}
+              {d.legalHold && (
+                <div className="vz-err">{t('Huquqiy so‘rov (hold)')}: {d.legalHold.note} — {t('hisob va kontent o‘chirilmaydi.')}</div>
+              )}
               {d.openReports > 0 && <div className="vz-err">{t('Bu odamning profillariga {n} ta ochiq shikoyat bor.', { n: d.openReports })}</div>}
 
               <AdminCard title={t('NFC ID lar ({n})', { n: d.cards.length })}>
@@ -1576,7 +1619,7 @@ function UserDrawer({ userId, onClose, onChanged }) {
                       : <button className="btn btn-warning btn-sm min-h-11" disabled={busy} onClick={() => setSuspendOpen((v) => !v)}>{t('Bloklash')}</button>)}
                     {isSuper && (
                       <button className="btn btn-ghost-vz btn-sm min-h-11" disabled={busy} onClick={() => act(() => adminApi(`/users/${u.id}/set-test`, { method: 'POST', body: JSON.stringify({ isTest: !u.isTest }) }))}>
-                        {u.isTest ? t('Sinovdan chiqarish') : t('Sinov deb belgilash')}
+                        {u.isTest ? t('Test hisobdan chiqarish') : t('Test hisob deb belgilash')}
                       </button>
                     )}
                     {isSuper && (
@@ -1596,7 +1639,32 @@ function UserDrawer({ userId, onClose, onChanged }) {
                       <button className="btn btn-warning btn-sm min-h-11" disabled={busy} onClick={() => act(async () => { await adminApi(`/users/${u.id}/suspend`, { method: 'POST', body: JSON.stringify({ days: Number(days), reason }) }); setSuspendOpen(false); })}>{t('Tasdiqlash')}</button>
                     </div>
                   )}
-                  <p className="mt-3 text-xs" style={{ color: 'var(--vz-ink-3)' }}>{t('«Sinov» — akkaunt ro‘yxatlardan va hisobdan yashiriladi. «Hisobga qo‘shmaslik» — o‘z akkauntingiz: ko‘rinadi, lekin pul va statistikaga kirmaydi.')}</p>
+                  {isManager && (
+                    <div className="vz-panel mt-3 space-y-2 p-3" data-testid="premium-grant">
+                      <div className="text-sm font-medium" style={{ color: 'var(--vz-ink)' }}>{t('Premium berish')}</div>
+                      {u.premium.legacy ? (
+                        <div className="text-xs" style={{ color: 'var(--vz-ink-3)' }}>{t('Muddatsiz (eski) Premium — o‘zgartirilmaydi.')}</div>
+                      ) : (
+                        <>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <select value={premMonths} onChange={(e) => setPremMonths(e.target.value)} className="vz-input w-auto min-w-0" aria-label={t('Muddat')}>
+                              {[1, 3, 6, 12].map((m) => <option key={m} value={m}>{t('{n} oy', { n: m })}</option>)}
+                            </select>
+                            <input value={premNote} onChange={(e) => setPremNote(e.target.value)} maxLength={300}
+                              placeholder={t('Sabab (majburiy)')} aria-label={t('Sabab')} className="vz-input min-w-0 flex-1" />
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <button type="button" className="btn btn-gold btn-sm min-h-11" disabled={busy || !premNote.trim()} onClick={grantPremium}>{t('Premium berish')}</button>
+                            {u.premium.state === 'active' && (
+                              <button type="button" className="btn btn-ghost-vz btn-sm min-h-11" disabled={busy || !premNote.trim()} onClick={revokePremium}>{t('Premiumni olib tashlash')}</button>
+                            )}
+                          </div>
+                          <div className="text-xs" style={{ color: 'var(--vz-ink-3)' }}>{t('Muddat joriy Premium tugashidan (yoki bugundan) uzayadi; 1 oy = 30 kun. Har amal jurnalga yoziladi.')}</div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  <p className="mt-3 text-xs" style={{ color: 'var(--vz-ink-3)' }}>{t('«Test hisob» — akkaunt ro‘yxatlardan va hisobdan yashiriladi. «Hisobga qo‘shmaslik» — o‘z akkauntingiz: ko‘rinadi, lekin pul va statistikaga kirmaydi.')}</p>
                 </AdminCard>
               )}
             </>
@@ -1892,7 +1960,7 @@ function OrdersTab({ initialView = null }) {
   const testToggle = (
       <label className="mb-3 flex cursor-pointer items-center gap-2 text-sm">
         <input type="checkbox" className="checkbox checkbox-sm" checked={includeTest} onChange={(e) => setIncludeTest(e.target.checked)} />
-        <span>{t('Sinov foydalanuvchilar buyurtmalarini ham ko‘rsatish')}</span>
+        <span>{t('Test hisoblar buyurtmalarini ham ko‘rsatish')}</span>
       </label>
   );
   const viewChips = (
@@ -3881,7 +3949,7 @@ function FinanceTransactions({ rangeQs, ready }) {
                       <td className="whitespace-nowrap text-xs text-base-content/60">{dateTime(new Date(r.createdAt).getTime())}</td>
                       <td className="text-xs">
                         {r.status === 'paid' ? <ChannelBadge channel={r.channel} refunded={r.refunded} /> : <span className="text-base-content/40">—</span>}
-                        {r.testUser && <span className="badge badge-sm badge-ghost ml-1">{t('Sinov akk.')}</span>}
+                        {r.testUser && <span className="badge badge-sm badge-ghost ml-1">{t('Test hisob')}</span>}
                       </td>
                       <td className="text-xs">{t(FIN_TYPE_LABEL[r.kind] || r.kind)}</td>
                       <td className="font-mono text-xs">{r.code}</td>
@@ -5174,7 +5242,7 @@ function Dashboard({ onLogout, role, totpEnabled, refreshMe }) {
             ular shu faylda va MarketplaceTab ularni import qilsa
             aylanma bog'liqlik hosil bo'lardi. */}
         {tab === 22 && <MarketplaceTab adminApi={adminApi} isManager={isManager} apiErrText={apiErrText} />}
-        {tab === 23 && <NovaTab adminApi={adminApi} apiErrText={apiErrText} />}
+        {tab === 23 && <NovaTab adminApi={adminApi} apiErrText={apiErrText} isManager={isManager} isSuper={isSuperAdmin} />}
         {tab === 24 && <PremiumUsersTab />}
         {tab === 25 && <MusicTab adminApi={adminApi} apiErrText={apiErrText} isManager={isManager} />}
         {tab === 26 && <DemoBusinessesTab adminApi={adminApi} apiErrText={apiErrText} isManager={isManager} />}
