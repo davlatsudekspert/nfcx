@@ -38,7 +38,7 @@ export const PENDING_ORDER_TTL_MS = PENDING_ORDER_TTL_HOURS * 60 * 60 * 1000;
 // (kasr va mintaqa tashlanadi) va probel "T" ga almashtiriladi. Uchala
 // format ham to'g'ri o'qiladi; NULL tekshiruvi joyida qoladi, chunki
 // butunlay buzuq qiymat baribir bo'lishi mumkin.
-const CREATED_AT_EPOCH_SQL = `strftime('%s', replace(substr(created_at, 1, 19), ' ', 'T'))`;
+export const CREATED_AT_EPOCH_SQL = `strftime('%s', replace(substr(created_at, 1, 19), ' ', 'T'))`;
 
 export const PENDING_EXPIRES_MS_SQL =
   `CASE WHEN ${CREATED_AT_EPOCH_SQL} IS NULL THEN NULL

@@ -1,6 +1,7 @@
 import { PENDING_ORDER_TTL_MS } from './order-window.js';
 import { cardContentCleanupStmts } from './card-cleanup.js';
 import { ensurePurgeSchema, idQuarantined } from './account-purge.js';
+import { isReservedCode } from './reserved-codes.js';
 // hosting/api/admin-extra.js — CONTRACT.md ga qarang. Route topilmasa null qaytaradi.
 //
 // server/admin.js (Express) dagi quyidagi admin route'larning D1 porti.
@@ -348,7 +349,8 @@ export async function handle(request, env, url, H) {
     const code = String(body.code || '').trim().toUpperCase();
     const recipientName = String(body.recipientName || '').slice(0, 100).trim();
     const note = String(body.note || '').slice(0, 300).trim();
-    if (!/^[A-Z0-9]{3,16}$/.test(code) || isBlockedCode(code)) return H.json({ error: 'bad_code' }, 422);
+    // Sayt sahifasi nomi (SUPPORT, ALOQA, ...) sovg'a ID bo'lib ham berilmaydi.
+    if (!/^[A-Z0-9]{3,16}$/.test(code) || isBlockedCode(code) || isReservedCode(code)) return H.json({ error: 'bad_code' }, 422);
     let value = null;
     if (body.value != null && body.value !== '') {
       const n = Math.round(Number(body.value));

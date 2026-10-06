@@ -26,17 +26,20 @@
 // 6 kunlik slotni 1 so'mga olardi.
 //
 // Marshrutlar:
-//   GET  /api/featured/packages          → { packages, enabled }
+//   GET  /api/featured/packages          → { packages, enabled, capacity }
 //   GET  /api/featured                   → { slots }   (ommaviy, lenta uchun)
-//   GET  /api/featured/mine              (auth) → { slots }
+//   GET  /api/featured/mine              (auth) → { slots[+stats{reach,views}] }
 //   POST /api/featured                   (auth) { targetKind, targetId, days }
 //                                        → 201 { slot, orderId, price, payLinks }
 //   POST /api/featured/:id/cancel        (auth) → { ok }
 //
 //   GET  /api/admin/featured             (admin) ?state= → { slots }
+//   POST /api/admin/featured             (manager+) { targetKind, targetId, days, note }
+//                                        → 201 { slot }  (qo'lda, to'lovsiz)
+//   POST /api/admin/featured/pricing     (super_admin) { packages:[{days,price}] }
 //   POST /api/admin/featured/:id/stop    (admin) { reason } → { ok }
 
-import { KINDS, targetOwner } from './comments.js';
+import { targetOwner } from './comments.js';
 
 /// STANDART NARXLAR — so'mda.
 ///
@@ -54,6 +57,22 @@ const DEFAULT_PACKAGES = [
 /// Cheklovsiz bo'lsa, bitta odam butun bosh sahifani sotib olib,
 /// lenta boshqa hech kimga ko'rinmay qolardi.
 const MAX_ACTIVE_PER_USER = 3;
+
+/// LENTADAGI JAMI JOYLAR (egasi, 2026-10-05: "u yerga nechta sig'adi").
+///
+/// Ilgari sotuv cheklanmagan, lenta esa faqat 10 ta eng yangisini
+/// ko'rsatardi: 11-biznes pul to'lab, umuman ko'rinmay qolardi.
+/// Endi faol reklamalar soni shu bilan cheklanadi, lentada ular
+/// almashib (rotatsiya) ko'rsatiladi — har bir ochilishda
+/// `FEED_AD_SLOTS` tasi, oddiy postlar orasida (worker.js `feedApi`).
+/// 8 ta joy / 4 ta o'rin → har bir reklama lenta ochilishlarining
+/// kamida yarmida chiqadi. Band bo'lsa, xaridor qachon bo'shashini
+/// ko'radi (`sold_out` + `nextFreeAt`).
+export const MAX_ACTIVE_TOTAL = 8;
+
+/// Faqat POSTLAR ko'tariladi (oddiy va biznes). Istoriyalar lentada
+/// chiqmaydi — ularni sotish "pul olib, ko'rsatmaslik" bo'lardi.
+const PROMO_KINDS = ['post', 'company_post'];
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -132,6 +151,60 @@ const slotOut = (r, H) => {
   };
 };
 
+/// BO'SH JOYLAR: { max, active, nextFreeAt } — nextFreeAt eng yaqin
+/// tugaydigan faol reklama vaqti (ms), joy bo'sh bo'lsa null.
+async function capacityOf(env, H) {
+  const row = await env.DB.prepare(
+    `SELECT COUNT(*) AS n, MIN(ends_at) AS next FROM featured_slots
+      WHERE status = 'active' AND ends_at > ?`
+  ).bind(H.nowTs()).first().catch(() => null);
+  const active = Number(row?.n) || 0;
+  const d = row?.next ? H.parseDbDate(row.next) : null;
+  return {
+    max: MAX_ACTIVE_TOTAL,
+    active,
+    nextFreeAt: active >= MAX_ACTIVE_TOTAL && d && !Number.isNaN(d.getTime()) ? d.getTime() : null,
+  };
+}
+
+/// REKLAMA NATIJASI — egasi pulining samarasini ko'radi.
+///
+/// Instagram'da natija alohida "reklama kabineti"da; bizda shu
+/// sahifaning o'zida. Ikki son, ikkalasi mavjud ko'rish jadvallaridan
+/// (yangi hisoblagich YO'Q, ilova hech narsa qo'shimcha yubormaydi):
+///   reach — ko'tarilgan davrda postni BIRINCHI MARTA ko'rgan odamlar
+///           (`content_views.created_at` — birinchi ko'rish vaqti);
+///   views — shu kunlardagi jami ko'rishlar (`content_view_hits`,
+///           kun aniqligida: boshlanish kunining ertalabki ko'rishlari
+///           ham kiradi — sahifada "taxminan" deyilmaydi, chunki farq
+///           kichik va faqat birinchi kunga tegishli).
+/// So'rovlar parallel (UZ adapterida bitta to'lqinga yig'iladi); slotlar
+/// soni 50 dan oshmaydi.
+async function slotStats(env, H, rows) {
+  const out = new Map();
+  const started = rows.filter((r) => r.starts_at && ['active', 'expired', 'stopped'].includes(String(r.status)));
+  if (!started.length) return out;
+  const now = H.nowTs();
+  const stmts = [];
+  for (const r of started) {
+    const end = r.ends_at && String(r.ends_at) < now ? String(r.ends_at) : now;
+    stmts.push(env.DB.prepare(
+      `SELECT
+         (SELECT COUNT(*) FROM content_views
+           WHERE target_kind = ? AND target_id = ? AND created_at >= ? AND created_at < ?) AS reach,
+         (SELECT COALESCE(SUM(hits), 0) FROM content_view_hits
+           WHERE target_kind = ? AND target_id = ? AND day >= ? AND day <= ?) AS views`
+    ).bind(String(r.target_kind), Number(r.target_id), String(r.starts_at), end,
+      String(r.target_kind), Number(r.target_id), String(r.starts_at).slice(0, 10), end.slice(0, 10)));
+  }
+  const res = await Promise.all(stmts.map((st) => st.first().catch(() => null)));
+  started.forEach((r, i) => {
+    const row = res[i] || {};
+    out.set(Number(r.id), { reach: Number(row.reach) || 0, views: Number(row.views) || 0 });
+  });
+  return out;
+}
+
 /// MUDDATI O'TGAN SLOTLARNI BELGILASH.
 ///
 /// Alohida cron YO'Q (Worker'da u qo'shimcha infratuzilma degani).
@@ -157,12 +230,14 @@ async function sweepExpired(env, H) {
 /// `ends_at > now` sharti — muddati o'tganni belgilash kechiksa
 /// ham eskirgan slot chiqmasligi uchun.
 export async function activeTargets(env, nowTs) {
-  await ensureSchema(env);
+  // Sxema va SELECT bitta to'lqinda (moderation.js `blockedByUser` izohi).
+  const ready = ensureSchema(env);
   const rows = await env.DB.prepare(
     `SELECT target_kind, target_id FROM featured_slots
       WHERE status = 'active' AND ends_at > ?
-      ORDER BY starts_at DESC, id DESC LIMIT 10`
+      ORDER BY starts_at DESC, id DESC LIMIT ${MAX_ACTIVE_TOTAL * 2}`
   ).bind(nowTs).all().catch(() => null);
+  await ready;
   return (rows?.results || []).map((r) => ({
     kind: String(r.target_kind),
     id: Number(r.target_id),
@@ -206,8 +281,10 @@ export async function handle(request, env, url, H) {
 
   // ── NARXLAR ──────────────────────────────────────────────────────
   if (path === '/api/featured/packages' && method === 'GET') {
+    const [packages, capacity] = await Promise.all([packagesOf(env), capacityOf(env, H)]);
     return H.json({
-      packages: await packagesOf(env),
+      packages,
+      capacity,
       // To'lovlar butunlay o'chirilgan bo'lsa, ilova tugmani
       // ko'rsatmaydi — bosilgach 503 chiqishidan ko'ra yaxshiroq.
       enabled: H.paymentsEnabledD1(env),
@@ -237,7 +314,9 @@ export async function handle(request, env, url, H) {
       `SELECT * FROM featured_slots WHERE user_id = ?
         ORDER BY created_at DESC, id DESC LIMIT 50`
     ).bind(user.id).all().catch(() => null);
-    return H.json({ slots: (rows?.results || []).map((r) => slotOut(r, H)) });
+    const list = rows?.results || [];
+    const stats = await slotStats(env, H, list);
+    return H.json({ slots: list.map((r) => ({ ...slotOut(r, H), stats: stats.get(Number(r.id)) || null })) });
   }
 
   // ── SLOT SOTIB OLISH ─────────────────────────────────────────────
@@ -250,7 +329,7 @@ export async function handle(request, env, url, H) {
     const body = await readJson();
     const kind = String(body.targetKind || '');
     const targetId = Number(body.targetId);
-    if (!KINDS.includes(kind)) return H.json({ error: 'bad_kind' }, 422);
+    if (!PROMO_KINDS.includes(kind)) return H.json({ error: 'bad_kind' }, 422);
     if (!Number.isInteger(targetId) || targetId <= 0) return H.json({ error: 'bad_target' }, 422);
 
     // NARX SERVERDA. Mijoz faqat kunlar sonini tanlaydi; yuborgan
@@ -266,6 +345,10 @@ export async function handle(request, env, url, H) {
     if (Number(target.ownerUserId) !== Number(user.id)) {
       return H.json({ error: 'forbidden' }, 403);
     }
+    // REJADAGI POST (api/scheduled-posts.js) ko'tarilmaydi: lenta uni
+    // vaqti kelguncha baribir ko'rsatmaydi — pul olinib, kunlar bekorga
+    // o'tib ketardi.
+    if (target.scheduled) return H.json({ error: 'post_scheduled' }, 409);
 
     // Bitta kontent uchun ikkita kutilayotgan buyurtma bo'lmasin —
     // odam ikki marta bosib, ikki marta to'lab qo'ymasin.
@@ -281,6 +364,8 @@ export async function handle(request, env, url, H) {
     if ((Number(activeRow?.n) || 0) >= MAX_ACTIVE_PER_USER) {
       return H.json({ error: 'too_many_active', max: MAX_ACTIVE_PER_USER }, 409);
     }
+    const cap = await capacityOf(env, H);
+    if (cap.active >= cap.max) return H.json({ error: 'sold_out', ...cap }, 409);
 
     const now = H.nowTs();
     const slot = await env.DB.prepare(
@@ -369,8 +454,83 @@ export async function handle(request, env, url, H) {
           userId: Number(r.user_id),
           orderId: Number(r.order_id) || 0,
           stoppedReason: String(r.stopped_reason || ''),
+          note: String(r.note || ''),
         })),
       });
+    }
+
+    // NARXLARNI O'ZGARTIRISH (egasi, 2026-10-05: "keyin summani
+    // oshirsa bo'ladimi"). Ilova yangilanishi KERAK EMAS: narx har
+    // safar serverdan o'qiladi. Faqat super_admin — bu moliyaviy
+    // qaror. Allaqachon ochilgan buyurtmalar eski narxida qoladi
+    // (narx slot va buyurtmaga yozilgan).
+    if (path === '/api/admin/featured/pricing' && method === 'POST') {
+      if (!H.roleAtLeast(admin, 'super_admin')) return H.json({ error: 'forbidden' }, 403);
+      const body = await readJson();
+      const list = Array.isArray(body.packages) ? body.packages : [];
+      const clean = list.map((p) => ({ days: Math.round(Number(p?.days)), price: Math.round(Number(p?.price)) }));
+      const ok = clean.length >= 1 && clean.length <= 6
+        && clean.every((p) => Number.isInteger(p.days) && p.days >= 1 && p.days <= 30
+          && Number.isInteger(p.price) && p.price >= 1000 && p.price <= 50000000)
+        && new Set(clean.map((p) => p.days)).size === clean.length;
+      if (!ok) return H.json({ error: 'bad_packages' }, 422);
+      clean.sort((a, b) => a.days - b.days);
+      await env.DB.prepare(
+        `INSERT INTO admin_settings (key, value) VALUES ('featured_pricing', ?)
+           ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+      ).bind(JSON.stringify(clean)).run();
+      await H.logAdminActivity(env, {
+        action: 'featured_pricing_set',
+        details: clean.map((p) => `${p.days}k=${p.price}`).join(', '),
+        ip: H.reqIp(request),
+      }).catch(() => {});
+      return H.json({ packages: clean });
+    }
+
+    // QO'LDA KO'TARISH — biznes bilan to'g'ridan-to'g'ri kelishuv
+    // (naqd, o'tkazma, hamkorlik). Manager+ va IZOH MAJBURIY: bu yo'l
+    // to'lovni chetlab o'tadi, shuning uchun kim, nega bergani yoziladi.
+    // Narx 0 va buyurtma yo'q — moliya hisobotiga soxta tushum
+    // tushmaydi. Egalik, takror va muddat cheklovlari pullik yo'l bilan
+    // bir xil.
+    if (path === '/api/admin/featured' && method === 'POST') {
+      if (!H.roleAtLeast(admin, 'manager')) return H.json({ error: 'forbidden' }, 403);
+      const body = await readJson();
+      const kind = String(body.targetKind || '');
+      const targetId = Number(body.targetId);
+      const days = Math.round(Number(body.days));
+      const note = H.shortText(body.note || '', 200).trim();
+      if (!PROMO_KINDS.includes(kind)) return H.json({ error: 'bad_kind' }, 422);
+      if (!Number.isInteger(targetId) || targetId <= 0) return H.json({ error: 'bad_target' }, 422);
+      if (!Number.isInteger(days) || days < 1 || days > 30) return H.json({ error: 'bad_days' }, 422);
+      if (!note) return H.json({ error: 'note_required' }, 422);
+
+      const target = await targetOwner(env, kind, targetId);
+      if (!target.ok) return H.json({ error: 'not_found' }, 404);
+      if (target.scheduled) return H.json({ error: 'post_scheduled' }, 409);
+      const dup = await env.DB.prepare(
+        `SELECT id FROM featured_slots
+          WHERE target_kind = ? AND target_id = ? AND status IN ('pending','active')`
+      ).bind(kind, targetId).first().catch(() => null);
+      if (dup) return H.json({ error: 'already_featured', slotId: Number(dup.id) }, 409);
+      // Qo'lda berilgan ham joy egallaydi — pul to'lagan biznesning
+      // ulushi kamaymasin.
+      const cap = await capacityOf(env, H);
+      if (cap.active >= cap.max) return H.json({ error: 'sold_out', ...cap }, 409);
+
+      // Izoh ustuni faqat shu kam ishlatiladigan yo'lda qo'shiladi —
+      // lenta va /mine so'rovlariga qo'shimcha to'lqin tushmasin.
+      // Ustun bor bo'lsa ALTER xato beradi va jim o'tkaziladi.
+      await env.DB.prepare(`ALTER TABLE featured_slots ADD COLUMN note TEXT`).run().catch(() => {});
+      const startMs = Date.now();
+      const iso = (ms) => new Date(ms).toISOString().replace('T', ' ').replace('Z', '+00');
+      const row = await env.DB.prepare(
+        `INSERT INTO featured_slots
+           (user_id, target_kind, target_id, code, days, price, status, starts_at, ends_at, note, created_at)
+         VALUES (?,?,?,?,?, 0, 'active', ?, ?, ?, ?) RETURNING *`
+      ).bind(Number(target.ownerUserId) || 0, kind, targetId, target.ownerCode || '', days,
+        iso(startMs), iso(startMs + days * DAY_MS), `admin#${Number(admin.adminId) || 0}: ${note}`, H.nowTs()).first();
+      return H.json({ slot: slotOut(row, H) }, 201);
     }
 
     const stopMatch = path.match(/^\/api\/admin\/featured\/(\d+)\/stop$/);

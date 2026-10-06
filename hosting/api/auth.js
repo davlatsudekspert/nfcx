@@ -6,7 +6,8 @@ import { idQuarantined } from './account-purge.js';
 // Javob shakllari server/index.js (Express) bilan BIR XIL — frontend
 // src/pages/AuthPage.jsx + src/lib/auth.jsx shunga bog'langan:
 //   POST /api/auth/request-register-code {email}|{phone} → {ok:true,channel:'email'|'telegram'|'none'}
-//                                                        | 422 {error:'bad_phone'|'phone_not_verified'} | 429
+//                                                        | 422 {error:'bad_phone'|'bad_email'|'phone_not_verified'} | 429
+//                                                        |   (bad_email + reason:'rejected' — Resend manzilni rad etdi)
 //                                                        | 503 {error:'email_send_failed'|'tg_send_failed'}
 //   POST /api/auth/tg-link/start                        → {token,url} | 429 | 503 {error:'bot_not_configured'}
 //   GET  /api/auth/tg-link/status?token=                → {status:'pending'|'linked'|'expired', phone?}
@@ -507,8 +508,22 @@ async function registerConflict(env, H, email, phone) {
     if (p) return 'phone_taken';
   }
   if (email) {
+    // O'CHIRISH NAVBATIDAGI HISOB EMAILI HAM BAND (egasi, 2026-09-28:
+    // "admin paneldan o'chirdim, qayta ro'yxatdan o'taman desam kod
+    // gmailga boryapti, yozsam 'band' chiqyapti").
+    //
+    // Ilgari bu yerda `deleted_at IS NULL` turardi: navbatdagi emailga
+    // kod YUBORILARDI, odam uni kiritardi va faqat oxirida
+    // `account_pending_deletion` olardi — kod yonib ketardi, ekranda
+    // esa tushunarsiz xato. Endi xat umuman ketmaydi, javob faol
+    // hisobdagi bilan AYNAN bir xil `email_taken` ("Kirish orqali
+    // kiring") — begona odam hisob o'chirilganini bilmaydi (B13).
+    // Egasining o'zi "Kirish" bilan kirsa, to'g'ri paroldan keyin
+    // o'chirish sanasini ko'radi (`account_deleted`, worker.js).
+    // Purge'dan keyin email `deleted-<id>@deleted.invalid` bo'ladi —
+    // manzil yana bo'sh.
     const e = await env.DB.prepare(
-      `SELECT id FROM users WHERE email = ? AND deleted_at IS NULL LIMIT 1`
+      `SELECT id FROM users WHERE email = ? LIMIT 1`
     ).bind(email).first();
     if (e) return 'email_taken';
   }
@@ -566,6 +581,12 @@ async function requestRegisterCode(request, env, H) {
     const code = await createEmailOtpCode(env, H, email, 'register', REGISTER_OTP_TTL_MS);
     const sent = await sendEmailOtp(env, H, email, 'register', code);
     if (!sent?.ok) {
+      // RESEND MANZILNI RAD ETDI ("Invalid `to` field", 422) — bu odam
+      // yozgan emailning xatosi, server nosozligi emas. 503 bo'lsa odam
+      // umumiy server xatosini ko'rardi, audit esa uni server xatosi deb
+      // sanardi. `bad_email` — buzuq format uchun ham shu kod, ya'ni
+      // sayt va ilova tayyor "email noto'g'ri" xabarini ko'rsatadi.
+      if (sent?.recipient) return H.json({ error: 'bad_email', reason: 'rejected' }, 422);
       // SABAB javobga qo'shiladi. Bu MAXFIY EMAS: `reason` faqat
       // "http_403" kabi holat kodi yoki "network"/"bad_address" —
       // Resend javobining matni ham, kalit ham bu yerga tushmaydi.
@@ -574,7 +595,8 @@ async function requestRegisterCode(request, env, H) {
       // sababni topish uchun har safar terminal ochish kerak bo'ladi.
       // Holat kodi esa o'zi aytadi: 401 — kalit noto'g'ri, 403 —
       // yuborishga ruxsat yo'q (masalan jo'natuvchi tasdiqlanmagan
-      // manzil), 422 — `from` formati noto'g'ri.
+      // manzil), 422 — `from` formati noto'g'ri (`to` rad etilsa —
+      // yuqorida, 422 `bad_email`).
       // Sabab sifatida faqat HOLAT KODI qaytariladi ("http_400").
       // Resend'ning to'liq matni `console.error` ga ketadi — uni
       // ochiq endpointda doimiy ko'rsatib turishning hojati yo'q.

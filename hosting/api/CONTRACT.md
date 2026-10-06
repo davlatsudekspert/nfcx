@@ -14,6 +14,7 @@ Har modul: `export async function handle(request, env, url, H)` → `Response` y
 - `reqIp(request)`, `logAdminActivity(env,{action,details,oldValue,newValue,ip})`, `sendTelegramMessage(env, text)` (ADMIN_CHAT_ID ga), `sendTelegramTo(env, chatId, text)`
 - `personalIdTierD1(rec)`, `effectiveAccessD1(rec)`, `featureAllowedD1(feature, access)`, `paymentsEnabledD1(env)`
 - `ensureCoreSchema(env)`
+- `feedUnionSql`, `shapeFeedRows(env, rows, viewerId)`, `feedViewerLikedKeys(env, rows, viewerId)`, `feedLikedKey(row)`, `commentTargetKind(row)` — lentaning o'zi (`reels`)
 
 Qoidalar: har query `.bind()`; egalik tekshiruvi SERVER tomonda (`getRecordOwner === user.id`); javob shakllari `server/index.js` (Express) bilan BIR XIL (frontend `src/lib/db.js` shunga bog'langan); D1 = SQLite (JSONB yo'q → TEXT + JSON.parse; `RETURNING` bor; `ON CONFLICT` bor; `NOW()` yo'q → `H.nowTs()`; `ILIKE` yo'q → `LOWER(x) LIKE LOWER(?)`).
 Har modul uchun test: `scripts/test-<modul>.mjs` (`scripts/lib/d1-harness.mjs` orqali, haqiqiy `worker.fetch` bilan).
@@ -23,8 +24,12 @@ Har modul uchun test: `scripts/test-<modul>.mjs` (`scripts/lib/d1-harness.mjs` o
 `auth`, `account`, `engagement`, `catalog`, `media`, `admin-extra`,
 `admin-finance`, `telegram`, `assistant`, `moderation`, `comments`,
 `notifications`, `featured`, `catalog-feed`, `saves`, `content-archive`,
-`app-usage`, `app-admin`, `my-analytics`, `marketplace`
+`app-usage`, `app-admin`, `account-purge`, `admin-control`, `music`,
+`demo-businesses`, `highlights`, `story-replies`, `my-analytics`, `reels`, `marketplace`
 (shu tartibda chaqiriladi — `worker.js: API_MODULES`).
+`nearby` — `companyApi` dan OLDIN alohida ulangan (`/api/companies/nearby`).
+Yordamchi (marshrutsiz) modullar: `carousel`, `product-tags`, `post-contact`,
+`scheduled-posts` — lenta va post yo'llari ularni chaqiradi.
 
 `catalog-feed` — ilova "Tanlov" katalogi, BARCHA bizneslarning
 mahsulot va xizmatlari: `GET /api/catalog/feed` (`page`, `limit`,
@@ -42,8 +47,49 @@ Yozish: `POST|PATCH /api/companies/:id/catalog[/:item]` qo'shimcha
 (faqat xizmat) qabul qiladi; ustunlar `ensureCatalogListingColumns`
 bilan ADD COLUMN orqali qo'shiladi, `company.catalogSchema` = 2.
 
-`saves` — saqlanganlar, hisobga bog'langan: `GET /api/saves?kind=reel|listing`,
-`POST /api/saves {kind, ref, saved}` (`user_saves`, 1000 tagacha).
+`saves` — saqlanganlar, hisobga bog'langan: `GET /api/saves?kind=reel|listing|post|company_post[&collectionId=N|none][&page=&limit=]`
+→ `{items:[{kind, ref, createdAt, collectionId, post?}], hasMore?}` (post turlarida
+`post` — lenta shaklidagi karta yoki ko'rinmasa `null`, sahifada 30 tagacha),
+`POST /api/saves {kind, ref, saved, collectionId?}` → `{kind, ref, saved, collectionId}`
+(`user_saves.collection_id` qo'shilmagan bo'lsa saqlash eski shaklda ishlaydi,
+to'plam amallari 503 `collections_unavailable`)
+(`user_saves`, 1000 tagacha; post turlarida `ref` — post raqami).
+To'plamlar (`save_collections`, 100 tagacha, nom ≤ 40): `GET|POST /api/saves/collections`,
+`PATCH|DELETE /api/saves/collections/:id` (o'chirish saqlanganlarni O'CHIRMAYDI —
+`collection_id = NULL`), `POST /api/saves/move {kind, ref, collectionId|null}`.
+
+IJTIMOIY IMKONIYATLAR (2026-10) — to'liq kontrakt har modul boshida:
+- KARUSEL (`carousel.js`): `POST /api/records/:code/posts` va
+  `POST /api/companies/:id/posts` ixtiyoriy `media:[{url, type:'image'|'video'}]`
+  (1–10; 2+ bo'lsa faqat rasm; manzil — faqat `/uploads/<fayl>.<kengaytma>`).
+  Ustun `posts.media_json` / `company_posts.media_json`; `imageUrl` = birinchi
+  rasm. Postni qaytaradigan HAR javobda `mediaItems` (har doim massiv).
+  JAVOBDA `media` KALITI YO'Q (ataylab): eski ilova `Post.fromJson` `media`
+  dagi har `url` ni rasm deb oladi — video postda MP4 rasm bo'lib yuklanardi.
+  So'rov maydoni (`media`) o'zgarmagan.
+- MAHSULOT BELGISI (`product-tags.js`): biznes posti `productIds` (≤ 5, faqat
+  o'sha kompaniya katalogidan) → `post_products`; javobda `products[]`
+  (shaxsiy postda doim `[]`).
+- BIZNES KONTAKTI (`post-contact.js`): lenta va kompaniya postlari ro'yxatidagi
+  biznes postida `contact:{phone, telegram, mapUrl}` (faqat ochiq maydonlar).
+- AKTUAL (`highlights.js`): `/api/highlights` — `story_highlights`,
+  `story_highlight_items` (istoriyaning NUSXASI; fayl tozalovchilari bu
+  fayllarni o'chirmaydi). Muqova faqat shu Aktualdagi element rasmi.
+  Moderatsiya: `DELETE /api/admin/highlights/:id[/items/:itemId] {reason}`
+  (manager+, dalil arxiviga `highlight`/`highlight_item`); admin istoriyani
+  o'chirsa (`DELETE /api/admin/content/story|company_story/:id`) undan
+  olingan Aktual nusxalari ham o'chadi; shikoyat turi `highlight`.
+- ISTORIYA JAVOBI (`story-replies.js`): `POST /api/stories/:kind/:id/reply`,
+  `GET /api/stories/:kind/:id/viewers` (faqat egasi, manba `story_views`),
+  `GET /api/my/story-replies`; egasiga istoriya ro'yxatida `replyCount`.
+- YAQINDAGI BIZNESLAR (`nearby.js`): `GET /api/companies/nearby?lat=&lng=&radiusKm=&limit=`.
+- REJALASHTIRILGAN POST (`scheduled-posts.js`): `publishAt` (ISO yoki ms;
+  kelajakda, ≤ 30 kun) → `publish_at`. Vaqti kelguncha egasidan boshqaga
+  HECH QAYERDA ko'rinmaydi (`postLiveSql`/`companyPostLiveSql`, `targetOwner().scheduled`);
+  egasiga `scheduledFor` (ms). Lenta tartibi — `COALESCE(publish_at, created_at)`.
+Hammasi faqat qo'shimcha (CREATE IF NOT EXISTS / himoyalangan ADD COLUMN);
+lenta va ro'yxatlarga yangi ketma-ket to'lqin qo'shilmagan
+(`scripts/test-scheduled-posts.mjs` 6-bo'lim o'lchaydi).
 
 `content-archive` — DALIL ARXIVI. Post, istoriya (egasi, admin, muddati
 o'tgan), kompaniya posti, profil videosi va fayli, karta tozalanishi —
@@ -80,18 +126,63 @@ to'xtamaydi; `MODERATION_OFF=1` bilan o'chadi.
 (`/api/feed`) har kadrga `commentKind` va `commentCount` qo'shadi va
 sonlarni `countsFor()` orqali BITTA guruhlangan so'rov bilan oladi.
 
-Ko'rishlar (`content_views`, shu modulda): `POST /api/content-views/:kind/:id`
-(`post | company_post`) → `{counted, count}`. Bir tomoshabin (`u:<id>` yoki
-mehmon `a:<IP+UA hash>`) bir kontentni bir marta sanaydi, egasi sanalmaydi,
-mehmon IP bo'yicha 10 daqiqada 120 tagacha. Lenta, profil postlari va
-kompaniya postlari `viewCount` qaytaradi (`viewsFor()`). Kontent
-o'chirilganda ko'rishlar `retireTargetStmts` bilan ketadi.
+Obunalar lentasi (Reels "Obunalar" tabi, 2026-10): `GET
+/api/feed?scope=following` — kirgan tomoshabin obuna bo'lgan odamlar
+(`follows`, odamning HAMMA kartalari) va kompaniyalar (`company_follows`)
+kontenti, xuddi shu shaklda `{feed, hasMore}`. Anonim — 401. Reklama
+qo'shilmaydi; bloklash, maxfiylik va rejadagi post shartlari oddiy lenta
+bilan bir xil. Noma'lum `scope` — oddiy lenta.
+
+Ko'rishlar (shu modulda): `POST /api/content-views/:kind/:id`
+(`post | company_post`) → `{counted, count}`. QOIDA (egasi, 2026-10-04):
+odam postga/Reels'ga har KIRIB 2 soniya ko'rganida +1 — qaysi seansda
+bo'lishidan qat'i nazar; o'sha videoda turib qolsa va u aylanib o'ynasa —
+qayta sanalmaydi (ilova bitta kirishda bitta so'rov yuboradi). Tomoshabin —
+`u:<id>` yoki mehmon `a:<IP+UA hash>`. Egasi hech qachon sanalmaydi; o'sha
+tomoshabinning oldingi sanalgan ko'rishidan 2 soniya o'tmagan so'rov
+sanalmaydi (`counted:false`). Mehmon IP bo'yicha 10 daqiqada 120 tagacha
+(oshsa 429); kirgan foydalanuvchi 10 daqiqada 300 tagacha (oshsa XATO EMAS —
+200 `counted:false`). Jadvallar: `content_view_hits` — jami ko'rishlar
+(tomoshabin × kontent × UTC kun, `hits` sanog'i), `content_views` — qamrov
+(bir tomoshabin — bir qator). `count` va hamma `viewCount` (lenta, profil va
+kompaniya postlari, `/post/:id` sahifasi) — JAMI ko'rishlar `SUM(hits)`
+(`viewsFor()`). Eski `content_views` qatorlari bir marta (`maintenance_runs`:
+`content_view_hits_backfill_2026_10`) birinchi kunining bitta ko'rishi
+bo'lib ko'chirilgan. Kontent o'chirilganda ikkala jadval ham
+`retireTargetStmts`/`deleteLikesFor` bilan, hisob o'chirilganda tomoshabin
+qatorlari `account-purge.js` bilan ketadi.
+
+`reels` — Reels "Siz uchun" (2026-10, saralangan va sahifalanadigan):
+`GET /api/reels?limit=10&cursor=<shaffof>` (kirish ixtiyoriy; `limit` 1..20)
+→ `{items, nextCursor: string|null, hasMore}`. `items` — `/api/feed` kadrlari
+bilan AYNAN bir shakl (`shapeFeedRows` + `liked`, `kind: 'post'`), pullik
+reklama qo'shimcha `featured: true`. Faqat reels: shaxsiy/kompaniya posti,
+videosi yoki rasmli reel belgisi (`post_extras.reel`) bor; istoriya yo'q;
+ko'rinish qoidalari `FEED_UNION_SQL` dan; bloklangan muallif va "qiziq emas"
+yo'q. Nomzodlar — eng yangi 300 reels. Ball: `freshness = 0.5^(soat/36)`,
+`engagement = ln(1 + likes + 2·comments + 3·saves + 0.05·views)`,
+`score = freshness·(1 + 0.6·engagement)`; obuna ×1.8, ko'rilgan
+(`content_views`, tomoshabin `u:<id>`/`a:<hash>`) ×0.12, o'ziniki ×0.35,
+`hash(tomoshabin+kun+nishon)` jitter `[0, 0.05)`. Xilma-xillik: bir muallif
+qo'shni emas, sahifada ≤ 2. Reklama (faol `featured_slots`, reels bo'lsa)
+sahifaning 4 va 9-o'rnida, sahifada ≤ 2, zanjirda bir marta, oddiy kadr
+bo'lib takrorlanmaydi. Kursor — base64url JSON (surat vaqti, o'rin, langar,
+berilgan reklamalar): keyingi sahifalar surat vaqtigacha bo'lgan ma'lumot
+bilan qayta hisoblanadi; buzuq kursor — 1-sahifa (500 emas). Oxirida
+`hasMore:false, nextCursor:null`.
+`POST /api/reels/hide {kind:'post'|'company_post', id}` (kirish shart, 401)
+→ `{ok:true}`, idempotent, yomon nishon 422 `bad_target`, 10 daqiqada 120
+tagacha (429). Jadval `reel_hidden(user_id, target_kind, target_id,
+created_at)`; hisob o'chirilganda tozalanadi.
 
 `my-analytics` — ilovadagi Sozlamalar → Analitika: `GET /api/my/analytics?days=30`
 (auth, 1–90) → `{days, profile:{views, uniqueVisitors, clicks, totalViews},
-followers, content:{posts, views, likes, comments}, byDay[{day, views}],
-top[{kind, id, code, imageUrl, videoUrl, caption, createdAt, views, likes, comments}]}`
-— faqat o'z kartalari va kompaniyalari bo'yicha.
+followers, content:{posts, views, reach, likes, comments}, byDay[{day, views}],
+top[{kind, id, code, imageUrl, videoUrl, caption, createdAt, views, reach, likes, comments}]}`
+— faqat o'z kartalari va kompaniyalari bo'yicha. Kontent `views` — tanlangan
+davrdagi (UTC kun aniqligida) JAMI ko'rishlar `SUM(hits)`: `content.views` =
+`byDay` yig'indisi = `top`/postlar `views` yig'indisi; `reach` — o'sha davrda
+takrorsiz tomoshabinlar soni.
 
 ## Lokal ishga tushirish
 

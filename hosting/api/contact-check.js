@@ -98,24 +98,56 @@ export const POPULAR_EMAIL_DOMAINS = [
   'umail.uz', 'inbox.uz',
 ];
 
+// HAQIQIY POCHTA DOMENLARI — HECH QACHON "xato" deb belgilanmaydi.
+//
+// App Store tekshiruvi (2026-10): `mac.com`, `aol.com`, `aim.com` →
+// "mail.com demoqchimisiz?", `ymail.com`, `email.com` → "gmail.com"
+// deb rad etilardi. Server 422 qaytarar, ilova esa email qadamiga
+// qaytarardi — odam (yoki Apple tekshiruvchisi) ro'yxatdan umuman o'ta
+// olmasdi. Mashhur domenga 1–2 harf o'xshash, lekin O'ZI haqiqiy
+// pochta xizmati bo'lgan manzillar shu ro'yxatda.
+export const KNOWN_EMAIL_DOMAINS = new Set([
+  ...POPULAR_EMAIL_DOMAINS,
+  // Apple
+  'mac.com', 'privaterelay.appleid.com',
+  // Google, Microsoft, Yahoo, AOL
+  'googlemail.com', 'msn.com', 'hotmail.co.uk', 'hotmail.fr', 'hotmail.de', 'hotmail.it',
+  'live.ru', 'live.co.uk', 'live.fr', 'outlook.de', 'outlook.fr',
+  'ymail.com', 'rocketmail.com', 'yahoo.co.uk', 'yahoo.fr', 'yahoo.de', 'yahoo.it', 'yahoo.co.jp',
+  'aol.com', 'aim.com', 'aol.co.uk',
+  // Mail.ru / Yandex / Rambler oilasi
+  'internet.ru', 'yandex.kz', 'yandex.by', 'yandex.ua', 'yandex.uz', 'yandex.com.tr',
+  'ro.ru', 'lenta.ru', 'autorambler.ru', 'myrambler.ru',
+  // Proton, GMX, Zoho va boshqa xalqaro xizmatlar
+  'pm.me', 'protonmail.ch', 'gmx.com', 'gmx.net', 'gmx.de', 'gmx.at', 'gmx.ch', 'web.de',
+  'zoho.com', 'zohomail.com', 'email.com', 'post.com', 'usa.com', 'consultant.com', 'mail.ee',
+  'tutanota.com', 'tuta.io', 'fastmail.com', 'hey.com', 'duck.com', 'mailbox.org', 'posteo.de',
+  'hushmail.com', 'inbox.com', 'lycos.com', 'yeah.net', 'foxmail.com', 'qq.com', '163.com', '126.com',
+  'naver.com', 'daum.net', 'hanmail.net', 'ukr.net', 'i.ua', 'meta.ua', 'email.ua', 'bigmir.net',
+  'comcast.net', 'att.net', 'verizon.net', 'sbcglobal.net', 'cox.net', 'charter.net', 'earthlink.net',
+]);
+
 const SINGLE_TLD = new Set(['gmail', 'googlemail', 'icloud']);
 const POPULAR_SLDS = new Set(POPULAR_EMAIL_DOMAINS.map((d) => d.split('.')[0]));
 // `.com` ning tez-tez uchraydigan xatolari — 2 harfli bo'lsa ham xato.
 const TLD_TYPOS = new Set(['co', 'cm', 'om', 'cn']);
 
-function levenshtein(a, b) {
+// Tahrir masofasi; qo'shni ikki harfning o'rni almashishi (`gmial`) —
+// BITTA xato (Damerau, "optimal string alignment").
+function editDistance(a, b) {
   if (a === b) return 0;
   const m = a.length;
   const n = b.length;
-  let prev = Array.from({ length: n + 1 }, (_, j) => j);
+  const d = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
+  for (let j = 1; j <= n; j++) d[0][j] = j;
   for (let i = 1; i <= m; i++) {
-    const cur = [i];
     for (let j = 1; j <= n; j++) {
-      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
     }
-    prev = cur;
   }
-  return prev[n];
+  return d[m][n];
 }
 
 /// Domen mashhur domenga juda o'xshasa-yu, o'zi emas bo'lsa — to'g'ri
@@ -126,7 +158,7 @@ export function emailTypoSuggestion(email) {
   if (at < 1) return null;
   const local = s.slice(0, at);
   const domain = s.slice(at + 1);
-  if (!domain || POPULAR_EMAIL_DOMAINS.includes(domain)) return null;
+  if (!domain || KNOWN_EMAIL_DOMAINS.has(domain)) return null;
   // `gmail` va `icloud` — FAQAT `.com`. `gmail.co`, `gmail.ru` — xato.
   const sld = domain.split('.')[0];
   if (SINGLE_TLD.has(sld)) return `${local}@${sld}.com`;
@@ -137,10 +169,12 @@ export function emailTypoSuggestion(email) {
   let best = null;
   let bestD = 99;
   for (const d of POPULAR_EMAIL_DOMAINS) {
-    const dist = levenshtein(domain, d);
-    // Qisqa domenlarda (ya.ru, bk.ru) faqat 1 harf farq — aks holda
-    // haqiqiy boshqa domenlar ham "xato" deb qolardi.
-    const limit = d.length <= 6 ? 1 : 2;
+    const dist = editDistance(domain, d);
+    // 2 harf farq faqat UZUN nomli domenga (yandex, hotmail, outlook,
+    // icloud, rambler) ruxsat. Qisqa nomlarda (mail, gmail, yahoo, me,
+    // bk, ya) — faqat 1: aks holda `mac.com`, `aol.com` kabi haqiqiy
+    // domenlar ham `mail.com` ning "xatosi" bo'lib qolardi.
+    const limit = d.split('.')[0].length >= 6 ? 2 : 1;
     if (dist <= limit && dist < bestD) { best = d; bestD = dist; }
   }
   // `gmail` (nuqtasiz), `gmail.` — oxiri tushib qolgan.
@@ -148,7 +182,10 @@ export function emailTypoSuggestion(email) {
     const bare = domain.replace(/\.+$/, '');
     best = POPULAR_EMAIL_DOMAINS.find((d) => d.split('.')[0] === bare) || null;
   }
-  return best ? `${local}@${best}` : null;
+  // O'ziga o'zini taklif qilish (`googlemail.com` → `googlemail.com`)
+  // cheksiz halqa beradi — bunday holda taklif yo'q.
+  if (!best || best === domain) return null;
+  return `${local}@${best}`;
 }
 
 const mxCache = new Map();
@@ -158,7 +195,7 @@ const mxCache = new Map();
 export async function emailDomainAccepts(env, email) {
   if (env?.EMAIL_MX_CHECK === 'off') return null;
   const domain = String(email || '').split('@').pop().toLowerCase();
-  if (!domain || POPULAR_EMAIL_DOMAINS.includes(domain)) return true;
+  if (!domain || KNOWN_EMAIL_DOMAINS.has(domain)) return true;
   const hit = mxCache.get(domain);
   if (hit && hit.until > Date.now()) return hit.ok;
   const ask = async (type) => {

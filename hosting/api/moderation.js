@@ -22,6 +22,7 @@
 
 import { archiveStmt } from './content-archive.js';
 import { ensureSchema as ensureCommentsSchema, retireTargetStmts } from './comments.js';
+import { ensureSchema as ensureHighlightsSchema } from './highlights.js';
 
 // Shikoyat sabablari. Ro'yxat YOPIQ: erkin matn sabab bo'lsa,
 // adminda saralash imkonsiz bo'lardi va bir xil muammo o'nta xil
@@ -45,7 +46,9 @@ export const REPORT_REASONS = [
 // Nimaga shikoyat qilish mumkin.
 // `comment` — izoh (2026-09): ilgari izoh shikoyati `post` bo'lib ketardi
 // va izoh ID'si post ID'si deb o'qilardi. `company_story` — biznes istoriyasi.
-const REPORT_TARGETS = ['post', 'story', 'company_post', 'company_story', 'record', 'company', 'comment'];
+// `highlight` (2026-10) — Aktual to'plami (highlights.js): istoriya 24
+// soatda yo'qoladi, Aktual esa doimiy — shikoyat qilinadigan bo'lishi shart.
+const REPORT_TARGETS = ['post', 'story', 'company_post', 'company_story', 'record', 'company', 'comment', 'highlight'];
 
 // Nimani bloklash mumkin: PROFIL (shaxsiy yoki kompaniya).
 // Alohida postni bloklash emas — odam odatda muallifdan qutulmoqchi
@@ -113,10 +116,14 @@ const str = (v, max) => String(v ?? '').trim().slice(0, max);
 /// aslida hech narsa qilmasdi.
 export async function blockedByUser(env, userId) {
   if (!userId) return [];
-  await ensureSchema(env);
+  // Sxema va SELECT BITTA to'lqinda: sqld pipeline'ni tartib bilan
+  // bajaradi (CREATE avval). Jadval hali yo'q bo'lsa (D1) SELECT xatosi
+  // `[]` beradi — jadval yo'q = blok yo'q, natija avvalgidek.
+  const ready = ensureSchema(env);
   const rows = await env.DB.prepare(
     `SELECT target_kind, target_id FROM user_blocks WHERE user_id = ?`
   ).bind(userId).all().catch(() => null);
+  await ready;
   return (rows?.results || []).map((r) => ({ kind: r.target_kind, id: String(r.target_id) }));
 }
 
@@ -282,11 +289,15 @@ export async function handle(request, env, url, H) {
   // Bu FAQAT ADMIN uchun: oddiy foydalanuvchi o'z kontentini
   // o'zining endpointlari orqali o'chiradi (u yerda egalik
   // tekshiriladi).
-  const del = path.match(/^\/api\/admin\/content\/(post|story|company_post)\/(\d+)$/);
+  // `company_story` — `story` bilan bir xil (bitta jadval, `stories.id`
+  // yagona): shikoyat turi shunday keladi, admin paneli to'g'ridan-to'g'ri
+  // shu yo'lni chaqira olsin.
+  const del = path.match(/^\/api\/admin\/content\/(post|story|company_post|company_story)\/(\d+)$/);
   if (del && request.method === 'DELETE') {
     const admin = await H.requireAdmin(request, env);
     if (!admin) return H.json({ error: 'unauthorized' }, 401);
-    const kind = del[1];
+    const reportKind = del[1];
+    const kind = reportKind === 'company_story' ? 'story' : reportKind;
     const id = Number(del[2]);
 
     // Har bir tur uchun O'ZINING jadvali va bog'liq yozuvlari.
@@ -299,9 +310,22 @@ export async function handle(request, env, url, H) {
       // `owner_kind` sharti ATAYLAB yo'q: `stories.id` yagona va
       // admin uchun istorya kimniki ekani (shaxsiy yoki kompaniya)
       // farq qilmaydi — u baribir o'chirishga haqli.
+      // AKTUAL NUSXALARI HAM (2026-10, highlights.js): istoriya Aktualga
+      // nusxa bo'lib saqlangan bo'lsa, admin o'chirgan kontent o'sha yerda
+      // yashab qolardi — moderatsiyani chetlab o'tish. Nusxalar ham dalil
+      // arxiviga yoziladi (pastda) va istoriyaning o'zidan OLDIN o'chadi.
       story: [
         `DELETE FROM story_likes WHERE story_id = ?`,
         `DELETE FROM story_views WHERE story_id = ?`,
+        // Muqova shu istoriya rasmi bo'lsa — tozalanadi (nusxa o'chishidan
+        // OLDIN, rasm manzili hali o'qiladi). Aks holda muqova ko'rinmasa
+        // ham fayl "ishlatilmoqda" deb hisoblanib, ombordan hech qachon
+        // o'chmasdi.
+        `UPDATE story_highlights SET cover_url = NULL
+          WHERE cover_url IS NOT NULL
+            AND cover_url IN (SELECT image_url FROM story_highlight_items
+                               WHERE story_id = ? AND image_url IS NOT NULL)`,
+        `DELETE FROM story_highlight_items WHERE story_id = ?`,
         `DELETE FROM stories WHERE id = ?`,
       ],
       company_post: [
@@ -320,8 +344,11 @@ export async function handle(request, env, url, H) {
     const retire = kind === 'post'
       ? retireTargetStmts(env, 'post', '?', [id], { byAdmin: adminLabel, reason: 'target_deleted' })
       : [];
+    const by = { admin: adminLabel, reason: str(body?.reason, 40) || 'admin' };
+    if (kind === 'story') await ensureHighlightsSchema(env).catch(() => {});
     const res = await env.DB.batch([
-      archiveStmt(env, kind, 'id = ?', [id], { admin: adminLabel, reason: str(body?.reason, 40) || 'admin' }),
+      archiveStmt(env, kind, 'id = ?', [id], by),
+      ...(kind === 'story' ? [archiveStmt(env, 'highlight_item', 'story_id = ?', [id], by)] : []),
       ...retire,
       ...plan.map((sql) => env.DB.prepare(sql).bind(id)),
     ]);
@@ -340,8 +367,8 @@ export async function handle(request, env, url, H) {
     // shikoyatlar yopiladi va javob `alreadyGone: true`.
     await env.DB.prepare(
       `UPDATE content_reports SET status = 'resolved', resolved_at = ?, resolved_by = ?
-        WHERE target_kind = ? AND target_id = ? AND status <> 'resolved'`
-    ).bind(H.nowTs(), String(admin.username || admin.id || ''), kind, String(id))
+        WHERE target_kind IN (?, ?) AND target_id = ? AND status <> 'resolved'`
+    ).bind(H.nowTs(), String(admin.username || admin.id || ''), kind, reportKind === 'story' ? 'company_story' : reportKind, String(id))
       .run().catch(() => {});
 
     H.logAdminActivity?.(env, { action: 'content_delete', details: `${kind}#${id} ${adminLabel}${changed ? '' : ' (allaqachon yo‘q)'}`, ip: H.reqIp?.(request) })?.catch?.(() => {});
@@ -391,6 +418,11 @@ async function attachPreviews(env, reports) {
   ],
     byKind.comment, (r) => ({ text: r.body || '', author: r.author_code || '', createdAt: r.created_at || '', imageUrl: '', videoUrl: '',
       ...(r.deleted_at ? { missing: true } : {}) }));
+  await q('highlight', `SELECT CAST(h.id AS TEXT) AS k, h.owner_kind, h.owner_id, h.title, h.cover_url, h.created_at,
+             (SELECT i.image_url FROM story_highlight_items i WHERE i.highlight_id = h.id ORDER BY i.id LIMIT 1) AS first_image
+        FROM story_highlights h WHERE CAST(h.id AS TEXT) IN (?)`,
+    byKind.highlight, (r) => ({ text: r.title || '', author: r.owner_id || '', ownerKind: r.owner_kind || '', createdAt: r.created_at || '',
+      imageUrl: r.cover_url || r.first_image || '', videoUrl: '' }));
   await q('record', `SELECT UPPER(code) AS k, name, avatar_url FROM cards WHERE UPPER(code) IN (?)`,
     new Set([...(byKind.record || [])].map((x) => x.toUpperCase())),
     (r) => ({ text: r.name || '', author: r.k, imageUrl: r.avatar_url || '', videoUrl: '' }));
@@ -429,8 +461,10 @@ async function attachPeople(env, reports) {
 
   const authorOf = (r) => String(r.preview?.author || r.ownerCode || '').trim();
   const companyKinds = new Set(['company', 'company_post', 'company_story']);
-  const codes = [...new Set(reports.filter((r) => !companyKinds.has(r.targetKind)).map(authorOf).filter(Boolean).map((c) => c.toUpperCase()))].slice(0, 300);
-  const cos = [...new Set(reports.filter((r) => companyKinds.has(r.targetKind)).map(authorOf).filter(Boolean).map((c) => c.toUpperCase()))].slice(0, 300);
+  // Aktual kimniki — shaxsiy profil yoki kompaniya (ko'rinishdan).
+  const isCompany = (r) => companyKinds.has(r.targetKind) || (r.targetKind === 'highlight' && r.preview?.ownerKind === 'company');
+  const codes = [...new Set(reports.filter((r) => !isCompany(r)).map(authorOf).filter(Boolean).map((c) => c.toUpperCase()))].slice(0, 300);
+  const cos = [...new Set(reports.filter((r) => isCompany(r)).map(authorOf).filter(Boolean).map((c) => c.toUpperCase()))].slice(0, 300);
   const cardName = new Map();
   if (codes.length) {
     for (const row of await safe(`SELECT UPPER(code) AS k, name, user_id FROM cards WHERE UPPER(code) IN (${inList(codes.length)})`, codes)) {
@@ -450,7 +484,7 @@ async function attachPeople(env, reports) {
       : { guest: false, userId: r.reporterId, email: r.reporterEmail, phone: r.reporterPhone, code: rep?.code || '', name: rep?.name || '' };
     const a = authorOf(r);
     if (!a) { r.author = null; continue; }
-    if (companyKinds.has(r.targetKind)) {
+    if (isCompany(r)) {
       const c = coName.get(a.toUpperCase());
       r.author = { kind: 'company', code: a.toUpperCase(), name: c?.name || '', email: c?.email || '' };
     } else {

@@ -6,29 +6,43 @@
 //     { days,
 //       profile: { views, uniqueVisitors, clicks, totalViews },
 //       followers,
-//       content: { posts, views, likes, comments },
+//       content: { posts, views, reach, likes, comments },
 //       byDay: [{ day, views }],            // kontent ko'rishlari
 //       top:   [{ kind, id, code, imageUrl, videoUrl, caption,
-//                 createdAt, views, likes, comments }] }
+//                 createdAt, views, reach, likes, comments }] }
 //
 // Hammasi foydalanuvchining O'Z kartalari va O'Z kompaniyalari
 // bo'yicha — begona raqam hech qachon qaytmaydi. Manbalar mavjud
 // jadvallarning o'zi: `card_events` (profil ko'rishlari va
-// tugmalar — engagement.js), `content_views` (comments.js),
+// tugmalar — engagement.js), `content_view_hits` (comments.js),
 // `post_likes` / `content_likes`, `content_comments`. Ikkinchi
 // hisoblagich ochilmagan: sayt va ilova bir xil raqamni ko'radi.
+//
+// KONTENT KO'RISHLARI — TANLANGAN DAVR (`days`) ICHIDA, JAMI
+// ko'rishlar (`SUM(hits)`): odam har qaytib kirib 2 soniya ko'rganida
+// +1 (comments.js dagi qoida). `content.views` = `byDay` yig'indisi =
+// har bir postning `views` yig'indisi — uchalasi bitta so'rovdan
+// emas, lekin bitta shartdan (`day >= sinceDay`). `reach` — o'sha
+// davrda NECHA KISHI ko'rgani (takrorsiz tomoshabin); u `views` dan
+// katta bo'la olmaydi.
+//
+// Kun — UTC (`content_view_hits.day`), davr chegarasi ham kun
+// aniqligida: `days=30` — bugun va undan oldingi 30 kun.
 //
 // NFC TEGIZISHLAR bu yerda YO'Q: server ularni alohida sanamaydi
 // (tegizish oddiy profil ko'rishi bo'lib keladi). Bo'lmagan raqamni
 // ko'rsatgandan ko'ra, "profil ko'rishlari" ichida qoldirgan to'g'ri.
 
 import { ensureSchema as ensureCommentsSchema } from './comments.js';
+// Rejadagi post (2026-10) hali chiqmagan — analitika "joylangan" kontentni
+// sanaydi (api/scheduled-posts.js).
+import { postLiveSql, companyPostLiveSql } from './scheduled-posts.js';
 
 const DAY_MS = 24 * 60 * 60_000;
 const TOP_N = 10;
 const tsAgo = (ms) => new Date(Date.now() - ms).toISOString().replace('T', ' ').replace('Z', '+00');
 
-// Foydalanuvchining kontenti — `content_views`/`content_likes`/
+// Foydalanuvchining kontenti — `content_view_hits`/`content_likes`/
 // `content_comments` dagi (target_kind, target_id) juftligi uchun.
 // `?` lar: [userId, userId].
 const MY_TARGETS = `(
@@ -46,11 +60,13 @@ export async function handle(request, env, url, H) {
 
   const days = Math.max(1, Math.min(90, Math.round(Number(url.searchParams.get('days')) || 30)));
   const since = tsAgo(days * DAY_MS);
+  // Bugun + oldingi (days - 1) kun = aynan `days` kalendar kuni.
+  const sinceDay = tsAgo((days - 1) * DAY_MS).slice(0, 10);
   const uid = user.id;
   const myCodes = `SELECT code FROM cards WHERE user_id = ?`;
 
   // Layklar: shaxsiy post — post_likes, kompaniya posti — content_likes.
-  const [events, uniq, legacy, followers, posts, views, comments, byDay] = await Promise.all([
+  const [events, uniq, legacy, followers, posts, views, comments, byDay, reach] = await Promise.all([
     env.DB.prepare(
       `SELECT event_type, COUNT(*) AS n FROM card_events
         WHERE code IN (${myCodes}) AND created_at >= ? GROUP BY event_type`
@@ -68,25 +84,30 @@ export async function handle(request, env, url, H) {
     env.DB.prepare(
       `SELECT 'post' AS kind, p.id, p.code, p.image_url, p.video_url, p.caption, p.created_at,
               (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS likes
-         FROM posts p WHERE p.code IN (${myCodes})
+         FROM posts p WHERE p.code IN (${myCodes}) AND ${postLiveSql('p')}
        UNION ALL
        SELECT 'company_post', cp.id, cp.company_id, cp.image_url, cp.video_url, cp.caption, cp.created_at,
               (SELECT COUNT(*) FROM content_likes cl WHERE cl.target_kind = 'company_post' AND cl.target_id = cp.id)
          FROM company_posts cp
-        WHERE cp.company_id IN (SELECT company_id FROM companies WHERE owner_user_id = ?)`
+        WHERE cp.company_id IN (SELECT company_id FROM companies WHERE owner_user_id = ?)
+          AND ${companyPostLiveSql('cp')}`
     ).bind(uid, uid).all(),
     env.DB.prepare(
-      `SELECT target_kind, target_id, COUNT(*) AS n FROM content_views
-        WHERE ${MY_TARGETS} GROUP BY target_kind, target_id`
-    ).bind(uid, uid).all(),
+      `SELECT target_kind, target_id, SUM(hits) AS n, COUNT(DISTINCT viewer) AS r FROM content_view_hits
+        WHERE ${MY_TARGETS} AND day >= ? GROUP BY target_kind, target_id`
+    ).bind(uid, uid, sinceDay).all(),
     env.DB.prepare(
       `SELECT target_kind, target_id, COUNT(*) AS n FROM content_comments
         WHERE ${MY_TARGETS} AND deleted_at IS NULL GROUP BY target_kind, target_id`
     ).bind(uid, uid).all(),
     env.DB.prepare(
-      `SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS n FROM content_views
-        WHERE ${MY_TARGETS} AND created_at >= ? GROUP BY day ORDER BY day`
-    ).bind(uid, uid, since).all(),
+      `SELECT day, SUM(hits) AS n FROM content_view_hits
+        WHERE ${MY_TARGETS} AND day >= ? GROUP BY day ORDER BY day`
+    ).bind(uid, uid, sinceDay).all(),
+    env.DB.prepare(
+      `SELECT COUNT(DISTINCT viewer) AS n FROM content_view_hits
+        WHERE ${MY_TARGETS} AND day >= ?`
+    ).bind(uid, uid, sinceDay).first(),
   ]);
 
   const byType = Object.fromEntries((events.results || []).map((r) => [r.event_type, Number(r.n) || 0]));
@@ -96,7 +117,7 @@ export async function handle(request, env, url, H) {
     .reduce((a, [, n]) => a + n, 0);
 
   const key = (kind, id) => `${kind}:${Number(id)}`;
-  const viewMap = new Map((views.results || []).map((r) => [key(r.target_kind, r.target_id), Number(r.n) || 0]));
+  const viewMap = new Map((views.results || []).map((r) => [key(r.target_kind, r.target_id), r]));
   const cmtMap = new Map((comments.results || []).map((r) => [key(r.target_kind, r.target_id), Number(r.n) || 0]));
 
   const items = (posts.results || []).map((r) => ({
@@ -107,7 +128,8 @@ export async function handle(request, env, url, H) {
     videoUrl: r.video_url || '',
     caption: r.caption || '',
     createdAt: r.created_at,
-    views: viewMap.get(key(r.kind, r.id)) || 0,
+    views: Number(viewMap.get(key(r.kind, r.id))?.n) || 0,
+    reach: Number(viewMap.get(key(r.kind, r.id))?.r) || 0,
     likes: Number(r.likes) || 0,
     comments: cmtMap.get(key(r.kind, r.id)) || 0,
   }));
@@ -125,7 +147,13 @@ export async function handle(request, env, url, H) {
       totalViews: Number(legacy?.n) || 0,
     },
     followers: Number(followers?.n) || 0,
-    content: { posts: items.length, views: sum('views'), likes: sum('likes'), comments: sum('comments') },
+    content: {
+      posts: items.length,
+      views: sum('views'),
+      reach: Number(reach?.n) || 0,
+      likes: sum('likes'),
+      comments: sum('comments'),
+    },
     byDay: (byDay.results || []).map((r) => ({ day: r.day, views: Number(r.n) || 0 })),
     top,
   });

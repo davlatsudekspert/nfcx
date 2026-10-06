@@ -74,6 +74,13 @@ export function cardContentCleanupStmts(env, codeSelect, binds, nowTs, by = { re
     env.DB.prepare(`DELETE FROM story_likes WHERE story_id IN (SELECT id FROM stories WHERE owner_kind = 'card' AND owner_id IN (${codeSelect}))`).bind(...binds),
     env.DB.prepare(`DELETE FROM story_views WHERE story_id IN (SELECT id FROM stories WHERE owner_kind = 'card' AND owner_id IN (${codeSelect}))`).bind(...binds),
     env.DB.prepare(`DELETE FROM stories WHERE owner_kind = 'card' AND owner_id IN (${codeSelect})`).bind(...binds),
+    // AKTUAL (highlights.js, 2026-10) — istoriyalar kabi `owner_id` orqali
+    // bog'langan. Qolsa, kod qayta sotilganda YANGI egasining profilida
+    // eski egasining Aktuallari chiqardi. Elementlar to'plamdan OLDIN.
+    // Fayllari R2 da qoladi (hisob purge'i ularni alohida navbatga qo'yadi).
+    env.DB.prepare(`DELETE FROM story_highlight_items WHERE highlight_id IN
+      (SELECT id FROM story_highlights WHERE owner_kind = 'card' AND owner_id IN (${codeSelect}))`).bind(...binds),
+    env.DB.prepare(`DELETE FROM story_highlights WHERE owner_kind = 'card' AND owner_id IN (${codeSelect})`).bind(...binds),
   ];
   for (const t of CARD_CONTENT_TABLES) {
     stmts.push(env.DB.prepare(`DELETE FROM ${t} WHERE code IN (${codeSelect})`).bind(...binds));

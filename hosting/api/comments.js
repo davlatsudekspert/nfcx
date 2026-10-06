@@ -50,6 +50,7 @@
 // yo'qolardi.
 
 import { createNotification } from './notifications.js';
+import { postLiveSql, companyPostLiveSql } from './scheduled-posts.js';
 
 export const KINDS = ['post', 'company_post', 'story', 'company_story'];
 
@@ -64,6 +65,20 @@ export const LIKE_KINDS = [...KINDS, 'comment'];
 /// KO'RISH SANALADIGAN TURLAR — post va Reels (ikkalasi ham post
 /// jadvallarida). Istoryaning o'z ko'rish ro'yxati bor.
 export const VIEW_KINDS = ['post', 'company_post'];
+
+// Bir tomoshabinning shu kontentdagi ikki sanalgan ko'rishi orasidagi
+// eng kam oraliq. Ilova ko'rishni odam postga KIRIB 2 soniya ko'rganda
+// yuboradi, ya'ni haqiqiy qayta kirish bundan tez kela olmaydi; tezroq
+// kelgan so'rov — tarmoq qayta yuborgan nusxa, u sanalmaydi.
+const VIEW_REPEAT_MS = 2000;
+// Bitta tomoshabin × kontent × kun uchun eng ko'p sanaladigan ko'rish.
+const VIEW_DAILY_CAP = 50;
+
+// Kirgan foydalanuvchi uchun suiiste'mol chegarasi: 10 daqiqada 300 ta
+// ko'rish. Oshsa XATO QAYTMAYDI — ko'rish shunchaki sanalmaydi (ilova
+// Reels'ni aylantirishda davom etadi, raqam esa sun'iy o'smaydi).
+const VIEW_USER_LIMIT = 300;
+const VIEW_WINDOW_MS = 10 * 60_000;
 
 // Izoh uzunligi. Instagram'da 2200 — bu yerda 1000 yetarli va
 // bitta izoh ekranni butunlay egallab ketmaydi.
@@ -83,10 +98,46 @@ export const NOT_E2E = (col) => `${col} NOT LIKE '${E2E_MARKER}%'`;
 
 let schemaReady = null;
 
+// FNV-1a — sxema kodining "barmoq izi" (belgi nomi uchun).
+function hashText(text) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i += 1) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(36);
+}
+
 // Jadval KERAK BO'LGANDA yaratiladi — moderation.js bilan bir xil
 // yondashuv (worker'da alohida migratsiya bosqichi yo'q).
-export async function ensureSchema(env) {
+//
+// TEZLIK (2026-10-05, o'lchov bilan): har yangi isolate'da to'liq
+// tekshiruv bazaga ~6 marta KETMA-KET borardi; bundan tashqari
+// `countsFor` va `viewsFor` parallel chaqirilganda va'da hali
+// yaratilmagani uchun ikkalasi ham uni NUSXALAB bajarardi. Endi:
+// 1) va'da SINXRON saqlanadi — bir isolate'da faqat bir marta;
+// 2) bazadagi belgi (`maintenance_runs`) bor bo'lsa — bitta SELECT bilan
+//    tayyor. Belgi nomi to'liq tekshiruv KODINING barmoq izi: kod
+//    o'zgarsa (yangi ustun) belgi ham o'zgaradi va tekshiruv bir marta
+//    qaytadan to'liq bajariladi.
+export function ensureSchema(env) {
   if (!schemaReady) {
+    schemaReady = (async () => {
+      const mark = `schema:comments:${hashText(ensureSchemaFull.toString() + backfillViewHitsOnce.toString())}`;
+      const done = await env.DB.prepare(`SELECT 1 AS x FROM maintenance_runs WHERE name = ?`)
+        .bind(mark).first().catch(() => null);
+      if (done) return;
+      await ensureSchemaFull(env);
+      await env.DB.prepare(`INSERT OR IGNORE INTO maintenance_runs (name, ran_at, details) VALUES (?, ?, 'schema')`)
+        .bind(mark, tsNow()).run().catch(() => {});
+    })();
+  }
+  return schemaReady;
+}
+
+async function ensureSchemaFull(env) {
+  let ready;
+  {
     // ESKI BAZADA JADVAL ALLAQACHON BOR.
     //
     // `CREATE TABLE IF NOT EXISTS` mavjud jadvalga yangi ustun
@@ -99,7 +150,7 @@ export async function ensureSchema(env) {
     await env.DB.prepare(
       `ALTER TABLE content_comments ADD COLUMN parent_id INTEGER`
     ).run().catch(() => {});
-    schemaReady = env.DB.batch([
+    ready = env.DB.batch([
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS "content_comments" (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         target_kind TEXT NOT NULL,
@@ -132,10 +183,21 @@ export async function ensureSchema(env) {
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_content_likes_target
         ON content_likes(target_kind, target_id)`),
 
-      // KO'RISHLAR (Instagram'dagi "ko'rishlar" kabi). Bir tomoshabin
-      // bir kontentni BIR MARTA sanaydi: `viewer` — `u:<user id>`
-      // yoki mehmon uchun `a:<IP+UA hash>`. Ya'ni raqam "necha kishi
-      // ko'rdi", "necha marta aylantirildi" emas.
+      // KO'RISHLAR (Instagram'dagi "ko'rishlar" kabi) — IKKI JADVAL.
+      //
+      // QOIDA (egasi, 2026-10-04): odam postga/Reels'ga HAR KIRIB
+      // 2 soniya ko'rganida +1 ko'rish, qaysi seansda bo'lishidan
+      // qat'i nazar. Ko'rdi, chiqdi, qaytib kirib yana 2 soniya
+      // ko'rdi — yana +1. O'sha videoda turib qolsa va u qayta-qayta
+      // aylanib o'ynasa — QAYTA SANALMAYDI (bitta kirish — bitta
+      // so'rov, buni ilova ta'minlaydi). Egasining o'z ko'rishi hech
+      // qachon sanalmaydi. `viewer` — `u:<user id>` yoki mehmon
+      // uchun `a:<IP+UA hash>`.
+      //
+      // `content_views` — NECHA KISHI ko'rdi (qamrov): bir tomoshabin
+      // bir kontentga BITTA qator, `created_at` — birinchi ko'rishi.
+      // 2026-10-04 gacha ko'rishlar soni shu jadvaldan olinardi (bir
+      // odam — bir marta); endi u faqat qamrov uchun.
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS "content_views" (
         target_kind TEXT NOT NULL,
         target_id INTEGER NOT NULL,
@@ -145,6 +207,31 @@ export async function ensureSchema(env) {
       )`),
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_content_views_time
         ON content_views(created_at)`),
+      // `content_view_hits` — NECHA MARTA ko'rildi. Har ko'rishga
+      // alohida qator EMAS: tomoshabin × kontent × KUN (UTC,
+      // 'YYYY-MM-DD') uchun bitta qator va uning `hits` sanog'i.
+      // Odam kuniga necha marta qaytib kirmasin, jadval bitta qator
+      // bilan o'sadi; kunlik grafik (`my-analytics.js`) esa to'g'ridan-
+      // to'g'ri `day` dan yig'iladi. Ko'rsatiladigan son — `SUM(hits)`.
+      // `last_at` — oxirgi SANALGAN ko'rish (`VIEW_REPEAT_MS` uchun).
+      //
+      // (target_kind, target_id, hits) indeksi — `SUM(hits)` lenta va
+      // profil so'rovlarida jadvalga tegmay faqat indeksdan o'qilsin
+      // (PRIMARY KEY uni qoplamaydi). `viewer` indeksi — hisob
+      // o'chirilganda (`account-purge.js`).
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS "content_view_hits" (
+        target_kind TEXT NOT NULL,
+        target_id INTEGER NOT NULL,
+        viewer TEXT NOT NULL,
+        day TEXT NOT NULL,
+        hits INTEGER NOT NULL DEFAULT 0,
+        last_at TEXT NOT NULL,
+        PRIMARY KEY (target_kind, target_id, viewer, day)
+      )`),
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_content_view_hits_viewer
+        ON content_view_hits(viewer)`),
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_content_view_hits_target
+        ON content_view_hits(target_kind, target_id, hits)`),
 
       // DALIL ARXIVI. O'chirilgan izohning to'liq nusxasi.
       //
@@ -186,7 +273,7 @@ export async function ensureSchema(env) {
     // `CREATE TABLE IF NOT EXISTS` bu ustunlarni QO'SHA OLMAYDI:
     // jadval production'da allaqachon bor, ya'ni u buyruq oddiy
     // no-op bo'ladi.
-    schemaReady = schemaReady.then(() => Promise.all([
+    ready = ready.then(() => Promise.all([
       `ALTER TABLE content_comments ADD COLUMN deleted_at TEXT`,
       `ALTER TABLE content_comments ADD COLUMN deleted_by_user_id INTEGER`,
       `ALTER TABLE content_comments ADD COLUMN deleted_reason TEXT`,
@@ -196,9 +283,45 @@ export async function ensureSchema(env) {
       .then(() => env.DB.prepare(
         `CREATE INDEX IF NOT EXISTS idx_comments_deleted
            ON content_comments(deleted_at)`
-      ).run().catch(() => {}));
+      ).run().catch(() => {}))
+      // Eski ko'rishlar yangi sanoqqa — jadvallar yaratilgandan KEYIN.
+      .then(() => backfillViewHitsOnce(env));
   }
-  await schemaReady;
+  await ready;
+}
+
+// ── BIR MARTALIK KO'CHIRISH: eski ko'rishlar yangi sanoqqa ───────
+//
+// `content_view_hits` paydo bo'lgunga qadar har ko'rish faqat
+// `content_views` da edi (bir odam — bir qator). Ular yangi jadvalga
+// birinchi ko'rilgan kunining BITTA ko'rishi bo'lib ko'chiriladi —
+// aks holda deploydan keyin hamma postning soni 0 ga tushib qolardi.
+// `content_views` ning o'zi o'chirilmaydi va o'zgartirilmaydi.
+//
+// BIR MARTA: `maintenance_runs` belgisi bilan — keyingi izolyatlar
+// butun jadvalni qayta o'qimaydi, faqat bitta PRIMARY KEY qidiruvi
+// qiladi; izolyat ichida esa `ensureSchema` keshi tufayli umuman
+// chaqirilmaydi. Qayta ishlab ketsa ham zarari yo'q (`INSERT OR
+// IGNORE`): mavjud qator ham, sanoq ham o'zgarmaydi.
+const VIEW_HITS_BACKFILL = 'content_view_hits_backfill_2026_10';
+
+async function backfillViewHitsOnce(env) {
+  try {
+    await env.DB.prepare(`CREATE TABLE IF NOT EXISTS "maintenance_runs" (
+      name TEXT PRIMARY KEY NOT NULL, ran_at TEXT NOT NULL, details TEXT)`).run();
+    const done = await env.DB.prepare(`SELECT 1 AS x FROM maintenance_runs WHERE name = ?`)
+      .bind(VIEW_HITS_BACKFILL).first();
+    if (done) return;
+    const res = await env.DB.prepare(
+      `INSERT OR IGNORE INTO content_view_hits (target_kind, target_id, viewer, day, hits, last_at)
+       SELECT target_kind, target_id, viewer, substr(created_at, 1, 10), 1, created_at FROM content_views`
+    ).run();
+    await env.DB.prepare(`INSERT OR IGNORE INTO maintenance_runs (name, ran_at, details) VALUES (?, ?, ?)`)
+      .bind(VIEW_HITS_BACKFILL, tsNow(), JSON.stringify({ rows: Number(res?.meta?.changes || 0) })).run();
+  } catch (e) {
+    // Belgi qo'yilmaydi — keyingi izolyat yana urinadi.
+    console.error('backfillViewHitsOnce', e?.message);
+  }
 }
 
 /// TIRIK IZOH sharti.
@@ -237,12 +360,31 @@ function cleanBody(v) {
 /// olinsa, yangi kontent turi qo'shilganda biri yangilanmay
 /// qolardi va begona kontentni pullik slotga qo'yish mumkin
 /// bo'lardi.
+///
+/// `scheduled: true` (2026-10) — post hali REJADA (`publish_at` kelajakda,
+/// api/scheduled-posts.js). Chaqiruvchi egasidan boshqaga uni "yo'q" deb
+/// ko'rsatadi (`hiddenFrom`). Ustun hali qo'shilmagan eski bazada so'rov
+/// eski shaklda qayta bajariladi — reja bo'lishi mumkin emas.
+const firstWithFallback = async (env, sql, legacySql, id) => {
+  try {
+    return await env.DB.prepare(sql).bind(id).first();
+  } catch (e) {
+    if (!/no such column/i.test(String(e?.message || e))) throw e;
+    return env.DB.prepare(legacySql).bind(id).first();
+  }
+};
+
+/// Rejadagi kontent shu foydalanuvchidan yashirilsinmi (egasi ko'radi).
+export const hiddenFrom = (target, userId) =>
+  !!target?.scheduled && Number(target.ownerUserId) !== Number(userId || 0);
+
 export async function targetOwner(env, kind, id) {
   if (kind === 'post') {
-    const row = await env.DB.prepare(
-      `SELECT p.code AS code, c.user_id AS user_id FROM posts p JOIN cards c ON c.code = p.code WHERE p.id = ?`
-    ).bind(id).first();
-    return row ? { ok: true, ownerUserId: Number(row.user_id) || 0, ownerCode: String(row.code || '') } : { ok: false };
+    const row = await firstWithFallback(env,
+      `SELECT p.code AS code, c.user_id AS user_id, NOT ${postLiveSql('p')} AS scheduled
+         FROM posts p JOIN cards c ON c.code = p.code WHERE p.id = ?`,
+      `SELECT p.code AS code, c.user_id AS user_id FROM posts p JOIN cards c ON c.code = p.code WHERE p.id = ?`, id);
+    return row ? { ok: true, ownerUserId: Number(row.user_id) || 0, ownerCode: String(row.code || ''), scheduled: !!Number(row.scheduled) } : { ok: false };
   }
   if (kind === 'story') {
     const row = await env.DB.prepare(
@@ -252,11 +394,12 @@ export async function targetOwner(env, kind, id) {
     return row ? { ok: true, ownerUserId: Number(row.user_id) || 0, ownerCode: String(row.code || '') } : { ok: false };
   }
   if (kind === 'company_post') {
-    const row = await env.DB.prepare(
+    const row = await firstWithFallback(env,
+      `SELECT cp.company_id AS code, co.owner_user_id AS user_id, NOT ${companyPostLiveSql('cp')} AS scheduled
+         FROM company_posts cp JOIN companies co ON co.company_id = cp.company_id WHERE cp.id = ?`,
       `SELECT cp.company_id AS code, co.owner_user_id AS user_id
-         FROM company_posts cp JOIN companies co ON co.company_id = cp.company_id WHERE cp.id = ?`
-    ).bind(id).first();
-    return row ? { ok: true, ownerUserId: Number(row.user_id) || 0, ownerCode: String(row.code || '') } : { ok: false };
+         FROM company_posts cp JOIN companies co ON co.company_id = cp.company_id WHERE cp.id = ?`, id);
+    return row ? { ok: true, ownerUserId: Number(row.user_id) || 0, ownerCode: String(row.code || ''), scheduled: !!Number(row.scheduled) } : { ok: false };
   }
   if (kind === 'company_story') {
     const row = await env.DB.prepare(
@@ -324,23 +467,6 @@ const tsMs = (H, v) => {
   const d = H.parseDbDate(v);
   return d && !Number.isNaN(d.getTime()) ? d.getTime() : 0;
 };
-
-/// Foydalanuvchining 30 kunlik sinov muddati hozir ketyaptimi.
-///
-/// `getCurrentUser` bu ustunni o'qiydi, lekin qaytarmaydi — uni
-/// o'zgartirib, butun serverga ta'sir qilish o'rniga shu yerda alohida
-/// o'qiladi. Ustun yo'q (juda eski baza) yoki xato — `false`: qoida
-/// hech qachon xato tufayli YUMSHAMAYDI.
-export async function trialActiveFor(env, userId, H, now = Date.now()) {
-  try {
-    const r = await env.DB.prepare(
-      `SELECT trial_expires_at AS t FROM users WHERE id = ?`
-    ).bind(userId).first();
-    return !!(r && r.t) && tsMs(H, r.t) > now;
-  } catch {
-    return false;
-  }
-}
 
 const rowToComment = (r, viewerId, H) => ({
   id: Number(r.id),
@@ -460,6 +586,10 @@ export async function likesFor(env, targets, viewerId = 0) {
 
 /// Kontent ko'rishlari — lenta/profil uchun guruhlab (`countsFor` kabi
 /// bitta so'rov). Faqat `VIEW_KINDS`; boshqalari 0.
+///
+/// JAMI ko'rishlar (`SUM(hits)`) — necha kishi emas, necha marta
+/// ko'rilgani. Lenta, profil, kompaniya postlari va /post/:id sahifasi
+/// hammasi shu yerdan oladi — bitta qoida, bitta raqam.
 export async function viewsFor(env, targets) {
   const out = new Map();
   const list = targets.filter((t) => VIEW_KINDS.includes(t.kind));
@@ -467,7 +597,7 @@ export async function viewsFor(env, targets) {
   await ensureSchema(env);
   const where = list.map(() => '(target_kind = ? AND target_id = ?)').join(' OR ');
   const rows = await env.DB.prepare(
-    `SELECT target_kind, target_id, COUNT(*) AS n FROM content_views
+    `SELECT target_kind, target_id, SUM(hits) AS n FROM content_view_hits
       WHERE ${where} GROUP BY target_kind, target_id`
   ).bind(...list.flatMap((t) => [t.kind, t.id])).all().catch(() => null);
   for (const r of rows?.results || []) out.set(`${r.target_kind}:${Number(r.target_id)}`, Number(r.n) || 0);
@@ -487,7 +617,11 @@ export async function viewsFor(env, targets) {
 // `idsSql` — o'chirilayotgan kontent raqamlarini beradigan SELECT
 // (yoki `?`), `binds` — unga. Chaqiruvchi avval `ensureSchema(env)`
 // ni kutadi: jadval yo'q bo'lsa butun batch yiqiladi.
-const tsNow = () => new Date().toISOString().replace('T', ' ').replace('Z', '+00');
+// `worker.js` dagi `nowTs()` bilan AYNAN bir format
+// ("YYYY-MM-DD HH:MM:SS.mmm+00") — satrlar leksikografik solishtiriladi
+// (`content_view_hits.last_at`), ya'ni ikki tomon bir xil bo'lishi shart.
+const tsAt = (ms) => new Date(ms).toISOString().replace('T', ' ').replace('Z', '+00');
+const tsNow = () => tsAt(Date.now());
 
 export function retireTargetStmts(env, kind, idsSql, binds, { reason = 'target_deleted', byUserId = 0, byAdmin = '' } = {}) {
   const now = tsNow();
@@ -507,10 +641,13 @@ export function retireTargetStmts(env, kind, idsSql, binds, { reason = 'target_d
     env.DB.prepare(
       `DELETE FROM content_likes WHERE target_kind = ? AND target_id IN (${idsSql})`
     ).bind(kind, ...binds),
-    // Ko'rishlar ham — aks holda yangi post eski postning
-    // ko'rishlari bilan tug'ilardi.
+    // Ko'rishlar ham (qamrov ham, jami sanoq ham) — aks holda yangi
+    // post eski postning ko'rishlari bilan tug'ilardi.
     env.DB.prepare(
       `DELETE FROM content_views WHERE target_kind = ? AND target_id IN (${idsSql})`
+    ).bind(kind, ...binds),
+    env.DB.prepare(
+      `DELETE FROM content_view_hits WHERE target_kind = ? AND target_id IN (${idsSql})`
     ).bind(kind, ...binds),
   ];
 }
@@ -588,7 +725,16 @@ export async function deleteLikesFor(env, kind, id) {
   await env.DB.batch([
     env.DB.prepare(`DELETE FROM content_likes WHERE target_kind = ? AND target_id = ?`).bind(kind, id),
     env.DB.prepare(`DELETE FROM content_views WHERE target_kind = ? AND target_id = ?`).bind(kind, id),
+    env.DB.prepare(`DELETE FROM content_view_hits WHERE target_kind = ? AND target_id = ?`).bind(kind, id),
   ]);
+}
+
+/// Ko'rish tomoshabini kaliti — `content_views.viewer` / `content_view_hits.viewer`:
+/// kirgan odam `u:<id>`, mehmon `a:<IP+UA+til hash>` (`newsVisitorHash`).
+/// BITTA manba: ko'rishni yozish ham, Reels'da "ko'rilganmi" (api/reels.js)
+/// tekshiruvi ham shu kalitni ishlatadi.
+export async function contentViewerKey(H, request, user) {
+  return user ? `u:${user.id}` : `a:${await H.newsVisitorHash(request)}`;
 }
 
 export async function handle(request, env, url, H) {
@@ -613,6 +759,8 @@ export async function handle(request, env, url, H) {
     if (!target.ok) return H.json({ error: 'not_found' }, 404);
 
     const user = await H.getCurrentUser(request, env).catch(() => null);
+    // Rejadagi post — egasidan boshqaga "yo'q" (api/scheduled-posts.js).
+    if (hiddenFrom(target, user?.id)) return H.json({ error: 'not_found' }, 404);
     const count = async () => {
       const row = await env.DB.prepare(
         `SELECT COUNT(*) AS n FROM content_likes WHERE target_kind = ? AND target_id = ?`
@@ -657,12 +805,25 @@ export async function handle(request, env, url, H) {
   // ── KO'RISH ─────────────────────────────────────────────────────
   // POST /api/content-views/:kind/:id → { counted, count }
   //
-  // Ilova post/Reels ekranda ko'ringanda BIR MARTA yuboradi. Server
-  // bir tomoshabinni bir kontentga bir marta yozadi (PRIMARY KEY),
-  // egasining o'z ko'rishi sanalmaydi. Mehmonlar (kirmagan) IP+UA
-  // hash bilan sanaladi va IP bo'yicha cheklanadi — UA almashtirib
-  // raqam ko'paytirib bo'lmasin. Kirgan foydalanuvchida cheklov
-  // kerak emas: u har kontentga baribir bitta qator yoza oladi.
+  // Ilova odam post/Reels'ga KIRIB uni 2 soniya ko'rganda BIR MARTA
+  // yuboradi; chiqib, qaytib kirib yana 2 soniya ko'rsa — yana bir
+  // marta. Video o'sha joyda aylanib o'ynayotganda qayta yuborilmaydi.
+  // Server har so'rovni +1 qiladi (`content_view_hits`), faqat:
+  //   • egasining o'z ko'rishi sanalmaydi;
+  //   • o'sha tomoshabinning oldingi sanalgan ko'rishidan
+  //     `VIEW_REPEAT_MS` o'tmagan bo'lsa — sanalmaydi (qayta yuborilgan
+  //     nusxa);
+  //   • mehmon (kirmagan) IP+UA hash bilan sanaladi va IP bo'yicha
+  //     cheklanadi (10 daqiqada 120, oshsa 429) — UA almashtirib raqam
+  //     ko'paytirib bo'lmasin;
+  //   • kirgan foydalanuvchi 10 daqiqada `VIEW_USER_LIMIT` dan oshsa —
+  //     xato emas, shunchaki sanalmaydi;
+  //   • bitta tomoshabin bitta kontentga kuniga `VIEW_DAILY_CAP` dan
+  //     ko'p qo'sha olmaydi (skript bilan raqam ko'paytirishga qarshi;
+  //     oddiy odam bunga yetmaydi).
+  // `content_views` (qamrov — necha kishi) ga har so'rovda
+  // `INSERT OR IGNORE` — birinchisi yoziladi, qolgani no-op.
+  // `count` — JAMI ko'rishlar (`SUM(hits)`), `viewsFor()` bilan bir xil.
   const viewMatch = path.match(/^\/api\/content-views\/([a-z_]+)\/(\d+)$/);
   if (viewMatch && method === 'POST') {
     const kind = viewMatch[1];
@@ -673,24 +834,46 @@ export async function handle(request, env, url, H) {
     if (!target.ok) return H.json({ error: 'not_found' }, 404);
 
     const user = await H.getCurrentUser(request, env).catch(() => null);
+    if (hiddenFrom(target, user?.id)) return H.json({ error: 'not_found' }, 404);
     let counted = false;
     if (!user || user.id !== target.ownerUserId) {
-      let viewer;
+      let viewer = '';
       if (user) {
-        viewer = `u:${user.id}`;
+        if (!(await H.rateLimitD1(env, `cview:u:${user.id}`, VIEW_USER_LIMIT, VIEW_WINDOW_MS))) {
+          viewer = await contentViewerKey(H, request, user);
+        }
       } else {
-        if (await H.rateLimitD1(env, `cview:${H.reqIp(request)}`, 120, 10 * 60_000)) {
+        if (await H.rateLimitD1(env, `cview:${H.reqIp(request)}`, 120, VIEW_WINDOW_MS)) {
           return H.json({ error: 'too_many_requests' }, 429);
         }
-        viewer = `a:${await H.newsVisitorHash(request)}`;
+        viewer = await contentViewerKey(H, request, null);
       }
-      const res = await env.DB.prepare(
-        `INSERT OR IGNORE INTO content_views (target_kind, target_id, viewer, created_at) VALUES (?, ?, ?, ?)`
-      ).bind(kind, id, viewer, H.nowTs()).run();
-      counted = Number(res?.meta?.changes || 0) > 0;
+      if (viewer) {
+        // Uchala vaqt BITTA `Date.now()` dan va `nowTs()` formatida:
+        // `last_at <= cutoff` satr solishtiruvi shunda to'g'ri ishlaydi.
+        const nowMs = Date.now();
+        const now = tsAt(nowMs);
+        const cutoff = tsAt(nowMs - VIEW_REPEAT_MS);
+        const day = now.slice(0, 10);
+        // `DO UPDATE ... WHERE` sharti bajarilmasa qator o'zgarmaydi va
+        // `changes` 0 bo'ladi — ya'ni "sanalmadi".
+        const [hit] = await env.DB.batch([
+          env.DB.prepare(
+            `INSERT INTO content_view_hits (target_kind, target_id, viewer, day, hits, last_at)
+             VALUES (?, ?, ?, ?, 1, ?)
+             ON CONFLICT(target_kind, target_id, viewer, day) DO UPDATE
+               SET hits = content_view_hits.hits + 1, last_at = excluded.last_at
+             WHERE content_view_hits.last_at <= ? AND content_view_hits.hits < ${VIEW_DAILY_CAP}`
+          ).bind(kind, id, viewer, day, now, cutoff),
+          env.DB.prepare(
+            `INSERT OR IGNORE INTO content_views (target_kind, target_id, viewer, created_at) VALUES (?, ?, ?, ?)`
+          ).bind(kind, id, viewer, now),
+        ]);
+        counted = Number(hit?.meta?.changes || 0) > 0;
+      }
     }
     const row = await env.DB.prepare(
-      `SELECT COUNT(*) AS n FROM content_views WHERE target_kind = ? AND target_id = ?`
+      `SELECT COALESCE(SUM(hits), 0) AS n FROM content_view_hits WHERE target_kind = ? AND target_id = ?`
     ).bind(kind, id).first();
     return H.json({ counted, count: Number(row?.n) || 0 });
   }
@@ -707,6 +890,7 @@ export async function handle(request, env, url, H) {
     if (!target.ok) return H.json({ error: 'not_found' }, 404);
 
     const user = await H.getCurrentUser(request, env).catch(() => null);
+    if (hiddenFrom(target, user?.id)) return H.json({ error: 'not_found' }, 404);
     const viewerId = user ? user.id : 0;
     const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
     const limit = Math.min(PAGE_MAX, Math.max(1, Number(url.searchParams.get('limit')) || 20));
@@ -799,28 +983,16 @@ export async function handle(request, env, url, H) {
     // tekshiriladi. Endi bu yerda ham shunday.
     if (user.bannedUntil) return H.json({ error: 'banned' }, 403);
 
-    // IZOH — FAQAT PREMIUM OBUNACHILARGA (egasining qarori).
+    // IZOH YOZISH — HAMMAGA BEPUL (egasining qarori, 2026-10-04).
     //
-    // NIMA UCHUN SERVERDA, ILOVADA EMAS: ilovada maydonni yashirish
-    // — bu faqat KO'RINISH. So'rovni qo'lda yuborgan odam baribir
-    // izoh yozardi. Qoida shu yerda turmasa, u qoida emas.
-    //
-    // O'QISH OCHIQ QOLADI: izohlarni hamma ko'radi. Cheklov faqat
-    // YOZISHDA — aks holda lentada gap ketayotgani bilinmay qolardi
-    // va Premium olishning ma'nosi ham ko'rinmasdi.
-    //
-    // SINOV MUDDATI HAM KIRADI (egasining qarori, 2026-09-23: "yangi
-    // ro'yxatdan o'tganga 1 oy bepul"). Server yangi hisoblarga 30 kunlik
-    // `users.trial_expires_at` ni allaqachon beradi va boshqa hamma joyda
-    // u Premium darajasida ishlaydi (`effectiveAccessD1`). Faqat izoh uni
-    // hisobga olmasdi. Muddat tugagach yozish yana faqat Premium'ga.
-    // Eski hisoblarda ustun NULL — ular uchun hech narsa o'zgarmaydi.
-    if (!user.isPremium && !(await trialActiveFor(env, user.id, H))) {
-      return H.json({ error: 'premium_required' }, 403);
-    }
+    // Ilgari faqat Premium obunachilar va 30 kunlik sinovdagilar yozardi
+    // (`premium_required`). App Store 3.1.1: ilovadagi asosiy imkoniyat
+    // ilova tashqarisidagi to'lovga bog'lanib qolmasin. Endi tizimga
+    // kirgan, bloklanmagan har kim yozadi; spamdan himoya — pastdagi
+    // `cmt:u:` daqiqalik chegarasi va moderatsiya.
 
     const target = await targetOwner(env, kind, id);
-    if (!target.ok) return H.json({ error: 'not_found' }, 404);
+    if (!target.ok || hiddenFrom(target, user.id)) return H.json({ error: 'not_found' }, 404);
 
     if (await H.rateLimitD1(env, `cmt:u:${user.id}`, MAX_PER_MIN, MIN_MS)) {
       return H.json({ error: 'too_many_requests' }, 429);

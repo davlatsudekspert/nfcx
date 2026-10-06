@@ -28,7 +28,12 @@
 //
 // Jadval `CREATE TABLE IF NOT EXISTS` — mavjud ma'lumotga tegilmaydi.
 
-export const ARCHIVE_KINDS = ['post', 'company_post', 'story', 'card_video', 'card_file'];
+// `highlight` / `highlight_item` (2026-10) — Aktual (highlights.js) admin
+// tomonidan olib tashlanganda yoki uning manbasi bo'lgan istoriya admin
+// tomonidan o'chirilganda: Aktual nusxasi ham dalil bo'lib qoladi.
+export const ARCHIVE_KINDS = ['post', 'company_post', 'story', 'card_video', 'card_file', 'highlight', 'highlight_item'];
+
+const HL = (col) => `(SELECT h.${col} FROM story_highlights h WHERE h.id = src.highlight_id)`;
 
 const CARD_USER = (col) => `(SELECT c.user_id FROM cards c WHERE c.code = ${col})`;
 
@@ -59,6 +64,16 @@ const SRC = {
     table: 'card_files', ownerKind: `'card'`, ownerId: 'src.code',
     userId: CARD_USER('src.code'),
     image: 'NULL', video: 'NULL', file: 'src.file_url', body: 'src.title',
+  },
+  highlight: {
+    table: 'story_highlights', ownerKind: 'src.owner_kind', ownerId: 'src.owner_id',
+    userId: 'src.user_id',
+    image: 'src.cover_url', video: 'NULL', file: 'NULL', body: 'src.title',
+  },
+  highlight_item: {
+    table: 'story_highlight_items', ownerKind: HL('owner_kind'), ownerId: HL('owner_id'),
+    userId: HL('user_id'),
+    image: 'src.image_url', video: 'src.video_url', file: 'NULL', body: 'src.caption',
   },
 };
 
@@ -98,26 +113,65 @@ export async function ensureArchiveTable(env) {
         flagged_at TEXT NOT NULL,
         PRIMARY KEY (source, archive_id)
       )`),
-    ]).catch((e) => { ready = null; throw e; });
+    ]).then(async () => {
+      // Karusel ustuni (pastga qarang). Bu yerda — chunki arxivga yozadigan
+      // HAR yo'l (shu jumladan faqat cron ishlagan isolate: hisob purge'i)
+      // shu funksiyani chaqiradi. Ustun bor bo'lsa ALTER jim yiqiladi.
+      await env.DB.prepare(`ALTER TABLE content_archive ADD COLUMN media_json TEXT`).run().catch(() => {});
+      await refreshCarouselFlag(env);
+    }).catch((e) => { ready = null; throw e; });
   }
   await ready;
 }
+
+/// Uchala ustun (`content_archive`, `posts`, `company_posts` dagi
+/// `media_json`) HAQIQATAN borligini PRAGMA bilan tekshiradi va
+/// `carouselOn` ni shunga qo'yadi. Xato — o'zgartirmaydi.
+export async function refreshCarouselFlag(env) {
+  try {
+    const res = await env.DB.batch(['content_archive', 'posts', 'company_posts']
+      .map((t) => env.DB.prepare(`PRAGMA table_info(${t})`)));
+    const ok = res.every((r) => (r?.results || []).some((c) => String(c?.name) === 'media_json'));
+    if (ok) carouselOn = true;
+    return ok;
+  } catch {
+    return carouselOn;
+  }
+}
+
+// ── KARUSEL RASMLARI HAM DALIL (2026-10) ─────────────────────────────
+// Post 10 tagacha rasmli bo'lishi mumkin (api/carousel.js, `media_json`).
+// Arxivda faqat `image_url` (birinchi rasm) qolsa, qolgan rasmlar dalil
+// bo'lmay qolardi va fayl tozalovchilari ularni o'chirib yuborardi.
+// `content_archive.media_json` ustuni ADD COLUMN bilan qo'shiladi;
+// nusxa unga FAQAT ustunlar (arxivda ham, `posts`/`company_posts` da ham)
+// haqiqatan bor bo'lganda yoziladi. Bayroq IKKI joydan yoqiladi:
+// `ensureArchiveTable` (PRAGMA — cron ham shu yo'ldan o'tadi) va worker.js
+// `ensureCoreSchema` (`enableArchiveCarousel()`). Hisob purge'i esa bayroqqa
+// tayanmaydi — `by.withMedia` ni o'zi beradi (o'sha ustunlar konfiguratsiyasi
+// bilan `mediaUnionSql` ham ishlaydi). Aks holda `archiveStmt` avvalgi
+// shaklda qoladi (batch yiqilmaydi).
+let carouselOn = false;
+export function enableArchiveCarousel(on = true) { carouselOn = !!on; }
+export const archiveCarouselOn = () => carouselOn;
 
 /// O'chirishdan OLDIN o'sha batch'ga qo'yiladigan nusxa statement'i.
 ///
 /// `where` — DELETE dagi AYNAN o'sha shart (ustunlar taxallussiz,
 /// `binds` bilan). Shunda arxivga aynan o'chiriladigan qatorlar tushadi.
-///   by: { userId?, admin?, reason }  reason: owner | admin | expired | card_cleanup
+///   by: { userId?, admin?, reason, withMedia? }  reason: owner | admin | expired | card_cleanup
+///   `withMedia` — karusel ustunini yozish-yozmaslik (berilmasa — bayroq).
 export function archiveStmt(env, kind, where, binds, by = {}, now = nowTs()) {
   const s = SRC[kind];
   if (!s) throw new Error(`archive_kind:${kind}`);
+  const withMedia = (by.withMedia ?? carouselOn) === true && (kind === 'post' || kind === 'company_post');
   return env.DB.prepare(
     `INSERT INTO content_archive
        (kind, content_id, owner_kind, owner_id, user_id, image_url, video_url, file_url,
-        body, created_at, deleted_at, deleted_by_user_id, deleted_by_admin, reason)
+        body, created_at, deleted_at, deleted_by_user_id, deleted_by_admin, reason${withMedia ? ', media_json' : ''})
      SELECT ?, src.id, COALESCE(${s.ownerKind}, ''), CAST(COALESCE(${s.ownerId}, '') AS TEXT),
             CAST(COALESCE(${s.userId}, '') AS TEXT), ${s.image}, ${s.video}, ${s.file},
-            COALESCE(${s.body}, ''), src.created_at, ?, ?, ?, ?
+            COALESCE(${s.body}, ''), src.created_at, ?, ?, ?, ?${withMedia ? ', src.media_json' : ''}
        FROM ${s.table} src
       WHERE ${where}`
   ).bind(
@@ -133,9 +187,14 @@ export function archiveStmt(env, kind, where, binds, by = {}, now = nowTs()) {
 export async function urlArchived(env, url) {
   if (!url) return false;
   try {
-    const row = await env.DB.prepare(
-      `SELECT 1 AS x FROM content_archive WHERE image_url = ? OR video_url = ? OR file_url = ? LIMIT 1`
-    ).bind(url, url, url).first();
+    const row = carouselOn
+      ? await env.DB.prepare(
+        `SELECT 1 AS x FROM content_archive WHERE image_url = ? OR video_url = ? OR file_url = ?
+            OR instr(COALESCE(media_json, ''), ?) > 0 LIMIT 1`
+      ).bind(url, url, url, url).first()
+      : await env.DB.prepare(
+        `SELECT 1 AS x FROM content_archive WHERE image_url = ? OR video_url = ? OR file_url = ? LIMIT 1`
+      ).bind(url, url, url).first();
     return !!row;
   } catch {
     // Jadval hali yo'q bo'lsa ham — ehtiyot: o'chirmaymiz.
