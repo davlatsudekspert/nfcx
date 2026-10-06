@@ -104,12 +104,13 @@ function withLatency(hook) {
 {
   delete env.IAP_APPLE_ENABLED;
   const off = await call('/api/iap/apple/config');
-  check('1) bayroq yo‘q — enabled:false', [off.status, off.body], [200, { enabled: false, products: PRODUCTS }]);
+  check('1) bayroq yo‘q — enabled:false', [off.status, off.body.enabled, off.body.products], [200, false, PRODUCTS]);
   check('1) mahsulotlar ro‘yxati', PRODUCTS, [MONTHLY, YEARLY]);
   env.IAP_APPLE_ENABLED = 'true';
   check('1) "true" ham o‘chiq (faqat "1")', (await call('/api/iap/apple/config')).body.enabled, false);
   env.IAP_APPLE_ENABLED = '1';
-  check('1) bayroq 1 — enabled:true', (await call('/api/iap/apple/config', { cookie: cookie.user })).body, { enabled: true, products: PRODUCTS });
+  const on = (await call('/api/iap/apple/config', { cookie: cookie.user })).body;
+  check('1) bayroq 1 — enabled:true', [on.enabled, on.products], [true, PRODUCTS]);
   check('1) POST — 405', (await call('/api/iap/apple/config', { method: 'POST', json: {} })).status, 405);
   check('1) noma’lum yo‘l — 404', (await call('/api/iap/apple/nope')).status, 404);
 }

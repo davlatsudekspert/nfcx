@@ -234,3 +234,24 @@ Qoidalar (xavfsizlik ko'rigi, 2026-10-06):
   faqat tranzaksiyaning `expiresDate` gacha beradi (App Store Connect'da grace period yoqilsa — qayta ko'rish).
 Jadvallar: `iap_apple_account_tokens`, `iap_apple_subscriptions`, `iap_apple_transactions`,
 `iap_apple_notifications`. Test: `scripts/test-iap-apple.mjs`, `scripts/test-apple-jws.mjs`.
+
+`iap-apple-boost` — "Ko'tarish" (FEATURED slotlari) iOS'da, Apple IAP consumable'lari
+`uz.nfcstore.nova.boost.1d|3d|6d` (1/3/6 kun). Tekshiruvlar `featured.js` dan
+(`checkPromoTarget`, `capacityOf`, `stopSlot`); Payme/Click yo'li o'zgarmagan.
+`GET /api/iap/apple/config` qo'shimcha `boostEnabled` (bayroq VA to'lovlar yoqiq), `boostProducts:[{productId, days}]`.
+`POST /api/iap/apple/boost-intent {targetKind, targetId, days}` (auth; bayroq o'chiq 503 `iap_disabled`)
+→ 201 `{intentId, productId, days, holdUntil}` (ms); xatolar POST /api/featured bilan bir xil
+(`banned`, `payments_disabled`, `bad_kind`, `bad_target`, `bad_package`, `not_found`, `forbidden`,
+`post_scheduled`, `already_featured`+`slotId`, `too_many_active`+`max`, `sold_out`+sig'im), 429, 413.
+Ushlab turish: slot `pending`, `source='apple'`, `ends_at` = +20 daqiqa — joy egallaydi, tugasa bo'shaydi;
+o'sha post uchun qayta bosish o'sha intentni yangilaydi.
+`POST /api/iap/apple/verify {signedTransaction, intentId?}` (consumable) → `{boost:'active', slot:{id, startsAt, endsAt}}`
+| `{boost:'credited', creditId, days}` (intent yo'q/tugagan va joy yo'q) | `{boost:'revoked'}`;
+403 `intent_forbidden`, 422 `days_mismatch`, 409 `already_linked` | `in_progress`, qolganlari premium verify bilan bir xil.
+`POST /api/iap/apple/boost-redeem {creditId, targetKind, targetId}` → `{boost:'active', slot}`;
+404 `credit_not_found`, 409 `credit_used` | `credit_revoked` + intent xatolari.
+`GET /api/iap/apple/boost-credits` → `{credits:[{creditId, days, productId, createdAt}]}`.
+Bildirishnomalar: REFUND/REVOKE → slot `stopped` (`apple_refund`) yoki kredit bekor (`slot_stopped`|`credit_revoked`|`not_granted`);
+CONSUMPTION_REQUEST → `consumption_ack`. Admin `GET /api/admin/featured` qatorlarida `source` ('apple'|'web'|'admin')
+va `appleTransactionId`. Jadvallar: `iap_apple_boost_transactions`, `iap_apple_boost_credits`;
+`featured_slots` + `source`, `apple_transaction_id` (ADD COLUMN). Test: `scripts/test-iap-apple-boost.mjs`.

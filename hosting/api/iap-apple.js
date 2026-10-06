@@ -30,6 +30,13 @@
 //        { signedPayload } → 200 { ok: true, result, duplicate? } | 400 bad_request | invalid_signature
 //        | 413 payload_too_large (128 KB dan katta — tana o'qilmaydi)
 //
+//   KO'TARISH (consumable, api/iap-apple-boost.js — to'liq kontrakt o'sha yerda):
+//   POST /api/iap/apple/boost-intent {targetKind, targetId, days} (kirish SHART)
+//   POST /api/iap/apple/verify {signedTransaction, intentId?} — consumable bo'lsa
+//        → {boost:'active', slot} | {boost:'credited', creditId, days} | {boost:'revoked'}
+//   POST /api/iap/apple/boost-redeem {creditId, targetKind, targetId}
+//   GET  /api/iap/apple/boost-credits
+//
 // ═══ QOIDALAR ═══
 //
 //   * Imzo: hosting/api/apple-jws.js (Apple Root CA - G3 ga pin).
@@ -76,6 +83,8 @@
 // Moliyaviy yozuv sifatida hisob o'chirilganda ham qoladi.
 
 import { verifyAppleJws } from './apple-jws.js';
+// "Ko'tarish" (FEATURED) consumable'lari — alohida modul, tekshiruvlar shu yerda umumiy.
+import * as boost from './iap-apple-boost.js';
 
 export const BUNDLE_ID = 'uz.nfcstore.nova';
 export const PRODUCTS = ['uz.nfcstore.nova.premium.monthly', 'uz.nfcstore.nova.premium.yearly'];
@@ -260,6 +269,23 @@ async function touchSubscription(env, tx, status, renewal) {
 function normalizeTx(p) {
   if (!p || typeof p !== 'object') return { problem: 'bad_transaction' };
   if (p.bundleId !== BUNDLE_ID) return { problem: 'wrong_bundle' };
+  // KO'TARISH — consumable (muddatsiz, `expiresDate` yo'q).
+  const boostDays = boost.boostDaysOf(p.productId);
+  if (boostDays) {
+    if (p.type !== 'Consumable') return { problem: 'wrong_type' };
+    if (p.inAppOwnershipType === 'FAMILY_SHARED') return { problem: 'family_shared_not_supported' };
+    const transactionId = p.transactionId != null ? String(p.transactionId) : '';
+    if (!/^[0-9A-Za-z_-]{1,64}$/.test(transactionId)) return { problem: 'bad_transaction' };
+    return {
+      tx: {
+        kind: 'boost', transactionId, originalTransactionId: String(p.originalTransactionId ?? transactionId).slice(0, 64),
+        productId: p.productId, days: boostDays,
+        purchaseDate: msField(p.purchaseDate), revocationDate: msField(p.revocationDate),
+        environment: typeof p.environment === 'string' ? p.environment.slice(0, 20) : null,
+        appAccountToken: typeof p.appAccountToken === 'string' && p.appAccountToken ? p.appAccountToken.toLowerCase() : null,
+      },
+    };
+  }
   if (!PRODUCTS.includes(p.productId)) return { problem: 'unknown_product' };
   if (p.type !== SUBSCRIPTION_TYPE) return { problem: 'wrong_type' };
   // Family Sharing o'chiq: oila a'zosiga ulashilgan xarid bilan Premium berilmaydi.
@@ -272,7 +298,7 @@ function normalizeTx(p) {
   const token = typeof p.appAccountToken === 'string' && p.appAccountToken ? p.appAccountToken.toLowerCase() : null;
   return {
     tx: {
-      transactionId, originalTransactionId, productId: p.productId, expiresDate,
+      kind: 'premium', transactionId, originalTransactionId, productId: p.productId, expiresDate,
       purchaseDate: msField(p.purchaseDate),
       revocationDate: msField(p.revocationDate),
       environment: typeof p.environment === 'string' ? p.environment.slice(0, 20) : null,
@@ -551,6 +577,10 @@ async function handleVerify(request, env, H) {
     const tokenOwner = await userIdByToken(env, tx.appAccountToken);
     if (!tokenOwner || await userLive(env, tokenOwner)) return H.json({ error: 'account_mismatch' }, 403);
   }
+  if (tx.kind === 'boost') {
+    const [b, st] = await boost.verifyBoost(env, H, user, tx, body.value);
+    return H.json(b, st);
+  }
   const owner = await bindOwner(env, tx, user.id);
   if (owner !== Number(user.id)) return H.json({ error: 'already_linked' }, 409);
   const r = await grantTransaction(env, user.id, tx, 'verify');
@@ -588,6 +618,13 @@ async function processNotification(env, p) {
   if (problem) return { ...base, result: problem === 'family_shared_not_supported' ? 'ignored' : problem };
   Object.assign(base, { otid: tx.originalTransactionId, txid: tx.transactionId, environment: tx.environment || base.environment });
   const isRevoke = REVOKE_TYPES.has(type) || !!tx.revocationDate;
+  if (tx.kind === 'boost') {
+    // Consumable: faqat qaytarish muhim. CONSUMPTION_REQUEST — faqat qayd
+    // (Apple'ga iste'mol ma'lumoti YUBORILMAYDI).
+    if (type === 'CONSUMPTION_REQUEST') return { ...base, result: 'consumption_ack' };
+    if (isRevoke) return { ...base, result: await boost.revokeBoost(env, tx, 0) };
+    return { ...base, result: 'ignored' };
+  }
 
   // Kim? Avval bog'lanish; bo'lmasa (yoki egasi o'chirilgan bo'lsa)
   // appAccountToken → tirik foydalanuvchi → bog'laymiz.
@@ -680,7 +717,28 @@ export async function handle(request, env, url, H) {
   const m = request.method;
   if (p === '/api/iap/apple/config') {
     if (m !== 'GET') return H.json({ error: 'method_not_allowed' }, 405);
-    return H.json({ enabled: iapAppleEnabled(env), products: PRODUCTS });
+    return H.json({
+      enabled: iapAppleEnabled(env), products: PRODUCTS,
+      // Ko'tarish: Apple bayrog'i VA FEATURED sotuvi (to'lovlar) yoqiq bo'lsa.
+      boostEnabled: iapAppleEnabled(env) && !!H.paymentsEnabledD1(env),
+      boostProducts: boost.BOOST_PRODUCTS.map((x) => ({ productId: x.productId, days: x.days })),
+    });
+  }
+  if (p === '/api/iap/apple/boost-intent' || p === '/api/iap/apple/boost-redeem' || p === '/api/iap/apple/boost-credits') {
+    const wantMethod = p === '/api/iap/apple/boost-credits' ? 'GET' : 'POST';
+    if (m !== wantMethod) return H.json({ error: 'method_not_allowed' }, 405);
+    const user = await H.getCurrentUser(request, env);
+    if (!user) return H.json({ error: 'unauthorized' }, 401);
+    if (p === '/api/iap/apple/boost-credits') return H.json(...await boost.listCredits(env, user));
+    // Yangi ushlab turish faqat bayroq yoqiq bo'lsa; to'langan kreditni
+    // ishlatish — bayroqdan qat'i nazar (pul olingan).
+    if (p === '/api/iap/apple/boost-intent' && !iapAppleEnabled(env)) return H.json({ error: 'iap_disabled' }, 503);
+    const body = await readJsonLimited(request);
+    if (body.tooLarge) return H.json({ error: 'payload_too_large' }, 413);
+    const out = p === '/api/iap/apple/boost-intent'
+      ? await boost.handleIntent(env, H, user, body.value || {})
+      : await boost.redeemCredit(env, H, user, body.value || {});
+    return H.json(...out);
   }
   if (p === '/api/iap/apple/account-token') {
     if (m !== 'GET') return H.json({ error: 'method_not_allowed' }, 405);
