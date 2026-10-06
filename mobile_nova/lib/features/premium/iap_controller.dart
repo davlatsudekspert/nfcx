@@ -4,11 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/errors/app_error.dart';
 import '../../core/utils/result.dart';
-import '../../data/models/models.dart';
 import '../../data/repositories/iap_repository.dart';
 import '../auth/session.dart';
 import '../shop/store_policy.dart' show isAppStoreBuild;
 import 'iap_store.dart';
+
+export 'premium_access.dart';
 
 // ═══════════════════════════════════════════════════════════════════
 // PREMIUM — APPLE IN-APP PURCHASE (FAQAT iPHONE)
@@ -30,24 +31,6 @@ import 'iap_store.dart';
 // ═══════════════════════════════════════════════════════════════════
 
 final iapStoreProvider = Provider<IapStore>((_) => StoreKitIapStore());
-
-/// TO'LANGAN Premium — server `isPremium` (eski muddatsiz yoki
-/// `premiumExpiresAt` kelajakda). Bepul sinov bu yerga KIRMAYDI.
-bool iapPaidPremium(User u, {DateTime? now}) =>
-    u.premium || (u.premiumUntil?.isAfter(now ?? DateTime.now()) ?? false);
-
-/// BEPUL SINOV necha kun qoldi (yuqoriga yaxlitlanadi, sayt
-/// `trialDaysLeft` bilan bir xil). Sinov yo'q / tugagan / to'langan
-/// Premium bo'lsa — `null`.
-int? iapTrialDaysLeft(User? u, {DateTime? now}) {
-  if (u == null) return null;
-  final at = now ?? DateTime.now();
-  if (iapPaidPremium(u, now: at)) return null;
-  final until = u.trialUntil;
-  if (until == null || !until.isAfter(at)) return null;
-  return (until.difference(at).inMilliseconds / Duration.millisecondsPerDay)
-      .ceil();
-}
 
 /// Server kaliti. iPhone bo'lmasa — tarmoqsiz o'chiq.
 final iapConfigProvider = FutureProvider<IapConfig>((ref) async {

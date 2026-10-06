@@ -21,8 +21,7 @@ import '../auth/session.dart';
 import '../home/home_screen.dart';
 import '../home/widgets/avatar.dart';
 import '../shop/store_policy.dart' show isAppStoreBuild;
-import '../premium/premium_iap_screen.dart'
-    show kMusicFreeLimit, kMusicPremiumLimit;
+import '../premium/premium_access.dart' show profileMusicLimit;
 import 'contact_editor.dart';
 import 'music_player.dart' show musicTitleOf;
 import 'music_source.dart';
@@ -92,24 +91,20 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   /// odam o'z profilining tepa qismini o'zgartira olmasdi.
   String _coverUrl = '';
 
-  /// PROFIL MUSIQASI — ko'pi bilan 5 ta.
+  /// PROFIL MUSIQASI — oddiy hisobda 5 ta, Premium / sinovda 10 ta.
   ///
-  /// Chegara serverdan: oddiy hisobda 5, Premiumda 10
-  /// (`musicLimitD1`). Ilova eng qat'iysini qo'llaydi, shuning
-  /// uchun serverga sig'maydigan ro'yxat yuborilmaydi.
+  /// Chegara serverdan (`musicLimitD1`) — [_musicMax]. Ilova uni
+  /// oldindan qo'llaydi, shuning uchun serverga sig'maydigan ro'yxat
+  /// yuborilmaydi (server ortig'ini jim kesib tashlardi).
   List<String> _music = const [];
 
   /// Aloqa va havolalar — `ContactEditor` har o'zgarishda yangilaydi.
   ContactInfo? _contact;
 
-  /// iPHONE'DA PREMIUM OBUNACHIGA 10 TA — server `musicLimitD1(true)`.
-  /// Premium iPhone'da ilova ichida sotiladi (Apple IAP) va xarid
-  /// ekrani "10 tagacha qo'shiq" deydi — va'da shu yerda ham ishlashi
-  /// kerak. ANDROID O'ZGARMAYDI: har doim 5.
-  int get _musicMax => isAppStoreBuild &&
-          (ref.read(currentUserProvider)?.premium ?? false)
-      ? kMusicPremiumLimit
-      : kMusicFreeLimit;
+  /// Premium (to'langan — saytda yoki App Store'da) yoki faol bepul
+  /// sinov: 10 ta, aks holda 5 ta — server `musicLimitD1` bilan bir
+  /// xil, IKKALA platformada (`profileMusicLimit`).
+  int get _musicMax => profileMusicLimit(ref.read(currentUserProvider));
   double _uploadProgress = 0;
 
   @override

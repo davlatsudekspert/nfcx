@@ -28,28 +28,6 @@ const kPrivacyUrl = 'https://nfcstore.uz/privacy';
 const kAppleManageSubscriptionsUrl =
     'https://apps.apple.com/account/subscriptions';
 
-/// PREMIUM NIMA BERADI — serverdagi qiymatlar bilan AYNAN bir xil.
-///
-/// `hosting/worker.js`: `COMPANY_FREE_ITEM_LIMIT = 5`,
-/// `COMPANY_PREMIUM_ITEM_LIMIT = 25` (biznes katalogi) va
-/// `MUSIC_LIMIT_FREE_D1 = 5` / `MUSIC_LIMIT_PREMIUM_D1 = 10` (profil
-/// qo'shiqlari, `musicLimitD1(user.isPremium)`). Post, istoriya,
-/// video va izoh ro'yxatda YO'Q — ular hammaga bepul (egasining
-/// qarori, 2026-10-04). Yangi imkoniyat o'ylab topilmaydi.
-///
-/// SAYTDAGI BOSHQA PREMIUM IMKONIYATLAR (`src/lib/access.js`
-/// FEATURE_MIN: premium/animatsion mavzular, shisha kontent, havola
-/// uslublari, profil kartasi sozlamasi, kengaytirilgan analitika, lid
-/// formasi, lokatsiya, menyu/fayl katalogi) bu ro'yxatga KIRMAYDI:
-/// ularning hech biri Nova ilovasida yo'q (2026-10 tekshiruvi —
-/// `lib/` da na tahrirlash joyi, na ko'rinishi bor; Analitika ekrani
-/// esa darajaga bog'lanmagan `/api/my/analytics` ni o'qiydi). Ilovada
-/// paydo bo'lganda shu yerga qo'shiladi.
-const kCatalogFreeLimit = 5;
-const kCatalogPremiumLimit = 25;
-const kMusicFreeLimit = 5;
-const kMusicPremiumLimit = 10;
-
 /// PREMIUM OBUNASI — APPLE IN-APP PURCHASE (faqat iPhone).
 ///
 /// Marshrut (`/premium`) faqat `iapEnabledProvider` yoqilganda
@@ -410,6 +388,16 @@ class _PlanCard extends StatelessWidget {
   }
 }
 
+/// Imkoniyatlar ro'yxati — hajmlar `premium_access.dart` dan.
+///
+/// SAYTDAGI BOSHQA PREMIUM IMKONIYATLAR (`src/lib/access.js`
+/// FEATURE_MIN: premium/animatsion mavzular, shisha kontent, havola
+/// uslublari, profil kartasi sozlamasi, kengaytirilgan analitika, lid
+/// formasi, lokatsiya, menyu/fayl katalogi) bu ro'yxatga KIRMAYDI:
+/// ularning hech biri Nova ilovasida yo'q (2026-10 tekshiruvi —
+/// `lib/` da na tahrirlash joyi, na ko'rinishi bor; Analitika ekrani
+/// esa darajaga bog'lanmagan `/api/my/analytics` ni o'qiydi). Ilovada
+/// paydo bo'lganda shu yerga qo'shiladi.
 class _Perks extends StatelessWidget {
   const _Perks();
 
