@@ -153,6 +153,16 @@ export default function BusinessPublicProfile({
   const promotedItems = items.filter((item) => livePromotion(catalogMeta[String(item.id || item.name)]));
   const heroImage = record.bgUrl || gallery[0]?.imageUrl || items.find((item) => item.imageUrl)?.imageUrl || '';
   const tgUrl = telegramUrl(record.tg);
+  // NAMUNA profil (/biznes-namuna): kontaktlar ko'rinadi, lekin BOSILMAYDI —
+  // `href` siz <a> (uslub saqlanadi, havola emas). Soxta raqamga qo'ng'iroq
+  // yoki begona saytga o'tish bo'lmasin.
+  const demoLink = Boolean(record.demo);
+  const hrefs = {
+    tel: demoLink ? undefined : `tel:${record.phone}`,
+    mail: demoLink ? undefined : `mailto:${record.email}`,
+    tg: demoLink ? undefined : tgUrl,
+    web: demoLink || !record.website ? undefined : websiteUrl(record.website),
+  };
   const hasLocation = Boolean(record.address || (record.latitude != null && record.longitude != null));
   // Yo'nalish havolasi — qurilmaga mos xarita ilovasida (iPhone'da
   // Apple Maps, qolganlarida Google Maps). Avval hamma joyda Google
@@ -304,8 +314,8 @@ export default function BusinessPublicProfile({
                 Yozuvchi umumiy (`src/lib/vcard.js`) — uchinchi
                 nusxa yaratilmadi. */}
             <button type="button" className="bp-gold-btn" onClick={saveContact}>↓ {t('Kontaktni saqlash')}</button>
-            {record.phone && !record.hidePhone && <a className="bp-dark-btn" href={`tel:${record.phone}`}>☎ {t('Qo‘ng‘iroq')}</a>}
-            {tgUrl && <a className="bp-dark-btn" href={tgUrl} target="_blank" rel="noopener noreferrer">Telegram</a>}
+            {record.phone && !record.hidePhone && <a className="bp-dark-btn" href={hrefs.tel} aria-disabled={demoLink || undefined}>☎ {t('Qo‘ng‘iroq')}</a>}
+            {tgUrl && <a className="bp-dark-btn" href={hrefs.tg} aria-disabled={demoLink || undefined} target="_blank" rel="noopener noreferrer">Telegram</a>}
             {hasLocation && <a className="bp-dark-btn" href={mapsUrl} target="_blank" rel="noopener noreferrer">⌖ {t('Yo‘nalish')}</a>}
           </div>
         </div>
@@ -327,15 +337,15 @@ export default function BusinessPublicProfile({
                 <p>{record.about || t('Kompaniya haqida ma’lumot tez orada qo‘shiladi.')}</p>
                 <div className="bp-facts">
                   {record.city && <span><b>⌖</b>{record.city}</span>}
-                  {record.website && <a href={websiteUrl(record.website)} target="_blank" rel="noopener noreferrer"><b>↗</b>{record.website.replace(/^https?:\/\//, '')}</a>}
-                  {record.phone && !record.hidePhone && <a href={`tel:${record.phone}`}><b>☎</b>{record.phone}</a>}
+                  {record.website && <a href={hrefs.web} aria-disabled={demoLink || undefined} target="_blank" rel="noopener noreferrer"><b>↗</b>{record.website.replace(/^https?:\/\//, '')}</a>}
+                  {record.phone && !record.hidePhone && <a href={hrefs.tel} aria-disabled={demoLink || undefined}><b>☎</b>{record.phone}</a>}
                 </div>
               </article>
               <article className="bp-panel bp-summary">
                 <span className="bp-section-label">{t('KATALOG')}</span>
                 <strong>{fmt(items.length)}</strong>
-                <p>{t(`${moduleCopy.tab} professional katalog ko‘rinishida`)}</p>
-                <button type="button" className="bp-text-link" onClick={() => chooseTab('catalog')}>{t(`${moduleCopy.tab}ni ko‘rish`)} →</button>
+                <p>{t('{tab} professional katalog ko‘rinishida', { tab: t(moduleCopy.tab) })}</p>
+                <button type="button" className="bp-text-link" onClick={() => chooseTab('catalog')}>{t('{tab}ni ko‘rish', { tab: t(moduleCopy.tab) })} →</button>
               </article>
               <article className="bp-panel bp-summary">
                 <span className="bp-section-label">{t('ALOQA')}</span>
@@ -405,10 +415,10 @@ export default function BusinessPublicProfile({
           <section className="bp-contact-grid">
             <div><span className="bp-section-label">{t('ALOQA')}</span><h2>{t('Keling, loyihangizni muhokama qilamiz')}</h2><p>{record.about || t('Savolingizni qulay kanal orqali yuboring.')}</p></div>
             <div className="bp-contact-list">
-              {record.phone && !record.hidePhone && <a href={`tel:${record.phone}`}><span>☎</span><div><small>{t('Telefon')}</small><b>{record.phone}</b></div><i>→</i></a>}
-              {record.email && <a href={`mailto:${record.email}`}><span>✉</span><div><small>Email</small><b>{record.email}</b></div><i>→</i></a>}
-              {tgUrl && <a href={tgUrl} target="_blank" rel="noopener noreferrer"><span>↗</span><div><small>Telegram</small><b>{record.tg}</b></div><i>→</i></a>}
-              {record.website && <a href={websiteUrl(record.website)} target="_blank" rel="noopener noreferrer"><span>◎</span><div><small>{t('Veb-sayt')}</small><b>{record.website.replace(/^https?:\/\//, '')}</b></div><i>→</i></a>}
+              {record.phone && !record.hidePhone && <a href={hrefs.tel} aria-disabled={demoLink || undefined}><span>☎</span><div><small>{t('Telefon')}</small><b>{record.phone}</b></div><i>→</i></a>}
+              {record.email && <a href={hrefs.mail} aria-disabled={demoLink || undefined}><span>✉</span><div><small>Email</small><b>{record.email}</b></div><i>→</i></a>}
+              {tgUrl && <a href={hrefs.tg} aria-disabled={demoLink || undefined} target="_blank" rel="noopener noreferrer"><span>↗</span><div><small>Telegram</small><b>{record.tg}</b></div><i>→</i></a>}
+              {record.website && <a href={hrefs.web} aria-disabled={demoLink || undefined} target="_blank" rel="noopener noreferrer"><span>◎</span><div><small>{t('Veb-sayt')}</small><b>{record.website.replace(/^https?:\/\//, '')}</b></div><i>→</i></a>}
             </div>
           </section>
         )}
@@ -432,8 +442,8 @@ export default function BusinessPublicProfile({
               <span>◉ {fmt(catalogMeta[String(selected.id || selected.name)]?.views || 0)} {t('ko‘rish')}</span>
             </div>
             <div className="bp-modal-actions">
-              {record.phone && !record.hidePhone && <a className="bp-gold-btn" href={`tel:${record.phone}`}>☎ {t('Qo‘ng‘iroq')}</a>}
-              {tgUrl && <a className="bp-dark-btn" href={tgUrl} target="_blank" rel="noopener noreferrer">{t('Yozish')}</a>}
+              {record.phone && !record.hidePhone && <a className="bp-gold-btn" href={hrefs.tel} aria-disabled={demoLink || undefined}>☎ {t('Qo‘ng‘iroq')}</a>}
+              {tgUrl && <a className="bp-dark-btn" href={hrefs.tg} aria-disabled={demoLink || undefined} target="_blank" rel="noopener noreferrer">{t('Yozish')}</a>}
             </div>
           </article>
         </div>

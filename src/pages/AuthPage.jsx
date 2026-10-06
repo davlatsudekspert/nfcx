@@ -389,16 +389,16 @@ export default function AuthPage({ mode }) {
           {isBusiness && <span className="vz-badge vz-badge--gold mt-2">{t('NFCSTORE BUSINESS')}</span>}
           <h2 className="vz-h2 mt-2 !text-2xl">
             {isBusiness
-              ? (isRegister ? t('Kompaniya uchun ro\u2019yxatdan o\u2019tish') : t('Biznes kabinetga kirish'))
+              ? (isRegister ? t('Kompaniya uchun ro’yxatdan o’tish') : t('Biznes kabinetga kirish'))
               : (isRegister ? t('Ro\u2019yxatdan o\u2019tish') : t('Kirish'))}
           </h2>
           <p className="mt-2 text-[15px] leading-relaxed text-base-content/55">
             {isBusiness
               ? (isRegister
-                ? t('Akkaunt oching — so\u2019ng Company ID ochasiz. Shaxsiy NFC kartalaringiz bunga aralashmaydi.')
-                : t('Kompaniyalaringizni boshqarish uchun kiring. Akkaunt shu telefon/parol \u2014 alohida raqam kerak emas.'))
+                ? t('Akkaunt oching — so’ng Company ID ochasiz. Shaxsiy NFC kartalaringiz bunga aralashmaydi.')
+                : t('Kompaniyalaringizni boshqarish uchun kiring. Akkaunt shu telefon/parol — alohida raqam kerak emas.'))
               : (isRegister
-                ? t("Akkaunt oching — sotib olgan raqamli tashrif qog'ozingiz profilingiz bilan birga shu yerda bo\u2019ladi.")
+                ? t("Akkaunt oching — sotib olgan raqamli tashrif qog'ozingiz profilingiz bilan birga shu yerda bo’ladi.")
                 : t("Raqamli tashrif qog'ozilaringizni boshqarish uchun akkauntingizga kiring."))}
           </p>
 

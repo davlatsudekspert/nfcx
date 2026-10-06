@@ -1451,9 +1451,10 @@ const DICT_BASE = {
   'Shaxsiy': { ru: 'Личный', en: 'Personal' },
   'Ekspert': { ru: 'Эксперт', en: 'Expert' },
   'Biznes': { ru: 'Бизнес', en: 'Business' },
-  'Odam': { ru: 'Человек', en: 'A person' },
-  'Mutaxassis': { ru: 'Специалист', en: 'A specialist' },
-  'Kompaniya': { ru: 'Компания', en: 'A company' },
+  'Odam': { ru: 'Человек', en: 'Person' },
+  'Mutaxassis': { ru: 'Специалист', en: 'Specialist' },
+  // 'Kompaniya' — 113-qatorda ('Company'); bu yerdagi takror uni
+  // 'A company' ga almashtirib qo'yardi (sayt auditi, 2026-10).
   'Shahar / viloyat (ixtiyoriy)': { ru: 'Город / область (необязательно)', en: 'City / region (optional)' },
   'masalan Toshkent': { ru: 'например Ташкент', en: 'e.g. Tashkent' },
   'Meni katalog va qidiruvda ko‘rsatmaslik': { ru: 'Не показывать меня в каталоге и поиске', en: 'Hide me from the catalog and search' },

@@ -11,7 +11,7 @@ export const FAQ = {
   ],
   ru: [
     { q: 'Можно ли изменить цифровую визитку после покупки?', a: 'Да! После создания аккаунта визитка привязывается к вашему профилю, и вы в любой момент редактируете её на странице /account: имя, профессия, фото, соцсети, тема профиля и прочее.' },
-    { q: 'Как рассчитывается цена?', a: 'Цена NFC ID зависит не от числа занятых кодов, а только от узора букв/цифр: Бронза (49 000 сум), Silver (99 000 сум), Gold (149 000 сум), Premium (199 000 сум) и Эксклюзивный (только через аукцион) — цена всегда фиксированная и не меняется.' },
+    { q: 'Как рассчитывается цена?', a: 'Цена NFC ID зависит не от числа занятых кодов, а только от узора букв/цифр: Бронза (49 000 сум), Silver (99 000 сум), Gold (149 000 сум), Premium (199 000 сум) и Эксклюзив (от 490 000 сум) — цена всегда фиксированная и не меняется.' },
     { q: 'Могу ли я передать свою визитку другому человеку?', a: 'Да — теперь через функцию «Подарить», без какой-либо оплаты, с согласия получателя вы можете передать право владения.' },
     { q: 'Как выглядит мой профиль?', a: 'У каждой визитки есть своя личная страница: ваше фото, профессия, био, контакты, соцсети (Telegram, Instagram, Facebook, X) и выбранная тема дизайна.' },
     { q: 'Можно ли иметь несколько визиток?', a: 'Да, к одному аккаунту можно привязать сколько угодно визиток. В вашем профиле также отображается список других ваших визиток.' },
@@ -20,7 +20,7 @@ export const FAQ = {
   ],
   en: [
     { q: 'Can I change the digital card after buying it?', a: 'Yes! Once you create an account, your card is linked to your profile and you can edit it any time on the /account page: name, profession, photo, social networks, profile theme and more.' },
-    { q: 'How is the price calculated?', a: "An NFC ID's price does not depend on how many codes are taken, only on its letter/digit pattern: Bronze (49,000 UZS), Silver (99,000 UZS), Gold (149,000 UZS), Premium (199,000 UZS) and Exclusive (auction only) — the price is always fixed and never changes." },
+    { q: 'How is the price calculated?', a: "An NFC ID's price does not depend on how many codes are taken, only on its letter/digit pattern: Bronze (49,000 UZS), Silver (99,000 UZS), Gold (149,000 UZS), Premium (199,000 UZS) and Exclusive (from 490,000 UZS) — the price is always fixed and never changes." },
     { q: 'Can I give my card to another person?', a: 'Yes — now via the "Gift" feature, with no payment, you can transfer ownership with the recipient’s consent.' },
     { q: 'What does my profile look like?', a: 'Every card has its own personal page: your photo, profession, bio, contacts, social networks (Telegram, Instagram, Facebook, X) and your chosen design theme.' },
     { q: 'Can I have several cards?', a: 'Yes, you can link any number of cards to one account. Your profile also shows a list of your other cards.' },

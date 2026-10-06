@@ -14,10 +14,16 @@ const record = {
   address: 'Chilonzor tumani, Bunyodkor ko‘chasi 12',
   latitude: 41.2825,
   longitude: 69.2121,
-  phone: '+998 90 123 45 67',
-  tg: '@elite_qurilish',
-  email: 'info@elite-qurilish.uz',
-  website: 'elite-qurilish.uz',
+  // ATAYLAB SOXTA kontaktlar (sayt auditi, 2026-10): ilgari bu yerda haqiqiy
+  // ko'rinadigan raqam, @elite_qurilish, elite-qurilish.uz turardi — ular
+  // begona odam yoki kompaniyaniki bo'lib chiqishi mumkin edi. Endi aniq
+  // namuna qiymatlar (".example" — internetda hech qachon mavjud bo'lmaydigan
+  // domen), `demo: true` bo'lgani uchun esa BusinessPublicProfile ularni
+  // bosiladigan havola qilmaydi.
+  phone: '+998 00 000 00 00',
+  tg: '@namuna_biznes',
+  email: 'info@namuna.example',
+  website: 'namuna.example',
   about: 'Elite Qurilish — zamonaviy turar-joy va tijorat obyektlarini loyihalashdan kalit topshirishgacha olib boradigan qurilish kompaniyasi. Har bir loyihada aniq reja, sifatli material va ochiq muloqotga tayanamiz.',
   avatarUrl: '/logo-192.png',
   bgUrl: '/business-assets/construction-hero.jpg',

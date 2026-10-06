@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { listPublicCompanies } from '../lib/company.js';
 import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
+import { subcategoryLabel } from '../lib/demoCategories.js';
 
 // ═══════════════════════════════════════════════════════════════════════
 // BOSH SAHIFA: NAMUNA BIZNESLAR KARUSELI (2026-09-26)
@@ -20,7 +21,7 @@ import { useLanguage } from '../lib/i18n.jsx';
 /// ixchamroq — namunalar birinchi ekranda ko'rinsin (egasi, 2026-09-26:
 /// "pastda ko'rinmay turgan biznes profillarni teparoqqa chiqar").
 export default function SampleBusinessesStrip({ compact = false, fallback = null, tight = false }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [items, setItems] = useState(null);
 
   useEffect(() => {
@@ -91,7 +92,7 @@ export default function SampleBusinessesStrip({ compact = false, fallback = null
               </span>
               <span className="min-w-0">
                 <span className="block truncate text-[16px] font-bold text-[color:var(--vz-ink)]">{c.displayName}</span>
-                <span className="block truncate text-[13px] text-[color:var(--vz-ink-3)]">{c.subcategory || c.city}</span>
+                <span className="block truncate text-[13px] text-[color:var(--vz-ink-3)]">{subcategoryLabel(c.subcategory, lang) || c.city}</span>
               </span>
             </div>
           </button>

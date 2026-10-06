@@ -213,4 +213,139 @@ export const DICT_SITE = {
   'Mijoz NFC yoki QR orqali bir tegishda ochadi': { ru: 'Клиент открывает одним касанием NFC или по QR', en: 'Customers open it with one NFC tap or a QR scan' },
   'Ilovada ham ko‘rinadi': { ru: 'Виден и в приложении', en: 'Also shown in the app' },
   'Katalog va buyurtmalar bir joyda': { ru: 'Каталог и заказы в одном месте', en: 'Catalog and orders in one place' },
+  // ── Sayt auditi (2026-10): ru/en da o'zbekcha qolgan matnlar ──
+  // Kirish / ro'yxatdan o'tish (AuthPage)
+  'Bu telefon raqami bilan allaqachon akkaunt ochilgan. Kirishga urinib ko‘ring yoki parolni tiklang.': {
+    ru: 'С этим номером телефона уже есть аккаунт. Попробуйте войти или восстановите пароль.',
+    en: 'An account with this phone number already exists. Try signing in or reset your password.' },
+  'Telefon raqami yoki email formati noto‘g‘ri.': { ru: 'Неверный формат номера телефона или email.', en: 'The phone number or email format is invalid.' },
+  'Telegram tasdig‘i topilmadi yoki muddati o‘tgan. «Telegramda tasdiqlash» tugmasini qayta bosing.': {
+    ru: 'Подтверждение в Telegram не найдено или истекло. Снова нажмите «Подтвердить в Telegram».',
+    en: 'The Telegram confirmation was not found or has expired. Tap “Confirm in Telegram” again.' },
+  'Botda tasdiqlangan raqam bu akkauntdagi raqamga mos kelmadi.': {
+    ru: 'Номер, подтверждённый в боте, не совпадает с номером этого аккаунта.',
+    en: 'The number confirmed in the bot does not match the number on this account.' },
+  'Telegram bot hozir sozlanmagan. Birozdan so‘ng urinib ko‘ring.': {
+    ru: 'Telegram-бот сейчас не настроен. Попробуйте чуть позже.',
+    en: 'The Telegram bot is not set up right now. Please try again shortly.' },
+  'Saytning pochta sozlamasida xatolik bor. Biz xabardormiz — birozdan so‘ng qayta urinib ko‘ring.': {
+    ru: 'Ошибка в почтовых настройках сайта. Мы уже знаем о ней — попробуйте ещё раз чуть позже.',
+    en: 'There is a problem with the site’s email settings. We are aware of it — please try again shortly.' },
+  "Emailga kod yuborib bo'lmadi. Manzilni tekshiring yoki birozdan so'ng qayta urining.": {
+    ru: 'Не удалось отправить код на email. Проверьте адрес или попробуйте чуть позже.',
+    en: 'We could not send the code by email. Check the address or try again shortly.' },
+  'Email manzilingizni kiriting — tasdiqlash kodi shu manzilga yuboriladi.': {
+    ru: 'Введите email — код подтверждения придёт на этот адрес.',
+    en: 'Enter your email — the confirmation code will be sent to it.' },
+  'Emailingizga kelgan 6 xonali kodni kiriting.': { ru: 'Введите 6-значный код из письма.', en: 'Enter the 6-digit code from your email.' },
+  "Kod noto'g'ri yoki muddati o'tgan. «Qaytadan yuborish» ni bosing.": {
+    ru: 'Код неверный или устарел. Нажмите «Отправить снова».',
+    en: 'The code is wrong or has expired. Tap “Resend”.' },
+  'Telefon raqami yoki emailingizni kiriting.': { ru: 'Введите номер телефона или email.', en: 'Enter your phone number or email.' },
+  'Avval Telegram orqali tasdiqlang.': { ru: 'Сначала подтвердите через Telegram.', en: 'Confirm via Telegram first.' },
+  'Tasdiqlash kodi emailingizga yuborildi. Pochtangizni oching (spam papkasini ham tekshiring).': {
+    ru: 'Код подтверждения отправлен на ваш email. Откройте почту (проверьте и папку «Спам»).',
+    en: 'The confirmation code has been sent to your email. Open your inbox (check the spam folder too).' },
+  'Tasdiqlash kodi Telegram botga yuborildi.': { ru: 'Код подтверждения отправлен в Telegram-бот.', en: 'The confirmation code has been sent to the Telegram bot.' },
+  'Havola tasdiqlandi. Endi yangi parol qo‘ying.': { ru: 'Ссылка подтверждена. Теперь задайте новый пароль.', en: 'Link confirmed. Now set a new password.' },
+  'Telefon raqamingiz yoki emailingizni yozing va Telegram orqali tasdiqlang — so‘ng yangi parol qo‘yasiz. Hech qanday kod kiritilmaydi.': {
+    ru: 'Введите номер телефона или email и подтвердите через Telegram — затем задайте новый пароль. Никаких кодов вводить не нужно.',
+    en: 'Enter your phone number or email and confirm via Telegram — then set a new password. No codes to type.' },
+  'Telefon yoki email': { ru: 'Телефон или email', en: 'Phone or email' },
+  'Akkauntingizga ulangan Telegram orqali tasdiqlang': { ru: 'Подтвердите через Telegram, привязанный к аккаунту', en: 'Confirm via the Telegram linked to your account' },
+  'Yoki email orqali': { ru: 'Или по email', en: 'Or by email' },
+  'Agar bu manzil bizda ro‘yxatdan o‘tgan bo‘lsa, havola yuborildi. Pochtangizni (va "Spam" papkasini) tekshiring.': {
+    ru: 'Если этот адрес у нас зарегистрирован, ссылка отправлена. Проверьте почту (и папку «Спам»).',
+    en: 'If this address is registered with us, a link has been sent. Check your inbox (and the “Spam” folder).' },
+  'Havola yuborildi': { ru: 'Ссылка отправлена', en: 'Link sent' },
+  'Emailga havola yuborish': { ru: 'Отправить ссылку на email', en: 'Send a link by email' },
+  'Telefon raqamingiz akkauntdagi raqam bilan mos kelishi kerak. Bot:': {
+    ru: 'Номер телефона должен совпадать с номером в аккаунте. Бот:',
+    en: 'Your phone number must match the one on the account. Bot:' },
+  'Kompaniya uchun ro’yxatdan o’tish': { ru: 'Регистрация для компании', en: 'Sign up for a company' },
+  'Akkaunt oching — so’ng Company ID ochasiz. Shaxsiy NFC kartalaringiz bunga aralashmaydi.': {
+    ru: 'Создайте аккаунт — затем откроете Company ID. Ваши личные NFC-карты это не затронет.',
+    en: 'Create an account — then you will open a Company ID. Your personal NFC cards are not affected.' },
+  'Kompaniyalaringizni boshqarish uchun kiring. Akkaunt shu telefon/parol — alohida raqam kerak emas.': {
+    ru: 'Войдите, чтобы управлять компаниями. Аккаунт тот же (телефон/пароль) — отдельный номер не нужен.',
+    en: 'Sign in to manage your companies. Same account (phone/password) — no separate number needed.' },
+  "Akkaunt oching — sotib olgan raqamli tashrif qog'ozingiz profilingiz bilan birga shu yerda bo’ladi.": {
+    ru: 'Создайте аккаунт — купленная цифровая визитка будет здесь вместе с вашим профилем.',
+    en: 'Create an account — the digital card you buy will live here together with your profile.' },
+  'Raqam to‘liq emas. O‘zbekiston: 90 111 22 33 yoki +998901112233.': {
+    ru: 'Номер неполный. Узбекистан: 90 111 22 33 или +998901112233.',
+    en: 'The number is incomplete. Uzbekistan: 90 111 22 33 or +998901112233.' },
+  'Shu raqam bilan kirasiz. Chet el raqami ham mumkin: +7, +996…': {
+    ru: 'С этим номером вы будете входить. Можно и иностранный номер: +7, +996…',
+    en: 'You will sign in with this number. Foreign numbers work too: +7, +996…' },
+  'Tasdiqlash kodi shu manzilga yuboriladi.': { ru: 'Код подтверждения придёт на этот адрес.', en: 'The confirmation code will be sent to this address.' },
+  'Emailga kelgan kod': { ru: 'Код из письма', en: 'Code from the email' },
+  'Kod kelmadimi? Qaytadan yuborish': { ru: 'Код не пришёл? Отправить снова', en: 'No code? Resend' },
+  'Parol {n} marta xato kiritildi.': { ru: 'Пароль введён неверно {n} раз(а).', en: 'Wrong password entered {n} times.' },
+  'Parolni Telegram orqali tiklashingiz mumkin: botda bitta tugma bosasiz va yangi parol qo‘yasiz. Hech qanday kod kiritilmaydi.': {
+    ru: 'Пароль можно восстановить через Telegram: нажмите одну кнопку в боте и задайте новый пароль. Никаких кодов вводить не нужно.',
+    en: 'You can reset your password via Telegram: tap one button in the bot and set a new password. No codes to type.' },
+  'Telegram orqali parolni tiklash': { ru: 'Восстановить пароль через Telegram', en: 'Reset password via Telegram' },
+  // Bosh sahifa (HomePage, PhysicalCardCta)
+  'Siz va biznesingiz — [[bitta profilda.]]': { ru: 'Вы и ваш бизнес — [[в одном профиле.]]', en: 'You and your business — [[in one profile.]]' },
+  'NFC ID kartangizni o‘zingizga mos [[dizaynda tayyorlang]]': { ru: 'Оформите свою NFC ID карту [[в своём дизайне]]', en: 'Make your NFC ID card [[in your own design]]' },
+  'Rang, fon va uslubni o‘zingiz tanlaysiz': { ru: 'Цвет, фон и стиль выбираете сами', en: 'You choose the colour, background and style' },
+  'Old va orqa tomon — ikkalasi ham sizniki': { ru: 'Лицевая и обратная сторона — обе ваши', en: 'Front and back — both are yours' },
+  'QR kod va logotipni xohlagan joyga qo‘yasiz': { ru: 'QR-код и логотип — там, где захотите', en: 'Place the QR code and logo wherever you like' },
+  'Chop etilgan karta pochta orqali keladi': { ru: 'Напечатанная карта приходит по почте', en: 'The printed card arrives by post' },
+  'Taqiqlangan': { ru: 'Запрещено', en: 'Prohibited' },
+  'Bu NFC ID’dan foydalanish taqiqlangan. Boshqa nom tanlang.': { ru: 'Этот NFC ID использовать запрещено. Выберите другое имя.', en: 'This NFC ID cannot be used. Please choose another name.' },
+  'Brend uchun himoyalangan': { ru: 'Защищено для бренда', en: 'Protected for a brand' },
+  'Bu nom kompaniya yoki brend nomiga mos kelgani uchun ochiq sotuvga qo‘yilmagan. Brendning rasmiy egasi yoki vakili bo‘lsangiz, admin bilan bog‘laning.': {
+    ru: 'Это имя совпадает с названием компании или бренда, поэтому не продаётся открыто. Если вы официальный владелец или представитель бренда, свяжитесь с администратором.',
+    en: 'This name matches a company or brand name, so it is not on open sale. If you are the brand’s official owner or representative, contact the admin.' },
+  'Admin bilan bog‘lanish': { ru: 'Связаться с администратором', en: 'Contact the admin' },
+  'Alohida toifa': { ru: 'Особая категория', en: 'Special category' },
+  'Bu nom kripto toifasiga saqlangan va hozircha sotuvda emas.': {
+    ru: 'Это имя зарезервировано для крипто-категории и пока не продаётся.',
+    en: 'This name is reserved for the crypto category and is not for sale yet.' },
+  'nfcstore.uz/{code} — {price} so‘m': { ru: 'nfcstore.uz/{code} — {price} сум', en: 'nfcstore.uz/{code} — {price} UZS' },
+  'Bepul profil': { ru: 'Бесплатный профиль', en: 'Free profile' },
+  'Maxsus NFC ID': { ru: 'Особый NFC ID', en: 'Custom NFC ID' },
+  "so'mdan": { ru: 'сум и выше', en: 'UZS and up' },
+  '490 000 dan': { ru: 'от 490 000', en: 'from 490,000' },
+  "Narxlarni ko'rish": { ru: 'Смотреть цены', en: 'See prices' },
+  'Premium profil': { ru: 'Премиум-профиль', en: 'Premium profile' },
+  // Biznes sahifasi (BusinessPublicProfile) — {tab}: Menyu / Mahsulotlar / Xizmatlar
+  '{tab} professional katalog ko‘rinishida': { ru: '{tab} в виде профессионального каталога', en: '{tab} as a professional catalog' },
+  '{tab}ni ko‘rish': { ru: 'Открыть: {tab}', en: 'View {tab}' },
+  // Bandlash (ReserveModal) — auksion bekor qilingan
+  'Bu NFC ID Ekslyuziv darajada — uni onlayn band qilib bo‘lmaydi. Sotib olish uchun «Aloqa» sahifasi orqali biz bilan bog‘laning.': {
+    ru: 'Этот NFC ID эксклюзивного уровня — забронировать его онлайн нельзя. Для покупки свяжитесь с нами через страницу «Контакты».',
+    en: 'This NFC ID is Exclusive tier — it cannot be reserved online. To buy it, contact us via the “Contact” page.' },
+  // Narx naqshlari (src/lib/pricing.js digitPattern)
+  'Ko‘zgu raqam': { ru: 'Зеркальное число', en: 'Mirror number' },
+  // Bandlash oynasi (ReserveModal)
+  "To'lov shartlari va pul qaytarish tartibiga rozilik bering.": {
+    ru: 'Подтвердите согласие с условиями оплаты и возврата.',
+    en: 'Please agree to the payment and refund terms.' },
+  "Bu raqamli tashrif qog'ozi hozir boshqa birov tomonidan band qilingan (to'lov kutilmoqda). Agar u 24 soat ichida to'lamasa, avtomatik bo'shaydi — birozdan keyin qayta urinib ko'ring.": {
+    ru: 'Эту цифровую визитку сейчас забронировал другой человек (ожидается оплата). Если он не оплатит в течение 24 часов, она освободится автоматически — попробуйте позже.',
+    en: 'Someone else has just reserved this digital card (payment pending). If they do not pay within 24 hours it is released automatically — please try again later.' },
+  "bilan to‘lov · {n} so'm": { ru: '— оплатить · {n} сум', en: 'pay · {n} UZS' },
+  "To'lov va pul qaytarish shartlari": { ru: 'Условия оплаты и возврата', en: 'Payment and refund terms' },
+  "NFC ID — raqamli mahsulot. To'lov tasdiqlangan zahoti kod profilingizga biriktiriladi, shundan keyin xarid bekor qilinmaydi va pul qaytarilmaydi.": {
+    ru: 'NFC ID — цифровой товар. Как только оплата подтверждена, код привязывается к вашему профилю; после этого покупку нельзя отменить, деньги не возвращаются.',
+    en: 'An NFC ID is a digital product. As soon as payment is confirmed the code is linked to your profile; after that the purchase cannot be cancelled and is not refunded.' },
+  "Band qilingan, lekin to'lanmagan buyurtma 24 soatdan keyin o'zi bekor bo'ladi — bu holda hech qanday summa yechilmaydi.": {
+    ru: 'Забронированный, но не оплаченный заказ сам отменяется через 24 часа — в этом случае ничего не списывается.',
+    en: 'A reserved but unpaid order is cancelled automatically after 24 hours — nothing is charged in that case.' },
+  "Agar xizmat texnik sabab bilan ko'rsatilmasa yoki summa xato yechilsa — to'langan pul to'liq qaytariladi. Bu huquqni Oferta cheklamaydi.": {
+    ru: 'Если услуга не оказана по технической причине или сумма списана ошибочно — оплата возвращается полностью. Оферта это право не ограничивает.',
+    en: 'If the service is not provided for a technical reason or an amount is charged by mistake, the payment is refunded in full. The Offer does not limit this right.' },
+  "Men yuqoridagi to'lov va pul qaytarish shartlari hamda": { ru: 'Я ознакомился(-лась) с условиями оплаты и возврата выше, а также с', en: 'I have read the payment and refund terms above and the' },
+  'ommaviy oferta': { ru: 'публичной офертой', en: 'public offer' },
+  'bilan tanishdim va roziman.': { ru: 'и согласен(-на).', en: 'and I agree.' },
+  "Band qilingandan so'ng 24 soat ichida to'lashingiz kerak — aks holda joy avtomatik bo'shaydi.": {
+    ru: 'После бронирования нужно оплатить в течение 24 часов — иначе бронь автоматически снимается.',
+    en: 'After reserving you must pay within 24 hours — otherwise the reservation is released automatically.' },
+  // Telefon uzunligi (src/lib/phone.js uzPhoneLengthBad)
+  'Telefon raqami noto‘g‘ri: O‘zbekiston raqami +998 va 9 ta raqamdan iborat (masalan +998 90 123 45 67).': {
+    ru: 'Неверный номер телефона: номер Узбекистана — это +998 и 9 цифр (например +998 90 123 45 67).',
+    en: 'Invalid phone number: an Uzbek number is +998 followed by 9 digits (e.g. +998 90 123 45 67).' },
 };

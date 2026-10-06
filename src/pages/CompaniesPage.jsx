@@ -1,6 +1,7 @@
 import SampleBusinessesStrip from '../components/SampleBusinessesStrip.jsx';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLanguage } from '../lib/i18n.jsx';
+import { subcategoryLabel } from '../lib/demoCategories.js';
 import { navigate } from '../lib/router.js';
 import { useCategories, catPath } from '../lib/categories.js';
 import { fmt } from '../lib/format.js';
@@ -319,7 +320,7 @@ export default function CompaniesPage({ catalog = [] }) {
       kind: 'company',
       code: c.companyId,
       name: c.displayName || c.companyId,
-      role: c.subcategory || '',
+      role: subcategoryLabel(c.subcategory, lang) || '',
       city: c.city || '',
       categorySlug: c.category || '',
       avatarUrl: c.logoUrl || '',
